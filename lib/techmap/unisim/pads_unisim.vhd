@@ -298,13 +298,25 @@ begin
     end generate;
   end generate;
   cmos0 : if level = cmos generate
-    slow0 : if slew = 0 generate
-      op : OBUFT generic map (drive => strength, IOSTANDARD => "LVCMOS33")
-                 port map (O => pad, I => i, T => en);
+    cmos_33 : if voltage = x33v generate
+      slow0 : if slew = 0 generate
+        op : OBUFT generic map (drive => strength, IOSTANDARD => "LVCMOS33")
+          port map (O => pad, I => i, T => en);
+      end generate;
+      fast0 : if slew /= 0 generate
+        op : OBUFT generic map (drive => strength, IOSTANDARD => "LVCMOS33", SLEW => "FAST")
+          port map (O => pad, I => i, T => en);
+      end generate;
     end generate;
-    fast0 : if slew /= 0 generate
-      op : OBUFT generic map (drive => strength, IOSTANDARD => "LVCMOS33", SLEW => "FAST")
-                 port map (O => pad, I => i, T => en);
+    cmos_25 : if voltage /= x33v generate
+      slow0 : if slew = 0 generate
+        op : OBUFT generic map (drive => strength, IOSTANDARD => "LVCMOS25")
+          port map (O => pad, I => i, T => en);
+      end generate;
+      fast0 : if slew /= 0 generate
+        op : OBUFT generic map (drive => strength, IOSTANDARD => "LVCMOS25", SLEW => "FAST")
+          port map (O => pad, I => i, T => en);
+      end generate;
     end generate;
   end generate;
   gen0 : if (level /= pci33) and (level /= ttl) and (level /= cmos) generate

@@ -98,7 +98,7 @@ architecture rtl of altera_tap is
 
 begin
   
-  tapo_capt <= '0'; tapo_upd <= '0'; tapo_rst <= '0';
+  tapo_rst <= '0';
   tapo_xsel1 <= '0'; tapo_xsel2 <= '0';
 
   
@@ -128,13 +128,13 @@ begin
               tdi             => tapo_tdi,
               tdo             => tapi_tdo1,
               tms             => open,  
-              virtual_state_cdr	 => open,
+              virtual_state_cdr	 => tapo_capt,
               virtual_state_cir	 => open,
               virtual_state_e1dr => open,
               virtual_state_e2dr => open,
               virtual_state_pdr  => open,	
               virtual_state_sdr  => tapo_shft,
-              virtual_state_udr  => open,	
+              virtual_state_udr  => tapo_upd,	
               virtual_state_uir  => open);
   
 end;

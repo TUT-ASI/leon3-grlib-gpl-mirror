@@ -55,9 +55,16 @@ type wrfst_type is record
   renable : std_logic;
 end record;
 
+type wrfst_type2 is record
+  waddr   : std_logic_vector(abits-1 downto 0);
+  datain  : std_logic_vector((dbits -1) downto 0);
+  write   : std_logic;
+end record;
+
 signal vcc, gnd : std_ulogic;
 signal vgnd : std_logic_vector(dbits-1 downto 0);
 signal r : wrfst_type;
+signal r2 : wrfst_type2;
 signal dataoutx  : std_logic_vector((dbits -1) downto 0);
 signal databp, testdata : std_logic_vector((dbits -1) downto 0);
 constant SCANTESTBP : boolean := (testen = 1) and (tech /= 0);
@@ -91,10 +98,12 @@ begin
   end generate;
 
   wrfst_gen : if wrfst = 1 generate
-    comb : process(r, dataoutx, testin) begin
+    comb : process(r, r2, dataoutx, testin) begin
       if (SCANTESTBP and (testin(3) = '1')) or
 	(((r.write and r.renable) = '1') and (r.raddr = r.waddr)) then
 	dataout <= r.datain;
+      elsif ((sepclk = 1) and ((r2.write and r.renable) = '1') and (r.raddr = r2.waddr)) then
+	dataout <= r2.datain;
       else dataout <= dataoutx; end if;
     end process;
     reg : process(rclk) begin
@@ -104,6 +113,18 @@ begin
 	r.renable <= renable;
       end if;
     end process;
+    reg2gen : if sepclk = 1 generate
+      reg2 : process(wclk) begin
+        if rising_edge(wclk) then
+	  r2.waddr <= waddress;
+	  r2.datain <= datain; r2.write <= write;
+        end if;
+      end process;
+    end generate;
+    noreg2gen : if sepclk = 0 generate
+      r2.waddr <= (others => '0');
+      r2.datain <= (others => '0'); r2.write <= '0';
+    end generate;
   end generate;
 
   inf : if tech = inferred generate
@@ -156,6 +177,12 @@ begin
 
   proa3 : if tech = apa3 generate
     x0 : proasic3_syncram_2p generic map (abits, dbits)
+         port map (rclk, renable, raddress, dataoutx,
+		   wclk, waddress, datain, write);
+  end generate;
+
+  fus : if tech = actfus generate
+    x0 : fusion_syncram_2p generic map (abits, dbits)
          port map (rclk, renable, raddress, dataoutx,
 		   wclk, waddress, datain, write);
   end generate;

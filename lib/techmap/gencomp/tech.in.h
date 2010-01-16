@@ -43,7 +43,7 @@
 #elif defined CONFIG_SYN_IGLOO
 #define CONFIG_SYN_TECH apa3
 #elif defined CONFIG_SYN_FUSION
-#define CONFIG_SYN_TECH apa3
+#define CONFIG_SYN_TECH actfus
 #elif defined CONFIG_SYN_SPARTAN2
 #define CONFIG_SYN_TECH virtex
 #elif defined CONFIG_SYN_VIRTEX

@@ -1,20 +1,17 @@
--- Copyright (C) 1991-2006 Altera Corporation
--- Your use of Altera Corporation's design tools, logic functions
--- and other software and tools, and its AMPP partner logic
--- functions, and any output files any of the foregoing
--- (including device programming or simulation files), and any
--- associated documentation or information are expressly subject
--- to the terms and conditions of the Altera Program License
--- Subscription Agreement, Altera MegaCore Function License
--- Agreement, or other applicable license agreement, including,
--- without limitation, that your use is for the sole purpose of
--- programming logic devices manufactured by Altera and sold by
--- Altera or its authorized distributors.  Please refer to the
+-- Copyright (C) 1991-2009 Altera Corporation
+-- Your use of Altera Corporation's design tools, logic functions 
+-- and other software and tools, and its AMPP partner logic 
+-- functions, and any output files from any of the foregoing 
+-- (including device programming or simulation files), and any 
+-- associated documentation or information are expressly subject 
+-- to the terms and conditions of the Altera Program License 
+-- Subscription Agreement, Altera MegaCore Function License 
+-- Agreement, or other applicable license agreement, including, 
+-- without limitation, that your use is for the sole purpose of 
+-- programming logic devices manufactured by Altera and sold by 
+-- Altera or its authorized distributors.  Please refer to the 
 -- applicable agreement for further details.
-
-
--- Quartus II 6.0 Build 178 04/27/2006
-
+-- Quartus II 9.0 Build 235 03/01/2009
 
 library IEEE;
 use IEEE.std_logic_1164.all;
@@ -32,8 +29,8 @@ function alt_conv_integer(arg : in std_logic_vector) return integer;
 
 -- default generic values
     CONSTANT DefWireDelay        : VitalDelayType01      := (0 ns, 0 ns);
-    CONSTANT DefPropDelay01      : VitalDelayType01      := (1 ns, 1 ns);
-    CONSTANT DefPropDelay01Z     : VitalDelayType01Z     := (OTHERS => 1 ns);
+    CONSTANT DefPropDelay01      : VitalDelayType01      := (0 ns, 0 ns);
+    CONSTANT DefPropDelay01Z     : VitalDelayType01Z     := (OTHERS => 0 ns);
     CONSTANT DefSetupHoldCnst    : TIME := 0 ns;
     CONSTANT DefPulseWdthCnst    : TIME := 0 ns;
 -- default control options
@@ -68,6 +65,14 @@ function int2str( value : integer ) return string;
 function map_x_to_0 (value : std_logic) return std_logic;
 
 function SelectDelay (CONSTANT Paths: IN  VitalPathArray01Type) return TIME;
+
+function int2bit (arg : boolean) return std_logic;
+function int2bit (arg : integer) return std_logic;
+function bin2int (s : std_logic_vector) return integer;
+function bin2int (s : std_logic) return integer;
+function int2bin (arg : integer; size : integer) return std_logic_vector;
+function int2bin (arg : boolean; size : integer) return std_logic_vector;
+function calc_sum_len( widtha : integer; widthb : integer) return integer;
 
 end stratixii_atom_pack;
 
@@ -109,13 +114,13 @@ begin
             when others => slice(i) := "1111";
         end case;
     end loop;
-
-
+ 
+ 
     mask := (slice(1) & slice(2) & slice(3) & slice(4));
     return (mask);
-
+ 
 end str_to_bin;
-
+ 
 function product (list: std_logic_vector) return std_logic is
 begin
 
@@ -222,6 +227,96 @@ begin
 
 end;
 
+function int2bit (arg : integer) return std_logic is
+    variable int_val : integer := arg;
+    variable result : std_logic;
+    begin
+        
+            if (int_val  = 0) then
+                result := '0';
+            else
+                result := '1';
+            end if;
+            
+        return result;
+end int2bit;
+
+function int2bit (arg : boolean) return std_logic is
+    variable int_val : boolean := arg;
+    variable result : std_logic;
+    begin
+        
+            if (int_val ) then
+                result := '1';
+            else
+                result := '0';
+            end if;
+            
+        return result;
+end int2bit;
+
+function bin2int (s : std_logic_vector) return integer is
+
+      constant temp      : std_logic_vector(s'high-s'low DOWNTO 0) := s;      
+      variable result      : integer := 0;
+   begin
+      for i in temp'range loop
+         if (temp(i) = '1') then
+            result := result + (2**i);
+         end if;
+      end loop;
+      return(result);
+   end bin2int;
+                  
+function bin2int (s : std_logic) return integer is
+      constant temp      : std_logic := s;      
+      variable result      : integer := 0;
+   begin
+         if (temp = '1') then
+            result := 1;
+         else
+         	result := 0;
+     	 end if;
+      return(result);
+	end bin2int;
+
+	function int2bin (arg : integer; size : integer) return std_logic_vector is
+    variable int_val : integer := arg;
+    variable result : std_logic_vector(size-1 downto 0);
+    begin
+        for i in 0 to result'left loop
+            if ((int_val mod 2) = 0) then
+                result(i) := '0';
+            else
+                result(i) := '1';
+            end if;
+            int_val := int_val/2;
+        end loop;
+        return result;
+    end int2bin;
+    
+function int2bin (arg : boolean; size : integer) return std_logic_vector is
+    variable result : std_logic_vector(size-1 downto 0);
+    begin
+		if(arg)then
+			result := (OTHERS => '1');
+		else
+			result := (OTHERS => '0');
+		end if;
+        return result;
+    end int2bin;
+
+function calc_sum_len( widtha : integer; widthb : integer) return integer is
+variable result: integer;
+begin
+	if(widtha >= widthb) then
+		result := widtha + 1;
+	else
+		result := widthb + 1;
+	end if;
+	return result;
+end calc_sum_len;
+
 end stratixii_atom_pack;
 
 Library ieee;
@@ -233,8 +328,28 @@ Package stratixii_pllpack is
     procedure find_simple_integer_fraction( numerator   : in integer;
                                             denominator : in integer;
                                             max_denom   : in integer;
-                                            fraction_num : out integer;
+                                            fraction_num : out integer; 
                                             fraction_div : out integer);
+
+    procedure find_m_and_n_4_manual_phase ( inclock_period : in integer;
+                                            vco_phase_shift_step : in integer;
+                                            clk0_mult: in integer; clk1_mult: in integer;
+                                            clk2_mult: in integer; clk3_mult: in integer;
+                                            clk4_mult: in integer; clk5_mult: in integer;
+                                            clk6_mult: in integer; clk7_mult: in integer;
+                                            clk8_mult: in integer; clk9_mult: in integer;
+                                            clk0_div : in integer; clk1_div : in integer;
+                                            clk2_div : in integer; clk3_div : in integer;
+                                            clk4_div : in integer; clk5_div : in integer;
+                                            clk6_div : in integer; clk7_div : in integer;
+                                            clk8_div : in integer; clk9_div : in integer;
+                                            clk0_used : in string; clk1_used : in string;
+                                            clk2_used : in string; clk3_used : in string;
+                                            clk4_used : in string; clk5_used : in string;
+                                            clk6_used : in string; clk7_used : in string;
+                                            clk8_used : in string; clk9_used : in string;
+                                            m : out integer;
+                                            n : out integer );
 
     function gcd (X: integer; Y: integer) return integer;
 
@@ -279,7 +394,7 @@ Package stratixii_pllpack is
     function ph_adjust (tap_phase: integer; ph_base : integer) return integer;
 
     function translate_string (mode : string) return string;
-
+    
     function str2int (s : string) return integer;
 
     function dqs_str2int (s : string) return integer;
@@ -289,13 +404,13 @@ end stratixii_pllpack;
 package body stratixii_pllpack is
 
 
--- finds the closest integer fraction of a given pair of numerator and denominator.
+-- finds the closest integer fraction of a given pair of numerator and denominator. 
 procedure find_simple_integer_fraction( numerator   : in integer;
                                         denominator : in integer;
                                         max_denom   : in integer;
-                                        fraction_num : out integer;
+                                        fraction_num : out integer; 
                                         fraction_div : out integer) is
-    constant MAX_ITER : integer := 20;
+    constant MAX_ITER : integer := 20; 
     type INT_ARRAY is array ((MAX_ITER-1) downto 0) of integer;
 
     variable quotient_array : INT_ARRAY;
@@ -310,18 +425,29 @@ procedure find_simple_integer_fraction( numerator   : in integer;
     variable den   : integer;
     variable i_max_iter : integer;
 
-begin
+begin      
     loop_iter := 0;
-    num := numerator;
-    den := denominator;
-    i_max_iter := max_iter;
 
+    if (numerator = 0) then
+        num := 1;
+    else
+        num := numerator;
+    end if;
+
+    if (denominator = 0) then
+        den := 1;
+    else
+        den := denominator;
+    end if;
+
+    i_max_iter := max_iter;
+   
     while (loop_iter < i_max_iter) loop
         int_quot := num / den;
         quotient_array(loop_iter) := int_quot;
         num := num - (den*int_quot);
         loop_iter := loop_iter+1;
-
+        
         if ((num = 0) or (max_denom /= -1) or (loop_iter = i_max_iter)) then
             -- calculate the numerator and denominator if there is a restriction on the
             -- max denom value or if the loop is ending
@@ -364,6 +490,158 @@ begin
     end loop;
 end find_simple_integer_fraction;
 
+-- find the M and N values for Manual phase based on the following 5 criterias:
+-- 1. The PFD frequency (i.e. Fin / N) must be in the range 5 MHz to 720 MHz
+-- 2. The VCO frequency (i.e. Fin * M / N) must be in the range 300 MHz to 1300 MHz
+-- 3. M is less than 512
+-- 4. N is less than 512
+-- 5. It's the smallest M/N which satisfies all the above constraints, and is within 2ps
+--    of the desired vco-phase-shift-step
+procedure find_m_and_n_4_manual_phase ( inclock_period : in integer;
+                                        vco_phase_shift_step : in integer;
+                                        clk0_mult: in integer; clk1_mult: in integer;
+                                        clk2_mult: in integer; clk3_mult: in integer;
+                                        clk4_mult: in integer; clk5_mult: in integer;
+                                        clk6_mult: in integer; clk7_mult: in integer;
+                                        clk8_mult: in integer; clk9_mult: in integer;
+                                        clk0_div : in integer; clk1_div : in integer;
+                                        clk2_div : in integer; clk3_div : in integer;
+                                        clk4_div : in integer; clk5_div : in integer;
+                                        clk6_div : in integer; clk7_div : in integer;
+                                        clk8_div : in integer; clk9_div : in integer;
+                                        clk0_used : in string; clk1_used : in string;
+                                        clk2_used : in string; clk3_used : in string;
+                                        clk4_used : in string; clk5_used : in string;
+                                        clk6_used : in string; clk7_used : in string;
+                                        clk8_used : in string; clk9_used : in string;
+                                        m : out integer;
+                                        n : out integer ) is
+        constant MAX_M : integer := 511;
+        constant MAX_N : integer := 511;
+        constant MAX_PFD : integer := 720;
+        constant MIN_PFD : integer := 5;
+        constant MAX_VCO : integer := 1300;
+        constant MIN_VCO : integer := 300;
+        constant MAX_OFFSET : real := 0.004;
+
+        variable vco_period : integer;
+        variable pfd_freq : integer;
+        variable vco_freq : integer;
+        variable vco_ps_step_value : integer;
+
+        variable i_m : integer;
+        variable i_n : integer;
+
+        variable i_pre_m : integer;
+        variable i_pre_n : integer;
+
+        variable closest_vco_step_value : integer;
+
+        variable i_max_iter : integer;
+        variable loop_iter : integer;
+        
+        variable clk0_div_factor_real : real;
+        variable clk1_div_factor_real : real;
+        variable clk2_div_factor_real : real;
+        variable clk3_div_factor_real : real;
+        variable clk4_div_factor_real : real;
+        variable clk5_div_factor_real : real;
+        variable clk6_div_factor_real : real;
+        variable clk7_div_factor_real : real;
+        variable clk8_div_factor_real : real;
+        variable clk9_div_factor_real : real;
+        variable clk0_div_factor_int : integer;
+        variable clk1_div_factor_int : integer;
+        variable clk2_div_factor_int : integer;
+        variable clk3_div_factor_int : integer;
+        variable clk4_div_factor_int : integer;
+        variable clk5_div_factor_int : integer;
+        variable clk6_div_factor_int : integer;
+        variable clk7_div_factor_int : integer;
+        variable clk8_div_factor_int : integer;
+        variable clk9_div_factor_int : integer;
+begin
+    vco_period := vco_phase_shift_step * 8;
+    i_pre_m := 0;
+    i_pre_n := 0;
+    closest_vco_step_value := 0;
+
+    LOOP_1 :   for i_n_out in 1 to MAX_N loop
+        for i_m_out in 1 to MAX_M loop
+        
+	    clk0_div_factor_real := real(clk0_div * i_m_out) / real(clk0_mult * i_n_out);
+            clk1_div_factor_real := real(clk1_div * i_m_out) / real(clk1_mult * i_n_out);
+            clk2_div_factor_real := real(clk2_div * i_m_out) / real(clk2_mult * i_n_out);
+            clk3_div_factor_real := real(clk3_div * i_m_out) / real(clk3_mult * i_n_out);
+            clk4_div_factor_real := real(clk4_div * i_m_out) / real(clk4_mult * i_n_out);
+            clk5_div_factor_real := real(clk5_div * i_m_out) / real(clk5_mult * i_n_out);
+            clk6_div_factor_real := real(clk6_div * i_m_out) / real(clk6_mult * i_n_out);
+            clk7_div_factor_real := real(clk7_div * i_m_out) / real(clk7_mult * i_n_out);
+            clk8_div_factor_real := real(clk8_div * i_m_out) / real(clk8_mult * i_n_out);
+            clk9_div_factor_real := real(clk9_div * i_m_out) / real(clk9_mult * i_n_out);
+
+            clk0_div_factor_int := integer(clk0_div_factor_real);
+            clk1_div_factor_int := integer(clk1_div_factor_real);
+            clk2_div_factor_int := integer(clk2_div_factor_real);
+            clk3_div_factor_int := integer(clk3_div_factor_real);
+            clk4_div_factor_int := integer(clk4_div_factor_real);
+            clk5_div_factor_int := integer(clk5_div_factor_real);
+            clk6_div_factor_int := integer(clk6_div_factor_real);
+            clk7_div_factor_int := integer(clk7_div_factor_real);
+            clk8_div_factor_int := integer(clk8_div_factor_real);
+            clk9_div_factor_int := integer(clk9_div_factor_real);
+	                
+            if (((abs(clk0_div_factor_real - real(clk0_div_factor_int)) < MAX_OFFSET) or (clk0_used = "unused")) and
+                ((abs(clk1_div_factor_real - real(clk1_div_factor_int)) < MAX_OFFSET) or (clk1_used = "unused")) and
+                ((abs(clk2_div_factor_real - real(clk2_div_factor_int)) < MAX_OFFSET) or (clk2_used = "unused")) and
+                ((abs(clk3_div_factor_real - real(clk3_div_factor_int)) < MAX_OFFSET) or (clk3_used = "unused")) and
+                ((abs(clk4_div_factor_real - real(clk4_div_factor_int)) < MAX_OFFSET) or (clk4_used = "unused")) and
+                ((abs(clk5_div_factor_real - real(clk5_div_factor_int)) < MAX_OFFSET) or (clk5_used = "unused")) and
+                ((abs(clk6_div_factor_real - real(clk6_div_factor_int)) < MAX_OFFSET) or (clk6_used = "unused")) and
+                ((abs(clk7_div_factor_real - real(clk7_div_factor_int)) < MAX_OFFSET) or (clk7_used = "unused")) and
+                ((abs(clk8_div_factor_real - real(clk8_div_factor_int)) < MAX_OFFSET) or (clk8_used = "unused")) and
+                ((abs(clk9_div_factor_real - real(clk9_div_factor_int)) < MAX_OFFSET) or (clk9_used = "unused")) )
+            then
+                if ((i_m_out /= 0) and (i_n_out /= 0))
+                then
+                    pfd_freq := 1000000 / (inclock_period * i_n_out);
+                    vco_freq := (1000000 * i_m_out) / (inclock_period * i_n_out);
+                    vco_ps_step_value := (inclock_period * i_n_out) / (8 * i_m_out);
+    
+                    if ( (i_m_out < max_m) and (i_n_out < max_n) and (pfd_freq >= min_pfd) and (pfd_freq <= max_pfd) and
+                        (vco_freq >= min_vco) and (vco_freq <= max_vco) )
+                    then
+                        if (abs(vco_ps_step_value - vco_phase_shift_step) <= 2)
+                        then
+                            i_pre_m := i_m_out;
+                            i_pre_n := i_n_out;
+                            exit LOOP_1;
+                        else
+                            if (abs(vco_ps_step_value - vco_phase_shift_step) < abs(closest_vco_step_value - vco_phase_shift_step))
+                            then
+                                i_pre_m := i_m_out;
+                                i_pre_n := i_n_out;
+                                closest_vco_step_value := vco_ps_step_value;
+                            end if;
+                        end if;
+                    end if;
+                end if;
+            end if;
+        end loop;
+    end loop;
+    
+    if ((i_pre_m /= 0) and (i_pre_n /= 0))
+    then
+        find_simple_integer_fraction(i_pre_m, i_pre_n,
+                    MAX_N, m, n);
+    else
+        n := 1;
+        m := lcm  (clk0_mult, clk1_mult, clk2_mult, clk3_mult,
+                clk4_mult, clk5_mult, clk6_mult,
+                clk7_mult, clk8_mult, clk9_mult, inclock_period);
+    end if;
+end find_m_and_n_4_manual_phase;
+
 -- find the greatest common denominator of X and Y
 function gcd (X: integer; Y: integer) return integer is
 variable L, S, R, G : integer := 1;
@@ -402,14 +680,14 @@ begin
         result := (result / 10);
         count := count + 1;
     end loop;
-
+    
     return count;
 end count_digit;
-
+    
 -- reduce the given huge number to Y significant digits
 function scale_num (X: integer; Y: integer)
         return integer is
-variable count : integer := 0;
+variable count : integer := 0; 
 variable lc, fac_ten, result: integer := 1;
 begin
     count := count_digit(X);
@@ -417,9 +695,9 @@ begin
     for lc in 1 to (count-Y) loop
         fac_ten := fac_ten * 10;
     end loop;
-
+    
     result := (X / fac_ten);
-
+    
     return result;
 end scale_num;
 
@@ -441,7 +719,9 @@ begin
     M9 := (M8 * A10)/gcd(M8, A10);
     if (M9 < 3) then
         R := 10;
-    elsif ((M9 <= 10) and (M9 >= 3)) then
+    elsif (M9 = 3) then
+        R := 9;
+    elsif ((M9 <= 10) and (M9 > 3)) then
         R := 4 * M9;
     elsif (M9 > 1000) then
         R := scale_num(M9,3);
@@ -455,9 +735,11 @@ end lcm;
 -- find the factor of division of the output clock frequency compared to the VCO
 function output_counter_value (clk_divide: integer; clk_mult: integer ;
                                 M: integer; N: integer ) return integer is
-variable R: integer := 1;
+variable r_real : real := 1.0;
+variable r: integer := 1;
 begin
-    R := (clk_divide * M)/(clk_mult * N);
+    r_real := real(clk_divide * M)/ real(clk_mult * N);
+    r := integer(r_real);
 
     return R;
 end output_counter_value;
@@ -510,6 +792,10 @@ begin
     end if;
 
     R := output_counter_value - R1;
+
+    if (R = 0) then
+        R := 1;
+    end if;
 
     return R;
 end;
@@ -592,8 +878,8 @@ function counter_initial (tap_phase: integer; m: integer; n: integer)
 variable R: integer;
 variable R1: real;
 begin
-    R1 := (real(abs(tap_phase)) * real(m))/(360.0 * real(n)) + 0.5;
-    -- Note NCSim VHDL had problem in rounding up for 0.5 - 0.99.
+    R1 := (real(abs(tap_phase)) * real(m))/(360.0 * real(n)) + 0.6;
+    -- Note NCSim VHDL had problem in rounding up for 0.5 - 0.99. 
     -- This checking will ensure that the rounding up is done.
     if (R1 >= 0.5) and (R1 <= 1.0) then
         R1 := 1.0;
@@ -609,7 +895,7 @@ function counter_ph (tap_phase: integer; m: integer; n: integer) return integer 
 variable R: integer := 0;
 begin
     -- 0.5 is added for proper rounding of the tap_phase.
-    R := (integer(real(tap_phase * m / n)+ 0.5) REM 360)/45;
+    R := integer(real(integer(real(tap_phase * m / n)+ 0.5) REM 360)/45.0) rem 8;
 
     return R;
 end;
@@ -780,7 +1066,7 @@ end stratixii_dffe;
 
 architecture behave of stratixii_dffe is
     attribute VITAL_LEVEL0 of behave : architecture is TRUE;
-
+    
     signal D_ipd  : STD_ULOGIC := 'U';
     signal CLRN_ipd       : STD_ULOGIC := 'U';
     signal PRN_ipd        : STD_ULOGIC := 'U';
@@ -804,13 +1090,13 @@ begin
     --  BEHAVIOR SECTION
     --------------------
     VITALBehavior : process (D_ipd, CLRN_ipd, PRN_ipd, CLK_ipd, ENA_ipd)
-
+    
     -- timing check results
     VARIABLE Tviol_D_CLK : STD_ULOGIC := '0';
     VARIABLE Tviol_ENA_CLK       : STD_ULOGIC := '0';
     VARIABLE TimingData_D_CLK : VitalTimingDataType := VitalTimingDataInit;
     VARIABLE TimingData_ENA_CLK : VitalTimingDataType := VitalTimingDataInit;
-
+    
     -- functionality results
     VARIABLE Violation : STD_ULOGIC := '0';
     VARIABLE PrevData_Q : STD_LOGIC_VECTOR(0 to 7);
@@ -1192,7 +1478,7 @@ ENTITY stratixii_ram_register IS
 GENERIC (
     width   : INTEGER := 1;
     preset  : STD_LOGIC := '0';
-    tipd_d  : VitalDelayArrayType01(143 DOWNTO 0) := (OTHERS => DefPropDelay01);
+    tipd_d  : VitalDelayArrayType01(143 DOWNTO 0) := (OTHERS => DefPropDelay01); 
     tipd_clk        : VitalDelayType01 := DefPropDelay01;
     tipd_ena        : VitalDelayType01 := DefPropDelay01;
     tipd_stall      : VitalDelayType01 := DefPropDelay01;
@@ -1265,7 +1551,7 @@ BEGIN
        ELSIF (clk_ipd = '1' AND clk_ipd'EVENT AND ena_ipd = '1' AND stall_ipd = '0') THEN
         q_reg := d_ipd;
     END IF;
-
+    
     -- Timing checks
     VitalSetupHoldCheck (
         Violation       => Tviol_clk_ena,
@@ -1278,12 +1564,12 @@ BEGIN
         SetupLow        => tsetup_ena_clk_noedge_posedge,
         HoldHigh        => thold_ena_clk_noedge_posedge,
         HoldLow         => thold_ena_clk_noedge_posedge,
-        CheckEnabled    => ((aclr_ipd) OR (NOT ena_ipd)) /= '1',
+        CheckEnabled    => ((aclr_ipd) OR (NOT ena_ipd)) /= '1',                              
         RefTransition   => '/',
         HeaderMsg       => "/RAM Register VitalSetupHoldCheck",
         XOn           => DefXOnChecks,
         MsgOn         => DefMsgOnChecks );
-
+        
   VitalSetupHoldCheck (
       Violation       => Tviol_clk_ena,
       TimingData      => TimingData_clk_stall,
@@ -1295,12 +1581,12 @@ BEGIN
       SetupLow        => tsetup_stall_clk_noedge_posedge,
       HoldHigh        => thold_stall_clk_noedge_posedge,
       HoldLow         => thold_stall_clk_noedge_posedge,
-      CheckEnabled    => ((aclr_ipd) OR (NOT ena_ipd)) /= '1',
+      CheckEnabled    => ((aclr_ipd) OR (NOT ena_ipd)) /= '1',                              
       RefTransition   => '/',
       HeaderMsg       => "/RAM Register VitalSetupHoldCheck",
       XOn           => DefXOnChecks,
       MsgOn         => DefMsgOnChecks );
-
+        
     VitalSetupHoldCheck (
         Violation       => Tviol_clk_aclr,
         TimingData      => TimingData_clk_aclr,
@@ -1317,7 +1603,7 @@ BEGIN
         HeaderMsg       => "/RAM Register VitalSetupHoldCheck",
         XOn           => DefXOnChecks,
         MsgOn         => DefMsgOnChecks );
-
+        
     VitalSetupHoldCheck (
         Violation       => Tviol_data_clk,
         TimingData      => TimingData_data_clk,
@@ -1334,7 +1620,7 @@ BEGIN
         HeaderMsg       => "/RAM Register VitalSetupHoldCheck",
         XOn           => DefXOnChecks,
         MsgOn         => DefMsgOnChecks );
-
+       
     VitalPeriodPulseCheck (
         Violation       => Tviol_ena,
         PeriodData      => PeriodData_ena,
@@ -1344,7 +1630,7 @@ BEGIN
         HeaderMsg       => "/RAM Register VitalPeriodPulseCheck",
         XOn           => DefXOnChecks,
         MsgOn         => DefMsgOnChecks );
-
+        
     -- Path Delay Selection
     CQDelay := SelectDelay (
                    Paths => (
@@ -1352,8 +1638,8 @@ BEGIN
                         1 => (aclr_ipd'LAST_EVENT,tpd_aclr_q_posedge,TRUE))
                    )
                );
-    q <= TRANSPORT q_reg AFTER CQDelay;
-
+    q <= TRANSPORT q_reg AFTER CQDelay; 
+        
 END PROCESS;
 
 aclrout <= aclr_ipd;
@@ -1377,7 +1663,7 @@ GENERIC (
     tipd_ena : VitalDelayType01 := DefPropDelay01;
     tpd_clk_pulse_posedge : VitalDelayType01 := DefPropDelay01
     );
-PORT (
+PORT ( 
     clk,ena : IN STD_LOGIC;
     pulse,cycle : OUT STD_LOGIC
     );
@@ -1385,9 +1671,9 @@ ATTRIBUTE VITAL_Level0 OF stratixii_ram_pulse_generator:ENTITY IS TRUE;
 END stratixii_ram_pulse_generator;
 
 ARCHITECTURE pgen_arch OF stratixii_ram_pulse_generator IS
-ATTRIBUTE VITAL_Level0 OF pgen_arch:ARCHITECTURE IS TRUE;
 SIGNAL clk_ipd,ena_ipd : STD_LOGIC;
 SIGNAL state : STD_LOGIC;
+ATTRIBUTE VITAL_Level0 OF pgen_arch:ARCHITECTURE IS TRUE;
 BEGIN
 
 WireDelay : BLOCK
@@ -1436,84 +1722,85 @@ USE work.stratixii_ram_pulse_generator;
 ENTITY stratixii_ram_block IS
     GENERIC (
         -- -------- GLOBAL PARAMETERS ---------
-        operation_mode                 :  STRING := "single_port";
-        mixed_port_feed_through_mode   :  STRING := "dont_care";
-        ram_block_type                 :  STRING := "auto";
-        logical_ram_name               :  STRING := "ram_name";
-        init_file                      :  STRING := "init_file.hex";
-        init_file_layout               :  STRING := "none";
-        data_interleave_width_in_bits  :  INTEGER := 1;
-        data_interleave_offset_in_bits :  INTEGER := 1;
-        port_a_logical_ram_depth       :  INTEGER := 0;
-        port_a_logical_ram_width       :  INTEGER := 0;
-        port_a_first_address           :  INTEGER := 0;
-        port_a_last_address            :  INTEGER := 0;
-        port_a_first_bit_number        :  INTEGER := 0;
-        port_a_data_in_clear           :  STRING := "none";
-        port_a_address_clear           :  STRING := "none";
-        port_a_write_enable_clear      :  STRING := "none";
-        port_a_data_out_clear          :  STRING := "none";
-        port_a_byte_enable_clear       :  STRING := "none";
-        port_a_data_in_clock           :  STRING := "clock0";
-        port_a_address_clock           :  STRING := "clock0";
-        port_a_write_enable_clock      :  STRING := "clock0";
-        port_a_byte_enable_clock       :  STRING := "clock0";
-        port_a_data_out_clock          :  STRING := "none";
-        port_a_data_width              :  INTEGER := 1;
-        port_a_address_width           :  INTEGER := 1;
-        port_a_byte_enable_mask_width  :  INTEGER := 1;
-        port_b_logical_ram_depth       :  INTEGER := 0;
-        port_b_logical_ram_width       :  INTEGER := 0;
-        port_b_first_address           :  INTEGER := 0;
-        port_b_last_address            :  INTEGER := 0;
-        port_b_first_bit_number        :  INTEGER := 0;
-        port_b_data_in_clear           :  STRING := "none";
-        port_b_address_clear           :  STRING := "none";
-        port_b_read_enable_write_enable_clear: STRING := "none";
-        port_b_byte_enable_clear       :  STRING := "none";
-        port_b_data_out_clear          :  STRING := "none";
-        port_b_data_in_clock           :  STRING := "clock0";
-        port_b_address_clock           :  STRING := "clock0";
-        port_b_read_enable_write_enable_clock: STRING := "clock0";
-        port_b_byte_enable_clock       :  STRING := "none";
-        port_b_data_out_clock          :  STRING := "none";
-        port_b_data_width              :  INTEGER := 1;
-        port_b_address_width           :  INTEGER := 1;
-        port_b_byte_enable_mask_width  :  INTEGER := 1;
-        power_up_uninitialized         :  STRING := "false";
+        operation_mode                 :  STRING := "single_port";    
+        mixed_port_feed_through_mode   :  STRING := "dont_care";    
+        ram_block_type                 :  STRING := "auto";    
+        logical_ram_name               :  STRING := "ram_name";    
+        init_file                      :  STRING := "init_file.hex";    
+        init_file_layout               :  STRING := "none";    
+        data_interleave_width_in_bits  :  INTEGER := 1;    
+        data_interleave_offset_in_bits :  INTEGER := 1;    
+        port_a_logical_ram_depth       :  INTEGER := 0;    
+        port_a_logical_ram_width       :  INTEGER := 0;    
+        port_a_first_address           :  INTEGER := 0;    
+        port_a_last_address            :  INTEGER := 0;    
+        port_a_first_bit_number        :  INTEGER := 0;    
+        port_a_data_in_clear           :  STRING := "none";    
+        port_a_address_clear           :  STRING := "none";    
+        port_a_write_enable_clear      :  STRING := "none";    
+        port_a_data_out_clear          :  STRING := "none";    
+        port_a_byte_enable_clear       :  STRING := "none";    
+        port_a_data_in_clock           :  STRING := "clock0";    
+        port_a_address_clock           :  STRING := "clock0";    
+        port_a_write_enable_clock      :  STRING := "clock0";    
+        port_a_byte_enable_clock       :  STRING := "clock0";    
+        port_a_data_out_clock          :  STRING := "none";    
+        port_a_data_width              :  INTEGER := 1;    
+        port_a_address_width           :  INTEGER := 1;    
+        port_a_byte_enable_mask_width  :  INTEGER := 1;    
+        port_b_logical_ram_depth       :  INTEGER := 0;    
+        port_b_logical_ram_width       :  INTEGER := 0;    
+        port_b_first_address           :  INTEGER := 0;    
+        port_b_last_address            :  INTEGER := 0;    
+        port_b_first_bit_number        :  INTEGER := 0;    
+        port_b_data_in_clear           :  STRING := "none";    
+        port_b_address_clear           :  STRING := "none";    
+        port_b_read_enable_write_enable_clear: STRING := "none";    
+        port_b_byte_enable_clear       :  STRING := "none";    
+        port_b_data_out_clear          :  STRING := "none";    
+        port_b_data_in_clock           :  STRING := "clock1";    
+        port_b_address_clock           :  STRING := "clock1";    
+        port_b_read_enable_write_enable_clock: STRING := "clock1";    
+        port_b_byte_enable_clock       :  STRING := "clock1";    
+        port_b_data_out_clock          :  STRING := "none";    
+        port_b_data_width              :  INTEGER := 1;    
+        port_b_address_width           :  INTEGER := 1;    
+        port_b_byte_enable_mask_width  :  INTEGER := 1;    
+        
+        power_up_uninitialized         :  STRING := "false";  
         port_b_disable_ce_on_output_registers : STRING := "off";
         port_b_disable_ce_on_input_registers : STRING := "off";
         port_b_byte_size : INTEGER := 0;
         port_a_disable_ce_on_output_registers : STRING := "off";
         port_a_disable_ce_on_input_registers : STRING := "off";
-        port_a_byte_size : INTEGER := 0;
+        port_a_byte_size : INTEGER := 0;  
         lpm_type                  : string := "stratixii_ram_block";
         lpm_hint                  : string := "true";
-        connectivity_checking     : string := "off";
-        mem_init0 : BIT_VECTOR := X"0";
-        mem_init1 : BIT_VECTOR := X"0"
-        );
+        mem_init0 : BIT_VECTOR  := X"0";
+        mem_init1 : BIT_VECTOR  := X"0";
+        connectivity_checking     : string := "off"
+        );    
     -- -------- PORT DECLARATIONS ---------
     PORT (
-        portadatain             : IN STD_LOGIC_VECTOR(port_a_data_width - 1 DOWNTO 0)    := (OTHERS => '0');
-        portaaddr               : IN STD_LOGIC_VECTOR(port_a_address_width - 1 DOWNTO 0) := (OTHERS => '0');
-        portawe                 : IN STD_LOGIC := '0';
-        portbdatain             : IN STD_LOGIC_VECTOR(port_b_data_width - 1 DOWNTO 0)    := (OTHERS => '0');
-        portbaddr               : IN STD_LOGIC_VECTOR(port_b_address_width - 1 DOWNTO 0) := (OTHERS => '0');
-        portbrewe               : IN STD_LOGIC := '0';
-        clk0                    : IN STD_LOGIC := '0';
-        clk1                    : IN STD_LOGIC := '0';
-        ena0                    : IN STD_LOGIC := '1';
-        ena1                    : IN STD_LOGIC := '1';
-        clr0                    : IN STD_LOGIC := '0';
-        clr1                    : IN STD_LOGIC := '0';
-        portabyteenamasks       : IN STD_LOGIC_VECTOR(port_a_byte_enable_mask_width - 1 DOWNTO 0) := (OTHERS => '1');
-        portbbyteenamasks       : IN STD_LOGIC_VECTOR(port_b_byte_enable_mask_width - 1 DOWNTO 0) := (OTHERS => '1');
-        devclrn                 : IN STD_LOGIC := '1';
-        devpor                  : IN STD_LOGIC := '1';
+        portadatain             : IN STD_LOGIC_VECTOR(port_a_data_width - 1 DOWNTO 0)    := (OTHERS => '0');   
+        portaaddr               : IN STD_LOGIC_VECTOR(port_a_address_width - 1 DOWNTO 0) := (OTHERS => '0');   
+        portawe                 : IN STD_LOGIC := '0';   
+        portbdatain             : IN STD_LOGIC_VECTOR(port_b_data_width - 1 DOWNTO 0)    := (OTHERS => '0');   
+        portbaddr               : IN STD_LOGIC_VECTOR(port_b_address_width - 1 DOWNTO 0) := (OTHERS => '0');   
+        portbrewe               : IN STD_LOGIC := '0';   
+        clk0                    : IN STD_LOGIC := '0';   
+        clk1                    : IN STD_LOGIC := '0';   
+        ena0                    : IN STD_LOGIC := '1';   
+        ena1                    : IN STD_LOGIC := '1';   
+        clr0                    : IN STD_LOGIC := '0';   
+        clr1                    : IN STD_LOGIC := '0';   
+        portabyteenamasks       : IN STD_LOGIC_VECTOR(port_a_byte_enable_mask_width - 1 DOWNTO 0) := (OTHERS => '1');   
+        portbbyteenamasks       : IN STD_LOGIC_VECTOR(port_b_byte_enable_mask_width - 1 DOWNTO 0) := (OTHERS => '1');   
+        devclrn                 : IN STD_LOGIC := '1';   
+        devpor                  : IN STD_LOGIC := '1';   
          portaaddrstall : IN STD_LOGIC := '0';
          portbaddrstall : IN STD_LOGIC := '0';
-        portadataout            : OUT STD_LOGIC_VECTOR(port_a_data_width - 1 DOWNTO 0);
+        portadataout            : OUT STD_LOGIC_VECTOR(port_a_data_width - 1 DOWNTO 0);   
         portbdataout            : OUT STD_LOGIC_VECTOR(port_b_data_width - 1 DOWNTO 0)
         );
 
@@ -1579,7 +1866,7 @@ CONSTANT address_unit_width : INTEGER := cond(mode_is_rom OR mode_is_sp OR prima
 CONSTANT address_width      : INTEGER := cond(mode_is_rom OR mode_is_sp OR primary_port_is_b,port_a_address_width,port_b_address_width);
 
 CONSTANT byte_size_a : INTEGER := port_a_data_width / port_a_byte_enable_mask_width;
-CONSTANT byte_size_b : INTEGER := port_b_data_width / port_b_byte_enable_mask_width;
+CONSTANT byte_size_b : INTEGER := port_b_data_width / port_b_byte_enable_mask_width;    
 
 CONSTANT out_a_is_reg : BOOLEAN := (port_a_data_out_clock /= "none" AND port_a_data_out_clock /= "UNUSED");
 CONSTANT out_b_is_reg : BOOLEAN := (port_b_data_out_clock /= "none" AND port_b_data_out_clock /= "UNUSED");
@@ -1587,12 +1874,14 @@ CONSTANT out_b_is_reg : BOOLEAN := (port_b_data_out_clock /= "none" AND port_b_d
 CONSTANT bytes_a_disabled : STD_LOGIC_VECTOR(port_a_byte_enable_mask_width - 1 DOWNTO 0) := (OTHERS => '0');
 CONSTANT bytes_b_disabled : STD_LOGIC_VECTOR(port_b_byte_enable_mask_width - 1 DOWNTO 0) := (OTHERS => '0');
 
-CONSTANT ram_type : BOOLEAN := (ram_block_type = "M-RAM" OR ram_block_type = "m-ram" OR ram_block_type = "MegaRAM" OR
+CONSTANT ram_type : BOOLEAN := (ram_block_type = "M-RAM" OR ram_block_type = "m-ram" OR ram_block_type = "MegaRAM" OR 
                                (ram_block_type = "auto"  AND mixed_port_feed_through_mode = "dont_care" AND port_b_read_enable_write_enable_clock = "clock0"));
-
+                               
 TYPE bool_to_std_logic_map IS ARRAY(TRUE DOWNTO FALSE) OF STD_LOGIC;
 CONSTANT bool_to_std_logic : bool_to_std_logic_map := ('1','0');
 
+
+                              
 -- -------- internal signals ---------
 -- clock / clock enable
 SIGNAL clk_a_in,clk_b_in : STD_LOGIC;
@@ -1601,11 +1890,17 @@ SIGNAL clk_a_out,clk_b_out : STD_LOGIC;
 SIGNAL clkena_a_out,clkena_b_out : STD_LOGIC;
 SIGNAL write_cycle_a,write_cycle_b : STD_LOGIC;
 
+
+
+SUBTYPE one_bit_bus_type IS STD_LOGIC_VECTOR(0 DOWNTO 0);
+
 -- asynch clear
 TYPE   clear_mode_type IS ARRAY (port_type'HIGH DOWNTO port_type'LOW) OF BOOLEAN;
 TYPE   clear_vec_type  IS ARRAY (port_type'HIGH DOWNTO port_type'LOW) OF STD_LOGIC;
 SIGNAL datain_a_clr,datain_b_clr   :  STD_LOGIC;
 SIGNAL dataout_a_clr,dataout_b_clr :  STD_LOGIC;
+
+
 SIGNAL addr_a_clr,addr_b_clr       :  STD_LOGIC;
 SIGNAL byteena_a_clr,byteena_b_clr :  STD_LOGIC;
 SIGNAL we_a_clr,rewe_b_clr         :  STD_LOGIC;
@@ -1616,7 +1911,7 @@ SIGNAL we_a_clr_in,rewe_b_clr_in          :  STD_LOGIC;
 SIGNAL mem_invalidate,mem_invalidate_loc,read_latch_invalidate : clear_mode_type;
 SIGNAL clear_asserted_during_write :  clear_vec_type;
 
-SUBTYPE one_bit_bus_type IS STD_LOGIC_VECTOR(0 DOWNTO 0);
+
 -- port A registers
 SIGNAL we_a_reg                 :  STD_LOGIC;
 SIGNAL we_a_reg_in,we_a_reg_out :  one_bit_bus_type;
@@ -1635,19 +1930,17 @@ SIGNAL dataout_b                :  STD_LOGIC_VECTOR(port_b_data_width - 1 DOWNTO
 SIGNAL byteena_b_reg            :  STD_LOGIC_VECTOR(port_b_byte_enable_mask_width- 1 DOWNTO 0);
 -- pulses
 TYPE   pulse_vec IS ARRAY (port_type'HIGH DOWNTO port_type'LOW) OF STD_LOGIC;
-SIGNAL write_pulse,read_pulse,read_pulse_feedthru : pulse_vec;
+SIGNAL write_pulse,read_pulse,read_pulse_feedthru : pulse_vec; 
 SIGNAL wpgen_a_clk,wpgen_a_clkena,wpgen_b_clk,wpgen_b_clkena : STD_LOGIC;
 SIGNAL rpgen_a_clkena,rpgen_b_clkena : STD_LOGIC;
 SIGNAL ftpgen_a_clkena,ftpgen_b_clkena : STD_LOGIC;
-
 -- registered address
-SIGNAL addr_prime_reg,addr_sec_reg :  INTEGER;
+SIGNAL addr_prime_reg,addr_sec_reg :  INTEGER;   
 -- input/output
-SIGNAL datain_prime_reg,dataout_prime     :  STD_LOGIC_VECTOR(data_width - 1 DOWNTO 0);
+SIGNAL datain_prime_reg,dataout_prime     :  STD_LOGIC_VECTOR(data_width - 1 DOWNTO 0);   
 SIGNAL datain_sec_reg,dataout_sec         :  STD_LOGIC_VECTOR(data_unit_width - 1 DOWNTO 0);
 --  overlapping location write
-SIGNAL dual_write : BOOLEAN;
-
+SIGNAL dual_write : BOOLEAN; 
 -- memory core
 SUBTYPE  mem_word_type IS STD_LOGIC_VECTOR (data_width - 1 DOWNTO 0);
 SUBTYPE  mem_col_type  IS STD_LOGIC_VECTOR (data_unit_width - 1 DOWNTO 0);
@@ -1659,6 +1952,7 @@ CONSTANT mem_x : mem_type     := (OTHERS => (OTHERS => (OTHERS => 'X')));
 CONSTANT row_x : mem_row_type := (OTHERS => (OTHERS => 'X'));
 CONSTANT col_x : mem_col_type := (OTHERS => 'X');
 SIGNAL   mem_data : mem_row_type;
+SIGNAL   old_mem_data : mem_row_type;
 SIGNAL   mem_unit_data : mem_col_type;
 
 -- latches
@@ -1693,7 +1987,7 @@ VARIABLE mask : mask_rec := (
                             );
 BEGIN
     FOR l in 0 TO b_ena_width - 1  LOOP
-        IF (b_ena(l) = '0') THEN
+        IF (b_ena(l) = '0') THEN 
             IF (mode = primary) THEN
                 mask.prime(normal) ((l+1)*byte_size - 1 DOWNTO l*byte_size) := (OTHERS => 'X');
                 mask.prime(inverse)((l+1)*byte_size - 1 DOWNTO l*byte_size) := (OTHERS => '0');
@@ -1701,7 +1995,7 @@ BEGIN
                 mask.sec(normal) ((l+1)*byte_size - 1 DOWNTO l*byte_size) := (OTHERS => 'X');
                 mask.sec(inverse)((l+1)*byte_size - 1 DOWNTO l*byte_size) := (OTHERS => '0');
             END IF;
-        ELSIF (b_ena(l) = 'X' OR b_ena(l) = 'U') THEN
+        ELSIF (b_ena(l) = 'X' OR b_ena(l) = 'U') THEN 
             IF (mode = primary) THEN
                 mask.prime(normal) ((l+1)*byte_size - 1 DOWNTO l*byte_size) := (OTHERS => 'X');
             ELSE
@@ -1714,52 +2008,63 @@ END get_mask;
 -- port active for read/write
 SIGNAL active_a_in_vec,active_b_in_vec,active_a_out,active_b_out : one_bit_bus_type;
 SIGNAL active_a_in,active_b_in   : STD_LOGIC;
-SIGNAL active_a,active_write_a :  BOOLEAN;
-SIGNAL active_b,active_write_b :  BOOLEAN;
+SIGNAL active_a,active_b : BOOLEAN;
+SIGNAL active_write_a :  BOOLEAN;
+SIGNAL active_write_b :  BOOLEAN;
 SIGNAL wire_vcc : STD_LOGIC := '1';
 SIGNAL wire_gnd : STD_LOGIC := '0';
+
+
+
+
+
+
 BEGIN
     -- memory initialization
     init_mem <= TRUE;
-
+    
     -- -------- core logic ---------------
     clk_a_in      <= clk0;
-    clk_a_byteena <= '0'   WHEN (port_a_byte_enable_clock = "none" OR port_a_byte_enable_clock = "UNUSED") ELSE clk_a_in;
-    clk_a_out     <= '0'   WHEN (port_a_data_out_clock = "none" OR port_a_data_out_clock = "UNUSED")    ELSE
-                      clk0 WHEN (port_a_data_out_clock = "clock0")  ELSE clk1;
 
+    clk_a_byteena <= '0'   WHEN (port_a_byte_enable_clock = "none" OR port_a_byte_enable_clock = "UNUSED") ELSE clk_a_in;
+    clk_a_out     <= '0'   WHEN (port_a_data_out_clock = "none" OR port_a_data_out_clock = "UNUSED")    ELSE 
+                      clk0 WHEN (port_a_data_out_clock = "clock0")  ELSE clk1;
+                      
     clk_b_in      <=  clk0 WHEN (port_b_read_enable_write_enable_clock = "clock0") ELSE clk1;
-    clk_b_byteena <=  '0'  WHEN (port_b_byte_enable_clock = "none" OR port_b_byte_enable_clock = "UNUSED") ELSE
+    clk_b_byteena <=  '0'  WHEN (port_b_byte_enable_clock = "none" OR port_b_byte_enable_clock = "UNUSED") ELSE 
                       clk0 WHEN (port_b_byte_enable_clock = "clock0") ELSE clk1;
-    clk_b_out     <=  '0'  WHEN (port_b_data_out_clock = "none" OR port_b_data_out_clock = "UNUSED")    ELSE
+    clk_b_out     <=  '0'  WHEN (port_b_data_out_clock = "none" OR port_b_data_out_clock = "UNUSED")    ELSE 
                       clk0 WHEN (port_b_data_out_clock = "clock0")  ELSE clk1;
 
     addr_a_clr_in <=  '0'  WHEN (port_a_address_clear = "none" OR port_a_address_clear = "UNUSED") ELSE clr0;
-    addr_b_clr_in <=  '0'  WHEN (port_b_address_clear = "none" OR port_b_address_clear = "UNUSED") ELSE
+    addr_b_clr_in <=  '0'  WHEN (port_b_address_clear = "none" OR port_b_address_clear = "UNUSED") ELSE 
                       clr0 WHEN (port_b_address_clear = "clear0") ELSE clr1;
 
     datain_a_clr_in <= '0' WHEN (port_a_data_in_clear = "none" OR port_a_data_in_clear = "UNUSED") ELSE clr0;
-    datain_b_clr_in <= '0' WHEN (port_b_data_in_clear = "none" OR port_b_data_in_clear = "UNUSED") ELSE
-                      clr0 WHEN (port_b_data_in_clear = "clear0") ELSE clr1;
-
-    dataout_a_clr   <= '0' WHEN (port_a_data_out_clear = "none" OR port_a_data_out_clear = "UNUSED")   ELSE
-                      clr0 WHEN (port_a_data_out_clear = "clear0") ELSE clr1;
-    dataout_b_clr   <= '0' WHEN (port_b_data_out_clear = "none" OR port_b_data_out_clear = "UNUSED")   ELSE
-                      clr0 WHEN (port_b_data_out_clear = "clear0") ELSE clr1;
-
+    datain_b_clr_in <= '0' WHEN (port_b_data_in_clear = "none" OR port_b_data_in_clear = "UNUSED") ELSE 
+                       clr0 WHEN (port_b_data_in_clear = "clear0") ELSE clr1;
+    
+    dataout_a_clr   <= '0' WHEN (port_a_data_out_clear = "none" OR port_a_data_out_clear = "UNUSED")   ELSE 
+                     clr0 WHEN (port_a_data_out_clear = "clear0") ELSE clr1;
+    
+    dataout_b_clr   <= '0' WHEN (port_b_data_out_clear = "none" OR port_b_data_out_clear = "UNUSED")   ELSE 
+                     clr0 WHEN (port_b_data_out_clear = "clear0") ELSE clr1;
+                      
     byteena_a_clr_in <= '0' WHEN (port_a_byte_enable_clear = "none" OR port_a_byte_enable_clear = "UNUSED") ELSE clr0;
-    byteena_b_clr_in <= '0' WHEN (port_b_byte_enable_clear = "none" OR port_b_byte_enable_clear = "UNUSED") ELSE
-                       clr0 WHEN (port_b_byte_enable_clear = "clear0") ELSE clr1;
-
+    byteena_b_clr_in <= '0' WHEN (port_b_byte_enable_clear = "none" OR port_b_byte_enable_clear = "UNUSED") ELSE 
+                        clr0 WHEN (port_b_byte_enable_clear = "clear0") ELSE clr1;
     we_a_clr_in      <= '0' WHEN (port_a_write_enable_clear = "none" OR port_a_write_enable_clear = "UNUSED") ELSE clr0;
-    rewe_b_clr_in    <= '0' WHEN (port_b_read_enable_write_enable_clear = "none" OR port_b_read_enable_write_enable_clear = "UNUSED")   ELSE
-                       clr0 WHEN (port_b_read_enable_write_enable_clear = "clear0") ELSE clr1;
-
+    rewe_b_clr_in    <= '0' WHEN (port_b_read_enable_write_enable_clear = "none" OR port_b_read_enable_write_enable_clear = "UNUSED")   ELSE 
+                        clr0 WHEN (port_b_read_enable_write_enable_clear = "clear0") ELSE clr1;
+                
         active_a_in <= '1'  WHEN (port_a_disable_ce_on_input_registers = "on") ELSE ena0;
-        active_b_in <= '1'  WHEN (port_b_disable_ce_on_input_registers = "on") ELSE
+    
+    
+        active_b_in <= '1'  WHEN (port_b_disable_ce_on_input_registers = "on") ELSE 
                        ena0 WHEN (port_b_read_enable_write_enable_clock = "clock0") ELSE ena1;
-
-    -- A port active
+ 
+    -- Store clock enable value for SEAB/MEAB
+    -- A port active 
     active_a_in_vec(0) <= active_a_in;
     active_port_a : stratixii_ram_register
         GENERIC MAP ( width => 1 )
@@ -1774,7 +2079,7 @@ BEGIN
         );
     active_a <= (active_a_out(0) = '1');
     active_write_a <= active_a AND (byteena_a_reg /= bytes_a_disabled);
-
+    
     -- B port active
     active_b_in_vec(0) <= active_b_in;
     active_port_b : stratixii_ram_register
@@ -1791,6 +2096,10 @@ BEGIN
     active_b <= (active_b_out(0) = '1');
     active_write_b <= active_b AND (byteena_b_reg /= bytes_b_disabled);
 
+    
+    
+
+
     -- ------ A input registers
     -- write enable
     we_a_reg_in(0) <= '0' WHEN mode_is_rom ELSE portawe;
@@ -1803,11 +2112,12 @@ BEGIN
             devclrn => devclrn,
             devpor => devpor,
             stall => wire_gnd,
-            ena => active_a_in,
+             ena => active_a_in,
             q   => we_a_reg_out,
             aclrout => we_a_clr
         );
     we_a_reg <= we_a_reg_out(0);
+    
     -- address
     addr_a_register : stratixii_ram_register
         GENERIC MAP ( width => port_a_address_width )
@@ -1853,7 +2163,7 @@ BEGIN
             q   => byteena_a_reg,
             aclrout => byteena_a_clr
         );
-    -- ------ B input registers
+    -- ------ B input registers 
     -- read/write enable
     rewe_b_reg_in(0) <= portbrewe;
     rewe_b_register : stratixii_ram_register
@@ -1873,6 +2183,9 @@ BEGIN
             aclrout => rewe_b_clr
         );
     rewe_b_reg <= rewe_b_reg_out(0);
+    
+    
+    
     -- address
     addr_b_register : stratixii_ram_register
         GENERIC MAP ( width  => port_b_address_width )
@@ -1918,26 +2231,30 @@ BEGIN
             q   => byteena_b_reg,
             aclrout => byteena_b_clr
         );
-
+    
     datain_prime_reg <= datain_a_reg WHEN primary_port_is_a ELSE datain_b_reg;
     addr_prime_reg   <= alt_conv_integer(addr_a_reg)   WHEN primary_port_is_a ELSE alt_conv_integer(addr_b_reg);
-
-    datain_sec_reg   <= (OTHERS => 'U') WHEN (mode_is_rom OR mode_is_sp) ELSE
+    
+    datain_sec_reg   <= (OTHERS => 'U') WHEN (mode_is_rom OR mode_is_sp) ELSE 
                         datain_b_reg    WHEN primary_port_is_a           ELSE datain_a_reg;
     addr_sec_reg     <= alt_conv_integer(addr_b_reg)   WHEN primary_port_is_a ELSE alt_conv_integer(addr_a_reg);
-
+    
     -- Write pulse generation
     wpgen_a_clk <= clk_a_in WHEN ram_type ELSE (NOT clk_a_in);
-    wpgen_a_clkena <= '1' WHEN (active_write_a AND (we_a_reg = '1')) ELSE '0';
-    wpgen_a : stratixii_ram_pulse_generator
+      wpgen_a_clkena <= '1' WHEN (active_write_a AND (we_a_reg = '1')) ELSE '0';
+    
+    wpgen_a : stratixii_ram_pulse_generator 
         PORT MAP (
             clk => wpgen_a_clk,
             ena => wpgen_a_clkena,
             pulse => write_pulse(primary_port_is_a),
             cycle => write_cycle_a
         );
+        
     wpgen_b_clk <= clk_b_in WHEN ram_type ELSE (NOT clk_b_in);
-    wpgen_b_clkena <= '1' WHEN (active_write_b AND mode_is_bdp AND (rewe_b_reg = '1')) ELSE '0';
+      wpgen_b_clkena <= '1' WHEN (active_write_b AND mode_is_bdp AND (rewe_b_reg = '1')) ELSE '0';
+    
+    
     wpgen_b : stratixii_ram_pulse_generator
         PORT MAP (
             clk => wpgen_b_clk,
@@ -1945,25 +2262,28 @@ BEGIN
             pulse => write_pulse(primary_port_is_b),
             cycle => write_cycle_b
             );
-
+            
     -- Read  pulse generation
     rpgen_a_clkena <= '1' WHEN (active_a AND (we_a_reg = '0')) ELSE '0';
+    
     rpgen_a : stratixii_ram_pulse_generator
         PORT MAP (
             clk => clk_a_in,
             ena => rpgen_a_clkena,
             pulse => read_pulse(primary_port_is_a)
         );
-    rpgen_b_clkena <= '1' WHEN (active_b AND mode_is_dp  AND (rewe_b_reg = '1')) OR
+    rpgen_b_clkena <= '1' WHEN (active_b AND mode_is_dp  AND (rewe_b_reg = '1')) OR 
                                (active_b AND mode_is_bdp AND (rewe_b_reg = '0'))
-                          ELSE '0';
+                         ELSE '0';
     rpgen_b : stratixii_ram_pulse_generator
         PORT MAP (
             clk => clk_b_in,
             ena => rpgen_b_clkena,
             pulse => read_pulse(primary_port_is_b)
         );
-
+    
+    
+    
     -- Create internal masks for byte enable processing
     mask_create : PROCESS (byteena_a_reg,byteena_b_reg)
     VARIABLE mask : mask_rec;
@@ -1985,11 +2305,14 @@ BEGIN
             END IF;
         END IF;
     END PROCESS mask_create;
-
+    
     -- (row,col) coordinates
-    row_sec <= addr_sec_reg / num_cols;
+    row_sec <= addr_sec_reg / num_cols;    
     col_sec <= addr_sec_reg mod num_cols;
+    
 
+            
+    
     mem_rw : PROCESS (init_mem,
                       write_pulse,read_pulse,read_pulse_feedthru,
                       mem_invalidate,mem_invalidate_loc,read_latch_invalidate)
@@ -1997,13 +2320,17 @@ BEGIN
     TYPE rw_type IS ARRAY (port_type'HIGH DOWNTO port_type'LOW) OF BOOLEAN;
     VARIABLE addr_range_init,row,col,index :  INTEGER;
     VARIABLE mem_init_std :  STD_LOGIC_VECTOR((port_a_last_address - port_a_first_address + 1)*port_a_data_width - 1 DOWNTO 0);
-    VARIABLE mem_val : mem_type;
+   VARIABLE mem_init  :  bit_vector(mem_init1'length + mem_init0'length - 1 DOWNTO 0);
+
+    VARIABLE mem_val : mem_type; 
     -- read/write
     VARIABLE mem_data_p : mem_row_type;
+    VARIABLE old_mem_data_p : mem_row_type;
     VARIABLE row_prime,col_prime  : INTEGER;
     VARIABLE access_same_location : BOOLEAN;
     VARIABLE read_during_write    : rw_type;
     BEGIN
+
         read_during_write := (FALSE,FALSE);
         -- Memory initialization
         IF (init_mem'EVENT) THEN
@@ -2016,19 +2343,20 @@ BEGIN
                 IF (mode_is_dp OR mode_is_bdp) THEN dataout_prime <= (OTHERS => '0'); END IF;
             END IF;
              IF (power_up_uninitialized = "false" AND (NOT ram_type)) THEN
-                 mem_val := (OTHERS => (OTHERS => (OTHERS => '0')));
+                 mem_val := (OTHERS => (OTHERS => (OTHERS => '0'))); 
              END IF;
-            IF (primary_port_is_a) THEN
+            IF (primary_port_is_a) THEN 
                 addr_range_init := port_a_last_address - port_a_first_address + 1;
             ELSE
                 addr_range_init := port_b_last_address - port_b_first_address + 1;
             END IF;
             IF (init_file_layout = "port_a" OR init_file_layout = "port_b") THEN
-                mem_init_std := to_stdlogicvector(mem_init1 & mem_init0)((port_a_last_address - port_a_first_address + 1)*port_a_data_width - 1 DOWNTO 0);
+                mem_init := mem_init1 & mem_init0;
+                mem_init_std := to_stdlogicvector(mem_init) ((port_a_last_address - port_a_first_address + 1)*port_a_data_width - 1 DOWNTO 0);
                 FOR row IN 0 TO addr_range_init - 1 LOOP
                     FOR col IN 0 to num_cols - 1 LOOP
                         index := row * data_width;
-                        mem_val(row)(col) := mem_init_std(index + (col+1)*data_unit_width -1 DOWNTO
+                        mem_val(row)(col) := mem_init_std(index + (col+1)*data_unit_width -1 DOWNTO 
                                                           index +  col*data_unit_width);
                     END LOOP;
                 END LOOP;
@@ -2036,18 +2364,20 @@ BEGIN
             mem <= mem_val;
         END IF;
         access_same_location := (mode_is_dp OR mode_is_bdp) AND (addr_prime_reg = row_sec);
+        
         -- Write stage 1 : X to buffer
         -- Write stage 2 : actual data to memory
     	IF (write_pulse(primary)'EVENT) THEN
     	    IF (write_pulse(primary) = '1') THEN
+    	        old_mem_data_p := mem(addr_prime_reg);
     	        mem_data_p := mem(addr_prime_reg);
     	        FOR i IN 0 TO num_cols - 1 LOOP
-    	            mem_data_p(i) := mem_data_p(i) XOR
+    	            mem_data_p(i) := mem_data_p(i) XOR 
     	                             mask_vector.prime(inverse)((i + 1)*data_unit_width - 1 DOWNTO i*data_unit_width);
     	        END LOOP;
     	        read_during_write(secondary) := (access_same_location AND read_pulse(secondary)'EVENT AND read_pulse(secondary) = '1');
-    	        IF (read_during_write(secondary)) THEN
-    	            read_latch.sec <= mem_data_p(col_sec);
+    	        IF (read_during_write(secondary)) THEN    
+    	            read_latch.sec <= old_mem_data_p(col_sec);
     	        ELSE
     	            mem_data <= mem_data_p;
     	        END IF;
@@ -2057,11 +2387,11 @@ BEGIN
     	                mem(addr_prime_reg)(i / data_unit_width)(i mod data_unit_width) <= datain_prime_reg(i);
     	            ELSIF (mask_vector.prime(inverse)(i) = 'X') THEN
     	                mem(addr_prime_reg)(i / data_unit_width)(i mod data_unit_width) <= 'X';
-    	            END IF;
+    	            END IF;                       
        	        END LOOP;
     	    END IF;
     	END IF;
-
+    	
     	IF (write_pulse(secondary)'EVENT) THEN
     	    IF (write_pulse(secondary) = '1') THEN
     	        read_during_write(primary) := (access_same_location AND read_pulse(primary)'EVENT AND read_pulse(primary) = '1');
@@ -2071,10 +2401,10 @@ BEGIN
     	        ELSE
     	            mem_unit_data <= mem(row_sec)(col_sec) XOR mask_vector.sec(inverse);
     	        END IF;
-
+    	        
     	        IF (access_same_location AND write_pulse(primary)'EVENT AND write_pulse(primary) = '1') THEN
-    	            mask_vector_common <=
-                       mask_vector.prime(inverse)(((col_sec + 1)* data_unit_width - 1) DOWNTO col_sec*data_unit_width) AND
+    	            mask_vector_common <= 
+                       mask_vector.prime(inverse)(((col_sec + 1)* data_unit_width - 1) DOWNTO col_sec*data_unit_width) AND 
                        mask_vector.sec(inverse);
                     dual_write <= TRUE;
     	        END IF;
@@ -2084,7 +2414,7 @@ BEGIN
     	                mem(row_sec)(col_sec)(i) <= datain_sec_reg(i);
     	            ELSIF (mask_vector.sec(inverse)(i) = 'X') THEN
     	                mem(row_sec)(col_sec)(i) <= 'X';
-    	            END IF;
+    	            END IF;                       
        	        END LOOP;
     	    END IF;
     	END IF;
@@ -2093,22 +2423,22 @@ BEGIN
            mem(row_sec)(col_sec) <= mem(row_sec)(col_sec) XOR mask_vector_common;
            dual_write <= FALSE;
         END IF;
-    	-- Read stage 1 : read data
+    	-- Read stage 1 : read data 
     	-- Read stage 2 : send data to output
     	IF ((NOT read_during_write(primary)) AND read_pulse(primary)'EVENT) THEN
     	    IF (read_pulse(primary) = '1') THEN
     	        read_latch.prime <= mem(addr_prime_reg);
     	        IF (access_same_location AND write_pulse(secondary) = '1') THEN
     	            read_latch.prime(col_sec) <= mem_unit_data;
-    	        END IF;
+    	        END IF;    
     	    ELSE
     	        FOR i IN 0 TO data_width - 1 LOOP
     	            row_prime := i / data_unit_width; col_prime := i mod data_unit_width;
-    	            dataout_prime(i) <= read_latch.prime(row_prime)(col_prime);
+    	            dataout_prime(i) <= read_latch.prime(row_prime)(col_prime);                      
        	        END LOOP;
     	    END IF;
     	END IF;
-
+    	
     	IF ((NOT read_during_write(secondary)) AND read_pulse(secondary)'EVENT) THEN
     	    IF (read_pulse(secondary) = '1') THEN
     	        IF (access_same_location AND write_pulse(primary) = '1') THEN
@@ -2121,12 +2451,12 @@ BEGIN
     	    END IF;
     	END IF;
     	-- Same port feed thru
-    	IF (read_pulse_feedthru(primary)'EVENT AND read_pulse_feedthru(primary) = '0') THEN
+    	   IF (read_pulse_feedthru(primary)'EVENT AND read_pulse_feedthru(primary) = '0') THEN
             dataout_prime <= datain_prime_reg XOR mask_vector.prime(normal);
         END IF;
-
+        
         IF (read_pulse_feedthru(secondary)'EVENT AND read_pulse_feedthru(secondary) = '0') THEN
-            dataout_sec <= datain_sec_reg XOR mask_vector.sec(normal);
+           dataout_sec <= datain_sec_reg XOR mask_vector.sec(normal);
         END IF;
         -- Async clear
         IF (mem_invalidate'EVENT) THEN
@@ -2139,20 +2469,26 @@ BEGIN
             IF (mem_invalidate_loc(secondary)) THEN mem(row_sec)(col_sec) <= col_x;  END IF;
         END IF;
         IF (read_latch_invalidate'EVENT) THEN
-            IF (read_latch_invalidate(primary))   THEN read_latch.prime <= row_x; END IF;
-            IF (read_latch_invalidate(secondary)) THEN read_latch.sec   <= col_x; END IF;
+            IF (read_latch_invalidate(primary)) THEN 
+                read_latch.prime <= row_x; 
+            END IF;
+            IF (read_latch_invalidate(secondary)) THEN 
+                read_latch.sec   <= col_x;
+            END IF;
         END IF;
+    
     END PROCESS mem_rw;
-
+    
     -- Same port feed through
-    ftpgen_a_clkena <= '1' WHEN (active_a AND (NOT mode_is_dp) AND (we_a_reg = '1')) ELSE '0';
+   ftpgen_a_clkena <= '1' WHEN (active_a AND (NOT mode_is_dp) AND (we_a_reg = '1')) ELSE '0';            
     ftpgen_a : stratixii_ram_pulse_generator
         PORT MAP (
             clk => clk_a_in,
             ena => ftpgen_a_clkena,
             pulse => read_pulse_feedthru(primary_port_is_a)
         );
-    ftpgen_b_clkena <= '1' WHEN (active_b AND mode_is_bdp AND (rewe_b_reg = '1')) ELSE '0';
+   ftpgen_b_clkena <= '1' WHEN (active_b AND mode_is_bdp AND (rewe_b_reg = '1')) ELSE '0';               
+
     ftpgen_b : stratixii_ram_pulse_generator
         PORT MAP (
             clk => clk_b_in,
@@ -2160,14 +2496,18 @@ BEGIN
             pulse => read_pulse_feedthru(primary_port_is_b)
         );
 
-    -- Asynch clear events
+
+
+
+
+    -- Asynch clear events    
     clear_a : PROCESS(addr_a_clr,we_a_clr,datain_a_clr)
     BEGIN
         IF (addr_a_clr'EVENT AND addr_a_clr = '1') THEN
             clear_asserted_during_write(primary_port_is_a) <= write_pulse(primary_port_is_a);
             IF (active_write_a AND (write_cycle_a = '1') AND (we_a_reg = '1')) THEN
                 mem_invalidate(primary_port_is_a) <= TRUE,FALSE AFTER 0.5 ns;
-            ELSIF (active_a AND we_a_reg = '1') THEN
+           ELSIF (active_a AND we_a_reg = '0') THEN
                 read_latch_invalidate(primary_port_is_a) <= TRUE,FALSE AFTER 0.5 ns;
             END IF;
         END IF;
@@ -2179,64 +2519,70 @@ BEGIN
             END IF;
         END IF;
     END PROCESS clear_a;
-
-    clear_b : PROCESS(addr_b_clr,rewe_b_clr,datain_b_clr)
+    
+   clear_b : PROCESS(addr_b_clr,rewe_b_clr,datain_b_clr)
     BEGIN
         IF (addr_b_clr'EVENT AND addr_b_clr = '1') THEN
             clear_asserted_during_write(primary_port_is_b) <= write_pulse(primary_port_is_b);
-            IF (mode_is_bdp AND active_write_b AND (write_cycle_b = '1') AND (rewe_b_reg = '1')) THEN
+           IF (mode_is_bdp AND active_write_b AND (write_cycle_b = '1') AND (rewe_b_reg = '1')) THEN
                 mem_invalidate(primary_port_is_b) <= TRUE,FALSE AFTER 0.5 ns;
-            ELSIF (active_b AND ((mode_is_dp AND rewe_b_reg = '1') OR (mode_is_bdp AND rewe_b_reg = '0'))) THEN
+           ELSIF (active_b AND ((mode_is_dp AND rewe_b_reg = '1') OR (mode_is_bdp AND rewe_b_reg = '0'))) THEN
                 read_latch_invalidate(primary_port_is_b) <= TRUE,FALSE AFTER 0.5 ns;
             END IF;
         END IF;
-        IF ((rewe_b_clr'EVENT AND rewe_b_clr = '1') OR (datain_b_clr'EVENT AND datain_b_clr = '1')) THEN
+       IF ((rewe_b_clr'EVENT AND rewe_b_clr = '1') OR (datain_b_clr'EVENT AND datain_b_clr = '1')) THEN
             clear_asserted_during_write(primary_port_is_b) <= write_pulse(primary_port_is_b);
-            IF (mode_is_bdp AND active_write_b AND (write_cycle_b = '1') AND (rewe_b_reg = '1')) THEN
+           IF (mode_is_bdp AND active_write_b AND (write_cycle_b = '1') AND (rewe_b_reg = '1')) THEN
                 mem_invalidate_loc(primary_port_is_b) <= TRUE,FALSE AFTER 0.5 ns;
                 read_latch_invalidate(primary_port_is_b) <= TRUE,FALSE AFTER 0.5 ns;
             END IF;
         END IF;
     END PROCESS clear_b;
-
+    
+    
+    
+    
     -- ------ Output registers
        clkena_a_out <= '1'  WHEN (port_a_disable_ce_on_output_registers = "on") ELSE
                        ena0 WHEN (port_a_data_out_clock = "clock0") ELSE ena1;
-       clkena_b_out <= '1'  WHEN (port_b_disable_ce_on_output_registers = "on") ELSE
+    
+      clkena_b_out <= '1'  WHEN (port_b_disable_ce_on_output_registers = "on") ELSE
                        ena0 WHEN (port_b_data_out_clock = "clock0") ELSE ena1;
-
+    
+    
     dataout_a <= dataout_prime WHEN primary_port_is_a ELSE dataout_sec;
-    dataout_b <= (OTHERS => 'U') WHEN (mode_is_rom OR mode_is_sp) ELSE
+    dataout_b <= (OTHERS => 'U') WHEN (mode_is_rom OR mode_is_sp) ELSE 
                  dataout_prime   WHEN primary_port_is_b ELSE dataout_sec;
-
+    
     dataout_a_register : stratixii_ram_register
         GENERIC MAP ( width => port_a_data_width )
         PORT MAP (
             d => dataout_a,
             clk => clk_a_out,
-            aclr => dataout_a_clr,
+                     aclr => dataout_a_clr,
             devclrn => devclrn,
             devpor => devpor,
             stall => wire_gnd,
             ena => clkena_a_out,
             q => dataout_a_reg
         );
-
+        
     dataout_b_register : stratixii_ram_register
         GENERIC MAP ( width => port_b_data_width )
         PORT MAP (
             d => dataout_b,
             clk => clk_b_out,
-            aclr => dataout_b_clr,
+                     aclr => dataout_b_clr,
             devclrn => devclrn,
             devpor => devpor,
             stall => wire_gnd,
             ena => clkena_b_out,
             q => dataout_b_reg
         );
-
-    portadataout <= dataout_a_reg WHEN out_a_is_reg ELSE dataout_a;
-    portbdataout <= dataout_b_reg WHEN out_b_is_reg ELSE dataout_b;
+        
+   portadataout <= dataout_a_reg WHEN out_a_is_reg ELSE dataout_a;
+   portbdataout <= dataout_b_reg WHEN out_b_is_reg ELSE dataout_b;
+    
 
 END block_arch;
 
@@ -2253,33 +2599,30 @@ use IEEE.std_logic_1164.all;
 use work.stratixii_atom_pack.all;
 
 entity  stratixii_jtag is
-	 generic (
-					lpm_type	: string := "stratixii_jtag"
-				);
-    port (tms : in std_logic;
-    		 tck : in std_logic;
-    		 tdi : in std_logic;
-    		 ntrst : in std_logic;
-    		 tdoutap : in std_logic;
-    		 tdouser : in std_logic;
-          tdo: out std_logic;
-          tmsutap: out std_logic;
-          tckutap: out std_logic;
-          tdiutap: out std_logic;
-          shiftuser: out std_logic;
-          clkdruser: out std_logic;
-          updateuser: out std_logic;
-          runidleuser: out std_logic;
-          usr1user: out std_logic);
+    generic (
+        lpm_type : string := "stratixii_jtag"
+        );	
+    port (
+        tms : in std_logic; 
+        tck : in std_logic; 
+        tdi : in std_logic; 
+        ntrst : in std_logic; 
+        tdoutap : in std_logic; 
+        tdouser : in std_logic; 
+        tdo: out std_logic; 
+        tmsutap: out std_logic; 
+        tckutap: out std_logic; 
+        tdiutap: out std_logic; 
+        shiftuser: out std_logic; 
+        clkdruser: out std_logic; 
+        updateuser: out std_logic; 
+        runidleuser: out std_logic; 
+        usr1user: out std_logic
+        );
 end stratixii_jtag;
 
 architecture architecture_jtag of stratixii_jtag is
 begin
-
---process(tms, tck, tdi, ntrst, tdoutap, tdouser)
---begin
---
---end process;
 
 end architecture_jtag;
 
@@ -2295,15 +2638,18 @@ use IEEE.std_logic_1164.all;
 use work.stratixii_atom_pack.all;
 
 entity  stratixii_crcblock is
-	generic 	(
-					oscillator_divider	: integer := 1;
-					lpm_type	: string := "stratixii_crcblock"
-				);	
-	port (clk 			: in std_logic; 
-   		shiftnld		: in std_logic; 
-    		ldsrc			: in std_logic; 
-         crcerror		: out std_logic; 
-         regout		: out std_logic); 
+    generic  (
+        oscillator_divider : integer := 1;
+
+        lpm_type : string := "stratixii_crcblock"
+        );	
+    port (
+        clk : in std_logic; 
+        shiftnld : in std_logic; 
+       ldsrc : in std_logic; 
+        crcerror : out std_logic; 
+        regout : out std_logic
+        ); 
 end stratixii_crcblock;
 
 architecture architecture_crcblock of stratixii_crcblock is
@@ -2314,7 +2660,7 @@ end architecture_crcblock;
 --
 -- Entity Name : stratixii_asmiblock
 --
--- Description : StratixIIII ASMIBLOCK VHDL Simulation model
+-- Description : StratixII ASMIBLOCK VHDL Simulation model
 --
 -------------------------------------------------------------------
 LIBRARY IEEE;
@@ -2326,27 +2672,27 @@ entity  stratixii_asmiblock is
 					lpm_type	: string := "stratixii_asmiblock"
 				);	
     port (dclkin : in std_logic; 
-    		 scein : in std_logic;
-    		 sdoin : in std_logic;
-    		 oe : in std_logic;
+    		 scein : in std_logic; 
+    		 sdoin : in std_logic; 
+    		 oe : in std_logic; 
           data0out: out std_logic);
 end stratixii_asmiblock;
 
 architecture architecture_asmiblock of stratixii_asmiblock is
 begin
 
---process(dclkin, scein, sdoin, oe)
---begin
---
---end process;
+process(dclkin, scein, sdoin, oe)
+begin
+
+end process;
 
 end architecture_asmiblock;  -- end of stratixii_asmiblock
 ---------------------------------------------------------------------
 --
 -- Entity Name :  stratixii_lcell_ff
---
+-- 
 -- Description :  StratixII LCELL_FF VHDL simulation model
---
+--  
 --
 ---------------------------------------------------------------------
 LIBRARY IEEE;
@@ -2377,11 +2723,11 @@ entity stratixii_lcell_ff is
              tipd_clk : VitalDelayType01 := DefPropDelay01;
              tipd_datain : VitalDelayType01 := DefPropDelay01;
              tipd_adatasdata : VitalDelayType01 := DefPropDelay01;
-             tipd_sclr : VitalDelayType01 := DefPropDelay01;
+             tipd_sclr : VitalDelayType01 := DefPropDelay01; 
              tipd_sload : VitalDelayType01 := DefPropDelay01;
-             tipd_aclr : VitalDelayType01 := DefPropDelay01;
-             tipd_aload : VitalDelayType01 := DefPropDelay01;
-             tipd_ena : VitalDelayType01 := DefPropDelay01;
+             tipd_aclr : VitalDelayType01 := DefPropDelay01; 
+             tipd_aload : VitalDelayType01 := DefPropDelay01; 
+             tipd_ena : VitalDelayType01 := DefPropDelay01; 
              TimingChecksOn: Boolean := True;
              MsgOn: Boolean := DefGlitchMsgOn;
              XOn: Boolean := DefGlitchXOn;
@@ -2389,7 +2735,7 @@ entity stratixii_lcell_ff is
              XOnChecks: Boolean := DefXOnChecks;
              InstancePath: STRING := "*"
             );
-
+    
     port (
           datain : in std_logic := '0';
           clk : in std_logic := '0';
@@ -2405,7 +2751,7 @@ entity stratixii_lcell_ff is
          );
    attribute VITAL_LEVEL0 of stratixii_lcell_ff : entity is TRUE;
 end stratixii_lcell_ff;
-
+        
 architecture vital_lcell_ff of stratixii_lcell_ff is
    attribute VITAL_LEVEL0 of vital_lcell_ff : architecture is TRUE;
    signal clk_ipd : std_logic;
@@ -2426,7 +2772,7 @@ component stratixii_and1
              tpd_IN1_Y            : VitalDelayType01 := DefPropDelay01;
              tipd_IN1             : VitalDelayType01 := DefPropDelay01
             );
-
+        
     port    (Y                    :  out   STD_LOGIC;
              IN1                  :  in    STD_LOGIC
             );
@@ -2465,7 +2811,7 @@ adatasdatadelaybuffer1: stratixii_and1
     VITALtiming : process (clk_ipd, datain_dly, adatasdata_dly1,
                            sclr_ipd, sload_ipd, aclr_ipd, aload_ipd,
                            ena_ipd, devclrn, devpor)
-
+    
     variable Tviol_datain_clk : std_ulogic := '0';
     variable Tviol_adatasdata_clk : std_ulogic := '0';
     variable Tviol_sclr_clk : std_ulogic := '0';
@@ -2477,20 +2823,20 @@ adatasdatadelaybuffer1: stratixii_and1
     variable TimingData_sload_clk : VitalTimingDataType := VitalTimingDataInit;
     variable TimingData_ena_clk : VitalTimingDataType := VitalTimingDataInit;
     variable regout_VitalGlitchData : VitalGlitchDataType;
-
+    
     variable iregout : std_logic := '0';
     variable idata: std_logic := '0';
-
+    
     -- variables for 'X' generation
     variable violation : std_logic := '0';
-
+    
     begin
-
+      
         ------------------------
         --  Timing Check Section
         ------------------------
         if (TimingChecksOn) then
-
+        
             VitalSetupHoldCheck (
                 Violation       => Tviol_datain_clk,
                 TimingData      => TimingData_datain_clk,
@@ -2505,6 +2851,7 @@ adatasdatadelaybuffer1: stratixii_and1
                 CheckEnabled    => TO_X01((aclr_ipd) OR
                                           (sload_ipd) OR
                                           (sclr_ipd) OR
+                                          (aload_ipd) OR
                                           (NOT devpor) OR
                                           (NOT devclrn) OR
                                           (NOT ena_ipd)) /= '1',
@@ -2512,7 +2859,7 @@ adatasdatadelaybuffer1: stratixii_and1
                 HeaderMsg       => InstancePath & "/LCELL_FF",
                 XOn             => XOnChecks,
                 MsgOn           => MsgOnChecks );
-
+            
             VitalSetupHoldCheck (
                 Violation       => Tviol_adatasdata_clk,
                 TimingData      => TimingData_adatasdata_clk,
@@ -2533,7 +2880,7 @@ adatasdatadelaybuffer1: stratixii_and1
                 HeaderMsg       => InstancePath & "/LCELL_FF",
                 XOn             => XOnChecks,
                 MsgOn           => MsgOnChecks );
-
+    
             VitalSetupHoldCheck (
                 Violation       => Tviol_sclr_clk,
                 TimingData      => TimingData_sclr_clk,
@@ -2553,7 +2900,7 @@ adatasdatadelaybuffer1: stratixii_and1
                 HeaderMsg       => InstancePath & "/LCELL_FF",
                 XOn             => XOnChecks,
                 MsgOn           => MsgOnChecks );
-
+            
             VitalSetupHoldCheck (
                 Violation       => Tviol_sload_clk,
                 TimingData      => TimingData_sload_clk,
@@ -2573,7 +2920,7 @@ adatasdatadelaybuffer1: stratixii_and1
                 HeaderMsg       => InstancePath & "/LCELL_FF",
                 XOn             => XOnChecks,
                 MsgOn           => MsgOnChecks );
-
+        
             VitalSetupHoldCheck (
                 Violation       => Tviol_ena_clk,
                 TimingData      => TimingData_ena_clk,
@@ -2592,13 +2939,13 @@ adatasdatadelaybuffer1: stratixii_and1
                 HeaderMsg       => InstancePath & "/LCELL_FF",
                 XOn             => XOnChecks,
                 MsgOn           => MsgOnChecks );
-
+    
         end if;
-
-        violation := Tviol_datain_clk or Tviol_adatasdata_clk or
+    
+        violation := Tviol_datain_clk or Tviol_adatasdata_clk or 
                      Tviol_sclr_clk or Tviol_sload_clk or Tviol_ena_clk;
-
-
+    
+    
         if ((devpor = '0') or (devclrn = '0') or (aclr_ipd = '1'))  then
             iregout := '0';
         elsif (aload_ipd = '1') then
@@ -2616,7 +2963,7 @@ adatasdatadelaybuffer1: stratixii_and1
                 end if;
             end if;
         end if;
-
+    
         ----------------------
         --  Path Delay Section
         ----------------------
@@ -2632,17 +2979,17 @@ adatasdatadelaybuffer1: stratixii_and1
             Mode => DefGlitchMode,
             XOn  => XOn,
             MsgOn  => MsgOn );
-
+    
     end process;
 
-end vital_lcell_ff;
+end vital_lcell_ff;	
 
 ---------------------------------------------------------------------
 --
 -- Entity Name :  stratixii_lcell_comb
---
+-- 
 -- Description :  StratixII LCELL_COMB VHDL simulation model
---
+--  
 --
 ---------------------------------------------------------------------
 
@@ -2689,17 +3036,17 @@ entity stratixii_lcell_comb is
              tpd_datab_shareout : VitalDelayType01 := DefPropDelay01;
              tpd_datac_shareout : VitalDelayType01 := DefPropDelay01;
              tpd_datad_shareout : VitalDelayType01 := DefPropDelay01;
-             tipd_dataa : VitalDelayType01 := DefPropDelay01;
-             tipd_datab : VitalDelayType01 := DefPropDelay01;
-             tipd_datac : VitalDelayType01 := DefPropDelay01;
-             tipd_datad : VitalDelayType01 := DefPropDelay01;
-             tipd_datae : VitalDelayType01 := DefPropDelay01;
-             tipd_dataf : VitalDelayType01 := DefPropDelay01;
-             tipd_datag : VitalDelayType01 := DefPropDelay01;
-             tipd_cin : VitalDelayType01 := DefPropDelay01;
+             tipd_dataa : VitalDelayType01 := DefPropDelay01; 
+             tipd_datab : VitalDelayType01 := DefPropDelay01; 
+             tipd_datac : VitalDelayType01 := DefPropDelay01; 
+             tipd_datad : VitalDelayType01 := DefPropDelay01; 
+             tipd_datae : VitalDelayType01 := DefPropDelay01; 
+             tipd_dataf : VitalDelayType01 := DefPropDelay01; 
+             tipd_datag : VitalDelayType01 := DefPropDelay01; 
+             tipd_cin : VitalDelayType01 := DefPropDelay01; 
              tipd_sharein : VitalDelayType01 := DefPropDelay01
             );
-
+    
     port (
           dataa : in std_logic := '0';
           datab : in std_logic := '0';
@@ -2717,7 +3064,7 @@ entity stratixii_lcell_comb is
          );
    attribute VITAL_LEVEL0 of stratixii_lcell_comb : entity is TRUE;
 end stratixii_lcell_comb;
-
+        
 architecture vital_lcell_comb of stratixii_lcell_comb is
     attribute VITAL_LEVEL0 of vital_lcell_comb : architecture is TRUE;
     signal dataa_ipd : std_logic;
@@ -2761,7 +3108,7 @@ begin
     f2_input3 <= datag_ipd WHEN (extended_lut = "on") ELSE datac_ipd;
 
 VITALtiming : process(dataa_ipd, datab_ipd, datac_ipd, datad_ipd,
-                      datae_ipd, dataf_ipd, f2_input3, cin_ipd,
+                      datae_ipd, dataf_ipd, f2_input3, cin_ipd, 
                       sharein_ipd)
 
 variable combout_VitalGlitchData : VitalGlitchDataType;
@@ -2787,7 +3134,7 @@ variable cout_tmp : std_logic;
 variable lut_mask_var : std_logic_vector(63 downto 0) := (OTHERS => '1');
 
 begin
-
+  
     lut_mask_var := lut_mask;
 
     ------------------------
@@ -2814,8 +3161,8 @@ begin
                                    f2_input3,
                                    datab_ipd,
                                    dataa_ipd));
-
-    -- combout
+    
+    -- combout 
     if (extended_lut = "on") then
         if (datae_ipd = '0') then
             g0_out := f0_out;
@@ -2929,7 +3276,7 @@ begin
 
 end process;
 
-end vital_lcell_comb;
+end vital_lcell_comb;	
 
 --/////////////////////////////////////////////////////////////////////////////
 --
@@ -2998,7 +3345,7 @@ begin
         --  Timing Check Section
         ------------------------
         if (TimingChecksOn) then
-
+        
             VitalSetupHoldCheck (
                 Violation       => Tviol_d_clk,
                 TimingData      => TimingData_d_clk,
@@ -3016,14 +3363,14 @@ begin
                 HeaderMsg       => InstancePath & "/ENA_REG",
                 XOn             => XOnChecks,
                 MsgOn           => MsgOnChecks );
-
+            
         end if;
 
         if (prn = '0') then
             q_reg := '1';
         elsif (clrn = '0') then
             q_reg := '0';
-        elsif (clk_ipd'event and clk_ipd = '1' and (ena = '1')) then
+        elsif (clk_ipd'event and clk_ipd = '1' and clk_ipd'last_value = '0' and (ena = '1')) then
             q_reg := d_ipd;
         end if;
 
@@ -3072,8 +3419,8 @@ entity stratixii_clkctrl is
              MsgOnChecks : Boolean := DefMsgOnChecks;
              XOnChecks : Boolean := DefXOnChecks;
              InstancePath : STRING := "*";
-             tipd_inclk : VitalDelayArrayType01(3 downto 0) := (OTHERS => DefPropDelay01);
-             tipd_clkselect : VitalDelayArrayType01(1 downto 0) := (OTHERS => DefPropDelay01);
+             tipd_inclk : VitalDelayArrayType01(3 downto 0) := (OTHERS => DefPropDelay01); 
+             tipd_clkselect : VitalDelayArrayType01(1 downto 0) := (OTHERS => DefPropDelay01); 
              tipd_ena : VitalDelayType01 := DefPropDelay01
              );
     port (
@@ -3083,10 +3430,10 @@ entity stratixii_clkctrl is
           devclrn : in std_logic := '1';
           devpor : in std_logic := '1';
           outclk : out std_logic
-          );
+          );    
    attribute VITAL_LEVEL0 of stratixii_clkctrl : entity is TRUE;
 end stratixii_clkctrl;
-
+        
 architecture vital_clkctrl of stratixii_clkctrl is
     attribute VITAL_LEVEL0 of vital_clkctrl : architecture is TRUE;
 
@@ -3158,15 +3505,15 @@ begin
                   port map (
                             clk => clkmux_out_inv,
                             ena => vcc,
-                            d => ena_ipd,
+                            d => ena_ipd, 
                             clrn => vcc,
                             prn => devpor,
-                            q => cereg_out
+                            q => cereg_out 
                            );
 
     outclk <= cereg_out AND clkmux_out;
 
-end vital_clkctrl;
+end vital_clkctrl;	
 
 
 --
@@ -3176,59 +3523,57 @@ end vital_clkctrl;
 --
 LIBRARY IEEE;
 use IEEE.std_logic_1164.all;
+use IEEE.std_logic_arith.all;
 use IEEE.VITAL_Timing.all;
 use IEEE.VITAL_Primitives.all;
 use work.stratixii_atom_pack.all;
 
 entity stratixii_asynch_io is
     generic(
-                operation_mode  : STRING := "input";
-                open_drain_output : STRING := "false";
-                bus_hold : STRING := "false";
-
-                dqs_input_frequency      : STRING := "10000 ps";
-                dqs_out_mode             : STRING := "none";
-                dqs_delay_buffer_mode    : STRING := "low";
-                dqs_phase_shift          : INTEGER := 0;
-                dqs_offsetctrl_enable    : STRING := "false";
-                dqs_ctrl_latches_enable  : STRING := "false";
-                dqs_edge_detect_enable   : STRING := "false";
-                gated_dqs                : STRING := "false";
-                sim_dqs_intrinsic_delay  : INTEGER := 0;
-                sim_dqs_delay_increment  : INTEGER := 0;
-                sim_dqs_offset_increment : INTEGER := 0;
-
-                XOn: Boolean := DefGlitchXOn;
-                MsgOn: Boolean := DefGlitchMsgOn;
-
-                tpd_datain_padio        : VitalDelayType01 := DefPropDelay01;
-                tpd_oe_padio_posedge       : VitalDelayType01 := DefPropDelay01;
-                tpd_oe_padio_negedge       : VitalDelayType01 := DefPropDelay01;
-                tpd_padio_combout   : VitalDelayType01 := DefPropDelay01;
-                tpd_regin_regout   : VitalDelayType01 := DefPropDelay01;
-                tpd_ddioregin_ddioregout   : VitalDelayType01 := DefPropDelay01;
-                tpd_padio_dqsbusout   : VitalDelayType01 := DefPropDelay01;
-                tpd_regin_dqsbusout   : VitalDelayType01 := DefPropDelay01;
-
-                tipd_datain         : VitalDelayType01 := DefPropDelay01;
-                tipd_oe             : VitalDelayType01 := DefPropDelay01;
-                tipd_padio          : VitalDelayType01 := DefPropDelay01;
-                tipd_dqsupdateen    : VitalDelayType01 := DefPropDelay01;
-                tipd_offsetctrlin   : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
-                tipd_delayctrlin    : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01));
+        operation_mode : STRING := "input";
+        open_drain_output : STRING := "false";
+        bus_hold : STRING := "false";
+        dqs_input_frequency      : STRING := "10000 ps";
+        dqs_out_mode             : STRING := "none";
+        dqs_delay_buffer_mode    : STRING := "low";
+        dqs_phase_shift          : INTEGER := 0;
+        dqs_offsetctrl_enable    : STRING := "false";
+        dqs_ctrl_latches_enable  : STRING := "false";
+        dqs_edge_detect_enable   : STRING := "false";  
+        gated_dqs                : STRING := "false";  
+        sim_dqs_intrinsic_delay  : INTEGER := 0;
+        sim_dqs_delay_increment  : INTEGER := 0;
+        sim_dqs_offset_increment : INTEGER := 0;
+        XOn: Boolean := DefGlitchXOn;
+        MsgOn: Boolean := DefGlitchMsgOn;
+        tpd_datain_padio : VitalDelayType01 := DefPropDelay01;
+        tpd_oe_padio_posedge : VitalDelayType01 := DefPropDelay01;
+        tpd_oe_padio_negedge : VitalDelayType01 := DefPropDelay01;
+        tpd_padio_combout : VitalDelayType01 := DefPropDelay01;
+        tpd_regin_regout : VitalDelayType01 := DefPropDelay01;
+        tpd_ddioregin_ddioregout : VitalDelayType01 := DefPropDelay01;
+        tpd_padio_dqsbusout : VitalDelayType01 := DefPropDelay01;
+        tpd_regin_dqsbusout : VitalDelayType01 := DefPropDelay01;
+        tipd_datain : VitalDelayType01 := DefPropDelay01;
+        tipd_oe : VitalDelayType01 := DefPropDelay01;
+        tipd_padio : VitalDelayType01 := DefPropDelay01;
+        tipd_dqsupdateen : VitalDelayType01 := DefPropDelay01;
+        tipd_offsetctrlin : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
+        tipd_delayctrlin : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01));
         port(
-                datain  : in  STD_LOGIC := '0';
-                oe          : in  STD_LOGIC := '1';
-                regin  : in std_logic;
-                ddioregin  : in std_logic;
-                padio   : inout STD_LOGIC;
-                delayctrlin  : in std_logic_vector(5 downto 0);
-                offsetctrlin : in std_logic_vector(5 downto 0);
-                dqsupdateen  : in std_logic;
-                dqsbusout    : out std_logic;
-                combout : out STD_LOGIC;
-                regout : out STD_LOGIC;
-                ddioregout : out STD_LOGIC);
+            datain : in  STD_LOGIC := '0';
+            oe : in  STD_LOGIC := '1';
+            regin : in std_logic;
+            ddioregin : in std_logic;
+            padio : inout STD_LOGIC;
+            delayctrlin  : in std_logic_vector(5 downto 0);
+            offsetctrlin : in std_logic_vector(5 downto 0);
+            dqsupdateen  : in std_logic;
+            dqsbusout    : out std_logic;
+            combout : out STD_LOGIC;
+            regout : out STD_LOGIC;
+            ddioregout : out STD_LOGIC
+            );
 
     attribute VITAL_LEVEL0 of stratixii_asynch_io : entity is TRUE;
 end stratixii_asynch_io;
@@ -3271,30 +3616,40 @@ begin
         VitalWireDelay (offsetctrlin_in(0), offsetctrlin(0), tipd_offsetctrlin(0));
     end block;
 
-   dqs_ctrl_latches_ena <= '1'              when dqs_ctrl_latches_enable = "false" ELSE
-                           dqsupdateen_in when dqs_edge_detect_enable = "false"  ELSE
-                           (not (combout_tmp_sig xor tmp_dqsbusout) and dqsupdateen_in);
+    dqs_ctrl_latches_ena <= '1' when dqs_ctrl_latches_enable = "false" ELSE 
+                            dqsupdateen_in when dqs_edge_detect_enable = "false"  ELSE
+                            (not (combout_tmp_sig xor tmp_dqsbusout) and dqsupdateen_in);
 
     process(delayctrlin_in, offsetctrlin_in, dqs_ctrl_latches_ena)
         variable tmp_delayctrl  : integer := 0;
         variable tmp_offsetctrl : integer := 0;
     begin
-        tmp_delayctrl  := alt_conv_integer(delayctrlin_in);
-
+        if ((dqs_delay_buffer_mode = "high") AND (delayctrlin_in(5) = '1')) THEN        
+            tmp_delayctrl  := 31;
+        else 
+            tmp_delayctrl  := alt_conv_integer(delayctrlin_in);
+        end if;
+        
         if (dqs_offsetctrl_enable = "true") then
-            tmp_offsetctrl := alt_conv_integer(offsetctrlin_in);
-        else
+            if ((dqs_delay_buffer_mode = "high") AND (offsetctrlin_in(5) = '1')) THEN        
+                tmp_offsetctrl := 31;
+            else 
+                tmp_offsetctrl := alt_conv_integer(offsetctrlin_in);
+            end if;
+        else 
             tmp_offsetctrl := 0;
         end if;
-
+             
         if (dqs_ctrl_latches_ena = '1') THEN
             dqs_delay_int <= sim_dqs_intrinsic_delay + sim_dqs_delay_increment*tmp_delayctrl + sim_dqs_offset_increment*tmp_offsetctrl;
         end if;
-
+            
         if ((dqs_delay_buffer_mode = "high") AND (delayctrlin_in(5) = '1')) THEN
             assert false report "DELAYCTRLIN of DQS I/O exceeds 5-bit range in high-frequency mode" severity warning;
-            dqs_delay_int <= 0;
-        end if;
+        end if;       
+        if ((dqs_delay_buffer_mode = "high") AND (offsetctrlin_in(5) = '1')) THEN
+            assert false report "OFFSETCTRLIN of DQS I/O exceeds 5-bit range in high-frequency mode" severity warning;
+        end if;       
     end process;
 
     VITAL: process(padio_ipd, datain_ipd, oe_ipd, regin, ddioregin, tmp_dqsbusout)
@@ -3303,124 +3658,124 @@ begin
         variable padio_VitalGlitchData : VitalGlitchDataType;
         variable regout_VitalGlitchData : VitalGlitchDataType;
         variable ddioregout_VitalGlitchData : VitalGlitchDataType;
-
+          
         variable tmp_combout, tmp_padio : std_logic;
         variable prev_value : std_logic := 'H';
-
+           
         variable dqsbusout_tmp   : std_logic;
         variable combout_delay   : VitalDelayType01 := (0 ps, 0 ps);
         variable init : boolean := true;
-
+            
         begin
-
+            
         if (init) then
             combout_delay := tpd_padio_combout;
             init := false;
         end if;
-
+                      
         if (bus_hold = "true" ) then
-                if ( operation_mode = "input") then
-                        if ( padio_ipd = 'Z') then
-                                tmp_combout := to_x01z(prev_value);
-                        else
-                                if ( padio_ipd = '1') then
-                                        prev_value := 'H';
-                                elsif ( padio_ipd = '0') then
-                                        prev_value := 'L';
-                                else
-                                        prev_value := 'W';
-                                end if;
-                                tmp_combout := to_x01z(padio_ipd);
-                        end if;
-                        tmp_padio := 'Z';
-                elsif ( operation_mode = "output" or operation_mode = "bidir") then
-                        if ( oe_ipd = '1') then
-                                if ( open_drain_output = "true" ) then
-                                        if (datain_ipd = '0') then
-                                                tmp_padio := '0';
-                                                prev_value := 'L';
-                                        elsif (datain_ipd = 'X') then
-                                                tmp_padio := 'X';
-                                                prev_value := 'W';
-                                        else   -- 'Z'
-                                                -- need to update prev_value
-                                                if (padio_ipd = '1') then
-                                                        prev_value := 'H';
-                                                elsif (padio_ipd = '0') then
-                                                        prev_value := 'L';
-                                                elsif (padio_ipd = 'X') then
-                                                        prev_value := 'W';
-                                                end if;
-                                                tmp_padio := prev_value;
-                                        end if;
-                                else
-                                        tmp_padio := datain_ipd;
-                                        if ( datain_ipd = '1') then
-                                                prev_value := 'H';
-                                        elsif (datain_ipd = '0' ) then
-                                                prev_value := 'L';
-                                        elsif ( datain_ipd = 'X') then
-                                                prev_value := 'W';
-                                        else
-                                                prev_value := datain_ipd;
-                                        end if;
-                                end if; -- end open_drain_output
-
-                        elsif ( oe_ipd = '0' ) then
-                                -- need to update prev_value
-                                if (padio_ipd = '1') then
-                                        prev_value := 'H';
-                                elsif (padio_ipd = '0') then
-                                        prev_value := 'L';
-                                elsif (padio_ipd = 'X') then
-                                        prev_value := 'W';
-                                end if;
-                                tmp_padio := prev_value;
-                        else
-                                tmp_padio := 'X';
-                                prev_value := 'W';
-                        end if; -- end oe_in
-
-                        if ( operation_mode = "bidir") then
-                                tmp_combout := to_x01z(padio_ipd);
-                        else
-                                tmp_combout := 'Z';
-                        end if;
-                end if;
-
-                if ( now <= 1 ps AND prev_value = 'W' ) then     --hack for autotest to pass
+            if ( operation_mode = "input") then
+                if ( padio_ipd = 'Z') then
+                    tmp_combout := to_x01z(prev_value);
+                else
+                    if ( padio_ipd = '1') then
+                        prev_value := 'H';
+                    elsif ( padio_ipd = '0') then
                         prev_value := 'L';
+                    else
+                        prev_value := 'W';
+                    end if;
+                    tmp_combout := to_x01z(padio_ipd);
                 end if;
+                tmp_padio := 'Z';
+            elsif ( operation_mode = "output" or operation_mode = "bidir") then
+                if ( oe_ipd = '1') then
+                    if ( open_drain_output = "true" ) then
+                        if (datain_ipd = '0') then
+                            tmp_padio := '0';
+                            prev_value := 'L';
+                        elsif (datain_ipd = 'X') then
+                            tmp_padio := 'X';
+                            prev_value := 'W';
+                        else   -- 'Z'
+                            -- need to update prev_value
+                            if (padio_ipd = '1') then
+                                    prev_value := 'H';
+                            elsif (padio_ipd = '0') then
+                                    prev_value := 'L';
+                            elsif (padio_ipd = 'X') then
+                                    prev_value := 'W';
+                            end if;
+                            tmp_padio := prev_value;
+                        end if;
+                    else
+                        tmp_padio := datain_ipd;
+                        if ( datain_ipd = '1') then
+                            prev_value := 'H';
+                        elsif (datain_ipd = '0' ) then
+                            prev_value := 'L';
+                        elsif ( datain_ipd = 'X') then
+                            prev_value := 'W';
+                        else
+                            prev_value := datain_ipd;
+                        end if;
+                    end if; -- end open_drain_output
+                    
+                elsif ( oe_ipd = '0' ) then
+                    -- need to update prev_value
+                    if (padio_ipd = '1') then
+                        prev_value := 'H';
+                    elsif (padio_ipd = '0') then
+                        prev_value := 'L';
+                    elsif (padio_ipd = 'X') then
+                        prev_value := 'W';
+                    end if;
+                    tmp_padio := prev_value;
+                else
+                    tmp_padio := 'X';
+                    prev_value := 'W';
+                end if; -- end oe_in
+                
+                if ( operation_mode = "bidir") then
+                    tmp_combout := to_x01z(padio_ipd);
+                else
+                    tmp_combout := 'Z';
+                end if;
+            end if;
+                
+            if ( now <= 1 ps AND prev_value = 'W' ) then     --hack for autotest to pass
+                    prev_value := 'L';
+            end if;
 
         else    -- bus_hold is false
-                if ( operation_mode = "input") then
-                        tmp_combout := padio_ipd;
-                        tmp_padio := 'Z';
-                elsif (operation_mode = "output" or operation_mode = "bidir" ) then
-                        if ( operation_mode  = "bidir") then
-                                tmp_combout := padio_ipd;
-                        else
-                                tmp_combout := 'Z';
-                        end if;
-
-                        if ( oe_ipd = '1') then
-                                if ( open_drain_output = "true" ) then
-                                        if (datain_ipd = '0') then
-                                                tmp_padio := '0';
-                                        elsif (datain_ipd = 'X') then
-                                                tmp_padio := 'X';
-                                        else
-                                                tmp_padio := 'Z';
-                                        end if;
-                                else
-                                        tmp_padio := datain_ipd;
-                                end if;
-                        elsif ( oe_ipd = '0' ) then
-                                tmp_padio := 'Z';
-                        else
-                                tmp_padio := 'X';
-                        end if;
+            if ( operation_mode = "input") then
+                tmp_combout := padio_ipd;
+                tmp_padio := 'Z';
+            elsif (operation_mode = "output" or operation_mode = "bidir" ) then
+                if ( operation_mode  = "bidir") then
+                    tmp_combout := padio_ipd;
+                else
+                    tmp_combout := 'Z';
                 end if;
+        
+                if ( oe_ipd = '1') then
+                    if ( open_drain_output = "true" ) then
+                        if (datain_ipd = '0') then
+                            tmp_padio := '0';
+                        elsif (datain_ipd = 'X') then
+                            tmp_padio := 'X';
+                        else
+                            tmp_padio := 'Z';
+                        end if;
+                    else
+                        tmp_padio := datain_ipd;
+                    end if;
+                elsif ( oe_ipd = '0' ) then
+                    tmp_padio := 'Z';
+                else
+                    tmp_padio := 'X';
+                end if;
+            end if;
         end if; -- end bus_hold
 
 		tmp_dqsbusout <= transport tmp_combout after (dqs_delay_int * 1 ps);
@@ -3506,132 +3861,133 @@ use IEEE.VITAL_Primitives.all;
 use work.stratixii_atom_pack.all;
 
 entity stratixii_io_register is
-  generic (
-      async_reset : string := "none";
-	  sync_reset : string := "none";
-	  power_up : string := "low";
+    generic (
+        async_reset : string := "none";
+        sync_reset : string := "none";
+        power_up : string := "low";
+        TimingChecksOn: Boolean := True;
+        MsgOn: Boolean := DefGlitchMsgOn;
+        XOn: Boolean := DefGlitchXOn;
+        MsgOnChecks: Boolean := DefMsgOnChecks;
+        XOnChecks: Boolean := DefXOnChecks;
+        InstancePath: STRING := "*";
+        tsetup_datain_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+        tsetup_ena_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+        tsetup_sreset_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+        thold_datain_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+        thold_ena_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+        thold_sreset_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+        tpd_clk_regout_posedge		: VitalDelayType01 := DefPropDelay01;
+        tpd_areset_regout_posedge		: VitalDelayType01 := DefPropDelay01;
+        tipd_clk  			: VitalDelayType01 := DefPropDelay01;
+        tipd_datain  			: VitalDelayType01 := DefPropDelay01;
+        tipd_ena  		: VitalDelayType01 := DefPropDelay01; 
+        tipd_areset 			: VitalDelayType01 := DefPropDelay01; 
+        tipd_sreset 			: VitalDelayType01 := DefPropDelay01
+        );
 
-	  TimingChecksOn: Boolean := True;
-      MsgOn: Boolean := DefGlitchMsgOn;
-      XOn: Boolean := DefGlitchXOn;
-      MsgOnChecks: Boolean := DefMsgOnChecks;
-      XOnChecks: Boolean := DefXOnChecks;
-      InstancePath: STRING := "*";
-
-      tsetup_datain_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
-	  tsetup_ena_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
-      tsetup_sreset_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
-      thold_datain_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
-	  thold_ena_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
-      thold_sreset_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
-      tpd_clk_regout_posedge		: VitalDelayType01 := DefPropDelay01;
-      tpd_areset_regout_posedge		: VitalDelayType01 := DefPropDelay01;
-
-	  tipd_clk  			: VitalDelayType01 := DefPropDelay01;
-	  tipd_datain  			: VitalDelayType01 := DefPropDelay01;
-	  tipd_ena  		: VitalDelayType01 := DefPropDelay01;
-	  tipd_areset 			: VitalDelayType01 := DefPropDelay01;
-      tipd_sreset 			: VitalDelayType01 := DefPropDelay01);
-
-  port (clk :in std_logic := '0';
+    port (
+        clk :in std_logic := '0';
         datain  : in std_logic := '0';
         ena     : in std_logic := '1';
-	sreset : in std_logic := '0';
+        sreset : in std_logic := '0';
         areset : in std_logic := '0';
         devclrn   : in std_logic := '1';
         devpor    : in std_logic := '1';
-        regout    : out std_logic);
-   attribute VITAL_LEVEL0 of stratixii_io_register : entity is TRUE;
+        regout    : out std_logic
+        );
+    attribute VITAL_LEVEL0 of stratixii_io_register : entity is TRUE;
 end stratixii_io_register;
-
+        
 architecture vital_io_reg of stratixii_io_register is
-   attribute VITAL_LEVEL0 of vital_io_reg : architecture is TRUE;
-   signal datain_ipd, ena_ipd, sreset_ipd : std_logic;
-   signal clk_ipd, areset_ipd : std_logic;
+    attribute VITAL_LEVEL0 of vital_io_reg : architecture is TRUE;
+    signal datain_ipd, ena_ipd, sreset_ipd : std_logic;
+    signal clk_ipd, areset_ipd : std_logic;
 begin
-   ---------------------
-   --  INPUT PATH DELAYs
-   ---------------------
-   WireDelay : block
-   begin
-   VitalWireDelay (datain_ipd, datain, tipd_datain);
-   VitalWireDelay (clk_ipd, clk, tipd_clk);
-   VitalWireDelay (ena_ipd, ena, tipd_ena);
-   VitalWireDelay (sreset_ipd, sreset, tipd_sreset);
-   VitalWireDelay (areset_ipd, areset, tipd_areset);
-   end block;
+    ---------------------
+    --  INPUT PATH DELAYs
+    ---------------------
+    WireDelay : block
+    begin
+        VitalWireDelay (datain_ipd, datain, tipd_datain);
+        VitalWireDelay (clk_ipd, clk, tipd_clk);
+        VitalWireDelay (ena_ipd, ena, tipd_ena);
+        VitalWireDelay (sreset_ipd, sreset, tipd_sreset);
+        VitalWireDelay (areset_ipd, areset, tipd_areset);
+    end block;
 
-VITALtiming : process(clk_ipd, datain_ipd, ena_ipd, sreset_ipd, areset_ipd, devclrn, devpor)
-
-variable Tviol_datain_clk : std_ulogic := '0';
-variable Tviol_ena_clk : std_ulogic := '0';
-variable Tviol_sreset_clk : std_ulogic := '0';
-variable TimingData_datain_clk : VitalTimingDataType := VitalTimingDataInit;
-variable TimingData_ena_clk : VitalTimingDataType := VitalTimingDataInit;
-variable TimingData_sreset_clk : VitalTimingDataType := VitalTimingDataInit;
-variable regout_VitalGlitchData : VitalGlitchDataType;
-
-variable iregout : std_logic;
-variable idata : std_logic := '0';
-variable tmp_regout : std_logic;
-variable tmp_reset : std_logic := '0';
-
--- variables for 'X' generation
-variable violation : std_logic := '0';
-
-begin
-
-      if (now = 0 ns) then
-         if (power_up = "low") then
-            iregout := '0';
-         elsif (power_up = "high") then
-            iregout := '1';
-         end if;
-      end if;
-
-      if ( async_reset /= "none") then
-		tmp_reset := areset_ipd; -- this is used to enable timing check.
-	  end if;
-      ------------------------
-      --  Timing Check Section
-      ------------------------
-      if (TimingChecksOn) then
-
-         VitalSetupHoldCheck (
-                Violation       => Tviol_datain_clk,
-                TimingData      => TimingData_datain_clk,
-                TestSignal      => datain_ipd,
-                TestSignalName  => "DATAIN",
-                RefSignal       => clk_ipd,
-                RefSignalName   => "CLK",
-                SetupHigh       => tsetup_datain_clk_noedge_posedge,
-                SetupLow        => tsetup_datain_clk_noedge_posedge,
-                HoldHigh        => thold_datain_clk_noedge_posedge,
-                HoldLow         => thold_datain_clk_noedge_posedge,
-                CheckEnabled    => TO_X01((tmp_reset) OR (NOT devpor) OR (NOT devclrn) OR (NOT ena_ipd)) /= '1',
-                RefTransition   => '/',
-                HeaderMsg       => InstancePath & "/LCELL",
-                XOn             => XOnChecks,
-                MsgOn           => MsgOnChecks );
-
-         VitalSetupHoldCheck (
-                Violation       => Tviol_ena_clk,
-                TimingData      => TimingData_ena_clk,
-                TestSignal      => ena_ipd,
-                TestSignalName  => "ENA",
-                RefSignal       => clk_ipd,
-                RefSignalName   => "CLK",
-                SetupHigh       => tsetup_ena_clk_noedge_posedge,
-                SetupLow        => tsetup_ena_clk_noedge_posedge,
-                HoldHigh        => thold_ena_clk_noedge_posedge,
-                HoldLow         => thold_ena_clk_noedge_posedge,
-                CheckEnabled    => TO_X01((tmp_reset) OR (NOT devpor) OR (NOT devclrn) OR (NOT ena_ipd)) /= '1',
-                RefTransition   => '/',
-                HeaderMsg       => InstancePath & "/LCELL",
-                XOn             => XOnChecks,
-                MsgOn           => MsgOnChecks );
-
-		VitalSetupHoldCheck (
+    VITALtiming : process(clk_ipd, datain_ipd, ena_ipd, sreset_ipd, areset_ipd, devclrn, devpor)
+    
+    variable Tviol_datain_clk : std_ulogic := '0';
+    variable Tviol_ena_clk : std_ulogic := '0';
+    variable Tviol_sreset_clk : std_ulogic := '0';
+    variable TimingData_datain_clk : VitalTimingDataType := VitalTimingDataInit;
+    variable TimingData_ena_clk : VitalTimingDataType := VitalTimingDataInit;
+    variable TimingData_sreset_clk : VitalTimingDataType := VitalTimingDataInit;
+    variable regout_VitalGlitchData : VitalGlitchDataType;
+    
+    variable iregout : std_logic;
+    variable idata : std_logic := '0';
+    variable tmp_regout : std_logic;
+    variable tmp_reset : std_logic := '0';
+    
+    -- variables for 'X' generation
+    variable violation : std_logic := '0';
+    
+    begin
+    
+        if (now = 0 ns) then
+            if (power_up = "low") then
+                iregout := '0';
+            elsif (power_up = "high") then
+                iregout := '1';
+            end if;
+        end if;
+        
+        if ( async_reset /= "none") then
+            tmp_reset := areset_ipd; -- this is used to enable timing check.
+        end if;
+    
+        ------------------------
+        --  Timing Check Section
+        ------------------------
+        if (TimingChecksOn) then
+    
+        VitalSetupHoldCheck (
+            Violation       => Tviol_datain_clk,
+            TimingData      => TimingData_datain_clk,
+            TestSignal      => datain_ipd,
+            TestSignalName  => "DATAIN",
+            RefSignal       => clk_ipd,
+            RefSignalName   => "CLK",
+            SetupHigh       => tsetup_datain_clk_noedge_posedge,
+            SetupLow        => tsetup_datain_clk_noedge_posedge,
+            HoldHigh        => thold_datain_clk_noedge_posedge,
+            HoldLow         => thold_datain_clk_noedge_posedge,
+            CheckEnabled    => TO_X01((tmp_reset) OR (NOT devpor) OR (NOT devclrn) OR (NOT ena_ipd)) /= '1',
+            RefTransition   => '/',
+            HeaderMsg       => InstancePath & "/LCELL",
+            XOn             => XOnChecks,
+            MsgOn           => MsgOnChecks );
+    
+        VitalSetupHoldCheck (
+            Violation       => Tviol_ena_clk,
+            TimingData      => TimingData_ena_clk,
+            TestSignal      => ena_ipd,
+            TestSignalName  => "ENA",
+            RefSignal       => clk_ipd,
+            RefSignalName   => "CLK",
+            SetupHigh       => tsetup_ena_clk_noedge_posedge,
+            SetupLow        => tsetup_ena_clk_noedge_posedge,
+            HoldHigh        => thold_ena_clk_noedge_posedge,
+            HoldLow         => thold_ena_clk_noedge_posedge,
+            CheckEnabled    => TO_X01((tmp_reset) OR (NOT devpor) OR (NOT devclrn) OR (NOT ena_ipd)) /= '1',
+            RefTransition   => '/',
+            HeaderMsg       => InstancePath & "/LCELL",
+            XOn             => XOnChecks,
+            MsgOn           => MsgOnChecks );
+    
+        VitalSetupHoldCheck (
                 Violation       => Tviol_sreset_clk,
                 TimingData      => TimingData_sreset_clk,
                 TestSignal      => sreset_ipd,
@@ -3647,51 +4003,251 @@ begin
                 HeaderMsg       => InstancePath & "/LCELL",
                 XOn             => XOnChecks,
                 MsgOn           => MsgOnChecks );
-      end if;
+        end if;
+    
+        violation := Tviol_datain_clk or Tviol_ena_clk or Tviol_sreset_clk;
+    
+        if (devpor = '0') then
+        	if (power_up = "low") then
+        		iregout := '0';
+        	elsif (power_up = "high") then
+        		iregout := '1';
+        	end if;
+        elsif (devclrn = '0') then
+        	iregout := '0';
+        elsif (async_reset = "clear" and areset_ipd = '1') then
+        	iregout := '0';
+        elsif ( async_reset = "preset" and areset_ipd = '1') then
+        	iregout := '1';
+        elsif (violation = 'X') then
+        	iregout := 'X';
+        elsif (ena_ipd = '1' and clk_ipd'event and clk_ipd = '1' and clk_ipd'last_value = '0') then
+        	if (sync_reset = "clear" and sreset_ipd = '1' ) then
+        		iregout := '0';
+        	elsif (sync_reset = "preset" and sreset_ipd = '1' ) then
+        		iregout := '1';
+        	else
+        		iregout := to_x01z(datain_ipd);
+        	end if;
+        end if;
+        
+        tmp_regout := iregout;
+    
+        ----------------------
+        --  Path Delay Section
+        ----------------------
+        VitalPathDelay01 (
+            OutSignal => regout,
+            OutSignalName => "REGOUT",
+            OutTemp => tmp_regout,
+            Paths => (0 => (areset_ipd'last_event, tpd_areset_regout_posedge, async_reset /= "none"),
+            		 1 => (clk_ipd'last_event, tpd_clk_regout_posedge, TRUE)),
+            GlitchData => regout_VitalGlitchData,
+            Mode => DefGlitchMode,
+            XOn  => XOn,
+            MsgOn  => MsgOn );
+    end process;
+end vital_io_reg;	
 
-      violation := Tviol_datain_clk or Tviol_ena_clk or Tviol_sreset_clk;
 
-	if (devpor = '0') then
-		if (power_up = "low") then
-			iregout := '0';
-		elsif (power_up = "high") then
-			iregout := '1';
-		end if;
-	elsif (devclrn = '0') then
-		iregout := '0';
-	elsif (async_reset = "clear" and areset_ipd = '1') then
-		iregout := '0';
-	elsif ( async_reset = "preset" and areset_ipd = '1') then
-		iregout := '1';
-    elsif (violation = 'X') then
-		iregout := 'X';
-	elsif (ena_ipd = '1' and clk_ipd'event and clk_ipd = '1' and clk_ipd'last_value = '0') then
-		if (sync_reset = "clear" and sreset_ipd = '1' ) then
-			iregout := '0';
-		elsif (sync_reset = "preset" and sreset_ipd = '1' ) then
-			iregout := '1';
-		else
-			iregout := to_x01z(datain_ipd);
-		end if;
-	end if;
+--
+-- STRATIXII_IO_LATCH
+--
 
-      tmp_regout := iregout;
+LIBRARY IEEE;
+use IEEE.std_logic_1164.all;
+use IEEE.VITAL_Timing.all;
+use IEEE.VITAL_Primitives.all;
+use work.stratixii_atom_pack.all;
 
-      ----------------------
-      --  Path Delay Section
-      ----------------------
-      VitalPathDelay01 (
-       OutSignal => regout,
-       OutSignalName => "REGOUT",
-       OutTemp => tmp_regout,
-       Paths => (0 => (areset_ipd'last_event, tpd_areset_regout_posedge, async_reset /= "none"),
-				 1 => (clk_ipd'last_event, tpd_clk_regout_posedge, TRUE)),
-       GlitchData => regout_VitalGlitchData,
-       Mode => DefGlitchMode,
-       XOn  => XOn,
-       MsgOn  => MsgOn );
-end process;
-end vital_io_reg;
+entity stratixii_io_latch is
+    generic (
+        async_reset : string := "none";
+        sync_reset : string := "none";
+        power_up : string := "low";
+        TimingChecksOn: Boolean := True;
+        MsgOn: Boolean := DefGlitchMsgOn;
+        XOn: Boolean := DefGlitchXOn;
+        MsgOnChecks: Boolean := DefMsgOnChecks;
+        XOnChecks: Boolean := DefXOnChecks;
+        InstancePath: STRING := "*";
+        tsetup_datain_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+        tsetup_ena_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+        tsetup_sreset_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+        thold_datain_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+        thold_ena_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+        thold_sreset_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+        tpd_clk_regout_posedge		: VitalDelayType01 := DefPropDelay01;
+        tpd_areset_regout_posedge		: VitalDelayType01 := DefPropDelay01;
+        tipd_clk  			: VitalDelayType01 := DefPropDelay01;
+        tipd_datain  			: VitalDelayType01 := DefPropDelay01;
+        tipd_ena  		: VitalDelayType01 := DefPropDelay01; 
+        tipd_areset 			: VitalDelayType01 := DefPropDelay01; 
+        tipd_sreset 			: VitalDelayType01 := DefPropDelay01
+        );
+
+    port (
+        clk :in std_logic := '0';
+        datain  : in std_logic := '0';
+        ena     : in std_logic := '1';
+        sreset : in std_logic := '0';
+        areset : in std_logic := '0';
+        devclrn   : in std_logic := '1';
+        devpor    : in std_logic := '1';
+        regout    : out std_logic
+        );
+    attribute VITAL_LEVEL0 of stratixii_io_latch : entity is TRUE;
+end stratixii_io_latch;
+        
+architecture vital_io_latch of stratixii_io_latch is
+    attribute VITAL_LEVEL0 of vital_io_latch : architecture is TRUE;
+    signal datain_ipd, ena_ipd, sreset_ipd : std_logic;
+    signal clk_ipd, areset_ipd : std_logic;
+begin
+    ---------------------
+    --  INPUT PATH DELAYs
+    ---------------------
+    WireDelay : block
+    begin
+        VitalWireDelay (datain_ipd, datain, tipd_datain);
+        VitalWireDelay (clk_ipd, clk, tipd_clk);
+        VitalWireDelay (ena_ipd, ena, tipd_ena);
+        VitalWireDelay (sreset_ipd, sreset, tipd_sreset);
+        VitalWireDelay (areset_ipd, areset, tipd_areset);
+    end block;
+
+    VITALtiming : process(clk_ipd, datain_ipd, ena_ipd, sreset_ipd, areset_ipd, devclrn, devpor)
+    
+    variable Tviol_datain_clk : std_ulogic := '0';
+    variable Tviol_ena_clk : std_ulogic := '0';
+    variable Tviol_sreset_clk : std_ulogic := '0';
+    variable TimingData_datain_clk : VitalTimingDataType := VitalTimingDataInit;
+    variable TimingData_ena_clk : VitalTimingDataType := VitalTimingDataInit;
+    variable TimingData_sreset_clk : VitalTimingDataType := VitalTimingDataInit;
+    variable regout_VitalGlitchData : VitalGlitchDataType;
+    
+    variable iregout : std_logic;
+    variable idata : std_logic := '0';
+    variable tmp_regout : std_logic;
+    variable tmp_reset : std_logic := '0';
+    
+    -- variables for 'X' generation
+    variable violation : std_logic := '0';
+    
+    begin
+    
+        if (now = 0 ns) then
+            if (power_up = "low") then
+                iregout := '0';
+            elsif (power_up = "high") then
+                iregout := '1';
+            end if;
+        end if;
+        
+        if ( async_reset /= "none") then
+            tmp_reset := areset_ipd; -- this is used to enable timing check.
+        end if;
+    
+        ------------------------
+        --  Timing Check Section
+        ------------------------
+        if (TimingChecksOn) then
+    
+        VitalSetupHoldCheck (
+            Violation       => Tviol_datain_clk,
+            TimingData      => TimingData_datain_clk,
+            TestSignal      => datain_ipd,
+            TestSignalName  => "DATAIN",
+            RefSignal       => clk_ipd,
+            RefSignalName   => "CLK",
+            SetupHigh       => tsetup_datain_clk_noedge_posedge,
+            SetupLow        => tsetup_datain_clk_noedge_posedge,
+            HoldHigh        => thold_datain_clk_noedge_posedge,
+            HoldLow         => thold_datain_clk_noedge_posedge,
+            CheckEnabled    => TO_X01((tmp_reset) OR (NOT devpor) OR (NOT devclrn) OR (NOT ena_ipd)) /= '1',
+            RefTransition   => '/',
+            HeaderMsg       => InstancePath & "/LCELL",
+            XOn             => XOnChecks,
+            MsgOn           => MsgOnChecks );
+    
+        VitalSetupHoldCheck (
+            Violation       => Tviol_ena_clk,
+            TimingData      => TimingData_ena_clk,
+            TestSignal      => ena_ipd,
+            TestSignalName  => "ENA",
+            RefSignal       => clk_ipd,
+            RefSignalName   => "CLK",
+            SetupHigh       => tsetup_ena_clk_noedge_posedge,
+            SetupLow        => tsetup_ena_clk_noedge_posedge,
+            HoldHigh        => thold_ena_clk_noedge_posedge,
+            HoldLow         => thold_ena_clk_noedge_posedge,
+            CheckEnabled    => TO_X01((tmp_reset) OR (NOT devpor) OR (NOT devclrn) OR (NOT ena_ipd)) /= '1',
+            RefTransition   => '/',
+            HeaderMsg       => InstancePath & "/LCELL",
+            XOn             => XOnChecks,
+            MsgOn           => MsgOnChecks );
+    
+        VitalSetupHoldCheck (
+                Violation       => Tviol_sreset_clk,
+                TimingData      => TimingData_sreset_clk,
+                TestSignal      => sreset_ipd,
+                TestSignalName  => "SRESET",
+                RefSignal       => clk_ipd,
+                RefSignalName   => "CLK",
+                SetupHigh       => tsetup_sreset_clk_noedge_posedge,
+                SetupLow        => tsetup_sreset_clk_noedge_posedge,
+                HoldHigh        => thold_sreset_clk_noedge_posedge,
+                HoldLow         => thold_sreset_clk_noedge_posedge,
+                CheckEnabled    => TO_X01((tmp_reset) OR (NOT devpor) OR (NOT devclrn) OR (NOT ena_ipd)) /= '1',
+                RefTransition   => '/',
+                HeaderMsg       => InstancePath & "/LCELL",
+                XOn             => XOnChecks,
+                MsgOn           => MsgOnChecks );
+        end if;
+    
+        violation := Tviol_datain_clk or Tviol_ena_clk or Tviol_sreset_clk;
+    
+        if (devpor = '0') then
+        	if (power_up = "low") then
+        		iregout := '0';
+        	elsif (power_up = "high") then
+        		iregout := '1';
+        	end if;
+        elsif (devclrn = '0') then
+        	iregout := '0';
+        elsif (async_reset = "clear" and areset_ipd = '1') then
+        	iregout := '0';
+        elsif ( async_reset = "preset" and areset_ipd = '1') then
+        	iregout := '1';
+        elsif (violation = 'X') then
+        	iregout := 'X';
+        elsif (ena_ipd = '1' and clk_ipd = '1') then
+        	if (sync_reset = "clear" and sreset_ipd = '1' ) then
+        		iregout := '0';
+        	elsif (sync_reset = "preset" and sreset_ipd = '1' ) then
+        		iregout := '1';
+        	else
+        		iregout := to_x01z(datain_ipd);
+        	end if;
+        end if;
+        
+        tmp_regout := iregout;
+    
+        ----------------------
+        --  Path Delay Section
+        ----------------------
+        VitalPathDelay01 (
+            OutSignal => regout,
+            OutSignalName => "REGOUT",
+            OutTemp => tmp_regout,
+            Paths => (0 => (areset_ipd'last_event, tpd_areset_regout_posedge, async_reset /= "none"),
+            		 1 => (clk_ipd'last_event, tpd_clk_regout_posedge, TRUE)),
+            GlitchData => regout_VitalGlitchData,
+            Mode => DefGlitchMode,
+            XOn  => XOn,
+            MsgOn  => MsgOn );
+    end process;
+end vital_io_latch;	
 
 --
 -- STRATIXII_IO
@@ -3703,75 +4259,76 @@ use IEEE.VITAL_Primitives.all;
 use work.stratixii_atom_pack.all;
 use work.stratixii_asynch_io;
 use work.stratixii_io_register;
+use work.stratixii_io_latch;
 use work.stratixii_mux21;
 use work.stratixii_and1;
 
 entity  stratixii_io is
-generic (
-         operation_mode : string := "input";
-         ddio_mode : string := "none";
-         open_drain_output : string := "false";
-         bus_hold : string := "false";
-         output_register_mode : string := "none";
-         output_async_reset : string := "none";
-         output_power_up : string := "low";
-         output_sync_reset : string := "none";
-         tie_off_output_clock_enable : string := "false";
-         oe_register_mode : string := "none";
-         oe_async_reset : string := "none";
-         oe_power_up : string := "low";
-         oe_sync_reset : string := "none";
-         tie_off_oe_clock_enable : string := "false";
-         input_register_mode : string := "none";
-         input_async_reset : string := "none";
-         input_power_up : string := "low";
-         input_sync_reset : string := "none";
-         extend_oe_disable : string := "false";
-         dqs_input_frequency : string := "10000 ps";
-         dqs_out_mode : string := "none";
-         dqs_delay_buffer_mode : string := "low";
-         dqs_phase_shift : integer := 0;
-         inclk_input : string := "normal";
-         ddioinclk_input : string := "negated_inclk";
-         dqs_offsetctrl_enable : string := "false";
-         dqs_ctrl_latches_enable : string := "false";
-         dqs_edge_detect_enable : string := "false";
-		 gated_dqs : string := "false";
-         sim_dqs_intrinsic_delay : integer := 0;
-         sim_dqs_delay_increment : integer := 0;
-         sim_dqs_offset_increment : integer := 0;
-         lpm_type : string := "stratixii_io"
+    generic (
+        operation_mode : string := "input";
+        ddio_mode : string := "none";
+        open_drain_output : string := "false";
+        bus_hold : string := "false";
+        output_register_mode : string := "none";
+        output_async_reset : string := "none";
+        output_power_up : string := "low";
+        output_sync_reset : string := "none";
+        tie_off_output_clock_enable : string := "false";
+        oe_register_mode : string := "none";
+        oe_async_reset : string := "none";
+        oe_power_up : string := "low";
+        oe_sync_reset : string := "none";
+        tie_off_oe_clock_enable : string := "false";
+        input_register_mode : string := "none";
+        input_async_reset : string := "none";
+        input_power_up : string := "low";
+        input_sync_reset : string := "none";
+        extend_oe_disable : string := "false";
+        dqs_input_frequency : string := "10000 ps";
+        dqs_out_mode : string := "none";
+        dqs_delay_buffer_mode : string := "low";
+        dqs_phase_shift : integer := 0;
+        inclk_input : string := "normal";
+        ddioinclk_input : string := "negated_inclk";
+        dqs_offsetctrl_enable : string := "false";
+        dqs_ctrl_latches_enable : string := "false";
+        dqs_edge_detect_enable : string := "false";
+        gated_dqs : string := "false";
+        sim_dqs_intrinsic_delay : integer := 0;
+        sim_dqs_delay_increment : integer := 0;
+        sim_dqs_offset_increment : integer := 0;
+        lpm_type : string := "stratixii_io"
         );
-port (
-      datain          : in std_logic := '0';
-      ddiodatain      : in std_logic := '0';
-      oe              : in std_logic := '1';
-      outclk          : in std_logic := '0';
-      outclkena       : in std_logic := '1';
-      inclk           : in std_logic := '0';
-      inclkena        : in std_logic := '1';
-      areset          : in std_logic := '0';
-      sreset          : in std_logic := '0';
-      ddioinclk       : in std_logic := '0';
-      delayctrlin     : in std_logic_vector(5 downto 0) := "000000";
-      offsetctrlin    : in std_logic_vector(5 downto 0) := "000000";
-      dqsupdateen     : in std_logic := '0';
-      linkin		  : in std_logic := '0';
-      terminationcontrol : in std_logic_vector(13 downto 0) := "00000000000000";
-      devclrn         : in std_logic := '1';
-      devpor          : in std_logic := '1';
-      devoe           : in std_logic := '0';
-      padio           : inout std_logic;
-      combout         : out std_logic;
-      regout          : out std_logic;
-      ddioregout      : out std_logic;
-      dqsbusout		  : out std_logic;
-      linkout		  : out std_logic
-);
+    port (
+        datain          : in std_logic := '0';
+        ddiodatain      : in std_logic := '0';
+        oe              : in std_logic := '1';
+        outclk          : in std_logic := '0';
+        outclkena       : in std_logic := '1';
+        inclk           : in std_logic := '0';
+        inclkena        : in std_logic := '1';
+        areset          : in std_logic := '0';
+        sreset          : in std_logic := '0';
+        ddioinclk       : in std_logic := '0';
+        delayctrlin     : in std_logic_vector(5 downto 0) := "000000";
+        offsetctrlin    : in std_logic_vector(5 downto 0) := "000000";
+        dqsupdateen     : in std_logic := '0';
+        linkin		  : in std_logic := '0';
+        terminationcontrol : in std_logic_vector(13 downto 0) := "00000000000000";      
+        devclrn         : in std_logic := '1';
+        devpor          : in std_logic := '1';
+        devoe           : in std_logic := '0';
+        padio           : inout std_logic;
+        combout         : out std_logic;
+        regout          : out std_logic;
+        ddioregout      : out std_logic;
+        dqsbusout		  : out std_logic;
+        linkout		  : out std_logic
+        );
 end stratixii_io;
 
 architecture structure of stratixii_io is
-component stratixii_asynch_io
+    component stratixii_asynch_io
         generic(
                 operation_mode : string := "input";
                 open_drain_output : string := "false";
@@ -3782,7 +4339,7 @@ component stratixii_asynch_io
                 dqs_phase_shift          : integer := 0;
                 dqs_offsetctrl_enable    : string := "false";
                 dqs_ctrl_latches_enable  : string := "false";
-                dqs_edge_detect_enable   : string := "false";
+                dqs_edge_detect_enable   : string := "false";  
                 gated_dqs                : string := "false";
                 sim_dqs_intrinsic_delay  : integer := 0;
                 sim_dqs_delay_increment  : integer := 0;
@@ -3800,218 +4357,268 @@ component stratixii_asynch_io
                 combout: out STD_LOGIC;
                 regout : out STD_LOGIC;
                 ddioregout : out STD_LOGIC);
-end component;
+    end component;
 
-component stratixii_io_register
-   generic(async_reset : string := "none";
-	  sync_reset : string := "none";
-	  power_up : string := "low";
+    component stratixii_io_register
+        generic (
+            async_reset : string := "none";
+            sync_reset : string := "none";
+            power_up : string := "low";
+            
+            TimingChecksOn: Boolean := True;
+            MsgOn: Boolean := DefGlitchMsgOn;
+            XOn: Boolean := DefGlitchXOn;
+            MsgOnChecks: Boolean := DefMsgOnChecks;
+            XOnChecks: Boolean := DefXOnChecks;
+            InstancePath: STRING := "*";
+            
+            tsetup_datain_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+            tsetup_ena_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+            tsetup_sreset_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+            thold_datain_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+            thold_ena_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+            thold_sreset_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+            tpd_clk_regout_posedge		: VitalDelayType01 := DefPropDelay01;
+            tpd_areset_regout_posedge		: VitalDelayType01 := DefPropDelay01;
+            
+            tipd_clk  			: VitalDelayType01 := DefPropDelay01;
+            tipd_datain  			: VitalDelayType01 := DefPropDelay01;
+            tipd_ena  		: VitalDelayType01 := DefPropDelay01; 
+            tipd_areset 			: VitalDelayType01 := DefPropDelay01; 
+            tipd_sreset 			: VitalDelayType01 := DefPropDelay01
+            );
+        port (
+            clk :in std_logic := '0';
+            datain  : in std_logic := '0';
+            ena     : in std_logic := '1';
+            sreset : in std_logic := '0';
+            areset : in std_logic := '0';
+            devclrn   : in std_logic := '1';
+            devpor    : in std_logic := '1';
+            regout    : out std_logic
+            );
+    end component;
 
-	  TimingChecksOn: Boolean := True;
-      MsgOn: Boolean := DefGlitchMsgOn;
-      XOn: Boolean := DefGlitchXOn;
-      MsgOnChecks: Boolean := DefMsgOnChecks;
-      XOnChecks: Boolean := DefXOnChecks;
-      InstancePath: STRING := "*";
+    component stratixii_io_latch
+        generic (
+            async_reset : string := "none";
+            sync_reset : string := "none";
+            power_up : string := "low";
+            
+            TimingChecksOn: Boolean := True;
+            MsgOn: Boolean := DefGlitchMsgOn;
+            XOn: Boolean := DefGlitchXOn;
+            MsgOnChecks: Boolean := DefMsgOnChecks;
+            XOnChecks: Boolean := DefXOnChecks;
+            InstancePath: STRING := "*";
+            
+            tsetup_datain_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+            tsetup_ena_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+            tsetup_sreset_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+            thold_datain_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+            thold_ena_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+            thold_sreset_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+            tpd_clk_regout_posedge		: VitalDelayType01 := DefPropDelay01;
+            tpd_areset_regout_posedge		: VitalDelayType01 := DefPropDelay01;
+            
+            tipd_clk  			: VitalDelayType01 := DefPropDelay01;
+            tipd_datain  			: VitalDelayType01 := DefPropDelay01;
+            tipd_ena  		: VitalDelayType01 := DefPropDelay01; 
+            tipd_areset 			: VitalDelayType01 := DefPropDelay01; 
+            tipd_sreset 			: VitalDelayType01 := DefPropDelay01
+            );
+        port (
+            clk :in std_logic := '0';
+            datain  : in std_logic := '0';
+            ena     : in std_logic := '1';
+            sreset : in std_logic := '0';
+            areset : in std_logic := '0';
+            devclrn   : in std_logic := '1';
+            devpor    : in std_logic := '1';
+            regout    : out std_logic
+            );
+    end component;
 
-      tsetup_datain_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
-	  tsetup_ena_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
-      tsetup_sreset_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
-      thold_datain_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
-	  thold_ena_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
-      thold_sreset_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
-      tpd_clk_regout_posedge		: VitalDelayType01 := DefPropDelay01;
-      tpd_areset_regout_posedge		: VitalDelayType01 := DefPropDelay01;
+    component stratixii_mux21
+        generic (
+            TimingChecksOn: Boolean := True;
+            MsgOn: Boolean := DefGlitchMsgOn;
+            XOn: Boolean := DefGlitchXOn;
+            InstancePath: STRING := "*";
+            tpd_A_MO : VitalDelayType01 := DefPropDelay01;
+            tpd_B_MO : VitalDelayType01 := DefPropDelay01;
+            tpd_S_MO : VitalDelayType01 := DefPropDelay01;
+            tipd_A   : VitalDelayType01 := DefPropDelay01;
+            tipd_B   : VitalDelayType01 := DefPropDelay01;
+            tipd_S   : VitalDelayType01 := DefPropDelay01
+            );
 
-	  tipd_clk  			: VitalDelayType01 := DefPropDelay01;
-	  tipd_datain  			: VitalDelayType01 := DefPropDelay01;
-	  tipd_ena  		: VitalDelayType01 := DefPropDelay01;
-	  tipd_areset 			: VitalDelayType01 := DefPropDelay01;
-      tipd_sreset 			: VitalDelayType01 := DefPropDelay01);
-   port(clk :in std_logic := '0';
-        datain  : in std_logic := '0';
-        ena     : in std_logic := '1';
-	sreset : in std_logic := '0';
-        areset : in std_logic := '0';
-        devclrn   : in std_logic := '1';
-        devpor    : in std_logic := '1';
-        regout    : out std_logic);
-end component;
-
-component stratixii_mux21
-   generic(
-      TimingChecksOn: Boolean := True;
-      MsgOn: Boolean := DefGlitchMsgOn;
-      XOn: Boolean := DefGlitchXOn;
-      InstancePath: STRING := "*";
-      tpd_A_MO                     :   VitalDelayType01 := DefPropDelay01;
-      tpd_B_MO                     :   VitalDelayType01 := DefPropDelay01;
-      tpd_S_MO                     :   VitalDelayType01 := DefPropDelay01;
-      tipd_A                       :   VitalDelayType01 := DefPropDelay01;
-      tipd_B                       :   VitalDelayType01 := DefPropDelay01;
-      tipd_S                       :   VitalDelayType01 := DefPropDelay01);
-
-     port ( A : in std_logic := '0';
+        port ( 
+            A : in std_logic := '0';
             B : in std_logic := '0';
             S : in std_logic := '0';
-            MO : out std_logic);
-end component;
+            MO : out std_logic
+            );
+    end component;
 
-component stratixii_and1
-   generic(
-      TimingChecksOn: Boolean := True;
-      MsgOn: Boolean := DefGlitchMsgOn;
-      XOn: Boolean := DefGlitchXOn;
-      InstancePath: STRING := "*";
-      tpd_IN1_Y                      :  VitalDelayType01 := DefPropDelay01;
-      tipd_IN1                       :  VitalDelayType01 := DefPropDelay01);
+    component stratixii_and1
+       generic (
+            TimingChecksOn: Boolean := True;
+            MsgOn: Boolean := DefGlitchMsgOn;
+            XOn: Boolean := DefGlitchXOn;
+            InstancePath: STRING := "*";
+            tpd_IN1_Y : VitalDelayType01 := DefPropDelay01;
+            tipd_IN1  : VitalDelayType01 := DefPropDelay01
+            );
 
-   port( Y                              :  out   STD_LOGIC;
-         IN1                            :  in    STD_LOGIC);
-end component;
+        port (
+            Y    :  out   STD_LOGIC;
+            IN1  :  in    STD_LOGIC
+            );
+    end component;
 
-        signal  oe_out : std_logic;
+    signal  oe_out : std_logic;
+    
+    signal  in_reg_out, in_ddio0_reg_out, in_ddio1_reg_out: std_logic;
+    signal  oe_reg_out, oe_pulse_reg_out : std_logic;
+    signal  out_reg_out, out_ddio_reg_out: std_logic;
+    
+    
+    signal  tmp_datain : std_logic;
+    signal  not_inclk, not_outclk : std_logic;
+    
+    -- for DDIO
+    signal ddio_data : std_logic;
+    signal outclk_delayed : std_logic;
+    
+    signal out_clk_ena, oe_clk_ena : std_logic;
 
-        signal  in_reg_out, in_ddio0_reg_out, in_ddio1_reg_out: std_logic;
-        signal  oe_reg_out, oe_pulse_reg_out : std_logic;
-        signal  out_reg_out, out_ddio_reg_out: std_logic;
-
-
-        signal  tmp_datain : std_logic;
-        signal  not_inclk, not_outclk : std_logic;
-
-        -- for DDIO
-        signal ddio_data : std_logic;
-        signal outclk_delayed : std_logic;
-
-        signal out_clk_ena, oe_clk_ena : std_logic;
-
-begin
-
-
-not_inclk <= (ddioinclk) WHEN (ddioinclk_input = "dqsb_bus") ELSE (not inclk);
-
-not_outclk <= not outclk;
-
-out_clk_ena <= '1' WHEN tie_off_output_clock_enable = "true" ELSE outclkena;
-oe_clk_ena <= '1' WHEN tie_off_oe_clock_enable = "true" ELSE outclkena;
-
---input register
-in_reg : stratixii_io_register
-	generic map ( ASYNC_RESET => input_async_reset,
-				  SYNC_RESET => input_sync_reset,
-				  POWER_UP => input_power_up)
-	port map ( regout  => in_reg_out,
-               clk => inclk,
-			   ena => inclkena,
-			   datain => padio,
-			   areset => areset,
-			   sreset => sreset,
-			   devpor => devpor,
-			   devclrn => devclrn);
-
--- in_ddio0_reg
-in_ddio0_reg : stratixii_io_register
-	generic map ( ASYNC_RESET => input_async_reset,
-				  SYNC_RESET => input_sync_reset,
-				  POWER_UP => input_power_up)
-	port map (regout => in_ddio0_reg_out,
-              clk => not_inclk,
-			  ena => inclkena,
-			  datain => padio,
-			  areset => areset,
-			  sreset => sreset,
-			  devpor => devpor,
-			  devclrn => devclrn);
--- in_ddio1_reg
-in_ddio1_reg : stratixii_io_register
-	generic map ( ASYNC_RESET => input_async_reset,
-				  SYNC_RESET => "none",  -- this register does not have sync_reset
-				  POWER_UP => input_power_up)
-	port map (regout  => in_ddio1_reg_out,
-              clk => inclk,
-			  ena => inclkena,
-			  datain => in_ddio0_reg_out,
-			  areset => areset,
-			  devpor => devpor,
-			  devclrn => devclrn);
-
--- out_reg
-out_reg : stratixii_io_register
-	generic map ( ASYNC_RESET => output_async_reset,
-				  SYNC_RESET => output_sync_reset,
-				  POWER_UP => output_power_up)
-	port map (regout  => out_reg_out,
-              clk => outclk,
-			  ena => out_clk_ena,
-			  datain => datain,
-			  areset => areset,
-			  sreset => sreset,
-			  devpor => devpor,
-			  devclrn => devclrn);
-
--- out ddio reg
-out_ddio_reg : stratixii_io_register
-	generic map ( ASYNC_RESET => output_async_reset,
-				  SYNC_RESET => output_sync_reset,
-				  POWER_UP => output_power_up)
-	port map (regout  => out_ddio_reg_out,
-              clk => outclk,
-			  ena => out_clk_ena,
-			  datain => ddiodatain,
-			  areset => areset,
-			  sreset => sreset,
-			  devpor => devpor,
-			  devclrn => devclrn);
-
--- oe reg
-oe_reg : stratixii_io_register
-	generic map (ASYNC_RESET => oe_async_reset,
-				 SYNC_RESET => oe_sync_reset,
-				 POWER_UP => oe_power_up)
-	port map (regout  => oe_reg_out,
-              clk => outclk,
-			  ena => oe_clk_ena,
-			  datain => oe,
-			  areset => areset,
-			  sreset => sreset,
-			  devpor => devpor,
-			  devclrn => devclrn);
-
--- oe_pulse reg
-oe_pulse_reg : stratixii_io_register
-	generic map (ASYNC_RESET => oe_async_reset,
-				 SYNC_RESET => oe_sync_reset,
-				 POWER_UP => oe_power_up)
-	port map (regout  => oe_pulse_reg_out,
-              clk => not_outclk,
-			  ena => oe_clk_ena,
-			  datain => oe_reg_out,
-			  areset => areset,
-			  sreset => sreset,
-			  devpor => devpor,
-			  devclrn => devclrn);
+    begin
 
 
-oe_out <= (oe_pulse_reg_out and oe_reg_out) WHEN (extend_oe_disable = "true") ELSE oe_reg_out WHEN (oe_register_mode = "register") ELSE oe;
+    not_inclk <= (ddioinclk) WHEN (ddioinclk_input = "dqsb_bus") ELSE (not inclk);
+    
+    not_outclk <= not outclk;
 
-sel_delaybuf  : stratixii_and1
-           port map (Y => outclk_delayed,
-                     IN1 => outclk);
+    out_clk_ena <= '1' WHEN tie_off_output_clock_enable = "true" ELSE outclkena;
+    oe_clk_ena <= '1' WHEN tie_off_oe_clock_enable = "true" ELSE outclkena;
+    
+    --input register
+    in_reg : stratixii_io_register
+    	generic map ( ASYNC_RESET => input_async_reset,
+    				  SYNC_RESET => input_sync_reset,
+    				  POWER_UP => input_power_up)
+    	port map ( regout  => in_reg_out,
+                   clk => inclk,
+    			   ena => inclkena,
+    			   datain => padio, 
+    			   areset => areset,
+    			   sreset => sreset,
+    			   devpor => devpor,
+    			   devclrn => devclrn);
 
-ddio_data_mux : stratixii_mux21
-           port map (MO => ddio_data,
-                     A => out_ddio_reg_out,
-                     B => out_reg_out,
-                     S => outclk_delayed);
+    -- in_ddio0_reg
+    in_ddio0_reg : stratixii_io_register
+    	generic map ( ASYNC_RESET => input_async_reset,
+    				  SYNC_RESET => input_sync_reset,
+    				  POWER_UP => input_power_up)
+    	port map (regout => in_ddio0_reg_out,
+                  clk => not_inclk,
+    			  ena => inclkena,
+    			  datain => padio, 
+    			  areset => areset,
+    			  sreset => sreset,
+    			  devpor => devpor,
+    			  devclrn => devclrn);
+    -- in_ddio1_latch
+    in_ddio1_reg : stratixii_io_latch
+    	generic map ( ASYNC_RESET => input_async_reset,
+    				  SYNC_RESET => "none",  -- this register does not have sync_reset
+    				  POWER_UP => input_power_up)
+    	port map (regout  => in_ddio1_reg_out,
+                  clk => inclk,
+    			  ena => inclkena,
+    			  datain => in_ddio0_reg_out, 
+    			  areset => areset,
+    			  devpor => devpor,
+    			  devclrn => devclrn);
+          
+    -- out_reg
+    out_reg : stratixii_io_register
+    	generic map ( ASYNC_RESET => output_async_reset,
+    				  SYNC_RESET => output_sync_reset,
+    				  POWER_UP => output_power_up)
+    	port map (regout  => out_reg_out,
+                  clk => outclk,
+    			  ena => out_clk_ena,
+    			  datain => datain, 
+    			  areset => areset,
+    			  sreset => sreset,
+    			  devpor => devpor,
+    			  devclrn => devclrn);
 
-tmp_datain <= ddio_data WHEN (ddio_mode = "output" or ddio_mode = "bidir") ELSE
-              out_reg_out WHEN (output_register_mode = "register") ELSE
-              datain;
+    -- out ddio reg
+    out_ddio_reg : stratixii_io_register
+    	generic map ( ASYNC_RESET => output_async_reset,
+    				  SYNC_RESET => output_sync_reset,
+    				  POWER_UP => output_power_up)
+    	port map (regout  => out_ddio_reg_out,
+                  clk => outclk,
+    			  ena => out_clk_ena,
+    			  datain => ddiodatain, 
+    			  areset => areset,
+    			  sreset => sreset,
+    			  devpor => devpor,
+    			  devclrn => devclrn);
+
+    -- oe reg
+    oe_reg : stratixii_io_register
+    	generic map (ASYNC_RESET => oe_async_reset,
+    				 SYNC_RESET => oe_sync_reset,
+    				 POWER_UP => oe_power_up)
+    	port map (regout  => oe_reg_out,
+                  clk => outclk,
+    			  ena => oe_clk_ena,
+    			  datain => oe, 
+    			  areset => areset,
+    			  sreset => sreset,
+    			  devpor => devpor,
+    			  devclrn => devclrn);
+    
+    -- oe_pulse reg
+    oe_pulse_reg : stratixii_io_register
+    	generic map (ASYNC_RESET => oe_async_reset,
+    				 SYNC_RESET => oe_sync_reset,
+    				 POWER_UP => oe_power_up)
+    	port map (regout  => oe_pulse_reg_out,
+                  clk => not_outclk,
+    			  ena => oe_clk_ena,
+    			  datain => oe_reg_out, 
+    			  areset => areset,
+    			  sreset => sreset,
+    			  devpor => devpor,
+    			  devclrn => devclrn);
 
 
--- timing info in case output and/or input are not registered.
-inst1 : stratixii_asynch_io
+    oe_out <= (oe_pulse_reg_out and oe_reg_out) WHEN (extend_oe_disable = "true") ELSE oe_reg_out WHEN (oe_register_mode = "register") ELSE oe;
+
+    sel_delaybuf  : stratixii_and1
+        port map (Y => outclk_delayed,
+                  IN1 => outclk);
+
+    ddio_data_mux : stratixii_mux21
+        port map (MO => ddio_data,
+                  A => out_ddio_reg_out,
+                  B => out_reg_out,
+                  S => outclk_delayed);
+
+    tmp_datain <= ddio_data WHEN (ddio_mode = "output" or ddio_mode = "bidir") ELSE
+                  out_reg_out WHEN (output_register_mode = "register") ELSE
+                  datain;
+
+
+    -- timing info in case output and/or input are not registered.
+    inst1 : stratixii_asynch_io
         generic map ( OPERATION_MODE => operation_mode,
                       OPEN_DRAIN_OUTPUT => open_drain_output,
                       BUS_HOLD => bus_hold,
@@ -4022,7 +4629,7 @@ inst1 : stratixii_asynch_io
                       dqs_offsetctrl_enable => dqs_offsetctrl_enable,
                       dqs_ctrl_latches_enable => dqs_ctrl_latches_enable,
                       dqs_edge_detect_enable => dqs_edge_detect_enable,
-                      gated_dqs => gated_dqs,
+                      gated_dqs => gated_dqs,    
                       sim_dqs_intrinsic_delay => sim_dqs_intrinsic_delay,
                       sim_dqs_delay_increment => sim_dqs_delay_increment,
                       sim_dqs_offset_increment => sim_dqs_offset_increment)
@@ -4043,11 +4650,10 @@ inst1 : stratixii_asynch_io
 end structure;
 --///////////////////////////////////////////////////////////////////////////
 --
--- Entity Name : stratixii_mn_cntr
+-- Entity Name : stratixii_m_cntr
 --
--- Description : Timing simulation model for the M and N counter. This is a
---               common model for the input counter and the loop feedback
---               counter of the StratixII PLL.
+-- Description : Timing simulation model for the M counter. M is the loop 
+--               feedback counter of the StratixII PLL.
 --
 --///////////////////////////////////////////////////////////////////////////
 
@@ -4056,7 +4662,7 @@ USE IEEE.std_logic_1164.all;
 USE IEEE.VITAL_Timing.all;
 USE IEEE.VITAL_Primitives.all;
 
-ENTITY stratixii_mn_cntr is
+ENTITY stratixii_m_cntr is
     PORT(  clk           : IN std_logic;
             reset         : IN std_logic := '0';
             cout          : OUT std_logic;
@@ -4064,9 +4670,9 @@ ENTITY stratixii_mn_cntr is
             modulus       : IN integer := 1;
             time_delay    : IN integer := 0
         );
-END stratixii_mn_cntr;
+END stratixii_m_cntr;
 
-ARCHITECTURE behave of stratixii_mn_cntr is
+ARCHITECTURE behave of stratixii_m_cntr is
 begin
 
     process (clk, reset)
@@ -4078,16 +4684,77 @@ begin
             count := 1;
             tmp_cout := '0';
             first_rising_edge := true;
-        elsif (clk'event and clk = '1' and first_rising_edge) then
-            first_rising_edge := false;
-            tmp_cout := clk;
-        elsif (not first_rising_edge) then
-            if (count < modulus) then
-                count := count + 1;
-            else
-                count := 1;
-                tmp_cout := not tmp_cout;
+        elsif (clk'event) then
+            if (clk = '1' and first_rising_edge) then
+                first_rising_edge := false;
+                tmp_cout := clk;
+            elsif (not first_rising_edge) then
+                if (count < modulus) then
+                    count := count + 1;
+                else
+                    count := 1;
+                    tmp_cout := not tmp_cout;
+                end if;
             end if;
+        end if;
+        cout <= transport tmp_cout after time_delay * 1 ps;
+    end process;
+end behave;
+
+--///////////////////////////////////////////////////////////////////////////
+--
+-- Entity Name : stratixii_n_cntr
+--
+-- Description : Timing simulation model for the N counter. N is the
+--               input counter of the StratixII PLL.
+--
+--///////////////////////////////////////////////////////////////////////////
+
+LIBRARY IEEE;
+USE IEEE.std_logic_1164.all;
+USE IEEE.VITAL_Timing.all;
+USE IEEE.VITAL_Primitives.all;
+
+ENTITY stratixii_n_cntr is
+    PORT(  clk           : IN std_logic;
+            reset         : IN std_logic := '0';
+            cout          : OUT std_logic;
+            initial_value : IN integer := 1;
+            modulus       : IN integer := 1;
+            time_delay    : IN integer := 0
+        );
+END stratixii_n_cntr;
+
+ARCHITECTURE behave of stratixii_n_cntr is
+begin
+
+    process (clk, reset)
+    variable count : integer := 1;
+    variable first_rising_edge : boolean := true;
+    variable tmp_cout : std_logic;
+    variable clk_last_valid_value : std_logic;
+    begin
+        if (reset = '1') then
+            count := 1;
+            tmp_cout := '0';
+            first_rising_edge := true;
+        elsif (clk'event) then
+            if (clk = 'X') then
+                ASSERT FALSE REPORT "Invalid transition to 'X' detected on PLL input clk. This edge will be ignored." severity warning;
+            elsif (clk = '1' and first_rising_edge) then
+                first_rising_edge := false;
+                tmp_cout := clk;
+            elsif (not first_rising_edge) then
+                if (count < modulus) then
+                    count := count + 1;
+                else
+                    count := 1;
+                    tmp_cout := not tmp_cout;
+                end if;
+            end if;
+        end if;
+        if (clk /= 'X') then
+            clk_last_valid_value := clk;
         end if;
         cout <= transport tmp_cout after time_delay * 1 ps;
     end process;
@@ -4233,7 +4900,8 @@ USE IEEE.VITAL_Primitives.all;
 USE STD.TEXTIO.all;
 USE work.stratixii_atom_pack.all;
 USE work.stratixii_pllpack.all;
-USE work.stratixii_mn_cntr;
+USE work.stratixii_m_cntr;
+USE work.stratixii_n_cntr;
 USE work.stratixii_scale_cntr;
 USE work.stratixii_dffe;
 USE work.stratixii_pll_reg;
@@ -4257,6 +4925,7 @@ ENTITY stratixii_pll is
         self_reset_on_gated_loss_lock : string := "off";
         valid_lock_multiplier       : integer := 1;
         invalid_lock_multiplier     : integer := 5;
+        sim_gate_lock_device_behavior : string := "off";
 
         switch_over_type            : string := "auto";
         switch_over_on_lossclk      : string := "off";
@@ -4313,7 +4982,7 @@ ENTITY stratixii_pll is
 
         -- ADVANCED USER PARAMETERS
         m_initial                   : integer := 1;
-        m                           : integer := 1;
+        m                           : integer := 0;
         n                           : integer := 1;
         m2                          : integer := 1;
         n2                          : integer := 1;
@@ -4321,7 +4990,7 @@ ENTITY stratixii_pll is
 
         c0_high                     : integer := 1;
         c0_low                      : integer := 1;
-        c0_initial                  : integer := 1;
+        c0_initial                  : integer := 1; 
         c0_mode                     : string := "bypass";
         c0_ph                       : integer := 0;
 
@@ -4348,28 +5017,28 @@ ENTITY stratixii_pll is
         c4_initial                  : integer := 1;
         c4_mode                     : string := "bypass";
         c4_ph                       : integer := 0;
-
+        
         c5_high                     : integer := 1;
         c5_low                      : integer := 1;
         c5_initial                  : integer := 1;
         c5_mode                     : string := "bypass";
         c5_ph                       : integer := 0;
-
+        
         m_ph                        : integer := 0;
-
+        
         clk0_counter                : string := "c0";
         clk1_counter                : string := "c1";
         clk2_counter                : string := "c2";
         clk3_counter                : string := "c3";
         clk4_counter                : string := "c4";
         clk5_counter                : string := "c5";
-
+        
         c1_use_casc_in              : string := "off";
         c2_use_casc_in              : string := "off";
         c3_use_casc_in              : string := "off";
         c4_use_casc_in              : string := "off";
         c5_use_casc_in              : string := "off";
-
+        
         m_test_source               : integer := 5;
         c0_test_source              : integer := 5;
         c1_test_source              : integer := 5;
@@ -4377,41 +5046,44 @@ ENTITY stratixii_pll is
         c3_test_source              : integer := 5;
         c4_test_source              : integer := 5;
         c5_test_source              : integer := 5;
-
+        
         -- LVDS mode parameters
         enable0_counter             : string := "c0";
         enable1_counter             : string := "c1";
         sclkout0_phase_shift        : string := "0";
         sclkout1_phase_shift        : string := "0";
-
-        charge_pump_current         : integer := 0;
+        
+        charge_pump_current         : integer := 52;
         loop_filter_r               : string := " 1.000000";
-        loop_filter_c               : integer := 1;
+        loop_filter_c               : integer := 16;
         common_rx_tx                : string := "off";
-        rx_outclock_resource        : string := "auto";
         use_vco_bypass              : string := "false";
         use_dc_coupling             : string := "false";
-
+        
         pll_compensation_delay      : integer := 0;
         simulation_type             : string := "functional";
         lpm_type                    : string := "stratixii_pll";
 
+        -- Simulation only generics
+        family_name                 : string  := "StratixII";
+        
         clk0_use_even_counter_mode  : string := "off";
         clk1_use_even_counter_mode  : string := "off";
         clk2_use_even_counter_mode  : string := "off";
         clk3_use_even_counter_mode  : string := "off";
         clk4_use_even_counter_mode  : string := "off";
         clk5_use_even_counter_mode  : string := "off";
-
+        
         clk0_use_even_counter_value : string := "off";
         clk1_use_even_counter_value : string := "off";
         clk2_use_even_counter_value : string := "off";
         clk3_use_even_counter_value : string := "off";
         clk4_use_even_counter_value : string := "off";
         clk5_use_even_counter_value : string := "off";
-
+        
         vco_multiply_by             : integer := 0;
         vco_divide_by               : integer := 0;
+        scan_chain_mif_file         : string := "";
         vco_post_scale              : integer := 1;
 
         -- VITAL generics
@@ -4502,6 +5174,7 @@ signal   c_mode_val_hold : str_array(0 to 5);
 -- temp registers
 signal   sig_c_ph_val_tmp   : int_array(0 to 5) := (OTHERS => 0);
 signal   sig_c_low_val_tmp  : int_array(0 to 5) := (OTHERS => 1);
+signal   sig_c_hi_val_tmp  : int_array(0 to 5) := (OTHERS => 1);
 signal   c_ph_val_orig  : int_array(0 to 5) := (OTHERS => 0);
 
 --signal   i_clk5_counter         : string(1 to 2) := "c5";
@@ -4525,6 +5198,8 @@ signal   i_loop_filter_r        : integer;
 -- CONSTANTS
 CONSTANT GPP_SCAN_CHAIN : integer := 174;
 CONSTANT FAST_SCAN_CHAIN : integer := 75;
+CONSTANT GATE_LOCK_CYCLES : integer := 7;
+
 CONSTANT cntrs : str_array(5 downto 0) := ("    C5", "    C4", "    C3", "    C2", "    C1", "    C0");
 CONSTANT ss_cntrs : str_array(0 to 3) := ("     M", "    M2", "     N", "    N2");
 
@@ -4540,15 +5215,11 @@ signal vcc : std_logic := '1';
 signal fbclk       : std_logic;
 signal refclk      : std_logic;
 
---signal c0_clk : std_logic;
---signal c1_clk : std_logic;
---signal c2_clk : std_logic;
---signal c3_clk : std_logic;
---signal c4_clk : std_logic;
---signal c5_clk : std_logic;
-
 signal c_clk : std_logic_array(0 to 5);
 signal vco_out : std_logic_vector(7 downto 0) := (OTHERS => '0');
+signal vco_tap : std_logic_vector(7 downto 0) := (OTHERS => '0');
+signal vco_out_last_value : std_logic_vector(7 downto 0);
+signal vco_tap_last_value : std_logic_vector(7 downto 0);
 
 -- signals to assign values to counter params
 signal m_val : int_array(0 to 1) := (OTHERS => 1);
@@ -4676,7 +5347,24 @@ signal inclk_m_from_vco : std_logic;
 signal inclk_sclkout0_from_vco : std_logic;
 signal inclk_sclkout1_from_vco : std_logic;
 
-COMPONENT stratixii_mn_cntr
+--signal tap0_is_active : boolean := true;
+    signal sig_quiet_time : time := 0 ps;
+    signal sig_slowest_clk_old : time := 0 ps;
+    signal sig_slowest_clk_new : time := 0 ps;
+    signal sig_m_val_tmp : int_array(0 to 1) := (OTHERS => 1);
+
+COMPONENT stratixii_m_cntr
+    PORT (
+        clk           : IN std_logic;
+        reset         : IN std_logic := '0';
+        cout          : OUT std_logic;
+        initial_value : IN integer := 1;
+        modulus       : IN integer := 1;
+        time_delay    : IN integer := 0
+    );
+END COMPONENT;
+
+COMPONENT stratixii_n_cntr
     PORT (
         clk           : IN std_logic;
         reset         : IN std_logic := '0';
@@ -4786,9 +5474,9 @@ begin
                                     c3_test_source /= 5 or c4_test_source /= 5 or
                                     c5_test_source /= 5 else
                         false;
-
-
-    m1 : stratixii_mn_cntr
+   
+   
+    m1 : stratixii_m_cntr
         port map (  clk           => inclk_m,
                     reset         => areset_ena_sig,
                     cout          => fbclk,
@@ -4900,7 +5588,7 @@ begin
                 switch_over_count := switch_over_count + 1;
             end if;
             if (input_value = '0') then
-                if (external_switch and (got_curr_clk_falling_edge_after_clkswitch or current_clk_is_bad)) or (switch_over_on_lossclk = "on" and primary_clk_is_bad and (enable_switch_over_counter = "off" or switch_over_count = switch_over_counter)) then
+                if (external_switch and (got_curr_clk_falling_edge_after_clkswitch or current_clk_is_bad)) or (switch_over_on_lossclk = "on" and primary_clk_is_bad and clkswitch_ipd /= '1' and (enable_switch_over_counter = "off" or switch_over_count = switch_over_counter)) then
                     got_curr_clk_falling_edge_after_clkswitch := false;
                     if (current_clock = 0) then
                         current_clock := 1;
@@ -4912,7 +5600,7 @@ begin
                     external_switch := false;
                     current_clk_is_bad := false;
                 end if;
-
+       
             end if;
         end if;
 
@@ -4943,7 +5631,7 @@ begin
         sclkout1_tmp <= inclk_sclkout1_from_vco;
     end process;
 
-    n1 : stratixii_mn_cntr
+    n1 : stratixii_n_cntr
         port map (
                 clk           => clkin,
                 reset         => areset_ipd,
@@ -4966,7 +5654,7 @@ begin
                 mode           => c_mode_val(0),
                 ph_tap         => c_ph_val(0));
 
-
+                
     inclk_c1 <= clkin when c1_test_source = 0 else
                 fbclk when c1_test_source = 2 else
                 c_clk(0) when c1_use_casc_in = "on" else
@@ -5150,7 +5838,11 @@ begin
         elsif (clkin'event and clkin = '1') then
             if (ena_ipd = '1') then
                 count := count + 1;
-                if (count = gate_lock_counter) then
+                if (sim_gate_lock_device_behavior = "on") then
+                    if (count = gate_lock_counter) then
+                        output := '1';
+                    end if;
+                elsif (count = GATE_LOCK_CYCLES) then
                     output := '1';
                 end if;
             end if;
@@ -5167,7 +5859,7 @@ begin
     begin
         if (scandone_tmp'event and scandone_tmp = '1') then
             if (reconfig_err = false) then
-                ASSERT false REPORT "PLL Reprogramming completed with the following values (Values in parantheses indicate values before reprogramming) :" severity note;
+                ASSERT false REPORT family_name & " PLL Reprogramming completed with the following values (Values in parantheses indicate values before reprogramming) :" severity note;
                 write (buf, string'("    N modulus = "));
                 write (buf, n_val(0));
                 write (buf, string'(" ( "));
@@ -5256,7 +5948,7 @@ begin
         end if;
     end process;
 
-    process (scanwrite_enabled, c_clk(0), c_clk(1), c_clk(2), c_clk(3), c_clk(4), c_clk(5), vco_out, fbclk, scanclk_ipd, gated_scanclk)
+    process (scanwrite_enabled, c_clk(0), c_clk(1), c_clk(2), c_clk(3), c_clk(4), c_clk(5), vco_tap, fbclk, scanclk_ipd, gated_scanclk)
     variable init : boolean := true;
     variable low, high : std_logic_vector(7 downto 0);
     variable low_fast, high_fast : std_logic_vector(3 downto 0);
@@ -5292,7 +5984,7 @@ begin
     variable i_clk5_div_by     : integer := 1;
     variable max_d_value       : integer := 1;
     variable new_multiplier    : integer := 1;
-
+    
     -- internal variables for storing the phase shift number.(used in lvds mode only)
     variable i_clk0_phase_shift : integer := 1;
     variable i_clk1_phase_shift : integer := 1;
@@ -5386,7 +6078,11 @@ begin
 
         refclk_int := refclk / 1 ps;
         if (m_mod /= 0) then
-            q_period := (refclk_int * max_modulus / m_mod) * 1 ps;
+            if (refclk_int > (refclk_int * max_modulus / m_mod)) then
+                q_period := refclk_int * 1 ps;
+            else
+                q_period := (refclk_int * max_modulus / m_mod) * 1 ps;
+            end if;
         end if;
         return (2*q_period);
     end slowest_clk;
@@ -5528,14 +6224,14 @@ begin
                     i_clk2_phase_shift := str2int(clk2_phase_shift);
                 end if;
 
-                max_neg_abs := maxnegabs(i_clk0_phase_shift,
+                max_neg_abs := maxnegabs(i_clk0_phase_shift, 
                                         i_clk1_phase_shift,
                                         i_clk2_phase_shift,
                                         str2int(clk3_phase_shift),
                                         str2int(clk4_phase_shift),
                                         str2int(clk5_phase_shift),
                                         0, 0, 0, 0);
-                i_m_ph  := counter_ph(get_phase_degree(max_neg_abs,inclk0_input_frequency), i_m, i_n);
+                i_m_ph  := counter_ph(get_phase_degree(max_neg_abs,inclk0_input_frequency), i_m, i_n); 
 
                 i_c_ph(0) := counter_ph(get_phase_degree(ph_adjust(i_clk0_phase_shift,max_neg_abs),inclk0_input_frequency), i_m, i_n);
                 i_c_ph(1) := counter_ph(get_phase_degree(ph_adjust(i_clk1_phase_shift,max_neg_abs),inclk0_input_frequency), i_m, i_n);
@@ -5568,7 +6264,7 @@ begin
                 i_c_low(5)  := counter_low(output_counter_value(i_clk5_div_by,
                                 i_clk5_mult_by,  i_m, i_n), clk5_duty_cycle);
                 i_m_initial  := counter_initial(get_phase_degree(max_neg_abs, inclk0_input_frequency), i_m,i_n);
-
+                
                 i_c_initial(0) := counter_initial(get_phase_degree(ph_adjust(i_clk0_phase_shift, max_neg_abs), inclk0_input_frequency), i_m, i_n);
                 i_c_initial(1) := counter_initial(get_phase_degree(ph_adjust(i_clk1_phase_shift, max_neg_abs), inclk0_input_frequency), i_m, i_n);
                 i_c_initial(2) := counter_initial(get_phase_degree(ph_adjust(i_clk2_phase_shift, max_neg_abs), inclk0_input_frequency), i_m, i_n);
@@ -5602,7 +6298,7 @@ begin
                     i_m := i_m / new_divisor;
                     i_n := output_count / new_divisor;
                 end if;
-
+ 
             else -- m /= 0
 
                 i_n             := n;
@@ -5731,7 +6427,7 @@ begin
                     end if;
                 end if;
             end loop;
-
+               
             if (pll_type = "fast" or pll_type = "lvds") then
                 scan_data(21 downto 12) <= "0000000000"; -- M, C3-C0 ph
                 -- C0-C3 high
@@ -5753,7 +6449,7 @@ begin
                         else
                             scan_data(31 + (10*i)) <= '0';
                         end if;
-                    else
+                    else 
                         scan_data(26 + (10*i)) <= '0';
                         if (i_c_mode(i) = "   odd") then
                             scan_data(31 + (10*i)) <= '1';
@@ -5812,7 +6508,7 @@ begin
                         else
                             scan_data(133 - (18*i)) <= '0';
                         end if;
-                    else
+                    else 
                         scan_data(124 - (18*i)) <= '0';
                         if (i_c_mode(i) = "   odd") then
                             scan_data(133 - (18*i)) <= '1';
@@ -5835,7 +6531,7 @@ begin
                     scan_data(153) <= '1';
                     scan_data(152 downto 144) <= "000000000";
                 end if;
-
+               
                 -- N/N2
                 scan_data(162 downto 154) <= int2bin(i_n, 9);
                 scan_data(172 downto 164) <= int2bin(n2, 9);
@@ -5847,7 +6543,7 @@ begin
                     scan_data(173) <= '1';
                     scan_data(172 downto 164) <= "000000000";
                 end if;
-
+               
             end if;
             if (pll_type = "fast" or pll_type = "lvds") then
                 num_output_cntrs <= 4;
@@ -5991,6 +6687,7 @@ begin
                 end loop;
                 sig_c_ph_val_tmp <= c_ph_val_tmp;
                 sig_c_low_val_tmp <= c_low_val_tmp;
+                sig_c_hi_val_tmp <= c_high_val_tmp;
                 -- M
                 -- some temporary storage
                 if (tmp_scan_data(65 downto 62) = "0000") then
@@ -6028,12 +6725,12 @@ begin
                         -- odd : check for duty cycle, if not 50% -- error
                         if (alt_conv_integer(m_hi) - alt_conv_integer(m_lo) /= 1) then
                             reconfig_err <= true;
-                            ASSERT FALSE REPORT "The M counter of the StratixII FAST PLL can be configured for 50% duty cycle only. In this case, the HIGH and LOW moduli programmed will result in a duty cycle other than 50%, which is illegal. Reconfiguration may not work." severity warning;
+                            ASSERT FALSE REPORT "The M counter of the " & family_name & " FAST PLL can be configured for 50% duty cycle only. In this case, the HIGH and LOW moduli programmed will result in a duty cycle other than 50%, which is illegal. Reconfiguration may not work." severity warning;
                         end if;
                     else -- even
                         if (alt_conv_integer(m_hi) /= alt_conv_integer(m_lo)) then
                             reconfig_err <= true;
-                            ASSERT FALSE REPORT "The M counter of the StratixII FAST PLL can be configured for 50% duty cycle only. In this case, the HIGH and LOW moduli programmed will result in a duty cycle other than 50%, which is illegal. Reconfiguration may not work." severity warning;
+                            ASSERT FALSE REPORT "The M counter of the " & family_name & " FAST PLL can be configured for 50% duty cycle only. In this case, the HIGH and LOW moduli programmed will result in a duty cycle other than 50%, which is illegal. Reconfiguration may not work." severity warning;
                         end if;
                     end if;
                 end if;
@@ -6121,6 +6818,7 @@ begin
                 end loop;
                 sig_c_ph_val_tmp <= c_ph_val_tmp;
                 sig_c_low_val_tmp <= c_low_val_tmp;
+                sig_c_hi_val_tmp <= c_high_val_tmp;
 
                 -- cntrs M/M2
                 for i in 0 to 1 loop
@@ -6169,6 +6867,7 @@ begin
                         ASSERT false REPORT "Incompatible modes for M/M2 counters. Either both should be BYPASSED or both NON-BYPASSED. Reconfiguration may not work." severity warning;
                     end if;
                 end if;
+                sig_m_val_tmp <= m_val_tmp;
 
                 -- cntrs N/N2
                 for i in 0 to 1 loop
@@ -6216,7 +6915,7 @@ begin
                     end if;
                 end if;
             end if;
-
+            
             slowest_clk_old := slowest_clk(c_high_val(0)+c_low_val(0), c_mode_val(0),
                                     c_high_val(1)+c_low_val(1), c_mode_val(1),
                                     c_high_val(2)+c_low_val(2), c_mode_val(2),
@@ -6225,20 +6924,22 @@ begin
                                     c_high_val(5)+c_low_val(5), c_mode_val(5),
                                     sig_refclk_period, m_val(0));
 
-            slowest_clk_new := slowest_clk(c_high_val(0)+c_low_val(0), c_mode_val(0),
-                                    c_high_val_tmp(1)+c_low_val(1), c_mode_val_tmp(1),
-                                    c_high_val_tmp(2)+c_low_val(2), c_mode_val_tmp(2),
-                                    c_high_val_tmp(3)+c_low_val(3), c_mode_val_tmp(3),
-                                    c_high_val_tmp(4)+c_low_val(4), c_mode_val_tmp(4),
-                                    c_high_val_tmp(5)+c_low_val(5), c_mode_val_tmp(5),
-                                    sig_refclk_period, m_val(0));
+            slowest_clk_new := slowest_clk(c_high_val_tmp(0)+c_low_val_tmp(0), c_mode_val_tmp(0),
+                                    c_high_val_tmp(1)+c_low_val_tmp(1), c_mode_val_tmp(1),
+                                    c_high_val_tmp(2)+c_low_val_tmp(2), c_mode_val_tmp(2),
+                                    c_high_val_tmp(3)+c_low_val_tmp(3), c_mode_val_tmp(3),
+                                    c_high_val_tmp(4)+c_low_val_tmp(4), c_mode_val_tmp(4),
+                                    c_high_val_tmp(5)+c_low_val_tmp(5), c_mode_val_tmp(5),
+                                    sig_refclk_period, m_val_tmp(0));
 
             if (slowest_clk_new > slowest_clk_old) then
                 quiet_time := slowest_clk_new;
             else
                 quiet_time := slowest_clk_old;
             end if;
-
+            sig_quiet_time <= quiet_time;
+            sig_slowest_clk_old <= slowest_clk_old;
+            sig_slowest_clk_new <= slowest_clk_new;
             tmp_rem := (quiet_time/1 ps) rem (scanclk_period/ 1 ps);
             scanclk_cycles := (quiet_time/1 ps) / (scanclk_period/1 ps);
             if (tmp_rem /= 0) then
@@ -6253,155 +6954,70 @@ begin
             end if;
 
             if (c_clk(0)'event and c_clk(0) = '1') then
-                c_high_val_hold(0) <= c_high_val_tmp(0);
-                c_mode_val_hold(0) <= c_mode_val_tmp(0);
+                c_high_val(0) <= c_high_val_tmp(0);
+                c_mode_val(0) <= c_mode_val_tmp(0);
                 c0_rising_edge_transfer_done := true;
-                c_high_val(0) <= c_high_val_hold(0);
-                c_mode_val(0) <= c_mode_val_hold(0);
             end if;
             if (c_clk(1)'event and c_clk(1) = '1') then
-                c_high_val_hold(1) <= c_high_val_tmp(1);
-                c_mode_val_hold(1) <= c_mode_val_tmp(1);
+                c_high_val(1) <= c_high_val_tmp(1);
+                c_mode_val(1) <= c_mode_val_tmp(1);
                 c1_rising_edge_transfer_done := true;
-                c_high_val(1) <= c_high_val_hold(1);
-                c_mode_val(1) <= c_mode_val_hold(1);
             end if;
             if (c_clk(2)'event and c_clk(2) = '1') then
-                c_high_val_hold(2) <= c_high_val_tmp(2);
-                c_mode_val_hold(2) <= c_mode_val_tmp(2);
+                c_high_val(2) <= c_high_val_tmp(2);
+                c_mode_val(2) <= c_mode_val_tmp(2);
                 c2_rising_edge_transfer_done := true;
-                c_high_val(2) <= c_high_val_hold(2);
-                c_mode_val(2) <= c_mode_val_hold(2);
             end if;
             if (c_clk(3)'event and c_clk(3) = '1') then
-                c_high_val_hold(3) <= c_high_val_tmp(3);
-                c_mode_val_hold(3) <= c_mode_val_tmp(3);
-                c_high_val(3) <= c_high_val_hold(3);
-                c_mode_val(3) <= c_mode_val_hold(3);
+                c_high_val(3) <= c_high_val_tmp(3);
+                c_mode_val(3) <= c_mode_val_tmp(3);
                 c3_rising_edge_transfer_done := true;
             end if;
             if (c_clk(4)'event and c_clk(4) = '1') then
-                c_high_val_hold(4) <= c_high_val_tmp(4);
-                c_mode_val_hold(4) <= c_mode_val_tmp(4);
-                c_high_val(4) <= c_high_val_hold(4);
-                c_mode_val(4) <= c_mode_val_hold(4);
+                c_high_val(4) <= c_high_val_tmp(4);
+                c_mode_val(4) <= c_mode_val_tmp(4);
                 c4_rising_edge_transfer_done := true;
             end if;
             if (c_clk(5)'event and c_clk(5) = '1') then
-                c_high_val_hold(5) <= c_high_val_tmp(5);
-                c_mode_val_hold(5) <= c_mode_val_tmp(5);
-                c_high_val(5) <= c_high_val_hold(5);
-                c_mode_val(5) <= c_mode_val_hold(5);
+                c_high_val(5) <= c_high_val_tmp(5);
+                c_mode_val(5) <= c_mode_val_tmp(5);
                 c5_rising_edge_transfer_done := true;
             end if;
         end if;
 
         if (c_clk(0)'event and c_clk(0) = '0' and c0_rising_edge_transfer_done) then
-            c_low_val_hold(0) <= c_low_val_tmp(0);
-            c_low_val(0) <= c_low_val_hold(0);
+            c_low_val(0) <= c_low_val_tmp(0);
         end if;
         if (c_clk(1)'event and c_clk(1) = '0' and c1_rising_edge_transfer_done) then
-            c_low_val_hold(1) <= c_low_val_tmp(1);
-            c_low_val(1) <= c_low_val_hold(1);
+            c_low_val(1) <= c_low_val_tmp(1);
         end if;
         if (c_clk(2)'event and c_clk(2) = '0' and c2_rising_edge_transfer_done) then
-            c_low_val_hold(2) <= c_low_val_tmp(2);
-            c_low_val(2) <= c_low_val_hold(2);
+            c_low_val(2) <= c_low_val_tmp(2);
         end if;
         if (c_clk(3)'event and c_clk(3) = '0' and c3_rising_edge_transfer_done) then
-            c_low_val_hold(3) <= c_low_val_tmp(3);
-            c_low_val(3) <= c_low_val_hold(3);
+            c_low_val(3) <= c_low_val_tmp(3);
         end if;
         if (c_clk(4)'event and c_clk(4) = '0' and c4_rising_edge_transfer_done) then
-            c_low_val_hold(4) <= c_low_val_tmp(4);
-            c_low_val(4) <= c_low_val_hold(4);
+            c_low_val(4) <= c_low_val_tmp(4);
         end if;
         if (c_clk(5)'event and c_clk(5) = '0' and c5_rising_edge_transfer_done) then
-            c_low_val_hold(5) <= c_low_val_tmp(5);
-            c_low_val(5) <= c_low_val_hold(5);
+            c_low_val(5) <= c_low_val_tmp(5);
         end if;
 
         if (scanwrite_enabled = '1') then
-            if (vco_out(0)'event and vco_out(0) = '0') then
-                for i in 0 to 5 loop
-                    if (c_ph_val(i) = 0) then
-                        c_ph_val(i) <= c_ph_val_tmp(i);
+            for x in 0 to 7 loop
+                if (vco_tap(x) /= vco_tap_last_value(x) and vco_tap(x) = '0') then
+                    -- TAP X has event
+                    for i in 0 to 5 loop
+                        if (c_ph_val(i) = x) then
+                            c_ph_val(i) <= c_ph_val_tmp(i);
+                        end if;
+                    end loop;
+                    if (m_ph_val = x) then
+                        m_ph_val <= m_ph_val_tmp;
                     end if;
-                end loop;
-                if (m_ph_val = 0) then
-                    m_ph_val <= m_ph_val_tmp;
                 end if;
-            end if;
-            if (vco_out(1)'event and vco_out(1) = '0') then
-                for i in 0 to 5 loop
-                    if (c_ph_val(i) = 1) then
-                        c_ph_val(i) <= c_ph_val_tmp(i);
-                    end if;
-                end loop;
-                if (m_ph_val = 1) then
-                    m_ph_val <= m_ph_val_tmp;
-                end if;
-            end if;
-            if (vco_out(2)'event and vco_out(2) = '0') then
-                for i in 0 to 5 loop
-                    if (c_ph_val(i) = 2) then
-                        c_ph_val(i) <= c_ph_val_tmp(i);
-                    end if;
-                end loop;
-                if (m_ph_val = 2) then
-                    m_ph_val <= m_ph_val_tmp;
-                end if;
-            end if;
-            if (vco_out(3)'event and vco_out(3) = '0') then
-                for i in 0 to 5 loop
-                    if (c_ph_val(i) = 3) then
-                        c_ph_val(i) <= c_ph_val_tmp(i);
-                    end if;
-                end loop;
-                if (m_ph_val = 3) then
-                    m_ph_val <= m_ph_val_tmp;
-                end if;
-            end if;
-            if (vco_out(4)'event and vco_out(4) = '0') then
-                for i in 0 to 5 loop
-                    if (c_ph_val(i) = 4) then
-                        c_ph_val(i) <= c_ph_val_tmp(i);
-                    end if;
-                end loop;
-                if (m_ph_val = 4) then
-                    m_ph_val <= m_ph_val_tmp;
-                end if;
-            end if;
-            if (vco_out(5)'event and vco_out(5) = '0') then
-                for i in 0 to 5 loop
-                    if (c_ph_val(i) = 5) then
-                        c_ph_val(i) <= c_ph_val_tmp(i);
-                    end if;
-                end loop;
-                if (m_ph_val = 5) then
-                    m_ph_val <= m_ph_val_tmp;
-                end if;
-            end if;
-            if (vco_out(6)'event and vco_out(6) = '0') then
-                for i in 0 to 5 loop
-                    if (c_ph_val(i) = 6) then
-                        c_ph_val(i) <= c_ph_val_tmp(i);
-                    end if;
-                end loop;
-                if (m_ph_val = 6) then
-                    m_ph_val <= m_ph_val_tmp;
-                end if;
-            end if;
-            if (vco_out(7)'event and vco_out(7) = '0') then
-                for i in 0 to 5 loop
-                    if (c_ph_val(i) = 7) then
-                        c_ph_val(i) <= c_ph_val_tmp(i);
-                    end if;
-                end loop;
-                if (m_ph_val = 7) then
-                    m_ph_val <= m_ph_val_tmp;
-                end if;
-            end if;
+            end loop;
         end if;
 
         -- revert counter phase tap values to POF programmed values
@@ -6414,182 +7030,35 @@ begin
             m_ph_val_tmp := i_m_ph;
         end if;
 
-        if (vco_out(0)'event) then
-            for i in 0 to 5 loop
-                if (c_ph_val(i) = 0) then
-                    inclk_c_from_vco(i) <= vco_out(0);
-                    if (i = 0 and enable0_counter = "c0") then
-                        inclk_sclkout0_from_vco <= vco_out(0);
+        for x in 0 to 7 loop
+            if (vco_tap(x) /= vco_tap_last_value(x)) then
+                -- TAP X has event
+                for i in 0 to 5 loop
+                    if (c_ph_val(i) = x) then
+                        inclk_c_from_vco(i) <= vco_tap(x);
+                        if (i = 0 and enable0_counter = "c0") then
+                            inclk_sclkout0_from_vco <= vco_tap(x);
+                        end if;
+                        if (i = 0 and enable1_counter = "c0") then
+                            inclk_sclkout1_from_vco <= vco_tap(x);
+                        end if;
+                        if (i = 1 and enable0_counter = "c1") then
+                            inclk_sclkout0_from_vco <= vco_tap(x);
+                        end if;
+                        if (i = 1 and enable1_counter = "c1") then
+                            inclk_sclkout1_from_vco <= vco_tap(x);
+                        end if;
                     end if;
-                    if (i = 0 and enable1_counter = "c0") then
-                        inclk_sclkout1_from_vco <= vco_out(0);
-                    end if;
-                    if (i = 1 and enable0_counter = "c1") then
-                        inclk_sclkout0_from_vco <= vco_out(0);
-                    end if;
-                    if (i = 1 and enable1_counter = "c1") then
-                        inclk_sclkout1_from_vco <= vco_out(0);
-                    end if;
+                end loop;
+
+                if (m_ph_val = x) then
+                    inclk_m_from_vco <= vco_tap(x);
                 end if;
-            end loop;
-            if (m_ph_val = 0) then
-                inclk_m_from_vco <= vco_out(0);
+
+                vco_tap_last_value(x) <= vco_tap(x);
             end if;
-        end if;
-        if (vco_out(1)'event) then
-            for i in 0 to 5 loop
-                if (c_ph_val(i) = 1) then
-                    inclk_c_from_vco(i) <= vco_out(1);
-                    if (i = 0 and enable0_counter = "c0") then
-                        inclk_sclkout0_from_vco <= vco_out(1);
-                    end if;
-                    if (i = 0 and enable1_counter = "c0") then
-                        inclk_sclkout1_from_vco <= vco_out(1);
-                    end if;
-                    if (i = 1 and enable0_counter = "c1") then
-                        inclk_sclkout0_from_vco <= vco_out(1);
-                    end if;
-                    if (i = 1 and enable1_counter = "c1") then
-                        inclk_sclkout1_from_vco <= vco_out(1);
-                    end if;
-                end if;
-            end loop;
-            if (m_ph_val = 1) then
-                inclk_m_from_vco <= vco_out(1);
-            end if;
-        end if;
-        if (vco_out(2)'event) then
-            for i in 0 to 5 loop
-                if (c_ph_val(i) = 2) then
-                    inclk_c_from_vco(i) <= vco_out(2);
-                    if (i = 0 and enable0_counter = "c0") then
-                        inclk_sclkout0_from_vco <= vco_out(2);
-                    end if;
-                    if (i = 0 and enable1_counter = "c0") then
-                        inclk_sclkout1_from_vco <= vco_out(2);
-                    end if;
-                    if (i = 1 and enable0_counter = "c1") then
-                        inclk_sclkout0_from_vco <= vco_out(2);
-                    end if;
-                    if (i = 1 and enable1_counter = "c1") then
-                        inclk_sclkout1_from_vco <= vco_out(2);
-                    end if;
-                end if;
-            end loop;
-            if (m_ph_val = 2) then
-                inclk_m_from_vco <= vco_out(2);
-            end if;
-        end if;
-        if (vco_out(3)'event) then
-            for i in 0 to 5 loop
-                if (c_ph_val(i) = 3) then
-                    inclk_c_from_vco(i) <= vco_out(3);
-                    if (i = 0 and enable0_counter = "c0") then
-                        inclk_sclkout0_from_vco <= vco_out(3);
-                    end if;
-                    if (i = 0 and enable1_counter = "c0") then
-                        inclk_sclkout1_from_vco <= vco_out(3);
-                    end if;
-                    if (i = 1 and enable0_counter = "c1") then
-                        inclk_sclkout0_from_vco <= vco_out(3);
-                    end if;
-                    if (i = 1 and enable1_counter = "c1") then
-                        inclk_sclkout1_from_vco <= vco_out(3);
-                    end if;
-                end if;
-            end loop;
-            if (m_ph_val = 3) then
-                inclk_m_from_vco <= vco_out(3);
-            end if;
-        end if;
-        if (vco_out(4)'event) then
-            for i in 0 to 5 loop
-                if (c_ph_val(i) = 4) then
-                    inclk_c_from_vco(i) <= vco_out(4);
-                    if (i = 0 and enable0_counter = "c0") then
-                        inclk_sclkout0_from_vco <= vco_out(4);
-                    end if;
-                    if (i = 0 and enable1_counter = "c0") then
-                        inclk_sclkout1_from_vco <= vco_out(4);
-                    end if;
-                    if (i = 1 and enable0_counter = "c1") then
-                        inclk_sclkout0_from_vco <= vco_out(4);
-                    end if;
-                    if (i = 1 and enable1_counter = "c1") then
-                        inclk_sclkout1_from_vco <= vco_out(4);
-                    end if;
-                end if;
-            end loop;
-            if (m_ph_val = 4) then
-                inclk_m_from_vco <= vco_out(4);
-            end if;
-        end if;
-        if (vco_out(5)'event) then
-            for i in 0 to 5 loop
-                if (c_ph_val(i) = 5) then
-                    inclk_c_from_vco(i) <= vco_out(5);
-                    if (i = 0 and enable0_counter = "c0") then
-                        inclk_sclkout0_from_vco <= vco_out(5);
-                    end if;
-                    if (i = 0 and enable1_counter = "c0") then
-                        inclk_sclkout1_from_vco <= vco_out(5);
-                    end if;
-                    if (i = 1 and enable0_counter = "c1") then
-                        inclk_sclkout0_from_vco <= vco_out(5);
-                    end if;
-                    if (i = 1 and enable1_counter = "c1") then
-                        inclk_sclkout1_from_vco <= vco_out(5);
-                    end if;
-                end if;
-            end loop;
-            if (m_ph_val = 5) then
-                inclk_m_from_vco <= vco_out(5);
-            end if;
-        end if;
-        if (vco_out(6)'event) then
-            for i in 0 to 5 loop
-                if (c_ph_val(i) = 6) then
-                    inclk_c_from_vco(i) <= vco_out(6);
-                    if (i = 0 and enable0_counter = "c0") then
-                        inclk_sclkout0_from_vco <= vco_out(6);
-                    end if;
-                    if (i = 0 and enable1_counter = "c0") then
-                        inclk_sclkout1_from_vco <= vco_out(6);
-                    end if;
-                    if (i = 1 and enable0_counter = "c1") then
-                        inclk_sclkout0_from_vco <= vco_out(6);
-                    end if;
-                    if (i = 1 and enable1_counter = "c1") then
-                        inclk_sclkout1_from_vco <= vco_out(6);
-                    end if;
-                end if;
-            end loop;
-            if (m_ph_val = 6) then
-                inclk_m_from_vco <= vco_out(6);
-            end if;
-        end if;
-        if (vco_out(7)'event) then
-            for i in 0 to 5 loop
-                if (c_ph_val(i) = 7) then
-                    inclk_c_from_vco(i) <= vco_out(7);
-                    if (i = 0 and enable0_counter = "c0") then
-                        inclk_sclkout0_from_vco <= vco_out(7);
-                    end if;
-                    if (i = 0 and enable1_counter = "c0") then
-                        inclk_sclkout1_from_vco <= vco_out(7);
-                    end if;
-                    if (i = 1 and enable0_counter = "c1") then
-                        inclk_sclkout0_from_vco <= vco_out(7);
-                    end if;
-                    if (i = 1 and enable1_counter = "c1") then
-                        inclk_sclkout1_from_vco <= vco_out(7);
-                    end if;
-                end if;
-            end loop;
-            if (m_ph_val = 7) then
-                inclk_m_from_vco <= vco_out(7);
-            end if;
-        end if;
+        end loop;
+
 
       ------------------------
       --  Timing Check Section
@@ -6611,7 +7080,7 @@ begin
               HeaderMsg       => InstancePath & "/stratixii_pll",
               XOn             => XOnChecks,
               MsgOn           => MsgOnChecks );
-
+ 
          VitalSetupHoldCheck (
               Violation       => Tviol_scanread_scanclk,
               TimingData      => TimingData_scanread_scanclk,
@@ -6628,7 +7097,7 @@ begin
               HeaderMsg       => InstancePath & "/stratixii_pll",
               XOn             => XOnChecks,
               MsgOn           => MsgOnChecks );
-
+ 
          VitalSetupHoldCheck (
               Violation       => Tviol_scanwrite_scanclk,
               TimingData      => TimingData_scanwrite_scanclk,
@@ -6645,7 +7114,7 @@ begin
               HeaderMsg       => InstancePath & "/stratixii_pll",
               XOn             => XOnChecks,
               MsgOn           => MsgOnChecks );
-
+ 
       end if;
 
         if (scanclk_ipd'event and scanclk_ipd = '0') then
@@ -6677,7 +7146,7 @@ begin
 
             scanclk_last_rising_edge := now;
         end if;
-
+   
         if (gated_scanclk'event and gated_scanclk = '1' and now > 0 ps) then
             if (not got_first_gated_scanclk) then
                 got_first_gated_scanclk := true;
@@ -6691,7 +7160,7 @@ begin
 
     scandataout_tmp <= scan_data(FAST_SCAN_CHAIN-1) when (pll_type = "fast" or pll_type = "lvds") else scan_data(GPP_SCAN_CHAIN-1);
 
-    process (schedule_vco, areset_ipd, ena_ipd, pfdena_ipd, refclk, fbclk)
+    SCHEDULE : process (schedule_vco, areset_ipd, ena_ipd, pfdena_ipd, refclk, fbclk, vco_out)
     variable sched_time : time := 0 ps;
 
     TYPE time_array is ARRAY (0 to 7) of time;
@@ -6759,6 +7228,10 @@ begin
     variable ext_fbk_cntr_modulus : integer := 1;
     variable init_clks : boolean := true;
     variable pll_is_in_reset : boolean := false;
+    variable pll_is_disabled : boolean := false;
+    variable next_vco_sched_time : time  := 0 ps;
+    variable tap0_is_active : boolean := true;
+
     begin
         if (init) then
 
@@ -6789,32 +7262,55 @@ begin
 
         -- areset was asserted
         if (areset_ipd'event and areset_ipd = '1') then
-            assert false report "PLL was reset" severity note;
+            assert false report family_name & " PLL was reset" severity note;
             -- reset lock parameters
             locked_tmp := '0';
             pll_is_locked := false;
             pll_about_to_lock := false;
             cycles_to_lock := 0;
             cycles_to_unlock := 0;
+            pll_is_in_reset := true;
+            tap0_is_active := false;
+            for x in 0 to 7 loop
+                vco_tap(x) <= '0';
+            end loop;
+        end if;
+
+        -- note areset deassert time
+        -- note it as refclk_time to prevent false triggering
+        -- of stop_vco after areset
+        if (areset_ipd'event and areset_ipd = '0' and pll_is_in_reset) then
+            refclk_time := now;
+            pll_is_in_reset := false;
+            if (ena_ipd = '1' and not stop_vco and next_vco_sched_time <= now) then
+                schedule_vco <= not schedule_vco;
+            end if;
         end if;
 
         -- ena was deasserted
         if (ena_ipd'event and ena_ipd = '0') then
-            assert false report "PLL was disabled" severity note;
+            assert false report family_name & " PLL was disabled" severity note;
+            pll_is_disabled := true;
+            tap0_is_active := false;
+            for x in 0 to 7 loop
+                vco_tap(x) <= '0';
+            end loop;
         end if;
 
-        if (schedule_vco'event and (areset_ipd = '1' or ena_ipd = '0' or stop_vco)) then
-
-            if (areset_ipd = '1') then
-                pll_is_in_reset := true;
+        if (ena_ipd'event and ena_ipd = '1') then
+            assert false report family_name & " PLL is enabled" severity note;
+            pll_is_disabled := false;
+            if (areset_ipd /= '1' and not stop_vco and next_vco_sched_time < now) then
+                schedule_vco <= not schedule_vco;
             end if;
+        end if;
 
-            -- drop VCO taps to 0
-            for i in 0 to 7 loop
-                vco_out(i) <= transport '0' after last_phase_shift(i);
-                phase_shift(i) := 0 ps;
-                last_phase_shift(i) := 0 ps;
-            end loop;
+        -- illegal value on areset_ipd
+        if (areset_ipd'event and areset_ipd = 'X') then
+            assert false report "Illegal value 'X' detected on ARESET input" severity warning;
+        end if;
+
+        if (areset_ipd = '1' or ena_ipd = '0' or stop_vco) then
 
             -- reset lock parameters
             locked_tmp := '0';
@@ -6831,20 +7327,16 @@ begin
             first_fbclk_time := 0 ps;
             fbclk_period := 0 ps;
 
-            first_schedule := true;
-            vco_val := '0';
+--            first_schedule := true;
+--            vco_val := '0';
             vco_period_was_phase_adjusted := false;
             phase_adjust_was_scheduled := false;
 
-        elsif ((schedule_vco'event or ena_ipd'event or areset_ipd'event) and areset_ipd = '0' and ena_ipd = '1' and (not stop_vco) and now > 0 ps) then
+            -- reset all counter phase taps to POF programmed values
+        end if;
 
-            -- note areset deassert time
-            -- note it as refclk_time to prevent false triggering
-            -- of stop_vco after areset
-            if (areset_ipd'event and areset_ipd = '0' and pll_is_in_reset) then
-                refclk_time := now;
-                pll_is_in_reset := false;
-            end if;
+        if (schedule_vco'event and areset_ipd /= '1' and ena_ipd /= '0' and (not stop_vco) and now > 0 ps) then
+
 
             -- calculate loop_xplier : this will be different from m_val
             -- in external_feedback_mode
@@ -6944,15 +7436,8 @@ begin
                         sched_time := sched_time + low_time;
                     end if;
 
-                    -- schedule the phase taps
-                    for k in 0 to 7 loop
-                        phase_shift(k) := (k * vco_per)/8;
-                        if (first_schedule) then
-                            vco_out(k) <= transport vco_val after (sched_time + phase_shift(k));
-                        else
-                            vco_out(k) <= transport vco_val after (sched_time + last_phase_shift(k));
-                        end if;
-                    end loop;
+                    -- schedule tap0
+                    vco_out(0) <= transport vco_val after sched_time;
                 end loop;
             end loop;
 
@@ -6964,15 +7449,13 @@ begin
                 elsif (vco_val = '1') then
                     sched_time := sched_time + low_time;
                 end if;
-                -- schedule the phase taps
-                for k in 0 to 7 loop
-                    phase_shift(k) := (k * vco_per)/8;
-                    vco_out(k) <= transport vco_val after (sched_time + phase_shift(k));
-                end loop;
+                -- schedule tap 0
+                vco_out(0) <= transport vco_val after sched_time;
                 first_schedule := false;
             end if;
 
             schedule_vco <= transport not schedule_vco after sched_time;
+            next_vco_sched_time := now + sched_time;
 
             if (vco_period_was_phase_adjusted) then
                 m_times_vco_period := refclk_period;
@@ -6985,6 +7468,13 @@ begin
                     phase_shift(k) := (k * vco_per)/8;
                 end loop;
             end if;
+        end if;
+        -- now schedule the other taps with the appropriate phase-shift
+        if (vco_out(0)'event) then
+            for k in 1 to 7 loop
+                phase_shift(k) := (k * vco_per)/8;
+                vco_out(k) <= transport vco_out(0) after phase_shift(k);
+            end loop;
         end if;
 
         if (refclk'event and refclk = '1' and areset_ipd = '0') then
@@ -7001,7 +7491,7 @@ begin
                     (((refclk_period/1 ps)/loop_xplier > vco_max) or
                     ((refclk_period/1 ps)/loop_xplier < vco_min)) ) then
                     if (pll_is_locked) then
-                        assert false report " Input clock freq. is not within VCO range : PLL may lose lock" severity warning;
+                        assert false report " Input clock freq. is not within VCO range : " & family_name & " PLL may lose lock" severity warning;
                         if (inclk_out_of_range) then
                             pll_is_locked := false;
                             locked_tmp := '0';
@@ -7009,10 +7499,10 @@ begin
                             cycles_to_lock := 0;
                             vco_period_was_phase_adjusted := false;
                             phase_adjust_was_scheduled := false;
-                            assert false report "Stratixii PLL lost lock." severity note;
+                            assert false report family_name & " PLL lost lock." severity note;
                         end if;
                     elsif (not no_warn) then
-                        assert false report " Input clock freq. is not within VCO range : PLL may not lock. Please use the correct frequency." severity warning;
+                        assert false report " Input clock freq. is not within VCO range : " & family_name & " PLL may not lock. Please use the correct frequency." severity warning;
                         no_warn := true;
                     end if;
                     inclk_out_of_range := true;
@@ -7049,7 +7539,7 @@ begin
                 if (pll_is_locked) then
                     pll_is_locked := false;
                     locked_tmp := '0';
-                    assert false report "PLL lost lock due to loss of input clock" severity note;
+                    assert false report family_name & " PLL lost lock due to loss of input clock" severity note;
                 end if;
                 pll_about_to_lock := false;
                 cycles_to_lock := 0;
@@ -7057,6 +7547,10 @@ begin
                 first_schedule := true;
                 vco_period_was_phase_adjusted := false;
                 phase_adjust_was_scheduled := false;
+                tap0_is_active := false;
+                for x in 0 to 7 loop
+                    vco_tap(x) <= '0';
+                end loop;
             end if;
             fbclk_time := now;
         else
@@ -7074,7 +7568,7 @@ begin
                 end if;
                 if (cycles_to_lock = valid_lock_multiplier) then
                     if (not pll_is_locked) then
-                        assert false report "PLL locked to incoming clock" severity note;
+                        assert false report family_name & " PLL locked to incoming clock" severity note;
                     end if;
                     pll_is_locked := true;
                     locked_tmp := '1';
@@ -7099,15 +7593,19 @@ begin
                         cycles_to_lock := 0;
                         vco_period_was_phase_adjusted := false;
                         phase_adjust_was_scheduled := false;
-                        assert false report "PLL lost lock." severity note;
+                        assert false report family_name & " PLL lost lock." severity note;
                     end if;
                 end if;
                 if ( abs(refclk_period - fbclk_period) <= 2 ps ) then
                     -- frequency is still good
                     if (now = fbclk_time and (not phase_adjust_was_scheduled)) then
                         if ( abs(fbclk_time - refclk_time) > refclk_period/2) then
+                            if ( abs(fbclk_time - refclk_time) > 1.5 * refclk_period) then
+                                -- input clock may have stopped : do nothing
+                            else
                             new_m_times_vco_period := m_times_vco_period + (refclk_period - abs(fbclk_time - refclk_time));
                             vco_period_was_phase_adjusted := true;
+                            end if;
                         else
                             new_m_times_vco_period := m_times_vco_period - abs(fbclk_time - refclk_time);
                             vco_period_was_phase_adjusted := true;
@@ -7118,9 +7616,31 @@ begin
                     phase_adjust_was_scheduled := false;
                     new_m_times_vco_period := refclk_period;
                 end if;
+
             end if;
         end if;
 
+        -- check which vco_tap has event
+        for x in 0 to 7 loop
+            if (vco_out(x) /= vco_out_last_value(x)) then
+                -- TAP X has event
+                if (x = 0 and areset_ipd = '0' and ena_ipd = '1' and sig_stop_vco = '0') then
+                    if (vco_out(0) = '1') then
+                        tap0_is_active := true;
+                    end if;
+                    if (tap0_is_active) then
+                        vco_tap(0) <= vco_out(0);
+                    end if;
+                elsif (tap0_is_active) then
+                        vco_tap(x) <= vco_out(x);
+                end if;
+                if (sig_stop_vco = '1') then
+                    vco_tap(x) <= '0';
+                end if;
+                vco_out_last_value(x) <= vco_out(x);
+            end if;
+        end loop;
+        
         if (pfdena_ipd = '0') then
             if (pll_is_locked) then
                 locked_tmp := 'X';
@@ -7153,71 +7673,29 @@ begin
         else
             sig_stop_vco <= '0';
         end if;
-    end process;
+    end process SCHEDULE;
 
     clk0_tmp <= c_clk(i_clk0_counter);
---    clk0_tmp <= c0_clk when i_clk0_counter = "c0" else
---                c_clk(1) when i_clk0_counter = "c1" else
---                c2_clk when i_clk0_counter = "c2" else
---                c3_clk when i_clk0_counter = "c3" else
---                c4_clk when i_clk0_counter = "c4" else
---                c5_clk when i_clk0_counter = "c5" else
---                '0';
     clk(0)   <= clk0_tmp when (areset_ipd = '1' or ena_ipd = '0' or pll_in_test_mode) or (about_to_lock and (not reconfig_err)) else
                 'X';
 
     clk1_tmp <= c_clk(i_clk1_counter);
---    clk1_tmp <= c_clk(0) when i_clk1_counter = "c0" else
---                c_clk(1) when i_clk1_counter = "c1" else
---                c2_clk when i_clk1_counter = "c2" else
---                c3_clk when i_clk1_counter = "c3" else
---                c4_clk when i_clk1_counter = "c4" else
---                c5_clk when i_clk1_counter = "c5" else
---                '0';
     clk(1)   <= clk1_tmp when (areset_ipd = '1' or ena_ipd = '0' or pll_in_test_mode) or (about_to_lock and (not reconfig_err)) else
                 'X';
 
     clk2_tmp <= c_clk(i_clk2_counter);
---    clk2_tmp <= c_clk(0) when i_clk2_counter = "c0" else
---                c_clk(1) when i_clk2_counter = "c1" else
---                c2_clk when i_clk2_counter = "c2" else
---                c3_clk when i_clk2_counter = "c3" else
---                c4_clk when i_clk2_counter = "c4" else
---                c5_clk when i_clk2_counter = "c5" else
---                '0';
     clk(2)   <= clk2_tmp when (areset_ipd = '1' or ena_ipd = '0' or pll_in_test_mode) or (about_to_lock and (not reconfig_err)) else
                 'X';
 
     clk3_tmp <= c_clk(i_clk3_counter);
---    clk3_tmp <= c_clk(0) when i_clk3_counter = "c0" else
---                c_clk(1) when i_clk3_counter = "c1" else
---                c2_clk when i_clk3_counter = "c2" else
---                c3_clk when i_clk3_counter = "c3" else
---                c4_clk when i_clk3_counter = "c4" else
---                c5_clk when i_clk3_counter = "c5" else
---                '0';
     clk(3)   <= clk3_tmp when (areset_ipd = '1' or ena_ipd = '0' or pll_in_test_mode) or (about_to_lock and (not reconfig_err)) else
                 'X';
 
     clk4_tmp <= c_clk(i_clk4_counter);
---    clk4_tmp <= c_clk(0) when i_clk4_counter = "c0" else
---                c_clk(1) when i_clk4_counter = "c1" else
---                c2_clk when i_clk4_counter = "c2" else
---                c3_clk when i_clk4_counter = "c3" else
---                c4_clk when i_clk4_counter = "c4" else
---                c5_clk when i_clk4_counter = "c5" else
---                '0';
     clk(4)   <= clk4_tmp when (areset_ipd = '1' or ena_ipd = '0' or pll_in_test_mode) or (about_to_lock and (not reconfig_err)) else
                 'X';
 
     clk5_tmp <= c_clk(i_clk5_counter);
---    clk5_tmp <= c_clk(0) when i_clk5_counter = "c0" else
---                c_clk(1) when i_clk5_counter = "c1" else
---                c2_clk when i_clk5_counter = "c2" else
---                c3_clk when i_clk5_counter = "c3" else
---                c4_clk when i_clk5_counter = "c4" else
---                c5_clk when i_clk5_counter = "c5" else
---                '0';
     clk(5)   <= clk5_tmp when (areset_ipd = '1' or ena_ipd = '0' or pll_in_test_mode) or (about_to_lock and (not reconfig_err)) else
                 'X';
 
@@ -7248,6 +7726,7 @@ end vital_pll;
 
 LIBRARY IEEE;
 USE ieee.std_logic_1164.all;
+USE ieee.std_logic_unsigned.all;
 use IEEE.VITAL_Timing.all;
 use IEEE.VITAL_Primitives.all;
 use work.stratixii_atom_pack.all;
@@ -7266,25 +7745,25 @@ ENTITY stratixii_mac_bit_register IS
              tsetup_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
              thold_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst);
    PORT (
-         data : IN std_logic := '0';
-         clk : IN std_logic := '0';
+         data : IN std_logic := '0';   
+         clk : IN std_logic := '0';   
          aclr : IN std_logic := '0';
          if_aclr : IN std_logic := '0';
          ena : IN std_logic := '1';
          async : IN std_logic := '1';
          dataout : OUT std_logic :=  '0'
-        );
+        );   
 END stratixii_mac_bit_register;
 
 ARCHITECTURE arch OF stratixii_mac_bit_register IS
 
-    SIGNAL data_ipd : std_logic := '0';
-    SIGNAL clk_ipd : std_logic := '0';
-    SIGNAL aclr_ipd : std_logic := '0';
-    SIGNAL ena_ipd : std_logic := '1';
-    SIGNAL dataout_reg : std_logic := '0';
-    SIGNAL viol_notifier : std_logic := '0';
-    SIGNAL data_dly : std_logic := '0';
+    SIGNAL data_ipd : std_logic := '0';   
+    SIGNAL clk_ipd : std_logic := '0';   
+    SIGNAL aclr_ipd : std_logic := '0';   
+    SIGNAL ena_ipd : std_logic := '1';   
+    SIGNAL dataout_reg : std_logic := '0';   
+    SIGNAL viol_notifier : std_logic := '0';   
+    SIGNAL data_dly : std_logic := '0';   
 
 BEGIN
 
@@ -7316,20 +7795,20 @@ BEGIN
         else
            if (if_aclr = '1') then
                IF (aclr_ipd = '1') THEN
-                   dataout_reg := '0';
+                   dataout_reg := '0';    
                ELSIF (clk_ipd'EVENT AND clk_ipd = '1') THEN
                    IF (ena_ipd = '1') THEN
-                       dataout_reg := data_dly;
+                       dataout_reg := data_dly;    
                    ELSE
-                       dataout_reg := dataout_reg;
+                       dataout_reg := dataout_reg;    
                    END IF;
                END IF;
            else
                IF (clk_ipd'EVENT AND clk_ipd = '1') THEN
                    IF (ena_ipd = '1') THEN
-                       dataout_reg := data_dly;
+                       dataout_reg := data_dly;    
                    ELSE
-                       dataout_reg := dataout_reg;
+                       dataout_reg := dataout_reg;    
                    END IF;
                END IF;
            end if;
@@ -7355,42 +7834,43 @@ END arch;
 
 LIBRARY IEEE;
 USE ieee.std_logic_1164.all;
+USE ieee.std_logic_unsigned.all;
 use IEEE.VITAL_Timing.all;
 use IEEE.VITAL_Primitives.all;
 use work.stratixii_atom_pack.all;
 
 ENTITY stratixii_mac_register IS
    GENERIC (
-      data_width      :  integer := 18;
+      data_width      :  integer := 18;    
       power_up        :  std_logic := '0';
       tipd_data       : VitalDelayArrayType01(143 downto 0) := (OTHERS => DefPropDelay01);
       tipd_clk        : VitalDelayType01 := DefPropDelay01;
       tipd_ena        : VitalDelayType01 := DefPropDelay01;
       tipd_aclr       : VitalDelayType01 := DefPropDelay01;
-      tpd_aclr_dataout_posedge  : VitalDelayType01 := DefPropDelay01;
-      tpd_clk_dataout_posedge   : VitalDelayType01 := DefPropDelay01;
-      tsetup_data_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
-      thold_data_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
+      tpd_aclr_dataout_posedge  : VitalDelayArrayType01(143 downto 0) := (OTHERS => DefPropDelay01);
+      tpd_clk_dataout_posedge   : VitalDelayArrayType01(143 downto 0) := (OTHERS => DefPropDelay01);
+      tsetup_data_clk_noedge_posedge : VitalDelayArrayType(143 downto 0) := (OTHERS => DefSetupHoldCnst);
+      thold_data_clk_noedge_posedge : VitalDelayArrayType(143 downto 0) := (OTHERS => DefSetupHoldCnst);
       tsetup_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
       thold_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst);
    PORT (
-      data                    : IN std_logic_vector(data_width -1 DOWNTO 0) := (others => '0');
-      clk                     : IN std_logic := '0';
+      data                    : IN std_logic_vector(data_width -1 DOWNTO 0) := (others => '0');   
+      clk                     : IN std_logic := '0';   
       aclr                    : IN std_logic := '0';
       if_aclr                 : IN std_logic := '0';
       ena                     : IN std_logic := '1';
       async                   : IN std_logic := '1';
-      dataout                 : OUT std_logic_vector(data_width -1 DOWNTO 0) := (others => '0'));
+      dataout                 : OUT std_logic_vector(data_width -1 DOWNTO 0) := (others => '0'));   
 END stratixii_mac_register;
 
 ARCHITECTURE arch OF stratixii_mac_register IS
 
-   SIGNAL data_ipd                 :  std_logic_vector(data_width -1 DOWNTO 0) := (others => '0');
-   SIGNAL clk_ipd                  :  std_logic := '0';
-   SIGNAL aclr_ipd                 :  std_logic := '0';
-   SIGNAL ena_ipd                  :  std_logic := '1';
-   SIGNAL dataout_reg              :  std_logic_vector(data_width -1 DOWNTO 0) := (others => '0');
-   SIGNAL viol_notifier            :  std_logic := '0';
+   SIGNAL data_ipd                 :  std_logic_vector(data_width -1 DOWNTO 0) := (others => '0');   
+   SIGNAL clk_ipd                  :  std_logic := '0';   
+   SIGNAL aclr_ipd                 :  std_logic := '0';   
+   SIGNAL ena_ipd                  :  std_logic := '1';   
+   SIGNAL dataout_reg              :  std_logic_vector(data_width -1 DOWNTO 0) := (others => '0');   
+   SIGNAL viol_notifier            :  std_logic := '0';   
 
 BEGIN
 
@@ -7405,7 +7885,7 @@ BEGIN
   end block;
 
   PROCESS (data_ipd, clk_ipd, aclr_ipd, ena_ipd, async)
-     variable dataout_VitalGlitchDataArray : VitalGlitchDataArrayType(71 downto 0);
+     variable dataout_VitalGlitchDataArray : VitalGlitchDataArrayType(143 downto 0);
      variable Tviol_clk_ena     : STD_ULOGIC := '0';
      variable Tviol_data_clk    : STD_ULOGIC := '0';
      variable TimingData_clk_ena : VitalTimingDataType := VitalTimingDataInit;
@@ -7421,17 +7901,17 @@ BEGIN
            dataout_reg <= (others => '0');
          ELSIF (clk_ipd'EVENT AND clk_ipd = '1') THEN
            IF (ena_ipd = '1') THEN
-             dataout_reg <= data_ipd;
+             dataout_reg <= data_ipd;    
            ELSE
-             dataout_reg <= dataout_reg;
+             dataout_reg <= dataout_reg;    
            END IF;
          END IF;
        else
          IF (clk_ipd'EVENT AND clk_ipd = '1') THEN
            IF (ena_ipd = '1') THEN
-             dataout_reg <= data_ipd;
+             dataout_reg <= data_ipd;    
            ELSE
-             dataout_reg <= dataout_reg;
+             dataout_reg <= dataout_reg;    
            END IF;
          END IF;
        end if;
@@ -7448,8 +7928,8 @@ BEGIN
           OutSignal     => dataout(i),
           OutSignalName => "dataout",
           OutTemp       => dataout_reg(i),
-          Paths         => (0 => (clk_ipd'last_event, tpd_clk_dataout_posedge, TRUE),
-                            1 => (aclr_ipd'last_event, tpd_aclr_dataout_posedge, TRUE)),
+          Paths         => (0 => (clk_ipd'last_event, tpd_clk_dataout_posedge(i), TRUE),
+                            1 => (aclr_ipd'last_event, tpd_aclr_dataout_posedge(i), TRUE)),
           GlitchData    => dataout_VitalGlitchData,
           Mode          => DefGlitchMode,
           XOn           => TRUE,
@@ -7468,67 +7948,67 @@ END arch;
 
 LIBRARY IEEE;
 USE ieee.std_logic_1164.all;
+USE ieee.std_logic_unsigned.all;
+USE ieee.std_logic_arith.all;
 use IEEE.VITAL_Timing.all;
 use IEEE.VITAL_Primitives.all;
 use work.stratixii_atom_pack.all;
-library grlib;
-use grlib.stdlib.all;
 
 ENTITY stratixii_mac_rs_block IS
    GENERIC (
-     tpd_saturate_dataout           : VitalDelayType01 := DefPropDelay01;
-     tpd_round_dataout              : VitalDelayType01 := DefPropDelay01;
-     block_type                     :  string := "mac_mult";
-     dataa_width                    :  integer := 18;
+     tpd_saturate_dataout           : VitalDelayArrayType01(71 downto 0) := (others => DefPropDelay01);
+     tpd_round_dataout              : VitalDelayArrayType01(71 downto 0) := (others => DefPropDelay01);
+     block_type                     :  string := "mac_mult";    
+     dataa_width                    :  integer := 18;    
      datab_width                    :  integer := 18);
    PORT (
-      operation               : IN std_logic_vector(3 DOWNTO 0) := (others => '0');
-      round                   : IN std_logic := '0';
-      saturate                : IN std_logic := '0';
-      addnsub                 : IN std_logic := '0';
-      signa                   : IN std_logic := '0';
-      signb                   : IN std_logic := '0';
-      signsize                : IN std_logic_vector(7 DOWNTO 0) := (others => '0');
-      roundsize               : IN std_logic_vector(7 DOWNTO 0) := (others => '0');
-      dataoutsize             : IN std_logic_vector(7 DOWNTO 0) := (others => '0');
-      dataa                   : IN std_logic_vector(dataa_width-1 DOWNTO 0) := (others => '0');
-      datab                   : IN std_logic_vector(datab_width-1 DOWNTO 0) := (others => '0');
-      datain                  : IN std_logic_vector(71 DOWNTO 0) := (others => '0');
-      dataout                 : OUT std_logic_vector(71 DOWNTO 0) := (others => '0'));
+      operation               : IN std_logic_vector(3 DOWNTO 0) := (others => '0');   
+      round                   : IN std_logic := '0';   
+      saturate                : IN std_logic := '0';   
+      addnsub                 : IN std_logic := '0';   
+      signa                   : IN std_logic := '0';   
+      signb                   : IN std_logic := '0';   
+      signsize                : IN std_logic_vector(7 DOWNTO 0) := (others => '0');   
+      roundsize               : IN std_logic_vector(7 DOWNTO 0) := (others => '0');   
+      dataoutsize             : IN std_logic_vector(7 DOWNTO 0) := (others => '0');   
+      dataa                   : IN std_logic_vector(dataa_width-1 DOWNTO 0) := (others => '0');   
+      datab                   : IN std_logic_vector(datab_width-1 DOWNTO 0) := (others => '0');   
+      datain                  : IN std_logic_vector(71 DOWNTO 0) := (others => '0');   
+      dataout                 : OUT std_logic_vector(71 DOWNTO 0) := (others => '0'));   
 END stratixii_mac_rs_block;
 
 ARCHITECTURE arch OF stratixii_mac_rs_block IS
 
-   SIGNAL round_ipd                :  std_logic := '0';
-   SIGNAL saturate_ipd             :  std_logic := '0';
-   SIGNAL addnsub_ipd              :  std_logic := '0';
-   SIGNAL signa_ipd                :  std_logic := '0';
-   SIGNAL signb_ipd                :  std_logic := '0';
-   SIGNAL dataa_ipd                :  std_logic_vector(71 DOWNTO 0) := (others => '0');
-   SIGNAL datab_ipd                :  std_logic_vector(71 DOWNTO 0) := (others => '0');
-   SIGNAL datain_ipd               :  std_logic_vector(71 DOWNTO 0) := (others => '0');
-   SIGNAL dataout_tbuf             :  std_logic_vector(71 DOWNTO 0) := (others => '0');
-   SIGNAL rs_saturate              :  std_logic_vector(71 DOWNTO 0) := (others => '0');
-   SIGNAL rs_mac_mult              :  std_logic_vector(71 DOWNTO 0) := (others => '0');
-   SIGNAL rs_mac_out               :  std_logic_vector(71 DOWNTO 0) := (others => '0');
-   SIGNAL dataout_round            :  std_logic_vector(71 DOWNTO 0) := (others => '0');
-   SIGNAL dataout_saturate         :  std_logic_vector(71 DOWNTO 0) := (others => '0');
-   SIGNAL dataout_dly              :  std_logic_vector(71 DOWNTO 0) := (others => '0');
-   SIGNAL saturated                :  std_logic := '0';
-   SIGNAL min                      :  std_logic_vector(71 DOWNTO 0) := (others => '0');
-   SIGNAL max                      :  std_logic_vector(71 DOWNTO 0) := (others => '0');
-   SIGNAL msb                      :  std_logic := '0';
-   SIGNAL dataout_tmp1            :  std_logic_vector(71 DOWNTO 0) := (others => '0');
+   SIGNAL round_ipd                :  std_logic := '0';   
+   SIGNAL saturate_ipd             :  std_logic := '0';   
+   SIGNAL addnsub_ipd              :  std_logic := '0';   
+   SIGNAL signa_ipd                :  std_logic := '0';   
+   SIGNAL signb_ipd                :  std_logic := '0';   
+   SIGNAL dataa_ipd                :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL datab_ipd                :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL datain_ipd               :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_tbuf             :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL rs_saturate              :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL rs_mac_mult              :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL rs_mac_out               :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_round            :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_saturate         :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_dly              :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL saturated                :  std_logic := '0';   
+   SIGNAL min                      :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL max                      :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL msb                      :  std_logic := '0';   
+   SIGNAL dataout_tmp1            :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
 
 BEGIN
-   round_ipd <= round ;
-   saturate_ipd <= saturate ;
-   addnsub_ipd <= addnsub ;
-   signa_ipd <= signa ;
-   signb_ipd <= signb ;
-   dataa_ipd(dataa_width-1 downto 0) <= dataa;
-   datab_ipd(datab_width-1 downto 0) <= datab;
-   datain_ipd(71 downto 0) <= datain(71 downto 0) ;
+   round_ipd <= round ;   
+   saturate_ipd <= saturate ;   
+   addnsub_ipd <= addnsub ;   
+   signa_ipd <= signa ;   
+   signb_ipd <= signb ;   
+   dataa_ipd(dataa_width-1 downto 0) <= dataa;   
+   datab_ipd(datab_width-1 downto 0) <= datab;   
+   datain_ipd(71 downto 0) <= datain(71 downto 0) ;   
    PROCESS (datain_ipd,
             signa_ipd,
             signb_ipd,
@@ -7537,9 +8017,9 @@ BEGIN
       VARIABLE dataout_round_tmp2  : std_logic_vector(71 DOWNTO 0);
    BEGIN
       IF (round_ipd = '1') THEN
-        dataout_round_tmp2 := datain_ipd + (2 **(conv_integer(dataoutsize - signsize - roundsize - "00000001")));
+        dataout_round_tmp2 := datain_ipd + (2 **(conv_integer(dataoutsize - signsize - roundsize - "00000001")));    
       ELSE
-        dataout_round_tmp2 := datain_ipd;
+        dataout_round_tmp2 := datain_ipd;    
       END IF;
       dataout_round <= dataout_round_tmp2;
    END PROCESS;
@@ -7561,71 +8041,71 @@ BEGIN
       IF (saturate_ipd = '1') THEN
          IF (block_type = "mac_mult") THEN
             IF (dataout_round(dataa_width + datab_width - 1) = '0' AND dataout_round(dataa_width + datab_width - 2) = '1') THEN
-               dataout_saturate_tmp3 := "111111111111111111111111111111111111111111111111111111111111111111111111";
+               dataout_saturate_tmp3 := "111111111111111111111111111111111111111111111111111111111111111111111111";  
                FOR i IN dataa_width + datab_width - 2 TO (72 - 1) LOOP
-                  dataout_saturate_tmp3(i) := '0';
+                  dataout_saturate_tmp3(i) := '0';    
                END LOOP;
-               saturated_tmp4 := '1';
+               saturated_tmp4 := '1';    
             ELSE
                dataout_saturate_tmp3 := dataout_round;
-               saturated_tmp4 := '0';
+               saturated_tmp4 := '0';    
             END IF;
             min_tmp5 := dataout_saturate_tmp3;
             max_tmp6 := dataout_saturate_tmp3;
          ELSE
            IF ((operation(2) = '1') AND ((block_type = "ab") OR (block_type = "cd"))) THEN
-             saturated_tmp4 := '0';
+             saturated_tmp4 := '0';    
              i := datab_width - 2;
              WHILE (i < (datab_width + signsize - 2)) LOOP
                IF (dataout_round(datab_width - 2) /= dataout_round(i)) THEN
-                 saturated_tmp4 := '1';
+                 saturated_tmp4 := '1';    
                END IF;
                i := i + 1;
              END LOOP;
              IF (saturated_tmp4 = '1') THEN
-               min_tmp5 := "111111111111111111111111111111111111111111111111111111111111111111111111";
-               max_tmp6 := "111111111111111111111111111111111111111111111111111111111111111111111111";
+               min_tmp5 := "111111111111111111111111111111111111111111111111111111111111111111111111";  
+               max_tmp6 := "111111111111111111111111111111111111111111111111111111111111111111111111";  
                FOR i IN 0 TO ((datab_width - 2) - 1) LOOP
-                 max_tmp6(i) := '0';
+                 max_tmp6(i) := '0';    
                END LOOP;
                FOR i IN datab_width - 2 TO (72 - 1) LOOP
-                 min_tmp5(i) := '0';
+                 min_tmp5(i) := '0';    
                END LOOP;
              ELSE
                dataout_saturate_tmp3 := dataout_round;
              END IF;
-             msb_tmp7 := dataout_round(datab_width + 15);
+             msb_tmp7 := dataout_round(datab_width + 15);    
            ELSE
              IF ((signa_ipd OR signb_ipd OR NOT addnsub_ipd) = '1') THEN
-               min_tmp5 := gnd + (2**((dataa_width)));
-               max_tmp6 := gnd + ((2**((dataa_width))) - 1);
+               min_tmp5 := gnd + (2 **(conv_integer(dataa_width)));
+               max_tmp6 := gnd + ((2 **(conv_integer(dataa_width))) - 1);
              ELSE
-               min_tmp5 := "000000000000000000000000000000000000000000000000000000000000000000000000";
-               max_tmp6 := gnd + ((2**((dataa_width + 1))) - 1);
+               min_tmp5 := "000000000000000000000000000000000000000000000000000000000000000000000000";    
+               max_tmp6 := gnd + ((2 **(conv_integer(dataa_width + 1))) - 1);
              END IF;
-             saturated_tmp4 := '0';
+             saturated_tmp4 := '0';    
              i := dataa_width - 2;
              WHILE (i < (dataa_width + signsize - 1)) LOOP
                IF (dataout_round(dataa_width - 2) /= dataout_round(i)) THEN
-                 saturated_tmp4 := '1';
+                 saturated_tmp4 := '1';    
                END IF;
                i := i + 1;
              END LOOP;
-             msb_tmp7 := dataout_round(i);
+             msb_tmp7 := dataout_round(i);    
            END IF;
            IF (saturated_tmp4 = '1') THEN
              IF (msb_tmp7 = '1') THEN
-               dataout_saturate_tmp3 := max_tmp6;
+               dataout_saturate_tmp3 := max_tmp6;    
              ELSE
-               dataout_saturate_tmp3 := min_tmp5;
+               dataout_saturate_tmp3 := min_tmp5;    
              END IF;
            ELSE
-             dataout_saturate_tmp3 := dataout_round;
+             dataout_saturate_tmp3 := dataout_round;    
            END IF;
          END IF;
       ELSE
-        saturated_tmp4 := '0';
-        dataout_saturate_tmp3 := dataout_round;
+        saturated_tmp4 := '0';    
+        dataout_saturate_tmp3 := dataout_round;    
       END IF;
       dataout_saturate <= dataout_saturate_tmp3;
       saturated <= saturated_tmp4;
@@ -7643,750 +8123,49 @@ BEGIN
             dataout_saturate)
       VARIABLE dataout_dly_tmp8 : std_logic_vector(71 DOWNTO 0);
       VARIABLE i                :  integer;
+      VARIABLE width_tmp : integer;
+      
    BEGIN
       IF (round_ipd = '1') THEN
-         dataout_dly_tmp8 := dataout_saturate;
+         dataout_dly_tmp8 := dataout_saturate;     
+         width_tmp := conv_integer(dataoutsize) - conv_integer(signsize) - conv_integer(roundsize);
          i := 0;
-         WHILE (i < (dataoutsize - signsize - roundsize)) LOOP
-            dataout_dly_tmp8(i) := '0';
+         WHILE (i < width_tmp) LOOP
+            dataout_dly_tmp8(i) := '0';    
             i := i + 1;
          END LOOP;
       ELSE
-         dataout_dly_tmp8 := dataout_saturate;
+         dataout_dly_tmp8 := dataout_saturate;    
       END IF;
       dataout_dly <= dataout_dly_tmp8;
    END PROCESS;
-   dataout_tbuf <= datain WHEN (operation = "0000") OR (operation = "0111") ELSE rs_saturate ;
+   dataout_tbuf <= datain WHEN (operation = 0) OR (operation = 7) ELSE rs_saturate ;
    rs_saturate <= rs_mac_mult WHEN (saturate_ipd = '1') ELSE rs_mac_out ;
    rs_mac_mult <= (dataout_dly(71 DOWNTO 3) & "00" & saturated)
                   WHEN ((saturate_ipd = '1') AND (saturated = '1') AND (block_type = "mac_mult")) ELSE rs_mac_out ;
    rs_mac_out <= (dataout_dly(71 DOWNTO 3) & saturated & datain_ipd(1 DOWNTO 0))
                  WHEN ((saturate_ipd = '1') AND (block_type /= "mac_mult")) ELSE dataout_dly ;
 
+pathDelay : BLOCK
+  BEGIN
+    g1 : for i in dataout'range generate
    PROCESS (dataout_tbuf)
-     VARIABLE dataout_VitalGlitchDataArray : VitalGlitchDataArrayType(71 downto 0);
+     		VARIABLE dataout_VitalGlitchData : VitalGlitchDataType;
    BEGIN
      VitalPathDelay01 (
-       OutSignal     => dataout(0),
+      		OutSignal     => dataout(i),
        OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(0),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(0),
+      		OutTemp       => dataout_tbuf(i),
+      		Paths         => (0 => (round_ipd'last_event, tpd_round_dataout(i), TRUE),
+      		                  1 => (saturate_ipd'last_event, tpd_saturate_dataout(i), TRUE)),
+      		GlitchData    => dataout_VitalGlitchData,
        Mode          => DefGlitchMode,
        XOn           => TRUE,
        MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(1),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(1),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(1),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(2),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(2),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(2),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(3),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(3),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(3),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(4),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(4),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(4),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(5),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(5),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(5),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(6),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(6),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(6),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(7),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(7),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(7),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(8),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(8),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(8),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(9),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(9),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(9),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(10),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(10),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(10),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(11),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(11),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(11),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(12),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(12),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(12),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(13),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(13),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(13),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(14),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(14),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(14),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(15),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(15),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(15),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(16),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(16),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(16),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(17),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(17),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(17),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(18),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(18),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(18),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(19),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(19),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(19),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(20),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(20),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(20),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(21),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(21),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(21),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(22),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(22),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(22),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(23),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(23),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(23),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(24),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(24),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(24),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(25),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(25),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(25),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(26),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(26),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(26),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(27),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(27),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(27),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(28),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(28),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(28),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(29),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(29),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(29),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(30),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(30),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(30),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(31),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(31),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(31),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(32),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(32),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(32),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(33),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(33),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(33),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(34),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(34),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(34),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(35),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(35),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(35),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(36),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(36),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(36),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(37),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(37),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(37),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(38),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(38),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(38),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(39),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(39),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(39),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(40),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(40),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(40),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(41),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(41),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(41),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(42),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(42),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(42),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(43),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(43),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(43),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(44),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(44),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(44),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(45),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(45),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(45),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(46),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(46),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(46),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(47),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(47),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(47),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(48),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(48),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(48),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(49),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(49),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(49),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(50),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(50),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(50),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(51),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(51),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(51),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(52),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(52),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(52),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(53),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(53),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(53),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(54),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(54),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(54),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(55),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(55),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(55),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(56),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(56),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(56),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(57),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(57),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(57),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(58),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(58),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(58),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(59),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(59),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(59),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(60),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(60),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(60),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(61),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(61),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(61),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(62),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(62),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(62),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(63),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(63),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(63),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(64),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(64),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(64),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(65),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(65),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(65),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(66),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(66),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(66),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(67),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(67),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(67),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(68),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(68),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(68),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(69),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(69),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(69),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(70),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(70),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(70),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-     VitalPathDelay01 (
-       OutSignal     => dataout(71),
-       OutSignalName => "dataout",
-       OutTemp       => dataout_tbuf(71),
-       Paths         => (0 => (round_ipd'last_event, tpd_round_dataout, TRUE),
-                         1 => (saturate_ipd'last_event, tpd_saturate_dataout, TRUE)),
-       GlitchData    => dataout_VitalGlitchDataArray(71),
-       Mode          => DefGlitchMode,
-       XOn           => TRUE,
-       MsgOn         => TRUE );
-   end process;
+		END PROCESS;
+	END GENERATE;
+END BLOCK;
+
 END arch;
 
 --/////////////////////////////////////////////////////////////////////////////
@@ -8397,52 +8176,51 @@ END arch;
 
 LIBRARY IEEE;
 USE ieee.std_logic_1164.all;
+USE ieee.std_logic_unsigned.all;
 use IEEE.VITAL_Timing.all;
 use IEEE.VITAL_Primitives.all;
 use work.stratixii_atom_pack.all;
-library grlib;
-use grlib.stdlib.all;
 
 ENTITY stratixii_mac_mult_internal IS
    GENERIC (
-      dataa_width                    :  integer := 18;
-      datab_width                    :  integer := 18;
+      dataa_width                    :  integer := 18;    
+      datab_width                    :  integer := 18;    
       dataout_width                  :  integer := 36;
       dynamic_mode                   :  string  := "no";
       tipd_dataa        : VitalDelayArrayType01(17 downto 0) := (OTHERS => DefPropDelay01);
       tipd_datab        : VitalDelayArrayType01(17 downto 0) := (OTHERS => DefPropDelay01);
-      tpd_dataa_dataout : VitalDelayType01 := DefPropDelay01;
-      tpd_datab_dataout : VitalDelayType01 := DefPropDelay01;
-      tpd_signa_dataout : VitalDelayType01 := DefPropDelay01;
-      tpd_signb_dataout : VitalDelayType01 := DefPropDelay01;
-      tpd_dataa_scanouta   : VitalDelayType01 := DefPropDelay01;
-      tpd_datab_scanoutb   : VitalDelayType01 := DefPropDelay01;
-      XOn               : Boolean := DefGlitchXOn;
+      tpd_dataa_dataout : VitalDelayArrayType01(18*36-1 downto 0) := (others => DefPropDelay01);
+      tpd_datab_dataout : VitalDelayArrayType01(18*36-1 downto 0) := (others => DefPropDelay01);
+      tpd_signa_dataout : VitalDelayArrayType01(35 downto 0) := (others => DefPropDelay01);
+      tpd_signb_dataout : VitalDelayArrayType01(35 downto 0) := (others => DefPropDelay01);
+      tpd_dataa_scanouta   : VitalDelayArrayType01(18*18-1 downto 0) := (others => DefPropDelay01);
+      tpd_datab_scanoutb   : VitalDelayArrayType01(18*18-1 downto 0) := (others => DefPropDelay01);
+      XOn               : Boolean := DefGlitchXOn;     
       MsgOn             : Boolean := DefGlitchMsgOn
       );
    PORT (
-      dataa                   : IN std_logic_vector(dataa_width - 1 DOWNTO 0) := (others => '0');
-      datab                   : IN std_logic_vector(datab_width - 1 DOWNTO 0) := (others => '0');
-      signa                   : IN std_logic := '0';
-      signb                   : IN std_logic := '0';
-      bypass                  : IN std_logic := '0';
-      scanouta                : OUT std_logic_vector(dataa_width - 1 DOWNTO 0) := (others => '0');
-      scanoutb                : OUT std_logic_vector(datab_width - 1 DOWNTO 0) := (others => '0');
+      dataa                   : IN std_logic_vector(dataa_width - 1 DOWNTO 0) := (others => '0');   
+      datab                   : IN std_logic_vector(datab_width - 1 DOWNTO 0) := (others => '0');   
+      signa                   : IN std_logic := '0';   
+      signb                   : IN std_logic := '0';   
+      bypass                  : IN std_logic := '0';   
+      scanouta                : OUT std_logic_vector(dataa_width - 1 DOWNTO 0) := (others => '0');   
+      scanoutb                : OUT std_logic_vector(datab_width - 1 DOWNTO 0) := (others => '0');   
       dataout                 : OUT std_logic_vector(35 DOWNTO 0) := (others => '0')
-      );
+      );   
 END stratixii_mac_mult_internal;
 
 ARCHITECTURE arch OF stratixii_mac_mult_internal IS
 
-   SIGNAL dataa_ipd                :  std_logic_vector(17 DOWNTO 0) := (others => '0');
-   SIGNAL datab_ipd                :  std_logic_vector(17 DOWNTO 0) := (others => '0');
-   SIGNAL neg                      :  std_logic := '0';
-   SIGNAL dataout_pre_bypass       :  std_logic_vector((dataa_width+datab_width) -1 DOWNTO 0) := (others => '0');
-   SIGNAL dataout_tmp              :  std_logic_vector((dataa_width+datab_width) -1 DOWNTO 0) := (others => '0');
-   SIGNAL abs_a                    :  std_logic_vector(dataa_width - 1 DOWNTO 0) := (others => '0');
-   SIGNAL abs_b                    :  std_logic_vector(datab_width - 1 DOWNTO 0) := (others => '0');
-   SIGNAL abs_output               :  std_logic_vector((dataa_width+datab_width) -1 DOWNTO 0) := (others => '0');
-
+   SIGNAL dataa_ipd                :  std_logic_vector(17 DOWNTO 0) := (others => '0');   
+   SIGNAL datab_ipd                :  std_logic_vector(17 DOWNTO 0) := (others => '0');   
+   SIGNAL neg                      :  std_logic := '0';   
+   SIGNAL dataout_pre_bypass       :  std_logic_vector((dataa_width+datab_width) -1 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_tmp              :  std_logic_vector((dataa_width+datab_width) -1 DOWNTO 0) := (others => '0');   
+   SIGNAL abs_a                    :  std_logic_vector(dataa_width - 1 DOWNTO 0) := (others => '0');   
+   SIGNAL abs_b                    :  std_logic_vector(datab_width - 1 DOWNTO 0) := (others => '0');   
+   SIGNAL abs_output               :  std_logic_vector((dataa_width+datab_width) -1 DOWNTO 0) := (others => '0');   
+   
 BEGIN
 
     neg <= (dataa_ipd(dataa_width - 1) AND signa) XOR (datab_ipd(datab_width - 1) AND signb) ;
@@ -8454,8 +8232,8 @@ BEGIN
 
   PathDelay : block
   begin
-    g1 : for i in 0 to 256 generate
-      do: if i < dataout_width generate
+    
+       do:for i in dataout_tmp'range generate   
         process(dataout_tmp(i))
           VARIABLE dataout_VitalGlitchData : VitalGlitchDataType;
         begin
@@ -8463,10 +8241,10 @@ BEGIN
             OutSignal => dataout(i),
             OutSignalName => "dataout",
             OutTemp => dataout_tmp(i),
-            Paths => (0 => (dataa_ipd'last_event, tpd_dataa_dataout, TRUE),
-                      1 => (datab_ipd'last_event, tpd_datab_dataout, TRUE),
-                      2 => (signa'last_event, tpd_signa_dataout, TRUE),
-                      3 => (signb'last_event, tpd_signb_dataout, TRUE)),
+            Paths => (0 => (dataa_ipd'last_event, tpd_dataa_dataout(i), TRUE),
+                      1 => (datab_ipd'last_event, tpd_datab_dataout(i), TRUE),
+                      2 => (signa'last_event, tpd_signa_dataout(i), TRUE),
+                      3 => (signb'last_event, tpd_signb_dataout(i), TRUE)),
             GlitchData => dataout_VitalGlitchData,
             Mode => DefGlitchMode,
             MsgOn => FALSE,
@@ -8474,7 +8252,7 @@ BEGIN
             );
         end process;
       end generate do;
-      sa: if i < dataa_width generate
+      sa: for i in dataa'range generate   
         VitalWireDelay (dataa_ipd(i), dataa(i), tipd_dataa(i));
         PROCESS(dataa_ipd)
           variable scanouta_VitalGlitchData : VitalGlitchDataType;
@@ -8483,15 +8261,15 @@ BEGIN
             OutSignal => scanouta(i),
             OutSignalName => "scanouta",
             OutTemp => dataa_ipd(i),
-            Paths => (1 => (dataa_ipd'last_event, tpd_dataa_scanouta, TRUE)),
+            Paths => (1 => (dataa_ipd'last_event, tpd_dataa_scanouta(i), TRUE)),
             GlitchData => scanouta_VitalGlitchData,
             Mode => DefGlitchMode,
             XOn  => XOn,
             MsgOn => MsgOn
             );
         end process;
-      end generate;
-      sb: if i < datab_width generate
+      end generate sa;
+      sb: for i in datab'range generate      
         VitalWireDelay (datab_ipd(i), datab(i), tipd_datab(i));
         PROCESS(datab_ipd)
           variable scanoutb_VitalGlitchData : VitalGlitchDataType;
@@ -8500,15 +8278,14 @@ BEGIN
             OutSignal => scanoutb(i),
             OutSignalName => "scanoutb",
             OutTemp => datab_ipd(i),
-            Paths => (1 => (datab_ipd'last_event, tpd_datab_scanoutb, TRUE)),
+            Paths => (1 => (datab_ipd'last_event, tpd_datab_scanoutb(i), TRUE)),
             GlitchData => scanoutb_VitalGlitchData,
             Mode => DefGlitchMode,
             XOn  => XOn,
             MsgOn => MsgOn
             );
         end process;
-      end generate;
-    end generate;
+      end generate sb;
   end block;
 
 END arch;
@@ -8519,6 +8296,8 @@ END arch;
 --/////////////////////////////////////////////////////////////////////////////
 LIBRARY IEEE;
 USE ieee.std_logic_1164.all;
+USE ieee.std_logic_unsigned.all;
+use ieee.std_logic_arith.all;
 use IEEE.VITAL_Timing.all;
 use IEEE.VITAL_Primitives.all;
 use work.stratixii_atom_pack.all;
@@ -8526,78 +8305,76 @@ use work.stratixii_mac_mult_internal;
 use work.stratixii_mac_bit_register;
 use work.stratixii_mac_register;
 use work.stratixii_mac_rs_block;
-library grlib;
-use grlib.stdlib.all;
 
 ENTITY stratixii_mac_mult IS
    GENERIC (
-      dataa_width                    :  integer := 18;
+      dataa_width                    :  integer := 18;    
       datab_width                    :  integer := 18;
-      dataa_clock                    :  string := "none";
-      datab_clock                    :  string := "none";
-      signa_clock                    :  string := "none";
-      signb_clock                    :  string := "none";
-      round_clock                    :  string := "none";
-      saturate_clock                 :  string := "none";
-      output_clock                   :  string := "none";
-      round_clear                    :  string := "none";
-      saturate_clear                 :  string := "none";
-      dataa_clear                    :  string := "none";
-      datab_clear                    :  string := "none";
-      signa_clear                    :  string := "none";
-      signb_clear                    :  string := "none";
-      output_clear                   :  string := "none";
-      bypass_multiplier              :  string := "no";
-      mode_clock                     :  string := "none";
+      dataa_clock                    :  string := "none";    
+      datab_clock                    :  string := "none";    
+      signa_clock                    :  string := "none";    
+      signb_clock                    :  string := "none";    
+      round_clock                    :  string := "none";    
+      saturate_clock                 :  string := "none";    
+      output_clock                   :  string := "none";    
+      round_clear                    :  string := "none";    
+      saturate_clear                 :  string := "none";    
+      dataa_clear                    :  string := "none";    
+      datab_clear                    :  string := "none";    
+      signa_clear                    :  string := "none";    
+      signb_clear                    :  string := "none";    
+      output_clear                   :  string := "none";    
+      bypass_multiplier              :  string := "no";    
+      mode_clock                     :  string := "none";    
       zeroacc_clock                  :  string := "none";
       mode_clear                     :  string := "none";
-      zeroacc_clear                  :  string := "none";
-      signa_internally_grounded      :  string := "false";
-      signb_internally_grounded      :  string := "false";
-      lpm_hint                       :  string := "true";
+      zeroacc_clear                  :  string := "none";    
+      signa_internally_grounded      :  string := "false";    
+      signb_internally_grounded      :  string := "false";    
+      lpm_hint                       :  string := "true";    
       lpm_type                       :  string := "stratixii_mac_mult";
       dynamic_mode                   :  string := "no");
    PORT (
-      dataa                   : IN std_logic_vector(dataa_width-1 DOWNTO 0) := (others => '0');
-      datab                   : IN std_logic_vector(datab_width-1 DOWNTO 0) := (others => '0');
+      dataa                   : IN std_logic_vector(dataa_width-1 DOWNTO 0) := (others => '1');
+      datab                   : IN std_logic_vector(datab_width-1 DOWNTO 0) := (others => '1');
       scanina                 : IN std_logic_vector(dataa_width-1 DOWNTO 0) := (others => '0');
       scaninb                 : IN std_logic_vector(datab_width-1 DOWNTO 0) := (others => '0');
-      sourcea                 : IN std_logic := '0';
-      sourceb                 : IN std_logic := '0';
-      signa                   : IN std_logic := '0';
-      signb                   : IN std_logic := '0';
-      round                   : IN std_logic := '0';
-      saturate                : IN std_logic := '0';
-      clk                     : IN std_logic_vector(3 DOWNTO 0) := (others => '0');
-      aclr                    : IN std_logic_vector(3 DOWNTO 0) := (others => '0');
-      ena                     : IN std_logic_vector(3 DOWNTO 0) := (others => '0');
-      mode                    : IN std_logic := '0';
-      zeroacc                 : IN std_logic := '0';
-      dataout                 : OUT std_logic_vector((dataa_width+datab_width)-1 DOWNTO 0) := (others => '0');
+      sourcea                 : IN std_logic := '0';   
+      sourceb                 : IN std_logic := '0';   
+      signa                   : IN std_logic := '1';   
+      signb                   : IN std_logic := '1';   
+      round                   : IN std_logic := '0';   
+      saturate                : IN std_logic := '0';   
+      clk                     : IN std_logic_vector(3 DOWNTO 0) := (others => '0');   
+      aclr                    : IN std_logic_vector(3 DOWNTO 0) := (others => '0');   
+      ena                     : IN std_logic_vector(3 DOWNTO 0) := (others => '1');   
+      mode                    : IN std_logic := '0';  
+      zeroacc                 : IN std_logic := '0';   
+      dataout                 : OUT std_logic_vector((dataa_width+datab_width)-1 DOWNTO 0) := (others => '0');   
       scanouta                : OUT std_logic_vector(dataa_width-1 DOWNTO 0) := (others => '0');
       scanoutb                : OUT std_logic_vector(datab_width-1 DOWNTO 0) := (others => '0');
       devclrn                 : IN std_logic := '1';
       devpor                  : IN std_logic := '1'
-      );
+      );   
 END stratixii_mac_mult;
 
 ARCHITECTURE arch OF stratixii_mac_mult IS
 
    COMPONENT stratixii_mac_mult_internal
       GENERIC (
-          dataout_width                  :  integer := 36;
-          dataa_width                    :  integer := 18;
+          dataout_width                  :  integer := 36;    
+          dataa_width                    :  integer := 18;    
           datab_width                    :  integer := 18;
           dynamic_mode                   :  string  := "no";
           tipd_dataa        : VitalDelayArrayType01(17 downto 0) := (OTHERS => DefPropDelay01);
           tipd_datab        : VitalDelayArrayType01(17 downto 0) := (OTHERS => DefPropDelay01);
-          tpd_dataa_dataout : VitalDelayType01 := DefPropDelay01;
-          tpd_datab_dataout : VitalDelayType01 := DefPropDelay01;
-          tpd_signa_dataout : VitalDelayType01 := DefPropDelay01;
-          tpd_signb_dataout : VitalDelayType01 := DefPropDelay01;
-          tpd_dataa_scanouta   : VitalDelayType01 := DefPropDelay01;
-          tpd_datab_scanoutb   : VitalDelayType01 := DefPropDelay01;
-          XOn               : Boolean := DefGlitchXOn;
+           tpd_dataa_dataout : VitalDelayArrayType01(18*36-1 downto 0) := (others => DefPropDelay01);
+          tpd_datab_dataout : VitalDelayArrayType01(18*36-1 downto 0) := (others => DefPropDelay01);
+          tpd_signa_dataout : VitalDelayArrayType01(35 downto 0) := (others => DefPropDelay01);
+          tpd_signb_dataout : VitalDelayArrayType01(35 downto 0) := (others => DefPropDelay01);
+          tpd_dataa_scanouta   : VitalDelayArrayType01(18*18-1 downto 0) := (others => DefPropDelay01);
+          tpd_datab_scanoutb   : VitalDelayArrayType01(18*18-1 downto 0) := (others => DefPropDelay01);
+          XOn               : Boolean := DefGlitchXOn;     
           MsgOn             : Boolean := DefGlitchMsgOn
           );
       PORT (
@@ -8615,36 +8392,36 @@ ARCHITECTURE arch OF stratixii_mac_mult IS
       GENERIC (
           power_up                       :  std_logic := '0');
       PORT (
-        data                    : IN std_logic := '0';
-        clk                     : IN std_logic := '0';
+        data                    : IN std_logic := '0';   
+        clk                     : IN std_logic := '0';   
         aclr                    : IN std_logic := '0';
         if_aclr                 : IN std_logic := '0';
         ena                     : IN std_logic := '1';
         async                   : IN std_logic := '1';
-        dataout                 : OUT std_logic := '0');
+        dataout                 : OUT std_logic := '0');   
    END COMPONENT;
 
    COMPONENT stratixii_mac_register
       GENERIC (
-          power_up                       :  std_logic := '0';
+          power_up                       :  std_logic := '0';    
           data_width                     :  integer := 18);
       PORT (
-        data                    : IN std_logic_vector(data_width -1 DOWNTO 0) := (others => '0');
-        clk                     : IN std_logic := '0';
+        data                    : IN std_logic_vector(data_width -1 DOWNTO 0) := (others => '0');   
+        clk                     : IN std_logic := '0';   
         aclr                    : IN std_logic := '0';
         if_aclr                 : IN std_logic := '0';
         ena                     : IN std_logic := '1';
         async                   : IN std_logic := '1';
-        dataout                 : OUT std_logic_vector(data_width -1 DOWNTO 0) := (others => '0'));
+        dataout                 : OUT std_logic_vector(data_width -1 DOWNTO 0) := (others => '0'));   
    END COMPONENT;
 
    COMPONENT stratixii_mac_rs_block
       GENERIC (
-        tpd_saturate_dataout           : VitalDelayType01 := DefPropDelay01;
-        tpd_round_dataout              : VitalDelayType01 := DefPropDelay01;
-        block_type                     :  string := "mac_mult";
-        dataa_width                    :  integer := 18;
-        datab_width                    :  integer := 18);
+        tpd_saturate_dataout           : VitalDelayArrayType01(71 downto 0) := (OTHERS => DefPropDelay01);
+        tpd_round_dataout              : VitalDelayArrayType01(71 downto 0) := (OTHERS => DefPropDelay01);
+        block_type                     :  string := "mac_mult";    
+        dataa_width                    :  integer := 18;    
+        datab_width                    :  integer := 18);        
       PORT (
          operation               : IN  std_logic_vector(3 DOWNTO 0) := (others => '0');
          round                   : IN  std_logic := '0';
@@ -8662,96 +8439,96 @@ ARCHITECTURE arch OF stratixii_mac_mult IS
    END COMPONENT;
 
 
-   SIGNAL mult_output              :  std_logic_vector(35 DOWNTO 0) := (others => '0');
-   SIGNAL signa_out                :  std_logic := '0';
-   SIGNAL signb_out                :  std_logic := '0';
-   SIGNAL round_out                :  std_logic := '0';
-   SIGNAL saturate_out             :  std_logic := '0';
-   SIGNAL mode_out                 :  std_logic := '0';
-   SIGNAL zeroacc_out              :  std_logic := '0';
-   SIGNAL dataout_tmp              :  std_logic_vector(71 DOWNTO 0) := (others => '0');
+   SIGNAL mult_output              :  std_logic_vector(35 DOWNTO 0) := (others => '0');   
+   SIGNAL signa_out                :  std_logic := '0';   
+   SIGNAL signb_out                :  std_logic := '0';   
+   SIGNAL round_out                :  std_logic := '0';   
+   SIGNAL saturate_out             :  std_logic := '0';   
+   SIGNAL mode_out                 :  std_logic := '0';   
+   SIGNAL zeroacc_out              :  std_logic := '0';   
+   SIGNAL dataout_tmp              :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
    SIGNAL dataout_reg              :  std_logic_vector(71 DOWNTO 0) := (others => '0');
-   SIGNAL dataout_rs               :  std_logic_vector(71 DOWNTO 0) := (others => '0');
-   SIGNAL scanouta_tmp             :  std_logic_vector(dataa_width -1 DOWNTO 0) := (others => '0');
-   SIGNAL scanoutb_tmp             :  std_logic_vector(datab_width -1 DOWNTO 0) := (others => '0');
-   SIGNAL dataa_src                :  std_logic_vector(dataa_width -1 DOWNTO 0) := (others => '0');
-   SIGNAL datab_src                :  std_logic_vector(datab_width -1 DOWNTO 0) := (others => '0');
-   SIGNAL dataa_clk                :  std_logic_vector(3 DOWNTO 0) := (others => '0');
-   SIGNAL datab_clk                :  std_logic_vector(3 DOWNTO 0) := (others => '0');
-   SIGNAL signa_clk                :  std_logic_vector(3 DOWNTO 0) := (others => '0');
-   SIGNAL signb_clk                :  std_logic_vector(3 DOWNTO 0) := (others => '0');
-   SIGNAL round_clk                :  std_logic_vector(3 DOWNTO 0) := (others => '0');
-   SIGNAL saturate_clk             :  std_logic_vector(3 DOWNTO 0) := (others => '0');
-   SIGNAL output_clk               :  std_logic_vector(3 DOWNTO 0) := (others => '0');
-   SIGNAL round_aclr               :  std_logic_vector(3 DOWNTO 0) := (others => '0');
-   SIGNAL saturate_aclr            :  std_logic_vector(3 DOWNTO 0) := (others => '0');
-   SIGNAL dataa_aclr               :  std_logic_vector(3 DOWNTO 0) := (others => '0');
-   SIGNAL datab_aclr               :  std_logic_vector(3 DOWNTO 0) := (others => '0');
-   SIGNAL signa_aclr               :  std_logic_vector(3 DOWNTO 0) := (others => '0');
-   SIGNAL signb_aclr               :  std_logic_vector(3 DOWNTO 0) := (others => '0');
-   SIGNAL output_aclr              :  std_logic_vector(3 DOWNTO 0) := (others => '0');
-   SIGNAL mode_clk                 :  std_logic_vector(3 DOWNTO 0) := (others => '0');
-   SIGNAL zeroacc_clk              :  std_logic_vector(3 DOWNTO 0) := (others => '0');
-   SIGNAL mode_aclr                :  std_logic_vector(3 DOWNTO 0) := (others => '0');
-   SIGNAL zeroacc_aclr             :  std_logic_vector(3 DOWNTO 0) := (others => '0');
-   SIGNAL clk_dataa                :  std_logic := '0';
-   SIGNAL clear_dataa              :  std_logic := '0';
-   SIGNAL aclr_dataa               :  std_logic := '0';
-   SIGNAL ena_dataa                :  std_logic := '0';
-   SIGNAL async_dataa              :  std_logic := '0';
-   SIGNAL clk_datab                :  std_logic := '0';
-   SIGNAL clear_datab              :  std_logic := '0';
-   SIGNAL aclr_datab               :  std_logic := '0';
-   SIGNAL ena_datab                :  std_logic := '0';
-   SIGNAL async_datab              :  std_logic := '0';
-   SIGNAL clk_signa                :  std_logic := '0';
-   SIGNAL clear_signa              :  std_logic := '0';
-   SIGNAL aclr_signa               :  std_logic := '0';
-   SIGNAL ena_signa                :  std_logic := '0';
-   SIGNAL async_signa              :  std_logic := '0';
-   SIGNAL clk_signb                :  std_logic := '0';
-   SIGNAL clear_signb              :  std_logic := '0';
-   SIGNAL aclr_signb               :  std_logic := '0';
-   SIGNAL ena_signb                :  std_logic := '0';
-   SIGNAL async_signb              :  std_logic := '0';
-   SIGNAL clk_round                :  std_logic := '0';
-   SIGNAL clear_round              :  std_logic := '0';
-   SIGNAL aclr_round               :  std_logic := '0';
-   SIGNAL ena_round                :  std_logic := '0';
-   SIGNAL async_round              :  std_logic := '0';
-   SIGNAL clk_saturate             :  std_logic := '0';
-   SIGNAL clear_saturate           :  std_logic := '0';
-   SIGNAL aclr_saturate            :  std_logic := '0';
-   SIGNAL ena_saturate             :  std_logic := '0';
-   SIGNAL async_saturate           :  std_logic := '0';
-   SIGNAL clk_mode                 :  std_logic := '0';
-   SIGNAL clear_mode               :  std_logic := '0';
-   SIGNAL aclr_mode                :  std_logic := '0';
-   SIGNAL ena_mode                 :  std_logic := '0';
-   SIGNAL async_mode               :  std_logic := '0';
-   SIGNAL clk_zeroacc              :  std_logic := '0';
-   SIGNAL clear_zeroacc            :  std_logic := '0';
-   SIGNAL aclr_zeroacc             :  std_logic := '0';
-   SIGNAL ena_zeroacc              :  std_logic := '0';
-   SIGNAL async_zeroacc            :  std_logic := '0';
-   SIGNAL clk_output               :  std_logic := '0';
-   SIGNAL clear_output             :  std_logic := '0';
-   SIGNAL aclr_output              :  std_logic := '0';
-   SIGNAL ena_output               :  std_logic := '0';
-   SIGNAL async_output             :  std_logic := '0';
-   SIGNAL signa_internal           :  std_logic := '0';
-   SIGNAL signb_internal           :  std_logic := '0';
-   SIGNAL bypass                   :  std_logic := '0';
-   SIGNAL mac_mult_dataoutsize     :  std_logic_vector(7 DOWNTO 0) := (others => '0');
-   SIGNAL tmp_4                   :  std_logic_vector(71 DOWNTO 0) := (others => '0');
-   SIGNAL tmp_60                  :  std_logic_vector(71 DOWNTO 0) := (others => '0');
-   SIGNAL port_tmp62              :  std_logic_vector(3 DOWNTO 0) := (others => '0');
-   SIGNAL port_tmp63              :  std_logic := '0';
-   SIGNAL port_tmp64              :  std_logic_vector(7 DOWNTO 0) := (others => '0');
-   SIGNAL port_tmp65              :  std_logic_vector(7 DOWNTO 0) := (others => '0');
-   SIGNAL dataout_tmp1            :  std_logic_vector(35 DOWNTO 0) := (others => '0');
-   SIGNAL scanouta_tmp2           :  std_logic_vector(dataa_width-1 DOWNTO 0) := (others => '0');
-   SIGNAL scanoutb_tmp3           :  std_logic_vector(datab_width-1 DOWNTO 0) := (others => '0');
+   SIGNAL dataout_rs               :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL scanouta_tmp             :  std_logic_vector(dataa_width -1 DOWNTO 0) := (others => '0');   
+   SIGNAL scanoutb_tmp             :  std_logic_vector(datab_width -1 DOWNTO 0) := (others => '0');   
+   SIGNAL dataa_src                :  std_logic_vector(dataa_width -1 DOWNTO 0) := (others => '0');   
+   SIGNAL datab_src                :  std_logic_vector(datab_width -1 DOWNTO 0) := (others => '0');   
+   SIGNAL dataa_clk                :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL datab_clk                :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL signa_clk                :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL signb_clk                :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL round_clk                :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL saturate_clk             :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL output_clk               :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL round_aclr               :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL saturate_aclr            :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL dataa_aclr               :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL datab_aclr               :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL signa_aclr               :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL signb_aclr               :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL output_aclr              :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL mode_clk                 :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL zeroacc_clk              :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL mode_aclr                :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL zeroacc_aclr             :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL clk_dataa                :  std_logic := '0';   
+   SIGNAL clear_dataa              :  std_logic := '0';   
+   SIGNAL aclr_dataa               :  std_logic := '0';   
+   SIGNAL ena_dataa                :  std_logic := '0';   
+   SIGNAL async_dataa              :  std_logic := '0';   
+   SIGNAL clk_datab                :  std_logic := '0';   
+   SIGNAL clear_datab              :  std_logic := '0';   
+   SIGNAL aclr_datab               :  std_logic := '0';   
+   SIGNAL ena_datab                :  std_logic := '0';   
+   SIGNAL async_datab              :  std_logic := '0';   
+   SIGNAL clk_signa                :  std_logic := '0';   
+   SIGNAL clear_signa              :  std_logic := '0';   
+   SIGNAL aclr_signa               :  std_logic := '0';   
+   SIGNAL ena_signa                :  std_logic := '0';   
+   SIGNAL async_signa              :  std_logic := '0';   
+   SIGNAL clk_signb                :  std_logic := '0';   
+   SIGNAL clear_signb              :  std_logic := '0';   
+   SIGNAL aclr_signb               :  std_logic := '0';   
+   SIGNAL ena_signb                :  std_logic := '0';   
+   SIGNAL async_signb              :  std_logic := '0';   
+   SIGNAL clk_round                :  std_logic := '0';   
+   SIGNAL clear_round              :  std_logic := '0';   
+   SIGNAL aclr_round               :  std_logic := '0';   
+   SIGNAL ena_round                :  std_logic := '0';   
+   SIGNAL async_round              :  std_logic := '0';   
+   SIGNAL clk_saturate             :  std_logic := '0';   
+   SIGNAL clear_saturate           :  std_logic := '0';   
+   SIGNAL aclr_saturate            :  std_logic := '0';   
+   SIGNAL ena_saturate             :  std_logic := '0';   
+   SIGNAL async_saturate           :  std_logic := '0';   
+   SIGNAL clk_mode                 :  std_logic := '0';   
+   SIGNAL clear_mode               :  std_logic := '0';   
+   SIGNAL aclr_mode                :  std_logic := '0';   
+   SIGNAL ena_mode                 :  std_logic := '0';   
+   SIGNAL async_mode               :  std_logic := '0';   
+   SIGNAL clk_zeroacc              :  std_logic := '0';   
+   SIGNAL clear_zeroacc            :  std_logic := '0';   
+   SIGNAL aclr_zeroacc             :  std_logic := '0';   
+   SIGNAL ena_zeroacc              :  std_logic := '0';   
+   SIGNAL async_zeroacc            :  std_logic := '0';   
+   SIGNAL clk_output               :  std_logic := '0';   
+   SIGNAL clear_output             :  std_logic := '0';   
+   SIGNAL aclr_output              :  std_logic := '0';   
+   SIGNAL ena_output               :  std_logic := '0';   
+   SIGNAL async_output             :  std_logic := '0';   
+   SIGNAL signa_internal           :  std_logic := '0';   
+   SIGNAL signb_internal           :  std_logic := '0';   
+   SIGNAL bypass                   :  std_logic := '0';   
+   SIGNAL mac_mult_dataoutsize     :  std_logic_vector(7 DOWNTO 0) := (others => '0');   
+   SIGNAL tmp_4                   :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL tmp_60                  :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL port_tmp62              :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL port_tmp63              :  std_logic := '0';   
+   SIGNAL port_tmp64              :  std_logic_vector(7 DOWNTO 0) := (others => '0');   
+   SIGNAL port_tmp65              :  std_logic_vector(7 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_tmp1            :  std_logic_vector(35 DOWNTO 0) := (others => '0');   
+   SIGNAL scanouta_tmp2           :  std_logic_vector(dataa_width-1 DOWNTO 0) := (others => '0');   
+   SIGNAL scanoutb_tmp3           :  std_logic_vector(datab_width-1 DOWNTO 0) := (others => '0');   
 
 
 BEGIN
@@ -8761,7 +8538,7 @@ BEGIN
    dataout_tmp1 <= dataout_tmp(35 DOWNTO 0) ;
    dataa_src <= scanina WHEN (sourcea = '1') ELSE dataa ;
    datab_src <= scaninb WHEN (sourceb = '1') ELSE datab ;
-   dataa_mac_reg : stratixii_mac_register
+   dataa_mac_reg : stratixii_mac_register 
       GENERIC MAP (
          data_width => dataa_width,
          power_up => '0')
@@ -8772,8 +8549,8 @@ BEGIN
          if_aclr => clear_dataa,
          ena => ena_dataa,
          dataout => scanouta_tmp,
-         async => async_dataa);
-
+         async => async_dataa);   
+   
    async_dataa <= '1' WHEN (dataa_clock = "none") ELSE '0' ;
    clear_dataa <= '1' WHEN (dataa_clear /= "none") ELSE '0' ;
    clk_dataa <= '1' WHEN clk(conv_integer(dataa_clk)) = '1' ELSE '0' ;
@@ -8781,7 +8558,7 @@ BEGIN
    ena_dataa <= '1' WHEN ena(conv_integer(dataa_clk)) = '1' ELSE '0' ;
    dataa_clk <= "0000" WHEN ((dataa_clock = "0") OR (dataa_clock = "none")) ELSE "0001" WHEN (dataa_clock = "1") ELSE "0010" WHEN (dataa_clock = "2") ELSE "0011" WHEN (dataa_clock = "3") ELSE "0000" ;
    dataa_aclr <= "0000" WHEN ((dataa_clear = "0") OR (dataa_clear = "none")) ELSE "0001" WHEN (dataa_clear = "1") ELSE "0010" WHEN (dataa_clear = "2") ELSE "0011" WHEN (dataa_clear = "3") ELSE "0000" ;
-   datab_mac_reg : stratixii_mac_register
+   datab_mac_reg : stratixii_mac_register 
       GENERIC MAP (
          data_width => datab_width,
          power_up => '0')
@@ -8792,8 +8569,8 @@ BEGIN
          if_aclr => clear_datab,
          ena => ena_datab,
          dataout => scanoutb_tmp,
-         async => async_datab);
-
+         async => async_datab);   
+   
    async_datab <= '1' WHEN (datab_clock = "none") ELSE '0' ;
    clear_datab <= '1' WHEN (datab_clear /= "none") ELSE '0' ;
    clk_datab <= '1' WHEN clk(conv_integer(datab_clk)) = '1' ELSE '0' ;
@@ -8801,7 +8578,7 @@ BEGIN
    ena_datab <= '1' WHEN ena(conv_integer(datab_clk)) = '1' ELSE '0' ;
    datab_clk <= "0000" WHEN ((datab_clock = "0") OR (datab_clock = "none")) ELSE "0001" WHEN (datab_clock = "1") ELSE "0010" WHEN (datab_clock = "2") ELSE "0011" WHEN (datab_clock = "3") ELSE "0000" ;
    datab_aclr <= "0000" WHEN ((datab_clear = "0") OR (datab_clear = "none")) ELSE "0001" WHEN (datab_clear = "1") ELSE "0010" WHEN (datab_clear = "2") ELSE "0011" WHEN (datab_clear = "3") ELSE "0000" ;
-   signa_mac_reg : stratixii_mac_bit_register
+   signa_mac_reg : stratixii_mac_bit_register 
       GENERIC MAP (
          power_up => '0')
       PORT MAP (
@@ -8811,8 +8588,8 @@ BEGIN
          if_aclr => clear_signa,
          ena => ena_signa,
          dataout => signa_out,
-         async => async_signa);
-
+         async => async_signa);   
+   
    async_signa <= '1' WHEN (signa_clock = "none") ELSE '0' ;
    clear_signa <= '1' WHEN (signa_clear /= "none") ELSE '0' ;
    clk_signa <= '1' WHEN clk(conv_integer(signa_clk)) = '1' ELSE '0' ;
@@ -8820,7 +8597,7 @@ BEGIN
    ena_signa <= '1' WHEN ena(conv_integer(signa_clk)) = '1' ELSE '0' ;
    signa_clk <= "0000" WHEN ((signa_clock = "0") OR (signa_clock = "none")) ELSE "0001" WHEN (signa_clock = "1") ELSE "0010" WHEN (signa_clock = "2") ELSE "0011" WHEN (signa_clock = "3") ELSE "0000" ;
    signa_aclr <= "0000" WHEN ((signa_clear = "0") OR (signa_clear = "none")) ELSE "0001" WHEN (signa_clear = "1") ELSE "0010" WHEN (signa_clear = "2") ELSE "0011" WHEN (signa_clear = "3") ELSE "0000" ;
-   signb_mac_reg : stratixii_mac_bit_register
+   signb_mac_reg : stratixii_mac_bit_register 
       GENERIC MAP (
          power_up => '0')
       PORT MAP (
@@ -8830,8 +8607,8 @@ BEGIN
          if_aclr => clear_signb,
          ena => ena_signb,
          dataout => signb_out,
-         async => async_signb);
-
+         async => async_signb);   
+   
    async_signb <= '1' WHEN (signb_clock = "none") ELSE '0' ;
    clear_signb <= '1' WHEN (signb_clear /= "none") ELSE '0' ;
    clk_signb <= '1' WHEN clk(conv_integer(signb_clk)) = '1' ELSE '0' ;
@@ -8839,7 +8616,7 @@ BEGIN
    ena_signb <= '1' WHEN ena(conv_integer(signb_clk)) = '1' ELSE '0' ;
    signb_clk <= "0000" WHEN ((signb_clock = "0") OR (signb_clock = "none")) ELSE "0001" WHEN (signb_clock = "1") ELSE "0010" WHEN (signb_clock = "2") ELSE "0011" WHEN (signb_clock = "3") ELSE "0000" ;
    signb_aclr <= "0000" WHEN ((signb_clear = "0") OR (signb_clear = "none")) ELSE "0001" WHEN (signb_clear = "1") ELSE "0010" WHEN (signb_clear = "2") ELSE "0011" WHEN (signb_clear = "3") ELSE "0000" ;
-   round_mac_reg : stratixii_mac_bit_register
+   round_mac_reg : stratixii_mac_bit_register 
       GENERIC MAP (
          power_up => '0')
       PORT MAP (
@@ -8849,8 +8626,8 @@ BEGIN
          if_aclr => clear_round,
          ena => ena_round,
          dataout => round_out,
-         async => async_round);
-
+         async => async_round);   
+   
    async_round <= '1' WHEN (round_clock = "none") ELSE '0' ;
    clear_round <= '1' WHEN (round_clear /= "none") ELSE '0' ;
    clk_round <= '1' WHEN clk(conv_integer(round_clk)) = '1' ELSE '0' ;
@@ -8858,7 +8635,7 @@ BEGIN
    ena_round <= '1' WHEN ena(conv_integer(round_clk)) = '1' ELSE '0' ;
    round_clk <= "0000" WHEN ((round_clock = "0") OR (round_clock = "none")) ELSE "0001" WHEN (round_clock = "1") ELSE "0010" WHEN (round_clock = "2") ELSE "0011" WHEN (round_clock = "3") ELSE "0000" ;
    round_aclr <= "0000" WHEN ((round_clear = "0") OR (round_clear = "none")) ELSE "0001" WHEN (round_clear = "1") ELSE "0010" WHEN (round_clear = "2") ELSE "0011" WHEN (round_clear = "3") ELSE "0000" ;
-   saturate_mac_reg : stratixii_mac_bit_register
+   saturate_mac_reg : stratixii_mac_bit_register 
       GENERIC MAP (
          power_up => '0')
       PORT MAP (
@@ -8868,8 +8645,8 @@ BEGIN
          if_aclr => clear_saturate,
          ena => ena_saturate,
          dataout => saturate_out,
-         async => async_saturate);
-
+         async => async_saturate);   
+   
    async_saturate <= '1' WHEN (saturate_clock = "none") ELSE '0' ;
    clear_saturate <= '1' WHEN (saturate_clear /= "none") ELSE '0' ;
    clk_saturate <= '1' WHEN clk(conv_integer(saturate_clk)) = '1' ELSE '0' ;
@@ -8877,7 +8654,7 @@ BEGIN
    ena_saturate <= '1' WHEN ena(conv_integer(saturate_clk)) = '1' ELSE '0' ;
    saturate_clk <= "0000" WHEN ((saturate_clock = "0") OR (saturate_clock = "none")) ELSE "0001" WHEN (saturate_clock = "1") ELSE "0010" WHEN (saturate_clock = "2") ELSE "0011" WHEN (saturate_clock = "3") ELSE "0000" ;
    saturate_aclr <= "0000" WHEN ((saturate_clear = "0") OR (saturate_clear = "none")) ELSE "0001" WHEN (saturate_clear = "1") ELSE "0010" WHEN (saturate_clear = "2") ELSE "0011" WHEN (saturate_clear = "3") ELSE "0000" ;
-   mode_mac_reg : stratixii_mac_bit_register
+   mode_mac_reg : stratixii_mac_bit_register 
       GENERIC MAP (
          power_up => '0')
       PORT MAP (
@@ -8887,8 +8664,8 @@ BEGIN
          if_aclr => clear_mode,
          ena => ena_mode,
          dataout => mode_out,
-         async => async_mode);
-
+         async => async_mode);   
+   
    async_mode <= '1' WHEN (mode_clock = "none") ELSE '0' ;
    clear_mode <= '1' WHEN (mode_clear /= "none") ELSE '0' ;
    clk_mode <= '1' WHEN clk(conv_integer(mode_clk)) = '1' ELSE '0' ;
@@ -8896,7 +8673,7 @@ BEGIN
    ena_mode <= '1' WHEN ena(conv_integer(mode_clk)) = '1' ELSE '0' ;
    mode_clk <= "0000" WHEN ((mode_clock = "0") OR (mode_clock = "none")) ELSE "0001" WHEN (mode_clock = "1") ELSE "0010" WHEN (mode_clock = "2") ELSE "0011" WHEN (mode_clock = "3") ELSE "0000" ;
    mode_aclr <= "0000" WHEN ((mode_clear = "0") OR (mode_clear = "none")) ELSE "0001" WHEN (mode_clear = "1") ELSE "0010" WHEN (mode_clear = "2") ELSE "0011" WHEN (mode_clear = "3") ELSE "0000" ;
-   zeroacc_mac_reg : stratixii_mac_bit_register
+   zeroacc_mac_reg : stratixii_mac_bit_register 
       GENERIC MAP (
          power_up => '0')
       PORT MAP (
@@ -8906,8 +8683,8 @@ BEGIN
          if_aclr => clear_zeroacc,
          ena => ena_zeroacc,
          dataout => zeroacc_out,
-         async => async_zeroacc);
-
+         async => async_zeroacc);   
+   
    async_zeroacc <= '1' WHEN (zeroacc_clock = "none") ELSE '0' ;
    clear_zeroacc <= '1' WHEN (zeroacc_clear /= "none") ELSE '0' ;
    clk_zeroacc <= '1' WHEN clk(conv_integer(zeroacc_clk)) = '1' ELSE '0' ;
@@ -8915,7 +8692,7 @@ BEGIN
    ena_zeroacc <= '1' WHEN ena(conv_integer(zeroacc_clk)) = '1' ELSE '0' ;
    zeroacc_clk <= "0000" WHEN ((zeroacc_clock = "0") OR (zeroacc_clock = "none")) ELSE "0001" WHEN (zeroacc_clock = "1") ELSE "0010" WHEN (zeroacc_clock = "2") ELSE "0011" WHEN (zeroacc_clock = "3") ELSE "0000" ;
    zeroacc_aclr <= "0000" WHEN ((zeroacc_clear = "0") OR (zeroacc_clear = "none")) ELSE "0001" WHEN (zeroacc_clear = "1") ELSE "0010" WHEN (zeroacc_clear = "2") ELSE "0011" WHEN (zeroacc_clear = "3") ELSE "0000" ;
-   mac_multiply : stratixii_mac_mult_internal
+   mac_multiply : stratixii_mac_mult_internal 
       GENERIC MAP (
          dataa_width => dataa_width,
          datab_width => datab_width,
@@ -8929,8 +8706,8 @@ BEGIN
          bypass => bypass,
          scanouta => scanouta_tmp2,
          scanoutb => scanoutb_tmp3,
-         dataout => mult_output);
-
+         dataout => mult_output);   
+   
    signa_internal <= '0' WHEN ((signa_internally_grounded = "true") AND (dynamic_mode = "no")) OR ((((signa_internally_grounded = "true") AND (dynamic_mode = "yes")) AND (zeroacc_out = '1')) AND (mode_out = '0')) ELSE signa_out ;
    signb_internal <= '0' WHEN ((signb_internally_grounded = "true") AND (dynamic_mode = "no")) OR ((((signb_internally_grounded = "true") AND (dynamic_mode = "yes")) AND (zeroacc_out = '1')) AND (mode_out = '0')) ELSE signb_out ;
    bypass <= '1' WHEN ((bypass_multiplier = "yes") AND (dynamic_mode = "no")) OR (((bypass_multiplier = "yes") AND (mode_out = '1')) AND (dynamic_mode = "yes")) ELSE '0' ;
@@ -8939,7 +8716,7 @@ BEGIN
    port_tmp63 <= '0';
    port_tmp64 <= "00000010";
    port_tmp65 <= "00001111";
-   mac_rs_block : stratixii_mac_rs_block
+   mac_rs_block : stratixii_mac_rs_block 
       GENERIC MAP (
          block_type => "mac_mult",
          dataa_width => dataa_width,
@@ -8957,13 +8734,13 @@ BEGIN
          dataa => scanouta_tmp,
          datab => scanoutb_tmp,
          datain => tmp_60,
-         dataout => dataout_rs);
-
+         dataout => dataout_rs);   
+   
    mac_mult_dataoutsize <= CONV_STD_LOGIC_VECTOR(dataa_width + datab_width, 8) ;
 
    dataout_reg <= tmp_60 when bypass = '1' else dataout_rs;
-
-   dataout_mac_reg : stratixii_mac_register
+   
+   dataout_mac_reg : stratixii_mac_register 
       GENERIC MAP (
          data_width => dataa_width + datab_width,
          power_up => '0')
@@ -8974,8 +8751,8 @@ BEGIN
          if_aclr => clear_output,
          ena => ena_output,
          dataout => dataout_tmp((dataa_width + datab_width) -1 downto 0),
-         async => async_output);
-
+         async => async_output);   
+   
    async_output <= '1' WHEN (output_clock = "none") ELSE '0' ;
    clear_output <= '1' WHEN (output_clear /= "none") ELSE '0' ;
    clk_output <= '1' WHEN clk(conv_integer(output_clk)) = '1' ELSE '0' ;
@@ -8986,7 +8763,896 @@ BEGIN
 
 END arch;
 
+--////////////////////////////////////////////////////////////////////////////
+--
+--                                 STRATIXII_MAC_ADDNSUB
+--
+--////////////////////////////////////////////////////////////////////////////
 
+LIBRARY IEEE;
+USE ieee.std_logic_1164.all;
+USE ieee.std_logic_unsigned.all;
+use IEEE.std_logic_arith.all;
+use IEEE.VITAL_Timing.all;
+use IEEE.VITAL_Primitives.all;
+use work.stratixii_atom_pack.all;
+
+ENTITY stratixii_mac_addnsub IS
+   GENERIC (
+      dataa_width                    :  integer := 36;    
+      datab_width                    :  integer := 36;    
+      datac_width                    :  integer := 36;    
+      datad_width                    :  integer := 36;    
+      block_type                     :  string := "ab");
+   PORT (
+      dataa                   : IN std_logic_vector(71 DOWNTO 0) := (others => '0');   
+      datab                   : IN std_logic_vector(71 DOWNTO 0) := (others => '0');   
+      datac                   : IN std_logic_vector(71 DOWNTO 0) := (others => '0');   
+      datad                   : IN std_logic_vector(71 DOWNTO 0) := (others => '0');   
+      signb                   : IN std_logic := '0';   
+      signa                   : IN std_logic := '0';   
+      operation               : IN std_logic_vector(3 DOWNTO 0) := (others => '0');   
+      addnsub                 : IN std_logic := '0';   
+      dataout                 : OUT std_logic_vector(71 DOWNTO 0) := (others => '0');   
+      overflow                : OUT std_logic := '0');   
+END stratixii_mac_addnsub;
+
+ARCHITECTURE arch OF stratixii_mac_addnsub IS
+
+   -- REGULAR ADD/SUB
+   SIGNAL sa                       :  std_logic := '0';   
+   SIGNAL sb                       :  std_logic := '0';   
+   SIGNAL abs_a                    :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL abs_b                    :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_tmp              :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL overflow_tmp             :  std_logic := '0';   
+   -- 36 BIT MULT
+   SIGNAL dataa_u                  :  std_logic_vector(35 DOWNTO 0) := (others => '0');   
+   SIGNAL datab_u                  :  std_logic_vector(35 DOWNTO 0) := (others => '0');   
+   SIGNAL datab_s                  :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL datac_u                  :  std_logic_vector(35 DOWNTO 0) := (others => '0');   
+   SIGNAL datac_s                  :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL datad_u                  :  std_logic_vector(35 DOWNTO 0) := (others => '0');   
+   SIGNAL datad_s                  :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   --SIGNAL z36                      :  std_logic_vector(35 DOWNTO 0) := (others => '0');   
+   --SIGNAL z18                      :  std_logic_vector(17 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_tmp1            :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL overflow_tmp2           :  std_logic := '0';   
+
+BEGIN
+   dataout <= dataout_tmp1;
+   overflow <= overflow_tmp2;
+
+   PROCESS (dataa, datab, datac, datad, signa, signb, operation, addnsub)
+      --VARIABLE z36_tmp3  : std_logic_vector(35 DOWNTO 0) := (others => '0');
+      --VARIABLE z18_tmp4  : std_logic_vector(17 DOWNTO 0) := (others => '0');
+      VARIABLE dataout_tmp_tmp12  : std_logic_vector(71 DOWNTO 0) := (others => '0');
+      VARIABLE overflow_tmp_tmp13  : std_logic;
+      VARIABLE sa_tmp14  : std_logic;
+      VARIABLE sb_tmp15  : std_logic;
+      VARIABLE abs_a_tmp16  : std_logic_vector(71 DOWNTO 0);
+      VARIABLE abs_b_tmp17  : std_logic_vector(71 DOWNTO 0);
+      VARIABLE dataout_t    : std_logic_vector(72 downto 0) := (others => '0');
+      VARIABLE dataa_u        : std_logic_vector(71 downto 0) := (others => '0');
+      VARIABLE datab_u        : std_logic_vector(71 downto 0) := (others => '0');
+      VARIABLE datab_s        : std_logic_vector(71 downto 0) := (others => '0'); 
+      VARIABLE datac_u        : std_logic_vector(71 downto 0) := (others => '0');
+      VARIABLE datac_s        : std_logic_vector(71 downto 0) := (others => '0'); 
+      VARIABLE datad_u        : std_logic_vector(71 downto 0) := (others => '0');
+      VARIABLE datad_s        : std_logic_vector(71 downto 0) := (others => '0'); 
+   BEGIN
+     IF ((unsigned(operation) = 7) AND (block_type /= "sum")) THEN
+       dataa_u := (others => '0');
+       datab_u := (others => '0');
+       datac_u := (others => '0');
+       datad_u := (others => '0');
+       datab_s := (others => '0');
+       datac_s := (others => '0');
+       dataa_u(35 downto 0) := dataa(35 downto 0);
+       datab_u(71 downto 36) := datab(35 downto 0);
+       datab_s(71 downto 36) := datab(35 downto 0);
+       datac_u(53 downto 18) := datac(35 downto 0);
+       datac_s(71 downto 18) := sxt(datac(datac_width-1 downto 0), 54);
+       datad_u(53 downto 18) := datad(35 downto 0);
+       datad_s(71 downto 18) := sxt(datad(datad_width-1 downto 0), 54);
+       if((signa = '0') and (signb = '0')) then 
+         dataout_tmp_tmp12 := unsigned(datab_u) + unsigned(datac_u)
+                              + unsigned(datad_u) + unsigned(dataa_u);
+       elsif((signa = '0') and (signb = '1')) then
+         dataout_t := signed(datab_s) + unsigned(datac_u)
+                      + signed(datad_s) + unsigned(dataa_u);
+         dataout_tmp_tmp12 := dataout_t(71 downto 0);
+       elsif((signa = '1') and (signb = '0')) then
+         dataout_t := signed(datab_s) + signed(datac_s)
+                      + unsigned(datad_u) + unsigned(dataa_u);
+         dataout_tmp_tmp12 := dataout_t(71 downto 0);
+       elsif((signa = '1') and (signb = '1')) then
+         dataout_t := signed(datab_s) + signed(datac_s)
+                      + signed(datad_s) + unsigned(dataa_u);
+         dataout_tmp_tmp12 := dataout_t(71 downto 0);
+       end if;
+       overflow_tmp_tmp13 := '0';    
+     ELSE
+         IF ((operation(2) = '1') AND (block_type = "ab")) THEN
+           if(addnsub = '0') then 
+             if ((signa or signb) = '1') then
+               dataout_tmp_tmp12(datab_width+16 downto 0) :=
+                 signed(sxt(dataa(datab_width+15 downto 0), datab_width+17)) -
+                 signed(sxt(datab(datab_width-1 downto 0), datab_width+17));
+             else
+               dataout_tmp_tmp12(datab_width+16 downto 0) :=
+                 unsigned(ext(dataa(datab_width+15 downto 0), datab_width+17)) -
+                 unsigned(ext(datab(datab_width-1 downto 0), datab_width+17));
+             end if;
+           else
+             if ((signa or signb) = '1') then
+               dataout_tmp_tmp12(datab_width+16 downto 0) :=
+                 signed(sxt(dataa(datab_width+15 downto 0), datab_width+17)) +
+                 signed(sxt(datab(datab_width-1 downto 0), datab_width+17));
+             else
+               dataout_tmp_tmp12(datab_width+16 downto 0) :=
+                 unsigned(ext(dataa(datab_width+15 downto 0), datab_width+17)) +
+                 unsigned(ext(datab(datab_width-1 downto 0), datab_width+17));
+             end if;
+           end if;
+           IF ((signa OR signb) = '1') THEN
+             overflow_tmp_tmp13 := dataout_tmp_tmp12(datab_width + 16) XOR dataout_tmp_tmp12(datab_width + 15);    
+           ELSE
+             overflow_tmp_tmp13 := dataout_tmp_tmp12(datab_width + 16);    
+           END IF;
+         ELSE
+           IF ((operation(2) = '1') AND (block_type = "cd")) THEN
+             if(addnsub = '0') then 
+               if ((signa or signb) = '1') then
+                 dataout_tmp_tmp12(datad_width+16 downto 0) :=
+                   signed(sxt(datac(datad_width+15 downto 0), datad_width+17)) -
+                   signed(sxt(datad(datad_width-1 downto 0), datad_width+17));
+               else
+                 dataout_tmp_tmp12(datad_width+16 downto 0) :=
+                   unsigned(ext(datac(datad_width+15 downto 0), datad_width+17)) -
+                   unsigned(ext(datad(datad_width-1 downto 0), datad_width+17));
+               end if;
+             else
+               if ((signa or signb) = '1') then
+                 dataout_tmp_tmp12(datad_width+16 downto 0) :=
+                   signed(sxt(datac(datad_width+15 downto 0), datad_width+17)) +
+                   signed(sxt(datad(datad_width-1 downto 0), datad_width+17));
+               else
+                 dataout_tmp_tmp12(datad_width+16 downto 0) :=
+                   unsigned(ext(datac(datad_width+15 downto 0), datad_width+17)) +
+                   unsigned(ext(datad(datad_width-1 downto 0), datad_width+17));
+               end if;
+             end if;
+             IF ((signa OR signb) = '1') THEN
+               overflow_tmp_tmp13 := dataout_tmp_tmp12(datad_width + 16) XOR dataout_tmp_tmp12(datad_width + 15);    
+             ELSE
+               overflow_tmp_tmp13 := dataout_tmp_tmp12(datad_width + 16);    
+             END IF;
+            ELSE
+               IF (block_type = "sum") THEN
+                 if ((signa = '1') and (signb = '0')) then
+                   dataout_tmp_tmp12(dataa_width+1 downto 0) :=
+                     signed(sxt(dataa(dataa_width downto 0), dataa_width+2)) +
+                     signed(ext(datab(datab_width downto 0), dataa_width+2));
+                 elsif ((signa = '0') and (signb = '1')) then
+                   dataout_tmp_tmp12(dataa_width+1 downto 0) :=
+                     signed(ext(dataa(dataa_width downto 0), dataa_width+2)) +
+                     signed(sxt(datab(datab_width downto 0), dataa_width+2));
+				elsif ((signa = '1') and (signb = '1')) then
+                   dataout_tmp_tmp12(dataa_width+1 downto 0) :=
+                     signed(sxt(dataa(dataa_width downto 0), dataa_width+2)) +
+                     signed(sxt(datab(datab_width downto 0), dataa_width+2));
+                 else
+                   dataout_tmp_tmp12(dataa_width+1 downto 0) :=
+                     unsigned(ext(dataa(dataa_width downto 0), dataa_width+2)) +
+                     unsigned(ext(datab(datab_width downto 0), dataa_width+2));
+                 end if;
+                 overflow_tmp_tmp13 := '0';
+               ELSE
+                  IF (block_type = "cd") THEN
+                    if(addnsub = '0') then 
+                      if ((signa or signb) = '1') then
+                        if(datac_width >= datad_width) then
+                          dataout_tmp_tmp12(datac_width downto 0) :=
+                            signed(sxt(datac(datac_width-1 downto 0), datac_width+1)) -
+                            signed(sxt(datad(datad_width-1 downto 0), datad_width+1));
+                        else
+                          dataout_tmp_tmp12(datad_width downto 0) :=
+                            signed(sxt(datac(datac_width-1 downto 0), datac_width+1)) -
+                            signed(sxt(datad(datad_width-1 downto 0), datad_width+1));
+                        end if;
+                      else
+                        if(datac_width >= datad_width) then
+                          dataout_tmp_tmp12(datac_width downto 0) :=
+                            unsigned(ext(datac(datac_width-1 downto 0), datac_width+1)) -
+                            unsigned(ext(datad(datad_width-1 downto 0), datad_width+1));
+                        else
+                          dataout_tmp_tmp12(datad_width downto 0) :=
+                            unsigned(ext(datac(datac_width-1 downto 0), datac_width+1)) -
+                            unsigned(ext(datad(datad_width-1 downto 0), datad_width+1));
+                        end if;
+                      end if;
+                    else
+                      if ((signa or signb) = '1') then
+                        if(datac_width >= datad_width) then
+                          dataout_tmp_tmp12(datac_width downto 0) :=
+                            signed(sxt(datac(datac_width-1 downto 0), datac_width+1)) +
+                            signed(sxt(datad(datad_width-1 downto 0), datad_width+1));
+                        else
+                          dataout_tmp_tmp12(datad_width downto 0) :=
+                            signed(sxt(datac(datac_width-1 downto 0), datac_width+1)) +
+                            signed(sxt(datad(datad_width-1 downto 0), datad_width+1));
+                        end if;
+                      else
+                        if(datac_width >= datad_width) then
+                          dataout_tmp_tmp12(datac_width downto 0) :=
+                            unsigned(ext(datac(datac_width-1 downto 0), datac_width+1)) +
+                            unsigned(ext(datad(datad_width-1 downto 0), datad_width+1));
+                        else
+                          dataout_tmp_tmp12(datad_width downto 0) :=
+                            unsigned(ext(datac(datac_width-1 downto 0), datac_width+1)) +
+                            unsigned(ext(datad(datad_width-1 downto 0), datad_width+1));
+                        end if;
+                      end if;
+                    end if;                    
+                    IF ((signa OR signb) = '1') THEN
+                      overflow_tmp_tmp13 := dataout_tmp_tmp12(datac_width + 1) XOR dataout_tmp_tmp12(datac_width);    
+                    ELSE
+                      overflow_tmp_tmp13 := dataout_tmp_tmp12(datac_width + 1);    
+                    END IF;
+                  ELSE
+                    if(addnsub = '0') then 
+                      if ((signa or signb) = '1') then
+                        if(dataa_width >= datab_width) then
+                          dataout_tmp_tmp12(dataa_width downto 0) :=
+                            signed(sxt(dataa(dataa_width-1 downto 0), dataa_width+1)) -
+                            signed(sxt(datab(datab_width-1 downto 0), datab_width+1));
+                        else
+                          dataout_tmp_tmp12(datab_width downto 0) :=
+                            signed(sxt(dataa(dataa_width-1 downto 0), dataa_width+1)) -
+                            signed(sxt(datab(datab_width-1 downto 0), datab_width+1));
+                        end if;
+                      else
+                        if(dataa_width >= datab_width) then
+                          dataout_tmp_tmp12(dataa_width downto 0) :=
+                            unsigned(ext(dataa(dataa_width-1 downto 0), dataa_width+1)) -
+                            unsigned(ext(datab(datab_width-1 downto 0), datab_width+1));
+                        else
+                          dataout_tmp_tmp12(datab_width downto 0) :=
+                            unsigned(ext(dataa(dataa_width-1 downto 0), dataa_width+1)) -
+                            unsigned(ext(datab(datab_width-1 downto 0), datab_width+1));
+                        end if;
+                      end if;
+                    else
+                      if ((signa or signb) = '1') then
+                        if(dataa_width >= datab_width) then
+                          dataout_tmp_tmp12(dataa_width downto 0) :=
+                            signed(sxt(dataa(dataa_width-1 downto 0), dataa_width+1)) +
+                            signed(sxt(datab(datab_width-1 downto 0), datab_width+1));
+                        else
+                          dataout_tmp_tmp12(datab_width downto 0) :=
+                            signed(sxt(dataa(dataa_width-1 downto 0), dataa_width+1)) +
+                            signed(sxt(datab(datab_width-1 downto 0), datab_width+1));
+                        end if;
+                      else
+                        if(dataa_width >= datab_width) then
+                          dataout_tmp_tmp12(dataa_width downto 0) :=
+                            unsigned(ext(dataa(dataa_width-1 downto 0), dataa_width+1)) +
+                            unsigned(ext(datab(datab_width-1 downto 0), datab_width+1));
+                        else
+                          dataout_tmp_tmp12(datab_width downto 0) :=
+                            unsigned(ext(dataa(dataa_width-1 downto 0), dataa_width+1)) +
+                            unsigned(ext(datab(datab_width-1 downto 0), datab_width+1));
+                        end if;
+                      end if;
+                    end if;
+                    IF ((signa OR signb) = '1') THEN
+                      overflow_tmp_tmp13 := dataout_tmp_tmp12(dataa_width + 1) XOR dataout_tmp_tmp12(dataa_width);    
+                    ELSE
+                      overflow_tmp_tmp13 := dataout_tmp_tmp12(dataa_width + 1);    
+                    END IF;
+                  END IF;
+               END IF;
+            END IF;
+         END IF;
+      END IF;
+      --z36 <= z36_tmp3;
+      --z18 <= z18_tmp4;
+      dataout_tmp <= dataout_tmp_tmp12;
+      overflow_tmp <= overflow_tmp_tmp13;
+      sa <= sa_tmp14;
+      sb <= sb_tmp15;
+      abs_a <= abs_a_tmp16;
+      abs_b <= abs_b_tmp17;
+   END PROCESS;
+   dataout_tmp1 <= dataout_tmp ;
+   overflow_tmp2 <= overflow_tmp ;
+
+END arch;
+
+--/////////////////////////////////////////////////////////////////////////////
+--
+--                            STRATIXII_MAC_DYNAMIC_SRC
+--
+--/////////////////////////////////////////////////////////////////////////////
+
+LIBRARY IEEE;
+USE ieee.std_logic_1164.all;
+USE ieee.std_logic_unsigned.all;
+use IEEE.std_logic_arith.all;
+use IEEE.VITAL_Timing.all;
+use IEEE.VITAL_Primitives.all;
+use work.stratixii_atom_pack.all;
+
+ENTITY stratixii_mac_dynamic_src IS
+   GENERIC (
+      dataa_width                    :  integer := 36;    
+      datab_width                    :  integer := 36;    
+      datac_width                    :  integer := 36;    
+      datad_width                    :  integer := 36);
+   PORT (
+      accuma                  : IN std_logic_vector(51 DOWNTO 0) := (others => '0');   
+      accumc                  : IN std_logic_vector(51 DOWNTO 0) := (others => '0');   
+      dataa                   : IN std_logic_vector(71 DOWNTO 0) := (others => '0');   
+      datab                   : IN std_logic_vector(71 DOWNTO 0) := (others => '0');   
+      datac                   : IN std_logic_vector(71 DOWNTO 0) := (others => '0');   
+      datad                   : IN std_logic_vector(71 DOWNTO 0) := (others => '0');   
+      multabsaturate          : IN std_logic := '0';   
+      multcdsaturate          : IN std_logic := '0';   
+      signa                   : IN std_logic := '0';   
+      signb                   : IN std_logic := '0';   
+      zeroacc                 : IN std_logic := '0';   
+      zeroacc1                : IN std_logic := '0';   
+      operation               : IN std_logic_vector(3 DOWNTO 0) := (others => '0');   
+      outa                    : OUT std_logic_vector(71 DOWNTO 0) := (others => '0');   
+      outb                    : OUT std_logic_vector(71 DOWNTO 0) := (others => '0');   
+      outc                    : OUT std_logic_vector(71 DOWNTO 0) := (others => '0');   
+      outd                    : OUT std_logic_vector(71 DOWNTO 0) := (others => '0');   
+      sata                    : OUT std_logic := '0';   
+      satb                    : OUT std_logic := '0';   
+      satc                    : OUT std_logic := '0';   
+      satd                    : OUT std_logic := '0';   
+      satab                   : OUT std_logic := '0';   
+      satcd                   : OUT std_logic := '0'
+      );   
+END stratixii_mac_dynamic_src;
+
+ARCHITECTURE arch OF stratixii_mac_dynamic_src IS
+
+
+   SIGNAL outa_tmp                 :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL outb_tmp                 :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL outc_tmp                 :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL outd_tmp                 :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL sata_tmp                 :  std_logic := '0';   
+   SIGNAL satb_tmp                 :  std_logic := '0';   
+   SIGNAL satc_tmp                 :  std_logic := '0';   
+   SIGNAL satd_tmp                 :  std_logic := '0';   
+   SIGNAL satab_tmp                :  std_logic := '0';   
+   SIGNAL satcd_tmp                :  std_logic := '0';   
+   SIGNAL i                        :  integer;   
+   SIGNAL j                        :  integer;   
+   SIGNAL outa_tmp1               :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL outb_tmp2               :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL outc_tmp3               :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL outd_tmp4               :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL sata_tmp5               :  std_logic := '0';   
+   SIGNAL satb_tmp6               :  std_logic := '0';   
+   SIGNAL satc_tmp7               :  std_logic := '0';   
+   SIGNAL satd_tmp8               :  std_logic := '0';   
+   SIGNAL satab_tmp9              :  std_logic := '0';   
+   SIGNAL satcd_tmp10             :  std_logic := '0';   
+
+   SIGNAL dynamic_dataa_width     : integer := 36;
+   SIGNAL dynamic_datab_width     : integer := 36;
+   SIGNAL dynamic_datac_width     : integer := 36;
+   SIGNAL dynamic_datad_width     : integer := 36;
+
+BEGIN
+   outa <= outa_tmp1;
+   outb <= outb_tmp2;
+   outc <= outc_tmp3;
+   outd <= outd_tmp4;
+   sata <= sata_tmp5;
+   satb <= satb_tmp6;
+   satc <= satc_tmp7;
+   satd <= satd_tmp8;
+   satab <= satab_tmp9;
+   satcd <= satcd_tmp10;
+
+   dynamic_dataa_width <= dataa_width WHEN (dataa_width > 0) ELSE 36;
+   dynamic_datab_width <= datab_width WHEN (datab_width > 0) ELSE 36;
+   dynamic_datac_width <= datac_width WHEN (datac_width > 0) ELSE 36;
+   dynamic_datad_width <= datad_width WHEN (datad_width > 0) ELSE 36;
+
+   PROCESS (accuma, accumc, dataa, datab, datac, datad, multabsaturate, multcdsaturate, signa, signb, zeroacc, zeroacc1, operation)
+      VARIABLE outa_tmp_tmp11  : std_logic_vector(71 DOWNTO 0) := (others => '0');
+      VARIABLE outb_tmp_tmp12  : std_logic_vector(71 DOWNTO 0) := (others => '0');
+      VARIABLE outc_tmp_tmp13  : std_logic_vector(71 DOWNTO 0) := (others => '0');
+      VARIABLE outd_tmp_tmp14  : std_logic_vector(71 DOWNTO 0) := (others => '0');
+      VARIABLE j_tmp15  : integer;
+      VARIABLE temp_tmp16  : std_logic_vector(1 DOWNTO 0) := (others => '0');
+      VARIABLE sata_tmp_tmp17  : std_logic := '0';
+      VARIABLE satb_tmp_tmp18  : std_logic := '0';
+      VARIABLE satc_tmp_tmp19  : std_logic := '0';
+      VARIABLE satd_tmp_tmp20  : std_logic := '0';
+      VARIABLE satab_tmp_tmp21  : std_logic := '0';
+      VARIABLE satcd_tmp_tmp22  : std_logic := '0';
+   BEGIN
+      CASE operation IS
+         WHEN "0000" =>
+                  IF (dataa(dynamic_dataa_width - 1) = '1' AND signa = '1') then 
+                    outa_tmp_tmp11 := sxt(dataa(dynamic_dataa_width - 1 DOWNTO 0), 72);
+                  ELSE
+                    outa_tmp_tmp11 := ext(dataa(dynamic_dataa_width - 1 DOWNTO 0), 72);
+                  END IF;
+                  IF (datab(dynamic_datab_width - 1) = '1' AND signb = '1') THEN
+                    outb_tmp_tmp12 := sxt(datab(dynamic_datab_width - 1 DOWNTO 0), 72);
+                  ELSE
+                    outb_tmp_tmp12 := ext(datab(dynamic_datab_width - 1 DOWNTO 0), 72);
+                  END IF;
+                  IF (datac(dynamic_datac_width - 1) = '1' AND signa = '1') THEN
+                     outc_tmp_tmp13 := sxt(datac(dynamic_datac_width - 1 DOWNTO 0), 72);
+                  ELSE
+                     outc_tmp_tmp13 := ext(datac(dynamic_datac_width - 1 DOWNTO 0), 72);
+                  END IF;
+                  IF (datad(dynamic_datad_width - 1) = '1' AND signb = '1') THEN
+                     outd_tmp_tmp14 := sxt(datad(dynamic_datad_width - 1 DOWNTO 0), 72);
+                  ELSE
+                     outd_tmp_tmp14 := ext(datad(dynamic_datad_width - 1 DOWNTO 0), 72);
+                  END IF;
+         WHEN "0100" =>
+                  IF (zeroacc = '1') THEN
+                     outa_tmp_tmp11 := "000000000000000000000000000000000000000000000000000000000000000000000000";    
+                     IF (dataa(datab_width + 15) = '1' AND signa = '1') THEN
+                        outa_tmp_tmp11:= sxt(dataa(datab_width+15 downto 0), 72);
+                     ELSE
+                        outa_tmp_tmp11:= ext(dataa(datab_width+15 downto 0), 72);
+                     END IF;
+                     j_tmp15 := 0;    
+                     IF (datab_width + 16 > dataa_width) THEN
+                        FOR i IN datab_width + 16 - dataa_width TO (datab_width + 16 - 1) LOOP
+                           outa_tmp_tmp11(i) := dataa(j_tmp15);    
+                           j_tmp15 := j_tmp15 + 1;    
+                        END LOOP;
+                        FOR i IN 0 to datab_width + 16 - dataa_width - 1 LOOP
+                           outa_tmp_tmp11(i) := '0';    
+                        END LOOP;
+                     ELSE
+                        j_tmp15 := dataa_width - 1;
+			FOR i IN (datab_width + 15) DOWNTO 0 LOOP
+                           outa_tmp_tmp11(i) := dataa(j_tmp15);   
+                           j_tmp15 := j_tmp15 - 1;
+                        END LOOP;
+                     END IF;
+                     IF (datab(dynamic_datab_width - 1) = '1' AND signb = '1') THEN
+                        outb_tmp_tmp12 := sxt(datab(dynamic_datab_width - 1 DOWNTO 0), 72);
+                     ELSE
+                        outb_tmp_tmp12 := ext(datab(dynamic_datab_width - 1 DOWNTO 0), 72);
+                     END IF;
+                     IF (datac(dynamic_datac_width - 1) = '1' AND signa = '1') THEN
+                        outc_tmp_tmp13 := sxt(datac(dynamic_datac_width - 1 DOWNTO 0), 72);
+                     ELSE
+                        outc_tmp_tmp13 := ext(datac(dynamic_datac_width - 1 DOWNTO 0), 72);
+                     END IF;
+                     IF (datad(dynamic_datad_width - 1) = '1' AND signb = '1') THEN
+                        outd_tmp_tmp14 := sxt(datad(dynamic_datad_width - 1 DOWNTO 0), 72);
+                     ELSE
+                        outd_tmp_tmp14 := ext(datad(dynamic_datad_width - 1 DOWNTO 0), 72);
+                     END IF;
+                  ELSE
+                     IF (accuma(datab_width + 15) = '1' AND signa = '1') THEN
+                        outa_tmp_tmp11 := sxt(accuma(datab_width + 15 DOWNTO 0), 72); 
+                     ELSE
+                        outa_tmp_tmp11 := ext(accuma(datab_width + 15 DOWNTO 0), 72); 
+                     END IF;
+                     IF (datab(dynamic_datab_width - 1) = '1' AND signb = '1') THEN
+                        outb_tmp_tmp12 := sxt(datab(dynamic_datab_width - 1 DOWNTO 0), 72);
+                     ELSE
+                        outb_tmp_tmp12 := ext(datab(dynamic_datab_width - 1 DOWNTO 0), 72);
+                     END IF;
+                     IF (datac(dynamic_datac_width - 1) = '1' AND signa = '1') THEN
+                        outc_tmp_tmp13 := sxt(datac(dynamic_datac_width - 1 DOWNTO 0), 72);
+                     ELSE
+                        outc_tmp_tmp13 := ext(datac(dynamic_datac_width - 1 DOWNTO 0), 72);
+                     END IF;
+                     IF (datad(dynamic_datad_width - 1) = '1' AND signb = '1') THEN
+                        outd_tmp_tmp14 := sxt(datad(dynamic_datad_width - 1 DOWNTO 0), 72);
+                     ELSE
+                        outd_tmp_tmp14 := ext(datad(dynamic_datad_width - 1 DOWNTO 0), 72);
+                     END IF;
+                  END IF;
+         WHEN "1100" =>
+                  temp_tmp16 := zeroacc1 & zeroacc;
+                  CASE temp_tmp16 IS
+                     WHEN "00" =>
+                              IF (accuma(datab_width + 15) = '1' AND signa = '1') THEN
+                                 outa_tmp_tmp11 := sxt(accuma(datab_width + 15 DOWNTO 0), 72);
+                              ELSE
+                                 outa_tmp_tmp11 := ext(accuma(datab_width + 15 DOWNTO 0), 72);
+                              END IF;
+                              IF (datab(dynamic_datab_width - 1) = '1' AND signb = '1') THEN
+                                 outb_tmp_tmp12 := sxt(datab(dynamic_datab_width - 1 DOWNTO 0), 72); 
+                              ELSE
+                                 outb_tmp_tmp12 := ext(datab(dynamic_datab_width - 1 DOWNTO 0), 72); 
+                              END IF;
+                              IF (accumc(datad_width + 15) = '1' AND signa = '1') THEN
+                                 outc_tmp_tmp13 := sxt(accumc(datad_width + 15 DOWNTO 0), 72);
+                              ELSE
+                                 outc_tmp_tmp13 := ext(accumc(datad_width + 15 DOWNTO 0), 72);
+                              END IF;
+                              IF (datad(dynamic_datad_width - 1) = '1' AND signb = '1') THEN
+                                 outd_tmp_tmp14 := sxt(datad(dynamic_datad_width - 1 DOWNTO 0), 72); 
+                              ELSE
+                                 outd_tmp_tmp14 := ext(datad(dynamic_datad_width - 1 DOWNTO 0), 72); 
+                              END IF;
+                     WHEN "01" =>
+                              outa_tmp_tmp11 := "000000000000000000000000000000000000000000000000000000000000000000000000";    
+                              IF (dataa(datab_width + 15) = '1' AND signa = '1') THEN
+                                 outa_tmp_tmp11 := sxt(dataa(datab_width + 15 DOWNTO 0), 72); 
+                              ELSE
+                                 outa_tmp_tmp11 := ext(dataa(datab_width + 15 DOWNTO 0), 72); 
+                              END IF;
+                              j_tmp15 := 0;    
+                              IF (datab_width + 16 > dataa_width) THEN
+                                 FOR i IN datab_width + 16 - dataa_width TO (datab_width + 16 - 1) LOOP
+                                    outa_tmp_tmp11(i) := dataa(j_tmp15);    
+                                    j_tmp15 := j_tmp15 + 1;    
+                                 END LOOP;
+                                 FOR i IN 0 to datab_width + 16 - dataa_width - 1 LOOP
+                                   outa_tmp_tmp11(i) := '0';    
+                                 END LOOP;
+                              ELSE
+                                 FOR i IN 0 TO (datab_width + 15 - 1) LOOP
+                                    outa_tmp_tmp11(i) := dataa(j_tmp15);    
+                                    j_tmp15 := j_tmp15 + 1;    
+                                 END LOOP;
+                              END IF;
+                              outa_tmp_tmp11(dataa_width + 15 DOWNTO 0) := dataa(15 DOWNTO 0) & dataa(35 DOWNTO 18) & dataa(17 downto 16) & "0000000000000000";
+                              IF (datab(dynamic_datab_width - 1) = '1' AND signb = '1') THEN
+                                 outb_tmp_tmp12 := sxt(datab(dynamic_datab_width - 1 DOWNTO 0), 72); 
+                              ELSE
+                                 outb_tmp_tmp12 := ext(datab(dynamic_datab_width - 1 DOWNTO 0), 72); 
+                              END IF;
+                              IF (accumc(datad_width + 15) = '1' AND signa = '1') THEN
+                                 outc_tmp_tmp13 := sxt(accumc(datad_width + 15 DOWNTO 0), 72); 
+                              ELSE
+                                 outc_tmp_tmp13 := ext(accumc(datad_width + 15 DOWNTO 0), 72); 
+                              END IF;
+                              IF (datad(dynamic_datad_width - 1) = '1' AND signb = '1') THEN
+                                 outd_tmp_tmp14 := sxt(datad(dynamic_datad_width - 1 DOWNTO 0), 72); 
+                              ELSE
+                                 outd_tmp_tmp14 := ext(datad(dynamic_datad_width - 1 DOWNTO 0), 72); 
+                              END IF;
+                     WHEN "10" =>
+                              IF (accuma(datab_width + 15) = '1' AND signa = '1') THEN
+                                 outa_tmp_tmp11 := sxt(accuma(datab_width + 15 DOWNTO 0), 72); 
+                              ELSE
+                                 outa_tmp_tmp11 := ext(accuma(datab_width + 15 DOWNTO 0), 72); 
+                              END IF;
+                              IF (datab(dynamic_datab_width - 1) = '1' AND signb = '1') THEN
+                                 outb_tmp_tmp12 := sxt(datab(dynamic_datab_width - 1 DOWNTO 0), 72); 
+                              ELSE
+                                 outb_tmp_tmp12 := ext(datab(datab_width - 1 DOWNTO 0), 72); 
+                              END IF;
+                              outc_tmp_tmp13 := "000000000000000000000000000000000000000000000000000000000000000000000000";    
+                              IF (datac(datad_width + 15) = '1' AND signb = '1') THEN
+                                 outc_tmp_tmp13 := sxt(datac(datad_width + 15 DOWNTO 0), 72); 
+                              ELSE
+                                 outc_tmp_tmp13 := ext(datac(datad_width + 15 DOWNTO 0), 72); 
+                              END IF;
+                              j_tmp15 := 0;    
+                              IF (datad_width + 16 > datac_width) THEN
+                                 FOR i IN datad_width + 16 - datac_width TO (datad_width + 16 - 1) LOOP
+                                    outc_tmp_tmp13(i) := datac(j_tmp15);    
+                                    j_tmp15 := j_tmp15 + 1;    
+                                 END LOOP;
+                                 FOR i IN 0 to datad_width + 16 - datac_width - 1 LOOP
+                                   outc_tmp_tmp13(i) := '0';    
+                                 END LOOP;
+                              ELSE
+                                 FOR i IN 0 TO (datad_width + 15 - 1) LOOP
+                                    outc_tmp_tmp13(i) := datac(j_tmp15);    
+                                    j_tmp15 := j_tmp15 + 1;    
+                                 END LOOP;
+                              END IF;
+                              outc_tmp_tmp13(datac_width + 15 DOWNTO 0) := datac(15 DOWNTO 0) & datac(35 DOWNTO 18) & datac(17 downto 16) & "0000000000000000";
+                              IF (datad(dynamic_datad_width - 1) = '1' AND signb = '1') THEN
+                                 outd_tmp_tmp14 := sxt(datad(dynamic_datad_width - 1 DOWNTO 0), 72); 
+                              ELSE
+                                 outd_tmp_tmp14 := ext(datad(dynamic_datad_width - 1 DOWNTO 0), 72); 
+                              END IF;
+                     WHEN "11" =>
+                              outa_tmp_tmp11 := "000000000000000000000000000000000000000000000000000000000000000000000000";    
+                              IF (dataa(datab_width + 15) = '1' AND signa = '1') THEN
+                                 outa_tmp_tmp11 := sxt(dataa(datab_width + 15 DOWNTO 0), 72); 
+                              ELSE
+                                 outa_tmp_tmp11 := ext(dataa(datab_width + 15 DOWNTO 0), 72); 
+                              END IF;
+                              j_tmp15 := 0;    
+                              IF (datab_width + 16 > dataa_width) THEN
+                                 FOR i IN datab_width + 16 - dataa_width TO (datab_width + 16 - 1) LOOP
+                                    outa_tmp_tmp11(i) := dataa(j_tmp15);    
+                                    j_tmp15 := j_tmp15 + 1;    
+                                 END LOOP;
+                                 FOR i IN 0 to datab_width + 16 - dataa_width - 1 LOOP
+                                   outa_tmp_tmp11(i) := '0';    
+                                 END LOOP;
+                              ELSE
+                                 FOR i IN 0 TO (datab_width + 15 - 1) LOOP
+                                    outa_tmp_tmp11(i) := dataa(j_tmp15);    
+                                    j_tmp15 := j_tmp15 + 1;    
+                                 END LOOP;
+                              END IF;
+                              outa_tmp_tmp11(dataa_width + 15 DOWNTO 0) := dataa(15 DOWNTO 0) & dataa(35 DOWNTO 18) & dataa(17 downto 16) & "0000000000000000";
+                              IF (datab(dynamic_datab_width - 1) = '1' AND signb = '1') THEN
+                                 outb_tmp_tmp12 := sxt(datab(dynamic_datab_width - 1 DOWNTO 0), 72); 
+                              ELSE
+                                 outb_tmp_tmp12 := ext(datab(dynamic_datab_width - 1 DOWNTO 0), 72); 
+                              END IF;
+                              outc_tmp_tmp13 := "000000000000000000000000000000000000000000000000000000000000000000000000";    
+                              IF (datac(datad_width + 15) = '1' AND signb = '1') THEN
+                                 outc_tmp_tmp13 := sxt(datac(datad_width + 15 DOWNTO 0), 72); 
+                              ELSE
+                                 outc_tmp_tmp13 := ext(datac(datad_width + 15 DOWNTO 0), 72); 
+                              END IF;
+                              j_tmp15 := 0;    
+                              IF (datad_width + 16 > datac_width) THEN
+                                 FOR i IN datad_width + 16 - datac_width TO (datad_width + 16 - 1) LOOP
+                                    outc_tmp_tmp13(i) := datac(j_tmp15);    
+                                    j_tmp15 := j_tmp15 + 1;    
+                                 END LOOP;
+                                 FOR i IN 0 to datad_width + 16 - datac_width - 1 LOOP
+                                   outc_tmp_tmp13(i) := '0';    
+                                 END LOOP;
+                              ELSE
+                                 FOR i IN 0 TO (datad_width + 15 - 1) LOOP
+                                    outc_tmp_tmp13(i) := datac(j_tmp15);    
+                                    j_tmp15 := j_tmp15 + 1;    
+                                 END LOOP;
+                              END IF;
+                              outc_tmp_tmp13(datac_width + 15 DOWNTO 0) := datac(15 DOWNTO 0) & datac(35 DOWNTO 18) & datac(17 downto 16) & "0000000000000000";
+                              IF (datad(dynamic_datad_width - 1) = '1' AND signb = '1') THEN
+                                 outd_tmp_tmp14 := sxt(datad(dynamic_datad_width - 1 DOWNTO 0), 72); 
+                              ELSE
+                                 outd_tmp_tmp14 := ext(datad(dynamic_datad_width - 1 DOWNTO 0), 72); 
+                              END IF;
+                     WHEN OTHERS  =>
+                              IF (accuma(datab_width + 15) = '1' AND signa = '1') THEN
+                                 outa_tmp_tmp11 := sxt(accuma(datab_width + 15 DOWNTO 0), 72); 
+                              ELSE
+                                 outa_tmp_tmp11 := ext(accuma(datab_width + 15 DOWNTO 0), 72); 
+                              END IF;
+                              IF (datab(dynamic_datab_width - 1) = '1' AND signb = '1') THEN
+                                 outb_tmp_tmp12 := sxt(datab(dynamic_datab_width - 1 DOWNTO 0), 72); 
+                              ELSE
+                                 outb_tmp_tmp12 := ext(datab(dynamic_datab_width - 1 DOWNTO 0), 72); 
+                              END IF;
+                              IF (accumc(datad_width + 15) = '1' AND signa = '1') THEN
+                                 outc_tmp_tmp13 := sxt(accumc(datad_width + 15 DOWNTO 0), 72); 
+                              ELSE
+                                 outc_tmp_tmp13 := ext(accumc(datad_width + 15 DOWNTO 0), 72); 
+                              END IF;
+                              IF (datad(dynamic_datad_width - 1) = '1' AND signb = '1') THEN
+                                 outd_tmp_tmp14 := sxt(datad(dynamic_datad_width - 1 DOWNTO 0), 72); 
+                              ELSE
+                                 outd_tmp_tmp14 := ext(datad(dynamic_datad_width - 1 DOWNTO 0), 72); 
+                              END IF;
+                     
+                  END CASE;
+         WHEN "1101" =>
+                  IF (zeroacc = '1') THEN
+                     outa_tmp_tmp11 := "000000000000000000000000000000000000000000000000000000000000000000000000";    
+                     IF (dataa(datab_width + 15) = '1' AND signa = '1') THEN
+                        outa_tmp_tmp11 := sxt(dataa(datab_width + 15 DOWNTO 0), 72); 
+                     ELSE
+                        outa_tmp_tmp11 := ext(dataa(datab_width + 15 DOWNTO 0), 72); 
+                     END IF;
+                     j_tmp15 := 0;    
+                     IF (datab_width + 16 > dataa_width) THEN
+                        FOR i IN datab_width + 16 - dataa_width TO (datab_width + 16 - 1) LOOP
+                           outa_tmp_tmp11(i) := dataa(j_tmp15);    
+                           j_tmp15 := j_tmp15 + 1;    
+                        END LOOP;
+                        FOR i IN 0 to datab_width + 16 - dataa_width - 1 LOOP
+                          outa_tmp_tmp11(i) := '0';    
+                        END LOOP;
+                     ELSE
+                        FOR i IN 0 TO (datab_width + 15 - 1) LOOP
+                           outa_tmp_tmp11(i) := dataa(j_tmp15);    
+                           j_tmp15 := j_tmp15 + 1;    
+                        END LOOP;
+                     END IF;
+                     outa_tmp_tmp11(dataa_width + 15 DOWNTO 0) := dataa(15 DOWNTO 0) & dataa(35 DOWNTO 18) & dataa(17 downto 16) & "0000000000000000";
+                     IF (datab(dynamic_datab_width - 1) = '1' AND signb = '1') THEN
+                        outb_tmp_tmp12 := sxt(datab(dynamic_datab_width - 1 DOWNTO 0), 72); 
+                     ELSE
+                        outb_tmp_tmp12 := ext(datab(dynamic_datab_width - 1 DOWNTO 0), 72); 
+                     END IF;
+                     IF (datac(dynamic_datac_width - 1) = '1' AND signa = '1') THEN
+                        outc_tmp_tmp13 := sxt(datac(dynamic_datac_width - 1 DOWNTO 0), 72); 
+                     ELSE
+                        outc_tmp_tmp13 := ext(datac(dynamic_datac_width - 1 DOWNTO 0), 72); 
+                     END IF;
+                     IF (datad(dynamic_datad_width - 1) = '1' AND signb = '1') THEN
+                        outd_tmp_tmp14 := sxt(datad(dynamic_datad_width - 1 DOWNTO 0), 72); 
+                     ELSE
+                        outd_tmp_tmp14 := ext(datad(dynamic_datad_width - 1 DOWNTO 0), 72);
+                     END IF;
+                  ELSE
+                     IF (accuma(datab_width + 15) = '1' AND signa = '1') THEN
+                        outa_tmp_tmp11 := sxt(accuma(datab_width + 15 DOWNTO 0), 72);
+                     ELSE
+                        outa_tmp_tmp11 := ext(accuma(datab_width + 15 DOWNTO 0), 72);
+                     END IF;
+                     IF (datab(dynamic_datab_width - 1) = '1' AND signb = '1') THEN
+                        outb_tmp_tmp12 := sxt(datab(dynamic_datab_width - 1 DOWNTO 0), 72); 
+                     ELSE
+                        outb_tmp_tmp12 := ext(datab(dynamic_datab_width - 1 DOWNTO 0), 72); 
+                     END IF;
+                     IF (datac(dynamic_datac_width - 1) = '1' AND signa = '1') THEN
+                        outc_tmp_tmp13 := sxt(datac(dynamic_datac_width - 1 DOWNTO 0), 72);
+                     ELSE
+                        outc_tmp_tmp13 := ext(datac(dynamic_datac_width - 1 DOWNTO 0), 72);
+                     END IF;
+                     IF (datad(dynamic_datad_width - 1) = '1' AND signb = '1') THEN
+                        outd_tmp_tmp14 := sxt(datad(dynamic_datad_width - 1 DOWNTO 0), 72); 
+                     ELSE
+                        outd_tmp_tmp14 := ext(datad(dynamic_datad_width - 1 DOWNTO 0), 72); 
+                     END IF;
+                  END IF;
+         WHEN "1110" =>
+                  IF (zeroacc1 = '1') THEN
+                     IF (dataa(dynamic_dataa_width - 1) = '1' AND signa = '1') THEN
+                        outa_tmp_tmp11 := sxt(dataa(dynamic_dataa_width - 1 DOWNTO 0), 72); 
+                     ELSE
+                        outa_tmp_tmp11 := ext(dataa(dynamic_dataa_width - 1 DOWNTO 0), 72); 
+                     END IF;
+                     IF (datab(dynamic_datab_width - 1) = '1' AND signb = '1') THEN
+                        outb_tmp_tmp12 := sxt(datab(dynamic_datab_width - 1 DOWNTO 0), 72); 
+                     ELSE
+                        outb_tmp_tmp12 := ext(datab(dynamic_datab_width - 1 DOWNTO 0), 72); 
+                     END IF;
+                     outc_tmp_tmp13 := "000000000000000000000000000000000000000000000000000000000000000000000000";    
+                     IF (datac(datad_width + 15) = '1' AND signb = '1') THEN
+                        outc_tmp_tmp13 := sxt(datac(datad_width + 15 DOWNTO 0), 72); 
+                     ELSE
+                        outc_tmp_tmp13 := ext(datac(datad_width + 15 DOWNTO 0), 72); 
+                     END IF;
+                     j_tmp15 := 0;    
+                     IF (datad_width + 16 > datac_width) THEN
+                        FOR i IN datad_width + 16 - datac_width TO (datad_width + 16 - 1) LOOP
+                           outc_tmp_tmp13(i) := datac(j_tmp15);    
+                           j_tmp15 := j_tmp15 + 1;    
+                        END LOOP;
+                        FOR i IN 0 to datad_width + 16 - datac_width - 1 LOOP
+                          outc_tmp_tmp13(i) := '0';    
+                        END LOOP;
+                     ELSE
+                        FOR i IN 0 TO (datad_width + 15 - 1) LOOP
+                           outc_tmp_tmp13(i) := datac(j_tmp15);    
+                           j_tmp15 := j_tmp15 + 1;    
+                        END LOOP;
+                     END IF;
+                     outc_tmp_tmp13(datac_width + 15 DOWNTO 0) := datac(15 DOWNTO 0) & datac(35 DOWNTO 18) & datac(17 downto 16) & "0000000000000000";
+                     IF (datad(dynamic_datad_width - 1) = '1' AND signb = '1') THEN
+                        outd_tmp_tmp14 := sxt(datad(dynamic_datad_width - 1 DOWNTO 0), 72); 
+                     ELSE
+                        outd_tmp_tmp14 := ext(datad(dynamic_datad_width - 1 DOWNTO 0), 72); 
+                     END IF;
+                  ELSE
+                     IF (dataa(dynamic_dataa_width - 1) = '1' AND signa = '1') THEN
+                        outa_tmp_tmp11 := sxt(dataa(dynamic_dataa_width - 1 DOWNTO 0), 72); 
+                     ELSE
+                        outa_tmp_tmp11 := ext(dataa(dynamic_dataa_width - 1 DOWNTO 0), 72); 
+                     END IF;
+                     IF (datab(dynamic_datab_width - 1) = '1' AND signb = '1') THEN
+                        outb_tmp_tmp12 := sxt(datab(dynamic_datab_width - 1 DOWNTO 0), 72); 
+                     ELSE
+                        outb_tmp_tmp12 := ext(datab(dynamic_datab_width - 1 DOWNTO 0), 72); 
+                     END IF;
+                     IF (accumc(datad_width + 15) = '1' AND signa = '1') THEN
+                        outc_tmp_tmp13 := sxt(accumc(datad_width + 15 DOWNTO 0), 72); 
+                     ELSE
+                        outc_tmp_tmp13 := ext(accumc(datad_width + 15 DOWNTO 0), 72); 
+                     END IF;
+                     IF (datad(dynamic_datad_width - 1) = '1' AND signb = '1') THEN
+                        outd_tmp_tmp14 := sxt(datad(dynamic_datad_width - 1 DOWNTO 0), 72); 
+                     ELSE
+                        outd_tmp_tmp14 := ext(datad(dynamic_datad_width - 1 DOWNTO 0), 72); 
+                     END IF;
+                  END IF;
+         WHEN OTHERS  =>
+                  IF (dataa(dynamic_dataa_width - 1) = '1' AND signa = '1') THEN
+                     outa_tmp_tmp11 := sxt(dataa(dynamic_dataa_width - 1 DOWNTO 0), 72); 
+                  ELSE
+                     outa_tmp_tmp11 := ext(dataa(dynamic_dataa_width - 1 DOWNTO 0), 72); 
+                  END IF;
+                  IF (datab(dynamic_datab_width - 1) = '1' AND signa = '1') THEN
+                     outb_tmp_tmp12 := sxt(datab(dynamic_datab_width - 1 DOWNTO 0), 72); 
+                  ELSE
+                     outb_tmp_tmp12 := ext(datab(dynamic_datab_width - 1 DOWNTO 0), 72); 
+                  END IF;
+                  IF (datac(dynamic_datac_width - 1) = '1' AND signa = '1') THEN
+                     outc_tmp_tmp13 := sxt(datac(dynamic_datac_width - 1 DOWNTO 0), 72); 
+                  ELSE
+                     outc_tmp_tmp13 := ext(datac(dynamic_datac_width - 1 DOWNTO 0), 72); 
+                  END IF;
+                  IF (datad(dynamic_datad_width - 1) = '1' AND signa = '1') THEN
+                     outd_tmp_tmp14 := sxt(datad(dynamic_datad_width - 1 DOWNTO 0), 72); 
+                  ELSE
+                     outd_tmp_tmp14 := ext(datad(dynamic_datad_width - 1 DOWNTO 0), 72); 
+                  END IF;
+         
+      END CASE;
+      IF (multabsaturate = '1') THEN
+         IF ((outa_tmp_tmp11(0) AND ((zeroacc AND operation(2)) OR NOT operation(2))) = '1') THEN
+            sata_tmp_tmp17 := '1';    
+            outa_tmp_tmp11(0) := '0';    
+         ELSE
+            sata_tmp_tmp17 := '0';    
+         END IF;
+         IF (outb_tmp_tmp12(0) = '1') THEN
+            satb_tmp_tmp18 := '1';    
+            outb_tmp_tmp12(0) := '0';    
+         ELSE
+            satb_tmp_tmp18 := '0';    
+         END IF;
+      ELSE
+         sata_tmp_tmp17 := '0';    
+         satb_tmp_tmp18 := '0';    
+      END IF;
+      IF (multcdsaturate = '1') THEN
+         IF ((outc_tmp_tmp13(0) AND ((zeroacc1 AND operation(2)) OR NOT operation(2))) = '1') THEN
+            satc_tmp_tmp19 := '1';    
+            outc_tmp_tmp13(0) := '0';    
+         ELSE
+            satc_tmp_tmp19 := '0';    
+         END IF;
+         IF (outd_tmp_tmp14(0) = '1') THEN
+            satd_tmp_tmp20 := '1';    
+            outd_tmp_tmp14(0) := '0';    
+         ELSE
+            satd_tmp_tmp20 := '0';    
+         END IF;
+      ELSE
+         satc_tmp_tmp19 := '0';    
+         satd_tmp_tmp20 := '0';    
+      END IF;
+      IF ((sata_tmp_tmp17 OR satb_tmp_tmp18) = '1') THEN
+         satab_tmp_tmp21 := '1';    
+      ELSE
+         satab_tmp_tmp21 := '0';    
+      END IF;
+      IF ((satc_tmp_tmp19 OR satd_tmp_tmp20) = '1') THEN
+         satcd_tmp_tmp22 := '1';    
+      ELSE
+         satcd_tmp_tmp22 := '0';    
+      END IF;
+      outa_tmp <= outa_tmp_tmp11;
+      outb_tmp <= outb_tmp_tmp12;
+      outc_tmp <= outc_tmp_tmp13;
+      outd_tmp <= outd_tmp_tmp14;
+      j <= j_tmp15;
+      sata_tmp <= sata_tmp_tmp17;
+      satb_tmp <= satb_tmp_tmp18;
+      satc_tmp <= satc_tmp_tmp19;
+      satd_tmp <= satd_tmp_tmp20;
+      satab_tmp <= satab_tmp_tmp21;
+      satcd_tmp <= satcd_tmp_tmp22;
+   END PROCESS;
+   outa_tmp1 <= outa_tmp ;
+   outb_tmp2 <= outb_tmp ;
+   outc_tmp3 <= outc_tmp ;
+   outd_tmp4 <= outd_tmp ;
+   sata_tmp5 <= sata_tmp ;
+   satb_tmp6 <= satb_tmp ;
+   satc_tmp7 <= satc_tmp ;
+   satd_tmp8 <= satd_tmp ;
+   satab_tmp9 <= satab_tmp ;
+   satcd_tmp10 <= satcd_tmp ;
+
+END arch;
 
 --/////////////////////////////////////////////////////////////////////////////
 --
@@ -8996,43 +9662,44 @@ END arch;
 
 LIBRARY IEEE;
 USE ieee.std_logic_1164.all;
+USE ieee.std_logic_unsigned.all;
 use IEEE.VITAL_Timing.all;
 use IEEE.VITAL_Primitives.all;
 use work.stratixii_atom_pack.all;
 
 ENTITY stratixii_mac_dynamic_mux IS
    PORT (
-      ab                      : IN std_logic_vector(71 DOWNTO 0) := (others => '0');
-      cd                      : IN std_logic_vector(71 DOWNTO 0) := (others => '0');
-      sata                    : IN std_logic := '0';
-      satb                    : IN std_logic := '0';
-      satc                    : IN std_logic := '0';
-      satd                    : IN std_logic := '0';
-      multsatab               : IN std_logic := '0';
-      multsatcd               : IN std_logic := '0';
-      outsatab                : IN std_logic := '0';
-      outsatcd                : IN std_logic := '0';
-      multabsaturate          : IN std_logic := '0';
-      multcdsaturate          : IN std_logic := '0';
-      saturateab              : IN std_logic := '0';
-      saturatecd              : IN std_logic := '0';
-      overab                  : IN std_logic := '0';
-      overcd                  : IN std_logic := '0';
-      sum                     : IN std_logic_vector(71 DOWNTO 0) := (others => '0');
-      m36                     : IN std_logic_vector(71 DOWNTO 0) := (others => '0');
-      bypass                  : IN std_logic_vector(143 DOWNTO 0) := (others => '0');
-      operation               : IN std_logic_vector(3 DOWNTO 0) := (others => '0');
-      dataout                 : OUT std_logic_vector(143 DOWNTO 0) := (others => '0');
-      accoverflow             : OUT std_logic := '0');
+      ab                      : IN std_logic_vector(71 DOWNTO 0) := (others => '0');   
+      cd                      : IN std_logic_vector(71 DOWNTO 0) := (others => '0');   
+      sata                    : IN std_logic := '0';   
+      satb                    : IN std_logic := '0';   
+      satc                    : IN std_logic := '0';   
+      satd                    : IN std_logic := '0';   
+      multsatab               : IN std_logic := '0';   
+      multsatcd               : IN std_logic := '0';   
+      outsatab                : IN std_logic := '0';   
+      outsatcd                : IN std_logic := '0';   
+      multabsaturate          : IN std_logic := '0';   
+      multcdsaturate          : IN std_logic := '0';   
+      saturateab              : IN std_logic := '0';   
+      saturatecd              : IN std_logic := '0';   
+      overab                  : IN std_logic := '0';   
+      overcd                  : IN std_logic := '0';   
+      sum                     : IN std_logic_vector(71 DOWNTO 0) := (others => '0');   
+      m36                     : IN std_logic_vector(71 DOWNTO 0) := (others => '0');   
+      bypass                  : IN std_logic_vector(143 DOWNTO 0) := (others => '0');   
+      operation               : IN std_logic_vector(3 DOWNTO 0) := (others => '0');   
+      dataout                 : OUT std_logic_vector(143 DOWNTO 0) := (others => '0');   
+      accoverflow             : OUT std_logic := '0');   
 END stratixii_mac_dynamic_mux;
 
 ARCHITECTURE arch OF stratixii_mac_dynamic_mux IS
 
 
-   SIGNAL dataout_tmp              :  std_logic_vector(143 DOWNTO 0) := (others => '0');
-   SIGNAL accoverflow_tmp          :  std_logic := '0';
-   SIGNAL dataout_tmp1            :  std_logic_vector(143 DOWNTO 0) := (others => '0');
-   SIGNAL accoverflow_tmp2        :  std_logic := '0';
+   SIGNAL dataout_tmp              :  std_logic_vector(143 DOWNTO 0) := (others => '0');   
+   SIGNAL accoverflow_tmp          :  std_logic := '0';   
+   SIGNAL dataout_tmp1            :  std_logic_vector(143 DOWNTO 0) := (others => '0');   
+   SIGNAL accoverflow_tmp2        :  std_logic := '0';   
 
 BEGIN
    dataout <= dataout_tmp1;
@@ -9049,136 +9716,629 @@ BEGIN
    BEGIN
       CASE operation IS
          WHEN "0000" =>
-                  dataout_tmp_tmp3 := bypass;
-                  accoverflow_tmp_tmp4 := '0';
+                  dataout_tmp_tmp3 := bypass;    
+                  accoverflow_tmp_tmp4 := '0';    
          WHEN "0100" =>
                   temp_tmp5 := saturateab & multabsaturate;
                   CASE temp_tmp5 IS
                      WHEN "00" =>
-                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 36) & ab(35 DOWNTO 0);
+                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 36) & ab(35 DOWNTO 0);    
                      WHEN "01" =>
-                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 36) & ab(35 DOWNTO 2) & multsatab & ab(0);
+                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 36) & ab(35 DOWNTO 2) & multsatab & ab(0);    
                      WHEN "10" =>
-                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 36) & ab(35 DOWNTO 3) & outsatab & ab(1 DOWNTO 0);
+                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 36) & ab(35 DOWNTO 3) & outsatab & ab(1 DOWNTO 0);    
                      WHEN "11" =>
-                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 36) & ab(35 DOWNTO 3) & outsatab & multsatab & ab(0);
+                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 36) & ab(35 DOWNTO 3) & outsatab & multsatab & ab(0);    
                      WHEN OTHERS  =>
-                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 36) & ab(35 DOWNTO 0);
-
+                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 36) & ab(35 DOWNTO 0);    
+                     
                   END CASE;
-                  accoverflow_tmp_tmp4 := overab;
+                  accoverflow_tmp_tmp4 := overab;    
          WHEN "0001" =>
                   IF (multabsaturate = '1') THEN
-                     dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 2) & satb & sata;
+                     dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 2) & satb & sata;    
                   ELSE
-                     dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 0);
+                     dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 0);    
                   END IF;
-                  accoverflow_tmp_tmp4 := '0';
+                  accoverflow_tmp_tmp4 := '0';    
          WHEN "0010" =>
                   temp_tmp6 := multsatcd & multsatab;
                   CASE temp_tmp6 IS
                      WHEN "00" =>
-                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & sum(71 DOWNTO 0);
-                              accoverflow_tmp_tmp4 := '0';
+                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & sum(71 DOWNTO 0);    
+                              accoverflow_tmp_tmp4 := '0';    
                      WHEN "01" =>
-                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & sum(71 DOWNTO 2) & satb & sata;
-                              accoverflow_tmp_tmp4 := '0';
+                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & sum(71 DOWNTO 2) & satb & sata;    
+                              accoverflow_tmp_tmp4 := '0';    
                      WHEN "10" =>
-                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & sum(71 DOWNTO 3) & satc & sum(1 DOWNTO 0);
-                              accoverflow_tmp_tmp4 := satd;
+                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & sum(71 DOWNTO 3) & satc & sum(1 DOWNTO 0);    
+                              accoverflow_tmp_tmp4 := satd;    
                      WHEN "11" =>
-                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & sum(71 DOWNTO 3) & satc & satb & sata;
-                              accoverflow_tmp_tmp4 := satd;
+                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & sum(71 DOWNTO 3) & satc & satb & sata;    
+                              accoverflow_tmp_tmp4 := satd;    
                      WHEN OTHERS  =>
-                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & sum(71 DOWNTO 0);
-                              accoverflow_tmp_tmp4 := '0';
-
+                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & sum(71 DOWNTO 0);    
+                              accoverflow_tmp_tmp4 := '0';    
+                     
                   END CASE;
          WHEN "0111" =>
-                  dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & m36;
-                  accoverflow_tmp_tmp4 := '0';
+                  dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & m36;    
+                  accoverflow_tmp_tmp4 := '0';    
          WHEN "1100" =>
                   temp_tmp7 := saturatecd & saturateab & multsatcd & multsatab;
                   CASE temp_tmp7 IS
                      WHEN "0000" =>
-                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 0);
+                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 0);    
                      WHEN "0001" =>
-                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 2) & multsatab & ab(0);
+                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 2) & multsatab & ab(0);    
                      WHEN "0010" =>
-                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 2) & multsatcd & cd(0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 0);
+                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 2) & multsatcd & cd(0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 0);    
                      WHEN "0011" =>
-                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 2) & multsatcd & cd(0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 2) & multsatab & ab(0);
+                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 2) & multsatcd & cd(0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 2) & multsatab & ab(0);    
                      WHEN "0100" =>
-                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 3) & outsatab & ab(1 DOWNTO 0);
+                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 3) & outsatab & ab(1 DOWNTO 0);    
                      WHEN "0101" =>
-                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 3) & outsatab & multsatab & ab(0);
+                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 3) & outsatab & multsatab & ab(0);    
                      WHEN "0110" =>
-                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 2) & multsatcd & cd(0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 3) & outsatab & ab(1 DOWNTO 0);
+                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 2) & multsatcd & cd(0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 3) & outsatab & ab(1 DOWNTO 0);    
                      WHEN "0111" =>
-                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 2) & multsatcd & cd(0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 3) & outsatab & multsatab & ab(0);
+                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 2) & multsatcd & cd(0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 3) & outsatab & multsatab & ab(0);    
                      WHEN "1000" =>
-                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 3) & outsatcd & cd(1 DOWNTO 0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 0);
+                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 3) & outsatcd & cd(1 DOWNTO 0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 0);    
                      WHEN "1001" =>
-                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 3) & outsatcd & cd(1 DOWNTO 0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 2) & multsatab & ab(0);
+                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 3) & outsatcd & cd(1 DOWNTO 0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 2) & multsatab & ab(0);    
                      WHEN "1010" =>
-                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 3) & outsatcd & multsatcd & cd(0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 0);
+                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 3) & outsatcd & multsatcd & cd(0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 0);    
                      WHEN "1011" =>
-                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 3) & outsatcd & multsatcd & cd(0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 2) & multsatab & ab(0);
+                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 3) & outsatcd & multsatcd & cd(0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 2) & multsatab & ab(0);    
                      WHEN "1100" =>
-                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 3) & outsatcd & cd(1 DOWNTO 0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 3) & outsatab & ab(1 DOWNTO 0);
+                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 3) & outsatcd & cd(1 DOWNTO 0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 3) & outsatab & ab(1 DOWNTO 0);    
                      WHEN "1101" =>
-                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 3) & outsatcd & cd(1 DOWNTO 0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 3) & outsatab & multsatab & ab(0);
+                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 3) & outsatcd & cd(1 DOWNTO 0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 3) & outsatab & multsatab & ab(0);    
                      WHEN "1110" =>
-                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 3) & outsatcd & multsatcd & cd(0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 3) & outsatab & ab(1 DOWNTO 0);
+                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 3) & outsatcd & multsatcd & cd(0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 3) & outsatab & ab(1 DOWNTO 0);    
                      WHEN "1111" =>
-                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 3) & outsatcd & multsatcd & cd(0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 3) & outsatab & multsatab & ab(0);
+                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 3) & outsatcd & multsatcd & cd(0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 3) & outsatab & multsatab & ab(0);    
                      WHEN OTHERS  =>
-                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 0);
-
+                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 0) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 0);    
+                     
                   END CASE;
-                  accoverflow_tmp_tmp4 := overab;
+                  accoverflow_tmp_tmp4 := overab;    
          WHEN "1101" =>
                   temp_tmp8 := saturateab & multabsaturate;
                   CASE temp_tmp8 IS
                      WHEN "00" =>
-                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 36) & ab(35 DOWNTO 0);
+                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 36) & ab(35 DOWNTO 0);    
                      WHEN "01" =>
-                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 2) & multsatab & ab(0);
+                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 2) & multsatab & ab(0);    
                      WHEN "10" =>
-                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 3) & outsatab & ab(1 DOWNTO 0);
+                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 3) & outsatab & ab(1 DOWNTO 0);    
                      WHEN "11" =>
-                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 3) & outsatab & multsatab & ab(0);
+                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 3) & outsatab & multsatab & ab(0);    
                      WHEN OTHERS  =>
-                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 36) & ab(35 DOWNTO 0);
-
+                              dataout_tmp_tmp3 := bypass(143 DOWNTO 72) & ab(71 DOWNTO 53) & overab & ab(51 DOWNTO 36) & ab(35 DOWNTO 0);    
+                     
                   END CASE;
-                  accoverflow_tmp_tmp4 := overab;
+                  accoverflow_tmp_tmp4 := overab;    
          WHEN "1110" =>
                   temp_tmp9 := saturatecd & multcdsaturate;
                   CASE temp_tmp9 IS
                      WHEN "00" =>
-                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 0) & bypass(71 DOWNTO 0);
+                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 0) & bypass(71 DOWNTO 0);    
                      WHEN "01" =>
-                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 2) & multsatcd & cd(0) & bypass(71 DOWNTO 0);
+                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 2) & multsatcd & cd(0) & bypass(71 DOWNTO 0);    
                      WHEN "10" =>
-                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 3) & outsatcd & cd(1 DOWNTO 0) & bypass(71 DOWNTO 0);
+                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 3) & outsatcd & cd(1 DOWNTO 0) & bypass(71 DOWNTO 0);    
                      WHEN "11" =>
-                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 3) & outsatcd & multsatcd & cd(0) & bypass(71 DOWNTO 0);
+                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 3) & outsatcd & multsatcd & cd(0) & bypass(71 DOWNTO 0);    
                      WHEN OTHERS  =>
-                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 0) & bypass(71 DOWNTO 0);
-
+                              dataout_tmp_tmp3 := cd(71 DOWNTO 53) & overcd & cd(51 DOWNTO 0) & bypass(71 DOWNTO 0);    
+                     
                   END CASE;
-                  accoverflow_tmp_tmp4 := overcd;
+                  accoverflow_tmp_tmp4 := overcd;    
          WHEN OTHERS  =>
-                  dataout_tmp_tmp3 := bypass;
-                  accoverflow_tmp_tmp4 := '0';
-
+                  dataout_tmp_tmp3 := bypass;    
+                  accoverflow_tmp_tmp4 := '0';    
+         
       END CASE;
       dataout_tmp <= dataout_tmp_tmp3;
       accoverflow_tmp <= accoverflow_tmp_tmp4;
    END PROCESS;
    dataout_tmp1 <= dataout_tmp ;
    accoverflow_tmp2 <= accoverflow_tmp ;
+END arch;
+--/////////////////////////////////////////////////////////////////////////////
+--
+--                            STRATIXII_MAC_OUT_INTERNAL
+--
+--/////////////////////////////////////////////////////////////////////////////
+LIBRARY IEEE;
+USE ieee.std_logic_1164.all;
+USE ieee.std_logic_unsigned.all;
+use ieee.std_logic_arith.all;
+use IEEE.VITAL_Timing.all;
+use IEEE.VITAL_Primitives.all;
+use work.stratixii_atom_pack.all;
+use work.stratixii_mac_addnsub;
+use work.stratixii_mac_dynamic_mux;
+use work.stratixii_mac_dynamic_src;
+use work.stratixii_mac_rs_block;
+
+ENTITY stratixii_mac_out_internal IS
+   GENERIC (
+      operation_mode                 :  string := "output_only";    
+      dataa_width                    :  integer := 36;    
+      datab_width                    :  integer := 36;    
+      datac_width                    :  integer := 36;    
+      datad_width                    :  integer := 36;
+      tmp_width                      :  integer := 144;
+      dataout_width                  :  integer := 144;
+      tipd_dataa        : VitalDelayArrayType01(35 downto 0):= (OTHERS => DefPropDelay01);
+      tipd_datab        : VitalDelayArrayType01(35 downto 0):= (OTHERS => DefPropDelay01);
+      tipd_datac        : VitalDelayArrayType01(35 downto 0):= (OTHERS => DefPropDelay01);
+      tipd_datad        : VitalDelayArrayType01(35 downto 0):= (OTHERS => DefPropDelay01);
+      tipd_feedback        : VitalDelayArrayType01(143 downto 0):= (OTHERS => DefPropDelay01);
+      tpd_dataa_dataout         : VitalDelayArrayType01(144*36-1 downto 0) := (others => DefPropDelay01);
+      tpd_datab_dataout         : VitalDelayArrayType01(144*36-1 downto 0) := (others => DefPropDelay01);
+      tpd_datac_dataout         : VitalDelayArrayType01(144*36-1 downto 0) := (others => DefPropDelay01);
+      tpd_datad_dataout         : VitalDelayArrayType01(144*36-1 downto 0) := (others => DefPropDelay01);
+      tpd_feedback_dataout      : VitalDelayArrayType01(144*144-1 downto 0) := (others => DefPropDelay01);
+      tpd_signx_dataout         : VitalDelayArrayType01(143 downto 0) := (others => DefPropDelay01);
+      tpd_signy_dataout         : VitalDelayArrayType01(143 downto 0) := (others => DefPropDelay01);
+      tpd_addnsub0_dataout      : VitalDelayArrayType01(143 downto 0) := (others => DefPropDelay01);
+      tpd_addnsub1_dataout      : VitalDelayArrayType01(143 downto 0) := (others => DefPropDelay01);
+      tpd_zeroacc_dataout       : VitalDelayArrayType01(143 downto 0) := (others => DefPropDelay01);
+      tpd_zeroacc1_dataout      : VitalDelayArrayType01(143 downto 0) := (others => DefPropDelay01);
+      tpd_multabsaturate_dataout: VitalDelayArrayType01(143 downto 0) := (others => DefPropDelay01);
+      tpd_multcdsaturate_dataout: VitalDelayArrayType01(143 downto 0) := (others => DefPropDelay01);
+      tpd_mode0_dataout         : VitalDelayArrayType01(143 downto 0) := (others => DefPropDelay01);
+      tpd_mode1_dataout         : VitalDelayArrayType01(143 downto 0) := (others => DefPropDelay01);
+      tpd_dataa_accoverflow     : VitalDelayArrayType01(35 downto 0) := (others => DefPropDelay01);
+      tpd_feedback_accoverflow     : VitalDelayType01 := DefPropDelay01;
+      tpd_signx_accoverflow     : VitalDelayType01 := DefPropDelay01;
+      tpd_signy_accoverflow     : VitalDelayType01 := DefPropDelay01;
+      tpd_addnsub0_accoverflow  : VitalDelayType01 := DefPropDelay01;
+      tpd_addnsub1_accoverflow  : VitalDelayType01 := DefPropDelay01;
+      tpd_zeroacc_accoverflow   : VitalDelayType01 := DefPropDelay01;
+      tpd_zeroacc1_accoverflow  : VitalDelayType01 := DefPropDelay01;
+      tpd_mode0_accoverflow     : VitalDelayType01 := DefPropDelay01;
+      tpd_mode1_accoverflow     : VitalDelayType01 := DefPropDelay01;
+      XOn: Boolean              := DefGlitchXOn;   
+      MsgOn: Boolean            := DefGlitchMsgOn
+      );
+   PORT (
+      dataa                   : IN std_logic_vector(dataa_width -1 DOWNTO 0) := (others => '0');   
+      datab                   : IN std_logic_vector(datab_width -1 DOWNTO 0) := (others => '0');   
+      datac                   : IN std_logic_vector(datac_width -1 DOWNTO 0) := (others => '0');   
+      datad                   : IN std_logic_vector(datad_width -1 DOWNTO 0) := (others => '0');   
+      mode0                   : IN std_logic := '0';   
+      mode1                   : IN std_logic := '0';   
+      roundab                 : IN std_logic := '0';   
+      saturateab              : IN std_logic := '0';   
+      roundcd                 : IN std_logic := '0';   
+      saturatecd              : IN std_logic := '0';   
+      multabsaturate          : IN std_logic := '0';   
+      multcdsaturate          : IN std_logic := '0';   
+      signx                   : IN std_logic := '0';   
+      signy                   : IN std_logic := '0';   
+      addnsub0                : IN std_logic := '0';   
+      addnsub1                : IN std_logic := '0';   
+      zeroacc                 : IN std_logic := '0';   
+      zeroacc1                : IN std_logic := '0';   
+      feedback       		  : IN std_logic_vector(tmp_width -1 DOWNTO 0) := (others => '0');   
+      dataout                 : OUT std_logic_vector(dataout_width -1 DOWNTO 0) := (others => '0');   
+      accoverflow             : OUT std_logic := '0'
+      );   
+END stratixii_mac_out_internal;
+
+ARCHITECTURE arch OF stratixii_mac_out_internal IS
+
+   COMPONENT stratixii_mac_addnsub
+      GENERIC (
+          dataa_width                    :  integer := 36;    
+          datab_width                    :  integer := 36;    
+          block_type                     :  string := "ab";    
+          datac_width                    :  integer := 36;    
+          datad_width                    :  integer := 36);
+      PORT (
+         dataa                   : IN  std_logic_vector(71 DOWNTO 0) := (others => '0');
+         datab                   : IN  std_logic_vector(71 DOWNTO 0) := (others => '0');
+         datac                   : IN  std_logic_vector(71 DOWNTO 0) := (others => '0');
+         datad                   : IN  std_logic_vector(71 DOWNTO 0) := (others => '0');
+         signb                   : IN  std_logic := '0';
+         signa                   : IN  std_logic := '0';
+         operation               : IN  std_logic_vector(3 DOWNTO 0) := (others => '0');
+         addnsub                 : IN  std_logic := '0';
+         dataout                 : OUT std_logic_vector(71 DOWNTO 0) := (others => '0');
+         overflow                : OUT std_logic := '0');
+   END COMPONENT;
+
+   COMPONENT stratixii_mac_dynamic_mux
+      PORT (
+         ab                      : IN  std_logic_vector(71 DOWNTO 0) := (others => '0');
+         cd                      : IN  std_logic_vector(71 DOWNTO 0) := (others => '0');
+         sata                    : IN  std_logic := '0';
+         satb                    : IN  std_logic := '0';
+         satc                    : IN  std_logic := '0';
+         satd                    : IN  std_logic := '0';
+         multsatab               : IN  std_logic := '0';
+         multsatcd               : IN  std_logic := '0';
+         outsatab                : IN  std_logic := '0';
+         outsatcd                : IN  std_logic := '0';
+         multabsaturate          : IN  std_logic := '0';
+         multcdsaturate          : IN  std_logic := '0';
+         saturateab              : IN  std_logic := '0';
+         saturatecd              : IN  std_logic := '0';
+         overab                  : IN  std_logic := '0';
+         overcd                  : IN  std_logic := '0';
+         sum                     : IN  std_logic_vector(71 DOWNTO 0) := (others => '0');
+         m36                     : IN  std_logic_vector(71 DOWNTO 0) := (others => '0');
+         bypass                  : IN  std_logic_vector(143 DOWNTO 0) := (others => '0');
+         operation               : IN  std_logic_vector(3 DOWNTO 0) := (others => '0');
+         dataout                 : OUT std_logic_vector(143 DOWNTO 0) := (others => '0');
+         accoverflow             : OUT std_logic := '0');
+   END COMPONENT;
+
+   COMPONENT stratixii_mac_dynamic_src
+      GENERIC (
+          dataa_width                    :  integer := 36;    
+          datab_width                    :  integer := 36;    
+          datac_width                    :  integer := 36;    
+          datad_width                    :  integer := 36);
+      PORT (
+         accuma                  : IN  std_logic_vector(51 DOWNTO 0) := (others => '0');
+         accumc                  : IN  std_logic_vector(51 DOWNTO 0) := (others => '0');
+         dataa                   : IN  std_logic_vector(71 DOWNTO 0) := (others => '0');
+         datab                   : IN  std_logic_vector(71 DOWNTO 0) := (others => '0');
+         datac                   : IN  std_logic_vector(71 DOWNTO 0) := (others => '0');
+         datad                   : IN  std_logic_vector(71 DOWNTO 0) := (others => '0');
+         multabsaturate          : IN  std_logic := '0';
+         multcdsaturate          : IN  std_logic := '0';
+         signa                   : IN  std_logic := '0';
+         signb                   : IN  std_logic := '0';
+         zeroacc                 : IN  std_logic := '0';
+         zeroacc1                : IN  std_logic := '0';
+         operation               : IN  std_logic_vector(3 DOWNTO 0) := (others => '0');
+         outa                    : OUT std_logic_vector(71 DOWNTO 0) := (others => '0');
+         outb                    : OUT std_logic_vector(71 DOWNTO 0) := (others => '0');
+         outc                    : OUT std_logic_vector(71 DOWNTO 0) := (others => '0');
+         outd                    : OUT std_logic_vector(71 DOWNTO 0) := (others => '0');
+         sata                    : OUT std_logic := '0';
+         satb                    : OUT std_logic := '0';
+         satc                    : OUT std_logic := '0';
+         satd                    : OUT std_logic := '0';
+         satab                   : OUT std_logic := '0';
+         satcd                   : OUT std_logic := '0');
+   END COMPONENT;
+
+   COMPONENT stratixii_mac_rs_block
+      GENERIC (
+        tpd_saturate_dataout           : VitalDelayArrayType01(71 downto 0) := (others => DefPropDelay01);
+        tpd_round_dataout              : VitalDelayArrayType01(71 downto 0) := (others => DefPropDelay01);
+        block_type                     :  string := "mac_mult";    
+        dataa_width                    :  integer := 18;    
+        datab_width                    :  integer := 18);                
+      PORT (
+         operation               : IN  std_logic_vector(3 DOWNTO 0) := (others => '0');
+         round                   : IN  std_logic := '0';
+         saturate                : IN  std_logic := '0';
+         addnsub                 : IN  std_logic := '0';
+         signa                   : IN  std_logic := '0';
+         signb                   : IN  std_logic := '0';
+         signsize                : IN  std_logic_vector(7 DOWNTO 0) := (others => '0');
+         roundsize               : IN  std_logic_vector(7 DOWNTO 0) := (others => '0');
+         dataoutsize             : IN  std_logic_vector(7 DOWNTO 0) := (others => '0');
+         dataa                   : IN  std_logic_vector(dataa_width-1 DOWNTO 0) := (others => '0');
+         datab                   : IN  std_logic_vector(datab_width-1 DOWNTO 0) := (others => '0');
+         datain                  : IN  std_logic_vector(71 DOWNTO 0) := (others => '0');
+         dataout                 : OUT std_logic_vector(71 DOWNTO 0) := (others => '0'));
+   END COMPONENT;
+
+
+   SIGNAL dataout_tmp              :  std_logic_vector(143 DOWNTO 0) := (others => '0');   
+   SIGNAL accoverflow_tmp          :  std_logic := '0';   
+   SIGNAL dataa_src                :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL datab_src                :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL datac_src                :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL datad_src                :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL sata                     :  std_logic := '0';   
+   SIGNAL satb                     :  std_logic := '0';   
+   SIGNAL satc                     :  std_logic := '0';   
+   SIGNAL satd                     :  std_logic := '0';   
+   SIGNAL satab                    :  std_logic := '0';   
+   SIGNAL satcd                    :  std_logic := '0';   
+   SIGNAL addnsub_ab_out           :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL addnsub_cd_out           :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL addnsub_sum              :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL overflow_ab              :  std_logic := '0';   
+   SIGNAL overflow_cd              :  std_logic := '0';   
+   SIGNAL overflow_sum             :  std_logic := '0';   
+   SIGNAL rs_block_ab_size         :  std_logic_vector(7 DOWNTO 0) := (others => '0');   
+   SIGNAL rs_block_cd_size         :  std_logic_vector(7 DOWNTO 0) := (others => '0');   
+   SIGNAL rs_block_ab_sign_size    :  std_logic_vector(7 DOWNTO 0) := (others => '0');   
+   SIGNAL rs_block_cd_sign_size    :  std_logic_vector(7 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_low              :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_high             :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL dataa_ipd                :  std_logic_vector(35 DOWNTO 0) := (others => '0');   
+   SIGNAL datab_ipd                :  std_logic_vector(35 DOWNTO 0) := (others => '0');   
+   SIGNAL datac_ipd                :  std_logic_vector(35 DOWNTO 0) := (others => '0');   
+   SIGNAL datad_ipd                :  std_logic_vector(35 DOWNTO 0) := (others => '0');   
+   SIGNAL feedback_ipd                :  std_logic_vector(143 DOWNTO 0) := (others => '0');   
+   SIGNAL saturateab_ipd           :  std_logic := '0';   
+   SIGNAL saturatecd_ipd           :  std_logic := '0';   
+   SIGNAL multabsaturate_ipd       :  std_logic := '0';   
+   SIGNAL multcdsaturate_ipd       :  std_logic := '0';   
+   SIGNAL dataout_tbuf             :  std_logic_vector(143 DOWNTO 0) := (others => '0');   
+   SIGNAL accoverflow_tbuf         :  std_logic;   
+   SIGNAL operation                :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL signx_or_y               :  std_logic;   
+   SIGNAL addnsub_signa_input 	   :  std_logic;
+   SIGNAL addnsub_signb_input 	   :  std_logic;
+   SIGNAL feedback_accuma          :  std_logic_vector(51 DOWNTO 0) := (others => '0');   
+   SIGNAL feedback_accumc          :  std_logic_vector(51 DOWNTO 0) := (others => '0');   
+   SIGNAL xory_addnsub0            :  std_logic := '0';   
+   SIGNAL xory_addnsub1            :  std_logic := '0';   
+   SIGNAL tmp_4                   :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL tmp_6                   :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL tmp_8                   :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL tmp_10                  :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL port_tmp38              :  std_logic_vector(7 DOWNTO 0) := (others => '0');   
+   SIGNAL port_tmp43              :  std_logic_vector(7 DOWNTO 0) := (others => '0');   
+   SIGNAL port_tmp50              :  std_logic := '0';   
+   SIGNAL tmp_59                  :  std_logic_vector(143 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_tmp1            :  std_logic_vector(143 DOWNTO 0) := (others => '0');   
+   SIGNAL accoverflow_tmp2        :  std_logic := '0';   
+
+BEGIN
+   dataa_ipd(dataa_width -1 downto 0) <= dataa;   
+   datab_ipd(datab_width -1 downto 0) <= datab;   
+   datac_ipd(datac_width -1 downto 0) <= datac;   
+   datad_ipd(datad_width -1 downto 0) <= datad; 
+   
+   WireDelay : block
+    begin
+        loopbits : FOR i in feedback'RANGE GENERATE
+            VitalWireDelay (feedback_ipd(i), feedback(i), tipd_feedback(i));
+        END GENERATE;
+    end block;
+    
+   multabsaturate_ipd <= multabsaturate ;   
+   multcdsaturate_ipd <= multcdsaturate ;   
+   saturateab_ipd <= saturateab ;   
+   saturatecd_ipd <= saturatecd ;   
+   operation <= "0000" WHEN (operation_mode = "output_only") ELSE "0001" WHEN (operation_mode = "one_level_adder") ELSE "0010" WHEN (operation_mode = "two_level_adder") ELSE "0100" WHEN (operation_mode = "accumulator") ELSE "0111" WHEN (operation_mode = "36_bit_multiply") ELSE "0000" WHEN (((((operation_mode = "dynamic") AND (mode0 = '0')) AND (mode1 = '0')) AND (zeroacc = '0')) AND (zeroacc1 = '0')) ELSE "1100" WHEN (((operation_mode = "dynamic") AND (mode0 = '1')) AND (mode1 = '1')) ELSE "1101" WHEN (((operation_mode = "dynamic") AND (mode0 = '1')) AND (mode1 = '0')) ELSE "1110" WHEN (((operation_mode = "dynamic") AND (mode0 = '0')) AND (mode1 = '1')) ELSE "0111" WHEN (((((operation_mode = "dynamic") AND (mode0 = '0')) AND (mode1 = '0')) AND (zeroacc = '1')) AND (zeroacc1 = '1')) ELSE "0000" ;
+   addnsub_signa_input <= signx WHEN (operation_mode = "36_bit_multiply") ELSE signx WHEN (((((operation_mode = "dynamic") AND (mode0 = '0')) AND (mode1 = '0')) AND (zeroacc = '1')) AND (zeroacc1 = '1')) ELSE signx_or_y;
+   addnsub_signb_input <= signy WHEN (operation_mode = "36_bit_multiply") ELSE signy WHEN (((((operation_mode = "dynamic") AND (mode0 = '0')) AND (mode1 = '0')) AND (zeroacc = '1')) AND (zeroacc1 = '1')) ELSE signx_or_y;
+   tmp_4(dataa_ipd'range) <= dataa_ipd;
+   tmp_6(datab_ipd'range) <= datab_ipd;
+   tmp_8(datac_ipd'range) <= datac_ipd;
+   tmp_10(datad_ipd'range) <= datad_ipd;
+   dynamic_src : stratixii_mac_dynamic_src 
+      GENERIC MAP (
+         dataa_width => dataa_width,
+         datab_width => datab_width,
+         datac_width => datac_width,
+         datad_width => datad_width)
+      PORT MAP (
+         accuma => feedback_accuma,
+         accumc => feedback_accumc,
+         dataa => tmp_4,
+         datab => tmp_6,
+         datac => tmp_8,
+         datad => tmp_10,
+         multabsaturate => multabsaturate_ipd,
+         multcdsaturate => multcdsaturate_ipd,
+         zeroacc => zeroacc,
+         zeroacc1 => zeroacc1,
+         signa => signx,
+         signb => signy,
+         operation => operation,
+         sata => sata,
+         satb => satb,
+         satc => satc,
+         satd => satd,
+         satab => satab,
+         satcd => satcd,
+         outa => dataa_src,
+         outb => datab_src,
+         outc => datac_src,
+         outd => datad_src);   
+   
+   signx_or_y <= signx OR signy ;
+   feedback_accuma <= feedback(52 DOWNTO 37) & feedback(35 DOWNTO 0) WHEN (operation_mode = "dynamic") ELSE feedback(51 DOWNTO 0) ;
+   feedback_accumc <= feedback(124 DOWNTO 109) & feedback(107 DOWNTO 72) WHEN (operation_mode = "dynamic") ELSE feedback(123 DOWNTO 72) ;
+   addnsub_ab : stratixii_mac_addnsub 
+      GENERIC MAP (
+         block_type => "ab",
+         dataa_width => dataa_width,
+         datab_width => datab_width,
+         datac_width => datac_width,
+         datad_width => datad_width)
+      PORT MAP (
+         dataa => dataa_src,
+         datab => datab_src,
+         datac => datac_src,
+         datad => datad_src,
+         signa => addnsub_signa_input,
+         signb => addnsub_signb_input,
+         operation => operation,
+         addnsub => addnsub0,
+         dataout => addnsub_ab_out,
+         overflow => overflow_ab);   
+   
+   addnsub_cd : stratixii_mac_addnsub 
+      GENERIC MAP (
+         block_type => "cd",
+         dataa_width => dataa_width,
+         datab_width => datab_width,
+         datac_width => datac_width,
+         datad_width => datad_width)
+      PORT MAP (
+         dataa => dataa_src,
+         datab => datab_src,
+         datac => datac_src,
+         datad => datad_src,
+         signa => signx_or_y,
+         signb => signx_or_y,
+         operation => operation,
+         addnsub => addnsub1,
+         dataout => addnsub_cd_out,
+         overflow => overflow_cd);   
+   
+   port_tmp38 <= "00001111";
+   mac_rs_block_low : stratixii_mac_rs_block 
+      GENERIC MAP (
+         block_type => "ab",
+         dataa_width => dataa_width,
+         datab_width => datab_width)
+      PORT MAP (
+         operation => operation,
+         round => roundab,
+         saturate => saturateab_ipd,
+         addnsub => addnsub0,
+         signa => signx_or_y,
+         signb => signx_or_y,
+         signsize => rs_block_ab_sign_size,
+         roundsize => port_tmp38,
+         dataoutsize => rs_block_ab_size,
+         dataa => dataa_src(dataa_width-1 downto 0),
+         datab => datab_src(datab_width-1 downto 0),
+         datain => addnsub_ab_out,
+         dataout => dataout_low);   
+   
+   rs_block_ab_size <= CONV_STD_LOGIC_VECTOR((datab_width + 16), 8) WHEN (operation(2) = '1') ELSE CONV_STD_LOGIC_VECTOR((dataa_width + 1), 8) WHEN (unsigned(operation) = 1) ELSE CONV_STD_LOGIC_VECTOR((dataa_width + 1), 8) WHEN (unsigned(operation) = 2) ELSE "00100100" ;
+   rs_block_ab_sign_size <= "00010010" WHEN (operation(2) = '1') ELSE "00000011" WHEN (unsigned(operation) = 1) OR (unsigned(operation) = 2) ELSE "00000010" ;
+   port_tmp43 <= "00001111";
+   mac_rs_block_high : stratixii_mac_rs_block 
+      GENERIC MAP (
+         block_type => "cd",
+         dataa_width => datac_width,
+         datab_width => datad_width)
+      PORT MAP (
+         operation => operation,
+         round => roundcd,
+         saturate => saturatecd_ipd,
+         addnsub => addnsub1,
+         signa => signx_or_y,
+         signb => signx_or_y,
+         signsize => rs_block_cd_sign_size,
+         roundsize => port_tmp43,
+         dataoutsize => rs_block_cd_size,
+         dataa => datac_src(datac_width -1 downto 0),
+         datab => datad_src(datad_width -1 downto 0),
+         datain => addnsub_cd_out,
+         dataout => dataout_high);   
+   
+   rs_block_cd_size <= CONV_STD_LOGIC_VECTOR((datad_width + 16), 8) WHEN (operation(2) = '1') ELSE CONV_STD_LOGIC_VECTOR((datac_width + 1), 8) WHEN (unsigned(operation) = 1) ELSE CONV_STD_LOGIC_VECTOR((datac_width + 1), 8) WHEN (unsigned(operation) = 2) ELSE "00100100" ;
+   rs_block_cd_sign_size <= "00010010" WHEN (operation(2) = '1') ELSE "00000011" WHEN (unsigned(operation) = 1) OR (unsigned(operation) = 2) ELSE "00000010" ;
+   port_tmp50 <= '1';
+   addnsub_sum_abcd : stratixii_mac_addnsub 
+      GENERIC MAP (
+         block_type => "sum",
+         dataa_width => dataa_width,
+         datab_width => dataa_width,
+         datac_width => datac_width,
+         datad_width => datad_width)
+      PORT MAP (
+         dataa => dataout_low,
+         datab => dataout_high,
+         datac => datac_src,
+         datad => datad_src,
+         signa => xory_addnsub0,
+         signb => xory_addnsub1,
+         operation => operation,
+         addnsub => port_tmp50,
+         dataout => addnsub_sum,
+         overflow => overflow_sum);   
+   
+   xory_addnsub0 <= signx_or_y OR NOT addnsub0 ;
+   xory_addnsub1 <= signx_or_y OR NOT addnsub1 ;
+   tmp_59 <= datad_ipd & datac_ipd & datab_ipd & dataa_ipd;
+   dynamic_mux : stratixii_mac_dynamic_mux 
+      PORT MAP (
+         ab => dataout_low,
+         cd => dataout_high,
+         sata => sata,
+         satb => satb,
+         satc => satc,
+         satd => satd,
+         multsatab => satab,
+         multsatcd => satcd,
+         outsatab => dataout_low(2),
+         outsatcd => dataout_high(2),
+         multabsaturate => multabsaturate_ipd,
+         multcdsaturate => multcdsaturate_ipd,
+         saturateab => saturateab_ipd,
+         saturatecd => saturatecd_ipd,
+         overab => overflow_ab,
+         overcd => overflow_cd,
+         sum => addnsub_sum,
+         m36 => addnsub_ab_out,
+         bypass => tmp_59,
+         operation => operation,
+         dataout => dataout_tmp,
+         accoverflow => accoverflow_tmp);   
+
+  PathDelay: for i in dataout'range generate
+    PROCESS(dataout_tmp(i))
+      variable dataout_VitalGlitchData : VitalGlitchDataType;
+    begin
+      VitalPathDelay01 (
+        OutSignal => dataout(i),
+        OutSignalName => "dataout",
+        OutTemp => dataout_tmp(i),
+              Paths => (1 => (dataa'last_event, tpd_dataa_dataout(i), TRUE),
+                  2 => (datab'last_event, tpd_datab_dataout(i), TRUE),
+                  3 => (datac'last_event, tpd_datac_dataout(i), TRUE),
+                  4 => (datad'last_event, tpd_datad_dataout(i), TRUE),
+                  5 => (signx'last_event, tpd_signx_dataout(i), TRUE),
+                  6 => (signy'last_event, tpd_signy_dataout(i), TRUE),
+                  7 => (addnsub0'last_event, tpd_addnsub0_dataout(i), TRUE),
+                  8 => (addnsub1'last_event, tpd_addnsub1_dataout(i), TRUE),
+                  9 => (zeroacc'last_event, tpd_zeroacc_dataout(i), TRUE),
+                  10 => (zeroacc1'last_event, tpd_zeroacc1_dataout(i), TRUE),
+                  11 => (mode0'last_event, tpd_mode0_dataout(i), TRUE),
+                  12 => (mode1'last_event, tpd_mode1_dataout(i), TRUE),
+                  13 => (multabsaturate'last_event, tpd_multabsaturate_dataout(i), TRUE),
+                  14 => (multcdsaturate'last_event, tpd_multcdsaturate_dataout(i), TRUE),
+                  15 => (feedback'last_event, tpd_feedback_dataout(i), TRUE)
+                  ),
+        GlitchData => dataout_VitalGlitchData,
+        Mode => DefGlitchMode,
+        XOn  => XOn,
+        MsgOn => MsgOn
+      );
+    end process;
+  end generate PathDelay;
+
+  acc: for i in dataa'range generate
+  PROCESS(accoverflow_tmp)
+    variable accoverflow_VitalGlitchData : VitalGlitchDataType;
+  BEGIN
+    VitalPathDelay01 (
+      OutSignal => accoverflow,
+      OutSignalName => "accoverflow",
+      OutTemp => accoverflow_tmp,
+      Paths => (1 => (dataa'last_event, tpd_dataa_accoverflow(i), TRUE),
+                2 => (signx'last_event, tpd_signx_accoverflow, TRUE),
+                3 => (signy'last_event, tpd_signy_accoverflow, TRUE),
+                4 => (addnsub0'last_event, tpd_addnsub0_accoverflow, TRUE),
+                5 => (addnsub1'last_event, tpd_addnsub1_accoverflow, TRUE),
+                6 => (zeroacc'last_event, tpd_zeroacc_accoverflow, TRUE),
+                7 => (zeroacc1'last_event, tpd_zeroacc1_accoverflow, TRUE),
+                8 => (mode0'last_event, tpd_mode0_accoverflow, TRUE),
+                9 => (mode1'last_event, tpd_mode1_accoverflow, TRUE),
+                10 => (feedback'last_event, tpd_feedback_accoverflow, TRUE)
+                ),
+      GlitchData => accoverflow_VitalGlitchData,
+      Mode => DefGlitchMode,
+      XOn  => XOn,
+      MsgOn => MsgOn
+    );
+  
+  END process;
+  END GENERATE acc;
+
 END arch;
 
 --/////////////////////////////////////////////////////////////////////////////
@@ -9189,6 +10349,7 @@ END arch;
 
 LIBRARY IEEE;
 USE ieee.std_logic_1164.all;
+USE ieee.std_logic_unsigned.all;
 use IEEE.VITAL_Timing.all;
 use IEEE.VITAL_Primitives.all;
 use work.stratixii_atom_pack.all;
@@ -9198,21 +10359,21 @@ ENTITY stratixii_mac_pin_map IS
       tipd_addnsub : VitalDelayType01 := DefPropDelay01;
       data_width :              integer := 144;
       tipd_datain               : VitalDelayArrayType01(143 downto 0) := (OTHERS => (20 ps,20 ps));
-      operation_mode 		:  string := "output_only";
+      operation_mode 		:  string := "output_only";    
       pinmap 			:  string := "map");
    PORT (
-      datain                  : IN std_logic_vector(data_width -1 DOWNTO 0) := (others => '0');
-      operation               : IN std_logic_vector(3 DOWNTO 0) := (others => '0');
+      datain                  : IN std_logic_vector(data_width -1 DOWNTO 0) := (others => '0');   
+      operation               : IN std_logic_vector(3 DOWNTO 0) := (others => '0');   
 	  addnsub				  : IN std_logic := '0';
-      dataout                 : OUT std_logic_vector(data_width -1 DOWNTO 0) := (others => '0'));
+      dataout                 : OUT std_logic_vector(data_width -1 DOWNTO 0) := (others => '0'));   
 END stratixii_mac_pin_map;
 
 ARCHITECTURE arch OF stratixii_mac_pin_map IS
-   SIGNAL addnsub_ipd : std_logic := '0';
+   SIGNAL addnsub_ipd : std_logic := '0';   
    SIGNAL datain_ipd             :  std_logic_vector(data_width -1 DOWNTO 0) := (others => '0');
-   SIGNAL dataout_tmp              :  std_logic_vector(data_width -1 DOWNTO 0) := (others => '0');
-   SIGNAL dataout_tmp2            :  std_logic_vector(data_width -1 DOWNTO 0) := (others => '0');
-
+   SIGNAL dataout_tmp              :  std_logic_vector(data_width -1 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_tmp2            :  std_logic_vector(data_width -1 DOWNTO 0) := (others => '0');   
+      
 BEGIN
     WireDelay : block
     begin
@@ -9236,53 +10397,53 @@ BEGIN
                                    "XXXXXXXXXXXXXXXXXXX" & datain_ipd(51 DOWNTO 36) &
                                    'X' & datain_ipd(35 DOWNTO 0);
              WHEN "1101" =>
-               dataout_tmp_tmp3 := datain_ipd(143 DOWNTO 72)& "XXXXXXXXXXXXXXXXXXX" & datain_ipd(51 DOWNTO 36) & 'X' & datain_ipd(35 DOWNTO 0);
+               dataout_tmp_tmp3 := datain_ipd(143 DOWNTO 72)& "XXXXXXXXXXXXXXXXXXX" & datain_ipd(51 DOWNTO 36) & 'X' & datain_ipd(35 DOWNTO 0);    
              WHEN "1110" =>
-               dataout_tmp_tmp3 := "XXXXXXXXXXXXXXXXXXX" & datain_ipd(123 DOWNTO 108) & 'X' & datain_ipd(107 DOWNTO 0);
+               dataout_tmp_tmp3 := "XXXXXXXXXXXXXXXXXXX" & datain_ipd(123 DOWNTO 108) & 'X' & datain_ipd(107 DOWNTO 0);    
              WHEN "0111" =>
-				IF (addnsub_ipd = '1') THEN
-	               dataout_tmp_tmp3(17 DOWNTO 0) := datain_ipd(17 DOWNTO 0);
-	               dataout_tmp_tmp3(35 DOWNTO 18) := datain_ipd(53 DOWNTO 36);
-	               dataout_tmp_tmp3(53 DOWNTO 36) := datain_ipd(35 DOWNTO 18);
-	               dataout_tmp_tmp3(71 DOWNTO 54) := datain_ipd(71 DOWNTO 54);
+				IF (addnsub_ipd = '1') THEN				
+	               dataout_tmp_tmp3(17 DOWNTO 0) := datain_ipd(17 DOWNTO 0);    
+	               dataout_tmp_tmp3(35 DOWNTO 18) := datain_ipd(53 DOWNTO 36);    
+	               dataout_tmp_tmp3(53 DOWNTO 36) := datain_ipd(35 DOWNTO 18);    
+	               dataout_tmp_tmp3(71 DOWNTO 54) := datain_ipd(71 DOWNTO 54);    
 				ELSE
-	               dataout_tmp_tmp3(17 DOWNTO 0) := "XXXXXXXXXXXXXXXXXX";
-	               dataout_tmp_tmp3(35 DOWNTO 18) := "XXXXXXXXXXXXXXXXXX";
-	               dataout_tmp_tmp3(53 DOWNTO 36) := "XXXXXXXXXXXXXXXXXX";
-	               dataout_tmp_tmp3(71 DOWNTO 54) := "XXXXXXXXXXXXXXXXXX";
+	               dataout_tmp_tmp3(17 DOWNTO 0) := "XXXXXXXXXXXXXXXXXX";    
+	               dataout_tmp_tmp3(35 DOWNTO 18) := "XXXXXXXXXXXXXXXXXX";    
+	               dataout_tmp_tmp3(53 DOWNTO 36) := "XXXXXXXXXXXXXXXXXX";    
+	               dataout_tmp_tmp3(71 DOWNTO 54) := "XXXXXXXXXXXXXXXXXX";    
 				END IF;
-               dataout_tmp_tmp3(143 DOWNTO 72) := "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+               dataout_tmp_tmp3(143 DOWNTO 72) := "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";    
              WHEN OTHERS  =>
-               dataout_tmp_tmp3 := datain_ipd;
+               dataout_tmp_tmp3 := datain_ipd;    
            END CASE;
          ELSE
             CASE operation IS
                WHEN "1100" =>
-                        dataout_tmp_tmp3(35 DOWNTO 0) := datain_ipd(35 DOWNTO 0);
-                        dataout_tmp_tmp3(70 DOWNTO 36) := datain_ipd(71 DOWNTO 37);
-                        dataout_tmp_tmp3(107 DOWNTO 72) := datain_ipd(107 DOWNTO 72);
-                        dataout_tmp_tmp3(142 DOWNTO 108) := datain_ipd(143 DOWNTO 109);
+                        dataout_tmp_tmp3(35 DOWNTO 0) := datain_ipd(35 DOWNTO 0);    
+                        dataout_tmp_tmp3(70 DOWNTO 36) := datain_ipd(71 DOWNTO 37);    
+                        dataout_tmp_tmp3(107 DOWNTO 72) := datain_ipd(107 DOWNTO 72);    
+                        dataout_tmp_tmp3(142 DOWNTO 108) := datain_ipd(143 DOWNTO 109);    
                WHEN "1101" =>
-                        dataout_tmp_tmp3(35 DOWNTO 0) := datain_ipd(35 DOWNTO 0);
-                        dataout_tmp_tmp3(70 DOWNTO 36) := datain_ipd(71 DOWNTO 37);
-                        dataout_tmp_tmp3(143 DOWNTO 72) := datain_ipd(143 DOWNTO 72);
+                        dataout_tmp_tmp3(35 DOWNTO 0) := datain_ipd(35 DOWNTO 0);    
+                        dataout_tmp_tmp3(70 DOWNTO 36) := datain_ipd(71 DOWNTO 37);    
+                        dataout_tmp_tmp3(143 DOWNTO 72) := datain_ipd(143 DOWNTO 72);    
                WHEN "1110" =>
-                        dataout_tmp_tmp3(107 DOWNTO 0) := datain_ipd(107 DOWNTO 0);
-                        dataout_tmp_tmp3(107 DOWNTO 72) := datain_ipd(107 DOWNTO 72);
-                        dataout_tmp_tmp3(142 DOWNTO 108) := datain_ipd(143 DOWNTO 109);
+                        dataout_tmp_tmp3(107 DOWNTO 0) := datain_ipd(107 DOWNTO 0);    
+                        dataout_tmp_tmp3(107 DOWNTO 72) := datain_ipd(107 DOWNTO 72);    
+                        dataout_tmp_tmp3(142 DOWNTO 108) := datain_ipd(143 DOWNTO 109);    
                WHEN "0111" =>
-                        dataout_tmp_tmp3(17 DOWNTO 0) := datain_ipd(17 DOWNTO 0);
-                        dataout_tmp_tmp3(53 DOWNTO 36) := datain_ipd(35 DOWNTO 18);
-                        dataout_tmp_tmp3(35 DOWNTO 18) := datain_ipd(53 DOWNTO 36);
-                        dataout_tmp_tmp3(71 DOWNTO 54) := datain_ipd(71 DOWNTO 54);
-                        dataout_tmp_tmp3(143 DOWNTO 72) := "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+                        dataout_tmp_tmp3(17 DOWNTO 0) := datain_ipd(17 DOWNTO 0);    
+                        dataout_tmp_tmp3(53 DOWNTO 36) := datain_ipd(35 DOWNTO 18);    
+                        dataout_tmp_tmp3(35 DOWNTO 18) := datain_ipd(53 DOWNTO 36);    
+                        dataout_tmp_tmp3(71 DOWNTO 54) := datain_ipd(71 DOWNTO 54);    
+                        dataout_tmp_tmp3(143 DOWNTO 72) := "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";    
                WHEN OTHERS  =>
-                        dataout_tmp_tmp3 := datain_ipd;
-
+                        dataout_tmp_tmp3 := datain_ipd;    
+               
             END CASE;
          END IF;
       ELSE
-         dataout_tmp_tmp3 := datain_ipd;
+         dataout_tmp_tmp3 := datain_ipd;    
       END IF;
       dataout_tmp <= dataout_tmp_tmp3;
    END PROCESS;
@@ -9290,6 +10451,1315 @@ BEGIN
 
 END arch;
 
+--/////////////////////////////////////////////////////////////////////////////
+--
+--                               STRATIXII_MAC_OUT
+--
+--/////////////////////////////////////////////////////////////////////////////
+
+LIBRARY IEEE;
+USE ieee.std_logic_1164.all;
+USE ieee.std_logic_unsigned.all;
+use ieee.std_logic_arith.all;
+use IEEE.VITAL_Timing.all;
+use IEEE.VITAL_Primitives.all;
+use work.stratixii_atom_pack.all;
+use work.stratixii_mac_out_internal;
+use work.stratixii_mac_pin_map;
+use work.stratixii_mac_bit_register;
+use work.stratixii_mac_register;
+
+ENTITY stratixii_mac_out IS
+   GENERIC (
+      operation_mode                 :  string := "output_only";    
+      dataa_width                    :  integer := 1;    
+      datab_width                    :  integer := 1;    
+      datac_width                    :  integer := 1;    
+      datad_width                    :  integer := 1;    
+      dataout_width                  :  integer := 144;
+      tmp_width                      :  integer := 144;
+      addnsub0_clock                 :  string := "none";    
+      addnsub1_clock                 :  string := "none";    
+      zeroacc_clock                  :  string := "none";    
+      round0_clock                   :  string := "none";    
+      round1_clock                   :  string := "none";    
+      saturate_clock                 :  string := "none";    
+      multabsaturate_clock           :  string := "none";    
+      multcdsaturate_clock           :  string := "none";    
+      signa_clock                    :  string := "none";    
+      signb_clock                    :  string := "none";    
+      output_clock                   :  string := "none";    
+      addnsub0_clear                 :  string := "none";    
+      addnsub1_clear                 :  string := "none";    
+      zeroacc_clear                  :  string := "none";    
+      round0_clear                   :  string := "none";    
+      round1_clear                   :  string := "none";    
+      saturate_clear                 :  string := "none";    
+      multabsaturate_clear           :  string := "none";    
+      multcdsaturate_clear           :  string := "none";    
+      signa_clear                    :  string := "none";    
+      signb_clear                    :  string := "none";    
+      output_clear                   :  string := "none";    
+      addnsub0_pipeline_clock        :  string := "none";    
+      addnsub1_pipeline_clock        :  string := "none";    
+      round0_pipeline_clock          :  string := "none";    
+      round1_pipeline_clock          :  string := "none";    
+      saturate_pipeline_clock        :  string := "none";    
+      multabsaturate_pipeline_clock  :  string := "none";    
+      multcdsaturate_pipeline_clock  :  string := "none";    
+      zeroacc_pipeline_clock         :  string := "none";    
+      signa_pipeline_clock           :  string := "none";    
+      signb_pipeline_clock           :  string := "none";    
+      addnsub0_pipeline_clear        :  string := "none";    
+      addnsub1_pipeline_clear        :  string := "none";    
+      round0_pipeline_clear          :  string := "none";    
+      round1_pipeline_clear          :  string := "none";    
+      saturate_pipeline_clear        :  string := "none";    
+      multabsaturate_pipeline_clear  :  string := "none";    
+      multcdsaturate_pipeline_clear  :  string := "none";    
+      zeroacc_pipeline_clear         :  string := "none";    
+      signa_pipeline_clear           :  string := "none";    
+      signb_pipeline_clear           :  string := "none";    
+      mode0_clock                    :  string := "none";    
+      mode1_clock                    :  string := "none";    
+      zeroacc1_clock                 :  string := "none";    
+      saturate1_clock                :  string := "none";    
+      output1_clock                  :  string := "none";    
+      output2_clock                  :  string := "none";    
+      output3_clock                  :  string := "none";    
+      output4_clock                  :  string := "none";    
+      output5_clock                  :  string := "none";    
+      output6_clock                  :  string := "none";    
+      output7_clock                  :  string := "none";    
+      mode0_clear                    :  string := "none";    
+      mode1_clear                    :  string := "none";    
+      zeroacc1_clear                 :  string := "none";    
+      saturate1_clear                :  string := "none";    
+      output1_clear                  :  string := "none";    
+      output2_clear                  :  string := "none";    
+      output3_clear                  :  string := "none";    
+      output4_clear                  :  string := "none";    
+      output5_clear                  :  string := "none";    
+      output6_clear                  :  string := "none";    
+      output7_clear                  :  string := "none";    
+      mode0_pipeline_clock           :  string := "none";    
+      mode1_pipeline_clock           :  string := "none";    
+      zeroacc1_pipeline_clock        :  string := "none";    
+      saturate1_pipeline_clock       :  string := "none";    
+      mode0_pipeline_clear           :  string := "none";    
+      mode1_pipeline_clear           :  string := "none";    
+      zeroacc1_pipeline_clear        :  string := "none";    
+      saturate1_pipeline_clear       :  string := "none";    
+      dataa_forced_to_zero           :  string := "no";    
+      datac_forced_to_zero           :  string := "no";    
+      lpm_hint                       :  string := "true";    
+      lpm_type                       :  string := "stratixii_mac_out");
+   PORT (
+      dataa                   : IN std_logic_vector(dataa_width-1 DOWNTO 0) := (others => '1');
+      datab                   : IN std_logic_vector(datab_width-1 DOWNTO 0) := (others => '1');
+      datac                   : IN std_logic_vector(datac_width-1 DOWNTO 0) := (others => '1');
+      datad                   : IN std_logic_vector(datad_width-1 DOWNTO 0) := (others => '1');
+      zeroacc                 : IN std_logic := '0';
+      addnsub0                : IN std_logic := '1';   
+      addnsub1                : IN std_logic := '1';   
+      round0                  : IN std_logic := '0';   
+      round1                  : IN std_logic := '0';   
+      saturate                : IN std_logic := '0';   
+      multabsaturate          : IN std_logic := '0';   
+      multcdsaturate          : IN std_logic := '0';   
+      signa                   : IN std_logic := '1';   
+      signb                   : IN std_logic := '1';   
+      clk                     : IN std_logic_vector(3 DOWNTO 0) := (others => '0');   
+      aclr                    : IN std_logic_vector(3 DOWNTO 0) := (others => '0');   
+      ena                     : IN std_logic_vector(3 DOWNTO 0) := (others => '1');   
+      mode0                   : IN std_logic := '0';  
+      mode1                   : IN std_logic := '0';   
+      zeroacc1                : IN std_logic := '0';  
+      saturate1               : IN std_logic := '0';  
+      dataout                 : OUT std_logic_vector(dataout_width -1 DOWNTO 0) := (others => '0');   
+      accoverflow             : OUT std_logic := '0';   
+      devclrn                 : IN std_logic := '1';   
+      devpor                  : IN std_logic := '1'
+      );   
+END stratixii_mac_out;
+
+ARCHITECTURE arch OF stratixii_mac_out IS
+
+   COMPONENT stratixii_mac_out_internal
+      GENERIC (
+                operation_mode                 :  string := "output_only";    
+                dataa_width                    :  integer := 36;    
+                datab_width                    :  integer := 36;    
+                datac_width                    :  integer := 36;    
+                datad_width                    :  integer := 36;
+                tmp_width                      :  integer := 144;
+                dataout_width                  :  integer := 144;
+                tipd_dataa        : VitalDelayArrayType01(35 downto 0):= (OTHERS => DefPropDelay01);
+                tipd_datab        : VitalDelayArrayType01(35 downto 0):= (OTHERS => DefPropDelay01);
+                tipd_datac        : VitalDelayArrayType01(35 downto 0):= (OTHERS => DefPropDelay01);
+                tipd_datad        : VitalDelayArrayType01(35 downto 0):= (OTHERS => DefPropDelay01);
+                tipd_feedback        : VitalDelayArrayType01(143 downto 0):= (OTHERS => DefPropDelay01);
+     	        tpd_dataa_dataout         : VitalDelayArrayType01(144*36-1 downto 0) := (others => DefPropDelay01);
+     	  tpd_datab_dataout         : VitalDelayArrayType01(144*36-1 downto 0) := (others => DefPropDelay01);
+     	  tpd_datac_dataout         : VitalDelayArrayType01(144*36-1 downto 0) := (others => DefPropDelay01);
+     	  tpd_datad_dataout         : VitalDelayArrayType01(144*36-1 downto 0) := (others => DefPropDelay01);
+     	  tpd_feedback_dataout         : VitalDelayArrayType01(144*144-1 downto 0) := (others => DefPropDelay01);
+     	  tpd_signx_dataout         : VitalDelayArrayType01(143 downto 0) := (others => DefPropDelay01);
+     	  tpd_signy_dataout         : VitalDelayArrayType01(143 downto 0) := (others => DefPropDelay01);
+     	  tpd_addnsub0_dataout      : VitalDelayArrayType01(143 downto 0) := (others => DefPropDelay01);
+     	  tpd_addnsub1_dataout      : VitalDelayArrayType01(143 downto 0) := (others => DefPropDelay01);
+     	  tpd_zeroacc_dataout       : VitalDelayArrayType01(143 downto 0) := (others => DefPropDelay01);
+     	  tpd_zeroacc1_dataout      : VitalDelayArrayType01(143 downto 0) := (others => DefPropDelay01);
+     	  tpd_multabsaturate_dataout: VitalDelayArrayType01(143 downto 0) := (others => DefPropDelay01);
+     	  tpd_multcdsaturate_dataout: VitalDelayArrayType01(143 downto 0) := (others => DefPropDelay01);
+     	  tpd_mode0_dataout         : VitalDelayArrayType01(143 downto 0) := (others => DefPropDelay01);
+     	  tpd_mode1_dataout         : VitalDelayArrayType01(143 downto 0) := (others => DefPropDelay01);
+     	  tpd_dataa_accoverflow     : VitalDelayArrayType01(35 downto 0) := (others => DefPropDelay01);
+                tpd_feedback_accoverflow     : VitalDelayType01 := DefPropDelay01;
+                tpd_signx_accoverflow     : VitalDelayType01 := DefPropDelay01;
+                tpd_signy_accoverflow     : VitalDelayType01 := DefPropDelay01;
+                tpd_addnsub0_accoverflow  : VitalDelayType01 := DefPropDelay01;
+                tpd_addnsub1_accoverflow  : VitalDelayType01 := DefPropDelay01;
+                tpd_zeroacc_accoverflow   : VitalDelayType01 := DefPropDelay01;
+                tpd_zeroacc1_accoverflow  : VitalDelayType01 := DefPropDelay01;
+                tpd_mode0_accoverflow     : VitalDelayType01 := DefPropDelay01;
+                tpd_mode1_accoverflow     : VitalDelayType01 := DefPropDelay01;
+                XOn: Boolean              := DefGlitchXOn;   
+                MsgOn: Boolean            := DefGlitchMsgOn
+             );
+      PORT (
+         dataa                   : IN  std_logic_vector(dataa_width -1 DOWNTO 0) := (others => '0');
+         datab                   : IN  std_logic_vector(datab_width -1 DOWNTO 0) := (others => '0');
+         datac                   : IN  std_logic_vector(datac_width -1 DOWNTO 0) := (others => '0');
+         datad                   : IN  std_logic_vector(datad_width -1 DOWNTO 0) := (others => '0');
+         mode0                   : IN  std_logic := '0';
+         mode1                   : IN  std_logic := '0';
+         roundab                 : IN  std_logic := '0';
+         saturateab              : IN  std_logic := '0';
+         roundcd                 : IN  std_logic := '0';
+         saturatecd              : IN  std_logic := '0';
+         multabsaturate          : IN  std_logic := '0';
+         multcdsaturate          : IN  std_logic := '0';
+         signx                   : IN  std_logic := '0';
+         signy                   : IN  std_logic := '0';
+         addnsub0                : IN  std_logic := '0';
+         addnsub1                : IN  std_logic := '0';
+         zeroacc                 : IN  std_logic := '0';
+         zeroacc1                : IN  std_logic := '0';
+         feedback  			      : IN  std_logic_vector(tmp_width-1 DOWNTO 0) := (others => '0');
+         dataout                 : OUT std_logic_vector(dataout_width-1 DOWNTO 0) := (others => '0');
+         accoverflow             : OUT std_logic);
+   END COMPONENT;
+
+   COMPONENT stratixii_mac_pin_map
+      GENERIC (
+          pinmap                         :  string := "map";
+          data_width :          integer := 144;
+          operation_mode                 :  string := "output_only");
+      PORT (
+         datain                  : IN  std_logic_vector(data_width-1 DOWNTO 0) := (others => '0');
+         operation               : IN  std_logic_vector(3 DOWNTO 0) := (others => '0');
+	 	 addnsub				 : IN  std_logic := '0';
+         dataout                 : OUT std_logic_vector(data_width-1 DOWNTO 0) := (others => '0'));
+   END COMPONENT;
+
+   COMPONENT stratixii_mac_bit_register
+      GENERIC (
+          power_up                       :  std_logic := '0');
+      PORT (
+        data                    : IN std_logic := '0';   
+        clk                     : IN std_logic := '0';   
+        aclr                    : IN std_logic := '0';
+        if_aclr                 : IN std_logic := '0';
+        ena                     : IN std_logic := '1';
+        async                   : IN std_logic := '1';
+        dataout                 : OUT std_logic := '0');   
+   END COMPONENT;
+
+   COMPONENT stratixii_mac_register
+      GENERIC (
+          power_up                       :  std_logic := '0';    
+          data_width                     :  integer := 18);
+      PORT (
+         data                    : IN  std_logic_vector(data_width -1 DOWNTO 0) := (others => '0');
+         clk                     : IN  std_logic := '0';
+         aclr                    : IN  std_logic := '0';
+         if_aclr                 : IN  std_logic := '0';
+         ena                     : IN  std_logic := '1';
+         async                   : IN  std_logic := '1';
+         dataout                 : OUT std_logic_vector(data_width -1 DOWNTO 0) := (others => '0'));
+   END COMPONENT;
+
+   SIGNAL dataa_f                  :  std_logic_vector(dataa_width-1 DOWNTO 0) := (others => '0');   
+   SIGNAL datac_f                  :  std_logic_vector(datac_width-1 DOWNTO 0) := (others => '0');   
+   SIGNAL signa_pipe               :  std_logic :=  '0';   
+   SIGNAL signb_pipe               :  std_logic :=  '0';   
+   SIGNAL multabsaturate_pipe      :  std_logic :=  '0';   
+   SIGNAL multcdsaturate_pipe      :  std_logic :=  '0';   
+   SIGNAL signa_out                :  std_logic :=  '0';   
+   SIGNAL signb_out                :  std_logic :=  '0';   
+   SIGNAL multabsaturate_out       :  std_logic :=  '0';   
+   SIGNAL multcdsaturate_out       :  std_logic :=  '0';   
+   SIGNAL addnsub0_pipe            :  std_logic :=  '0';   
+   SIGNAL addnsub1_pipe            :  std_logic :=  '0';   
+   SIGNAL addnsub0_out             :  std_logic :=  '0';   
+   SIGNAL addnsub1_out             :  std_logic :=  '0';   
+   SIGNAL zeroacc_pipe             :  std_logic :=  '0';   
+   SIGNAL zeroacc1_pipe            :  std_logic :=  '0';   
+   SIGNAL zeroacc_out              :  std_logic :=  '0';   
+   SIGNAL zeroacc1_out             :  std_logic :=  '0';   
+   SIGNAL dataout_feedback         :  std_logic_vector(tmp_width-1 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_tmp              :  std_logic_vector(tmp_width-1 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_map              :  std_logic_vector(tmp_width-1 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_mapped           :  std_logic_vector(tmp_width-1 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_unmapped         :  std_logic_vector(tmp_width-1 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_non_dynamic      :  std_logic_vector(tmp_width-1 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_dynamic          :  std_logic_vector(tmp_width-1 DOWNTO 0) := (others => '0');  
+   SIGNAL dataout_dynamic1         :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_dynamic2         :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_dynamic3         :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_dynamic4         :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_dynamic5         :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_dynamic6         :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_dynamic7         :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_tmp_low          :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_tmp_high         :  std_logic_vector(71 DOWNTO 0) := (others => '0');   
+   SIGNAL dataout_to_reg           :  std_logic_vector(tmp_width-1 DOWNTO 0) := (others => '0');   
+   SIGNAL accoverflow_reg          :  std_logic := '0';   
+   SIGNAL accoverflow_tmp          :  std_logic := '0';   
+   SIGNAL operation                :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL round0_pipe              :  std_logic := '0'; 
+   SIGNAL round1_pipe              :  std_logic := '0';   
+   SIGNAL saturate_pipe            :  std_logic := '0';   
+   SIGNAL saturate1_pipe           :  std_logic := '0';   
+   SIGNAL mode0_pipe               :  std_logic := '0';   
+   SIGNAL mode1_pipe               :  std_logic := '0';   
+   SIGNAL round0_out               :  std_logic := '0';   
+   SIGNAL round1_out               :  std_logic := '0';   
+   SIGNAL saturate_out             :  std_logic := '0';   
+   SIGNAL saturate1_out            :  std_logic := '0';   
+   SIGNAL mode0_out                :  std_logic := '0';   
+   SIGNAL mode1_out                :  std_logic := '0';   
+   SIGNAL addnsub0_clk             :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL addnsub1_clk             :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL zeroacc_clk              :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL round0_clk               :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL round1_clk               :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL saturate_clk             :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL multabsaturate_clk       :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL multcdsaturate_clk       :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL signa_clk                :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL signb_clk                :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL output_clk               :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL addnsub0_aclr            :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL addnsub1_aclr            :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL zeroacc_aclr             :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL round0_aclr              :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL round1_aclr              :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL saturate_aclr            :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL multabsaturate_aclr      :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL multcdsaturate_aclr      :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL signa_aclr               :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL signb_aclr               :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL output_aclr              :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL addnsub0_pipeline_clk    :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL addnsub1_pipeline_clk    :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL round0_pipeline_clk      :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL round1_pipeline_clk      :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL saturate_pipeline_clk    :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL multabsaturate_pipeline_clk     :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL multcdsaturate_pipeline_clk     :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL zeroacc_pipeline_clk     :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL signa_pipeline_clk       :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL signb_pipeline_clk       :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL addnsub0_pipeline_aclr   :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL addnsub1_pipeline_aclr   :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL round0_pipeline_aclr     :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL round1_pipeline_aclr     :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL saturate_pipeline_aclr   :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL multabsaturate_pipeline_aclr    :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL multcdsaturate_pipeline_aclr    :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL zeroacc_pipeline_aclr    :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL signa_pipeline_aclr      :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL signb_pipeline_aclr      :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL mode0_clk                :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL mode1_clk                :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL zeroacc1_clk             :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL saturate1_clk            :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL output1_clk              :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL output2_clk              :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL output3_clk              :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL output4_clk              :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL output5_clk              :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL output6_clk              :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL output7_clk              :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL mode0_aclr               :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL mode1_aclr               :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL zeroacc1_aclr            :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL saturate1_aclr           :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL output1_aclr             :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL output2_aclr             :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL output3_aclr             :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL output4_aclr             :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL output5_aclr             :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL output6_aclr             :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL output7_aclr             :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL mode0_pipeline_clk       :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL mode1_pipeline_clk       :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL zeroacc1_pipeline_clk    :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL saturate1_pipeline_clk   :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL mode0_pipeline_aclr      :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL mode1_pipeline_aclr      :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL zeroacc1_pipeline_aclr   :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL saturate1_pipeline_aclr  :  std_logic_vector(3 DOWNTO 0) := (others => '0');   
+   SIGNAL clk_signa                :  std_logic := '0';   
+   SIGNAL clear_signa              :  std_logic := '0';   
+   SIGNAL aclr_signa               :  std_logic := '0';   
+   SIGNAL ena_signa                :  std_logic := '0';   
+   SIGNAL async_signa              :  std_logic := '0';   
+   SIGNAL clk_signb                :  std_logic := '0';   
+   SIGNAL clear_signb              :  std_logic := '0';   
+   SIGNAL aclr_signb               :  std_logic := '0';   
+   SIGNAL ena_signb                :  std_logic := '0';   
+   SIGNAL async_signb              :  std_logic := '0';   
+   SIGNAL clk_zeroacc              :  std_logic := '0';   
+   SIGNAL clear_zeroacc            :  std_logic := '0';   
+   SIGNAL aclr_zeroacc             :  std_logic := '0';   
+   SIGNAL ena_zeroacc              :  std_logic := '0';   
+   SIGNAL async_zeroacc            :  std_logic := '0';   
+   SIGNAL clk_zeroacc1             :  std_logic := '0';   
+   SIGNAL clear_zeroacc1           :  std_logic := '0';   
+   SIGNAL aclr_zeroacc1            :  std_logic := '0';   
+   SIGNAL ena_zeroacc1             :  std_logic := '0';   
+   SIGNAL async_zeroacc1           :  std_logic := '0';   
+   SIGNAL clk_addnsub0             :  std_logic := '0';   
+   SIGNAL clear_addnsub0           :  std_logic := '0';   
+   SIGNAL aclr_addnsub0            :  std_logic := '0';   
+   SIGNAL ena_addnsub0             :  std_logic := '0';   
+   SIGNAL async_addnsub0           :  std_logic := '0';   
+   SIGNAL clk_addnsub1             :  std_logic := '0';   
+   SIGNAL clear_addnsub1           :  std_logic := '0';   
+   SIGNAL aclr_addnsub1            :  std_logic := '0';   
+   SIGNAL ena_addnsub1             :  std_logic := '0';   
+   SIGNAL async_addnsub1           :  std_logic := '0';   
+   SIGNAL clk_round0               :  std_logic := '0';   
+   SIGNAL clear_round0             :  std_logic := '0';   
+   SIGNAL aclr_round0              :  std_logic := '0';   
+   SIGNAL ena_round0               :  std_logic := '0';   
+   SIGNAL async_round0             :  std_logic := '0';   
+   SIGNAL clk_saturate             :  std_logic := '0';   
+   SIGNAL clear_saturate           :  std_logic := '0';   
+   SIGNAL aclr_saturate            :  std_logic := '0';   
+   SIGNAL ena_saturate             :  std_logic := '0';   
+   SIGNAL async_saturate           :  std_logic := '0';   
+   SIGNAL clk_mode0                :  std_logic := '0';   
+   SIGNAL clear_mode0              :  std_logic := '0';   
+   SIGNAL aclr_mode0               :  std_logic := '0';   
+   SIGNAL ena_mode0                :  std_logic := '0';   
+   SIGNAL async_mode0              :  std_logic := '0';   
+   SIGNAL clk_round1               :  std_logic := '0';   
+   SIGNAL clear_round1             :  std_logic := '0';   
+   SIGNAL aclr_round1              :  std_logic := '0';   
+   SIGNAL ena_round1               :  std_logic := '0';   
+   SIGNAL async_round1             :  std_logic := '0';   
+   SIGNAL clk_saturate1            :  std_logic := '0';   
+   SIGNAL clear_saturate1          :  std_logic := '0';   
+   SIGNAL aclr_saturate1           :  std_logic := '0';   
+   SIGNAL ena_saturate1            :  std_logic := '0';   
+   SIGNAL async_saturate1          :  std_logic := '0';   
+   SIGNAL clk_mode1                :  std_logic := '0';   
+   SIGNAL clear_mode1              :  std_logic := '0';   
+   SIGNAL aclr_mode1               :  std_logic := '0';   
+   SIGNAL ena_mode1                :  std_logic := '0';   
+   SIGNAL async_mode1              :  std_logic := '0';   
+   SIGNAL clk_multabsaturate       :  std_logic := '0';   
+   SIGNAL clear_multabsaturate     :  std_logic := '0';   
+   SIGNAL aclr_multabsaturate      :  std_logic := '0';   
+   SIGNAL ena_multabsaturate       :  std_logic := '0';   
+   SIGNAL async_multabsaturate     :  std_logic := '0';   
+   SIGNAL clk_multcdsaturate       :  std_logic := '0';   
+   SIGNAL clear_multcdsaturate     :  std_logic := '0';   
+   SIGNAL aclr_multcdsaturate      :  std_logic := '0';   
+   SIGNAL ena_multcdsaturate       :  std_logic := '0';   
+   SIGNAL async_multcdsaturate     :  std_logic := '0';   
+   SIGNAL clk_signa_pipeline       :  std_logic := '0';   
+   SIGNAL clear_signa_pipeline     :  std_logic := '0';   
+   SIGNAL aclr_signa_pipeline      :  std_logic := '0';   
+   SIGNAL ena_signa_pipeline       :  std_logic := '0';   
+   SIGNAL async_signa_pipeline     :  std_logic := '0';   
+   SIGNAL clk_signb_pipeline       :  std_logic := '0';   
+   SIGNAL clear_signb_pipeline     :  std_logic := '0';   
+   SIGNAL aclr_signb_pipeline      :  std_logic := '0';   
+   SIGNAL ena_signb_pipeline       :  std_logic := '0';   
+   SIGNAL async_signb_pipeline     :  std_logic := '0';   
+   SIGNAL clk_zeroacc_pipeline     :  std_logic := '0';   
+   SIGNAL clear_zeroacc_pipeline   :  std_logic := '0';   
+   SIGNAL aclr_zeroacc_pipeline    :  std_logic := '0';   
+   SIGNAL ena_zeroacc_pipeline     :  std_logic := '0';   
+   SIGNAL async_zeroacc_pipeline   :  std_logic := '0';   
+   SIGNAL clk_zeroacc1_pipeline    :  std_logic := '0';   
+   SIGNAL clear_zeroacc1_pipeline  :  std_logic := '0';   
+   SIGNAL aclr_zeroacc1_pipeline   :  std_logic := '0';   
+   SIGNAL ena_zeroacc1_pipeline    :  std_logic := '0';   
+   SIGNAL async_zeroacc1_pipeline  :  std_logic := '0';   
+   SIGNAL clk_addnsub0_pipeline    :  std_logic := '0';   
+   SIGNAL clear_addnsub0_pipeline  :  std_logic := '0';   
+   SIGNAL aclr_addnsub0_pipeline   :  std_logic := '0';   
+   SIGNAL ena_addnsub0_pipeline    :  std_logic := '0';   
+   SIGNAL async_addnsub0_pipeline  :  std_logic := '0';   
+   SIGNAL clk_addnsub1_pipeline    :  std_logic := '0';   
+   SIGNAL clear_addnsub1_pipeline  :  std_logic := '0';   
+   SIGNAL aclr_addnsub1_pipeline   :  std_logic := '0';   
+   SIGNAL ena_addnsub1_pipeline    :  std_logic := '0';   
+   SIGNAL async_addnsub1_pipeline  :  std_logic := '0';   
+   SIGNAL clk_round0_pipeline      :  std_logic := '0';   
+   SIGNAL clear_round0_pipeline    :  std_logic := '0';   
+   SIGNAL aclr_round0_pipeline     :  std_logic := '0';   
+   SIGNAL ena_round0_pipeline      :  std_logic := '0';   
+   SIGNAL async_round0_pipeline    :  std_logic := '0';   
+   SIGNAL clk_saturate_pipeline    :  std_logic := '0';   
+   SIGNAL clear_saturate_pipeline  :  std_logic := '0';   
+   SIGNAL aclr_saturate_pipeline   :  std_logic := '0';   
+   SIGNAL ena_saturate_pipeline    :  std_logic := '0';   
+   SIGNAL async_saturate_pipeline  :  std_logic := '0';   
+   SIGNAL clk_mode0_pipeline       :  std_logic := '0';   
+   SIGNAL clear_mode0_pipeline     :  std_logic := '0';   
+   SIGNAL aclr_mode0_pipeline      :  std_logic := '0';   
+   SIGNAL ena_mode0_pipeline       :  std_logic := '0';   
+   SIGNAL async_mode0_pipeline     :  std_logic := '0';   
+   SIGNAL clk_round1_pipeline      :  std_logic := '0';   
+   SIGNAL clear_round1_pipeline    :  std_logic := '0';   
+   SIGNAL aclr_round1_pipeline     :  std_logic := '0';   
+   SIGNAL ena_round1_pipeline      :  std_logic := '0';   
+   SIGNAL async_round1_pipeline    :  std_logic := '0';   
+   SIGNAL clk_saturate1_pipeline   :  std_logic := '0';   
+   SIGNAL clear_saturate1_pipeline :  std_logic := '0';   
+   SIGNAL aclr_saturate1_pipeline  :  std_logic := '0';   
+   SIGNAL ena_saturate1_pipeline   :  std_logic := '0';   
+   SIGNAL async_saturate1_pipeline :  std_logic := '0';   
+   SIGNAL clk_mode1_pipeline       :  std_logic := '0';   
+   SIGNAL clear_mode1_pipeline     :  std_logic := '0';   
+   SIGNAL aclr_mode1_pipeline      :  std_logic := '0';   
+   SIGNAL ena_mode1_pipeline       :  std_logic := '0';   
+   SIGNAL async_mode1_pipeline     :  std_logic := '0';   
+   SIGNAL clk_multabsaturate_pipeline     :  std_logic := '0';   
+   SIGNAL clear_multabsaturate_pipeline   :  std_logic := '0';   
+   SIGNAL aclr_multabsaturate_pipeline    :  std_logic := '0';   
+   SIGNAL ena_multabsaturate_pipeline     :  std_logic := '0';   
+   SIGNAL async_multabsaturate_pipeline   :  std_logic := '0';   
+   SIGNAL clk_multcdsaturate_pipeline     :  std_logic := '0';   
+   SIGNAL clear_multcdsaturate_pipeline   :  std_logic := '0';   
+   SIGNAL aclr_multcdsaturate_pipeline    :  std_logic := '0';   
+   SIGNAL ena_multcdsaturate_pipeline     :  std_logic := '0';   
+   SIGNAL async_multcdsaturate_pipeline   :  std_logic := '0';   
+   SIGNAL clk_output               :  std_logic := '0';   
+   SIGNAL clear_output             :  std_logic := '0';   
+   SIGNAL aclr_output              :  std_logic := '0';   
+   SIGNAL ena_output               :  std_logic := '0';   
+   SIGNAL async_output             :  std_logic := '0';   
+   SIGNAL clk_output1              :  std_logic := '0';   
+   SIGNAL clear_output1            :  std_logic := '0';   
+   SIGNAL aclr_output1             :  std_logic := '0';   
+   SIGNAL ena_output1              :  std_logic := '0';   
+   SIGNAL async_output1            :  std_logic := '0';   
+   SIGNAL clk_output2              :  std_logic := '0';   
+   SIGNAL clear_output2            :  std_logic := '0';   
+   SIGNAL aclr_output2             :  std_logic := '0';   
+   SIGNAL ena_output2              :  std_logic := '0';   
+   SIGNAL async_output2            :  std_logic := '0';   
+   SIGNAL clk_output3              :  std_logic := '0';   
+   SIGNAL clear_output3            :  std_logic := '0';   
+   SIGNAL aclr_output3             :  std_logic := '0';   
+   SIGNAL ena_output3              :  std_logic := '0';   
+   SIGNAL async_output3            :  std_logic := '0';   
+   SIGNAL clk_output4              :  std_logic := '0';   
+   SIGNAL clear_output4            :  std_logic := '0';   
+   SIGNAL aclr_output4             :  std_logic := '0';   
+   SIGNAL ena_output4              :  std_logic := '0';   
+   SIGNAL async_output4            :  std_logic := '0';   
+   SIGNAL clk_output5              :  std_logic := '0';   
+   SIGNAL clear_output5            :  std_logic := '0';   
+   SIGNAL aclr_output5             :  std_logic := '0';   
+   SIGNAL ena_output5              :  std_logic := '0';   
+   SIGNAL async_output5            :  std_logic := '0';   
+   SIGNAL clk_output6              :  std_logic := '0';   
+   SIGNAL clear_output6            :  std_logic := '0';   
+   SIGNAL aclr_output6             :  std_logic := '0';   
+   SIGNAL ena_output6              :  std_logic := '0';   
+   SIGNAL async_output6            :  std_logic := '0';   
+   SIGNAL clk_output7              :  std_logic := '0';   
+   SIGNAL clear_output7            :  std_logic := '0';   
+   SIGNAL aclr_output7             :  std_logic := '0';   
+   SIGNAL ena_output7              :  std_logic := '0';   
+   SIGNAL async_output7            :  std_logic := '0';   
+   SIGNAL tmp_186                 :  std_logic := '0';   
+   SIGNAL tmp_189                 :  std_logic := '0';   
+   SIGNAL accoverflow_tmp2        :  std_logic := '0';   
+   SIGNAL pin_map_addnsub		  :  std_logic := '0';
+
+BEGIN
+   dataout <= dataout_tmp(dataout'range);
+   accoverflow <= accoverflow_tmp2;
+   signa_mac_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => signa,
+         clk => clk_signa,
+         aclr => aclr_signa,
+         if_aclr => clear_signa,
+         ena => ena_signa,
+         dataout => signa_pipe,
+         async => async_signa);   
+   
+   async_signa <= '1' WHEN (signa_clock = "none") ELSE '0' ;
+   clear_signa <= '1' WHEN (signa_clear /= "none") ELSE '0' ;
+   clk_signa <= '1' WHEN clk(conv_integer(signa_clk)) = '1' ELSE '0' ;
+   aclr_signa <= '1' WHEN (aclr(conv_integer(signa_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_signa <= '1' WHEN ena(conv_integer(signa_clk)) = '1' ELSE '0' ;
+   signa_clk <= "0000" WHEN ((signa_clock = "0") OR (signa_clock = "none")) ELSE "0001" WHEN (signa_clock = "1") ELSE "0010" WHEN (signa_clock = "2") ELSE "0011" WHEN (signa_clock = "3") ELSE "0000" ;
+   signa_aclr <= "0000" WHEN ((signa_clear = "0") OR (signa_clear = "none")) ELSE "0001" WHEN (signa_clear = "1") ELSE "0010" WHEN (signa_clear = "2") ELSE "0011" WHEN (signa_clear = "3") ELSE "0000" ;
+   signb_mac_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => signb,
+         clk => clk_signb,
+         aclr => aclr_signb,
+         if_aclr => clear_signb,
+         ena => ena_signb,
+         dataout => signb_pipe,
+         async => async_signb);   
+   
+   async_signb <= '1' WHEN (signb_clock = "none") ELSE '0' ;
+   clear_signb <= '1' WHEN (signb_clear /= "none") ELSE '0' ;
+   clk_signb <= '1' WHEN clk(conv_integer(signb_clk)) = '1' ELSE '0' ;
+   aclr_signb <= '1' WHEN (aclr(conv_integer(signb_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_signb <= '1' WHEN ena(conv_integer(signb_clk)) = '1' ELSE '0' ;
+   signb_clk <= "0000" WHEN ((signb_clock = "0") OR (signb_clock = "none")) ELSE "0001" WHEN (signb_clock = "1") ELSE "0010" WHEN (signb_clock = "2") ELSE "0011" WHEN (signb_clock = "3") ELSE "0000" ;
+   signb_aclr <= "0000" WHEN ((signb_clear = "0") OR (signb_clear = "none")) ELSE "0001" WHEN (signb_clear = "1") ELSE "0010" WHEN (signb_clear = "2") ELSE "0011" WHEN (signb_clear = "3") ELSE "0000" ;
+   zeroacc_mac_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => zeroacc,
+         clk => clk_zeroacc,
+         aclr => aclr_zeroacc,
+         if_aclr => clear_zeroacc,
+         ena => ena_zeroacc,
+         dataout => zeroacc_pipe,
+         async => async_zeroacc);   
+   
+   async_zeroacc <= '1' WHEN (zeroacc_clock = "none") ELSE '0' ;
+   clear_zeroacc <= '1' WHEN (zeroacc_clear /= "none") ELSE '0' ;
+   clk_zeroacc <= '1' WHEN clk(conv_integer(zeroacc_clk)) = '1' ELSE '0' ;
+   aclr_zeroacc <= '1' WHEN (aclr(conv_integer(zeroacc_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_zeroacc <= '1' WHEN ena(conv_integer(zeroacc_clk)) = '1' ELSE '0' ;
+   zeroacc_clk <= "0000" WHEN ((zeroacc_clock = "0") OR (zeroacc_clock = "none")) ELSE "0001" WHEN (zeroacc_clock = "1") ELSE "0010" WHEN (zeroacc_clock = "2") ELSE "0011" WHEN (zeroacc_clock = "3") ELSE "0000" ;
+   zeroacc_aclr <= "0000" WHEN ((zeroacc_clear = "0") OR (zeroacc_clear = "none")) ELSE "0001" WHEN (zeroacc_clear = "1") ELSE "0010" WHEN (zeroacc_clear = "2") ELSE "0011" WHEN (zeroacc_clear = "3") ELSE "0000" ;
+   zeroacc1_mac_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => zeroacc1,
+         clk => clk_zeroacc1,
+         aclr => aclr_zeroacc1,
+         if_aclr => clear_zeroacc1,
+         ena => ena_zeroacc1,
+         dataout => zeroacc1_pipe,
+         async => async_zeroacc1);   
+   
+   async_zeroacc1 <= '1' WHEN (zeroacc1_clock = "none") ELSE '0' ;
+   clear_zeroacc1 <= '1' WHEN (zeroacc1_clear /= "none") ELSE '0' ;
+   clk_zeroacc1 <= '1' WHEN clk(conv_integer(zeroacc1_clk)) = '1' ELSE '0' ;
+   aclr_zeroacc1 <= '1' WHEN (aclr(conv_integer(zeroacc1_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_zeroacc1 <= '1' WHEN ena(conv_integer(zeroacc1_clk)) = '1' ELSE '0' ;
+   zeroacc1_clk <= "0000" WHEN ((zeroacc1_clock = "0") OR (zeroacc1_clock = "none")) ELSE "0001" WHEN (zeroacc1_clock = "1") ELSE "0010" WHEN (zeroacc1_clock = "2") ELSE "0011" WHEN (zeroacc1_clock = "3") ELSE "0000" ;
+   zeroacc1_aclr <= "0000" WHEN ((zeroacc1_clear = "0") OR (zeroacc1_clear = "none")) ELSE "0001" WHEN (zeroacc1_clear = "1") ELSE "0010" WHEN (zeroacc1_clear = "2") ELSE "0011" WHEN (zeroacc1_clear = "3") ELSE "0000" ;
+   addnsub0_mac_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => addnsub0,
+         clk => clk_addnsub0,
+         aclr => aclr_addnsub0,
+         if_aclr => clear_addnsub0,
+         ena => ena_addnsub0,
+         dataout => addnsub0_pipe,
+         async => async_addnsub0);   
+   
+   async_addnsub0 <= '1' WHEN (addnsub0_clock = "none") ELSE '0' ;
+   clear_addnsub0 <= '1' WHEN (addnsub0_clear /= "none") ELSE '0' ;
+   clk_addnsub0 <= '1' WHEN clk(conv_integer(addnsub0_clk)) = '1' ELSE '0' ;
+   aclr_addnsub0 <= '1' WHEN (aclr(conv_integer(addnsub0_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_addnsub0 <= '1' WHEN ena(conv_integer(addnsub0_clk)) = '1' ELSE '0' ;
+   addnsub0_clk <= "0000" WHEN ((addnsub0_clock = "0") OR (addnsub0_clock = "none")) ELSE "0001" WHEN (addnsub0_clock = "1") ELSE "0010" WHEN (addnsub0_clock = "2") ELSE "0011" WHEN (addnsub0_clock = "3") ELSE "0000" ;
+   addnsub0_aclr <= "0000" WHEN ((addnsub0_clear = "0") OR (addnsub0_clear = "none")) ELSE "0001" WHEN (addnsub0_clear = "1") ELSE "0010" WHEN (addnsub0_clear = "2") ELSE "0011" WHEN (addnsub0_clear = "3") ELSE "0000" ;
+   addnsub1_mac_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => addnsub1,
+         clk => clk_addnsub1,
+         aclr => aclr_addnsub1,
+         if_aclr => clear_addnsub1,
+         ena => ena_addnsub1,
+         dataout => addnsub1_pipe,
+         async => async_addnsub1);   
+   
+   async_addnsub1 <= '1' WHEN (addnsub1_clock = "none") ELSE '0' ;
+   clear_addnsub1 <= '1' WHEN (addnsub1_clear /= "none") ELSE '0' ;
+   clk_addnsub1 <= '1' WHEN clk(conv_integer(addnsub1_clk)) = '1' ELSE '0' ;
+   aclr_addnsub1 <= '1' WHEN (aclr(conv_integer(addnsub1_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_addnsub1 <= '1' WHEN ena(conv_integer(addnsub1_clk)) = '1' ELSE '0' ;
+   addnsub1_clk <= "0000" WHEN ((addnsub1_clock = "0") OR (addnsub1_clock = "none")) ELSE "0001" WHEN (addnsub1_clock = "1") ELSE "0010" WHEN (addnsub1_clock = "2") ELSE "0011" WHEN (addnsub1_clock = "3") ELSE "0000" ;
+   addnsub1_aclr <= "0000" WHEN ((addnsub1_clear = "0") OR (addnsub1_clear = "none")) ELSE "0001" WHEN (addnsub1_clear = "1") ELSE "0010" WHEN (addnsub1_clear = "2") ELSE "0011" WHEN (addnsub1_clear = "3") ELSE "0000" ;
+   round0_mac_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => round0,
+         clk => clk_round0,
+         aclr => aclr_round0,
+         if_aclr => clear_round0,
+         ena => ena_round0,
+         dataout => round0_pipe,
+         async => async_round0);   
+   
+   async_round0 <= '1' WHEN (round0_clock = "none") ELSE '0' ;
+   clear_round0 <= '1' WHEN (round0_clear /= "none") ELSE '0' ;
+   clk_round0 <= '1' WHEN clk(conv_integer(round0_clk)) = '1' ELSE '0' ;
+   aclr_round0 <= '1' WHEN (aclr(conv_integer(round0_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_round0 <= '1' WHEN ena(conv_integer(round0_clk)) = '1' ELSE '0' ;
+   round0_clk <= "0000" WHEN ((round0_clock = "0") OR (round0_clock = "none")) ELSE "0001" WHEN (round0_clock = "1") ELSE "0010" WHEN (round0_clock = "2") ELSE "0011" WHEN (round0_clock = "3") ELSE "0000" ;
+   round0_aclr <= "0000" WHEN ((round0_clear = "0") OR (round0_clear = "none")) ELSE "0001" WHEN (round0_clear = "1") ELSE "0010" WHEN (round0_clear = "2") ELSE "0011" WHEN (round0_clear = "3") ELSE "0000" ;
+   saturate_mac_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => saturate,
+         clk => clk_saturate,
+         aclr => aclr_saturate,
+         if_aclr => clear_saturate,
+         ena => ena_saturate,
+         dataout => saturate_pipe,
+         async => async_saturate);   
+   
+   async_saturate <= '1' WHEN (saturate_clock = "none") ELSE '0' ;
+   clear_saturate <= '1' WHEN (saturate_clear /= "none") ELSE '0' ;
+   clk_saturate <= '1' WHEN clk(conv_integer(saturate_clk)) = '1' ELSE '0' ;
+   aclr_saturate <= '1' WHEN (aclr(conv_integer(saturate_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_saturate <= '1' WHEN ena(conv_integer(saturate_clk)) = '1' ELSE '0' ;
+   saturate_clk <= "0000" WHEN ((saturate_clock = "0") OR (saturate_clock = "none")) ELSE "0001" WHEN (saturate_clock = "1") ELSE "0010" WHEN (saturate_clock = "2") ELSE "0011" WHEN (saturate_clock = "3") ELSE "0000" ;
+   saturate_aclr <= "0000" WHEN ((saturate_clear = "0") OR (saturate_clear = "none")) ELSE "0001" WHEN (saturate_clear = "1") ELSE "0010" WHEN (saturate_clear = "2") ELSE "0011" WHEN (saturate_clear = "3") ELSE "0000" ;
+   mode0_mac_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => mode0,
+         clk => clk_mode0,
+         aclr => aclr_mode0,
+         if_aclr => clear_mode0,
+         ena => ena_mode0,
+         dataout => mode0_pipe,
+         async => async_mode0);   
+   
+   async_mode0 <= '1' WHEN (mode0_clock = "none") ELSE '0' ;
+   clear_mode0 <= '1' WHEN (mode0_clear /= "none") ELSE '0' ;
+   clk_mode0 <= '1' WHEN clk(conv_integer(mode0_clk)) = '1' ELSE '0' ;
+   aclr_mode0 <= '1' WHEN (aclr(conv_integer(mode0_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_mode0 <= '1' WHEN ena(conv_integer(mode0_clk)) = '1' ELSE '0' ;
+   mode0_clk <= "0000" WHEN ((mode0_clock = "0") OR (mode0_clock = "none")) ELSE "0001" WHEN (mode0_clock = "1") ELSE "0010" WHEN (mode0_clock = "2") ELSE "0011" WHEN (mode0_clock = "3") ELSE "0000" ;
+   mode0_aclr <= "0000" WHEN ((mode0_clear = "0") OR (mode0_clear = "none")) ELSE "0001" WHEN (mode0_clear = "1") ELSE "0010" WHEN (mode0_clear = "2") ELSE "0011" WHEN (mode0_clear = "3") ELSE "0000" ;
+   round1_mac_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => round1,
+         clk => clk_round1,
+         aclr => aclr_round1,
+         if_aclr => clear_round1,
+         ena => ena_round1,
+         dataout => round1_pipe,
+         async => async_round1);   
+   
+   async_round1 <= '1' WHEN (round1_clock = "none") ELSE '0' ;
+   clear_round1 <= '1' WHEN (round1_clear /= "none") ELSE '0' ;
+   clk_round1 <= '1' WHEN clk(conv_integer(round1_clk)) = '1' ELSE '0' ;
+   aclr_round1 <= '1' WHEN (aclr(conv_integer(round1_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_round1 <= '1' WHEN ena(conv_integer(round1_clk)) = '1' ELSE '0' ;
+   round1_clk <= "0000" WHEN ((round1_clock = "0") OR (round1_clock = "none")) ELSE "0001" WHEN (round1_clock = "1") ELSE "0010" WHEN (round1_clock = "2") ELSE "0011" WHEN (round1_clock = "3") ELSE "0000" ;
+   round1_aclr <= "0000" WHEN ((round1_clear = "0") OR (round1_clear = "none")) ELSE "0001" WHEN (round1_clear = "1") ELSE "0010" WHEN (round1_clear = "2") ELSE "0011" WHEN (round1_clear = "3") ELSE "0000" ;
+   saturate1_mac_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => saturate1,
+         clk => clk_saturate1,
+         aclr => aclr_saturate1,
+         if_aclr => clear_saturate1,
+         ena => ena_saturate1,
+         dataout => saturate1_pipe,
+         async => async_saturate1);   
+   
+   async_saturate1 <= '1' WHEN (saturate1_clock = "none") ELSE '0' ;
+   clear_saturate1 <= '1' WHEN (saturate1_clear /= "none") ELSE '0' ;
+   clk_saturate1 <= '1' WHEN clk(conv_integer(saturate1_clk)) = '1' ELSE '0' ;
+   aclr_saturate1 <= '1' WHEN (aclr(conv_integer(saturate1_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_saturate1 <= '1' WHEN ena(conv_integer(saturate1_clk)) = '1' ELSE '0' ;
+   saturate1_clk <= "0000" WHEN ((saturate1_clock = "0") OR (saturate1_clock = "none")) ELSE "0001" WHEN (saturate1_clock = "1") ELSE "0010" WHEN (saturate1_clock = "2") ELSE "0011" WHEN (saturate1_clock = "3") ELSE "0000" ;
+   saturate1_aclr <= "0000" WHEN ((saturate1_clear = "0") OR (saturate1_clear = "none")) ELSE "0001" WHEN (saturate1_clear = "1") ELSE "0010" WHEN (saturate1_clear = "2") ELSE "0011" WHEN (saturate1_clear = "3") ELSE "0000" ;
+   mode1_mac_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => mode1,
+         clk => clk_mode1,
+         aclr => aclr_mode1,
+         if_aclr => clear_mode1,
+         ena => ena_mode1,
+         dataout => mode1_pipe,
+         async => async_mode1);   
+   
+   async_mode1 <= '1' WHEN (mode1_clock = "none") ELSE '0' ;
+   clear_mode1 <= '1' WHEN (mode1_clear /= "none") ELSE '0' ;
+   clk_mode1 <= '1' WHEN clk(conv_integer(mode1_clk)) = '1' ELSE '0' ;
+   aclr_mode1 <= '1' WHEN (aclr(conv_integer(mode1_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_mode1 <= '1' WHEN ena(conv_integer(mode1_clk)) = '1' ELSE '0' ;
+   mode1_clk <= "0000" WHEN ((mode1_clock = "0") OR (mode1_clock = "none")) ELSE "0001" WHEN (mode1_clock = "1") ELSE "0010" WHEN (mode1_clock = "2") ELSE "0011" WHEN (mode1_clock = "3") ELSE "0000" ;
+   mode1_aclr <= "0000" WHEN ((mode1_clear = "0") OR (mode1_clear = "none")) ELSE "0001" WHEN (mode1_clear = "1") ELSE "0010" WHEN (mode1_clear = "2") ELSE "0011" WHEN (mode1_clear = "3") ELSE "0000" ;
+   multabsaturate_mac_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => multabsaturate,
+         clk => clk_multabsaturate,
+         aclr => aclr_multabsaturate,
+         if_aclr => clear_multabsaturate,
+         ena => ena_multabsaturate,
+         dataout => multabsaturate_pipe,
+         async => async_multabsaturate);   
+   
+   async_multabsaturate <= '1' WHEN (multabsaturate_clock = "none") ELSE '0' ;
+   clear_multabsaturate <= '1' WHEN (multabsaturate_clear /= "none") ELSE '0' ;
+   clk_multabsaturate <= '1' WHEN clk(conv_integer(multabsaturate_clk)) = '1' ELSE '0' ;
+   aclr_multabsaturate <= '1' WHEN (aclr(conv_integer(multabsaturate_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_multabsaturate <= '1' WHEN ena(conv_integer(multabsaturate_clk)) = '1' ELSE '0' ;
+   multabsaturate_clk <= "0000" WHEN ((multabsaturate_clock = "0") OR (multabsaturate_clock = "none")) ELSE "0001" WHEN (multabsaturate_clock = "1") ELSE "0010" WHEN (multabsaturate_clock = "2") ELSE "0011" WHEN (multabsaturate_clock = "3") ELSE "0000" ;
+   multabsaturate_aclr <= "0000" WHEN ((multabsaturate_clear = "0") OR (multabsaturate_clear = "none")) ELSE "0001" WHEN (multabsaturate_clear = "1") ELSE "0010" WHEN (multabsaturate_clear = "2") ELSE "0011" WHEN (multabsaturate_clear = "3") ELSE "0000" ;
+   multcdsaturate_mac_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => multcdsaturate,
+         clk => clk_multcdsaturate,
+         aclr => aclr_multcdsaturate,
+         if_aclr => clear_multcdsaturate,
+         ena => ena_multcdsaturate,
+         dataout => multcdsaturate_pipe,
+         async => async_multcdsaturate);   
+   
+   async_multcdsaturate <= '1' WHEN (multcdsaturate_clock = "none") ELSE '0' ;
+   clear_multcdsaturate <= '1' WHEN (multcdsaturate_clear /= "none") ELSE '0' ;
+   clk_multcdsaturate <= '1' WHEN clk(conv_integer(multcdsaturate_clk)) = '1' ELSE '0' ;
+   aclr_multcdsaturate <= '1' WHEN (aclr(conv_integer(multcdsaturate_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_multcdsaturate <= '1' WHEN ena(conv_integer(multcdsaturate_clk)) = '1' ELSE '0' ;
+   multcdsaturate_clk <= "0000" WHEN ((multcdsaturate_clock = "0") OR (multcdsaturate_clock = "none")) ELSE "0001" WHEN (multcdsaturate_clock = "1") ELSE "0010" WHEN (multcdsaturate_clock = "2") ELSE "0011" WHEN (multcdsaturate_clock = "3") ELSE "0000" ;
+   multcdsaturate_aclr <= "0000" WHEN ((multcdsaturate_clear = "0") OR (multcdsaturate_clear = "none")) ELSE "0001" WHEN (multcdsaturate_clear = "1") ELSE "0010" WHEN (multcdsaturate_clear = "2") ELSE "0011" WHEN (multcdsaturate_clear = "3") ELSE "0000" ;
+   signa_mac_pipeline_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => signa_pipe,
+         clk => clk_signa_pipeline,
+         aclr => aclr_signa_pipeline,
+         if_aclr => clear_signa_pipeline,
+         ena => ena_signa_pipeline,
+         dataout => signa_out,
+         async => async_signa_pipeline);   
+   
+   async_signa_pipeline <= '1' WHEN (signa_pipeline_clock = "none") ELSE '0' ;
+   clear_signa_pipeline <= '1' WHEN (signa_pipeline_clear /= "none") ELSE '0' ;
+   clk_signa_pipeline <= '1' WHEN clk(conv_integer(signa_pipeline_clk)) = '1' ELSE '0' ;
+   aclr_signa_pipeline <= '1' WHEN (aclr(conv_integer(signa_pipeline_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_signa_pipeline <= '1' WHEN ena(conv_integer(signa_pipeline_clk)) = '1' ELSE '0' ;
+   signa_pipeline_clk <= "0000" WHEN ((signa_pipeline_clock = "0") OR (signa_pipeline_clock = "none")) ELSE "0001" WHEN (signa_pipeline_clock = "1") ELSE "0010" WHEN (signa_pipeline_clock = "2") ELSE "0011" WHEN (signa_pipeline_clock = "3") ELSE "0000" ;
+   signa_pipeline_aclr <= "0000" WHEN ((signa_pipeline_clear = "0") OR (signa_pipeline_clear = "none")) ELSE "0001" WHEN (signa_pipeline_clear = "1") ELSE "0010" WHEN (signa_pipeline_clear = "2") ELSE "0011" WHEN (signa_pipeline_clear = "3") ELSE "0000" ;
+   signb_mac_pipeline_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => signb_pipe,
+         clk => clk_signb_pipeline,
+         aclr => aclr_signb_pipeline,
+         if_aclr => clear_signb_pipeline,
+         ena => ena_signb_pipeline,
+         dataout => signb_out,
+         async => async_signb_pipeline);   
+   
+   async_signb_pipeline <= '1' WHEN (signb_pipeline_clock = "none") ELSE '0' ;
+   clear_signb_pipeline <= '1' WHEN (signb_pipeline_clear /= "none") ELSE '0' ;
+   clk_signb_pipeline <= '1' WHEN clk(conv_integer(signb_pipeline_clk)) = '1' ELSE '0' ;
+   aclr_signb_pipeline <= '1' WHEN (aclr(conv_integer(signb_pipeline_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_signb_pipeline <= '1' WHEN ena(conv_integer(signb_pipeline_clk)) = '1' ELSE '0' ;
+   signb_pipeline_clk <= "0000" WHEN ((signb_pipeline_clock = "0") OR (signb_pipeline_clock = "none")) ELSE "0001" WHEN (signb_pipeline_clock = "1") ELSE "0010" WHEN (signb_pipeline_clock = "2") ELSE "0011" WHEN (signb_pipeline_clock = "3") ELSE "0000" ;
+   signb_pipeline_aclr <= "0000" WHEN ((signb_pipeline_clear = "0") OR (signb_pipeline_clear = "none")) ELSE "0001" WHEN (signb_pipeline_clear = "1") ELSE "0010" WHEN (signb_pipeline_clear = "2") ELSE "0011" WHEN (signb_pipeline_clear = "3") ELSE "0000" ;
+   zeroacc_mac_pipeline_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => zeroacc_pipe,
+         clk => clk_zeroacc_pipeline,
+         aclr => aclr_zeroacc_pipeline,
+         if_aclr => clear_zeroacc_pipeline,
+         ena => ena_zeroacc_pipeline,
+         dataout => zeroacc_out,
+         async => async_zeroacc_pipeline);   
+   
+   async_zeroacc_pipeline <= '1' WHEN (zeroacc_pipeline_clock = "none") ELSE '0' ;
+   clear_zeroacc_pipeline <= '1' WHEN (zeroacc_pipeline_clear /= "none") ELSE '0' ;
+   clk_zeroacc_pipeline <= '1' WHEN clk(conv_integer(zeroacc_pipeline_clk)) = '1' ELSE '0' ;
+   aclr_zeroacc_pipeline <= '1' WHEN (aclr(conv_integer(zeroacc_pipeline_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_zeroacc_pipeline <= '1' WHEN ena(conv_integer(zeroacc_pipeline_clk)) = '1' ELSE '0' ;
+   zeroacc_pipeline_clk <= "0000" WHEN ((zeroacc_pipeline_clock = "0") OR (zeroacc_pipeline_clock = "none")) ELSE "0001" WHEN (zeroacc_pipeline_clock = "1") ELSE "0010" WHEN (zeroacc_pipeline_clock = "2") ELSE "0011" WHEN (zeroacc_pipeline_clock = "3") ELSE "0000" ;
+   zeroacc_pipeline_aclr <= "0000" WHEN ((zeroacc_pipeline_clear = "0") OR (zeroacc_pipeline_clear = "none")) ELSE "0001" WHEN (zeroacc_pipeline_clear = "1") ELSE "0010" WHEN (zeroacc_pipeline_clear = "2") ELSE "0011" WHEN (zeroacc_pipeline_clear = "3") ELSE "0000" ;
+   zeroacc1_mac_pipeline_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => zeroacc1_pipe,
+         clk => clk_zeroacc1_pipeline,
+         aclr => aclr_zeroacc1_pipeline,
+         if_aclr => clear_zeroacc1_pipeline,
+         ena => ena_zeroacc1_pipeline,
+         dataout => zeroacc1_out,
+         async => async_zeroacc1_pipeline);   
+   
+   async_zeroacc1_pipeline <= '1' WHEN (zeroacc1_pipeline_clock = "none") ELSE '0' ;
+   clear_zeroacc1_pipeline <= '1' WHEN (zeroacc1_pipeline_clear /= "none") ELSE '0' ;
+   clk_zeroacc1_pipeline <= '1' WHEN clk(conv_integer(zeroacc1_pipeline_clk)) = '1' ELSE '0' ;
+   aclr_zeroacc1_pipeline <= '1' WHEN (aclr(conv_integer(zeroacc1_pipeline_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_zeroacc1_pipeline <= '1' WHEN ena(conv_integer(zeroacc1_pipeline_clk)) = '1' ELSE '0' ;
+   zeroacc1_pipeline_clk <= "0000" WHEN ((zeroacc1_pipeline_clock = "0") OR (zeroacc1_pipeline_clock = "none")) ELSE "0001" WHEN (zeroacc1_pipeline_clock = "1") ELSE "0010" WHEN (zeroacc1_pipeline_clock = "2") ELSE "0011" WHEN (zeroacc1_pipeline_clock = "3") ELSE "0000" ;
+   zeroacc1_pipeline_aclr <= "0000" WHEN ((zeroacc1_pipeline_clear = "0") OR (zeroacc1_pipeline_clear = "none")) ELSE "0001" WHEN (zeroacc1_pipeline_clear = "1") ELSE "0010" WHEN (zeroacc1_pipeline_clear = "2") ELSE "0011" WHEN (zeroacc1_pipeline_clear = "3") ELSE "0000" ;
+   addnsub0_mac_pipeline_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => addnsub0_pipe,
+         clk => clk_addnsub0_pipeline,
+         aclr => aclr_addnsub0_pipeline,
+         if_aclr => clear_addnsub0_pipeline,
+         ena => ena_addnsub0_pipeline,
+         dataout => addnsub0_out,
+         async => async_addnsub0_pipeline);   
+   
+   async_addnsub0_pipeline <= '1' WHEN (addnsub0_pipeline_clock = "none") ELSE '0' ;
+   clear_addnsub0_pipeline <= '1' WHEN (addnsub0_pipeline_clear /= "none") ELSE '0' ;
+   clk_addnsub0_pipeline <= '1' WHEN clk(conv_integer(addnsub0_pipeline_clk)) = '1' ELSE '0' ;
+   aclr_addnsub0_pipeline <= '1' WHEN (aclr(conv_integer(addnsub0_pipeline_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_addnsub0_pipeline <= '1' WHEN ena(conv_integer(addnsub0_pipeline_clk)) = '1' ELSE '0' ;
+   addnsub0_pipeline_clk <= "0000" WHEN ((addnsub0_pipeline_clock = "0") OR (addnsub0_pipeline_clock = "none")) ELSE "0001" WHEN (addnsub0_pipeline_clock = "1") ELSE "0010" WHEN (addnsub0_pipeline_clock = "2") ELSE "0011" WHEN (addnsub0_pipeline_clock = "3") ELSE "0000" ;
+   addnsub0_pipeline_aclr <= "0000" WHEN ((addnsub0_pipeline_clear = "0") OR (addnsub0_pipeline_clear = "none")) ELSE "0001" WHEN (addnsub0_pipeline_clear = "1") ELSE "0010" WHEN (addnsub0_pipeline_clear = "2") ELSE "0011" WHEN (addnsub0_pipeline_clear = "3") ELSE "0000" ;
+   addnsub1_mac_pipeline_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => addnsub1_pipe,
+         clk => clk_addnsub1_pipeline,
+         aclr => aclr_addnsub1_pipeline,
+         if_aclr => clear_addnsub1_pipeline,
+         ena => ena_addnsub1_pipeline,
+         dataout => addnsub1_out,
+         async => async_addnsub1_pipeline);   
+   
+   async_addnsub1_pipeline <= '1' WHEN (addnsub1_pipeline_clock = "none") ELSE '0' ;
+   clear_addnsub1_pipeline <= '1' WHEN (addnsub1_pipeline_clear /= "none") ELSE '0' ;
+   clk_addnsub1_pipeline <= '1' WHEN clk(conv_integer(addnsub1_pipeline_clk)) = '1' ELSE '0' ;
+   aclr_addnsub1_pipeline <= '1' WHEN (aclr(conv_integer(addnsub1_pipeline_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_addnsub1_pipeline <= '1' WHEN ena(conv_integer(addnsub1_pipeline_clk)) = '1' ELSE '0' ;
+   addnsub1_pipeline_clk <= "0000" WHEN ((addnsub1_pipeline_clock = "0") OR (addnsub1_pipeline_clock = "none")) ELSE "0001" WHEN (addnsub1_pipeline_clock = "1") ELSE "0010" WHEN (addnsub1_pipeline_clock = "2") ELSE "0011" WHEN (addnsub1_pipeline_clock = "3") ELSE "0000" ;
+   addnsub1_pipeline_aclr <= "0000" WHEN ((addnsub1_pipeline_clear = "0") OR (addnsub1_pipeline_clear = "none")) ELSE "0001" WHEN (addnsub1_pipeline_clear = "1") ELSE "0010" WHEN (addnsub1_pipeline_clear = "2") ELSE "0011" WHEN (addnsub1_pipeline_clear = "3") ELSE "0000" ;
+   round0_mac_pipeline_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => round0_pipe,
+         clk => clk_round0_pipeline,
+         aclr => aclr_round0_pipeline,
+         if_aclr => clear_round0_pipeline,
+         ena => ena_round0_pipeline,
+         dataout => round0_out,
+         async => async_round0_pipeline);   
+   
+   async_round0_pipeline <= '1' WHEN (round0_pipeline_clock = "none") ELSE '0' ;
+   clear_round0_pipeline <= '1' WHEN (round0_pipeline_clear /= "none") ELSE '0' ;
+   clk_round0_pipeline <= '1' WHEN clk(conv_integer(round0_pipeline_clk)) = '1' ELSE '0' ;
+   aclr_round0_pipeline <= '1' WHEN (aclr(conv_integer(round0_pipeline_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_round0_pipeline <= '1' WHEN ena(conv_integer(round0_pipeline_clk)) = '1' ELSE '0' ;
+   round0_pipeline_clk <= "0000" WHEN ((round0_pipeline_clock = "0") OR (round0_pipeline_clock = "none")) ELSE "0001" WHEN (round0_pipeline_clock = "1") ELSE "0010" WHEN (round0_pipeline_clock = "2") ELSE "0011" WHEN (round0_pipeline_clock = "3") ELSE "0000" ;
+   round0_pipeline_aclr <= "0000" WHEN ((round0_pipeline_clear = "0") OR (round0_pipeline_clear = "none")) ELSE "0001" WHEN (round0_pipeline_clear = "1") ELSE "0010" WHEN (round0_pipeline_clear = "2") ELSE "0011" WHEN (round0_pipeline_clear = "3") ELSE "0000" ;
+   saturate_mac_pipeline_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => saturate_pipe,
+         clk => clk_saturate_pipeline,
+         aclr => aclr_saturate_pipeline,
+         if_aclr => clear_saturate_pipeline,
+         ena => ena_saturate_pipeline,
+         dataout => saturate_out,
+         async => async_saturate_pipeline);   
+   
+   async_saturate_pipeline <= '1' WHEN (saturate_pipeline_clock = "none") ELSE '0' ;
+   clear_saturate_pipeline <= '1' WHEN (saturate_pipeline_clear /= "none") ELSE '0' ;
+   clk_saturate_pipeline <= '1' WHEN clk(conv_integer(saturate_pipeline_clk)) = '1' ELSE '0' ;
+   aclr_saturate_pipeline <= '1' WHEN (aclr(conv_integer(saturate_pipeline_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_saturate_pipeline <= '1' WHEN ena(conv_integer(saturate_pipeline_clk)) = '1' ELSE '0' ;
+   saturate_pipeline_clk <= "0000" WHEN ((saturate_pipeline_clock = "0") OR (saturate_pipeline_clock = "none")) ELSE "0001" WHEN (saturate_pipeline_clock = "1") ELSE "0010" WHEN (saturate_pipeline_clock = "2") ELSE "0011" WHEN (saturate_pipeline_clock = "3") ELSE "0000" ;
+   saturate_pipeline_aclr <= "0000" WHEN ((saturate_pipeline_clear = "0") OR (saturate_pipeline_clear = "none")) ELSE "0001" WHEN (saturate_pipeline_clear = "1") ELSE "0010" WHEN (saturate_pipeline_clear = "2") ELSE "0011" WHEN (saturate_pipeline_clear = "3") ELSE "0000" ;
+   mode0_mac_pipeline_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => mode0_pipe,
+         clk => clk_mode0_pipeline,
+         aclr => aclr_mode0_pipeline,
+         if_aclr => clear_mode0_pipeline,
+         ena => ena_mode0_pipeline,
+         dataout => mode0_out,
+         async => async_mode0_pipeline);   
+   
+   async_mode0_pipeline <= '1' WHEN (mode0_pipeline_clock = "none") ELSE '0' ;
+   clear_mode0_pipeline <= '1' WHEN (mode0_pipeline_clear /= "none") ELSE '0' ;
+   clk_mode0_pipeline <= '1' WHEN clk(conv_integer(mode0_pipeline_clk)) = '1' ELSE '0' ;
+   aclr_mode0_pipeline <= '1' WHEN (aclr(conv_integer(mode0_pipeline_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_mode0_pipeline <= '1' WHEN ena(conv_integer(mode0_pipeline_clk)) = '1' ELSE '0' ;
+   mode0_pipeline_clk <= "0000" WHEN ((mode0_pipeline_clock = "0") OR (mode0_pipeline_clock = "none")) ELSE "0001" WHEN (mode0_pipeline_clock = "1") ELSE "0010" WHEN (mode0_pipeline_clock = "2") ELSE "0011" WHEN (mode0_pipeline_clock = "3") ELSE "0000" ;
+   mode0_pipeline_aclr <= "0000" WHEN ((mode0_pipeline_clear = "0") OR (mode0_pipeline_clear = "none")) ELSE "0001" WHEN (mode0_pipeline_clear = "1") ELSE "0010" WHEN (mode0_pipeline_clear = "2") ELSE "0011" WHEN (mode0_pipeline_clear = "3") ELSE "0000" ;
+   round1_mac_pipeline_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => round1_pipe,
+         clk => clk_round1_pipeline,
+         aclr => aclr_round1_pipeline,
+         if_aclr => clear_round1_pipeline,
+         ena => ena_round1_pipeline,
+         dataout => round1_out,
+         async => async_round1_pipeline);   
+   
+   async_round1_pipeline <= '1' WHEN (round1_pipeline_clock = "none") ELSE '0' ;
+   clear_round1_pipeline <= '1' WHEN (round1_pipeline_clear /= "none") ELSE '0' ;
+   clk_round1_pipeline <= '1' WHEN clk(conv_integer(round1_pipeline_clk)) = '1' ELSE '0' ;
+   aclr_round1_pipeline <= '1' WHEN (aclr(conv_integer(round1_pipeline_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_round1_pipeline <= '1' WHEN ena(conv_integer(round1_pipeline_clk)) = '1' ELSE '0' ;
+   round1_pipeline_clk <= "0000" WHEN ((round1_pipeline_clock = "0") OR (round1_pipeline_clock = "none")) ELSE "0001" WHEN (round1_pipeline_clock = "1") ELSE "0010" WHEN (round1_pipeline_clock = "2") ELSE "0011" WHEN (round1_pipeline_clock = "3") ELSE "0000" ;
+   round1_pipeline_aclr <= "0000" WHEN ((round1_pipeline_clear = "0") OR (round1_pipeline_clear = "none")) ELSE "0001" WHEN (round1_pipeline_clear = "1") ELSE "0010" WHEN (round1_pipeline_clear = "2") ELSE "0011" WHEN (round1_pipeline_clear = "3") ELSE "0000" ;
+   saturate1_mac_pipeline_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => saturate1_pipe,
+         clk => clk_saturate1_pipeline,
+         aclr => aclr_saturate1_pipeline,
+         if_aclr => clear_saturate1_pipeline,
+         ena => ena_saturate1_pipeline,
+         dataout => saturate1_out,
+         async => async_saturate1_pipeline);   
+   
+   async_saturate1_pipeline <= '1' WHEN (saturate1_pipeline_clock = "none") ELSE '0' ;
+   clear_saturate1_pipeline <= '1' WHEN (saturate1_pipeline_clear /= "none") ELSE '0' ;
+   clk_saturate1_pipeline <= '1' WHEN clk(conv_integer(saturate1_pipeline_clk)) = '1' ELSE '0' ;
+   aclr_saturate1_pipeline <= '1' WHEN (aclr(conv_integer(saturate1_pipeline_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_saturate1_pipeline <= '1' WHEN ena(conv_integer(saturate1_pipeline_clk)) = '1' ELSE '0' ;
+   saturate1_pipeline_clk <= "0000" WHEN ((saturate1_pipeline_clock = "0") OR (saturate1_pipeline_clock = "none")) ELSE "0001" WHEN (saturate1_pipeline_clock = "1") ELSE "0010" WHEN (saturate1_pipeline_clock = "2") ELSE "0011" WHEN (saturate1_pipeline_clock = "3") ELSE "0000" ;
+   saturate1_pipeline_aclr <= "0000" WHEN ((saturate1_pipeline_clear = "0") OR (saturate1_pipeline_clear = "none")) ELSE "0001" WHEN (saturate1_pipeline_clear = "1") ELSE "0010" WHEN (saturate1_pipeline_clear = "2") ELSE "0011" WHEN (saturate1_pipeline_clear = "3") ELSE "0000" ;
+   mode1_mac_pipeline_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => mode1_pipe,
+         clk => clk_mode1_pipeline,
+         aclr => aclr_mode1_pipeline,
+         if_aclr => clear_mode1_pipeline,
+         ena => ena_mode1_pipeline,
+         dataout => mode1_out,
+         async => async_mode1_pipeline);   
+   
+   async_mode1_pipeline <= '1' WHEN (mode1_pipeline_clock = "none") ELSE '0' ;
+   clear_mode1_pipeline <= '1' WHEN (mode1_pipeline_clear /= "none") ELSE '0' ;
+   clk_mode1_pipeline <= '1' WHEN clk(conv_integer(mode1_pipeline_clk)) = '1' ELSE '0' ;
+   aclr_mode1_pipeline <= '1' WHEN (aclr(conv_integer(mode1_pipeline_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_mode1_pipeline <= '1' WHEN ena(conv_integer(mode1_pipeline_clk)) = '1' ELSE '0' ;
+   mode1_pipeline_clk <= "0000" WHEN ((mode1_pipeline_clock = "0") OR (mode1_pipeline_clock = "none")) ELSE "0001" WHEN (mode1_pipeline_clock = "1") ELSE "0010" WHEN (mode1_pipeline_clock = "2") ELSE "0011" WHEN (mode1_pipeline_clock = "3") ELSE "0000" ;
+   mode1_pipeline_aclr <= "0000" WHEN ((mode1_pipeline_clear = "0") OR (mode1_pipeline_clear = "none")) ELSE "0001" WHEN (mode1_pipeline_clear = "1") ELSE "0010" WHEN (mode1_pipeline_clear = "2") ELSE "0011" WHEN (mode1_pipeline_clear = "3") ELSE "0000" ;
+   multabsaturate_mac_pipeline_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => multabsaturate_pipe,
+         clk => clk_multabsaturate_pipeline,
+         aclr => aclr_multabsaturate_pipeline,
+         if_aclr => clear_multabsaturate_pipeline,
+         ena => ena_multabsaturate_pipeline,
+         dataout => multabsaturate_out,
+         async => async_multabsaturate_pipeline);   
+   
+   async_multabsaturate_pipeline <= '1' WHEN (multabsaturate_pipeline_clock = "none") ELSE '0' ;
+   clear_multabsaturate_pipeline <= '1' WHEN (multabsaturate_pipeline_clear /= "none") ELSE '0' ;
+   clk_multabsaturate_pipeline <= '1' WHEN clk(conv_integer(multabsaturate_pipeline_clk)) = '1' ELSE '0' ;
+   aclr_multabsaturate_pipeline <= '1' WHEN (aclr(conv_integer(multabsaturate_pipeline_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_multabsaturate_pipeline <= '1' WHEN ena(conv_integer(multabsaturate_pipeline_clk)) = '1' ELSE '0' ;
+   multabsaturate_pipeline_clk <= "0000" WHEN ((multabsaturate_pipeline_clock = "0") OR (multabsaturate_pipeline_clock = "none")) ELSE "0001" WHEN (multabsaturate_pipeline_clock = "1") ELSE "0010" WHEN (multabsaturate_pipeline_clock = "2") ELSE "0011" WHEN (multabsaturate_pipeline_clock = "3") ELSE "0000" ;
+   multabsaturate_pipeline_aclr <= "0000" WHEN ((multabsaturate_pipeline_clear = "0") OR (multabsaturate_pipeline_clear = "none")) ELSE "0001" WHEN (multabsaturate_pipeline_clear = "1") ELSE "0010" WHEN (multabsaturate_pipeline_clear = "2") ELSE "0011" WHEN (multabsaturate_pipeline_clear = "3") ELSE "0000" ;
+   multcdsaturate_mac_pipeline_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => multcdsaturate_pipe,
+         clk => clk_multcdsaturate_pipeline,
+         aclr => aclr_multcdsaturate_pipeline,
+         if_aclr => clear_multcdsaturate_pipeline,
+         ena => ena_multcdsaturate_pipeline,
+         dataout => multcdsaturate_out,
+         async => async_multcdsaturate_pipeline);   
+   
+   async_multcdsaturate_pipeline <= '1' WHEN (multcdsaturate_pipeline_clock = "none") ELSE '0' ;
+   clear_multcdsaturate_pipeline <= '1' WHEN (multcdsaturate_pipeline_clear /= "none") ELSE '0' ;
+   clk_multcdsaturate_pipeline <= '1' WHEN clk(conv_integer(multcdsaturate_pipeline_clk)) = '1' ELSE '0' ;
+   aclr_multcdsaturate_pipeline <= '1' WHEN (aclr(conv_integer(multcdsaturate_pipeline_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_multcdsaturate_pipeline <= '1' WHEN ena(conv_integer(multcdsaturate_pipeline_clk)) = '1' ELSE '0' ;
+   multcdsaturate_pipeline_clk <= "0000" WHEN ((multcdsaturate_pipeline_clock = "0") OR (multcdsaturate_pipeline_clock = "none")) ELSE "0001" WHEN (multcdsaturate_pipeline_clock = "1") ELSE "0010" WHEN (multcdsaturate_pipeline_clock = "2") ELSE "0011" WHEN (multcdsaturate_pipeline_clock = "3") ELSE "0000" ;
+   multcdsaturate_pipeline_aclr <= "0000" WHEN ((multcdsaturate_pipeline_clear = "0") OR (multcdsaturate_pipeline_clear = "none")) ELSE "0001" WHEN (multcdsaturate_pipeline_clear = "1") ELSE "0010" WHEN (multcdsaturate_pipeline_clear = "2") ELSE "0011" WHEN (multcdsaturate_pipeline_clear = "3") ELSE "0000" ;
+   dataa_f <= (others => '0') WHEN (dataa_forced_to_zero = "yes") ELSE dataa ;
+   datac_f <= (others => '0') WHEN (datac_forced_to_zero = "yes") ELSE datac ;
+   mac_adder : stratixii_mac_out_internal 
+      GENERIC MAP (
+         dataa_width => dataa_width,
+         datab_width => datab_width,
+         datac_width => datac_width,
+         datad_width => datad_width,
+         dataout_width => dataout_width,
+         operation_mode => operation_mode)
+      PORT MAP (
+         dataa => dataa_f,
+         datab => datab,
+         datac => datac_f,
+         datad => datad,
+         mode0 => mode0_out,       
+         mode1 => mode1_out,       
+         zeroacc => zeroacc_out,
+         zeroacc1 => zeroacc1_out, 
+         roundab => round0_out,
+         roundcd => round1_out,
+         saturateab => saturate_out,
+         saturatecd => saturate1_out,
+         multabsaturate => multabsaturate_out,
+         multcdsaturate => multcdsaturate_out,
+         signx => signa_out,
+         signy => signb_out,
+         addnsub0 => addnsub0_out,
+         addnsub1 => addnsub1_out,
+         feedback => dataout_feedback,
+         dataout => dataout_map(dataout_width -1 downto 0),
+         accoverflow => accoverflow_reg);   
+
+   pin_map_addnsub <= addnsub0_out AND addnsub1_out;
+   
+   mac_pin_map : stratixii_mac_pin_map 
+      GENERIC MAP (
+         operation_mode => operation_mode,
+         data_width => tmp_width,
+         pinmap => "map")
+      PORT MAP (
+         datain => dataout_map,
+         operation => operation,
+		 addnsub => pin_map_addnsub,
+         dataout => dataout_to_reg);   
+   
+   output0_reg : stratixii_mac_register 
+      GENERIC MAP (
+         data_width => dataout_width,
+         power_up => '0')
+      PORT MAP (
+         data => dataout_to_reg(dataout_width -1 DOWNTO 0),
+         clk => clk_output,
+         aclr => aclr_output,
+         if_aclr => clear_output,
+         ena => ena_output,
+         dataout => dataout_non_dynamic(dataout_width -1 DOWNTO 0),
+         async => async_output);   
+   
+   async_output <= '1' WHEN (output_clock = "none") ELSE '0' ;
+   clear_output <= '1' WHEN (output_clear /= "none") ELSE '0' ;
+   clk_output <= '1' WHEN clk(conv_integer(output_clk)) = '1' ELSE '0' ;
+   aclr_output <= '1' WHEN (aclr(conv_integer(output_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_output <= '1' WHEN ena(conv_integer(output_clk)) = '1' ELSE '0' ;
+   output_clk <= "0000" WHEN ((output_clock = "0") OR (output_clock = "none")) ELSE "0001" WHEN (output_clock = "1") ELSE "0010" WHEN (output_clock = "2") ELSE "0011" WHEN (output_clock = "3") ELSE "0000" ;
+   output_aclr <= "0000" WHEN ((output_clear = "0") OR (output_clear = "none")) ELSE "0001" WHEN (output_clear = "1") ELSE "0010" WHEN (output_clear = "2") ELSE "0011" WHEN (output_clear = "3") ELSE "0000" ;
+   output1_reg : stratixii_mac_register 
+      GENERIC MAP (
+         data_width => 18,
+         power_up => '0')
+      PORT MAP (
+         data => dataout_to_reg(35 DOWNTO 18),
+         clk => clk_output1,
+         aclr => aclr_output1,
+         if_aclr => clear_output1,
+         ena => ena_output1,
+         dataout => dataout_dynamic1(17 downto 0),
+         async => async_output1);   
+   
+   async_output1 <= '1' WHEN (output1_clock = "none") ELSE '0' ;
+   clear_output1 <= '1' WHEN (output1_clear /= "none") ELSE '0' ;
+   clk_output1 <= '1' WHEN clk(conv_integer(output1_clk)) = '1' ELSE '0' ;
+   aclr_output1 <= '1' WHEN (aclr(conv_integer(output1_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_output1 <= '1' WHEN ena(conv_integer(output1_clk)) = '1' ELSE '0' ;
+   output1_clk <= "0000" WHEN ((output1_clock = "0") OR (output1_clock = "none")) ELSE "0001" WHEN (output1_clock = "1") ELSE "0010" WHEN (output1_clock = "2") ELSE "0011" WHEN (output1_clock = "3") ELSE "0000" ;
+   output1_aclr <= "0000" WHEN ((output1_clear = "0") OR (output1_clear = "none")) ELSE "0001" WHEN (output1_clear = "1") ELSE "0010" WHEN (output1_clear = "2") ELSE "0011" WHEN (output1_clear = "3") ELSE "0000" ;
+   output2_reg : stratixii_mac_register 
+      GENERIC MAP (
+         data_width => 18,
+         power_up => '0')
+      PORT MAP (
+         data => dataout_to_reg(53 DOWNTO 36),
+         clk => clk_output2,
+         aclr => aclr_output2,
+         if_aclr => clear_output2,
+         ena => ena_output2,
+         dataout => dataout_dynamic2(17 downto 0),
+         async => async_output2);   
+   
+   async_output2 <= '1' WHEN (output2_clock = "none") ELSE '0' ;
+   clear_output2 <= '1' WHEN (output2_clear /= "none") ELSE '0' ;
+   clk_output2 <= '1' WHEN clk(conv_integer(output2_clk)) = '1' ELSE '0' ;
+   aclr_output2 <= '1' WHEN (aclr(conv_integer(output2_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_output2 <= '1' WHEN ena(conv_integer(output2_clk)) = '1' ELSE '0' ;
+   output2_clk <= "0000" WHEN ((output2_clock = "0") OR (output2_clock = "none")) ELSE "0001" WHEN (output2_clock = "1") ELSE "0010" WHEN (output2_clock = "2") ELSE "0011" WHEN (output2_clock = "3") ELSE "0000" ;
+   output2_aclr <= "0000" WHEN ((output2_clear = "0") OR (output2_clear = "none")) ELSE "0001" WHEN (output2_clear = "1") ELSE "0010" WHEN (output2_clear = "2") ELSE "0011" WHEN (output2_clear = "3") ELSE "0000" ;
+   output3_reg : stratixii_mac_register 
+      GENERIC MAP (
+         data_width => 18,
+         power_up => '0')
+      PORT MAP (
+         data => dataout_to_reg(71 DOWNTO 54),
+         clk => clk_output3,
+         aclr => aclr_output3,
+         if_aclr => clear_output3,
+         ena => ena_output3,
+         dataout => dataout_dynamic3(17 downto 0),
+         async => async_output3);   
+   
+   async_output3 <= '1' WHEN (output3_clock = "none") ELSE '0' ;
+   clear_output3 <= '1' WHEN (output3_clear /= "none") ELSE '0' ;
+   clk_output3 <= '1' WHEN clk(conv_integer(output3_clk)) = '1' ELSE '0' ;
+   aclr_output3 <= '1' WHEN (aclr(conv_integer(output3_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_output3 <= '1' WHEN ena(conv_integer(output3_clk)) = '1' ELSE '0' ;
+   output3_clk <= "0000" WHEN ((output3_clock = "0") OR (output3_clock = "none")) ELSE "0001" WHEN (output3_clock = "1") ELSE "0010" WHEN (output3_clock = "2") ELSE "0011" WHEN (output3_clock = "3") ELSE "0000" ;
+   output3_aclr <= "0000" WHEN ((output3_clear = "0") OR (output3_clear = "none")) ELSE "0001" WHEN (output3_clear = "1") ELSE "0010" WHEN (output3_clear = "2") ELSE "0011" WHEN (output3_clear = "3") ELSE "0000" ;
+   output4_reg : stratixii_mac_register 
+      GENERIC MAP (
+         data_width => 18,
+         power_up => '0')
+      PORT MAP (
+         data => dataout_to_reg(89 DOWNTO 72),
+         clk => clk_output4,
+         aclr => aclr_output4,
+         if_aclr => clear_output4,
+         ena => ena_output4,
+         dataout => dataout_dynamic4(17 downto 0),
+         async => async_output4);   
+   
+   async_output4 <= '1' WHEN (output4_clock = "none") ELSE '0' ;
+   clear_output4 <= '1' WHEN (output4_clear /= "none") ELSE '0' ;
+   clk_output4 <= '1' WHEN clk(conv_integer(output4_clk)) = '1' ELSE '0' ;
+   aclr_output4 <= '1' WHEN (aclr(conv_integer(output4_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_output4 <= '1' WHEN ena(conv_integer(output4_clk)) = '1' ELSE '0' ;
+   output4_clk <= "0000" WHEN ((output4_clock = "0") OR (output4_clock = "none")) ELSE "0001" WHEN (output4_clock = "1") ELSE "0010" WHEN (output4_clock = "2") ELSE "0011" WHEN (output4_clock = "3") ELSE "0000" ;
+   output4_aclr <= "0000" WHEN ((output4_clear = "0") OR (output4_clear = "none")) ELSE "0001" WHEN (output4_clear = "1") ELSE "0010" WHEN (output4_clear = "2") ELSE "0011" WHEN (output4_clear = "3") ELSE "0000" ;
+   output5_reg : stratixii_mac_register 
+      GENERIC MAP (
+         data_width => 18,
+         power_up => '0')
+      PORT MAP (
+         data => dataout_to_reg(107 DOWNTO 90),
+         clk => clk_output5,
+         aclr => aclr_output5,
+         if_aclr => clear_output5,
+         ena => ena_output5,
+         dataout => dataout_dynamic5(17 downto 0),
+         async => async_output5);   
+   
+   async_output5 <= '1' WHEN (output5_clock = "none") ELSE '0' ;
+   clear_output5 <= '1' WHEN (output5_clear /= "none") ELSE '0' ;
+   clk_output5 <= '1' WHEN clk(conv_integer(output5_clk)) = '1' ELSE '0' ;
+   aclr_output5 <= '1' WHEN (aclr(conv_integer(output5_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_output5 <= '1' WHEN ena(conv_integer(output5_clk)) = '1' ELSE '0' ;
+   output5_clk <= "0000" WHEN ((output5_clock = "0") OR (output5_clock = "none")) ELSE "0001" WHEN (output5_clock = "1") ELSE "0010" WHEN (output5_clock = "2") ELSE "0011" WHEN (output5_clock = "3") ELSE "0000" ;
+   output5_aclr <= "0000" WHEN ((output5_clear = "0") OR (output5_clear = "none")) ELSE "0001" WHEN (output5_clear = "1") ELSE "0010" WHEN (output5_clear = "2") ELSE "0011" WHEN (output5_clear = "3") ELSE "0000" ;
+   output6_reg : stratixii_mac_register 
+      GENERIC MAP (
+         data_width => 18,
+         power_up => '0')
+      PORT MAP (
+         data => dataout_to_reg(125 DOWNTO 108),
+         clk => clk_output6,
+         aclr => aclr_output6,
+         if_aclr => clear_output6,
+         ena => ena_output6,
+         dataout => dataout_dynamic6(17 downto 0),
+         async => async_output6);   
+   
+   async_output6 <= '1' WHEN (output6_clock = "none") ELSE '0' ;
+   clear_output6 <= '1' WHEN (output6_clear /= "none") ELSE '0' ;
+   clk_output6 <= '1' WHEN clk(conv_integer(output6_clk)) = '1' ELSE '0' ;
+   aclr_output6 <= '1' WHEN (aclr(conv_integer(output6_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_output6 <= '1' WHEN ena(conv_integer(output6_clk)) = '1' ELSE '0' ;
+   output6_clk <= "0000" WHEN ((output6_clock = "0") OR (output6_clock = "none")) ELSE "0001" WHEN (output6_clock = "1") ELSE "0010" WHEN (output6_clock = "2") ELSE "0011" WHEN (output6_clock = "3") ELSE "0000" ;
+   output6_aclr <= "0000" WHEN ((output6_clear = "0") OR (output6_clear = "none")) ELSE "0001" WHEN (output6_clear = "1") ELSE "0010" WHEN (output6_clear = "2") ELSE "0011" WHEN (output6_clear = "3") ELSE "0000" ;
+   output7_reg : stratixii_mac_register 
+      GENERIC MAP (
+         data_width => 18,
+         power_up => '0')
+      PORT MAP (
+         data => dataout_to_reg(tmp_width-1 DOWNTO 126),
+         clk => clk_output7,
+         aclr => aclr_output7,
+         if_aclr => clear_output7,
+         ena => ena_output7,
+         dataout => dataout_dynamic7(17 downto 0),
+         async => async_output7);   
+   
+   async_output7 <= '1' WHEN (output7_clock = "none") ELSE '0' ;
+   clear_output7 <= '1' WHEN (output7_clear /= "none") ELSE '0' ;
+   clk_output7 <= '1' WHEN clk(conv_integer(output7_clk)) = '1' ELSE '0' ;
+   aclr_output7 <= '1' WHEN (aclr(conv_integer(output7_aclr)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
+   ena_output7 <= '1' WHEN ena(conv_integer(output7_clk)) = '1' ELSE '0' ;
+   output7_clk <= "0000" WHEN ((output7_clock = "0") OR (output7_clock = "none")) ELSE "0001" WHEN (output7_clock = "1") ELSE "0010" WHEN (output7_clock = "2") ELSE "0011" WHEN (output7_clock = "3") ELSE "0000" ;
+   output7_aclr <= "0000" WHEN ((output7_clear = "0") OR (output7_clear = "none")) ELSE "0001" WHEN (output7_clear = "1") ELSE "0010" WHEN (output7_clear = "2") ELSE "0011" WHEN (output7_clear = "3") ELSE "0000" ;
+   tmp_186 <= '1' when (output_clear /= "none") else '0';
+   tmp_189 <= '1' when (output_clock = "none") else '0';
+   accoverflow_out_reg : stratixii_mac_bit_register 
+      GENERIC MAP (
+         power_up => '0')
+      PORT MAP (
+         data => accoverflow_reg,
+         clk => clk_output,
+         aclr => aclr_output,
+         if_aclr => tmp_186,
+         ena => ena_output,
+         dataout => accoverflow_tmp,
+         async => tmp_189);   
+   
+   dataout_dynamic(tmp_width-1 DOWNTO 0) <= dataout_dynamic7(17 DOWNTO 0) & dataout_dynamic6(17 DOWNTO 0) & dataout_dynamic5(17 DOWNTO 0) & dataout_dynamic4(17 DOWNTO 0) & dataout_dynamic3(17 DOWNTO 0) & dataout_dynamic2(17 DOWNTO 0) & dataout_dynamic1(17 DOWNTO 0) & dataout_non_dynamic(17 DOWNTO 0) ;
+   dataout_tmp <= dataout_dynamic WHEN (operation_mode = "dynamic") ELSE dataout_non_dynamic ;
+   operation <= "0000" WHEN (operation_mode = "output_only") ELSE "0001" WHEN (operation_mode = "one_level_adder") ELSE "0010" WHEN (operation_mode = "two_level_adder") ELSE "0100" WHEN (operation_mode = "accumulator") ELSE "0111" WHEN (operation_mode = "36_bit_multiply") ELSE "0000" WHEN (((((operation_mode = "dynamic") AND (mode0_out = '0')) AND (mode1_out = '0')) AND (zeroacc_out = '0')) AND (zeroacc1_out = '0')) ELSE "1100" WHEN (((operation_mode = "dynamic") AND (mode0_out = '1')) AND (mode1_out = '1')) ELSE "1101" WHEN (((operation_mode = "dynamic") AND (mode0_out = '1')) AND (mode1_out = '0')) ELSE "1110" WHEN (((operation_mode = "dynamic") AND (mode0_out = '0')) AND (mode1_out = '1')) ELSE "0111" WHEN (((((operation_mode = "dynamic") AND (mode0_out = '0')) AND (mode1_out = '0')) AND (zeroacc_out = '1')) AND (zeroacc1_out = '1')) ELSE "0000" ;
+   
+   dataout_feedback <= dataout_dynamic WHEN (operation_mode = "dynamic") ELSE dataout_non_dynamic ;
+   accoverflow_tmp2 <= accoverflow_tmp;
+
+END arch;
 
 --/////////////////////////////////////////////////////////////////////////////
 --
@@ -9303,6 +11773,7 @@ END arch;
 
 LIBRARY IEEE, std;
 USE ieee.std_logic_1164.all;
+--USE ieee.std_logic_unsigned.all;
 USE IEEE.VITAL_Timing.all;
 USE IEEE.VITAL_Primitives.all;
 USE work.stratixii_atom_pack.all;
@@ -9553,6 +12024,7 @@ ENTITY stratixii_lvds_tx_out_block is
               MsgOnChecks                : Boolean := DefMsgOnChecks;
               XOnChecks                  : Boolean := DefXOnChecks;
               InstancePath               : String := "*";
+              tpd_datain_dataout         : VitalDelayType01 := DefPropDelay01;
               tpd_clk_dataout            : VitalDelayType01 := DefPropDelay01;
               tpd_clk_dataout_negedge    : VitalDelayType01 := DefPropDelay01;
               tipd_clk                   : VitalDelayType01 := DefpropDelay01;
@@ -9620,13 +12092,14 @@ begin
         ----------------------
         --  Path Delay Section
         ----------------------
+
         if (bypass_serializer = "false") then
             VitalPathDelay01 (
                 OutSignal => dataout,
                 OutSignalName => "DATAOUT",
                 OutTemp => dataout_tmp,
-                Paths => (0 => (datain_ipd'last_event, DefpropDelay01, TRUE),
-                          1 => (clk_ipd'last_event, tpd_clk_dataout_negedge, TRUE)),
+                Paths => (0 => (datain_ipd'last_event, tpd_datain_dataout, TRUE),
+                          1 => (clk_ipd'last_event, tpd_clk_dataout_negedge, use_falling_clock_edge = "true")),
                 GlitchData => dataout_VitalGlitchData,
                 Mode => DefGlitchMode,
                 XOn  => XOn,
@@ -9766,6 +12239,7 @@ COMPONENT stratixii_lvds_tx_out_block
               MsgOnChecks              : Boolean := DefMsgOnChecks;
               XOnChecks                : Boolean := DefXOnChecks;
               InstancePath             : String := "*";
+              tpd_datain_dataout       : VitalDelayType01 := DefPropDelay01;
               tpd_clk_dataout          : VitalDelayType01 := DefPropDelay01;
               tpd_clk_dataout_negedge  : VitalDelayType01 := DefPropDelay01;
               tipd_clk                 : VitalDelayType01 := DefpropDelay01;
@@ -9903,7 +12377,10 @@ begin
 
     end process;
 
-    process (serialdatain_ipd, postdpaserialdatain_ipd, tmp_dataout)
+    process (serialdatain_ipd,
+            postdpaserialdatain_ipd,
+            tmp_dataout
+            )
     variable dataout_tmp : std_logic := '0';
     variable dataout_VitalGlitchData : VitalGlitchDataType;
     begin
@@ -9939,7 +12416,6 @@ begin
                 Mode => DefGlitchMode,
                 XOn  => XOn,
                 MsgOn  => MsgOn );
-
         else
             VitalPathDelay01 (
                 OutSignal => dataout,
@@ -9966,6 +12442,7 @@ end vital_transmitter_atom;
 
 LIBRARY IEEE, std;
 USE ieee.std_logic_1164.all;
+--USE ieee.std_logic_unsigned.all;
 USE IEEE.VITAL_Timing.all;
 USE IEEE.VITAL_Primitives.all;
 USE work.stratixii_atom_pack.all;
@@ -9985,22 +12462,22 @@ ENTITY stratixii_lvds_reg is
               tpd_clrn_q_negedge      : VitalDelayType01 := DefPropDelay01
             );
 
-    PORT    ( q                       : OUT std_logic;
-              clk                     : IN std_logic;
+    PORT    ( q                       : OUT std_logic;   
+              clk                     : IN std_logic;   
               ena                     : IN std_logic := '1';
               d                       : IN std_logic;
               clrn                    : IN std_logic := '1';
               prn                     : IN std_logic := '1'
-            );
+            );   
 END stratixii_lvds_reg;
 
 ARCHITECTURE vital_stratixii_lvds_reg of stratixii_lvds_reg is
 
 
     -- INTERNAL SIGNALS
-    signal clk_ipd                  :  std_logic;
-    signal d_ipd                    :  std_logic;
-    signal ena_ipd                  :  std_logic;
+    signal clk_ipd                  :  std_logic;   
+    signal d_ipd                    :  std_logic;   
+    signal ena_ipd                  :  std_logic;   
 
     begin
 
@@ -10026,12 +12503,12 @@ ARCHITECTURE vital_stratixii_lvds_reg of stratixii_lvds_reg is
             ------------------------
 
             if (prn = '0') then
-                q_tmp := '1';
+                q_tmp := '1';    
             elsif (clrn = '0') then
-                q_tmp := '0';
+                q_tmp := '0';    
             elsif (clk_ipd'event and clk_ipd = '1') then
                 if (ena_ipd = '1') then
-                    q_tmp := d_ipd;
+                    q_tmp := d_ipd;    
                 end if;
             end if;
 
@@ -10062,12 +12539,13 @@ end vital_stratixii_lvds_reg;
 
 LIBRARY IEEE, std;
 USE ieee.std_logic_1164.all;
+--USE ieee.std_logic_unsigned.all;
 USE IEEE.VITAL_Timing.all;
 USE IEEE.VITAL_Primitives.all;
 USE work.stratixii_atom_pack.all;
 
 ENTITY stratixii_lvds_rx_fifo_sync_ram is
-    PORT ( clk                     : IN std_logic;
+    PORT ( clk                     : IN std_logic;   
            datain                  : IN std_logic := '0';
            writereset             : IN std_logic := '0';
            waddr                   : IN std_logic_vector(2 DOWNTO 0) := "000";
@@ -10094,17 +12572,17 @@ ARCHITECTURE vital_arm_lvds_rx_fifo_sync_ram OF stratixii_lvds_rx_fifo_sync_ram 
     begin
         if (initial) then
             for i in 0 to 5 loop
-                ram_q(i) <= '0';
+                ram_q(i) <= '0';    
             end loop;
             initial := false;
         end if;
         if (writereset = '1') then
             for i in 0 to 5 loop
-                ram_q(i) <= '0';
+                ram_q(i) <= '0';    
             end loop;
         elsif (clk'event and clk = '1') then
             for i in 0 to 5 loop
-                ram_q(i) <= ram_d(i);
+                ram_q(i) <= ram_d(i);    
             end loop;
         end if;
     end process;
@@ -10112,9 +12590,9 @@ ARCHITECTURE vital_arm_lvds_rx_fifo_sync_ram OF stratixii_lvds_rx_fifo_sync_ram 
     process (we, data_reg, ram_q)
     begin
         if (we = '1') then
-            ram_d <= data_reg;
+            ram_d <= data_reg;    
         else
-            ram_d <= ram_q;
+            ram_d <= ram_q;    
         end if;
     end process;
 
@@ -10134,19 +12612,19 @@ ARCHITECTURE vital_arm_lvds_rx_fifo_sync_ram OF stratixii_lvds_rx_fifo_sync_ram 
         end if;
         case raddr is
             when "000" =>
-                  dataout_tmp <= ram_q(0);
+                  dataout_tmp <= ram_q(0);    
             when "001" =>
-                  dataout_tmp <= ram_q(1);
+                  dataout_tmp <= ram_q(1);    
             when "010" =>
-                  dataout_tmp <= ram_q(2);
+                  dataout_tmp <= ram_q(2);    
             when "011" =>
-                  dataout_tmp <= ram_q(3);
+                  dataout_tmp <= ram_q(3);    
             when "100" =>
-                  dataout_tmp <= ram_q(4);
+                  dataout_tmp <= ram_q(4);    
             when "101" =>
-                  dataout_tmp <= ram_q(5);
+                  dataout_tmp <= ram_q(5);    
             when others  =>
-                  dataout_tmp <= '0';
+                  dataout_tmp <= '0';    
       end case;
    end process;
 
@@ -10161,6 +12639,7 @@ END vital_arm_lvds_rx_fifo_sync_ram;
 --/////////////////////////////////////////////////////////////////////////////
 LIBRARY IEEE, std;
 USE ieee.std_logic_1164.all;
+USE ieee.std_logic_unsigned.all;
 USE IEEE.VITAL_Timing.all;
 USE IEEE.VITAL_Primitives.all;
 USE work.stratixii_atom_pack.all;
@@ -10194,20 +12673,20 @@ END stratixii_lvds_rx_fifo;
 
 ARCHITECTURE vital_arm_lvds_rx_fifo of stratixii_lvds_rx_fifo is
     -- INTERNAL SIGNALS
-    signal datain_in                :  std_logic;
-    signal rclk_in                  :  std_logic;
-    signal dparst_in                :  std_logic;
-    signal fiforst_in               :  std_logic;
+    signal datain_in                :  std_logic;   
+    signal rclk_in                  :  std_logic;   
+    signal dparst_in                :  std_logic;   
+    signal fiforst_in               :  std_logic;   
     signal wclk_in                  :  std_logic;
 
-    signal ram_datain               :  std_logic;
-    signal ram_dataout              :  std_logic;
-    signal wrPtr                    :  std_logic_vector(2 DOWNTO 0);
-    signal rdPtr                    :  std_logic_vector(2 DOWNTO 0);
-    signal rdAddr                   :  std_logic_vector(2 DOWNTO 0);
-    signal ram_we                   :  std_logic;
-    signal write_side_sync_reset    :  std_logic;
-    signal read_side_sync_reset     :  std_logic;
+    signal ram_datain               :  std_logic;   
+    signal ram_dataout              :  std_logic;   
+    signal wrPtr                    :  std_logic_vector(2 DOWNTO 0);   
+    signal rdPtr                    :  std_logic_vector(2 DOWNTO 0);   
+    signal rdAddr                   :  std_logic_vector(2 DOWNTO 0);   
+    signal ram_we                   :  std_logic;   
+    signal write_side_sync_reset    :  std_logic;   
+    signal read_side_sync_reset     :  std_logic;   
 
     COMPONENT stratixii_lvds_rx_fifo_sync_ram
         PORT ( clk                  : IN  std_logic;
@@ -10235,7 +12714,7 @@ begin
     end block;
 
     rdAddr <= rdPtr ;
-    s_fifo_ram : stratixii_lvds_rx_fifo_sync_ram
+    s_fifo_ram : stratixii_lvds_rx_fifo_sync_ram 
            PORT MAP ( clk         => wclk_in,
                       datain      => ram_datain,
                       writereset => write_side_sync_reset,
@@ -10244,28 +12723,28 @@ begin
                       we          => ram_we,
                       dataout     => ram_dataout
                     );
-
+   
 
     process (wclk_in, dparst_in)
     variable initial : boolean := true;
     begin
         if (initial) then
-            wrPtr <= "000";
+            wrPtr <= "000";    
             write_side_sync_reset <= '0';
             ram_we <= '0';
             ram_datain <= '0';
             initial := false;
         end if;
         if (dparst_in = '1' or (fiforst_in = '1' and wclk_in'event and wclk_in = '1')) then
-            write_side_sync_reset <= '1';
-            ram_datain <= '0';
-            wrPtr <= "000";
-            ram_we <= '0';
+            write_side_sync_reset <= '1';    
+            ram_datain <= '0';    
+            wrPtr <= "000";    
+            ram_we <= '0';    
         elsif (dparst_in = '0' and (fiforst_in = '0' and wclk_in'event and wclk_in = '1')) then
-            write_side_sync_reset <= '0';
+            write_side_sync_reset <= '0';    
         end if;
         if (wclk_in'event and wclk_in = '1' and write_side_sync_reset = '0' and  fiforst_in = '0' and dparst_in = '0') then
-            ram_datain <= datain_in;
+            ram_datain <= datain_in;    
             ram_we <= '1';
             case wrPtr is
                 when "000" => wrPtr <= "001";
@@ -10285,17 +12764,17 @@ begin
     variable dataout_VitalGlitchData : VitalGlitchDataType;
     begin
         if (initial) then
-            rdPtr <= "011";
+            rdPtr <= "011";    
             read_side_sync_reset <= '0';
             dataout_tmp := '0';
             initial := false;
         end if;
         if (dparst_in = '1' or (fiforst_in = '1' and rclk_in'event and rclk_in = '1')) then
-            read_side_sync_reset <= '1';
-            rdPtr <= "011";
-            dataout_tmp := '0';
+            read_side_sync_reset <= '1';    
+            rdPtr <= "011";    
+            dataout_tmp := '0';    
         elsif (dparst_in = '0' and (fiforst_in = '0' and rclk_in'event and rclk_in = '1')) then
-            read_side_sync_reset <= '0';
+            read_side_sync_reset <= '0';    
         end if;
         if (rclk_in'event and rclk_in = '1' and read_side_sync_reset = '0' and fiforst_in = '0' and dparst_in = '0') then
             case rdPtr is
@@ -10307,7 +12786,7 @@ begin
                 when "101" => rdPtr <= "000";
                 when others => rdPtr <= "000";
             end case;
-            dataout_tmp := ram_dataout;
+            dataout_tmp := ram_dataout;    
         end if;
 
         ----------------------
@@ -10342,7 +12821,7 @@ USE work.stratixii_atom_pack.all;
 USE work.stratixii_lvds_reg;
 
 ENTITY stratixii_lvds_rx_bitslip is
-    GENERIC ( channel_width            : integer := 10;
+    GENERIC ( channel_width            : integer := 10;    
               bitslip_rollover         : integer := 12;
               x_on_bitslip             : string  := "on";
               MsgOn                    : Boolean := DefGlitchMsgOn;
@@ -10358,24 +12837,24 @@ ENTITY stratixii_lvds_rx_bitslip is
               tpd_clk0_bslipmax_posedge: VitalDelayType01 := DefPropDelay01
             );
 
-    PORT    ( clk0                     : IN std_logic := '0';
-              bslipcntl                : IN std_logic := '0';
-              bsliprst                 : IN std_logic := '0';
-              datain                   : IN std_logic := '0';
-              bslipmax                 : OUT std_logic;
+    PORT    ( clk0                     : IN std_logic := '0';   
+              bslipcntl                : IN std_logic := '0';   
+              bsliprst                 : IN std_logic := '0';   
+              datain                   : IN std_logic := '0';   
+              bslipmax                 : OUT std_logic;   
               dataout                  : OUT std_logic
             );
 END stratixii_lvds_rx_bitslip;
 
 ARCHITECTURE vital_arm_lvds_rx_bitslip OF stratixii_lvds_rx_bitslip IS
     -- INTERNAL SIGNALS
-    signal clk0_in               :  std_logic;
-    signal bslipcntl_in          :  std_logic;
-    signal bsliprst_in           :  std_logic;
-    signal datain_in             :  std_logic;
+    signal clk0_in               :  std_logic;   
+    signal bslipcntl_in          :  std_logic;   
+    signal bsliprst_in           :  std_logic;   
+    signal datain_in             :  std_logic;   
 
     signal slip_count            :  integer := 0;
-    signal dataout_tmp           :  std_logic;
+    signal dataout_tmp           :  std_logic;   
     signal bitslip_arr           :  std_logic_vector(11 DOWNTO 0) := "000000000000";
     signal bslipcntl_reg         :  std_logic;
     signal vcc                   : std_logic := '1';
@@ -10417,7 +12896,7 @@ begin
         VitalWireDelay (datain_in, datain, tipd_datain);
     end block;
 
-    bslipcntlreg : stratixii_lvds_reg
+    bslipcntlreg : stratixii_lvds_reg 
            PORT MAP ( d    => bslipcntl_in,
                       clk  => clk0_in,
                       ena  => vcc,
@@ -10433,7 +12912,7 @@ begin
     variable bslipmax_VitalGlitchData : VitalGlitchDataType;
     begin
         if (bsliprst_in = '1') then
-            slip_count <= 0;
+            slip_count <= 0;    
             bslipmax_tmp := '0';
 --            bitslip_arr <= (OTHERS => '0');
             if (bsliprst_in'event and bsliprst_in = '1' and bsliprst_in'last_value = '0') then
@@ -10447,13 +12926,13 @@ begin
                 num_corrupt_bits <= 0;
                 if (slip_count = bitslip_rollover) then
                     ASSERT false report "Rollover occurred on Bit Slip circuit. Serial data stream will have 0 latency." severity note;
-                    slip_count <= 0;
-                    bslipmax_tmp := '0';
+                    slip_count <= 0;    
+                    bslipmax_tmp := '0';    
                 else
-                    slip_count <= slip_count + 1;
+                    slip_count <= slip_count + 1;    
                     if ((slip_count + 1) = bitslip_rollover) then
                         ASSERT false report "The Bit Slip circuit has reached the maximum Bit Slip limit. Rollover will occur on the next slip." severity note;
-                        bslipmax_tmp := '1';
+                        bslipmax_tmp := '1';    
                     end if;
                 end if;
             elsif (bslipcntl_reg'event and bslipcntl_reg = '0' and bslipcntl_reg'last_value = '1') then
@@ -10464,9 +12943,9 @@ begin
             if (clk0_in'event and clk0_in = '1' and clk0_in'last_value = '0') then
                 bitslip_arr(0) <= datain_in;
                 for i in 0 to (bitslip_rollover - 1) loop
-                    bitslip_arr(i + 1) <= bitslip_arr(i);
+                    bitslip_arr(i + 1) <= bitslip_arr(i);    
                 end loop;
-
+ 
                 if (start_corrupt_bits = '1') then
                     num_corrupt_bits <= num_corrupt_bits + 1;
                 end if;
@@ -10498,7 +12977,7 @@ begin
 --        elsif (clk0_in'event and clk0_in = '1' and clk0'last_value = '0') then
 --            bitslip_arr(0) <= datain_in;
 --            for i in 0 to (bitslip_rollover - 1) loop
---                bitslip_arr(i + 1) <= bitslip_arr(i);
+--                bitslip_arr(i + 1) <= bitslip_arr(i);    
 --            end loop;
 --
 --            if (start_corrupt_bits = '1') then
@@ -10512,7 +12991,7 @@ begin
 
     slip_data <= bitslip_arr(slip_count);
 
-    dataoutreg : stratixii_lvds_reg
+    dataoutreg : stratixii_lvds_reg 
           PORT MAP ( d => slip_data,
                      clk => clk0_in,
                      ena => vcc,
@@ -10555,10 +13034,10 @@ ENTITY stratixii_lvds_rx_deser IS
               tpd_clk_dataout_posedge  : VitalDelayType01 := DefPropDelay01
             );
 
-    PORT    ( clk                      : IN std_logic := '0';
-              datain                   : IN std_logic := '0';
-              dataout                  : OUT std_logic_vector(channel_width - 1 DOWNTO 0);
-              devclrn                  : IN std_logic := '1';
+    PORT    ( clk                      : IN std_logic := '0';   
+              datain                   : IN std_logic := '0';   
+              dataout                  : OUT std_logic_vector(channel_width - 1 DOWNTO 0);   
+              devclrn                  : IN std_logic := '1';   
               devpor                   : IN std_logic := '1'
             );
 
@@ -10567,8 +13046,8 @@ END stratixii_lvds_rx_deser;
 ARCHITECTURE vital_arm_lvds_rx_deser OF stratixii_lvds_rx_deser IS
 
     -- INTERNAL SIGNALS
-    signal clk_ipd                  :  std_logic;
-    signal datain_ipd               :  std_logic;
+    signal clk_ipd                  :  std_logic;   
+    signal datain_ipd               :  std_logic;   
 
     begin
 
@@ -10588,13 +13067,13 @@ ARCHITECTURE vital_arm_lvds_rx_deser OF stratixii_lvds_rx_deser IS
         variable CQDelay : TIME := 0 ns;
         begin
             if (devclrn = '0' or devpor = '0') then
-                dataout_tmp := (OTHERS => '0');
+                dataout_tmp := (OTHERS => '0');    
         else
             if (clk_ipd'event and clk_ipd  = '1' and clk_ipd'last_value = '0') then
                 for i in channel_width - 1 DOWNTO 1 loop
-                    dataout_tmp(i) := dataout_tmp(i - 1);
+                    dataout_tmp(i) := dataout_tmp(i - 1);    
                 end loop;
-                dataout_tmp(0) := datain_ipd;
+                dataout_tmp(0) := datain_ipd;    
             end if;
         end if;
 
@@ -10638,11 +13117,11 @@ ENTITY stratixii_lvds_rx_parallel_reg IS
               tipd_datain              : VitalDelayArrayType01(9 downto 0) := (OTHERS => DefpropDelay01);
               tpd_clk_dataout_posedge  : VitalDelayType01 := DefPropDelay01
             );
-    PORT    ( clk                      : IN std_logic;
-              enable                   : IN std_logic := '1';
-              datain                   : IN std_logic_vector(channel_width - 1 DOWNTO 0);
-              dataout                  : OUT std_logic_vector(channel_width - 1 DOWNTO 0);
-              devclrn                  : IN std_logic := '1';
+    PORT    ( clk                      : IN std_logic;   
+              enable                   : IN std_logic := '1';   
+              datain                   : IN std_logic_vector(channel_width - 1 DOWNTO 0);   
+              dataout                  : OUT std_logic_vector(channel_width - 1 DOWNTO 0);   
+              devclrn                  : IN std_logic := '1';   
               devpor                   : IN std_logic := '1'
             );
 
@@ -10650,9 +13129,9 @@ END stratixii_lvds_rx_parallel_reg;
 
 ARCHITECTURE vital_arm_lvds_rx_parallel_reg OF stratixii_lvds_rx_parallel_reg IS
     -- INTERNAL SIGNALS
-    signal clk_ipd                  :  std_logic;
-    signal datain_ipd               :  std_logic_vector(channel_width - 1 downto 0);
-    signal enable_ipd               :  std_logic;
+    signal clk_ipd                  :  std_logic;   
+    signal datain_ipd               :  std_logic_vector(channel_width - 1 downto 0);   
+    signal enable_ipd               :  std_logic;   
 
     begin
 
@@ -10694,6 +13173,9 @@ ARCHITECTURE vital_arm_lvds_rx_parallel_reg OF stratixii_lvds_rx_parallel_reg IS
             dataout <= dataout_tmp AFTER CQDelay;
         end process;
 END vital_arm_lvds_rx_parallel_reg;
+
+
+
 --/////////////////////////////////////////////////////////////////////////////
 --
 -- Module Name : STRATIXII_LVDS_RECEIVER
@@ -10718,13 +13200,13 @@ USE work.stratixii_lvds_rx_parallel_reg;
 USE work.stratixii_lvds_reg;
 
 ENTITY stratixii_lvds_receiver IS
-    GENERIC ( channel_width                  :  integer := 10;
-              data_align_rollover            :  integer := 2;
-              enable_dpa                     :  string := "off";
-              lose_lock_on_one_change        :  string := "off";
-              reset_fifo_at_first_lock       :  string := "on";
-              align_to_rising_edge_only      :  string := "on";
-              use_serial_feedback_input      :  string := "off";
+    GENERIC ( channel_width                  :  integer := 10;    
+              data_align_rollover            :  integer := 2;    
+              enable_dpa                     :  string := "off";    
+              lose_lock_on_one_change        :  string := "off";    
+              reset_fifo_at_first_lock       :  string := "on";    
+              align_to_rising_edge_only      :  string := "on";    
+              use_serial_feedback_input      :  string := "off";    
               dpa_debug                      :  string := "off";
               x_on_bitslip                   :  string := "on";
               lpm_type                       :  string := "stratixii_lvds_receiver";
@@ -10745,22 +13227,22 @@ ENTITY stratixii_lvds_receiver IS
               tipd_serialfbk           : VitalDelayType01 := DefpropDelay01;
               tpd_clk0_dpalock_posedge : VitalDelayType01 := DefPropDelay01
             );
-    PORT    ( clk0                    : IN std_logic;
-              datain                  : IN std_logic := '0';
-              enable0                 : IN std_logic := '0';
-              dpareset                : IN std_logic := '0';
-              dpahold                 : IN std_logic := '0';
-              dpaswitch               : IN std_logic := '0';
-              fiforeset               : IN std_logic := '0';
-              bitslip                 : IN std_logic := '0';
-              bitslipreset            : IN std_logic := '0';
-              serialfbk               : IN std_logic := '0';
-              dataout                 : OUT std_logic_vector(channel_width - 1 DOWNTO 0);
-              dpalock                 : OUT std_logic;
-              bitslipmax              : OUT std_logic;
-              serialdataout           : OUT std_logic;
+    PORT    ( clk0                    : IN std_logic;   
+              datain                  : IN std_logic := '0';   
+              enable0                 : IN std_logic := '0';   
+              dpareset                : IN std_logic := '0';   
+              dpahold                 : IN std_logic := '0';   
+              dpaswitch               : IN std_logic := '0';   
+              fiforeset               : IN std_logic := '0';   
+              bitslip                 : IN std_logic := '0';   
+              bitslipreset            : IN std_logic := '0';   
+              serialfbk               : IN std_logic := '0';   
+              dataout                 : OUT std_logic_vector(channel_width - 1 DOWNTO 0);   
+              dpalock                 : OUT std_logic;   
+              bitslipmax              : OUT std_logic;   
+              serialdataout           : OUT std_logic;   
               postdpaserialdataout    : OUT std_logic;
-              devclrn                 : IN std_logic := '1';
+              devclrn                 : IN std_logic := '1';   
               devpor                  : IN std_logic := '1'
             );
 
@@ -10769,7 +13251,7 @@ END stratixii_lvds_receiver;
 ARCHITECTURE vital_arm_lvds_receiver OF stratixii_lvds_receiver IS
 
     COMPONENT stratixii_lvds_rx_bitslip
-        GENERIC ( channel_width            : integer := 10;
+        GENERIC ( channel_width            : integer := 10;    
                   bitslip_rollover         : integer := 12;
                   x_on_bitslip             : string  := "on";
                   MsgOn                    : Boolean := DefGlitchMsgOn;
@@ -10846,50 +13328,57 @@ ARCHITECTURE vital_arm_lvds_receiver OF stratixii_lvds_receiver IS
                   clrn                    : IN  std_logic := '1';
                   prn                     : IN  std_logic := '1'
                 );
-    END COMPONENT;
+      END COMPONENT;             
+   
 
     -- INTERNAL SIGNALS
-    signal bitslip_ipd              :  std_logic;
-    signal bitslipreset_ipd         :  std_logic;
-    signal clk0_ipd                 :  std_logic;
-    signal datain_ipd               :  std_logic;
-    signal dpahold_ipd              :  std_logic;
-    signal dpareset_ipd             :  std_logic;
-    signal dpaswitch_ipd            :  std_logic;
-    signal enable0_ipd              :  std_logic;
-    signal fiforeset_ipd            :  std_logic;
-    signal serialfbk_ipd            :  std_logic;
+    signal bitslip_ipd              :  std_logic;   
+    signal bitslipreset_ipd         :  std_logic;   
+    signal clk0_ipd                 :  std_logic;   
+    signal datain_ipd               :  std_logic;   
+    signal dpahold_ipd              :  std_logic;   
+    signal dpareset_ipd             :  std_logic;   
+    signal dpaswitch_ipd            :  std_logic;   
+    signal enable0_ipd              :  std_logic;   
+    signal fiforeset_ipd            :  std_logic;   
+    signal serialfbk_ipd            :  std_logic;   
 
-    signal fifo_wclk                :  std_logic;
-    signal fifo_rclk                :  std_logic;
-    signal fifo_datain              :  std_logic;
-    signal fifo_dataout             :  std_logic;
-    signal fifo_reset               :  std_logic;
-    signal slip_datain              :  std_logic;
-    signal slip_dataout             :  std_logic;
-    signal bitslip_reset            :  std_logic;
+    signal fifo_wclk                :  std_logic;   
+    signal fifo_rclk                :  std_logic;   
+    signal fifo_datain              :  std_logic;   
+    signal fifo_dataout             :  std_logic;   
+    signal fifo_reset               :  std_logic;   
+    signal slip_datain              :  std_logic;   
+    signal slip_dataout             :  std_logic;   
+    signal bitslip_reset            :  std_logic;   
     --    wire deser_dataout;
-    signal dpareg0_out              :  std_logic;
-    signal dpareg1_out              :  std_logic;
-    signal dpa_clk                  :  std_logic;
-    signal dpa_rst                  :  std_logic;
+    signal dpareg0_out              :  std_logic;   
+    signal dpareg1_out              :  std_logic;   
+    signal dpa_clk                  :  std_logic;   
+    signal dpa_rst                  :  std_logic;   
     signal datain_reg               :  std_logic;
-    signal deser_dataout            :  std_logic_vector(channel_width - 1 DOWNTO 0);
-    signal reset_fifo               :  std_logic;
-    signal first_dpa_lock           :  std_logic;
-    signal loadreg_datain           :  std_logic_vector(channel_width - 1 DOWNTO 0);
-    signal reset_int                :  std_logic;
+    signal datain_reg_neg           :  std_logic;
+    signal datain_reg_tmp           :  std_logic;   
+    signal deser_dataout            :  std_logic_vector(channel_width - 1 DOWNTO 0);   
+    signal reset_fifo               :  std_logic;   
+    signal first_dpa_lock           :  std_logic;   
+    signal loadreg_datain           :  std_logic_vector(channel_width - 1 DOWNTO 0);   
+    signal reset_int                :  std_logic;   
     signal gnd                      :  std_logic := '0';
     signal vcc                      :  std_logic := '1';
-    signal in_reg_data              :  std_logic;
-    signal clk0_dly                 :  std_logic;
-    signal datain_tmp               :  std_logic;
-
+    signal in_reg_data              :  std_logic;   
+    signal clk0_dly                 :  std_logic;   
+    signal datain_tmp               :  std_logic;   
+    signal slip_datain_tmp          :  std_logic; 
+    signal s_bitslip_clk             :  std_logic; 
+    signal loaden                     :  std_logic;
+        
+        
     -- INTERNAL PARAMETERS
     CONSTANT  DPA_CYCLES_TO_LOCK    :  integer := 2;
 
-    signal xhdl_12                  :  std_logic;
-    signal rxload                   :  std_logic;
+    signal xhdl_12                  :  std_logic;   
+    signal rxload                   :  std_logic;   
 
     begin
 
@@ -10900,7 +13389,7 @@ ARCHITECTURE vital_arm_lvds_receiver OF stratixii_lvds_receiver IS
             VitalWireDelay (enable0_ipd, enable0, tipd_enable0);
             VitalWireDelay (dpareset_ipd, dpareset, tipd_dpareset);
             VitalWireDelay (dpahold_ipd, dpahold, tipd_dpahold);
-            VitalWireDelay (dpaswitch_ipd, dpaswitch, tipd_dpaswitch);
+            VitalWireDelay (dpaswitch_ipd, dpaswitch, tipd_dpaswitch);   
             VitalWireDelay (fiforeset_ipd, fiforeset, tipd_fiforeset);
             VitalWireDelay (bitslip_ipd, bitslip, tipd_bitslip);
             VitalWireDelay (bitslipreset_ipd, bitslipreset, tipd_bitslipreset);
@@ -10917,11 +13406,11 @@ ARCHITECTURE vital_arm_lvds_receiver OF stratixii_lvds_receiver IS
         clk0_dly <= clk0_ipd;
 
         xhdl_12 <= devclrn OR devpor;
-
+    
         -- SUB-MODULE INSTANTIATION
 
         -- input register in non-DPA mode for sampling incoming data
-        in_reg : stratixii_lvds_reg
+        in_reg : stratixii_lvds_reg 
             PORT MAP ( d    => in_reg_data,
                        clk  => clk0_dly,
                        ena  => vcc,
@@ -10929,8 +13418,9 @@ ARCHITECTURE vital_arm_lvds_receiver OF stratixii_lvds_receiver IS
                        prn  => vcc,
                        q    => datain_reg
                      );
+        datain_reg_tmp <= datain_reg;              
 
-        dpa_clk <= clk0_ipd when (enable_dpa = "on") else '0' ;
+        dpa_clk <= clk0_ipd when (enable_dpa = "on") else '0' ;    
         dpa_rst <= dpareset_ipd when (enable_dpa = "on") else '0' ;
 
         process (dpa_clk, dpa_rst)
@@ -10946,24 +13436,29 @@ ARCHITECTURE vital_arm_lvds_receiver OF stratixii_lvds_receiver IS
                 else
                     reset_fifo <= '0';
                 end if;
+
+                if (enable_dpa = "on") then
+                    ASSERT false report "DPA Phase tracking is not modeled, and once locked, DPA will continue to lock until the next reset is asserted. Please refer to the StratixII device handbook for further details." severity warning;
+                end if;
+
                 initial := false;
             end if;
 
             if (dpa_rst = '1') then
-                dpa_is_locked := '0';
-                dpa_lock_count := 0;
+                dpa_is_locked := '0';    
+                dpa_lock_count := 0;    
                 if (not dparst_msg) then
                     ASSERT false report "DPA was reset" severity note;
-                    dparst_msg := true;
+                    dparst_msg := true;    
                 end if;
             elsif (dpa_clk'event and dpa_clk = '1') then
-                dparst_msg := false;
+                dparst_msg := false;    
                 if (dpa_is_locked = '0') then
-                    dpa_lock_count := dpa_lock_count + 1;
+                    dpa_lock_count := dpa_lock_count + 1;    
                     if (dpa_lock_count > DPA_CYCLES_TO_LOCK) then
-                        dpa_is_locked := '1';
+                        dpa_is_locked := '1';    
                         ASSERT false report "DPA locked" severity note;
-                        reset_fifo <= '0';
+                        reset_fifo <= '0';    
                     end if;
                 end if;
             end if;
@@ -10985,7 +13480,7 @@ ARCHITECTURE vital_arm_lvds_receiver OF stratixii_lvds_receiver IS
     -- ?????????? insert delay to mimic DPLL dataout ?????????
 
     -- DPA registers
-    dpareg0 : stratixii_lvds_reg
+    dpareg0 : stratixii_lvds_reg 
         PORT MAP ( d    => in_reg_data,
                    clk  => dpa_clk,
                    clrn => vcc,
@@ -10993,17 +13488,17 @@ ARCHITECTURE vital_arm_lvds_receiver OF stratixii_lvds_receiver IS
                    ena  => vcc,
                    q    => dpareg0_out
                  );
-
-    dpareg1 : stratixii_lvds_reg
-        PORT MAP ( d    => dpareg0_out,
-                   clk  => dpa_clk,
-                   clrn => vcc,
-                   prn  => vcc,
-                   ena  => vcc,
-                   q    => dpareg1_out
-                 );
-
-    s_fifo : stratixii_lvds_rx_fifo
+   
+    dpareg1 : stratixii_lvds_reg             
+        PORT MAP ( d    => dpareg0_out,      
+                   clk  => dpa_clk,          
+                   clrn => vcc,              
+                   prn  => vcc,              
+                   ena  => vcc,              
+                   q    => dpareg1_out       
+                 );                          
+   
+    s_fifo : stratixii_lvds_rx_fifo 
         GENERIC MAP ( channel_width => channel_width
                     )
         PORT MAP    ( wclk    => fifo_wclk,
@@ -11013,27 +13508,33 @@ ARCHITECTURE vital_arm_lvds_receiver OF stratixii_lvds_receiver IS
                       datain  => fifo_datain,
                       dataout => fifo_dataout
                     );
-
-    slip_datain <= fifo_dataout when (enable_dpa = "on" and dpaswitch_ipd = '1') else datain_reg ;
-    s_bslip : stratixii_lvds_rx_bitslip
+   
+    slip_datain_tmp <= fifo_dataout when (enable_dpa = "on" and dpaswitch_ipd = '1') else datain_reg_tmp ;
+    
+    slip_datain <= slip_datain_tmp; 
+    
+    s_bitslip_clk <= clk0_dly; 
+    
+    s_bslip : stratixii_lvds_rx_bitslip 
         GENERIC MAP ( bitslip_rollover => data_align_rollover,
                       channel_width    => channel_width,
                       x_on_bitslip     => x_on_bitslip
                     )
-        PORT MAP    ( clk0      => clk0_dly,
+        PORT MAP    ( clk0      => s_bitslip_clk,
                       bslipcntl => bitslip_ipd,
                       bsliprst  => bitslip_reset,
                       datain    => slip_datain,
                       bslipmax  => bitslipmax,
                       dataout   => slip_dataout
                     );
-
+   
     --********* DESERIALISER *********//
+loaden <= enable0_ipd;  
 
    -- only 1 enable signal used for StratixII
-    rxload_reg : stratixii_lvds_reg
-        PORT MAP ( d    => enable0_ipd,
-                   clk  => clk0_dly,
+    rxload_reg : stratixii_lvds_reg 
+        PORT MAP ( d    => loaden,
+                   clk  => s_bitslip_clk,
                    ena  => vcc,
                    clrn => vcc,
                    prn  => vcc,
@@ -11043,26 +13544,27 @@ ARCHITECTURE vital_arm_lvds_receiver OF stratixii_lvds_receiver IS
     s_deser : stratixii_lvds_rx_deser
         GENERIC MAP (channel_width => channel_width
                     )
-        PORT MAP    (clk => clk0_dly,
+        PORT MAP    (clk => s_bitslip_clk,
                      datain => slip_dataout,
                      devclrn => devclrn,
                      devpor => devpor,
                      dataout => deser_dataout
                     );
 
-    output_reg : stratixii_lvds_rx_parallel_reg
+    output_reg : stratixii_lvds_rx_parallel_reg 
         GENERIC MAP ( channel_width => channel_width
                     )
-        PORT MAP    ( clk => clk0_dly,
+        PORT MAP    ( clk => s_bitslip_clk,
                       enable => rxload,
                       datain => deser_dataout,
                       devpor => devpor,
                       devclrn => devclrn,
                       dataout => dataout
                     );
-
+                                                            
+                                                            
     postdpaserialdataout <= dpareg1_out ;
-    serialdataout <= datain_ipd;
+    serialdataout <= datain_ipd;   
 
 END vital_arm_lvds_receiver;
 -------------------------------------------------------------------------------
@@ -11083,7 +13585,7 @@ END vital_arm_lvds_receiver;
 --               upndninclkena - clock enable for the delaying setting counter
 --               addnsub - dynamically control +/- on offsetctrlout
 --
--- Formulae    : delay (input_period) = sim_loop_intrinsic_delay +
+-- Formulae    : delay (input_period) = sim_loop_intrinsic_delay + 
 --                                      sim_loop_delay_increment * dllcounter;
 --
 -- Latency     : 3 (clk8 cycles) = pc + dc + dr
@@ -11091,13 +13593,14 @@ END vital_arm_lvds_receiver;
 
 library IEEE;
 use IEEE.std_logic_1164.all;
+use IEEE.std_logic_arith.all;
 use IEEE.VITAL_Timing.all;
 use IEEE.VITAL_Primitives.all;
 use work.stratixii_atom_pack.all;
 USE work.stratixii_pllpack.all;
 
 ENTITY stratixii_dll is
-    GENERIC (
+    GENERIC ( 
     input_frequency          : string := "10000 ps";
     delay_chain_length       : integer := 16;
     delay_buffer_mode        : string := "low";
@@ -11147,7 +13650,7 @@ ENTITY stratixii_dll is
               delayctrlout             : OUT std_logic_vector(5 DOWNTO 0);
               offsetctrlout            : OUT std_logic_vector(5 DOWNTO 0);
               dqsupdate                : OUT std_logic;
-              upndnout                 : OUT std_logic;
+              upndnout                 : OUT std_logic;	
               devclrn                  : IN std_logic := '1';
               devpor                   : IN std_logic := '1'
             );
@@ -11211,13 +13714,13 @@ signal dr_dllcount_in         : integer := 0;
 signal dr_addnsub_in          : std_logic := '1';
 signal dr_clk8_in             : std_logic := '0';
 signal dr_aload_in             : std_logic := '0';
-
+                           
 signal dr_reg_offset          : integer := 0;
 signal dr_reg_dllcount        : integer := 0;
 signal dr_delayctrl_out_tmp   : integer := 0;
 
-
-
+                            
+                                                          
 -- delay chain setting counter
 signal dc_dllcount_out        : integer := 0;
 signal dc_dqsupdate_out       : std_logic := '0';
@@ -11227,31 +13730,31 @@ signal dc_upndnclkena_in      : std_logic := '1';
 signal dc_clk8_in             : std_logic := '0';
 signal dc_clk1_in             : std_logic := '0';
 signal dc_dlltolock_in        : std_logic := '0';
-
+                                
 signal dc_reg_dllcount        : integer := 0;
 signal dc_reg_dlltolock_pulse : std_logic := '0';
-
--- jitter reduction counter
+                                   
+-- jitter reduction counter   
 signal jc_upndn_out           : std_logic := '0';
 signal jc_upndnclkena_out     : std_logic := '1';
 signal jc_clk8_in             : std_logic := '0';
 signal jc_upndn_in            : std_logic := '1';
 signal jc_aload_in            : std_logic := '0';
-
+                                    
 signal jc_count               : integer   := 8;
 signal jc_reg_upndn           : std_logic := '0';
 signal jc_reg_upndnclkena     : std_logic := '0';
-
+                                   
 -- phase comparator
 signal pc_upndn_out           : std_logic := '1';
 signal pc_dllcount_in         : integer := 0;
 signal pc_clk1_in             : std_logic := '0';
 signal pc_clk8_in             : std_logic := '0';
 signal pc_aload_in            : std_logic := '0';
-
+                                      
 signal pc_reg_upndn           : std_logic := '1';
-signal pc_delay               : integer   := 0;
-
+signal pc_delay               : integer   := 0; 
+                                       
 -- clock generator
 signal cg_clk_in              : std_logic := '0';
 signal cg_aload_in            : std_logic := '0';
@@ -11260,7 +13763,7 @@ signal cg_clk1_out            : std_logic := '0';
 signal cg_clk8a_out           : std_logic := '0';
 signal cg_clk8b_out           : std_logic := '0';
 
--- por: 000
+-- por: 000                                                  
 signal cg_reg_1           : std_logic := '0';
 signal cg_rega_2          : std_logic := '0';
 signal cg_rega_3          : std_logic := '0';
@@ -11268,8 +13771,8 @@ signal cg_rega_3          : std_logic := '0';
 -- por: 010
 signal cg_regb_2          : std_logic := '1';
 signal cg_regb_3          : std_logic := '0';
-
--- for violation checks
+                                          
+-- for violation checks                                          
 signal dll_to_lock            : std_logic := '0';
 signal input_period           : integer := 10000;
 signal clk_in_last_value      : std_logic := 'X';
@@ -11289,7 +13792,7 @@ begin
 
 	-- violation check block
     process (clk_in)
-
+               
     variable got_first_rising_edge  : std_logic := '0';
     variable got_first_falling_edge : std_logic := '0';
 
@@ -11297,19 +13800,19 @@ begin
     variable duty_violation             : std_logic  := '0';
     variable sent_per_violation         : std_logic  := '0';
     variable sent_duty_violation        : std_logic  := '0';
-
+               
     variable clk_in_last_rising_edge  : time := 0 ps;
     variable clk_in_last_falling_edge : time := 0 ps;
-
+                      
     variable input_period_ps     : time := 10000 ps;
     variable duty_cycle          : time := 5000 ps;
     variable clk_in_period       : time := 10000 ps;
     variable clk_in_duty_cycle   : time := 5000 ps;
     variable clk_per_tolerance   : time := 2 ps;
     variable half_cycles_to_lock : integer := 1;
-
+                      
     variable init : boolean := true;
-
+                     
     begin
         if (init) then
             input_period_ps := dqs_str2int(input_frequency) * 1 ps;
@@ -11318,11 +13821,11 @@ begin
             end if;
 
             duty_cycle := input_period_ps/2;
-            clk_per_tolerance := 2 ps;
+            clk_per_tolerance := 2 ps;                        
             half_cycles_to_lock := 0;
             init := false;
         end if;
-
+             
         if (clk_in'event and clk_in = '1')    then -- rising edge
             if (got_first_rising_edge = '0') then
                 got_first_rising_edge := '1';
@@ -11351,13 +13854,13 @@ begin
                     duty_violation := '0';
                 end if;
             end if;
-
-            if (per_violation = '0' and duty_violation = '0' and dll_to_lock = '0') then
+            
+            if (per_violation = '0' and duty_violation = '0' and dll_to_lock = '0') then			       
                 half_cycles_to_lock := half_cycles_to_lock + 1;
                 if (half_cycles_to_lock >= sim_valid_lock) then
                     dll_to_lock <= '1';
                     assert false report "DLL to lock to incoming clock" severity note;
-                end if;
+                end if;                          
             end if;
             clk_in_last_rising_edge := now;
         elsif (clk_in'event and clk_in = '0') then  -- falling edge
@@ -11374,8 +13877,8 @@ begin
                 else
                     duty_violation := '0';
                 end if;
-
-                if (dll_to_lock = '0' and duty_violation = '0') then
+                             
+                if (dll_to_lock = '0' and duty_violation = '0') then 
                     half_cycles_to_lock := half_cycles_to_lock + 1;
                 end if;
             end if;
@@ -11387,49 +13890,49 @@ begin
             got_first_falling_edge := '0';
             if (dll_to_lock = '1') then
                 dll_to_lock <= '0';
-                assert false report "Illegal value detected on input clock. DLL will lose lock." severity error;
+                assert false report "Illegal value detected on input clock. DLL will lose lock." severity warning;
             else
-                assert false report "Illegal value detected on input clock." severity error;
-            end if;
+                assert false report "Illegal value detected on input clock." severity warning;
+            end if;               
         end if;
-
+                 
         clk_in_last_value <= clk_in;
-
+                     
     end process ; -- violation check
-
-
+                    
+                   
     -- outputs
     delayctrl_out  <= dr_delayctrl_out;
     offsetctrl_out <= dr_offsetctrl_out;
     dqsupdate_out  <= cg_clk8a_out;
     upndn_out      <= pc_upndn_out;
-
-
+        
+                    	
     -- Delay and offset ctrl out resolver -------------------------------------
     -------- convert calculations into integer
-
+                   
     -- inputs
     dr_clk8_in     <= not cg_clk8b_out;
     dr_offset_in   <= (64 - alt_conv_integer(offset_in)) WHEN ((offset_in /= "000000") AND ((offsetctrlout_mode = "dynamic_addnsub" AND  addnsub_in = '0') or (offsetctrlout_mode = "dynamic_sub"))) ELSE
                        alt_conv_integer(offset_in);
-    dr_dllcount_in <= dc_dllcount_out;
-    dr_addnsub_in  <= addnsub_in;
-    dr_aload_in    <= aload_in;
-
+    dr_dllcount_in <= dc_dllcount_out; 
+    dr_addnsub_in  <= addnsub_in; 
+    dr_aload_in    <= aload_in; 
+                
     -- outputs
     dr_delayctrl_out  <= dll_unsigned2bin(dr_delayctrl_out_tmp);
-    dr_offsetctrl_out <= dll_unsigned2bin(dr_reg_offset);
-
+    dr_offsetctrl_out <= dll_unsigned2bin(dr_reg_offset); 
+    
     dr_delayctrl_out_tmp <= dr_offset_in    WHEN (delayctrlout_mode = "offset_only")   ELSE
                             dr_reg_offset   WHEN (delayctrlout_mode = "normal_offset") ELSE
                             dr_reg_dllcount;
-
+      	
     dr_delayctrl_int <= para_static_delay_ctrl WHEN (delayctrlout_mode = "static") ELSE
                         dr_dllcount_in;
-
+    
     dr_offsetctrl_int <= para_static_offset WHEN (offsetctrlout_mode = "static") ELSE
                          dr_offset_in;
-
+          
     -- model
     process(dr_clk8_in, dr_aload_in)
     begin
@@ -11439,7 +13942,7 @@ begin
             dr_reg_dllcount <= dr_delayctrl_int;
         end if;
      end process;
-
+    
     -- generating dr_reg_offset
     process(dr_clk8_in, dr_aload_in)
     begin
@@ -11450,7 +13953,7 @@ begin
             if (dr_addnsub_in = '1') then
                 if (dr_delayctrl_int < 63 - dr_offset_in) then
                     dr_reg_offset <= dr_delayctrl_int + dr_offset_in;
-                else
+                else 
                     dr_reg_offset <= 63;
                 end if;
             elsif (dr_addnsub_in = '0') then
@@ -11465,11 +13968,11 @@ begin
                 dr_reg_offset <= dr_delayctrl_int - dr_offset_in;
             else
                 dr_reg_offset <= 0;
-            end if;
+            end if;    
           elsif (offsetctrlout_mode = "dynamic_add") then
             if (dr_delayctrl_int < 63 - dr_offset_in) then
                 dr_reg_offset <= dr_delayctrl_int + dr_offset_in;
-            else
+            else 
                 dr_reg_offset <= 63;
             end if;
           elsif (offsetctrlout_mode = "static") then
@@ -11491,24 +13994,24 @@ begin
           end if; -- modes
         end if; -- rising clock
     end process ;  -- generating dr_reg_offset
-
+                           
     -- Delay Setting Control Counter ------------------------------------------
-
+             
     --inputs
     dc_dlltolock_in   <= dll_to_lock;
     dc_aload_in       <= aload_in;
     dc_clk1_in        <= cg_clk1_out;
     dc_clk8_in        <= not cg_clk8b_out;
-    dc_upndnclkena_in <= jc_upndnclkena_out WHEN (para_jitter_reduction = '1') ELSE
-                         upndninclkena      WHEN (para_use_upndninclkena = '1')      ELSE
+    dc_upndnclkena_in <= jc_upndnclkena_out WHEN (para_jitter_reduction = '1') ELSE 
+                         upndninclkena      WHEN (para_use_upndninclkena = '1')      ELSE 
                          '1';
-    dc_upndn_in       <= upndnin      WHEN (para_use_upndnin = '1')      ELSE
-                         jc_upndn_out WHEN (para_jitter_reduction = '1') ELSE
+    dc_upndn_in       <= upndnin      WHEN (para_use_upndnin = '1')      ELSE 
+                         jc_upndn_out WHEN (para_jitter_reduction = '1') ELSE 
                          pc_upndn_out;
-
+           
     -- outputs
     dc_dllcount_out  <= dc_reg_dllcount;
-
+                
     -- dll counter logic
     process(dc_clk8_in, dc_aload_in, dc_dlltolock_in)
     variable dc_var_dllcount : integer := 64;
@@ -11516,16 +14019,16 @@ begin
     begin
         if (init) then
             if (delay_buffer_mode = "low") then
-                dc_var_dllcount := 32;
+                dc_var_dllcount := 32; 
             else
                 dc_var_dllcount := 16;
 		    end if;
             init := false;
         end if;
-
+              
         if (dc_aload_in = '1' and dc_aload_in'event) then
             if (delay_buffer_mode = "low") then
-                dc_var_dllcount := 32;
+                dc_var_dllcount := 32; 
             else
                 dc_var_dllcount := 16;
             end if;
@@ -11534,7 +14037,7 @@ begin
                 dc_var_dllcount := sim_valid_lockcount;
                 dc_reg_dlltolock_pulse <= '1';
         elsif (dc_aload_in /= '1' and
-                dc_upndnclkena_in = '1' and dc_clk8_in'event and dc_clk8_in = '1')  then  -- posedge clk
+                dc_upndnclkena_in = '1' and dc_clk8_in'event and dc_clk8_in = '1')  then  -- posedge clk            
                 if (dc_upndn_in = '1') then
                     if ((para_delay_buffer_mode = "01" and dc_var_dllcount < 63) or
                         (para_delay_buffer_mode /= "01" and dc_var_dllcount < 31)) then
@@ -11546,22 +14049,22 @@ begin
                     end if;
                 end if;
         end if;  -- rising clock
-
+                  
         -- schedule signal dc_reg_dllcount
         dc_reg_dllcount <= dc_var_dllcount;
     end process;
-
+                                 
     -- Jitter reduction counter -----------------------------------------------
-
+         
     -- inputs
     jc_clk8_in  <= not cg_clk8b_out;
     jc_upndn_in <= pc_upndn_out;
     jc_aload_in <= aload_in;
-
+              
     -- outputs
     jc_upndn_out       <= jc_reg_upndn;
     jc_upndnclkena_out <= jc_reg_upndnclkena;
-
+             
     -- Model
     process (jc_clk8_in, jc_aload_in)
     begin
@@ -11586,50 +14089,50 @@ begin
             end if;
         end if;
     end process;
-
+         
     -- Phase comparator -------------------------------------------------------
-
+                 
     -- inputs
     pc_clk1_in <= cg_clk1_out;
     pc_clk8_in <= cg_clk8b_out;  -- positive
     pc_dllcount_in <= dc_dllcount_out; -- for phase loop calculation
     pc_aload_in <= aload_in;
-
+       
     -- outputs
     pc_upndn_out <= pc_reg_upndn;
-
+          
     -- parameter used
     -- sim_loop_intrinsic_delay, sim_loop_delay_increment
-
+         
     -- Model
     process (pc_clk8_in, pc_aload_in)
     variable pc_var_delay : integer := 0;
     begin
         if (pc_aload_in = '1' and pc_aload_in'event) then
             pc_var_delay := 0;
-        elsif (pc_aload_in /= '1' and pc_clk8_in'event and pc_clk8_in = '1' ) then
+        elsif (pc_aload_in /= '1' and pc_clk8_in'event and pc_clk8_in = '1' ) then	   
             pc_var_delay := sim_loop_intrinsic_delay + sim_loop_delay_increment * pc_dllcount_in;
             if (pc_var_delay > input_period) then
                 pc_reg_upndn <= '0';
             else
                 pc_reg_upndn <= '1';
             end if;
-
+             
             pc_delay <= pc_var_delay;
         end if;
     end process;
-
+           
     -- Clock Generator -------------------------------------------------------
-
+          
     -- inputs
     cg_clk_in <= clk_in;
     cg_aload_in <= aload_in;
-
+         	
     -- outputs
     cg_clk8a_out <= cg_rega_3;
     cg_clk8b_out <= cg_regb_3;
     cg_clk1_out <= '0' WHEN cg_aload_in = '1' ELSE cg_clk_in;
-
+              
     -- Model
     process(cg_clk1_out, cg_aload_in)
     begin
@@ -11639,7 +14142,7 @@ begin
             cg_reg_1 <= not cg_reg_1;
         end if;
     end  process;
-
+             
     process(cg_reg_1, cg_aload_in)
     begin
         if (cg_aload_in = '1' and cg_aload_in'event) then
@@ -11650,7 +14153,7 @@ begin
             cg_regb_2 <= not cg_regb_2;
         end if;
     end  process;
-
+            
     process (cg_rega_2, cg_aload_in)
     begin
         if (cg_aload_in = '1' and cg_aload_in'event) then
@@ -11659,7 +14162,7 @@ begin
             cg_rega_3 <= not cg_rega_3;
         end if;
     end  process;
-
+            
     process (cg_regb_2, cg_aload_in)
     begin
         if (cg_aload_in = '1' and cg_aload_in'event) then
@@ -11668,7 +14171,7 @@ begin
             cg_regb_3 <= not cg_regb_3;
         end if;
     end  process;
-
+             
     --------------------
     -- INPUT PATH DELAYS
     --------------------
@@ -11686,30 +14189,30 @@ begin
         VitalWireDelay (offset_in(5), offset(5), tipd_offset(5));
         VitalWireDelay (upndninclkena_in, upndninclkena, tipd_upndninclkena);
     end block;
-
+         
    	------------------------
     --  Timing Check Section
     ------------------------
-    VITALtiming : process (clk_in, offset_in, upndn_in, upndninclkena_in, addnsub_in,
+    VITALtiming : process (clk_in, offset_in, upndn_in, upndninclkena_in, addnsub_in, 
                            delayctrl_out, offsetctrl_out, dqsupdate_out, upndn_out)
-
+    
     variable Tviol_offset_clk        : std_ulogic := '0';
     variable Tviol_upndnin_clk       : std_ulogic := '0';
     variable Tviol_addnsub_clk       : std_ulogic := '0';
     variable Tviol_upndninclkena_clk : std_ulogic := '0';
-
+           
     variable TimingData_offset_clk        : VitalTimingDataType := VitalTimingDataInit;
     variable TimingData_upndnin_clk       : VitalTimingDataType := VitalTimingDataInit;
     variable TimingData_addnsub_clk       : VitalTimingDataType := VitalTimingDataInit;
     variable TimingData_upndninclkena_clk : VitalTimingDataType := VitalTimingDataInit;
-
+         
     variable delayctrlout_VitalGlitchDataArray  : VitalGlitchDataArrayType(5 downto 0);
 	variable upndnout_VitalGlitchData           : VitalGlitchDataType;
-
+                  
     begin
 
         if (TimingChecksOn) then
-
+                      
            VitalSetupHoldCheck (
                Violation       => Tviol_offset_clk,
                TimingData      => TimingData_offset_clk,
@@ -11720,12 +14223,12 @@ begin
                SetupHigh       => tsetup_offset_clk_noedge_posedge(0),
                SetupLow        => tsetup_offset_clk_noedge_posedge(0),
                HoldHigh        => thold_offset_clk_noedge_posedge(0),
-               HoldLow         => thold_offset_clk_noedge_posedge(0),
+               HoldLow         => thold_offset_clk_noedge_posedge(0),                
                RefTransition   => '/',
                HeaderMsg       => InstancePath & "/SRRATIXII_DLL",
                XOn             => XOn,
                MsgOn           => MsgOnChecks );
-
+                          
            VitalSetupHoldCheck (
                Violation       => Tviol_upndnin_clk,
                TimingData      => TimingData_upndnin_clk,
@@ -11741,7 +14244,7 @@ begin
                HeaderMsg       => InstancePath & "/STRATIXII_DLL",
                XOn             => XOn,
                MsgOn           => MsgOnChecks );
-
+                          
            VitalSetupHoldCheck (
                Violation       => Tviol_upndninclkena_clk,
                TimingData      => TimingData_upndninclkena_clk,
@@ -11757,7 +14260,7 @@ begin
                HeaderMsg       => InstancePath & "/STRATIXII_DLL",
                XOn             => XOn,
                MsgOn           => MsgOnChecks );
-
+                          
            VitalSetupHoldCheck (
                Violation       => Tviol_addnsub_clk,
                TimingData      => TimingData_addnsub_clk,
@@ -11772,16 +14275,16 @@ begin
                RefTransition   => '/',
                HeaderMsg       => InstancePath & "/STRATIXII_DLL",
                XOn             => XOn,
-               MsgOn           => MsgOnChecks );
+               MsgOn           => MsgOnChecks );   	               
        end if;
 
        ----------------------
        --  Path Delay Section
        ----------------------
-
+                                                                     
        offsetctrlout <= offsetctrl_out;
 	   dqsupdate <= dqsupdate_out;
-
+                                                                     
        VitalPathDelay01 (
            OutSignal     => upndnout,
            OutSignalName => "UPNDNOUT",
@@ -11791,7 +14294,7 @@ begin
            Mode          => DefGlitchMode,
            XOn           => XOn,
            MsgOn         => MsgOn );
-
+                              
        VitalPathDelay01 (
            OutSignal     => delayctrlout(0),
            OutSignalName => "DELAYCTRLOUT",
@@ -11802,7 +14305,7 @@ begin
            Mode          => DefGlitchMode,
            XOn           => XOn,
            MsgOn         => MsgOn );
-
+             
        VitalPathDelay01 (
            OutSignal     => delayctrlout(1),
            OutSignalName => "DELAYCTRLOUT",
@@ -11813,7 +14316,7 @@ begin
            Mode          => DefGlitchMode,
            XOn           => XOn,
            MsgOn         => MsgOn );
-
+           
        VitalPathDelay01 (
            OutSignal     => delayctrlout(2),
            OutSignalName => "DELAYCTRLOUT",
@@ -11824,7 +14327,7 @@ begin
            Mode          => DefGlitchMode,
            XOn           => XOn,
            MsgOn         => MsgOn );
-
+             
        VitalPathDelay01 (
            OutSignal     => delayctrlout(3),
            OutSignalName => "DELAYCTRLOUT",
@@ -11835,7 +14338,7 @@ begin
            Mode          => DefGlitchMode,
            XOn           => XOn,
            MsgOn         => MsgOn );
-
+             
        VitalPathDelay01 (
            OutSignal     => delayctrlout(4),
            OutSignalName => "DELAYCTRLOUT",
@@ -11846,7 +14349,7 @@ begin
            Mode          => DefGlitchMode,
            XOn           => XOn,
            MsgOn         => MsgOn );
-
+           
        VitalPathDelay01 (
            OutSignal     => delayctrlout(5),
            OutSignalName => "DELAYCTRLOUT",
@@ -11857,7 +14360,7 @@ begin
            Mode          => DefGlitchMode,
            XOn           => XOn,
            MsgOn         => MsgOn );
-
+ 
 
 
     end process;  -- vital timing
@@ -11872,9 +14375,8 @@ end vital_armdll;
 --
 LIBRARY IEEE;
 use IEEE.std_logic_1164.all;
+use IEEE.std_logic_arith.all;
 use work.stratixii_atom_pack.all;
-library grlib;
-use grlib.stdlib.all;
 
 entity  stratixii_rublock is
 	generic
@@ -11886,15 +14388,15 @@ entity  stratixii_rublock is
 		sim_init_status			: integer := 0;
 		lpm_type				: string := "stratixii_rublock"
 	);
-	port
+	port 
 	(
-		clk			: in std_logic;
-		shiftnld	: in std_logic;
-		captnupdt	: in std_logic;
-		regin		: in std_logic;
-		rsttimer	: in std_logic;
-		rconfig		: in std_logic;
-		regout		: out std_logic;
+		clk			: in std_logic; 
+		shiftnld	: in std_logic; 
+		captnupdt	: in std_logic; 
+		regin		: in std_logic; 
+		rsttimer	: in std_logic; 
+		rconfig		: in std_logic; 
+		regout		: out std_logic; 
 		pgmout		: out std_logic_vector(2 downto 0)
 	);
 
@@ -11956,7 +14458,7 @@ begin
 			--report "        -> Field User Watchdog is set to %s", update_reg[8] ? "Enabled" : "Disabled";
 			--report "        -> Field User Watchdog Timeout Value is set to %d", update_reg[20:9];
 
-		else
+		else 
 			-- dont handle clk events during initialization since this will
 			-- destroy the register values that we just initialized
 
@@ -11979,7 +14481,7 @@ begin
 					elsif (captnupdt = '0') then
 						-- update data from shift into Update Register
 
-						if (sim_init_config = "factory" and
+						if (sim_init_config = "factory" and 
 							(operation_mode = "remote" or operation_mode = "active_serial_remote")) then
 							-- every bit in Update Reg gets updated
 							update_reg(20 downto 0) <= shift_reg(25 downto 5);
@@ -12034,7 +14536,7 @@ begin
 				pgmout_update <= conv_std_logic_vector(sim_init_page_select, 3);
 				-- PGM[] field
 			else
-				pgmout_update <= (others => 'X');
+				pgmout_update <= (others => 'X');			
 			end if;
 		end if;
 
@@ -12050,19 +14552,19 @@ begin
 			if (operation_mode = "remote") then
 				-- set pgm[] to page as set in Update Register
 				pgmout_update <= update_reg(3 downto 1);
-
+				
 			elsif (operation_mode = "local") then
 				-- set pgm[] to page as 001
 				pgmout_update <= "001";
-			else
+			else			
 				-- invalid rconfig: destroys pgmout (only if not initializing)
-				pgmout_update <= (others => 'X');
+				pgmout_update <= (others => 'X');			
 			end if;
-
+			
 		elsif (rconfig /= '0') then
 			-- invalid rconfig: destroys pgmout (only if not initializing)
 			if (now /= 0 ns) then
-				pgmout_update <= (others => 'X');
+				pgmout_update <= (others => 'X');			
 			end if;
 		end if;
 	end process;
@@ -12124,7 +14626,7 @@ ENTITY stratixii_termination is
     tpd_terminationclock_terminationcontrolprobe_posedge  : VitalDelayArrayType01(6 downto 0)  := (OTHERS => DefPropDelay01)
     );
 
-    PORT (
+    PORT ( 
     rup                      : IN std_logic := '0';
     rdn                      : IN std_logic := '0';
     terminationclock         : IN std_logic := '0';
@@ -12144,11 +14646,11 @@ END stratixii_termination;
 
 ARCHITECTURE vital_armtermination of stratixii_termination is
 
-begin
+begin             
     --------------------
     -- INPUT PATH DELAYS
     --------------------
-
+         
    	------------------------
     --  Timing Check Section
     ------------------------
@@ -12156,7 +14658,7 @@ begin
     ----------------------
     --  Path Delay Section
     ----------------------
-
+                                                                     
 end vital_armtermination;
 
 ---------------------------------------------------------------------
@@ -12219,7 +14721,7 @@ begin
             Mode => VitalInertial,
             XOn  => XOn,
             MsgOn  => MsgOn );
-
+    
         VitalPathDelay01 (
             OutSignal => dataout,
             OutSignalName => "dataout",

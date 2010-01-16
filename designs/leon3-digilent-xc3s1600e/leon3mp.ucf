@@ -16,9 +16,11 @@ TIMESPEC "TS_clkm_clkml" = FROM "clkm" TO "clkml" TIG;
 TIMESPEC "TS_clkml_clkm" = FROM "clkml" TO "clkm" TIG;
 NET "lock"  TIG;
 
-#NET "ddr_clk_fb" TNM_NET = "ddr_clk_fb";
-#TIMESPEC "TS_ddr_clk_fb" = PERIOD "ddr_clk_fb" 10.00 ns HIGH 50 %;
-
+NET "ddr_clk_fb" TNM_NET = "ddr_clk_fb";
+TIMESPEC "TS_ddr_clk_fb" = PERIOD "ddr_clk_fb" 10.00 ns HIGH 50 %;
+NET "ddr_clk_fb" MAXDELAY = 1660 ps;
+NET "*dqinl*" MAXDELAY = 1900 ps;
+NET "ddrsp0.ddrc/ddr16.ddrc/rwdata*" MAXDELAY = 2100 ps;
 
 INST "ddrsp0.ddrc/ddr_phy0/ddr_phy0/xc3se.ddr_phy0/nops.read_dll" LOC = DCM_X1Y3;
 INST "ddrsp0.ddrc/ddr_phy0/ddr_phy0/xc3se.ddr_phy0/ps.read_dll" LOC = DCM_X1Y3;
@@ -32,7 +34,7 @@ PIN "clkgen0/xc3s.v/dll0.CLK2X" CLOCK_DEDICATED_ROUTE = FALSE;
 PIN "clkgen0/xc3s.v/dll0.CLKIN" CLOCK_DEDICATED_ROUTE = FALSE;
 NET "clk_50mhz" CLOCK_DEDICATED_ROUTE = FALSE;
  
-NET "ddrsp0.ddrc/ddr_phy0/ddr_phy0/xc3se.ddr_phy0/vlockl_1" TIG;
+#NET "ddrsp0.ddrc/ddr_phy0/ddr_phy0/xc3se.ddr_phy0/vlockl_1" TIG;
 
 NET "ddrsp0.ddrc/ddr_phy0/ddr_phy0/xc3se.ddr_phy0/rclk90b" TNM_NET = "rclk90b"; 
 TIMEGRP "rclk270b_rise" = FALLING "rclk90b";

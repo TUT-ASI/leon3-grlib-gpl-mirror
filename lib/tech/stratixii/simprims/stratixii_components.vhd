@@ -1,7 +1,7 @@
--- Copyright (C) 1991-2006 Altera Corporation
+-- Copyright (C) 1991-2009 Altera Corporation
 -- Your use of Altera Corporation's design tools, logic functions 
 -- and other software and tools, and its AMPP partner logic 
--- functions, and any output files any of the foregoing 
+-- functions, and any output files from any of the foregoing 
 -- (including device programming or simulation files), and any 
 -- associated documentation or information are expressly subject 
 -- to the terms and conditions of the Altera Program License 
@@ -11,10 +11,7 @@
 -- programming logic devices manufactured by Altera and sold by 
 -- Altera or its authorized distributors.  Please refer to the 
 -- applicable agreement for further details.
-
-
--- Quartus II 6.0 Build 178 04/27/2006
-
+-- Quartus II 9.0 Build 235 03/01/2009
 LIBRARY IEEE;
 use IEEE.STD_LOGIC_1164.all;
 use IEEE.VITAL_Timing.all;
@@ -279,19 +276,19 @@ component stratixii_mac_mult
 
   port
     (
-      dataa                   : IN std_logic_vector(dataa_width-1 DOWNTO 0) := (others => '0');   
-      datab                   : IN std_logic_vector(datab_width-1 DOWNTO 0) := (others => '0');
+      dataa                   : IN std_logic_vector(dataa_width-1 DOWNTO 0) := (others => '1');   
+      datab                   : IN std_logic_vector(datab_width-1 DOWNTO 0) := (others => '1');
       scanina                 : IN std_logic_vector(dataa_width-1 DOWNTO 0) := (others => '0');   
       scaninb                 : IN std_logic_vector(datab_width-1 DOWNTO 0) := (others => '0');
       sourcea                 : IN std_logic := '0';
       sourceb                 : IN std_logic := '0';
-      signa                   : IN std_logic := '0';   
-      signb                   : IN std_logic := '0';   
+      signa                   : IN std_logic := '1';   
+      signb                   : IN std_logic := '1';   
       round                   : IN std_logic := '0';   
       saturate                : IN std_logic := '0';   
       clk                     : IN std_logic_vector(3 DOWNTO 0) := (others => '0');   
       aclr                    : IN std_logic_vector(3 DOWNTO 0) := (others => '0');   
-      ena                     : IN std_logic_vector(3 DOWNTO 0) := (others => '0');   
+      ena                     : IN std_logic_vector(3 DOWNTO 0) := (others => '1');   
       mode                    : IN std_logic := '0';     
       zeroacc                 : IN std_logic := '0';     
       dataout                 : OUT std_logic_vector((dataa_width+datab_width)-1 DOWNTO 0);   
@@ -395,10 +392,10 @@ component stratixii_mac_out
 
   port
     (
-      dataa     : in std_logic_vector (dataa_width - 1 downto 0) := (others => '0');
-      datab     : in std_logic_vector (datab_width - 1 downto 0) := (others => '0');
-      datac     : in std_logic_vector (datac_width - 1 downto 0) := (others => '0');
-      datad     : in std_logic_vector (datad_width - 1 downto 0) := (others => '0');
+      dataa     : in std_logic_vector (dataa_width - 1 downto 0) := (others => '1');
+      datab     : in std_logic_vector (datab_width - 1 downto 0) := (others => '1');
+      datac     : in std_logic_vector (datac_width - 1 downto 0) := (others => '1');
+      datad     : in std_logic_vector (datad_width - 1 downto 0) := (others => '1');
       zeroacc   : in std_logic := '0';
       addnsub0  : in std_logic := '1';
       addnsub1  : in std_logic := '1';
@@ -440,11 +437,12 @@ COMPONENT stratixii_pll
              inclk0_input_frequency      : integer := 10000;
              inclk1_input_frequency      : integer := 10000;
 
-             gate_lock_signal            : string := "yes";
+             gate_lock_signal            : string := "no";
              gate_lock_counter           : integer := 1;
              self_reset_on_gated_loss_lock : string := "off";
              valid_lock_multiplier       : integer := 1;
              invalid_lock_multiplier     : integer := 5;
+             sim_gate_lock_device_behavior : string := "off";
 
              switch_over_type            : string := "auto";
              switch_over_on_lossclk      : string := "off";
@@ -501,7 +499,7 @@ COMPONENT stratixii_pll
 
              -- ADVANCED USE PARAMETERS
              m_initial                   : integer := 1;
-             m                           : integer := 1;
+             m                           : integer := 0;
              n                           : integer := 1;
              m2                          : integer := 1;
              n2                          : integer := 1;
@@ -571,11 +569,10 @@ COMPONENT stratixii_pll
              sclkout0_phase_shift        : string := "0";
              sclkout1_phase_shift        : string := "0";
 
-             charge_pump_current         : integer := 0;
-             loop_filter_c               : integer := 1;
+             charge_pump_current         : integer := 52;
+             loop_filter_c               : integer := 16;
              loop_filter_r               : string := "1.0" ;
              common_rx_tx                : string := "off";
-             rx_outclock_resource        : string := "auto";
              use_vco_bypass              : string := "false";
              use_dc_coupling             : string := "false";
 
@@ -601,6 +598,7 @@ COMPONENT stratixii_pll
              vco_multiply_by             : integer := 0;
              vco_divide_by               : integer := 0;
              vco_post_scale              : integer := 1;
+             scan_chain_mif_file         : string := "";
 
              XOn                         : Boolean := DefGlitchXOn;
              MsgOn                       : Boolean := DefGlitchMsgOn;
@@ -802,7 +800,7 @@ COMPONENT stratixii_dll
               offset                   : IN std_logic_vector(5 DOWNTO 0) := "000000";
               upndnin                  : IN std_logic := '0';
               upndninclkena            : IN std_logic := '1';
-              addnsub                  : IN std_logic := '0';
+              addnsub                  : IN std_logic := '1';
               delayctrlout             : OUT std_logic_vector(5 DOWNTO 0);
               offsetctrlout            : OUT std_logic_vector(5 DOWNTO 0);
               dqsupdate                : OUT std_logic;
@@ -958,7 +956,7 @@ component  stratixii_crcblock
 	port    (
             clk         : in std_logic := '0'; 
             shiftnld    : in std_logic := '0'; 
-            ldsrc       : in std_logic := '0'; 
+           ldsrc       : in std_logic := '0'; 
             crcerror    : out std_logic; 
             regout      : out std_logic
             ); 
@@ -981,7 +979,7 @@ component  stratixii_asmiblock
 end component;
 
 --
--- STRATIXII_RAM_BLOCK
+-- stratixii_ram_block
 --
 
 component stratixii_ram_block
@@ -1013,11 +1011,11 @@ component stratixii_ram_block
       port_a_byte_enable_clock  : string := "clock0";
       port_b_logical_ram_depth  : integer := 0;
       port_b_logical_ram_width  : integer := 0;
-      port_b_data_in_clock      : string := "none";
+      port_b_data_in_clock      : string := "clock1";
       port_b_data_in_clear      : string := "none";
-      port_b_address_clock      : string := "none";
+      port_b_address_clock      : string := "clock1";
       port_b_address_clear      : string := "none";
-      port_b_read_enable_write_enable_clock : string := "none";
+      port_b_read_enable_write_enable_clock : string := "clock1";
       port_b_read_enable_write_enable_clear : string := "none";
       port_b_data_out_clock     : string := "none";
       port_b_data_out_clear     : string := "none";
@@ -1026,7 +1024,7 @@ component stratixii_ram_block
       port_b_first_bit_number   : integer := 0;
       port_b_data_width         : integer := 1;
       port_b_byte_enable_clear  : string := "none";
-      port_b_byte_enable_clock  : string := "none";
+      port_b_byte_enable_clock  : string := "clock1";
       port_a_address_width      : integer := 1; 
       port_b_address_width      : integer := 1; 
       port_a_byte_enable_mask_width : integer := 1; 
@@ -1040,10 +1038,10 @@ component stratixii_ram_block
       port_b_disable_ce_on_output_registers : string := "off";
       lpm_type                  : string := "stratixii_ram_block";
       lpm_hint                  : string := "true";
-      connectivity_checking     : string := "off";
-      mem_init0 : bit_vector := X"0";
-      mem_init1 : bit_vector := X"0"
-    );
+        mem_init0 : BIT_VECTOR  := X"0";
+        mem_init1 : BIT_VECTOR  := X"0";
+        connectivity_checking     : string := "off"
+        ); 
   port
     (
       portawe           : in std_logic := '0';

@@ -10,20 +10,21 @@
 #
 # Clocks
 #
-define_clock            {etx_clk} -name {etx_clk}  -freq 25 -clockgroup phy_rx_clkgroup -route 10
-define_clock            {erx_clk} -name {erx_clk}  -freq 25 -clockgroup phy_tx_clkgroup -route 10
+define_clock            {etx_clk} -name {etx_clk}  -freq 25 -route 10 -clockgroup phy_rx_clkgroup
+define_clock            {erx_clk} -name {erx_clk}  -freq 25 -route 10 -clockgroup phy_tx_clkgroup
 define_clock            {ddr_clk_fb} -name {ddr_clk_fb}  -freq 125 -clockgroup ddr_read_group
-define_clock            {leon3mp|ddrsp0.ddrc.ddr_phy0.ddr_phy0.clk} -name {leon3mp|ddrsp0.ddrc.ddr_phy0.ddr_phy0.clk}  -freq 100 -clockgroup ddr_clkgroup -route 1
-define_clock            {clk_50mhz} -name {clk_50mhz}  -freq 55 -clockgroup default_clkgroup_0 -route 2
+define_clock            {n:clkml} -name {clkml}  -freq 125 -clockgroup ddr_clkgroup
+define_clock            {n:clkm} -name {clkm}  -freq 50 -clockgroup ahb_clkgroup
+define_clock            {clk_50mhz} -name {clk_50mhz}  -freq 55 -route 2 -clockgroup clk50_clkgroup
 
 #
 # Clock to Clock
 #
-define_clock_delay           -rise {leon3mp|ddrsp0.ddrc.ddr_phy0.ddr_phy0.clk} -rise {clkm} -false
-define_clock_delay           -rise {clk_50mhz} -rise {leon3mp|ddrsp0.ddrc.ddr_phy0.ddr_phy0.clk} -false
-define_clock_delay           -rise {leon3mp|clkgen0.xc3s.v.clk0B_derived_clock} -rise {leon3mp|ddrsp0.ddrc.ddr_phy0.ddr_phy0.clk} -false
-define_clock_delay           -rise {leon3mp|clkgen0.xc3s.v.clk0B_derived_clock} -rise {leon3mp|clkgen0.xc3s.v.clk_x_derived_clock} -false
-define_clock_delay           -rise {leon3mp|clkgen0.xc3s.v.clk0B_derived_clock} -rise {ddrspa|ddr_phy0.ddr_phy0.xc3se.ddr_phy0.clk_270ro_derived_clock} -false
+#define_clock_delay           -rise {leon3mp|ddrsp0.ddrc.ddr_phy0.ddr_phy0.clk} -rise {clkm} -false
+#define_clock_delay           -rise {clk_50mhz} -rise {leon3mp|ddrsp0.ddrc.ddr_phy0.ddr_phy0.clk} -false
+#define_clock_delay           -rise {leon3mp|clkgen0.xc3s.v.clk0B_derived_clock} -rise {leon3mp|ddrsp0.ddrc.ddr_phy0.ddr_phy0.clk} -false
+#define_clock_delay           -rise {leon3mp|clkgen0.xc3s.v.clk0B_derived_clock} -rise {leon3mp|clkgen0.xc3s.v.clk_x_derived_clock} -false
+#define_clock_delay           -rise {leon3mp|clkgen0.xc3s.v.clk0B_derived_clock} -rise {ddrspa|ddr_phy0.ddr_phy0.xc3se.ddr_phy0.clk_270ro_derived_clock} -false
 
 #
 # Inputs/Outputs

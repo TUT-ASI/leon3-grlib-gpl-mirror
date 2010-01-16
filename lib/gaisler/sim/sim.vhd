@@ -201,7 +201,8 @@ package sim is
 
   component grusbdcsim
     generic (
-      functm : integer range 0 to 1 := 0);
+      functm  : integer range 0 to 1 := 0;
+      keepclk : integer range 0 to 1 := 0);
     port (
       rst     : in    std_ulogic;
       clk     : out   std_ulogic;

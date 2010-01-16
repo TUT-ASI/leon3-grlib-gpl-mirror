@@ -79,6 +79,8 @@ type mmuidc_data_out_type is record
   accexc           : std_logic;
 end record;
 
+constant mmuidco_zero : mmuidc_data_out_type := ('0', zero32, '0', '0');
+
 type mmudc_in_type is record
   trans_op         : std_logic; 
   transdata        : mmuidc_data_in_type;
@@ -109,9 +111,12 @@ end record;
 type mmuic_out_type is record
   grant            : std_logic;
   transdata        : mmuidc_data_out_type;
-
 end record;
 
+constant mmudco_zero : mmudc_out_type := ('0', mmuidco_zero,
+	mmctrl2_zero, mmuidco_zero);
+
+constant mmuico_zero : mmuic_out_type := ('0', mmuidco_zero);
 
 --#lrue i/o
 type mmulrue_in_type is record

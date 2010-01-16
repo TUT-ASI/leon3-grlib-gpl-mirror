@@ -112,7 +112,7 @@ begin
 --       port map (rst, clk, mcii, mcio, mcdi, mcdo, ahbi2, ahbo2, ahbso, hclken);
      a0 : mmu_acache
        generic map (hindex, ilinesize, cached, clk2x, scantest)
-       port map (rst, clk, mcii, mcio, mcdi, mcdo, mcmmi, open, ahbi2, ahbo2, ahbso, hclken);
+       port map (rst, sclk, mcii, mcio, mcdi, mcdo, mcmmi, open, ahbi2, ahbo2, ahbso, hclken);
 
   mcmmi <= mci_zero;
   ico <= icol;

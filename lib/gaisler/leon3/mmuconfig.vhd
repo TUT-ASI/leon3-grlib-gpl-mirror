@@ -426,11 +426,17 @@ type mmctrl_fs_type is record
   ebe   : std_logic_vector(7 downto 0);            
 end record;
 
+constant mmctrl_fs_zero : mmctrl_fs_type := 
+	('0', '0', "000", '0', '0', '0', "00", "00000000");
+
 type mmctrl_type2 is record
   fs    : mmctrl_fs_type;
   valid : std_logic;
   fa    : std_logic_vector(VA_I_SZ-1 downto 0);   -- fault address register
 end record;
+
+constant mmctrl2_zero : mmctrl_type2 := 
+	(mmctrl_fs_zero, '0', zero32(VA_I_SZ-1 downto 0));
 
 -- ##############################################################
 --     6. Virtual Flush/Probe address [sparc V8: p.249,Appx.H,Figure H-9]

@@ -36,11 +36,16 @@ use gaisler.mmuiface.all;
 
 entity mmu_icache is
   generic (
+    icen      : integer range 0 to 1  := 0;
     irepl     : integer range 0 to 2  := 0;
     isets     : integer range 1 to 4  := 1;
     ilinesize : integer range 4 to 8  := 4;
     isetsize  : integer range 1 to 256 := 1;
-    isetlock  : integer range 0 to 1  := 0
+    isetlock  : integer range 0 to 1  := 0;
+    lram      : integer range 0 to 1 := 0;
+    lramsize  : integer range 1 to 512 := 1;
+    lramstart : integer range 0 to 255 := 16#8e#;
+    mmuen     : integer              := 0
   );
   port (
     rst : in  std_logic;
@@ -62,6 +67,7 @@ end;
 
 architecture rtl of mmu_icache is
 
+constant M_EN         : boolean := (mmuen = 1);
 constant ILINE_BITS   : integer := log2(ilinesize);
 constant IOFFSET_BITS : integer := 8 +log2(isetsize) - ILINE_BITS;
 constant TAG_LOW    : integer := IOFFSET_BITS + ILINE_BITS + 2;
@@ -190,7 +196,7 @@ signal r, c : icache_control_type;	-- r is registers, c is combinational
 signal rl, cl : lru_reg_type;           -- rl is registers, cl is combinational
 
 constant icfg : std_logic_vector(31 downto 0) := 
-	cache_cfg(irepl, isets, ilinesize, isetsize, isetlock, 0, 0, 1, 0, 1);
+	cache_cfg(irepl, isets, ilinesize, isetsize, isetlock, 0, lram, log2(lramsize), lramstart, mmuen);
 
 
 begin
@@ -278,7 +284,7 @@ begin
     hit := '0';
     for i in ISETS-1 downto 0 loop
       if (icramo.tag(i)(TAG_HIGH downto TAG_LOW) = ici.fpc(TAG_HIGH downto TAG_LOW))
-        and ((icramo.ctx(i) = mmudci.mmctrl1.ctx) or (mmudci.mmctrl1.e = '0'))
+        and ((icramo.ctx(i) = mmudci.mmctrl1.ctx) or (mmudci.mmctrl1.e = '0') or not M_EN)
       then hit := not r.flush; set := i; end if;
       validv(i) := genmux(ici.fpc(LINE_HIGH downto LINE_LOW), 
 		          icramo.tag(i)(ilinesize -1 downto 0));
@@ -329,7 +335,7 @@ begin
 	  v.istate := streaming;  
           v.holdn := '0'; v.overrun := '1';
           
-          if ((mmudci.mmctrl1.e) = '1') then 
+          if M_EN and (mmudci.mmctrl1.e = '1') then 
             v.istate := trans; 
             mmuici_trans_op := '1';
             v.trans_op := not mmuico.grant;
@@ -395,9 +401,8 @@ begin
         end if;
       end if;
     when trans =>
-
+      if M_EN then
         v.holdn := '0';
-        
         if (mmuico.transdata.finish = '1') then
           if (mmuico.transdata.accexc) = '1' and ((mmudci.mmctrl1.nf) /= '1' or (r.su) = '1') then 
             -- if su then always do mexc
@@ -408,6 +413,7 @@ begin
             v.waddress := mmuico.transdata.data(31 downto PCLOW);
             v.istate := streaming; v.req := '1'; 
           end if;
+        end if;
       end if;
       
     when streaming =>		-- streaming: update cache and send data to IU
@@ -541,7 +547,7 @@ begin
       v.lrr := '0';
      
       -- precise flush, ASI_FLUSH_PAGE & ASI_FLUSH_CTX
-      --if M_EN then
+      if M_EN then
         if r.pflush = '1' then
           twrite := '0'; ctwrite := (others => '0');
           v.pflushr := not r.pflushr;
@@ -557,7 +563,7 @@ begin
             end loop;
           end if;
         end if;
-      --end if;
+      end if;
     end if;
 
 -- reset

@@ -57,8 +57,11 @@ begin
 	 port map (pad, i, oen, o);
   end generate;
   pa : if (tech = proasic) or (tech = apa3) generate
-    x0 : apa3_iopad generic map (level, slew, voltage, strength,
-                                 filter)
+    x0 : apa3_iopad generic map (level, slew, voltage, strength, filter)
+	 port map (pad, i, oen, o);
+  end generate;
+  fus : if (tech = actfus) generate
+    x0 : fusion_iopad generic map (level, slew, voltage, strength, filter)
 	 port map (pad, i, oen, o);
   end generate;
   atc : if (tech = atc18s) generate

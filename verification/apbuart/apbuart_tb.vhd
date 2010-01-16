@@ -284,7 +284,8 @@ begin
       print("");
       if (fifosize > 1) then
         c := '1' &                          -- fifos available
-             X"0000" & '0' &                -- unused
+             X"0000" &                      -- unused
+             '-' &                          -- transmitter shift register irq enable
              '-' &                          -- delay irq enable
              '-' &                          -- break irq enable
              '-' &                          -- debug enable
@@ -301,7 +302,8 @@ begin
              '0';                           -- receive enable
       else
         c := '0' &                          -- fifos available
-             X"0000" & '0' &                -- unused
+             X"0000" &                      -- unused
+             '-' &                          -- transmitter shift register irq enable  
              '-' &                          -- delay irq enable
              '-' &                          -- break irq enable
              '-' &                          -- debug enable
@@ -1796,6 +1798,253 @@ begin
 
       tintermediate(tp, tpcounter);
     end treceiverinterrupts;
+
+    procedure ttransmittershiftregisterinterrupt is
+    begin
+      print("--=========================================================--");
+      print(" Test transmitter shift register empty interrupt operation --");
+      print("--=========================================================--");
+      rate := 262144;
+      dbgi.baudrate <= rate; dbgi.rxen <= '1';
+      scaler := 1000000000/(rate*8*sysperiod_g);
+      c := X"00000" & conv_std_logic_vector(scaler, 12);
+      at_write_32(scalerreg_c, c, 0, false, "0011", true, vmode, atmi, atmo);
+      at_comp_32(scalerreg_c, c, 0, false, "0011", true, vmode, tp, d, atmi, atmo);
+
+      c := "000000" &      -- receiver fifo count
+           "000000" &      -- transmitter fifo count
+           "000000000" &   -- unused
+           '0' &           -- receiver fifo full
+           '0' &           -- transmitter fifo full
+           '0' &           -- receiver fifo half-full
+           '1' &           -- transmitter fifo half-full
+           '0' &           -- frame received
+           '0' &           -- parity error
+           '0' &           -- overflow
+           '0' &           -- break received
+           '1' &           -- transmitter holding register empty
+           '1' &           -- transmitter shift register empty
+           '0';            -- received data available
+
+      at_comp_32(statusreg_c, c, 0, false, "0011", true, vmode, tp, d, atmi, atmo);
+
+      clearirq <= '1';
+      while irqdetected = '1' loop
+        wait on irqdetected;
+      end loop;
+      clearirq <= '0';
+
+      d := X"000000" & conv_std_logic_vector(5, 8);
+      at_write_32(datareg_c, d, 0, false, "0011", true, vmode, atmi, atmo);
+      c := '0' &                          -- fifos available
+           X"0000" & '0' &                -- unused
+           '0' &                          -- delay irq enable
+           '0' &                          -- break irq enable
+           '0' &                          -- debug enable
+           '0' &                          -- receiver fifo irq enable
+           '0' &                          -- transmitter fifo irq enable
+           '0' &                          -- external clock enable
+           '0' &                          -- loopback enable
+           '0' &                          -- flow control enable
+           '0' &                          -- parity enable
+           '0' &                          -- parity select
+           '0' &                          -- transmit irq enable
+           '0' &                          -- receive irq enable
+           '1' &                          -- transmit enable
+           '0';                           -- receive enable
+      at_write_32(ctrlreg_c, c, 0, false, "0011", true, vmode, atmi, atmo);
+      wait until dbgo.gotchar = '1';
+      wait until dbgo.gotchar = '0';
+      dbgi.rdfifo <= '1';
+      wait until dbgo.rdack = '1';
+      dbgi.rdfifo <= '0';
+      wait until dbgo.rdack = '0';
+
+      if irqdetected = '1' then
+        print("ERROR: Irq detected when not enabled");
+        tp := false;
+      end if;
+      
+      wait for (1500000000/rate)*1 ns;
+      
+      c := '0' &                          -- fifos available
+           X"0000" & '0' &                -- unused
+           '0' &                          -- delay irq enable
+           '0' &                          -- break irq enable
+           '0' &                          -- debug enable
+           '0' &                          -- receiver fifo irq enable
+           '0' &                          -- transmitter fifo irq enable
+           '0' &                          -- external clock enable
+           '0' &                          -- loopback enable
+           '0' &                          -- flow control enable
+           '0' &                          -- parity enable
+           '0' &                          -- parity select
+           '0' &                          -- transmit irq enable
+           '0' &                          -- receive irq enable
+           '0' &                          -- transmit enable
+           '0';                           -- receive enable
+      at_write_32(ctrlreg_c, c, 0, false, "0011", true, vmode, atmi, atmo);
+      
+      for i in 1 to fifosize loop
+        print("iteration: " & tost(i));
+        clearirq <= '1';
+        while irqdetected = '1' loop
+          wait on irqdetected;
+        end loop;
+        clearirq <= '0';
+        print("transmit");
+        for j in 0 to i-1 loop
+          d := X"000000" & conv_std_logic_vector(j, 8);
+          at_write_32(datareg_c, d, 0, false, "0011", true, vmode, atmi, atmo);
+        end loop;
+        if fifosize > 1 then
+          if i >= fifosize/2 then
+            halffull := 0;
+          else
+            halffull := 1;
+          end if;
+          c := "000000" &                     -- receiver fifo count
+               conv_std_logic_vector(i, 6) &  -- transmitter fifo count
+               "000000000" &                  -- unused
+               '0' &                          -- receiver fifo full
+               conv_std_logic(fifosize = i) & -- transmitter fifo full
+               '0' &                          -- receiver fifo half-full
+               conv_std_logic(halffull = 1) & -- transmitter fifo half-full
+               '0' &                          -- frame received
+               '0' &                          -- parity error
+               '0' &                          -- overflow
+               '0' &                          -- break received
+               '0' &                          -- transmitter holding register empty
+               '1' &                          -- transmitter shift register empty
+               '0';                           -- received data available
+        else
+          c := "000000" &      -- receiver fifo count
+               "000000" &      -- transmitter fifo count
+               "000000000" &   -- unused
+               '0' &           -- receiver fifo full
+               '0' &           -- transmitter fifo full
+               '0' &           -- receiver fifo half-full
+               '0' &           -- transmitter fifo half-full
+               '0' &           -- frame received
+               '0' &           -- parity error
+               '0' &           -- overflow
+               '0' &           -- break received
+               '0' &           -- transmitter holding register empty
+               '1' &           -- transmitter shift register empty
+               '0';            -- received data available
+        end if;
+        at_comp_32(statusreg_c, c, 0, false, "0011", true, vmode, tp, d, atmi, atmo);
+        c := '0' &                          -- fifos available
+           X"0000" &                      -- unused
+           '1' &                          -- transmitter shift register empty irq enable
+           '0' &                          -- delay irq enable
+           '0' &                          -- break irq enable
+           '0' &                          -- debug enable
+           '0' &                          -- receiver fifo irq enable
+           '0' &                          -- transmitter fifo irq enable
+           '0' &                          -- external clock enable
+           '0' &                          -- loopback enable
+           '0' &                          -- flow control enable
+           '0' &                          -- parity enable
+           '0' &                          -- parity select
+           '0' &                          -- transmit irq enable
+           '0' &                          -- receive irq enable
+           '1' &                          -- transmit enable
+           '0';                           -- receive enable
+        at_write_32(ctrlreg_c, c, 0, false, "0011", true, vmode, atmi, atmo);
+
+        print("read");
+        for j in i-1 downto 0 loop
+          wait until dbgo.gotchar = '1';
+          wait until dbgo.gotchar = '0';
+          if j = 0 then
+            wait for (1500000000/rate)*1 ns; 
+          end if;
+          if fifosize > 1 then
+            if j >= fifosize/2 then
+              halffull := 0;
+            else
+              halffull := 1;
+            end if;
+            c := "000000" &                   -- receiver fifo count
+               conv_std_logic_vector(j, 6) &  -- transmitter fifo count
+               "000000000" &                  -- unused
+               '0' &                          -- receiver fifo full
+               conv_std_logic(j = fifosize) & -- transmitter fifo full
+               '0' &                          -- receiver fifo half-full
+               conv_std_logic(halffull = 1) & -- transmitter fifo half-full
+               '0' &                          -- frame received
+               '0' &                          -- parity error
+               '0' &                          -- overflow
+               '0' &                          -- break received
+               conv_std_logic(j = 0) &        -- transmitter holding register empty
+               conv_std_logic(j = 0) &        -- transmitter shift register empty
+               '0';                           -- received data available
+          else
+            c := "000000" &      -- receiver fifo count
+                 "000000" &      -- transmitter fifo count
+                 "000000000" &   -- unused
+                 '0' &           -- receiver fifo full
+                 '0' &           -- transmitter fifo full
+                 '0' &           -- receiver fifo half-full
+                 '0' &           -- transmitter fifo half-full
+                 '0' &           -- frame received
+                 '0' &           -- parity error
+                 '0' &           -- overflow
+                 '0' &           -- break received
+                 '1' &           -- transmitter holding register empty
+                 '1' &           -- transmitter shift register empty
+                 '0';            -- received data available
+          end if;
+          at_comp_32(statusreg_c, c, 0, false, "0011", true, vmode, tp, d, atmi, atmo);
+          if j > 0 then
+            if irqdetected = '1' then
+              print("ERROR: Interrupt detected when shift register should not be empty");
+              tp := false;
+            end if;
+          else
+            if irqdetected = '0' then
+              print("ERROR: Interrupt not detected when shift register should be empty");
+              tp := false;
+            end if;
+          end if;
+          dbgi.rdfifo <= '1';
+          wait until dbgo.rdack = '1';
+          if conv_integer(dbgo.rxchar) /= i-1-j then
+            print("ERROR: Wrong character received. Expected: " & tost(i-1-j) & " Got: " & tost(dbgo.rxchar));
+            tp := false;
+          end if;
+          if dbgo.parerr = '1' then
+            print("ERROR: Parity error detected in received character");
+            tp := false;
+          end if;
+          dbgi.rdfifo <= '0'; 
+          wait until dbgo.rdack = '0';
+        end loop;
+        c := '0' &                          -- fifos available
+              X"0000" &                      -- unused
+              '1' &                          -- transmitter shift register empty irq enable
+              '0' &                          -- delay irq enable
+              '0' &                          -- break irq enable
+              '0' &                          -- debug enable
+              '0' &                          -- receiver fifo irq enable
+              '0' &                          -- transmitter fifo irq enable
+              '0' &                          -- external clock enable
+              '0' &                          -- loopback enable
+              '0' &                          -- flow control enable
+              '0' &                          -- parity enable
+              '0' &                          -- parity select
+              '0' &                          -- transmit irq enable
+              '0' &                          -- receive irq enable
+              '0' &                          -- transmit enable
+              '0';                           -- receive enable
+        at_write_32(ctrlreg_c, c, 0, false, "0011", true, vmode, atmi, atmo);
+        print("");
+      end loop;
+            
+      dbgi.rxen <= '0';
+      tintermediate(tp, tpcounter);
+    end ttransmittershiftregisterinterrupt;
      
   begin
     tinitialise(tp, tpcounter);
@@ -1804,6 +2053,7 @@ begin
     tbaudrategeneration;
     ttransmitteroperation;
     treceiverinterrupts;
+    ttransmittershiftregisterinterrupt;
     tterminate(tp, tpcounter);
   end process;
   

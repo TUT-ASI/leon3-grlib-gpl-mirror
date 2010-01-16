@@ -505,11 +505,16 @@ constant lru_table  : lru_bits_type := (1,1,3,5);
   
   component mmu_icache 
     generic (
+      icen      : integer range 0 to 1  := 0;
       irepl     : integer range 0 to 2  := 0;
       isets     : integer range 1 to 4  := 1;
       ilinesize : integer range 4 to 8  := 4;
       isetsize  : integer range 1 to 256 := 1;
-      isetlock  : integer range 0 to 1  := 0
+      isetlock  : integer range 0 to 1  := 0;
+      lram      : integer range 0 to 1 := 0;
+      lramsize  : integer range 1 to 512 := 1;
+      lramstart : integer range 0 to 255 := 16#8e#;
+      mmuen     : integer              := 0
     );
     port (
       rst : in  std_logic;
@@ -532,18 +537,26 @@ constant lru_table  : lru_bits_type := (1,1,3,5);
   component mmu_dcache 
     generic (
       dsu       : integer range 0 to 1  := 0;
+      dcen      : integer range 0 to 1  := 0;
       drepl     : integer range 0 to 2  := 0;
       dsets     : integer range 1 to 4  := 1;
       dlinesize : integer range 4 to 8  := 4;
       dsetsize  : integer range 1 to 256 := 1;
       dsetlock  : integer range 0 to 1  := 0;
       dsnoop    : integer range 0 to 6 := 0;
+      dlram      : integer range 0 to 1 := 0;
+      dlramsize  : integer range 1 to 512 := 1;
+      dlramstart : integer range 0 to 255 := 16#8f#;
+      ilram      : integer range 0 to 1 := 0;
+      ilramstart : integer range 0 to 255 := 16#8e#;
       itlbnum   : integer range 2 to 64 := 8;
       dtlbnum   : integer range 2 to 64 := 8;
       tlb_type  : integer range 0 to 3 := 1;
       memtech   : integer range 0 to NTECH := 0;    
       cached    : integer := 0;
-      mmupgsz   : integer range 0 to 5  := 0
+      mmupgsz   : integer range 0 to 5  := 0;
+      smp      : integer := 0;
+      mmuen    : integer := 0
     );    
     port (
       rst : in  std_logic;
@@ -581,6 +594,12 @@ constant lru_table  : lru_bits_type := (1,1,3,5);
       dsetsize  : integer range 1 to 256 := 1;
       dsetlock  : integer range 0 to 1 := 0;
       dsnoop    : integer range 0 to 6 := 0;
+      ilram      : integer range 0 to 1 := 0;
+      ilramsize  : integer range 1 to 512 := 1;        
+      ilramstart : integer range 0 to 255 := 16#8e#;
+      dlram      : integer range 0 to 1 := 0;
+      dlramsize  : integer range 1 to 512 := 1;        
+      dlramstart : integer range 0 to 255 := 16#8f#;
       itlbnum   : integer range 2 to 64 := 8;
       dtlbnum   : integer range 2 to 64 := 8;
       tlb_type  : integer range 0 to 3 := 1;
@@ -588,7 +607,9 @@ constant lru_table  : lru_bits_type := (1,1,3,5);
       cached    : integer := 0;
       clk2x     : integer := 0;
       scantest   : integer := 0;
-      mmupgsz   : integer range 0 to 5  := 0
+      mmupgsz   : integer range 0 to 5  := 0;
+      smp       : integer               := 0;
+      mmuen     : integer range 0 to 1  := 0
       );
     port (
       rst   : in  std_ulogic;

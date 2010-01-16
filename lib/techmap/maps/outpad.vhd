@@ -51,6 +51,9 @@ begin
   pa : if (tech = proasic) or (tech = apa3) generate
     x0 : apa3_outpad generic map (level, slew, voltage, strength) port map (pad, i);
   end generate;
+  fus : if (tech = actfus) generate
+    x0 : fusion_outpad generic map (level, slew, voltage, strength) port map (pad, i);
+  end generate;
   atc : if (tech = atc18s) generate
     x0 : atc18_outpad generic map (level, slew, voltage, strength) port map (pad, i);
   end generate;

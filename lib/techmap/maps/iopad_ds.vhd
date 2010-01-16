@@ -63,6 +63,10 @@ begin
     x0 : apa3_iopad_ds generic map (level)
 	 port map (padp, padn, i, oen, o);
   end generate;
+  fus : if (tech = actfus) generate
+    x0 : fusion_iopad_ds generic map (level)
+	 port map (padp, padn, i, oen, o);
+  end generate;
 end;
 
 library techmap;

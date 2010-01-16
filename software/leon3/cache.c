@@ -10,6 +10,24 @@
 #define ICLOCK_BIT 6
 #define DCLOCK_BIT 7
 
+extern int asmgetdtag(int addr);
+extern void asmsetdtag(int addr, int data);
+
+extern int asmgetddata(int addr);
+extern void asmsetddata(int addr, int data);
+
+extern void setudata(int addr, int data);
+extern int getudata(int addr);
+
+
+extern int asmgetitag(int addr);
+extern void asmsetitag(int addr, int data);
+
+extern int asmgetidata(int addr);
+extern void asmsetidata(int addr, int data);
+
+extern void wsysreg(int addr, int data);
+extern int rsysreg(int addr);
 
 int icconf, dcconf, dsetsize, isetsize;
 int dsetbits, isetbits;
@@ -52,15 +70,6 @@ int addr, set;
   return(idata);
 }
 
-
-asmgetitag(addr) int addr; { asm(" lda	[%o0] 0xc, %o0 "); }
-asmsetitag(addr,data) int *addr,data; { asm(" sta	%o1, [%o0] 0xc "); }
-
-asmgetidata(addr) int addr; { asm(" lda	[%o0] 0xd, %o0 "); }
-asmsetidata(addr,data) int *addr,data; { asm(" sta	%o1, [%o0] 0xd "); }
-
-wsysreg(addr,data) int *addr,data; { asm(" sta	%o1, [%o0] 0x2 "); }
-rsysreg(addr) int addr; { asm(" lda	[%o0] 0x2, %o0 "); }
 
 
 setdtag(addr, set, data)
@@ -122,35 +131,16 @@ dma(int addr, int len,  int write)
 
 }
 
-asmgetdtag(addr) int addr; { asm(" lda	[%o0] 0xe, %o0 "); }
-asmsetdtag(addr,data) int addr,data; { asm(" sta	%o1, [%o0] 0xe "); }
+extern int xgetpsr();
+extern void setpsr(int psr);
 
-asmgetddata(addr) int *addr; { asm(" lda	[%o0] 0xf, %o0 "); }
-asmsetddata(addr,data) int *addr,data; { asm(" sta	%o1, [%o0] 0xf "); }
-
-setudata(addr,data) int *addr,data; { asm(" sta	%o1, [%o0] 0x0 "); }
-getudata(addr) int addr; { asm(" lda	[%o0] 0x0, %o0 "); }
-xgetpsr() { asm(" mov	%psr, %o0 "); }
-setpsr(psr) int psr; { asm(" mov  %o0, %psr; nop; nop; nop "); }
-
-flushi(addr,data) int *addr,data; { asm(" sta	%g0, [%g0] 0x5 "); }
-flushd(addr,data) int *addr,data; { asm(" sta	%g0, [%g0] 0x6 "); }
+extern void flushi(int addr, int data);
+extern void flushd(int addr, int data);
 
 extern line0();
 extern line1();
 extern line2();
 extern line3();
-
-asm(
-"    .text           \n"
-"    .align 4        \n"
-"getdw:              \n"
-"    retl            \n"
-"    ldd [%o0], %o0  \n"
-);
-
-
-
 
 
 #define ITAGMASK ((1<<ILINESZ)-1)

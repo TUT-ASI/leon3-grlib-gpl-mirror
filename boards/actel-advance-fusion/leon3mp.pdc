@@ -1,0 +1,173 @@
+##########################################################################
+#  SYSTEM SIGNALS
+##########################################################################
+set_io clk           -pinname J16    -fixed yes
+set_io resetn        -pinname H19    -fixed yes
+set_io resetoutn     -pinname P5    -fixed yes
+
+
+##########################################################################
+#  FLASH/SRAM MEMORY INTERFACE SIGNALS
+##########################################################################
+
+set_io flash_rpn      -pinname H17    -fixed yes
+set_io flash_sts      -pinname D13    -fixed yes
+set_io flash_vpen      -pinname J17    -fixed yes
+set_io flash_byte1      -pinname F19    -fixed yes
+set_io flash_byte2      -pinname L18    -fixed yes
+set_io flash_ce0        -pinname K17    -fixed yes
+set_io flash_ce3        -pinname L16    -fixed yes
+#set_io romsn         -pinname B16    -fixed yes
+set_io oen              -pinname G13    -fixed yes
+set_io writen           -pinname E12    -fixed yes
+#set_io FLASH_RB         -pinname B18    -fixed yes
+
+set_io ramsn         -pinname J19    -fixed yes
+set_io ramce2         -pinname H18    -fixed yes
+set_io rwen          -pinname E21    -fixed yes
+set_io ramben\[0\]  -pinname N22    -fixed yes
+set_io ramben\[1\]  -pinname N20    -fixed yes
+set_io ramben\[2\]  -pinname G20    -fixed yes
+set_io ramben\[3\]  -pinname j18    -fixed yes
+set_io ramoen         -pinname K16    -fixed yes
+
+set_io address\[0\]    -pinname E19    -fixed yes
+set_io address\[1\]    -pinname E22    -fixed yes
+set_io address\[2\]    -pinname F20    -fixed yes
+set_io address\[3\]    -pinname F21    -fixed yes
+set_io address\[4\]    -pinname F22    -fixed yes
+set_io address\[5\]    -pinname B18    -fixed yes
+set_io address\[6\]    -pinname B17    -fixed yes
+set_io address\[7\]    -pinname C16    -fixed yes
+set_io address\[8\]    -pinname B15    -fixed yes
+set_io address\[9\]    -pinname B14    -fixed yes
+set_io address\[10\]   -pinname C22    -fixed yes
+set_io address\[11\]   -pinname C21    -fixed yes
+set_io address\[12\]   -pinname A18    -fixed yes
+set_io address\[13\]   -pinname A17    -fixed yes
+set_io address\[14\]   -pinname A16    -fixed yes
+set_io address\[15\]   -pinname B12    -fixed yes
+set_io address\[16\]   -pinname A12    -fixed yes
+set_io address\[17\]   -pinname A13    -fixed yes
+set_io address\[18\]   -pinname A14    -fixed yes
+set_io address\[19\]   -pinname A15    -fixed yes
+set_io address\[20\]   -pinname C14    -fixed yes
+set_io address\[21\]   -pinname C13    -fixed yes
+set_io address\[22\]   -pinname D12    -fixed yes
+set_io address\[23\]   -pinname J7     -fixed yes
+
+set_io data\[0\]    -pinname D19     -fixed yes
+set_io data\[1\]    -pinname D17     -fixed yes
+set_io data\[2\]    -pinname D16     -fixed yes
+set_io data\[3\]    -pinname G17     -fixed yes
+set_io data\[4\]    -pinname G16     -fixed yes
+set_io data\[5\]    -pinname E15     -fixed yes
+set_io data\[6\]    -pinname D14     -fixed yes
+set_io data\[7\]    -pinname F14     -fixed yes
+set_io data\[8\]    -pinname E18     -fixed yes
+set_io data\[9\]    -pinname C17     -fixed yes
+set_io data\[10\]   -pinname F17     -fixed yes
+set_io data\[11\]   -pinname F16     -fixed yes
+set_io data\[12\]   -pinname D15    -fixed yes
+set_io data\[13\]   -pinname G14     -fixed yes
+set_io data\[14\]   -pinname E14     -fixed yes
+set_io data\[15\]   -pinname F13     -fixed yes
+set_io data\[16\]   -pinname M21     -fixed yes
+set_io data\[17\]   -pinname M18     -fixed yes
+set_io data\[18\]   -pinname L19    -fixed yes
+set_io data\[19\]   -pinname L22    -fixed yes
+set_io data\[20\]   -pinname K20    -fixed yes
+set_io data\[21\]   -pinname J21    -fixed yes
+set_io data\[22\]   -pinname K22    -fixed yes
+set_io data\[23\]   -pinname H21    -fixed yes
+set_io data\[24\]   -pinname M22    -fixed yes
+set_io data\[25\]   -pinname M19    -fixed yes
+set_io data\[26\]   -pinname L21    -fixed yes
+set_io data\[27\]   -pinname K19    -fixed yes
+set_io data\[28\]   -pinname J22     -fixed yes
+set_io data\[29\]   -pinname J20     -fixed yes
+set_io data\[30\]   -pinname H22    -fixed yes
+set_io data\[31\]   -pinname G22    -fixed yes
+
+
+##########################################################################
+#  PUSH-BUTTON SWITCHES SIGNALS
+##########################################################################
+set_io gpio\[0\]          -pinname H4     -fixed yes
+set_io gpio\[1\]          -pinname H2     -fixed yes
+set_io gpio\[2\]          -pinname E5     -fixed yes
+set_io gpio\[3\]          -pinname F4     -fixed yes
+set_io gpio\[4\]          -pinname U20    -fixed yes
+set_io gpio\[5\]          -pinname D20    -fixed yes
+set_io gpio\[6\]          -pinname A19    -fixed yes
+set_io iosn               -pinname U19    -fixed yes
+
+##########################################################################
+#  LED SIGNALS
+##########################################################################
+set_io led\[0\]         -pinname W19    -fixed yes
+set_io led\[1\]         -pinname J2     -fixed yes
+set_io led\[2\]         -pinname J3     -fixed yes
+set_io led\[3\]         -pinname J4     -fixed yes
+set_io led\[4\]         -pinname M7     -fixed yes
+set_io led\[5\]         -pinname K4     -fixed yes
+set_io errorn         -pinname L5     -fixed yes
+set_io dsuact         -pinname L7     -fixed yes
+
+##########################################################################
+#  IIC SIGNALS
+##########################################################################
+set_io scl1       -pinname J5     -fixed yes
+set_io scl2       -pinname T6     -fixed yes
+set_io scl3       -pinname H6     -fixed yes
+set_io sda1       -pinname J6     -fixed yes
+set_io sda2       -pinname N6     -fixed yes
+set_io sda3       -pinname G6     -fixed yes
+
+##########################################################################
+#  SPI SIGNALS
+##########################################################################
+set_io spicsn       -pinname F3     -fixed yes
+set_io spirstn      -pinname D1     -fixed yes
+set_io spisck       -pinname E2     -fixed yes
+set_io spisi        -pinname E1     -fixed yes
+set_io spiso        -pinname C2     -fixed yes
+set_io spiwpn       -pinname C1     -fixed yes
+
+##########################################################################
+#  RS-232 INTERFACE SIGNALS
+##########################################################################
+#set_io dsurx            -pinname K18    -fixed yes
+#set_io dsutx            -pinname C11    -fixed yes
+set_io rxd             -pinname M1    -fixed yes
+set_io txd             -pinname N1    -fixed yes
+set_io ctsn            -pinname J1    -fixed yes
+set_io rtsn            -pinname N4    -fixed yes
+set_io dsrn            -pinname P4    -fixed yes
+set_io dtrn            -pinname P3    -fixed yes
+
+##########################################################################
+#  ETHERNET INTERFACE SIGNALS
+##########################################################################
+set_io clk25          -pinname W5    -fixed yes
+set_io emdio          -pinname R4    -fixed yes
+set_io emdc           -pinname W1    -fixed yes
+set_io etx_clk           -pinname V1    -fixed yes
+set_io erx_clk           -pinname Y4    -fixed yes
+set_io erxd\[3\]         -pinname V2    -fixed yes
+set_io erxd\[2\]         -pinname V4    -fixed yes
+set_io erxd\[1\]         -pinname W3    -fixed yes
+set_io erxd\[0\]         -pinname W4    -fixed yes
+set_io erx_dv            -pinname Y3    -fixed yes
+set_io erx_er            -pinname Y1    -fixed yes
+set_io erx_col            -pinname AB3    -fixed yes
+set_io erx_crs            -pinname Y2    -fixed yes
+set_io etxd\[3\]         -pinname T4    -fixed yes
+set_io etxd\[2\]         -pinname U1    -fixed yes
+set_io etxd\[1\]         -pinname U2    -fixed yes
+set_io etxd\[0\]         -pinname U3    -fixed yes
+set_io etx_en           -pinname U4    -fixed yes
+#set_io etx_er           -pinname AB6    -fixed yes
+
+
+set_io dsubre           -pinname E4    -fixed yes

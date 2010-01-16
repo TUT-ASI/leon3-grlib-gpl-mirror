@@ -51,11 +51,12 @@ entity svgactrl is
     clk1        : integer := 20000;
     clk2        : integer := 15385;
     clk3        : integer := 0;
-    burstlen    : integer range 2 to 8 := 8
+    burstlen    : integer range 2 to 8 := 8;
+    asyncrst    : integer range 0 to 1 := 0  -- Enable async. reset of VGA CD
     );
   
   port (
-    rst       : in std_logic;
+    rst       : in std_logic;           -- Synchronous reset
     clk       : in std_logic;
     vgaclk    : in std_logic;
     apbi      : in apb_slv_in_type;
@@ -63,7 +64,8 @@ entity svgactrl is
     vgao      : out apbvga_out_type;
     ahbi      : in  ahb_mst_in_type;
     ahbo      : out ahb_mst_out_type;
-    clk_sel   : out std_logic_vector(1 downto 0)
+    clk_sel   : out std_logic_vector(1 downto 0);
+    arst      : in std_ulogic := '1'    -- Asynchronous reset
     );
 
 end ;
@@ -445,7 +447,10 @@ begin
       elsif t.vcounter = vvideo and t.hcounter = (hvideo -1) then
          v.fifo_en := '1';
       end if;
-
+    else
+      -- Prevent uninitialized fifo_en signal that leads to uninitialized
+      -- bit in APB status register
+      v.fifo_en := '1';
     end if;
 
     if r.func /= "01" then -- do not delay strobes when not using CLUT
@@ -595,10 +600,17 @@ begin
       sync_rb.s3 <= sync_rb.s2;      -- Write
     end if;
   end process;
-         
-  proc_vgaclk : process(vgaclk)
+
+  -----------------------------------------------------------------------------
+  -- Registers in video clock domain
+  -----------------------------------------------------------------------------
+  proc_vgaclk : process(arst, vgaclk)
   begin
-    if rising_edge(vgaclk) then
+    if asyncrst = 1 and arst = '0' then
+      t.fifo_en <= '1';
+      sync_c.s2 <= "011";
+      sync_c.s3 <= "011";
+    elsif rising_edge(vgaclk) then
       t <= tin;                    -- Read
       sync_c.s2 <= sync_c.s1;      -- Control
       sync_c.s3 <= sync_c.s2;      -- Control

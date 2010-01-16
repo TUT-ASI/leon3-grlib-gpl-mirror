@@ -45,7 +45,8 @@ use grlib.stdlib.all;
 
 entity grusbdcsim is
   generic (
-    functm : integer range 0 to 1 := 0);
+    functm  : integer range 0 to 1 := 0;
+    keepclk : integer range 0 to 1 := 0);
   port (
     rst : in    std_ulogic;
     clk : out   std_ulogic;
@@ -308,6 +309,7 @@ architecture behav of grusbdcsim is
       for i in 0 to 4 loop
         wait until rising_edge(clk);
       end loop;  -- i
+      wait until falling_edge(clk);
       uctrl.suspendm <= '0';
     else
       wait until rising_edge(clk);
@@ -1207,8 +1209,26 @@ begin
     usbi.nxt <= '0';
     while rst = '0' loop
       wait until rst = '1';
-    end loop;    
-    ulpi_reset(clko_int, usbi, usbo, uctrl, false, true);
+    end loop;
+    ulpi_reset(clko_int, usbi, usbo, uctrl, false, keepclk = 1);
+    
+    if keepclk = 0 then
+      wait for 10 us;
+      -- assert vbus so that device can wake up from suspend
+      usbi.datain(1 downto 0) <= J_STATE;
+      usbi.datain(3) <= '1';
+      wait until rising_edge(usbo.stp);
+      wait until falling_edge(clk_int);
+      uctrl.suspendm <= '1';
+      for i in 0 to 5 loop
+        wait until rising_edge(clko_int);
+      end loop;
+      usbi.dir <= '0';
+      wait until rising_edge(clko_int);
+      usbi.datain(7 downto 0) <= (others=>'0');
+      accept_regread(clko_int,usbi,usbo,'1');
+    end if;
+    
     accept_regwrite(clko_int,usbi,usbo,uctrl);
     if functm = 1 then
       accept_regwrite(clko_int,usbi,usbo,uctrl);

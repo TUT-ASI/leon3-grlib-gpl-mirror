@@ -409,26 +409,17 @@ begin
       cramo.dcramo.ctx(i) <= dtdataout(i)((DTWIDTH - (DLRR_BIT+DCLOCK_BIT+1)) downto (DTWIDTH - (DLRR_BIT+DCLOCK_BIT+M_CTX_SZ)));
     end generate;
     
-    stagv : if not ((MMUEN = 0) or not DSNOOPSEP) generate
-      cramo.dcramo.stag(i)(TAG_HIGH downto DTAG_LOW) <= dtdataout3(i)(DTAG_BITS-1 downto (DTAG_BITS-1) - (TAG_HIGH - DTAG_LOW));
-    end generate;
-    stagp : if ((MMUEN = 0) or not DSNOOPSEP) generate
-      cramo.dcramo.stag(i)(TAG_HIGH downto DTAG_LOW) <= dtdataout2(i)(DTAG_BITS-1 downto (DTAG_BITS-1) - (TAG_HIGH - DTAG_LOW));
-    end generate;
+    cramo.dcramo.stag(i)(TAG_HIGH downto DTAG_LOW) <= dtdataout3(i)(DTAG_BITS-1 downto (DTAG_BITS-1) - (TAG_HIGH - DTAG_LOW))
+    when DSNOOPSEP else dtdataout2(i)(DTAG_BITS-1 downto (DTAG_BITS-1) - (TAG_HIGH - DTAG_LOW));
     
---    cramo.dcramo.stag(i)(TAG_HIGH downto DTAG_LOW) <= dtdataout2(i)(DTWIDTH-1 downto DTWIDTH-(TAG_HIGH-DTAG_LOW)-1);
-    cramo.dcramo.stag(i)(dlinesize-1 downto 0) <= dtdataout2(i)(dlinesize-1 downto 0);
-    cramo.dcramo.stag(i)(CTAG_LRRPOS) <= dtdataout2(i)(DTWIDTH - (1+DCLOCK_BIT));
-    cramo.dcramo.stag(i)(CTAG_LOCKPOS) <= dtdataout2(i)(DTWIDTH-1);     
+    cramo.dcramo.stag(i)(DTAG_LOW-1 downto 0) <= (others => '0');
     cramo.dcramo.data(i) <= ldataout when (dlram = 1) and ((DSETS = 1) or (i = 1)) and (crami.dcramin.ldramin.read = '1')
     else dddataout(i)(31 downto 0);
     dtv : if dlinesize = 4 generate
       cramo.dcramo.tag(i)(7 downto 4) <= (others => '0');
-      cramo.dcramo.stag(i)(7 downto 4) <= (others => '0');
     end generate;
     dte : for j in 10 to DTAG_LOW-1 generate
       cramo.dcramo.tag(i)(j) <= '0';
-      cramo.dcramo.stag(i)(j) <= '0';
     end generate;
   end generate;
 

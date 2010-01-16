@@ -5,11 +5,13 @@
 report_start()
 {
 	if (!get_pid()) printf("\nStarting test ...\n");
+	return(0);
 }
 
 report_end()
 {
 	printf("\nTested ended\n");
+	return(0);
 }
 
 char *dev_to_string(unsigned int dev);
@@ -26,11 +28,13 @@ char *dev_to_subtest(int dev, int test);
 report_subtest(int test)
 {
 	printf("  %s\n", dev_to_subtest(device, test));
+	return(0);
 }
 
 fail(int dev)
 {
 	printf("    test failed at %d\n", dev);
+	return(0);
 }
 
 

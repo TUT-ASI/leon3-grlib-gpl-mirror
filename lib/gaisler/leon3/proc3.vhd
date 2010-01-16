@@ -147,7 +147,6 @@ begin
                  dbgi, dbgo, muli, mulo, divi, divo, fpo, fpi, cpo, cpi, tbo, tbi, sclk);
 
 -- multiply and divide units
--- Actel FPGAs cannot use inferred mul due to bug in synplify 8.9 and 9.0
 
   mgen : if v8 /= 0 generate
     mul0 : mul32 generic map (fabtech, v8/16, (v8 mod 4)/2, mac)
@@ -161,24 +160,23 @@ begin
 
 -- cache controller
 
-  m0 : if mmuen = 0 generate
-    c0 : cache
-      generic map (hindex, dsu, icen, irepl, isets, ilinesize, isetsize,
-	isetlock, dcen, drepl, dsets, dlinesize, dsetsize,  dsetlock, dsnoop,
-	ilram, ilramsize, ilramstart, dlram, dlramsize, dlramstart, cached,
-	clk2x, memtech, scantest)
-      port map ( rstn, clk, ici, ico, dci, dco, ahbi, ahbo, ahbsi, ahbso, crami, cramo, pholdn, hclk, sclk, hclken);
-  end generate;
-  m1 : if mmuen = 1 generate
+--  m0 : if mmuen = 0 generate
+--    c0 : cache
+--      generic map (hindex, dsu, icen, irepl, isets, ilinesize, isetsize,
+--	isetlock, dcen, drepl, dsets, dlinesize, dsetsize,  dsetlock, dsnoop,
+--	ilram, ilramsize, ilramstart, dlram, dlramsize, dlramstart, cached,
+--	clk2x, memtech, scantest)
+--      port map ( rstn, clk, ici, ico, dci, dco, ahbi, ahbo, ahbsi, ahbso, crami, cramo, pholdn, hclk, sclk, hclken);
+--  end generate;
+--  m1 : if mmuen = 1 generate
     c0mmu : mmu_cache
-       generic map (hindex=>hindex, memtech=>memtech, dsu=>dsu, icen=>icen, irepl=>irepl,
-	  isets=>isets, ilinesize=>ilinesize, isetsize=>isetsize, isetlock=>isetlock,
-          dcen=>dcen, drepl=>drepl, dsets=>dsets, dlinesize=>dlinesize, dsetsize=>dsetsize,
-	  dsetlock=>dsetlock, dsnoop=>dsnoop, itlbnum=>itlbnum, dtlbnum=>dtlbnum,
-	  tlb_type=>tlb_type, tlb_rep=>tlb_rep, mmupgsz=> mmupgsz, cached => cached, clk2x => clk2x,
-	  scantest => scantest)
+       generic map (hindex, memtech, dsu, icen, irepl, isets, ilinesize,
+	  isetsize, isetlock, dcen, drepl, dsets, dlinesize, dsetsize,
+	  dsetlock, dsnoop, ilram, ilramsize, ilramstart, dlram, dlramsize,
+	  dlramstart, itlbnum, dtlbnum, tlb_type, tlb_rep, 
+	  cached, clk2x, scantest, mmupgsz, smp, mmuen)
        port map ( rstn, clk, ici, ico, dci, dco,
 	  ahbi, ahbo, ahbsi, ahbso, crami, cramo, pholdn, hclk, sclk, hclken);
-  end generate;
+--  end generate;
 
 end;

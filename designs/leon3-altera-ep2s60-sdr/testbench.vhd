@@ -165,18 +165,6 @@ begin
             Ba => sdba, Clk => sdclk, Cke => sdcke,
             Cs_n => sdcsn, Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
             Dqm => sddqm(1 downto 0));
-    u2: mt48lc16m16a2 generic map (index => 0, fname => sdramfile)
-	PORT MAP(
-            Dq => sd(31 downto 16), Addr => sa(12 downto 0),
-            Ba => sdba, Clk => sdclk, Cke => sdcke,
-            Cs_n => sdcsn, Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
-            Dqm => sddqm(3 downto 2));
-    u3: mt48lc16m16a2 generic map (index => 16, fname => sdramfile)
-	PORT MAP(
-            Dq => sd(15 downto 0), Addr => sa(12 downto 0),
-            Ba => sdba, Clk => sdclk, Cke => sdcke,
-            Cs_n => sdcsn, Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
-            Dqm => sddqm(1 downto 0));
    end generate;
 
   -- 8 bit prom

@@ -50,6 +50,9 @@ begin
   pa : if (tech = proasic) or (tech = apa3) generate
     u0 : apa3_clkpad generic map (level, voltage) port map (pad, o);
   end generate;
+  fus : if (tech = actfus) generate
+    u0 : fusion_clkpad generic map (level, voltage) port map (pad, o);
+  end generate;
   atc : if (tech = atc18s) generate
     u0 : atc18_clkpad generic map (level, voltage) port map (pad, o);
   end generate;

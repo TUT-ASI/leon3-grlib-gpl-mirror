@@ -74,10 +74,10 @@ function check_actel(multype, tech: Integer) return Integer is
 begin
    if multype=m32x32 and tech=axdsp then
       return 0;
-   elsif tech=axcel then
-      return 0;
-   elsif tech=apa3 then
-      return 0;
+--   elsif tech=axcel then
+--      return 0;
+--   elsif tech=apa3 then
+--      return 0;
    else
       return is_fpga(tech);
    end if;

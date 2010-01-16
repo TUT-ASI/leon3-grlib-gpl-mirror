@@ -1,4 +1,4 @@
--- Copyright (C) 1991-2007 Altera Corporation
+-- Copyright (C) 1991-2009 Altera Corporation
 -- Your use of Altera Corporation's design tools, logic functions 
 -- and other software and tools, and its AMPP partner logic 
 -- functions, and any output files from any of the foregoing 
@@ -11,7 +11,7 @@
 -- programming logic devices manufactured by Altera and sold by 
 -- Altera or its authorized distributors.  Please refer to the 
 -- applicable agreement for further details.
--- Quartus II 7.2 Build 207 09/26/2007
+-- Quartus II 9.0 Build 235 03/01/2009
 
 LIBRARY IEEE;
 use IEEE.STD_LOGIC_1164.all;
@@ -134,9 +134,9 @@ end component;
 --
 
 component stratixiii_mlab_cell
-  generic 
-    (
-        logical_ram_name               :  STRING := "lutram";
+    GENERIC (
+        -- -------- GLOBAL PARAMETERS ---------
+        logical_ram_name               :  STRING := "lutram";    
         init_file                      :  STRING := "UNUSED";    
         data_interleave_offset_in_bits :  INTEGER := 1;    
         logical_ram_depth       :  INTEGER := 0;    
@@ -152,6 +152,7 @@ component stratixiii_mlab_cell
         lpm_hint                  : string := "true";
 	mixed_port_feed_through_mode : string := "dont_care";
         mem_init0 : BIT_VECTOR := X"0";
+        -- --------- VITAL PARAMETERS --------
         tipd_clk0        : VitalDelayType01 := DefPropDelay01;
         tipd_ena0        : VitalDelayType01 := DefPropDelay01;
         tipd_portaaddr   : VitalDelayArrayType01(7 DOWNTO 0) := (OTHERS => DefPropDelay01);
@@ -159,20 +160,23 @@ component stratixiii_mlab_cell
         tipd_portabyteenamasks        : VitalDelayArrayType01(20 DOWNTO 0) := (OTHERS => DefPropDelay01);
         tsetup_portaaddr_clk0_noedge_negedge : VitalDelayType := DefSetupHoldCnst;
         tsetup_portabyteenamasks_clk0_noedge_negedge : VitalDelayType := DefSetupHoldCnst;
+        tsetup_ena0_clk0_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
         thold_portaaddr_clk0_noedge_negedge : VitalDelayType := DefSetupHoldCnst;
-        thold_portabyteenamasks_clk0_noedge_negedge : VitalDelayType := DefSetupHoldCnst
+        thold_portabyteenamasks_clk0_noedge_negedge : VitalDelayType := DefSetupHoldCnst;
+        thold_ena0_clk0_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
+	tpd_portbaddr_portbdataout : VitalDelayType01 := DefPropDelay01
 
-    );
-  port
-    (
+        );    
+    -- -------- PORT DECLARATIONS ---------
+    PORT (
         portadatain             : IN STD_LOGIC_VECTOR(data_width - 1 DOWNTO 0)    := (OTHERS => '0');   
         portaaddr               : IN STD_LOGIC_VECTOR(address_width - 1 DOWNTO 0) := (OTHERS => '0');   
         portabyteenamasks       : IN STD_LOGIC_VECTOR(byte_enable_mask_width - 1 DOWNTO 0) := (OTHERS => '1');   
         portbaddr               : IN STD_LOGIC_VECTOR(address_width - 1 DOWNTO 0) := (OTHERS => '0');   
         clk0                : IN STD_LOGIC := '0';   
         ena0                : IN STD_LOGIC := '1';   
-        portbdataout            : OUT STD_LOGIC_VECTOR(data_width - 1 DOWNTO 0)
-    );
+        portbdataout            : OUT STD_LOGIC_VECTOR(data_width - 1 DOWNTO 0)   
+        );
 end component;
 
 --
@@ -207,6 +211,7 @@ COMPONENT stratixiii_io_obuf
     GENERIC (
              tipd_i                           : VitalDelayType01 := DefPropDelay01;
              tipd_oe                          : VitalDelayType01 := DefPropDelay01;
+             tipd_dynamicterminationcontrol   : VitalDelayType01 := DefPropDelay01;  
              tpd_i_o                          : VitalDelayType01 := DefPropDelay01;
              tpd_oe_o                         : VitalDelayType01 := DefPropDelay01;
              tpd_i_obar                       : VitalDelayType01 := DefPropDelay01;
@@ -215,15 +220,16 @@ COMPONENT stratixiii_io_obuf
              MsgOn                         : Boolean := DefGlitchMsgOn;  
              open_drain_output                :  string := "false";              
              shift_series_termination_control :  string := "false";  
+             sim_dynamic_termination_control_is_connected :  string := "false";                            
              bus_hold                         :  string := "false";              
              lpm_type                         :  string := "stratixiii_io_obuf"
             );               
     PORT (
            i                       : IN std_logic := '0';                                                 
            oe                      : IN std_logic := '1';                                                 
-           dynamicterminationcontrol   : IN std_logic := '0';                                 
-           seriesterminationcontrol    : IN std_logic_vector(13 DOWNTO 0) := (others => '0'); 
-           parallelterminationcontrol  : IN std_logic_vector(13 DOWNTO 0) := (others => '0'); 
+           dynamicterminationcontrol   : IN std_logic := '0';                                
+           seriesterminationcontrol    : IN std_logic_vector(13 DOWNTO 0) := (others => '0');   
+           parallelterminationcontrol  : IN std_logic_vector(13 DOWNTO 0) := (others => '0');   
            devoe                   : IN std_logic := '1'; 
            o                       : OUT std_logic;                                                       
            obar                    : OUT std_logic
@@ -333,7 +339,7 @@ COMPONENT stratixiii_ddio_out
           sreset                  : IN std_logic := '0';   
           dataout                 : OUT std_logic;         
           dfflo                   : OUT std_logic;         
-          dffhi                   : OUT std_logic ;         
+          dffhi                   : OUT std_logic_vector(1 downto 0) ;      
           devclrn                 : IN std_logic := '1';   
           devpor                  : IN std_logic := '1'   
         );   
@@ -516,60 +522,60 @@ COMPONENT stratixiii_dll_offset_ctrl
 
 END COMPONENT;
 
---
--- stratixiii_dqs_delay_chain Model
---
-
-COMPONENT stratixiii_dqs_delay_chain
-    GENERIC ( 
-        dqs_input_frequency             : string := "unused" ;
-        use_phasectrlin                 : string := "false";
-        phase_setting                   : integer := 0;
-        delay_buffer_mode               : string := "low";
-        dqs_phase_shift                 : integer := 0;
-        dqs_offsetctrl_enable           : string := "false";
-        dqs_ctrl_latches_enable         : string := "false";
-        -- DFT added in WYS 1.33
-        test_enable                     : string := "false";
-        test_select                     : integer := 0;
-        -- SIM only
-        sim_low_buffer_intrinsic_delay  : integer := 350;
-        sim_high_buffer_intrinsic_delay : integer := 175;
-        sim_buffer_delay_increment      : integer := 10;
-        lpm_type                        : string := "stratixiii_dqs_delay_chain";
-        tipd_dqsin               : VitalDelayType01 := DefpropDelay01;
-        tipd_aload               : VitalDelayType01 := DefpropDelay01;
-        tipd_delayctrlin         : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_offsetctrlin        : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_dqsupdateen         : VitalDelayType01 := DefpropDelay01;
-        tipd_phasectrlin         : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
-        tpd_dqsin_dqsbusout      : VitalDelayType01 := DefPropDelay01;
-        tsetup_delayctrlin_dqsupdateen_noedge_posedge  : VitalDelayArrayType(5 downto 0) := (OTHERS => DefSetupHoldCnst);
-        thold_delayctrlin_dqsupdateen_noedge_posedge   : VitalDelayArrayType(5 downto 0) := (OTHERS => DefSetupHoldCnst);
-        tsetup_offsetctrlin_dqsupdateen_noedge_posedge : VitalDelayArrayType(5 downto 0) := (OTHERS => DefSetupHoldCnst);
-        thold_offsetctrlin_dqsupdateen_noedge_posedge  : VitalDelayArrayType(5 downto 0) := (OTHERS => DefSetupHoldCnst);
-        TimingChecksOn           : Boolean := True;
-        MsgOn                    : Boolean := DefGlitchMsgOn;
-        XOn                      : Boolean := DefGlitchXOn;
-        MsgOnChecks              : Boolean := DefMsgOnChecks;
-        XOnChecks                : Boolean := DefXOnChecks;
-        InstancePath             : String := "*"   
-    );
-    
-    PORT (
-        dqsin        : IN std_logic := '0';
-        delayctrlin  : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
-        offsetctrlin : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
-        dqsupdateen  : IN std_logic := '1';
-        phasectrlin  : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
-        devclrn      : IN std_logic := '1';
-        devpor       : IN std_logic := '1';
-        dqsbusout    : OUT std_logic;
-        dffin        : OUT std_logic
-    );
-
-END COMPONENT;
-    
+ --
+ -- stratixiii_dqs_delay_chain Model
+ --
+ 
+ COMPONENT stratixiii_dqs_delay_chain
+     GENERIC ( 
+         dqs_input_frequency             : string := "unused" ;
+         use_phasectrlin                 : string := "false";
+         phase_setting                   : integer := 0;
+         delay_buffer_mode               : string := "low";
+         dqs_phase_shift                 : integer := 0;
+         dqs_offsetctrl_enable           : string := "false";
+         dqs_ctrl_latches_enable         : string := "false";
+         -- DFT added in WYS 1.33
+         test_enable                     : string := "false";
+         test_select                     : integer := 0;
+         -- SIM only
+         sim_low_buffer_intrinsic_delay  : integer := 350;
+         sim_high_buffer_intrinsic_delay : integer := 175;
+         sim_buffer_delay_increment      : integer := 10;
+         lpm_type                        : string := "stratixiii_dqs_delay_chain";
+         tipd_dqsin               : VitalDelayType01 := DefpropDelay01;
+         tipd_aload               : VitalDelayType01 := DefpropDelay01;
+         tipd_delayctrlin         : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_offsetctrlin        : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_dqsupdateen         : VitalDelayType01 := DefpropDelay01;
+         tipd_phasectrlin         : VitalDelayArrayType01(2 downto 0) := (OTHERS => DefPropDelay01);
+         tpd_dqsin_dqsbusout      : VitalDelayType01 := DefPropDelay01;
+         tsetup_delayctrlin_dqsupdateen_noedge_posedge  : VitalDelayArrayType(5 downto 0) := (OTHERS => DefSetupHoldCnst);
+         thold_delayctrlin_dqsupdateen_noedge_posedge   : VitalDelayArrayType(5 downto 0) := (OTHERS => DefSetupHoldCnst);
+         tsetup_offsetctrlin_dqsupdateen_noedge_posedge : VitalDelayArrayType(5 downto 0) := (OTHERS => DefSetupHoldCnst);
+         thold_offsetctrlin_dqsupdateen_noedge_posedge  : VitalDelayArrayType(5 downto 0) := (OTHERS => DefSetupHoldCnst);
+         TimingChecksOn           : Boolean := True;
+         MsgOn                    : Boolean := DefGlitchMsgOn;
+         XOn                      : Boolean := DefGlitchXOn;
+         MsgOnChecks              : Boolean := DefMsgOnChecks;
+         XOnChecks                : Boolean := DefXOnChecks;
+         InstancePath             : String := "*"   
+     );
+     
+     PORT (
+         dqsin        : IN std_logic := '0';
+         delayctrlin  : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
+         offsetctrlin : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
+         dqsupdateen  : IN std_logic := '1';
+         phasectrlin  : IN std_logic_vector(2 downto 0) := (OTHERS => '0');
+         devclrn      : IN std_logic := '1';
+         devpor       : IN std_logic := '1';
+         dqsbusout    : OUT std_logic;
+         dffin        : OUT std_logic
+     );
+ 
+ END COMPONENT;
+     
 --
 -- stratixiii_dqs_enable Model
 --
@@ -599,409 +605,465 @@ COMPONENT stratixiii_dqs_enable
 
 END COMPONENT;
     
---
--- stratixiii_dqs_enable_ctrl Model
---
-
-COMPONENT stratixiii_dqs_enable_ctrl
-    GENERIC ( 
-        use_phasectrlin                 : string := "true";
-        phase_setting                   : integer := 0;
-        delay_buffer_mode               : string := "high";
-        level_dqs_enable                : string := "false";
-        delay_dqs_enable_by_half_cycle  : string := "false";
-        add_phase_transfer_reg          : string := "false";
-        invert_phase                    : string := "false";
-        sim_low_buffer_intrinsic_delay  : integer := 350;
-        sim_high_buffer_intrinsic_delay : integer := 175;
-        sim_buffer_delay_increment      : integer := 10;    
-        lpm_type                        : string := "stratixiii_dqs_enable_ctrl";
-        tipd_dqsenablein         : VitalDelayType01 := DefpropDelay01;
-        tipd_clk                 : VitalDelayType01 := DefpropDelay01;
-        tipd_delayctrlin         : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_phasectrlin         : VitalDelayArrayType01(3 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_enaphasetransferreg : VitalDelayType01 := DefpropDelay01;
-        tipd_phaseinvertctrl     : VitalDelayType01 := DefpropDelay01;
-        TimingChecksOn           : Boolean := True;
-        MsgOn                    : Boolean := DefGlitchMsgOn;
-        XOn                      : Boolean := DefGlitchXOn;
-        MsgOnChecks              : Boolean := DefMsgOnChecks;
-        XOnChecks                : Boolean := DefXOnChecks;
-        InstancePath             : String := "*"   
-    );
+ --
+ -- stratixiii_dqs_enable_ctrl Model
+ --
+ 
+ COMPONENT stratixiii_dqs_enable_ctrl
+     GENERIC ( 
+         use_phasectrlin                 : string := "true";
+         phase_setting                   : integer := 0;
+         delay_buffer_mode               : string := "high";
+         level_dqs_enable                : string := "false";
+         delay_dqs_enable_by_half_cycle  : string := "false";
+         add_phase_transfer_reg          : string := "false";
+         invert_phase                    : string := "false";
+         sim_low_buffer_intrinsic_delay  : integer := 350;
+         sim_high_buffer_intrinsic_delay : integer := 175;
+         sim_buffer_delay_increment      : integer := 10;    
+         lpm_type                        : string := "stratixiii_dqs_enable_ctrl";
+         tipd_dqsenablein         : VitalDelayType01 := DefpropDelay01;
+         tipd_clk                 : VitalDelayType01 := DefpropDelay01;
+         tipd_delayctrlin         : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_phasectrlin         : VitalDelayArrayType01(3 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_enaphasetransferreg : VitalDelayType01 := DefpropDelay01;
+         tipd_phaseinvertctrl     : VitalDelayType01 := DefpropDelay01;
+         TimingChecksOn           : Boolean := True;
+         MsgOn                    : Boolean := DefGlitchMsgOn;
+         XOn                      : Boolean := DefGlitchXOn;
+         MsgOnChecks              : Boolean := DefMsgOnChecks;
+         XOnChecks                : Boolean := DefXOnChecks;
+         InstancePath             : String := "*"   
+     );
+     
+     PORT (
+         dqsenablein         : IN std_logic := '1';
+         clk                 : IN std_logic := '0';
+         delayctrlin         : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
+         phasectrlin         : IN std_logic_vector(3 downto 0) := (OTHERS => '0');
+         enaphasetransferreg : IN std_logic := '0';
+         phaseinvertctrl     : IN std_logic := '0';
+         devclrn             : IN std_logic := '1';
+         devpor              : IN std_logic := '1';        
+         dqsenableout        : OUT std_logic;
+         dffin               : OUT std_logic;
+         dffextenddqsenable  : OUT std_logic
+     );
+ 
+ END COMPONENT;
     
-    PORT (
-        dqsenablein         : IN std_logic := '1';
-        clk                 : IN std_logic := '0';
-        delayctrlin         : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
-        phasectrlin         : IN std_logic_vector(3 downto 0) := (OTHERS => '0');
-        enaphasetransferreg : IN std_logic := '0';
-        phaseinvertctrl     : IN std_logic := '0';
-        devclrn             : IN std_logic := '1';
-        devpor              : IN std_logic := '1';        
-        dqsenableout        : OUT std_logic;
-        dffin               : OUT std_logic;
-        dffextenddqsenable  : OUT std_logic
-    );
-
-END COMPONENT;
-   
 --
 -- stratixiii_delay_chain Model
 --
 
-COMPONENT stratixiii_delay_chain
-    GENERIC ( 
-        sim_delayctrlin_rising_delay_0   : integer := 0;
-        sim_delayctrlin_rising_delay_1   : integer := 50;
-        sim_delayctrlin_rising_delay_2   : integer := 100;
-        sim_delayctrlin_rising_delay_3   : integer := 150;
-        sim_delayctrlin_rising_delay_4   : integer := 200;
-        sim_delayctrlin_rising_delay_5   : integer := 250;
-        sim_delayctrlin_rising_delay_6   : integer := 300;
-        sim_delayctrlin_rising_delay_7   : integer := 350;
-        sim_delayctrlin_rising_delay_8   : integer := 400;
-        sim_delayctrlin_rising_delay_9   : integer := 450;
-        sim_delayctrlin_rising_delay_10  : integer := 500;
-        sim_delayctrlin_rising_delay_11  : integer := 550;
-        sim_delayctrlin_rising_delay_12  : integer := 600;
-        sim_delayctrlin_rising_delay_13  : integer := 650;
-        sim_delayctrlin_rising_delay_14  : integer := 700;
-        sim_delayctrlin_rising_delay_15  : integer := 750;
-        sim_delayctrlin_falling_delay_0  : integer := 0;
-        sim_delayctrlin_falling_delay_1  : integer := 50;
-        sim_delayctrlin_falling_delay_2  : integer := 100;
-        sim_delayctrlin_falling_delay_3  : integer := 150;
-        sim_delayctrlin_falling_delay_4  : integer := 200;
-        sim_delayctrlin_falling_delay_5  : integer := 250;
-        sim_delayctrlin_falling_delay_6  : integer := 300;
-        sim_delayctrlin_falling_delay_7  : integer := 350;
-        sim_delayctrlin_falling_delay_8  : integer := 400;
-        sim_delayctrlin_falling_delay_9  : integer := 450;
-        sim_delayctrlin_falling_delay_10  : integer := 500;
-        sim_delayctrlin_falling_delay_11  : integer := 550;
-        sim_delayctrlin_falling_delay_12  : integer := 600;
-        sim_delayctrlin_falling_delay_13  : integer := 650;
-        sim_delayctrlin_falling_delay_14  : integer := 700;
-        sim_delayctrlin_falling_delay_15  : integer := 750;
-        use_delayctrlin                   : string := "true";
-        delay_setting                     : integer := 0;
-        lpm_type                          : string := "stratixiii_delay_chain";
-        tipd_datain              : VitalDelayType01 := DefpropDelay01;
-        tipd_delayctrlin         : VitalDelayArrayType01(3 downto 0) := (OTHERS => DefPropDelay01);
-        tpd_datain_dataout       : VitalDelayType01 := DefPropDelay01;
-        TimingChecksOn           : Boolean := True;
-        MsgOn                    : Boolean := DefGlitchMsgOn;
-        XOn                      : Boolean := DefGlitchXOn;
-        MsgOnChecks              : Boolean := DefMsgOnChecks;
-        XOnChecks                : Boolean := DefXOnChecks;
-        InstancePath             : String := "*"   
-    );
-    
-    PORT (
-        datain       : IN std_logic := '0';
-        delayctrlin  : IN std_logic_vector(3 downto 0) := (OTHERS => '0');
-        devclrn      : IN std_logic := '1';
-        devpor       : IN std_logic := '1';
-        dataout      : OUT std_logic
-    );
-
-END COMPONENT;
-    
---
--- stratixiii_io_clock_divider Model
---
-
-COMPONENT stratixiii_io_clock_divider
-    GENERIC ( 
-        use_phasectrlin                 : string := "true";
-        phase_setting                   : integer := 0;     
-        delay_buffer_mode               : string := "high";
-        use_masterin                    : string := "false";
-        invert_phase                    : string := "false";    
-        sim_low_buffer_intrinsic_delay  : integer := 350;
-        sim_high_buffer_intrinsic_delay : integer := 175;
-        sim_buffer_delay_increment      : integer := 10;    
-        lpm_type                        : string := "stratixiii_io_clock_divider";
-        tipd_clk                 : VitalDelayType01 := DefpropDelay01;
-        tipd_phaseselect         : VitalDelayType01 := DefpropDelay01;
-        tipd_delayctrlin         : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_phasectrlin         : VitalDelayArrayType01(3 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_phaseinvertctrl     : VitalDelayType01 := DefpropDelay01;
-        tipd_masterin            : VitalDelayType01 := DefpropDelay01;
-        tpd_clk_clkout           : VitalDelayType01 := DefPropDelay01;
-        TimingChecksOn           : Boolean := True;
-        MsgOn                    : Boolean := DefGlitchMsgOn;
-        XOn                      : Boolean := DefGlitchXOn;
-        MsgOnChecks              : Boolean := DefMsgOnChecks;
-        XOnChecks                : Boolean := DefXOnChecks;
-        InstancePath             : String := "*"   
-    );
-    
-    PORT (
-        clk             : IN std_logic := '0';
-        phaseselect     : IN std_logic := '0';
-        delayctrlin     : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
-        phasectrlin     : IN std_logic_vector(3 downto 0) := (OTHERS => '0');
-        phaseinvertctrl : IN std_logic := '0';
-        masterin        : IN std_logic := '0';
-        devclrn         : IN std_logic := '1';
-        devpor          : IN std_logic := '1';
-        clkout          : OUT std_logic;
-        slaveout        : OUT std_logic
-    );
-
-END COMPONENT;
-    
---
--- stratixiii_output_phase_alignment Model
---
-
-COMPONENT stratixiii_output_phase_alignment
-    GENERIC ( 
-        operation_mode                   : string := "ddio_out";
-        use_phasectrlin                  : string := "true";
-        phase_setting                    : integer := 0;      
-        delay_buffer_mode                : string := "high";
-        power_up                         : string := "low";
-        async_mode                       : string := "none";
-        sync_mode                        : string := "none";
-        add_output_cycle_delay           : string := "false";
-        use_delayed_clock                : string := "false";
-        add_phase_transfer_reg           : string := "false"; 
-        use_phasectrl_clock              : string := "true";   
-        use_primary_clock                : string := "true";   
-        invert_phase                     : string := "false";  
-        bypass_input_register            : string := "false";  
-        phase_setting_for_delayed_clock  : integer := 2;           
-        sim_low_buffer_intrinsic_delay  : integer := 350;
-        sim_high_buffer_intrinsic_delay : integer := 175;
-        sim_buffer_delay_increment      : integer := 10;    
-        lpm_type                        : string := "stratixiii_output_phase_alignment";
-        tipd_datain              : VitalDelayArrayType01(1 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_clk                 : VitalDelayType01 := DefpropDelay01;
-        tipd_delayctrlin         : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_phasectrlin         : VitalDelayArrayType01(3 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_areset              : VitalDelayType01 := DefpropDelay01;
-        tipd_sreset              : VitalDelayType01 := DefpropDelay01;
-        tipd_clkena              : VitalDelayType01 := DefpropDelay01;
-        tipd_enaoutputcycledelay : VitalDelayType01 := DefpropDelay01;
-        tipd_enaphasetransferreg : VitalDelayType01 := DefpropDelay01;
-        tipd_phaseinvertctrl     : VitalDelayType01 := DefpropDelay01;
-        TimingChecksOn           : Boolean := True;
-        MsgOn                    : Boolean := DefGlitchMsgOn;
-        XOn                      : Boolean := DefGlitchXOn;
-        MsgOnChecks              : Boolean := DefMsgOnChecks;
-        XOnChecks                : Boolean := DefXOnChecks;
-        InstancePath             : String := "*"   
-    );
-    
-    PORT (
-        datain              : IN std_logic_vector(1 downto 0) := (OTHERS => '0');
-        clk                 : IN std_logic := '0';
-        delayctrlin         : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
-        phasectrlin         : IN std_logic_vector(3 downto 0) := (OTHERS => '0');
-        areset              : IN std_logic := '0';
-        sreset              : IN std_logic := '0';
-        clkena              : IN std_logic := '1';
-        enaoutputcycledelay : IN std_logic := '0';
-        enaphasetransferreg : IN std_logic := '0';
-        phaseinvertctrl     : IN std_logic := '0';
-        devclrn             : IN std_logic := '1';
-        devpor              : IN std_logic := '1';
-        dataout             : OUT std_logic;
-        dffin               : OUT std_logic_vector(1 downto 0);
-        dff1t               : OUT std_logic_vector(1 downto 0);
-        dffddiodataout      : OUT std_logic
-    );
-
-END COMPONENT;
+ COMPONENT stratixiii_delay_chain
+     GENERIC ( 
+         sim_delayctrlin_rising_delay_0   : integer := 0;
+         sim_delayctrlin_rising_delay_1   : integer := 50;
+         sim_delayctrlin_rising_delay_2   : integer := 100;
+         sim_delayctrlin_rising_delay_3   : integer := 150;
+         sim_delayctrlin_rising_delay_4   : integer := 200;
+         sim_delayctrlin_rising_delay_5   : integer := 250;
+         sim_delayctrlin_rising_delay_6   : integer := 300;
+         sim_delayctrlin_rising_delay_7   : integer := 350;
+         sim_delayctrlin_rising_delay_8   : integer := 400;
+         sim_delayctrlin_rising_delay_9   : integer := 450;
+         sim_delayctrlin_rising_delay_10  : integer := 500;
+         sim_delayctrlin_rising_delay_11  : integer := 550;
+         sim_delayctrlin_rising_delay_12  : integer := 600;
+         sim_delayctrlin_rising_delay_13  : integer := 650;
+         sim_delayctrlin_rising_delay_14  : integer := 700;
+         sim_delayctrlin_rising_delay_15  : integer := 750;
+         sim_delayctrlin_falling_delay_0  : integer := 0;
+         sim_delayctrlin_falling_delay_1  : integer := 50;
+         sim_delayctrlin_falling_delay_2  : integer := 100;
+         sim_delayctrlin_falling_delay_3  : integer := 150;
+         sim_delayctrlin_falling_delay_4  : integer := 200;
+         sim_delayctrlin_falling_delay_5  : integer := 250;
+         sim_delayctrlin_falling_delay_6  : integer := 300;
+         sim_delayctrlin_falling_delay_7  : integer := 350;
+         sim_delayctrlin_falling_delay_8  : integer := 400;
+         sim_delayctrlin_falling_delay_9  : integer := 450;
+         sim_delayctrlin_falling_delay_10  : integer := 500;
+         sim_delayctrlin_falling_delay_11  : integer := 550;
+         sim_delayctrlin_falling_delay_12  : integer := 600;
+         sim_delayctrlin_falling_delay_13  : integer := 650;
+         sim_delayctrlin_falling_delay_14  : integer := 700;
+         sim_delayctrlin_falling_delay_15  : integer := 750;
+         use_delayctrlin                   : string := "true";
+         delay_setting                     : integer := 0;
+         -- new in STRATIXIV ww30.2008
+         sim_finedelayctrlin_falling_delay_0 : integer := 0;
+         sim_finedelayctrlin_falling_delay_1 : integer := 25;
+         sim_finedelayctrlin_rising_delay_0  : integer := 0;
+         sim_finedelayctrlin_rising_delay_1  : integer := 25;
+         use_finedelayctrlin                 : string  := "false";
  
---
--- stratixiii_input_phase_alignment Model
---
-
-COMPONENT stratixiii_input_phase_alignment
-    GENERIC ( 
-        use_phasectrlin                 : string := "true";
-        phase_setting                   : integer := 0;
-        delay_buffer_mode               : string := "high";
-        power_up                        : string := "low";
-        async_mode                      : string := "none";
-        add_input_cycle_delay           : string := "false";
-        bypass_output_register          : string := "false";
-        add_phase_transfer_reg          : string := "false";
-        invert_phase                    : string := "false";
-        sim_low_buffer_intrinsic_delay  : integer := 350;
-        sim_high_buffer_intrinsic_delay : integer := 175;
-        sim_buffer_delay_increment      : integer := 10;        
-        lpm_type                 : string := "stratixiii_input_phase_alignment";
-        tipd_datain              : VitalDelayType01 := DefpropDelay01;
-        tipd_clk                 : VitalDelayType01 := DefpropDelay01;
-        tipd_delayctrlin         : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_phasectrlin         : VitalDelayArrayType01(3 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_areset              : VitalDelayType01 := DefpropDelay01;
-        tipd_enainputcycledelay  : VitalDelayType01 := DefpropDelay01;
-        tipd_enaphasetransferreg : VitalDelayType01 := DefpropDelay01;
-        tipd_phaseinvertctrl     : VitalDelayType01 := DefpropDelay01;
-        TimingChecksOn           : Boolean := True;
-        MsgOn                    : Boolean := DefGlitchMsgOn;
-        XOn                      : Boolean := DefGlitchXOn;
-        MsgOnChecks              : Boolean := DefMsgOnChecks;
-        XOnChecks                : Boolean := DefXOnChecks;
-        InstancePath             : String := "*"   
-    );
+         lpm_type                          : string := "stratixiii_delay_chain";
+         tipd_datain              : VitalDelayType01 := DefpropDelay01;
+         tipd_delayctrlin         : VitalDelayArrayType01(3 downto 0) := (OTHERS => DefPropDelay01);
+         tpd_datain_dataout       : VitalDelayType01 := DefPropDelay01;
+         TimingChecksOn           : Boolean := True;
+         MsgOn                    : Boolean := DefGlitchMsgOn;
+         XOn                      : Boolean := DefGlitchXOn;
+         MsgOnChecks              : Boolean := DefMsgOnChecks;
+         XOnChecks                : Boolean := DefXOnChecks;
+         InstancePath             : String := "*"   
+     );
+     
+     PORT (
+         datain       : IN std_logic := '0';
+         delayctrlin  : IN std_logic_vector(3 downto 0) := (OTHERS => '0');
+         finedelayctrlin : IN std_logic := '0';
+         devclrn      : IN std_logic := '1';
+         devpor       : IN std_logic := '1';
+         dataout      : OUT std_logic
+     );
+ 
+ END COMPONENT;
+     
+ --
+ -- stratixiii_io_clock_divider Model
+ --
+ 
+ COMPONENT stratixiii_io_clock_divider
+     GENERIC ( 
+         use_phasectrlin                 : string := "true";
+         phase_setting                   : integer := 0;     
+         delay_buffer_mode               : string := "high";
+         use_masterin                    : string := "false";
+         invert_phase                    : string := "false";    
+         sim_low_buffer_intrinsic_delay  : integer := 350;
+         sim_high_buffer_intrinsic_delay : integer := 175;
+         sim_buffer_delay_increment      : integer := 10;    
+         lpm_type                        : string := "stratixiii_io_clock_divider";
+         tipd_clk                 : VitalDelayType01 := DefpropDelay01;
+         tipd_phaseselect         : VitalDelayType01 := DefpropDelay01;
+         tipd_delayctrlin         : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_phasectrlin         : VitalDelayArrayType01(3 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_phaseinvertctrl     : VitalDelayType01 := DefpropDelay01;
+         tipd_masterin            : VitalDelayType01 := DefpropDelay01;
+         tpd_clk_clkout           : VitalDelayType01 := DefPropDelay01;
+         TimingChecksOn           : Boolean := True;
+         MsgOn                    : Boolean := DefGlitchMsgOn;
+         XOn                      : Boolean := DefGlitchXOn;
+         MsgOnChecks              : Boolean := DefMsgOnChecks;
+         XOnChecks                : Boolean := DefXOnChecks;
+         InstancePath             : String := "*"   
+     );
+     
+     PORT (
+         clk             : IN std_logic := '0';
+         phaseselect     : IN std_logic := '0';
+         delayctrlin     : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
+         phasectrlin     : IN std_logic_vector(3 downto 0) := (OTHERS => '0');
+         phaseinvertctrl : IN std_logic := '0';
+         masterin        : IN std_logic := '0';
+         devclrn         : IN std_logic := '1';
+         devpor          : IN std_logic := '1';
+         clkout          : OUT std_logic;
+         slaveout        : OUT std_logic
+     );
+ 
+ END COMPONENT;
+     
+ --
+ -- stratixiii_output_phase_alignment Model
+ --
+ 
+ COMPONENT stratixiii_output_phase_alignment
+     GENERIC ( 
+         operation_mode                   : string := "ddio_out";
+         use_phasectrlin                  : string := "true";
+         phase_setting                    : integer := 0;      
+         delay_buffer_mode                : string := "high";
+         power_up                         : string := "low";
+         async_mode                       : string := "none";
+         sync_mode                        : string := "none";
+         add_output_cycle_delay           : string := "false";
+         use_delayed_clock                : string := "false";
+         add_phase_transfer_reg           : string := "false"; 
+         use_phasectrl_clock              : string := "true";   
+         use_primary_clock                : string := "true";   
+         invert_phase                     : string := "false";  
+         bypass_input_register            : string := "false";  
+         phase_setting_for_delayed_clock  : integer := 2;           
+         sim_low_buffer_intrinsic_delay  : integer := 350;
+         sim_high_buffer_intrinsic_delay : integer := 175;
+         sim_buffer_delay_increment      : integer := 10;    
+         -- new in STRATIXIV: ww30.2008
+         duty_cycle_delay_mode : string := "none";
+         sim_dutycycledelayctrlin_falling_delay_0 : integer :=  0 ;
+         sim_dutycycledelayctrlin_falling_delay_1 : integer :=  25 ;
+         sim_dutycycledelayctrlin_falling_delay_10 : integer :=  250 ;
+         sim_dutycycledelayctrlin_falling_delay_11 : integer :=  275 ;
+         sim_dutycycledelayctrlin_falling_delay_12 : integer :=  300 ;
+         sim_dutycycledelayctrlin_falling_delay_13 : integer :=  325 ;
+         sim_dutycycledelayctrlin_falling_delay_14 : integer :=  350 ;
+         sim_dutycycledelayctrlin_falling_delay_15 : integer :=  375 ;
+         sim_dutycycledelayctrlin_falling_delay_2 : integer :=  50 ;
+         sim_dutycycledelayctrlin_falling_delay_3 : integer :=  75 ;
+         sim_dutycycledelayctrlin_falling_delay_4 : integer :=  100 ;
+         sim_dutycycledelayctrlin_falling_delay_5 : integer :=  125 ;
+         sim_dutycycledelayctrlin_falling_delay_6 : integer :=  150 ;
+         sim_dutycycledelayctrlin_falling_delay_7 : integer :=  175 ;
+         sim_dutycycledelayctrlin_falling_delay_8 : integer :=  200 ;
+         sim_dutycycledelayctrlin_falling_delay_9 : integer :=  225 ;
+         sim_dutycycledelayctrlin_rising_delay_0 : integer :=  0 ;
+         sim_dutycycledelayctrlin_rising_delay_1 : integer :=  25 ;
+         sim_dutycycledelayctrlin_rising_delay_10 : integer :=  250 ;
+         sim_dutycycledelayctrlin_rising_delay_11 : integer :=  275 ;
+         sim_dutycycledelayctrlin_rising_delay_12 : integer :=  300 ;
+         sim_dutycycledelayctrlin_rising_delay_13 : integer :=  325 ;
+         sim_dutycycledelayctrlin_rising_delay_14 : integer :=  350 ;
+         sim_dutycycledelayctrlin_rising_delay_15 : integer :=  375 ;
+         sim_dutycycledelayctrlin_rising_delay_2 : integer :=  50 ;
+         sim_dutycycledelayctrlin_rising_delay_3 : integer :=  75 ;
+         sim_dutycycledelayctrlin_rising_delay_4 : integer :=  100 ;
+         sim_dutycycledelayctrlin_rising_delay_5 : integer :=  125 ;
+         sim_dutycycledelayctrlin_rising_delay_6 : integer :=  150 ;
+         sim_dutycycledelayctrlin_rising_delay_7 : integer :=  175 ;
+         sim_dutycycledelayctrlin_rising_delay_8 : integer :=  200 ;
+         sim_dutycycledelayctrlin_rising_delay_9 : integer :=  225 ;
+         lpm_type                        : string := "stratixiii_output_phase_alignment";
+         tipd_datain              : VitalDelayArrayType01(1 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_clk                 : VitalDelayType01 := DefpropDelay01;
+         tipd_delayctrlin         : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_phasectrlin         : VitalDelayArrayType01(3 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_areset              : VitalDelayType01 := DefpropDelay01;
+         tipd_sreset              : VitalDelayType01 := DefpropDelay01;
+         tipd_clkena              : VitalDelayType01 := DefpropDelay01;
+         tipd_enaoutputcycledelay : VitalDelayType01 := DefpropDelay01;
+         tipd_enaphasetransferreg : VitalDelayType01 := DefpropDelay01;
+         tipd_phaseinvertctrl     : VitalDelayType01 := DefpropDelay01;
+         TimingChecksOn           : Boolean := True;
+         MsgOn                    : Boolean := DefGlitchMsgOn;
+         XOn                      : Boolean := DefGlitchXOn;
+         MsgOnChecks              : Boolean := DefMsgOnChecks;
+         XOnChecks                : Boolean := DefXOnChecks;
+         InstancePath             : String := "*"   
+     );
+     
+     PORT (
+         datain              : IN std_logic_vector(1 downto 0) := (OTHERS => '0');
+         clk                 : IN std_logic := '0';
+         delayctrlin         : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
+         phasectrlin         : IN std_logic_vector(3 downto 0) := (OTHERS => '0');
+         areset              : IN std_logic := '0';
+         sreset              : IN std_logic := '0';
+         clkena              : IN std_logic := '1';
+         enaoutputcycledelay : IN std_logic := '0';
+         enaphasetransferreg : IN std_logic := '0';
+         phaseinvertctrl     : IN std_logic := '0';
+         delaymode           : IN std_logic := '0'; -- new in STRATIXIV: ww30.2008
+         dutycycledelayctrlin: IN std_logic_vector(3 downto 0) := (OTHERS => '0');
+         devclrn             : IN std_logic := '1';
+         devpor              : IN std_logic := '1';
+         dataout             : OUT std_logic;
+         dffin               : OUT std_logic_vector(1 downto 0);
+         dff1t               : OUT std_logic_vector(1 downto 0);
+         dffddiodataout      : OUT std_logic
+     );
+ 
+ END COMPONENT;
+  
+ --
+ -- stratixiii_input_phase_alignment Model
+ --
+ 
+ COMPONENT stratixiii_input_phase_alignment
+     GENERIC ( 
+         use_phasectrlin                 : string := "true";
+         phase_setting                   : integer := 0;
+         delay_buffer_mode               : string := "high";
+         power_up                        : string := "low";
+         async_mode                      : string := "none";
+         add_input_cycle_delay           : string := "false";
+         bypass_output_register          : string := "false";
+         add_phase_transfer_reg          : string := "false";
+         invert_phase                    : string := "false";
+         sim_low_buffer_intrinsic_delay  : integer := 350;
+         sim_high_buffer_intrinsic_delay : integer := 175;
+         sim_buffer_delay_increment      : integer := 10;        
+         lpm_type                 : string := "stratixiii_input_phase_alignment";
+         tipd_datain              : VitalDelayType01 := DefpropDelay01;
+         tipd_clk                 : VitalDelayType01 := DefpropDelay01;
+         tipd_delayctrlin         : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_phasectrlin         : VitalDelayArrayType01(3 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_areset              : VitalDelayType01 := DefpropDelay01;
+         tipd_enainputcycledelay  : VitalDelayType01 := DefpropDelay01;
+         tipd_enaphasetransferreg : VitalDelayType01 := DefpropDelay01;
+         tipd_phaseinvertctrl     : VitalDelayType01 := DefpropDelay01;
+         TimingChecksOn           : Boolean := True;
+         MsgOn                    : Boolean := DefGlitchMsgOn;
+         XOn                      : Boolean := DefGlitchXOn;
+         MsgOnChecks              : Boolean := DefMsgOnChecks;
+         XOnChecks                : Boolean := DefXOnChecks;
+         InstancePath             : String := "*"   
+     );
+     
+     PORT (
+         datain              : IN std_logic := '0';
+         clk                 : IN std_logic := '0';
+         delayctrlin         : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
+         phasectrlin         : IN std_logic_vector(3 downto 0) := (OTHERS => '0');
+         areset              : IN std_logic := '0';
+         enainputcycledelay  : IN std_logic := '0';
+         enaphasetransferreg : IN std_logic := '0';
+         phaseinvertctrl     : IN std_logic := '0';
+         devclrn             : IN std_logic := '1';
+         devpor              : IN std_logic := '1';
+         dataout             : OUT std_logic;
+         dffin               : OUT std_logic;
+         dff1t               : OUT std_logic
+     );
+ 
+ END COMPONENT;
+     
+ --
+ -- stratixiii_half_rate_input Model
+ --
+ 
+ COMPONENT stratixiii_half_rate_input
+     GENERIC ( 
+         power_up           : string := "low";
+         async_mode         : string := "none";
+         use_dataoutbypass  : string := "false";
+         lpm_type           : string := "stratixiii_half_rate_input";
+         tipd_datain              : VitalDelayArrayType01(1 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_directin            : VitalDelayType01 := DefpropDelay01;
+         tipd_clk                 : VitalDelayType01 := DefpropDelay01;
+         tipd_areset              : VitalDelayType01 := DefpropDelay01;
+         tipd_dataoutbypass       : VitalDelayType01 := DefpropDelay01;
+         TimingChecksOn           : Boolean := True;
+         MsgOn                    : Boolean := DefGlitchMsgOn;
+         XOn                      : Boolean := DefGlitchXOn;
+         MsgOnChecks              : Boolean := DefMsgOnChecks;
+         XOnChecks                : Boolean := DefXOnChecks;
+         InstancePath             : String := "*"   
+     );
+     
+     PORT (
+         datain       : IN std_logic_vector(1 downto 0) := (OTHERS => '0');
+         directin     : IN std_logic := '0';
+         clk          : IN std_logic := '0';
+         areset       : IN std_logic := '0';
+         dataoutbypass: IN std_logic := '0';
+         devclrn      : IN std_logic := '1';
+         devpor       : IN std_logic := '1';
+         dataout      : OUT std_logic_vector(3 downto 0);
+         dffin        : OUT std_logic
+     );
+ 
+ END COMPONENT;
+     
+ --
+ -- stratixiii_io_config Model
+ --
+ 
+ COMPONENT stratixiii_io_config
+     GENERIC ( 
+         enhanced_mode      : string := "false";
+         lpm_type           : string := "stratixiii_io_config";
+         tipd_datain                       : VitalDelayType01 := DefpropDelay01;
+         tipd_clk                          : VitalDelayType01 := DefpropDelay01;
+         tipd_ena                          : VitalDelayType01 := DefpropDelay01;
+         tipd_update                       : VitalDelayType01 := DefpropDelay01;
+         tsetup_datain_clk_noedge_posedge  : VitalDelayType := DefSetupHoldCnst;
+         thold_datain_clk_noedge_posedge   : VitalDelayType := DefSetupHoldCnst;
+         tpd_clk_dataout_posedge           : VitalDelayType01 := DefPropDelay01;
+         TimingChecksOn           : Boolean := True;
+         MsgOn                    : Boolean := DefGlitchMsgOn;
+         XOn                      : Boolean := DefGlitchXOn;
+         MsgOnChecks              : Boolean := DefMsgOnChecks;
+         XOnChecks                : Boolean := DefXOnChecks;
+         InstancePath             : String := "*"   
+     );
+     
+     PORT (
+         datain       : IN std_logic := '0';
+         clk          : IN std_logic := '0';
+         ena          : IN std_logic := '1';
+         update       : IN std_logic := '0';
+         devclrn      : IN std_logic := '1';
+         devpor       : IN std_logic := '1';
+         -- new STRATIXIV: ww30.2008
+         dutycycledelaymode                 : OUT std_logic;
+         dutycycledelaysettings             : OUT std_logic_vector(3 downto 0);
+         outputfinedelaysetting1            : OUT std_logic;
+         outputfinedelaysetting2            : OUT std_logic;
+         outputonlydelaysetting2            : OUT std_logic_vector(2 downto 0);
+         outputonlyfinedelaysetting2        : OUT std_logic;
+         padtoinputregisterfinedelaysetting : OUT std_logic;
+         padtoinputregisterdelaysetting : OUT std_logic_vector(3 downto 0);
+         outputdelaysetting1            : OUT std_logic_vector(3 downto 0);
+         outputdelaysetting2            : OUT std_logic_vector(2 downto 0);
+         dataout                        : OUT std_logic
+     );
+ 
+ END COMPONENT;
+     
+ --
+ -- stratixiii_dqs_config Model
+ --
+ 
+ COMPONENT stratixiii_dqs_config
+     GENERIC ( 
+         enhanced_mode            : string := "false";
+         lpm_type                 : string := "stratixiii_dqs_config";
+         tipd_datain                       : VitalDelayType01 := DefpropDelay01;
+         tipd_clk                          : VitalDelayType01 := DefpropDelay01;
+         tipd_ena                          : VitalDelayType01 := DefpropDelay01;
+         tipd_update                       : VitalDelayType01 := DefpropDelay01;
+         tsetup_datain_clk_noedge_posedge  : VitalDelayType := DefSetupHoldCnst;
+         thold_datain_clk_noedge_posedge   : VitalDelayType := DefSetupHoldCnst;
+         tpd_clk_dataout_posedge           : VitalDelayType01 := DefPropDelay01;
+         TimingChecksOn           : Boolean := True;
+         MsgOn                    : Boolean := DefGlitchMsgOn;
+         XOn                      : Boolean := DefGlitchXOn;
+         MsgOnChecks              : Boolean := DefMsgOnChecks;
+         XOnChecks                : Boolean := DefXOnChecks;
+         InstancePath             : String := "*"   
+     );
+     
+     PORT (
+         datain       : IN std_logic := '0';
+         clk          : IN std_logic := '0';
+         ena          : IN std_logic := '0';
+         update       : IN std_logic := '0';
+         devclrn      : IN std_logic := '1';
+         devpor       : IN std_logic := '1';
+         dqsbusoutfinedelaysetting   : OUT std_logic;  -- new in STRATIXIV
+         dqsenablefinedelaysetting   : OUT std_logic;  -- new in STRATIXIV
+         dqsbusoutdelaysetting     : OUT std_logic_vector(3 downto 0);          
+         dqsinputphasesetting      : OUT std_logic_vector(2 downto 0);
+         dqsenablectrlphasesetting : OUT std_logic_vector(3 downto 0);
+         dqsoutputphasesetting     : OUT std_logic_vector(3 downto 0);
+         dqoutputphasesetting      : OUT std_logic_vector(3 downto 0);
+         resyncinputphasesetting   : OUT std_logic_vector(3 downto 0);
+         dividerphasesetting       : OUT std_logic;
+         enaoctcycledelaysetting   : OUT std_logic;
+         enainputcycledelaysetting : OUT std_logic;
+         enaoutputcycledelaysetting: OUT std_logic;
+         dqsenabledelaysetting     : OUT std_logic_vector(2 downto 0);
+         octdelaysetting1          : OUT std_logic_vector(3 downto 0);
+         octdelaysetting2          : OUT std_logic_vector(2 downto 0);
+         enadataoutbypass          : OUT std_logic;
+         enadqsenablephasetransferreg : OUT std_logic;
+         enaoctphasetransferreg    : OUT std_logic;       
+         enaoutputphasetransferreg : OUT std_logic;   
+         enainputphasetransferreg  : OUT std_logic;
+         resyncinputphaseinvert    : OUT std_logic;
+         dqsenablectrlphaseinvert  : OUT std_logic;
+         dqoutputphaseinvert       : OUT std_logic;        
+         dqsoutputphaseinvert      : OUT std_logic; 
+         dataout                   : OUT std_logic
+     );
+ 
+ END COMPONENT;
     
-    PORT (
-        datain              : IN std_logic := '0';
-        clk                 : IN std_logic := '0';
-        delayctrlin         : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
-        phasectrlin         : IN std_logic_vector(3 downto 0) := (OTHERS => '0');
-        areset              : IN std_logic := '0';
-        enainputcycledelay  : IN std_logic := '0';
-        enaphasetransferreg : IN std_logic := '0';
-        phaseinvertctrl     : IN std_logic := '0';
-        devclrn             : IN std_logic := '1';
-        devpor              : IN std_logic := '1';
-        dataout             : OUT std_logic;
-        dffin               : OUT std_logic;
-        dff1t               : OUT std_logic
-    );
-
-END COMPONENT;
-    
 --
--- stratixiii_half_rate_input Model
---
-
-COMPONENT stratixiii_half_rate_input
-    GENERIC ( 
-        power_up           : string := "low";
-        async_mode         : string := "none";
-        use_dataoutbypass  : string := "false";
-        lpm_type           : string := "stratixiii_half_rate_input";
-        tipd_datain              : VitalDelayArrayType01(1 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_directin            : VitalDelayType01 := DefpropDelay01;
-        tipd_clk                 : VitalDelayType01 := DefpropDelay01;
-        tipd_areset              : VitalDelayType01 := DefpropDelay01;
-        tipd_dataoutbypass       : VitalDelayType01 := DefpropDelay01;
-        TimingChecksOn           : Boolean := True;
-        MsgOn                    : Boolean := DefGlitchMsgOn;
-        XOn                      : Boolean := DefGlitchXOn;
-        MsgOnChecks              : Boolean := DefMsgOnChecks;
-        XOnChecks                : Boolean := DefXOnChecks;
-        InstancePath             : String := "*"   
-    );
-    
-    PORT (
-        datain       : IN std_logic_vector(1 downto 0) := (OTHERS => '0');
-        directin     : IN std_logic := '0';
-        clk          : IN std_logic := '0';
-        areset       : IN std_logic := '0';
-        dataoutbypass: IN std_logic := '0';
-        devclrn      : IN std_logic := '1';
-        devpor       : IN std_logic := '1';
-        dataout      : OUT std_logic_vector(3 downto 0);
-        dffin        : OUT std_logic
-    );
-
-END COMPONENT;
-    
---
--- stratixiii_io_config Model
---
-
-COMPONENT stratixiii_io_config
-    GENERIC ( 
-        lpm_type           : string := "stratixiii_io_config";
-        tipd_datain                       : VitalDelayType01 := DefpropDelay01;
-        tipd_clk                          : VitalDelayType01 := DefpropDelay01;
-        tipd_ena                          : VitalDelayType01 := DefpropDelay01;
-        tipd_update                       : VitalDelayType01 := DefpropDelay01;
-        tsetup_datain_clk_noedge_posedge  : VitalDelayType := DefSetupHoldCnst;
-        thold_datain_clk_noedge_posedge   : VitalDelayType := DefSetupHoldCnst;
-        tpd_clk_dataout_posedge           : VitalDelayType01 := DefPropDelay01;
-        TimingChecksOn           : Boolean := True;
-        MsgOn                    : Boolean := DefGlitchMsgOn;
-        XOn                      : Boolean := DefGlitchXOn;
-        MsgOnChecks              : Boolean := DefMsgOnChecks;
-        XOnChecks                : Boolean := DefXOnChecks;
-        InstancePath             : String := "*"   
-    );
-    
-    PORT (
-        datain       : IN std_logic := '0';
-        clk          : IN std_logic := '0';
-        ena          : IN std_logic := '0';
-        update       : IN std_logic := '0';
-        devclrn      : IN std_logic := '1';
-        devpor       : IN std_logic := '1';
-        padtoinputregisterdelaysetting : OUT std_logic_vector(3 downto 0);
-        outputdelaysetting1            : OUT std_logic_vector(3 downto 0);
-        outputdelaysetting2            : OUT std_logic_vector(2 downto 0);
-        dataout                        : OUT std_logic
-    );
-
-END COMPONENT;
-    
---
--- stratixiii_dqs_config Model
---
-
-COMPONENT stratixiii_dqs_config
-    GENERIC ( 
-        lpm_type                 : string := "stratixiii_dqs_config";
-        tipd_datain                       : VitalDelayType01 := DefpropDelay01;
-        tipd_clk                          : VitalDelayType01 := DefpropDelay01;
-        tipd_ena                          : VitalDelayType01 := DefpropDelay01;
-        tipd_update                       : VitalDelayType01 := DefpropDelay01;
-        tsetup_datain_clk_noedge_posedge  : VitalDelayType := DefSetupHoldCnst;
-        thold_datain_clk_noedge_posedge   : VitalDelayType := DefSetupHoldCnst;
-        tpd_clk_dataout_posedge           : VitalDelayType01 := DefPropDelay01;
-        TimingChecksOn           : Boolean := True;
-        MsgOn                    : Boolean := DefGlitchMsgOn;
-        XOn                      : Boolean := DefGlitchXOn;
-        MsgOnChecks              : Boolean := DefMsgOnChecks;
-        XOnChecks                : Boolean := DefXOnChecks;
-        InstancePath             : String := "*"   
-    );
-    
-    PORT (
-        datain       : IN std_logic := '0';
-        clk          : IN std_logic := '0';
-        ena          : IN std_logic := '0';
-        update       : IN std_logic := '0';
-        devclrn      : IN std_logic := '1';
-        devpor       : IN std_logic := '1';
-        dqsbusoutdelaysetting     : OUT std_logic_vector(3 downto 0);          
-        dqsinputphasesetting      : OUT std_logic_vector(2 downto 0);
-        dqsenablectrlphasesetting : OUT std_logic_vector(3 downto 0);
-        dqsoutputphasesetting     : OUT std_logic_vector(3 downto 0);
-        dqoutputphasesetting      : OUT std_logic_vector(3 downto 0);
-        resyncinputphasesetting   : OUT std_logic_vector(3 downto 0);
-        dividerphasesetting       : OUT std_logic;
-        enaoctcycledelaysetting   : OUT std_logic;
-        enainputcycledelaysetting : OUT std_logic;
-        enaoutputcycledelaysetting: OUT std_logic;
-        dqsenabledelaysetting     : OUT std_logic_vector(2 downto 0);
-        octdelaysetting1          : OUT std_logic_vector(3 downto 0);
-        octdelaysetting2          : OUT std_logic_vector(2 downto 0);
-        enadataoutbypass          : OUT std_logic;
-        enadqsenablephasetransferreg : OUT std_logic;
-        enaoctphasetransferreg    : OUT std_logic;       
-        enaoutputphasetransferreg : OUT std_logic;   
-        enainputphasetransferreg  : OUT std_logic;
-        resyncinputphaseinvert    : OUT std_logic;
-        dqsenablectrlphaseinvert  : OUT std_logic;
-        dqoutputphaseinvert       : OUT std_logic;        
-        dqsoutputphaseinvert      : OUT std_logic; 
-        dataout                   : OUT std_logic
-    );
-
-END COMPONENT;
-    
---
--- stratixiii_mac_mult
+-- stratixiii_MAC_MULT
 --
 
 component stratixiii_mac_mult 
@@ -1038,7 +1100,7 @@ component stratixiii_mac_mult
 END component;
 
 --
--- stratixiii_mac_out
+-- stratixiii_MAC_OUT
 --
 
 component stratixiii_mac_out
@@ -1120,6 +1182,14 @@ component stratixiii_mac_out
             round_chain_out_mode           :  string := "nearest_integer";    
             saturate_mode                  :  string := "asymmetric";    
             saturate_chain_out_mode        :  string := "asymmetric";
+            multa_signa_internally_grounded : string := "false";
+            multa_signb_internally_grounded : string := "false";
+            multb_signa_internally_grounded : string := "false";
+            multb_signb_internally_grounded : string := "false";
+            multc_signa_internally_grounded : string := "false";
+            multc_signb_internally_grounded : string := "false";
+            multd_signa_internally_grounded : string := "false";
+            multd_signb_internally_grounded : string := "false";
             lpm_type                       :  string := "stratixiii_mac_out";
             dataout_width                  :  integer:= 72
            );    
@@ -1182,7 +1252,7 @@ COMPONENT stratixiii_pll
         
         self_reset_on_loss_lock     : string  := "off";
         switch_over_type            : string  := "auto";
-	switch_over_counter         : integer := 1;
+    switch_over_counter         : integer := 1;
         enable_switch_over_counter  : string := "off";
         
          dpa_multiply_by : integer := 0;
@@ -1434,12 +1504,13 @@ COMPONENT stratixiii_pll
         test_volt_reg_test_mode : string := "false";
         vco_range_detector_high_bits : integer := -1;
         vco_range_detector_low_bits : integer := -1;
-	scan_chain_mif_file : string := "";
+    scan_chain_mif_file : string := "";
          dpa_output_clock_phase_shift : integer := 0;
           test_counter_c3_sclk_delay_chain_bits   : integer := -1;
          test_counter_c4_sclk_delay_chain_bits   : integer := -1;
          test_counter_c5_lden_delay_chain_bits   : integer := -1;
          test_counter_c6_lden_delay_chain_bits   : integer := -1;
+         auto_settings : string  := "true";    
         -- VITAL generics
         XOn                         : Boolean := DefGlitchXOn;
         MsgOn                       : Boolean := DefGlitchMsgOn;
@@ -1515,7 +1586,7 @@ component  stratixiii_asmiblock
 end component;
 
 --
--- stratixiii_lvds_receiver
+-- stratixiii_LVDS_RECEIVER
 --
 
 COMPONENT stratixiii_lvds_receiver
@@ -1534,7 +1605,7 @@ COMPONENT stratixiii_lvds_receiver
               enable_dpa_align_to_rising_edge_only   : string := "off";
               net_ppm_variation     : INTEGER := 0;
               is_negative_ppm_drift   : string := "off";
-              rx_input_path_delay_engineering_bits : INTEGER := -1;              
+               rx_input_path_delay_engineering_bits : INTEGER := -1;
               x_on_bitslip                   :  string := "on";
               lpm_type                       :  string := "stratixiii_lvds_receiver";
               MsgOn                    : Boolean := DefGlitchMsgOn;
@@ -1581,7 +1652,7 @@ END COMPONENT;
 -- stratixiii_pseudo_diff_out
 --
 
-COMPONENT stratixiii_pseudo_diff_out IS
+COMPONENT stratixiii_pseudo_diff_out
  GENERIC (
           tipd_i          : VitalDelayType01 := DefPropDelay01;
           tpd_i_o         : VitalDelayType01 := DefPropDelay01;
@@ -1604,7 +1675,22 @@ END COMPONENT;
 
 component stratixiii_bias_block
     generic (
-        lpm_type : string := "stratixiii_bias_block"
+        lpm_type : string := "stratixiii_bias_block";
+        tipd_clk : VitalDelayType01 := DefPropDelay01;
+        tipd_shiftnld : VitalDelayType01 := DefPropDelay01;
+        tipd_captnupdt : VitalDelayType01 := DefPropDelay01;
+        tipd_din : VitalDelayType01 := DefPropDelay01;
+        tsetup_din_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
+        tsetup_shiftnld_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
+        tsetup_captnupdt_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
+        thold_din_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
+        thold_shiftnld_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
+        thold_captnupdt_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
+        tpd_clk_dout_posedge : VitalDelayType01 := DefPropDelay01;
+        MsgOn: Boolean := DefGlitchMsgOn;
+        XOn: Boolean := DefGlitchXOn;
+        MsgOnChecks: Boolean := DefMsgOnChecks;
+        XOnChecks: Boolean := DefXOnChecks
         );
     port (
         clk : in std_logic := '0';
@@ -1624,13 +1710,15 @@ component  stratixiii_tsdblock
         clock_divider_enable : string := "on";
         clock_divider_value : integer := 40;
         sim_tsdcalo : integer := 0;
+        user_offset_enable : string := "off";
         lpm_type : string := "stratixiii_tsdblock"
         );	
     port (
-        offset : in std_logic_vector(5 downto 0);
-        clk : in std_logic; 
-        ce : in std_logic; 
-        clr : in std_logic; 
+        offset : in std_logic_vector(5 downto 0) := (OTHERS => '0');
+        clk : in std_logic := '0'; 
+        ce : in std_logic := '0'; 
+        clr : in std_logic := '0'; 
+        testin : in std_logic_vector(7 downto 0) := (OTHERS => '0');
         tsdcalo : out std_logic_vector(7 downto 0);
         tsdcaldone : out std_logic; 
         fdbkctrlfromcore : in std_logic := '0';
@@ -1748,6 +1836,9 @@ end component;
 component  stratixiii_crcblock 
     generic (
             oscillator_divider : integer := 1;
+   crc_deld_disable : string := "off";
+   error_delay : integer :=  0 ;
+   error_dra_dl_bypass : string := "off";
             lpm_type : string := "stratixiii_crcblock"
             );
 	port    (
@@ -1910,6 +2001,7 @@ component stratixiii_ram_block
       clk1_input_clock_enable  : STRING := "none"; -- ena1,ena3,none
       clk1_core_clock_enable   : STRING := "none"; -- ena1,ena3,none
       clk1_output_clock_enable : STRING := "none"; -- ena1,none
+	clock_duty_cycle_dependence : STRING := "Auto";
       port_a_read_during_write_mode  :  STRING  := "new_data_no_nbe_read";
       port_b_read_during_write_mode  :  STRING  := "new_data_no_nbe_read";
         mem_init0 : BIT_VECTOR  := X"0";

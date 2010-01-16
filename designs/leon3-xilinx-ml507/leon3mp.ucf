@@ -16,6 +16,10 @@ NET clk_100 period = 10.000 ;
 
 NET clk_200 period = 5.000;
 
+NET "*dqinl*" MAXDELAY = 1900 ps;
+NET "ddrsp0.ddrc0/ddr64.ddrc/rwdata*" MAXDELAY = 2100 ps;
+#NET "*clk180r" MAXDELAY = 2040 ps;
+
 NET clk_33   TNM_NET    = "clk_33";
 # Leave 1 ns margin
 TIMESPEC "TSSYSACE" = PERIOD "clk_33" 29 ns;

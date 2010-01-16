@@ -271,7 +271,7 @@ begin
     end generate;
 
     sh : if CFG_GRFPUSH = 1 generate
-     grfpush0 : grfpushwx generic map ((CFG_FPU-1), CFG_NCPU)
+     grfpush0 : grfpushwx generic map ((CFG_FPU-1), CFG_NCPU, fabtech)
       port map (clkm, rstn, fpi, fpo);
     end generate;
 

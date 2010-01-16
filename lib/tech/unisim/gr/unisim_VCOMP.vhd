@@ -3250,4 +3250,33 @@ port (
   );
 end component;
 
+component BUFGCE
+     port(
+	 O : out STD_ULOGIC;
+         
+	 CE: in STD_ULOGIC;
+	 I : in STD_ULOGIC
+         );
+end component;
+
+component RAM64X1S 
+  generic (
+    INIT : bit_vector(63 downto 0) := X"0000000000000000"
+    );
+
+  port (
+    O : out std_ulogic;
+
+    A0   : in std_ulogic;
+    A1   : in std_ulogic;
+    A2   : in std_ulogic;
+    A3   : in std_ulogic;
+    A4   : in std_ulogic;
+    A5   : in std_ulogic;
+    D    : in std_ulogic;
+    WCLK : in std_ulogic;
+    WE   : in std_ulogic
+    );
+end component;
+
 end;

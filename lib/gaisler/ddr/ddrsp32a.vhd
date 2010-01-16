@@ -192,8 +192,15 @@ signal rbdrive, ribdrive : std_logic_vector(31 downto 0);
 signal rdata, wdata : std_logic_vector(63 downto 0);
 signal ddr_rst : std_logic;
 signal ddr_rst_gen  : std_logic_vector(3 downto 0);
-attribute syn_preserve : boolean;
+signal rwdata : std_logic_vector(63 downto 0);
+attribute keep                     : boolean;
+attribute syn_keep                 : boolean;
+attribute syn_preserve             : boolean;
+
 attribute syn_preserve of rbdrive : signal is true; 
+attribute keep of rwdata : signal is true; 
+attribute syn_keep of rwdata : signal is true; 
+attribute syn_preserve of rwdata : signal is true; 
 
 begin
 
@@ -336,6 +343,7 @@ begin
     regsd2(19 downto 16) := conv_std_logic_vector(confapi, 4);
     regsd3 := (others => '0');
     regsd3(31) := r.cfg.mobileen(0); -- Mobile DDR enable
+    regsd3(30) := r.cfg.cl;
     regsd3(24 downto 19) := r.cfg.tcke & r.cfg.txsr & r.cfg.txp;
     regsd3(18 downto 16) := r.cfg.pmode;
     regsd3( 7 downto  0) := r.cfg.ds(2 downto 0) & r.cfg.tcsr(1 downto 0) 
@@ -961,11 +969,13 @@ begin
   sdo.moben    <= r.cfg.mobileen(0);
   sdo.conf     <= r.cfg.conf;
 
+  rwdata <= ri.hrdata;
+
   read_buff : syncram_2p 
   generic map (tech => memtech, abits => 5, dbits => 64, sepclk => 1, wrfst => 0)
   port map ( rclk => clk_ahb, renable => vcc, raddress => rai.raddr(5 downto 1),
     dataout => rdata, wclk => clk_ddr, write => ri.hready,
-    waddress => r.waddr(5 downto 1), datain => ri.hrdata);
+    waddress => r.waddr(5 downto 1), datain => rwdata);
 
   write_buff1 : syncram_2p 
   generic map (tech => memtech, abits => 5, dbits => 32, sepclk => 1, wrfst => 0)

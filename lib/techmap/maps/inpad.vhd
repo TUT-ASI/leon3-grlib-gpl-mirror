@@ -50,6 +50,9 @@ begin
   pa : if (tech = proasic) or (tech = apa3) generate
     x0 : apa3_inpad generic map (level, voltage, filter) port map (pad, o);
   end generate;
+  fus : if (tech = actfus) generate
+    x0 : fusion_inpad generic map (level, voltage, filter) port map (pad, o);
+  end generate;
   atc : if (tech = atc18s) generate
     x0 : atc18_inpad generic map (level, voltage) port map (pad, o);
   end generate;

@@ -311,7 +311,7 @@ begin
     dsurx_pad : inpad generic map (tech  => padtech) port map (dsurx, dui.rxd);
     dsutx_pad : outpad generic map (tech => padtech) port map (dsutx, duo.txd);
   end generate;
-  nouah : if CFG_AHB_UART = 0 generate apbo(7) <= apb_none; end generate;
+  nouah : if CFG_AHB_UART = 0 generate apbo(4) <= apb_none; end generate;
 
   ahbjtaggen0 : if CFG_AHB_JTAG = 1 generate
     ahbjtag0 : ahbjtag generic map(tech => fabtech, hindex => CFG_NCPU+CFG_AHB_UART)

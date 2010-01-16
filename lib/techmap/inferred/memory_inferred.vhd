@@ -143,17 +143,15 @@ begin
 
   oneclk : if sepclk = 0 generate
     rp : process(wclk) begin
-    if rising_edge(wclk) then ra <= rdaddress; end if;
+    if rising_edge(wclk) then q <= rfd(conv_integer(rdaddress)); end if;
     end process;
   end generate;
 
   twoclk : if sepclk = 1 generate
     rp : process(rclk) begin
-    if rising_edge(rclk) then ra <= rdaddress; end if;
+    if rising_edge(rclk) then q <= rfd(conv_integer(rdaddress)); end if;
     end process;
   end generate;
-
-  q <= rfd(conv_integer(ra));
 
 end;
 

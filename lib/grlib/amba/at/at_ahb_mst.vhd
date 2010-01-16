@@ -135,7 +135,7 @@ begin
         current.op.wrap := false;
         current.op.beat := 1;
         current := current.nxt;
-        while current.op.burst loop
+        while current.op.burst and not current.op.first loop
           current.op.wrap := false;
           current.op.beat := 1;
           if current.op.address /=

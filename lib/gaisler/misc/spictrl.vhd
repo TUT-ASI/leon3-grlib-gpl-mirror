@@ -42,8 +42,8 @@
 -- asvsel generic that decides if the core should use automatic slave select
 --
 -- A field called FACT has been added to the Mode register. This field decides
--- if the highest attainable SCK frequenecy (in master mode) should be SYSFRE/4
--- or SYSFREQ/8. If FACT is set to 1 the core's register interface is no longer
+-- if the highest attainable SCK frequenecy (in master mode) should be SYSFREQ/2
+-- or SYSFREQ/4. If FACT is set to 1 the core's register interface is no longer
 -- compatible with the interface found in MPC83xx SoCs.
 --
 -- Event register now has status bit for when core has transfer in progress

@@ -17,8 +17,8 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------
--- Entity: 	greth
--- File:	greth.vhd
+-- Entity: 	grethc
+-- File:	grethc.vhd
 -- Author:	Marko Isomaki 
 -- Description:	Ethernet Media Access Controller with Ethernet Debug
 --              Communication Link
@@ -325,7 +325,8 @@ architecture rtl of grethc is
     txdataav        : std_ulogic;
     txburstav       : std_ulogic;
           
-    --master rx interface 
+    --master rx interface
+    rxrenable       : std_ulogic;
     rxdsel          : std_logic_vector(9 downto 3);
     rmsto           : eth_rx_ahb_in_type;
     rxdstate        : rxd_state_type;
@@ -383,6 +384,7 @@ architecture rtl of grethc is
     mdint_sync      : std_logic_vector(2 downto 0);
 
     --edcl
+    erenable        : std_ulogic;
     edclrstate      : edclrstate_type;
     edclactive      : std_ulogic;
     nak             : std_ulogic;
@@ -481,11 +483,11 @@ begin
     
     vtxfi.datain := tmsti.data; 
     vtxfi.raddress := r.tfrpnt; vtxfi.write := '0';
-    vtxfi.waddress := r.tfwpnt; vtxfi.renable := '1';
+    vtxfi.waddress := r.tfwpnt; 
 
     vrxfi.datain := rxo.dataout; 
     vrxfi.write := '0'; vrxfi.waddress := r.rfwpnt;
-    vrxfi.renable := '1'; vrxenable := r.ctrl.rxen;
+    vrxfi.renable := r.rxrenable; vrxenable := r.ctrl.rxen;
 
     --synchronization
     v.txdone(0)     := txo.done;
@@ -701,10 +703,13 @@ begin
    when idle =>
      v.txcnt := (others => '0'); v.txburstcnt := (others => '0');
      if (edcl /= 0) then
-       v.tedcl := '0';
+       v.tedcl := '0'; v.erenable := '0';
      end if;
      if (edcl /= 0) and (conv_integer(r.abufs) /= 0)  then
-       v.txdstate := getlen;
+       v.erenable := '1';
+       if r.erenable = '1' then
+         v.txdstate := getlen;
+       end if;
        v.tcnt := conv_std_logic_vector(10, bpbits);
      elsif r.ctrl.txen = '1' then
        v.txdstate := read_desc; v.tmsto.write := '0';  
@@ -875,6 +880,8 @@ begin
      v.rxburstav := '1'; 
    end if;
 
+   vtxfi.renable := v.txdataav;
+
    --rx dma fsm
    case r.rxdstate is
    when idle =>
@@ -882,7 +889,7 @@ begin
      v.rxburstcnt := (others => '0'); v.addrdone := '0';
      v.rxcnt := (others => '0'); v.rxdoneold := '0';
      v.ctrlpkt := '0'; v.bcast := '0'; v.edclactive := '0';
-     v.msbgood := '0';
+     v.msbgood := '0'; v.rxrenable := '0';
      if multicast = 1 then
        v.mcast := '0'; v.mcastacc := '0';
      end if;
@@ -912,6 +919,7 @@ begin
          when "01" =>
            v.rxaddr    := rmsti.data(31 downto 2);
            v.rxdstate  := check_desc;
+           v.rxrenable := '1';
          when others =>
            null;
        end case; 
@@ -1267,7 +1275,7 @@ begin
 -- EDCL -----------------------------------------------------------------------
 -------------------------------------------------------------------------------
    if (edcl /= 0) then
-     veri.renable := '1'; veri.writem := '0'; veri.writel := '0';
+     veri.renable := r.erenable; veri.writem := '0'; veri.writel := '0';
      veri.waddressm := r.rpnt & r.rcntm; veri.waddressl := r.rpnt & r.rcntl;
      swap := '0'; vrxenable := '1'; vecnt := conv_integer(r.ecnt); setmz := '0';
      veri.datain := rxo.dataout;
@@ -1279,7 +1287,7 @@ begin
      --edcl receiver 
      case r.edclrstate is
        when idle =>
-         v.edclbcast := '0';
+         v.edclbcast := '0'; 
          if rxstart = '1' then
            v.edclrstate := wrda; v.edclactive := '0';
            v.rcntm := conv_std_logic_vector(2, bpbits);

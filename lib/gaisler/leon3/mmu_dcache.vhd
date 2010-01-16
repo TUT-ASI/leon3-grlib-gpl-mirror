@@ -41,18 +41,26 @@ use gaisler.mmuiface.all;
 entity mmu_dcache is
   generic (
     dsu       : integer range 0 to 1  := 0;
+    dcen      : integer range 0 to 1  := 0;
     drepl     : integer range 0 to 2  := 0;
     dsets     : integer range 1 to 4  := 1;
     dlinesize : integer range 4 to 8  := 4;
     dsetsize  : integer range 1 to 256 := 1;
     dsetlock  : integer range 0 to 1  := 0;
     dsnoop    : integer range 0 to 6 := 0;
+    dlram      : integer range 0 to 1 := 0;
+    dlramsize  : integer range 1 to 512 := 1;
+    dlramstart : integer range 0 to 255 := 16#8f#;
+    ilram      : integer range 0 to 1 := 0;
+    ilramstart : integer range 0 to 255 := 16#8e#;
     itlbnum   : integer range 2 to 64 := 8;
     dtlbnum   : integer range 2 to 64 := 8;
     tlb_type  : integer range 0 to 3 := 1;
     memtech   : integer range 0 to NTECH := 0;
     cached    : integer := 0;
-    mmupgsz   : integer range 0 to 5 := 0
+    mmupgsz   : integer range 0 to 5 := 0;
+    smp      : integer := 0;
+    mmuen    : integer := 0
   );
   port (
     rst : in  std_logic;
@@ -74,15 +82,10 @@ end;
 
 architecture rtl of mmu_dcache is
   
-constant dlram      : integer range 0 to 1 := 0;
-constant dlramsize  : integer range 1 to 512 := 1;
-constant dlramstart : integer range 0 to 255 := 16#8f#;
-constant ilram      : integer range 0 to 1 := 0;
-constant ilramstart : integer range 0 to 255 := 16#8e#;
-
-constant M_EN : boolean := true;
+constant M_EN : boolean := (mmuen /= 0);
 
 constant DSNOOP2        : integer := dsnoop mod 4;
+constant DSNOOPSEP      : boolean := (dsnoop > 3);
 
 constant M_TLB_TYPE     : integer range 0 to 1 := conv_integer(conv_std_logic_vector(tlb_type,2) and conv_std_logic_vector(1,2));  -- eather split or combined
 constant M_TLB_FASTWRITE : integer range 0 to 3 := conv_integer(conv_std_logic_vector(tlb_type,2) and conv_std_logic_vector(2,2));   -- fast writebuffer
@@ -343,6 +346,7 @@ begin
   variable mmuisdis : std_logic;
   variable ctxp : std_logic;
   variable sidle : std_logic;
+  variable wbread : std_logic;
   
   variable mmudci_transdata_data : std_logic_vector(31 downto 0);
   variable paddress : std_logic_vector(31 downto 0);		-- physical address buffer
@@ -568,12 +572,12 @@ begin
       else laddr := dci.eaddress; end if;
       if  (dci.enaddr = '1') and (dci.maddress(31 downto 24) = LOCAL_RAM_START)
       then lramen := '1'; end if;
-      if  ((laddr(31 downto 24) = LOCAL_RAM_START)) or ((dci.dsuen = '1') and (dci.asi(4 downto 1) = "0101"))
+      if  ((laddr(31 downto 24) = LOCAL_RAM_START) and (dci.dsuen = '0')) or ((dci.dsuen = '1') and (dci.asi(4 downto 1) = "0101"))
       then lramcs := '1'; end if;      
     end if;
     
     if (ilram = 1) then 
-      if  (dci.enaddr = '1') and (dci.maddress(31 downto 24) = ILRAM_START)  then ilramen := '1'; end if;
+      if  (dci.enaddr = '1') and (dci.maddress(31 downto 24) = ILRAM_START) and (dci.dsuen = '0') then ilramen := '1'; end if;
     end if;
 
     -- cache freeze operation
@@ -627,8 +631,8 @@ begin
  	when ASI_SYSR => rdatasel := sysr;	
 	when ASI_DTAG => rdatasel := dtag;
 	when ASI_DDATA => rdatasel := dddata;
-	when ASI_DCTX => rdatasel := dctx;
-        when ASI_MMUREGS => rdatasel := misc;
+	when ASI_DCTX => if M_EN then rdatasel := dctx; end if;
+        when ASI_MMUREGS => if M_EN then rdatasel := misc; end if;
         when ASI_MMUSNOOP_DTAG => rdatasel := mmusnoop_dtag;
 	when others =>
 	end case;
@@ -638,8 +642,8 @@ begin
  	when ASI_SYSR =>		-- system registers
           v.cctrlwr := not dci.read and not (dci.dsuen and not dci.eenaddr);
         when ASI_MMUREGS =>
-          if (dsu = 0) or dci.dsuen = '0' then
-            if M_EN then
+          if M_EN then
+            if (dsu = 0) or dci.dsuen = '0' then
               -- clean fault valid bit
               if dci.read = '1' then
                 case dci.maddress(CNR_U downto CNR_D) is
@@ -672,7 +676,7 @@ begin
  	    twrite := '1'; tdiagwrite := '1';
  	  end if;
         when ASI_MMUSNOOP_DTAG =>	-- Read/write MMU physical snoop tags
-          if M_EN then
+          if DSNOOPSEP then
             snoopaddr := taddr(OFFSET_HIGH downto OFFSET_LOW);
             if (dci.size /= "10") or (r.flush = '1') then -- allow only word access
  	      mexc := '1';
@@ -717,8 +721,7 @@ begin
             if (dlram = 1) and (lramen = '1') then
 	      lramrd := '1';
             elsif (ilram = 1) and (ilramen = '1') then
-              if (ico.flush = '1') or (dci.size /= "10") then mexc := '1';
-              else v.dstate := asi_idtag; v.holdn := dci.dsuen; v.ilramen := '1'; end if;              
+              v.dstate := asi_idtag; v.holdn := dci.dsuen; v.ilramen := '1'; 
 	    elsif dci.dsuen = '0' then
               if (not ((r.cctrl.dcs(0) = '1') and ((hit and valid and not forcemiss) = '1')))
               then	-- read miss
@@ -763,8 +766,7 @@ begin
                 v.dstate := dblwrite; v.xaddress(2) := '1';
               end if; 
             elsif (ilram = 1) and (ilramen = '1') then
-              if (ico.flush = '1') or (dci.size /= "10") then mexc := '1';
-              else v.dstate := asi_idtag; v.holdn := dci.dsuen; v.ilramen := '1'; end if;
+              v.dstate := asi_idtag; v.holdn := dci.dsuen; v.ilramen := '1';
             elsif dci.dsuen = '0' then
               v.ready := '0';
               if (not M_EN) or
@@ -930,7 +932,7 @@ begin
       end if;
     when loadpend =>		-- return from read miss with load pending
       taddr := dci.maddress(OFFSET_HIGH downto LINE_LOW);
-      if (dlram = 1) then
+      if (dlram = 1) and (dci.dsuen = '0') then
         laddr := dci.maddress;
         if laddr(31 downto 24) = LOCAL_RAM_START then lramcs := '1'; end if;
       end if;
@@ -1073,7 +1075,8 @@ begin
     end if;
     
     -- read
-    case dci.maddress(CNR_U downto CNR_D) is
+    if M_EN then
+      case dci.maddress(CNR_U downto CNR_D) is
       when CNR_CTRL => 
         miscdata(MMCTRL_E) := r.mmctrl1.e; 
         miscdata(MMCTRL_NF) := r.mmctrl1.nf; 
@@ -1105,18 +1108,19 @@ begin
       when CNR_FADDR => 
         miscdata(VA_I_U downto VA_I_D) := mmudco.mmctrl2.fa; 
       when others => null; 
-    end case;
-    
+      end case;
+    end if;
+
 
     
     rdata := (others => '0'); rdatav := (others => (others => '0'));
+
     align_data := (others => '0'); align_datav := (others => (others => '0'));
     maddrlow := maddress(1 downto 0); -- stupid Synopsys VSS bug ...
 
     case rdatasel is
     when misc =>
-      set := 0;
-      rdatav(0) := miscdata;
+      if M_EN then set := 0; rdatav(0) := miscdata; end if;
     when dddata =>
       rdatav := dcramov.data;
       if dci.dsuen = '1' then set := conv_integer(r.dsuset);
@@ -1159,7 +1163,7 @@ begin
 	rdatav(0) := ico.cfg;
       when others =>
 	rdatav(0) := cache_cfg(drepl, dsets, dlinesize, dsetsize, dsetlock, 
-		dsnoop, dlram, log2(dlramsize), dlramstart, 1);
+		dsnoop, dlram, log2(dlramsize), dlramstart, mmuen);
       end case;
     end case;
 
@@ -1324,7 +1328,7 @@ begin
       if tdiagwrite = '1' then ctwrite(ddset) := '1';
       else ctwrite(conv_integer(setrepl)) := '1'; end if;
     end if;
-    if M_EN then
+    if DSNOOPSEP then
       if tpwrite = '1' then
         if tdiagwrite = '1' then ctpwrite(ddset) := '1';
         else ctpwrite(conv_integer(setrepl)) := '1'; end if;
@@ -1341,7 +1345,7 @@ begin
 
      if (r.flush and twrite) = '1' then   -- flush 
        ctwrite := (others => '1'); wlrr := (others => '0'); wlock := (others => '0');
-       if M_EN then
+       if DSNOOPSEP then
          ctpwrite := (others => '1');
        end if;
          
@@ -1405,7 +1409,11 @@ begin
     end if;
 
     if dsnoop = 0 then v.cctrl.dsnoop := '0'; end if;
+    if not M_EN then v.mmctrl1 := mmctrl_type1_none; end if; -- kill MMU regs if not enabled
 
+    -- Needed for HLOCK generation during LDST for slow MMU write
+    if (M_TLB_FASTWRITE = 0) and (r.dstate = wtrans) and (r.wb.lock = '1') 
+    then wbread := '1'; else wbread := r.wb.read; end if;
 
 -- Drive signals
 
@@ -1456,7 +1464,7 @@ begin
     mcdi.data     <= r.wb.data1;
     mcdi.burst    <= r.burst;
     mcdi.size     <= r.wb.size;
-    mcdi.read     <= r.wb.read;
+    mcdi.read     <= wbread;
     mcdi.asi      <= r.wb.asi;
     mcdi.lock     <= r.wb.lock;
     mcdi.req      <= r.req;

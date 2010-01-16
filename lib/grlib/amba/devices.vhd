@@ -130,6 +130,7 @@ package devices is
   constant GAISLER_PWM       : amba_device_type := 16#04A#;
   constant GAISLER_L2CACHE   : amba_device_type := 16#04B#;
   constant GAISLER_SDCTRL64  : amba_device_type := 16#04C#;
+  constant GAISLER_GR1553B   : amba_device_type := 16#04D#;
 
   constant GAISLER_FTAHBRAM  : amba_device_type := 16#050#;
   constant GAISLER_FTSRCTRL  : amba_device_type := 16#051#;
@@ -374,6 +375,7 @@ package devices is
    GAISLER_GRTMVC    => "CCSDS Telemetry VC Generator   ",
    GAISLER_GRTMPAHB  => "CCSDS Telemetry VC AHB Input   ",
    GAISLER_GEFFE     => "Geffe Generator                ",
+   GAISLER_GPREG     => "General Purpose Register       ",
    GAISLER_AES       => "Advanced Encryption Standard   ",
    GAISLER_ECC       => "Elliptic Curve Cryptography    ",
    GAISLER_PCIF      => "AMBA Wrapper for CorePCIF      ",
@@ -410,6 +412,7 @@ package devices is
    GAISLER_ATAHBSLV  => "AMBA Test Framework AHB Slave  ",
    GAISLER_ATAHBMST  => "AMBA Test Framework AHB Master ",
    GAISLER_ATAPBSLV  => "AMBA Test Framework APB Slave  ",
+   GAISLER_GR1553B   => "MIL-STD-1553B Interface        ",
    others            => "Unknown Device                 ");
 
    constant gaisler_lib : vendor_library_type := (

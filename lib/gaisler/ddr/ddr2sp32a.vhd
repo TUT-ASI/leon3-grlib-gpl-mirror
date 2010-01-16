@@ -89,7 +89,7 @@ constant hconfig : ahb_config_type := (
 type mcycletype is (midle, active, ext, leadout);
 type ahb_state_type is (midle, rhold, dread, dwrite, whold1, whold2);
 type sdcycletype is (act1, act2, act3, rd1, rd2, rd3, rd4, rd5, rd6, rd7, rd8,
-                     wr0, wr1, wr2, wr3, wr4a, wr4b, wr4, wr5, sidle, ioreg1, ioreg2);
+                     wr0, wr1, wr2, wr3, wr4a, wr4b, wr4, wr5, sidle, ioreg1, ioreg2, ioreg3);
 type icycletype is (iidle, pre, ref1, ref2, emode23, emode, lmode, emodeocd, finish);
 
 -- sdram configuration register
@@ -184,6 +184,7 @@ type ddr_reg_type is record
    dqsgate     : std_ulogic;
 end record;
 
+constant ramwt : integer := 0;
 signal vcc : std_ulogic;
 signal r, ri : ddr_reg_type;
 signal ra, rai : ahb_reg_type;
@@ -192,8 +193,17 @@ signal rdata, wdata : std_logic_vector(63 downto 0);
 signal ddr_rst : std_logic;
 signal ddr_rst_gen  : std_logic_vector(3 downto 0);
 signal dqsgate180   : std_ulogic;
-attribute syn_preserve : boolean;
+signal rwdata : std_logic_vector(63 downto 0);
+attribute keep                     : boolean;
+attribute syn_keep                 : boolean;
+attribute syn_preserve             : boolean;
+
+attribute keep of rbdrive : signal is true; 
+attribute syn_keep of rbdrive : signal is true; 
 attribute syn_preserve of rbdrive : signal is true; 
+attribute keep of rwdata : signal is true; 
+attribute syn_keep of rwdata : signal is true; 
+attribute syn_preserve of rwdata : signal is true;
 
 begin
 
@@ -218,7 +228,7 @@ begin
         v.sync(1) := r.startsdold; v.sync(2) := ra.sync(1);
         ready := ra.startsd_ack xor ra.sync(2);
       else
-        v.sync := (others => '0');
+        v.sync(1) := r.startsdold; v.sync(2) := '0';
         ready := ra.startsd_ack xor r.startsdold;
       end if;
       --------------------------------------------------------
@@ -250,13 +260,16 @@ begin
          end if;
       when rhold =>
          v.raddr := ra.haddr(7 downto 2);
+	 if (nosync = 1) and (ra.haddr(4) = '1') and (ramwt = 0) then
+           ready := ra.startsd_ack xor ra.sync(1);
+	 end if;
          if ready = '1' then 
             v.state := dread; v.hready := '1'; v.raddr := ra.raddr + 1;
          end if;
       when dread =>
          v.raddr := ra.raddr + 1; v.hready := '1';
          if ((v.hsel and v.htrans(1) and v.htrans(0)) = '0')
-            or (ra.raddr(2 downto 0) = "000") then
+            or (ra.raddr(2 downto 0) = "000") or (ra.hio = '1') then
             v.state := midle; v.hready := '0';
             v.startsd_ack := ra.startsd; 
          end if;
@@ -265,7 +278,7 @@ begin
          v.raddr := ra.haddr(7 downto 2); v.hready := '1';
          v.write(0) := not v.haddr(2); v.write(1) := v.haddr(2);
          if ((v.hsel and v.htrans(1) and v.htrans(0)) = '0')
-            or (ra.haddr(4 downto 2) = "111") then
+            or (ra.haddr(4 downto 2) = "111") or (ra.hio = '1') then
             v.startsd := not ra.startsd; v.state := whold1;
             v.write := "00"; v.hready := '0';
          end if;
@@ -623,9 +636,11 @@ begin
          else
             v.hrdata := regsd3 & regsd4;
          end if;
-         v.sdstate := ioreg2;
+         if nosync = 0 then v.sdstate := ioreg3; else v.sdstate := ioreg2; end if;
          if ra.acc.hwrite = '0' then v.hready := '1'; end if;
       when ioreg2 =>
+         v.sdstate := ioreg3;
+      when ioreg3 =>
          writecfg := ra.acc.hwrite;
          if nosync = 0 then
            v.startsdold := r.startsd;
@@ -912,11 +927,12 @@ begin
    sdo.dqs_gate <= r.dqsgate when r.cfg.dqsctrl(0) = '0' else
                    dqsgate180;
    
+   rwdata <= ri.hrdata(63 downto 0);
    read_buff : syncram_2p
-   generic map (tech => memtech, abits => 5, dbits => 64, sepclk => 1, wrfst => 0)
+   generic map (tech => memtech, abits => 5, dbits => 64, sepclk => 1, wrfst => ramwt)
    port map ( rclk => clk_ahb, renable => vcc, raddress => rai.raddr(5 downto 1),
               dataout => rdata, wclk => clk_ddr, write => ri.hready,
-              waddress => r.waddr(5 downto 1), datain => ri.hrdata);
+              waddress => r.waddr(5 downto 1), datain => rwdata);
 
    write_buff1 : syncram_2p
    generic map (tech => memtech, abits => 5, dbits => 32, sepclk => 1, wrfst => 0)

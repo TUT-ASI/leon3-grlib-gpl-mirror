@@ -731,6 +731,7 @@ proc menu1 {w title} {
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-ProasicPlus" -variable tmpvar_0 -value "Actel-ProasicPlus" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-Proasic3/E/L" -variable tmpvar_0 -value "Actel-Proasic3/E/L" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-IGLOO/p/L" -variable tmpvar_0 -value "Actel-IGLOO/p/L" -command "update_active"
+	$w.config.f.x0.x.menu add radiobutton -label "Actel-Fusion" -variable tmpvar_0 -value "Actel-Fusion" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Aeroflex-UT025CRH" -variable tmpvar_0 -value "Aeroflex-UT025CRH" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Atmel-ATC18" -variable tmpvar_0 -value "Atmel-ATC18" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Atmel-ATC18RHA" -variable tmpvar_0 -value "Atmel-ATC18RHA" -command "update_active"
@@ -756,7 +757,7 @@ proc menu1 {w title} {
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Virtex6" -variable tmpvar_0 -value "Xilinx-Virtex6" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "UMC180" -variable tmpvar_0 -value "UMC180" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "TSMC90" -variable tmpvar_0 -value "TSMC90" -command "update_active"
-	menusplit $w $w.config.f.x0.x.menu 37
+	menusplit $w $w.config.f.x0.x.menu 38
 	global tmpvar_1
 	minimenu $w.config.f 1 1 "Memory Library                           " tmpvar_1 CONFIG_MEM_INFERRED
 	menu $w.config.f.x1.x.menu -tearoffcommand "menutitle \"Memory Library                           \""
@@ -829,6 +830,8 @@ proc update_menu1 {} {
 	global CONFIG_SYN_INFER_PADS
 	if {($CONFIG_SYN_INFERRED != 1)} then {
 	configure_entry .menu1.config.f.x3 normal {n l y}} else {configure_entry .menu1.config.f.x3 disabled {y n l}}
+	global CONFIG_SYN_VIRTEX4
+	if {($CONFIG_SYN_VIRTEX4 == 1)} then {configure_entry .menu1.config.f.x6 normal {x l}} else {configure_entry .menu1.config.f.x6 disabled {x l}}
 }
 
 
@@ -860,6 +863,8 @@ proc update_define_menu1 {} {
 	if {$tmpvar_0 == "Actel-Proasic3/E/L"} then {set CONFIG_SYN_PROASIC3 1} else {set CONFIG_SYN_PROASIC3 0}
 	global CONFIG_SYN_IGLOO
 	if {$tmpvar_0 == "Actel-IGLOO/p/L"} then {set CONFIG_SYN_IGLOO 1} else {set CONFIG_SYN_IGLOO 0}
+	global CONFIG_SYN_FUSION
+	if {$tmpvar_0 == "Actel-Fusion"} then {set CONFIG_SYN_FUSION 1} else {set CONFIG_SYN_FUSION 0}
 	global CONFIG_SYN_UT025CRH
 	if {$tmpvar_0 == "Aeroflex-UT025CRH"} then {set CONFIG_SYN_UT025CRH 1} else {set CONFIG_SYN_UT025CRH 0}
 	global CONFIG_SYN_ATC18
@@ -4383,6 +4388,7 @@ set CONFIG_SYN_PROASIC 0
 set CONFIG_SYN_PROASICPLUS 0
 set CONFIG_SYN_PROASIC3 0
 set CONFIG_SYN_IGLOO 0
+set CONFIG_SYN_FUSION 0
 set CONFIG_SYN_UT025CRH 0
 set CONFIG_SYN_ATC18 0
 set CONFIG_SYN_ATC18RHA 0
@@ -4787,6 +4793,7 @@ proc writeconfig {file1 file2} {
 	if { $tmpvar_0 == "Actel-ProasicPlus" } then { write_tristate $cfg $autocfg CONFIG_SYN_PROASICPLUS 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_PROASICPLUS 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Actel-Proasic3/E/L" } then { write_tristate $cfg $autocfg CONFIG_SYN_PROASIC3 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_PROASIC3 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Actel-IGLOO/p/L" } then { write_tristate $cfg $autocfg CONFIG_SYN_IGLOO 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_IGLOO 0 [list $notmod] 2 }
+	if { $tmpvar_0 == "Actel-Fusion" } then { write_tristate $cfg $autocfg CONFIG_SYN_FUSION 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_FUSION 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Aeroflex-UT025CRH" } then { write_tristate $cfg $autocfg CONFIG_SYN_UT025CRH 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_UT025CRH 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Atmel-ATC18" } then { write_tristate $cfg $autocfg CONFIG_SYN_ATC18 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_ATC18 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Atmel-ATC18RHA" } then { write_tristate $cfg $autocfg CONFIG_SYN_ATC18RHA 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_ATC18RHA 0 [list $notmod] 2 }
@@ -4837,10 +4844,11 @@ proc writeconfig {file1 file2} {
 	global CONFIG_SYN_SCAN
 	write_tristate $cfg $autocfg CONFIG_SYN_SCAN $CONFIG_SYN_SCAN [list $notmod] 2
 	global tmpvar_2
-	
+	global CONFIG_SYN_VIRTEX4
+	if {($CONFIG_SYN_VIRTEX4 == 1)} then {
 	if { $tmpvar_2 == "XC4V-LX100" } then { write_tristate $cfg $autocfg CONFIG_FPGA_LX100 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_FPGA_LX100 0 [list $notmod] 2 }
 	if { $tmpvar_2 == "XC4V-LX160" } then { write_tristate $cfg $autocfg CONFIG_FPGA_LX160 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_FPGA_LX160 0 [list $notmod] 2 }
-	if { $tmpvar_2 == "XC4V-LX200" } then { write_tristate $cfg $autocfg CONFIG_FPGA_LX200 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_FPGA_LX200 0 [list $notmod] 2 }
+	if { $tmpvar_2 == "XC4V-LX200" } then { write_tristate $cfg $autocfg CONFIG_FPGA_LX200 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_FPGA_LX200 0 [list $notmod] 2 }}
 	write_comment $cfg $autocfg "Clock generation"
 	global tmpvar_3
 	
@@ -5363,6 +5371,7 @@ proc clear_choices { } {
 	global CONFIG_SYN_PROASICPLUS; set CONFIG_SYN_PROASICPLUS 0
 	global CONFIG_SYN_PROASIC3; set CONFIG_SYN_PROASIC3 0
 	global CONFIG_SYN_IGLOO; set CONFIG_SYN_IGLOO 0
+	global CONFIG_SYN_FUSION; set CONFIG_SYN_FUSION 0
 	global CONFIG_SYN_UT025CRH; set CONFIG_SYN_UT025CRH 0
 	global CONFIG_SYN_ATC18; set CONFIG_SYN_ATC18 0
 	global CONFIG_SYN_ATC18RHA; set CONFIG_SYN_ATC18RHA 0
@@ -5593,6 +5602,8 @@ proc update_choices { } {
 	if { $CONFIG_SYN_PROASIC3 == 1 } then { set tmpvar_0 "Actel-Proasic3/E/L" }
 	global CONFIG_SYN_IGLOO
 	if { $CONFIG_SYN_IGLOO == 1 } then { set tmpvar_0 "Actel-IGLOO/p/L" }
+	global CONFIG_SYN_FUSION
+	if { $CONFIG_SYN_FUSION == 1 } then { set tmpvar_0 "Actel-Fusion" }
 	global CONFIG_SYN_UT025CRH
 	if { $CONFIG_SYN_UT025CRH == 1 } then { set tmpvar_0 "Aeroflex-UT025CRH" }
 	global CONFIG_SYN_ATC18

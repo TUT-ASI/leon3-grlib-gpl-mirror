@@ -5,9 +5,6 @@ Development board, with 16-bit DDR SDRAM and 2 Mbyte of SSRAM.
 As of this time, the DDR interface only works up to 120 MHz.
 At 130 MHz, DDR data can be read but not written. 
 
-NOTE: the test bench cannot be simulated with DDR enabled
-because the Altera pads do not have the correct delay models.
-
 * The SMSC LAN91C111 10/100 Ethernet controller is attached
   to the I/O area of the memory controller at address 0x20000300.
   The ethernet interrupt is connected to GPIO[4], i.e. IRQ4.

@@ -58,7 +58,7 @@ architecture rtl of jtagcom is
   constant NOCMP : boolean := (isel /= 0);
 
   
-  type state_type is (shft, ahb);  
+  type state_type is (shft, ahb, nxt_shft);  
   
   type reg_type is record
     addr  : std_logic_vector(34 downto 0);
@@ -70,7 +70,8 @@ architecture rtl of jtagcom is
     tdi   : std_logic_vector(nsync-1 downto 0);
     shift : std_logic_vector(nsync-1 downto 0);
     shift2: std_ulogic;
-    shift3: std_ulogic;    
+    upd   : std_logic_vector(nsync-1 downto 0);
+    upd2  : std_ulogic;
     asel  : std_logic_vector(nsync-1 downto 0);
     dsel  : std_logic_vector(nsync-1 downto 0);
     tdi2  : std_ulogic;
@@ -99,10 +100,12 @@ begin
     end if;
     write := r.addr(34); seq := r.data(32);
     
-    v.tck(0) := r.tck(nsync-1); v.tck(nsync-1) := tapo.tck; v.tck2 := r.tck(0); v.shift2 := r.shift(0); v.shift3 := r.shift2;
+    v.tck(0) := r.tck(nsync-1); v.tck(nsync-1) := tapo.tck; v.tck2 := r.tck(0); v.shift2 := r.shift(0);
     v.trst(0) := r.trst(nsync-1); v.trst(nsync-1) := tapo.reset;
     v.tdi(0) := r.tdi(nsync-1); v.tdi(nsync-1) := tapo.tdi;
     v.shift(0) := r.shift(nsync-1); v.shift(nsync-1) := tapo.shift;
+    v.upd(0) := r.upd(nsync-1); v.upd(nsync-1) := tapo.upd;
+    v.upd2 := r.upd(0);
     v.asel(0) := r.asel(nsync-1); v.asel(nsync-1) := asel;
     v.dsel(0) := r.dsel(nsync-1); v.dsel(nsync-1) := dsel;
     v.tdi2 := r.tdi(0);
@@ -122,7 +125,7 @@ begin
             if r.asel(0) = '1' then v.addr := r.tdi2 & r.addr(34 downto 1); end if;
             if r.dsel(0) = '1' then v.data := r.tdi2 & r.data(32 downto 1); end if;
           end if;        
-        elsif r.shift3 = '1' then          
+        elsif r.upd2 = '1' then          
           if (r.asel(0) and not write) = '1' then v.state := ahb; end if;
           if (r.dsel(0) and (write or (not write and seq))) = '1' then -- data register
             v.state := ahb;
@@ -137,7 +140,7 @@ begin
         if dmao.active = '1' then
           if dmao.ready = '1' then
             v.data(31 downto 0) := dmao.rdata;
-            v.state := shft;
+            v.state := nxt_shft;
             if (write and seq) = '1' then
               v.addr(ADDBITS-1 downto 2) := r.addr(ADDBITS-1 downto 2) + 1;
             end if;
@@ -145,6 +148,9 @@ begin
         else
           vdmai.start := '1';
         end if;
+
+      when nxt_shft =>
+        if r.upd2 = '0' then v.state := shft; end if;
     end case;
 
     if (rst = '0') or (r.trst(0) = '1') then

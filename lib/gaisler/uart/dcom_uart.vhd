@@ -83,14 +83,13 @@ type uartregs is record
   txtick     	:  std_ulogic;	-- tx clock (internal)
   rxstate	:  rxfsmtype;
   rxclk 	:  std_logic_vector(2 downto 0); -- rx clock divider
-  rxdb  	:  std_ulogic;   -- rx data filtering buffer
+  rxdb  	:  std_logic_vector(1 downto 0);   -- rx data filtering buffer
   rxtick     	:  std_ulogic;	-- rx clock (internal)
   tick     	:  std_ulogic;	-- rx clock (internal)
   scaler	:  std_logic_vector(17 downto 0);
   brate 	:  std_logic_vector(17 downto 0);
   tcnt  	:  std_logic_vector(1 downto 0); -- autobaud counter
-  rxdb2  	:  std_ulogic;   -- delayed rx data
-  rxf    	:  std_logic_vector(7 downto 0); --  rx data filtering buffer
+  rxf    	:  std_logic_vector(4 downto 0); --  rx data filtering buffer
   fedge  	:  std_ulogic;   -- rx falling edge
 end record;
 
@@ -109,15 +108,15 @@ begin
 
     v := r;
     v.txtick := '0'; v.rxtick := '0'; v.tick := '0'; rdata := (others => '0');
+    v.rxdb(1) := r.rxdb(0);
 
 -- scaler
 
     if r.tcnt = "11" then scaler := r.scaler - 1;
     else scaler := r.scaler + 1; end if;
 
-    v.rxdb2 := r.rxdb;
     if r.tcnt /= "11" then
-      if (r.rxdb2 and not r.rxdb) = '1' then v.fedge := '1'; end if;
+      if (r.rxdb(1) and not r.rxdb(0)) = '1' then v.fedge := '1'; end if;
       if (r.fedge) = '1' then 
 	v.scaler := scaler;
 	if (v.scaler(17) and not r.scaler(16)) = '1' then
@@ -125,7 +124,7 @@ begin
 	  v.fedge := '0'; v.tcnt := "00";
 	end if;
       end if;
-      if (r.rxdb2 and r.fedge and not r.rxdb) = '1' then
+      if (r.rxdb(1) and r.fedge and not r.rxdb(0)) = '1' then
 	if (r.brate(17 downto 4)> r.scaler(17 downto 4)) then 
 	  v.brate := r.scaler; v.tcnt := "00";
 	end if;
@@ -139,7 +138,7 @@ begin
         end if;
       end if;
     else
-      if (r.break and r.rxdb2) = '1' then
+      if (r.break and r.rxdb(1)) = '1' then
 	v.scaler := "111111111111111011";
 	v.brate := (others => '1'); v.tcnt := "00";
  	v.break := '0'; v.rxen := '0';
@@ -158,7 +157,7 @@ begin
 
     case apbi.paddr(3 downto 2) is
     when "01" => 
-      rdata(6 downto 0) := r.frame & '0' & r.ovf & 
+      rdata(9 downto 0) := r.tcnt & r.rxdb(0) & r.frame & '0' & r.ovf & 
 		r.break & r.thempty & r.tsempty & r.dready;
     when "10" => 
       rdata(1 downto 0) := (r.tcnt(1) or r.tcnt(0)) & r.rxen;
@@ -198,12 +197,13 @@ begin
 
 -- filter rx data
 
-    v.rxf := r.rxf(6 downto 0) & ui.rxd;
-    if ((r.rxf(7) & r.rxf(7) & r.rxf(7) & r.rxf(7) & r.rxf(7) & r.rxf(7) &
-	 r.rxf(7)) = r.rxf(6 downto 0))
-    then v.rxdb := r.rxf(7); end if;
-
-    irxd := r.rxdb;
+    v.rxf(1 downto 0) := r.rxf(0) & ui.rxd;	-- meta-stability filter
+    if ((r.tcnt /= "11") and (r.scaler(0 downto 0) = "1")) or
+       ((r.tcnt = "11") and (r.tick = '1'))
+    then v.rxf(4 downto 2) := r.rxf(3 downto 1); end if;
+    v.rxdb(0) := (r.rxf(4) and r.rxf(3)) or (r.rxf(4) and r.rxf(2)) or 
+		  (r.rxf(3) and r.rxf(2));
+    irxd := r.rxdb(0);
 
 -- transmitter operation
 
@@ -243,7 +243,7 @@ begin
       if ((not r.rsempty) and not r.dready) = '1' then
 	v.rhold := r.rshift; v.rsempty := '1'; v.dready := '1';
       end if;
-      if (r.rxen and r.rxdb2 and (not irxd)) = '1' then
+      if (r.rxen and r.rxdb(1) and (not irxd)) = '1' then
 	v.rxstate := startbit; v.rshift := (others => '1'); v.rxclk := "100";
 	if v.rsempty = '0' then v.ovf := '1'; end if;
 	v.rsempty := '0'; v.rxtick := '0';
@@ -303,6 +303,7 @@ begin
     uo.txd <= r.tshift(0);
     uo.scaler <= r.brate;
     uo.rtsn <= '0';
+    uo.rxen <= andv(r.tcnt);
     uarto.dready <= r.dready;
     uarto.tsempty <= r.tsempty;
     uarto.thempty <= r.thempty;

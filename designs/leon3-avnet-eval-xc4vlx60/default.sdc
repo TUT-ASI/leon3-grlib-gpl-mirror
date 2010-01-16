@@ -10,14 +10,14 @@
 #
 # Clocks
 #
-define_clock            -name {clk_100mhz}  -freq 120.000 -clockgroup ddr_clkgroup
-define_clock            -name {clk_50mhz}  -freq 60.000 -clockgroup ahb_clkgroup
-define_clock            -name {etx_clk}  -freq 25.000 -clockgroup phy_rx_clkgroup -route 10.000
-define_clock            -name {erx_clk}  -freq 25.000 -clockgroup phy_tx_clkgroup -route 10.000
+define_clock {clk_100mhz}           -name {clk_100mhz}  -freq 120.000 -clockgroup ddr_clkgroup
+define_clock {clk_50mhz}           -name {clk_50mhz}  -freq 60.000 -clockgroup ahb_clkgroup
+define_clock {etx_clk}           -name {etx_clk}  -freq 25.000 -route 10.00 -clockgroup phy_rx_clkgroup
+define_clock {erx_clk}           -name {erx_clk}  -freq 25.000 -route 10.00 -clockgroup phy_tx_clkgroup 
 
 #define_clock            -name {leon3mp|ddrsp0.ddrc.ddr_phy0.clk} -freq 100.000 -route 1.0 -clockgroup ddr_clkgroup
 #define_clock            -name {leon3mp|clkgen0.clkin}  -freq 50.000 -route 1.0 -clockgroup ahb_clkgroup
-define_clock            -name {ddr_clk_fb}  -freq 125.000 -clockgroup ddr_fb_clkgroup -route 1.000
+define_clock {ddr_clk_fb}           -name {ddr_clk_fb}  -freq 125.000 -route 1.000 -clockgroup ddr_fb_clkgroup
 #
 # Clock to Clock
 #

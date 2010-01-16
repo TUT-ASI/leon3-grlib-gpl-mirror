@@ -36,7 +36,7 @@ package gencomp is
 
 -- technologies and libraries
 
-constant NTECH : integer := 36;
+constant NTECH : integer := 37;
 type tech_ability_type is array (0 to NTECH) of integer;
 
 constant inferred    : integer := 0;
@@ -76,6 +76,7 @@ constant tm65gpl     : integer := 33;
 constant axdsp       : integer := 34;
 constant spartan6    : integer := 35;
 constant virtex6     : integer := 36;
+constant actfus      : integer := 37;
 
 constant DEFMEMTECH  : integer := inferred;
 constant DEFPADTECH  : integer := inferred;
@@ -87,7 +88,7 @@ constant is_fpga : tech_ability_type :=
          virtex4 => 1, lattice => 1, spartan3e => 1, virtex5 => 1,
 	 stratix1 => 1, stratix2 => 1, eclipse => 1,
 	 stratix3 => 1, cyclone3 => 1, axdsp => 1, 
-	 spartan6 => 1, virtex6 => 1, others => 0);
+	 spartan6 => 1, virtex6 => 1, actfus => 1, others => 0);
 
 constant infer_mul : tech_ability_type := is_fpga;
 
@@ -119,7 +120,8 @@ constant has_dpram : tech_ability_type :=
 	 lattice => 1, spartan3e => 1, memartisan => 1, virtex5 => 1,
 	 custom1 => 1, stratix1 => 1, stratix2 => 1, stratix3 => 1,
 	 cyclone3 => 1, memvirage90 => 1, atc18rha => 1, smic013 => 1,
-	 tm65gpl => 1, axdsp => 1, spartan6 => 1, virtex6 => 1, others => 0);
+	 tm65gpl => 1, axdsp => 1, spartan6 => 1, virtex6 => 1, 
+	 actfus => 1, others => 0);
 
 constant has_sram64 : tech_ability_type :=
 	(inferred => 0, virtex2 => 1, spartan3 => 1, virtex4 => 1,
@@ -129,7 +131,7 @@ constant has_sram64 : tech_ability_type :=
 constant padoen_polarity : tech_ability_type :=
         (axcel => 1, proasic => 1, umc => 1, rhumc => 1, apa3 => 1,
          ihp25 => 1, ut25 => 1, peregrine => 1, easic90 => 1, axdsp => 1,
-	 others => 0);
+	 actfus => 1, others => 0);
 
 constant has_pads : tech_ability_type :=
 	(inferred => 0, virtex => 1, virtex2 => 1, memvirage => 0,
@@ -138,7 +140,7 @@ constant has_pads : tech_ability_type :=
          ihp25 => 1, rhlib18t => 1, virtex4 => 1, lattice => 0,
 	 ut25 => 1, spartan3e => 1, peregrine => 1, virtex5 => 1, axdsp => 1,
 	 easic90 => 1, atc18rha => 1, spartan6 => 1, virtex6 => 1, 
-         others => 0);
+         actfus => 1, others => 0);
 
 constant has_ds_pads : tech_ability_type :=
 	(inferred => 0, virtex => 1, virtex2 => 1, memvirage => 0,
@@ -146,7 +148,7 @@ constant has_ds_pads : tech_ability_type :=
 	 umc => 0, rhumc => 0, apa3 => 1, spartan3 => 1,
          ihp25 => 0, rhlib18t => 1, virtex4 => 1, lattice => 0,
 	 ut25 => 1, spartan3e => 1, virtex5 => 1, axdsp => 1,
-	 spartan6 => 1, virtex6 => 1, others => 0);
+	 spartan6 => 1, virtex6 => 1, actfus => 1, others => 0);
 
 constant has_ds_combo : tech_ability_type :=
 	( rhumc => 1, ut25 => 1, others => 0);
@@ -164,7 +166,7 @@ constant has_clkmux : tech_ability_type :=
 constant has_techbuf : tech_ability_type :=
         ( virtex => 1, virtex2 => 1, virtex4 => 1, virtex5 => 1,
           spartan3 => 1, spartan3e => 1, axcel => 1, ut25 => 1,
-	  apa3 => 1, easic90 => 1, axdsp => 1, others => 0);
+	  apa3 => 1, easic90 => 1, axdsp => 1, actfus => 1, others => 0);
 
 constant has_tapsel : tech_ability_type :=
         ( virtex => 1, virtex2 => 1, virtex4 => 1, virtex5 => 1,
@@ -206,7 +208,7 @@ constant is_unisim : tech_ability_type :=
   easic90   => "nextreme  ", atc18rha  => "atc18rha  ",
   smic013   => "smic13    ", tm65gpl =>   "tm65gplus ",
   axdsp     => "axdsp     ", spartan6  => "spartan6  ",
-  virtex6   => "virtex6   "
+  virtex6   => "virtex6   ", actfus    => "fusion    "
 );
 
 -- pragma translate_on

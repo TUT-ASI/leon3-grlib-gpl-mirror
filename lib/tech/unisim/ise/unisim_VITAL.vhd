@@ -126,6 +126,65 @@ begin
   SHIFT <= '0'; TDI  <= '0'; UPDATE <= '0';
 end;
 
+library ieee;
+use ieee.std_logic_1164.all;
+
+entity BSCAN_SPARTAN6 is
+  generic (
+     JTAG_CHAIN : integer := 1
+  );
+  port (
+     CAPTURE : out std_ulogic := 'H';
+     DRCK : out std_ulogic := 'H';
+     RESET : out std_ulogic := 'H';
+     RUNTEST : out std_ulogic := 'L';
+     SEL : out std_ulogic := 'L';
+     SHIFT : out std_ulogic := 'L';
+     TCK : out std_ulogic := 'L';
+     TDI : out std_ulogic := 'L';
+     TMS : out std_ulogic := 'L';
+     UPDATE : out std_ulogic := 'L';
+     TDO : in std_ulogic := 'X'
+  );
+end ;
+
+architecture behav of BSCAN_SPARTAN6 is
+begin
+  CAPTURE <= '0'; DRCK <= '0'; RUNTEST <= '0';
+  RESET <= '0'; SEL <= '0'; TCK <= '0'; TMS <= '0';
+  SHIFT <= '0'; TDI  <= '0'; UPDATE <= '0';
+end;
+
+library ieee;
+use ieee.std_logic_1164.all;
+
+entity BSCAN_VIRTEX6 is
+  generic (
+     DISABLE_JTAG : boolean := FALSE;
+     JTAG_CHAIN : integer := 1
+  );
+  port (
+     CAPTURE : out std_ulogic := 'H';
+     DRCK : out std_ulogic := 'H';
+     RESET : out std_ulogic := 'H';
+     RUNTEST : out std_ulogic := 'L';
+     SEL : out std_ulogic := 'L';
+     SHIFT : out std_ulogic := 'L';
+     TCK : out std_ulogic := 'L';
+     TDI : out std_ulogic := 'L';
+     TMS : out std_ulogic := 'L';
+     UPDATE : out std_ulogic := 'L';
+     TDO : in std_ulogic := 'X'
+  );
+end ;
+
+architecture behav of BSCAN_VIRTEX6 is
+begin
+  CAPTURE <= '0'; DRCK <= '0'; RUNTEST <= '0';
+  RESET <= '0'; SEL <= '0'; TCK <= '0'; TMS <= '0';
+  SHIFT <= '0'; TDI  <= '0'; UPDATE <= '0';
+end;
+
 library ieee; use ieee.std_logic_1164.all;
 entity BUFGMUX is port (O : out std_logic; I0, I1, S : in std_logic); end;
 architecture beh of BUFGMUX is
@@ -33097,7 +33156,7 @@ RAMB36_inst : ARAMB36_INTERNAL
 		INITP_0E => INITP_0E,
 		INITP_0F => INITP_0F,
                 
-		SIM_COLLISION_CHECK => SIM_COLLISION_CHECK,
+		SIM_COLLISION_CHECK => "NONE",
                 SIM_MODE => SIM_MODE,
 		SRVAL_A => SRVAL_A,
 		SRVAL_B => SRVAL_B,
@@ -33171,5 +33230,100 @@ RAMB36_inst : ARAMB36_INTERNAL
    end process prcs_output_wtiming;
 
 end RAMB36_V;
+
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.all;
+
+library UNISIM;
+use UNISIM.VCOMPONENTS.all;
+
+entity BUFGCE is
+     port(
+	 O : out STD_ULOGIC;
+         
+	 CE: in STD_ULOGIC;
+	 I : in STD_ULOGIC
+         );
+end BUFGCE;
+
+architecture BUFGCE_V of BUFGCE is
+
+    signal NCE : STD_ULOGIC := 'X';
+    signal GND : STD_ULOGIC := '0';
+
+begin
+    B1 : BUFGMUX 
+	port map (
+	I0 => I,
+	I1 => GND,
+	O =>O,
+	s =>NCE);
+
+    I1 : INV
+	port map (
+	I => CE,
+	O => NCE);
+
+end BUFGCE_V;
+
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.all;
+
+library UNISIM;
+use UNISIM.VPKG.all;
+
+entity RAM64X1S is
+  generic (
+    INIT : bit_vector(63 downto 0) := X"0000000000000000"
+    );
+
+  port (
+    O : out std_ulogic;
+
+    A0   : in std_ulogic;
+    A1   : in std_ulogic;
+    A2   : in std_ulogic;
+    A3   : in std_ulogic;
+    A4   : in std_ulogic;
+    A5   : in std_ulogic;
+    D    : in std_ulogic;
+    WCLK : in std_ulogic;
+    WE   : in std_ulogic
+    );
+end RAM64X1S;
+
+architecture RAM64X1S_V of RAM64X1S is
+  signal MEM : std_logic_vector( 64 downto 0 ) := ('X' & To_StdLogicVector(INIT) );
+
+begin
+  VITALReadBehavior  : process(A0, A1, A2, A3, A4, A5, MEM)
+    variable Index   : integer := 64;
+    variable Address : std_logic_vector (5 downto 0);
+
+  begin
+    Address := (A5, A4, A3, A2, A1, A0);
+    Index   := SLV_TO_INT(SLV => Address);
+    O <= MEM(Index);      
+  end process VITALReadBehavior;
+
+  VITALWriteBehavior : process(WCLK)
+    variable Index   : integer := 64;
+    variable Address : std_logic_vector (5 downto 0);
+  begin
+    if (rising_edge(WCLK)) then
+      if (WE = '1') then
+        Address                := (A5, A4, A3, A2, A1, A0);
+        Index                  := SLV_TO_INT(SLV => Address);
+        MEM(Index) <= D after 100 ps;
+      end if;
+    end if;
+  end process VITALWriteBehavior;
+end RAM64X1S_V;
+
+
+
+
 -- pragma translate_on
 

@@ -282,12 +282,8 @@ begin
   xc4v : if (tech = virtex4) or (tech = virtex5) or (tech = virtex6) generate
 
     ddr_phy0 : virtex5_ddr2_phy 
-     generic map (MHz => MHz, rstdelay => rstdelay
--- reduce 200 us start-up delay during simulation
--- pragma translate_off
-	/ 200
--- pragma translate_on
-	, clk_mul => clk_mul, clk_div => clk_div, dbits => dbits,
+     generic map (MHz => MHz, rstdelay => rstdelay,
+	clk_mul => clk_mul, clk_div => clk_div, dbits => dbits,
 	ddelayb0 => ddelayb0, ddelayb1 => ddelayb1, ddelayb2 => ddelayb2, 
 	ddelayb3 => ddelayb3, ddelayb4 => ddelayb4, ddelayb5 => ddelayb5, 
 	ddelayb6 => ddelayb6, ddelayb7 => ddelayb7,
@@ -307,12 +303,8 @@ begin
   stra2 : if (tech = stratix2) generate
 
       ddr_phy0 : stratixii_ddr2_phy
-      generic map (MHz => MHz, rstdelay => rstdelay
-        -- reduce 200 us start-up delay during simulation
-        -- pragma translate_off
-        / 200
-        -- pragma translate_on
-        , clk_mul => clk_mul, clk_div => clk_div, dbits => dbits
+      generic map (MHz => MHz, rstdelay => rstdelay,
+        clk_mul => clk_mul, clk_div => clk_div, dbits => dbits
       )
       port map (
         rst, clk, clkout, lock, ddr_clk, ddr_clkb,
@@ -326,12 +318,8 @@ begin
   stra3 : if (tech = stratix3) generate
 
     ddr_phy0 : stratixiii_ddr2_phy 
-     generic map (MHz => MHz, rstdelay => rstdelay
--- reduce 200 us start-up delay during simulation
--- pragma translate_off
-	/ 200
--- pragma translate_on
-	, clk_mul => clk_mul, clk_div => clk_div, dbits => dbits,
+     generic map (MHz => MHz, rstdelay => rstdelay,
+	clk_mul => clk_mul, clk_div => clk_div, dbits => dbits,
 	ddelayb0 => ddelayb0, ddelayb1 => ddelayb1, ddelayb2 => ddelayb2, 
 	ddelayb3 => ddelayb3, ddelayb4 => ddelayb4, ddelayb5 => ddelayb5, 
 	ddelayb6 => ddelayb6, ddelayb7 => ddelayb7,
@@ -350,12 +338,8 @@ begin
 
   sp3a : if (tech = spartan3) generate
     ddr_phy0 : spartan3a_ddr2_phy 
-     generic map (MHz => MHz, rstdelay => rstdelay
--- reduce 200 us start-up delay during simulation
--- pragma translate_off
-                  / 200
--- pragma translate_on
-                  , clk_mul => clk_mul, clk_div => clk_div, dbits => dbits, tech => tech, rskew => rskew,
+     generic map (MHz => MHz, rstdelay => rstdelay,
+                  clk_mul => clk_mul, clk_div => clk_div, dbits => dbits, tech => tech, rskew => rskew,
                   eightbanks => eightbanks)
      port map (   rst, clk, clkout, lock, ddr_clk, ddr_clkb, ddr_clk_fb_out, ddr_clk_fb,
                   ddr_cke, ddr_csb, ddr_web, ddr_rasb, ddr_casb, 
@@ -383,13 +367,10 @@ begin
   end generate;
 
   sp6 : if  (tech = spartan6) generate
-    ddr_phy0 : spartan6_ddr2_phy 
-     generic map (MHz => MHz, rstdelay => rstdelay
--- reduce 200 us start-up delay during simulation
--- pragma translate_off
-                  / 200
--- pragma translate_on
-                  , clk_mul => clk_mul, clk_div => clk_div, dbits => dbits, tech => tech, rskew => rskew,
+--    ddr_phy0 : spartan6_ddr2_phy 
+    ddr_phy0 : spartan3a_ddr2_phy 
+     generic map (MHz => MHz, rstdelay => rstdelay,
+                  clk_mul => clk_mul, clk_div => clk_div, dbits => dbits, tech => tech, rskew => rskew,
                   eightbanks => eightbanks)
      port map (   rst, clk, clkout, lock, ddr_clk, ddr_clkb, ddr_clk_fb_out, ddr_clk_fb,
                   ddr_cke, ddr_csb, ddr_web, ddr_rasb, ddr_casb, 

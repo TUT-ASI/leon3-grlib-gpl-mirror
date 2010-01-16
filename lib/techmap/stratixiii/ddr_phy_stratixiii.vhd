@@ -261,7 +261,8 @@ type phy_r_type is record
 end record;
 type phy_r_type_arr is array (7 downto 0) of phy_r_type;
 signal r,rin : phy_r_type_arr;
-signal rp : std_logic_vector(3 downto 0);
+signal rp : std_logic_vector(8 downto 0);
+signal rlockl : std_logic;
 
 constant DDR_FREQ : integer := (MHz * clk_mul) / clk_div;
 
@@ -296,8 +297,8 @@ begin
   port map(
     areset  => reset,
     inclk0  => clk,
-    phasestep   => rp(1),
-    phaseupdown => rp(3),
+    phasestep   => rp(3),--rp(1),
+    phaseupdown => rp(8),--rp(3),
     scanclk     => clk0r,
     c0      => clk0r,
     c1      => clk90r,
@@ -323,17 +324,20 @@ begin
       if rising_edge(clk0r) then
         co := cnt(15);
         vlockl <= vlock;
-        if lockl = '0' then
+        if rlockl = '0' then
           cnt := conv_std_logic_vector(rstdelay*DDR_FREQ, 16); vlock := '0';
           cnt(0) := dqsin_reg(7) or dqsin_reg(6) or dqsin_reg(5) or dqsin_reg(4) or  -- dummy use of dqsin
                     dqsin_reg(3) or dqsin_reg(2) or dqsin_reg(1) or dqsin_reg(0);
+-- pragma translate_off
+          cnt(0) := '0';
+-- pragma translate_on
         else
           if vlock = '0' then
             cnt := cnt -1;  vlock := cnt(15) and not co;
           end if;
         end if;
       end if;
-      if lockl = '0' then
+      if rlockl = '0' then
         vlock := '0';
       end if;
     end process;
@@ -595,9 +599,22 @@ begin
           delayrst <= delayrst(2 downto 0) & '1';
           r <= rin;
           -- PLL phase config
-          rp(0) <= cal_pll(0); rp(1) <= cal_pll(0) or rp(0); 
-          rp(2) <= cal_pll(1); rp(3) <= cal_pll(1) or rp(2);
+          -- Active puls is extended to be sampled vith scanclk = (ddr clock / 2)
+          --rp(0) <= cal_pll(0); rp(1) <= cal_pll(0) or rp(0); 
+          rp(0) <= cal_pll(0); rp(1) <= rp(0); rp(2) <= rp(1); rp(3) <= cal_pll(0) or rp(0) or rp(1) or rp(2); 
+          --rp(2) <= cal_pll(1); rp(3) <= cal_pll(1) or rp(2);
+          --rp(2) <= cal_pll(1); rp(4) <= cal_pll(1) or rp(2); rp(3) <= rp(4);
+          rp(4) <= cal_pll(1); rp(5) <= rp(4); rp(6) <= rp(5); rp(7) <= rp(6); rp(8) <= cal_pll(1) or rp(4) or rp(5) or rp(6) or rp(7); 
         end if; 
+      end process;
+
+      process(lockl,clk0r)
+      begin
+        if lockl = '0' then
+          rlockl <= '0';
+        elsif rising_edge(clk0r) then
+          rlockl <= lockl;
+        end if;
       end process;
 end;
 

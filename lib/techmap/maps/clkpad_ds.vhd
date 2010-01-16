@@ -54,6 +54,9 @@ begin
   pa : if (tech = apa3) generate
     u0 : apa3_clkpad_ds generic map (level) port map (padp, padn, o);
   end generate;
+  fus : if (tech = actfus) generate
+    u0 : fusion_clkpad_ds generic map (level) port map (padp, padn, o);
+  end generate;
   rht : if (tech = rhlib18t) generate
     u0 : rh_lib18t_inpad_ds port map (padp, padn, o, gnd);
   end generate;

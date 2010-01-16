@@ -109,9 +109,10 @@ signal clk2     : std_ulogic := '1';
   signal ddr_casb  	: std_ulogic;                       -- ddr cas
   signal ddr_dm   	: std_logic_vector (1 downto 0);    -- ddr dm
   signal ddr_dqs  	: std_logic_vector (1 downto 0);    -- ddr dqs
+  signal ddr_dqs2  	: std_logic_vector (1 downto 0);    -- ddr dqs
   signal ddr_ad      : std_logic_vector (12 downto 0);   -- ddr address
   signal ddr_ba      : std_logic_vector (1 downto 0);    -- ddr bank address
-  signal ddr_dq  		: std_logic_vector (15 downto 0); -- ddr data
+  signal ddr_dq, ddr_dq2 : std_logic_vector (15 downto 0); -- ddr data
 
 signal plllock    : std_ulogic;       
 signal txd1, rxd1 : std_ulogic;       
@@ -159,6 +160,14 @@ begin
   rst <= dsurst;
   dsubren <= '1'; rxd1 <= '1';
 
+  dqs2delay : delay_wire 
+    generic map(data_width => ddr_dqs'length, delay_atob => 3.0, delay_btoa => 1.0)
+    port map(a => ddr_dqs, b => ddr_dqs2);
+
+  ddr2delay : delay_wire 
+    generic map(data_width => ddr_dq'length, delay_atob => 3.0, delay_btoa => 1.0)
+    port map(a => ddr_dq, b => ddr_dq2);
+
 --  ddr_dqs <= (others => 'L');
   d3 : entity work.leon3mp generic map (fabtech, memtech, padtech, clktech, 
 	ncpu, disas, dbguart, pclow )
@@ -167,7 +176,7 @@ begin
 	ssram_ce1n, ssram_ce2, ssram_ce3n, ssram_wen, ssram_bw, ssram_oen, ssaddr, ssdata,
 	ssram_clk, ssram_adscn, ssram_adsp_n, ssram_adv_n,  iosn,
 	ddr_clkin, ddr_clk, ddr_clkb, ddr_cke, ddr_csb, ddr_web, ddr_rasb, 
-	ddr_casb, ddr_dm, ddr_dqs, ddr_ad, ddr_ba, ddr_dq, 
+	ddr_casb, ddr_dm, ddr_dqs2, ddr_ad, ddr_ba, ddr_dq2, 
 	dsubren, dsuact, rxd1, txd1, 
 	ata_data, ata_da, ata_cs0, ata_cs1, 
 	ata_dior, ata_diow, ata_iordy, ata_intrq, ata_dmarq, ata_dmack, cf_power, 

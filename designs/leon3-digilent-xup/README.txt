@@ -26,11 +26,11 @@ This leon3 design is tailored to the Digilent Virtex2-Pro XUP board
 * The GRETH core is enabled and runs without problems at 100 Mbit.
   Ethernet debug link is enabled, default IP is 192.168.0.51.
 
-* DDR is mapped at address 0x40000000. Any DDR DIMM between
+* DDR is mapped at address 0x40000000. Any PC2100 DDR DIMM between
   128 - 1024 Mbyte can be used. Note that the DIMM must
   support CL=2 and run on 2.5 V. The DDR frequency should
-  be set to 90 - 120 MHz.  The processor and AMBA system 
-  runs on a different clock, and can typically reach 60 - 70 MHz.
+  be set to 100 MHz.  The processor and AMBA system 
+  runs on a different clock, and can typically reach 70 - 90 MHz.
 
 * IMPORTANT : If you download a new bitfile to the FPGA, make sure you
   press the reset button shortly to reset the clock DLLs. Otherwise
@@ -58,24 +58,18 @@ This leon3 design is tailored to the Digilent Virtex2-Pro XUP board
 
 grmon -eth -ip 192.168.0.51
 
- GRMON LEON debug monitor v1.1.32
-
- Copyright (C) 2004-2008 Aeroflex Gaisler - all rights reserved.
- For latest updates, go to http://www.gaisler.com/
- Comments or bug-reports to support@gaisler.com
-
 
  ethernet startup.
- GRLIB build version: 3323
+ GRLIB build version: 4090
 
  initialising ...............
- detected frequency:  65 MHz
+ detected frequency:  65 MHz 
 
  Component                            Vendor
  LEON3 SPARC V8 Processor             Gaisler Research
  AHB Debug UART                       Gaisler Research
  AHB Debug JTAG TAP                   Gaisler Research
- SVGA frame buffer                    Gaisler Research
+ SVGA Controller                      Gaisler Research
  GR Ethernet MAC                      Gaisler Research
  AHB ROM                              Gaisler Research
  AHB/APB Bridge                       Gaisler Research
@@ -92,43 +86,43 @@ grmon -eth -ip 192.168.0.51
 
 grlib> inf sys
 00.01:003   Gaisler Research  LEON3 SPARC V8 Processor (ver 0x0)
-             ahb master 0
-01.01:007   Gaisler Research  AHB Debug UART (ver 0x0)
-             ahb master 1
-             apb: 80000400 - 80000500
-             baud rate 115200, ahb frequency 65.00
-02.01:01c   Gaisler Research  AHB Debug JTAG TAP (ver 0x0)
-             ahb master 2
-03.01:063   Gaisler Research  SVGA frame buffer (ver 0x0)
-             ahb master 3
-             apb: 80000600 - 80000700
-             clk0: 25.00 MHz  clk1: 50.00 MHz  clk2: 65.00 MHz
-04.01:01d   Gaisler Research  GR Ethernet MAC (ver 0x0)
-             ahb master 4, irq 12
-             apb: 80000b00 - 80000c00
-             edcl ip 192.168.0.51, buffer 2 kbyte
-00.01:01b   Gaisler Research  AHB ROM (ver 0x0)
-             ahb: 00000000 - 00100000
-01.01:006   Gaisler Research  AHB/APB Bridge (ver 0x0)
-             ahb: 80000000 - 80100000
+             ahb master 0                                       
+01.01:007   Gaisler Research  AHB Debug UART (ver 0x0)          
+             ahb master 1                                       
+             apb: 80000400 - 80000500                           
+             baud rate 115200, ahb frequency 65.00              
+02.01:01c   Gaisler Research  AHB Debug JTAG TAP (ver 0x0)      
+             ahb master 2                                       
+03.01:063   Gaisler Research  SVGA Controller (ver 0x0)         
+             ahb master 3                                       
+             apb: 80000600 - 80000700                           
+             clk0: 25.00 MHz  clk1: 50.00 MHz  clk2: 65.00 MHz  
+04.01:01d   Gaisler Research  GR Ethernet MAC (ver 0x0)         
+             ahb master 4, irq 12                               
+             apb: 80000b00 - 80000c00                           
+             edcl ip 192.168.0.53, buffer 2 kbyte               
+00.01:01b   Gaisler Research  AHB ROM (ver 0x0)                 
+             ahb: 00000000 - 00100000                           
+01.01:006   Gaisler Research  AHB/APB Bridge (ver 0x0)          
+             ahb: 80000000 - 80100000                           
 02.01:004   Gaisler Research  LEON3 Debug Support Unit (ver 0x1)
-             ahb: 90000000 - a0000000
-             AHB trace 128 lines, stack pointer 0x4ffffff0
-             CPU#0 win 8, hwbp 2, itrace 128, V8 mul/div, srmmu, lddel 1
+             ahb: 90000000 - a0000000                           
+             AHB trace 256 lines, 32-bit bus, stack pointer 0x4ffffff0
+             CPU#0 win 8, hwbp 2, itrace 256, V8 mul/div, srmmu, lddel 1, GRFPU-lite
                    icache 2 * 8 kbyte, 32 byte/line lru
                    dcache 2 * 4 kbyte, 32 byte/line lru
 03.01:025   Gaisler Research  DDR266 Controller (ver 0x0)
              ahb: 40000000 - 80000000
              ahb: fff00100 - fff00200
              64-bit DDR : 2 * 128 Mbyte @ 0x40000000
-                           90 MHz, col 10, ref 7.8 us, trfc 77 ns
+                          100 MHz, col 10, ref 7.8 us, trfc 80 ns
 05.01:067   Gaisler Research  System ACE I/F Controller (ver 0x0)
              irq 13
              ahb: fff00300 - fff00400
 01.01:00c   Gaisler Research  Generic APB UART (ver 0x1)
              irq 2
              apb: 80000100 - 80000200
-             baud rate 38325
+             baud rate 38325, DSU mode (FIFO debug)
 02.01:00d   Gaisler Research  Multi-processor Interrupt Ctrl (ver 0x3)
              apb: 80000200 - 80000300
 03.01:011   Gaisler Research  Modular Timer Unit (ver 0x0)
@@ -141,7 +135,7 @@ grlib> inf sys
 07.01:060   Gaisler Research  PS/2 interface (ver 0x2)
              irq 4
              apb: 80000700 - 80000800
-grlib> 
+grlib>
 
 
 [Booting the system in hardware]
@@ -161,7 +155,8 @@ below are for a design where GRMON 'info sys' reports:
              ahb: 40000000 - 80000000
              ahb: fff00100 - fff00200
              64-bit DDR : 2 * 128 Mbyte @ 0x40000000
-                           90 MHz, col 10, ref 7.8 us, trfc 77 ns
+                          100 MHz, col 10, ref 7.8 us, trfc 80 ns
+
 
 The application that will be included in the PROM image looks like:
 
@@ -182,7 +177,7 @@ Then generate the PROM image. Please see the mkprom2 manual for additional
 information and a description of the parameters. The default name for the 
 created image  is 'prom.out':
 
-user@host:~/grlib/designs/leon3-digilent-xup$ mkprom2 -baud 38400 -freq 65 -ddrram 128 -ddrfreq 90 -ddrcol 1024 -msoft-float hello
+user@host:~/grlib/designs/leon3-digilent-xup$ mkprom2 -baud 38400 -freq 65 -ddrram 128 -ddrfreq 100 -ddrcol 1024 -msoft-float hello
 
 The next step is to remove the existing ahbrom.vhd from the template design:
 

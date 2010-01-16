@@ -16,10 +16,12 @@ mainmenu_name "LEON3MP GR-CPCI-XC4V Design Configuration"
 mainmenu_option next_comment
   comment 'Synthesis      '
   source lib/techmap/gencomp/tech.in
-  choice 'FPGA type                                      ' \
-	"XC4V-LX100		CONFIG_FPGA_LX100 \
-	XC4V-LX160		CONFIG_FPGA_LX160 \
-	XC4V-LX200     		CONFIG_FPGA_LX200" XC4V-LX100
+  if [ "$CONFIG_SYN_VIRTEX4" = "y" ]; then
+    choice 'FPGA type                                      ' \
+	  "XC4V-LX100		CONFIG_FPGA_LX100 \
+          XC4V-LX160		CONFIG_FPGA_LX160 \
+          XC4V-LX200   		CONFIG_FPGA_LX200" XC4V-LX100
+  fi
 endmenu
 
 mainmenu_option next_comment

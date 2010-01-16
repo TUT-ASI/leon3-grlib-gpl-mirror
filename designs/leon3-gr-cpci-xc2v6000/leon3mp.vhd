@@ -268,7 +268,7 @@ begin
       		irqi(i), irqo(i), dbgi(i), dbgo(i), fpi(i), fpo(i));
     end generate;
     
-    grfpush0 : grfpushwx generic map ((CFG_FPU-1), CFG_NCPU)
+    grfpush0 : grfpushwx generic map ((CFG_FPU-1), CFG_NCPU, fabtech)
       port map (clkm, rstn, fpi, fpo);
     end generate;
       

@@ -9,6 +9,7 @@ TIMESPEC "TS_clk_50mhz" = PERIOD "clk_50mhz" 20.00 ns HIGH 50 %;
 NET "etx_clk" CLOCK_DEDICATED_ROUTE = FALSE;
 NET "erx_clk" CLOCK_DEDICATED_ROUTE = FALSE;
 NET "ddr_clk_fb" CLOCK_DEDICATED_ROUTE = FALSE;
+NET "ddr_clk_fb" MAXDELAY = 1660 ps;
 
 #############################################################################
 ##                           RESET, UART                                   ##
@@ -519,3 +520,6 @@ NET "ddrsp0.ddrc/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/rclk90b" TNM_NET = "rclk90b";
 TIMEGRP "rclk270b_rise" = FALLING "rclk90b";
 TIMEGRP "clkml_rise" = RISING "clkml";
 TIMESPEC "TS_rclk270b_clkml_rise" = FROM "rclk270b_rise" TO "clkml_rise" 5.500;
+NET "*dqinl*" MAXDELAY = 1900 ps;
+NET "ddrsp0.ddrc/ddr16.ddrc/rwdata*" MAXDELAY = 2100 ps;
+#NET "*rclk180b" MAXDELAY = 2040 ps;

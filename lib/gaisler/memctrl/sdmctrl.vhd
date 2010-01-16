@@ -481,10 +481,13 @@ begin
 	    end if;
 	  end if;
         when "111" => -- Load Ext-Mode Reg
-          v.sdcsn := (others => '0'); v.rasn := '0'; v.casn := '0';
-          v.sdwen := '0'; v.cmstate := active;
-          v.address(16 downto 2) := "10000000" & r.cfg.ds(1 downto 0) & r.cfg.tcsr(1 downto 0) 
-                                    & r.cfg.pasr(2 downto 0);
+          if (sdi.idle = '1') then
+            v.busy := '1';
+            v.sdcsn := (others => '0'); v.rasn := '0'; v.casn := '0';
+            v.sdwen := '0'; v.cmstate := active;
+            v.address(16 downto 2) := "10000000" & r.cfg.ds(1 downto 0) & r.cfg.tcsr(1 downto 0) 
+                                      & r.cfg.pasr(2 downto 0);
+          end if;
         when others => null;
         end case;
       end if;

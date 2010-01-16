@@ -35,8 +35,9 @@ asm(
 "	.data\n"
 "	.align 4\n"
 "	.global mpsem\n"
-/*"mpsem:	.word 1\n"*/
 "mpsem:	.word 0\n"
+"	.text \n"
+"	.align 4\n"
 	
 );
 

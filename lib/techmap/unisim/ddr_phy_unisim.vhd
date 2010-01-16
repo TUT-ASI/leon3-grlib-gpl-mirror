@@ -2015,7 +2015,7 @@ architecture rtl of spartan3a_ddr2_phy is
   signal clk_90ro                            : std_ulogic;
   signal clk0r, clk90r, clk180r, clk270r     : std_ulogic;
   signal rclk0b, rclk90b, rclk180b, rclk270b : std_ulogic;
-  signal rclk0, rclk90, rclk270              : std_ulogic;
+  signal rclk0, rclk90, rclk180, rclk270     : std_ulogic;
   signal rclk0b_high, rclk90b_high, rclk270b_high : std_ulogic;
   signal rclk0_high, rclk90_high, rclk270_high : std_ulogic;
   signal locked, vlockl, dllfb               : std_ulogic;
@@ -2030,7 +2030,7 @@ architecture rtl of spartan3a_ddr2_phy is
   signal ddr_dqsoen                          : std_logic_vector (dbits/8-1 downto 0);    -- ddr dqs
   signal ddr_dqsoutl                         : std_logic_vector (dbits/8-1 downto 0);    -- ddr dqs
   signal dqinl                               : std_logic_vector (dbits*2-1 downto 0);    -- ddr data
-  signal dllrst                              : std_ulogic;
+  signal dllrst                              : std_logic_vector(0 to 3);
   signal dll0rst                             : std_ulogic;
   signal dll1rst                             : std_ulogic;
   signal mlock, mclkfb, mclk, mclkfx, mclk0  : std_ulogic;
@@ -2057,13 +2057,6 @@ architecture rtl of spartan3a_ddr2_phy is
   attribute syn_noprune of FD : component is true;
   attribute syn_noprune of IDDR2 : component is true;
   attribute syn_noprune of ODDR2 : component is true;
-
-  -- We do not want XST (10.1.03) to insert a BUFG on rclk180b since this
-  -- means that ISE will not be able to perform clock placement - at least
-  -- not on the xc3sd design which is the only design that uses this PHY at
-  -- the time of writing.
-  attribute buffer_type : string;
-  attribute buffer_type of rclk180b : signal is "none";
 
 begin
 
@@ -2106,7 +2099,7 @@ begin
     generic map (CLKFX_MULTIPLY => 2, CLKFX_DIVIDE => 2, 
                  CLKOUT_PHASE_SHIFT => "FIXED", PHASE_SHIFT => 64)
     port map (CLKIN => mclk, CLKFB => dllfb, DSSEN => gnd, PSCLK => gnd,
-              PSEN => gnd, PSINCDEC => gnd, RST => dllrst, CLK0 => clk_90ro,
+              PSEN => gnd, PSINCDEC => gnd, RST => dllrst(0), CLK0 => clk_90ro,
               CLK90 => open, CLK180 => open, CLK270 => open,
               LOCKED => lockl);
 
@@ -2118,9 +2111,9 @@ begin
   rstdel : process (mclk, rst, mlock)
   begin
     if rst = '0' or mlock = '0' then
-      dllrst <= '1';
+      dllrst <= (others => '1');
     elsif rising_edge(mclk) then
-      dllrst <= '0';
+      dllrst <= dllrst(1 to 3) & '0';
     end if;
   end process;
 
@@ -2275,14 +2268,16 @@ begin
   end process;
 
   bufg7 : BUFG port map (I => rclk90,  O => rclk90b);
-  bufg8 : BUFG port map (I => rclk270, O => rclk270b);
+--  bufg8 : BUFG port map (I => rclk270, O => rclk270b);
+  rclk270b <= not rclk90b;
+  bufg9 : BUFG port map (I => rclk180, O => rclk180b);
 
   read_dll : DCM
     generic map (clkin_period => 8.0, DESKEW_ADJUST => "SOURCE_SYNCHRONOUS", 
                  CLKOUT_PHASE_SHIFT => "VARIABLE", PHASE_SHIFT => rskew)
     port map ( CLKIN => ddr_clk_fbl, CLKFB => rclk90b, DSSEN => gnd, PSCLK => mclk,
                PSEN => cal_pll(0), PSINCDEC => cal_pll(1), RST => dll1rst, CLK0 => rclk90,
-               CLK90 => rclk180b, CLK180 => rclk270);
+               CLK90 => rclk180); --, CLK180 => rclk270);
   
   -- Data bus
   ddgen : for i in 0 to dbits-1 generate
@@ -2318,7 +2313,7 @@ begin
 end;
 
 ------------------------------------------------------------------
--- Spartan 3A DDR2 PHY -------------------------------------------
+-- Spartan 6 DDR2 PHY  -------------------------------------------
 ------------------------------------------------------------------
 library ieee;
 use ieee.std_logic_1164.all;
@@ -2470,7 +2465,7 @@ architecture rtl of spartan6_ddr2_phy is
   signal clk_90ro                            : std_ulogic;
   signal clk0r, clk90r, clk180r, clk270r     : std_ulogic;
   signal rclk0b, rclk90b, rclk180b, rclk270b : std_ulogic;
-  signal rclk0, rclk90, rclk270              : std_ulogic;
+  signal rclk0, rclk90, rclk180, rclk270              : std_ulogic;
   signal rclk0b_high, rclk90b_high, rclk270b_high : std_ulogic;
   signal rclk0_high, rclk90_high, rclk270_high : std_ulogic;
   signal locked, vlockl, dllfb               : std_ulogic;
@@ -2512,13 +2507,6 @@ architecture rtl of spartan6_ddr2_phy is
   attribute syn_noprune of FD : component is true;
   attribute syn_noprune of IDDR2 : component is true;
   attribute syn_noprune of ODDR2 : component is true;
-
-  -- We do not want XST (10.1.03) to insert a BUFG on rclk180b since this
-  -- means that ISE will not be able to perform clock placement - at least
-  -- not on the xc3sd design which is the only design that uses this PHY at
-  -- the time of writing.
-  attribute buffer_type : string;
-  attribute buffer_type of rclk180b : signal is "none";
 
 begin
 
@@ -2579,6 +2567,9 @@ begin
     end if;
   end process;
 
+  nordel : if rstdelay = 0 generate
+    vlockl <= '1';
+  end generate;
   rdel : if rstdelay /= 0 generate
     rcnt : process (clk0r)
       variable cnt : std_logic_vector(15 downto 0);
@@ -2734,14 +2725,16 @@ begin
   end process;
 
   bufg7 : BUFG port map (I => rclk90,  O => rclk90b);
-  bufg8 : BUFG port map (I => rclk270, O => rclk270b);
+  rclk270b <= not rclk90b;
+--  bufg8 : BUFG port map (I => rclk270, O => rclk270b);
+  bufg9 : BUFG port map (I => rclk180, O => rclk180b);
 
   read_dll : DCM
     generic map (clkin_period => 8.0, DESKEW_ADJUST => "SOURCE_SYNCHRONOUS", 
                  CLKOUT_PHASE_SHIFT => "VARIABLE", PHASE_SHIFT => rskew)
     port map ( CLKIN => ddr_clk_fbl, CLKFB => rclk90b, DSSEN => gnd, PSCLK => mclk,
                PSEN => cal_pll(0), PSINCDEC => cal_pll(1), RST => dll1rst, CLK0 => rclk90,
-               CLK90 => rclk180b, CLK180 => rclk270);
+               CLK90 => rclk180); --, CLK180 => rclk270);
   
   -- Data bus
   ddgen : for i in 0 to dbits-1 generate

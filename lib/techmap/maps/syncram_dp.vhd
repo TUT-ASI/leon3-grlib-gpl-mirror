@@ -100,6 +100,12 @@ begin
                    clk2, address2, datain2, dataout2, enable2, write2);
   end generate;
 
+  fus  : if tech = actfus generate
+    x0 : fusion_syncram_dp generic map (abits, dbits)
+         port map (clk1, address1, datain1, dataout1, enable1, write1,
+                   clk2, address2, datain2, dataout2, enable2, write2);
+  end generate;
+
   alt : if (tech = altera) or (tech = stratix1) or (tech = stratix2) or
 	(tech = stratix3) or (tech = cyclone3) generate
     x0 : altera_syncram_dp generic map (abits, dbits)

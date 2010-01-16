@@ -35,6 +35,9 @@ entity techbuf is
 end entity;
 
 architecture rtl of techbuf is
+component clkbuf_fusion is generic( buftype :  integer range 0 to 3 := 0);
+  port( i :  in  std_ulogic; o :  out std_ulogic);
+end component;
 component clkbuf_apa3 is generic( buftype :  integer range 0 to 3 := 0);
   port( i :  in  std_ulogic; o :  out std_ulogic);
 end component;
@@ -54,6 +57,9 @@ end component;
 begin
   gen : if has_techbuf(tech) = 0 generate
     o <= i;
+  end generate;
+  fus : if (tech = actfus) generate
+    axc : clkbuf_fusion generic map (buftype => buftype) port map(i => i, o => o);
   end generate;
   pa3 : if (tech = apa3) generate
     axc : clkbuf_apa3 generic map (buftype => buftype) port map(i => i, o => o);

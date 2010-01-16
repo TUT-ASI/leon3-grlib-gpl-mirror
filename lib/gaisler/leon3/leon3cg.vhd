@@ -177,7 +177,7 @@ begin
 
   grfpw0gen : if (fpuarch > 0) and (fpuarch < 8) generate
     fpu0: grfpwx
-      generic map (FPURFHARD*fabtech, FPURFHARD*memtech, (fpuarch-1), pclow, dsu, disas, fpunet, smp)
+      generic map (FPURFHARD*fabtech, FPURFHARD*memtech, (fpuarch-1), pclow, dsu, disas, fpunet, hindex)
       port map (rst, gclk, holdn, fpi, fpo);
   end generate;
 
@@ -189,7 +189,7 @@ begin
 
    grlfpc0gen : if (fpuarch >= 8) and (fpuarch < 15) generate
      fpu0 : grlfpwx
-       generic map (FPURFHARD*memtech, pclow, dsu, disas, (fpuarch-8), fpunet, smp)
+       generic map (FPURFHARD*memtech, pclow, dsu, disas, (fpuarch-8), fpunet, hindex)
        port map (rst, gclk, holdn, fpi, fpo);
    end generate;
 

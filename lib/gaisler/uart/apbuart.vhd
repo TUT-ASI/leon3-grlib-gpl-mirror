@@ -82,6 +82,7 @@ type uartregs is record
   debug         :  std_ulogic;  -- debug mode enable
   rsempty   	:  std_ulogic;	-- receiver shift register empty (internal)
   tsempty   	:  std_ulogic;	-- transmitter shift register empty
+  tsemptyirqen  :  std_ulogic;  -- generate irq when tx shift register is empty
   break  	:  std_ulogic;	-- break detected
   breakirqen    :  std_ulogic;  -- generate irq when break has been received
   ovf    	:  std_ulogic;	-- receiver overflow
@@ -214,6 +215,7 @@ begin
       if fifosize > 1 then
         rdata(31) := '1';
       end if;
+      rdata(14) := r.tsemptyirqen;
       rdata(13) := r.delayirqen;
       rdata(12) := r.breakirqen;
       rdata(11) := r.debug;
@@ -251,6 +253,7 @@ begin
 	v.ovf 	     := apbi.pwdata(4);
 	v.break      := apbi.pwdata(3);
       when "000010" =>
+        v.tsemptyirqen := apbi.pwdata(14);
         v.delayirqen := apbi.pwdata(13);
         v.breakirqen := apbi.pwdata(12);
         v.debug      := apbi.pwdata(11);
@@ -487,6 +490,7 @@ begin
       end if;
     end if;
 
+    v.irq := v.irq or (r.tsemptyirqen and v.tsempty and not r.tsempty); 
 
 -- reset operation
 

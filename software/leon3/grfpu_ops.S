@@ -6,7 +6,7 @@
 /*                                                                    */
 /**********************************************************************/
 
-/* #include "leon" */
+/* #include leon */
 	
 	
 !  %i0  : operand 1
@@ -516,5 +516,196 @@ grfpufq:
 	.word 0
 	.word 0
 	.word 0
+
+	.text
+	.align 8
+	.global fpu_pipe, fsr1, f1x, fmin1, ftest
+
+
+fpu_pipe:
+	set	fsr1, %o0	! check ldfsr/stfsr interlock
+	ld	[%o0], %fsr
+	st	%g0, [%o0]
+	ld	[%o0], %fsr
+	st	%fsr, [%o0]
+	ld	[%o0], %o2
+	set	0x000E0000, %o1
+	andn	%o2, %o1, %o2
+	subcc	%g0, %o2, %g0
+	bne,a	8f
+	mov	3, %o0
+
+	set 0x0f800000, %o1	! check ldfsr/fpop interlock
+	st	%o1, [%sp-96]
+	st	%g0, [%sp-92]
+	ld	[%sp-96], %fsr
+	st	%g0, [%sp-96]
+	set	f1x, %o2
+	ld	[%o2], %f0
+	nop; nop
+	ld	[%sp-96], %fsr
+	ld	[%sp-92], %fsr
+	fsqrts	%f0, %f1
+	st	%fsr, [%sp-96]
+	ld	[%sp-96], %o0
+	andcc	%o0, 0x200, %g0
+	be,a	8f
+	mov	4, %o0
+
+
+	mov	0, %o0
+
+1:
+	set ftest, %o2
+	ld [%o2], %f2
+	ld [%o2+8], %f4
+	ld [%o2+12], %f8
+	set f1x, %o1
+	ld [%o1], %f3
+	fmuld %f2, %f4, %f6
+	fcmped %f6, %f8
+	nop
+	fbne 3f
+	nop
+	set 1, %o0
+	ba  8f
+	nop
+3:
+	ld [%o2], %f2
+	ld [%o2+8], %f4
+	ld [%o2+12], %f8
+	set f1x, %o1
+	ld [%o1], %f5
+	fmuld %f2, %f4, %f6
+	fcmped %f6, %f8
+	nop
+	fbne 4f
+	nop
+	set 1, %o0
+	ba  8f
+	nop
+4:
+	set fmin1, %l2
+	ldd [%l2], %f0
+	ldd [%l2], %f2
+	subcc %g0, %g0, %g0
+	bne,a  5f
+	fsubd %f0, %f0, %f2
+	fcmped %f0, %f2
+	nop
+	fbe   6f
+	nop
+5:
+	set 5, %o0
+6:
+	nop
+	set fmin1, %l2
+	ldd [%l2], %f0
+	ldd [%l2], %f2
+	subcc %g0, %g0, %g0
+	nop
+	bne,a  7f
+	fsubd %f0, %f0, %f2
+	fcmped %f0, %f2
+	nop
+	fbe   8f
+	nop
+7:
+	set 7, %o0
+8:
+	nop
+	retl
+	nop
+
+
+	.data         
+	.global a1, c2
+	.global b1,c1
+	.align 8
+a1:	.word 0x48000001
+	.word 0
+b1:	.word 0x48000000
+	.word 0
+c1:	.word 0x46c00000
+	.word 0
+c2:    .word 0x3ff00000
+       .word 0 
+       .word 0x40000000
+       .word 0 
+       .word 0x40080000
+       .word 0 
+       .word 0x3f800000
+
+	.global       
+	.text         
+	.align 4      
+	.global fpu_chkft
+	              
+fpu_chkft:           
+       set     1, %o0                 
+       mov     %asr16, %o2            
+       srl     %o2, 30, %o2           
+       and     %o2, 3, %o2                  ! %o2 = fpft 
+       cmp     %o2, %g0               
+       beq     1f                     
+       mov     0, %o0                 
+       cmp     %o2, 3                 
+       beq     1f                     
+ 	set	c2, %o1                      
+	ldd	[%o1], %f0             
+	ldd	[%o1 + 8], %f2         
+       ld      [%o1 + 0x18], %f30           ! f30 = 1.0    
+       fmovs   %f30, %f10             
+       fmovs   %f30, %f12             
+       fmovs   %f30, %f14             
+	set	0x030078, %o3                ! 4-bit error DP ram 0 
+	mov	%o3, %asr16            
+	nop; nop; nop; nop; nop; nop;  
+	fmovs   %f0, %f0               
+	fmovs   %f1, %f1               
+	fmovs   %f10, %f10             
+       fmovs   %f12, %f12             
+       fmovs   %f14, %f14             
+	set	0x03007c, %o3                ! 4-bit error DP ram 1 
+	mov	%o3, %asr16            
+	nop; nop; nop; nop; nop; nop;  
+       fmovs   %f2, %f2               
+       fmovs   %f3, %f3               
+	mov     %g0, %asr16            
+	nop; nop; nop; nop; nop; nop;  
+       faddd   %f0, %f2, %f4                ! should correct 4 errors 
+       fadds   %f10, %f30, %f20             ! should correct 1 error  
+       std     %f12, [%o1]                  ! should correct 1 error  
+       st      %f14, [%o1]                  ! should correct 1 error  
+       ldd     [%o1 + 0x10], %f6            ! %f6 = 2.0 (DP) 
+       ld      [%o1 + 0x8], %f8             ! %f8 = 2.0 (SP) 
+       fcmpd   %f4, %f6               
+       nop                            
+       fbne    1f                     
+       fcmps    %f20, %f8             
+       nop                            
+       fbne    1f                     
+       mov     %asr16, %o1            
+       srl     %o1, 27, %o1           
+       and     %o1, 7, %o1                 ! error counter 
+       mov     0, %o0                 
+       cmp     %o2, 1                 
+       beq     1f                     
+       sub     %o1, 7, %o0                 ! should be 7 for fpft = 1  
+       sub     %o1, 4, %o0                 ! should be 4 for fpft = 2  
+1:     retl                            
+       nop                              
+
+	.text
+	.align 4
+	.global set_fsr, get_fsr
+get_fsr: 
+	st	%fsr, [%sp-96]
+	retl
+	ld	[%sp-96], %o0
+set_fsr: 
+	st	%o0, [%sp-96]
+	retl
+	ld	[%sp-96], %fsr
 
 

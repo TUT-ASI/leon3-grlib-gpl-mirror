@@ -46,11 +46,13 @@ entity grusbhc_net is
     utm_type    : integer range 0 to 2     := 2;
     vbusconf    : integer                  := 3;
     ramtest     : integer range 0 to 1     := 0;
-    urst_time   : integer                  := 250;
+    urst_time   : integer                  := 0;
     oepol       : integer range 0 to 1     := 0;
-    scantest    : integer                  := 0;
+    scantest    : integer range 0 to 1     := 0;
     memtech     : integer range 0 to NTECH := DEFMEMTECH;
-    memsel      : integer                  := 0);
+    memsel      : integer                  := 0;
+    syncprst    : integer range 0 to 1     := 0;
+    sysfreq     : integer                  := 65000);
   port (
     clk               : in  std_ulogic;
     uclk              : in  std_ulogic;
@@ -61,9 +63,6 @@ entity grusbhc_net is
     ehc_apbsi_paddr   : in  std_logic_vector(31 downto 0);
     ehc_apbsi_pwrite  : in  std_ulogic;
     ehc_apbsi_pwdata  : in  std_logic_vector(31 downto 0);
-    ehc_apbsi_testen  : in  std_ulogic;
-    ehc_apbsi_testrst : in  std_ulogic;
-    ehc_apbsi_scanen  : in  std_ulogic;
     -- EHC apb_slv_out_type unwrapped
     ehc_apbso_prdata  : out std_logic_vector(31 downto 0);
     ehc_apbso_pirq    : out std_ulogic;
@@ -73,9 +72,6 @@ entity grusbhc_net is
     ahbmi_hresp       : in  std_logic_vector(1 downto 0);
     ahbmi_hrdata      : in  std_logic_vector(31 downto 0);
     ahbmi_hcache      : in  std_ulogic;
-    ahbmi_testen      : in  std_ulogic;
-    ahbmi_testrst     : in  std_ulogic;
-    ahbmi_scanen      : in  std_ulogic;
     -- UHC ahb_slv_in_type unwrapped
     uhc_ahbsi_hsel    : in  std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
     uhc_ahbsi_haddr   : in  std_logic_vector(31 downto 0);
@@ -84,9 +80,6 @@ entity grusbhc_net is
     uhc_ahbsi_hsize   : in  std_logic_vector(2 downto 0);
     uhc_ahbsi_hwdata  : in  std_logic_vector(31 downto 0);
     uhc_ahbsi_hready  : in  std_ulogic;
-    uhc_ahbsi_testen  : in  std_ulogic;
-    uhc_ahbsi_testrst : in  std_ulogic;
-    uhc_ahbsi_scanen  : in  std_ulogic;
     -- EHC ahb_mst_out_type_unwrapped
     ehc_ahbmo_hbusreq : out std_ulogic;
     ehc_ahbmo_hlock   : out std_ulogic;
@@ -188,7 +181,12 @@ entity grusbhc_net is
     mbc11_pb_en       : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
     mbc11_pb_we       : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
     pb_mbc11_data     : in  std_logic_vector((n_cc*32)*uhcgen downto 1*uhcgen);
-    bufsel            : out std_ulogic);    
+    bufsel            : out std_ulogic;
+    -- scan signals
+    testen            : in  std_ulogic;
+    testrst           : in  std_ulogic;
+    scanen            : in  std_ulogic;
+    testoen           : in  std_ulogic);
 end grusbhc_net;
 
 architecture rtl of grusbhc_net is
@@ -211,12 +209,13 @@ architecture rtl of grusbhc_net is
       utm_type    : integer range 0 to 2     := 2;
       vbusconf    : integer                  := 3;
       ramtest     : integer range 0 to 1     := 0;
-      urst_time   : integer                  := 250;
+      urst_time   : integer                  := 0;
       oepol       : integer range 0 to 1     := 0;
-      scantest    : integer                  := 0;
+      scantest    : integer range 0 to 1     := 0;
       memtech     : integer range 0 to NTECH := DEFMEMTECH;
-      memsel      : integer                  := 0
-    );
+      memsel      : integer                  := 0;
+      syncprst    : integer range 0 to 1     := 0;
+      sysfreq     : integer                  := 65000);
     port (
       clk               : in  std_ulogic;
       uclk              : in  std_ulogic;
@@ -227,9 +226,6 @@ architecture rtl of grusbhc_net is
       ehc_apbsi_paddr   : in  std_logic_vector(31 downto 0);
       ehc_apbsi_pwrite  : in  std_ulogic;
       ehc_apbsi_pwdata  : in  std_logic_vector(31 downto 0);
-      ehc_apbsi_testen  : in  std_ulogic;
-      ehc_apbsi_testrst : in  std_ulogic;
-      ehc_apbsi_scanen  : in  std_ulogic;
       -- EHC apb_slv_out_type unwrapped
       ehc_apbso_prdata  : out std_logic_vector(31 downto 0);
       ehc_apbso_pirq    : out std_ulogic;
@@ -239,9 +235,6 @@ architecture rtl of grusbhc_net is
       ahbmi_hresp       : in  std_logic_vector(1 downto 0);
       ahbmi_hrdata      : in  std_logic_vector(31 downto 0);
       ahbmi_hcache      : in  std_ulogic;
-      ahbmi_testen      : in  std_ulogic;
-      ahbmi_testrst     : in  std_ulogic;
-      ahbmi_scanen      : in  std_ulogic;
       -- UHC ahb_slv_in_type unwrapped
       uhc_ahbsi_hsel    : in  std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
       uhc_ahbsi_haddr   : in  std_logic_vector(31 downto 0);
@@ -250,9 +243,6 @@ architecture rtl of grusbhc_net is
       uhc_ahbsi_hsize   : in  std_logic_vector(2 downto 0);
       uhc_ahbsi_hwdata  : in  std_logic_vector(31 downto 0);
       uhc_ahbsi_hready  : in  std_ulogic;
-      uhc_ahbsi_testen  : in  std_ulogic;
-      uhc_ahbsi_testrst : in  std_ulogic;
-      uhc_ahbsi_scanen  : in  std_ulogic;
       -- EHC ahb_mst_out_type_unwrapped
       ehc_ahbmo_hbusreq : out std_ulogic;
       ehc_ahbmo_hlock   : out std_ulogic;
@@ -354,7 +344,12 @@ architecture rtl of grusbhc_net is
       mbc11_pb_en       : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
       mbc11_pb_we       : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
       pb_mbc11_data     : in  std_logic_vector((n_cc*32)*uhcgen downto 1*uhcgen);
-      bufsel            : out std_ulogic);      
+      bufsel            : out std_ulogic;
+      -- scan signals
+      testen            : in  std_ulogic;
+      testrst           : in  std_ulogic;
+      scanen            : in  std_ulogic;
+      testoen           : in  std_ulogic);    
   end component;
 
   component grusbhc_stratixii is
@@ -375,12 +370,13 @@ architecture rtl of grusbhc_net is
       utm_type    : integer range 0 to 2     := 2;
       vbusconf    : integer                  := 3;
       ramtest     : integer range 0 to 1     := 0;
-      urst_time   : integer                  := 250;
+      urst_time   : integer                  := 0;
       oepol       : integer range 0 to 1     := 0;
-      scantest    : integer                  := 0;
+      scantest    : integer range 0 to 1     := 0;
       memtech     : integer range 0 to NTECH := DEFMEMTECH;
-      memsel      : integer                  := 0
-    );
+      memsel      : integer                  := 0;
+      syncprst    : integer range 0 to 1     := 0;
+      sysfreq     : integer                  := 65000);
     port (
       clk               : in  std_ulogic;
       uclk              : in  std_ulogic;
@@ -391,9 +387,6 @@ architecture rtl of grusbhc_net is
       ehc_apbsi_paddr   : in  std_logic_vector(31 downto 0);
       ehc_apbsi_pwrite  : in  std_ulogic;
       ehc_apbsi_pwdata  : in  std_logic_vector(31 downto 0);
-      ehc_apbsi_testen  : in  std_ulogic;
-      ehc_apbsi_testrst : in  std_ulogic;
-      ehc_apbsi_scanen  : in  std_ulogic;
       -- EHC apb_slv_out_type unwrapped
       ehc_apbso_prdata  : out std_logic_vector(31 downto 0);
       ehc_apbso_pirq    : out std_ulogic;
@@ -403,9 +396,6 @@ architecture rtl of grusbhc_net is
       ahbmi_hresp       : in  std_logic_vector(1 downto 0);
       ahbmi_hrdata      : in  std_logic_vector(31 downto 0);
       ahbmi_hcache      : in  std_ulogic;
-      ahbmi_testen      : in  std_ulogic;
-      ahbmi_testrst     : in  std_ulogic;
-      ahbmi_scanen      : in  std_ulogic;
       -- UHC ahb_slv_in_type unwrapped
       uhc_ahbsi_hsel    : in  std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
       uhc_ahbsi_haddr   : in  std_logic_vector(31 downto 0);
@@ -414,9 +404,6 @@ architecture rtl of grusbhc_net is
       uhc_ahbsi_hsize   : in  std_logic_vector(2 downto 0);
       uhc_ahbsi_hwdata  : in  std_logic_vector(31 downto 0);
       uhc_ahbsi_hready  : in  std_ulogic;
-      uhc_ahbsi_testen  : in  std_ulogic;
-      uhc_ahbsi_testrst : in  std_ulogic;
-      uhc_ahbsi_scanen  : in  std_ulogic;
       -- EHC ahb_mst_out_type_unwrapped
       ehc_ahbmo_hbusreq : out std_ulogic;
       ehc_ahbmo_hlock   : out std_ulogic;
@@ -518,7 +505,12 @@ architecture rtl of grusbhc_net is
       mbc11_pb_en       : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
       mbc11_pb_we       : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
       pb_mbc11_data     : in  std_logic_vector((n_cc*32)*uhcgen downto 1*uhcgen);
-      bufsel            : out std_ulogic);      
+      bufsel            : out std_ulogic;
+      -- scan signals
+      testen            : in  std_ulogic;
+      testrst           : in  std_ulogic;
+      scanen            : in  std_ulogic;
+      testoen           : in  std_ulogic);
   end component;
 
   component grusbhc_axcelerator is
@@ -539,12 +531,13 @@ architecture rtl of grusbhc_net is
       utm_type    : integer range 0 to 2     := 2;
       vbusconf    : integer                  := 3;
       ramtest     : integer range 0 to 1     := 0;
-      urst_time   : integer                  := 250;
+      urst_time   : integer                  := 0;
       oepol       : integer range 0 to 1     := 0;
-      scantest    : integer                  := 0;
+      scantest    : integer range 0 to 1     := 0;
       memtech     : integer range 0 to NTECH := DEFMEMTECH;
-      memsel      : integer                  := 0
-    );
+      memsel      : integer                  := 0;
+      syncprst    : integer range 0 to 1     := 0;
+      sysfreq     : integer                  := 65000);
     port (
       clk               : in  std_ulogic;
       uclk              : in  std_ulogic;
@@ -555,9 +548,6 @@ architecture rtl of grusbhc_net is
       ehc_apbsi_paddr   : in  std_logic_vector(31 downto 0);
       ehc_apbsi_pwrite  : in  std_ulogic;
       ehc_apbsi_pwdata  : in  std_logic_vector(31 downto 0);
-      ehc_apbsi_testen  : in  std_ulogic;
-      ehc_apbsi_testrst : in  std_ulogic;
-      ehc_apbsi_scanen  : in  std_ulogic;
       -- EHC apb_slv_out_type unwrapped
       ehc_apbso_prdata  : out std_logic_vector(31 downto 0);
       ehc_apbso_pirq    : out std_ulogic;
@@ -567,9 +557,6 @@ architecture rtl of grusbhc_net is
       ahbmi_hresp       : in  std_logic_vector(1 downto 0);
       ahbmi_hrdata      : in  std_logic_vector(31 downto 0);
       ahbmi_hcache      : in  std_ulogic;
-      ahbmi_testen      : in  std_ulogic;
-      ahbmi_testrst     : in  std_ulogic;
-      ahbmi_scanen      : in  std_ulogic;
       -- UHC ahb_slv_in_type unwrapped
       uhc_ahbsi_hsel    : in  std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
       uhc_ahbsi_haddr   : in  std_logic_vector(31 downto 0);
@@ -578,9 +565,6 @@ architecture rtl of grusbhc_net is
       uhc_ahbsi_hsize   : in  std_logic_vector(2 downto 0);
       uhc_ahbsi_hwdata  : in  std_logic_vector(31 downto 0);
       uhc_ahbsi_hready  : in  std_ulogic;
-      uhc_ahbsi_testen  : in  std_ulogic;
-      uhc_ahbsi_testrst : in  std_ulogic;
-      uhc_ahbsi_scanen  : in  std_ulogic;
       -- EHC ahb_mst_out_type_unwrapped
       ehc_ahbmo_hbusreq : out std_ulogic;
       ehc_ahbmo_hlock   : out std_ulogic;
@@ -682,7 +666,12 @@ architecture rtl of grusbhc_net is
       mbc11_pb_en       : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
       mbc11_pb_we       : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
       pb_mbc11_data     : in  std_logic_vector((n_cc*32)*uhcgen downto 1*uhcgen);
-      bufsel            : out std_ulogic);                                
+      bufsel            : out std_ulogic;
+      -- scan signals
+      testen            : in  std_ulogic;
+      testrst           : in  std_ulogic;
+      scanen            : in  std_ulogic;
+      testoen           : in  std_ulogic);
   end component;
 
   component grusbhc_proasic3 is
@@ -703,12 +692,13 @@ architecture rtl of grusbhc_net is
       utm_type    : integer range 0 to 2     := 2;
       vbusconf    : integer                  := 3;
       ramtest     : integer range 0 to 1     := 0;
-      urst_time   : integer                  := 250;
+      urst_time   : integer                  := 0;
       oepol       : integer range 0 to 1     := 0;
-      scantest    : integer                  := 0;
+      scantest    : integer range 0 to 1     := 0;
       memtech     : integer range 0 to NTECH := DEFMEMTECH;
-      memsel      : integer                  := 0
-    );
+      memsel      : integer                  := 0;
+      syncprst    : integer range 0 to 1     := 0;
+      sysfreq     : integer                  := 65000);
     port (
       clk               : in  std_ulogic;
       uclk              : in  std_ulogic;
@@ -719,9 +709,6 @@ architecture rtl of grusbhc_net is
       ehc_apbsi_paddr   : in  std_logic_vector(31 downto 0);
       ehc_apbsi_pwrite  : in  std_ulogic;
       ehc_apbsi_pwdata  : in  std_logic_vector(31 downto 0);
-      ehc_apbsi_testen  : in  std_ulogic;
-      ehc_apbsi_testrst : in  std_ulogic;
-      ehc_apbsi_scanen  : in  std_ulogic;
       -- EHC apb_slv_out_type unwrapped
       ehc_apbso_prdata  : out std_logic_vector(31 downto 0);
       ehc_apbso_pirq    : out std_ulogic;
@@ -731,9 +718,6 @@ architecture rtl of grusbhc_net is
       ahbmi_hresp       : in  std_logic_vector(1 downto 0);
       ahbmi_hrdata      : in  std_logic_vector(31 downto 0);
       ahbmi_hcache      : in  std_ulogic;
-      ahbmi_testen      : in  std_ulogic;
-      ahbmi_testrst     : in  std_ulogic;
-      ahbmi_scanen      : in  std_ulogic;
       -- UHC ahb_slv_in_type unwrapped
       uhc_ahbsi_hsel    : in  std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
       uhc_ahbsi_haddr   : in  std_logic_vector(31 downto 0);
@@ -742,9 +726,6 @@ architecture rtl of grusbhc_net is
       uhc_ahbsi_hsize   : in  std_logic_vector(2 downto 0);
       uhc_ahbsi_hwdata  : in  std_logic_vector(31 downto 0);
       uhc_ahbsi_hready  : in  std_ulogic;
-      uhc_ahbsi_testen  : in  std_ulogic;
-      uhc_ahbsi_testrst : in  std_ulogic;
-      uhc_ahbsi_scanen  : in  std_ulogic;
       -- EHC ahb_mst_out_type_unwrapped
       ehc_ahbmo_hbusreq : out std_ulogic;
       ehc_ahbmo_hlock   : out std_ulogic;
@@ -846,7 +827,12 @@ architecture rtl of grusbhc_net is
       mbc11_pb_en       : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
       mbc11_pb_we       : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
       pb_mbc11_data     : in  std_logic_vector((n_cc*32)*uhcgen downto 1*uhcgen);
-      bufsel            : out std_ulogic);      
+      bufsel            : out std_ulogic;
+      -- scan signals
+      testen            : in  std_ulogic;
+      testrst           : in  std_ulogic;
+      scanen            : in  std_ulogic;
+      testoen           : in  std_ulogic);
   end component;
 
 begin
@@ -875,7 +861,9 @@ begin
         oepol       => oepol,
         scantest    => scantest,
         memtech     => memtech,
-        memsel      => memsel)
+        memsel      => memsel,
+        syncprst    => syncprst,
+        sysfreq     => sysfreq)
       port map(
         clk               => clk,
         uclk              => uclk,
@@ -886,9 +874,6 @@ begin
         ehc_apbsi_paddr   => ehc_apbsi_paddr,
         ehc_apbsi_pwrite  => ehc_apbsi_pwrite,
         ehc_apbsi_pwdata  => ehc_apbsi_pwdata,
-        ehc_apbsi_testen  => ehc_apbsi_testen,
-        ehc_apbsi_testrst => ehc_apbsi_testrst,
-        ehc_apbsi_scanen  => ehc_apbsi_scanen,
         -- EHC apb_slv_out_type unwrapped
         ehc_apbso_prdata  => ehc_apbso_prdata,
         ehc_apbso_pirq    => ehc_apbso_pirq,
@@ -898,9 +883,6 @@ begin
         ahbmi_hresp       => ahbmi_hresp,
         ahbmi_hrdata      => ahbmi_hrdata,
         ahbmi_hcache      => ahbmi_hcache,
-        ahbmi_testen      => ahbmi_testen,
-        ahbmi_testrst     => ahbmi_testrst,
-        ahbmi_scanen      => ahbmi_scanen,
         -- UHC ahb_slv_in_type unwrapped
         uhc_ahbsi_hsel    => uhc_ahbsi_hsel,
         uhc_ahbsi_haddr   => uhc_ahbsi_haddr,
@@ -909,9 +891,6 @@ begin
         uhc_ahbsi_hsize   => uhc_ahbsi_hsize,
         uhc_ahbsi_hwdata  => uhc_ahbsi_hwdata,
         uhc_ahbsi_hready  => uhc_ahbsi_hready,
-        uhc_ahbsi_testen  => uhc_ahbsi_testen,
-        uhc_ahbsi_testrst => uhc_ahbsi_testrst,
-        uhc_ahbsi_scanen  => uhc_ahbsi_scanen,
         -- EHC ahb_mst_out_type_unwrapped
         ehc_ahbmo_hbusreq => ehc_ahbmo_hbusreq,
         ehc_ahbmo_hlock   => ehc_ahbmo_hlock,
@@ -1013,7 +992,12 @@ begin
         mbc11_pb_en       => mbc11_pb_en,
         mbc11_pb_we       => mbc11_pb_we,
         pb_mbc11_data     => pb_mbc11_data,
-        bufsel            => bufsel);        
+        bufsel            => bufsel,
+        -- scan signals
+        testen            => testen,
+        testrst           => testrst,
+        scanen            => scanen,
+        testoen           => testoen);
   end generate;
 
   alt : if (tech = altera) or (tech = stratix1) or (tech = stratix2) or
@@ -1040,7 +1024,9 @@ begin
         oepol       => oepol,
         scantest    => scantest,
         memtech     => memtech,
-        memsel      => memsel)
+        memsel      => memsel,
+        syncprst    => syncprst,
+        sysfreq     => sysfreq)
       port map(
         clk               => clk,
         uclk              => uclk,
@@ -1051,9 +1037,6 @@ begin
         ehc_apbsi_paddr   => ehc_apbsi_paddr,
         ehc_apbsi_pwrite  => ehc_apbsi_pwrite,
         ehc_apbsi_pwdata  => ehc_apbsi_pwdata,
-        ehc_apbsi_testen  => ehc_apbsi_testen,
-        ehc_apbsi_testrst => ehc_apbsi_testrst,
-        ehc_apbsi_scanen  => ehc_apbsi_scanen,
         -- EHC apb_slv_out_type unwrapped
         ehc_apbso_prdata  => ehc_apbso_prdata,
         ehc_apbso_pirq    => ehc_apbso_pirq,
@@ -1063,9 +1046,6 @@ begin
         ahbmi_hresp       => ahbmi_hresp,
         ahbmi_hrdata      => ahbmi_hrdata,
         ahbmi_hcache      => ahbmi_hcache,
-        ahbmi_testen      => ahbmi_testen,
-        ahbmi_testrst     => ahbmi_testrst,
-        ahbmi_scanen      => ahbmi_scanen,
         -- UHC ahb_slv_in_type unwrapped
         uhc_ahbsi_hsel    => uhc_ahbsi_hsel,
         uhc_ahbsi_haddr   => uhc_ahbsi_haddr,
@@ -1074,9 +1054,6 @@ begin
         uhc_ahbsi_hsize   => uhc_ahbsi_hsize,
         uhc_ahbsi_hwdata  => uhc_ahbsi_hwdata,
         uhc_ahbsi_hready  => uhc_ahbsi_hready,
-        uhc_ahbsi_testen  => uhc_ahbsi_testen,
-        uhc_ahbsi_testrst => uhc_ahbsi_testrst,
-        uhc_ahbsi_scanen  => uhc_ahbsi_scanen,
         -- EHC ahb_mst_out_type_unwrapped
         ehc_ahbmo_hbusreq => ehc_ahbmo_hbusreq,
         ehc_ahbmo_hlock   => ehc_ahbmo_hlock,
@@ -1178,7 +1155,12 @@ begin
         mbc11_pb_en       => mbc11_pb_en,
         mbc11_pb_we       => mbc11_pb_we,
         pb_mbc11_data     => pb_mbc11_data,
-        bufsel            => bufsel);        
+        bufsel            => bufsel,
+        -- scan signals
+        testen            => testen,
+        testrst           => testrst,
+        scanen            => scanen,
+        testoen           => testoen);
   end generate;
 
   ax : if (tech = axcel) or (tech = axdsp)  generate
@@ -1204,7 +1186,9 @@ begin
         oepol       => oepol,
         scantest    => scantest,
         memtech     => memtech,
-        memsel      => memsel)
+        memsel      => memsel,
+        syncprst    => syncprst,
+        sysfreq     => sysfreq)
       port map(
         clk               => clk,
         uclk              => uclk,
@@ -1215,9 +1199,6 @@ begin
         ehc_apbsi_paddr   => ehc_apbsi_paddr,
         ehc_apbsi_pwrite  => ehc_apbsi_pwrite,
         ehc_apbsi_pwdata  => ehc_apbsi_pwdata,
-        ehc_apbsi_testen  => ehc_apbsi_testen,
-        ehc_apbsi_testrst => ehc_apbsi_testrst,
-        ehc_apbsi_scanen  => ehc_apbsi_scanen,
         -- EHC apb_slv_out_type unwrapped
         ehc_apbso_prdata  => ehc_apbso_prdata,
         ehc_apbso_pirq    => ehc_apbso_pirq,
@@ -1227,9 +1208,6 @@ begin
         ahbmi_hresp       => ahbmi_hresp,
         ahbmi_hrdata      => ahbmi_hrdata,
         ahbmi_hcache      => ahbmi_hcache,
-        ahbmi_testen      => ahbmi_testen,
-        ahbmi_testrst     => ahbmi_testrst,
-        ahbmi_scanen      => ahbmi_scanen,
         -- UHC ahb_slv_in_type unwrapped
         uhc_ahbsi_hsel    => uhc_ahbsi_hsel,
         uhc_ahbsi_haddr   => uhc_ahbsi_haddr,
@@ -1238,9 +1216,6 @@ begin
         uhc_ahbsi_hsize   => uhc_ahbsi_hsize,
         uhc_ahbsi_hwdata  => uhc_ahbsi_hwdata,
         uhc_ahbsi_hready  => uhc_ahbsi_hready,
-        uhc_ahbsi_testen  => uhc_ahbsi_testen,
-        uhc_ahbsi_testrst => uhc_ahbsi_testrst,
-        uhc_ahbsi_scanen  => uhc_ahbsi_scanen,
         -- EHC ahb_mst_out_type_unwrapped
         ehc_ahbmo_hbusreq => ehc_ahbmo_hbusreq,
         ehc_ahbmo_hlock   => ehc_ahbmo_hlock,
@@ -1342,7 +1317,12 @@ begin
         mbc11_pb_en       => mbc11_pb_en,
         mbc11_pb_we       => mbc11_pb_we,
         pb_mbc11_data     => pb_mbc11_data,
-        bufsel            => bufsel);        
+        bufsel            => bufsel,
+        -- scan signals
+        testen            => testen,
+        testrst           => testrst,
+        scanen            => scanen,
+        testoen           => testoen);
   end generate;
 
   pa3 : if (tech = apa3) generate
@@ -1368,7 +1348,9 @@ begin
         oepol       => oepol,
         scantest    => scantest,
         memtech     => memtech,
-        memsel      => memsel)
+        memsel      => memsel,
+        syncprst    => syncprst,
+        sysfreq     => sysfreq)
       port map(
         clk               => clk,
         uclk              => uclk,
@@ -1379,9 +1361,6 @@ begin
         ehc_apbsi_paddr   => ehc_apbsi_paddr,
         ehc_apbsi_pwrite  => ehc_apbsi_pwrite,
         ehc_apbsi_pwdata  => ehc_apbsi_pwdata,
-        ehc_apbsi_testen  => ehc_apbsi_testen,
-        ehc_apbsi_testrst => ehc_apbsi_testrst,
-        ehc_apbsi_scanen  => ehc_apbsi_scanen,
         -- EHC apb_slv_out_type unwrapped
         ehc_apbso_prdata  => ehc_apbso_prdata,
         ehc_apbso_pirq    => ehc_apbso_pirq,
@@ -1391,9 +1370,6 @@ begin
         ahbmi_hresp       => ahbmi_hresp,
         ahbmi_hrdata      => ahbmi_hrdata,
         ahbmi_hcache      => ahbmi_hcache,
-        ahbmi_testen      => ahbmi_testen,
-        ahbmi_testrst     => ahbmi_testrst,
-        ahbmi_scanen      => ahbmi_scanen,
         -- UHC ahb_slv_in_type unwrapped
         uhc_ahbsi_hsel    => uhc_ahbsi_hsel,
         uhc_ahbsi_haddr   => uhc_ahbsi_haddr,
@@ -1402,9 +1378,6 @@ begin
         uhc_ahbsi_hsize   => uhc_ahbsi_hsize,
         uhc_ahbsi_hwdata  => uhc_ahbsi_hwdata,
         uhc_ahbsi_hready  => uhc_ahbsi_hready,
-        uhc_ahbsi_testen  => uhc_ahbsi_testen,
-        uhc_ahbsi_testrst => uhc_ahbsi_testrst,
-        uhc_ahbsi_scanen  => uhc_ahbsi_scanen,
         -- EHC ahb_mst_out_type_unwrapped
         ehc_ahbmo_hbusreq => ehc_ahbmo_hbusreq,
         ehc_ahbmo_hlock   => ehc_ahbmo_hlock,
@@ -1506,7 +1479,12 @@ begin
         mbc11_pb_en       => mbc11_pb_en,
         mbc11_pb_we       => mbc11_pb_we,
         pb_mbc11_data     => pb_mbc11_data,
-        bufsel            => bufsel);        
+        bufsel            => bufsel,
+        -- scan signals
+        testen            => testen,
+        testrst           => testrst,
+        scanen            => scanen,
+        testoen           => testoen);
   end generate;
 
   -- pragma translate_off

@@ -1,4 +1,5 @@
 VER=1.0.22
+BID=4095
 GVER=1022
 CC=gcc
 SED=sed
@@ -6,7 +7,7 @@ DISTLIB=~/vhdl
 
 ASICLIBS = ihp25 sgb25vrh ut025crh virage rh_lib18t rh_lib18t_io2 \
 	atc18 artisan umc18 virage90 tsmc90 dare nextreme atc18rha_cell smic13
-FPGALIBS = apa proasic3 axcelerator ec unisim altera altera_mf stratixii \
+FPGALIBS = apa proasic3 axcelerator ec fusion unisim altera altera_mf stratixii \
 	eclipsee cycloneiii stratixiii synplify simprim
 ifeq ("$(TECHLIBS)","")
 TECHLIBS=$(FPGALIBS) $(ASICLIBS)
@@ -95,6 +96,11 @@ INTFILES =  TODO.txt \
 	lib/gaisler/spacewire/spw_sim_codec*.vhd \
 	verification/grspw* verification/grfpu
 
+ACTFILES = \
+	lib/tech/apa lib/tech/proasic3 lib/tech/fusion lib/tech/axcelerator \
+	lib/techmap/apa lib/techmap/proasic3 lib/techmap/fusion lib/techmap/axcelerator \
+	designs/leon3-gr-cpci-ax designs/*actel*
+
 FTFILES =  \
 	doc/reedsolomon doc/tmtc \
 	designs/leon3-rtax* designs/leon3-ft* \
@@ -106,6 +112,7 @@ FTFILES =  \
 	lib/grlib/ftlib \
 	lib/micron/sdram/ft* \
 	lib/techmap/maps/*ft* \
+	lib/techmap/unisim/*ft* \
 	lib/spw/core \
 	lib/techmap/*/grspwc_*_*.vhd \
 	lib/techmap/*/grspwc2_*_*.vhd \
@@ -148,7 +155,8 @@ COMFILES = \
 	lib/opencores/can/can_top_core_sync.vhd lib/opencores/can/can_top_sync.vhd \
 	lib/gaisler/sim/ulpi.vhd lib/gaisler/sim/utmi.vhd \
 	lib/techmap/inferred/tap_inferred.vhd \
-	$(USBFILES) $(RMCOMLIBSX) $(GBITFILES)
+	$(USBFILES) $(RMCOMLIBSX) $(GBITFILES) $(ACTFILES) \
+	doc/Changelog.txt
 
 INTFTFPGAFILES = \
 	verification/greth verification/greth/*gbit* \
@@ -251,14 +259,11 @@ ISE11TECH=$(ISETECH)
 endif
 
 ifeq ("$(NETLISTTECH)","")
-# Use Virtex4 .ngo netlists for Virtex5
+# Some .ngo netlists are reused for other FPGA families 
 ifeq ("$(TECHNOLOGY)","Spartan6")
-NETLISTTECH = Virtex4
+NETLISTTECH = Spartan3
 else
 ifeq ("$(TECHNOLOGY)","Virtex6")
-NETLISTTECH = Virtex4
-else
-ifeq ("$(TECHNOLOGY)","Virtex5")
 NETLISTTECH = Virtex4
 else
 ifeq ("$(TECHNOLOGY)","Virtex2p")
@@ -268,7 +273,6 @@ ifeq ("$(TECHNOLOGY)","Spartan3A")
 NETLISTTECH = Spartan3
 else
 NETLISTTECH = $(TECHNOLOGY)
-endif
 endif
 endif
 endif
@@ -576,7 +580,7 @@ vsim-fix:
 #########   GHDL targets   ############
 
 ghdl $(SIMTOP): make.ghdl
-	make -f make.ghdl GHDLFLAGS="--workdir=gnu/work --work=work `cat ghdl.path`"
+	make -f make.ghdl GHDLFLAGS="-fexplicit --ieee=synopsys --workdir=gnu/work --work=work `cat ghdl.path`"
 
 make.ghdl: compile.ghdl
 	-rm -rf gnu
@@ -683,7 +687,7 @@ $(TOP).xst: compile.xst
 		echo vhdl work $$i >> $(TOP)_files.prj ; \
 	done
 #	@for i in $(VERILOGSYNFILES); do $(GRLIB)/bin/xstverilog $ii >> $(TOP).xst; done
-	@$(GRLIB)/bin/xstrun $(TOP) $(TOP).vhd  $(DEVICE) $(XSTOPT) -define {XSTDUMMY $(SYNPVLOGDEFS)} -sd $(GRLIB)/netlists/xilinx/$(NETLISTTECH)/xst >> $(TOP).xst
+	@$(GRLIB)/bin/xstrun $(TOP) $(TOP).vhd  $(DEVICE) $(XSTOPT) -define {XSTDUMMY $(SYNPVLOGDEFS)} -sd $(GRLIB)/netlists/xilinx/$(NETLISTTECH) >> $(TOP).xst
 	@echo  $(TOP).xst
 
 ise-xstmod :
@@ -900,6 +904,13 @@ synplify/$(TOP).edf: $(VHDLSYNFILES) $(VERILOGSYNFILES)
 $(TOP)_synplify.prj: compile.synp
 	@echo source compile.synp > $(TOP)_synplify.prj
 	@for i in $(VHDLSYNFILES); do echo add_file "-vhdl -lib work" $$i >> $(TOP)_synplify.prj; done
+	@if test -r $(GRLIB)/netlists/xilinx/$(NETLISTTECH)/edifsyn.txt; then \
+	  for q in `cat $(GRLIB)/netlists/xilinx/$(NETLISTTECH)/edifsyn.txt`; do \
+	    if test -r $(GRLIB)/netlists/xilinx/$(NETLISTTECH)/$$q; then \
+	      echo add_file -edif $(GRLIB)/netlists/xilinx/$(NETLISTTECH)/$$q >> $(TOP)_synplify.prj ; \
+	    fi; \
+	  done; \
+	fi 
 #	@for i in $(VERILOGSYNFILES); do echo add_file "-verilog -lib work" $ii >> $(TOP)_synplify.prj; done
 	@for i in $(SDCFILE); do echo add_file "-constraint " $$i >> $(TOP)_synplify.prj; done
 	@cat $(GRLIB)/bin/synplify.prj | sed -e s/TOP/$(TOP)/ \
@@ -1935,7 +1946,6 @@ clean-lib:
 	echo "end;"  >> lib/grlib/stdlib/version.vhd ;\
 
 delint:
-	@if test -r .svn; then echo .svn found, exiting; exit; fi;
 	@rm -rf $(INTFILES)
 	@cd doc; mv grlib/grlib.pdf grip/grip.pdf haps/haps.pdf tmtc/tmtc.pdf .; \
 	mkdir devices ;\
@@ -1952,10 +1962,13 @@ delint:
 	@make -f bin/Makefile bitfiles
 	@cd lib/gaisler; mv leon3sim leon3ft
 	@cat lib/techmap/unisim/vhdlsyn.txt | sed -e s/#// > x; mv x lib/techmap/unisim/vhdlsyn.txt
+	@cat lib/techmap/unisim/vhdlsim.txt | sed -e s/#// > x; mv x lib/techmap/unisim/vhdlsim.txt
 	@cat lib/techmap/axcelerator/vhdlsyn.txt | sed -e s/#// > x; mv x lib/techmap/axcelerator/vhdlsyn.txt
+	@cat netlists/xilinx/Virtex2/edifsyn.txt | sed -e s/#// > x; mv x netlists/xilinx/Virtex2/edifsyn.txt
+	@cat netlists/xilinx/Virtex4/edifsyn.txt | sed -e s/#// > x; mv x netlists/xilinx/Virtex4/edifsyn.txt
+	@cat netlists/xilinx/Virtex5/edifsyn.txt | sed -e s/#// > x; mv x netlists/xilinx/Virtex5/edifsyn.txt
 
 ft: delint
-	@if test -r .svn; then echo .svn found, exiting; exit; fi; \
 	echo creating grlib-ft-netlists-$(VER).tar.gz ;\
 	tar czf ../grlib-ft-netlists-$(VER).tar.gz netlists ;\
 	rm -rf netlists lib/techmap/*/gr*fp*_*_*
@@ -1970,7 +1983,6 @@ ft: delint
 	cd .. ; tar czf $$tname.tar.gz $$tname
 
 ftfpga: delint
-	@if test -r .svn; then echo .svn found, exiting; exit; fi;
 	@cd lib/tech; rm -rf $(ASICLIBS)
 	@cd lib/techmap; rm -rf $(ASICLIBS)
 	@cd lib/spw; rm -rf core
@@ -1986,7 +1998,6 @@ ftfpga: delint
 	cd .. ; tar czf $$tname.tar.gz $$tname
 
 delft: delint
-	@if test -r .svn; then echo .svn found, exiting; exit; fi;
 	@-rm netlists/*/*/*ft*
 	@-rm netlists/*/*/*grspw* ;\
 	rm -rf doc/devices doc/grlib-ft-fpga.pdf doc/tmtc.pdf ;\
@@ -2005,7 +2016,6 @@ delft: delint
 	@make -f bin/Makefile cfgdep
 
 com: delft
-	@if test -r .svn; then echo .svn found, exiting; exit; fi; \
 	for i in `find -name '*.vhd' -print | xargs`; do \
 	  if test -r $$i; then sed -f bin/gr.sed $$i > x; mv x $$i; fi; \
 	done ;\
@@ -2022,7 +2032,6 @@ com: delft
 	cd .. ; tar czf $$tname.tar.gz $$tname
 
 fpga-com: delft
-	@if test -r .svn; then echo .svn found, exiting; exit; fi
 	@cd lib/tech; rm -rf $(ASICLIBS)
 	@cd lib/techmap; rm -rf $(ASICLIBS)
 	@for i in `find -name '*.vhd' -print | xargs`; do \
@@ -2037,7 +2046,6 @@ fpga-com: delft
 	cd .. ; tar czf $$tname.tar.gz $$tname
 
 gpl: delft
-	@if test -r .svn; then echo .svn found, exiting; exit; fi; \
 	rm -rf $(COMFILES) ;\
 	for i in `find -name '*.vhd' -print | xargs`; do \
 	  if test -r $$i; then sed -f bin/gpl.sed $$i > x; mv x $$i; fi; \
@@ -2048,7 +2056,6 @@ gpl: delft
 	cd .. ; tar czf $$tname.tar.gz $$tname
 
 fpga: delft
-	@if test -r .svn; then echo .svn found, exiting; exit; fi
 	@cd lib/tech; rm -rf $(ASICLIBS)
 	@cd lib/techmap; rm -rf $(ASICLIBS)
 	@cd boards; rm -rf ge-* jop*
@@ -2063,46 +2070,40 @@ fpga: delft
 	cd .. ; tar czf $$tname.tar.gz $$tname
 
 distft:
-	@-nsvn=`svn info | awk '/Revision:/ {print $$2 + 1}'` ;\
-	rm -rf ~/vhdl/grlib-ft-$(VER)-b$$nsvn ;\
-	echo exporting repository to ~/vhdl/grlib-ft-$(VER)-b$$nsvn ;\
-	svn export . ~/vhdl/grlib-ft-$(VER)-b$$nsvn ;\
-	make -C ~/vhdl/grlib-ft-$(VER)-b$$nsvn ft
+	rm -rf $(DISTLIB)/grlib-ft-$(VER)-b$(BID) ;\
+	echo exporting repository to $(DISTLIB)/grlib-ft-$(VER)-b$(BID) ;\
+	git archive --format=tar --prefix=grlib-ft-$(VER)-b$(BID)/ HEAD | tar -x -C $(DISTLIB) ;\
+	make -C $(DISTLIB)/grlib-ft-$(VER)-b$(BID) ft
 
 distftfpga:
-	@-nsvn=`svn info | awk '/Revision:/ {print $$2 + 1}'` ;\
-	rm -rf ~/vhdl/grlib-ft-fpga-$(VER)-b$$nsvn ;\
-	echo exporting repository to ~/vhdl/grlib-ft-fpga-$(VER)-b$$nsvn ;\
-	svn export . ~/vhdl/grlib-ft-fpga-$(VER)-b$$nsvn ;\
-	make -C ~/vhdl/grlib-ft-fpga-$(VER)-b$$nsvn ftfpga
+	rm -rf $(DISTLIB)/grlib-ft-fpga-$(VER)-b$(BID) ;\
+	echo exporting repository to $(DISTLIB)/grlib-ft-fpga-$(VER)-b$(BID) ;\
+	git archive --format=tar --prefix=grlib-ft-fpga-$(VER)-b$(BID)/ HEAD | tar -x -C $(DISTLIB) ;\
+	make -C $(DISTLIB)/grlib-ft-fpga-$(VER)-b$(BID) ftfpga
 
 distfpga:
-	@-nsvn=`svn info | awk '/Revision:/ {print $$2 + 1}'` ;\
-	rm -rf ~/vhdl/grlib-fpga-$(VER)-b$$nsvn ;\
-	echo exporting repository to ~/vhdl/grlib-fpga-$(VER)-b$$nsvn ;\
-	svn export . ~/vhdl/grlib-fpga-$(VER)-b$$nsvn ;\
-	make -C ~/vhdl/grlib-fpga-$(VER)-b$$nsvn fpga
+	rm -rf $(DISTLIB)/grlib-fpga-$(VER)-b$(BID) ;\
+	echo exporting repository to $(DISTLIB)/grlib-fpga-$(VER)-b$(BID) ;\
+	git archive --format=tar --prefix=grlib-fpga-$(VER)-b$(BID)/ HEAD | tar -x -C $(DISTLIB) ;\
+	make -C $(DISTLIB)/grlib-fpga-$(VER)-b$(BID) fpga
 
 distfpga-com:
-	@-nsvn=`svn info | awk '/Revision:/ {print $$2 + 1}'` ;\
-	rm -rf ~/vhdl/grlib-fpga-com-$(VER)-b$$nsvn ;\
-	echo exporting repository to ~/vhdl/grlib-fpga-com-$(VER)-b$$nsvn ;\
-	svn export . ~/vhdl/grlib-fpga-com-$(VER)-b$$nsvn ;\
-	make -C ~/vhdl/grlib-fpga-com-$(VER)-b$$nsvn fpga-com
+	rm -rf $(DISTLIB)/grlib-fpga-com-$(VER)-b$(BID) ;\
+	echo exporting repository to $(DISTLIB)/grlib-fpga-com-$(VER)-b$(BID) ;\
+	git archive --format=tar --prefix=grlib-fpga-com-$(VER)-b$(BID)/ HEAD | tar -x -C $(DISTLIB) ;\
+	make -C $(DISTLIB)/grlib-fpga-com-$(VER)-b$(BID) fpga-com
 
 distcom:
-	@-nsvn=`svn info | awk '/Revision:/ {print $$2 + 1}'` ;\
-	rm -rf ~/vhdl/grlib-com-$(VER)-b$$nsvn ;\
-	echo exporting repository to ~/vhdl/grlib-com-$(VER)-b$$nsvn ;\
-	svn export . ~/vhdl/grlib-com-$(VER)-b$$nsvn ;\
-	make -C ~/vhdl/grlib-com-$(VER)-b$$nsvn com
+	rm -rf $(DISTLIB)/grlib-com-$(VER)-b$(BID) ;\
+	echo exporting repository to $(DISTLIB)/grlib-com-$(VER)-b$(BID) ;\
+	git archive --format=tar --prefix=grlib-com-$(VER)-b$(BID)/ HEAD | tar -x -C $(DISTLIB) ;\
+	make -C $(DISTLIB)/grlib-com-$(VER)-b$(BID) com
 
 distgpl:
-	@-nsvn=`svn info | awk '/Revision:/ {print $$2 + 1}'` ;\
-	rm -rf ~/vhdl/grlib-gpl-$(VER)-b$$nsvn ;\
-	echo exporting repository to ~/vhdl/grlib-gpl-$(VER)-b$$nsvn ;\
-	svn export . ~/vhdl/grlib-gpl-$(VER)-b$$nsvn ;\
-	make -C ~/vhdl/grlib-gpl-$(VER)-b$$nsvn gpl
+	rm -rf $(DISTLIB)/grlib-gpl-$(VER)-b$(BID) ;\
+	echo exporting repository to $(DISTLIB)/grlib-gpl-$(VER)-b$(BID) ;\
+	git archive --format=tar --prefix=grlib-gpl-$(VER)-b$(BID)/ HEAD | tar -x -C $(DISTLIB) ;\
+	make -C $(DISTLIB)/grlib-gpl-$(VER)-b$(BID) gpl
 
 dist:
 	make distft distcom distgpl distfpga

@@ -67,7 +67,7 @@ begin
 	(tech /= stratix2) and (tech /= stratix3) and
 	(tech /= cyclone3) and (tech /= axcel) and
 	(tech /= axdsp) and (tech /= proasic) and (tech /= rhlib18t) and
-	(tech /= rhumc) and (tech /= easic90) generate
+	(tech /= rhumc) and (tech /= easic90) and (tech /= actfus) generate
     sdintclk <= pciclkin when (PCISYSCLK = 1 and PCIEN /= 0) else clkin;
     sdclk <= sdintclk; intclk <= sdintclk
 -- pragma translate_off
@@ -127,6 +127,11 @@ begin
   end generate;
   ap3 : if tech = apa3 generate
     v : clkgen_proasic3
+    generic map (clk_mul, clk_div, clk_odiv, pcien, pcisysclk, freq)
+    port map (clkin, pciclkin, clk, sdclk, pciclk, cgi, cgo);
+  end generate;
+  fus : if tech = actfus generate
+    v : clkgen_fusion
     generic map (clk_mul, clk_div, clk_odiv, pcien, pcisysclk, freq)
     port map (clkin, pciclkin, clk, sdclk, pciclk, cgi, cgo);
   end generate;

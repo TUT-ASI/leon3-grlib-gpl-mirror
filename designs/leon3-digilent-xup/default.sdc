@@ -1,31 +1,23 @@
-# Synplicity, Inc. constraint file
-# /home/jiri/ibm/vhdl/grlib/designs/leon3-avnet-eval-xc4vlx25/default.sdc
-# Written on Sun Oct  1 16:16:08 2006
-# by Synplify Pro, Synplify Pro 8.6.1 Scope Editor
-
-#
-# Collections
-#
-
-#
 # Clocks
 #
 #define_clock            -name {clk}  -freq 100.000 -route 1.0 -clockgroup default_clkgroup
-define_clock            -name {etx_clk}  -freq 25.000 -clockgroup phy_rx_clkgroup -route 10.000
-define_clock            -name {erx_clk}  -freq 25.000 -clockgroup phy_tx_clkgroup -route 10.000
-define_clock            -name {ddr_clk_fb} -freq 125.000 -clockgroup ddr_read_group
-define_clock            -name {clkvga} -freq 65.000 -clockgroup clkvga_group -route 4.0
+define_clock            -name {etx_clk}  -freq 25.000 -route 10.0 -clockgroup phy_rx_clkgroup
+define_clock            -name {erx_clk}  -freq 25.000 -route 10.0 -clockgroup phy_tx_clkgroup
+define_clock            -name {ddr_clk_fb} -freq 125.000 -clockgroup -route 1.0 ddr_read_group
+define_clock            -name {n:clkvga} -freq 65.000 -route 4.0 -clockgroup clkvga_group
 
-define_clock            -name {leon3mp|ddrsp0.ddr0.ddr_phy0.clk} -freq 100.000 -route 1.0 -clockgroup ddr_clkgroup
-define_clock            -name {leon3mp|clkgen0.clkin}  -freq 100.000 -route 1.0 -clockgroup ahb_clkgroup
+define_clock            -name {n:clkml} -freq 125.000 -route 1.0 -clockgroup ddr_clkgroup
+define_clock            -name {n:clkm} -freq 100.000 -route 1.0 -clockgroup cpu_clkgroup
+#define_clock            -name {leon3mp|ddrsp0.ddr0.ddr_phy0.clk} -freq 100.000 -route 1.0 -clockgroup ddr_clkgroup
+#define_clock            -name {leon3mp|clkgen0.clkin}  -freq 100.000 -route 1.0 -clockgroup ahb_clkgroup
 #
 # Clock to Clock
 #
 #define_clock_delay           -rise {ddr_clk_fb} -rise {leon3mp|clkgen0.clkin} 4.0
 
-define_clock_delay -rise leon3mp|clkgen0.xc2v.v.clk0B_derived_clock  -rise ddrspa|ddr_phy0.ddr_phy0.xc2v.ddr_phy0.clk_270ro_derived_clock -false
-define_clock_delay -rise ddrspa|ddr_phy0.ddr_phy0.xc2v.ddr_phy0.clk_0ro_derived_clock -rise leon3mp|clkgen0.xc2v.v.clk0B_derived_clock -false
-define_clock_delay -rise ddrspa|ddr_phy0.ddr_phy0.xc2v.ddr_phy0.clk_270ro_derived_clock -rise leon3mp|clkgen0.xc2v.v.clk0B_derived_clock -false
+#define_clock_delay -rise leon3mp|clkgen0.xc2v.v.clk0B_derived_clock  -rise ddrspa|ddr_phy0.ddr_phy0.xc2v.ddr_phy0.clk_270ro_derived_clock -false
+#define_clock_delay -rise ddrspa|ddr_phy0.ddr_phy0.xc2v.ddr_phy0.clk_0ro_derived_clock -rise leon3mp|clkgen0.xc2v.v.clk0B_derived_clock -false
+#define_clock_delay -rise ddrspa|ddr_phy0.ddr_phy0.xc2v.ddr_phy0.clk_270ro_derived_clock -rise leon3mp|clkgen0.xc2v.v.clk0B_derived_clock -false
 
 #
 # Inputs/Outputs

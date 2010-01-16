@@ -4,7 +4,7 @@ use std.textio.all;
 package version is
   constant grlib_version : integer := 1022;
 -- pragma translate_off
-  constant grlib_date : string := "20100118";
+  constant grlib_date : string := "20100426";
 -- pragma translate_on
-  constant grlib_build : integer := 4075;
+  constant grlib_build : integer := 4095;
 end;

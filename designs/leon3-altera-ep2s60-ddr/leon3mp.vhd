@@ -337,7 +337,7 @@ begin
     dsurx_pad : inpad generic map (tech  => padtech) port map (rxd1, dui.rxd);
     dsutx_pad : outpad generic map (tech => padtech) port map (txd1, duo.txd);
   end generate;
-  nouah : if CFG_AHB_UART = 0 generate apbo(7) <= apb_none; end generate;
+  nouah : if CFG_AHB_UART = 0 generate apbo(4) <= apb_none; end generate;
 
   ahbjtaggen0 :if CFG_AHB_JTAG = 1 generate
     ahbjtag0 : ahbjtag generic map(tech => fabtech, hindex => NCPU+CFG_AHB_UART)
@@ -581,8 +581,8 @@ begin
   nam1 : for i in (NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_ATA) to NAHBMST-1 generate
     ahbmo(i) <= ahbm_none;
   end generate;
---  nap0 : for i in 6 to NAPBSLV-1 generate apbo(i) <= apb_none; end generate;
---  nah0 : for i in 7 to NAHBSLV-1 generate ahbso(i) <= ahbs_none; end generate;
+  nap0 : for i in 6 to NAPBSLV-1 generate apbo(i) <= apb_none; end generate;
+  nah0 : for i in 8 to NAHBSLV-1 generate ahbso(i) <= ahbs_none; end generate;
 
   -- invert signal for input via a key
   dsubre  <= not dsubren;

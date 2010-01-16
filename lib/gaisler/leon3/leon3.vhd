@@ -425,6 +425,10 @@ package leon3 is
     rndmode : std_logic_vector(1 downto 0);
     req     : std_logic;
   end record;
+
+  constant grfpu_in_none : grfpu_in_type :=
+    ('0', '0', (others => '0'), (others => '0'), (others => '0'),
+     (others => '0'), '0', (others => '0'), (others => '0'), '0');
   
   type grfpu_out_type is record
     res     : std_logic_vector(63 downto 0);
@@ -435,12 +439,17 @@ package leon3 is
     idout   : std_logic_vector(7 downto 0);
   end record;
 
+  constant grfpu_out_none : grfpu_out_type :=
+    ((others => '0'), (others => '0'), (others => '0'),
+     '0', (others => '0'), (others => '0'));
+
   type grfpu_out_vector_type is array (integer range 0 to 7) of grfpu_out_type;
   type grfpu_in_vector_type is array (integer range 0 to 7) of grfpu_in_type;
 
   component grfpushwx 
   generic (mul    : integer              := 0;
-           nshare : integer range 0 to 8 := 0);
+           nshare : integer range 0 to 8 := 0;
+           tech   : integer);
   port(
     clk     : in  std_logic;
     reset   : in  std_logic;

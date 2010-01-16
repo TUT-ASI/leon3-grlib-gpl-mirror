@@ -1099,9 +1099,9 @@ package body at_ahb_mst_pkg is
      if atmo.rdy = '1' then
        vready := true;
      else
-       atmi.get <= '0';
-       wait until atmo.getack = '0';
        while wait_for_op loop
+         atmi.get <= '0';
+         wait until atmo.getack = '0';
          while atmo.fin /= '1' loop
            wait until atmo.fin = '1';
          end loop;
@@ -1568,8 +1568,8 @@ package body at_ahb_mst_pkg is
      at_write_nb(address => address, data => data, waitcycles => idlecycles,
                  lock => false, hprot => "0011", back2back => back2back, 
                  screenoutput => false, dbglevel => dbglevel,
-                 discard => false, size => size, first => false, 
-                 burst => false, id => id, atmi => atmi, atmo => atmo);
+                 discard => false, size => size, first => first, 
+                 burst => burst, id => id, atmi => atmi, atmo => atmo);
      at_write_nb_fin(id => id, wait_for_op => true, screenoutput => false,
                      ready => ready, atmi => atmi, atmo => atmo);
    end procedure;
@@ -1744,9 +1744,9 @@ package body at_ahb_mst_pkg is
      if atmo.rdy = '1' then
        vready := true;
      else
-       atmi.get <= '0';
-       wait until atmo.getack = '0';
        while wait_for_op loop
+         atmi.get <= '0';
+         wait until atmo.getack = '0';
          while atmo.fin /= '1' loop
            wait until atmo.fin = '1';
          end loop;
@@ -2555,9 +2555,9 @@ package body at_ahb_mst_pkg is
      if atmo.rdy = '1' then
        vready := true;
      else
-       atmi.get <= '0';
-       wait until atmo.getack = '0';
        while wait_for_op loop
+         atmi.get <= '0';
+         wait until atmo.getack = '0';
          while atmo.fin /= '1' loop
            wait until atmo.fin = '1';
          end loop;
@@ -2582,10 +2582,8 @@ package body at_ahb_mst_pkg is
              " Data: " & tost(atmo.op.data) & " " & resp_to_str(atmo.op.response));
      end if;
      atmi.useid <= '0';
-     if vready then
-       atmi.get <= '0';
-       wait until atmo.getack = '0';
-     end if;
+     atmi.get <= '0';
+     wait until atmo.getack = '0';
    end procedure at_read_32_nb_fin;
 
    procedure at_read_32_nb_fin(
@@ -2609,9 +2607,9 @@ package body at_ahb_mst_pkg is
      if atmo(master).rdy = '1' then
        vready := true;
      else
-       atmi(master).get <= '0';
-       wait until atmo(master).getack = '0';
        while wait_for_op loop
+         atmi(master).get <= '0';
+         wait until atmo(master).getack = '0';
          while atmo(master).fin /= '1' loop
            wait until atmo(master).fin = '1';
          end loop;
@@ -3733,7 +3731,8 @@ package body at_ahb_mst_pkg is
          atmi.useid <= '0'; atmi.get <= '0';
          wait until atmo.getack = '0';
        else
-         atmi.useid <= '0'; atmi.get <= '0';
+         atmi.useid <= '0';
+         atmi.get <= '0';
          wait until atmo.getack = '0';
          while wait_for_op loop
            while atmo.fin /= '1' loop
@@ -4185,7 +4184,7 @@ package body at_ahb_mst_pkg is
                 burst => burst, first => first, compare => true, cmpdata => cmpdata,
                 erresp => false, split => true, retry => true, dbglevel => dbglevel,
                 discard => false, id => id, atmi => atmi, atmo => atmo);
-   
+
      at_read_32_nb_fin(id => id, wait_for_op => true, screenoutput => false,
                        ready => ready, data => data, atmi => atmi, atmo => atmo);
    end procedure at_comp;

@@ -4,11 +4,13 @@ volatile int *grtestmod = (volatile int *) 0x20000000;
 report_start()
 {
 	if (!get_pid()) grtestmod[4] = 1;
+	return(0);
 }
 
 report_end()
 {
 	grtestmod[5] = 1;
+	return(0);
 }
 
 report_device(int dev)
@@ -20,9 +22,11 @@ report_device(int dev)
 report_subtest(int dev)
 {
 	grtestmod[2] = dev;
+	return(0);
 }
 
 fail(int dev)
 {
 	grtestmod[1] = dev;
+	return(0);
 }

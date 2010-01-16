@@ -22,6 +22,7 @@
 
 #include "testmod.h"
 #include <malloc.h>
+#include <stdio.h>
 
 /***********/
 /* Helpers */          

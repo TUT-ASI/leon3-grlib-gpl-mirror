@@ -54,6 +54,12 @@ entity mmu_cache is
     dsetsize  : integer range 1 to 256 := 1;
     dsetlock  : integer range 0 to 1 := 0;
     dsnoop    : integer range 0 to 6 := 0;
+    ilram      : integer range 0 to 1 := 0;
+    ilramsize  : integer range 1 to 512 := 1;        
+    ilramstart : integer range 0 to 255 := 16#8e#;
+    dlram      : integer range 0 to 1 := 0;
+    dlramsize  : integer range 1 to 512 := 1;        
+    dlramstart : integer range 0 to 255 := 16#8f#;
     itlbnum   : integer range 2 to 64 := 8;
     dtlbnum   : integer range 2 to 64 := 8;
     tlb_type  : integer range 0 to 3 := 1;
@@ -61,7 +67,9 @@ entity mmu_cache is
     cached    : integer := 0;
     clk2x     : integer := 0;
     scantest  : integer := 0;
-    mmupgsz   : integer range 0 to 5  := 0
+    mmupgsz   : integer range 0 to 5  := 0;
+    smp       : integer               := 0;
+    mmuen     : integer range 0 to 1  := 0
   );
   port (
     rst   : in  std_ulogic;
@@ -107,26 +115,33 @@ begin
 
 -- instruction cache controller
   icache0 : mmu_icache 
-      generic map (irepl => irepl, isets=>isets, ilinesize=>ilinesize, isetsize=>isetsize, isetlock=>isetlock)
+      generic map (icen, irepl, isets, ilinesize, isetsize, isetlock,
+	ilram, ilramsize, ilramstart, mmuen)
       port map ( rst, clk, ici, icol, dci, dcol, mcii, mcio, 
    		 crami.icramin, cramo.icramo, fpuholdn, mmudci, mmuici, mmuico);
 
 -- data cache controller
   dcache0 : mmu_dcache 
-      generic map (dsu, drepl, dsets, dlinesize, dsetsize, dsetlock, dsnoop,
-            itlbnum, dtlbnum, tlb_type, memtech, cached, mmupgsz)
+      generic map (dsu, dcen, drepl, dsets, dlinesize, dsetsize, dsetlock, 
+	    dsnoop, dlram, dlramsize, dlramstart, ilram, ilramstart,
+            itlbnum, dtlbnum, tlb_type, memtech, cached, mmupgsz, smp, mmuen)
       port map ( rst, clk, dci, dcol, icol, mcdi, mcdo, ahbsi2,
 		 crami.dcramin, cramo.dcramo, fpuholdn, mmudci, mmudco, sclk);
 
 -- AMBA AHB interface
   a0 : mmu_acache 
       generic map (hindex, ilinesize, cached, clk2x, scantest)
-      port map (rst, clk, mcii, mcio, mcdi, mcdo, mcmmi, mcmmo, ahbi2, ahbo2, ahbso, hclken);
+      port map (rst, sclk, mcii, mcio, mcdi, mcdo, mcmmi, mcmmo, ahbi2, ahbo2, ahbso, hclken);
 
   -- MMU
-  m0 : mmu
+  mmugen : if mmuen = 1 generate
+    m0 : mmu
       generic map (memtech, itlbnum, dtlbnum, tlb_type, tlb_rep, mmupgsz)
       port map (rst, clk, mmudci, mmudco, mmuici, mmuico, mcmmo, mcmmi);
+  end generate;
+  nommu : if mmuen = 0 generate
+    mcmmi <= mci_zero; mmudco <= mmudco_zero; mmuico <= mmuico_zero;
+  end generate;
 
   ico <= icol;
   dco <= dcol;

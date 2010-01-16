@@ -7,6 +7,8 @@
 #define CFG_CLK_TECH lattice
 #elif defined CONFIG_CLK_PRO3PLL
 #define CFG_CLK_TECH apa3
+#elif defined CONFIG_CLK_FUSPLL
+#define CFG_CLK_TECH actfus
 #elif defined CONFIG_CLK_CLKDLL
 #define CFG_CLK_TECH virtex
 #elif defined CONFIG_CLK_DCM

@@ -1,4 +1,4 @@
--- Copyright (C) 1991-2007 Altera Corporation
+-- Copyright (C) 1991-2009 Altera Corporation
 -- Your use of Altera Corporation's design tools, logic functions 
 -- and other software and tools, and its AMPP partner logic 
 -- functions, and any output files from any of the foregoing 
@@ -11,7 +11,7 @@
 -- programming logic devices manufactured by Altera and sold by 
 -- Altera or its authorized distributors.  Please refer to the 
 -- applicable agreement for further details.
--- Quartus II 7.2 Build 207 09/26/2007
+-- Quartus II 9.0 Build 235 03/01/2009
 
 library IEEE;
 use IEEE.std_logic_1164.all;
@@ -65,6 +65,14 @@ function int2str( value : integer ) return string;
 function map_x_to_0 (value : std_logic) return std_logic;
 
 function SelectDelay (CONSTANT Paths: IN  VitalPathArray01Type) return TIME;
+
+function int2bit (arg : boolean) return std_logic;
+function int2bit (arg : integer) return std_logic;
+function bin2int (s : std_logic_vector) return integer;
+function bin2int (s : std_logic) return integer;
+function int2bin (arg : integer; size : integer) return std_logic_vector;
+function int2bin (arg : boolean; size : integer) return std_logic_vector;
+function calc_sum_len( widtha : integer; widthb : integer) return integer;
 
 end stratixiii_atom_pack;
 
@@ -219,6 +227,96 @@ begin
 
 end;
 
+function int2bit (arg : integer) return std_logic is
+    variable int_val : integer := arg;
+    variable result : std_logic;
+    begin
+        
+            if (int_val  = 0) then
+                result := '0';
+            else
+                result := '1';
+            end if;
+            
+        return result;
+end int2bit;
+
+function int2bit (arg : boolean) return std_logic is
+    variable int_val : boolean := arg;
+    variable result : std_logic;
+    begin
+        
+            if (int_val ) then
+                result := '1';
+            else
+                result := '0';
+            end if;
+            
+        return result;
+end int2bit;
+
+function bin2int (s : std_logic_vector) return integer is
+
+      constant temp      : std_logic_vector(s'high-s'low DOWNTO 0) := s;      
+      variable result      : integer := 0;
+   begin
+      for i in temp'range loop
+         if (temp(i) = '1') then
+            result := result + (2**i);
+         end if;
+      end loop;
+      return(result);
+   end bin2int;
+                  
+function bin2int (s : std_logic) return integer is
+      constant temp      : std_logic := s;      
+      variable result      : integer := 0;
+   begin
+         if (temp = '1') then
+            result := 1;
+         else
+         	result := 0;
+     	 end if;
+      return(result);
+	end bin2int;
+
+	function int2bin (arg : integer; size : integer) return std_logic_vector is
+    variable int_val : integer := arg;
+    variable result : std_logic_vector(size-1 downto 0);
+    begin
+        for i in 0 to result'left loop
+            if ((int_val mod 2) = 0) then
+                result(i) := '0';
+            else
+                result(i) := '1';
+            end if;
+            int_val := int_val/2;
+        end loop;
+        return result;
+    end int2bin;
+    
+function int2bin (arg : boolean; size : integer) return std_logic_vector is
+    variable result : std_logic_vector(size-1 downto 0);
+    begin
+		if(arg)then
+			result := (OTHERS => '1');
+		else
+			result := (OTHERS => '0');
+		end if;
+        return result;
+    end int2bin;
+
+function calc_sum_len( widtha : integer; widthb : integer) return integer is
+variable result: integer;
+begin
+	if(widtha >= widthb) then
+		result := widtha + 1;
+	else
+		result := widthb + 1;
+	end if;
+	return result;
+end calc_sum_len;
+
 end stratixiii_atom_pack;
 
 Library ieee;
@@ -245,6 +343,11 @@ Package stratixiii_pllpack is
                                             clk4_div : in integer; clk5_div : in integer;
                                             clk6_div : in integer; clk7_div : in integer;
                                             clk8_div : in integer; clk9_div : in integer;
+                                            clk0_used : in string; clk1_used : in string;
+                                            clk2_used : in string; clk3_used : in string;
+                                            clk4_used : in string; clk5_used : in string;
+                                            clk6_used : in string; clk7_used : in string;
+                                            clk8_used : in string; clk9_used : in string;
                                             m : out integer;
                                             n : out integer );
 
@@ -406,6 +509,11 @@ procedure find_m_and_n_4_manual_phase ( inclock_period : in integer;
                                         clk4_div : in integer; clk5_div : in integer;
                                         clk6_div : in integer; clk7_div : in integer;
                                         clk8_div : in integer; clk9_div : in integer;
+                                        clk0_used : in string; clk1_used : in string;
+                                        clk2_used : in string; clk3_used : in string;
+                                        clk4_used : in string; clk5_used : in string;
+                                        clk6_used : in string; clk7_used : in string;
+                                        clk8_used : in string; clk9_used : in string;
                                         m : out integer;
                                         n : out integer ) is
         constant MAX_M : integer := 511;
@@ -414,6 +522,7 @@ procedure find_m_and_n_4_manual_phase ( inclock_period : in integer;
         constant MIN_PFD : integer := 5;
         constant MAX_VCO : integer := 1300;
         constant MIN_VCO : integer := 300;
+        constant MAX_OFFSET : real := 0.004;
 
         variable vco_period : integer;
         variable pfd_freq : integer;
@@ -422,65 +531,115 @@ procedure find_m_and_n_4_manual_phase ( inclock_period : in integer;
 
         variable i_m : integer;
         variable i_n : integer;
+
         variable i_pre_m : integer;
         variable i_pre_n : integer;
 
+        variable closest_vco_step_value : integer;
+
         variable i_max_iter : integer;
         variable loop_iter : integer;
+        
+        variable clk0_div_factor_real : real;
+        variable clk1_div_factor_real : real;
+        variable clk2_div_factor_real : real;
+        variable clk3_div_factor_real : real;
+        variable clk4_div_factor_real : real;
+        variable clk5_div_factor_real : real;
+        variable clk6_div_factor_real : real;
+        variable clk7_div_factor_real : real;
+        variable clk8_div_factor_real : real;
+        variable clk9_div_factor_real : real;
+        variable clk0_div_factor_int : integer;
+        variable clk1_div_factor_int : integer;
+        variable clk2_div_factor_int : integer;
+        variable clk3_div_factor_int : integer;
+        variable clk4_div_factor_int : integer;
+        variable clk5_div_factor_int : integer;
+        variable clk6_div_factor_int : integer;
+        variable clk7_div_factor_int : integer;
+        variable clk8_div_factor_int : integer;
+        variable clk9_div_factor_int : integer;
 begin
-
-    loop_iter  := 0;
-    i_max_iter := MAX_N;
     vco_period := vco_phase_shift_step * 8;
+    i_pre_m := 0;
+    i_pre_n := 0;
+    closest_vco_step_value := 0;
 
-    while (loop_iter < i_max_iter) loop
-        loop_iter := loop_iter+1;
+    LOOP_1 :   for i_n_out in 1 to MAX_N loop
+        for i_m_out in 1 to MAX_M loop
+        
+	    clk0_div_factor_real := real(clk0_div * i_m_out) / real(clk0_mult * i_n_out);
+            clk1_div_factor_real := real(clk1_div * i_m_out) / real(clk1_mult * i_n_out);
+            clk2_div_factor_real := real(clk2_div * i_m_out) / real(clk2_mult * i_n_out);
+            clk3_div_factor_real := real(clk3_div * i_m_out) / real(clk3_mult * i_n_out);
+            clk4_div_factor_real := real(clk4_div * i_m_out) / real(clk4_mult * i_n_out);
+            clk5_div_factor_real := real(clk5_div * i_m_out) / real(clk5_mult * i_n_out);
+            clk6_div_factor_real := real(clk6_div * i_m_out) / real(clk6_mult * i_n_out);
+            clk7_div_factor_real := real(clk7_div * i_m_out) / real(clk7_mult * i_n_out);
+            clk8_div_factor_real := real(clk8_div * i_m_out) / real(clk8_mult * i_n_out);
+            clk9_div_factor_real := real(clk9_div * i_m_out) / real(clk9_mult * i_n_out);
 
-        i_pre_m := i_m;
-        i_pre_n := i_n;
-
-        find_simple_integer_fraction(inclock_period, vco_period,
-                    loop_iter, i_m, i_n);
-
-        if (((clk0_div * i_m) rem (clk0_mult * i_n) /= 0) or
-            ((clk1_div * i_m) rem (clk1_mult * i_n) /= 0) or
-            ((clk2_div * i_m) rem (clk2_mult * i_n) /= 0) or
-            ((clk3_div * i_m) rem (clk3_mult * i_n) /= 0) or
-            ((clk4_div * i_m) rem (clk4_mult * i_n) /= 0) or
-            ((clk5_div * i_m) rem (clk5_mult * i_n) /= 0) or
-            ((clk6_div * i_m) rem (clk6_mult * i_n) /= 0) or
-            ((clk7_div * i_m) rem (clk7_mult * i_n) /= 0) or
-            ((clk8_div * i_m) rem (clk8_mult * i_n) /= 0) or
-            ((clk9_div * i_m) rem (clk9_mult * i_n) /= 0) )
-        then
-            if (loop_iter = 1)
+            clk0_div_factor_int := integer(clk0_div_factor_real);
+            clk1_div_factor_int := integer(clk1_div_factor_real);
+            clk2_div_factor_int := integer(clk2_div_factor_real);
+            clk3_div_factor_int := integer(clk3_div_factor_real);
+            clk4_div_factor_int := integer(clk4_div_factor_real);
+            clk5_div_factor_int := integer(clk5_div_factor_real);
+            clk6_div_factor_int := integer(clk6_div_factor_real);
+            clk7_div_factor_int := integer(clk7_div_factor_real);
+            clk8_div_factor_int := integer(clk8_div_factor_real);
+            clk9_div_factor_int := integer(clk9_div_factor_real);
+	                
+            if (((abs(clk0_div_factor_real - real(clk0_div_factor_int)) < MAX_OFFSET) or (clk0_used = "unused")) and
+                ((abs(clk1_div_factor_real - real(clk1_div_factor_int)) < MAX_OFFSET) or (clk1_used = "unused")) and
+                ((abs(clk2_div_factor_real - real(clk2_div_factor_int)) < MAX_OFFSET) or (clk2_used = "unused")) and
+                ((abs(clk3_div_factor_real - real(clk3_div_factor_int)) < MAX_OFFSET) or (clk3_used = "unused")) and
+                ((abs(clk4_div_factor_real - real(clk4_div_factor_int)) < MAX_OFFSET) or (clk4_used = "unused")) and
+                ((abs(clk5_div_factor_real - real(clk5_div_factor_int)) < MAX_OFFSET) or (clk5_used = "unused")) and
+                ((abs(clk6_div_factor_real - real(clk6_div_factor_int)) < MAX_OFFSET) or (clk6_used = "unused")) and
+                ((abs(clk7_div_factor_real - real(clk7_div_factor_int)) < MAX_OFFSET) or (clk7_used = "unused")) and
+                ((abs(clk8_div_factor_real - real(clk8_div_factor_int)) < MAX_OFFSET) or (clk8_used = "unused")) and
+                ((abs(clk9_div_factor_real - real(clk9_div_factor_int)) < MAX_OFFSET) or (clk9_used = "unused")) )
             then
-                n := 1;
-                m := lcm  (clk0_mult, clk1_mult, clk2_mult, clk3_mult,
-                        clk4_mult, clk5_mult, clk6_mult,
-                        clk7_mult, clk8_mult, clk9_mult, inclock_period);
-            else
-                m := i_pre_m;
-                n := i_pre_n;
+                if ((i_m_out /= 0) and (i_n_out /= 0))
+                then
+                    pfd_freq := 1000000 / (inclock_period * i_n_out);
+                    vco_freq := (1000000 * i_m_out) / (inclock_period * i_n_out);
+                    vco_ps_step_value := (inclock_period * i_n_out) / (8 * i_m_out);
+    
+                    if ( (i_m_out < max_m) and (i_n_out < max_n) and (pfd_freq >= min_pfd) and (pfd_freq <= max_pfd) and
+                        (vco_freq >= min_vco) and (vco_freq <= max_vco) )
+                    then
+                        if (abs(vco_ps_step_value - vco_phase_shift_step) <= 2)
+                        then
+                            i_pre_m := i_m_out;
+                            i_pre_n := i_n_out;
+                            exit LOOP_1;
+                        else
+                            if (abs(vco_ps_step_value - vco_phase_shift_step) < abs(closest_vco_step_value - vco_phase_shift_step))
+                            then
+                                i_pre_m := i_m_out;
+                                i_pre_n := i_n_out;
+                                closest_vco_step_value := vco_ps_step_value;
+                            end if;
+                        end if;
+                    end if;
+                end if;
             end if;
-
-            i_max_iter := loop_iter;
-        else
-            m := i_m;
-            n := i_n;
-        end if;
-
-        pfd_freq := 1000000 / (inclock_period * i_n);
-        vco_freq := (1000000 * i_m) / (inclock_period * i_n);
-        vco_ps_step_value := (inclock_period * i_n) / (8 * i_m);
-
-        if ( (i_m < max_m) and (i_n < max_n) and (pfd_freq >= min_pfd) and (pfd_freq <= max_pfd) and
-            (vco_freq >= min_vco) and (vco_freq <= max_vco) and 
-            (abs(vco_ps_step_value - vco_phase_shift_step) <= 2) )
-        then
-            i_max_iter := loop_iter;
-        end if;
+        end loop;
     end loop;
+    
+    if ((i_pre_m /= 0) and (i_pre_n /= 0))
+    then
+        find_simple_integer_fraction(i_pre_m, i_pre_n,
+                    MAX_N, m, n);
+    else
+        n := 1;
+        m := lcm  (clk0_mult, clk1_mult, clk2_mult, clk3_mult,
+                clk4_mult, clk5_mult, clk6_mult,
+                clk7_mult, clk8_mult, clk9_mult, inclock_period);
+    end if;
 end find_m_and_n_4_manual_phase;
 
 -- find the greatest common denominator of X and Y
@@ -576,9 +735,11 @@ end lcm;
 -- find the factor of division of the output clock frequency compared to the VCO
 function output_counter_value (clk_divide: integer; clk_mult: integer ;
                                 M: integer; N: integer ) return integer is
-variable R: integer := 1;
+variable r_real : real := 1.0;
+variable r: integer := 1;
 begin
-    R := (clk_divide * M)/(clk_mult * N);
+    r_real := real(clk_divide * M)/ real(clk_mult * N);
+    r := integer(r_real);
 
     return R;
 end output_counter_value;
@@ -631,6 +792,10 @@ begin
     end if;
 
     R := output_counter_value - R1;
+
+    if (R = 0) then
+        R := 1;
+    end if;
 
     return R;
 end;
@@ -713,7 +878,7 @@ function counter_initial (tap_phase: integer; m: integer; n: integer)
 variable R: integer;
 variable R1: real;
 begin
-    R1 := (real(abs(tap_phase)) * real(m))/(360.0 * real(n)) + 0.5;
+    R1 := (real(abs(tap_phase)) * real(m))/(360.0 * real(n)) + 0.6;
     -- Note NCSim VHDL had problem in rounding up for 0.5 - 0.99. 
     -- This checking will ensure that the rounding up is done.
     if (R1 >= 0.5) and (R1 <= 1.0) then
@@ -730,7 +895,7 @@ function counter_ph (tap_phase: integer; m: integer; n: integer) return integer 
 variable R: integer := 0;
 begin
     -- 0.5 is added for proper rounding of the tap_phase.
-    R := (integer(real(tap_phase * m / n)+ 0.5) REM 360)/45;
+    R := integer(real(integer(real(tap_phase * m / n)+ 0.5) REM 360)/45.0) rem 8;
 
     return R;
 end;
@@ -1350,6 +1515,10 @@ use work.stratixiii_atom_pack.all;
 entity  stratixiii_crcblock is
     generic  (
         oscillator_divider : integer := 1;
+ crc_deld_disable : string := "off";
+ error_delay : integer :=  0 ;
+ error_dra_dl_bypass : string := "off";
+
         lpm_type : string := "stratixiii_crcblock"
         );	
     port (
@@ -1776,9 +1945,9 @@ ENTITY stratixiii_lvds_tx_reg is
     attribute VITAL_LEVEL0 of stratixiii_lvds_tx_reg : ENTITY is TRUE;
 END stratixiii_lvds_tx_reg;
 
-ARCHITECTURE vital_stratixiii_lvds_tx_reg of stratixiii_lvds_tx_reg is
+ARCHITECTURE vital_titan_lvds_tx_reg of stratixiii_lvds_tx_reg is
 
-    attribute VITAL_LEVEL0 of vital_stratixiii_lvds_tx_reg : architecture is TRUE;
+    attribute VITAL_LEVEL0 of vital_titan_lvds_tx_reg : architecture is TRUE;
 
     -- INTERNAL SIGNALS
     signal clk_ipd                  :  std_logic;
@@ -1851,7 +2020,7 @@ ARCHITECTURE vital_stratixiii_lvds_tx_reg of stratixiii_lvds_tx_reg is
 
         end process;
 
-end vital_stratixiii_lvds_tx_reg;
+end vital_titan_lvds_tx_reg;
 
 --////////////////////////////////////////////////////////////////////////////
 --
@@ -2531,7 +2700,7 @@ BEGIN
     VitalWireDelay (stall_ipd, stall, tipd_stall);
 END BLOCK;
 
--- REMSTRATIXIII PROCESS (d_ipd,ena_ipd,clk_ipd,aclr_ipd,devclrn,devpor)
+-- REMTITAN PROCESS (d_ipd,ena_ipd,clk_ipd,aclr_ipd,devclrn,devpor)
    PROCESS (d_ipd,ena_ipd,stall_ipd,clk_ipd,aclr_ipd,devclrn,devpor)
 VARIABLE Tviol_clk_ena        : STD_ULOGIC := '0';
 VARIABLE Tviol_clk_aclr       : STD_ULOGIC := '0';
@@ -2673,9 +2842,9 @@ ATTRIBUTE VITAL_Level0 OF stratixiii_ram_pulse_generator:ENTITY IS TRUE;
 END stratixiii_ram_pulse_generator;
 
 ARCHITECTURE pgen_arch OF stratixiii_ram_pulse_generator IS
-ATTRIBUTE VITAL_Level0 OF pgen_arch:ARCHITECTURE IS TRUE;
 SIGNAL clk_ipd,ena_ipd : STD_LOGIC;
 SIGNAL state : STD_LOGIC;
+ATTRIBUTE VITAL_Level0 OF pgen_arch:ARCHITECTURE IS TRUE;
 BEGIN
 
 WireDelay : BLOCK
@@ -2783,6 +2952,7 @@ ENTITY stratixiii_ram_block IS
          clk1_input_clock_enable  : STRING := "none"; -- ena1,ena3,none
          clk1_core_clock_enable   : STRING := "none"; -- ena1,ena3,none
          clk1_output_clock_enable : STRING := "none"; -- ena1,none
+	 clock_duty_cycle_dependence : STRING := "Auto";
         mem_init0 : BIT_VECTOR  := X"0";
         mem_init1 : BIT_VECTOR  := X"0";
          mem_init2 : BIT_VECTOR := X"0";
@@ -3541,6 +3711,22 @@ BEGIN
     TYPE rw_type IS ARRAY (port_type'HIGH DOWNTO port_type'LOW) OF BOOLEAN;
     VARIABLE addr_range_init,row,col,index :  INTEGER;
     VARIABLE mem_init_std :  STD_LOGIC_VECTOR((port_a_last_address - port_a_first_address + 1)*port_a_data_width - 1 DOWNTO 0);
+    VARIABLE mem_init  :  bit_vector(mem_init71'length + mem_init70'length + mem_init69'length + mem_init68'length + mem_init67'length + mem_init66'length +
+                mem_init65'length + mem_init64'length + mem_init63'length + mem_init62'length + mem_init61'length +
+                mem_init60'length + mem_init59'length + mem_init58'length + mem_init57'length + mem_init56'length +
+                mem_init55'length + mem_init54'length + mem_init53'length + mem_init52'length + mem_init51'length +
+                mem_init50'length + mem_init49'length + mem_init48'length + mem_init47'length + mem_init46'length +
+                mem_init45'length + mem_init44'length + mem_init43'length + mem_init42'length + mem_init41'length +
+                mem_init40'length + mem_init39'length + mem_init38'length + mem_init37'length + mem_init36'length +
+                mem_init35'length + mem_init34'length + mem_init33'length + mem_init32'length + mem_init31'length +
+                mem_init30'length + mem_init29'length + mem_init28'length + mem_init27'length + mem_init26'length +
+                mem_init25'length + mem_init24'length + mem_init23'length + mem_init22'length + mem_init21'length +
+                mem_init20'length + mem_init19'length + mem_init18'length + mem_init17'length + mem_init16'length +
+                mem_init15'length + mem_init14'length + mem_init13'length + mem_init12'length + mem_init11'length +
+                mem_init10'length + mem_init9'length + mem_init8'length + mem_init7'length + mem_init6'length +
+                mem_init5'length + mem_init4'length + mem_init3'length + mem_init2'length + mem_init1'length +
+                mem_init0'length - 1 DOWNTO 0);
+
     VARIABLE mem_val : mem_type; 
     -- read/write
     VARIABLE mem_data_p : mem_row_type;
@@ -3570,8 +3756,7 @@ BEGIN
                 addr_range_init := port_b_last_address - port_b_first_address + 1;
             END IF;
             IF (init_file_layout = "port_a" OR init_file_layout = "port_b") THEN
-                  mem_init_std := to_stdlogicvector(
-                            mem_init71 & mem_init70 & mem_init69 & mem_init68 & mem_init67 & mem_init66 &
+                  mem_init := mem_init71 & mem_init70 & mem_init69 & mem_init68 & mem_init67 & mem_init66 &
                             mem_init65 & mem_init64 & mem_init63 & mem_init62 & mem_init61 &
                             mem_init60 & mem_init59 & mem_init58 & mem_init57 & mem_init56 &
                             mem_init55 & mem_init54 & mem_init53 & mem_init52 & mem_init51 &
@@ -3585,7 +3770,8 @@ BEGIN
                             mem_init15 & mem_init14 & mem_init13 & mem_init12 & mem_init11 &
                             mem_init10 & mem_init9  & mem_init8  & mem_init7  & mem_init6  &
                             mem_init5  & mem_init4  & mem_init3  & mem_init2  & mem_init1  &
-                            mem_init0) ((port_a_last_address - port_a_first_address + 1)*port_a_data_width - 1 DOWNTO 0);
+                            mem_init0;
+                mem_init_std := to_stdlogicvector(mem_init) ((port_a_last_address - port_a_first_address + 1)*port_a_data_width - 1 DOWNTO 0);
                 FOR row IN 0 TO addr_range_init - 1 LOOP
                     FOR col IN 0 to num_cols - 1 LOOP
                         index := row * data_width;
@@ -4176,8 +4362,7 @@ asdatadelaybuffer1: stratixiii_and1
                      Tviol_sclr_clk or Tviol_sload_clk or Tviol_ena_clk;
     
     
-        --if ((devpor = '0') or (devclrn = '0') or (clrn_ipd = '1'))  then
-        if ((devpor = '0') or (devclrn = '0') or (clrn_ipd = '0'))  then -- changed ***
+        if ((devpor = '0') or (devclrn = '0') or (clrn_ipd = '0'))  then
             iq := '0';
         elsif (aload_ipd = '1') then
             iq := asdata_dly1;
@@ -4299,7 +4484,7 @@ begin
             (
                 OutSignal => outclk,
                 OutSignalName => "OUTCLOCK",
-                OutTemp => clkmux_out,
+                OutTemp => tmp,
                 Paths => (0 => (inclk_ipd(0)'last_event, tpd_inclk_outclk(0), TRUE),
                          1 => (inclk_ipd(1)'last_event, tpd_inclk_outclk(1), TRUE),
                          2 => (inclk_ipd(2)'last_event, tpd_inclk_outclk(2), TRUE),
@@ -4494,7 +4679,7 @@ begin
             q_reg := '1';
         elsif (clrn = '0') then
             q_reg := '0';
-        elsif (clk_ipd'event and clk_ipd = '1' and (ena = '1')) then
+        elsif (clk_ipd'event and clk_ipd = '1' and clk_ipd'last_value = '0' and (ena = '1')) then
             q_reg := d_ipd;
         end if;
 
@@ -4517,13 +4702,13 @@ end behave;
 
 --/////////////////////////////////////////////////////////////////////////////
 --
---              VHDL Simulation Model for Cyclone II CLKCTRL Atom
+--              VHDL Simulation Model for Stratix III CLKCTRL Atom
 --
 --/////////////////////////////////////////////////////////////////////////////
 
 --
 --
---  CYCLONEII_CLKCTRL Model
+--  Stratix III_CLKCTRL Model
 --
 --
 LIBRARY IEEE;
@@ -4679,7 +4864,7 @@ USE work.stratixiii_atom_pack.all;
 
 ENTITY stratixiii_mlab_cell_pulse_generator IS
 GENERIC (
-    tipd_clk : VitalDelayType01 := (0.5 ns,0.5 ns);
+    tipd_clk : VitalDelayType01 := (1 ps,1 ps);
     tipd_ena : VitalDelayType01 := DefPropDelay01;
     tpd_clk_pulse_posedge : VitalDelayType01 := DefPropDelay01
     );
@@ -4691,9 +4876,9 @@ ATTRIBUTE VITAL_Level0 OF stratixiii_mlab_cell_pulse_generator:ENTITY IS TRUE;
 END stratixiii_mlab_cell_pulse_generator;
 
 ARCHITECTURE pgen_arch OF stratixiii_mlab_cell_pulse_generator IS
-ATTRIBUTE VITAL_Level0 OF pgen_arch:ARCHITECTURE IS TRUE;
 SIGNAL clk_ipd,ena_ipd : STD_LOGIC;
 SIGNAL state : STD_LOGIC;
+ATTRIBUTE VITAL_Level0 OF pgen_arch:ARCHITECTURE IS TRUE;
 BEGIN
 
 WireDelay : BLOCK
@@ -4765,8 +4950,10 @@ ENTITY stratixiii_mlab_cell IS
         tipd_portabyteenamasks        : VitalDelayArrayType01(20 DOWNTO 0) := (OTHERS => DefPropDelay01);
         tsetup_portaaddr_clk0_noedge_negedge : VitalDelayType := DefSetupHoldCnst;
         tsetup_portabyteenamasks_clk0_noedge_negedge : VitalDelayType := DefSetupHoldCnst;
+        tsetup_ena0_clk0_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
         thold_portaaddr_clk0_noedge_negedge : VitalDelayType := DefSetupHoldCnst;
         thold_portabyteenamasks_clk0_noedge_negedge : VitalDelayType := DefSetupHoldCnst;
+        thold_ena0_clk0_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
 	tpd_portbaddr_portbdataout : VitalDelayType01 := DefPropDelay01
 
         );    
@@ -4862,7 +5049,7 @@ BEGIN
     END BLOCK;
 
     -- setup/hold checks
-    setup_hold_checks: PROCESS (ena0_reg,portaaddr_ipd,portabyteenamasks_ipd)
+    setup_hold_checks: PROCESS (ena0_reg,portaaddr_ipd,portabyteenamasks_ipd,clk0_ipd,ena0_ipd)
     VARIABLE Tviol_clk_enable        : STD_ULOGIC := '0';
     VARIABLE Tviol_clk_address       : STD_ULOGIC := '0';
     VARIABLE Tviol_clk_bemasks       : STD_ULOGIC := '0';
@@ -4871,6 +5058,24 @@ BEGIN
     VARIABLE TimingData_clk_bemasks  : VitalTimingDataType := VitalTimingDataInit;
     BEGIN
     -- Timing checks
+
+    VitalSetupHoldCheck (
+        Violation       => Tviol_clk_enable,
+        TimingData      => TimingData_clk_enable,
+        TestSignal      => ena0_ipd,
+        TestSignalName  => "ena0",
+        RefSignal       => clk0_ipd,
+        RefSignalName   => "clk0",
+        SetupHigh       => tsetup_ena0_clk0_noedge_posedge,
+        SetupLow        => tsetup_ena0_clk0_noedge_posedge,
+        HoldHigh        => thold_ena0_clk0_noedge_posedge,
+        HoldLow         => thold_ena0_clk0_noedge_posedge,
+        CheckEnabled    => TRUE,
+
+        RefTransition   => '/',
+        HeaderMsg       => "/LUTRAM VitalSetupHoldCheck",
+        XOn           => DefXOnChecks,
+        MsgOn         => DefMsgOnChecks );
 
     VitalSetupHoldCheck (
         Violation       => Tviol_clk_address,
@@ -4957,6 +5162,7 @@ BEGIN
     -- mem init
     VARIABLE addr_range_init,index :  INTEGER;
     VARIABLE mem_init_std :  STD_LOGIC_VECTOR((last_address - first_address + 1)*data_width - 1 DOWNTO 0);
+    VARIABLE mem_init :  bit_vector(mem_init0'length - 1 DOWNTO 0);
     VARIABLE mem_val : mem_type; 
     -- read/write 
     VARIABLE mem_data_p : mem_word_type;
@@ -4967,7 +5173,8 @@ BEGIN
         mem_val := (OTHERS => (OTHERS => '0')); 
         IF (init_file /= "UNUSED" AND init_file /= "unused") THEN
             addr_range_init := last_address - first_address + 1;
-            mem_init_std := to_stdlogicvector(mem_init0)((last_address - first_address + 1)*data_width - 1 DOWNTO 0);
+	    mem_init := mem_init0;
+            mem_init_std := to_stdlogicvector(mem_init)((last_address - first_address + 1)*data_width - 1 DOWNTO 0);
             FOR row IN 0 TO addr_range_init - 1 LOOP
                 index := row * data_width;
                 mem_val(row) := mem_init_std(index + data_width -1 DOWNTO index );
@@ -5027,6 +5234,7 @@ ENTITY stratixiii_io_ibuf IS
     GENERIC (
              tipd_i                  : VitalDelayType01 := DefPropDelay01;
              tipd_ibar               : VitalDelayType01 := DefPropDelay01;
+             tipd_dynamicterminationcontrol   : VitalDelayType01 := DefPropDelay01;  
              tpd_i_o                 : VitalDelayType01 := DefPropDelay01;
              tpd_ibar_o              : VitalDelayType01 := DefPropDelay01;
              XOn                           : Boolean := DefGlitchXOn;
@@ -5039,6 +5247,7 @@ ENTITY stratixiii_io_ibuf IS
     PORT (
           i                       : IN std_logic := '0';   
           ibar                    : IN std_logic := '0';   
+          dynamicterminationcontrol   : IN std_logic := '0';                                 
           o                       : OUT std_logic
          );       
 END stratixiii_io_ibuf;
@@ -5129,6 +5338,7 @@ ENTITY stratixiii_io_obuf IS
     GENERIC (
              tipd_i                           : VitalDelayType01 := DefPropDelay01;
              tipd_oe                          : VitalDelayType01 := DefPropDelay01;
+             tipd_dynamicterminationcontrol   : VitalDelayType01 := DefPropDelay01;  
              tpd_i_o                          : VitalDelayType01 := DefPropDelay01;
              tpd_oe_o                         : VitalDelayType01 := DefPropDelay01;
              tpd_i_obar                       : VitalDelayType01 := DefPropDelay01;
@@ -5137,6 +5347,7 @@ ENTITY stratixiii_io_obuf IS
              MsgOn                         : Boolean := DefGlitchMsgOn;  
              open_drain_output                :  string := "false";              
              shift_series_termination_control :  string := "false";  
+             sim_dynamic_termination_control_is_connected :  string := "false";                
              bus_hold                         :  string := "false";              
              lpm_type                         :  string := "stratixiii_io_obuf"
             );               
@@ -5144,8 +5355,8 @@ ENTITY stratixiii_io_obuf IS
            i                       : IN std_logic := '0';                                                 
            oe                      : IN std_logic := '1';                                                 
            dynamicterminationcontrol   : IN std_logic := '0';                                 
-           seriesterminationcontrol    : IN std_logic_vector(13 DOWNTO 0) := (others => '0'); 
-           parallelterminationcontrol  : IN std_logic_vector(13 DOWNTO 0) := (others => '0'); 
+           seriesterminationcontrol    : IN std_logic_vector(13 DOWNTO 0) := (others => '0');  
+           parallelterminationcontrol  : IN std_logic_vector(13 DOWNTO 0) := (others => '0');  
            devoe                       : IN std_logic := '1';
            o                       : OUT std_logic;                                                       
            obar                    : OUT std_logic
@@ -5156,6 +5367,7 @@ ARCHITECTURE arch OF stratixiii_io_obuf IS
     --INTERNAL Signals
     SIGNAL i_ipd                    : std_logic := '0'; 
     SIGNAL oe_ipd                   : std_logic := '0'; 
+    SIGNAL dynamicterminationcontrol_ipd : std_logic := '0';   
     SIGNAL out_tmp                  :  std_logic := 'Z';   
     SIGNAL out_tmp_bar              :  std_logic;   
     SIGNAL prev_value               :  std_logic := '0';     
@@ -5168,7 +5380,8 @@ BEGIN
 WireDelay : block
     begin                                                             
         VitalWireDelay (i_ipd, i, tipd_i);          
-        VitalWireDelay (oe_ipd, oe, tipd_oe);  
+        VitalWireDelay (oe_ipd, oe, tipd_oe); 
+        VitalWireDelay (dynamicterminationcontrol_ipd, dynamicterminationcontrol, tipd_dynamicterminationcontrol);   
     end block;                                                                              
     PROCESS( i_ipd, oe_ipd)
         BEGIN                                              
@@ -5210,8 +5423,8 @@ WireDelay : block
     END PROCESS;
     o_tmp1 <= prev_value WHEN (bus_hold = "true") ELSE out_tmp;
     obar_tmp1 <= NOT prev_value WHEN (bus_hold = "true") ELSE out_tmp_bar;  
-    o_tmp <= 'X' when (( oe_ipd = '1') and (dynamicterminationcontrol = '1') and (shift_series_termination_control = "true")) else o_tmp1 WHEN (devoe = '1') ELSE 'Z';
-    obar_tmp <= 'X' when (( oe_ipd = '1') and (dynamicterminationcontrol = '1')and (shift_series_termination_control = "true")) else obar_tmp1 WHEN (devoe = '1') ELSE 'Z';
+    o_tmp <= 'X' when (( oe_ipd = '1') and (dynamicterminationcontrol = '1') and (sim_dynamic_termination_control_is_connected = "true")) else o_tmp1 WHEN (devoe = '1') ELSE 'Z'; 
+    obar_tmp <= 'X' when (( oe_ipd = '1') and (dynamicterminationcontrol = '1')and (sim_dynamic_termination_control_is_connected = "true")) else obar_tmp1 WHEN (devoe = '1') ELSE 'Z'; 
          ---------------------
      --  Path Delay Section
      ----------------------
@@ -5258,7 +5471,7 @@ use IEEE.std_logic_1164.all;
 use IEEE.std_logic_arith.all;                                                                                 
 use IEEE.VITAL_Timing.all;                                                                                    
 use IEEE.VITAL_Primitives.all;                                                                                
-use altera.altera_primitives_components.all;                                                                  
+use altera.all;                                                                  
 use work.stratixiii_atom_pack.all;                                                                              
                                                                                                            
                                                                                                               
@@ -5490,7 +5703,7 @@ use IEEE.std_logic_1164.all;
 use IEEE.std_logic_arith.all;
 use IEEE.VITAL_Timing.all;
 use IEEE.VITAL_Primitives.all;
-use altera.altera_primitives_components.all;
+use altera.all;
 use work.stratixiii_atom_pack.all;
 
 
@@ -5709,7 +5922,6 @@ BEGIN
     dffhi <= dffhi_tmp ;
     
 END arch;
-
 ---------------------------------------------------------------------
 --
 -- Entity Name :  stratixiii_ddio_out
@@ -5725,7 +5937,7 @@ use IEEE.std_logic_1164.all;
 use IEEE.std_logic_arith.all;
 use IEEE.VITAL_Timing.all;
 use IEEE.VITAL_Primitives.all;
-use altera.altera_primitives_components.all;
+use altera.all;
 use work.stratixiii_atom_pack.all;
 
 ENTITY stratixiii_ddio_out IS
@@ -5760,7 +5972,7 @@ ENTITY stratixiii_ddio_out IS
           sreset                  : IN std_logic := '0';   
           dataout                 : OUT std_logic;         
           dfflo                   : OUT std_logic;         
-          dffhi                   : OUT std_logic ;         
+          dffhi                   : OUT std_logic_vector(1 downto 0) ;      
           devclrn                 : IN std_logic := '1';   
           devpor                  : IN std_logic := '1'   
         );   
@@ -5842,6 +6054,7 @@ component dffeas
           q : out std_logic
          );          
 end component;
+   
    
     --Internal Signals
     SIGNAL datainlo_ipd             : std_logic := '0';  
@@ -5932,27 +6145,30 @@ WireDelay : block
         begin                   
             muxsel1 <= muxsel_ipd;
     end process;
+    
+        
 
     --DDIO HIGH Register 
-    clk_hi <= clkhi_ipd when(use_new_clocking_model = "true") else clk_ipd;
+    clk_hi <=  clkhi_ipd when(use_new_clocking_model = "true") else  clk_ipd;  
     datainhi_tmp <= datainhi;
-    ddioreg_hi : dffeas 
-        GENERIC MAP (
-                     power_up => power_up
-                    )
-        PORT MAP (
-                  d => datainhi_tmp,               
-                  clk => clk_hi,                  
-                  clrn => ddioreg_aclr,        
-                  prn => ddioreg_prn,      
-                  sclr => ddioreg_sclr,        
-                  sload => ddioreg_sload,      
-                  asdata => ddioreg_adatasdata,
-                  ena => ena_ipd,                  
-                  q => dffhi_tmp,              
-                  devpor => devpor,            
-                  devclrn => devclrn           
-                );   
+    ddioreg_hi : dffeas                                      
+        GENERIC MAP (                                        
+                     power_up => power_up                    
+                    )                                        
+        PORT MAP (                                           
+                  d => datainhi_tmp,                         
+                  clk => clk_hi,                             
+                  clrn => ddioreg_aclr,                      
+                  prn => ddioreg_prn,                        
+                  sclr => ddioreg_sclr,                      
+                  sload => ddioreg_sload,                    
+                  asdata => ddioreg_adatasdata,              
+                  ena => ena_ipd,                            
+                  q => dffhi_tmp,                            
+                  devpor => devpor,                          
+                  devclrn => devclrn                         
+                );                                           
+
         
     --DDIO Low Register
     clk_lo <= clklo_ipd when(use_new_clocking_model = "true") else clk_ipd;
@@ -6011,8 +6227,8 @@ WireDelay : block
                   );              
 
     dfflo <= dfflo_tmp;
-    dffhi <= dffhi_tmp;
-                                           
+    dffhi(0) <= dffhi_tmp; 
+    dffhi(1) <= dffhi1_tmp;                                           
 END arch;
 
 -- --------------------------------------------------------------------
@@ -7395,8 +7611,8 @@ entity stratixiii_ddr_io_reg is
 end stratixiii_ddr_io_reg;
 
 
-architecture vital_stratixiii_ddr_io_reg of stratixiii_ddr_io_reg is
-    attribute VITAL_LEVEL0 of vital_stratixiii_ddr_io_reg : architecture is TRUE;
+architecture vital_titan_ddr_io_reg of stratixiii_ddr_io_reg is
+    attribute VITAL_LEVEL0 of vital_titan_ddr_io_reg : architecture is TRUE;
     signal clk_ipd : std_logic;
     signal d_ipd : std_logic;
     signal d_dly : std_logic;
@@ -7623,26 +7839,24 @@ begin
     
     end process;
 
-end vital_stratixiii_ddr_io_reg;
+end vital_titan_ddr_io_reg;
 
 -------------------------------------------------------------------------------
 --
--- Entity Name : stratixiii_dll
+-- Entity Name : Stratix III_dll
 --
 -------------------------------------------------------------------------------
 
 library IEEE;
 use IEEE.std_logic_1164.all;
---use IEEE.std_logic_arith.all;
---use IEEE.std_logic_unsigned.all;
+use IEEE.std_logic_arith.all;
+use IEEE.std_logic_unsigned.all;
 use IEEE.VITAL_Timing.all;
 use IEEE.VITAL_Primitives.all;
 use work.stratixiii_atom_pack.all;
 use work.stratixiii_pllpack.all;
 use work.stratixiii_atom_ddr_pack.all;
 use work.stratixiii_dll_gray_encoder;
-library grlib;
-use grlib.stdlib.all;
 
 ENTITY stratixiii_dll is
     GENERIC ( 
@@ -7695,7 +7909,7 @@ ENTITY stratixiii_dll is
 END stratixiii_dll;
 
 
-ARCHITECTURE vital_stratixiiidll of stratixiii_dll is
+ARCHITECTURE vital_titandll of stratixiii_dll is
 
 COMPONENT stratixiii_dll_gray_encoder
     GENERIC ( width : integer := 6 );
@@ -7705,10 +7919,9 @@ COMPONENT stratixiii_dll_gray_encoder
 END COMPONENT;
 
 signal clk_in               : std_logic := '0';
-signal aload_in_buf             : std_logic := '0';
+signal aload_in_buf         : std_logic := '0';
 signal upndn_in             : std_logic := '0';
 signal upndninclkena_in     : std_logic := '1';
-signal addnsub_in           : std_logic := '0';
 
 signal delayctrl_out        : std_logic_vector(5 DOWNTO 0) := "000000";
 signal offsetdelayctrl_out  : std_logic_vector(5 DOWNTO 0) := "000000";
@@ -7922,9 +8135,9 @@ begin
             got_first_falling_edge := '0';
             if (dll_to_lock = '1') then
                 dll_to_lock <= '0';
-                assert false report "Illegal value detected on input clock. DLL will lose lock." severity error;
+                assert false report "Illegal value detected on input clock. DLL will lose lock." severity warning;
             else
-                assert false report "Illegal value detected on input clock." severity error;
+                assert false report "Illegal value detected on input clock." severity warning;
             end if;               
         end if;
                  
@@ -8331,18 +8544,18 @@ begin
 
     end process;  -- vital timing
 
-end vital_stratixiiidll;
+end vital_titandll;
 
 -------------------------------------------------------------------------------
 --
--- Entity Name : stratixiii_dll_offset_ctrl
+-- Entity Name : Stratix III_dll_offset_ctrl
 --
 -------------------------------------------------------------------------------
 
 library IEEE;
 use IEEE.std_logic_1164.all;
---use IEEE.std_logic_arith.all;
---use IEEE.std_logic_unsigned.all;
+use IEEE.std_logic_arith.all;
+use IEEE.std_logic_unsigned.all;
 use IEEE.VITAL_Timing.all;
 use IEEE.VITAL_Primitives.all;
 use work.stratixiii_atom_pack.all;
@@ -8350,8 +8563,6 @@ USE work.stratixiii_pllpack.all;
 use work.stratixiii_atom_ddr_pack.all;
 use work.stratixiii_dll_gray_encoder;
 use work.stratixiii_dll_gray_decoder;
-library grlib;
-use grlib.stdlib.all;
 
 ENTITY stratixiii_dll_offset_ctrl is
     GENERIC ( 
@@ -8391,7 +8602,7 @@ ENTITY stratixiii_dll_offset_ctrl is
 END stratixiii_dll_offset_ctrl;
 
 
-ARCHITECTURE vital_stratixiiioffset of stratixiii_dll_offset_ctrl is
+ARCHITECTURE vital_titanoffset of stratixiii_dll_offset_ctrl is
 
 COMPONENT stratixiii_dll_gray_encoder
     GENERIC ( width : integer := 6 );
@@ -8687,267 +8898,276 @@ begin
     end process;  -- vital timing
 
 
-end vital_stratixiiioffset;
+end vital_titanoffset;
 
--------------------------------------------------------------------------------
---
--- Entity Name : stratixiii_dqs_delay_chain
---
--------------------------------------------------------------------------------
-
-library IEEE;
-use IEEE.std_logic_1164.all;
-use IEEE.VITAL_Timing.all;
-use IEEE.VITAL_Primitives.all;
-use work.stratixiii_atom_pack.all;
-use work.stratixiii_dll_gray_decoder;
-
-ENTITY stratixiii_dqs_delay_chain IS
-    GENERIC ( 
-        dqs_input_frequency             : string := "unused" ;
-        use_phasectrlin                 : string := "false";
-        phase_setting                   : integer := 0;
-        delay_buffer_mode               : string := "low";
-        dqs_phase_shift                 : integer := 0;
-        dqs_offsetctrl_enable           : string := "false";
-        dqs_ctrl_latches_enable         : string := "false";
-        -- DFT added in WYS 1.33
-        test_enable                     : string := "false";
-        test_select                     : integer := 0;
-        -- SIM only
-        sim_low_buffer_intrinsic_delay  : integer := 350;
-        sim_high_buffer_intrinsic_delay : integer := 175;
-        sim_buffer_delay_increment      : integer := 10;
-        lpm_type                        : string := "stratixiii_dqs_delay_chain";
-        tipd_dqsin               : VitalDelayType01 := DefpropDelay01;
-        tipd_aload               : VitalDelayType01 := DefpropDelay01;
-        tipd_delayctrlin         : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_offsetctrlin        : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_dqsupdateen         : VitalDelayType01 := DefpropDelay01;
-        tipd_phasectrlin         : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
-        tpd_dqsin_dqsbusout      : VitalDelayType01 := DefPropDelay01;
-        tsetup_delayctrlin_dqsupdateen_noedge_posedge  : VitalDelayArrayType(5 downto 0) := (OTHERS => DefSetupHoldCnst);
-        thold_delayctrlin_dqsupdateen_noedge_posedge   : VitalDelayArrayType(5 downto 0) := (OTHERS => DefSetupHoldCnst);
-        tsetup_offsetctrlin_dqsupdateen_noedge_posedge : VitalDelayArrayType(5 downto 0) := (OTHERS => DefSetupHoldCnst);
-        thold_offsetctrlin_dqsupdateen_noedge_posedge  : VitalDelayArrayType(5 downto 0) := (OTHERS => DefSetupHoldCnst);
-        TimingChecksOn           : Boolean := True;
-        MsgOn                    : Boolean := DefGlitchMsgOn;
-        XOn                      : Boolean := DefGlitchXOn;
-        MsgOnChecks              : Boolean := DefMsgOnChecks;
-        XOnChecks                : Boolean := DefXOnChecks;
-        InstancePath             : String := "*"   
-    );
-    
-    PORT (
-        dqsin        : IN std_logic := '0';
-        delayctrlin  : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
-        offsetctrlin : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
-        dqsupdateen  : IN std_logic := '1';
-        phasectrlin  : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
-        devclrn      : IN std_logic := '1';
-        devpor       : IN std_logic := '1';
-        dqsbusout    : OUT std_logic;
-        dffin        : OUT std_logic
-    );
-
-END;
-
-ARCHITECTURE stratixiii_dqs_delay_chain_arch OF stratixiii_dqs_delay_chain IS
-
-    -- component section
-    COMPONENT stratixiii_dll_gray_decoder
-        GENERIC ( width : integer := 6 );
-        PORT (    gin   : IN  STD_LOGIC_VECTOR (width-1 DOWNTO 0) := (OTHERS => '0');
-              bout  : OUT STD_LOGIC_VECTOR (width-1 DOWNTO 0)
-    );
-    END COMPONENT;
-    
-    -- signal section
-    SIGNAL delayctrl_bin  : std_logic_vector(5 downto 0) := (OTHERS => '0');
-    SIGNAL offsetctrl_bin : std_logic_vector(5 downto 0) := (OTHERS => '0');
-    
-    -- offsetctrl after "dqs_offsetctrl_enable" mux
-    SIGNAL offsetctrl_mux  : std_logic_vector(5 downto 0) := (OTHERS => '0');
-
-    -- reged outputs of delay count
-    SIGNAL delayctrl_reg  : std_logic_vector(5 downto 0) := (OTHERS => '1');
-    SIGNAL offsetctrl_reg : std_logic_vector(5 downto 0) := (OTHERS => '1');
-
-    -- delay count after latch enable mux
-    SIGNAL delayctrl_reg_mux  : std_logic_vector(5 downto 0) := (OTHERS => '0');
-    SIGNAL offsetctrl_reg_mux : std_logic_vector(5 downto 0) := (OTHERS => '0');
-    
-    -- timing outputs
-    SIGNAL tmp_dqsbusout : STD_LOGIC := '0';
-    SIGNAL dqs_delay     : INTEGER := 0;  
-    
-    -- timing inputs
-    SIGNAL dqsin_in        : std_logic := '0';
-    SIGNAL delayctrlin_in  : std_logic_vector(5 downto 0) := (OTHERS => '0');
-    SIGNAL offsetctrlin_in : std_logic_vector(5 downto 0) := (OTHERS => '0');
-    SIGNAL dqsupdateen_in  : std_logic := '1';
-    SIGNAL phasectrlin_in  : std_logic_vector(5 downto 0) := (OTHERS => '0');
-
-    SIGNAL test_bus        : std_logic_vector(12 downto 0);
-    SIGNAL test_lpbk       : std_logic;
-    SIGNAL tmp_dqsin       : std_logic;
-        
-BEGIN
-        
-    PROCESS(dqsupdateen_in)
-    BEGIN
-        IF (dqsupdateen_in = '1') THEN
-            delayctrl_reg  <= delayctrlin_in;
-            offsetctrl_reg <= offsetctrl_mux;
-        END IF;
-    END PROCESS;
-    
-    offsetctrl_mux <= offsetctrlin_in WHEN (dqs_offsetctrl_enable = "true") ELSE delayctrlin_in;
-
-    -- mux after reg
-    delayctrl_reg_mux  <= delayctrl_reg  WHEN (dqs_ctrl_latches_enable = "true") ELSE delayctrlin_in;
-    offsetctrl_reg_mux <= offsetctrl_reg WHEN (dqs_ctrl_latches_enable = "true") ELSE offsetctrl_mux;
-
-    mdelayctrlin_dec : stratixiii_dll_gray_decoder
-        GENERIC MAP (width => 6)
-        PORT MAP (gin => delayctrl_reg_mux, bout => delayctrl_bin);
-    moffsetctrlin_dec : stratixiii_dll_gray_decoder
-        GENERIC MAP (width => 6)
-        PORT MAP (gin => offsetctrl_reg_mux, bout => offsetctrl_bin);
-        
-    PROCESS (delayctrl_bin, offsetctrl_bin, phasectrlin_in)        
-        variable sim_intrinsic_delay : INTEGER := 0;
-        variable acell_delay         : INTEGER := 0;
-        variable aoffsetcell_delay   : INTEGER := 0;
-        variable delay_chain_len     : INTEGER := 0;
-    BEGIN
-        IF (delay_buffer_mode = "low") THEN
-            sim_intrinsic_delay := sim_low_buffer_intrinsic_delay;
-        ELSE 
-            sim_intrinsic_delay := sim_high_buffer_intrinsic_delay;
-        END IF;
-        
-        -- cell
-        acell_delay := sim_intrinsic_delay + alt_conv_integer(delayctrl_bin) * sim_buffer_delay_increment;
-        IF (dqs_offsetctrl_enable = "true") THEN
-            aoffsetcell_delay := sim_intrinsic_delay + alt_conv_integer(offsetctrl_bin)*sim_buffer_delay_increment;
-        ELSE 
-            aoffsetcell_delay := acell_delay;
-        END IF;
-        -- no of cells
-        IF (use_phasectrlin = "false") THEN
-            delay_chain_len := phase_setting;
-        ELSIF (phasectrlin_in(2) = '1') THEN
-            delay_chain_len := 0;
-        ELSE
-            delay_chain_len := alt_conv_integer(phasectrlin_in) + 1;
-        END IF;
-        -- total delay
-        IF (delay_chain_len = 0) THEN
-            dqs_delay <= 0;
-        ELSE
-            dqs_delay <= (delay_chain_len - 1)*acell_delay + aoffsetcell_delay;
-        END IF;
-    
-        IF (delay_buffer_mode = "high" AND delayctrl_bin(5) = '1') THEN
-            assert false report "DELAYCTRLIN of DQS I/O exceeds 5-bit range in high-frequency mode" severity warning;
-        END IF;     
-    
-    END PROCESS; -- generating delays
-
-    -- test bus loopback
-    test_bus  <= (not dqsupdateen_in) & offsetctrl_reg_mux & delayctrl_reg_mux; 
-    test_lpbk <= test_bus(test_select) WHEN ((0 <= test_select) AND (test_select <= 12)) ELSE 'Z';
-    tmp_dqsin <= (test_lpbk AND dqsin) WHEN (test_enable = "true") ELSE dqsin_in;
-
-	tmp_dqsbusout <= transport tmp_dqsin after (dqs_delay * 1 ps);
-    
-    --------------------
-    -- INPUT PATH DELAYS
-    --------------------
-    WireDelay : block
-    begin
-        VitalWireDelay (dqsin_in,       dqsin,       tipd_dqsin);
-        loopbits_delayctrlin : FOR i in delayctrlin'RANGE GENERATE
-            VitalWireDelay (delayctrlin_in(i), delayctrlin(i), tipd_delayctrlin(i));
-        END GENERATE;
-        loopbits_offsetctrlin : FOR i in offsetctrlin'RANGE GENERATE
-            VitalWireDelay (offsetctrlin_in(i), offsetctrlin(i), tipd_offsetctrlin(i));
-        END GENERATE;
-        VitalWireDelay (dqsupdateen_in, dqsupdateen, tipd_dqsupdateen);
-        loopbits_phasectrlin : FOR i in phasectrlin'RANGE GENERATE
-            VitalWireDelay (phasectrlin_in(i), phasectrlin(i), tipd_phasectrlin(i));
-        END GENERATE;
-    end block;
-
-    -----------------------------------
-    -- Timing Check Section
-    -----------------------------------
-    VITAL_timing_check: PROCESS (dqsupdateen_in,offsetctrlin_in,delayctrlin_in)
-    
-    variable Tviol_dqsupdateen_offsetctrlin : std_ulogic := '0';
-    variable TimingData_dqsupdateen_offsetctrlin : VitalTimingDataType := VitalTimingDataInit;
-    variable Tviol_dqsupdateen_delayctrlin    : std_ulogic := '0';
-    variable TimingData_dqsupdateen_delayctrlin  : VitalTimingDataType := VitalTimingDataInit;
-    
-    BEGIN
-        IF (TimingChecksOn) THEN
-            VitalSetupHoldCheck (
-                        Violation       => Tviol_dqsupdateen_offsetctrlin,
-                        TimingData      => TimingData_dqsupdateen_offsetctrlin,
-                        TestSignal      => offsetctrlin_in,
-                        TestSignalName  => "offsetctrlin",
-                        RefSignal       => dqsupdateen_in,
-                        RefSignalName   => "dqsupdateen",
-                        SetupHigh       => tsetup_offsetctrlin_dqsupdateen_noedge_posedge(0),
-                        SetupLow        => tsetup_offsetctrlin_dqsupdateen_noedge_posedge(0),
-                        HoldHigh        => thold_offsetctrlin_dqsupdateen_noedge_posedge(0),
-                        HoldLow         => thold_offsetctrlin_dqsupdateen_noedge_posedge(0),
-                        RefTransition   => '/',
-                        HeaderMsg       => InstancePath & "/STRATIXIII_DQS_DELAY_CHAIN",
-                        XOn             => XOnChecks,
-                        MsgOn           => MsgOnChecks
-            );
-            
-            VitalSetupHoldCheck (
-                        Violation       => Tviol_dqsupdateen_delayctrlin,
-                        TimingData      => TimingData_dqsupdateen_delayctrlin,
-                        TestSignal      => delayctrlin_in,
-                        TestSignalName  => "delayctrlin",
-                        RefSignal       => dqsupdateen_in,
-                        RefSignalName   => "dqsupdateen",
-                        SetupHigh       => tsetup_delayctrlin_dqsupdateen_noedge_posedge(0),
-                        SetupLow        => tsetup_delayctrlin_dqsupdateen_noedge_posedge(0),
-                        HoldHigh        => thold_delayctrlin_dqsupdateen_noedge_posedge(0),
-                        HoldLow         => thold_delayctrlin_dqsupdateen_noedge_posedge(0),
-                        RefTransition   => '/',
-                        HeaderMsg       => InstancePath & "/STRATIXIII_DQS_DELAY_CHAIN",
-                        XOn             => XOnChecks,
-                        MsgOn           => MsgOnChecks
-            );
-            
-        END IF;
-    END PROCESS;  -- timing check
-
-    --------------------------------------
-    --  Path Delay Section
-    --------------------------------------
-    
-    VITAL_path_delays: PROCESS (tmp_dqsbusout)
-        variable dqsbusout_VitalGlitchData : VitalGlitchDataType;
-    BEGIN
-        VitalPathDelay01 (
-            OutSignal => dqsbusout,
-            OutSignalName => "dqsbusout",
-            OutTemp => tmp_dqsbusout,
-            Paths =>   (0 => (dqsin_in'last_event, tpd_dqsin_dqsbusout, TRUE)),
-            GlitchData => dqsbusout_VitalGlitchData,
-            Mode => DefGlitchMode,
-            XOn  => XOn,
-            MsgOn  => MsgOn );
-    END PROCESS;  -- Path Delays
-
-END stratixiii_dqs_delay_chain_arch;
+ -------------------------------------------------------------------------------
+ --
+ -- Entity Name : stratixiii_dqs_delay_chain
+ --
+ -------------------------------------------------------------------------------
+ 
+ library IEEE;
+ use IEEE.std_logic_1164.all;
+ use IEEE.VITAL_Timing.all;
+ use IEEE.VITAL_Primitives.all;
+ use work.stratixiii_atom_pack.all;
+ use work.stratixiii_dll_gray_decoder;
+ 
+ ENTITY stratixiii_dqs_delay_chain IS
+     GENERIC ( 
+         dqs_input_frequency             : string := "unused" ;
+         use_phasectrlin                 : string := "false";
+         phase_setting                   : integer := 0;
+         delay_buffer_mode               : string := "low";
+         dqs_phase_shift                 : integer := 0;
+         dqs_offsetctrl_enable           : string := "false";
+         dqs_ctrl_latches_enable         : string := "false";
+         -- DFT added in WYS 1.33
+         test_enable                     : string := "false";
+         test_select                     : integer := 0;
+         -- SIM only
+         sim_low_buffer_intrinsic_delay  : integer := 350;
+         sim_high_buffer_intrinsic_delay : integer := 175;
+         sim_buffer_delay_increment      : integer := 10;
+         lpm_type                        : string := "stratixiii_dqs_delay_chain";
+         tipd_dqsin               : VitalDelayType01 := DefpropDelay01;
+         tipd_aload               : VitalDelayType01 := DefpropDelay01;
+         tipd_delayctrlin         : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_offsetctrlin        : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_dqsupdateen         : VitalDelayType01 := DefpropDelay01;
+         tipd_phasectrlin         : VitalDelayArrayType01(2 downto 0) := (OTHERS => DefPropDelay01);
+         tpd_dqsin_dqsbusout      : VitalDelayType01 := DefPropDelay01;
+         tsetup_delayctrlin_dqsupdateen_noedge_posedge  : VitalDelayArrayType(5 downto 0) := (OTHERS => DefSetupHoldCnst);
+         thold_delayctrlin_dqsupdateen_noedge_posedge   : VitalDelayArrayType(5 downto 0) := (OTHERS => DefSetupHoldCnst);
+         tsetup_offsetctrlin_dqsupdateen_noedge_posedge : VitalDelayArrayType(5 downto 0) := (OTHERS => DefSetupHoldCnst);
+         thold_offsetctrlin_dqsupdateen_noedge_posedge  : VitalDelayArrayType(5 downto 0) := (OTHERS => DefSetupHoldCnst);
+         TimingChecksOn           : Boolean := True;
+         MsgOn                    : Boolean := DefGlitchMsgOn;
+         XOn                      : Boolean := DefGlitchXOn;
+         MsgOnChecks              : Boolean := DefMsgOnChecks;
+         XOnChecks                : Boolean := DefXOnChecks;
+         InstancePath             : String := "*"   
+     );
+     
+     PORT (
+         dqsin        : IN std_logic := '0';
+         delayctrlin  : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
+         offsetctrlin : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
+         dqsupdateen  : IN std_logic := '1';
+         phasectrlin  : IN std_logic_vector(2 downto 0) := (OTHERS => '0');
+         devclrn      : IN std_logic := '1';
+         devpor       : IN std_logic := '1';
+         dqsbusout    : OUT std_logic;
+         dffin        : OUT std_logic
+     );
+ 
+ END;
+ 
+ ARCHITECTURE stratixiii_dqs_delay_chain_arch OF stratixiii_dqs_delay_chain IS
+ 
+     -- component section
+     COMPONENT stratixiii_dll_gray_decoder
+         GENERIC ( width : integer := 6 );
+         PORT (    gin   : IN  STD_LOGIC_VECTOR (width-1 DOWNTO 0) := (OTHERS => '0');
+               bout  : OUT STD_LOGIC_VECTOR (width-1 DOWNTO 0)
+     );
+     END COMPONENT;
+     
+     -- signal section
+     SIGNAL delayctrl_bin  : std_logic_vector(5 downto 0) := (OTHERS => '0');
+     SIGNAL offsetctrl_bin : std_logic_vector(5 downto 0) := (OTHERS => '0');
+     
+     -- offsetctrl after "dqs_offsetctrl_enable" mux
+     SIGNAL offsetctrl_mux  : std_logic_vector(5 downto 0) := (OTHERS => '0');
+ 
+     -- reged outputs of delay count
+     SIGNAL delayctrl_reg  : std_logic_vector(5 downto 0) := (OTHERS => '1');
+     SIGNAL offsetctrl_reg : std_logic_vector(5 downto 0) := (OTHERS => '1');
+ 
+     -- delay count after latch enable mux
+     SIGNAL delayctrl_reg_mux  : std_logic_vector(5 downto 0) := (OTHERS => '0');
+     SIGNAL offsetctrl_reg_mux : std_logic_vector(5 downto 0) := (OTHERS => '0');
+     
+     -- timing outputs
+     SIGNAL tmp_dqsbusout : STD_LOGIC := '0';
+     SIGNAL dqs_delay     : INTEGER := 0;  
+     
+     -- timing inputs
+     SIGNAL dqsin_in        : std_logic := '0';
+     SIGNAL delayctrlin_in  : std_logic_vector(5 downto 0) := (OTHERS => '0');
+     SIGNAL offsetctrlin_in : std_logic_vector(5 downto 0) := (OTHERS => '0');
+     SIGNAL dqsupdateen_in  : std_logic := '1';
+     SIGNAL phasectrlin_in  : std_logic_vector(2 downto 0) := (OTHERS => '0');
+ 
+     SIGNAL test_bus        : std_logic_vector(12 downto 0);
+     SIGNAL test_lpbk       : std_logic;
+     SIGNAL tmp_dqsin       : std_logic;
+         
+ BEGIN
+         
+     PROCESS(dqsupdateen_in)
+     BEGIN
+         IF (dqsupdateen_in = '1') THEN
+             delayctrl_reg  <= delayctrlin_in;
+             offsetctrl_reg <= offsetctrl_mux;
+         END IF;
+     END PROCESS;
+     
+     offsetctrl_mux <= offsetctrlin_in WHEN (dqs_offsetctrl_enable = "true") ELSE delayctrlin_in;
+ 
+     -- mux after reg
+     delayctrl_reg_mux  <= delayctrl_reg  WHEN (dqs_ctrl_latches_enable = "true") ELSE delayctrlin_in;
+     offsetctrl_reg_mux <= offsetctrl_reg WHEN (dqs_ctrl_latches_enable = "true") ELSE offsetctrl_mux;
+ 
+     mdelayctrlin_dec : stratixiii_dll_gray_decoder
+         GENERIC MAP (width => 6)
+         PORT MAP (gin => delayctrl_reg_mux, bout => delayctrl_bin);
+     moffsetctrlin_dec : stratixiii_dll_gray_decoder
+         GENERIC MAP (width => 6)
+         PORT MAP (gin => offsetctrl_reg_mux, bout => offsetctrl_bin);
+         
+     PROCESS (delayctrl_bin, offsetctrl_bin, phasectrlin_in)        
+         variable sim_intrinsic_delay : INTEGER := 0;
+         variable tmp_delayctrl       : std_logic_vector(5 downto 0) := (OTHERS => '0');
+         variable tmp_offsetctrl      : std_logic_vector(5 downto 0) := (OTHERS => '0');
+         variable acell_delay         : INTEGER := 0;
+         variable aoffsetcell_delay   : INTEGER := 0;
+         variable delay_chain_len     : INTEGER := 0;
+     BEGIN
+         IF (delay_buffer_mode = "low") THEN
+             sim_intrinsic_delay := sim_low_buffer_intrinsic_delay;
+         ELSE 
+             sim_intrinsic_delay := sim_high_buffer_intrinsic_delay;
+         END IF;
+         
+         IF (delay_buffer_mode = "high" AND delayctrl_bin(5) = '1') THEN
+             tmp_delayctrl  := "011111";
+         ELSE       
+             tmp_delayctrl  := delayctrl_bin;
+         END IF;
+         IF (delay_buffer_mode = "high" AND offsetctrl_bin(5) = '1') THEN
+             tmp_offsetctrl  := "011111";
+         ELSE       
+             tmp_offsetctrl  := offsetctrl_bin;
+         END IF;
+         
+         -- cell
+         acell_delay := sim_intrinsic_delay + alt_conv_integer(tmp_delayctrl) * sim_buffer_delay_increment;
+         IF (dqs_offsetctrl_enable = "true") THEN
+             aoffsetcell_delay := sim_intrinsic_delay + alt_conv_integer(tmp_offsetctrl)*sim_buffer_delay_increment;
+         ELSE 
+             aoffsetcell_delay := acell_delay;
+         END IF;
+         -- no of cells
+         IF (use_phasectrlin = "false") THEN
+             delay_chain_len := phase_setting;
+         ELSIF (phasectrlin_in(2) = '1') THEN
+             delay_chain_len := 0;
+         ELSE
+             delay_chain_len := alt_conv_integer(phasectrlin_in) + 1;
+         END IF;
+         -- total delay
+         IF (delay_chain_len = 0) THEN
+             dqs_delay <= 0;
+         ELSE
+             dqs_delay <= (delay_chain_len - 1)*acell_delay + aoffsetcell_delay;
+         END IF;
+     
+     END PROCESS; -- generating delays
+ 
+     -- test bus loopback
+     test_bus  <= (not dqsupdateen_in) & offsetctrl_reg_mux & delayctrl_reg_mux; 
+     test_lpbk <= test_bus(test_select) WHEN ((0 <= test_select) AND (test_select <= 12)) ELSE 'Z';
+     tmp_dqsin <= (test_lpbk AND dqsin) WHEN (test_enable = "true") ELSE dqsin_in;
+ 
+ 	tmp_dqsbusout <= transport tmp_dqsin after (dqs_delay * 1 ps);
+     
+     --------------------
+     -- INPUT PATH DELAYS
+     --------------------
+     WireDelay : block
+     begin
+         VitalWireDelay (dqsin_in,       dqsin,       tipd_dqsin);
+         loopbits_delayctrlin : FOR i in delayctrlin'RANGE GENERATE
+             VitalWireDelay (delayctrlin_in(i), delayctrlin(i), tipd_delayctrlin(i));
+         END GENERATE;
+         loopbits_offsetctrlin : FOR i in offsetctrlin'RANGE GENERATE
+             VitalWireDelay (offsetctrlin_in(i), offsetctrlin(i), tipd_offsetctrlin(i));
+         END GENERATE;
+         VitalWireDelay (dqsupdateen_in, dqsupdateen, tipd_dqsupdateen);
+         loopbits_phasectrlin : FOR i in phasectrlin'RANGE GENERATE
+             VitalWireDelay (phasectrlin_in(i), phasectrlin(i), tipd_phasectrlin(i));
+         END GENERATE;
+     end block;
+ 
+     -----------------------------------
+     -- Timing Check Section
+     -----------------------------------
+     VITAL_timing_check: PROCESS (dqsupdateen_in,offsetctrlin_in,delayctrlin_in)
+     
+     variable Tviol_dqsupdateen_offsetctrlin : std_ulogic := '0';
+     variable TimingData_dqsupdateen_offsetctrlin : VitalTimingDataType := VitalTimingDataInit;
+     variable Tviol_dqsupdateen_delayctrlin    : std_ulogic := '0';
+     variable TimingData_dqsupdateen_delayctrlin  : VitalTimingDataType := VitalTimingDataInit;
+     
+     BEGIN
+         IF (TimingChecksOn) THEN
+             VitalSetupHoldCheck (
+                         Violation       => Tviol_dqsupdateen_offsetctrlin,
+                         TimingData      => TimingData_dqsupdateen_offsetctrlin,
+                         TestSignal      => offsetctrlin_in,
+                         TestSignalName  => "offsetctrlin",
+                         RefSignal       => dqsupdateen_in,
+                         RefSignalName   => "dqsupdateen",
+                         SetupHigh       => tsetup_offsetctrlin_dqsupdateen_noedge_posedge(0),
+                         SetupLow        => tsetup_offsetctrlin_dqsupdateen_noedge_posedge(0),
+                         HoldHigh        => thold_offsetctrlin_dqsupdateen_noedge_posedge(0),
+                         HoldLow         => thold_offsetctrlin_dqsupdateen_noedge_posedge(0),
+                         RefTransition   => '/',
+                         HeaderMsg       => InstancePath & "/STRATIXIII_DQS_DELAY_CHAIN",
+                         XOn             => XOnChecks,
+                         MsgOn           => MsgOnChecks
+             );
+             
+             VitalSetupHoldCheck (
+                         Violation       => Tviol_dqsupdateen_delayctrlin,
+                         TimingData      => TimingData_dqsupdateen_delayctrlin,
+                         TestSignal      => delayctrlin_in,
+                         TestSignalName  => "delayctrlin",
+                         RefSignal       => dqsupdateen_in,
+                         RefSignalName   => "dqsupdateen",
+                         SetupHigh       => tsetup_delayctrlin_dqsupdateen_noedge_posedge(0),
+                         SetupLow        => tsetup_delayctrlin_dqsupdateen_noedge_posedge(0),
+                         HoldHigh        => thold_delayctrlin_dqsupdateen_noedge_posedge(0),
+                         HoldLow         => thold_delayctrlin_dqsupdateen_noedge_posedge(0),
+                         RefTransition   => '/',
+                         HeaderMsg       => InstancePath & "/STRATIXIII_DQS_DELAY_CHAIN",
+                         XOn             => XOnChecks,
+                         MsgOn           => MsgOnChecks
+             );
+             
+         END IF;
+     END PROCESS;  -- timing check
+ 
+     --------------------------------------
+     --  Path Delay Section
+     --------------------------------------
+     
+     VITAL_path_delays: PROCESS (tmp_dqsbusout)
+         variable dqsbusout_VitalGlitchData : VitalGlitchDataType;
+     BEGIN
+         VitalPathDelay01 (
+             OutSignal => dqsbusout,
+             OutSignalName => "dqsbusout",
+             OutTemp => tmp_dqsbusout,
+             Paths =>   (0 => (dqsin_in'last_event, tpd_dqsin_dqsbusout, TRUE)),
+             GlitchData => dqsbusout_VitalGlitchData,
+             Mode => DefGlitchMode,
+             XOn  => XOn,
+             MsgOn  => MsgOn );
+     END PROCESS;  -- Path Delays
+ 
+ END stratixiii_dqs_delay_chain_arch;
 
 -------------------------------------------------------------------------------
 --
@@ -9041,2209 +9261,2414 @@ BEGIN
     
 END stratixiii_dqs_enable_arch;
 
--------------------------------------------------------------------------------
---
--- Entity Name : stratixiii_dqs_enable_ctrl
---
--------------------------------------------------------------------------------
-
-library IEEE;
-use IEEE.std_logic_1164.all;
-use IEEE.std_logic_arith.all;
-use IEEE.std_logic_unsigned.all;
-use IEEE.VITAL_Timing.all;
-use IEEE.VITAL_Primitives.all;
-use work.stratixiii_atom_pack.all;
-use work.stratixiii_ddr_io_reg;
-use work.stratixiii_ddr_delay_chain_s;
-
-ENTITY stratixiii_dqs_enable_ctrl IS
-    GENERIC ( 
-        use_phasectrlin                 : string := "true";
-        phase_setting                   : integer := 0;
-        delay_buffer_mode               : string := "high";
-        level_dqs_enable                : string := "false";
-        delay_dqs_enable_by_half_cycle  : string := "false";
-        add_phase_transfer_reg          : string := "false";
-        invert_phase                    : string := "false";
-        sim_low_buffer_intrinsic_delay  : integer := 350;
-        sim_high_buffer_intrinsic_delay : integer := 175;
-        sim_buffer_delay_increment      : integer := 10;    
-        lpm_type                        : string := "stratixiii_dqs_enable_ctrl";
-        tipd_dqsenablein         : VitalDelayType01 := DefpropDelay01;
-        tipd_clk                 : VitalDelayType01 := DefpropDelay01;
-        tipd_delayctrlin         : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_phasectrlin         : VitalDelayArrayType01(3 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_enaphasetransferreg : VitalDelayType01 := DefpropDelay01;
-        tipd_phaseinvertctrl     : VitalDelayType01 := DefpropDelay01;
-        TimingChecksOn           : Boolean := True;
-        MsgOn                    : Boolean := DefGlitchMsgOn;
-        XOn                      : Boolean := DefGlitchXOn;
-        MsgOnChecks              : Boolean := DefMsgOnChecks;
-        XOnChecks                : Boolean := DefXOnChecks;
-        InstancePath             : String := "*"   
-    );
-    
-    PORT (
-        dqsenablein         : IN std_logic := '1';
-        clk                 : IN std_logic := '0';
-        delayctrlin         : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
-        phasectrlin         : IN std_logic_vector(3 downto 0) := (OTHERS => '0');
-        enaphasetransferreg : IN std_logic := '0';
-        phaseinvertctrl     : IN std_logic := '0';
-        devclrn             : IN std_logic := '1';
-        devpor              : IN std_logic := '1';        
-        dqsenableout        : OUT std_logic;
-        dffin               : OUT std_logic;
-        dffextenddqsenable  : OUT std_logic
-    );
-
-END;
-
-ARCHITECTURE stratixiii_dqs_enable_ctrl_arch OF stratixiii_dqs_enable_ctrl IS
-    -- component section
-    COMPONENT stratixiii_ddr_delay_chain_s
-    GENERIC (
-        use_phasectrlin : string  := "true";
-        phase_setting   : integer :=  0;
-        delay_buffer_mode               : string  := "high";
-        sim_low_buffer_intrinsic_delay  : integer := 350;
-        sim_high_buffer_intrinsic_delay : integer := 175;
-        sim_buffer_delay_increment  : integer := 10;
-        phasectrlin_limit           : integer := 7
-    );
-    PORT (
-        clk         : IN std_logic := '0';
-        delayctrlin : IN std_logic_vector(5 DOWNTO 0) := (OTHERS => '0');
-        phasectrlin : IN std_logic_vector(3 DOWNTO 0) := (OTHERS => '0');
-        delayed_clkout : OUT std_logic
-    );
-    END COMPONENT;
-    
-    component stratixiii_ddr_io_reg                                                                                              
-    generic (                                                                                                 
-             power_up : string := "DONT_CARE";                                                                
-             is_wysiwyg : string := "false";                                                                  
-             x_on_violation : string := "on";                                                                 
-             tsetup_d_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                                
-             tsetup_asdata_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                           
-             tsetup_sclr_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                             
-             tsetup_sload_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                            
-             tsetup_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                              
-             thold_d_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                                 
-             thold_asdata_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                            
-             thold_sclr_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                              
-             thold_sload_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                             
-             thold_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                               
-             tpd_clk_q_posedge : VitalDelayType01 := DefPropDelay01;                                          
-             tpd_clrn_q_negedge : VitalDelayType01 := DefPropDelay01;                                         
-             tpd_aload_q_posedge : VitalDelayType01 := DefPropDelay01;                                        
-             tpd_asdata_q: VitalDelayType01 := DefPropDelay01;                                                
-             tipd_clk : VitalDelayType01 := DefPropDelay01;                                                   
-             tipd_d : VitalDelayType01 := DefPropDelay01;                                                     
-             tipd_asdata : VitalDelayType01 := DefPropDelay01;                                                
-             tipd_sclr : VitalDelayType01 := DefPropDelay01;                                                  
-             tipd_sload : VitalDelayType01 := DefPropDelay01;                                                 
-             tipd_clrn : VitalDelayType01 := DefPropDelay01;                                                  
-             tipd_prn : VitalDelayType01 := DefPropDelay01;                                                   
-             tipd_aload : VitalDelayType01 := DefPropDelay01;                                                 
-             tipd_ena : VitalDelayType01 := DefPropDelay01;                                                   
-             TimingChecksOn: Boolean := True;                                                                 
-             MsgOn: Boolean := DefGlitchMsgOn;                                                                
-             XOn: Boolean := DefGlitchXOn;                                                                    
-             MsgOnChecks: Boolean := DefMsgOnChecks;                                                          
-             XOnChecks: Boolean := DefXOnChecks;                                                              
-             InstancePath: STRING := "*"                                                                      
-            );                                                                                                
-                                                                                                              
-    port (                                                                                                    
-           d : in std_logic := '0';                                                                           
-           clk : in std_logic := '0';                                                                         
-           ena : in std_logic := '1';                                                                         
-           clrn : in std_logic := '1';                                                                        
-           prn : in std_logic := '1';                                                                         
-           aload : in std_logic := '0';                                                                       
-           asdata : in std_logic := '0';                                                                      
-           sclr : in std_logic := '0';                                                                        
-           sload : in std_logic := '0';                                                                       
-           devclrn : in std_logic := '1';                                                                     
-           devpor : in std_logic := '1';                                                                      
-           q : out std_logic                                                                                  
-         );                                                                                                   
-    end component;                                                                                                
-    
-
-    -- int signals
-    SIGNAL phasectrl_clkout  : std_logic := '0';
-    SIGNAL delayed_clk       : std_logic := '0';
-    SIGNAL dqsenablein_reg_q : std_logic := '0';
-    SIGNAL dqsenablein_level_ena : std_logic := '0';
-
-    -- transfer delay
-    SIGNAL dqsenablein_reg_dly : std_logic := '0';
-    SIGNAL phasetransferdelay_mux_out : std_logic := '0';
-
-    SIGNAL dqsenable_delayed_regp : std_logic := '0';
-    SIGNAL dqsenable_delayed_regn : std_logic := '0';
-    
-    SIGNAL m_vcc : std_logic := '1';
-    SIGNAL m_gnd : std_logic := '0';
-    
-    SIGNAL not_clk_in      : std_logic := '1';
-    SIGNAL not_delayed_clk : std_logic := '1';
-    
-    -- timing output
-    SIGNAL tmp_dqsenableout       : std_logic := '1';
-
-    -- timing input
-    SIGNAL dqsenablein_in         : std_logic := '1';
-    SIGNAL clk_in                 : std_logic := '0';
-    SIGNAL delayctrlin_in         : std_logic_vector(5 downto 0) := (OTHERS => '0');
-    SIGNAL phasectrlin_in         : std_logic_vector(3 downto 0) := (OTHERS => '0');
-    SIGNAL enaphasetransferreg_in : std_logic := '0';
-    SIGNAL phaseinvertctrl_in     : std_logic := '0';
-    
-BEGIN
-
-    -- delay chain
-    m_delay_chain : stratixiii_ddr_delay_chain_s 
-        GENERIC MAP (
-            phase_setting               => phase_setting,
-            use_phasectrlin             => use_phasectrlin,
-            delay_buffer_mode           => delay_buffer_mode,
-            sim_low_buffer_intrinsic_delay  => sim_low_buffer_intrinsic_delay,
-            sim_high_buffer_intrinsic_delay => sim_high_buffer_intrinsic_delay,
-            sim_buffer_delay_increment      => sim_buffer_delay_increment
-        )
-        PORT MAP(
-            clk            => clk_in, 
-            delayctrlin    => delayctrlin_in, 
-            phasectrlin    => phasectrlin_in, 
-            delayed_clkout => phasectrl_clkout
-       ); 
-    
-    delayed_clk <= (not phasectrl_clkout) WHEN (invert_phase = "true") ELSE
-                   phasectrl_clkout       WHEN (invert_phase = "false") ELSE
-                   (not phasectrl_clkout) WHEN (phaseinvertctrl_in = '1') ELSE
-                   phasectrl_clkout;
-                   
-    not_clk_in <= not clk_in;
-    not_delayed_clk <= not delayed_clk;
-                         
-    dqsenablein_reg : stratixiii_ddr_io_reg
-        PORT MAP(
-            d        => dqsenablein_in, 
-            clk     => clk_in, 
-            ena     => m_vcc, 
-            clrn    => m_vcc, 
-            prn     => m_vcc,
-            aload   => m_gnd, 
-            asdata  => m_gnd, 
-            sclr    => m_gnd, 
-            sload   => m_gnd,
-            devclrn => devclrn,
-            devpor  => devpor,
-            q       => dqsenablein_reg_q
-        );
-  
-    dqsenable_transfer_reg : stratixiii_ddr_io_reg  
-        PORT MAP ( 
-            d       => dqsenablein_reg_q, 
-            clk     => not_clk_in, 
-            ena     => m_vcc, 
-            clrn    => m_vcc, 
-            prn     => m_vcc,
-            aload   => m_gnd, 
-            asdata  => m_gnd, 
-            sclr    => m_gnd, 
-            sload   => m_gnd,
-            devclrn => devclrn,
-            devpor  => devpor,
-            q       => dqsenablein_reg_dly
-        );
-
-    -- add phase transfer mux
-    phasetransferdelay_mux_out <= dqsenablein_reg_dly WHEN (add_phase_transfer_reg = "true")  ELSE 
-                                  dqsenablein_reg_q   WHEN (add_phase_transfer_reg = "false") ELSE
-                                  dqsenablein_reg_dly WHEN (enaphasetransferreg_in = '1')     ELSE 
-                                  dqsenablein_reg_q;
-
-    dqsenablein_level_ena      <= phasetransferdelay_mux_out WHEN (level_dqs_enable = "true") ELSE dqsenablein_in;
-
-    dqsenableout_reg : stratixiii_ddr_io_reg  
-        PORT MAP(
-            d       => dqsenablein_level_ena, 
-            clk     => delayed_clk, 
-            ena     => m_vcc, 
-            clrn    => m_vcc, 
-            prn     => m_vcc,
-            aload   => m_gnd, 
-            asdata  => m_gnd, 
-            sclr    => m_gnd, 
-            sload   => m_gnd,
-            devclrn => devclrn,
-            devpor  => devpor,
-            q       => dqsenable_delayed_regp
-        );
-        
-    dqsenableout_extend_reg : stratixiii_ddr_io_reg
-        PORT MAP(
-            d       => dqsenable_delayed_regp, 
-            clk     => not_delayed_clk, 
-            ena     => m_vcc, 
-            clrn    => m_vcc, 
-            prn     => m_vcc,
-            aload   => m_gnd, 
-            asdata  => m_gnd, 
-            sclr    => m_gnd, 
-            sload   => m_gnd,
-            devclrn => devclrn,
-            devpor  => devpor,
-            q       => dqsenable_delayed_regn
-        );
-    
-    tmp_dqsenableout <= dqsenable_delayed_regp WHEN (delay_dqs_enable_by_half_cycle = "false") ELSE
-                        (dqsenable_delayed_regp AND dqsenable_delayed_regn);
-                          
-    dqsenableout <= tmp_dqsenableout;
-
-
-    --------------------
-    -- INPUT PATH DELAYS
-    --------------------
-    WireDelay : block
-    begin
-        VitalWireDelay (dqsenablein_in,       dqsenablein,       tipd_dqsenablein);
-        VitalWireDelay (clk_in,       clk,       tipd_clk);
-        loopbits_delayctrlin : FOR i in delayctrlin'RANGE GENERATE
-            VitalWireDelay (delayctrlin_in(i), delayctrlin(i), tipd_delayctrlin(i));
-        END GENERATE;
-        loopbits_phasectrlin : FOR i in phasectrlin'RANGE GENERATE
-            VitalWireDelay (phasectrlin_in(i), phasectrlin(i), tipd_phasectrlin(i));
-        END GENERATE;
-        VitalWireDelay (enaphasetransferreg_in, enaphasetransferreg, tipd_enaphasetransferreg);
-        VitalWireDelay (phaseinvertctrl_in,     phaseinvertctrl,     tipd_phaseinvertctrl);
-    end block;
-    
-
-END stratixiii_dqs_enable_ctrl_arch;
-
--------------------------------------------------------------------------------
---
--- Entity Name : stratixiii_delay_chain
---
--------------------------------------------------------------------------------
-
-library IEEE;
-use IEEE.std_logic_1164.all;
-use IEEE.std_logic_arith.all;
-use IEEE.std_logic_unsigned.all;
-use IEEE.VITAL_Timing.all;
-use IEEE.VITAL_Primitives.all;
-use work.stratixiii_atom_pack.all;
+ -------------------------------------------------------------------------------
+ --
+ -- Entity Name : stratixiii_dqs_enable_ctrl
+ --
+ -------------------------------------------------------------------------------
  
-ENTITY stratixiii_delay_chain IS
-    GENERIC ( 
-        sim_delayctrlin_rising_delay_0   : integer := 0;
-        sim_delayctrlin_rising_delay_1   : integer := 50;
-        sim_delayctrlin_rising_delay_2   : integer := 100;
-        sim_delayctrlin_rising_delay_3   : integer := 150;
-        sim_delayctrlin_rising_delay_4   : integer := 200;
-        sim_delayctrlin_rising_delay_5   : integer := 250;
-        sim_delayctrlin_rising_delay_6   : integer := 300;
-        sim_delayctrlin_rising_delay_7   : integer := 350;
-        sim_delayctrlin_rising_delay_8   : integer := 400;
-        sim_delayctrlin_rising_delay_9   : integer := 450;
-        sim_delayctrlin_rising_delay_10  : integer := 500;
-        sim_delayctrlin_rising_delay_11  : integer := 550;
-        sim_delayctrlin_rising_delay_12  : integer := 600;
-        sim_delayctrlin_rising_delay_13  : integer := 650;
-        sim_delayctrlin_rising_delay_14  : integer := 700;
-        sim_delayctrlin_rising_delay_15  : integer := 750;
-        sim_delayctrlin_falling_delay_0  : integer := 0;
-        sim_delayctrlin_falling_delay_1  : integer := 50;
-        sim_delayctrlin_falling_delay_2  : integer := 100;
-        sim_delayctrlin_falling_delay_3  : integer := 150;
-        sim_delayctrlin_falling_delay_4  : integer := 200;
-        sim_delayctrlin_falling_delay_5  : integer := 250;
-        sim_delayctrlin_falling_delay_6  : integer := 300;
-        sim_delayctrlin_falling_delay_7  : integer := 350;
-        sim_delayctrlin_falling_delay_8  : integer := 400;
-        sim_delayctrlin_falling_delay_9  : integer := 450;
-        sim_delayctrlin_falling_delay_10  : integer := 500;
-        sim_delayctrlin_falling_delay_11  : integer := 550;
-        sim_delayctrlin_falling_delay_12  : integer := 600;
-        sim_delayctrlin_falling_delay_13  : integer := 650;
-        sim_delayctrlin_falling_delay_14  : integer := 700;
-        sim_delayctrlin_falling_delay_15  : integer := 750;
-        use_delayctrlin                   : string := "true";
-        delay_setting                     : integer := 0;
-        lpm_type                          : string := "stratixiii_delay_chain";
-        tipd_datain              : VitalDelayType01 := DefpropDelay01;
-        tipd_delayctrlin         : VitalDelayArrayType01(3 downto 0) := (OTHERS => DefPropDelay01);
-        tpd_datain_dataout       : VitalDelayType01 := DefPropDelay01;
-        TimingChecksOn           : Boolean := True;
-        MsgOn                    : Boolean := DefGlitchMsgOn;
-        XOn                      : Boolean := DefGlitchXOn;
-        MsgOnChecks              : Boolean := DefMsgOnChecks;
-        XOnChecks                : Boolean := DefXOnChecks;
-        InstancePath             : String := "*"   
-    );
-    
-    PORT (
-        datain       : IN std_logic := '0';
-        delayctrlin  : IN std_logic_vector(3 downto 0) := (OTHERS => '0');
-        devclrn      : IN std_logic := '1';
-        devpor       : IN std_logic := '1';
-        dataout      : OUT std_logic
-    );
-
-END;
-
-ARCHITECTURE stratixiii_delay_chain_arch OF stratixiii_delay_chain IS
-    -- type def
-    type delay_chain_int_vec is array (natural range <>) of integer;
-    
-    -- component section
-    
-    -- signal section
-    SIGNAL rising_dly  : INTEGER := 0;
-    SIGNAL falling_dly : INTEGER := 0;
-    SIGNAL delayctrlin_in : STD_LOGIC_VECTOR (3 DOWNTO 0) := (OTHERS => '0');
-    
-    -- timing inputs
-    SIGNAL tmp_dataout     : std_logic := '0';
-    
-    -- timing inputs
-    SIGNAL datain_in       : std_logic := '0';
-    
-BEGIN
-    -- filtering X/U etc.
-    delayctrlin_in(0) <= '1' WHEN (delayctrlin(0) = '1') ELSE '0';
-    delayctrlin_in(1) <= '1' WHEN (delayctrlin(1) = '1') ELSE '0';
-    delayctrlin_in(2) <= '1' WHEN (delayctrlin(2) = '1') ELSE '0';
-    delayctrlin_in(3) <= '1' WHEN (delayctrlin(3) = '1') ELSE '0';
-
-    --  generate dynamic delay table and dynamic delay       
-    process(delayctrlin_in)
-        variable init : boolean := true;
-        variable dly_table_rising : delay_chain_int_vec(15 downto 0) := (OTHERS => 0);
-        variable dly_table_falling : delay_chain_int_vec(15 downto 0) := (OTHERS => 0);
-        variable dly_setting : integer := 0;
-    begin
-        if (init) then
-            dly_table_rising(0) := sim_delayctrlin_rising_delay_0;
-            dly_table_rising(1) := sim_delayctrlin_rising_delay_1;
-            dly_table_rising(2) := sim_delayctrlin_rising_delay_2;
-            dly_table_rising(3) := sim_delayctrlin_rising_delay_3;
-            dly_table_rising(4) := sim_delayctrlin_rising_delay_4;
-            dly_table_rising(5) := sim_delayctrlin_rising_delay_5;
-            dly_table_rising(6) := sim_delayctrlin_rising_delay_6;
-            dly_table_rising(7) := sim_delayctrlin_rising_delay_7;
-            dly_table_rising(8) := sim_delayctrlin_rising_delay_8;
-            dly_table_rising(9) := sim_delayctrlin_rising_delay_9;
-            dly_table_rising(10) := sim_delayctrlin_rising_delay_10;
-            dly_table_rising(11) := sim_delayctrlin_rising_delay_11;
-            dly_table_rising(12) := sim_delayctrlin_rising_delay_12;
-            dly_table_rising(13) := sim_delayctrlin_rising_delay_13;
-            dly_table_rising(14) := sim_delayctrlin_rising_delay_14;
-            dly_table_rising(15) := sim_delayctrlin_rising_delay_15;
-
-            dly_table_falling(0) := sim_delayctrlin_falling_delay_0;
-            dly_table_falling(1) := sim_delayctrlin_falling_delay_1;
-            dly_table_falling(2) := sim_delayctrlin_falling_delay_2;
-            dly_table_falling(3) := sim_delayctrlin_falling_delay_3;
-            dly_table_falling(4) := sim_delayctrlin_falling_delay_4;
-            dly_table_falling(5) := sim_delayctrlin_falling_delay_5;
-            dly_table_falling(6) := sim_delayctrlin_falling_delay_6;
-            dly_table_falling(7) := sim_delayctrlin_falling_delay_7;
-            dly_table_falling(8) := sim_delayctrlin_falling_delay_8;
-            dly_table_falling(9) := sim_delayctrlin_falling_delay_9;
-            dly_table_falling(10) := sim_delayctrlin_falling_delay_10;
-            dly_table_falling(11) := sim_delayctrlin_falling_delay_11;
-            dly_table_falling(12) := sim_delayctrlin_falling_delay_12;
-            dly_table_falling(13) := sim_delayctrlin_falling_delay_13;
-            dly_table_falling(14) := sim_delayctrlin_falling_delay_14;
-            dly_table_falling(15) := sim_delayctrlin_falling_delay_15;
+ library IEEE;
+ use IEEE.std_logic_1164.all;
+ use IEEE.std_logic_arith.all;
+ use IEEE.std_logic_unsigned.all;
+ use IEEE.VITAL_Timing.all;
+ use IEEE.VITAL_Primitives.all;
+ use work.stratixiii_atom_pack.all;
+ use work.stratixiii_ddr_io_reg;
+ use work.stratixiii_ddr_delay_chain_s;
+ 
+ ENTITY stratixiii_dqs_enable_ctrl IS
+     GENERIC ( 
+         use_phasectrlin                 : string := "true";
+         phase_setting                   : integer := 0;
+         delay_buffer_mode               : string := "high";
+         level_dqs_enable                : string := "false";
+         delay_dqs_enable_by_half_cycle  : string := "false";
+         add_phase_transfer_reg          : string := "false";
+         invert_phase                    : string := "false";
+         sim_low_buffer_intrinsic_delay  : integer := 350;
+         sim_high_buffer_intrinsic_delay : integer := 175;
+         sim_buffer_delay_increment      : integer := 10;    
+         lpm_type                        : string := "stratixiii_dqs_enable_ctrl";
+         tipd_dqsenablein         : VitalDelayType01 := DefpropDelay01;
+         tipd_clk                 : VitalDelayType01 := DefpropDelay01;
+         tipd_delayctrlin         : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_phasectrlin         : VitalDelayArrayType01(3 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_enaphasetransferreg : VitalDelayType01 := DefpropDelay01;
+         tipd_phaseinvertctrl     : VitalDelayType01 := DefpropDelay01;
+         TimingChecksOn           : Boolean := True;
+         MsgOn                    : Boolean := DefGlitchMsgOn;
+         XOn                      : Boolean := DefGlitchXOn;
+         MsgOnChecks              : Boolean := DefMsgOnChecks;
+         XOnChecks                : Boolean := DefXOnChecks;
+         InstancePath             : String := "*"   
+     );
+     
+     PORT (
+         dqsenablein         : IN std_logic := '1';
+         clk                 : IN std_logic := '0';
+         delayctrlin         : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
+         phasectrlin         : IN std_logic_vector(3 downto 0) := (OTHERS => '0');
+         enaphasetransferreg : IN std_logic := '0';
+         phaseinvertctrl     : IN std_logic := '0';
+         devclrn             : IN std_logic := '1';
+         devpor              : IN std_logic := '1';        
+         dqsenableout        : OUT std_logic;
+         dffin               : OUT std_logic;
+         dffextenddqsenable  : OUT std_logic
+     );
+ 
+ END;
+ 
+ ARCHITECTURE stratixiii_dqs_enable_ctrl_arch OF stratixiii_dqs_enable_ctrl IS
+     -- component section
+     COMPONENT stratixiii_ddr_delay_chain_s
+     GENERIC (
+         use_phasectrlin : string  := "true";
+         phase_setting   : integer :=  0;
+         delay_buffer_mode               : string  := "high";
+         sim_low_buffer_intrinsic_delay  : integer := 350;
+         sim_high_buffer_intrinsic_delay : integer := 175;
+         sim_buffer_delay_increment  : integer := 10;
+         phasectrlin_limit           : integer := 7
+     );
+     PORT (
+         clk         : IN std_logic := '0';
+         delayctrlin : IN std_logic_vector(5 DOWNTO 0) := (OTHERS => '0');
+         phasectrlin : IN std_logic_vector(3 DOWNTO 0) := (OTHERS => '0');
+         delayed_clkout : OUT std_logic
+     );
+     END COMPONENT;
+     
+     component stratixiii_ddr_io_reg                                                                                              
+     generic (                                                                                                 
+              power_up : string := "DONT_CARE";                                                                
+              is_wysiwyg : string := "false";                                                                  
+              x_on_violation : string := "on";                                                                 
+              tsetup_d_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                                
+              tsetup_asdata_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                           
+              tsetup_sclr_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                             
+              tsetup_sload_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                            
+              tsetup_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                              
+              thold_d_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                                 
+              thold_asdata_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                            
+              thold_sclr_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                              
+              thold_sload_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                             
+              thold_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                               
+              tpd_clk_q_posedge : VitalDelayType01 := DefPropDelay01;                                          
+              tpd_clrn_q_negedge : VitalDelayType01 := DefPropDelay01;                                         
+              tpd_aload_q_posedge : VitalDelayType01 := DefPropDelay01;                                        
+              tpd_asdata_q: VitalDelayType01 := DefPropDelay01;                                                
+              tipd_clk : VitalDelayType01 := DefPropDelay01;                                                   
+              tipd_d : VitalDelayType01 := DefPropDelay01;                                                     
+              tipd_asdata : VitalDelayType01 := DefPropDelay01;                                                
+              tipd_sclr : VitalDelayType01 := DefPropDelay01;                                                  
+              tipd_sload : VitalDelayType01 := DefPropDelay01;                                                 
+              tipd_clrn : VitalDelayType01 := DefPropDelay01;                                                  
+              tipd_prn : VitalDelayType01 := DefPropDelay01;                                                   
+              tipd_aload : VitalDelayType01 := DefPropDelay01;                                                 
+              tipd_ena : VitalDelayType01 := DefPropDelay01;                                                   
+              TimingChecksOn: Boolean := True;                                                                 
+              MsgOn: Boolean := DefGlitchMsgOn;                                                                
+              XOn: Boolean := DefGlitchXOn;                                                                    
+              MsgOnChecks: Boolean := DefMsgOnChecks;                                                          
+              XOnChecks: Boolean := DefXOnChecks;                                                              
+              InstancePath: STRING := "*"                                                                      
+             );                                                                                                
+                                                                                                               
+     port (                                                                                                    
+            d : in std_logic := '0';                                                                           
+            clk : in std_logic := '0';                                                                         
+            ena : in std_logic := '1';                                                                         
+            clrn : in std_logic := '1';                                                                        
+            prn : in std_logic := '1';                                                                         
+            aload : in std_logic := '0';                                                                       
+            asdata : in std_logic := '0';                                                                      
+            sclr : in std_logic := '0';                                                                        
+            sload : in std_logic := '0';                                                                       
+            devclrn : in std_logic := '1';                                                                     
+            devpor : in std_logic := '1';                                                                      
+            q : out std_logic                                                                                  
+          );                                                                                                   
+     end component;                                                                                                
+     
+ 
+     -- int signals
+     SIGNAL phasectrl_clkout  : std_logic := '0';
+     SIGNAL delayed_clk       : std_logic := '0';
+     SIGNAL dqsenablein_reg_q : std_logic := '0';
+     SIGNAL dqsenablein_level_ena : std_logic := '0';
+ 
+     -- transfer delay
+     SIGNAL dqsenablein_reg_dly : std_logic := '0';
+     SIGNAL phasetransferdelay_mux_out : std_logic := '0';
+ 
+     SIGNAL dqsenable_delayed_regp : std_logic := '0';
+     SIGNAL dqsenable_delayed_regn : std_logic := '0';
+     
+     SIGNAL m_vcc : std_logic := '1';
+     SIGNAL m_gnd : std_logic := '0';
+     
+     SIGNAL not_clk_in      : std_logic := '1';
+     SIGNAL not_delayed_clk : std_logic := '1';
+     
+     -- timing output
+     SIGNAL tmp_dqsenableout       : std_logic := '1';
+ 
+     -- timing input
+     SIGNAL dqsenablein_in         : std_logic := '1';
+     SIGNAL clk_in                 : std_logic := '0';
+     SIGNAL delayctrlin_in         : std_logic_vector(5 downto 0) := (OTHERS => '0');
+     SIGNAL phasectrlin_in         : std_logic_vector(3 downto 0) := (OTHERS => '0');
+     SIGNAL enaphasetransferreg_in : std_logic := '0';
+     SIGNAL phaseinvertctrl_in     : std_logic := '0';
+     
+ BEGIN
+ 
+     -- delay chain
+     m_delay_chain : stratixiii_ddr_delay_chain_s 
+         GENERIC MAP (
+             phase_setting               => phase_setting,
+             use_phasectrlin             => use_phasectrlin,
+             delay_buffer_mode           => delay_buffer_mode,
+             sim_low_buffer_intrinsic_delay  => sim_low_buffer_intrinsic_delay,
+             sim_high_buffer_intrinsic_delay => sim_high_buffer_intrinsic_delay,
+             sim_buffer_delay_increment      => sim_buffer_delay_increment
+         )
+         PORT MAP(
+             clk            => clk_in, 
+             delayctrlin    => delayctrlin_in, 
+             phasectrlin    => phasectrlin_in, 
+             delayed_clkout => phasectrl_clkout
+        ); 
+     
+     delayed_clk <= (not phasectrl_clkout) WHEN (invert_phase = "true") ELSE
+                    phasectrl_clkout       WHEN (invert_phase = "false") ELSE
+                    (not phasectrl_clkout) WHEN (phaseinvertctrl_in = '1') ELSE
+                    phasectrl_clkout;
                     
-            init := false;
-        end if;
-        
-        IF (use_delayctrlin = "false") THEN
-            dly_setting := delay_setting;
-        ELSE
-            dly_setting := alt_conv_integer(delayctrlin_in);
-        END IF;
-         	
-        rising_dly  <= dly_table_rising(dly_setting);
-        falling_dly <= dly_table_falling(dly_setting);
-    end process; -- generating dynamic delays
-
-    PROCESS(datain_in)
-    BEGIN
-        if (datain_in = '0') then
-            tmp_dataout <= transport datain_in after (falling_dly * 1 ps);
-        else
-            tmp_dataout <= transport datain_in after (rising_dly * 1 ps);
-        end if;
-    END PROCESS;
-        
-    ----------------------------------
-    --  Path Delay Section
-    ----------------------------------
-    
-    VITAL: process(tmp_dataout)
-        variable dataout_VitalGlitchData : VitalGlitchDataType;
-    begin 
-        VitalPathDelay01 (
-            OutSignal => dataout,
-            OutSignalName => "dataout",
-            OutTemp => tmp_dataout,
-            Paths => (0 => (datain_in'last_event, tpd_datain_dataout, TRUE)),
-            GlitchData => dataout_VitalGlitchData,
-            Mode => DefGlitchMode,
-            XOn  => XOn,
-            MsgOn  => MsgOn );
-    end process;
-
-    --------------------
-    -- INPUT PATH DELAYS
-    --------------------
-    WireDelay : block
-    begin
-        VitalWireDelay (datain_in,       datain,       tipd_datain);
-    end block;
-    
-END stratixiii_delay_chain_arch;
-
--------------------------------------------------------------------------------
---
--- Entity Name : stratixiii_io_clock_divider
---
--------------------------------------------------------------------------------
-
-library IEEE;
-use IEEE.std_logic_1164.all;
-use IEEE.VITAL_Timing.all;
-use IEEE.VITAL_Primitives.all;
-use work.stratixiii_atom_pack.all;
-use work.stratixiii_ddr_delay_chain_s;
-    
-ENTITY stratixiii_io_clock_divider IS
-    GENERIC ( 
-        use_phasectrlin                 : string := "true";
-        phase_setting                   : integer := 0;     
-        delay_buffer_mode               : string := "high";
-        use_masterin                    : string := "false";
-        invert_phase                    : string := "false";    
-        sim_low_buffer_intrinsic_delay  : integer := 350;
-        sim_high_buffer_intrinsic_delay : integer := 175;
-        sim_buffer_delay_increment      : integer := 10;    
-        lpm_type                        : string := "stratixiii_io_clock_divider";
-        tipd_clk                 : VitalDelayType01 := DefpropDelay01;
-        tipd_phaseselect         : VitalDelayType01 := DefpropDelay01;
-        tipd_delayctrlin         : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_phasectrlin         : VitalDelayArrayType01(3 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_phaseinvertctrl     : VitalDelayType01 := DefpropDelay01;
-        tipd_masterin            : VitalDelayType01 := DefpropDelay01;
-        tpd_clk_clkout           : VitalDelayType01 := DefPropDelay01;
-        TimingChecksOn           : Boolean := True;
-        MsgOn                    : Boolean := DefGlitchMsgOn;
-        XOn                      : Boolean := DefGlitchXOn;
-        MsgOnChecks              : Boolean := DefMsgOnChecks;
-        XOnChecks                : Boolean := DefXOnChecks;
-        InstancePath             : String := "*"   
-    );
-    
-    PORT (
-        clk             : IN std_logic := '0';
-        phaseselect     : IN std_logic := '0';
-        delayctrlin     : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
-        phasectrlin     : IN std_logic_vector(3 downto 0) := (OTHERS => '0');
-        phaseinvertctrl : IN std_logic := '0';
-        masterin        : IN std_logic := '0';
-        devclrn         : IN std_logic := '1';
-        devpor          : IN std_logic := '1';
-        clkout          : OUT std_logic;
-        slaveout        : OUT std_logic
-    );
-
-END;
-
-ARCHITECTURE stratixiii_io_clock_divider_arch OF stratixiii_io_clock_divider IS
-    -- component section
-    COMPONENT stratixiii_ddr_delay_chain_s
-    GENERIC (
-        use_phasectrlin : string  := "true";
-        phase_setting   : integer :=  0;
-        delay_buffer_mode               : string  := "high";
-        sim_low_buffer_intrinsic_delay  : integer := 350;
-        sim_high_buffer_intrinsic_delay : integer := 175;
-        sim_buffer_delay_increment  : integer := 10;
-        phasectrlin_limit           : integer := 7
-    );
-    PORT (
-        clk         : IN std_logic := '0';
-        delayctrlin : IN std_logic_vector(5 DOWNTO 0) := (OTHERS => '0');
-        phasectrlin : IN std_logic_vector(3 DOWNTO 0) := (OTHERS => '0');
-        delayed_clkout : OUT std_logic
-    );
-    END COMPONENT;
-    
-    -- int signals
-    SIGNAL phasectrl_clkout : STD_LOGIC := '0';
-    SIGNAL delayed_clk      : STD_LOGIC := '0';
-    SIGNAL divided_clk_in   : STD_LOGIC := '0';
-    SIGNAL divided_clk      : STD_LOGIC := '0';
-    
-    -- timing outputs
-    SIGNAL tmp_clkout       : STD_LOGIC := '0';
-    
-    -- timing inputs
-    SIGNAL clk_in             : std_logic := '0';
-    SIGNAL phaseselect_in     : std_logic := '0';
-    SIGNAL delayctrlin_in     : std_logic_vector(5 downto 0) := (OTHERS => '0');
-    SIGNAL phasectrlin_in     : std_logic_vector(3 downto 0) := (OTHERS => '0');
-    SIGNAL phaseinvertctrl_in : std_logic := '0';
-    SIGNAL masterin_in        : std_logic := '0';
-    
-BEGIN
-
-    -- delay chain
-    m_delay_chain : stratixiii_ddr_delay_chain_s 
-        GENERIC MAP (
-            phase_setting               => phase_setting,
-            use_phasectrlin             => use_phasectrlin,
-            delay_buffer_mode           => delay_buffer_mode,
-            sim_low_buffer_intrinsic_delay  => sim_low_buffer_intrinsic_delay,
-            sim_high_buffer_intrinsic_delay => sim_high_buffer_intrinsic_delay,
-            sim_buffer_delay_increment      => sim_buffer_delay_increment
-        )
-        PORT MAP(
-            clk            => clk_in, 
-            delayctrlin    => delayctrlin_in, 
-            phasectrlin    => phasectrlin_in, 
-            delayed_clkout => phasectrl_clkout
-       ); 
-       
-    delayed_clk <= (not phasectrl_clkout) WHEN (invert_phase = "true") ELSE
-                   phasectrl_clkout       WHEN (invert_phase = "false") ELSE
-                   (not phasectrl_clkout) WHEN (phaseinvertctrl_in = '1') ELSE
-                   phasectrl_clkout;
-
-    divided_clk_in <= masterin_in WHEN (use_masterin = "true") ELSE divided_clk;
-  
-    PROCESS (delayed_clk)
-    BEGIN
-        if (delayed_clk = '1') then
-            divided_clk <= not divided_clk_in;
-        end if;
-    END PROCESS;
-      
-    
-    tmp_clkout <= (not divided_clk) WHEN (phaseselect_in = '1') ELSE divided_clk;
-
-    slaveout <= divided_clk;
-    
-    ----------------------------------
-    --  Path Delay Section
-    ----------------------------------
-    
-    VITAL: process(tmp_clkout)
-        variable clkout_VitalGlitchData : VitalGlitchDataType;
-    begin 
-        VitalPathDelay01 (
-            OutSignal => clkout,
-            OutSignalName => "clkout",
-            OutTemp => tmp_clkout,
-            Paths => (0 => (clk_in'last_event, tpd_clk_clkout, TRUE)),
-            GlitchData => clkout_VitalGlitchData,
-            Mode => DefGlitchMode,
-            XOn  => XOn,
-            MsgOn  => MsgOn );
-    end process;
+     not_clk_in <= not clk_in;
+     not_delayed_clk <= not delayed_clk;
                           
-    --------------------
-    -- INPUT PATH DELAYS
-    --------------------
-    WireDelay : block
-    begin
-        VitalWireDelay (clk_in,         clk,         tipd_clk);
-        VitalWireDelay (phaseselect_in, phaseselect, tipd_phaseselect);
-        loopbits_delayctrlin : FOR i in delayctrlin'RANGE GENERATE
-            VitalWireDelay (delayctrlin_in(i), delayctrlin(i), tipd_delayctrlin(i));
-        END GENERATE;
-        loopbits_phasectrlin : FOR i in phasectrlin'RANGE GENERATE
-            VitalWireDelay (phasectrlin_in(i), phasectrlin(i), tipd_phasectrlin(i));
-        END GENERATE;
-        VitalWireDelay (phaseinvertctrl_in, phaseinvertctrl, tipd_phaseinvertctrl);
-        VitalWireDelay (masterin_in,        masterin,        tipd_masterin);
-    end block;
-    
-END stratixiii_io_clock_divider_arch;
-
--------------------------------------------------------------------------------
---
--- Entity Name : stratixiii_output_phase_alignment
---
--------------------------------------------------------------------------------
-
-library IEEE;
-use IEEE.std_logic_1164.all;
-use IEEE.std_logic_arith.all;
-use IEEE.std_logic_unsigned.all;
-use IEEE.VITAL_Timing.all;
-use IEEE.VITAL_Primitives.all;
-use work.stratixiii_atom_pack.all;
-use work.stratixiii_ddr_io_reg;
-use work.stratixiii_ddr_delay_chain_s;
-    
-ENTITY stratixiii_output_phase_alignment IS
-    GENERIC ( 
-        operation_mode                   : string := "ddio_out";
-        use_phasectrlin                  : string := "true";
-        phase_setting                    : integer := 0;      
-        delay_buffer_mode                : string := "high";
-        power_up                         : string := "low";
-        async_mode                       : string := "none";
-        sync_mode                        : string := "none";
-        add_output_cycle_delay           : string := "false";
-        use_delayed_clock                : string := "false";
-        add_phase_transfer_reg           : string := "false"; 
-        use_phasectrl_clock              : string := "true";   
-        use_primary_clock                : string := "true";   
-        invert_phase                     : string := "false";  
-        bypass_input_register            : string := "false";  
-        phase_setting_for_delayed_clock  : integer := 2;           
-        sim_low_buffer_intrinsic_delay  : integer := 350;
-        sim_high_buffer_intrinsic_delay : integer := 175;
-        sim_buffer_delay_increment      : integer := 10;    
-        lpm_type                        : string := "stratixiii_output_phase_alignment";
-        tipd_datain              : VitalDelayArrayType01(1 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_clk                 : VitalDelayType01 := DefpropDelay01;
-        tipd_delayctrlin         : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_phasectrlin         : VitalDelayArrayType01(3 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_areset              : VitalDelayType01 := DefpropDelay01;
-        tipd_sreset              : VitalDelayType01 := DefpropDelay01;
-        tipd_clkena              : VitalDelayType01 := DefpropDelay01;
-        tipd_enaoutputcycledelay : VitalDelayType01 := DefpropDelay01;
-        tipd_enaphasetransferreg : VitalDelayType01 := DefpropDelay01;
-        tipd_phaseinvertctrl     : VitalDelayType01 := DefpropDelay01;
-        TimingChecksOn           : Boolean := True;
-        MsgOn                    : Boolean := DefGlitchMsgOn;
-        XOn                      : Boolean := DefGlitchXOn;
-        MsgOnChecks              : Boolean := DefMsgOnChecks;
-        XOnChecks                : Boolean := DefXOnChecks;
-        InstancePath             : String := "*"   
-    );
-    
-    PORT (
-        datain              : IN std_logic_vector(1 downto 0) := (OTHERS => '0');
-        clk                 : IN std_logic := '0';
-        delayctrlin         : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
-        phasectrlin         : IN std_logic_vector(3 downto 0) := (OTHERS => '0');
-        areset              : IN std_logic := '0';
-        sreset              : IN std_logic := '0';
-        clkena              : IN std_logic := '1';
-        enaoutputcycledelay : IN std_logic := '0';
-        enaphasetransferreg : IN std_logic := '0';
-        phaseinvertctrl     : IN std_logic := '0';
-        devclrn             : IN std_logic := '1';
-        devpor              : IN std_logic := '1';
-        dataout             : OUT std_logic;
-        dffin               : OUT std_logic_vector(1 downto 0);
-        dff1t               : OUT std_logic_vector(1 downto 0);
-        dffddiodataout      : OUT std_logic
-    );
-
-END;
-
-ARCHITECTURE stratixiii_output_phase_alignment_arch OF stratixiii_output_phase_alignment IS
-    -- component section
-    COMPONENT stratixiii_ddr_delay_chain_s
-    GENERIC (
-        use_phasectrlin : string  := "true";
-        phase_setting   : integer :=  0;
-        delay_buffer_mode               : string  := "high";
-        sim_low_buffer_intrinsic_delay  : integer := 350;
-        sim_high_buffer_intrinsic_delay : integer := 175;
-        sim_buffer_delay_increment  : integer := 10;
-        phasectrlin_limit           : integer := 7
-    );
-    PORT (
-        clk         : IN std_logic := '0';
-        delayctrlin : IN std_logic_vector(5 DOWNTO 0) := (OTHERS => '0');
-        phasectrlin : IN std_logic_vector(3 DOWNTO 0) := (OTHERS => '0');
-        delayed_clkout : OUT std_logic
-    );
-    END COMPONENT;
-    
-    component stratixiii_ddr_io_reg                                                                                              
-    generic (                                                                                                 
-             power_up : string := "DONT_CARE";                                                                
-             is_wysiwyg : string := "false";                                                                  
-             x_on_violation : string := "on";                                                                 
-             tsetup_d_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                                
-             tsetup_asdata_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                           
-             tsetup_sclr_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                             
-             tsetup_sload_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                            
-             tsetup_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                              
-             thold_d_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                                 
-             thold_asdata_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                            
-             thold_sclr_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                              
-             thold_sload_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                             
-             thold_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                               
-             tpd_clk_q_posedge : VitalDelayType01 := DefPropDelay01;                                          
-             tpd_clrn_q_negedge : VitalDelayType01 := DefPropDelay01;                                         
-             tpd_aload_q_posedge : VitalDelayType01 := DefPropDelay01;                                        
-             tpd_asdata_q: VitalDelayType01 := DefPropDelay01;                                                
-             tipd_clk : VitalDelayType01 := DefPropDelay01;                                                   
-             tipd_d : VitalDelayType01 := DefPropDelay01;                                                     
-             tipd_asdata : VitalDelayType01 := DefPropDelay01;                                                
-             tipd_sclr : VitalDelayType01 := DefPropDelay01;                                                  
-             tipd_sload : VitalDelayType01 := DefPropDelay01;                                                 
-             tipd_clrn : VitalDelayType01 := DefPropDelay01;                                                  
-             tipd_prn : VitalDelayType01 := DefPropDelay01;                                                   
-             tipd_aload : VitalDelayType01 := DefPropDelay01;                                                 
-             tipd_ena : VitalDelayType01 := DefPropDelay01;                                                   
-             TimingChecksOn: Boolean := True;                                                                 
-             MsgOn: Boolean := DefGlitchMsgOn;                                                                
-             XOn: Boolean := DefGlitchXOn;                                                                    
-             MsgOnChecks: Boolean := DefMsgOnChecks;                                                          
-             XOnChecks: Boolean := DefXOnChecks;                                                              
-             InstancePath: STRING := "*"                                                                      
-            );                                                                                                
-                                                                                                              
-    port (                                                                                                    
-           d : in std_logic := '0';                                                                           
-           clk : in std_logic := '0';                                                                         
-           ena : in std_logic := '1';                                                                         
-           clrn : in std_logic := '1';                                                                        
-           prn : in std_logic := '1';                                                                         
-           aload : in std_logic := '0';                                                                       
-           asdata : in std_logic := '0';                                                                      
-           sclr : in std_logic := '0';                                                                        
-           sload : in std_logic := '0';                                                                       
-           devclrn : in std_logic := '1';                                                                     
-           devpor : in std_logic := '1';                                                                      
-           q : out std_logic                                                                                  
-         );                                                                                                   
-    end component;                                                                                                
-    
-    -- int signals on clock paths
-    SIGNAL clk_in_delayed: STD_LOGIC := '0';
-    SIGNAL clk_in_mux: STD_LOGIC := '0';
-    SIGNAL phasectrl_clkout: STD_LOGIC := '0';
-    SIGNAL phaseinvertctrl_out: STD_LOGIC := '0';
-
-    SIGNAL m_vcc: STD_LOGIC := '1';
-    SIGNAL m_gnd: STD_LOGIC := '0';
-    
-    -- IO registers
-    -- common
-    SIGNAL adatasdata_in_r : STD_LOGIC := '0';   -- sync reset - common for transfer and output reg
-    SIGNAL sclr_in_r : STD_LOGIC := '0';
-    SIGNAL sload_in_r : STD_LOGIC := '0';  
-    SIGNAL sclr_in : STD_LOGIC := '0';
-    SIGNAL sload_in : STD_LOGIC := '0';
-    SIGNAL adatasdata_in : STD_LOGIC := '0';
-    SIGNAL clrn_in_r : STD_LOGIC := '1';        -- async reset - common for all registers
-    SIGNAL prn_in_r : STD_LOGIC := '1';
-    
-    SIGNAL datain_q: STD_LOGIC := '0';
-    SIGNAL ddio_datain_q: STD_LOGIC := '0';
-
-    SIGNAL cycledelay_q: STD_LOGIC := '0';
-    SIGNAL ddio_cycledelay_q: STD_LOGIC := '0';
-
-    SIGNAL cycledelay_mux_out: STD_LOGIC := '0';
-    SIGNAL ddio_cycledelay_mux_out: STD_LOGIC := '0';
-
-    SIGNAL bypass_input_reg_mux_out      : STD_LOGIC := '0';
-    SIGNAL ddio_bypass_input_reg_mux_out : STD_LOGIC := '0';
-
-    SIGNAL not_clk_in_mux: STD_LOGIC := '0';
-    
-    SIGNAL ddio_out_clk_mux: STD_LOGIC := '0';
-    SIGNAL ddio_out_lo_q: STD_LOGIC := '0';
-    SIGNAL ddio_out_hi_q: STD_LOGIC := '0';
-    
-    -- transfer delay now by negative clk
-    SIGNAL transfer_q: STD_LOGIC := '0';
-    SIGNAL ddio_transfer_q: STD_LOGIC := '0';
-
-    SIGNAL dlyclk_clk: STD_LOGIC := '0';
-    SIGNAL dlyclk_d: STD_LOGIC := '0';
-    SIGNAL dlyclk_q: STD_LOGIC := '0';
-    SIGNAL ddio_dlyclk_d: STD_LOGIC := '0';
-    SIGNAL ddio_dlyclk_q: STD_LOGIC := '0';
-
-    SIGNAL dlyclk_clkena_in: STD_LOGIC := '0';     -- shared    
-    SIGNAL dlyclk_extended_q: STD_LOGIC := '0';
-    SIGNAL dlyclk_extended_clk: STD_LOGIC := '0';
-
-    SIGNAL normal_dataout: STD_LOGIC := '0';
-    SIGNAL extended_dataout: STD_LOGIC := '0';
-    SIGNAL ddio_dataout: STD_LOGIC := '0';
-    SIGNAL tmp_dataout: STD_LOGIC := '0';
-
-    
-    -- timing inputs
-    SIGNAL datain_in              : std_logic_vector(1 downto 0) := (OTHERS => '0');
-    SIGNAL clk_in                 : std_logic := '0';
-    SIGNAL delayctrlin_in         : std_logic_vector(5 downto 0) := (OTHERS => '0');
-    SIGNAL phasectrlin_in         : std_logic_vector(3 downto 0) := (OTHERS => '0');
-    SIGNAL areset_in              : std_logic := '0';
-    SIGNAL sreset_in              : std_logic := '0';
-    SIGNAL clkena_in              : std_logic := '1';
-    SIGNAL enaoutputcycledelay_in : std_logic := '0';
-    SIGNAL enaphasetransferreg_in : std_logic := '0';
-    SIGNAL phaseinvertctrl_in     : std_logic := '0';
-    
-BEGIN
-
-    -- delay chain for clk_in delay
-    m_clk_in_delay_chain : stratixiii_ddr_delay_chain_s 
-        GENERIC MAP (
-            phase_setting               => phase_setting_for_delayed_clock,
-            use_phasectrlin             => "false",
-            delay_buffer_mode           => delay_buffer_mode,
-            sim_low_buffer_intrinsic_delay  => sim_low_buffer_intrinsic_delay,
-            sim_high_buffer_intrinsic_delay => sim_high_buffer_intrinsic_delay,
-            sim_buffer_delay_increment      => sim_buffer_delay_increment
-        )
-        PORT MAP(
-            clk            => clk_in, 
-            delayctrlin    => delayctrlin_in, 
-            phasectrlin    => phasectrlin_in, 
-            delayed_clkout => clk_in_delayed
-       ); 
-       
-    -- clock source for datain and cycle delay registers
-    clk_in_mux <= clk_in_delayed WHEN (use_delayed_clock = "true") ELSE clk_in;
-
-    -- delay chain for phase control
-    m_delay_chain : stratixiii_ddr_delay_chain_s 
-        GENERIC MAP (
-            phase_setting               => phase_setting,
-            use_phasectrlin             => use_phasectrlin,
-            delay_buffer_mode           => delay_buffer_mode,
-            sim_low_buffer_intrinsic_delay  => sim_low_buffer_intrinsic_delay,
-            sim_high_buffer_intrinsic_delay => sim_high_buffer_intrinsic_delay,
-            phasectrlin_limit               => 10,
-            sim_buffer_delay_increment      => sim_buffer_delay_increment
-        )
-        PORT MAP(
-            clk            => clk_in, 
-            delayctrlin    => delayctrlin_in, 
-            phasectrlin    => phasectrlin_in, 
-            delayed_clkout => phasectrl_clkout
-       ); 
-       
-    -- primary outputs
-    normal_dataout   <= dlyclk_q;
-    extended_dataout <= dlyclk_q OR dlyclk_extended_q;    -- oe port is active low
-    ddio_dataout     <= ddio_out_hi_q WHEN (ddio_out_clk_mux = '1') ELSE ddio_out_lo_q;
-    tmp_dataout      <= ddio_dataout     WHEN (operation_mode = "ddio_out") ELSE
-                        extended_dataout WHEN (operation_mode = "extended_oe" OR operation_mode = "extended_rtena") ELSE
-                        normal_dataout   WHEN (operation_mode = "output" OR operation_mode = "oe" OR operation_mode = "rtena") ELSE  
-                        'Z';
-    dataout <= tmp_dataout;   
-                           
-    ddio_out_clk_mux <= dlyclk_clk after 1 ps;  -- symbolic T4 to remove glitch on data_h
-    ddio_out_lo_q <= dlyclk_q after 2 ps;       -- symbolic 2 T4 to remove glitch on data_l
-    ddio_out_hi_q <= ddio_dlyclk_q;
-
-    -- resolve reset modes
-    PROCESS(areset_in)
-    BEGIN
-        IF (async_mode = "clear") THEN
-            clrn_in_r  <= not areset_in;
-            prn_in_r   <= '1';
-        ELSIF (async_mode = "preset") THEN
-            prn_in_r   <=  not areset_in;
-            clrn_in_r  <= '1';
-        END IF;
-    END PROCESS;
-
-    PROCESS(sreset_in)
-    BEGIN
-        IF (sync_mode = "clear") THEN
-            sclr_in_r       <= sreset_in;
-            adatasdata_in_r <= '0';
-            sload_in_r      <= '0';      
-        ELSIF (sync_mode = "preset") THEN
-            sload_in_r      <= sreset_in;  
-            adatasdata_in_r <= '1';
-            sclr_in_r       <= '0';
-        END IF;
-    END PROCESS;
-    
-
-    sclr_in   <= '0' WHEN (operation_mode = "rtena" OR operation_mode = "extended_rtena") ELSE sclr_in_r;
-    sload_in  <= '0' WHEN (operation_mode = "rtena" OR operation_mode = "extended_rtena") ELSE sload_in_r; 
-    adatasdata_in    <= adatasdata_in_r;
-    dlyclk_clkena_in <= '1' WHEN (operation_mode = "rtena" OR operation_mode = "extended_rtena") ELSE clkena_in;
-
-    -- Datain Register
-    datain_reg : stratixiii_ddr_io_reg  
-        GENERIC MAP (power_up => power_up)  
-        PORT MAP( 
-            d       => datain_in(0), 
-            clk     => clk_in_mux, 
-            ena     => m_vcc, 
-            clrn    => clrn_in_r, 
-            prn     => prn_in_r,
-            aload   => m_gnd, 
-            asdata  => adatasdata_in, 
-            sclr    => m_gnd, 
-            sload   => m_gnd,
-            devclrn => devclrn,
-            devpor  => devpor,
-            q       => datain_q
-        );
-         
-    -- DDIO Datain Register  
-    ddio_datain_reg : stratixiii_ddr_io_reg  
-        GENERIC MAP (power_up => power_up)  
-        PORT MAP( 
-            d       => datain_in(1), 
-            clk     => clk_in_mux, 
-            ena     => m_vcc, 
-            clrn    => clrn_in_r, 
-            prn     => prn_in_r,
-            aload   => m_gnd, 
-            asdata  => adatasdata_in, 
-            sclr    => m_gnd, 
-            sload   => m_gnd,
-            devclrn => devclrn,
-            devpor  => devpor, 
-            q       => ddio_datain_q
-       );
-
-    -- Cycle Delay Register  
-    cycledelay_reg : stratixiii_ddr_io_reg  
-        GENERIC MAP (power_up => power_up)  
-        PORT MAP( 
-            d       => datain_q, 
-            clk     => clk_in_mux, 
-            ena     => m_vcc, 
-            clrn    => clrn_in_r, 
-            prn     => prn_in_r,
-            aload   => m_gnd, 
-            asdata  => adatasdata_in, 
-            sclr    => m_gnd, 
-            sload   => m_gnd,
-            devclrn => devclrn,
-            devpor  => devpor, 
-            q       => cycledelay_q
-        );
-         
-    -- DDIO Cycle Delay Register  
-    ddio_cycledelay_reg : stratixiii_ddr_io_reg  
-        GENERIC MAP (power_up => power_up)  
-        PORT MAP( 
-            d       => ddio_datain_q, 
-            clk     => clk_in_mux, 
-            ena     => m_vcc, 
-            clrn    => clrn_in_r, 
-            prn     => prn_in_r,
-            aload   => m_gnd, 
-            asdata  => adatasdata_in, 
-            sclr    => m_gnd, 
-            sload   => m_gnd,
-            devclrn => devclrn,
-            devpor  => devpor, 
-            q       => ddio_cycledelay_q
-        );
-
-    -- enaoutputcycledelay data path mux
-    cycledelay_mux_out <=  cycledelay_q WHEN (add_output_cycle_delay = "true")  ELSE 
-                           datain_q     WHEN (add_output_cycle_delay = "false") ELSE
-                           cycledelay_q WHEN (enaoutputcycledelay_in = m_vcc)   ELSE
-                           datain_q;
-
-    -- input register bypass mux
-    bypass_input_reg_mux_out <= datain_in(0) WHEN (bypass_input_register = "true") ELSE cycledelay_mux_out;
-
-    --assign #300 transfer_q = cycledelay_mux_out;
-    -- transfer delay is implemented with negative register in rev1.26 
-    transferdelay_reg : stratixiii_ddr_io_reg  
-        GENERIC MAP (power_up => power_up)  
-        PORT MAP( 
-            d       => bypass_input_reg_mux_out, 
-            clk     => not_clk_in_mux,
-            ena     => m_vcc, 
-            clrn    => clrn_in_r, 
-            prn     => prn_in_r,
-            aload   => m_gnd, 
-            asdata  => adatasdata_in, 
-            sclr    => sclr_in, 
-            sload   => sload_in,
-            devclrn => devclrn,
-            devpor  => devpor, 
-            q       => transfer_q
-        );
-
-    -- add phase transfer data path mux
-    dlyclk_d <=  transfer_q   WHEN (add_phase_transfer_reg = "true")  ELSE 
-                 bypass_input_reg_mux_out WHEN (add_phase_transfer_reg = "false") ELSE
-                 transfer_q   WHEN (enaphasetransferreg_in = m_vcc)   ELSE 
-                 bypass_input_reg_mux_out;
-
-    -- clock mux for the output register
-    phaseinvertctrl_out <=  (not phasectrl_clkout) WHEN (invert_phase = "true")      ELSE
-                            phasectrl_clkout       WHEN (invert_phase = "false")     ELSE
-                            (not phasectrl_clkout) WHEN (phaseinvertctrl_in = m_vcc) ELSE 
-                            phasectrl_clkout;
-                
-    dlyclk_clk <= phaseinvertctrl_out WHEN (use_phasectrl_clock = "true") ELSE clk_in_mux;
-
-    -- Output Register clocked by phasectrl_clk
-    dlyclk_reg : stratixiii_ddr_io_reg  
-        GENERIC MAP (power_up => power_up)  
-        PORT MAP( 
-            d       => dlyclk_d, 
-            clk     => dlyclk_clk, 
-            ena     => dlyclk_clkena_in, 
-            clrn    => clrn_in_r, 
-            prn     => prn_in_r,
-            aload   => m_gnd, 
-            asdata  => adatasdata_in, 
-            sclr    => sclr_in, 
-            sload   => sload_in,
-            devclrn => devclrn,
-            devpor  => devpor, 
-            q       => dlyclk_q
-        );
-
-    -- enaoutputcycledelay data path mux
-    ddio_cycledelay_mux_out <= ddio_cycledelay_q WHEN (add_output_cycle_delay = "true")  ELSE 
-                               ddio_datain_q     WHEN (add_output_cycle_delay = "false") ELSE
-                               ddio_cycledelay_q WHEN (enaoutputcycledelay_in = m_vcc)   ELSE 
-                               ddio_datain_q;
-
-    -- input register bypass mux
-    ddio_bypass_input_reg_mux_out <= datain_in(1) WHEN (bypass_input_register = "true") ELSE ddio_cycledelay_mux_out;
-                             
-    --assign #300 ddio_transfer_q = ddio_cycledelay_mux_out;
-    -- transfer delay is implemented with negative register in rev1.26 
-    not_clk_in_mux <= not clk_in_mux;
-    
-    ddio_transferdelay_reg : stratixiii_ddr_io_reg  
-        GENERIC MAP (power_up => power_up)  
-        PORT MAP( 
-            d       => ddio_bypass_input_reg_mux_out, 
-            clk     => not_clk_in_mux,
-            ena     => m_vcc, 
-            clrn    => clrn_in_r, 
-            prn     => prn_in_r,
-            aload   => m_gnd, 
-            asdata  => adatasdata_in, 
-            sclr    => sclr_in, 
-            sload   => sload_in,
-            devclrn => devclrn,
-            devpor  => devpor, 
-            q       => ddio_transfer_q
-        );
-
-    -- add phase transfer data path mux
-    ddio_dlyclk_d <= ddio_transfer_q   WHEN (add_phase_transfer_reg = "true")  ELSE 
-                     ddio_bypass_input_reg_mux_out WHEN (add_phase_transfer_reg = "false") ELSE
-                     ddio_transfer_q   WHEN (enaphasetransferreg_in = m_vcc)   ELSE 
-                     ddio_bypass_input_reg_mux_out;
-
-    -- Output Register clocked by phasectrl_clk
-    ddio_dlyclk_reg : stratixiii_ddr_io_reg  
-        GENERIC MAP (power_up => power_up)  
-        PORT MAP( 
-            d       => ddio_dlyclk_d, 
-            clk     => dlyclk_clk, 
-            ena     => dlyclk_clkena_in, 
-            clrn    => clrn_in_r, 
-            prn     => prn_in_r,
-            aload   => m_gnd, 
-            asdata  => adatasdata_in, 
-            sclr    => sclr_in, 
-            sload   => sload_in,
-            devclrn => devclrn,
-            devpor  => devpor, 
-            q       => ddio_dlyclk_q
-        );
-
-    -- Extension Register
-    dlyclk_extended_clk <= not dlyclk_clk;
-
-    dlyclk_extended_reg : stratixiii_ddr_io_reg  
-        GENERIC MAP (power_up => power_up)  
-        PORT MAP( 
-            d       => dlyclk_q, 
-            clk     => dlyclk_extended_clk, 
-            ena     => dlyclk_clkena_in, 
-            clrn    => clrn_in_r, 
-            prn     => prn_in_r,
-            aload   => m_gnd, 
-            asdata  => adatasdata_in, 
-            sclr    => sclr_in, 
-            sload   => sload_in,
-            devclrn => devclrn,
-            devpor  => devpor, 
-            q       => dlyclk_extended_q
+     dqsenablein_reg : stratixiii_ddr_io_reg
+         PORT MAP(
+             d        => dqsenablein_in, 
+             clk     => clk_in, 
+             ena     => m_vcc, 
+             clrn    => m_vcc, 
+             prn     => m_vcc,
+             aload   => m_gnd, 
+             asdata  => m_gnd, 
+             sclr    => m_gnd, 
+             sload   => m_gnd,
+             devclrn => devclrn,
+             devpor  => devpor,
+             q       => dqsenablein_reg_q
          );
-    
-    --------------------
-    -- INPUT PATH DELAYS
-    --------------------
-    WireDelay : block
-    begin
-        loopbits_datain : FOR i in datain'RANGE GENERATE
-            VitalWireDelay (datain_in(i), datain(i), tipd_datain(i));
-        END GENERATE;
-        VitalWireDelay (clk_in,       clk,       tipd_clk);
-        loopbits_delayctrlin : FOR i in delayctrlin'RANGE GENERATE
-            VitalWireDelay (delayctrlin_in(i), delayctrlin(i), tipd_delayctrlin(i));
-        END GENERATE;
-        loopbits_phasectrlin : FOR i in phasectrlin'RANGE GENERATE
-            VitalWireDelay (phasectrlin_in(i), phasectrlin(i), tipd_phasectrlin(i));
-        END GENERATE;
-        VitalWireDelay (areset_in,       areset,       tipd_areset);
-        VitalWireDelay (sreset_in,       sreset,       tipd_sreset);
-        VitalWireDelay (clkena_in,       clkena,       tipd_clkena);
-    end block;
-    
-END stratixiii_output_phase_alignment_arch;
-
--------------------------------------------------------------------------------
---
--- Entity Name : stratixiii_input_phase_alignment
---
--------------------------------------------------------------------------------
-
-library IEEE;
-use IEEE.std_logic_1164.all;
-use IEEE.VITAL_Timing.all;
-use IEEE.VITAL_Primitives.all;
-use work.stratixiii_atom_pack.all;
-use work.stratixiii_ddr_io_reg;
-use work.stratixiii_ddr_delay_chain_s;
+   
+     dqsenable_transfer_reg : stratixiii_ddr_io_reg  
+         PORT MAP ( 
+             d       => dqsenablein_reg_q, 
+             clk     => not_delayed_clk, 
+             ena     => m_vcc, 
+             clrn    => m_vcc, 
+             prn     => m_vcc,
+             aload   => m_gnd, 
+             asdata  => m_gnd, 
+             sclr    => m_gnd, 
+             sload   => m_gnd,
+             devclrn => devclrn,
+             devpor  => devpor,
+             q       => dqsenablein_reg_dly
+         );
  
-ENTITY stratixiii_input_phase_alignment IS
-    GENERIC ( 
-        use_phasectrlin                 : string := "true";
-        phase_setting                   : integer := 0;
-        delay_buffer_mode               : string := "high";
-        power_up                        : string := "low";
-        async_mode                      : string := "none";
-        add_input_cycle_delay           : string := "false";
-        bypass_output_register          : string := "false";
-        add_phase_transfer_reg          : string := "false";
-        invert_phase                    : string := "false";
-        sim_low_buffer_intrinsic_delay  : integer := 350;
-        sim_high_buffer_intrinsic_delay : integer := 175;
-        sim_buffer_delay_increment      : integer := 10;        
-        lpm_type                 : string := "stratixiii_input_phase_alignment";
-        tipd_datain              : VitalDelayType01 := DefpropDelay01;
-        tipd_clk                 : VitalDelayType01 := DefpropDelay01;
-        tipd_delayctrlin         : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_phasectrlin         : VitalDelayArrayType01(3 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_areset              : VitalDelayType01 := DefpropDelay01;
-        tipd_enainputcycledelay  : VitalDelayType01 := DefpropDelay01;
-        tipd_enaphasetransferreg : VitalDelayType01 := DefpropDelay01;
-        tipd_phaseinvertctrl     : VitalDelayType01 := DefpropDelay01;
-        TimingChecksOn           : Boolean := True;
-        MsgOn                    : Boolean := DefGlitchMsgOn;
-        XOn                      : Boolean := DefGlitchXOn;
-        MsgOnChecks              : Boolean := DefMsgOnChecks;
-        XOnChecks                : Boolean := DefXOnChecks;
-        InstancePath             : String := "*"   
-    );
-    
-    PORT (
-        datain              : IN std_logic := '0';
-        clk                 : IN std_logic := '0';
-        delayctrlin         : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
-        phasectrlin         : IN std_logic_vector(3 downto 0) := (OTHERS => '0');
-        areset              : IN std_logic := '0';
-        enainputcycledelay  : IN std_logic := '0';
-        enaphasetransferreg : IN std_logic := '0';
-        phaseinvertctrl     : IN std_logic := '0';
-        devclrn             : IN std_logic := '1';
-        devpor              : IN std_logic := '1';
-        dataout             : OUT std_logic;
-        dffin               : OUT std_logic;
-        dff1t               : OUT std_logic
-    );
+     -- add phase transfer mux
+     phasetransferdelay_mux_out <= dqsenablein_reg_dly WHEN (add_phase_transfer_reg = "true")  ELSE 
+                                   dqsenablein_reg_q   WHEN (add_phase_transfer_reg = "false") ELSE
+                                   dqsenablein_reg_dly WHEN (enaphasetransferreg_in = '1')     ELSE 
+                                   dqsenablein_reg_q;
+ 
+     dqsenablein_level_ena      <= phasetransferdelay_mux_out WHEN (level_dqs_enable = "true") ELSE dqsenablein_in;
+ 
+     dqsenableout_reg : stratixiii_ddr_io_reg  
+         PORT MAP(
+             d       => dqsenablein_level_ena, 
+             clk     => delayed_clk, 
+             ena     => m_vcc, 
+             clrn    => m_vcc, 
+             prn     => m_vcc,
+             aload   => m_gnd, 
+             asdata  => m_gnd, 
+             sclr    => m_gnd, 
+             sload   => m_gnd,
+             devclrn => devclrn,
+             devpor  => devpor,
+             q       => dqsenable_delayed_regp
+         );
+         
+     dqsenableout_extend_reg : stratixiii_ddr_io_reg
+         PORT MAP(
+             d       => dqsenable_delayed_regp, 
+             clk     => not_delayed_clk, 
+             ena     => m_vcc, 
+             clrn    => m_vcc, 
+             prn     => m_vcc,
+             aload   => m_gnd, 
+             asdata  => m_gnd, 
+             sclr    => m_gnd, 
+             sload   => m_gnd,
+             devclrn => devclrn,
+             devpor  => devpor,
+             q       => dqsenable_delayed_regn
+         );
+     
+     tmp_dqsenableout <= dqsenable_delayed_regp WHEN (delay_dqs_enable_by_half_cycle = "false") ELSE
+                         (dqsenable_delayed_regp AND dqsenable_delayed_regn);
+                           
+     dqsenableout <= tmp_dqsenableout;
+ 
+ 
+     --------------------
+     -- INPUT PATH DELAYS
+     --------------------
+     WireDelay : block
+     begin
+         VitalWireDelay (dqsenablein_in,       dqsenablein,       tipd_dqsenablein);
+         VitalWireDelay (clk_in,       clk,       tipd_clk);
+         loopbits_delayctrlin : FOR i in delayctrlin'RANGE GENERATE
+             VitalWireDelay (delayctrlin_in(i), delayctrlin(i), tipd_delayctrlin(i));
+         END GENERATE;
+         loopbits_phasectrlin : FOR i in phasectrlin'RANGE GENERATE
+             VitalWireDelay (phasectrlin_in(i), phasectrlin(i), tipd_phasectrlin(i));
+         END GENERATE;
+         VitalWireDelay (enaphasetransferreg_in, enaphasetransferreg, tipd_enaphasetransferreg);
+         VitalWireDelay (phaseinvertctrl_in,     phaseinvertctrl,     tipd_phaseinvertctrl);
+     end block;
+     
+ 
+ END stratixiii_dqs_enable_ctrl_arch;
 
-END;
-
-ARCHITECTURE stratixiii_input_phase_alignment_arch OF stratixiii_input_phase_alignment IS
-    -- component section
-    COMPONENT stratixiii_ddr_delay_chain_s
-    GENERIC (
-        use_phasectrlin : string  := "true";
-        phase_setting   : integer :=  0;
-        delay_buffer_mode               : string  := "high";
-        sim_low_buffer_intrinsic_delay  : integer := 350;
-        sim_high_buffer_intrinsic_delay : integer := 175;
-        sim_buffer_delay_increment  : integer := 10;
-        phasectrlin_limit           : integer := 7
-    );
-    PORT (
-        clk         : IN std_logic := '0';
-        delayctrlin : IN std_logic_vector(5 DOWNTO 0) := (OTHERS => '0');
-        phasectrlin : IN std_logic_vector(3 DOWNTO 0) := (OTHERS => '0');
-        delayed_clkout : OUT std_logic
-    );
-    END COMPONENT;
-    
-    component stratixiii_ddr_io_reg                                                                                              
-    generic (                                                                                                 
-             power_up : string := "DONT_CARE";                                                                
-             is_wysiwyg : string := "false";                                                                  
-             x_on_violation : string := "on";                                                                 
-             tsetup_d_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                                
-             tsetup_asdata_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                           
-             tsetup_sclr_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                             
-             tsetup_sload_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                            
-             tsetup_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                              
-             thold_d_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                                 
-             thold_asdata_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                            
-             thold_sclr_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                              
-             thold_sload_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                             
-             thold_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                               
-             tpd_clk_q_posedge : VitalDelayType01 := DefPropDelay01;                                          
-             tpd_clrn_q_negedge : VitalDelayType01 := DefPropDelay01;                                         
-             tpd_aload_q_posedge : VitalDelayType01 := DefPropDelay01;                                        
-             tpd_asdata_q: VitalDelayType01 := DefPropDelay01;                                                
-             tipd_clk : VitalDelayType01 := DefPropDelay01;                                                   
-             tipd_d : VitalDelayType01 := DefPropDelay01;                                                     
-             tipd_asdata : VitalDelayType01 := DefPropDelay01;                                                
-             tipd_sclr : VitalDelayType01 := DefPropDelay01;                                                  
-             tipd_sload : VitalDelayType01 := DefPropDelay01;                                                 
-             tipd_clrn : VitalDelayType01 := DefPropDelay01;                                                  
-             tipd_prn : VitalDelayType01 := DefPropDelay01;                                                   
-             tipd_aload : VitalDelayType01 := DefPropDelay01;                                                 
-             tipd_ena : VitalDelayType01 := DefPropDelay01;                                                   
-             TimingChecksOn: Boolean := True;                                                                 
-             MsgOn: Boolean := DefGlitchMsgOn;                                                                
-             XOn: Boolean := DefGlitchXOn;                                                                    
-             MsgOnChecks: Boolean := DefMsgOnChecks;                                                          
-             XOnChecks: Boolean := DefXOnChecks;                                                              
-             InstancePath: STRING := "*"                                                                      
-            );                                                                                                
-                                                                                                              
-    port (                                                                                                    
-           d : in std_logic := '0';                                                                           
-           clk : in std_logic := '0';                                                                         
-           ena : in std_logic := '1';                                                                         
-           clrn : in std_logic := '1';                                                                        
-           prn : in std_logic := '1';                                                                         
-           aload : in std_logic := '0';                                                                       
-           asdata : in std_logic := '0';                                                                      
-           sclr : in std_logic := '0';                                                                        
-           sload : in std_logic := '0';                                                                       
-           devclrn : in std_logic := '1';                                                                     
-           devpor : in std_logic := '1';                                                                      
-           q : out std_logic                                                                                  
-         );                                                                                                   
-    end component;                                                                                                
-    
-    -- int signals
-    SIGNAL phasectrl_clkout : STD_LOGIC := '0';
-    SIGNAL delayed_clk : STD_LOGIC := '0';
-    SIGNAL not_delayed_clk : STD_LOGIC := '1';
-    
-    SIGNAL m_vcc: STD_LOGIC := '1';
-    SIGNAL m_gnd: STD_LOGIC := '0';
-
-    -- IO registers
-    -- common
-    SIGNAL adatasdata_in_r : STD_LOGIC := '0';
-    SIGNAL aload_in_r : STD_LOGIC := '0';
-
-    SIGNAL datain_q : STD_LOGIC := '0';
-
-    SIGNAL cycledelay_q : STD_LOGIC := '0';
-    SIGNAL cycledelay_mux_out : STD_LOGIC := '0';
-    SIGNAL cycledelay_mux_out_dly : STD_LOGIC := '0';
-
-    SIGNAL dlyclk_d : STD_LOGIC := '0';
-    SIGNAL dlyclk_q : STD_LOGIC := '0';
-
-    SIGNAL tmp_dataout : STD_LOGIC := '0';
-    
-    -- timing inputs
-    SIGNAL datain_in              : std_logic := '0';
-    SIGNAL clk_in                 : std_logic := '0';
-    SIGNAL delayctrlin_in         : std_logic_vector(5 downto 0) := (OTHERS => '0');
-    SIGNAL phasectrlin_in         : std_logic_vector(3 downto 0) := (OTHERS => '0');
-    SIGNAL areset_in              : std_logic := '0';
-    SIGNAL enainputcycledelay_in  : std_logic := '0';
-    SIGNAL enaphasetransferreg_in : std_logic := '0';
-    SIGNAL phaseinvertctrl_in     : std_logic := '0';
-
-BEGIN
-    m_clk_in_delay_chain : stratixiii_ddr_delay_chain_s 
-        GENERIC MAP (
-            phase_setting               => phase_setting,
-            use_phasectrlin             => use_phasectrlin,
-            delay_buffer_mode           => delay_buffer_mode,
-            sim_low_buffer_intrinsic_delay  => sim_low_buffer_intrinsic_delay,
-            sim_high_buffer_intrinsic_delay => sim_high_buffer_intrinsic_delay,
-            sim_buffer_delay_increment      => sim_buffer_delay_increment
-        )
-        PORT MAP(
-            clk            => clk_in, 
-            delayctrlin    => delayctrlin_in, 
-            phasectrlin    => phasectrlin_in, 
-            delayed_clkout => phasectrl_clkout
-       );
-        
-    delayed_clk <= (not phasectrl_clkout) WHEN (invert_phase = "true")  ELSE
-                   phasectrl_clkout       WHEN (invert_phase = "false") ELSE
-                   (not phasectrl_clkout) WHEN (phaseinvertctrl_in = '1') ELSE
-                   phasectrl_clkout;
+ -------------------------------------------------------------------------------
+ --
+ -- Entity Name : stratixiii_delay_chain
+ --
+ -------------------------------------------------------------------------------
+ 
+ library IEEE;
+ use IEEE.std_logic_1164.all;
+ use IEEE.std_logic_arith.all;
+ use IEEE.std_logic_unsigned.all;
+ use IEEE.VITAL_Timing.all;
+ use IEEE.VITAL_Primitives.all;
+ use work.stratixiii_atom_pack.all;
+  
+ ENTITY stratixiii_delay_chain IS
+     GENERIC ( 
+         sim_delayctrlin_rising_delay_0   : integer := 0;
+         sim_delayctrlin_rising_delay_1   : integer := 50;
+         sim_delayctrlin_rising_delay_2   : integer := 100;
+         sim_delayctrlin_rising_delay_3   : integer := 150;
+         sim_delayctrlin_rising_delay_4   : integer := 200;
+         sim_delayctrlin_rising_delay_5   : integer := 250;
+         sim_delayctrlin_rising_delay_6   : integer := 300;
+         sim_delayctrlin_rising_delay_7   : integer := 350;
+         sim_delayctrlin_rising_delay_8   : integer := 400;
+         sim_delayctrlin_rising_delay_9   : integer := 450;
+         sim_delayctrlin_rising_delay_10  : integer := 500;
+         sim_delayctrlin_rising_delay_11  : integer := 550;
+         sim_delayctrlin_rising_delay_12  : integer := 600;
+         sim_delayctrlin_rising_delay_13  : integer := 650;
+         sim_delayctrlin_rising_delay_14  : integer := 700;
+         sim_delayctrlin_rising_delay_15  : integer := 750;
+         sim_delayctrlin_falling_delay_0  : integer := 0;
+         sim_delayctrlin_falling_delay_1  : integer := 50;
+         sim_delayctrlin_falling_delay_2  : integer := 100;
+         sim_delayctrlin_falling_delay_3  : integer := 150;
+         sim_delayctrlin_falling_delay_4  : integer := 200;
+         sim_delayctrlin_falling_delay_5  : integer := 250;
+         sim_delayctrlin_falling_delay_6  : integer := 300;
+         sim_delayctrlin_falling_delay_7  : integer := 350;
+         sim_delayctrlin_falling_delay_8  : integer := 400;
+         sim_delayctrlin_falling_delay_9  : integer := 450;
+         sim_delayctrlin_falling_delay_10  : integer := 500;
+         sim_delayctrlin_falling_delay_11  : integer := 550;
+         sim_delayctrlin_falling_delay_12  : integer := 600;
+         sim_delayctrlin_falling_delay_13  : integer := 650;
+         sim_delayctrlin_falling_delay_14  : integer := 700;
+         sim_delayctrlin_falling_delay_15  : integer := 750;
+         use_delayctrlin                   : string := "true";
+         delay_setting                     : integer := 0;
+         -- new in STRATIXIV ww30.2008
+         sim_finedelayctrlin_falling_delay_0 : integer := 0;
+         sim_finedelayctrlin_falling_delay_1 : integer := 25;
+         sim_finedelayctrlin_rising_delay_0  : integer := 0;
+         sim_finedelayctrlin_rising_delay_1  : integer := 25;
+         use_finedelayctrlin                 : string  := "false";
+ 
+         lpm_type                          : string := "stratixiii_delay_chain";
+         tipd_datain              : VitalDelayType01 := DefpropDelay01;
+         tipd_delayctrlin         : VitalDelayArrayType01(3 downto 0) := (OTHERS => DefPropDelay01);
+         tpd_datain_dataout       : VitalDelayType01 := DefPropDelay01;
+         TimingChecksOn           : Boolean := True;
+         MsgOn                    : Boolean := DefGlitchMsgOn;
+         XOn                      : Boolean := DefGlitchXOn;
+         MsgOnChecks              : Boolean := DefMsgOnChecks;
+         XOnChecks                : Boolean := DefXOnChecks;
+         InstancePath             : String := "*"   
+     );
+     
+     PORT (
+         datain       : IN std_logic := '0';
+         delayctrlin  : IN std_logic_vector(3 downto 0) := (OTHERS => '0');
+         finedelayctrlin : IN std_logic := '0';
+         devclrn      : IN std_logic := '1';
+         devpor       : IN std_logic := '1';
+         dataout      : OUT std_logic
+     );
+ 
+ END;
+ 
+ ARCHITECTURE stratixiii_delay_chain_arch OF stratixiii_delay_chain IS
+     -- type def
+     type delay_chain_int_vec is array (natural range <>) of integer;
+     
+     -- component section
+     
+     -- signal section
+     SIGNAL rising_dly  : INTEGER := 0;
+     SIGNAL falling_dly : INTEGER := 0;
+     SIGNAL delayctrlin_in : STD_LOGIC_VECTOR (3 DOWNTO 0) := (OTHERS => '0');
+     SIGNAL finedelayctrlin_in : STD_LOGIC := '0';
+     
+     -- timing inputs
+     SIGNAL tmp_dataout     : std_logic := '0';
+     
+     -- timing inputs
+     SIGNAL datain_in       : std_logic := '0';
+     
+ BEGIN
+     -- filtering X/U etc.
+     delayctrlin_in(0) <= '1' WHEN (delayctrlin(0) = '1') ELSE '0';
+     delayctrlin_in(1) <= '1' WHEN (delayctrlin(1) = '1') ELSE '0';
+     delayctrlin_in(2) <= '1' WHEN (delayctrlin(2) = '1') ELSE '0';
+     delayctrlin_in(3) <= '1' WHEN (delayctrlin(3) = '1') ELSE '0';
+     finedelayctrlin_in <= '1' WHEN (finedelayctrlin = '1') ELSE '0';
+ 
+     --  generate dynamic delay table and dynamic delay       
+     process(delayctrlin_in, finedelayctrlin_in)
+         variable init : boolean := true;
+         variable dly_table_rising : delay_chain_int_vec(15 downto 0) := (OTHERS => 0);
+         variable dly_table_falling : delay_chain_int_vec(15 downto 0) := (OTHERS => 0);
+         variable finedly_table_rising : delay_chain_int_vec(1 downto 0) := (OTHERS => 0);
+         variable finedly_table_falling : delay_chain_int_vec(1 downto 0) := (OTHERS => 0);
+         variable dly_setting : integer := 0;
+         variable finedly_setting : integer := 0;
+     begin
+         if (init) then
+             dly_table_rising(0) := sim_delayctrlin_rising_delay_0;
+             dly_table_rising(1) := sim_delayctrlin_rising_delay_1;
+             dly_table_rising(2) := sim_delayctrlin_rising_delay_2;
+             dly_table_rising(3) := sim_delayctrlin_rising_delay_3;
+             dly_table_rising(4) := sim_delayctrlin_rising_delay_4;
+             dly_table_rising(5) := sim_delayctrlin_rising_delay_5;
+             dly_table_rising(6) := sim_delayctrlin_rising_delay_6;
+             dly_table_rising(7) := sim_delayctrlin_rising_delay_7;
+             dly_table_rising(8) := sim_delayctrlin_rising_delay_8;
+             dly_table_rising(9) := sim_delayctrlin_rising_delay_9;
+             dly_table_rising(10) := sim_delayctrlin_rising_delay_10;
+             dly_table_rising(11) := sim_delayctrlin_rising_delay_11;
+             dly_table_rising(12) := sim_delayctrlin_rising_delay_12;
+             dly_table_rising(13) := sim_delayctrlin_rising_delay_13;
+             dly_table_rising(14) := sim_delayctrlin_rising_delay_14;
+             dly_table_rising(15) := sim_delayctrlin_rising_delay_15;
+ 
+             dly_table_falling(0) := sim_delayctrlin_falling_delay_0;
+             dly_table_falling(1) := sim_delayctrlin_falling_delay_1;
+             dly_table_falling(2) := sim_delayctrlin_falling_delay_2;
+             dly_table_falling(3) := sim_delayctrlin_falling_delay_3;
+             dly_table_falling(4) := sim_delayctrlin_falling_delay_4;
+             dly_table_falling(5) := sim_delayctrlin_falling_delay_5;
+             dly_table_falling(6) := sim_delayctrlin_falling_delay_6;
+             dly_table_falling(7) := sim_delayctrlin_falling_delay_7;
+             dly_table_falling(8) := sim_delayctrlin_falling_delay_8;
+             dly_table_falling(9) := sim_delayctrlin_falling_delay_9;
+             dly_table_falling(10) := sim_delayctrlin_falling_delay_10;
+             dly_table_falling(11) := sim_delayctrlin_falling_delay_11;
+             dly_table_falling(12) := sim_delayctrlin_falling_delay_12;
+             dly_table_falling(13) := sim_delayctrlin_falling_delay_13;
+             dly_table_falling(14) := sim_delayctrlin_falling_delay_14;
+             dly_table_falling(15) := sim_delayctrlin_falling_delay_15;
                      
-
-    -- primary output
-    dataout <= tmp_dataout;
-    tmp_dataout <= dlyclk_d WHEN (bypass_output_register = "true") ELSE dlyclk_q;
-
-    -- add phase transfer data path mux
-    dlyclk_d <= cycledelay_mux_out_dly WHEN (add_phase_transfer_reg = "true")    ELSE 
-                cycledelay_mux_out     WHEN (add_phase_transfer_reg = "false")   ELSE
-                cycledelay_mux_out_dly WHEN (enaphasetransferreg_in = '1')       ELSE 
-                cycledelay_mux_out;
-
-    -- enaoutputcycledelay data path mux
-    cycledelay_mux_out <= cycledelay_q  WHEN (add_input_cycle_delay = "true")    ELSE 
-                          datain_q      WHEN (add_input_cycle_delay = "false")   ELSE
-                          cycledelay_q  WHEN (enainputcycledelay_in = '1')       ELSE 
-                          datain_q;
-
-    -- resolve reset modes
-    PROCESS (areset_in)
-    BEGIN 
-        if (async_mode = "clear") then
-            aload_in_r   <= areset_in;
-            adatasdata_in_r <= '0';
-        elsif (async_mode = "preset") then
-            aload_in_r   <= areset_in;
-            adatasdata_in_r <= '1';
-        else      -- async_mode = "none"
-            adatasdata_in_r <= 'Z';
-        end if;
-    END PROCESS;
-
-
-    -- Datain Register  
-    datain_reg : stratixiii_ddr_io_reg  
-        GENERIC MAP (power_up => power_up)  
-        PORT MAP( 
-            d       => datain_in, 
-            clk     => delayed_clk, 
-            ena     => m_vcc, 
-            clrn    => m_vcc, 
-            prn     => m_vcc,
-            aload   => aload_in_r, 
-            asdata  => adatasdata_in_r, 
-            sclr    => m_gnd, 
-            sload   => m_gnd,
-            devclrn => devclrn,
-            devpor  => devpor,
-            q       => datain_q
-        );
+             finedly_table_rising(0)  := sim_finedelayctrlin_rising_delay_0;
+             finedly_table_rising(1)  := sim_finedelayctrlin_rising_delay_1;
+             finedly_table_falling(0) := sim_finedelayctrlin_falling_delay_0;
+             finedly_table_falling(1) := sim_finedelayctrlin_falling_delay_1;
+ 
+             init := false;
+         end if;
          
-    -- Cycle Delay Register  
-    cycledelay_reg : stratixiii_ddr_io_reg  
-        GENERIC MAP (power_up => power_up)  
-        PORT MAP( 
-            d       => datain_q, 
-            clk     => delayed_clk, 
-            ena     => m_vcc, 
-            clrn    => m_vcc, 
-            prn     => m_vcc,
-            aload   => aload_in_r, 
-            asdata  => adatasdata_in_r, 
-            sclr    => m_gnd, 
-            sload   => m_gnd,
-            devclrn => devclrn,
-            devpor  => devpor,
-            q       => cycledelay_q
-        );
-
-    -- assign #300 cycledelay_mux_out_dly = cycledelay_mux_out;  replaced by neg reg   
-    -- Transfer Register  - clocked by negative edge
-    not_delayed_clk <= not delayed_clk;
-    
-    transfer_reg : stratixiii_ddr_io_reg  
-        GENERIC MAP (power_up => power_up)  
-        PORT MAP( 
-            d       => cycledelay_mux_out, 
-            clk     => not_delayed_clk,  -- ~delayed_clk
-            ena     => m_vcc, 
-            clrn    => m_vcc, 
-            prn     => m_vcc,
-            aload   => aload_in_r, 
-            asdata  => adatasdata_in_r, 
-            sclr    => m_gnd, 
-            sload   => m_gnd,
-            devclrn => devclrn,
-            devpor  => devpor,
-            q       => cycledelay_mux_out_dly
-        );
+         IF (use_delayctrlin = "false") THEN
+             dly_setting := delay_setting;
+         ELSE
+             dly_setting := alt_conv_integer(delayctrlin_in);
+         END IF;
+          	
+         IF (finedelayctrlin_in = '1') THEN
+             finedly_setting := 1;
+         ELSE
+             finedly_setting := 0;
+         END IF;
+          	
+ 	     IF (use_finedelayctrlin = "true") THEN
+ 	         rising_dly  <= dly_table_rising(dly_setting) + finedly_table_rising(finedly_setting);
+ 	         falling_dly <= dly_table_falling(dly_setting) + finedly_table_falling(finedly_setting);
+ 	     ELSE 
+             rising_dly  <= dly_table_rising(dly_setting);
+             falling_dly <= dly_table_falling(dly_setting);
+         END IF;
+     end process; -- generating dynamic delays
+ 
+     PROCESS(datain_in)
+     BEGIN
+         if (datain_in = '0') then
+             tmp_dataout <= transport datain_in after (falling_dly * 1 ps);
+         else
+             tmp_dataout <= transport datain_in after (rising_dly * 1 ps);
+         end if;
+     END PROCESS;
          
-         
-    -- Register clocked by actually by clk_in
-    dlyclk_reg : stratixiii_ddr_io_reg  
-        GENERIC MAP (power_up => power_up)  
-        PORT MAP( 
-            d       => dlyclk_d, 
-            clk     => clk_in, 
-            ena     => m_vcc, 
-            clrn    => m_vcc, 
-            prn     => m_vcc,
-            aload   => aload_in_r, 
-            asdata  => adatasdata_in_r, 
-            sclr    => m_gnd, 
-            sload   => m_gnd,
-            devclrn => devclrn,
-            devpor  => devpor,
-            q       => dlyclk_q
-        );
-
-    --------------------
-    -- INPUT PATH DELAYS
-    --------------------
-    WireDelay : block
-    begin
-        VitalWireDelay (datain_in,       datain,       tipd_datain);
-        VitalWireDelay (clk_in,       clk,       tipd_clk);
-        loopbits_delayctrlin : FOR i in delayctrlin'RANGE GENERATE
-            VitalWireDelay (delayctrlin_in(i), delayctrlin(i), tipd_delayctrlin(i));
-        END GENERATE;
-        loopbits_phasectrlin : FOR i in phasectrlin'RANGE GENERATE
-            VitalWireDelay (phasectrlin_in(i), phasectrlin(i), tipd_phasectrlin(i));
-        END GENERATE;
-        VitalWireDelay (areset_in,               areset,               tipd_areset);
-        VitalWireDelay (enainputcycledelay_in,   enainputcycledelay,   tipd_enainputcycledelay);
-        VitalWireDelay (enaphasetransferreg_in,  enaphasetransferreg,  tipd_enaphasetransferreg);
-        VitalWireDelay (phaseinvertctrl_in,      phaseinvertctrl,      tipd_phaseinvertctrl);
-    end block;
-    
-END stratixiii_input_phase_alignment_arch;
-
--------------------------------------------------------------------------------
---
--- Entity Name : stratixiii_half_rate_input
---
--------------------------------------------------------------------------------
-
-library IEEE;
-use IEEE.std_logic_1164.all;
-use IEEE.std_logic_arith.all;
-use IEEE.std_logic_unsigned.all;
-use IEEE.VITAL_Timing.all;
-use IEEE.VITAL_Primitives.all;
-use work.stratixiii_atom_pack.all;
-use work.stratixiii_ddr_io_reg;
-    
-ENTITY stratixiii_half_rate_input IS
-    GENERIC ( 
-        power_up           : string := "low";
-        async_mode         : string := "none";
-        use_dataoutbypass  : string := "false";
-        lpm_type           : string := "stratixiii_half_rate_input";
-        tipd_datain              : VitalDelayArrayType01(1 downto 0) := (OTHERS => DefPropDelay01);
-        tipd_directin            : VitalDelayType01 := DefpropDelay01;
-        tipd_clk                 : VitalDelayType01 := DefpropDelay01;
-        tipd_areset              : VitalDelayType01 := DefpropDelay01;
-        tipd_dataoutbypass       : VitalDelayType01 := DefpropDelay01;
-        TimingChecksOn           : Boolean := True;
-        MsgOn                    : Boolean := DefGlitchMsgOn;
-        XOn                      : Boolean := DefGlitchXOn;
-        MsgOnChecks              : Boolean := DefMsgOnChecks;
-        XOnChecks                : Boolean := DefXOnChecks;
-        InstancePath             : String := "*"   
-    );
-    
-    PORT (
-        datain       : IN std_logic_vector(1 downto 0) := (OTHERS => '0');
-        directin     : IN std_logic := '0';
-        clk          : IN std_logic := '0';
-        areset       : IN std_logic := '0';
-        dataoutbypass: IN std_logic := '0';
-        devclrn      : IN std_logic := '1';
-        devpor       : IN std_logic := '1';
-        dataout      : OUT std_logic_vector(3 downto 0);
-        dffin        : OUT std_logic
-    );
-
-END;
-
-ARCHITECTURE stratixiii_half_rate_input_arch OF stratixiii_half_rate_input IS
-    -- component section
-    component stratixiii_ddr_io_reg                                                                                              
-    generic (                                                                                                 
-             power_up : string := "DONT_CARE";                                                                
-             is_wysiwyg : string := "false";                                                                  
-             x_on_violation : string := "on";                                                                 
-             tsetup_d_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                                
-             tsetup_asdata_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                           
-             tsetup_sclr_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                             
-             tsetup_sload_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                            
-             tsetup_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                              
-             thold_d_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                                 
-             thold_asdata_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                            
-             thold_sclr_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                              
-             thold_sload_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                             
-             thold_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                               
-             tpd_clk_q_posedge : VitalDelayType01 := DefPropDelay01;                                          
-             tpd_clrn_q_negedge : VitalDelayType01 := DefPropDelay01;                                         
-             tpd_aload_q_posedge : VitalDelayType01 := DefPropDelay01;                                        
-             tpd_asdata_q: VitalDelayType01 := DefPropDelay01;                                                
-             tipd_clk : VitalDelayType01 := DefPropDelay01;                                                   
-             tipd_d : VitalDelayType01 := DefPropDelay01;                                                     
-             tipd_asdata : VitalDelayType01 := DefPropDelay01;                                                
-             tipd_sclr : VitalDelayType01 := DefPropDelay01;                                                  
-             tipd_sload : VitalDelayType01 := DefPropDelay01;                                                 
-             tipd_clrn : VitalDelayType01 := DefPropDelay01;                                                  
-             tipd_prn : VitalDelayType01 := DefPropDelay01;                                                   
-             tipd_aload : VitalDelayType01 := DefPropDelay01;                                                 
-             tipd_ena : VitalDelayType01 := DefPropDelay01;                                                   
-             TimingChecksOn: Boolean := True;                                                                 
-             MsgOn: Boolean := DefGlitchMsgOn;                                                                
-             XOn: Boolean := DefGlitchXOn;                                                                    
-             MsgOnChecks: Boolean := DefMsgOnChecks;                                                          
-             XOnChecks: Boolean := DefXOnChecks;                                                              
-             InstancePath: STRING := "*"                                                                      
-            );                                                                                                
-                                                                                                              
-    port (                                                                                                    
-           d : in std_logic := '0';                                                                           
-           clk : in std_logic := '0';                                                                         
-           ena : in std_logic := '1';                                                                         
-           clrn : in std_logic := '1';                                                                        
-           prn : in std_logic := '1';                                                                         
-           aload : in std_logic := '0';                                                                       
-           asdata : in std_logic := '0';                                                                      
-           sclr : in std_logic := '0';                                                                        
-           sload : in std_logic := '0';                                                                       
-           devclrn : in std_logic := '1';                                                                     
-           devpor : in std_logic := '1';                                                                      
-           q : out std_logic                                                                                  
-         );                                                                                                   
-    end component;                                                                                                
-    
-    SIGNAL m_vcc: STD_LOGIC := '1';
-    SIGNAL m_gnd: STD_LOGIC := '0';
-
-    -- IO SIGNAListers
-    -- common
-    SIGNAL neg_clk_in      : STD_LOGIC := '0';
-    SIGNAL adatasdata_in_r : STD_LOGIC := '0';
-    SIGNAL aload_in_r      : STD_LOGIC := '0';
-
-    -- low_bank  = {1, 0} - capturing datain at falling edge then sending at falling rise 
-    -- high_bank = {3, 2} - output of SIGNALister datain at rising 
-    SIGNAL high_bank     : STD_LOGIC_VECTOR (1 DOWNTO 0) := (OTHERS => '0');
-    SIGNAL low_bank      : STD_LOGIC_VECTOR (1 DOWNTO 0) := (OTHERS => '0');
-    SIGNAL low_bank_low  : STD_LOGIC := '0';
-    SIGNAL low_bank_high : STD_LOGIC := '0';
-    SIGNAL high_bank_low : STD_LOGIC := '0';
-    SIGNAL high_bank_high: STD_LOGIC := '0';
-
-    SIGNAL dataout_reg_n : STD_LOGIC_VECTOR (1 DOWNTO 0) := (OTHERS => '0');
-    SIGNAL tmp_dataout   : STD_LOGIC_VECTOR (3 DOWNTO 0) := (OTHERS => '0');
-    
-    -- delayed version to ensure 1 latency as expected in functional sim
-    SIGNAL datain_in       : std_logic_vector(1 downto 0) := (OTHERS => '0');
-    
-    -- timing inputs
-    SIGNAL datain_ipd      : std_logic_vector(1 downto 0) := (OTHERS => '0');
-    SIGNAL directin_in     : std_logic := '0';
-    SIGNAL clk_in          : std_logic := '0';
-    SIGNAL areset_in       : std_logic := '0';
-    SIGNAL dataoutbypass_in: std_logic := '0';
-    
-BEGIN
-    -- primary input
-    datain_in <= transport datain_ipd after 2 ps;
-    
-    -- primary output
-    dataout <= tmp_dataout;
-    tmp_dataout(3) <= directin_in WHEN (dataoutbypass_in = '0' AND use_dataoutbypass = "true") ELSE high_bank_high;
-    tmp_dataout(2) <= directin_in WHEN (dataoutbypass_in = '0' AND use_dataoutbypass = "true") ELSE high_bank_low;
-    tmp_dataout(1) <= low_bank(1);
-    tmp_dataout(0) <= low_bank(0);
-
-    low_bank  <= low_bank_high  & low_bank_low;
-    high_bank <= high_bank_high & high_bank_low;
-
-    -- resolve reset modes
-    PROCESS(areset_in)
-    BEGIN
-        if (async_mode = "clear") then
-            aload_in_r   <= areset_in;
-            adatasdata_in_r <= '0';
-        elsif (async_mode = "preset") then
-            aload_in_r   <= areset_in;
-            adatasdata_in_r <= '1';
-        else  -- async_mode = "none"
-            adatasdata_in_r <= 'Z';
-        end if;
-    END PROCESS;
-
-    neg_clk_in <= not clk_in;
-    
-    --  datain_1 - H  
-    reg1_h : stratixiii_ddr_io_reg  
-        GENERIC MAP (power_up => power_up)  
-        PORT MAP( 
-            d       => datain_in(1), 
-            clk     => clk_in, 
-            ena     => m_vcc, 
-            clrn    => m_vcc, 
-            prn     => m_vcc,
-            aload   => aload_in_r, 
-            asdata  => adatasdata_in_r, 
-            sclr    => m_gnd, 
-            sload   => m_gnd,
-            devclrn => devclrn,
-            devpor  => devpor,
-            q       => high_bank_high
-        );
-
-    --  datain_0 - H  
-    reg0_h : stratixiii_ddr_io_reg  
-        GENERIC MAP (power_up => power_up)  
-        PORT MAP( 
-            d       => datain_in(0), 
-            clk     => clk_in, 
-            ena     => m_vcc, 
-            clrn    => m_vcc, 
-            prn     => m_vcc,
-            aload   => aload_in_r, 
-            asdata  => adatasdata_in_r, 
-            sclr    => m_gnd, 
-            sload   => m_gnd,
-            devclrn => devclrn,
-            devpor  => devpor,
-            q       => high_bank_low
-        );
-
-    --  datain_1 - L (n)  
-    reg1_l_n : stratixiii_ddr_io_reg  
-        GENERIC MAP (power_up => power_up)  
-        PORT MAP( 
-            d       => datain_in(1), 
-            clk     => neg_clk_in, 
-            ena     => m_vcc, 
-            clrn    => m_vcc, 
-            prn     => m_vcc,
-            aload   => aload_in_r, 
-            asdata  => adatasdata_in_r, 
-            sclr    => m_gnd, 
-            sload   => m_gnd,
-            devclrn => devclrn,
-            devpor  => devpor,
-            q       => dataout_reg_n(1)
-        );
-         
-    --  datain_1 - L  
-    reg1_l : stratixiii_ddr_io_reg  
-        GENERIC MAP (power_up => power_up)  
-        PORT MAP( 
-            d       => dataout_reg_n(1), 
-            clk     => clk_in, 
-            ena     => m_vcc, 
-            clrn    => m_vcc, 
-            prn     => m_vcc,
-            aload   => aload_in_r, 
-            asdata  => adatasdata_in_r, 
-            sclr    => m_gnd, 
-            sload   => m_gnd,
-            devclrn => devclrn,
-            devpor  => devpor,
-            q       => low_bank_high
-        );
-
-    --  datain_0 - L (n)  
-    reg0_l_n : stratixiii_ddr_io_reg  
-        GENERIC MAP (power_up => power_up)  
-        PORT MAP( 
-            d       => datain_in(0), 
-            clk     => neg_clk_in, 
-            ena     => m_vcc, 
-            clrn    => m_vcc, 
-            prn     => m_vcc,
-            aload   => aload_in_r, 
-            asdata  => adatasdata_in_r, 
-            sclr    => m_gnd, 
-            sload   => m_gnd,
-            devclrn => devclrn,
-            devpor  => devpor,
-            q       => dataout_reg_n(0)
-        );
-         
-    --  datain_0 - L  
-    reg0_l : stratixiii_ddr_io_reg  
-        GENERIC MAP (power_up => power_up)  
-        PORT MAP( 
-            d       => dataout_reg_n(0), 
-            clk     => clk_in, 
-            ena     => m_vcc, 
-            clrn    => m_vcc, 
-            prn     => m_vcc,
-            aload   => aload_in_r, 
-            asdata  => adatasdata_in_r, 
-            sclr    => m_gnd, 
-            sload   => m_gnd,
-            devclrn => devclrn,
-            devpor  => devpor,
-            q       => low_bank_low
-        );
-         
-    --------------------
-    -- INPUT PATH DELAYS
-    --------------------
-    WireDelay : block
-    begin
-        loopbits_datain : FOR i in datain'RANGE GENERATE
-            VitalWireDelay (datain_ipd(i), datain(i), tipd_datain(i));
-        END GENERATE;
-        VitalWireDelay (directin_in,      directin,      tipd_directin);
-        VitalWireDelay (clk_in,           clk,           tipd_clk);
-        VitalWireDelay (areset_in,        areset,        tipd_areset);
-        VitalWireDelay (dataoutbypass_in, dataoutbypass, tipd_dataoutbypass);
-    end block;
-    
-END stratixiii_half_rate_input_arch;
-
--------------------------------------------------------------------------------
---
--- Entity Name : stratixiii_io_config
---
--------------------------------------------------------------------------------
-
-library IEEE;
-use IEEE.std_logic_1164.all;
-use IEEE.std_logic_arith.all;
-use IEEE.std_logic_unsigned.all;
-use IEEE.VITAL_Timing.all;
-use IEEE.VITAL_Primitives.all;
-use work.stratixiii_atom_pack.all;
-    
-ENTITY stratixiii_io_config IS
-    GENERIC ( 
-        lpm_type           : string := "stratixiii_io_config";
-        tipd_datain                       : VitalDelayType01 := DefpropDelay01;
-        tipd_clk                          : VitalDelayType01 := DefpropDelay01;
-        tipd_ena                          : VitalDelayType01 := DefpropDelay01;
-        tipd_update                       : VitalDelayType01 := DefpropDelay01;
-        tsetup_datain_clk_noedge_posedge  : VitalDelayType := DefSetupHoldCnst;
-        thold_datain_clk_noedge_posedge   : VitalDelayType := DefSetupHoldCnst;
-        tpd_clk_dataout_posedge           : VitalDelayType01 := DefPropDelay01;
-        TimingChecksOn           : Boolean := True;
-        MsgOn                    : Boolean := DefGlitchMsgOn;
-        XOn                      : Boolean := DefGlitchXOn;
-        MsgOnChecks              : Boolean := DefMsgOnChecks;
-        XOnChecks                : Boolean := DefXOnChecks;
-        InstancePath             : String := "*"   
-    );
-    
-    PORT (
-        datain       : IN std_logic := '0';
-        clk          : IN std_logic := '0';
-        ena          : IN std_logic := '0';
-        update       : IN std_logic := '0';
-        devclrn      : IN std_logic := '1';
-        devpor       : IN std_logic := '1';
-        padtoinputregisterdelaysetting : OUT std_logic_vector(3 downto 0);
-        outputdelaysetting1            : OUT std_logic_vector(3 downto 0);
-        outputdelaysetting2            : OUT std_logic_vector(2 downto 0);
-        dataout                        : OUT std_logic
-    );
-
-END;
-
-ARCHITECTURE stratixiii_io_config_arch OF stratixiii_io_config IS
-    -- component section
-    
-    SIGNAL shift_reg   : std_logic_vector(10 downto 0) := (OTHERS => '0');
-    SIGNAL output_reg  : std_logic_vector(10 downto 0) := (OTHERS => '0');
-    SIGNAL tmp_output  : std_logic_vector(10 downto 0) := (OTHERS => '0');
-    
-    -- timing outputs
-    SIGNAL tmp_dataout     : std_logic := '0';
-    
-    -- timing inputs
-    SIGNAL datain_in       : std_logic := '0';
-    SIGNAL clk_in          : std_logic := '0';
-    SIGNAL ena_in          : std_logic := '0';
-    SIGNAL update_in       : std_logic := '0';
-    
-BEGIN
-    -- primary outputs
-    tmp_dataout <= shift_reg(10);
-
-    -- bit order changed in wys revision 1.32
-    outputdelaysetting1            <= tmp_output(3 DOWNTO 0);
-    outputdelaysetting2            <= tmp_output(6 DOWNTO 4);
-    padtoinputregisterdelaysetting <= tmp_output(10 DOWNTO 7);
-    -- padtoinputregisterdelaysetting <= tmp_output(3 DOWNTO 0);
-    -- outputdelaysetting1            <= tmp_output(7 DOWNTO 4);
-    -- outputdelaysetting2            <= tmp_output(10 DOWNTO 8);
-    tmp_output <= output_reg;
-
-
-
-    PROCESS(clk_in)
-    BEGIN
-        if (clk_in = '1' AND ena_in = '1') then
-            shift_reg(0) <= datain_in;
-            shift_reg(10 DOWNTO 1) <= shift_reg(9 DOWNTO 0);
-        end if;
-    END PROCESS;
-
-
-    PROCESS(clk_in)
-    BEGIN
-        if (clk_in = '1' AND update_in = '1') then
-            output_reg <= shift_reg;
-        end if;
-    END PROCESS;
-
-
-    --------------------
-    -- INPUT PATH DELAYS
-    --------------------
-    WireDelay : block
-    begin
-        VitalWireDelay (datain_in,    datain,    tipd_datain);
-        VitalWireDelay (clk_in,       clk,       tipd_clk);
-        VitalWireDelay (ena_in,       ena,       tipd_ena);
-        VitalWireDelay (update_in,    update,    tipd_update);
-    end block;
+     ----------------------------------
+     --  Path Delay Section
+     ----------------------------------
+     
+     VITAL: process(tmp_dataout)
+         variable dataout_VitalGlitchData : VitalGlitchDataType;
+     begin 
+         VitalPathDelay01 (
+             OutSignal => dataout,
+             OutSignalName => "dataout",
+             OutTemp => tmp_dataout,
+             Paths => (0 => (datain_in'last_event, tpd_datain_dataout, TRUE)),
+             GlitchData => dataout_VitalGlitchData,
+             Mode => DefGlitchMode,
+             XOn  => XOn,
+             MsgOn  => MsgOn );
+     end process;
+ 
+     --------------------
+     -- INPUT PATH DELAYS
+     --------------------
+     WireDelay : block
+     begin
+         VitalWireDelay (datain_in,       datain,       tipd_datain);
+     end block;
+     
+ END stratixiii_delay_chain_arch;
+ 
+ -------------------------------------------------------------------------------
+ --
+ -- Entity Name : stratixiii_io_clock_divider
+ --
+ -------------------------------------------------------------------------------
+ 
+ library IEEE;
+ use IEEE.std_logic_1164.all;
+ use IEEE.VITAL_Timing.all;
+ use IEEE.VITAL_Primitives.all;
+ use work.stratixiii_atom_pack.all;
+ use work.stratixiii_ddr_delay_chain_s;
+     
+ ENTITY stratixiii_io_clock_divider IS
+     GENERIC ( 
+         use_phasectrlin                 : string := "true";
+         phase_setting                   : integer := 0;     
+         delay_buffer_mode               : string := "high";
+         use_masterin                    : string := "false";
+         invert_phase                    : string := "false";    
+         sim_low_buffer_intrinsic_delay  : integer := 350;
+         sim_high_buffer_intrinsic_delay : integer := 175;
+         sim_buffer_delay_increment      : integer := 10;    
+         lpm_type                        : string := "stratixiii_io_clock_divider";
+         tipd_clk                 : VitalDelayType01 := DefpropDelay01;
+         tipd_phaseselect         : VitalDelayType01 := DefpropDelay01;
+         tipd_delayctrlin         : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_phasectrlin         : VitalDelayArrayType01(3 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_phaseinvertctrl     : VitalDelayType01 := DefpropDelay01;
+         tipd_masterin            : VitalDelayType01 := DefpropDelay01;
+         tpd_clk_clkout           : VitalDelayType01 := DefPropDelay01;
+         TimingChecksOn           : Boolean := True;
+         MsgOn                    : Boolean := DefGlitchMsgOn;
+         XOn                      : Boolean := DefGlitchXOn;
+         MsgOnChecks              : Boolean := DefMsgOnChecks;
+         XOnChecks                : Boolean := DefXOnChecks;
+         InstancePath             : String := "*"   
+     );
+     
+     PORT (
+         clk             : IN std_logic := '0';
+         phaseselect     : IN std_logic := '0';
+         delayctrlin     : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
+         phasectrlin     : IN std_logic_vector(3 downto 0) := (OTHERS => '0');
+         phaseinvertctrl : IN std_logic := '0';
+         masterin        : IN std_logic := '0';
+         devclrn         : IN std_logic := '1';
+         devpor          : IN std_logic := '1';
+         clkout          : OUT std_logic;
+         slaveout        : OUT std_logic
+     );
+ 
+ END;
+ 
+ ARCHITECTURE stratixiii_io_clock_divider_arch OF stratixiii_io_clock_divider IS
+     -- component section
+     COMPONENT stratixiii_ddr_delay_chain_s
+     GENERIC (
+         use_phasectrlin : string  := "true";
+         phase_setting   : integer :=  0;
+         delay_buffer_mode               : string  := "high";
+         sim_low_buffer_intrinsic_delay  : integer := 350;
+         sim_high_buffer_intrinsic_delay : integer := 175;
+         sim_buffer_delay_increment  : integer := 10;
+         phasectrlin_limit           : integer := 7
+     );
+     PORT (
+         clk         : IN std_logic := '0';
+         delayctrlin : IN std_logic_vector(5 DOWNTO 0) := (OTHERS => '0');
+         phasectrlin : IN std_logic_vector(3 DOWNTO 0) := (OTHERS => '0');
+         delayed_clkout : OUT std_logic
+     );
+     END COMPONENT;
+     
+     -- int signals
+     SIGNAL phasectrl_clkout : STD_LOGIC := '0';
+     SIGNAL delayed_clk      : STD_LOGIC := '0';
+     SIGNAL divided_clk_in   : STD_LOGIC := '0';
+     SIGNAL divided_clk      : STD_LOGIC := '0';
+     
+     -- timing outputs
+     SIGNAL tmp_clkout       : STD_LOGIC := '0';
+     
+     -- timing inputs
+     SIGNAL clk_in             : std_logic := '0';
+     SIGNAL phaseselect_in     : std_logic := '0';
+     SIGNAL delayctrlin_in     : std_logic_vector(5 downto 0) := (OTHERS => '0');
+     SIGNAL phasectrlin_in     : std_logic_vector(3 downto 0) := (OTHERS => '0');
+     SIGNAL phaseinvertctrl_in : std_logic := '0';
+     SIGNAL masterin_in        : std_logic := '0';
+     
+ BEGIN
+ 
+     -- delay chain
+     m_delay_chain : stratixiii_ddr_delay_chain_s 
+         GENERIC MAP (
+             phase_setting               => phase_setting,
+             use_phasectrlin             => use_phasectrlin,
+             delay_buffer_mode           => delay_buffer_mode,
+             sim_low_buffer_intrinsic_delay  => sim_low_buffer_intrinsic_delay,
+             sim_high_buffer_intrinsic_delay => sim_high_buffer_intrinsic_delay,
+             sim_buffer_delay_increment      => sim_buffer_delay_increment
+         )
+         PORT MAP(
+             clk            => clk_in, 
+             delayctrlin    => delayctrlin_in, 
+             phasectrlin    => phasectrlin_in, 
+             delayed_clkout => phasectrl_clkout
+        ); 
         
-    -----------------------------------
-    -- Timing Check Section
-    -----------------------------------
-    VITAL_timing_check: PROCESS (clk_in,datain_in,ena_in,update_in)
-    
-    variable Tviol_clk_datain : std_ulogic := '0';
-    variable TimingData_clk_datain : VitalTimingDataType := VitalTimingDataInit;
-    variable Tviol_clk_ena    : std_ulogic := '0';
-    variable TimingData_clk_ena    : VitalTimingDataType := VitalTimingDataInit;
-    variable Tviol_clk_update : std_ulogic := '0';
-    variable TimingData_clk_update : VitalTimingDataType := VitalTimingDataInit;
-    
-    BEGIN
-        IF (TimingChecksOn) THEN
-            VitalSetupHoldCheck (
-                        Violation       => Tviol_clk_datain,
-                        TimingData      => TimingData_clk_datain,
-                        TestSignal      => datain_in,
-                        TestSignalName  => "Datain",
-                        RefSignal       => clk_in,
-                        RefSignalName   => "clk",
-                        SetupHigh       => tsetup_datain_clk_noedge_posedge,
-                        SetupLow        => tsetup_datain_clk_noedge_posedge,
-                        HoldHigh        => thold_datain_clk_noedge_posedge,
-                        HoldLow         => thold_datain_clk_noedge_posedge,
-                        RefTransition   => '/',
-                        HeaderMsg       => InstancePath & "/STRATIXIII_IO_CONFIG",
-                        XOn             => XOnChecks,
-                        MsgOn           => MsgOnChecks
-            );
-            
-            VitalSetupHoldCheck (
-                        Violation       => Tviol_clk_ena,
-                        TimingData      => TimingData_clk_ena,
-                        TestSignal      => ena_in,
-                        TestSignalName  => "Ena",
-                        RefSignal       => clk_in,
-                        RefSignalName   => "clk",
-                        SetupHigh       => tsetup_datain_clk_noedge_posedge,
-                        SetupLow        => tsetup_datain_clk_noedge_posedge,
-                        HoldHigh        => thold_datain_clk_noedge_posedge,
-                        HoldLow         => thold_datain_clk_noedge_posedge,
-                        RefTransition   => '/',
-                        HeaderMsg       => InstancePath & "/STRATIXIII_IO_CONFIG",
-                        XOn             => XOnChecks,
-                        MsgOn           => MsgOnChecks
-            );
-            
-            VitalSetupHoldCheck (
-                        Violation       => Tviol_clk_update,
-                        TimingData      => TimingData_clk_update,
-                        TestSignal      => update_in,
-                        TestSignalName  => "Update",
-                        RefSignal       => clk_in,
-                        RefSignalName   => "clk",
-                        SetupHigh       => tsetup_datain_clk_noedge_posedge,
-                        SetupLow        => tsetup_datain_clk_noedge_posedge,
-                        HoldHigh        => thold_datain_clk_noedge_posedge,
-                        HoldLow         => thold_datain_clk_noedge_posedge,
-                        RefTransition   => '/',
-                        HeaderMsg       => InstancePath & "/STRATIXIII_IO_CONFIG",
-                        XOn             => XOnChecks,
-                        MsgOn           => MsgOnChecks
-            );
-            
-        END IF;
-    END PROCESS;  -- timing check
-
-    --------------------------------------
-    --  Path Delay Section
-    --------------------------------------
-    
-    VITAL_path_delays: PROCESS (tmp_dataout)
-    
-        variable dataout_VitalGlitchData : VitalGlitchDataType;
-    
-    BEGIN
-        VitalPathDelay01 (
-            OutSignal => dataout,
-            OutSignalName => "Dataout",
-            OutTemp => tmp_dataout,
-            Paths =>   (0 => (clk_in'last_event, tpd_clk_dataout_posedge, TRUE)),
-            GlitchData => dataout_VitalGlitchData,
-            Mode => DefGlitchMode,
-            XOn  => XOn,
-            MsgOn  => MsgOn );
-    
-    END PROCESS;  -- Path Delays
+     delayed_clk <= (not phasectrl_clkout) WHEN (invert_phase = "true") ELSE
+                    phasectrl_clkout       WHEN (invert_phase = "false") ELSE
+                    (not phasectrl_clkout) WHEN (phaseinvertctrl_in = '1') ELSE
+                    phasectrl_clkout;
+ 
+     divided_clk_in <= masterin_in WHEN (use_masterin = "true") ELSE divided_clk;
+   
+     PROCESS (delayed_clk)
+     BEGIN
+         if (delayed_clk = '1') then
+             divided_clk <= not divided_clk_in;
+         end if;
+     END PROCESS;
+       
+     
+     tmp_clkout <= (not divided_clk) WHEN (phaseselect_in = '1') ELSE divided_clk;
+ 
+     slaveout <= divided_clk;
+     
+     ----------------------------------
+     --  Path Delay Section
+     ----------------------------------
+     
+     VITAL: process(tmp_clkout)
+         variable clkout_VitalGlitchData : VitalGlitchDataType;
+     begin 
+         VitalPathDelay01 (
+             OutSignal => clkout,
+             OutSignalName => "clkout",
+             OutTemp => tmp_clkout,
+             Paths => (0 => (clk_in'last_event, tpd_clk_clkout, TRUE)),
+             GlitchData => clkout_VitalGlitchData,
+             Mode => DefGlitchMode,
+             XOn  => XOn,
+             MsgOn  => MsgOn );
+     end process;
+                           
+     --------------------
+     -- INPUT PATH DELAYS
+     --------------------
+     WireDelay : block
+     begin
+         VitalWireDelay (clk_in,         clk,         tipd_clk);
+         VitalWireDelay (phaseselect_in, phaseselect, tipd_phaseselect);
+         loopbits_delayctrlin : FOR i in delayctrlin'RANGE GENERATE
+             VitalWireDelay (delayctrlin_in(i), delayctrlin(i), tipd_delayctrlin(i));
+         END GENERATE;
+         loopbits_phasectrlin : FOR i in phasectrlin'RANGE GENERATE
+             VitalWireDelay (phasectrlin_in(i), phasectrlin(i), tipd_phasectrlin(i));
+         END GENERATE;
+         VitalWireDelay (phaseinvertctrl_in, phaseinvertctrl, tipd_phaseinvertctrl);
+         VitalWireDelay (masterin_in,        masterin,        tipd_masterin);
+     end block;
+     
+ END stratixiii_io_clock_divider_arch;
+ 
+ -------------------------------------------------------------------------------
+ --
+ -- Entity Name : stratixiii_output_phase_alignment
+ --
+ -------------------------------------------------------------------------------
+ 
+ library IEEE;
+ use IEEE.std_logic_1164.all;
+ use IEEE.std_logic_arith.all;
+ use IEEE.std_logic_unsigned.all;
+ use IEEE.VITAL_Timing.all;
+ use IEEE.VITAL_Primitives.all;
+ use work.stratixiii_atom_pack.all;
+ use work.stratixiii_ddr_io_reg;
+ use work.stratixiii_ddr_delay_chain_s;
+     
+ ENTITY stratixiii_output_phase_alignment IS
+     GENERIC ( 
+         operation_mode                   : string := "ddio_out";
+         use_phasectrlin                  : string := "true";
+         phase_setting                    : integer := 0;      
+         delay_buffer_mode                : string := "high";
+         power_up                         : string := "low";
+         async_mode                       : string := "none";
+         sync_mode                        : string := "none";
+         add_output_cycle_delay           : string := "false";
+         use_delayed_clock                : string := "false";
+         add_phase_transfer_reg           : string := "false"; 
+         use_phasectrl_clock              : string := "true";   
+         use_primary_clock                : string := "true";   
+         invert_phase                     : string := "false";  
+         bypass_input_register            : string := "false";  
+         phase_setting_for_delayed_clock  : integer := 2;           
+         sim_low_buffer_intrinsic_delay  : integer := 350;
+         sim_high_buffer_intrinsic_delay : integer := 175;
+         sim_buffer_delay_increment      : integer := 10;  
+         -- new in STRATIXIV: ww30.2008
+         duty_cycle_delay_mode : string := "none";
+         sim_dutycycledelayctrlin_falling_delay_0 : integer :=  0 ;
+         sim_dutycycledelayctrlin_falling_delay_1 : integer :=  25 ;
+         sim_dutycycledelayctrlin_falling_delay_10 : integer :=  250 ;
+         sim_dutycycledelayctrlin_falling_delay_11 : integer :=  275 ;
+         sim_dutycycledelayctrlin_falling_delay_12 : integer :=  300 ;
+         sim_dutycycledelayctrlin_falling_delay_13 : integer :=  325 ;
+         sim_dutycycledelayctrlin_falling_delay_14 : integer :=  350 ;
+         sim_dutycycledelayctrlin_falling_delay_15 : integer :=  375 ;
+         sim_dutycycledelayctrlin_falling_delay_2 : integer :=  50 ;
+         sim_dutycycledelayctrlin_falling_delay_3 : integer :=  75 ;
+         sim_dutycycledelayctrlin_falling_delay_4 : integer :=  100 ;
+         sim_dutycycledelayctrlin_falling_delay_5 : integer :=  125 ;
+         sim_dutycycledelayctrlin_falling_delay_6 : integer :=  150 ;
+         sim_dutycycledelayctrlin_falling_delay_7 : integer :=  175 ;
+         sim_dutycycledelayctrlin_falling_delay_8 : integer :=  200 ;
+         sim_dutycycledelayctrlin_falling_delay_9 : integer :=  225 ;
+         sim_dutycycledelayctrlin_rising_delay_0 : integer :=  0 ;
+         sim_dutycycledelayctrlin_rising_delay_1 : integer :=  25 ;
+         sim_dutycycledelayctrlin_rising_delay_10 : integer :=  250 ;
+         sim_dutycycledelayctrlin_rising_delay_11 : integer :=  275 ;
+         sim_dutycycledelayctrlin_rising_delay_12 : integer :=  300 ;
+         sim_dutycycledelayctrlin_rising_delay_13 : integer :=  325 ;
+         sim_dutycycledelayctrlin_rising_delay_14 : integer :=  350 ;
+         sim_dutycycledelayctrlin_rising_delay_15 : integer :=  375 ;
+         sim_dutycycledelayctrlin_rising_delay_2 : integer :=  50 ;
+         sim_dutycycledelayctrlin_rising_delay_3 : integer :=  75 ;
+         sim_dutycycledelayctrlin_rising_delay_4 : integer :=  100 ;
+         sim_dutycycledelayctrlin_rising_delay_5 : integer :=  125 ;
+         sim_dutycycledelayctrlin_rising_delay_6 : integer :=  150 ;
+         sim_dutycycledelayctrlin_rising_delay_7 : integer :=  175 ;
+         sim_dutycycledelayctrlin_rising_delay_8 : integer :=  200 ;
+         sim_dutycycledelayctrlin_rising_delay_9 : integer :=  225 ;
+         lpm_type                        : string := "stratixiii_output_phase_alignment";
+         tipd_datain              : VitalDelayArrayType01(1 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_clk                 : VitalDelayType01 := DefpropDelay01;
+         tipd_delayctrlin         : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_phasectrlin         : VitalDelayArrayType01(3 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_areset              : VitalDelayType01 := DefpropDelay01;
+         tipd_sreset              : VitalDelayType01 := DefpropDelay01;
+         tipd_clkena              : VitalDelayType01 := DefpropDelay01;
+         tipd_enaoutputcycledelay : VitalDelayType01 := DefpropDelay01;
+         tipd_enaphasetransferreg : VitalDelayType01 := DefpropDelay01;
+         tipd_phaseinvertctrl     : VitalDelayType01 := DefpropDelay01;
+         TimingChecksOn           : Boolean := True;
+         MsgOn                    : Boolean := DefGlitchMsgOn;
+         XOn                      : Boolean := DefGlitchXOn;
+         MsgOnChecks              : Boolean := DefMsgOnChecks;
+         XOnChecks                : Boolean := DefXOnChecks;
+         InstancePath             : String := "*"   
+     );
+     
+     PORT (
+         datain              : IN std_logic_vector(1 downto 0) := (OTHERS => '0');
+         clk                 : IN std_logic := '0';
+         delayctrlin         : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
+         phasectrlin         : IN std_logic_vector(3 downto 0) := (OTHERS => '0');
+         areset              : IN std_logic := '0';
+         sreset              : IN std_logic := '0';
+         clkena              : IN std_logic := '1';
+         enaoutputcycledelay : IN std_logic := '0';
+         enaphasetransferreg : IN std_logic := '0';
+         phaseinvertctrl     : IN std_logic := '0';
+         devclrn             : IN std_logic := '1';
+         devpor              : IN std_logic := '1';    
+         delaymode           : IN std_logic := '0'; -- new in STRATIXIV: ww30.2008
+         dutycycledelayctrlin: IN std_logic_vector(3 downto 0) := (OTHERS => '0');
+         dataout             : OUT std_logic;
+         dffin               : OUT std_logic_vector(1 downto 0);
+         dff1t               : OUT std_logic_vector(1 downto 0);
+         dffddiodataout      : OUT std_logic
+     );
+ 
+ END;
+ 
+ ARCHITECTURE stratixiii_output_phase_alignment_arch OF stratixiii_output_phase_alignment IS
+     -- type def
+     type delay_chain_int_vec is array (natural range <>) of integer;
+     
+     -- component section
+     COMPONENT stratixiii_ddr_delay_chain_s
+     GENERIC (
+         use_phasectrlin : string  := "true";
+         phase_setting   : integer :=  0;
+         delay_buffer_mode               : string  := "high";
+         sim_low_buffer_intrinsic_delay  : integer := 350;
+         sim_high_buffer_intrinsic_delay : integer := 175;
+         sim_buffer_delay_increment  : integer := 10;
+         phasectrlin_limit           : integer := 7
+     );
+     PORT (
+         clk         : IN std_logic := '0';
+         delayctrlin : IN std_logic_vector(5 DOWNTO 0) := (OTHERS => '0');
+         phasectrlin : IN std_logic_vector(3 DOWNTO 0) := (OTHERS => '0');
+         delayed_clkout : OUT std_logic
+     );
+     END COMPONENT;
+     
+     component stratixiii_ddr_io_reg                                                                                              
+     generic (                                                                                                 
+              power_up : string := "DONT_CARE";                                                                
+              is_wysiwyg : string := "false";                                                                  
+              x_on_violation : string := "on";                                                                 
+              tsetup_d_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                                
+              tsetup_asdata_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                           
+              tsetup_sclr_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                             
+              tsetup_sload_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                            
+              tsetup_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                              
+              thold_d_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                                 
+              thold_asdata_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                            
+              thold_sclr_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                              
+              thold_sload_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                             
+              thold_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                               
+              tpd_clk_q_posedge : VitalDelayType01 := DefPropDelay01;                                          
+              tpd_clrn_q_negedge : VitalDelayType01 := DefPropDelay01;                                         
+              tpd_aload_q_posedge : VitalDelayType01 := DefPropDelay01;                                        
+              tpd_asdata_q: VitalDelayType01 := DefPropDelay01;                                                
+              tipd_clk : VitalDelayType01 := DefPropDelay01;                                                   
+              tipd_d : VitalDelayType01 := DefPropDelay01;                                                     
+              tipd_asdata : VitalDelayType01 := DefPropDelay01;                                                
+              tipd_sclr : VitalDelayType01 := DefPropDelay01;                                                  
+              tipd_sload : VitalDelayType01 := DefPropDelay01;                                                 
+              tipd_clrn : VitalDelayType01 := DefPropDelay01;                                                  
+              tipd_prn : VitalDelayType01 := DefPropDelay01;                                                   
+              tipd_aload : VitalDelayType01 := DefPropDelay01;                                                 
+              tipd_ena : VitalDelayType01 := DefPropDelay01;                                                   
+              TimingChecksOn: Boolean := True;                                                                 
+              MsgOn: Boolean := DefGlitchMsgOn;                                                                
+              XOn: Boolean := DefGlitchXOn;                                                                    
+              MsgOnChecks: Boolean := DefMsgOnChecks;                                                          
+              XOnChecks: Boolean := DefXOnChecks;                                                              
+              InstancePath: STRING := "*"                                                                      
+             );                                                                                                
+                                                                                                               
+     port (                                                                                                    
+            d : in std_logic := '0';                                                                           
+            clk : in std_logic := '0';                                                                         
+            ena : in std_logic := '1';                                                                         
+            clrn : in std_logic := '1';                                                                        
+            prn : in std_logic := '1';                                                                         
+            aload : in std_logic := '0';                                                                       
+            asdata : in std_logic := '0';                                                                      
+            sclr : in std_logic := '0';                                                                        
+            sload : in std_logic := '0';                                                                       
+            devclrn : in std_logic := '1';                                                                     
+            devpor : in std_logic := '1';                                                                      
+            q : out std_logic                                                                                  
+          );                                                                                                   
+     end component;                                                                                                
+     
+     -- int signals on clock paths
+     SIGNAL clk_in_delayed: STD_LOGIC := '0';
+     SIGNAL clk_in_mux: STD_LOGIC := '0';
+     SIGNAL phasectrl_clkout: STD_LOGIC := '0';
+     SIGNAL phaseinvertctrl_out: STD_LOGIC := '0';
+ 
+     SIGNAL m_vcc: STD_LOGIC := '1';
+     SIGNAL m_gnd: STD_LOGIC := '0';
+     
+     -- IO registers
+     -- common
+     SIGNAL adatasdata_in_r : STD_LOGIC := '0';   -- sync reset - common for transfer and output reg
+     SIGNAL sclr_in_r : STD_LOGIC := '0';
+     SIGNAL sload_in_r : STD_LOGIC := '0';  
+     SIGNAL sclr_in : STD_LOGIC := '0';
+     SIGNAL sload_in : STD_LOGIC := '0';
+     SIGNAL adatasdata_in : STD_LOGIC := '0';
+     SIGNAL clrn_in_r : STD_LOGIC := '1';        -- async reset - common for all registers
+     SIGNAL prn_in_r : STD_LOGIC := '1';
+     
+     SIGNAL datain_q: STD_LOGIC := '0';
+     SIGNAL ddio_datain_q: STD_LOGIC := '0';
+ 
+     SIGNAL cycledelay_q: STD_LOGIC := '0';
+     SIGNAL ddio_cycledelay_q: STD_LOGIC := '0';
+ 
+     SIGNAL cycledelay_mux_out: STD_LOGIC := '0';
+     SIGNAL ddio_cycledelay_mux_out: STD_LOGIC := '0';
+ 
+     SIGNAL bypass_input_reg_mux_out      : STD_LOGIC := '0';
+     SIGNAL ddio_bypass_input_reg_mux_out : STD_LOGIC := '0';
+ 
+     SIGNAL not_clk_in_mux: STD_LOGIC := '0';
+     
+     SIGNAL ddio_out_clk_mux: STD_LOGIC := '0';
+     SIGNAL ddio_out_lo_q: STD_LOGIC := '0';
+     SIGNAL ddio_out_hi_q: STD_LOGIC := '0';
+     
+     -- transfer delay now by negative clk
+     SIGNAL transfer_q: STD_LOGIC := '0';
+     SIGNAL ddio_transfer_q: STD_LOGIC := '0';
+ 
+     -- Duty Cycle Delay
+     SIGNAL dcd_in            : STD_LOGIC := '0';
+     SIGNAL dcd_out           : STD_LOGIC := '0';
+     SIGNAL dcd_both          : STD_LOGIC := '0';
+     SIGNAL dcd_both_gnd      : STD_LOGIC := '0';
+     SIGNAL dcd_both_vcc      : STD_LOGIC := '0';
+     SIGNAL dcd_fallnrise     : STD_LOGIC := '0';
+     SIGNAL dcd_fallnrise_gnd : STD_LOGIC := '0';
+     SIGNAL dcd_fallnrise_vcc : STD_LOGIC := '0';
+     SIGNAL dcd_rising_dly    : INTEGER := 0;
+     SIGNAL dcd_falling_dly   : INTEGER := 0;
+ 
+     SIGNAL dlyclk_clk: STD_LOGIC := '0';
+     SIGNAL dlyclk_d: STD_LOGIC := '0';
+     SIGNAL dlyclk_q: STD_LOGIC := '0';
+     SIGNAL ddio_dlyclk_d: STD_LOGIC := '0';
+     SIGNAL ddio_dlyclk_q: STD_LOGIC := '0';
+ 
+     SIGNAL dlyclk_clkena_in: STD_LOGIC := '0';     -- shared    
+     SIGNAL dlyclk_extended_q: STD_LOGIC := '0';
+     SIGNAL dlyclk_extended_clk: STD_LOGIC := '0';
+ 
+     SIGNAL normal_dataout: STD_LOGIC := '0';
+     SIGNAL extended_dataout: STD_LOGIC := '0';
+     SIGNAL ddio_dataout: STD_LOGIC := '0';
+     SIGNAL tmp_dataout: STD_LOGIC := '0';
+ 
+     
+     -- timing inputs
+     SIGNAL datain_in              : std_logic_vector(1 downto 0) := (OTHERS => '0');
+     SIGNAL clk_in                 : std_logic := '0';
+     SIGNAL delayctrlin_in         : std_logic_vector(5 downto 0) := (OTHERS => '0');
+     SIGNAL phasectrlin_in         : std_logic_vector(3 downto 0) := (OTHERS => '0');
+     SIGNAL areset_in              : std_logic := '0';
+     SIGNAL sreset_in              : std_logic := '0';
+     SIGNAL clkena_in              : std_logic := '1';
+     SIGNAL enaoutputcycledelay_in : std_logic := '0';
+     SIGNAL enaphasetransferreg_in : std_logic := '0';
+     SIGNAL phaseinvertctrl_in     : std_logic := '0';
+     
+     SIGNAL delaymode_in: std_logic := '0';
+     SIGNAL dutycycledelayctrlin_in : std_logic_vector(3 downto 0) := (OTHERS => '0');
+  
+ BEGIN
+ 
+     -- filtering X/U etc.
+     delaymode_in <= '1' WHEN (delaymode = '1') ELSE '0';
+     dutycycledelayctrlin_in(0) <= '1' WHEN (dutycycledelayctrlin(0) = '1') ELSE '0';
+     dutycycledelayctrlin_in(1) <= '1' WHEN (dutycycledelayctrlin(1) = '1') ELSE '0';
+     dutycycledelayctrlin_in(2) <= '1' WHEN (dutycycledelayctrlin(2) = '1') ELSE '0';
+     dutycycledelayctrlin_in(3) <= '1' WHEN (dutycycledelayctrlin(3) = '1') ELSE '0';
+ 
+     -- delay chain for clk_in delay
+     m_clk_in_delay_chain : stratixiii_ddr_delay_chain_s 
+         GENERIC MAP (
+             phase_setting               => phase_setting_for_delayed_clock,
+             use_phasectrlin             => "false",
+             delay_buffer_mode           => delay_buffer_mode,
+             sim_low_buffer_intrinsic_delay  => sim_low_buffer_intrinsic_delay,
+             sim_high_buffer_intrinsic_delay => sim_high_buffer_intrinsic_delay,
+             sim_buffer_delay_increment      => sim_buffer_delay_increment
+         )
+         PORT MAP(
+             clk            => clk_in, 
+             delayctrlin    => delayctrlin_in, 
+             phasectrlin    => phasectrlin_in, 
+             delayed_clkout => clk_in_delayed
+        ); 
         
-END stratixiii_io_config_arch;
-
--------------------------------------------------------------------------------
---
--- Entity Name : stratixiii_dqs_config
---
--------------------------------------------------------------------------------
-
-library IEEE;
-use IEEE.std_logic_1164.all;
-use IEEE.std_logic_arith.all;
-use IEEE.std_logic_unsigned.all;
-use IEEE.VITAL_Timing.all;
-use IEEE.VITAL_Primitives.all;
-use work.stratixiii_atom_pack.all;
-    
-ENTITY stratixiii_dqs_config IS
-    GENERIC ( 
-        lpm_type                 : string := "stratixiii_dqs_config";
-        tipd_datain                       : VitalDelayType01 := DefpropDelay01;
-        tipd_clk                          : VitalDelayType01 := DefpropDelay01;
-        tipd_ena                          : VitalDelayType01 := DefpropDelay01;
-        tipd_update                       : VitalDelayType01 := DefpropDelay01;
-        tsetup_datain_clk_noedge_posedge  : VitalDelayType := DefSetupHoldCnst;
-        thold_datain_clk_noedge_posedge   : VitalDelayType := DefSetupHoldCnst;
-        tpd_clk_dataout_posedge           : VitalDelayType01 := DefPropDelay01;
-        TimingChecksOn           : Boolean := True;
-        MsgOn                    : Boolean := DefGlitchMsgOn;
-        XOn                      : Boolean := DefGlitchXOn;
-        MsgOnChecks              : Boolean := DefMsgOnChecks;
-        XOnChecks                : Boolean := DefXOnChecks;
-        InstancePath             : String := "*"   
-    );
-    
-    PORT (
-        datain       : IN std_logic := '0';
-        clk          : IN std_logic := '0';
-        ena          : IN std_logic := '0';
-        update       : IN std_logic := '0';
-        devclrn      : IN std_logic := '1';
-        devpor       : IN std_logic := '1';
-        dqsbusoutdelaysetting     : OUT std_logic_vector(3 downto 0);          
-        dqsinputphasesetting      : OUT std_logic_vector(2 downto 0);
-        dqsenablectrlphasesetting : OUT std_logic_vector(3 downto 0);
-        dqsoutputphasesetting     : OUT std_logic_vector(3 downto 0);
-        dqoutputphasesetting      : OUT std_logic_vector(3 downto 0);
-        resyncinputphasesetting   : OUT std_logic_vector(3 downto 0);
-        dividerphasesetting       : OUT std_logic;
-        enaoctcycledelaysetting   : OUT std_logic;
-        enainputcycledelaysetting : OUT std_logic;
-        enaoutputcycledelaysetting: OUT std_logic;
-        dqsenabledelaysetting     : OUT std_logic_vector(2 downto 0);
-        octdelaysetting1          : OUT std_logic_vector(3 downto 0);
-        octdelaysetting2          : OUT std_logic_vector(2 downto 0);
-        enadataoutbypass          : OUT std_logic;
-        enadqsenablephasetransferreg : OUT std_logic;
-        enaoctphasetransferreg    : OUT std_logic;       
-        enaoutputphasetransferreg : OUT std_logic;   
-        enainputphasetransferreg  : OUT std_logic;
-        resyncinputphaseinvert    : OUT std_logic;
-        dqsenablectrlphaseinvert  : OUT std_logic;
-        dqoutputphaseinvert       : OUT std_logic;        
-        dqsoutputphaseinvert      : OUT std_logic; 
-        dataout                   : OUT std_logic
-    );
-
-END;
-    
-ARCHITECTURE stratixiii_dqs_config_arch OF stratixiii_dqs_config IS
-    -- component section
-    
-    SIGNAL shift_reg  : STD_LOGIC_VECTOR (45 DOWNTO 0) := (OTHERS => '0');
-    SIGNAL output_reg : STD_LOGIC_VECTOR (45 DOWNTO 0) := (OTHERS => '0');
-    SIGNAL tmp_output : STD_LOGIC_VECTOR (45 DOWNTO 0) := (OTHERS => '0');
-    
-    -- timing outputs
-    SIGNAL tmp_dataout     : std_logic := '0';
-    
-    -- timing inputs
-    SIGNAL datain_in       : std_logic := '0';
-    SIGNAL clk_in          : std_logic := '0';
-    SIGNAL ena_in          : std_logic := '0';
-    SIGNAL update_in       : std_logic := '0';
-    
-BEGIN
-    -- primary outputs
-    tmp_dataout <= shift_reg(45);
-
-    dqsbusoutdelaysetting     <= tmp_output(3   DOWNTO  0);
-    dqsinputphasesetting      <= tmp_output(6   DOWNTO  4);
-    dqsenablectrlphasesetting <= tmp_output(10  DOWNTO  7);
-    dqsoutputphasesetting     <= tmp_output(14  DOWNTO  11);
-    dqoutputphasesetting      <= tmp_output(18  DOWNTO  15);
-    resyncinputphasesetting   <= tmp_output(22  DOWNTO  19);
-    dividerphasesetting       <= tmp_output(23);
-    enaoctcycledelaysetting   <= tmp_output(24);
-    enainputcycledelaysetting <= tmp_output(25);
-    enaoutputcycledelaysetting<= tmp_output(26);
-    dqsenabledelaysetting     <= tmp_output(29  DOWNTO  27);
-    octdelaysetting1          <= tmp_output(33  DOWNTO  30);
-    octdelaysetting2          <= tmp_output(36  DOWNTO  34);
-    enadataoutbypass          <= tmp_output(37);
-    enadqsenablephasetransferreg <= tmp_output(38); -- new in 1.23
-    enaoctphasetransferreg       <= tmp_output(39); -- new in 1.23 
-    enaoutputphasetransferreg    <= tmp_output(40); -- new in 1.23
-    enainputphasetransferreg     <= tmp_output(41); -- new in 1.23
-    resyncinputphaseinvert       <= tmp_output(42);    -- new in 1.26
-    dqsenablectrlphaseinvert     <= tmp_output(43);    -- new in 1.26
-    dqoutputphaseinvert          <= tmp_output(44);    -- new in 1.26
-    dqsoutputphaseinvert         <= tmp_output(45);    -- new in 1.26
-
-    tmp_output         <= output_reg;
-
-    PROCESS(clk_in)
-    begin
-        if (clk_in = '1' AND ena_in = '1') then 
-            shift_reg(0) <= datain_in;
-            shift_reg(45 DOWNTO 1) <= shift_reg(44 DOWNTO 0);
-        end if;
-    end process;
-
-    PROCESS(clk_in)
-    begin
-        if (clk_in = '1' AND update_in = '1') then 
-            output_reg <= shift_reg;
-        end if;
-    end process;
-
-    --------------------
-    -- INPUT PATH DELAYS
-    --------------------
-    WireDelay : block
-    begin
-        VitalWireDelay (datain_in,    datain,    tipd_datain);
-        VitalWireDelay (clk_in,       clk,       tipd_clk);
-        VitalWireDelay (ena_in,       ena,       tipd_ena);
-        VitalWireDelay (update_in,    update,    tipd_update);
-    end block;
+     -- clock source for datain and cycle delay registers
+     clk_in_mux <= clk_in_delayed WHEN (use_delayed_clock = "true") ELSE clk_in;
+ 
+     -- delay chain for phase control
+     m_delay_chain : stratixiii_ddr_delay_chain_s 
+         GENERIC MAP (
+             phase_setting               => phase_setting,
+             use_phasectrlin             => use_phasectrlin,
+             delay_buffer_mode           => delay_buffer_mode,
+             sim_low_buffer_intrinsic_delay  => sim_low_buffer_intrinsic_delay,
+             sim_high_buffer_intrinsic_delay => sim_high_buffer_intrinsic_delay,
+             phasectrlin_limit               => 10,
+             sim_buffer_delay_increment      => sim_buffer_delay_increment
+         )
+         PORT MAP(
+             clk            => clk_in, 
+             delayctrlin    => delayctrlin_in, 
+             phasectrlin    => phasectrlin_in, 
+             delayed_clkout => phasectrl_clkout
+        ); 
         
-    -----------------------------------
-    -- Timing Check Section
-    -----------------------------------
-    VITAL_timing_check: PROCESS (clk_in,datain_in,ena_in,update_in)
-    
-    variable Tviol_clk_datain : std_ulogic := '0';
-    variable TimingData_clk_datain : VitalTimingDataType := VitalTimingDataInit;
-    variable Tviol_clk_ena    : std_ulogic := '0';
-    variable TimingData_clk_ena    : VitalTimingDataType := VitalTimingDataInit;
-    variable Tviol_clk_update : std_ulogic := '0';
-    variable TimingData_clk_update : VitalTimingDataType := VitalTimingDataInit;
-    
-    BEGIN
-        IF (TimingChecksOn) THEN
-            VitalSetupHoldCheck (
-                        Violation       => Tviol_clk_datain,
-                        TimingData      => TimingData_clk_datain,
-                        TestSignal      => datain_in,
-                        TestSignalName  => "Datain",
-                        RefSignal       => clk_in,
-                        RefSignalName   => "clk",
-                        SetupHigh       => tsetup_datain_clk_noedge_posedge,
-                        SetupLow        => tsetup_datain_clk_noedge_posedge,
-                        HoldHigh        => thold_datain_clk_noedge_posedge,
-                        HoldLow         => thold_datain_clk_noedge_posedge,
-                        RefTransition   => '/',
-                        HeaderMsg       => InstancePath & "/STRATIXIII_IO_CONFIG",
-                        XOn             => XOnChecks,
-                        MsgOn           => MsgOnChecks
-            );
-            
-            VitalSetupHoldCheck (
-                        Violation       => Tviol_clk_ena,
-                        TimingData      => TimingData_clk_ena,
-                        TestSignal      => ena_in,
-                        TestSignalName  => "Ena",
-                        RefSignal       => clk_in,
-                        RefSignalName   => "clk",
-                        SetupHigh       => tsetup_datain_clk_noedge_posedge,
-                        SetupLow        => tsetup_datain_clk_noedge_posedge,
-                        HoldHigh        => thold_datain_clk_noedge_posedge,
-                        HoldLow         => thold_datain_clk_noedge_posedge,
-                        RefTransition   => '/',
-                        HeaderMsg       => InstancePath & "/STRATIXIII_IO_CONFIG",
-                        XOn             => XOnChecks,
-                        MsgOn           => MsgOnChecks
-            );
-            
-            VitalSetupHoldCheck (
-                        Violation       => Tviol_clk_update,
-                        TimingData      => TimingData_clk_update,
-                        TestSignal      => update_in,
-                        TestSignalName  => "Update",
-                        RefSignal       => clk_in,
-                        RefSignalName   => "clk",
-                        SetupHigh       => tsetup_datain_clk_noedge_posedge,
-                        SetupLow        => tsetup_datain_clk_noedge_posedge,
-                        HoldHigh        => thold_datain_clk_noedge_posedge,
-                        HoldLow         => thold_datain_clk_noedge_posedge,
-                        RefTransition   => '/',
-                        HeaderMsg       => InstancePath & "/STRATIXIII_IO_CONFIG",
-                        XOn             => XOnChecks,
-                        MsgOn           => MsgOnChecks
-            );
-            
-        END IF;
-    END PROCESS;  -- timing check
-
-    --------------------------------------
-    --  Path Delay Section
-    --------------------------------------
-    
-    VITAL_path_delays: PROCESS (tmp_dataout)
-    
-        variable dataout_VitalGlitchData : VitalGlitchDataType;
-    
-    BEGIN
-        VitalPathDelay01 (
-            OutSignal => dataout,
-            OutSignalName => "Dataout",
-            OutTemp => tmp_dataout,
-            Paths =>   (0 => (clk_in'last_event, tpd_clk_dataout_posedge, TRUE)),
-            GlitchData => dataout_VitalGlitchData,
-            Mode => DefGlitchMode,
-            XOn  => XOn,
-            MsgOn  => MsgOn );
-    
-    END PROCESS;  -- Path Delays
-    
-END stratixiii_dqs_config_arch;
+     -- primary outputs
+     normal_dataout   <= dlyclk_q;
+     extended_dataout <= dlyclk_q OR dlyclk_extended_q;    -- oe port is active low
+     ddio_dataout     <= ddio_out_hi_q WHEN (ddio_out_clk_mux = '1') ELSE ddio_out_lo_q;
+     tmp_dataout      <= ddio_dataout     WHEN (operation_mode = "ddio_out") ELSE
+                         extended_dataout WHEN (operation_mode = "extended_oe" OR operation_mode = "extended_rtena") ELSE
+                         normal_dataout   WHEN (operation_mode = "output" OR operation_mode = "oe" OR operation_mode = "rtena") ELSE  
+                         'Z';
+     dataout <= tmp_dataout;   
+                            
+     ddio_out_clk_mux <= dlyclk_clk after 1 ps;  -- symbolic T4 to remove glitch on data_h
+     ddio_out_lo_q <= dlyclk_q after 2 ps;       -- symbolic 2 T4 to remove glitch on data_l
+     ddio_out_hi_q <= ddio_dlyclk_q;
+ 
+     -- resolve reset modes
+     PROCESS(areset_in)
+     BEGIN
+         IF (async_mode = "clear") THEN
+             clrn_in_r  <= not areset_in;
+             prn_in_r   <= '1';
+         ELSIF (async_mode = "preset") THEN
+             prn_in_r   <=  not areset_in;
+             clrn_in_r  <= '1';
+         END IF;
+     END PROCESS;
+ 
+     PROCESS(sreset_in)
+     BEGIN
+         IF (sync_mode = "clear") THEN
+             sclr_in_r       <= sreset_in;
+             adatasdata_in_r <= '0';
+             sload_in_r      <= '0';      
+         ELSIF (sync_mode = "preset") THEN
+             sload_in_r      <= sreset_in;  
+             adatasdata_in_r <= '1';
+             sclr_in_r       <= '0';
+         END IF;
+     END PROCESS;
+     
+ 
+     sclr_in   <= '0' WHEN (operation_mode = "rtena" OR operation_mode = "extended_rtena") ELSE sclr_in_r;
+     sload_in  <= '0' WHEN (operation_mode = "rtena" OR operation_mode = "extended_rtena") ELSE sload_in_r; 
+     adatasdata_in    <= adatasdata_in_r;
+     dlyclk_clkena_in <= '1' WHEN (operation_mode = "rtena" OR operation_mode = "extended_rtena") ELSE clkena_in;
+ 
+     -- Datain Register
+     datain_reg : stratixiii_ddr_io_reg  
+         GENERIC MAP (power_up => power_up)  
+         PORT MAP( 
+             d       => datain_in(0), 
+             clk     => clk_in_mux, 
+             ena     => m_vcc, 
+             clrn    => clrn_in_r, 
+             prn     => prn_in_r,
+             aload   => m_gnd, 
+             asdata  => adatasdata_in, 
+             sclr    => m_gnd, 
+             sload   => m_gnd,
+             devclrn => devclrn,
+             devpor  => devpor,
+             q       => datain_q
+         );
+          
+     -- DDIO Datain Register  
+     ddio_datain_reg : stratixiii_ddr_io_reg  
+         GENERIC MAP (power_up => power_up)  
+         PORT MAP( 
+             d       => datain_in(1), 
+             clk     => clk_in_mux, 
+             ena     => m_vcc, 
+             clrn    => clrn_in_r, 
+             prn     => prn_in_r,
+             aload   => m_gnd, 
+             asdata  => adatasdata_in, 
+             sclr    => m_gnd, 
+             sload   => m_gnd,
+             devclrn => devclrn,
+             devpor  => devpor, 
+             q       => ddio_datain_q
+        );
+ 
+     -- Cycle Delay Register  
+     cycledelay_reg : stratixiii_ddr_io_reg  
+         GENERIC MAP (power_up => power_up)  
+         PORT MAP( 
+             d       => datain_q, 
+             clk     => clk_in_mux, 
+             ena     => m_vcc, 
+             clrn    => clrn_in_r, 
+             prn     => prn_in_r,
+             aload   => m_gnd, 
+             asdata  => adatasdata_in, 
+             sclr    => m_gnd, 
+             sload   => m_gnd,
+             devclrn => devclrn,
+             devpor  => devpor, 
+             q       => cycledelay_q
+         );
+          
+     -- DDIO Cycle Delay Register  
+     ddio_cycledelay_reg : stratixiii_ddr_io_reg  
+         GENERIC MAP (power_up => power_up)  
+         PORT MAP( 
+             d       => ddio_datain_q, 
+             clk     => clk_in_mux, 
+             ena     => m_vcc, 
+             clrn    => clrn_in_r, 
+             prn     => prn_in_r,
+             aload   => m_gnd, 
+             asdata  => adatasdata_in, 
+             sclr    => m_gnd, 
+             sload   => m_gnd,
+             devclrn => devclrn,
+             devpor  => devpor, 
+             q       => ddio_cycledelay_q
+         );
+ 
+     -- enaoutputcycledelay data path mux
+     cycledelay_mux_out <=  cycledelay_q WHEN (add_output_cycle_delay = "true")  ELSE 
+                            datain_q     WHEN (add_output_cycle_delay = "false") ELSE
+                            cycledelay_q WHEN (enaoutputcycledelay_in = m_vcc)   ELSE
+                            datain_q;
+ 
+     -- input register bypass mux
+     bypass_input_reg_mux_out <= datain_in(0) WHEN (bypass_input_register = "true") ELSE cycledelay_mux_out;
+ 
+     --assign #300 transfer_q = cycledelay_mux_out;
+     -- transfer delay is implemented with negative register in rev1.26 
+     transferdelay_reg : stratixiii_ddr_io_reg  
+         GENERIC MAP (power_up => power_up)  
+         PORT MAP( 
+             d       => bypass_input_reg_mux_out, 
+             clk     => not_clk_in_mux,
+             ena     => m_vcc, 
+             clrn    => clrn_in_r, 
+             prn     => prn_in_r,
+             aload   => m_gnd, 
+             asdata  => adatasdata_in, 
+             sclr    => sclr_in, 
+             sload   => sload_in,
+             devclrn => devclrn,
+             devpor  => devpor, 
+             q       => transfer_q
+         );
+ 
+     -- add phase transfer data path mux
+     dlyclk_d <=  transfer_q   WHEN (add_phase_transfer_reg = "true")  ELSE 
+                  bypass_input_reg_mux_out WHEN (add_phase_transfer_reg = "false") ELSE
+                  transfer_q   WHEN (enaphasetransferreg_in = m_vcc)   ELSE 
+                  bypass_input_reg_mux_out;
+ 
+     -- clock mux for the output register
+     phaseinvertctrl_out <=  (not phasectrl_clkout) WHEN (invert_phase = "true")      ELSE
+                             phasectrl_clkout       WHEN (invert_phase = "false")     ELSE
+                             (not phasectrl_clkout) WHEN (phaseinvertctrl_in = m_vcc) ELSE 
+                             phasectrl_clkout;
+ 
+     -- Duty Cycle Delay
+     dcd_in <= phaseinvertctrl_out WHEN (use_phasectrl_clock = "true") ELSE clk_in_mux;
+ 
+     PROCESS(dutycycledelayctrlin_in)
+         variable init : boolean := true;
+         variable dcd_table_rising : delay_chain_int_vec(15 downto 0) := (OTHERS => 0);
+         variable dcd_table_falling : delay_chain_int_vec(15 downto 0) := (OTHERS => 0);
+         variable dcd_dly_setting : integer := 0;
+     begin
+         if (init) then
+             dcd_table_rising(0) := sim_dutycycledelayctrlin_rising_delay_0;
+             dcd_table_rising(1) := sim_dutycycledelayctrlin_rising_delay_1;
+             dcd_table_rising(2) := sim_dutycycledelayctrlin_rising_delay_2;
+             dcd_table_rising(3) := sim_dutycycledelayctrlin_rising_delay_3;
+             dcd_table_rising(4) := sim_dutycycledelayctrlin_rising_delay_4;
+             dcd_table_rising(5) := sim_dutycycledelayctrlin_rising_delay_5;
+             dcd_table_rising(6) := sim_dutycycledelayctrlin_rising_delay_6;
+             dcd_table_rising(7) := sim_dutycycledelayctrlin_rising_delay_7;
+             dcd_table_rising(8) := sim_dutycycledelayctrlin_rising_delay_8;
+             dcd_table_rising(9) := sim_dutycycledelayctrlin_rising_delay_9;
+             dcd_table_rising(10) := sim_dutycycledelayctrlin_rising_delay_10;
+             dcd_table_rising(11) := sim_dutycycledelayctrlin_rising_delay_11;
+             dcd_table_rising(12) := sim_dutycycledelayctrlin_rising_delay_12;
+             dcd_table_rising(13) := sim_dutycycledelayctrlin_rising_delay_13;
+             dcd_table_rising(14) := sim_dutycycledelayctrlin_rising_delay_14;
+             dcd_table_rising(15) := sim_dutycycledelayctrlin_rising_delay_15;
+ 
+             dcd_table_falling(0) := sim_dutycycledelayctrlin_falling_delay_0;
+             dcd_table_falling(1) := sim_dutycycledelayctrlin_falling_delay_1;
+             dcd_table_falling(2) := sim_dutycycledelayctrlin_falling_delay_2;
+             dcd_table_falling(3) := sim_dutycycledelayctrlin_falling_delay_3;
+             dcd_table_falling(4) := sim_dutycycledelayctrlin_falling_delay_4;
+             dcd_table_falling(5) := sim_dutycycledelayctrlin_falling_delay_5;
+             dcd_table_falling(6) := sim_dutycycledelayctrlin_falling_delay_6;
+             dcd_table_falling(7) := sim_dutycycledelayctrlin_falling_delay_7;
+             dcd_table_falling(8) := sim_dutycycledelayctrlin_falling_delay_8;
+             dcd_table_falling(9) := sim_dutycycledelayctrlin_falling_delay_9;
+             dcd_table_falling(10) := sim_dutycycledelayctrlin_falling_delay_10;
+             dcd_table_falling(11) := sim_dutycycledelayctrlin_falling_delay_11;
+             dcd_table_falling(12) := sim_dutycycledelayctrlin_falling_delay_12;
+             dcd_table_falling(13) := sim_dutycycledelayctrlin_falling_delay_13;
+             dcd_table_falling(14) := sim_dutycycledelayctrlin_falling_delay_14;
+             dcd_table_falling(15) := sim_dutycycledelayctrlin_falling_delay_15;
+ 
+             init := false;
+         end if;
+ 
+        dcd_dly_setting := alt_conv_integer(dutycycledelayctrlin_in);
+        dcd_rising_dly  <= dcd_table_rising(dcd_dly_setting);
+        dcd_falling_dly <= dcd_table_falling(dcd_dly_setting);
+     end process; -- generating dynamic delays
+ 
+     PROCESS(dcd_in)
+     BEGIN
+         dcd_both_gnd <= dcd_in;
+ 
+         if (dcd_in = '0') then
+             dcd_both_vcc <= transport dcd_in after (dcd_falling_dly * 1 ps);
+         else
+             dcd_both_vcc <= transport dcd_in after (dcd_rising_dly * 1 ps);
+         end if;
+     END PROCESS;
+         
+     PROCESS(dcd_in)
+     BEGIN
+         if (dcd_in = '0') then
+             dcd_fallnrise_gnd <= transport dcd_in after (dcd_falling_dly * 1 ps);
+         else
+             dcd_fallnrise_vcc <= transport dcd_in after (dcd_rising_dly * 1 ps);
+         end if;
+     END PROCESS;
+                         
+     dcd_both      <= dcd_both_vcc      WHEN (delaymode_in = '1')             ELSE dcd_both_gnd; 
+     dcd_fallnrise <= dcd_fallnrise_vcc WHEN (delaymode_in = '1')             ELSE dcd_fallnrise_gnd; 
+     dlyclk_clk    <= dcd_both          WHEN (duty_cycle_delay_mode = "both") ELSE
+                      dcd_fallnrise     WHEN (duty_cycle_delay_mode = "fallnrise") ELSE dcd_in;
+ 
+     -- Output Register clocked by phasectrl_clk
+     dlyclk_reg : stratixiii_ddr_io_reg  
+         GENERIC MAP (power_up => power_up)  
+         PORT MAP( 
+             d       => dlyclk_d, 
+             clk     => dlyclk_clk, 
+             ena     => dlyclk_clkena_in, 
+             clrn    => clrn_in_r, 
+             prn     => prn_in_r,
+             aload   => m_gnd, 
+             asdata  => adatasdata_in, 
+             sclr    => sclr_in, 
+             sload   => sload_in,
+             devclrn => devclrn,
+             devpor  => devpor, 
+             q       => dlyclk_q
+         );
+ 
+     -- enaoutputcycledelay data path mux
+     ddio_cycledelay_mux_out <= ddio_cycledelay_q WHEN (add_output_cycle_delay = "true")  ELSE 
+                                ddio_datain_q     WHEN (add_output_cycle_delay = "false") ELSE
+                                ddio_cycledelay_q WHEN (enaoutputcycledelay_in = m_vcc)   ELSE 
+                                ddio_datain_q;
+ 
+     -- input register bypass mux
+     ddio_bypass_input_reg_mux_out <= datain_in(1) WHEN (bypass_input_register = "true") ELSE ddio_cycledelay_mux_out;
+                              
+     --assign #300 ddio_transfer_q = ddio_cycledelay_mux_out;
+     -- transfer delay is implemented with negative register in rev1.26 
+     not_clk_in_mux <= not clk_in_mux;
+     
+     ddio_transferdelay_reg : stratixiii_ddr_io_reg  
+         GENERIC MAP (power_up => power_up)  
+         PORT MAP( 
+             d       => ddio_bypass_input_reg_mux_out, 
+             clk     => not_clk_in_mux,
+             ena     => m_vcc, 
+             clrn    => clrn_in_r, 
+             prn     => prn_in_r,
+             aload   => m_gnd, 
+             asdata  => adatasdata_in, 
+             sclr    => sclr_in, 
+             sload   => sload_in,
+             devclrn => devclrn,
+             devpor  => devpor, 
+             q       => ddio_transfer_q
+         );
+ 
+     -- add phase transfer data path mux
+     ddio_dlyclk_d <= ddio_transfer_q   WHEN (add_phase_transfer_reg = "true")  ELSE 
+                      ddio_bypass_input_reg_mux_out WHEN (add_phase_transfer_reg = "false") ELSE
+                      ddio_transfer_q   WHEN (enaphasetransferreg_in = m_vcc)   ELSE 
+                      ddio_bypass_input_reg_mux_out;
+ 
+     -- Output Register clocked by phasectrl_clk
+     ddio_dlyclk_reg : stratixiii_ddr_io_reg  
+         GENERIC MAP (power_up => power_up)  
+         PORT MAP( 
+             d       => ddio_dlyclk_d, 
+             clk     => dlyclk_clk, 
+             ena     => dlyclk_clkena_in, 
+             clrn    => clrn_in_r, 
+             prn     => prn_in_r,
+             aload   => m_gnd, 
+             asdata  => adatasdata_in, 
+             sclr    => sclr_in, 
+             sload   => sload_in,
+             devclrn => devclrn,
+             devpor  => devpor, 
+             q       => ddio_dlyclk_q
+         );
+ 
+     -- Extension Register
+     dlyclk_extended_clk <= not dlyclk_clk;
+ 
+     dlyclk_extended_reg : stratixiii_ddr_io_reg  
+         GENERIC MAP (power_up => power_up)  
+         PORT MAP( 
+             d       => dlyclk_q, 
+             clk     => dlyclk_extended_clk, 
+             ena     => dlyclk_clkena_in, 
+             clrn    => clrn_in_r, 
+             prn     => prn_in_r,
+             aload   => m_gnd, 
+             asdata  => adatasdata_in, 
+             sclr    => sclr_in, 
+             sload   => sload_in,
+             devclrn => devclrn,
+             devpor  => devpor, 
+             q       => dlyclk_extended_q
+          );
+     
+     --------------------
+     -- INPUT PATH DELAYS
+     --------------------
+     WireDelay : block
+     begin
+         loopbits_datain : FOR i in datain'RANGE GENERATE
+             VitalWireDelay (datain_in(i), datain(i), tipd_datain(i));
+         END GENERATE;
+         VitalWireDelay (clk_in,       clk,       tipd_clk);
+         loopbits_delayctrlin : FOR i in delayctrlin'RANGE GENERATE
+             VitalWireDelay (delayctrlin_in(i), delayctrlin(i), tipd_delayctrlin(i));
+         END GENERATE;
+         loopbits_phasectrlin : FOR i in phasectrlin'RANGE GENERATE
+             VitalWireDelay (phasectrlin_in(i), phasectrlin(i), tipd_phasectrlin(i));
+         END GENERATE;
+         VitalWireDelay (areset_in,       areset,       tipd_areset);
+         VitalWireDelay (sreset_in,       sreset,       tipd_sreset);
+         VitalWireDelay (clkena_in,       clkena,       tipd_clkena);   
+              
+         VitalWireDelay (enaoutputcycledelay_in, enaoutputcycledelay, tipd_enaoutputcycledelay);
+         VitalWireDelay (enaphasetransferreg_in, enaphasetransferreg, tipd_enaphasetransferreg);
+         VitalWireDelay (phaseinvertctrl_in,     phaseinvertctrl,     tipd_phaseinvertctrl);
+     end block;
+     
+ END stratixiii_output_phase_alignment_arch;
+ 
+ -------------------------------------------------------------------------------
+ --
+ -- Entity Name : stratixiii_input_phase_alignment
+ --
+ -------------------------------------------------------------------------------
+ 
+ library IEEE;
+ use IEEE.std_logic_1164.all;
+ use IEEE.VITAL_Timing.all;
+ use IEEE.VITAL_Primitives.all;
+ use work.stratixiii_atom_pack.all;
+ use work.stratixiii_ddr_io_reg;
+ use work.stratixiii_ddr_delay_chain_s;
+  
+ ENTITY stratixiii_input_phase_alignment IS
+     GENERIC ( 
+         use_phasectrlin                 : string := "true";
+         phase_setting                   : integer := 0;
+         delay_buffer_mode               : string := "high";
+         power_up                        : string := "low";
+         async_mode                      : string := "none";
+         add_input_cycle_delay           : string := "false";
+         bypass_output_register          : string := "false";
+         add_phase_transfer_reg          : string := "false";
+         invert_phase                    : string := "false";
+         sim_low_buffer_intrinsic_delay  : integer := 350;
+         sim_high_buffer_intrinsic_delay : integer := 175;
+         sim_buffer_delay_increment      : integer := 10;        
+         lpm_type                 : string := "stratixiii_input_phase_alignment";
+         tipd_datain              : VitalDelayType01 := DefpropDelay01;
+         tipd_clk                 : VitalDelayType01 := DefpropDelay01;
+         tipd_delayctrlin         : VitalDelayArrayType01(5 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_phasectrlin         : VitalDelayArrayType01(3 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_areset              : VitalDelayType01 := DefpropDelay01;
+         tipd_enainputcycledelay  : VitalDelayType01 := DefpropDelay01;
+         tipd_enaphasetransferreg : VitalDelayType01 := DefpropDelay01;
+         tipd_phaseinvertctrl     : VitalDelayType01 := DefpropDelay01;
+         TimingChecksOn           : Boolean := True;
+         MsgOn                    : Boolean := DefGlitchMsgOn;
+         XOn                      : Boolean := DefGlitchXOn;
+         MsgOnChecks              : Boolean := DefMsgOnChecks;
+         XOnChecks                : Boolean := DefXOnChecks;
+         InstancePath             : String := "*"   
+     );
+     
+     PORT (
+         datain              : IN std_logic := '0';
+         clk                 : IN std_logic := '0';
+         delayctrlin         : IN std_logic_vector(5 downto 0) := (OTHERS => '0');
+         phasectrlin         : IN std_logic_vector(3 downto 0) := (OTHERS => '0');
+         areset              : IN std_logic := '0';
+         enainputcycledelay  : IN std_logic := '0';
+         enaphasetransferreg : IN std_logic := '0';
+         phaseinvertctrl     : IN std_logic := '0';
+         devclrn             : IN std_logic := '1';
+         devpor              : IN std_logic := '1';
+         dataout             : OUT std_logic;
+         dffin               : OUT std_logic;
+         dff1t               : OUT std_logic
+     );
+ 
+ END;
+ 
+ ARCHITECTURE stratixiii_input_phase_alignment_arch OF stratixiii_input_phase_alignment IS
+     -- component section
+     COMPONENT stratixiii_ddr_delay_chain_s
+     GENERIC (
+         use_phasectrlin : string  := "true";
+         phase_setting   : integer :=  0;
+         delay_buffer_mode               : string  := "high";
+         sim_low_buffer_intrinsic_delay  : integer := 350;
+         sim_high_buffer_intrinsic_delay : integer := 175;
+         sim_buffer_delay_increment  : integer := 10;
+         phasectrlin_limit           : integer := 7
+     );
+     PORT (
+         clk         : IN std_logic := '0';
+         delayctrlin : IN std_logic_vector(5 DOWNTO 0) := (OTHERS => '0');
+         phasectrlin : IN std_logic_vector(3 DOWNTO 0) := (OTHERS => '0');
+         delayed_clkout : OUT std_logic
+     );
+     END COMPONENT;
+     
+     component stratixiii_ddr_io_reg                                                                                              
+     generic (                                                                                                 
+              power_up : string := "DONT_CARE";                                                                
+              is_wysiwyg : string := "false";                                                                  
+              x_on_violation : string := "on";                                                                 
+              tsetup_d_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                                
+              tsetup_asdata_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                           
+              tsetup_sclr_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                             
+              tsetup_sload_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                            
+              tsetup_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                              
+              thold_d_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                                 
+              thold_asdata_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                            
+              thold_sclr_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                              
+              thold_sload_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                             
+              thold_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                               
+              tpd_clk_q_posedge : VitalDelayType01 := DefPropDelay01;                                          
+              tpd_clrn_q_negedge : VitalDelayType01 := DefPropDelay01;                                         
+              tpd_aload_q_posedge : VitalDelayType01 := DefPropDelay01;                                        
+              tpd_asdata_q: VitalDelayType01 := DefPropDelay01;                                                
+              tipd_clk : VitalDelayType01 := DefPropDelay01;                                                   
+              tipd_d : VitalDelayType01 := DefPropDelay01;                                                     
+              tipd_asdata : VitalDelayType01 := DefPropDelay01;                                                
+              tipd_sclr : VitalDelayType01 := DefPropDelay01;                                                  
+              tipd_sload : VitalDelayType01 := DefPropDelay01;                                                 
+              tipd_clrn : VitalDelayType01 := DefPropDelay01;                                                  
+              tipd_prn : VitalDelayType01 := DefPropDelay01;                                                   
+              tipd_aload : VitalDelayType01 := DefPropDelay01;                                                 
+              tipd_ena : VitalDelayType01 := DefPropDelay01;                                                   
+              TimingChecksOn: Boolean := True;                                                                 
+              MsgOn: Boolean := DefGlitchMsgOn;                                                                
+              XOn: Boolean := DefGlitchXOn;                                                                    
+              MsgOnChecks: Boolean := DefMsgOnChecks;                                                          
+              XOnChecks: Boolean := DefXOnChecks;                                                              
+              InstancePath: STRING := "*"                                                                      
+             );                                                                                                
+                                                                                                               
+     port (                                                                                                    
+            d : in std_logic := '0';                                                                           
+            clk : in std_logic := '0';                                                                         
+            ena : in std_logic := '1';                                                                         
+            clrn : in std_logic := '1';                                                                        
+            prn : in std_logic := '1';                                                                         
+            aload : in std_logic := '0';                                                                       
+            asdata : in std_logic := '0';                                                                      
+            sclr : in std_logic := '0';                                                                        
+            sload : in std_logic := '0';                                                                       
+            devclrn : in std_logic := '1';                                                                     
+            devpor : in std_logic := '1';                                                                      
+            q : out std_logic                                                                                  
+          );                                                                                                   
+     end component;                                                                                                
+     
+     -- int signals
+     SIGNAL phasectrl_clkout : STD_LOGIC := '0';
+     SIGNAL delayed_clk : STD_LOGIC := '0';
+     SIGNAL not_delayed_clk : STD_LOGIC := '1';
+     
+     SIGNAL m_vcc: STD_LOGIC := '1';
+     SIGNAL m_gnd: STD_LOGIC := '0';
+ 
+     -- IO registers
+     -- common
+     SIGNAL adatasdata_in_r : STD_LOGIC := '0';
+     SIGNAL aload_in_r : STD_LOGIC := '0';
+ 
+     SIGNAL datain_q : STD_LOGIC := '0';
+ 
+     SIGNAL cycledelay_q : STD_LOGIC := '0';
+     SIGNAL cycledelay_mux_out : STD_LOGIC := '0';
+     SIGNAL cycledelay_mux_out_dly : STD_LOGIC := '0';
+ 
+     SIGNAL dlyclk_d : STD_LOGIC := '0';
+     SIGNAL dlyclk_q : STD_LOGIC := '0';
+ 
+     SIGNAL tmp_dataout : STD_LOGIC := '0';
+     
+     -- timing inputs
+     SIGNAL datain_in              : std_logic := '0';
+     SIGNAL clk_in                 : std_logic := '0';
+     SIGNAL delayctrlin_in         : std_logic_vector(5 downto 0) := (OTHERS => '0');
+     SIGNAL phasectrlin_in         : std_logic_vector(3 downto 0) := (OTHERS => '0');
+     SIGNAL areset_in              : std_logic := '0';
+     SIGNAL enainputcycledelay_in  : std_logic := '0';
+     SIGNAL enaphasetransferreg_in : std_logic := '0';
+     SIGNAL phaseinvertctrl_in     : std_logic := '0';
+ 
+ BEGIN
+     m_clk_in_delay_chain : stratixiii_ddr_delay_chain_s 
+         GENERIC MAP (
+             phase_setting               => phase_setting,
+             use_phasectrlin             => use_phasectrlin,
+             delay_buffer_mode           => delay_buffer_mode,
+             sim_low_buffer_intrinsic_delay  => sim_low_buffer_intrinsic_delay,
+             sim_high_buffer_intrinsic_delay => sim_high_buffer_intrinsic_delay,
+             sim_buffer_delay_increment      => sim_buffer_delay_increment
+         )
+         PORT MAP(
+             clk            => clk_in, 
+             delayctrlin    => delayctrlin_in, 
+             phasectrlin    => phasectrlin_in, 
+             delayed_clkout => phasectrl_clkout
+        );
+         
+     delayed_clk <= (not phasectrl_clkout) WHEN (invert_phase = "true")  ELSE
+                    phasectrl_clkout       WHEN (invert_phase = "false") ELSE
+                    (not phasectrl_clkout) WHEN (phaseinvertctrl_in = '1') ELSE
+                    phasectrl_clkout;
+                      
+ 
+     -- primary output
+     dataout <= tmp_dataout;
+     tmp_dataout <= dlyclk_d WHEN (bypass_output_register = "true") ELSE dlyclk_q;
+ 
+     -- add phase transfer data path mux
+     dlyclk_d <= cycledelay_mux_out_dly WHEN (add_phase_transfer_reg = "true")    ELSE 
+                 cycledelay_mux_out     WHEN (add_phase_transfer_reg = "false")   ELSE
+                 cycledelay_mux_out_dly WHEN (enaphasetransferreg_in = '1')       ELSE 
+                 cycledelay_mux_out;
+ 
+     -- enaoutputcycledelay data path mux
+     cycledelay_mux_out <= cycledelay_q  WHEN (add_input_cycle_delay = "true")    ELSE 
+                           datain_q      WHEN (add_input_cycle_delay = "false")   ELSE
+                           cycledelay_q  WHEN (enainputcycledelay_in = '1')       ELSE 
+                           datain_q;
+ 
+     -- resolve reset modes
+     PROCESS (areset_in)
+     BEGIN 
+         if (async_mode = "clear") then
+             aload_in_r   <= areset_in;
+             adatasdata_in_r <= '0';
+         elsif (async_mode = "preset") then
+             aload_in_r   <= areset_in;
+             adatasdata_in_r <= '1';
+         else      -- async_mode = "none"
+             adatasdata_in_r <= 'Z';
+         end if;
+     END PROCESS;
+ 
+ 
+     -- Datain Register  
+     datain_reg : stratixiii_ddr_io_reg  
+         GENERIC MAP (power_up => power_up)  
+         PORT MAP( 
+             d       => datain_in, 
+             clk     => delayed_clk, 
+             ena     => m_vcc, 
+             clrn    => m_vcc, 
+             prn     => m_vcc,
+             aload   => aload_in_r, 
+             asdata  => adatasdata_in_r, 
+             sclr    => m_gnd, 
+             sload   => m_gnd,
+             devclrn => devclrn,
+             devpor  => devpor,
+             q       => datain_q
+         );
+          
+     -- Cycle Delay Register  
+     cycledelay_reg : stratixiii_ddr_io_reg  
+         GENERIC MAP (power_up => power_up)  
+         PORT MAP( 
+             d       => datain_q, 
+             clk     => delayed_clk, 
+             ena     => m_vcc, 
+             clrn    => m_vcc, 
+             prn     => m_vcc,
+             aload   => aload_in_r, 
+             asdata  => adatasdata_in_r, 
+             sclr    => m_gnd, 
+             sload   => m_gnd,
+             devclrn => devclrn,
+             devpor  => devpor,
+             q       => cycledelay_q
+         );
+ 
+     -- assign #300 cycledelay_mux_out_dly = cycledelay_mux_out;  replaced by neg reg   
+     -- Transfer Register  - clocked by negative edge
+     not_delayed_clk <= not delayed_clk;
+     
+     transfer_reg : stratixiii_ddr_io_reg  
+         GENERIC MAP (power_up => power_up)  
+         PORT MAP( 
+             d       => cycledelay_mux_out, 
+             clk     => not_delayed_clk,  -- ~delayed_clk
+             ena     => m_vcc, 
+             clrn    => m_vcc, 
+             prn     => m_vcc,
+             aload   => aload_in_r, 
+             asdata  => adatasdata_in_r, 
+             sclr    => m_gnd, 
+             sload   => m_gnd,
+             devclrn => devclrn,
+             devpor  => devpor,
+             q       => cycledelay_mux_out_dly
+         );
+          
+          
+     -- Register clocked by actually by clk_in
+     dlyclk_reg : stratixiii_ddr_io_reg  
+         GENERIC MAP (power_up => power_up)  
+         PORT MAP( 
+             d       => dlyclk_d, 
+             clk     => clk_in, 
+             ena     => m_vcc, 
+             clrn    => m_vcc, 
+             prn     => m_vcc,
+             aload   => aload_in_r, 
+             asdata  => adatasdata_in_r, 
+             sclr    => m_gnd, 
+             sload   => m_gnd,
+             devclrn => devclrn,
+             devpor  => devpor,
+             q       => dlyclk_q
+         );
+ 
+     --------------------
+     -- INPUT PATH DELAYS
+     --------------------
+     WireDelay : block
+     begin
+         VitalWireDelay (datain_in,       datain,       tipd_datain);
+         VitalWireDelay (clk_in,       clk,       tipd_clk);
+         loopbits_delayctrlin : FOR i in delayctrlin'RANGE GENERATE
+             VitalWireDelay (delayctrlin_in(i), delayctrlin(i), tipd_delayctrlin(i));
+         END GENERATE;
+         loopbits_phasectrlin : FOR i in phasectrlin'RANGE GENERATE
+             VitalWireDelay (phasectrlin_in(i), phasectrlin(i), tipd_phasectrlin(i));
+         END GENERATE;
+         VitalWireDelay (areset_in,               areset,               tipd_areset);
+         VitalWireDelay (enainputcycledelay_in,   enainputcycledelay,   tipd_enainputcycledelay);
+         VitalWireDelay (enaphasetransferreg_in,  enaphasetransferreg,  tipd_enaphasetransferreg);
+         VitalWireDelay (phaseinvertctrl_in,      phaseinvertctrl,      tipd_phaseinvertctrl);
+     end block;
+     
+ END stratixiii_input_phase_alignment_arch;
+ 
+ -------------------------------------------------------------------------------
+ --
+ -- Entity Name : stratixiii_half_rate_input
+ --
+ -------------------------------------------------------------------------------
+ 
+ library IEEE;
+ use IEEE.std_logic_1164.all;
+ use IEEE.std_logic_arith.all;
+ use IEEE.std_logic_unsigned.all;
+ use IEEE.VITAL_Timing.all;
+ use IEEE.VITAL_Primitives.all;
+ use work.stratixiii_atom_pack.all;
+ use work.stratixiii_ddr_io_reg;
+     
+ ENTITY stratixiii_half_rate_input IS
+     GENERIC ( 
+         power_up           : string := "low";
+         async_mode         : string := "none";
+         use_dataoutbypass  : string := "false";
+         lpm_type           : string := "stratixiii_half_rate_input";
+         tipd_datain              : VitalDelayArrayType01(1 downto 0) := (OTHERS => DefPropDelay01);
+         tipd_directin            : VitalDelayType01 := DefpropDelay01;
+         tipd_clk                 : VitalDelayType01 := DefpropDelay01;
+         tipd_areset              : VitalDelayType01 := DefpropDelay01;
+         tipd_dataoutbypass       : VitalDelayType01 := DefpropDelay01;
+         TimingChecksOn           : Boolean := True;
+         MsgOn                    : Boolean := DefGlitchMsgOn;
+         XOn                      : Boolean := DefGlitchXOn;
+         MsgOnChecks              : Boolean := DefMsgOnChecks;
+         XOnChecks                : Boolean := DefXOnChecks;
+         InstancePath             : String := "*"   
+     );
+     
+     PORT (
+         datain       : IN std_logic_vector(1 downto 0) := (OTHERS => '0');
+         directin     : IN std_logic := '0';
+         clk          : IN std_logic := '0';
+         areset       : IN std_logic := '0';
+         dataoutbypass: IN std_logic := '0';
+         devclrn      : IN std_logic := '1';
+         devpor       : IN std_logic := '1';
+         dataout      : OUT std_logic_vector(3 downto 0);
+         dffin        : OUT std_logic
+     );
+ 
+ END;
+ 
+ ARCHITECTURE stratixiii_half_rate_input_arch OF stratixiii_half_rate_input IS
+     -- component section
+     component stratixiii_ddr_io_reg                                                                                              
+     generic (                                                                                                 
+              power_up : string := "DONT_CARE";                                                                
+              is_wysiwyg : string := "false";                                                                  
+              x_on_violation : string := "on";                                                                 
+              tsetup_d_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                                
+              tsetup_asdata_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                           
+              tsetup_sclr_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                             
+              tsetup_sload_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                            
+              tsetup_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                              
+              thold_d_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                                 
+              thold_asdata_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                            
+              thold_sclr_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                              
+              thold_sload_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                             
+              thold_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;                               
+              tpd_clk_q_posedge : VitalDelayType01 := DefPropDelay01;                                          
+              tpd_clrn_q_negedge : VitalDelayType01 := DefPropDelay01;                                         
+              tpd_aload_q_posedge : VitalDelayType01 := DefPropDelay01;                                        
+              tpd_asdata_q: VitalDelayType01 := DefPropDelay01;                                                
+              tipd_clk : VitalDelayType01 := DefPropDelay01;                                                   
+              tipd_d : VitalDelayType01 := DefPropDelay01;                                                     
+              tipd_asdata : VitalDelayType01 := DefPropDelay01;                                                
+              tipd_sclr : VitalDelayType01 := DefPropDelay01;                                                  
+              tipd_sload : VitalDelayType01 := DefPropDelay01;                                                 
+              tipd_clrn : VitalDelayType01 := DefPropDelay01;                                                  
+              tipd_prn : VitalDelayType01 := DefPropDelay01;                                                   
+              tipd_aload : VitalDelayType01 := DefPropDelay01;                                                 
+              tipd_ena : VitalDelayType01 := DefPropDelay01;                                                   
+              TimingChecksOn: Boolean := True;                                                                 
+              MsgOn: Boolean := DefGlitchMsgOn;                                                                
+              XOn: Boolean := DefGlitchXOn;                                                                    
+              MsgOnChecks: Boolean := DefMsgOnChecks;                                                          
+              XOnChecks: Boolean := DefXOnChecks;                                                              
+              InstancePath: STRING := "*"                                                                      
+             );                                                                                                
+                                                                                                               
+     port (                                                                                                    
+            d : in std_logic := '0';                                                                           
+            clk : in std_logic := '0';                                                                         
+            ena : in std_logic := '1';                                                                         
+            clrn : in std_logic := '1';                                                                        
+            prn : in std_logic := '1';                                                                         
+            aload : in std_logic := '0';                                                                       
+            asdata : in std_logic := '0';                                                                      
+            sclr : in std_logic := '0';                                                                        
+            sload : in std_logic := '0';                                                                       
+            devclrn : in std_logic := '1';                                                                     
+            devpor : in std_logic := '1';                                                                      
+            q : out std_logic                                                                                  
+          );                                                                                                   
+     end component;                                                                                                
+     
+     SIGNAL m_vcc: STD_LOGIC := '1';
+     SIGNAL m_gnd: STD_LOGIC := '0';
+ 
+     -- IO SIGNAListers
+     -- common
+     SIGNAL neg_clk_in      : STD_LOGIC := '0';
+     SIGNAL adatasdata_in_r : STD_LOGIC := '0';
+     SIGNAL aload_in_r      : STD_LOGIC := '0';
+ 
+     -- low_bank  = {1, 0} - capturing datain at falling edge then sending at falling rise 
+     -- high_bank = {3, 2} - output of SIGNALister datain at rising 
+     SIGNAL high_bank     : STD_LOGIC_VECTOR (1 DOWNTO 0) := (OTHERS => '0');
+     SIGNAL low_bank      : STD_LOGIC_VECTOR (1 DOWNTO 0) := (OTHERS => '0');
+     SIGNAL low_bank_low  : STD_LOGIC := '0';
+     SIGNAL low_bank_high : STD_LOGIC := '0';
+     SIGNAL high_bank_low : STD_LOGIC := '0';
+     SIGNAL high_bank_high: STD_LOGIC := '0';
+ 
+     SIGNAL dataout_reg_n : STD_LOGIC_VECTOR (1 DOWNTO 0) := (OTHERS => '0');
+     SIGNAL tmp_dataout   : STD_LOGIC_VECTOR (3 DOWNTO 0) := (OTHERS => '0');
+     
+     -- delayed version to ensure 1 latency as expected in functional sim
+     SIGNAL datain_in       : std_logic_vector(1 downto 0) := (OTHERS => '0');
+     
+     -- timing inputs
+     SIGNAL datain_ipd      : std_logic_vector(1 downto 0) := (OTHERS => '0');
+     SIGNAL directin_in     : std_logic := '0';
+     SIGNAL clk_in          : std_logic := '0';
+     SIGNAL areset_in       : std_logic := '0';
+     SIGNAL dataoutbypass_in: std_logic := '0';
+     
+ BEGIN
+     -- primary input
+     datain_in <= transport datain_ipd after 2 ps;
+     
+     -- primary output
+     dataout <= tmp_dataout;
+     tmp_dataout(3) <= directin_in WHEN (dataoutbypass_in = '0' AND use_dataoutbypass = "true") ELSE high_bank_high;
+     tmp_dataout(2) <= directin_in WHEN (dataoutbypass_in = '0' AND use_dataoutbypass = "true") ELSE high_bank_low;
+     tmp_dataout(1) <= low_bank(1);
+     tmp_dataout(0) <= low_bank(0);
+ 
+     low_bank  <= low_bank_high  & low_bank_low;
+     high_bank <= high_bank_high & high_bank_low;
+ 
+     -- resolve reset modes
+     PROCESS(areset_in)
+     BEGIN
+         if (async_mode = "clear") then
+             aload_in_r   <= areset_in;
+             adatasdata_in_r <= '0';
+         elsif (async_mode = "preset") then
+             aload_in_r   <= areset_in;
+             adatasdata_in_r <= '1';
+         else  -- async_mode = "none"
+             adatasdata_in_r <= 'Z';
+         end if;
+     END PROCESS;
+ 
+     neg_clk_in <= not clk_in;
+     
+     --  datain_1 - H  
+     reg1_h : stratixiii_ddr_io_reg  
+         GENERIC MAP (power_up => power_up)  
+         PORT MAP( 
+             d       => datain_in(1), 
+             clk     => clk_in, 
+             ena     => m_vcc, 
+             clrn    => m_vcc, 
+             prn     => m_vcc,
+             aload   => aload_in_r, 
+             asdata  => adatasdata_in_r, 
+             sclr    => m_gnd, 
+             sload   => m_gnd,
+             devclrn => devclrn,
+             devpor  => devpor,
+             q       => high_bank_high
+         );
+ 
+     --  datain_0 - H  
+     reg0_h : stratixiii_ddr_io_reg  
+         GENERIC MAP (power_up => power_up)  
+         PORT MAP( 
+             d       => datain_in(0), 
+             clk     => clk_in, 
+             ena     => m_vcc, 
+             clrn    => m_vcc, 
+             prn     => m_vcc,
+             aload   => aload_in_r, 
+             asdata  => adatasdata_in_r, 
+             sclr    => m_gnd, 
+             sload   => m_gnd,
+             devclrn => devclrn,
+             devpor  => devpor,
+             q       => high_bank_low
+         );
+ 
+     --  datain_1 - L (n)  
+     reg1_l_n : stratixiii_ddr_io_reg  
+         GENERIC MAP (power_up => power_up)  
+         PORT MAP( 
+             d       => datain_in(1), 
+             clk     => neg_clk_in, 
+             ena     => m_vcc, 
+             clrn    => m_vcc, 
+             prn     => m_vcc,
+             aload   => aload_in_r, 
+             asdata  => adatasdata_in_r, 
+             sclr    => m_gnd, 
+             sload   => m_gnd,
+             devclrn => devclrn,
+             devpor  => devpor,
+             q       => dataout_reg_n(1)
+         );
+          
+     --  datain_1 - L  
+     reg1_l : stratixiii_ddr_io_reg  
+         GENERIC MAP (power_up => power_up)  
+         PORT MAP( 
+             d       => dataout_reg_n(1), 
+             clk     => clk_in, 
+             ena     => m_vcc, 
+             clrn    => m_vcc, 
+             prn     => m_vcc,
+             aload   => aload_in_r, 
+             asdata  => adatasdata_in_r, 
+             sclr    => m_gnd, 
+             sload   => m_gnd,
+             devclrn => devclrn,
+             devpor  => devpor,
+             q       => low_bank_high
+         );
+ 
+     --  datain_0 - L (n)  
+     reg0_l_n : stratixiii_ddr_io_reg  
+         GENERIC MAP (power_up => power_up)  
+         PORT MAP( 
+             d       => datain_in(0), 
+             clk     => neg_clk_in, 
+             ena     => m_vcc, 
+             clrn    => m_vcc, 
+             prn     => m_vcc,
+             aload   => aload_in_r, 
+             asdata  => adatasdata_in_r, 
+             sclr    => m_gnd, 
+             sload   => m_gnd,
+             devclrn => devclrn,
+             devpor  => devpor,
+             q       => dataout_reg_n(0)
+         );
+          
+     --  datain_0 - L  
+     reg0_l : stratixiii_ddr_io_reg  
+         GENERIC MAP (power_up => power_up)  
+         PORT MAP( 
+             d       => dataout_reg_n(0), 
+             clk     => clk_in, 
+             ena     => m_vcc, 
+             clrn    => m_vcc, 
+             prn     => m_vcc,
+             aload   => aload_in_r, 
+             asdata  => adatasdata_in_r, 
+             sclr    => m_gnd, 
+             sload   => m_gnd,
+             devclrn => devclrn,
+             devpor  => devpor,
+             q       => low_bank_low
+         );
+          
+     --------------------
+     -- INPUT PATH DELAYS
+     --------------------
+     WireDelay : block
+     begin
+         loopbits_datain : FOR i in datain'RANGE GENERATE
+             VitalWireDelay (datain_ipd(i), datain(i), tipd_datain(i));
+         END GENERATE;
+         VitalWireDelay (directin_in,      directin,      tipd_directin);
+         VitalWireDelay (clk_in,           clk,           tipd_clk);
+         VitalWireDelay (areset_in,        areset,        tipd_areset);
+         VitalWireDelay (dataoutbypass_in, dataoutbypass, tipd_dataoutbypass);
+     end block;
+     
+ END stratixiii_half_rate_input_arch;
+ 
+ -------------------------------------------------------------------------------
+ --
+ -- Entity Name : stratixiii_io_config
+ --
+ -------------------------------------------------------------------------------
+ 
+ library IEEE;
+ use IEEE.std_logic_1164.all;
+ use IEEE.std_logic_arith.all;
+ use IEEE.std_logic_unsigned.all;
+ use IEEE.VITAL_Timing.all;
+ use IEEE.VITAL_Primitives.all;
+ use work.stratixiii_atom_pack.all;
+     
+ ENTITY stratixiii_io_config IS
+     GENERIC ( 
+         enhanced_mode      : string := "false";
+         lpm_type           : string := "stratixiii_io_config";
+         tipd_datain                       : VitalDelayType01 := DefpropDelay01;
+         tipd_clk                          : VitalDelayType01 := DefpropDelay01;
+         tipd_ena                          : VitalDelayType01 := DefpropDelay01;
+         tipd_update                       : VitalDelayType01 := DefpropDelay01;
+         tsetup_datain_clk_noedge_posedge  : VitalDelayType := DefSetupHoldCnst;
+         thold_datain_clk_noedge_posedge   : VitalDelayType := DefSetupHoldCnst;
+         tpd_clk_dataout_posedge           : VitalDelayType01 := DefPropDelay01;
+         TimingChecksOn           : Boolean := True;
+         MsgOn                    : Boolean := DefGlitchMsgOn;
+         XOn                      : Boolean := DefGlitchXOn;
+         MsgOnChecks              : Boolean := DefMsgOnChecks;
+         XOnChecks                : Boolean := DefXOnChecks;
+         InstancePath             : String := "*"   
+     );
+     
+     PORT (
+         datain       : IN std_logic := '0';
+         clk          : IN std_logic := '0';
+         ena          : IN std_logic := '1';
+         update       : IN std_logic := '0';
+         devclrn      : IN std_logic := '1';
+         devpor       : IN std_logic := '1';
+         -- new STRATIXIV: ww30.2008
+         dutycycledelaymode                 : OUT std_logic;
+         dutycycledelaysettings             : OUT std_logic_vector(3 downto 0);
+         outputfinedelaysetting1            : OUT std_logic;
+         outputfinedelaysetting2            : OUT std_logic;
+         outputonlydelaysetting2            : OUT std_logic_vector(2 downto 0);
+         outputonlyfinedelaysetting2        : OUT std_logic;
+         padtoinputregisterfinedelaysetting : OUT std_logic;
+         padtoinputregisterdelaysetting : OUT std_logic_vector(3 downto 0);
+         outputdelaysetting1            : OUT std_logic_vector(3 downto 0);
+         outputdelaysetting2            : OUT std_logic_vector(2 downto 0);
+         dataout                        : OUT std_logic
+     );
+ 
+ END;
+ 
+ ARCHITECTURE stratixiii_io_config_arch OF stratixiii_io_config IS
+     -- component section
+     
+     SIGNAL shift_reg   : std_logic_vector(10 downto 0) := (OTHERS => '0');
+     SIGNAL output_reg  : std_logic_vector(10 downto 0) := (OTHERS => '0');
+     SIGNAL tmp_output  : std_logic_vector(10 downto 0) := (OTHERS => '0');
+     
+     SIGNAL enhance_shift_reg  : std_logic_vector(22 downto 0) := (OTHERS => '0');
+     SIGNAL enhance_output_reg : std_logic_vector(22 downto 0) := (OTHERS => '0');
+     SIGNAL enhance_tmp_output : std_logic_vector(22 downto 0) := (OTHERS => '0');
+  
+     -- timing outputs
+     SIGNAL tmp_dataout     : std_logic := '0';
+     
+     -- timing inputs
+     SIGNAL datain_in       : std_logic := '0';
+     SIGNAL clk_in          : std_logic := '0';
+     SIGNAL ena_in          : std_logic := '0';
+     SIGNAL update_in       : std_logic := '0';
+     
+ BEGIN
+     -- primary outputs
+     tmp_dataout <= enhance_shift_reg(22) WHEN (enhanced_mode = "true") ELSE shift_reg(10);
+ 
+     -- bit order changed in wys revision 1.32
+     outputdelaysetting1            <= tmp_output(3 DOWNTO 0);
+     outputdelaysetting2            <= tmp_output(6 DOWNTO 4);
+     padtoinputregisterdelaysetting <= tmp_output(10 DOWNTO 7);
+     -- padtoinputregisterdelaysetting <= tmp_output(3 DOWNTO 0);
+     -- outputdelaysetting1            <= tmp_output(7 DOWNTO 4);
+     -- outputdelaysetting2            <= tmp_output(10 DOWNTO 8);
+     tmp_output <= output_reg;
+ 
+     outputdelaysetting1            <= enhance_tmp_output(3 DOWNTO 0)  WHEN (enhanced_mode = "true") ELSE tmp_output(3 DOWNTO 0);
+     outputdelaysetting2            <= enhance_tmp_output(6 DOWNTO 4)  WHEN (enhanced_mode = "true") ELSE tmp_output(6 DOWNTO 4);
+     padtoinputregisterdelaysetting <= enhance_tmp_output(10 DOWNTO 7) WHEN (enhanced_mode = "true") ELSE tmp_output(10 DOWNTO 7);
+  
+     outputfinedelaysetting1            <= enhance_tmp_output(11)      WHEN (enhanced_mode = "true") ELSE '0';
+     outputfinedelaysetting2            <= enhance_tmp_output(12)      WHEN (enhanced_mode = "true") ELSE '0';
+     padtoinputregisterfinedelaysetting <= enhance_tmp_output(13)      WHEN (enhanced_mode = "true") ELSE '0';
+     outputonlyfinedelaysetting2        <= enhance_tmp_output(14)      WHEN (enhanced_mode = "true") ELSE '0';
+     outputonlydelaysetting2            <= enhance_tmp_output(17 DOWNTO 15)  WHEN (enhanced_mode = "true") ELSE "000";
+     dutycycledelaymode                 <= enhance_tmp_output(18)            WHEN (enhanced_mode = "true") ELSE '0';
+     dutycycledelaysettings             <= enhance_tmp_output(22 DOWNTO 19)  WHEN (enhanced_mode = "true") ELSE "0000";
+  
+     tmp_output <= output_reg;
+     enhance_tmp_output <= enhance_output_reg;
+ 
+     PROCESS(clk_in)
+     BEGIN
+         if (clk_in = '1' AND ena_in = '1') then
+             shift_reg(0) <= datain_in;
+             shift_reg(10 DOWNTO 1) <= shift_reg(9 DOWNTO 0);
+ 
+             enhance_shift_reg(0) <= datain_in;
+             enhance_shift_reg(22 DOWNTO 1) <= enhance_shift_reg(21 DOWNTO 0);
+         end if;
+     END PROCESS;
+ 
+ 
+     PROCESS(clk_in)
+     BEGIN
+         if (clk_in = '1' AND update_in = '1') then
+             output_reg <= shift_reg;
+             enhance_output_reg <= enhance_shift_reg;
+         end if;
+     END PROCESS;
+ 
+ 
+     --------------------
+     -- INPUT PATH DELAYS
+     --------------------
+     WireDelay : block
+     begin
+         VitalWireDelay (datain_in,    datain,    tipd_datain);
+         VitalWireDelay (clk_in,       clk,       tipd_clk);
+         VitalWireDelay (ena_in,       ena,       tipd_ena);
+         VitalWireDelay (update_in,    update,    tipd_update);
+     end block;
+         
+     -----------------------------------
+     -- Timing Check Section
+     -----------------------------------
+     VITAL_timing_check: PROCESS (clk_in,datain_in,ena_in,update_in)
+     
+     variable Tviol_clk_datain : std_ulogic := '0';
+     variable TimingData_clk_datain : VitalTimingDataType := VitalTimingDataInit;
+     variable Tviol_clk_ena    : std_ulogic := '0';
+     variable TimingData_clk_ena    : VitalTimingDataType := VitalTimingDataInit;
+     variable Tviol_clk_update : std_ulogic := '0';
+     variable TimingData_clk_update : VitalTimingDataType := VitalTimingDataInit;
+     
+     BEGIN
+         IF (TimingChecksOn) THEN
+             VitalSetupHoldCheck (
+                         Violation       => Tviol_clk_datain,
+                         TimingData      => TimingData_clk_datain,
+                         TestSignal      => datain_in,
+                         TestSignalName  => "Datain",
+                         RefSignal       => clk_in,
+                         RefSignalName   => "clk",
+                         SetupHigh       => tsetup_datain_clk_noedge_posedge,
+                         SetupLow        => tsetup_datain_clk_noedge_posedge,
+                         HoldHigh        => thold_datain_clk_noedge_posedge,
+                         HoldLow         => thold_datain_clk_noedge_posedge,
+                         RefTransition   => '/',
+                         HeaderMsg       => InstancePath & "/STRATIXIII_IO_CONFIG",
+                         XOn             => XOnChecks,
+                         MsgOn           => MsgOnChecks
+             );
+             
+             VitalSetupHoldCheck (
+                         Violation       => Tviol_clk_ena,
+                         TimingData      => TimingData_clk_ena,
+                         TestSignal      => ena_in,
+                         TestSignalName  => "Ena",
+                         RefSignal       => clk_in,
+                         RefSignalName   => "clk",
+                         SetupHigh       => tsetup_datain_clk_noedge_posedge,
+                         SetupLow        => tsetup_datain_clk_noedge_posedge,
+                         HoldHigh        => thold_datain_clk_noedge_posedge,
+                         HoldLow         => thold_datain_clk_noedge_posedge,
+                         RefTransition   => '/',
+                         HeaderMsg       => InstancePath & "/STRATIXIII_IO_CONFIG",
+                         XOn             => XOnChecks,
+                         MsgOn           => MsgOnChecks
+             );
+             
+             VitalSetupHoldCheck (
+                         Violation       => Tviol_clk_update,
+                         TimingData      => TimingData_clk_update,
+                         TestSignal      => update_in,
+                         TestSignalName  => "Update",
+                         RefSignal       => clk_in,
+                         RefSignalName   => "clk",
+                         SetupHigh       => tsetup_datain_clk_noedge_posedge,
+                         SetupLow        => tsetup_datain_clk_noedge_posedge,
+                         HoldHigh        => thold_datain_clk_noedge_posedge,
+                         HoldLow         => thold_datain_clk_noedge_posedge,
+                         RefTransition   => '/',
+                         HeaderMsg       => InstancePath & "/STRATIXIII_IO_CONFIG",
+                         XOn             => XOnChecks,
+                         MsgOn           => MsgOnChecks
+             );
+             
+         END IF;
+     END PROCESS;  -- timing check
+ 
+     --------------------------------------
+     --  Path Delay Section
+     --------------------------------------
+     
+     VITAL_path_delays: PROCESS (tmp_dataout)
+     
+         variable dataout_VitalGlitchData : VitalGlitchDataType;
+     
+     BEGIN
+         VitalPathDelay01 (
+             OutSignal => dataout,
+             OutSignalName => "Dataout",
+             OutTemp => tmp_dataout,
+             Paths =>   (0 => (clk_in'last_event, tpd_clk_dataout_posedge, TRUE)),
+             GlitchData => dataout_VitalGlitchData,
+             Mode => DefGlitchMode,
+             XOn  => XOn,
+             MsgOn  => MsgOn );
+     
+     END PROCESS;  -- Path Delays
+         
+ END stratixiii_io_config_arch;
+ 
+ -------------------------------------------------------------------------------
+ --
+ -- Entity Name : stratixiii_dqs_config
+ --
+ -------------------------------------------------------------------------------
+ 
+ library IEEE;
+ use IEEE.std_logic_1164.all;
+ use IEEE.std_logic_arith.all;
+ use IEEE.std_logic_unsigned.all;
+ use IEEE.VITAL_Timing.all;
+ use IEEE.VITAL_Primitives.all;
+ use work.stratixiii_atom_pack.all;
+     
+ ENTITY stratixiii_dqs_config IS
+     GENERIC ( 
+         enhanced_mode            : string := "false";
+         lpm_type                 : string := "stratixiii_dqs_config";
+         tipd_datain                       : VitalDelayType01 := DefpropDelay01;
+         tipd_clk                          : VitalDelayType01 := DefpropDelay01;
+         tipd_ena                          : VitalDelayType01 := DefpropDelay01;
+         tipd_update                       : VitalDelayType01 := DefpropDelay01;
+         tsetup_datain_clk_noedge_posedge  : VitalDelayType := DefSetupHoldCnst;
+         thold_datain_clk_noedge_posedge   : VitalDelayType := DefSetupHoldCnst;
+         tpd_clk_dataout_posedge           : VitalDelayType01 := DefPropDelay01;
+         TimingChecksOn           : Boolean := True;
+         MsgOn                    : Boolean := DefGlitchMsgOn;
+         XOn                      : Boolean := DefGlitchXOn;
+         MsgOnChecks              : Boolean := DefMsgOnChecks;
+         XOnChecks                : Boolean := DefXOnChecks;
+         InstancePath             : String := "*"   
+     );
+     
+     PORT (
+         datain       : IN std_logic := '0';
+         clk          : IN std_logic := '0';
+         ena          : IN std_logic := '0';
+         update       : IN std_logic := '0';
+         devclrn      : IN std_logic := '1';
+         devpor       : IN std_logic := '1';
+         dqsbusoutfinedelaysetting   : OUT std_logic;  -- new in STRATIXIV
+         dqsenablefinedelaysetting   : OUT std_logic;  -- new in STRATIXIV
+         dqsbusoutdelaysetting     : OUT std_logic_vector(3 downto 0);          
+         dqsinputphasesetting      : OUT std_logic_vector(2 downto 0);
+         dqsenablectrlphasesetting : OUT std_logic_vector(3 downto 0);
+         dqsoutputphasesetting     : OUT std_logic_vector(3 downto 0);
+         dqoutputphasesetting      : OUT std_logic_vector(3 downto 0);
+         resyncinputphasesetting   : OUT std_logic_vector(3 downto 0);
+         dividerphasesetting       : OUT std_logic;
+         enaoctcycledelaysetting   : OUT std_logic;
+         enainputcycledelaysetting : OUT std_logic;
+         enaoutputcycledelaysetting: OUT std_logic;
+         dqsenabledelaysetting     : OUT std_logic_vector(2 downto 0);
+         octdelaysetting1          : OUT std_logic_vector(3 downto 0);
+         octdelaysetting2          : OUT std_logic_vector(2 downto 0);
+         enadataoutbypass          : OUT std_logic;
+         enadqsenablephasetransferreg : OUT std_logic;
+         enaoctphasetransferreg    : OUT std_logic;       
+         enaoutputphasetransferreg : OUT std_logic;   
+         enainputphasetransferreg  : OUT std_logic;
+         resyncinputphaseinvert    : OUT std_logic;
+         dqsenablectrlphaseinvert  : OUT std_logic;
+         dqoutputphaseinvert       : OUT std_logic;        
+         dqsoutputphaseinvert      : OUT std_logic; 
+         dataout                   : OUT std_logic
+     );
+ 
+ END;
+     
+ ARCHITECTURE stratixiii_dqs_config_arch OF stratixiii_dqs_config IS
+     -- component section
+     
+     SIGNAL shift_reg  : STD_LOGIC_VECTOR (47 DOWNTO 0) := (OTHERS => '0');
+     SIGNAL output_reg : STD_LOGIC_VECTOR (47 DOWNTO 0) := (OTHERS => '0');
+     SIGNAL tmp_output : STD_LOGIC_VECTOR (47 DOWNTO 0) := (OTHERS => '0');
+     
+     -- timing outputs
+     SIGNAL tmp_dataout     : std_logic := '0';
+     
+     -- timing inputs
+     SIGNAL datain_in       : std_logic := '0';
+     SIGNAL clk_in          : std_logic := '0';
+     SIGNAL ena_in          : std_logic := '0';
+     SIGNAL update_in       : std_logic := '0';
+     
+ BEGIN
+     -- primary outputs
+     tmp_dataout <= shift_reg(47) WHEN (enhanced_mode = "true")ELSE shift_reg(45);
+ 
+     dqsbusoutdelaysetting     <= tmp_output(3   DOWNTO  0);
+     dqsinputphasesetting      <= tmp_output(6   DOWNTO  4);
+     dqsenablectrlphasesetting <= tmp_output(10  DOWNTO  7);
+     dqsoutputphasesetting     <= tmp_output(14  DOWNTO  11);
+     dqoutputphasesetting      <= tmp_output(18  DOWNTO  15);
+     resyncinputphasesetting   <= tmp_output(22  DOWNTO  19);
+     dividerphasesetting       <= tmp_output(23);
+     enaoctcycledelaysetting   <= tmp_output(24);
+     enainputcycledelaysetting <= tmp_output(25);
+     enaoutputcycledelaysetting<= tmp_output(26);
+     dqsenabledelaysetting     <= tmp_output(29  DOWNTO  27);
+     octdelaysetting1          <= tmp_output(33  DOWNTO  30);
+     octdelaysetting2          <= tmp_output(36  DOWNTO  34);
+     enadataoutbypass          <= tmp_output(37);
+     enadqsenablephasetransferreg <= tmp_output(38); -- new in 1.23
+     enaoctphasetransferreg       <= tmp_output(39); -- new in 1.23 
+     enaoutputphasetransferreg    <= tmp_output(40); -- new in 1.23
+     enainputphasetransferreg     <= tmp_output(41); -- new in 1.23
+     resyncinputphaseinvert       <= tmp_output(42);    -- new in 1.26
+     dqsenablectrlphaseinvert     <= tmp_output(43);    -- new in 1.26
+     dqoutputphaseinvert          <= tmp_output(44);    -- new in 1.26
+     dqsoutputphaseinvert         <= tmp_output(45);    -- new in 1.26
+     -- new in STRATIXIV: ww30.2008
+     dqsbusoutfinedelaysetting    <= tmp_output(46) WHEN (enhanced_mode = "true") ELSE '0';    
+     dqsenablefinedelaysetting    <= tmp_output(47) WHEN (enhanced_mode = "true") ELSE '0';    
+ 
+     tmp_output         <= output_reg;
+ 
+     PROCESS(clk_in)
+     begin
+         if (clk_in = '1' AND ena_in = '1') then 
+             shift_reg(0) <= datain_in;
+             shift_reg(47 DOWNTO 1) <= shift_reg(46 DOWNTO 0);
+         end if;
+     end process;
+ 
+     PROCESS(clk_in)
+     begin
+         if (clk_in = '1' AND update_in = '1') then 
+             output_reg <= shift_reg;
+         end if;
+     end process;
+ 
+     --------------------
+     -- INPUT PATH DELAYS
+     --------------------
+     WireDelay : block
+     begin
+         VitalWireDelay (datain_in,    datain,    tipd_datain);
+         VitalWireDelay (clk_in,       clk,       tipd_clk);
+         VitalWireDelay (ena_in,       ena,       tipd_ena);
+         VitalWireDelay (update_in,    update,    tipd_update);
+     end block;
+         
+     -----------------------------------
+     -- Timing Check Section
+     -----------------------------------
+     VITAL_timing_check: PROCESS (clk_in,datain_in,ena_in,update_in)
+     
+     variable Tviol_clk_datain : std_ulogic := '0';
+     variable TimingData_clk_datain : VitalTimingDataType := VitalTimingDataInit;
+     variable Tviol_clk_ena    : std_ulogic := '0';
+     variable TimingData_clk_ena    : VitalTimingDataType := VitalTimingDataInit;
+     variable Tviol_clk_update : std_ulogic := '0';
+     variable TimingData_clk_update : VitalTimingDataType := VitalTimingDataInit;
+     
+     BEGIN
+         IF (TimingChecksOn) THEN
+             VitalSetupHoldCheck (
+                         Violation       => Tviol_clk_datain,
+                         TimingData      => TimingData_clk_datain,
+                         TestSignal      => datain_in,
+                         TestSignalName  => "Datain",
+                         RefSignal       => clk_in,
+                         RefSignalName   => "clk",
+                         SetupHigh       => tsetup_datain_clk_noedge_posedge,
+                         SetupLow        => tsetup_datain_clk_noedge_posedge,
+                         HoldHigh        => thold_datain_clk_noedge_posedge,
+                         HoldLow         => thold_datain_clk_noedge_posedge,
+                         RefTransition   => '/',
+                         HeaderMsg       => InstancePath & "/STRATIXIII_IO_CONFIG",
+                         XOn             => XOnChecks,
+                         MsgOn           => MsgOnChecks
+             );
+             
+             VitalSetupHoldCheck (
+                         Violation       => Tviol_clk_ena,
+                         TimingData      => TimingData_clk_ena,
+                         TestSignal      => ena_in,
+                         TestSignalName  => "Ena",
+                         RefSignal       => clk_in,
+                         RefSignalName   => "clk",
+                         SetupHigh       => tsetup_datain_clk_noedge_posedge,
+                         SetupLow        => tsetup_datain_clk_noedge_posedge,
+                         HoldHigh        => thold_datain_clk_noedge_posedge,
+                         HoldLow         => thold_datain_clk_noedge_posedge,
+                         RefTransition   => '/',
+                         HeaderMsg       => InstancePath & "/STRATIXIII_IO_CONFIG",
+                         XOn             => XOnChecks,
+                         MsgOn           => MsgOnChecks
+             );
+             
+             VitalSetupHoldCheck (
+                         Violation       => Tviol_clk_update,
+                         TimingData      => TimingData_clk_update,
+                         TestSignal      => update_in,
+                         TestSignalName  => "Update",
+                         RefSignal       => clk_in,
+                         RefSignalName   => "clk",
+                         SetupHigh       => tsetup_datain_clk_noedge_posedge,
+                         SetupLow        => tsetup_datain_clk_noedge_posedge,
+                         HoldHigh        => thold_datain_clk_noedge_posedge,
+                         HoldLow         => thold_datain_clk_noedge_posedge,
+                         RefTransition   => '/',
+                         HeaderMsg       => InstancePath & "/STRATIXIII_IO_CONFIG",
+                         XOn             => XOnChecks,
+                         MsgOn           => MsgOnChecks
+             );
+             
+         END IF;
+     END PROCESS;  -- timing check
+ 
+     --------------------------------------
+     --  Path Delay Section
+     --------------------------------------
+     
+     VITAL_path_delays: PROCESS (tmp_dataout)
+     
+         variable dataout_VitalGlitchData : VitalGlitchDataType;
+     
+     BEGIN
+         VitalPathDelay01 (
+             OutSignal => dataout,
+             OutSignalName => "Dataout",
+             OutTemp => tmp_dataout,
+             Paths =>   (0 => (clk_in'last_event, tpd_clk_dataout_posedge, TRUE)),
+             GlitchData => dataout_VitalGlitchData,
+             Mode => DefGlitchMode,
+             XOn  => XOn,
+             MsgOn  => MsgOn );
+     
+     END PROCESS;  -- Path Delays
+     
+ END stratixiii_dqs_config_arch;
 -------------------------------------------------------------------------------
 --  Module Name:             stratixiii_mac_bit_register                          --
 --  Description:             Stratix III MAC single bit register                   --
@@ -11393,10 +11818,10 @@ ENTITY stratixiii_mac_register IS
               tipd_clk        : VitalDelayType01 := DefPropDelay01;
               tipd_sload        : VitalDelayType01 := DefPropDelay01;
               tipd_aclr       : VitalDelayType01 := DefPropDelay01;
-              tpd_aclr_dataout_posedge  : VitalDelayType01 := DefPropDelay01;
-              tpd_clk_dataout_posedge   : VitalDelayType01 := DefPropDelay01;
-              tsetup_datain_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
-              thold_datain_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
+              tpd_aclr_dataout_posedge   : VitalDelayArrayType01(71 downto 0) := (OTHERS => DefPropDelay01);
+              tpd_clk_dataout_posedge    : VitalDelayArrayType01(71 downto 0) := (OTHERS => DefPropDelay01);
+              tsetup_datain_clk_noedge_posedge : VitalDelayArrayType(71 downto 0) := (OTHERS => DefSetupHoldCnst);
+              thold_datain_clk_noedge_posedge  : VitalDelayArrayType(71 downto 0) := (OTHERS => DefSetupHoldCnst);
               tsetup_sload_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
               thold_sload_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
               MsgOn: Boolean := DefGlitchMsgOn;
@@ -11435,12 +11860,6 @@ WireDelay : block
 
 
     PROCESS(clk_ipd, datain_ipd, sload_ipd, aclr_ipd)
-        variable dataout_VitalGlitchDataArray : VitalGlitchDataArrayType(71 downto 0);
-        variable Tviol_sload_clk : std_ulogic := '0';
-        variable Tviol_datain_clk : std_ulogic := '0';
-        variable TimingData_datain_clk : VitalTimingDataType := VitalTimingDataInit;
-        variable TimingData_sload_clk : VitalTimingDataType := VitalTimingDataInit;
-
         BEGIN
             IF (aclr_ipd = '1') THEN
                 dataout_reg <= (OTHERS => '0');
@@ -11451,18 +11870,29 @@ WireDelay : block
                     dataout_reg <= dataout_reg;
                 END IF;
             END IF;
+    END process;
 
+    sh: block
+    begin
+        g0 : for i in datain'range generate
+            process(datain_ipd(i),clk_ipd,sload_ipd)
+                 variable dataout_VitalGlitchDataArray : VitalGlitchDataArrayType(71 downto 0);
+                 variable Tviol_sload_clk : std_ulogic := '0';
+                variable Tviol_datain_clk : std_ulogic := '0';
+                variable TimingData_datain_clk : VitalTimingDataType := VitalTimingDataInit;
+                variable TimingData_sload_clk : VitalTimingDataType := VitalTimingDataInit;
+                begin
                 VitalSetupHoldCheck (
                     Violation       => Tviol_datain_clk,
                     TimingData      => TimingData_datain_clk,
-                    TestSignal      => datain,
-                    TestSignalName  => "DATAIN",
+                    TestSignal      => datain_ipd(i),
+                    TestSignalName  => "DATAIN(i)",
                     RefSignal       => clk_ipd,
                     RefSignalName   => "CLK",
-                    SetupHigh       => tsetup_datain_clk_noedge_posedge,
-                    SetupLow        => tsetup_datain_clk_noedge_posedge,
-                    HoldHigh        => thold_datain_clk_noedge_posedge,
-                    HoldLow         => thold_datain_clk_noedge_posedge,
+                    SetupHigh       => tsetup_datain_clk_noedge_posedge(i),
+                    SetupLow        => tsetup_datain_clk_noedge_posedge(i),
+                    HoldHigh        => thold_datain_clk_noedge_posedge(i),
+                    HoldLow         => thold_datain_clk_noedge_posedge(i),
                     CheckEnabled    => TO_X01((NOT aclr_ipd) OR
                                               (sload_ipd)) /= '1',
                     RefTransition   => '/',
@@ -11487,6 +11917,8 @@ WireDelay : block
                     XOn             => XOnChecks,
                     MsgOn           => MsgOnChecks );
     END PROCESS;
+    end generate g0;
+    end block;
 
     dataout_tmp <= datain_ipd WHEN bypass_register = '1' ELSE dataout_reg;
 
@@ -11500,8 +11932,8 @@ WireDelay : block
                           OutSignal     => dataout(i),
                           OutSignalName => "dataout",
                           OutTemp       => dataout_tmp(i),
-                          Paths         => (0 => (clk_ipd'last_event, tpd_clk_dataout_posedge, TRUE),
-                                            1 => (aclr_ipd'last_event, tpd_aclr_dataout_posedge, TRUE)),
+                          Paths         => (0 => (clk_ipd'last_event, tpd_clk_dataout_posedge(i), TRUE),
+                                            1 => (aclr_ipd'last_event, tpd_aclr_dataout_posedge(i), TRUE)),
                           GlitchData    => dataout_VitalGlitchData,
                           Mode          => DefGlitchMode,
                           XOn           => TRUE,
@@ -11559,8 +11991,8 @@ ARCHITECTURE arch OF stratixiii_mac_multiplier IS
     SIGNAL product_sign             :  std_logic := '0';
     SIGNAL dataa_sign               :  std_logic := '0';
     SIGNAL datab_sign               :  std_logic := '0';
-    SIGNAL dataa_ipd                :  std_logic_vector(17 DOWNTO 0) := (others => '0');
-    SIGNAL datab_ipd                :  std_logic_vector(17 DOWNTO 0) := (others => '0');
+    SIGNAL dataa_ipd                :  std_logic_vector(dataa_width -1 DOWNTO 0) := (others => '0');
+    SIGNAL datab_ipd                :  std_logic_vector(datab_width -1 DOWNTO 0) := (others => '0');
     SIGNAL signa_ipd                :  std_logic := '0';
     SIGNAL signb_ipd                :  std_logic := '0';
 BEGIN
@@ -11580,8 +12012,8 @@ BEGIN
     dataa_sign <= dataa_ipd(dataa_width - 1) AND signa_ipd ;
     datab_sign <= datab_ipd(datab_width - 1) AND signb_ipd ;
     product_sign <= dataa_sign XOR datab_sign ;
-    abs_a <= (NOT dataa + '1') WHEN dataa_sign = '1' ELSE dataa;
-    abs_b <= (NOT datab + '1') WHEN datab_sign = '1' ELSE datab;
+    abs_a <= (NOT dataa_ipd + '1') WHEN dataa_sign = '1' ELSE dataa_ipd;
+    abs_b <= (NOT datab_ipd + '1') WHEN datab_sign = '1' ELSE datab_ipd;
     abs_product <=  abs_a * abs_b ;
     dataout_tmp   <= (NOT abs_product + 1) WHEN product_sign = '1' ELSE abs_product;
 
@@ -11710,6 +12142,8 @@ ARCHITECTURE arch OF stratixiii_mac_mult IS
     SIGNAL dataa_sload              :  std_logic := '0';
     SIGNAL dataa_bypass_register    :  std_logic := '0';
     SIGNAL dataa_in_reg             :  std_logic_vector(dataa_width - 1 DOWNTO 0):= (others => '0');
+    SIGNAL dataa_in             :  std_logic_vector(dataa_width - 1 DOWNTO 0):= (others => '0');
+
     --Internal signals to instantiate the datab input register unit
     SIGNAL datab_clk_value          :  std_logic_vector(3 DOWNTO 0) := (others => '0');
     SIGNAL datab_aclr_value         :  std_logic_vector(3 DOWNTO 0) := (others => '0');
@@ -11718,6 +12152,8 @@ ARCHITECTURE arch OF stratixiii_mac_mult IS
     SIGNAL datab_sload              :  std_logic := '0';
     SIGNAL datab_bypass_register    :  std_logic := '0';
     SIGNAL datab_in_reg             :  std_logic_vector(datab_width - 1 DOWNTO 0):= (others => '0');
+    SIGNAL datab_in           :  std_logic_vector(datab_width - 1 DOWNTO 0):= (others => '0');
+
     --Internal signals to instantiate the signa input register unit
     SIGNAL signa_clk_value          :  std_logic_vector(3 DOWNTO 0) := (others => '0');
     SIGNAL signa_aclr_value         :  std_logic_vector(3 DOWNTO 0) := (others => '0');
@@ -11726,6 +12162,9 @@ ARCHITECTURE arch OF stratixiii_mac_mult IS
     SIGNAL signa_sload              :  std_logic := '0';
     SIGNAL signa_bypass_register    :  std_logic := '0';
     SIGNAL signa_in_reg             :  std_logic := '0';
+    SIGNAL signa_in                 :  std_logic := '0';
+
+    
     --Internal signbls to instantiate the signb input register unit
     SIGNAL signb_clk_value          :  std_logic_vector(3 DOWNTO 0) := (others => '0');
     SIGNAL signb_aclr_value         :  std_logic_vector(3 DOWNTO 0) := (others => '0');
@@ -11734,6 +12173,8 @@ ARCHITECTURE arch OF stratixiii_mac_mult IS
     SIGNAL signb_sload              :  std_logic := '0';
     SIGNAL signb_bypass_register    :  std_logic := '0';
     SIGNAL signb_in_reg             :  std_logic := '0';
+    SIGNAL signb_in                 :  std_logic := '0';
+
     --Internal scanoutals to instantiate the scanouta input register unit
     SIGNAL scanouta_clk_value       :  std_logic_vector(3 DOWNTO 0) := (others => '0');
     SIGNAL scanouta_aclr_value      :  std_logic_vector(3 DOWNTO 0) := (others => '0');
@@ -11769,13 +12210,15 @@ BEGIN
     dataa_sload <= '1' WHEN ena(conv_integer(dataa_clk_value)) = '1' ELSE '0';
 
     dataa_bypass_register <= '1' WHEN (dataa_clock = "none") ELSE '0';
+    
+    dataa_in <= dataa;
 
     dataa_input_register : stratixiii_mac_register
        GENERIC MAP (
                    data_width => dataa_width
                    )
        PORT MAP (
-                   datain => dataa,
+                   datain => dataa_in,
                    clk => dataa_clk,
                    aclr => dataa_aclr,
                    sload => dataa_sload,
@@ -11804,13 +12247,16 @@ BEGIN
     datab_sload <= '1' WHEN ena(conv_integer(datab_clk_value)) = '1' ELSE '0';
 
     datab_bypass_register <= '1' WHEN (datab_clock = "none") ELSE '0';
+    
+    datab_in <= datab;
+
 
     datab_input_register : stratixiii_mac_register
        GENERIC MAP (
                    data_width => datab_width
                    )
        PORT MAP (
-                   datain => datab,
+                   datain => datab_in,
                    clk => datab_clk,
                    aclr => datab_aclr,
                    sload => datab_sload,
@@ -11839,10 +12285,13 @@ BEGIN
     signa_sload <= '1' WHEN ena(conv_integer(signa_clk_value)) = '1' ELSE '0';
 
     signa_bypass_register <= '1' WHEN (signa_clock = "none") ELSE '0';
+    
+    signa_in <= signa;
+
 
     signa_input_register : stratixiii_mac_bit_register
        PORT MAP (
-                   datain => signa,
+                   datain => signa_in,
                    clk => signa_clk,
                    aclr => signa_aclr,
                    sload => signa_sload,
@@ -11869,10 +12318,13 @@ BEGIN
     signb_sload <= '1' WHEN ena(conv_integer(signb_clk_value)) = '1' ELSE '0';
 
     signb_bypass_register <= '1' WHEN (signb_clock = "none") ELSE '0';
+    
+     signb_in <= signb;
+
 
     signb_input_register : stratixiii_mac_bit_register
        PORT MAP (
-                   datain => signb,
+                   datain => signb_in,
                    clk => signb_clk,
                    aclr => signb_aclr,
                    sload => signb_sload,
@@ -11952,6 +12404,14 @@ ENTITY stratixiii_fsa_isse IS
             datac_width                    :  integer := 36;
             datad_width                    :  integer := 36;
             chainin_width                  :  integer := 44;
+            multa_signa_internally_grounded : string := "false";
+            multa_signb_internally_grounded : string := "false";
+            multb_signa_internally_grounded : string := "false";
+            multb_signb_internally_grounded : string := "false";
+            multc_signa_internally_grounded : string := "false";
+            multc_signb_internally_grounded : string := "false";
+            multd_signa_internally_grounded : string := "false";
+            multd_signb_internally_grounded : string := "false";
             operation_mode                 :  string  := "output_only"
            );
    PORT (
@@ -11978,7 +12438,7 @@ ARCHITECTURE arch OF stratixiii_fsa_isse IS
     signal datad_out_tmp  : std_logic_vector(71 DOWNTO 0) := (others => '0');
     signal chainin_out_tmp: std_logic_vector(71 DOWNTO 0) := (others => '0');
     signal sign :std_logic := '0';
-
+    
 BEGIN
     operation <=   "0000" WHEN (operation_mode = "output_only") ELSE
                    "0001" WHEN (operation_mode = "one_level_adder") ELSE
@@ -11991,70 +12451,167 @@ BEGIN
                    "1000" WHEN (operation_mode = "shift") ELSE
                    "1001" WHEN (operation_mode = "double") ELSE "0000";
     sign <= signa or signb;
+    
+
     PROCESS( dataa,datab,datac,datad,chainin,signa,signb)
+        variable active_signb : std_logic := '0';
+        variable active_signc : std_logic := '0';
+        variable active_signd : std_logic := '0'; 
+        variable read_new_param : std_logic := '0';
+        variable datab_out_tim_tmp  : std_logic_vector(71 DOWNTO 0) := (others => '0');
+        variable datac_out_tim_tmp  : std_logic_vector(71 DOWNTO 0) := (others => '0');
+        variable datad_out_tim_tmp  : std_logic_vector(71 DOWNTO 0) := (others => '0');
+        variable datab_out_fun_tmp  : std_logic_vector(71 DOWNTO 0) := (others => '0');
+        variable datac_out_fun_tmp  : std_logic_vector(71 DOWNTO 0) := (others => '0');
+        variable datad_out_fun_tmp  : std_logic_vector(71 DOWNTO 0) := (others => '0');
         BEGIN
+        
+        IF (  multa_signa_internally_grounded = "false" AND multa_signb_internally_grounded = "false" 
+           AND multb_signa_internally_grounded = "false" AND multb_signb_internally_grounded = "false" 
+           AND multc_signa_internally_grounded = "false" AND multc_signb_internally_grounded = "false"
+           AND multd_signa_internally_grounded = "false" AND multd_signb_internally_grounded = "false") THEN
+           read_new_param := '0' ;
+        ELSE                      
+           read_new_param := '1'  ;
+        END IF;
+   
+        IF ((operation_mode = "36_bit_multiply") or (operation_mode = "shift") or (operation_mode = "double")) THEN
+               if (multb_signb_internally_grounded = "false" AND multb_signa_internally_grounded = "true") then
+                    active_signb := signb;
+                elsif(multb_signb_internally_grounded = "true" AND multb_signa_internally_grounded = "false" ) then
+                    active_signb := signa;
+                elsif(multb_signb_internally_grounded = "false" AND multb_signa_internally_grounded = "false") then
+                    active_signb := sign;
+                else
+                    active_signb := '0';
+                end if;
+           ELSE
+                active_signb := sign;
+            END IF;
+            
+            IF ((operation_mode = "36_bit_multiply") or (operation_mode = "shift") or (operation_mode = "double")) THEN
+               if (multc_signb_internally_grounded = "false" AND multc_signa_internally_grounded = "true") then
+                    active_signc := signb;
+                elsif(multc_signb_internally_grounded = "true" AND multc_signa_internally_grounded = "false" ) then
+                    active_signc := signa;
+                elsif(multc_signb_internally_grounded = "false" AND multc_signa_internally_grounded = "false") then
+                    active_signc := sign;
+                else
+                    active_signc := '0';
+                end if;
+           ELSE
+                active_signc := sign;
+            END IF;
+            
+            IF ((operation_mode = "36_bit_multiply") or (operation_mode = "shift") or (operation_mode = "double")) THEN
+               if (multd_signb_internally_grounded = "false" AND multd_signa_internally_grounded = "true") then
+                    active_signd := signb;
+                elsif(multd_signb_internally_grounded = "true" AND multd_signa_internally_grounded = "false" ) then
+                    active_signd := signa;
+                elsif(multd_signb_internally_grounded = "false" AND multd_signa_internally_grounded = "false") then
+                    active_signd := sign;
+                else
+                    active_signd := '0';
+                end if;
+           ELSE
+                active_signd := sign;
+            END IF;
+
            IF (dataa(dataa_width - 1) = '1' AND sign = '1') THEN
                dataa_out_tmp <=  sxt(dataa(dataa_width - 1 DOWNTO 0), 72);
            ELSE
                dataa_out_tmp <=  ext(dataa(dataa_width - 1 DOWNTO 0), 72);
            END IF;
 
-           IF ((operation_mode = "36_bit_multiply") or (operation_mode = "shift")) THEN
-               IF(datab(datab_width - 1) = '1' AND signb = '1') THEN
-                   datab_out_tmp <=  sxt(datab(datab_width - 1 DOWNTO 0), 72);
-               ELSE
-                   datab_out_tmp <=  ext(datab(datab_width - 1 DOWNTO 0), 72);
-               END IF;
-           ELSIF(operation_mode = "double") THEN
+         
+            IF (datab(datab_width - 1) = '1' AND active_signb = '1') THEN
+                datab_out_tim_tmp :=  sxt(datab(datab_width - 1 DOWNTO 0), 72);
+            ELSE
+                datab_out_tim_tmp :=  ext(datab(datab_width - 1 DOWNTO 0), 72);
+            END IF;
+           
+            IF (datac(datac_width - 1) = '1' AND active_signc = '1') THEN
+               datac_out_tim_tmp :=  sxt(datac(datac_width - 1 DOWNTO 0), 72);
+           ELSE
+               datac_out_tim_tmp :=  ext(datac(datac_width - 1 DOWNTO 0), 72);
+           END IF;
+           
+             IF (datad(datad_width - 1) = '1' AND active_signd = '1') THEN
+               datad_out_tim_tmp :=  sxt(datad(datad_width - 1 DOWNTO 0), 72);
+           ELSE
+               datad_out_tim_tmp :=  ext(datad(datad_width - 1 DOWNTO 0), 72);
+           END IF;
+
+           
+            IF ((operation_mode = "36_bit_multiply") or (operation_mode = "shift")) THEN
+                IF(datab(datab_width - 1) = '1' AND signb = '1') THEN
+                     datab_out_fun_tmp :=  sxt(datab(datab_width - 1 DOWNTO 0), 72);
+                ELSE
+                    datab_out_fun_tmp :=  ext(datab(datab_width - 1 DOWNTO 0), 72);
+                END IF;
+            ELSIF(operation_mode = "double") THEN
                 IF(datab(datab_width - 1) = '1' AND signa = '1') THEN
-                   datab_out_tmp <=  sxt(datab(datab_width - 1 DOWNTO 0), 72);
-               ELSE
-                   datab_out_tmp <=  ext(datab(datab_width - 1 DOWNTO 0), 72);
-               END IF;
-           ELSE
-           IF (datab(datab_width - 1) = '1' AND sign = '1') THEN
-               datab_out_tmp <=  sxt(datab(datab_width - 1 DOWNTO 0), 72);
-           ELSE
-               datab_out_tmp <=  ext(datab(datab_width - 1 DOWNTO 0), 72);
-           END IF;
-           END IF;
+                   datab_out_fun_tmp :=  sxt(datab(datab_width - 1 DOWNTO 0), 72);
+                ELSE
+                    datab_out_fun_tmp :=  ext(datab(datab_width - 1 DOWNTO 0), 72);
+                END IF;
+            ELSE
+                IF (datab(datab_width - 1) = '1' AND sign = '1') THEN
+                    datab_out_fun_tmp :=  sxt(datab(datab_width - 1 DOWNTO 0), 72);
+                ELSE
+                     datab_out_fun_tmp :=  ext(datab(datab_width - 1 DOWNTO 0), 72);
+                END IF;
+            END IF;
+            
            IF ((operation_mode = "36_bit_multiply") or (operation_mode = "shift")) THEN
                IF (datac(datac_width - 1) = '1' AND signa = '1') THEN
-                   datac_out_tmp <=  sxt(datac(datac_width - 1 DOWNTO 0), 72);
+                    datac_out_fun_tmp :=  sxt(datac(datac_width - 1 DOWNTO 0), 72);
                ELSE
-                   datac_out_tmp <=  ext(datac(datac_width - 1 DOWNTO 0), 72);
+                   datac_out_fun_tmp :=  ext(datac(datac_width - 1 DOWNTO 0), 72);
                END IF;
-           ELSE
-           IF (datac(datac_width - 1) = '1' AND sign = '1') THEN
-               datac_out_tmp <=  sxt(datac(datac_width - 1 DOWNTO 0), 72);
-           ELSE
-               datac_out_tmp <=  ext(datac(datac_width - 1 DOWNTO 0), 72);
-           END IF;
+            ELSE
+                IF (datac(datac_width - 1) = '1' AND sign = '1') THEN
+                    datac_out_fun_tmp :=  sxt(datac(datac_width - 1 DOWNTO 0), 72);
+                ELSE
+                    datac_out_fun_tmp :=  ext(datac(datac_width - 1 DOWNTO 0), 72);
+                END IF;
            END IF;
 
            IF ((operation_mode = "36_bit_multiply") or (operation_mode = "shift")) THEN
-               datad_out_tmp <=  ext(datad(datad_width - 1 DOWNTO 0), 72);
+               datad_out_fun_tmp :=  ext(datad(datad_width - 1 DOWNTO 0), 72);
            ELSIF(operation_mode = "double")THEN
                IF (datad(datad_width - 1) = '1' AND signa = '1') THEN
-                    datad_out_tmp <=  sxt(datad(datad_width - 1 DOWNTO 0), 72);
+                    datad_out_fun_tmp :=  sxt(datad(datad_width - 1 DOWNTO 0), 72);
                 ELSE
-                    datad_out_tmp <=  ext(datad(datad_width - 1 DOWNTO 0), 72);
+                    datad_out_fun_tmp :=  ext(datad(datad_width - 1 DOWNTO 0), 72);
                 END IF;
            ELSE
-           IF (datad(datad_width - 1) = '1' AND sign = '1') THEN
-               datad_out_tmp <=  sxt(datad(datad_width - 1 DOWNTO 0), 72);
-           ELSE
-               datad_out_tmp <=  ext(datad(datad_width - 1 DOWNTO 0), 72);
-           END IF;
-           END IF;
-
+                IF (datad(datad_width - 1) = '1' AND sign = '1') THEN
+                    datad_out_fun_tmp :=  sxt(datad(datad_width - 1 DOWNTO 0), 72);
+                ELSE
+                    datad_out_fun_tmp :=  ext(datad(datad_width - 1 DOWNTO 0), 72);
+                END IF;
+            END IF;
+            
            IF (chainin(chainin_width - 1) = '1') THEN
                chainin_out_tmp <=  sxt(chainin(chainin_width - 1 DOWNTO 0), 72);
            ELSE
                chainin_out_tmp <=  ext(chainin(chainin_width - 1 DOWNTO 0), 72);
            END IF;
+           
+     IF(read_new_param = '1') THEN
+        datab_out_tmp <= datab_out_tim_tmp;
+        datac_out_tmp <= datac_out_tim_tmp;
+        datad_out_tmp <= datad_out_tim_tmp;
+     ELSE
+        datab_out_tmp <= datab_out_fun_tmp;
+        datac_out_tmp <= datac_out_fun_tmp;
+        datad_out_tmp <= datad_out_fun_tmp;
+     END IF;
+ 
      END process;
-
+    
+     
      dataa_out <= dataa_out_tmp;
      datab_out <= datab_out_tmp;
      datac_out <= datac_out_tmp;
@@ -12070,13 +12627,11 @@ END arch;
 
 LIBRARY IEEE;
 USE ieee.std_logic_1164.all;
---USE ieee.std_logic_unsigned.all;
+USE ieee.std_logic_unsigned.all;
 use IEEE.std_logic_arith.all;
 use IEEE.VITAL_Timing.all;
 use IEEE.VITAL_Primitives.all;
 use work.stratixiii_atom_pack.all;
-library grlib;
-use grlib.stdlib.all;
 
 
 ENTITY stratixiii_first_stage_add_sub IS
@@ -12177,13 +12732,12 @@ END arch;
 
 LIBRARY IEEE;
 USE ieee.std_logic_1164.all;
---USE ieee.std_logic_unsigned.all;
+USE ieee.std_logic_unsigned.all;
 use IEEE.std_logic_arith.all;
 use IEEE.VITAL_Timing.all;
 use IEEE.VITAL_Primitives.all;
 use work.stratixiii_atom_pack.all;
-library grlib;
-use grlib.stdlib.all;
+
 
 ENTITY stratixiii_second_stage_add_accum IS
    GENERIC (
@@ -12821,14 +13375,14 @@ BEGIN
 
     PROCESS
     BEGIN
-        WAIT UNTIL datain_ipd'EVENT OR rotate_ipd'EVENT OR shiftright_ipd'EVENT OR signa_ipd'EVENT OR signb_ipd'EVENT;
+        WAIT UNTIL datain_ipd'EVENT OR rotate_ipd'EVENT OR shiftright_ipd'EVENT;
         sign <= signa_ipd xor signb_ipd;
         dataout_tmp <= datain;
         IF ((rotate_ipd = '0') AND (shiftright_ipd = '0')) THEN
             dataout_tmp(39 downto 8) <=   datain_ipd(39 downto 8);
         ELSIF ((rotate_ipd = '0') AND (shiftright_ipd = '1')) THEN --shift right
             dataout_tmp(39 downto 8) <= datain_ipd(71 downto 40);
-        ELSIF((rotate_ipd = '1') AND (shiftright_ipd = '0') AND (signa_ipd = '0')) THEN
+        ELSIF((rotate_ipd = '1') AND (shiftright_ipd = '0')) THEN
             dataout_tmp(39 downto 8) <=   datain_ipd(39 downto 8) OR datain_ipd(71 downto 40);
         ELSE
             dataout_tmp <= datain_ipd;
@@ -13028,6 +13582,14 @@ ENTITY stratixiii_mac_out IS
             round_chain_out_mode           :  string := "nearest_integer";
             saturate_mode                  :  string := "asymmetric";
             saturate_chain_out_mode        :  string := "asymmetric";
+            multa_signa_internally_grounded : string := "false";
+            multa_signb_internally_grounded : string := "false";
+            multb_signa_internally_grounded : string := "false";
+            multb_signb_internally_grounded : string := "false";
+            multc_signa_internally_grounded : string := "false";
+            multc_signb_internally_grounded : string := "false";
+            multd_signa_internally_grounded : string := "false";
+            multd_signb_internally_grounded : string := "false";
             lpm_type                       :  string := "stratixiii_mac_out";
             dataout_width                  :  integer:=72
            );
@@ -13094,6 +13656,14 @@ ARCHITECTURE arch OF stratixiii_mac_out IS
                    chainin_width                  :  integer := 44;
                    operation_mode                 :  string := "output_only";
                    datad_width                    :  integer := 36;
+                   multa_signa_internally_grounded : string := "false";
+                   multa_signb_internally_grounded : string := "false";
+                   multb_signa_internally_grounded : string := "false";
+                   multb_signb_internally_grounded : string := "false";
+                   multc_signa_internally_grounded : string := "false";
+                   multc_signb_internally_grounded : string := "false";
+                   multd_signa_internally_grounded : string := "false";
+                   multd_signb_internally_grounded : string := "false";
                    datac_width                    :  integer := 36
                 );
         PORT (
@@ -13198,6 +13768,8 @@ ARCHITECTURE arch OF stratixiii_mac_out IS
     SIGNAL zeroloopback_sload_ir    :  std_logic := '0';
     SIGNAL zeroloopback_bypass_register_ir :  std_logic := '0';
     SIGNAL zeroloopback_in_reg      :  std_logic := '0';
+    SIGNAL zeroloopback_in      :  std_logic := '0';
+
     --signals for zeroacc input register
     SIGNAL zeroacc_clkval_ir        :  std_logic_vector(3 DOWNTO 0) := (others => '0');
     SIGNAL zeroacc_aclrval_ir       :  std_logic_vector(3 DOWNTO 0) := (others => '0');
@@ -13206,6 +13778,8 @@ ARCHITECTURE arch OF stratixiii_mac_out IS
     SIGNAL zeroacc_sload_ir         :  std_logic := '0';
     SIGNAL zeroacc_bypass_register_ir      :  std_logic := '0';
     SIGNAL zeroacc_in_reg           :  std_logic := '0';
+    SIGNAL zeroacc_in           :  std_logic := '0';
+
     --Signals for signa input register
     SIGNAL signa_clkval_ir          :  std_logic_vector(3 DOWNTO 0) := (others => '0');
     SIGNAL signa_aclrval_ir         :  std_logic_vector(3 DOWNTO 0) := (others => '0');
@@ -13214,6 +13788,8 @@ ARCHITECTURE arch OF stratixiii_mac_out IS
     SIGNAL signa_sload_ir           :  std_logic := '0';
     SIGNAL signa_bypass_register_ir :  std_logic := '0';
     SIGNAL signa_in_reg             :  std_logic := '0';
+    SIGNAL signa_in             :  std_logic := '0';
+
     --signals for signb input register
     SIGNAL signb_clkval_ir          :  std_logic_vector(3 DOWNTO 0) := (others => '0');
     SIGNAL signb_aclrval_ir         :  std_logic_vector(3 DOWNTO 0) := (others => '0');
@@ -13222,6 +13798,8 @@ ARCHITECTURE arch OF stratixiii_mac_out IS
     SIGNAL signb_sload_ir           :  std_logic := '0';
     SIGNAL signb_bypass_register_ir :  std_logic := '0';
     SIGNAL signb_in_reg             :  std_logic := '0';
+    SIGNAL signb_in             :  std_logic := '0';
+    
     --signals for rotate input register
     SIGNAL rotate_clkval_ir         :  std_logic_vector(3 DOWNTO 0) := (others => '0');
     SIGNAL rotate_aclrval_ir        :  std_logic_vector(3 DOWNTO 0) := (others => '0');
@@ -13230,6 +13808,8 @@ ARCHITECTURE arch OF stratixiii_mac_out IS
     SIGNAL rotate_sload_ir          :  std_logic := '0';
     SIGNAL rotate_bypass_register_ir:  std_logic := '0';
     SIGNAL rotate_in_reg            :  std_logic := '0';
+    SIGNAL rotate_in            :  std_logic := '0';
+    
     --signals for shiftright input register
     SIGNAL shiftright_clkval_ir     :  std_logic_vector(3 DOWNTO 0) := (others => '0');
     SIGNAL shiftright_aclrval_ir    :  std_logic_vector(3 DOWNTO 0) := (others => '0');
@@ -13238,6 +13818,7 @@ ARCHITECTURE arch OF stratixiii_mac_out IS
     SIGNAL shiftright_sload_ir      :  std_logic := '0';
     SIGNAL shiftright_bypass_register_ir   :  std_logic := '0';
     SIGNAL shiftright_in_reg        :  std_logic := '0';
+    SIGNAL shiftright_in        :  std_logic := '0';
     --signals for round input register
     SIGNAL round_clkval_ir          :  std_logic_vector(3 DOWNTO 0) := (others => '0');
     SIGNAL round_aclrval_ir         :  std_logic_vector(3 DOWNTO 0) := (others => '0');
@@ -13246,6 +13827,8 @@ ARCHITECTURE arch OF stratixiii_mac_out IS
     SIGNAL round_sload_ir           :  std_logic := '0';
     SIGNAL round_bypass_register_ir :  std_logic := '0';
     SIGNAL round_in_reg             :  std_logic := '0';
+    SIGNAL round_in             :  std_logic := '0';
+
     --signals for saturate input register
     SIGNAL saturate_clkval_ir       :  std_logic_vector(3 DOWNTO 0) := (others => '0');
     SIGNAL saturate_aclrval_ir      :  std_logic_vector(3 DOWNTO 0) := (others => '0');
@@ -13254,6 +13837,7 @@ ARCHITECTURE arch OF stratixiii_mac_out IS
     SIGNAL saturate_sload_ir        :  std_logic := '0';
     SIGNAL saturate_bypass_register_ir     :  std_logic := '0';
     SIGNAL saturate_in_reg          :  std_logic := '0';
+    SIGNAL saturate_in          :  std_logic := '0';
     --signals for roundchainout input register
     SIGNAL roundchainout_clkval_ir  :  std_logic_vector(3 DOWNTO 0) := (others => '0');
     SIGNAL roundchainout_aclrval_ir :  std_logic_vector(3 DOWNTO 0) := (others => '0');
@@ -13262,6 +13846,7 @@ ARCHITECTURE arch OF stratixiii_mac_out IS
     SIGNAL roundchainout_sload_ir   :  std_logic := '0';
     SIGNAL roundchainout_bypass_register_ir:  std_logic := '0';
     SIGNAL roundchainout_in_reg     :  std_logic := '0';
+    SIGNAL roundchainout_in          :  std_logic := '0';
     --signals for saturatechainout input register
     SIGNAL saturatechainout_clkval_ir      :  std_logic_vector(3 DOWNTO 0) := (others => '0');
     SIGNAL saturatechainout_aclrval_ir     :  std_logic_vector(3 DOWNTO 0) := (others => '0');
@@ -13270,6 +13855,8 @@ ARCHITECTURE arch OF stratixiii_mac_out IS
     SIGNAL saturatechainout_sload_ir:  std_logic := '0';
     SIGNAL saturatechainout_bypass_register_ir:  std_logic := '0';
     SIGNAL saturatechainout_in_reg  :  std_logic := '0';
+    SIGNAL saturatechainout_in  :  std_logic := '0';
+   
     --signals for fsa_input_interface
     SIGNAL dataa_fsa_in             :  std_logic_vector(71 DOWNTO 0) := (others => '0');
     SIGNAL datab_fsa_in             :  std_logic_vector(71 DOWNTO 0) := (others => '0');
@@ -13515,10 +14102,10 @@ end process;
     zeroloopback_aclr_ir <= '1' WHEN (aclr(conv_integer(zeroloopback_aclrval_ir)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0';
     zeroloopback_sload_ir <= '1' WHEN ena(conv_integer(zeroloopback_clkval_ir)) = '1' ELSE '0';
     zeroloopback_bypass_register_ir <= '1' WHEN (zeroloopback_clock = "none") ELSE '0';
-
+    zeroloopback_in <= zeroloopback;
     zeroloopback_input_register : stratixiii_mac_bit_register
          PORT MAP (
-                   datain => zeroloopback,
+                   datain => zeroloopback_in,
                    clk => zeroloopback_clk_ir,
                    aclr => zeroloopback_aclr_ir,
                    sload => zeroloopback_sload_ir,
@@ -13542,10 +14129,10 @@ end process;
     zeroacc_aclr_ir <= '1' WHEN (aclr(conv_integer(zeroacc_aclrval_ir)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0';
     zeroacc_sload_ir <= '1' WHEN ena(conv_integer(zeroacc_clkval_ir)) = '1' ELSE '0';
     zeroacc_bypass_register_ir <= '1' WHEN (zeroacc_clock = "none") ELSE '0';
-
+    zeroacc_in  <= zeroacc;
     zeroacc_input_register : stratixiii_mac_bit_register
         PORT MAP (
-                  datain => zeroacc,
+                  datain => zeroacc_in,
                   clk => zeroacc_clk_ir,
                   aclr => zeroacc_aclr_ir,
                   sload => zeroacc_sload_ir,
@@ -13568,10 +14155,10 @@ end process;
     signa_aclr_ir <= '1' WHEN (aclr(conv_integer(signa_aclrval_ir)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0';
     signa_sload_ir <= '1' WHEN ena(conv_integer(signa_clkval_ir)) = '1' ELSE '0';
     signa_bypass_register_ir <= '1' WHEN (signa_clock = "none") ELSE '0';
-
+    signa_in <= signa;
     signa_input_register : stratixiii_mac_bit_register
        PORT MAP (
-                datain => signa,
+                datain => signa_in,
                 clk => signa_clk_ir,
                 aclr => signa_aclr_ir,
                 sload => signa_sload_ir,
@@ -13595,10 +14182,11 @@ end process;
     signb_aclr_ir <= '1' WHEN (aclr(conv_integer(signb_aclrval_ir)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0';
     signb_sload_ir <= '1' WHEN ena(conv_integer(signb_clkval_ir)) = '1' ELSE '0';
     signb_bypass_register_ir <= '1' WHEN (signb_clock = "none") ELSE '0';
+    signb_in <= signb;
 
     signb_input_register : stratixiii_mac_bit_register
      PORT MAP (
-               datain => signb,
+               datain => signb_in,
                clk => signb_clk_ir,
                aclr => signb_aclr_ir,
                sload => signb_sload_ir,
@@ -13621,10 +14209,10 @@ end process;
     rotate_aclr_ir <= '1' WHEN (aclr(conv_integer(rotate_aclrval_ir)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0';
     rotate_sload_ir <= '1' WHEN ena(conv_integer(rotate_clkval_ir)) = '1' ELSE '0';
     rotate_bypass_register_ir <= '1' WHEN (rotate_clock = "none") ELSE '0';
-
+    rotate_in <= rotate;
     rotate_input_register : stratixiii_mac_bit_register
      PORT MAP (
-               datain => rotate,
+               datain => rotate_in,
                clk => rotate_clk_ir,
                aclr => rotate_aclr_ir,
                sload => rotate_sload_ir,
@@ -13648,10 +14236,10 @@ end process;
     shiftright_aclr_ir <= '1' WHEN (aclr(conv_integer(shiftright_aclrval_ir)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0' ;
     shiftright_sload_ir <= '1' WHEN ena(conv_integer(shiftright_clkval_ir)) = '1' ELSE '0';
     shiftright_bypass_register_ir <= '1' WHEN (shiftright_clock = "none") ELSE '0';
-
+    shiftright_in <= shiftright;
      shiftright_input_register : stratixiii_mac_bit_register
        PORT MAP (
-                 datain => shiftright,
+                 datain => shiftright_in,
                  clk => shiftright_clk_ir,
                  aclr => shiftright_aclr_ir,
                  sload => shiftright_sload_ir,
@@ -13674,10 +14262,10 @@ end process;
     round_aclr_ir <= '1' WHEN (aclr(conv_integer(round_aclrval_ir)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0';
     round_sload_ir <= '1' WHEN ena(conv_integer(round_clkval_ir)) = '1' ELSE '0';
     round_bypass_register_ir <= '1' WHEN (round_clock = "none") ELSE '0';
-
+    round_in <= round;
     round_input_register : stratixiii_mac_bit_register
       PORT MAP (
-                datain => round,
+                datain => round_in,
                 clk => round_clk_ir,
                 aclr => round_aclr_ir,
                 sload => round_sload_ir,
@@ -13700,10 +14288,10 @@ end process;
     saturate_aclr_ir <= '1' WHEN (aclr(conv_integer(saturate_aclrval_ir)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0';
     saturate_sload_ir <= '1' WHEN ena(conv_integer(saturate_clkval_ir)) = '1' ELSE '0';
     saturate_bypass_register_ir <= '1' WHEN (saturate_clock = "none") ELSE '0';
-
+    saturate_in <=  saturate;
     saturate_input_register : stratixiii_mac_bit_register
      PORT MAP (
-               datain => saturate,
+               datain => saturate_in,
                clk => saturate_clk_ir,
                aclr => saturate_aclr_ir,
                sload => saturate_sload_ir,
@@ -13727,10 +14315,10 @@ end process;
      roundchainout_aclr_ir <= '1' WHEN (aclr(conv_integer(roundchainout_aclrval_ir)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0';
      roundchainout_sload_ir <= '1' WHEN ena(conv_integer(roundchainout_clkval_ir)) = '1' ELSE '0';
      roundchainout_bypass_register_ir <= '1' WHEN (roundchainout_clock = "none") ELSE '0';
-
+     roundchainout_in <= roundchainout;
      roundchainout_input_register : stratixiii_mac_bit_register
         PORT MAP (
-                  datain => roundchainout,
+                  datain => roundchainout_in,
                   clk => roundchainout_clk_ir,
                   aclr => roundchainout_aclr_ir,
                   sload => roundchainout_sload_ir,
@@ -13753,10 +14341,10 @@ end process;
     saturatechainout_aclr_ir <= '1' WHEN (aclr(conv_integer(saturatechainout_aclrval_ir)) OR NOT devclrn OR NOT devpor) = '1' ELSE '0';
     saturatechainout_sload_ir <= '1' WHEN ena(conv_integer(saturatechainout_clkval_ir)) = '1' ELSE '0';
     saturatechainout_bypass_register_ir <= '1' WHEN (saturatechainout_clock = "none") ELSE '0';
-
+    saturatechainout_in <= saturatechainout;
     saturatechainout_input_register : stratixiii_mac_bit_register
        PORT MAP (
-                 datain => saturatechainout,
+                 datain => saturatechainout_in,
                  clk => saturatechainout_clk_ir,
                  aclr => saturatechainout_aclr_ir,
                  sload => saturatechainout_sload_ir,
@@ -13773,7 +14361,15 @@ end process;
                      datab_width => datab_width,
                      datac_width => datac_width,
                      datad_width => datad_width,
-                     operation_mode => operation_mode
+                     operation_mode => operation_mode,
+                     multa_signa_internally_grounded => multa_signa_internally_grounded,
+                     multa_signb_internally_grounded => multa_signb_internally_grounded,
+                     multb_signa_internally_grounded => multb_signa_internally_grounded,
+                     multb_signb_internally_grounded => multb_signb_internally_grounded,
+                     multc_signa_internally_grounded => multc_signa_internally_grounded,
+                     multc_signb_internally_grounded => multc_signb_internally_grounded,
+                     multd_signa_internally_grounded => multd_signa_internally_grounded,
+                     multd_signb_internally_grounded => multd_signb_internally_grounded
                      )
         PORT MAP (
                   dataa => dataa,
@@ -14799,9 +15395,9 @@ ENTITY stratixiii_pll is
         switch_over_counter         : integer := 1;
         enable_switch_over_counter  : string := "off";
 
-         dpa_multiply_by : integer := 0;
-         dpa_divide_by   : integer := 0;
-         dpa_divider     : integer := 0;
+        dpa_multiply_by : integer := 0;
+        dpa_divide_by   : integer := 0;
+        dpa_divider     : integer := 0;
         
         bandwidth                    : integer := 0;
         bandwidth_type               : string  := "auto";
@@ -14967,11 +15563,11 @@ ENTITY stratixiii_pll is
         c2_use_casc_in              : string := "off";
         c3_use_casc_in              : string := "off";
         c4_use_casc_in              : string := "off";
-         c5_use_casc_in              : string := "off";
-         c6_use_casc_in              : string := "off";
-         c7_use_casc_in              : string := "off";
-         c8_use_casc_in              : string := "off";
-         c9_use_casc_in              : string := "off";
+        c5_use_casc_in              : string := "off";
+        c6_use_casc_in              : string := "off";
+        c7_use_casc_in              : string := "off";
+        c8_use_casc_in              : string := "off";
+        c9_use_casc_in              : string := "off";
         
         m_test_source               : integer := -1;
         c0_test_source              : integer := -1;
@@ -14979,11 +15575,11 @@ ENTITY stratixiii_pll is
         c2_test_source              : integer := -1;
         c3_test_source              : integer := -1;
         c4_test_source              : integer := -1;
-         c5_test_source              : integer := -1;
-         c6_test_source              : integer := -1;
-         c7_test_source              : integer := -1;
-         c8_test_source              : integer := -1;
-         c9_test_source              : integer := -1;
+        c5_test_source              : integer := -1;
+        c6_test_source              : integer := -1;
+        c7_test_source              : integer := -1;
+        c8_test_source              : integer := -1;
+        c9_test_source              : integer := -1;
         
         vco_multiply_by             : integer := 0;
         vco_divide_by               : integer := 0;
@@ -15005,7 +15601,7 @@ ENTITY stratixiii_pll is
         clk2_use_even_counter_mode  : string := "off";
         clk3_use_even_counter_mode  : string := "off";
         clk4_use_even_counter_mode  : string := "off";
-    clk5_use_even_counter_mode  : string := "off";
+        clk5_use_even_counter_mode  : string := "off";
         clk6_use_even_counter_mode  : string := "off";
         clk7_use_even_counter_mode  : string := "off";
         clk8_use_even_counter_mode  : string := "off";
@@ -15035,10 +15631,10 @@ ENTITY stratixiii_pll is
         test_counter_c3_delay_chain_bits : integer := 0;
         test_counter_c4_delay_chain_bits : integer := 0;
         test_counter_c5_delay_chain_bits : integer := 0;
-         test_counter_c6_delay_chain_bits : integer := 0;
-         test_counter_c7_delay_chain_bits : integer := 0;
-         test_counter_c8_delay_chain_bits : integer := 0;
-         test_counter_c9_delay_chain_bits : integer := 0;
+        test_counter_c6_delay_chain_bits : integer := 0;
+        test_counter_c7_delay_chain_bits : integer := 0;
+        test_counter_c8_delay_chain_bits : integer := 0;
+        test_counter_c9_delay_chain_bits : integer := 0;
         test_counter_m_delay_chain_bits : integer := 0;
         test_counter_n_delay_chain_bits : integer := 0;
         test_feedback_comp_delay_chain_bits : integer := 0;
@@ -15048,13 +15644,14 @@ ENTITY stratixiii_pll is
         test_volt_reg_test_mode : string := "false";
         vco_range_detector_high_bits : integer := -1;
         vco_range_detector_low_bits : integer := -1;
-	scan_chain_mif_file : string := "";
-         dpa_output_clock_phase_shift : integer := 0;
-         test_counter_c3_sclk_delay_chain_bits   : integer := -1;
-         test_counter_c4_sclk_delay_chain_bits   : integer := -1;
-         test_counter_c5_lden_delay_chain_bits   : integer := -1;
-         test_counter_c6_lden_delay_chain_bits   : integer := -1;
-     
+        scan_chain_mif_file : string := "";
+        dpa_output_clock_phase_shift : integer := 0;
+        test_counter_c3_sclk_delay_chain_bits   : integer := -1;
+        test_counter_c4_sclk_delay_chain_bits   : integer := -1;
+        test_counter_c5_lden_delay_chain_bits   : integer := -1;
+        test_counter_c6_lden_delay_chain_bits   : integer := -1;
+
+        auto_settings : string  := "true";     
 -- Simulation only generics
         family_name                 : string  := "StratixIII";
 
@@ -15132,6 +15729,7 @@ signal   i_pfd_max      : integer;
  signal   c_low_val      : int_array(0 to 9) := (OTHERS => 1);
  signal   c_initial_val  : int_array(0 to 9) := (OTHERS => 1);
  signal   c_mode_val     : str_array(0 to 9);
+ signal   clk_num     : str_array(0 to 9);
 
 -- old values
  signal   c_high_val_old : int_array(0 to 9) := (OTHERS => 1);
@@ -15165,25 +15763,25 @@ signal   i_loop_filter_r        : integer;
 -- end internal advanced parameter signals
 
 -- CONSTANTS
-CONSTANT SCAN_CHAIN : integer := 144;
-CONSTANT GPP_SCAN_CHAIN : integer := 234;
-CONSTANT FAST_SCAN_CHAIN : integer := 180;
+CONSTANT    SCAN_CHAIN : integer := 144;
+CONSTANT    GPP_SCAN_CHAIN : integer := 234;
+CONSTANT    FAST_SCAN_CHAIN : integer := 180;
  CONSTANT cntrs : str_array(9 downto 0) := ("    C9", "    C8", "    C7", "    C6", "    C5", "    C4", "    C3", "    C2", "    C1", "    C0");
-CONSTANT ss_cntrs : str_array(0 to 3) := ("     M", "    M2", "     N", "    N2");
+CONSTANT    ss_cntrs : str_array(0 to 3) := ("     M", "    M2", "     N", "    N2");
+            
+CONSTANT    loop_filter_c_arr : int_array(0 to 3) := (0,0,0,0);
+CONSTANT    fpll_loop_filter_c_arr : int_array(0 to 3) := (0,0,0,0);
+CONSTANT    charge_pump_curr_arr : int_array(0 to 15) := (0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
-CONSTANT loop_filter_c_arr : int_array(0 to 3) := (0,0,0,0);
-CONSTANT fpll_loop_filter_c_arr : int_array(0 to 3) := (0,0,0,0);
-CONSTANT charge_pump_curr_arr : int_array(0 to 15) := (0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-
-CONSTANT num_phase_taps : integer := 8;
+CONSTANT    num_phase_taps : integer := 8;
 -- signals
 
-signal vcc : std_logic := '1';
-
-signal fbclk       : std_logic;
-signal refclk      : std_logic;
-signal vco_over    : std_logic := '0';
-signal vco_under   : std_logic := '1';
+signal    vcc : std_logic := '1';
+          
+signal    fbclk       : std_logic;
+signal    refclk      : std_logic;
+signal    vco_over    : std_logic := '0';
+signal    vco_under   : std_logic := '1';
 
 signal pll_locked : boolean := false;
 
@@ -15192,68 +15790,70 @@ signal pll_locked : boolean := false;
 signal vco_out : std_logic_vector(7 downto 0) := (OTHERS => '0');
 
 -- signals to assign values to counter params
-signal m_val : integer := 1;
-signal n_val : integer := 1;
-signal m_ph_val : integer := 0;
-signal m_ph_initial : integer := 0;
-signal m_ph_val_tmp  : integer := 0;
-signal m_initial_val : integer := m_initial;
-
-signal m_mode_val : string(1 to 6) := "      ";
-signal n_mode_val : string(1 to 6) := "      ";
-signal lfc_val : integer := 0;
-signal cp_curr_val : integer := 0;
-signal lfr_val : string(1 to 2) := "  ";
-
-signal cp_curr_old_bit_setting : integer := charge_pump_current_bits;
-signal cp_curr_val_bit_setting : std_logic_vector(14 to 16) := (OTHERS => '0');
-signal lfr_old_bit_setting : integer := loop_filter_r_bits;
-signal lfr_val_bit_setting : std_logic_vector(3 to 7) := (OTHERS => '0');
-signal lfc_old_bit_setting : integer := loop_filter_c_bits; 
-signal lfc_val_bit_setting : std_logic_vector(1 to 2) := (OTHERS => '0');
-
-signal pll_reconfig_display_full_setting : boolean := FALSE; -- display full setting, change to true
--- old values
-signal m_val_old : integer := 1;
-signal n_val_old : integer := 1;
-signal m_mode_val_old : string(1 to 6) := "      ";
-signal n_mode_val_old : string(1 to 6) := "      ";
-signal m_ph_val_old : integer := 0;
-signal lfc_old : integer := 0;
-signal cp_curr_old : integer := 0;
-signal lfr_old : string(1 to 2) := "  ";
+signal    m_val : integer := 1;
+signal    n_val : integer := 1;
+signal    m_ph_val : integer := 0;
+signal    m_ph_initial : integer := 0;
+signal    m_ph_val_tmp  : integer := 0;
+signal    m_initial_val : integer := m_initial;
+         
+signal    m_mode_val : string(1 to 6) := "      ";
+signal    n_mode_val : string(1 to 6) := "      ";
+signal    lfc_val : integer := 0;
+signal    vco_cur : integer := vco_post_scale;
+signal    cp_curr_val : integer := 0;
+signal    lfr_val : string(1 to 2) := "  ";
+         
+signal    cp_curr_old_bit_setting : integer := charge_pump_current_bits;
+signal    cp_curr_val_bit_setting : std_logic_vector(2 downto 0) := (OTHERS => '0');
+signal    lfr_old_bit_setting : integer := loop_filter_r_bits;
+signal    lfr_val_bit_setting : std_logic_vector(4 downto 0) := (OTHERS => '0');
+signal    lfc_old_bit_setting : integer := loop_filter_c_bits; 
+signal    lfc_val_bit_setting : std_logic_vector(1 downto 0) := (OTHERS => '0');
+         
+signal    pll_reconfig_display_full_setting : boolean := FALSE; -- display full setting, change to true
+-- old    values
+signal    m_val_old : integer := 1;
+signal    n_val_old : integer := 1;
+signal    m_mode_val_old : string(1 to 6) := "      ";
+signal    n_mode_val_old : string(1 to 6) := "      ";
+signal    m_ph_val_old : integer := 0;
+signal    lfc_old : integer := 0;
+signal    vco_old : integer := 0;
+signal    cp_curr_old : integer := 0;
+signal    lfr_old : string(1 to 2) := "  ";
  signal num_output_cntrs : integer := 10;
-signal scanclk_period : time := 1 ps;
+signal    scanclk_period : time := 1 ps;
  signal scan_data : std_logic_vector(0 to 233) := (OTHERS => '0');
 
 
  signal clk_pfd : std_logic_vector(0 to 9);
-signal clk0_tmp : std_logic;
-signal clk1_tmp : std_logic;
-signal clk2_tmp : std_logic;
-signal clk3_tmp : std_logic;
-signal clk4_tmp : std_logic;
+signal    clk0_tmp : std_logic;
+signal    clk1_tmp : std_logic;
+signal    clk2_tmp : std_logic;
+signal    clk3_tmp : std_logic;
+signal    clk4_tmp : std_logic;
  signal clk5_tmp : std_logic;
  signal clk6_tmp : std_logic;
  signal clk7_tmp : std_logic;
  signal clk8_tmp : std_logic;
  signal clk9_tmp : std_logic;
 
-signal update_conf_latches : std_logic := '0';
-signal update_conf_latches_reg : std_logic := '0';
+signal    update_conf_latches : std_logic := '0';
+signal    update_conf_latches_reg : std_logic := '0';
 
-signal clkin : std_logic := '0';
-signal gate_locked : std_logic := '0';
-signal pfd_locked : std_logic := '0';
-signal lock : std_logic := '0';
-signal about_to_lock : boolean := false;
-signal reconfig_err : boolean := false;
+signal    clkin : std_logic := '0';
+signal    gate_locked : std_logic := '0';
+signal    pfd_locked : std_logic := '0';
+signal    lock : std_logic := '0';
+signal    about_to_lock : boolean := false;
+signal    reconfig_err : boolean := false;
 
-signal inclk_c0 : std_logic;
-signal inclk_c1 : std_logic;
-signal inclk_c2 : std_logic;
-signal inclk_c3 : std_logic;
-signal inclk_c4 : std_logic;
+signal    inclk_c0 : std_logic;
+signal    inclk_c1 : std_logic;
+signal    inclk_c2 : std_logic;
+signal    inclk_c3 : std_logic;
+signal    inclk_c4 : std_logic;
  signal inclk_c5 : std_logic;
  signal inclk_c6 : std_logic;
  signal inclk_c7 : std_logic;
@@ -15300,7 +15900,7 @@ signal reset_low : std_logic := '0';
 
 -- Phase Reconfig
 
-    SIGNAL phasecounterselect_reg   :  std_logic_vector(3 DOWNTO 0);
+ SIGNAL phasecounterselect_reg   :  std_logic_vector(3 DOWNTO 0);
 
 SIGNAL phaseupdown_reg          :  std_logic := '0';
 SIGNAL phasestep_reg            :  std_logic := '0';
@@ -15319,10 +15919,22 @@ signal schedule_vco : std_logic := '0';
 
 signal areset_ena_sig : std_logic := '0';
 signal pll_in_test_mode : boolean := false;
+signal pll_has_just_been_reconfigured : boolean := false;
 
  signal inclk_c_from_vco : std_logic_array(0 to 9);
 
 signal inclk_m_from_vco : std_logic;
+
+   SIGNAL inclk0_period              : time := 0 ps;
+   SIGNAL last_inclk0_period         : time := 0 ps;
+   SIGNAL last_inclk0_edge         : time := 0 ps;
+   SIGNAL first_inclk0_edge_detect : STD_LOGIC := '0';
+   SIGNAL inclk1_period              : time := 0 ps;
+   SIGNAL last_inclk1_period         : time := 0 ps;
+   SIGNAL last_inclk1_edge         : time := 0 ps;
+   SIGNAL first_inclk1_edge_detect : STD_LOGIC := '0';
+
+
 
 COMPONENT stratixiii_mn_cntr
     PORT (
@@ -15447,6 +16059,36 @@ inclk_m <=  fbclk when m_test_source = 0 else
     -- in different simulation deltas.
     inclk1_tmp <= inclk1_ipd;
 
+    -- Calculate the inclk0 period
+   PROCESS
+   VARIABLE inclk0_period_tmp : time := 0 ps;
+   BEGIN
+   WAIT UNTIL (inclk0_ipd'EVENT AND inclk0_ipd = '1');
+      IF (first_inclk0_edge_detect = '0') THEN
+         first_inclk0_edge_detect <= '1';
+      ELSE
+         last_inclk0_period <= inclk0_period;
+         inclk0_period_tmp  := NOW - last_inclk0_edge;
+      END IF;
+      last_inclk0_edge <= NOW;
+      inclk0_period <= inclk0_period_tmp;
+   END PROCESS;
+   
+   
+       -- Calculate the inclk1 period
+   PROCESS
+   VARIABLE inclk1_period_tmp : time := 0 ps;
+   BEGIN
+   WAIT UNTIL (inclk1_ipd'EVENT AND inclk1_ipd = '1');
+      IF (first_inclk1_edge_detect = '0') THEN
+         first_inclk1_edge_detect <= '1';
+      ELSE
+         last_inclk1_period <= inclk1_period;
+         inclk1_period_tmp  := NOW - last_inclk1_edge;
+      END IF;
+      last_inclk1_edge <= NOW;
+      inclk1_period <= inclk1_period_tmp;
+   END PROCESS;
 
     process (inclk0_ipd, inclk1_tmp, clkswitch_ipd)
     variable input_value : std_logic := '0';
@@ -15459,6 +16101,10 @@ inclk_m <=  fbclk when m_test_source = 0 else
     variable switch_over_count : integer := 0;
     variable active_clock : std_logic := '0';
     variable external_switch : boolean := false;
+    variable diff_percent_period : integer := 0;
+    variable buf : line;
+    variable switch_clock : boolean := false;
+
     begin
         if (now = 0 ps) then
             if (switch_over_type = "manual" and clkswitch_ipd = '1') then
@@ -15470,17 +16116,27 @@ inclk_m <=  fbclk when m_test_source = 0 else
             external_switch := true;
         elsif (switch_over_type = "manual") then
             if (clkswitch_ipd'event and clkswitch_ipd = '1') then
-                if (current_clock = 0) then
-                current_clock := 1;
-                active_clock := '1';
-                clkin <= transport inclk1_tmp;
-                elsif (current_clock = 1) then
-                current_clock := 0;
-                active_clock := '0';
-                clkin <= transport inclk0_ipd;
+                switch_clock := true;
+            elsif (clkswitch_ipd'event and clkswitch_ipd = '0') then
+                switch_clock := false;
             end if;
         end if;
+
+        if (switch_clock = true) then
+            if (inclk0_ipd'event or inclk1_tmp'event) then
+	            if (current_clock = 0) then
+	                current_clock := 1;
+	                active_clock := '1';
+	                clkin <= transport inclk1_tmp;
+				elsif (current_clock = 1) then
+	                current_clock := 0;
+	                active_clock := '0';
+	                clkin <= transport inclk0_ipd;
+	            end if;
+	            switch_clock := false;
+	        end if;
         end if;
+
         -- save the current inclk event value
         if (inclk0_ipd'event) then
             input_value := inclk0_ipd;
@@ -15551,6 +16207,17 @@ inclk_m <=  fbclk when m_test_source = 0 else
             if ((input_value = '0')) then
                 if (external_switch and (got_curr_clk_falling_edge_after_clkswitch or current_clk_is_bad)) or (primary_clk_is_bad and clkswitch_ipd /= '1' and (enable_switch_over_counter = "off" or switch_over_count = switch_over_counter)) then
                     got_curr_clk_falling_edge_after_clkswitch := false;
+                    
+                    if(inclk0_period > inclk1_period) then
+                        diff_percent_period := (( inclk0_period - inclk1_period ) * 100) / inclk1_period;
+                    else
+                        diff_percent_period := (( inclk1_period - inclk0_period ) * 100) / inclk0_period;
+                    end if;
+                     if((diff_percent_period > 20)and ( switch_over_type = "auto")) then
+                          WRITE(buf,string'("Warning : The input clock frequencies specified for the specified PLL are too far apart for auto-switch-over feature to work properly. Please make sure that the clock frequencies are 20 percent apart for correct functionality."));
+                          writeline(output, buf);
+                      end if;
+
                     if (current_clock = 0) then
                         current_clock := 1;
                     else
@@ -15561,19 +16228,19 @@ inclk_m <=  fbclk when m_test_source = 0 else
                     external_switch := false;
                     current_clk_is_bad := false;
                 else
-     				if(switch_over_type = "auto") then
-     					if(current_clock = 0 and clk0_is_bad = '1' and clk1_is_bad = '0' ) then
-                			current_clock := 1;
-                			active_clock := not active_clock;
-                		end	if;
+                    if(switch_over_type = "auto") then
+                        if(current_clock = 0 and clk0_is_bad = '1' and clk1_is_bad = '0' ) then
+                            current_clock := 1;
+                            active_clock := not active_clock;
+                        end if;
                 
-                     	if(current_clock = 1 and clk0_is_bad = '0' and clk1_is_bad = '1' ) then
-                			current_clock := 0;
-                			active_clock := not active_clock;
-                		end	if;
-                end if;
-                end if;  		
-       
+                        if(current_clock = 1 and clk0_is_bad = '0' and clk1_is_bad = '1' ) then
+                            current_clock := 0;
+                            active_clock := not active_clock;
+                        end if;
+                    end if;
+                end if;         
+                
             end if;
         end if;
 
@@ -15675,85 +16342,94 @@ inclk_c2 <= refclk when c2_test_source = 1 else
                 mode           => c_mode_val(4),
                 ph_tap         => c_ph_val(4));
 
-     inclk_c5 <= refclk when c5_test_source = 1 else
-                 fbclk  when c5_test_source = 0 else
-                 c_clk(4) when c5_use_casc_in = "on" else
-                 inclk_c_from_vco(5);
-                
-     c5 : stratixiii_scale_cntr
-         port map (
-                 clk            => inclk_c5,
-                 reset          => areset_ena_sig,
-                 cout           => c_clk(5),
-                 initial        => c_initial_val(5),
-                 high           => c_high_val(5),
-                 low            => c_low_val(5),
-                 mode           => c_mode_val(5),
-                 ph_tap         => c_ph_val(5));
+ inclk_c5 <= refclk when c5_test_source = 1 else
+             fbclk  when c5_test_source = 0 else
+             c_clk(4) when c5_use_casc_in = "on" else
+             inclk_c_from_vco(5);
+            
+ c5 : stratixiii_scale_cntr
+     port map (
+             clk            => inclk_c5,
+             reset          => areset_ena_sig,
+             cout           => c_clk(5),
+             initial        => c_initial_val(5),
+             high           => c_high_val(5),
+             low            => c_low_val(5),
+             mode           => c_mode_val(5),
+             ph_tap         => c_ph_val(5));
 
-     inclk_c6 <= refclk when c6_test_source = 1 else
-                 fbclk  when c6_test_source = 0 else
-                 c_clk(5) when c6_use_casc_in = "on" else
-                 inclk_c_from_vco(6);
-                
-     c6 : stratixiii_scale_cntr
-         port map (
-                 clk            => inclk_c6,
-                 reset          => areset_ena_sig,
-                 cout           => c_clk(6),
-                 initial        => c_initial_val(6),
-                 high           => c_high_val(6),
-                 low            => c_low_val(6),
-                 mode           => c_mode_val(6),
-                 ph_tap         => c_ph_val(6));
+ inclk_c6 <= refclk when c6_test_source = 1 else
+             fbclk  when c6_test_source = 0 else
+             c_clk(5) when c6_use_casc_in = "on" else
+             inclk_c_from_vco(6);
+            
+ c6 : stratixiii_scale_cntr
+     port map (
+             clk            => inclk_c6,
+             reset          => areset_ena_sig,
+             cout           => c_clk(6),
+             initial        => c_initial_val(6),
+             high           => c_high_val(6),
+             low            => c_low_val(6),
+             mode           => c_mode_val(6),
+             ph_tap         => c_ph_val(6));
 
-     inclk_c7 <= refclk when c7_test_source = 1 else
-                 fbclk  when c7_test_source = 0 else
-                 c_clk(6) when c7_use_casc_in = "on" else
-                 inclk_c_from_vco(7);
-                
-     c7 : stratixiii_scale_cntr
-         port map (
-                 clk            => inclk_c7,
-                 reset          => areset_ena_sig,
-                 cout           => c_clk(7),
-                 initial        => c_initial_val(7),
-                 high           => c_high_val(7),
-                 low            => c_low_val(7),
-                 mode           => c_mode_val(7),
-                 ph_tap         => c_ph_val(7));
+ inclk_c7 <= refclk when c7_test_source = 1 else
+             fbclk  when c7_test_source = 0 else
+             c_clk(6) when c7_use_casc_in = "on" else
+             inclk_c_from_vco(7);
+            
+ c7 : stratixiii_scale_cntr
+     port map (
+             clk            => inclk_c7,
+             reset          => areset_ena_sig,
+             cout           => c_clk(7),
+             initial        => c_initial_val(7),
+             high           => c_high_val(7),
+             low            => c_low_val(7),
+             mode           => c_mode_val(7),
+             ph_tap         => c_ph_val(7));
 
-     inclk_c8 <= refclk when c8_test_source = 1 else
-                 fbclk  when c8_test_source = 0 else
-                 c_clk(7) when c8_use_casc_in = "on" else
-                 inclk_c_from_vco(8);
-                
-     c8 : stratixiii_scale_cntr
-         port map (
-                 clk            => inclk_c8,
-                 reset          => areset_ena_sig,
-                 cout           => c_clk(8),
-                 initial        => c_initial_val(8),
-                 high           => c_high_val(8),
-                 low            => c_low_val(8),
-                 mode           => c_mode_val(8),
-                 ph_tap         => c_ph_val(8));
+ inclk_c8 <= refclk when c8_test_source = 1 else
+             fbclk  when c8_test_source = 0 else
+             c_clk(7) when c8_use_casc_in = "on" else
+             inclk_c_from_vco(8);
+            
+ c8 : stratixiii_scale_cntr
+     port map (
+             clk            => inclk_c8,
+             reset          => areset_ena_sig,
+             cout           => c_clk(8),
+             initial        => c_initial_val(8),
+             high           => c_high_val(8),
+             low            => c_low_val(8),
+             mode           => c_mode_val(8),
+             ph_tap         => c_ph_val(8));
+
+ inclk_c9 <= refclk when c9_test_source = 1 else
+             fbclk  when c9_test_source = 0 else
+             c_clk(8) when c9_use_casc_in = "on" else
+             inclk_c_from_vco(9);
+            
+ c9 : stratixiii_scale_cntr
+     port map (
+             clk            => inclk_c9,
+             reset          => areset_ena_sig,
+             cout           => c_clk(9),
+             initial        => c_initial_val(9),
+             high           => c_high_val(9),
+             low            => c_low_val(9),
+             mode           => c_mode_val(9),
+             ph_tap         => c_ph_val(9));
     
-     inclk_c9 <= refclk when c9_test_source = 1 else
-                 fbclk  when c9_test_source = 0 else
-                 c_clk(8) when c9_use_casc_in = "on" else
-                 inclk_c_from_vco(9);
-                
-     c9 : stratixiii_scale_cntr
-         port map (
-                 clk            => inclk_c9,
-                 reset          => areset_ena_sig,
-                 cout           => c_clk(9),
-                 initial        => c_initial_val(9),
-                 high           => c_high_val(9),
-                 low            => c_low_val(9),
-                 mode           => c_mode_val(9),
-                 ph_tap         => c_ph_val(9));
+    process(scandone_tmp, lock)
+    begin
+        if (scandone_tmp'event and (scandone_tmp = '1')) then
+            pll_has_just_been_reconfigured <= true;
+        elsif (lock'event and (lock = '1')) then
+            pll_has_just_been_reconfigured <= false;
+        end if;
+    end process;
     
     process(inclk_c0, inclk_c1, areset_ipd, sig_stop_vco)
     variable c0_got_first_rising_edge : boolean := false;
@@ -15854,6 +16530,8 @@ inclk_c2 <= refclk when c2_test_source = 1 else
                 writeline (output, buf);
 
                 for i in 0 to (num_output_cntrs-1) loop
+                    write (buf, clk_num(i));
+                    write (buf, string'(" : "));
                     write (buf, cntrs(i));
                     write (buf, string'(" :   high = "));
                     write (buf, c_high_val(i));
@@ -15899,6 +16577,15 @@ inclk_c2 <= refclk when c2_test_source = 1 else
                 write (buf, lfr_old);
                 write (buf, string'(" ) "));
                 writeline (output, buf);
+                
+                write (buf, string'("    VCO_Post_Scale = "));
+                write (buf, vco_cur);
+                write (buf, string'(" ( "));
+                write (buf, vco_old);
+                write (buf, string'(" ) "));
+                writeline (output, buf);
+
+                
                 ELSE
                 write (buf, string'("    Charge Pump Current  (bit setting) = "));
                 write (buf, alt_conv_integer(cp_curr_val_bit_setting));
@@ -15920,6 +16607,14 @@ inclk_c2 <= refclk when c2_test_source = 1 else
                 write (buf, lfr_old_bit_setting);
                 write (buf, string'(" ) "));
                 writeline (output, buf);
+                
+                write (buf, string'("    VCO_Post_Scale = "));
+                write (buf, vco_cur);
+                write (buf, string'(" ( "));
+                write (buf, vco_old);
+                write (buf, string'(" ) "));
+                writeline (output, buf);
+                
                 END IF;
                 cp_curr_old_bit_setting <= alt_conv_integer(cp_curr_val_bit_setting);
                 lfc_old_bit_setting <= alt_conv_integer(lfc_val_bit_setting);
@@ -16170,6 +16865,34 @@ inclk_c2 <= refclk when c2_test_source = 1 else
         return index;
     end extract_cntr_index;
 
+    function output_cntr_num (arg:string) return string is
+    variable str : string(1 to 6) := "unused";
+    begin
+        if (arg = "c0") then
+            str := "  clk0";
+        elsif (arg = "c1") then
+            str := "  clk1";
+        elsif (arg = "c2") then
+            str := "  clk2";
+        elsif (arg = "c3") then
+            str := "  clk3";
+        elsif (arg = "c4") then
+            str := "  clk4";
+        elsif (arg = "c5") then
+            str := "  clk5";
+        elsif (arg = "c6") then
+            str := "  clk6";
+        elsif (arg = "c7") then
+            str := "  clk7";
+        elsif (arg = "c8") then
+            str := "  clk8";
+        elsif (arg = "c9") then
+            str := "  clk9";
+        else str := "unused";
+        end if;
+        return str;
+    end output_cntr_num;
+
     begin
         IF (areset_ipd'EVENT AND areset_ipd = '1') then
             c_ph_val <= i_c_ph;
@@ -16200,6 +16923,16 @@ inclk_c2 <= refclk when c2_test_source = 1 else
                 clk0_cntr  := extract_cntr_string(clk0_counter);
             end if;
 
+    clk_num(9)  <= output_cntr_num(clk9_counter);
+    clk_num(8)  <= output_cntr_num(clk8_counter);
+    clk_num(7)  <= output_cntr_num(clk7_counter);
+    clk_num(6)  <= output_cntr_num(clk6_counter);
+    clk_num(5)  <= output_cntr_num(clk5_counter);
+                clk_num(4)  <= output_cntr_num(clk4_counter);
+                clk_num(3)  <= output_cntr_num(clk3_counter);
+                clk_num(2)  <= output_cntr_num(clk2_counter);
+                clk_num(1)  <= output_cntr_num(clk1_counter);
+                clk_num(0)  <= output_cntr_num(clk0_counter);
             
             i_clk0_counter <= extract_cntr_index(clk0_cntr);
             i_clk1_counter <= extract_cntr_index(clk1_cntr);
@@ -16253,13 +16986,15 @@ inclk_c2 <= refclk when c2_test_source = 1 else
                                 i_clk4_div_by, 
                                  i_clk5_div_by,i_clk6_div_by,
                                  i_clk7_div_by,i_clk8_div_by,i_clk9_div_by,
+                                clk0_counter, clk1_counter,
+                                clk2_counter, clk3_counter,
+                                clk4_counter, 
+                                 clk5_counter,clk6_counter,
+                                 clk7_counter,clk8_counter,clk9_counter,
                         i_m, i_n);
                 elsif (((pll_type = "fast") or (pll_type = "lvds") OR (pll_type = "left_right")) and ((vco_multiply_by /= 0) and (vco_divide_by /= 0))) then
                     i_n := vco_divide_by;
                     i_m := vco_multiply_by;
-                 elsif (((pll_type = "fast") or (pll_type = "lvds") OR (pll_type = "left_right")) and ((dpa_multiply_by /= 0) and (dpa_divide_by /= 0))) then
-                     i_n := dpa_divide_by;
-                     i_m := dpa_multiply_by;
                 else
                     i_n := 1;
 
@@ -16394,10 +17129,10 @@ inclk_c2 <= refclk when c2_test_source = 1 else
                 i_c_ph(3)         := c3_ph;
                 i_c_ph(4)         := c4_ph;
                 i_c_ph(5)         := c5_ph;
-                i_c_ph(6)         := c5_ph;
-                i_c_ph(7)         := c5_ph;
-                i_c_ph(8)         := c5_ph;
-                i_c_ph(9)         := c5_ph;
+                i_c_ph(6)         := c6_ph;
+                i_c_ph(7)         := c7_ph;
+                i_c_ph(8)         := c8_ph;
+                i_c_ph(9)         := c9_ph;
                 i_c_high(0)       := c0_high;
                 i_c_high(1)       := c1_high;
                 i_c_high(2)       := c2_high;
@@ -16529,6 +17264,7 @@ inclk_c2 <= refclk when c2_test_source = 1 else
                 cp_curr_old <= cp_curr_val;    
                 lfc_old <= lfc_val;    
                 lfr_old <= lfr_val;    
+                vco_old <= vco_cur;   
                 -- LF unused : bit 0,1
                 -- LF Capacitance : bits 2,3 : all values are legal
                 buf_scan_data := scan_data(2 TO 3);
@@ -16558,15 +17294,17 @@ inclk_c2 <= refclk when c2_test_source = 1 else
                     lfr_val <= "01";
                 END IF;
             
-
+             
                 -- VCO post scale assignment   
-                if (scan_data(9) = '0') then  -- vco_post_scale = 1
-               	    i_vco_max <= vco_max/2;
-               	    i_vco_min <= vco_min/2;
-       	    	else
-               	    i_vco_max <= vco_max;
-               	    i_vco_min <= vco_min;  
-       	    	end if;             
+                if (scan_data(9) = '1') then  -- vco_post_scale = 1
+                    i_vco_max <= vco_max/2;
+                    i_vco_min <= vco_min/2;
+                    vco_cur <= 1;
+                else
+                    i_vco_max <= vco_max;
+                    i_vco_min <= vco_min;  
+                    vco_cur <= 2;
+                end if;             
                 -- CP
                 -- Bit 9 : CRBYPASS
                 -- Bit 10-14 : unused
@@ -16649,7 +17387,7 @@ inclk_c2 <= refclk when c2_test_source = 1 else
                     IF (c_hval(i) /= 0) THEN
                         c_high_val_tmp(i) := c_hval(i);
                     ELSE
-                    	c_high_val_tmp(i) := alt_conv_integer("000000001");
+                        c_high_val_tmp(i) := alt_conv_integer("000000001");
                     END IF;
                     
                     -- 4. Low 
@@ -16659,7 +17397,7 @@ inclk_c2 <= refclk when c2_test_source = 1 else
                     IF (c_lval(i) /= 0) THEN
                         c_low_val_tmp(i) := c_lval(i);
                     ELSE
-                    	 c_low_val_tmp(i) := alt_conv_integer("000000001");
+                         c_low_val_tmp(i) := alt_conv_integer("000000001");
                     END IF;
                     i := i + 1;
                 END LOOP;
@@ -16674,10 +17412,10 @@ inclk_c2 <= refclk when c2_test_source = 1 else
                 ELSIF (m_hi /= "00000000") THEN
                     m_val_tmp := alt_conv_integer(m_hi) + alt_conv_integer(m_lo);    
                 ELSE
-                	m_val_tmp := alt_conv_integer("000000001");
+                    m_val_tmp := alt_conv_integer("000000001");
                 END IF;
                 ELSE
-                	m_val_tmp := alt_conv_integer("10000000");
+                    m_val_tmp := alt_conv_integer("10000000");
                 END IF;
                 -- N counter value
     IF(scan_data(36) /= '1') THEN
@@ -16688,10 +17426,10 @@ inclk_c2 <= refclk when c2_test_source = 1 else
                 ELSIF (n_hi /= "00000000") THEN
                     n_val <= alt_conv_integer(n_hi) + alt_conv_integer(n_lo);    
                 ELSE
-                	n_val <= alt_conv_integer("000000001");
+                    n_val <= alt_conv_integer("000000001");
                 END IF;
                 ELSE
-                	n_val <= alt_conv_integer("10000000");
+                    n_val <= alt_conv_integer("10000000");
                 END IF;
                 -- TODO : Give warnings/errors in the following cases?
                 -- 1. Illegal counter values (error)
@@ -17066,6 +17804,7 @@ BEGIN
           -- start reconfiguration
            IF (phasecounterselect_ipd < "1100") THEN -- no counters selected 
              IF (phasecounterselect_ipd = "0000") THEN
+                            i := 0;
                             WHILE (i < num_output_cntrs) LOOP
                                 c_ph := c_ph_val(i);
                                 IF (phaseupdown_ipd = '1') THEN
@@ -17223,6 +17962,8 @@ END PROCESS;
 
             if (areset_ipd = '1') then
                 pll_is_in_reset := true;
+                got_first_refclk := false;
+                got_second_refclk := false;
             end if;
 
             -- drop VCO taps to 0
@@ -17386,7 +18127,7 @@ if (refclk'event and refclk = '1' and areset_ipd = '0') then
             cycles_pfd_low := 0;
             if (pfd_locked = '0') then
                 if (cycles_pfd_high = lock_high) then
-                    assert false report family_name & " PLL locked in test mode on PFD enable assertion.";
+                    assert false report family_name & " PLL locked in test mode on PFD enable assertion." severity warning;
                     pfd_locked <= '1';
                 end if;
                 cycles_pfd_high := cycles_pfd_high + 1;
@@ -17397,7 +18138,7 @@ if (refclk'event and refclk = '1' and areset_ipd = '0') then
             cycles_pfd_high := 0;
             if (pfd_locked = '1') then
                 if (cycles_pfd_low = lock_low) then
-                    assert false report family_name & " PLL lost lock in test mode on PFD enable de-assertion.";
+                    assert false report family_name & " PLL lost lock in test mode on PFD enable de-assertion." severity warning;
                     pfd_locked <= '0';
                 end if;
                 cycles_pfd_low := cycles_pfd_low + 1;
@@ -17479,7 +18220,9 @@ if (refclk'event and refclk = '1' and areset_ipd = '0') then
             end if;
 
             -- need refclk_period here, so initialized to proper value above
-            if ( ( (now - refclk_time > 1.5 * refclk_period) and pfdena_ipd = '1' and pll_is_locked) or ( (now - refclk_time > 5 * refclk_period) and pfdena_ipd = '1') ) then
+            if ( ( (now - refclk_time > 1.5 * refclk_period) and pfdena_ipd = '1' and pll_is_locked) or
+                ( (now - refclk_time > 5 * refclk_period) and pfdena_ipd = '1' and pll_has_just_been_reconfigured = false) or
+                ( (now - refclk_time > 50 * refclk_period) and pfdena_ipd = '1' and pll_has_just_been_reconfigured = true) ) then
                 stop_vco := true;
                 -- reset
                 got_first_refclk := false;
@@ -17488,7 +18231,10 @@ if (refclk'event and refclk = '1' and areset_ipd = '0') then
                 if (pll_is_locked) then
                     pll_is_locked := false;
                     locked_tmp := '0';
-                    assert false report family_name & " PLL lost lock due to loss of input clock" severity note;
+                    assert false report family_name & " PLL lost lock due to loss of input clock or the input clock is not detected within the allowed time frame." severity note;
+                    if ((i_vco_max = 0) and (i_vco_min = 0)) then
+                        assert false report "Please run timing simulation to check whether the input clock is operating within the supported VCO range or not." severity note;
+                    end if;
                 end if;
                 cycles_to_lock := 0;
                 cycles_to_unlock := 0;
@@ -17534,6 +18280,9 @@ if (refclk'event and refclk = '1' and areset_ipd = '0') then
                         vco_period_was_phase_adjusted := false;
                         phase_adjust_was_scheduled := false;
                         assert false report family_name & " PLL lost lock." severity note;
+                        got_first_refclk := false;
+                        got_first_fbclk := false;
+                        got_second_refclk := false;
                     end if;
                 end if;
                 if ( abs(refclk_period - fbclk_period) <= 2 ps ) then
@@ -17652,7 +18401,7 @@ scandone <= NOT scandone_tmp;
 phasedone <= NOT update_phase;
 vcooverrange <= 'Z' WHEN (vco_range_detector_high_bits = -1) ELSE vco_over;
 vcounderrange <= 'Z' WHEN (vco_range_detector_low_bits = -1) ELSE vco_under;
-
+fbout <= fbclk;
 end vital_pll;
 -- END ARCHITECTURE VITAL_PLL
 -------------------------------------------------------------------
@@ -17728,7 +18477,7 @@ ENTITY stratixiii_lvds_reg is
             );
 END stratixiii_lvds_reg;
 
-ARCHITECTURE vital_stratixiii_lvds_reg of stratixiii_lvds_reg is
+ARCHITECTURE vital_titan_lvds_reg of stratixiii_lvds_reg is
 
 
     -- INTERNAL SIGNALS
@@ -17784,7 +18533,7 @@ ARCHITECTURE vital_stratixiii_lvds_reg of stratixiii_lvds_reg is
 
         end process;
 
-end vital_stratixiii_lvds_reg;
+end vital_titan_lvds_reg;
 
 --/////////////////////////////////////////////////////////////////////////////
 --
@@ -18670,7 +19419,7 @@ ARCHITECTURE trans OF stratixiii_dpa_retime_block IS
    SIGNAL data5_tmp               : STD_LOGIC;
    SIGNAL data6_tmp               : STD_LOGIC;
    SIGNAL data7_tmp               : STD_LOGIC;
-   SIGNAL lock_tmp                : STD_LOGIC;
+   SIGNAL lock_tmp                : STD_LOGIC := '0';
 BEGIN
 
    clk0 <= '0' WHEN reset = '1' ELSE clk0_tmp;
@@ -18748,17 +19497,16 @@ END trans;
    -- Module Name : stratixiii_dpa_block
    --
    -- Description : Simulation model for selecting the retimed data, clock and loaden
-   --               depending on teh PPM varaiation and direction of shift.
+   --               depending on the PPM varaiation and direction of shift.
    --
    -------------------------------------------------------------------------------
 
 
 LIBRARY ieee;
    USE ieee.std_logic_1164.all;
---   USE ieee.std_logic_unsigned.all;
+   USE ieee.std_logic_unsigned.all;
    USE work.stratixiii_dpa_retime_block;
-library grlib;
-use grlib.stdlib.all;
+
 
 ENTITY stratixiii_dpa_block IS
    GENERIC (
@@ -18780,7 +19528,7 @@ ENTITY stratixiii_dpa_block IS
 END stratixiii_dpa_block;
 
 ARCHITECTURE trans OF stratixiii_dpa_block IS
-   COMPONENT stratixiii_dpa_retime_block IS
+   COMPONENT stratixiii_dpa_retime_block
       PORT (
          clkin            : IN STD_LOGIC;
          datain           : IN STD_LOGIC;
@@ -18864,15 +19612,22 @@ BEGIN
 
    PROCESS (clkin, dpareset, dpahold)
    variable initial : boolean := true;
+   variable ppm_tmp : integer;
    BEGIN
    if(initial) then
+        if(net_ppm_variation = 0) then
+        	ppm_tmp := 1;
+        else
+        	ppm_tmp := net_ppm_variation;
+        end if;
+        
         if(net_ppm_variation = 0) then
             counter_reset_value <=  1;
             count_value <= 1;
             initial := false;
         else
-            counter_reset_value <=  1000000 / (net_ppm_variation * 8);
-            count_value <= 1000000 / (net_ppm_variation * 8);
+            counter_reset_value <=  1000000 / (ppm_tmp * 8);
+            count_value <= 1000000 / (ppm_tmp * 8);
             initial := false;
         end if;
     end if;
@@ -18972,7 +19727,7 @@ END trans;
 
 --/////////////////////////////////////////////////////////////////////////////
 --
--- Module Name : stratixiii_lvds_receiver
+-- Module Name : stratixiii_LVDS_RECEIVER
 --
 -- Description : Timing simulation model for the stratixiii LVDS RECEIVER
 --               atom. This module instantiates the following sub-modules :
@@ -19016,7 +19771,7 @@ ENTITY stratixiii_lvds_receiver IS
               enable_dpa_align_to_rising_edge_only   : string := "off";
               net_ppm_variation     : INTEGER := 0;
               is_negative_ppm_drift   : string := "off";
-              rx_input_path_delay_engineering_bits : INTEGER := -1;
+               rx_input_path_delay_engineering_bits : INTEGER := -1;
               x_on_bitslip                   :  string := "on";
               lpm_type                       :  string := "stratixiii_lvds_receiver";
               MsgOn                    : Boolean := DefGlitchMsgOn;
@@ -19047,7 +19802,7 @@ ENTITY stratixiii_lvds_receiver IS
               bitslipreset            : IN std_logic := '0';
               serialfbk               : IN std_logic := '0';
               dataout                 : OUT std_logic_vector(channel_width - 1 DOWNTO 0);
-              dpalock                 : OUT std_logic;
+              dpalock                 : OUT std_logic:= '0';
               bitslipmax              : OUT std_logic;
               serialdataout           : OUT std_logic;
               postdpaserialdataout    : OUT std_logic;
@@ -19232,6 +19987,8 @@ ARCHITECTURE vital_arm_lvds_receiver OF stratixiii_lvds_receiver IS
 
     signal xhdl_12                  :  std_logic;
     signal rxload                   :  std_logic;
+    signal clk0_tmp                  :  std_logic; 
+    signal clk0_tmp_neg                  :  std_logic; 
 
 
     begin
@@ -19285,22 +20042,30 @@ ARCHITECTURE vital_arm_lvds_receiver OF stratixiii_lvds_receiver IS
         end process;
 
 
+       
         xhdl_12 <= devclrn OR devpor;
 
          -- input register in non-DPA mode for sampling incoming data
         in_reg : stratixiii_lvds_reg
-            PORT MAP ( d    => in_reg_data,
-                       clk  => clk0_ipd,
+            PORT MAP (
+                     d    => in_reg_data,
+                       clk  => clk0_tmp,
                        ena  => vcc,
                        clrn => xhdl_12,
                        prn  => vcc,
                        q    => datain_reg
                      );
       in_reg_data <= serialfbk_ipd WHEN (use_serial_feedback_input = "on") ELSE datain_ipd;
+      						 
+      						 
+
+      clk0_tmp <= clk0_ipd;
+      clk0_tmp_neg <= not clk0_ipd;
 
       neg_reg : stratixiii_lvds_reg
-            PORT MAP ( d    => in_reg_data,
-                       clk  => clk0_ipd,
+            PORT MAP ( 
+                     d    => in_reg_data,
+                       clk  => clk0_tmp_neg,
                        ena  => vcc,
                        clrn => xhdl_12,
                        prn  => vcc,
@@ -19325,7 +20090,8 @@ ARCHITECTURE vital_arm_lvds_receiver OF stratixiii_lvds_receiver IS
 
    -- DPA circuitary
        dpareg0 : stratixiii_lvds_reg
-        PORT MAP ( d    => in_reg_data,
+        PORT MAP ( 
+                d    => in_reg_data,
                    clk  => ini_dpa_clk,
                    clrn => vcc,
                    prn  => vcc,
@@ -19374,7 +20140,7 @@ ARCHITECTURE vital_arm_lvds_receiver OF stratixiii_lvds_receiver IS
     s_fifo : stratixiii_lvds_rx_fifo
         GENERIC MAP ( channel_width => channel_width
                     )
-        PORT MAP    ( wclk    => fifo_wclk,
+        PORT MAP    ( wclk    => dpa_clk,
                       rclk    => fifo_rclk,
                       fiforst => fifo_reset,
                       dparst  => dpa_rst,
@@ -19401,7 +20167,7 @@ ARCHITECTURE vital_arm_lvds_receiver OF stratixiii_lvds_receiver IS
                       dataout   => slip_dataout
                     );
     bitslip_reset <= (NOT devpor) OR (NOT devclrn) OR bitslipreset_ipd ;
-    slip_datain_tmp <= fifo_dataout when (enable_dpa = "on" and dpaswitch_ipd = '1') else datain_reg_tmp ;
+   slip_datain_tmp <= fifo_dataout when (enable_dpa = "on" and dpaswitch_ipd = '1') else datain_reg_tmp ;
     slip_datain <= dpa_data_shift when(enable_soft_cdr = "on") else slip_datain_tmp;
     s_bitslip_clk <= dpa_clk when (enable_soft_cdr = "on") else clk0_ipd;
 
@@ -19437,7 +20203,7 @@ ARCHITECTURE vital_arm_lvds_receiver OF stratixiii_lvds_receiver IS
                       dataout => dataout
                     );
 
-    dpa_is_locked <= lock_tmp when (enable_dpa = "on") else gnd;
+    dpa_is_locked <= gnd;
     dpaclkout <= dpa_clk_shift;
     postdpaserialdataout <= dpa_data_shift ;
     serialdataout <= datain_ipd;
@@ -19728,6 +20494,13 @@ ENTITY stratixiii_bias_block IS
         tipd_shiftnld : VitalDelayType01 := DefPropDelay01;
         tipd_captnupdt : VitalDelayType01 := DefPropDelay01;
         tipd_din : VitalDelayType01 := DefPropDelay01;
+        tsetup_din_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
+        tsetup_shiftnld_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
+        tsetup_captnupdt_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
+        thold_din_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
+        thold_shiftnld_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
+        thold_captnupdt_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
+        tpd_clk_dout_posedge : VitalDelayType01 := DefPropDelay01;
         MsgOn: Boolean := DefGlitchMsgOn;
         XOn: Boolean := DefGlitchXOn;
         MsgOnChecks: Boolean := DefMsgOnChecks;
@@ -19816,7 +20589,7 @@ begin
                            update => update_wire,
                            dout => dout
                            );
-
+    
 end vital_bias_block;
 -------------------------------------------------------------------
 --
@@ -19835,13 +20608,15 @@ entity  stratixiii_tsdblock is
         clock_divider_enable : string := "on";
         clock_divider_value : integer := 40;
         sim_tsdcalo : integer := 0;
+        user_offset_enable : string := "off";
         lpm_type : string := "stratixiii_tsdblock"
         );	
     port (
-        offset : in std_logic_vector(5 downto 0);
-        clk : in std_logic; 
-        ce : in std_logic; 
-        clr : in std_logic; 
+        offset : in std_logic_vector(5 downto 0) := (OTHERS => '0');
+        clk : in std_logic := '0'; 
+        ce : in std_logic := '0'; 
+        clr : in std_logic := '0'; 
+        testin : in std_logic_vector(7 downto 0) := (OTHERS => '0');
         tsdcalo : out std_logic_vector(7 downto 0);
         tsdcaldone : out std_logic; 
         fdbkctrlfromcore : in std_logic := '0';

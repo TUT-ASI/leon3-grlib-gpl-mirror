@@ -193,3 +193,140 @@ dtramtest:
 6: 	mov	1, %o0
 
 
+	.data
+test_data:
+	.word  1
+
+	.text
+	.global bpred_test
+
+	nop; nop
+	nop
+bpred_test:
+
+	set 	test_data, %o1
+	ld 	[%o1], %o2
+	subcc	%o2, 1, %g0
+	bne	1f
+	subcc	%02, 2, %g0
+	ld 	[%o1], %o2
+	ld 	[%o1], %o2
+	sll	%o2, 2, %o2
+	ba	2f
+	nop
+1:
+	bne,a	2f
+	restore
+	ld 	[%o1], %o2
+2:	
+
+	save
+	mov	%psr, %o1
+	wr	%o1, 0x20, %psr
+	set	reta, %l1
+	add	%l1, 4, %l2
+	nop
+	jmp	%l1
+	rett	%l2
+	ta 1
+	ta 1
+reta:
+	bl,a	3f
+	add	%g0, 1, %o0
+	sub	%o0, 1, %o0
+	sll	%o0, 1, %o0
+	sll	%o0, 2, %o0
+3:
+	retl
+	nop
+
+
+	.global rsysreg
+rsysreg:
+	retl
+	lda	[%o0] 0x2, %o0
+
+	.global wsysreg
+wsysreg:
+	retl
+	sta	%o1, [%o0] 0x2
+
+	.global asmgetitag
+asmgetitag:
+	retl
+	lda	[%o0] 0xc, %o0
+
+	.global asmsetitag
+asmsetitag:
+	retl
+	sta	%o1, [%o0] 0xc
+
+	.global asmgetidata
+asmgetidata:
+	retl
+	lda	[%o0] 0xd, %o0
+
+	.global asmsetidata
+asmsetidata:
+	retl
+	sta	%o1, [%o0] 0xd
+
+	.global asmgetdtag
+asmgetdtag:
+	retl
+	lda	[%o0] 0xe, %o0
+
+	.global asmsetdtag
+asmsetdtag:
+	retl
+	sta	%o1, [%o0] 0xe
+
+	.global asmgetddata
+asmgetddata:
+	retl
+	lda	[%o0] 0xf, %o0
+
+	.global asmsetddata
+asmsetddata:
+	retl
+	sta	%o1, [%o0] 0xf
+
+	.global setudata
+setudata:
+	retl
+	sta	%o1, [%o0] 0x0
+
+	.global getudata
+getudata:
+	retl
+	lda	[%o0] 0x0, %o0
+
+	.global xgetpsr
+xgetpsr:
+	retl
+	mov	%psr, %o0
+
+	.global setpsr
+setpsr:
+	mov  %o0, %psr;
+	nop;
+	nop;
+	nop;
+	retl
+	nop
+
+	.global flushi
+flushi:
+	retl
+	sta	%g0, [%g0] 0x5
+
+	.global flushd
+flushd:
+	retl
+	sta	%g0, [%g0] 0x6
+
+    .global getdw
+getdw:
+    retl
+    ldd [%o0], %o0
+

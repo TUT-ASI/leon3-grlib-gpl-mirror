@@ -172,7 +172,7 @@ package misc is
     datain  : in std_logic_vector(31 downto 0);
     dataout : out std_logic_vector(31 downto 0);
     enable  : in std_ulogic;			-- active high chip select
-    bwrite  : in std_logic_vector(0 to 3)	-- active high byte write enable
+    write  : in std_logic_vector(0 to 3)	-- active high byte write enable
   );						-- big-endian write: bwrite(0) => data(31:24)
   end component;
 
@@ -533,7 +533,8 @@ end record;
     clk1        : integer := 20000;
     clk2        : integer := 15385;
     clk3        : integer := 0;
-    burstlen    : integer range 2 to 8 := 8
+    burstlen    : integer range 2 to 8 := 8;
+    asyncrst    : integer range 0 to 1 := 0
     );
   port (
     rst       : in std_logic;
@@ -544,7 +545,8 @@ end record;
     vgao      : out apbvga_out_type;
     ahbi      : in  ahb_mst_in_type;
     ahbo      : out ahb_mst_out_type;
-    clk_sel   : out std_logic_vector(1 downto 0)
+    clk_sel   : out std_logic_vector(1 downto 0);
+    arst      : in  std_ulogic := '1'
     );
 
   end component;

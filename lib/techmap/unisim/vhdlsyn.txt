@@ -14,9 +14,8 @@ grlfpw_0_unisim.vhd
 grfpw_unisim.vhd
 grfpw_0_unisim_v2.vhd
 grfpw_0_unisim_v4.vhd
+grfpw_0_unisim_v5.vhd
 leon3ft_unisim.vhd
-leon3ft_grfpu_unisim.vhd
-leon3ft_grfpul_unisim.vhd
 grusbhc_unisim.vhd
 grusbhc_unisim_comb0.vhd
 grusbhc_unisim_comb1.vhd

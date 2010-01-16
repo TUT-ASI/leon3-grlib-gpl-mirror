@@ -56,10 +56,11 @@ component grusbhc_net is
     ramtest     : integer range 0 to 1     := 0;
     urst_time   : integer                  := 250;
     oepol       : integer range 0 to 1     := 0;
-    scantest    : integer                  := 0;
+    scantest    : integer range 0 to 1     := 0;
     memtech     : integer range 0 to NTECH := DEFMEMTECH;
-    memsel      : integer                  := 0
-    );
+    memsel      : integer                  := 0;
+    syncprst    : integer range 0 to 1     := 0;
+    sysfreq     : integer                  := 65000);
   port (
     clk               : in  std_ulogic;
     uclk              : in  std_ulogic;
@@ -70,9 +71,6 @@ component grusbhc_net is
     ehc_apbsi_paddr   : in  std_logic_vector(31 downto 0);
     ehc_apbsi_pwrite  : in  std_ulogic;
     ehc_apbsi_pwdata  : in  std_logic_vector(31 downto 0);
-    ehc_apbsi_testen  : in  std_ulogic;
-    ehc_apbsi_testrst : in  std_ulogic;
-    ehc_apbsi_scanen  : in  std_ulogic;
     -- EHC apb_slv_out_type unwrapped
     ehc_apbso_prdata  : out std_logic_vector(31 downto 0);
     ehc_apbso_pirq    : out std_ulogic;
@@ -82,9 +80,6 @@ component grusbhc_net is
     ahbmi_hresp       : in  std_logic_vector(1 downto 0);
     ahbmi_hrdata      : in  std_logic_vector(31 downto 0);
     ahbmi_hcache      : in  std_ulogic;
-    ahbmi_testen      : in  std_ulogic;
-    ahbmi_testrst     : in  std_ulogic;
-    ahbmi_scanen      : in  std_ulogic;
     -- UHC ahb_slv_in_type unwrapped
     uhc_ahbsi_hsel    : in  std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
     uhc_ahbsi_haddr   : in  std_logic_vector(31 downto 0);
@@ -93,9 +88,6 @@ component grusbhc_net is
     uhc_ahbsi_hsize   : in  std_logic_vector(2 downto 0);
     uhc_ahbsi_hwdata  : in  std_logic_vector(31 downto 0);
     uhc_ahbsi_hready  : in  std_ulogic;
-    uhc_ahbsi_testen  : in  std_ulogic;
-    uhc_ahbsi_testrst : in  std_ulogic;
-    uhc_ahbsi_scanen  : in  std_ulogic;
     -- EHC ahb_mst_out_type_unwrapped 
     ehc_ahbmo_hbusreq : out std_ulogic;
     ehc_ahbmo_hlock   : out std_ulogic;
@@ -197,7 +189,12 @@ component grusbhc_net is
     mbc11_pb_en       : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
     mbc11_pb_we       : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
     pb_mbc11_data     : in  std_logic_vector((n_cc*32)*uhcgen downto 1*uhcgen);
-    bufsel            : out std_ulogic);    
+    bufsel            : out std_ulogic;
+    -- scan signals
+    testen            : in  std_ulogic;
+    testrst           : in  std_ulogic;
+    scanen            : in  std_ulogic;
+    testoen           : in  std_ulogic);
   end component;
 
 component grspwc_net 
@@ -615,9 +612,9 @@ end component;
       clk     : in  std_ulogic;
       gclk    : in  std_ulogic;
       rstn    : in  std_ulogic;
-      ahbi    : in  ahb_mst_in_type;
-      ahbo    : out ahb_mst_out_type;
-      ahbsi   : in  ahb_slv_in_type;
+      ahbix   : in  ahb_mst_in_type;
+      ahbox   : out ahb_mst_out_type;
+      ahbsix  : in  ahb_slv_in_type;
       ahbso   : in  ahb_slv_out_vector;
       irqi_irl:         in    std_logic_vector(3 downto 0);
       irqi_rst:         in    std_ulogic;

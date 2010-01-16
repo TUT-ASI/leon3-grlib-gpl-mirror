@@ -42,6 +42,7 @@ ARCHITECTURE SYN OF apll IS
 	SIGNAL sub_wire8	: STD_LOGIC_VECTOR (1 DOWNTO 0);
 	SIGNAL sub_wire9_bv	: BIT_VECTOR (0 DOWNTO 0);
 	SIGNAL sub_wire9	: STD_LOGIC_VECTOR (0 DOWNTO 0);
+	SIGNAL scanclk_clk5	: STD_LOGIC ;
 
   signal phasecounter_reg : std_logic_vector(3 downto 0);
   attribute syn_keep : boolean;
@@ -119,6 +120,10 @@ ARCHITECTURE SYN OF apll IS
 		clk4_duty_cycle		: NATURAL;
 		clk4_multiply_by		: NATURAL;
 		clk4_phase_shift		: STRING;
+		clk5_divide_by		: NATURAL;
+		clk5_duty_cycle		: NATURAL;
+		clk5_multiply_by		: NATURAL;
+		clk5_phase_shift		: STRING;
 		compensate_clock		: STRING;
 		inclk0_input_frequency		: NATURAL;
 		intended_device_family		: STRING;
@@ -188,6 +193,7 @@ ARCHITECTURE SYN OF apll IS
 BEGIN
 	sub_wire9_bv(0 DOWNTO 0) <= "0";
 	sub_wire9    <= To_stdlogicvector(sub_wire9_bv);
+	scanclk_clk5 <= sub_wire0(5);
 	sub_wire5    <= sub_wire0(4);
 	sub_wire4    <= sub_wire0(3);
 	sub_wire3    <= sub_wire0(2);
@@ -203,9 +209,11 @@ BEGIN
 	sub_wire8    <= sub_wire9(0 DOWNTO 0) & sub_wire7;
 
   -- quartus bug, cant be constant
-  process(scanclk)
+  --process(scanclk)
+  process(scanclk_clk5)
   begin
-    if rising_edge(scanclk) then
+    --if rising_edge(scanclk) then
+    if rising_edge(scanclk_clk5) then -- use ddr clock/2 to not violate 100MHz max freq
       phasecounter_reg <= "0110"; --phasecounter;
     end if;
   end process;
@@ -233,6 +241,10 @@ BEGIN
 		clk4_duty_cycle => 50,
 		clk4_multiply_by => mult,
 		clk4_phase_shift => pshift_rclk,--"0",
+		clk5_divide_by => div*2,
+		clk5_duty_cycle => 50,
+		clk5_multiply_by => mult,
+		clk5_phase_shift => "0",
 		compensate_clock => "CLK0",
 		inclk0_input_frequency => period,--8000,
 		intended_device_family => "Stratix III",
@@ -271,7 +283,7 @@ BEGIN
 		port_clk2 => "PORT_USED",
 		port_clk3 => "PORT_USED",
 		port_clk4 => "PORT_USED",
-		port_clk5 => "PORT_UNUSED",
+		port_clk5 => "PORT_USED",
 		port_clk6 => "PORT_UNUSED",
 		port_clk7 => "PORT_UNUSED",
 		port_clk8 => "PORT_UNUSED",
@@ -292,7 +304,8 @@ BEGIN
 		inclk => sub_wire8,
 		phasecounterselect => phasecounter_reg,
 		areset => areset,
-		scanclk => scanclk,
+		--scanclk => scanclk,
+		scanclk => scanclk_clk5,
 		clk => sub_wire0,
 		locked => sub_wire6,
     phasedone => phasedone 

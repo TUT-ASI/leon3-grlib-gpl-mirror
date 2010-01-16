@@ -127,6 +127,11 @@ begin
          port map (clk, address, datain, dataoutx, enable, write);
   end generate;
 
+  fus : if tech = actfus generate
+    x0 : fusion_syncram generic map (abits, dbits)
+         port map (clk, address, datain, dataoutx, enable, write);
+  end generate;
+
   ihp : if tech = ihp25 generate
     x0 : ihp25_syncram generic map(abits, dbits)
          port map(clk, address, datain, dataoutx, enable, write);

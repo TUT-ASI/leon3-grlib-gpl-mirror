@@ -350,67 +350,76 @@ begin
           hrdata := (others => '0');          
           case hasel2 is
             when "00000" =>
-              if (r.slv.hwrite and hclken) = '1' then
-                v.te(index) := ahbsi2.hwdata(0);
-                v.be(index) := ahbsi2.hwdata(1);
-                v.bw(index) := ahbsi2.hwdata(2);
-                v.bs(index) := ahbsi2.hwdata(3);
-                v.bx(index) := ahbsi2.hwdata(4);                
-                v.bz(index) := ahbsi2.hwdata(5);                
-                v.reset(index) := ahbsi2.hwdata(9);                
-                v.halt(index) := ahbsi2.hwdata(10);                
-              else
-                hrdata(0) := r.te(index);
-                hrdata(1) := r.be(index);
-                hrdata(2) := r.bw(index);
-                hrdata(3) := r.bs(index);
-                hrdata(4) := r.bx(index);
-                hrdata(5) := r.bz(index);
-                hrdata(6) := dbgi(index).dsumode;
-                hrdata(7) := r.dsuen(2);
-                hrdata(8) := r.dsubre(2);
-                hrdata(9) := not dbgi(index).error;
-                hrdata(10) := dbgi(index).halt;
-                hrdata(11) := dbgi(index).pwd;
+              if r.slv.hwrite = '1' then
+                if hclken = '1' then
+                  v.te(index) := ahbsi2.hwdata(0);
+                  v.be(index) := ahbsi2.hwdata(1);
+                  v.bw(index) := ahbsi2.hwdata(2);
+                  v.bs(index) := ahbsi2.hwdata(3);
+                  v.bx(index) := ahbsi2.hwdata(4);                
+                  v.bz(index) := ahbsi2.hwdata(5);                
+                  v.reset(index) := ahbsi2.hwdata(9);                
+                  v.halt(index) := ahbsi2.hwdata(10);                
+		else v.reset := r.reset; end if;
               end if;
+              hrdata(0) := r.te(index);
+              hrdata(1) := r.be(index);
+              hrdata(2) := r.bw(index);
+              hrdata(3) := r.bs(index);
+              hrdata(4) := r.bx(index);
+              hrdata(5) := r.bz(index);
+              hrdata(6) := dbgi(index).dsumode;
+              hrdata(7) := r.dsuen(2);
+              hrdata(8) := r.dsubre(2);
+              hrdata(9) := not dbgi(index).error;
+              hrdata(10) := dbgi(index).halt;
+              hrdata(11) := dbgi(index).pwd;
             when "00010" =>  -- timer
-              if (r.slv.hwrite and hclken) = '1' then
-                v.timer := ahbsi2.hwdata(tbits-1 downto 0);
-              else
-                hrdata(tbits-1 downto 0) := r.timer;
+              if r.slv.hwrite = '1' then
+                if hclken = '1' then
+                  v.timer := ahbsi2.hwdata(tbits-1 downto 0);
+                else v.timer := r.timer; end if;
               end if;
+              hrdata(tbits-1 downto 0) := r.timer;
             when "01000" =>
-              if (r.slv.hwrite and hclken) = '1' then
-                v.bn := ahbsi2.hwdata(NCPU-1 downto 0);
-                v.ss := ahbsi2.hwdata(16+NCPU-1 downto 16);
-              else
-                hrdata(NCPU-1 downto 0) := r.bn;
-                hrdata(16+NCPU-1 downto 16) := r.ss; 
+              if r.slv.hwrite = '1' then
+                if hclken = '1' then
+                  v.bn := ahbsi2.hwdata(NCPU-1 downto 0);
+                  v.ss := ahbsi2.hwdata(16+NCPU-1 downto 16);
+		else v.bn := r.bn; v.ss := r.ss; end if;
               end if;
+              hrdata(NCPU-1 downto 0) := r.bn;
+              hrdata(16+NCPU-1 downto 16) := r.ss; 
             when "01001" =>
               if (r.slv.hwrite and hclken) = '1' then
                 v.bmsk(NCPU-1 downto 0) := ahbsi2.hwdata(NCPU-1 downto 0);
                 v.dmsk(NCPU-1 downto 0) := ahbsi2.hwdata(NCPU-1+16 downto 16);
-              else
-                hrdata(NCPU-1 downto 0) := r.bmsk;
-                hrdata(NCPU-1+16 downto 16) := r.dmsk;
               end if;
+              hrdata(NCPU-1 downto 0) := r.bmsk;
+              hrdata(NCPU-1+16 downto 16) := r.dmsk;
             when "10000" =>
 	      if TRACEN then
 	        hrdata((TBUFABITS + 15) downto 16) := tr.delaycnt;
 	        hrdata(2 downto 0) := tr.break & tr.dcnten & tr.enable;
-	        if (r.slv.hwrite and hclken) = '1' then
-	          tv.delaycnt := ahbsi2.hwdata((TBUFABITS+ 15) downto 16);
-	          tv.break  := ahbsi2.hwdata(2);                  
-	          tv.dcnten := ahbsi2.hwdata(1);
-	          tv.enable := ahbsi2.hwdata(0);
+                if r.slv.hwrite = '1' then
+                  if hclken = '1' then
+	            tv.delaycnt := ahbsi2.hwdata((TBUFABITS+ 15) downto 16);
+	            tv.break  := ahbsi2.hwdata(2);                  
+	            tv.dcnten := ahbsi2.hwdata(1);
+	            tv.enable := ahbsi2.hwdata(0);
+		  else 
+		    tv.delaycnt := tr.delaycnt; tv.break := tr.break;
+		    tv.dcnten := tr.dcnten; tv.enable := tr.enable;
+		  end if;
 	        end if;
 	      end if;
             when "10001" =>
 	      if TRACEN then
 	        hrdata((TBUFABITS - 1 + 4) downto 4) := tr.aindex;
-	        if (r.slv.hwrite and hclken) = '1' then
-		  tv.aindex := ahbsi2.hwdata((TBUFABITS - 1 + 4) downto 4);
+                if r.slv.hwrite = '1' then
+                  if hclken = '1' then
+		    tv.aindex := ahbsi2.hwdata((TBUFABITS - 1 + 4) downto 4);
+		  else tv.aindex := tr.aindex; end if;
 	        end if;
 	      end if;
             when "10100" =>

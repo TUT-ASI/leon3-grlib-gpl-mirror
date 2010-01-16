@@ -115,10 +115,12 @@ package grusb is
       vbusconf    : integer                      := 3;
       netlist     : integer range 0 to 1         := 0;
       ramtest     : integer range 0 to 1         := 0;
-      urst_time   : integer                      := 250;
+      urst_time   : integer                      := 0;
       oepol       : integer range 0 to 1         := 0;
-      scantest    : integer                      := 0;
-      memsel      : integer                      := 0);
+      scantest    : integer range 0 to 1         := 0;
+      memsel      : integer                      := 0;
+      syncprst    : integer range 0 to 1         := 0;
+      sysfreq     : integer                      := 65000);
     port (
       clk       : in  std_ulogic;
       uclk      : in  std_ulogic;
@@ -188,7 +190,8 @@ package grusb is
       sepirq     : integer range 0 to 1         := 0;
       irqi       : integer range 0 to NAHBIRQ-1 := 1;
       irqo       : integer range 0 to NAHBIRQ-1 := 2;
-      functesten : integer range 0 to 1         := 0);
+      functesten : integer range 0 to 1         := 0;
+      scantest   : integer range 0 to 1         := 0);
     port (
       uclk  : in  std_ulogic;
       usbi  : in  grusb_in_type;
@@ -214,7 +217,8 @@ package grusb is
       sysfreq    : integer                := 50000;
       keepclk    : integer range 0 to 1   := 0;
       functesten : integer range 0 to 1   := 0;
-      burstlength: integer range 1 to 512 := 8
+      burstlength: integer range 1 to 512 := 8;
+      scantest   : integer range 0 to 1   := 0
     );
     port (
       uclk : in  std_ulogic;
@@ -247,10 +251,12 @@ package grusb is
       vbusconf    : integer                      := 3;
       netlist     : integer range 0 to 1         := 0;
       ramtest     : integer range 0 to 1         := 0;
-      urst_time   : integer                      := 250;
+      urst_time   : integer                      := 0;
       oepol       : integer range 0 to 1         := 0;
-      scantest    : integer                      := 0;
-      memsel      : integer                      := 0);
+      scantest    : integer range 0 to 1         := 0;
+      memsel      : integer                      := 0;
+      syncprst    : integer range 0 to 1         := 0;
+      sysfreq     : integer                      := 65000);
     port (
       clk               : in  std_ulogic;
       uclk              : in  std_ulogic;
@@ -261,9 +267,6 @@ package grusb is
       ehc_apbsi_paddr   : in  std_logic_vector(31 downto 0);
       ehc_apbsi_pwrite  : in  std_ulogic;
       ehc_apbsi_pwdata  : in  std_logic_vector(31 downto 0);
-      ehc_apbsi_testen  : in  std_ulogic;
-      ehc_apbsi_testrst : in  std_ulogic;
-      ehc_apbsi_scanen  : in  std_ulogic;
       -- EHC APB slave output signals    
       ehc_apbso_prdata  : out std_logic_vector(31 downto 0);
       ehc_apbso_pirq    : out std_ulogic;
@@ -273,9 +276,6 @@ package grusb is
       ahbmi_hresp       : in  std_logic_vector(1 downto 0);
       ahbmi_hrdata      : in  std_logic_vector(31 downto 0);
       ahbmi_hcache      : in  std_ulogic;
-      ahbmi_testen      : in  std_ulogic;
-      ahbmi_testrst     : in  std_ulogic;
-      ahbmi_scanen      : in  std_ulogic;
       -- UHC(s) AHB slave input signals
       uhc_ahbsi_hsel    : in  std_logic_vector((n_cc-1)*uhcgen downto 0);
       uhc_ahbsi_haddr   : in  std_logic_vector(31 downto 0);
@@ -284,9 +284,6 @@ package grusb is
       uhc_ahbsi_hsize   : in  std_logic_vector(2 downto 0);
       uhc_ahbsi_hwdata  : in  std_logic_vector(31 downto 0);
       uhc_ahbsi_hready  : in  std_ulogic;
-      uhc_ahbsi_testen  : in  std_ulogic;
-      uhc_ahbsi_testrst : in  std_ulogic;
-      uhc_ahbsi_scanen  : in  std_ulogic;
       -- EHC AHB master output signals
       ehc_ahbmo_hbusreq : out std_ulogic;
       ehc_ahbmo_hlock   : out std_ulogic;
@@ -349,7 +346,12 @@ package grusb is
       rxvalidh          : in  std_logic_vector((nports-1) downto 0);
       hostdisconnect    : in  std_logic_vector((nports-1) downto 0);
       nxt               : in  std_logic_vector((nports-1) downto 0);
-      dir               : in  std_logic_vector((nports-1) downto 0));
+      dir               : in  std_logic_vector((nports-1) downto 0);
+      -- scan signals
+      testen            : in  std_ulogic;
+      testrst           : in  std_ulogic;
+      scanen            : in  std_ulogic;
+      testoen           : in  std_ulogic);
   end component;  
 end grusb;
 

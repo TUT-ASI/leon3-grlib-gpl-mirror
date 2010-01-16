@@ -139,7 +139,6 @@ type ahb_reg_type is record
   state         : ahb_state_type;
   haddr         : std_logic_vector(31 downto 0);
   hrdata        : std_logic_vector(31 downto 0);
-  hwdata        : std_logic_vector(31 downto 0);
   hwrite        : std_ulogic;
   htrans        : std_logic_vector(1 downto 0);
   hresp         : std_logic_vector(1 downto 0);
@@ -192,8 +191,15 @@ signal rdata, wdata, rwdata, rbdrive, ribdrive : std_logic_vector(31 downto 0);
 signal waddr2 : std_logic_vector(abuf-1 downto 0);
 signal ddr_rst : std_logic;
 signal ddr_rst_gen  : std_logic_vector(3 downto 0);
+
+attribute keep                     : boolean;
+attribute syn_keep                 : boolean;
 attribute syn_preserve : boolean;
+
 attribute syn_preserve of rbdrive : signal is true; 
+attribute keep of rwdata : signal is true; 
+attribute syn_keep of rwdata : signal is true; 
+attribute syn_preserve of rwdata : signal is true; 
 
 begin
 
@@ -204,7 +210,6 @@ begin
   ahb_ctrl : process(rst, ahbsi, r, ra, rdata)
   variable v       : ahb_reg_type;		-- local variables for registers
   variable startsd : std_ulogic;
-  variable dout    : std_logic_vector(31 downto 0);
   begin
 
     v := ra; v.hrdata := rdata; v.hresp := HRESP_OKAY; 
@@ -271,15 +276,9 @@ begin
       end if;
     end case;
 
-    v.hwdata := ahbsi.hwdata; 
-
     if (ahbsi.hready and ahbsi.hsel(hindex) ) = '1' then
       if ahbsi.htrans(1) = '0' then v.hready := '1'; end if;
     end if;
-
---    if (ra.hsel and ra.hio) = '1' then dout := regsd;
---    else dout := ra.hrdata(31 downto 0); end if;
-    dout := ra.hrdata(31 downto 0);
 
     if rst = '0' then
       v.hsel      := '0';
@@ -292,7 +291,7 @@ begin
     rai <= v;
     ahbso.hready  <= ra.hready;
     ahbso.hresp   <= ra.hresp;
-    ahbso.hrdata  <= dout;
+    ahbso.hrdata  <= ra.hrdata(31 downto 0);
     ahbso.hcache  <= not ra.hio;
 
   end process;
@@ -307,7 +306,6 @@ begin
   variable rams    : std_logic_vector(1 downto 0);
   variable ba      : std_logic_vector(1 downto 0);
   variable haddr   : std_logic_vector(31 downto 0);
-  variable hsize   : std_logic_vector(1 downto 0);
   variable hwrite  : std_ulogic;
   variable htrans  : std_logic_vector(1 downto 0);
   variable hready  : std_ulogic;
@@ -964,9 +962,7 @@ begin
   generic map (tech => memtech, abits => 6, dbits => 32, sepclk => 1, wrfst => 0)
   port map ( rclk => clk_ahb, renable => vcc, raddress => rai.raddr,
     dataout => rdata, wclk => clk_ddr, write => ri.hready,
---    dataout => rdata, wclk => clkread, write => rwrite,
     waddress => r.waddr, datain => rwdata);
---    waddress => waddr2, datain => rwdata);
 
   write_buff : syncram_2p 
   generic map (tech => memtech, abits => 6, dbits => 32, sepclk => 1, wrfst => 0)

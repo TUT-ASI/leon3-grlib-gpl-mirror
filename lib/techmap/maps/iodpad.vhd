@@ -61,6 +61,10 @@ begin
     x0 : apa3_iopad generic map (level, slew, voltage, strength)
          port map (pad, gnd, oen, o);
   end generate;
+  fus : if (tech = actfus) generate
+    x0 : fusion_iopad generic map (level, slew, voltage, strength)
+         port map (pad, gnd, oen, o);
+  end generate;
   atc : if (tech = atc18s) generate
     x0 : atc18_iopad generic map (level, slew, voltage, strength)
 	 port map (pad, gnd, oen, o);

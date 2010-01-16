@@ -58,7 +58,7 @@ architecture rtl of grfpwx is
            pclow    : integer range 0 to 2 := 2;
            dsu      : integer range 0 to 1 := 0;
            disas    : integer range 0 to 2 := 0;
-           index    : integer range 0 to 2 := 0
+           index    : integer range 0 to 7 := 0
            );
   port (
     rst    : in  std_ulogic;			-- Reset
