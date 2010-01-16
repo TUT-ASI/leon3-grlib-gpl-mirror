@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -44,6 +45,9 @@
 --         |   0x0C     |  0x00   |   0x00  |  0x00   |  CR    |
 --         |   0x0C     |  0x00   |   0x00  |  0x00   |  SR    |
 --         +------------+---------+---------+---------+--------+
+--
+-- Revision 1 of this core also sets the TIP bit when STO is set.
+--
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -86,9 +90,11 @@ architecture rtl of i2cmst is
   -----------------------------------------------------------------------------
   -- Constants
   -----------------------------------------------------------------------------
+
+  constant I2CMST_REV : integer := 1;
   
   constant PCONFIG : apb_config_type := (
-  0 => ahb_device_reg(VENDOR_GAISLER, GAISLER_I2CMST, 0, 0, pirq),
+  0 => ahb_device_reg(VENDOR_GAISLER, GAISLER_I2CMST, 0, I2CMST_REV, pirq),
   1 => apb_iobar(paddr, pmask));
 
   constant PRER_addr : std_logic_vector(7 downto 2) := "000000";
@@ -163,6 +169,8 @@ begin
   -- OC I2C logic has active high reset.
   irst <= not rstn;
 
+  i2co.enable <= r.ctrl.en;
+  
   -- Fix output enable polarity
   soepol0: if oepol = 0 generate
     i2co.scloen <= iscloen; 
@@ -191,7 +199,7 @@ begin
     v.sts := (rxack => rxack,
               busy  => busy,
               al    => al or (r.sts.al and not r.cmd.sta),
-              tip   => r.cmd.rd or r.cmd.wr,
+              tip   => r.cmd.rd or r.cmd.wr or r.cmd.sto,
               ifl   => done or al or r.sts.ifl);
     v.irq := (done or al) and r.ctrl.ien;
    
@@ -269,7 +277,7 @@ begin
   bootmsg : report_version 
     generic map (
       "i2cmst" & tost(pindex) & ": AMBA Wrapper for OC I2C-master rev " &
-      tost(0) & ", irq " & tost(pirq));
+      tost(I2CMST_REV) & ", irq " & tost(pirq));
   -- pragma translate_on
   
 end architecture rtl;

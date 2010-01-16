@@ -1,6 +1,10 @@
 ------------------------------------------------------------------------------
 --  LEON3 Demonstration design test bench
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -11,6 +15,10 @@
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
 --  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 --  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -90,33 +98,33 @@ signal ramoen   : std_logic_vector(4 downto 0);
 signal rwen     : std_logic_vector(3 downto 0);
 signal rwenx    : std_logic_vector(3 downto 0);
 signal romsn    : std_logic_vector(1 downto 0);
-signal iosn     : std_ulogic;
-signal oen      : std_ulogic;
-signal read     : std_ulogic;
-signal writen   : std_ulogic;
-signal brdyn    : std_ulogic;
-signal bexcn    : std_ulogic;
+signal iosn     : std_logic;
+signal oen      : std_logic;
+signal read     : std_logic;
+signal writen   : std_logic;
+signal brdyn    : std_logic;
+signal bexcn    : std_logic;
 signal wdogn    : std_logic;
-signal dsuen, dsutx, dsurx, dsubre, dsuact : std_ulogic;
-signal dsurst   : std_ulogic;
-signal test     : std_ulogic;
+signal dsuen, dsutx, dsurx, dsubre, dsuact : std_logic;
+signal dsurst   : std_logic;
+signal test     : std_logic;
 signal error    : std_logic;
 signal gpio	: std_logic_vector(CFG_GRGPIO_WIDTH-1 downto 0);
-signal GND      : std_ulogic := '0';
-signal VCC      : std_ulogic := '1';
-signal NC       : std_ulogic := 'Z';
-signal clk2     : std_ulogic := '1';
+signal GND      : std_logic := '0';
+signal VCC      : std_logic := '1';
+signal NC       : std_logic := 'Z';
+signal clk2     : std_logic := '1';
     
 signal sdcke    : std_logic_vector ( 1 downto 0);  -- clk en
 signal sdcsn    : std_logic_vector ( 1 downto 0);  -- chip sel
-signal sdwen    : std_ulogic;                       -- write en
-signal sdrasn   : std_ulogic;                       -- row addr stb
-signal sdcasn   : std_ulogic;                       -- col addr stb
+signal sdwen    : std_logic;                       -- write en
+signal sdrasn   : std_logic;                       -- row addr stb
+signal sdcasn   : std_logic;                       -- col addr stb
 signal sddqm    : std_logic_vector ( 3 downto 0);  -- data i/o mask
-signal sdclk    : std_ulogic;       
-signal plllock, pllref    : std_ulogic;       
-signal txd1, rxd1 : std_ulogic;       
-signal txd2, rxd2 : std_ulogic;       
+signal sdclk    : std_logic;       
+signal plllock, pllref    : std_logic;       
+signal txd1, rxd1 : std_logic;       
+signal txd2, rxd2 : std_logic;       
 
 signal etx_clk, erx_clk, erx_dv, erx_er, erx_col, erx_crs, etx_en, etx_er : std_logic:='0';
 signal erxd, etxd: std_logic_vector(3 downto 0):=(others=>'0');  
@@ -138,10 +146,10 @@ signal sd   	: std_logic_vector(31 downto 0);
 signal can_txd	: std_logic_vector(0 to CFG_CAN_NUM-1);
 signal can_rxd	: std_logic_vector(0 to CFG_CAN_NUM-1);
 
-signal can_stb	: std_ulogic;
+signal can_stb	: std_logic;
 
-signal spw_clkp	: std_ulogic := '0';
-signal spw_clkn	: std_ulogic := '1';
+signal spw_clkp	: std_logic := '0';
+signal spw_clkn	: std_logic := '1';
 signal spw_rxdp : std_logic_vector(0 to CFG_SPW_NUM-1) := (others => '0');
 signal spw_rxdn : std_logic_vector(0 to CFG_SPW_NUM-1) := (others => '0');
 signal spw_rxsp : std_logic_vector(0 to CFG_SPW_NUM-1) := (others => '0');
@@ -271,11 +279,11 @@ begin
 	port map (address(sramdepth+1 downto 2), cb(7 downto 0), ramsn(0), rwen(0), ramoen(0));
   end generate;
 
-  phy0 : if (CFG_GRETH = 1) generate
-    p0: phy 
-      port map(rst, led_cfg, open, etx_clk, erx_clk, erxd, erx_dv,
-      erx_er, erx_col, erx_crs, etxd, etx_en, etx_er, emdc);
-  end generate;
+--  phy0 : if (CFG_GRETH = 1) generate
+--    p0: phy 
+--      port map(rst, led_cfg, open, etx_clk, erx_clk, erxd, erx_dv,
+--      erx_er, erx_col, erx_crs, etxd, etx_en, etx_er, emdc);
+--  end generate;
   error <= 'H';			  -- ERROR pull-up
 
    iuerr : process
@@ -298,7 +306,7 @@ begin
   cb <= buskeep(cb), (others => 'H') after 250 ns;
 
   dsucom : process
-    procedure dsucfg(signal dsurx : in std_ulogic; signal dsutx : out std_ulogic) is
+    procedure dsucfg(signal dsurx : in std_logic; signal dsutx : out std_logic) is
     variable w32 : std_logic_vector(31 downto 0);
     variable c8  : std_logic_vector(7 downto 0);
     constant txp : time := 160 * 1 ns;

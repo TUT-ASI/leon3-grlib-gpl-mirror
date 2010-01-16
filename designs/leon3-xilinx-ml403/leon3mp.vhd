@@ -1,6 +1,10 @@
 -----------------------------------------------------------------------------
 --  LEON3 Demonstration design
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -14,7 +18,7 @@
 --
 --  You should have received a copy of the GNU General Public License
 --  along with this program; if not, write to the Free Software
---  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 
@@ -50,73 +54,76 @@ entity leon3mp is
     pclow     : integer := CFG_PCLOW
   );
   port (
-    sys_rst_in	: in  std_ulogic;
-    sys_clk	: in  std_ulogic; 	-- 100 MHz main clock
-    opb_error	: out std_logic;	-- DSU active
+    sys_rst_in      : in  std_ulogic;
+    sys_clk	    : in  std_ulogic; 	-- 100 MHz main clock
+--pragma translate_off
+    plb_error       : out std_logic;    -- ERRORn
+--pragma translate_on
+    opb_error	    : out std_logic;	-- DSU active
     sram_flash_addr : out std_logic_vector(20 downto 0);
     sram_flash_data : inout std_logic_vector(31 downto 0);
-    sram_cen  	: out std_logic;
-    sram_bw   	: out std_logic_vector (0 to 3);
+    sram_cen        : out std_logic;
+    sram_bw         : out std_logic_vector (0 to 3);
     sram_flash_oe_n : out std_ulogic;
-    sram_flash_we_n 	: out std_ulogic;
-    flash_ce  	: out std_logic;
-    sram_clk  	: out std_ulogic;
-    sram_clk_fb	: in  std_ulogic; 
-    sram_adv_ld_n : out std_ulogic;
+    sram_flash_we_n : out std_ulogic;
+    flash_ce        : out std_logic;
+    sram_clk        : out std_ulogic;
+    sram_clk_fb     : in  std_ulogic; 
+    sram_adv_ld_n   : out std_ulogic;
 --pragma translate_off
-    iosn    : out std_ulogic;
+    iosn            : out std_ulogic;
 --pragma translate_on
 
-    ddr_clk  	: out std_logic;
-    ddr_clkb  	: out std_logic;
-    ddr_clk_fb  : in std_logic;
-    ddr_cke  	: out std_logic;
-    ddr_csb  	: out std_logic;
-    ddr_web  	: out std_ulogic;                       -- ddr write enable
-    ddr_rasb  	: out std_ulogic;                       -- ddr ras
-    ddr_casb  	: out std_ulogic;                       -- ddr cas
-    ddr_dm   	: out std_logic_vector (3 downto 0);    -- ddr dm
-    ddr_dqs  	: inout std_logic_vector (3 downto 0);    -- ddr dqs
-    ddr_ad      : out std_logic_vector (12 downto 0);   -- ddr address
-    ddr_ba      : out std_logic_vector (1 downto 0);    -- ddr bank address
-    ddr_dq  	: inout std_logic_vector (31 downto 0); -- ddr data
+    ddr_clk         : out std_logic;
+    ddr_clkb        : out std_logic;
+    ddr_clk_fb      : in std_logic;
+    ddr_cke         : out std_logic;
+    ddr_csb         : out std_logic;
+    ddr_web         : out std_ulogic;                       -- ddr write enable
+    ddr_rasb        : out std_ulogic;                       -- ddr ras
+    ddr_casb        : out std_ulogic;                       -- ddr cas
+    ddr_dm          : out std_logic_vector (3 downto 0);    -- ddr dm
+    ddr_dqs         : inout std_logic_vector (3 downto 0);    -- ddr dqs
+    ddr_ad          : out std_logic_vector (12 downto 0);   -- ddr address
+    ddr_ba          : out std_logic_vector (1 downto 0);    -- ddr bank address
+    ddr_dq          : inout std_logic_vector (31 downto 0); -- ddr data
 
-    txd1   	: out std_ulogic; 			-- UART1 tx data
-    rxd1   	: in  std_ulogic;  			-- UART1 rx data
+    txd1            : out std_ulogic; 			-- UART1 tx data
+    rxd1            : in  std_ulogic;  			-- UART1 rx data
 
-    gpio        : inout std_logic_vector(13 downto 0); 	-- I/O port
+    gpio            : inout std_logic_vector(13 downto 0); 	-- I/O port
 
-    phy_gtx_clk : out std_logic;
-    phy_mii_data: inout std_logic;		-- ethernet PHY interface
-    phy_tx_clk 	: in std_ulogic;
-    phy_rx_clk 	: in std_ulogic;
-    phy_rx_data	: in std_logic_vector(7 downto 0);   
-    phy_dv  	: in std_ulogic; 
-    phy_rx_er	: in std_ulogic; 
-    phy_col 	: in std_ulogic;
-    phy_crs 	: in std_ulogic;
-    phy_tx_data : out std_logic_vector(7 downto 0);   
-    phy_tx_en 	: out std_ulogic; 
-    phy_tx_er 	: out std_ulogic; 
-    phy_mii_clk	: out std_ulogic;
-    phy_rst_n	: out std_ulogic;
+    phy_gtx_clk     : out std_logic;
+    phy_mii_data    : inout std_logic;		-- ethernet PHY interface
+    phy_tx_clk 	    : in std_ulogic;
+    phy_rx_clk 	    : in std_ulogic;
+    phy_rx_data	    : in std_logic_vector(7 downto 0);   
+    phy_dv  	    : in std_ulogic; 
+    phy_rx_er	    : in std_ulogic; 
+    phy_col 	    : in std_ulogic;
+    phy_crs 	    : in std_ulogic;
+    phy_tx_data     : out std_logic_vector(7 downto 0);   
+    phy_tx_en 	    : out std_ulogic; 
+    phy_tx_er 	    : out std_ulogic; 
+    phy_mii_clk	    : out std_ulogic;
+    phy_rst_n	    : out std_ulogic;
 
-    ps2_keyb_clk   : inout std_logic;
-    ps2_keyb_data  : inout std_logic;
-    ps2_mouse_clk  : inout std_logic;
-    ps2_mouse_data : inout std_logic;
+    ps2_keyb_clk    : inout std_logic;
+    ps2_keyb_data   : inout std_logic;
+    ps2_mouse_clk   : inout std_logic;
+    ps2_mouse_data  : inout std_logic;
 
-    tft_lcd_clk : out std_ulogic;
-    vid_hsync   : out std_ulogic;
-    vid_vsync   : out std_ulogic;
-    vid_r       : out std_logic_vector(7 downto 3);
-    vid_g       : out std_logic_vector(7 downto 3);
-    vid_b       : out std_logic_vector(7 downto 3);
+    tft_lcd_clk     : out std_ulogic;
+    vid_hsync       : out std_ulogic;
+    vid_vsync       : out std_ulogic;
+    vid_r           : out std_logic_vector(7 downto 3);
+    vid_g           : out std_logic_vector(7 downto 3);
+    vid_b           : out std_logic_vector(7 downto 3);
 
-    usb_csn : out std_logic;
+    usb_csn         : out std_logic;
 
-    iic_scl : inout std_ulogic;
-    iic_sda : inout std_ulogic
+    iic_scl         : inout std_ulogic;
+    iic_sda         : inout std_ulogic
    );
 end;
 
@@ -283,7 +290,10 @@ begin
       port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso, 
     		irqi(i), irqo(i), dbgi(i), dbgo(i));
     end generate;
-  
+--pragma translate_off
+    errorn_pad : odpad generic map (tech => padtech) port map (plb_error, dbgo(0).error);
+--pragma translate_on
+    
     dsugen : if CFG_DSU = 1 generate
       dsu0 : dsu3			-- LEON3 Debug Support Unit
       generic map (hindex => 2, haddr => 16#900#, hmask => 16#F00#, 
@@ -292,7 +302,7 @@ begin
 --    dsuen_pad : inpad generic map (tech => padtech) port map (dsuen, dsui.enable); 
       dsui.enable <= '1';
 --    dsubre_pad : inpad generic map (tech => padtech) port map (dsubre, dsui.break); 
-       dsui.break <= gpioo.val(11); --  South Button
+      dsui.break <= gpioo.val(11); --  South Button
 --    dsuact_pad : outpad generic map (tech => padtech) port map (dsuact, ndsuact);
       dsuact_pad : outpad generic map (tech => padtech) port map (opb_error, ndsuact);
       ndsuact <= not dsuo.active;
@@ -309,10 +319,10 @@ begin
     port map (rstn, clkm, dui, duo, apbi, apbo(7), ahbmi, ahbmo(NCPU));
 --    dsurx_pad : inpad generic map (tech => padtech) port map (rxd1, dui.rxd); 
 --    dsutx_pad : outpad generic map (tech => padtech) port map (txd1, duo.txd);
-    dui.rxd <= rxd1 when gpioo.val(21) = '1' else '1';
+    dui.rxd <= rxd1 when gpioo.val(13) = '1' else '1';
   end generate;
 
-  txd1 <= duo.txd when  gpioo.val(21) = '1' else u1o.txd;
+  txd1 <= duo.txd when  gpioo.val(13) = '1' else u1o.txd;
 
   ahbjtaggen0 :if CFG_AHB_JTAG = 1 generate
     ahbjtag0 : ahbjtag generic map(tech => fabtech, hindex => NCPU+CFG_AHB_UART)
@@ -407,7 +417,7 @@ begin
 	fifosize => CFG_UART1_FIFO)
     port map (rstn, clkm, apbi, apbo(1), u1i, u1o);
     u1i.extclk <= '0'; u1i.ctsn <= '0';
-    u1i.rxd <= rxd1 when gpioo.val(21) = '0' else '1';
+    u1i.rxd <= rxd1 when gpioo.val(13) = '0' else '1';
   end generate;
 
   irqctrl : if CFG_IRQ3_ENABLE /= 0 generate

@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -29,10 +30,10 @@ use techmap.gencomp.all;
 use techmap.allpads.all;
 
 entity outpad_ds is
-  generic (tech : integer := 0; level : integer := lvds; 
+  generic (tech : integer := 0; level : integer := lvds;
 	voltage : integer := x33v; oepol : integer := 0);
   port (padp, padn : out std_ulogic; i, en : in std_ulogic);
-end; 
+end;
 
 architecture rtl of outpad_ds is
 signal gnd, oen : std_ulogic;
@@ -43,16 +44,14 @@ begin
     padp <= i after 1 ns;
     padn <= not i after 1 ns;
   end generate;
-  xcv : if (tech = virtex) or (tech = virtex2) or (tech = spartan3) or
-	(tech = virtex4) or (tech = spartan3e)
-  generate
-    u0 : virtex_outpad_ds generic map (level, voltage) port map (padp, padn, i);
+  xcv : if (is_unisim(tech) = 1) generate
+    u0 : unisim_outpad_ds generic map (level, voltage) port map (padp, padn, i);
   end generate;
-  xcv5 : if (tech = virtex5) generate
-    u0 : virtex5_outpad_ds generic map (level, voltage) port map (padp, padn, i);
-  end generate;
-  axc : if (tech = axcel) generate
+  axc : if (tech = axcel) or (tech = axdsp) generate
     u0 : axcel_outpad_ds generic map (level, voltage) port map (padp, padn, i);
+  end generate;
+  pa : if (tech = apa3) generate
+    u0 : apa3_outpad_ds generic map (level) port map (padp, padn, i);
   end generate;
   rht : if (tech = rhlib18t) generate
     u0 : rh_lib18t_outpad_ds port map (padp, padn, i, oen);
@@ -69,14 +68,14 @@ entity outpad_dsv is
 	voltage : integer := lvds; width : integer := 1;
 	oepol : integer := 0);
   port (
-    padp : out std_logic_vector(width-1 downto 0); 
-    padn : out std_logic_vector(width-1 downto 0); 
+    padp : out std_logic_vector(width-1 downto 0);
+    padn : out std_logic_vector(width-1 downto 0);
     i, en: in  std_logic_vector(width-1 downto 0));
-end; 
+end;
 architecture rtl of outpad_dsv is
 begin
   v : for j in width-1 downto 0 generate
-    u0 : outpad_ds generic map (tech, level, voltage, oepol) 
+    u0 : outpad_ds generic map (tech, level, voltage, oepol)
 	 port map (padp(j), padn(j), i(j), en(j));
   end generate;
 end;

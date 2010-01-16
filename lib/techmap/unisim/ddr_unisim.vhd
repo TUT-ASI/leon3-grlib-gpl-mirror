@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -70,45 +71,22 @@ architecture rtl of unisim_iddr_reg is
 begin
 
       
--- SAME EDGE mode have when this is written an incorrect P&R
--- timing model, instead OPPOSITE_MODE with an extra register is used
---      V4 : if tech = virtex4 generate
---        U0 : IDDR
---          generic map(
---            DDR_CLK_EDGE => "SAME_EDGE",
---            INIT_Q1 =>  '0',
---            INIT_Q2 =>  '0',
---            SRTYPE =>  "ASYNC")
---          Port map(
---            Q1 => Q1,
---            Q2 => Q2,
---            C => C1,
---            CE => CE,                 
---            D => D,
---            R => R,    
---            S => S);
---     end generate;
-
-       V4 : if (tech = virtex4) or (tech = virtex5) generate
-       U0 : IDDR generic map( DDR_CLK_EDGE => "OPPOSITE_EDGE"
---           ,INIT_Q1 =>  '0',
---           INIT_Q2 =>  '0',
---           SRTYPE =>  "ASYNC"
-)
+     V4 : if (tech = virtex4) or (tech = virtex5) or (tech = virtex6) generate
+       U0 : IDDR generic map( DDR_CLK_EDGE => "OPPOSITE_EDGE")
          Port map( Q1 => Q1, Q2 => preQ2, C => C1, CE => CE,                 
            	   D => D, R => R,    S => S);
 
-      q3reg : process (C1, preQ2, R)
-        begin
+       q3reg : process (C1, preQ2, R)
+       begin
           if R='1' then --asynchronous reset, active high
             Q2 <= '0';
           elsif C1'event and C1='1' then --Clock event - posedge
             Q2 <= preQ2;
           end if;
-        end process;
+       end process;
      end generate;
 
-    V2 : if tech = virtex2 or tech = spartan3 generate
+    V2 : if tech = virtex2 or tech = spartan3 or tech = spartan6 generate
 
       -- CE and S inputs inactive for virtex 2
       
@@ -138,16 +116,6 @@ begin
           Q2 <= preQ2;
         end if;
       end process;
-
- -- NOTE: You must include the following constraints in the .ucf
- -- file when running back-end tools,
- -- in order to ensure that IOB DDR registers are used:
- -- -- INST "q2_reg" IOB=TRUE;
- -- INST "q1_reg" IOB=TRUE;
- -- -- Depending on the synthesis tools you use, it may be required to
- -- check the edif file for modifications to
- -- original net names...in this case, Synopsys changed the
- -- names: q1 and q2 to q1_reg and q2_reg
 
     end generate;
       
@@ -220,25 +188,7 @@ architecture rtl of unisim_oddr_reg is
   
 begin
 
--- SAME EDGE mode have when this is written an incorrect P&R
--- timing model, instead OPPOSITE_MODE with an extra register is used
---    V4 : if tech = virtex4 generate
---      U0 : ODDR
---        generic map(
---          DDR_CLK_EDGE => "SAME_EDGE",
---          INIT => '0',
---          SRTYPE => "ASYNC")
---        port map(
---          Q => Q,
---          C => C1,
---          CE => CE,
---          D1 => D1,
---          D2 => D2,
---          R => R,
---          S => S);
---      end generate;
-
-  V4 : if (tech = virtex4) or (tech = virtex5) generate
+  V4 : if (tech = virtex4) or (tech = virtex5) or (tech = virtex6) generate
 
     d2reg : process (C1, D2, R)
        begin
@@ -261,7 +211,7 @@ begin
          S => S);
   end generate;
 
-  V2 : if tech = virtex2 or tech = spartan3 generate
+  V2 : if tech = virtex2 or tech = spartan3 or tech = spartan6 generate
 
       d2reg : process (C1, D2, R)
       begin

@@ -14,21 +14,21 @@ use gaisler.leon3.all;
 
 
 entity grfpushwx is
-  generic (mul    : integer              := 0;
+  generic (mul    : integer range 0 to 3 := 0;
            nshare : integer range 0 to 8 := 0);
   port(
     clk     : in  std_logic;
     reset   : in  std_logic;
     fpvi    : in  grfpu_in_vector_type;
-    fpvo    : out grfpu_out_vector_type    
+    fpvo    : out grfpu_out_vector_type
     );
 end;
 
 
 architecture rtl of grfpushwx is
 
-component grfpushw 
-  generic (mul    : integer range 0 to 2 := 0;
+component grfpushw
+  generic (mul    : integer range 0 to 3 := 0;
            nshare : integer range 0 to 8 := 0);
   port(
     clk     : in  std_logic;
@@ -160,18 +160,18 @@ component grfpushw
     cpu7_allow   : out std_logic_vector(2 downto 0);
     cpu7_rdy     : out std_logic;
     cpu7_cc      : out std_logic_vector(1 downto 0);
-    cpu7_idout   : out std_logic_vector(7 downto 0)    
+    cpu7_idout   : out std_logic_vector(7 downto 0)
     );
 end component;
-  
+
 
 begin
 
   x0 : grfpushw generic map ((mul mod 4), nshare)
     port map (
-      clk  ,   
-      reset ,  
-      fpvi(0).start ,   
+      clk  ,
+      reset ,
+      fpvi(0).start ,
     fpvi(0).nonstd  ,
     fpvi(0).flop    ,
     fpvi(0).op1     ,
@@ -299,15 +299,15 @@ begin
     fpvo(7).rdy     ,
     fpvo(7).cc      ,
     fpvo(7).idout);
-                   
-end;               
-                   
-                   
-                   
-                   
-                   
-                   
-                   
-                   
-                   
-                   
+
+end;
+
+
+
+
+
+
+
+
+
+

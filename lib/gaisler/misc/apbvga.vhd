@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -256,6 +257,7 @@ begin
     vgao.video_out_r <= r.video_out(23 downto 16);
     vgao.video_out_g <= r.video_out(15 downto 8);
     vgao.video_out_b <= r.video_out(7 downto 0);
+    vgao.bitdepth <= "11";              -- All data is valid
   end process;
 
         

@@ -14,6 +14,9 @@ NET phy_tx_clk PERIOD = 40.000 ;
 OFFSET = OUT : 18.000 : AFTER phy_tx_clk ;
 OFFSET = IN : 10.000 : BEFORE phy_tx_clk ;
 
+# Enable for ISE-10
+#NET "phy_tx_clk" CLOCK_DEDICATED_ROUTE = FALSE;
+
 INST "clkgen0_v_dll0" LOC = DCM_X1Y0;
 INST "clkgen0_v_dll1" LOC = DCM_X1Y1;
 INST "clkgen0/v/dll0" LOC = DCM_X1Y0;
@@ -23,6 +26,7 @@ INST "clkgen0/xc2v.v/sd0.dll1" LOC = DCM_X1Y1;
 INST "clkgen0_xc2v_v_dll0" LOC = DCM_X1Y0;
 INST "clkgen0_xc2v_v_sd0_dll1" LOC = DCM_X1Y1;
 
+NET "phy_tx_clk" CLOCK_DEDICATED_ROUTE = FALSE;
 INST "etxc_pad/xcv2.u0/g1.ttl0.bf" LOC = BUFGMUX3;
 INST "etxc_pad_xcv2.u0_g1.ttl0.bf" LOC = BUFGMUX3;
 INST "erxc_pad/xcv2.u0/g1.ttl0.bf" LOC = BUFGMUX2;
@@ -232,7 +236,7 @@ NET "phy_tx_data(2)" LOC = "Y9" | IOSTANDARD = LVTTL;
 NET "phy_tx_data(1)" LOC = "Y8" | IOSTANDARD = LVTTL;
 NET "phy_tx_data(0)" LOC = "W13" | IOSTANDARD = LVTTL;
 NET "phy_tx_en" LOC = "W12" | IOSTANDARD = LVTTL;
-NET "phy_tx_clk" LOC = "W11" | IOSTANDARD = LVTTL | CLOCK_DEDICATED_ROUTE = FALSE;
+NET "phy_tx_clk" LOC = "W11" | IOSTANDARD = LVTTL ;
 #  PIN PHY_TX_ER  = phy_tx_er" LOC = "";
 NET "phy_rx_er" LOC = "AA6" | IOSTANDARD = LVTTL;
 NET "phy_rx_clk" LOC = "AE13" | IOSTANDARD = LVTTL;

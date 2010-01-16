@@ -1,6 +1,10 @@
 -----------------------------------------------------------------------------
 --  LEON3 Demonstration design test bench
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -11,6 +15,10 @@
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
 --  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 --  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -149,10 +157,11 @@ begin
   ps2_mouse_clk <= 'H'; ps2_mouse_data <= 'H';
   iic_scl <= 'H'; iic_sda <= 'H';
   flash_cex <= not flash_ce;
-
+  gpio <= (others => 'L');
+  
   cpu : entity work.leon3mp
       generic map ( fabtech, memtech, padtech, ncpu, disas, dbguart, pclow )
-      port map ( sys_rst_in, sys_clk, opb_error, sram_flash_addr,
+      port map ( sys_rst_in, sys_clk, plb_error, opb_error, sram_flash_addr,
 	sram_flash_data, sram_cen, sram_bw, sram_flash_oe_n, sram_flash_we_n, 
 	flash_ce, sram_clk, sram_clk_fb, sram_adv_ld_n, iosn,
 	ddr_clk, ddr_clkb, ddr_clk_fb, ddr_cke, ddr_csb, ddr_web, ddr_rasb, 
@@ -213,17 +222,17 @@ begin
 
   i0: i2c_slave_model
     port map (iic_scl, iic_sda);
-  
-  plb_error <= 'H';			  -- ERROR pull-up
 
-   iuerr : process
-   begin
-     wait for 5000 ns;
-     if to_x01(plb_error) = '1' then wait on plb_error; end if;
-     assert (to_x01(plb_error) = '1') 
-       report "*** IU in error mode, simulation halted ***"
-         severity failure ;
-   end process;
+  plb_error <= 'H';                     -- ERROR pull-up
+  
+  iuerr : process
+  begin
+    wait for 5000 ns;
+    if to_x01(plb_error) = '1' then wait on plb_error; end if;
+    assert (to_x01(plb_error) = '1') 
+      report "*** IU in error mode, simulation halted ***"
+      severity failure ;
+  end process;
 
   test0 :  grtestmod
     port map ( sys_rst_in, sys_clk, plb_error, sram_flash_addr(19 downto 0), sram_flash_data,

@@ -4,6 +4,7 @@
 /* page table param */
 #define PAGE_SHIFT   12
 #define PAGE_SIZE   1<<PAGE_SHIFT
+#define PAGE_SIZE_MAX   (1<<(PAGE_SHIFT+3))
 
 /* PMD_SHIFT determines the size of the area a second-level page table can map */
 #define SRMMU_PMD_SHIFT         18

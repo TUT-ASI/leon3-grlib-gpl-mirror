@@ -52,6 +52,7 @@
   constant CFG_DTLBNUM  : integer := CONFIG_DTLBNUM;
   constant CFG_TLB_TYPE : integer := CONFIG_TLB_TYPE + CFG_MMU_FASTWB*2;
   constant CFG_TLB_REP  : integer := CONFIG_TLB_REP;
+  constant CFG_MMU_PAGE : integer := CONFIG_MMU_PAGE;
   constant CFG_DSU   	: integer := CONFIG_DSU_ENABLE;
   constant CFG_ITBSZ 	: integer := CFG_DSU_ITB;
   constant CFG_ATBSZ 	: integer := CFG_DSU_ATB;
@@ -173,6 +174,9 @@
   constant CFG_SPICTRL_SLVS   : integer := CONFIG_SPICTRL_SLVS;
   constant CFG_SPICTRL_FIFO   : integer := CONFIG_SPICTRL_FIFO;
   constant CFG_SPICTRL_SLVREG : integer := CONFIG_SPICTRL_SLVREG;
+  constant CFG_SPICTRL_ODMODE : integer := CONFIG_SPICTRL_ODMODE;
+  constant CFG_SPICTRL_AM     : integer := CONFIG_SPICTRL_AM;
+  constant CFG_SPICTRL_ASEL   : integer := CONFIG_SPICTRL_ASEL;
 
 -- LCD SVGA controller
   constant CFG_LCD_ENABLE : integer := CONFIG_LCD_ENABLE;

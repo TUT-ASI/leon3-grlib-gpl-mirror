@@ -173,25 +173,25 @@ begin
 
   dq_oe_reg_n <= not dq_oe_reg;
 
-  dq_oct_reg0 : stratixiii_ddio_oe
-    generic map(
-      power_up    => "low",    
-      async_mode  => "none",    
-      sync_mode   => "none",
-      lpm_type    => "stratixiii_ddio_oe"
-    )
-    port map(
-      oe        => dq_oct,
-      clk       => clk_oct,
-      ena       => vcc,
-      areset    => gnd(0),
-      sreset    => gnd(0),
-      dataout   => dq_oct_reg--,
-      --dfflo   => open,
-      --dffhi   => open,
-      --devclrn => vcc,
-      --devpor  => vcc
-    );
+--  dq_oct_reg0 : stratixiii_ddio_oe
+--    generic map(
+--      power_up    => "low",    
+--      async_mode  => "none",    
+--      sync_mode   => "none",
+--      lpm_type    => "stratixiii_ddio_oe"
+--    )
+--    port map(
+--      oe        => dq_oct,
+--      clk       => clk_oct,
+--      ena       => vcc,
+--      areset    => gnd(0),
+--      sreset    => gnd(0),
+--      dataout   => dq_oct_reg--,
+--      --dfflo   => open,
+--      --dffhi   => open,
+--      --devclrn => vcc,
+--      --devpor  => vcc
+--    );
   
 -- Out buffer (DQ) ------------------------------------------------------------------
 
@@ -205,7 +205,7 @@ begin
     port map(
       i                          => dq_reg,                                                 
       oe                         => dq_oe_reg_n,                                                 
-      dynamicterminationcontrol  => gnd(0),--dq_oct_reg,                                 
+      dynamicterminationcontrol  => dq_oct,--dq_oct_reg, --gnd(0),--dq_oct_reg,                                 
       --seriesterminationcontrol   => gnd, 
       --parallelterminationcontrol => gnd, 
       o                          => dq_pad,                                                       

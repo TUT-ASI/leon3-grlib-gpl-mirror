@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -34,7 +35,8 @@ use grlib.stdlib.all;
 entity tbufmem is
   generic (
     tech   : integer := 0;
-    tbuf   : integer := 0 -- trace buf size in kB (0 - no trace buffer)
+    tbuf   : integer := 0; -- trace buf size in kB (0 - no trace buffer)
+    testen : integer := 0
     );
   port (
     clk : in std_ulogic;
@@ -51,7 +53,7 @@ begin
 
   enable <= di.enable & di.enable;
   mem0 : for i in 0 to 1 generate
-    ram0 : syncram64 generic map (tech => tech, abits => addrbits)
+    ram0 : syncram64 generic map (tech => tech, abits => addrbits, testen => testen)
       port map ( clk, di.addr(addrbits-1 downto 0), di.data(((i*64)+63) downto (i*64)),
                  do.data(((i*64)+63) downto (i*64)), enable ,di.write(i*2+1 downto i*2),
 		 di.diag);

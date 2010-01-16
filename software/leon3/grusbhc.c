@@ -2,6 +2,7 @@
  * Tests for GRUSBHC
  *
  * Copyright (c) 2008 Gaisler Research AB
+ * Copyright (c) 2009 Aeroflex Gaisler AB
  *
  * Test functions:
  * ehc_test(..):     Tests EHC only
@@ -16,6 +17,7 @@
  * Requirements on simulation environment:
  * All ports must be connected to the utmi or ulpi simulation model
  * available in the gaisler simulation library lib/gaisler/sim.
+ *
  */
 
 #include "testmod.h"
@@ -24,6 +26,26 @@
 /***********/
 /* Helpers */          
 /***********/
+
+static inline int loadmem(int addr)
+{
+   int tmp;
+   asm volatile (" lda [%1]1, %0 "
+                 : "=r"(tmp)
+                 : "r"(addr)
+                 );
+   return tmp;
+}
+
+static inline char loadmemb(int addr)
+{
+   char tmp;        
+   asm volatile (" lduba [%1]1, %0 "
+                 : "=r"(tmp)
+                 : "r"(addr)
+                 );
+   return tmp;
+}
 
 #define byte_swap(x) ((((x) >> 24) & 0xff) | (((x) >> 8) & 0xff00) | \
 		      (((x) << 8) & 0xff0000) | ((x) << 24))
@@ -403,85 +425,85 @@ int ehc_test(int addr, int bedesc, int beregs)
 			      EHC_USBSTS_USBINT, beregs))
     fail(2);
   
-  if (itdo->lp != cond_bswap((int)itdi,bedesc))
+  if (loadmem((int)&itdo->lp) != cond_bswap((int)itdi,bedesc))
     fail(3);
-  if (itdo->status[0] != cond_bswap((1 << iTD_TLEN_P) | 1,bedesc))
+  if (loadmem((int)&itdo->status[0]) != cond_bswap((1 << iTD_TLEN_P) | 1,bedesc))
     fail(4);
-  if (itdo->buf[0] != cond_bswap((int)buf,bedesc))
+  if (loadmem((int)&itdo->buf[0]) != cond_bswap((int)buf,bedesc))
     fail(5);
-  if (itdo->buf[1] != cond_bswap(1,bedesc))
+  if (loadmem((int)&itdo->buf[1]) != cond_bswap(1,bedesc))
     fail(6);
-  if (itdo->buf[2] != cond_bswap(1,bedesc))
+  if (loadmem((int)&itdo->buf[2]) != cond_bswap(1,bedesc))
     fail(7);
-  if (itdi->lp != cond_bswap((int)qho | EHC_TYP_QH ,bedesc))
+  if (loadmem((int)&itdi->lp) != cond_bswap((int)qho | EHC_TYP_QH ,bedesc))
     fail(8);
-  if (itdi->status[0] != cond_bswap((1 << iTD_TLEN_P) | 1,bedesc))
+  if (loadmem((int)&itdi->status[0]) != cond_bswap((1 << iTD_TLEN_P) | 1,bedesc))
     fail(9);
-  if (itdi->buf[0] != cond_bswap((int)buf,bedesc))
+  if (loadmem((int)&itdi->buf[0]) != cond_bswap((int)buf,bedesc))
     fail(10);
-  if (itdi->buf[1] != cond_bswap(iTD_IO | 1,bedesc))
+  if (loadmem((int)&itdi->buf[1]) != cond_bswap(iTD_IO | 1,bedesc))
     fail(11);
-  if (itdi->buf[2] != cond_bswap(1,bedesc))
+  if (loadmem((int)&itdi->buf[2]) != cond_bswap(1,bedesc))
     fail(12);
 
-  if (*buf != 0x55)
+  if (loadmemb((int)buf) != 0x55)
     fail(13);
 
-  if (qho->lp != cond_bswap((int)qhi | EHC_TYP_QH,bedesc))
+  if (loadmem((int)&qho->lp) != cond_bswap((int)qhi | EHC_TYP_QH,bedesc))
     fail(14);
-  if (qho->chr != cond_bswap((1 << QH_MAXP_P) | (EHC_HS << QH_EPS_P) |
+  if (loadmem((int)&qho->chr) != cond_bswap((1 << QH_MAXP_P) | (EHC_HS << QH_EPS_P) |
 			     (1 << QH_ENDPT_P),bedesc))
     fail(15);
-  if (qho->cap != cond_bswap(1 << QH_MULT_P | MASK_UFRAME0,bedesc))
+  if (loadmem((int)&qho->cap) != cond_bswap(1 << QH_MULT_P | MASK_UFRAME0,bedesc))
     fail(16);
-  if (qho->curr != cond_bswap((int)qtdo,bedesc))
+  if (loadmem((int)&qho->curr) != cond_bswap((int)qtdo,bedesc))
     fail(17);
-  if (qho->qtd.next != cond_bswap(EHC_T,bedesc))
+  if (loadmem((int)&qho->qtd.next) != cond_bswap(EHC_T,bedesc))
     fail(18);
-  if (qho->qtd.anext != cond_bswap(EHC_T,bedesc))
+  if (loadmem((int)&qho->qtd.anext) != cond_bswap(EHC_T,bedesc))
     fail(19);
-  if (qho->qtd.token != cond_bswap(qTD_DT | (qTD_OUT << qTD_PID_P),bedesc))
+  if (loadmem((int)&qho->qtd.token) != cond_bswap(qTD_DT | (qTD_OUT << qTD_PID_P),bedesc))
     fail(20);
-  if (qho->qtd.bufp[0] != cond_bswap((int)buf | 2,bedesc))
+  if (loadmem((int)&qho->qtd.bufp[0]) != cond_bswap((int)buf | 2,bedesc))
     fail(21);
-  if (qtdo->next != cond_bswap(EHC_T,bedesc))
+  if (loadmem((int)&qtdo->next) != cond_bswap(EHC_T,bedesc))
     fail(22);
-  if (qtdo->anext != cond_bswap(EHC_T,bedesc))
+  if (loadmem((int)&qtdo->anext) != cond_bswap(EHC_T,bedesc))
     fail(23);
-  if (qtdo->token != cond_bswap(qTD_DT | (qTD_OUT << qTD_PID_P),bedesc))
+  if (loadmem((int)&qtdo->token) != cond_bswap(qTD_DT | (qTD_OUT << qTD_PID_P),bedesc))
     fail(24);
-  if (qtdo->bufp[0] != cond_bswap((int)buf | 1,bedesc))
+  if (loadmem((int)&qtdo->bufp[0]) != cond_bswap((int)buf | 1,bedesc))
     fail(25);
   
-  if (qhi->lp != cond_bswap(EHC_T,bedesc))
+  if (loadmem((int)&qhi->lp) != cond_bswap(EHC_T,bedesc))
     fail(26);
-  if (qhi->chr != cond_bswap((1 << QH_MAXP_P) | (EHC_HS << QH_EPS_P) |
+  if (loadmem((int)&qhi->chr) != cond_bswap((1 << QH_MAXP_P) | (EHC_HS << QH_EPS_P) |
 			     (1 << QH_ENDPT_P),bedesc))
     fail(27);
-  if (qhi->cap != cond_bswap(1 << QH_MULT_P | MASK_UFRAME0,bedesc))
+  if (loadmem((int)&qhi->cap) != cond_bswap(1 << QH_MULT_P | MASK_UFRAME0,bedesc))
     fail(28);
-  if (qhi->curr != cond_bswap((int)qtdi,bedesc))
+  if (loadmem((int)&qhi->curr) != cond_bswap((int)qtdi,bedesc))
     fail(29);
-  if (qhi->qtd.next != cond_bswap(EHC_T,bedesc))
+  if (loadmem((int)&qhi->qtd.next) != cond_bswap(EHC_T,bedesc))
     fail(30);
-  if (qhi->qtd.anext != cond_bswap(EHC_T,bedesc))
+  if (loadmem((int)&qhi->qtd.anext) != cond_bswap(EHC_T,bedesc))
     fail(31);
-  if (qhi->qtd.token != cond_bswap(qTD_DT | qTD_IOC | 
+  if (loadmem((int)&qhi->qtd.token) != cond_bswap(qTD_DT | qTD_IOC | 
 				   (qTD_IN << qTD_PID_P),bedesc))
     fail(32);
-  if (qhi->qtd.bufp[0] != cond_bswap((int)buf | 2,bedesc))
+  if (loadmem((int)&qhi->qtd.bufp[0]) != cond_bswap((int)buf | 2,bedesc))
     fail(33);
-  if (qtdi->next != cond_bswap(EHC_T,bedesc))
+  if (loadmem((int)&qtdi->next) != cond_bswap(EHC_T,bedesc))
     fail(34);
-  if (qtdi->anext != cond_bswap(EHC_T,bedesc))
+  if (loadmem((int)&qtdi->anext) != cond_bswap(EHC_T,bedesc))
     fail(35);
-  if (qtdi->token != cond_bswap(qTD_DT | qTD_IOC | 
+  if (loadmem((int)&qtdi->token) != cond_bswap(qTD_DT | qTD_IOC | 
 				(qTD_IN << qTD_PID_P),bedesc))
     fail(36);
-  if (qtdi->bufp[0] != cond_bswap((int)buf | 1,bedesc))
+  if (loadmem((int)&qtdi->bufp[0]) != cond_bswap((int)buf | 1,bedesc))
     fail(37);
 
-  if (*(buf+1) != 0x44)
+  if (loadmemb((int)buf+1) != 0x44)
     fail(38);
 
   c->usbsts = c->usbsts;
@@ -505,38 +527,38 @@ int ehc_test(int addr, int bedesc, int beregs)
   
   c->usbcmd = 0;
 
-  if (aqh->lp != cond_bswap((int)aqh,bedesc))
+  if (loadmem((int)&aqh->lp) != cond_bswap((int)aqh,bedesc))
     fail(2);
-  if (aqh->chr != cond_bswap((1 << QH_MAXP_P) | QH_H | QH_DTC | 
+  if (loadmem((int)&aqh->chr) != cond_bswap((1 << QH_MAXP_P) | QH_H | QH_DTC | 
 			     (EHC_HS << QH_EPS_P) | (1 << QH_ENDPT_P),bedesc))
     fail(3);
-  if (aqh->cap != cond_bswap(1 << QH_MULT_P,bedesc))
+  if (loadmem((int)&aqh->cap) != cond_bswap(1 << QH_MULT_P,bedesc))
     fail(4);
-  if (aqh->curr != cond_bswap((int)aqtdi,bedesc))
+  if (loadmem((int)&aqh->curr) != cond_bswap((int)aqtdi,bedesc))
     fail(5);
-  if (aqh->qtd.next != cond_bswap(EHC_T,bedesc))
+  if (loadmem((int)&aqh->qtd.next) != cond_bswap(EHC_T,bedesc))
     fail(6);
-  if (aqh->qtd.anext != cond_bswap(EHC_T,bedesc))
+  if (loadmem((int)&aqh->qtd.anext) != cond_bswap(EHC_T,bedesc))
     fail(7);
-  if (aqh->qtd.token != cond_bswap((qTD_IN << qTD_PID_P) | qTD_HALTBABXACT,bedesc))
+  if (loadmem((int)&aqh->qtd.token) != cond_bswap((qTD_IN << qTD_PID_P) | qTD_HALTBABXACT,bedesc))
     fail(8);
-  if (aqh->qtd.bufp[0] != cond_bswap((int)buf,bedesc))
+  if (loadmem((int)&aqh->qtd.bufp[0]) != cond_bswap((int)buf,bedesc))
     fail(9);
-  if (aqtdo->next != cond_bswap((int)aqtdi,bedesc))
+  if (loadmem((int)&aqtdo->next) != cond_bswap((int)aqtdi,bedesc))
     fail(10);
-  if (aqtdo->anext != cond_bswap(EHC_T,bedesc))
+  if (loadmem((int)&aqtdo->anext) != cond_bswap(EHC_T,bedesc))
     fail(11);
-  if (aqtdo->token != cond_bswap(qTD_DT | qTD_IOC | qTD_OUT << qTD_PID_P,bedesc))
+  if (loadmem((int)&aqtdo->token) != cond_bswap(qTD_DT | qTD_IOC | qTD_OUT << qTD_PID_P,bedesc))
     fail(12);
-  if (aqtdo->bufp[0] != cond_bswap((int)buf,bedesc))
+  if (loadmem((int)&aqtdo->bufp[0]) != cond_bswap((int)buf,bedesc))
     fail(13);
-  if (aqtdi->next != cond_bswap(EHC_T,bedesc))
+  if (loadmem((int)&aqtdi->next) != cond_bswap(EHC_T,bedesc))
     fail(14);
-  if (aqtdi->anext != cond_bswap(EHC_T,bedesc))
+  if (loadmem((int)&aqtdi->anext) != cond_bswap(EHC_T,bedesc))
     fail(15);
-  if (aqtdi->token != cond_bswap((qTD_IN << qTD_PID_P) | qTD_HALTBABXACT,bedesc))
+  if (loadmem((int)&aqtdi->token) != cond_bswap((qTD_IN << qTD_PID_P) | qTD_HALTBABXACT,bedesc))
     fail(16);
-  if (aqtdi->bufp[0] != cond_bswap((int)buf,bedesc))
+  if (loadmem((int)&aqtdi->bufp[0]) != cond_bswap((int)buf,bedesc))
     fail(17);
 
   free(itdi);
@@ -710,7 +732,7 @@ int uhc_test(int addr, int bedesc, int beregs)
   /* Perform HC reset */
   report_subtest(2);
 
-  regs->usbcmdsts = cond_regswap(UHC_USBCMD_HCRESET);
+  regs->usbcmdsts = cond_regswap(UHC_USBCMD_HCRESET << 16);
 
   while (get_usbcmd(regs) & UHC_USBCMD_HCRESET)
     ;
@@ -757,23 +779,23 @@ int uhc_test(int addr, int bedesc, int beregs)
     fail(1);
   
 
-  if (td[0].lp != cond_bswap((int)(td+1),bedesc))
+  if (loadmem((int)&td[0].lp) != cond_bswap((int)(td+1),bedesc))
     fail(2);
-  if (td[0].stat != cond_bswap(TD_ISO,bedesc))
+  if (loadmem((int)&td[0].stat) != cond_bswap(TD_ISO,bedesc))
     fail(3);
-  if (td[0].token != cond_bswap(TD_PID_OUT,bedesc))
+  if (loadmem((int)&td[0].token) != cond_bswap(TD_PID_OUT,bedesc))
     fail(4);
-  if (td[0].bufp != cond_bswap((int)buf,bedesc))
+  if (loadmem((int)&td[0].bufp) != cond_bswap((int)buf,bedesc))
     fail(5);
-  if (td[1].lp != cond_bswap(TD_T,bedesc))
+  if (loadmem((int)&td[1].lp) != cond_bswap(TD_T,bedesc))
     fail(6);
-  if (td[1].stat != cond_bswap(TD_ISO | TD_IOC,bedesc))
+  if (loadmem((int)&td[1].stat) != cond_bswap(TD_ISO | TD_IOC,bedesc))
     fail(7);
-  if (td[1].token != cond_bswap(TD_PID_IN,bedesc))
+  if (loadmem((int)&td[1].token) != cond_bswap(TD_PID_IN,bedesc))
     fail(8);
-  if (td[1].bufp != cond_bswap((int)buf,bedesc))
+  if (loadmem((int)&td[1].bufp) != cond_bswap((int)buf,bedesc))
     fail(9);
-  if (*buf != 0x55)
+  if (loadmemb((int)buf) != 0x55)
     fail(10);
 
   /* Transfer 0 byte control OUT and bulk IN */
@@ -814,34 +836,34 @@ int uhc_test(int addr, int bedesc, int beregs)
   if (!(get_usbsts(regs) & UHC_USBSTS_HCHALTED))
     fail(1);
 
-  if (td[0].lp != cond_bswap(TD_T,bedesc))
+  if (loadmem((int)&td[0].lp) != cond_bswap(TD_T,bedesc))
     fail(2);
-  if (td[0].stat != cond_bswap(0x7ff,bedesc))
+  if (loadmem((int)&td[0].stat) != cond_bswap(0x7ff,bedesc))
     fail(3);
-  if (td[0].token != cond_bswap((0x7FF << TD_MAXLEN_P) | (1 << TD_ENDPT_P) | 
+  if (loadmem((int)&td[0].token) != cond_bswap((0x7FF << TD_MAXLEN_P) | (1 << TD_ENDPT_P) | 
 				TD_PID_SETUP,bedesc))
     fail(4);
-  if (td[0].bufp != cond_bswap((int)buf,bedesc))
+  if (loadmem((int)&td[0].bufp) != cond_bswap((int)buf,bedesc))
     fail(5);
-  if (td[1].lp != cond_bswap(TD_T,bedesc))
+  if (loadmem((int)&td[1].lp) != cond_bswap(TD_T,bedesc))
     fail(6);
-  if (td[1].stat != cond_bswap(TD_IOC | 0x7ff,bedesc))
+  if (loadmem((int)&td[1].stat) != cond_bswap(TD_IOC | 0x7ff,bedesc))
     fail(7);
-  if (td[1].token != cond_bswap((0x7FF << TD_MAXLEN_P) | (1 << TD_ENDPT_P) | 
+  if (loadmem((int)&td[1].token) != cond_bswap((0x7FF << TD_MAXLEN_P) | (1 << TD_ENDPT_P) | 
 				TD_PID_IN,bedesc))
     fail(8);
-  if (td[1].bufp != cond_bswap((int)buf,bedesc))
+  if (loadmem((int)&td[1].bufp) != cond_bswap((int)buf,bedesc))
     fail(9);
-  if (*buf != 0x55)
+  if (loadmemb((int)buf) != 0x55)
     fail(10);
   
-  if (qh[0].lp != cond_bswap((int)(qh+1) | TD_Q,bedesc))
+  if (loadmem((int)&qh[0].lp) != cond_bswap((int)(qh+1) | TD_Q,bedesc))
     fail(11);
-  if (qh[0].elp != cond_bswap(TD_T,bedesc))
+  if (loadmem((int)&qh[0].elp) != cond_bswap(TD_T,bedesc))
     fail(12);
-  if (qh[1].lp != cond_bswap(TD_T,bedesc))
+  if (loadmem((int)&qh[1].lp) != cond_bswap(TD_T,bedesc))
     fail(13);
-  if (qh[1].elp != cond_bswap(TD_T,bedesc))
+  if (loadmem((int)&qh[1].elp) != cond_bswap(TD_T,bedesc))
     fail(14);
 
   free(td);

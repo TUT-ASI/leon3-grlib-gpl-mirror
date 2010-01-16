@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -237,7 +238,7 @@ type dcram_in_type is record
   senable	: std_logic_vector(0 to 3);
   swrite	: std_logic_vector(0 to 3);
   saddress	: std_logic_vector(19 downto 0);
-  stag    	: std_logic_vector(31 downto 0);
+--  stag    	: std_logic_vector(31 downto 0);
   spar          : std_logic;
   ldramin	: ldram_in_type;
   ctx           : ctxdatatype;
@@ -245,6 +246,7 @@ type dcram_in_type is record
   dpar          : cpartype;
   tdiag         : std_logic_vector(3 downto 0);
   ddiag         : std_logic_vector(3 downto 0);
+  sdiag         : std_logic_vector(3 downto 0);
 end record;
 
 type dcram_out_type is record
@@ -466,7 +468,8 @@ constant lru_table  : lru_bits_type := (1,1,3,5);
     ilramsize  : integer range 1 to 512 := 1;        
     dlram      : integer range 0 to 1 := 0;
     dlramsize  : integer range 1 to 512 := 1;
-    mmuen     : integer range 0 to 1 := 0
+    mmuen     : integer range 0 to 1 := 0;
+    testen    : integer range 0 to 3 := 0
   );
   port (
     	clk   : in  std_ulogic;
@@ -539,7 +542,9 @@ constant lru_table  : lru_bits_type := (1,1,3,5);
       dtlbnum   : integer range 2 to 64 := 8;
       tlb_type  : integer range 0 to 3 := 1;
       memtech   : integer range 0 to NTECH := 0;    
-      cached    : integer := 0);    
+      cached    : integer := 0;
+      mmupgsz   : integer range 0 to 5  := 0
+    );    
     port (
       rst : in  std_logic;
       clk : in  std_logic;
@@ -582,7 +587,9 @@ constant lru_table  : lru_bits_type := (1,1,3,5);
       tlb_rep   : integer range 0 to 1 := 0;
       cached    : integer := 0;
       clk2x     : integer := 0;
-      scantest   : integer := 0);
+      scantest   : integer := 0;
+      mmupgsz   : integer range 0 to 5  := 0
+      );
     port (
       rst   : in  std_ulogic;
       clk   : in  std_ulogic;

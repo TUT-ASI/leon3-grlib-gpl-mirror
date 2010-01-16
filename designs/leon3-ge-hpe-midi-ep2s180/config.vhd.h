@@ -89,8 +89,10 @@
   constant CFG_ETH_ENM 	: integer := 16#CONFIG_DSU_ETHMSB#;
   constant CFG_ETH_ENL 	: integer := 16#CONFIG_DSU_ETHLSB#;
 
--- USB target controller
-  constant CFG_USBDCL     	: integer := CONFIG_USBDCL;
+-- USB DSU
+  constant CFG_GRUSB_DCL        : integer := CONFIG_GRUSB_DCL;
+  constant CFG_GRUSB_DCL_UIFACE : integer := CONFIG_GRUSB_DCL_UIFACE;
+  constant CFG_GRUSB_DCL_DW     : integer := CONFIG_GRUSB_DCL_DW;
 
 -- PROM/SRAM controller
   constant CFG_SRCTRL           : integer := CONFIG_SRCTRL;
@@ -157,6 +159,7 @@
 
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE  : integer := CONFIG_IRQ3_ENABLE;
+  constant CFG_IRQ3_NSEC    : integer := CONFIG_IRQ3_NSEC;
 
 -- Modular timer
   constant CFG_GPT_ENABLE   : integer := CONFIG_GPT_ENABLE;

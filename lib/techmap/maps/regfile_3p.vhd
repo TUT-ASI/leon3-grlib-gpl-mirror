@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -30,7 +31,7 @@ use techmap.allmem.all;
 
 entity regfile_3p is
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
-           wrfst : integer := 0; numregs : integer := 64);
+           wrfst : integer := 0; numregs : integer := 64; testen : integer := 0);
   port (
     wclk   : in  std_ulogic;
     waddr  : in  std_logic_vector((abits -1) downto 0);
@@ -48,7 +49,7 @@ end;
 
 architecture rtl of regfile_3p is
   constant rfinfer : boolean := (regfile_3p_infer(tech) = 1) or
-	(((tech = spartan3) or (tech = spartan3e) or (tech = virtex2) or (tech = virtex4) or (tech = virtex5)) and (abits <= 5));
+	(((is_unisim(tech) = 1)) and (abits <= 5));
 begin
   
   s0 : if rfinfer generate
@@ -62,7 +63,7 @@ begin
       port map ( wclk, waddr, wdata, we, raddr1, re1, rdata1, raddr2, re2, rdata2);
     end generate;
     dp : if tech /= peregrine generate
-      x0 : syncram_2p generic map (tech, abits, dbits, 0, wrfst)
+      x0 : syncram_2p generic map (tech, abits, dbits, 0, wrfst, testen)
         port map (rclk, re1, raddr1, rdata1, wclk, we, waddr, wdata, testin);
       x1 : syncram_2p generic map (tech, abits, dbits, 0, wrfst)
         port map (rclk, re2, raddr2, rdata2, wclk, we, waddr, wdata, testin);

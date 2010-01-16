@@ -20,7 +20,7 @@ TECHLIBS = unisim
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF gsi \
 	tmtc openchip hynix cypress ihp gleichmann fmf spansion usbhc
 DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan ddr usb ata grusbhc haps \
-	slink
+	slink ascs coremp7 ac97
 
 include $(GRLIB)/bin/Makefile
 include $(GRLIB)/software/leon3/Makefile

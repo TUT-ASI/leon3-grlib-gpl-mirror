@@ -1,6 +1,10 @@
 -----------------------------------------------------------------------------
 --  LEON3 Demonstration design
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -14,7 +18,7 @@
 --
 --  You should have received a copy of the GNU General Public License
 --  along with this program; if not, write to the Free Software
---  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 
@@ -186,9 +190,6 @@ signal s_eth_din   : std_logic_vector(31 downto 0);
 constant ahbmmax : integer := CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+ CFG_GRETH;
 constant BOARD_FREQ : integer := 50000; -- board frequency in KHz
 constant CPU_FREQ : integer := (BOARD_FREQ*CFG_CLKMUL)/CFG_CLKDIV; -- cpu frequency in KHz
-
-constant i : integer := 0;
-
 begin
 
 ----------------------------------------------------------------------
@@ -228,8 +229,8 @@ begin
 ---  LEON3 processor and DSU -----------------------------------------
 ----------------------------------------------------------------------
 
---  l3 : if CFG_LEON3 = 1 generate
---    cpu : for i in 0 to CFG_NCPU-1 generate
+  l3 : if CFG_LEON3 = 1 generate
+    cpu : for i in 0 to CFG_NCPU-1 generate
       u0 : leon3s			-- LEON3 processor
       generic map (i, fabtech, memtech, CFG_NWIN, CFG_DSU, CFG_FPU, CFG_V8, 
   	0, CFG_MAC, pclow, 0, CFG_NWP, CFG_ICEN, CFG_IREPL, CFG_ISETS, CFG_ILINE, 
@@ -239,17 +240,17 @@ begin
           CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1)
       port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso, 
       		irqi(i), irqo(i), dbgi(i), dbgo(i));
---    end generate;
+    end generate;
     ledo(8) <= dbgo(0).error;
   
---    dsugen : if CFG_DSU = 1 generate
+    dsugen : if CFG_DSU = 1 generate
       dsu0 : dsu3			-- LEON3 Debug Support Unit
       generic map (hindex => 2, haddr => 16#900#, hmask => 16#F00#, 
          ncpu => CFG_NCPU, tbits => 30, tech => memtech, irq => 0, kbytes => CFG_ATBSZ)
       port map (rstn, clkm, ahbmi, ahbsi, ahbso(2), dbgo, dbgi, dsui, dsuo);
       dsui.enable <= '1'; dsui.break <= pbsw(1); ledo(1) <= not dsuo.active;
---    end generate;
---  end generate;
+    end generate;
+  end generate;
 
   nodcom : if CFG_DSU = 0 generate 
     ahbso(2) <= ahbs_none; dsuo.tstop <= '0'; dsuo.active <= '0';

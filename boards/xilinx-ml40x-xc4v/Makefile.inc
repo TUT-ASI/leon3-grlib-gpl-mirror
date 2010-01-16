@@ -1,4 +1,4 @@
-TECHNOLOGY=virtex4
+TECHNOLOGY=Virtex4
 PART=xc4vlx25
 ifeq ("$(CONFIG_BOARD_ML402)","y")
 PART=xc4vsx35

@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -112,7 +113,8 @@ end;
 
 architecture rtl of grfpw_net is
 
-component grfpw_0_unisim
+component grfpw_unisim
+generic (tech : integer := 0);
 port(
   rst :  in std_logic;
   clk :  in std_logic;
@@ -341,10 +343,9 @@ begin
 
   disasen <= '1' when disas /= 0 else '0';
 
-  uni : if (tech = virtex2) or (tech = virtex4) or (tech = virtex5) or 
-		(tech = spartan3) or  (tech = spartan3e) 
-  generate
-    grfpw0 : grfpw_0_unisim
+  uni : if (is_unisim(tech) = 1) generate
+    grfpw0 : grfpw_unisim
+      generic map (tech => tech)
       port map (rst, clk, holdn, cpi_flush, cpi_exack, cpi_a_rs1, cpi_d_pc,
     	cpi_d_inst, cpi_d_cnt, cpi_d_trap, cpi_d_annul, cpi_d_pv, cpi_a_pc,
     	cpi_a_inst, cpi_a_cnt, cpi_a_trap, cpi_a_annul, cpi_a_pv, cpi_e_pc, 

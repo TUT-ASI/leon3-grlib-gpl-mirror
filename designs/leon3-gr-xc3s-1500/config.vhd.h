@@ -20,6 +20,7 @@
   constant CFG_NWIN 	: integer := CONFIG_IU_NWINDOWS;
   constant CFG_V8   	: integer := CFG_IU_V8;
   constant CFG_MAC  	: integer := CONFIG_IU_MUL_MAC;
+  constant CFG_BP   	: integer := CONFIG_IU_BP;
   constant CFG_SVT  	: integer := CONFIG_IU_SVT;
   constant CFG_RSTADDR 	: integer := 16#CONFIG_IU_RSTADDR#;
   constant CFG_LDDEL	: integer := CONFIG_IU_LDELAY;
@@ -52,6 +53,7 @@
   constant CFG_DTLBNUM  : integer := CONFIG_DTLBNUM;
   constant CFG_TLB_TYPE : integer := CONFIG_TLB_TYPE + CFG_MMU_FASTWB*2;
   constant CFG_TLB_REP  : integer := CONFIG_TLB_REP;
+  constant CFG_MMU_PAGE : integer := CONFIG_MMU_PAGE;
   constant CFG_DSU   	: integer := CONFIG_DSU_ENABLE;
   constant CFG_ITBSZ 	: integer := CFG_DSU_ITB;
   constant CFG_ATBSZ 	: integer := CFG_DSU_ATB;
@@ -81,8 +83,10 @@
 -- JTAG based DSU interface
   constant CFG_AHB_JTAG	: integer := CONFIG_DSU_JTAG;
 
--- USB target controller
-  constant CFG_USBDCL     	: integer := CONFIG_USBDCL;
+-- USB DSU
+  constant CFG_GRUSB_DCL        : integer := CONFIG_GRUSB_DCL;
+  constant CFG_GRUSB_DCL_UIFACE : integer := CONFIG_GRUSB_DCL_UIFACE;
+  constant CFG_GRUSB_DCL_DW     : integer := CONFIG_GRUSB_DCL_DW;
 
 -- Ethernet DSU
   constant CFG_DSU_ETH	: integer := CONFIG_DSU_ETH + CONFIG_DSU_ETH_PROG;
@@ -140,6 +144,45 @@
   constant CFG_CAN_SYNCRST : integer := CONFIG_CAN_SYNCRST;
   constant CFG_CANFT    : integer := CONFIG_CAN_FT;
 
+-- GR USB 2.0 Device Controller
+  constant CFG_GRUSBDC        : integer := CONFIG_GRUSBDC_ENABLE;
+  constant CFG_GRUSBDC_AIFACE : integer := CONFIG_GRUSBDC_AIFACE;
+  constant CFG_GRUSBDC_UIFACE : integer := CONFIG_GRUSBDC_UIFACE;
+  constant CFG_GRUSBDC_DW     : integer := CONFIG_GRUSBDC_DW;
+  constant CFG_GRUSBDC_NEPI   : integer := CONFIG_GRUSBDC_NEPI;
+  constant CFG_GRUSBDC_NEPO   : integer := CONFIG_GRUSBDC_NEPO;
+  constant CFG_GRUSBDC_I0     : integer := CONFIG_GRUSBDC_I0;
+  constant CFG_GRUSBDC_I1     : integer := CONFIG_GRUSBDC_I1;
+  constant CFG_GRUSBDC_I2     : integer := CONFIG_GRUSBDC_I2;
+  constant CFG_GRUSBDC_I3     : integer := CONFIG_GRUSBDC_I3;
+  constant CFG_GRUSBDC_I4     : integer := CONFIG_GRUSBDC_I4;
+  constant CFG_GRUSBDC_I5     : integer := CONFIG_GRUSBDC_I5;
+  constant CFG_GRUSBDC_I6     : integer := CONFIG_GRUSBDC_I6;
+  constant CFG_GRUSBDC_I7     : integer := CONFIG_GRUSBDC_I7;
+  constant CFG_GRUSBDC_I8     : integer := CONFIG_GRUSBDC_I8;
+  constant CFG_GRUSBDC_I9     : integer := CONFIG_GRUSBDC_I9;
+  constant CFG_GRUSBDC_I10    : integer := CONFIG_GRUSBDC_I10;
+  constant CFG_GRUSBDC_I11    : integer := CONFIG_GRUSBDC_I11;
+  constant CFG_GRUSBDC_I12    : integer := CONFIG_GRUSBDC_I12;
+  constant CFG_GRUSBDC_I13    : integer := CONFIG_GRUSBDC_I13;
+  constant CFG_GRUSBDC_I14    : integer := CONFIG_GRUSBDC_I14;
+  constant CFG_GRUSBDC_I15    : integer := CONFIG_GRUSBDC_I15;
+  constant CFG_GRUSBDC_O0     : integer := CONFIG_GRUSBDC_O0;
+  constant CFG_GRUSBDC_O1     : integer := CONFIG_GRUSBDC_O1;
+  constant CFG_GRUSBDC_O2     : integer := CONFIG_GRUSBDC_O2;
+  constant CFG_GRUSBDC_O3     : integer := CONFIG_GRUSBDC_O3;
+  constant CFG_GRUSBDC_O4     : integer := CONFIG_GRUSBDC_O4;
+  constant CFG_GRUSBDC_O5     : integer := CONFIG_GRUSBDC_O5;
+  constant CFG_GRUSBDC_O6     : integer := CONFIG_GRUSBDC_O6;
+  constant CFG_GRUSBDC_O7     : integer := CONFIG_GRUSBDC_O7;
+  constant CFG_GRUSBDC_O8     : integer := CONFIG_GRUSBDC_O8;
+  constant CFG_GRUSBDC_O9     : integer := CONFIG_GRUSBDC_O9;
+  constant CFG_GRUSBDC_O10    : integer := CONFIG_GRUSBDC_O10;
+  constant CFG_GRUSBDC_O11    : integer := CONFIG_GRUSBDC_O11;
+  constant CFG_GRUSBDC_O12    : integer := CONFIG_GRUSBDC_O12;
+  constant CFG_GRUSBDC_O13    : integer := CONFIG_GRUSBDC_O13;
+  constant CFG_GRUSBDC_O14    : integer := CONFIG_GRUSBDC_O14;
+  constant CFG_GRUSBDC_O15    : integer := CONFIG_GRUSBDC_O15;
 -- UART 1
   constant CFG_UART1_ENABLE : integer := CONFIG_UART1_ENABLE;
   constant CFG_UART1_FIFO   : integer := CFG_UA1_FIFO;
@@ -150,6 +193,7 @@
 
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE  : integer := CONFIG_IRQ3_ENABLE;
+  constant CFG_IRQ3_NSEC    : integer := CONFIG_IRQ3_NSEC;
 
 -- Modular timer
   constant CFG_GPT_ENABLE   : integer := CONFIG_GPT_ENABLE;
@@ -177,7 +221,12 @@
   constant CFG_SPW_NETLIST : integer := CONFIG_SPW_NETLIST;
   constant CFG_SPW_FT      : integer := CONFIG_SPW_FT;
   constant CFG_SPW_GRSPW   : integer := CONFIG_SPW_GRSPW;
-
+  constant CFG_SPW_RXUNAL  : integer := CONFIG_SPW_RXUNAL;
+  constant CFG_SPW_DMACHAN : integer := CONFIG_SPW_DMACHAN;
+  constant CFG_SPW_PORTS   : integer := CONFIG_SPW_PORTS;
+  constant CFG_SPW_INPUT   : integer := CONFIG_SPW_INPUT;
+  constant CFG_SPW_OUTPUT  : integer := CONFIG_SPW_OUTPUT;
+  constant CFG_SPW_RTSAME  : integer := CONFIG_SPW_RTSAME;
 -- VGA and PS2/ interface
   constant CFG_KBD_ENABLE  : integer := CONFIG_KBD_ENABLE;
   constant CFG_VGA_ENABLE  : integer := CONFIG_VGA_ENABLE;

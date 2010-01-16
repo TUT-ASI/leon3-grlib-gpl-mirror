@@ -19,10 +19,28 @@
 	 256	CONFIG_SPW_RMAPBUF8" 64
     fi
     bool 'Enable RMAP CRC check  ' CONFIG_SPW_RMAPCRC
+    bool 'Enable Rx unaligned transfers ' CONFIG_SPW_RXUNAL
     bool 'Spacewire FIFO protection           ' CONFIG_SPW_FT
     bool 'Use GRSPWC netlist     ' CONFIG_SPW_NETLIST
+    int 'Number of ports (1 - 2)' CONFIG_SPW_PORTS 1  
     choice 'Select GRSPW core (GRSPW1/GRSPW2) ' \
 	"1	CONFIG_SPW_GRSPW1	 \
 	 2	CONFIG_SPW_GRSPW2" 2 
+    if [ "$CONFIG_SPW_GRSPW2" = "y" ]; then
+      int 'Number of DMA channels (1 - 4)' CONFIG_SPW_DMACHAN 1
+      bool 'Receiver and transmitter uses same clock  ' CONFIG_SPW_RTSAME
+      choice 'Select receiver clock type ' \
+	"SDR       CONFIG_SPW_RX_SDR	 \
+	 DDR       CONFIG_SPW_RX_DDR   \
+         Xor       CONFIG_SPW_RX_XOR \
+         Aeroflex  CONFIG_SPW_RX_AFLEX " DDR
+      choice 'Select transmitter clock type ' \
+	"SDR       CONFIG_SPW_TX_SDR	 \
+	 DDR       CONFIG_SPW_TX_DDR   \
+         Aeroflex  CONFIG_SPW_TX_AFLEX " SDR   
+      
+    fi    
+        
+      
   fi
 

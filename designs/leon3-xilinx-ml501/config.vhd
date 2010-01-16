@@ -90,7 +90,7 @@ package config is
 -- AMBA settings
   constant CFG_DEFMST : integer := (0);
   constant CFG_RROBIN : integer := 1;
-  constant CFG_SPLIT : integer := 0;
+  constant CFG_SPLIT : integer := 1;
   constant CFG_AHBIO : integer := 16#FFF#;
   constant CFG_APBADDR : integer := 16#800#;
   constant CFG_AHB_MON : integer := 0;
@@ -181,15 +181,21 @@ package config is
 -- GPIO port
   constant CFG_GRGPIO_ENABLE : integer := 1;
   constant CFG_GRGPIO_IMASK : integer := 16#0FFFE#;
-  constant CFG_GRGPIO_WIDTH : integer := (12);
+  constant CFG_GRGPIO_WIDTH : integer := (14);
 
 -- I2C master
   constant CFG_I2C_ENABLE : integer := 1;
 
+-- AMBA Wrapper for Xilinx System Monitor
+  constant CFG_GRSYSMON : integer := 1;
+
 -- VGA and PS2/ interface
   constant CFG_KBD_ENABLE : integer := 1;
   constant CFG_VGA_ENABLE : integer := 0;
-  constant CFG_SVGA_ENABLE : integer := 0;
+  constant CFG_SVGA_ENABLE : integer := 1;
+
+-- AMBA System ACE Interface Controller
+  constant CFG_GRACECTRL : integer := 1;
 
 -- GRLIB debugging
   constant CFG_DUART : integer := 0;

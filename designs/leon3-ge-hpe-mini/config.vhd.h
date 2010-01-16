@@ -52,6 +52,7 @@
   constant CFG_DTLBNUM  : integer := CONFIG_DTLBNUM;
   constant CFG_TLB_TYPE : integer := CONFIG_TLB_TYPE + CFG_MMU_FASTWB*2;
   constant CFG_TLB_REP  : integer := CONFIG_TLB_REP;
+  constant CFG_MMU_PAGE : integer := CONFIG_MMU_PAGE;
   constant CFG_DSU   	: integer := CONFIG_DSU_ENABLE;
   constant CFG_ITBSZ 	: integer := CFG_DSU_ITB;
   constant CFG_ATBSZ 	: integer := CFG_DSU_ATB;
@@ -134,6 +135,7 @@
 
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE  : integer := CONFIG_IRQ3_ENABLE;
+  constant CFG_IRQ3_NSEC    : integer := CONFIG_IRQ3_NSEC;
 
 -- Modular timer
   constant CFG_GPT_ENABLE   : integer := CONFIG_GPT_ENABLE;

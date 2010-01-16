@@ -439,7 +439,8 @@ NET "writen"  LOC = "J3"  ;
 
 ## pin mappings for GR-CPCI-1553 mezzanine
 
-NET "spw_clk" LOC = "AJ15"  | IOSTANDARD=LVTTL; #pci_clk
+NET "spw_clk" LOC = "AJ15"; #pci_clk
+#NET IOSTANDARD=LVTTL; #pci_clk
 
 NET "spw_rxdp(0)" LOC = "AB1";#  | IOSTANDARD = LVDS_25; # GENIO71
 NET "spw_rxdn(0)" LOC = "AA1";#  | IOSTANDARD = LVDS_25; # GENIO67

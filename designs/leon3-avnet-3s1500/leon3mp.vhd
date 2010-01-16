@@ -1,6 +1,10 @@
 -----------------------------------------------------------------------------
 --  LEON3 Demonstration design for AVNET Spartan3 Evaluation Board
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -14,7 +18,7 @@
 --
 --  You should have received a copy of the GNU General Public License
 --  along with this program; if not, write to the Free Software
---  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 
@@ -53,8 +57,8 @@ entity leon3mp is
     mezz      : integer := CFG_ADS_DAU_MEZZ
   );
   port (
-    clk_66mhz	: in  std_ulogic;
-    clk_socket	: in  std_ulogic;
+    clk_66mhz	: in  std_logic;
+    clk_socket	: in  std_logic;
     leds	: out std_logic_vector(7 downto 0);
     switches	: in  std_logic_vector(5 downto 0);
 
@@ -79,25 +83,25 @@ entity leon3mp is
     can_txd     : out std_logic;
     can_rxd     : in  std_logic;
 
-    phy_txck 	: in std_ulogic;
-    phy_rxck 	: in std_ulogic;
+    phy_txck 	: in std_logic;
+    phy_rxck 	: in std_logic;
     phy_rxd    	: in std_logic_vector(3 downto 0);   
-    phy_rxdv  	: in std_ulogic; 
-    phy_rxer  	: in std_ulogic; 
-    phy_col 	: in std_ulogic;
-    phy_crs 	: in std_ulogic;
+    phy_rxdv  	: in std_logic; 
+    phy_rxer  	: in std_logic; 
+    phy_col 	: in std_logic;
+    phy_crs 	: in std_logic;
     phy_txd 	: out std_logic_vector(3 downto 0);   
-    phy_txen 	: out std_ulogic; 
-    phy_txer 	: out std_ulogic; 
-    phy_mdc 	: out std_ulogic;
+    phy_txen 	: out std_logic; 
+    phy_txer 	: out std_logic; 
+    phy_mdc 	: out std_logic;
     phy_mdio   	: inout std_logic;		-- ethernet PHY interface
     phy_reset_l	: inout std_logic;
 
-    video_clk 	: in std_ulogic;
-    comp_sync 	: out std_ulogic;
-    horiz_sync 	: out std_ulogic;
-    vert_sync 	: out std_ulogic;
-    blank 	: out std_ulogic;
+    video_clk 	: in std_logic;
+    comp_sync 	: out std_logic;
+    horiz_sync 	: out std_logic;
+    vert_sync 	: out std_logic;
+    blank 	: out std_logic;
     video_out 	: out std_logic_vector(23 downto 0);   
 
     msclk   	: inout std_logic;
@@ -108,23 +112,23 @@ entity leon3mp is
     disp_seg1 	: out std_logic_vector(7 downto 0);   
     disp_seg2 	: out std_logic_vector(7 downto 0);   
 
-    pci_clk 	: in std_ulogic;
-    pci_gnt     : in std_ulogic;
-    pci_idsel   : in std_ulogic; 
-    pci_lock    : inout std_ulogic;
+    pci_clk 	: in std_logic;
+    pci_gnt     : in std_logic;
+    pci_idsel   : in std_logic; 
+    pci_lock    : inout std_logic;
     pci_ad 	: inout std_logic_vector(31 downto 0);
     pci_cbe 	: inout std_logic_vector(3 downto 0);
-    pci_frame   : inout std_ulogic;
-    pci_irdy 	: inout std_ulogic;
-    pci_trdy 	: inout std_ulogic;
-    pci_devsel  : inout std_ulogic;
-    pci_stop 	: inout std_ulogic;
-    pci_perr 	: inout std_ulogic;
-    pci_par 	: inout std_ulogic;    
-    pci_req 	: inout std_ulogic;
-    pci_serr    : inout std_ulogic;
-    pci_host   	: in std_ulogic;
-    pci_66	: in std_ulogic
+    pci_frame   : inout std_logic;
+    pci_irdy 	: inout std_logic;
+    pci_trdy 	: inout std_logic;
+    pci_devsel  : inout std_logic;
+    pci_stop 	: inout std_logic;
+    pci_perr 	: inout std_logic;
+    pci_par 	: inout std_logic;    
+    pci_req 	: inout std_logic;
+    pci_serr    : inout std_logic;
+    pci_host   	: in std_logic;
+    pci_66	: in std_logic
 	);
 end;
 
@@ -151,7 +155,7 @@ signal ahbso : ahb_slv_out_vector := (others => ahbs_none);
 signal ahbmi : ahb_mst_in_type;
 signal ahbmo : ahb_mst_out_vector := (others => ahbm_none);
 
-signal clk, rstn, rstraw, pciclk, sdclkl : std_ulogic;
+signal clk, rstn, rstraw, pciclk, sdclkl : std_logic;
 signal cgi   : clkgen_in_type;
 signal cgo   : clkgen_out_type;
 signal u1i, u2i, dui : uart_in_type;
@@ -179,13 +183,13 @@ signal ethi, ethi1, ethi2 : eth_in_type;
 signal etho, etho1, etho2 : eth_out_type;
 
 signal gpti : gptimer_in_type;
-signal tck, tms, tdi, tdo : std_ulogic;
+signal tck, tms, tdi, tdo : std_logic;
 
-signal pllref, errorn, pci_rst   : std_ulogic;
+signal pllref, errorn, pci_rst   : std_logic;
 signal pci_arb_req_n, pci_arb_gnt_n   : std_logic_vector(0 to 3);
 
-signal dac_clk, clk25, clk_66mhzl, pci_lclk   : std_ulogic;
-signal can_ltx, can_lrx  : std_ulogic;
+signal dac_clk, clk25, clk_66mhzl, pci_lclk   : std_logic;
+signal can_ltx, can_lrx  : std_logic;
 
 attribute keep : boolean;
 attribute syn_keep : boolean;
@@ -469,7 +473,7 @@ begin
     pci_mtf0 : if CFG_PCI = 2 generate	-- master/target with fifo
       pci0 : pci_mtf generic map (memtech => memtech, hmstndx => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SVGA_ENABLE, 
 	  fifodepth => log2(CFG_PCIDEPTH), device_id => CFG_PCIDID, vendor_id => CFG_PCIVID,
-	  hslvndx => 4, pindex => 9, paddr => 4, haddr => 16#E00#,
+	  hslvndx => 4, pindex => 9, paddr => 9, haddr => 16#E00#,
 	  ioaddr => 16#400#, nsync => 2)
       port map (rstn, clk, pciclk, pcii, pcio, apbi, apbo(9),
 	ahbmi, ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SVGA_ENABLE), ahbsi, ahbso(4));
@@ -479,9 +483,9 @@ begin
       dma : pcidma generic map (memtech => memtech, dmstndx => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+1+CFG_SVGA_ENABLE, 
 	  dapbndx => 5, dapbaddr => 5, blength => blength, mstndx => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SVGA_ENABLE,
 	  fifodepth => log2(fifodepth), device_id => CFG_PCIDID, vendor_id => CFG_PCIVID,
-	  slvndx => 4, apbndx => 4, apbaddr => 4, haddr => 16#E00#, ioaddr => 16#800#, 
+	  slvndx => 4, apbndx => 9, apbaddr => 9, haddr => 16#E00#, ioaddr => 16#800#, 
 	  nsync => 1)
-      	port map (rstn, clk, pciclk, pcii, pcio, apbo(5),  ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+1+CFG_SVGA_ENABLE), 
+      	port map (rstn, clk, pciclk, pcii, pcio, apbo(9),  ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+1+CFG_SVGA_ENABLE), 
  	  apbi, apbo(4), ahbmi, ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SVGA_ENABLE), ahbsi, ahbso(4));
     end generate;
 

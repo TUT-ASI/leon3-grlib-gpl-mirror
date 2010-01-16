@@ -1,6 +1,10 @@
 -----------------------------------------------------------------------------
 --  LEON3 Demonstration design test bench
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -11,6 +15,10 @@
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
 --  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 --  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -111,6 +119,7 @@ component leon3mp
     erx_er  	: in std_ulogic; 
     erx_col 	: in std_ulogic;
     erx_crs 	: in std_ulogic;
+    emdint      : in std_ulogic;
     etxd 	: out std_logic_vector(3 downto 0);   
     etx_en 	: out std_ulogic; 
     etx_er 	: out std_ulogic; 
@@ -216,6 +225,7 @@ signal erxd, etxd: std_logic_vector(3 downto 0):=(others=>'0');
 signal erxdt, etxdt : std_logic_vector(7 downto 0);
 signal emdc, emdio: std_logic; --dummy signal for the mdc,mdio in the phy which is not used
 signal eth_macclk : std_ulogic := '0';
+signal emdint : std_ulogic;
 
 signal ps2clk      : std_logic_vector(1 downto 0);
 signal ps2data     : std_logic_vector(1 downto 0);
@@ -304,7 +314,7 @@ begin
 	sdclk, sdcsn, sdwen, sdrasn, sdcasn, sddqm, 
 	dsuen, dsubre, dsuact, 
 	txd1, rxd1, ctsn1, rtsn1, txd2, rxd2, ctsn2, rtsn2, pio,
-        emdio, etx_clk, erx_clk, erxd, erx_dv, erx_er, erx_col, erx_crs,
+        emdio, etx_clk, erx_clk, erxd, erx_dv, erx_er, erx_col, erx_crs, emdint, 
         etxd, etx_en, etx_er, emdc, ps2clk, ps2data, vid_clock, vid_blankn, vid_syncn,
         vid_hsync, vid_vsync, vid_r, vid_g, vid_b, spw_clk, spw_rxdp, spw_rxdn,
         spw_rxsp,  spw_rxsn, spw_txdp, spw_txdn, spw_txsp, spw_txsn, usb_clkout,
@@ -351,6 +361,10 @@ begin
       port map(rst, emdio, etx_clk, erx_clk, erxdt, erx_dv,
         erx_er, erx_col, erx_crs, etxdt, etx_en, etx_er, emdc, eth_macclk);
   end generate;
+
+  ps2devs: for i in 0 to 1 generate
+    ps2_device(ps2clk(i), ps2data(i));
+  end generate ps2devs;
   
   errorn <= 'H';			  -- ERROR pull-up
 

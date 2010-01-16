@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -145,6 +146,7 @@ constant STC      : op3_type := "110100";
 constant STCSR    : op3_type := "110101";
 constant STDCQ    : op3_type := "110110";
 constant STDC     : op3_type := "110111";
+constant CASA     : op3_type := "111100";
 
 -- bicc decoding (inst(27 downto 25))
 
@@ -208,6 +210,9 @@ constant TT_CPEXC  : trap_type := "101000";
 constant TT_DIV    : trap_type := "101010";
 constant TT_DSEX   : trap_type := "101011";
 constant TT_TICC   : trap_type := "111111";
+constant TT_ICERR  : trap_type := "110000";	-- icache correctable error
+constant TT_DCERR  : trap_type := "110100";	-- dcache correctable error
+constant TT_RCERR  : trap_type := "111000";	-- RF correctable error
 
 -- Alternate address space identifiers (only 5 lsb bist are used)
 

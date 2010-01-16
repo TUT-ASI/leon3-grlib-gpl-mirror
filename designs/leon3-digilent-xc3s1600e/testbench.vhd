@@ -157,7 +157,7 @@ begin
 
       dsuen   => dsuen,
       dsubre => dsubre,
-      dsuact => dsuactn,
+--      dsuact => dsuactn,
       dsutx   => dsutx,
       dsurx   => dsurx,
 

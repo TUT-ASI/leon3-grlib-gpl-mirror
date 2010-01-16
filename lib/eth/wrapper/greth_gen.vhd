@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -49,7 +50,10 @@ entity greth_gen is
     phyrstadr      : integer range 0 to 31 := 0;
     rmii           : integer range 0 to 1  := 0;
     oepol	   : integer range 0 to 1  := 0; 
-    scanen	   : integer range 0 to 1  := 0); 
+    scanen	   : integer range 0 to 1  := 0;
+    mdint_pol      : integer range 0 to 1  := 0;
+    enable_mdint   : integer range 0 to 1  := 0;
+    multicast      : integer range 0 to 1  := 0); 
   port(
     rst            : in  std_ulogic;
     clk            : in  std_ulogic;
@@ -89,6 +93,7 @@ entity greth_gen is
     rx_crs         : in   std_ulogic;
     mdio_i         : in   std_ulogic;
     phyrstaddr     : in   std_logic_vector(4 downto 0);
+    mdint          : in   std_ulogic;
     --ethernet output signals
     reset          : out  std_ulogic;
     txd            : out  std_logic_vector(3 downto 0);   
@@ -167,7 +172,10 @@ begin
       phyrstadr      => phyrstadr,
       rmii           => rmii,
       oepol	     => oepol,
-      scanen	     => scanen)
+      scanen	     => scanen,
+      mdint_pol      => mdint_pol,
+      enable_mdint   => enable_mdint,
+      multicast      => multicast)
     port map(
       rst            => rst,
       clk            => clk,
@@ -230,6 +238,7 @@ begin
       rx_crs         => rx_crs,
       mdio_i         => mdio_i,
       phyrstaddr     => phyrstaddr,
+      mdint          => mdint,
       --ethernet output signals
       reset          => reset,
       txd            => txd(3 downto 0),

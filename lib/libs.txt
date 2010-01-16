@@ -2,7 +2,6 @@ tech/dw02
 synplify
 techmap
 spw
-usbhc
 eth
 opencores
 ihp
@@ -13,6 +12,7 @@ actel/corePCIF
 gr1553
 gaisler
 esa
+#nasa
 gleichmann
 fmf
 spansion

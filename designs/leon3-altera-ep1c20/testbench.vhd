@@ -1,6 +1,10 @@
 ------------------------------------------------------------------------------
 --  LEON3 Demonstration design test bench
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -11,6 +15,10 @@
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
 --  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 --  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -44,26 +52,6 @@ entity testbench is
     sramdepth  : integer := 20;		-- ram address depth
     srambanks  : integer := 1		-- number of ram banks
   );
---   port (
---     pci_rst     : in std_ulogic;	-- PCI bus
---     pci_clk 	: in std_ulogic;
---     pci_gnt     : in std_ulogic;
---     pci_idsel   : in std_ulogic;  
---     pci_lock    : inout std_ulogic;
---     pci_ad 	: inout std_logic_vector(31 downto 0);
---     pci_cbe 	: inout std_logic_vector(3 downto 0);
---     pci_frame   : inout std_ulogic;
---     pci_irdy 	: inout std_ulogic;
---     pci_trdy 	: inout std_ulogic;
---     pci_devsel  : inout std_ulogic;
---     pci_stop 	: inout std_ulogic;
---     pci_perr 	: inout std_ulogic;
---     pci_par 	: inout std_ulogic;    
---     pci_req 	: inout std_ulogic;
---     pci_serr    : inout std_ulogic;
---     pci_host   	: in std_ulogic;
---     pci_66	: in std_ulogic
---   );
 end; 
 
 architecture behav of testbench is
@@ -250,35 +238,7 @@ begin
                   cf_power, cf_gnd_da, cf_atasel, cf_we, cf_csel,
                   eth_aen, eth_readn, eth_writen, eth_nbe); 
 
-
 -- optional sdram
-
---   sd0 : if (CFG_SDEN = 1) and (CFG_SEPBUS = 0) generate
---     u0: mt48lc16m16a2 generic map (index => 0, fname => sdramfile)
--- 	PORT MAP(
---             Dq => data(31 downto 16), Addr => address(14 downto 2),
---             Ba => address(16 downto 15), Clk => sdclk, Cke => sdcke(0),
---             Cs_n => sdcsn(0), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
---             Dqm => sddqm(3 downto 2));
---     u1: mt48lc16m16a2 generic map (index => 16, fname => sdramfile)
--- 	PORT MAP(
---             Dq => data(15 downto 0), Addr => address(14 downto 2),
---             Ba => address(16 downto 15), Clk => sdclk, Cke => sdcke(0),
---             Cs_n => sdcsn(0), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
---             Dqm => sddqm(1 downto 0));
---     u2: mt48lc16m16a2 generic map (index => 0, fname => sdramfile)
--- 	PORT MAP(
---             Dq => data(31 downto 16), Addr => address(14 downto 2),
---             Ba => address(16 downto 15), Clk => sdclk, Cke => sdcke(0),
---             Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
---             Dqm => sddqm(3 downto 2));
---     u3: mt48lc16m16a2 generic map (index => 16, fname => sdramfile)
--- 	PORT MAP(
---             Dq => data(15 downto 0), Addr => address(14 downto 2),
---             Ba => address(16 downto 15), Clk => sdclk, Cke => sdcke(0),
---             Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
---             Dqm => sddqm(1 downto 0));
---   end generate;
 
   sd1 : if (CFG_MCTRL_SDEN = 1) and (CFG_MCTRL_SEPBUS = 1) generate
     u0: mt48lc16m16a2 generic map (index => 0, fname => sdramfile)
@@ -306,32 +266,6 @@ begin
             Cs_n => sdcsn, Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
             Dqm => sddqm(1 downto 0));
 
---     sd64 : if (CFG_SD64 = 1) generate
---       u4: mt48lc16m16a2 generic map (index => 0, fname => sdramfile)
--- 	PORT MAP(
---             Dq => sd(63 downto 48), Addr => sa(12 downto 0),
---             Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(0),
---             Cs_n => sdcsn(0), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
---             Dqm => sddqm(7 downto 6));
---       u5: mt48lc16m16a2 generic map (index => 16, fname => sdramfile)
--- 	PORT MAP(
---             Dq => sd(47 downto 32), Addr => sa(12 downto 0),
---             Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(0),
---             Cs_n => sdcsn(0), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
---             Dqm => sddqm(5 downto 4));
---       u6: mt48lc16m16a2 generic map (index => 0, fname => sdramfile)
--- 	PORT MAP(
---             Dq => sd(63 downto 48), Addr => sa(12 downto 0),
---             Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(0),
---             Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
---             Dqm => sddqm(7 downto 6));
---       u7: mt48lc16m16a2 generic map (index => 16, fname => sdramfile)
--- 	PORT MAP(
---             Dq => sd(47 downto 32), Addr => sa(12 downto 0),
---             Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(0),
---             Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
---             Dqm => sddqm(5 downto 4));
---     end generate;
   end generate;
 
   -- 8 bit prom
@@ -353,10 +287,7 @@ begin
   to_ata.cs(0)<=ata_cs0; to_ata.cs(1)<=ata_cs1;
   to_ata.da<=ata_da; to_ata.dmack<=ata_dmack;
   to_ata.dior<=ata_dior; to_ata.diow<=ata_diow; to_ata.reset<=ata_rst;
---  ata_dmarq<=from_ata.dmarq; 
   ata_intrq<=from_ata.intrq; ata_iordy<=from_ata.iordy;
-
-
 
   error <= 'H';			  -- ERROR pull-up
 

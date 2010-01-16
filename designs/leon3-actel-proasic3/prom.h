@@ -1,5 +1,5 @@
 #define MCFG1 0x10380233
-#define MCFG2 0xe6A06e20
+#define MCFG2 0xe6A06e61
 //#define MCFG2 0xe6A00e60
 #define MCFG3 0x000ff000
 #define ASDCFG 0xfff00100

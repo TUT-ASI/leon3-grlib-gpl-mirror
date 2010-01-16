@@ -142,6 +142,6 @@ struct l2regs {
 #define IDE_BIT		10
 #define DTE_BIT		8
 #define DDE_BIT		6
-#define CE_CLEAR	0x3fc0;
+//#define CE_CLEAR	0x3fc0;
 
 

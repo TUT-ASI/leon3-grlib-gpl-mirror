@@ -50,19 +50,19 @@ Design specifics:
 
 * Sample output from GRMON is:
 
- GRMON LEON debug monitor v1.1.19c
+ GRMON LEON debug monitor v1.1.32
 
- Copyright (C) 2004,2005 Gaisler Research - all rights reserved.
+ Copyright (C) 2004-2008 Gaisler Research - all rights reserved.
  For latest updates, go to http://www.gaisler.com/
  Comments or bug-reports to support@gaisler.com
 
-
- using JTAG cable on parallel port
+ Xilinx cable: Cable type/rev : 0x3
  JTAG chain: xc95144xl xc4vlx25 xcf32p xccace
 
- GRLIB build version: 2314
+ Device ID: : 0x401
+ GRLIB build version: 3199
 
- initialising .............
+ initialising ..............
  detected frequency:  65 MHz
 
  Component                            Vendor
@@ -73,6 +73,7 @@ Design specifics:
  AHB/APB Bridge                       Gaisler Research
  LEON3 Debug Support Unit             Gaisler Research
  LEON2 Memory Controller              European Space Agency
+ System ACE I/F Controller            Gaisler Research
  Generic APB UART                     Gaisler Research
  Multi-processor Interrupt Ctrl       Gaisler Research
  Modular Timer Unit                   Gaisler Research
@@ -82,7 +83,7 @@ Design specifics:
 
  Use command 'info sys' to print a detailed report of attached cores
 
-grlib> inf sys
+grlib> info sys
 00.01:003   Gaisler Research  LEON3 SPARC V8 Processor (ver 0x0)
              ahb master 0
 01.01:01c   Gaisler Research  AHB Debug JTAG TAP (ver 0x0)
@@ -90,30 +91,33 @@ grlib> inf sys
 02.01:01d   Gaisler Research  GR Ethernet MAC (ver 0x0)
              ahb master 2, irq 12
              apb: 80000b00 - 80000c00
-             edcl ip 192.168.0.69, buffer 2 kbyte
+             edcl ip 192.168.0.51, buffer 2 kbyte
 00.01:025   Gaisler Research  DDR266 Controller (ver 0x0)
              ahb: 40000000 - 50000000
              ahb: fff00100 - fff00200
              32-bit DDR : 1 * 64 Mbyte @ 0x40000000
-                          120 MHz, col 9, ref 7.8 us
+                          100 MHz, col 9, ref 7.8 us, trfc 80 ns
 01.01:006   Gaisler Research  AHB/APB Bridge (ver 0x0)
              ahb: 80000000 - 80100000
 02.01:004   Gaisler Research  LEON3 Debug Support Unit (ver 0x1)
              ahb: 90000000 - a0000000
              AHB trace 128 lines, stack pointer 0x43fffff0
-             CPU#0 win 8, hwbp 2, itrace 128, srmmu, lddel 1
-                   icache 4 * 4 kbyte, 32 byte/line lru
-                   dcache 4 * 4 kbyte, 16 byte/line lru
+             CPU#0 win 8, hwbp 2, itrace 128, V8 mul/div, srmmu, lddel 1
+                   icache 2 * 8 kbyte, 32 byte/line lru
+                   dcache 2 * 4 kbyte, 16 byte/line lru
 03.04:00f   European Space Agency  LEON2 Memory Controller (ver 0x1)
              ahb: 00000000 - 20000000
              ahb: 20000000 - 40000000
              ahb: c0000000 - c1000000
              apb: 80000000 - 80000100
              32-bit prom @ 0x00000000
+04.01:067   Gaisler Research  System ACE I/F Controller (ver 0x0)
+             irq 13
+             ahb: fff00200 - fff00300
 01.01:00c   Gaisler Research  Generic APB UART (ver 0x1)
              irq 2
              apb: 80000100 - 80000200
-             baud rate 38400
+             baud rate 38325
 02.01:00d   Gaisler Research  Multi-processor Interrupt Ctrl (ver 0x3)
              apb: 80000200 - 80000300
 03.01:011   Gaisler Research  Modular Timer Unit (ver 0x0)
@@ -149,14 +153,29 @@ grlib> fla
  write buffer  : 32 bytes
  region  0     : 32 blocks of 128 Kbytes
 
-grlib> i2c read 0x50 0x00 8
+grlib> i2c scan
 
- 00:    48      57      2d      56
- 04:    34      2d      4d      4c
+Scanning 7-bit address space on I2C bus:
+ Detected I2C device at address 0x50
+ Detected I2C device at address 0x51
+ Detected I2C device at address 0x52
+ Detected I2C device at address 0x53
+ Detected I2C device at address 0x54
+ Detected I2C device at address 0x55
+ Detected I2C device at address 0x56
+ Detected I2C device at address 0x57
+Scan of I2C bus completed. 8 devices found
+
+grlib> i2c  read 0x50 0x00 8
+
+ 00:    10      f3      3d      44
+ 04:    55      12      04      07
 
 grlib> i2c read 0x51 0x00 8
 
- 00:    00      00      00      00
- 04:    00      00      00      00
+ 00:    04      07      08      09
+ 04:    0a      0b      0c      0d
 
 grlib>  
+
+

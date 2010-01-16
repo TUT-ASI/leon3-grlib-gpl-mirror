@@ -1,6 +1,10 @@
 -----------------------------------------------------------------------------
 --  LEON3 Demonstration design
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -14,7 +18,7 @@
 --
 --  You should have received a copy of the GNU General Public License
 --  along with this program; if not, write to the Free Software
---  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 
@@ -34,7 +38,7 @@ use gaisler.pci.all;
 use gaisler.net.all;
 use gaisler.jtag.all;
 use gaisler.spacewire.all;
-use gaisler.grusbhc_pkg.all;
+use gaisler.grusb.all;
 
 library esa;
 use esa.memoryctrl.all;
@@ -52,78 +56,79 @@ entity leon3mp is
     pclow     : integer := CFG_PCLOW
   );
   port (
-    resetn	: in  std_ulogic;
-    clk		: in  std_ulogic;
-    pllref 	: in  std_ulogic; 
-    errorn	: out std_ulogic;
-    wdogn  	: out std_ulogic;
+    resetn	: in  std_logic;
+    clk		: in  std_logic;
+    pllref 	: in  std_logic; 
+    errorn	: out std_logic;
+    wdogn  	: out std_logic;
 
     address 	: out std_logic_vector(27 downto 0);
     data	: inout std_logic_vector(31 downto 0);
     sa      	: out std_logic_vector(14 downto 0);
     sd   	: inout std_logic_vector(63 downto 0);
 
-    sdclk  	: out std_ulogic;
+    sdclk  	: out std_logic;
     sdcke  	: out std_logic_vector (1 downto 0);    -- sdram clock enable
     sdcsn  	: out std_logic_vector (1 downto 0);    -- sdram chip select
-    sdwen  	: out std_ulogic;                       -- sdram write enable
-    sdrasn  	: out std_ulogic;                       -- sdram ras
-    sdcasn  	: out std_ulogic;                       -- sdram cas
+    sdwen  	: out std_logic;                       -- sdram write enable
+    sdrasn  	: out std_logic;                       -- sdram ras
+    sdcasn  	: out std_logic;                       -- sdram cas
     sddqm   	: out std_logic_vector (7 downto 0);    -- sdram dqm
-    dsutx  	: out std_ulogic; 			-- DSU tx data
-    dsurx  	: in  std_ulogic;  			-- DSU rx data
-    dsuen   	: in std_ulogic;
-    dsubre  	: in std_ulogic;
-    dsuact  	: out std_ulogic;
-    txd1   	: out std_ulogic; 			-- UART1 tx data
-    rxd1   	: in  std_ulogic;  			-- UART1 rx data
-    txd2   	: out std_ulogic; 			-- UART2 tx data
-    rxd2   	: in  std_ulogic;  			-- UART2 rx data
+    dsutx  	: out std_logic; 			-- DSU tx data
+    dsurx  	: in  std_logic;  			-- DSU rx data
+    dsuen   	: in std_logic;
+    dsubre  	: in std_logic;
+    dsuact  	: out std_logic;
+    txd1   	: out std_logic; 			-- UART1 tx data
+    rxd1   	: in  std_logic;  			-- UART1 rx data
+    txd2   	: out std_logic; 			-- UART2 tx data
+    rxd2   	: in  std_logic;  			-- UART2 rx data
     ramsn  	: out std_logic_vector (4 downto 0);
     ramoen 	: out std_logic_vector (4 downto 0);
     rwen   	: out std_logic_vector (3 downto 0);
-    oen    	: out std_ulogic;
-    writen 	: out std_ulogic;
-    read   	: out std_ulogic;
-    iosn   	: out std_ulogic;
+    oen    	: out std_logic;
+    writen 	: out std_logic;
+    read   	: out std_logic;
+    iosn   	: out std_logic;
     romsn  	: out std_logic_vector (1 downto 0);
-    brdyn  	: in  std_ulogic;  			-- bus ready
-    bexcn  	: in  std_ulogic;  			-- bus exception
+    brdyn  	: in  std_logic;  			-- bus ready
+    bexcn  	: in  std_logic;  			-- bus exception
 
     gpio        : inout std_logic_vector(CFG_GRGPIO_WIDTH-1 downto 0); 	-- I/O port
 
     emdio     	: inout std_logic;		-- ethernet PHY interface
-    eth_macclk  : in std_ulogic;
-    etx_clk 	: in std_ulogic;
-    erx_clk 	: in std_ulogic;
+    eth_macclk  : in std_logic;
+    etx_clk 	: in std_logic;
+    erx_clk 	: in std_logic;
     erxd    	: in std_logic_vector(7 downto 0);   
-    erx_dv  	: in std_ulogic; 
-    erx_er  	: in std_ulogic; 
-    erx_col 	: in std_ulogic;
-    erx_crs 	: in std_ulogic;
+    erx_dv  	: in std_logic; 
+    erx_er  	: in std_logic; 
+    erx_col 	: in std_logic;
+    erx_crs 	: in std_logic;
+    emdintn     : in std_logic;
     etxd 	: out std_logic_vector(7 downto 0);   
-    etx_en 	: out std_ulogic; 
-    etx_er 	: out std_ulogic; 
-    emdc 	: out std_ulogic;
+    etx_en 	: out std_logic; 
+    etx_er 	: out std_logic; 
+    emdc 	: out std_logic;
 
-    pci_rst     : inout std_ulogic;		-- PCI bus
-    pci_clk 	: in std_ulogic;
-    pci_gnt     : in std_ulogic;
-    pci_idsel   : in std_ulogic; 
-    pci_lock    : inout std_ulogic;
+    pci_rst     : inout std_logic;		-- PCI bus
+    pci_clk 	: in std_logic;
+    pci_gnt     : in std_logic;
+    pci_idsel   : in std_logic; 
+    pci_lock    : inout std_logic;
     pci_ad 	: inout std_logic_vector(31 downto 0);
     pci_cbe 	: inout std_logic_vector(3 downto 0);
-    pci_frame   : inout std_ulogic;
-    pci_irdy 	: inout std_ulogic;
-    pci_trdy 	: inout std_ulogic;
-    pci_devsel  : inout std_ulogic;
-    pci_stop 	: inout std_ulogic;
-    pci_perr 	: inout std_ulogic;
-    pci_par 	: inout std_ulogic;    
-    pci_req 	: inout std_ulogic;
-    pci_serr    : inout std_ulogic;
-    pci_host   	: in std_ulogic;
-    pci_66	: in std_ulogic;
+    pci_frame   : inout std_logic;
+    pci_irdy 	: inout std_logic;
+    pci_trdy 	: inout std_logic;
+    pci_devsel  : inout std_logic;
+    pci_stop 	: inout std_logic;
+    pci_perr 	: inout std_logic;
+    pci_par 	: inout std_logic;    
+    pci_req 	: inout std_logic;
+    pci_serr    : inout std_logic;
+    pci_host   	: in std_logic;
+    pci_66	: in std_logic;
     pci_arb_req	: in  std_logic_vector(0 to 3);
     pci_arb_gnt	: out std_logic_vector(0 to 3);
 
@@ -131,7 +136,7 @@ entity leon3mp is
     can_rxd	: in  std_logic_vector(0 to CFG_CAN_NUM-1);
 --    can_stb	: out std_logic_vector(0 to CFG_CAN_NUM-1)
 
-    spw_clk	 : in  std_ulogic;
+    spw_clk	 : in  std_logic;
     spw_rxdp     : in  std_logic_vector(0 to CFG_SPW_NUM-1);
     spw_rxdn     : in  std_logic_vector(0 to CFG_SPW_NUM-1);
     spw_rxsp     : in  std_logic_vector(0 to CFG_SPW_NUM-1);
@@ -141,18 +146,11 @@ entity leon3mp is
     spw_txsp     : out std_logic_vector(0 to CFG_SPW_NUM-1);
     spw_txsn     : out std_logic_vector(0 to CFG_SPW_NUM-1);
 
-    usb_clkout  : in std_ulogic;
+    usb_clkout  : in std_logic;
     usb_d       : inout std_logic_vector(7 downto 0);
-    usb_nxt     : in  std_ulogic;
-    usb_stp     : out std_ulogic;
-    usb_dir     : in  std_ulogic;
---    usb_id      : out std_ulogic;     -- not used by usb host controller
---    usb_csn     : out std_ulogic;     -- not used by usb host controller
---    usb_vbus    : in  std_ulogic;     -- not used by usb host controller
---    usb_fault   : out std_ulogic;     -- not used by usb host controller
---    usb_enablen : out std_ulogic;     -- not used by usb host controller
---    usb_clock   : out std_ulogic;     -- not used by usb host controller
---    usb_faultn  : in  std_ulogic;     -- not used by usb host controller
+    usb_nxt     : in  std_logic;
+    usb_stp     : out std_logic;
+    usb_dir     : in  std_logic;
     usb_resetn  : out std_ulogic
     );
 end;
@@ -177,7 +175,7 @@ signal ahbso : ahb_slv_out_vector := (others => ahbs_none);
 signal ahbmi : ahb_mst_in_type;
 signal ahbmo : ahb_mst_out_vector := (others => ahbm_none);
 
-signal clkm, rstn, rstraw, pciclk, sdclkl : std_ulogic;
+signal clkm, rstn, rstraw, pciclk, sdclkl : std_logic;
 signal cgi, cgi2 : clkgen_in_type;
 signal cgo, cgo2 : clkgen_out_type;
 signal u1i, u2i, dui : uart_in_type;
@@ -197,43 +195,42 @@ signal pcio : pci_out_type;
 
 signal spwi : grspw_in_type_vector(0 to CFG_SPW_NUM-1);
 signal spwo : grspw_out_type_vector(0 to CFG_SPW_NUM-1);
-signal spw_clkl   : std_ulogic;
+signal spw_clkl   : std_logic;
+signal spw_rx_clk : std_ulogic;
 
 signal stati : ahbstat_in_type;
 
 signal ethi, ethi1, ethi2 : eth_in_type;
 signal etho, etho1, etho2 : eth_out_type;
 
-signal ethclk, egtx_clk_fb : std_ulogic;
-signal egtx_clk, legtx_clk, l2egtx_clk : std_ulogic;
+signal ethclk, egtx_clk_fb : std_logic;
+signal egtx_clk, legtx_clk, l2egtx_clk : std_logic;
 
 signal gpti : gptimer_in_type;
 signal gpto : gptimer_out_type;
+signal wdog : std_logic;
 
 signal gpioi : gpio_in_type;
 signal gpioo : gpio_out_type;
 
-signal clklock : std_ulogic;
+signal clklock, elock, ulock : std_ulogic;
 signal can_lrx, can_ltx   : std_logic_vector(0 to 7);
-signal lclk, pci_lclk : std_ulogic;
+signal lclk, pci_lclk : std_logic;
 signal pci_arb_req_n, pci_arb_gnt_n   : std_logic_vector(0 to 3);
 
-signal tck, tms, tdi, tdo : std_ulogic;
+signal tck, tms, tdi, tdo : std_logic;
 
-signal usbhci : usbhc_in_vector(0 downto 0);
-signal usbhco : usbhc_out_vector(0 downto 0);
-signal uhclk, urst : std_ulogic := '0';
+signal usbi : grusb_in_vector(0 downto 0);
+signal usbo : grusb_out_vector(0 downto 0);
+signal uclk : std_ulogic := '0';
 
--- USB Host Controller ahb master/slave indexes
-constant USBHC_EHC_HINDEX : integer :=
-  CFG_NCPU+CFG_AHB_UART+log2x(CFG_PCI)+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM;
-constant USBHC_UHC_HINDEX : integer :=
-  CFG_NCPU+CFG_AHB_UART+log2x(CFG_PCI)+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM+1;
-constant USBHC_UHC_HSINDEX : integer := 8;
+signal fpi : grfpu_in_vector_type;
+signal fpo : grfpu_out_vector_type;
 
 constant BOARD_FREQ : integer := 50000;	-- Board frequency in KHz
 constant CPU_FREQ : integer := BOARD_FREQ * CFG_CLKMUL / CFG_CLKDIV;  -- cpu frequency in KHz
-constant IOAEN : integer := CFG_CAN + CFG_PCI + CFG_USBHC;
+constant IOAEN : integer := CFG_CAN + CFG_PCI + CFG_GRUSBHC +
+                            CFG_GRUSBDC;
 constant CFG_SDEN : integer := CFG_MCTRL_SDEN;
 constant CFG_INVCLK : integer := CFG_MCTRL_INVCLK;
 constant OEPOL : integer := padoen_polarity(padtech);
@@ -265,7 +262,7 @@ begin
 
   rst0 : rstgen			-- reset generator
     port map (resetn, clkm, clklock, rstn, rstraw);
-  clklock <= cgo.clklock; 
+  clklock <= cgo.clklock and elock and ulock;
 
 ----------------------------------------------------------------------
 ---  AHB CONTROLLER --------------------------------------------------
@@ -276,8 +273,9 @@ begin
 	rrobin => CFG_RROBIN, ioaddr => CFG_AHBIO, ioen => IOAEN,
 	nahbm => CFG_NCPU+CFG_AHB_UART+log2x(CFG_PCI)+CFG_AHB_JTAG+
                CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM+
-               CFG_USBHC*(CFG_USBHC_EHC+CFG_USBHC_UHC), 
-	nahbs => 8+CFG_USBHC*CFG_USBHC_UHC)
+               CFG_GRUSBHC*(CFG_GRUSBHC_EHC+CFG_GRUSBHC_UHC)+
+               CFG_GRUSBDC*CFG_GRUSBDC_AIFACE,
+	nahbs => 8+CFG_GRUSBHC*CFG_GRUSBHC_UHC+CFG_GRUSBDC)
   port map (rstn, clkm, ahbmi, ahbmo, ahbsi, ahbso);
 
 ----------------------------------------------------------------------
@@ -285,15 +283,37 @@ begin
 ----------------------------------------------------------------------
 
   cpu : for i in 0 to CFG_NCPU-1 generate
+    nosh : if CFG_GRFPUSH = 0 generate    
       u0 : leon3s 		-- LEON3 processor      
       generic map (i, fabtech, memtech, CFG_NWIN, CFG_DSU, CFG_FPU, CFG_V8, 
 	0, CFG_MAC, pclow, notag, CFG_NWP, CFG_ICEN, CFG_IREPL, CFG_ISETS, CFG_ILINE, 
 	CFG_ISETSZ, CFG_ILOCK, CFG_DCEN, CFG_DREPL, CFG_DSETS, CFG_DLINE, CFG_DSETSZ,
 	CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
         CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP, 
-        CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1)
+        CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1,
+	0, 0, CFG_MMU_PAGE)
       port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso, 
     		irqi(i), irqo(i), dbgi(i), dbgo(i));
+    end generate;
+  end generate;
+
+  sh : if CFG_GRFPUSH = 1 generate
+    cpu : for i in 0 to CFG_NCPU-1 generate
+      u0 : leon3sh 		-- LEON3 processor      
+      generic map (i, fabtech, memtech, CFG_NWIN, CFG_DSU, CFG_FPU, CFG_V8, 
+	0, CFG_MAC, pclow, notag, CFG_NWP, CFG_ICEN, CFG_IREPL, CFG_ISETS, CFG_ILINE, 
+	CFG_ISETSZ, CFG_ILOCK, CFG_DCEN, CFG_DREPL, CFG_DSETS, CFG_DLINE, CFG_DSETSZ,
+	CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
+        CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP, 
+        CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1,
+	0, 0, CFG_MMU_PAGE)
+      port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso, 
+    		irqi(i), irqo(i), dbgi(i), dbgo(i), fpi(i), fpo(i));
+    end generate;
+
+    grfpush0 : grfpushwx generic map ((CFG_FPU-1), CFG_NCPU)
+      port map (clkm, rstn, fpi, fpo);
+    
   end generate;
 
   errorn_pad : odpad generic map (tech => padtech) port map (errorn, dbgo(0).error);
@@ -452,7 +472,8 @@ begin
 	nbits => CFG_GPT_TW)
     port map (rstn, clkm, apbi, apbo(3), gpti, open);
     gpti.dhalt <= dsuo.tstop; gpti.extclk <= '0';
-    wdogn_pad : odpad generic map (tech => padtech, oepol => OEPOL) port map (wdogn, gpto.wdog);
+    wdog <= gpto.wdogn when OEPOL = 0 else gpto.wdog;
+    wdogn_pad : odpad generic map (tech => padtech, oepol => OEPOL) port map (wdogn, wdog);
   end generate;
 --  notim : if CFG_GPT_ENABLE = 0 generate apbo(3) <= apb_none; end generate;
 
@@ -551,15 +572,18 @@ begin
       mdcscaler => CPU_FREQ/1000, enable_mdio => 1, fifosize => CFG_ETH_FIFO,
       nsync => 1, edcl => CFG_DSU_ETH, edclbufsz => CFG_ETH_BUF,
       macaddrh => CFG_ETH_ENM, macaddrl => CFG_ETH_ENL, phyrstadr => 1,
-      ipaddrh => CFG_ETH_IPM, ipaddrl => CFG_ETH_IPL, giga => CFG_GRETH1G)
+      ipaddrh => CFG_ETH_IPM, ipaddrl => CFG_ETH_IPL, giga => CFG_GRETH1G,
+      enable_mdint => 1)
       port map(
         rst => rstn, clk => clkm, ahbmi => ahbmi,
         ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+log2x(CFG_PCI)+CFG_AHB_JTAG), apbi => apbi,
         apbo => apbo(14), ethi => ethi, etho => etho);
-       
-    eth_macclk_pad : clkpad
-      generic map (tech => padtech, arch => 3, hf => 1)
-      port map (eth_macclk, egtx_clk, rstn);
+
+    greth1g: if CFG_GRETH1G = 1 generate
+      eth_macclk_pad : clkpad
+        generic map (tech => padtech, arch => 3, hf => 1)
+        port map (eth_macclk, egtx_clk, cgo.clklock, elock);
+    end generate greth1g;
     
     emdio_pad : iopad generic map (tech => padtech) 
       port map (emdio, etho.mdio_o, etho.mdio_oe, ethi.mdio_i);
@@ -578,6 +602,8 @@ begin
       port map (erx_col, ethi.rx_col);
     erxcr_pad : inpad generic map (tech => padtech) 
       port map (erx_crs, ethi.rx_crs);
+    emdintn_pad : inpad generic map (tech => padtech) 
+      port map (emdintn, ethi.mdint);
     
     etxd_pad : outpadv generic map (tech => padtech, width => 8)
       port map (etxd, etho.txd(7 downto 0));
@@ -601,6 +627,9 @@ begin
         
     ethi.gtx_clk <= egtx_clk;
   end generate;
+  noeth: if CFG_GRETH = 0 or CFG_GRETH1G = 0 generate
+    elock <= '1';
+  end generate noeth;
 
 -----------------------------------------------------------------------
 ---  CAN --------------------------------------------------------------
@@ -640,8 +669,9 @@ begin
 -----------------------------------------------------------------------
 ---  SPACEWIRE  -------------------------------------------------------
 -----------------------------------------------------------------------
-
+  --This template does NOT currently support grspw2 so only use grspw1 
   spw : if CFG_SPW_EN > 0 generate
+   spw_rx_clk <= '0';
    spw_clk_pad : clkpad generic map (tech => padtech) port map (spw_clk, spw_clkl); 
 --   spw_clkl <= pciclk;
    swloop : for i in 0 to CFG_SPW_NUM-1 generate
@@ -654,7 +684,7 @@ begin
      fifosize2 => CFG_SPW_RXFIFO, rxclkbuftype => 1, 
      rmapbufs => CFG_SPW_RMAPBUF,ft => CFG_SPW_FT, ports => 1, dmachan => 1,
      netlist => CFG_SPW_NETLIST, spwcore => CFG_SPW_GRSPW)
-     port map(rstn, clkm, spw_clkl, ahbmi,
+     port map(rstn, clkm, spw_rx_clk, spw_rx_clk, spw_clkl, spw_clkl, ahbmi,
         ahbmo(CFG_NCPU+CFG_AHB_UART+log2x(CFG_PCI)+CFG_AHB_JTAG+CFG_GRETH+i),
         apbi, apbo(10+i), spwi(i), spwo(i));
      spwi(i).tickin <= '0'; spwi(i).rmapen <= '0';
@@ -680,60 +710,116 @@ begin
 	 port map (spw_txsp(0), spw_txsn(0), spwi(0).s(0), gnd(0));
   end generate;
 
-  
------------------------------------------------------------------------
---   USB 2.0 Host Controller ------------------------------------------
------------------------------------------------------------------------
-  usbhc0: if CFG_USBHC = 1 generate
-    usb_d_pad: iopadv
-      generic map(tech => padtech, width => 8)
-      port map (usb_d, usbhco(0).datao, usbhco(0).dctrl, usbhci(0).datai);
-    usb_nxt_pad : inpad generic map (tech => padtech)
-      port map (usb_nxt,usbhci(0).nxt);
-    usb_dir_pad : inpad generic map (tech => padtech)
-      port map (usb_dir,usbhci(0).dir);
-    usb_resetn_pad : outpad generic map (tech => padtech)
-      port map (usb_resetn,usbhco(0).utm_rst);
-    usb_stp_pad : outpad generic map (tech => padtech)
-      port map (usb_stp,usbhco(0).stp);
-                                   
+-------------------------------------------------------------------------------
+-- USB ------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+  -- Note that more than one USB component can not be instantiated at the same
+  -- time (board has only one USB transceiver), therefore they share AHB
+  -- master/slave indexes
+  -----------------------------------------------------------------------------
+  -- Shared pads
+  -----------------------------------------------------------------------------
+  usbpads: if (CFG_GRUSBHC + CFG_GRUSBDC + CFG_GRUSB_DCL) /= 0 generate
     -- Incoming 60 MHz clock from transceiver, arch 3 = through BUFGDLL or
     -- similiar.
     usb_clkout_pad : clkpad
-      generic map (tech => padtech, arch => 2)
-      port map (usb_clkout, uhclk);
-    
-    -- urst should always be '1' (unless board configuration is changed so that
-    -- a XTAL isn't mounted and clock is generated by FPGA, then urst should be
-    -- connected to that DCM's lock signal)
-    urst <= '1';
+      generic map (tech => padtech, arch => 3)
+      port map (usb_clkout, uclk, cgo.clklock, ulock);
 
-    -- Notes about grusbhc instantiation:
-    -- If CFG_USBHC_EHC = 0 then apbo and ahbmo(USBHC_EHC_HINDEX) in the port
-    -- map below can be set to open to be sure to avoid possible conflict.
-    -- The same goes for ahmbo(USBHC_UHC_HINDEX. . .) and
-    -- ahbso(USBHC_UHC_HSINDEX. . .) when CFG_USBHC_UHC = 0
+    usb_d_pad: iopadv
+      generic map(tech => padtech, width => 8)
+      port map (usb_d, usbo(0).dataout(7 downto 0), usbo(0).oen,
+                usbi(0).datain(7 downto 0));
+    usb_nxt_pad : inpad generic map (tech => padtech)
+      port map (usb_nxt, usbi(0).nxt);
+    usb_dir_pad : inpad generic map (tech => padtech)
+      port map (usb_dir, usbi(0).dir);
+    usb_resetn_pad : outpad generic map (tech => padtech)
+      port map (usb_resetn, usbo(0).reset);
+    usb_stp_pad : outpad generic map (tech => padtech)
+      port map (usb_stp, usbo(0).stp);
+  end generate usbpads;
+  nousb: if (CFG_GRUSBHC + CFG_GRUSBDC + CFG_GRUSB_DCL) = 0 generate
+    ulock <= '1';
+  end generate nousb;
+  
+  -----------------------------------------------------------------------------
+  -- USB 2.0 Host Controller
+  -----------------------------------------------------------------------------
+  usbhc0: if CFG_GRUSBHC = 1 generate
     usbhc0 : grusbhc
       generic map (
-        -- (USBHC_EHC_HINDEX, USBHC_UHC_HINDEX, USBHC_HSINDEX are defined as
-        -- constants above)
-        ehchindex => USBHC_EHC_HINDEX,
+        ehchindex => CFG_NCPU+CFG_AHB_UART+log2x(CFG_PCI)+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM,
         ehcpindex => 13, ehcpaddr => 13, ehcpirq => 13, ehcpmask => 16#fff#,
-        uhchindex => USBHC_UHC_HINDEX, uhchsindex => USBHC_UHC_HSINDEX,
-        uhchaddr => 16#A00#, uhchmask => 16#fff#, uhchirq => 9, tech => fabtech,
-        memtech => memtech, ehcgen => CFG_USBHC_EHC, uhcgen => CFG_USBHC_UHC,
-        endian_conv => CFG_USBHC_ENDIAN, be_regs => CFG_USBHC_BEREGS,
-        be_desc => CFG_USBHC_BEDESC, uhcblo => CFG_USBHC_BLO,
-        bwrd => CFG_USBHC_BWRD, vbusconf => CFG_USBHC_VBUSCONF)
+        uhchindex => CFG_NCPU+CFG_AHB_UART+log2x(CFG_PCI)+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM+1,
+        uhchsindex => 8, uhchaddr => 16#A00#, uhchmask => 16#fff#, uhchirq => 9, tech => fabtech,
+        memtech => memtech, ehcgen => CFG_GRUSBHC_EHC, uhcgen => CFG_GRUSBHC_UHC,
+        endian_conv => CFG_GRUSBHC_ENDIAN, be_regs => CFG_GRUSBHC_BEREGS,
+        be_desc => CFG_GRUSBHC_BEDESC, uhcblo => CFG_GRUSBHC_BLO,
+        bwrd => CFG_GRUSBHC_BWRD, vbusconf => CFG_GRUSBHC_VBUSCONF)
       port map (
-        clkm,uhclk,rstn,urst,apbi,apbo(13),ahbmi,ahbsi,
-        ahbmo(USBHC_EHC_HINDEX),
-        ahbmo(USBHC_UHC_HINDEX downto USBHC_UHC_HINDEX),
-        ahbso(USBHC_UHC_HSINDEX downto USBHC_UHC_HSINDEX),
-        usbhco,usbhci);
+        clkm,uclk,rstn,apbi,apbo(13),ahbmi,ahbsi,
+        ahbmo(CFG_NCPU+CFG_AHB_UART+log2x(CFG_PCI)+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM),
+        ahbmo(CFG_NCPU+CFG_AHB_UART+log2x(CFG_PCI)+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM+1
+              downto
+              CFG_NCPU+CFG_AHB_UART+log2x(CFG_PCI)+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM+1),
+        ahbso(8 downto 8),
+        usbo,usbi);    
   end generate usbhc0;
 
+  -----------------------------------------------------------------------------
+  -- USB 2.0 Device Controller
+  -----------------------------------------------------------------------------
+  usbdc0: if CFG_GRUSBDC = 1 generate
+    usbdc0: grusbdc
+      generic map(
+        hsindex => 8, hirq => 9, haddr => 16#004#, hmask => 16#FFC#,        
+        hmindex => CFG_NCPU+CFG_AHB_UART+log2x(CFG_PCI)+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM,
+        aiface => CFG_GRUSBDC_AIFACE, uiface => 1,
+        nepi => CFG_GRUSBDC_NEPI, nepo => CFG_GRUSBDC_NEPO,
+        i0 => CFG_GRUSBDC_I0, i1 => CFG_GRUSBDC_I1,
+        i2 => CFG_GRUSBDC_I2, i3 => CFG_GRUSBDC_I3,
+        i4 => CFG_GRUSBDC_I4, i5 => CFG_GRUSBDC_I5,
+        i6 => CFG_GRUSBDC_I6, i7 => CFG_GRUSBDC_I7,
+        i8 => CFG_GRUSBDC_I8, i9 => CFG_GRUSBDC_I9,
+        i10 => CFG_GRUSBDC_I10, i11 => CFG_GRUSBDC_I11,
+        i12 => CFG_GRUSBDC_I12, i13 => CFG_GRUSBDC_I13,
+        i14 => CFG_GRUSBDC_I14, i15 => CFG_GRUSBDC_I15,
+        o0 => CFG_GRUSBDC_O0, o1 => CFG_GRUSBDC_O1,
+        o2 => CFG_GRUSBDC_O2, o3 => CFG_GRUSBDC_O3,
+        o4 => CFG_GRUSBDC_O4, o5 => CFG_GRUSBDC_O5,
+        o6 => CFG_GRUSBDC_O6, o7 => CFG_GRUSBDC_O7,
+        o8 => CFG_GRUSBDC_O8, o9 => CFG_GRUSBDC_O9,
+        o10 => CFG_GRUSBDC_O10, o11 => CFG_GRUSBDC_O11,
+        o12 => CFG_GRUSBDC_O12, o13 => CFG_GRUSBDC_O13,
+        o14 => CFG_GRUSBDC_O14, o15 => CFG_GRUSBDC_O15,
+        memtech => memtech, keepclk => 1)
+      port map(
+        uclk  => uclk,
+        usbi  => usbi(0),
+        usbo  => usbo(0),
+        hclk  => clkm,
+        hrst  => rstn,
+        ahbmi => ahbmi,
+        ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+log2x(CFG_PCI)+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM),
+        ahbsi => ahbsi,
+        ahbso => ahbso(8)
+        );
+  end generate usbdc0;
 
+  -----------------------------------------------------------------------------
+  -- USB DCL
+  -----------------------------------------------------------------------------
+  usb_dcl0: if CFG_GRUSB_DCL = 1 generate
+    usb_dcl0: grusb_dcl
+      generic map (
+        hindex => CFG_NCPU+CFG_AHB_UART+log2x(CFG_PCI)+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM,
+        memtech => memtech, keepclk => 1, uiface => 1)
+      port map (
+        uclk, usbi(0), usbo(0), clkm, rstn, ahbmi,
+        ahbmo(CFG_NCPU+CFG_AHB_UART+log2x(CFG_PCI)+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM));
+  end generate usb_dcl0;
+  
 -----------------------------------------------------------------------
 ---  Drive unused bus elements  ---------------------------------------
 -----------------------------------------------------------------------

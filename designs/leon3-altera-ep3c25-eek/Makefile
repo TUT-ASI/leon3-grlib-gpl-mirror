@@ -20,7 +20,7 @@ TECHLIBS = altera altera_mf cycloneiii
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp gleichmann stratixii stratixiii usbhc spw
 DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan pci leon3ft ambatest can \
-	grusbhc spacewire
+	grusbhc spacewire hcan
 FILESKIP = grcan.vhd
 
 include $(GRLIB)/software/leon3/Makefile

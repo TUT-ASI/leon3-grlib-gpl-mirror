@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -27,6 +28,7 @@ library grlib;
 use grlib.amba.all;
 library techmap;
 use techmap.gencomp.all;
+use techmap.netcomp.all;
 use grlib.stdlib.all;
 use grlib.devices.all;
 library gaisler;
@@ -42,7 +44,6 @@ entity grspw2 is
     paddr        : integer range 0 to 16#FFF#   := 0;
     pmask        : integer range 0 to 16#FFF#   := 16#FFF#;
     pirq         : integer range 0 to NAHBIRQ-1 := 0;
-    nsync        : integer range 1 to 2  := 1; 
     rmap         : integer range 0 to 1  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
     fifosize1    : integer range 4 to 32 := 32;
@@ -55,12 +56,19 @@ entity grspw2 is
     techfifo     : integer range 0 to 1 := 1;
     ports        : integer range 1 to 2 := 1;
     dmachan      : integer range 1 to 4 := 1;
-    memtech      : integer range 0 to NTECH := DEFMEMTECH
+    memtech      : integer range 0 to NTECH := DEFMEMTECH;
+    input_type   : integer range 0 to 3 := 0;
+    output_type  : integer range 0 to 2 := 0;
+    rxtx_sameclk : integer range 0 to 1 := 0;
+    netlist      : integer range 0 to 1 := 0
   );
   port(
     rst        : in  std_ulogic;
     clk        : in  std_ulogic;
+    rxclk0     : in  std_ulogic;
+    rxclk1     : in  std_ulogic;
     txclk      : in  std_ulogic;
+    txclkn     : in  std_ulogic;
     ahbmi      : in  ahb_mst_in_type;
     ahbmo      : out ahb_mst_out_type;
     apbi       : in  apb_slv_in_type;
@@ -83,8 +91,6 @@ architecture rtl of grspw2 is
     0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_SPW2, 0, REVISION, pirq),
   others => zero32);
 
-  signal rxclki, nrxclki, rxclko : std_logic_vector(1 downto 0);
-  
   --rx ahb fifo
   signal rxrenable    : std_ulogic;
   signal rxraddress   : std_logic_vector(4 downto 0);
@@ -103,9 +109,9 @@ architecture rtl of grspw2 is
   signal ncrenable    : std_ulogic;
   signal ncraddress   : std_logic_vector(5 downto 0);
   signal ncwrite      : std_ulogic;
-  signal ncwdata      : std_logic_vector(8 downto 0);
+  signal ncwdata      : std_logic_vector(9 downto 0);
   signal ncwaddress   : std_logic_vector(5 downto 0);
-  signal ncrdata      : std_logic_vector(8 downto 0);
+  signal ncrdata      : std_logic_vector(9 downto 0);
   --rmap buf
   signal rmrenable    : std_ulogic;
   signal rmraddress   : std_logic_vector(7 downto 0);
@@ -115,16 +121,17 @@ architecture rtl of grspw2 is
   signal rmrdata      : std_logic_vector(7 downto 0);
   --misc
   signal irq          : std_ulogic;
-  signal rxclk, nrxclk : std_logic_vector(ports-1 downto 0);
-  signal testin        : std_logic_vector(3 downto 0);
+  signal testin       : std_logic_vector(3 downto 0);
+  signal rxclk        : std_logic_vector(1 downto 0);
   
 begin  
 
   testin <= ahbmi.testen & "000";
 
+rtl : if netlist = 0 generate
+
   grspwc0 : grspwc2
     generic map(
-      nsync        => nsync,
       rmap         => rmap,
       rmapcrc      => rmapcrc,
       fifosize1    => fifosize1,
@@ -134,11 +141,16 @@ begin
       scantest     => scantest,
       ports        => ports,
       dmachan      => dmachan,
-      tech         => tech)
+      tech         => tech,
+      input_type   => input_type,
+      output_type  => output_type)
     port map(
       rst          => rst,
       clk          => clk,
+      rxclk0       => rxclk0,
+      rxclk1       => rxclk1,
       txclk        => txclk,
+      txclkn       => txclkn,
       --ahb mst in
       hgrant       => ahbmi.hgrant(hindex),
       hready       => ahbmi.hready,   
@@ -163,18 +175,104 @@ begin
       --apb slv out
       prdata       => apbo.prdata,
       --spw in
-      di           => swni.d,
-      si           => swni.s,
+      d            => swni.d,
+      dv           => swni.dv,
+      dconnect     => swni.dconnect,
       --spw out
       do           => swno.d,
       so           => swno.s,
       --time iface
       tickin       => swni.tickin,
       tickout      => swno.tickout,
-      --clk bufs
-      rxclki       => rxclki,
-      nrxclki      => nrxclki,
-      rxclko       => rxclko,
+      --irq
+      irq          => irq,
+      --misc     
+      clkdiv10     => swni.clkdiv10,
+      dcrstval     => swni.dcrstval,
+      timerrstval  => swni.timerrstval,
+      --rmapen    
+      rmapen       => swni.rmapen, 
+      --rx ahb fifo
+      rxrenable    => rxrenable,
+      rxraddress   => rxraddress, 
+      rxwrite      => rxwrite,
+      rxwdata      => rxwdata, 
+      rxwaddress   => rxwaddress,
+      rxrdata      => rxrdata,  
+      --tx ahb fifo
+      txrenable    => txrenable,
+      txraddress   => txraddress, 
+      txwrite      => txwrite,
+      txwdata      => txwdata, 
+      txwaddress   => txwaddress,
+      txrdata      => txrdata,  
+      --nchar fifo
+      ncrenable    => ncrenable,
+      ncraddress   => ncraddress, 
+      ncwrite      => ncwrite,
+      ncwdata      => ncwdata, 
+      ncwaddress   => ncwaddress,
+      ncrdata      => ncrdata,  
+      --rmap buf
+      rmrenable    => rmrenable,
+      rmraddress   => rmraddress, 
+      rmwrite      => rmwrite,
+      rmwdata      => rmwdata, 
+      rmwaddress   => rmwaddress,
+      rmrdata      => rmrdata,
+      linkdis      => swno.linkdis,
+      testrst      => ahbmi.testrst,
+      testen       => ahbmi.testen
+      );
+  end generate;
+
+  struct : if netlist = 1 generate
+    rxclk <= rxclk1 & rxclk0;
+
+    
+    grspwc20 : grspwc2_net 
+    generic map (rmap, rmapcrc, fifosize1, fifosize2,
+		 rxunaligned, rmapbufs, scantest, ports, dmachan,
+		tech, input_type, output_type, rxtx_sameclk)
+    port map(
+      rst          => rst,
+      clk          => clk,
+      rxclk        => rxclk,
+      txclk        => txclk,
+      txclkn       => txclkn,
+      --ahb mst in
+      hgrant       => ahbmi.hgrant(hindex),
+      hready       => ahbmi.hready,   
+      hresp        => ahbmi.hresp,
+      hrdata       => ahbmi.hrdata,
+      --ahb mst out
+      hbusreq      => ahbmo.hbusreq,
+      hlock        => ahbmo.hlock,
+      htrans       => ahbmo.htrans,
+      haddr        => ahbmo.haddr,
+      hwrite       => ahbmo.hwrite,
+      hsize        => ahbmo.hsize,
+      hburst       => ahbmo.hburst,
+      hprot        => ahbmo.hprot,
+      hwdata       => ahbmo.hwdata,
+      --apb slv in 
+      psel	   => apbi.psel(pindex),
+      penable	   => apbi.penable,
+      paddr	   => apbi.paddr,
+      pwrite	   => apbi.pwrite,
+      pwdata	   => apbi.pwdata,
+      --apb slv out
+      prdata       => apbo.prdata,
+      --spw in
+      d            => swni.d,
+      dv           => swni.dv,
+      dconnect     => swni.dconnect,
+      --spw out
+      do           => swno.d,
+      so           => swno.s,
+      --time iface
+      tickin       => swni.tickin,
+      tickout      => swno.tickout,
       --irq
       irq          => irq,
       --misc     
@@ -216,6 +314,7 @@ begin
       testrst      => ahbmi.testrst,
       testen       => ahbmi.testen
       );
+  end generate;
 
   irqdrv : process(irq)
   begin
@@ -229,24 +328,7 @@ begin
   
   apbo.pconfig <= pconfig;
   apbo.pindex  <= pindex;
-
-  ntst: if scantest = 0 generate
-    cbufloop : for i in 0 to ports-1 generate
-      rx_clkbuf : techbuf generic map(tech => tech, buftype => rxclkbuftype)
-      port map(i => rxclko(i), o => rxclki(i));
-    end generate;
-  end generate;
-  tst: if scantest = 1 generate
-    cloop : for i in 0 to ports-1 generate
-      rxclk(i) <= clk when ahbmi.testen = '1' else rxclko(i);
-      nrxclk(i) <= clk when ahbmi.testen = '1' else not rxclko(i);
-      rx_clkbuf : techbuf generic map(tech => tech, buftype => rxclkbuftype)
-        port map(i => rxclk(i), o => rxclki(i));
-      nrx_clkbuf : techbuf generic map(tech => tech, buftype => rxclkbuftype)
-        port map(i => nrxclk(i), o => nrxclki(i));
-    end generate;
-  end generate;
-
+ 
   ------------------------------------------------------------------------------
   -- FIFOS ---------------------------------------------------------------------
   ------------------------------------------------------------------------------
@@ -259,7 +341,7 @@ begin
       rxwaddress(fabits1-1 downto 0), rxwdata, testin);
   
     --receiver nchar FIFO
-    rx_ram1 : syncram_2p generic map(memtech*techfifo, fabits2, 9)
+    rx_ram1 : syncram_2p generic map(memtech*techfifo, fabits2, 10)
     port map(clk, ncrenable, ncraddress(fabits2-1 downto 0),
       ncrdata, clk, ncwrite,
       ncwaddress(fabits2-1 downto 0), ncwdata, testin);
@@ -283,25 +365,25 @@ begin
     rx_ram0 : syncram_2pft generic map(memtech*techfifo, fabits1, 32, 0, 0, ft*techfifo)
     port map(clk, rxrenable, rxraddress(fabits1-1 downto 0),
       rxrdata, clk, rxwrite,
-      rxwaddress(fabits1-1 downto 0), rxwdata, testin);
+      rxwaddress(fabits1-1 downto 0), rxwdata, open, testin);
   
     --receiver nchar FIFO
-    rx_ram1 : syncram_2pft generic map(memtech*techfifo, fabits2, 9, 0, 0, 2*techfifo)
+    rx_ram1 : syncram_2pft generic map(memtech*techfifo, fabits2, 10, 0, 0, 2*techfifo)
     port map(clk, ncrenable, ncraddress(fabits2-1 downto 0),
       ncrdata, clk, ncwrite,
-      ncwaddress(fabits2-1 downto 0), ncwdata, testin);
+      ncwaddress(fabits2-1 downto 0), ncwdata, open, testin);
     
     --transmitter FIFO
     tx_ram0 : syncram_2pft generic map(memtech*techfifo, fabits1, 32, 0, 0, ft*techfifo)
     port map(clk, txrenable, txraddress(fabits1-1 downto 0),
-      txrdata, clk, txwrite, txwaddress(fabits1-1 downto 0), txwdata, testin);
+      txrdata, clk, txwrite, txwaddress(fabits1-1 downto 0), txwdata, open, testin);
 
     --RMAP Buffer
     rmap_ram : if (rmap = 1) generate
       ram0 : syncram_2pft generic map(memtech, rfifo, 8, 0, 0, 2)
       port map(clk, rmrenable, rmraddress(rfifo-1 downto 0),
         rmrdata, clk, rmwrite, rmwaddress(rfifo-1 downto 0),
-        rmwdata, testin);
+        rmwdata, open, testin);
     end generate;
   end generate;
 

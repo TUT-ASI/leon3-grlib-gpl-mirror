@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -401,7 +402,7 @@ begin
           if (mmuico.transdata.accexc) = '1' and ((mmudci.mmctrl1.nf) /= '1' or (r.su) = '1') then 
             -- if su then always do mexc
             error := '1'; mds := '0';
-            v.holdn := '1'; v.istate := idle; v.burst := '0';
+            v.holdn := '0'; v.istate := stop; v.burst := '0';
           else
             v.cache := mmuico.transdata.cache;
             v.waddress := mmuico.transdata.data(31 downto PCLOW);

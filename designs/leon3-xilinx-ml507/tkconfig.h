@@ -10,6 +10,8 @@
 #define CONFIG_SYN_TECH atc18rha
 #elif defined CONFIG_SYN_AXCEL
 #define CONFIG_SYN_TECH axcel
+#elif defined CONFIG_SYN_AXDSP
+#define CONFIG_SYN_TECH axdsp
 #elif defined CONFIG_SYN_PROASICPLUS
 #define CONFIG_SYN_TECH proasic
 #elif defined CONFIG_SYN_ALTERA
@@ -38,6 +40,8 @@
 #define CONFIG_SYN_TECH proasic
 #elif defined CONFIG_SYN_PROASIC3
 #define CONFIG_SYN_TECH apa3
+#elif defined CONFIG_SYN_IGLOO
+#define CONFIG_SYN_TECH apa3
 #elif defined CONFIG_SYN_SPARTAN2
 #define CONFIG_SYN_TECH virtex
 #elif defined CONFIG_SYN_VIRTEX
@@ -56,6 +60,8 @@
 #define CONFIG_SYN_TECH virtex5
 #elif defined CONFIG_SYN_RH_LIB18T
 #define CONFIG_SYN_TECH rhlib18t
+#elif defined CONFIG_SYN_SMIC13
+#define CONFIG_SYN_TECH smic013
 #elif defined CONFIG_SYN_UT025CRH
 #define CONFIG_SYN_TECH ut25
 #elif defined CONFIG_SYN_TSMC90
@@ -204,8 +210,10 @@
 #define CONFIG_FPU_GRFPU_MUL 0
 #elif defined CONFIG_FPU_GRFPU_DWMUL
 #define CONFIG_FPU_GRFPU_MUL 1
-#elif defined CONFIG_FPU_GRFPU_MODGEN 
+#elif defined CONFIG_FPU_GRFPU_MODGEN
 #define CONFIG_FPU_GRFPU_MUL 2
+#elif defined CONFIG_FPU_GRFPU_TECHSPEC
+#define CONFIG_FPU_GRFPU_MUL 3
 #else
 #define CONFIG_FPU_GRFPU_MUL 0
 #endif
@@ -415,6 +423,19 @@
 #define CFG_DLRAM_SIZE 1
 #endif
 
+#if defined CONFIG_MMU_PAGE_4K
+#define CONFIG_MMU_PAGE 0
+#elif defined CONFIG_MMU_PAGE_8K
+#define CONFIG_MMU_PAGE 1
+#elif defined CONFIG_MMU_PAGE_16K
+#define CONFIG_MMU_PAGE 2
+#elif defined CONFIG_MMU_PAGE_32K
+#define CONFIG_MMU_PAGE 3
+#elif defined CONFIG_MMU_PAGE_PROG
+#define CONFIG_MMU_PAGE 4
+#else
+#define CONFIG_MMU_PAGE 0
+#endif
 
 #ifdef CONFIG_MMU_ENABLE
 #define CONFIG_MMUEN 1
@@ -433,16 +454,16 @@
 #define CONFIG_TLB_REP 1
 #endif
 
-#ifdef CONFIG_MMU_I2 
+#ifdef CONFIG_MMU_I2
 #define CONFIG_ITLBNUM 2
 #endif
-#ifdef CONFIG_MMU_I4 
+#ifdef CONFIG_MMU_I4
 #define CONFIG_ITLBNUM 4
 #endif
-#ifdef CONFIG_MMU_I8 
+#ifdef CONFIG_MMU_I8
 #define CONFIG_ITLBNUM 8
 #endif
-#ifdef CONFIG_MMU_I16 
+#ifdef CONFIG_MMU_I16
 #define CONFIG_ITLBNUM 16
 #endif
 #ifdef CONFIG_MMU_I32
@@ -450,24 +471,24 @@
 #endif
 
 #define CONFIG_DTLBNUM 2
-#ifdef CONFIG_MMU_D2 
-#undef CONFIG_DTLBNUM 
+#ifdef CONFIG_MMU_D2
+#undef CONFIG_DTLBNUM
 #define CONFIG_DTLBNUM 2
 #endif
-#ifdef CONFIG_MMU_D4 
-#undef CONFIG_DTLBNUM 
+#ifdef CONFIG_MMU_D4
+#undef CONFIG_DTLBNUM
 #define CONFIG_DTLBNUM 4
 #endif
-#ifdef CONFIG_MMU_D8 
-#undef CONFIG_DTLBNUM 
+#ifdef CONFIG_MMU_D8
+#undef CONFIG_DTLBNUM
 #define CONFIG_DTLBNUM 8
 #endif
-#ifdef CONFIG_MMU_D16 
-#undef CONFIG_DTLBNUM 
+#ifdef CONFIG_MMU_D16
+#undef CONFIG_DTLBNUM
 #define CONFIG_DTLBNUM 16
 #endif
 #ifdef CONFIG_MMU_D32
-#undef CONFIG_DTLBNUM 
+#undef CONFIG_DTLBNUM
 #define CONFIG_DTLBNUM 32
 #endif
 #ifdef CONFIG_MMU_FASTWB
@@ -558,7 +579,7 @@
 #endif
 
 #ifdef CONFIG_DEBUG_PC32
-#define CFG_DEBUG_PC32 0 
+#define CFG_DEBUG_PC32 0
 #else
 #define CFG_DEBUG_PC32 2
 #endif
@@ -620,11 +641,11 @@
 #endif
 
 #ifndef CONFIG_DSU_ETHMSB
-#define CONFIG_DSU_ETHMSB 00007A
+#define CONFIG_DSU_ETHMSB 020000
 #endif
 
 #ifndef CONFIG_DSU_ETHLSB
-#define CONFIG_DSU_ETHLSB CC0001
+#define CONFIG_DSU_ETHLSB 000009
 #endif
 
 #if defined CONFIG_DSU_ETHSZ1
@@ -754,6 +775,11 @@
 #ifndef CONFIG_DDR2SP_DELAY7
 #define CONFIG_DDR2SP_DELAY7 0
 #endif
+
+#ifndef CONFIG_DDR2SP_NOSYNC
+#define CONFIG_DDR2SP_NOSYNC 0
+#endif
+
 #ifndef CONFIG_AHBSTAT_ENABLE
 #define CONFIG_AHBSTAT_ENABLE  0
 #endif
@@ -931,6 +957,10 @@
 #endif
 #ifndef CONFIG_KBD_ENABLE
 #define CONFIG_KBD_ENABLE 0
+#endif
+
+#ifndef CONFIG_GRACECTRL
+#define CONFIG_GRACECTRL 0
 #endif
 
 

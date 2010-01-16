@@ -108,8 +108,8 @@ package config is
   constant CFG_ETH_BUF : integer := 2;
   constant CFG_ETH_IPM : integer := 16#C0A8#;
   constant CFG_ETH_IPL : integer := 16#0058#;
-  constant CFG_ETH_ENM : integer := 16#00007A#;
-  constant CFG_ETH_ENL : integer := 16#CC0058#;
+  constant CFG_ETH_ENM : integer := 16#020000#;
+  constant CFG_ETH_ENL : integer := 16#000012#;
 
 -- LEON2 memory controller
   constant CFG_MCTRL_LEON2 : integer := 1;

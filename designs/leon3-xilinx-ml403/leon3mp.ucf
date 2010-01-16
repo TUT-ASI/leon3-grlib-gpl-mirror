@@ -1,22 +1,3 @@
-
-#     XILINX IS PROVIDING THIS DESIGN, CODE, OR INFORMATION "AS IS"
-#     SOLELY FOR USE IN DEVELOPING PROGRAMS AND SOLUTIONS FOR
-#     XILINX DEVICES.  BY PROVIDING THIS DESIGN, CODE, OR INFORMATION
-#     AS ONE POSSIBLE IMPLEMENTATION OF THIS FEATURE, APPLICATION
-#     OR STANDARD, XILINX IS MAKING NO REPRESENTATION THAT THIS
-#     IMPLEMENTATION IS FREE FROM ANY CLAIMS OF INFRINGEMENT,
-#     AND YOU ARE RESPONSIBLE FOR OBTAINING ANY RIGHTS YOU MAY REQUIRE
-#     FOR YOUR IMPLEMENTATION.  XILINX EXPRESSLY DISCLAIMS ANY
-#     WARRANTY WHATSOEVER WITH RESPECT TO THE ADEQUACY OF THE
-#     IMPLEMENTATION, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OR
-#     REPRESENTATIONS THAT THIS IMPLEMENTATION IS FREE FROM CLAIMS OF
-#     INFRINGEMENT, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-#     FOR A PARTICULAR PURPOSE.
-#     
-#     (c) Copyright 2005 Xilinx, Inc.
-#     All rights reserved.
-#
-
 # Bus clock nets
 #NET "clkm"  TNM_NET = "clkm";
 #NET "tft_clk"  TNM_NET = "tft_clk";
@@ -90,7 +71,7 @@ NET gpio(10) LOC = E9 | IOSTANDARD = LVCMOS25;  # W Button
 NET gpio(11) LOC = A6 | IOSTANDARD = LVCMOS25;  # S Button
 NET gpio(12) LOC = F10 | IOSTANDARD = LVCMOS25; # E Button
 NET gpio(13) LOC = E7 | IOSTANDARD = LVCMOS25;  # N Button
-# Dip Switches 1-8
+# Dip Switches 1-8, not installed on ML403 board
 #NET gpio(14) LOC = U24; # DIP SW 8
 #NET gpio(15) LOC = U25; # DIP SW 7
 #NET gpio(16) LOC = V23; # DIP SW 6
@@ -99,38 +80,38 @@ NET gpio(13) LOC = E7 | IOSTANDARD = LVCMOS25;  # N Button
 #NET gpio(19) LOC = T26; # DIP SW 3
 #NET gpio(20) LOC = R19; # DIP SW 2
 #NET gpio(21) LOC = R20; # DIP SW 1
-NET gpio(14) IOSTANDARD = LVCMOS33;
-NET gpio(15) IOSTANDARD = LVCMOS33;
-NET gpio(16) IOSTANDARD = LVCMOS33;
-NET gpio(17) IOSTANDARD = LVCMOS33;
-NET gpio(18) IOSTANDARD = LVCMOS33;
-NET gpio(19) IOSTANDARD = LVCMOS33;
-NET gpio(20) IOSTANDARD = LVCMOS33;
-NET gpio(21) IOSTANDARD = LVCMOS33;
+#NET gpio(14) IOSTANDARD = LVCMOS33;
+#NET gpio(15) IOSTANDARD = LVCMOS33;
+#NET gpio(16) IOSTANDARD = LVCMOS33;
+#NET gpio(17) IOSTANDARD = LVCMOS33;
+#NET gpio(18) IOSTANDARD = LVCMOS33;
+#NET gpio(19) IOSTANDARD = LVCMOS33;
+#NET gpio(20) IOSTANDARD = LVCMOS33;
+#NET gpio(21) IOSTANDARD = LVCMOS33;
 #SMA Connectors
-NET gpio(22) LOC = C12; # SMA_IN_N
-NET gpio(23) LOC = C13; # SMA_IN_P
-NET gpio(24) LOC = D7 | IOSTANDARD = LVCMOS25;  # SMA_OUT_N
-NET gpio(25) LOC = D8 | IOSTANDARD = LVCMOS25;  # SMA_OUT_P
-NET gpio(26) LOC = AD12;# USERCLK
-NET gpio(26) IOSTANDARD = LVCMOS33;
+#NET gpio(22) LOC = C12; # SMA_IN_N
+#NET gpio(23) LOC = C13; # SMA_IN_P
+#NET gpio(24) LOC = D7 | IOSTANDARD = LVCMOS25;  # SMA_OUT_N
+#NET gpio(25) LOC = D8 | IOSTANDARD = LVCMOS25;  # SMA_OUT_P
+#NET gpio(26) LOC = AD12;# USERCLK
+#NET gpio(26) IOSTANDARD = LVCMOS33;
 
 NET "gpio(*)" PULLDOWN;
 NET "gpio(*)" TIG;
 NET "gpio(*)" SLEW = SLOW;
 NET "gpio(*)" DRIVE = 2;
 
-NET "gpio(22)" SLEW = FAST;
-NET "gpio(22)" DRIVE = 12;
-NET "gpio(23)" SLEW = FAST;
-NET "gpio(23)" DRIVE = 12;
-NET "gpio(24)" SLEW = FAST;
-NET "gpio(24)" DRIVE = 12;
-NET "gpio(25)" SLEW = FAST;
-NET "gpio(25)" DRIVE = 12;
+#NET "gpio(22)" SLEW = FAST;
+#NET "gpio(22)" DRIVE = 12;
+#NET "gpio(23)" SLEW = FAST;
+#NET "gpio(23)" DRIVE = 12;
+#NET "gpio(24)" SLEW = FAST;
+#NET "gpio(24)" DRIVE = 12;
+#NET "gpio(25)" SLEW = FAST;
+#NET "gpio(25)" DRIVE = 12;
 
-NET gpio(22) IOSTANDARD = LVCMOS25;
-NET gpio(23) IOSTANDARD = LVCMOS25;
+#NET gpio(22) IOSTANDARD = LVCMOS25;
+#NET gpio(23) IOSTANDARD = LVCMOS25;
 
 #NET  "gpio2_d_out(*)" TIG;
 #NET  "gpio2_t_out(*)" TIG;
@@ -183,73 +164,73 @@ NET iic_sda    IOSTANDARD = LVCMOS25;
 # IO Pad Location Constraints / Properties for AC97 Sound Controller
 #------------------------------------------------------------------------------
 
-NET ac97_bit_clk   LOC = AE10;
-NET ac97_bit_clk   IOSTANDARD = LVCMOS33;
+#NET ac97_bit_clk   LOC = AE10;
+#NET ac97_bit_clk   IOSTANDARD = LVCMOS33;
 #NET ac97_bit_clk   PERIOD = 80;
-NET ac97_sdata_in  LOC = AD16;
-NET ac97_sdata_in  IOSTANDARD = LVCMOS33;
-NET ac97_reset_n   LOC = AD10;
-NET ac97_reset_n   IOSTANDARD = LVCMOS33;
+#NET ac97_sdata_in  LOC = AD16;
+#NET ac97_sdata_in  IOSTANDARD = LVCMOS33;
+#NET ac97_reset_n   LOC = AD10;
+#NET ac97_reset_n   IOSTANDARD = LVCMOS33;
 #NET ac97_reset_n   TIG;
-NET ac97_sdata_out LOC = C8;
-NET ac97_sync      LOC = D9;
-NET ac97_sdata_out   IOSTANDARD = LVCMOS25;
-NET ac97_sync   IOSTANDARD = LVCMOS25;
+#NET ac97_sdata_out LOC = C8;
+#NET ac97_sync      LOC = D9;
+#NET ac97_sdata_out   IOSTANDARD = LVCMOS25;
+#NET ac97_sync   IOSTANDARD = LVCMOS25;
 
 #------------------------------------------------------------------------------
 # IO Pad Location Constraints / Properties for System ACE MPU / USB
 #------------------------------------------------------------------------------
 
-NET sysace_clk_in   LOC        = AF11;
-NET sysace_clk_in   IOSTANDARD = LVCMOS33;
+#NET sysace_clk_in   LOC        = AF11;
+#NET sysace_clk_in   IOSTANDARD = LVCMOS33;
 #NET sysace_clk_in   TNM_NET    = "sysace_clk_in";
 # Leave 1 ns margin
 #TIMESPEC "TSSYSACE" = PERIOD "sysace_clk_in" 29 ns;
 
-NET sace_usb_a(0)   LOC        = U22;
-NET sace_usb_a(1)   LOC        = Y10;
-NET sace_usb_a(2)   LOC        = AA10;
-NET sace_usb_a(3)   LOC        = AC7;
-NET sace_usb_a(4)   LOC        = Y7;
-NET sace_usb_a(5)   LOC        = AA9;
-NET sace_usb_a(6)   LOC        = Y9;
-NET sace_usb_a(*)   IOSTANDARD = LVCMOS33;
-NET sace_usb_a(*)   SLEW       = FAST;
-NET sace_usb_a(*)   DRIVE      = 8;
-NET sace_mpce       LOC        = AD5;
-NET sace_mpce       IOSTANDARD = LVCMOS33;
-NET sace_mpce       SLEW       = FAST;
-NET sace_mpce       DRIVE      = 8;
-NET sace_usb_d(0)   LOC        = AB7;
-NET sace_usb_d(1)   LOC        = AC9;
-NET sace_usb_d(2)   LOC        = AB9;
-NET sace_usb_d(3)   LOC        = AE6;
-NET sace_usb_d(4)   LOC        = AD6;
-NET sace_usb_d(5)   LOC        = AF9;
-NET sace_usb_d(6)   LOC        = AE9;
-NET sace_usb_d(7)   LOC        = AD8;
-NET sace_usb_d(8)   LOC        = AC8;
-NET sace_usb_d(9)   LOC        = AF4;
-NET sace_usb_d(10)  LOC        = AE4;
-NET sace_usb_d(11)  LOC        = AD3;
-NET sace_usb_d(12)  LOC        = AC3;
-NET sace_usb_d(13)  LOC        = AF6;
-NET sace_usb_d(14)  LOC        = AF5;
-NET sace_usb_d(15)  LOC        = AA7;
-NET sace_usb_d(*)   IOSTANDARD = LVCMOS33;
-NET sace_usb_d(*)   SLEW       = FAST;
-NET sace_usb_d(*)   DRIVE      = 8;
+#NET sace_usb_a(0)   LOC        = U22;
+#NET sace_usb_a(1)   LOC        = Y10;
+#NET sace_usb_a(2)   LOC        = AA10;
+#NET sace_usb_a(3)   LOC        = AC7;
+#NET sace_usb_a(4)   LOC        = Y7;
+#NET sace_usb_a(5)   LOC        = AA9;
+#NET sace_usb_a(6)   LOC        = Y9;
+#NET sace_usb_a(*)   IOSTANDARD = LVCMOS33;
+#NET sace_usb_a(*)   SLEW       = FAST;
+#NET sace_usb_a(*)   DRIVE      = 8;
+#NET sace_mpce       LOC        = AD5;
+#NET sace_mpce       IOSTANDARD = LVCMOS33;
+#NET sace_mpce       SLEW       = FAST;
+#NET sace_mpce       DRIVE      = 8;
+#NET sace_usb_d(0)   LOC        = AB7;
+#NET sace_usb_d(1)   LOC        = AC9;
+#NET sace_usb_d(2)   LOC        = AB9;
+#NET sace_usb_d(3)   LOC        = AE6;
+#NET sace_usb_d(4)   LOC        = AD6;
+#NET sace_usb_d(5)   LOC        = AF9;
+#NET sace_usb_d(6)   LOC        = AE9;
+#NET sace_usb_d(7)   LOC        = AD8;
+#NET sace_usb_d(8)   LOC        = AC8;
+#NET sace_usb_d(9)   LOC        = AF4;
+#NET sace_usb_d(10)  LOC        = AE4;
+#NET sace_usb_d(11)  LOC        = AD3;
+#NET sace_usb_d(12)  LOC        = AC3;
+#NET sace_usb_d(13)  LOC        = AF6;
+#NET sace_usb_d(14)  LOC        = AF5;
+#NET sace_usb_d(15)  LOC        = AA7;
+#NET sace_usb_d(*)   IOSTANDARD = LVCMOS33;
+#NET sace_usb_d(*)   SLEW       = FAST;
+#NET sace_usb_d(*)   DRIVE      = 8;
 #NET sace_usb_d(*)   PULLDOWN;
-NET sace_usb_oen    LOC        = AA8;
-NET sace_usb_oen    IOSTANDARD = LVCMOS33;
-NET sace_usb_oen    SLEW       = FAST;
-NET sace_usb_oen    DRIVE      = 8;
-NET sace_usb_wen    LOC        = Y8;
-NET sace_usb_wen    IOSTANDARD = LVCMOS33;
-NET sace_usb_wen    SLEW       = FAST;
-NET sace_usb_wen    DRIVE      = 8;
-NET sysace_mpirq    LOC        = AD4;
-NET sysace_mpirq    IOSTANDARD = LVCMOS33;
+#NET sace_usb_oen    LOC        = AA8;
+#NET sace_usb_oen    IOSTANDARD = LVCMOS33;
+#NET sace_usb_oen    SLEW       = FAST;
+#NET sace_usb_oen    DRIVE      = 8;
+#NET sace_usb_wen    LOC        = Y8;
+#NET sace_usb_wen    IOSTANDARD = LVCMOS33;
+#NET sace_usb_wen    SLEW       = FAST;
+#NET sace_usb_wen    DRIVE      = 8;
+#NET sysace_mpirq    LOC        = AD4;
+#NET sysace_mpirq    IOSTANDARD = LVCMOS33;
 #NET sysace_mpirq    TIG;
 #NET sysace_mpirq    PULLDOWN;
 
@@ -257,11 +238,11 @@ NET usb_csn         LOC        = AF10;
 NET usb_csn         IOSTANDARD = LVCMOS33;
 NET usb_csn         SLEW       = FAST;
 NET usb_csn         DRIVE      = 8;
-NET usb_hpi_reset_n LOC        = A7;
-NET usb_hpi_reset_n IOSTANDARD = LVCMOS25;
+#NET usb_hpi_reset_n LOC        = A7;
+#NET usb_hpi_reset_n IOSTANDARD = LVCMOS25;
 #NET usb_hpi_reset_n TIG;
-NET usb_hpi_int     LOC        = V5;
-NET usb_hpi_int     IOSTANDARD = LVCMOS33;
+#NET usb_hpi_int     LOC        = V5;
+#NET usb_hpi_int     IOSTANDARD = LVCMOS33;
 #NET usb_hpi_int     TIG;
 #NET usb_hpi_int     PULLDOWN;
 
@@ -393,7 +374,7 @@ NET vid_hsync SLEW = FAST;
 NET vid_hsync DRIVE = 8;
 #NET vid_blankn LOC = M24 | IOSTANDARD = LVCMOS33;
 #NET vid_syncn LOC = L23 | IOSTANDARD = LVCMOS33;
-NET vid_psaven LOC = M25 | IOSTANDARD = LVCMOS33;
+#NET vid_psaven LOC = M25 | IOSTANDARD = LVCMOS33;
 
 #NET vid_r(0) LOC = N23 | IOSTANDARD = LVCMOS33; #VGA_R0
 #NET vid_r(1) LOC = N24 | IOSTANDARD = LVCMOS33; #VGA_R1
@@ -417,9 +398,11 @@ NET vid_vsync DRIVE = 8;
 // Misc Board Signals
 ////////////////////////////////////////////////////////////////////////////
 
+# PLB error is not available on ML403
 #NET plb_error LOC = L24;
 #NET plb_error IOSTANDARD = LVCMOS33;
 #NET plb_error TIG;
+
 NET opb_error LOC = V6;
 NET opb_error IOSTANDARD = LVCMOS33;
 NET opb_error TIG;
@@ -579,13 +562,13 @@ NET sram_clk           DRIVE = 16;
 NET sram_clk           SLEW = FAST;
 NET sram_clk_fb        IOSTANDARD = LVCMOS33;
 
-NET flash_a23          IOSTANDARD = LVDCI_33;
-NET flash_a23  SLEW = FAST;
-NET flash_a23  DRIVE = 8;
+#NET flash_a23          IOSTANDARD = LVDCI_33;
+#NET flash_a23  SLEW = FAST;
+#NET flash_a23  DRIVE = 8;
 
-NET sram_mode          IOSTANDARD = LVDCI_33;
-NET sram_mode SLEW = FAST;
-NET sram_mode DRIVE = 8;
+#NET sram_mode          IOSTANDARD = LVDCI_33;
+#NET sram_mode SLEW = FAST;
+#NET sram_mode DRIVE = 8;
 
 NET sram_flash_addr(*) IOSTANDARD = LVDCI_33;
 NET sram_flash_addr(*)  SLEW = FAST;
@@ -624,74 +607,74 @@ NET sram_adv_ld_n DRIVE = 8;
 # IO Pad Location Constraints / Properties for Expansion Header GPIO
 #------------------------------------------------------------------------------
 
-NET gpio_exp_hdr1(31) LOC = AF24; # HDR1_64
-NET gpio_exp_hdr1(30) LOC = AE24; # HDR1_62
-NET gpio_exp_hdr1(29) LOC = AD22; # HDR1_8
-NET gpio_exp_hdr1(28) LOC = AB21; # HDR1_58
-NET gpio_exp_hdr1(27) LOC = W20;  # HDR1_44
-NET gpio_exp_hdr1(26) LOC = W21;  # HDR1_48
-NET gpio_exp_hdr1(25) LOC = AB22; # HDR1_14
-NET gpio_exp_hdr1(24) LOC = AD25; # HDR1_20
-NET gpio_exp_hdr1(23) LOC = W22;  # HDR1_46
-NET gpio_exp_hdr1(22) LOC = V21;  # HDR1_56
-NET gpio_exp_hdr1(21) LOC = V22;  # HDR1_54
-NET gpio_exp_hdr1(20) LOC = AC22; # HDR1_16
-NET gpio_exp_hdr1(19) LOC = AD26; # HDR1_18
-NET gpio_exp_hdr1(18) LOC = AC26; # HDR1_34
-NET gpio_exp_hdr1(17) LOC = AD23; # HDR1_6
-NET gpio_exp_hdr1(16) LOC = AB25; # HDR1_30
-NET gpio_exp_hdr1(15) LOC = AC23; # HDR1_4
-NET gpio_exp_hdr1(14) LOC = AB26; # HDR1_24
-NET gpio_exp_hdr1(13) LOC = AC21; # HDR1_60
-NET gpio_exp_hdr1(12) LOC = AA23; # HDR1_10
-NET gpio_exp_hdr1(11) LOC = AA26; # HDR1_22
-NET gpio_exp_hdr1(10) LOC = Y25;  # HDR1_40
-NET gpio_exp_hdr1(9)  LOC = Y26;  # HDR1_38
-NET gpio_exp_hdr1(8)  LOC = W26;  # HDR1_50
-NET gpio_exp_hdr1(7)  LOC = AB23; # HDR1_12
-NET gpio_exp_hdr1(6)  LOC = Y24;  # HDR1_26
-NET gpio_exp_hdr1(5)  LOC = AB24; # HDR1_32
-NET gpio_exp_hdr1(4)  LOC = W25;  # HDR1_52
-NET gpio_exp_hdr1(3)  LOC = AC24; # HDR1_2
-NET gpio_exp_hdr1(2)  LOC = AC25; # HDR1_36
-NET gpio_exp_hdr1(1)  LOC = V20;  # HDR1_42
-NET gpio_exp_hdr1(0)  LOC = AA24; # HDR1_28
+#NET gpio_exp_hdr1(31) LOC = AF24; # HDR1_64
+#NET gpio_exp_hdr1(30) LOC = AE24; # HDR1_62
+#NET gpio_exp_hdr1(29) LOC = AD22; # HDR1_8
+#NET gpio_exp_hdr1(28) LOC = AB21; # HDR1_58
+#NET gpio_exp_hdr1(27) LOC = W20;  # HDR1_44
+#NET gpio_exp_hdr1(26) LOC = W21;  # HDR1_48
+#NET gpio_exp_hdr1(25) LOC = AB22; # HDR1_14
+#NET gpio_exp_hdr1(24) LOC = AD25; # HDR1_20
+#NET gpio_exp_hdr1(23) LOC = W22;  # HDR1_46
+#NET gpio_exp_hdr1(22) LOC = V21;  # HDR1_56
+#NET gpio_exp_hdr1(21) LOC = V22;  # HDR1_54
+#NET gpio_exp_hdr1(20) LOC = AC22; # HDR1_16
+#NET gpio_exp_hdr1(19) LOC = AD26; # HDR1_18
+#NET gpio_exp_hdr1(18) LOC = AC26; # HDR1_34
+#NET gpio_exp_hdr1(17) LOC = AD23; # HDR1_6
+#NET gpio_exp_hdr1(16) LOC = AB25; # HDR1_30
+#NET gpio_exp_hdr1(15) LOC = AC23; # HDR1_4
+#NET gpio_exp_hdr1(14) LOC = AB26; # HDR1_24
+#NET gpio_exp_hdr1(13) LOC = AC21; # HDR1_60
+#NET gpio_exp_hdr1(12) LOC = AA23; # HDR1_10
+#NET gpio_exp_hdr1(11) LOC = AA26; # HDR1_22
+#NET gpio_exp_hdr1(10) LOC = Y25;  # HDR1_40
+#NET gpio_exp_hdr1(9)  LOC = Y26;  # HDR1_38
+#NET gpio_exp_hdr1(8)  LOC = W26;  # HDR1_50
+#NET gpio_exp_hdr1(7)  LOC = AB23; # HDR1_12
+#NET gpio_exp_hdr1(6)  LOC = Y24;  # HDR1_26
+#NET gpio_exp_hdr1(5)  LOC = AB24; # HDR1_32
+#NET gpio_exp_hdr1(4)  LOC = W25;  # HDR1_52
+#NET gpio_exp_hdr1(3)  LOC = AC24; # HDR1_2
+#NET gpio_exp_hdr1(2)  LOC = AC25; # HDR1_36
+#NET gpio_exp_hdr1(1)  LOC = V20;  # HDR1_42
+#NET gpio_exp_hdr1(0)  LOC = AA24; # HDR1_28
 
 #NET gpio_exp_hdr1(*) TIG;
 #NET gpio_exp_hdr1(*) PULLDOWN;
 
-NET gpio_exp_hdr2(31) LOC = AF18; # HDR2_40
-NET gpio_exp_hdr2(30) LOC = AE18; # HDR2_38
-NET gpio_exp_hdr2(29) LOC = AF19; # HDR2_32
-NET gpio_exp_hdr2(28) LOC = AF20; # HDR2_30
-NET gpio_exp_hdr2(27) LOC = AF21; # HDR2_44
-NET gpio_exp_hdr2(26) LOC = AF22; # HDR2_42
-NET gpio_exp_hdr2(25) LOC = AF23; # HDR2_24
-NET gpio_exp_hdr2(24) LOC = AE23; # HDR2_22
-NET gpio_exp_hdr2(23) LOC = AC18; # HDR2_48
-NET gpio_exp_hdr2(22) LOC = AB18; # HDR2_46
-NET gpio_exp_hdr2(21) LOC = AD19; # HDR2_64
-NET gpio_exp_hdr2(20) LOC = AC19; # HDR2_62
-NET gpio_exp_hdr2(19) LOC = AE20; # HDR2_16
-NET gpio_exp_hdr2(18) LOC = AD20; # HDR2_14
-NET gpio_exp_hdr2(17) LOC = AE21; # HDR2_36
-NET gpio_exp_hdr2(16) LOC = AD21; # HDR2_34
-NET gpio_exp_hdr2(15) LOC = AB20; # HDR2_52
-NET gpio_exp_hdr2(14) LOC = AC20; # HDR2_50
-NET gpio_exp_hdr2(13) LOC = Y17;  # HDR2_56
-NET gpio_exp_hdr2(12) LOC = AA17; # HDR2_54
-NET gpio_exp_hdr2(11) LOC = AA19; # HDR2_60
-NET gpio_exp_hdr2(10) LOC = AA20; # HDR2_58
-NET gpio_exp_hdr2(9)  LOC = Y22;  # HDR2_8
-NET gpio_exp_hdr2(8)  LOC = Y23;  # HDR2_6
-NET gpio_exp_hdr2(7)  LOC = W23;  # HDR2_12
-NET gpio_exp_hdr2(6)  LOC = W24;  # HDR2_10
-NET gpio_exp_hdr2(5)  LOC = Y20;  # HDR2_20
-NET gpio_exp_hdr2(4)  LOC = Y21;  # HDR2_18
-NET gpio_exp_hdr2(3)  LOC = Y19;  # HDR2_28
-NET gpio_exp_hdr2(2)  LOC = W19;  # HDR2_26
-NET gpio_exp_hdr2(1)  LOC = AA18; # HDR2_4
-NET gpio_exp_hdr2(0)  LOC = Y18;  # HDR2_2
+#NET gpio_exp_hdr2(31) LOC = AF18; # HDR2_40
+#NET gpio_exp_hdr2(30) LOC = AE18; # HDR2_38
+#NET gpio_exp_hdr2(29) LOC = AF19; # HDR2_32
+#NET gpio_exp_hdr2(28) LOC = AF20; # HDR2_30
+#NET gpio_exp_hdr2(27) LOC = AF21; # HDR2_44
+#NET gpio_exp_hdr2(26) LOC = AF22; # HDR2_42
+#NET gpio_exp_hdr2(25) LOC = AF23; # HDR2_24
+#NET gpio_exp_hdr2(24) LOC = AE23; # HDR2_22
+#NET gpio_exp_hdr2(23) LOC = AC18; # HDR2_48
+#NET gpio_exp_hdr2(22) LOC = AB18; # HDR2_46
+#NET gpio_exp_hdr2(21) LOC = AD19; # HDR2_64
+#NET gpio_exp_hdr2(20) LOC = AC19; # HDR2_62
+#NET gpio_exp_hdr2(19) LOC = AE20; # HDR2_16
+#NET gpio_exp_hdr2(18) LOC = AD20; # HDR2_14
+#NET gpio_exp_hdr2(17) LOC = AE21; # HDR2_36
+#NET gpio_exp_hdr2(16) LOC = AD21; # HDR2_34
+#NET gpio_exp_hdr2(15) LOC = AB20; # HDR2_52
+#NET gpio_exp_hdr2(14) LOC = AC20; # HDR2_50
+#NET gpio_exp_hdr2(13) LOC = Y17;  # HDR2_56
+#NET gpio_exp_hdr2(12) LOC = AA17; # HDR2_54
+#NET gpio_exp_hdr2(11) LOC = AA19; # HDR2_60
+#NET gpio_exp_hdr2(10) LOC = AA20; # HDR2_58
+#NET gpio_exp_hdr2(9)  LOC = Y22;  # HDR2_8
+#NET gpio_exp_hdr2(8)  LOC = Y23;  # HDR2_6
+#NET gpio_exp_hdr2(7)  LOC = W23;  # HDR2_12
+#NET gpio_exp_hdr2(6)  LOC = W24;  # HDR2_10
+#NET gpio_exp_hdr2(5)  LOC = Y20;  # HDR2_20
+#NET gpio_exp_hdr2(4)  LOC = Y21;  # HDR2_18
+#NET gpio_exp_hdr2(3)  LOC = Y19;  # HDR2_28
+#NET gpio_exp_hdr2(2)  LOC = W19;  # HDR2_26
+#NET gpio_exp_hdr2(1)  LOC = AA18; # HDR2_4
+#NET gpio_exp_hdr2(0)  LOC = Y18;  # HDR2_2
 
 #NET gpio_exp_hdr2(*) TIG;
 #NET gpio_exp_hdr2(*) PULLDOWN;
@@ -700,14 +683,14 @@ NET gpio_exp_hdr2(0)  LOC = Y18;  # HDR2_2
 # IO Pad Location Constraints / Properties for Character LCD GPIO
 #------------------------------------------------------------------------------
 
-NET gpio_char_lcd(6) LOC = AE13; # LCD_E
-NET gpio_char_lcd(5) LOC = AC17; # LCD_RS
-NET gpio_char_lcd(4) LOC = AB17; # LCD_RW
-NET gpio_char_lcd(3) LOC = AF12; # LCD_DB7
-NET gpio_char_lcd(2) LOC = AE12; # LCD_DB6
-NET gpio_char_lcd(1) LOC = AC10; # LCD_DB5
-NET gpio_char_lcd(0) LOC = AB10; # LCD_DB4
-NET gpio_char_lcd(*) IOSTANDARD = LVCMOS33;
+#NET gpio_char_lcd(6) LOC = AE13; # LCD_E
+#NET gpio_char_lcd(5) LOC = AC17; # LCD_RS
+#NET gpio_char_lcd(4) LOC = AB17; # LCD_RW
+#NET gpio_char_lcd(3) LOC = AF12; # LCD_DB7
+#NET gpio_char_lcd(2) LOC = AE12; # LCD_DB6
+#NET gpio_char_lcd(1) LOC = AC10; # LCD_DB5
+#NET gpio_char_lcd(0) LOC = AB10; # LCD_DB4
+#NET gpio_char_lcd(*) IOSTANDARD = LVCMOS33;
 #NET gpio_char_lcd(*) TIG;
 #NET gpio_char_lcd(*) PULLDOWN;
 

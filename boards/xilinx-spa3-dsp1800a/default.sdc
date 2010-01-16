@@ -11,7 +11,7 @@
 # Clocks
 #
 define_clock            {clk_in}     -name {clk_in}      -freq 135    -clockgroup default_clkgroup -route 0
-define_clock            {clkm}       -name {clkm}        -freq 48     -clockgroup main_clkgroup    -route 0
+define_clock            {clkm}       -name {clkm}        -freq 60     -clockgroup main_clkgroup    -route 0
 define_clock            {clkml}      -name {clkml}       -freq 135    -clockgroup ddr_clkgroup     -route 0
 define_clock            {ddr_clk_fb} -name {ddr_clk_fb}  -freq 135    -clockgroup ddr_fb_clkgroup  -route 0
 define_clock            {clk_vga}    -name {clk_vga}     -freq 25     -clockgroup vga_clkgroup     -route 0

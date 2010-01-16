@@ -820,6 +820,7 @@ set_instance_assignment -name IO_STANDARD "SSTL-18 CLASS I"  -to ddr_web #ddr2_d
 #set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to ddr_dqsp
 #set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to ddr_dqsn
 
+# Remove these group assignments to run in quartus >= 8.0
 set_instance_assignment -name MEMORY_INTERFACE_DATA_PIN_GROUP 9 -from ddr_dqsp[0] -to ddr_dq[0..7]
 set_instance_assignment -name MEMORY_INTERFACE_DATA_PIN_GROUP 9 -from ddr_dqsp[1] -to ddr_dq[8..15]
 set_instance_assignment -name MEMORY_INTERFACE_DATA_PIN_GROUP 9 -from ddr_dqsp[2] -to ddr_dq[16..23]
@@ -844,6 +845,22 @@ set_instance_assignment -name D3_DELAY 0 -to ddr_dq
 # set_instance_assignment -name MEMORY_INTERFACE_DATA_PIN_GROUP 9 -from ddr_dqsp[6] -to ddr_dqsp[6]
 # set_instance_assignment -name MEMORY_INTERFACE_DATA_PIN_GROUP 9 -from ddr_dqsp[7] -to ddr_dqsp[7]
 
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to ddr_ad
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to ddr_ba
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to ddr_cke
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to ddr_csb
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to ddr_rasb
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to ddr_casb
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to ddr_web
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to ddr_odt
+
+#set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to ddr_dm[0..7]
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 25 OHM WITH CALIBRATION" -to ddr_dqsn[0..7]
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 25 OHM WITH CALIBRATION" -to ddr_dqsp[0..7]
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to ddr_dqsn[0..7]
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to ddr_dqsp[0..7]
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to ddr_dq[0..63]
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 25 OHM WITH CALIBRATION" -to ddr_dq[0..63]
 
 
 # set_location_assignment PIN_E31 -to rup1a

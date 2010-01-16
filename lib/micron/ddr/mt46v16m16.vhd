@@ -1296,15 +1296,15 @@ BEGIN
                         Bank0 (To_Integer(Rows_Load)) (To_Integer(Cols_Load)+i) := (recdata(i*64+index*16 to i*64+index*16+15));
 		      end loop;
                     ELSIF Bank_Load = "01" THEN
-		      for i in 0 to 3 loop
+		      for i in 0 to 1 loop
                         Bank1 (To_Integer(Rows_Load)) (To_Integer(Cols_Load)+i) := (recdata(i*64+index*16 to i*64+index*16+15));
 		      end loop;
                     ELSIF Bank_Load = "10" THEN
-		      for i in 0 to 3 loop
+		      for i in 0 to 1 loop
                         Bank2 (To_Integer(Rows_Load)) (To_Integer(Cols_Load)+i) := (recdata(i*64+index*16 to i*64+index*16+15));
 		      end loop;
                     ELSIF Bank_Load = "11" THEN
-		      for i in 0 to 3 loop
+		      for i in 0 to 1 loop
                         Bank3 (To_Integer(Rows_Load)) (To_Integer(Cols_Load)+i) := (recdata(i*64+index*16 to i*64+index*16+15));
 		      end loop;
                     END IF;

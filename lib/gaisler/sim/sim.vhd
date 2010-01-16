@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -100,7 +101,8 @@ package sim is
       base1000_x_fd : integer range 0 to 1  := 0;
       base1000_x_hd : integer range 0 to 1  := 0;
       base1000_t_fd : integer range 0 to 1  := 1;
-      base1000_t_hd : integer range 0 to 1  := 1
+      base1000_t_hd : integer range 0 to 1  := 1;
+      rmii          : integer range 0 to 1  := 0
       );
     port(
       rstn     : in std_logic;
@@ -172,6 +174,9 @@ package sim is
   procedure irqmp_subtest(subtest : integer);
   procedure spimctrl_subtest(subtest : integer);
   procedure svgactrl_subtest(subtest : integer);
+  procedure apbps2_subtest(subtest : integer);
+  procedure i2cslv_subtest(subtest : integer);
+  procedure grpwm_subtest(subtest : integer);
   
   component ahbrep
   generic (
@@ -192,6 +197,19 @@ package sim is
       scl : inout std_logic;
       sda : inout std_logic
       );
+  end component;
+
+  component grusbdcsim
+    generic (
+      functm : integer range 0 to 1 := 0);
+    port (
+      rst     : in    std_ulogic;
+      clk     : out   std_ulogic;
+      d       : inout std_logic_vector(7 downto 0);
+      nxt     : out   std_ulogic;
+      stp     : in    std_ulogic;
+      dir     : out   std_ulogic
+    );
   end component;
 
   component ulpi
@@ -236,11 +254,64 @@ package sim is
       data      : inout std_logic_vector(7 downto 0)
       );
   end component;
+
+  component delay_wire
+    generic(
+      data_width  : integer := 1;
+      delay_atob  : real := 0.0;
+      delay_btoa  : real := 0.0
+      );
+    port(
+      a : inout std_logic_vector(data_width-1 downto 0);
+      b : inout std_logic_vector(data_width-1 downto 0)
+      );
+  end component;
+
+  component spi_flash
+    generic (
+      ftype      : integer := 0;               -- Flash type
+      debug      : integer := 0;               -- Debug output
+      fname      : string  := "prom.srec";     -- File to read from
+      readcmd    : integer := 16#0B#;          -- SPI memory device read command
+      dummybyte  : integer := 1;
+      dualoutput : integer := 0);
+    port (
+      sck : in    std_ulogic;
+      di  : inout std_logic;
+      do  : inout std_logic;
+      csn : inout std_logic;
+      -- Test control inputs
+      sd_cmd_timeout  : in std_ulogic := '0';
+      sd_data_timeout : in std_ulogic := '0'
+      );
+  end component;
+
+  component pwm_check
+    port (
+      clk     : in    std_ulogic;
+      address : in    std_logic_vector(21 downto 2);
+      data    : inout std_logic_vector(31 downto 0);
+      iosn    : in    std_ulogic;
+      oen     : in    std_ulogic;
+      writen  : in    std_ulogic;
+      pwm     : in    std_logic_vector(15 downto 0)
+      );
+  end component;
+
+  procedure ps2_device (
+    signal clk      : inout std_logic;
+    signal data     : inout std_logic;
+    -- Configuration
+    constant DELAY  : in time := 40 us
+    );
   
 end;
 
 package body sim is
 
+  -----------------------------------------------------------------------------
+  -- Helper functions
+  -----------------------------------------------------------------------------
   function to_xlhz(i : std_logic) return std_logic is
   begin
     case to_X01Z(i) is
@@ -374,6 +445,9 @@ package body sim is
     return OK;
   end ishex;
 
+  -----------------------------------------------------------------------------
+  -- Subtest print out
+  -----------------------------------------------------------------------------
   procedure gptimer_subtest(subtest : integer) is
   begin
 
@@ -449,6 +523,7 @@ package body sim is
     case subtest is
     when 1 => print("  APB interface reset values");
     when 2 => print("  Loopback mode");
+    when 3 => print("  AM Loopback mode");
     when others => print("  sub-system test " & tost(subtest));
     end case;
 
@@ -523,6 +598,126 @@ package body sim is
 
   end;
   
+  procedure apbps2_subtest(subtest : integer) is
+  begin
+
+    case subtest is
+    when 1 => print("  Transmit test");
+    when 2 => print("  Receive test");
+    when others => print("  sub-system test " & tost(subtest));
+    end case;
+
+  end;
+
+  procedure i2cslv_subtest(subtest : integer) is
+  begin
+
+    case subtest is
+    when 1 => print("  Register interface");
+    when 2 => print("  Combined I2CMST/I2CSLV test"); 
+    when others => print("  sub-system test " & tost(subtest));
+    end case;
+
+  end;
+
+  procedure grpwm_subtest(subtest : integer) is
+  begin
+
+    case subtest is
+    when 1 => print("  Asymmetric PWM test");
+    when 2 => print("  Symmetric PWM test");
+    when 3 => print("  Waveform PWM test (asymmetric)");
+    when 4 => print("  Waveform PWM test (symmetric)");
+    when others =>
+      -- 247 - 255 if used for configuring pwm_check
+      if subtest < 247 then
+        print("  sub-system test " & tost(subtest));
+      end if;
+    end case;
+
+  end;
+    
+
+  -----------------------------------------------------------------------------
+  -- Simple simulation models
+  -----------------------------------------------------------------------------
   
+  -- Description: Simple "PS/2" device. When the device receives the data
+  --              0xAA it will respond with the bytes 0x5A, 0xA5.
+  --              The argument DELAY is the PS/2 clock period / 2
+  procedure ps2_device (
+    signal   clk    : inout std_logic;
+    signal   data   : inout std_logic;
+    -- Configuration
+    constant DELAY  : in time := 40 us) is
+    variable d : std_logic_vector(9 downto 0);
+  begin  -- ps2_device
+    clk <= 'Z'; data <= 'Z';
+    
+    loop
+      -- Wait for host request-to-send
+      wait until clk = '0';
+      wait until data = '0';
+      wait until clk /= '0';
+      wait for DELAY;
+      
+      -- Generate clock and shift in data
+      for i in 0 to 9 loop
+        wait for DELAY/2;
+        clk <= '0';
+        wait for DELAY;
+        clk <= 'Z';
+        d(i) := data;
+        wait for DELAY/2;
+      end loop;  -- i = 0
+      
+      -- Acknowledge data
+      data <= '0';
+      wait for DELAY/2;
+      clk <= '0'; 
+      wait for DELAY;
+      clk <= 'Z'; data <= 'Z';
+
+      -- Check parity
+      assert xorv(d(7 downto 0)) /= d(8)
+        report "Wrong parity on PS/2 bus" severity warning;
+
+      -- Continue if data is not 0xAA
+      if d(7 downto 0) /= conv_std_logic_vector(16#AA#, 8) then next; end if;
+
+      wait for 2*DELAY;
+      
+      -- Transmit two byte response
+      d(8) := '1'; d(7 downto 0) := conv_std_logic_vector(16#A5#, 8); 
+      for i in 0 to 1 loop
+        d(7 downto 0) := d(3 downto 0) & d(7 downto 4);
+        
+        data <= '0'; clk <= '0';
+        wait for DELAY;
+        clk <= 'Z';
+        
+        for j in 0 to 8 loop
+          wait for DELAY/2;
+          data <= d(j);
+          wait for DELAY/2;
+          clk <= '0';
+          wait for DELAY;
+          clk <= 'Z';
+        end loop;  -- j
+
+        -- Stop bit
+        wait for DELAY/2;
+        data <= 'Z';
+        wait for DELAY/2;
+        clk <= '0';
+        wait for DELAY;
+        clk <= 'Z';
+
+        -- Insert delay between transmissions
+        if i = 0 then wait for 2*DELAY; end if;
+      end loop;  -- i
+    end loop;
+  end ps2_device;
+
 end;
 -- pragma translate_on

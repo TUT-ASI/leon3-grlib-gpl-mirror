@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -51,9 +52,20 @@ begin
 
   cs : if rsel = 0 generate seli <= sel; end generate;
   
-  xil : if (tech = virtex2) or (tech = spartan3) or (tech = spartan3e)
-          or (tech = virtex4) or (tech = virtex5) generate
-    buf : clkmux_unisim port map(sel => seli, I0 => i0, I1 => i1, O => o);
+  tec : if has_clkmux(tech) = 1 generate
+
+    xil : if is_unisim(tech) = 1 generate
+      buf : clkmux_unisim port map(sel => seli, I0 => i0, I1 => i1, O => o);
+    end generate;
+
+    rhl : if tech = rhlib18t generate
+      buf : clkmux_rhlib18t port map(sel => seli, I0 => i0, I1 => i1, O => o);
+    end generate;
+    
+    noxil : if not((is_unisim(tech) = 1) or (tech = rhlib18t)) generate
+      o <= i0 when seli = '0' else i1;
+    end generate;
+
   end generate;
 
   gen : if has_clkmux(tech) = 0 generate

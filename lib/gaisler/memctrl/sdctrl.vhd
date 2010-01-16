@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -305,7 +306,8 @@ begin
         v.address(16 downto 2) := ba & raddr;
         v.sdcsn := not rams(1 downto 0); v.rasn := '0'; v.sdstate := act1;
         v.startsd := '0';
-      elsif (r.idlecnt = "0000") and (r.cfg.command = "000") and (r.cmstate = midle) then
+      elsif (r.idlecnt = "0000") and (r.cfg.command = "000") 
+            and (r.cmstate = midle) and (r.cfg.mobileen(1) = '1') then
         case r.cfg.pmode is
         when PM_SR => 
           v.cfg.cke := '0'; v.sdstate := sref;
@@ -623,13 +625,18 @@ begin
         if r.cfg.pmode = "000" then
           v.cfg.cke               :=  ahbsi.hwdata(30);
         end if;
-        v.cfg.txsr              :=  ahbsi.hwdata(23 downto 20);
-        v.cfg.pmode             :=  ahbsi.hwdata(18 downto 16);
-        v.cfg.ds(3 downto 2)    :=  ahbsi.hwdata( 6 downto  5);
-        v.cfg.tcsr(3 downto 2)  :=  ahbsi.hwdata( 4 downto  3);
-        v.cfg.pasr(5 downto 3)  :=  ahbsi.hwdata( 2 downto  0);
+        if r.cfg.mobileen(1) = '1' then
+          v.cfg.txsr              :=  ahbsi.hwdata(23 downto 20);
+          v.cfg.pmode             :=  ahbsi.hwdata(18 downto 16);
+          v.cfg.ds(3 downto 2)    :=  ahbsi.hwdata( 6 downto  5);
+          v.cfg.tcsr(3 downto 2)  :=  ahbsi.hwdata( 4 downto  3);
+          v.cfg.pasr(5 downto 3)  :=  ahbsi.hwdata( 2 downto  0);
+        end if;
       end if;
     end if;
+
+    -- Disable CS and DPD when Mobile SDR is Disabled
+    if r.cfg.mobileen(0) = '0' then v.cfg.pmode(2) := '0'; end if;
 
     -- Update EMR when ds, tcsr or pasr change
     if r.cfg.command = "000" and arefresh = '0' and r.cfg.mobileen(0) = '1' then
@@ -749,7 +756,9 @@ begin
     sdo.dqm      <= "11111111" & r.dqm;
     sdo.rasn     <= r.rasn;
     sdo.casn     <= r.casn;
-    sdo.data(31 downto 0) <= r.hwdata;
+    drivebus: for i in 0 to sdbits/64 generate
+      sdo.data(31+32*i downto 32*i) <= r.hwdata;
+    end generate;
   end generate;
 
   ngen : if SDINVCLK generate
@@ -764,7 +773,9 @@ begin
         sdo.dqm      <= "11111111" & r.dqm;
         sdo.rasn     <= r.rasn;
         sdo.casn     <= r.casn;
-        sdo.data(31 downto 0) <= r.hwdata;
+        for i in 0 to sdbits/64 loop 
+          sdo.data(31+32*i downto 32*i) <= r.hwdata;
+        end loop;
       end if;
       if rst = '0' then sdo.sdcsn <= (others => '1'); end if;
     end process;

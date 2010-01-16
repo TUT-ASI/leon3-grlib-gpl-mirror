@@ -2,6 +2,7 @@
  * Simple loopback test for SPICTRL 
  *
  * Copyright (c) 2008 Gaisler Research AB
+ * Copyright (c) 2009 Aeroflex Gaisler AB
  *
  * This test requires that the SPISEL input is HIGH
  *
@@ -14,26 +15,47 @@
 #define SPIC_MODE_OFF   0x20
 
 /* Register fields */
+/* Capability register */
+#define SPIC_SSSZ   24
+#define SPIC_TWEN   (1 << 19)
+#define SPIC_AMODE  (1 << 18)
+#define SPIC_ASELA  (1 << 17)
+#define SPIC_SSEN   (1 << 16)
+#define SPIC_FDEPTH 8
+#define SPIC_REVI   0
 /* Mode register */
-#define SPIC_LOOP (1 << 30)
-#define SPIC_CPOL (1 << 29)
-#define SPIC_CPHA (1 << 28)
-#define SPIC_DIV16 (1 << 27)
-#define SPIC_REV (1 << 26)
-#define SPIC_MS (1 << 25)
-#define SPIC_EN (1 << 24)
-#define SPIC_LEN 20
-#define SPIC_PM 16
-#define SPIC_CG 7
+#define SPIC_AMEN   (1 << 31)
+#define SPIC_LOOP   (1 << 30)
+#define SPIC_CPOL   (1 << 29)
+#define SPIC_CPHA   (1 << 28)
+#define SPIC_DIV16  (1 << 27)
+#define SPIC_REV    (1 << 26)
+#define SPIC_MS     (1 << 25)
+#define SPIC_EN     (1 << 24)
+#define SPIC_LEN    20
+#define SPIC_PM     16
+#define SPIC_TW     (1 << 15)
+#define SPIC_ASEL   (1 << 14)
+#define SPIC_FACT   (1 << 13)
+#define SPIC_OD     (1 << 12)
+#define SPIC_CG     7
+#define SPIC_ASDEL  5
 /* Event and Mask registers */
-#define SPIC_LT (1 << 14)
-#define SPIC_OV (1 << 12)
-#define SPIC_UN (1 << 11)
-#define SPIC_MME (1 << 10)
-#define SPIC_NE (1 << 9)
-#define SPIC_NF (1 << 8)
+#define SPIC_LT     (1 << 14)
+#define SPIC_OV     (1 << 12)
+#define SPIC_UN     (1 << 11)
+#define SPIC_MME    (1 << 10)
+#define SPIC_NE     (1 << 9)
+#define SPIC_NF     (1 << 8)
 /* Command register */
-#define SPIC_LST (1 << 22)
+#define SPIC_LST    (1 << 22)
+/* AM Configuration register */
+#define SPIC_SEQ    (1 << 5)
+#define SPIC_STRICT (1 << 4)
+#define SPIC_OVTB   (1 << 3)
+#define SPIC_OVDB   (1 << 2)
+#define SPIC_ACT    (1 << 1)
+#define SPIC_EACT   (1 << 0)
 
 /* Reset values */
 #define MODE_RESVAL  0
@@ -49,7 +71,10 @@ struct spictrlregs {
   volatile unsigned int com;
   volatile unsigned int td;
   volatile unsigned int rd;
-  /* volatile unsigned int slvsel; */
+  volatile unsigned int slvsel;
+  volatile unsigned int aslvsel;
+  volatile unsigned int amcfg;
+  volatile unsigned int amper;
 };
 
 /*
@@ -58,18 +83,19 @@ struct spictrlregs {
  * Writes fifo depth + 1 words in loopback mode. Writes
  * one more word and checks LT and OV status
  *
+ * Tests automated transfers if the core has support
+ * for them.
+ *
  */
 int spictrl_test(int addr)
 {
   int i;
   int data;
-  int fdepth;
-  
+  int fd;
   
   volatile unsigned int *capreg;
   struct spictrlregs *regs;
   
-
   report_device(0x0102D000);
 
   capreg = (int*)addr;
@@ -98,7 +124,7 @@ int spictrl_test(int addr)
    * Configure core in loopback and write FIFO depth + 1
    * words
    */
-  fdepth = (*capreg >> 8) & 0xff;
+  fd = (*capreg >> SPIC_FDEPTH) & 0xff;
 
   regs->mode = SPIC_LOOP | SPIC_MS | SPIC_EN;
 
@@ -117,7 +143,7 @@ int spictrl_test(int addr)
     fail(10);
      
   data = 0xaaaaaaaa;
-  for (i = 0; i <= fdepth; i++) {
+  for (i = 0; i <= fd; i++) {
     regs->td = data;
     data = ~data;
   }
@@ -145,12 +171,57 @@ int spictrl_test(int addr)
 
   /* Verify that words transferred correctly */
   data = 0xaaaaaaaa;
-  for (i = 0; i <= fdepth; i++) {
+  for (i = 0; i <= fd; i++) {
     if (regs->rd != data)
-      fail(14+7);
+      fail(14+i);
     data = ~data;
   }
     
+  /* Deactivate core */
+  regs->mode = 0;
+
+  /* Return if core does not support automated transfers */
+  if (!(*capreg & SPIC_AMODE))
+     return 0;
+
+  /* AM Loopback test */
+  report_subtest(3);
+
+  /* Enable core with automated transfers */
+  regs->mode = SPIC_AMEN | SPIC_FACT | SPIC_LOOP | SPIC_MS | SPIC_EN;
+
+  /* Write two words to transmit FIFO */
+  data = 0xdeadf00d;
+  for (i = 0; i < 2; i++) {
+    regs->td = data;
+    data = ~data;
+  }
+  
+  /* Set AM period register */
+  regs->amper = 0;
+
+  /* Enable automated transfers */
+  regs->amcfg = SPIC_ACT;
+  
+  /* Wait for NE event */
+  while (!(regs->event & SPIC_NE))
+     ;
+  
+  /* Read out data */
+  data = 0xdeadf00d;
+  for (i = 0; i < 2; i++) {
+    if (regs->rd != data)
+      fail(15+fd+i);
+    data = ~data;
+  }
+  
+  /* Deactivate automated transfers */
+  regs->amcfg = 0;
+  
+  /* Wait for automated mode to be deactivated */
+  while (!(regs->amcfg & SPIC_ACT))
+     ;
+  
   /* Deactivate core */
   regs->mode = 0;
 

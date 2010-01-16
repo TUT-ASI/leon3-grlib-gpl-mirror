@@ -178,6 +178,7 @@ NET "ddr_clk(1)"     LOC = "AD27";
 NET "ddr_clkb(1)"    LOC = "AC27";
 NET "ddr_clk_fb_out" LOC = "AC26";
 NET "ddr_clk_fb_in"  LOC = "AE16";
+NET "ddr_clk_fb"  LOC = "AE16";
 #
 NET ddr_cke(0)  LOC = L23;
 NET ddr_cke(1)  LOC = V23;

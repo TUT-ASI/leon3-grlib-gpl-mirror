@@ -14,11 +14,14 @@ SDCFILE=$(GRLIB)/boards/$(BOARD)/default.sdc
 BITGEN=$(GRLIB)/boards/$(BOARD)/default.ut
 CLEAN=soft-clean
 
-LIBSKIP = apa apa3 axcelerator ec unisim ihp25 ihp25rh \
-	ut025crh rh_lib18t rh_lib18t_io2 pere05 cust1 atmel \
-	artisan umc18 core1553bbc core1553brm core1553brt gr1553 corePCIF \
+TECHLIBS = altera altera_mf
+
+LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc ihp hynix cypress gleichmann
-DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan leon3ft ddr usbhc
+DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan leon3ft \
+	ddr grusbhc usb haps spi ac97 \
+	slink ascs coremp7
+
 FILESKIP = grcan.vhd
 
 include $(GRLIB)/bin/Makefile

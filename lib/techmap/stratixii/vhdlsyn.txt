@@ -1,5 +1,5 @@
 #grfpw_0_stratixii.vhd
 #grlfpw_2_stratixii.vhd
-#usbhc_stratixiipkg.vhd
-#usbhc_stratixii.vhd
+grusbhc_stratixii.vhd
 stratixii_ddr_phy.vhd
+clkgen_stratixii.vhd

@@ -52,6 +52,7 @@
   constant CFG_DTLBNUM  : integer := CONFIG_DTLBNUM;
   constant CFG_TLB_TYPE : integer := CONFIG_TLB_TYPE + CFG_MMU_FASTWB*2;
   constant CFG_TLB_REP  : integer := CONFIG_TLB_REP;
+  constant CFG_MMU_PAGE : integer := CONFIG_MMU_PAGE;
   constant CFG_DSU   	: integer := CONFIG_DSU_ENABLE;
   constant CFG_ITBSZ 	: integer := CFG_DSU_ITB;
   constant CFG_ATBSZ 	: integer := CFG_DSU_ATB;

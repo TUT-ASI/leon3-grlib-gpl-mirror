@@ -65,6 +65,11 @@ comment 'Peripherals             '
   comment 'Keybord and VGA interface'
     source lib/gaisler/misc/ps2vga.in
   endmenu
+
+  mainmenu_option next_comment
+  comment 'System ACE Interface Controller'
+    source lib/gaisler/misc/gracectrl.in
+  endmenu
 endmenu
 
 mainmenu_option next_comment

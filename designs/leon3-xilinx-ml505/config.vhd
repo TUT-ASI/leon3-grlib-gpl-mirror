@@ -1,16 +1,6 @@
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
--- Copyright (C) 2004 Jiri Gaisler, Gaisler Research
---
--- This program is free software; you can redistribute it and/or modify
--- it under the terms of the GNU General Public License as published by
--- the Free Software Foundation; either version 2 of the License, or
--- (at your option) any later version.
---
--- This program is distributed in the hope that it will be useful,
--- but WITHOUT ANY WARRANTY; without even the implied warranty of
--- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
--- GNU General Public License for more details.
+-- Copyright (C) 2009 Aeroflex Gaisler
 ------------------------------------------------------------------------------
 
 
@@ -42,6 +32,7 @@ package config is
   constant CFG_NWIN : integer := (8);
   constant CFG_V8 : integer := 0;
   constant CFG_MAC : integer := 0;
+  constant CFG_BP : integer := 0;
   constant CFG_SVT : integer := 0;
   constant CFG_RSTADDR : integer := 16#00000#;
   constant CFG_LDDEL : integer := (1);
@@ -69,11 +60,12 @@ package config is
   constant CFG_DLRAMEN : integer := 0;
   constant CFG_DLRAMADDR: integer := 16#8F#;
   constant CFG_DLRAMSZ : integer := 1;
-  constant CFG_MMUEN : integer := 0;
-  constant CFG_ITLBNUM : integer := 2;
+  constant CFG_MMUEN : integer := 1;
+  constant CFG_ITLBNUM : integer := 8;
   constant CFG_DTLBNUM : integer := 2;
   constant CFG_TLB_TYPE : integer := 1 + 0*2;
   constant CFG_TLB_REP : integer := 1;
+  constant CFG_MMU_PAGE : integer := 0;
   constant CFG_DSU : integer := 1;
   constant CFG_ITBSZ : integer := 2;
   constant CFG_ATBSZ : integer := 2;
@@ -90,7 +82,7 @@ package config is
 -- AMBA settings
   constant CFG_DEFMST : integer := (0);
   constant CFG_RROBIN : integer := 1;
-  constant CFG_SPLIT : integer := 0;
+  constant CFG_SPLIT : integer := 1;
   constant CFG_AHBIO : integer := 16#FFF#;
   constant CFG_APBADDR : integer := 16#800#;
   constant CFG_AHB_MON : integer := 0;
@@ -108,8 +100,8 @@ package config is
   constant CFG_ETH_BUF : integer := 2;
   constant CFG_ETH_IPM : integer := 16#C0A8#;
   constant CFG_ETH_IPL : integer := 16#0034#;
-  constant CFG_ETH_ENM : integer := 16#00007A#;
-  constant CFG_ETH_ENL : integer := 16#CC0008#;
+  constant CFG_ETH_ENM : integer := 16#020000#;
+  constant CFG_ETH_ENL : integer := 16#000031#;
 
 -- LEON2 memory controller
   constant CFG_MCTRL_LEON2 : integer := 1;
@@ -138,6 +130,7 @@ package config is
   constant CFG_DDR2SP_DELAY5 : integer := (0);
   constant CFG_DDR2SP_DELAY6 : integer := (0);
   constant CFG_DDR2SP_DELAY7 : integer := (0);
+  constant CFG_DDR2SP_NOSYNC : integer := 0;
 
 -- AHB status register
   constant CFG_AHBSTAT : integer := 1;
@@ -189,7 +182,10 @@ package config is
 -- VGA and PS2/ interface
   constant CFG_KBD_ENABLE : integer := 1;
   constant CFG_VGA_ENABLE : integer := 0;
-  constant CFG_SVGA_ENABLE : integer := 0;
+  constant CFG_SVGA_ENABLE : integer := 1;
+
+-- AMBA System ACE Interface Controller
+  constant CFG_GRACECTRL : integer := 1;
 
 -- GRLIB debugging
   constant CFG_DUART : integer := 0;

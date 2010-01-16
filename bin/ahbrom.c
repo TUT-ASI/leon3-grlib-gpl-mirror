@@ -4,6 +4,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#ifdef WIN32
+#include <winsock2.h>
+#endif
 
 main (argc, argv)
   int argc; char **argv;
@@ -28,21 +31,13 @@ main (argc, argv)
   fprintf(wfp, "\n\
 ----------------------------------------------------------------------------\n\
 --  This file is a part of the GRLIB VHDL IP LIBRARY\n\
---  Copyright (C) 2004 GAISLER RESEARCH\n\
---\n\
---  This program is free software; you can redistribute it and/or modify\n\
---  it under the terms of the GNU General Public License as published by\n\
---  the Free Software Foundation; either version 2 of the License, or\n\
---  (at your option) any later version.\n\
---\n\
---  See the file COPYING for the full details of the license.\n\
---\n\
------------------------------------------------------------------------------\n\
+--  Copyright (C) 2010 Aeroflex Gaisler\n\
+----------------------------------------------------------------------------\n\
 -- Entity: 	ahbrom\n\
 -- File:	ahbrom.vhd\n\
 -- Author:	Jiri Gaisler - Gaisler Research\n\
 -- Description:	AHB rom. 0/1-waitstate read\n\
-------------------------------------------------------------------------------\n\
+----------------------------------------------------------------------------\n\
 library ieee;\n\
 use ieee.std_logic_1164.all;\n\
 library grlib;\n\

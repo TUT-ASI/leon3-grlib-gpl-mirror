@@ -2,3 +2,6 @@ spacewire.vhd
 grspw.vhd
 grspw2.vhd
 grspwm.vhd
+grspw2_phy.vhd
+grspw_codec.vhd
+grspwrouter.vhd

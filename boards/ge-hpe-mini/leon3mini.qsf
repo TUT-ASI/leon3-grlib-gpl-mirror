@@ -224,7 +224,7 @@ set_global_assignment -name ENABLE_DEVICE_WIDE_RESET OFF
 set_global_assignment -name RESERVE_DATA7_THROUGH_DATA1_AFTER_CONFIGURATION "AS INPUT TRI-STATED"
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
 set_global_assignment -name OPTIMIZE_IOC_REGISTER_PLACEMENT_FOR_TIMING OFF
-set_global_assignment -name WEAK_PULL_UP_RESISTOR ON
+#set_global_assignment -name WEAK_PULL_UP_RESISTOR ON
 set_global_assignment -name ROUTER_REGISTER_DUPLICATION ON
 set_global_assignment -name IO_PLACEMENT_OPTIMIZATION OFF
 set_global_assignment -name INC_PLC_MODE OFF

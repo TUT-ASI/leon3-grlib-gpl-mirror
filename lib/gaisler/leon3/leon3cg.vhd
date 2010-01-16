@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -84,7 +85,9 @@ entity leon3cg is
     rstaddr   : integer               := 0;
     smp       : integer range 0 to 15 := 0;     -- support SMP systems
     cached    : integer               := 0;	-- cacheability table
-    scantest  : integer               := 0
+    scantest  : integer               := 0;
+    mmupgsz   : integer range 0 to 5  := 0;
+    bp        : integer               := 1
   );
   port (
     clk    : in  std_ulogic;	-- AHB clock (free-running)
@@ -102,9 +105,6 @@ entity leon3cg is
 end; 
 
 architecture rtl of leon3cg is
-
-constant fpuarch   : integer := fpu mod 16;
-constant fpunet    : integer := fpu / 16;
 
 constant IRFBITS  : integer range 6 to 10 := log2(NWINDOWS+1) + 4;
 constant IREGNUM  : integer := NWINDOWS * 16 + 8;
@@ -128,7 +128,10 @@ signal gnd, vcc : std_logic;
 attribute sync_set_reset : string;
 attribute sync_set_reset of rst : signal is "true";
 
-constant FPURFHARD : integer := 1-is_fpga(memtech);
+constant FPURFHARD : integer := 1; --1-is_fpga(memtech);
+constant fpuarch   : integer := fpu mod 16;
+constant fpunet    : integer := fpu / 16;
+
 begin
 
    gnd <= '0'; vcc <= '1';
@@ -140,13 +143,14 @@ begin
     pclow, notag, nwp, icen, irepl, isets, ilinesize, isetsize, isetlock, 
     dcen, drepl, dsets, dlinesize, dsetsize, dsetlock, dsnoop, ilram, 
     ilramsize, ilramstart, dlram, dlramsize, dlramstart, mmuen, itlbnum, dtlbnum,
-    tlb_type, tlb_rep, lddel, disas, tbuf, pwd, svt, rstaddr, smp, cached, 0, scantest)
+    tlb_type, tlb_rep, lddel, disas, tbuf, pwd, svt, rstaddr, smp, cached, 0, 
+    scantest, mmupgsz, bp)
   port map (gclk, rst, holdn, ahbi, ahbo, ahbsi, ahbso, rfi, rfo, crami, cramo, 
     tbi, tbo, fpi, fpo, cpi, cpo, irqi, irqo, dbgi, dbgo, gnd, clk, vcc);
   
 -- IU register file
   
-    rf0 : regfile_3p generic map (memtech, IRFBITS, 32, 1, IREGNUM)
+    rf0 : regfile_3p generic map (memtech, IRFBITS, 32, syncram_2p_write_through(memtech), IREGNUM)
         port map (gclk, rfi.waddr(IRFBITS-1 downto 0), rfi.wdata, rfi.wren, 
 		  gclk, rfi.raddr1(IRFBITS-1 downto 0), rfi.ren1, rfo.data1, 
 		  rfi.raddr2(IRFBITS-1 downto 0), rfi.ren2, rfo.data2);
@@ -173,7 +177,7 @@ begin
 
   grfpw0gen : if (fpuarch > 0) and (fpuarch < 8) generate
     fpu0: grfpwx
-      generic map (FPURFHARD*fabtech, FPURFHARD*memtech, (fpuarch-1), pclow, dsu, disas, fpunet)
+      generic map (FPURFHARD*fabtech, FPURFHARD*memtech, (fpuarch-1), pclow, dsu, disas, fpunet, smp)
       port map (rst, gclk, holdn, fpi, fpo);
   end generate;
 
@@ -185,7 +189,7 @@ begin
 
    grlfpc0gen : if (fpuarch >= 8) and (fpuarch < 15) generate
      fpu0 : grlfpwx
-       generic map (FPURFHARD*memtech, pclow, dsu, disas, (fpuarch-8))
+       generic map (FPURFHARD*memtech, pclow, dsu, disas, (fpuarch-8), fpunet, smp)
        port map (rst, gclk, holdn, fpi, fpo);
    end generate;
 

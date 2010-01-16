@@ -1,6 +1,10 @@
 -----------------------------------------------------------------------------
 --  LEON3 Demonstration design
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -14,7 +18,7 @@
 --
 --  You should have received a copy of the GNU General Public License
 --  along with this program; if not, write to the Free Software
---  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 
@@ -50,21 +54,21 @@ entity leon3mp is
   );
   port (
 
-    resetn	: in  std_ulogic;
-    clk		: in  std_ulogic;
-    clk125	: in  std_ulogic;
-    errorn	: out std_ulogic;
-    flash_rstn	: out std_ulogic;
+    resetn	: in  std_logic;
+    clk		: in  std_logic;
+    clk125	: in  std_logic;
+    errorn	: out std_logic;
+    flash_rstn	: out std_logic;
     addr     	: out std_logic_vector(27 downto 0);
     data	: inout std_logic_vector(15 downto 0);
-    dsuen   	: in std_ulogic;
-    dsubre  	: in std_ulogic;
-    dsuact  	: out std_ulogic;
-    oen    	: out std_ulogic;
-    writen 	: out std_ulogic;
-    read   	: out std_ulogic;
+    dsuen   	: in std_logic;
+    dsubre  	: in std_logic;
+    dsuact  	: out std_logic;
+    oen    	: out std_logic;
+    writen 	: out std_logic;
+    read   	: out std_logic;
 -- pragma translate_off
-    iosn   	: out std_ulogic;
+    iosn   	: out std_logic;
 -- pragma translate_on 
     romsn  	: out std_logic;
 
@@ -74,38 +78,38 @@ entity leon3mp is
     ddr_clk_fb_out  : out std_logic;
     ddr_cke  	: out std_logic_vector(1 downto 0);
     ddr_csb  	: out std_logic_vector(1 downto 0);
-    ddr_web  	: out std_ulogic;                       -- ddr write enable
-    ddr_rasb  	: out std_ulogic;                       -- ddr ras
-    ddr_casb  	: out std_ulogic;                       -- ddr cas
+    ddr_web  	: out std_logic;                       -- ddr write enable
+    ddr_rasb  	: out std_logic;                       -- ddr ras
+    ddr_casb  	: out std_logic;                       -- ddr cas
     ddr_dm   	: out std_logic_vector (7 downto 0);    -- ddr dm
     ddr_dqs  	: inout std_logic_vector (7 downto 0);    -- ddr dqs
     ddr_ad      : out std_logic_vector (12 downto 0);   -- ddr address
     ddr_ba      : out std_logic_vector (1 downto 0);    -- ddr bank address
     ddr_dq  	: inout std_logic_vector (63 downto 0); -- ddr data
 
-    txd1   	: out std_ulogic; 			-- UART1 tx data
-    rxd1   	: in  std_ulogic;  			-- UART1 rx data
+    txd1   	: out std_logic; 			-- UART1 tx data
+    rxd1   	: in  std_logic;  			-- UART1 rx data
 
 --    gpio        : inout std_logic_vector(31 downto 0); 	-- I/O port
 
-    pci_rst     : inout std_ulogic;		-- PCI bus
-    pci_clk 	: in std_ulogic;
-    pci_gnt     : in std_ulogic;
-    pci_idsel   : in std_ulogic; 
-    pci_lock    : inout std_ulogic;
+    pci_rst     : inout std_logic;		-- PCI bus
+    pci_clk 	: in std_logic;
+    pci_gnt     : in std_logic;
+    pci_idsel   : in std_logic; 
+    pci_lock    : inout std_logic;
     pci_ad 	: inout std_logic_vector(31 downto 0);
     pci_cbe 	: inout std_logic_vector(3 downto 0);
-    pci_frame   : inout std_ulogic;
-    pci_irdy 	: inout std_ulogic;
-    pci_trdy 	: inout std_ulogic;
-    pci_devsel  : inout std_ulogic;
-    pci_stop 	: inout std_ulogic;
-    pci_perr 	: inout std_ulogic;
-    pci_par 	: inout std_ulogic;    
-    pci_req 	: inout std_ulogic;
-    pci_serr    : inout std_ulogic;
-    pci_host   	: in std_ulogic;
-    pci_66	: in std_ulogic
+    pci_frame   : inout std_logic;
+    pci_irdy 	: inout std_logic;
+    pci_trdy 	: inout std_logic;
+    pci_devsel  : inout std_logic;
+    pci_stop 	: inout std_logic;
+    pci_perr 	: inout std_logic;
+    pci_par 	: inout std_logic;    
+    pci_req 	: inout std_logic;
+    pci_serr    : inout std_logic;
+    pci_host   	: in std_logic;
+    pci_66	: in std_logic
 	);
 end;
 
@@ -132,7 +136,7 @@ signal ahbso : ahb_slv_out_vector := (others => ahbs_none);
 signal ahbmi : ahb_mst_in_type;
 signal ahbmo : ahb_mst_out_vector := (others => ahbm_none);
 
-signal clkm, clkml,  rstn, rstraw, pciclk, clkddr, ddrlock : std_ulogic;
+signal clkm, clkml,  rstn, rstraw, pciclk, clkddr, ddrlock : std_logic;
 
 signal cgi   : clkgen_in_type;
 signal cgo   : clkgen_out_type;
@@ -153,8 +157,8 @@ signal gpti : gptimer_in_type;
 signal gpioi : gpio_in_type;
 signal gpioo : gpio_out_type;
 
-signal lclk, rst, ndsuact : std_ulogic;
-signal tck, tckn, tms, tdi, tdo : std_ulogic;
+signal lclk, rst, ndsuact : std_logic;
+signal tck, tckn, tms, tdi, tdo : std_logic;
 
 signal pcii : pci_in_type;
 signal pcio : pci_out_type;
@@ -172,7 +176,7 @@ attribute keep of clkm : signal is true;
 attribute syn_keep of clkml : signal is true;
 attribute syn_preserve of clkml : signal is true;
 
-signal lresetn, lclk125, lock : std_ulogic;
+signal lresetn, lclk125, lock : std_logic;
 
 constant BOARD_FREQ : integer := 40000;   -- input frequency in KHz
 constant CPU_FREQ : integer := BOARD_FREQ * CFG_CLKMUL / CFG_CLKDIV;  -- cpu frequency in KHz

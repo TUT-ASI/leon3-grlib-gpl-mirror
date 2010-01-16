@@ -8,6 +8,7 @@
 #
 
 #define_bool CONFIG_MCTRL_RMW y
+define_bool CONFIG_LEON3FT_PRESENT y
 
 mainmenu_name "LEON3MP Design Configuration"
 

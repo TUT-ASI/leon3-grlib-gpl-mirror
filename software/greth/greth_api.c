@@ -19,7 +19,7 @@
 static inline int load(int addr)
 {
     int tmp;        
-    asm(" lda [%1]1, %0 "
+    asm volatile(" lda [%1]1, %0 "
         : "=r"(tmp)
         : "r"(addr)
         );
@@ -35,8 +35,14 @@ static inline int save(unsigned int addr, unsigned int data)
 static char *almalloc(int sz)
 {
     char *tmp;
-    tmp = calloc(1,2*sz);
+    int *tmp2;
+    int i;
+    tmp = malloc(2*sz);
     tmp = (char *) (((int)tmp+sz) & ~(sz -1));
+    tmp2 = (int *)tmp;
+    for (i = 0; i < 128; i++) {
+            tmp2[i*2] = 0;
+    }
     return(tmp);
 }
 
@@ -126,12 +132,15 @@ int greth_init(struct greth_info *greth) {
     greth->rxd = (struct descriptor *) almalloc(1024);
     save((int)&greth->regs->tx_desc_p, (unsigned int) greth->txd);
     save((int)&greth->regs->rx_desc_p, (unsigned int) greth->rxd);
-
+    greth->txpnt = 0;
+    greth->rxpnt = 0;
+    greth->txchkpnt = 0;
+    greth->rxchkpnt = 0;
+    
     /* Reset PHY */
     if (greth->edcl == 0) {
             write_mii(greth->phyaddr, 0, 0x8000, greth->regs);
-            while ( (tmp=read_mii(greth->phyaddr,0, greth->regs)) & 0x8000)
-                    ;
+            while ( (tmp=read_mii(greth->phyaddr,0, greth->regs)) & 0x8000);
             i = 0;
             if (tmp & 0x1000) { /* auto neg */
                     while ( !(read_mii(greth->phyaddr,1, greth->regs) & 0x20 ) ) {
@@ -144,16 +153,16 @@ int greth_init(struct greth_info *greth) {
             }
             tmp = read_mii(greth->phyaddr, 0, greth->regs);
 
-            if (greth->gbit && !(tmp >> 13) && (tmp >> 6)) {
+            if (greth->gbit && !((tmp >> 13) & 1) && ((tmp >> 6) & 1)) {
                     gbit = 1; speed = 0;
-            } else if ((tmp >> 13) && !(tmp >> 6)) {
+            } else if (((tmp >> 13) & 1) && !((tmp >> 6) & 1)) {
                     gbit = 0; speed = 1;
-            } else if (!(tmp >> 13) && !(tmp >> 6)) {
+            } else if (!((tmp >> 13) & 1) && !((tmp >> 6) & 1)) {
                     gbit = 0; speed = 0;
             }
             duplex = (tmp >> 8) & 1;
             
-            save((int)&greth->regs->control, (duplex << 4) || (speed << 7) || (gbit << 8));
+            save((int)&greth->regs->control, (duplex << 4) | (speed << 7) | (gbit << 8));
     } else {
             /* wait for edcl phy initialisation to finish */
             i = 0;

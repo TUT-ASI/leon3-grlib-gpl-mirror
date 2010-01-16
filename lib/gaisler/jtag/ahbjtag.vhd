@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -79,19 +80,16 @@ signal dmai : ahb_dma_in_type;
 signal dmao : ahb_dma_out_type;
 signal ltapi : tap_in_type;
 signal ltapo : tap_out_type;
-signal taprst : std_ulogic;
 
 begin
 
-  taprst <= trst and rst;
-  
   ahbmst0 : ahbmst 
     generic map (hindex => hindex, venid => VENDOR_GAISLER, devid => GAISLER_AHBJTAG)
     port map (rst, clk, dmai, dmao, ahbi, ahbo);
 
   tap0 : tap generic map (tech => tech, irlen => 6, idcode => idcode, 
 	manf => manf, part => part, ver => ver, scantest => scantest)
-    port map (taprst, tck, tms, tdi, tdo, ltapo.tck, ltapo.tdi, ltapo.inst, ltapo.reset, ltapo.capt,  
+    port map (trst, tck, tms, tdi, tdo, ltapo.tck, ltapo.tdi, ltapo.inst, ltapo.reset, ltapo.capt,
               ltapo.shift, ltapo.upd, ltapo.asel, ltapo.dsel, ltapi.en, ltapi.tdo, tapi_tdo,
 	      ahbi.testen, ahbi.testrst, tdoen);
   

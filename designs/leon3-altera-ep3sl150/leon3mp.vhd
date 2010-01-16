@@ -1,6 +1,10 @@
 ------------------------------------------------------------------------------
 --  LEON3 Demonstration design
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -14,7 +18,8 @@
 --
 --  You should have received a copy of the GNU General Public License
 --  along with this program; if not, write to the Free Software
---  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+------------------------------------------------------------------------------
 
 
 library ieee;
@@ -397,7 +402,7 @@ begin
       ddelayb2 => CFG_DDR2SP_DELAY2, ddelayb3 => CFG_DDR2SP_DELAY3, 
       ddelayb4 => CFG_DDR2SP_DELAY4, ddelayb5 => CFG_DDR2SP_DELAY5,
       ddelayb6 => CFG_DDR2SP_DELAY6, ddelayb7 => CFG_DDR2SP_DELAY7,
-      numidelctrl => 3, norefclk => 0, odten => 3, readdly => 1)
+      odten => 3, octen => 1, readdly => 1)
     port map ( resetn, rstn, clkm125, clkm, clkm125, lock, clkml, clkml, ahbsi, ahbso(3),
                ddr_clkv, ddr_clkbv, ddr_clk_fb, ddr_clk_fb, ddr_ckev, ddr_csbv, ddr_web, ddr_rasb, ddr_casb, 
                ddr_dm(dbits/8-1 downto 0), ddr_dqsp(dbits/8-1 downto 0), ddr_dqsn(dbits/8-1 downto 0), 

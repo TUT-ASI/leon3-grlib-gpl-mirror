@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -31,7 +32,8 @@ use eth.grethpkg.all;
 entity greth_rx is
   generic(
     nsync          : integer range 1 to 2 := 2;
-    rmii           : integer range 0 to 1  := 0);
+    rmii           : integer range 0 to 1 := 0;
+    multicast      : integer range 0 to 1 := 0);
   port(
     rst            : in  std_ulogic;
     clk            : in  std_ulogic;
@@ -71,6 +73,8 @@ architecture rtl of greth_rx is
     done_ack        : std_logic_vector(nsync downto 0);
     rxen            : std_logic_vector(1 downto 0);
     got4b           : std_ulogic;
+    mcasthash       : std_logic_vector(5 downto 0);
+    hashlock        : std_ulogic;
 
     --rmii
     enold           : std_ulogic;
@@ -183,12 +187,18 @@ begin
     if (r.en and not r.act) = '1' then
       if (rxd = "0101") and (r.speed(1) or
          (not r.speed(1) and r.zero)) = '1' then
-        v.act := '1'; v.dv := '0';
+        v.act := '1'; v.dv := '0'; v.rxdp := rxd;
       end if;
     end if;
 
     if (dv = '1') then
       v.rxdp := rxd;
+    end if;
+
+    if multicast = 1 then
+      if (r.byte_count(2 downto 0) = "110") and (r.hashlock = '0') then
+        v.mcasthash := r.crc(5 downto 0); v.hashlock := '1';
+      end if;
     end if;
     
     --fsm
@@ -197,18 +207,20 @@ begin
       v.gotframe := '0'; v.status := (others => '0'); v.got4b := '0';
       v.byte_count := (others => '0'); v.odd_nibble := '0';
       v.ltfound := '0';
+      if multicast = 1 then
+        v.hashlock := '0';
+      end if;
       if (dv and r.rxen(1)) = '1' then
-        v.rx_state := wait_sfd;  
-      elsif dv = '1' then v.rx_state := discard_packet; end if;
+        if (rxd = "1101") and (r.rxdp = "0101") then
+          v.rx_state := data1; v.sync_start := not r.sync_start;
+        end if;
+        v.start := '0'; v.crc := (others => '1');
+        if er = '1' then v.status(2) := '1'; end if;
+      elsif dv = '1' then
+        v.rx_state := discard_packet;
+      end if;
     when discard_packet =>
       if act = '0' then v.rx_state := idle; end if; 
-    when wait_sfd =>
-      if act = '0' then v.rx_state := idle; 
-      elsif (rxd = "1101") and (dv = '1') and (r.rxdp = "0101") then
-        v.rx_state := data1; v.sync_start := not r.sync_start;
-      end if;
-      v.start := '0'; v.crc := (others => '1');
-      if er = '1' then v.status(2) := '1'; end if;
     when data1 =>
       if (act and dv) = '1' then 
         crc_en := '1';
@@ -294,7 +306,7 @@ begin
       end if;
     end if;
 
-    if rxi.writeack = '1' then 
+    if write_ack = '1' then 
       if rxi.writeok = '0' then v.status(3) := '1'; end if;
     end if;
 
@@ -321,6 +333,8 @@ begin
     rxo.gotframe   <= r.gotframe;
     rxo.byte_count <= r.byte_count;
     rxo.lentype    <= r.lentype;
+    rxo.mcasthash  <= r.mcasthash;
+    
   end process;
 
   rxregs : process(clk) is

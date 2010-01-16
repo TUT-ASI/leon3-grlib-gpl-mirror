@@ -24,6 +24,16 @@ INST "ddrsp0.ddrc/ddr_phy0/ddr_phy0/xc3se.ddr_phy0/nops.read_dll" LOC = DCM_X1Y3
 INST "ddrsp0.ddrc/ddr_phy0/ddr_phy0/xc3se.ddr_phy0/ps.read_dll" LOC = DCM_X1Y3;
 INST "ddrsp0.ddrc/ddr_phy0/ddr_phy0/xc3se.ddr_phy0/dll" LOC = DCM_X0Y2;
 
+# Enable this for ISE-10
+PIN  "ddrsp0.ddrc/ddr_phy0/ddr_phy0/xc3se.ddr_phy0/dll.CLK270" CLOCK_DEDICATED_ROUTE = FALSE;
+NET etx_clk CLOCK_DEDICATED_ROUTE = FALSE;
+NET erx_clk CLOCK_DEDICATED_ROUTE = FALSE;
+PIN "clkgen0/xc3s.v/dll0.CLK2X" CLOCK_DEDICATED_ROUTE = FALSE;
+PIN "clkgen0/xc3s.v/dll0.CLKIN" CLOCK_DEDICATED_ROUTE = FALSE;
+NET "clk_50mhz" CLOCK_DEDICATED_ROUTE = FALSE;
+ 
+NET "ddrsp0.ddrc/ddr_phy0/ddr_phy0/xc3se.ddr_phy0/vlockl_1" TIG;
+
 NET "ddrsp0.ddrc/ddr_phy0/ddr_phy0/xc3se.ddr_phy0/rclk90b" TNM_NET = "rclk90b"; 
 TIMEGRP "rclk270b_rise" = FALLING "rclk90b";
 TIMEGRP "clkml_rise" = RISING "clkml";
@@ -50,7 +60,7 @@ NET "led(3)" LOC = "D6" | IOSTANDARD = LVTTL | SLEW = SLOW | DRIVE = 8 ;
 NET "led(4)" LOC = "D13" | IOSTANDARD = LVTTL | SLEW = SLOW | DRIVE = 8 ;
 NET "led(5)" LOC = "A7" | IOSTANDARD = LVTTL | SLEW = SLOW | DRIVE = 8 ;
 #NET "led(6)" LOC = "G9"  | IOSTANDARD = LVTTL | SLEW = SLOW | DRIVE = 8 ;
-NET "dsuact" LOC = "G9"  | IOSTANDARD = LVTTL | SLEW = SLOW | DRIVE = 8 ;
+#NET "dsuact" LOC = "G9"  | IOSTANDARD = LVTTL | SLEW = SLOW | DRIVE = 8 ;
 #NET "led(7)" LOC = "A8"  | IOSTANDARD = LVTTL | SLEW = SLOW | DRIVE = 8 ;
 NET "errorn" LOC = "A8"  | IOSTANDARD = LVTTL | SLEW = SLOW | DRIVE = 8 ;
 
@@ -120,7 +130,7 @@ Net ddr_clk_fb LOC=B9 | IOSTANDARD = LVCMOS33;
 
 Net etx_clk LOC=T7;
 Net etx_clk IOSTANDARD = LVCMOS33;
-Net erx_clk LOC=V3;
+Net erx_clk LOC=V3 ;
 Net erx_clk IOSTANDARD = LVCMOS33;
 Net erx_crs LOC=U13;
 Net erx_crs IOSTANDARD = LVCMOS33;
@@ -149,7 +159,6 @@ Net etxd(2) IOSTANDARD = LVCMOS33;
 Net etxd(3) LOC=T5;
 Net etxd(3) IOSTANDARD = LVCMOS33;
 Net etx_er LOC=R6 | IOSTANDARD = LVCMOS33;
-Net etx_en LOC=P16;
 Net emdc LOC=P9;
 Net emdc IOSTANDARD = LVCMOS33;
 Net emdio LOC=U5;
@@ -200,7 +209,7 @@ Net oen LOC=C18  | IOSTANDARD = LVCMOS33;
 Net writen LOC=D17 | IOSTANDARD = LVCMOS33;
 Net romsn LOC=D16 | IOSTANDARD = LVCMOS33;
 Net byten LOC=C17 | IOSTANDARD = LVCMOS33;
-Net sts LOC=B18 | IOSTANDARD = LVCMOS33;
+Net sts LOC=B18 ;
 
 NET ps2data LOC = G13 | IOSTANDARD = LVCMOS33;
 NET ps2clk  LOC = G14 | IOSTANDARD = LVCMOS33;

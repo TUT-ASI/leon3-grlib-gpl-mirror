@@ -7,7 +7,7 @@
 # Clocks
 #
 define_clock -name   {clk}  -freq 80.000 -clockgroup default_clkgroup
-define_clock -name   {clk125}  -freq 40.000 -clockgroup ddr_clkgroup
+define_clock -name   {clk125}  -freq 150.00 -clockgroup ddr_clkgroup
 
 #
 # Clock to Clock

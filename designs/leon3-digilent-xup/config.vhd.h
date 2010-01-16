@@ -137,6 +137,9 @@
   constant CFG_VGA_ENABLE  : integer := CONFIG_VGA_ENABLE;
   constant CFG_SVGA_ENABLE : integer := CONFIG_SVGA_ENABLE;
 
+-- AMBA System ACE Interface Controller
+  constant CFG_GRACECTRL : integer := CONFIG_GRACECTRL;
+
 -- GRLIB debugging
   constant CFG_DUART    : integer := CONFIG_DEBUG_UART;
 

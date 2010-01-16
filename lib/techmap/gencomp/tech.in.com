@@ -2,9 +2,11 @@
 	"Inferred		CONFIG_SYN_INFERRED \
 	Altera-all            	CONFIG_SYN_ALTERA \
 	Actel-Axcelerator	CONFIG_SYN_AXCEL \
+	Actel-Axcelerator-DSP	CONFIG_SYN_AXDSP \
 	Actel-Proasic		CONFIG_SYN_PROASIC \
 	Actel-ProasicPlus	CONFIG_SYN_PROASICPLUS \
-	Actel-Proasic3   	CONFIG_SYN_PROASIC3 \
+	Actel-Proasic3/E/L   	CONFIG_SYN_PROASIC3 \
+	Actel-IGLOO/p/L   	CONFIG_SYN_IGLOO \
 	Atmel-ATC18		CONFIG_SYN_ATC18 \
 	Custom1        		CONFIG_SYN_CUSTOM1 \
         Lattice-EC/ECP/XP   	CONFIG_SYN_LATTICE \

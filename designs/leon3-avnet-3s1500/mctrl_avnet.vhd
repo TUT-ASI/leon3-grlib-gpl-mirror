@@ -187,7 +187,6 @@ signal r, ri : reg_type;
 signal wrnout : std_logic_vector(3 downto 0);
 signal sdmo : sdram_mctrl_out_type;
 signal sdi  : sdram_in_type;
-signal sdapbo :  apb_slv_out_type;
 signal lsdo   : sdram_out_type;
 
 -- vectored output enable to data pads 
@@ -202,7 +201,7 @@ attribute syn_preserve of rsbdrive : signal is true;
 
 begin
 
-  ctrl : process(rst, ahbsi, apbi, memi, r, wpo, sdmo, sdapbo, rbdrive, rsbdrive, lsdo)
+  ctrl : process(rst, ahbsi, apbi, memi, r, wpo, sdmo, rbdrive, rsbdrive, lsdo)
   variable v : reg_type;		-- local variables for registers
   variable start : std_logic;
   variable dataout : std_logic_vector(31 downto 0); -- data from memory
@@ -698,7 +697,7 @@ begin
 	'0' & r.mcfg1.romwidth & r.mcfg1.romwws & r.mcfg1.romrws;
     when "01" =>
       if SDRAMEN then
-        regsd(31 downto 17) := sdapbo.prdata(31 downto 17);
+        regsd(31 downto 17) := sdmo.prdata(31 downto 17);
 	if BUS64 then regsd(18) := '1'; end if;
         regsd(14 downto 13) := r.mcfg2.sdren & r.mcfg2.srdis;
       end if;
@@ -709,7 +708,7 @@ begin
     when "10" =>
 
       if SDRAMEN then
-	regsd(26 downto 12) := sdapbo.prdata(26 downto 12);
+	regsd(26 downto 12) := sdmo.prdata(26 downto 12);
       end if;
     when others => regsd := (others => '0');
     end case;
@@ -984,7 +983,7 @@ begin
   sd0 : if SDRAMEN generate
     sdctrl : sdmctrl generic map (pindex, invclk, fast, wprot, sdbits, pageburst)
 	port map ( rst => rst, clk => clk, sdi => sdi,
-	sdo => lsdo, apbi => apbi, apbo => sdapbo, wpo => wpo, sdmo => sdmo);
+	sdo => lsdo, apbi => apbi, wpo => wpo, sdmo => sdmo);
     rgen : if invclk = 0 generate
       memo.sa <= r.sa; sdo <= lsdo; memo.svbdrive <= rsbdrive;
       memo.sddata(31 downto 0)  <= r.sdwritedata(31 downto 0);
@@ -1004,8 +1003,7 @@ begin
 
   sd1 : if not SDRAMEN generate
 	sdo <= ("00", "11", '1', '1', '1', "11111111");
-        sdapbo <= apb_none;
-        --sdmo <= ((others => '0'), '0', '0', '0', '1', '0', "11");
+        sdmo.prdata <= (others => '0');
         sdmo.address <= (others => '0'); sdmo.busy <= '0';
         sdmo.aload <= '0'; sdmo.bdrive <= '0'; sdmo.hready <= '1';
         sdmo.hresp <= "11";

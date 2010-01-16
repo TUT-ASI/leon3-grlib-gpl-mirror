@@ -4,9 +4,11 @@
 	Altera-Stratix        	CONFIG_SYN_STRATIX \
 	Altera-StratixII      	CONFIG_SYN_STRATIXII \
 	Actel-Axcelerator	CONFIG_SYN_AXCEL \
+	Actel-Axcelerator-DSP	CONFIG_SYN_AXDSP \
 	Actel-Proasic		CONFIG_SYN_PROASIC \
 	Actel-ProasicPlus	CONFIG_SYN_PROASICPLUS \
-	Actel-Proasic3   	CONFIG_SYN_PROASIC3 \
+	Actel-Proasic3/E/L   	CONFIG_SYN_PROASIC3 \
+	Actel-IGLOO/p/L	   	CONFIG_SYN_IGLOO \
 	Custom1          	CONFIG_SYN_CUSTOM1 \
         Lattice-EC/ECP/XP   	CONFIG_SYN_LATTICE \
 	Xilinx-Spartan2		CONFIG_SYN_SPARTAN2 \

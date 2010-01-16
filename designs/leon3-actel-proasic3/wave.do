@@ -12,11 +12,6 @@ add wave -noupdate -format Logic /testbench/romsn
 add wave -noupdate -format Logic /testbench/iosn
 add wave -noupdate -format Logic /testbench/oen
 add wave -noupdate -format Logic /testbench/writen
-add wave -noupdate -format Logic /testbench/dsutx
-add wave -noupdate -format Logic /testbench/dsurx
-add wave -noupdate -format Logic /testbench/dsubre
-add wave -noupdate -format Logic /testbench/dsuact
-add wave -noupdate -format Logic /testbench/dsurst
 add wave -noupdate -format Literal /testbench/gpio
 add wave -noupdate -format Logic /testbench/txd1
 add wave -noupdate -format Logic /testbench/rxd1
@@ -32,28 +27,26 @@ add wave -noupdate -format Literal /testbench/erxd
 add wave -noupdate -format Literal /testbench/etxd
 add wave -noupdate -format Logic /testbench/emdc
 add wave -noupdate -format Logic /testbench/emdio
-add wave -noupdate -format Literal /testbench/led_cfg
-add wave -noupdate -format Logic /testbench/flash_byten
-add wave -noupdate -format Logic /testbench/flash_rpn
-add wave -noupdate -format Logic /testbench/sram_pwrdwn
-add wave -noupdate -format Logic /testbench/sram_gwen
-add wave -noupdate -format Logic /testbench/sram_adsc
-add wave -noupdate -format Logic /testbench/sram_adsp
-add wave -noupdate -format Logic /testbench/sram_adv
 add wave -noupdate -format Logic /testbench/can_txd
 add wave -noupdate -format Logic /testbench/can_rxd
 add wave -noupdate -format Logic /testbench/ramclk
 add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/apbi
 add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/apbo
-add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/ahbsi
-add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/ahbso
-add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/ahbmi
-add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/ahbmo
+add wave -noupdate -format Literal -radix hexadecimal -expand /testbench/d3/ahbsi
 add wave -noupdate -format Logic /testbench/d3/clkm
-add wave -noupdate -format Logic /testbench/d3/rstn
+add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/ahbso
+add wave -noupdate -format Literal -radix hexadecimal -expand /testbench/d3/ahbmi
+add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/ahbmo
+add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/l3/cpu__0/l3ft/leon3ft0/beh/p0/iuft0/ici
+add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/l3/cpu__0/l3ft/leon3ft0/beh/p0/iuft0/ico
+add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/l3/cpu__0/l3ft/leon3ft0/beh/p0/iuft0/dci
+add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/l3/cpu__0/l3ft/leon3ft0/beh/p0/iuft0/dco
+add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/l3/cpu__0/l3ft/leon3ft0/beh/p0/iuft0/rfi
+add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/l3/cpu__0/l3ft/leon3ft0/beh/p0/iuft0/rfo
+add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/l3/cpu__0/l3ft/leon3ft0/beh/p0/iuft0/r
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {0 ps} 0}
-configure wave -namecolwidth 150
+WaveRestoreCursors {{Cursor 1} {499173706 ps} 0}
+configure wave -namecolwidth 179
 configure wave -valuecolwidth 100
 configure wave -justifyvalue left
 configure wave -signalnamewidth 0
@@ -66,4 +59,4 @@ configure wave -gridperiod 1
 configure wave -griddelta 40
 configure wave -timeline 0
 update
-WaveRestoreZoom {0 ps} {5250 ns}
+WaveRestoreZoom {498938215 ps} {499603086 ps}

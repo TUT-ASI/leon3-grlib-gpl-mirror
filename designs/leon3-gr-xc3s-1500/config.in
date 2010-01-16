@@ -14,6 +14,10 @@ mainmenu_name "LEON3MP Design Configuration"
 mainmenu_option next_comment
   comment 'Synthesis      '
   source lib/techmap/gencomp/tech.in
+  choice 'FPGA type                                      ' \
+	"XC3S-1500		CONFIG_FPGA_1500 \
+	 XC3S-2000		CONFIG_FPGA_2000" XC3S-1500
+
 endmenu
 
 mainmenu_option next_comment
@@ -28,7 +32,7 @@ mainmenu_option next_comment
   comment 'Debug Link           '
   source lib/gaisler/uart/dcom.in
   source lib/gaisler/jtag/jtag.in
-  source lib/gaisler/usb/usbdcl.in
+  source lib/gaisler/usb/grusb_dcl.in
   source lib/gaisler/net/edcl.in
 endmenu
 
@@ -62,6 +66,10 @@ comment 'Peripherals             '
     source lib/gaisler/can/can_mc.in
   endmenu
 
+  mainmenu_option next_comment
+  comment 'USB 2.0 Device Controller      '
+    source lib/gaisler/usb/grusbdc.in
+  endmenu
 
   mainmenu_option next_comment
   comment 'UART, timer, I/O port and interrupt controller'

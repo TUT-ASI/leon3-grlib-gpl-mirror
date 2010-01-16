@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -33,10 +34,12 @@ use gaisler.libcache.all;
 use gaisler.leon3.all;
 use gaisler.mmuconfig.all;
 use gaisler.mmuiface.all;
+use gaisler.libmmu.all;
 
 entity mmutlbcam is  
   generic ( 
-    tlb_type  : integer range 0 to 3 := 1
+    tlb_type  : integer range 0 to 3 := 1;
+    mmupgsz   : integer range 0 to 5  := 0
   );
   port (
       rst     : in std_logic;
@@ -73,12 +76,15 @@ begin
   variable tlbcamo_LVL           : std_logic_vector(1 downto 0);
   variable tlbcamo_NEEDSYNC      : std_logic;
   variable tlbcamo_WBNEEDSYNC    : std_logic;
+  variable vaddr_r                 : std_logic_vector(31 downto 12);
+  variable vaddr_i                 : std_logic_vector(31 downto 12);
+  variable pagesize : integer range 0 to 3;
   begin
 
     v := r;
     --#init
     h_i1 := '0'; h_i2 := '0'; h_i3 := '0'; h_c := '0';
-    hm := '0';
+    hm := '0'; pagesize := 0;
     hf := r.btag.VALID;
     
     blvl := r.btag.LVL;
@@ -91,12 +97,37 @@ begin
 
     tlbcamo_pteout := (others => '0');
     tlbcamo_lvl := (others => '0'); 
-    
+
+    vaddr_r := r.btag.I1 & r.btag.I2 & r.btag.I3;
+    vaddr_i := tlbcami.tagin.I1 & tlbcami.tagin.I2 & tlbcami.tagin.I3;
+
     -- prepare tag comparision
-    if (r.btag.I1  = tlbcami.tagin.I1)  then h_i1 := '1';  else h_i1 := '0'; end if;
-    if (r.btag.I2  = tlbcami.tagin.I2)  then h_i2 := '1';  else h_i2 := '0'; end if;
-    if (r.btag.I3  = tlbcami.tagin.I3)  then h_i3 := '1';  else h_i3 := '0'; end if;
-    if (r.btag.CTX = tlbcami.tagin.CTX) then h_c  := '1';  else h_c  := '0'; end if;
+    pagesize := MMU_getpagesize(mmupgsz,tlbcami.mmctrl);
+    case pagesize is
+      when 1 => 
+        -- 8k tag comparision [ 7 6 6 ]
+        if (vaddr_r(P8K_VA_I1_U downto P8K_VA_I1_D)  = vaddr_i(P8K_VA_I1_U downto P8K_VA_I1_D))  then h_i1 := '1';  else h_i1 := '0'; end if;
+        if (vaddr_r(P8K_VA_I2_U downto P8K_VA_I2_D)  = vaddr_i(P8K_VA_I2_U downto P8K_VA_I2_D))  then h_i2 := '1';  else h_i2 := '0'; end if;
+        if (vaddr_r(P8K_VA_I3_U downto P8K_VA_I3_D)  = vaddr_i(P8K_VA_I3_U downto P8K_VA_I3_D))  then h_i3 := '1';  else h_i3 := '0'; end if;
+        if (r.btag.CTX = tlbcami.tagin.CTX) then h_c  := '1';  else h_c  := '0'; end if;
+      when 2 => 
+        -- 16k tag comparision [ 6 6 6 ]
+        if (vaddr_r(P16K_VA_I1_U downto P16K_VA_I1_D)  = vaddr_i(P16K_VA_I1_U downto P16K_VA_I1_D))  then h_i1 := '1';  else h_i1 := '0'; end if;
+        if (vaddr_r(P16K_VA_I2_U downto P16K_VA_I2_D)  = vaddr_i(P16K_VA_I2_U downto P16K_VA_I2_D))  then h_i2 := '1';  else h_i2 := '0'; end if;
+        if (vaddr_r(P16K_VA_I3_U downto P16K_VA_I3_D)  = vaddr_i(P16K_VA_I3_U downto P16K_VA_I3_D))  then h_i3 := '1';  else h_i3 := '0'; end if;
+        if (r.btag.CTX = tlbcami.tagin.CTX) then h_c  := '1';  else h_c  := '0'; end if;
+      when 3 => 
+        -- 32k tag comparision [ 4 7 6 ]
+        if (vaddr_r(P32K_VA_I1_U downto P32K_VA_I1_D)  = vaddr_i(P32K_VA_I1_U downto P32K_VA_I1_D))  then h_i1 := '1';  else h_i1 := '0'; end if;
+        if (vaddr_r(P32K_VA_I2_U downto P32K_VA_I2_D)  = vaddr_i(P32K_VA_I2_U downto P32K_VA_I2_D))  then h_i2 := '1';  else h_i2 := '0'; end if;
+        if (vaddr_r(P32K_VA_I3_U downto P32K_VA_I3_D)  = vaddr_i(P32K_VA_I3_U downto P32K_VA_I3_D))  then h_i3 := '1';  else h_i3 := '0'; end if;
+        if (r.btag.CTX = tlbcami.tagin.CTX) then h_c  := '1';  else h_c  := '0'; end if;
+      when others =>    -- standard 4k tag comparision [ 8 6 6 ]
+        if (r.btag.I1  = tlbcami.tagin.I1)  then h_i1 := '1';  else h_i1 := '0'; end if;
+        if (r.btag.I2  = tlbcami.tagin.I2)  then h_i2 := '1';  else h_i2 := '0'; end if;
+        if (r.btag.I3  = tlbcami.tagin.I3)  then h_i3 := '1';  else h_i3 := '0'; end if;
+        if (r.btag.CTX = tlbcami.tagin.CTX) then h_c  := '1';  else h_c  := '0'; end if;
+    end case;
     
     -- #level 2 hit (segment)
     h_l2 := h_i1 and h_i2 ;

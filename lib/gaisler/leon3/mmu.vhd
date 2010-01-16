@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -39,7 +40,8 @@ entity mmu is
     itlbnum   : integer range 2 to 64 := 8;
     dtlbnum   : integer range 2 to 64 := 8;
     tlb_type  : integer range 0 to 3 := 1;
-    tlb_rep   : integer range 0 to 1 := 0
+    tlb_rep   : integer range 0 to 1 := 0;
+    mmupgsz   : integer range 0 to 5  := 0
     );
   port (
     rst  : in std_logic;
@@ -105,7 +107,8 @@ constant M_ENT_CLOG     : integer := M_ENT_ILOG;     -- i/dcache tlb entries: ad
       tech     : integer range 0 to NTECH := 0;
       entries  : integer range 2 to 32 := 8;
       tlb_type  : integer range 0 to 3 := 1;
-      tlb_rep   : integer range 0 to 1 := 0
+      tlb_rep   : integer range 0 to 1 := 0;
+      mmupgsz   : integer range 0 to 5  := 0
       );
     port (
       rst   : in std_logic;
@@ -125,6 +128,9 @@ constant M_ENT_CLOG     : integer := M_ENT_ILOG;     -- i/dcache tlb entries: ad
 
   -- table walk
   component mmutw 
+  generic ( 
+    mmupgsz   : integer range 0 to 5  := 0
+  );
   port (
     rst     : in  std_logic;
     clk     : in  std_logic;
@@ -575,23 +581,24 @@ begin
   tlbcomb0: if M_TLB_TYPE = 1 generate
     -- i/d tlb
     ctlb0 : mmutlb
-      generic map ( tech, M_ENT_C, 0, tlb_rep )
+      generic map ( tech, M_ENT_C, 0, tlb_rep, mmupgsz )
       port map (rst, clk, tlbi_a0, tlbo_a0, two_a(0), twi_a(0));
   end generate tlbcomb0;
 
   tlbsplit0: if M_TLB_TYPE = 0 generate
     -- i tlb
     itlb0 : mmutlb
-      generic map ( tech, M_ENT_I, 0, tlb_rep )
+      generic map ( tech, M_ENT_I, 0, tlb_rep, mmupgsz )
       port map (rst, clk, tlbi_a0, tlbo_a0, two_a(0), twi_a(0));
     -- d tlb
     dtlb0 : mmutlb
-      generic map ( tech, M_ENT_D, tlb_type, tlb_rep )
+      generic map ( tech, M_ENT_D, tlb_type, tlb_rep, mmupgsz )
       port map (rst, clk, tlbi_a1, tlbo_a1, two_a(1), twi_a(1));
   end generate tlbsplit0;
 
   -- table walk component
   tw0 : mmutw
+    generic map ( mmupgsz )
     port map (rst, clk, mmctrl1, twi, two, mcmmo, mcmmi);
 
 -- pragma translate_off

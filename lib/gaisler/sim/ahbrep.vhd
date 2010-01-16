@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -120,6 +121,9 @@ begin
           when GAISLER_IRQMP => irqmp_subtest(subtest);
           when GAISLER_SPIMCTRL => spimctrl_subtest(subtest);
           when GAISLER_SVGACTRL => svgactrl_subtest(subtest);
+          when GAISLER_APBPS2 => apbps2_subtest(subtest);
+          when GAISLER_I2CSLV => i2cslv_subtest(subtest);
+          when GAISLER_PWM => grpwm_subtest(subtest);
           when others =>
             print ("  subtest " & tost(subtest));
 	  end case;

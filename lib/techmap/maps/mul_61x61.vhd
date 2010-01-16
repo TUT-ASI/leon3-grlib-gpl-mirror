@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -19,7 +20,7 @@
 -- Entity: 	mul_61x61
 -- File:	mul_61x61.vhd
 -- Author:	Edvin Catovic - Gaisler Research
--- Description:	61x61 multiplier 
+-- Description:	61x61 multiplier
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -28,11 +29,12 @@ library techmap;
 use techmap.gencomp.all;
 
 entity mul_61x61 is
-  generic (multech : integer := 0);
-    port(A       : in std_logic_vector(60 downto 0);  
+  generic (multech : integer := 0;
+           fabtech : integer := 0);
+    port(A       : in std_logic_vector(60 downto 0);
          B       : in std_logic_vector(60 downto 0);
          EN      : in std_logic;
-         CLK     : in std_logic;     
+         CLK     : in std_logic;
          PRODUCT : out std_logic_vector(121 downto 0));
 end;
 
@@ -40,23 +42,39 @@ end;
 architecture rtl of mul_61x61 is
 
 component dw_mul_61x61 is
-    port(A       : in std_logic_vector(60 downto 0);  
+    port(A       : in std_logic_vector(60 downto 0);
          B       : in std_logic_vector(60 downto 0);
-         CLK     : in std_logic;     
+         CLK     : in std_logic;
          PRODUCT : out std_logic_vector(121 downto 0));
 end component;
 
-
 component gen_mul_61x61 is
-    port(A       : in std_logic_vector(60 downto 0);  
+    port(A       : in std_logic_vector(60 downto 0);
          B       : in std_logic_vector(60 downto 0);
          EN      : in std_logic;
-         CLK     : in std_logic;     
+         CLK     : in std_logic;
          PRODUCT : out std_logic_vector(121 downto 0));
+end component;
+
+component axcel_mul_61x61 is
+    port(A       : in std_logic_vector(60 downto 0);
+         B       : in std_logic_vector(60 downto 0);
+         EN      : in std_logic;
+         CLK     : in std_logic;
+         PRODUCT : out std_logic_vector(121 downto 0));
+end component;
+
+component virtex4_mul_61x61
+port(
+  A : in std_logic_vector(60 downto 0);
+  B : in std_logic_vector(60 downto 0);
+  EN :  in std_logic;
+  CLK :  in std_logic;
+  PRODUCT : out std_logic_vector(121 downto 0));
 end component;
 
 begin
-  
+
   gen0 : if multech = 0 generate
     mul0 : gen_mul_61x61 port map (A, B, EN, CLK, PRODUCT);
   end generate;
@@ -64,6 +82,18 @@ begin
   dw0 : if multech = 1 generate
     mul0 : dw_mul_61x61 port map (A, B, CLK, PRODUCT);
   end generate;
-  
+
+  tech0 : if multech = 3 generate
+    axd0 : if fabtech = axdsp generate
+      mul0 : axcel_mul_61x61 port map (A, B, EN, CLK, PRODUCT);
+    end generate;
+    xc4v : if fabtech = virtex5 generate
+      mul0 : virtex4_mul_61x61 port map (A, B, EN, CLK, PRODUCT);
+    end generate;
+    gen0 : if not ((fabtech = axdsp) or (fabtech = virtex5)) generate
+      mul0 : gen_mul_61x61 port map (A, B, EN, CLK, PRODUCT);
+    end generate;
+  end generate;
+
 end;
 

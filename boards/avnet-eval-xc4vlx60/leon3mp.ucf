@@ -1,40 +1,14 @@
-#############################################################################
-##    _____											##
-##   /     \													##
-##  /____   \____												##
-## / \===\   \==/												##
-##/___\===\___\/  AVNET											##
-##     \======/   DESIGN											##
-##      \====/    SERVICES										##
-##															##
-#############################################################################
-##                                                                         ##
-##            Virtex 4 LX25 Evaluation Kit Constraints File                ##
-##                                                                         ##
-#############################################################################
-#                                                                           #
-# Disclaimer                                                                #
-#                                                                           #
-# Avnet, Inc. makes no warranty for the use of this code or design.         #
-# This code is provided  "As Is". Avnet, Inc assumes no responsibility for  #
-# any errors, which may appear in this code, nor does it make a commitment  #
-# to update the information contained herein. Avnet, Inc specifically       #
-# disclaims any implied warranties of fitness for a particular purpose.     #
-#                                                                           #
-# Copyright (c) 2004 Avnet, Inc.                                            #
-# All rights reserved.                                                      #
-#                                                                           #
-#############################################################################
+NET "clk_100mhz" 		LOC = "C13";  
+NET "clk_100mhz" 		TNM_NET = "clk_100mhz";
+TIMESPEC "TS_clk_100mhz" = PERIOD "clk_100mhz" 10.00 ns HIGH 50 %;
+NET "clk_50mhz" 		LOC = "B17";  
+NET "clk_50mhz" 		TNM_NET = "clk_50mhz";
+TIMESPEC "TS_clk_50mhz" = PERIOD "clk_50mhz" 20.00 ns HIGH 50 %;
 
-
-#############################################################################
-##                         CLOCKS / Timing                                 ##
-#############################################################################
-NET "CLK_100MHz" 		LOC = "C13";  
-NET "CLK_100MHz" 		TNM_NET = "CLK_100MHz";
-TIMESPEC "TS_CLK_100MHz" = PERIOD "CLK_100MHz" 9.75 ns HIGH 50 %;
-
-INST sysclk_DCM LOC=DCM_ADV_X0Y3;
+# Enable those for ISE10
+#NET "etx_clk" CLOCK_DEDICATED_ROUTE = FALSE;
+#NET "erx_clk" CLOCK_DEDICATED_ROUTE = FALSE;
+#NET "ddr_clk_fb" CLOCK_DEDICATED_ROUTE = FALSE;
 
 #############################################################################
 ##                           RESET, UART                                   ##
@@ -135,7 +109,7 @@ NET	 "DDR_DQS(1)"        IOSTANDARD = SSTL2_I;
 NET	 "DDR_CKE0"    LOC = "N5";       
 NET	 "DDR_CLK0"       LOC = "T4";            
 NET	 "DDR_CLK0B"      LOC = "T3";       
-NET   "DDR_CLK_FB"    LOC ="AB10";    
+NET   "ddr_clk_fb"    LOC ="AB10";    
 NET   "DDR_CLK_FB_OUT"   LOC ="T7";	    
 NET	 "DDR_RASB"       LOC = "N2";       
 NET	 "DDR_CASB"       LOC = "P2";       
@@ -268,7 +242,7 @@ Net PLL_STOP_L LOC=B10;
 Net PLL_REF_CLK LOC=B17;
 Net PLL_CLK_P LOC=C15; 
 #Net PLL_CLK_N LOC=C14; 
-INST PLL_CLK_P IOSTANDARD=LVDS_25;
+#INST PLL_CLK_P IOSTANDARD=LVDS_25;
 
 #****************************************************************************
 #*                           P1 Pins                                       **
@@ -529,3 +503,19 @@ OFFSET = IN : 10.000 : BEFORE erx_clk ;
 NET etx_clk PERIOD = 40.000 ;
 OFFSET = OUT : 20.000 : AFTER etx_clk ;
 OFFSET = IN : 8.000 : BEFORE etx_clk ;
+
+NET "ddr_clk_fb" TNM_NET = "ddr_clk_fb";
+TIMESPEC "TS_ddr_clk_fb" = PERIOD "ddr_clk_fb" 8.00 ns HIGH 50 %;
+
+#TIMESPEC "TS_sepclk1" = FROM "clkgen0_clkin" TO "ddrsp0_ddr_phy0_clk" TIG;
+#TIMESPEC "TS_sepclk2" = FROM "ddrsp0_ddr_phy0_clk" TO "clkgen0_clkin" TIG;
+
+NET "clkm" 		 TNM_NET = "clkm";
+NET "clkml" 		 TNM_NET = "clkml";
+TIMESPEC "TS_clkm_clkml" = FROM "clkm" TO "clkml" TIG;
+TIMESPEC "TS_clkml_clkm" = FROM "clkml" TO "clkm" TIG;
+NET "lock"  TIG;
+NET "ddrsp0.ddrc/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/rclk90b" TNM_NET = "rclk90b"; 
+TIMEGRP "rclk270b_rise" = FALLING "rclk90b";
+TIMEGRP "clkml_rise" = RISING "clkml";
+TIMESPEC "TS_rclk270b_clkml_rise" = FROM "rclk270b_rise" TO "clkml_rise" 5.500;

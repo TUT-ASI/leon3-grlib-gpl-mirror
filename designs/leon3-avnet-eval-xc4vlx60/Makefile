@@ -19,12 +19,13 @@ SIMTOP=testbench
 SDCFILE=default.sdc
 BITGEN=$(GRLIB)/boards/$(BOARD)/default.ut
 CLEAN=soft-clean
-
+VCOMOPT=-explicit
 TECHLIBS = unisim
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip hynix cypress ihp gleichmann usbhc spw
 DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan pci leon3ft \
-	spacewire ambatest can grusbhc usb hasp
+	spacewire ambatest can grusbhc usb hasp spi ata ac97 coremp7 \
+	hcan
 FILESKIP = grcan.vhd i2cmst.vhd
 
 

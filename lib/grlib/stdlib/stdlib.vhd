@@ -86,6 +86,10 @@ function conv_std_logic(b : boolean) return std_ulogic;
 function tost(v:std_logic_vector) return string;
 function tost(v:std_logic) return string;
 function tost(i : integer) return string;
+function tost_any(s: std_ulogic) return string;
+function tost_bits(s: std_logic_vector) return string;
+function tost(b: boolean) return string;
+function tost(r: real) return string;
 procedure print(s : string);
 
 component report_version
@@ -176,13 +180,15 @@ end;
 function "*" (a, b : std_logic_vector) return std_logic_vector is
 variable z : std_logic_vector(a'length+b'length-1 downto 0);
 begin
+-- pragma translate_off
   if notx(a&b) then
+-- pragma translate_on
     return(std_logic_vector(unsigned(a) * unsigned(b)));
 -- pragma translate_off
   else
      z := (others =>'X'); return(z);
--- pragma translate_on
   end if;
+-- pragma translate_on
 end;
 
 -- signed multiplication
@@ -190,13 +196,15 @@ end;
 function signed_mul (a, b : std_logic_vector) return std_logic_vector is
 variable z : std_logic_vector(a'length+b'length-1 downto 0);
 begin
+-- pragma translate_off
   if notx(a&b) then
+-- pragma translate_on
     return(std_logic_vector(signed(a) * signed(b)));
 -- pragma translate_off
   else
      z := (others =>'X'); return(z);
--- pragma translate_on
   end if;
+-- pragma translate_on
 end;
 
 -- unsigned addition
@@ -205,36 +213,42 @@ function "+" (a, b : std_logic_vector) return std_logic_vector is
 variable x : std_logic_vector(a'length-1 downto 0);
 variable y : std_logic_vector(b'length-1 downto 0);
 begin
+-- pragma translate_off
   if notx(a&b) then
+-- pragma translate_on
     return(std_logic_vector(unsigned(a) + unsigned(b)));
 -- pragma translate_off
   else
      x := (others =>'X'); y := (others =>'X');
      if (x'length > y'length) then return(x); else return(y); end if;
--- pragma translate_on
   end if;
+-- pragma translate_on
 end;
 
 function "+" (i : integer; d : std_logic_vector) return std_logic_vector is
 variable x : std_logic_vector(d'length-1 downto 0);
 begin
+-- pragma translate_off
   if notx(d) then
+-- pragma translate_on
     return(std_logic_vector(unsigned(d) + i));
 -- pragma translate_off
   else x := (others =>'X'); return(x);
--- pragma translate_on
   end if;
+-- pragma translate_on
 end;
 
 function "+" (d : std_logic_vector; i : integer) return std_logic_vector is
 variable x : std_logic_vector(d'length-1 downto 0);
 begin
+-- pragma translate_off
   if notx(d) then
+-- pragma translate_on
     return(std_logic_vector(unsigned(d) + i));
 -- pragma translate_off
   else x := (others =>'X'); return(x);
--- pragma translate_on
   end if;
+-- pragma translate_on
 end;
 
 function "+" (d : std_logic_vector; i : std_ulogic) return std_logic_vector is
@@ -242,12 +256,14 @@ variable x : std_logic_vector(d'length-1 downto 0);
 variable y : std_logic_vector(0 downto 0);
 begin
   y(0) := i;
+-- pragma translate_off
   if notx(d) then
+-- pragma translate_on
     return(std_logic_vector(unsigned(d) + unsigned(y)));
 -- pragma translate_off
   else x := (others =>'X'); return(x); 
--- pragma translate_on
   end if;
+-- pragma translate_on
 end;
 
 -- unsigned subtraction
@@ -256,36 +272,42 @@ function "-" (a, b : std_logic_vector) return std_logic_vector is
 variable x : std_logic_vector(a'length-1 downto 0);
 variable y : std_logic_vector(b'length-1 downto 0);
 begin
+-- pragma translate_off
   if notx(a&b) then
+-- pragma translate_on
     return(std_logic_vector(unsigned(a) - unsigned(b)));
 -- pragma translate_off
   else
      x := (others =>'X'); y := (others =>'X');
      if (x'length > y'length) then return(x); else return(y); end if; 
--- pragma translate_on
   end if;
+-- pragma translate_on
 end;
 
 function "-" (d : std_logic_vector; i : integer) return std_logic_vector is
 variable x : std_logic_vector(d'length-1 downto 0);
 begin
+-- pragma translate_off
   if notx(d) then
+-- pragma translate_on
     return(std_logic_vector(unsigned(d) - i));
 -- pragma translate_off
   else x := (others =>'X'); return(x); 
--- pragma translate_on
   end if;
+-- pragma translate_on
 end;
 
 function "-" (i : integer; d : std_logic_vector) return std_logic_vector is
 variable x : std_logic_vector(d'length-1 downto 0);
 begin
+-- pragma translate_off
   if notx(d) then
+-- pragma translate_on
     return(std_logic_vector(i - unsigned(d)));
 -- pragma translate_off
   else x := (others =>'X'); return(x); 
--- pragma translate_on
   end if;
+-- pragma translate_on
 end;
 
 function "-" (d : std_logic_vector; i : std_ulogic) return std_logic_vector is
@@ -293,12 +315,14 @@ variable x : std_logic_vector(d'length-1 downto 0);
 variable y : std_logic_vector(0 downto 0);
 begin
   y(0) := i;
+-- pragma translate_off
   if notx(d) then
+-- pragma translate_on
     return(std_logic_vector(unsigned(d) - unsigned(y)));
 -- pragma translate_off
   else x := (others =>'X'); return(x); 
--- pragma translate_on
   end if;
+-- pragma translate_on
 end;
 
 function ">=" (a, b : std_logic_vector) return boolean is
@@ -418,12 +442,46 @@ begin
   if to_x01(v) = '1' then return("1"); else return("0"); end if;
 end;
 
+function tost_any(s: std_ulogic) return string is
+begin
+  case s is
+    when '1' => return "1";
+    when '0' => return "0";
+    when '-' => return "-";
+    when 'U' => return "U";
+    when 'X' => return "X";
+    when 'Z' => return "Z";
+    when 'H' => return "H";
+    when 'L' => return "L";
+    when 'W' => return "W";
+  end case;
+end;
+
+function tost_bits(s: std_logic_vector) return string is
+  constant len: natural := s'length;
+  variable str: string(1 to len);
+  variable i: integer;
+begin
+  i := 1;
+  for x in s'range loop      
+    str(i to i) := tost_any(s(x));
+    i := i+1;
+  end loop;
+  return str;
+end;
+
+function tost(b: boolean) return string is
+begin
+  if b then return "true"; else return "false"; end if;
+end tost;
+  
 function tost(i : integer) return string is
 variable L : line;
 variable s, x : string(1 to 128);
 variable n, tmp : integer := 0;
 begin
   tmp := i;
+  if i < 0 then tmp := -i; end if;
   loop
     s(128-n) := todec(tmp mod 10);
     tmp := tmp / 10;
@@ -431,8 +489,51 @@ begin
     if tmp = 0 then exit; end if;
   end loop;
   x(1 to n) := s(129-n to 128);
+  if i < 0 then return "-" & x(1 to n); end if;
   return(x(1 to n));
 end;
+
+function tost(r: real) return string is
+  variable x: real;
+  variable i,j: integer;
+  variable s: string(1 to 30);
+  variable c: character;
+begin
+  if r < 0.0 then
+    return "-" & tost(-r);
+  elsif r < 0.001 then
+    x:=r; i:=0;
+    while x<1.0 loop x:=x*10.0; i:=i+1; end loop;
+    return tost(x) & "e-" & tost(i);
+  elsif r >= 1000000.0 then
+    x:=10000000.0; i:=6;
+    while r>=x loop x:=x*10.0; i:=i+1; end loop;
+    return tost(10.0*r/x) & "e+" & tost(i);
+  else
+    i:=0; x:=r+0.00005;
+    while x >= 10.0 loop x:=x/10.0; i:=i+1; end loop;
+    j := 1;
+    while i > -5 loop
+      if x >= 9.0 then c:='9'; x:=x-9.0;
+      elsif x >= 8.0 then c:='8'; x:=x-8.0;
+      elsif x >= 7.0 then c:='7'; x:=x-7.0;
+      elsif x >= 6.0 then c:='6'; x:=x-6.0;
+      elsif x >= 5.0 then c:='5'; x:=x-5.0;
+      elsif x >= 4.0 then c:='4'; x:=x-4.0;
+      elsif x >= 3.0 then c:='3'; x:=x-3.0;
+      elsif x >= 2.0 then c:='2'; x:=x-2.0;
+      elsif x >= 1.0 then c:='1'; x:=x-1.0;
+      else c:='0';
+      end if;
+      s(j) := c;
+      j:=j+1;
+      if i=0 then s(j):='.'; j:=j+1; end if;
+      i:=i-1;
+      x := x * 10.0;
+    end loop;
+    return s(1 to j-1);
+  end if;    
+end tost;
 
 procedure print(s : string) is
     variable L : line;

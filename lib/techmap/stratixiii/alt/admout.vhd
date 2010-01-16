@@ -109,8 +109,8 @@ begin
     )               
     port map(
       i                          => dm_reg,                                                 
-      oe                         => vcc,                                                 
-      dynamicterminationcontrol  => gnd(0),                                 
+      --oe                         => vcc,                                                 
+      --dynamicterminationcontrol  => gnd(0),                                 
       --seriesterminationcontrol   => gnd, 
       --parallelterminationcontrol => gnd, 
       o                          => dm_pad,                                                       

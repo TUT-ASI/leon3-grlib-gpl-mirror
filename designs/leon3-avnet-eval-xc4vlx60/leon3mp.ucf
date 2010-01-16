@@ -1,35 +1,3 @@
-#############################################################################
-##    _____											##
-##   /     \													##
-##  /____   \____												##
-## / \===\   \==/												##
-##/___\===\___\/  AVNET											##
-##     \======/   DESIGN											##
-##      \====/    SERVICES										##
-##															##
-#############################################################################
-##                                                                         ##
-##            Virtex 4 LX25 Evaluation Kit Constraints File                ##
-##                                                                         ##
-#############################################################################
-#                                                                           #
-# Disclaimer                                                                #
-#                                                                           #
-# Avnet, Inc. makes no warranty for the use of this code or design.         #
-# This code is provided  "As Is". Avnet, Inc assumes no responsibility for  #
-# any errors, which may appear in this code, nor does it make a commitment  #
-# to update the information contained herein. Avnet, Inc specifically       #
-# disclaims any implied warranties of fitness for a particular purpose.     #
-#                                                                           #
-# Copyright (c) 2004 Avnet, Inc.                                            #
-# All rights reserved.                                                      #
-#                                                                           #
-#############################################################################
-
-
-#############################################################################
-##                         CLOCKS / Timing                                 ##
-#############################################################################
 NET "clk_100mhz" 		LOC = "C13";  
 NET "clk_100mhz" 		TNM_NET = "clk_100mhz";
 TIMESPEC "TS_clk_100mhz" = PERIOD "clk_100mhz" 10.00 ns HIGH 50 %;
@@ -37,7 +5,10 @@ NET "clk_50mhz" 		LOC = "B17";
 NET "clk_50mhz" 		TNM_NET = "clk_50mhz";
 TIMESPEC "TS_clk_50mhz" = PERIOD "clk_50mhz" 20.00 ns HIGH 50 %;
 
-#INST sysclk_DCM LOC=DCM_ADV_X0Y3;
+# Enable those for ISE10
+NET "etx_clk" CLOCK_DEDICATED_ROUTE = FALSE;
+NET "erx_clk" CLOCK_DEDICATED_ROUTE = FALSE;
+NET "ddr_clk_fb" CLOCK_DEDICATED_ROUTE = FALSE;
 
 #############################################################################
 ##                           RESET, UART                                   ##
@@ -271,7 +242,7 @@ Net PLL_STOP_L LOC=B10;
 Net PLL_REF_CLK LOC=B17;
 Net PLL_CLK_P LOC=C15; 
 #Net PLL_CLK_N LOC=C14; 
-INST PLL_CLK_P IOSTANDARD=LVDS_25;
+#INST PLL_CLK_P IOSTANDARD=LVDS_25;
 
 #****************************************************************************
 #*                           P1 Pins                                       **

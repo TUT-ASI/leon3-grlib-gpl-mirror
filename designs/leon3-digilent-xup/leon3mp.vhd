@@ -1,6 +1,10 @@
 -----------------------------------------------------------------------------
 --  LEON3 Demonstration design
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -14,7 +18,7 @@
 --
 --  You should have received a copy of the GNU General Public License
 --  along with this program; if not, write to the Free Software
---  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 
@@ -52,63 +56,70 @@ entity leon3mp is
   );
   port (
 
-    resetn	: in  std_ulogic;
-    clk		: in  std_ulogic;
-    errorn	: out std_ulogic;
+    resetn          : in  std_ulogic;
+    clk	            : in  std_ulogic;
+    sysace_clk      : in  std_ulogic;
+    errorn          : out std_ulogic;
 
-    dsuen   	: in std_ulogic;
-    dsubre  	: in std_ulogic;
-    dsuact  	: out std_ulogic;
+    dsuen           : in std_ulogic;
+    dsubre          : in std_ulogic;
+    dsuact  	    : out std_ulogic;
 
-    ddr_clk  	: out std_logic_vector(2 downto 0);
-    ddr_clkb  	: out std_logic_vector(2 downto 0);
-    ddr_clk_fb  : in std_logic;
+    ddr_clk         : out std_logic_vector(2 downto 0);
+    ddr_clkb  	    : out std_logic_vector(2 downto 0);
+    ddr_clk_fb      : in std_logic;
     ddr_clk_fb_out  : out std_logic;
-    ddr_cke  	: out std_logic_vector(1 downto 0);
-    ddr_csb  	: out std_logic_vector(1 downto 0);
-    ddr_web  	: out std_ulogic;                       -- ddr write enable
-    ddr_rasb  	: out std_ulogic;                       -- ddr ras
-    ddr_casb  	: out std_ulogic;                       -- ddr cas
-    ddr_dm   	: out std_logic_vector (7 downto 0);    -- ddr dm
-    ddr_dqs  	: inout std_logic_vector (7 downto 0);    -- ddr dqs
-    ddr_ad      : out std_logic_vector (13 downto 0);   -- ddr address
-    ddr_ba      : out std_logic_vector (1 downto 0);    -- ddr bank address
-    ddr_dq  	: inout std_logic_vector (63 downto 0); -- ddr data
+    ddr_cke         : out std_logic_vector(1 downto 0);
+    ddr_csb         : out std_logic_vector(1 downto 0);
+    ddr_web         : out std_ulogic;                       -- ddr write enable
+    ddr_rasb        : out std_ulogic;                       -- ddr ras
+    ddr_casb        : out std_ulogic;                       -- ddr cas
+    ddr_dm          : out std_logic_vector (7 downto 0);    -- ddr dm
+    ddr_dqs         : inout std_logic_vector (7 downto 0);    -- ddr dqs
+    ddr_ad          : out std_logic_vector (13 downto 0);   -- ddr address
+    ddr_ba          : out std_logic_vector (1 downto 0);    -- ddr bank address
+    ddr_dq          : inout std_logic_vector (63 downto 0); -- ddr data
 
-    rxd : in std_ulogic;
-    txd : out std_ulogic;
-    led_rx  : out std_ulogic;
-    led_tx  : out std_ulogic;
+    rxd             : in std_ulogic;
+    txd             : out std_ulogic;
+    led_rx          : out std_ulogic;
+    led_tx          : out std_ulogic;
 
 --    gpio        : inout std_logic_vector(31 downto 0); 	-- I/O port
 
-    emdio     	  : inout std_logic;		-- ethernet PHY interface
-    etx_clk 	  : in std_ulogic;
-    erx_clk 	  : in std_ulogic;
-    erxd    	  : in std_logic_vector(3 downto 0);   
-    erx_dv  	  : in std_ulogic; 
-    erx_er  	  : in std_ulogic; 
-    erx_col 	  : in std_ulogic;
-    erx_crs 	  : in std_ulogic;
-    etxd 	  : out std_logic_vector(3 downto 0);   
-    etx_en 	  : out std_ulogic; 
-    etx_er 	  : out std_ulogic; 
-    emdc 	  : out std_ulogic;
-    eresetn	  : out std_ulogic;
-    etx_slew	  : out std_logic_vector(1 downto 0);   
+    emdio           : inout std_logic;		-- ethernet PHY interface
+    etx_clk         : in std_ulogic;
+    erx_clk         : in std_ulogic;
+    erxd            : in std_logic_vector(3 downto 0);   
+    erx_dv          : in std_ulogic; 
+    erx_er          : in std_ulogic; 
+    erx_col         : in std_ulogic;
+    erx_crs         : in std_ulogic;
+    etxd            : out std_logic_vector(3 downto 0);   
+    etx_en          : out std_ulogic; 
+    etx_er          : out std_ulogic; 
+    emdc            : out std_ulogic;
+    eresetn         : out std_ulogic;
+    etx_slew        : out std_logic_vector(1 downto 0);   
 
-    ps2clk        : inout std_logic_vector(1 downto 0);
-    ps2data       : inout std_logic_vector(1 downto 0);
+    ps2clk          : inout std_logic_vector(1 downto 0);
+    ps2data         : inout std_logic_vector(1 downto 0);
 
-    vid_clock     : out std_ulogic;
-    vid_blankn    : out std_ulogic;
-    vid_syncn     : out std_ulogic;
-    vid_hsync     : out std_ulogic;
-    vid_vsync     : out std_ulogic;
-    vid_r         : out std_logic_vector(7 downto 0);
-    vid_g         : out std_logic_vector(7 downto 0);
-    vid_b         : out std_logic_vector(7 downto 0)
+    vid_clock       : out std_ulogic;
+    vid_blankn      : out std_ulogic;
+    vid_syncn       : out std_ulogic;
+    vid_hsync       : out std_ulogic;
+    vid_vsync       : out std_ulogic;
+    vid_r           : out std_logic_vector(7 downto 0);
+    vid_g           : out std_logic_vector(7 downto 0);
+    vid_b           : out std_logic_vector(7 downto 0);
 
+    cf_mpa          : out std_logic_vector(6 downto 0);
+    cf_mpd          : inout std_logic_vector(15 downto 0);
+    cf_mp_ce_z      : out std_ulogic;
+    cf_mp_oe_z      : out std_ulogic;
+    cf_mp_we_z      : out std_ulogic;
+    cf_mpirq        : in  std_ulogic
 	);
 end;
 
@@ -169,7 +180,11 @@ signal moui  : ps2_in_type;
 signal mouo  : ps2_out_type;
 signal vgao  : apbvga_out_type;
 
-signal lresetn, lock, clkml, clk1x : std_ulogic;
+signal clkace : std_ulogic;
+signal acei   : gracectrl_in_type;
+signal aceo   : gracectrl_out_type;
+
+signal ldsubre, lresetn, lock, clkml, clk1x : std_ulogic;
 
 constant BOARD_FREQ : integer := 100000;   -- input frequency in KHz
 constant CPU_FREQ : integer := BOARD_FREQ * CFG_CLKMUL / CFG_CLKDIV;  -- cpu frequency in KHz
@@ -183,6 +198,8 @@ attribute keep of clkml : signal is true;
 attribute keep of clkm : signal is true;
 attribute syn_keep of clkml : signal is true;
 attribute syn_preserve of clkml : signal is true;
+attribute syn_keep of ddrlock : signal is true;
+attribute syn_preserve of ddrlock : signal is true;
 
 signal stati : ahbstat_in_type;
 signal dac_clk,video_clk, clkvga : std_logic; -- Signals to vgaclock.
@@ -202,6 +219,9 @@ begin
   cgi.pllctrl <= "00"; cgi.pllrst <= rstraw;
   lock <= ddrlock and cgo.clklock;
 
+  sysace_clk_pad : clkpad generic map (tech => padtech, level => cmos, voltage => x25v) 
+    port map (sysace_clk, clkace);
+  
   clk_pad : clkpad generic map (tech => padtech) port map (clk, lclk); 
 
   clkgen0 : clkgen  		-- clock generator
@@ -246,7 +266,8 @@ begin
          ncpu => NCPU, tbits => 30, tech => memtech, irq => 0, kbytes => CFG_ATBSZ)
       port map (rstn, clkm, ahbmi, ahbsi, ahbso(2), dbgo, dbgi, dsui, dsuo);
       dsui.enable <= '1';
-      dsubre_pad : inpad generic map (tech => padtech) port map (dsubre, dsui.break); 
+      dsubre_pad : inpad generic map (tech => padtech) port map (dsubre, ldsubre);
+      dsui.break <= not ldsubre;
       ndsuact <= not dsuo.active;
       dsuact_pad : outpad generic map (tech => padtech) port map (dsuact, ndsuact);
     end generate;
@@ -467,6 +488,40 @@ begin
 
     etx_slew <= "00";
     eresetn <= rstn;
+
+----------------------------------------------------------------------
+---  System ACE I/F Controller ---------------------------------------
+----------------------------------------------------------------------
+  
+  grace: if CFG_GRACECTRL = 1 generate
+    grace0 : gracectrl generic map (hindex => 5, hirq => 13,
+        haddr => 16#003#, hmask => 16#fff#, split => CFG_SPLIT)
+      port map (rstn, clkm, clkace, ahbsi, ahbso(5), acei, aceo);
+  end generate;
+
+  nograce: if CFG_GRACECTRL = 0 generate
+    aceo.addr <= (others => '0'); aceo.cen <= '1'; aceo.do <= (others => '0');
+    aceo.doen <= '1'; aceo.oen <= '1'; aceo.wen <= '0';
+  end generate nograce;
+  
+  cf_mpa_pads : outpadv generic map
+    (width => 7, tech => padtech, level => cmos, voltage => x25v) 
+    port map (cf_mpa, aceo.addr); 
+  cf_mp_ce_z_pad : outpad generic map
+    (tech => padtech, level => cmos, voltage => x25v)
+    port map (cf_mp_ce_z, aceo.cen); 
+  cf_mpd_pads : iopadv generic map
+    (tech => padtech, width => 16, level => cmos, voltage => x25v)
+    port map (cf_mpd, aceo.do, aceo.doen, acei.di); 
+  cf_mp_oe_z_pad : outpad generic map
+    (tech => padtech, level => cmos, voltage => x25v)
+    port map (cf_mp_oe_z, aceo.oen);
+  cf_mp_we_z_pad : outpad generic map
+    (tech => padtech, level => cmos, voltage => x25v)
+    port map (cf_mp_we_z, aceo.wen); 
+  cf_mpirq_pad : inpad generic map
+    (tech => padtech, level => cmos, voltage => x25v)
+    port map (cf_mpirq, acei.irq); 
 
 -----------------------------------------------------------------------
 ---  AHB ROM ----------------------------------------------------------

@@ -1,7 +1,14 @@
-bool 'Enable SPI controller ' CONFIG_SPICTRL_ENABLE
-if [ "$CONFIG_SPICTRL_ENABLE" = "y" ]; then
-  int 'Slave select lines    '   CONFIG_SPICTRL_SLVS 1
-  int 'FIFO depth (2^N)      '   CONFIG_SPICTRL_FIFO 1
-  bool 'Enable slave select registers'   CONFIG_SPICTRL_SLVREG
-fi
+  mainmenu_option next_comment
+   comment 'SPI controller '
+    bool 'Enable SPI controller ' CONFIG_SPICTRL_ENABLE
+    if [ "$CONFIG_SPICTRL_ENABLE" = "y" ]; then
+     int 'Slave select lines    '   CONFIG_SPICTRL_SLVS 1
+     int 'FIFO depth (2^N)      '   CONFIG_SPICTRL_FIFO 1
+     bool 'Enable slave select registers'   CONFIG_SPICTRL_SLVREG
+     bool 'Enable automatic slave select'   CONFIG_SPICTRL_ASEL
+     bool 'Support automated transfers  '   CONFIG_SPICTRL_AM
+     bool 'Support open drain mode      '   CONFIG_SPICTRL_ODMODE
+    fi
+  endmenu
+
 

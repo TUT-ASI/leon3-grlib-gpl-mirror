@@ -13,7 +13,7 @@ static int snoopen;
 static inline int load(int addr)
 {
     int tmp;        
-    asm(" lda [%1]1, %0 "
+    asm volatile(" lda [%1]1, %0 "
         : "=r"(tmp)
         : "r"(addr)
         );
@@ -145,14 +145,15 @@ static void build_ip(
         buf[35] = 0;
         buf[36] = 0;
         buf[37] = 0;
-        crc = 0x8511;
+        crc = 0x8D11;
         crc = crc + (iplen & 0xFFFF);
-        crc = crc + (source_ip >> 16) & 0xFFFF;
-        crc = crc + source_ip & 0xFFFF;
-        crc = crc + (dest_ip >> 16) & 0xFFFF;
-        crc = crc + dest_ip & 0xFFFF;
+        crc = crc + ((source_ip >> 16) & 0xFFFF);
+        crc = crc + (source_ip & 0xFFFF);
+        crc = crc + ((dest_ip >> 16) & 0xFFFF);
+        crc = crc + (dest_ip & 0xFFFF);
         crc = (crc & 0xFFFF) + ((crc >> 16) & 0xFFFF);
         crc = (crc & 0xFFFF) + ((crc >> 16) & 0xFFFF);
+        crc = ~crc;
         buf[24] = (crc >> 8) & 0xFF;
         buf[25] = crc & 0xFF;
         buf[38] = (udplen >> 8) & 0xFF;

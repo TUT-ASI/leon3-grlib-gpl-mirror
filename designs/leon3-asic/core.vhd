@@ -1,6 +1,10 @@
 -----------------------------------------------------------------------------
 --  LEON3 Demonstration design
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -14,7 +18,7 @@
 --
 --  You should have received a copy of the GNU General Public License
 --  along with this program; if not, write to the Free Software
---  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 
@@ -151,9 +155,12 @@ begin
   gpioen <= lgpioen when (testen = '0') else (others => '0') when oepol = 1 
 	else (others => '1');
 
-  nandout <= nandtree(testen & brdyn & bexcn & roen & promedac & prom32 &
-	spw_clksel & clksel & spw_rxs & spw_rxd & resetn & rxd2 & rxd1 &
-	dsuen & dsubre & dsurx & datain & cbin & gpioin);
+--  nandtree0 : nandtree generic map (fabtech, nandchain'length)
+--	port map (nandchain, nandout, testen);
+--
+--  nandout <= nandtree(testen & brdyn & bexcn & roen & promedac & prom32 &
+--	spw_clksel & clksel & spw_rxs & spw_rxd & resetn & rxd2 & rxd1 &
+--	dsuen & dsubre & dsurx & datain & cbin & gpioin);
 
   leon3core0 : entity work.leon3core
     generic map ( fabtech, memtech, padtech, clktech, disas, dbguart, 

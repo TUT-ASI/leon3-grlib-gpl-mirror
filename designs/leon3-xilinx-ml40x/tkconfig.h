@@ -6,6 +6,8 @@
 #define CONFIG_SYN_TECH rhumc
 #elif defined CONFIG_SYN_ATC18
 #define CONFIG_SYN_TECH atc18s
+#elif defined CONFIG_SYN_ATC18RHA
+#define CONFIG_SYN_TECH atc18rha
 #elif defined CONFIG_SYN_AXCEL
 #define CONFIG_SYN_TECH axcel
 #elif defined CONFIG_SYN_PROASICPLUS
@@ -618,11 +620,11 @@
 #endif
 
 #ifndef CONFIG_DSU_ETHMSB
-#define CONFIG_DSU_ETHMSB 00007A
+#define CONFIG_DSU_ETHMSB 020000
 #endif
 
 #ifndef CONFIG_DSU_ETHLSB
-#define CONFIG_DSU_ETHLSB CC0001
+#define CONFIG_DSU_ETHLSB 00002F
 #endif
 
 #if defined CONFIG_DSU_ETHSZ1
@@ -818,6 +820,9 @@
 #ifndef CONFIG_IRQ3_ENABLE
 #define CONFIG_IRQ3_ENABLE 0
 #endif
+#ifndef CONFIG_IRQ3_NSEC
+#define CONFIG_IRQ3_NSEC 0
+#endif
 #ifndef CONFIG_GPT_ENABLE
 #define CONFIG_GPT_ENABLE 0
 #endif
@@ -894,6 +899,10 @@
 #endif
 #ifndef CONFIG_KBD_ENABLE
 #define CONFIG_KBD_ENABLE 0
+#endif
+
+#ifndef CONFIG_GRACECTRL
+#define CONFIG_GRACECTRL 0
 #endif
 
 

@@ -53,17 +53,23 @@ comment 'Peripherals             '
   endmenu
 
   mainmenu_option next_comment
-  comment 'UART, timer, I2C, I/O port and interrupt controller'
+  comment 'UART, timer, I2C, SysMon, I/O port and interrupt controller'
     source lib/gaisler/uart/uart1.in
     source lib/gaisler/leon3/irqmp.in
     source lib/gaisler/misc/gptimer.in
     source lib/gaisler/misc/grgpio.in
     source lib/gaisler/misc/i2c.in
+    source lib/gaisler/misc/grsysmon.in
   endmenu
 
   mainmenu_option next_comment
   comment 'Keybord and VGA interface'
     source lib/gaisler/misc/ps2vga.in
+  endmenu
+
+  mainmenu_option next_comment
+  comment 'System ACE Interface Controller'
+    source lib/gaisler/misc/gracectrl.in
   endmenu
 endmenu
 

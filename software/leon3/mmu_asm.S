@@ -4,7 +4,7 @@
  
 	.seg	"text"
 	.proc	0
-	.align PAGE_SIZE
+	.align PAGE_SIZE_MAX
 	.global mmu_func1
 mmu_func1:
 	save  %sp, -112, %sp
@@ -14,6 +14,11 @@ mmu_func1:
 	.align 4
 	.global mmu_double
 mmu_double:
+        set     1<<14, %g1
+1:      lda    [%g0] 2,%g2
+        andcc   %g2, %g1, %g0
+        bne     1b
+         nop
 	save  %sp, -112, %sp
 	save  %sp, -112, %sp
 	save  %sp, -112, %sp

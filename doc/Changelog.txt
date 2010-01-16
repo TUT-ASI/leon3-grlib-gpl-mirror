@@ -1,9 +1,321 @@
+
+----------------------- Release 1.0.22-b4075 ---------------------------
+
+2010-01-16	Updated GRFPU netlists
+
+2010-01-03	Added initial support for Virtex6 and Spartan6 FPGAs.
+
+2010-01-03	LEON3: Added branch prediction to remove ICC interlocks.
+
+2010-01-03	DSU access to LEON3 local data RAM could cause the
+		local instruction RAM to be written.
+
+2009-12-23      GRUSBHC/GRUSBDC: Added input that determines if the cores
+                should drive the transceiver's data lines during USB PHY 
+                reset, even if DIR is high.
+
+2009-12-16      GRUSBHC: Remove dependencies on write-first RAMs. Memory 
+                test behavior of 2-port RAMs differed from documention.
+
+2009-12-11      GRUSB_DCL: Added generic to define maximum AHB burst length
+
+2009-11-09      AHBCTRL* and APBCTRL: Added simulation check that asserts 
+                a warning if config signals of undecoded master and slave 
+                ports are non-zero. Added sanity checks on decoded configs.
+
+2009-11-09      APBCTRL: Added simulation check for memory map intersects
+
+2009-11-02      SPICTRL: Added generic that sets maximum word length
+
+2009-10-24      SPICTRL: Allow automatic slave select swap in clock gaps
+
+----------------------- Release 1.0.21-b3957 ---------------------------
+
+2009-10-22      Added delayed receiver interrupts and break interrupts 
+                to APBUART.
+
+2009-10-22      AHB2AHB decoding of prefetchable memory areas could give
+                false positives on disabled bars.
+
+2009-10-21      Fixed race condition in AHB2AHB when generic lckdac = 2
+
+----------------------- Release 1.0.21-b3892 ---------------------------
+
+2009-10-04	divided long bash scripts in bin/Makefile to avoid buffer 
+		limitations in cygwin
+
+2009-10-04	Worked around some quartus problems to allow Altera DDR PHY
+		to be synthesized by Synplify and p&r by Quartus.
+
+2009-10-02      GRSPW is now configurable as RMAP target only.
+
+2009-09-28      Added configuration signal for the 4-LSB bits in the MAC and 
+                IP addresses of the GRETH_GBIT core.
+
+2009-09-28	GRPCI: AHB master could change htrans (sequential to idle) while 
+		hready was deasserted when waitstates was added by the slave on 
+		last word in transfer.
+		PCIDMA: Interrupt support added.
+		Added new testbench for GRPCI target and PCIDMA see
+		verification/pci/README.txt.
+
+2009-09-24	DDR2SP16A: When the generic for eight-bank support was set for 
+		the 16-bit version of the DDR2 memory controller the register
+		for enabling eight-bank addressing was randomly changing.
+
+2009-09-15	GRFPU: A FPU pipeline bug was fixed, where if an FDIVD or FSQRTD
+		is followed by an FMULS within less than 20 cycles, the result
+		of the FMULS operation could get rounded incorrectly.
+		Testing for this bug has been added to system test.
+
+----------------------- Release 1.0.21-b3848 ---------------------------
+
+2009-09-11      Added features to GRETH and GRETH_GBIT to provide clean
+                deadlock prevention during software boot when running 
+                the software through the EDCL.
+
+2009-08-26	GRPCI: AHB master didn't handle waitstates for accesses with 
+		burst length > fifodepth/2 (burst on AHB never ended). If a 
+		PCI master added waitstates in a burst, the PCI target
+		deasserted irdy and stop incorrectly.
+
+2009-08-16      Added optional scan bypass registers to syncram and syncram_2p.
+
+2009-08-16      Added optional write-through bypass logic to syncram_2p.
+
+2009-07-16      Added dqsse generic to DDR2SPA which allows the controller to
+                configure the DDR2 memory to use DQS in single-ended mode.
+
+2009-07-16      Added Stratix II DDR2 PHY, contributed by TU Dresden.
+
+2009-07-16      Added template design for Altera Audio Video Development Kit, 
+                Stratix II GX Edition (leon3-altera-ep2sgx90-av). Design 
+                contributed by TU Dresden.
+
+2009-07-10      AHBBRIDGE may now be instantiated with ffact = 1.
+
+2009-07-10      AHBBRIDGE expected HSB configuration address to be assigned to
+                generic lsb_ioarea, and LSB config. addr. to be assigned to
+                hsb_ioarea. Changed use of generics so that they match the
+                documentation.  
+
+2009-07-10      AHBCTRL would wait for SPLIT complete for all SPLITs before
+                granting any access after locked transfer had received SPLIT.
+
+2009-07-10      Included AHB2AHB and AHBBRIDGE test benches in com distribution.
+
+2009-07-10      AHB2AHB can now be configured to resolve the deadlock condition, 
+                or to complete both accesses, when it receives a locked access 
+                while the bridge has issued a SPLIT response to another master.
+
+2009-07-09	LEON3: SWAP and LDST will now always be non-cacheable
+
+2009-07-06      AHB2AHB in bidirectional configuration could deadlock if locked
+                accesses were made from both buses simultaneously. Core did not 
+                assert HLOCK at least one cycle before address phase for writes.
+
+2009-07-02      ModelSim versions >6.3f were not able to load data in DDR2 
+                memory model.
+
+2009-05-05      Greth_Gbit receiver discarded packets if received preamble 
+                was an odd number of nibbles in 10 or 100 mbit mode
+
+2009-04-30      GRUSBHC: If the first QH in the EHCI asynchronous schedule was
+                linked to a chain of QHs and these QHs never linked back to the
+                first QH, the same descriptor could be buffered more than once.
+
+2009-04-24      SpaceWire cores did not always deassert request when 
+                encountering an AHB error causing unwanted accesses. More 
+                specifically this could only happen when reading or writing 
+                a descriptor ctrl word address. Eventually the request would 
+                be deasserted and no harm could have been made to the rest 
+                of the system
+
+2009-04-22      SPICTRL: Added open drain mode. Use extra sync registers.
+                Added support for higher SCK frequencies, auto transfers, 
+                transfer in progress detection and automatic slave select.
+
+2009-04-02	FTMCTRL : RAMOEN could be asserted during write cycles
+		when pipelined EDAC was enabled
+
+----------------------- Release 1.0.20-b3545 ---------------------------
+
+2009-03-25	PCIDMA did not handle retry/split in the AHB bus correctly. 
+		GRPCI: Improved FIFO handling on AHB busy accesses.
+
+2009-03-21      Automated use of Virtex4 .ngo netlists in Virtex5 designs.
+
+2009-03-20      Updated GRFPU/GRFPC FPGA netlists.
+
+2009-03-17      TCP/UDP hardware checksumming was not handled correctly with
+                fragmented IP packets
+
+2009-03-17	Input and input-output pads have been changed for the Nextreme technology.
+		These pads does not have a schmitt trigger or weak pull down any more.
+
+2009-03-13      GRUSBDC could start an access without being requested if an
+                activated DMA channel was aborted and an inactive channel 
+                had enabled descriptors.
+
+2009-03-13      GRETH and GRETH_GBIT did not handle early burst termination 
+                correctly during descriptor fetch. GRETH_GBIT could perform
+                incorrect accesses when receiving an error and retry response
+                consecutively. 
+
+2009-03-13      Updated GRUSBHC test bench to use new AMBA test framework.
+
+2009-03-13      AHBCTRL and AHBCTRL_MB: Check for memory map intersects in
+                simulation. Removed enebterm generic.
+
+2009-03-13      Added AMBA test framework
+
+2009-03-13      GRFPU: FSMULD results were subjected to single precision checks
+                and this could lead to unexpected exceptions. FSMULD is not 
+                generated by compilers.
+
+2009-03-09     OC CAN / GRCAN:
+                  SJW=4 could result in incorrect (re-)synchronization.
+                  Updated xconfig files.
+               OC CAN:
+                  Error status bit was cleared too early after BUSOFF recovery.
+                  Byte count was not reset after frame error recovery.
+
+----------------------- Release 1.0.20-b3472 ---------------------------
+
+2009-03-04	LEON3: support for larger MMU page sizes (4/8/16/32 Kbyte)
+
+2009-02-19      GRUSBHC: EHC could execute buffered transaction from asynchronous
+                schedule after schedule traversal had been disabled.
+
+2009-02-17	Added support for addressing eight banks in the DDR2SPA controller
+
+----------------------- Release 1.0.20-b3403 ---------------------------
+
+2009-02-12      Added possibility to install full Xilinx UNISIM libraries
+
+2009-02-11      Fixed two bugs in grethc. Receiver fifo overruns were not
+                detected correctly. Descriptor reads could fail when burst
+                was terminated early.
+
+2009-02-10      Added new version of GRSPW2 with SDR, DDR receiver sampling
+                and DDR transmitter outputs.
+
+2009-01-20      Added test software for APBPS2, I2CSLV and combined I2CMST/I2CSLV
+
+2009-01-20      APBPS2: Increased width of APBPS2 prescaler, added OEPOL generic
+                and corrected documentation. The default instantiation of APBPS2
+                now uses a programmable divider.
+
+2009-01-19	Added support for Reed-Solomon coding in FTMCTRL
+
+2009-01-19      Added support for PHY interrupts in GRETH and GRETH_GBIT
+
+2009-01-13      Fixed fifo pointer misalignment bug in GRETH_GBIT
+
+2009-01-08      MMU system test software did not wait for cache flush to
+                complete before accessing data cache entries.
+
+2008-12-23      Added -opt_mode Speed -opt_level 2 to XST synthesis command
+
+2008-12-19      Updated ML403 template design
+
+2008-12-10      Improved SPIMCTRL SPI flash performance and corrected issue
+                when configured without AMBA SPLIT support.
+
+2008-12-01      Updated Spartan-3A DSP 1800A template design
+
+2008-12-01      Modified Virtex-5 DDR2 PHY to increase setup time for address
+                and control signals.
+
+2008-11-27      Added nosync generic to DDR2SPA to remove synchronization
+                registers when DDR clock and AHB clock are plesiosynchronous.
+
+2008-11-21      Added template design for Xilinx ML510 development board
+
+2008-11-20	Added support for eASIC's eTools
+
+2008-11-19      Added tech mapping for SMIC 0.13um with Artisan RAMs
+
+2008-11-18      Added support for Spartan3-2000 to the gr-xc3s-1500 template design
+
+2008-11-17      Added dual-port AHBDPRAM with back-end port for user IP
+
+2008-11-12      LEON3: cache locking was always disabled regardless of generics
+
+2008-11-07      Added template design for Xilinx ML509 board
+
+2008-10-28      Added AMBA System ACE Interface Controller (GRACECTRL) that
+                can be utilized to access a CompactFlash card. Added core to
+                leon3-xilinx-ml50x, ml40x and XUP template designs.
+
+2008-10-28      Added AMBA wrapper for Virtex-5 System Monitor (GRSYSMON)
+
+2008-10-24	GRUSBHC: Added support for double port RAM and improved
+		RAM test facilities. See grip.pdf for more information.
+
+2008-10-22	Added OCT control support in the DDR2 controller for
+		Altera Stratix3 technology.
+
+2008-10-20      Hynix HY5PS121621F DDR2 model can now read initial memory
+                contents from a file specified by a VHDL generic.
+
+2008-10-14      Added T1 Niagara support for Altera Startix2 Dev. board
+
+2008-10-14      Added DVI support to xilinx-ml50x template designs
+
+----------------------- Release 1.0.19-b3188 ---------------------------
+
+2008-09-29      Added T1 Niagara bridge and template designs
+
+2008-09-25	GRUSBHC: To conserve power the core disables the RAMS more
+		often on non-FPGA technologies
+
+2008-09-25	GRUSBHC: Some signal names in the in and out types for GRUSBHC
+		has changed. The reason is that not all signals were named
+		exactly	the same as in the UTMI+ specification. Also all UTMI+
+		signals	are now present, even those which are always constant.
+		Also the input ursti has been removed. See grip.pdf for more
+		detailed information.
+
+2008-09-25      GRUSBHC: The core is no longer located in library usbhc but
+		instead in library gaisler. In and out types of the core has
+		changed from usbhc_in_type and usbhc_out_type to grusb_in_type
+		and grusb_out_type respectively. The package file needed to
+		instantiate the core has changed from grusbhc_pkg to grusb.
+		See grip.pdf for more detailed information and an example of
+		how to instantiate the core.
+
+2008-09-25      GRFPU: Updated Altera and (non-FT) Xilinx netlists.
+
+2008-09-25      GRFPU: Allow use of Module Generator multiplier.
+
+2008-09-24	GRPCI: The amba master interface didn't handle a retry/split
+		response on the 1k boundary. One data word was lost.
+
+2008-09-19	Added Mobile SDR support to SDRAM controller in MCTRL.
+		Disabled all power-saving functionality when the mobile
+		generic is set to 0 in DDRSPA, SDCTRL and SDMCTRL
+
+2008-09-19	Added support for .ise file generation for ISE9/10
+
+2008-09-18      GRUSBHC: Improve timing by latching AHB ERROR responses
+                during first AMBA response cycle.
+
+2008-09-18      GRFPU: Fix rounding of mantissa and exponent in round up,
+                round to zero, and round down for division and sqrt.
+                The core could also produce denormalized numbers when an
+                underflow occured in single precision division.
+
+2008-09-12	Added VHDL generic to set reset value for tRFC for DDR2.
+		Some memory chip required  more then 75 ns which was the old
+		default value. New default tRFC value is 130 ns.
+
 2008-09-02      I2CMST: Core did not perform clock synchronization and
                 did not differentiate between master clock synchronization and
                 slave clock stretch. Affects behavior in multi-master systems.
 
 2008-09-01      GRUSBHC: Conserve power on non-FPGA technologies by disabling
-                RAMs when a controller is idle. Added scan test support; 
+                RAMs when a controller is idle. Added scan test support;
                 disable RAMs when in test mode and scan is enabled.
 
 2008-08-24	LEON3: the processor could change address after a retry
@@ -12,14 +324,14 @@
 2008-08-15	GRPCI & PCIF: Added possibility to drive pci_rst if in host slot
 
 2008-08-08      GRUSBHC: The 'Port Enable/Disable Change' bit in the UHCI PORTSC
-                register was set every time the 'Port Enable/Disable' bit 
+                register was set every time the 'Port Enable/Disable' bit
                 changed.
 
 2008-08-08      GRFPU: Rounding of infinity always regarded infinity as created
-                from finite operands and the result was thus determined by the 
+                from finite operands and the result was thus determined by the
                 rounding rules for the overflow exception.
 
-2008-08-01	LEON3: uncache byte access (LDUBA with ASI=1) could fail on 
+2008-08-01	LEON3: uncache byte access (LDUBA with ASI=1) could fail on
 		non-FT system without MMU.
 
 2008-07-30	Reduced the address width from 11 to 9 bits of the input
@@ -36,10 +348,10 @@
                 devices with a serial peripheral interface into AMBA
                 address space.
 
-2008-07-22	Added generic (regoutput) to the DDR controller to enable 
-		register on output signals to the PHY. 
+2008-07-22	Added generic (regoutput) to the DDR controller to enable
+		register on output signals to the PHY.
 
-2008-07-22      Generated script now explicitly turns off automatic 
+2008-07-22      Generated script now explicitly turns off automatic
                 optimization of designs in Modelsim.
 
 2008-07-17	Added template designs for Xilinx ML506 and ML507
@@ -47,7 +359,7 @@
 2008-07-16	SDCTRL: Extended tRFC timing bits in configuration register
 		with the tRP bit when Mobile SDR support is enabled.
 
-2008-07-09	Renamed template design leon3-actel-coremp7 to 
+2008-07-09	Renamed template design leon3-actel-coremp7 to
 		leon3-actel-proasic3.
 
 2008-07-09	Added GRLIB wrapper for Actel's CoreMP7 processor and a
@@ -68,12 +380,12 @@
 2008-06-23	Quartus II flow invoked the Classical Timing Analyzer but did
 		not explicitly disable the TimeQuest analyzer.
 
-2008-06-23	Added Stratixiii support to DDR2 controller. Fixed ODT control 
+2008-06-23	Added Stratixiii support to DDR2 controller. Fixed ODT control
 		for DDR2 controller (only enabled during memory-write).
 
 2008-06-19	GRUSBHC: Enhanced host controller could use wrong data buffer
 		after processing the asynchronous schedule in NAK throttle mode
-		when the only active descriptor was a HS QH with RL field set 
+		when the only active descriptor was a HS QH with RL field set
 		to a non-zero value.
 
 2008-06-16	SVGACTRL: Dynamic clock registers and generics were documented
@@ -85,9 +397,9 @@
 2008-05-26	SPICTRL: Added 3-wire mode
 
 2008-05-26	SPICTRL: Last SCK cycle could be short. Delay first SCK
-		transition, when CPHA = 0, based on clock scaler setting to 
+		transition, when CPHA = 0, based on clock scaler setting to
 		guarantee proper setup time on MOSI. Data line could change
-		value, in anticipaiton of next transfer, before SCK "change" 
+		value, in anticipaiton of next transfer, before SCK "change"
 		flank in last cycle for CPHA = 0.
 
 2008-05-25	LEON3/MMU: do not change AHB address if htrans has been set
@@ -112,7 +424,7 @@
 2008-05-12	Added Leon3 Demonstration design and board support for
 		Nios II Embedded Evaluation Kit (leon3-altera-ep3c25-eek)
 
-2008-05-05	Added system test software, UTMI+ and ULPI simulation models 
+2008-05-05	Added system test software, UTMI+ and ULPI simulation models
 		for GRUSBHC.
 
 2008-05-05	Added oepol generic to control polarity of output enable
@@ -154,7 +466,7 @@
 
 2008-03-27	Quartus II could not synthesize SPICTRL
 
-2008-03-20	Added support for HAPS Daughter board: SDRAM_1x1, DDR_1x1, 
+2008-03-20	Added support for HAPS Daughter board: SDRAM_1x1, DDR_1x1,
 		GEPHY_1x1 and BIO1 I/O board.
 
 ------------------- Release 1.0.18-b2823 ---------------------------

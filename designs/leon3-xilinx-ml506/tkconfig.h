@@ -620,11 +620,11 @@
 #endif
 
 #ifndef CONFIG_DSU_ETHMSB
-#define CONFIG_DSU_ETHMSB 00007A
+#define CONFIG_DSU_ETHMSB 020000
 #endif
 
 #ifndef CONFIG_DSU_ETHLSB
-#define CONFIG_DSU_ETHLSB CC0001
+#define CONFIG_DSU_ETHLSB 000032
 #endif
 
 #if defined CONFIG_DSU_ETHSZ1
@@ -931,6 +931,10 @@
 #endif
 #ifndef CONFIG_KBD_ENABLE
 #define CONFIG_KBD_ENABLE 0
+#endif
+
+#ifndef CONFIG_GRACECTRL
+#define CONFIG_GRACECTRL 0
 #endif
 
 

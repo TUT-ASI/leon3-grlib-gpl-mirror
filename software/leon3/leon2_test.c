@@ -16,4 +16,5 @@ leon2_test(volatile int *irqmp, int mtest)
 	if (domp) mptest_end(irqmp);	
 	cachetest();
 	*/
+	mmu_test();
 }

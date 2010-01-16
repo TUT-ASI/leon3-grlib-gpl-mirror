@@ -6,12 +6,18 @@
 # Speed Grade: -4                                                       ##
 ##########################################################################
 
+# Enable this for ISE-11
+
+NET "ddr_clk_fb" CLOCK_DEDICATED_ROUTE = FALSE;
+
+#######################################################################
+
 # ==== Clock inputs (CLK) ====
 NET "clk_in" LOC = "F13" | IOSTANDARD = LVCMOS33 ;
 NET "clk_in" PERIOD = 8ns HIGH 50%;
 
-#NET "clk_vga" LOC = "P26" | IOSTANDARD = LVCMOS33 ;
-#NET "clk_vga" PERIOD = 40ns HIGH 50%;
+NET "clk_vga" LOC = "P26" | IOSTANDARD = LVCMOS33 ;
+NET "clk_vga" PERIOD = 40ns HIGH 50%;
 
 NET erx_clk PERIOD = 40.000;
 OFFSET = IN : 10.000 : BEFORE erx_clk;
@@ -20,17 +26,48 @@ OFFSET = OUT : 20.000 : AFTER etx_clk;
 OFFSET = IN : 10.000 : BEFORE etx_clk;
 
 # Avoid false paths between main clock and SVGA clock
-NET "clkm"     TNM_NET = "clkm";
-NET "lclk_vga" TNM_NET = "lclk_vga";
-TIMESPEC "TS_clkm_vga" = FROM "clkm" TO "lclk_vga" TIG;
-TIMESPEC "TS_vga_clkm" = FROM "lclk_vga" TO "clkm" TIG;
+#NET "clkm"     TNM_NET = "clkm";
+#NET "lclk_vga" TNM_NET = "lclk_vga";
+#TIMESPEC "TS_clkm_vga" = FROM "clkm" TO "lclk_vga" TIG;
+#TIMESPEC "TS_vga_clkm" = FROM "lclk_vga" TO "clkm" TIG;
 #NET "lock"  TIG;
+
+# BUFGMUX placements
+# ethi_rx_clk
+INST "ethpads.erxc_pad/xcv2.u0/g2.ttl0.bf" LOC = "BUFGMUX_X0Y4";
+# ethi_tx_clk  
+INST "ethpads.etxc_pad/xcv2.u0/g2.ttl0.bf" LOC = "BUFGMUX_X0Y5";
+# clkml
+INST "ddr2sp0.ddrc0/ddr_phy0/ddr_phy0/sp3a.ddr_phy0/noclkscale.mbufg0" LOC = "BUFGMUX_X2Y10";
+# ddr2sp0.ddrc0/ddr_phy0/ddr_phy0/sp3a.ddr_phy0/rclk270b 
+INST "ddr2sp0.ddrc0/ddr_phy0/ddr_phy0/sp3a.ddr_phy0/bufg8" LOC = "BUFGMUX_X0Y9";
+# ddr2sp0.ddrc0/ddr_phy0/ddr_phy0/sp3a.ddr_phy0/rclk90b   
+INST "ddr2sp0.ddrc0/ddr_phy0/ddr_phy0/sp3a.ddr_phy0/bufg7" LOC = "BUFGMUX_X0Y8";
+# ddr2sp0.ddrc0/ddr_phy0/ddr_phy0/sp3a.ddr_phy0/clk90r   
+INST "ddr2sp0.ddrc0/ddr_phy0/ddr_phy0/sp3a.ddr_phy0/bufg2" LOC = "BUFGMUX_X2Y0";
+# BUFGs in clkgen
+INST "clkgen0/xc3s.v/bufg0" LOC = "BUFGMUX_X2Y11";
+INST "clkgen0/xc3s.v/bufg1" LOC = "BUFGMUX_X1Y11";
+# lclk_vga
+INST "lclk_vga_cb" LOC = "BUFGMUX_X3Y8";
+
+# DCM placements
+INST "clkgen0/xc3s.v/dll0/DCM_SP" LOC = "DCM_X1Y3";
+INST "ddr2sp0.ddrc0/ddr_phy0/ddr_phy0/sp3a.ddr_phy0/dll/DCM_SP" LOC = "DCM_X2Y0";
+INST "ddr2sp0.ddrc0/ddr_phy0/ddr_phy0/sp3a.ddr_phy0/read_dll/DCM_SP" LOC = "DCM_X0Y1";
 
 # Avoid false paths between main clock and DDR clock
 NET "clkm"  TNM_NET = "clkm";
 NET "clkml" TNM_NET = "clkml";
 TIMESPEC "TS_clkm_clkml" = FROM "clkm" TO "clkml" TIG;
 TIMESPEC "TS_clkml_clkm" = FROM "clkml" TO "clkm" TIG;
+
+INST "clkgen0_xc3s_v_dll0" LOC = DCM_X2Y3;
+INST "clkgen0/xc3s.v/dll0" LOC = DCM_X2Y3;
+INST "ddr2sp0.ddrc0/ddr_phy0/ddr_phy0/sp3a.ddr_phy0/read_dll" LOC = DCM_X0Y1;
+INST "ddr2sp0.ddrc0_ddr_phy0_ddr_phy0_sp3a.ddr_phy0_read_dll" LOC = DCM_X0Y1;
+INST "ddr2sp0.ddrc0/ddr_phy0/ddr_phy0/sp3a.ddr_phy0/dll" LOC = DCM_X1Y0;
+INST "ddr2sp0_ddrc0_ddr_phy0_ddr_phy0_sp3a_ddr_phy0_dll" LOC = DCM_X1Y0;
 
 # ==== Pushbuttons ====
 NET reset	LOC = J17 | IOSTANDARD = LVTTL | PULLDOWN;
@@ -223,5 +260,8 @@ NET oen		LOC = AE26 | IOSTANDARD = LVCMOS33;
 NET writen	LOC = Y20  | IOSTANDARD = LVCMOS33;
 NET romsn	LOC = AE25 | IOSTANDARD = LVCMOS33;
 
-## This is to force the SPI ROM to not be selected(drive high)
-NET spi         LOC = AA7 | IOSTANDARD = LVCMOS33 | PULLUP;  
+# === Serial Flash ===
+NET spi_sel_n   LOC = AA7  | IOSTANDARD = LVCMOS33;  
+NET spi_clk     LOC = AE24 | IOSTANDARD = LVCMOS33;
+NET spi_mosi    LOC = AB15 | IOSTANDARD = LVCMOS33;
+

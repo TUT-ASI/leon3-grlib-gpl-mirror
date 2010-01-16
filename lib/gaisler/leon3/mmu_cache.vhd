@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -59,7 +60,8 @@ entity mmu_cache is
     tlb_rep   : integer range 0 to 1 := 0;
     cached    : integer := 0;
     clk2x     : integer := 0;
-    scantest  : integer := 0
+    scantest  : integer := 0;
+    mmupgsz   : integer range 0 to 5  := 0
   );
   port (
     rst   : in  std_ulogic;
@@ -105,14 +107,14 @@ begin
 
 -- instruction cache controller
   icache0 : mmu_icache 
-      generic map (irepl=>irepl, isets=>isets, ilinesize=>ilinesize, isetsize=>isetsize, isetlock=>isetlock)
+      generic map (irepl => irepl, isets=>isets, ilinesize=>ilinesize, isetsize=>isetsize, isetlock=>isetlock)
       port map ( rst, clk, ici, icol, dci, dcol, mcii, mcio, 
    		 crami.icramin, cramo.icramo, fpuholdn, mmudci, mmuici, mmuico);
 
 -- data cache controller
   dcache0 : mmu_dcache 
-      generic map (dsu=>dsu, drepl=>drepl, dsets=>dsets, dlinesize=>dlinesize, dsetsize=>dsetsize,  dsetlock=>dsetlock, dsnoop=>dsnoop,
-            itlbnum=>itlbnum, dtlbnum=>dtlbnum, tlb_type=>tlb_type, memtech=>memtech, cached => cached)
+      generic map (dsu, drepl, dsets, dlinesize, dsetsize, dsetlock, dsnoop,
+            itlbnum, dtlbnum, tlb_type, memtech, cached, mmupgsz)
       port map ( rst, clk, dci, dcol, icol, mcdi, mcdo, ahbsi2,
 		 crami.dcramin, cramo.dcramo, fpuholdn, mmudci, mmudco, sclk);
 
@@ -123,7 +125,7 @@ begin
 
   -- MMU
   m0 : mmu
-      generic map (memtech, itlbnum, dtlbnum, tlb_type, tlb_rep)
+      generic map (memtech, itlbnum, dtlbnum, tlb_type, tlb_rep, mmupgsz)
       port map (rst, clk, mmudci, mmudco, mmuici, mmuico, mcmmo, mcmmi);
 
   ico <= icol;

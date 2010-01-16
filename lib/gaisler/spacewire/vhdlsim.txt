@@ -1,0 +1,2 @@
+spw_sim_codec_pkg.vhd
+spw_sim_codec.vhd

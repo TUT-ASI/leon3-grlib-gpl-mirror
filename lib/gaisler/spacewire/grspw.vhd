@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -46,7 +47,7 @@ entity grspw is
     sysfreq      : integer := 10000;
     usegen       : integer range 0 to 1  := 1;
     nsync        : integer range 1 to 2  := 1; 
-    rmap         : integer range 0 to 1  := 0;
+    rmap         : integer range 0 to 2  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
     fifosize1    : integer range 4 to 32 := 32;
     fifosize2    : integer range 16 to 64 := 64;
@@ -58,7 +59,10 @@ entity grspw is
     techfifo     : integer range 0 to 1 := 1;
     netlist      : integer range 0 to 1 := 0;
     ports        : integer range 1 to 2 := 1;
-    memtech      : integer range 0 to NTECH := DEFMEMTECH
+    memtech      : integer range 0 to NTECH := DEFMEMTECH;
+    nodeaddr     : integer range 0 to 255 := 254;
+    destkey      : integer range 0 to 255 := 0
+    
   );
   port(
     rst        : in  std_ulogic;
@@ -140,7 +144,9 @@ rtl : if netlist = 0 generate
       rmapbufs     => rmapbufs,
       scantest     => scantest,
       ports        => ports,
-      tech         => tech)
+      tech         => tech,
+      nodeaddr     => nodeaddr,
+      destkey      => destkey)
     port map(
       rst          => rst,
       clk          => clk,
@@ -169,11 +175,11 @@ rtl : if netlist = 0 generate
       --apb slv out
       prdata       => apbo.prdata,
       --spw in
-      di           => swni.d,
-      si           => swni.s,
+      di           => swni.d(1 downto 0),
+      si           => swni.s(1 downto 0),
       --spw out
-      do           => swno.d,
-      so           => swno.s,
+      do           => swno.d(1 downto 0),
+      so           => swno.s(1 downto 0),
       --time iface
       tickin       => swni.tickin,
       tickout      => swno.tickout,
@@ -220,7 +226,8 @@ rtl : if netlist = 0 generate
       linkdis      => swno.linkdis,
       testclk      => clk,
       testrst      => ahbmi.testrst,
-      testen       => ahbmi.testen
+      testen       => ahbmi.testen,
+      rmapact      => swno.rmapact
       );
 end generate;
 
@@ -266,11 +273,11 @@ struct : if netlist = 1 generate
       --apb slv out
       prdata       => apbo.prdata,
       --spw in
-      di           => swni.d,
-      si           => swni.s,
+      di           => swni.d(1 downto 0),
+      si           => swni.s(1 downto 0),
       --spw out
-      do           => swno.d,
-      so           => swno.s,
+      do           => swno.d(1 downto 0),
+      so           => swno.s(1 downto 0),
       --time iface
       tickin       => swni.tickin,
       tickout      => swno.tickout,
@@ -374,7 +381,7 @@ end generate;
 	txwrite, txwaddress(fabits1-1 downto 0), txwdata, testin);
 
     --RMAP Buffer
-    rmap_ram : if (rmap = 1) generate
+    rmap_ram : if (rmap /= 0) generate
       ram0 : syncram_2p generic map(memtech, rfifo, 8)
       port map(clk, rmrenablex, rmraddress(rfifo-1 downto 0), rmrdata, clk, 
 	rmwrite, rmwaddress(rfifo-1 downto 0), rmwdata, testin);
@@ -399,7 +406,7 @@ end generate;
       txrdata, clk, txwrite, txwaddress(fabits1-1 downto 0), txwdata, open, testin);
 
     --RMAP Buffer
-    rmap_ram : if (rmap = 1) generate
+    rmap_ram : if (rmap /= 0) generate
       ram0 : syncram_2pft generic map(memtech, rfifo, 8, 0, 0, 2)
       port map(clk, rmrenablex, rmraddress(rfifo-1 downto 0),
         rmrdata, clk, rmwrite, rmwaddress(rfifo-1 downto 0),

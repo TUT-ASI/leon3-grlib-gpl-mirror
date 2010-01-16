@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -45,6 +46,47 @@ architecture behavioral of generic_syncram is
   signal memarr : mem;
   signal ra  : std_logic_vector((abits -1) downto 0);
 
+begin
+
+  main : process(clk)
+  begin
+    if rising_edge(clk) then
+      if write = '1' then
+        memarr(conv_integer(address)) <= datain;
+      end if;
+      ra <= address;
+    end if;
+  end process;
+
+  dataout <= memarr(conv_integer(ra));
+
+end;
+
+library ieee;
+use ieee.std_logic_1164.all;
+library grlib;
+use grlib.stdlib.all;
+
+entity generic_syncram_reg is
+  generic ( abits : integer := 10; dbits : integer := 8 );
+  port (
+    clk      : in std_ulogic;
+    address  : in std_logic_vector((abits -1) downto 0);
+    datain   : in std_logic_vector((dbits -1) downto 0);
+    dataout  : out std_logic_vector((dbits -1) downto 0);
+    write    : in std_ulogic
+  ); 
+end;     
+
+architecture behavioral of generic_syncram_reg is
+
+  type mem is array(0 to (2**abits -1)) 
+	of std_logic_vector((dbits -1) downto 0);
+  signal memarr : mem;
+  signal ra  : std_logic_vector((abits -1) downto 0);
+
+  attribute syn_ramstyle : string;
+  attribute syn_ramstyle of memarr : signal is "registers";                               
 begin
 
   main : process(clk)
@@ -115,6 +157,62 @@ begin
 
 end;
 
+
+-- synchronous 2-port ram, common clock, flip-flops
+
+LIBRARY ieee;
+use ieee.std_logic_1164.all;
+library grlib;
+use grlib.stdlib.all;
+
+entity generic_syncram_2p_reg is
+  generic (
+    abits : integer := 8;
+    dbits : integer := 32;
+    sepclk: integer := 0
+  );
+  port (
+    rclk : in std_ulogic;
+    wclk : in std_ulogic;
+    rdaddress: in std_logic_vector (abits -1 downto 0);
+    wraddress: in std_logic_vector (abits -1 downto 0);
+    data: in std_logic_vector (dbits -1 downto 0);
+    wren : in std_ulogic;
+    q: out std_logic_vector (dbits -1 downto 0)
+  );
+end;
+
+architecture behav of generic_syncram_2p_reg is
+  type dregtype is array (0 to 2**abits - 1) 
+	of std_logic_vector(dbits -1 downto 0);
+  signal rfd : dregtype;
+  signal wa, ra : std_logic_vector (abits -1 downto 0);
+  attribute syn_ramstyle : string;
+  attribute syn_ramstyle of rfd : signal is "registers";                               
+begin
+
+  wp : process(wclk)
+  begin
+    if rising_edge(wclk) then
+      if wren = '1' then rfd(conv_integer(wraddress)) <= data; end if;
+    end if;
+  end process;
+
+  oneclk : if sepclk = 0 generate
+    rp : process(wclk) begin
+    if rising_edge(wclk) then ra <= rdaddress; end if;
+    end process;
+  end generate;
+
+  twoclk : if sepclk = 1 generate
+    rp : process(rclk) begin
+    if rising_edge(rclk) then ra <= rdaddress; end if;
+    end process;
+  end generate;
+
+  q <= rfd(conv_integer(ra));
+
+end;
 
 library ieee;
 use ieee.std_logic_1164.all;

@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -308,8 +309,8 @@ begin
     ahbo.hsize   <= hsize;
     ahbo.hburst  <= hburst;
     ahbo.hindex  <= hindex;
-    if nbo = "00" then ahbo.hprot   <= "11" & su & '0';
-    else ahbo.hprot   <= "11" & su & (nbo(1) xor nbo(0)); end if;
+    if nbo = "00" then ahbo.hprot <= "11" & su & '0';
+    else ahbo.hprot <= "11" & su & '1'; end if;
     
     mcio.grant   <= igrant;
     mcio.ready   <= iready;
@@ -323,7 +324,8 @@ begin
     mcdo.werr    <= r.werr;
     mcdo.cache   <= dhcache;
     mcdo.ba      <= r.ba;
-    mcdo.bg      <= r.bg;
+    mcdo.bg      <= r.bg and not v.bo(1);
+
 
     mcmmo.grant   <= mmgrant;
     mcmmo.ready   <= mmready;

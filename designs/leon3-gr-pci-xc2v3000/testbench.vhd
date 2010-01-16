@@ -1,6 +1,10 @@
 ------------------------------------------------------------------------------
 --  LEON3 Demonstration design test bench
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -11,6 +15,10 @@
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
 --  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 --  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -44,24 +52,24 @@ entity testbench is
     srambanks  : integer := 2		-- number of ram banks
   );
   port (
-    pci_rst     : inout std_ulogic;	-- PCI bus
-    pci_clk 	: in std_ulogic;
-    pci_gnt     : in std_ulogic;
-    pci_idsel   : in std_ulogic;  
-    pci_lock    : inout std_ulogic;
+    pci_rst     : inout std_logic;	-- PCI bus
+    pci_clk 	: in std_logic;
+    pci_gnt     : in std_logic;
+    pci_idsel   : in std_logic;  
+    pci_lock    : inout std_logic;
     pci_ad 	: inout std_logic_vector(31 downto 0);
     pci_cbe 	: inout std_logic_vector(3 downto 0);
-    pci_frame   : inout std_ulogic;
-    pci_irdy 	: inout std_ulogic;
-    pci_trdy 	: inout std_ulogic;
-    pci_devsel  : inout std_ulogic;
-    pci_stop 	: inout std_ulogic;
-    pci_perr 	: inout std_ulogic;
-    pci_par 	: inout std_ulogic;    
-    pci_req 	: inout std_ulogic;
-    pci_serr    : inout std_ulogic;
-    pci_host   	: in std_ulogic;
-    pci_66	: in std_ulogic
+    pci_frame   : inout std_logic;
+    pci_irdy 	: inout std_logic;
+    pci_trdy 	: inout std_logic;
+    pci_devsel  : inout std_logic;
+    pci_stop 	: inout std_logic;
+    pci_perr 	: inout std_logic;
+    pci_par 	: inout std_logic;    
+    pci_req 	: inout std_logic;
+    pci_serr    : inout std_logic;
+    pci_host   	: in std_logic;
+    pci_66	: in std_logic
   );
 end; 
 
@@ -83,45 +91,45 @@ signal ramoen   : std_logic_vector(4 downto 0);
 signal rwen     : std_logic_vector(3 downto 0);
 signal rwenx    : std_logic_vector(3 downto 0);
 signal romsn    : std_logic_vector(1 downto 0);
-signal iosn     : std_ulogic;
-signal oen      : std_ulogic;
-signal read     : std_ulogic;
-signal writen   : std_ulogic;
-signal brdyn    : std_ulogic;
-signal bexcn    : std_ulogic;
-signal wdog     : std_ulogic;
-signal dsuen, dsutx, dsurx, dsubre, dsuact : std_ulogic;
-signal dsurst   : std_ulogic;
-signal test     : std_ulogic;
+signal iosn     : std_logic;
+signal oen      : std_logic;
+signal read     : std_logic;
+signal writen   : std_logic;
+signal brdyn    : std_logic;
+signal bexcn    : std_logic;
+signal wdog     : std_logic;
+signal dsuen, dsutx, dsurx, dsubre, dsuact : std_logic;
+signal dsurst   : std_logic;
+signal test     : std_logic;
 signal error    : std_logic;
 signal gpio	: std_logic_vector(7 downto 0);
-signal GND      : std_ulogic := '0';
-signal VCC      : std_ulogic := '1';
-signal NC       : std_ulogic := 'Z';
-signal clk2     : std_ulogic := '1';
+signal GND      : std_logic := '0';
+signal VCC      : std_logic := '1';
+signal NC       : std_logic := 'Z';
+signal clk2     : std_logic := '1';
     
 signal sdcke    : std_logic_vector ( 1 downto 0);  -- clk en
 signal sdcsn    : std_logic_vector ( 1 downto 0);  -- chip sel
-signal sdwen    : std_ulogic;                       -- write en
-signal sdrasn   : std_ulogic;                       -- row addr stb
-signal sdcasn   : std_ulogic;                       -- col addr stb
+signal sdwen    : std_logic;                       -- write en
+signal sdrasn   : std_logic;                       -- row addr stb
+signal sdcasn   : std_logic;                       -- col addr stb
 signal sddqm    : std_logic_vector ( 3 downto 0);  -- data i/o mask
-signal sdclk    : std_ulogic;       
-signal plllock    : std_ulogic;       
-signal txd1, rxd1 : std_ulogic;       
-signal txd2, rxd2 : std_ulogic;       
+signal sdclk    : std_logic;       
+signal plllock    : std_logic;       
+signal txd1, rxd1 : std_logic;       
+signal txd2, rxd2 : std_logic;       
 
 signal etx_clk, erx_clk, erx_dv, erx_er, erx_col, erx_crs, etx_en, etx_er : std_logic:='0';
 signal erxd, etxd: std_logic_vector(3 downto 0):=(others=>'0');
 signal erxdt, etxdt: std_logic_vector(7 downto 0):=(others=>'0');  
 signal emdc, emdio: std_logic;
-signal gtx_clk : std_ulogic;
+signal gtx_clk : std_logic;
 
 constant lresp : boolean := false;
 
 signal pci_arb_req, pci_arb_gnt : std_logic_vector(0 to 3);
 
-signal pllref	: std_ulogic;
+signal pllref	: std_logic;
 
 signal spw_rxd  : std_logic_vector(0 to 1) := "00";
 signal spw_rxs  : std_logic_vector(0 to 1) := "00";
@@ -221,7 +229,7 @@ begin
 
 
   dsucom : process
-    procedure dsucfg(signal dsurx : in std_ulogic; signal dsutx : out std_ulogic) is
+    procedure dsucfg(signal dsurx : in std_logic; signal dsutx : out std_logic) is
     variable w32 : std_logic_vector(31 downto 0);
     variable c8  : std_logic_vector(7 downto 0);
     constant txp : time := 160 * 1 ns;

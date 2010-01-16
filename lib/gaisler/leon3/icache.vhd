@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -480,6 +481,9 @@ begin
       end if;
       vmask := dci.maddress(ilinesize -1 downto 0);
       v.diagrdy := '1';
+      if (dco.icdiag.ilramen = '1') and (lram = 1) and (r.flush2 = '1') then
+        v.diagrdy := '0';
+      end if;
     end if;
 
     

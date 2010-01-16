@@ -6,6 +6,8 @@
 #define CONFIG_SYN_TECH rhumc
 #elif defined CONFIG_SYN_ATC18
 #define CONFIG_SYN_TECH atc18s
+#elif defined CONFIG_SYN_ATC18RHA
+#define CONFIG_SYN_TECH atc18rha
 #elif defined CONFIG_SYN_AXCEL
 #define CONFIG_SYN_TECH axcel
 #elif defined CONFIG_SYN_PROASICPLUS
@@ -54,6 +56,8 @@
 #define CONFIG_SYN_TECH virtex5
 #elif defined CONFIG_SYN_RH_LIB18T
 #define CONFIG_SYN_TECH rhlib18t
+#elif defined CONFIG_SYN_SMIC13
+#define CONFIG_SYN_TECH smic013
 #elif defined CONFIG_SYN_UT025CRH
 #define CONFIG_SYN_TECH ut25
 #elif defined CONFIG_SYN_TSMC90
@@ -169,12 +173,15 @@
 #ifdef CONFIG_IU_V8MULDIV
 #ifdef CONFIG_IU_MUL_LATENCY_4
 #define CFG_IU_V8 1
-#else
+#elif defined CONFIG_IU_MUL_LATENCY_5
 #define CFG_IU_V8 2
+#elif defined CONFIG_IU_MUL_LATENCY_2
+#define CFG_IU_V8 16#32#
 #endif
 #else
 #define CFG_IU_V8 0
 #endif
+
 #ifndef CONFIG_PWD
 #define CONFIG_PWD 0
 #endif
@@ -410,6 +417,19 @@
 #define CFG_DLRAM_SIZE 1
 #endif
 
+#if defined CONFIG_MMU_PAGE_4K
+#define CONFIG_MMU_PAGE 0
+#elif defined CONFIG_MMU_PAGE_8K
+#define CONFIG_MMU_PAGE 1
+#elif defined CONFIG_MMU_PAGE_16K
+#define CONFIG_MMU_PAGE 2
+#elif defined CONFIG_MMU_PAGE_32K
+#define CONFIG_MMU_PAGE 3
+#elif defined CONFIG_MMU_PAGE_PROG
+#define CONFIG_MMU_PAGE 4
+#else
+#define CONFIG_MMU_PAGE 0
+#endif
 
 #ifdef CONFIG_MMU_ENABLE
 #define CONFIG_MMUEN 1
@@ -615,11 +635,11 @@
 #endif
 
 #ifndef CONFIG_DSU_ETHMSB
-#define CONFIG_DSU_ETHMSB 00007A
+#define CONFIG_DSU_ETHMSB 020000
 #endif
 
 #ifndef CONFIG_DSU_ETHLSB
-#define CONFIG_DSU_ETHLSB CC0001
+#define CONFIG_DSU_ETHLSB 000009
 #endif
 
 #if defined CONFIG_DSU_ETHSZ1
@@ -878,6 +898,10 @@
 #define CONFIG_SPW_RMAPCRC 0
 #endif
 
+#ifndef CONFIG_SPW_RXUNAL
+#define CONFIG_SPW_RXUNAL 0
+#endif
+
 #ifndef CONFIG_SPW_NETLIST
 #define CONFIG_SPW_NETLIST 0
 #endif
@@ -892,6 +916,39 @@
 #define CONFIG_SPW_GRSPW 2
 #endif
 
+#ifndef CONFIG_SPW_DMACHAN
+#define CONFIG_SPW_DMACHAN 1
+#endif
+
+#ifndef CONFIG_SPW_PORTS
+#define CONFIG_SPW_PORTS 1
+#endif
+
+#if defined CONFIG_SPW_RX_SDR
+#define CONFIG_SPW_INPUT 2
+#elif defined CONFIG_SPW_RX_DDR
+#define CONFIG_SPW_INPUT 3
+#elif defined CONFIG_SPW_RX_XOR
+#define CONFIG_SPW_INPUT 0
+#elif defined CONFIG_SPW_RX_AFLEX
+#define CONFIG_SPW_INPUT 1
+#else
+#define CONFIG_SPW_INPUT 2
+#endif
+
+#if defined CONFIG_SPW_TX_SDR
+#define CONFIG_SPW_OUTPUT 0
+#elif defined CONFIG_SPW_TX_DDR
+#define CONFIG_SPW_OUTPUT 1
+#elif defined CONFIG_SPW_TX_AFLEX
+#define CONFIG_SPW_OUTPUT 2
+#else
+#define CONFIG_SPW_OUTPUT 0
+#endif
+
+#ifndef CONFIG_SPW_RTSAME
+#define CONFIG_SPW_RTSAME 0
+#endif
 #ifndef CONFIG_UART1_ENABLE
 #define CONFIG_UART1_ENABLE 0
 #endif
@@ -934,6 +991,9 @@
 
 #ifndef CONFIG_IRQ3_ENABLE
 #define CONFIG_IRQ3_ENABLE 0
+#endif
+#ifndef CONFIG_IRQ3_NSEC
+#define CONFIG_IRQ3_NSEC 0
 #endif
 #ifndef CONFIG_GPT_ENABLE
 #define CONFIG_GPT_ENABLE 0

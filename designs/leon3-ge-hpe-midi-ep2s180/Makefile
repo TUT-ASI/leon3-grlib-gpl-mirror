@@ -20,7 +20,8 @@ CLEAN=soft-clean quartus-cpf-clean mkprom-clean
 TECHLIBS = altera altera_mf stratixii
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip hynix cypress ihp grusbhc ec ecp2
-DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan pci leon3ft ambatest ddr
+DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan pci leon3ft ambatest ddr \
+	slink ascs haps coremp7 spacewire
 
 include $(GRLIB)/bin/Makefile
 

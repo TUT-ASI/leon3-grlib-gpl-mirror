@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -16,10 +17,12 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------
--- Entity:      Vga Controller
--- File:        vga_controller.vhd
+-- Entity:      svgactrl
+-- File:        svgactrl.vhd
 -- Author:      Hans Soderlund
--- Description: Vga Controller main file
+-- Modified:    Jiri Gaisler, Edvin Catovic, Jan Andersson
+-- Contact:     support@gaisler.com
+-- Description: SVGA Controller core
 -----------------------------------------------------------------------------
 
 library ieee;
@@ -37,7 +40,7 @@ entity svgactrl is
 
   generic(
     length      : integer := 384;        -- Fifo-length
-    part        : integer := 128;        -- Fifo-part lenght
+    part        : integer := 128;        -- Fifo-part length
     memtech     : integer := DEFMEMTECH;  
     pindex      : integer := 0; 
     paddr       : integer := 0;
@@ -66,12 +69,24 @@ entity svgactrl is
 end ;
 
 architecture rtl of svgactrl is
-
+  
   constant REVISION : amba_version_type := 0; 
   constant pconfig : apb_config_type := (
      0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_SVGACTRL, 0, REVISION, 0),
      1 => apb_iobar(paddr, pmask));
 
+  -- Calculates the required number of address bits
+  function addrbits return integer is
+  begin
+    for i in 1 to 30 loop 
+      if (2**i >= length) then return(i);
+      end if;
+    end loop;
+    return(30);
+  end function addrbits;
+  
+  constant ABITS : integer := addrbits;
+  
   type RegisterType is array (1 to 5) of std_logic_vector(31 downto 0);
   type state_type is (running, not_running, reset);
  
@@ -152,8 +167,8 @@ architecture rtl of svgactrl is
   signal vvideo             : std_logic_vector(15 downto 0);
   signal write_pointer_clut : std_logic_vector(7 downto 0);
   signal read_pointer_clut  : std_logic_vector(7 downto 0);
-  signal read_pointer_fifo  : std_logic_vector(9 downto 0);
-  signal write_pointer_fifo : std_logic_vector(9 downto 0);
+  signal read_pointer_fifo  : std_logic_vector((ABITS-1) downto 0);
+  signal write_pointer_fifo : std_logic_vector((ABITS-1) downto 0);
   signal datain_clut        : std_logic_vector(23 downto 0);
   signal dataout_clut       : std_logic_vector(23 downto 0);
   signal dataout_fifo       : std_logic_vector(31 downto 0);
@@ -165,7 +180,7 @@ architecture rtl of svgactrl is
 begin
 
   vcc <= '1';
-  ram0 : syncram_2p generic map (tech => memtech, abits => 10, dbits => 32, 
+  ram0 : syncram_2p generic map (tech => memtech, abits => ABITS, dbits => 32, 
 	sepclk => 1)
   port map (vgaclk, read_en_fifo, read_pointer_fifo, dataout_fifo,clk, write_en_fifo,
 	write_pointer_fifo, datain_fifo);
@@ -363,7 +378,7 @@ begin
     dmai.busy   <= '0';
     dmai.start    <= r.start and r.enable;
     dmai.address  <= r.adress;
-    write_pointer_fifo <= conv_std_logic_vector(v.ram_address,10);
+    write_pointer_fifo <= conv_std_logic_vector(v.ram_address,ABITS);
     write_pointer_clut <= r.write_pointer_clut;
     datain_fifo   <= v.data;
     datain_clut <= r.datain_clut;
@@ -556,7 +571,7 @@ begin
     write_en     <= sync_rb.s3(2);
     fifo_en      <= t.fifo_en;
     read_pointer_clut <= v.read_pointer_clut;
-    read_pointer_fifo <= conv_std_logic_vector(v.read_pointer_out,10);
+    read_pointer_fifo <= conv_std_logic_vector(v.read_pointer_out,ABITS);
     read_en_fifo  <= not v.fifo_ren;
     read_en_clut  <= not v.fifo_ren and not r.func(1) and r.func(0); 
     vgao.video_out_r <= t.data_out(23 downto 16);
@@ -566,7 +581,8 @@ begin
     vgao.vsync     <= t.vsync2;
     vgao.comp_sync <= t.csync2;
     vgao.blank     <= t.blank2;
-
+    vgao.bitdepth  <= r.func;
+    
   end process;
 
   proc_clk : process(clk)
@@ -591,5 +607,16 @@ begin
     end if;
   end process;
 
+  -- Boot message
+  -- pragma translate_off
+  bootmsg : report_version 
+    generic map (
+      "svgactrl" & tost(pindex) & ": SVGA controller rev " &
+      tost(REVISION) & ", FIFO length: " & tost(length) &
+      ", FIFO part length: " & tost(part) &
+      ", FIFO address bits: " & tost(ABITS));
+  -- pragma translate_on
+  
+  
 end ;
 

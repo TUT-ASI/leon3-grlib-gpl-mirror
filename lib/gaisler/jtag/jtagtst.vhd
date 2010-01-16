@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -303,7 +304,7 @@ begin
   assert (datav(0) = X"00000010") and (datav(1) = X"00000011") and (datav(2) = X"00000012") and (datav(3) = X"00000013")
     report "JTAG test failed" severity failure;
   
-  assert false report "JTAG test passed, halting with failure." severity failure;
+  print("JTAG test passed");
 
   end procedure;
     

@@ -9,4 +9,9 @@
   constant CFG_SPW_NETLIST : integer := CONFIG_SPW_NETLIST;
   constant CFG_SPW_FT      : integer := CONFIG_SPW_FT;
   constant CFG_SPW_GRSPW   : integer := CONFIG_SPW_GRSPW;
-
+  constant CFG_SPW_RXUNAL  : integer := CONFIG_SPW_RXUNAL;
+  constant CFG_SPW_DMACHAN : integer := CONFIG_SPW_DMACHAN;
+  constant CFG_SPW_PORTS   : integer := CONFIG_SPW_PORTS;
+  constant CFG_SPW_INPUT   : integer := CONFIG_SPW_INPUT;
+  constant CFG_SPW_OUTPUT  : integer := CONFIG_SPW_OUTPUT;
+  constant CFG_SPW_RTSAME  : integer := CONFIG_SPW_RTSAME;

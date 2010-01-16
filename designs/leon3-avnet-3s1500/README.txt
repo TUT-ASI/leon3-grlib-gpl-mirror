@@ -9,7 +9,7 @@ Design specifics:
 * The console UART (UART 1) is connected to the P3 DB-9 connector.
 
 * The JTAG DSU interface is enabled and works well with
-  GRMON and Xilinx parallel cabel III or IV .
+  GRMON and Xilinx parallel cable III or IV .
 
 * The GRETH core is enabled and runs without problems at 100 Mbit.
   Ethernet debug link is enabled, default IP is 192.168.0.51.
@@ -29,7 +29,7 @@ Design specifics:
   programmed using GRMON.
 
 * The LEON3 processor can run up to 40 - 50 MHz on the board
-  in the typical configuartion.
+  in the typical configuration.
 
 
 * Sample output from GRMON info sys is:

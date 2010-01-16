@@ -1,0 +1,314 @@
+# Actel Physical design constraints file
+
+#
+# IO banks setting
+#
+
+set_iobank Bank7 -vcci 3.30 -fixed no
+set_iobank Bank6 -vcci 3.30 -fixed no
+set_iobank Bank5 -vcci 3.30 -fixed no
+set_iobank Bank4 -vcci 3.30 -fixed no
+set_iobank Bank3 -vcci 3.30 -fixed no
+set_iobank Bank2 -vcci 3.30 -fixed no
+set_iobank Bank1 -vcci 3.30 -fixed no
+set_iobank Bank0 -vcci 3.30 -fixed no
+
+#
+# I/O constraints
+#
+# System clock and SpaceWire clock
+set_io clk1 -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname D17 -fixed yes
+set_io clk2 -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname L15 -fixed yes
+set_io clk3 -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname M17 -fixed yes
+set_io clk4 -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname M5 -fixed yes
+
+set_io clkvoted -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname F13 -fixed yes
+
+# System reset
+set_io resetn1 -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER On -IN_DELAY Off -pinname AA13 -fixed yes
+set_io resetn2 -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER On -IN_DELAY Off -pinname B14 -fixed yes
+set_io resetn3 -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER On -IN_DELAY Off -pinname P18 -fixed yes
+set_io auxresetn -iostd LVTTL -RES_PULL Up -SCHMITT_TRIGGER On -IN_DELAY Off -pinname L8 -fixed yes
+
+# SRAM signals
+set_io ramaddr\[2\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 30 -pinname Y16 -fixed yes
+set_io ramaddr\[3\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 30 -pinname AB19 -fixed yes
+set_io ramaddr\[4\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 30 -pinname W11 -fixed yes
+set_io ramaddr\[5\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 30 -pinname AA11 -fixed yes
+set_io ramaddr\[6\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 30 -pinname Y13 -fixed yes
+set_io ramaddr\[7\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 30 -pinname W13 -fixed yes
+set_io ramaddr\[8\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 30 -pinname W12 -fixed yes
+set_io ramaddr\[9\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 30 -pinname U14 -fixed yes
+set_io ramaddr\[10\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 30 -pinname V13 -fixed yes
+set_io ramaddr\[11\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 30 -pinname AB17 -fixed yes
+set_io ramaddr\[12\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 30 -pinname AA19 -fixed yes
+set_io ramaddr\[13\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 30 -pinname Y12 -fixed yes
+set_io ramaddr\[14\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 30 -pinname T14 -fixed yes
+set_io ramaddr\[15\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 30 -pinname AA12 -fixed yes
+set_io ramaddr\[16\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 30 -pinname V14 -fixed yes
+set_io ramaddr\[17\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 30 -pinname AB14 -fixed yes
+set_io ramaddr\[18\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 30 -pinname AA15 -fixed yes
+set_io ramaddr\[19\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 30 -pinname AA14 -fixed yes
+set_io ramaddr\[20\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 30 -pinname AB18 -fixed yes
+set_io ramdata\[0\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname W10 -fixed yes
+set_io ramdata\[1\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname W9 -fixed yes
+set_io ramdata\[2\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname W8 -fixed yes
+set_io ramdata\[3\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname W7 -fixed yes
+set_io ramdata\[4\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname W6 -fixed yes
+set_io ramdata\[5\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname W5 -fixed yes
+set_io ramdata\[6\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname W3 -fixed yes
+set_io ramdata\[7\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname V12 -fixed yes
+set_io ramdata\[8\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname V11 -fixed yes
+set_io ramdata\[9\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname V10 -fixed yes
+set_io ramdata\[10\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname V9 -fixed yes
+set_io ramdata\[11\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname V8 -fixed yes
+set_io ramdata\[12\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname V7 -fixed yes
+set_io ramdata\[13\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname U12 -fixed yes
+set_io ramdata\[14\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname U11 -fixed yes
+set_io ramdata\[15\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname U10 -fixed yes
+set_io ramdata\[16\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname U9 -fixed yes
+set_io ramdata\[17\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname U8 -fixed yes
+set_io ramdata\[18\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname T12 -fixed yes
+set_io ramdata\[19\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname T11 -fixed yes
+set_io ramdata\[20\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname T10 -fixed yes
+set_io ramdata\[21\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname T9 -fixed yes
+set_io ramdata\[22\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname R12 -fixed yes
+set_io ramdata\[23\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname R11 -fixed yes
+set_io ramdata\[24\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname AB11 -fixed yes
+set_io ramdata\[25\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname AB10 -fixed yes
+set_io ramdata\[26\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname AB9 -fixed yes
+set_io ramdata\[27\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname AB8 -fixed yes
+set_io ramdata\[28\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname AB7 -fixed yes
+set_io ramdata\[29\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname AB6 -fixed yes
+set_io ramdata\[30\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname AB5 -fixed yes
+set_io ramdata\[31\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname AB4 -fixed yes
+set_io ramcb\[0\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname AA10 -fixed yes
+set_io ramcb\[1\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname AA9 -fixed yes
+set_io ramcb\[2\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname AA8 -fixed yes
+set_io ramcb\[3\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname AA7 -fixed yes
+set_io ramcb\[4\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname AA6 -fixed yes
+set_io ramcb\[5\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname AA5 -fixed yes
+set_io ramcb\[6\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname AA4 -fixed yes
+set_io ramcb\[7\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 10 -pinname AA3 -fixed yes
+set_io ramsn0\[0\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname V16 -fixed yes
+set_io ramsn0\[1\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname AB15 -fixed yes
+set_io ramsn0\[2\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname V15 -fixed yes
+set_io ramsn0\[3\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname U13 -fixed yes
+set_io ramsn0\[4\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname AA16 -fixed yes
+set_io ramsn1\[0\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname M8 -fixed yes
+set_io ramsn1\[1\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname M3 -fixed yes
+set_io ramsn1\[2\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname M4 -fixed yes
+set_io ramsn1\[3\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname L5 -fixed yes
+set_io ramsn1\[4\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname N22 -fixed yes
+set_io ramoen0\[0\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname W14 -fixed yes
+set_io ramoen0\[1\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname AB12 -fixed yes
+set_io ramoen0\[2\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname AA18 -fixed yes
+set_io ramoen0\[3\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname W16 -fixed yes
+set_io ramoen0\[4\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname AB13 -fixed yes
+set_io ramoen1\[0\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname P5 -fixed yes
+set_io ramoen1\[1\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname R5 -fixed yes
+set_io ramoen1\[2\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname R6 -fixed yes
+set_io ramoen1\[3\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname N2 -fixed yes
+set_io ramoen1\[4\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname P2 -fixed yes
+set_io rwen0\[0\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname Y19 -fixed yes
+set_io rwen0\[1\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname W17 -fixed yes
+set_io rwen0\[2\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname Y17 -fixed yes
+set_io rwen0\[3\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname AA20 -fixed yes
+set_io rwen0\[4\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname W15 -fixed yes
+set_io rwen1\[0\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname M7 -fixed yes
+set_io rwen1\[1\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname N1 -fixed yes
+set_io rwen1\[2\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname P6 -fixed yes
+set_io rwen1\[3\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname P4 -fixed yes
+set_io rwen1\[4\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname P3 -fixed yes
+
+# PROM signals
+set_io romaddr\[0\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname L21 -fixed yes
+set_io romaddr\[1\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname H22 -fixed yes
+set_io romaddr\[2\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname J19 -fixed yes
+set_io romaddr\[3\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname F20 -fixed yes
+set_io romaddr\[4\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname F22 -fixed yes
+set_io romaddr\[5\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname G18 -fixed yes
+set_io romaddr\[6\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname D22 -fixed yes
+set_io romaddr\[7\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname F19 -fixed yes
+set_io romaddr\[8\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname C20 -fixed yes
+set_io romaddr\[9\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname H16 -fixed yes
+set_io romaddr\[10\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname H19 -fixed yes
+set_io romaddr\[11\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname G21 -fixed yes
+set_io romaddr\[12\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname E22 -fixed yes
+set_io romaddr\[13\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname H18 -fixed yes
+set_io romaddr\[14\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname C21 -fixed yes
+set_io romaddr\[15\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname F21 -fixed yes
+set_io romaddr\[16\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname D20 -fixed yes
+set_io romaddr\[17\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname E21 -fixed yes
+set_io romaddr\[18\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname K17 -fixed yes
+set_io romaddr\[19\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname K22 -fixed yes
+set_io romaddr\[20\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname G20 -fixed yes
+set_io romdata\[24\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 12 -pinname E19 -fixed yes
+set_io romdata\[25\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 12 -pinname G19 -fixed yes
+set_io romdata\[26\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 12 -pinname D21 -fixed yes
+set_io romdata\[27\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 12 -pinname J22 -fixed yes
+set_io romdata\[28\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 12 -pinname L20 -fixed yes
+set_io romdata\[29\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 12 -pinname L22 -fixed yes
+set_io romdata\[30\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 12 -pinname E18 -fixed yes
+set_io romdata\[31\] -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 12 -pinname F18 -fixed yes
+set_io romoen -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 20 -pinname H17 -fixed yes
+set_io romwriten -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname G17 -fixed yes
+set_io romsn -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname G22 -fixed yes
+set_io romryby -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname J16 -fixed yes
+set_io romrstn -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 10 -pinname J17 -fixed yes
+set_io romtrn -iostd LVTTL -OUT_DRIVE 16 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 20 -pinname J18 -fixed yes
+
+# General purpose I/O
+set_io gpio\[0\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname A8 -fixed yes
+set_io gpio\[1\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname A9 -fixed yes
+set_io gpio\[2\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname A10 -fixed yes
+set_io gpio\[3\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname A11 -fixed yes
+set_io gpio\[4\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname B3 -fixed yes
+set_io gpio\[5\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname B4 -fixed yes
+set_io gpio\[6\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname B5 -fixed yes
+set_io gpio\[7\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname B6 -fixed yes
+set_io gpio\[8\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname B7 -fixed yes
+set_io gpio\[9\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname B8 -fixed yes
+set_io gpio\[10\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname B9 -fixed yes
+set_io gpio\[11\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname B10 -fixed yes
+set_io gpio\[12\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname B11 -fixed yes
+set_io gpio\[13\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname C4 -fixed yes
+set_io gpio\[14\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname C6 -fixed yes
+set_io gpio\[15\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname C7 -fixed yes
+set_io gpio\[16\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname C10 -fixed yes
+set_io gpio\[17\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname C11 -fixed yes
+set_io gpio\[18\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname D5 -fixed yes
+set_io gpio\[19\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname D6 -fixed yes
+set_io gpio\[20\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname D7 -fixed yes
+set_io gpio\[21\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname D8 -fixed yes
+set_io gpio\[22\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname D9 -fixed yes
+set_io gpio\[23\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname D10 -fixed yes
+set_io gpio\[24\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname D11 -fixed yes
+set_io gpio\[25\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname E7 -fixed yes
+set_io gpio\[26\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname E8 -fixed yes
+set_io gpio\[27\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname E9 -fixed yes
+set_io gpio\[28\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname E10 -fixed yes
+set_io gpio\[29\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname E11 -fixed yes
+set_io gpio\[30\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname F8 -fixed yes
+set_io gpio\[31\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname F9 -fixed yes
+set_io gpio\[32\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname F10 -fixed yes
+set_io gpio\[33\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname F11 -fixed yes
+set_io gpio\[34\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname G9 -fixed yes
+set_io gpio\[35\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname G10 -fixed yes
+set_io gpio\[36\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname H11 -fixed yes
+set_io gpio\[37\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname G11 -fixed yes
+set_io gpio\[38\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname E12 -fixed yes
+set_io gpio\[39\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname G13 -fixed yes
+set_io gpio\[40\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname F12 -fixed yes
+set_io gpio\[41\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname A12 -fixed yes
+set_io gpio\[42\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname E15 -fixed yes
+set_io gpio\[43\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname H12 -fixed yes
+set_io gpio\[44\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname B12 -fixed yes
+set_io gpio\[45\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname E13 -fixed yes
+set_io gpio\[46\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname F15 -fixed yes
+set_io gpio\[47\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname G12 -fixed yes
+set_io gpio\[48\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname A13 -fixed yes
+set_io gpio\[49\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname B13 -fixed yes
+set_io gpio\[50\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname A14 -fixed yes
+set_io gpio\[51\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname D16 -fixed yes
+set_io gpio\[52\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname C13 -fixed yes
+set_io gpio\[53\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname C12 -fixed yes
+set_io gpio\[54\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname F14 -fixed yes
+set_io gpio\[55\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname G14 -fixed yes
+set_io gpio\[56\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname A16 -fixed yes
+set_io gpio\[57\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname D18 -fixed yes
+set_io gpio\[58\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname E16 -fixed yes
+set_io gpio\[59\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname E14 -fixed yes
+
+set_io pio\[0\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL Up -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname P21 -fixed yes
+set_io pio\[1\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname T22 -fixed yes
+set_io pio\[2\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname R22 -fixed yes
+set_io pio\[3\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname P17 -fixed yes
+set_io pio\[4\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname R19 -fixed yes
+set_io pio\[5\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname P19 -fixed yes
+set_io pio\[6\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname U21 -fixed yes
+set_io pio\[7\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname T21 -fixed yes
+set_io pio\[8\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname V22 -fixed yes
+set_io pio\[9\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname U22 -fixed yes
+set_io pio\[10\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL Up -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname U20 -fixed yes
+set_io pio\[11\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname T20 -fixed yes
+set_io pio\[12\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname V21 -fixed yes
+set_io pio\[13\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname W20 -fixed yes
+set_io pio\[14\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL Up -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname T18 -fixed yes
+set_io pio\[15\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -SKEW Off -OUT_LOAD 35 -pinname R18 -fixed yes
+
+# SpaceWire signals
+set_io spw_rxd\[0\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname M15 -fixed yes
+set_io spw_rxd\[1\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname M22 -fixed yes
+set_io spw_rxs\[0\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname L17 -fixed yes
+set_io spw_rxs\[1\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname M21 -fixed yes
+set_io spw_txd\[0\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname M19 -fixed yes
+set_io spw_txd\[1\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname N18 -fixed yes
+set_io spw_txs\[0\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname M20 -fixed yes
+set_io spw_txs\[1\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname N19 -fixed yes
+
+# CAN signals
+set_io can_rx\[0\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname N21 -fixed yes
+set_io can_rx\[1\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname N17 -fixed yes
+set_io can_tx\[0\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname M16 -fixed yes
+set_io can_tx\[1\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname N16 -fixed yes
+
+# SPI signals
+set_io spi_miso\[0\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname E2 -fixed yes
+set_io spi_miso\[1\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname L2 -fixed yes
+set_io spi_miso\[2\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname N4 -fixed yes
+set_io spi_miso\[3\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname V4 -fixed yes
+set_io spi_mosi\[0\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname E5 -fixed yes
+set_io spi_mosi\[1\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname L4 -fixed yes
+set_io spi_mosi\[2\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname N6 -fixed yes
+set_io spi_mosi\[3\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname W1 -fixed yes
+set_io spi_sck\[0\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname E4 -fixed yes
+set_io spi_sck\[1\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname L3 -fixed yes
+set_io spi_sck\[2\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname N5 -fixed yes
+set_io spi_sck\[3\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname V5 -fixed yes
+set_io spi_slvsel\[0\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname F1 -fixed yes
+set_io spi_slvsel\[1\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname L6 -fixed yes
+set_io spi_slvsel\[2\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname N7 -fixed yes
+set_io spi_slvsel\[3\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname W2 -fixed yes
+set_io adcconvn\[0\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname C3 -fixed yes
+set_io adcconvn\[1\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname J4 -fixed yes
+set_io adcconvn\[2\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname M2 -fixed yes
+set_io adcconvn\[3\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname T4 -fixed yes
+set_io adcstbyn\[0\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname C2 -fixed yes
+set_io adcstbyn\[1\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname J2 -fixed yes
+set_io adcstbyn\[2\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname L1 -fixed yes
+set_io adcstbyn\[3\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL None -SKEW Off -OUT_LOAD 35 -pinname T3 -fixed yes
+
+# Fault tolerance related signals
+set_io bankin\[0\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname A6 -fixed yes
+set_io bankin\[1\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname A7 -fixed yes
+set_io bankin\[2\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname D12 -fixed yes
+set_io bankin\[3\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname D13 -fixed yes
+set_io bankin\[4\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname K20 -fixed yes
+set_io bankin\[5\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname K18 -fixed yes
+set_io bankin\[6\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname Y20 -fixed yes
+set_io bankin\[7\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname Y21 -fixed yes
+set_io bankin\[8\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname AA17 -fixed yes
+set_io bankin\[9\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname AB16 -fixed yes
+set_io bankin\[10\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname Y6 -fixed yes
+set_io bankin\[11\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname Y7 -fixed yes
+set_io bankin\[12\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname R2 -fixed yes
+set_io bankin\[13\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname R4 -fixed yes
+set_io bankin\[14\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname H1 -fixed yes
+set_io bankin\[15\] -iostd LVTTL -RES_PULL None -SCHMITT_TRIGGER Off -IN_DELAY Off -pinname H2 -fixed yes
+set_io bankout\[0\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL Up -SKEW Off -OUT_LOAD 35 -pinname A4 -fixed yes
+set_io bankout\[1\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL Down -SKEW Off -OUT_LOAD 35 -pinname A5 -fixed yes
+set_io bankout\[2\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL Up -SKEW Off -OUT_LOAD 35 -pinname C17 -fixed yes
+set_io bankout\[3\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL Down -SKEW Off -OUT_LOAD 35 -pinname C19 -fixed yes
+set_io bankout\[4\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL Up -SKEW Off -OUT_LOAD 35 -pinname K21 -fixed yes
+set_io bankout\[5\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL Down -SKEW Off -OUT_LOAD 35 -pinname K19 -fixed yes
+set_io bankout\[6\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL Up -SKEW Off -OUT_LOAD 35 -pinname W21 -fixed yes
+set_io bankout\[7\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL Down -SKEW Off -OUT_LOAD 35 -pinname W22 -fixed yes
+set_io bankout\[8\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL Up -SKEW Off -OUT_LOAD 35 -pinname T13 -fixed yes
+set_io bankout\[9\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL Down -SKEW Off -OUT_LOAD 35 -pinname Y11 -fixed yes
+set_io bankout\[10\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL Up -SKEW Off -OUT_LOAD 35 -pinname Y3 -fixed yes
+set_io bankout\[11\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL Down -SKEW Off -OUT_LOAD 35 -pinname Y4 -fixed yes
+set_io bankout\[12\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL Up -SKEW Off -OUT_LOAD 35 -pinname P7 -fixed yes
+set_io bankout\[13\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL Down -SKEW Off -OUT_LOAD 35 -pinname R1 -fixed yes
+set_io bankout\[14\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL Up -SKEW Off -OUT_LOAD 35 -pinname G5 -fixed yes
+set_io bankout\[15\] -iostd LVTTL -OUT_DRIVE 8 -SLEW Low -RES_PULL Down -SKEW Off -OUT_LOAD 35 -pinname G6 -fixed yes

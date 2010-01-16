@@ -9,6 +9,8 @@ ENTITY G880E18BT IS
     CONSTANT A_size      : integer := 19;
     CONSTANT DQ_size     : integer := 9;
     CONSTANT bank_size   : integer := 1024 * 512;-- *8M /4 bytes in parallel
+    fname : string       := "ram.dat";	-- File to read from
+    index : integer      := 0;
 --250MHZ
 --    CONSTANT tKQpipe     : time    := 2.5 ns ;
 --    CONSTANT tKQflow     : time    := 5.5 ns ;
@@ -70,7 +72,9 @@ ARCHITECTURE BURST_8MEG_x18 OF G880E18BT IS
     generic (
       CONSTANT bank_size   : integer := 1024 * 512;-- *8M /4 bytes in parallel
       CONSTANT A_size      : integer := 19;
-      CONSTANT DQ_size     : integer := 9);
+      CONSTANT DQ_size     : integer := 9;
+      fname : string := "ram.dat";	-- File to read from
+      index : integer      := 0);
     port (
       signal       A           : in    std_logic_vector(A_size - 1 downto 0);  -- address
       signal       DQa         : inout std_logic_vector(DQ_size downto 1) bus;  -- byte A data
@@ -130,7 +134,7 @@ begin
   tKQX <= TERNARY(nFT, tKQXpipe, tKQXflow);
   HighZ <= to_stdlogicvector( "ZZZZZZZZZZ" ,DQ_size);
   A     <= to_stdlogicvector(A88, A_size);
-  CORE_CALL : VHDL_BURST_CORE port map (
+  CORE_CALL : VHDL_BURST_CORE generic map (fname => fname, index => index) port map (
     A, DQA, DQB, DQC, DQD, DQE, DQF, DQG, DQH, NBA, NBB, NBC, NBD, NBE, NBF, NBG, NBH, CK, NBW, NGW, NE1, E2, NE3, NG, NADV, NADSC, NADSP, ZZ, NFT, NLBO, SCD, HighZ, tKQ, tKQX);
 
 END BURST_8MEG_x18;

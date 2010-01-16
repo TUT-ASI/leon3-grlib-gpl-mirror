@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -63,7 +64,7 @@ type mul32_out_type is record
   result          : std_logic_vector(63 downto 0); -- mul result
 end record;
 
-component div32 
+component div32
 port (
     rst     : in  std_ulogic;
     clk     : in  std_ulogic;
@@ -75,7 +76,7 @@ end component;
 
 component mul32
 generic (
-    infer   : integer := 1;
+    tech    : integer := 0;
     multype : integer := 0;
     pipe    : integer := 0;
     mac     : integer := 0
@@ -100,7 +101,7 @@ function smult ( a, b  : in  std_logic_vector) return std_logic_vector is
   variable sb : signed (b'length-1 downto 0);
   variable sc : signed ((a'length + b'length) -1 downto 0);
   variable res : std_logic_vector ((a'length + b'length) -1 downto 0);
-begin 
+begin
 
   sa := signed(a); sb := signed(b);
 -- pragma translate_off
@@ -108,7 +109,7 @@ begin
     sc := (others => 'X');
   else
 -- pragma translate_on
-    sc := sa * sb; 
+    sc := sa * sb;
 -- pragma translate_off
   end if;
 -- pragma translate_on

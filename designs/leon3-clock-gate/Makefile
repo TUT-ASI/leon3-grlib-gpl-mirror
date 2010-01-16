@@ -15,6 +15,8 @@ SDCFILE=$(GRLIB)/boards/$(BOARD)/default.sdc
 BITGEN=$(GRLIB)/boards/$(BOARD)/default.ut
 CLEAN=soft-clean
 
+LIBSKIP = dare
+
 include $(GRLIB)/bin/Makefile
 include $(GRLIB)/software/leon3/Makefile
 

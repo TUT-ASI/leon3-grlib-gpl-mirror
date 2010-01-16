@@ -1,6 +1,10 @@
 -----------------------------------------------------------------------------
 --  LEON3 Demonstration design test bench
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -11,6 +15,10 @@
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
 --  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 --  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -45,24 +53,24 @@ entity testbench is
     srambanks  : integer := 2		-- number of ram banks
   );
   port (
-    pci_rst     : inout std_ulogic;	-- PCI bus
-    pci_clk 	: in std_ulogic;
-    pci_gnt     : in std_ulogic;
-    pci_idsel   : in std_ulogic;  
-    pci_lock    : inout std_ulogic;
+    pci_rst     : inout std_logic;	-- PCI bus
+    pci_clk 	: in std_logic;
+    pci_gnt     : in std_logic;
+    pci_idsel   : in std_logic;  
+    pci_lock    : inout std_logic;
     pci_ad 	: inout std_logic_vector(31 downto 0);
     pci_cbe 	: inout std_logic_vector(3 downto 0);
-    pci_frame   : inout std_ulogic;
-    pci_irdy 	: inout std_ulogic;
-    pci_trdy 	: inout std_ulogic;
-    pci_devsel  : inout std_ulogic;
-    pci_stop 	: inout std_ulogic;
-    pci_perr 	: inout std_ulogic;
-    pci_par 	: inout std_ulogic;    
-    pci_req 	: inout std_ulogic;
-    pci_serr    : inout std_ulogic;
-    pci_host   	: in std_ulogic;
-    pci_66	: in std_ulogic
+    pci_frame   : inout std_logic;
+    pci_irdy 	: inout std_logic;
+    pci_trdy 	: inout std_logic;
+    pci_devsel  : inout std_logic;
+    pci_stop 	: inout std_logic;
+    pci_perr 	: inout std_logic;
+    pci_par 	: inout std_logic;    
+    pci_req 	: inout std_logic;
+    pci_serr    : inout std_logic;
+    pci_host   	: in std_logic;
+    pci_66	: in std_logic
   );
 
 end; 
@@ -82,9 +90,9 @@ signal address : std_logic_vector(27 downto 0);
 signal data : std_logic_vector(15 downto 0);
 signal xdata : std_logic_vector(31 downto 0);
 signal romsn  	: std_logic;
-signal iosn : std_ulogic;
-signal writen, read 	: std_ulogic;
-signal oen 	: std_ulogic;
+signal iosn : std_logic;
+signal writen, read 	: std_logic;
+signal oen 	: std_logic;
 signal flash_rstn  	: std_logic;
 signal ddr_clk  	: std_logic_vector(1 downto 0);
 signal ddr_clkb  	: std_logic_vector(1 downto 0);
@@ -92,28 +100,28 @@ signal ddr_clk_fb  : std_logic;
 signal ddr_clk_fb_out  : std_logic;
 signal ddr_cke  	: std_logic_vector(1 downto 0);
 signal ddr_csb  	: std_logic_vector(1 downto 0);
-signal ddr_web  	: std_ulogic;                       -- ddr write enable
-signal ddr_rasb  	: std_ulogic;                       -- ddr ras
-signal ddr_casb  	: std_ulogic;                       -- ddr cas
+signal ddr_web  	: std_logic;                       -- ddr write enable
+signal ddr_rasb  	: std_logic;                       -- ddr ras
+signal ddr_casb  	: std_logic;                       -- ddr cas
 signal ddr_dm   	: std_logic_vector (7 downto 0);    -- ddr dm
 signal ddr_dqs  	: std_logic_vector (7 downto 0);    -- ddr dqs
 signal ddr_ad      : std_logic_vector (12 downto 0);   -- ddr address
 signal ddr_ba      : std_logic_vector (1 downto 0);    -- ddr bank address
 signal ddr_dq  : std_logic_vector (63 downto 0);   -- ddr data
-signal txd1   	: std_ulogic; 			-- UART1 tx data
-signal rxd1   	: std_ulogic;  			-- UART1 rx data
+signal txd1   	: std_logic; 			-- UART1 tx data
+signal rxd1   	: std_logic;  			-- UART1 rx data
 signal gpio         : std_logic_vector(31 downto 0); 	-- I/O port
 signal flash_cex : std_logic;
 
-signal clk125      : std_ulogic := '0';
-signal GND      : std_ulogic := '0';
-signal VCC      : std_ulogic := '1';
-signal NC       : std_ulogic := 'Z';
+signal clk125      : std_logic := '0';
+signal GND      : std_logic := '0';
+signal VCC      : std_logic := '1';
+signal NC       : std_logic := 'Z';
 constant lresp : boolean := false;
 
-signal dsuen   	: std_ulogic;
-signal dsubre  	: std_ulogic;
-signal dsuact  	: std_ulogic;
+signal dsuen   	: std_logic;
+signal dsubre  	: std_logic;
+signal dsuact  	: std_logic;
 begin
 
 -- clock and reset

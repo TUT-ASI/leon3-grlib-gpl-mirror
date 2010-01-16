@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -35,66 +36,71 @@ use techmap.gencomp.all;
 
 entity ddr2spa is
   generic (
-    fabtech : integer := virtex4;
-    memtech : integer := 0;
-    rskew   : integer := 0;
-    hindex  : integer := 0;
-    haddr   : integer := 0;
-    hmask   : integer := 16#f00#;
-    ioaddr  : integer := 16#000#;
-    iomask  : integer := 16#fff#;
-    MHz     : integer := 100;
-    TRFC    : integer := 130;
-    clkmul  : integer := 2;
-    clkdiv  : integer := 2;
-    col     : integer := 9;
-    Mbyte   : integer := 16;
-    rstdel  : integer := 200;
-    pwron   : integer := 0;
-    oepol   : integer := 0;
-    ddrbits : integer := 16;
-    ahbfreq : integer := 50;
-    readdly : integer := 1; -- 1 added read latency cycle
-    ddelayb0 : integer := 0; -- Data delay value (0 - 63)
-    ddelayb1 : integer := 0; -- Data delay value (0 - 63)
-    ddelayb2 : integer := 0; -- Data delay value (0 - 63)
-    ddelayb3 : integer := 0; -- Data delay value (0 - 63)
-    ddelayb4 : integer := 0; -- Data delay value (0 - 63)
-    ddelayb5 : integer := 0; -- Data delay value (0 - 63)
-    ddelayb6 : integer := 0; -- Data delay value (0 - 63)
-    ddelayb7 : integer := 0; -- Data delay value (0 - 63)
-    numidelctrl : integer := 4; 
-    norefclk : integer := 0;
-    odten    : integer := 0
-  );
+    fabtech        :       integer := virtex4;
+    memtech        :       integer := 0;
+    rskew          :       integer := 0;
+    hindex         :       integer := 0;
+    haddr          :       integer := 0;
+    hmask          :       integer := 16#f00#;
+    ioaddr         :       integer := 16#000#;
+    iomask         :       integer := 16#fff#;
+    MHz            :       integer := 100;
+    TRFC           :       integer := 130;
+    clkmul         :       integer := 2;
+    clkdiv         :       integer := 2;
+    col            :       integer := 9;
+    Mbyte          :       integer := 16;
+    rstdel         :       integer := 200;
+    pwron          :       integer := 0;
+    oepol          :       integer := 0;
+    ddrbits        :       integer := 16;
+    ahbfreq        :       integer := 50;
+    readdly        :       integer := 1;  -- 1 added read latency cycle
+    ddelayb0       :       integer := 0;  -- Data delay value (0 - 63)
+    ddelayb1       :       integer := 0;  -- Data delay value (0 - 63)
+    ddelayb2       :       integer := 0;  -- Data delay value (0 - 63)
+    ddelayb3       :       integer := 0;  -- Data delay value (0 - 63)
+    ddelayb4       :       integer := 0;  -- Data delay value (0 - 63)
+    ddelayb5       :       integer := 0;  -- Data delay value (0 - 63)
+    ddelayb6       :       integer := 0;  -- Data delay value (0 - 63)
+    ddelayb7       :       integer := 0;  -- Data delay value (0 - 63)
+    numidelctrl    :       integer := 4;
+    norefclk       :       integer := 0;
+    odten          :       integer := 0;
+    octen          :       integer := 0;
+    dqsgating      :       integer := 0;
+    nosync         :       integer := 0;  -- Disable sync registers at CD crossings
+    eightbanks     :       integer range 0 to 1 := 0;
+    dqsse          :       integer range 0 to 1 := 0  -- single ended DQS
+    );
   port (
-    rst_ddr    : in  std_ulogic;
-    rst_ahb    : in  std_ulogic;
-    clk_ddr    : in  std_ulogic;
-    clk_ahb    : in  std_ulogic;
-    clkref200  : in  std_logic;
-    lock       : out std_ulogic;    -- DCM locked
-    clkddro    : out std_ulogic;    -- DCM locked
-    clkddri    : in  std_ulogic;
-    ahbsi      : in  ahb_slv_in_type;
-    ahbso      : out ahb_slv_out_type;
-    ddr_clk        : out std_logic_vector(2 downto 0);
-    ddr_clkb       : out std_logic_vector(2 downto 0);
+    rst_ddr        : in    std_ulogic;
+    rst_ahb        : in    std_ulogic;
+    clk_ddr        : in    std_ulogic;
+    clk_ahb        : in    std_ulogic;
+    clkref200      : in    std_logic;
+    lock           : out   std_ulogic;  -- DCM locked
+    clkddro        : out   std_ulogic;  -- DDR clock
+    clkddri        : in    std_ulogic;
+    ahbsi          : in    ahb_slv_in_type;
+    ahbso          : out   ahb_slv_out_type;
+    ddr_clk        : out   std_logic_vector(2 downto 0);
+    ddr_clkb       : out   std_logic_vector(2 downto 0);
     ddr_clk_fb_out : out   std_logic;
     ddr_clk_fb     : in    std_logic;
-    ddr_cke        : out std_logic_vector(1 downto 0);
-    ddr_csb        : out std_logic_vector(1 downto 0);
-    ddr_web        : out std_ulogic;                       -- ddr write enable
-    ddr_rasb       : out std_ulogic;                       -- ddr ras
-    ddr_casb       : out std_ulogic;                       -- ddr cas
-    ddr_dm         : out std_logic_vector (ddrbits/8-1 downto 0);    -- ddr dm
-    ddr_dqs        : inout std_logic_vector (ddrbits/8-1 downto 0);  -- ddr dqs
-    ddr_dqsn       : inout std_logic_vector (ddrbits/8-1 downto 0); -- ddr dqsn
-    ddr_ad         : out std_logic_vector (13 downto 0);   -- ddr address
-    ddr_ba         : out std_logic_vector (1 downto 0);    -- ddr bank address
-    ddr_dq         : inout  std_logic_vector (ddrbits-1 downto 0); -- ddr data
-    ddr_odt        : out std_logic_vector(1 downto 0)
-  );
+    ddr_cke        : out   std_logic_vector(1 downto 0);
+    ddr_csb        : out   std_logic_vector(1 downto 0);
+    ddr_web        : out   std_ulogic;                              -- ddr write enable
+    ddr_rasb       : out   std_ulogic;                              -- ddr ras
+    ddr_casb       : out   std_ulogic;                              -- ddr cas
+    ddr_dm         : out   std_logic_vector(ddrbits/8-1 downto 0);  -- ddr dm
+    ddr_dqs        : inout std_logic_vector(ddrbits/8-1 downto 0);  -- ddr dqs
+    ddr_dqsn       : inout std_logic_vector(ddrbits/8-1 downto 0);  -- ddr dqsn
+    ddr_ad         : out   std_logic_vector(13 downto 0);           -- ddr address
+    ddr_ba         : out   std_logic_vector(1+eightbanks downto 0); -- ddr bank address
+    ddr_dq         : inout std_logic_vector(ddrbits-1 downto 0);    -- ddr data
+    ddr_odt        : out   std_logic_vector(1 downto 0)
+    );
 end;
 
 architecture rtl of ddr2spa is
@@ -113,7 +119,8 @@ begin
       ddelayb0 => ddelayb0, ddelayb1 => ddelayb1, ddelayb2 => ddelayb2,
       ddelayb3 => ddelayb3, ddelayb4 => ddelayb4, ddelayb5 => ddelayb5,
       ddelayb6 => ddelayb6, ddelayb7 => ddelayb7,
-      numidelctrl => numidelctrl, norefclk => norefclk, rskew => rskew)
+      numidelctrl => numidelctrl, norefclk => norefclk, rskew => rskew,
+      eightbanks => eightbanks, dqsse => dqsse)
   port map (rst_ddr, clk_ddr, clkref200, clkddro, lock,
       ddr_clk, ddr_clkb, ddr_clk_fb_out, ddr_clk_fb,
       ddr_cke, ddr_csb, ddr_web, ddr_rasb, ddr_casb, ddr_dm, 
@@ -123,7 +130,8 @@ begin
     ddrc : ddr2sp16a generic map (memtech => memtech, hindex => hindex, 
       haddr => haddr, hmask => hmask, ioaddr => ioaddr, iomask => iomask,
       pwron => pwron, MHz => DDR_FREQ, TRFC => TRFC, col => col, Mbyte => Mbyte,
-      fast => FAST_AHB, readdly => readdly, odten => odten)
+      fast => FAST_AHB, readdly => readdly, odten => odten, octen => octen, dqsgating => dqsgating,
+      nosync => nosync, eightbanks => eightbanks, dqsse => dqsse)
     port map (rst_ahb, clkddri, clk_ahb, ahbsi, ahbso, sdi, sdo);
   end generate;
 
@@ -131,7 +139,8 @@ begin
     ddrc : ddr2sp32a generic map (memtech => memtech, hindex => hindex,
       haddr => haddr, hmask => hmask, ioaddr => ioaddr, iomask => iomask,
       pwron => pwron, MHz => DDR_FREQ, TRFC => TRFC, col => col, Mbyte => Mbyte,
-      fast => FAST_AHB/2, readdly => readdly, odten => odten)
+      fast => FAST_AHB/2, readdly => readdly, odten => odten, octen => octen, dqsgating => dqsgating,
+      nosync => nosync, eightbanks => eightbanks, dqsse => dqsse)
     port map (rst_ahb, clkddri, clk_ahb, ahbsi, ahbso, sdi, sdo);
   end generate;
 
@@ -139,7 +148,8 @@ begin
     ddrc : ddr2sp64a generic map (memtech => memtech, hindex => hindex,
       haddr => haddr, hmask => hmask, ioaddr => ioaddr, iomask => iomask,
       pwron => pwron, MHz => DDR_FREQ, TRFC => TRFC, col => col, Mbyte => Mbyte,
-      fast => FAST_AHB/4, readdly => readdly, odten => odten)
+      fast => FAST_AHB/4, readdly => readdly, odten => odten, octen => octen, dqsgating => dqsgating,
+      nosync => nosync, eightbanks => eightbanks, dqsse => dqsse)
     port map (rst_ahb, clkddri, clk_ahb, ahbsi, ahbso, sdi, sdo);
   end generate;
 end;

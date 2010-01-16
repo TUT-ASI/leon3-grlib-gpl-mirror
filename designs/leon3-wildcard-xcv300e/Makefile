@@ -19,9 +19,10 @@ CLEAN=soft-clean
 LIBSKIP=apa proasic3 axcelerator ecaltera altera_mf stratixii ec altera \
         eclipsee cycloneiii virage atc18 umc18 dw02 spw usbhc eth gleichmann \
         fmf spansion gsi cypress hynix ihp25 sgb25vrh ut025crh rh_lib18t ihp \
-        artisan virage90 tsmc90 dare nextreme micron \
+        artisan virage90 tsmc90 dare nextreme micron stratixiii \
         core1553bbc core1553brt core1553brm corePCIF gr1553 openchip tmtc
-DIRSKIP=spw usbhc spacewire greth grusbhc can leon3ft pcif b1553 crypto satcan
+DIRSKIP=spw usbhc spacewire greth grusbhc can leon3ft pcif b1553 crypto satcan \
+	hcan
 FILESKIP=simple_spi_top.v
 
 include $(GRLIB)/software/leon3/Makefile

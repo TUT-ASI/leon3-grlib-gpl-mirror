@@ -7,9 +7,11 @@ XLDFLAGS=-L./ lib3tests.a
 
 PROGS = report_device apbuart divtest multest regtest \
 	cache gpio ramfill ramtest irqmp leon3_test gptimer \
-	mulasm cacheasm spwtest mptest fpu spwtest mptest grfpu_ops \
-	base_test can_oc mmu mmu_asm pcitest greth grfpu_test atactrl \
-	grcan i2cmst spictrl greth_api misc spimctrl
+	mulasm cacheasm spwtest mptest fpu grfpu_ops \
+	base_test grfpu_test can_oc mmu mmu_asm pcitest greth atactrl \
+	amba dsu3 greth_api grcan \
+	spictrl i2cmst misc spimctrl svgactrl apbps2 \
+        i2cslv i2c $(EXTRA_PROGS)
 
 
 OFILES = $(PROGS:%=%.o)
@@ -24,10 +26,10 @@ fpu.o: fpu.c
 	$(XCC) -ffast-math -O3 -c  $<
 
 multest.o: multest.c
-	$(XCC) -O2 -c -mv8  $<
+	$(XCC) -O2 -c -mcpu=v8  $<
 
 divtest.o: divtest.c
-	$(XCC) -O2 -c -mv8  $<
+	$(XCC) -O2 -c -mcpu=v8  $<
 
 greth_api.o : $(GRLIB)/software/greth/greth_api.c
 	$(XCC) -g -msoft-float -c $(GRLIB)/software/greth/greth_api.c

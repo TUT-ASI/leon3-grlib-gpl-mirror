@@ -3,6 +3,10 @@ NET "clk" LOC = "AJ15" | IOSTANDARD = LVCMOS25;
 NET "clk" TNM_NET = "clk";
 TIMESPEC "TS_clk" = PERIOD "clk" 10.00 ns HIGH 50 %;
 
+NET "sysace_clk" LOC = "AH15" | IOSTANDARD = LVCMOS25;
+NET "sysace_clk" TNM_NET = "sysace_clk";
+NET "sysace_clk" period = 29.000;
+
 NET "clkm" 		TNM_NET = "clkm";
 NET "clkml" 		TNM_NET = "clkml";
 NET "clkvga" 		TNM_NET = "clkvga";
@@ -283,4 +287,33 @@ NET "vid_b(3)" LOC = "J15";
 NET "vid_b(2)" LOC = "H15";
 NET "vid_b(1)" LOC = "E15";
 NET "vid_b(0)" LOC = "D15";
+
+NET "cf_mpa(0)" LOC = "AF21";
+NET "cf_mpa(1)" LOC = "AG21";
+NET "cf_mpa(2)" LOC = "AC19";
+NET "cf_mpa(3)" LOC = "AD19";
+NET "cf_mpa(4)" LOC = "AE22";
+NET "cf_mpa(5)" LOC = "AE21";
+NET "cf_mpa(6)" LOC = "AH22";
+NET "cf_mpd(0)" LOC = "AE15";
+NET "cf_mpd(1)" LOC = "AD15";
+NET "cf_mpd(2)" LOC = "AG14";
+NET "cf_mpd(3)" LOC = "AF14";
+NET "cf_mpd(4)" LOC = "AE14";
+NET "cf_mpd(5)" LOC = "AD14";
+NET "cf_mpd(6)" LOC = "AC15";
+NET "cf_mpd(7)" LOC = "AB15";
+NET "cf_mpd(8)" LOC = "AJ9";
+NET "cf_mpd(9)" LOC = "AH9";
+NET "cf_mpd(10)" LOC = "AE10";
+NET "cf_mpd(11)" LOC = "AE9";
+NET "cf_mpd(12)" LOC = "AD12";
+NET "cf_mpd(13)" LOC = "AC12";
+NET "cf_mpd(14)" LOC = "AG10";
+NET "cf_mpd(15)" LOC = "AF10";
+NET "cf_mp_ce_z" LOC = "AB16";
+NET "cf_mp_oe_z" LOC = "AD17";
+NET "cf_mp_we_z" LOC = "AC16";
+NET "cf_mpirq" LOC = "AD16";
+#NET "cf_mpbrdy" LOC = "AE16";
 

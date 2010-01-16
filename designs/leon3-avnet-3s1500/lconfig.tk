@@ -731,7 +731,9 @@ proc menu1 {w title} {
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-Proasic3" -variable tmpvar_0 -value "Actel-Proasic3" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Aeroflex-UT025CRH" -variable tmpvar_0 -value "Aeroflex-UT025CRH" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Atmel-ATC18" -variable tmpvar_0 -value "Atmel-ATC18" -command "update_active"
+	$w.config.f.x0.x.menu add radiobutton -label "Atmel-ATC18RHA" -variable tmpvar_0 -value "Atmel-ATC18RHA" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Custom1" -variable tmpvar_0 -value "Custom1" -command "update_active"
+	$w.config.f.x0.x.menu add radiobutton -label "eASIC90" -variable tmpvar_0 -value "eASIC90" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "IHP25" -variable tmpvar_0 -value "IHP25" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "IHP25RH" -variable tmpvar_0 -value "IHP25RH" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Lattice-EC/ECP/XP" -variable tmpvar_0 -value "Lattice-EC/ECP/XP" -command "update_active"
@@ -739,6 +741,7 @@ proc menu1 {w title} {
 	$w.config.f.x0.x.menu add radiobutton -label "Peregrine" -variable tmpvar_0 -value "Peregrine" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "RH-LIB18T" -variable tmpvar_0 -value "RH-LIB18T" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "RH-UMC" -variable tmpvar_0 -value "RH-UMC" -command "update_active"
+	$w.config.f.x0.x.menu add radiobutton -label "SMIC130" -variable tmpvar_0 -value "SMIC130" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Spartan2" -variable tmpvar_0 -value "Xilinx-Spartan2" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Spartan3" -variable tmpvar_0 -value "Xilinx-Spartan3" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Spartan3E" -variable tmpvar_0 -value "Xilinx-Spartan3E" -command "update_active"
@@ -747,9 +750,9 @@ proc menu1 {w title} {
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Virtex2" -variable tmpvar_0 -value "Xilinx-Virtex2" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Virtex4" -variable tmpvar_0 -value "Xilinx-Virtex4" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Virtex5" -variable tmpvar_0 -value "Xilinx-Virtex5" -command "update_active"
-	$w.config.f.x0.x.menu add radiobutton -label "UMC18" -variable tmpvar_0 -value "UMC18" -command "update_active"
+	$w.config.f.x0.x.menu add radiobutton -label "UMC180" -variable tmpvar_0 -value "UMC180" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "TSMC90" -variable tmpvar_0 -value "TSMC90" -command "update_active"
-	menusplit $w $w.config.f.x0.x.menu 30
+	menusplit $w $w.config.f.x0.x.menu 33
 	global tmpvar_1
 	minimenu $w.config.f 1 1 "Memory Library                           " tmpvar_1 CONFIG_MEM_INFERRED
 	menu $w.config.f.x1.x.menu -tearoffcommand "menutitle \"Memory Library                           \""
@@ -805,9 +808,10 @@ proc update_menu1 {} {
 	global CONFIG_SYN_CUSTOM1
 	global CONFIG_SYN_ATC18
 	global CONFIG_SYN_TSMC90
+	global CONFIG_SYN_UMC
 	global CONFIG_SYN_RHUMC
 	global CONFIG_SYN_ARTISAN
-	if {($CONFIG_SYN_INFERRED == 1 || $CONFIG_SYN_CUSTOM1 == 1 || $CONFIG_SYN_ATC18 == 1 || $CONFIG_SYN_TSMC90 == 1 || $CONFIG_SYN_RHUMC == 1 || $CONFIG_SYN_ARTISAN == 1)} then {configure_entry .menu1.config.f.x1 normal {x l}} else {configure_entry .menu1.config.f.x1 disabled {x l}}
+	if {($CONFIG_SYN_INFERRED == 1 || $CONFIG_SYN_CUSTOM1 == 1 || $CONFIG_SYN_ATC18 == 1 || $CONFIG_SYN_TSMC90 == 1 || $CONFIG_SYN_UMC == 1 || $CONFIG_SYN_RHUMC == 1 || $CONFIG_SYN_ARTISAN == 1)} then {configure_entry .menu1.config.f.x1 normal {x l}} else {configure_entry .menu1.config.f.x1 disabled {x l}}
 	global CONFIG_SYN_INFER_RAM
 	if {($CONFIG_SYN_INFERRED != 1)} then {
 	configure_entry .menu1.config.f.x2 normal {n l y}} else {configure_entry .menu1.config.f.x2 disabled {y n l}}
@@ -845,8 +849,12 @@ proc update_define_menu1 {} {
 	if {$tmpvar_0 == "Aeroflex-UT025CRH"} then {set CONFIG_SYN_UT025CRH 1} else {set CONFIG_SYN_UT025CRH 0}
 	global CONFIG_SYN_ATC18
 	if {$tmpvar_0 == "Atmel-ATC18"} then {set CONFIG_SYN_ATC18 1} else {set CONFIG_SYN_ATC18 0}
+	global CONFIG_SYN_ATC18RHA
+	if {$tmpvar_0 == "Atmel-ATC18RHA"} then {set CONFIG_SYN_ATC18RHA 1} else {set CONFIG_SYN_ATC18RHA 0}
 	global CONFIG_SYN_CUSTOM1
 	if {$tmpvar_0 == "Custom1"} then {set CONFIG_SYN_CUSTOM1 1} else {set CONFIG_SYN_CUSTOM1 0}
+	global CONFIG_SYN_EASIC90
+	if {$tmpvar_0 == "eASIC90"} then {set CONFIG_SYN_EASIC90 1} else {set CONFIG_SYN_EASIC90 0}
 	global CONFIG_SYN_IHP25
 	if {$tmpvar_0 == "IHP25"} then {set CONFIG_SYN_IHP25 1} else {set CONFIG_SYN_IHP25 0}
 	global CONFIG_SYN_IHP25RH
@@ -861,6 +869,8 @@ proc update_define_menu1 {} {
 	if {$tmpvar_0 == "RH-LIB18T"} then {set CONFIG_SYN_RH_LIB18T 1} else {set CONFIG_SYN_RH_LIB18T 0}
 	global CONFIG_SYN_RHUMC
 	if {$tmpvar_0 == "RH-UMC"} then {set CONFIG_SYN_RHUMC 1} else {set CONFIG_SYN_RHUMC 0}
+	global CONFIG_SYN_SMIC13
+	if {$tmpvar_0 == "SMIC130"} then {set CONFIG_SYN_SMIC13 1} else {set CONFIG_SYN_SMIC13 0}
 	global CONFIG_SYN_SPARTAN2
 	if {$tmpvar_0 == "Xilinx-Spartan2"} then {set CONFIG_SYN_SPARTAN2 1} else {set CONFIG_SYN_SPARTAN2 0}
 	global CONFIG_SYN_SPARTAN3
@@ -878,7 +888,7 @@ proc update_define_menu1 {} {
 	global CONFIG_SYN_VIRTEX5
 	if {$tmpvar_0 == "Xilinx-Virtex5"} then {set CONFIG_SYN_VIRTEX5 1} else {set CONFIG_SYN_VIRTEX5 0}
 	global CONFIG_SYN_UMC
-	if {$tmpvar_0 == "UMC18"} then {set CONFIG_SYN_UMC 1} else {set CONFIG_SYN_UMC 0}
+	if {$tmpvar_0 == "UMC180"} then {set CONFIG_SYN_UMC 1} else {set CONFIG_SYN_UMC 0}
 	global CONFIG_SYN_TSMC90
 	if {$tmpvar_0 == "TSMC90"} then {set CONFIG_SYN_TSMC90 1} else {set CONFIG_SYN_TSMC90 0}
 	global tmpvar_1
@@ -1346,11 +1356,12 @@ proc menu5 {w title} {
 	int $w.config.f 5 0 "SPARC register windows" CONFIG_IU_NWINDOWS
 	bool $w.config.f 5 1 "SPARC V8 MUL/DIV instructions" CONFIG_IU_V8MULDIV
 	global tmpvar_3
-	minimenu $w.config.f 5 2 "Hardware multiplier latency" tmpvar_3 CONFIG_IU_MUL_LATENCY_4
+	minimenu $w.config.f 5 2 "Hardware multiplier latency" tmpvar_3 CONFIG_IU_MUL_LATENCY_2
 	menu $w.config.f.x2.x.menu -tearoffcommand "menutitle \"Hardware multiplier latency\""
+	$w.config.f.x2.x.menu add radiobutton -label "2-cycles" -variable tmpvar_3 -value "2-cycles" -command "update_active"
 	$w.config.f.x2.x.menu add radiobutton -label "4-cycles" -variable tmpvar_3 -value "4-cycles" -command "update_active"
 	$w.config.f.x2.x.menu add radiobutton -label "5-cycles" -variable tmpvar_3 -value "5-cycles" -command "update_active"
-	menusplit $w $w.config.f.x2.x.menu 2
+	menusplit $w $w.config.f.x2.x.menu 3
 	bool $w.config.f 5 3 "SPARC V8e SMAC/UMAC instructions     " CONFIG_IU_MUL_MAC
 	bool $w.config.f 5 4 "Single-vector trapping" CONFIG_IU_SVT
 	int $w.config.f 5 5 "Load delay" CONFIG_IU_LDELAY
@@ -1401,8 +1412,10 @@ proc update_menu5 {} {
 	if {($CONFIG_LEON3 == 1)} then {
 	configure_entry .menu5.config.f.x1 normal {n l y}} else {configure_entry .menu5.config.f.x1 disabled {y n l}}
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_IU_V8MULDIV == 1)} then {configure_entry .menu5.config.f.x2 normal {x l}} else {configure_entry .menu5.config.f.x2 disabled {x l}}
+	global CONFIG_IU_MUL_LATENCY_4
+	global CONFIG_IU_MUL_LATENCY_5
 	global CONFIG_IU_MUL_MAC
-	if {($CONFIG_LEON3 == 1) && ($CONFIG_IU_V8MULDIV == 1)} then {
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_IU_V8MULDIV == 1) && ($CONFIG_IU_MUL_LATENCY_4 == 1 || $CONFIG_IU_MUL_LATENCY_5 == 1)} then {
 	configure_entry .menu5.config.f.x3 normal {n l y}} else {configure_entry .menu5.config.f.x3 disabled {y n l}}
 	global CONFIG_IU_SVT
 	if {($CONFIG_LEON3 == 1)} then {
@@ -1429,12 +1442,14 @@ proc update_define_menu5 {} {
 	if {($CONFIG_LEON3 == 1)} then {
 	set CONFIG_IU_V8MULDIV [expr $CONFIG_IU_V8MULDIV&15]} else {set CONFIG_IU_V8MULDIV [expr $CONFIG_IU_V8MULDIV|16]}
 	global tmpvar_3
+	global CONFIG_IU_MUL_LATENCY_2
+	if {$tmpvar_3 == "2-cycles"} then {set CONFIG_IU_MUL_LATENCY_2 1} else {set CONFIG_IU_MUL_LATENCY_2 0}
 	global CONFIG_IU_MUL_LATENCY_4
 	if {$tmpvar_3 == "4-cycles"} then {set CONFIG_IU_MUL_LATENCY_4 1} else {set CONFIG_IU_MUL_LATENCY_4 0}
 	global CONFIG_IU_MUL_LATENCY_5
 	if {$tmpvar_3 == "5-cycles"} then {set CONFIG_IU_MUL_LATENCY_5 1} else {set CONFIG_IU_MUL_LATENCY_5 0}
 	global CONFIG_IU_MUL_MAC
-	if {($CONFIG_LEON3 == 1) && ($CONFIG_IU_V8MULDIV == 1)} then {
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_IU_V8MULDIV == 1) && ($CONFIG_IU_MUL_LATENCY_4 == 1 || $CONFIG_IU_MUL_LATENCY_5 == 1)} then {
 	set CONFIG_IU_MUL_MAC [expr $CONFIG_IU_MUL_MAC&15]} else {set CONFIG_IU_MUL_MAC [expr $CONFIG_IU_MUL_MAC|16]}
 	global CONFIG_IU_SVT
 	if {($CONFIG_LEON3 == 1)} then {
@@ -2096,6 +2111,7 @@ proc menu8 {w title} {
 	$w.config.f.x4.x.menu add radiobutton -label "16" -variable tmpvar_20 -value "16" -command "update_active"
 	$w.config.f.x4.x.menu add radiobutton -label "32" -variable tmpvar_20 -value "32" -command "update_active"
 	menusplit $w $w.config.f.x4.x.menu 5
+	bool $w.config.f 8 5 "Fast writebuffer       " CONFIG_MMU_FASTWB
 
 
 
@@ -2142,6 +2158,9 @@ proc update_menu8 {} {
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_MMU_ENABLE == 1)} then {configure_entry .menu8.config.f.x3 normal {x l}} else {configure_entry .menu8.config.f.x3 disabled {x l}}
 	global CONFIG_MMU_SPLIT
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_MMU_ENABLE == 1) && ($CONFIG_MMU_SPLIT == 1)} then {configure_entry .menu8.config.f.x4 normal {x l}} else {configure_entry .menu8.config.f.x4 disabled {x l}}
+	global CONFIG_MMU_FASTWB
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_MMU_ENABLE == 1) && ($CONFIG_MMU_SPLIT == 1)} then {
+	configure_entry .menu8.config.f.x5 normal {n l y}} else {configure_entry .menu8.config.f.x5 disabled {y n l}}
 }
 
 
@@ -2184,6 +2203,9 @@ proc update_define_menu8 {} {
 	if {$tmpvar_20 == "16"} then {set CONFIG_MMU_D16 1} else {set CONFIG_MMU_D16 0}
 	global CONFIG_MMU_D32
 	if {$tmpvar_20 == "32"} then {set CONFIG_MMU_D32 1} else {set CONFIG_MMU_D32 0}
+	global CONFIG_MMU_FASTWB
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_MMU_ENABLE == 1) && ($CONFIG_MMU_SPLIT == 1)} then {
+	set CONFIG_MMU_FASTWB [expr $CONFIG_MMU_FASTWB&15]} else {set CONFIG_MMU_FASTWB [expr $CONFIG_MMU_FASTWB|16]}
 }
 
 
@@ -2831,9 +2853,9 @@ proc update_define_menu13 {} {
 	global CONFIG_DSU_IPLSB
 	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {validate_hex CONFIG_DSU_IPLSB "$CONFIG_DSU_IPLSB" 0033}
 	global CONFIG_DSU_ETHMSB
-	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {validate_hex CONFIG_DSU_ETHMSB "$CONFIG_DSU_ETHMSB" 00007A}
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {validate_hex CONFIG_DSU_ETHMSB "$CONFIG_DSU_ETHMSB" 020000}
 	global CONFIG_DSU_ETHLSB
-	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {validate_hex CONFIG_DSU_ETHLSB "$CONFIG_DSU_ETHLSB" CC0001}
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {validate_hex CONFIG_DSU_ETHLSB "$CONFIG_DSU_ETHLSB" 000000}
 	global CONFIG_GRETH_GIGA
 	global CONFIG_DSU_ETH_PROG
 	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1) && ($CONFIG_GRETH_GIGA == 0)} then {
@@ -3768,9 +3790,9 @@ proc update_define_menu20 {} {
 	if {($CONFIG_PCI_MASTER_TARGET == 1)} then {
 	set CONFIG_PCI_MASTER_TARGET_DMA [expr $CONFIG_PCI_MASTER_TARGET_DMA&15]} else {set CONFIG_PCI_MASTER_TARGET_DMA [expr $CONFIG_PCI_MASTER_TARGET_DMA|16]}
 	global CONFIG_PCI_VENDORID
-	if {($CONFIG_PCI_SIMPLE_TARGET == 1 || $CONFIG_PCI_MASTER_TARGET == 1 || $CONFIG_PCI_ACTEL == 1)} then {validate_hex CONFIG_PCI_VENDORID "$CONFIG_PCI_VENDORID" 16E3}
+	if {($CONFIG_PCI_SIMPLE_TARGET == 1 || $CONFIG_PCI_MASTER_TARGET == 1 || $CONFIG_PCI_ACTEL == 1)} then {validate_hex CONFIG_PCI_VENDORID "$CONFIG_PCI_VENDORID" 1AC8}
 	global CONFIG_PCI_DEVICEID
-	if {($CONFIG_PCI_SIMPLE_TARGET == 1 || $CONFIG_PCI_MASTER_TARGET == 1 || $CONFIG_PCI_ACTEL == 1)} then {validate_hex CONFIG_PCI_DEVICEID "$CONFIG_PCI_DEVICEID" 0210}
+	if {($CONFIG_PCI_SIMPLE_TARGET == 1 || $CONFIG_PCI_MASTER_TARGET == 1 || $CONFIG_PCI_ACTEL == 1)} then {validate_hex CONFIG_PCI_DEVICEID "$CONFIG_PCI_DEVICEID" 0054}
 	global tmpvar_27
 	global CONFIG_PCI_FIFO0
 	if {$tmpvar_27 == "None"} then {set CONFIG_PCI_FIFO0 1} else {set CONFIG_PCI_FIFO0 0}
@@ -3869,14 +3891,16 @@ proc menu21 {w title} {
 	$w.config.f.x1.x.menu add radiobutton -label "32" -variable tmpvar_29 -value "32" -command "update_active"
 	menusplit $w $w.config.f.x1.x.menu 6
 	bool $w.config.f 21 2 "Enable LEON3 interrupt controller    " CONFIG_IRQ3_ENABLE
-	bool $w.config.f 21 3 "Enable Timer Unit                    " CONFIG_GPT_ENABLE
-	int $w.config.f 21 4 "Number of timers (1 - 7)              " CONFIG_GPT_NTIM
-	int $w.config.f 21 5 "Scaler width (2 - 16)                 " CONFIG_GPT_SW
-	int $w.config.f 21 6 "Timer width (2 - 32)                  " CONFIG_GPT_TW
-	int $w.config.f 21 7 "Timer unit interrupt                  " CONFIG_GPT_IRQ
-	bool $w.config.f 21 8 "Separate interrupts                  " CONFIG_GPT_SEPIRQ
-	bool $w.config.f 21 9 "Watchdog enable                      " CONFIG_GPT_WDOGEN
-	hex $w.config.f 21 10 "Initial watchdog time-out value       " CONFIG_GPT_WDOG
+	bool $w.config.f 21 3 "Enable secondary interrupts           " CONFIG_IRQ3_SEC
+	int $w.config.f 21 4 "Secondary interrupt number (1 - 15)    " CONFIG_IRQ3_NSEC
+	bool $w.config.f 21 5 "Enable Timer Unit                    " CONFIG_GPT_ENABLE
+	int $w.config.f 21 6 "Number of timers (1 - 7)              " CONFIG_GPT_NTIM
+	int $w.config.f 21 7 "Scaler width (2 - 16)                 " CONFIG_GPT_SW
+	int $w.config.f 21 8 "Timer width (2 - 32)                  " CONFIG_GPT_TW
+	int $w.config.f 21 9 "Timer unit interrupt                  " CONFIG_GPT_IRQ
+	bool $w.config.f 21 10 "Separate interrupts                  " CONFIG_GPT_SEPIRQ
+	bool $w.config.f 21 11 "Watchdog enable                      " CONFIG_GPT_WDOGEN
+	hex $w.config.f 21 12 "Initial watchdog time-out value       " CONFIG_GPT_WDOG
 
 
 
@@ -3916,23 +3940,29 @@ proc menu21 {w title} {
 proc update_menu21 {} {
 	global CONFIG_UART1_ENABLE
 	if {($CONFIG_UART1_ENABLE == 1)} then {configure_entry .menu21.config.f.x1 normal {x l}} else {configure_entry .menu21.config.f.x1 disabled {x l}}
+	global CONFIG_IRQ3_ENABLE
+	global CONFIG_IRQ3_SEC
+	if {($CONFIG_IRQ3_ENABLE == 1)} then {
+	configure_entry .menu21.config.f.x3 normal {n l y}} else {configure_entry .menu21.config.f.x3 disabled {y n l}}
+	global CONFIG_IRQ3_NSEC
+	if {($CONFIG_IRQ3_ENABLE == 1) && ($CONFIG_IRQ3_SEC == 1)} then {.menu21.config.f.x4.x configure -state normal -foreground [ cget .ref -foreground ]; .menu21.config.f.x4.l configure -state normal; } else {.menu21.config.f.x4.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu21.config.f.x4.l configure -state disabled}
 	global CONFIG_GPT_ENABLE
 	global CONFIG_GPT_NTIM
-	if {($CONFIG_GPT_ENABLE == 1)} then {.menu21.config.f.x4.x configure -state normal -foreground [ cget .ref -foreground ]; .menu21.config.f.x4.l configure -state normal; } else {.menu21.config.f.x4.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu21.config.f.x4.l configure -state disabled}
-	global CONFIG_GPT_SW
-	if {($CONFIG_GPT_ENABLE == 1)} then {.menu21.config.f.x5.x configure -state normal -foreground [ cget .ref -foreground ]; .menu21.config.f.x5.l configure -state normal; } else {.menu21.config.f.x5.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu21.config.f.x5.l configure -state disabled}
-	global CONFIG_GPT_TW
 	if {($CONFIG_GPT_ENABLE == 1)} then {.menu21.config.f.x6.x configure -state normal -foreground [ cget .ref -foreground ]; .menu21.config.f.x6.l configure -state normal; } else {.menu21.config.f.x6.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu21.config.f.x6.l configure -state disabled}
-	global CONFIG_GPT_IRQ
+	global CONFIG_GPT_SW
 	if {($CONFIG_GPT_ENABLE == 1)} then {.menu21.config.f.x7.x configure -state normal -foreground [ cget .ref -foreground ]; .menu21.config.f.x7.l configure -state normal; } else {.menu21.config.f.x7.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu21.config.f.x7.l configure -state disabled}
+	global CONFIG_GPT_TW
+	if {($CONFIG_GPT_ENABLE == 1)} then {.menu21.config.f.x8.x configure -state normal -foreground [ cget .ref -foreground ]; .menu21.config.f.x8.l configure -state normal; } else {.menu21.config.f.x8.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu21.config.f.x8.l configure -state disabled}
+	global CONFIG_GPT_IRQ
+	if {($CONFIG_GPT_ENABLE == 1)} then {.menu21.config.f.x9.x configure -state normal -foreground [ cget .ref -foreground ]; .menu21.config.f.x9.l configure -state normal; } else {.menu21.config.f.x9.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu21.config.f.x9.l configure -state disabled}
 	global CONFIG_GPT_SEPIRQ
 	if {($CONFIG_GPT_ENABLE == 1)} then {
-	configure_entry .menu21.config.f.x8 normal {n l y}} else {configure_entry .menu21.config.f.x8 disabled {y n l}}
+	configure_entry .menu21.config.f.x10 normal {n l y}} else {configure_entry .menu21.config.f.x10 disabled {y n l}}
 	global CONFIG_GPT_WDOGEN
 	if {($CONFIG_GPT_ENABLE == 1)} then {
-	configure_entry .menu21.config.f.x9 normal {n l y}} else {configure_entry .menu21.config.f.x9 disabled {y n l}}
+	configure_entry .menu21.config.f.x11 normal {n l y}} else {configure_entry .menu21.config.f.x11 disabled {y n l}}
 	global CONFIG_GPT_WDOG
-	if {($CONFIG_GPT_ENABLE == 1) && ($CONFIG_GPT_WDOGEN == 1)} then {.menu21.config.f.x10.x configure -state normal -foreground [ cget .ref -foreground ]; .menu21.config.f.x10.l configure -state normal; } else {.menu21.config.f.x10.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu21.config.f.x10.l configure -state disabled}
+	if {($CONFIG_GPT_ENABLE == 1) && ($CONFIG_GPT_WDOGEN == 1)} then {.menu21.config.f.x12.x configure -state normal -foreground [ cget .ref -foreground ]; .menu21.config.f.x12.l configure -state normal; } else {.menu21.config.f.x12.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu21.config.f.x12.l configure -state disabled}
 }
 
 
@@ -3952,6 +3982,12 @@ proc update_define_menu21 {} {
 	if {$tmpvar_29 == "16"} then {set CONFIG_UA1_FIFO16 1} else {set CONFIG_UA1_FIFO16 0}
 	global CONFIG_UA1_FIFO32
 	if {$tmpvar_29 == "32"} then {set CONFIG_UA1_FIFO32 1} else {set CONFIG_UA1_FIFO32 0}
+	global CONFIG_IRQ3_ENABLE
+	global CONFIG_IRQ3_SEC
+	if {($CONFIG_IRQ3_ENABLE == 1)} then {
+	set CONFIG_IRQ3_SEC [expr $CONFIG_IRQ3_SEC&15]} else {set CONFIG_IRQ3_SEC [expr $CONFIG_IRQ3_SEC|16]}
+	global CONFIG_IRQ3_NSEC
+	if {($CONFIG_IRQ3_ENABLE == 1) && ($CONFIG_IRQ3_SEC == 1)} then {validate_int CONFIG_IRQ3_NSEC "$CONFIG_IRQ3_NSEC" 12}
 	global CONFIG_GPT_ENABLE
 	global CONFIG_GPT_NTIM
 	if {($CONFIG_GPT_ENABLE == 1)} then {validate_int CONFIG_GPT_NTIM "$CONFIG_GPT_NTIM" 2}
@@ -4195,7 +4231,9 @@ set CONFIG_SYN_PROASICPLUS 0
 set CONFIG_SYN_PROASIC3 0
 set CONFIG_SYN_UT025CRH 0
 set CONFIG_SYN_ATC18 0
+set CONFIG_SYN_ATC18RHA 0
 set CONFIG_SYN_CUSTOM1 0
+set CONFIG_SYN_EASIC90 0
 set CONFIG_SYN_IHP25 0
 set CONFIG_SYN_IHP25RH 0
 set CONFIG_SYN_LATTICE 0
@@ -4203,6 +4241,7 @@ set CONFIG_SYN_ECLIPSE 0
 set CONFIG_SYN_PEREGRINE 0
 set CONFIG_SYN_RH_LIB18T 0
 set CONFIG_SYN_RHUMC 0
+set CONFIG_SYN_SMIC13 0
 set CONFIG_SYN_SPARTAN2 0
 set CONFIG_SYN_SPARTAN3 0
 set CONFIG_SYN_SPARTAN3E 0
@@ -4247,6 +4286,7 @@ set CONFIG_PROC_NUM 1
 set CONFIG_IU_NWINDOWS 8
 set CONFIG_IU_V8MULDIV 0
 set tmpvar_3 "(not set)"
+set CONFIG_IU_MUL_LATENCY_2 0
 set CONFIG_IU_MUL_LATENCY_4 0
 set CONFIG_IU_MUL_LATENCY_5 0
 set CONFIG_IU_MUL_MAC 0
@@ -4364,6 +4404,7 @@ set CONFIG_MMU_D4 0
 set CONFIG_MMU_D8 0
 set CONFIG_MMU_D16 0
 set CONFIG_MMU_D32 0
+set CONFIG_MMU_FASTWB 0
 set CONFIG_DSU_ENABLE 0
 set CONFIG_DSU_ITRACE 0
 set tmpvar_21 "(not set)"
@@ -4401,8 +4442,8 @@ set CONFIG_DSU_ETHSZ8 0
 set CONFIG_DSU_ETHSZ16 0
 set CONFIG_DSU_IPMSB C0A8
 set CONFIG_DSU_IPLSB 0033
-set CONFIG_DSU_ETHMSB 00007A
-set CONFIG_DSU_ETHLSB CC0001
+set CONFIG_DSU_ETHMSB 020000
+set CONFIG_DSU_ETHLSB 000000
 set CONFIG_DSU_ETH_PROG 0
 set CONFIG_MCTRL_LEON2 0
 set CONFIG_MCTRL_8BIT 0
@@ -4444,8 +4485,8 @@ set CONFIG_CAN_FT 0
 set CONFIG_PCI_SIMPLE_TARGET 0
 set CONFIG_PCI_MASTER_TARGET 0
 set CONFIG_PCI_MASTER_TARGET_DMA 0
-set CONFIG_PCI_VENDORID 16E3
-set CONFIG_PCI_DEVICEID 0210
+set CONFIG_PCI_VENDORID 1AC8
+set CONFIG_PCI_DEVICEID 0054
 set tmpvar_27 "(not set)"
 set CONFIG_PCI_FIFO0 0
 set CONFIG_PCI_FIFO8 0
@@ -4473,6 +4514,8 @@ set CONFIG_UA1_FIFO8 0
 set CONFIG_UA1_FIFO16 0
 set CONFIG_UA1_FIFO32 0
 set CONFIG_IRQ3_ENABLE 0
+set CONFIG_IRQ3_SEC 0
+set CONFIG_IRQ3_NSEC 12
 set CONFIG_GPT_ENABLE 0
 set CONFIG_GPT_NTIM 2
 set CONFIG_GPT_SW 8
@@ -4530,7 +4573,9 @@ proc writeconfig {file1 file2} {
 	if { $tmpvar_0 == "Actel-Proasic3" } then { write_tristate $cfg $autocfg CONFIG_SYN_PROASIC3 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_PROASIC3 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Aeroflex-UT025CRH" } then { write_tristate $cfg $autocfg CONFIG_SYN_UT025CRH 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_UT025CRH 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Atmel-ATC18" } then { write_tristate $cfg $autocfg CONFIG_SYN_ATC18 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_ATC18 0 [list $notmod] 2 }
+	if { $tmpvar_0 == "Atmel-ATC18RHA" } then { write_tristate $cfg $autocfg CONFIG_SYN_ATC18RHA 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_ATC18RHA 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Custom1" } then { write_tristate $cfg $autocfg CONFIG_SYN_CUSTOM1 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_CUSTOM1 0 [list $notmod] 2 }
+	if { $tmpvar_0 == "eASIC90" } then { write_tristate $cfg $autocfg CONFIG_SYN_EASIC90 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_EASIC90 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "IHP25" } then { write_tristate $cfg $autocfg CONFIG_SYN_IHP25 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_IHP25 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "IHP25RH" } then { write_tristate $cfg $autocfg CONFIG_SYN_IHP25RH 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_IHP25RH 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Lattice-EC/ECP/XP" } then { write_tristate $cfg $autocfg CONFIG_SYN_LATTICE 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_LATTICE 0 [list $notmod] 2 }
@@ -4538,6 +4583,7 @@ proc writeconfig {file1 file2} {
 	if { $tmpvar_0 == "Peregrine" } then { write_tristate $cfg $autocfg CONFIG_SYN_PEREGRINE 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_PEREGRINE 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "RH-LIB18T" } then { write_tristate $cfg $autocfg CONFIG_SYN_RH_LIB18T 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_RH_LIB18T 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "RH-UMC" } then { write_tristate $cfg $autocfg CONFIG_SYN_RHUMC 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_RHUMC 0 [list $notmod] 2 }
+	if { $tmpvar_0 == "SMIC130" } then { write_tristate $cfg $autocfg CONFIG_SYN_SMIC13 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_SMIC13 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Xilinx-Spartan2" } then { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN2 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Xilinx-Spartan3" } then { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN3 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN3 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Xilinx-Spartan3E" } then { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN3E 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN3E 0 [list $notmod] 2 }
@@ -4546,16 +4592,17 @@ proc writeconfig {file1 file2} {
 	if { $tmpvar_0 == "Xilinx-Virtex2" } then { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEX2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEX2 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Xilinx-Virtex4" } then { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEX4 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEX4 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Xilinx-Virtex5" } then { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEX5 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEX5 0 [list $notmod] 2 }
-	if { $tmpvar_0 == "UMC18" } then { write_tristate $cfg $autocfg CONFIG_SYN_UMC 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_UMC 0 [list $notmod] 2 }
+	if { $tmpvar_0 == "UMC180" } then { write_tristate $cfg $autocfg CONFIG_SYN_UMC 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_UMC 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "TSMC90" } then { write_tristate $cfg $autocfg CONFIG_SYN_TSMC90 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_TSMC90 0 [list $notmod] 2 }
 	global tmpvar_1
 	global CONFIG_SYN_INFERRED
 	global CONFIG_SYN_CUSTOM1
 	global CONFIG_SYN_ATC18
 	global CONFIG_SYN_TSMC90
+	global CONFIG_SYN_UMC
 	global CONFIG_SYN_RHUMC
 	global CONFIG_SYN_ARTISAN
-	if {($CONFIG_SYN_INFERRED == 1 || $CONFIG_SYN_CUSTOM1 == 1 || $CONFIG_SYN_ATC18 == 1 || $CONFIG_SYN_TSMC90 == 1 || $CONFIG_SYN_RHUMC == 1 || $CONFIG_SYN_ARTISAN == 1)} then {
+	if {($CONFIG_SYN_INFERRED == 1 || $CONFIG_SYN_CUSTOM1 == 1 || $CONFIG_SYN_ATC18 == 1 || $CONFIG_SYN_TSMC90 == 1 || $CONFIG_SYN_UMC == 1 || $CONFIG_SYN_RHUMC == 1 || $CONFIG_SYN_ARTISAN == 1)} then {
 	if { $tmpvar_1 == "Inferred" } then { write_tristate $cfg $autocfg CONFIG_MEM_INFERRED 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_MEM_INFERRED 0 [list $notmod] 2 }
 	if { $tmpvar_1 == "UMC18" } then { write_tristate $cfg $autocfg CONFIG_MEM_UMC 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_MEM_UMC 0 [list $notmod] 2 }
 	if { $tmpvar_1 == "RH-UMC" } then { write_tristate $cfg $autocfg CONFIG_MEM_RHUMC 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_MEM_RHUMC 0 [list $notmod] 2 }
@@ -4617,10 +4664,13 @@ proc writeconfig {file1 file2} {
 	if {($CONFIG_LEON3 == 1)} then {write_tristate $cfg $autocfg CONFIG_IU_V8MULDIV $CONFIG_IU_V8MULDIV [list $notmod] 2 }
 	global tmpvar_3
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_IU_V8MULDIV == 1)} then {
+	if { $tmpvar_3 == "2-cycles" } then { write_tristate $cfg $autocfg CONFIG_IU_MUL_LATENCY_2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_IU_MUL_LATENCY_2 0 [list $notmod] 2 }
 	if { $tmpvar_3 == "4-cycles" } then { write_tristate $cfg $autocfg CONFIG_IU_MUL_LATENCY_4 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_IU_MUL_LATENCY_4 0 [list $notmod] 2 }
 	if { $tmpvar_3 == "5-cycles" } then { write_tristate $cfg $autocfg CONFIG_IU_MUL_LATENCY_5 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_IU_MUL_LATENCY_5 0 [list $notmod] 2 }}
 	global CONFIG_IU_MUL_MAC
-	if {($CONFIG_LEON3 == 1) && ($CONFIG_IU_V8MULDIV == 1)} then {write_tristate $cfg $autocfg CONFIG_IU_MUL_MAC $CONFIG_IU_MUL_MAC [list $notmod] 2 }
+	global CONFIG_IU_MUL_LATENCY_4
+	global CONFIG_IU_MUL_LATENCY_5
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_IU_V8MULDIV == 1) && ($CONFIG_IU_MUL_LATENCY_4 == 1 || $CONFIG_IU_MUL_LATENCY_5 == 1)} then {write_tristate $cfg $autocfg CONFIG_IU_MUL_MAC $CONFIG_IU_MUL_MAC [list $notmod] 2 }
 	global CONFIG_IU_SVT
 	if {($CONFIG_LEON3 == 1)} then {write_tristate $cfg $autocfg CONFIG_IU_SVT $CONFIG_IU_SVT [list $notmod] 2 }
 	global CONFIG_IU_LDELAY
@@ -4780,6 +4830,8 @@ proc writeconfig {file1 file2} {
 	if { $tmpvar_20 == "8" } then { write_tristate $cfg $autocfg CONFIG_MMU_D8 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_MMU_D8 0 [list $notmod] 2 }
 	if { $tmpvar_20 == "16" } then { write_tristate $cfg $autocfg CONFIG_MMU_D16 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_MMU_D16 0 [list $notmod] 2 }
 	if { $tmpvar_20 == "32" } then { write_tristate $cfg $autocfg CONFIG_MMU_D32 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_MMU_D32 0 [list $notmod] 2 }}
+	global CONFIG_MMU_FASTWB
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_MMU_ENABLE == 1) && ($CONFIG_MMU_SPLIT == 1)} then {write_tristate $cfg $autocfg CONFIG_MMU_FASTWB $CONFIG_MMU_FASTWB [list $notmod] 2 }
 	if {($CONFIG_LEON3 == 1)} then {write_comment $cfg $autocfg "Debug Support Unit        "}
 	global CONFIG_DSU_ENABLE
 	if {($CONFIG_LEON3 == 1)} then {write_tristate $cfg $autocfg CONFIG_DSU_ENABLE $CONFIG_DSU_ENABLE [list $notmod] 2 }
@@ -4968,6 +5020,10 @@ proc writeconfig {file1 file2} {
 	if { $tmpvar_29 == "32" } then { write_tristate $cfg $autocfg CONFIG_UA1_FIFO32 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA1_FIFO32 0 [list $notmod] 2 }}
 	global CONFIG_IRQ3_ENABLE
 	write_tristate $cfg $autocfg CONFIG_IRQ3_ENABLE $CONFIG_IRQ3_ENABLE [list $notmod] 2
+	global CONFIG_IRQ3_SEC
+	if {($CONFIG_IRQ3_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_IRQ3_SEC $CONFIG_IRQ3_SEC [list $notmod] 2 }
+	global CONFIG_IRQ3_NSEC
+	if {($CONFIG_IRQ3_ENABLE == 1) && ($CONFIG_IRQ3_SEC == 1)} then {write_int $cfg $autocfg CONFIG_IRQ3_NSEC $CONFIG_IRQ3_NSEC $notmod }
 	global CONFIG_GPT_ENABLE
 	write_tristate $cfg $autocfg CONFIG_GPT_ENABLE $CONFIG_GPT_ENABLE [list $notmod] 2
 	global CONFIG_GPT_NTIM
@@ -5012,7 +5068,9 @@ proc clear_choices { } {
 	global CONFIG_SYN_PROASIC3; set CONFIG_SYN_PROASIC3 0
 	global CONFIG_SYN_UT025CRH; set CONFIG_SYN_UT025CRH 0
 	global CONFIG_SYN_ATC18; set CONFIG_SYN_ATC18 0
+	global CONFIG_SYN_ATC18RHA; set CONFIG_SYN_ATC18RHA 0
 	global CONFIG_SYN_CUSTOM1; set CONFIG_SYN_CUSTOM1 0
+	global CONFIG_SYN_EASIC90; set CONFIG_SYN_EASIC90 0
 	global CONFIG_SYN_IHP25; set CONFIG_SYN_IHP25 0
 	global CONFIG_SYN_IHP25RH; set CONFIG_SYN_IHP25RH 0
 	global CONFIG_SYN_LATTICE; set CONFIG_SYN_LATTICE 0
@@ -5020,6 +5078,7 @@ proc clear_choices { } {
 	global CONFIG_SYN_PEREGRINE; set CONFIG_SYN_PEREGRINE 0
 	global CONFIG_SYN_RH_LIB18T; set CONFIG_SYN_RH_LIB18T 0
 	global CONFIG_SYN_RHUMC; set CONFIG_SYN_RHUMC 0
+	global CONFIG_SYN_SMIC13; set CONFIG_SYN_SMIC13 0
 	global CONFIG_SYN_SPARTAN2; set CONFIG_SYN_SPARTAN2 0
 	global CONFIG_SYN_SPARTAN3; set CONFIG_SYN_SPARTAN3 0
 	global CONFIG_SYN_SPARTAN3E; set CONFIG_SYN_SPARTAN3E 0
@@ -5046,6 +5105,7 @@ proc clear_choices { } {
 	global CONFIG_CLK_RHUMC; set CONFIG_CLK_RHUMC 0
 	global CONFIG_CLK_CLKDLL; set CONFIG_CLK_CLKDLL 0
 	global CONFIG_CLK_DCM; set CONFIG_CLK_DCM 0
+	global CONFIG_IU_MUL_LATENCY_2; set CONFIG_IU_MUL_LATENCY_2 0
 	global CONFIG_IU_MUL_LATENCY_4; set CONFIG_IU_MUL_LATENCY_4 0
 	global CONFIG_IU_MUL_LATENCY_5; set CONFIG_IU_MUL_LATENCY_5 0
 	global CONFIG_FPU_GRFPU; set CONFIG_FPU_GRFPU 0
@@ -5199,8 +5259,12 @@ proc update_choices { } {
 	if { $CONFIG_SYN_UT025CRH == 1 } then { set tmpvar_0 "Aeroflex-UT025CRH" }
 	global CONFIG_SYN_ATC18
 	if { $CONFIG_SYN_ATC18 == 1 } then { set tmpvar_0 "Atmel-ATC18" }
+	global CONFIG_SYN_ATC18RHA
+	if { $CONFIG_SYN_ATC18RHA == 1 } then { set tmpvar_0 "Atmel-ATC18RHA" }
 	global CONFIG_SYN_CUSTOM1
 	if { $CONFIG_SYN_CUSTOM1 == 1 } then { set tmpvar_0 "Custom1" }
+	global CONFIG_SYN_EASIC90
+	if { $CONFIG_SYN_EASIC90 == 1 } then { set tmpvar_0 "eASIC90" }
 	global CONFIG_SYN_IHP25
 	if { $CONFIG_SYN_IHP25 == 1 } then { set tmpvar_0 "IHP25" }
 	global CONFIG_SYN_IHP25RH
@@ -5215,6 +5279,8 @@ proc update_choices { } {
 	if { $CONFIG_SYN_RH_LIB18T == 1 } then { set tmpvar_0 "RH-LIB18T" }
 	global CONFIG_SYN_RHUMC
 	if { $CONFIG_SYN_RHUMC == 1 } then { set tmpvar_0 "RH-UMC" }
+	global CONFIG_SYN_SMIC13
+	if { $CONFIG_SYN_SMIC13 == 1 } then { set tmpvar_0 "SMIC130" }
 	global CONFIG_SYN_SPARTAN2
 	if { $CONFIG_SYN_SPARTAN2 == 1 } then { set tmpvar_0 "Xilinx-Spartan2" }
 	global CONFIG_SYN_SPARTAN3
@@ -5232,7 +5298,7 @@ proc update_choices { } {
 	global CONFIG_SYN_VIRTEX5
 	if { $CONFIG_SYN_VIRTEX5 == 1 } then { set tmpvar_0 "Xilinx-Virtex5" }
 	global CONFIG_SYN_UMC
-	if { $CONFIG_SYN_UMC == 1 } then { set tmpvar_0 "UMC18" }
+	if { $CONFIG_SYN_UMC == 1 } then { set tmpvar_0 "UMC180" }
 	global CONFIG_SYN_TSMC90
 	if { $CONFIG_SYN_TSMC90 == 1 } then { set tmpvar_0 "TSMC90" }
 	global tmpvar_1
@@ -5273,6 +5339,8 @@ proc update_choices { } {
 	if { $CONFIG_CLK_DCM == 1 } then { set tmpvar_2 "Xilinx-DCM" }
 	global tmpvar_3
 	set tmpvar_3 "5-cycles"
+	global CONFIG_IU_MUL_LATENCY_2
+	if { $CONFIG_IU_MUL_LATENCY_2 == 1 } then { set tmpvar_3 "2-cycles" }
 	global CONFIG_IU_MUL_LATENCY_4
 	if { $CONFIG_IU_MUL_LATENCY_4 == 1 } then { set tmpvar_3 "4-cycles" }
 	global CONFIG_IU_MUL_LATENCY_5

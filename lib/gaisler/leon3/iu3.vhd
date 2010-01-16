@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -60,7 +61,8 @@ entity iu3 is
     rstaddr  : integer := 16#00000#;        -- reset vector MSB address
     smp      : integer range 0 to 15 := 0;  -- support SMP systems
     fabtech  : integer range 0 to NTECH := 0;
-    clk2x    : integer := 0
+    clk2x    : integer := 0;
+    bp       : integer := 1
   );
   port (
     clk   : in  std_ulogic;
@@ -117,6 +119,9 @@ architecture rtl of iu3 is
   constant RS1OPT : boolean := (is_fpga(FABTECH) /= 0);
   constant DYNRST : boolean := (rstaddr = 16#FFFFF#);
   
+--  constant BPRED : std_logic := '1';
+  signal BPRED : std_logic;
+
   subtype word is std_logic_vector(31 downto 0);
   subtype pctype is std_logic_vector(31 downto PCLOW);
   subtype rfatype is std_logic_vector(RFBITS-1 downto 0);
@@ -162,6 +167,7 @@ architecture rtl of iu3 is
     annul : std_ulogic;
     inull : std_ulogic;
     step  : std_ulogic;        
+    divrdy: std_ulogic;        
   end record;
   
   type regacc_reg_type is record
@@ -185,6 +191,7 @@ architecture rtl of iu3 is
     step  : std_ulogic;            
     mulstart : std_ulogic;            
     divstart : std_ulogic;            
+    bp, nobp : std_ulogic;
   end record;
   
   type execute_reg_type is record
@@ -210,6 +217,7 @@ architecture rtl of iu3 is
     mulstep: std_ulogic;            
     mul    : std_ulogic;            
     mac    : std_ulogic;
+    bp     : std_ulogic;
   end record;
   
   type memory_reg_type is record
@@ -285,6 +293,7 @@ architecture rtl of iu3 is
     asr18  : word;
     svt    : std_ulogic;			   -- enable traps
     dwt    : std_ulogic;			   -- disable write error trap
+    dbp    : std_ulogic;			   -- disable branch prediction
   end record;
   
   type write_reg_type is record
@@ -429,6 +438,7 @@ architecture rtl of iu3 is
               when "01" => -- ASR16 - ASR31
 		case dbg.daddr(5 downto 2) is
 		when "0001" =>	-- %ASR17
+	    	  if bp = 2 then s.dbp := dbg.ddata(27); end if;
 	    	  s.dwt := dbg.ddata(14);
 	    	  s.svt := dbg.ddata(13);
 		when "0010" =>	-- %ASR18
@@ -492,6 +502,7 @@ architecture rtl of iu3 is
     elsif (clk2x > 0) then
       asr17(16 downto 15) := conv_std_logic_vector(clk2x, 2);
     end if;
+    if bp = 2 then asr17(27) := r.w.s.dbp; end if;
     asr17(14) := r.w.s.dwt;
     if svt = 1 then asr17(13) := r.w.s.svt; end if;
     if lddel = 2 then asr17(12) := '1'; end if;
@@ -862,17 +873,20 @@ architecture rtl of iu3 is
   variable ushiftin : unsigned(31 downto 0);
   variable sshiftin : signed(32 downto 0);
   variable cnt : natural range 0 to 31;
+  variable resleft, resright : word;
   begin
 
     cnt := conv_integer(r.e.shcnt);
     ushiftin := unsigned(aluin1);
     sshiftin := signed('0' & aluin1);
     if r.e.shleft = '1' then
-      return(std_logic_vector(SHIFT_LEFT(ushiftin, cnt)));
+      resleft := std_logic_vector(SHIFT_LEFT(ushiftin, cnt));
+      return(resleft);
     else
       if r.e.sari = '1' then sshiftin(32) := aluin1(31); end if;
       sshiftin := SHIFT_RIGHT(sshiftin, cnt);
-      return(std_logic_vector(sshiftin(31 downto 0)));
+      resright := std_logic_vector(sshiftin(31 downto 0));
+      return(resright);
 --      else 
 --	ushiftin := SHIFT_RIGHT(ushiftin, cnt);
 --        return(std_logic_vector(ushiftin));
@@ -900,7 +914,6 @@ architecture rtl of iu3 is
 -- Check for illegal and privileged instructions
 
 procedure exception_detect(r : registers; wpr : watchpoint_registers; dbgi : l3_debug_in_type;
-        trapin : in std_ulogic; ttin : in std_logic_vector(5 downto 0); 
 	trap : out std_ulogic; tt : out std_logic_vector(5 downto 0)) is
 variable illegal_inst, privileged_inst : std_ulogic;
 variable cp_disabled, fp_disabled, fpop : std_ulogic;
@@ -911,7 +924,7 @@ variable rd  : std_logic_vector(4 downto 0);
 variable inst : word;
 variable wph : std_ulogic;
 begin
-  inst := r.a.ctrl.inst; trap := trapin; tt := ttin;
+  inst := r.a.ctrl.inst; trap := r.a.ctrl.trap; tt := r.a.ctrl.tt;
   if r.a.ctrl.annul = '0' then
     op  := inst(31 downto 30); op2 := inst(24 downto 22);
     op3 := inst(24 downto 19); rd  := inst(29 downto 25);
@@ -1099,36 +1112,70 @@ end;
 
 -- load/icc interlock detection
 
+  function icc_valid(r : registers) return std_logic is
+  variable not_valid : std_logic;
+  begin
+    not_valid := '0';
+    if MULEN or DIVEN then 
+      not_valid := r.m.ctrl.wicc and (r.m.ctrl.cnt(0) or r.m.mul);
+    end if;
+    not_valid := not_valid or (r.a.ctrl.wicc or r.e.ctrl.wicc);
+    return(not not_valid);
+  end;
+
+  procedure bp_miss_ex(r : registers; icc : std_logic_vector(3 downto 0); 
+	ex_bpmiss, ra_bpannul : out std_logic) is
+  variable miss : std_logic;
+  begin
+    miss := (not r.e.ctrl.annul) and r.e.bp and not branch_true(icc, r.e.ctrl.inst);
+    ra_bpannul := miss and r.e.ctrl.inst(29);
+    ex_bpmiss := miss;
+  end;
+
+  procedure bp_miss_ra(r : registers; ra_bpmiss, de_bpannul : out std_logic) is
+  variable miss : std_logic;
+  begin
+    miss := ((not r.a.ctrl.annul) and r.a.bp and icc_valid(r) and not branch_true(r.m.icc, r.a.ctrl.inst));
+    de_bpannul := miss and r.a.ctrl.inst(29);
+    ra_bpmiss := miss;
+  end;
+
   procedure lock_gen(r : registers; rs2, rd : std_logic_vector(4 downto 0);
-	rfa1, rfa2, rfrd : rfatype; inst : word; fpc_lock, mulinsn, divinsn : std_ulogic;
-        lldcheck1, lldcheck2, lldlock, lldchkra, lldchkex : out std_ulogic) is
+	rfa1, rfa2, rfrd : rfatype; inst : word; fpc_lock, mulinsn, divinsn, de_wcwp : std_ulogic;
+        lldcheck1, lldcheck2, lldlock, lldchkra, lldchkex, bp, nobp, de_fins_hold : out std_ulogic) is
   variable op : std_logic_vector(1 downto 0);
   variable op2 : std_logic_vector(2 downto 0);
   variable op3 : std_logic_vector(5 downto 0);
   variable cond : std_logic_vector(3 downto 0);
   variable rs1  : std_logic_vector(4 downto 0);
   variable i, ldcheck1, ldcheck2, ldchkra, ldchkex, ldcheck3 : std_ulogic;
-  variable ldlock, icc_check, bicc_hold, chkmul, y_check : std_ulogic;
+  variable ldlock, icc_check, bicc_hold, chkmul, y_check : std_logic;
+  variable icc_check_bp, y_hold, mul_hold, bicc_hold_bp, fins, call_hold  : std_ulogic;
   variable lddlock : boolean;
+  variable de_fins_holdx : std_ulogic;
   begin
     op := inst(31 downto 30); op3 := inst(24 downto 19); 
     op2 := inst(24 downto 22); cond := inst(28 downto 25); 
     rs1 := inst(18 downto 14); lddlock := false; i := inst(13);
     ldcheck1 := '0'; ldcheck2 := '0'; ldcheck3 := '0'; ldlock := '0';
     ldchkra := '1'; ldchkex := '1'; icc_check := '0'; bicc_hold := '0';
-    y_check := '0';
-
+    y_check := '0'; y_hold := '0'; bp := '0'; mul_hold := '0';
+    icc_check_bp := '0'; nobp := '0'; fins := '0'; call_hold := '0';
     if (r.d.annul = '0') then
       case op is
+      when CALL =>
+	call_hold := '1'; nobp := BPRED;
       when FMT2 =>
 	if (op2 = BICC) and (cond(2 downto 0) /= "000") then 
-	  icc_check := '1';
+	  icc_check_bp := '1';
 	end if;
+	if (op2 = BICC) then nobp := BPRED; end if;
       when FMT3 =>
         ldcheck1 := '1'; ldcheck2 := not i;
         case op3 is
 	when TICC =>
 	  if (cond(2 downto 0) /= "000") then icc_check := '1'; end if;
+	  nobp := BPRED;
         when RDY => 
           ldcheck1 := '0'; ldcheck2 := '0';
 	  if MACPIPE then y_check := '1'; end if;
@@ -1137,11 +1184,10 @@ end;
         when RDPSR => 
           ldcheck1 := '0'; ldcheck2 := '0'; icc_check := '1';
 	  if MULEN then icc_check := '1'; end if;
---	when ADDX | ADDXCC | SUBX | SUBXCC =>
---	  if MULEN then icc_check := '1'; end if;
 	when SDIV | SDIVCC | UDIV | UDIVCC =>
 	  if DIVEN then y_check := '1'; end if;
-        when FPOP1 | FPOP2 => ldcheck1:= '0'; ldcheck2 := '0';
+        when FPOP1 | FPOP2 => ldcheck1:= '0'; ldcheck2 := '0'; fins := BPRED;
+        when JMPL => call_hold := '1'; nobp := BPRED;
         when others => 
         end case;
       when LDST =>
@@ -1154,20 +1200,22 @@ end;
 	when others => ldchkex := '0';
         end case;
         if  (op3(2 downto 0) = "011") then lddlock := true; end if;
+        if op3(5) = '1' then fins := BPRED; end if; -- no BP on FPU/CP LD/ST
       when others => null;
       end case;
     end if;
 
     if MULEN or DIVEN then 
       chkmul := mulinsn;
-      bicc_hold := bicc_hold or (icc_check and r.m.ctrl.wicc and (r.m.ctrl.cnt(0) or r.m.mul));
+      mul_hold := (r.a.mulstart and r.a.ctrl.wicc) or (r.m.ctrl.wicc and (r.m.ctrl.cnt(0) or r.m.mul));
     else chkmul := '0'; end if;
     if DIVEN then 
-      bicc_hold := bicc_hold or (y_check and (r.a.ctrl.wy or r.e.ctrl.wy));
+      y_hold := y_check and (r.a.ctrl.wy or r.e.ctrl.wy);
       chkmul := chkmul or divinsn;
     end if;
 
-    bicc_hold := bicc_hold or (icc_check and (r.a.ctrl.wicc or r.e.ctrl.wicc));
+    bicc_hold := icc_check and not icc_valid(r);
+    bicc_hold_bp := icc_check_bp and not icc_valid(r);
 
     if (((r.a.ctrl.ld or chkmul) and r.a.ctrl.wreg and ldchkra) = '1') and
        (((ldcheck1 = '1') and (r.a.ctrl.rd = rfa1)) or
@@ -1181,8 +1229,12 @@ end;
         ((ldcheck2 = '1') and (r.e.ctrl.rd = rfa2)))
     then ldlock := '1'; end if;
 
-    ldlock := ldlock or bicc_hold or fpc_lock;
-
+    de_fins_holdx := BPRED and fins and (r.a.bp or r.e.bp); -- skip BP on FPU inst in branch target address
+    de_fins_hold := de_fins_holdx;
+    ldlock := ldlock or y_hold or fpc_lock or (BPRED and r.a.bp and r.a.ctrl.inst(29) and de_wcwp) or de_fins_holdx;
+    if ((icc_check_bp and BPRED) = '1') and ((r.a.nobp or mul_hold) = '0') then 
+      bp := bicc_hold_bp;
+    else ldlock := ldlock or bicc_hold or bicc_hold_bp; end if;
     lldcheck1 := ldcheck1; lldcheck2:= ldcheck2; lldlock := ldlock;
     lldchkra := ldchkra; lldchkex := ldchkex;
   end;
@@ -1213,20 +1265,20 @@ end;
 	cnt : out std_logic_vector(1 downto 0); 
 	de_pc : out pctype; de_branch, ctrl_annul, de_annul, jmpl_inst, inull, 
 	de_pv, ctrl_pv, de_hold_pc, ticc_exception, rett_inst, mulstart,
-	divstart : out std_ulogic) is
+	divstart : out std_ulogic; rabpmiss, exbpmiss : std_logic) is
   variable op : std_logic_vector(1 downto 0);
   variable op2 : std_logic_vector(2 downto 0);
   variable op3 : std_logic_vector(5 downto 0);
   variable cond : std_logic_vector(3 downto 0);
   variable hold_pc, annul_current, annul_next, branch, annul, pv : std_ulogic;
-  variable de_jmpl : std_ulogic;
+  variable de_jmpl, inhibit_current : std_ulogic;
   begin
     branch := '0'; annul_next := '0'; annul_current := '0'; pv := '1';
     hold_pc := '0'; ticc_exception := '0'; rett_inst := '0';
     op := inst(31 downto 30); op3 := inst(24 downto 19); 
     op2 := inst(24 downto 22); cond := inst(28 downto 25); 
     annul := inst(29); de_jmpl := '0'; cnt := "00";
-    mulstart := '0'; divstart := '0'; 
+    mulstart := '0'; divstart := '0'; inhibit_current := '0';
     if r.d.annul = '0' then
       case inst(31 downto 30) is
       when CALL =>
@@ -1242,11 +1294,11 @@ end;
           elsif (CPEN and (op2 = CBCCC)) then 
 	    branch := cbranch_true;
 	    if cccv /= '1' then hold_pc := '1'; annul_current := '1'; end if;
-	  else branch := branch_true; end if;
+	  else branch := branch_true or (BPRED and orv(cond) and not icc_valid(r)); end if;
 	  if hold_pc = '0' then
   	    if (branch = '1') then
               if (cond = BA) and (annul = '1') then annul_next := '1'; end if;
-            else annul_next := annul; end if;
+            else annul_next := annul_next or annul; end if;
 	    if r.d.inull = '1' then -- contention with JMPL
 	      hold_pc := '1'; annul_current := '1'; annul_next := '0';
 	    end if;
@@ -1270,8 +1322,10 @@ end;
 	  if DIVEN then
             case r.d.cnt is
             when "00" =>
- 	      cnt := "01"; hold_pc := '1'; pv := '0';
-	      divstart := '1';
+ 	      hold_pc := '1'; pv := '0';
+	      if r.d.divrdy = '0' then
+ 	        cnt := "01"; divstart := '1';
+	      end if;
             when "01" =>
  	      if divo.nready = '1' then cnt := "00"; 
               else cnt := "01"; pv := '0'; hold_pc := '1'; end if;
@@ -1325,12 +1379,36 @@ end;
     end if;
     hold_pc := (hold_pc or ldlock) and not annul_all;
 
+    if ((exbpmiss and r.a.ctrl.annul and r.d.pv and not hold_pc) = '1') then
+	annul_next := '1'; pv := '0';
+    end if;
+    if ((exbpmiss and not r.a.ctrl.annul and r.d.pv) = '1') then
+	annul_next := '1'; pv := '0'; annul_current := '1';
+    end if;
+    if ((exbpmiss and not r.a.ctrl.annul and not r.d.pv and not hold_pc) = '1') then
+	annul_next := '1'; pv := '0';
+    end if;
+    if ((exbpmiss and r.e.ctrl.inst(29) and not r.a.ctrl.annul and not r.d.pv ) = '1') 
+	and (r.d.cnt = "01") then
+	annul_next := '1'; annul_current := '1'; pv := '0';
+    end if;
+    if (exbpmiss and r.e.ctrl.inst(29) and r.a.ctrl.annul and r.d.pv) = '1' then
+      annul_next := '1'; pv := '0'; inhibit_current := '1';
+    end if; 
+    if (rabpmiss and not r.a.ctrl.inst(29) and not r.d.annul and r.d.pv and not hold_pc) = '1' then
+	annul_next := '1'; pv := '0';
+    end if;
+    if (rabpmiss and r.a.ctrl.inst(29) and not r.d.annul and r.d.pv ) = '1' then
+	annul_next := '1'; pv := '0'; inhibit_current := '1';
+    end if;
+
+
     if hold_pc = '1' then de_pc := r.d.pc; else de_pc := r.f.pc; end if;
 
-    annul_current := (annul_current or ldlock or annul_all);
-    ctrl_annul := r.d.annul or annul_all or annul_current;
+    annul_current := (annul_current or (ldlock and not inhibit_current) or annul_all);
+    ctrl_annul := r.d.annul or annul_all or annul_current or inhibit_current;
     pv := pv and not ((r.d.inull and not hold_pc) or annul_all);
-    jmpl_inst := de_jmpl and not annul_current;
+    jmpl_inst := de_jmpl and not annul_current and not inhibit_current;
     annul_next := (r.d.inull and not hold_pc) or annul_next or annul_all;
     if (annul_next = '1') or (rstn = '0') then
       cnt := (others => '0'); 
@@ -1803,11 +1881,13 @@ end;
       case op is
       when CALL => link_pc := '1';
       when FMT3 =>
-        case op3 is
-        when JMPL => jump := '1'; link_pc := '1'; 
-        when RETT => jump := '1';
-        when others => null;
-        end case;
+	if r.e.ctrl.trap = '0' then
+          case op3 is
+          when JMPL => jump := '1'; link_pc := '1'; 
+          when RETT => jump := '1';
+          when others => null;
+          end case;
+	end if;
       when LDST =>
           case r.e.ctrl.cnt is
 	  when "00" =>
@@ -2072,6 +2152,7 @@ end;
           elsif MACEN and (rd = "10010") then
 	    s.asr18 := r.x.result;
           elsif (rd = "10001") then
+	    if bp = 2 then s.dbp := r.x.result(27); end if;
 	    s.dwt := r.x.result(14);
             if (svt = 1) then s.svt := r.x.result(13); end if;
           elsif rd(4 downto 3) = "11" then -- %ASR24 - %ASR31
@@ -2232,6 +2313,7 @@ end;
 
 begin
 
+  BPRED <= '0' when bp = 0 else '1' when bp = 1 else not r.w.s.dbp;
   comb : process(ico, dco, rfo, r, wpr, ir, dsur, rstn, holdn, irqi, dbgi, fpo, cpo, tbo,
 		 mulo, divo, dummy, rp)
 
@@ -2239,10 +2321,11 @@ begin
   variable vp 	: pwd_register_type;
   variable vwpr : watchpoint_registers;
   variable vdsu : dsu_registers;
+  variable fe_pc, fe_npc :  std_logic_vector(31 downto PCLOW);
   variable npc 	: std_logic_vector(31 downto PCLOW);
   variable de_raddr1, de_raddr2 : std_logic_vector(9 downto 0);
   variable de_rs2, de_rd : std_logic_vector(4 downto 0);
-  variable de_hold_pc, de_branch, de_fpop, de_ldlock : std_ulogic;
+  variable de_hold_pc, de_branch, de_ldlock : std_ulogic;
   variable de_cwp, de_cwp2 : cwptype;
   variable de_inull : std_ulogic;
   variable de_ren1, de_ren2 : std_ulogic;
@@ -2252,9 +2335,13 @@ begin
   variable de_icc : std_logic_vector(3 downto 0);
   variable de_fbranch, de_cbranch : std_ulogic;
   variable de_rs1mod : std_ulogic;
+  variable de_bpannul : std_ulogic;
+  variable de_fins_hold : std_ulogic;
 
   variable ra_op1, ra_op2 : word;
   variable ra_div : std_ulogic;
+  variable ra_bpmiss : std_ulogic;
+  variable ra_bpannul : std_ulogic;
 
   variable ex_jump, ex_link_pc : std_ulogic;
   variable ex_jump_address : pctype;
@@ -2268,6 +2355,7 @@ begin
   variable ex_dsuen : std_ulogic;
   variable ex_ldbp2 : std_ulogic;
   variable ex_sari : std_ulogic;
+  variable ex_bpmiss : std_ulogic;
   
   variable me_inull, me_nullify, me_nullify2 : std_ulogic;
   variable me_iflush : std_ulogic;
@@ -2299,6 +2387,7 @@ begin
   variable vir : irestart_register;
   variable icnt : std_ulogic;
   variable tbufcntx : std_logic_vector(TBUFBITS-1 downto 0);
+  variable bpmiss : std_ulogic;
   
   begin
 
@@ -2452,6 +2541,12 @@ begin
     
     if (xc_rstn = '0') then 
       v.w.except := '0'; v.w.s.et := '0'; v.w.s.svt := '0'; v.w.s.dwt := '0';
+      v.w.s.ef := '0';  -- needed for AX
+      if need_extra_sync_reset(fabtech) /= 0 then 
+	v.w.s.cwp := (others => '0');
+	v.w.s.icc := (others => '0');
+      end if;
+      v.w.s.dbp := '0';
       v.x.annul_all := '1'; v.x.rstate := run; vir.pwd := '0'; 
       vp.pwd := '0'; v.x.debug := '0'; --vp.error := '0';
       v.x.nerror := '0';
@@ -2575,20 +2670,20 @@ begin
     dci.eenaddr  <= v.m.dci.enaddr;
     dci.eaddress <= ex_add_res(32 downto 1);
     dci.edata <= ex_edata2;
+    bp_miss_ex(r, me_icc, ex_bpmiss, ra_bpannul);
     
 -----------------------------------------------------------------------
 -- REGFILE STAGE
 -----------------------------------------------------------------------
 
-    v.e.ctrl := r.a.ctrl; v.e.jmpl := r.a.jmpl;
-    v.e.ctrl.annul := r.a.ctrl.annul or v.x.annul_all;
-    v.e.ctrl.rett := r.a.ctrl.rett and not r.a.ctrl.annul;
-    v.e.ctrl.wreg := r.a.ctrl.wreg and not v.x.annul_all;    
+    v.e.ctrl := r.a.ctrl; v.e.jmpl := r.a.jmpl and not r.a.ctrl.trap;
+    v.e.ctrl.annul := r.a.ctrl.annul or ra_bpannul or v.x.annul_all;
+    v.e.ctrl.rett := r.a.ctrl.rett and not r.a.ctrl.annul and not r.a.ctrl.trap;
+    v.e.ctrl.wreg := r.a.ctrl.wreg and not (ra_bpannul or v.x.annul_all);    
     v.e.su := r.a.su; v.e.et := r.a.et;
-    v.e.ctrl.wicc := r.a.ctrl.wicc and not v.x.annul_all;
+    v.e.ctrl.wicc := r.a.ctrl.wicc and not (ra_bpannul or v.x.annul_all);
     
-    exception_detect(r, wpr, dbgi, r.a.ctrl.trap, r.a.ctrl.tt, 
-		     v.e.ctrl.trap, v.e.ctrl.tt);
+    exception_detect(r, wpr, dbgi, v.e.ctrl.trap, v.e.ctrl.tt);
     op_mux(r, rfo.data1, v.m.result, v.x.result, xc_df_result, zero32, 
 	r.a.rsel1, v.e.ldbp1, ra_op1);
     op_mux(r, rfo.data2,  v.m.result, v.x.result, xc_df_result, r.a.imm, 
@@ -2597,6 +2692,8 @@ begin
 	   v.e.aluop, v.e.alusel, v.e.aluadd, v.e.shcnt, v.e.sari, v.e.shleft,
 	   v.e.ymsb, v.e.mul, ra_div, v.e.mulstep, v.e.mac, v.e.ldbp2, v.e.invop2);
     cin_gen(r, v.m.icc(0), v.e.alucin);
+    bp_miss_ra(r, ra_bpmiss, de_bpannul);
+    v.e.bp := r.a.bp and not ra_bpmiss;
 
 -----------------------------------------------------------------------
 -- DECODE STAGE
@@ -2633,13 +2730,16 @@ begin
     fpbranch(de_inst, cpo.cc, de_cbranch);
     v.a.imm := imm_data(r, de_inst);
     lock_gen(r, de_rs2, de_rd, v.a.rfa1, v.a.rfa2, v.a.ctrl.rd, de_inst, 
-	fpo.ldlock, v.e.mul, ra_div, v.a.ldcheck1, v.a.ldcheck2, de_ldlock, 
-	v.a.ldchkra, v.a.ldchkex);
+	fpo.ldlock, v.e.mul, ra_div, de_wcwp, v.a.ldcheck1, v.a.ldcheck2, de_ldlock, 
+	v.a.ldchkra, v.a.ldchkex, v.a.bp, v.a.nobp, de_fins_hold);
     ic_ctrl(r, de_inst, v.x.annul_all, de_ldlock, branch_true(de_icc, de_inst), 
 	de_fbranch, de_cbranch, fpo.ccv, cpo.ccv, v.d.cnt, v.d.pc, de_branch,
 	v.a.ctrl.annul, v.d.annul, v.a.jmpl, de_inull, v.d.pv, v.a.ctrl.pv,
-	de_hold_pc, v.a.ticc, v.a.ctrl.rett, v.a.mulstart, v.a.divstart);
+	de_hold_pc, v.a.ticc, v.a.ctrl.rett, v.a.mulstart, v.a.divstart, 
+	ra_bpmiss, ex_bpmiss);
 
+    v.a.bp := v.a.bp and not v.a.ctrl.annul;
+    v.a.nobp := v.a.nobp and not v.a.ctrl.annul;
     cwp_gen(r, v, v.a.ctrl.annul, de_wcwp, de_cwp, v.d.cwp);    
     
     v.d.inull := ra_inull_gen(r, v);
@@ -2651,7 +2751,7 @@ begin
 
     de_branch_address := branch_address(de_inst, r.d.pc);
 
-    v.a.ctrl.annul := v.a.ctrl.annul or v.x.annul_all;    
+    v.a.ctrl.annul := v.a.ctrl.annul;    
     v.a.ctrl.wicc := v.a.ctrl.wicc and not v.a.ctrl.annul;
     v.a.ctrl.wreg := v.a.ctrl.wreg and not v.a.ctrl.annul;
     v.a.ctrl.rett := v.a.ctrl.rett and not v.a.ctrl.annul;
@@ -2685,13 +2785,25 @@ begin
     rfi.diag <= dco.testen & "000";
     ici.inull <= de_inull;
     ici.flush <= me_iflush;
-    if (xc_rstn = '0') then v.d.cnt := (others => '0'); end if;
+    v.d.divrdy := divo.nready;
+    if (xc_rstn = '0') then
+      v.d.cnt := (others => '0');
+      if need_extra_sync_reset(fabtech) /= 0 then 
+	v.d.cwp := (others => '0');
+      end if;
+    end if;
 
 -----------------------------------------------------------------------
 -- FETCH STAGE
 -----------------------------------------------------------------------
 
-    npc := r.f.pc;
+    bpmiss := ex_bpmiss or ra_bpmiss;
+    npc := r.f.pc; fe_pc := r.f.pc;
+    if ra_bpmiss = '1' then fe_pc := r.d.pc; end if;
+    if ex_bpmiss = '1' then fe_pc := r.a.ctrl.pc; end if;
+    fe_npc := zero32(31 downto PCLOW);
+    fe_npc(31 downto 2) := fe_pc(31 downto 2) + 1;    -- Address incrementer
+
     if (xc_rstn = '0') then
       v.f.pc := (others => '0'); v.f.branch := '0';
       if DYNRST then v.f.pc(31 downto 12) := irqi.rstvec;
@@ -2701,23 +2813,23 @@ begin
     elsif xc_exception = '1' then	-- exception
       v.f.branch := '1'; v.f.pc := xc_trap_address;
       npc := v.f.pc;
---    elsif (not ra_inull and de_hold_pc) = '1' then
     elsif de_hold_pc = '1' then
       v.f.pc := r.f.pc; v.f.branch := r.f.branch;
-      if ex_jump = '1' then
+      if bpmiss = '1' then
+        v.f.pc := fe_npc; v.f.branch := '1';
+        npc := v.f.pc;
+      elsif ex_jump = '1' then
         v.f.pc := ex_jump_address; v.f.branch := '1';
         npc := v.f.pc;
       end if;
-    elsif ex_jump = '1' then
+    elsif (ex_jump and not bpmiss) = '1' then
       v.f.pc := ex_jump_address; v.f.branch := '1';
       npc := v.f.pc;
-    elsif de_branch = '1' then
+    elsif (de_branch and not bpmiss) = '1' then
       v.f.pc := branch_address(de_inst, r.d.pc); v.f.branch := '1';
       npc := v.f.pc;
     else
-      v.f.branch := '0';
-      v.f.pc(31 downto 2) := r.f.pc(31 downto 2) + 1;    -- Address incrementer
-      npc := v.f.pc;
+      v.f.branch := bpmiss; v.f.pc := fe_npc; npc := v.f.pc;
     end if;
 
     ici.dpc <= r.d.pc(31 downto 2) & "00";
@@ -2789,12 +2901,12 @@ begin
     if FPEN then
 -- pragma translate_on
       vfpi.flush := v.x.annul_all; vfpi.exack := xc_fpexack; vfpi.a_rs1 := r.a.rs1; vfpi.d.inst := de_inst;
-      vfpi.d.cnt := r.d.cnt; vfpi.d.annul := v.x.annul_all or r.d.annul; vfpi.d.trap := r.d.mexc;
+      vfpi.d.cnt := r.d.cnt; vfpi.d.annul := v.x.annul_all or de_bpannul or r.d.annul or de_fins_hold; vfpi.d.trap := r.d.mexc;
       vfpi.d.pc(1 downto 0) := (others => '0'); vfpi.d.pc(31 downto PCLOW) := r.d.pc(31 downto PCLOW); 
       vfpi.d.pv := r.d.pv;
       vfpi.a.pc(1 downto 0) := (others => '0'); vfpi.a.pc(31 downto PCLOW) := r.a.ctrl.pc(31 downto PCLOW); 
       vfpi.a.inst := r.a.ctrl.inst; vfpi.a.cnt := r.a.ctrl.cnt; vfpi.a.trap := r.a.ctrl.trap;
-      vfpi.a.annul := r.a.ctrl.annul; vfpi.a.pv := r.a.ctrl.pv;
+      vfpi.a.annul := r.a.ctrl.annul or (ex_bpmiss and r.e.ctrl.inst(29)); vfpi.a.pv := r.a.ctrl.pv;
       vfpi.e.pc(1 downto 0) := (others => '0'); vfpi.e.pc(31 downto PCLOW) := r.e.ctrl.pc(31 downto PCLOW); 
       vfpi.e.inst := r.e.ctrl.inst; vfpi.e.cnt := r.e.ctrl.cnt; vfpi.e.trap := r.e.ctrl.trap; vfpi.e.annul := r.e.ctrl.annul;
       vfpi.e.pv := r.e.ctrl.pv;
@@ -2832,6 +2944,7 @@ begin
       if (holdn = '1') then
         r <= rin;
       else
+	r.d.divrdy <= rin.d.divrdy;
 	r.x.ipend <= rin.x.ipend;
 	r.m.werr <= rin.m.werr;
 	if (holdn or ico.mds) = '0' then
@@ -2844,10 +2957,11 @@ begin
         end if;
       end if;
       if rstn = '0' then
-        r.w.s.s <= '1';
-        if fabtech = axcel then
+        r.w.s.s <= '1'; r.w.s.ps <= '1'; 
+        if need_extra_sync_reset(fabtech) /= 0 then 
           r.d.inst <= (others => (others => '0'));
-        end if;
+	  r.x.mexc <= '0';
+        end if; 
       end if; 
     end if;
   end process;

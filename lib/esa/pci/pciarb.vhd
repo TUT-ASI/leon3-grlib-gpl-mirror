@@ -16,6 +16,7 @@ use grlib.stdlib.all;
 use grlib.amba.all;
 use grlib.devices.all;
 use techmap.gencomp.all;
+use techmap.netcomp.all;
 use esa.pci_arb_pkg.all;
 --pragma translate_off
 use std.textio.all;
@@ -29,7 +30,8 @@ entity pciarb is
     pmask      : integer := 16#FFF#;
     nb_agents  : integer := 4;
     apb_en     : integer := 1;
-    netlist    : integer := 0);
+    netlist    : integer := 0;
+    tech       : integer := axcel);
   port(
     clk     : in std_ulogic;
     rst_n   : in std_ulogic;
@@ -68,7 +70,8 @@ component pci_arb_net is
   generic (
     nb_agents : integer := 4;
     arb_size  : integer := 2;
-    apb_en    : integer := 1
+    apb_en    : integer := 1;
+    tech      : integer := axcel
   );
   port (
     clk     : in  std_logic;                            -- clock
@@ -108,7 +111,8 @@ begin
   net0 : if netlist /= 0 generate
     arb : pci_arb_net
     generic map(
-      NB_AGENTS => nb_agents, ARB_SIZE => log2(nb_agents), APB_EN => apb_en)
+      NB_AGENTS => nb_agents, ARB_SIZE => log2(nb_agents), APB_EN => apb_en,
+      tech => tech)
     port map(
       clk => clk, rst_n => rst_n, req_n => req_n, frame_n => frame_n,
       gnt_n => gnt_n, pclk => pclk, prst_n => prst_n, 
@@ -120,10 +124,12 @@ begin
       pbo_prdata  => pbo.prdata);
   end generate;
 
-  apbo.prdata <= pbo.prdata;
-  apbo.pindex <= pindex;
-  apbo.pconfig <= pconfig;
-  apbo.pirq <= (others => '0');
+  apb_en1: if apb_en /= 0 generate
+    apbo.prdata <= pbo.prdata;
+    apbo.pindex <= pindex;
+    apbo.pconfig <= pconfig;
+    apbo.pirq <= (others => '0');
+  end generate apb_en1;
 
   pbi.psel <= apbi.psel(pindex);
   pbi.penable <= apbi.penable;

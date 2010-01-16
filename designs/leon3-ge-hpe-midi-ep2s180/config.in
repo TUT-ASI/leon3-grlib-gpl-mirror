@@ -29,7 +29,7 @@ mainmenu_option next_comment
   source lib/gaisler/uart/dcom.in
   source lib/gaisler/jtag/jtag.in
   source lib/gaisler/net/edcl.in
-  source lib/gaisler/usb/usbdcl.in
+  source lib/gaisler/usb/grusb_dcl.in
 endmenu
 
 mainmenu_option next_comment

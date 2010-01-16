@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -85,7 +86,7 @@ begin
 	ddr_clk, ddr_clkb, ddr_clk_fb_out, ddr_clk_fb,
 	ddr_cke, ddr_csb, ddr_web, ddr_rasb, ddr_casb, 
 	ddr_dm, ddr_dqs, ddr_ad, ddr_ba, ddr_dq,
-	sdo.address(15 downto 2), sdo.ba,
+	sdo.address(15 downto 2), sdo.ba(1 downto 0),
 	sdi.data(dbits*2-1 downto 0), sdo.data(dbits*2-1 downto 0), 
 	sdo.dqm(dbits/4-1 downto 0), sdo.bdrive, sdo.bdrive, sdo.qdrive, 
 	sdo.rasn, sdo.casn, sdo.sdwen, sdo.sdcsn, sdo.sdcke, sdo.sdck, sdo.moben);
@@ -107,14 +108,15 @@ use gaisler.memctrl.all;
 ------------------------------------------------------------------
 
 entity ddr2_phy is
-  generic (tech     : integer := virtex2; MHz      : integer := 100; 
-	rstdelay    : integer := 200;     dbits    : integer := 16; 
-	clk_mul     : integer := 2 ;      clk_div  : integer := 2;
-	ddelayb0    : integer := 0;       ddelayb1 : integer := 0; ddelayb2 : integer := 0;
-	ddelayb3    : integer := 0;       ddelayb4 : integer := 0; ddelayb5 : integer := 0;
-	ddelayb6    : integer := 0;       ddelayb7 : integer := 0;
-        numidelctrl : integer := 4;       norefclk : integer := 0; odten    : integer := 0;
-        rskew       : integer := 0);
+  generic (tech     : integer := virtex2; MHz        : integer := 100; 
+	rstdelay    : integer := 200;     dbits      : integer := 16; 
+	clk_mul     : integer := 2 ;      clk_div    : integer := 2;
+	ddelayb0    : integer := 0;       ddelayb1   : integer := 0; ddelayb2 : integer := 0;
+	ddelayb3    : integer := 0;       ddelayb4   : integer := 0; ddelayb5 : integer := 0;
+	ddelayb6    : integer := 0;       ddelayb7   : integer := 0;
+        numidelctrl : integer := 4;       norefclk   : integer := 0; odten    : integer := 0;
+        rskew       : integer := 0;       eightbanks : integer range 0 to 1 := 0;
+        dqsse       : integer range 0 to 1 := 0);
   port (
     rst            : in    std_ulogic;
     clk            : in    std_logic;   -- input clock
@@ -128,15 +130,15 @@ entity ddr2_phy is
     ddr_clk_fb     : in    std_logic;
     ddr_cke        : out   std_logic_vector(1 downto 0);
     ddr_csb        : out   std_logic_vector(1 downto 0);
-    ddr_web        : out   std_ulogic;  -- ddr write enable
-    ddr_rasb       : out   std_ulogic;  -- ddr ras
-    ddr_casb       : out   std_ulogic;  -- ddr cas
-    ddr_dm         : out   std_logic_vector (dbits/8-1 downto 0);  -- ddr dm
-    ddr_dqs        : inout std_logic_vector (dbits/8-1 downto 0);  -- ddr dqs
-    ddr_dqsn       : inout std_logic_vector (dbits/8-1 downto 0);  -- ddr dqs
-    ddr_ad         : out   std_logic_vector (13 downto 0);         -- ddr address
-    ddr_ba         : out   std_logic_vector (1 downto 0);          -- ddr bank address
-    ddr_dq         : inout std_logic_vector (dbits-1 downto 0);    -- ddr data
+    ddr_web        : out   std_ulogic;                               -- ddr write enable
+    ddr_rasb       : out   std_ulogic;                               -- ddr ras
+    ddr_casb       : out   std_ulogic;                               -- ddr cas
+    ddr_dm         : out   std_logic_vector (dbits/8-1 downto 0);    -- ddr dm
+    ddr_dqs        : inout std_logic_vector (dbits/8-1 downto 0);    -- ddr dqs
+    ddr_dqsn       : inout std_logic_vector (dbits/8-1 downto 0);    -- ddr dqs
+    ddr_ad         : out   std_logic_vector (13 downto 0);           -- ddr address
+    ddr_ba         : out   std_logic_vector (1+eightbanks downto 0); -- ddr bank address
+    ddr_dq         : inout std_logic_vector (dbits-1 downto 0);      -- ddr data
     ddr_odt        : out   std_logic_vector(1 downto 0);
 
     sdi            : out   sdctrl_in_type;
@@ -154,11 +156,12 @@ begin
 -- pragma translate_off
 	/ 200
 -- pragma translate_on
-	, dbits => dbits, clk_mul => clk_mul, clk_div => clk_div, 
-	ddelayb0 => ddelayb0, ddelayb1 => ddelayb1, ddelayb2 => ddelayb2,
-	ddelayb3 => ddelayb3, ddelayb4 => ddelayb4, ddelayb5 => ddelayb5,
-	ddelayb6 => ddelayb6, ddelayb7 => ddelayb7,
-        numidelctrl => numidelctrl, norefclk => norefclk, rskew => rskew)
+	, dbits     => dbits,       clk_mul  => clk_mul,  clk_div  => clk_div, 
+	ddelayb0    => ddelayb0,    ddelayb1 => ddelayb1, ddelayb2 => ddelayb2,
+	ddelayb3    => ddelayb3,    ddelayb4 => ddelayb4, ddelayb5 => ddelayb5,
+	ddelayb6    => ddelayb6,    ddelayb7 => ddelayb7,
+        numidelctrl => numidelctrl, norefclk => norefclk, rskew    => rskew,
+        eightbanks  => eightbanks,  dqsse => dqsse)
      port map (
 	rst, clk, clkref200, clkout, lock,
 	ddr_clk, ddr_clkb, ddr_clk_fb_out, ddr_clk_fb,
@@ -169,7 +172,7 @@ begin
 	sdo.dqm(dbits/4-1 downto 0), sdo.bdrive, sdo.bdrive, sdo.qdrive, 
 	sdo.rasn, sdo.casn, sdo.sdwen, sdo.sdcsn, sdo.sdcke, 
 	sdo.cal_en(dbits/8-1 downto 0), sdo.cal_inc(dbits/8-1 downto 0), 
-        sdo.cal_pll, sdo.cal_rst, sdo.odt 
+        sdo.cal_pll, sdo.cal_rst, sdo.odt, sdo.oct, sdo.dqs_gate
         );
 end;
 

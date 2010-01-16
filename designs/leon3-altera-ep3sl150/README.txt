@@ -96,6 +96,11 @@ grlib>
 The DDR2 interface has been tested up to 200 MHz. The input data delay
 has to be recalibrated when the interface frequency change. This can be 
 done dynamically or by changing the delay in the .qsf file.
+To run the design in quartus 7.2 you have to uncomment the lines in the 
+.qsf file that assigns the MEMORY_INTERFACE_DATA_PIN_GROUP for the DDR2
+interface. These group assignments result in error when quartus 8.0 is
+used.
+
 
 2. SSRAM interface
 ------------------

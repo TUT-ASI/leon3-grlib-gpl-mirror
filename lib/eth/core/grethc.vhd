@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -47,7 +48,10 @@ entity grethc is
     phyrstadr      : integer range 0 to 32 := 0;
     rmii           : integer range 0 to 1  := 0;
     oepol	   : integer range 0 to 1  := 0; 
-    scanen	   : integer range 0 to 1  := 0); 
+    scanen	   : integer range 0 to 1  := 0;
+    mdint_pol      : integer range 0 to 1  := 0;
+    enable_mdint   : integer range 0 to 1  := 0;
+    multicast      : integer range 0 to 1  := 0); 
   port(
     rst            : in  std_ulogic;
     clk            : in  std_ulogic;
@@ -110,6 +114,7 @@ entity grethc is
     rx_crs         : in   std_ulogic;
     mdio_i         : in   std_ulogic;
     phyrstaddr     : in   std_logic_vector(4 downto 0);
+    mdint          : in   std_ulogic; 
     --ethernet output signals
     reset          : out  std_ulogic;
     txd            : out  std_logic_vector(3 downto 0);   
@@ -215,6 +220,8 @@ architecture rtl of grethc is
     prom        : std_ulogic;
     reset       : std_ulogic;
     speed       : std_ulogic;
+    pstatirqen  : std_ulogic;
+    mcasten     : std_ulogic;
   end record;
 
   type status_reg_type is record
@@ -226,6 +233,7 @@ architecture rtl of grethc is
     rxahberr    : std_ulogic;
     toosmall    : std_ulogic;
     invaddr     : std_ulogic;
+    phystat     : std_ulogic;
   end record;
 
   type mdio_ctrl_reg_type is record
@@ -284,6 +292,7 @@ architecture rtl of grethc is
     status      : status_reg_type;
     mdio_ctrl   : mdio_ctrl_reg_type;
     mac_addr    : mac_addr_reg_type;
+    hash        : std_logic_vector(63 downto 0);
     txdesc      : std_logic_vector(31 downto 10);
     rxdesc      : std_logic_vector(31 downto 10);
     edclip      : std_logic_vector(31 downto 0);
@@ -337,7 +346,8 @@ architecture rtl of grethc is
     rxwrite         : std_logic_vector(nsync-1 downto 0);
     rxwriteack      : std_ulogic; 
     rxburstcnt      : std_logic_vector(burstbits downto 0);
-    addrnok         : std_ulogic;
+    addrok          : std_ulogic;
+    addrdone        : std_ulogic;
     ctrlpkt         : std_ulogic;
     check           : std_ulogic;
     checkdata       : std_logic_vector(31 downto 0);
@@ -345,7 +355,11 @@ architecture rtl of grethc is
     rxden           : std_ulogic;
     gotframe        : std_ulogic;
     bcast           : std_ulogic;
+    msbgood         : std_ulogic;
     rxburstav       : std_ulogic;
+    hashlookup      : std_ulogic;
+    mcast           : std_ulogic;
+    mcastacc        : std_ulogic;
     
     --mdio
     mdccnt          : std_logic_vector(7 downto 0);
@@ -357,6 +371,8 @@ architecture rtl of grethc is
     mdioen          : std_ulogic;
     cnt             : std_logic_vector(4 downto 0);
     duplexstate     : duplexstate_type;
+    disableduplex   : std_ulogic;
+    init_busy       : std_ulogic;
     ext             : std_ulogic;
     extcap          : std_ulogic;
     regaddr         : std_logic_vector(4 downto 0);
@@ -364,6 +380,7 @@ architecture rtl of grethc is
     rstphy          : std_ulogic;
     capbil          : std_logic_vector(4 downto 0);
     rstaneg         : std_ulogic;
+    mdint_sync      : std_logic_vector(2 downto 0);
 
     --edcl
     edclrstate      : edclrstate_type;
@@ -400,7 +417,7 @@ architecture rtl of grethc is
   signal rmsto            : eth_rx_ahb_in_type;
   signal rmsti            : eth_rx_ahb_out_type;
 
-  signal macaddr         : std_logic_vector(47 downto 0);
+  signal macaddr          : std_logic_vector(47 downto 0);
 
   signal ahbmi            : ahbc_mst_in_type;
   signal ahbmo            : ahbc_mst_out_type;
@@ -429,7 +446,7 @@ begin
      
   comb : process(rst, irst, r, rmsti, tmsti, txo, rxo, psel, paddr, penable,
                  erdata, pwrite, pwdata, rxrdata, txrdata, mdio_i, phyrstaddr,
-                 testen, testrst, macaddr, edcladdr) is
+                 testen, testrst, macaddr, edcladdr, mdint) is
     variable v             : reg_type;
     variable vpirq         : std_ulogic;
     variable vprdata       : std_logic_vector(31 downto 0);
@@ -446,7 +463,8 @@ begin
     variable ovrunstop     : std_ulogic;
     --mdio
     variable mdioindex     : integer range 0 to 31;
-    variable mclk          : std_ulogic;
+    variable mclk          : std_ulogic;  --rising mdio clk edge
+    variable nmclk         : std_ulogic;  --falling mdio clk edge
     --edcl
     variable veri          : edcl_ram_in_type;
     variable swap          : std_ulogic;
@@ -476,7 +494,7 @@ begin
     v.rxstart(0)    := rxo.start;
     v.rxdone(0)     := rxo.done;
     v.rxwrite(0)    := rxo.write;
-        
+    
     if nsync = 2 then
       v.txdone(1)     := r.txdone(0);
       v.txread(1)     := r.txread(0);
@@ -484,6 +502,12 @@ begin
       v.rxstart(1)    := r.rxstart(0);
       v.rxdone(1)     := r.rxdone(0);
       v.rxwrite(1)    := r.rxwrite(0);
+    end if;
+
+    if enable_mdint = 1 then
+      v.mdint_sync(0) := mdint;
+      v.mdint_sync(1) := r.mdint_sync(0);
+      v.mdint_sync(2) := r.mdint_sync(1);
     end if;
 
     txdone     := r.txdone(nsync)     xor r.txdone(nsync-1);
@@ -496,7 +520,7 @@ begin
     if txdone = '1' then
       v.txstatus := txo.status;
     end if;
-    
+        
 -------------------------------------------------------------------------------
 -- HOST INTERFACE -------------------------------------------------------------
 -------------------------------------------------------------------------------
@@ -506,6 +530,15 @@ begin
    if (psel and penable and pwrite) = '1' then
      case paddr(5 downto 2) is
      when "0000" => --ctrl reg
+       if edcl /= 0 then
+         v.disableduplex := pwdata(12);
+       end if;
+       if multicast = 1 then
+         v.ctrl.mcasten := pwdata(11);
+       end if;
+       if enable_mdint = 1 then
+         v.ctrl.pstatirqen  := pwdata(10);
+       end if;
        if rmii = 1 then
        v.ctrl.speed       := pwdata(7);  
        end if;
@@ -517,6 +550,9 @@ begin
        v.ctrl.rxen        := pwdata(1);
        v.ctrl.txen        := pwdata(0);
      when "0001" => --status/int source reg
+       if enable_mdint = 1 then
+         if pwdata(8) = '1' then v.status.phystat  := '0'; end if;
+       end if;
        if pwdata(7) = '1' then v.status.invaddr  := '0'; end if;
        if pwdata(6) = '1' then v.status.toosmall := '0'; end if;
        if pwdata(5) = '1' then v.status.txahberr := '0'; end if;
@@ -530,11 +566,11 @@ begin
      when "0011" => --mac addr lsb
        v.mac_addr(31 downto 0)  := pwdata(31 downto 0);
      when "0100" => --mdio ctrl/status
-       if enable_mdio = 1 then 
-         v.mdio_ctrl.data   := pwdata(31 downto 16);
-         v.mdio_ctrl.phyadr := pwdata(15 downto 11);
-         v.mdio_ctrl.regadr := pwdata(10 downto 6);
+       if enable_mdio = 1 then
          if r.mdio_ctrl.busy = '0' then
+           v.mdio_ctrl.data   := pwdata(31 downto 16);
+           v.mdio_ctrl.phyadr := pwdata(15 downto 11);
+           v.mdio_ctrl.regadr := pwdata(10 downto 6);
            v.mdio_ctrl.read   := pwdata(1);
            v.mdio_ctrl.write  := pwdata(0);
            v.mdio_ctrl.busy   := pwdata(1) or pwdata(0);
@@ -550,6 +586,14 @@ begin
        if (edcl /= 0) then
        v.edclip := pwdata;
        end if;
+     when "1000" => --hash msb
+       if multicast = 1 then
+         v.hash(63 downto 32) := pwdata;
+       end if;
+     when "1001" => --hash lsb
+       if multicast = 1 then
+         v.hash(31 downto 0) := pwdata;
+       end if;
      when others => null; 
      end case; 
    end if;
@@ -560,6 +604,15 @@ begin
      if (edcl /= 0) then
        vprdata(31) := '1';
        vprdata(30 downto 28) := bufsize;
+       vprdata(12) := r.disableduplex;
+     end if;
+     if enable_mdint = 1 then
+       vprdata(26) := '1';
+       vprdata(10) := r.ctrl.pstatirqen;
+     end if;
+     if multicast = 1 then
+       vprdata(25) := '1';
+       vprdata(11) := r.ctrl.mcasten;
      end if;
      if rmii = 1 then
      vprdata(7) := r.ctrl.speed;
@@ -572,8 +625,11 @@ begin
      vprdata(1) := r.ctrl.rxen;
      vprdata(0) := r.ctrl.txen; 
    when "0001" => --status/int source reg
-     vprdata(5) := r.status.invaddr;
-     vprdata(4) := r.status.toosmall;
+     if enable_mdint = 1 then
+       vprdata(8) := r.status.phystat;
+     end if;
+     vprdata(7) := r.status.invaddr;
+     vprdata(6) := r.status.toosmall;
      vprdata(5) := r.status.txahberr;
      vprdata(4) := r.status.rxahberr;
      vprdata(3) := r.status.tx_int;
@@ -602,8 +658,36 @@ begin
      if (edcl /= 0) then
      vprdata := r.edclip;
      end if;
+   when "1000" =>
+     if multicast = 1 then
+       vprdata := r.hash(63 downto 32);
+     end if;
+   when "1001" =>
+     if multicast = 1 then
+       vprdata := r.hash(31 downto 0);
+     end if;
    when others => null; 
-   end case;   
+   end case;
+
+
+   --PHY STATUS DETECTION
+   if enable_mdint = 1 then
+     if mdint_pol = 0 then
+       if (r.mdint_sync(2) and not r.mdint_sync(1)) = '1' then
+         v.status.phystat := '1';
+         if r.ctrl.pstatirqen = '1' then
+           vpirq := '1';
+         end if;
+       end if;
+     else
+       if (r.mdint_sync(1) and not r.mdint_sync(2)) = '1' then
+         v.status.phystat := '1';
+         if r.ctrl.pstatirqen = '1' then
+           vpirq := '1';
+         end if;
+       end if;
+     end if;
+   end if;
       
    --MASTER INTERFACE
 
@@ -615,7 +699,7 @@ begin
    --tx dma fsm
    case r.txdstate is
    when idle =>
-     v.txcnt := (others => '0');
+     v.txcnt := (others => '0'); v.txburstcnt := (others => '0');
      if (edcl /= 0) then
        v.tedcl := '0';
      end if;
@@ -639,10 +723,13 @@ begin
      v.tfwpnt := (others => '0'); v.tfrpnt := (others => '0');
      v.tfcnt := (others => '0');
      if tmsti.grant = '1' then
-       v.tmsto.addr := r.tmsto.addr + 4;
+       v.txburstcnt := r.txburstcnt + 1; v.tmsto.addr := r.tmsto.addr + 4;
+       if r.txburstcnt(0) = '1' then
+         v.tmsto.req := '0';
+       end if;
      end if;
      if tmsti.ready = '1' then
-       v.txcnt := r.txcnt + 1; v.tmsto.req := '0';
+       v.txcnt := r.txcnt + 1; 
        case r.txcnt(1 downto 0) is
          when "00" =>
            v.txlength  := tmsti.data(10 downto 0);
@@ -791,9 +878,14 @@ begin
    --rx dma fsm
    case r.rxdstate is
    when idle =>
-     v.rmsto.req := '0'; v.rmsto.write := '0'; v.addrnok := '0'; 
+     v.rmsto.req := '0'; v.rmsto.write := '0'; v.addrok := '0';
+     v.rxburstcnt := (others => '0'); v.addrdone := '0';
      v.rxcnt := (others => '0'); v.rxdoneold := '0';
      v.ctrlpkt := '0'; v.bcast := '0'; v.edclactive := '0';
+     v.msbgood := '0';
+     if multicast = 1 then
+       v.mcast := '0'; v.mcastacc := '0';
+     end if;
      if r.ctrl.rxen = '1' then
        v.rxdstate := read_desc; v.rmsto.req := '1';
        v.rmsto.addr := r.rxdesc & r.rxdsel & "000"; 
@@ -804,10 +896,13 @@ begin
    when read_desc =>
      v.rxstatus := (others => '0');
      if rmsti.grant = '1' then
-       v.rmsto.addr := r.rmsto.addr + 4;
+       v.rxburstcnt := r.rxburstcnt + 1; v.rmsto.addr := r.rmsto.addr + 4;
+       if r.rxburstcnt(0) = '1' then
+         v.rmsto.req := '0';
+       end if;
      end if;
      if rmsti.ready = '1' then
-       v.rxcnt := r.rxcnt + 1; v.rmsto.req := '0';
+       v.rxcnt := r.rxcnt + 1;
        case r.rxcnt(1 downto 0) is
          when "00" =>
            v.ctrl.rxen := rmsti.data(11);
@@ -843,7 +938,7 @@ begin
        v.rfcnt := (others => '0'); v.rfwpnt := (others => '0');
        v.rfrpnt := (others => '0'); v.writeok := '1';
        v.rxbytecount := (others => '0'); v.rxlength := (others => '0');
-     elsif (r.addrnok or r.ctrlpkt) = '1' then
+     elsif ((r.addrdone and not r.addrok) or r.ctrlpkt) = '1' then
        v.rxdstate := discard; v.status.invaddr := '1';
      elsif ((r.rxdoneold = '1') and r.rxcnt >= r.rxlength) then
        if r.gotframe = '1' then
@@ -891,7 +986,13 @@ begin
    when write_status =>
      v.rmsto.req := '1'; v.rmsto.addr := r.rxdesc & r.rxdsel & "000";
      v.rxdstate := write_status2;
-     v.rmsto.data := X"000" & '0' & r.rxstatus & "000" & r.rxlength;  
+     if multicast = 1 then
+       v.rmsto.data := "00000" & r.mcastacc & "0000000" &
+                        r.rxstatus & "000" & r.rxlength;
+     else
+       v.rmsto.data := "0000000000000" &
+                        r.rxstatus & "000" & r.rxlength;
+     end if;
    when write_status2 =>
      if rmsti.grant = '1' then
        v.rmsto.req := '0'; v.rmsto.addr := r.rmsto.addr + 4;
@@ -935,26 +1036,44 @@ begin
    if r.check = '1' and r.rxcnt(10 downto 5) = "000000" then 
      case r.rxcnt(4 downto 2) is
      when "001" =>
-       if r.checkdata /= broadcast(47 downto 16) and
-          r.checkdata /= r.mac_addr(47 downto 16) and
-          (not r.ctrl.prom) = '1'then
-         v.addrnok := '1';
-       elsif r.checkdata = broadcast(47 downto 16) then
+       if r.ctrl.prom = '1' then
+         v.addrok := '1';
+       end if;
+       v.mcast := r.checkdata(24);
+       if r.checkdata = broadcast(47 downto 16) then
          v.bcast := '1';
        end if;
+       if r.checkdata = r.mac_addr(47 downto 16) then
+         v.msbgood := '1';
+       end if;
      when "010" =>
-       if r.checkdata(31 downto 16) /= broadcast(15 downto 0) and
-          r.checkdata(31 downto 16) /= r.mac_addr(15 downto 0) and
-          (not r.ctrl.prom) = '1' then
-         v.addrnok := '1';
-       elsif (r.bcast = '0') and
-             (r.checkdata(31 downto 16) = broadcast(15 downto 0)) then
-         v.addrnok := '1';
+       if r.checkdata(31 downto 16) = broadcast(15 downto 0) then
+         if r.bcast = '1' then
+           v.addrok := '1';
+         end if;
+       else
+         v.bcast := '0';
+       end if;
+       if r.checkdata(31 downto 16) = r.mac_addr(15 downto 0) then
+         if r.msbgood = '1' then
+           v.addrok := '1';
+         end if;
+       end if;
+       if multicast = 1 then
+         v.hashlookup := r.hash(conv_integer(rxo.mcasthash));
        end if;
      when "011" =>
-       null;
+       if multicast = 1 then
+         if (r.hashlookup and r.ctrl.mcasten and r.mcast) = '1' then
+           v.addrok := '1';
+           if r.bcast = '0' then
+             v.mcastacc := '1';
+           end if;
+         end if;
+       end if;
      when "100" =>
        if r.checkdata(31 downto 16) = ctrlopcode then v.ctrlpkt := '1'; end if;
+       v.addrdone := '1';
      when others =>
        null;
      end case; 
@@ -1011,6 +1130,7 @@ begin
    --mdio commands
    if enable_mdio = 1 then
      mclk := r.mdioclk and not r.mdioclkold;
+     nmclk := r.mdioclkold and not r.mdioclk;
      v.mdioclkold := r.mdioclk;
      if r.mdccnt = "00000000" then
        v.mdccnt := divisor;
@@ -1019,9 +1139,17 @@ begin
        v.mdccnt := r.mdccnt - 1;
      end if;
      mdioindex := conv_integer(r.cnt); v.mdioi := mdio_i;
-     if mclk = '1' then
-       case r.mdio_state is
-         when idle =>
+     case r.mdio_state is
+       when idle =>
+         if (enable_mdio = 1) and (edcl = 0) and (r.ctrl.reset = '1') then
+           v.mdio_state := idle; v.mdio_ctrl.read := '0';
+           v.mdio_ctrl.write := '0'; v.mdio_ctrl.busy := '0';
+           v.mdio_ctrl.data := (others => '0');
+           v.mdio_ctrl.regadr := (others => '0');
+           v.ctrl.reset := '0';
+           if OEPOL = 0 then v.mdioen := '1'; else v.mdioen := '0'; end if;
+         end if;
+         if mclk = '1' then
            v.cnt := (others => '0');
            if r.mdio_ctrl.busy = '1' then
              v.mdio_ctrl.linkfail := '0'; 
@@ -1030,22 +1158,32 @@ begin
              end if;
              v.mdio_state := preamble; v.mdioo := '1';
              if OEPOL = 0 then v.mdioen := '0'; else v.mdioen := '1'; end if;
-           end if; 
-         when preamble =>
+           end if;
+         end if;
+       when preamble =>
+         if mclk = '1' then
            v.cnt := r.cnt + 1; 
            if r.cnt = "11111" then
              v.mdioo := '0'; v.mdio_state := startst; 
-           end if; 
-         when startst =>
+           end if;
+         end if;
+       when startst =>
+         if mclk = '1' then
            v.mdioo := '1'; v.mdio_state := op; v.cnt := (others => '0');
-         when op =>
+         end if;
+       when op =>
+         if mclk = '1' then
            v.mdio_state := op2;    
            if r.mdio_ctrl.read = '1' then v.mdioo := '1';
            else v.mdioo := '0'; end if;
-         when op2 =>
+         end if;
+       when op2 =>
+         if mclk = '1' then
            v.mdioo := not r.mdioo; v.mdio_state := phyadr;
            v.cnt := (others => '0');
-         when phyadr =>
+         end if;
+       when phyadr =>
+         if mclk = '1' then
            v.cnt := r.cnt + 1;
            case mdioindex is
            when 0 => v.mdioo := r.mdio_ctrl.phyadr(4);
@@ -1056,7 +1194,9 @@ begin
                      v.mdio_state := regadr; v.cnt := (others => '0');
            when others => null;
            end case;
-         when regadr =>
+         end if;
+       when regadr =>
+         if mclk = '1' then
            v.cnt := r.cnt + 1;
            case mdioindex is
            when 0 => v.mdioo := r.mdio_ctrl.regadr(4);
@@ -1067,37 +1207,60 @@ begin
                      v.mdio_state := ta; v.cnt := (others => '0');
            when others => null;
            end case;
-         when ta =>
+         end if;
+       when ta =>
+         if mclk = '1' then
            v.mdio_state := ta2;
            if r.mdio_ctrl.read = '1' then 
              if OEPOL = 0 then v.mdioen := '1'; else v.mdioen := '0'; end if;
            else v.mdioo := '1'; end if;
-         when ta2 =>
+         end if;
+       when ta2 =>
+         if mclk = '1' then
            v.cnt := "01111"; v.mdio_state := ta3; 
            if r.mdio_ctrl.write = '1' then v.mdioo := '0'; v.mdio_state := data; end if;
-         when ta3 =>
+         end if;
+       when ta3 =>
+         if mclk = '1' then
            v.mdio_state := data;
+         end if;
+         if nmclk = '1' then
            if r.mdioi /= '0' then
              v.mdio_ctrl.linkfail := '1';
            end if;
-         when data =>
+         end if;
+       when data =>
+         if mclk = '1' then
            v.cnt := r.cnt - 1;
-           if r.mdio_ctrl.read = '1' then
-             v.mdio_ctrl.data(mdioindex) := r.mdioi; 
-           else
-             v.mdioo := r.mdio_ctrl.data(mdioindex);
-           end if;
            if r.cnt = "00000" then
              v.mdio_state := dataend;
            end if;
-         when dataend =>
-           v.mdio_ctrl.busy := '0'; v.mdio_ctrl.read := '0';
+           if r.mdio_ctrl.read = '0' then
+             v.mdioo := r.mdio_ctrl.data(mdioindex);
+           end if;
+         end if;
+         if nmclk = '1' then
+           if r.mdio_ctrl.read = '1' then
+             v.mdio_ctrl.data(mdioindex) := r.mdioi; 
+           end if;
+         end if;
+       when dataend =>
+         if mclk = '1' then
+           if (rmii = 1) or (edcl /= 0) then
+             v.init_busy := '0';
+             if r.duplexstate = done then
+               v.mdio_ctrl.busy := '0';
+             end if;
+           else
+             v.mdio_ctrl.busy := '0'; 
+           end if;
+           v.mdio_ctrl.read := '0'; 
            v.mdio_ctrl.write := '0'; v.mdio_state := idle;
            if OEPOL = 0 then v.mdioen := '1'; else v.mdioen := '0'; end if;
-         when others =>
-           null;
-       end case;
-     end if;
+         end if;
+       when others =>
+         null;
+     end case;
    end if;
 
 -------------------------------------------------------------------------------
@@ -1450,7 +1613,7 @@ begin
      --edcl, gbit link mode check
      case r.duplexstate is
        when start =>
-         v.mdio_ctrl.regadr := r.regaddr;
+         v.mdio_ctrl.regadr := r.regaddr; v.init_busy := '1';
          v.mdio_ctrl.busy := '1'; v.duplexstate := waitop;
          if (r.phywr or r.rstphy) = '1' then
            v.mdio_ctrl.write := '1'; 
@@ -1461,7 +1624,7 @@ begin
            v.mdio_ctrl.data := X"9000";
          end if;
        when waitop =>
-         if r.mdio_ctrl.busy = '0' then
+         if r.init_busy = '0' then
            if r.mdio_ctrl.linkfail = '1' then
              v.duplexstate := start; 
            elsif r.rstphy = '1' then
@@ -1500,7 +1663,9 @@ begin
                --phy gbit capable, disable gbit
                v.regaddr := "01001"; 
              elsif r.mdio_ctrl.data(5) = '1' then --auto neg completed
-               v.regaddr := "00100"; 
+               v.regaddr := "00100";
+             elsif r.disableduplex = '1' then
+               v.duplexstate := done; v.mdio_ctrl.busy := '0';
              end if;
            when "00100" =>
              v.duplexstate := start; v.regaddr := "00101";
@@ -1522,7 +1687,7 @@ begin
              null;
          end case;
        when selmode =>
-         v.duplexstate := done;
+         v.duplexstate := done; v.mdio_ctrl.busy := '0';
          if r.phywr = '1' then
            v.ctrl.full_duplex := '0'; v.ctrl.speed := '0';
          else
@@ -1556,24 +1721,22 @@ begin
     if irst = '0' then
       v.txdstate := idle; v.rxdstate := idle; v.rfrpnt := (others => '0');
       v.tmsto.req := '0'; v.tmsto.req := '0'; v.rfwpnt := (others => '0'); 
-      v.rfcnt := (others => '0');  v.mdio_ctrl.read := '0';
-      v.mdio_ctrl.write := '0'; v.ctrl.txen := '0';
-      v.mdio_ctrl.busy := '0'; v.txirqgen := '0'; v.ctrl.rxen := '0';
-      v.mdio_ctrl.data := (others => '0');
-      v.mdio_ctrl.regadr := (others => '0');
+      v.rfcnt := (others => '0'); 
+      v.ctrl.txen := '0';
+      v.txirqgen := '0'; v.ctrl.rxen := '0';
       v.txdsel := (others => '0'); v.txstart_sync := '0';
       v.txread := (others => '0'); v.txrestart := (others => '0');
       v.txdone := (others => '0'); v.txreadack := '0'; 
       v.rxdsel := (others => '0'); v.rxdone := (others => '0');
       v.rxdoneold := '0'; v.rxdoneack := '0'; v.rxwriteack := '0';
       v.rxstart := (others => '0'); v.rxwrite := (others => '0');
-      v.mdio_ctrl.linkfail := '1'; v.ctrl.reset := '0';
       v.status.invaddr := '0'; v.status.toosmall := '0';
-      v.ctrl.full_duplex := '0'; v.writeok := '0';
-      if (enable_mdio = 1) then
-        v.mdccnt := (others => '0'); v.mdioclk := '0';
-        v.mdio_state := idle;
-        if OEPOL = 0 then v.mdioen := '1'; else v.mdioen := '0'; end if;
+      v.ctrl.full_duplex := '0'; v.writeok := '1';
+      if (enable_mdio = 0) or (edcl /= 0) then
+        v.ctrl.reset := '0';
+      end if;
+      if enable_mdint = 1 then
+        v.status.phystat := '0'; v.ctrl.pstatirqen := '0';
       end if;
       if (edcl /= 0) then
         v.tpnt := (others => '0'); v.rpnt := (others => '0');
@@ -1587,6 +1750,9 @@ begin
       v.ctrl.tx_irqen := '0';
       v.ctrl.rx_irqen := '0';
       v.ctrl.prom := '0';
+      if multicast = 1 then
+        v.ctrl.mcasten := '0';
+      end if;
     end if;
 
     if edcl = 0 then
@@ -1612,6 +1778,21 @@ begin
         v.mdio_ctrl.phyadr := phyrstaddr;
       end if;
       v.seq := (others => '0');
+      if (enable_mdio = 1) then
+        v.mdccnt := divisor; v.mdioclk := '0';
+      end if;
+      if edcl /= 0 then
+        v.disableduplex := '0';
+      end if;
+      v.ctrl.reset := '0';
+      if (enable_mdio = 1) then
+        v.mdio_state := idle; v.mdio_ctrl.read := '0';
+        v.mdio_ctrl.write := '0'; v.mdio_ctrl.busy := '0';
+        v.mdio_ctrl.data := (others => '0');
+        v.mdio_ctrl.regadr := (others => '0');
+        v.ctrl.reset := '0'; v.mdio_ctrl.linkfail := '1';
+        if OEPOL = 0 then v.mdioen := '1'; else v.mdioen := '0'; end if;
+      end if;
     end if;
 -------------------------------------------------------------------------------
 -- SIGNAL ASSIGNMENTS ---------------------------------------------------------
@@ -1742,8 +1923,9 @@ begin
   rx_rmii0 : if rmii = 0 generate
     rx0 : greth_rx
       generic map(
-        nsync => nsync,
-        rmii  => rmii)
+        nsync     => nsync,
+        rmii      => rmii,
+        multicast => multicast)
       port map(
         rst   => arst,
         clk   => rx_clk,
@@ -1754,8 +1936,9 @@ begin
   rx_rmii1 : if rmii = 1 generate
     rx0 : greth_rx
       generic map(
-        nsync => nsync,
-        rmii  => rmii)
+        nsync     => nsync,
+        rmii      => rmii,
+        multicast => multicast)
       port map(
         rst   => arst,
         clk   => rmii_clk,

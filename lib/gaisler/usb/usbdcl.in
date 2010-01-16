@@ -1,1 +1,0 @@
-    bool 'Enable USB debug link       ' CONFIG_USBDCL

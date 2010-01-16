@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -79,7 +80,7 @@ component ahbuart
     apbi    : in  apb_slv_in_type;
     apbo    : out apb_slv_out_type;
     ahbi    : in  ahb_mst_in_type;
-    ahbo    : out ahb_mst_out_type );
+    ahbo    : out ahb_mst_out_type);
 end component;      
 
 end;

@@ -139,6 +139,7 @@
 
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE  : integer := CONFIG_IRQ3_ENABLE;
+  constant CFG_IRQ3_NSEC    : integer := CONFIG_IRQ3_NSEC;
 
 -- Modular timer
   constant CFG_GPT_ENABLE   : integer := CONFIG_GPT_ENABLE;
@@ -162,6 +163,9 @@
   constant CFG_KBD_ENABLE  : integer := CONFIG_KBD_ENABLE;
   constant CFG_VGA_ENABLE  : integer := CONFIG_VGA_ENABLE;
   constant CFG_SVGA_ENABLE : integer := CONFIG_SVGA_ENABLE;
+
+-- AMBA System ACE Interface Controller
+  constant CFG_GRACECTRL : integer := CONFIG_GRACECTRL;
 
 -- GRLIB debugging
   constant CFG_DUART    : integer := CONFIG_DEBUG_UART;

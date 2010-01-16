@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -19,7 +20,7 @@
 -- Entity: 	various
 -- File:	clkgen_proasic3.vhd
 -- Author:	Jiri Gaisler, Gaisler Research
--- Description:	Clock generators for Proasic3
+-- Description:	Clock generators for Actel Proasic3 / IGLOO
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -64,8 +65,8 @@ constant VERSION : integer := 0;
     component PLL
     generic (VCOFREQUENCY:real := 0.0);
 
-        port(CLKA, EXTFB, POWERDOWN : in std_logic := 'U'; GLA, 
-        LOCK, GLB, YB, GLC, YC : out std_logic;  OADIV0, OADIV1, 
+        port(CLKA, EXTFB, POWERDOWN : in std_ulogic := 'U'; GLA, 
+        LOCK, GLB, YB, GLC, YC : out std_ulogic;  OADIV0, OADIV1, 
         OADIV2, OADIV3, OADIV4, OAMUX0, OAMUX1, OAMUX2, DLYGLA0, 
         DLYGLA1, DLYGLA2, DLYGLA3, DLYGLA4, OBDIV0, OBDIV1, 
         OBDIV2, OBDIV3, OBDIV4, OBMUX0, OBMUX1, OBMUX2, DLYYB0, 
@@ -76,13 +77,13 @@ constant VERSION : integer := 0;
         FINDIV0, FINDIV1, FINDIV2, FINDIV3, FINDIV4, FINDIV5, 
         FINDIV6, FBDIV0, FBDIV1, FBDIV2, FBDIV3, FBDIV4, FBDIV5, 
         FBDIV6, FBDLY0, FBDLY1, FBDLY2, FBDLY3, FBDLY4, FBSEL0, 
-        FBSEL1, XDLYSEL, VCOSEL0, VCOSEL1, VCOSEL2 : in std_logic := 
+        FBSEL1, XDLYSEL, VCOSEL0, VCOSEL1, VCOSEL2 : in std_ulogic := 
         'U') ;
     end component;
 
-    component PLLINT port( A : in std_logic; Y :out std_logic); end component;
+    component PLLINT port(A : in std_ulogic; Y :out std_ulogic); end component;
 
-    signal VCC_1_net, GND_1_net, clkint : std_logic ;
+    signal VCC_1_net, GND_1_net, clkint : std_ulogic ;
     signal M, N : std_logic_vector(6 downto 0) ;
     signal O : std_logic_vector(4 downto 0) ;
     signal vcosel : std_logic_vector(2 downto 0) ;

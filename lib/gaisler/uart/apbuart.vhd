@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -74,7 +75,6 @@ type uartregs is record
   txen   	:  std_ulogic;	-- transmitter enabled
   rirqen 	:  std_ulogic;	-- receiver irq enable
   tirqen 	:  std_ulogic;	-- transmitter irq enable
-  oen           :  std_ulogic;  -- output enable
   parsel 	:  std_ulogic;	-- parity select
   paren  	:  std_ulogic;	-- parity select
   flow   	:  std_ulogic;	-- flow control enable
@@ -83,6 +83,7 @@ type uartregs is record
   rsempty   	:  std_ulogic;	-- receiver shift register empty (internal)
   tsempty   	:  std_ulogic;	-- transmitter shift register empty
   break  	:  std_ulogic;	-- break detected
+  breakirqen    :  std_ulogic;  -- generate irq when break has been received
   ovf    	:  std_ulogic;	-- receiver overflow
   parerr    	:  std_ulogic;	-- parity error
   frame     	:  std_ulogic;	-- framing error
@@ -95,6 +96,8 @@ type uartregs is record
   tshift	:  std_logic_vector(10 downto 0);
   thold 	:  fifo;
   irq       	:  std_ulogic;	-- tx/rx interrupt (internal)
+  irqpend       :  std_ulogic;  -- pending irq for delayed rx irq
+  delayirqen    :  std_ulogic;  -- enable delayed rx irq
   tpar       	:  std_ulogic;	-- tx data parity (internal)
   txstate	:  txfsmtype;
   txclk 	:  std_logic_vector(2 downto 0);  -- tx clock divider
@@ -111,6 +114,7 @@ type uartregs is record
   txd        	:  std_ulogic;	-- transmitter data
   rfifoirqen    :  std_ulogic;  -- receiver fifo interrupt enable
   tfifoirqen    :  std_ulogic;  -- transmitter fifo interrupt enable
+  irqcnt        :  std_logic_vector(5 downto 0); -- delay counter for rx irq
  --fifo counters
   rwaddr        :  std_logic_vector(log2x(fifosize) - 1 downto 0);
   rraddr        :  std_logic_vector(log2x(fifosize) - 1 downto 0);
@@ -210,7 +214,8 @@ begin
       if fifosize > 1 then
         rdata(31) := '1';
       end if;
-      rdata(12) := r.oen;
+      rdata(13) := r.delayirqen;
+      rdata(12) := r.breakirqen;
       rdata(11) := r.debug;
       if fifosize /= 1 then
 	rdata(10 downto 9) := r.rfifoirqen & r.tfifoirqen;
@@ -246,7 +251,8 @@ begin
 	v.ovf 	     := apbi.pwdata(4);
 	v.break      := apbi.pwdata(3);
       when "000010" =>
-        v.oen        := apbi.pwdata(12);
+        v.delayirqen := apbi.pwdata(13);
+        v.breakirqen := apbi.pwdata(12);
         v.debug      := apbi.pwdata(11);
 	if fifosize /= 1 then
 	  v.rfifoirqen := apbi.pwdata(10);
@@ -295,6 +301,15 @@ begin
     if r.tick = '1' then
       v.rxclk := rxclk;
       v.rxtick := r.rxclk(2) and not rxclk(2);
+    end if;
+
+    if (r.rxtick and r.delayirqen) = '1' then
+      v.irqcnt := v.irqcnt + 1;
+    end if;
+
+    if r.irqcnt(5 downto 4) = "11" then
+      v.irq := v.irq or (r.delayirqen and r.irqpend); -- make sure no tx irqs are lost !
+      v.irqpend := '0';
     end if;
 
 -- filter rx data
@@ -430,9 +445,14 @@ begin
       end if;
     when stopbit =>	-- receive stop bit
       if r.rxtick = '1' then
-	v.irq := v.irq or r.rirqen; -- make sure no tx irqs are lost !
-	if rxd = '1' then
-	  v.parerr := r.parerr or r.dpar; v.rsempty := r.dpar;
+        if r.delayirqen = '0' then
+          v.irq := v.irq or r.rirqen; -- make sure no tx irqs are lost !
+        end if;
+        if rxd = '1' then
+          if r.delayirqen = '1' then
+            v.irqpend := r.rirqen; v.irqcnt := (others => '0');
+          end if;
+          v.parerr := r.parerr or r.dpar; v.rsempty := r.dpar;
           if not (rfull = '1') and (r.dpar = '0') then
 	    v.rsempty := '1';
 	    v.rhold(conv_integer(r.rwaddr)) := r.rshift;
@@ -440,7 +460,9 @@ begin
 	    else v.rwaddr := r.rwaddr + 1; v.rcnt := v.rcnt + 1; end if;
 	  end if;
 	else
-	  if r.rshift = "00000000" then v.break := '1';
+	  if r.rshift = "00000000" then
+            v.break := '1';
+            v.irq := v.irq or r.breakirqen;
 	  else v.frame := '1'; end if;
 	  v.rsempty := '1';
 	end if;
@@ -460,8 +482,10 @@ begin
       end if;
       v.irq := v.irq or (r.tfifoirqen and r.txen and thalffull);
       v.irq := v.irq or (r.rfifoirqen and r.rxen and rhalffull);
+      if (r.rfifoirqen and r.rxen and rhalffull) = '1' then
+        v.irqpend := '0';
+      end if;
     end if;
-
 
 
 -- reset operation
@@ -476,6 +500,7 @@ begin
       v.rcnt := (others => '0'); v.tcnt := (others => '0');
       v.rwaddr := (others => '0'); v.twaddr := (others => '0');
       v.rraddr := (others => '0'); v.traddr := (others => '0');
+      v.irqcnt := (others => '0'); v.irqpend := '0';
     end if;
 
 -- update registers
@@ -486,7 +511,6 @@ begin
 
     uarto.txd <= r.txd; uarto.rtsn <= r.rtsn;
     uarto.scaler <= "000000" & r.scaler;
-    uarto.txen <= r.oen; uarto.rxen <= r.rxen;
     apbo.prdata <= rdata; apbo.pirq <= irq;
     apbo.pindex <= pindex;
     uarto.txen <= r.txen; uarto.rxen <= r.rxen;

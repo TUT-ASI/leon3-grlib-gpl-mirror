@@ -343,7 +343,7 @@ begin
 		);
 
 	-- generate acknowledge
-	gen_ack: process(clk)
+	gen_ack: process(clk,rPIOack)
 	begin
 		if (clk'event and clk = '1') then
 			rPIOack <= PIOdone or (PIOreq and not IDEctrl_IDEen); -- acknowledge when done or when IDE not enabled (discard request)

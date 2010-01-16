@@ -1,3 +1,0 @@
-axcelerator_components.vhd
-axcelerator_vtables.vhd
-axcelerator.vhd

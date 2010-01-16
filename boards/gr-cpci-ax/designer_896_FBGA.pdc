@@ -455,6 +455,19 @@ set_io busbinp\[0\]     -iostd LVTTL                                          -p
 set_io busboutin\[0\]   -iostd LVTTL -OUT_DRIVE 12 -SLEW Low  -OUT_LOAD 35    -pinname P27   -fixed yes
 set_io busboutn\[0\]    -iostd LVTTL -OUT_DRIVE 12 -SLEW Low  -OUT_LOAD 35    -pinname P24   -fixed yes
 set_io busboutp\[0\]    -iostd LVTTL -OUT_DRIVE 12 -SLEW Low  -OUT_LOAD 35    -pinname P28   -fixed yes
+# alternative names
+set_io busainen         -iostd LVTTL -OUT_DRIVE 12 -SLEW Low  -OUT_LOAD 35    -pinname P29   -fixed yes
+set_io busainn          -iostd LVTTL                                          -pinname R26   -fixed yes
+set_io busainp          -iostd LVTTL                                          -pinname P26   -fixed yes
+set_io busaoutin        -iostd LVTTL -OUT_DRIVE 12 -SLEW Low  -OUT_LOAD 35    -pinname R25   -fixed yes
+set_io busaoutn         -iostd LVTTL -OUT_DRIVE 12 -SLEW Low  -OUT_LOAD 35    -pinname P30   -fixed yes
+set_io busaoutp         -iostd LVTTL -OUT_DRIVE 12 -SLEW Low  -OUT_LOAD 35    -pinname R24   -fixed yes
+set_io busbinen         -iostd LVTTL -OUT_DRIVE 12 -SLEW Low  -OUT_LOAD 35    -pinname P25   -fixed yes
+set_io busbinn          -iostd LVTTL                                          -pinname N24   -fixed yes
+set_io busbinp          -iostd LVTTL                                          -pinname N29   -fixed yes
+set_io busboutin        -iostd LVTTL -OUT_DRIVE 12 -SLEW Low  -OUT_LOAD 35    -pinname P27   -fixed yes
+set_io busboutn         -iostd LVTTL -OUT_DRIVE 12 -SLEW Low  -OUT_LOAD 35    -pinname P24   -fixed yes
+set_io busboutp         -iostd LVTTL -OUT_DRIVE 12 -SLEW Low  -OUT_LOAD 35    -pinname P28   -fixed yes
 
 set_io canrx\[0\]       -iostd LVTTL                                          -pinname R29   -fixed yes
 set_io cantx\[0\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low  -OUT_LOAD 35    -pinname R30   -fixed yes
@@ -499,13 +512,17 @@ set_io spw_txsn\[1\]    -iostd LVDS                                           -p
 set_io spw_txsn\[2\]    -iostd LVDS                                           -pinname AA24  -fixed yes
 set_io spw_txsn\[3\]    -iostd LVDS                                           -pinname AC26  -fixed yes
 
-set_location spw.swloop.0.sw0/spw1.u0/rtl.grspwc0/rx.0.rx0/rxclko_0 -fixed yes 1051 48
-set_location spw.swloop.0.sw0/spw1.u0/rtl.grspwc0/rx.0.rx0/r.shftreg -fixed yes 1052 52
-set_location spw.swloop.0.sw0/spw1.u0/rtl.grspwc0/rx.0.rx0/nr.shftreg\[0\] -fixed yes 1052 51
+set_location spw.swloop.0.sw0/spw1.u0/rtl.grspwc0/rx.0.rx0/rxclko_0         -fixed yes 1051 48
+set_location spw.swloop.0.sw0/spw1.u0/rtl.grspwc0/rx.0.rx0/r.shftreg        -fixed yes 1052 52
+set_location spw.swloop.0.sw0/spw1.u0/rtl.grspwc0/rx.0.rx0/nr.shftreg\[0\]  -fixed yes 1052 51
 
-set_location spw.swloop.1.sw0/spw1.u0/rtl.grspwc0/rx.0.rx0/rxclko_0 -fixed yes 1051 34
-set_location spw.swloop.1.sw0/spw1.u0/rtl.grspwc0/rx.0.rx0/r.shftreg -fixed yes 1052 34
-set_location spw.swloop.1.sw0/spw1.u0/rtl.grspwc0/rx.0.rx0/nr.shftreg\[0\] -fixed yes 1052 33
+set_location spw.swloop.1.sw0/spw1.u0/rtl.grspwc0/rx.0.rx0/rxclko_0         -fixed yes 1051 34
+set_location spw.swloop.1.sw0/spw1.u0/rtl.grspwc0/rx.0.rx0/r.shftreg        -fixed yes 1052 34
+set_location spw.swloop.1.sw0/spw1.u0/rtl.grspwc0/rx.0.rx0/nr.shftreg\[0\]  -fixed yes 1052 33
+
+set_location spw.swloop.2.sw0/spw1.u0/rtl.grspwc0/rx.0.rx0/rxclko_0         -fixed yes 1051 26
+set_location spw.swloop.2.sw0/spw1.u0/rtl.grspwc0/rx.0.rx0/r.shftreg        -fixed yes 1052 26
+set_location spw.swloop.2.sw0/spw1.u0/rtl.grspwc0/rx.0.rx0/nr.shftreg\[0\]  -fixed yes 1052 25
 
 # LEON3FT-RTAX additions supported on GR-CPCI-TEST mezzanine board
 set_io busainen\[1\]    -iostd LVTTL -OUT_DRIVE 12 -SLEW Low  -OUT_LOAD 35    -pinname N26   -fixed yes
@@ -557,8 +574,8 @@ set_io gpio\[30\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low  -OUT_LOAD 35    -p
 set_io gpio\[31\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low  -OUT_LOAD 35    -pinname AD5   -fixed yes
 
 # Ethernet pins for GR-CPCI-TEST mezzanine board and GR-XC3S-RMII
-set_io emdio            -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 35    -pinname AC4   -fixed yes
-set_io emdc             -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 35    -pinname AF1   -fixed yes
+set_io emdio            -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname AC4   -fixed yes
+set_io emdc             -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname AF1   -fixed yes
 set_io erx_clk          -iostd LVTTL                                          -pinname N25   -fixed yes
 set_io erx_dv           -iostd LVTTL                                          -pinname N27   -fixed yes
 set_io erx_crs          -iostd LVTTL                                          -pinname N28   -fixed yes
@@ -569,15 +586,15 @@ set_io erxd\[1\]        -iostd LVTTL                                          -p
 set_io erxd\[2\]        -iostd LVTTL                                          -pinname N22   -fixed yes
 set_io erxd\[3\]        -iostd LVTTL                                          -pinname L28   -fixed yes
 set_io etx_clk          -iostd LVTTL                                          -pinname M28   -fixed yes
-set_io etx_en           -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 35    -pinname AB7   -fixed yes
-set_io etxd\[0\]        -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 35    -pinname L27   -fixed yes
-set_io etxd\[1\]        -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 35    -pinname M27   -fixed yes
-set_io etxd\[2\]        -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 35    -pinname M24   -fixed yes
-set_io etxd\[3\]        -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 35    -pinname M23   -fixed yes
-set_io etx_er           -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 35    -pinname AD5   -fixed yes
+set_io etx_en           -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname AB7   -fixed yes
+set_io etxd\[0\]        -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname L27   -fixed yes
+set_io etxd\[1\]        -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname M27   -fixed yes
+set_io etxd\[2\]        -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname M24   -fixed yes
+set_io etxd\[3\]        -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname M23   -fixed yes
+set_io etx_er           -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname AD5   -fixed yes
 
-set_io e0mdio           -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 35    -pinname AC4   -fixed yes
-set_io e0mdc            -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 35    -pinname AF1   -fixed yes
+set_io e0mdio           -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname AC4   -fixed yes
+set_io e0mdc            -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname AF1   -fixed yes
 set_io e0rx_clk         -iostd LVTTL                                          -pinname N25   -fixed yes
 set_io e0rx_dv          -iostd LVTTL                                          -pinname N27   -fixed yes
 set_io e0rx_crs         -iostd LVTTL                                          -pinname N28   -fixed yes
@@ -588,15 +605,15 @@ set_io e0rxd\[1\]       -iostd LVTTL                                          -p
 set_io e0rxd\[2\]       -iostd LVTTL                                          -pinname N22   -fixed yes
 set_io e0rxd\[3\]       -iostd LVTTL                                          -pinname L28   -fixed yes
 set_io e0tx_clk         -iostd LVTTL                                          -pinname M28   -fixed yes
-set_io e0tx_en          -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 35    -pinname AB7   -fixed yes
-set_io e0txd\[0\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 35    -pinname L27   -fixed yes
-set_io e0txd\[1\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 35    -pinname M27   -fixed yes
-set_io e0txd\[2\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 35    -pinname M24   -fixed yes
-set_io e0txd\[3\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 35    -pinname M23   -fixed yes
-set_io e0tx_er          -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 35    -pinname AD5   -fixed yes
+set_io e0tx_en          -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname AB7   -fixed yes
+set_io e0tx_er          -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname AD5   -fixed yes
+set_io e0txd\[0\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname L27   -fixed yes
+set_io e0txd\[1\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname M27   -fixed yes
+set_io e0txd\[2\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname M24   -fixed yes
+set_io e0txd\[3\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname M23   -fixed yes
 
-set_io e1mdio           -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 35    -pinname AB26  -fixed yes
-set_io e1mdc            -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 35    -pinname AE26  -fixed yes
+set_io e1mdio           -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname AB26  -fixed yes
+set_io e1mdc            -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname AE26  -fixed yes
 set_io e1rx_clk         -iostd LVTTL                                          -pinname AD26  -fixed yes
 set_io e1rx_dv          -iostd LVTTL                                          -pinname AC25  -fixed yes
 set_io e1rx_crs         -iostd LVTTL                                          -pinname AD25  -fixed yes
@@ -607,12 +624,12 @@ set_io e1rxd\[1\]       -iostd LVTTL                                          -p
 set_io e1rxd\[2\]       -iostd LVTTL                                          -pinname AA23  -fixed yes
 set_io e1rxd\[3\]       -iostd LVTTL                                          -pinname T27   -fixed yes
 set_io e1tx_clk         -iostd LVTTL                                          -pinname T30   -fixed yes
-set_io e1tx_en          -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 35    -pinname V23   -fixed yes
-set_io e1txd\[0\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 35    -pinname V26   -fixed yes
-set_io e1txd\[1\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 35    -pinname Y25   -fixed yes
-set_io e1txd\[2\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 35    -pinname AD30  -fixed yes
-set_io e1txd\[3\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 35    -pinname AG28  -fixed yes
-set_io e1tx_er          -iostd LVTTL -OUT_DRIVE 12 -SLEW Low  -OUT_LOAD 35    -pinname T22   -fixed yes
+set_io e1tx_en          -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname V23   -fixed yes
+set_io e1tx_er          -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname T22   -fixed yes
+set_io e1txd\[0\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname V26   -fixed yes
+set_io e1txd\[1\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname Y25   -fixed yes
+set_io e1txd\[2\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname AD30  -fixed yes
+set_io e1txd\[3\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname AG28  -fixed yes
 
 # Extra PCI interrupt signals:
 # PCI_INTA

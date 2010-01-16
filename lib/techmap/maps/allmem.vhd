@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -30,7 +31,7 @@ package allmem is
 -- AX & RTAX family
 
   component axcel_syncram
-  generic ( abits : integer := 10; dbits : integer := 8 );
+  generic ( abits : integer := 10; dbits : integer := 8);
   port (
     clk      : in std_ulogic;
     address  : in std_logic_vector((abits -1) downto 0);
@@ -41,7 +42,7 @@ package allmem is
   end component;
 
   component axcel_syncram_2p
-  generic ( abits : integer := 8; dbits : integer := 32);
+  generic ( abits : integer := 8; dbits : integer := 32; sepclk : integer:= 0);
   port (
     rclk  : in std_ulogic;
     rena  : in std_ulogic;
@@ -177,6 +178,30 @@ component generic_syncram_2p
   );
 end component;
 
+component generic_syncram_reg
+  generic (abits : integer := 10; dbits : integer := 8 );
+  port (
+    clk      : in std_ulogic;
+    address  : in std_logic_vector((abits -1) downto 0);
+    datain   : in std_logic_vector((dbits -1) downto 0);
+    dataout  : out std_logic_vector((dbits -1) downto 0);
+    write    : in std_ulogic
+   ); 
+end component;
+
+component generic_syncram_2p_reg
+  generic (abits : integer := 8; dbits : integer := 32; sepclk : integer := 0);
+  port (
+    rclk : in std_ulogic;
+    wclk : in std_ulogic;
+    rdaddress: in std_logic_vector (abits -1 downto 0);
+    wraddress: in std_logic_vector (abits -1 downto 0);
+    data: in std_logic_vector (dbits -1 downto 0);
+    wren : in std_ulogic;
+    q: out std_logic_vector (dbits -1 downto 0)
+  );
+end component;
+
 -- synchronous 3-port regfile (2 read, 1 write port)
 
   component generic_regfile_3p
@@ -240,12 +265,14 @@ end component;
   end component;
 
   component rh_lib18t_syncram_2p
-  generic (abits : integer := 6; dbits : integer := 8);
+  generic (abits : integer := 6; dbits : integer := 8;
+	sepclk : integer := 0);
   port (
     rclk     : in std_ulogic;
     renable  : in std_ulogic;
     raddress : in std_logic_vector((abits -1) downto 0);
     dataout  : out std_logic_vector((dbits -1) downto 0);
+    wclk     : in std_ulogic;
     write    : in std_ulogic;
     waddress : in std_logic_vector((abits -1) downto 0);
     datain   : in std_logic_vector((dbits -1) downto 0);
@@ -326,7 +353,7 @@ end component;
   end component;  
   
   component virtex_syncram
-  generic ( abits : integer := 6; dbits : integer := 8 );
+  generic ( abits : integer := 10; dbits : integer := 8 );
   port (
     clk      : in std_ulogic;
     address  : in std_logic_vector((abits -1) downto 0);
@@ -338,7 +365,7 @@ end component;
   end component;
 
   component virtex_syncram_dp
-  generic ( abits : integer := 6; dbits : integer := 8 );
+  generic ( abits : integer := 10; dbits : integer := 8 );
   port (
     clk1     : in std_ulogic;
     address1 : in std_logic_vector((abits -1) downto 0);
@@ -355,7 +382,7 @@ end component;
    ); 
   end component;
 
-  component virtex2_syncram
+  component unisim_syncram
   generic ( abits : integer := 10; dbits : integer := 8 );
   port (
     clk      : in std_ulogic;
@@ -367,7 +394,7 @@ end component;
    ); 
   end component;
 
-  component virtex2_syncram_dp
+  component unisim_syncram_dp
   generic ( abits : integer := 10; dbits : integer := 8 );
   port (
     clk1     : in std_ulogic;
@@ -383,6 +410,18 @@ end component;
     enable2  : in std_ulogic;
     write2   : in std_ulogic
    ); 
+  end component;
+
+  component unisim_syncram64
+  generic ( abits : integer := 9);
+  port (
+    clk     : in  std_ulogic;
+    address : in  std_logic_vector (abits -1 downto 0);
+    datain  : in  std_logic_vector (63 downto 0);
+    dataout : out std_logic_vector (63 downto 0);
+    enable  : in  std_logic_vector (1 downto 0);
+    write   : in  std_logic_vector (1 downto 0)
+  );
   end component;
 
   component virage90_syncram_dp 
@@ -403,18 +442,6 @@ end component;
    );
   end component;
   
-  component virtex2_syncram64
-  generic ( abits : integer := 9);
-  port (
-    clk     : in  std_ulogic;
-    address : in  std_logic_vector (abits -1 downto 0);
-    datain  : in  std_logic_vector (63 downto 0);
-    dataout : out std_logic_vector (63 downto 0);
-    enable  : in  std_logic_vector (1 downto 0);
-    write   : in  std_logic_vector (1 downto 0)
-  );
-  end component;
-
   component ut025crh_syncram
   generic ( abits : integer := 10; dbits : integer := 8 );
   port (
@@ -507,6 +534,19 @@ end component;
     datain   : in std_logic_vector((dbits -1) downto 0));
   end component;
 
+  component smic13_syncram_2p is
+  generic ( abits : integer := 8; dbits : integer := 32);
+  port (
+    rclk     : in std_ulogic;
+    renable  : in std_ulogic;
+    raddress : in std_logic_vector((abits -1) downto 0);
+    dataout  : out std_logic_vector((dbits -1) downto 0);
+    wclk     : in std_ulogic;
+    write    : in std_ulogic;
+    waddress : in std_logic_vector((abits -1) downto 0);
+    datain   : in std_logic_vector((dbits -1) downto 0));
+  end component;
+
   component ihp25rh_syncram
     generic ( abits : integer := 10; dbits : integer := 8 );
     port (
@@ -542,6 +582,18 @@ end component;
    ); 
   end component;
 
+  component smic13_syncram
+  generic ( abits : integer := 10; dbits : integer := 32 );
+  port (
+    clk      : in std_ulogic;
+    address  : in std_logic_vector((abits -1) downto 0);
+    datain   : in std_logic_vector((dbits -1) downto 0);
+    dataout  : out std_logic_vector((dbits -1) downto 0);
+    enable   : in std_ulogic;
+    write    : in std_ulogic
+   ); 
+  end component;
+
   component custom1_syncram
   generic ( abits : integer := 10; dbits : integer := 32 );
   port (
@@ -565,7 +617,7 @@ end component;
     write    : in std_ulogic); 
   end component;
 
-  component virtex2_syncram_2p is
+  component unisim_syncram_2p is
   generic (abits : integer := 6; dbits : integer := 8; sepclk : integer := 0;
 	wrfst : integer := 0);
   port (
@@ -639,6 +691,24 @@ end component;
   end component;
 
   component artisan_syncram_dp
+  generic ( abits : integer := 10; dbits : integer := 32 );
+  port (
+    clk1     : in std_ulogic;
+    address1 : in std_logic_vector((abits -1) downto 0);
+    datain1  : in std_logic_vector((dbits -1) downto 0);
+    dataout1 : out std_logic_vector((dbits -1) downto 0);
+    enable1  : in std_ulogic;
+    write1   : in std_ulogic;
+    clk2     : in std_ulogic;
+    address2 : in std_logic_vector((abits -1) downto 0);
+    datain2  : in std_logic_vector((dbits -1) downto 0);
+    dataout2 : out std_logic_vector((dbits -1) downto 0);
+    enable2  : in std_ulogic;
+    write2   : in std_ulogic
+   );
+  end component;
+
+  component smic13_syncram_dp
   generic ( abits : integer := 10; dbits : integer := 32 );
   port (
     clk1     : in std_ulogic;

@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -57,7 +58,13 @@ architecture rtl of cyclone3_pll is
     clk1_multiply_by       : positive := 1;
     clk1_divide_by         : positive := 1;    
     clk2_multiply_by       : positive := 1;
-    clk2_divide_by         : positive := 1    
+    clk2_divide_by         : positive := 1;    
+    port_clkena0           : string := "PORT_CONNECTIVITY";
+    port_clkena1           : string := "PORT_CONNECTIVITY";
+    port_clkena2           : string := "PORT_CONNECTIVITY";
+    port_clkena3           : string := "PORT_CONNECTIVITY";
+    port_clkena4           : string := "PORT_CONNECTIVITY";
+    port_clkena5           : string := "PORT_CONNECTIVITY"
   );
   port (
     inclk       : in std_logic_vector(1 downto 0);
@@ -89,6 +96,8 @@ begin
       intended_device_family => "Cyclone III",
       operation_mode => "ZERO_DELAY_BUFFER", inclk0_input_frequency => clk_period, 
       width_clock => 5, compensate_clock => "CLK1",
+      port_clkena2 => "PORT_UNUSED", port_clkena3 => "PORT_UNUSED", 
+      port_clkena4 => "PORT_UNUSED", port_clkena5 => "PORT_UNUSED", 
       clk0_multiply_by => clk_mul, clk0_divide_by => clk_div,
       clk1_multiply_by => clk_mul, clk1_divide_by => clk_div,
       clk2_multiply_by => CLK_MUL2X, clk2_divide_by => clk_div)
@@ -104,6 +113,9 @@ begin
       intended_device_family => "Cyclone III",
       operation_mode => "NORMAL", inclk0_input_frequency => clk_period, 
       width_clock => 5,
+      port_clkena1 => "PORT_UNUSED",
+      port_clkena2 => "PORT_UNUSED", port_clkena3 => "PORT_UNUSED", 
+      port_clkena4 => "PORT_UNUSED", port_clkena5 => "PORT_UNUSED", 
       clk0_multiply_by => clk_mul, clk0_divide_by => clk_div,
       clk1_multiply_by => clk_mul, clk1_divide_by => clk_div,
       clk2_multiply_by => CLK_MUL2X, clk2_divide_by => clk_div)

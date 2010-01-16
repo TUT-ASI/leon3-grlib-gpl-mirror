@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -29,7 +30,7 @@ use ieee.std_logic_1164.all;
 use techmap.gencomp.all;
   
 entity syncram64 is
-  generic (tech : integer := 0; abits : integer := 6);
+  generic (tech : integer := 0; abits : integer := 6; testen : integer := 0);
   port (
     clk     : in  std_ulogic;
     address : in  std_logic_vector (abits -1 downto 0);
@@ -41,7 +42,7 @@ entity syncram64 is
 end;
 
 architecture rtl of syncram64 is
-  component virtex2_syncram64
+  component unisim_syncram64
   generic ( abits : integer := 9);
   port (
     clk     : in  std_ulogic;
@@ -77,13 +78,23 @@ architecture rtl of syncram64 is
   );
   end component;
 
+  component smic13_syncram64
+  generic ( abits : integer := 9);
+  port (
+    clk     : in  std_ulogic;
+    address : in  std_logic_vector (abits -1 downto 0);
+    datain  : in  std_logic_vector (63 downto 0);
+    dataout : out std_logic_vector (63 downto 0);
+    enable  : in  std_logic_vector (1 downto 0);
+    write   : in  std_logic_vector (1 downto 0)
+  );
+  end component;
+
 begin
 
   s64 : if has_sram64(tech) = 1 generate
-    xc2v : if (tech = virtex2) or (tech = spartan3) or (tech = virtex4) 
-	or (tech = spartan3e) or (tech = virtex5) 
-    generate 
-      x0 : virtex2_syncram64 generic map (abits)
+    xc2v : if (is_unisim(tech) = 1) generate 
+      x0 : unisim_syncram64 generic map (abits)
          port map (clk, address, datain, dataout, enable, write);
     end generate;
     arti : if tech = memartisan generate
@@ -94,13 +105,17 @@ begin
       x0 : custom1_syncram64 generic map (abits)
          port map (clk, address, datain, dataout, enable, write);
     end generate;
+    smic: if tech = smic013 generate
+      x0 : smic13_syncram64 generic map (abits)
+         port map (clk, address, datain, dataout, enable, write);
+    end generate;
   end generate;
 
   nos64 : if has_sram64(tech) = 0 generate
-    x0 : syncram generic map (tech, abits, 32)
+    x0 : syncram generic map (tech, abits, 32, testen)
          port map (clk, address, datain(63 downto 32), dataout(63 downto 32), 
 	           enable(1), write(1), testin);
-    x1 : syncram generic map (tech, abits, 32)
+    x1 : syncram generic map (tech, abits, 32, testen)
          port map (clk, address, datain(31 downto 0), dataout(31 downto 0), 
 	           enable(0), write(0), testin);
   end generate;

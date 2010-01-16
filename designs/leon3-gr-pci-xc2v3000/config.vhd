@@ -1,16 +1,6 @@
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
--- Copyright (C) 2004 Jiri Gaisler, Gaisler Research
---
--- This program is free software; you can redistribute it and/or modify
--- it under the terms of the GNU General Public License as published by
--- the Free Software Foundation; either version 2 of the License, or
--- (at your option) any later version.
---
--- This program is distributed in the hope that it will be useful,
--- but WITHOUT ANY WARRANTY; without even the implied warranty of
--- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
--- GNU General Public License for more details.
+-- Copyright (C) 2009 Aeroflex Gaisler
 ------------------------------------------------------------------------------
 
 
@@ -74,6 +64,7 @@ package config is
   constant CFG_DTLBNUM : integer := 8;
   constant CFG_TLB_TYPE : integer := 0 + 1*2;
   constant CFG_TLB_REP : integer := 0;
+  constant CFG_MMU_PAGE : integer := 0;
   constant CFG_DSU : integer := 1;
   constant CFG_ITBSZ : integer := 2;
   constant CFG_ATBSZ : integer := 2;
@@ -108,8 +99,8 @@ package config is
   constant CFG_ETH_BUF : integer := 2;
   constant CFG_ETH_IPM : integer := 16#C0A8#;
   constant CFG_ETH_IPL : integer := 16#0034#;
-  constant CFG_ETH_ENM : integer := 16#00007A#;
-  constant CFG_ETH_ENL : integer := 16#CC1023#;
+  constant CFG_ETH_ENM : integer := 16#020000#;
+  constant CFG_ETH_ENL : integer := 16#000006#;
 
 -- LEON2 memory controller
   constant CFG_MCTRL_LEON2 : integer := 1;
@@ -166,7 +157,12 @@ package config is
   constant CFG_SPW_NETLIST : integer := 0;
   constant CFG_SPW_FT : integer := 0;
   constant CFG_SPW_GRSPW : integer := 2;
-
+  constant CFG_SPW_RXUNAL : integer := 0;
+  constant CFG_SPW_DMACHAN : integer := 1;
+  constant CFG_SPW_PORTS : integer := 1;
+  constant CFG_SPW_INPUT : integer := 2;
+  constant CFG_SPW_OUTPUT : integer := 0;
+  constant CFG_SPW_RTSAME : integer := 0;
 -- UART 1
   constant CFG_UART1_ENABLE : integer := 1;
   constant CFG_UART1_FIFO : integer := 4;
@@ -177,6 +173,7 @@ package config is
 
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE : integer := 1;
+  constant CFG_IRQ3_NSEC : integer := 0;
 
 -- Modular timer
   constant CFG_GPT_ENABLE : integer := 1;

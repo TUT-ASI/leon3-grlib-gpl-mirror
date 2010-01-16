@@ -1,6 +1,10 @@
 -----------------------------------------------------------------------------
 --  LEON3 Demonstration design test bench
---  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+--  Copyright (C) 2004-2008 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -11,6 +15,10 @@
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
 --  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 --  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -24,6 +32,8 @@ library micron;
 use micron.components.all;
 library cypress;
 use cypress.components.all;
+library hynix;
+use hynix.components.all;
 use work.debug.all;
 
 use work.config.all;	-- configuration
@@ -89,11 +99,12 @@ signal ddr_rdqs  	: std_logic_vector (7 downto 0);    -- ddr dqs
 signal ddr_ad      : std_logic_vector (13 downto 0);   -- ddr address
 signal ddr_ba      : std_logic_vector (1 downto 0);    -- ddr bank address
 signal ddr_dq  	: std_logic_vector (63 downto 0); -- ddr data
+signal ddr_dq2 	: std_logic_vector (63 downto 0); -- ddr data
 
 
 signal txd1   	: std_ulogic; 			-- UART1 tx data
 signal rxd1   	: std_ulogic;  			-- UART1 rx data
-signal gpio         : std_logic_vector(12 downto 0); 	-- I/O port
+signal gpio         : std_logic_vector(13 downto 0); 	-- I/O port
 signal led          : std_logic_vector(12 downto 0); 	-- I/O port
 signal phy_mii_data: std_logic;		-- ethernet PHY interface
 signal phy_tx_clk 	: std_ulogic;
@@ -113,22 +124,29 @@ signal ps2_keyb_clk: std_logic;
 signal ps2_keyb_data: std_logic;
 signal ps2_mouse_clk: std_logic;
 signal ps2_mouse_data: std_logic;
-signal tft_lcd_clk : std_ulogic;
-signal vid_blankn  : std_ulogic;
-signal vid_syncn   : std_ulogic;
-signal vid_hsync   : std_ulogic;
-signal vid_vsync   : std_ulogic;
-signal vid_r       : std_logic_vector(7 downto 0);
-signal vid_g       : std_logic_vector(7 downto 0);
-signal vid_b       : std_logic_vector(7 downto 0);
 signal usb_csn, usb_rstn : std_logic;
 signal iic_scl_main, iic_sda_main : std_logic;
+signal iic_scl_dvi, iic_sda_dvi : std_logic;
+signal tft_lcd_data    : std_logic_vector(11 downto 0);
+signal tft_lcd_clk_p   : std_logic;
+signal tft_lcd_clk_n   : std_logic;
+signal tft_lcd_hsync   : std_logic;
+signal tft_lcd_vsync   : std_logic;
+signal tft_lcd_de      : std_logic;
+signal tft_lcd_reset_b : std_logic;
+signal sace_usb_a      : std_logic_vector(6 downto 0);
+signal sace_mpce       : std_ulogic;
+signal sace_usb_d      : std_logic_vector(15 downto 0);
+signal sace_usb_oen    : std_ulogic;
+signal sace_usb_wen    : std_ulogic;
+signal sysace_mpirq    : std_ulogic;
 
 signal GND      : std_ulogic := '0';
 signal VCC      : std_ulogic := '1';
 signal NC       : std_ulogic := 'Z';
 signal clk_200_p      : std_ulogic := '0';
 signal clk_200_n      : std_ulogic := '1';
+signal sysace_clk_in  : std_ulogic := '0';
 
 constant lresp : boolean := false;
 
@@ -138,20 +156,23 @@ begin
 
   sys_clk <= not sys_clk after ct * 1 ns;
   sys_rst_in <= '0', '1' after 200 ns; 
-  clk_200_p <= not clk_200_p after 8 ns;
-  clk_200_n <= not clk_200_n after 8 ns;
-  rxd1 <= 'H';
+  clk_200_p <= not clk_200_p after 2.5 ns;
+  clk_200_n <= not clk_200_n after 2.5 ns;
+  sysace_clk_in <= not sysace_clk_in after 15 ns;
+  rxd1 <= 'H'; gpio(11) <= 'L';
   sram_clk_fb <= sram_clk; 
   ps2_keyb_data <= 'H'; ps2_keyb_clk <= 'H';
   ps2_mouse_clk <= 'H'; ps2_mouse_data <= 'H';
   iic_scl_main <= 'H'; iic_sda_main <= 'H';
+  iic_scl_dvi <= 'H'; iic_sda_dvi <= 'H';
+  sace_usb_d <= (others => 'H'); sysace_mpirq <= 'L';
   
   cpu : entity work.leon3mp
       generic map ( fabtech, memtech, padtech, ncpu, disas, dbguart, pclow )
-      port map ( sys_rst_in, sys_clk, clk_200_p, clk_200_n, sram_flash_addr,
-	sram_flash_data, sram_cen, sram_bw, sram_oen, sram_flash_we_n, 
-	flash_cen, flash_oen, flash_adv_n,sram_clk, sram_clk_fb, sram_mode, 
-	sram_adv_ld_n, iosn,
+      port map (sys_rst_in, sys_clk, clk_200_p, clk_200_n, sysace_clk_in,
+        sram_flash_addr, sram_flash_data, sram_cen, sram_bw, sram_oen,
+        sram_flash_we_n, flash_cen, flash_oen, flash_adv_n,sram_clk,
+        sram_clk_fb, sram_mode, sram_adv_ld_n, iosn,
 	ddr_clk, ddr_clkb, ddr_cke, ddr_csb, ddr_odt, ddr_web,
 	ddr_rasb, ddr_casb, ddr_dm, ddr_dqsp, ddr_dqsn, ddr_ad, ddr_ba, ddr_dq, 
 	txd1, rxd1, gpio, led, bus_error,
@@ -160,20 +181,41 @@ begin
 	phy_tx_data, phy_tx_en, phy_tx_er, phy_mii_clk,	phy_rst_n, 
 	ps2_keyb_clk, ps2_keyb_data, ps2_mouse_clk, ps2_mouse_data,
 	usb_csn, usb_rstn,
-        iic_scl_main, iic_sda_main
+        iic_scl_main, iic_sda_main,
+        iic_scl_dvi, iic_sda_dvi,
+        tft_lcd_data, tft_lcd_clk_p, tft_lcd_clk_n, tft_lcd_hsync,
+        tft_lcd_vsync, tft_lcd_de, tft_lcd_reset_b,
+        sace_usb_a, sace_mpce, sace_usb_d, sace_usb_oen, sace_usb_wen,
+        sysace_mpirq
 	);
 
-  ddr2mem : for i in 0 to 3 generate
-    u1 : ddr2 
-    PORT MAP(
-      ck => ddr_clk(0), ck_n => ddr_clkb(0), cke => ddr_cke(0), cs_n => ddr_csb(0),
-      ras_n => ddr_rasb, cas_n => ddr_casb, we_n => ddr_web, 
-      dm_rdqs => ddr_dm(i*2+1 downto i*2), ba => ddr_ba,
-      addr => ddr_ad(12 downto 0), dq => ddr_dq(i*16+15 downto i*16),
-      dqs => ddr_dqsp(i*2+1 downto i*2), dqs_n => ddr_dqsn(i*2+1 downto i*2),
-      rdqs_n => ddr_rdqs(i*2+1 downto i*2), odt => ddr_odt(0));
+--   ddr2mem : for i in 0 to 3 generate
+--     u1 : ddr2 
+--     PORT MAP(
+--       ck => ddr_clk(0), ck_n => ddr_clkb(0), cke => ddr_cke(0), cs_n => ddr_csb(0),
+--       ras_n => ddr_rasb, cas_n => ddr_casb, we_n => ddr_web, 
+--       dm_rdqs => ddr_dm(i*2+1 downto i*2), ba => ddr_ba,
+--       addr => ddr_ad(12 downto 0), dq => ddr_dq(i*16+15 downto i*16),
+--       dqs => ddr_dqsp(i*2+1 downto i*2), dqs_n => ddr_dqsn(i*2+1 downto i*2),
+--       rdqs_n => ddr_rdqs(i*2+1 downto i*2), odt => ddr_odt(0));
+--   end generate;
+
+  ddr2mem: for i in 0 to 3 generate
+    u1 : HY5PS121621F
+      generic map (TimingCheckFlag => true, PUSCheckFlag => false,
+                   index => 3-i, fname => sdramfile)
+      port map (DQ => ddr_dq2(i*16+15 downto i*16), LDQS  => ddr_dqsp(i*2),
+                LDQSB => ddr_dqsn(i*2), UDQS => ddr_dqsp(i*2+1),
+                UDQSB => ddr_dqsn(i*2+1), LDM => ddr_dm(i*2),
+                WEB => ddr_web, CASB => ddr_casb, RASB  => ddr_rasb, CSB => ddr_csb(0),
+                BA => ddr_ba, ADDR => ddr_ad(12 downto 0), CKE => ddr_cke(0),
+                CLK => ddr_clk(0), CLKB => ddr_clkb(0), UDM => ddr_dm(i*2+1));
   end generate;
 
+  ddr2delay : delay_wire 
+    generic map(data_width => ddr_dq'length, delay_atob => 0.0, delay_btoa => 2.5)
+    port map(a => ddr_dq, b => ddr_dq2);
+  
   sram01 : for i in 0 to 1 generate
       sr0 : sram generic map (index => i, abits => sramdepth, fname => sramfile)
 	port map (sram_flash_addr(sramdepth downto 1), sram_flash_data(15-i*8 downto 8-i*8),
@@ -215,7 +257,7 @@ begin
 
 
   sram_flash_data <= buskeep(sram_flash_data), (others => 'H') after 250 ns;
-  ddr_dq <= buskeep(ddr_dq), (others => 'H') after 250 ns;
+--  ddr_dq <= buskeep(ddr_dq), (others => 'H') after 250 ns;
   data <= buskeep(data), (others => 'H') after 250 ns;
 
 end ;

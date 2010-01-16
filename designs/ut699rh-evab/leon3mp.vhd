@@ -1,6 +1,10 @@
 -----------------------------------------------------------------------------
 --  LEON3 Demonstration design
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -14,7 +18,7 @@
 --
 --  You should have received a copy of the GNU General Public License
 --  along with this program; if not, write to the Free Software
---  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 
@@ -36,70 +40,70 @@ entity leon3mp is
     pclow     : integer := CFG_PCLOW
   );
   port (
-    resetn	: in  std_ulogic;
-    clk		: in  std_ulogic;
-    errorn	: inout std_ulogic;
-    wdogn  	: inout std_ulogic;
+    resetn	: in  std_logic;
+    clk		: in  std_logic;
+    errorn	: inout std_logic;
+    wdogn  	: inout std_logic;
 
     address 	: out   std_logic_vector(27 downto 0);
     data	: inout std_logic_vector(31 downto 0);
     cb   	: inout std_logic_vector(7 downto 0);
 
-    sdclk  	: out std_ulogic;
+    sdclk  	: out std_logic;
     sdcke  	: out std_logic_vector (1 downto 0);    -- sdram chip select
     sdcsn  	: out std_logic_vector (1 downto 0);    -- sdram chip select
-    sdwen  	: out std_ulogic;                       -- sdram write enable
-    sdrasn  	: out std_ulogic;                       -- sdram ras
-    sdcasn  	: out std_ulogic;                       -- sdram cas
+    sdwen  	: out std_logic;                       -- sdram write enable
+    sdrasn  	: out std_logic;                       -- sdram ras
+    sdcasn  	: out std_logic;                       -- sdram cas
     sddqm   	: out std_logic_vector (3 downto 0);    -- sdram dqm
-    dsutx  	: out std_ulogic; 			-- DSU tx data / scanout
-    dsurx  	: in  std_ulogic;  			-- DSU rx data / scanin
-    dsuen   	: in std_ulogic;
-    dsubre  	: in std_ulogic;			-- DSU break / scanen
-    dsuact  	: out std_ulogic;			-- DSU active / NT
-    txd1   	: out std_ulogic; 			-- UART1 tx data
-    rxd1   	: in  std_ulogic;  			-- UART1 rx data
+    dsutx  	: out std_logic; 			-- DSU tx data / scanout
+    dsurx  	: in  std_logic;  			-- DSU rx data / scanin
+    dsuen   	: in std_logic;
+    dsubre  	: in std_logic;			-- DSU break / scanen
+    dsuact  	: out std_logic;			-- DSU active / NT
+    txd1   	: out std_logic; 			-- UART1 tx data
+    rxd1   	: in  std_logic;  			-- UART1 rx data
 
     ramsn  	: out std_logic_vector (4 downto 0);
     ramoen 	: out std_logic_vector (4 downto 0);
     rwen   	: out std_logic_vector (3 downto 0);
-    oen    	: out std_ulogic;
-    writen 	: inout std_ulogic;
-    read   	: out std_ulogic;
-    iosn   	: out std_ulogic;
+    oen    	: out std_logic;
+    writen 	: inout std_logic;
+    read   	: out std_logic;
+    iosn   	: out std_logic;
     romsn  	: out std_logic_vector (1 downto 0);
-    brdyn  	: in  std_ulogic;
-    bexcn  	: in  std_ulogic;
+    brdyn  	: in  std_logic;
+    bexcn  	: in  std_logic;
     gpio        : inout std_logic_vector(CFG_GRGPIO_WIDTH-1 downto 0); 	-- I/O port
 
     emdio     	: inout std_logic;		-- ethernet PHY interface
-    etx_clk 	: in std_ulogic;
-    erx_clk 	: in std_ulogic;
+    etx_clk 	: in std_logic;
+    erx_clk 	: in std_logic;
     erxd    	: in std_logic_vector(3 downto 0);   
-    erx_dv  	: in std_ulogic; 
-    erx_er  	: in std_ulogic; 
-    erx_col 	: in std_ulogic;
-    erx_crs 	: in std_ulogic;
+    erx_dv  	: in std_logic; 
+    erx_er  	: in std_logic; 
+    erx_col 	: in std_logic;
+    erx_crs 	: in std_logic;
     etxd 	: out std_logic_vector(3 downto 0);   
-    etx_en 	: out std_ulogic; 
-    etx_er 	: out std_ulogic; 
-    emdc 	: out std_ulogic;
+    etx_en 	: out std_logic; 
+    etx_er 	: out std_logic; 
+    emdc 	: out std_logic;
 
-    pci_rst     : in std_ulogic;		-- PCI bus
-    pci_clk 	: in std_ulogic;
-    pci_gnt     : in std_ulogic;
-    pci_idsel   : in std_ulogic; 
+    pci_rst     : in std_logic;		-- PCI bus
+    pci_clk 	: in std_logic;
+    pci_gnt     : in std_logic;
+    pci_idsel   : in std_logic; 
     pci_ad 	: inout std_logic_vector(31 downto 0);
     pci_cbe 	: inout std_logic_vector(3 downto 0);
-    pci_frame   : inout std_ulogic;
-    pci_irdy 	: inout std_ulogic;
-    pci_trdy 	: inout std_ulogic;
-    pci_devsel  : inout std_ulogic;
-    pci_stop 	: inout std_ulogic;
-    pci_perr 	: inout std_ulogic;
-    pci_par 	: inout std_ulogic;    
-    pci_req 	: out std_ulogic;
-    pci_host   	: in std_ulogic;
+    pci_frame   : inout std_logic;
+    pci_irdy 	: inout std_logic;
+    pci_trdy 	: inout std_logic;
+    pci_devsel  : inout std_logic;
+    pci_stop 	: inout std_logic;
+    pci_perr 	: inout std_logic;
+    pci_par 	: inout std_logic;    
+    pci_req 	: out std_logic;
+    pci_host   	: in std_logic;
 
     pci_arb_req	: in  std_logic_vector(0 to CFG_PCI_ARB_NGNT-1);
     pci_arb_gnt	: out std_logic_vector(0 to CFG_PCI_ARB_NGNT-1);
@@ -107,21 +111,21 @@ entity leon3mp is
     can_txd	: out std_logic_vector(0 to CFG_CAN_NUM-1);
     can_rxd	: in  std_logic_vector(0 to CFG_CAN_NUM-1);
 
---    spw_clk	: in  std_ulogic;
+--    spw_clk	: in  std_logic;
 --    spw_rxd     : in  std_logic_vector(0 to CFG_SPW_NUM-1);
 --    spw_rxs     : in  std_logic_vector(0 to CFG_SPW_NUM-1);
 --    spw_txd     : out std_logic_vector(0 to CFG_SPW_NUM-1);
 --    spw_txs     : out std_logic_vector(0 to CFG_SPW_NUM-1);
 
---    tck         : in std_ulogic;
---    tms         : in std_ulogic;
---    tdi         : in std_ulogic;
---    tdo         : out std_ulogic;
+--    tck         : in std_logic;
+--    tms         : in std_logic;
+--    tdi         : in std_logic;
+--    tdo         : out std_logic;
 
---    test       	: in  std_ulogic
+--    test       	: in  std_logic
 
-    spw_clkp	  : in  std_ulogic;
-    spw_clkn	  : in  std_ulogic;
+    spw_clkp	  : in  std_logic;
+    spw_clkn	  : in  std_logic;
     spw_rxdp      : in  std_logic_vector(0 to CFG_SPW_NUM-1);
     spw_rxdn      : in  std_logic_vector(0 to CFG_SPW_NUM-1);
     spw_rxsp      : in  std_logic_vector(0 to CFG_SPW_NUM-1);
@@ -130,15 +134,15 @@ entity leon3mp is
     spw_txdn      : out std_logic_vector(0 to CFG_SPW_NUM-1);
     spw_txsp      : out std_logic_vector(0 to CFG_SPW_NUM-1);
     spw_txsn      : out std_logic_vector(0 to CFG_SPW_NUM-1);
-    pllref   	  : in  std_ulogic
+    pllref   	  : in  std_logic
 	);
 end;
 
 architecture rtl of leon3mp is
 
-signal lresetn	: std_ulogic;
-signal lclk	: std_ulogic;
-signal lerrorn	: std_ulogic;
+signal lresetn	: std_logic;
+signal lclk	: std_logic;
+signal lerrorn	: std_logic;
 signal laddress : std_logic_vector(27 downto 0);
 signal datain	: std_logic_vector(31 downto 0);
 signal dataout	: std_logic_vector(31 downto 0);
@@ -146,104 +150,104 @@ signal dataen 	: std_logic_vector(31 downto 0);
 signal cbin   	: std_logic_vector(7 downto 0);
 signal cbout   	: std_logic_vector(7 downto 0);
 signal cben   	: std_logic_vector(7 downto 0);
-signal lsdclk  	: std_ulogic;
---signal sdclk  	: std_ulogic;
+signal lsdclk  	: std_logic;
+--signal sdclk  	: std_logic;
 signal lsdcsn  	: std_logic_vector (1 downto 0);    -- sdram chip select
-signal lsdwen  	: std_ulogic;                       -- sdram write enable
-signal lsdrasn  : std_ulogic;                       -- sdram ras
-signal lsdcasn  : std_ulogic;                       -- sdram cas
+signal lsdwen  	: std_logic;                       -- sdram write enable
+signal lsdrasn  : std_logic;                       -- sdram ras
+signal lsdcasn  : std_logic;                       -- sdram cas
 signal lsddqm   : std_logic_vector (3 downto 0);    -- sdram dqm
-signal ldsutx  	: std_ulogic; 			-- DSU tx data
-signal ldsurx  	: std_ulogic;  			-- DSU rx data
-signal ldsuen   : std_ulogic;
-signal ldsubre  : std_ulogic;
-signal ldsuact  : std_ulogic;
-signal ltxd1   	: std_ulogic; 			-- UART1 tx data
-signal lrxd1   	: std_ulogic;  			-- UART1 rx data
+signal ldsutx  	: std_logic; 			-- DSU tx data
+signal ldsurx  	: std_logic;  			-- DSU rx data
+signal ldsuen   : std_logic;
+signal ldsubre  : std_logic;
+signal ldsuact  : std_logic;
+signal ltxd1   	: std_logic; 			-- UART1 tx data
+signal lrxd1   	: std_logic;  			-- UART1 rx data
 signal lramsn  	: std_logic_vector (4 downto 0);
 signal lramoen 	: std_logic_vector (4 downto 0);
 signal lrwen   	: std_logic_vector (3 downto 0);
-signal loen    	: std_ulogic;
-signal lwriten 	: std_ulogic;
-signal lread   	: std_ulogic;
-signal liosn   	: std_ulogic;
+signal loen    	: std_logic;
+signal lwriten 	: std_logic;
+signal lread   	: std_logic;
+signal liosn   	: std_logic;
 signal lromsn  	: std_logic_vector (1 downto 0);
-signal lbrdyn  	: std_ulogic;
-signal lbexcn  	: std_ulogic;
-signal lwdogn  	: std_ulogic;
+signal lbrdyn  	: std_logic;
+signal lbexcn  	: std_logic;
+signal lwdogn  	: std_logic;
 signal gpioin   : std_logic_vector(CFG_GRGPIO_WIDTH-1 downto 0); 	-- I/O port
 signal gpioout  : std_logic_vector(CFG_GRGPIO_WIDTH-1 downto 0); 	-- I/O port
 signal gpioen   : std_logic_vector(CFG_GRGPIO_WIDTH-1 downto 0); 	-- I/O port
 
 signal can_lrx, can_ltx   : std_logic_vector(0 to CFG_CAN_NUM-1);
 
-signal lspw_clk	: std_ulogic;
-signal spw_clkl	: std_ulogic;
+signal lspw_clk	: std_logic;
+signal spw_clkl	: std_logic;
 signal lspw_rxd  : std_logic_vector(0 to CFG_SPW_NUM-1);
 signal lspw_rxs  : std_logic_vector(0 to CFG_SPW_NUM-1);
 signal lspw_txd  : std_logic_vector(0 to CFG_SPW_NUM-1);
 signal lspw_txs  : std_logic_vector(0 to CFG_SPW_NUM-1);
 signal lspw_ten  : std_logic_vector(0 to CFG_SPW_NUM-1);
 
-signal ltest 	: std_ulogic;
+signal ltest 	: std_logic;
 constant OEPOL 	: integer := padoen_polarity(padtech);
 
-signal lpciclk 	: std_ulogic;
-signal pcii_rst 	: std_ulogic;
-signal pcii_gnt 	: std_ulogic;
-signal pcii_idsel 	: std_ulogic;
+signal lpciclk 	: std_logic;
+signal pcii_rst 	: std_logic;
+signal pcii_gnt 	: std_logic;
+signal pcii_idsel 	: std_logic;
 signal pcii_ad 	: std_logic_vector(31 downto 0);
 signal pcii_cbe 	: std_logic_vector(3 downto 0);
-signal pcii_frame	: std_ulogic;
-signal pcii_irdy   : std_ulogic;
-signal pcii_trdy   : std_ulogic;
-signal pcii_devsel : std_ulogic;
-signal pcii_stop   : std_ulogic;
-signal pcii_perr   : std_ulogic;
-signal pcii_par 	: std_ulogic;
-signal pcii_host   : std_ulogic;
+signal pcii_frame	: std_logic;
+signal pcii_irdy   : std_logic;
+signal pcii_trdy   : std_logic;
+signal pcii_devsel : std_logic;
+signal pcii_stop   : std_logic;
+signal pcii_perr   : std_logic;
+signal pcii_par 	: std_logic;
+signal pcii_host   : std_logic;
 signal pcio_vaden   : std_logic_vector(31 downto 0);
 signal pcio_cbeen   : std_logic_vector(3 downto 0);
-signal pcio_frameen : std_ulogic;
-signal pcio_irdyen  : std_ulogic;
-signal pcio_trdyen  : std_ulogic;
-signal pcio_devselen:  std_ulogic;
-signal pcio_stopen : std_ulogic;
-signal pcio_perren : std_ulogic;
-signal pcio_paren 	: std_ulogic;
-signal pcio_reqen	: std_ulogic;
-signal pcio_locken : std_ulogic;
-signal pcio_req    : std_ulogic;
+signal pcio_frameen : std_logic;
+signal pcio_irdyen  : std_logic;
+signal pcio_trdyen  : std_logic;
+signal pcio_devselen:  std_logic;
+signal pcio_stopen : std_logic;
+signal pcio_perren : std_logic;
+signal pcio_paren 	: std_logic;
+signal pcio_reqen	: std_logic;
+signal pcio_locken : std_logic;
+signal pcio_req    : std_logic;
 signal pcio_ad 	: std_logic_vector(31 downto 0);
 signal pcio_cbe : std_logic_vector(3 downto 0);
-signal pcio_frame  : std_ulogic;
-signal pcio_irdy   : std_ulogic;
-signal pcio_trdy   : std_ulogic;
-signal pcio_devsel : std_ulogic;
-signal pcio_stop   : std_ulogic;
-signal pcio_perr   : std_ulogic;
-signal pcio_par    : std_ulogic;
+signal pcio_frame  : std_logic;
+signal pcio_irdy   : std_logic;
+signal pcio_trdy   : std_logic;
+signal pcio_devsel : std_logic;
+signal pcio_stop   : std_logic;
+signal pcio_perr   : std_logic;
+signal pcio_par    : std_logic;
 signal pcii_arb_req: std_logic_vector(0 to CFG_PCI_ARB_NGNT-1);
 signal pcio_arb_gnt: std_logic_vector(0 to CFG_PCI_ARB_NGNT-1);
 
 signal ethi_mdio_i : std_logic;		-- ethernet PHY interface
 signal etho_mdio_o : std_logic;
 signal etho_mdio_oe: std_logic;
-signal ethi_tx_clk : std_ulogic;
-signal ethi_rx_clk : std_ulogic;
+signal ethi_tx_clk : std_logic;
+signal ethi_rx_clk : std_logic;
 signal ethi_rxd    : std_logic_vector(3 downto 0);   
-signal ethi_rx_dv  : std_ulogic; 
-signal ethi_rx_er  : std_ulogic; 
-signal ethi_rx_col : std_ulogic;
-signal ethi_rx_crs : std_ulogic;
+signal ethi_rx_dv  : std_logic; 
+signal ethi_rx_er  : std_logic; 
+signal ethi_rx_col : std_logic;
+signal ethi_rx_crs : std_logic;
 signal etho_txd    : std_logic_vector(3 downto 0);   
-signal etho_tx_en  : std_ulogic; 
-signal etho_tx_er  : std_ulogic; 
-signal etho_mdc    : std_ulogic;
+signal etho_tx_en  : std_logic; 
+signal etho_tx_er  : std_logic; 
+signal etho_mdc    : std_logic;
 signal gnd         : std_logic_vector(3 downto 0);   
 
-signal ltck, ltms, ltdi, ltrst, ltdo : std_ulogic;
-signal lwritefb : std_ulogic;
+signal ltck, ltms, ltdi, ltrst, ltdo : std_logic;
+signal lwritefb : std_logic;
 
 begin
 

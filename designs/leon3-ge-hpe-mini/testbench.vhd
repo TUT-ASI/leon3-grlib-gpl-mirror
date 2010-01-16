@@ -129,8 +129,8 @@ architecture behav of testbench is
   signal txd1, rxd1 : std_logic;
 
   signal etx_clk, erx_clk, erx_dv, erx_er, erx_col, erx_crs, etx_en, etx_er : std_logic                    := '0';
-  signal erxd, etxd                                                         : std_logic_vector(3 downto 0) := (others => '0');
-  signal emdc, emdio                                                        : std_logic;  --dummy signal for the mdc,mdio in the phy which is not used
+  signal erxd, etxd  : std_logic_vector(7 downto 0) := (others => '0');
+  signal emdc, emdio : std_logic;  --dummy signal for the mdc,mdio in the phy which is not used
 
   signal emddis  : std_logic;
   signal epwrdwn : std_logic;
@@ -218,6 +218,7 @@ architecture behav of testbench is
   signal drive_bus         : std_ulogic;
   ---------------------------------------------------------------------------------------
 
+signal eth_macclk : std_ulogic := '0';
 
 begin
   
@@ -279,12 +280,12 @@ begin
       emdio   => emdio,
       etx_clk => etx_clk,
       erx_clk => erx_clk,
-      erxd    => erxd,
+      erxd    => erxd(3 downto 0),
       erx_dv  => erx_dv,
       erx_er  => erx_er,
       erx_col => erx_col,
       erx_crs => erx_crs,
-      etxd    => etxd,
+      etxd    => etxd(3 downto 0),
       etx_en  => etx_en,
       etx_er  => etx_er,
       emdc    => emdc,
@@ -380,25 +381,15 @@ begin
                 rben(0), ramoen(0));    -- **** tame: changed rwen to rben
   end generate;
 
-  phy0 : if CFG_GRETH > 0 generate
-    p0 : phy
-      port map(rst, led_cfg, open, etx_clk, erx_clk, erxd, erx_dv,
-               erx_er, erx_col, erx_crs, etxd, etx_en, etx_er, emdc);
+  phy0 : if (CFG_GRETH /= 0) generate
+    emdio <= 'H';
+    p0: phy
+      generic map(base1000_t_fd => 0, base1000_t_hd => 0)
+      port map(rst, emdio, etx_clk, erx_clk, erxd, erx_dv,
+        erx_er, erx_col, erx_crs, etxd, etx_en, etx_er, emdc, eth_macclk);
   end generate;
-  error <= 'H';                         -- ERROR pull-up
 
-  ata_dev0 : ata_device
-    port map(
-      ata_rst_n  => ata_rst,
-      ata_data   => ata_data,
-      ata_da     => ata_da,
-      ata_cs0    => ata_cs0,
-      ata_cs1    => ata_cs1,
-      ata_dior_n => ata_dior,
-      ata_diow_n => ata_diow,
-      ata_iordy  => ata_iordy,
-      ata_intrq  => ata_intrq
-      );
+  error <= 'H';                         -- ERROR pull-up
 
   iuerr : process(error)
   begin

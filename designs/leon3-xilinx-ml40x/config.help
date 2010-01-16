@@ -235,9 +235,9 @@ GRFPU Multiplier
 CONFIG_FPU_GRFPU_INFMUL
   On FPGA targets choose inferred multiplier. For ASIC implementations 
   choose between Synopsys Design Ware (DW) multiplier or Module 
-  Generator (ModGen) multiplier. DW multiplier gives better results 
-  (smaller area  and better timing) but requires DW license. ModGen 
-  multiplier is part of GRLIB and does not require license. 
+  Generator (ModGen) multiplier. The DW multiplier gives better results 
+  (smaller area and better timing) but requires a DW license. 
+  The ModGen multiplier is part of GRLIB and does not require a license. 
 
 Shared GRFPU
 CONFIG_FPU_GRFPU_SH
@@ -308,7 +308,7 @@ CONFIG_ICACHE_LZ16
 Instruction cache replacement algorithm
 CONFIG_ICACHE_ALGORND
   Cache replacement algorithm for caches with 2 - 4 sets. The 'random'
-  algorithm selects the set to evict randomly. The least-recently-used
+  algorithm selects the set to evict randomly. The least-recently-replaced
   (LRR) algorithm evicts the set least recently replaced. The least-
   recently-used (LRU) algorithm evicts the set least recently accessed.
   The random algorithm uses a simple 1- or 2-bit counter to select
@@ -749,6 +749,8 @@ CONFIG_DDRSP_RSKEW
   must be added manually. The entered value is set to the PHASE_SHIFT
   generic on the Xilinx DCM. The Digilent Sparten3E-1600 board typically
   needs a value of 35, while the Avnet Virtex4 Eval board needs -90.
+  For Altera CycloneIII, the entered value is set to the PHASE_SHIFT of 
+  the PLL in ps (e.g 2500 for 90' shift in 100MHz)
 SDRAM controller enable
 CONFIG_SSCTRL
   Say Y here to enabled a 32-bit synchronous SRAM (SSRAM) controller.
@@ -858,6 +860,22 @@ CONFIG_IRQ3_BROADCAST_ENABLE
   If enabled the broadcast register is used to determine which
   interrupt should be sent to all cpus instead of just the first
   one that consumes it.
+
+Secondary interrupts
+CONFIG_IRQ3_SEC
+  The interrupt controller handles 15 interrupts by default (1 - 15).
+  These correspond to the 15 SPARC asyncronous traps (0x11 - 0x1F),
+  and AMBA interrupts 1 - 15. This option will enable 16 additional
+  (secondary) interrupts, corresponding to AMBA interrupts 16 - 31.
+  The secondary interrupts will be multiplexed onto one of the first
+  15 interrupts. The total number of handled interrupts can then
+  be up to 30 (14 primary and 16 secondary).
+
+Number of interrupts
+CONFIG_IRQ3_NSEC
+  Defines which of the first 15 interrupts should be used for the
+  secondary (16 - 31) interrupts. Interrupt 15 should be avoided
+  since it is not maskable by the processor.
 Timer module enable
 CONFIG_GPT_ENABLE
   Say Y here to enable the Modular Timer Unit. The timer unit consists
@@ -929,6 +947,9 @@ PS2 KBD interface
 CONFIG_KBD_ENABLE
   Say Y here to enable a PS/2 keyboard or mouse interface.
 
+AMBA System ACE Interface Controller
+CONFIG_GRACECTRL
+  Say Y here to enable the AMBA System ACE Interface Controller
 UART debugging
 CONFIG_DEBUG_UART
   During simulation, the output from the UARTs is printed on the

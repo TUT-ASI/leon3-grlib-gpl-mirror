@@ -1,6 +1,10 @@
 -----------------------------------------------------------------------------
 --  LEON3 Demonstration design test bench
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -11,6 +15,10 @@
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
 --  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 --  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -56,6 +64,8 @@ constant sdramfile : string := "sdram.srec"; -- sdram contents
 
 signal sys_clk : std_logic := '0';
 signal sys_rst_in : std_logic := '0';			-- Reset
+signal sysace_clk_in  : std_ulogic := '0';
+
 constant ct : integer := clkperiod/2;
 
 signal plb_error	: std_logic;
@@ -104,6 +114,7 @@ signal phy_tx_er 	: std_ulogic;
 signal phy_mii_clk	: std_ulogic;
 signal phy_rst_n	: std_ulogic;
 signal phy_gtx_clk	: std_ulogic;
+signal phy_int_n        : std_ulogic;
 signal ps2_keyb_clk: std_logic;
 signal ps2_keyb_data: std_logic;
 signal ps2_mouse_clk: std_logic;
@@ -120,6 +131,12 @@ signal usb_csn : std_logic;
 signal flash_cex : std_logic;  
 signal iic_scl : std_logic;
 signal iic_sda : std_logic;
+signal sace_usb_a      : std_logic_vector(6 downto 0);
+signal sace_mpce       : std_ulogic;
+signal sace_usb_d      : std_logic_vector(15 downto 0);
+signal sace_usb_oen    : std_ulogic;
+signal sace_usb_wen    : std_ulogic;
+signal sysace_mpirq    : std_ulogic;
 
 signal GND      : std_ulogic := '0';
 signal VCC      : std_ulogic := '1';
@@ -143,27 +160,31 @@ begin
 
   sys_clk <= not sys_clk after ct * 1 ns;
   sys_rst_in <= '0', '1' after 200 ns; 
+  sysace_clk_in <= not sysace_clk_in after 15 ns;
   rxd1 <= 'H';
   sram_clk_fb <= sram_clk; ddr_clk_fb <= ddr_clk;
   ps2_keyb_data <= 'H'; ps2_keyb_clk <= 'H';
   ps2_mouse_clk <= 'H'; ps2_mouse_data <= 'H';
   iic_scl <= 'H'; iic_sda <= 'H';
   flash_cex <= not flash_ce;
-
+  sace_usb_d <= (others => 'H'); sysace_mpirq <= 'L';
+  
   cpu : entity work.leon3mp
       generic map ( fabtech, memtech, padtech, ncpu, disas, dbguart, pclow )
-      port map ( sys_rst_in, sys_clk, plb_error, opb_error, flash_a23, sram_flash_addr,
-	sram_flash_data, sram_cen, sram_bw, sram_flash_oe_n, sram_flash_we_n, 
-	flash_ce, sram_clk, sram_clk_fb, sram_mode, sram_adv_ld_n, iosn,
+      port map ( sys_rst_in, sys_clk, sysace_clk_in, plb_error, opb_error, flash_a23,
+        sram_flash_addr, sram_flash_data, sram_cen, sram_bw, sram_flash_oe_n,
+        sram_flash_we_n, flash_ce, sram_clk, sram_clk_fb, sram_mode, sram_adv_ld_n, iosn,
 	ddr_clk, ddr_clkb, ddr_clk_fb, ddr_cke, ddr_csb, ddr_web, ddr_rasb, 
 	ddr_casb, ddr_dm, ddr_dqs, ddr_ad, ddr_ba, ddr_dq, 
 	txd1, rxd1, gpio, phy_gtx_clk, phy_mii_data, phy_tx_clk, phy_rx_clk, 
-	phy_rx_data, phy_dv, phy_rx_er,	phy_col, phy_crs, 
+	phy_rx_data, phy_dv, phy_rx_er,	phy_col, phy_crs, phy_int_n,
 	phy_tx_data, phy_tx_en, phy_tx_er, phy_mii_clk,	phy_rst_n, ps2_keyb_clk,
 	ps2_keyb_data, ps2_mouse_clk, ps2_mouse_data, tft_lcd_clk, vid_blankn, vid_syncn, 
 	vid_hsync, vid_vsync, vid_r, vid_g, vid_b,
         usb_csn,
-        iic_scl, iic_sda
+        iic_scl, iic_sda,
+        sace_usb_a, sace_mpce, sace_usb_d, sace_usb_oen, sace_usb_wen,
+        sysace_mpirq
 	);
 
   datazz <= "HHHH";

@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -749,6 +750,8 @@ architecture struct of clkgen_virtex5 is
 
 constant VERSION : integer := 1;
 constant CLKIN_PERIOD_ST : string := "20.0";
+constant FREQ_MHZ : integer := freq/1000;
+  
 attribute CLKIN_PERIOD : string;
 attribute CLKIN_PERIOD of dll0: label is CLKIN_PERIOD_ST;
 signal gnd, clk_i, clk_j, clk_k, clk_l, clk_m, lsdclk : std_logic;
@@ -797,18 +800,39 @@ begin
     bufg4 : BUFG port map (I => clk_o, O => clk_p);
   end generate;
   dll0rst <= not cgi.pllrst;
-  dll0 : DCM 
-    generic map (CLKFX_MULTIPLY => clk_mul, CLKFX_DIVIDE => clk_div)
-    port map ( CLKIN => clkint, CLKFB => clk_k, DSSEN => gnd, PSCLK => gnd,
-    PSEN => gnd, PSINCDEC => gnd, RST => dll0rst, CLK0 => clk_j,
-    CLKFX => clk0B, CLK2X => clk_x, CLKFX180 => clk_l, LOCKED => dll0lock);
 
-
+--   HMODE_dll0 : if (((FREQ_MHZ*clk_mul)/clk_div >= 140) or (FREQ_MHZ >= 120)) generate
+--     dll0 : DCM 
+--       generic map (CLKFX_MULTIPLY => clk_mul, CLKFX_DIVIDE => clk_div,
+--                    DFS_FREQUENCY_MODE => "HIGH", DLL_FREQUENCY_MODE => "HIGH")
+--       port map ( CLKIN => clkint, CLKFB => clk_k, DSSEN => gnd, PSCLK => gnd,
+--                  PSEN => gnd, PSINCDEC => gnd, RST => dll0rst, CLK0 => clk_j,
+--                  CLKFX => clk0B, CLK2X => clk_x, CLKFX180 => clk_l, LOCKED => dll0lock);
+--   end generate;
+--   LMODE_dll0 : if not (((FREQ_MHZ*clk_mul)/clk_div >= 140) or (FREQ_MHZ >= 120)) generate
+    dll0 : DCM 
+      generic map (CLKFX_MULTIPLY => clk_mul, CLKFX_DIVIDE => clk_div,
+                   DFS_FREQUENCY_MODE => "LOW", DLL_FREQUENCY_MODE => "LOW")
+      port map ( CLKIN => clkint, CLKFB => clk_k, DSSEN => gnd, PSCLK => gnd,
+                 PSEN => gnd, PSINCDEC => gnd, RST => dll0rst, CLK0 => clk_j,
+                 CLKFX => clk0B, CLK2X => clk_x, CLKFX180 => clk_l, LOCKED => dll0lock);
+--  end generate;
+  
   clk2xgen : if (CLK2XEN /= 0) generate
-    dll2x : DCM generic map (CLKFX_MULTIPLY => 2, CLKFX_DIVIDE => 2)
+--     HMODE_dll2x : if ((FREQ_MHZ*clk_mul)/clk_div >= 120) generate
+--       dll2x : DCM generic map (CLKFX_MULTIPLY => 2, CLKFX_DIVIDE => 2,
+--                                DFS_FREQUENCY_MODE => "HIGH", DLL_FREQUENCY_MODE => "HIGH")
+--       port map ( CLKIN => clk_i, CLKFB => clk_p, DSSEN => gnd, PSCLK => gnd,
+--       PSEN => gnd, PSINCDEC => gnd, RST => dll2xrst(0), CLK0 => clk_o,
+--                  CLK2X => clk_n,  LOCKED => dll2xlock);
+--     end generate;
+--     LMODE_dll2x : if not ((FREQ_MHZ*clk_mul)/clk_div >= 120) generate
+      dll2x : DCM generic map (CLKFX_MULTIPLY => 2, CLKFX_DIVIDE => 2,
+                               DFS_FREQUENCY_MODE => "LOW", DLL_FREQUENCY_MODE => "LOW")          
       port map ( CLKIN => clk_i, CLKFB => clk_p, DSSEN => gnd, PSCLK => gnd,
       PSEN => gnd, PSINCDEC => gnd, RST => dll2xrst(0), CLK0 => clk_o,
                  CLK2X => clk_n,  LOCKED => dll2xlock);
+--    end generate;
     rstdel2x : process (clk_i, dll0lock)
     begin
       if dll0lock = '0' then dll2xrst <= (others => '1');
@@ -830,11 +854,22 @@ begin
   
   sd0 : if (SDRAMEN /= 0) and (NOCLKFB=0) generate
     cgo.clklock <= dll1lock;
-    dll1 : DCM generic map (CLKFX_MULTIPLY => 2, CLKFX_DIVIDE => 2,
-	DESKEW_ADJUST => "SOURCE_SYNCHRONOUS")
-      port map ( CLKIN => clk_sd, CLKFB => cgi.pllref, DSSEN => gnd, PSCLK => gnd,
-      PSEN => gnd, PSINCDEC => gnd, RST => dll1rst(0), CLK0 => lsdclk, --CLK2X => clk2x, 
-      LOCKED => dll1lock);
+--     HMODE_dll1 : if ((FREQ_MHZ*clk_mul)/clk_div >= (120-60*(CLK2XEN/2))) generate
+--       dll1 : DCM generic map (CLKFX_MULTIPLY => 2, CLKFX_DIVIDE => 2,
+--                               DFS_FREQUENCY_MODE => "HIGH", DLL_FREQUENCY_MODE => "HIGH",
+--                               DESKEW_ADJUST => "SOURCE_SYNCHRONOUS")
+--         port map ( CLKIN => clk_sd, CLKFB => cgi.pllref, DSSEN => gnd, PSCLK => gnd,
+--                    PSEN => gnd, PSINCDEC => gnd, RST => dll1rst(0), CLK0 => lsdclk, --CLK2X => clk2x, 
+--                    LOCKED => dll1lock);
+--     end generate;
+--     LMODE_dll1 : if not ((FREQ_MHZ*clk_mul)/clk_div >= (120-60*(CLK2XEN/2))) generate
+      dll1 : DCM generic map (CLKFX_MULTIPLY => 2, CLKFX_DIVIDE => 2,
+                              DFS_FREQUENCY_MODE => "LOW", DLL_FREQUENCY_MODE => "LOW",
+                              DESKEW_ADJUST => "SOURCE_SYNCHRONOUS")
+        port map ( CLKIN => clk_sd, CLKFB => cgi.pllref, DSSEN => gnd, PSCLK => gnd,
+                   PSEN => gnd, PSINCDEC => gnd, RST => dll1rst(0), CLK0 => lsdclk, --CLK2X => clk2x, 
+                   LOCKED => dll1lock);
+--    end generate;
     bufgx : BUFG port map (I => lsdclk, O => sdclk);
     rstdel : process (clk_sd, dll2xlock)
     begin

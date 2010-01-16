@@ -1,6 +1,10 @@
 -----------------------------------------------------------------------------
 --  LEON3 Demonstration design
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -14,7 +18,7 @@
 --
 --  You should have received a copy of the GNU General Public License
 --  along with this program; if not, write to the Free Software
---  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 
@@ -52,6 +56,7 @@ entity leon3mp is
   port (
     sys_rst_in	: in  std_ulogic;
     sys_clk	: in  std_ulogic; 	-- 100 MHz main clock
+    sysace_clk_in  : in  std_ulogic;   -- System ACE clock
     plb_error	: out std_logic;	-- IU error mode
     opb_error	: out std_logic;	-- DSU active
     flash_a23	: out std_ulogic;
@@ -98,6 +103,7 @@ entity leon3mp is
     phy_rx_er	: in std_ulogic; 
     phy_col 	: in std_ulogic;
     phy_crs 	: in std_ulogic;
+    phy_int_n   : in std_ulogic;
     phy_tx_data : out std_logic_vector(7 downto 0);   
     phy_tx_en 	: out std_ulogic; 
     phy_tx_er 	: out std_ulogic; 
@@ -121,8 +127,15 @@ entity leon3mp is
     usb_csn : out std_logic;
 
     iic_scl : inout std_ulogic;
-    iic_sda : inout std_ulogic
-   );
+    iic_sda : inout std_ulogic;
+
+    sace_usb_a      : out std_logic_vector(6 downto 0);
+    sace_mpce       : out std_ulogic;
+    sace_usb_d      : inout std_logic_vector(15 downto 0);
+    sace_usb_oen    : out std_ulogic;
+    sace_usb_wen    : out std_ulogic;
+    sysace_mpirq    : in std_ulogic
+    );
 end;
 
 architecture rtl of leon3mp is
@@ -208,6 +221,10 @@ signal ddr_ckev  	: std_logic_vector(1 downto 0);
 signal ddr_csbv  	: std_logic_vector(1 downto 0);
 signal ddr_adl      	: std_logic_vector (13 downto 0);
 
+signal clkace : std_ulogic;
+signal acei   : gracectrl_in_type;
+signal aceo   : gracectrl_out_type;
+
 attribute syn_keep : boolean;
 attribute syn_preserve : boolean;
 attribute syn_keep of clkml : signal is true;
@@ -219,6 +236,9 @@ attribute keep of lock : signal is true;
 attribute keep of clkml : signal is true;
 attribute keep of clkm : signal is true;
 attribute keep of egtx_clk : signal is true;
+
+attribute syn_noprune : boolean;
+attribute syn_noprune of sysace_clk_in_pad : label is true;
 
 signal romsn   : std_ulogic;
 constant SPW_LOOP_BACK : integer := 0;
@@ -241,6 +261,9 @@ begin
   srclk_pad : outpad generic map (tech => padtech, slew => 1, strength => 24) 
 	port map (sram_clk, srclkl);
 
+  sysace_clk_in_pad : clkpad generic map (tech => padtech) 
+	port map (sysace_clk_in, clkace); 
+  
   clkgen0 : clkgen  		-- system clock generator
     generic map (CFG_FABTECH, CFG_CLKMUL, CFG_CLKDIV, 1, 0, 0, 0, 0, BOARD_FREQ, 0)
     port map (lclk, gnd(0), clkm, open, open, srclkl, open, cgi, cgo, open, clk1x);
@@ -389,6 +412,33 @@ begin
 
   noddr :  if (CFG_DDRSP = 0) generate lock <= '1'; end generate;
 
+----------------------------------------------------------------------
+---  System ACE I/F Controller ---------------------------------------
+----------------------------------------------------------------------
+  
+  grace: if CFG_GRACECTRL = 1 generate
+    grace0 : gracectrl generic map (hindex => 4, hirq => 13,
+        haddr => 16#002#, hmask => 16#fff#, split => CFG_SPLIT)
+      port map (rstn, clkm, clkace, ahbsi, ahbso(4), acei, aceo);
+  end generate;
+  nograce: if CFG_GRACECTRL /= 1 generate
+    aceo <= gracectrl_none;
+  end generate;
+  
+  sace_usb_a_pads : outpadv generic map (width => 7, tech => padtech) 
+    port map (sace_usb_a, aceo.addr); 
+  sace_mpce_pad : outpad generic map (tech => padtech)
+    port map (sace_mpce, aceo.cen); 
+  sace_usb_d_pads : iopadv generic map (tech => padtech, width => 16)
+    port map (sace_usb_d, aceo.do, aceo.doen, acei.di); 
+  sace_usb_oen_pad : outpad generic map (tech => padtech)
+    port map (sace_usb_oen, aceo.oen);
+  sace_usb_wen_pad : outpad generic map (tech => padtech)
+    port map (sace_usb_wen, aceo.wen); 
+  sysace_mpirq_pad : inpad generic map (tech => padtech)
+    port map (sysace_mpirq, acei.irq); 
+
+  
 ----------------------------------------------------------------------
 ---  APB Bridge and various periherals -------------------------------
 ----------------------------------------------------------------------
@@ -539,7 +589,7 @@ begin
 	pindex => 11, paddr => 11, pirq => 12, memtech => memtech,
         mdcscaler => CPU_FREQ/1000, enable_mdio => 1, fifosize => CFG_ETH_FIFO,
         nsync => 1, edcl => CFG_DSU_ETH, edclbufsz => CFG_ETH_BUF,
-        macaddrh => CFG_ETH_ENM, macaddrl => CFG_ETH_ENL, 
+        macaddrh => CFG_ETH_ENM, macaddrl => CFG_ETH_ENL, enable_mdint => 1,
 	ipaddrh => CFG_ETH_IPM, ipaddrl => CFG_ETH_IPL, giga => CFG_GRETH1G)
       port map( rst => rstn, clk => clkm, ahbmi => ahbmi,
         ahbmo => ahbmo(NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SVGA_ENABLE), 
@@ -561,6 +611,8 @@ begin
 	port map (phy_col, ethi.rx_col);
       erxcr_pad : inpad generic map (tech => padtech) 
 	port map (phy_crs, ethi.rx_crs);
+      emdint_pad : inpad generic map (tech => padtech) 
+	port map (phy_int_n, ethi.mdint);
 
       etxd_pad : outpadv generic map (tech => padtech, width => 8) 
 	port map (phy_tx_data, etho.txd(7 downto 0));

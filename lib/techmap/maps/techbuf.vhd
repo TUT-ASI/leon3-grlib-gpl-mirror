@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,7 +29,7 @@ use techmap.gencomp.all;
 
 entity techbuf is
   generic(
-    buftype  :  integer range 0 to 4 := 0; 
+    buftype  :  integer range 0 to 4 := 0;
     tech     :  integer range 0 to NTECH := inferred);
   port( i :  in  std_ulogic; o :  out std_ulogic);
 end entity;
@@ -46,6 +47,9 @@ end component;
 component clkbuf_ut025crh is generic( buftype :  integer range 0 to 3 := 0);
   port( i :  in  std_ulogic; o :  out std_ulogic);
 end component;
+component clkbuf_nextreme is generic( buftype :  integer range 0 to 3 := 0);
+  port( i :  in  std_ulogic; o :  out std_ulogic);
+end component;
 
 begin
   gen : if has_techbuf(tech) = 0 generate
@@ -54,14 +58,16 @@ begin
   pa3 : if (tech = apa3) generate
     axc : clkbuf_apa3 generic map (buftype => buftype) port map(i => i, o => o);
   end generate;
-  axc : if (tech = axcel) generate
+  axc : if (tech = axcel) or (tech = axdsp) generate
     axc : clkbuf_actel generic map (buftype => buftype) port map(i => i, o => o);
   end generate;
-  xil : if (tech = virtex) or (tech = virtex2) or (tech = spartan3) or (tech = virtex4) or 
-	(tech = spartan3e) or (tech = virtex5) generate
+  xil : if (is_unisim(tech) = 1) generate
     xil : clkbuf_xilinx generic map (buftype => buftype) port map(i => i, o => o);
   end generate;
   ut  : if (tech = ut25) generate
     axc : clkbuf_ut025crh generic map (buftype => buftype) port map(i => i, o => o);
   end generate;
+  easic: if tech = easic90 generate
+    eas : clkbuf_nextreme generic map (buftype => buftype) port map(i => i, o => o);
+  end generate easic;
 end architecture;

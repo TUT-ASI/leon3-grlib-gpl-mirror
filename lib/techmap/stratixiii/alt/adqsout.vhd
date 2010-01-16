@@ -235,7 +235,7 @@ begin
     port map(
       i                          => dqs_buf,                                                 
       oe                         => dqs_oe_reg_n,                                                 
-      dynamicterminationcontrol  => gnd(0),--dqs_oct_reg,                                 
+      --dynamicterminationcontrol  => dqs_oct, --gnd(0),--dqs_oct_reg,                                 
       --seriesterminationcontrol   => gnd, 
       --parallelterminationcontrol => gnd, 
       o                          => dqs_pad,                                                       
@@ -252,7 +252,7 @@ begin
     port map(
       i                          => dqsn_buf,                                                 
       oe                         => dqsn_oe_reg_n,                                                 
-      dynamicterminationcontrol  => gnd(0),--dqsn_oct_reg,                                 
+      --dynamicterminationcontrol  => dqs_oct, --gnd(0),--dqsn_oct_reg,                                 
       --seriesterminationcontrol   => gnd, 
       --parallelterminationcontrol => gnd, 
       o                          => dqsn_pad,                                                       

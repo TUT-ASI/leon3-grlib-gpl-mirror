@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -45,13 +46,14 @@ entity phy is
     base1000_x_fd : integer range 0 to 1  := 0;
     base1000_x_hd : integer range 0 to 1  := 0;
     base1000_t_fd : integer range 0 to 1  := 1;
-    base1000_t_hd : integer range 0 to 1  := 1
+    base1000_t_hd : integer range 0 to 1  := 1;
+    rmii          : integer range 0 to 1  := 0
     );
   port(
     rstn     : in std_logic;
     mdio     : inout std_logic;
     tx_clk   : out std_logic;
-    rx_clk   : out std_logic;
+    rx_clk   : out std_logic; 
     rxd      : out std_logic_vector(7 downto 0);   
     rx_dv    : out std_logic; 
     rx_er    : out std_logic; 
@@ -61,7 +63,7 @@ entity phy is
     tx_en    : in std_logic; 
     tx_er    : in std_logic; 
     mdc      : in std_logic;
-    gtx_clk  : in std_logic
+    gtx_clk  : in std_logic  
   );
 end;
 
@@ -178,12 +180,13 @@ architecture behavioral of phy is
   signal anegact  : std_ulogic;
 begin
   --mdio signal pull-up
-  int_clk <= not int_clk after 8 ns when r.ctrl.speedsel = "01" else
-             not int_clk after 40 ns when r.ctrl.speedsel = "10" else
-             not int_clk after 400 ns when r.ctrl.speedsel = "00";
-
-  clkslow <= not clkslow after 40 ns when r.ctrl.speedsel = "10" else
-             not clkslow after 400 ns;
+  int_clk <= not int_clk after 10 ns when rmii = 1 else
+             not int_clk after 4 ns when r.ctrl.speedsel = "01" else
+             not int_clk after 20 ns when r.ctrl.speedsel = "10" else
+             not int_clk after 200 ns when r.ctrl.speedsel = "00";
+  
+  clkslow <= not clkslow after 20 ns when r.ctrl.speedsel = "10" else
+             not clkslow after 200 ns;
   
 --   rstdelay : process
 --   begin
@@ -520,7 +523,7 @@ begin
 
     -- RESET
     if (r.ctrl.reset or not rstn) = '1' then
-      r.ctrl.loopback <= '0'; r.anegcnt <= 0;
+      r.ctrl.loopback <= '1'; r.anegcnt <= 0;
       if (base1000_x_hd = 1) or (base1000_x_fd = 1) or (base1000_t_hd = 1) or
          (base1000_t_fd = 1) then
         r.ctrl.speedsel <= "01";
@@ -626,21 +629,36 @@ begin
   loopback_sel : process(r.ctrl.loopback, int_clk, gtx_clk, r.ctrl.speedsel, txd, tx_en) is
   begin
     if r.ctrl.loopback = '1' then
-      rx_col <= '0'; rx_crs <= tx_en; rx_dv <= tx_en; rx_er <= tx_er;
-      rxd <= txd;
-      if r.ctrl.speedsel /= "01" then
-        rx_clk <= int_clk; tx_clk <= int_clk;
+      if rmii = 0 then
+        rx_col <= '0'; rx_crs <= tx_en; rx_dv <= tx_en; rx_er <= tx_er;
+        rxd <= txd;
+        if r.ctrl.speedsel /= "01" then
+          rx_clk <= int_clk; tx_clk <= int_clk;
+        else
+          rx_clk <= gtx_clk; tx_clk <= clkslow;
+        end if;
       else
-        rx_clk <= gtx_clk; tx_clk <= clkslow;
+        rx_dv <= '1'; rx_er <= '1'; --unused should not affect anything
+        rx_col <= '0'; rx_crs <= tx_en;
+        if tx_en = '0' then
+          rxd(1 downto 0) <= "00";
+        else
+          rxd(1 downto 0) <= txd(1 downto 0);
+        end if;
+        rx_clk <= '0'; tx_clk <= '0';
       end if;
     else
-      rx_col <= '0'; rx_crs <= '0'; rx_dv <= '0';
+      rx_col <= '0'; rx_crs <= '0'; rx_dv <= '0'; rx_er <= '0';
       rxd <= (others => '0');
-      if r.ctrl.speedsel /= "01" then
-        rx_clk <= int_clk; tx_clk <= int_clk after 3 ns;
+      if rmii = 0 then
+        if r.ctrl.speedsel /= "01" then
+          rx_clk <= int_clk; tx_clk <= int_clk after 3 ns;
+        else
+          rx_clk <= gtx_clk; tx_clk <= clkslow;
+        end if;
       else
-        rx_clk <= gtx_clk; tx_clk <= clkslow;
-      end if;
+        rx_clk <= int_clk; tx_clk <= int_clk after 3 ns;
+      end if;  
     end if;
   end process;
 end;

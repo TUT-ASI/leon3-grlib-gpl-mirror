@@ -10,6 +10,8 @@
 #define CONFIG_SYN_TECH atc18rha
 #elif defined CONFIG_SYN_AXCEL
 #define CONFIG_SYN_TECH axcel
+#elif defined CONFIG_SYN_AXDSP
+#define CONFIG_SYN_TECH axdsp
 #elif defined CONFIG_SYN_PROASICPLUS
 #define CONFIG_SYN_TECH proasic
 #elif defined CONFIG_SYN_ALTERA
@@ -38,6 +40,8 @@
 #define CONFIG_SYN_TECH proasic
 #elif defined CONFIG_SYN_PROASIC3
 #define CONFIG_SYN_TECH apa3
+#elif defined CONFIG_SYN_IGLOO
+#define CONFIG_SYN_TECH apa3
 #elif defined CONFIG_SYN_SPARTAN2
 #define CONFIG_SYN_TECH virtex
 #elif defined CONFIG_SYN_VIRTEX
@@ -48,14 +52,20 @@
 #define CONFIG_SYN_TECH spartan3
 #elif defined CONFIG_SYN_SPARTAN3E
 #define CONFIG_SYN_TECH spartan3e
+#elif defined CONFIG_SYN_SPARTAN6
+#define CONFIG_SYN_TECH spartan6
 #elif defined CONFIG_SYN_VIRTEX2
 #define CONFIG_SYN_TECH virtex2
 #elif defined CONFIG_SYN_VIRTEX4
 #define CONFIG_SYN_TECH virtex4
 #elif defined CONFIG_SYN_VIRTEX5
 #define CONFIG_SYN_TECH virtex5
+#elif defined CONFIG_SYN_VIRTEX6
+#define CONFIG_SYN_TECH virtex6
 #elif defined CONFIG_SYN_RH_LIB18T
 #define CONFIG_SYN_TECH rhlib18t
+#elif defined CONFIG_SYN_SMIC13
+#define CONFIG_SYN_TECH smic013
 #elif defined CONFIG_SYN_UT025CRH
 #define CONFIG_SYN_TECH ut25
 #elif defined CONFIG_SYN_TSMC90
@@ -188,6 +198,10 @@
 #define CONFIG_IU_MUL_MAC 0
 #endif
 
+#ifndef CONFIG_IU_BP
+#define CONFIG_IU_BP 0
+#endif
+
 #ifndef CONFIG_IU_SVT
 #define CONFIG_IU_SVT 0
 #endif
@@ -204,8 +218,10 @@
 #define CONFIG_FPU_GRFPU_MUL 0
 #elif defined CONFIG_FPU_GRFPU_DWMUL
 #define CONFIG_FPU_GRFPU_MUL 1
-#elif defined CONFIG_FPU_GRFPU_MODGEN 
+#elif defined CONFIG_FPU_GRFPU_MODGEN
 #define CONFIG_FPU_GRFPU_MUL 2
+#elif defined CONFIG_FPU_GRFPU_TECHSPEC
+#define CONFIG_FPU_GRFPU_MUL 3
 #else
 #define CONFIG_FPU_GRFPU_MUL 0
 #endif
@@ -415,6 +431,19 @@
 #define CFG_DLRAM_SIZE 1
 #endif
 
+#if defined CONFIG_MMU_PAGE_4K
+#define CONFIG_MMU_PAGE 0
+#elif defined CONFIG_MMU_PAGE_8K
+#define CONFIG_MMU_PAGE 1
+#elif defined CONFIG_MMU_PAGE_16K
+#define CONFIG_MMU_PAGE 2
+#elif defined CONFIG_MMU_PAGE_32K
+#define CONFIG_MMU_PAGE 3
+#elif defined CONFIG_MMU_PAGE_PROG
+#define CONFIG_MMU_PAGE 4
+#else
+#define CONFIG_MMU_PAGE 0
+#endif
 
 #ifdef CONFIG_MMU_ENABLE
 #define CONFIG_MMUEN 1
@@ -433,16 +462,16 @@
 #define CONFIG_TLB_REP 1
 #endif
 
-#ifdef CONFIG_MMU_I2 
+#ifdef CONFIG_MMU_I2
 #define CONFIG_ITLBNUM 2
 #endif
-#ifdef CONFIG_MMU_I4 
+#ifdef CONFIG_MMU_I4
 #define CONFIG_ITLBNUM 4
 #endif
-#ifdef CONFIG_MMU_I8 
+#ifdef CONFIG_MMU_I8
 #define CONFIG_ITLBNUM 8
 #endif
-#ifdef CONFIG_MMU_I16 
+#ifdef CONFIG_MMU_I16
 #define CONFIG_ITLBNUM 16
 #endif
 #ifdef CONFIG_MMU_I32
@@ -450,24 +479,24 @@
 #endif
 
 #define CONFIG_DTLBNUM 2
-#ifdef CONFIG_MMU_D2 
-#undef CONFIG_DTLBNUM 
+#ifdef CONFIG_MMU_D2
+#undef CONFIG_DTLBNUM
 #define CONFIG_DTLBNUM 2
 #endif
-#ifdef CONFIG_MMU_D4 
-#undef CONFIG_DTLBNUM 
+#ifdef CONFIG_MMU_D4
+#undef CONFIG_DTLBNUM
 #define CONFIG_DTLBNUM 4
 #endif
-#ifdef CONFIG_MMU_D8 
-#undef CONFIG_DTLBNUM 
+#ifdef CONFIG_MMU_D8
+#undef CONFIG_DTLBNUM
 #define CONFIG_DTLBNUM 8
 #endif
-#ifdef CONFIG_MMU_D16 
-#undef CONFIG_DTLBNUM 
+#ifdef CONFIG_MMU_D16
+#undef CONFIG_DTLBNUM
 #define CONFIG_DTLBNUM 16
 #endif
 #ifdef CONFIG_MMU_D32
-#undef CONFIG_DTLBNUM 
+#undef CONFIG_DTLBNUM
 #define CONFIG_DTLBNUM 32
 #endif
 #ifdef CONFIG_MMU_FASTWB
@@ -558,7 +587,7 @@
 #endif
 
 #ifdef CONFIG_DEBUG_PC32
-#define CFG_DEBUG_PC32 0 
+#define CFG_DEBUG_PC32 0
 #else
 #define CFG_DEBUG_PC32 2
 #endif
@@ -607,6 +636,20 @@
 #define CONFIG_DSU_JTAG 0
 #endif
 
+#ifndef CONFIG_GRUSB_DCL
+#define CONFIG_GRUSB_DCL 0
+#endif
+
+#if defined CONFIG_GRUSB_DCL_UTMI16
+#define CONFIG_GRUSB_DCL_UIFACE 0
+#define CONFIG_GRUSB_DCL_DW 16
+#elif defined CONFIG_GRUSB_DCL_UTMI8
+#define CONFIG_GRUSB_DCL_UIFACE 0
+#define CONFIG_GRUSB_DCL_DW 8
+#else
+#define CONFIG_GRUSB_DCL_UIFACE 1
+#define CONFIG_GRUSB_DCL_DW 8
+#endif
 #ifndef CONFIG_DSU_ETH
 #define CONFIG_DSU_ETH 0
 #endif
@@ -620,11 +663,11 @@
 #endif
 
 #ifndef CONFIG_DSU_ETHMSB
-#define CONFIG_DSU_ETHMSB 00007A
+#define CONFIG_DSU_ETHMSB 020000
 #endif
 
 #ifndef CONFIG_DSU_ETHLSB
-#define CONFIG_DSU_ETHLSB CC0001
+#define CONFIG_DSU_ETHLSB 000009
 #endif
 
 #if defined CONFIG_DSU_ETHSZ1
@@ -828,6 +871,10 @@
 #define CONFIG_SPW_RMAPCRC 0
 #endif
 
+#ifndef CONFIG_SPW_RXUNAL
+#define CONFIG_SPW_RXUNAL 0
+#endif
+
 #ifndef CONFIG_SPW_NETLIST
 #define CONFIG_SPW_NETLIST 0
 #endif
@@ -842,6 +889,39 @@
 #define CONFIG_SPW_GRSPW 2
 #endif
 
+#ifndef CONFIG_SPW_DMACHAN
+#define CONFIG_SPW_DMACHAN 1
+#endif
+
+#ifndef CONFIG_SPW_PORTS
+#define CONFIG_SPW_PORTS 1
+#endif
+
+#if defined CONFIG_SPW_RX_SDR
+#define CONFIG_SPW_INPUT 2
+#elif defined CONFIG_SPW_RX_DDR
+#define CONFIG_SPW_INPUT 3
+#elif defined CONFIG_SPW_RX_XOR
+#define CONFIG_SPW_INPUT 0
+#elif defined CONFIG_SPW_RX_AFLEX
+#define CONFIG_SPW_INPUT 1
+#else
+#define CONFIG_SPW_INPUT 2
+#endif
+
+#if defined CONFIG_SPW_TX_SDR
+#define CONFIG_SPW_OUTPUT 0
+#elif defined CONFIG_SPW_TX_DDR
+#define CONFIG_SPW_OUTPUT 1
+#elif defined CONFIG_SPW_TX_AFLEX
+#define CONFIG_SPW_OUTPUT 2
+#else
+#define CONFIG_SPW_OUTPUT 0
+#endif
+
+#ifndef CONFIG_SPW_RTSAME
+#define CONFIG_SPW_RTSAME 0
+#endif
 #if defined CONFIG_PCI_SIMPLE_TARGET
 #define CFG_PCITYPE 1
 #elif defined CONFIG_PCI_MASTER_TARGET_DMA
@@ -1070,6 +1150,129 @@
                                   CONFIG_GRUSBHC_PR9*2**2 + (CONFIG_GRUSBHC_PR1 mod 4) 
 
 
+#ifndef CONFIG_GRUSBDC_ENABLE
+#define CONFIG_GRUSBDC_ENABLE 0
+#endif
+
+#ifndef CONFIG_GRUSBDC_AIFACE
+#define CONFIG_GRUSBDC_AIFACE 0
+#endif
+
+#if defined CONFIG_GRUSBDC_UTMI16
+#define CONFIG_GRUSBDC_UIFACE 0
+#define CONFIG_GRUSBDC_DW 16
+#elif defined CONFIG_GRUSBDC_UTMI8
+#define CONFIG_GRUSBDC_UIFACE 0
+#define CONFIG_GRUSBDC_DW 8
+#else
+#define CONFIG_GRUSBDC_UIFACE 1
+#define CONFIG_GRUSBDC_DW 8
+#endif
+
+#ifndef CONFIG_GRUSBDC_NEPI
+#define CONFIG_GRUSBDC_NEPI 1
+#endif
+
+#ifndef CONFIG_GRUSBDC_NEPO
+#define CONFIG_GRUSBDC_NEPO 1
+#endif
+
+#ifndef CONFIG_GRUSBDC_I0
+#define CONFIG_GRUSBDC_I0 1024
+#endif
+#ifndef CONFIG_GRUSBDC_I1
+#define CONFIG_GRUSBDC_I1 1024
+#endif
+#ifndef CONFIG_GRUSBDC_I2
+#define CONFIG_GRUSBDC_I2 1024
+#endif
+#ifndef CONFIG_GRUSBDC_I3
+#define CONFIG_GRUSBDC_I3 1024
+#endif
+#ifndef CONFIG_GRUSBDC_I4
+#define CONFIG_GRUSBDC_I4 1024
+#endif
+#ifndef CONFIG_GRUSBDC_I5
+#define CONFIG_GRUSBDC_I5 1024
+#endif
+#ifndef CONFIG_GRUSBDC_I6
+#define CONFIG_GRUSBDC_I6 1024
+#endif
+#ifndef CONFIG_GRUSBDC_I7
+#define CONFIG_GRUSBDC_I7 1024
+#endif
+#ifndef CONFIG_GRUSBDC_I8
+#define CONFIG_GRUSBDC_I8 1024
+#endif
+#ifndef CONFIG_GRUSBDC_I9
+#define CONFIG_GRUSBDC_I9 1024
+#endif
+#ifndef CONFIG_GRUSBDC_I10
+#define CONFIG_GRUSBDC_I10 1024
+#endif
+#ifndef CONFIG_GRUSBDC_I11
+#define CONFIG_GRUSBDC_I11 1024
+#endif
+#ifndef CONFIG_GRUSBDC_I12
+#define CONFIG_GRUSBDC_I12 1024
+#endif
+#ifndef CONFIG_GRUSBDC_I13
+#define CONFIG_GRUSBDC_I13 1024
+#endif
+#ifndef CONFIG_GRUSBDC_I14
+#define CONFIG_GRUSBDC_I14 1024
+#endif
+#ifndef CONFIG_GRUSBDC_I15
+#define CONFIG_GRUSBDC_I15 1024
+#endif
+#ifndef CONFIG_GRUSBDC_O0
+#define CONFIG_GRUSBDC_O0 1024
+#endif
+#ifndef CONFIG_GRUSBDC_O1
+#define CONFIG_GRUSBDC_O1 1024
+#endif
+#ifndef CONFIG_GRUSBDC_O2
+#define CONFIG_GRUSBDC_O2 1024
+#endif
+#ifndef CONFIG_GRUSBDC_O3
+#define CONFIG_GRUSBDC_O3 1024
+#endif
+#ifndef CONFIG_GRUSBDC_O4
+#define CONFIG_GRUSBDC_O4 1024
+#endif
+#ifndef CONFIG_GRUSBDC_O5
+#define CONFIG_GRUSBDC_O5 1024
+#endif
+#ifndef CONFIG_GRUSBDC_O6
+#define CONFIG_GRUSBDC_O6 1024
+#endif
+#ifndef CONFIG_GRUSBDC_O7
+#define CONFIG_GRUSBDC_O7 1024
+#endif
+#ifndef CONFIG_GRUSBDC_O8
+#define CONFIG_GRUSBDC_O8 1024
+#endif
+#ifndef CONFIG_GRUSBDC_O9
+#define CONFIG_GRUSBDC_O9 1024
+#endif
+#ifndef CONFIG_GRUSBDC_O10
+#define CONFIG_GRUSBDC_O10 1024
+#endif
+#ifndef CONFIG_GRUSBDC_O11
+#define CONFIG_GRUSBDC_O11 1024
+#endif
+#ifndef CONFIG_GRUSBDC_O12
+#define CONFIG_GRUSBDC_O12 1024
+#endif
+#ifndef CONFIG_GRUSBDC_O13
+#define CONFIG_GRUSBDC_O13 1024
+#endif
+#ifndef CONFIG_GRUSBDC_O14
+#define CONFIG_GRUSBDC_O14 1024
+#endif
+#ifndef CONFIG_GRUSBDC_O15
+#define CONFIG_GRUSBDC_O15 1024
+#endif
 #ifndef CONFIG_UART1_ENABLE
 #define CONFIG_UART1_ENABLE 0
 #endif

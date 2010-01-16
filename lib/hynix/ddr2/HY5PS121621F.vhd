@@ -13,11 +13,15 @@
 --                   HHHH    HHHH  Hynix            --
 --                   HHHH    HHHH  Semiconductor    --
 ------------------------------------------------------
+-- Modified by Gaisler Research to use GRLIB libraries
+-- and to load initial memory data from a file.
 ---------------------------------------------------------------------------------------------------
 LIBRARY IEEE;
 USE IEEE.STD_LOGIC_1164.all;
-library grlib;
+use std.textio.all;
+library grlib, gaisler;
 use grlib.stdlib.all;
+use gaisler.sim.all;
 --USE IEEE.STD_LOGIC_ARITH.all;
 --USE IEEE.STD_LOGIC_UNSIGNED.all;
 USE work.HY5PS121621F_PACK.all;
@@ -26,8 +30,11 @@ USE work.HY5PS121621F_PACK.all;
 Entity HY5PS121621F Is
   generic (
      TimingCheckFlag : boolean := TRUE;
-     PUSCheckFlag : boolean := FALSE;
-     Part_Number : PART_NUM_TYPE := B400);
+     PUSCheckFlag    : boolean := FALSE;
+     Part_Number     : PART_NUM_TYPE := B400;
+     index           : integer := 0;
+     bbits           : natural := 64;
+     fname           : string  := "sdram.srec");
   Port (  DQ    :  inout   std_logic_vector(15 downto 0) := (others => 'Z');
           LDQS  :  inout   std_logic := 'Z';
           LDQSB :  inout   std_logic := 'Z';
@@ -212,6 +219,8 @@ signal dq12_ch : time := 0 ns;
 signal dq13_ch : time := 0 ns;
 signal dq14_ch : time := 0 ns;
 signal dq15_ch : time := 0 ns;
+
+signal load_file : std_ulogic := '1';
 
 begin
 
@@ -762,10 +771,236 @@ MEMORY_BANK_ACTIVATE_PRECHARGE : process (PrechargeFlag, AutoPrechargeFlag, Prec
 
 variable BkAdd : std_logic_vector ((NUM_OF_BANK_ADD - 1) downto 0) := (others => 'X');
 variable RA : std_logic_vector ((NUM_OF_ROW_ADD - 1) downto 0) := (others => 'X');
+variable COLA : std_logic_vector ((NUM_OF_COL_ADD-1) downto 0) := (others => '0');
 variable MEM_CELL_ARRAY0, MEM_CELL_ARRAY1, MEM_CELL_ARRAY2, MEM_CELL_ARRAY3 : MEM_CELL_TYPE;
 variable i, j, k, l, m, u : integer := 0;
 
+file fload : text open read_mode is fname;
+variable fline : line;
+variable fchar : character;
+variable rtype : std_logic_vector(3 downto 0);
+variable raddr : std_logic_vector(31 downto 0);
+variable rlen  : std_logic_vector(7 downto 0);
+variable rdata : std_logic_vector(0 to 16*8-1);
+
 begin
+
+  -- Load initial memory data from file
+  if load_file = '1' then
+  
+    load_file <= '0';
+
+    while not endfile(fload) loop
+      readline(fload, fline);
+      read(fline, fchar);
+      if fchar /= 'S' or fchar /= 's' then
+        hexread(fline, rtype);
+        hexread(fline, rlen);
+        case rtype is 
+          when "0001" =>
+            hexread(fline, raddr(15 downto 0));
+          when "0010" =>
+            hexread(fline, raddr(23 downto 0));
+          when "0011" =>
+            hexread(fline, raddr);
+            raddr(31 downto 24) := (others => '0');
+          when others => next;
+        end case;
+
+        case bbits is
+          -- 64 bit bank with four 16-bit...
+          when 64 => 
+            hexread(fline, rdata);
+            BkAdd := raddr(27 downto 26);
+            RA := raddr(25 downto 13);
+            COLA := raddr(12 downto 3);
+        
+            if (conv_integer (BkAdd) = 0) then
+              if (MEM_CELL_ARRAY0(conv_integer (RA)) = NULL) then
+                MEM_CELL_ARRAY0(conv_integer (RA)) := NEW ROW_DATA_TYPE;
+                loop
+                  exit when u >= NUM_OF_COLS;
+                  MEM_CELL_ARRAY0(conv_integer (RA))(u) := 0;
+                  u := u + 1;
+                end loop;
+              end if;
+              for i in 0 to 1 loop
+                MEM_CELL_ARRAY0(conv_integer (RA))(conv_integer(COLA)+i) :=
+                  conv_integer(rdata(i*64+index*16 to i*64+index*16+15));
+              end loop;
+            elsif (conv_integer (BkAdd) = 1) then
+              if (MEM_CELL_ARRAY1(conv_integer (RA)) = NULL) then
+                MEM_CELL_ARRAY1(conv_integer (RA)) := NEW ROW_DATA_TYPE;
+                loop
+                  exit when u >= NUM_OF_COLS;
+                  MEM_CELL_ARRAY1(conv_integer (RA))(u) := 0;
+                  u := u + 1;
+                end loop;
+              end if;
+              for i in 0 to 1 loop
+                MEM_CELL_ARRAY1(conv_integer (RA))(conv_integer(COLA)+i) :=
+                  conv_integer(rdata(i*64+index*16 to i*64+index*16+15));
+              end loop;
+            elsif (conv_integer (BkAdd) = 2) then
+              if (MEM_CELL_ARRAY2(conv_integer (RA)) = NULL) then
+                MEM_CELL_ARRAY2(conv_integer (RA)) := NEW ROW_DATA_TYPE;
+                loop
+                  exit when u >= NUM_OF_COLS;
+                  MEM_CELL_ARRAY2(conv_integer (RA))(u) := 0;
+                  u := u + 1;
+                end loop;
+              end if;
+              for i in 0 to 1 loop
+                MEM_CELL_ARRAY2(conv_integer (RA))(conv_integer(COLA)+i) :=
+                  conv_integer(rdata(i*64+index*16 to i*64+index*16+15));
+              end loop;
+            elsif (conv_integer (BkAdd) = 3) then
+              if (MEM_CELL_ARRAY3(conv_integer (RA)) = NULL) then
+                MEM_CELL_ARRAY3(conv_integer (RA)) := NEW ROW_DATA_TYPE;
+                loop
+                  exit when u >= NUM_OF_COLS;
+                  MEM_CELL_ARRAY3(conv_integer (RA))(u) := 0;
+                  u := u + 1;
+                end loop;
+              end if;
+              for i in 0 to 1 loop
+                MEM_CELL_ARRAY3(conv_integer (RA))(conv_integer(COLA)+i) :=
+                  conv_integer(rdata(i*64+index*16 to i*64+index*16+15));
+              end loop;
+            end if;
+          -- 32 bit bank with two 16-bit...
+          when 32 =>
+            hexread(fline, rdata);
+            BkAdd := raddr(26 downto 25);
+            RA    := raddr(24 downto 12);
+            COLA  := raddr(11 downto 2);
+            if (conv_integer (BkAdd) = 0) then
+              if (MEM_CELL_ARRAY0(conv_integer (RA)) = NULL) then
+                MEM_CELL_ARRAY0(conv_integer (RA)) := NEW ROW_DATA_TYPE;
+                loop
+                  exit when u >= NUM_OF_COLS;
+                  MEM_CELL_ARRAY0(conv_integer (RA))(u) := 0;
+                  u := u + 1;
+                end loop;
+              end if;
+              for i in 0 to 3 loop
+                MEM_CELL_ARRAY0(conv_integer (RA))(conv_integer(COLA)+i) :=
+                  conv_integer(rdata(i*32+index*16 to i*32+index*16+15));
+              end loop;
+            elsif (conv_integer (BkAdd) = 1) then
+              if (MEM_CELL_ARRAY1(conv_integer (RA)) = NULL) then
+                MEM_CELL_ARRAY1(conv_integer (RA)) := NEW ROW_DATA_TYPE;
+                loop
+                  exit when u >= NUM_OF_COLS;
+                  MEM_CELL_ARRAY1(conv_integer (RA))(u) := 0;
+                  u := u + 1;
+                end loop;
+              end if;
+              for i in 0 to 3 loop
+                MEM_CELL_ARRAY1(conv_integer (RA))(conv_integer(COLA)+i) :=
+                  conv_integer(rdata(i*32+index*16 to i*32+index*16+15));
+              end loop;
+            elsif (conv_integer (BkAdd) = 2) then
+              if (MEM_CELL_ARRAY2(conv_integer (RA)) = NULL) then
+                MEM_CELL_ARRAY2(conv_integer (RA)) := NEW ROW_DATA_TYPE;
+                loop
+                  exit when u >= NUM_OF_COLS;
+                  MEM_CELL_ARRAY2(conv_integer (RA))(u) := 0;
+                  u := u + 1;
+                end loop;
+              end if;
+              for i in 0 to 3 loop
+                MEM_CELL_ARRAY2(conv_integer (RA))(conv_integer(COLA)+i) :=
+                  conv_integer(rdata(i*32+index*16 to i*32+index*16+15));
+              end loop;
+            elsif (conv_integer (BkAdd) = 3) then
+              if (MEM_CELL_ARRAY3(conv_integer (RA)) = NULL) then
+                MEM_CELL_ARRAY3(conv_integer (RA)) := NEW ROW_DATA_TYPE;
+                loop
+                  exit when u >= NUM_OF_COLS;
+                  MEM_CELL_ARRAY3(conv_integer (RA))(u) := 0;
+                  u := u + 1;
+                end loop;
+              end if;
+              for i in 0 to 3 loop
+                MEM_CELL_ARRAY3(conv_integer (RA))(conv_integer(COLA)+i) :=
+                  conv_integer(rdata(i*32+index*16 to i*32+index*16+15));
+              end loop;
+            end if;
+          -- 16 bit bank with one 16-bit...
+          when others =>
+            hexread(fline, rdata);
+            BkAdd := raddr(25 downto 24);
+            RA    := raddr(23 downto 11);
+            COLA  := raddr(10 downto 1);
+            if (conv_integer (BkAdd) = 0) then
+              if (MEM_CELL_ARRAY0(conv_integer (RA)) = NULL) then
+                MEM_CELL_ARRAY0(conv_integer (RA)) := NEW ROW_DATA_TYPE;
+                loop
+                  exit when u >= NUM_OF_COLS;
+                  MEM_CELL_ARRAY0(conv_integer (RA))(u) := 0;
+                  u := u + 1;
+                end loop;
+              end if;
+              for i in 0 to 3 loop
+                MEM_CELL_ARRAY0(conv_integer (RA))(conv_integer(COLA)+i*2) :=
+                  conv_integer(rdata(i*32 to i*32+15));
+                MEM_CELL_ARRAY0(conv_integer (RA))(conv_integer(COLA)+i*2+1) :=
+                  conv_integer(rdata(i*32+16 to i*32+31));
+              end loop;
+            elsif (conv_integer (BkAdd) = 1) then
+              if (MEM_CELL_ARRAY1(conv_integer (RA)) = NULL) then
+                MEM_CELL_ARRAY1(conv_integer (RA)) := NEW ROW_DATA_TYPE;
+                loop
+                  exit when u >= NUM_OF_COLS;
+                  MEM_CELL_ARRAY1(conv_integer (RA))(u) := 0;
+                  u := u + 1;
+                end loop;
+              end if;
+              for i in 0 to 3 loop
+                MEM_CELL_ARRAY1(conv_integer (RA))(conv_integer(COLA)+i*2) :=
+                  conv_integer(rdata(i*32 to i*32+15));
+                MEM_CELL_ARRAY1(conv_integer (RA))(conv_integer(COLA)+i*2+1) :=
+                  conv_integer(rdata(i*32+16 to i*32+31));
+              end loop;
+            elsif (conv_integer (BkAdd) = 2) then
+              if (MEM_CELL_ARRAY2(conv_integer (RA)) = NULL) then
+                MEM_CELL_ARRAY2(conv_integer (RA)) := NEW ROW_DATA_TYPE;
+                loop
+                  exit when u >= NUM_OF_COLS;
+                  MEM_CELL_ARRAY2(conv_integer (RA))(u) := 0;
+                  u := u + 1;
+                end loop;
+              end if;
+              for i in 0 to 3 loop
+                MEM_CELL_ARRAY2(conv_integer (RA))(conv_integer(COLA)+i*2) :=
+                  conv_integer(rdata(i*32 to i*32+15));
+                MEM_CELL_ARRAY2(conv_integer (RA))(conv_integer(COLA)+i*2+1) :=
+                  conv_integer(rdata(i*32+16 to i*32+31));
+              end loop;
+           elsif (conv_integer (BkAdd) = 3) then
+              if (MEM_CELL_ARRAY3(conv_integer (RA)) = NULL) then
+                MEM_CELL_ARRAY3(conv_integer (RA)) := NEW ROW_DATA_TYPE;
+                loop
+                  exit when u >= NUM_OF_COLS;
+                  MEM_CELL_ARRAY3(conv_integer (RA))(u) := 0;
+                  u := u + 1;
+                end loop;
+              end if;
+              for i in 0 to 3 loop
+                MEM_CELL_ARRAY3(conv_integer (RA))(conv_integer(COLA)+i*2) :=
+                  conv_integer(rdata(i*32 to i*32+15));
+                MEM_CELL_ARRAY3(conv_integer (RA))(conv_integer(COLA)+i*2+1) :=
+                  conv_integer(rdata(i*32+16 to i*32+31));
+              end loop;
+            end if;
+        end case;
+        u := 0;
+        i := 0;
+      end if;
+    end loop;
+  end if;
+  
   if (CLK'EVENT and CLK = '0') then
     if ((BankActivateFlag = TRUE) or ((BankActivateFlag = FALSE) and (tmp_act_trans0 = '1'))) Then
       tmp_act_trans0 <= '0';

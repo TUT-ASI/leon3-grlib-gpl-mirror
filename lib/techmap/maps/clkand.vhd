@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -33,7 +34,8 @@ entity clkand is
   port(
     i      :  in  std_ulogic;
     en     :  in  std_ulogic;
-    o      :  out std_ulogic
+    o      :  out std_ulogic;
+    tsten  :  in  std_ulogic := '0'
   );
 end entity;
 
@@ -50,17 +52,22 @@ begin
 
   ce : if ren = 0 generate eni <= en; end generate;
   
-  xil : if (tech = virtex2) or (tech = spartan3) or (tech = spartan3e)
-          or (tech = virtex4) or (tech = virtex5) generate
-    clkgate : clkand_unisim port map(I => i, en => eni, O => o);
-  end generate;
+  struct : if has_clkand(tech) = 1 generate
+    xil : if is_unisim(tech) = 1 generate
+      clkgate : clkand_unisim port map(I => i, en => eni, O => o);
+    end generate;
 
-  ut : if (tech = ut25) generate
-    clkgate : clkand_ut025crh port map(I => i, en => eni, O => o);
+    ut : if (tech = ut25) generate
+      clkgate : clkand_ut025crh port map(I => i, en => eni, O => o);
+    end generate;
+
+    rhl : if (tech = rhlib18t) generate
+      clkgate : clkand_rh_lib18t port map(I => i, en => eni, O => o, tsten => tsten);
+    end generate;
   end generate;
 
   gen : if has_clkand(tech) = 0 generate
-    o <= i and eni;
+    o <= i and (eni or tsten);
   end generate;
 end architecture;
 

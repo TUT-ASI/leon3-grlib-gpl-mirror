@@ -1,9 +1,0 @@
-  mainmenu_option next_comment
-  comment 'CoreMP7/GRLIB bridge '
-    bool 'Enable CoreMP7/GRLIB bridge  ' CONFIG_CMP7GRLIB
-    if [ "$CONFIG_CMP7GRLIB" = "y" ]; then
-      int 'Debug choice' CONFIG_CMP7GRLIB_DEBUG 2
-      int 'Synchronize nFIQ' CONFIG_CMP7GRLIB_SYNCFIQ 0
-      int 'Synchronize nIRQ' CONFIG_CMP7GRLIB_SYNCIRQ 0
-    fi
-  endmenu

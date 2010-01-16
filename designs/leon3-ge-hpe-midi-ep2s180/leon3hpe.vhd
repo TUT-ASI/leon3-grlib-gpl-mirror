@@ -37,7 +37,7 @@ use gaisler.uart.all;
 use gaisler.misc.all;
 use gaisler.can.all;
 use gaisler.net.all;
-use gaisler.usb.all;
+use gaisler.grusb.all;
 use gaisler.jtag.all;
 library esa;
 use esa.memoryctrl.all;
@@ -65,12 +65,12 @@ entity leon3hpe is
     pclow   : integer := CFG_PCLOW
     );
   port (
-    resetn  : in  std_ulogic;
+    resetn  : in  std_logic;
     resoutn : out std_logic;
 
-    clk : in std_ulogic;
+    clk : in std_logic;
 
-    errorn  : out   std_ulogic;
+    errorn  : out   std_logic;
     address : out   std_logic_vector(27 downto 0);
     data    : inout std_logic_vector(31 downto 0);
     ramsn   : out   std_logic_vector (4 downto 0);
@@ -81,10 +81,10 @@ entity leon3hpe is
     -- be selected for reading as well
     rben    : out   std_logic_vector(3 downto 0);
     romsn   : out   std_logic_vector (1 downto 0);
-    iosn    : out   std_ulogic;
-    oen     : out   std_ulogic;
-    read    : out   std_ulogic;
-    writen  : out   std_ulogic;
+    iosn    : out   std_logic;
+    oen     : out   std_logic;
+    read    : out   std_logic;
+    writen  : out   std_logic;
 
     -- SDRAM interface
     sdclk  : out   std_logic_vector(1 downto 0);
@@ -92,41 +92,41 @@ entity leon3hpe is
     sdaddr : out   std_logic_vector(12 downto 0);
     sddq   : inout std_logic_vector(63 downto 0);
     sddqm  : out   std_logic_vector(7 downto 0);   -- sdram dqm
-    sdwen  : out   std_ulogic;                     -- sdram write enable
-    sdcasn : out   std_ulogic;                     -- sdram cas
-    sdrasn : out   std_ulogic;                     -- sdram ras
+    sdwen  : out   std_logic;                     -- sdram write enable
+    sdcasn : out   std_logic;                     -- sdram cas
+    sdrasn : out   std_logic;                     -- sdram ras
     sdcsn  : out   std_logic_vector (1 downto 0);  -- sdram chip select
     sdba   : out   std_logic_vector(1 downto 0);   -- sdram bank address
 
     -- debug support unit
-    dsutx   : out std_ulogic;           -- DSU tx data
-    dsurx   : in  std_ulogic;           -- DSU rx data
-    dsubre  : in  std_ulogic;
-    dsuactn : out std_ulogic;
+    dsutx   : out std_logic;           -- DSU tx data
+    dsurx   : in  std_logic;           -- DSU rx data
+    dsubre  : in  std_logic;
+    dsuactn : out std_logic;
 
     -- console UART
-    rxd1 : in  std_ulogic;
-    txd1 : out std_ulogic;
+    rxd1 : in  std_logic;
+    txd1 : out std_logic;
 
     -- ethernet signals
     emdio   : inout std_logic;          -- ethernet PHY interface
-    etx_clk : in    std_ulogic;
-    erx_clk : in    std_ulogic;
+    etx_clk : in    std_logic;
+    erx_clk : in    std_logic;
     erxd    : in    std_logic_vector(3 downto 0);
-    erx_dv  : in    std_ulogic;
-    erx_er  : in    std_ulogic;
-    erx_col : in    std_ulogic;
-    erx_crs : in    std_ulogic;
+    erx_dv  : in    std_logic;
+    erx_er  : in    std_logic;
+    erx_col : in    std_logic;
+    erx_crs : in    std_logic;
     etxd    : out   std_logic_vector(3 downto 0);
-    etx_en  : out   std_ulogic;
-    etx_er  : out   std_ulogic;
-    emdc    : out   std_ulogic;
-    ereset  : out   std_ulogic;
+    etx_en  : out   std_logic;
+    etx_er  : out   std_logic;
+    emdc    : out   std_logic;
+    ereset  : out   std_logic;
 
     --  CAN receive and transmit signals
-    can_txd : out std_ulogic;
-    can_rxd : in  std_ulogic;
-    can_stb : out std_ulogic;
+    can_txd : out std_logic;
+    can_rxd : in  std_logic;
+    can_stb : out std_logic;
 
     -------------------------------------------------------------------------------------
     -- IO SECTION
@@ -157,11 +157,11 @@ entity leon3hpe is
     ---------------------------------------------------------------------------
     -- VGA interface
     ---------------------------------------------------------------------------
-    vga_clk    : out std_ulogic;
-    vga_syncn  : out std_ulogic;
-    vga_blankn : out std_ulogic;
-    vga_vsync  : out std_ulogic;
-    vga_hsync  : out std_ulogic;
+    vga_clk    : out std_logic;
+    vga_syncn  : out std_logic;
+    vga_blankn : out std_logic;
+    vga_vsync  : out std_logic;
+    vga_hsync  : out std_logic;
     vga_rd     : out std_logic_vector(7 downto 0);
     vga_gr     : out std_logic_vector(7 downto 0);
     vga_bl     : out std_logic_vector(7 downto 0);
@@ -181,48 +181,48 @@ entity leon3hpe is
     -------------------------------------------------------------------------------------
     -- USB DEBUG INTERFACE
     -------------------------------------------------------------------------------------
-    usb_clkout    : in    std_ulogic;
+    usb_clkout    : in    std_logic;
     usb_d         : inout std_logic_vector(15 downto 0);
     usb_linestate : in    std_logic_vector(1 downto 0);
     usb_opmode    : out   std_logic_vector(1 downto 0);
-    usb_reset     : out   std_ulogic;
-    usb_rxactive  : in    std_ulogic;
-    usb_rxerror   : in    std_ulogic;
-    usb_rxvalid   : in    std_ulogic;
-    usb_suspend   : out   std_ulogic;
-    usb_termsel   : out   std_ulogic;
-    usb_txready   : in    std_ulogic;
-    usb_txvalid   : out   std_ulogic;
-    usb_validh    : inout std_ulogic;
-    usb_xcvrsel   : out   std_ulogic;
-    usb_vbus      : in    std_ulogic;
-    usb_dbus16    : out   std_ulogic;
-    usb_unidir    : out   std_ulogic;
+    usb_reset     : out   std_logic;
+    usb_rxactive  : in    std_logic;
+    usb_rxerror   : in    std_logic;
+    usb_rxvalid   : in    std_logic;
+    usb_suspend   : out   std_logic;
+    usb_termsel   : out   std_logic;
+    usb_txready   : in    std_logic;
+    usb_txvalid   : out   std_logic;
+    usb_validh    : inout std_logic;
+    usb_xcvrsel   : out   std_logic;
+    usb_vbus      : in    std_logic;
+    usb_dbus16    : out   std_logic;
+    usb_unidir    : out   std_logic;
 
     ---------------------------------------------------------------------------
     -- ADC/DAC INTERFACE
     ---------------------------------------------------------------------------
-    adc_dout : in  std_ulogic;
-    adc_ain  : out std_ulogic;
-    dac_out  : out std_ulogic;
+    adc_dout : in  std_logic;
+    adc_ain  : out std_logic;
+    dac_out  : out std_logic;
 
     -------------------------------------------------------------------------------------
     -- SDCARD interface (SPI mode)
     -------------------------------------------------------------------------------------
-    sdcard_cs   : out std_ulogic;
-    sdcard_di   : out std_ulogic;
-    sdcard_sclk : out std_ulogic;
-    sdcard_do   : in  std_ulogic;
+    sdcard_cs   : out std_logic;
+    sdcard_di   : out std_logic;
+    sdcard_sclk : out std_logic;
+    sdcard_do   : in  std_logic;
 
     -------------------------------------------------------------------------------
     -- HPI PORT
     -------------------------------------------------------------------------------
     hpiaddr : out   std_logic_vector(1 downto 0);
     hpidata : inout std_logic_vector(15 downto 0);
-    hpicsn  : out   std_ulogic;
-    hpiwrn  : out   std_ulogic;
-    hpirdn  : out   std_ulogic;
-    hpiint  : in    std_ulogic
+    hpicsn  : out   std_logic;
+    hpiwrn  : out   std_logic;
+    hpirdn  : out   std_logic;
+    hpiint  : in    std_logic
     );
 end;
 
@@ -231,7 +231,7 @@ architecture rtl of leon3hpe is
   constant blength   : integer := 12;
   constant fifodepth : integer := 8;
 
-  signal reset    : std_ulogic;
+  signal reset    : std_logic;
   signal vcc, gnd : std_logic_vector(4 downto 0);
   signal memi     : memory_in_type;
   signal memo     : memory_out_type;
@@ -249,8 +249,8 @@ architecture rtl of leon3hpe is
   signal ahbmi : ahb_mst_in_type;
   signal ahbmo : ahb_mst_out_vector := (others => ahbm_none);
 
-  signal clkm, clk_25MHz, rstn, sdclkl : std_ulogic;
-  -- signal clkvga             : std_ulogic;
+  signal clkm, clk_25MHz, rstn, sdclkl : std_logic;
+  -- signal clkvga             : std_logic;
   signal cgi                           : clkgen_in_type;
   signal cgo                           : clkgen_out_type;
   signal u1i, dui                      : uart_in_type;
@@ -270,10 +270,10 @@ architecture rtl of leon3hpe is
 
   signal gpti : gptimer_in_type;
 
-  signal emddis  : std_ulogic;
-  signal epwrdwn : std_ulogic;
-  signal esleep  : std_ulogic;
-  signal epause  : std_ulogic;
+  signal emddis  : std_logic;
+  signal epwrdwn : std_logic;
+  signal esleep  : std_logic;
+  signal epause  : std_logic;
 
 
 
@@ -305,9 +305,9 @@ architecture rtl of leon3hpe is
   -- VGA interface
   signal vgao : apbvga_out_type;
 
-  signal uclk : std_ulogic;
-  signal usbi : usb_in_type;
-  signal usbo : usb_out_type;
+  signal uclk : std_logic;
+  signal usbi : grusb_in_type;
+  signal usbo : grusb_out_type;
 
   -- simple SPI controller
   signal spii  : sspi_in_type;
@@ -338,13 +338,13 @@ architecture rtl of leon3hpe is
   ---------------------------------------------------------------------------------------
   -- HPI SIGNALS
   ---------------------------------------------------------------------------------------
-  signal hpiwriten : std_ulogic;        -- intermediate signal
+  signal hpiwriten : std_logic;        -- intermediate signal
   signal hpirdata  : std_logic_vector(15 downto 0);
   signal hpiwdata  : std_logic_vector(15 downto 0);
-  signal drive_bus : std_ulogic;
+  signal drive_bus : std_logic;
 
-  signal dbg_equal  : std_ulogic;
-  signal sample_clk : std_ulogic;
+  signal dbg_equal  : std_logic;
+  signal sample_clk : std_logic;
 
   ---------------------------------------------------------------------------------------
 
@@ -420,7 +420,7 @@ begin
   ahb0 : ahbctrl                        -- AHB arbiter/multiplexer
     generic map (defmast => CFG_DEFMST, split => CFG_SPLIT,
                  rrobin  => CFG_RROBIN, ioaddr => CFG_AHBIO, ioen => IOAEN,
-                 nahbm   => CFG_NCPU+CFG_AHB_UART+CFG_GRETH+CFG_USBDCL+CFG_AHB_JTAG,
+                 nahbm   => CFG_NCPU+CFG_AHB_UART+CFG_GRETH+CFG_GRUSB_DCL+CFG_AHB_JTAG,
                  nahbs   => 9)
     port map (rstn, clkm, ahbmi, ahbmo, ahbsi, ahbso);
 
@@ -473,19 +473,14 @@ begin
 ---  USB DEBUG LINK  --------------------------------------------------
 -----------------------------------------------------------------------
 
-  usb0 : if CFG_USBDCL = 1 generate
-    usb_d_pads : for i in 0 to 7 generate
+  usb0 : if CFG_GRUSB_DCL = 1 generate
+    usb_d_pads : for i in 0 to 15 generate
       usb_d_pad : iopad generic map(tech => padtech)
-        port map (usb_d(i), usbo.dout(i), usbi.rxactive, usbi.din(i));
-    end generate;
-
-    usb_dh_pads : for i in 0 to 7 generate
-      usb_dh_pad : iopad generic map(tech => padtech)
-        port map (usb_d(i+8), usbo.douth(i), usbi.rxactive, usbi.dinh(i));
+        port map (usb_d(i), usbo.dataout(i), usbo.oen, usbi.datain(i));
     end generate;
 
     usb_h_pad : iopad generic map(tech => padtech)
-      port map (usb_validh, usbo.thvalid, usbi.rxactive, usbi.rhvalid);
+      port map (usb_validh, usbo.txvalidh, usbo.oen, usbi.rxvalidh);
     
     usb_i0_pad : inpad generic map (tech => padtech) port map (usb_txready, usbi.txready);
     usb_i1_pad : inpad generic map (tech => padtech) port map (usb_rxvalid, usbi.rxvalid);
@@ -494,12 +489,12 @@ begin
     usb_i4_pad : inpad generic map (tech => padtech) port map (usb_linestate(0), usbi.linestate(0));
     usb_i5_pad : inpad generic map (tech => padtech) port map (usb_linestate(1), usbi.linestate(1));
 
-    usb_i6_pad : inpad generic map (tech  => padtech) port map (usb_vbus, usbi.vbus);
+    usb_i6_pad : inpad generic map (tech  => padtech) port map (usb_vbus, usbi.vbusvalid);
     usb_o0_pad : outpad generic map (tech => padtech) port map (usb_reset, usbo.reset);
 
-    usb_o1_pad : outpad generic map (tech => padtech) port map (usb_suspend, usbo.suspend);
+    usb_o1_pad : outpad generic map (tech => padtech) port map (usb_suspend, usbo.suspendm);
     usb_o2_pad : outpad generic map (tech => padtech) port map (usb_termsel, usbo.termselect);
-    usb_o3_pad : outpad generic map (tech => padtech) port map (usb_xcvrsel, usbo.xcvrselect);
+    usb_o3_pad : outpad generic map (tech => padtech) port map (usb_xcvrsel, usbo.xcvrselect(0));
     usb_o4_pad : outpad generic map (tech => padtech) port map (usb_opmode(0), usbo.opmode(0));
     usb_o5_pad : outpad generic map (tech => padtech) port map (usb_opmode(1), usbo.opmode(1));
     usb_o6_pad : outpad generic map (tech => padtech) port map (usb_txvalid, usbo.txvalid);
@@ -512,9 +507,9 @@ begin
     -- (bits 15 downto 8 are undriven)
     usb_unidir <= not dsw(2);
 
-    usb_ctrl : usbdcl
-      generic map (hindex => CFG_NCPU+CFG_AHB_UART+CFG_GRETH, memtech => memtech)
-      port map (uclk, usbi, usbo, clkm, rstn, ahbmi, ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_GRETH));
+    usb_ctrl : grusb_dcl
+      generic map (hindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG, memtech => memtech)
+      port map (uclk, usbi, usbo, clkm, rstn, ahbmi, ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG));
   end generate;
 
 ----------------------------------------------------------------------
@@ -809,14 +804,14 @@ begin
 -----------------------------------------------------------------------
 
   eth0 : if CFG_GRETH = 1 generate      -- Gaisler ethernet MAC
-    e1 : greth generic map(hindex    => CFG_NCPU+CFG_AHB_UART,
+    e1 : greth generic map(hindex    => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRUSB_DCL,
                            pindex    => 15, paddr => 15, pirq => 12, memtech => memtech,
                            mdcscaler => CPU_FREQ/1000000, enable_mdio => 1, fifosize => CFG_ETH_FIFO,
                            nsync     => 1, edcl => CFG_DSU_ETH, edclbufsz => CFG_ETH_BUF,
                            macaddrh  => CFG_ETH_ENM, macaddrl => CFG_ETH_ENL,
                            ipaddrh   => CFG_ETH_IPM, ipaddrl => CFG_ETH_IPL)
       port map(rst   => rstn, clk => clkm, ahbmi => ahbmi,
-               ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART), apbi => apbi,
+               ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRUSB_DCL), apbi => apbi,
                apbo  => apbo(15), ethi => ethi, etho => etho); 
 
     emdio_pad : iopad generic map (tech => padtech)
@@ -914,7 +909,7 @@ begin
 ---  Drive unused bus elements  ---------------------------------------
 -----------------------------------------------------------------------
 
-  nam1 : for i in (CFG_NCPU+CFG_AHB_UART+CFG_GRETH+CFG_USBDCL+CFG_AHB_JTAG) to NAHBMST-1 generate
+  nam1 : for i in (CFG_NCPU+CFG_AHB_UART+CFG_GRETH+CFG_GRUSB_DCL+CFG_AHB_JTAG) to NAHBMST-1 generate
     ahbmo(i) <= ahbm_none;
   end generate;
 
@@ -1187,7 +1182,7 @@ begin
 
   end generate;
   nac97_oc_inst : if CFG_AC97_OC = 0 generate
-    apbo(4) <= apb_none;
+    ahbso(4) <= ahbs_none;
   end generate;
 
 

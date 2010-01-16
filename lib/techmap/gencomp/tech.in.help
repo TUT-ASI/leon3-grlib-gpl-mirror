@@ -2,14 +2,14 @@
 
 Prompt for target technology
 CONFIG_SYN_INFERRED
-  Selects the target technology for memory and pads. 
+  Selects the target technology for memory and pads.
   The following are available:
 
   - Inferred: Generic FPGA or ASIC targets if your synthesis tool
     is capable of inferring RAMs and pads automatically.
 
-  - Actel ProAsic/P/3 and Axellerator FPGAs
-  - Aeroflex UT25CRH Rad-Hard 0.25 um CMOS 
+  - Actel ProAsic/P/3, IGLOO and Axcelerator FPGAs
+  - Aeroflex UT25CRH Rad-Hard 0.25 um CMOS
   - Altera: Most Altera FPGA families
   - Altera-Stratix: Altera Stratix FPGA family
   - Altera-StratixII: Altera Stratix-II FPGA family
@@ -27,7 +27,7 @@ CONFIG_SYN_INFERRED
 
 Ram library
 CONFIG_MEM_VIRAGE
-  Select RAM generators for ASIC targets. 
+  Select RAM generators for ASIC targets.
 
 Infer ram
 CONFIG_SYN_INFER_RAM

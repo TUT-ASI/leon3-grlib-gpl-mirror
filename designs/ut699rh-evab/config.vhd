@@ -108,8 +108,8 @@ package config is
   constant CFG_ETH_BUF : integer := 2;
   constant CFG_ETH_IPM : integer := 16#C0A8#;
   constant CFG_ETH_IPL : integer := 16#0030#;
-  constant CFG_ETH_ENM : integer := 16#00007A#;
-  constant CFG_ETH_ENL : integer := 16#CC0669#;
+  constant CFG_ETH_ENM : integer := 16#020000#;
+  constant CFG_ETH_ENL : integer := 16#00003C#;
 
 -- FTMCTRL memory controller
   constant CFG_MCTRLFT : integer := 0;

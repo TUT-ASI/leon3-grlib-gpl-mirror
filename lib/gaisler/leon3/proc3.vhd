@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -86,7 +87,9 @@ entity proc3 is
     smp      : integer range 0 to 15 := 0;  -- support SMP systems
     cached   : integer := 0;
     clk2x    : integer := 0;
-    scantest : integer := 0    
+    scantest : integer := 0;
+    mmupgsz  : integer range 0 to 5  := 0;
+    bp       : integer := 1
   );
   port (
     clk    : in  std_ulogic;
@@ -95,7 +98,7 @@ entity proc3 is
     ahbi   : in  ahb_mst_in_type;
     ahbo   : out ahb_mst_out_type;
     ahbsi  : in  ahb_slv_in_type;
-    ahbso  : in  ahb_slv_out_vector;        
+    ahbso  : in  ahb_slv_out_vector;
     rfi    : out iregfile_in_type;
     rfo    : in  iregfile_out_type;
     crami  : out cram_in_type;
@@ -111,9 +114,9 @@ entity proc3 is
     dbgi   : in  l3_debug_in_type;
     dbgo   : out l3_debug_out_type;
     hclk, sclk   : in std_ulogic;
-    hclken   : in std_ulogic    
+    hclken   : in std_ulogic
   );
-end; 
+end;
 
 architecture rtl of proc3 is
 
@@ -135,26 +138,20 @@ begin
   holdnx <= ico.hold and dco.hold and fpo.holdn; holdn <= holdnx;
   pholdn <= fpo.holdn;
 
--- integer unit 
+-- integer unit
 
-     iu0 : iu3  
+     iu0 : iu3
        generic map (nwindows, isets, dsets, fpu, v8, cp, mac, dsu, nwp, pclow,
-	 0, hindex, lddel, IRFWT, disas, tbuf, pwd, svt, rstaddr, smp, fabtech, clk2x)
-       port map (clk, rstn, holdnx, ici, ico, dci, dco, rfi, rfo, irqi, irqo, 
+	 0, hindex, lddel, IRFWT, disas, tbuf, pwd, svt, rstaddr, smp, fabtech, clk2x, bp)
+       port map (clk, rstn, holdnx, ici, ico, dci, dco, rfi, rfo, irqi, irqo,
                  dbgi, dbgo, muli, mulo, divi, divo, fpo, fpi, cpo, cpi, tbo, tbi, sclk);
 
--- multiply and divide units 
+-- multiply and divide units
 -- Actel FPGAs cannot use inferred mul due to bug in synplify 8.9 and 9.0
 
   mgen : if v8 /= 0 generate
-   mgen2 : if (fabtech = axcel) or (fabtech = apa3) generate
-    mul0 : mul32 generic map (0, v8/16, (v8 mod 4)/2, mac)
+    mul0 : mul32 generic map (fabtech, v8/16, (v8 mod 4)/2, mac)
 	    port map (rstn, clk, holdnx, muli, mulo);
-   end generate;
-   mgen3 : if not ((fabtech = axcel) or (fabtech = apa3)) generate
-    mul0 : mul32 generic map (is_fpga(fabtech), v8/16, (v8 mod 4)/2, mac)
-	    port map (rstn, clk, holdnx, muli, mulo);
-   end generate;
     div0 : div32 port map (rstn, clk, holdnx, divi, divo);
   end generate;
   nomgen : if v8 = 0 generate
@@ -165,22 +162,22 @@ begin
 -- cache controller
 
   m0 : if mmuen = 0 generate
-    c0 : cache 
-      generic map (hindex, dsu, icen, irepl, isets, ilinesize, isetsize, 
+    c0 : cache
+      generic map (hindex, dsu, icen, irepl, isets, ilinesize, isetsize,
 	isetlock, dcen, drepl, dsets, dlinesize, dsetsize,  dsetlock, dsnoop,
-	ilram, ilramsize, ilramstart, dlram, dlramsize, dlramstart, cached, 
+	ilram, ilramsize, ilramstart, dlram, dlramsize, dlramstart, cached,
 	clk2x, memtech, scantest)
       port map ( rstn, clk, ici, ico, dci, dco, ahbi, ahbo, ahbsi, ahbso, crami, cramo, pholdn, hclk, sclk, hclken);
   end generate;
   m1 : if mmuen = 1 generate
-    c0mmu : mmu_cache 
-       generic map (hindex=>hindex, memtech=>memtech, dsu=>dsu, icen=>icen, irepl=>irepl, 
+    c0mmu : mmu_cache
+       generic map (hindex=>hindex, memtech=>memtech, dsu=>dsu, icen=>icen, irepl=>irepl,
 	  isets=>isets, ilinesize=>ilinesize, isetsize=>isetsize, isetlock=>isetlock,
           dcen=>dcen, drepl=>drepl, dsets=>dsets, dlinesize=>dlinesize, dsetsize=>dsetsize,
-	  dsetlock=>dsetlock, dsnoop=>dsnoop, itlbnum=>itlbnum, dtlbnum=>dtlbnum, 
-	  tlb_type=>tlb_type, tlb_rep=>tlb_rep, cached => cached, clk2x => clk2x,
+	  dsetlock=>dsetlock, dsnoop=>dsnoop, itlbnum=>itlbnum, dtlbnum=>dtlbnum,
+	  tlb_type=>tlb_type, tlb_rep=>tlb_rep, mmupgsz=> mmupgsz, cached => cached, clk2x => clk2x,
 	  scantest => scantest)
-       port map ( rstn, clk, ici, ico, dci, dco, 
+       port map ( rstn, clk, ici, ico, dci, dco,
 	  ahbi, ahbo, ahbsi, ahbso, crami, cramo, pholdn, hclk, sclk, hclken);
   end generate;
 

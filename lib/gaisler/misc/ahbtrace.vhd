@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -144,8 +145,9 @@ begin
       then
 	if (r.enable = '1') and (r.dcnten = '0') and 
 	   (r.delaycnt /= zero32(TBUFABITS-1 downto 0))
-        then v.dcnten := '1'; 
-	else bphit := '1'; v.enable := '0'; end if;
+        then v.dcnten := '1'; bphit := '1';
+	--else bphit := '1'; v.enable := '0'; end if;
+	elsif (r.enable = '1') and (r.dcnten = '0') then bphit := '1'; v.enable := '0'; end if;
       end if;
     end if;
 
@@ -186,7 +188,8 @@ begin
 
 -- trace buffer delay counter handling
 
-    if (r.dcnten = '1') then
+    --if (r.dcnten = '1') then
+    if (r.dcnten = '1') and (r.ahbactive and ahbsi.hready) = '1' then
       if (r.delaycnt = zero32(TBUFABITS-1 downto 0)) then
 	v.enable := '0'; v.dcnten := '0';
       end if;

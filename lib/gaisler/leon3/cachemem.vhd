@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -53,7 +54,8 @@ entity cachemem is
     ilramsize  : integer range 1 to 512 := 1;        
     dlram      : integer range 0 to 1 := 0;
     dlramsize  : integer range 1 to 512 := 1;
-    mmuen     : integer range 0 to 1 := 0
+    mmuen     : integer range 0 to 1 := 0;
+    testen    : integer range 0 to 3 := 0
   );
   port (
         clk   : in  std_ulogic;
@@ -64,7 +66,9 @@ entity cachemem is
 end;
 
 architecture rtl of cachemem is
-  constant DSNOOPMMU    : boolean := (dsnoop > 3);
+  constant DSNOOPSEP    : boolean := (dsnoop > 3);
+  constant DSNOOPFAST   : boolean := (dsnoop = 2) or (dsnoop = 6);
+
   constant ILINE_BITS   : integer := log2(ilinesize);
   constant IOFFSET_BITS : integer := 8 +log2(isetsize) - ILINE_BITS;
   constant DLINE_BITS   : integer := log2(dlinesize);
@@ -92,8 +96,8 @@ architecture rtl of cachemem is
   -- | LRR | LOCK_BIT | MMUCTX | TAG | VALID |
   -- +-----+----------+--------+-----+-------+
 
-  constant ITWIDTH : natural := ITAG_BITS + ILRR_BIT + isetlock + MMUCTX_BITS;
-  constant DTWIDTH : natural := DTAG_BITS + DLRR_BIT + dsetlock + MMUCTX_BITS;
+  constant ITWIDTH : natural := ITAG_BITS + ILRR_BIT + ICLOCK_BIT + MMUCTX_BITS;
+  constant DTWIDTH : natural := DTAG_BITS + DLRR_BIT + DCLOCK_BIT + MMUCTX_BITS;
   constant IDWIDTH : natural := 32;
   constant DDWIDTH : natural := 32;
 
@@ -178,10 +182,12 @@ begin
     for i in 0 to DSETS-1 loop
       vdtdatain(i) := (others => '0');
       if mmuen = 1 then
-        vdtdatain(i)((DTWIDTH - (DLRR_BIT+dsetlock+1)) downto (DTWIDTH - (DLRR_BIT+dsetlock+M_CTX_SZ))) := crami.dcramin.ctx(i);
+        vdtdatain(i)((DTWIDTH - (DLRR_BIT+DCLOCK_BIT+1)) downto (DTWIDTH - (DLRR_BIT+DCLOCK_BIT+M_CTX_SZ))) := crami.dcramin.ctx(i);
       end if;
-      vdtdatain(i)(DTWIDTH-(DCLOCK_BIT + dsetlock)) := crami.dcramin.tag(i)(CTAG_LOCKPOS);
-      vdtdatain(i)(DTWIDTH-DLRR_BIT) := crami.dcramin.tag(i)(CTAG_LRRPOS);          
+      vdtdatain(i)(DTWIDTH-(DCLOCK_BIT + DLRR_BIT)) := crami.dcramin.tag(i)(CTAG_LOCKPOS);
+      if drepl = lrr then
+        vdtdatain(i)(DTWIDTH-DLRR_BIT) := crami.dcramin.tag(i)(CTAG_LRRPOS);          
+      end if;
       vdtdatain(i)(DTAG_BITS-1 downto 0) := crami.dcramin.tag(i)(TAG_HIGH downto DTAG_LOW) & crami.dcramin.tag(i)(dlinesize-1 downto 0);
       if (DSETS > 1) and (crami.dcramin.flush = '1') then
 	vdtdatain(i)(dlinesize+1 downto dlinesize) :=  conv_std_logic_vector(i,2);
@@ -206,10 +212,12 @@ begin
     for i in 0 to ISETS-1 loop
       vitdatain(i) := (others => '0');
       if mmuen = 1 then
-        vitdatain(i)((ITWIDTH - (ILRR_BIT+isetlock+1)) downto (ITWIDTH - (ILRR_BIT+isetlock+M_CTX_SZ))) := crami.icramin.ctx;
+        vitdatain(i)((ITWIDTH - (ILRR_BIT+ICLOCK_BIT+1)) downto (ITWIDTH - (ILRR_BIT+ICLOCK_BIT+M_CTX_SZ))) := crami.icramin.ctx;
       end if;
-      vitdatain(i)(ITWIDTH-(ICLOCK_BIT + isetlock)) := crami.icramin.tag(i)(CTAG_LOCKPOS);
-      vitdatain(i)(ITWIDTH-ILRR_BIT) := crami.icramin.tag(i)(CTAG_LRRPOS);
+      vitdatain(i)(ITWIDTH-(ICLOCK_BIT + ILRR_BIT)) := crami.icramin.tag(i)(CTAG_LOCKPOS);
+      if irepl = lrr then
+        vitdatain(i)(ITWIDTH-ILRR_BIT) := crami.icramin.tag(i)(CTAG_LRRPOS);
+      end if;
       vitdatain(i)(ITAG_BITS-1 downto 0) := crami.icramin.tag(i)(TAG_HIGH downto ITAG_LOW) & crami.icramin.tag(i)(ilinesize-1 downto 0);
       if (ISETS > 1) and (crami.icramin.flush = '1') then
 	vitdatain(i)(ilinesize+1 downto ilinesize) :=  conv_std_logic_vector(i,2);
@@ -278,7 +286,7 @@ begin
     end generate;
 
     dtags1 : if DSNOOP /= 0 generate
-      dt1 : if ((MMUEN = 0) or not DSNOOPMMU) generate
+      dt1 : if not DSNOOPSEP generate
         dt0 : for i in 0 to DSETS-1 generate
           dtags0 : syncram_dp
           generic map (tech, DOFFSET_BITS, DTWIDTH) port map (
@@ -288,7 +296,10 @@ begin
 		dtdataout2(i)(DTWIDTH-1 downto 0), dtenable2(i), dtwrite2(i));
         end generate;
       end generate;
-      mdt1 : if not ((MMUEN = 0) or not DSNOOPMMU) generate
+
+      -- virtual address snoop case
+      mdt1 : if DSNOOPSEP generate
+       slow : if not DSNOOPFAST generate
         dt0 : for i in 0 to DSETS-1 generate
           dtags0 : syncram_dp
           generic map (tech, DOFFSET_BITS, DTWIDTH) port map (
@@ -303,6 +314,19 @@ begin
             sclk, dtaddr2, dtdatainu(i)(DTAG_BITS-1 downto DTAG_BITS-DPTAG_BITS), 
                dtdataout3(i)(DTAG_BITS-1 downto DTAG_BITS-DPTAG_BITS), dtenable2(i), dtwrite2(i));
         end generate;
+       end generate;
+       fast : if DSNOOPFAST generate
+        mdt0 : for i in 0 to DSETS-1 generate
+          dtags0 : syncram
+          generic map (tech, DOFFSET_BITS, DTWIDTH, testen) port map (
+	    clk, dtaddr, dtdatain(i)(DTWIDTH-1 downto 0), 
+		 dtdataout(i)(DTWIDTH-1 downto 0), dtenable(i), dtwrite(i));
+          dtags1 : syncram_2p
+          generic map (tech, DOFFSET_BITS, DPTAG_BITS, 1, 1-syncram_2p_write_through(tech), testen) port map (
+            sclk, dtenable2(i), dtaddr2, dtdataout3(i)(DTAG_BITS-1 downto DTAG_BITS-DPTAG_BITS),
+            clk, dtwrite3(i), dtaddr, dtdatain3(i)(DTAG_BITS-1 downto DTAG_BITS-DPTAG_BITS));
+        end generate;
+       end generate;
       end generate;
     end generate;
     nodtags1 : if DSNOOP = 0 generate
@@ -353,7 +377,6 @@ begin
 
   itx : for i in 0 to ISETS-1 generate
     cramo.icramo.tag(i)(TAG_HIGH downto ITAG_LOW) <= itdataout(i)(ITAG_BITS-1 downto (ITAG_BITS-1) - (TAG_HIGH - ITAG_LOW));
-    --(ITWIDTH-1-(ILRR_BIT+ICLOCK_BIT) downto ITWIDTH-(TAG_HIGH-ITAG_LOW)-(ILRR_BIT+ICLOCK_BIT)-1);    
     cramo.icramo.tag(i)(ilinesize-1 downto 0) <= itdataout(i)(ilinesize-1 downto 0);
     cramo.icramo.tag(i)(CTAG_LRRPOS) <= itdataout(i)(ITWIDTH - (1+ICLOCK_BIT));
     cramo.icramo.tag(i)(CTAG_LOCKPOS) <= itdataout(i)(ITWIDTH-1);     
@@ -386,10 +409,10 @@ begin
       cramo.dcramo.ctx(i) <= dtdataout(i)((DTWIDTH - (DLRR_BIT+DCLOCK_BIT+1)) downto (DTWIDTH - (DLRR_BIT+DCLOCK_BIT+M_CTX_SZ)));
     end generate;
     
-    stagv : if not ((MMUEN = 0) or not DSNOOPMMU) generate
+    stagv : if not ((MMUEN = 0) or not DSNOOPSEP) generate
       cramo.dcramo.stag(i)(TAG_HIGH downto DTAG_LOW) <= dtdataout3(i)(DTAG_BITS-1 downto (DTAG_BITS-1) - (TAG_HIGH - DTAG_LOW));
     end generate;
-    stagp : if ((MMUEN = 0) or not DSNOOPMMU) generate
+    stagp : if ((MMUEN = 0) or not DSNOOPSEP) generate
       cramo.dcramo.stag(i)(TAG_HIGH downto DTAG_LOW) <= dtdataout2(i)(DTAG_BITS-1 downto (DTAG_BITS-1) - (TAG_HIGH - DTAG_LOW));
     end generate;
     

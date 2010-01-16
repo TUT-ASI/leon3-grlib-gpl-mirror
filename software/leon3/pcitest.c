@@ -377,9 +377,9 @@ int pci_test(int apbaddr, int ioaddr, int ahbaddr) {
 
 int pcidata ;
 
-    PCI_ADDR  = 0x80000400;
-    PCI_CONF  = 0xfff10000;
-    PCI_MEM_START  = 0xc0000000;
+    PCI_ADDR  = apbaddr;
+    PCI_CONF  = ioaddr;
+    PCI_MEM_START  = ahbaddr;
     pcic = (LEON3_GRPCI_Regs_Map *) PCI_ADDR;
     report_device(0x01014000);
 

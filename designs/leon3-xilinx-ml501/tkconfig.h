@@ -56,6 +56,8 @@
 #define CONFIG_SYN_TECH virtex5
 #elif defined CONFIG_SYN_RH_LIB18T
 #define CONFIG_SYN_TECH rhlib18t
+#elif defined CONFIG_SYN_SMIC13
+#define CONFIG_SYN_TECH smic013
 #elif defined CONFIG_SYN_UT025CRH
 #define CONFIG_SYN_TECH ut25
 #elif defined CONFIG_SYN_TSMC90
@@ -415,6 +417,19 @@
 #define CFG_DLRAM_SIZE 1
 #endif
 
+#if defined CONFIG_MMU_PAGE_4K
+#define CONFIG_MMU_PAGE 0
+#elif defined CONFIG_MMU_PAGE_8K
+#define CONFIG_MMU_PAGE 1
+#elif defined CONFIG_MMU_PAGE_16K
+#define CONFIG_MMU_PAGE 2
+#elif defined CONFIG_MMU_PAGE_32K
+#define CONFIG_MMU_PAGE 3
+#elif defined CONFIG_MMU_PAGE_PROG
+#define CONFIG_MMU_PAGE 4
+#else
+#define CONFIG_MMU_PAGE 0
+#endif
 
 #ifdef CONFIG_MMU_ENABLE
 #define CONFIG_MMUEN 1
@@ -620,11 +635,11 @@
 #endif
 
 #ifndef CONFIG_DSU_ETHMSB
-#define CONFIG_DSU_ETHMSB 00007A
+#define CONFIG_DSU_ETHMSB 020000
 #endif
 
 #ifndef CONFIG_DSU_ETHLSB
-#define CONFIG_DSU_ETHLSB CC0001
+#define CONFIG_DSU_ETHLSB 000009
 #endif
 
 #if defined CONFIG_DSU_ETHSZ1
@@ -754,6 +769,11 @@
 #ifndef CONFIG_DDR2SP_DELAY7
 #define CONFIG_DDR2SP_DELAY7 0
 #endif
+
+#ifndef CONFIG_DDR2SP_NOSYNC
+#define CONFIG_DDR2SP_NOSYNC 0
+#endif
+
 #ifndef CONFIG_AHBSTAT_ENABLE
 #define CONFIG_AHBSTAT_ENABLE  0
 #endif
@@ -923,6 +943,10 @@
 #ifndef CONFIG_I2C_ENABLE
 #define CONFIG_I2C_ENABLE 0
 #endif
+#ifndef CONFIG_GRSYSMON
+#define CONFIG_GRSYSMON 0
+#endif
+
 #ifndef CONFIG_VGA_ENABLE
 #define CONFIG_VGA_ENABLE 0
 #endif
@@ -931,6 +955,10 @@
 #endif
 #ifndef CONFIG_KBD_ENABLE
 #define CONFIG_KBD_ENABLE 0
+#endif
+
+#ifndef CONFIG_GRACECTRL
+#define CONFIG_GRACECTRL 0
 #endif
 
 

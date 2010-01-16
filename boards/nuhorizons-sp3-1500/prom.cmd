@@ -19,9 +19,9 @@ setPreference -pref svfUseTime:FALSE
 setMode -bs
 setCable -port auto
 Identify
-setAttribute -position 1 -attr devicePartName -value "xcf04s"
+#setAttribute -position 1 -attr devicePartName -value "xcf04s"
 setAttribute -position 1 -attr configFileName -value "nuhorizons-sp3-1500_0.mcs"
-setAttribute -position 2 -attr devicePartName -value "xcf04s"
+#setAttribute -position 2 -attr devicePartName -value "xcf04s"
 setAttribute -position 2 -attr configFileName -value "nuhorizons-sp3-1500_1.mcs"
 Program -p 1 2 -e -v 
 quit

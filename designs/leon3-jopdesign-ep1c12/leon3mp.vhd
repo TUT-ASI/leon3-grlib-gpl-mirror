@@ -1,6 +1,10 @@
 -----------------------------------------------------------------------------
 --  LEON3 Demonstration design
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -14,7 +18,7 @@
 --
 --  You should have received a copy of the GNU General Public License
 --  along with this program; if not, write to the Free Software
---  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 
@@ -52,85 +56,85 @@ entity leon3mp is
     pclow     : integer := CFG_PCLOW
   );
   port (
-    resetn	: in  std_ulogic;
-    clk		: in  std_ulogic;
-    pllref 	: in  std_ulogic; 
-    errorn	: out std_ulogic;
+    resetn	: in  std_logic;
+    clk		: in  std_logic;
+    pllref 	: in  std_logic; 
+    errorn	: out std_logic;
     address 	: out std_logic_vector(27 downto 0);
     data	: inout std_logic_vector(31 downto 0);
     sa      	: out std_logic_vector(14 downto 0);
     sd   	: inout std_logic_vector(63 downto 0);
-    sdclk  	: out std_ulogic;
+    sdclk  	: out std_logic;
     sdcke  	: out std_logic_vector (1 downto 0);    -- sdram clock enable
     sdcsn  	: out std_logic_vector (1 downto 0);    -- sdram chip select
-    sdwen  	: out std_ulogic;                       -- sdram write enable
-    sdrasn  	: out std_ulogic;                       -- sdram ras
-    sdcasn  	: out std_ulogic;                       -- sdram cas
+    sdwen  	: out std_logic;                       -- sdram write enable
+    sdrasn  	: out std_logic;                       -- sdram ras
+    sdcasn  	: out std_logic;                       -- sdram cas
     sddqm   	: out std_logic_vector (7 downto 0);    -- sdram dqm
-    dsutx  	: out std_ulogic; 			-- DSU tx data
-    dsurx  	: in  std_ulogic;  			-- DSU rx data
-    dsuen   	: in std_ulogic;
-    dsubre  	: in std_ulogic;
-    dsuact  	: out std_ulogic;
-    txd1   	: out std_ulogic; 			-- UART1 tx data
-    rxd1   	: in  std_ulogic;  			-- UART1 rx data
-    txd2   	: out std_ulogic; 			-- UART2 tx data
-    rxd2   	: in  std_ulogic;  			-- UART2 rx data
+    dsutx  	: out std_logic; 			-- DSU tx data
+    dsurx  	: in  std_logic;  			-- DSU rx data
+    dsuen   	: in std_logic;
+    dsubre  	: in std_logic;
+    dsuact  	: out std_logic;
+    txd1   	: out std_logic; 			-- UART1 tx data
+    rxd1   	: in  std_logic;  			-- UART1 rx data
+    txd2   	: out std_logic; 			-- UART2 tx data
+    rxd2   	: in  std_logic;  			-- UART2 rx data
     ramsn  	: out std_logic_vector (4 downto 0);
     ramoen 	: out std_logic_vector (4 downto 0);
     rwen   	: out std_logic_vector (3 downto 0);
-    oen    	: out std_ulogic;
-    writen 	: out std_ulogic;
-    read   	: out std_ulogic;
-    iosn   	: out std_ulogic;
+    oen    	: out std_logic;
+    writen 	: out std_logic;
+    read   	: out std_logic;
+    iosn   	: out std_logic;
     romsn  	: out std_logic_vector (1 downto 0);
     gpio        : inout std_logic_vector(7 downto 0); 	-- I/O port
 
     emdio     	: inout std_logic;		-- ethernet PHY interface
-    etx_clk 	: in std_ulogic;
-    erx_clk 	: in std_ulogic;
+    etx_clk 	: in std_logic;
+    erx_clk 	: in std_logic;
     erxd    	: in std_logic_vector(3 downto 0);   
-    erx_dv  	: in std_ulogic; 
-    erx_er  	: in std_ulogic; 
-    erx_col 	: in std_ulogic;
-    erx_crs 	: in std_ulogic;
+    erx_dv  	: in std_logic; 
+    erx_er  	: in std_logic; 
+    erx_col 	: in std_logic;
+    erx_crs 	: in std_logic;
     etxd 	: out std_logic_vector(3 downto 0);   
-    etx_en 	: out std_ulogic; 
-    etx_er 	: out std_ulogic; 
-    emdc 	: out std_ulogic;
+    etx_en 	: out std_logic; 
+    etx_er 	: out std_logic; 
+    emdc 	: out std_logic;
 
     emddis 	: out std_logic;    
-    epwrdwn 	: out std_ulogic;
-    ereset 	: out std_ulogic;
-    esleep 	: out std_ulogic;
-    epause 	: out std_ulogic;
+    epwrdwn 	: out std_logic;
+    ereset 	: out std_logic;
+    esleep 	: out std_logic;
+    epause 	: out std_logic;
 
-    pci_rst     : inout std_ulogic;		-- PCI bus
-    pci_clk 	: in std_ulogic;
-    pci_gnt     : in std_ulogic;
-    pci_idsel   : in std_ulogic; 
-    pci_lock    : inout std_ulogic;
+    pci_rst     : inout std_logic;		-- PCI bus
+    pci_clk 	: in std_logic;
+    pci_gnt     : in std_logic;
+    pci_idsel   : in std_logic; 
+    pci_lock    : inout std_logic;
     pci_ad 	: inout std_logic_vector(31 downto 0);
     pci_cbe 	: inout std_logic_vector(3 downto 0);
-    pci_frame   : inout std_ulogic;
-    pci_irdy 	: inout std_ulogic;
-    pci_trdy 	: inout std_ulogic;
-    pci_devsel  : inout std_ulogic;
-    pci_stop 	: inout std_ulogic;
-    pci_perr 	: inout std_ulogic;
-    pci_par 	: inout std_ulogic;    
-    pci_req 	: inout std_ulogic;
-    pci_serr    : inout std_ulogic;
-    pci_host   	: in std_ulogic;
-    pci_66	: in std_ulogic;
+    pci_frame   : inout std_logic;
+    pci_irdy 	: inout std_logic;
+    pci_trdy 	: inout std_logic;
+    pci_devsel  : inout std_logic;
+    pci_stop 	: inout std_logic;
+    pci_perr 	: inout std_logic;
+    pci_par 	: inout std_logic;    
+    pci_req 	: inout std_logic;
+    pci_serr    : inout std_logic;
+    pci_host   	: in std_logic;
+    pci_66	: in std_logic;
     pci_arb_req	: in  std_logic_vector(0 to 3);
     pci_arb_gnt	: out std_logic_vector(0 to 3);
 
-    can_txd	: out std_ulogic;
-    can_rxd	: in  std_ulogic;
-    can_stb	: out std_ulogic;
+    can_txd	: out std_logic;
+    can_rxd	: in  std_logic;
+    can_stb	: out std_logic;
 
-    spw_clk	: in  std_ulogic;
+    spw_clk	: in  std_logic;
     spw_rxd     : in  std_logic_vector(0 to 2);
     spw_rxdn    : in  std_logic_vector(0 to 2);
     spw_rxs     : in  std_logic_vector(0 to 2);
@@ -167,7 +171,7 @@ signal ahbso : ahb_slv_out_vector := (others => ahbs_none);
 signal ahbmi : ahb_mst_in_type;
 signal ahbmo : ahb_mst_out_vector := (others => ahbm_none);
 
-signal clkm, rstn, rstraw, pciclk, sdclkl, spw_lclk : std_ulogic;
+signal clkm, rstn, rstraw, pciclk, sdclkl, spw_lclk : std_logic;
 signal cgi   : clkgen_in_type;
 signal cgo   : clkgen_out_type;
 signal u1i, u2i, dui : uart_in_type;
@@ -193,14 +197,15 @@ signal gpti : gptimer_in_type;
 signal gpioi : gpio_in_type;
 signal gpioo : gpio_out_type;
 
-signal can_lrx, can_ltx   : std_ulogic;
-signal lclk, pci_lclk : std_ulogic;
+signal can_lrx, can_ltx   : std_logic;
+signal lclk, pci_lclk : std_logic;
 signal pci_arb_req_n, pci_arb_gnt_n   : std_logic_vector(0 to 3);
 
-signal tck, tms, tdi, tdo : std_ulogic;
+signal tck, tms, tdi, tdo : std_logic;
 
 signal spwi : grspw_in_type_vector(0 to 2);
 signal spwo : grspw_out_type_vector(0 to 2);
+signal spw_rx_clk : std_ulogic;
 
 constant BOARD_FREQ : integer := 20000;	-- Board frequency in KHz
 constant CPU_FREQ : integer := BOARD_FREQ * CFG_CLKMUL / CFG_CLKDIV; 
@@ -626,8 +631,9 @@ begin
 -----------------------------------------------------------------------
 ---  SPACEWIRE  -------------------------------------------------------
 -----------------------------------------------------------------------
-
+  --This template does NOT currently support grspw2 so only use grspw1 
   spw : if CFG_SPW_EN > 0 generate
+   spw_rx_clk <= '0';
    spw_clk_pad : clkpad generic map (tech => padtech) port map (spw_clk, spw_lclk); 
    swloop : for i in 0 to CFG_SPW_NUM-1 generate
    sw0 : grspwm generic map(tech => memtech,
@@ -635,7 +641,8 @@ begin
      sysfreq => sysfreq, nsync => 1, rmap => 0,
      fifosize1 => CFG_SPW_AHBFIFO, fifosize2 => CFG_SPW_RXFIFO,
      rxclkbuftype => 1, ports => 1, dmachan => 1, spwcore => CFG_SPW_GRSPW)
-     port map(resetn, clkm, spw_lclk, ahbmi, ahbmo(maxahbmsp+i), 
+     port map(resetn, clkm, spw_rx_clk, spw_rx_clk, spw_lclk, spw_lclk,
+        ahbmi, ahbmo(maxahbmsp+i), 
 	apbi, apbo(12+i), spwi(i), spwo(i));
      spwi(i).tickin <= '0'; spwi(i).rmapen <= '1';
      spwi(i).clkdiv10 <= conv_std_logic_vector(sysfreq/10000-1, 8);

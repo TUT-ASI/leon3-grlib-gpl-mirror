@@ -21,7 +21,7 @@ TECHLIBS = nextreme virage atc18 artisan virage90 tsmc90 umc18 cust1
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	openchip gleichmann gsi spansion
 DIRSKIP = b1553 pcif leon2 leon2ft 
-	
+
 FILESKIP =
 
 

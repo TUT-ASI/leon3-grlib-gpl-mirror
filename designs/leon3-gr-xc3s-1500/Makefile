@@ -1,3 +1,5 @@
+include .config
+
 GRLIB=../..
 TOP=leon3mp
 BOARD=gr-xc3s-1500
@@ -17,13 +19,13 @@ SIMTOP=testbench
 SDCFILE=default.sdc
 BITGEN=$(GRLIB)/boards/$(BOARD)/default.ut
 CLEAN=soft-clean
-
+VCOMOPT=-explicit
 TECHLIBS = unisim
 
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
-	tmtc openchip hynix cypress ihp gleichmann usbhc gsi fmf spansion
+	tmtc openchip hynix cypress ihp gleichmann gsi fmf spansion
 DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan pci leon3ft ambatest ddr \
-	grusbhc haps
+	haps ascs slink coremp7
 FILESKIP = grcan.vhd
 
 include $(GRLIB)/bin/Makefile

@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -70,6 +71,109 @@ constant VA_OFFSEG_D : integer := 0;
 constant VA_OFFPAG_U : integer := 31-VA_I_SZ;
 constant VA_OFFPAG_D : integer := 0;
 
+
+-- 8k pages
+--         7        6        6         13
+--     +--------+--------+--------+---------------+
+--  a) | INDEX1 | INDEX2 | INDEX3 |    OFFSET     |  
+--     +--------+--------+--------+---------------+
+--      31    25 24    19 18    13 12            0
+
+constant P8K_VA_I1_SZ : integer := 7;
+constant P8K_VA_I2_SZ : integer := 6;
+constant P8K_VA_I3_SZ : integer := 6;
+constant P8K_VA_I_SZ  : integer := P8K_VA_I1_SZ+P8K_VA_I2_SZ+P8K_VA_I3_SZ;
+constant P8K_VA_I_MAX : integer := 7;
+
+constant P8K_VA_I1_U  : integer := 31;
+constant P8K_VA_I1_D  : integer := 32-P8K_VA_I1_SZ;
+constant P8K_VA_I2_U  : integer := 31-P8K_VA_I1_SZ;
+constant P8K_VA_I2_D  : integer := 32-P8K_VA_I1_SZ-P8K_VA_I2_SZ;
+constant P8K_VA_I3_U  : integer := 31-P8K_VA_I1_SZ-P8K_VA_I2_SZ;
+constant P8K_VA_I3_D  : integer := 32-P8K_VA_I_SZ;
+constant P8K_VA_I_U   : integer := 31;
+constant P8K_VA_I_D   : integer := 32-P8K_VA_I_SZ;
+constant P8K_VA_OFF_U : integer := 31-P8K_VA_I_SZ;
+constant P8K_VA_OFF_D : integer := 0;
+
+constant P8K_VA_OFFCTX_U : integer := 31;
+constant P8K_VA_OFFCTX_D : integer := 0;
+constant P8K_VA_OFFREG_U : integer := 31-P8K_VA_I1_SZ;
+constant P8K_VA_OFFREG_D : integer := 0;
+constant P8K_VA_OFFSEG_U : integer := 31-P8K_VA_I1_SZ-P8K_VA_I2_SZ;
+constant P8K_VA_OFFSEG_D : integer := 0;
+constant P8K_VA_OFFPAG_U : integer := 31-P8K_VA_I_SZ;
+constant P8K_VA_OFFPAG_D : integer := 0;
+
+
+-- 16k pages
+--         6        6        6         14
+--     +--------+--------+--------+---------------+
+--  a) | INDEX1 | INDEX2 | INDEX3 |    OFFSET     |  
+--     +--------+--------+--------+---------------+
+--      31    26 25    20 19    14 13            0
+
+constant P16K_VA_I1_SZ : integer := 6;
+constant P16K_VA_I2_SZ : integer := 6;
+constant P16K_VA_I3_SZ : integer := 6;
+constant P16K_VA_I_SZ  : integer := P16K_VA_I1_SZ+P16K_VA_I2_SZ+P16K_VA_I3_SZ;
+constant P16K_VA_I_MAX : integer := 6;
+
+constant P16K_VA_I1_U  : integer := 31;
+constant P16K_VA_I1_D  : integer := 32-P16K_VA_I1_SZ;
+constant P16K_VA_I2_U  : integer := 31-P16K_VA_I1_SZ;
+constant P16K_VA_I2_D  : integer := 32-P16K_VA_I1_SZ-P16K_VA_I2_SZ;
+constant P16K_VA_I3_U  : integer := 31-P16K_VA_I1_SZ-P16K_VA_I2_SZ;
+constant P16K_VA_I3_D  : integer := 32-P16K_VA_I_SZ;
+constant P16K_VA_I_U   : integer := 31;
+constant P16K_VA_I_D   : integer := 32-P16K_VA_I_SZ;
+constant P16K_VA_OFF_U : integer := 31-P16K_VA_I_SZ;
+constant P16K_VA_OFF_D : integer := 0;
+
+constant P16K_VA_OFFCTX_U : integer := 31;
+constant P16K_VA_OFFCTX_D : integer := 0;
+constant P16K_VA_OFFREG_U : integer := 31-P16K_VA_I1_SZ;
+constant P16K_VA_OFFREG_D : integer := 0;
+constant P16K_VA_OFFSEG_U : integer := 31-P16K_VA_I1_SZ-P16K_VA_I2_SZ;
+constant P16K_VA_OFFSEG_D : integer := 0;
+constant P16K_VA_OFFPAG_U : integer := 31-P16K_VA_I_SZ;
+constant P16K_VA_OFFPAG_D : integer := 0;
+
+
+-- 32k pages
+--         4        7        6         15
+--     +--------+--------+--------+---------------+
+--  a) | INDEX1 | INDEX2 | INDEX3 |    OFFSET     |  
+--     +--------+--------+--------+---------------+
+--      31    28 27    21 20    15 14            0
+
+constant P32K_VA_I1_SZ : integer := 4;
+constant P32K_VA_I2_SZ : integer := 7;
+constant P32K_VA_I3_SZ : integer := 6;
+constant P32K_VA_I_SZ  : integer := P32K_VA_I1_SZ+P32K_VA_I2_SZ+P32K_VA_I3_SZ;
+constant P32K_VA_I_MAX : integer := 7;
+
+constant P32K_VA_I1_U  : integer := 31;
+constant P32K_VA_I1_D  : integer := 32-P32K_VA_I1_SZ;
+constant P32K_VA_I2_U  : integer := 31-P32K_VA_I1_SZ;
+constant P32K_VA_I2_D  : integer := 32-P32K_VA_I1_SZ-P32K_VA_I2_SZ;
+constant P32K_VA_I3_U  : integer := 31-P32K_VA_I1_SZ-P32K_VA_I2_SZ;
+constant P32K_VA_I3_D  : integer := 32-P32K_VA_I_SZ;
+constant P32K_VA_I_U   : integer := 31;
+constant P32K_VA_I_D   : integer := 32-P32K_VA_I_SZ;
+constant P32K_VA_OFF_U : integer := 31-P32K_VA_I_SZ;
+constant P32K_VA_OFF_D : integer := 0;
+
+constant P32K_VA_OFFCTX_U : integer := 31;
+constant P32K_VA_OFFCTX_D : integer := 0;
+constant P32K_VA_OFFREG_U : integer := 31-P32K_VA_I1_SZ;
+constant P32K_VA_OFFREG_D : integer := 0;
+constant P32K_VA_OFFSEG_U : integer := 31-P32K_VA_I1_SZ-P32K_VA_I2_SZ;
+constant P32K_VA_OFFSEG_D : integer := 0;
+constant P32K_VA_OFFPAG_U : integer := 31-P32K_VA_I_SZ;
+constant P32K_VA_OFFPAG_D : integer := 0;
+
+
 -- ##############################################################
 --     2.0 PAGE TABE DESCRIPTOR (PTD) [sparc V8: p.247,Appx.H,Figure H-7]                             
 --                                                                  
@@ -95,12 +199,39 @@ constant PTE_PPN_S : integer := (PTE_PPN_U+1)-PTE_PPN_D;  -- PTE: pysical page n
 constant PTE_PPN32_U : integer := 27; -- PTE: physical page number 32 bit addr
 constant PTE_PPN32_D : integer := 8;    
 constant PTE_PPN32_S : integer := (PTE_PPN32_U+1)-PTE_PPN32_D;  -- PTE: pysical page number 32 bit size
+
 constant PTE_PPN32REG_U : integer := PTE_PPN32_U;  -- PTE: pte part of merged result address
 constant PTE_PPN32REG_D : integer := PTE_PPN32_U+1-VA_I1_SZ;
 constant PTE_PPN32SEG_U : integer := PTE_PPN32_U;
 constant PTE_PPN32SEG_D : integer := PTE_PPN32_U+1-VA_I1_SZ-VA_I2_SZ;
 constant PTE_PPN32PAG_U : integer := PTE_PPN32_U;
 constant PTE_PPN32PAG_D : integer := PTE_PPN32_U+1-VA_I_SZ;
+
+-- 8k pages 
+constant P8K_PTE_PPN32REG_U : integer := PTE_PPN32_U;  -- PTE: pte part of merged result address
+constant P8K_PTE_PPN32REG_D : integer := PTE_PPN32_U+1-P8K_VA_I1_SZ;
+constant P8K_PTE_PPN32SEG_U : integer := PTE_PPN32_U;
+constant P8K_PTE_PPN32SEG_D : integer := PTE_PPN32_U+1-P8K_VA_I1_SZ-P8K_VA_I2_SZ;
+constant P8K_PTE_PPN32PAG_U : integer := PTE_PPN32_U;
+constant P8K_PTE_PPN32PAG_D : integer := PTE_PPN32_U+1-P8K_VA_I_SZ;
+
+-- 16k pages 
+constant P16K_PTE_PPN32REG_U : integer := PTE_PPN32_U;  -- PTE: pte part of merged result address
+constant P16K_PTE_PPN32REG_D : integer := PTE_PPN32_U+1-P16K_VA_I1_SZ;
+constant P16K_PTE_PPN32SEG_U : integer := PTE_PPN32_U;
+constant P16K_PTE_PPN32SEG_D : integer := PTE_PPN32_U+1-P16K_VA_I1_SZ-P16K_VA_I2_SZ;
+constant P16K_PTE_PPN32PAG_U : integer := PTE_PPN32_U;
+constant P16K_PTE_PPN32PAG_D : integer := PTE_PPN32_U+1-P16K_VA_I_SZ;
+
+-- 32k pages 
+constant P32K_PTE_PPN32REG_U : integer := PTE_PPN32_U;  -- PTE: pte part of merged result address
+constant P32K_PTE_PPN32REG_D : integer := PTE_PPN32_U+1-P32K_VA_I1_SZ;
+constant P32K_PTE_PPN32SEG_U : integer := PTE_PPN32_U;
+constant P32K_PTE_PPN32SEG_D : integer := PTE_PPN32_U+1-P32K_VA_I1_SZ-P32K_VA_I2_SZ;
+constant P32K_PTE_PPN32PAG_U : integer := PTE_PPN32_U;
+constant P32K_PTE_PPN32PAG_D : integer := PTE_PPN32_U+1-P32K_VA_I_SZ;
+
+
 
 constant PTE_C : integer := 7;        -- PTE: Cacheable bit
 constant PTE_M : integer := 6;        -- PTE: Modified bit 
@@ -210,11 +341,15 @@ constant MMCTRL_NF : integer := 1;
 constant MMCTRL_PSO : integer := 7;
 constant MMCTRL_SC_U : integer := 23;
 constant MMCTRL_SC_D : integer := 8;
+
+constant MMCTRL_PGSZ_U : integer := 17;
+constant MMCTRL_PGSZ_D : integer := 16;
+
 constant MMCTRL_VER_U : integer := 27;
 constant MMCTRL_VER_D : integer := 24;
 constant MMCTRL_IMPL_U : integer := 31;
 constant MMCTRL_IMPL_D : integer := 28;
-constant MMCTRL_TLBDIS : integer := 31;
+constant MMCTRL_TLBDIS : integer := 15;
 
 constant MMCTXP_U : integer := 31;
 constant MMCTXP_D : integer := 2;
@@ -269,11 +404,15 @@ type mmctrl_type1 is record
   pso     : std_logic;				        -- partial store order
 --  pre     : std_logic;                            -- pretranslation source
 --  pri     : std_logic;                            -- i/d priority 
+  pagesize : std_logic_vector(1 downto 0);-- page size
+  
   ctx     : std_logic_vector(M_CTX_SZ-1 downto 0);-- context nr
   ctxp    : std_logic_vector(MMCTRL_CTXP_SZ-1 downto 0);  -- context table pointer
   tlbdis  : std_logic;                            -- tlb disabled
   bar     : std_logic_vector(1 downto 0);         -- preplace barrier
 end record;
+
+constant mmctrl_type1_none : mmctrl_type1 := ('0', '0', '0', (others => '0'), (others => '0'), (others => '0'), '0', (others => '0'));
 
 --# fault status reg
 type mmctrl_fs_type is record

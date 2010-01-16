@@ -2,11 +2,9 @@
 main()
 
 {
-	report_start();
+   report_start();
 
-	base_test();
+   base_test();
 
-	/* i2cmst_test(0x80000c00); */
-
-	report_end();
+   report_end();
 }

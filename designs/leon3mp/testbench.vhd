@@ -1,6 +1,10 @@
 ------------------------------------------------------------------------------
 --  LEON3 Demonstration design test bench
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -11,6 +15,10 @@
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
 --  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 --  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -44,11 +52,11 @@ entity testbench is
     romwidth  : integer := 32;		-- rom data width (8/32)
     romdepth  : integer := 16;		-- rom address depth
     sramwidth  : integer := 32;		-- ram data width (8/16/32)
-    sramdepth  : integer := 18;		-- ram address depth
+    sramdepth  : integer := 21;		-- ram address depth
     srambanks  : integer := 2		-- number of ram banks
   );
   port (
-    pci_rst     : inout std_ulogic;	-- PCI bus
+    pci_rst     : inout std_logic;	-- PCI bus
     pci_clk 	: in std_ulogic;
     pci_gnt     : in std_ulogic;
     pci_idsel   : in std_ulogic;
@@ -139,7 +147,7 @@ component leon3mp
     esleep 	: out std_logic;
     epause 	: out std_logic;
 
-    pci_rst     : in std_ulogic;		-- PCI bus
+    pci_rst     : inout std_logic;		-- PCI bus
     pci_clk 	: in std_ulogic;
     pci_gnt     : in std_ulogic;
     pci_idsel   : in std_ulogic;

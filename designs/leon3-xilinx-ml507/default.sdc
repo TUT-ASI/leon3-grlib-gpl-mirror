@@ -14,6 +14,11 @@ define_clock            -name {leon3mp|clkgen0.clkin}  -freq 100.000 -route 2.0 
 define_clock            -name {ddr2spa|ddr_phy0.ddr_phy0.xc4v.ddr_phy0.mclkfx} -freq 200.000 -route 1.0 -clockgroup ddr_clkgroup
 define_clock            -name {clk_200}  -freq 200.000 -route 1.0 -clockgroup ddr_clkgroup
 
+define_clock            -name {leon3mp|clkvgap}  -clockgroup vga_clkgroup
+define_clock            -name {leon3mp|clk65} -freq 65.000 -clockgroup vga65_clkgroup
+define_clock            -name {leon3mp|clk40} -freq 40.000 -clockgroup vga40_clkgroup
+define_clock            -name {leon3mp|clk25} -freq 25.000 -clockgroup vga25_clkgroup
+
 #
 # Clock to Clock
 #
@@ -22,6 +27,13 @@ define_clock            -name {clk_200}  -freq 200.000 -route 1.0 -clockgroup dd
 
 #define_clock_delay -rise ddr2spa|ddr_phy0.ddr_phy0.xc4v.ddr_phy0.mclkfx -rise leon3mp|clkgen0.xc5l.v.clk0B_derived_clock -false
 #define_clock_delay -rise ddr2spa|ddr_phy0.ddr_phy0.xc4v.ddr_phy0.clk_90ro -rise leon3mp|clkgen0.xc5l.v.clk0B_derived_clock -false
+
+define_clock_delay -rise {leon3mp|clkm} -rise {leon3mp|clk65} -false
+define_clock_delay -rise {leon3mp|clk40} -rise {leon3mp|clk65} -false
+define_clock_delay -rise {leon3mp|clk40} -fall {leon3mp|clk65} -false
+define_clock_delay -rise {leon3mp|clk65} -rise {leon3mp|clkm} -false
+define_clock_delay -rise {leon3mp|clk65} -rise {leon3mp|clk40} -false
+define_clock_delay -rise {leon3mp|clk65} -fall {leon3mp|clk40} -false
 
 #
 # Inputs/Outputs

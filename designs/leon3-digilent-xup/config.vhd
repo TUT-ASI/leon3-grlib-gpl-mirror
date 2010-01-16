@@ -1,16 +1,6 @@
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
--- Copyright (C) 2004 Jiri Gaisler, Gaisler Research
---
--- This program is free software; you can redistribute it and/or modify
--- it under the terms of the GNU General Public License as published by
--- the Free Software Foundation; either version 2 of the License, or
--- (at your option) any later version.
---
--- This program is distributed in the hope that it will be useful,
--- but WITHOUT ANY WARRANTY; without even the implied warranty of
--- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
--- GNU General Public License for more details.
+-- Copyright (C) 2009 Aeroflex Gaisler
 ------------------------------------------------------------------------------
 
 
@@ -90,7 +80,7 @@ package config is
 -- AMBA settings
   constant CFG_DEFMST : integer := (0);
   constant CFG_RROBIN : integer := 1;
-  constant CFG_SPLIT : integer := 0;
+  constant CFG_SPLIT : integer := 1;
   constant CFG_AHBIO : integer := 16#FFF#;
   constant CFG_APBADDR : integer := 16#800#;
   constant CFG_AHB_MON : integer := 0;
@@ -108,8 +98,8 @@ package config is
   constant CFG_ETH_BUF : integer := 2;
   constant CFG_ETH_IPM : integer := 16#C0A8#;
   constant CFG_ETH_IPL : integer := 16#0033#;
-  constant CFG_ETH_ENM : integer := 16#00007A#;
-  constant CFG_ETH_ENL : integer := 16#CC0009#;
+  constant CFG_ETH_ENM : integer := 16#020000#;
+  constant CFG_ETH_ENL : integer := 16#000019#;
 
 -- DDR controller
   constant CFG_DDRSP : integer := 1;
@@ -142,6 +132,7 @@ package config is
 
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE : integer := 1;
+  constant CFG_IRQ3_NSEC : integer := 0;
 
 -- Modular timer
   constant CFG_GPT_ENABLE : integer := 1;
@@ -157,6 +148,9 @@ package config is
   constant CFG_KBD_ENABLE : integer := 1;
   constant CFG_VGA_ENABLE : integer := 0;
   constant CFG_SVGA_ENABLE : integer := 1;
+
+-- AMBA System ACE Interface Controller
+  constant CFG_GRACECTRL : integer := 1;
 
 -- GRLIB debugging
   constant CFG_DUART : integer := 0;

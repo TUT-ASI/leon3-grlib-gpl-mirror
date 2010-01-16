@@ -1,6 +1,10 @@
 -----------------------------------------------------------------------------
 --  LEON3 Demonstration design
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -14,7 +18,7 @@
 --
 --  You should have received a copy of the GNU General Public License
 --  along with this program; if not, write to the Free Software
---  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 
@@ -49,92 +53,130 @@ entity leon3mp is
     pclow     : integer := CFG_PCLOW
   );
   port (
-    sys_rst_in	: in  std_ulogic;
-    clk_100	: in  std_ulogic; 	-- 100 MHz main clock
-    clk_200_p	: in  std_ulogic; 	-- 200 MHz 
-    clk_200_n	: in  std_ulogic; 	-- 200 MHz 
+    sys_rst_in      : in  std_ulogic;
+    clk_100         : in  std_ulogic; 	-- 100 MHz main clock
+    clk_200_p       : in  std_ulogic; 	-- 200 MHz 
+    clk_200_n       : in  std_ulogic; 	-- 200 MHz 
+    clk_33          : in  std_ulogic;   -- 33 MHz
     sram_flash_addr : out std_logic_vector(23 downto 0);
     sram_flash_data : inout std_logic_vector(31 downto 0);
-    sram_cen  	: out std_logic;
-    sram_bw   	: out std_logic_vector (0 to 3);
-    sram_oen    : out std_ulogic;
-    sram_flash_we_n 	: out std_ulogic;
-    flash_ce  	: out std_logic;
-    flash_oen 	: out std_logic;
-    flash_adv_n : out std_logic;
-    sram_clk  	: out std_ulogic;
-    sram_clk_fb	: in  std_ulogic; 
-    sram_mode 	: out std_ulogic;
-    sram_adv_ld_n : out std_ulogic;
+    sram_cen        : out std_logic;
+    sram_bw         : out std_logic_vector (0 to 3);
+    sram_oen        : out std_ulogic;
+    sram_flash_we_n : out std_ulogic;
+    flash_ce        : out std_logic;
+    flash_oen       : out std_logic;
+    flash_adv_n     : out std_logic;
+    sram_clk        : out std_ulogic;
+    sram_clk_fb	    : in  std_ulogic; 
+    sram_mode       : out std_ulogic;
+    sram_adv_ld_n   : out std_ulogic;
 --pragma translate_off
-    iosn    : out std_ulogic;
+    iosn            : out std_ulogic;
 --pragma translate_on
 
+    ddr_clk         : out std_logic_vector(1 downto 0);
+    ddr_clkb        : out std_logic_vector(1 downto 0);
+    ddr_cke         : out std_logic_vector(1 downto 0);
+    ddr_csb         : out std_logic_vector(1 downto 0);
+    ddr_odt         : out std_logic_vector(1 downto 0);
+    ddr_web         : out std_ulogic;                       -- ddr write enable
+    ddr_rasb        : out std_ulogic;                       -- ddr ras
 
-    ddr_clk  	: out std_logic_vector(1 downto 0);
-    ddr_clkb  	: out std_logic_vector(1 downto 0);
-    ddr_cke  	: out std_logic_vector(1 downto 0);
-    ddr_csb  	: out std_logic_vector(1 downto 0);
-    ddr_odt  	: out std_logic_vector(1 downto 0);
-    ddr_web  	: out std_ulogic;                       -- ddr write enable
-    ddr_rasb  	: out std_ulogic;                       -- ddr ras
+    ddr_casb        : out std_ulogic;                       -- ddr cas
+    ddr_dm          : out std_logic_vector (7 downto 0);    -- ddr dm
+    ddr_dqsp        : inout std_logic_vector (7 downto 0);    -- ddr dqs
+    ddr_dqsn        : inout std_logic_vector (7 downto 0);    -- ddr dqs
+    ddr_ad          : out std_logic_vector (13 downto 0);   -- ddr address
+    ddr_ba          : out std_logic_vector (1 downto 0);    -- ddr bank address
+    ddr_dq          : inout std_logic_vector (63 downto 0); -- ddr data
 
-    ddr_casb  	: out std_ulogic;                       -- ddr cas
-    ddr_dm   	: out std_logic_vector (7 downto 0);    -- ddr dm
-    ddr_dqsp  	: inout std_logic_vector (7 downto 0);    -- ddr dqs
-    ddr_dqsn  	: inout std_logic_vector (7 downto 0);    -- ddr dqs
-    ddr_ad      : out std_logic_vector (13 downto 0);   -- ddr address
-    ddr_ba      : out std_logic_vector (1 downto 0);    -- ddr bank address
-    ddr_dq  	: inout std_logic_vector (63 downto 0); -- ddr data
+    txd1            : out std_ulogic; 			-- UART1 tx data
+    rxd1            : in  std_ulogic;  			-- UART1 rx data
+    txd2            : out std_ulogic; 			-- UART2 tx data
+    rxd2            : in  std_ulogic;  			-- UART2 rx data
 
-    txd1   	: out std_ulogic; 			-- UART1 tx data
-    rxd1   	: in  std_ulogic;  			-- UART1 rx data
-    txd2   	: out std_ulogic; 			-- UART2 tx data
-    rxd2   	: in  std_ulogic;  			-- UART2 rx data
+    gpio            : inout std_logic_vector(12 downto 0); 	-- I/O port
+    led             : out std_logic_vector(12 downto 0);
+    bus_error       : out std_logic_vector(1 downto 0);
 
-    gpio        : inout std_logic_vector(12 downto 0); 	-- I/O port
-    led         : out std_logic_vector(12 downto 0);
-    bus_error   : out std_logic_vector(1 downto 0);
+    phy_gtx_clk     : out std_logic;
+    phy_mii_data    : inout std_logic;		-- ethernet PHY interface
+    phy_tx_clk      : in std_ulogic;
+    phy_rx_clk      : in std_ulogic;
+    phy_rx_data	    : in std_logic_vector(7 downto 0);   
+    phy_dv          : in std_ulogic; 
+    phy_rx_er       : in std_ulogic; 
+    phy_col         : in std_ulogic;
+    phy_crs         : in std_ulogic;
+    phy_tx_data     : out std_logic_vector(7 downto 0);   
+    phy_tx_en       : out std_ulogic; 
+    phy_tx_er       : out std_ulogic; 
+    phy_mii_clk	    : out std_ulogic;
+    phy_rst_n	    : out std_ulogic;
 
-    phy_gtx_clk : out std_logic;
-    phy_mii_data: inout std_logic;		-- ethernet PHY interface
-    phy_tx_clk 	: in std_ulogic;
-    phy_rx_clk 	: in std_ulogic;
-    phy_rx_data	: in std_logic_vector(7 downto 0);   
-    phy_dv  	: in std_ulogic; 
-    phy_rx_er	: in std_ulogic; 
-    phy_col 	: in std_ulogic;
-    phy_crs 	: in std_ulogic;
-    phy_tx_data : out std_logic_vector(7 downto 0);   
-    phy_tx_en 	: out std_ulogic; 
-    phy_tx_er 	: out std_ulogic; 
-    phy_mii_clk	: out std_ulogic;
-    phy_rst_n	: out std_ulogic;
+    ps2_keyb_clk    : inout std_logic;
+    ps2_keyb_data   : inout std_logic;
+    ps2_mouse_clk   : inout std_logic;
+    ps2_mouse_data  : inout std_logic;
 
-    ps2_keyb_clk: inout std_logic;
-    ps2_keyb_data: inout std_logic;
-    ps2_mouse_clk: inout std_logic;
-    ps2_mouse_data: inout std_logic;
+    usb_csn         : out std_logic;
+    usb_rstn        : out std_logic;
 
---    tft_lcd_clk : out std_ulogic;
---    vid_blankn  : out std_ulogic;
---    vid_syncn   : out std_ulogic;
---    vid_hsync   : out std_ulogic;
---    vid_vsync   : out std_ulogic;
---    vid_r       : out std_logic_vector(7 downto 0);
---    vid_g       : out std_logic_vector(7 downto 0);
---    vid_b       : out std_logic_vector(7 downto 0);
+    iic_scl_main    : inout std_ulogic;
+    iic_sda_main    : inout std_ulogic;
 
-    usb_csn     : out std_logic;
-    usb_rstn    : out std_logic;
+    iic_scl_video   : inout std_logic;
+    iic_sda_video   : inout std_logic;
 
-    iic_scl_main : inout std_ulogic;
-    iic_sda_main : inout std_ulogic
+    tft_lcd_data    : out std_logic_vector(11 downto 0);
+    tft_lcd_clk_p   : out std_ulogic;
+    tft_lcd_clk_n   : out std_ulogic;
+    tft_lcd_hsync   : out std_ulogic;
+    tft_lcd_vsync   : out std_ulogic;
+    tft_lcd_de      : out std_ulogic;
+    tft_lcd_reset_b : out std_ulogic;
+
+    sysace_mpa      : out std_logic_vector(6 downto 0);
+    sysace_mpce     : out std_ulogic;
+    sysace_mpirq    : in  std_ulogic;
+    sysace_mpoe     : out std_ulogic;
+    sysace_mpwe     : out std_ulogic;
+    sysace_d        : inout std_logic_vector(15 downto 0)
     );
 end;
 
 architecture rtl of leon3mp is
 
+component svga2ch7301c
+  generic (
+    tech    : integer := 0;
+    idf     : integer := 0;
+    dynamic : integer := 0
+    );
+  port (
+    clk         : in  std_ulogic;
+    rstn        : in  std_ulogic;
+    clksel      : in  std_logic_vector(1 downto 0);
+    vgao        : in  apbvga_out_type;
+    vgaclk_fb   : in  std_ulogic;
+    clk25_fb    : in  std_ulogic;
+    clk40_fb    : in  std_ulogic;
+    clk65_fb    : in  std_ulogic;
+    vgaclk      : out std_ulogic;
+    clk25       : out std_ulogic;
+    clk40       : out std_ulogic;
+    clk65       : out std_ulogic;
+    dclk_p      : out std_ulogic;
+    dclk_n      : out std_ulogic;
+    locked      : out std_ulogic;
+    data        : out std_logic_vector(11 downto 0);
+    hsync       : out std_ulogic;
+    vsync       : out std_ulogic;
+    de          : out std_ulogic
+    );
+end component;
+  
 constant blength : integer := 12;
 constant fifodepth : integer := 8;
 constant maxahbm : integer := NCPU+CFG_AHB_UART
@@ -157,8 +199,8 @@ signal ahbmi : ahb_mst_in_type;
 signal ahbmo : ahb_mst_out_vector := (others => ahbm_none);
 
 signal clkm, rstn, rstraw, srclkl : std_ulogic;
-signal clkm_90, clkm_180, clkm_270 : std_ulogic;
 signal clk_200 : std_ulogic;
+signal clk25, clk40, clk65 : std_ulogic;
 
 signal cgi, cgi2   : clkgen_in_type;
 signal cgo, cgo2   : clkgen_out_type;
@@ -186,21 +228,23 @@ signal clklock, lock, lclk, clkml, rst, ndsuact : std_ulogic;
 signal tck, tckn, tms, tdi, tdo : std_ulogic;
 signal ddrclk, ddrrst : std_ulogic;
 
-
-signal ethclk, egtx_clk_fb : std_ulogic;
+signal egtx_clk_fb : std_ulogic;
 signal egtx_clk, legtx_clk, l2egtx_clk : std_ulogic;
 
 signal kbdi  : ps2_in_type;
 signal kbdo  : ps2_out_type;
 signal moui  : ps2_in_type;
 signal mouo  : ps2_out_type;
-signal vgao  : apbvga_out_type;
-signal clk_sel : std_logic_vector(1 downto 0);
-signal clkval : std_logic_vector(1 downto 0);
-signal clkvga, clk1x, video_clk, dac_clk : std_ulogic;
 
-signal i2ci : i2c_in_type;
-signal i2co : i2c_out_type;
+signal vgao  : apbvga_out_type;
+signal lcd_datal : std_logic_vector(11 downto 0);
+signal lcd_hsyncl, lcd_vsyncl, lcd_del, lcd_reset_bl : std_ulogic;
+signal clk_sel : std_logic_vector(1 downto 0);
+signal vgalock : std_ulogic;
+signal clkvga, clkvga_p, clkvga_n : std_ulogic;
+
+signal i2ci, dvi_i2ci : i2c_in_type;
+signal i2co, dvi_i2co : i2c_out_type;
 
 constant BOARD_FREQ_200 : integer := 200000;   -- input frequency in KHz
 constant BOARD_FREQ : integer := 100000;   -- input frequency in KHz
@@ -219,20 +263,38 @@ signal ddr_ckev  	: std_logic_vector(1 downto 0);
 signal ddr_csbv  	: std_logic_vector(1 downto 0);
 signal ddr_adl      	: std_logic_vector (13 downto 0);
 
+signal clkace : std_ulogic;
+signal acei   : gracectrl_in_type;
+signal aceo   : gracectrl_out_type;
+
 attribute syn_keep : boolean;
 attribute syn_preserve : boolean;
 attribute syn_keep of clkml : signal is true;
 attribute syn_preserve of clkml : signal is true;
+attribute syn_keep of clkm : signal is true;
+attribute syn_preserve of clkm : signal is true;
 attribute syn_keep of egtx_clk : signal is true;
 attribute syn_preserve of egtx_clk : signal is true;
+attribute syn_keep of clkvga : signal is true;
+attribute syn_preserve of clkvga : signal is true;
+attribute syn_keep of clk25 : signal is true;
+attribute syn_preserve of clk25 : signal is true;
+attribute syn_keep of clk40 : signal is true;
+attribute syn_preserve of clk40 : signal is true;
+attribute syn_keep of clk65 : signal is true;
+attribute syn_preserve of clk65 : signal is true;
 attribute keep : boolean;
 attribute keep of lock : signal is true;
 attribute keep of clkml : signal is true;
 attribute keep of clkm : signal is true;
 attribute keep of egtx_clk : signal is true;
+attribute keep of clkvga : signal is true;
+attribute keep of clk25 : signal is true;
+attribute keep of clk40 : signal is true;
+attribute keep of clk65 : signal is true;
 
-signal romsn   : std_ulogic;
-constant SPW_LOOP_BACK : integer := 0;
+attribute syn_noprune : boolean;
+attribute syn_noprune of clk_33_pad : label is true;
 
 begin
 
@@ -255,9 +317,12 @@ begin
   srclk_pad : outpad generic map (tech => padtech, slew => 1, strength => 24) 
 	port map (sram_clk, srclkl);
 
+  clk_33_pad : clkpad generic map (tech => padtech) 
+        port map (clk_33, clkace);
+  
   clkgen0 : clkgen  		-- system clock generator
     generic map (CFG_FABTECH, CFG_CLKMUL, CFG_CLKDIV, 1, 0, 0, 0, 0, BOARD_FREQ, 0)
-    port map (lclk, gnd(0), clkm, open, open, srclkl, open, cgi, cgo, open, clk1x);
+    port map (lclk, gnd(0), clkm, open, open, srclkl, open, cgi, cgo, open);
 
   clkgen1 : clkgen  		-- Ethernet 1G PHY clock generator
     generic map (CFG_FABTECH, 5, 4, 0, 0, 0, 0, 0, BOARD_FREQ, 0)
@@ -306,7 +371,7 @@ begin
       port map (rstn, clkm, ahbmi, ahbsi, ahbso(2), dbgo, dbgi, dsui, dsuo);
       dsui.enable <= '1';
 --    dsubre_pad : inpad generic map (tech => padtech) port map (dsubre, dsui.break); 
-       dsui.break <= gpioo.val(24); --  South Button
+       dsui.break <= gpioo.val(11); --  South Button
 --    dsuact_pad : outpad generic map (tech => padtech) port map (dsuact, ndsuact);
     led(4) <= dsuo.active;
     end generate;
@@ -403,6 +468,32 @@ begin
   noddr :  if (CFG_DDR2SP = 0) generate lock <= '1'; end generate;
 
 ----------------------------------------------------------------------
+---  System ACE I/F Controller ---------------------------------------
+----------------------------------------------------------------------
+  
+  grace: if CFG_GRACECTRL = 1 generate
+    grace0 : gracectrl generic map (hindex => 4, hirq => 13,
+        haddr => 16#002#, hmask => 16#fff#, split => CFG_SPLIT)
+      port map (rstn, clkm, clkace, ahbsi, ahbso(4), acei, aceo);
+  end generate;
+  nograce: if CFG_GRACECTRL /= 1 generate
+    aceo <= gracectrl_none;
+  end generate;
+  
+  sysace_mpa_pads : outpadv generic map (width => 7, tech => padtech) 
+    port map (sysace_mpa, aceo.addr); 
+  sysace_mpce_pad : outpad generic map (tech => padtech)
+    port map (sysace_mpce, aceo.cen); 
+  sysace_d_pads : iopadv generic map (tech => padtech, width => 16)
+    port map (sysace_d, aceo.do, aceo.doen, acei.di); 
+  sysace_mpoe_pad : outpad generic map (tech => padtech)
+    port map (sysace_mpoe, aceo.oen);
+  sysace_mpwe_pad : outpad generic map (tech => padtech)
+    port map (sysace_mpwe, aceo.wen); 
+  sysace_mpirq_pad : inpad generic map (tech => padtech)
+    port map (sysace_mpirq, acei.irq);
+  
+----------------------------------------------------------------------
 ---  APB Bridge and various periherals -------------------------------
 ----------------------------------------------------------------------
 
@@ -473,52 +564,54 @@ begin
 
   vga : if CFG_VGA_ENABLE /= 0 generate
     vga0 : apbvga generic map(memtech => memtech, pindex => 6, paddr => 6)
-      port map(rstn, clkm, ethclk, apbi, apbo(6), vgao);
+      port map(rstn, clkm, clkvga, apbi, apbo(6), vgao);
       clk_sel <= "00";
   end generate;
 
   svga : if CFG_SVGA_ENABLE /= 0 generate
     svga0 : svgactrl generic map(memtech => memtech, pindex => 6, paddr => 6,
         hindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG, 
-	clk0 => 4*(1000000000/BOARD_FREQ), clk1 => 2*(1000000000/BOARD_FREQ),
-	clk2 => 1000000000/CPU_FREQ, burstlen => 6)
+	clk0 => 40000, clk1 => 40000, clk2 => 25000, clk3 => 15385, burstlen => 6)
        port map(rstn, clkm, clkvga, apbi, apbo(6), vgao, ahbmi, 
 		ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG), clk_sel);
   end generate;
 
-  vgadiv : if (CFG_VGA_ENABLE + CFG_SVGA_ENABLE) /= 0 generate 
-    clkdiv : process(clk1x, rstn)
-    begin
-	if rstn = '0' then clkval <= "00";
-        elsif rising_edge(clk1x) then
-	  clkval <= clkval + 1;
-	end if;
-    end process;
-    video_clk <= clkval(1) when clk_sel = "00" else clkval(0) when clk_sel = "01" else clkm;
-    b1 : techbuf generic map (2, virtex2) port map (video_clk, clkvga);
-    dac_clk <= not clkvga;
+  vgadvi : if (CFG_VGA_ENABLE + CFG_SVGA_ENABLE) /= 0 generate 
+    dvi0 : svga2ch7301c generic map (tech => fabtech, idf => 2)
+      port map (lclk, rstraw, clk_sel, vgao, clkvga, clk25, clk40, clk65,
+                clkvga, clk25, clk40, clk65, clkvga_p, clkvga_n, 
+                vgalock, lcd_datal, lcd_hsyncl, lcd_vsyncl, lcd_del);
+    
+    i2cdvi : i2cmst
+      generic map (pindex => 9, paddr => 9, pmask => 16#FFF#, pirq => 14)
+      port map (rstn, clkm, apbi, apbo(9), dvi_i2ci, dvi_i2co);
   end generate;
 
   novga : if (CFG_VGA_ENABLE + CFG_SVGA_ENABLE) = 0 generate 
-     apbo(6) <= apb_none; vgao <= vgao_none; 
+     apbo(6) <= apb_none;
+     lcd_datal <= (others => '0'); clkvga_p <= '0'; clkvga_n <= '0';
+     lcd_hsyncl <= '0'; lcd_vsyncl <= '0'; lcd_del <= '0';
+     dvi_i2co.scloen <= '1'; dvi_i2co.sdaoen <= '1';
   end generate;
 
---  blank_pad : outpad generic map (tech => padtech)
---        port map (vid_blankn, vgao.blank);
---  comp_sync_pad : outpad generic map (tech => padtech)
---        port map (vid_syncn, vgao.comp_sync);
---  vert_sync_pad : outpad generic map (tech => padtech)
---        port map (vid_vsync, vgao.vsync);
---  horiz_sync_pad : outpad generic map (tech => padtech)
---        port map (vid_hsync, vgao.hsync);
---  video_out_r_pad : outpadv generic map (width => 8, tech => padtech)
---        port map (vid_r, vgao.video_out_r);
---  video_out_g_pad : outpadv generic map (width => 8, tech => padtech)
---        port map (vid_g, vgao.video_out_g);
---  video_out_b_pad : outpadv generic map (width => 8, tech => padtech)
---        port map (vid_b, vgao.video_out_b);
---  video_clock_pad : outpad generic map ( tech => padtech)
---        port map (tft_lcd_clk, dac_clk);
+  tft_lcd_data_pad : outpadv generic map (width => 12, tech => padtech)
+        port map (tft_lcd_data, lcd_datal);
+  tft_lcd_clkp_pad : outpad generic map (tech => padtech)
+    port map (tft_lcd_clk_p, clkvga_p);
+  tft_lcd_clkn_pad : outpad generic map (tech => padtech)
+    port map (tft_lcd_clk_n, clkvga_n);
+  tft_lcd_hsync_pad : outpad generic map (tech => padtech)
+    port map (tft_lcd_hsync, lcd_hsyncl);
+  tft_lcd_vsync_pad : outpad generic map (tech => padtech)
+    port map (tft_lcd_vsync, lcd_vsyncl);
+  tft_lcd_de_pad : outpad generic map (tech => padtech)
+    port map (tft_lcd_de, lcd_del);
+  tft_lcd_reset_pad : outpad generic map (tech => padtech)
+    port map (tft_lcd_reset_b, rstn);
+  dvi_i2c_scl_pad : iopad generic map (tech => padtech)
+    port map (iic_scl_video, dvi_i2co.scl, dvi_i2co.scloen, dvi_i2ci.scl);
+  dvi_i2c_sda_pad : iopad generic map (tech => padtech)
+    port map (iic_sda_video, dvi_i2co.sda, dvi_i2co.sdaoen, dvi_i2ci.sda);
 
   gpio0 : if CFG_GRGPIO_ENABLE /= 0 generate     -- GPIO unit
     grgpio0: grgpio

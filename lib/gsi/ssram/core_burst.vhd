@@ -53,11 +53,18 @@
 --
 LIBRARY ieee;
 USE ieee.std_logic_1164.all;
+library gaisler;
+use gaisler.sim.all;
+library grlib;
+--use grlib.stdlib.all;
+
 ENTITY VHDL_BURST_CORE IS
   GENERIC (
     CONSTANT bank_size : integer ;-- *16M /4 bytes in parallel
     CONSTANT A_size    : integer;
-    CONSTANT DQ_size   : integer);
+    CONSTANT DQ_size   : integer;
+    fname : string := "ram.dat";	-- File to read from
+    index : integer := 0);	-- Index
   PORT (
     SIGNAL A     : IN std_logic_vector(A_size - 1 DOWNTO 0);-- address
     SIGNAL DQa   : INOUT std_logic_vector(DQ_size DOWNTO 1);-- byte A data
@@ -341,6 +348,76 @@ BEGIN
     re0 <= tre0;
     ce0 <= tce0;
   END PROCESS;
+
+ RAMINIT : process
+ -- variable MEMA : MEM;
+  variable L1 : line;
+--  variable FIRST : boolean := true;
+  variable ADR : std_logic_vector(19 downto 0);
+  variable BUF : std_logic_vector(31 downto 0);
+  variable CH : character;
+  variable ai : integer := 0;
+  variable len : integer := 0;
+  file TCF : text open read_mode is fname;
+  variable rectype : std_logic_vector(3 downto 0);
+  variable recaddr : std_logic_vector(31 downto 0);
+  variable reclen  : std_logic_vector(7 downto 0);
+  variable recdata : std_logic_vector(0 to 16*8-1);
+
+  begin
+    if fname /= "" then
+--      if clear = 1 then MEMA := (others => X"00"); end if;
+      L1:= new string'("");	--'
+      while not endfile(TCF) loop
+        readline(TCF,L1);
+        if (L1'length /= 0) then	--'
+          while (not (L1'length=0)) and (L1(L1'left) = ' ') loop
+            std.textio.read(L1,CH);
+          end loop;
+
+          if L1'length > 0 then	--'
+            read(L1, ch);
+            if (ch = 'S') or (ch = 's') then
+              hexread(L1, rectype);
+              hexread(L1, reclen);
+	      len := to_integer(reclen)-1;
+	      recaddr := (others => '0');
+	      case rectype is 
+		when "0001" =>
+                  hexread(L1, recaddr(15 downto 0));
+		when "0010" =>
+                  hexread(L1, recaddr(23 downto 0));
+		when "0011" =>
+                  hexread(L1, recaddr);
+		  recaddr(31 downto 20) := (others => '0');
+		when others => next;
+	      end case;
+              hexread(L1, recdata);
+--              if index = 6 then
+--	        ai := to_integer(recaddr);
+-- 	        for i in 0 to 15 loop
+--                  MEMA(ai+i) := recdata((i*8) to (i*8+7));
+--	        end loop;
+--              elsif (index = 4) or (index = 5) then
+	        ai := to_integer(recaddr)/4;
+ 	        for i in 0 to 3 loop
+                    bank0(ai+i) := '0' & recdata((i*32+index*16) to (i*32+index*16+7));
+                    bank1(ai+i) := '0' & recdata((i*32+index*16+8) to (i*32+index*16+15));
+	        end loop;
+--              else 
+--	        ai := conv_integer(recaddr)/4;
+-- 	        for i in 0 to 3 loop
+--                  MEMA(ai+i) := recdata((i*32+index*8) to (i*32+index*8+7));
+--	        end loop;
+--              end if;
+            end if;
+          end if;
+        end if;
+      end loop;
+    end if;
+    wait;
+  end process;
+
 -- ---------------------------------------------------------------
 --               Data IO Logic
 -- ---------------------------------------------------------------

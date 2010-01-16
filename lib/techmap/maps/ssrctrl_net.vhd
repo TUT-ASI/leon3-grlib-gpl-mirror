@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -177,8 +178,7 @@ architecture rtl of ssrctrl_net is
    end component;
 
 begin
-   xil : if ((tech = virtex2)  or (tech = virtex4) or (tech = virtex5) or
-             (tech = spartan3) or (tech = spartan3e)) and bus16=1 generate
+   xil : if (is_unisim(tech) = 1) and (bus16 = 1) generate
       ssrctrlxil: ssrctrl_unisim
          port map(
             rst               => rst,
@@ -247,9 +247,7 @@ begin
    end generate;
 
 -- pragma translate_off
-   nonet : if not (((tech = virtex2)  or (tech = virtex4) or (tech = virtex5) or
-                    (tech = spartan3) or (tech = spartan3e)))
-      generate
+   nonet : if is_unisim(tech) = 0 generate
          err : process
          begin
             assert False report "ERROR : No ssrctrl netlist available for this technology!"
@@ -257,8 +255,7 @@ begin
             wait;
          end process;
       end generate;
-   nobus16 : if not ( bus16=1 )
-      generate
+   nobus16 : if bus16 = 0 generate
          err : process
          begin
             assert False report "ERROR : 16-bit PROM bus option not selected for ssrctrl netlist!"

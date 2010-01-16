@@ -1,4 +1,3 @@
--g ConfigRate:20 
 -g DebugBitstream:No
 -g Binary:no
 -b

@@ -6,6 +6,8 @@
 #define CONFIG_SYN_TECH rhumc
 #elif defined CONFIG_SYN_ATC18
 #define CONFIG_SYN_TECH atc18s
+#elif defined CONFIG_SYN_ATC18RHA
+#define CONFIG_SYN_TECH atc18rha
 #elif defined CONFIG_SYN_AXCEL
 #define CONFIG_SYN_TECH axcel
 #elif defined CONFIG_SYN_PROASICPLUS
@@ -20,6 +22,8 @@
 #define CONFIG_SYN_TECH stratix3
 #elif defined CONFIG_SYN_CYCLONEIII
 #define CONFIG_SYN_TECH cyclone3
+#elif defined CONFIG_SYN_EASIC90
+#define CONFIG_SYN_TECH easic90
 #elif defined CONFIG_SYN_IHP25
 #define CONFIG_SYN_TECH ihp25
 #elif defined CONFIG_SYN_IHP25RH
@@ -52,6 +56,8 @@
 #define CONFIG_SYN_TECH virtex5
 #elif defined CONFIG_SYN_RH_LIB18T
 #define CONFIG_SYN_TECH rhlib18t
+#elif defined CONFIG_SYN_SMIC13
+#define CONFIG_SYN_TECH smic013
 #elif defined CONFIG_SYN_UT025CRH
 #define CONFIG_SYN_TECH ut25
 #elif defined CONFIG_SYN_TSMC90
@@ -76,6 +82,8 @@
 #define CFG_RAM_TECH custom1
 #elif defined CONFIG_MEM_VIRAGE90
 #define CFG_RAM_TECH memvirage90
+#elif defined CONFIG_MEM_INFERRED
+#define CFG_RAM_TECH inferred
 #else
 #define CFG_RAM_TECH CONFIG_SYN_TECH
 #endif
@@ -165,12 +173,15 @@
 #ifdef CONFIG_IU_V8MULDIV
 #ifdef CONFIG_IU_MUL_LATENCY_4
 #define CFG_IU_V8 1
-#else
+#elif defined CONFIG_IU_MUL_LATENCY_5
 #define CFG_IU_V8 2
+#elif defined CONFIG_IU_MUL_LATENCY_2
+#define CFG_IU_V8 16#32#
 #endif
 #else
 #define CFG_IU_V8 0
 #endif
+
 #ifndef CONFIG_PWD
 #define CONFIG_PWD 0
 #endif
@@ -461,6 +472,11 @@
 #undef CONFIG_DTLBNUM 
 #define CONFIG_DTLBNUM 32
 #endif
+#ifdef CONFIG_MMU_FASTWB
+#define CFG_MMU_FASTWB 1
+#else
+#define CFG_MMU_FASTWB 0
+#endif
 
 #else
 #define CONFIG_MMUEN 0
@@ -468,6 +484,7 @@
 #define CONFIG_DTLBNUM 2
 #define CONFIG_TLB_TYPE 1
 #define CONFIG_TLB_REP 1
+#define CFG_MMU_FASTWB 0
 #endif
 
 #ifndef CONFIG_DSU_ENABLE
@@ -605,11 +622,11 @@
 #endif
 
 #ifndef CONFIG_DSU_ETHMSB
-#define CONFIG_DSU_ETHMSB 00007A
+#define CONFIG_DSU_ETHMSB 020000
 #endif
 
 #ifndef CONFIG_DSU_ETHLSB
-#define CONFIG_DSU_ETHLSB CC0001
+#define CONFIG_DSU_ETHLSB 000009
 #endif
 
 #if defined CONFIG_DSU_ETHSZ1
@@ -862,6 +879,9 @@
 
 #ifndef CONFIG_IRQ3_ENABLE
 #define CONFIG_IRQ3_ENABLE 0
+#endif
+#ifndef CONFIG_IRQ3_NSEC
+#define CONFIG_IRQ3_NSEC 0
 #endif
 #ifndef CONFIG_GPT_ENABLE
 #define CONFIG_GPT_ENABLE 0

@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -263,7 +264,6 @@ begin
         v.iforce(i) := v.iforce(i) and not temp(i);
         v.ipend  := v.ipend and not ((not r.iforce(i)) and temp(i));
         if eirq /= 0 then
---          v2.irl(i) := '0' & irqi(i).irl;
           if eirq = conv_integer(irqi(i).irl) then
             v2.irl(i) := orv(temp2(i)) & prioritize(temp2(i));
             if v2.irl(i)(4) = '1' then

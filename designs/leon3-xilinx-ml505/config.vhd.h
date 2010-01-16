@@ -20,6 +20,7 @@
   constant CFG_NWIN 	: integer := CONFIG_IU_NWINDOWS;
   constant CFG_V8   	: integer := CFG_IU_V8;
   constant CFG_MAC  	: integer := CONFIG_IU_MUL_MAC;
+  constant CFG_BP   	: integer := CONFIG_IU_BP;
   constant CFG_SVT  	: integer := CONFIG_IU_SVT;
   constant CFG_RSTADDR 	: integer := 16#CONFIG_IU_RSTADDR#;
   constant CFG_LDDEL	: integer := CONFIG_IU_LDELAY;
@@ -52,6 +53,7 @@
   constant CFG_DTLBNUM  : integer := CONFIG_DTLBNUM;
   constant CFG_TLB_TYPE : integer := CONFIG_TLB_TYPE + CFG_MMU_FASTWB*2;
   constant CFG_TLB_REP  : integer := CONFIG_TLB_REP;
+  constant CFG_MMU_PAGE : integer := CONFIG_MMU_PAGE;
   constant CFG_DSU   	: integer := CONFIG_DSU_ENABLE;
   constant CFG_ITBSZ 	: integer := CFG_DSU_ITB;
   constant CFG_ATBSZ 	: integer := CFG_DSU_ATB;
@@ -116,6 +118,7 @@
   constant CFG_DDR2SP_DELAY5 	   : integer := CONFIG_DDR2SP_DELAY5;
   constant CFG_DDR2SP_DELAY6 	   : integer := CONFIG_DDR2SP_DELAY6;
   constant CFG_DDR2SP_DELAY7 	   : integer := CONFIG_DDR2SP_DELAY7;
+  constant CFG_DDR2SP_NOSYNC       : integer := CONFIG_DDR2SP_NOSYNC;
 
 -- AHB status register
   constant CFG_AHBSTAT 	: integer := CONFIG_AHBSTAT_ENABLE;
@@ -168,6 +171,9 @@
   constant CFG_KBD_ENABLE  : integer := CONFIG_KBD_ENABLE;
   constant CFG_VGA_ENABLE  : integer := CONFIG_VGA_ENABLE;
   constant CFG_SVGA_ENABLE : integer := CONFIG_SVGA_ENABLE;
+
+-- AMBA System ACE Interface Controller
+  constant CFG_GRACECTRL : integer := CONFIG_GRACECTRL;
 
 -- GRLIB debugging
   constant CFG_DUART    : integer := CONFIG_DEBUG_UART;

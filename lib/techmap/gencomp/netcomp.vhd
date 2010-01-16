@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -18,8 +19,8 @@
 -----------------------------------------------------------------------------
 -- Package: 	netcomp
 -- File:	netcomp.vhd
--- Author:	Jiri Gaisler - Gaisler Research
--- Description:	Delcation of netlists componnets
+-- Author:	Jiri Gaisler - Aeroflex Gaisler
+-- Description:	Declaration of netlists components
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -34,67 +35,67 @@ package netcomp is
 -- netlists ---------------------------------------------------------------
 ---------------------------------------------------------------------------
 
-component usbhc_net is
+component grusbhc_net is
   generic (
-    tech        : integer := 0;
-    nports      : integer range 1 to 15 := 1;
-    ehcgen      : integer range 0 to 1 := 1;
-    uhcgen      : integer range 0 to 1 := 1;
-    n_cc        : integer range 1 to 15 := 1;
-    n_pcc       : integer range 1 to 15 := 1;
-    prr         : integer range 0 to 1 := 0;
-    portroute1  : integer := 0;
-    portroute2  : integer := 0;
-    endian_conv : integer range 0 to 1 := 1;
-    be_regs     : integer range 0 to 1 := 0;
-    be_desc     : integer range 0 to 1 := 0;
-    uhcblo      : integer range 0 to 255 := 2;
-    bwrd        : integer range 1 to 256 := 16;
-    utm_type    : integer range 0 to 2 := 2;
-    vbusconf    : integer range 0 to 3 := 3;
-    ramtest     : integer range 0 to 1 := 0;
-    urst_time   : integer := 250;
-    oepol       : integer range 0 to 1 := 0;
-    scantest    : integer := 0;
-    memtech     : integer range 0 to NTECH := DEFMEMTECH
+    tech        : integer                  := 0;
+    nports      : integer range 1 to 15    := 1;
+    ehcgen      : integer range 0 to 1     := 1;
+    uhcgen      : integer range 0 to 1     := 1;
+    n_cc        : integer range 1 to 15    := 1;
+    n_pcc       : integer range 1 to 15    := 1;
+    prr         : integer range 0 to 1     := 0;
+    portroute1  : integer                  := 0;
+    portroute2  : integer                  := 0;
+    endian_conv : integer range 0 to 1     := 1;
+    be_regs     : integer range 0 to 1     := 0;
+    be_desc     : integer range 0 to 1     := 0;
+    uhcblo      : integer range 0 to 255   := 2;
+    bwrd        : integer range 1 to 256   := 16;
+    utm_type    : integer range 0 to 2     := 2;
+    vbusconf    : integer                  := 3;
+    ramtest     : integer range 0 to 1     := 0;
+    urst_time   : integer                  := 250;
+    oepol       : integer range 0 to 1     := 0;
+    scantest    : integer                  := 0;
+    memtech     : integer range 0 to NTECH := DEFMEMTECH;
+    memsel      : integer                  := 0
     );
   port (
-    clk   : in std_ulogic;
-    uclk  : in std_ulogic;
-    rst   : in std_ulogic;
-    ursti : in std_ulogic;
+    clk               : in  std_ulogic;
+    uclk              : in  std_ulogic;
+    rst               : in  std_ulogic;
     -- EHC apb_slv_in_type unwrapped
-    ehc_apbsi_psel    : in std_ulogic;
-    ehc_apbsi_penable : in std_ulogic;
-    ehc_apbsi_paddr   : in std_logic_vector(31 downto 0);
-    ehc_apbsi_pwrite  : in std_ulogic;
-    ehc_apbsi_pwdata  : in std_logic_vector(31 downto 0);
-    ehc_apbsi_testen  : in std_ulogic;
-    ehc_apbsi_testrst : in std_ulogic;
-    ehc_apbsi_scanen  : in std_ulogic;
+    ehc_apbsi_psel    : in  std_ulogic;
+    ehc_apbsi_penable : in  std_ulogic;
+    ehc_apbsi_paddr   : in  std_logic_vector(31 downto 0);
+    ehc_apbsi_pwrite  : in  std_ulogic;
+    ehc_apbsi_pwdata  : in  std_logic_vector(31 downto 0);
+    ehc_apbsi_testen  : in  std_ulogic;
+    ehc_apbsi_testrst : in  std_ulogic;
+    ehc_apbsi_scanen  : in  std_ulogic;
     -- EHC apb_slv_out_type unwrapped
-    ehc_apbso_prdata : out std_logic_vector(31 downto 0);
-    ehc_apbso_pirq   : out std_ulogic;
+    ehc_apbso_prdata  : out std_logic_vector(31 downto 0);
+    ehc_apbso_pirq    : out std_ulogic;
     -- EHC/UHC ahb_mst_in_type unwrapped
-    ahbmi_hgrant  : in std_logic_vector(n_cc*uhcgen downto 0);
-    ahbmi_hready  : in std_ulogic;
-    ahbmi_hresp   : in std_logic_vector(1 downto 0);
-    ahbmi_hrdata  : in std_logic_vector(31 downto 0);
-    ahbmi_hcache  : in std_ulogic;
-    ahbmi_testen  : in std_ulogic;
-    ahbmi_testrst : in std_ulogic;
-    ahbmi_scanen  : in std_ulogic;
+    ahbmi_hgrant      : in  std_logic_vector(n_cc*uhcgen downto 0);
+    ahbmi_hready      : in  std_ulogic;
+    ahbmi_hresp       : in  std_logic_vector(1 downto 0);
+    ahbmi_hrdata      : in  std_logic_vector(31 downto 0);
+    ahbmi_hcache      : in  std_ulogic;
+    ahbmi_testen      : in  std_ulogic;
+    ahbmi_testrst     : in  std_ulogic;
+    ahbmi_scanen      : in  std_ulogic;
     -- UHC ahb_slv_in_type unwrapped
-    uhc_ahbsi_hsel    : in std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
-    uhc_ahbsi_haddr   : in std_logic_vector(31 downto 0);
-    uhc_ahbsi_hwrite  : in std_ulogic;
-    uhc_ahbsi_htrans  : in std_logic_vector(1 downto 0);
-    uhc_ahbsi_hsize   : in std_logic_vector(2 downto 0);
-    uhc_ahbsi_hwdata  : in std_logic_vector(31 downto 0);
-    uhc_ahbsi_hready  : in std_ulogic;
-    uhc_ahbsi_testen  : in std_ulogic;
-    uhc_ahbsi_testrst : in std_ulogic;
-    uhc_ahbsi_scanen  : in std_ulogic;
+    uhc_ahbsi_hsel    : in  std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
+    uhc_ahbsi_haddr   : in  std_logic_vector(31 downto 0);
+    uhc_ahbsi_hwrite  : in  std_ulogic;
+    uhc_ahbsi_htrans  : in  std_logic_vector(1 downto 0);
+    uhc_ahbsi_hsize   : in  std_logic_vector(2 downto 0);
+    uhc_ahbsi_hwdata  : in  std_logic_vector(31 downto 0);
+    uhc_ahbsi_hready  : in  std_ulogic;
+    uhc_ahbsi_testen  : in  std_ulogic;
+    uhc_ahbsi_testrst : in  std_ulogic;
+    uhc_ahbsi_scanen  : in  std_ulogic;
     -- EHC ahb_mst_out_type_unwrapped 
     ehc_ahbmo_hbusreq : out std_ulogic;
     ehc_ahbmo_hlock   : out std_ulogic;
@@ -116,75 +117,87 @@ component usbhc_net is
     uhc_ahbmo_hprot   : out std_logic_vector((n_cc*4)*uhcgen downto 1*uhcgen);
     uhc_ahbmo_hwdata  : out std_logic_vector((n_cc*32)*uhcgen downto 1*uhcgen);
     -- UHC ahb_slv_out_vector_type unwrapped
-    uhc_ahbso_hready : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
-    uhc_ahbso_hresp  : out std_logic_vector((n_cc*2)*uhcgen downto 1*uhcgen);
-    uhc_ahbso_hrdata : out std_logic_vector((n_cc*32)*uhcgen downto 1*uhcgen);
-    uhc_ahbso_hsplit : out std_logic_vector((n_cc*16)*uhcgen downto 1*uhcgen);
-    uhc_ahbso_hcache : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
-    uhc_ahbso_hirq   : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
-    -- usbhc_out_type_vector unwrapped
-    xcvrsel  : out std_logic_vector(((nports*2)-1) downto 0);
-    termsel  : out std_logic_vector((nports-1) downto 0);
-    suspendm : out std_logic_vector((nports-1) downto 0);
-    opmode   : out std_logic_vector(((nports*2)-1) downto 0);
-    txvalid  : out std_logic_vector((nports-1) downto 0);
-    drvvbus  : out std_logic_vector((nports-1) downto 0);
-    dataho   : out std_logic_vector(((nports*8)-1) downto 0); 
-    validho  : out std_logic_vector((nports-1) downto 0);
-    host     : out std_logic_vector((nports-1) downto 0);
-    stp      : out std_logic_vector((nports-1) downto 0);
-    datao    : out std_logic_vector(((nports*8)-1) downto 0);   
-    utm_rst  : out std_logic_vector((nports-1) downto 0);
-    dctrlo   : out std_logic_vector((nports-1) downto 0);
-    -- usbhc_in_type_vector unwrapped
-    linestate : in std_logic_vector(((nports*2)-1) downto 0);
-    txready   : in std_logic_vector((nports-1) downto 0);
-    rxvalid   : in std_logic_vector((nports-1) downto 0);
-    rxactive  : in std_logic_vector((nports-1) downto 0);
-    rxerror   : in std_logic_vector((nports-1) downto 0);
-    vbusvalid : in std_logic_vector((nports-1) downto 0);
-    datahi    : in std_logic_vector(((nports*8)-1) downto 0);
-    validhi   : in std_logic_vector((nports-1) downto 0);
-    hostdisc  : in std_logic_vector((nports-1) downto 0);
-    nxt       : in std_logic_vector((nports-1) downto 0);
-    dir       : in std_logic_vector((nports-1) downto 0);
-    datai     : in std_logic_vector(((nports*8)-1) downto 0);
+    uhc_ahbso_hready  : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
+    uhc_ahbso_hresp   : out std_logic_vector((n_cc*2)*uhcgen downto 1*uhcgen);
+    uhc_ahbso_hrdata  : out std_logic_vector((n_cc*32)*uhcgen downto 1*uhcgen);
+    uhc_ahbso_hsplit  : out std_logic_vector((n_cc*16)*uhcgen downto 1*uhcgen);
+    uhc_ahbso_hcache  : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
+    uhc_ahbso_hirq    : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
+    -- grusb_out_type_vector unwrapped
+    xcvrsel           : out std_logic_vector(((nports*2)-1) downto 0);
+    termsel           : out std_logic_vector((nports-1) downto 0);
+    opmode            : out std_logic_vector(((nports*2)-1) downto 0);
+    txvalid           : out std_logic_vector((nports-1) downto 0);
+    drvvbus           : out std_logic_vector((nports-1) downto 0);
+    dataho            : out std_logic_vector(((nports*8)-1) downto 0);
+    validho           : out std_logic_vector((nports-1) downto 0);
+    stp               : out std_logic_vector((nports-1) downto 0);
+    datao             : out std_logic_vector(((nports*8)-1) downto 0);
+    utm_rst           : out std_logic_vector((nports-1) downto 0);
+    dctrlo            : out std_logic_vector((nports-1) downto 0);
+    suspendm          : out std_ulogic;
+    dbus16_8          : out std_ulogic;
+    dppulldown        : out std_ulogic;
+    dmpulldown        : out std_ulogic;
+    idpullup          : out std_ulogic;
+    dischrgvbus       : out std_ulogic;
+    chrgvbus          : out std_ulogic;
+    txbitstuffenable  : out std_ulogic;
+    txbitstuffenableh : out std_ulogic;
+    fslsserialmode    : out std_ulogic;
+    txenablen         : out std_ulogic;
+    txdat             : out std_ulogic;
+    txse0             : out std_ulogic;
+    -- grusb_in_type_vector unwrapped
+    linestate         : in  std_logic_vector(((nports*2)-1) downto 0);
+    txready           : in  std_logic_vector((nports-1) downto 0);
+    rxvalid           : in  std_logic_vector((nports-1) downto 0);
+    rxactive          : in  std_logic_vector((nports-1) downto 0);
+    rxerror           : in  std_logic_vector((nports-1) downto 0);
+    vbusvalid         : in  std_logic_vector((nports-1) downto 0);
+    datahi            : in  std_logic_vector(((nports*8)-1) downto 0);
+    validhi           : in  std_logic_vector((nports-1) downto 0);
+    hostdisc          : in  std_logic_vector((nports-1) downto 0);
+    nxt               : in  std_logic_vector((nports-1) downto 0);
+    dir               : in  std_logic_vector((nports-1) downto 0);
+    datai             : in  std_logic_vector(((nports*8)-1) downto 0);
+    urstdrive         : in  std_logic_vector((nports-1) downto 0);
     -- EHC transaction buffer signals
-    mbc20_tb_addr : out std_logic_vector(8 downto 0);
-    mbc20_tb_data : out std_logic_vector(31 downto 0);
-    mbc20_tb_en   : out std_ulogic;
-    mbc20_tb_wel  : out std_ulogic;
-    mbc20_tb_weh  : out std_ulogic;
-    tb_mbc20_data : in std_logic_vector(31 downto 0);
-    pe20_tb_addr  : out std_logic_vector(8 downto 0);
-    pe20_tb_data  : out std_logic_vector(31 downto 0);
-    pe20_tb_en    : out std_ulogic;
-    pe20_tb_wel   : out std_ulogic;
-    pe20_tb_weh   : out std_ulogic;
-    tb_pe20_data  : in std_logic_vector(31 downto 0);
+    mbc20_tb_addr     : out std_logic_vector(8 downto 0);
+    mbc20_tb_data     : out std_logic_vector(31 downto 0);
+    mbc20_tb_en       : out std_ulogic;
+    mbc20_tb_wel      : out std_ulogic;
+    mbc20_tb_weh      : out std_ulogic;
+    tb_mbc20_data     : in  std_logic_vector(31 downto 0);
+    pe20_tb_addr      : out std_logic_vector(8 downto 0);
+    pe20_tb_data      : out std_logic_vector(31 downto 0);
+    pe20_tb_en        : out std_ulogic;
+    pe20_tb_wel       : out std_ulogic;
+    pe20_tb_weh       : out std_ulogic;
+    tb_pe20_data      : in  std_logic_vector(31 downto 0);
     -- EHC packet buffer signals
-    mbc20_pb_addr : out std_logic_vector(8 downto 0);
-    mbc20_pb_data : out std_logic_vector(31 downto 0);
-    mbc20_pb_en   : out std_ulogic;
-    mbc20_pb_we   : out std_ulogic;
-    pb_mbc20_data : in std_logic_vector(31 downto 0);
-    sie20_pb_addr : out std_logic_vector(8 downto 0);
-    sie20_pb_data : out std_logic_vector(31 downto 0);
-    sie20_pb_en   : out std_ulogic;
-    sie20_pb_we   : out std_ulogic;
-    pb_sie20_data : in std_logic_vector(31 downto 0);
+    mbc20_pb_addr     : out std_logic_vector(8 downto 0);
+    mbc20_pb_data     : out std_logic_vector(31 downto 0);
+    mbc20_pb_en       : out std_ulogic;
+    mbc20_pb_we       : out std_ulogic;
+    pb_mbc20_data     : in  std_logic_vector(31 downto 0);
+    sie20_pb_addr     : out std_logic_vector(8 downto 0);
+    sie20_pb_data     : out std_logic_vector(31 downto 0);
+    sie20_pb_en       : out std_ulogic;
+    sie20_pb_we       : out std_ulogic;
+    pb_sie20_data     : in  std_logic_vector(31 downto 0);
     -- UHC packet buffer signals
-    sie11_pb_addr : out std_logic_vector((n_cc*9)*uhcgen downto 1*uhcgen);
-    sie11_pb_data : out std_logic_vector((n_cc*32)*uhcgen downto 1*uhcgen);
-    sie11_pb_en   : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
-    sie11_pb_we   : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
-    pb_sie11_data : in std_logic_vector((n_cc*32)*uhcgen downto 1*uhcgen);
-    mbc11_pb_addr : out std_logic_vector((n_cc*9)*uhcgen downto 1*uhcgen);
-    mbc11_pb_data : out std_logic_vector((n_cc*32)*uhcgen downto 1*uhcgen);
-    mbc11_pb_en   : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
-    mbc11_pb_we   : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
-    pb_mbc11_data : in std_logic_vector((n_cc*32)*uhcgen downto 1*uhcgen);
-    bufsel        : out std_ulogic);
+    sie11_pb_addr     : out std_logic_vector((n_cc*9)*uhcgen downto 1*uhcgen);
+    sie11_pb_data     : out std_logic_vector((n_cc*32)*uhcgen downto 1*uhcgen);
+    sie11_pb_en       : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
+    sie11_pb_we       : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
+    pb_sie11_data     : in  std_logic_vector((n_cc*32)*uhcgen downto 1*uhcgen);
+    mbc11_pb_addr     : out std_logic_vector((n_cc*9)*uhcgen downto 1*uhcgen);
+    mbc11_pb_data     : out std_logic_vector((n_cc*32)*uhcgen downto 1*uhcgen);
+    mbc11_pb_en       : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
+    mbc11_pb_we       : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
+    pb_mbc11_data     : in  std_logic_vector((n_cc*32)*uhcgen downto 1*uhcgen);
+    bufsel            : out std_ulogic);    
   end component;
 
 component grspwc_net 
@@ -270,6 +283,104 @@ component grspwc_net
     ncwdata      : out  std_logic_vector(8 downto 0);
     ncwaddress   : out  std_logic_vector(5 downto 0);
     ncrdata      : in   std_logic_vector(8 downto 0);
+    --rmap buf
+    rmrenable    : out  std_ulogic;
+    rmraddress   : out  std_logic_vector(7 downto 0);
+    rmwrite      : out  std_ulogic;
+    rmwdata      : out  std_logic_vector(7 downto 0);
+    rmwaddress   : out  std_logic_vector(7 downto 0);
+    rmrdata      : in   std_logic_vector(7 downto 0);
+    linkdis      : out  std_ulogic;
+    testclk      : in   std_ulogic := '0';
+    testrst      : in   std_ulogic := '0';
+    testen       : in   std_ulogic := '0'
+  );
+end component;
+
+component grspwc2_net
+  generic(
+    rmap         : integer range 0 to 1  := 0;
+    rmapcrc      : integer range 0 to 1  := 0;
+    fifosize1    : integer range 4 to 32 := 32;
+    fifosize2    : integer range 16 to 64 := 64;
+    rxunaligned  : integer range 0 to 1 := 0;
+    rmapbufs     : integer range 2 to 8 := 4;
+    scantest     : integer range 0 to 1 := 0;
+    ports        : integer range 1 to 2 := 1;
+    dmachan      : integer range 1 to 4 := 1;
+    tech         : integer;
+    input_type   : integer range 0 to 3 := 0;
+    output_type  : integer range 0 to 2 := 0;
+    rxtx_sameclk : integer range 0 to 1 := 0
+  );
+  port(
+    rst          : in  std_ulogic;
+    clk          : in  std_ulogic;
+    rxclk        : in  std_logic_vector(1 downto 0);
+    txclk        : in  std_ulogic;
+    txclkn       : in  std_ulogic;
+    --ahb mst in
+    hgrant       : in  std_ulogic;
+    hready       : in  std_ulogic;   
+    hresp        : in  std_logic_vector(1 downto 0);
+    hrdata       : in  std_logic_vector(31 downto 0); 
+    --ahb mst out
+    hbusreq      : out  std_ulogic;        
+    hlock        : out  std_ulogic;
+    htrans       : out  std_logic_vector(1 downto 0);
+    haddr        : out  std_logic_vector(31 downto 0);
+    hwrite       : out  std_ulogic;
+    hsize        : out  std_logic_vector(2 downto 0);
+    hburst       : out  std_logic_vector(2 downto 0);
+    hprot        : out  std_logic_vector(3 downto 0);
+    hwdata       : out  std_logic_vector(31 downto 0);
+    --apb slv in 
+    psel	 : in   std_ulogic;
+    penable	 : in   std_ulogic;
+    paddr	 : in   std_logic_vector(31 downto 0);
+    pwrite	 : in   std_ulogic;
+    pwdata	 : in   std_logic_vector(31 downto 0);
+    --apb slv out
+    prdata	 : out  std_logic_vector(31 downto 0);
+    --spw in
+    d            : in   std_logic_vector(3 downto 0);
+    dv           : in   std_logic_vector(3 downto 0);
+    dconnect     : in   std_logic_vector(3 downto 0);
+    --spw out
+    do           : out  std_logic_vector(3 downto 0);
+    so           : out  std_logic_vector(3 downto 0);
+    --time iface
+    tickin       : in   std_ulogic;
+    tickout      : out  std_ulogic;
+    --irq
+    irq          : out  std_logic;
+    --misc     
+    clkdiv10     : in   std_logic_vector(7 downto 0);
+    dcrstval     : in   std_logic_vector(9 downto 0);
+    timerrstval  : in   std_logic_vector(11 downto 0);
+    --rmapen
+    rmapen       : in   std_ulogic;
+    --rx ahb fifo
+    rxrenable    : out  std_ulogic;
+    rxraddress   : out  std_logic_vector(4 downto 0);
+    rxwrite      : out  std_ulogic;
+    rxwdata      : out  std_logic_vector(31 downto 0);
+    rxwaddress   : out  std_logic_vector(4 downto 0);
+    rxrdata      : in   std_logic_vector(31 downto 0);    
+    --tx ahb fifo
+    txrenable    : out  std_ulogic;
+    txraddress   : out  std_logic_vector(4 downto 0);
+    txwrite      : out  std_ulogic;
+    txwdata      : out  std_logic_vector(31 downto 0);
+    txwaddress   : out  std_logic_vector(4 downto 0);
+    txrdata      : in   std_logic_vector(31 downto 0);    
+    --nchar fifo
+    ncrenable    : out  std_ulogic;
+    ncraddress   : out  std_logic_vector(5 downto 0);
+    ncwrite      : out  std_ulogic;
+    ncwdata      : out  std_logic_vector(9 downto 0);
+    ncwaddress   : out  std_logic_vector(5 downto 0);
+    ncrdata      : in   std_logic_vector(9 downto 0);
     --rmap buf
     rmrenable    : out  std_ulogic;
     rmraddress   : out  std_logic_vector(7 downto 0);
@@ -495,7 +606,9 @@ end component;
     fpft      : integer range 0 to 4  := 0;
     cmft      : integer range 0 to 1  := 0;
     cached    : integer               := 0;
-    scantest  : integer               := 0
+    scantest  : integer               := 0;
+    mmupgsz   : integer range 0 to 5  := 0
+
   );
 
    port (

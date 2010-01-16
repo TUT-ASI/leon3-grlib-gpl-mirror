@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -178,6 +179,7 @@ package grethpkg is
     byte_count   : std_logic_vector(10 downto 0);
     status       : std_logic_vector(3 downto 0);
     gotframe     : std_ulogic;
+    mcasthash    : std_logic_vector(5 downto 0);
   end record;
 
   type gbit_host_rx_type is record
@@ -249,6 +251,7 @@ package grethpkg is
     gotframe   : std_ulogic;
     byte_count : std_logic_vector(10 downto 0);
     lentype    : std_logic_vector(15 downto 0);
+    mcasthash  : std_logic_vector(5 downto 0);
   end record;
 
   type host_rx_type is record
@@ -266,7 +269,8 @@ package grethpkg is
   component greth_rx is
     generic(
       nsync          : integer range 1 to 2 := 2;
-      rmii           : integer range 0 to 1  := 0);
+      rmii           : integer range 0 to 1 := 0;
+      multicast      : integer range 0 to 1 := 0);
     port(
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;
@@ -330,6 +334,7 @@ package grethpkg is
 
   component greth_gbit_rx is
     generic(
+      multicast      : integer range 0 to 1 := 0;
       nsync          : integer range 1 to 2 := 2);
     port(
       rst            : in  std_ulogic;
@@ -399,7 +404,7 @@ package body grethpkg is
   
   function mirror(din : in std_logic_vector)
                         return std_logic_vector is
-    variable do : std_logic_vector(din'high downto din'low);
+    variable do : std_logic_vector(din'range);
   begin
     for i in 0 to din'length-1 loop
       do(din'high-i) := din(i+din'low);

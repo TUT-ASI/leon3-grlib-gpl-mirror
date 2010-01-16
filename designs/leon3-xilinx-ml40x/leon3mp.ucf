@@ -184,17 +184,17 @@ NET iic_sda    IOSTANDARD = LVCMOS25;
 #------------------------------------------------------------------------------
 
 NET ac97_bit_clk   LOC = AE10;
-NET ac97_bit_clk   IOSTANDARD = LVCMOS33;
+#NET ac97_bit_clk   IOSTANDARD = LVCMOS33;
 #NET ac97_bit_clk   PERIOD = 80;
 NET ac97_sdata_in  LOC = AD16;
-NET ac97_sdata_in  IOSTANDARD = LVCMOS33;
+#NET ac97_sdata_in  IOSTANDARD = LVCMOS33;
 NET ac97_reset_n   LOC = AD10;
-NET ac97_reset_n   IOSTANDARD = LVCMOS33;
+#NET ac97_reset_n   IOSTANDARD = LVCMOS33;
 #NET ac97_reset_n   TIG;
 NET ac97_sdata_out LOC = C8;
 NET ac97_sync      LOC = D9;
-NET ac97_sdata_out   IOSTANDARD = LVCMOS25;
-NET ac97_sync   IOSTANDARD = LVCMOS25;
+#NET ac97_sdata_out   IOSTANDARD = LVCMOS25;
+#NET ac97_sync   IOSTANDARD = LVCMOS25;
 
 #------------------------------------------------------------------------------
 # IO Pad Location Constraints / Properties for System ACE MPU / USB
@@ -202,9 +202,9 @@ NET ac97_sync   IOSTANDARD = LVCMOS25;
 
 NET sysace_clk_in   LOC        = AF11;
 NET sysace_clk_in   IOSTANDARD = LVCMOS33;
-#NET sysace_clk_in   TNM_NET    = "sysace_clk_in";
+NET sysace_clk_in   TNM_NET    = "sysace_clk_in";
 # Leave 1 ns margin
-#TIMESPEC "TSSYSACE" = PERIOD "sysace_clk_in" 29 ns;
+TIMESPEC "TSSYSACE" = PERIOD "sysace_clk_in" 29 ns;
 
 NET sace_usb_a(0)   LOC        = U22;
 NET sace_usb_a(1)   LOC        = Y10;
@@ -239,7 +239,7 @@ NET sace_usb_d(15)  LOC        = AA7;
 NET sace_usb_d(*)   IOSTANDARD = LVCMOS33;
 NET sace_usb_d(*)   SLEW       = FAST;
 NET sace_usb_d(*)   DRIVE      = 8;
-#NET sace_usb_d(*)   PULLDOWN;
+NET sace_usb_d(*)   PULLDOWN;
 NET sace_usb_oen    LOC        = AA8;
 NET sace_usb_oen    IOSTANDARD = LVCMOS33;
 NET sace_usb_oen    SLEW       = FAST;
@@ -250,18 +250,18 @@ NET sace_usb_wen    SLEW       = FAST;
 NET sace_usb_wen    DRIVE      = 8;
 NET sysace_mpirq    LOC        = AD4;
 NET sysace_mpirq    IOSTANDARD = LVCMOS33;
-#NET sysace_mpirq    TIG;
-#NET sysace_mpirq    PULLDOWN;
+NET sysace_mpirq    TIG;
+NET sysace_mpirq    PULLDOWN;
 
 NET usb_csn         LOC        = AF10;
 NET usb_csn         IOSTANDARD = LVCMOS33;
-NET usb_csn         SLEW       = FAST;
+#NET usb_csn         SLEW       = FAST;
 NET usb_csn         DRIVE      = 8;
 NET usb_hpi_reset_n LOC        = A7;
-NET usb_hpi_reset_n IOSTANDARD = LVCMOS25;
+#NET usb_hpi_reset_n IOSTANDARD = LVCMOS25;
 #NET usb_hpi_reset_n TIG;
 NET usb_hpi_int     LOC        = V5;
-NET usb_hpi_int     IOSTANDARD = LVCMOS33;
+#NET usb_hpi_int     IOSTANDARD = LVCMOS33;
 #NET usb_hpi_int     TIG;
 #NET usb_hpi_int     PULLDOWN;
 
@@ -393,7 +393,7 @@ NET vid_hsync SLEW = FAST;
 NET vid_hsync DRIVE = 8;
 NET vid_blankn LOC = M24 | IOSTANDARD = LVCMOS33;
 NET vid_syncn LOC = L23 | IOSTANDARD = LVCMOS33;
-NET vid_psaven LOC = M25 | IOSTANDARD = LVCMOS33;
+#NET vid_psaven LOC = M25 | IOSTANDARD = LVCMOS33;
 
 NET vid_r(0) LOC = N23 | IOSTANDARD = LVCMOS33; #VGA_R0
 NET vid_r(1) LOC = N24 | IOSTANDARD = LVCMOS33; #VGA_R1
@@ -457,9 +457,8 @@ NET phy_tx_en      LOC = F4 | IOSTANDARD = LVCMOS25;
 NET phy_tx_er      LOC = F3 | IOSTANDARD = LVCMOS25;
 NET phy_mii_data   LOC = G4 | IOSTANDARD = LVCMOS25;
 NET phy_gtx_clk     LOC = G10 | IOSTANDARD = LVCMOS25;
+NET phy_int_n  LOC = H4 | IOSTANDARD = LVCMOS25 | PULLUP;
 
-#NET phy_mii_int_n  LOC = H4;
-#NET phy_mii_int_n  PULLUP;
 #NET phy_mii_int_n  TIG;
 
 NET phy_rst_n      TIG;
@@ -708,7 +707,7 @@ NET gpio_char_lcd(3) LOC = AF12; # LCD_DB7
 NET gpio_char_lcd(2) LOC = AE12; # LCD_DB6
 NET gpio_char_lcd(1) LOC = AC10; # LCD_DB5
 NET gpio_char_lcd(0) LOC = AB10; # LCD_DB4
-NET gpio_char_lcd(*) IOSTANDARD = LVCMOS33;
+#NET gpio_char_lcd(*) IOSTANDARD = LVCMOS33;
 #NET gpio_char_lcd(*) TIG;
 #NET gpio_char_lcd(*) PULLDOWN;
 

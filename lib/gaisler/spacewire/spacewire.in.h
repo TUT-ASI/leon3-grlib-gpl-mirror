@@ -50,6 +50,10 @@
 #define CONFIG_SPW_RMAPCRC 0
 #endif
 
+#ifndef CONFIG_SPW_RXUNAL
+#define CONFIG_SPW_RXUNAL 0
+#endif
+
 #ifndef CONFIG_SPW_NETLIST
 #define CONFIG_SPW_NETLIST 0
 #endif
@@ -64,3 +68,36 @@
 #define CONFIG_SPW_GRSPW 2
 #endif
 
+#ifndef CONFIG_SPW_DMACHAN
+#define CONFIG_SPW_DMACHAN 1
+#endif
+
+#ifndef CONFIG_SPW_PORTS
+#define CONFIG_SPW_PORTS 1
+#endif
+
+#if defined CONFIG_SPW_RX_SDR
+#define CONFIG_SPW_INPUT 2
+#elif defined CONFIG_SPW_RX_DDR
+#define CONFIG_SPW_INPUT 3
+#elif defined CONFIG_SPW_RX_XOR
+#define CONFIG_SPW_INPUT 0
+#elif defined CONFIG_SPW_RX_AFLEX
+#define CONFIG_SPW_INPUT 1
+#else
+#define CONFIG_SPW_INPUT 2
+#endif
+
+#if defined CONFIG_SPW_TX_SDR
+#define CONFIG_SPW_OUTPUT 0
+#elif defined CONFIG_SPW_TX_DDR
+#define CONFIG_SPW_OUTPUT 1
+#elif defined CONFIG_SPW_TX_AFLEX
+#define CONFIG_SPW_OUTPUT 2
+#else
+#define CONFIG_SPW_OUTPUT 0
+#endif
+
+#ifndef CONFIG_SPW_RTSAME
+#define CONFIG_SPW_RTSAME 0
+#endif

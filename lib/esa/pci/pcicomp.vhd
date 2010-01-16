@@ -1,7 +1,9 @@
 library ieee;
 library grlib;
+library techmap;
 
 use grlib.amba.all;
+use techmap.gencomp.all;
 use ieee.std_logic_1164.all;
 
 package pcicomp is
@@ -13,7 +15,8 @@ package pcicomp is
       pmask      : integer := 16#FFF#;
       nb_agents  : integer := 4;
       apb_en     : integer := 1;
-      netlist    : integer := 0);
+      netlist    : integer := 0;
+      tech       : integer := axcel);
     port(
       clk     : in std_ulogic;
       rst_n   : in std_ulogic;

@@ -14,4 +14,5 @@
   constant CFG_DDR2SP_DELAY5 	   : integer := CONFIG_DDR2SP_DELAY5;
   constant CFG_DDR2SP_DELAY6 	   : integer := CONFIG_DDR2SP_DELAY6;
   constant CFG_DDR2SP_DELAY7 	   : integer := CONFIG_DDR2SP_DELAY7;
+  constant CFG_DDR2SP_NOSYNC       : integer := CONFIG_DDR2SP_NOSYNC;
 

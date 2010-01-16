@@ -6,6 +6,8 @@
 #define CONFIG_SYN_TECH rhumc
 #elif defined CONFIG_SYN_ATC18
 #define CONFIG_SYN_TECH atc18s
+#elif defined CONFIG_SYN_ATC18RHA
+#define CONFIG_SYN_TECH atc18rha
 #elif defined CONFIG_SYN_AXCEL
 #define CONFIG_SYN_TECH axcel
 #elif defined CONFIG_SYN_PROASICPLUS
@@ -169,12 +171,15 @@
 #ifdef CONFIG_IU_V8MULDIV
 #ifdef CONFIG_IU_MUL_LATENCY_4
 #define CFG_IU_V8 1
-#else
+#elif defined CONFIG_IU_MUL_LATENCY_5
 #define CFG_IU_V8 2
+#elif defined CONFIG_IU_MUL_LATENCY_2
+#define CFG_IU_V8 16#32#
 #endif
 #else
 #define CFG_IU_V8 0
 #endif
+
 #ifndef CONFIG_PWD
 #define CONFIG_PWD 0
 #endif
@@ -615,11 +620,11 @@
 #endif
 
 #ifndef CONFIG_DSU_ETHMSB
-#define CONFIG_DSU_ETHMSB 00007A
+#define CONFIG_DSU_ETHMSB 020000
 #endif
 
 #ifndef CONFIG_DSU_ETHLSB
-#define CONFIG_DSU_ETHLSB CC0001
+#define CONFIG_DSU_ETHLSB 000029
 #endif
 
 #if defined CONFIG_DSU_ETHSZ1
@@ -1057,6 +1062,9 @@
 
 #ifndef CONFIG_IRQ3_ENABLE
 #define CONFIG_IRQ3_ENABLE 0
+#endif
+#ifndef CONFIG_IRQ3_NSEC
+#define CONFIG_IRQ3_NSEC 0
 #endif
 #ifndef CONFIG_GPT_ENABLE
 #define CONFIG_GPT_ENABLE 0

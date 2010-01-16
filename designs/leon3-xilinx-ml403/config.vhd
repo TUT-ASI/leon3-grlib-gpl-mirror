@@ -40,12 +40,12 @@ package config is
   constant CFG_LEON3 : integer := 1;
   constant CFG_NCPU : integer := (1);
   constant CFG_NWIN : integer := (8);
-  constant CFG_V8 : integer := 16#32#;
+  constant CFG_V8 : integer := 0;
   constant CFG_MAC : integer := 0;
   constant CFG_SVT : integer := 1;
   constant CFG_RSTADDR : integer := 16#00000#;
   constant CFG_LDDEL : integer := (1);
-  constant CFG_NWP : integer := (2);
+  constant CFG_NWP : integer := (1);
   constant CFG_PWD : integer := 1*2;
   constant CFG_FPU : integer := 0 + 16*0;
   constant CFG_GRFPUSH : integer := 0;
@@ -161,6 +161,7 @@ package config is
 
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE : integer := 1;
+  constant CFG_IRQ3_NSEC : integer := 0;
 
 -- Modular timer
   constant CFG_GPT_ENABLE : integer := 1;
@@ -175,7 +176,7 @@ package config is
 -- GPIO port
   constant CFG_GRGPIO_ENABLE : integer := 1;
   constant CFG_GRGPIO_IMASK : integer := 16#0FFFE#;
-  constant CFG_GRGPIO_WIDTH : integer := (32);
+  constant CFG_GRGPIO_WIDTH : integer := (14);
 
 -- I2C master
   constant CFG_I2C_ENABLE : integer := 1;

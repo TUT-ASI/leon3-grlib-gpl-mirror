@@ -1,6 +1,7 @@
 /**********************************************************************/
 /*  This file is a part of the GRFPU IP core testbench                */
-/*  Copyright (C) 2004  Gaisler Research AB                           */
+/*  Copyright (C) 2004-2008  Gaisler Research AB                      */
+/*  Copyright (C) 2008-2009  Aeroflex Gaisler AB                      */
 /*  ALL RIGHTS RESERVED                                               */
 /*                                                                    */
 /**********************************************************************/
@@ -14,21 +15,49 @@
 !  %o0  : 0 - OK, 1 - error	 	
 
 	.text
-	.align 4
+	.align 4	
 	.global grfpu_fdivs, grfpu_fdivd, grfpu_sqrtd, grfpu_ttrap
 	.global divident, divromtst
 	.global grfpu_faddd
-	.global grfpu_fmuld		
+	.global grfpu_fmuld
+	.global grfpu_fsmuld
 	.global grfpu_fstoi, grfpu_fdtoi, grfpu_fitos, grfpu_fitod
 	.global grfpu_fstod, grfpu_fdtos
 	.global grfpu_fnegs, grfpu_fmovs, grfpu_fabss
 	.global grfpu_fcmpd, grfpu_fcmped, grfpu_fcmps, grfpu_fcmpes
 	.global grfpu_fsubd, grfpu_fadds, grfpu_fsubs, grfpu_fmuls
 	.global	grfpu_fdivs, grfpu_fsqrts, initfpreg
-	.global grfpc_dpdep_tst, grfpc_spdep_tst, grfpc_spdpdep_tst	
+	.global grfpc_dpdep_tst, grfpc_spdep_tst, grfpc_spdep_tst2
+	.global grfpc_spdpdep_tst
 	.global get_tbr, fptrap
+	.global test_pl1
+
 	
-				
+test_pl1:
+	set	dw, %o4
+	set	0x40080000, %o0
+	mov	0x00000000, %o1
+	set	0x3fddb3d7, %o2	
+	std 	%o0, [%o4]
+	st	%o2, [%o4+8]
+	ldd	[%o4], %f0
+	ld	[%o4+8], %f2	
+	fmuls   %f2, %f2, %f3
+	/* Nop needed, otherwise both fmuls gets reordered ahead of
+	 * fsqrtd */
+	nop 
+	fsqrtd  %f0, %f4
+	fmuls   %f2, %f2, %f6
+	fcmps   %f3, %f6
+	nop
+	fbe,a   comp_eq
+	mov     0, %o0
+	mov	1, %o0
+comp_eq:
+	retl
+	nop
+
+	
 grfpu_faddd:
 	ldd	[%o0], %f0
 	ldd	[%o1], %f2
@@ -43,7 +72,16 @@ grfpu_fmuld:
 	fmuld	%f0, %f2, %f4
 	retl
 	std	%f4, [%o2]		
-		
+
+grfpu_fsmuld:
+	set     dw, %o4
+	st	%o0, [%o4]
+	st	%o1, [%o4+8]
+	ld	[%o4], %f0
+	ld	[%o4+8], %f1
+	fsmuld  %f0, %f1, %f2
+	retl
+	std	%f2, [%o2]
 	
 grfpu_fdivd:	
 	ldd  [%o0], %f0
@@ -326,7 +364,23 @@ grfpc_spdep_tst:
 	fmuls	%f4, %f1, %f4	! -0.5 * 3 = -1.5
 	retl
         st      %f4, [%o0]
-	
+
+grfpc_spdep_tst2:
+	set     2, %o3
+	set	dpbuf, %o1
+        set     dpbuf, %o2
+grfpc_spdep_tst2_loop:     
+	ld	[%o1], %f10
+	ld	[%o2], %f11
+	st      %f10, [%o0]
+	ld      [%o0], %o4
+	set	spbuf, %o1       ! change buffer for second run
+	subcc   %o3, 1, %o3
+	bne     grfpc_spdep_tst2_loop
+	nop
+	retl
+	nop
+
 grfpc_spdpdep_tst:
 	set	dpbuf, %o1
 	set	spbuf, %o2
@@ -462,4 +516,5 @@ grfpufq:
 	.word 0
 	.word 0
 	.word 0
+
 

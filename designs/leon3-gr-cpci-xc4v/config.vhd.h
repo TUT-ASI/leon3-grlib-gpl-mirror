@@ -20,6 +20,7 @@
   constant CFG_NWIN 	: integer := CONFIG_IU_NWINDOWS;
   constant CFG_V8   	: integer := CFG_IU_V8;
   constant CFG_MAC  	: integer := CONFIG_IU_MUL_MAC;
+  constant CFG_BP   	: integer := CONFIG_IU_BP;
   constant CFG_SVT  	: integer := CONFIG_IU_SVT;
   constant CFG_RSTADDR 	: integer := 16#CONFIG_IU_RSTADDR#;
   constant CFG_LDDEL	: integer := CONFIG_IU_LDELAY;
@@ -52,6 +53,7 @@
   constant CFG_DTLBNUM  : integer := CONFIG_DTLBNUM;
   constant CFG_TLB_TYPE : integer := CONFIG_TLB_TYPE + CFG_MMU_FASTWB*2;
   constant CFG_TLB_REP  : integer := CONFIG_TLB_REP;
+  constant CFG_MMU_PAGE : integer := CONFIG_MMU_PAGE;
   constant CFG_DSU   	: integer := CONFIG_DSU_ENABLE;
   constant CFG_ITBSZ 	: integer := CFG_DSU_ITB;
   constant CFG_ATBSZ 	: integer := CFG_DSU_ATB;
@@ -134,7 +136,12 @@
   constant CFG_SPW_NETLIST : integer := CONFIG_SPW_NETLIST;
   constant CFG_SPW_FT      : integer := CONFIG_SPW_FT;
   constant CFG_SPW_GRSPW   : integer := CONFIG_SPW_GRSPW;
-
+  constant CFG_SPW_RXUNAL  : integer := CONFIG_SPW_RXUNAL;
+  constant CFG_SPW_DMACHAN : integer := CONFIG_SPW_DMACHAN;
+  constant CFG_SPW_PORTS   : integer := CONFIG_SPW_PORTS;
+  constant CFG_SPW_INPUT   : integer := CONFIG_SPW_INPUT;
+  constant CFG_SPW_OUTPUT  : integer := CONFIG_SPW_OUTPUT;
+  constant CFG_SPW_RTSAME  : integer := CONFIG_SPW_RTSAME;
 -- PCI interface
   constant CFG_PCI     	: integer := CFG_PCITYPE;
   constant CFG_PCIVID   : integer := 16#CONFIG_PCI_VENDORID#;

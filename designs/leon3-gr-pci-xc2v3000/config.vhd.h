@@ -52,6 +52,7 @@
   constant CFG_DTLBNUM  : integer := CONFIG_DTLBNUM;
   constant CFG_TLB_TYPE : integer := CONFIG_TLB_TYPE + CFG_MMU_FASTWB*2;
   constant CFG_TLB_REP  : integer := CONFIG_TLB_REP;
+  constant CFG_MMU_PAGE : integer := CONFIG_MMU_PAGE;
   constant CFG_DSU   	: integer := CONFIG_DSU_ENABLE;
   constant CFG_ITBSZ 	: integer := CFG_DSU_ITB;
   constant CFG_ATBSZ 	: integer := CFG_DSU_ATB;
@@ -144,7 +145,12 @@
   constant CFG_SPW_NETLIST : integer := CONFIG_SPW_NETLIST;
   constant CFG_SPW_FT      : integer := CONFIG_SPW_FT;
   constant CFG_SPW_GRSPW   : integer := CONFIG_SPW_GRSPW;
-
+  constant CFG_SPW_RXUNAL  : integer := CONFIG_SPW_RXUNAL;
+  constant CFG_SPW_DMACHAN : integer := CONFIG_SPW_DMACHAN;
+  constant CFG_SPW_PORTS   : integer := CONFIG_SPW_PORTS;
+  constant CFG_SPW_INPUT   : integer := CONFIG_SPW_INPUT;
+  constant CFG_SPW_OUTPUT  : integer := CONFIG_SPW_OUTPUT;
+  constant CFG_SPW_RTSAME  : integer := CONFIG_SPW_RTSAME;
 -- UART 1
   constant CFG_UART1_ENABLE : integer := CONFIG_UART1_ENABLE;
   constant CFG_UART1_FIFO   : integer := CFG_UA1_FIFO;
@@ -155,6 +161,7 @@
 
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE  : integer := CONFIG_IRQ3_ENABLE;
+  constant CFG_IRQ3_NSEC    : integer := CONFIG_IRQ3_NSEC;
 
 -- Modular timer
   constant CFG_GPT_ENABLE   : integer := CONFIG_GPT_ENABLE;

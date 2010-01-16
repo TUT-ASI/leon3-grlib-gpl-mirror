@@ -1,6 +1,10 @@
 -----------------------------------------------------------------------------
 --  LEON3 Demonstration design test bench
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -11,6 +15,10 @@
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
 --  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 --  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -53,6 +61,7 @@ constant sramfile  : string := "sram.srec";  -- ram contents
 constant sdramfile : string := "sdram.srec"; -- sdram contents
 
 signal sys_clk : std_logic := '0';
+signal sysace_clk : std_logic := '0';
 signal sys_rst_in : std_logic := '0';			-- Reset
 constant ct : integer := clkperiod/2;
 
@@ -101,6 +110,13 @@ signal vid_b         : std_logic_vector(7 downto 0);
 signal ps2clk        : std_logic_vector(1 downto 0);
 signal ps2data       : std_logic_vector(1 downto 0);
 
+signal cf_mpa        : std_logic_vector(6 downto 0);
+signal cf_mpd        : std_logic_vector(15 downto 0);
+signal cf_mp_ce_z    : std_ulogic;
+signal cf_mp_oe_z    : std_ulogic;
+signal cf_mp_we_z    : std_ulogic;
+signal cf_mpirq      : std_ulogic;
+
 signal GND      : std_ulogic := '0';
 signal VCC      : std_ulogic := '1';
 signal NC       : std_ulogic := 'Z';
@@ -114,13 +130,15 @@ begin
 -- clock and reset
 
   sys_clk <= not sys_clk after ct * 1 ns;
+  sysace_clk <= not sysace_clk after 15 ns;
   sys_rst_in <= '0', '1' after 200 ns; 
-  rxd1 <= 'H'; errorn <= 'H'; dsuen <= '0';
+  rxd1 <= 'H'; errorn <= 'H'; dsuen <= '0'; dsubre <= 'H';
   ddr_clk_fb <= ddr_clk_fb_out; rxd1 <= txd1;
+  cf_mpd <= (others => 'H'); cf_mpirq <= 'L';
 
   cpu : entity work.leon3mp
       generic map ( fabtech, memtech, padtech, ncpu, disas, dbguart, pclow )
-      port map ( sys_rst_in, sys_clk, errorn, dsuen, dsubre, dsuact, 
+      port map ( sys_rst_in, sys_clk, sysace_clk, errorn, dsuen, dsubre, dsuact, 
 	ddr_clk, ddr_clkb, ddr_clk_fb, ddr_clk_fb_out, ddr_cke, ddr_csb, 
 	ddr_web, ddr_rasb, ddr_casb, ddr_dm, ddr_dqs, ddr_ad, ddr_ba, ddr_dq, 
 	rxd1, txd1, leds(0), leds(1),
@@ -128,7 +146,8 @@ begin
 	emdio, etx_clk, erx_clk, erxd, erx_dv, erx_er, erx_col, erx_crs,
         etxd, etx_en, etx_er, emdc, eresetn, etx_slew, ps2clk, ps2data, 
 	vid_clock, vid_blankn, vid_syncn, vid_hsync, vid_vsync, 
-	vid_r, vid_g, vid_b
+	vid_r, vid_g, vid_b,
+        cf_mpa, cf_mpd, cf_mp_ce_z, cf_mp_oe_z, cf_mp_we_z, cf_mpirq
 	);
 
   ddrmem : for i in 0 to 1 generate

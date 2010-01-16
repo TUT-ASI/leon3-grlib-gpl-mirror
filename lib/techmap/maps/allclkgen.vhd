@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,27 +29,6 @@ library techmap;
 use techmap.gencomp.all;
 
 package allclkgen is
-
-component clkgen_virtex 
-  generic (
-    clk_mul  : integer := 1; 
-    clk_div  : integer := 1;
-    sdramen  : integer := 0;
-    noclkfb  : integer := 0;
-    pcien    : integer := 0;
-    pcidll   : integer := 0;
-    pcisysclk: integer := 0);
-  port (
-    clkin   : in  std_logic;
-    pciclkin: in  std_logic;
-    clk     : out std_logic;			-- main clock
-    clkn    : out std_logic;			-- inverted main clock
-    clk2x   : out std_logic;			-- double clock
-    sdclk   : out std_logic;			-- SDRAM clock
-    pciclk  : out std_logic;			-- PCI clock
-    cgi     : in clkgen_in_type;
-    cgo     : out clkgen_out_type);
-end component; 
 
 component clkgen_virtex2 
   generic (
@@ -171,6 +151,29 @@ component clkgen_altera_mf
     cgo     : out clkgen_out_type);
 end component; 
 
+component clkgen_stratixii 
+  generic (
+    clk_mul  : integer := 1; 
+    clk_div  : integer := 1;
+    sdramen  : integer := 0;
+    sdinvclk : integer := 0;
+    pcien    : integer := 0;
+    pcidll   : integer := 0;
+    pcisysclk: integer := 0;
+    freq     : integer := 25000;
+    clk2xen  : integer := 0);      
+  port (
+    clkin   : in  std_logic;
+    pciclkin: in  std_logic;
+    clk     : out std_logic;			-- main clock
+    clkn    : out std_logic;			-- inverted main clock
+    clk2x   : out std_logic;			-- double clock    
+    sdclk   : out std_logic;			-- SDRAM clock
+    pciclk  : out std_logic;			-- PCI clock
+    cgi     : in clkgen_in_type;
+    cgo     : out clkgen_out_type);
+end component; 
+
 component clkgen_cycloneiii 
   generic (
     clk_mul  : integer := 1; 
@@ -257,7 +260,24 @@ component clkand_ut025crh
   );
 end component;
 
+component clkand_rh_lib18t
+  port(
+    i      :  in  std_ulogic;
+    en     :  in  std_ulogic;
+    o      :  out std_ulogic;
+    tsten  :  in  std_ulogic
+  );
+end component;
+
 component clkmux_unisim
+  port(
+    i0, i1  :  in  std_ulogic;
+    sel     :  in  std_ulogic;
+    o       :  out std_ulogic
+  );
+end component;
+
+component clkmux_fusion
   port(
     i0, i1  :  in  std_ulogic;
     sel     :  in  std_ulogic;
@@ -282,6 +302,24 @@ end component;
   end component;
 
   component clkgen_proasic3
+  generic (
+    clk_mul  : integer := 1; 
+    clk_div  : integer := 1;
+    clk_odiv : integer := 1;		-- output divider
+    pcien    : integer := 0;
+    pcisysclk: integer := 0;
+    freq     : integer := 25000);	-- clock frequency in KHz
+  port (
+    clkin   : in  std_ulogic;
+    pciclkin: in  std_ulogic;
+    clk     : out std_ulogic;			-- main clock
+    sdclk   : out std_ulogic;			-- SDRAM clock
+    pciclk  : out std_ulogic;
+    cgi     : in clkgen_in_type;
+    cgo     : out clkgen_out_type);
+  end component;
+
+  component clkgen_fusion
   generic (
     clk_mul  : integer := 1; 
     clk_div  : integer := 1;
@@ -344,4 +382,30 @@ end component;
     clk1xu  : out std_logic;			-- unscaled 1X clock
     clk2xu  : out std_logic);			-- unscaled 2X clock
   end component; 
+
+  component clkgen_easic90
+    generic (
+      clk_mul   : integer;
+      clk_div   : integer;
+      freq      : integer;
+      pcisysclk : integer;
+      pcien     : integer); 
+    port (
+      clkin    : in  std_ulogic;
+      pciclkin : in  std_ulogic;
+      clk      : out std_ulogic;
+      clk2x    : out std_ulogic;
+      clk4x    : out std_ulogic;
+      clkn     : out std_ulogic;
+      lock     : out std_ulogic); 
+  end component;
+
+component clkmux_rhlib18t
+  port(
+    i0     :  in  std_ulogic;
+    i1     :  in  std_ulogic;
+    sel    :  in  std_ulogic;
+    o      :  out std_ulogic);
+end component;
+
 end;

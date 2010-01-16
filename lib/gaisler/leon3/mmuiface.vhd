@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -32,6 +33,7 @@ use gaisler.mmuconfig.all;
 package mmuiface is
 
 type mmutlbcam_in_type is record
+  mmctrl   : mmctrl_type1;
   tagin    : tlbcam_tfp;
   tagwrite : tlbcam_reg;
   trans_op : std_logic;
@@ -43,7 +45,7 @@ type mmutlbcam_in_type is record
 end record;
 type mmutlbcami_a is array (natural range <>) of mmutlbcam_in_type;
 
-constant mmutlbcam_in_type_none : mmutlbcam_in_type := (tlbcam_tfp_none,
+constant mmutlbcam_in_type_none : mmutlbcam_in_type := (mmctrl_type1_none, tlbcam_tfp_none,
 	tlbcam_reg_none, '0', '0', '0', '0', '0', '0');
 type mmutlbcam_out_type is record
   pteout   : std_logic_vector(31 downto 0);

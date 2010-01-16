@@ -2,11 +2,15 @@
 
 #Clocks
 NET "clk_socket" LOC = "AB12"  | IOSTANDARD = LVCMOS33; #OSC2 (SOCKET)
-NET clk_66mhz PERIOD = 15.000 ;
 NET "clk_66mhz"  LOC = "A11";  #OSC1 (66MHZ)
+NET clk_66mhz PERIOD = 15.000 ;
+OFFSET = OUT : 12.000 : AFTER clk_66mhz;
 NET video_clk PERIOD = 39.000 ;
 
-OFFSET = OUT : 12.000 : AFTER clk_66mhz;
+# Enable for ISE10
+#NET "video_clk" CLOCK_DEDICATED_ROUTE = FALSE;
+#NET "phy_rxck" CLOCK_DEDICATED_ROUTE = FALSE;
+#NET "phy_txck" CLOCK_DEDICATED_ROUTE = FALSE;
 
 #NET "clk" 		TNM_NET = "clk";
 #NET "clk40" 		TNM_NET = "clk40";

@@ -52,6 +52,7 @@
   constant CFG_DTLBNUM  : integer := CONFIG_DTLBNUM;
   constant CFG_TLB_TYPE : integer := CONFIG_TLB_TYPE + CFG_MMU_FASTWB*2;
   constant CFG_TLB_REP  : integer := CONFIG_TLB_REP;
+  constant CFG_MMU_PAGE : integer := CONFIG_MMU_PAGE;
   constant CFG_DSU   	: integer := CONFIG_DSU_ENABLE;
   constant CFG_ITBSZ 	: integer := CFG_DSU_ITB;
   constant CFG_ATBSZ 	: integer := CFG_DSU_ATB;
@@ -116,6 +117,7 @@
   constant CFG_DDR2SP_DELAY5 	   : integer := CONFIG_DDR2SP_DELAY5;
   constant CFG_DDR2SP_DELAY6 	   : integer := CONFIG_DDR2SP_DELAY6;
   constant CFG_DDR2SP_DELAY7 	   : integer := CONFIG_DDR2SP_DELAY7;
+  constant CFG_DDR2SP_NOSYNC       : integer := CONFIG_DDR2SP_NOSYNC;
 
 -- AHB status register
   constant CFG_AHBSTAT 	: integer := CONFIG_AHBSTAT_ENABLE;
@@ -164,10 +166,16 @@
 -- I2C master
   constant CFG_I2C_ENABLE : integer := CONFIG_I2C_ENABLE;
 
+-- AMBA Wrapper for Xilinx System Monitor
+  constant CFG_GRSYSMON : integer := CONFIG_GRSYSMON;
+
 -- VGA and PS2/ interface
   constant CFG_KBD_ENABLE  : integer := CONFIG_KBD_ENABLE;
   constant CFG_VGA_ENABLE  : integer := CONFIG_VGA_ENABLE;
   constant CFG_SVGA_ENABLE : integer := CONFIG_SVGA_ENABLE;
+
+-- AMBA System ACE Interface Controller
+  constant CFG_GRACECTRL : integer := CONFIG_GRACECTRL;
 
 -- GRLIB debugging
   constant CFG_DUART    : integer := CONFIG_DEBUG_UART;

@@ -35,9 +35,10 @@ component stratixiii_ddio_out
     ena                     : in std_logic := '1';   
     areset                  : in std_logic := '0';   
     sreset                  : in std_logic := '0';   
-    dataout                 : out std_logic;         
-    dfflo                   : out std_logic;         
-    dffhi                   : out std_logic-- ;         
+    dataout                 : out std_logic --;         
+--    dfflo                   : out std_logic;         
+--    dffhi                   : out std_logic_vector(1 downto 0) -- changed in quartus 9.0
+--    dffhi                   : out std_logic-- ;         
     --devclrn                 : in std_logic := '1';   
     --devpor                  : in std_logic := '1'   
   );   
@@ -97,9 +98,9 @@ begin
       ena      => vcc,   
       areset   => gnd(0),   
       sreset   => gnd(0),   
-      dataout  => clk_reg,   
-      dfflo    => open,   
-      dffhi    => open--,    
+      dataout  => clk_reg   
+--      dfflo    => open --,   
+--      dffhi    => open--,    
       --devclrn  => vcc,   
       --devpor   => vcc  
     );

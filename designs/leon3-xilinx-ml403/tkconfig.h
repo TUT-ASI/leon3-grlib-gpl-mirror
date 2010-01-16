@@ -56,6 +56,8 @@
 #define CONFIG_SYN_TECH virtex5
 #elif defined CONFIG_SYN_RH_LIB18T
 #define CONFIG_SYN_TECH rhlib18t
+#elif defined CONFIG_SYN_SMIC13
+#define CONFIG_SYN_TECH smic013
 #elif defined CONFIG_SYN_UT025CRH
 #define CONFIG_SYN_TECH ut25
 #elif defined CONFIG_SYN_TSMC90
@@ -819,6 +821,9 @@
 
 #ifndef CONFIG_IRQ3_ENABLE
 #define CONFIG_IRQ3_ENABLE 0
+#endif
+#ifndef CONFIG_IRQ3_NSEC
+#define CONFIG_IRQ3_NSEC 0
 #endif
 #ifndef CONFIG_GPT_ENABLE
 #define CONFIG_GPT_ENABLE 0

@@ -644,7 +644,7 @@ set active_menus [list]
 set processed_top_level 0
 set ARCH sparc
 set menus_per_column 4
-set total_menus 19
+set total_menus 20
 
 proc toplevel_menu {num} {
 	if {$num == 4} then {return 3}
@@ -659,6 +659,7 @@ proc toplevel_menu {num} {
 	if {$num == 16} then {return 13}
 	if {$num == 17} then {return 13}
 	if {$num == 18} then {return 13}
+	if {$num == 19} then {return 13}
 	return $num
 }
 
@@ -739,6 +740,7 @@ proc menu1 {w title} {
 	$w.config.f.x0.x.menu add radiobutton -label "Peregrine" -variable tmpvar_0 -value "Peregrine" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "RH-LIB18T" -variable tmpvar_0 -value "RH-LIB18T" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "RH-UMC" -variable tmpvar_0 -value "RH-UMC" -command "update_active"
+	$w.config.f.x0.x.menu add radiobutton -label "SMIC130" -variable tmpvar_0 -value "SMIC130" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Spartan2" -variable tmpvar_0 -value "Xilinx-Spartan2" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Spartan3" -variable tmpvar_0 -value "Xilinx-Spartan3" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Spartan3E" -variable tmpvar_0 -value "Xilinx-Spartan3E" -command "update_active"
@@ -747,9 +749,9 @@ proc menu1 {w title} {
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Virtex2" -variable tmpvar_0 -value "Xilinx-Virtex2" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Virtex4" -variable tmpvar_0 -value "Xilinx-Virtex4" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Virtex5" -variable tmpvar_0 -value "Xilinx-Virtex5" -command "update_active"
-	$w.config.f.x0.x.menu add radiobutton -label "UMC18" -variable tmpvar_0 -value "UMC18" -command "update_active"
+	$w.config.f.x0.x.menu add radiobutton -label "UMC180" -variable tmpvar_0 -value "UMC180" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "TSMC90" -variable tmpvar_0 -value "TSMC90" -command "update_active"
-	menusplit $w $w.config.f.x0.x.menu 32
+	menusplit $w $w.config.f.x0.x.menu 33
 	global tmpvar_1
 	minimenu $w.config.f 1 1 "Memory Library                           " tmpvar_1 CONFIG_MEM_INFERRED
 	menu $w.config.f.x1.x.menu -tearoffcommand "menutitle \"Memory Library                           \""
@@ -866,6 +868,8 @@ proc update_define_menu1 {} {
 	if {$tmpvar_0 == "RH-LIB18T"} then {set CONFIG_SYN_RH_LIB18T 1} else {set CONFIG_SYN_RH_LIB18T 0}
 	global CONFIG_SYN_RHUMC
 	if {$tmpvar_0 == "RH-UMC"} then {set CONFIG_SYN_RHUMC 1} else {set CONFIG_SYN_RHUMC 0}
+	global CONFIG_SYN_SMIC13
+	if {$tmpvar_0 == "SMIC130"} then {set CONFIG_SYN_SMIC13 1} else {set CONFIG_SYN_SMIC13 0}
 	global CONFIG_SYN_SPARTAN2
 	if {$tmpvar_0 == "Xilinx-Spartan2"} then {set CONFIG_SYN_SPARTAN2 1} else {set CONFIG_SYN_SPARTAN2 0}
 	global CONFIG_SYN_SPARTAN3
@@ -883,7 +887,7 @@ proc update_define_menu1 {} {
 	global CONFIG_SYN_VIRTEX5
 	if {$tmpvar_0 == "Xilinx-Virtex5"} then {set CONFIG_SYN_VIRTEX5 1} else {set CONFIG_SYN_VIRTEX5 0}
 	global CONFIG_SYN_UMC
-	if {$tmpvar_0 == "UMC18"} then {set CONFIG_SYN_UMC 1} else {set CONFIG_SYN_UMC 0}
+	if {$tmpvar_0 == "UMC180"} then {set CONFIG_SYN_UMC 1} else {set CONFIG_SYN_UMC 0}
 	global CONFIG_SYN_TSMC90
 	if {$tmpvar_0 == "TSMC90"} then {set CONFIG_SYN_TSMC90 1} else {set CONFIG_SYN_TSMC90 0}
 	global tmpvar_1
@@ -1428,7 +1432,8 @@ proc menu5 {w title} {
 	menu $w.config.f.x2.x.menu -tearoffcommand "menutitle \"GRFPU multiplier\""
 	$w.config.f.x2.x.menu add radiobutton -label "Inferred" -variable tmpvar_5 -value "Inferred" -command "update_active"
 	$w.config.f.x2.x.menu add radiobutton -label "DW" -variable tmpvar_5 -value "DW" -command "update_active"
-	menusplit $w $w.config.f.x2.x.menu 2
+	$w.config.f.x2.x.menu add radiobutton -label "ModGen" -variable tmpvar_5 -value "ModGen" -command "update_active"
+	menusplit $w $w.config.f.x2.x.menu 3
 	global tmpvar_6
 	minimenu $w.config.f 5 3 "GRFPU-LITE controller" tmpvar_6 CONFIG_FPU_GRFPC0
 	menu $w.config.f.x3.x.menu -tearoffcommand "menutitle \"GRFPU-LITE controller\""
@@ -1508,6 +1513,8 @@ proc update_define_menu5 {} {
 	if {$tmpvar_5 == "Inferred"} then {set CONFIG_FPU_GRFPU_INFMUL 1} else {set CONFIG_FPU_GRFPU_INFMUL 0}
 	global CONFIG_FPU_GRFPU_DWMUL
 	if {$tmpvar_5 == "DW"} then {set CONFIG_FPU_GRFPU_DWMUL 1} else {set CONFIG_FPU_GRFPU_DWMUL 0}
+	global CONFIG_FPU_GRFPU_MODGEN
+	if {$tmpvar_5 == "ModGen"} then {set CONFIG_FPU_GRFPU_MODGEN 1} else {set CONFIG_FPU_GRFPU_MODGEN 0}
 	global tmpvar_6
 	global CONFIG_FPU_GRFPC0
 	if {$tmpvar_6 == "Simple"} then {set CONFIG_FPU_GRFPC0 1} else {set CONFIG_FPU_GRFPC0 0}
@@ -2748,9 +2755,9 @@ proc update_define_menu12 {} {
 	global CONFIG_DSU_IPLSB
 	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {validate_hex CONFIG_DSU_IPLSB "$CONFIG_DSU_IPLSB" 0033}
 	global CONFIG_DSU_ETHMSB
-	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {validate_hex CONFIG_DSU_ETHMSB "$CONFIG_DSU_ETHMSB" 00007A}
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {validate_hex CONFIG_DSU_ETHMSB "$CONFIG_DSU_ETHMSB" 020000}
 	global CONFIG_DSU_ETHLSB
-	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {validate_hex CONFIG_DSU_ETHLSB "$CONFIG_DSU_ETHLSB" CC0001}
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {validate_hex CONFIG_DSU_ETHLSB "$CONFIG_DSU_ETHLSB" 000000}
 	global CONFIG_GRETH_GIGA
 	global CONFIG_DSU_ETH_PROG
 	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1) && ($CONFIG_GRETH_GIGA == 0)} then {
@@ -2814,6 +2821,7 @@ proc menu13 {w title} {
 	submenu $w.config.f 13 2 "Ethernet             " 16
 	submenu $w.config.f 13 3 "UART, timer, I/O port and interrupt controller" 17
 	submenu $w.config.f 13 4 "Keybord and VGA interface" 18
+	submenu $w.config.f 13 5 "System ACE            " 19
 
 
 
@@ -2968,8 +2976,9 @@ proc update_menu14 {} {
 	global CONFIG_SYN_SPARTAN3
 	global CONFIG_SYN_VIRTEX5
 	global CONFIG_SYN_SPARTAN3E
+	global CONFIG_SYN_CYCLONEIII
 	global CONFIG_DDRSP_RSKEW
-	if {($CONFIG_DDRSP == 1) && ($CONFIG_SYN_VIRTEX2 == 1 || $CONFIG_SYN_VIRTEX4 == 1 || $CONFIG_SYN_SPARTAN3 == 1 || $CONFIG_SYN_VIRTEX5 == 1 || $CONFIG_SYN_SPARTAN3E == 1)} then {.menu14.config.f.x5.x configure -state normal -foreground [ cget .ref -foreground ]; .menu14.config.f.x5.l configure -state normal; } else {.menu14.config.f.x5.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu14.config.f.x5.l configure -state disabled}
+	if {($CONFIG_DDRSP == 1) && ($CONFIG_SYN_VIRTEX2 == 1 || $CONFIG_SYN_VIRTEX4 == 1 || $CONFIG_SYN_SPARTAN3 == 1 || $CONFIG_SYN_VIRTEX5 == 1 || $CONFIG_SYN_SPARTAN3E == 1 || $CONFIG_SYN_CYCLONEIII == 1)} then {.menu14.config.f.x5.x configure -state normal -foreground [ cget .ref -foreground ]; .menu14.config.f.x5.l configure -state normal; } else {.menu14.config.f.x5.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu14.config.f.x5.l configure -state disabled}
 }
 
 
@@ -2991,8 +3000,9 @@ proc update_define_menu14 {} {
 	global CONFIG_SYN_SPARTAN3
 	global CONFIG_SYN_VIRTEX5
 	global CONFIG_SYN_SPARTAN3E
+	global CONFIG_SYN_CYCLONEIII
 	global CONFIG_DDRSP_RSKEW
-	if {($CONFIG_DDRSP == 1) && ($CONFIG_SYN_VIRTEX2 == 1 || $CONFIG_SYN_VIRTEX4 == 1 || $CONFIG_SYN_SPARTAN3 == 1 || $CONFIG_SYN_VIRTEX5 == 1 || $CONFIG_SYN_SPARTAN3E == 1)} then {validate_int CONFIG_DDRSP_RSKEW "$CONFIG_DDRSP_RSKEW" 0}
+	if {($CONFIG_DDRSP == 1) && ($CONFIG_SYN_VIRTEX2 == 1 || $CONFIG_SYN_VIRTEX4 == 1 || $CONFIG_SYN_SPARTAN3 == 1 || $CONFIG_SYN_VIRTEX5 == 1 || $CONFIG_SYN_SPARTAN3E == 1 || $CONFIG_SYN_CYCLONEIII == 1)} then {validate_int CONFIG_DDRSP_RSKEW "$CONFIG_DDRSP_RSKEW" 0}
 }
 
 
@@ -3465,7 +3475,7 @@ proc menu18 {w title} {
 	wm title $w "Keybord and VGA interface" 
 
 	bind $w <Escape> "catch {focus $oldFocus}; destroy $w; unregister_active 18; break"
-	set nextscript "catch {focus $oldFocus}; destroy $w; unregister_active 18; catch {destroy .menu13}; unregister_active 13; menu19 .menu19 \"$title\""
+	set nextscript "catch {focus $oldFocus}; destroy $w; unregister_active 18; menu19 .menu19 \"$title\""
 	frame $w.f
 	button $w.f.back -text "OK" \
 		-width 15 -command "catch {focus $oldFocus}; destroy $w; unregister_active 18"
@@ -3559,28 +3569,27 @@ proc update_define_menu18 {} {
 }
 
 
-menu_option menu19 19 "VHDL Debugging        "
 proc menu19 {w title} {
 	set oldFocus [focus]
+	catch {focus .menu13}
 	catch {destroy $w; unregister_active 19}
 	toplevel $w -class Dialog
 	wm withdraw $w
 	global active_menus
 	set active_menus [lsort -integer [linsert $active_menus end 19]]
 	message $w.m -width 400 -aspect 300 -text \
-		"VHDL Debugging        "  -relief raised
+		"System ACE            "  -relief raised
 	pack $w.m -pady 10 -side top -padx 10
-	wm title $w "VHDL Debugging        " 
+	wm title $w "System ACE            " 
 
 	bind $w <Escape> "catch {focus $oldFocus}; destroy $w; unregister_active 19; break"
-	set nextscript "catch {focus $oldFocus}; menu20 .menu20 \"$title\""
+	set nextscript "catch {focus $oldFocus}; destroy $w; unregister_active 19; catch {destroy .menu13}; unregister_active 13; menu20 .menu20 \"$title\""
 	frame $w.f
-	button $w.f.back -text "Main Menu" \
+	button $w.f.back -text "OK" \
 		-width 15 -command "catch {focus $oldFocus}; destroy $w; unregister_active 19"
 	button $w.f.next -text "Next" -underline 0\
 		-width 15 -command $nextscript
-	$w.f.next configure -state disabled
-	bind all <Alt-n> "puts \"no more menus\" "
+	bind all <Alt-n> $nextscript
 	button $w.f.prev -text "Prev" -underline 0\
 		-width 15 -command "catch {focus $oldFocus}; destroy $w; unregister_active 19; menu18 .menu18 \"$title\""
 	bind $w <Alt-p> "catch {focus $oldFocus}; destroy $w; unregister_active 19; menu18 .menu18 \"$title\";break"
@@ -3611,14 +3620,15 @@ proc menu19 {w title} {
 	pack $w.config.canvas -side right -fill y
 
 
-	bool $w.config.f 19 0 "Accelerated UART tracing       " CONFIG_DEBUG_UART
+	bool $w.config.f 19 0 "Enable System ACE I/F Controller " CONFIG_GRACECTRL
 
 
 
 	focus $w
 	update_active
 	global winx; global winy
-	set winx [expr [winfo x .]+30]; set winy [expr [winfo y .]+30]
+	if {[winfo exists .menu13] == 0} then {menu13 .menu13 "Peripherals             "}
+	set winx [expr [winfo x .menu13]+30]; set winy [expr [winfo y .menu13]+30]
 	if {[winfo exists $w]} then {wm geometry $w +$winx+$winy}
 	update idletasks
 	if {[winfo exists $w]} then  {$w.config.canvas create window 0 0 -anchor nw -window $w.config.f
@@ -3657,6 +3667,104 @@ proc update_define_menu19 {} {
 }
 
 
+menu_option menu20 20 "VHDL Debugging        "
+proc menu20 {w title} {
+	set oldFocus [focus]
+	catch {destroy $w; unregister_active 20}
+	toplevel $w -class Dialog
+	wm withdraw $w
+	global active_menus
+	set active_menus [lsort -integer [linsert $active_menus end 20]]
+	message $w.m -width 400 -aspect 300 -text \
+		"VHDL Debugging        "  -relief raised
+	pack $w.m -pady 10 -side top -padx 10
+	wm title $w "VHDL Debugging        " 
+
+	bind $w <Escape> "catch {focus $oldFocus}; destroy $w; unregister_active 20; break"
+	set nextscript "catch {focus $oldFocus}; menu21 .menu21 \"$title\""
+	frame $w.f
+	button $w.f.back -text "Main Menu" \
+		-width 15 -command "catch {focus $oldFocus}; destroy $w; unregister_active 20"
+	button $w.f.next -text "Next" -underline 0\
+		-width 15 -command $nextscript
+	$w.f.next configure -state disabled
+	bind all <Alt-n> "puts \"no more menus\" "
+	button $w.f.prev -text "Prev" -underline 0\
+		-width 15 -command "catch {focus $oldFocus}; destroy $w; unregister_active 20; menu19 .menu19 \"$title\""
+	bind $w <Alt-p> "catch {focus $oldFocus}; destroy $w; unregister_active 20; menu19 .menu19 \"$title\";break"
+	pack $w.f.back $w.f.next $w.f.prev -side left -expand on
+	pack $w.f -pady 10 -side bottom -anchor w -fill x
+	frame $w.topline -relief ridge -borderwidth 2 -height 2
+	pack $w.topline -side top -fill x
+
+	frame $w.botline -relief ridge -borderwidth 2 -height 2
+	pack $w.botline -side bottom -fill x
+
+	frame $w.config
+	pack $w.config -fill y -expand on
+
+	scrollbar $w.config.vscroll -command "$w.config.canvas yview"
+	pack $w.config.vscroll -side right -fill y
+
+	canvas $w.config.canvas -height 1\
+		-relief flat -borderwidth 0 -yscrollcommand "$w.config.vscroll set" \
+		-width [expr [winfo screenwidth .] * 1 / 2] 
+	frame $w.config.f
+	bind $w <Key-Down> "$w.config.canvas yview scroll  1 unit;break;"
+	bind $w <Key-Up> "$w.config.canvas yview scroll  -1 unit;break;"
+	bind $w <Key-Next> "$w.config.canvas yview scroll  1 page;break;"
+	bind $w <Key-Prior> "$w.config.canvas yview scroll  -1 page;break;"
+	bind $w <Key-Home> "$w.config.canvas yview moveto 0;break;"
+	bind $w <Key-End> "$w.config.canvas yview moveto 1 ;break;"
+	pack $w.config.canvas -side right -fill y
+
+
+	bool $w.config.f 20 0 "Accelerated UART tracing       " CONFIG_DEBUG_UART
+
+
+
+	focus $w
+	update_active
+	global winx; global winy
+	set winx [expr [winfo x .]+30]; set winy [expr [winfo y .]+30]
+	if {[winfo exists $w]} then {wm geometry $w +$winx+$winy}
+	update idletasks
+	if {[winfo exists $w]} then  {$w.config.canvas create window 0 0 -anchor nw -window $w.config.f
+
+	$w.config.canvas configure \
+		-width [expr [winfo reqwidth $w.config.f] + 1]\
+		-scrollregion "-1 -1 [expr [winfo reqwidth $w.config.f] + 1] \
+			 [expr [winfo reqheight $w.config.f] + 1]"
+
+	set winy [expr [winfo reqh $w] - [winfo reqh $w.config.canvas]]
+	set scry [expr [winfo screenh $w] / 2]
+	set maxy [expr [winfo screenh $w] * 3 / 4]
+	set canvtotal [expr [winfo reqh $w.config.f] + 2]
+	if [expr $winy + $canvtotal < $maxy] {
+		$w.config.canvas configure -height $canvtotal
+	} else {
+		$w.config.canvas configure -height [expr $scry - $winy]
+		}
+	}
+	update idletasks
+	if {[winfo exists $w]} then {
+	wm maxsize $w [winfo width $w] [winfo screenheight $w]
+	wm minsize $w [winfo width $w] 100
+
+	wm deiconify $w
+}
+}
+
+proc update_menu20 {} {
+}
+
+
+proc update_define_menu20 {} {
+	update_define_mainmenu
+	global CONFIG_MODULES
+}
+
+
 proc update_mainmenu {}  {
 }
 
@@ -3684,6 +3792,7 @@ set CONFIG_SYN_ECLIPSE 0
 set CONFIG_SYN_PEREGRINE 0
 set CONFIG_SYN_RH_LIB18T 0
 set CONFIG_SYN_RHUMC 0
+set CONFIG_SYN_SMIC13 0
 set CONFIG_SYN_SPARTAN2 0
 set CONFIG_SYN_SPARTAN3 0
 set CONFIG_SYN_SPARTAN3E 0
@@ -3744,6 +3853,7 @@ set CONFIG_FPU_MEIKO 0
 set tmpvar_5 "(not set)"
 set CONFIG_FPU_GRFPU_INFMUL 0
 set CONFIG_FPU_GRFPU_DWMUL 0
+set CONFIG_FPU_GRFPU_MODGEN 0
 set tmpvar_6 "(not set)"
 set CONFIG_FPU_GRFPC0 0
 set CONFIG_FPU_GRFPC1 0
@@ -3882,8 +3992,8 @@ set CONFIG_DSU_ETHSZ8 0
 set CONFIG_DSU_ETHSZ16 0
 set CONFIG_DSU_IPMSB C0A8
 set CONFIG_DSU_IPLSB 0033
-set CONFIG_DSU_ETHMSB 00007A
-set CONFIG_DSU_ETHLSB CC0001
+set CONFIG_DSU_ETHMSB 020000
+set CONFIG_DSU_ETHLSB 000000
 set CONFIG_DSU_ETH_PROG 0
 set CONFIG_DDRSP 0
 set CONFIG_DDRSP_INIT 0
@@ -3934,6 +4044,7 @@ set CONFIG_GPT_WDOG FFFF
 set CONFIG_KBD_ENABLE 0
 set CONFIG_VGA_ENABLE 0
 set CONFIG_SVGA_ENABLE 0
+set CONFIG_GRACECTRL 0
 set CONFIG_DEBUG_UART 0
 set CONFIG_SYN_ARTISAN 4
 set CONFIG_PCI_ENABLE 4
@@ -3989,6 +4100,7 @@ proc writeconfig {file1 file2} {
 	if { $tmpvar_0 == "Peregrine" } then { write_tristate $cfg $autocfg CONFIG_SYN_PEREGRINE 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_PEREGRINE 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "RH-LIB18T" } then { write_tristate $cfg $autocfg CONFIG_SYN_RH_LIB18T 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_RH_LIB18T 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "RH-UMC" } then { write_tristate $cfg $autocfg CONFIG_SYN_RHUMC 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_RHUMC 0 [list $notmod] 2 }
+	if { $tmpvar_0 == "SMIC130" } then { write_tristate $cfg $autocfg CONFIG_SYN_SMIC13 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_SMIC13 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Xilinx-Spartan2" } then { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN2 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Xilinx-Spartan3" } then { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN3 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN3 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Xilinx-Spartan3E" } then { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN3E 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN3E 0 [list $notmod] 2 }
@@ -3997,7 +4109,7 @@ proc writeconfig {file1 file2} {
 	if { $tmpvar_0 == "Xilinx-Virtex2" } then { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEX2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEX2 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Xilinx-Virtex4" } then { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEX4 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEX4 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Xilinx-Virtex5" } then { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEX5 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEX5 0 [list $notmod] 2 }
-	if { $tmpvar_0 == "UMC18" } then { write_tristate $cfg $autocfg CONFIG_SYN_UMC 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_UMC 0 [list $notmod] 2 }
+	if { $tmpvar_0 == "UMC180" } then { write_tristate $cfg $autocfg CONFIG_SYN_UMC 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_UMC 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "TSMC90" } then { write_tristate $cfg $autocfg CONFIG_SYN_TSMC90 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_TSMC90 0 [list $notmod] 2 }
 	global tmpvar_1
 	global CONFIG_SYN_INFERRED
@@ -4095,7 +4207,8 @@ proc writeconfig {file1 file2} {
 	global CONFIG_FPU_GRFPU
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_FPU_ENABLE == 1) && ($CONFIG_FPU_GRFPU == 1)} then {
 	if { $tmpvar_5 == "Inferred" } then { write_tristate $cfg $autocfg CONFIG_FPU_GRFPU_INFMUL 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_FPU_GRFPU_INFMUL 0 [list $notmod] 2 }
-	if { $tmpvar_5 == "DW" } then { write_tristate $cfg $autocfg CONFIG_FPU_GRFPU_DWMUL 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_FPU_GRFPU_DWMUL 0 [list $notmod] 2 }}
+	if { $tmpvar_5 == "DW" } then { write_tristate $cfg $autocfg CONFIG_FPU_GRFPU_DWMUL 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_FPU_GRFPU_DWMUL 0 [list $notmod] 2 }
+	if { $tmpvar_5 == "ModGen" } then { write_tristate $cfg $autocfg CONFIG_FPU_GRFPU_MODGEN 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_FPU_GRFPU_MODGEN 0 [list $notmod] 2 }}
 	global tmpvar_6
 	global CONFIG_FPU_GRFPULITE
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_FPU_ENABLE == 1) && ($CONFIG_FPU_GRFPULITE == 1)} then {
@@ -4323,7 +4436,8 @@ proc writeconfig {file1 file2} {
 	global CONFIG_SYN_SPARTAN3
 	global CONFIG_SYN_VIRTEX5
 	global CONFIG_SYN_SPARTAN3E
-	if {($CONFIG_DDRSP == 1) && ($CONFIG_SYN_VIRTEX2 == 1 || $CONFIG_SYN_VIRTEX4 == 1 || $CONFIG_SYN_SPARTAN3 == 1 || $CONFIG_SYN_VIRTEX5 == 1 || $CONFIG_SYN_SPARTAN3E == 1)} then {write_int $cfg $autocfg CONFIG_DDRSP_RSKEW $CONFIG_DDRSP_RSKEW $notmod }
+	global CONFIG_SYN_CYCLONEIII
+	if {($CONFIG_DDRSP == 1) && ($CONFIG_SYN_VIRTEX2 == 1 || $CONFIG_SYN_VIRTEX4 == 1 || $CONFIG_SYN_SPARTAN3 == 1 || $CONFIG_SYN_VIRTEX5 == 1 || $CONFIG_SYN_SPARTAN3E == 1 || $CONFIG_SYN_CYCLONEIII == 1)} then {write_int $cfg $autocfg CONFIG_DDRSP_RSKEW $CONFIG_DDRSP_RSKEW $notmod }
 	write_comment $cfg $autocfg "On-chip RAM/ROM                 "
 	global CONFIG_AHBROM_ENABLE
 	write_tristate $cfg $autocfg CONFIG_AHBROM_ENABLE $CONFIG_AHBROM_ENABLE [list $notmod] 2
@@ -4394,6 +4508,9 @@ proc writeconfig {file1 file2} {
 	write_tristate $cfg $autocfg CONFIG_VGA_ENABLE $CONFIG_VGA_ENABLE [list $notmod] 2
 	global CONFIG_SVGA_ENABLE
 	if {($CONFIG_VGA_ENABLE == 0)} then {write_tristate $cfg $autocfg CONFIG_SVGA_ENABLE $CONFIG_SVGA_ENABLE [list $notmod] 2 }
+	write_comment $cfg $autocfg "System ACE            "
+	global CONFIG_GRACECTRL
+	write_tristate $cfg $autocfg CONFIG_GRACECTRL $CONFIG_GRACECTRL [list $notmod] 2
 	write_comment $cfg $autocfg "VHDL Debugging        "
 	global CONFIG_DEBUG_UART
 	write_tristate $cfg $autocfg CONFIG_DEBUG_UART $CONFIG_DEBUG_UART [list $notmod] 2
@@ -4425,6 +4542,7 @@ proc clear_choices { } {
 	global CONFIG_SYN_PEREGRINE; set CONFIG_SYN_PEREGRINE 0
 	global CONFIG_SYN_RH_LIB18T; set CONFIG_SYN_RH_LIB18T 0
 	global CONFIG_SYN_RHUMC; set CONFIG_SYN_RHUMC 0
+	global CONFIG_SYN_SMIC13; set CONFIG_SYN_SMIC13 0
 	global CONFIG_SYN_SPARTAN2; set CONFIG_SYN_SPARTAN2 0
 	global CONFIG_SYN_SPARTAN3; set CONFIG_SYN_SPARTAN3 0
 	global CONFIG_SYN_SPARTAN3E; set CONFIG_SYN_SPARTAN3E 0
@@ -4459,6 +4577,7 @@ proc clear_choices { } {
 	global CONFIG_FPU_MEIKO; set CONFIG_FPU_MEIKO 0
 	global CONFIG_FPU_GRFPU_INFMUL; set CONFIG_FPU_GRFPU_INFMUL 0
 	global CONFIG_FPU_GRFPU_DWMUL; set CONFIG_FPU_GRFPU_DWMUL 0
+	global CONFIG_FPU_GRFPU_MODGEN; set CONFIG_FPU_GRFPU_MODGEN 0
 	global CONFIG_FPU_GRFPC0; set CONFIG_FPU_GRFPC0 0
 	global CONFIG_FPU_GRFPC1; set CONFIG_FPU_GRFPC1 0
 	global CONFIG_FPU_GRFPC2; set CONFIG_FPU_GRFPC2 0
@@ -4613,6 +4732,8 @@ proc update_choices { } {
 	if { $CONFIG_SYN_RH_LIB18T == 1 } then { set tmpvar_0 "RH-LIB18T" }
 	global CONFIG_SYN_RHUMC
 	if { $CONFIG_SYN_RHUMC == 1 } then { set tmpvar_0 "RH-UMC" }
+	global CONFIG_SYN_SMIC13
+	if { $CONFIG_SYN_SMIC13 == 1 } then { set tmpvar_0 "SMIC130" }
 	global CONFIG_SYN_SPARTAN2
 	if { $CONFIG_SYN_SPARTAN2 == 1 } then { set tmpvar_0 "Xilinx-Spartan2" }
 	global CONFIG_SYN_SPARTAN3
@@ -4630,7 +4751,7 @@ proc update_choices { } {
 	global CONFIG_SYN_VIRTEX5
 	if { $CONFIG_SYN_VIRTEX5 == 1 } then { set tmpvar_0 "Xilinx-Virtex5" }
 	global CONFIG_SYN_UMC
-	if { $CONFIG_SYN_UMC == 1 } then { set tmpvar_0 "UMC18" }
+	if { $CONFIG_SYN_UMC == 1 } then { set tmpvar_0 "UMC180" }
 	global CONFIG_SYN_TSMC90
 	if { $CONFIG_SYN_TSMC90 == 1 } then { set tmpvar_0 "TSMC90" }
 	global tmpvar_1
@@ -4691,6 +4812,8 @@ proc update_choices { } {
 	if { $CONFIG_FPU_GRFPU_INFMUL == 1 } then { set tmpvar_5 "Inferred" }
 	global CONFIG_FPU_GRFPU_DWMUL
 	if { $CONFIG_FPU_GRFPU_DWMUL == 1 } then { set tmpvar_5 "DW" }
+	global CONFIG_FPU_GRFPU_MODGEN
+	if { $CONFIG_FPU_GRFPU_MODGEN == 1 } then { set tmpvar_5 "ModGen" }
 	global tmpvar_6
 	set tmpvar_6 "Simple"
 	global CONFIG_FPU_GRFPC0

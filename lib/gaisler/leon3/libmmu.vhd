@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -40,7 +41,8 @@ package libmmu is
       itlbnum   : integer range 2 to 64 := 8;
       dtlbnum   : integer range 2 to 64 := 8;
       tlb_type  : integer range 0 to 3 := 1;
-      tlb_rep   : integer range 0 to 1 := 0
+      tlb_rep   : integer range 0 to 1 := 0;
+      mmupgsz   : integer range 0 to 5 := 0
       );
     port (
       rst  : in std_logic;
@@ -72,7 +74,9 @@ package libmmu is
                             fault_pro  : out std_logic;
                             fault_pri  : out std_logic );
 
-  procedure TLB_MergeData( LVL         : in  std_logic_vector(1 downto 0);
+  procedure TLB_MergeData( mmupgsz     : in  integer range 0 to 5;
+                           mmctrl      : in  mmctrl_type1;
+			   LVL         : in  std_logic_vector(1 downto 0);
                            PTE         : in  std_logic_vector(31 downto 0);
                            data        : in  std_logic_vector(31 downto 0);
                            transdata   : out std_logic_vector(31 downto 0));
@@ -86,7 +90,10 @@ package libmmu is
                                ctx       : std_logic_vector(M_CTX_SZ-1 downto 0)
                              ) return tlbcam_tfp;
 
-  
+  subtype mmu_gpsz_typ is integer range 0 to 3;
+  function MMU_getpagesize( mmupgsz     : in  integer range 0 to 4;
+                            mmctrl      : in  mmctrl_type1
+                             ) return mmu_gpsz_typ;
 end;
 
 package body libmmu is
@@ -123,21 +130,57 @@ begin
   end case;
 end;
  
-procedure TLB_MergeData( LVL         : in  std_logic_vector(1 downto 0);
+procedure TLB_MergeData( mmupgsz     : in  integer range 0 to 5;
+                         mmctrl      : in  mmctrl_type1;
+                         LVL         : in  std_logic_vector(1 downto 0);
                          PTE         : in  std_logic_vector(31 downto 0);
                          data        : in  std_logic_vector(31 downto 0);
                          transdata   : out std_logic_vector(31 downto 0) ) is
+variable pagesize      : integer range 0 to 3;
 begin 
-
+  
   --# merge data
   transdata := (others => '0');
-  case LVL is
-    when LVL_PAGE    => transdata := PTE(PTE_PPN32PAG_U downto PTE_PPN32PAG_D) & data(VA_OFFPAG_U downto VA_OFFPAG_D);
-    when LVL_SEGMENT => transdata := PTE(PTE_PPN32SEG_U downto PTE_PPN32SEG_D) & data(VA_OFFSEG_U downto VA_OFFSEG_D);
-    when LVL_REGION  => transdata := PTE(PTE_PPN32REG_U downto PTE_PPN32REG_D) & data(VA_OFFREG_U downto VA_OFFREG_D);
-    when LVL_CTX     => transdata :=                                             data(VA_OFFCTX_U downto VA_OFFCTX_D);
-    when others      => transdata := (others => 'X');
+  pagesize := MMU_getpagesize(mmupgsz, mmctrl);
+  case pagesize is
+    when 1 => 
+      -- 8k
+      case LVL is
+        when LVL_PAGE    => transdata := PTE(P8K_PTE_PPN32PAG_U downto P8K_PTE_PPN32PAG_D) & data(P8K_VA_OFFPAG_U downto P8K_VA_OFFPAG_D);
+        when LVL_SEGMENT => transdata := PTE(P8K_PTE_PPN32SEG_U downto P8K_PTE_PPN32SEG_D) & data(P8K_VA_OFFSEG_U downto P8K_VA_OFFSEG_D);
+        when LVL_REGION  => transdata := PTE(P8K_PTE_PPN32REG_U downto P8K_PTE_PPN32REG_D) & data(P8K_VA_OFFREG_U downto P8K_VA_OFFREG_D);
+        when LVL_CTX     => transdata :=                                             data(P8K_VA_OFFCTX_U downto P8K_VA_OFFCTX_D);
+        when others      => transdata := (others => 'X');
+      end case;
+    when 2 => 
+      -- 16k
+      case LVL is
+        when LVL_PAGE    => transdata := PTE(P16K_PTE_PPN32PAG_U downto P16K_PTE_PPN32PAG_D) & data(P16K_VA_OFFPAG_U downto P16K_VA_OFFPAG_D);
+        when LVL_SEGMENT => transdata := PTE(P16K_PTE_PPN32SEG_U downto P16K_PTE_PPN32SEG_D) & data(P16K_VA_OFFSEG_U downto P16K_VA_OFFSEG_D);
+        when LVL_REGION  => transdata := PTE(P16K_PTE_PPN32REG_U downto P16K_PTE_PPN32REG_D) & data(P16K_VA_OFFREG_U downto P16K_VA_OFFREG_D);
+        when LVL_CTX     => transdata :=                                             data(P16K_VA_OFFCTX_U downto P16K_VA_OFFCTX_D);
+        when others      => transdata := (others => 'X');
+      end case;
+    when 3 => 
+      -- 32k
+      case LVL is
+        when LVL_PAGE    => transdata := PTE(P32K_PTE_PPN32PAG_U downto P32K_PTE_PPN32PAG_D) & data(P32K_VA_OFFPAG_U downto P32K_VA_OFFPAG_D);
+        when LVL_SEGMENT => transdata := PTE(P32K_PTE_PPN32SEG_U downto P32K_PTE_PPN32SEG_D) & data(P32K_VA_OFFSEG_U downto P32K_VA_OFFSEG_D);
+        when LVL_REGION  => transdata := PTE(P32K_PTE_PPN32REG_U downto P32K_PTE_PPN32REG_D) & data(P32K_VA_OFFREG_U downto P32K_VA_OFFREG_D);
+        when LVL_CTX     => transdata :=                                             data(P32K_VA_OFFCTX_U downto P32K_VA_OFFCTX_D);
+        when others      => transdata := (others => 'X');
+      end case;
+    when others =>
+      -- 4k
+      case LVL is
+        when LVL_PAGE    => transdata := PTE(PTE_PPN32PAG_U downto PTE_PPN32PAG_D) & data(VA_OFFPAG_U downto VA_OFFPAG_D);
+        when LVL_SEGMENT => transdata := PTE(PTE_PPN32SEG_U downto PTE_PPN32SEG_D) & data(VA_OFFSEG_U downto VA_OFFSEG_D);
+        when LVL_REGION  => transdata := PTE(PTE_PPN32REG_U downto PTE_PPN32REG_D) & data(VA_OFFREG_U downto VA_OFFREG_D);
+        when LVL_CTX     => transdata :=                                             data(VA_OFFCTX_U downto VA_OFFCTX_D);
+        when others      => transdata := (others => 'X');
+      end case;
   end case;
+      
 end;
 
 function TLB_CreateCamWrite( two_data  : std_logic_vector(31 downto 0);
@@ -166,6 +209,16 @@ begin
     tlbcam_tagwrite.PPN   := two_data(PTE_PPN_U downto PTE_PPN_D);
     tlbcam_tagwrite.C     := two_data(PTE_C);
     return tlbcam_tagwrite;
+end;
+
+function MMU_getpagesize( mmupgsz     : in  integer range 0 to 4;
+                          mmctrl      : in  mmctrl_type1
+                             ) return mmu_gpsz_typ is
+variable pagesize      : mmu_gpsz_typ;
+begin
+  if mmupgsz = 4 then pagesize := conv_integer(mmctrl.pagesize);  -- variable
+  else pagesize := mmupgsz; end if;
+  return pagesize;
 end;
 
 function TLB_CreateCamTrans( vaddr     : std_logic_vector(31 downto 0);

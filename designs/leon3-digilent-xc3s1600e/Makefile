@@ -25,7 +25,7 @@ TECHLIBS = unisim
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp gleichmann opencores usbhc spw
 DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan pci leon3ft ambatest can \
-	usb grusbhc spacewire ata synplicity
+	usb grusbhc spacewire ata synplicity haps coremp7 hcan
 FILESKIP = grcan.vhd i2cmst.vhd
 
 include $(GRLIB)/bin/Makefile

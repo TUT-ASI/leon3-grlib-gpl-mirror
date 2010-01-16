@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -183,7 +184,8 @@ component iu3
     rstaddr  : integer              := 0;
     smp      : integer range 0 to 15 := 0;   -- support SMP systems
     fabtech  : integer range 0 to NTECH := 0;
-    clk2x    : integer := 0
+    clk2x    : integer := 0;
+    bp       : integer := 1
     );
   port (
     clk   : in  std_ulogic;
@@ -214,10 +216,7 @@ component iu3
 end component;
 
   component tbufmem 
-  generic (
-    tech   : integer := 0;
-    tbuf  : integer := 0
-    );
+  generic ( tech   : integer := 0; tbuf  : integer := 0; testen: integer := 0);
   port (
     clk : in std_ulogic;
     di  : in tracebuf_in_type;

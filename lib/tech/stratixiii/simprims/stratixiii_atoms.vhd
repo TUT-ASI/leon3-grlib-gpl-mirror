@@ -2673,9 +2673,9 @@ ATTRIBUTE VITAL_Level0 OF stratixiii_ram_pulse_generator:ENTITY IS TRUE;
 END stratixiii_ram_pulse_generator;
 
 ARCHITECTURE pgen_arch OF stratixiii_ram_pulse_generator IS
+ATTRIBUTE VITAL_Level0 OF pgen_arch:ARCHITECTURE IS TRUE;
 SIGNAL clk_ipd,ena_ipd : STD_LOGIC;
 SIGNAL state : STD_LOGIC;
-ATTRIBUTE VITAL_Level0 OF pgen_arch:ARCHITECTURE IS TRUE;
 BEGIN
 
 WireDelay : BLOCK
@@ -4176,7 +4176,8 @@ asdatadelaybuffer1: stratixiii_and1
                      Tviol_sclr_clk or Tviol_sload_clk or Tviol_ena_clk;
     
     
-        if ((devpor = '0') or (devclrn = '0') or (clrn_ipd = '1'))  then
+        --if ((devpor = '0') or (devclrn = '0') or (clrn_ipd = '1'))  then
+        if ((devpor = '0') or (devclrn = '0') or (clrn_ipd = '0'))  then -- changed ***
             iq := '0';
         elsif (aload_ipd = '1') then
             iq := asdata_dly1;
@@ -4690,9 +4691,9 @@ ATTRIBUTE VITAL_Level0 OF stratixiii_mlab_cell_pulse_generator:ENTITY IS TRUE;
 END stratixiii_mlab_cell_pulse_generator;
 
 ARCHITECTURE pgen_arch OF stratixiii_mlab_cell_pulse_generator IS
+ATTRIBUTE VITAL_Level0 OF pgen_arch:ARCHITECTURE IS TRUE;
 SIGNAL clk_ipd,ena_ipd : STD_LOGIC;
 SIGNAL state : STD_LOGIC;
-ATTRIBUTE VITAL_Level0 OF pgen_arch:ARCHITECTURE IS TRUE;
 BEGIN
 
 WireDelay : BLOCK

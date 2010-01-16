@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -38,7 +39,10 @@ package ethcomp is
       phyrstadr      : integer range 0 to 32 := 0;
       rmii           : integer range 0 to 1  := 0;
       oepol	     : integer range 0 to 1  := 0; 
-      scanen	     : integer range 0 to 1  := 0); 
+      scanen	     : integer range 0 to 1  := 0;
+      mdint_pol      : integer range 0 to 1  := 0;
+      enable_mdint   : integer range 0 to 1  := 0;
+      multicast      : integer range 0 to 1  := 0); 
     port(
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;
@@ -58,13 +62,13 @@ package ethcomp is
       hprot          : out  std_logic_vector(3 downto 0);
       hwdata         : out  std_logic_vector(31 downto 0);
       --apb slv in 
-      psel	   : in   std_ulogic;
-      penable	   : in   std_ulogic;
-      paddr	   : in   std_logic_vector(31 downto 0);
-      pwrite	   : in   std_ulogic;
-      pwdata	   : in   std_logic_vector(31 downto 0);
+      psel	     : in   std_ulogic;
+      penable	     : in   std_ulogic;
+      paddr	     : in   std_logic_vector(31 downto 0);
+      pwrite	     : in   std_ulogic;
+      pwdata	     : in   std_logic_vector(31 downto 0);
       --apb slv out
-      prdata	   : out  std_logic_vector(31 downto 0);
+      prdata	     : out  std_logic_vector(31 downto 0);
       --irq
       irq            : out  std_logic;
       --rx ahb fifo
@@ -101,6 +105,7 @@ package ethcomp is
       rx_crs         : in   std_ulogic;
       mdio_i         : in   std_ulogic;
       phyrstaddr     : in   std_logic_vector(4 downto 0);
+      mdint          : in   std_ulogic;
       --ethernet output signals
       reset          : out  std_ulogic;
       txd            : out  std_logic_vector(3 downto 0);   
@@ -124,7 +129,7 @@ package ethcomp is
       slot_time      : integer := 128;
       mdcscaler      : integer range 0 to 255 := 25; 
       nsync          : integer range 1 to 2 := 2;
-      edcl           : integer range 0 to 1 := 0;
+      edcl           : integer range 0 to 2 := 0;
       edclbufsz      : integer range 1 to 64 := 1;
       burstlength    : integer range 4 to 128 := 32;
       macaddrh       : integer := 16#00005E#;
@@ -134,7 +139,10 @@ package ethcomp is
       phyrstadr      : integer range 0 to 32 := 0;
       sim            : integer range 0 to 1 := 0;
       oepol          : integer range 0 to 1 := 0;
-      scanen         : integer range 0 to 1 := 0);
+      scanen         : integer range 0 to 1 := 0;
+      mdint_pol      : integer range 0 to 1 := 0;
+      enable_mdint   : integer range 0 to 1 := 0;
+      multicast      : integer range 0 to 1 := 0);
     port(
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;
@@ -154,13 +162,13 @@ package ethcomp is
       hprot          : out  std_logic_vector(3 downto 0);
       hwdata         : out  std_logic_vector(31 downto 0);
       --apb slv in 
-      psel	   : in   std_ulogic;
-      penable	   : in   std_ulogic;
-      paddr	   : in   std_logic_vector(31 downto 0);
-      pwrite	   : in   std_ulogic;
-      pwdata	   : in   std_logic_vector(31 downto 0);
+      psel	     : in   std_ulogic;
+      penable	     : in   std_ulogic;
+      paddr	     : in   std_logic_vector(31 downto 0);
+      pwrite	     : in   std_ulogic;
+      pwdata	     : in   std_logic_vector(31 downto 0);
       --apb slv out
-      prdata	   : out  std_logic_vector(31 downto 0);
+      prdata	     : out  std_logic_vector(31 downto 0);
       --irq
       irq            : out  std_logic;
       --rx ahb fifo
@@ -197,6 +205,7 @@ package ethcomp is
       rx_crs         : in   std_ulogic;
       mdio_i         : in   std_ulogic;
       phyrstaddr     : in   std_logic_vector(4 downto 0);
+      mdint          : in   std_ulogic;
       --ethernet output signals
       reset          : out  std_ulogic;
       txd            : out  std_logic_vector(7 downto 0);   
@@ -207,8 +216,9 @@ package ethcomp is
       mdio_oe        : out  std_ulogic;
       --scantest
       testrst        : in   std_ulogic;
-      testen         : in   std_ulogic
-    );
+      testen         : in   std_ulogic;
+      edcladdr       : in   std_logic_vector(3 downto 0) := "0000"
+      );
   end component;
 
   component greth_gen is
@@ -229,8 +239,11 @@ package ethcomp is
       ipaddrl        : integer := 16#0035#;
       phyrstadr      : integer range 0 to 31 := 0;
       rmii           : integer range 0 to 1  := 0;
-      oepol	    : integer range 0 to 1  := 0; 
-      scanen	    : integer range 0 to 1  := 0); 
+      oepol	     : integer range 0 to 1  := 0; 
+      scanen	     : integer range 0 to 1  := 0;
+      mdint_pol      : integer range 0 to 1  := 0;
+      enable_mdint   : integer range 0 to 1  := 0;
+      multicast      : integer range 0 to 1  := 0); 
     port(
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;
@@ -250,13 +263,13 @@ package ethcomp is
       hprot          : out  std_logic_vector(3 downto 0);
       hwdata         : out  std_logic_vector(31 downto 0);
       --apb slv in 
-      psel	   : in   std_ulogic;
-      penable	   : in   std_ulogic;
-      paddr	   : in   std_logic_vector(31 downto 0);
-      pwrite	   : in   std_ulogic;
-      pwdata	   : in   std_logic_vector(31 downto 0);
+      psel	     : in   std_ulogic;
+      penable	     : in   std_ulogic;
+      paddr	     : in   std_logic_vector(31 downto 0);
+      pwrite	     : in   std_ulogic;
+      pwdata	     : in   std_logic_vector(31 downto 0);
       --apb slv out
-      prdata	   : out  std_logic_vector(31 downto 0);
+      prdata	     : out  std_logic_vector(31 downto 0);
       --irq
       irq            : out  std_logic;
       --ethernet input signals
@@ -270,6 +283,7 @@ package ethcomp is
       rx_crs         : in   std_ulogic;
       mdio_i         : in   std_ulogic;
       phyrstaddr     : in   std_logic_vector(4 downto 0);
+      mdint          : in   std_ulogic;
       --ethernet output signals
       reset          : out  std_ulogic;
       txd            : out  std_logic_vector(3 downto 0);   
@@ -293,7 +307,7 @@ package ethcomp is
       slot_time      : integer := 128;
       mdcscaler      : integer range 0 to 255 := 25; 
       nsync          : integer range 1 to 2 := 2;
-      edcl           : integer range 0 to 1 := 0;
+      edcl           : integer range 0 to 2 := 0;
       edclbufsz      : integer range 1 to 64 := 1;
       burstlength    : integer range 4 to 128 := 32;
       macaddrh       : integer := 16#00005E#;
@@ -303,7 +317,10 @@ package ethcomp is
       phyrstadr      : integer range 0 to 32 := 0;
       sim            : integer range 0 to 1 := 0;
       oepol          : integer range 0 to 1 := 0;
-      scanen         : integer range 0 to 1 := 0);
+      scanen         : integer range 0 to 1 := 0;
+      mdint_pol      : integer range 0 to 1 := 0;
+      enable_mdint   : integer range 0 to 1 := 0;
+      multicast      : integer range 0 to 1 := 0);
     port(
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;
@@ -323,13 +340,13 @@ package ethcomp is
       hprot          : out  std_logic_vector(3 downto 0);
       hwdata         : out  std_logic_vector(31 downto 0);
       --apb slv in 
-      psel	   : in   std_ulogic;
-      penable	   : in   std_ulogic;
-      paddr	   : in   std_logic_vector(31 downto 0);
-      pwrite	   : in   std_ulogic;
-      pwdata	   : in   std_logic_vector(31 downto 0);
+      psel	     : in   std_ulogic;
+      penable	     : in   std_ulogic;
+      paddr	     : in   std_logic_vector(31 downto 0);
+      pwrite	     : in   std_ulogic;
+      pwdata	     : in   std_logic_vector(31 downto 0);
       --apb slv out
-      prdata	   : out  std_logic_vector(31 downto 0);
+      prdata	     : out  std_logic_vector(31 downto 0);
       --irq
       irq            : out  std_logic;
       --ethernet input signals
@@ -343,6 +360,7 @@ package ethcomp is
       rx_crs         : in   std_ulogic;
       mdio_i         : in   std_ulogic;
       phyrstaddr     : in   std_logic_vector(4 downto 0);
+      mdint          : in   std_ulogic;
       --ethernet output signals
       reset          : out  std_ulogic;
       txd            : out  std_logic_vector(7 downto 0);   
@@ -353,7 +371,9 @@ package ethcomp is
       mdio_oe        : out  std_ulogic;
       --scantest
       testrst        : in   std_ulogic;
-      testen         : in   std_ulogic
+      testen         : in   std_ulogic;
+      edcladdr       : in   std_logic_vector(3 downto 0) := "0000"
       );
   end component;
+  
 end package;

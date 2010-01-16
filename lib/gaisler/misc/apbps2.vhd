@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -19,6 +20,7 @@
 -- Entity:      apbps2
 -- File:        apbps2.vhd
 -- Author:      Marcus Hellqvist, Jiri Gaisler
+-- Modified by: Jan Andersson
 -- Description: PS/2 keyboard interface
 -----------------------------------------------------------------------------
 
@@ -39,7 +41,8 @@ entity apbps2 is
     pmask       : integer := 16#fff#;
     pirq        : integer := 0;
     fKHz        : integer := 50000;
-    fixed       : integer := 1
+    fixed       : integer := 0;
+    oepol       : integer range 0 to 1 := 0
     );
   port(
     rst         : in std_ulogic;        -- Global asynchronous reset
@@ -100,15 +103,18 @@ type ps2_regs is record
   ps2data        : std_ulogic;                                   -- ps2 data
   ps2clkoe       : std_ulogic;                                   -- ps2 clock output enable
   ps2dataoe      : std_ulogic;                                   -- ps2 data output enable
-  timer          : std_logic_vector(13 downto 0);                -- timer
-  reload         : std_logic_vector(13 downto 0);                -- reload register
+  timer          : std_logic_vector(16 downto 0);                -- timer
+  reload         : std_logic_vector(16 downto 0);                -- reload register
 end record;
 
  constant rcntzero      : std_logic_vector(log2x(fifosize) downto 0) := (others => '0');
- constant REVISION      : integer := 1;
+ constant REVISION      : integer := 2;
  constant pconfig       : apb_config_type := (
                         0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_APBPS2, 0, REVISION, pirq),
                         1 => apb_iobar(paddr, pmask));
+
+ constant OUTPUT : std_ulogic := conv_std_logic(oepol = 1);
+ constant INPUT  : std_ulogic := conv_std_logic(oepol = 0);
 
  signal r, rin          : ps2_regs;
  signal ps2_clk, ps2_data : std_ulogic;
@@ -160,7 +166,7 @@ begin
       when "10" =>
 	rdata(3 downto 0) := r.tx_irq_en & r.rx_irq_en & r.tx_en & r.rx_en;
       when others =>
-	if fixed = 0 then rdata(13 downto 0) := r.reload; end if;
+	if fixed = 0 then rdata(r.reload'range) := r.reload; end if;
     end case;
 
     -- write registers
@@ -182,7 +188,7 @@ begin
           v.rx_en := apbi.pwdata(0);
         when "11" =>
           if fixed = 0 then
-            v.reload := apbi.pwdata(13 downto 0);
+            v.reload := apbi.pwdata(r.reload'range);
           end if;
         when others =>
           null;
@@ -192,18 +198,18 @@ begin
     case r.txstate is
     when idle =>
       if r.tx_en = '1' and r.tcnt /= rcntzero then
-        v.ps2clk := '0'; v.ps2clkoe := '0'; v.tx_act := '1';
-        v.ps2data := '1'; v.ps2dataoe := '0'; v.txstate := waitrequest;
+        v.ps2clk := '0'; v.ps2clkoe := OUTPUT; v.tx_act := '1';
+        v.ps2data := '1'; v.ps2dataoe := OUTPUT; v.txstate := waitrequest;
+        if fixed = 1 then v.timer := conv_std_logic_vector(fKHz/10,r.timer'length);
+        else v.timer := r.reload; end if;
       end if;
     when waitrequest =>
       v.timer := r.timer - 1;
-      if (v.timer(13) and not r.timer(13)) = '1' then
-        if fixed = 1 then v.timer := conv_std_logic_vector(fKHz/10,14);
-        else v.timer := r.reload; end if;
-        v.ps2clk := '1'; v.ps2data := '0'; v.txstate := start;
+      if (v.timer(r.timer'left) and not r.timer(r.timer'left)) = '1' then
+        v.ps2data := '0'; v.txstate := start;
       end if;
     when start  =>
-      v.ps2clkoe := '1';
+      v.ps2clkoe := INPUT; v.ps2clk := '1';
       v.tshift := "10" & r.txfifo(conv_integer(r.traddr));
       v.traddr := r.traddr + 1; v.tcnt := r.tcnt - 1;
       v.tpar := '1';
@@ -224,9 +230,9 @@ begin
         v.ps2data := '1'; v.txstate := ack;
       end if;
     when ack =>
-      v.ps2dataoe := '1';
+      v.ps2dataoe := INPUT;
       if r.ps2_clk_fall = '1' and r.ps2_data_syn = '0'then
-        v.ps2data := '1'; v.ps2dataoe := '0'; v.tx_irq := r.tx_irq_en;
+        v.ps2data := '1'; v.ps2dataoe := OUTPUT; v.tx_irq := r.tx_irq_en;
         v.txstate := idle; v.tx_act := '0';
       end if;
     end case;
@@ -272,10 +278,10 @@ begin
     if v.tx_act = '0' then
       if r.rbf = '1' then
         v.kb_inh := '1'; v.ps2clk := '0'; v.ps2data := '1';
-        v.ps2dataoe := '0'; v.ps2clkoe := '0';
+        v.ps2dataoe := OUTPUT; v.ps2clkoe := OUTPUT;
       else
-        v.ps2clk := '1'; v.ps2data := '1'; v.ps2dataoe := '1';
-        v.ps2clkoe := '1';
+        v.ps2clk := '1'; v.ps2data := '1'; v.ps2dataoe := INPUT;
+        v.ps2clkoe := INPUT;
       end if;
     end if;
 
@@ -294,8 +300,12 @@ begin
       v.rcnt := (others => '0'); v.traddr := (others => '0');
       v.twaddr := (others => '0'); v.tcnt := (others => '0');
       v.tshift := (others => '0'); v.tpar := '0';
-      v.timer := conv_std_logic_vector(fKHz/10,14);
+      if fixed = 0 then
+        v.reload := conv_std_logic_vector(fKHz/10,r.reload'length);
+      end if;
     end if;
+    
+    if fixed = 1 then v.reload := (others => '0'); end if;
 
     -- update registers
     rin <= v;
@@ -323,8 +333,8 @@ begin
 
 -- pragma translate_off
     bootmsg : report_version
-    generic map ("apbps2_" & tost(pindex) & ": APB PS2 interface rev 0, irq "
-    & tost(pirq));
+    generic map ("apbps2_" & tost(pindex) & ": APB PS2 interface rev " &
+                 tost(REVISION) & ", irq " & tost(pirq));
 -- pragma translate_on
 
 end;

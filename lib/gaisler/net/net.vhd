@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -40,6 +41,7 @@ package net is
     rx_col     : std_ulogic;
     rx_crs     : std_ulogic;
     mdio_i     : std_ulogic;
+    mdint      : std_ulogic;
     phyrstaddr : std_logic_vector(4 downto 0);
     edcladdr   : std_logic_vector(3 downto 0);   
   end record;
@@ -97,7 +99,10 @@ package net is
       rmii           : integer range 0 to 1  := 0; 
       oepol          : integer range 0 to 1  := 0; 
       scanen         : integer range 0 to 1  := 0;
-      ft             : integer range 0 to 1  := 0); 
+      ft             : integer range 0 to 2  := 0;
+      mdint_pol      : integer range 0 to 1  := 0;
+      enable_mdint   : integer range 0 to 1  := 0;
+      multicast      : integer range 0 to 1  := 0); 
     port(
      rst            : in  std_ulogic;
      clk            : in  std_ulogic;
@@ -124,7 +129,7 @@ package net is
       slot_time      : integer := 128;
       mdcscaler      : integer range 0 to 255 := 25; 
       nsync          : integer range 1 to 2 := 2;
-      edcl           : integer range 0 to 1 := 0;
+      edcl           : integer range 0 to 2 := 0;
       edclbufsz      : integer range 1 to 64 := 1;
       burstlength    : integer range 4 to 128 := 32;
       macaddrh       : integer := 16#00005E#;
@@ -134,7 +139,10 @@ package net is
       phyrstadr      : integer range 0 to 32 := 0;
       sim            : integer range 0 to 1 := 0;
       oepol          : integer range 0 to 1  := 0; 
-      scanen         : integer range 0 to 1  := 0); 
+      scanen         : integer range 0 to 1  := 0;
+      mdint_pol      : integer range 0 to 1  := 0;
+      enable_mdint   : integer range 0 to 1  := 0;
+      multicast      : integer range 0 to 1  := 0); 
     port(
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;
@@ -175,7 +183,10 @@ package net is
     sim            : integer range 0 to 1 := 0;
     giga           : integer range 0 to 1  := 0;
     oepol          : integer range 0 to 1  := 0;
-    scanen         : integer range 0 to 1  := 0); 
+    scanen         : integer range 0 to 1  := 0;
+    mdint_pol      : integer range 0 to 1  := 0;
+    enable_mdint   : integer range 0 to 1  := 0;
+    multicast      : integer range 0 to 1  := 0); 
   port(
     rst            : in  std_ulogic;
     clk            : in  std_ulogic;

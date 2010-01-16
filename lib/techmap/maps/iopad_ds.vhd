@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -16,8 +17,8 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------
--- Entity: 	iopad
--- File:	iopad.vhd
+-- Entity: 	iopad_ds
+-- File:	iopad_ds.vhd
 -- Author:	Nils Johan Wessman - Gaisler Research
 -- Description:	differential io pad with technology wrapper
 ------------------------------------------------------------------------------
@@ -33,27 +34,33 @@ entity iopad_ds is
 	   voltage : integer := x33v; strength : integer := 12;
 	   oepol : integer := 0);
   port (padp, padn : inout std_ulogic; i, en : in std_ulogic; o : out std_ulogic);
-end; 
+end;
 
 architecture rtl of iopad_ds is
 signal oen : std_ulogic;
 begin
   oen <= not en when oepol /= padoen_polarity(tech) else en;
-  gen0 : if has_pads(tech) = 0 generate
-    padp <= i after 2 ns when oen = '0' 
+  gen0 : if has_ds_pads(tech) = 0 or 
+           tech = axcel or tech = axdsp or tech = rhlib18t or
+           tech = ut25 generate
+    padp <= i after 2 ns when oen = '0'
 -- pragma translate_off
-           else 'X' after 2 ns when is_x(oen) 
+           else 'X' after 2 ns when is_x(oen)
 -- pragma translate_on
            else 'Z' after 2 ns;
-    padn <= not i after 2 ns when oen = '0' 
+    padn <= not i after 2 ns when oen = '0'
 -- pragma translate_off
-           else 'X' after 2 ns when is_x(oen) 
+           else 'X' after 2 ns when is_x(oen)
 -- pragma translate_on
            else 'Z' after 2 ns;
     o <= to_X01(padp) after 1 ns;
   end generate;
-  xcv : if (tech = virtex5) generate
-    x0 : virtex5_iopad_ds generic map (level, slew, voltage, strength) 
+  xcv : if is_unisim(tech) = 1 generate
+    x0 : unisim_iopad_ds generic map (level, slew, voltage, strength)
+	 port map (padp, padn, i, oen, o);
+  end generate;
+  pa : if (tech = apa3) generate
+    x0 : apa3_iopad_ds generic map (level)
 	 port map (padp, padn, i, oen, o);
   end generate;
 end;
@@ -68,15 +75,15 @@ entity iopad_dsv is
 	voltage : integer := x33v; strength : integer := 12; width : integer := 1;
 	oepol : integer := 0);
   port (
-    padp, padn : inout std_logic_vector(width-1 downto 0); 
+    padp, padn : inout std_logic_vector(width-1 downto 0);
     i   : in  std_logic_vector(width-1 downto 0);
     en  : in  std_ulogic;
     o   : out std_logic_vector(width-1 downto 0));
-end; 
+end;
 architecture rtl of iopad_dsv is
 begin
   v : for j in width-1 downto 0 generate
-    x0 : iopad_ds generic map (tech, level, slew, voltage, strength, oepol) 
+    x0 : iopad_ds generic map (tech, level, slew, voltage, strength, oepol)
 	 port map (padp(j), padn(j), i(j), en, o(j));
   end generate;
 end;
@@ -91,15 +98,15 @@ entity iopad_dsvv is
 	voltage : integer := x33v; strength : integer := 12; width : integer := 1;
 	oepol : integer := 0);
   port (
-    padp, padn : inout std_logic_vector(width-1 downto 0); 
+    padp, padn : inout std_logic_vector(width-1 downto 0);
     i   : in  std_logic_vector(width-1 downto 0);
     en  : in  std_logic_vector(width-1 downto 0);
     o   : out std_logic_vector(width-1 downto 0));
-end; 
+end;
 architecture rtl of iopad_dsvv is
 begin
   v : for j in width-1 downto 0 generate
-    x0 : iopad_ds generic map (tech, level, slew, voltage, strength, oepol) 
+    x0 : iopad_ds generic map (tech, level, slew, voltage, strength, oepol)
 	 port map (padp(j), padn(j), i(j), en(j), o(j));
   end generate;
 end;

@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -33,8 +34,12 @@ use gaisler.libcache.all;
 use gaisler.leon3.all;
 use gaisler.mmuconfig.all;
 use gaisler.mmuiface.all;
+use gaisler.libmmu.all;
 
 entity mmutw is
+  generic ( 
+    mmupgsz   : integer range 0 to 5  := 0
+  );
   port (
     rst     : in  std_logic;
     clk     : in  std_logic;
@@ -89,6 +94,7 @@ begin
   variable pte,ptd,inv,rvd : std_logic;
   variable goon, found : std_logic;
   variable base        : std_logic_vector(31 downto 0);
+  variable pagesize : integer range 0 to 3;
   
   begin 
     v := r;
@@ -124,6 +130,17 @@ begin
     end if;      
     fault_trans := (rvd);
     fault_inv := inv;
+
+    pagesize := MMU_getpagesize(mmupgsz,mmctrl1);
+    case pagesize is
+      when 1 => 
+        -- 8k tag comparision [ 7 6 6 ]
+      when 2 => 
+        -- 16k tag comparision [ 6 6 6 ]
+      when 3 => 
+        -- 32k tag comparision [ 4 7 6 ]
+      when others =>    -- standard 4k tag comparision [ 8 6 6 ]
+    end case;
     
     -- # state machine
     case r.state is
@@ -154,22 +171,61 @@ begin
       when lv1 =>                                               
                                                                 
         if ((mcmmo.ready and not r.req)= '1') then          
-          lvl := LVL_CTX; fault_lvl := FS_L_CTX;                
-          index(VA_I1_SZ-1 downto 0) := twi.data(VA_I1_U downto VA_I1_D);       
+          lvl := LVL_CTX; fault_lvl := FS_L_CTX;
+          case pagesize is
+            when 1 => 
+              -- 8k tag comparision [ 7 6 6 ]
+              index(P8K_VA_I1_SZ-1 downto 0) := twi.data(P8K_VA_I1_U downto P8K_VA_I1_D);       
+            when 2 => 
+              -- 16k tag comparision [ 6 6 6 ]
+              index(P16K_VA_I1_SZ-1 downto 0) := twi.data(P16K_VA_I1_U downto P16K_VA_I1_D);       
+            when 3 => 
+              -- 32k tag comparision [ 4 7 6 ]
+              index(P32K_VA_I1_SZ-1 downto 0) := twi.data(P32K_VA_I1_U downto P32K_VA_I1_D);       
+            when others =>
+              -- standard 4k tag comparision [ 8 6 6 ]
+              index(VA_I1_SZ-1 downto 0) := twi.data(VA_I1_U downto VA_I1_D);       
+          end case;
           v.state := lv2;
         end if;
       when lv2 =>                                               
                                                                 
         if ((mcmmo.ready and not r.req)= '1') then          
           lvl := LVL_REGION; fault_lvl :=  FS_L_L1;             
-          index(VA_I2_SZ-1 downto 0) := twi.data(VA_I2_U downto VA_I2_D);       
+          case pagesize is
+            when 1 => 
+              -- 8k tag comparision [ 7 6 6 ]
+              index(P8K_VA_I2_SZ-1 downto 0) := twi.data(P8K_VA_I2_U downto P8K_VA_I2_D);       
+            when 2 => 
+              -- 16k tag comparision [ 6 6 6 ]
+              index(P16K_VA_I2_SZ-1 downto 0) := twi.data(P16K_VA_I2_U downto P16K_VA_I2_D);       
+            when 3 => 
+              -- 32k tag comparision [ 4 7 6 ]
+              index(P32K_VA_I2_SZ-1 downto 0) := twi.data(P32K_VA_I2_U downto P32K_VA_I2_D);       
+            when others =>
+              -- standard 4k tag comparision [ 8 6 6 ]
+              index(VA_I2_SZ-1 downto 0) := twi.data(VA_I2_U downto VA_I2_D);       
+          end case;
           v.state := lv3;
         end if;
       when lv3 =>                                               
                                                                 
         if ((mcmmo.ready and not r.req)= '1') then          
           lvl := LVL_SEGMENT; fault_lvl := FS_L_L2;             
-          index(VA_I3_SZ-1 downto 0) := twi.data(VA_I3_U downto VA_I3_D);
+          case pagesize is
+            when 1 => 
+              -- 8k tag comparision [ 7 6 6 ]
+              index(P8K_VA_I3_SZ-1 downto 0) := twi.data(P8K_VA_I3_U downto P8K_VA_I3_D);
+            when 2 => 
+              -- 16k tag comparision [ 6 6 6 ]
+              index(P16K_VA_I3_SZ-1 downto 0) := twi.data(P16K_VA_I3_U downto P16K_VA_I3_D);
+            when 3 => 
+              -- 32k tag comparision [ 4 7 6 ]
+              index(P32K_VA_I3_SZ-1 downto 0) := twi.data(P32K_VA_I3_U downto P32K_VA_I3_D);
+            when others =>
+              -- standard 4k tag comparision [ 8 6 6 ]
+              index(VA_I3_SZ-1 downto 0) := twi.data(VA_I3_U downto VA_I3_D);
+          end case;
           v.state := lv4;
         end if;
       when lv4 =>                                               

@@ -164,12 +164,13 @@ CONFIG_IU_V8MULDIV
   The divider consumes approximately 2 kgates, the multiplier 6 kgates.
 
 Multiplier latency
-CONFIG_IU_MUL_LATENCY_4
-  The multiplier used for UMUL/SMUL instructions is implemented
-  with a 16x16 multiplier which is iterated 4 times. This leads
-  to a 4-cycle latency for multiply operations. To improve timing,
-  a pipeline stage can be inserted into the 16x16 multiplier which
-  will lead to a 5-cycle latency for the multiply oprations.
+CONFIG_IU_MUL_LATENCY_2
+  Implementation options for the integer multiplier.
+  
+  Type        Implementation              issue-rate/latency
+  2-clocks    32x32 pipelined multiplier     1/2 
+  4-clocks    16x16 standard multiplier      4/4
+  5-clocks    16x16 pipelined multiplier     4/5
 
 Multiplier latency
 CONFIG_IU_MUL_MAC
@@ -177,6 +178,7 @@ CONFIG_IU_MUL_MAC
   instructions will be enabled. The instructions implement a
   single-cycle 16x16->32 bits multiply with a 40-bits accumulator.
   The details of these instructions can be found in the LEON manual,
+  This option is only available when 16x16 multiplier is used.
 
 Single vector trapping
 CONFIG_IU_SVT
@@ -233,9 +235,9 @@ GRFPU Multiplier
 CONFIG_FPU_GRFPU_INFMUL
   On FPGA targets choose inferred multiplier. For ASIC implementations 
   choose between Synopsys Design Ware (DW) multiplier or Module 
-  Generator (ModGen) multiplier. DW multiplier gives better results 
-  (smaller area  and better timing) but requires DW license. ModGen 
-  multiplier is part of GRLIB and does not require license. 
+  Generator (ModGen) multiplier. The DW multiplier gives better results 
+  (smaller area and better timing) but requires a DW license. 
+  The ModGen multiplier is part of GRLIB and does not require a license. 
 
 Shared GRFPU
 CONFIG_FPU_GRFPU_SH
@@ -1028,6 +1030,22 @@ CONFIG_IRQ3_BROADCAST_ENABLE
   If enabled the broadcast register is used to determine which
   interrupt should be sent to all cpus instead of just the first
   one that consumes it.
+
+Secondary interrupts
+CONFIG_IRQ3_SEC
+  The interrupt controller handles 15 interrupts by default (1 - 15).
+  These correspond to the 15 SPARC asyncronous traps (0x11 - 0x1F),
+  and AMBA interrupts 1 - 15. This option will enable 16 additional
+  (secondary) interrupts, corresponding to AMBA interrupts 16 - 31.
+  The secondary interrupts will be multiplexed onto one of the first
+  15 interrupts. The total number of handled interrupts can then
+  be up to 30 (14 primary and 16 secondary).
+
+Number of interrupts
+CONFIG_IRQ3_NSEC
+  Defines which of the first 15 interrupts should be used for the
+  secondary (16 - 31) interrupts. Interrupt 15 should be avoided
+  since it is not maskable by the processor.
 Timer module enable
 CONFIG_GPT_ENABLE
   Say Y here to enable the Modular Timer Unit. The timer unit consists

@@ -1,8 +1,0 @@
-#include "arm.h"
-#include "interrupt_controller.h"
-#include "misc.h"
-#include "platform.h"
-#include "reg_macros.h"
-#include "timer.h"
-#include "uart_reg.h"
-#include "cmp7wrapper.h"

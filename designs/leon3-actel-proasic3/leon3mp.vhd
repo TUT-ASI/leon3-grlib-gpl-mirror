@@ -1,6 +1,10 @@
 -----------------------------------------------------------------------------
 --  LEON3 Demonstration design
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -14,7 +18,7 @@
 --
 --  You should have received a copy of the GNU General Public License
 --  along with this program; if not, write to the Free Software
---  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 
@@ -154,6 +158,7 @@ signal gpioo : gpio_out_type;
 signal can_lrx, can_ltx   : std_ulogic;
 
 signal lclk, letx_clk : std_ulogic;
+signal ramcs : std_ulogic;
 
 --signal tck, tms, tdi, tdo : std_ulogic;
 signal resetnl, clk2x, spw_clkl   : std_ulogic;
@@ -207,16 +212,34 @@ begin
 
   l3 : if CFG_LEON3 = 1 generate
     cpu : for i in 0 to CFG_NCPU-1 generate
-      u0 : leon3s			-- LEON3 processor      
-      generic map (i, fabtech, memtech, CFG_NWIN, CFG_DSU, CFG_FPU, CFG_V8, 
-  	0, CFG_MAC, pclow, 0, CFG_NWP, CFG_ICEN, CFG_IREPL, CFG_ISETS, CFG_ILINE, 
-  	CFG_ISETSZ, CFG_ILOCK, CFG_DCEN, CFG_DREPL, CFG_DSETS, CFG_DLINE, CFG_DSETSZ,
-  	CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
+      l3ft : if CFG_LEON3FT_EN /= 0 generate
+        leon3ft0 : leon3ft		-- LEON3 processor      
+        generic map (i, fabtech, memtech, CFG_NWIN, CFG_DSU, CFG_FPU, CFG_V8, 
+  	  0, CFG_MAC, pclow, 0, CFG_NWP, CFG_ICEN, CFG_IREPL, CFG_ISETS, CFG_ILINE, 
+	  CFG_ISETSZ, CFG_ILOCK, CFG_DCEN, CFG_DREPL, CFG_DSETS, CFG_DLINE, CFG_DSETSZ,
+	  CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
           CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP, 
-          CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1)
-      port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso, 
-      		irqi(i), irqo(i), dbgi(i), dbgo(i));
+          CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1,
+	  CFG_IUFT_EN, CFG_FPUFT_EN, CFG_CACHE_FT_EN, CFG_RF_ERRINJ, 
+	  CFG_CACHE_ERRINJ, CFG_DFIXED, CFG_LEON3_NETLIST, CFG_SCAN, CFG_MMU_PAGE)
+        port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso, 
+    		irqi(i), irqo(i), dbgi(i), dbgo(i), clkm);
+      end generate;
+
+      l3s : if CFG_LEON3FT_EN = 0 generate
+        u0 : leon3s 		-- LEON3 processor
+        generic map (i, fabtech, memtech, CFG_NWIN, CFG_DSU, CFG_FPU, CFG_V8,
+	  0, CFG_MAC, pclow, 0, CFG_NWP, CFG_ICEN, CFG_IREPL, CFG_ISETS, CFG_ILINE,
+	  CFG_ISETSZ, CFG_ILOCK, CFG_DCEN, CFG_DREPL, CFG_DSETS, CFG_DLINE, CFG_DSETSZ,
+	  CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
+          CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP,
+          CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1,
+	  CFG_DFIXED, CFG_SCAN, CFG_MMU_PAGE)
+        port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso,
+    		irqi(i), irqo(i), dbgi(i), dbgo(i));
+      end generate;
     end generate;
+
     errorn_pad : outpad generic map (tech => padtech) port map (errorn, dbgo(0).error);
     
     dsugen : if CFG_DSU = 1 generate
@@ -264,6 +287,7 @@ begin
       x : outpad generic map (tech => padtech) 
 	port map (ramben(i), memo.wrn(3-i));
     end generate;
+    ramcs <= memo.ramsn(0);
   end generate;
 
   mctrl2 : if (CFG_MCTRL_LEON2 = 1) and (CFG_SSCTRL = 0) generate 	-- LEON2 memory controller
@@ -276,13 +300,14 @@ begin
       x : outpad generic map (tech => padtech) 
 	port map (ramben(i), memo.mben(3-i));
     end generate;
+    ramcs <= memo.ramsn(0) or andv(memo.mben);
   end generate;
 
   mempads : if (CFG_MCTRL_LEON2 = 1) or (CFG_SSCTRL = 1) generate 	-- LEON2 memory controller
     addr_pad : outpadv generic map (width => 19, tech => padtech) 
 	port map (address, memo.address(20 downto 2)); 
     rams_pad : outpad generic map (tech => padtech) 
-	port map (ramsn, memo.ramsn(0)); 
+	port map (ramsn, ramcs); --memo.ramsn(0)); 
     roms_pad : outpad generic map (tech => padtech) 
 	port map (romsn, memo.romsn(0)); 
     iosn_pad : outpad generic map (tech => padtech) 

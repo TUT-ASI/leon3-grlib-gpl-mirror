@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -63,7 +64,10 @@ entity greth is
     rmii           : integer range 0 to 1  := 0;
     oepol	   : integer range 0 to 1  := 0; 
     scanen	   : integer range 0 to 1  := 0;
-    ft             : integer range 0 to 1 := 0);
+    ft             : integer range 0 to 2  := 0;
+    mdint_pol      : integer range 0 to 1  := 0;
+    enable_mdint   : integer range 0 to 1  := 0;
+    multicast      : integer range 0 to 1  := 0);
   port(
     rst            : in  std_ulogic;
     clk            : in  std_ulogic;
@@ -152,7 +156,10 @@ begin
       phyrstadr      => phyrstadr,
       rmii           => rmii,
       oepol	     => oepol,
-      scanen	     => scanen)
+      scanen	     => scanen,
+      mdint_pol      => mdint_pol,
+      enable_mdint   => enable_mdint,
+      multicast      => multicast)
     port map(
       rst            => rst,
       clk            => clk,
@@ -215,6 +222,7 @@ begin
       rx_crs         => ethi.rx_crs,
       mdio_i         => ethi.mdio_i,
       phyrstaddr     => ethi.phyrstaddr,
+      mdint          => ethi.mdint,
       --ethernet output signals
       reset          => etho.reset,
       txd            => etho.txd(3 downto 0),
@@ -256,14 +264,14 @@ begin
       port map(clk, rxrenable, rxraddress(fabits-1 downto 0), rxrdata, clk,
       rxwrite, rxwaddress(fabits-1 downto 0), rxwdata);
   end generate; 
-  ft1 : if ft = 1 generate
+  ft1 : if ft /= 0 generate
     tx_fifo0 : syncram_2pft generic map(tech => memtech, abits => txfabits,
-      dbits => 32, sepclk => 0, ft => 1)
+      dbits => 32, sepclk => 0, ft => ft)
       port map(clk, txrenable, txraddress(txfabits-1 downto 0), txrdata, clk,
       txwrite, txwaddress(txfabits-1 downto 0), txwdata);
 
     rx_fifo0 : syncram_2pft generic map(tech => memtech, abits => fabits,
-      dbits => 32, sepclk => 0, ft => 1)
+      dbits => 32, sepclk => 0, ft => ft)
       port map(clk, rxrenable, rxraddress(fabits-1 downto 0), rxrdata, clk,
       rxwrite, rxwaddress(fabits-1 downto 0), rxwdata);
   end generate;

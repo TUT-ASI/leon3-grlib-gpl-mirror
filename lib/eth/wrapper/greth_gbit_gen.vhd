@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -39,7 +40,7 @@ entity greth_gbit_gen is
     slot_time      : integer := 128;
     mdcscaler      : integer range 0 to 255 := 25; 
     nsync          : integer range 1 to 2 := 2;
-    edcl           : integer range 0 to 1 := 0;
+    edcl           : integer range 0 to 2 := 1;
     edclbufsz      : integer range 1 to 64 := 1;
     burstlength    : integer range 4 to 128 := 32;
     macaddrh       : integer := 16#00005E#;
@@ -49,7 +50,10 @@ entity greth_gbit_gen is
     phyrstadr      : integer range 0 to 32 := 0;
     sim            : integer range 0 to 1 := 0;
     oepol          : integer range 0 to 1 := 0;
-    scanen         : integer range 0 to 1 := 0);
+    scanen         : integer range 0 to 1 := 0;
+    mdint_pol      : integer range 0 to 1 := 0;
+    enable_mdint   : integer range 0 to 1 := 0;
+    multicast      : integer range 0 to 1 := 0);
   port(
     rst            : in  std_ulogic;
     clk            : in  std_ulogic;
@@ -89,6 +93,7 @@ entity greth_gbit_gen is
     rx_crs         : in   std_ulogic;
     mdio_i         : in   std_ulogic;
     phyrstaddr     : in   std_logic_vector(4 downto 0);
+    mdint          : in   std_ulogic;
     --ethernet output signals
     reset          : out  std_ulogic;
     txd            : out  std_logic_vector(7 downto 0);   
@@ -99,7 +104,8 @@ entity greth_gbit_gen is
     mdio_oe        : out  std_ulogic;
     --scantest
     testrst        : in   std_ulogic;
-    testen         : in   std_ulogic
+    testen         : in   std_ulogic;
+    edcladdr       : in   std_logic_vector(3 downto 0)
     );
 end entity;
   
@@ -159,7 +165,10 @@ begin
       phyrstadr      => phyrstadr,
       sim            => sim,
       oepol          => oepol,
-      scanen         => scanen)
+      scanen         => scanen,
+      mdint_pol      => mdint_pol,
+      enable_mdint   => enable_mdint,
+      multicast      => multicast)
     port map(
       rst            => rst,
       clk            => clk,
@@ -222,6 +231,7 @@ begin
       rx_crs         => rx_crs,
       mdio_i         => mdio_i,
       phyrstaddr     => phyrstaddr,
+      mdint          => mdint,
       --ethernet output signals
       reset          => reset,
       txd            => txd,
@@ -232,7 +242,8 @@ begin
       mdio_oe        => mdio_oe,
       --scantest     
       testrst        => testrst,
-      testen         => testen);
+      testen         => testen,
+      edcladdr       => edcladdr);
 
 -------------------------------------------------------------------------------
 -- FIFOS ----------------------------------------------------------------------
@@ -250,7 +261,7 @@ begin
 -------------------------------------------------------------------------------
 -- EDCL buffer ram ------------------------------------------------------------
 -------------------------------------------------------------------------------
-  edclram : if (edcl = 1) generate
+  edclram : if (edcl /= 0) generate
     rloopm : for i in 0 to 1 generate
       r0 : syncram_2p generic map (memtech, eabits, 8) port map (
 	clk, erenable, eraddress(eabits-1 downto 0), erdata(i*8+23 downto i*8+16), clk,

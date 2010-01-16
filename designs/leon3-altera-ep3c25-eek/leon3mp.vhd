@@ -1,6 +1,10 @@
 ------------------------------------------------------------------------------
 --  LEON3 Demonstration design
 --  Copyright (C) 2008 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -14,7 +18,8 @@
 --
 --  You should have received a copy of the GNU General Public License
 --  along with this program; if not, write to the Free Software
---  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -587,7 +592,7 @@ begin
     spi1 : spictrl
     generic map (pindex => 9, paddr  => 9, pmask  => 16#fff#, pirq => 9,
                  fdepth => CFG_SPICTRL_FIFO, slvselen => CFG_SPICTRL_SLVREG,
-                 slvselsz => CFG_SPICTRL_SLVS)
+                 slvselsz => CFG_SPICTRL_SLVS, odmode => 1)
     port map (rstn, clkm, apbi, apbo(9), spii, spio, slvsel);
    miso_pad : iopad generic map (tech => padtech)
      port map (hc_sd_dat, spio.miso, spio.misooen, spii.miso);
@@ -658,7 +663,7 @@ begin
     -- Interrupt and busy signals not connected
     touch3spi1 : spictrl
       generic map (pindex => 12, paddr  => 12, pmask  => 16#fff#, pirq => 12,
-                   fdepth => 2, slvselen => 1, slvselsz => 2)
+                   fdepth => 2, slvselen => 1, slvselsz => 2, odmode => 0)
       port map (rstn, clkm, apbi, apbo(12), lcdspii, lcdspio, lcdslvsel);
     adc_miso_pad : inpad generic map (tech => padtech)
       port map (hc_adc_dout, lcdspii.miso);

@@ -6,17 +6,7 @@
 
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
--- Copyright (C) 2004 Jiri Gaisler, Gaisler Research
---
--- This program is free software; you can redistribute it and/or modify
--- it under the terms of the GNU General Public License as published by
--- the Free Software Foundation; either version 2 of the License, or
--- (at your option) any later version.
---
--- This program is distributed in the hope that it will be useful,
--- but WITHOUT ANY WARRANTY; without even the implied warranty of
--- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
--- GNU General Public License for more details.
+-- Copyright (C) 2009 Aeroflex Gaisler
 ------------------------------------------------------------------------------
 
 
@@ -32,24 +22,24 @@ package config is
   -- boot prom source
   -- 0: external
   -- 1: internal
-  constant CFG_BOOTOPT : integer := CONFIG_BOOTOPT;
+  constant CFG_BOOTOPT : integer := 0;
 
   -- HPE board version
   -- 1: version 1
   -- /= 1: version 2
-  constant CFG_HPEVER : integer := CONFIG_HPEVER;
+  constant CFG_HPEVER : integer := 2;
 
   -- provide ahb signals for an external slave
   -- slave number can be defined below
   -- numbers 8 to 15 can be used safely, numbers below
   -- might be used by other LEON cores depending on configuration
-  constant CFG_EXTAHB : integer := CONFIG_EXTAHB_ENABLE;
+  constant CFG_EXTAHB : integer := 0;
 
-  constant CFG_EXTAHB_ADDR : integer := 16#CONFIG_EXTAHB_BASE#;
+-- constant CFG_EXTAHB_ADDR : integer := 16#A00#;
 
   -- interrupt number the external slave is assigned to
   -- unused at the moment
-  constant CFG_EXTAHB_IRQ : integer := CONFIG_EXTAHB_INT;
+  constant CFG_EXTAHB_IRQ : integer := 6;
 
   -- AHB slave number the external slave is assigned to
   constant CFG_EXTAHB_NR : integer := 8;
@@ -58,7 +48,7 @@ package config is
   constant CFG_EXTAHB_ID : integer := 8;
 
   -- shift sdram address to bits 12+
-  constant CFG_SDSHIFT : integer := CONFIG_SDRAM_SHIFT;
+  constant CFG_SDSHIFT : integer := 0;
 
   -----------------------------------------------------------------------------
   -- END GLEICHMANN SPECIFIC OPTIONS
@@ -115,6 +105,7 @@ package config is
   constant CFG_DTLBNUM : integer := 8;
   constant CFG_TLB_TYPE : integer := 0 + 0*2;
   constant CFG_TLB_REP : integer := 0;
+  constant CFG_MMU_PAGE : integer := 0;
   constant CFG_DSU : integer := 1;
   constant CFG_ITBSZ : integer := 1;
   constant CFG_ATBSZ : integer := 1;
@@ -145,8 +136,8 @@ package config is
   constant CFG_ETH_BUF : integer := 2;
   constant CFG_ETH_IPM : integer := 16#C0A8#;
   constant CFG_ETH_IPL : integer := 16#0033#;
-  constant CFG_ETH_ENM : integer := 16#00007A#;
-  constant CFG_ETH_ENL : integer := 16#CC3004#;
+  constant CFG_ETH_ENM : integer := 16#020000#;
+  constant CFG_ETH_ENL : integer := 16#00001F#;
 -- PROM/SRAM controller
   constant CFG_SRCTRL : integer := 0;
   constant CFG_SRCTRL_PROMWS : integer := 0;
@@ -186,6 +177,7 @@ package config is
   constant CFG_UART1_FIFO : integer := 4;
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE : integer := 1;
+  constant CFG_IRQ3_NSEC : integer := 0;
 -- Modular timer
   constant CFG_GPT_ENABLE : integer := 1;
   constant CFG_GPT_NTIM : integer := (2);

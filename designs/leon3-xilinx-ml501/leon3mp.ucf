@@ -11,15 +11,40 @@ NET "egtx_clk" 	TNM_NET = "egtx_clk";
 TIMESPEC "TS_clkm_egtx_clk" = FROM "clkm" TO "egtx_clk" TIG;
 TIMESPEC "TS_egtx_clk_clkm" = FROM "egtx_clk" TO "clkm" TIG;
 
+
+NET sysace_clk_in   TNM_NET    = "sysace_clk_in";
+# Leave 1 ns margin
+TIMESPEC "TSSYSACE" = PERIOD "sysace_clk_in" 29 ns;
+#TIMESPEC "TS_clkm_sysace_clk_in" = FROM "clkm" TO "sysace_clk_in" TIG;
+#TIMESPEC "TS_sysace_clk_in_clkm" = FROM "sysace_clk_in" TO "clkm" TIG;
+#OFFSET = OUT : 8.000 AFTER sysace_clk_in;
+#OFFSET = IN : 7.000 BEFORE sysace_clk_in;
+
 #TIMESPEC "TSGTXOUT" = FROM "egtx_clk" TO "gtxphypads" 4.3 ns;
 #TIMESPEC "TSGRXIN" = FROM "gtxphypads" TO "eth1_e1_m1000_u0_rxclk" 10 ns;
 
-NET clk_100 period = 10.000 ;
-NET clk_200 period = 5.000;
-
-NET  clk_100              LOC="AD8" | IOSTANDARD = LVCMOS33;  # Bank 4, Vcco=3.3V, No DCI
-NET  clk_200_p            LOC="E16" | IOSTANDARD = LVDS_25;   # Bank 3, Vcco=2.5V, No DCI      
-NET  clk_200_n            LOC="E17" | IOSTANDARD = LVDS_25;   # Bank 3, Vcco=2.5V, No DCI      
+////////////////////////////////////////////////////////////////////////////
+// VGA clocks
+////////////////////////////////////////////////////////////////////////////
+NET "clkvga" TNM_NET = "clkvga" | PERIOD = 15.385;
+NET "clk25" TNM_NET = "clk25" | PERIOD = 40.000;
+NET "clk40" TNM_NET = "clk40" | PERIOD = 25.000;
+NET "clk65" TNM_NET = "clk65" | PERIOD = 15.385;
+#TIMESPEC "TSPLB_TFT" = FROM "clkm" TO "clkvga" TIG;
+TIMESPEC "TSPLB_TFT25" = FROM "clkm" TO "clk25" TIG;
+TIMESPEC "TSPLB_TFT40" = FROM "clkm" TO "clk40" TIG;
+TIMESPEC "TSPLB_TFT65" = FROM "clkm" TO "clk65" TIG;
+#TIMESPEC "TSTFT_PLB" = FROM "clkvgap" TO "clkm" TIG;
+TIMESPEC "TSTFT25_PLB" = FROM "clk25" TO "clkm" TIG;
+TIMESPEC "TSTFT25_TFT40" = FROM "clk25" TO "clk40" TIG;
+TIMESPEC "TSTFT25_TFT65" = FROM "clk25" TO "clk65" TIG;
+TIMESPEC "TSTFT40_PLB" = FROM "clk40" TO "clkm" TIG;
+TIMESPEC "TSTFT40_TFT25" = FROM "clk40" TO "clk25" TIG;
+TIMESPEC "TSTFT40_TFT65" = FROM "clk40" TO "clk65" TIG;
+TIMESPEC "TSTFT65_PLB" = FROM "clk65" TO "clkm" TIG;
+TIMESPEC "TSTFT65_TFT25" = FROM "clk65" TO "clk25" TIG;
+TIMESPEC "TSTFT65_TFT40" = FROM "clk65" TO "clk40" TIG;
+////////////////////////////////////////////////////////////////////////////
 
 #NET "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/dqsclk(*)" TNM_NET = "dqsclk"; 
 #TIMEGRP "dqsclk_rise" = FALLING "dqsclk";
@@ -27,13 +52,21 @@ NET  clk_200_n            LOC="E17" | IOSTANDARD = LVDS_25;   # Bank 3, Vcco=2.5
 #TIMESPEC "TS_dqsclk_clkml_rise" = FROM "dqsclk_rise" TO "clkml_rise" 3.500;
 
 INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.0.u" LOC = "IDELAYCTRL_X2Y4";
-INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.1.u" LOC = "IDELAYCTRL_X2Y3";
+#INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.1.u" LOC = "IDELAYCTRL_X2Y3";
 INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.2.u" LOC = "IDELAYCTRL_X2Y2";
 INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.3.u" LOC = "IDELAYCTRL_X0Y0";
 INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[0].u" LOC = "IDELAYCTRL_X2Y4";
-INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[1].u" LOC = "IDELAYCTRL_X2Y3";
+#INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[1].u" LOC = "IDELAYCTRL_X2Y3";
 INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[2].u" LOC = "IDELAYCTRL_X2Y2";
 INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[3].u" LOC = "IDELAYCTRL_X0Y0";
+
+
+NET clk_100 period = 10.000 ;
+NET clk_200 period = 5.000;
+
+NET  clk_100              LOC="AD8" | IOSTANDARD = LVCMOS33;  # Bank 4, Vcco=3.3V, No DCI
+NET  clk_200_p            LOC="E16" | IOSTANDARD = LVDS_25;   # Bank 3, Vcco=2.5V, No DCI      
+NET  clk_200_n            LOC="E17" | IOSTANDARD = LVDS_25;   # Bank 3, Vcco=2.5V, No DCI      
 
 
 NET sys_rst_in PULLUP;
@@ -66,9 +99,9 @@ NET led(7) IOSTANDARD = LVCMOS25;
 # North-East-South-West-Center LEDs
 NET led(8)  LOC = T22;  # C LED
 NET led(9)  LOC = AA18; # W LED
-NET led(9)  LOC = AA8;  # S LED
-NET led(10)  LOC = Y18;  # E LED
-NET led(11)  LOC = Y8;   # N LED
+NET led(10)  LOC = AA8;  # S LED
+NET led(11)  LOC = Y18;  # E LED
+NET led(12)  LOC = Y8;   # N LED
 NET led(8) IOSTANDARD = LVCMOS33;
 NET led(9) IOSTANDARD = LVCMOS33;
 NET led(10) IOSTANDARD = LVCMOS33;
@@ -105,14 +138,14 @@ NET gpio(6) IOSTANDARD = LVCMOS18;
 NET gpio(7) IOSTANDARD = LVCMOS18;
 #SMA Connectors
 NET gpio(8) LOC = F10; # SMA_IN_N
-NET gpio(9) LOC = F9;  # SMA_IN_P
-NET gpio(10) LOC = F19; # SMA_OUT_N
-NET gpio(11) LOC = E18; # SMA_OUT_P
+#NET gpio(9) LOC = F9;  # SMA_IN_P
+#NET gpio(10) LOC = F19; # SMA_OUT_N
+#NET gpio(11) LOC = E18; # SMA_OUT_P
 #NET gpio(26) LOC = AD8; # USERCLK
 NET gpio(8) IOSTANDARD = LVCMOS25;
-NET gpio(9) IOSTANDARD = LVCMOS25;
-NET gpio(10) IOSTANDARD = LVCMOS25;
-NET gpio(11) IOSTANDARD = LVCMOS25;
+#NET gpio(9) IOSTANDARD = LVCMOS25;
+#NET gpio(10) IOSTANDARD = LVCMOS25;
+#NET gpio(11) IOSTANDARD = LVCMOS25;
 #NET gpio(26) IOSTANDARD = LVCMOS33;
 
 NET "gpio(*)" PULLDOWN;
@@ -120,14 +153,14 @@ NET "gpio(*)" TIG;
 NET "gpio(*)" SLEW = SLOW;
 NET "gpio(*)" DRIVE = 2;
 
-NET "gpio(8)" SLEW = FAST;
-NET "gpio(8)" DRIVE = 12;
-NET "gpio(9)" SLEW = FAST;
-NET "gpio(9)" DRIVE = 12;
-NET "gpio(10)" SLEW = FAST;
-NET "gpio(10)" DRIVE = 12;
-NET "gpio(11)" SLEW = FAST;
-NET "gpio(11)" DRIVE = 12;
+#NET "gpio(8)" SLEW = FAST;
+#NET "gpio(8)" DRIVE = 12;
+#NET "gpio(9)" SLEW = FAST;
+#NET "gpio(9)" DRIVE = 12;
+#NET "gpio(10)" SLEW = FAST;
+#NET "gpio(10)" DRIVE = 12;
+#NET "gpio(11)" SLEW = FAST;
+#NET "gpio(11)" DRIVE = 12;
 
 #NET  "gpio2_d_out(*)" TIG;
 #NET  "gpio2_t_out(*)" TIG;
@@ -195,58 +228,55 @@ NET iic_sda    IOSTANDARD = LVCMOS33;
 # IO Pad Location Constraints / Properties for System ACE MPU / USB
 #------------------------------------------------------------------------------
 
-#NET sysace_clk_in   LOC        = AB12;
-#NET sysace_clk_in   IOSTANDARD = LVCMOS33;
-#NET sysace_clk_in   TNM_NET    = "sysace_clk_in";
-# Leave 1 ns margin
-#TIMESPEC "TSSYSACE" = PERIOD "sysace_clk_in" 29 ns;
+NET sysace_clk_in   LOC        = AB12;
+NET sysace_clk_in   IOSTANDARD = LVCMOS33;
 
-#NET sace_usb_a(0)   LOC        = N6;
-#NET sace_usb_a(1)   LOC        = E5;
-#NET sace_usb_a(2)   LOC        = F5;
-#NET sace_usb_a(3)   LOC        = F4;
-#NET sace_usb_a(4)   LOC        = J5;
-#NET sace_usb_a(5)   LOC        = E7;
-#NET sace_usb_a(6)   LOC        = G7;
-#NET sace_usb_a(*)   IOSTANDARD = LVCMOS33;
-#NET sace_usb_a(*)   SLEW       = FAST;
-#NET sace_usb_a(*)   DRIVE      = 8;
-#NET sace_mpce       LOC        = F7;
-#NET sace_mpce       IOSTANDARD = LVCMOS33;
-#NET sace_mpce       SLEW       = FAST;
-#NET sace_mpce       DRIVE      = 8;
-#NET sace_usb_d(0)   LOC        = M6;
-#NET sace_usb_d(1)   LOC        = K5;
-#NET sace_usb_d(2)   LOC        = L3;
-#NET sace_usb_d(3)   LOC        = L4;
-#NET sace_usb_d(4)   LOC        = L7;
-#NET sace_usb_d(5)   LOC        = L5;
-#NET sace_usb_d(6)   LOC        = H6;
-#NET sace_usb_d(7)   LOC        = G5;
-#NET sace_usb_d(8)   LOC        = M7;
-#NET sace_usb_d(9)   LOC        = H7;
-#NET sace_usb_d(10)  LOC        = J6;
-#NET sace_usb_d(11)  LOC        = G4;
-#NET sace_usb_d(12)  LOC        = K7;
-#NET sace_usb_d(13)  LOC        = J4;
-#NET sace_usb_d(14)  LOC        = H4;
-#NET sace_usb_d(15)  LOC        = K6;
-#NET sace_usb_d(*)   IOSTANDARD = LVCMOS33;
-#NET sace_usb_d(*)   SLEW       = FAST;
-#NET sace_usb_d(*)   DRIVE      = 8;
-#NET sace_usb_d(*)   PULLDOWN;
-#NET sace_usb_oen    LOC        = E6;
-#NET sace_usb_oen    IOSTANDARD = LVCMOS33;
-#NET sace_usb_oen    SLEW       = FAST;
-#NET sace_usb_oen    DRIVE      = 8;
-#NET sace_usb_wen    LOC        = M5;
-#NET sace_usb_wen    IOSTANDARD = LVCMOS33;
-#NET sace_usb_wen    SLEW       = FAST;
-#NET sace_usb_wen    DRIVE      = 8;
-#NET sysace_mpirq    LOC        = G6;
-#NET sysace_mpirq    IOSTANDARD = LVCMOS33;
-#NET sysace_mpirq    TIG;
-#NET sysace_mpirq    PULLDOWN;
+NET sace_usb_a(0)   LOC        = N6;
+NET sace_usb_a(1)   LOC        = E5;
+NET sace_usb_a(2)   LOC        = F5;
+NET sace_usb_a(3)   LOC        = F4;
+NET sace_usb_a(4)   LOC        = J5;
+NET sace_usb_a(5)   LOC        = E7;
+NET sace_usb_a(6)   LOC        = G7;
+NET sace_usb_a(*)   IOSTANDARD = LVCMOS33;
+NET sace_usb_a(*)   SLEW       = FAST;
+NET sace_usb_a(*)   DRIVE      = 8;
+NET sace_mpce       LOC        = F7;
+NET sace_mpce       IOSTANDARD = LVCMOS33;
+NET sace_mpce       SLEW       = FAST;
+NET sace_mpce       DRIVE      = 8;
+NET sace_usb_d(0)   LOC        = M6;
+NET sace_usb_d(1)   LOC        = K5;
+NET sace_usb_d(2)   LOC        = L3;
+NET sace_usb_d(3)   LOC        = L4;
+NET sace_usb_d(4)   LOC        = L7;
+NET sace_usb_d(5)   LOC        = L5;
+NET sace_usb_d(6)   LOC        = H6;
+NET sace_usb_d(7)   LOC        = G5;
+NET sace_usb_d(8)   LOC        = M7;
+NET sace_usb_d(9)   LOC        = H7;
+NET sace_usb_d(10)  LOC        = J6;
+NET sace_usb_d(11)  LOC        = G4;
+NET sace_usb_d(12)  LOC        = K7;
+NET sace_usb_d(13)  LOC        = J4;
+NET sace_usb_d(14)  LOC        = H4;
+NET sace_usb_d(15)  LOC        = K6;
+NET sace_usb_d(*)   IOSTANDARD = LVCMOS33;
+NET sace_usb_d(*)   SLEW       = FAST;
+NET sace_usb_d(*)   DRIVE      = 8;
+NET sace_usb_d(*)   PULLDOWN;
+NET sace_usb_oen    LOC        = E6;
+NET sace_usb_oen    IOSTANDARD = LVCMOS33;
+NET sace_usb_oen    SLEW       = FAST;
+NET sace_usb_oen    DRIVE      = 8;
+NET sace_usb_wen    LOC        = M5;
+NET sace_usb_wen    IOSTANDARD = LVCMOS33;
+NET sace_usb_wen    SLEW       = FAST;
+NET sace_usb_wen    DRIVE      = 8;
+NET sysace_mpirq    LOC        = G6;
+NET sysace_mpirq    IOSTANDARD = LVCMOS33;
+NET sysace_mpirq    TIG;
+NET sysace_mpirq    PULLDOWN;
 
 NET usb_rstn         LOC        = P3;
 NET usb_rstn         IOSTANDARD = LVCMOS33;
@@ -611,7 +641,7 @@ NET sram_bw(0)          LOC = V23  | IOSTANDARD = LVDCI_33;
 NET flash_ce            LOC = AA10 | IOSTANDARD = LVCMOS33 | DRIVE = 12 | SLEW = FAST;
 NET sram_adv_ld_n       LOC = U21  | IOSTANDARD = LVDCI_33;
 NET sram_mode           LOC = AC23 | IOSTANDARD = LVDCI_33;
-NET flash_audio_reset_n LOC = AD10 | IOSTANDARD = LVCMOS33;
+#NET flash_audio_reset_n LOC = AD10 | IOSTANDARD = LVCMOS33;
 NET flash_adv_n         LOC="AA20";   # Bank 17, Vcco=3.3V (FLASH_ADV_B)
 
 
@@ -619,48 +649,45 @@ NET flash_adv_n         LOC="AA20";   # Bank 17, Vcco=3.3V (FLASH_ADV_B)
 # IO Pad Location Constraints / Properties for TFT VGA LCD Controller
 #------------------------------------------------------------------------------
 
-#NET dvi_iic_scl  LOC = D21;
-#NET dvi_iic_sda  LOC = D20;
-#NET dvi_iic_scl  SLEW = SLOW;
-#NET dvi_iic_scl  DRIVE = 6;
-#NET dvi_iic_scl  TIG;
-#NET dvi_iic_scl  IOSTANDARD = LVCMOS33;
-#NET dvi_iic_sda  SLEW = SLOW;
-#NET dvi_iic_sda  DRIVE = 6;
-#NET dvi_iic_sda  TIG;
-#NET dvi_iic_sda  IOSTANDARD = LVCMOS33;
+NET dvi_iic_scl  LOC = D21;
+NET dvi_iic_sda  LOC = D20;
+NET dvi_iic_scl  SLEW = SLOW;
+NET dvi_iic_scl  DRIVE = 6;
+NET dvi_iic_scl  TIG;
+NET dvi_iic_scl  IOSTANDARD = LVCMOS33;
+NET dvi_iic_sda  SLEW = SLOW;
+NET dvi_iic_sda  DRIVE = 6;
+NET dvi_iic_sda  TIG;
+NET dvi_iic_sda  IOSTANDARD = LVCMOS33;
 #
-#NET tft_lcd_data(0)  LOC = A17; 
-#NET tft_lcd_data(1)  LOC = B17; 
-#NET tft_lcd_data(2)  LOC = C17; 
-#NET tft_lcd_data(3)  LOC = D18; 
-#NET tft_lcd_data(4)  LOC = C16; 
-#NET tft_lcd_data(5)  LOC = D16; 
-#NET tft_lcd_data(6)  LOC = B16; 
-#NET tft_lcd_data(7)  LOC = B15; 
-#NET tft_lcd_data(8)  LOC = A15; 
-#NET tft_lcd_data(9)  LOC = A14; 
-#NET tft_lcd_data(10) LOC = B14; 
-#NET tft_lcd_data(11) LOC = C14; 
-#NET tft_lcd_data(*) IOSTANDARD = LVDCI_33;
+NET tft_lcd_data(0)  LOC = A17; 
+NET tft_lcd_data(1)  LOC = B17; 
+NET tft_lcd_data(2)  LOC = C17; 
+NET tft_lcd_data(3)  LOC = D18; 
+NET tft_lcd_data(4)  LOC = C16; 
+NET tft_lcd_data(5)  LOC = D16; 
+NET tft_lcd_data(6)  LOC = B16; 
+NET tft_lcd_data(7)  LOC = B15; 
+NET tft_lcd_data(8)  LOC = A15; 
+NET tft_lcd_data(9)  LOC = A14; 
+NET tft_lcd_data(10) LOC = B14; 
+NET tft_lcd_data(11) LOC = C14; 
+NET tft_lcd_data(*) IOSTANDARD = LVDCI_33;
 #
-#NET tft_lcd_clk_p LOC = A20;
-#NET tft_lcd_clk_p IOSTANDARD = LVCMOS33 | DRIVE = 24 | SLEW = FAST;
-#NET tft_lcd_clk_n LOC = B20;
-#NET tft_lcd_clk_n IOSTANDARD = LVCMOS33 | DRIVE = 24 | SLEW = FAST;
+NET tft_lcd_clk_p LOC = A20;
+NET tft_lcd_clk_p IOSTANDARD = LVCMOS33;
+NET tft_lcd_clk_n LOC = B20;
+NET tft_lcd_clk_n IOSTANDARD = LVCMOS33;
 #
-#NET tft_lcd_hsync LOC = C19;
-#NET tft_lcd_hsync IOSTANDARD = LVDCI_33;
-#NET tft_lcd_vsync LOC = D19;
-#NET tft_lcd_vsync IOSTANDARD = LVDCI_33;
-#NET tft_lcd_de    LOC = C18;
-#NET tft_lcd_de    IOSTANDARD = LVDCI_33;
-#NET tft_lcd_reset_b LOC = A18;
-#NET tft_lcd_reset_b IOSTANDARD = LVCMOS33;
+NET tft_lcd_hsync LOC = C19;
+NET tft_lcd_hsync IOSTANDARD = LVDCI_33;
+NET tft_lcd_vsync LOC = D19;
+NET tft_lcd_vsync IOSTANDARD = LVDCI_33;
+NET tft_lcd_de    LOC = C18;
+NET tft_lcd_de    IOSTANDARD = LVDCI_33;
+NET tft_lcd_reset_b LOC = A18;
+NET tft_lcd_reset_b IOSTANDARD = LVCMOS33;
 #
-#NET "tft_clk"  TNM_NET = "tft_clk";
-#TIMESPEC "TSPLB_TFT" = FROM "sys_clk" TO "tft_clk" TIG;
-#TIMESPEC "TSTFT_PLB" = FROM "tft_clk" TO "sys_clk" TIG;
 
 #------------------------------------------------------------------------------
 # IO Pad Location Constraints / Properties for Ethernet

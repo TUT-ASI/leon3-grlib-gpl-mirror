@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -45,7 +46,8 @@ entity dsu3x is
     tech    : integer := DEFMEMTECH; 
     irq     : integer := 0; 
     kbytes  : integer := 0;
-    clk2x   : integer range 0 to 1 := 0
+    clk2x   : integer range 0 to 1 := 0;
+    testen  : integer := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -640,7 +642,7 @@ begin
     treg : process(cpuclk)
     begin if rising_edge(cpuclk) then tr <= trin; end if; end process;
     mem0 : tbufmem
-    generic map (tech => tech, tbuf => kbytes) port map (cpuclk, tbi, tbo);
+    generic map (tech => tech, tbuf => kbytes, testen => testen) port map (cpuclk, tbi, tbo);
 -- pragma translate_off
     bootmsg : report_version 
     generic map ("dsu3_" & tost(hindex) &

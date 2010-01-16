@@ -2234,7 +2234,7 @@ end
         specparam tIS              =     1.3;      // tIS    ns    Input Setup Time (fast)
         specparam tDQSH            =     3.0;      // tDQSH  ns    DQS input High Pulse Width
         specparam tDQSL            =     3.0;      // tDQSL  ns    DQS input Low Pulse Width
-`else `define sg10v12                              //              specparams for -10 (CL = 3)
+`else `ifdef sg10v12                              //              specparams for -10 (CL = 3)
         specparam tCLK_MIN         =     9.6;      // tCLK   ns    minimum clk cycle time
         specparam tDSS             =     1.92;     // tDSS   ns    DQS falling edge to CLK rising (setup time)
         specparam tDSH             =     1.92;     // tDSH   ns    DQS falling edge from CLK rising (hold time)
@@ -2242,7 +2242,7 @@ end
         specparam tIS              =     1.7;      // tIS    ns    Input Setup Time (fast)
         specparam tDQSH            =     3.84;     // tDQSH  ns    DQS input High Pulse Width
         specparam tDQSL            =     3.84;     // tDQSL  ns    DQS input Low Pulse Width
-`else `define sg10                                 //              specparams for -10 (CL = 3)
+`else `ifdef sg10                                 //              specparams for -10 (CL = 3)
         specparam tCLK_MIN         =     9.6;      // tCLK   ns    minimum clk cycle time
         specparam tDSS             =     1.92;     // tDSS   ns    DQS falling edge to CLK rising (setup time)
         specparam tDSH             =     1.92;     // tDSH   ns    DQS falling edge from CLK rising (hold time)
@@ -2250,7 +2250,7 @@ end
         specparam tIS              =     1.5;      // tIS    ns    Input Setup Time (fast)
         specparam tDQSH            =     3.84;     // tDQSH  ns    DQS input High Pulse Width
         specparam tDQSL            =     3.84;     // tDQSL  ns    DQS input Low Pulse Width
-`endif `endif `endif `endif `endif `endif `endif `endif
+`endif `endif `endif `endif `endif `endif `endif `endif `endif `endif
         $period   (posedge Clk, tCLK_MIN);
         $width    (posedge Dqs_in[0] &&& wdqs_valid, tDQSH);
         $width    (posedge Dqs_in[1] &&& wdqs_valid, tDQSH);

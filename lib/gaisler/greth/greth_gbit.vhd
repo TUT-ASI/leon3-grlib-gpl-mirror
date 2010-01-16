@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -51,7 +52,7 @@ entity greth_gbit is
     slot_time      : integer := 128;
     mdcscaler      : integer range 0 to 255 := 25; 
     nsync          : integer range 1 to 2 := 2;
-    edcl           : integer range 0 to 1 := 0;
+    edcl           : integer range 0 to 2 := 0;
     edclbufsz      : integer range 1 to 64 := 1;
     burstlength    : integer range 4 to 128 := 32;
     macaddrh       : integer := 16#00005E#;
@@ -61,7 +62,10 @@ entity greth_gbit is
     phyrstadr      : integer range 0 to 32 := 0;
     sim            : integer range 0 to 1 := 0;
     oepol          : integer range 0 to 1 := 0;
-    scanen         : integer range 0 to 1 := 0);
+    scanen         : integer range 0 to 1 := 0;
+    mdint_pol      : integer range 0 to 1 := 0;
+    enable_mdint   : integer range 0 to 1 := 0;
+    multicast      : integer range 0 to 1 := 0);
   port(
     rst            : in  std_ulogic;
     clk            : in  std_ulogic;
@@ -142,7 +146,10 @@ begin
       phyrstadr      => phyrstadr,
       sim            => sim,
       oepol          => oepol,
-      scanen         => scanen)
+      scanen         => scanen,
+      mdint_pol      => mdint_pol,
+      enable_mdint   => enable_mdint,
+      multicast      => multicast)
     port map(
       rst            => rst,
       clk            => clk,
@@ -205,6 +212,7 @@ begin
       rx_crs         => ethi.rx_crs,
       mdio_i         => ethi.mdio_i,
       phyrstaddr     => ethi.phyrstaddr,
+      mdint          => ethi.mdint,
       --ethernet output signals
       reset          => etho.reset,
       txd            => etho.txd,
@@ -215,7 +223,8 @@ begin
       mdio_oe        => etho.mdio_oe,
       --scantest     
       testrst        => ahbmi.testrst,
-      testen         => ahbmi.testen);
+      testen         => ahbmi.testen,
+      edcladdr       => ethi.edcladdr);  
 
   irqdrv : process(irq)
   begin
@@ -245,7 +254,7 @@ begin
 -------------------------------------------------------------------------------
 -- EDCL buffer ram ------------------------------------------------------------
 -------------------------------------------------------------------------------
-  edclram : if (edcl = 1) generate
+  edclram : if (edcl /= 0) generate
     r0 : syncram_2p generic map (memtech, eabits, 16) port map (
       clk, erenable, eraddress(eabits-1 downto 0), erdata(31 downto 16), clk,
       ewritem, ewaddressm(eabits-1 downto 0), ewdata(31 downto 16)); 

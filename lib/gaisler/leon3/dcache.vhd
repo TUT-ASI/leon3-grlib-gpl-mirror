@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -276,7 +277,6 @@ begin
   variable lock : std_logic_vector(0 to DSETS-1);
   variable wlock : std_logic_vector(0 to MAXSETS-1);
   variable snoophit : std_logic_vector(0 to DSETS-1);
-  variable snoopval : std_ulogic;
   variable snoopset2 : integer range 0 to DSETS-1;
   variable laddr : std_logic_vector(31  downto 0); -- local ram addr
   variable tag : cdatatype; --std_logic_vector(31  downto 0);
@@ -408,18 +408,17 @@ begin
     if cached /= 0 then hcache := ctbl(conv_integer(dci.maddress(31 downto 28)));
     else hcache := '1'; end if;
 
-    forcemiss := not dci.asi(3); hit := '0'; set := 0; snoophit := (others => '0');
-    snoopval := '1';
+    forcemiss := (not dci.asi(3)) or dci.lock;
+    hit := '0'; set := 0; snoophit := (others => '0');
     for i in DSETS-1 downto 0 loop
       if DSNOOP = 2 then
         snoophit(i) := rh.hit(conv_integer(rh.taddr))(i);
       end if;
       if (dcramov.tag(i)(TAG_HIGH downto TAG_LOW) = dci.maddress(TAG_HIGH downto TAG_LOW)) 
-      then hitv(i) := hcache; end if; 
-      validrawv(i) := hitv(i) and (not r.flush) and (not r.flush2) and (not snoophit(i)) and
+      then hitv(i) := '1'; end if; 
+      validrawv(i) := hcache and hitv(i) and (not r.flush) and (not r.flush2) and (not snoophit(i)) and
 	genmux(dci.maddress(LINE_HIGH downto LINE_LOW), dcramov.tag(i)(dlinesize-1 downto 0));
       validv(i) :=  validrawv(i);
-      snoopval := snoopval and not snoophit(i);
     end loop;
 
     hit := orv(hitv) and not r.flush and not r.flush2; validraw := orv(validrawv);
@@ -467,14 +466,14 @@ begin
       elsif ((dci.enaddr and not dci.read) = '1') or (eholdn = '0') then
         laddr := dci.maddress;
       else laddr := dci.eaddress; end if;
-      if  (dci.enaddr = '1') and (dci.maddress(31 downto 24) = LOCAL_RAM_START)
+      if  (dci.enaddr = '1') and (dci.dsuen = '0') and (dci.maddress(31 downto 24) = LOCAL_RAM_START)
       then lramen := '1'; end if;
-      if  ((laddr(31 downto 24) = LOCAL_RAM_START)) or ((dci.dsuen = '1') and (dci.asi(4 downto 1) = "0101"))
+      if  ((laddr(31 downto 24) = LOCAL_RAM_START) and (dci.dsuen = '0')) or ((dci.dsuen = '1') and (dci.asi(4 downto 1) = "0101"))
       then lramcs := '1'; end if;      
     end if;
     
     if (ilram = 1) then 
-      if  (dci.enaddr = '1') and (dci.maddress(31 downto 24) = ILRAM_START)  then ilramen := '1'; end if;
+      if  (dci.enaddr = '1') and (dci.maddress(31 downto 24) = ILRAM_START) and (dci.dsuen = '0') then ilramen := '1'; end if;
     end if;
 
     -- cache freeze operation
@@ -504,11 +503,11 @@ begin
     when "000" =>			-- Idle state
       v.nomds := r.nomds and not eholdn; 
       v.forcemiss := forcemiss; sidle := '1';
-      if (snoopval = '1') then 
-	for i in 0 to DSETS-1 loop
+      for i in 0 to DSETS-1 loop
+        if (snoophit(i) = '0') and ((r.flush or r.flush2) = '0') then 
           v.valid(i) := dcramov.tag(i)(dlinesize-1 downto 0);
-	end loop;
-      else v.valid := (others => (others => '0')); end if;
+        else v.valid(i) := (others => '0'); end if;
+      end loop;
       if (r.stpend  = '0') or ((mcdo.ready and not r.req)= '1') then -- wait for store queue
 	v.wb.addr := dci.maddress; v.wb.size := dci.size; 
 	v.wb.read := dci.read; v.wb.data1 := dci.edata; v.wb.lock := dci.lock;
@@ -566,8 +565,7 @@ begin
             if (dlram = 1) and (lramen = '1') then
 	      lramrd := '1';
             elsif (ilram = 1) and (ilramen = '1') then
-              if (ico.flush = '1') or (dci.size /= "10") then mexc := '1';
-              else v.dstate := "101"; v.holdn := dci.dsuen; v.ilramen := '1'; end if;              
+              v.dstate := "101"; v.holdn := dci.dsuen; v.ilramen := '1';
 	    elsif dci.dsuen = '0' then
               if (not ((r.cctrl.dcs(0) = '1') and ((hit and valid and not forcemiss) = '1')))
               then	-- read miss
@@ -589,8 +587,7 @@ begin
                 v.dstate := "100"; v.xaddress(2) := '1';
               end if; 
             elsif (ilram = 1) and (ilramen = '1') then
-              if (ico.flush = '1') or (dci.size /= "10") then mexc := '1';
-              else v.dstate := "101"; v.holdn := dci.dsuen; v.ilramen := '1'; end if;
+              v.dstate := "101"; v.holdn := dci.dsuen; v.ilramen := '1';
             elsif dci.dsuen = '0' then
               if (r.stpend  = '0') or ((mcdo.ready and not r.req)= '1') then	-- wait for store queue
                 v.req := '1'; v.stpend := '1'; 
@@ -703,7 +700,7 @@ begin
       if DSNOOP /= 0 then vs.readbpx(conv_integer(setrepl)) := '1'; end if;      
     when "011" =>		-- return from read miss with load pending
       taddr := dci.maddress(OFFSET_HIGH downto LINE_LOW);
-      if (dlram = 1) then
+      if (dlram = 1) and (dci.dsuen = '0') then
         laddr := dci.maddress;
         if laddr(31 downto 24) = LOCAL_RAM_START then lramcs := '1'; end if;
       end if;
@@ -1026,9 +1023,9 @@ begin
     dcrami.saddress(19 downto (OFFSET_HIGH - OFFSET_LOW +1)) <= 
     	zero32(19 downto (OFFSET_HIGH - OFFSET_LOW +1));
     dcrami.saddress(OFFSET_HIGH - OFFSET_LOW downto 0) <= snoopaddr;
-    dcrami.stag(31 downto (TAG_HIGH - TAG_LOW +1)) <=
-    	zero32(31 downto (TAG_HIGH - TAG_LOW +1));
-    dcrami.stag(TAG_HIGH - TAG_LOW downto 0) <= rs.addr(TAG_HIGH downto TAG_LOW);
+--    dcrami.stag(31 downto (TAG_HIGH - TAG_LOW +1)) <=
+--    	zero32(31 downto (TAG_HIGH - TAG_LOW +1));
+--    dcrami.stag(TAG_HIGH - TAG_LOW downto 0) <= rs.addr(TAG_HIGH downto TAG_LOW);
     dcrami.tdiag <= mcdo.testen & "000";
     dcrami.ddiag <= mcdo.testen & "000";
 

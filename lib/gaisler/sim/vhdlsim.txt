@@ -1,2 +1,4 @@
 sim.vhd sram.vhd sramft.vhd ata_device.vhd
 sram16.vhd phy.vhd ahbrep.vhd ulpi.vhd utmi.vhd
+delay_wire.vhd spi_flash.vhd pwm_check.vhd
+grusbdcsim.vhd

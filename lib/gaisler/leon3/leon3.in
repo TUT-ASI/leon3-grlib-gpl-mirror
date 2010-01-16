@@ -17,6 +17,7 @@ if [ "$CONFIG_LEON3" = "y" ]; then
         bool 'SPARC V8e SMAC/UMAC instructions     ' CONFIG_IU_MUL_MAC
       fi
     fi
+    bool 'Branch prediction     ' CONFIG_IU_BP
     bool 'Single-vector trapping' CONFIG_IU_SVT
     int 'Load delay' CONFIG_IU_LDELAY 1
     int 'Hardware watchpoints' CONFIG_IU_WATCHPOINTS 0
@@ -32,10 +33,11 @@ if [ "$CONFIG_LEON3" = "y" ]; then
 	 GRFPU-LITE	CONFIG_FPU_GRFPULITE \
 	Meiko		CONFIG_FPU_MEIKO" GRFPU
       if [ "$CONFIG_FPU_GRFPU" = "y" ]; then
-	choice 'GRFPU multiplier' \
-	 "Inferred              CONFIG_FPU_GRFPU_INFMUL \
-	  DW                    CONFIG_FPU_GRFPU_DWMUL" Inferred
-#	  ModGen                CONFIG_FPU_GRFPU_MODGEN" Inferred 
+  	   choice 'GRFPU multiplier' \
+   	 "Inferred              CONFIG_FPU_GRFPU_INFMUL \
+   	  DW                    CONFIG_FPU_GRFPU_DWMUL \
+   	  ModGen                CONFIG_FPU_GRFPU_MODGEN \
+   	  TechSpec              CONFIG_FPU_GRFPU_TECHSPEC" Inferred
       fi
       if [ "$CONFIG_HAS_SHARED_GRFPU" = "y" ]; then
 	bool 'Shared GRFPU                      ' CONFIG_FPU_GRFPU_SH
@@ -44,7 +46,7 @@ if [ "$CONFIG_LEON3" = "y" ]; then
 	choice 'GRFPU-LITE controller' \
 	 "Simple                CONFIG_FPU_GRFPC0 \
 	  Data-forwarding       CONFIG_FPU_GRFPC1 \
-	  Non-blocking          CONFIG_FPU_GRFPC2" Simple 	
+	  Non-blocking          CONFIG_FPU_GRFPC2" Simple
       fi
       bool 'Use VHDL netlist          ' CONFIG_FPU_NETLIST
     fi
@@ -160,7 +162,7 @@ if [ "$CONFIG_LEON3" = "y" ]; then
 	 split		CONFIG_MMU_SPLIT" combined
     choice 'TLB replacement sheme              ' \
 	"LRU      	CONFIG_MMU_REPARRAY \
-	 Increment	CONFIG_MMU_REPINCREMENT" Increment 
+	 Increment	CONFIG_MMU_REPINCREMENT" Increment
        choice 'Instruction (or combined) TLB entries' \
 	"2		CONFIG_MMU_I2 \
 	4		CONFIG_MMU_I4 \
@@ -176,6 +178,12 @@ if [ "$CONFIG_LEON3" = "y" ]; then
 	32		CONFIG_MMU_D32" 8
 	bool 'Fast writebuffer       ' CONFIG_MMU_FASTWB
     fi
+    choice 'MMU page size' \
+	"4K		CONFIG_MMU_PAGE_4K \
+	8K		CONFIG_MMU_PAGE_8K \
+	16K		CONFIG_MMU_PAGE_16K \
+	32K		CONFIG_MMU_PAGE_32K \
+	Programmable	CONFIG_MMU_PAGE_PROG" 4K
   fi
   endmenu
 

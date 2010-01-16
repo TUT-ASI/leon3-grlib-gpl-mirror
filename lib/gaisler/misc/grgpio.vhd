@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -231,6 +232,11 @@ begin
 
     apbo.prdata <= readdata; 	-- drive apb read bus
     apbo.pirq <= xirq;
+
+    if (syncrst = 1 ) and (rst = '0') then
+      if oepol = 1 then dir := (others => '0');
+      else dir := (others => '1'); end if;
+    end if;
 
     gpioo.dout <= dout;
     gpioo.oen <= dir;

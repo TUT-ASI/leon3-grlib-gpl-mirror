@@ -33,6 +33,7 @@ set_global_assignment -name DEVICE EP3C25F324C8
 set_global_assignment -name DEVICE_FILTER_PACKAGE FBGA
 set_global_assignment -name DEVICE_FILTER_PIN_COUNT 324
 set_global_assignment -name DEVICE_FILTER_SPEED_GRADE 8
+set_global_assignment -name NUM_PARALLEL_PROCESSORS 2
 
 set_location_assignment PIN_B9 -to clk 
 set_location_assignment PIN_N2 -to resetn

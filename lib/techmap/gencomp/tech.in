@@ -6,9 +6,12 @@
 	Altera-CycloneIII      	CONFIG_SYN_CYCLONEIII \
 	Altera-Others         	CONFIG_SYN_ALTERA \
 	Actel-Axcelerator	CONFIG_SYN_AXCEL \
+	Actel-Axcelerator-DSP	CONFIG_SYN_AXDSP \
 	Actel-Proasic		CONFIG_SYN_PROASIC \
 	Actel-ProasicPlus	CONFIG_SYN_PROASICPLUS \
-	Actel-Proasic3   	CONFIG_SYN_PROASIC3 \
+	Actel-Proasic3/E/L   	CONFIG_SYN_PROASIC3 \
+	Actel-IGLOO/p/L	   	CONFIG_SYN_IGLOO \
+	Actel-Fusion   	   	CONFIG_SYN_FUSION\
 	Aeroflex-UT025CRH	CONFIG_SYN_UT025CRH \
 	Atmel-ATC18		CONFIG_SYN_ATC18 \
 	Atmel-ATC18RHA		CONFIG_SYN_ATC18RHA \
@@ -21,15 +24,18 @@
         Peregrine           	CONFIG_SYN_PEREGRINE \
 	RH-LIB18T  		CONFIG_SYN_RH_LIB18T \
 	RH-UMC     		CONFIG_SYN_RHUMC \
+	SMIC130   		CONFIG_SYN_SMIC13 \
 	Xilinx-Spartan2		CONFIG_SYN_SPARTAN2 \
 	Xilinx-Spartan3		CONFIG_SYN_SPARTAN3 \
 	Xilinx-Spartan3E	CONFIG_SYN_SPARTAN3E \
+	Xilinx-Spartan6		CONFIG_SYN_SPARTAN6 \
 	Xilinx-Virtex		CONFIG_SYN_VIRTEX \
 	Xilinx-VirtexE		CONFIG_SYN_VIRTEXE \
 	Xilinx-Virtex2		CONFIG_SYN_VIRTEX2 \
 	Xilinx-Virtex4		CONFIG_SYN_VIRTEX4 \
 	Xilinx-Virtex5		CONFIG_SYN_VIRTEX5 \
-	UMC18     		CONFIG_SYN_UMC     \
+	Xilinx-Virtex6		CONFIG_SYN_VIRTEX6 \
+	UMC180     		CONFIG_SYN_UMC     \
         TSMC90                  CONFIG_SYN_TSMC90 " Inferred
   if [ "$CONFIG_SYN_INFERRED" = "y" -o "$CONFIG_SYN_CUSTOM1" = "y" \
        -o "$CONFIG_SYN_ATC18" = "y" -o "$CONFIG_SYN_TSMC90" = "y" \

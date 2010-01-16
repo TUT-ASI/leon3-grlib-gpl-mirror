@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -39,7 +40,7 @@
 -- Limitations  : The AMBA AHB interface has been reduced in function to support
 --                only what is required. The following features are constrained:
 --                Optionally generates HSIZE=BYTE, HWORD and WORD
---                Only generates HPROT="0000"
+--                Only generates HPROT="0011"
 --                Allways generates HBURST=HBURST_SINGLE, HBURST_INCR
 --                Optionally generates HBURST_INCR4, HBURST_INCR8, HBURST_INCR16
 --
@@ -59,12 +60,12 @@
 -- Library      : gaisler
 --
 -- Authors      : Mr Sandi Habinc
---                Gaisler Research AB
---                Forsta Langgatan 19
---                SE-413 27 Göteborg
+--                Aeroflex Gaisler AB
+--                Kungsgatan 12
+--                SE-411 19 Göteborg
 --                Sweden
 --
--- Contact      : mailto:sandi@gaisler.com
+-- Contact      : mailto:support@gaisler.com
 --                http://www.gaisler.com
 --
 -- Disclaimer   : All information is provided "as is", there is no warranty that
@@ -95,6 +96,8 @@
 -- 1.9.5    SH       14 Dec 2007    Automatic 1kbyte boundary crossing (merged)
 -- 1.9.6    JA       14 Dec 2007    Support for halfword and byte bursts
 -- 1.9.7    MI        4 Aug 2008    Support for Lock
+-- 1.9.8    SH       16 Apr 2009    Address recovery after SPLIT/RETRY moved
+-- 1.9.9    SH        9 Oct 2009    HPROT defult to 0x3
 --------------------------------------------------------------------------------
 library  IEEE;
 use      IEEE.Std_Logic_1164.all;
@@ -155,7 +158,7 @@ architecture RTL of DMA2AHB is
    signal   EarlyPhase:          Std_ULogic;             -- early termination
 
    signal   BoundaryPhase:       Std_ULogic;             -- boundary crossing
-   
+
    signal   SingleAcc:           Std_ULogic;             -- single access
    signal   WriteAcc:            Std_ULogic;             -- write access
 
@@ -181,7 +184,7 @@ begin
    -----------------------------------------------------------------------------
    -- Fixed AMBA AHB signals
    -----------------------------------------------------------------------------
-   AHBOut.HPROT               <= (others => '0');
+   AHBOut.HPROT               <= "0011";
 
    -----------------------------------------------------------------------------
    -- Combinatorial paths
@@ -218,7 +221,7 @@ begin
                                  '1' when ReDataPhase='1' else
                                  '1' when ReAddrPhase='1' else
                                  '0';
-   
+
    AHBOut.HLOCK               <= '0' when IdlePhase='1' else
                                  '1' when (DMAIn.Lock and
                                           (DMAIn.Request or ReDataPhase)) = '1'else
@@ -281,7 +284,7 @@ begin
             --------------------------------------------------------------------
             BoundaryCrossing := '0';
             AddressInc := (others => '0');
-           
+
             --------------------------------------------------------------------
             -- AMBA AHB interface - data phase handling
             --------------------------------------------------------------------
@@ -304,19 +307,6 @@ begin
                   ReAddrPhase       <= AddressPhase or ReAddrPhase;
                   AddressPhase      <= '0';              -- addr phase aborted
                   DataPhase         <= '0';              -- data phase aborted
-                  -- go back with address
-                  if boundary=1 then
-                     Address           <= AddressSave;
-                  else
-                     Address(9 downto 0) <= AddressSave(9 downto 0);    
-                  end if;
-                  if DMAIn.Size=HSIZE8 then
-                    AHBOut.HSIZE    <= HSIZE_BYTE;
-                  elsif DMAIn.Size=HSIZE16 then
-                    AHBOut.HSIZE    <= HSIZE_HWORD;
-                  else
-                    AHBOut.HSIZE    <= HSIZE_WORD;
-                  end if;
                end if;
             end if;
 
@@ -374,7 +364,7 @@ begin
                      Address                 <= DMAIn.Address;
                      AddressSave(9 downto 0) <= DMAIn.Address(9 downto 0);
                   end if;
-                  
+
                   if DMAIn.Size=HSIZE8 then
                     AHBOut.HSIZE          <= HSIZE_BYTE;
                   elsif DMAIn.Size=HSIZE16 then
@@ -405,7 +395,12 @@ begin
                         AHBOut.HBURST  <= HBURST_INCR;
                      end if;
                      AHBOut.HWRITE     <= WriteAcc;
-
+                     -- go back with address
+                     if boundary=1 then
+                        Address             <= AddressSave;
+                     else
+                        Address(9 downto 0) <= AddressSave(9 downto 0);
+                     end if;
                   elsif ReAddrPhase='1' then
                      AddressPhase      <= '1';           -- address phase start
                      ReAddrPhase       <= '0';
@@ -448,7 +443,7 @@ begin
                         else
                            -- burst continuation, sequential transfer
                            AHBOut.HTRANS <= HTRANS_SEQ;
-                        end if;                        
+                        end if;
                      else
                         -- start of burst, non-sequential transfer
                         AHBOut.HTRANS  <= HTRANS_NONSEQ;
@@ -537,4 +532,3 @@ begin
       end if;
    end process AHBMaster;
 end architecture RTL; --======================================================--
-

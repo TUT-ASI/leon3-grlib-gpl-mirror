@@ -1,6 +1,10 @@
 ------------------------------------------------------------------------------
 --  LEON3 Demonstration design test bench
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -11,6 +15,10 @@
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
 --  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 --  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -79,6 +87,7 @@ signal GND      : std_ulogic := '0';
 signal VCC      : std_ulogic := '1';
 signal NC       : std_ulogic := 'Z';
 signal clk2     : std_ulogic := '1';
+signal ssft     : std_ulogic := '1';
     
 signal txd1, rxd1 : std_ulogic;       
 signal txd2, rxd2 : std_ulogic;       
@@ -130,18 +139,19 @@ begin
 		  rwen, oen);
     end generate;
 
+    ssft <= '1' when CFG_SSCTRL /= 0 else '0';
 
     sssram0 : for i in 0 to 1 generate
-      u0 : entity gsi.g880e18bt --generic map (fname => sramfile)
+      u0 : entity gsi.g880e18bt generic map (fname => sramfile, index => i)
       port map(
-        A88 => address(18 downto 0), 
-        DQa(9) => datazz, DQa(8 downto 1) => data(i*16+7 downto i*16),
-        DQb(9) => datazz, DQb(8 downto 1) => data(i*16+15 downto i*16+8),
+        A88 => address(20 downto 2), 
+        DQa(9) => datazz, DQa(8 downto 1) => data(31-i*16 downto 24-i*16),
+        DQb(9) => datazz, DQb(8 downto 1) => data(23-i*16 downto 16-i*16),
         nBa => ramben(i*2), nBb => ramben(i*2+1),
         CK => ramclk, nBW => rwen, nGW => sram_gwen, 
         nE1 => ramsn, E2 => '1', nE3 => ramsn, 
         nG => ramoen, nADV => sram_adv, nADSC => sram_adsc,
-	nADSP => sram_adsp, Zz => sram_pwrdwn, nFT => '1',
+	nADSP => sram_adsp, Zz => sram_pwrdwn, nFT => ssft,
 	nLBO => '0');
 
     end generate;

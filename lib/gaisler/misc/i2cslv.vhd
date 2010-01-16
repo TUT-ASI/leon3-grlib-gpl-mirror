@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -384,6 +385,10 @@ begin
            (r.transmit and (r.reg.ctrl.tv or not r.reg.ctrl.tmode) = '1')) then
          v.slvstate := movebyte;
          v.scloen := I2C_HIZ;
+         -- Falling edge that should be detected in movebyte may have passed
+         if r.transmit and v.scl = '0' then
+           v.sdaoen := r.sreg(7) xor OEPOL_LEVEL;
+         end if;
        end if;
        v.sreg := r.reg.transmit;
 

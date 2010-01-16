@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -84,7 +85,9 @@ entity leon3sh is
     rstaddr   : integer               := 0;
     smp       : integer range 0 to 15 := 0;     -- support SMP systems
     cached    : integer               := 0;	-- cacheability table
-    scantest  : integer               := 0
+    scantest  : integer               := 0;
+    mmupgsz   : integer range 0 to 5  := 0;
+    bp        : integer               := 1
   );
   port (
     clk    : in  std_ulogic;
@@ -138,13 +141,14 @@ begin
     pclow, notag, nwp, icen, irepl, isets, ilinesize, isetsize, isetlock, 
     dcen, drepl, dsets, dlinesize, dsetsize, dsetlock, dsnoop, ilram, 
     ilramsize, ilramstart, dlram, dlramsize, dlramstart, mmuen, itlbnum, dtlbnum,
-    tlb_type, tlb_rep, lddel, disas, tbuf, pwd, svt, rstaddr, smp, cached, 0, scantest)
+    tlb_type, tlb_rep, lddel, disas, tbuf, pwd, svt, rstaddr, smp, cached, 0, 
+    scantest, mmupgsz, bp)
   port map (clk, rst, holdn, ahbi, ahbo, ahbsi, ahbso, rfi, rfo, crami, cramo, 
     tbi, tbo, fpi, fpo, cpi, cpo, irqi, irqo, dbgi, dbgo, gnd, clk, vcc);
   
 -- IU register file
   
-    rf0 : regfile_3p generic map (memtech, IRFBITS, 32, 1, IREGNUM)
+    rf0 : regfile_3p generic map (memtech, IRFBITS, 32, syncram_2p_write_through(memtech), IREGNUM)
         port map (clk, rfi.waddr(IRFBITS-1 downto 0), rfi.wdata, rfi.wren, 
 		  clk, rfi.raddr1(IRFBITS-1 downto 0), rfi.ren1, rfo.data1, 
 		  rfi.raddr2(IRFBITS-1 downto 0), rfi.ren2, rfo.data2, rfi.diag);

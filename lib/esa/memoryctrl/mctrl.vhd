@@ -59,7 +59,8 @@ entity mctrl is
     oepol     : integer := 0;
     syncrst   : integer := 0;
     pageburst : integer := 0;
-    scantest  : integer := 0
+    scantest  : integer := 0;
+    mobile    : integer := 0
   );
   port (
     rst       : in  std_ulogic;
@@ -243,6 +244,7 @@ begin
   variable vbdrive : std_logic_vector(31 downto 0);
   variable vsbdrive : std_logic_vector(63 downto 0);
   variable bdrive_sel : std_logic_vector(3 downto 0);
+  variable haddrsel   : std_logic_vector(31 downto 13);
   begin 
 
 -- Variable default settings to avoid latches
@@ -294,9 +296,11 @@ begin
     if area(rom) = '1' then
       busw := r.mcfg1.romwidth;
     end if;
+    haddrsel := (others => '0'); 
+    haddrsel(sdrasel downto 13) := haddr(sdrasel downto 13);
     if area(ram) = '1' then
-      adec := genmux(r.mcfg2.rambanksz, haddr(sdrasel downto 14)) &
-              genmux(r.mcfg2.rambanksz, haddr(sdrasel-1 downto 13));
+      adec := genmux(r.mcfg2.rambanksz, haddrsel(sdrasel downto 14)) &
+              genmux(r.mcfg2.rambanksz, haddrsel(sdrasel-1 downto 13));
 
       if sdhsel = '1' then busw := "10";
 
@@ -704,7 +708,7 @@ begin
 	'0' & r.mcfg1.romwidth & r.mcfg1.romwws & r.mcfg1.romrws;
     when "01" =>
       if SDRAMEN then
-        regsd(31 downto 17) := sdmo.prdata(31 downto 17);
+        regsd(31 downto 16) := sdmo.prdata(31 downto 16);
 	if BUS64 then regsd(18) := '1'; end if;
         regsd(14 downto 13) := r.mcfg2.sdren & r.mcfg2.srdis;
       end if;
@@ -716,6 +720,11 @@ begin
 
       if SDRAMEN then
 	regsd(26 downto 12) := sdmo.prdata(26 downto 12);
+      end if;
+    when "11" =>
+
+      if SDRAMEN then
+	regsd(31 downto 0) := sdmo.prdata(31 downto 0);
       end if;
     when others => regsd := (others => '0');
     end case;
@@ -1011,7 +1020,7 @@ begin
 -- optional sdram controller
 
   sd0 : if SDRAMEN generate
-    sdctrl : sdmctrl generic map (pindex, invclk, fast, wprot, sdbits, pageburst)
+    sdctrl : sdmctrl generic map (pindex, invclk, fast, wprot, sdbits, pageburst, mobile)
 	port map ( rst => rst, clk => clk, sdi => sdi,
 	sdo => lsdo, apbi => apbi, wpo => wpo, sdmo => sdmo);
     rgen : if invclk = 0 generate

@@ -8,7 +8,7 @@ DEVICE=$(PART)-$(PACKAGE)$(SPEED)
 #UCF=$(GRLIB)/boards/$(BOARD)/leon3mp.ucf
 UCF=leon3mp.ucf
 QSF=$(GRLIB)/boards/$(BOARD)/$(TOP).qsf
-EFFORT=med
+EFFORT=high
 XSTOPT=-uc leon3mp.xcf
 SYNPOPT="set_option -pipe 1; set_option -retiming 1; set_option -write_apr_constraint 0"
 VHDLSYNFILES=config.vhd ahbrom.vhd leon3mp.vhd
@@ -23,7 +23,7 @@ TECHLIBS = unisim
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip hynix cypress ihp gleichmann usbhc spw
 DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan pci leon3ft \
-	spacewire ambatest can grusbhc usb hasp
+	spacewire ambatest can grusbhc usb hasp hcan
 FILESKIP = grcan.vhd i2cmst.vhd
 
 

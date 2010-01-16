@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -41,7 +42,8 @@ entity grtestmod is
     iosn        : in std_ulogic;
     oen         : in std_ulogic;
     writen  	: in std_ulogic; 		
-    brdyn  	: out  std_ulogic := '1'
+    brdyn  	: out  std_ulogic := '1';
+    bexcn  	: out  std_ulogic := '1'
  );
 
 end;
@@ -76,12 +78,14 @@ begin
     end if;
     if falling_edge (ior) then
       brdyn <= '1', '0' after 100 ns;
+      if addr(15) = '1' then bexcn <= '1', '0' after 100 ns; end if;
     elsif rising_edge (ior) then
-      brdyn <= '1';
+      brdyn <= '1'; bexcn <= '1';
     elsif falling_edge(iow) then
       brdyn <= '1', '0' after 100 ns;
+      if addr(15) = '1' then bexcn <= '1', '0' after 100 ns; end if;
     elsif rising_edge(iow) then
-      brdyn <= '1';
+      brdyn <= '1'; bexcn <= '1';
 --      addr := to_X01(address);
       case addr(7 downto 2) is
       when "000000" =>
@@ -115,6 +119,9 @@ begin
           when GAISLER_IRQMP => irqmp_subtest(subtest);                    
           when GAISLER_SPIMCTRL => spimctrl_subtest(subtest);                      
           when GAISLER_SVGACTRL => svgactrl_subtest(subtest);
+          when GAISLER_APBPS2 => apbps2_subtest(subtest);
+          when GAISLER_I2CSLV => i2cslv_subtest(subtest);
+          when GAISLER_PWM => grpwm_subtest(subtest);
           when others =>
             print ("  subtest " & tost(subtest));
 	  end case;

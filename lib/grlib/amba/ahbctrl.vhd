@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -59,7 +60,8 @@ entity ahbctrl is
     hslvdisable : integer := 0; --disable slave checks
     arbdisable  : integer := 0; --disable arbiter checks
     mprio       : integer := 0; --master with highest priority
-    enebterm    : integer range 0 to 1 := 0  --enable early burst termination
+    mcheck      : integer range 0 to 1 := 1; --check memory map for intersects
+    ccheck      : integer range 0 to 1 := 1  --perform sanity checks on pnp config
   );
   port (
     rst     : in  std_ulogic;
@@ -98,6 +100,7 @@ type reg_type is record
   beat         : std_logic_vector(3 downto 0);
   defmst       : std_ulogic;
   ldefmst      : std_ulogic;
+  lsplmst      : integer range 0 to nahbmx-1;
 end record;
 
   constant primst : std_logic_vector(NAHBMST downto 0) := conv_std_logic_vector(mprio, NAHBMST+1);
@@ -389,9 +392,6 @@ begin
           end case;
         when others => arb := '0';
       end case;
--- pragma translate_off 
-      if enebterm = 1 then arb := '1'; end if;
--- pragma translate_on
     end if;
 
     if (split /= 0) then
@@ -521,12 +521,13 @@ begin
       if split /= 0 then
         if hresp = HRESP_SPLIT then
           v.ldefmst := '1'; defmst := '1';
+          v.lsplmst := nhmaster;
         end if;
       end if;
     end if;
 
-    if r.ldefmst = '1' then
-      if orv(rsplit) = '0' then
+    if split /= 0 and r.ldefmst = '1' then
+      if rsplit(r.lsplmst) = '0' then
         v.ldefmst := '0'; defmst := '0';
       end if;
     end if;
@@ -639,6 +640,8 @@ begin
     lmsti.hirq    <= hirq; 
 -- pragma translate_on
 
+    if split = 0 then v.ldefmst := '0'; v.lsplmst := 0; end if;
+    
     rin <= v; rsplitin <= vsplit; 
 
   end process;
@@ -660,29 +663,6 @@ begin
   end generate;
   
 -- pragma translate_off
---  diag : process
---  variable k : integer;
---  variable mask : std_logic_vector(11 downto 0);
---  variable iostart : std_logic_vector(11 downto 0) := IOAREA and IOMSK;
---  variable cfgstart : std_logic_vector(11 downto 0) := CFGAREA and CFGMSK;
---  begin
---    wait for 2 ns;
---    k := 0; mask := IOMSK;
---    while (k<12) and (mask(k) = '0') loop k := k+1; end loop; 
---    print("ahbctrl: AHB arbiter/multiplexer rev 1");
---    if ioen /= 0 then
---      print("ahbctrl: Common I/O area at " & tost(iostart) & "00000, " & tost(2**k) & " Mbyte");
---    else
---      print("ahbctrl: Common I/O area disabled");
---    end if;
---    if cfgmask /= 0 then
---      print("ahbctrl: Configuration area at " & tost(iostart & cfgstart) & "00, 4 kbyte");
---    else
---      print("ahbctrl: Configuration area disabled");
---    end if;
---    wait;
---  end process;
-
   mon0 : if enbusmon /= 0 generate 
     mon : ahbmon 
       generic map(
@@ -704,6 +684,12 @@ begin
   end generate;
 
   diag : process
+  type ahbsbank_type is record
+        start : std_logic_vector(31 downto 8);
+        stop  : std_logic_vector(31 downto 8);
+  end record;
+  type ahbsbanks_type is array (0 to 3) of ahbsbank_type;
+  type memmap_type is array (0 to nahbs-1) of ahbsbanks_type;
   variable k : integer;
   variable mask : std_logic_vector(11 downto 0);
   variable device : std_logic_vector(11 downto 0);
@@ -718,84 +704,166 @@ begin
   variable cfgstart : std_logic_vector(11 downto 0) := CFGAREA and CFGMSK;
   variable L1 : line := new string'("");
   variable S1 : string(1 to 255);
-
+  variable memmap : memmap_type;
+  
   begin
     wait for 2 ns;
     if debug = 0 then wait; end if;
-    k := 0; mask := IOMSK;
-    while (k<12) and (mask(k) = '0') loop k := k+1; end loop; 
-    print("ahbctrl: AHB arbiter/multiplexer rev 1");
-    if ioen /= 0 then
-      print("ahbctrl: Common I/O area at " & tost(iostart) & "00000, " & tost(2**k) & " Mbyte");
-    else
-      print("ahbctrl: Common I/O area disabled");
+    if debug > 0 then
+      k := 0; mask := IOMSK;
+      while (k<12) and (mask(k) = '0') loop k := k+1; end loop; 
+      print("ahbctrl: AHB arbiter/multiplexer rev 1");
+      if ioen /= 0 then
+        print("ahbctrl: Common I/O area at " & tost(iostart) & "00000, " & tost(2**k) & " Mbyte");
+      else
+        print("ahbctrl: Common I/O area disabled");
+      end if;
+      print("ahbctrl: AHB masters: " & tost(nahbm) & ", AHB slaves: " & tost(nahbs));
+      if cfgmask /= 0 then
+        print("ahbctrl: Configuration area at " & tost(iostart & cfgstart) & "00, 4 kbyte");
+      else
+        print("ahbctrl: Configuration area disabled");
+      end if;
     end if;
-    print("ahbctrl: AHB masters: " & tost(nahbm) & ", AHB slaves: " & tost(nahbs));
-    if cfgmask /= 0 then
-      print("ahbctrl: Configuration area at " & tost(iostart & cfgstart) & "00, 4 kbyte");
-    else
-      print("ahbctrl: Configuration area disabled");
-    end if;
-    if debug = 1 then wait; end if;
     for i in 0 to nahbm-1 loop
       vendor := msto(i).hconfig(0)(31 downto 24); 
       vendori := conv_integer(vendor);
       if vendori /= 0 then
-        device := msto(i).hconfig(0)(23 downto 12); 
-        devicei := conv_integer(device);
-	print("ahbctrl: mst" & tost(i) & ": " & iptable(vendori).vendordesc &
-	   iptable(vendori).device_table(devicei));
+        if debug > 1 then
+          device := msto(i).hconfig(0)(23 downto 12); 
+          devicei := conv_integer(device);      
+          print("ahbctrl: mst" & tost(i) & ": " & iptable(vendori).vendordesc &
+                iptable(vendori).device_table(devicei));
+        end if;
+        for j in 1 to NAHBIR-1 loop 
+          assert (msto(i).hconfig(j) = zx or FULLPNP or ccheck = 0)
+            report "AHB slave " & tost(i) & " propagates non-zero user defined PnP data, " &
+            "but AHBCTRL full PnP decoding has not been enabled"
+            severity warning;
+        end loop;
 	assert (msto(i).hindex = i) or (icheck = 0)
-	report "AHB master index error on master " & tost(i) severity failure;
+	report "AHB master index error on master " & tost(i) &
+          ". Detected index value " & tost(msto(i).hindex) severity failure;
+      else
+        for j in 0 to NAHBCFG-1 loop 
+          assert (msto(i).hconfig(j) = zx or ccheck = 0)
+            report "AHB master " & tost(i) & " appears to be disabled, " &
+            "but the master config record is not driven to zero"
+            severity warning;
+        end loop;
       end if;
     end loop;
+    if nahbm < NAHBMST then
+      for i in nahbm to NAHBMST-1 loop 
+        for j in 0 to NAHBCFG-1 loop 
+          assert (msto(i).hconfig(j) = zx or ccheck = 0)
+            report "AHB master " & tost(i) & " is outside the range of " &
+            "decoded master indexes but the master config record is not driven to zero"
+            severity warning;
+        end loop;
+      end loop;
+    end if;
     for i in 0 to nahbs-1 loop
       vendor := slvo(i).hconfig(0)(31 downto 24); 
       vendori := conv_integer(vendor);
       if vendori /= 0 then
-        device := slvo(i).hconfig(0)(23 downto 12); 
-        devicei := conv_integer(device);
-	std.textio.write(L1, "ahbctrl: slv" & tost(i) & ": " & iptable(vendori).vendordesc &
-	   iptable(vendori).device_table(devicei));
-	std.textio.writeline(OUTPUT, L1);
+        if debug > 1 then
+          device := slvo(i).hconfig(0)(23 downto 12); 
+          devicei := conv_integer(device);      
+          std.textio.write(L1, "ahbctrl: slv" & tost(i) & ": " & iptable(vendori).vendordesc &
+                           iptable(vendori).device_table(devicei));
+          std.textio.writeline(OUTPUT, L1);
+        end if;
+        for j in 1 to NAHBIR-1 loop 
+          assert (slvo(i).hconfig(j) = zx or FULLPNP or ccheck = 0)
+            report "AHB slave " & tost(i) & " propagates non-zero user defined PnP data, " &
+            "but AHBCTRL full PnP decoding has not been enabled"
+            severity warning;
+        end loop;
         for j in NAHBIR to NAHBCFG-1 loop
           area := slvo(i).hconfig(j)(1 downto 0);
 	  mask := slvo(i).hconfig(j)(15 downto 4);
+          memmap(i)(j mod NAHBIR).start := (others => '0');
+          memmap(i)(j mod NAHBIR).stop := (others => '0');
 	  if (mask /= "000000000000") then
             case area is
 	    when "01" =>
 	    when "10" =>
 	      k := 0;
-              while (k<15) and (mask(k) = '0') loop k := k+1; end loop; 
-	      std.textio.write(L1, "ahbctrl:       memory at " & tost( slvo(i).hconfig(j)(31 downto 20))&
-		"00000, size "& tost(2**k) & " Mbyte");
-	      if slvo(i).hconfig(j)(16) = '1' then 
-	        std.textio.write(L1, string'(", cacheable"));
-	      end if;
-	      if slvo(i).hconfig(j)(17) = '1' then 
-	        std.textio.write(L1, string'(", prefetch"));
-	       end if;
-	      std.textio.writeline(OUTPUT, L1);
+              while (k<15) and (mask(k) = '0') loop k := k+1; end loop;
+              if debug > 1 then
+                std.textio.write(L1, "ahbctrl:       memory at " &
+                                 tost( slvo(i).hconfig(j)(31 downto 20)) &
+                                 "00000, size "& tost(2**k) & " Mbyte");
+                if slvo(i).hconfig(j)(16) = '1' then 
+                  std.textio.write(L1, string'(", cacheable"));
+                end if;
+                if slvo(i).hconfig(j)(17) = '1' then 
+                  std.textio.write(L1, string'(", prefetch"));
+                end if;
+                std.textio.writeline(OUTPUT, L1);
+              end if;
+              memmap(i)(j mod NAHBIR).start(31 downto 20) := slvo(i).hconfig(j)(31 downto 20);
+              memmap(i)(j mod NAHBIR).start(19 downto 8) := (others => '0');
+              memmap(i)(j mod NAHBIR).stop := memmap(i)(j mod NAHBIR).start + 2**(k+12);
 	    when "11" =>
               if ioen /= 0 then
 	        k := 0;
                 while (k<15) and (mask(k) = '0') loop k := k+1; end loop; 
-	        iosize := 256 * 2**k; iounit(1) := ' ';
-	        if (iosize > 1023) then
-	          iosize := iosize/1024; iounit(1) := 'k';
-	        end if;
-	        print("ahbctrl:       I/O port at " & tost( iostart & 
-		  ((slvo(i).hconfig(j)(31 downto 20)) and slvo(i).hconfig(j)(15 downto 4))) &
-		  "00, size "& tost(iosize) & iounit);
+                memmap(i)(j mod NAHBIR).start := iostart & (slvo(i).hconfig(j)(31 downto 20) and
+                                                            slvo(i).hconfig(j)(15 downto 4));
+                memmap(i)(j mod NAHBIR).stop := memmap(i)(j mod NAHBIR).start + 2**k;
+                if debug > 1 then
+                  iosize := 256 * 2**k; iounit(1) := ' ';
+                  if (iosize > 1023) then
+                    iosize := iosize/1024; iounit(1) := 'k';
+                  end if;
+                  print("ahbctrl:       I/O port at " & tost(iostart &
+                        ((slvo(i).hconfig(j)(31 downto 20)) and slvo(i).hconfig(j)(15 downto 4))) &
+                        "00, size "& tost(iosize) & iounit);
+                end if;
 	      end if;
-	    when others =>
+            when others =>
             end case;
-	  end if;
+          end if;
         end loop;
 	assert (slvo(i).hindex = i) or (icheck = 0)
-	report "AHB slave index error on slave " & tost(i) severity failure;
+	report "AHB slave index error on slave " & tost(i) &
+          ". Detected index value " & tost(slvo(i).hindex) severity failure;
+        if mcheck /= 0 then
+          for j in 0 to i loop
+            for k in memmap(i)'range loop
+              for l in memmap(i)'range loop
+                if memmap(i)(k).start /= memmap(i)(k).stop then
+                  assert ((memmap(i)(k).start >= memmap(j)(l).stop) or
+                          (memmap(i)(k).stop <= memmap(j)(l).start) or (i = j and k = l))
+                    report "AHB slave " & tost(i) & " bank " & tost(k) & 
+                    " intersects with AHB slave " & tost(j) & " bank " & tost(l)
+                    severity failure;
+                end if;
+              end loop;
+            end loop;
+          end loop;
+        end if;
+      else
+        for j in 0 to NAHBCFG-1 loop 
+          assert (slvo(i).hconfig(j) = zx or ccheck = 0)
+            report "AHB slave " & tost(i) & " appears to be disabled, " &
+            "but the slave config record is not driven to zero"
+            severity warning;
+        end loop;
       end if;
     end loop;
+    if nahbs < NAHBSLV then
+      for i in nahbs to NAHBSLV-1 loop 
+        for j in 0 to NAHBCFG-1 loop 
+          assert (slvo(i).hconfig(j) = zx or ccheck = 0)
+            report "AHB slave " & tost(i) & " is outside the range of " &
+            "decoded slave indexes but the slave config record is not driven to zero"
+            severity warning;
+        end loop;
+      end loop;
+    end if;
     wait;
   end process;
 

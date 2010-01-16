@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -43,7 +44,8 @@ entity dsu3 is
     tbits   : integer := 30; -- timer bits (instruction trace time tag)
     tech    : integer := DEFMEMTECH; 
     irq     : integer := 0; 
-    kbytes  : integer := 0
+    kbytes  : integer := 0;
+    testen  : integer := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -66,7 +68,7 @@ begin
 
   gnd <= '0'; vcc <= '1';
   
-  x0 : dsu3x generic map (hindex, haddr, hmask, ncpu, tbits, tech, irq, kbytes, 0)
+  x0 : dsu3x generic map (hindex, haddr, hmask, ncpu, tbits, tech, irq, kbytes, 0, testen)
     port map (rst, gnd, clk, ahbmi, ahbsi, ahbso, dbgi, dbgo, dsui, dsuo, vcc);  
   
 end;

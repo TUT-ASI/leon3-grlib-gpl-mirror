@@ -1,6 +1,10 @@
 ------------------------------------------------------------------------------
 --  LEON3 Demonstration design test bench
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -11,6 +15,10 @@
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
 --  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 --  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -40,9 +48,9 @@ entity testbench_netlist is
 
     clkperiod : integer := 1000;		-- system clock period
     romwidth  : integer := 32;		-- rom data width (8/32)
-    romdepth  : integer := 16;		-- rom address depth
+    romdepth  : integer := 20;		-- rom address depth
     sramwidth  : integer := 32;		-- ram data width (8/16/32)
-    sramdepth  : integer := 18;		-- ram address depth
+    sramdepth  : integer := 20;		-- ram address depth
     srambanks  : integer := 2;		-- number of ram banks
     testen  : integer := 0;
     scanen  : integer := 0;

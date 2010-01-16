@@ -1,6 +1,10 @@
 -----------------------------------------------------------------------------
 --  LEON3 Demonstration design test bench
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -11,6 +15,10 @@
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
 --  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 --  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -54,24 +62,24 @@ entity testbench is
     sramdepth : integer := 16;          -- ram address depth
     srambanks : integer := 2);          -- number of ram banks
   port (
-    pci_rst    : in    std_ulogic;      -- PCI bus
-    pci_clk    : in    std_ulogic;
-    pci_gnt    : in    std_ulogic;
-    pci_idsel  : in    std_ulogic;
-    pci_lock   : inout std_ulogic;
+    pci_rst    : in    std_logic;      -- PCI bus
+    pci_clk    : in    std_logic;
+    pci_gnt    : in    std_logic;
+    pci_idsel  : in    std_logic;
+    pci_lock   : inout std_logic;
     pci_ad     : inout std_logic_vector(31 downto 0);
     pci_cbe    : inout std_logic_vector(3 downto 0);
-    pci_frame  : inout std_ulogic;
-    pci_irdy   : inout std_ulogic;
-    pci_trdy   : inout std_ulogic;
-    pci_devsel : inout std_ulogic;
-    pci_stop   : inout std_ulogic;
-    pci_perr   : inout std_ulogic;
-    pci_par    : inout std_ulogic;
-    pci_req    : inout std_ulogic;
-    pci_serr   : inout std_ulogic;
-    pci_host   : in    std_ulogic;
-    pci_66     : in    std_ulogic);
+    pci_frame  : inout std_logic;
+    pci_irdy   : inout std_logic;
+    pci_trdy   : inout std_logic;
+    pci_devsel : inout std_logic;
+    pci_stop   : inout std_logic;
+    pci_perr   : inout std_logic;
+    pci_par    : inout std_logic;
+    pci_req    : inout std_logic;
+    pci_serr   : inout std_logic;
+    pci_host   : in    std_logic;
+    pci_66     : in    std_logic);
 end testbench;
 
 
@@ -94,40 +102,40 @@ architecture behav of testbench is
   signal rwen                                : std_logic_vector(3 downto 0);
   signal rwenx                               : std_logic_vector(3 downto 0);
   signal romsn                               : std_logic_vector(1 downto 0);
-  signal iosn                                : std_ulogic;
-  signal oen                                 : std_ulogic;
-  signal read                                : std_ulogic;
-  signal writen                              : std_ulogic;
-  signal brdyn                               : std_ulogic;
-  signal bexcn                               : std_ulogic;
-  signal wdog                                : std_ulogic;
-  signal dsuen, dsutx, dsurx, dsubre, dsuact : std_ulogic;
-  signal dsurst                              : std_ulogic;
-  signal test                                : std_ulogic;
+  signal iosn                                : std_logic;
+  signal oen                                 : std_logic;
+  signal read                                : std_logic;
+  signal writen                              : std_logic;
+  signal brdyn                               : std_logic;
+  signal bexcn                               : std_logic;
+  signal wdog                                : std_logic;
+  signal dsuen, dsutx, dsurx, dsubre, dsuact : std_logic;
+  signal dsurst                              : std_logic;
+  signal test                                : std_logic;
 
   signal error : std_logic;
-  alias errorn : std_ulogic is error;
+  alias errorn : std_logic is error;
 
   signal pio  : std_logic_vector(15 downto 0);
-  signal GND  : std_ulogic := '0';
-  signal VCC  : std_ulogic := '1';
-  signal NC   : std_ulogic := 'Z';
-  signal clk2 : std_ulogic := '1';
+  signal GND  : std_logic := '0';
+  signal VCC  : std_logic := '1';
+  signal NC   : std_logic := 'Z';
+  signal clk2 : std_logic := '1';
 
 -- sdram
   signal sdclk  : std_logic_vector(1 downto 0);
--- signal sdclk    : std_ulogic;       
+-- signal sdclk    : std_logic;       
 --  alias sdclk   : std_logic is sd_clk(0);
   signal sdcke  : std_logic_vector (1 downto 0);  -- clk en
   signal sa     : std_logic_vector(14 downto 0);
   signal sd     : std_logic_vector(63 downto 0);
   signal sddqm  : std_logic_vector (7 downto 0);  -- data i/o mask
-  signal sdwen  : std_ulogic;                     -- write en
-  signal sdcasn : std_ulogic;                     -- col addr stb
-  signal sdrasn : std_ulogic;                     -- row addr stb
+  signal sdwen  : std_logic;                     -- write en
+  signal sdcasn : std_logic;                     -- col addr stb
+  signal sdrasn : std_logic;                     -- row addr stb
   signal sdcsn  : std_logic_vector (1 downto 0);  -- chip sel
 
-  signal plllock : std_ulogic;
+  signal plllock : std_logic;
 
 -- pulled up high, therefore std_logic
   signal txd1, rxd1 : std_logic;
@@ -153,28 +161,28 @@ architecture behav of testbench is
   signal resoutn : std_logic;
   signal disrams : std_logic;
   signal rben    : std_logic_vector(3 downto 0);
-  signal sdclk0  : std_ulogic;
-  signal sdclk1  : std_ulogic;
+  signal sdclk0  : std_logic;
+  signal sdclk1  : std_logic;
   signal sdba0   : std_logic;           -- bank address zero
   signal sdba1   : std_logic;           -- bank address one
-  signal dsubren : std_ulogic;
-  signal dsuactn : std_ulogic;
+  signal dsubren : std_logic;
+  signal dsuactn : std_logic;
   signal bufdir  : std_logic;
   signal bufoen  : std_logic;
   signal s_sddqm : std_logic_vector (3 downto 0);
 
-  signal HRESETn   : std_ulogic;
-  signal HSEL      : std_ulogic;
-  signal HREADY_ba : std_ulogic;        -- hready input signal
+  signal HRESETn   : std_logic;
+  signal HSEL      : std_logic;
+  signal HREADY_ba : std_logic;        -- hready input signal
   signal HADDR     : std_logic_vector(31 downto 0);
-  signal HWRITE    : std_ulogic;
+  signal HWRITE    : std_logic;
   signal HTRANS    : std_logic_vector(1 downto 0);
   signal HSIZE     : std_logic_vector(2 downto 0);
   signal HBURST    : std_logic_vector(2 downto 0);
   signal HWDATA    : std_logic_vector(31 downto 0);
   signal HMASTER   : std_logic_vector(3 downto 0);
-  signal HMASTLOCK : std_ulogic;
-  signal HREADY    : std_ulogic;
+  signal HMASTLOCK : std_logic;
+  signal HREADY    : std_logic;
   signal HRESP     : std_logic_vector(1 downto 0);
   signal HRDATA    : std_logic_vector(31 downto 0);
   signal HSPLIT    : std_logic_vector(15 downto 0);
@@ -194,10 +202,10 @@ architecture behav of testbench is
   ---------------------------------------------------------------------------------------
   signal hpiaddr : std_logic_vector(1 downto 0);
   signal hpidata : std_logic_vector(15 downto 0);
-  signal hpicsn  : std_ulogic;
-  signal hpiwrn  : std_ulogic;
-  signal hpiint  : std_ulogic;
-  signal hpirdn  : std_ulogic;
+  signal hpicsn  : std_logic;
+  signal hpiwrn  : std_logic;
+  signal hpiint  : std_logic;
+  signal hpirdn  : std_logic;
 --  signal hpirdata : std_logic_vector(15 downto 0);
 --  signal hpiwdata : std_logic_vector(15 downto 0);
 
@@ -210,13 +218,13 @@ component hpi_ram
     abits : integer;
     dbits : integer);
   port (
-    clk     : in  std_ulogic;
+    clk     : in  std_logic;
     address : in  std_logic_vector(1 downto 0);
     datain  : in  std_logic_vector(dbits-1 downto 0);
     dataout : out std_logic_vector(dbits-1 downto 0);
-    writen  : in  std_ulogic;
-    readn   : in  std_ulogic;
-    csn     : in  std_ulogic);
+    writen  : in  std_logic;
+    readn   : in  std_logic;
+    csn     : in  std_logic);
 end component;
 
 -----------------------------------------------------------------------------------------
@@ -238,11 +246,11 @@ end component;
   signal ac97_resetn    : std_logic;
   signal ac97_ext_clk   : std_logic;
 
-  signal vga_clk    : std_ulogic;
-  signal vga_syncn  : std_ulogic;
-  signal vga_blankn : std_ulogic;
-  signal vga_vsync  : std_ulogic;
-  signal vga_hsync  : std_ulogic;
+  signal vga_clk    : std_logic;
+  signal vga_syncn  : std_logic;
+  signal vga_blankn : std_logic;
+  signal vga_vsync  : std_logic;
+  signal vga_hsync  : std_logic;
   signal vga_rd     : std_logic_vector(7 downto 0);
   signal vga_gr     : std_logic_vector(7 downto 0);
   signal vga_bl     : std_logic_vector(7 downto 0);
@@ -256,10 +264,10 @@ end component;
   signal cb4_datao : std_logic_vector(35 downto 0);
   signal cb4_datai : std_logic_vector(35 downto 0);
 
-  signal sdcard_cs   : std_ulogic;
-  signal sdcard_di   : std_ulogic;
-  signal sdcard_sclk : std_ulogic;
-  signal sdcard_do   : std_ulogic;
+  signal sdcard_cs   : std_logic;
+  signal sdcard_di   : std_logic;
+  signal sdcard_sclk : std_logic;
+  signal sdcard_do   : std_logic;
 
   component spi_slave_model
     port(
@@ -273,30 +281,30 @@ end component;
 -----------------------------------------------------------------------------------------
 -- USB DEBUG LINK
 -----------------------------------------------------------------------------------------
-  signal usb_clkout    : std_ulogic;
+  signal usb_clkout    : std_logic;
   signal usb_d         : std_logic_vector(15 downto 0);
   signal usb_linestate : std_logic_vector(1 downto 0);
   signal usb_opmode    : std_logic_vector(1 downto 0);
-  signal usb_reset     : std_ulogic;
-  signal usb_rxactive  : std_ulogic;
-  signal usb_rxerror   : std_ulogic;
-  signal usb_rxvalid   : std_ulogic;
-  signal usb_suspend   : std_ulogic;
-  signal usb_termsel   : std_ulogic;
-  signal usb_txready   : std_ulogic;
-  signal usb_txvalid   : std_ulogic;
-  signal usb_validh    : std_ulogic;
-  signal usb_xcvrsel   : std_ulogic;
-  signal usb_vbus      : std_ulogic;
-  signal usb_dbus16    : std_ulogic;
-  signal usb_unidir    : std_ulogic;
+  signal usb_reset     : std_logic;
+  signal usb_rxactive  : std_logic;
+  signal usb_rxerror   : std_logic;
+  signal usb_rxvalid   : std_logic;
+  signal usb_suspend   : std_logic;
+  signal usb_termsel   : std_logic;
+  signal usb_txready   : std_logic;
+  signal usb_txvalid   : std_logic;
+  signal usb_validh    : std_logic;
+  signal usb_xcvrsel   : std_logic;
+  signal usb_vbus      : std_logic;
+  signal usb_dbus16    : std_logic;
+  signal usb_unidir    : std_logic;
 
 -----------------------------------------------------------------------------------------
 -- ADC/DAC
 -----------------------------------------------------------------------------------------
-  signal adc_dout : std_ulogic;
-  signal adc_ain  : std_ulogic;
-  signal dac_out  : std_ulogic;
+  signal adc_dout : std_logic;
+  signal adc_ain  : std_logic;
+  signal dac_out  : std_logic;
 
 --------------------------------------------------------------------------------
 -- MISC TEST BENCH SIGNALS
@@ -615,7 +623,7 @@ begin
 
   dcomstart : if CFG_AHBROMEN = 0 generate
     dsucom : process
-      procedure dsucfg(signal dsurx : in std_ulogic; signal dsutx : out std_ulogic) is
+      procedure dsucfg(signal dsurx : in std_logic; signal dsutx : out std_logic) is
         variable w32 : std_logic_vector(31 downto 0);
         variable c8  : std_logic_vector(7 downto 0);
         constant txp : time := 160 * 1 ns;

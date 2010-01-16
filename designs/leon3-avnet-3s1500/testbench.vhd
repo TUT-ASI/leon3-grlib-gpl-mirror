@@ -1,6 +1,10 @@
 -----------------------------------------------------------------------------
 --  LEON3 Demonstration design test bench
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -11,6 +15,10 @@
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
 --  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 --  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -39,24 +47,24 @@ entity testbench is
     comboard  : integer := 1		-- Comms. adapter board attached
   );
   port (
-    pci_rst     : out std_ulogic;
-    pci_clk 	: in std_ulogic;
-    pci_gnt     : in std_ulogic;
-    pci_idsel   : in std_ulogic;  
-    pci_lock    : inout std_ulogic;
+    pci_rst     : out std_logic;
+    pci_clk 	: in std_logic;
+    pci_gnt     : in std_logic;
+    pci_idsel   : in std_logic;  
+    pci_lock    : inout std_logic;
     pci_ad 	: inout std_logic_vector(31 downto 0);
     pci_cbe 	: inout std_logic_vector(3 downto 0);
-    pci_frame   : inout std_ulogic;
-    pci_irdy 	: inout std_ulogic;
-    pci_trdy 	: inout std_ulogic;
-    pci_devsel  : inout std_ulogic;
-    pci_stop 	: inout std_ulogic;
-    pci_perr 	: inout std_ulogic;
-    pci_par 	: inout std_ulogic;    
-    pci_req 	: inout std_ulogic;
-    pci_serr    : inout std_ulogic;
-    pci_host   	: in std_ulogic;
-    pci_66	: in std_ulogic
+    pci_frame   : inout std_logic;
+    pci_irdy 	: inout std_logic;
+    pci_trdy 	: inout std_logic;
+    pci_devsel  : inout std_logic;
+    pci_stop 	: inout std_logic;
+    pci_perr 	: inout std_logic;
+    pci_par 	: inout std_logic;    
+    pci_req 	: inout std_logic;
+    pci_serr    : inout std_logic;
+    pci_host   	: in std_logic;
+    pci_66	: in std_logic
   );
 end; 
 
@@ -78,8 +86,8 @@ component leon3mp
     mezz      : integer := CFG_ADS_DAU_MEZZ
   );
   port (
-    clk_66mhz	: in  std_ulogic;
-    clk_socket	: in  std_ulogic;
+    clk_66mhz	: in  std_logic;
+    clk_socket	: in  std_logic;
     leds	: out std_logic_vector(7 downto 0);
     switches	: in  std_logic_vector(5 downto 0);
 
@@ -104,23 +112,23 @@ component leon3mp
     can_txd     : out std_logic;
     can_rxd     : in  std_logic;
 
-    phy_txck 	: in std_ulogic;
-    phy_rxck 	: in std_ulogic;
+    phy_txck 	: in std_logic;
+    phy_rxck 	: in std_logic;
     phy_rxd    	: in std_logic_vector(3 downto 0);   
-    phy_rxdv  	: in std_ulogic; 
-    phy_rxer  	: in std_ulogic; 
-    phy_col 	: in std_ulogic;
-    phy_crs 	: in std_ulogic;
+    phy_rxdv  	: in std_logic; 
+    phy_rxer  	: in std_logic; 
+    phy_col 	: in std_logic;
+    phy_crs 	: in std_logic;
     phy_txd 	: out std_logic_vector(3 downto 0);   
-    phy_txen 	: out std_ulogic; 
-    phy_txer 	: out std_ulogic; 
-    phy_mdc 	: out std_ulogic;
+    phy_txen 	: out std_logic; 
+    phy_txer 	: out std_logic; 
+    phy_mdc 	: out std_logic;
     phy_mdio   	: inout std_logic;		-- ethernet PHY interface
     phy_reset_l	: inout std_logic;
 
-    video_clk 	: in std_ulogic;
-    comp_sync 	: out std_ulogic;
-    blank 	: out std_ulogic;
+    video_clk 	: in std_logic;
+    comp_sync 	: out std_logic;
+    blank 	: out std_logic;
     video_out 	: out std_logic_vector(23 downto 0);   
 
     msclk   	: inout std_logic;
@@ -131,75 +139,75 @@ component leon3mp
     disp_seg1 	: out std_logic_vector(7 downto 0);   
     disp_seg2 	: out std_logic_vector(7 downto 0);   
 
-    pci_clk 	: in std_ulogic;
-    pci_gnt     : in std_ulogic;
-    pci_idsel   : in std_ulogic; 
-    pci_lock    : inout std_ulogic;
+    pci_clk 	: in std_logic;
+    pci_gnt     : in std_logic;
+    pci_idsel   : in std_logic; 
+    pci_lock    : inout std_logic;
     pci_ad 	: inout std_logic_vector(31 downto 0);
     pci_cbe 	: inout std_logic_vector(3 downto 0);
-    pci_frame   : inout std_ulogic;
-    pci_irdy 	: inout std_ulogic;
-    pci_trdy 	: inout std_ulogic;
-    pci_devsel  : inout std_ulogic;
-    pci_stop 	: inout std_ulogic;
-    pci_perr 	: inout std_ulogic;
-    pci_par 	: inout std_ulogic;    
-    pci_req 	: inout std_ulogic;
-    pci_serr    : inout std_ulogic;
-    pci_host   	: in std_ulogic;
-    pci_66	: in std_ulogic
+    pci_frame   : inout std_logic;
+    pci_irdy 	: inout std_logic;
+    pci_trdy 	: inout std_logic;
+    pci_devsel  : inout std_logic;
+    pci_stop 	: inout std_logic;
+    pci_perr 	: inout std_logic;
+    pci_par 	: inout std_logic;    
+    pci_req 	: inout std_logic;
+    pci_serr    : inout std_logic;
+    pci_host   	: in std_logic;
+    pci_66	: in std_logic
 	);
 end component;
 
 signal clk : std_logic := '0';
 constant ct : integer := clkperiod/2;
 
-signal gnd      : std_ulogic := '0';
-signal vcc      : std_ulogic := '1';
+signal gnd      : std_logic := '0';
+signal vcc      : std_logic := '1';
     
-signal sdcke    : std_ulogic;
-signal sdcsn    : std_ulogic;
-signal sdwen    : std_ulogic;                       -- write en
-signal sdrasn   : std_ulogic;                       -- row addr stb
-signal sdcasn   : std_ulogic;                       -- col addr stb
+signal sdcke    : std_logic;
+signal sdcsn    : std_logic;
+signal sdwen    : std_logic;                       -- write en
+signal sdrasn   : std_logic;                       -- row addr stb
+signal sdcasn   : std_logic;                       -- col addr stb
 signal sddqm    : std_logic_vector ( 7 downto 0);  -- data i/o mask
-signal sdclk    : std_ulogic;       
-signal plllock  : std_ulogic;       
-signal tx, rx   : std_ulogic;       
-signal dsutx, dsurx   : std_ulogic;       
+signal sdclk    : std_logic;       
+signal plllock  : std_logic;       
+signal tx, rx   : std_logic;       
+signal dsutx, dsurx   : std_logic;       
 
 signal leds : std_logic_vector(7 downto 0);
 signal switches : std_logic_vector(5 downto 0);
 
 constant lresp : boolean := false;
 
-signal sram_oe_l, sram_we_l : std_ulogic;
+signal sram_oe_l, sram_we_l : std_logic;
 signal sram_cs_l : std_logic_vector(1 downto 0);
 signal sram_ben_l : std_logic_vector(0 to 3);
 signal sram_dq : std_logic_vector(31 downto 0);
-signal flash_cs_l, flash_rst_l : std_ulogic;
-signal iosn : std_ulogic;
+signal flash_cs_l, flash_rst_l : std_logic;
+signal iosn : std_logic;
 
-signal phy_txck : std_ulogic;
-signal phy_rxck : std_ulogic;
+signal phy_txck : std_logic;
+signal phy_rxck : std_logic;
 signal phy_rxd  : std_logic_vector(3 downto 0);
 signal phy_rxdt : std_logic_vector(7 downto 0);   
-signal phy_rxdv : std_ulogic; 
-signal phy_rxer : std_ulogic; 
-signal phy_col 	: std_ulogic;
-signal phy_crs 	: std_ulogic;
+signal phy_rxdv : std_logic; 
+signal phy_rxer : std_logic; 
+signal phy_col 	: std_logic;
+signal phy_crs 	: std_logic;
 signal phy_txd 	: std_logic_vector(3 downto 0);
 signal phy_txdt : std_logic_vector(7 downto 0);   
-signal phy_txen : std_ulogic; 
-signal phy_txer : std_ulogic; 
-signal phy_mdc 	: std_ulogic;
+signal phy_txen : std_logic; 
+signal phy_txer : std_logic; 
+signal phy_mdc 	: std_logic;
 signal phy_mdio : std_logic;
 signal phy_reset_l : std_logic;
-signal phy_gtx_clk : std_ulogic := '0';
+signal phy_gtx_clk : std_logic := '0';
 
-signal video_clk : std_ulogic := '0';
-signal comp_sync : std_ulogic;
-signal blank 	 : std_ulogic;
+signal video_clk : std_logic := '0';
+signal comp_sync : std_logic;
+signal blank 	 : std_logic;
 signal video_out : std_logic_vector(23 downto 0);   
 
 signal msclk   	: std_logic;
@@ -319,7 +327,7 @@ begin
   sram_dq <= buskeep(sram_dq), (others => 'H') after 250 ns;
 
   dsucom : process
-    procedure dsucfg(signal dsurx : in std_ulogic; signal dsutx : out std_ulogic) is
+    procedure dsucfg(signal dsurx : in std_logic; signal dsutx : out std_logic) is
     variable w32 : std_logic_vector(31 downto 0);
     variable c8  : std_logic_vector(7 downto 0);
     constant txp : time := 160 * 1 ns;

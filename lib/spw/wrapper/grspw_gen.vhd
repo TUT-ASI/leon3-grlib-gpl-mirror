@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -36,7 +37,7 @@ entity grspw_gen is
     sysfreq      : integer := 10000;
     usegen       : integer range 0 to 1  := 1;
     nsync        : integer range 1 to 2  := 1; 
-    rmap         : integer range 0 to 1  := 0;
+    rmap         : integer range 0 to 2  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
     fifosize1    : integer range 4 to 32 := 32;
     fifosize2    : integer range 16 to 64 := 64;
@@ -47,7 +48,9 @@ entity grspw_gen is
     scantest     : integer range 0 to 1 := 0;
     techfifo     : integer range 0 to 1 := 1;
     ports        : integer range 1 to 2 := 1;
-    memtech      : integer := 0
+    memtech      : integer := 0;
+    nodeaddr     : integer range 0 to 255 := 254;
+    destkey      : integer range 0 to 255 := 0
   );
   port(
     rst          : in  std_ulogic;
@@ -157,7 +160,9 @@ begin
       rmapbufs     => rmapbufs,
       scantest     => scantest,
       ports        => ports,
-      tech         => tech)
+      tech         => tech,
+      nodeaddr     => nodeaddr,
+      destkey      => destkey)
     port map(
       rst          => rst,
       clk          => clk,

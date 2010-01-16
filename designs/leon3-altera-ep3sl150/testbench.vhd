@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -189,7 +190,7 @@ begin
       phy_tx_data, phy_tx_en, phy_tx_er, phy_mii_clk,	phy_rst_n 
     ); 
 
-  ddr2delay : entity work.delay_wire 
+  ddr2delay : delay_wire 
     generic map(data_width => dbits, delay_atob => 0.0, delay_btoa => 5.5)
     port map(a => ddr_dq(dbits-1 downto 0), b => ddr_dq2(dbits-1 downto 0));
 

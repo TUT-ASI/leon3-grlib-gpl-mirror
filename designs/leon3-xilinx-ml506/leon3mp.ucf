@@ -16,6 +16,35 @@ NET clk_100 period = 10.000 ;
 
 NET clk_200 period = 5.000;
 
+NET clk_33   TNM_NET    = "clk_33";
+# Leave 1 ns margin
+TIMESPEC "TSSYSACE" = PERIOD "clk_33" 29 ns;
+#TIMESPEC "TS_clkm_sysace_clk_in" = FROM "clkm" TO "clk_33" TIG;
+#TIMESPEC "TS_sysace_clk_in_clkm" = FROM "clk_33" TO "clkm" TIG;
+#OFFSET = OUT : 8.000 AFTER clk_33;
+#OFFSET = IN : 7.000 BEFORE clk_33;
+
+////////////////////////////////////////////////////////////////////////////
+// VGA clocks
+////////////////////////////////////////////////////////////////////////////
+NET "clkvga" TNM_NET = "clkvga" | PERIOD = 15.385;
+NET "clk25" TNM_NET = "clk25" | PERIOD = 40.000;
+NET "clk40" TNM_NET = "clk40" | PERIOD = 25.000;
+NET "clk65" TNM_NET = "clk65" | PERIOD = 15.385;
+TIMESPEC "TSPLB_TFT25" = FROM "clkm" TO "clk25" TIG;
+TIMESPEC "TSPLB_TFT40" = FROM "clkm" TO "clk40" TIG;
+TIMESPEC "TSPLB_TFT65" = FROM "clkm" TO "clk65" TIG;
+TIMESPEC "TSTFT25_PLB" = FROM "clk25" TO "clkm" TIG;
+TIMESPEC "TSTFT25_TFT40" = FROM "clk25" TO "clk40" TIG;
+TIMESPEC "TSTFT25_TFT65" = FROM "clk25" TO "clk65" TIG;
+TIMESPEC "TSTFT40_PLB" = FROM "clk40" TO "clkm" TIG;
+TIMESPEC "TSTFT40_TFT25" = FROM "clk40" TO "clk25" TIG;
+TIMESPEC "TSTFT40_TFT65" = FROM "clk40" TO "clk65" TIG;
+TIMESPEC "TSTFT65_PLB" = FROM "clk65" TO "clkm" TIG;
+TIMESPEC "TSTFT65_TFT25" = FROM "clk65" TO "clk25" TIG;
+TIMESPEC "TSTFT65_TFT40" = FROM "clk65" TO "clk40" TIG;
+////////////////////////////////////////////////////////////////////////////
+
 #NET "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/dqsclk(*)" TNM_NET = "dqsclk"; 
 #TIMEGRP "dqsclk_rise" = FALLING "dqsclk";
 #TIMEGRP "clkml_rise" = RISING "clkml";
@@ -35,8 +64,8 @@ NET sys_rst_in TIG;
 #NET  AUDIO_SDATA_IN       LOC="AE18";  # Bank 4, Vcco=3.3V, No DCI    
 #NET  AUDIO_SDATA_OUT      LOC="AG16";  # Bank 4, Vcco=3.3V, No DCI    
 #NET  AUDIO_SYNC           LOC="AF19";  # Bank 4, Vcco=3.3V, No DCI    
-NET  bus_error(0)         LOC="F6" | IOSTANDARD = LVDCI_33;    # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors      
-NET  bus_error(1)         LOC="T10" | IOSTANDARD = LVDCI_33;   # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors      
+NET  bus_error(0)         LOC="F6" | IOSTANDARD = LVCMOS33;    # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors      
+NET  bus_error(1)         LOC="T10" | IOSTANDARD = LVCMOS33;   # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors      
 NET  sram_flash_addr(22)  LOC="AE12";  # Bank 2, Vcco=3.3V      
 NET  sram_flash_addr(23)  LOC="AE13";  # Bank 2, Vcco=3.3V      
 NET  clk_27       	  LOC="AG18";  # Bank 4, Vcco=3.3V, No DCI      
@@ -172,25 +201,52 @@ NET  ddr_rasb             LOC="H30" | IOSTANDARD = SSTL18_I;   # Bank 15, Vcco=1
 #NET  DDR2_SCL             LOC="E29";   # Bank 15, Vcco=1.8V, DCI using 49.9 ohm resistors
 #NET  DDR2_SDA             LOC="F29";   # Bank 15, Vcco=1.8V, DCI using 49.9 ohm resistors
 NET  ddr_web              LOC="K29" | IOSTANDARD = SSTL18_I;   # Bank 15, Vcco=1.8V, DCI using 49.9 ohm resistors
+#
 #NET  DVI_D0               LOC="AB8";   # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET tft_lcd_data(0)       LOC="AB8";   # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
 #NET  DVI_D1               LOC="AC8";   # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
-#NET  DVI_D2               LOC="AN12";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET tft_lcd_data(1)       LOC="AC8";   # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
+#NET  DVI_D2               LOC="AN12";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors 
+NET tft_lcd_data(2)       LOC="AN12";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors 
 #NET  DVI_D3               LOC="AP12";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET tft_lcd_data(3)       LOC="AP12";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
 #NET  DVI_D4               LOC="AA9";   # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET tft_lcd_data(4)       LOC="AA9";   # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
 #NET  DVI_D5               LOC="AA8";   # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET tft_lcd_data(5)       LOC="AA8";   # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
 #NET  DVI_D6               LOC="AM13";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET tft_lcd_data(6)       LOC="AM13";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
 #NET  DVI_D7               LOC="AN13";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET tft_lcd_data(7)       LOC="AN13";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
 #NET  DVI_D8               LOC="AA10";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET tft_lcd_data(8)       LOC="AA10";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
 #NET  DVI_D9               LOC="AB10";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET tft_lcd_data(9)       LOC="AB10";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
 #NET  DVI_D10              LOC="AP14";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET tft_lcd_data(10)      LOC="AP14";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
 #NET  DVI_D11              LOC="AN14";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
-#NET  DVI_DE               LOC="AE8";   # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
-#NET  DVI_GPIO1            LOC="N30";   # Bank 15, Vcco=1.8V, DCI using 49.9 ohm resistors
-#NET  DVI_H                LOC="AM12";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
-#NET  DVI_RESET_B          LOC="AK6";   # Bank 18, Vcco=3.3V, No DCI
-#NET  DVI_V                LOC="AM11";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
-#NET  DVI_XCLK_N           LOC="AL10";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET tft_lcd_data(11)      LOC="AN14";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET tft_lcd_data(*)       IOSTANDARD = LVDCI_33;
+#
 #NET  DVI_XCLK_P           LOC="AL11";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET tft_lcd_clk_p         LOC="AL11";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
+#NET  DVI_XCLK_N           LOC="AL10";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET tft_lcd_clk_n         LOC="AL10";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
+#
+#NET  DVI_H                LOC="AM12";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET tft_lcd_hsync         LOC="AM12";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET tft_lcd_hsync         IOSTANDARD = LVDCI_33;
+#NET  DVI_V                LOC="AM11";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET tft_lcd_vsync         LOC="AM11";  # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET tft_lcd_vsync         IOSTANDARD = LVDCI_33;
+#NET  DVI_DE               LOC="AE8";   # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET tft_lcd_de            LOC="AE8";   # Bank 22, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET tft_lcd_de            IOSTANDARD = LVDCI_33;
+#NET  DVI_RESET_B          LOC="AK6";   # Bank 18, Vcco=3.3V, No DCI
+NET tft_lcd_reset_b       LOC="AK6";   # Bank 18, Vcco=3.3V, No DCI
+NET tft_lcd_reset_b       IOSTANDARD = LVCMOS33;
+#NET  DVI_GPIO1            LOC="N30";   # Bank 15, Vcco=1.8V, DCI using 49.9 ohm resistors
+
 #NET  FAN_ALERT_B          LOC="T30";   # Bank 15, Vcco=1.8V, DCI using 49.9 ohm resistors
 NET  flash_adv_n          LOC="F13";   # Bank 20, Vcco=3.3V, DCI using 49.9 ohm resistors (FLASH_ADV_B)
 #NET  FLASH_AUDIO_RESET_B  LOC="AG17";  # Bank 4, Vcco=3.3V, No DCI
@@ -364,10 +420,10 @@ NET  gpio(12)             LOC="AJ7"   | IOSTANDARD = LVCMOS33;   # Bank 18, Vcco
 #NET  HDR2_64_SM_9_P       LOC="AN32";  # Bank 13, Vcco=2.5V or 3.3V user selectable by J20
 NET  iic_scl_main         LOC="F9";    # Bank 20, Vcco=3.3V, DCI using 49.9 ohm resistors
 NET  IIC_SCL_SFP          LOC="R26";   # Bank 15, Vcco=1.8V, DCI using 49.9 ohm resistors
-NET  IIC_SCL_VIDEO        LOC="U27";   # Bank 15, Vcco=1.8V, DCI using 49.9 ohm resistors
+NET  iic_scl_video        LOC="U27" | IOSTANDARD=LVCMOS18;   # Bank 15, Vcco=1.8V, DCI using 49.9 ohm resistors
 NET  iic_sda_main         LOC="F8";    # Bank 20, Vcco=3.3V, DCI using 49.9 ohm resistors
 NET  IIC_SDA_SFP          LOC="U28";   # Bank 15, Vcco=1.8V, DCI using 49.9 ohm resistors
-NET  IIC_SDA_VIDEO        LOC="T29";   # Bank 15, Vcco=1.8V, DCI using 49.9 ohm resistors
+NET  iic_sda_video        LOC="T29" | IOSTANDARD=LVCMOS18;   # Bank 15, Vcco=1.8V, DCI using 49.9 ohm resistors
 NET  ps2_keyb_clk         LOC="T26" | IOSTANDARD = LVCMOS18; #LVDCI_18;   # Bank 15, Vcco=1.8V, DCI using 49.9 ohm resistors
 NET  ps2_keyb_data        LOC="T25" | IOSTANDARD = LVCMOS18; #LVDCI_18;   # Bank 15, Vcco=1.8V, DCI using 49.9 ohm resistors
 NET  LCD_FPGA_DB4         LOC="T9";    # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
@@ -525,6 +581,36 @@ NET  sram_flash_data(15)  LOC="AG22";  # Bank 4, Vcco=3.3V, No DCI
 NET  sram_flash_we_n      LOC="AF20";  # Bank 2, Vcco=3.3V
 NET  sram_mode            LOC="A13" | IOSTANDARD = LVDCI_33;   # Bank 20, Vcco=3.3V, DCI using 49.9 ohm resistors
 NET  sram_oen      	  LOC="B12" | IOSTANDARD = LVDCI_33;   # Bank 20, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_mpa(0)        LOC="G5";   # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_mpa(1)        LOC="N7";   # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_mpa(2)        LOC="N5";   # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_mpa(3)        LOC="P5";   # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_mpa(4)        LOC="R6";   # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_mpa(5)        LOC="M6";   # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_mpa(6)        LOC="L6";   # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_mpa(*)        IOSTANDARD = LVCMOS33; 
+#NET  SYSACE_MPBRDY        LOC="H5";    # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_mpce          LOC="M5" | IOSTANDARD = LVCMOS33; # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_mpirq         LOC="M7" | IOSTANDARD = LVCMOS33; # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_mpoe          LOC="N8" | IOSTANDARD = LVCMOS33; # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_mpwe          LOC="R9" | IOSTANDARD = LVCMOS33; # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_d(0)          LOC="P9";    # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_d(1)          LOC="T8";    # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_d(2)          LOC="J7";    # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_d(3)          LOC="H7";    # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_d(4)          LOC="R7";    # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_d(5)          LOC="U7";    # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_d(6)          LOC="P7";    # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_d(7)          LOC="P6";    # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_d(8)          LOC="R8";    # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_d(9)          LOC="L5";    # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_d(10)         LOC="L4";    # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_d(11)         LOC="K6";    # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_d(12)         LOC="J5";    # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_d(13)         LOC="T6";    # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_d(14)         LOC="K7";    # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_d(15)         LOC="J6";    # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
+NET  sysace_d(*)          IOSTANDARD = LVCMOS33; 
 #NET  SYSACE_MPA00         LOC="G5";    # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
 #NET  SYSACE_MPA01_USB_A0  LOC="N7";    # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors
 #NET  SYSACE_MPA02_USB_A1  LOC="N5";    # Bank 12, Vcco=3.3V, DCI using 49.9 ohm resistors

@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -230,6 +231,9 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
                              ahbso : ahb_slv_out_vector)
   return std_ulogic;
 
+  function ahb_membar_size (addrmask : ahb_addr_type) return integer;
+
+  function ahb_iobar_size (addrmask : ahb_addr_type) return integer;
 
   component ahbctrl
   generic (
@@ -257,7 +261,8 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
     hslvdisable : integer := 0; --disable slave checks
     arbdisable  : integer := 0; --disable arbiter checks
     mprio       : integer := 0; --master with highest priority
-    enebterm    : integer range 0 to 1 := 0  --enable early burst termination
+    mcheck      : integer range 0 to 1 := 1; --check memory map for intersects
+    ccheck      : integer range 0 to 1 := 1  --perform sanity checks on pnp config
   );
   port (
     rst     : in  std_ulogic;
@@ -284,7 +289,9 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
     enbusmon    : integer range 0 to 1 := 0;
     asserterr   : integer range 0 to 1 := 0;
     assertwarn  : integer range 0 to 1 := 0;
-    pslvdisable : integer := 0
+    pslvdisable : integer := 0;
+    mcheck      : integer range 0 to 1 := 1;
+    ccheck      : integer range 0 to 1 := 1
   );
   port (
     rst     : in  std_ulogic;
@@ -323,7 +330,8 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
     hslvdisable : integer := 0; --disable slave checks
     arbdisable  : integer := 0; --disable arbiter checks
     mprio       : integer := 0; --master with highest priority
-    enebterm    : integer range 0 to 1 := 0  --enable early burst termination
+    mcheck      : integer range 0 to 1 := 1; --check memory map for intersects
+    ccheck      : integer range 0 to 1 := 1  --perform sanity checks on pnp config
   );
   port (
     rst     : in  std_ulogic;
@@ -519,7 +527,9 @@ package body amba is
     pfetch := '0';
     for i in 0 to NAHBSLV-1 loop
       for j in NAHBAMR to NAHBCFG-1 loop
-        if ahbso(i).hconfig(j)(17) = '1' then
+        if ((ahbso(i).hconfig(j)(17) = '1') and
+            (ahbso(i).hconfig(j)(15 downto 4) /= "000000000000"))
+        then
           if (haddr(31 downto 20) and ahbso(i).hconfig(j)(15 downto 4)) =
             (ahbso(i).hconfig(j)(31 downto 20) and ahbso(i).hconfig(j)(15 downto 4)) then
             pfetch := '1';
@@ -530,4 +540,14 @@ package body amba is
     return(pfetch);
   end;
 
+  function ahb_membar_size (addrmask : ahb_addr_type) return integer is
+  begin
+    if addrmask = 0 then return 0; end if;
+    return (4096 - addrmask) * 1024 * 1024;
+  end;
+
+  function ahb_iobar_size (addrmask : ahb_addr_type) return integer is
+  begin
+    return (4096 - addrmask) * 256;
+  end;
 end;

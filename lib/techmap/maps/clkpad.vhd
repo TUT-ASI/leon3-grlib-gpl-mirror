@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -29,27 +30,24 @@ use techmap.gencomp.all;
 use techmap.allpads.all;
 
 entity clkpad is
-  generic (tech : integer := 0; level : integer := 0; 
+  generic (tech : integer := 0; level : integer := 0;
 	   voltage : integer := x33v; arch : integer := 0;
            hf : integer := 0);
-  port (pad : in std_ulogic; o : out std_ulogic; rstn : in std_ulogic := '1');
-end; 
+  port (pad : in std_ulogic; o : out std_ulogic; rstn : in std_ulogic := '1'; lock : out std_ulogic);
+end;
 
 architecture rtl of clkpad is
 begin
   gen0 : if has_pads(tech) = 0 generate
     o <= to_X01(pad);
   end generate;
-  xcv : if (tech = virtex) generate
-    u0 : virtex_clkpad generic map (level, voltage, 0, 0) port map (pad, o, rstn);
+  xcv2 : if (is_unisim(tech) = 1) generate
+    u0 : unisim_clkpad generic map (level, voltage, arch, hf) port map (pad, o, rstn, lock);
   end generate;
-  xcv2 : if (tech = virtex2) or (tech = spartan3) or (tech = virtex4) or (tech = spartan3e) or (tech = virtex5) generate
-    u0 : virtex_clkpad generic map (level, voltage, arch, hf) port map (pad, o, rstn);
-  end generate;
-  axc : if (tech = axcel) generate
+  axc : if (tech = axcel) or (tech = axdsp) generate
     u0 : axcel_clkpad generic map (level, voltage) port map (pad, o);
   end generate;
-  pa3 : if (tech = proasic) or (tech = apa3) generate
+  pa : if (tech = proasic) or (tech = apa3) generate
     u0 : apa3_clkpad generic map (level, voltage) port map (pad, o);
   end generate;
   atc : if (tech = atc18s) generate
@@ -66,7 +64,7 @@ begin
   end generate;
   ihp : if (tech = ihp25) generate
     u0 : ihp25_clkpad generic map (level, voltage) port map (pad, o);
-  end generate; 
+  end generate;
   rh18t : if (tech = rhlib18t) generate
     u0 : rh_lib18t_inpad port map (pad, o);
   end generate;

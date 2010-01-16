@@ -27,21 +27,16 @@ while the console UART (APB) is connected to P2.
 
 * SSRAM
 
-The SSRAM can be interfaced with the SSRCTRL sync-ram controller,
-or the leon2 async-sram MCTRL memory controller. If SSRCTRL is
-used, the J49 must be open to run the SSRAM in pipeline mode.
-If the MCTRL is used, J49 should be closed and zero-waitstates
-should be used in MCTRL.
+The SSRAM can be interfaced with the async-sram MCTRL memory 
+controller.  If the MCTRL is used, J49 should be closed and 
+zero-waitstates should be used for write while one waitstate
+should be used for read. Suitable start-up option for grmon
+is in this case -ramrws 1 .
 
 * Synthesis
 
 Synthesis has been done with Synplify-9.2. It is IMPERATIVE
 that retiming is NOT enabled, or a corrupt netlist will be created.
 Maximum frequency is in the range of 30 - 35 MHz, depending on
-the processor configuartion (using STD device timing).
-
-* Simulation
-
-It is not possible to simulate the test bench since the GSI SSRAM models
-do not support data pre-loading.
+the processor configuration (using STD device timing).
 

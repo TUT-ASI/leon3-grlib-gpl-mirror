@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -285,7 +286,7 @@ begin
   hc_tx_dt(3 downto 0) <= hc_tx_d;
   hc_rx_d <= hc_rx_dt(3 downto 0);
   p0: phy
-    generic map(base1000_t_fd => 0, base1000_t_hd => 0)
+    generic map(base1000_t_fd => 0, base1000_t_hd => 0, address => 1)
     port map(hc_eth_reset_n, hc_mdio, hc_tx_clk, hc_rx_clk, hc_rx_dt, hc_rx_dv,
              hc_rx_err, hc_rx_col, hc_rx_crs, hc_tx_dt, hc_tx_en, phy_tx_er, hc_mdc, phy_gtx_clk);
 

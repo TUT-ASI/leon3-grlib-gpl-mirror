@@ -235,9 +235,9 @@ GRFPU Multiplier
 CONFIG_FPU_GRFPU_INFMUL
   On FPGA targets choose inferred multiplier. For ASIC implementations 
   choose between Synopsys Design Ware (DW) multiplier or Module 
-  Generator (ModGen) multiplier. DW multiplier gives better results 
-  (smaller area  and better timing) but requires DW license. ModGen 
-  multiplier is part of GRLIB and does not require license. 
+  Generator (ModGen) multiplier. The DW multiplier gives better results 
+  (smaller area and better timing) but requires a DW license. 
+  The ModGen multiplier is part of GRLIB and does not require a license. 
 
 Shared GRFPU
 CONFIG_FPU_GRFPU_SH
@@ -308,7 +308,7 @@ CONFIG_ICACHE_LZ16
 Instruction cache replacement algorithm
 CONFIG_ICACHE_ALGORND
   Cache replacement algorithm for caches with 2 - 4 sets. The 'random'
-  algorithm selects the set to evict randomly. The least-recently-used
+  algorithm selects the set to evict randomly. The least-recently-replaced
   (LRR) algorithm evicts the set least recently replaced. The least-
   recently-used (LRU) algorithm evicts the set least recently accessed.
   The random algorithm uses a simple 1- or 2-bit counter to select
@@ -673,6 +673,8 @@ CONFIG_DDRSP_RSKEW
   must be added manually. The entered value is set to the PHASE_SHIFT
   generic on the Xilinx DCM. The Digilent Sparten3E-1600 board typically
   needs a value of 35, while the Avnet Virtex4 Eval board needs -90.
+  For Altera CycloneIII, the entered value is set to the PHASE_SHIFT of 
+  the PLL in ps (e.g 2500 for 90' shift in 100MHz)
 On-chip rom
 CONFIG_AHBROM_ENABLE
   Say Y here to add a block on on-chip rom to the AHB bus. The ram
@@ -830,6 +832,9 @@ PS2 KBD interface
 CONFIG_KBD_ENABLE
   Say Y here to enable a PS/2 keyboard or mouse interface.
 
+AMBA System ACE Interface Controller
+CONFIG_GRACECTRL
+  Say Y here to enable the AMBA System ACE Interface Controller
 UART debugging
 CONFIG_DEBUG_UART
   During simulation, the output from the UARTs is printed on the

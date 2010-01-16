@@ -4,7 +4,7 @@ Gleichmann Electronics:
 
 http://www.ger-fae.com/Hpe_mini_ac2.html
 
-The default configuartion (and pre-compiled bit files) contains
+The default configuration (and pre-compiled bit files) contains
 a leon3 configuration with SDRAM controller and Ethernet DSU.
 The IP address for the ethernet DSU is 192.168.0.68 . The
 'info sys' command in grmon returns the following report:

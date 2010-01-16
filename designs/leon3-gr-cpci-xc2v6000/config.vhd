@@ -1,16 +1,6 @@
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
--- Copyright (C) 2004 Jiri Gaisler, Gaisler Research
---
--- This program is free software; you can redistribute it and/or modify
--- it under the terms of the GNU General Public License as published by
--- the Free Software Foundation; either version 2 of the License, or
--- (at your option) any later version.
---
--- This program is distributed in the hope that it will be useful,
--- but WITHOUT ANY WARRANTY; without even the implied warranty of
--- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
--- GNU General Public License for more details.
+-- Copyright (C) 2009 Aeroflex Gaisler
 ------------------------------------------------------------------------------
 
 
@@ -29,7 +19,7 @@ package config is
 
 -- Clock generator
   constant CFG_CLKTECH : integer := virtex2;
-  constant CFG_CLKMUL : integer := (5);
+  constant CFG_CLKMUL : integer := (4);
   constant CFG_CLKDIV : integer := (4);
   constant CFG_OCLKDIV : integer := 2;
   constant CFG_PCIDLL : integer := 0;
@@ -40,18 +30,18 @@ package config is
   constant CFG_LEON3 : integer := 1;
   constant CFG_NCPU : integer := (2);
   constant CFG_NWIN : integer := (8);
-  constant CFG_V8 : integer := 2;
+  constant CFG_V8 : integer := 16#32#;
   constant CFG_MAC : integer := 0;
   constant CFG_SVT : integer := 1;
   constant CFG_RSTADDR : integer := 16#00000#;
   constant CFG_LDDEL : integer := (1);
-  constant CFG_NWP : integer := (2);
+  constant CFG_NWP : integer := (4);
   constant CFG_PWD : integer := 1*2;
-  constant CFG_FPU : integer := (8+2) + 16*0;
+  constant CFG_FPU : integer := 0 + 16*0;
   constant CFG_GRFPUSH : integer := 0;
   constant CFG_ICEN : integer := 1;
-  constant CFG_ISETS : integer := 2;
-  constant CFG_ISETSZ : integer := 8;
+  constant CFG_ISETS : integer := 4;
+  constant CFG_ISETSZ : integer := 4;
   constant CFG_ILINE : integer := 8;
   constant CFG_IREPL : integer := 0;
   constant CFG_ILOCK : integer := 0;
@@ -59,9 +49,9 @@ package config is
   constant CFG_ILRAMADDR: integer := 16#8E#;
   constant CFG_ILRAMSZ : integer := 1;
   constant CFG_DCEN : integer := 1;
-  constant CFG_DSETS : integer := 2;
+  constant CFG_DSETS : integer := 4;
   constant CFG_DSETSZ : integer := 4;
-  constant CFG_DLINE : integer := 8;
+  constant CFG_DLINE : integer := 4;
   constant CFG_DREPL : integer := 0;
   constant CFG_DLOCK : integer := 0;
   constant CFG_DSNOOP : integer := 1 + 0 + 4*1;
@@ -74,9 +64,10 @@ package config is
   constant CFG_DTLBNUM : integer := 8;
   constant CFG_TLB_TYPE : integer := 0 + 1*2;
   constant CFG_TLB_REP : integer := 0;
+  constant CFG_MMU_PAGE : integer := 0;
   constant CFG_DSU : integer := 1;
-  constant CFG_ITBSZ : integer := 4;
-  constant CFG_ATBSZ : integer := 4;
+  constant CFG_ITBSZ : integer := 2;
+  constant CFG_ATBSZ : integer := 2;
   constant CFG_LEON3FT_EN : integer := 0;
   constant CFG_IUFT_EN : integer := 0;
   constant CFG_FPUFT_EN : integer := 0;
@@ -85,7 +76,7 @@ package config is
   constant CFG_CACHE_ERRINJ : integer := 0;
   constant CFG_LEON3_NETLIST: integer := 0;
   constant CFG_DISAS : integer := 0 + 0;
-  constant CFG_PCLOW : integer := 0;
+  constant CFG_PCLOW : integer := 2;
 
 -- AMBA settings
   constant CFG_DEFMST : integer := (0);
@@ -108,8 +99,8 @@ package config is
   constant CFG_ETH_BUF : integer := 2;
   constant CFG_ETH_IPM : integer := 16#C0A8#;
   constant CFG_ETH_IPL : integer := 16#0033#;
-  constant CFG_ETH_ENM : integer := 16#00007A#;
-  constant CFG_ETH_ENL : integer := 16#CC7001#;
+  constant CFG_ETH_ENM : integer := 16#020000#;
+  constant CFG_ETH_ENL : integer := 16#000004#;
 
 -- PROM/SRAM controller
   constant CFG_SRCTRL : integer := 0;
@@ -131,7 +122,7 @@ package config is
   constant CFG_MCTRL_SEPBUS : integer := 1;
   constant CFG_MCTRL_INVCLK : integer := 0;
   constant CFG_MCTRL_SD64 : integer := 1;
-  constant CFG_MCTRL_PAGE : integer := 1 + 0;
+  constant CFG_MCTRL_PAGE : integer := 0 + 0;
 
 -- SDRAM controller
   constant CFG_SDCTRL : integer := 0;
@@ -174,11 +165,17 @@ package config is
   constant CFG_SPW_RMAPCRC : integer := 0;
   constant CFG_SPW_NETLIST : integer := 0;
   constant CFG_SPW_FT : integer := 0;
-
+  constant CFG_SPW_GRSPW : integer := 2;
+  constant CFG_SPW_RXUNAL : integer := 0;
+  constant CFG_SPW_DMACHAN : integer := 1;
+  constant CFG_SPW_PORTS : integer := 1;
+  constant CFG_SPW_INPUT : integer := 2;
+  constant CFG_SPW_OUTPUT : integer := 0;
+  constant CFG_SPW_RTSAME : integer := 0;
 -- PCI interface
-  constant CFG_PCI : integer := 1;
-  constant CFG_PCIVID : integer := 16#16E3#;
-  constant CFG_PCIDID : integer := 16#0210#;
+  constant CFG_PCI : integer := 0;
+  constant CFG_PCIVID : integer := 16#0#;
+  constant CFG_PCIDID : integer := 16#0#;
   constant CFG_PCIDEPTH : integer := 8;
   constant CFG_PCI_MTF : integer := 1;
 
@@ -201,6 +198,7 @@ package config is
 
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE : integer := 1;
+  constant CFG_IRQ3_NSEC : integer := 0;
 
 -- Modular timer
   constant CFG_GPT_ENABLE : integer := 1;

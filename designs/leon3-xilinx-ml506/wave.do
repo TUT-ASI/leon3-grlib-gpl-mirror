@@ -37,11 +37,7 @@ add wave -noupdate -format Literal /testbench/cpu/cgo2
 add wave -noupdate -format Logic /testbench/cpu/ps2_mouse_clk
 add wave -noupdate -format Logic /testbench/cpu/ps2_mouse_data
 add wave -noupdate -format Literal /testbench/cpu/clk_sel
-add wave -noupdate -format Literal /testbench/cpu/clkval
 add wave -noupdate -format Logic /testbench/cpu/clkvga
-add wave -noupdate -format Logic /testbench/cpu/clk1x
-add wave -noupdate -format Logic /testbench/cpu/video_clk
-add wave -noupdate -format Logic /testbench/cpu/dac_clk
 TreeUpdate [SetDefaultTree]
 WaveRestoreCursors {{Cursor 1} {52212589 ps} 0}
 configure wave -namecolwidth 162
@@ -57,4 +53,4 @@ configure wave -gridperiod 1
 configure wave -griddelta 40
 configure wave -timeline 0
 update
-WaveRestoreZoom {157518816 ps} {158016606 ps}
+WaveRestoreZoom {157518816 ps} {158558471 ps}

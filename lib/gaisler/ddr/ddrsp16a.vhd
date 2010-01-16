@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -426,7 +427,7 @@ begin
         elsif ra.acc.haddr(4 downto 2) = "100" and r.cfg.mobileen(0) = '1' then v.sdstate := srr1;
         else v.sdstate := ioreg1; end if;
       elsif (r.cfg.command = "000") and (r.cmstate = midle) 
-            and (r.istate = finish) and r.idlecnt = "0000" then
+            and (r.istate = finish) and r.idlecnt = "0000" and (r.cfg.mobileen(1) = '1') then
         case r.cfg.pmode is
         when PM_SR => v.cfg.cke := '0'; v.sdstate := sref;
         when PM_CKS => v.ck := (others => '0'); v.sdstate := cks;
@@ -809,13 +810,15 @@ begin
         if r.cfg.mobileen(1) = '1' and mobile /= 3 then -- Mobile DDR support
           v.cfg.mobileen(0) :=  wdata(31); 
         end if;
-        v.cfg.pasr(5 downto 3)  :=  wdata( 2 downto  0);
-        v.cfg.tcsr(3 downto 2)  :=  wdata( 4 downto  3);
-        v.cfg.ds(5 downto 3)    :=  wdata( 7 downto  5);
-        v.cfg.pmode       :=  wdata(18 downto 16);
-        v.cfg.txp         :=  wdata(19);
-        v.cfg.txsr        :=  wdata(23 downto 20);
-        v.cfg.tcke        :=  wdata(24);
+        if r.cfg.mobileen(1) = '1' then
+          v.cfg.pasr(5 downto 3)  :=  wdata( 2 downto  0);
+          v.cfg.tcsr(3 downto 2)  :=  wdata( 4 downto  3);
+          v.cfg.ds(5 downto 3)    :=  wdata( 7 downto  5);
+          v.cfg.pmode       :=  wdata(18 downto 16);
+          v.cfg.txp         :=  wdata(19);
+          v.cfg.txsr        :=  wdata(23 downto 20);
+          v.cfg.tcke        :=  wdata(24);
+        end if;
       elsif r.waddr(2 downto 0) = "101" and confapi /= 0 then 
         v.cfg.conf(31 downto 0) := wdata(31 downto 0);
       elsif r.waddr(2 downto 0) = "110" and confapi /= 0 then 
@@ -942,7 +945,7 @@ begin
   end process;
 
   sdo.address  <= '0' & r.address when regoutput = 1 else '0' & ri.address;                     -- *** ??? delay ctrl
-  sdo.ba       <= r.ba when regoutput = 1 else ri.ba;                                           -- *** ??? delay ctrl
+  sdo.ba(1 downto 0) <= r.ba when regoutput = 1 else ri.ba;                                     -- *** ??? delay ctrl
   sdo.bdrive   <= r.sdo_bdrive when regoutput = 1 else r.nbdrive when oepol = 1 else r.bdrive;  -- *** ??? delay ctrl
   sdo.qdrive   <= r.sdo_qdrive when regoutput = 1 else not (ri.qdrive or r.nbdrive);            -- *** ??? delay ctrl
   sdo.vbdrive  <= rbdrive;

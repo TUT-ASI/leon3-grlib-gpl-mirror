@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003, Gaisler Research
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -32,10 +33,10 @@ use techmap.netcomp.all;
 
 entity grfpwx is
   generic (fabtech  : integer := 0;
-           memtech  : integer := 0;           
-           mul      : integer range 0 to 2 := 0;
+           memtech  : integer := 0;
+           mul      : integer range 0 to 3 := 0;
            pclow    : integer range 0 to 2 := 2;
-           dsu      : integer range 0 to 2 := 0;           
+           dsu      : integer range 0 to 2 := 0;
            disas    : integer range 0 to 2 := 0;
            netlist  : integer              := 0;
            index    : integer              := 0);
@@ -52,10 +53,10 @@ architecture rtl of grfpwx is
 
   component grfpw
   generic (fabtech  : integer := 0;
-           memtech  : integer := 0;                                 
-           mul      : integer range 0 to 2 := 0;
+           memtech  : integer := 0;
+           mul      : integer range 0 to 3 := 0;
            pclow    : integer range 0 to 2 := 2;
-           dsu      : integer range 0 to 1 := 0;           
+           dsu      : integer range 0 to 1 := 0;
            disas    : integer range 0 to 2 := 0;
            index    : integer range 0 to 2 := 0
            );
@@ -95,7 +96,7 @@ architecture rtl of grfpwx is
     cpi_x_cnt   : in std_logic_vector(1 downto 0);
     cpi_x_trap  : in std_ulogic;
     cpi_x_annul : in std_ulogic;
-    cpi_x_pv    : in std_ulogic;    
+    cpi_x_pv    : in std_ulogic;
     cpi_lddata        : in std_logic_vector(31 downto 0);     -- load data
     cpi_dbg_enable : in std_ulogic;
     cpi_dbg_write  : in std_ulogic;
@@ -111,25 +112,25 @@ architecture rtl of grfpwx is
     cpo_holdn         : out std_ulogic;
     cpo_dbg_data     : out std_logic_vector(31 downto 0);
 
-    rfi1_rd1addr 	: out std_logic_vector(3 downto 0); 
-    rfi1_rd2addr 	: out std_logic_vector(3 downto 0); 
-    rfi1_wraddr 	: out std_logic_vector(3 downto 0); 
+    rfi1_rd1addr 	: out std_logic_vector(3 downto 0);
+    rfi1_rd2addr 	: out std_logic_vector(3 downto 0);
+    rfi1_wraddr 	: out std_logic_vector(3 downto 0);
     rfi1_wrdata 	: out std_logic_vector(31 downto 0);
-    rfi1_ren1        : out std_ulogic;			   
-    rfi1_ren2        : out std_ulogic;			   
-    rfi1_wren        : out std_ulogic;			   
-    
-    rfi2_rd1addr 	: out std_logic_vector(3 downto 0); 
-    rfi2_rd2addr 	: out std_logic_vector(3 downto 0); 
-    rfi2_wraddr 	: out std_logic_vector(3 downto 0); 
+    rfi1_ren1        : out std_ulogic;
+    rfi1_ren2        : out std_ulogic;
+    rfi1_wren        : out std_ulogic;
+
+    rfi2_rd1addr 	: out std_logic_vector(3 downto 0);
+    rfi2_rd2addr 	: out std_logic_vector(3 downto 0);
+    rfi2_wraddr 	: out std_logic_vector(3 downto 0);
     rfi2_wrdata 	: out std_logic_vector(31 downto 0);
     rfi2_ren1        : out std_ulogic;
-    rfi2_ren2        : out std_ulogic;			        
+    rfi2_ren2        : out std_ulogic;
     rfi2_wren        : out std_ulogic;
 
     rfo1_data1    	: in std_logic_vector(31 downto 0);
     rfo1_data2    	: in std_logic_vector(31 downto 0);
-    
+
     rfo2_data1    	: in std_logic_vector(31 downto 0);
     rfo2_data2    	: in std_logic_vector(31 downto 0)
     );
@@ -145,7 +146,7 @@ begin
    port map (
     rst          ,
     clk          ,
-    holdn        , 
+    holdn        ,
     cpi.flush    ,
     cpi.exack    ,
     cpi.a_rs1    ,
@@ -214,16 +215,16 @@ begin
     rfo1.data1        ,
     rfo1.data2        ,
     rfo2.data1        ,
-    rfo2.data2        
+    rfo2.data2
     );
-  end generate;  
+  end generate;
 
   x1 : if netlist = 1 generate
    grfpw0 : grfpw_net generic map (fabtech, pclow, dsu, disas)
    port map (
     rst          ,
     clk          ,
-    holdn        , 
+    holdn        ,
     cpi.flush    ,
     cpi.exack    ,
     cpi.a_rs1    ,
@@ -292,10 +293,10 @@ begin
     rfo1.data1        ,
     rfo1.data2        ,
     rfo2.data1        ,
-    rfo2.data2        
+    rfo2.data2
     );
-  end generate;  
-   
+  end generate;
+
    rf1 : regfile_3p generic map (memtech, 4, 32, 1, 16)
      port map (clk, rfi1.wraddr, rfi1.wrdata, rfi1.wren, clk, rfi1.rd1addr, rfi1.ren1, rfo1.data1,
                rfi1.rd2addr, rfi1.ren2, rfo1.data2);
@@ -303,5 +304,5 @@ begin
    rf2 : regfile_3p generic map (memtech, 4, 32, 1, 16)
      port map (clk, rfi2.wraddr, rfi2.wrdata, rfi2.wren, clk, rfi2.rd1addr, rfi2.ren1, rfo2.data1,
                rfi2.rd2addr, rfi2.ren2, rfo2.data2);
-   
+
 end;
