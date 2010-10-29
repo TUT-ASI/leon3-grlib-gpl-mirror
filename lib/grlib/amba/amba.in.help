@@ -40,4 +40,8 @@ Report AHB warnings
 CONFIG_AHB_MONWAR
   Print out detected AHB warnings on console.
 
+Write trace to console
+CONFIG_AHB_DTRACE
+  Say yes here to write a trace of all AHB transfers to the
+  simulator console. Has not impact on final netlist.
 

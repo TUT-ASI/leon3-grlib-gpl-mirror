@@ -100,6 +100,18 @@ begin
                    clk2, address2, datain2, dataout2, enable2, write2);
   end generate;
 
+  pa3e  : if tech = apa3e generate
+    x0 : proasic3e_syncram_dp generic map (abits, dbits)
+         port map (clk1, address1, datain1, dataout1, enable1, write1,
+                   clk2, address2, datain2, dataout2, enable2, write2);
+  end generate;
+
+  pa3l  : if tech = apa3l generate
+    x0 : proasic3l_syncram_dp generic map (abits, dbits)
+         port map (clk1, address1, datain1, dataout1, enable1, write1,
+                   clk2, address2, datain2, dataout2, enable2, write2);
+  end generate;
+
   fus  : if tech = actfus generate
     x0 : fusion_syncram_dp generic map (abits, dbits)
          port map (clk1, address1, datain1, dataout1, enable1, write1,
@@ -136,6 +148,12 @@ begin
          port map (clk1, address1, datain1, dataout1, enable1, write1,
                    clk2, address2, datain2, dataout2, enable2, write2);
   end generate;
+
+  tm65gplu  : if tech = tm65gpl generate
+    x0 : tm65gplus_syncram_dp generic map (abits, dbits)
+         port map (clk1, address1, datain1, dataout1, enable1, write1,
+                   clk2, address2, datain2, dataout2, enable2, write2);
+   end generate;
 
 end;
 

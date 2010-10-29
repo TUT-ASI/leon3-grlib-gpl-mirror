@@ -288,7 +288,7 @@ begin
 	ddelayb3 => ddelayb3, ddelayb4 => ddelayb4, ddelayb5 => ddelayb5, 
 	ddelayb6 => ddelayb6, ddelayb7 => ddelayb7,
         numidelctrl => numidelctrl, norefclk => norefclk, 
-        tech => tech, eightbanks => eightbanks
+        tech => tech, eightbanks => eightbanks, dqsse => dqsse
 	)
      port map (
 	rst, clk, clkref200, clkout, lock,

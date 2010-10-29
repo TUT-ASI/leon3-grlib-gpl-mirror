@@ -128,6 +128,7 @@ signal gnd, vcc : std_logic;
 attribute sync_set_reset : string;
 attribute sync_set_reset of rst : signal is "true";
 
+constant IRFWT     : integer := 1;--regfile_3p_write_through(memtech);
 constant FPURFHARD : integer := 1; --1-is_fpga(memtech);
 constant fpuarch   : integer := fpu mod 16;
 constant fpunet    : integer := fpu / 16;
@@ -150,7 +151,7 @@ begin
   
 -- IU register file
   
-    rf0 : regfile_3p generic map (memtech, IRFBITS, 32, syncram_2p_write_through(memtech), IREGNUM)
+    rf0 : regfile_3p generic map (memtech, IRFBITS, 32, IRFWT, IREGNUM)
         port map (gclk, rfi.waddr(IRFBITS-1 downto 0), rfi.wdata, rfi.wren, 
 		  gclk, rfi.raddr1(IRFBITS-1 downto 0), rfi.ren1, rfo.data1, 
 		  rfi.raddr2(IRFBITS-1 downto 0), rfi.ren2, rfo.data2);

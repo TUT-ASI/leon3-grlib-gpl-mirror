@@ -141,9 +141,11 @@ begin  -- rtl
     variable v       : sys_reg_type;
     variable irq     : std_logic_vector((NAHBIRQ-1) downto 0);
     variable hsplit  : std_logic_vector(15 downto 0);
+    variable hwdata  : std_logic_vector(31 downto 0);
   begin  -- process comb
     v := r; v.irq := '0'; irq := (others => '0'); irq(hirq) := r.irq;
     v.hresp := HRESP_OKAY; v.hready := '1'; hsplit := (others => '0');
+    hwdata := ahbreadword(ahbsi.hwdata, r.haddr(4 downto 2)); 
     
     -- Sync
     v.sync.accdone := r.sync.accdone(0) & s.accdone;
@@ -192,8 +194,8 @@ begin  -- rtl
     if r.acc = '1' then
       -- Propagate data
       if r.active = '0' then
-        if r.haddr(1) = '0' then v.wdata := ahbsi.hwdata(31 downto 16);
-        else v.wdata := ahbsi.hwdata(15 downto 0); end if;
+        if r.haddr(1) = '0' then v.wdata := hwdata(31 downto 16);
+        else v.wdata := hwdata(15 downto 0); end if;
       end if;
       -- Remove access signal when access is done
       if r.sync.accdone(1) = '1' then
@@ -258,7 +260,7 @@ begin  -- rtl
     -- AHB slave output
     ahbso.hready  <= r.hready;
     ahbso.hresp   <= r.hresp;
-    ahbso.hrdata <= s.rdata & s.rdata;
+    ahbso.hrdata  <= ahbdrivedata(s.rdata);
     ahbso.hconfig <= HCONFIG;
     ahbso.hcache  <= '0';
     ahbso.hirq    <= irq;

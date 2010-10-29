@@ -53,9 +53,41 @@ package jtagtst is
                                                           -- start - time in us when JTAG test
                                                           -- is started
                                                           -- addr - read/write operation destination address 
-                    haltcpu          : in boolean);
-  
+                    haltcpu          : in boolean;
+                    justinit         : in boolean := false;  -- Only perform initialization
+                    reread           : in boolean := false;  -- Re-read on slow AHB response
+                    assertions       : in boolean := false   -- Allow output from assertions 
+                    );
 
+  subtype jword_type is std_logic_vector(31 downto 0);
+  type jdata_vector_type is array (integer range <>) of jword_type;
+
+  procedure jwritem(addr                 : in std_logic_vector;
+                    data                 : in jdata_vector_type;
+                    signal tck, tms, tdi : out std_ulogic;
+                    signal tdo           : in std_ulogic;
+                    cp                   : in integer);
+  
+  procedure jreadm(addr                 : in  std_logic_vector;
+                   data                 : out jdata_vector_type;
+                   signal tck, tms, tdi : out std_ulogic;
+                   signal tdo           : in std_ulogic;
+                   cp                   : in integer;
+                   reread               : in boolean := false;
+                   assertions           : in boolean := false);
+
+  procedure jwrite(addr, data           : in std_logic_vector;
+                   signal tck, tms, tdi : out std_ulogic;
+                   signal tdo           : in std_ulogic;
+                   cp                   : in integer);
+
+  procedure jread(addr                 : in  std_logic_vector;
+                  data                 : out std_logic_vector;
+                  signal tck, tms, tdi : out std_ulogic;
+                  signal tdo           : in std_ulogic;
+                  cp                   : in integer;
+                  reread               : in boolean := false;
+                  assertions           : in boolean := false);
 end;  
 
 
@@ -80,17 +112,17 @@ package body jtagtst is
                   cp                   : in integer) is
     variable dc : std_ulogic;
   begin
-    clkj('0', '-', dc, tck, tms, tdi, tdo, cp);
-    clkj('1', '-', dc, tck, tms, tdi, tdo, cp);
-    if (not dr) then clkj('1', '-', dc, tck, tms, tdi, tdo, cp); end if;
-    clkj('0', '-', dc, tck, tms, tdi, tdo, cp);  -- capture
-    clkj('0', '-', dc, tck, tms, tdi, tdo, cp);  -- shift (state)
+    clkj('0', '0', dc, tck, tms, tdi, tdo, cp);
+    clkj('1', '0', dc, tck, tms, tdi, tdo, cp);
+    if (not dr) then clkj('1', '0', dc, tck, tms, tdi, tdo, cp); end if;
+    clkj('0', '0', dc, tck, tms, tdi, tdo, cp);  -- capture
+    clkj('0', '0', dc, tck, tms, tdi, tdo, cp);  -- shift (state)
     for i in 0 to len-2 loop
       clkj('0', din(i), dout(i), tck, tms, tdi, tdo, cp);  
     end loop;        
     clkj('1', din(len-1), dout(len-1), tck, tms, tdi, tdo, cp);  -- end shift, goto exit1
-    clkj('1', '-', dc, tck, tms, tdi, tdo, cp);  -- update ir/dr
-    clkj('0', '-', dc, tck, tms, tdi, tdo, cp);  -- run_test/idle                                                      
+    clkj('1', '0', dc, tck, tms, tdi, tdo, cp);  -- update ir/dr
+    clkj('0', '0', dc, tck, tms, tdi, tdo, cp);  -- run_test/idle                                                      
   end;
 
   procedure jwrite(addr, data           : in std_logic_vector;
@@ -120,7 +152,9 @@ package body jtagtst is
                   data                 : out std_logic_vector;
                   signal tck, tms, tdi : out std_ulogic;
                   signal tdo           : in std_ulogic;
-                  cp                   : in integer) is
+                  cp                   : in integer;
+                  reread               : in boolean := false;
+                  assertions           : in boolean := false) is
     variable tmp : std_logic_vector(32 downto 0);
     variable tmp2 : std_logic_vector(34 downto 0);
     variable dr : std_logic_vector(32 downto 0);
@@ -138,11 +172,16 @@ package body jtagtst is
     wait for 5 * cp * 1 ns;
     tmp := (others => '0'); --tmp(32) := '1'; 
     shift(true, 33, tmp, dr, tck, tms, tdi, tdo, cp); -- read data reg
+    assert dr(32) = '1' or not assertions
+      report "JTAG READ: data read out before AHB access completed"
+      severity warning;
+    while dr(32) /= '1' and reread loop
+      assert not assertions report "Re-reading JTAG data register" severity note;
+      tmp := (others => '0');
+      shift(true, 33, tmp, dr, tck, tms, tdi, tdo, cp); -- read data reg
+    end loop;
     data := dr(31 downto 0);
   end;
-
-  subtype jword_type is std_logic_vector(31 downto 0);
-  type jdata_vector_type is array (integer range <>) of jword_type;
   
   procedure jwritem(addr                 : in std_logic_vector;
                     data                 : in jdata_vector_type;
@@ -176,12 +215,14 @@ package body jtagtst is
                    data                 : out jdata_vector_type;
                    signal tck, tms, tdi : out std_ulogic;
                    signal tdo           : in std_ulogic;
-                   cp                   : in integer) is
+                   cp                   : in integer;
+                   reread               : in boolean := false;
+                   assertions           : in boolean := false) is
     variable tmp : std_logic_vector(32 downto 0);
     variable tmp2 : std_logic_vector(34 downto 0);
     variable dr : std_logic_vector(32 downto 0);
     variable dr2 : std_logic_vector(34 downto 0);
-    variable hsize : std_logic_vector(1 downto 0);            
+    variable hsize : std_logic_vector(1 downto 0);
   begin
     hsize := "10";    
     wait for 10 * cp * 1 ns;
@@ -193,19 +234,38 @@ package body jtagtst is
     shift(false, 6, B"110000", dr, tck, tms, tdi, tdo, cp);  -- inst = datareg
     wait for 5 * cp * 1 ns;
     for i in data'left to data'right-1 loop
-      tmp := (others => '0'); tmp(32) := '1'; 
+      tmp := (others => '0'); tmp(32) := '1';
       shift(true, 33, tmp, dr, tck, tms, tdi, tdo, cp); -- read data reg
+      assert dr(32) = '1' or not assertions
+        report "JTAG READ: data read out before AHB access completed"
+        severity warning;
+      while dr(32) /= '1' and reread loop
+        assert not assertions report "Re-reading JTAG data register" severity note;
+        tmp := (others => '0'); tmp(32) := '1';
+        shift(true, 33, tmp, dr, tck, tms, tdi, tdo, cp); -- read data reg
+      end loop;
       data(i) := dr(31 downto 0);
     end loop;
     tmp := (others => '0');
     shift(true, 33, tmp, dr, tck, tms, tdi, tdo, cp); -- read data reg
+    assert dr(32) = '1' or not assertions
+      report "JTAG READ: data read out before AHB access completed"
+      severity warning;
+    while dr(32) /= '1' and reread loop
+      assert not assertions report "Re-reading JTAG data register" severity note;
+      tmp := (others => '0');
+      shift(true, 33, tmp, dr, tck, tms, tdi, tdo, cp); -- read data reg
+    end loop;
     data(data'right) := dr(31 downto 0);
   end;
   
 procedure jtagcom(signal tdo : in std_ulogic;
                   signal tck, tms, tdi : out std_ulogic;
                   cp, start, addr  : in integer;
-                  haltcpu          : in boolean) is
+                  haltcpu          : in boolean;
+                  justinit         : in boolean := false;
+                  reread           : in boolean := false;
+                  assertions       : in boolean := false) is
   variable dc : std_ulogic;
   variable dr : std_logic_vector(32 downto 0);
   variable tmp : std_logic_vector(32 downto 0);
@@ -220,7 +280,7 @@ begin
   for i in 1 to 5 loop     -- reset
     clkj('1', '0', dc, tck, tms, tdi, tdo, cp);
   end loop;        
-  clkj('0', '-', dc, tck, tms, tdi, tdo, cp);
+  clkj('0', '0', dc, tck, tms, tdi, tdo, cp);
 
   --read IDCODE
   wait for 10 * cp * 1 ns;
@@ -243,69 +303,74 @@ begin
 
   if false then
   jwrite(X"90000000", X"FFFFFFFF", tck, tms, tdi, tdo, cp);
-  jread (X"90000000", data, tck, tms, tdi, tdo, cp);  
+  jread (X"90000000", data, tck, tms, tdi, tdo, cp, reread, assertions);  
   print("JTAG WRITE " &  tost(X"90000000") & ":" & tost(X"FFFFFFFF"));
   print("JTAG READ  " &  tost(X"90000000") & ":" & tost(data));
   
   jwrite(X"90100034", X"ABCD1234", tck, tms, tdi, tdo, cp);
-  jread (X"90100034", data, tck, tms, tdi, tdo, cp);
+  jread (X"90100034", data, tck, tms, tdi, tdo, cp, reread, assertions);
   print("JTAG WRITE " &  tost(X"90100034") & ":" & tost(X"ABCD1234"));
   print("JTAG READ  " &  tost(X"90100034") & ":" & tost(data));  
 
   jwrite(X"90200058", X"ABCDEF01", tck, tms, tdi, tdo, cp);
-  jread (X"90200058", data, tck, tms, tdi, tdo, cp);
+  jread (X"90200058", data, tck, tms, tdi, tdo, cp, reread, assertions);
   print("JTAG WRITE " &  tost(X"90200058") & ":" & tost(X"ABCDEF01"));
   print("JTAG READ  " &  tost(X"90200058") & ":" & tost(data));  
   
   jwrite(X"90300000", X"ABCD1234", tck, tms, tdi, tdo, cp);
-  jread (X"90300000", data, tck, tms, tdi, tdo, cp);
+  jread (X"90300000", data, tck, tms, tdi, tdo, cp, reread, assertions);
   print("JTAG WRITE " &  tost(X"90300000") & ":" & tost(X"ABCD1234"));
   print("JTAG READ  " &  tost(X"90300000") & ":" & tost(data));  
   
   jwrite(X"90400000", X"ABCD1234", tck, tms, tdi, tdo, cp);
-  jread (X"90400000", data, tck, tms, tdi, tdo, cp);
+  jread (X"90400000", data, tck, tms, tdi, tdo, cp, reread, assertions);
   print("JTAG WRITE " &  tost(X"90400000") & ":" & tost(X"ABCD1234"));
   print("JTAG READ  " &  tost(X"90400000") & ":" & tost(data));  
 
   jwrite(X"90400024", X"0000000C", tck, tms, tdi, tdo, cp);
   jwrite(X"90700100", X"ABCD1234", tck, tms, tdi, tdo, cp);
-  jread (X"90700100", data, tck, tms, tdi, tdo, cp);
+  jread (X"90700100", data, tck, tms, tdi, tdo, cp, reread, assertions);
   print("JTAG WRITE ITAG :" &  tost(X"00000100") & ":" & tost(X"ABCD1234"));
   print("JTAG READ  ITAG :" &  tost(X"00000100") & ":" & tost(data));  
     
   jwrite(X"90400024", X"0000000D", tck, tms, tdi, tdo, cp);
   jwrite(X"90700100", X"ABCD1234", tck, tms, tdi, tdo, cp);
-  jread (X"90700100", data, tck, tms, tdi, tdo, cp);
+  jread (X"90700100", data, tck, tms, tdi, tdo, cp, reread, assertions);
   print("JTAG WRITE IDATA:" &  tost(X"00000100") & ":" & tost(X"ABCD1234"));
   print("JTAG READ  IDATA:" &  tost(X"00000100") & ":" & tost(data));  
     
   jwrite(X"90400024", X"0000000E", tck, tms, tdi, tdo, cp);
   jwrite(X"90700100", X"ABCD1234", tck, tms, tdi, tdo, cp);
-  jread (X"90700100", data, tck, tms, tdi, tdo, cp);
+  jread (X"90700100", data, tck, tms, tdi, tdo, cp, reread, assertions);
   print("JTAG WRITE DTAG :" &  tost(X"00000100") & ":" & tost(X"ABCD1234"));
   print("JTAG READ  DTAG :" &  tost(X"00000100") & ":" & tost(data));  
 
   jwrite(X"90400024", X"0000000F", tck, tms, tdi, tdo, cp);  
   jwrite(X"90700100", X"ABCD1234", tck, tms, tdi, tdo, cp);
-  jread (X"90700100", data, tck, tms, tdi, tdo, cp);
+  jread (X"90700100", data, tck, tms, tdi, tdo, cp, reread, assertions);
   print("JTAG WRITE DDATA:" &  tost(X"00000100") & ":" & tost(X"ABCD1234"));
   print("JTAG READ  DDATA:" &  tost(X"00000100") & ":" & tost(data));  
   end if;
-    
+
+  if not justinit then
+  
   --jwritem(addr, (X"00000010", X"00000010", X"00000010", X"00000010"), tck, tms, tdi, tdo, cp);
   datav(0) := X"00000010"; datav(1) := X"00000011"; datav(2) := X"00000012";  datav(3) := X"00000013";
   jwritem(conv_std_logic_vector(addr, 32), datav, tck, tms, tdi, tdo, cp);  
   print("JTAG WRITE " &  tost(conv_std_logic_vector(addr,32)) & ":" & tost(X"00000010") & " " & tost(X"00000011") & " " & tost(X"00000012") & " " & tost(X"00000013"));
 
   datav := (others => (others => '0'));
-  jreadm(conv_std_logic_vector(addr, 32), datav, tck, tms, tdi, tdo, cp);
+  jreadm(conv_std_logic_vector(addr, 32), datav, tck, tms, tdi, tdo, cp, reread, assertions);
   print("JTAG READ  " &  tost(conv_std_logic_vector(addr,32)) & ":" & tost(datav(0)) & " " & tost(datav(1)) & " "  & tost(datav(2)) & " " & tost(datav(3))); 
-    
+
+  -- Not affected by 'assertions' parameter
   assert (datav(0) = X"00000010") and (datav(1) = X"00000011") and (datav(2) = X"00000012") and (datav(3) = X"00000013")
     report "JTAG test failed" severity failure;
   
   print("JTAG test passed");
 
+  end if;
+  
   end procedure;
     
 end;

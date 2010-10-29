@@ -19,7 +19,7 @@
 -----------------------------------------------------------------------------
 -- package: 	testlib
 -- file:	testlib.vhd
--- author:	marko isomaki - aeroflex gaisler
+-- author:	Marko Isomaki - Aeroflex Gaisler
 -- description:	package for common vhdl functions for testbenches
 ------------------------------------------------------------------------------
 
@@ -37,10 +37,16 @@ use      grlib.stdio.all;
 use      grlib.stdlib.tost;
 
 package testlib is
-   type octet_vector  is array (natural range <>) of std_logic_vector(7 downto 0);
-   type data_vector   is array (natural range <>) of std_logic_vector(31 downto 0);
-   type nibble_vector is array (natural range <>) of std_logic_vector(3 downto 0);
-  
+   type octet_vector   is array (natural range <>) of std_logic_vector(7 downto 0);
+   subtype data_vector8 is octet_vector;
+   type data_vector16  is array (natural range <>) of std_logic_vector(15 downto 0);
+   type data_vector32  is array (natural range <>) of std_logic_vector(31 downto 0);
+   type data_vector64  is array (natural range <>) of std_logic_vector(63 downto 0);
+   type data_vector128 is array (natural range <>) of std_logic_vector(127 downto 0);
+   type data_vector256 is array (natural range <>) of std_logic_vector(255 downto 0);
+   type nibble_vector  is array (natural range <>) of std_logic_vector(3 downto 0);
+   subtype data_vector is data_vector32;
+   
    -----------------------------------------------------------------------------
    -- compare function handling '-'. c is the expected data parameter. If it is
    --'-' or 'U' then this bit is not compared. Returns true if the vectors match
@@ -201,6 +207,14 @@ package testlib is
 
    --reverses std_logic_vector
    function reverse(din : std_logic_vector) return std_logic_vector;
+
+   -- Returns offset to start of valid data for an access of size 'size' in
+   -- AMBA data vector
+   function ahb_doff (
+     constant dw   : integer;
+     constant size : integer;           -- access size
+     constant addr : std_logic_vector(4 downto 0))
+     return integer;
    
 end package testlib;
 
@@ -299,6 +313,7 @@ package body testlib is
    procedure tintermediate(
       variable test:       inout boolean;
       variable testcount:  inout integer) is
+      variable l:                line;
    begin
       --------------------------------------------------------------------------
       -- report test status
@@ -307,10 +322,24 @@ package body testlib is
       print("--=========================================================--");
       if test then
          print("*** sub-test completed successfully                       ***");
+         if testcount >  0 then
+            write(l, now, right, 15);
+            write(l, string'(" :     "));
+            write(l, testcount);
+            write(l, string'(" sub-test(s) ended with one or more errors."));
+            writeline(output, l);
+         end if;
       else
          print("*** sub-test completed with errors   -- # error # --      ***");
          testcount   := testcount + 1;
          test        := true;
+         if testcount >  0 then
+            write(l, now, right, 15);
+            write(l, string'(" :     "));
+            write(l, testcount);
+            write(l, string'(" sub-test(s) ended with one or more errors."));
+            writeline(output, l);
+         end if;
       end if;
       print("--=========================================================--");
    end procedure tintermediate;
@@ -753,6 +782,21 @@ package body testlib is
     for i in din'RANGE loop dout(i) := din(i); end loop;
     return dout; 
   end function reverse; 
+
+   function ahb_doff (
+     constant dw   : integer;
+     constant size : integer;
+     constant addr : std_logic_vector(4 downto 0))
+     return integer is
+     variable off : integer;
+   begin  -- ahb_doff
+     if size < 256 and dw = 256 and addr(4) = '0' then off := 128; else off := 0; end if;
+     if size < 128 and dw >= 128 and addr(3) = '0' then off := off + 64; end if;
+     if size < 64 and dw >= 64 and addr(2) = '0' then off := off + 32; end if;
+     if size < 32 and addr(1) = '0' then off := off + 16; end if;
+     if size < 16 and addr(0) = '0' then off := off + 8; end if;
+     return off;
+   end ahb_doff;
    
 end package body ; --=======================================--
 

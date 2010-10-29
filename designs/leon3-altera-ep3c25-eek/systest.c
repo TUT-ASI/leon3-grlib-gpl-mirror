@@ -10,7 +10,7 @@ main()
 
 	i2cmst_test(0x80000800);
 
-	spictrl_test(0x80000900);
+	spictrl_test(0x80000900, 2);
 
 	report_end();
 }

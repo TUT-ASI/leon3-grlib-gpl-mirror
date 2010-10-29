@@ -1,4 +1,4 @@
--- Copyright (C) 1991-2007 Altera Corporation
+-- Copyright (C) 1991-2009 Altera Corporation
 -- Your use of Altera Corporation's design tools, logic functions 
 -- and other software and tools, and its AMPP partner logic 
 -- functions, and any output files from any of the foregoing 
@@ -11,7 +11,7 @@
 -- programming logic devices manufactured by Altera and sold by 
 -- Altera or its authorized distributors.  Please refer to the 
 -- applicable agreement for further details.
--- Quartus II 7.2 Build 207 09/26/2007
+-- Quartus II 9.0 Build 235 03/01/2009
 
 Library ieee;
 use ieee.std_logic_1164.all;
@@ -649,7 +649,7 @@ begin
                 if (sclr_ipd = '1') then
                     iq := '0';
                 elsif (sload_ipd = '1') then
-                    iq := asdata_dly1;
+                    iq := asdata_dly;
                 else
                     iq := d_dly;
                 end if;

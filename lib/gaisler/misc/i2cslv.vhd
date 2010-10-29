@@ -40,6 +40,9 @@
 -- [oepol]
 -- Output enable polarity
 --
+-- [filter]
+-- Length of filters used on SCL and SDA
+--
 -- The slave has four different modes operation. The mode is defined by the
 -- value of the bits RMODE and TMODE.
 -- RMODE TMODE   I2CSLAVE Mode
@@ -77,15 +80,16 @@ use grlib.stdlib.all;
 entity i2cslv is
  generic (
    -- APB generics
-   pindex : integer := 0;         -- slave bus index
-   paddr  : integer := 0;
-   pmask  : integer := 16#fff#;
-   pirq   : integer := 0;         -- interrupt index
+   pindex   : integer := 0;         -- slave bus index
+   paddr    : integer := 0;
+   pmask    : integer := 16#fff#;
+   pirq     : integer := 0;         -- interrupt index
    -- I2C configuration
    hardaddr : integer range 0 to 1 := 0; -- See description above
    tenbit   : integer range 0 to 1 := 0;
    i2caddr  : integer range 0 to 1023 := 0;
-   oepol    : integer range 0 to 1 := 0
+   oepol    : integer range 0 to 1 := 0;
+   filter   : integer range 2 to 512 := 2
    );
  port (
    rstn   : in  std_ulogic;
@@ -171,7 +175,7 @@ architecture rtl of i2cslv is
       transmit : std_logic_vector(7 downto 0);
  end record;
 
- type i2c_in_array is array (6 downto 0) of i2c_in_type;
+ type i2c_in_array is array (filter downto 0) of i2c_in_type;
 
  type slv_state_type is (idle, checkaddr, check10bitaddr, sclhold,
                          movebyte, handshake);
@@ -241,13 +245,14 @@ begin
    variable irq       : std_logic_vector((NAHBIRQ-1) downto 0);
    variable apbaddr   : std_logic_vector(5 downto 0);
    variable apbout    : std_logic_vector(31 downto 0);
-   variable sclfilt   : std_logic_vector(3 downto 0);
-   variable sdafilt   : std_logic_vector(3 downto 0);
+   variable sclfilt   : std_logic_vector(filter-1 downto 0);
+   variable sdafilt   : std_logic_vector(filter-1 downto 0);
    variable tba       : boolean;
  begin  -- process comb
    v := r;  v.irq := '0'; irq := (others=>'0'); irq(pirq) := r.irq;
    apbaddr := apbi.paddr(7 downto 2); apbout := (others => '0');
-   v.i2ci(0) := i2ci; v.i2ci(6 downto 1) := r.i2ci(5 downto 0); tba := false;
+   v.i2ci(0) := i2ci; v.i2ci(filter downto 1) := r.i2ci(filter-1 downto 0);
+   tba := false;
    
    ---------------------------------------------------------------------------
    -- APB register interface
@@ -306,13 +311,13 @@ begin
    ----------------------------------------------------------------------------
    -- Bus filtering
    ----------------------------------------------------------------------------
-   for i in 0 to 3 loop 
-     sclfilt(i) := r.i2ci(i+2).scl; sdafilt(i) := r.i2ci(i+2).sda;
+   for i in 0 to filter-1 loop 
+     sclfilt(i) := r.i2ci(i+1).scl; sdafilt(i) := r.i2ci(i+1).sda;
    end loop;  -- i
-   if sclfilt = "1111" then v.scl := '1'; end if;
-   if sclfilt = "0000" then v.scl := '0'; end if;
-   if sdafilt = "1111" then v.sda := '1'; end if;
-   if sdafilt = "0000" then v.sda := '0'; end if;
+   if andv(sclfilt) = '1' then v.scl := '1'; end if;
+   if orv(sclfilt) = '0' then v.scl := '0'; end if;
+   if andv(sdafilt) = '1' then v.sda := '1'; end if;
+   if orv(sdafilt) = '0' then v.sda := '0'; end if;
    
    ---------------------------------------------------------------------------
    -- I2C slave control FSM
@@ -500,13 +505,13 @@ begin
    
    if r.reg.ctrl.en = '1' then
      -- STOP condition
-     if sclfilt = "1111" and sdafilt = "0011" then
+     if (r.scl and v.scl and not r.sda and v.sda) = '1' then
        v.active := false;
        v.slvstate := idle;
      end if;
 
      -- START or repeated START condition
-     if sclfilt = "1111" and sdafilt = "1100" then
+     if (r.scl and v.scl and r.sda and not v.sda) = '1' then
        v.slvstate := movebyte;
        v.cnt := (others => '0');
        v.addr := true;

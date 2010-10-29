@@ -44,14 +44,16 @@ entity grgpreg is
         pmask    : integer := 16#fff#;
         nbits    : integer range 1 to 64 := 16;
         rstval   : integer := 0;
-        rstval2  : integer := 0
+        rstval2  : integer := 0;
+        extrst   : integer := 0
         );
     port (
         rst    : in  std_ulogic;
         clk    : in  std_ulogic;
         apbi   : in  apb_slv_in_type;
         apbo   : out apb_slv_out_type;
-        gprego : out std_logic_vector(nbits-1 downto 0)
+        gprego : out std_logic_vector(nbits-1 downto 0);
+        resval : in  std_logic_vector(nbits-1 downto 0) := (others => '0')
         );
 end;
 
@@ -114,10 +116,14 @@ begin
         end if;
 
         if rst = '0' then
+          if extrst = 0 then
             v.reg :=  conv_std_logic_vector(rstval, nbits);
             if nbits > 32 then
               v.reg(nbits-1 downto 32) := conv_std_logic_vector(rstval2, nbits-32);
             end if;
+          else
+            v.reg := resval;
+          end if;
         end if;
         
         rin <= v;

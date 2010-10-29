@@ -5,5 +5,5 @@
 
 # Explicitly disable TimeQuest since the GRLIB flow invokes the classical
 # timing analyzer and USE_TIMEQUEST_TIMING_ANALYZER defaults to "ON"
-set_global_assignment -name USE_TIMEQUEST_TIMING_ANALYZER "OFF"
+# set_global_assignment -name USE_TIMEQUEST_TIMING_ANALYZER "OFF"
 

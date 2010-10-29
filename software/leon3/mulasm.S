@@ -54,6 +54,25 @@ mulpipe:
 	bne	1f
 	nop
 
+	mov	%g0, %y
+	set	2, %o0
+	subcc	%g0, %g0, %g0
+	bne,a	1f
+	umul	%o0, %o0, %o0
+	subcc	%o0, 2, %g0
+	bne	1f
+	nop
+
+	mov	%g0, %y
+	set	2, %o0
+	subcc	%g0, %g0, %g0
+	nop
+	bne,a	1f
+	umul	%o0, %o0, %o0
+	subcc	%o0, 2, %g0
+	bne	1f
+	nop
+
 	retl
 	or	%g0, 1, %o0
 
@@ -130,6 +149,34 @@ macpipe:
 	retl
 	or	%g0, 1, %o0
 
+1:
+	retl
+	mov	%g0, %o0
+
+
+	.global divpipe
+divpipe:
+	mov	%g0, %y
+	set	2, %o0
+	subcc	%g0, %g0, %g0
+	bne,a	1f
+	udiv	%o0, %o0, %o0
+	subcc	%o0, 2, %g0
+	bne	1f
+	nop
+
+	mov	%g0, %y
+	set	2, %o0
+	subcc	%g0, %g0, %g0
+	nop
+	bne,a	1f
+	udiv	%o0, %o0, %o0
+	subcc	%o0, 2, %g0
+	bne	1f
+	nop
+
+	retl
+	or	%g0, 1, %o0
 1:
 	retl
 	mov	%g0, %o0

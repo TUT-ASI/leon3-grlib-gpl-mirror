@@ -32,7 +32,8 @@ use ieee.numeric_std.all;
 
 package i2coc is
   component i2c_master_byte_ctrl is
-   port (
+    generic (filter : integer);
+    port (
      clk    : in std_logic;
      rst    : in std_logic;   -- active high reset
      nReset : in std_logic;   -- asynchornous active low reset

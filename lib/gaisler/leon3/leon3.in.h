@@ -46,6 +46,10 @@
 #define CONFIG_IU_BP 0
 #endif
 
+#ifndef CONFIG_NOTAG
+#define CONFIG_NOTAG 0
+#endif
+
 #ifndef CONFIG_IU_SVT
 #define CONFIG_IU_SVT 0
 #endif

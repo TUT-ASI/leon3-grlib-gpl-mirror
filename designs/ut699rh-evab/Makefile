@@ -22,7 +22,8 @@ SYNPOPT="set_option -pipe 1; set_option -retiming 1"
 TECHLIBS = unisim
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip hynix cypress ihp gleichmann
-DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan ddr ata usb usbhc
+DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan ddr ata usb usbhc \
+	leon4 leon4b64 l2cache slink ascs pwm haps coremp7 gr1553b iommu
 FILESKIP = grcan.vhd
 
 

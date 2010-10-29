@@ -69,6 +69,10 @@ constant pci_memory_read : word4 := "0110";
 constant pci_memory_write : word4 := "0111";
 constant pci_config_read : word4 := "1010";
 constant pci_config_write : word4 := "1011";
+constant pci_memory_read_m : word4 := "1100"; -- Aliased to Memory Read
+constant pci_memory_read_l : word4 := "1110"; -- Aliased to Memory Read
+constant pci_memory_write_i: word4 := "1111"; -- Aliased to Memory Write
+
 type pci_input_type is record
   ad       : std_logic_vector(31 downto 0);  
   cbe      : std_logic_vector(3 downto 0);  
@@ -104,8 +108,10 @@ type pci_reg_type is record
   bar0     : std_logic_vector(31 downto MADDR_WIDTH);  
   page     : std_logic_vector(31 downto MADDR_WIDTH-1);  
   men      : std_logic;
+  twist    : std_logic;
   laddr    : std_logic_vector(31 downto 0);  
   ldata    : std_logic_vector(31 downto 0);  
+  lsize    : std_logic_vector(2 downto 0);
   lwrite   : std_logic;
   start    : std_logic;
   rready   : std_logic_vector(csync downto 0);
@@ -133,6 +139,64 @@ signal dmao : ahb_dma_out_type;
 signal roe_ad, rioe_ad : std_logic_vector(31 downto 0);
 attribute syn_preserve : boolean;
 attribute syn_preserve of roe_ad : signal is true; 
+
+function byte_twist(di : in std_logic_vector(31 downto 0); twist : in std_logic) return std_logic_vector is
+  variable do : std_logic_vector(31 downto 0);
+begin
+  if twist = '1' then
+    for i in 0 to 3 loop
+      do(31-i*8 downto 24-i*8) := di(31-(3-i)*8 downto 24-(3-i)*8);
+    end loop;
+  else
+    do := di;
+  end if;
+  return do; 
+end function;
+
+function set_size_from_cbe(cbe  : in std_logic_vector(3 downto 0))
+                           return std_logic_vector is
+variable res : std_logic_vector(1 downto 0);
+begin
+  case cbe is                       -- FIXME: this may need to be swaped
+    when "0111" => res := "00";
+    when "1011" => res := "00";
+    when "1101" => res := "00";
+    when "1110" => res := "00";
+    when "0011" => res := "01";
+    when "1100" => res := "01";
+    when others => res := "10";
+  end case;
+  return res;
+end function;
+
+function set_addr_from_cbe(cbe  : in std_logic_vector(3 downto 0);
+                           twist: in std_logic)
+                           return std_logic_vector is
+variable res : std_logic_vector(1 downto 0);
+begin
+  if twist = '1' then -- Little (PCI) to big (AHB) endian
+    case cbe is
+      when "0111" => res := "11";
+      when "1011" => res := "10";
+      when "1101" => res := "01";
+      when "1110" => res := "00";
+      when "0011" => res := "10";
+      when "1100" => res := "01";
+      when others => res := "00";
+    end case;
+  else                -- Big (PCI) to big (AHB) endian
+    case cbe is
+      when "0111" => res := "00";
+      when "1011" => res := "01";
+      when "1101" => res := "10";
+      when "1110" => res := "11";
+      when "0011" => res := "00";
+      when "1100" => res := "10";
+      when others => res := "00";
+    end case;
+  end if;
+  return res;
+end function;
 begin
 
 -- Back-end state machine (AHB clock domain)
@@ -142,9 +206,9 @@ begin
   variable v : cpu_reg_type;
   begin
     v := r2; 
-    vdmai.start := '0'; vdmai.burst := '0'; vdmai.size := "10";
+    vdmai.start := '0'; vdmai.burst := '0'; vdmai.size := r.lsize; --"010";
     vdmai.address := r.laddr; v.sync := '1';
-    vdmai.wdata := r.ldata; vdmai.write := r.lwrite; vdmai.irq := '0';
+    vdmai.wdata := ahbdrivedata(r.ldata); vdmai.write := r.lwrite; vdmai.irq := '0';
     v.start(0) := r2.start(csync); v.start(csync) := r.start;
     case r2.state is
     when idle =>
@@ -158,7 +222,7 @@ begin
     when busy =>
       if dmao.active = '1' then
 	if dmao.ready = '1' then
-          v.rready := not r.lwrite; v.data := dmao.rdata; v.state := sync2;
+          v.rready := not r.lwrite; v.data := dmao.rdata(31 downto 0); v.state := sync2;
         end if;
       else vdmai.start := '1'; end if;
     when sync2 =>
@@ -191,10 +255,12 @@ begin
 
 -- address decoding
 
-    if (r.state = s_data) and ((pr.irdy or r.trdy or r.read) = '0') then
+    --if (r.state = s_data) and ((pr.irdy or r.trdy or r.read) = '0') then
+    if (r.state = turn_ar) and ((pr.irdy or pr.trdy or r.read) = '0') then
       cwrite := r.csel;
       if ((r.msel and r.addr(MADDR_WIDTH-1)) = '1') and (pr.cbe = "0000") then
 	v.page := pr.ad(31 downto MADDR_WIDTH-1);
+        v.twist := pr.ad(0);
       end if;
       if (pr.cbe = "0000") and  (r.addr(MADDR_WIDTH-1) = '1') then 
 	mwrite := r.msel;
@@ -232,7 +298,8 @@ begin
     if (((pr.cbe = pci_config_read) or (pr.cbe = pci_config_write))
 	and (pr.ad(1 downto 0) = "00"))
     then chit := '1'; else chit := '0'; end if;
-    if ((pr.cbe = pci_memory_read) or (pr.cbe = pci_memory_write))
+    if ((pr.cbe = pci_memory_read) or (pr.cbe = pci_memory_write)
+        or (pr.cbe = pci_memory_read_m) or (pr.cbe = pci_memory_read_l) or (pr.cbe = pci_memory_write_i))
 	and (r.bar0 = pr.ad(31 downto MADDR_WIDTH))
 	and (r.bar0 /= zero(31 downto MADDR_WIDTH))
     then mhit := '1'; else mhit := '0'; end if;
@@ -283,6 +350,10 @@ begin
       then
         v.laddr := r.page & r.addr(MADDR_WIDTH-2 downto 0);
         v.ldata := pr.ad; v.lwrite := not r.read; v.start := '1';
+        -- Added little/big endian support
+        v.laddr := v.laddr(31 downto 2) & set_addr_from_cbe(pr.cbe, r.twist);
+        v.ldata := byte_twist(v.ldata, r.twist); 
+        v.lsize := '0' & set_size_from_cbe(pr.cbe);
       end if;
     end if;
 
@@ -292,7 +363,9 @@ begin
     elsif r.addr(MADDR_WIDTH-1) = '1' then 
       v.data(31 downto MADDR_WIDTH-1) := r.page;
       v.data(MADDR_WIDTH-2 downto 0) := (others => '0');
-    else v.data := r2.data; end if;
+      v.data(0) := r.twist; -- Addded little/bit endian support
+    --else v.data := r2.data; end if;
+    else v.data := byte_twist(r2.data, r.twist); end if;
     v.par := xorv(r.data & pcii.cbe);
 
     if (v.state = s_data) or (r.state = s_data) then
@@ -314,6 +387,7 @@ begin
       v.bar0 := (others => '0'); v.msel := '0'; v.csel := '0';
       v.page := (others => '0');
       v.page(31 downto 30) := "01";
+      v.twist := '0';
     end if;
     rin <= v;
     rioe_ad <= voe_ad;

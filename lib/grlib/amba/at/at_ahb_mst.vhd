@@ -35,7 +35,7 @@ use      grlib.at_pkg.all;
 use      grlib.at_ahb_mst_pkg.all;
 use      grlib.testlib.compare;
 use      grlib.testlib.print;
-
+use      grlib.testlib.ahb_doff;
 entity at_ahb_mst is
   generic(
     hindex:        in    Integer := 0;
@@ -113,7 +113,7 @@ begin
     variable htrans         : std_logic_vector(1 downto 0);
     variable opcnt          : integer;
     variable addr_assigned  : time;
-    variable cmpdata        : std_logic_vector(31 downto 0);
+    variable off            : integer;
                   
     procedure add_op(
       variable head : inout list_object_ptr;
@@ -135,12 +135,12 @@ begin
         current.op.wrap := false;
         current.op.beat := 1;
         current := current.nxt;
-        while current.op.burst and not current.op.first loop
+        while (current.op.burst) and not (current.op.first) loop
           current.op.wrap := false;
           current.op.beat := 1;
           if current.op.address /=
             (current.prv.op.address + current.op.size/8) then
-            current.op.burst := false;
+            current.op.first := true;
           end if;
           current := current.nxt;
         end loop;
@@ -217,37 +217,14 @@ begin
         if rising_edge(hclk) and (ahbi.hready = '1') then
           --error checking
           if data_op.op.compare then
-            if (ahbi.hresp = HRESP_OKAY) and not data_op.op.store then
-              cmpdata := data_op.op.cmpdata;
-              case data_op.op.size is
-                when 8 =>
-                  case address(1 downto 0) is
-                    when "00" =>
-                      cmpdata(31 downto 8) := (others => '-');
-                    when "01" =>
-                      cmpdata(7 downto 0) := (others => '-');
-                      cmpdata(31 downto 16) := (others => '-');
-                    when "10" =>
-                      cmpdata(15 downto 0) := (others => '-');
-                      cmpdata(31 downto 24) := (others => '-');
-                    when "11" =>
-                      cmpdata(23 downto 0) := (others => '-');
-                    when others =>
-                      null;
-                  end case;
-                when 16 =>
-                  if address(1) = '0' then
-                    cmpdata(31 downto 16) := (others => '-');
-                  else
-                    cmpdata(15 downto 0) := (others => '-');
-                  end if;
-                when others =>
-                  null;
-              end case;
-              if not compare(ahbi.hrdata, cmpdata) then
+            off := ahb_doff(AHBDW, data_op.op.size, data_op.op.address(4 downto 0));
+            if (ahbi.hresp = HRESP_OKAY) and not data_op.op.store then              
+              if not compare(ahbi.hrdata, data_op.op.cmpdata) then
                 if data_op.op.dbglevel /= 0 then
-                  print("ERROR: Unexpected read data. Expected: " & tost(data_op.op.cmpdata) &
-                        " Read[" & tost(data_op.op.address) & "]: " & tost(ahbi.hrdata));
+                  print("ERROR: Unexpected read data. Expected: " &
+                        tost(data_op.op.cmpdata(data_op.op.size-1+off downto off)) &
+                        " Read[" & tost(data_op.op.address) & "]: " &
+                        tost(ahbi.hrdata(data_op.op.size-1+off downto off)));
                 end if;
                 atmo.error <= '1';
               else                                    -- added Read printout
@@ -323,6 +300,8 @@ begin
             else
               data_op.op.splits := data_op.op.splits + 1;
             end if;
+            -- Wait should only apply to first attempt
+            data_op.op.wait_start := 0;
             --split or retry, if ongoing burst rebuild it
             if grant_op /= null then
               add_op(list_head, grant_op);
@@ -359,6 +338,12 @@ begin
             ahbo.hsize <= HSIZE_HWORD;
           when 32 =>
             ahbo.hsize <= HSIZE_WORD;
+          when 64 =>
+            ahbo.hsize <= HSIZE_DWORD;
+          when 128 =>
+            ahbo.hsize <= HSIZE_4WORD;
+          when 256 =>
+            ahbo.hsize <= HSIZE_8WORD;
           when others =>
             assert false
             report "illegal hsize"
@@ -408,7 +393,6 @@ begin
           ahbo.hburst <= HBURST_SINGLE;
         end if;
 
-        
         --HTRANS
         if (not addr_op.op.burst) or
            (addr_op.op.burst and addr_op.op.first) or
@@ -426,6 +410,10 @@ begin
         end if;
 
         ahbo.htrans <= htrans;
+
+        if (htrans = HTRANS_BUSY) and addr_op.op.lock then
+          ahbo.hlock <= '1';
+        end if;
 
         if rising_edge(hclk) and (ahbi.hready = '1') and
            ((htrans = HTRANS_NONSEQ) or (htrans = HTRANS_SEQ)) and
@@ -481,7 +469,10 @@ begin
           end if;
         end if;
       else
-        ahbo.hbusreq <= '0'; ahbo.hlock <= '0';
+        ahbo.hbusreq <= '0';
+        if htrans /= HTRANS_BUSY then
+          ahbo.hlock <= '0';
+        end if;
       end if;
       
     end if;

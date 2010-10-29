@@ -7,4 +7,5 @@
   constant CFG_AHB_MON 	  : integer := CONFIG_AHB_MON;
   constant CFG_AHB_MONERR : integer := CONFIG_AHB_MONERR;
   constant CFG_AHB_MONWAR : integer := CONFIG_AHB_MONWAR;
+  constant CFG_AHB_DTRACE : integer := CONFIG_AHB_DTRACE;
 

@@ -87,6 +87,7 @@ struct spwvars
    int    nodeaddr;
    int    mask;
    int    destkey;
+   int    port;
    struct dmachanvar dma[4];
 };
 
@@ -97,7 +98,7 @@ int wait_running(struct spwvars *spw);
 /*sets node specific parameters in the spwvars structure */
 int spw_setparam(int nodeaddr, int clkdiv, int destkey,
                  int timetxen, int timerxen, int spwadr, 
-                 int khz, struct spwvars *spw);
+                 int khz, struct spwvars *spw, int port);
 
 int spw_setparam_dma(int dmachan, int addr, int mask, int nospill, int rxmaxlen, struct spwvars *spw);
 
@@ -179,6 +180,11 @@ void spw_disablesepaddr(int dmachan, struct spwvars *spw);
 void spw_enablerx(int dmachan, struct spwvars *spw);
 
 void spw_disablerx(int dmachan, struct spwvars *spw);
+
+void spw_disable_promiscuous(struct spwvars *spw);
+
+void spw_enable_promiscuous(struct spwvars *spw);
+
 
 
 

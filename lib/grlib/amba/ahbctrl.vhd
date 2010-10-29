@@ -61,7 +61,10 @@ entity ahbctrl is
     arbdisable  : integer := 0; --disable arbiter checks
     mprio       : integer := 0; --master with highest priority
     mcheck      : integer range 0 to 1 := 1; --check memory map for intersects
-    ccheck      : integer range 0 to 1 := 1  --perform sanity checks on pnp config
+    ccheck      : integer range 0 to 1 := 1; --perform sanity checks on pnp config
+    acdm        : integer := 0;  --AMBA compliant data muxing (for hsize > word)
+    index       : integer := 0;  --Index for trace print-out
+    ahbtrace    : integer := 0  --AHB trace enable
   );
   port (
     rst     : in  std_ulogic;
@@ -92,6 +95,7 @@ type reg_type is record
   hready       : std_ulogic;
   defslv       : std_ulogic;
   htrans       : std_logic_vector(1 downto 0);
+  hsize        : std_logic_vector(2 downto 0);
   haddr        : std_logic_vector(15 downto 2); 
   cfgsel       : std_ulogic;
   cfga11       : std_ulogic;
@@ -353,7 +357,7 @@ begin
   variable cfgsel  : std_ulogic;
   variable hcache  : std_ulogic;
   variable hresp   : std_logic_vector(1 downto 0);
-  variable hrdata  : std_logic_vector(31 downto 0);
+  variable hrdata  : std_logic_vector(AHBDW-1 downto 0);
   variable haddr   : std_logic_vector(31 downto 0);
   variable hirq    : std_logic_vector(NAHBIRQ-1 downto 0);
   variable arb     : std_ulogic;
@@ -474,8 +478,12 @@ begin
       end if;
     end if;
 
-    hrdata := slvo(r.hslave).hrdata;
-
+    if acdm = 0 then
+      hrdata := slvo(r.hslave).hrdata;
+    else
+      hrdata := ahbselectdata(slvo(r.hslave).hrdata, r.haddr(4 downto 2), r.hsize);
+    end if;
+    
     if cfgmask /= 0 then
 --      v.hrdatam := msto(conv_integer(r.haddr(MIMAX+5 downto 5))).hconfig(conv_integer(r.haddr(4 downto 2)));
 --      if r.haddr(11 downto MIMAX+6) /= zero32(11 downto MIMAX+6) then v.hrdatam := (others => '0'); end if;
@@ -508,8 +516,8 @@ begin
   	  -- return two-cycle read/write respons
  	  hresp := HRESP_OKAY; hready := r.hready; v.hready := not r.hready;
         end if;
-        if r.cfga11 = '0' then hrdata := r.hrdatam;
-        else hrdata := r.hrdatas; end if;
+        if r.cfga11 = '0' then hrdata := ahbdrivedata(r.hrdatam);
+        else hrdata := ahbdrivedata(r.hrdatas); end if;
       end if;
     end if;
 
@@ -537,6 +545,7 @@ begin
     -- latch active master and slave
     if hready = '1' then 
       v.hmaster := nhmaster; v.hmasterd := r.hmaster;
+      v.hsize := msto(r.hmaster).hsize; 
       v.hslave := nslave; v.defslv := defslv;
       v.hmasterlockd := r.hmasterlock;
       if (split = 0) or (r.defmst = '0') then v.htrans := msto(r.hmaster).htrans;
@@ -585,7 +594,6 @@ begin
       vslvi.hsize      := msto(r.hmaster).hsize;
       vslvi.hburst     := msto(r.hmaster).hburst;
       vslvi.hready     := hready;
-      vslvi.hwdata     := msto(r.hmasterd).hwdata;
       vslvi.hprot      := msto(r.hmaster).hprot;
 --      vslvi.hmastlock  := msto(r.hmaster).hlock;
       vslvi.hmastlock  := r.hmasterlock;
@@ -597,9 +605,13 @@ begin
     else
       vslvi := ahbs_in_none;
       vslvi.hready := hready;
-      vslvi.hwdata := msto(r.hmasterd).hwdata;
       vslvi.hirq   := hirq;
-    end if;    
+    end if;
+    if acdm = 0 then
+      vslvi.hwdata := msto(r.hmasterd).hwdata;
+    else
+      vslvi.hwdata := ahbselectdata(msto(r.hmasterd).hwdata, r.haddr(4 downto 2), r.hsize);
+    end if;
     vslvi.testen  := testen; 
     vslvi.testrst := testrst; 
     vslvi.scanen  := scanen and testen; 
@@ -663,6 +675,36 @@ begin
   end generate;
   
 -- pragma translate_off
+  ahblog : if ahbtrace /= 0 generate 
+    log : process (clk)
+    variable hwrite : std_logic;
+    variable hsize : std_logic_vector(2 downto 0);
+    variable htrans : std_logic_vector(1 downto 0);
+    variable haddr : std_logic_vector(31 downto 0);
+    variable hwdata, hrdata : std_logic_vector(127 downto 0);
+    variable mbit : integer;
+    variable t : integer;
+    begin
+      if rising_edge(clk) then
+        if (htrans(1) and lmsti.hready) = '1' then
+	  mbit :=  2**conv_integer(hsize)*8;
+	  t := (now/1 ns);
+          if hwrite = '1' then
+	    print(tost(t) & " ahb" & tost(index) & " AHB write " & tost(mbit/8) & " bytes : " & tost(haddr) & " " & tost(lslvi.hwdata(mbit-1 downto 0)));
+	  else
+	    print(tost(t) & " ahb" & tost(index) & " AHB read  " & tost(mbit/8) & " bytes : " & tost(haddr) & " " & tost(lmsti.hrdata(mbit-1 downto 0)));
+	  end if;
+        end if;
+        if lmsti.hready = '1' then
+          hwrite := lslvi.hwrite;
+          hsize := lslvi.hsize;
+          haddr := lslvi.haddr;
+          htrans := lslvi.htrans;
+        end if;
+      end if;
+    end process;
+  end generate;
+
   mon0 : if enbusmon /= 0 generate 
     mon : ahbmon 
       generic map(
@@ -736,8 +778,8 @@ begin
                 iptable(vendori).device_table(devicei));
         end if;
         for j in 1 to NAHBIR-1 loop 
-          assert (msto(i).hconfig(j) = zx or FULLPNP or ccheck = 0)
-            report "AHB slave " & tost(i) & " propagates non-zero user defined PnP data, " &
+          assert (msto(i).hconfig(j) = zx or FULLPNP or ccheck = 0 or cfgmask = 0)
+            report "AHB master " & tost(i) & " propagates non-zero user defined PnP data, " &
             "but AHBCTRL full PnP decoding has not been enabled"
             severity warning;
         end loop;
@@ -775,7 +817,7 @@ begin
           std.textio.writeline(OUTPUT, L1);
         end if;
         for j in 1 to NAHBIR-1 loop 
-          assert (slvo(i).hconfig(j) = zx or FULLPNP or ccheck = 0)
+          assert (slvo(i).hconfig(j) = zx or FULLPNP or ccheck = 0 or cfgmask = 0)
             report "AHB slave " & tost(i) & " propagates non-zero user defined PnP data, " &
             "but AHBCTRL full PnP decoding has not been enabled"
             severity warning;
@@ -793,8 +835,8 @@ begin
               while (k<15) and (mask(k) = '0') loop k := k+1; end loop;
               if debug > 1 then
                 std.textio.write(L1, "ahbctrl:       memory at " &
-                                 tost( slvo(i).hconfig(j)(31 downto 20)) &
-                                 "00000, size "& tost(2**k) & " Mbyte");
+                tost(slvo(i).hconfig(j)(31 downto 20) and mask) &
+		"00000, size "& tost(2**k) & " Mbyte");
                 if slvo(i).hconfig(j)(16) = '1' then 
                   std.textio.write(L1, string'(", cacheable"));
                 end if;
@@ -804,8 +846,19 @@ begin
                 std.textio.writeline(OUTPUT, L1);
               end if;
               memmap(i)(j mod NAHBIR).start(31 downto 20) := slvo(i).hconfig(j)(31 downto 20);
+              memmap(i)(j mod NAHBIR).start(31 downto 20) :=
+                (slvo(i).hconfig(j)(31 downto 20) and mask);
               memmap(i)(j mod NAHBIR).start(19 downto 8) := (others => '0');
               memmap(i)(j mod NAHBIR).stop := memmap(i)(j mod NAHBIR).start + 2**(k+12);
+              -- Be verbose if an address with bits set outside the area
+              -- selected by the mask is encountered 
+              assert (slvo(i).hconfig(j)(31 downto 20) and not mask) = zero32(11 downto 0) report
+                "AHB slave " & tost(i) & " may decode an area larger than intended. Bar " &
+                tost(j mod NAHBIR) & " will have base address " &
+                tost(slvo(i).hconfig(j)(31 downto 20) and mask) &
+                "00000, the intended base address may have been " &
+                tost(slvo(i).hconfig(j)(31 downto 20)) & "00000"
+                severity warning;
 	    when "11" =>
               if ioen /= 0 then
 	        k := 0;
@@ -822,6 +875,13 @@ begin
                         ((slvo(i).hconfig(j)(31 downto 20)) and slvo(i).hconfig(j)(15 downto 4))) &
                         "00, size "& tost(iosize) & iounit);
                 end if;
+                assert (slvo(i).hconfig(j)(31 downto 20) and not mask) = zero32(11 downto 0) report
+                  "AHB slave " & tost(i) & " may decode an area I/O larger than intended. Bar " &
+                  tost(j mod NAHBIR) & " will have base address " &
+                  tost(iostart & (slvo(i).hconfig(j)(31 downto 20) and mask)) &
+                  "00, the intended base address may have been " &
+                  tost(iostart & slvo(i).hconfig(j)(31 downto 20)) & "00"
+                  severity warning;
 	      end if;
             when others =>
             end case;

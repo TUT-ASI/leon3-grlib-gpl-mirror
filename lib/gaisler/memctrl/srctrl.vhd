@@ -22,6 +22,7 @@
 -- Author:	Jiri Gaisler - Gaisler Research
 -- Modified:    Marko Isomaki - Gaisler Research
 -- Description:	32-bit SRAM memory controller with read-modify-write
+--              Supports also 64-bit AHB read/write accesses
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -73,10 +74,10 @@ constant hconfig : ahb_config_type := (
   6 => ahb_membar(ioaddr, '0', '0', iomask),
   others => zero32);
 
-type srcycletype is (idle, read1, read2, write1, write2, rmw1, rmw2, rmw3);
+type srcycletype is (idle, read1, read2, write1, write2, write3, rmw1, rmw2, rmw3);
 type prom8cycletype is (idle, read1, read2);
 
-function byteswap (rdata, wdata, addr, size : std_logic_vector) return std_logic_vector is
+function byteswap (rdata, wdata : std_logic_vector(31 downto 0); addr, size : std_logic_vector) return std_logic_vector is
 variable tmp : std_logic_vector(31 downto 0);
 variable a : std_logic_vector(1 downto 0);
 begin
@@ -105,8 +106,8 @@ type reg_type is record
   nbdrive       : std_ulogic;
   srstate	: srcycletype;
   haddr         : std_logic_vector(31 downto 0);
-  hrdata        : std_logic_vector(31 downto 0);
-  hwdata        : std_logic_vector(31 downto 0);
+  hrdata        : std_logic_vector(63 downto 0);
+  hwdata        : std_logic_vector(63 downto 0);
   hwrite        : std_ulogic;
   htrans        : std_logic_vector(1 downto 0);
   hburst        : std_logic_vector(2 downto 0);
@@ -147,7 +148,7 @@ begin
   variable rams    : std_logic_vector(4 downto 0);
   variable roms    : std_logic_vector(1 downto 0);
   variable haddr   : std_logic_vector(31 downto 0);
-  variable hrdata  : std_logic_vector(31 downto 0);
+  variable hrdata  : std_logic_vector(63 downto 0);
   variable hsize   : std_logic_vector(1 downto 0);
   variable hwrite  : std_ulogic;
   variable htrans  : std_logic_vector(1 downto 0);
@@ -159,7 +160,6 @@ begin
   variable writen  : std_ulogic;
   variable hready  : std_ulogic;
   variable ws      : std_logic_vector(3 downto 0);
-  variable hwdata  : std_logic_vector(31 downto 0);
   variable prom8sel : std_ulogic;
   variable vbdrive : std_logic_vector(31 downto 0);
   variable sbdrive  : std_ulogic;
@@ -167,7 +167,8 @@ begin
 
 -- Variable default settings to avoid latches
 
-    v := r; v.hresp := HRESP_OKAY; v.hrdata := sri.data; hrdata := r.hrdata;
+    v := r; v.hresp := HRESP_OKAY; v.hrdata(31 downto 0) := sri.data; 
+    hrdata := r.hrdata;
     vramws := conv_std_logic_vector(ramws, 4); vbdrive := rbdrive;
     vromws := conv_std_logic_vector(romws, 4);
     viows := conv_std_logic_vector(iows, 4);
@@ -251,30 +252,49 @@ begin
       else v.ws := vramws; end if;
     when read1 =>
       v.srstate := read2;
+      v.hrdata(63 downto 32) := r.hrdata(31 downto 0);
     when read2 =>
       v.ws := r.ws -1; v.oen := '0';
       if r.ws = "0000" then
-	v.srstate := idle; v.hready := '1'; v.haddr := ahbsi.haddr;
-	v.ramsn := not (ahbsi.hmbsel(1) and ahbsi.htrans(1));
-	v.romsn := not (ahbsi.hmbsel(0) and ahbsi.htrans(1));
-	v.oen := not (ahbsi.hsel(hindex) and ahbsi.htrans(1) and not ahbsi.hwrite);
+	if (r.size /= "11") or (r.haddr(2) = '1') or (AHBDW = 32) then 
+	  v.srstate := idle; v.hready := '1'; v.haddr := ahbsi.haddr;
+	  v.ramsn := not (ahbsi.hmbsel(1) and ahbsi.htrans(1));
+	  v.romsn := not (ahbsi.hmbsel(0) and ahbsi.htrans(1));
+	  v.oen := not (ahbsi.hsel(hindex) and ahbsi.htrans(1) and not ahbsi.hwrite);
+	else
+          v.srstate := read1; v.haddr(2) := '1';
+          if v.romsn = '0' then v.ws := vromws;
+          elsif v.iosn = '0' then v.ws := viows;
+          else v.ws := vramws; end if;
+        end if;
       end if;
     when write1 =>
       if r.romsn = '0' then v.ws := vromws;
       elsif v.iosn = '0' then v.ws := viows;
       else v.ws := vramws; end if;
       v.srstate := write2; v.bdrive := '0'; v.wen := dqm; v.writen := '0';
-      v.hwdata := ahbsi.hwdata;
+      v.hwdata(31 downto 0) := ahbsi.hwdata(31 downto 0);
+      if not ((r.size = "11") and (r.haddr(2) = '1')) then
+        v.hwdata(63 downto 32) := ahbsi.hwdata(63 mod AHBDW downto 32 mod AHBDW);
+      end if;
     when write2 =>
       if r.ws = "0000" then
-        v.srstate := idle; v.bdrive := '1'; v.wen := "1111"; v.writen := '1';
-        v.hready := '1';
+	if (r.size /= "11") or (r.haddr(2) = '1') or (AHBDW = 32) then 
+          v.srstate := idle; v.bdrive := '1'; v.hready := '1';
+	else
+          v.srstate := write3; 
+	end if;
+	v.wen := "1111"; v.writen := '1';
       end if;
       v.ws := r.ws -1;
+    when write3 =>
+	v.haddr(2) := '1'; v.hwdata(63 downto 32) := r.hwdata(31 downto 0);
+        v.srstate := write1; 
     when rmw1 =>
       if (rmw = 1) then v.oen := '0';
         v.srstate := rmw2;
-        v.hwdata := ahbsi.hwdata;
+        v.hwdata(31 downto 0) := ahbsi.hwdata(31 downto 0);
+        v.hwdata(63 downto 32) := ahbsi.hwdata(63 mod AHBDW downto 32 mod AHBDW);
       end if;
     when rmw2 =>
       if (rmw = 1) then
@@ -283,7 +303,7 @@ begin
       end if;
     when rmw3 =>
       if (rmw = 1) then
-        v.hwdata := byteswap(r.hrdata, r.hwdata, r.haddr, r.size);
+        v.hwdata(63 downto 32) := byteswap(r.hrdata(31 downto 0), r.hwdata(63 downto 32), r.haddr, r.size);
         v.srstate := write2; v.bdrive := '0'; v.wen := dqm; v.writen := '0';
       end if;
       if r.romsn = '0' then v.ws := vromws; else v.ws := vramws; end if;
@@ -301,11 +321,11 @@ begin
       if r.ready8 = '1' then
 	v.data8 := r.data8(15 downto 0) & r.hrdata(31 downto 24);
 	case r.size is
-	when "00" => hrdata :=  r.hrdata(31 downto 24) &
+	when "00" => hrdata(31 downto 0) :=  r.hrdata(31 downto 24) &
 	  r.hrdata(31 downto 24) &  r.hrdata(31 downto 24) &  r.hrdata(31 downto 24);
-	when "01" => hrdata := r.data8(7 downto 0) &  r.hrdata(31 downto 24) &
+	when "01" => hrdata(31 downto 0) := r.data8(7 downto 0) &  r.hrdata(31 downto 24) &
 		r.data8(7 downto 0) & r.hrdata(31 downto 24);
-	when others => hrdata := r.data8 & r.hrdata(31 downto 24);
+	when others => hrdata(31 downto 0) := r.data8 & r.hrdata(31 downto 24);
 	end case;
       end if;
 
@@ -355,6 +375,7 @@ begin
     if oepol = 1 then sbdrive := r.nbdrive; vbdrive := (others => v.nbdrive);
     else sbdrive := r.bdrive; vbdrive := (others => v.bdrive);  end if;
 
+    if (r.size /= "11") or (AHBDW = 32) then hrdata(63 downto 32) := hrdata(31 downto 0); end if;
 -- reset
 
     if rst = '0' then
@@ -377,14 +398,14 @@ begin
     sro.wrn      <= r.wen;
     sro.oen      <= r.oen;
     sro.read     <= r.read;
-    sro.data     <= r.hwdata;
+    sro.data <= r.hwdata(63 downto 32);
     sro.writen   <= r.writen;
     sro.ramn     <= r.ramsn;
     sro.romn     <= r.romsn;
 
     ahbso.hready  <= r.hready;
     ahbso.hresp   <= r.hresp;
-    ahbso.hrdata  <= hrdata;
+    ahbso.hrdata  <= ahbdrivedata(hrdata);
     ahbso.hconfig <= hconfig;
     ahbso.hcache  <= '1';
     ahbso.hirq    <= (others => '0');
@@ -393,14 +414,14 @@ begin
 
   end process;
 
-  sdo.sdcsn <= "11";
-  sdo.sdcke <= "11";
-  sdo.sdwen <= '1';
-  sdo.rasn  <= '1';
-  sdo.casn  <= '1';
-  sdo.dqm   <= (others => '1');
-  sdo.address  <= (others => '0');
-  sdo.data  <= (others => '0');
+  sdo.sdcsn <= "11"; sdo.sdcke <= "11"; sdo.sdwen <= '1'; sdo.rasn  <= '1';
+  sdo.casn  <= '1'; sdo.dqm   <= (others => '1'); sdo.address  <= (others => '0');
+  sdo.data  <= (others => '0'); sdo.conf <= (others => '0'); sdo.odt  <= (others => '0');
+  sdo.cal_pll  <= (others => '0'); sdo.cal_inc  <= (others => '0');
+  sdo.cal_en <= (others => '0'); sdo.sdck <= (others => '0');
+  sdo.ba <= (others => '0'); sdo.cb <= (others => '0');
+  sdo.vbdrive <= (others => '0'); sdo.qdrive <= '0'; sdo.bdrive <= '0';
+  sdo.oct  <= '0'; sdo.dqs_gate  <= '0'; 
   sro.mben  <= r.mben;
 
   regs : process(clk,rst)

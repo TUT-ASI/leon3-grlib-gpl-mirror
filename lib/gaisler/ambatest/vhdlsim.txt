@@ -1,2 +1,1 @@
-ambatest.vhd ahb_tbfunct.vhd ahbslv_em.vhd ahbmst_em.vhd
-ahbtbp.vhd ahbtbm.vhd ahbtbs.vhd
+ahbtbp.vhd ahbtbm.vhd 

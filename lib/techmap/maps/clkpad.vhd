@@ -45,10 +45,16 @@ begin
     u0 : unisim_clkpad generic map (level, voltage, arch, hf) port map (pad, o, rstn, lock);
   end generate;
   axc : if (tech = axcel) or (tech = axdsp) generate
-    u0 : axcel_clkpad generic map (level, voltage) port map (pad, o);
+    u0 : axcel_clkpad generic map (level, voltage, arch) port map (pad, o);
   end generate;
   pa : if (tech = proasic) or (tech = apa3) generate
     u0 : apa3_clkpad generic map (level, voltage) port map (pad, o);
+  end generate;
+  pa3e : if (tech = apa3e) generate
+    u0 : apa3e_clkpad generic map (level, voltage) port map (pad, o);
+  end generate;
+  pa3l : if (tech = apa3l) generate
+    u0 : apa3l_clkpad generic map (level, voltage) port map (pad, o);
   end generate;
   fus : if (tech = actfus) generate
     u0 : fusion_clkpad generic map (level, voltage) port map (pad, o);

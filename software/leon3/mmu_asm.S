@@ -59,6 +59,8 @@ mmu_double:
 	ldd [%fp-24],%l2
 	ldd [%fp-16],%l4
 	ldd [%fp-8],%l6
+	ldstub [%fp-8], %l6
+	swap [%fp-8], %l6
 	nop
 	nop
 	restore
@@ -107,3 +109,41 @@ pth_addr:	.word 0
 	.align 8 
 pth_addr1:	.word 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 		
+	.align 32 
+	.global srmmu_set_mmureg_aligned
+
+srmmu_set_mmureg_aligned:
+	retl
+	sta %o0, [%g0] 0x19
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+
+	.global casa_test
+
+casa_test:
+	
+	save  %sp, -112, %sp
+
+	st	%fp, [%fp]
+	add	%fp, 1, %o0
+	mov	%fp, %o2
+	casa	[%fp] 0xB, %o2, %o0
+	casa	[%fp] 0xB, %o2, %o0
+	add	%o2, 1, %o2
+	add	%o0, 1, %o0
+	casa	[%fp] 0xB, %o2, %o0
+	casa	[%fp] 0xB, %o2, %o0
+	ld	[%fp], %o3
+	sub	%o3, %fp, %o3
+	subcc	%o3, 2, %i0
+	be	1f
+	add	%g0, 1, %o0
+	call	fail
+	nop
+1:
+	ret
+	restore

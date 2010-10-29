@@ -25,6 +25,7 @@ define_input_delay -disable      -default  14.00 -improve 0.00 -route 0.00 -ref 
 define_output_delay      -default  19.00 -improve 0.00 -route 4.00 -ref {pci_clk:r}
 define_input_delay       -default  23.00 -improve 0.00 -route 3.00 -ref {pci_clk:r}
 define_input_delay       {pci_rst}  0.00 -improve 0.00 -route 0.00 -ref {pci_clk:r}
+define_input_delay       {pci_host}  0.00 -improve 0.00 -route 0.00 -ref {pci_clk:r}
 
 #
 # Registers

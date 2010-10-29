@@ -26,3 +26,7 @@
 #define CONFIG_AHB_MONWAR 0
 #endif
 
+#ifndef CONFIG_AHB_DTRACE
+#define CONFIG_AHB_DTRACE 0
+#endif
+

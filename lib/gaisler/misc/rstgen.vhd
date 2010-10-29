@@ -27,8 +27,10 @@ library ieee;
 use ieee.std_logic_1164.all;
 
 entity rstgen is
-  generic (acthigh : integer := 0; syncrst : integer := 0;
-	   scanen : integer := 0);
+  generic (
+    acthigh : integer := 0;
+    syncrst : integer := 0;
+    scanen  : integer := 0);
   port (
     rstin     : in  std_ulogic;
     clk       : in  std_ulogic;

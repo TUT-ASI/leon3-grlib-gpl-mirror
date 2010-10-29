@@ -5,7 +5,6 @@ echo set -xsthdpdir "xst"
 echo run
 echo -opt_mode Speed
 echo -opt_level 2
-echo -read_cores yes
 echo -fsm_extract no
 echo -iob true
 echo -ifn $1_files.prj
@@ -13,5 +12,3 @@ echo -bus_delimiter "()"
 echo -ifmt mixed
 echo -p $3
 echo -top $1
-echo -ofn $1 $4 $5 $6 $7 $8 $9 
-

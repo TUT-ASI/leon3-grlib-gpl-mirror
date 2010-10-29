@@ -71,7 +71,9 @@ entity ddr2spa is
     dqsgating      :       integer := 0;
     nosync         :       integer := 0;  -- Disable sync registers at CD crossings
     eightbanks     :       integer range 0 to 1 := 0;
-    dqsse          :       integer range 0 to 1 := 0  -- single ended DQS
+    dqsse          :       integer range 0 to 1 := 0;  -- single ended DQS
+    burstlen       :       integer range 4 to 128 := 8;
+    ahbbits        :       integer := ahbdw
     );
   port (
     rst_ddr        : in    std_ulogic;
@@ -106,7 +108,7 @@ end;
 architecture rtl of ddr2spa is
 
 constant DDR_FREQ : integer := (clkmul * MHz) / clkdiv;
-constant FAST_AHB : integer := AHBFREQ / DDR_FREQ;
+constant FAST_AHB : integer := integer'(AHBFREQ / DDR_FREQ) + integer'((ahbbits-1)/(2*ddrbits));
 signal sdi     : sdctrl_in_type;
 signal sdo     : sdctrl_out_type;
 --signal clkread  : std_ulogic;
@@ -126,30 +128,11 @@ begin
       ddr_cke, ddr_csb, ddr_web, ddr_rasb, ddr_casb, ddr_dm, 
       ddr_dqs, ddr_dqsn, ddr_ad, ddr_ba, ddr_dq, ddr_odt, sdi, sdo);
 
-  ddr16 : if ddrbits = 16 generate
-    ddrc : ddr2sp16a generic map (memtech => memtech, hindex => hindex, 
-      haddr => haddr, hmask => hmask, ioaddr => ioaddr, iomask => iomask,
+    ddrc : ddr2spax generic map (memtech => memtech, hindex => hindex, 
+      haddr => haddr, hmask => hmask, ioaddr => ioaddr, iomask => iomask, ddrbits => ddrbits,
       pwron => pwron, MHz => DDR_FREQ, TRFC => TRFC, col => col, Mbyte => Mbyte,
-      fast => FAST_AHB, readdly => readdly, odten => odten, octen => octen, dqsgating => dqsgating,
-      nosync => nosync, eightbanks => eightbanks, dqsse => dqsse)
+      fastahb => FAST_AHB, readdly => readdly, odten => odten, octen => octen, dqsgating => dqsgating,
+      nosync => nosync, eightbanks => eightbanks, dqsse => dqsse, burstlen => burstlen, ahbbits => ahbbits)
     port map (rst_ahb, clkddri, clk_ahb, ahbsi, ahbso, sdi, sdo);
-  end generate;
 
-  ddr32 : if ddrbits = 32 generate
-    ddrc : ddr2sp32a generic map (memtech => memtech, hindex => hindex,
-      haddr => haddr, hmask => hmask, ioaddr => ioaddr, iomask => iomask,
-      pwron => pwron, MHz => DDR_FREQ, TRFC => TRFC, col => col, Mbyte => Mbyte,
-      fast => FAST_AHB/2, readdly => readdly, odten => odten, octen => octen, dqsgating => dqsgating,
-      nosync => nosync, eightbanks => eightbanks, dqsse => dqsse)
-    port map (rst_ahb, clkddri, clk_ahb, ahbsi, ahbso, sdi, sdo);
-  end generate;
-
-  ddr64 : if ddrbits = 64 generate
-    ddrc : ddr2sp64a generic map (memtech => memtech, hindex => hindex,
-      haddr => haddr, hmask => hmask, ioaddr => ioaddr, iomask => iomask,
-      pwron => pwron, MHz => DDR_FREQ, TRFC => TRFC, col => col, Mbyte => Mbyte,
-      fast => FAST_AHB/4, readdly => readdly, odten => odten, octen => octen, dqsgating => dqsgating,
-      nosync => nosync, eightbanks => eightbanks, dqsse => dqsse)
-    port map (rst_ahb, clkddri, clk_ahb, ahbsi, ahbso, sdi, sdo);
-  end generate;
 end;

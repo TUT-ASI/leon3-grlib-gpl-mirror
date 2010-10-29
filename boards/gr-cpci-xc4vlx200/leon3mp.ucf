@@ -20,6 +20,7 @@ NET "pci_clk" LOC = "AK19" | IOSTANDARD=LVTTL;
 NET "spw_clk" LOC = "L21"  | IOSTANDARD=LVTTL;
 NET "sdclk"   LOC = "J21"  | IOSTANDARD=LVTTL;
 NET "pllref"  LOC = "J20"  | IOSTANDARD=LVTTL;
+NET "pllref" CLOCK_DEDICATED_ROUTE = FALSE;
 
 # precision
 INST "clkgen0_xc2v_v_dll0" LOC = DCM_ADV_X0Y8;
@@ -415,77 +416,77 @@ NET "xd(7)" LOC = "AL24" | IOSTANDARD=LVTTL; # reserved for Master Parallel mode
 #NET "can_rxd" LOC = "R38" | IOSTANDARD = LVTTL; #aka gpio(4)
 #NET "can_txd" LOC = "K38" | IOSTANDARD = LVTTL; #aka gpio(5)
 
-NET "spw_rxdp(0)" LOC = "AA34" | IOSTANDARD = LVDS; #lvdsp(0)
-NET "spw_rxdn(0)" LOC = "AA35" | IOSTANDARD = LVDS; #lvdsn(0)
+NET "spw_rxdp(0)" LOC = "AA34" | IOSTANDARD = LVDS_25; #lvdsp(0)
+NET "spw_rxdn(0)" LOC = "AA35" | IOSTANDARD = LVDS_25; #lvdsn(0)
 
-NET "spw_txsp(0)" LOC = "AA31" | IOSTANDARD = LVDS; #lvdsp(1)
-NET "spw_txsn(0)" LOC = "Y31"  | IOSTANDARD = LVDS; #lvdsn(1)
+NET "spw_txsp(0)" LOC = "AA31" | IOSTANDARD = LVDS_25; #lvdsp(1)
+NET "spw_txsn(0)" LOC = "Y31"  | IOSTANDARD = LVDS_25; #lvdsn(1)
 
-NET "spw_rxsp(0)" LOC = "AC35" | IOSTANDARD = LVDS; #lvdsp(2)
-NET "spw_rxsn(0)" LOC = "AB35" | IOSTANDARD = LVDS; #lvdsn(2)
+NET "spw_rxsp(0)" LOC = "AC35" | IOSTANDARD = LVDS_25; #lvdsp(2)
+NET "spw_rxsn(0)" LOC = "AB35" | IOSTANDARD = LVDS_25; #lvdsn(2)
 
-NET "spw_txdp(0)" LOC = "Y29"  | IOSTANDARD = LVDS; #lvdsp(3)
-NET "spw_txdn(0)" LOC = "AA30" | IOSTANDARD = LVDS; #lvdsn(3)
+NET "spw_txdp(0)" LOC = "Y29"  | IOSTANDARD = LVDS_25; #lvdsp(3)
+NET "spw_txdn(0)" LOC = "AA30" | IOSTANDARD = LVDS_25; #lvdsn(3)
 
-NET "spw_rxdp(1)" LOC = "AC38" | IOSTANDARD = LVDS; #lvdsp(4)
-NET "spw_rxdn(1)" LOC = "AC39" | IOSTANDARD = LVDS; #lvdsn(4)
+NET "spw_rxdp(1)" LOC = "AC38" | IOSTANDARD = LVDS_25; #lvdsp(4)
+NET "spw_rxdn(1)" LOC = "AC39" | IOSTANDARD = LVDS_25; #lvdsn(4)
 
-NET "spw_txsp(1)" LOC = "AE34" | IOSTANDARD = LVDS; #lvdsp(5)
-NET "spw_txsn(1)" LOC = "AD34" | IOSTANDARD = LVDS; #lvdsn(5)
+NET "spw_txsp(1)" LOC = "AE34" | IOSTANDARD = LVDS_25; #lvdsp(5)
+NET "spw_txsn(1)" LOC = "AD34" | IOSTANDARD = LVDS_25; #lvdsn(5)
 
-NET "spw_rxsp(1)" LOC = "AE39" | IOSTANDARD = LVDS; #lvdsp(6)
-NET "spw_rxsn(1)" LOC = "AD39" | IOSTANDARD = LVDS; #lvdsn(6)
+NET "spw_rxsp(1)" LOC = "AE39" | IOSTANDARD = LVDS_25; #lvdsp(6)
+NET "spw_rxsn(1)" LOC = "AD39" | IOSTANDARD = LVDS_25; #lvdsn(6)
 
-NET "spw_txdp(1)" LOC = "AD31" | IOSTANDARD = LVDS; #lvdsp(7)
-NET "spw_txdn(1)" LOC = "AD32" | IOSTANDARD = LVDS; #lvdsn(7)
+NET "spw_txdp(1)" LOC = "AD31" | IOSTANDARD = LVDS_25; #lvdsp(7)
+NET "spw_txdn(1)" LOC = "AD32" | IOSTANDARD = LVDS_25; #lvdsn(7)
 
-NET "spw_rxdp(2)" LOC = "AF38" | IOSTANDARD = LVDS; #lvdsp(8)
-NET "spw_rxdn(2)" LOC = "AF39" | IOSTANDARD = LVDS; #lvdsn(8)
+NET "spw_rxdp(2)" LOC = "AF38" | IOSTANDARD = LVDS_25; #lvdsp(8)
+NET "spw_rxdn(2)" LOC = "AF39" | IOSTANDARD = LVDS_25; #lvdsn(8)
 
-NET "spw_rxsp(2)" LOC = "AG37" | IOSTANDARD = LVDS; #lvdsp(9)
-NET "spw_rxsn(2)" LOC = "AG38" | IOSTANDARD = LVDS; #lvdsn(9)
+NET "spw_rxsp(2)" LOC = "AG37" | IOSTANDARD = LVDS_25; #lvdsp(9)
+NET "spw_rxsn(2)" LOC = "AG38" | IOSTANDARD = LVDS_25; #lvdsn(9)
 
-NET "spw_txsp(2)" LOC = "AJ39" | IOSTANDARD = LVDS; #lvdsp(10)
-NET "spw_txsn(2)" LOC = "AH39" | IOSTANDARD = LVDS; #lvdsn(10)
+NET "spw_txsp(2)" LOC = "AJ39" | IOSTANDARD = LVDS_25; #lvdsp(10)
+NET "spw_txsn(2)" LOC = "AH39" | IOSTANDARD = LVDS_25; #lvdsn(10)
 
-NET "spw_txdp(2)" LOC = "AB27" | IOSTANDARD = LVDS; #lvdsp(11)
-NET "spw_txdn(2)" LOC = "AB28" | IOSTANDARD = LVDS; #lvdsn(11)
+NET "spw_txdp(2)" LOC = "AB27" | IOSTANDARD = LVDS_25; #lvdsp(11)
+NET "spw_txdn(2)" LOC = "AB28" | IOSTANDARD = LVDS_25; #lvdsn(11)
 
-NET "spw_rxdp(3)" LOC = "AK38" | IOSTANDARD = LVDS; #lvdsp(12)
-NET "spw_rxdn(3)" LOC = "AK39" | IOSTANDARD = LVDS; #lvdsn(12)
+NET "spw_rxdp(3)" LOC = "AK38" | IOSTANDARD = LVDS_25; #lvdsp(12)
+NET "spw_rxdn(3)" LOC = "AK39" | IOSTANDARD = LVDS_25; #lvdsn(12)
 
-NET "spw_rxsp(3)" LOC = "AK36" | IOSTANDARD = LVDS; #lvdsp(13)
-NET "spw_rxsn(3)" LOC = "AK37" | IOSTANDARD = LVDS; #lvdsn(13)
+NET "spw_rxsp(3)" LOC = "AK36" | IOSTANDARD = LVDS_25; #lvdsp(13)
+NET "spw_rxsn(3)" LOC = "AK37" | IOSTANDARD = LVDS_25; #lvdsn(13)
 
-NET "spw_txsp(3)" LOC = "AJ35" | IOSTANDARD = LVDS; #lvdsp(14)
-NET "spw_txsn(3)" LOC = "AH35" | IOSTANDARD = LVDS; #lvdsn(14)
+NET "spw_txsp(3)" LOC = "AJ35" | IOSTANDARD = LVDS_25; #lvdsp(14)
+NET "spw_txsn(3)" LOC = "AH35" | IOSTANDARD = LVDS_25; #lvdsn(14)
 
-NET "spw_txdp(3)" LOC = "AM36" | IOSTANDARD = LVDS; #lvdsp(15)
-NET "spw_txdn(3)" LOC = "AL36" | IOSTANDARD = LVDS; #lvdsn(15)
+NET "spw_txdp(3)" LOC = "AM36" | IOSTANDARD = LVDS_25; #lvdsp(15)
+NET "spw_txdn(3)" LOC = "AL36" | IOSTANDARD = LVDS_25; #lvdsn(15)
 
-NET "spw_rxdp(4)" LOC = "AL38" | IOSTANDARD = LVDS; #lvdsp(16)
-NET "spw_rxdn(4)" LOC = "AL39" | IOSTANDARD = LVDS; #lvdsn(16)
+NET "spw_rxdp(4)" LOC = "AL38" | IOSTANDARD = LVDS_25; #lvdsp(16)
+NET "spw_rxdn(4)" LOC = "AL39" | IOSTANDARD = LVDS_25; #lvdsn(16)
 
-NET "spw_txdp(4)" LOC = "AD37" | IOSTANDARD = LVDS; #lvdsp(17)
-NET "spw_txdn(4)" LOC = "AC37" | IOSTANDARD = LVDS; #lvdsn(17)
+NET "spw_txdp(4)" LOC = "AD37" | IOSTANDARD = LVDS_25; #lvdsp(17)
+NET "spw_txdn(4)" LOC = "AC37" | IOSTANDARD = LVDS_25; #lvdsn(17)
 
-NET "spw_rxsp(4)" LOC = "AM37" | IOSTANDARD = LVDS; #lvdsp(18)
-NET "spw_rxsn(4)" LOC = "AM38" | IOSTANDARD = LVDS; #lvdsn(18)
+NET "spw_rxsp(4)" LOC = "AM37" | IOSTANDARD = LVDS_25; #lvdsp(18)
+NET "spw_rxsn(4)" LOC = "AM38" | IOSTANDARD = LVDS_25; #lvdsn(18)
 
-NET "spw_txsp(4)" LOC = "AD35" | IOSTANDARD = LVDS; #lvdsp(19)
-NET "spw_txsn(4)" LOC = "AD36" | IOSTANDARD = LVDS; #lvdsn(19)
+NET "spw_txsp(4)" LOC = "AD35" | IOSTANDARD = LVDS_25; #lvdsp(19)
+NET "spw_txsn(4)" LOC = "AD36" | IOSTANDARD = LVDS_25; #lvdsn(19)
 
-NET "spw_rxdp(5)" LOC = "AC32" | IOSTANDARD = LVDS; #lvdsp(20)
-NET "spw_rxdn(5)" LOC = "AB31" | IOSTANDARD = LVDS; #lvdsn(20)
+NET "spw_rxdp(5)" LOC = "AC32" | IOSTANDARD = LVDS_25; #lvdsp(20)
+NET "spw_rxdn(5)" LOC = "AB31" | IOSTANDARD = LVDS_25; #lvdsn(20)
 
-NET "spw_txdp(5)" LOC = "AF36" | IOSTANDARD = LVDS; #lvdsp(21)
-NET "spw_txdn(5)" LOC = "AE36" | IOSTANDARD = LVDS; #lvdsn(21)
+NET "spw_txdp(5)" LOC = "AF36" | IOSTANDARD = LVDS_25; #lvdsp(21)
+NET "spw_txdn(5)" LOC = "AE36" | IOSTANDARD = LVDS_25; #lvdsn(21)
 
-NET "spw_rxsp(5)" LOC = "AC30" | IOSTANDARD = LVDS; #lvdsp(22)
-NET "spw_rxsn(5)" LOC = "AB30" | IOSTANDARD = LVDS; #lvdsn(22)
+NET "spw_rxsp(5)" LOC = "AC30" | IOSTANDARD = LVDS_25; #lvdsp(22)
+NET "spw_rxsn(5)" LOC = "AB30" | IOSTANDARD = LVDS_25; #lvdsn(22)
 
-NET "spw_txsp(5)" LOC = "AG35" | IOSTANDARD = LVDS; #lvdsp(23)
-NET "spw_txsn(5)" LOC = "AG36" | IOSTANDARD = LVDS; #lvdsn(23)
+NET "spw_txsp(5)" LOC = "AG35" | IOSTANDARD = LVDS_25; #lvdsp(23)
+NET "spw_txsn(5)" LOC = "AG36" | IOSTANDARD = LVDS_25; #lvdsn(23)
 
 
 NET "gpio(0)"  LOC = "K39" | IOSTANDARD=LVTTL;

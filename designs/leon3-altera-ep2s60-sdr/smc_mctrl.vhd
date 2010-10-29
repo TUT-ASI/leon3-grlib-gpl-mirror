@@ -417,7 +417,7 @@ begin
 
 -- Merge data during byte write
 
-    writedata := ahbsi.hwdata;
+    writedata := ahbreadword(ahbsi.hwdata, r.address(4 downto 2));
     if ((r.brmw and r.busw(1)) = '1')
 
     then
@@ -926,7 +926,7 @@ begin
     sdi.enable		<= r.mcfg2.sdren;
     sdi.srdis 		<= r.mcfg2.srdis;
 
-    ahbso.hrdata <= dataout;
+    ahbso.hrdata <= ahbdrivedata(dataout);
     ahbso.hready <= hready;
     ahbso.hresp  <= r.hresp;
 

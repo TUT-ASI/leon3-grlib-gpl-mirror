@@ -41,13 +41,9 @@
 --
 -- Library      : {independent}
 --
--- Authors      : Mr Sandi Habinc
---                Gaisler Research AB
---                Forsta Langgantan 19
---                SE-413 27 Göteborg
---                Sweden
+-- Authors      : Aeroflex Gaisler AB
 --
--- Contact      : mailto:sandi@gaisler.com
+-- Contact      : mailto:support@gaisler.com
 --                http://www.gaisler.com
 --
 -- Disclaimer   : All information is provided "as is", there is no warranty that
@@ -103,7 +99,7 @@ package DMA2AHB_TestPackage is
    -- Constant for calculating burst lengths
    ----------------------------------------------------------------------------
    constant WordSize: integer := 32;
-   
+
    -----------------------------------------------------------------------------
    -- Initialize AHB interface
    -----------------------------------------------------------------------------
@@ -562,7 +558,7 @@ package body DMA2AHB_TestPackage is
             dmai.Burst     <= '0';
             dmai.Beat      <= (others => '0');
             dmai.Size      <= (others => '0');
-            dmai.Lock      <= '0'; 
+            dmai.Lock      <= '0';
             Synchronise(HCLK);
             Synchronise(HCLK);
             exit;
@@ -676,7 +672,7 @@ package body DMA2AHB_TestPackage is
       else
         dmai.Lock       <= '0';
       end if;
-      
+
 
       wait for 1 ns;
       if dmao.Grant='0' then
@@ -1178,7 +1174,7 @@ package body DMA2AHB_TestPackage is
          Synchronise(HCLK);
       end if;
       GCount := GCount-1;
-      
+
       -- first data
       if Size=32 then
          dmai.Data   <= Data(0);
@@ -1188,7 +1184,7 @@ package body DMA2AHB_TestPackage is
          dmai.Data   <= Data(0)(31 downto 24) & Data(0)(31 downto 24) &
                         Data(0)(31 downto 24) & Data(0)(31 downto 24);
       end if;
-      
+
       loop
          -- remove request when all grants received
          if dmao.Grant='1' then
@@ -1254,8 +1250,8 @@ package body DMA2AHB_TestPackage is
                DCount      := DCount+1;
             end if;
          end if;
-          
-        
+
+
          if dmao.Retry='1' then
            if ScreenOutput then
                Write (L, Now, Right, 15);
@@ -1337,7 +1333,7 @@ package body DMA2AHB_TestPackage is
       if not cBack2Back then
          Synchronise(HCLK);
       end if;
-      
+
       dmai.Reset     <= '0';
       dmai.Address   <= Address;
       dmai.Data      <= (others => '0');
@@ -1390,8 +1386,8 @@ package body DMA2AHB_TestPackage is
       else
         dmai.Lock    <= '0';
       end if;
-      
-      
+
+
       -- wait for first grant, indicating start of accesses
       wait for 1 ns;
       if dmao.Grant='0' then
@@ -1457,7 +1453,7 @@ package body DMA2AHB_TestPackage is
                  dmao.Data((31-8*DataPart) downto (24-8*DataPart));
                DataPart := (DataPart + 1) mod 4;
             end if;
-            
+
             if DCount=Count then
                dmai.Address   <= (others => '0');
                dmai.Beat      <= (others => '0');

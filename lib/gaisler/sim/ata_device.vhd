@@ -36,7 +36,8 @@ Entity ata_device is
 generic(sector_length: integer :=512; --in bytes
         disk_size: integer :=32; --in sectors
         log2_size : integer :=14; --Log2(sector_length*disk_size), abits
-        Tlr : time := 35 ns
+        Tlr : time := 35 ns;
+        sramfile : string := "disk.srec"
         );
 port(
   --for convinience, not part of ATA interface
@@ -95,7 +96,7 @@ constant  SCR     : std_logic_vector(4 downto 0):="01010";
 constant  SNR     : std_logic_vector(4 downto 0):="01011";
 constant  STAT    : std_logic_vector(4 downto 0):="01111";
 
-constant sramfile  : string := "disk.srec";  -- ram contents
+--constant sramfile  : string := "disk.srec";  -- ram contents
 constant w_adr: integer := log2(sector_length)-1; --word adress bits (within sector)
 
 type ram_type is record

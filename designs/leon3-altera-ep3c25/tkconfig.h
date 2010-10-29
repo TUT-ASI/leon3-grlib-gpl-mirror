@@ -52,12 +52,16 @@
 #define CONFIG_SYN_TECH spartan3
 #elif defined CONFIG_SYN_SPARTAN3E
 #define CONFIG_SYN_TECH spartan3e
+#elif defined CONFIG_SYN_SPARTAN6
+#define CONFIG_SYN_TECH spartan6
 #elif defined CONFIG_SYN_VIRTEX2
 #define CONFIG_SYN_TECH virtex2
 #elif defined CONFIG_SYN_VIRTEX4
 #define CONFIG_SYN_TECH virtex4
 #elif defined CONFIG_SYN_VIRTEX5
 #define CONFIG_SYN_TECH virtex5
+#elif defined CONFIG_SYN_VIRTEX6
+#define CONFIG_SYN_TECH virtex6
 #elif defined CONFIG_SYN_RH_LIB18T
 #define CONFIG_SYN_TECH rhlib18t
 #elif defined CONFIG_SYN_SMIC13
@@ -66,6 +70,8 @@
 #define CONFIG_SYN_TECH ut25
 #elif defined CONFIG_SYN_TSMC90
 #define CONFIG_SYN_TECH tsmc90
+#elif defined CONFIG_SYN_TM65GPLUS
+#define CONFIG_SYN_TECH tm65gpl
 #elif defined CONFIG_SYN_CUSTOM1
 #define CONFIG_SYN_TECH custom1
 #else
@@ -192,6 +198,10 @@
 
 #ifndef CONFIG_IU_MUL_MAC
 #define CONFIG_IU_MUL_MAC 0
+#endif
+
+#ifndef CONFIG_IU_BP
+#define CONFIG_IU_BP 0
 #endif
 
 #ifndef CONFIG_IU_SVT
@@ -617,6 +627,10 @@
 
 #ifndef CONFIG_AHB_MONWAR
 #define CONFIG_AHB_MONWAR 0
+#endif
+
+#ifndef CONFIG_AHB_DTRACE
+#define CONFIG_AHB_DTRACE 0
 #endif
 
 #ifndef CONFIG_DSU_UART

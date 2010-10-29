@@ -249,7 +249,11 @@ begin
   hc_id_i2cscl <= 'H'; hc_id_i2cdat <= 'H';
 
   -- SD card signals
-  hc_sd_dat  <= 'L'; hc_sd_cmd  <= 'Z';
+  spiflashmod : spi_flash
+    generic map (ftype => 3, debug => 0, dummybyte => 0)
+    port map (sck => hc_sd_clk, di => hc_sd_cmd, do => hc_sd_dat, csn => hc_sd_dat3);
+  hc_sd_dat  <= 'Z'; hc_sd_cmd  <= 'Z';
+--  hc_sd_dat <= hc_sd_cmd;               -- Loopback
   
   ddr0 : mt46v16m16 
     generic map (index => -1, fname => sdramfile)

@@ -82,7 +82,7 @@ architecture rtl of mmutw is
   
 begin  
 
-  p0: process (rst, r, c, twi, mcmmo, mmctrl1)
+  p0: process (rst, r, twi, mcmmo, mmctrl1)
   variable v           : tw_rtype;
   variable finish      : std_logic;
   variable index       : std_logic_vector(31-2 downto 0);

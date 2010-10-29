@@ -4,11 +4,11 @@ BOARD=xilinx-ml510-xc5vfx130t
 include $(GRLIB)/boards/$(BOARD)/Makefile.inc
 DEVICE=$(PART)-$(PACKAGE)$(SPEED)
 UCF=leon3mp.ucf
-XSTOPT= -uc leon3mp.xcf
+XSTOPT="-uc leon3mp.xcf"
 QSF=$(GRLIB)/boards/$(BOARD)/$(TOP).qsf
 EFFORT=high
-ISEMAPOPT=-m -timing
-SYNPOPT="set_option -pipe 0; set_option -retiming 0; set_option -write_apr_constraint 0"
+ISEMAPOPT="-m -timing"
+SYNPOPT="set_option -pipe 1; set_option -retiming 1; set_option -write_apr_constraint 0"
 VHDLSYNFILES=config.vhd ahbrom.vhd svga2ch7301c.vhd leon3mp.vhd
 VHDLSIMFILES=testbench.vhd
 SIMTOP=testbench
@@ -23,7 +23,8 @@ TECHLIBS = unisim
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp gleichmann usbhc spw
 DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan can ata leon3ft \
-	grusbhc usb spacewire hcan
+	grusbhc usb spacewire hcan leon4 leon4b64 l2cache \
+	slink ascs pwm haps coremp7 gr1553b iommu
 
 FILESKIP = grcan.vhd simple_spi_top.v
 

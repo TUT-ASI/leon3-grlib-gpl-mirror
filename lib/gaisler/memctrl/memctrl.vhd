@@ -27,6 +27,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 library grlib;
 use grlib.amba.all;
+use grlib.stdlib.log2;
 library techmap;
 use techmap.gencomp.all;
 
@@ -44,6 +45,10 @@ type memory_in_type is record
   scb           : std_logic_vector(15 downto 0);
   edac          : std_logic;
 end record;
+
+constant memory_in_none : memory_in_type :=
+  ((others => '0'), '0', '0', '0', (others => '0'), (others => '0'),
+   (others => '0'), (others => '0'), (others => '0'), '0');
 
 type memory_out_type is record
   address       : std_logic_vector(31 downto 0);
@@ -73,11 +78,21 @@ type memory_out_type is record
   rs_edac_en    : std_ulogic;                      -- Reed-Solomon enabled
 end record;
 
+constant memory_out_none : memory_out_type :=
+  ((others => '0'), (others => '0'), (others => '0'), (others => '1'),
+   (others => '1'), '1', '1', (others => '1'), '1', (others => '1'),
+   '1', '1', (others => '1'), (others => '1'), (others => '1'),
+   (others => '1'), '0', (others => '0'), (others => '1'), (others => '1'),
+   (others => '1'), (others => '1'), '0', '0', '0');
+
 type sdctrl_in_type is record
   wprot     : std_ulogic;
   data      : std_logic_vector (127 downto 0);  -- data in
-  cb        : std_logic_vector(15 downto 0);
+  cb        : std_logic_vector(31 downto 0);
 end record;
+
+constant sdctrl_in_none : sdctrl_in_type :=
+  ('0', (others => '0'), (others => '0'));
 
 type sdctrl_out_type is record
   sdcke     : std_logic_vector ( 1 downto 0);  -- clk en
@@ -88,10 +103,10 @@ type sdctrl_out_type is record
   dqm       : std_logic_vector ( 15 downto 0);  -- data i/o mask
   bdrive    : std_ulogic;                       -- bus drive
   qdrive    : std_ulogic;                       -- bus drive
-  vbdrive   : std_logic_vector(31 downto 0);   -- vector bus drive
+  vbdrive   : std_logic_vector(63 downto 0);   -- vector bus drive
   address   : std_logic_vector (16 downto 2);  -- address out
   data      : std_logic_vector (127 downto 0);  -- data out
-  cb        : std_logic_vector(15 downto 0);
+  cb        : std_logic_vector(31 downto 0);
   ce        : std_ulogic;
   ba        : std_logic_vector (2 downto 0);  -- bank address
   sdck      : std_logic_vector(2 downto 0);
@@ -104,7 +119,15 @@ type sdctrl_out_type is record
   conf      : std_logic_vector(63 downto 0);
   oct       : std_logic;                    -- On Chip Termination
   dqs_gate  : std_ulogic;                   -- dqsen
+  vcbdrive  : std_logic_vector(31 downto 0);   -- cb vector bus drive
 end record;
+
+constant sdctrl_out_none : sdctrl_out_type :=
+  ((others => '0'), (others => '0'), '0', '0', '0', (others => '0'),
+   '0', '0', (others => '0'), (others => '0'), (others => '0'),
+   (others => '0'), '0', (others => '0'), (others => '0'), '0',
+   (others => '0'), (others => '0'), (others => '0'), '0',
+   (others => '0'), (others => '0'), '0', '0', (others => '0'));
 
 type sdram_out_type is record
   sdcke     : std_logic_vector ( 1 downto 0);  -- clk en
@@ -127,6 +150,31 @@ component sdctrl
     fast    : integer := 0;
     pwron   : integer := 0;
     sdbits  : integer := 32;
+    oepol   : integer := 0;
+    pageburst : integer := 0;
+    mobile  : integer := 0
+  );
+  port (
+    rst    : in  std_ulogic;
+    clk    : in  std_ulogic;
+    ahbsi  : in  ahb_slv_in_type;
+    ahbso  : out ahb_slv_out_type;
+    sdi    : in  sdctrl_in_type;
+    sdo    : out sdctrl_out_type
+  );
+end component;
+
+component sdctrl64
+  generic (
+    hindex  : integer := 0;
+    haddr   : integer := 0;
+    hmask   : integer := 16#f00#;
+    ioaddr  : integer := 16#000#;
+    iomask  : integer := 16#fff#;
+    wprot   : integer := 0;
+    invclk  : integer := 0;
+    fast    : integer := 0;
+    pwron   : integer := 0;
     oepol   : integer := 0;
     pageburst : integer := 0;
     mobile  : integer := 0
@@ -169,6 +217,31 @@ component ftsdctrl is
   );
 end component;
 
+component ftsdctrl64
+  generic (
+    hindex  : integer := 0;
+    haddr   : integer := 0;
+    hmask   : integer := 16#f00#;
+    ioaddr  : integer := 16#000#;
+    iomask  : integer := 16#fff#;
+    wprot   : integer := 0;
+    invclk  : integer := 0;
+    fast    : integer := 0;
+    pwron   : integer := 0;
+    oepol   : integer := 0;
+    pageburst : integer := 0;
+    mobile  : integer := 0;
+    edac    : integer := 0
+  );
+  port (
+    rst     : in  std_ulogic;
+    clk     : in  std_ulogic;
+    ahbsi   : in  ahb_slv_in_type;
+    ahbso   : out ahb_slv_out_type;
+    sdi     : in  sdctrl_in_type;
+    sdo     : out sdctrl_out_type
+  );
+end component;
 
 component srctrl
   generic (
@@ -226,7 +299,9 @@ component ftsrctrl is
     cntbits      : integer range 1 to 8 := 1;
     wsreg        : integer := 0;
     oepol        : integer := 0;
-    prom8en      : integer := 0
+    prom8en      : integer := 0;
+    netlist      : integer := 0;
+    tech         : integer := 0
   );
   port (
     rst          : in  std_ulogic;
@@ -349,7 +424,8 @@ component ftmctrl
     pageburst : integer := 0;
     scantest  : integer := 0;
     writefb   : integer := 0;
-    netlist   : integer := 0
+    netlist   : integer := 0;
+    tech      : integer := 0
   );
   port (
     rst       : in  std_ulogic;
@@ -663,108 +739,132 @@ end component;
   );
   end component; 
 
-component ddr2sp16a
-  generic (
-    memtech : integer := 0;
-    hindex  : integer := 0;
-    haddr   : integer := 0;
-    hmask   : integer := 16#f00#;
-    ioaddr  : integer := 16#000#;
-    iomask  : integer := 16#fff#;
-    MHz     : integer := 100;
-    TRFC    : integer := 130;
-    col     : integer := 9; 
-    Mbyte   : integer := 16; 
-    fast    : integer := 0; 
-    pwron   : integer := 0;
-    oepol   : integer := 0;
-    readdly : integer := 1;
-    odten      : integer := 0;
-    octen      : integer := 0;
-    dqsgating  : integer := 0;
-    nosync     : integer := 0;
-    eightbanks : integer  range 0 to 1 := 0;
-    dqsse      : integer range 0 to 1 := 0
-  );
+component ddr2buf is
+  generic (tech : integer := 0; wabits : integer := 6; wdbits : integer := 8;
+  rabits : integer := 6; rdbits : integer := 8;
+  sepclk : integer := 0; wrfst : integer := 0; testen : integer := 0);
   port (
-    rst     : in  std_ulogic;
-    clk_ddr : in  std_ulogic;
-    clk_ahb : in  std_ulogic;
-    ahbsi   : in  ahb_slv_in_type;
-    ahbso   : out ahb_slv_out_type;
-    sdi     : in  sdctrl_in_type;
-    sdo     : out sdctrl_out_type
-  );
+    rclk     : in std_ulogic;
+    renable  : in std_ulogic;
+    raddress : in std_logic_vector((rabits -1) downto 0);
+    dataout  : out std_logic_vector((rdbits -1) downto 0);
+    wclk     : in std_ulogic;
+    write    : in std_ulogic;
+    writebig : in std_ulogic;
+    waddress : in std_logic_vector((wabits -1) downto 0);
+    datain   : in std_logic_vector((wdbits -1) downto 0);
+    testin   : in std_logic_vector(3 downto 0) := "0000");
 end component;
 
-component ddr2sp32a
-  generic (
-    memtech : integer := 0;
-    hindex  : integer := 0;
-    haddr   : integer := 0;
-    hmask   : integer := 16#f00#;
-    ioaddr  : integer := 16#000#;
-    iomask  : integer := 16#fff#;
-    MHz     : integer := 100;
-    TRFC    : integer := 130;
-    col     : integer := 9; 
-    Mbyte   : integer := 16; 
-    fast    : integer := 0; 
-    pwron   : integer := 0;
-    oepol   : integer := 0;
-    readdly : integer := 1;
-    odten      : integer := 0;
-    octen      : integer := 0;
-    dqsgating  : integer := 0;
-    nosync     : integer := 0;
-    eightbanks : integer  range 0 to 1 := 0;
-    dqsse      : integer range 0 to 1 := 0
-  );
-  port (
-    rst     : in  std_ulogic;
-    clk_ddr : in  std_ulogic;
-    clk_ahb : in  std_ulogic;
-    ahbsi   : in  ahb_slv_in_type;
-    ahbso   : out ahb_slv_out_type;
-    sdi     : in  sdctrl_in_type;
-    sdo     : out sdctrl_out_type
-  );
+type ddr_request_type is record
+  startaddr : std_logic_vector(31 downto 0);
+  endaddr   : std_logic_vector(9 downto 0);
+  hsize     : std_logic_vector(2 downto 0);
+  hwrite    : std_ulogic;
+  hio       : std_ulogic;
+end record;
+
+component ddr2spax_ahb is
+   generic (
+      hindex     : integer := 0;
+      haddr      : integer := 0;
+      hmask      : integer := 16#f00#;
+      ioaddr     : integer := 16#000#;
+      iomask     : integer := 16#fff#;
+      burstlen   : integer := 8;
+      nosync     : integer := 0;
+      ahbbits    : integer := ahbdw
+   );
+   port (
+      rst       : in  std_ulogic;
+      clk_ahb   : in  std_ulogic;
+      ahbsi     : in  ahb_slv_in_type;
+      ahbso     : out ahb_slv_out_type;
+      request   : out ddr_request_type;
+      start_tog : out std_logic;
+      done_tog  : in std_logic;
+      wbwaddr   : out std_logic_vector(log2(burstlen) downto 0);
+      wbwdata   : out std_logic_vector(ahbdw-1 downto 0);
+      wbwrite   : out std_logic;
+      wbwritebig: out std_logic;
+      rbraddr   : out std_logic_vector(log2(burstlen*32/ahbdw)-1 downto 0);
+      rbrdata   : in std_logic_vector(ahbdw-1 downto 0)
+   );  
 end component;
 
-component ddr2sp64a
-  generic (
-    memtech : integer := 0;
-    hindex  : integer := 0;
-    haddr   : integer := 0;
-    hmask   : integer := 16#f00#;
-    ioaddr  : integer := 16#000#;
-    iomask  : integer := 16#fff#;
-    MHz     : integer := 100;
-    TRFC    : integer := 130;
-    col     : integer := 9; 
-    Mbyte   : integer := 16; 
-    fast    : integer := 0; 
-    pwron   : integer := 0;
-    oepol   : integer := 0;
-    readdly : integer := 1;
-    odten      : integer := 0;
-    octen      : integer := 0;
-    dqsgating  : integer := 0;
-    nosync     : integer := 0;
-    eightbanks : integer  range 0 to 1 := 0;
-    dqsse      : integer range 0 to 1 := 0
-  );
-  port (
-    rst     : in  std_ulogic;
-    clk_ddr : in  std_ulogic;
-    clk_ahb : in  std_ulogic;
-    ahbsi   : in  ahb_slv_in_type;
-    ahbso   : out ahb_slv_out_type;
-    sdi     : in  sdctrl_in_type;
-    sdo     : out sdctrl_out_type
-  );
+component ddr2spax_ddr is
+   generic (
+      ddrbits    : integer := 32;
+      burstlen   : integer := 8;
+      MHz        : integer := 100;
+      TRFC       : integer := 130;
+      col        : integer := 9;
+      Mbyte      : integer := 8;
+      fastahb    : integer := 0;
+      pwron      : integer := 0;
+      oepol      : integer := 0;
+      readdly    : integer := 1;
+      odten      : integer := 0;
+      octen      : integer := 0;
+      dqsgating  : integer := 0;
+      nosync     : integer := 0;
+      eightbanks : integer range 0 to 1 := 0; -- Set to 1 if 8 banks instead of 4
+      dqsse      : integer range 0 to 1 := 0;  -- single ended DQS
+      ddr_syncrst: integer range 0 to 1 := 0
+   );
+   port (
+      rst      : in  std_ulogic;
+      clk_ddr  : in  std_ulogic;
+      request  : in ddr_request_type;
+      start_tog: in std_logic;
+      done_tog : out std_logic;
+      sdi      : in  sdctrl_in_type;
+      sdo      : out sdctrl_out_type;
+      wbraddr  : out std_logic_vector(log2((16*burstlen)/ddrbits) downto 0);
+      wbrdata  : in std_logic_vector(2*ddrbits-1 downto 0);
+      rbwaddr  : out std_logic_vector(log2((16*burstlen)/ddrbits)-1 downto 0);
+      rbwdata  : out std_logic_vector(2*ddrbits-1 downto 0);
+      rbwrite  : out std_logic
+   );  
 end component;
 
+component ddr2spax is
+   generic (
+      memtech    : integer := 0;
+      hindex     : integer := 0;
+      haddr      : integer := 0;
+      hmask      : integer := 16#f00#;
+      ioaddr     : integer := 16#000#;
+      iomask     : integer := 16#fff#;
+      ddrbits    : integer := 32;
+      burstlen   : integer := 8;
+      MHz        : integer := 100;
+      TRFC       : integer := 130;
+      col        : integer := 9;
+      Mbyte      : integer := 8;
+      fastahb    : integer := 0;
+      pwron      : integer := 0;
+      oepol      : integer := 0;
+      readdly    : integer := 1;
+      odten      : integer := 0;
+      octen      : integer := 0;
+      dqsgating  : integer := 0;
+      nosync     : integer := 0;
+      eightbanks : integer range 0 to 1 := 0; -- Set to 1 if 8 banks instead of 4
+      dqsse      : integer range 0 to 1 := 0;  -- single ended DQS
+      ddr_syncrst: integer range 0 to 1 := 0;
+      ahbbits    : integer := ahbdw
+   );
+   port (
+      rst     : in  std_ulogic;
+      clk_ddr : in  std_ulogic;
+      clk_ahb : in  std_ulogic;
+      ahbsi   : in  ahb_slv_in_type;
+      ahbso   : out ahb_slv_out_type;
+      sdi     : in  sdctrl_in_type;
+      sdo     : out sdctrl_out_type
+   );  
+end component;
 
 component ddr2spa
   generic (
@@ -803,7 +903,9 @@ component ddr2spa
     dqsgating : integer := 0;
     nosync    : integer := 0;
     eightbanks : integer := 0;
-    dqsse      : integer range 0 to 1 := 0
+    dqsse      : integer range 0 to 1 := 0;
+    burstlen : integer range 4 to 128 := 8;
+    ahbbits    : integer := ahbdw
   );
   port (
     rst_ddr    : in  std_ulogic;
@@ -834,7 +936,7 @@ component ddr2spa
     ddr_odt	: out std_logic_vector(1 downto 0)
   );
   end component; 
-
+  
   component ddr_phy
   generic (tech : integer := virtex2; MHz : integer := 100; 
 	rstdelay : integer := 200; dbits : integer := 16; 
@@ -956,21 +1058,22 @@ component ddr2spa
 
   component spimctrl
     generic (
-      hindex     : integer := 0;
-      hirq       : integer := 0;
-      faddr      : integer := 16#000#;
-      fmask      : integer := 16#fff#;
-      ioaddr     : integer := 16#000#;
-      iomask     : integer := 16#fff#;
-      spliten    : integer := 0;
-      oepol      : integer := 0;
-      sdcard     : integer range 0 to 1   := 0;
-      readcmd    : integer range 0 to 255 := 16#0B#;
-      dummybyte  : integer range 0 to 1   := 1;
-      dualoutput : integer range 0 to 1   := 0;
-      scaler     : integer range 1 to 512 := 1;
-      altscaler  : integer range 1 to 512 := 1;
-      pwrupcnt   : integer := 0
+      hindex      : integer := 0;
+      hirq        : integer := 0;
+      faddr       : integer := 16#000#;
+      fmask       : integer := 16#fff#;
+      ioaddr      : integer := 16#000#;
+      iomask      : integer := 16#fff#;
+      spliten     : integer := 0;
+      oepol       : integer := 0;
+      sdcard      : integer range 0 to 1   := 0;
+      readcmd     : integer range 0 to 255 := 16#0B#;
+      dummybyte   : integer range 0 to 1   := 1;
+      dualoutput  : integer range 0 to 1   := 0;
+      scaler      : integer range 1 to 512 := 1;
+      altscaler   : integer range 1 to 512 := 1;
+      pwrupcnt    : integer := 0;
+      maxahbaccsz : integer range 0 to 256 := AHBDW
       );
     port (
       rstn    : in  std_ulogic;

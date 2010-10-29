@@ -120,7 +120,7 @@ end;
 
 architecture rtl of proc3 is
 
-constant IRFWT    : integer := regfile_3p_write_through(memtech);
+constant IRFWT    : integer := 1; --regfile_3p_write_through(memtech);
 
 signal ici : icache_in_type;
 signal ico : icache_out_type;
@@ -142,7 +142,7 @@ begin
 
      iu0 : iu3
        generic map (nwindows, isets, dsets, fpu, v8, cp, mac, dsu, nwp, pclow,
-	 0, hindex, lddel, IRFWT, disas, tbuf, pwd, svt, rstaddr, smp, fabtech, clk2x, bp)
+	 notag, hindex, lddel, IRFWT, disas, tbuf, pwd, svt, rstaddr, smp, fabtech, clk2x, bp)
        port map (clk, rstn, holdnx, ici, ico, dci, dco, rfi, rfo, irqi, irqo,
                  dbgi, dbgo, muli, mulo, divi, divo, fpo, fpi, cpo, cpi, tbo, tbi, sclk);
 

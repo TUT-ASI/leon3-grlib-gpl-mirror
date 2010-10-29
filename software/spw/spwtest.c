@@ -18,12 +18,12 @@
 #include "spwapi.h"
 #include "rmapapi.h"
 
-#define SPW_ADDR    0x80000c00
+#define SPW_ADDR    0x80000a00
 #define AHBFREQ     40000
 
 #define PKTTESTMAX  128
 #define DESCPKT     1024
-#define MAXSIZE     4194304
+#define MAXSIZE     419430
 #define RMAPSIZE    1024
 #define RMAPCRCSIZE 1024
 
@@ -60,6 +60,7 @@ int main(void)
   int  tmp;
   int  eoplen;        
   int  *size;
+  int status;
   char *txbuf;
   char *rxbuf;
   char *rx0;
@@ -86,18 +87,22 @@ int main(void)
   /************************ TEST INIT ***********************************/
   /*Initalize link*/
   /*initialize parameters*/
-  if (spw_setparam(0x14, 0, 0xBF, 1, 1, 1, 1048576, SPW_ADDR, AHBFREQ, spw) ) {
+  if (spw_setparam(0x14, 0, 0xBF, 1, 1, SPW_ADDR, AHBFREQ, spw, 0) ) {
     printf("Illegal parameters to spacewire\n");
     exit(1);
   }
+  
+  spw_setparam_dma(0, 0x1, 0x0, 1, 1048576, spw);
+
   /*reset link*/
   spw_reset(spw);
   /*initialize link*/
-  if (spw_init(spw)) {
-    printf("Link initialization failed\n");
+  status = spw_init(spw);
+  if (status) {
+    printf("Link initialization failed: %d\n", status);
   }
   /************************ TEST 1 **************************************/ 
-  /*Simulatenous time-code and packet transmission/reception*/
+  /*Simultaneous time-code and packet transmission/reception*/
   printf("Test transmission and reception with simultaneous time-code transmissions\n");
   rx0 = malloc(128);
   rx1 = malloc(128);
@@ -121,14 +126,14 @@ int main(void)
   tx1[1] = 0x02;
   tx2[1] = 0x02;
   tx3[1] = 0x02;
-  spw_rx(rx0, spw);
-  spw_rx(rx1, spw);
-  spw_rx(rx2, spw);
-  spw_rx(rx3, spw);
-  spw_tx(0, 0, 0, 0, tx0, 128, tx0, spw);
-  spw_tx(0, 0, 0, 0, tx1, 128, tx1, spw);
-  spw_tx(0, 0, 0, 0, tx2, 128, tx2, spw);
-  spw_tx(0, 0, 0, 0, tx3, 128, tx3, spw);
+  spw_rx(0, rx0, spw);
+  spw_rx(0, rx1, spw);
+  spw_rx(0, rx2, spw);
+  spw_rx(0, rx3, spw);
+  spw_tx(0, 0, 0, 0, 0, tx0, 128, tx0, spw);
+  spw_tx(0, 0, 0, 0, 0, tx1, 128, tx1, spw);
+  spw_tx(0, 0, 0, 0, 0, tx2, 128, tx2, spw);
+  spw_tx(0, 0, 0, 0, 0, tx3, 128, tx3, spw);
   if (check_time(spw)) {
     printf("Tick out set before any time-codes were sent\n");
     exit(1);
@@ -141,7 +146,7 @@ int main(void)
     send_time(spw);
   }
   for(i = 0; i < 4; i++) {
-    while(!(tmp = spw_checktx(spw))) {
+    while(!(tmp = spw_checktx(0, spw))) {
       for(j = 0; j < 64; j++) {}
     }
     if (tmp != 1) {
@@ -150,7 +155,7 @@ int main(void)
     }
   }
   for(i = 0; i < 4; i++) {
-    while(!(tmp = spw_checkrx(size, rxs, spw))) {
+    while(!(tmp = spw_checkrx(0, size, rxs, spw))) {
       for(j = 0; j < 64; j++) {}
     }
     if (rxs->truncated) {
@@ -217,21 +222,21 @@ int main(void)
     for (j = 2; j < i; j++) {
       txbuf[j] = ~txbuf[j];
     }
-    while (spw_rx(rxbuf, spw)) {
+    while (spw_rx(0, rxbuf, spw)) {
       for (k = 0; k < 64; k++) {}
     }
-    if (spw_tx(0, 0, 0, 0, txbuf, i, txbuf, spw)) {
+    if (spw_tx(0, 0, 0, 0, 0, txbuf, i, txbuf, spw)) {
       printf("Transmission failed\n");
                         exit(1);
     }
-    while (!(tmp = spw_checktx(spw))) {
+    while (!(tmp = spw_checktx(0, spw))) {
       for (k = 0; k < 64; k++) {}
     }
     if (tmp != 1) {
       printf("Error in transmit \n");
       exit(1);
     }
-    while (!(tmp = spw_checkrx(size, rxs, spw))) {
+    while (!(tmp = spw_checkrx(0, size, rxs, spw))) {
       for (k = 0; k < 64; k++) {}
     }
     if (rxs->truncated) {
@@ -280,21 +285,21 @@ int main(void)
         for (j = 2; j < i; j++) {
           txbuf[j] = ~txbuf[j];
         }
-        while (spw_rx((char *)&(rxbuf[m]), spw)) {
+        while (spw_rx(0, (char *)&(rxbuf[m]), spw)) {
           for (k = 0; k < 64; k++) {}
         }
-        if (spw_tx(0, 0, 0, 0, txbuf, i, txbuf, spw)) {
+        if (spw_tx(0, 0, 0, 0, 0, txbuf, i, txbuf, spw)) {
           printf("Transmission failed\n");
           exit(1);
         }
-        while (!(tmp = spw_checktx(spw))) {
+        while (!(tmp = spw_checktx(0, spw))) {
           for (k = 0; k < 64; k++) {}
         }
         if (tmp != 1) {
           printf("Error in transmit \n");
           exit(1);
         }
-        while (!(tmp = spw_checkrx(size, rxs, spw))) {
+        while (!(tmp = spw_checkrx(0, size, rxs, spw))) {
           for (k = 0; k < 64; k++) {}
         }
         if (rxs->truncated) {
@@ -344,21 +349,21 @@ int main(void)
       }
       txbuf[m] = 0x14;
       txbuf[m+1] = 0x2;
-      while (spw_rx(rxbuf, spw)) {
+      while (spw_rx(0, rxbuf, spw)) {
         for (k = 0; k < 64; k++) {}
       }
-      if (spw_tx(0, 0, 0, 0, txbuf, i, (char *)&(txbuf[m]), spw)) {
+      if (spw_tx(0, 0, 0, 0, 0, txbuf, i, (char *)&(txbuf[m]), spw)) {
         printf("Transmission failed\n");
         exit(1);
       }
-      while (!(tmp = spw_checktx(spw))) {
+      while (!(tmp = spw_checktx(0, spw))) {
         for (k = 0; k < 64; k++) {}
       }
       if (tmp != 1) {
         printf("Error in transmit \n");
         exit(1);
       }
-      while (!(tmp = spw_checkrx(size, rxs, spw))) {
+      while (!(tmp = spw_checkrx(0, size, rxs, spw))) {
         for (k = 0; k < 64; k++) {}
       }
       if (rxs->truncated) {
@@ -419,21 +424,21 @@ int main(void)
       }
       tx0[m] = 0x14;
       tx0[m+1] = 0x2;
-      while (spw_rx(rxbuf, spw)) {
+      while (spw_rx(0, rxbuf, spw)) {
         for (k = 0; k < 64; k++) {}
       }
-      if (spw_tx(0, 0, 0, i,(char *)&(tx0[m]), PKTTESTMAX, txbuf, spw)) {
+      if (spw_tx(0, 0, 0, 0, i,(char *)&(tx0[m]), PKTTESTMAX, txbuf, spw)) {
         printf("Transmission failed\n");
         exit(1);
       }
-      while (!(tmp = spw_checktx(spw))) {
+      while (!(tmp = spw_checktx(0, spw))) {
         for (k = 0; k < 64; k++) {}
       }
       if (tmp != 1) {
         printf("Error in transmit \n");
         exit(1);
       }
-      while (!(tmp = spw_checkrx(size, rxs, spw))) {
+      while (!(tmp = spw_checkrx(0, size, rxs, spw))) {
         for (k = 0; k < 64; k++) {}
       }
       if (rxs->truncated) {
@@ -506,15 +511,15 @@ int main(void)
           txbuf[l] = 0x14;
           txbuf[l+1] = 0x2;
           if (!notrx) {
-            while (spw_rx(rxbuf, spw)) {
+            while (spw_rx(0, rxbuf, spw)) {
               for (k = 0; k < 64; k++) {}
             }
           }
-          if (spw_tx(0, 0, 0, i,(char *)&(tx0[m]), j, (char *)&(txbuf[l]), spw)) {
+          if (spw_tx(0, 0, 0, 0, i,(char *)&(tx0[m]), j, (char *)&(txbuf[l]), spw)) {
             printf("Transmission failed\n");
             exit(1);
           }
-          while (!(tmp = spw_checktx(spw))) {
+          while (!(tmp = spw_checktx(0, spw))) {
             for (k = 0; k < 64; k++) {}
           }
           if (tmp != 1) {
@@ -522,7 +527,7 @@ int main(void)
             exit(1);
           }
           if( (i+j) > 1) {
-            while (!(tmp = spw_checkrx(size, rxs, spw))) {
+            while (!(tmp = spw_checkrx(0, size, rxs, spw))) {
               for (k = 0; k < 64; k++) {}
             }
             if (rxs->truncated) {
@@ -552,7 +557,7 @@ int main(void)
             notrx = 0;
           } else {
             for(k = 0; k < 1048576; k++) {}
-            if (spw_checkrx(size, rxs, spw)) {
+            if (spw_checkrx(0, size, rxs, spw)) {
               printf("Packet recevied/sent although length was too small\n");
               exit(1);
             }
@@ -593,18 +598,18 @@ int main(void)
     txbuf[i] = i;
   }
   for(i = 0; i < 128; i++) {
-    while (spw_rx(rx[i], spw)) {
+    while (spw_rx(0, rx[i], spw)) {
       for (k = 0; k < 64; k++) {}
     }
   }
   for(i = 0; i < 64; i++) {
-    if (spw_tx(0, 0, 0, 255, txbuf, DESCPKT, tx[i], spw)) {
+    if (spw_tx(0, 0, 0, 0, 255, txbuf, DESCPKT, tx[i], spw)) {
       printf("Transmission failed\n");
       exit(1);
     }
   }
   for(i = 0; i < 64; i++) {
-    while (!(tmp = spw_checktx(spw))) {
+    while (!(tmp = spw_checktx(0, spw))) {
       for (k = 0; k < 64; k++) {}
     }
     if (tmp != 1) {
@@ -613,7 +618,7 @@ int main(void)
     }
   }
   for(i = 0; i < 64; i++) {
-    while (!(tmp = spw_checkrx(size, rxs, spw))) {
+    while (!(tmp = spw_checkrx(0, size, rxs, spw))) {
       for (k = 0; k < 64; k++) {}
     }
     if (rxs->truncated) {
@@ -644,13 +649,13 @@ int main(void)
   }
   /*second transmit loop*/
   for(i = 0; i < 64; i++) {
-    if (spw_tx(0, 0, 0, 255, txbuf, DESCPKT, tx[i], spw)) {
+    if (spw_tx(0, 0, 0, 0, 255, txbuf, DESCPKT, tx[i], spw)) {
       printf("Transmission failed\n");
       exit(1);
     }
   }
   for(i = 0; i < 64; i++) {
-    while (!(tmp = spw_checktx(spw))) {
+    while (!(tmp = spw_checktx(0, spw))) {
       for (k = 0; k < 64; k++) {}
     }
     if (tmp != 1) {
@@ -659,7 +664,7 @@ int main(void)
     }
   }
   for(i = 0; i < 64; i++) {
-    while (!(tmp = spw_checkrx(size, rxs, spw))) {
+    while (!(tmp = spw_checkrx(0, size, rxs, spw))) {
       for (k = 0; k < 64; k++) {}
     }
     if (rxs->truncated) {
@@ -708,26 +713,26 @@ int main(void)
   for(i = 2; i < MAXSIZE; i++) {
     txbuf[i] = i;
   }
-  while (spw_rx(rxbuf, spw)) {
+  while (spw_rx(0, rxbuf, spw)) {
     for (k = 0; k < 64; k++) {}
   }
-  spw->rxmaxlen = MAXSIZE;
-  if (spw_set_rxmaxlength(spw) ) {
+  spw->dma[0].rxmaxlen = MAXSIZE;
+  if (spw_set_rxmaxlength(0, spw) ) {
     printf("Max length change failed\n");
     exit(1);
   }
-  if (spw_tx(0, 0, 0, 0, txbuf, MAXSIZE, txbuf, spw)) {
+  if (spw_tx(0, 0, 0, 0, 0, txbuf, MAXSIZE, txbuf, spw)) {
     printf("Transmission failed\n");
     exit(1);
   }
-  while (!(tmp = spw_checktx(spw))) {
+  while (!(tmp = spw_checktx(0, spw))) {
     for (k = 0; k < 64; k++) {}
   }
   if (tmp != 1) {
     printf("Error in transmit \n");
     exit(1);
   }
-  while (!(tmp = spw_checkrx(size, rxs, spw))) {
+  while (!(tmp = spw_checkrx(0, size, rxs, spw))) {
     for (k = 0; k < 64; k++) {}
   }
   if (rxs->truncated) {
@@ -751,21 +756,21 @@ int main(void)
   for(i = 2; i < MAXSIZE; i++) {
     txbuf[i] = ~txbuf[i];
   }
-  while (spw_rx(rxbuf, spw)) {
+  while (spw_rx(0, rxbuf, spw)) {
     for (k = 0; k < 64; k++) {}
   }
-  if (spw_tx(0, 0, 0, 0, txbuf, MAXSIZE+1, txbuf, spw)) {
+  if (spw_tx(0, 0, 0, 0, 0, txbuf, MAXSIZE+1, txbuf, spw)) {
     printf("Transmission failed\n");
     exit(1);
   }
-  while (!(tmp = spw_checktx(spw))) {
+  while (!(tmp = spw_checktx(0, spw))) {
     for (k = 0; k < 64; k++) {}
   }
   if (tmp != 1) {
     printf("Error in transmit \n");
     exit(1);
   }
-  while (!(tmp = spw_checkrx(size, rxs, spw))) {
+  while (!(tmp = spw_checkrx(0, size, rxs, spw))) {
     for (k = 0; k < 64; k++) {}
   }
   if (!rxs->truncated) {
@@ -789,21 +794,21 @@ int main(void)
   for(i = 2; i < MAXSIZE; i++) {
     txbuf[i] = ~txbuf[i];
   }
-  while (spw_rx(rxbuf, spw)) {
+  while (spw_rx(0, rxbuf, spw)) {
     for (k = 0; k < 64; k++) {}
   }
-  if (spw_tx(0, 0, 0, 0, txbuf, MAXSIZE, txbuf, spw)) {
+  if (spw_tx(0, 0, 0, 0, 0, txbuf, MAXSIZE, txbuf, spw)) {
     printf("Transmission failed\n");
     exit(1);
   }
-  while (!(tmp = spw_checktx(spw))) {
+  while (!(tmp = spw_checktx(0, spw))) {
     for (k = 0; k < 64; k++) {}
   }
   if (tmp != 1) {
     printf("Error in transmit \n");
     exit(1);
   }
-  while (!(tmp = spw_checkrx(size, rxs, spw))) {
+  while (!(tmp = spw_checkrx(0, size, rxs, spw))) {
     for (k = 0; k < 64; k++) {}
   }
   if (rxs->truncated) {
@@ -828,121 +833,121 @@ int main(void)
   free(txbuf);
   printf("Test 8 completed successfully\n");
   /************************ TEST 9 **************************************/
-/*   printf("Test crc\n"); */
-/*   if (spw->rmap || spw->rmapcrc) { */
-/*     printf("Test transmission of packets with different alignment, and header\n"); */
-/*     if ((txbuf = calloc(PKTTESTMAX+4, 1)) == NULL) { */
-/*       printf("Transmit buffer initialization failed\n"); */
-/*       exit(1); */
-/*     } */
-/*     if ((rxbuf = calloc(PKTTESTMAX+256+2, 1)) == NULL) { */
-/*       printf("Receive buffer initialization failed\n"); */
-/*       exit(1); */
-/*     } */
-/*     if ((tx0 = calloc(260, 1)) == NULL) { */
-/*       printf("Receive buffer initialization failed\n"); */
-/*       exit(1); */
-/*     } */
-/*     /\*initialize data*\/ */
-/*     for (j = 0; j < PKTTESTMAX; j++) { */
-/*       txbuf[j] = (char)j; */
-/*     } */
-/*     for (j = 0; j < 260; j++) { */
-/*       tx0[j] = (char)~j; */
-/*     } */
-/*     notrx = 0; data = 0; hdr = 0; */
-/*     for(i = 0; i < 256; i++) { */
-/* //      printf("Packet with header %i, alignment: %i and data: %i, alignment: %i transferred\n", i, m, j, l); */
-/*       for(j = 0; j < PKTTESTMAX; j++) { */
-/*         for(m = 0; m < 4; m++) { */
-/*           for(l = 0; l < 4; l++) { */
-/*             for (k = 0; k < PKTTESTMAX; k++) { */
-/*               txbuf[k] = ~txbuf[k]; */
-/*             } */
-/*             for (k = 0; k < 260; k++) { */
-/*               tx0[k] = ~tx0[k]; */
-/*             } */
-/*             if (i != 0) { */
-/*               hdr = 1; */
-/*             } else { */
-/*               hdr = 0; */
-/*             } */
-/*             if (j != 0) { */
-/*               data = 1; */
+  printf("Test crc\n");
+  if (spw->rmap || spw->rmapcrc) {
+    printf("Test transmission of packets with different alignment, and header\n");
+    if ((txbuf = calloc(PKTTESTMAX+4, 1)) == NULL) {
+      printf("Transmit buffer initialization failed\n");
+      exit(1);
+    }
+    if ((rxbuf = calloc(PKTTESTMAX+256+2, 1)) == NULL) {
+      printf("Receive buffer initialization failed\n");
+      exit(1);
+    }
+    if ((tx0 = calloc(260, 1)) == NULL) {
+      printf("Receive buffer initialization failed\n");
+      exit(1);
+    }
+    /*initialize data*/
+    for (j = 0; j < PKTTESTMAX; j++) {
+      txbuf[j] = (char)j;
+    }
+    for (j = 0; j < 260; j++) {
+      tx0[j] = (char)~j;
+    }
+    notrx = 0; data = 0; hdr = 0;
+    for(i = 0; i < 256; i++) {
+//      printf("Packet with header %i, alignment: %i and data: %i, alignment: %i transferred\n", i, m, j, l);
+      for(j = 0; j < PKTTESTMAX; j++) {
+        for(m = 0; m < 4; m++) {
+          for(l = 0; l < 4; l++) {
+            for (k = 0; k < PKTTESTMAX; k++) {
+              txbuf[k] = ~txbuf[k];
+            }
+            for (k = 0; k < 260; k++) {
+              tx0[k] = ~tx0[k];
+            }
+            if (i != 0) {
+              hdr = 1;
+            } else {
+              hdr = 0;
+            }
+            if (j != 0) {
+              data = 1;
                                                 
-/*             } else { */
-/*               data = 0; */
-/*             } */
-/*             tx0[m] = 0x14; */
-/*             tx0[m+1] = 0x2; */
-/*             txbuf[l] = 0x14; */
-/*             txbuf[l+1] = 0x2; */
-/*             if (!notrx) { */
-/*               while (spw_rx(rxbuf, spw)) { */
-/*                 for (k = 0; k < 64; k++) {} */
-/*               } */
-/*             } */
-/*             if (spw_tx(1, 1, 0, i,(char *)&(tx0[m]), j, (char *)&(txbuf[l]), spw)) { */
-/*               printf("Transmission failed\n"); */
-/*               exit(1); */
-/*             } */
-/*             while (!(tmp = spw_checktx(spw))) { */
-/*               for (k = 0; k < 64; k++) {} */
-/*             } */
-/*             if (tmp != 1) { */
-/*               printf("Error in transmit \n"); */
-/*               exit(1); */
-/*             } */
-/*             if( (i+j+hdr+data) > 1) { */
-/*               while (!(tmp = spw_checkrx(size, rxs, spw))) { */
-/*                 for (k = 0; k < 64; k++) {} */
-/*               } */
-/*               if (rxs->truncated) { */
-/*                 printf("Received packet truncated\n"); */
-/*                 exit(1); */
-/*               } */
-/*               if(rxs->eep) { */
-/*                 printf("Received packet terminated with eep\n"); */
-/*                 exit(1); */
-/*               } */
-/*               if (*size != (j+i+hdr+data)) { */
-/*                 printf("Received packet has wrong length\n"); */
-/*                 printf("Expected: %i, Got: %i \n", i+j, *size); */
-/*               } */
-/*               for(k = 0; k < i; k++) { */
-/*                 if (loadb((int)&(rxbuf[k])) != tx0[k+m]) { */
-/*                   printf("Compare error: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rxbuf[k])), (unsigned)tx0[k+m]); */
-/*                   exit(1); */
-/*                 } */
-/*               } */
-/*               for(k = 0; k < j; k++) { */
-/*                 if (loadb((int)&(rxbuf[k+i+hdr])) != txbuf[k+l]) { */
-/*                   printf("Compare error: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rxbuf[k+i+hdr])), (unsigned)txbuf[k+l]); */
-/*                   exit(1); */
-/*                 } */
-/*               } */
-/*               notrx = 0; */
-/*             } else { */
-/*               for(k = 0; k < 1048576; k++) {} */
-/*               if (spw_checkrx(size, rxs, spw)) { */
-/*                 printf("Packet recevied/sent although length was too small\n"); */
-/*                 exit(1); */
-/*               } */
-/*               notrx = 1; */
-/*             } */
-/*           } */
+            } else {
+              data = 0;
+            }
+            tx0[m] = 0x14;
+            tx0[m+1] = 0x2;
+            txbuf[l] = 0x14;
+            txbuf[l+1] = 0x2;
+            if (!notrx) {
+              while (spw_rx(0, rxbuf, spw)) {
+                for (k = 0; k < 64; k++) {}
+              }
+            }
+            if (spw_tx(1, hdr, 1, 0, i,(char *)&(tx0[m]), j, (char *)&(txbuf[l]), spw)) {
+              printf("Transmission failed\n");
+              exit(1);
+            }
+            while (!(tmp = spw_checktx(0, spw))) {
+              for (k = 0; k < 64; k++) {}
+            }
+            if (tmp != 1) {
+              printf("Error in transmit \n");
+              exit(1);
+            }
+            if( (i+j+hdr+data) > 1) {
+              while (!(tmp = spw_checkrx(0, size, rxs, spw))) {
+                for (k = 0; k < 64; k++) {}
+              }
+              if (rxs->truncated) {
+                printf("Received packet truncated\n");
+                exit(1);
+              }
+              if(rxs->eep) {
+                printf("Received packet terminated with eep\n");
+                exit(1);
+              }
+              if (*size != (j+i+hdr+data)) {
+                printf("Received packet has wrong length\n");
+                printf("Expected: %i, Got: %i \n", i+j, *size);
+              }
+              for(k = 0; k < i; k++) {
+                if (loadb((int)&(rxbuf[k])) != tx0[k+m]) {
+                  printf("Compare error: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rxbuf[k])), (unsigned)tx0[k+m]);
+                  exit(1);
+                }
+              }
+              for(k = 0; k < j; k++) {
+                if (loadb((int)&(rxbuf[k+i+hdr])) != txbuf[k+l]) {
+                  printf("Compare error: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rxbuf[k+i+hdr])), (unsigned)txbuf[k+l]);
+                  exit(1);
+                }
+              }
+              notrx = 0;
+            } else {
+              for(k = 0; k < 1048576; k++) {}
+              if (spw_checkrx(0, size, rxs, spw)) {
+                printf("Packet recevied/sent although length was too small\n");
+                exit(1);
+              }
+              notrx = 1;
+            }
+          }
                                 
-/*         } */
-/*       } */
+        }
+      }
                 
                 
                                 
-/*     } */
-/*     free(rxbuf); */
-/*     free(txbuf); */
-/*     free(tx0); */
-/*     printf("Test 9 completed successfully\n"); */
-/*   } */
+    }
+    free(rxbuf);
+    free(txbuf);
+    free(tx0);
+    printf("Test 9 completed successfully\n");
+  }
   /************************ TEST 10 **************************************/
   if (spw->rmap == 1) {
     printf("Test RMAP, including transmit spa test\n");
@@ -1018,21 +1023,21 @@ int main(void)
           printf("RMAP reply build failed\n");
           exit(1);
         }
-        while (spw_rx(rx1, spw)) {
+        while (spw_rx(0, rx1, spw)) {
           for (k = 0; k < 64; k++) {}
         }
-        if (spw_tx(1, 1, 0, *cmdsize, tx0, j, tx1, spw)) {
+        if (spw_tx(0, 1, 1, 0, *cmdsize, tx0, j, tx1, spw)) {
           printf("Transmission failed\n");
           exit(1);
         }
-        while (!(tmp = spw_checktx(spw))) {
+        while (!(tmp = spw_checktx(0, spw))) {
           for (k = 0; k < 64; k++) {}
         }
         if (tmp != 1) {
           printf("Error in transmit \n");
           exit(1);
         }
-        while (!(tmp = spw_checkrx(size, rxs, spw))) {
+        while (!(tmp = spw_checkrx(0, size, rxs, spw))) {
           for (k = 0; k < 64; k++) {}
         }
         if (rxs->truncated) {
@@ -1148,21 +1153,21 @@ int main(void)
           printf("RMAP reply build failed\n");
           exit(1);
         }
-        while (spw_rx(rx1, spw)) {
+        while (spw_rx(0, rx1, spw)) {
           for (k = 0; k < 64; k++) {}
         }
-        if (spw_tx(1, 1, 0, *cmdsize, tx0, j, tx1, spw)) {
+        if (spw_tx(0, 1, 1, 0, *cmdsize, tx0, j, tx1, spw)) {
           printf("Transmission failed\n");
           exit(1);
         }
-        while (!(tmp = spw_checktx(spw))) {
+        while (!(tmp = spw_checktx(0, spw))) {
           for (k = 0; k < 64; k++) {}
         }
         if (tmp != 1) {
           printf("Error in transmit \n");
           exit(1);
         }
-        while (!(tmp = spw_checkrx(size, rxs, spw))) {
+        while (!(tmp = spw_checkrx(0, size, rxs, spw))) {
           for (k = 0; k < 64; k++) {}
         }
         if (rxs->truncated) {
@@ -1207,482 +1212,483 @@ int main(void)
       }
     }
     printf("Verified write test passed\n");
+    printf("\nRMW\n");
 
-/*     for(i = 0; i < 64; i++) { */
-/*       for(m = 0; m < 8; m++) { */
-/*         for(j = 0; j < i; j++) { */
-/*           tx1[j]  = ~tx1[j]; */
-/*         } */
-/*         if (m >= 4) { */
-/*           cmd->incr     = no; */
-/*         } else { */
-/*           cmd->incr     = yes; */
-/*         } */
-/*         cmd->type     = rmwcmd; */
-/*         cmd->verify   = yes; */
-/*         cmd->ack      = yes; */
-/*         cmd->destaddr = 0x14; */
-/*         cmd->destkey  = 0xBF; */
-/*         cmd->srcaddr  = 0x14; */
-/*         cmd->tid      = i; */
-/*         cmd->addr     = (int)&(rx0[(m%4)]); */
-/*         cmd->len      = i; */
-/*         cmd->status   = 0; */
-/*         cmd->dstspalen = 0; */
-/*         cmd->dstspa  = (char *)NULL; */
-/*         cmd->srcspalen = 0; */
-/*         cmd->srcspa = (char *)NULL; */
-/*         if (build_rmap_hdr(cmd, tx0, cmdsize)) { */
-/*           printf("RMAP cmd build failed\n"); */
-/*           exit(1); */
-/*         } */
-/*         reply->type     = rmwrep; */
-/*         reply->verify   = yes; */
-/*         reply->ack      = yes; */
-/*         if (m >= 4) { */
-/*           reply->incr     = no; */
+    for(i = 0; i < 64; i++) {
+      for(m = 0; m < 8; m++) {
+        for(j = 0; j < i; j++) {
+          tx1[j]  = ~tx1[j];
+        }
+        if (m >= 4) {
+          cmd->incr     = no;
+        } else {
+          cmd->incr     = yes;
+        }
+        cmd->type     = rmwcmd;
+        cmd->verify   = yes;
+        cmd->ack      = yes;
+        cmd->destaddr = 0x14;
+        cmd->destkey  = 0xBF;
+        cmd->srcaddr  = 0x14;
+        cmd->tid      = i;
+        cmd->addr     = (int)&(rx0[(m%4)]);
+        cmd->len      = i;
+        cmd->status   = 0;
+        cmd->dstspalen = 0;
+        cmd->dstspa  = (char *)NULL;
+        cmd->srcspalen = 0;
+        cmd->srcspa = (char *)NULL;
+        if (build_rmap_hdr(cmd, tx0, cmdsize)) {
+          printf("RMAP cmd build failed\n");
+          exit(1);
+        }
+        reply->type     = rmwrep;
+        reply->verify   = yes;
+        reply->ack      = yes;
+        if (m >= 4) {
+          reply->incr     = no;
                                         
-/*         } else { */
-/*           reply->incr     = yes; */
-/*         } */
-/*         if ( (((((int)&(rx0[(m%4)])) % 2) != 0) && ((cmd->len/2) == 2)) || */
-/*              (((((int)&(rx0[(m%4)])) % 4) != 0) && ((cmd->len/2) == 4)) || */
-/*              ((cmd->len/2) == 3) ) { */
-/*           reply->status   = 10; */
-/*         } else { */
-/*           reply->status   = 0; */
-/*         } */
-/*         if ( (cmd->len != 0) && (cmd->len != 2) && (cmd->len != 4) && */
-/*              (cmd->len != 6) && (cmd->len != 8)) { */
-/*           reply->status = 11; */
-/*         } */
-/*         if (m >= 4) { */
-/*           reply->status = 2; */
-/*         } */
-/*         if (reply->status == 0) { */
-/*           for(k = 0; k < (i/2); k++) { */
-/*             rx2[*replysize+1+k] = rx0[k+m]; */
-/*           } */
-/*         } */
-/*         reply->destaddr = 0x14; */
-/*         reply->destkey  = 0XBF; */
-/*         reply->srcaddr  = 0x14; */
-/*         reply->tid      = i; */
-/*         reply->addr     = (int)&(rx0[(m%4)]); */
-/*         if (reply->status == 0) { */
-/*           reply->len      = (i/2); */
-/*         } else { */
-/*           reply->len      = 0; */
-/*         } */
-/*         reply->dstspalen = 0; */
-/*         reply->dstspa  = (char *)NULL; */
-/*         reply->srcspalen = 0; */
-/*         reply->srcspa = (char *)NULL; */
-/*         if (build_rmap_hdr(reply, rx2, replysize)) { */
-/*           printf("RMAP reply build failed\n"); */
-/*           exit(1); */
-/*         } */
-/*         while (spw_rx(rx1, spw)) { */
-/*           for (k = 0; k < 64; k++) {} */
-/*         } */
-/*         if (spw_tx(1, 1, 0, *cmdsize, tx0, j, tx1, spw)) { */
-/*           printf("Transmission failed\n"); */
-/*           exit(1); */
-/*         } */
-/*         while (!(tmp = spw_checktx(spw))) { */
-/*           for (k = 0; k < 64; k++) {} */
-/*         } */
-/*         if (tmp != 1) { */
-/*           printf("Error in transmit \n"); */
-/*           exit(1); */
-/*         } */
-/*         while (!(tmp = spw_checkrx(size, rxs, spw))) { */
-/*           for (k = 0; k < 64; k++) {} */
-/*         } */
-/*         if (rxs->truncated) { */
-/*           printf("Received packet truncated\n"); */
-/*           exit(1); */
-/*         } */
-/*         if(rxs->eep) { */
-/*           printf("Received packet terminated with eep\n"); */
-/*           exit(1); */
-/*         } */
-/*         if(rxs->hcrcerr) { */
-/*           printf("Received packet header crc error detected\n"); */
-/*           exit(1); */
-/*         } */
-/*         if(rxs->dcrcerr) { */
-/*           printf("Received packet data crc error detected\n"); */
-/*           exit(1); */
-/*         } */
-/*         if ((reply->status == 0) && (i != 0)) { */
-/*           if (*size != (*replysize+1+(i/2)+1)) { */
-/*             printf("Received packet has wrong length\n"); */
-/*             printf("Expected: %i, Got: %i \n", *replysize+2+(i/2), *size); */
-/*             exit(1); */
-/*           } */
-/*         } else { */
-/*           if (*size != (*replysize+1)) { */
-/*             printf("Received packet has wrong length\n"); */
-/*             printf("Expected: %i, Got: %i \n", *replysize+1, *size); */
-/*             exit(1); */
-/*           } */
-/*         } */
-/*         for(k = 0; k < *replysize; k++) { */
-/*           if (loadb((int)&(rx1[k])) != rx2[k]) { */
-/*             printf("Compare error 0: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx1[k])), (unsigned)rx2[k]); */
-/*             exit(1); */
-/*           } */
-/*         } */
-/*         if (reply->status == 0) { */
-/*           for(k = *replysize+1; k < *replysize+1+(i/2); k++) { */
-/*             if (loadb((int)&(rx1[k])) != rx2[k]) { */
-/*               printf("Compare error 1: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx1[k])), (unsigned)rx2[k]); */
-/*               exit(1); */
-/*             } */
-/*           } */
-/*           for(k = 0; k < (i/2); k++) { */
-/*             if (loadb((int)&(rx0[k+(m%4)])) != ((tx1[k] & tx1[k+(i/2)]) | (rx2[*replysize+1+k] & ~tx1[k+(i/2)]) )) { */
-/*               printf("Compare error 2: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx0[k+(m%4)])), (unsigned)tx1[k]); */
-/*               exit(1); */
-/*             } */
-/*           } */
+        } else {
+          reply->incr     = yes;
+        }
+        if ( (((((int)&(rx0[(m%4)])) % 2) != 0) && ((cmd->len/2) == 2)) ||
+             (((((int)&(rx0[(m%4)])) % 4) != 0) && ((cmd->len/2) == 4)) ||
+             ((cmd->len/2) == 3) ) {
+          reply->status   = 10;
+        } else {
+          reply->status   = 0;
+        }
+        if ( (cmd->len != 0) && (cmd->len != 2) && (cmd->len != 4) &&
+             (cmd->len != 6) && (cmd->len != 8)) {
+          reply->status = 11;
+        }
+        if (m >= 4) {
+          reply->status = 2;
+        }
+        if (reply->status == 0) {
+          for(k = 0; k < (i/2); k++) {
+            rx2[*replysize+1+k] = rx0[k+m];
+          }
+        }
+        reply->destaddr = 0x14;
+        reply->destkey  = 0XBF;
+        reply->srcaddr  = 0x14;
+        reply->tid      = i;
+        reply->addr     = (int)&(rx0[(m%4)]);
+        if (reply->status == 0) {
+          reply->len      = (i/2);
+        } else {
+          reply->len      = 0;
+        }
+        reply->dstspalen = 0;
+        reply->dstspa  = (char *)NULL;
+        reply->srcspalen = 0;
+        reply->srcspa = (char *)NULL;
+        if (build_rmap_hdr(reply, rx2, replysize)) {
+          printf("RMAP reply build failed\n");
+          exit(1);
+        }
+        while (spw_rx(0, rx1, spw)) {
+          for (k = 0; k < 64; k++) {}
+        }
+        if (spw_tx(0, 1, 1, 0, *cmdsize, tx0, j, tx1, spw)) {
+          printf("Transmission failed\n");
+          exit(1);
+        }
+        while (!(tmp = spw_checktx(0, spw))) {
+          for (k = 0; k < 64; k++) {}
+        }
+        if (tmp != 1) {
+          printf("Error in transmit \n");
+          exit(1);
+        }
+        while (!(tmp = spw_checkrx(0, size, rxs, spw))) {
+          for (k = 0; k < 64; k++) {}
+        }
+        if (rxs->truncated) {
+          printf("Received packet truncated\n");
+          exit(1);
+        }
+        if(rxs->eep) {
+          printf("Received packet terminated with eep\n");
+          exit(1);
+        }
+        if(rxs->hcrcerr) {
+          printf("Received packet header crc error detected\n");
+          exit(1);
+        }
+        if(rxs->dcrcerr) {
+          printf("Received packet data crc error detected\n");
+          exit(1);
+        }
+        if ((reply->status == 0) && (i != 0)) {
+          if (*size != (*replysize+1+(i/2)+1)) {
+            printf("Received packet has wrong length\n");
+            printf("Expected: %i, Got: %i \n", *replysize+2+(i/2), *size);
+            exit(1);
+          }
+        } else {
+          if (*size != (*replysize+1)) {
+            printf("Received packet has wrong length\n");
+            printf("Expected: %i, Got: %i \n", *replysize+1, *size);
+            exit(1);
+          }
+        }
+        for(k = 0; k < *replysize; k++) {
+          if (loadb((int)&(rx1[k])) != rx2[k]) {
+            printf("Compare error 0: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx1[k])), (unsigned)rx2[k]);
+            exit(1);
+          }
+        }
+        if (reply->status == 0) {
+          for(k = *replysize+1; k < *replysize+1+(i/2); k++) {
+            if (loadb((int)&(rx1[k])) != rx2[k]) {
+              printf("Compare error 1: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx1[k])), (unsigned)rx2[k]);
+              exit(1);
+            }
+          }
+          for(k = 0; k < (i/2); k++) {
+            if (loadb((int)&(rx0[k+(m%4)])) != ((tx1[k] & tx1[k+(i/2)]) | (rx2[*replysize+1+k] & ~tx1[k+(i/2)]) )) {
+              printf("Compare error 2: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx0[k+(m%4)])), (unsigned)tx1[k]);
+              exit(1);
+            }
+          }
                                         
-/*         } */
-/*         if (((i % 4) == 0) && ((m % 8) == 0)) { */
-/*           printf("Packet  %i, alignment %i\n", i, m); */
-/*         } */
-/*       } */
-/*     } */
-/*     printf("RMW test passed\n"); */
+        }
+        if (((i % 4) == 0) && ((m % 8) == 0)) {
+          printf("Packet  %i, alignment %i\n", i, m);
+        }
+      }
+    }
+    printf("RMW test passed\n");
 
-/*     for(i = 0; i < RMAPSIZE; i++) { */
-/*       for(m = 0; m < 8; m++) { */
-/*         for(j = 0; j < i+4; j++) { */
-/*           rx0[j]  = ~rx0[j]; */
-/*         } */
-/*         if (m >= 4) { */
-/*           cmd->incr     = no; */
-/*         } else { */
-/*           cmd->incr     = yes; */
-/*         } */
-/*         cmd->type     = readcmd; */
-/*         cmd->verify   = no; */
-/*         cmd->ack      = yes; */
-/*         cmd->destaddr = 0x14; */
-/*         cmd->destkey  = 0xBF; */
-/*         cmd->srcaddr  = 0x14; */
-/*         cmd->tid      = i; */
-/*         cmd->addr     = (int)&(rx0[(m%4)]); */
-/*         cmd->len      = i; */
-/*         cmd->status   = 0; */
-/*         cmd->dstspalen = 0; */
-/*         cmd->dstspa  = (char *)NULL; */
-/*         cmd->srcspalen = 0; */
-/*         cmd->srcspa = (char *)NULL; */
-/*         if (build_rmap_hdr(cmd, tx0, cmdsize)) { */
-/*           printf("RMAP cmd build failed\n"); */
-/*           exit(1); */
-/*         } */
-/*         reply->type     = readrep; */
-/*         reply->verify   = no; */
-/*         reply->ack      = yes; */
-/*         if (m >= 4) { */
-/*           reply->incr     = no; */
-/*           if ( ((((int)&(rx0[(m%4)])) % 4) != 0) || ((cmd->len % 4) != 0) )  { */
-/*             reply->status   = 10; */
-/*           } else { */
-/*             reply->status   = 0; */
-/*           } */
-/*         } else { */
-/*           reply->incr     = yes; */
-/*           reply->status   = 0; */
-/*         } */
-/*         if (reply->status == 0) { */
-/*           reply->len      = i; */
-/*         } else { */
-/*           reply->len      = 0; */
-/*         } */
-/*         reply->destaddr = 0x14; */
-/*         reply->destkey  = 0XBF; */
-/*         reply->srcaddr  = 0x14; */
-/*         reply->tid      = i; */
-/*         reply->addr     = (int)&(rx0[(m%4)]); */
-/*         reply->dstspalen = 0; */
-/*         reply->dstspa  = (char *)NULL; */
-/*         reply->srcspalen = 0; */
-/*         reply->srcspa = (char *)NULL; */
-/*         if (build_rmap_hdr(reply, rx2, replysize)) { */
-/*           printf("RMAP reply build failed\n"); */
-/*           exit(1); */
-/*         } */
-/*         while (spw_rx(rx1, spw)) { */
-/*           for (k = 0; k < 64; k++) {} */
-/*         } */
-/*         if (spw_tx(1, 0, 0, *cmdsize, tx0, 0, tx1, spw)) { */
-/*           printf("Transmission failed\n"); */
-/*           exit(1); */
-/*         } */
-/*         while (!(tmp = spw_checktx(spw))) { */
-/*           for (k = 0; k < 64; k++) {} */
-/*         } */
-/*         if (tmp != 1) { */
-/*           printf("Error in transmit \n"); */
-/*           exit(1); */
-/*         } */
-/*         while (!(tmp = spw_checkrx(size, rxs, spw))) { */
-/*           for (k = 0; k < 64; k++) {} */
-/*         } */
-/*         if (rxs->truncated) { */
-/*           printf("Received packet truncated\n"); */
-/*           exit(1); */
-/*         } */
-/*         if(rxs->eep) { */
-/*           printf("Received packet terminated with eep\n"); */
-/*           exit(1); */
-/*         } */
-/*         if(rxs->hcrcerr) { */
-/*           printf("Received packet header crc error detected\n"); */
-/*           exit(1); */
-/*         } */
-/*         if(rxs->dcrcerr) { */
-/*           printf("Received packet data crc error detected\n"); */
-/*           exit(1); */
-/*         } */
-/*         for (k = 0; k < *replysize; k++) { */
-/*           if (loadb((int)&(rx1[k])) != rx2[k]) { */
-/*             printf("Compare error 0: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx1[k])), (unsigned)rx2[k]); */
-/*             exit(1); */
-/*           } */
-/*         } */
-/*         if ((reply->status) == 0 && (i != 0)) { */
-/*           if (*size != (*replysize+2+i)) { */
-/*             printf("Received packet has wrong length\n"); */
-/*             printf("Expected: %i, Got: %i \n", *replysize+2+i, *size); */
-/*           } */
-/*           if (cmd->incr == yes) { */
-/*             for(k = 0; k < i; k++) { */
-/*               if (loadb((int)&(rx1[*replysize+1+k])) != rx0[k+(m%4)]) { */
-/*                 printf("Compare error 1: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx1[*replysize+1+k])), (unsigned)rx0[k+(m%4)]); */
-/*                 exit(1); */
-/*               } */
-/*             } */
-/*           } else { */
-/*             for(k = 0; k < i; k++) { */
-/*               if (loadb((int)&(rx1[*replysize+1+k])) != rx0[(k%4)+(m%4)]) { */
-/*                 printf("Compare error 2: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx1[*replysize+1+k])), (unsigned)rx0[(k%4)+(m%4)]); */
-/*                 printf("Rx1: %x, Rx0: %x\n", (int)rx1, (int)rx0); */
-/*                 //exit(1); */
-/*               } */
-/*             } */
-/*           } */
-/*         } else { */
-/*           if (*size != (*replysize+1)) { */
-/*             printf("Received packet has wrong length\n"); */
-/*             printf("Expected: %i, Got: %i \n", *replysize+1, *size); */
-/*           } */
-/*         } */
-/*         if ((i % 512) == 0) { */
-/*           printf("Packet  %i, alignment %i\n", i, m); */
-/*         } */
-/*       } */
-/*     } */
-/*     printf("Read test passed\n"); */
+    for(i = 0; i < RMAPSIZE; i++) {
+      for(m = 0; m < 8; m++) {
+        for(j = 0; j < i+4; j++) {
+          rx0[j]  = ~rx0[j];
+        }
+        if (m >= 4) {
+          cmd->incr     = no;
+        } else {
+          cmd->incr     = yes;
+        }
+        cmd->type     = readcmd;
+        cmd->verify   = no;
+        cmd->ack      = yes;
+        cmd->destaddr = 0x14;
+        cmd->destkey  = 0xBF;
+        cmd->srcaddr  = 0x14;
+        cmd->tid      = i;
+        cmd->addr     = (int)&(rx0[(m%4)]);
+        cmd->len      = i;
+        cmd->status   = 0;
+        cmd->dstspalen = 0;
+        cmd->dstspa  = (char *)NULL;
+        cmd->srcspalen = 0;
+        cmd->srcspa = (char *)NULL;
+        if (build_rmap_hdr(cmd, tx0, cmdsize)) {
+          printf("RMAP cmd build failed\n");
+          exit(1);
+        }
+        reply->type     = readrep;
+        reply->verify   = no;
+        reply->ack      = yes;
+        if (m >= 4) {
+          reply->incr     = no;
+          if ( ((((int)&(rx0[(m%4)])) % 4) != 0) || ((cmd->len % 4) != 0) )  {
+            reply->status   = 10;
+          } else {
+            reply->status   = 0;
+          }
+        } else {
+          reply->incr     = yes;
+          reply->status   = 0;
+        }
+        if (reply->status == 0) {
+          reply->len      = i;
+        } else {
+          reply->len      = 0;
+        }
+        reply->destaddr = 0x14;
+        reply->destkey  = 0XBF;
+        reply->srcaddr  = 0x14;
+        reply->tid      = i;
+        reply->addr     = (int)&(rx0[(m%4)]);
+        reply->dstspalen = 0;
+        reply->dstspa  = (char *)NULL;
+        reply->srcspalen = 0;
+        reply->srcspa = (char *)NULL;
+        if (build_rmap_hdr(reply, rx2, replysize)) {
+          printf("RMAP reply build failed\n");
+          exit(1);
+        }
+        while (spw_rx(0, rx1, spw)) {
+          for (k = 0; k < 64; k++) {}
+        }
+        if (spw_tx(0, 1, 0, 0, *cmdsize, tx0, 0, tx1, spw)) {
+          printf("Transmission failed\n");
+          exit(1);
+        }
+        while (!(tmp = spw_checktx(0, spw))) {
+          for (k = 0; k < 64; k++) {}
+        }
+        if (tmp != 1) {
+          printf("Error in transmit \n");
+          exit(1);
+        }
+        while (!(tmp = spw_checkrx(0, size, rxs, spw))) {
+          for (k = 0; k < 64; k++) {}
+        }
+        if (rxs->truncated) {
+          printf("Received packet truncated\n");
+          exit(1);
+        }
+        if(rxs->eep) {
+          printf("Received packet terminated with eep\n");
+          exit(1);
+        }
+        if(rxs->hcrcerr) {
+          printf("Received packet header crc error detected\n");
+          exit(1);
+        }
+        if(rxs->dcrcerr) {
+          printf("Received packet data crc error detected\n");
+          exit(1);
+        }
+        for (k = 0; k < *replysize; k++) {
+          if (loadb((int)&(rx1[k])) != rx2[k]) {
+            printf("Compare error 0: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx1[k])), (unsigned)rx2[k]);
+            exit(1);
+          }
+        }
+        if ((reply->status) == 0 && (i != 0)) {
+          if (*size != (*replysize+2+i)) {
+            printf("Received packet has wrong length\n");
+            printf("Expected: %i, Got: %i \n", *replysize+2+i, *size);
+          }
+          if (cmd->incr == yes) {
+            for(k = 0; k < i; k++) {
+              if (loadb((int)&(rx1[*replysize+1+k])) != rx0[k+(m%4)]) {
+                printf("Compare error 1: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx1[*replysize+1+k])), (unsigned)rx0[k+(m%4)]);
+                exit(1);
+              }
+            }
+          } else {
+            for(k = 0; k < i; k++) {
+              if (loadb((int)&(rx1[*replysize+1+k])) != rx0[(k%4)+(m%4)]) {
+                printf("Compare error 2: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx1[*replysize+1+k])), (unsigned)rx0[(k%4)+(m%4)]);
+                printf("Rx1: %x, Rx0: %x\n", (int)rx1, (int)rx0);
+                //exit(1);
+              }
+            }
+          }
+        } else {
+          if (*size != (*replysize+1)) {
+            printf("Received packet has wrong length\n");
+            printf("Expected: %i, Got: %i \n", *replysize+1, *size);
+          }
+        }
+        if ((i % 512) == 0) {
+          printf("Packet  %i, alignment %i\n", i, m);
+        }
+      }
+    }
+    printf("Read test passed\n");
 
-/*     /\*late and early eop tests*\/ */
-/*     for(i = 0; i < RMAPSIZE; i++) { */
-/*       if (i < 16) { */
-/*         tmp = -i; */
-/*       } else { */
-/*         tmp = -16; */
-/*       } */
-/*       for (j = tmp; j < i; j++) { */
-/*         for (m = 0; m < 3; m++) { */
-/*           for(k = 0; k < i; k++) { */
-/*             tx1[k]  = ~tx1[k]; */
-/*           } */
-/*           if (m == 0) { */
-/*             cmd->type     = writecmd; */
-/*             cmd->verify   = no; */
-/*             reply->type   = writerep; */
-/*             reply->verify = no; */
-/*           } else if (m == 2) { */
-/*             cmd->type     = rmwcmd; */
-/*             cmd->verify   = yes; */
-/*             reply->type    = rmwrep; */
-/*             reply->verify = yes; */
-/*           } else { */
-/*             cmd->type     = writecmd; */
-/*             cmd->verify   = yes; */
-/*             reply->type    = writerep; */
-/*             reply->verify = yes; */
-/*           } */
-/*           cmd->incr     = yes; */
-/*           cmd->ack      = yes; */
-/*           cmd->destaddr = 0x14; */
-/*           cmd->destkey  = 0xBF; */
-/*           cmd->srcaddr  = 0x14; */
-/*           cmd->tid      = i; */
-/*           cmd->addr     = (int)rx0; */
-/*           cmd->len      = i; */
-/*           cmd->status   = 0; */
-/*           cmd->dstspalen = 0; */
-/*           cmd->dstspa  = (char *)NULL; */
-/*           cmd->srcspalen = 0; */
-/*           cmd->srcspa = (char *)NULL; */
-/*           if (build_rmap_hdr(cmd, tx0, cmdsize)) { */
-/*             printf("RMAP cmd build failed\n"); */
-/*             exit(1); */
-/*           } */
-/*           reply->len       = 0; */
-/*           if (j < 0 ) { */
-/*             reply->status = 5; */
-/*           } else if (j == 0) { */
-/*             reply->status = 0; */
+    /*late and early eop tests*/
+    for(i = 0; i < RMAPSIZE; i++) {
+      if (i < 16) {
+        tmp = -i;
+      } else {
+        tmp = -16;
+      }
+      for (j = tmp; j < i; j++) {
+        for (m = 0; m < 3; m++) {
+          for(k = 0; k < i; k++) {
+            tx1[k]  = ~tx1[k];
+          }
+          if (m == 0) {
+            cmd->type     = writecmd;
+            cmd->verify   = no;
+            reply->type   = writerep;
+            reply->verify = no;
+          } else if (m == 2) {
+            cmd->type     = rmwcmd;
+            cmd->verify   = yes;
+            reply->type    = rmwrep;
+            reply->verify = yes;
+          } else {
+            cmd->type     = writecmd;
+            cmd->verify   = yes;
+            reply->type    = writerep;
+            reply->verify = yes;
+          }
+          cmd->incr     = yes;
+          cmd->ack      = yes;
+          cmd->destaddr = 0x14;
+          cmd->destkey  = 0xBF;
+          cmd->srcaddr  = 0x14;
+          cmd->tid      = i;
+          cmd->addr     = (int)rx0;
+          cmd->len      = i;
+          cmd->status   = 0;
+          cmd->dstspalen = 0;
+          cmd->dstspa  = (char *)NULL;
+          cmd->srcspalen = 0;
+          cmd->srcspa = (char *)NULL;
+          if (build_rmap_hdr(cmd, tx0, cmdsize)) {
+            printf("RMAP cmd build failed\n");
+            exit(1);
+          }
+          reply->len       = 0;
+          if (j < 0 ) {
+            reply->status = 5;
+          } else if (j == 0) {
+            reply->status = 0;
                                                 
-/*           } else { */
-/*             reply->status = 6; */
-/*             for(l = 0; l < i; l++) { */
-/*               if ((int)tx1[l] != 0) { */
-/*                 reply->status = 4; */
-/*               } */
-/*             } */
-/*           } */
-/*           if(m == 2 ) { */
-/*             if((cmd->len != 0) && (cmd->len != 2) && (cmd->len != 4) && */
-/*                (cmd->len != 6) && (cmd->len != 8)) { */
-/*               reply->status = 11; */
-/*             } else if( (((cmd->len/2) == 2) && (cmd->addr % 2 != 0)) || */
-/*                        (((cmd->len/2) == 4) && (cmd->addr % 4 != 0)) || */
-/*                        ((cmd->len/2) == 3) ) { */
-/*               reply->status = 10; */
-/*             } else { */
-/*               if ((reply->status != 0) && (reply->status != 6)) { */
-/*                 reply->len = 0; */
-/*               } else { */
-/*                 reply->len = cmd->len/2; */
-/*               } */
-/*             } */
-/*           } else if (m != 0) { */
-/*             if(cmd->len > 4) { */
-/*               reply->status = 9; */
-/*             } else if( (((cmd->len) == 2) && (cmd->addr % 2 != 0)) || */
-/*                        (((cmd->len) == 4) && (cmd->addr % 4 != 0)) || */
-/*                        ((cmd->len) == 3) ) { */
-/*               reply->status = 10; */
-/*             } */
-/*           } */
-/*           reply->incr      = yes; */
-/*           reply->ack       = yes; */
-/*           reply->destaddr  = 0x14; */
-/*           reply->destkey   = 0xBF; */
-/*           reply->srcaddr   = 0x14; */
-/*           reply->tid       = i; */
-/*           reply->addr      = (int)rx0; */
-/*           reply->dstspalen = 0; */
-/*           reply->dstspa    = (char *) NULL; */
-/*           reply->srcspalen = 0; */
-/*           reply->srcspa    = (char *) NULL; */
-/*           if (build_rmap_hdr(reply, rx2, replysize)) { */
-/*             printf("RMAP reply build failed\n"); */
-/*             exit(1); */
-/*           } */
-/*           if ((reply->status == 0) || (reply->status == 6)) { */
-/*             for(k = 0; k < reply->len; k++) { */
-/*               rx2[*replysize+1+k] = loadb((int)&(rx0[k])); */
-/*             } */
-/*           } */
-/*           while (spw_rx(rx1, spw)) { */
-/*             for (k = 0; k < 64; k++) {} */
-/*           } */
-/*           if (spw_tx(1, 1, 0, *cmdsize, tx0, i+j, tx1, spw)) { */
-/*             printf("Transmission failed\n"); */
-/*             exit(1); */
-/*           } */
-/*           while (!(tmp = spw_checktx(spw))) { */
-/*             for (k = 0; k < 64; k++) {} */
-/*           } */
-/*           if (tmp != 1) { */
-/*             printf("Error in transmit \n"); */
-/*             exit(1); */
-/*           } */
-/*           while (!(tmp = spw_checkrx(size, rxs, spw))) { */
-/*             for (k = 0; k < 64; k++) {} */
-/*           } */
-/*           if (rxs->truncated) { */
-/*             printf("Received packet truncated\n"); */
-/*             exit(1); */
-/*           } */
-/*           if(rxs->eep) { */
-/*             printf("Received packet terminated with eep\n"); */
-/*             exit(1); */
-/*           } */
-/*           if(rxs->hcrcerr) { */
-/*             printf("Received packet header crc error detected\n"); */
-/*             exit(1); */
-/*           } */
-/*           if(rxs->dcrcerr) { */
-/*             printf("Received packet data crc error detected\n"); */
-/*             exit(1); */
-/*           } */
-/*           if (m == 2) { */
-/*             if ((i != 0) && ((reply->status == 0) || (reply->status == 6))) { */
-/*               tmp = reply->len+1; */
-/*             } else { */
-/*               tmp = 0; */
-/*             } */
-/*           } else { */
-/*             tmp = 0; */
-/*           } */
-/*           if (*size != (*replysize+1+tmp)) { */
-/*             printf("Received packet has wrong length\n"); */
-/*             printf("Expected: %i, Got: %i \n", *replysize+1+tmp, *size); */
-/*             exit(1); */
-/*           } */
-/*           if (tmp == 0) { */
-/*             tmp++; */
-/*           } */
-/*           for(k = 0; k < *replysize; k++) { */
-/*             if (loadb((int)&(rx1[k])) != rx2[k]) { */
-/*               if (k != 3) { */
-/*                 printf("Compare error 0: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx1[k])), (unsigned)rx2[k]); */
-/*                 printf("Packet  %i, type %i, offset: %i\n", i, m, j); */
-/*                 exit(1); */
-/*               } */
-/*             } */
-/*           } */
-/*           if ((reply->status == 0) || (reply->status == 6)) { */
-/*             if (m == 2) { */
-/*               for(k = 0; k < reply->len; k++) { */
-/*                 if (loadb((int)&(rx1[k+*replysize+1])) != rx2[k+*replysize+1]) { */
-/*                   printf("Compare error 2: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx1[k+*replysize+1])), (unsigned)rx2[k+*replysize+1]); */
-/*                   printf("Rx0: %x, Rx1: %x, Rx2: %x\n", (int)rx0, (int)rx1, (int)rx2); */
-/*                   exit(1); */
-/*                 } */
-/*               } */
-/*               for(k = 0; k < (reply->len/2); k++) { */
-/*                 if (loadb((int)&(rx0[k])) != ((tx1[k] & tx1[k+(i/2)]) | (rx2[*replysize+1+k] & ~tx1[k+(i/2)]) )) { */
-/*                   printf("Compare error 3: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx0[k])), (unsigned)tx1[k]); */
-/*                   exit(1); */
-/*                 } */
-/*               } */
-/*             } else { */
-/*               for (k = 0; k < i; k++) { */
-/*                 if (loadb((int)&(rx0[k])) != tx1[k]) { */
-/*                   printf("Compare error 1: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx0[k])), (unsigned)tx1[k]); */
-/*                   exit(1); */
-/*                 } */
-/*               } */
-/*             } */
-/*           } */
-/*           if (((i % 8) == 0) && (m == 0) && (j == 0)) { */
-/*             printf("Packet  %i, type %i, offset: %i\n", i, m, j); */
-/*           } */
-/*         } */
-/*       } */
+          } else {
+            reply->status = 6;
+            for(l = 0; l < i; l++) {
+              if ((int)tx1[l] != 0) {
+                reply->status = 4;
+              }
+            }
+          }
+          if(m == 2 ) {
+            if((cmd->len != 0) && (cmd->len != 2) && (cmd->len != 4) &&
+               (cmd->len != 6) && (cmd->len != 8)) {
+              reply->status = 11;
+            } else if( (((cmd->len/2) == 2) && (cmd->addr % 2 != 0)) ||
+                       (((cmd->len/2) == 4) && (cmd->addr % 4 != 0)) ||
+                       ((cmd->len/2) == 3) ) {
+              reply->status = 10;
+            } else {
+              if ((reply->status != 0) && (reply->status != 6)) {
+                reply->len = 0;
+              } else {
+                reply->len = cmd->len/2;
+              }
+            }
+          } else if (m != 0) {
+            if(cmd->len > 4) {
+              reply->status = 9;
+            } else if( (((cmd->len) == 2) && (cmd->addr % 2 != 0)) ||
+                       (((cmd->len) == 4) && (cmd->addr % 4 != 0)) ||
+                       ((cmd->len) == 3) ) {
+              reply->status = 10;
+            }
+          }
+          reply->incr      = yes;
+          reply->ack       = yes;
+          reply->destaddr  = 0x14;
+          reply->destkey   = 0xBF;
+          reply->srcaddr   = 0x14;
+          reply->tid       = i;
+          reply->addr      = (int)rx0;
+          reply->dstspalen = 0;
+          reply->dstspa    = (char *) NULL;
+          reply->srcspalen = 0;
+          reply->srcspa    = (char *) NULL;
+          if (build_rmap_hdr(reply, rx2, replysize)) {
+            printf("RMAP reply build failed\n");
+            exit(1);
+          }
+          if ((reply->status == 0) || (reply->status == 6)) {
+            for(k = 0; k < reply->len; k++) {
+              rx2[*replysize+1+k] = loadb((int)&(rx0[k]));
+            }
+          }
+          while (spw_rx(0, rx1, spw)) {
+            for (k = 0; k < 64; k++) {}
+          }
+          if (spw_tx(0, 1, 1, 0, *cmdsize, tx0, i+j, tx1, spw)) {
+            printf("Transmission failed\n");
+            exit(1);
+          }
+          while (!(tmp = spw_checktx(0, spw))) {
+            for (k = 0; k < 64; k++) {}
+          }
+          if (tmp != 1) {
+            printf("Error in transmit \n");
+            exit(1);
+          }
+          while (!(tmp = spw_checkrx(0, size, rxs, spw))) {
+            for (k = 0; k < 64; k++) {}
+          }
+          if (rxs->truncated) {
+            printf("Received packet truncated\n");
+            exit(1);
+          }
+          if(rxs->eep) {
+            printf("Received packet terminated with eep\n");
+            exit(1);
+          }
+          if(rxs->hcrcerr) {
+            printf("Received packet header crc error detected\n");
+            exit(1);
+          }
+          if(rxs->dcrcerr) {
+            printf("Received packet data crc error detected\n");
+            exit(1);
+          }
+          if (m == 2) {
+            if ((i != 0) && ((reply->status == 0) || (reply->status == 6))) {
+              tmp = reply->len+1;
+            } else {
+              tmp = 0;
+            }
+          } else {
+            tmp = 0;
+          }
+          if (*size != (*replysize+1+tmp)) {
+            printf("Received packet has wrong length\n");
+            printf("Expected: %i, Got: %i \n", *replysize+1+tmp, *size);
+            exit(1);
+          }
+          if (tmp == 0) {
+            tmp++;
+          }
+          for(k = 0; k < *replysize; k++) {
+            if (loadb((int)&(rx1[k])) != rx2[k]) {
+              if (k != 3) {
+                printf("Compare error 0: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx1[k])), (unsigned)rx2[k]);
+                printf("Packet  %i, type %i, offset: %i\n", i, m, j);
+                exit(1);
+              }
+            }
+          }
+          if ((reply->status == 0) || (reply->status == 6)) {
+            if (m == 2) {
+              for(k = 0; k < reply->len; k++) {
+                if (loadb((int)&(rx1[k+*replysize+1])) != rx2[k+*replysize+1]) {
+                  printf("Compare error 2: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx1[k+*replysize+1])), (unsigned)rx2[k+*replysize+1]);
+                  printf("Rx0: %x, Rx1: %x, Rx2: %x\n", (int)rx0, (int)rx1, (int)rx2);
+                  exit(1);
+                }
+              }
+              for(k = 0; k < (reply->len/2); k++) {
+                if (loadb((int)&(rx0[k])) != ((tx1[k] & tx1[k+(i/2)]) | (rx2[*replysize+1+k] & ~tx1[k+(i/2)]) )) {
+                  printf("Compare error 3: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx0[k])), (unsigned)tx1[k]);
+                  exit(1);
+                }
+              }
+            } else {
+              for (k = 0; k < i; k++) {
+                if (loadb((int)&(rx0[k])) != tx1[k]) {
+                  printf("Compare error 1: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx0[k])), (unsigned)tx1[k]);
+                  exit(1);
+                }
+              }
+            }
+          }
+          if (((i % 8) == 0) && (m == 0) && (j == 0)) {
+            printf("Packet  %i, type %i, offset: %i\n", i, m, j);
+          }
+        }
+      }
                         
-/*     } */
-/*     printf("Test 10 completed successfully\n"); */
+    }
+    printf("Test 10 completed successfully\n");
    } 
 
   /************************ TEST 11 **************************************/
@@ -1747,21 +1753,21 @@ int main(void)
           printf("RMAP cmd build failed\n");
           exit(1);
         }
-        while (spw_rx(rx1, spw)) {
+        while (spw_rx(0, rx1, spw)) {
           for (k = 0; k < 64; k++) {}
         }
-        if (spw_tx(1, 1, 0, *cmdsize, tx0, j, tx1, spw)) {
+        if (spw_tx(0, 1, 1, 0, *cmdsize, tx0, j, tx1, spw)) {
           printf("Transmission failed\n");
           exit(1);
         }
-        while (!(tmp = spw_checktx(spw))) {
+        while (!(tmp = spw_checktx(0, spw))) {
           for (k = 0; k < 64; k++) {}
         }
         if (tmp != 1) {
           printf("Error in transmit \n");
           exit(1);
         }
-        while (!(tmp = spw_checkrx(size, rxs, spw))) {
+        while (!(tmp = spw_checkrx(0, size, rxs, spw))) {
           for (k = 0; k < 64; k++) {}
         }
         if (rxs->truncated) {

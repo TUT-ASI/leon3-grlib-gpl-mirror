@@ -1163,7 +1163,7 @@ begin
 	rdatav(0) := ico.cfg;
       when others =>
 	rdatav(0) := cache_cfg(drepl, dsets, dlinesize, dsetsize, dsetlock, 
-		dsnoop, dlram, log2(dlramsize), dlramstart, mmuen);
+		dsnoop, dlram, dlramsize, dlramstart, mmuen);
       end case;
     end case;
 

@@ -11,8 +11,7 @@ PROGS = report_device apbuart divtest multest regtest \
 	base_test grfpu_test can_oc mmu mmu_asm pcitest greth atactrl \
 	amba dsu3 greth_api grcan \
 	spictrl i2cmst misc spimctrl svgactrl apbps2 \
-        i2cslv i2c $(EXTRA_PROGS)
-
+        i2cslv i2c  $(EXTRA_PROGS)
 
 OFILES = $(PROGS:%=%.o)
 

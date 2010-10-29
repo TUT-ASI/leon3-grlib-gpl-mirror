@@ -1,10 +1,21 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2006, Gaisler Research AB - all rights reserved.
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2010, Aeroflex Gaisler
 --
--- ANY USE OR REDISTRIBUTION IN PART OR IN WHOLE MUST BE HANDLED IN 
--- ACCORDANCE WITH THE GAISLER LICENSE AGREEMENT AND MUST BE APPROVED 
--- IN ADVANCE IN WRITING. 
+--  This program is free software; you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation; either version 2 of the License, or
+--  (at your option) any later version.
+--
+--  This program is distributed in the hope that it will be useful,
+--  but WITHOUT ANY WARRANTY; without even the implied warranty of
+--  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------
 -- Package: 	stdlib
 -- File:	stdlib.vhd
@@ -30,7 +41,10 @@ constant LIBVHDL_DATE : string := grlib_date;
 -- pragma translate_on
 constant zero32 : std_logic_vector(31 downto 0) := (others => '0');
 constant zero64 : std_logic_vector(63 downto 0) := (others => '0');
+constant zero128 : std_logic_vector(127 downto 0) := (others => '0');
 constant one32  : std_logic_vector(31 downto 0) := (others => '1');
+constant one64  : std_logic_vector(63 downto 0) := (others => '1');
+constant one128  : std_logic_vector(127 downto 0) := (others => '1');
 
 type log2arr is array(0 to 512) of integer;
 constant log2   : log2arr := (

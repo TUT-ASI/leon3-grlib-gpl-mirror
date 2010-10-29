@@ -136,7 +136,10 @@ architecture rtl of greth is
   signal ewdata       : std_logic_vector(31 downto 0);
   signal erdata       : std_logic_vector(31 downto 0);
   signal lmdio_oe     : std_ulogic;
-
+  -- Fix for wider bus
+  signal hwdata       : std_logic_vector(31 downto 0);
+  signal hrdata       : std_logic_vector(31 downto 0);
+  
 begin
   ethc0: grethc 
     generic map(
@@ -167,7 +170,7 @@ begin
       hgrant         => ahbmi.hgrant(hindex),
       hready         => ahbmi.hready,
       hresp          => ahbmi.hresp,
-      hrdata         => ahbmi.hrdata,
+      hrdata         => hrdata,
       --ahb mst out
       hbusreq        => ahbmo.hbusreq,
       hlock          => ahbmo.hlock,
@@ -177,7 +180,7 @@ begin
       hsize          => ahbmo.hsize,
       hburst         => ahbmo.hburst,
       hprot          => ahbmo.hprot,
-      hwdata         => ahbmo.hwdata,
+      hwdata         => hwdata,
       --apb slv in 
       psel	     => apbi.psel(pindex),
       penable	     => apbi.penable,
@@ -244,6 +247,9 @@ begin
     apbo.pirq(pirq) <= irq;
   end process;
 
+  hrdata <= ahbreadword(ahbmi.hrdata);
+  
+  ahbmo.hwdata <= ahbdrivedata(hwdata);
   ahbmo.hconfig <= hconfig;
   ahbmo.hindex  <= hindex;
   ahbmo.hirq    <= (others => '0');

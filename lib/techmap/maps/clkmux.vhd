@@ -57,7 +57,6 @@ begin
     xil : if is_unisim(tech) = 1 generate
       buf : clkmux_unisim port map(sel => seli, I0 => i0, I1 => i1, O => o);
     end generate;
-
     rhl : if tech = rhlib18t generate
       buf : clkmux_rhlib18t port map(sel => seli, I0 => i0, I1 => i1, O => o);
     end generate;

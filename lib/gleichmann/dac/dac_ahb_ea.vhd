@@ -101,7 +101,7 @@ begin
 
     if rst = '0' then v.hwrite := '0'; v.hready := '1'; end if;
     write                      <= bs; ramsel <= v.hsel or r.hwrite; ahbso.hready <= r.hready;
-    ramaddr                    <= haddr; c <= v; ahbso.hrdata <= ramdata;
+    ramaddr                    <= haddr; c <= v; ahbso.hrdata <= ahbdrivedata(ramdata);
 
   end process;
 
@@ -126,7 +126,7 @@ begin
 --    end if;
     elsif rising_edge(clk) then
       if r.hwrite = '1' then
-        memarr(conv_integer(ramaddr)) <= ahbsi.hwdata;
+        memarr(conv_integer(ramaddr)) <= ahbsi.hwdata(31 downto 0);
       end if;
       ra <= ramaddr(3 downto 0);
     end if;

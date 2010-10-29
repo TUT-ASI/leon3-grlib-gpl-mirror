@@ -40,9 +40,11 @@ entity clkgen is
     pcidll   : integer := 0;
     pcisysclk: integer := 0;
     freq     : integer := 25000;	-- clock frequency in KHz
-    clk2xen  : integer := 0;
-    clksel   : integer := 0;             -- enable clock select
-    clk_odiv : integer := 0);             -- Proasic3 output divider
+    clk2xen  : integer := 0;            
+    clksel   : integer := 0;            -- enable clock select
+    clk_odiv : integer := 1;            -- Proasic3/Fusion output divider clkA
+    clkb_odiv: integer := 0;            -- Proasic3/Fusion output divider clkB
+    clkc_odiv: integer := 0);           -- Proasic3/Fusion output divider clkC
   port (
     clkin   : in  std_logic;
     pciclkin: in  std_logic;
@@ -55,19 +57,16 @@ entity clkgen is
     cgo     : out clkgen_out_type;
     clk4x   : out std_logic;			-- 4x clock
     clk1xu  : out std_logic;			-- unscaled 1X clock
-    clk2xu  : out std_logic);			-- unscaled 2X clock
+    clk2xu  : out std_logic;			-- unscaled 2X clock
+    clkb    : out std_logic;            -- Proasic3/Fusion clkB
+    clkc    : out std_logic);           -- Proasic3/Fusion clkC
 end;
 
 architecture struct of clkgen is
 signal intclk, sdintclk : std_ulogic;
 signal lock : std_ulogic;
 begin
-  gen : if (is_unisim(tech) /= 1) and 
-	(tech /= altera) and (tech /= stratix1) and (tech /= apa3) and
-	(tech /= stratix2) and (tech /= stratix3) and
-	(tech /= cyclone3) and (tech /= axcel) and
-	(tech /= axdsp) and (tech /= proasic) and (tech /= rhlib18t) and
-	(tech /= rhumc) and (tech /= easic90) and (tech /= actfus) generate
+  gen : if (has_clkgen(tech) = 0) generate
     sdintclk <= pciclkin when (PCISYSCLK = 1 and PCIEN /= 0) else clkin;
     sdclk <= sdintclk; intclk <= sdintclk
 -- pragma translate_off
@@ -112,10 +111,39 @@ begin
    generic map (clk_mul, clk_div, sdramen, noclkfb, pcien, pcidll, pcisysclk, freq, clk2xen)
    port map (clkin, pciclkin, clk, clkn, clk2x, sdclk, pciclk, cgi, cgo);
   end generate;
-  act : if (tech = axcel) or (tech = axdsp) or (tech = proasic) generate
+  act : if (tech = axdsp) or (tech = proasic) generate
     intclk <= pciclkin when (PCISYSCLK = 1 and PCIEN /= 0) else clkin;
     sdclk <= '0'; pciclk <= pciclkin; clk <= intclk; clkn <= '0';
     cgo.clklock <= '1'; cgo.pcilock <= '1'; clk2x <= '0';
+  end generate;
+  axc : if (tech = axcel) generate
+    pll_disabled : if (clk_mul = clk_div) generate
+      intclk <= pciclkin when (PCISYSCLK = 1 and PCIEN /= 0) else clkin;
+      sdclk <= '0'; pciclk <= pciclkin; clk <= intclk; clkn <= '0';
+      cgo.clklock <= '1'; cgo.pcilock <= '1'; clk2x <= '0';
+    end generate;
+    pll_enabled : if (clk_mul /= clk_div) generate
+      clk2x <= '0';
+      pll : clkgen_axcelerator
+        generic map (
+          clk_mul   => clk_mul,
+          clk_div   => clk_div,
+          sdramen   => sdramen,
+          sdinvclk  => 0,
+          pcien     => pcien,
+          pcidll    => pcidll,
+          pcisysclk => pcisysclk,
+          freq      => freq)
+        port map(
+          clkin     => clkin,
+          pciclkin  => pciclkin,
+          clk       => clk,
+          clkn      => clkn,
+          sdclk     => sdclk,
+          pciclk    => pciclk,
+          cgi       => cgi,
+          cgo       => cgo);
+    end generate;
   end generate;
   lib18t : if (tech = rhlib18t) generate
     v : clkgen_rh_lib18t
@@ -127,13 +155,23 @@ begin
   end generate;
   ap3 : if tech = apa3 generate
     v : clkgen_proasic3
-    generic map (clk_mul, clk_div, clk_odiv, pcien, pcisysclk, freq)
-    port map (clkin, pciclkin, clk, sdclk, pciclk, cgi, cgo);
+    generic map (clk_mul, clk_div, clk_odiv, pcien, pcisysclk, freq, clkb_odiv, clkc_odiv)
+    port map (clkin, pciclkin, clk, sdclk, pciclk, cgi, cgo, clkb, clkc);
+  end generate;
+  ap3e : if tech = apa3e generate
+    v : clkgen_proasic3e
+    generic map (clk_mul, clk_div, clk_odiv, pcien, pcisysclk, freq, clkb_odiv, clkc_odiv)
+    port map (clkin, pciclkin, clk, sdclk, pciclk, cgi, cgo, clkb, clkc);
+  end generate;
+  ap3l : if tech = apa3l generate
+    v : clkgen_proasic3l
+    generic map (clk_mul, clk_div, clk_odiv, pcien, pcisysclk, freq, clkb_odiv, clkc_odiv)
+    port map (clkin, pciclkin, clk, sdclk, pciclk, cgi, cgo, clkb, clkc);
   end generate;
   fus : if tech = actfus generate
     v : clkgen_fusion
-    generic map (clk_mul, clk_div, clk_odiv, pcien, pcisysclk, freq)
-    port map (clkin, pciclkin, clk, sdclk, pciclk, cgi, cgo);
+    generic map (clk_mul, clk_div, clk_odiv, pcien, pcisysclk, freq, clkb_odiv, clkc_odiv)
+    port map (clkin, pciclkin, clk, sdclk, pciclk, cgi, cgo, clkb, clkc);
   end generate;
   dr : if (tech = rhumc)  generate
    v : clkgen_dare

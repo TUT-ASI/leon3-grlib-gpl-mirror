@@ -289,6 +289,7 @@ set_io erxd\[3\]        -iostd LVTTL                                          -p
 set_io etx_clk          -iostd LVTTL                                          -pinname 77    -fixed yes
 set_io etx_en           -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname 78    -fixed yes
 set_io etx_er           -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname 79    -fixed yes
+set_io emdint           -iostd LVTTL                                         -pinname 79    -fixed yes
 set_io etxd\[0\]        -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname 82    -fixed yes
 set_io etxd\[1\]        -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname 83    -fixed yes
 set_io etxd\[2\]        -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname 84    -fixed yes
@@ -308,6 +309,7 @@ set_io e0rxd\[3\]       -iostd LVTTL                                          -p
 set_io e0tx_clk         -iostd LVTTL                                          -pinname 77    -fixed yes
 set_io e0tx_en          -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname 78    -fixed yes
 set_io e0tx_er          -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname 79    -fixed yes
+set_io e0mdint          -iostd LVTTL                                         -pinname 79    -fixed yes
 set_io e0txd\[0\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname 82    -fixed yes
 set_io e0txd\[1\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname 83    -fixed yes
 set_io e0txd\[2\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname 84    -fixed yes
@@ -327,6 +329,7 @@ set_io e1rxd\[3\]       -iostd LVTTL                                          -p
 set_io e1tx_clk         -iostd LVTTL                                          -pinname 17    -fixed yes
 set_io e1tx_en          -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15     -pinname 18    -fixed yes
 set_io e1tx_er          -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15     -pinname 16    -fixed yes
+set_io e1mdint          -iostd LVTTL                                          -pinname 16    -fixed yes
 set_io e1txd\[0\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15     -pinname 10    -fixed yes
 set_io e1txd\[1\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15     -pinname 12    -fixed yes
 set_io e1txd\[2\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15     -pinname 11    -fixed yes

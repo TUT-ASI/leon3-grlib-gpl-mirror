@@ -1,6 +1,9 @@
 #ifndef CONFIG_SPICTRL_ENABLE
 #define CONFIG_SPICTRL_ENABLE 0
 #endif
+#ifndef CONFIG_SPICTRL_NUM
+#define CONFIG_SPICTRL_NUM 1
+#endif
 #ifndef CONFIG_SPICTRL_SLVS
 #define CONFIG_SPICTRL_SLVS 1
 #endif
@@ -18,4 +21,10 @@
 #endif
 #ifndef CONFIG_SPICTRL_ASEL
 #define CONFIG_SPICTRL_ASEL 0
+#endif
+#ifndef CONFIG_SPICTRL_TWEN
+#define CONFIG_SPICTRL_TWEN 0
+#endif
+#ifndef CONFIG_SPICTRL_MAXWLEN
+#define CONFIG_SPICTRL_MAXWLEN 0
 #endif

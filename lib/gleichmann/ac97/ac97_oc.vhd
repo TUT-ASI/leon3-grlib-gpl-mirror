@@ -290,7 +290,7 @@ begin
   htrans    <= ahbsi.HTRANS;
   hsize     <= ahbsi.HSIZE;
   hburst    <= ahbsi.HBURST;
-  hwdata    <= ahbsi.HWDATA;            --(7 downto 0);
+  hwdata    <= ahbreadword(ahbsi.HWDATA);
   hmaster   <= ahbsi.HMASTER;
   hmastlock <= ahbsi.HMASTLOCK;
 
@@ -298,7 +298,7 @@ begin
 -- fill ahb slave-out vector
   ahbso.HREADY  <= hready;
   ahbso.HRESP   <= hresp;
-  ahbso.HRDATA  <= hrdata;
+  ahbso.HRDATA  <= ahbdrivedata(hrdata);
   ahbso.HSPLIT  <= hsplit;              -- maybe better way (others => '0');
   ahbso.HCACHE  <= '0';
   ahbso.HCONFIG <= hconfig;

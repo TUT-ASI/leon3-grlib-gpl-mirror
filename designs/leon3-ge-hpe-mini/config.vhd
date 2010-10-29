@@ -2,8 +2,6 @@
 
 
 
-
-
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
 -- Copyright (C) 2009 Aeroflex Gaisler
@@ -202,5 +200,5 @@ package config is
 -- DAC_AHB enable
   constant CFG_DAC_AHB : integer := 1;
 -- GRLIB debugging
-  constant CFG_DUART : integer := 1;
+  constant CFG_DUART : integer := 0;
 end;

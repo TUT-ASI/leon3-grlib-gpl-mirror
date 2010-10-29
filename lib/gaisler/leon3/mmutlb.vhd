@@ -66,10 +66,7 @@ architecture rtl of mmutlb is
 
   type states  is (idle, match, walk, pack, flush, sync, diag, dofault);
   type tlb_rtype is record
-      s1_valid    : std_logic;
-
       s2_tlbstate : states;
-      s2_valid    : std_logic;
       s2_entry    : std_logic_vector(entries_log-1 downto 0);
       s2_hm       : std_logic;
       s2_needsync : std_logic;
@@ -78,7 +75,8 @@ architecture rtl of mmutlb is
       s2_su       : std_logic;
       s2_read     : std_logic;
       s2_flush    : std_logic;
-      
+      s2_ctx      : std_logic_vector(M_CTX_SZ-1 downto 0);
+
       walk_use       : std_logic;
       walk_transdata : mmuidc_data_out_type;
       walk_fault     : mmutlbfault_out_type;
@@ -87,6 +85,7 @@ architecture rtl of mmutlb is
       tpos        : std_logic_vector(entries_log-1 downto 0);
       touch       : std_logic;
       sync_isw    : std_logic;
+      tlbmiss     : std_logic;
   end record;
   signal c,r   : tlb_rtype;
 
@@ -130,7 +129,7 @@ architecture rtl of mmutlb is
 
 begin
 
-  p0: process (clk, rst, r, c, tlbi, two, tlbcamo, dr1_dataout, lruo)
+  p0: process (rst, r, tlbi, two, tlbcamo, dr1_dataout, lruo)
     variable v                    : tlb_rtype;
     variable finish, selstate      : std_logic;
 
@@ -205,8 +204,7 @@ begin
     variable cam_addr     : std_logic_vector(31 downto 0);
   begin
 
-    v := r;
-
+    v := r; v.tlbmiss := '0';
     cam_addr := tlbi.transdata.data;
 
     wb_i_entry := 0;
@@ -346,7 +344,7 @@ begin
     end loop;
     
     -- tlbcam write operation
-    tlbcam_tagwrite := TLB_CreateCamWrite( two.data, r.s2_read, two.lvl, tlbi.mmctrl1.ctx, r.s2_data);
+    tlbcam_tagwrite := TLB_CreateCamWrite( two.data, r.s2_read, two.lvl, r.s2_ctx, r.s2_data);
     
     -- replacement position
     reppos := (others => '0');
@@ -395,7 +393,7 @@ begin
               
             else
 	      v.s2_entry := reppos;
-              v.s2_tlbstate := walk;
+              v.s2_tlbstate := walk; v.tlbmiss := '1';
               if tlb_rep = 0 then
                 lrui_touchmin := '1';             -- lru element consumed
               end if;
@@ -545,6 +543,7 @@ begin
       v.s2_su := tlbi.transdata.su;
       v.s2_isid := tlbi.transdata.isid;
       v.s2_flush := tlbi.flush_op;
+      v.s2_ctx := tlbi.mmctrl1.ctx;
     end if;
 
     -- translation operation tag
@@ -587,6 +586,7 @@ begin
     twi.areq_ur       <= twi_areq_ur;
     twi.adata         <= twi_adata;
     twi.aaddr         <= twi_aaddr;
+    twi.tlbmiss       <= r.tlbmiss;
 
     if tlb_rep = 0 then
       lrui.flush        <= r.s2_flush;
@@ -622,6 +622,7 @@ begin
       tlbcami(i).tagwrite  <= tlbcam_reg_none;
       tlbcami(i).write_op  <= '0';
       tlbcami(i).mset  <= '0';
+      tlbcami(i).mmctrl    <= mmctrl_type1_none;
     end loop;
     
     c <= v;

@@ -159,7 +159,7 @@ begin
 
     v := r; startsd := '0'; v.hresp := HRESP_OKAY; vbdrive := rbdrive; 
     v.hrdata(31 downto 0) := sdi.data(31 downto 0); 
-    v.hwdata := ahbsi.hwdata; v.qdrive :='0';
+    v.hwdata := ahbreadword(ahbsi.hwdata); v.qdrive :='0';
 
     if ((ahbsi.hready and ahbsi.hsel(hindex)) = '1') then
       v.size := ahbsi.hsize(1 downto 0); v.hwrite := ahbsi.hwrite;
@@ -504,7 +504,7 @@ begin
     
     ahbso.hready  <= r.hready;
     ahbso.hresp   <= r.hresp;
-    ahbso.hrdata  <= dout;
+    ahbso.hrdata  <= ahbdrivedata(dout);
     ahbso.hcache  <= not r.hio;
 
 

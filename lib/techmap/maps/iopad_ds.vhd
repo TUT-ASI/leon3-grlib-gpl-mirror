@@ -59,8 +59,16 @@ begin
     x0 : unisim_iopad_ds generic map (level, slew, voltage, strength)
 	 port map (padp, padn, i, oen, o);
   end generate;
-  pa : if (tech = apa3) generate
+  pa3 : if (tech = apa3) generate
     x0 : apa3_iopad_ds generic map (level)
+	 port map (padp, padn, i, oen, o);
+  end generate;
+  pa3e : if (tech = apa3e) generate
+    x0 : apa3e_iopad_ds generic map (level)
+	 port map (padp, padn, i, oen, o);
+  end generate;
+  pa3l : if (tech = apa3l) generate
+    x0 : apa3l_iopad_ds generic map (level)
 	 port map (padp, padn, i, oen, o);
   end generate;
   fus : if (tech = actfus) generate

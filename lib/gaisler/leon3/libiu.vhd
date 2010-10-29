@@ -97,6 +97,7 @@ type icache_out_type is record
   mds              : std_ulogic;			-- memory data strobe
   cfg              : std_logic_vector(31 downto 0);
   idle             : std_ulogic;			-- idle mode
+  cstat            : l3_cstat_type;
 end record;
 
 type icdiag_in_type is record
@@ -148,19 +149,6 @@ type dcache_out_type is record
   scanen           : std_ulogic;
   testen           : std_ulogic;
 end record;
-
-type tracebuf_in_type is record 
-  addr             : std_logic_vector(11 downto 0);
-  data             : std_logic_vector(127 downto 0);
-  enable           : std_logic;
-  write            : std_logic_vector(3 downto 0);
-  diag             : std_logic_vector(3 downto 0);
-end record;
-
-type tracebuf_out_type is record 
-  data             : std_logic_vector(127 downto 0);
-end record;                           
-
 
 component iu3
   generic (
@@ -214,14 +202,6 @@ component iu3
     sclk   : in  std_ulogic
   );
 end component;
-
-  component tbufmem 
-  generic ( tech   : integer := 0; tbuf  : integer := 0; testen: integer := 0);
-  port (
-    clk : in std_ulogic;
-    di  : in tracebuf_in_type;
-    do  : out tracebuf_out_type);
-  end component;
 
 -- disassembly dummy module
 

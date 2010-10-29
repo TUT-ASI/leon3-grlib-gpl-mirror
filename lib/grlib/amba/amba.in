@@ -11,5 +11,6 @@ comment 'AMBA configuration'
     bool 'Report AHB errors                  ' CONFIG_AHB_MONERR
     bool 'Report AHB warings                 ' CONFIG_AHB_MONWAR
   fi
+  bool 'Write trace to simulation console    ' CONFIG_AHB_DTRACE
 endmenu
 

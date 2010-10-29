@@ -98,9 +98,11 @@ begin
   variable hresp : std_logic_vector(1 downto 0);
   variable lcs, dataout : std_logic_vector(7 downto 0);    
   variable irqvec : std_logic_vector(NAHBIRQ-1 downto 0);
+  variable hwdata : std_logic_vector(31 downto 0);
   begin
 
     v := r;
+    hwdata := ahbreadword(ahbsi.hwdata, r.haddr(4 downto 2));
     if (r.hsel = '1' ) and (r.ws /= "11") then v.ws := r.ws + 1; end if;
 
     if ahbsi.hready = '1' then
@@ -122,10 +124,10 @@ begin
     else hresp := HRESP_OKAY; end if;
 
     case r.haddr(1 downto 0) is
-    when "00" => v.hwdata := ahbsi.hwdata(31 downto 24);
-    when "01" => v.hwdata := ahbsi.hwdata(23 downto 16);
-    when "10" => v.hwdata := ahbsi.hwdata(15 downto 8);
-    when others => v.hwdata := ahbsi.hwdata(7 downto 0);
+    when "00" => v.hwdata := hwdata(31 downto 24);
+    when "01" => v.hwdata := hwdata(23 downto 16);
+    when "10" => v.hwdata := hwdata(15 downto 8);
+    when others => v.hwdata := hwdata(7 downto 0);
     end case;
 
     if ncores > 1 then
@@ -144,7 +146,7 @@ begin
     else irqvec(irq) := orv(r.irqo); end if;
 
     ahbso.hirq <= irqvec;
-    ahbso.hrdata  <= dataout & dataout & dataout & dataout;
+    ahbso.hrdata  <= ahbdrivedata(dataout);
     cs <= lcs;
     ahbso.hresp <= hresp; rin <= v;
 

@@ -22,6 +22,13 @@
 -- Author:      Jiri Gaisler - Gaisler Research
 -- Description: AMBA AHB/APB bridge with plug&play support
 ------------------------------------------------------------------------------ 
+-- GRLIB2 CORE
+-- VENDOR:      VENDOR_GAISLER
+-- DEVICE:      GAISLER_APBMST
+-- VERSION:     0
+-- AHBSLAVE:    0
+-- BAR: 0       TYPE: 0010      PREFETCH: 0     CACHE: 0        DESC: APB_AREA
+-------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -121,7 +128,7 @@ begin
     when "00" => null;		-- idle
     when "01" =>
       if r.hwrite = '0' then v.penable := '1'; 
-      else v.pwdata := ahbi.hwdata; end if;
+      else v.pwdata := ahbreadword(ahbi.hwdata, r.haddr(4 downto 2)); end if;
       v.psel := '1'; v.state := "10";
     when others =>
       if r.penable = '0' then v.psel := '1'; v.penable := '1'; end if;
@@ -164,7 +171,7 @@ begin
 
     -- AHB respons
     ahbo.hready <= r.hready;
-    ahbo.hrdata <= r.prdata;
+    ahbo.hrdata <= ahbdrivedata(r.prdata);
     ahbo.hirq   <= pirq;
 
     if rst = '0' then

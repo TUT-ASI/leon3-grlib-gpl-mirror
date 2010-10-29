@@ -31,6 +31,8 @@ library techmap;
 use techmap.gencomp.all;
 library micron;
 use micron.components.all;
+library grlib;
+use grlib.stdlib.all;
 
 use work.config.all;	-- configuration
 
@@ -48,7 +50,7 @@ entity testbench is
     romwidth  : integer := 32;		-- rom data width (8/32)
     romdepth  : integer := 16;		-- rom address depth
     sramwidth  : integer := 32;		-- ram data width (8/16/32)
-    sramdepth  : integer := 16;		-- ram address depth
+    sramdepth  : integer := 20;		-- ram address depth
     srambanks  : integer := 2		-- number of ram banks
   );
   port (
@@ -163,6 +165,16 @@ signal usb_resetn  : std_ulogic;
 signal usb_nxt     : std_ulogic;
 signal usb_stp     : std_ulogic;
 signal usb_dir     : std_ulogic;
+
+-- GRUSB_DCL test signals
+signal ddelay : std_ulogic := '0';
+signal dstart : std_ulogic := '0';
+signal drw    : std_ulogic;
+signal daddr  : std_logic_vector(31 downto 0);
+signal dlen   : std_logic_vector(14 downto 0);
+signal ddi    : grusb_dcl_debug_data;
+signal ddone  : std_ulogic;
+signal ddo    : grusb_dcl_debug_data;
 
 begin
 
@@ -311,9 +323,46 @@ begin
 
   usbdevsim: if (CFG_GRUSBDC = 1) generate
     u0: grusbdcsim
-      generic map (functm => 0)
+      generic map (functm => 0, keepclk => 1)
       port map (usb_resetn, usb_clkout, usb_d, usb_nxt, usb_stp, usb_dir);
   end generate usbdevsim;
+
+  usb_dclsim: if (CFG_GRUSB_DCL = 1) generate
+    u0: grusb_dclsim
+      generic map (functm => 0, keepclk => 1)
+      port map (usb_resetn, usb_clkout, usb_d, usb_nxt, usb_stp, usb_dir,
+                ddelay, dstart, drw, daddr, dlen, ddi, ddone, ddo);
+    
+    usb_dcl_proc : process
+    begin
+      wait for 10 ns;
+      Print("GRUSB_DCL test started");
+
+      wait until rising_edge(ddone);
+
+      -- Write 128 bytes to memory
+      daddr <= X"40000000";
+      dlen  <= conv_std_logic_vector(32,15);
+      for i in 0 to 127 loop
+        ddi(i) <= conv_std_logic_vector(i+8,8);
+      end loop;  -- i
+      grusb_dcl_write(usb_clkout, drw, dstart, ddone);
+      
+      -- Read back written data
+      grusb_dcl_read(usb_clkout, drw, dstart, ddone);
+      
+      -- Compare data
+      for i in 0 to 127 loop
+        if ddo(i) /= ddi(i) then
+          Print("ERROR: Data mismatch using GRUSB_DCL");
+        end if;
+      end loop;
+
+      Print("GRUSB_DCL test finished");
+      
+      wait;
+    end process;    
+  end generate usb_dclsim;
   
   error <= 'H';			  -- ERROR pull-up
 

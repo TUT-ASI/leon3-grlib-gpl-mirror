@@ -249,7 +249,7 @@ begin
     ahbo.haddr   <= haddr ;
     ahbo.htrans  <= htrans;
     ahbo.hbusreq <= hbusreq and not r.lb and not (((r.bo and r.ba) or nb) and r.bg and nbo);
-    ahbo.hwdata  <= hwdata;
+    ahbo.hwdata  <= ahbdrivedata(hwdata);
     ahbo.hlock   <= hlock and mcdi.read;
     ahbo.hwrite  <= hwrite;
     ahbo.hsize   <= hsize;
@@ -279,7 +279,8 @@ begin
 
   end process;
 
-  mcio.data <= ahbi.hrdata; mcdo.data <= ahbi.hrdata;
+  mcio.data <= ahbreadword(ahbi.hrdata);
+  mcdo.data <= ahbreadword(ahbi.hrdata);
   ahbo.hirq    <= (others => '0');
   ahbo.hconfig <= hconfig;
 

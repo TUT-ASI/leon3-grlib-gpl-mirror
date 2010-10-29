@@ -56,5 +56,6 @@ divtest()
 	    if ((udiva[i].num / udiva[i].denom) != udiva[i].res) fail(2);
 	    i++;
 	}
+	if (!divpipe()) fail(3);
 	return(0);
 }

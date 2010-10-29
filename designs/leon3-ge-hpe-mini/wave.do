@@ -86,7 +86,6 @@ add wave -noupdate -format Literal /testbench/d3/etho2
 add wave -noupdate -format Literal /testbench/d3/gpti
 add wave -noupdate -format Literal /testbench/d3/sa
 add wave -noupdate -format Literal /testbench/d3/sd
-add wave -noupdate -format Literal /testbench/d3/edcli
 add wave -noupdate -format Logic /testbench/d3/dsubre
 add wave -noupdate -format Logic /testbench/d3/dsuact
 add wave -noupdate -format Logic /testbench/d3/oen_ctrl
@@ -105,49 +104,9 @@ add wave -noupdate -format Literal -radix hexadecimal /testbench/hpi_ram_1/mailb
 add wave -noupdate -format Literal -radix hexadecimal /testbench/hpi_ram_1/address_reg
 add wave -noupdate -format Literal -radix hexadecimal /testbench/hpi_ram_1/status_reg
 add wave -noupdate -divider AHB2HPI
-add wave -noupdate -format Logic -radix hexadecimal /testbench/d3/ahb2hpi2_1/hclk
-add wave -noupdate -format Logic -radix hexadecimal /testbench/d3/ahb2hpi2_1/hresetn
-add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/ahb2hpi2_1/ahbso
-add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/ahb2hpi2_1/ahbsi
-add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/ahb2hpi2_1/addr
-add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/ahb2hpi2_1/wdata
-add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/ahb2hpi2_1/rdata
-add wave -noupdate -format Logic -radix hexadecimal /testbench/d3/ahb2hpi2_1/ncs
-add wave -noupdate -format Logic -radix hexadecimal /testbench/d3/ahb2hpi2_1/nwr
-add wave -noupdate -format Logic -radix hexadecimal /testbench/d3/ahb2hpi2_1/nrd
-add wave -noupdate -format Logic -radix hexadecimal /testbench/d3/ahb2hpi2_1/int
-add wave -noupdate -format Logic -radix hexadecimal /testbench/d3/ahb2hpi2_1/dbg_equal
-add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/ahb2hpi2_1/c
-add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/ahb2hpi2_1/r
-add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/ahb2hpi2_1/rr
-add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/ahb2hpi2_1/in_data_probe
-add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/ahb2hpi2_1/out_data_probe
-add wave -noupdate -format Logic -radix hexadecimal /testbench/d3/ahb2hpi2_1/equality_probe
 add wave -noupdate -divider DAC_AHB
-add wave -noupdate -format Logic -radix hexadecimal /testbench/d3/dac_ahb_1/rst
-add wave -noupdate -format Logic -radix hexadecimal /testbench/d3/dac_ahb_1/clk
-add wave -noupdate -format Literal -radix hexadecimal -expand /testbench/d3/dac_ahb_1/ahbsi
-add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/dac_ahb_1/ahbso
-add wave -noupdate -format Logic -radix hexadecimal /testbench/d3/dac_ahb_1/dac_out
-add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/dac_ahb_1/r
-add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/dac_ahb_1/c
-add wave -noupdate -format Logic -radix hexadecimal /testbench/d3/dac_ahb_1/ramsel
-add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/dac_ahb_1/write
-add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/dac_ahb_1/ramaddr
-add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/dac_ahb_1/ramdata
-add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/dac_ahb_1/memarr
-add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/dac_ahb_1/ra
-add wave -noupdate -format Logic -radix hexadecimal /testbench/d3/dac_ahb_1/rstp
 add wave -noupdate -divider {DAC SigDelt}
-add wave -noupdate -format Logic /testbench/d3/dac_ahb_1/sigdelt_1/reset
-add wave -noupdate -format Logic /testbench/d3/dac_ahb_1/sigdelt_1/clock
-add wave -noupdate -format Literal /testbench/d3/dac_ahb_1/sigdelt_1/dac_in
-add wave -noupdate -format Logic /testbench/d3/dac_ahb_1/sigdelt_1/dac_out
-add wave -noupdate -format Literal /testbench/d3/dac_ahb_1/sigdelt_1/delta
-add wave -noupdate -format Literal /testbench/d3/dac_ahb_1/sigdelt_1/state
 add wave -noupdate -divider LEON3S
-add wave -noupdate -format Literal -radix hexadecimal -expand /testbench/d3/cpu__0/u0/ahbi
-add wave -noupdate -format Literal -radix hexadecimal -expand /testbench/d3/cpu__0/u0/ahbo
 add wave -noupdate -divider {Memory Controller}
 add wave -noupdate -format Literal -radix hexadecimal -expand /testbench/d3/mg2/sr1/ahbsi
 add wave -noupdate -format Literal -radix hexadecimal -expand /testbench/d3/mg2/sr1/ahbso

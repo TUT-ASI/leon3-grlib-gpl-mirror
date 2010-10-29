@@ -57,8 +57,16 @@ begin
 -- pragma translate_on
            else 'Z' after 2 ns;
   end generate;
-  pa : if (tech = apa3) generate
+  pa3 : if (tech = apa3) generate
     u0 : apa3_toutpad_ds generic map (level)
+      port map (padp, padn, i, oen);
+  end generate;
+  pa3e : if (tech = apa3e) generate
+    u0 : apa3e_toutpad_ds generic map (level)
+      port map (padp, padn, i, oen);
+  end generate;
+  pa3l : if (tech = apa3l) generate
+    u0 : apa3l_toutpad_ds generic map (level)
       port map (padp, padn, i, oen);
   end generate;
   fus : if (tech = actfus) generate

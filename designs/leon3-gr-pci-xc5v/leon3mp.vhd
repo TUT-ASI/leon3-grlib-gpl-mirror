@@ -274,7 +274,8 @@ begin
 	nahbm => CFG_NCPU+CFG_AHB_UART+log2x(CFG_PCI)+CFG_AHB_JTAG+
                CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM+
                CFG_GRUSBHC*(CFG_GRUSBHC_EHC+CFG_GRUSBHC_UHC)+
-               CFG_GRUSBDC*CFG_GRUSBDC_AIFACE,
+               CFG_GRUSBDC*CFG_GRUSBDC_AIFACE+
+               CFG_GRUSB_DCL,
 	nahbs => 8+CFG_GRUSBHC*CFG_GRUSBHC_UHC+CFG_GRUSBDC)
   port map (rstn, clkm, ahbmi, ahbmo, ahbsi, ahbso);
 
@@ -548,7 +549,7 @@ begin
 	port map (pci_arb_req, pci_arb_req_n);
     end generate;
 
-    pcipads0 : pcipads generic map (padtech => padtech)	-- PCI pads
+    pcipads0 : pcipads generic map (padtech => padtech, host => 0)	-- PCI pads
     port map ( pci_rst, pci_gnt, pci_idsel, pci_lock, pci_ad, pci_cbe,
       pci_frame, pci_irdy, pci_trdy, pci_devsel, pci_stop, pci_perr,
       pci_par, pci_req, pci_serr, pci_host, pci_66, pcii, pcio );

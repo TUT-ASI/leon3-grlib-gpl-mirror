@@ -1,3 +1,14 @@
 Gaisler Research SPI controller
 CONFIG_SPICTRL_ENABLE
-  Say Y here to enable the SPI controller
+  Say Y here to enable the SPI controller(s)
+
+CONFIG_SPICTRL_NUM
+  Number of SPI controllers to implement in design. Note that most
+  template designs are limited to one SPI controller.
+  Configuration options made here in xconfig will apply to all
+  implemented SPI controllers.
+
+CONFIG_SPICTRL_MAXWLEN
+  0: Core will support lengths up to 32 bits
+  1-2: Illegal values
+  3-15: Maximum word length will be value+1 (4-16)

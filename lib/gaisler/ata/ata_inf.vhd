@@ -71,7 +71,7 @@ type ctrl_to_bm_type is record
 end record;
 
 constant DMA_IN_RESET_VECTOR : ahb_dma_in_type :=
-  ((others=>'0'),(others=>'0'),'0','0','0','0','0',"10");
+  ((others=>'0'),(others=>'0'),'0','0','0','0','0',"010");
 
 type bmi_type is record
   fr_mst : ahb_dma_out_type;

@@ -6,10 +6,11 @@ include $(GRLIB)/boards/$(BOARD)/Makefile.inc
 DEVICE=$(PART)-$(PACKAGE)$(SPEED)
 #UCF=$(GRLIB)/boards/$(BOARD)/$(TOP).ucf
 UCF=leon3mp.ucf
-XSTOPT= -uc leon3mp.xcf
+XSTOPT="-uc leon3mp.xcf"
 SYNPOPT="set_option -pipe 1; set_option -retiming 1; set_option -write_apr_constraint 0"
 QSF=$(GRLIB)/boards/$(BOARD)/$(TOP).qsf
 EFFORT=high
+ISEMAPOPT="-m -timing"
 VHDLSYNFILES=config.vhd ahbrom.vhd leon3mp.vhd
 VHDLSIMFILES=testbench.vhd
 SIMTOP=testbench

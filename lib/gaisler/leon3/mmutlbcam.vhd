@@ -212,7 +212,7 @@ begin
     c <= v;
   end process p0;
   
-  p1: process (clk, c)
+  p1: process (clk)
   begin if rising_edge(clk) then r <= c; end if;
   end process p1;
   

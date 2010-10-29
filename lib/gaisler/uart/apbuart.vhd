@@ -23,6 +23,13 @@
 --              Marko Isomaki - Gaisler Research
 -- Description:	Asynchronous UART. Implements 8-bit data frame with one stop-bit.
 ------------------------------------------------------------------------------
+-- GRLIB2 CORE
+-- VENDOR:      VENDOR_GAISLER
+-- DEVICE:      GAISLER_APBUART
+-- VERSION:     1
+-- APB:         0
+-- BAR: 0       TYPE: 0010      PREFETCH: 0     CACHE: 0        DESC: IO_AREA
+-------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;

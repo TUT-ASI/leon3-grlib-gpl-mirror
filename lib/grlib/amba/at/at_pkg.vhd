@@ -39,9 +39,9 @@ package at_pkg is
 
   -- Ranges
   subtype ADDR_R is natural range 31 downto 0;
-  subtype DATA_R is natural range 31 downto 0;
+  subtype DATA_R is natural range (AHBDW-1) downto 0;
   subtype BANK_R is natural range 0 to 3;
-  subtype SIZE_R is natural range 1 downto 0;
+  subtype SIZE_R is natural range 2 downto 0;
   subtype BEAT_R is natural range 1 downto 0;
 
   -- constants for HBURST definition (used with at_mst_in_type.Beat)
@@ -50,15 +50,10 @@ package at_pkg is
   constant HINCR8:     Std_Logic_Vector(BEAT_R) := "10";
   constant HINCR16:    Std_Logic_Vector(BEAT_R) := "11";
 
-  -- constants for HSIZE definition (used with at_mst_in_type.Size)
-  constant HSIZE8:     Std_Logic_Vector(SIZE_R) := "00";
-  constant HSIZE16:    Std_Logic_Vector(SIZE_R) := "01";
-  constant HSIZE32:    Std_Logic_Vector(SIZE_R) := "10";
-
   -- Config for AHB Slave model generics
   constant AT_AHBSLV_MEM          : integer := 0;
   constant AT_AHBSLV_IO           : integer := 1;
-  constant AT_AHBSLV_FIXED_WS  : integer := 0;
+  constant AT_AHBSLV_FIXED_WS     : integer := 0;
   constant AT_AHBSLV_RANDOM_WS    : integer := 1;
 
   -- Accesses to the AHB slave's debug port are not clocked and rely on a
@@ -232,6 +227,8 @@ package at_pkg is
     anymst   : boolean;                      -- Response is valid for any master
     mst      : integer range 0 to NAHBMST-1; -- Master response is valid for
     delay    : integer;                      -- # accesses before response is valid
+    anyhprot : boolean;                      -- Response is valid for any hprot
+    hprot    : std_logic_vector(3 downto 0); -- HPROT response is valid for 
   end record;
   
   -- Debug port
@@ -323,7 +320,6 @@ package at_pkg is
       --Operation Scheduling Interface
       atmi:          in  at_ahb_mst_in_type;
       atmo:          out at_ahb_mst_out_type
-      
      );
    end component;
 
@@ -356,8 +352,9 @@ package at_pkg is
        mcheck      : integer := 1; --check memory map for intersects
        enebterm    : integer := 0; --enable early burst termination
        ebprob      : integer := 10; --probability of early bursttermination, lower value ->higher probability
-       ccheck      : integer range 0 to 1 := 1  --perform sanity checks on pnp config
-     );
+       ccheck      : integer range 0 to 1 := 1;  --perform sanity checks on pnp config
+       acdm        : integer := 0  --AMBA compliant data muxing (for hsize > word) 
+       );
      port (
        rst     : in  std_ulogic;
        clk     : in  std_ulogic;
@@ -368,7 +365,8 @@ package at_pkg is
        testen  : in  std_ulogic := '0';
        testrst : in  std_ulogic := '1';
        scanen  : in  std_ulogic := '0';
-       testoen : in  std_ulogic := '1'
+       testoen : in  std_ulogic := '1';
+       doarb   : in  std_ulogic := '0'
      );
    end component;
 

@@ -7,8 +7,8 @@ DEVICE=$(PART)-$(PACKAGE)$(SPEED)
 UCF=$(GRLIB)/boards/$(BOARD)/$(TOP).ucf
 QSF=$(GRLIB)/boards/$(BOARD)/$(TOP).qsf
 EFFORT=high
-XSTOPT=
-ISEMAPOPT=-timing
+XSTOPT=""
+ISEMAPOPT="-timing"
 VHDLSYNFILES=config.vhd leon3mp.vhd
 VHDLSIMFILES=testbench.vhd
 SIMTOP=testbench
@@ -22,7 +22,7 @@ TECHLIBS = unisim
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 \
 	tmtc openchip hynix cypress ihp gleichmann usbhc fmf spansion gsi
 DIRSKIP = b1553 leon2 leon2ft leon3ft crypto satcan ddr usb ata grusbhc haps \
-	slink ascs coremp7 ac97
+	leon4 leon4b64 l2cache iommu pcif slink ascs coremp7 ac97
 
 include $(GRLIB)/bin/Makefile
 include $(GRLIB)/software/leon3/Makefile

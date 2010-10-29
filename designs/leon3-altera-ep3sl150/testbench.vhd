@@ -32,6 +32,8 @@ library micron;
 use micron.components.all;
 library cypress;
 use cypress.components.all;
+library hynix;
+use hynix.components.all;
 
 use work.debug.all;
 
@@ -195,14 +197,17 @@ begin
     port map(a => ddr_dq(dbits-1 downto 0), b => ddr_dq2(dbits-1 downto 0));
 
   ddr2mem : for i in 0 to dbits/16-1 generate
-    u1 : ddr2 generic map(DEBUG => 0) 
+    u1 : HY5PS121621F
+      generic map (TimingCheckFlag => true, PUSCheckFlag => false,
+                   index => (1 + 2*(CFG_DDR2SP_DATAWIDTH/64))-i, 
+	           fname => sdramfile, bbits => CFG_DDR2SP_DATAWIDTH)
     PORT MAP(
-      ck => ddr_clk(0), ck_n => ddr_clkb(0), cke => ddr_cke(0), cs_n => ddr_csb(0),
-      ras_n => ddr_rasb, cas_n => ddr_casb, we_n => ddr_web, 
-      dm_rdqs => ddr_dm(i*2+1 downto i*2), ba => ddr_ba(1 downto 0),
+      clk => ddr_clk(0), clkb => ddr_clkb(0), cke => ddr_cke(0), 
+      csb => ddr_csb(0), rasb => ddr_rasb, casb => ddr_casb, web => ddr_web, 
+      LDM => ddr_dm(i*2), UDM => ddr_dm(i*2+1), ba => ddr_ba(1 downto 0),
       addr => ddr_ad(12 downto 0), dq => ddr_dq2(i*16+15 downto i*16),
-      dqs => ddr_dqsp(i*2+1 downto i*2), dqs_n => ddr_dqsn(i*2+1 downto i*2),
-      rdqs_n => ddr_rdqs(i*2+1 downto i*2), odt => ddr_odt(0));
+      LDQS  => ddr_dqsp(i*2), LDQSB => ddr_dqsn(i*2), UDQS => ddr_dqsp(i*2+1),
+      UDQSB => ddr_dqsn(i*2+1));
   end generate;
 
   -- 16 bit prom

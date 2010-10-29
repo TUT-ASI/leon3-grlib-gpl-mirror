@@ -33,12 +33,13 @@ use techmap.gencomp.all;
 package jtag is
 
 constant JTAG_MANF_ID_GR : integer range 0 to 2047 := 804;
+constant JTAG_NEXTREME   : integer range 0 to 65535 := 16#102#;
 constant JTAG_IHP25RH1   : integer range 0 to 65535 := 16#251#;
+constant JTAG_NGMP_PROTO : integer range 0 to 65535 := 16#281#;
+constant JTAG_ORBITA1    : integer range 0 to 65535 := 16#631#;
 constant JTAG_UT699RH    : integer range 0 to 65535 := 16#699#;
 constant JTAG_GR702      : integer range 0 to 65535 := 16#702#;
 constant JTAG_GR712      : integer range 0 to 65535 := 16#712#;
-constant JTAG_NEXTREME   : integer range 0 to 65535 := 16#102#;
-constant JTAG_ORBITA1    : integer range 0 to 65535 := 16#631#;
 
 component ahbjtag 
   generic (

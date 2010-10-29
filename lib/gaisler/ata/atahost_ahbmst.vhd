@@ -33,6 +33,7 @@ Library gaisler;
 Use gaisler.ata.all;
 Library grlib;
 Use grlib.stdlib.all;
+Use grlib.amba.ahbdrivedata;
 
 --************************ENTITY************************************************
 Entity atahost_ahbmst is
@@ -102,7 +103,7 @@ begin
               v.cur_base(15 downto 8):=i.fr_mst.rdata(23 downto 16);
               v.cur_base(7 downto 0):=i.fr_mst.rdata(31 downto 24);
             else --prd in mem is little endian
-              v.cur_base:=i.fr_mst.rdata; 
+              v.cur_base:=i.fr_mst.rdata(31 downto 0); 
             end if;
             v.adr_cnt:=conv_std_logic_vector(1,abits);
           elsif r.adr_cnt=conv_std_logic_vector(1,abits) then
@@ -161,7 +162,7 @@ begin
           end if;
         end if;
         if i.fr_mst.ready='1' and v.o.to_ctr.force_rdy='0' then
-          v.o.to_mst.address:=r.o.to_mst.address+4; o.d<=i.fr_mst.rdata;
+          v.o.to_mst.address:=r.o.to_mst.address+4; o.d<=i.fr_mst.rdata(31 downto 0);
           v.adr_cnt:=r.adr_cnt+1; v.cur_cnt:=r.cur_cnt+4; v.o.to_ctr.sel:='1';
           if r.adr_cnt=conv_std_logic_vector(fdepth-1,abits) then
             v.o.to_ctr.force_rdy:='1'; end if;
@@ -183,7 +184,7 @@ begin
       when BURST_TO_MEM =>
         v.o.to_ctr.sel:='0';
         if i.fr_mst.start='1' and v.o.to_ctr.force_rdy='0' then 
-          v_temp:=r.o.to_mst.address+4; o.to_mst.wdata<=i.fr_ctr.q;
+          v_temp:=r.o.to_mst.address+4; o.to_mst.wdata<=ahbdrivedata(i.fr_ctr.q);
           --abort burst due to PRD exhausted
           if r.cur_cnt+4>=r.cur_length then
             v.o.to_mst.start:='0'; v.o.to_mst.burst:='0'; end if;
@@ -255,8 +256,8 @@ begin
     o.to_ctr.sel<=v.o.to_ctr.sel;
     o.to_slv.err<=i.fr_mst.mexc; --2007-02-06
     
-    o.to_mst.wdata<=i.fr_ctr.q; --2006-11-16
-    o.d<=i.fr_mst.rdata; --2006-11-16
+    o.to_mst.wdata<=ahbdrivedata(i.fr_ctr.q); --2006-11-16
+    o.d<=i.fr_mst.rdata(31 downto 0); --2006-11-16
     
     ri<=v;
   end process comb;

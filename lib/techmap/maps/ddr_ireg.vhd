@@ -44,7 +44,7 @@ architecture rtl of ddr_ireg is
 begin
 
   inf : if not((is_unisim(tech) = 1) or (tech = axcel) or
-               (tech = axdsp) or (tech = apa3)) generate
+               (tech = axdsp) or (tech = apa3) or (tech = apa3e) or (tech = apa3l)) generate
     inf0 : gen_iddr_reg port map (Q1, Q2, C1, C2, CE, D, R, S);
   end generate;
 
@@ -52,8 +52,16 @@ begin
     axc0 : axcel_iddr_reg port map (Q1, Q2, C1, C2, CE, D, R, S);
   end generate;
 
-  pa : if (tech = apa3) generate
+  pa3 : if (tech = apa3) generate
     pa0 : apa3_iddr_reg port map (Q1, Q2, C1, C2, CE, D, R, S);
+  end generate;
+
+  pa3e : if (tech = apa3e) generate
+    pa0 : apa3e_iddr_reg port map (Q1, Q2, C1, C2, CE, D, R, S);
+  end generate;
+
+  pa3l : if (tech = apa3l) generate
+    pa0 : apa3l_iddr_reg port map (Q1, Q2, C1, C2, CE, D, R, S);
   end generate;
 
   xil : if is_unisim(tech) = 1 generate

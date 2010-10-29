@@ -26,9 +26,6 @@
 -- Library      : {independent}
 --
 -- Authors      : Aeroflex Gaisler AB
---                Kungsgatan 12
---                SE-411 19 Göteborg
---                Sweden
 --
 -- Contact      : mailto:support@gaisler.com
 --                http://www.aeroflex.com/gaisler
@@ -659,7 +656,7 @@ package body AMBA_TestPackage is
       AHBIn.HADDR       <= (others => '-');
       AHBIn.HWRITE      <= '0';
       AHBIn.HTRANS      <= HTRANS_IDLE;
-      AHBIn.HWDATA      <= Data;
+      AHBIn.HWDATA      <= ahbdrivedata(Data);
       AHBIn.HREADY      <= AHBOut.HREADY;
       AHBIn.HMBSEL      <= (others => '0');
       AHBIn.HMBSEL(HMBINDEX)  <= '1';
@@ -809,7 +806,7 @@ package body AMBA_TestPackage is
          Synchronise(HCLK);
       end loop;
 
-      Data              := AHBOut.HRDATA;
+      Data              := AHBOut.HRDATA(31 downto 0);
       if    AHBOut.HRESP=HRESP_ERROR then
          if ScreenOutput then
             Write(L, Now, Right, 15);
@@ -1225,7 +1222,7 @@ package body AMBA_TestPackage is
             -- data phase
             if AHBIn.HREADY='1' then
                if W='1' then
-                  M(Conv_Integer(A)) := AHBIn.HWDATA;
+                  M(Conv_Integer(A)) := AHBIn.HWDATA(31 downto 0);
                   W := '0';
                end if;
             end if;
@@ -1241,7 +1238,7 @@ package body AMBA_TestPackage is
                A              := AHBIn.HADDR(gAWidth-1 downto 2);
                AHBOut.HREADY  <= '1';
                AHBOut.HRESP   <= HRESP_OKAY;
-               AHBOut.HRDATA  <= M(Conv_Integer(A));
+               AHBOut.HRDATA  <= ahbdrivedata(M(Conv_Integer(A)));
             else
                W :='0';
                AHBOut.HREADY  <= '1';
@@ -1492,7 +1489,7 @@ package body AMBA_TestPackage is
                   A              := AHBIn.HADDR(gAWidth-1 downto 2);
                   AHBOut.HREADY  <= '1';
                   AHBOut.HRESP   <= HRESP_OKAY;
-                  AHBOut.HRDATA  <= M(Conv_Integer(A));
+                  AHBOut.HRDATA  <= ahbdrivedata(M(Conv_Integer(A)));
                elsif AHBInDiag.HRESP=HRESP_RETRY then
                   W              :='0';
                   AHBOut.HREADY  <= '0';

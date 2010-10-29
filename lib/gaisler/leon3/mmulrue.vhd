@@ -60,7 +60,7 @@ architecture rtl of mmulrue is
   signal c,r   : lru_rtype;
 begin  
   
-  p0: process (rst, r, c, lruei)
+  p0: process (rst, r, lruei)
     variable v : lru_rtype;
     variable ov : mmulrue_out_type;
   begin

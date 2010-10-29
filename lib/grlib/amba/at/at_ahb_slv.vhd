@@ -201,7 +201,17 @@ architecture sim of at_ahb_slv is
     end loop;  -- i
     return max;    
   end max_memsize;
- 
+
+  -- Debug levels
+
+  constant LISTMOD_DBGLVL : integer := 7;  -- Show list operations
+  constant DBGACC_DBGLVL : integer := 6;
+  constant AHBACC_DBGLVL : integer := 5;
+  
+  constant QUIET_DBGLVL  : integer := 0;
+  
+  constant INITIAL_DBGLVL : integer := QUIET_DBGLVL;
+  
   -----------------------------------------------------------------------------
   -- Types
   -----------------------------------------------------------------------------
@@ -216,6 +226,7 @@ architecture sim of at_ahb_slv is
     addr    : std_logic_vector(ADDR_R);
     bank    : std_logic_vector(BANK_R);
     size    : std_logic_vector(SIZE_R);
+    hprot   : std_logic_vector(3 downto 0);
     mst     : integer range 0 to NAHBMST-1;
     trans   : std_logic_vector(1 downto 0);
     mstlock : std_ulogic;
@@ -448,6 +459,7 @@ architecture sim of at_ahb_slv is
     variable rlen  : std_logic_vector(7 downto 0);
     variable rdata : std_logic_vector(0 to 16*8-1);
     variable addr  : integer;
+    variable data  : std_logic_vector(31 downto 0);
   begin  -- loadmem
     
     while not endfile(fload) loop
@@ -474,7 +486,8 @@ architecture sim of at_ahb_slv is
         
         for i in 0 to 3 loop
           if mem(addr+i) = NULL then
-            mem(addr+i) := new memory_word_type'(rdata(i*32 to i*32+31));
+            data := rdata(i*32 to i*32+31);
+            mem(addr+i) := new memory_word_type'(data);
           end if; 
         end loop; -- i
       end if;
@@ -482,26 +495,33 @@ architecture sim of at_ahb_slv is
   end loadmem;
 
   -- Description: Write data into memory array
+  -- Expects valid write data to be on low part of data vector
   procedure writemem (
     variable mem  : inout bank_ptr;
     constant addr : in    std_logic_vector(ADDR_R);
     constant data : in    std_logic_vector(DATA_R);
     constant size : in    std_logic_vector(SIZE_R)) is
-    variable a : integer;
-    variable lsize : std_logic_vector(2 downto 0) := (others => '0');
+    variable a, words : integer;
   begin  -- writemem
     a := conv_integer(addr(ADDR_R'left downto 2));
     
-    assert DATA_R'left = 31
+    assert (DATA_R'left = 31 or DATA_R'left = 63 or
+            DATA_R'left = 127 or DATA_R'left = 255)
       report "writemem needs to be adjusted for new data bus width"
       severity failure;
-    
-    if mem(a) = NULL then
-      mem(a) := new memory_word_type'(others => 'U');
-    end if;
 
-    lsize(size'range) := size;
-    case lsize is
+    if size = HSIZE_8WORD then words := 8;
+    elsif size = HSIZE_4WORD then words := 4;
+    elsif size = HSIZE_DWORD then words := 2;
+    else words := 1; end if;
+
+    for i in 0 to (words-1) loop
+      if mem(a+i) = NULL then
+        mem(a+i) := new memory_word_type'(others => 'U');
+      end if;
+    end loop;  -- i
+    
+    case size is
       when HSIZE_BYTE =>
         case addr(1 downto 0) is
           when "00" => mem(a).all(31 downto 24) := data(7 downto 0);
@@ -512,7 +532,19 @@ architecture sim of at_ahb_slv is
       when HSIZE_HWORD =>
           if addr(1) = '0' then mem(a).all(31 downto 16) := data(15 downto 0);
           else mem(a).all(15 downto 0) := data(15 downto 0); end if;
-      when HSIZE_WORD => mem(a).all := data;
+      when HSIZE_WORD => mem(a).all := data(31 downto 0);
+      when HSIZE_DWORD =>
+        for i in 0 to 1 loop
+          mem(a+i).all := data(63-32*i downto 32-32*i);
+        end loop;  -- i         
+      when HSIZE_4WORD =>
+        for i in 0 to 3 loop
+          mem(a+i).all := data(127-32*i downto 96-32*i);
+        end loop;  -- i
+      when HSIZE_8WORD =>
+        for i in 0 to 7 loop
+          mem(a+i).all := data(255-32*i downto 224-32*i);
+        end loop;  -- i
       when others =>
         assert false
           report "writemem needs to be updated for this system"
@@ -528,54 +560,92 @@ architecture sim of at_ahb_slv is
     constant addr : in    std_logic_vector(ADDR_R);
     signal   data : out   std_logic_vector(DATA_R);
     constant size : in    std_logic_vector(SIZE_R)) is
-    variable lsize : std_logic_vector(2 downto 0) := (others => '0');
+    variable nwords : integer;          -- Number of words to read from memory
+                                        -- array
+    variable off : integer := 0;    -- Offset in data vector
   begin  -- readmem
     
-    assert DATA_R'left = 31
+    assert (DATA_R'left = 31 or DATA_R'left = 63 or
+            DATA_R'left = 127 or DATA_R'left = 255)
       report "readmem needs to be adjusted for new data bus width"
       severity failure;
+
+    case size is
+      when HSIZE_8WORD =>
+        nwords := 8;
+        assert DATA_R'left > 127
+          report "HSIZE_8WORD not supported for current data vector width"
+          severity failure;
+        off := 224;
+      when HSIZE_4WORD =>
+        nwords := 4;
+        assert DATA_R'left > 63
+          report "HSIZE_4WORD not supported for current data vector width"
+          severity failure;
+        if DATA_R'left >= 255 and addr(4) = '0' then off := 128; end if;
+        off := off + 96;
+      when HSIZE_DWORD =>
+        nwords := 2;
+        assert DATA_R'left > 31
+          report "HSIZE_DWORD not support for current data vector width"
+          severity failure;
+        if DATA_R'left >= 255 and addr(4) = '0' then off := 128; end if;
+        if DATA_R'left >= 127 and addr(3) = '0' then off := off + 64; end if;
+        off := off + 32;
+      when others =>
+        nwords := 1;
+        if DATA_R'left >= 255 and addr(4) = '0' then off := 128; end if;
+        if DATA_R'left >= 127 and addr(3) = '0' then off := off + 64; end if;
+        if DATA_R'left >= 63 and addr(2) = '0' then off := off + 32; end if;
+    end case;
+
+    data <= (others => 'U');
     
-    if mem(conv_integer(addr(ADDR_R'left downto 2))) = NULL then
-      data <= (others => 'U');
-    else
-      data <= mem(conv_integer(addr(ADDR'left downto 2))).all;
-      
-      lsize(size'range) := size;
-      case lsize is
-        when HSIZE_BYTE =>
-          if addr(1) = '0' then
-            data(15 downto 0) <= (others => 'U');
-            if addr(0) = '0' then data(23 downto 16) <= (others => 'U');
-            else data(31 downto 24) <= (others => 'U'); end if;
-          else
-            data(31 downto 16) <= (others => 'U');
-            if addr(0) = '0' then data(7 downto 0) <= (others => 'U');
-            else data(15 downto 8) <= (others => 'U'); end if;
-          end if;
-        when HSIZE_HWORD =>
-          if addr(1) = '0' then data(15 downto 0) <= (others => 'U');
-          else data(31 downto 16) <= (others => 'U'); end if;
-        when HSIZE_WORD => null;
-        when others =>
-          assert false
-            report "readmem needs to be updated for this system"
-            severity failure;
-      end case;
-    end if;
+    for i in 0 to (nwords-1) loop
+      if mem(conv_integer(addr(ADDR_R'left downto 2))+i) = NULL then
+        data(31+off-32*i downto off-32*i) <= (others => 'U');
+      else
+        data(31+off-32*i downto off-32*i) <=
+          mem(conv_integer(addr(ADDR'left downto 2))+i).all;
+        case size is
+          when HSIZE_BYTE =>
+            if addr(1) = '0' then
+              data(15+off downto off) <= (others => 'U');
+              if addr(0) = '0' then data(23+off downto 16+off) <= (others => 'U');
+              else data(31+off downto 24+off) <= (others => 'U'); end if;
+            else
+              data(31+off downto 16+off) <= (others => 'U');
+              if addr(0) = '0' then data(7+off downto 0+off) <= (others => 'U');
+              else data(15+off downto 8+off) <= (others => 'U'); end if;
+            end if;
+          when HSIZE_HWORD =>
+            if addr(1) = '0' then data(15+off downto off) <= (others => 'U');
+            else data(31+off downto 16+off) <= (others => 'U'); end if;
+          when others => null;
+        end case;
+      end if;
+    end loop;  -- i
   end readmem;
   
   -- Description: Insert a response into the linked list of responses
   procedure insert_resp (
     constant id        : in    integer;
     variable resp_root : inout response_element_ptr;
-    signal   resp      : in    at_slv_resp_type) is
+    signal   resp      : in    at_slv_resp_type;
+    signal   dbglvl    : in    integer) is
     variable elem : response_element_ptr;
   begin  -- insert_resp
     elem := resp_root;
     if elem /= NULL then
       while elem.nxt /= NULL loop elem := elem.nxt; end loop;
       elem.nxt := new response_element_type'(id, resp, NULL);
+      Print(" DBG inserting response " & tost(id) & " in queue",
+            note, LISTMOD_DBGLVL <= dbglvl);
+      Print(" DBG ID of previous response is " & tost(elem.id),
+            note, LISTMOD_DBGLVL <= dbglvl);
     else
+      Print(" DBG inserting response " & tost(id) & " first in queue",
+            note, LISTMOD_DBGLVL <= dbglvl);
       resp_root := new response_element_type'(id, resp, NULL);
     end if;
   end insert_resp;
@@ -591,28 +661,48 @@ architecture sim of at_ahb_slv is
     signal   id        : out   integer;
     signal   lastac    : out   boolean;
     variable found     : out   boolean;
-    variable accmem    : out   boolean) is
+    variable accmem    : out   boolean;
+    variable varid     : out   integer;
+    signal   dbglvl    : in    integer) is
     variable elem, prev : response_element_ptr;
     variable lfound : boolean := false;
   begin  -- get_resp
     prev := resp_root;
     elem := resp_root;
+    Print(" DBG checking for response to address " & tost(req.addr),
+          note, LISTMOD_DBGLVL <= dbglvl);
     while elem /= NULL and not lfound loop
-      -- Check if response is a match for address range, read/write and master
+      -- Check if response is a match for address range, read/write,
+      -- master and hprot
       if (req.addr >= elem.resp.addr1 and req.addr <= elem.resp.addr2 and
           ((elem.resp.read and req.wr = '0') or
            (elem.resp.write and req.wr = '1')) and
-          (elem.resp.anymst or (elem.resp.mst = req.mst))) then
+          (elem.resp.anymst or (elem.resp.mst = req.mst)) and
+          (elem.resp.anyhprot or (elem.resp.hprot = req.hprot))) then
         if elem.resp.delay = 0 then
           id <= elem.id;
+          varid := elem.id;
           resp <= elem.resp.resp;
           accmem := elem.resp.accmem;
           wantda  <= elem.resp.accmem and req.wr = '1';
           if elem.resp.count = 1 then
-            if prev = resp_root then
+            Print(" DBG removing response " & tost(elem.id) & " from queue",
+                  note, LISTMOD_DBGLVL <= dbglvl);
+            if elem = resp_root then
               resp_root := elem.nxt;
+              Print(" DBG response " & tost(elem.id) & " was first in queue",
+                    note, LISTMOD_DBGLVL <= dbglvl);
             else
               prev.nxt := elem.nxt;
+              Print(" DBG response " &  tost(elem.id) & " was preceded by elements in queue",
+                    note, LISTMOD_DBGLVL <= dbglvl);
+            end if;
+            if elem.nxt = null then
+              Print(" DBG response " & tost(elem.id) & " was at end of queue",
+                  note, LISTMOD_DBGLVL <= dbglvl);
+            else
+              Print(" DBG response " & tost(elem.id) & " is followed by " &
+                    tost(elem.nxt.id), note, LISTMOD_DBGLVL <= dbglvl);
             end if;
             deallocate(elem);
             lastac <= true;
@@ -626,12 +716,19 @@ architecture sim of at_ahb_slv is
         end if;
       end if;
       if not lfound then
+        Print(" DBG response " &  tost(elem.id) & " did not match",
+              note, LISTMOD_DBGLVL <= dbglvl);
         prev := elem;
         elem := elem.nxt;
       end if;
     end loop;
-    if lfound then found := true;
+    if lfound then
+      found := true;
+      Print(" DBG response to address " & tost(req.addr) & " found!",
+            note, LISTMOD_DBGLVL <= dbglvl);
     else
+      Print(" DBG response to address " & tost(req.addr) & " NOT found!",
+            note, LISTMOD_DBGLVL <= dbglvl);
       found := false; accmem := false; wantda <= req.wr = '1';
       id <= RESERVED_RESP_ID; lastac <= false;
     end if;
@@ -645,7 +742,8 @@ architecture sim of at_ahb_slv is
     constant asa       : in    access_state_array;
     constant id        : in    integer;
     signal   resp      : out   at_slv_resp_type;
-    signal   respid    : out   integer) is
+    signal   respid    : out   integer;
+    signal   dbglvl    : in    integer) is
     variable elem, prev : response_element_ptr;
     variable lfound : boolean := false;
     variable i : integer := 0;
@@ -695,7 +793,7 @@ architecture sim of at_ahb_slv is
       elem := resp_root(i);
       while elem /= NULL and not lfound loop
         if id = elem.id then
-          if prev = resp_root(i) then
+          if elem = resp_root(i) then
             resp_root(i) := elem.nxt;
           else
             prev.nxt := elem.nxt;
@@ -741,15 +839,6 @@ architecture sim of at_ahb_slv is
     6 => gen_pnp_bar(bank2addr, bank2mask, bank2type, bank2cache, bank2prefetch),
     7 => gen_pnp_bar(bank3addr, bank3mask, bank3type, bank3cache, bank3prefetch),
     others => zero32);  
-
-  -- Debug levels
-
-  constant DBGACC_DBGLVL : integer := 6;
-  constant AHBACC_DBGLVL : integer := 5;
-  
-  constant QUIET_DBGLVL  : integer := 0;
-  
-  constant INITIAL_DBGLVL : integer := QUIET_DBGLVL;
   
   -----------------------------------------------------------------------------
   -- Signals
@@ -793,6 +882,7 @@ begin  -- sim
     variable deltacount    : integer := 0;
     variable interactive   : boolean := false;
     variable dinteractive  : boolean := false;
+    variable varid         : integer;
   begin  -- process core
 
     ---------------------------------------------------------------------------
@@ -845,8 +935,11 @@ begin  -- sim
           print("DBG insertion of response on bank " & tost(bank),
                 note, DBGACC_DBGLVL <= dbglvl);
 
-          insert_resp(id, resp_root(bank), dbgi.resp);
+          insert_resp(id, resp_root(bank), dbgi.resp, dbglvl);
           dbgo.id <= id;
+          print(" => Assigned ID: " & tost(id),
+                note, DBGACC_DBGLVL <= dbglvl);
+          
           id := (id + 1) mod RESERVED_RESP_ID;
 
           print(" => Address range start: " & tost(dbgi.resp.addr1),
@@ -890,13 +983,21 @@ begin  -- sim
             print(" => Response is valid for master " & tost(dbgi.resp.mst),
                   note, DBGACC_DBGLVL <= dbglvl);
           end if;
+          if dbgi.resp.anyhprot then
+            print(" => Response is valid for any HPROT",
+                  note, DBGACC_DBGLVL <= dbglvl);
+          else
+            print(" => Response is valid for HPROT " & tost(dbgi.resp.hprot),
+                  note, DBGACC_DBGLVL <= dbglvl);
+          end if;
+          
         when rc =>
           -- Check status of response
-          print("DBG statuc check access to bank " & tost(bank),
-                note, DBGACC_DBGLVL <= dbglvl);
+          print("DBG status check access to bank " & tost(bank) &
+                ", id " & tost(dbgi.id), note, DBGACC_DBGLVL <= dbglvl);
           -- If the response is found, it is returned with the correct ID.
           -- Otherwise the ID will not match
-          get_resp(resp_root, asa, dbgi.id, dbgo.resp, dbgo.id);
+          get_resp(resp_root, asa, dbgi.id, dbgo.resp, dbgo.id, dbglvl);
         when ru =>
           -- Unlock response
           print("DBG unlock access to bank " & tost(bank),
@@ -914,11 +1015,13 @@ begin  -- sim
           -- Remove response
           -- If a response was successfully removed, the ID will match,
           -- otherwise a valid pending response was not found
-          print("DBG remove response access to bank " & tost(bank),
-                note, DBGACC_DBGLVL <= dbglvl);
+          print("DBG remove response access to bank " & tost(bank) &
+                 ", id " & tost(dbgi.id), note, DBGACC_DBGLVL <= dbglvl);
           rm_resp(resp_root, dbgi.id, dbgo.id);
         when rar =>
           -- Remove all responses queued for a bank
+          print("DBG remove all responses queued for bank " & tost(bank),
+                note, DBGACC_DBGLVL <= dbglvl);
           rm_all_resp(resp_root(bank));
         when c =>
           print("DBG configuration access to bank " & tost(bank),
@@ -1011,7 +1114,7 @@ begin  -- sim
       if slv_to_core.avalid = '1' and not interactive then
         -- Check if there is a response queued for this access
         get_resp(resp_root(bank), slv_to_core, core_to_slv.resp, core_to_slv.wantda,
-                 core_to_slv.id, core_to_slv.lastac, success, accmem);
+                 core_to_slv.id, core_to_slv.lastac, success, accmem, varid, dbglvl);
         if (not success or accmem) and slv_to_core.avalid = '1' then
           -- No response queued or response may access memory.
           print(" => access to memory array", note, AHBACC_DBGLVL <= dbglvl);
@@ -1071,7 +1174,7 @@ begin  -- sim
             core_to_slv.resp.lock <= false;
             core_to_slv.resp.repeat <= 1;
           else
-            print(" => using queued response", note,
+            print(" => using queued response id: " & tost(varid), note,
                   AHBACC_DBGLVL <= dbglvl and slv_to_core.avalid = '1');
           end if;
         end if;
@@ -1111,8 +1214,9 @@ begin  -- sim
     variable handle_write : boolean := false;
     variable sync         : boolean := false;
     variable master       : integer range 0 to NAHBMST-1;
-    variable index        : integer range 0 to 24;
+    variable index        : integer range 0 to 120;
     variable htrans       : std_logic_vector(ahbsi.htrans'range);
+    variable off          : integer;
   begin
     
     ahbso.hconfig  <= HCONFIG;
@@ -1131,16 +1235,9 @@ begin  -- sim
         slv_to_core.waddr  <= slv_to_core.addr;
         slv_to_core.wbank  <= slv_to_core.bank;
         slv_to_core.wsize  <= slv_to_core.size;
-        case slv_to_core.size is
-          when HSIZE8 =>
-            index := conv_integer(slv_to_core.addr(1 downto 0))*8;
-            slv_to_core.wdata(7 downto 0) <= ahbsi.hwdata(31-index downto 24-index);
-          when HSIZE16 =>
-            index := conv_integer(slv_to_core.addr(1 downto 0))*8;
-            slv_to_core.wdata(15 downto 0) <= ahbsi.hwdata(31-index downto 16-index);
-          when others => 
-            slv_to_core.wdata <= ahbsi.hwdata;
-        end case;
+        off := ahb_doff(AHBDW, 2**conv_integer(slv_to_core.size)*8, slv_to_core.addr(4 downto 0));
+        slv_to_core.wdata(2**conv_integer(slv_to_core.size)*8-1 downto 0) <=
+          ahbsi.hwdata(2**conv_integer(slv_to_core.size)*8-1+off downto off);
         handle_write := false; sync := true;
       else
         slv_to_core.dvalid <= '0';
@@ -1160,10 +1257,11 @@ begin  -- sim
             slv_to_core.wr      <= ahbsi.hwrite;
             slv_to_core.addr    <= ahbsi.haddr(ADDR_R);
             slv_to_core.bank    <= ahbsi.hmbsel(BANK_R);
-            slv_to_core.size    <= ahbsi.hsize(SIZE_R);
+            slv_to_core.size    <= ahbsi.hsize;
             slv_to_core.trans   <= ahbsi.htrans;
             slv_to_core.mstlock <= ahbsi.hmastlock;
             slv_to_core.mst     <= master;
+            slv_to_core.hprot   <= ahbsi.hprot;
             sync_with_core; sync := false;
             ahb_access(master).active     := true;
             ahb_access(master).checktrans := false;

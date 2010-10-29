@@ -81,7 +81,7 @@ int build_rmap_hdr(struct rmap_pkt *pkt, char *hdr, int *size)
                         (write << 5) | (pkt->verify << 4) | (pkt->ack << 3) | (pkt->incr << 2) | srcspalen;
                 hdr[pkt->dstspalen+3] = (char)pkt->destkey;
                 for(i = 0; i < pkt->srcspalen; i++) {
-                        hdr[pkt->dstspalen+3+i] = pkt->srcspa[i];
+                        hdr[pkt->dstspalen+4+i] = pkt->srcspa[i];
                 }
                 hdr[pkt->dstspalen+4+pkt->srcspalen] = (char)pkt->srcaddr;
                 hdr[pkt->dstspalen+5+pkt->srcspalen] = (char)((pkt->tid >> 8) & 0xFF);

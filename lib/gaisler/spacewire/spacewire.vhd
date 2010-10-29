@@ -31,6 +31,8 @@ package spacewire is
     s           : std_logic_vector(1 downto 0);
     dconnect    : std_logic_vector(3 downto 0);
     tickin      : std_ulogic;
+    tickinraw   : std_ulogic;
+    timein      : std_logic_vector(7 downto 0);
     clkdiv10    : std_logic_vector(7 downto 0);
     rmapen      : std_ulogic;
     dcrstval    : std_logic_vector(9 downto 0);
@@ -41,9 +43,23 @@ package spacewire is
     d           : std_logic_vector(3 downto 0);
     s           : std_logic_vector(3 downto 0);
     tickout     : std_ulogic;
+    tickoutraw  : std_ulogic;
+    tickindone  : std_ulogic;
+    timeout     : std_logic_vector(7 downto 0);
     linkdis     : std_ulogic;
     rmapact     : std_ulogic;
+    rxdataout   : std_logic_vector(8 downto 0);
+    rxdav       : std_ulogic;
   end record;
+
+  constant grspw_in_none : grspw_in_type :=
+    ((others => '0'), (others => '0'), (others => '0'),
+     (others => '0'), '0', '0', (others => '0'), (others => '0'), '0',
+     (others => '0'), (others => '0'));
+
+  constant grspw_out_none : grspw_out_type :=
+    ((others => '0'), (others => '0'), '0', '0', '0', (others => '0'),
+     '0', '0', (others => '0'), '0');
 
   type grspw_codec_in_type is record
     --spw                                     
@@ -60,14 +76,14 @@ package spacewire is
     idivisor     : std_logic_vector(7 downto 0);
     --rx iface
     rxiread      : std_ulogic;
+    rxififorst   : std_ulogic;
     --tx iface
     txiwrite     : std_ulogic;
     txichar      : std_logic_vector(8 downto 0);
-    txiflush     : std_ulogic;
+    txififorst   : std_ulogic;
     --time iface
     tickin       : std_ulogic;
-    timectrlin   : std_logic_vector(1 downto 0);
-    timein       : std_logic_vector(5 downto 0);
+    timein       : std_logic_vector(7 downto 0);
   end record;
 
   type grspw_codec_out_type is record
@@ -83,17 +99,171 @@ package spacewire is
     parerr       : std_ulogic;
     --rx iface
     rxicharav    : std_ulogic;
-    rxicharcnt   : std_logic_vector(6 downto 0);
+    rxicharcnt   : std_logic_vector(11 downto 0);
     rxichar      : std_logic_vector(8 downto 0);
     --tx iface
-    txicharcnt   : std_logic_vector(6 downto 0);
+    txicharcnt   : std_logic_vector(11 downto 0);
     txifull      : std_ulogic;
     --time iface
     tickin_done  : std_ulogic;
     tickout      : std_ulogic;
-    timeout      : std_logic_vector(5 downto 0);
-    timectrlout  : std_logic_vector(1 downto 0);
+    timeout      : std_logic_vector(7 downto 0);
+    merror       : std_ulogic;
   end record;
+
+  type grspw_dma_in_type is record
+    --rx iface
+    rxiread      : std_ulogic;
+    --tx iface
+    txiwrite     : std_ulogic;
+    txichar      : std_logic_vector(8 downto 0);
+    txififorst   : std_ulogic;
+    --internal time iface
+    itickin      : std_ulogic;
+    itimein      : std_logic_vector(7 downto 0);
+    --time iface
+    tickin       : std_ulogic;
+    timein       : std_logic_vector(7 downto 0);
+    rmapen       : std_ulogic;
+  end record;
+
+  type grspw_dma_out_type is record
+    --rx iface
+    rxicharav    : std_ulogic;
+    rxichar      : std_logic_vector(8 downto 0);
+    --tx iface
+    txicharcnt   : std_logic_vector(11 downto 0);
+    txifull      : std_ulogic;
+    --internal time iface
+    itickout     : std_ulogic;
+    itimeout     : std_logic_vector(7 downto 0);
+    --time iface
+    tickin_done  : std_ulogic;
+    tickout      : std_ulogic;
+    timeout      : std_logic_vector(7 downto 0);
+    merror       : std_ulogic;
+  end record;
+
+  type grspw_fifo_in_type is record
+    --rx iface
+    rxiread      : std_ulogic;
+    --tx iface
+    txiwrite     : std_ulogic;
+    txichar      : std_logic_vector(8 downto 0);
+    txififorst   : std_ulogic;
+    --internal time iface
+    itickin      : std_ulogic;
+    itimein      : std_logic_vector(7 downto 0);
+    --time iface
+    tickin       : std_ulogic;
+    timein       : std_logic_vector(7 downto 0);
+    rmapen       : std_ulogic;
+    --external interface
+    etxwrite     : std_ulogic;
+    etxchar      : std_logic_vector(8 downto 0);
+    erxread      : std_ulogic;
+  end record;
+
+  type grspw_fifo_out_type is record
+    --rx iface
+    rxicharcnt   : std_logic_vector(11 downto 0);
+    rxicharav    : std_ulogic;
+    rxichar      : std_logic_vector(8 downto 0);
+    --tx iface
+    txicharcnt   : std_logic_vector(11 downto 0);
+    txifull      : std_ulogic;
+    --internal time iface
+    itickout     : std_ulogic;
+    itimeout     : std_logic_vector(7 downto 0);
+    --time iface
+    tickin_done  : std_ulogic;
+    tickout      : std_ulogic;
+    timeout      : std_logic_vector(7 downto 0);
+    --external interface
+    erxcharav    : std_ulogic;
+    erxaempty    : std_ulogic;
+    etxfull      : std_ulogic;
+    etxafull     : std_ulogic;
+    erxchar      : std_logic_vector(8 downto 0);
+    merror       : std_ulogic;
+  end record;
+
+  type grspw_router_fifo_char_type is array (0 to 30) of std_logic_vector(8 downto 0);
+  type grspw_router_time_type is array (0 to 30) of std_logic_vector(7 downto 0);
+
+  type grspw_router_in_type is record
+    rmapen       : std_logic_vector(30 downto 0);
+    idivisor     : std_logic_vector(7 downto 0);
+    txwrite      : std_logic_vector(30 downto 0);
+    txchar       : grspw_router_fifo_char_type;
+    rxread       : std_logic_vector(30 downto 0);
+    tickin       : std_logic_vector(30 downto 0);
+    timein       : grspw_router_time_type;
+    reload       : std_logic_vector(31 downto 0);
+    reloadn      : std_logic_vector(9 downto 0);
+    timeren      : std_ulogic;
+    timecodeen   : std_ulogic;
+    cfglock      : std_ulogic;
+    selfaddren   : std_ulogic;
+    linkstartreq : std_ulogic;
+    autodconnect : std_ulogic;
+    instanceid   : std_logic_vector(7 downto 0);
+    enbridge     : std_logic_vector(1 downto 0);
+  end record;
+
+  type grspw_router_out_type is record
+    rmapen       : std_logic_vector(30 downto 0);
+    idivisor     : std_logic_vector(7 downto 0);
+    rxcharav     : std_logic_vector(30 downto 0);
+    rxaempty     : std_logic_vector(30 downto 0);
+    txfull       : std_logic_vector(30 downto 0);
+    txafull      : std_logic_vector(30 downto 0);
+    rxchar       : grspw_router_fifo_char_type;
+    tickout      : std_logic_vector(30 downto 0);
+    timeout      : grspw_router_time_type;
+    --debug
+    tick         : std_ulogic;
+    timetx       : std_logic_vector(5 downto 0);
+    s0currport   : std_logic_vector(3 downto 0);
+    s1currport   : std_logic_vector(3 downto 0);
+    s0charav     : std_ulogic;
+    s1charav     : std_ulogic;
+    rtvalid      : std_ulogic;
+    pevalid      : std_ulogic;
+    s1char       : std_logic_vector(8 downto 0);
+    p0insel      : std_logic_vector(3 downto 0); 
+    p0rxactive   : std_ulogic;
+    p0txactive   : std_ulogic;
+    p0active     : std_ulogic;
+    p0headerdel  : std_ulogic;
+    p0spill      : std_ulogic;
+    p0charav     : std_ulogic;
+    p0invaddr    : std_ulogic;
+    p0bufav      : std_ulogic;
+    p0pktdist    : std_ulogic; 
+    p0ports      : std_logic_vector(12 downto 0);
+    p1insel      : std_logic_vector(3 downto 0);
+    p1rxactive   : std_ulogic;
+    p1txactive   : std_ulogic;
+    p1active     : std_ulogic;
+    p1headerdel  : std_ulogic;
+    p1spill      : std_ulogic;
+    p1charav     : std_ulogic;
+    p1invaddr    : std_ulogic;
+    p1bufav      : std_ulogic;
+    p1pktdist    : std_ulogic;
+    p1ports      : std_logic_vector(12 downto 0);
+    rmapstate    : std_logic_vector(4 downto 0);
+    merror       : std_ulogic;
+    gerror       : std_ulogic;
+    lerror       : std_ulogic;
+    linkrun      : std_logic_vector(30 downto 0);
+  end record;
+  
+  type spw_ahb_mst_out_vector is array (natural range <>) of
+    ahb_mst_out_type;
+  type spw_apb_slv_out_vector is array (natural range <>) of
+    apb_slv_out_type;
 
   component grspw2_phy is
     generic(
@@ -253,7 +423,7 @@ package spacewire is
     input_type   : integer range 0 to 3 := 0;
     output_type  : integer range 0 to 2 := 0;
     rxtx_sameclk : integer range 0 to 1 := 0;
-    fifosize     : integer range 16 to 64 := 64;
+    fifosize     : integer range 16 to 2048 := 64;
     tech         : integer;
     scantest     : integer range 0 to 1 := 0;
     techfifo     : integer range 0 to 1 := 0;
@@ -278,29 +448,117 @@ package spacewire is
       input_type   : integer range 0 to 3 := 0;
       output_type  : integer range 0 to 2 := 0;
       rxtx_sameclk : integer range 0 to 1 := 0;
-      fifosize     : integer range 16 to 64 := 64;
+      fifosize     : integer range 16 to 2048 := 64;
       tech         : integer;
       scantest     : integer range 0 to 1 := 0;
       techfifo     : integer range 0 to 1 := 0;
       ft           : integer range 0 to 2 := 0;
-      ports        : integer range 2 to 31 := 2;
-      arbitration  : integer range 0 to 1 := 0 --0=rrobin, 1=priority 
+      spwen        : integer range 0 to 1 := 1;
+      ambaen       : integer range 0 to 1 := 0;
+      fifoen       : integer range 0 to 1 := 0;
+      spwports     : integer range 0 to 31 := 2;
+      ambaports    : integer range 0 to 16 := 0;
+      fifoports    : integer range 0 to 31 := 0;
+      arbitration  : integer range 0 to 1 := 0; --0=rrobin, 1=priority
+      rmap         : integer range 0 to 1 := 0;
+      rmapcrc      : integer range 0 to 1 := 0;
+      fifosize2    : integer range 4 to 32 := 32;
+      almostsize   : integer range 1 to 32 := 8;
+      rxunaligned  : integer range 0 to 1 := 0;
+      rmapbufs     : integer range 2 to 8 := 4;
+      dmachan      : integer range 1 to 4 := 1;
+      hindex       : integer range 0 to NAHBMST-1 := 0;
+      pindex       : integer range 0 to NAPBSLV-1 := 0;
+      paddr        : integer range 0 to 16#FFF#   := 0;
+      pmask        : integer range 0 to 16#FFF#   := 16#FFF#;
+      pirq         : integer range 0 to NAHBIRQ-1 := 0;
+      cfghindex    : integer range 0 to NAHBSLV-1 := 0;
+      cfghaddr     : integer range 0 to 16#FFF#   := 0;
+      cfghmask     : integer range 0 to 16#FFF#   := 16#FF0#;
+      ahbslven     : integer range 0 to 1 := 0;
+      timerbits    : integer range 0 to 31 := 0;
+      pnp          : integer range 0 to 1 := 0;
+      autoscrub    : integer range 0 to 1 := 0
       );
     port(
-      rst          : in std_ulogic;
-      clk          : in std_ulogic;
-      rxclk0       : in std_ulogic;
-      txclk        : in std_ulogic;
-      txclkn       : in std_ulogic;
-      testen       : in std_ulogic;
-      testrst      : in std_ulogic;
-      testin       : in std_ulogic;
-      di           : in  std_logic_vector(61 downto 0);
-      dvi          : in  std_logic_vector(61 downto 0);
-      dconnect     : in  std_logic_vector(61 downto 0);
-      do           : out std_logic_vector(61 downto 0);
-      so           : out std_logic_vector(61 downto 0)
-      );
+      rst          : in  std_ulogic;
+      clk          : in  std_ulogic;
+      rxclk        : in  std_logic_vector(spwports-spwen downto 0);
+      txclk        : in  std_ulogic;
+      txclkn       : in  std_ulogic;
+      testen       : in  std_ulogic;
+      testrst      : in  std_ulogic;
+      testin       : in  std_ulogic;
+      di           : in  std_logic_vector(spwports*2-spwen downto 0);
+      dvi          : in  std_logic_vector(spwports*2-spwen downto 0);
+      dconnect     : in  std_logic_vector(spwports*2-spwen downto 0);
+      do           : out std_logic_vector(spwports*2-spwen downto 0);
+      so           : out std_logic_vector(spwports*2-spwen downto 0);
+      ahbmi        : in  ahb_mst_in_type;
+      ahbmo        : out spw_ahb_mst_out_vector(0 to ambaports-ambaen);
+      apbi         : in  apb_slv_in_type;
+      apbo         : out spw_apb_slv_out_vector(0 to ambaports-ambaen);
+      ahbsi        : in  ahb_slv_in_type;
+      ahbso        : out ahb_slv_out_type;
+      ri           : in  grspw_router_in_type;
+      ro           : out grspw_router_out_type
+    );
   end component grspwrouter;
+
+  component grspw2_dma is
+    generic(
+      hindex       : integer range 0 to NAHBMST-1 := 0;
+      pindex       : integer range 0 to NAPBSLV-1:= 0;
+      pirq         : integer range 0 to NAHBIRQ-1 := 0;
+      paddr        : integer range 0 to 16#FFF# := 0;
+      pmask        : integer range 0 to 16#FFF# := 16#FFF#;
+      rmap         : integer range 0 to 1  := 0;
+      rmapcrc      : integer range 0 to 1  := 0;
+      fifosize1    : integer range 4 to 32 := 32;
+      fifosize2    : integer range 16 to 2048 := 64;
+      rxunaligned  : integer range 0 to 1 := 0;
+      rmapbufs     : integer range 2 to 8 := 4;
+      scantest     : integer range 0 to 1 := 0;
+      dmachan      : integer range 1 to 4 := 1;
+      tech         : integer range 0 to NTECH := inferred;
+      techfifo     : integer range 0 to 1 := 1;
+      ft           : integer range 0 to 2 := 0
+    );
+    port(
+      rst          : in   std_ulogic;
+      clk          : in   std_ulogic;
+      --ahb mst
+      ahbmi        : in   ahb_mst_in_type;
+      ahbmo        : out  ahb_mst_out_type;
+      --apb 
+      apbi         : in   apb_slv_in_type;
+      apbo	   : out  apb_slv_out_type;
+      --link
+      lii          : in   grspw_dma_in_type;
+      lio          : out  grspw_dma_out_type;
+      testrst      : in   std_ulogic := '0';
+      testen       : in   std_ulogic := '0'
+    );
+  end component;
+
+  component grspw2_fifo is
+    generic(
+      fifosize     : integer range 16 to 2048 := 64;
+      almostsize   : integer range 1 to 32 := 8;
+      scantest     : integer range 0 to 1 := 0;
+      tech         : integer range 0 to NTECH := inferred;
+      techfifo     : integer range 0 to 1 := 1;
+      ft           : integer range 0 to 2 := 0
+    );
+    port(
+      rst          : in   std_ulogic;
+      clk          : in   std_ulogic;
+      --link
+      lii          : in   grspw_fifo_in_type;
+      lio          : out  grspw_fifo_out_type;
+      testrst      : in   std_ulogic := '0';
+      testen       : in   std_ulogic := '0'
+    );
+  end component;
 
 end package;

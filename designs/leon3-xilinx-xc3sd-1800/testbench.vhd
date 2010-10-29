@@ -232,7 +232,7 @@ begin
     end generate;
 
     ddr2delay0 : delay_wire 
-      generic map(data_width => ddr_dq'length, delay_atob => 0.0, delay_btoa => 10.0)
+      generic map(data_width => ddr_dq'length, delay_atob => 0.0, delay_btoa => 1.0)
       port map(a => ddr_dq, b => ddr_dq2);
   end generate;
 

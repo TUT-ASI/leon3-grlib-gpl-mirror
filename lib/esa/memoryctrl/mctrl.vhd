@@ -20,6 +20,17 @@
 -- Author:	Jiri Gaisler - ESA/ESTEC
 -- Description:	External memory controller.
 ------------------------------------------------------------------------------
+-- GRLIB2 CORE
+-- VENDOR:      VENDOR_ESA
+-- DEVICE:      ESA_MCTRL
+-- VERSION:     1
+-- AHBSLAVE:    0
+-- BAR: 0       TYPE: 0010      PREFETCH: 1     CACHE: 1        DESC: PROM_AREA
+-- BAR: 1       TYPE: 0010      PREFETCH: 0     CACHE: 0        DESC: IO_AREA
+-- BAR: 2       TYPE: 0010      PREFETCH: 1     CACHE: 1        DESC: SDRAM_AREA
+-- APB:         0
+-- BAR: 0       TYPE: 0001      PREFETCH: 0     CACHE: 0        DESC: IO_AREA
+-------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -428,7 +439,7 @@ begin
 
 -- Merge data during byte write
 
-    writedata := ahbsi.hwdata;
+    writedata := ahbreadword(ahbsi.hwdata, r.address(4 downto 2));
     if ((r.brmw and r.busw(1)) = '1')
 
     then
@@ -988,7 +999,7 @@ begin
     sdi.brmw		<= '0';
     sdi.error		<= '0';
 
-    ahbso.hrdata <= dataout;
+    ahbso.hrdata <= ahbdrivedata(dataout);
     ahbso.hready <= hready;
     ahbso.hresp  <= r.hresp;
 

@@ -191,6 +191,7 @@ signal rdata, wdata, rwdata, rbdrive, ribdrive : std_logic_vector(31 downto 0);
 signal waddr2 : std_logic_vector(abuf-1 downto 0);
 signal ddr_rst : std_logic;
 signal ddr_rst_gen  : std_logic_vector(3 downto 0);
+signal hwdata : std_logic_vector(31 downto 0);
 
 attribute keep                     : boolean;
 attribute syn_keep                 : boolean;
@@ -291,7 +292,7 @@ begin
     rai <= v;
     ahbso.hready  <= ra.hready;
     ahbso.hresp   <= ra.hresp;
-    ahbso.hrdata  <= ra.hrdata(31 downto 0);
+    ahbso.hrdata  <= ahbdrivedata(ra.hrdata);
     ahbso.hcache  <= not ra.hio;
 
   end process;
@@ -946,7 +947,8 @@ begin
   sdo.ba(1 downto 0) <= r.ba when regoutput = 1 else ri.ba;                                     -- *** ??? delay ctrl
   sdo.bdrive   <= r.sdo_bdrive when regoutput = 1 else r.nbdrive when oepol = 1 else r.bdrive;  -- *** ??? delay ctrl
   sdo.qdrive   <= r.sdo_qdrive when regoutput = 1 else not (ri.qdrive or r.nbdrive);            -- *** ??? delay ctrl
-  sdo.vbdrive  <= rbdrive;
+  sdo.vbdrive(31 downto 0)  <= rbdrive;
+  sdo.vbdrive(63 downto 32) <= (others => '0');
   sdo.sdcsn    <= r.sdcsn when regoutput = 1 else ri.sdcsn;                                     -- *** ??? delay ctrl
   sdo.sdwen    <= r.sdwen when regoutput = 1 else ri.sdwen;                                     -- *** ??? delay ctrl
   sdo.dqm      <= "111111111111" & r.dqm_dly when regoutput = 1 else "111111111111" & r.dqm;    -- *** ??? delay ctrl
@@ -958,17 +960,22 @@ begin
   sdo.moben    <= r.cfg.mobileen(0);
   sdo.conf     <= r.cfg.conf;
 
+  -- AMBA data mux:ing
+  hwdata       <= ahbreadword(ahbsi.hwdata, ra.haddr(4 downto 2));
+ 
   read_buff : syncram_2p 
   generic map (tech => memtech, abits => 6, dbits => 32, sepclk => 1, wrfst => 0)
   port map ( rclk => clk_ahb, renable => vcc, raddress => rai.raddr,
     dataout => rdata, wclk => clk_ddr, write => ri.hready,
+--    dataout => rdata, wclk => clkread, write => rwrite,
     waddress => r.waddr, datain => rwdata);
+--    waddress => waddr2, datain => rwdata);
 
   write_buff : syncram_2p 
   generic map (tech => memtech, abits => 6, dbits => 32, sepclk => 1, wrfst => 0)
   port map ( rclk => clk_ddr, renable => vcc, raddress => r.waddr,
     dataout => wdata, wclk => clk_ahb, write => ra.write,
-    waddress => ra.haddr(7 downto 2), datain => ahbsi.hwdata);
+    waddress => ra.haddr(7 downto 2), datain => hwdata);
 
 -- pragma translate_off
   bootmsg : report_version 

@@ -1,10 +1,34 @@
 /*
- * Simple loopback test for SPICTRL 
+ * SPICTRL system test software
  *
  * Copyright (c) 2008 Gaisler Research AB
- * Copyright (c) 2009 Aeroflex Gaisler AB
+ * Copyright (c) 2009 - 2010 Aeroflex Gaisler AB
  *
- * This test requires that the SPISEL input is HIGH
+ * The tests are started with spictrl_test(<addr>, sel) where:
+ *
+ * sel = 0, uses internal loopback to test the core
+ *
+ * sel = 1, requires that the sck, miso, and mosi 
+ * signals must be connected together.
+ *
+ * sel = 0, 1 does not use any slave select signals.
+ *
+ * sel = 2, performs an internal loopback test and communicates
+ * with a spi_flash simulation module. A model should be instantiated 
+ * in the testbench with the following parameters:
+ *
+ * spi_flash
+ *   ftype      => 3,
+ *   debug      => Don't care,
+ *   fname      => Don't care,
+ *   readcmd    => 16#0B#,
+ *   dummybyte  => 0,
+ *   dualoutput => 0 
+ *
+ * sel = 2 requires that slave select 0 is connected to the spi_flash
+ * model.
+ *
+ * All tests require that the SPISEL input is HIGH.
  *
  */
 
@@ -13,10 +37,14 @@
 /* Register offsets */
 #define SPIC_CAP_OFF    0x00
 #define SPIC_MODE_OFF   0x20
+#define SPIC_AMMSK_OFF  0x50
+#define SPIC_AMTX_OFF   0x200
+#define SPIC_AMRX_OFF   0x400
 
 /* Register fields */
 /* Capability register */
 #define SPIC_SSSZ   24
+#define SPIC_MAXLEN 20
 #define SPIC_TWEN   (1 << 19)
 #define SPIC_AMODE  (1 << 18)
 #define SPIC_ASELA  (1 << 17)
@@ -41,6 +69,7 @@
 #define SPIC_CG     7
 #define SPIC_ASDEL  5
 /* Event and Mask registers */
+#define SPIC_TIP    (1 << 31)
 #define SPIC_LT     (1 << 14)
 #define SPIC_OV     (1 << 12)
 #define SPIC_UN     (1 << 11)
@@ -77,29 +106,165 @@ struct spictrlregs {
   volatile unsigned int amper;
 };
 
+struct amregs {
+  volatile unsigned int tx[128];
+  volatile unsigned int rx[128];
+};
+
 /*
- * spictrl_test(int addr)
+ * spictrl_extdev_test(int addr)
  *
- * Writes fifo depth + 1 words in loopback mode. Writes
- * one more word and checks LT and OV status
+ * Communicates with a spi_flash simulation module. A model 
+ * should be instantiated in the testbench with the following
+ * parameters:
+ *
+ * spi_flash
+ *   ftype      => 3,
+ *   debug      => Don't care,
+ *   fname      => Don't care,
+ *   readcmd    => 16#0B#,
+ *   dummybyte  => 0,
+ *   dualoutput => 0
+ *
+ * The test requires that slave select 0 is connected to the spi_flash model.
+ *
+ */
+int spictrl_extdev_test(int addr)
+{
+   int i;
+   int fd;
+   int data;
+   
+   volatile unsigned int *capreg;
+   struct spictrlregs *regs;
+
+   capreg = (int*)addr;
+   regs = (struct spictrlregs*)(addr + SPIC_MODE_OFF);
+   
+   report_subtest(4);
+   
+   /* Test requires core to have a maximum word length of at least 8 */
+   if ((((*capreg >> SPIC_MAXLEN) & 0xF) != 0) &&
+       (((*capreg >> SPIC_MAXLEN) & 0xF) < 7)) {
+      fail(1);
+   }
+
+   regs->mode = (SPIC_MS | SPIC_EN | SPIC_REV | (7 << SPIC_LEN));
+
+   /* Check event bits */
+   if (regs->event & SPIC_LT)
+      fail(2);
+   if (regs->event & SPIC_OV)
+      fail(3);
+   if (regs->event & SPIC_UN)
+      fail(4);
+   if (regs->event & SPIC_MME)
+      fail(5);
+   if (regs->event & SPIC_NE)
+      fail(6);
+   if (!(regs->event & SPIC_NF))
+      fail(7);
+     
+   /* Select slave */
+   regs->slvsel = ~1;
+  
+   /* Address device */
+   data = 0x0bdead55;
+   for (i = 0; i < 4; i++) {
+      regs->td = data << (i * 8);
+      while (!(regs->event & SPIC_NF))
+         ;
+   }
+   
+   /* Depending on fifo depth we may have run into a overrun condition */
+   fd = (*capreg >> SPIC_FDEPTH) & 0xff;
+   if (((fd < 4) && !((regs->event & SPIC_OV))) ||
+       ((fd >= 4) && (regs->event & SPIC_OV))) {
+      fail(8);
+   }
+   regs->event = SPIC_OV;
+
+   while (regs->event & SPIC_TIP)
+     ;
+
+   /* Empty receive queue */
+   for (i = 0; i < 4; i++) {
+      data = regs->rd;
+   }
+   /* Queue should now be empty */
+   if (regs->event & SPIC_NE)
+      fail(9);
+   
+   /* Read back data */
+   data = 0;
+   for (i = 0; i < 3; i++) {
+      regs->td = 0;
+      while (!(regs->event & SPIC_NE))
+         ;
+      data = (data << 8) | ((regs->rd >> 16) & 0xff);
+   }
+
+   /* Check data, ends with 4 since spi_flash model modifies data */
+   if (data != 0xdead54)
+      fail(10);
+   
+   /* Deselect slave */
+   regs->slvsel = ~0;
+
+   /* Deactivate core */
+   regs->mode = 0;
+
+   /* Clear status bits */
+   regs->event = ~0;
+
+   return 0;
+}
+
+/*
+ * spictrl_test(int addr, int testsel)
+ *
+ * Writes fifo depth + 1 words. Writes one more word and 
+ * checks LT and OV status.
  *
  * Tests automated transfers if the core has support
  * for them.
  *
+ * Calls spictrl_extdev_test if testsel = 2.
+ *
  */
-int spictrl_test(int addr)
+int spictrl_test(int addr, int testsel)
 {
   int i;
   int data;
   int fd;
-  
+  int maxwlen;
+  int wmask;
+  int wshft;
+  int internal;
+
   volatile unsigned int *capreg;
   struct spictrlregs *regs;
-  
+  struct amregs *amreg;
+  volatile unsigned int *ammsk;
+    
   report_device(0x0102D000);
 
   capreg = (int*)addr;
   regs = (struct spictrlregs*)(addr + SPIC_MODE_OFF);
+  amreg = (struct amregs*)(addr + SPIC_AMTX_OFF);
+  ammsk = (int*)(addr + SPIC_AMMSK_OFF);
+
+  /* Core may have a maximum word length that is less than 32 bits */
+  maxwlen = (*capreg >> SPIC_MAXLEN) & 0xF;
+  if (maxwlen == 0) {
+    wmask = ~0;
+    wshft = 0;
+  } else {
+    wmask = ~(~0 << (maxwlen + 1));
+    wshft = (15 - maxwlen);
+  }
+  
+  internal = ~(testsel & 1);
 
   report_subtest(1);
 
@@ -126,7 +291,8 @@ int spictrl_test(int addr)
    */
   fd = (*capreg >> SPIC_FDEPTH) & 0xff;
 
-  regs->mode = SPIC_LOOP | SPIC_MS | SPIC_EN;
+  regs->mode = ((internal ? SPIC_LOOP : 0) | SPIC_MS | 
+                SPIC_EN | (maxwlen << SPIC_LEN));
 
   /* Check event bits */
   if (regs->event & SPIC_LT)
@@ -141,15 +307,16 @@ int spictrl_test(int addr)
     fail(9);
   if (!(regs->event & SPIC_NF))
     fail(10);
-     
-  data = 0xaaaaaaaa;
+    
+  data = 0xaaaaaaaa; 
+
   for (i = 0; i <= fd; i++) {
     regs->td = data;
     data = ~data;
   }
   
   /* Multiple master error */
-  if (regs->event & SPIC_MME) 
+  if (regs->event & SPIC_MME)
     fail(11);
 
   /* Wait for first word to be transferred */
@@ -171,14 +338,21 @@ int spictrl_test(int addr)
 
   /* Verify that words transferred correctly */
   data = 0xaaaaaaaa;
+
   for (i = 0; i <= fd; i++) {
-    if (regs->rd != data)
+    if (regs->rd != ((data & wmask) << wshft))
       fail(14+i);
     data = ~data;
   }
-    
+  
   /* Deactivate core */
   regs->mode = 0;
+
+  /* Clear status bits */
+  regs->event = ~0;
+
+  if (testsel == 2)
+     spictrl_extdev_test(addr);
 
   /* Return if core does not support automated transfers */
   if (!(*capreg & SPIC_AMODE))
@@ -188,14 +362,19 @@ int spictrl_test(int addr)
   report_subtest(3);
 
   /* Enable core with automated transfers */
-  regs->mode = SPIC_AMEN | SPIC_FACT | SPIC_LOOP | SPIC_MS | SPIC_EN;
+  regs->mode = (SPIC_AMEN | SPIC_FACT | (internal ? SPIC_LOOP : 0) | 
+                SPIC_MS | SPIC_EN | (maxwlen << SPIC_LEN));
 
-  /* Write two words to transmit FIFO */
+  /* Write two words to AM transmit registers */
   data = 0xdeadf00d;
+
   for (i = 0; i < 2; i++) {
-    regs->td = data;
+    amreg->tx[i] = data;
     data = ~data;
   }
+
+  /* Set AM mask register to used only the first two words */
+  *ammsk = 3;
   
   /* Set AM period register */
   regs->amper = 0;
@@ -209,8 +388,9 @@ int spictrl_test(int addr)
   
   /* Read out data */
   data = 0xdeadf00d;
+
   for (i = 0; i < 2; i++) {
-    if (regs->rd != data)
+    if (amreg->rx[i] != ((data & wmask) << wshft))
       fail(15+fd+i);
     data = ~data;
   }
@@ -227,3 +407,5 @@ int spictrl_test(int addr)
 
   return 0;
 }
+
+

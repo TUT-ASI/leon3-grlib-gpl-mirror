@@ -26,7 +26,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 library gaisler;
-use gaisler.libiu.all;
+use gaisler.leon3.all;
 library techmap;
 use techmap.gencomp.all;
 library grlib;

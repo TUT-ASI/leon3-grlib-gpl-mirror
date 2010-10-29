@@ -180,6 +180,13 @@ CONFIG_IU_MUL_MAC
   The details of these instructions can be found in the LEON manual,
   This option is only available when 16x16 multiplier is used.
 
+Branch prediction
+CONFIG_IU_BP
+  Enabling branch prediction will improve performance with
+  up to 20%, depending on application. The timing and area
+  overhead are minor, so it is recommended to always enable
+  this option.
+
 Single vector trapping
 CONFIG_IU_SVT
   Single-vector trapping is a SPARC V8e option to reduce code-size
@@ -602,6 +609,10 @@ Report AHB warnings
 CONFIG_AHB_MONWAR
   Print out detected AHB warnings on console.
 
+Write trace to console
+CONFIG_AHB_DTRACE
+  Say yes here to write a trace of all AHB transfers to the
+  simulator console. Has not impact on final netlist.
 
 DSU enable
 CONFIG_DSU_UART

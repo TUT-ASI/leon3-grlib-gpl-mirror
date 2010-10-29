@@ -9,6 +9,6 @@ hc/uahbmst.vhd hc/urstgen.vhd hc/tbctrl.vhd hc/usbhc_top.vhd hc/grusbhc.vhd
 hc/grusbhc_gen.vhd
 #device
 dc/grusbdc_pkg.vhd dc/grusbdcuw.vhd dc/grusbdcsie.vhd dc/grusbdcc.vhd 
-dc/grusbdcahbm.vhd dc/grusbdc.vhd
+dc/grusbdcahbm.vhd dc/grusbdc.vhd dc/grusbdc_gen.vhd
 #DCL
 dcl/grusb_dcl.vhd

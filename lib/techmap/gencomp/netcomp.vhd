@@ -813,4 +813,256 @@ component ssrctrl_net
       n_sro_ce:         out   Std_Logic);
 end component;
 
+  component ftsrctrl_net
+  generic (
+    hindex       : integer := 0;
+    romaddr      : integer := 0;
+    rommask      : integer := 16#ff0#;
+    ramaddr      : integer := 16#400#;
+    rammask      : integer := 16#ff0#;
+    ioaddr       : integer := 16#200#;
+    iomask       : integer := 16#ff0#;
+    ramws        : integer := 0;
+    romws        : integer := 2;
+    iows         : integer := 2;
+    rmw          : integer := 0;
+    srbanks      : integer range 1 to 8  := 1;
+    banksz       : integer range 0 to 15 := 15;
+    rombanks     : integer range 1 to 8  := 1;
+    rombanksz    : integer range 0 to 15 := 15;
+    rombankszdef : integer range 0 to 15 := 15;
+    pindex       : integer := 0;
+    paddr        : integer := 0;
+    pmask        : integer := 16#fff#;
+    edacen       : integer range 0 to 1 := 1;
+    errcnt       : integer range 0 to 1 := 0;
+    cntbits      : integer range 1 to 8 := 1;
+    wsreg        : integer := 0;
+    oepol        : integer := 0;
+    prom8en      : integer := 0;
+    netlist      : integer := 0;
+    tech         : integer := 0
+  );
+  port (
+      rst:              in    Std_ULogic;
+      clk:              in    Std_ULogic;
+      ahbsi        : in  ahb_slv_in_type;
+      ahbso        : out ahb_slv_out_type;
+      apbi         : in  apb_slv_in_type;
+      apbo         : out apb_slv_out_type;
+
+      sri_data:         in    Std_Logic_Vector(31 downto 0);            -- Data bus address
+      sri_brdyn:        in    Std_Logic;
+      sri_bexcn:        in    Std_Logic;
+      sri_writen:       in    Std_Logic;
+      sri_wrn:          in    Std_Logic_Vector(3 downto 0);
+      sri_bwidth:       in    Std_Logic_Vector(1 downto 0);
+      sri_sd:           in    Std_Logic_Vector(63 downto 0);
+      sri_cb:           in    Std_Logic_Vector(15 downto 0);
+      sri_scb:          in    Std_Logic_Vector(15 downto 0);
+      sri_edac:         in    Std_Logic;
+
+      sro_address:      out   Std_Logic_Vector(31 downto 0);
+      sro_data:         out   Std_Logic_Vector(31 downto 0);
+      sro_sddata:       out   Std_Logic_Vector(63 downto 0);
+      sro_ramsn:        out   Std_Logic_Vector(7 downto 0);
+      sro_ramoen:       out   Std_Logic_Vector(7 downto 0);
+      sro_ramn:         out   Std_ULogic;
+      sro_romn:         out   Std_ULogic;
+      sro_mben:         out   Std_Logic_Vector(3 downto 0);
+      sro_iosn:         out   Std_Logic;
+      sro_romsn:        out   Std_Logic_Vector(7 downto 0);
+      sro_oen:          out   Std_Logic;
+      sro_writen:       out   Std_Logic;
+      sro_wrn:          out   Std_Logic_Vector(3 downto 0);
+      sro_bdrive:       out   Std_Logic_Vector(3 downto 0);
+      sro_vbdrive:      out   Std_Logic_Vector(31 downto 0);            --vector bus drive
+      sro_svbdrive:     out   Std_Logic_Vector(63 downto 0);            --vector bus drive sdram
+      sro_read:         out   Std_Logic;
+      sro_sa:           out   Std_Logic_Vector(14 downto 0);
+      sro_cb:           out   Std_Logic_Vector(15 downto 0);
+      sro_scb:          out   Std_Logic_Vector(15 downto 0);
+      sro_vcdrive:      out   Std_Logic_Vector(15 downto 0);             --vector bus drive cb
+      sro_svcdrive:     out   Std_Logic_Vector(15 downto 0);             --vector bus drive cb sdram
+      sro_ce:           out   Std_ULogic;
+
+      sdo_sdcke:        out   Std_Logic_Vector( 1 downto 0);            -- clk en
+      sdo_sdcsn:        out   Std_Logic_Vector( 1 downto 0);            -- chip sel
+      sdo_sdwen:        out   Std_ULogic;                               -- write en
+      sdo_rasn:         out   Std_ULogic;                               -- row addr stb
+      sdo_casn:         out   Std_ULogic;                               -- col addr stb
+      sdo_dqm:          out   Std_Logic_Vector(15 downto 0);            -- data i/o mask
+      sdo_bdrive:       out   Std_ULogic;                               -- bus drive
+      sdo_qdrive:       out   Std_ULogic;                               -- bus drive
+      sdo_vbdrive:      out   Std_Logic_Vector(31 downto 0);            -- vector bus drive
+      sdo_address:      out   Std_Logic_Vector(16 downto 2);            -- address out
+      sdo_data:         out   Std_Logic_Vector(127 downto 0);           -- data out
+      sdo_cb:           out   Std_Logic_Vector(15 downto 0);
+      sdo_ce:           out   Std_ULogic;
+      sdo_ba:           out   Std_Logic_Vector(2 downto 0));            -- bank address
+  end component;
+
+  component grlfpw4_net 
+  generic (tech     : integer := 0;
+           pclow    : integer range 0 to 2 := 2;
+           dsu      : integer range 0 to 1 := 1;           
+           disas    : integer range 0 to 2 := 0;
+           pipe     : integer range 0 to 2 := 0;
+           wrt      : integer range 0 to 2 := 0
+           );
+  port (
+    rst    : in  std_ulogic;			-- Reset
+    clk    : in  std_ulogic;
+    holdn  : in  std_ulogic;			-- pipeline hold
+    cpi_flush  	: in std_ulogic;			  -- pipeline flush
+    cpi_exack    	: in std_ulogic;			  -- FP exception acknowledge
+    cpi_a_rs1  	: in std_logic_vector(4 downto 0);
+    cpi_d_pc    : in std_logic_vector(31 downto 0);
+    cpi_d_inst  : in std_logic_vector(31 downto 0);
+    cpi_d_cnt   : in std_logic_vector(1 downto 0);
+    cpi_d_trap  : in std_ulogic;
+    cpi_d_annul : in std_ulogic;
+    cpi_d_pv    : in std_ulogic;
+    cpi_a_pc    : in std_logic_vector(31 downto 0);
+    cpi_a_inst  : in std_logic_vector(31 downto 0);
+    cpi_a_cnt   : in std_logic_vector(1 downto 0);
+    cpi_a_trap  : in std_ulogic;
+    cpi_a_annul : in std_ulogic;
+    cpi_a_pv    : in std_ulogic;
+    cpi_e_pc    : in std_logic_vector(31 downto 0);
+    cpi_e_inst  : in std_logic_vector(31 downto 0);
+    cpi_e_cnt   : in std_logic_vector(1 downto 0);
+    cpi_e_trap  : in std_ulogic;
+    cpi_e_annul : in std_ulogic;
+    cpi_e_pv    : in std_ulogic;
+    cpi_m_pc    : in std_logic_vector(31 downto 0);
+    cpi_m_inst  : in std_logic_vector(31 downto 0);
+    cpi_m_cnt   : in std_logic_vector(1 downto 0);
+    cpi_m_trap  : in std_ulogic;
+    cpi_m_annul : in std_ulogic;
+    cpi_m_pv    : in std_ulogic;
+    cpi_x_pc    : in std_logic_vector(31 downto 0);
+    cpi_x_inst  : in std_logic_vector(31 downto 0);
+    cpi_x_cnt   : in std_logic_vector(1 downto 0);
+    cpi_x_trap  : in std_ulogic;
+    cpi_x_annul : in std_ulogic;
+    cpi_x_pv    : in std_ulogic;    
+    cpi_lddata        : in std_logic_vector(63 downto 0);     -- load data
+    cpi_dbg_enable : in std_ulogic;
+    cpi_dbg_write  : in std_ulogic;
+    cpi_dbg_fsr    : in std_ulogic;                            -- FSR access
+    cpi_dbg_addr   : in std_logic_vector(4 downto 0);
+    cpi_dbg_data   : in std_logic_vector(31 downto 0);
+    cpo_data          : out std_logic_vector(63 downto 0); -- store data
+    cpo_exc  	        : out std_logic;			 -- FP exception
+    cpo_cc           : out std_logic_vector(1 downto 0);  -- FP condition codes
+    cpo_ccv  	       : out std_ulogic;			 -- FP condition codes valid
+    cpo_ldlock       : out std_logic;			 -- FP pipeline hold
+    cpo_holdn         : out std_ulogic;
+    cpo_dbg_data     : out std_logic_vector(31 downto 0);
+
+    rfi1_rd1addr 	: out std_logic_vector(3 downto 0); 
+    rfi1_rd2addr 	: out std_logic_vector(3 downto 0); 
+    rfi1_wraddr 	: out std_logic_vector(3 downto 0); 
+    rfi1_wrdata 	: out std_logic_vector(31 downto 0);
+    rfi1_ren1        : out std_ulogic;			   
+    rfi1_ren2        : out std_ulogic;			   
+    rfi1_wren        : out std_ulogic;			   
+    
+    rfi2_rd1addr 	: out std_logic_vector(3 downto 0); 
+    rfi2_rd2addr 	: out std_logic_vector(3 downto 0); 
+    rfi2_wraddr 	: out std_logic_vector(3 downto 0); 
+    rfi2_wrdata 	: out std_logic_vector(31 downto 0);
+    rfi2_ren1        : out std_ulogic;
+    rfi2_ren2        : out std_ulogic;			    
+    rfi2_wren        : out std_ulogic;
+
+    rfo1_data1    	: in std_logic_vector(31 downto 0);
+    rfo1_data2    	: in std_logic_vector(31 downto 0);
+    rfo2_data1    	: in std_logic_vector(31 downto 0);
+    rfo2_data2    	: in std_logic_vector(31 downto 0)        
+    );
+  end component;
+
+  component grfpw4_net 
+  generic (tech     : integer := 0;
+           pclow    : integer range 0 to 2 := 2;
+           dsu      : integer range 0 to 2 := 1;           
+           disas    : integer range 0 to 2 := 0;
+           pipe     : integer range 0 to 2 := 0
+           );
+  port (
+    rst    : in  std_ulogic;			-- Reset
+    clk    : in  std_ulogic;
+    holdn  : in  std_ulogic;			-- pipeline hold
+    cpi_flush  	: in std_ulogic;			  -- pipeline flush
+    cpi_exack    	: in std_ulogic;			  -- FP exception acknowledge
+    cpi_a_rs1  	: in std_logic_vector(4 downto 0);
+    cpi_d_pc    : in std_logic_vector(31 downto 0);
+    cpi_d_inst  : in std_logic_vector(31 downto 0);
+    cpi_d_cnt   : in std_logic_vector(1 downto 0);
+    cpi_d_trap  : in std_ulogic;
+    cpi_d_annul : in std_ulogic;
+    cpi_d_pv    : in std_ulogic;
+    cpi_a_pc    : in std_logic_vector(31 downto 0);
+    cpi_a_inst  : in std_logic_vector(31 downto 0);
+    cpi_a_cnt   : in std_logic_vector(1 downto 0);
+    cpi_a_trap  : in std_ulogic;
+    cpi_a_annul : in std_ulogic;
+    cpi_a_pv    : in std_ulogic;
+    cpi_e_pc    : in std_logic_vector(31 downto 0);
+    cpi_e_inst  : in std_logic_vector(31 downto 0);
+    cpi_e_cnt   : in std_logic_vector(1 downto 0);
+    cpi_e_trap  : in std_ulogic;
+    cpi_e_annul : in std_ulogic;
+    cpi_e_pv    : in std_ulogic;
+    cpi_m_pc    : in std_logic_vector(31 downto 0);
+    cpi_m_inst  : in std_logic_vector(31 downto 0);
+    cpi_m_cnt   : in std_logic_vector(1 downto 0);
+    cpi_m_trap  : in std_ulogic;
+    cpi_m_annul : in std_ulogic;
+    cpi_m_pv    : in std_ulogic;
+    cpi_x_pc    : in std_logic_vector(31 downto 0);
+    cpi_x_inst  : in std_logic_vector(31 downto 0);
+    cpi_x_cnt   : in std_logic_vector(1 downto 0);
+    cpi_x_trap  : in std_ulogic;
+    cpi_x_annul : in std_ulogic;
+    cpi_x_pv    : in std_ulogic;    
+    cpi_lddata        : in std_logic_vector(63 downto 0);     -- load data
+    cpi_dbg_enable : in std_ulogic;
+    cpi_dbg_write  : in std_ulogic;
+    cpi_dbg_fsr    : in std_ulogic;                            -- FSR access
+    cpi_dbg_addr   : in std_logic_vector(4 downto 0);
+    cpi_dbg_data   : in std_logic_vector(31 downto 0);
+    cpo_data          : out std_logic_vector(63 downto 0); -- store data
+    cpo_exc  	        : out std_logic;			 -- FP exception
+    cpo_cc           : out std_logic_vector(1 downto 0);  -- FP condition codes
+    cpo_ccv  	       : out std_ulogic;			 -- FP condition codes valid
+    cpo_ldlock       : out std_logic;			 -- FP pipeline hold
+    cpo_holdn         : out std_ulogic;
+    cpo_dbg_data     : out std_logic_vector(31 downto 0);
+
+    rfi1_rd1addr 	: out std_logic_vector(3 downto 0); 
+    rfi1_rd2addr 	: out std_logic_vector(3 downto 0); 
+    rfi1_wraddr 	: out std_logic_vector(3 downto 0); 
+    rfi1_wrdata 	: out std_logic_vector(31 downto 0);
+    rfi1_ren1        : out std_ulogic;			   
+    rfi1_ren2        : out std_ulogic;			   
+    rfi1_wren        : out std_ulogic;			   
+    
+    rfi2_rd1addr 	: out std_logic_vector(3 downto 0); 
+    rfi2_rd2addr 	: out std_logic_vector(3 downto 0); 
+    rfi2_wraddr 	: out std_logic_vector(3 downto 0); 
+    rfi2_wrdata 	: out std_logic_vector(31 downto 0);
+    rfi2_ren1        : out std_ulogic;
+    rfi2_ren2        : out std_ulogic;			    
+    rfi2_wren        : out std_ulogic;
+
+    rfo1_data1    	: in std_logic_vector(31 downto 0);
+    rfo1_data2    	: in std_logic_vector(31 downto 0);
+    rfo2_data1    	: in std_logic_vector(31 downto 0);
+    rfo2_data2    	: in std_logic_vector(31 downto 0)        
+    );
+  end component;
+
 end;

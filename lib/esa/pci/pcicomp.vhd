@@ -16,7 +16,8 @@ package pcicomp is
       nb_agents  : integer := 4;
       apb_en     : integer := 1;
       netlist    : integer := 0;
-      tech       : integer := axcel);
+      tech       : integer := axcel;
+      reg        : integer := 0);
     port(
       clk     : in std_ulogic;
       rst_n   : in std_ulogic;

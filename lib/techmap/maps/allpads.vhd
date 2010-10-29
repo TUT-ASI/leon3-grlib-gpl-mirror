@@ -91,6 +91,128 @@ component apa3_toutpad_ds
   port (padp, padn : out std_ulogic; i, en : in std_ulogic);
 end component;
 
+component apa3e_clkpad 
+  generic (level : integer := 0; voltage : integer := 0);
+  port (pad : in std_ulogic; o : out std_ulogic);
+end component;
+
+component apa3e_clkpad_ds
+  generic (level : integer := lvds);
+  port (padp, padn : in std_ulogic; o : out std_ulogic);
+end component;
+
+component apa3e_inpad
+  generic (level : integer := 0; voltage : integer := 0;
+           filter : integer := 0);
+  port (pad : in std_ulogic; o : out std_ulogic);
+end component;
+
+component apa3e_inpad_ds
+  generic (level : integer := lvds);
+  port (padp, padn : in std_ulogic; o : out std_ulogic);
+end component;
+
+component apa3e_iopad 
+  generic (level : integer := 0; slew : integer := 0;
+	   voltage : integer := 0; strength : integer := 0;
+           filter : integer := 0);
+  port (pad : inout std_ulogic; i, en : in std_ulogic; o : out std_ulogic);
+end component;
+
+component apa3e_iopad_ds
+  generic (level : integer := lvds);
+  port (padp, padn : inout std_ulogic; i, en : in std_ulogic; o : out std_ulogic);
+end component;
+
+component apa3e_odpad 
+  generic (level : integer := 0; slew : integer := 0;
+           voltage : integer := 0; strength : integer := 0);
+  port (pad : out std_ulogic; i, en : in std_ulogic);
+end component;
+
+component apa3e_outpad 
+  generic (level : integer := 0; slew : integer := 0;
+	   voltage : integer := 0; strength : integer := 0);
+  port (pad : out std_ulogic; i : in std_ulogic);
+end component;
+
+component apa3e_outpad_ds
+  generic (level : integer := lvds);
+  port (padp, padn : out std_ulogic; i : in std_ulogic);
+end component;
+
+component apa3e_toutpad 
+  generic (level : integer := 0; slew : integer := 0;
+	   voltage : integer := 0; strength : integer := 0);
+  port (pad : out std_ulogic; i, en : in std_ulogic);
+end component;
+
+component apa3e_toutpad_ds
+  generic (level : integer := lvds);
+  port (padp, padn : out std_ulogic; i, en : in std_ulogic);
+end component;
+
+component apa3l_clkpad 
+  generic (level : integer := 0; voltage : integer := 0);
+  port (pad : in std_ulogic; o : out std_ulogic);
+end component;
+
+component apa3l_clkpad_ds
+  generic (level : integer := lvds);
+  port (padp, padn : in std_ulogic; o : out std_ulogic);
+end component;
+
+component apa3l_inpad
+  generic (level : integer := 0; voltage : integer := 0;
+           filter : integer := 0);
+  port (pad : in std_ulogic; o : out std_ulogic);
+end component;
+
+component apa3l_inpad_ds
+  generic (level : integer := lvds);
+  port (padp, padn : in std_ulogic; o : out std_ulogic);
+end component;
+
+component apa3l_iopad 
+  generic (level : integer := 0; slew : integer := 0;
+	   voltage : integer := 0; strength : integer := 0;
+           filter : integer := 0);
+  port (pad : inout std_ulogic; i, en : in std_ulogic; o : out std_ulogic);
+end component;
+
+component apa3l_iopad_ds
+  generic (level : integer := lvds);
+  port (padp, padn : inout std_ulogic; i, en : in std_ulogic; o : out std_ulogic);
+end component;
+
+component apa3l_odpad 
+  generic (level : integer := 0; slew : integer := 0;
+           voltage : integer := 0; strength : integer := 0);
+  port (pad : out std_ulogic; i, en : in std_ulogic);
+end component;
+
+component apa3l_outpad 
+  generic (level : integer := 0; slew : integer := 0;
+	   voltage : integer := 0; strength : integer := 0);
+  port (pad : out std_ulogic; i : in std_ulogic);
+end component;
+
+component apa3l_outpad_ds
+  generic (level : integer := lvds);
+  port (padp, padn : out std_ulogic; i : in std_ulogic);
+end component;
+
+component apa3l_toutpad 
+  generic (level : integer := 0; slew : integer := 0;
+	   voltage : integer := 0; strength : integer := 0);
+  port (pad : out std_ulogic; i, en : in std_ulogic);
+end component;
+
+component apa3l_toutpad_ds
+  generic (level : integer := lvds);
+  port (padp, padn : out std_ulogic; i, en : in std_ulogic);
+end component;
+
 component fusion_clkpad 
   generic (level : integer := 0; voltage : integer := 0);
   port (pad : in std_ulogic; o : out std_ulogic);
@@ -182,7 +304,7 @@ component axcel_toutpad
 end component;
 
 component axcel_clkpad 
-  generic (level : integer := 0; voltage : integer := 0);
+  generic (level : integer := 0; voltage : integer := 0; arch : integer := 0);
   port (pad : in std_ulogic; o : out std_ulogic);
 end component; 
 

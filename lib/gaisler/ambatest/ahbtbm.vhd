@@ -67,13 +67,17 @@ type reg_type is record
   read      : std_logic; -- indicate 
 
   dbgl      : integer;
+  use128    : integer;
+  hsize     : std_logic_vector(2 downto 0);
   ac        : ahbtbm_access_array_type;
   retryac   : ahbtbm_access_type;
   curac     : ahbtbm_access_type;
   haddr     : std_logic_vector(31 downto 0); -- addr current access
   hdata     : std_logic_vector(31 downto 0); -- data currnet access
+  hdata128  : std_logic_vector(127 downto 0); -- data currnet access
   hwrite    : std_logic;                     -- write current access
   hrdata    : std_logic_vector(31 downto 0);
+  hrdata128 : std_logic_vector(127 downto 0);
   status    : ahbtbm_status_type;
   dvalid    : std_logic;
   oldhtrans : std_logic_vector(1 downto 0);
@@ -119,11 +123,16 @@ begin
     -- new /*
     v := r; update := '0'; hbusreq := '0';--v.retry := '0';
     v.dvalid := '0'; xhirq := (others => '0');
+    hprot := "1110";
     
-    v.hrdata := ahbmi.hrdata;
+    --v.hrdata := ahbmi.hrdata;
+    --v.hrdata128 := ahbmi.hrdata128;
+    v.hrdata := ahbmi.hrdata(31 downto 0);
+    v.hrdata128 := ahbread4word(ahbmi.hrdata);
     -- pragma translate_off
     if ahbmi.hready = '1' and ahbmi.hresp = HRESP_ERROR then
       v.hrdata := (others => 'X');
+      v.hrdata128 := (others => 'X');
     end if;
     -- pragma translate_on
 
@@ -151,20 +160,41 @@ begin
     --  or r.ac(1).htrans = HTRANS_IDLE) and r.retry = '0' then
     --if ahbmi.hready = '1' and ((ahbmi.hresp = HRESP_OKAY and r.grant = '1') 
     --   or r.ac(1).htrans = HTRANS_IDLE) and r.retry = "00" then
-    if ahbmi.hready = '1' and (( r.grant = '1' and 
-       (ahbmi.hresp = HRESP_OKAY or ahbmi.hresp = HRESP_ERROR)) 
+
+    if ahbmi.hready = '0' and (ahbmi.hresp = HRESP_RETRY or ahbmi.hresp = HRESP_SPLIT) and r.grant2 = '1' then 
+      if r.retry = "00" then
+        v.retryac := r.ac(1);
+        v.ac(1) := r.curac;
+        v.ac(1).htrans := HTRANS_IDLE;
+        v.ac(1).hburst := "000";
+        v.retry := "01";
+      elsif r.retry = "10" then
+        v.ac(1) := r.retryac;
+        if kblimit = '1' then v.ac(1).htrans := HTRANS_NONSEQ; end if;
+      end if;
+    
+    elsif ahbmi.hready = '1' and ( r.grant = '1'  
        or r.ac(1).htrans = HTRANS_IDLE) and r.retry = "00" then
+--    elsif ahbmi.hready = '1' and (( r.grant = '1' and 
+--       (ahbmi.hresp = HRESP_OKAY or ahbmi.hresp = HRESP_ERROR)) 
+--       or r.ac(1).htrans = HTRANS_IDLE) and r.retry = "00" then
         v.ac(1) := r.ac(0); v.ac(0) := ctrli.ac;
         
         v.curac := r.ac(1);
         v.hdata := r.ac(1).hdata; v.haddr := r.ac(1).haddr; 
         v.hwrite := r.ac(1).hwrite; v.dbgl := r.ac(1).ctrl.dbgl;
-        
+        v.use128 := r.ac(1).ctrl.use128; 
+        if v.use128 = 0 then
+          v.hdata128 := r.ac(1).hdata & r.ac(1).hdata & r.ac(1).hdata & r.ac(1).hdata;
+        else
+          v.hdata128 := r.ac(1).hdata128;
+        end if;
+        v.hsize := r.ac(1).hsize;
+
         v.read := (not r.ac(1).hwrite) and r.ac(1).htrans(1);
         update := '1';
         
         if kblimit = '1' then v.ac(1).htrans := HTRANS_NONSEQ; end if;
-
     elsif ahbmi.hready = '0' and (ahbmi.hresp = HRESP_RETRY or ahbmi.hresp = HRESP_SPLIT) and r.grant2 = '1' then 
       if r.retry = "00" then
         v.retryac := r.ac(1);
@@ -184,11 +214,11 @@ begin
     elsif ahbmi.hready = '1' and r.grant = '1' and r.retry = "10" then
       v.read := (not r.ac(1).hwrite) and r.ac(1).htrans(1);
       --if ahbmi.hresp = HRESP_OKAY then
-      if ahbmi.hresp = HRESP_OKAY or ahbmi.hresp = HRESP_ERROR then
+      --if ahbmi.hresp = HRESP_OKAY or ahbmi.hresp = HRESP_ERROR then
         v.ac(1) := r.retryac;
         if kblimit = '1' then v.ac(1).htrans := HTRANS_NONSEQ; end if;
         v.retry := "00";
-      end if;
+      --end if;
     end if;
    
     -- NONSEQ in retry
@@ -216,8 +246,24 @@ begin
     -- Check read data
     if r.read = '1' and ahbmi.hresp = HRESP_OKAY and ahbmi.hready = '1' then
       v.dvalid := '1';
-      if r.hdata /= ahbmi.hrdata then
-        v.status.err := '1';
+      if r.use128 = 0 then
+        --if r.hdata /= ahbmi.hrdata then
+        if r.hdata /= ahbmi.hrdata(31 downto 0) then
+          v.status.err := '1';
+        end if;
+      else
+        if r.hsize = "100" then
+          --if r.hdata128 /= ahbmi.hrdata128 then
+          if r.hdata128 /= ahbread4word(ahbmi.hrdata) then
+            v.status.err := '1';
+          end if;
+        else
+          --if r.hdata128(63 downto 0) /= ahbmi.hrdata128(63 downto 0) then
+          --if r.hdata128(63 downto 0) /= ahbmi.hrdata(63 downto 0) then
+          if r.hdata128(63 downto 0) /= ahbreaddword(ahbmi.hrdata) then
+            v.status.err := '1';
+          end if;
+        end if;
       end if;
     elsif r.read = '1' and ahbmi.hresp = HRESP_ERROR and ahbmi.hready = '1' then
       v.status.err := '1';
@@ -244,18 +290,21 @@ begin
     ctrlo.update <= update;
     ctrlo.status <= r.status;
     ctrlo.hrdata <= r.hrdata;
+    ctrlo.hrdata128 <= r.hrdata128;
     ctrlo.dvalid <= r.dvalid;
 
     ahbmo.haddr   <= r.ac(1).haddr;
     ahbmo.htrans  <= r.ac(1).htrans;
     ahbmo.hbusreq <= hbusreq;
-    ahbmo.hwdata  <= r.hdata;
+    --ahbmo.hwdata  <= r.hdata;
+    --ahbmo.hwdata128  <= r.hdata128;
+    ahbmo.hwdata  <= ahbdrivedata(r.hdata128);
     ahbmo.hconfig <= hconfig;
     ahbmo.hlock   <= '0';
     ahbmo.hwrite  <= r.ac(1).hwrite;
     ahbmo.hsize   <= r.ac(1).hsize;
     ahbmo.hburst  <= r.ac(1).hburst;
-    ahbmo.hprot   <= hprot;
+    ahbmo.hprot   <= r.ac(1).hprot;
     ahbmo.hirq    <= xhirq;
     ahbmo.hindex  <= hindex;
 
@@ -271,12 +320,23 @@ begin
       if ahbmi.hresp = HRESP_OKAY then
         if rin.status.err = '0' then
           if r.dbgl >= 2 then
-            print(ptime & "Read[" & tost(r.haddr) & "]: " & tost(ahbmi.hrdata));
+            if r.use128 = 0 then print(ptime & "Read[" & tost(r.haddr) & "]: " & tost(ahbmi.hrdata(31 downto 0)));
+            else 
+              if r.hsize = "100" then print(ptime & "Read[" & tost(r.haddr) & "]: " & tost(ahbmi.hrdata)); 
+              else print(ptime & "Read[" & tost(r.haddr) & "]: " & tost(ahbreaddword(ahbmi.hrdata))); end if;
+            end if;
           end if;
         else
           if r.dbgl >= 1 then
-            print(ptime & "Read[" & tost(r.haddr) & "]: " & tost(ahbmi.hrdata) 
-                  & " != " & tost(r.hdata));
+            if r.use128 = 0 then print(ptime & "Read[" & tost(r.haddr) & "]: " & tost(ahbmi.hrdata(31 downto 0)) 
+                                       & " != " & tost(r.hdata));
+            else 
+              if r.hsize = "100" then print(ptime & "Read[" & tost(r.haddr) & "]: " & tost(ahbmi.hrdata) 
+                                            & " != " & tost(r.hdata128)); 
+              else print(ptime & "Read[" & tost(r.haddr) & "]: " & tost(ahbreaddword(ahbmi.hrdata)) 
+                         & " != " & tost(r.hdata128(63 downto 0))); 
+              end if;
+            end if;
           end if;
         end if;
       elsif ahbmi.hresp = HRESP_RETRY then
@@ -296,12 +356,24 @@ begin
     if r.hwrite = '1' and ahbmi.hready = '1' and r.oldhtrans /= HTRANS_IDLE then
       if ahbmi.hresp = HRESP_OKAY then
         if r.dbgl >= 2 then
-          print(ptime & "Write[" & tost(r.haddr) & "]: " & tost(r.hdata));
+          if r.use128 = 0 then print(ptime & "Write[" & tost(r.haddr) & "]: " & tost(r.hdata));
+          else 
+            if r.hsize = "100" then print(ptime & "Write[" & tost(r.haddr) & "]: " & tost(r.hdata128)); 
+            else print(ptime & "Write[" & tost(r.haddr) & "]: " & tost(r.hdata128(63 downto 0))); end if;
+          end if;
         end if;
       elsif ahbmi.hresp = HRESP_RETRY then
         if r.dbgl >= 3 then
+          if r.use128 = 0 then print(ptime & "Write[" & tost(r.haddr) & "]: " & tost(r.hdata) & " [RETRY]");
+          else 
+            if r.hsize = "100" then print(ptime & "Write[" & tost(r.haddr) & "]: " & tost(r.hdata128) & " [RETRY]"); 
+            else print(ptime & "Write[" & tost(r.haddr) & "]: " & tost(r.hdata128(63 downto 0)) & " [RETRY]"); end if; 
+          end if;
+        end if;
+      elsif ahbmi.hresp = HRESP_SPLIT then
+        if r.dbgl >= 3 then
           print(ptime & "Write[" & tost(r.haddr) & "]: " & tost(r.hdata) 
-                & " [RETRY]");
+                & " [SPLIT]");
         end if;
       elsif ahbmi.hresp = HRESP_SPLIT then
         if r.dbgl >= 3 then
@@ -310,8 +382,11 @@ begin
         end if;
       elsif ahbmi.hresp = HRESP_ERROR then
         if r.dbgl >= 1 then
-          print(ptime & "Write[" & tost(r.haddr) & "]: " & tost(r.hdata) 
-                & " [ERROR]");
+          if r.use128 = 0 then print(ptime & "Write[" & tost(r.haddr) & "]: " & tost(r.hdata) & " [ERROR]");
+          else 
+            if r.hsize = "100" then print(ptime & "Write[" & tost(r.haddr) & "]: " & tost(r.hdata128) & " [ERROR]"); 
+            else print(ptime & "Write[" & tost(r.haddr) & "]: " & tost(r.hdata128(63 downto 0)) & " [ERROR]"); end if; 
+          end if;
         end if;
       end if;
     end if;

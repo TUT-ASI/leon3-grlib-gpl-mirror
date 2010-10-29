@@ -112,8 +112,20 @@ begin
                                 tapo_capt, tapo_shft, tapo_upd, tapo_xsel1, tapo_xsel2);
    end generate;
 
-   actpa3 : if (tech = apa3) generate
+   pa3 : if (tech = apa3) generate
      u0 : proasic3_tap port map (tck, tms, tdi, trst, tdo,
+       tapi_tdo1, tapi_tdo2, tapi_en1, tapo_tck, tapo_tdi, tapo_rst,
+                                 tapo_capt, tapo_shft, tapo_upd, tapo_inst);
+   end generate;
+   
+   pa3e : if (tech = apa3e) generate
+     u0 : proasic3e_tap port map (tck, tms, tdi, trst, tdo,
+       tapi_tdo1, tapi_tdo2, tapi_en1, tapo_tck, tapo_tdi, tapo_rst,
+                                 tapo_capt, tapo_shft, tapo_upd, tapo_inst);
+   end generate;
+   
+   pa3l : if (tech = apa3l) generate
+     u0 : proasic3l_tap port map (tck, tms, tdi, trst, tdo,
        tapi_tdo1, tapi_tdo2, tapi_en1, tapo_tck, tapo_tdi, tapo_rst,
                                  tapo_capt, tapo_shft, tapo_upd, tapo_inst);
    end generate;
@@ -124,10 +136,7 @@ begin
                                  tapo_capt, tapo_shft, tapo_upd, tapo_inst);
    end generate;
    
-   inf : if (is_unisim(tech) /= 1) and
-            (tech /= altera) and (tech /= stratix1)  and (tech /= stratix2) and
-            (tech /= stratix3)  and (tech /= cyclone3) and (tech /= apa3) and (tech /= actfus )
-   generate
+   inf : if has_tap(tech) = 0 generate
    asic : if is_fpga(tech) = 0 generate
      gscn : if scantest = 1 generate
        lltckn <= not tck;

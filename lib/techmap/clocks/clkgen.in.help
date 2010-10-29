@@ -44,6 +44,16 @@ CONFIG_OCLK_DIV
   Static PLL configurator. The mul/div factors can then be read
   out from tool.
 
+Output clock divider, 2nd clock
+CONFIG_OCLKB_DIV
+  See help for 'Ouput division factor'. Set this to 0 to disable the
+  second clock output.
+
+Output clock divider, 3rd clock
+CONFIG_OCLKC_DIV
+  See help for 'Ouput division factor'. Set this to 0 to disable the
+  third clock output.
+
 System clock multiplier
 CONFIG_CLKDLL_1_2
   The Xilinx CLKDLL can scale the input clock with a factor of 0.5, 1.0, 

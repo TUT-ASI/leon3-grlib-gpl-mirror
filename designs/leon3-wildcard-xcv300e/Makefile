@@ -6,7 +6,7 @@ include $(GRLIB)/boards/$(BOARD)/Makefile.inc
 DEVICE=$(PART)-$(PACKAGE)$(SPEED)
 UCF=$(GRLIB)/boards/$(BOARD)/default.ucf
 EFFORT=high
-XSTOPT=
+XSTOPT=""
 ISEMAPOPT="-r"
 SYNPOPT="set_option -pipe 0; set_option -retiming 0; set_option -write_apr_constraint 0; set_option -resource_sharing 1"
 VHDLSYNFILES=config.vhd wildfpga.vhd

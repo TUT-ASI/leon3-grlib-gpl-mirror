@@ -123,7 +123,10 @@ architecture rtl of grspw2 is
   signal irq          : std_ulogic;
   signal testin       : std_logic_vector(3 downto 0);
   signal rxclk        : std_logic_vector(1 downto 0);
-  
+
+  signal hwdata       : std_logic_vector(31 downto 0);
+  signal hrdata       : std_logic_vector(31 downto 0);
+
 begin  
 
   testin <= ahbmi.testen & "000";
@@ -155,7 +158,7 @@ rtl : if netlist = 0 generate
       hgrant       => ahbmi.hgrant(hindex),
       hready       => ahbmi.hready,   
       hresp        => ahbmi.hresp,
-      hrdata       => ahbmi.hrdata,
+      hrdata       => hrdata,
       --ahb mst out
       hbusreq      => ahbmo.hbusreq,
       hlock        => ahbmo.hlock,
@@ -165,7 +168,7 @@ rtl : if netlist = 0 generate
       hsize        => ahbmo.hsize,
       hburst       => ahbmo.hburst,
       hprot        => ahbmo.hprot,
-      hwdata       => ahbmo.hwdata,
+      hwdata       => hwdata,
       --apb slv in 
       psel	   => apbi.psel(pindex),
       penable	   => apbi.penable,
@@ -183,13 +186,16 @@ rtl : if netlist = 0 generate
       so           => swno.s,
       --time iface
       tickin       => swni.tickin,
+      tickinraw    => swni.tickinraw,
+      timein       => swni.timein,
+      tickindone   => swno.tickindone,
       tickout      => swno.tickout,
+      tickoutraw   => swno.tickoutraw,
+      timeout      => swno.timeout,
       --irq
       irq          => irq,
       --misc     
       clkdiv10     => swni.clkdiv10,
-      dcrstval     => swni.dcrstval,
-      timerrstval  => swni.timerrstval,
       --rmapen    
       rmapen       => swni.rmapen, 
       --rx ahb fifo
@@ -222,7 +228,9 @@ rtl : if netlist = 0 generate
       rmrdata      => rmrdata,
       linkdis      => swno.linkdis,
       testrst      => ahbmi.testrst,
-      testen       => ahbmi.testen
+      testen       => ahbmi.testen,
+      rxdataout    => swno.rxdataout,
+      rxdav        => swno.rxdav
       );
   end generate;
 
@@ -244,7 +252,7 @@ rtl : if netlist = 0 generate
       hgrant       => ahbmi.hgrant(hindex),
       hready       => ahbmi.hready,   
       hresp        => ahbmi.hresp,
-      hrdata       => ahbmi.hrdata,
+      hrdata       => hrdata,
       --ahb mst out
       hbusreq      => ahbmo.hbusreq,
       hlock        => ahbmo.hlock,
@@ -254,7 +262,7 @@ rtl : if netlist = 0 generate
       hsize        => ahbmo.hsize,
       hburst       => ahbmo.hburst,
       hprot        => ahbmo.hprot,
-      hwdata       => ahbmo.hwdata,
+      hwdata       => hwdata,
       --apb slv in 
       psel	   => apbi.psel(pindex),
       penable	   => apbi.penable,
@@ -264,8 +272,8 @@ rtl : if netlist = 0 generate
       --apb slv out
       prdata       => apbo.prdata,
       --spw in
-      d            => swni.d,
-      dv           => swni.dv,
+      d            => swni.d(3 downto 0),
+      dv           => swni.dv(3 downto 0),
       dconnect     => swni.dconnect,
       --spw out
       do           => swno.d,
@@ -322,6 +330,9 @@ rtl : if netlist = 0 generate
     apbo.pirq(pirq)  <= irq;
   end process;
 
+  hrdata           <= ahbreadword(ahbmi.hrdata);
+  
+  ahbmo.hwdata     <= ahbdrivedata(hwdata);
   ahbmo.hirq   	   <= (others => '0');
   ahbmo.hconfig    <= hconfig;
   ahbmo.hindex     <= hindex;

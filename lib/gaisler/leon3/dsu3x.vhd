@@ -31,8 +31,6 @@ use grlib.stdlib.all;
 use grlib.devices.all;
 library gaisler;
 use gaisler.leon3.all;
-use gaisler.libiu.all;
-use gaisler.libcache.all;
 library techmap;
 use techmap.gencomp.all;
 
@@ -238,14 +236,14 @@ begin
         vabufi.data(66) := tr.hmastlock;
         vabufi.data(65 downto 64) := ahbmi.hresp;
         if tr.hwrite = '1' then
-          vabufi.data(63 downto 32) := ahbsi2.hwdata;
+          vabufi.data(63 downto 32) := ahbsi2.hwdata(31 downto 0);
         else
-          vabufi.data(63 downto 32) := ahbmi.hrdata;
+          vabufi.data(63 downto 32) := ahbmi.hrdata(31 downto 0);
         end if; 
         vabufi.data(31 downto 0) := tr.haddr;
       else
         vabufi.addr(TBUFABITS-1 downto 0) := tr.haddr(TBUFABITS+3 downto 4);
-        vabufi.data := ahbsi2.hwdata & ahbsi2.hwdata & ahbsi2.hwdata & ahbsi2.hwdata;
+        vabufi.data := ahbsi2.hwdata(31 downto 0) & ahbsi2.hwdata(31 downto 0) & ahbsi2.hwdata(31 downto 0) & ahbsi2.hwdata(31 downto 0);
       end if;
 
 -- write trace buffer
@@ -273,7 +271,7 @@ begin
         tv.hsize := ahbsi2.hsize; tv.hburst := ahbsi2.hburst;
         tv.hmaster := ahbsi2.hmaster; tv.hmastlock := ahbsi2.hmastlock;
       end if;
-      if tr.hsel = '1' then tv.hwdata := ahbsi2.hwdata; end if;
+      if tr.hsel = '1' then tv.hwdata := ahbsi2.hwdata(31 downto 0); end if;
       if ahbsi2.hready = '1' then
         tv.hsel := ahbsi2.hsel(hindex);
         tv.ahbactive := ahbsi2.htrans(1);
@@ -514,7 +512,7 @@ begin
     end if;
 
     if r.slv.hsel = '1' then
-      if (r.slv.hwrite and hclken) = '1' then v.slv.hwdata := ahbsi2.hwdata; end if;
+      if (r.slv.hwrite and hclken) = '1' then v.slv.hwdata := ahbsi2.hwdata(31 downto 0); end if;
       if (clk2x = 0) or ((r.slv.hready or r.slv.hready2) = '0') then
         v.slv.hrdata := hrdata;
       end if;
@@ -572,7 +570,7 @@ begin
       dbgo(i).btrapa <= r.bx(i);
       dbgo(i).btrape <= r.bz(i);
       dbgo(i).daddr <= r.slv.haddr(PROC_L-1 downto 2);
-      dbgo(i).ddata <= r.slv.hwdata;    
+      dbgo(i).ddata <= r.slv.hwdata(31 downto 0);    
       dbgo(i).dwrite <= r.slv.hwrite;
       dbgo(i).halt <= r.halt(i);
       dbgo(i).reset <= r.reset(i);
@@ -584,9 +582,9 @@ begin
     ahbso.hresp <= HRESP_OKAY;
     ahbso.hready <= r.slv.hready;
     if (clk2x = 0) then 
-      ahbso.hrdata <= r.slv.hrdata;
+      ahbso.hrdata <= ahbdrivedata(r.slv.hrdata);
     else
-      ahbso.hrdata <= hrdata2x;
+      ahbso.hrdata <= ahbdrivedata(hrdata2x);
     end if;
     ahbso.hsplit <= (others => '0');
     ahbso.hcache <= '0';
@@ -611,7 +609,8 @@ begin
     gen4 : for i in ahbsi.htrans'range generate 
       ag4 : clkand generic map (tech => 0, ren => 0) port map (ahbsi.htrans(i), hclken, ahbsi2.htrans(i));
     end generate;
-    gen5 : for i in ahbsi.hwdata'range generate
+--    gen5 : for i in ahbsi.hwdata'range generate
+    gen5 : for i in 0 to 31 generate
       ag5 : clkand generic map (tech => 0, ren => 0) port map (ahbsi.hwdata(i), hclken, ahbsi2.hwdata(i));
     end generate;
     gen6 : for i in ahbsi.hsize'range generate 

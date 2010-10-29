@@ -145,7 +145,17 @@ _fsrxx:
 !	set 0x0ffff, %g2
 !	st  %g2, [%g1+0x10]
 
-	set 0xFFFFF860, %g1
+#ifdef DDR2CTRLIO
+	set DDR2CTRLIO, %g1
+	set DDR2CFG4, %g2
+	st  %g2, [%g1+12]
+#endif
+
+#ifdef ASDCFG
+#ifndef SDCTRLPNP
+#define SDCTRLPNP 0xFFFFF860
+#endif
+	set SDCTRLPNP, %g1
 	ld  [%g1], %g2
 	srl %g2, 12, %g2
 	set 0x01009, %g1
@@ -155,6 +165,7 @@ _fsrxx:
 	set ASDCFG, %g1
 	set DSDCFG, %g2
 	st  %g2, [%g1]
+#endif
 
 	! %g3 = cpu index
 1:	set STACKSIZE, %g2

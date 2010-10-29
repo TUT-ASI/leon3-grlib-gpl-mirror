@@ -54,7 +54,8 @@ package libjtagcom is
     isel   : integer range 0 to 1 := 0;
     nsync : integer range 1 to 2 := 2;
     ainst  : integer range 0 to 255 := 2;
-    dinst  : integer range 0 to 255 := 3);
+    dinst  : integer range 0 to 255 := 3;
+    reread : integer range 0 to 1 := 0);
   port (
     rst  : in std_ulogic;
     clk  : in std_ulogic;

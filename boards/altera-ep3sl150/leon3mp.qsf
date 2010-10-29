@@ -820,15 +820,17 @@ set_instance_assignment -name IO_STANDARD "SSTL-18 CLASS I"  -to ddr_web #ddr2_d
 #set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to ddr_dqsp
 #set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to ddr_dqsn
 
+########################################################################################################
 # Remove these group assignments to run in quartus >= 8.0
-set_instance_assignment -name MEMORY_INTERFACE_DATA_PIN_GROUP 9 -from ddr_dqsp[0] -to ddr_dq[0..7]
-set_instance_assignment -name MEMORY_INTERFACE_DATA_PIN_GROUP 9 -from ddr_dqsp[1] -to ddr_dq[8..15]
-set_instance_assignment -name MEMORY_INTERFACE_DATA_PIN_GROUP 9 -from ddr_dqsp[2] -to ddr_dq[16..23]
-set_instance_assignment -name MEMORY_INTERFACE_DATA_PIN_GROUP 9 -from ddr_dqsp[3] -to ddr_dq[24..31]
-set_instance_assignment -name MEMORY_INTERFACE_DATA_PIN_GROUP 9 -from ddr_dqsp[4] -to ddr_dq[32..39]
-set_instance_assignment -name MEMORY_INTERFACE_DATA_PIN_GROUP 9 -from ddr_dqsp[5] -to ddr_dq[40..47]
-set_instance_assignment -name MEMORY_INTERFACE_DATA_PIN_GROUP 9 -from ddr_dqsp[6] -to ddr_dq[48..55]
-set_instance_assignment -name MEMORY_INTERFACE_DATA_PIN_GROUP 9 -from ddr_dqsp[7] -to ddr_dq[56..63]
+#set_instance_assignment -name MEMORY_INTERFACE_DATA_PIN_GROUP 9 -from ddr_dqsp[0] -to ddr_dq[0..7]
+#set_instance_assignment -name MEMORY_INTERFACE_DATA_PIN_GROUP 9 -from ddr_dqsp[1] -to ddr_dq[8..15]
+#set_instance_assignment -name MEMORY_INTERFACE_DATA_PIN_GROUP 9 -from ddr_dqsp[2] -to ddr_dq[16..23]
+#set_instance_assignment -name MEMORY_INTERFACE_DATA_PIN_GROUP 9 -from ddr_dqsp[3] -to ddr_dq[24..31]
+#set_instance_assignment -name MEMORY_INTERFACE_DATA_PIN_GROUP 9 -from ddr_dqsp[4] -to ddr_dq[32..39]
+#set_instance_assignment -name MEMORY_INTERFACE_DATA_PIN_GROUP 9 -from ddr_dqsp[5] -to ddr_dq[40..47]
+#set_instance_assignment -name MEMORY_INTERFACE_DATA_PIN_GROUP 9 -from ddr_dqsp[6] -to ddr_dq[48..55]
+#set_instance_assignment -name MEMORY_INTERFACE_DATA_PIN_GROUP 9 -from ddr_dqsp[7] -to ddr_dq[56..63]
+########################################################################################################
 
 ## D3_DELAY = 3 for 125 MHz, D3_DELAY = 0 for 150-200 MHz
 set_instance_assignment -name D3_DELAY 0 -to ddr_dq

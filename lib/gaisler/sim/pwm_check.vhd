@@ -126,7 +126,7 @@ architecture sim of pwm_check is
     6 => (others=>16),
     7 => (others=>17));
 
-  -- Period, compare, and dead band values for each pwm period in subtest 1,
+  -- Period, compare, and dead band values for each pwm period in subtest 2,
   -- in clock cycles
   constant ST2_PER : st2_array := (
     0 => (others=>200),

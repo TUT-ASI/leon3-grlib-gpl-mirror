@@ -9,7 +9,7 @@ main()
 	apbuart_test(0x80000100);
 	gptimer_test(0x80000300, 6);
 //	mctrl_test(0x80000000, 0x80000f00, 1);
-	pci_test(0x80000400, 0xfff1000, 0xc0000000);
+//	pci_test(0x80000400, 0xfff00000, 0xc0000000);
 	greth_test(0x80000e00);
 	can_oc_test(0xfff20000);
 	can_oc_test(0xfff20100);

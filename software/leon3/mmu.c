@@ -8,6 +8,14 @@
 #define NODO_CLEAR
 #define TLBNUM 8
 
+#ifndef RAMSTART
+#define RAMSTART 0x40000000
+#endif
+
+#ifndef ROMSTART
+#define ROMSTART 0x00000000
+#endif
+
 extern unsigned long ctx;
 extern unsigned long pg0,pm0,pt0,page0,page1,page2,pth_addr,pth_addr1;
 typedef void (*functype)(void);
@@ -156,12 +164,12 @@ __asm__(
  paddr = 0;
  srmmu_ctxd_set(c0+0,(pgd_t *)g0); //ctx 0
  srmmu_ctxd_set(c0+1,(pgd_t *)g0); //ctx 1
- pteval = ((0 >> 4) | SRMMU_ET_PTE | SRMMU_EXEC);           /*0 - 1000000: ROM */
- srmmu_set_pte(g0+0, pteval);
+ pteval = ((ROMSTART >> 4) | SRMMU_ET_PTE | SRMMU_EXEC);           /*ROMSTART - ROMSTART+1000000: ROM */
+ srmmu_set_pte(g0+PGD_IDX(ROMSTART), pteval);
  pteval = ((0x20000000 >> 4) | SRMMU_ET_PTE | SRMMU_EXEC);  /*20000000 - 21000000: IOAREA */
  srmmu_set_pte(g0+PGD_IDX(0x20000000), pteval);
- pteval = ((0x40000000 >> 4) | SRMMU_ET_PTE | SRMMU_EXEC | SRMMU_WRITE | SRMMU_CACHE);  /*40000000 - 41000000: CRAM */
- srmmu_set_pte(g0+PGD_IDX(0x40000000), pteval);
+ pteval = ((RAMSTART >> 4) | SRMMU_ET_PTE | SRMMU_EXEC | SRMMU_WRITE | SRMMU_CACHE);  /*RAMSTART - RAMSTART+01000000: CRAM */
+ srmmu_set_pte(g0+PGD_IDX(RAMSTART), pteval);
  pteval = ((0x70000000 >> 4) | SRMMU_ET_PTE | SRMMU_EXEC | SRMMU_WRITE | SRMMU_CACHE);  /*70000000 - 71000000: CRAM */
  srmmu_set_pte(g0+PGD_IDX(0x70000000), pteval); 
 
@@ -173,7 +181,7 @@ __asm__(
 #define a_31000000 DEF_ADDR(0x3,3,0,0)
  
  /* testarea: 
-  *  map 0x40000000  at 3080000 [vaddr:(0) (0x3)(2)(-)] as pmd 
+  *  map RAMSTART    at 3080000 [vaddr:(0) (0x3)(2)(-)] as pmd 
   *  map page0       at 3041000 [vaddr:(0) (0x3)(1)(1)] as page SRMMU_PRIV_RDONLY
   *  map mmu_func1() at 3042000 [vaddr:(0) (0x3)(1)(2)] as page
   *  map 3043000 - 307f000 [vaddr:(0) (0x3)(1)(3)] - [vaddr:(0) (0x3)(1)(63)] as page
@@ -181,7 +189,7 @@ __asm__(
   *  missing pgd at 3030000 [vaddr:(0) (0x3)(0x3)(-)]
   */
  srmmu_pgd_set(g0+0x3,m0);
- pteval = ((((unsigned long)0x40000000) >> 4) | SRMMU_ET_PTE | SRMMU_PRIV); 
+ pteval = ((((unsigned long)RAMSTART) >> 4) | SRMMU_ET_PTE | SRMMU_PRIV); 
  srmmu_set_pte(m0+2, pteval);
  srmmu_set_pte(m0+3, 0);
  srmmu_pmd_set(m0+1,p0);
@@ -196,9 +204,9 @@ __asm__(
  }
 
  *((unsigned long **)&pth_addr) =  pthaddr;
- /* repair info for fault (0x4000000)*/
+ /* repair info for fault (RAMSTART)*/
  pthaddr[0] = (unsigned long) (m0+0x3);
- pthaddr[1] = ((0x40000000 >> 4) | SRMMU_ET_PTE | SRMMU_PRIV);  
+ pthaddr[1] = ((RAMSTART >> 4) | SRMMU_ET_PTE | SRMMU_PRIV);  
  pthaddr[2] = 31000000;
  /* repair info for write protection fault (0x3041000) */
  pthaddr[3] = (unsigned long) (p0+1);
@@ -242,7 +250,7 @@ __asm__(
  /* do tests*/
  if ( (*((unsigned long *)a_30041000)) != 0 ||
       (*((unsigned long *)a_30041004)) != 0x12345678 ) { fail(1); }
- if ( (*((unsigned long *)a_30080000)) != (*((unsigned long *)0x40000000))) { fail(2); }
+ if ( (*((unsigned long *)a_30080000)) != (*((unsigned long *)RAMSTART))) { fail(2); }
  
  /* page faults tests*/
  val = * ((volatile unsigned long *) a_31000000 );
@@ -327,20 +335,20 @@ __asm__(
    //check ctx field
    unsigned long a;
    srmmu_set_context(0);
-   a = *(unsigned long *)0x40000000;
+   a = *(unsigned long *)RAMSTART;
    srmmu_set_context(1);
-   a = *(unsigned long *)0x40000000;
+   a = *(unsigned long *)RAMSTART;
    srmmu_set_context(0);
-   a = *(unsigned long *)0x40000000;
+   a = *(unsigned long *)RAMSTART;
  }
  {
    //bypass asi:
    unsigned int i;
-   i = leon_load_bp(0x40000000);
-   leon_store_bp(0x40000000,i);
+   i = leon_load_bp(RAMSTART);
+   leon_store_bp(RAMSTART,i);
  }
  //mmu off
- srmmu_set_mmureg(0x00000000);
+ srmmu_set_mmureg_aligned(0x00000000);
  
  asm("flush");
  return(0);

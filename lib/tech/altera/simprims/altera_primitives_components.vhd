@@ -1,4 +1,4 @@
--- Copyright (C) 1991-2007 Altera Corporation
+-- Copyright (C) 1991-2009 Altera Corporation
 -- Your use of Altera Corporation's design tools, logic functions 
 -- and other software and tools, and its AMPP partner logic 
 -- functions, and any output files from any of the foregoing 
@@ -11,10 +11,7 @@
 -- programming logic devices manufactured by Altera and sold by 
 -- Altera or its authorized distributors.  Please refer to the 
 -- applicable agreement for further details.
-
-
--- Quartus II 7.1 Build 156 04/30/2007
-
+-- Quartus II 9.0 Build 235 03/01/2009
 
 ----------------------------------------------------------------------------
 -- ALtera Primitives Component Declaration File

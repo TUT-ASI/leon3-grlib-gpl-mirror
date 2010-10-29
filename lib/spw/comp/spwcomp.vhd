@@ -75,13 +75,16 @@ package spwcomp is
       so           : out  std_logic_vector(3 downto 0);
       --time iface
       tickin       : in   std_ulogic;
+      tickinraw    : in   std_ulogic;
+      timein       : in   std_logic_vector(7 downto 0);
+      tickindone   : out  std_ulogic;
       tickout      : out  std_ulogic;
+      tickoutraw   : out  std_ulogic;
+      timeout      : out  std_logic_vector(7 downto 0);
       --irq
       irq          : out  std_logic;
       --misc     
       clkdiv10     : in   std_logic_vector(7 downto 0);
-      dcrstval     : in   std_logic_vector(9 downto 0);
-      timerrstval  : in   std_logic_vector(11 downto 0);
       --rmapen
       rmapen       : in   std_ulogic;
       --rx ahb fifo
@@ -114,7 +117,10 @@ package spwcomp is
       rmrdata      : in   std_logic_vector(7 downto 0);
       linkdis      : out  std_ulogic;
       testrst      : in   std_ulogic := '0';
-      testen       : in   std_ulogic := '0'
+      testen       : in   std_ulogic := '0';
+      --parallel rx data out
+      rxdav        : out  std_ulogic;
+      rxdataout    : out  std_logic_vector(8 downto 0)
     );
   end component;
    
@@ -465,7 +471,7 @@ package spwcomp is
     input_type   : integer range 0 to 3 := 0;
     output_type  : integer range 0 to 2 := 0;
     rxtx_sameclk : integer range 0 to 1 := 0;
-    fifosize     : integer range 16 to 64 := 64;
+    fifosize     : integer range 16 to 2048 := 64;
     tech         : integer;
     scantest     : integer range 0 to 1 := 0
     );
@@ -501,38 +507,115 @@ package spwcomp is
     parerr       : out std_ulogic;
     --rx fifo signals
     rxrenable    : out std_ulogic;
-    rxraddress   : out std_logic_vector(5 downto 0);
+    rxraddress   : out std_logic_vector(10 downto 0);
     rxwrite      : out std_ulogic;
     rxwdata      : out std_logic_vector(9 downto 0);
-    rxwaddress   : out std_logic_vector(5 downto 0);
+    rxwaddress   : out std_logic_vector(10 downto 0);
     rxrdata      : in  std_logic_vector(9 downto 0);
     --rx iface
     rxicharav    : out std_ulogic;
-    rxicharcnt   : out std_logic_vector(6 downto 0);
+    rxicharcnt   : out std_logic_vector(11 downto 0);
     rxichar      : out std_logic_vector(8 downto 0);
     rxiread      : in  std_ulogic;
+    rxififorst   : in  std_ulogic;
     --tx fifo signals
     txrenable    : out std_ulogic;
-    txraddress   : out std_logic_vector(5 downto 0);
+    txraddress   : out std_logic_vector(10 downto 0);
     txwrite      : out std_ulogic;
     txwdata      : out std_logic_vector(8 downto 0);
-    txwaddress   : out std_logic_vector(5 downto 0);
+    txwaddress   : out std_logic_vector(10 downto 0);
     txrdata      : in  std_logic_vector(8 downto 0);
     --tx iface
-    txicharcnt   : out std_logic_vector(6 downto 0);
+    txicharcnt   : out std_logic_vector(11 downto 0);
     txifull      : out std_ulogic;
     txiwrite     : in  std_ulogic;
     txichar      : in  std_logic_vector(8 downto 0);
-    txiflush     : in  std_ulogic;
+    txififorst   : in  std_ulogic;
     --time iface
     tickin       : in  std_ulogic;
-    timein       : in  std_logic_vector(5 downto 0);
-    timectrlin   : in  std_logic_vector(1 downto 0);
+    timein       : in  std_logic_vector(7 downto 0);
     tickin_done  : out std_ulogic;
     tickout      : out std_ulogic;
-    timeout      : out std_logic_vector(5 downto 0);
-    timectrlout  : out std_logic_vector(1 downto 0)
+    timeout      : out std_logic_vector(7 downto 0)
   );
+  end component;
+
+  component grspw2_gen is
+    generic(
+      rmap         : integer range 0 to 1  := 0;
+      rmapcrc      : integer range 0 to 1  := 0;
+      fifosize1    : integer range 4 to 32 := 32;
+      fifosize2    : integer range 16 to 64 := 64;
+      rxunaligned  : integer range 0 to 1 := 0;
+      rmapbufs     : integer range 2 to 8 := 4;
+      scantest     : integer range 0 to 1 := 0;
+      ports        : integer range 1 to 2 := 1;
+      dmachan      : integer range 1 to 4 := 1;
+      tech         : integer;
+      input_type   : integer range 0 to 3 := 0;
+      output_type  : integer range 0 to 2 := 0;
+      rxtx_sameclk : integer range 0 to 1 := 0;
+      ft           : integer range 0 to 2 := 0;
+      techfifo     : integer range 0 to 1 := 1;
+      memtech      : integer := 0);
+    port(
+      rst          : in  std_ulogic;
+      clk          : in  std_ulogic;
+      rxclk0       : in  std_ulogic;
+      rxclk1       : in  std_ulogic;
+      txclk        : in  std_ulogic;
+      txclkn       : in  std_ulogic;
+      --ahb mst in
+      hgrant       : in  std_ulogic;
+      hready       : in  std_ulogic;   
+      hresp        : in  std_logic_vector(1 downto 0);
+      hrdata       : in  std_logic_vector(31 downto 0); 
+      --ahb mst out
+      hbusreq      : out  std_ulogic;        
+      hlock        : out  std_ulogic;
+      htrans       : out  std_logic_vector(1 downto 0);
+      haddr        : out  std_logic_vector(31 downto 0);
+      hwrite       : out  std_ulogic;
+      hsize        : out  std_logic_vector(2 downto 0);
+      hburst       : out  std_logic_vector(2 downto 0);
+      hprot        : out  std_logic_vector(3 downto 0);
+      hwdata       : out  std_logic_vector(31 downto 0);
+      --apb slv in 
+      psel	 : in   std_ulogic;
+      penable	 : in   std_ulogic;
+      paddr	 : in   std_logic_vector(31 downto 0);
+      pwrite	 : in   std_ulogic;
+      pwdata	 : in   std_logic_vector(31 downto 0);
+      --apb slv out
+      prdata	 : out  std_logic_vector(31 downto 0);
+      --spw in
+      d            : in   std_logic_vector(3 downto 0);
+      dv           : in   std_logic_vector(3 downto 0);
+      dconnect     : in   std_logic_vector(3 downto 0);
+      --spw out
+      do           : out  std_logic_vector(3 downto 0);
+      so           : out  std_logic_vector(3 downto 0);
+      --time iface
+      tickin       : in   std_ulogic;
+      tickinraw    : in   std_ulogic;
+      timein       : in   std_logic_vector(7 downto 0);
+      tickindone   : out  std_ulogic;
+      tickout      : out  std_ulogic;
+      tickoutraw   : out  std_ulogic;
+      timeout      : out  std_logic_vector(7 downto 0);
+      --irq
+      irq          : out  std_logic;
+      --misc     
+      clkdiv10     : in   std_logic_vector(7 downto 0);
+      linkdis      : out  std_ulogic;
+      testrst      : in   std_ulogic := '0';
+      testen       : in   std_ulogic := '0';
+      --rmapen
+      rmapen       : in   std_ulogic;
+      --parallel rx data out
+      rxdav        : out  std_ulogic;
+      rxdataout    : out  std_logic_vector(8 downto 0)
+    );
   end component;
 
 end package;

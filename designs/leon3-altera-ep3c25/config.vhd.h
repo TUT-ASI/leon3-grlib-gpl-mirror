@@ -20,6 +20,7 @@
   constant CFG_NWIN 	: integer := CONFIG_IU_NWINDOWS;
   constant CFG_V8   	: integer := CFG_IU_V8;
   constant CFG_MAC  	: integer := CONFIG_IU_MUL_MAC;
+  constant CFG_BP   	: integer := CONFIG_IU_BP;
   constant CFG_SVT  	: integer := CONFIG_IU_SVT;
   constant CFG_RSTADDR 	: integer := 16#CONFIG_IU_RSTADDR#;
   constant CFG_LDDEL	: integer := CONFIG_IU_LDELAY;
@@ -75,6 +76,7 @@
   constant CFG_AHB_MON 	  : integer := CONFIG_AHB_MON;
   constant CFG_AHB_MONERR : integer := CONFIG_AHB_MONERR;
   constant CFG_AHB_MONWAR : integer := CONFIG_AHB_MONWAR;
+  constant CFG_AHB_DTRACE : integer := CONFIG_AHB_DTRACE;
 
 -- DSU UART
   constant CFG_AHB_UART	: integer := CONFIG_DSU_UART;

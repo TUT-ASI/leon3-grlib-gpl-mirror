@@ -216,12 +216,15 @@ begin  -- rtl
     variable addr    : std_logic_vector(7 downto 0);
     variable hsplit  : std_logic_vector(15 downto 0);
     variable regaddr : std_ulogic;
+    variable hrdata  : std_logic_vector(31 downto 0);
+    variable hwdata  : std_logic_vector(31 downto 0);
   begin  -- process comb
     v := r; v.irq := '0'; irq := (others => '0'); irq(hirq) := r.irq;
     v.hresp := HRESP_OKAY; v.hready := '1'; v.den := '0';
     regaddr := r.haddr(1-wrdalign); hsplit := (others => '0');
     v.cfgreg.convst := '0';
-
+    hwdata := ahbreadword(ahbsi.hwdata, r.haddr(4 downto 2));
+    
     -- AHB communication
     if ahbsi.hready = '1' then
       if (ahbsi.hsel(hindex) and ahbsi.htrans(1)) = '1' then
@@ -285,17 +288,17 @@ begin  -- rtl
           v.rrdata(1) := r.cfgreg.jl_ien;
           v.rrdata(0) := r.cfgreg.jm_ien;
           if r.hwrite = '1' then
-            v.cfgreg.ot_ien  := ahbsi.hwdata(12);
-            v.cfgreg.alm_ien := ahbsi.hwdata(11 downto 9);
+            v.cfgreg.ot_ien  := hwdata(12);
+            v.cfgreg.alm_ien := hwdata(11 downto 9);
             if extconvst = 0 then
-              v.cfgreg.convst  := ahbsi.hwdata(6);
+              v.cfgreg.convst  := hwdata(6);
             end if;
-            v.cfgreg.eos_ien := ahbsi.hwdata(5);
-            v.cfgreg.eoc_ien := ahbsi.hwdata(4);
-            v.cfgreg.busy_ien := ahbsi.hwdata(3);
-            v.cfgreg.jb_ien := ahbsi.hwdata(2);
-            v.cfgreg.jl_ien := ahbsi.hwdata(1);
-            v.cfgreg.jm_ien := ahbsi.hwdata(0);
+            v.cfgreg.eos_ien := hwdata(5);
+            v.cfgreg.eoc_ien := hwdata(4);
+            v.cfgreg.busy_ien := hwdata(3);
+            v.cfgreg.jb_ien := hwdata(2);
+            v.cfgreg.jl_ien := hwdata(1);
+            v.cfgreg.jm_ien := hwdata(0);
           end if;
         when STAT_REG_OFF =>
           v.rrdata(12) := syso.ot;
@@ -418,12 +421,14 @@ begin  -- rtl
     ahbso.hready  <= r.hready;
     ahbso.hresp   <= r.hresp;
     if r.hmbsel(CONF_BANK) = '1' then
-      if wrdalign = 0 then ahbso.hrdata <= zero32(31 downto 13) & r.rrdata;
-      else ahbso.hrdata <= '1' & zero32(30 downto 13) & r.rrdata; end if;
+      if wrdalign = 0 then hrdata := zero32(31 downto 13) & r.rrdata;
+      else hrdata := '1' & zero32(30 downto 13) & r.rrdata; end if;
     else
-      if wrdalign = 0 then ahbso.hrdata <= r.srdata & r.srdata;
-      else ahbso.hrdata <= zero32(31 downto 16) & r.srdata; end if;
+      if wrdalign = 0 then hrdata := r.srdata & r.srdata;
+      else hrdata := zero32(31 downto 16) & r.srdata;
+      end if;
     end if;
+    ahbso.hrdata  <= ahbdrivedata(hrdata);
     ahbso.hconfig <= HCONFIG;
     ahbso.hcache  <= '0';
     ahbso.hirq    <= irq;
@@ -435,10 +440,10 @@ begin  -- rtl
     sysi.den      <= r.den;
     sysi.dwe      <= r.hwrite;
     if wrdalign = 0 then
-      if r.haddr(0) = '0' then sysi.di <= ahbsi.hwdata(31 downto 16);
-      else sysi.di <= ahbsi.hwdata(15 downto 0); end if;
+      if r.haddr(0) = '0' then sysi.di <= hwdata(31 downto 16);
+      else sysi.di <= hwdata(15 downto 0); end if;
     else
-      sysi.di <= ahbsi.hwdata(15 downto 0);
+      sysi.di <= hwdata(15 downto 0);
     end if;
     
     -- Signals from system monitor to core outputs

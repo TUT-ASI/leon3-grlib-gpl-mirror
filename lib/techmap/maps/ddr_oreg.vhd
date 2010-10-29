@@ -44,7 +44,8 @@ architecture rtl of ddr_oreg is
 begin
 
   inf : if not ((tech = lattice) or (is_unisim(tech) = 1) or
-                (tech = axcel) or (tech = axdsp) or (tech = apa3)) generate
+                (tech = axcel) or (tech = axdsp) or (tech = apa3) or
+		(tech = apa3e) or (tech = apa3l)) generate
     inf0 : gen_oddr_reg port map (Q, C1, C2, CE, D1, D2, R, S);
   end generate;
 
@@ -52,8 +53,16 @@ begin
     ax0 : axcel_oddr_reg port map (Q, C1, C2, CE, D1, D2, R, S);
   end generate;
 
-  pa : if (tech = apa3) generate
+  pa3 : if (tech = apa3) generate
     pa0 : apa3_oddr_reg port map (Q, C1, C2, CE, D1, D2, R, S);
+  end generate;
+
+  pa3e : if (tech = apa3e) generate
+    pa0 : apa3e_oddr_reg port map (Q, C1, C2, CE, D1, D2, R, S);
+  end generate;
+
+  pa3l : if (tech = apa3l) generate
+    pa0 : apa3l_oddr_reg port map (Q, C1, C2, CE, D1, D2, R, S);
   end generate;
 
   lat : if tech = lattice generate

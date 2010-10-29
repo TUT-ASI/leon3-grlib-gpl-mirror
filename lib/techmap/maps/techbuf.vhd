@@ -41,6 +41,12 @@ end component;
 component clkbuf_apa3 is generic( buftype :  integer range 0 to 3 := 0);
   port( i :  in  std_ulogic; o :  out std_ulogic);
 end component;
+component clkbuf_apa3e is generic( buftype :  integer range 0 to 3 := 0);
+  port( i :  in  std_ulogic; o :  out std_ulogic);
+end component;
+component clkbuf_apa3l is generic( buftype :  integer range 0 to 3 := 0);
+  port( i :  in  std_ulogic; o :  out std_ulogic);
+end component;
 component clkbuf_actel is generic( buftype :  integer range 0 to 3 := 0);
   port( i :  in  std_ulogic; o :  out std_ulogic);
 end component;
@@ -59,19 +65,25 @@ begin
     o <= i;
   end generate;
   fus : if (tech = actfus) generate
-    axc : clkbuf_fusion generic map (buftype => buftype) port map(i => i, o => o);
+    fus0 : clkbuf_fusion generic map (buftype => buftype) port map(i => i, o => o);
   end generate;
   pa3 : if (tech = apa3) generate
-    axc : clkbuf_apa3 generic map (buftype => buftype) port map(i => i, o => o);
+    pa30 : clkbuf_apa3 generic map (buftype => buftype) port map(i => i, o => o);
+  end generate;
+  pa3e : if (tech = apa3e) generate
+    pae30 : clkbuf_apa3e generic map (buftype => buftype) port map(i => i, o => o);
+  end generate;
+  pa3l : if (tech = apa3l) generate
+    pa3l0 : clkbuf_apa3l generic map (buftype => buftype) port map(i => i, o => o);
   end generate;
   axc : if (tech = axcel) or (tech = axdsp) generate
-    axc : clkbuf_actel generic map (buftype => buftype) port map(i => i, o => o);
+    axc0 : clkbuf_actel generic map (buftype => buftype) port map(i => i, o => o);
   end generate;
   xil : if (is_unisim(tech) = 1) generate
-    xil : clkbuf_xilinx generic map (buftype => buftype) port map(i => i, o => o);
+    xil0 : clkbuf_xilinx generic map (buftype => buftype) port map(i => i, o => o);
   end generate;
   ut  : if (tech = ut25) generate
-    axc : clkbuf_ut025crh generic map (buftype => buftype) port map(i => i, o => o);
+    ut0 : clkbuf_ut025crh generic map (buftype => buftype) port map(i => i, o => o);
   end generate;
   easic: if tech = easic90 generate
     eas : clkbuf_nextreme generic map (buftype => buftype) port map(i => i, o => o);

@@ -91,6 +91,7 @@ type dmactrl_reg_type is record
   burstl_p  : std_logic_vector(BURST_LENGTH - 1 downto 0); -- pci access counter
   burstl_a  : std_logic_vector(BURST_LENGTH - 1 downto 0); -- amba access counter
   ahb0_htrans : std_logic_vector(1 downto 0);
+  ahb0_hresp  : std_logic_vector(1 downto 0);
   ahb0_hready : std_logic;
   ahb0_retry  : std_logic;
   ahb0_hsel   : std_logic;
@@ -98,14 +99,14 @@ type dmactrl_reg_type is record
 end record;
 
 signal r,rin : dmactrl_reg_type;
-signal dmai : ahb_dma_in_type;
-signal dmao : ahb_dma_out_type;
+signal dmai : pci_ahb_dma_in_type;
+signal dmao : pci_ahb_dma_out_type;
 
 begin
 
    comb : process(rst,r,dmao,apbi,ahbsi0,ahbso1)
    variable v : dmactrl_reg_type;
-   variable vdmai : ahb_dma_in_type;
+   variable vdmai : pci_ahb_dma_in_type;
    variable pdata : std_logic_vector(31 downto 0);
    variable slvbusy : ahb_slv_out_type;
    variable dma_done, pci_done : std_logic;
@@ -121,17 +122,25 @@ begin
 
 
    v.start_del := r.start;
-   slvbusy.hready := '1'; slvbusy.hindex := hindex; --slvbusy.hresp := "00"; 
-   v.ahb0_htrans := ahbsi0.htrans; v.ahb0_retry := '0';
-   v.ahb0_hsel := ahbsi0.hsel(slvindex); v.ahb0_hready := ahbsi0.hready;
+   --slvbusy.hready := '1'; slvbusy.hindex := hindex; --slvbusy.hresp := "00"; 
+   --v.ahb0_htrans := ahbsi0.htrans; v.ahb0_retry := '0';
+   --v.ahb0_hsel := ahbsi0.hsel(slvindex); v.ahb0_hready := ahbsi0.hready;   
+   v.ahb0_hready := '1'; v.ahb0_hresp := HRESP_OKAY; v.ahb0_retry := '0';
+   slvbusy.hready := r.ahb0_hready; slvbusy.hresp := r.ahb0_hresp;
 
    -- AMBA busy response when dma is running 
-   if r.ahb0_retry = '1' then slvbusy.hresp := "10";
-   else slvbusy.hresp := "00"; end if;
+   --if r.ahb0_retry = '1' then slvbusy.hresp := "10";
+   --else slvbusy.hresp := "00"; end if;
+   if r.ahb0_retry = '1' then v.ahb0_hresp := HRESP_RETRY; end if; 
 
-   if r.ahb0_htrans = "10" and (r.start = '1') and r.ahb0_hsel = '1' and r.ahb0_hready = '1' then
-      slvbusy.hready := '0';
-      slvbusy.hresp := "10";
+   --if r.ahb0_htrans = "10" and (r.start = '1') and r.ahb0_hsel = '1' and r.ahb0_hready = '1' then
+   --   slvbusy.hready := '0';
+   --   slvbusy.hresp := "10";
+   --   v.ahb0_retry := '1';
+   --end if;
+   if ahbsi0.htrans = "10" and (r.start = '1') and ahbsi0.hsel(slvindex) = '1' and ahbsi0.hready = '1' then
+      v.ahb0_hready := '0';
+      v.ahb0_hresp := HRESP_RETRY;
       v.ahb0_retry := '1';
    end if;
 
@@ -389,7 +398,7 @@ begin
             v.rbuf(0) := r.rbuf(1);                                     -- dont update if wait states
             v.rbuf(1) := r.rbuf(2);                                     -- 
          end if;
-         if r.write = '0' then v.rbuf(bufloc) := ahbso1.hrdata; end if; -- PCI to AMBA 
+         if r.write = '0' then v.rbuf(bufloc) := ahbreadword(ahbso1.hrdata); end if; -- PCI to AMBA 
       end if;                                                           -- if wait states store in buf(2) else
    end if;                                                              -- in buf(1). Frist word in buf(0)    
 
@@ -432,7 +441,7 @@ begin
    end if;
 
 
-   if r.start = '1' then -- new *** ???
+   if r.start = '1' then
       ahbsi1.hsel <= (others => '1');
       ahbsi1.hmbsel(0 to 3) <= r.hmbsel;
       ahbsi1.hsize <= "010";
@@ -441,7 +450,7 @@ begin
 --      ahbsi1.haddr <= r.addr1 & "00";
       ahbsi1.haddr <= v.addr1 & "00"; 
       ahbsi1.hburst <= "001";
-      ahbsi1.hwdata <= r.rbuf(0);
+      ahbsi1.hwdata <= ahbdrivedata(r.rbuf(0));
       ahbsi1.hready <= ahbso1.hready;
       ahbsi1.hmaster <= conv_std_logic_vector(hindex,4);
       ahbso0 <= slvbusy;
@@ -457,6 +466,9 @@ begin
       ahbsi1.hready <= ahbsi0.hready;
       ahbsi1.hmaster <= ahbsi0.hmaster;
       ahbso0 <= ahbso1;
+      if r.ahb0_hresp = HRESP_RETRY then
+        ahbso0.hready <= r.ahb0_hready; ahbso0.hresp <= r.ahb0_hresp;      
+      end if;
       
       v.state := idle;
    end if;

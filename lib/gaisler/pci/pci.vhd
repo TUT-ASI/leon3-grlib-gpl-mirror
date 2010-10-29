@@ -319,6 +319,27 @@ component pcidma
 );
 end component;
 
+  type pci_ahb_dma_in_type is record
+    address         : std_logic_vector(31 downto 0);
+    wdata           : std_logic_vector(31 downto 0);
+    start           : std_ulogic;
+    burst           : std_ulogic;
+    write           : std_ulogic;
+    busy            : std_ulogic;
+    irq             : std_ulogic;
+    size            : std_logic_vector(1 downto 0);
+  end record;
+
+  type pci_ahb_dma_out_type is record
+    start           : std_ulogic;
+    active          : std_ulogic;
+    ready           : std_ulogic;
+    retry           : std_ulogic;
+    mexc            : std_ulogic;
+    haddr           : std_logic_vector(9 downto 0);
+    rdata           : std_logic_vector(31 downto 0);
+  end record;
+
   component pciahbmst
   generic (
     hindex  : integer := 0;
@@ -331,8 +352,8 @@ end component;
    port (
       rst  : in  std_ulogic;
       clk  : in  std_ulogic;
-      dmai : in ahb_dma_in_type;
-      dmao : out ahb_dma_out_type;
+      dmai : in  pci_ahb_dma_in_type;
+      dmao : out pci_ahb_dma_out_type;
       ahbi : in  ahb_mst_in_type;
       ahbo : out ahb_mst_out_type
       );

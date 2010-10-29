@@ -31,7 +31,8 @@ entity pciarb is
     nb_agents  : integer := 4;
     apb_en     : integer := 1;
     netlist    : integer := 0;
-    tech       : integer := axcel);
+    tech       : integer := axcel;
+    reg        : integer := 0);
   port(
     clk     : in std_ulogic;
     rst_n   : in std_ulogic;
@@ -93,6 +94,10 @@ end component;
 signal pbi : eapb_slv_in_type;
 signal pbo : eapb_slv_out_type;
 
+-- Added to latch frame and req in registers
+signal frame_n_int : std_logic;
+signal req_n_int : std_logic_vector(0 to NB_AGENTS-1);
+
 constant REVISION : integer := 0;
 
 constant pconfig : apb_config_type := (
@@ -100,12 +105,27 @@ constant pconfig : apb_config_type := (
   1 => apb_iobar(paddr, pmask));
 
 begin
+  reg0 : if reg /= 0 generate
+    process(clk)
+    begin
+      if rising_edge(clk) then
+        frame_n_int <= frame_n; 
+        req_n_int <= req_n;
+      end if;
+    end process;
+  end generate;
+  noreg0 : if reg = 0 generate
+    frame_n_int <= frame_n; 
+    req_n_int <= req_n;
+  end generate;
+
+
   rtl0 : if netlist = 0 generate
     arb : pci_arb
     generic map(
       NB_AGENTS => nb_agents, ARB_SIZE => log2(nb_agents), APB_EN => apb_en)
     port map(
-      clk => clk, rst_n => rst_n, req_n => req_n, frame_n => frame_n,
+      clk => clk, rst_n => rst_n, req_n => req_n_int, frame_n => frame_n_int,
       gnt_n => gnt_n, pclk => pclk, prst_n => prst_n, pbi => pbi, pbo => pbo);
   end generate;
   net0 : if netlist /= 0 generate
@@ -114,7 +134,7 @@ begin
       NB_AGENTS => nb_agents, ARB_SIZE => log2(nb_agents), APB_EN => apb_en,
       tech => tech)
     port map(
-      clk => clk, rst_n => rst_n, req_n => req_n, frame_n => frame_n,
+      clk => clk, rst_n => rst_n, req_n => req_n_int, frame_n => frame_n_int,
       gnt_n => gnt_n, pclk => pclk, prst_n => prst_n, 
       pbi_psel    => pbi.psel, 
       pbi_penable => pbi.penable, 

@@ -20,7 +20,7 @@
 -- Entity:      ddr2sp32a
 -- File:        ddr2sp32a.vhd
 -- Author:      Nils-Johan Wessman - Gaisler Research
--- Description: 32-bit DDR2 memory controller with asych AHB interface
+-- Description: 32-bit DDR2 memory controller with asynch AHB interface
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -36,22 +36,22 @@ use techmap.gencomp.all;
 
 entity ddr2sp32a is
    generic (
-      memtech : integer := 0;
-      hindex  : integer := 0;
-      haddr   : integer := 0;
-      hmask   : integer := 16#f00#;
-      ioaddr  : integer := 16#000#;
-      iomask  : integer := 16#fff#;
-      MHz     : integer := 100;
-      TRFC    : integer := 130;
-      col     : integer := 9;
-      Mbyte   : integer := 8;
-      fast    : integer := 0;
-      pwron   : integer := 0;
-      oepol   : integer := 0;
-      readdly : integer := 1;
-      odten   : integer := 0;
-      octen   : integer := 0;
+      memtech    : integer := 0;
+      hindex     : integer := 0;
+      haddr      : integer := 0;
+      hmask      : integer := 16#f00#;
+      ioaddr     : integer := 16#000#;
+      iomask     : integer := 16#fff#;
+      MHz        : integer := 100;
+      TRFC       : integer := 130;
+      col        : integer := 9;
+      Mbyte      : integer := 8;
+      fast       : integer := 0;
+      pwron      : integer := 0;
+      oepol      : integer := 0;
+      readdly    : integer := 1;
+      odten      : integer := 0;
+      octen      : integer := 0;
       dqsgating  : integer := 0;
       nosync     : integer := 0;
       eightbanks : integer range 0 to 1 := 0;  -- Set to 1 if 8 banks instead of 4
@@ -134,8 +134,7 @@ type ahb_reg_type is record
    write    : std_logic_vector(1 downto 0);
    state    : ahb_state_type;
    haddr    : std_logic_vector(31 downto 0);
-   hrdata   : std_logic_vector(31 downto 0);
-   hwdata   : std_logic_vector(31 downto 0);
+   hrdata   : std_logic_vector(63 downto 0);
    hwrite   : std_ulogic;
    htrans   : std_logic_vector(1 downto 0);
    hresp    : std_logic_vector(1 downto 0);
@@ -190,6 +189,7 @@ signal r, ri : ddr_reg_type;
 signal ra, rai : ahb_reg_type;
 signal rbdrive, ribdrive : std_logic_vector(31 downto 0);
 signal rdata, wdata : std_logic_vector(63 downto 0);
+signal hwdata : std_logic_vector(63 downto 0);
 signal ddr_rst : std_logic;
 signal ddr_rst_gen  : std_logic_vector(3 downto 0);
 signal dqsgate180   : std_ulogic;
@@ -214,15 +214,19 @@ begin
    ahb_ctrl : process(rst, ahbsi, r, ra, rdata)
    variable v       : ahb_reg_type;    -- local variables for registers
    variable startsd : std_ulogic;
-   variable dout    : std_logic_vector(31 downto 0);
    variable ready   : std_logic;
    begin
 
       v := ra; v.hresp := HRESP_OKAY; v.write := "00";
 
-      if ra.raddr(0) = '0' then v.hrdata := rdata(63 downto 32);
-      else v.hrdata := rdata(31 downto 0); end if;
-
+      if ra.size = "11" and AHBDW > 32 then v.hrdata := rdata; else
+        if ra.raddr(0) = '0' then 
+	  v.hrdata := rdata(63 downto 32) &  rdata(63 downto 32);
+        else 
+  	  v.hrdata := rdata(31 downto 0) & rdata(31 downto 0);
+        end if;
+      end if;
+    
       -- Sync ------------------------------------------------
       if nosync = 0 then
         v.sync(1) := r.startsdold; v.sync(2) := ra.sync(1);
@@ -251,7 +255,11 @@ begin
                v.state := rhold; v.startsd := not ra.startsd;
             else
                v.state := dwrite; v.hready := '1'; 
-               v.write(0) := not v.haddr(2); v.write(1) := v.haddr(2);
+               if AHBDW = 32 or andv(v.size) = '0' then
+                 v.write(0) := not v.haddr(2); v.write(1) := v.haddr(2);
+               else
+                 v.write := (others => '1');
+               end if;
             end if;
          end if;
          v.raddr := ra.haddr(7 downto 2);
@@ -264,10 +272,20 @@ begin
            ready := ra.startsd_ack xor ra.sync(1);
 	 end if;
          if ready = '1' then 
-            v.state := dread; v.hready := '1'; v.raddr := ra.raddr + 1;
+            v.state := dread; v.hready := '1';
+            if AHBDW = 32 or andv(ra.size) = '0' then
+              v.raddr := ra.raddr + 1;
+            else
+              v.raddr := ra.raddr + 2;
+            end if;
          end if;
       when dread =>
-         v.raddr := ra.raddr + 1; v.hready := '1';
+         v.hready := '1';
+         if AHBDW = 32 or andv(ra.size) = '0' then
+           v.raddr := ra.raddr + 1;
+         else
+           v.raddr := ra.raddr + 2;
+         end if;
          if ((v.hsel and v.htrans(1) and v.htrans(0)) = '0')
             or (ra.raddr(2 downto 0) = "000") or (ra.hio = '1') then
             v.state := midle; v.hready := '0';
@@ -276,9 +294,14 @@ begin
          v.acc := (v.haddr, v.size, v.hwrite, v.hio);
       when dwrite =>
          v.raddr := ra.haddr(7 downto 2); v.hready := '1';
-         v.write(0) := not v.haddr(2); v.write(1) := v.haddr(2);
+         if AHBDW = 32 or andv(v.size) = '0' then
+           v.write(0) := not v.haddr(2); v.write(1) := v.haddr(2);
+         else
+           v.write := (others => '1');
+         end if;
          if ((v.hsel and v.htrans(1) and v.htrans(0)) = '0')
-            or (ra.haddr(4 downto 2) = "111") or (ra.hio = '1') then
+            or (ra.haddr(4 downto 2) = "111") or (ra.hio = '1')
+            or (AHBDW > 32 and ra.haddr(4 downto 2) = "110" and andv(ra.size) = '1') then
             v.startsd := not ra.startsd; v.state := whold1;
             v.write := "00"; v.hready := '0';
          end if;
@@ -291,13 +314,9 @@ begin
          end if;
       end case;
 
-      v.hwdata := ahbsi.hwdata;
-
       if (ahbsi.hready and ahbsi.hsel(hindex) ) = '1' then
          if ahbsi.htrans(1) = '0' then v.hready := '1'; end if;
       end if;
-
-      dout := ra.hrdata(31 downto 0);
 
       if rst = '0' then
          v.hsel         := '0';
@@ -311,7 +330,7 @@ begin
       rai <= v;
       ahbso.hready  <= ra.hready;
       ahbso.hresp   <= ra.hresp;
-      ahbso.hrdata  <= dout;
+      ahbso.hrdata  <= ahbdrivedata(ra.hrdata);
       ahbso.hcache  <= not ra.hio;
 
    end process;
@@ -361,8 +380,8 @@ begin
       regsd3(22 downto 18) := r.cfg.trfc;
       regsd3(27 downto 23) := r.cfg.twr;
       regsd3(28) := r.cfg.trp;
+      regsd4 := (others => '0');
       if dqsgating = 1 then
-        regsd4 := (others => '0');
         regsd4(7 downto 0) := r.cfg.dqsctrl;
       end if;
       regsd4(8) := r.cfg.eightbanks;
@@ -388,6 +407,11 @@ begin
          when "10"   => dqm := "11110011";
          when others => dqm := "11111100";
          end case;
+--      when "10" =>
+--         case ra.acc.haddr(2 downto 2) is
+--         when "0"    => dqm := "00001111";
+--         when others => dqm := "11110000";
+--        end case;
       when others => dqm := "00000000";
       end case;
 
@@ -518,10 +542,15 @@ begin
             v.waddr := r.waddr + 2;
             v.sdstate := wr1; 
             if (r.waddr_d /= ra.raddr) then v.hready := '1';
-               if r.waddr_d(0) = '1' then v.dqm(7 downto 4) := (others => '1'); end if;
+               if (r.waddr_d(0) = '1') and (AHBDW = 32 or ra.acc.size /= "11") then
+                 v.dqm(7 downto 4) := (others => '1');
+               end if;
             else
-               if r.waddr_d(0) = '0' then v.dqm(3 downto 0) := (others => '1');
-               else v.dqm(7 downto 4) := (others => '1'); end if;
+               if (r.waddr_d(0) = '0') and (AHBDW = 32 or ra.acc.size /= "11") then
+                 v.dqm(3 downto 0) := (others => '1');
+               elsif (AHBDW = 32 or ra.acc.size /= "11") then
+                 v.dqm(7 downto 4) := (others => '1');
+               end if;
             end if;
          else
             v.newcom(0) := '1'; -- start new command
@@ -546,7 +575,8 @@ begin
          if (r.waddr_d <= ra.raddr) and (r.waddr_d(5 downto 1) /= "00000") and (r.hready = '1')
          then
             v.hready := '1';
-            if  (r.waddr_d = ra.raddr) and (r.waddr_d /= "000000") and (r.waddr_d(0) = '0') then
+            if ((r.waddr_d = ra.raddr) and (r.waddr_d /= "000000") and (r.waddr_d(0) = '0') and
+                (AHBDW = 32 or ra.acc.size /= "11")) then
                v.dqm(3 downto 0) := (others => '1');
             end if;
          else
@@ -926,6 +956,19 @@ begin
    sdo.oct      <= r.oct;
    sdo.dqs_gate <= r.dqsgate when r.cfg.dqsctrl(0) = '0' else
                    dqsgate180;
+
+   -- Write data selection.
+   AHB32: if AHBDW = 32 generate
+     hwdata <= ahbsi.hwdata(31 downto 0) & ahbsi.hwdata(31 downto 0);
+   end generate AHB32;
+   AHBWIDE: if AHBDW > 32 generate
+     -- With CORE_ACDM set to 0 hwdata will always be ahbsi.hwdata(63 downto 0)
+     -- otherwise the valid data slice will be selected, and possibly uplicated,
+     -- from ahbsi.hwdata. 
+     hwdata <= ahbreaddword(ahbsi.hwdata, ra.haddr(4 downto 2)) when (CORE_ACDM = 0 or ra.size = "11") else
+               (ahbreadword(ahbsi.hwdata, ra.haddr(4 downto 2)) &
+                ahbreadword(ahbsi.hwdata, ra.haddr(4 downto 2)));
+   end generate AHBWIDE;
    
    rwdata <= ri.hrdata(63 downto 0);
    read_buff : syncram_2p
@@ -938,13 +981,13 @@ begin
    generic map (tech => memtech, abits => 5, dbits => 32, sepclk => 1, wrfst => 0)
    port map ( rclk => clk_ddr, renable => vcc, raddress => r.waddr(5 downto 1),
               dataout => wdata(63 downto 32), wclk => clk_ahb, write => ra.write(0),
-              waddress => ra.haddr(7 downto 3), datain => ahbsi.hwdata);
+              waddress => ra.haddr(7 downto 3), datain => hwdata(63 downto 32));
 
    write_buff2 : syncram_2p
    generic map (tech => memtech, abits => 5, dbits => 32, sepclk => 1, wrfst => 0)
    port map ( rclk => clk_ddr, renable => vcc, raddress => r.waddr(5 downto 1),
               dataout => wdata(31 downto 0), wclk => clk_ahb, write => ra.write(1),
-              waddress => ra.haddr(7 downto 3), datain => ahbsi.hwdata);
+              waddress => ra.haddr(7 downto 3), datain => hwdata(31 downto 0));
 
 -- pragma translate_off
    bootmsg : report_version

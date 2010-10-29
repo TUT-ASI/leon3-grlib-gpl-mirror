@@ -20,6 +20,7 @@
 -- Entity:      jtagcom
 -- File:        jtagcom.vhd
 -- Author:      Edvin Catovic - Gaisler Research
+-- Modified:    J. Gaisler, K. Glembo, J. Andersson - Aeroflex Gaisler
 -- Description: JTAG Debug Interface with AHB master interface 
 ------------------------------------------------------------------------------
 
@@ -40,7 +41,8 @@ entity jtagcom is
     isel   : integer range 0 to 1 := 0;
     nsync  : integer range 1 to 2 := 2;
     ainst  : integer range 0 to 255 := 2;
-    dinst  : integer range 0 to 255 := 3);
+    dinst  : integer range 0 to 255 := 3;
+    reread : integer range 0 to 1 := 0);
   port (
     rst  : in std_ulogic;
     clk  : in std_ulogic;
@@ -56,7 +58,6 @@ architecture rtl of jtagcom is
 
   constant ADDBITS : integer := 10;
   constant NOCMP : boolean := (isel /= 0);
-
   
   type state_type is (shft, ahb, nxt_shft);  
   
@@ -75,6 +76,8 @@ architecture rtl of jtagcom is
     asel  : std_logic_vector(nsync-1 downto 0);
     dsel  : std_logic_vector(nsync-1 downto 0);
     tdi2  : std_ulogic;
+    seq   : std_ulogic;
+    holdn : std_ulogic;
   end record;
 
   signal r, rin : reg_type;
@@ -98,7 +101,7 @@ begin
       if tapo.inst = conv_std_logic_vector(ainst, 8) then asel := '1'; else asel := '0'; end if;
       if tapo.inst = conv_std_logic_vector(dinst, 8) then dsel := '1'; else dsel := '0'; end if;
     end if;
-    write := r.addr(34); seq := r.data(32);
+    write := r.addr(34); seq := r.seq;
     
     v.tck(0) := r.tck(nsync-1); v.tck(nsync-1) := tapo.tck; v.tck2 := r.tck(0); v.shift2 := r.shift(0);
     v.trst(0) := r.trst(nsync-1); v.trst(nsync-1) := tapo.reset;
@@ -110,12 +113,17 @@ begin
     v.dsel(0) := r.dsel(nsync-1); v.dsel(nsync-1) := dsel;
     v.tdi2 := r.tdi(0);
     redge := not r.tck2 and r.tck(0);
-    vdmai.address := r.addr(31 downto 0); vdmai.wdata := r.data(31 downto 0);
+    vdmai.address := r.addr(31 downto 0); vdmai.wdata := ahbdrivedata(r.data(31 downto 0));
     vdmai.start := '0'; vdmai.burst := '0'; vdmai.write := write;
-    vdmai.busy := '0'; vdmai.irq := '0'; vdmai.size := r.addr(33 downto 32);
+    vdmai.busy := '0'; vdmai.irq := '0'; vdmai.size := '0' & r.addr(33 downto 32);
 
     vtapi.en := r.asel(0) or r.dsel(0);
-    if r.asel(0) = '1' then vtapi.tdo := r.addr(0); else vtapi.tdo := r.data(0); end if;
+    if r.asel(0) = '1' then
+      vtapi.tdo := r.addr(0);
+    else
+      if reread /= 0 then vtapi.tdo := r.data(0) and r.holdn;
+      else vtapi.tdo := r.data(0); end if;
+    end if;
     
     case r.state is
       when shft =>
@@ -123,9 +131,12 @@ begin
         if r.shift2 = '1' then
           if redge = '1' then
             if r.asel(0) = '1' then v.addr := r.tdi2 & r.addr(34 downto 1); end if;
-            if r.dsel(0) = '1' then v.data := r.tdi2 & r.data(32 downto 1); end if;
+            if r.dsel(0) = '1' then v.data := r.tdi2 & r.data(32 downto 1); v.seq := r.tdi2; end if;
           end if;        
-        elsif r.upd2 = '1' then          
+        elsif r.upd2 = '1' then
+          if reread /= 0 then
+            v.data(32) := '0';          -- Transfer not done
+          end if;
           if (r.asel(0) and not write) = '1' then v.state := ahb; end if;
           if (r.dsel(0) and (write or (not write and seq))) = '1' then -- data register
             v.state := ahb;
@@ -135,12 +146,18 @@ begin
           end if;
           end if;
         end if;
-        vdmai.size := "00";
+        if reread /= 0 then v.holdn := '1'; end if;
+        vdmai.size := "000";
+        
       when ahb =>
+        if reread /= 0 and r.shift2 = '1' then v.holdn := '0'; end if;
         if dmao.active = '1' then
           if dmao.ready = '1' then
-            v.data(31 downto 0) := dmao.rdata;
+            v.data(31 downto 0) := ahbreadword(dmao.rdata);
             v.state := nxt_shft;
+            if reread /= 0 then
+              v.data(32) := '1';          -- Transfer done
+            end if;
             if (write and seq) = '1' then
               v.addr(ADDBITS-1 downto 2) := r.addr(ADDBITS-1 downto 2) + 1;
             end if;
@@ -150,13 +167,20 @@ begin
         end if;
 
       when nxt_shft =>
-        if r.upd2 = '0' then v.state := shft; end if;
+        if reread /= 0 then
+          v.holdn := (r.holdn or r.upd2) and not r.shift2;
+          if r.upd2 = '0' and r.shift2 = '0' and r.holdn = '1' then v.state := shft; end if;
+        else
+          if r.upd2 = '0' then v.state := shft; end if;
+        end if;
     end case;
 
     if (rst = '0') or (r.trst(0) = '1') then
-      v.state := shft; v.addr(34) := '0'; v.data(32) := '0';
+      v.state := shft; v.addr(34) := '0'; v.seq := '0';
     end if;
 
+    if reread = 0 then v.holdn := '0'; end if;
+    
     rin <= v; dmai <= vdmai; tapi <= vtapi;
     
     

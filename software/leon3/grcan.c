@@ -55,6 +55,8 @@ grcan_test(int paddr)
    // transmit and receive memory, allocate 2k memory
    volatile long int memory[512];
 
+   volatile int i = 0;
+
    // search for start of allocated memory
    long int memorytxbase;
    memorytxbase = (long int)&memory[0];
@@ -64,15 +66,15 @@ grcan_test(int paddr)
 
    // baud rate configuration
    int SCALER = 0;
-   int PS1 = 2;
-   int PS2 = 2;
+   int PS1 = 3;
+   int PS2 = 3;
    int RSJ = 1;
    int BPR = 0;
    int SELECTION = 0;
    int ENABLE = 0x1;
 
    // setup transmit memory
-//   report_subtest(0x1);
+   report_subtest(0x1);
 
    // set temporary pointer to base memory start
    volatile int *memorytx;
@@ -87,21 +89,25 @@ grcan_test(int paddr)
    memorytx++;
 
    // reset controller, setup baud rate, clear int erupts, enable codec
-//   report_subtest(0x2);
+   report_subtest(0x2);
 
    lctrl->ctrl = 0x00000002;
    lctrl->conf = (SCALER<<24) | (PS1<<20) | (PS2<<16) | (RSJ<<12) | (BPR<<8) | (SELECTION<<3) | (ENABLE<<1);
    lirq->picr  = 0xFFFFFFFF;
+
 //   lirq->imr   = 0x00000540;
+
    lctrl->ctrl = 0x00000001;
 
    // transmit messages test
-//   report_subtest(0x3);
+   report_subtest(0x3);
 
    ltx0->addr   = memorytxbase;
    ltx0->size   = 0x00000080;
-//   ltx0->wr     = 0x00000000;
-//   ltx0->rd     = 0x00000000;
+
+   ltx0->wr     = 0x00000000;
+   ltx0->rd     = 0x00000000;
+
    ltx0->irq    = 0x00000010; // number of packets
    ltx0->ctrl   = 0x00000001;
 
@@ -111,11 +117,14 @@ grcan_test(int paddr)
    // wait for four messages being sent
    while ((ltx0->rd & 0xFFFF) != 0x0010) ;
 
+   while(i < 20) i++;
+   i = 0;
+
    // check status
-//   report_subtest(0x4);
    if (lctrl->stat != 0x00000000) fail(1);
    if (lirq->pir != 0x00000540) fail(2);
 
+   report_subtest(0x4);
    // clear interrupt
    lirq->picr  = 0xFFFFFFFF;
 
@@ -134,8 +143,10 @@ grcan_test(int paddr)
 
    ltx0->addr   = memorytxbase;
    ltx0->size   = 0x00000080;
-//   ltx0->wr     = 0x00000000;
-//   ltx0->rd     = 0x00000000;
+
+   ltx0->wr     = 0x00000000;
+   ltx0->rd     = 0x00000000;
+
    ltx0->irq    = 0x00000010; // number of packets
    ltx0->ctrl   = 0x00000001;
 
@@ -145,6 +156,7 @@ grcan_test(int paddr)
    // wait for four messages being sent
    while ((ltx0->rd & 0xFFFF) != 0x0010) ;
 
+   while(i < 20) i++;
    // check status
 //   report_subtest(0x6);
    if (lctrl->stat != 0x00000000) fail(3);

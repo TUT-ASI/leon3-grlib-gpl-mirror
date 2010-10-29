@@ -30,6 +30,7 @@ use ieee.std_logic_1164.all;
 library grlib;
 use grlib.stdlib.all;
 library unisim;
+use unisim.IBUFG;
 use unisim.BUFG;
 use unisim.DCM;
 use unisim.BUFGDLL;
@@ -73,6 +74,7 @@ end;
 architecture struct of clkgen_virtex2 is 
 
   component BUFG port (O : out std_logic; I : in std_logic); end component;
+  component IBUFG port (O : out std_logic; I : in std_logic); end component;
 
   component BUFGMUX port ( O : out std_ulogic; I0 : in std_ulogic;
                          I1 : in std_ulogic; S : in std_ulogic);
@@ -120,12 +122,12 @@ architecture struct of clkgen_virtex2 is
   component BUFGDLL port (O : out std_logic; I : in std_logic); end component;
 
 constant VERSION : integer := 1;
-constant CLKIN_PERIOD_ST : string := "20.0";
-attribute CLKIN_PERIOD : string;
-attribute CLKIN_PERIOD of dll0: label is CLKIN_PERIOD_ST;
+--constant CLKIN_PERIOD_ST : string := "20.0";
+--attribute CLKIN_PERIOD : string;
+--attribute CLKIN_PERIOD of dll0: label is CLKIN_PERIOD_ST;
 signal gnd, clk_i, clk_j, clk_k, clk_l, clk_m, clk_x, clk_n, clk_o, clk_p, clk_i2, clk_sd, clk_r, dll0rst, dll0lock, dll1lock, dll2xlock : std_logic;
 signal dll1rst, dll2xrst : std_logic_vector(0 to 3);
-signal clk0B, clkint, pciclkint : std_logic;
+signal clk0B, clkint, pciclkint, pciclkl, pciclkfb, pciclk0 : std_logic;
 
 begin
 
@@ -145,6 +147,16 @@ begin
     end generate;
     p1 : if PCIDLL = 0 generate 
       x1 : BUFG port map (I => pciclkint, O => pciclk);
+    end generate;
+    p2 : if (PCIDLL /= 0) and ( PCIDLL /= 1) generate 
+      x1 : IBUFG port map (I => pciclkint, O => pciclkl);
+      dll0 : DCM 
+        generic map (CLKOUT_PHASE_SHIFT => "FIXED", PHASE_SHIFT => PCIDLL)
+        port map ( CLKIN => pciclkint, CLKFB => pciclkfb,
+         DSSEN => gnd, PSCLK => gnd,
+         RST => gnd, PSEN => gnd, PSINCDEC => gnd, CLK0 => pciclk0);
+      x2 : BUFG port map (I => pciclk0, O => pciclkfb);
+      pciclk <= pciclkfb;
     end generate;
   end generate;
 
@@ -374,11 +386,11 @@ architecture struct of clkmul_virtex2 is
 
 --  attribute CLKFX_MULTIPLY : string;
 --  attribute CLKFX_DIVIDE : string;
-  attribute CLKIN_PERIOD : string;
+--  attribute CLKIN_PERIOD : string;
 --
 --  attribute CLKFX_MULTIPLY of dll0: label is "5";
 --  attribute CLKFX_DIVIDE of dll0: label is "4";
-  attribute CLKIN_PERIOD of dll0: label is "20";
+--  attribute CLKIN_PERIOD of dll0: label is "20";
 --
 --  attribute CLKFX_MULTIPLY of dll1: label is "4";
 --  attribute CLKFX_DIVIDE of dll1: label is "4";
@@ -537,9 +549,9 @@ architecture struct of clkgen_spartan3 is
   component BUFGDLL port (O : out std_logic; I : in std_logic); end component;
 
 constant VERSION : integer := 1;
-constant CLKIN_PERIOD_ST : string := "20.0";
-attribute CLKIN_PERIOD : string;
-attribute CLKIN_PERIOD of dll0: label is CLKIN_PERIOD_ST;
+--constant CLKIN_PERIOD_ST : string := "20.0";
+--attribute CLKIN_PERIOD : string;
+--attribute CLKIN_PERIOD of dll0: label is CLKIN_PERIOD_ST;
 signal gnd, clk_i, clk_j, clk_k, clk_l, clk_m, clk_x, clk_n, clk_o, clk_p, clk_i2, clk_sd, clk_r, dll0rst, dll0lock, dll1lock, dll2xlock : std_logic;
 signal dll1rst, dll2xrst : std_logic_vector(0 to 3);
 signal clk0B, clkint, pciclkint : std_logic;
@@ -749,11 +761,11 @@ architecture struct of clkgen_virtex5 is
   component BUFGDLL port (O : out std_logic; I : in std_logic); end component;
 
 constant VERSION : integer := 1;
-constant CLKIN_PERIOD_ST : string := "20.0";
+--constant CLKIN_PERIOD_ST : string := "20.0";
 constant FREQ_MHZ : integer := freq/1000;
   
-attribute CLKIN_PERIOD : string;
-attribute CLKIN_PERIOD of dll0: label is CLKIN_PERIOD_ST;
+--attribute CLKIN_PERIOD : string;
+--attribute CLKIN_PERIOD of dll0: label is CLKIN_PERIOD_ST;
 signal gnd, clk_i, clk_j, clk_k, clk_l, clk_m, lsdclk : std_logic;
 signal clk_x, clk_n, clk_o, clk_p, clk_i2, clk_sd, clk_r: std_logic; 
 signal dll0rst, dll0lock, dll1lock, dll2xlock : std_logic;

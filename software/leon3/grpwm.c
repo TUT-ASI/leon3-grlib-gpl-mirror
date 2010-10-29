@@ -271,7 +271,7 @@ int grpwm_test(int addr) {
       pregs[caps.npwm-1]->ctrl |= PWM_CTRL_EN;
       
       /* Wait a while */
-      for(i = 0; i < 2000; i++)	tmp = i;
+      for(i = 0; i < 3000; i++)	tmp = i;
       
       /* Stop PWM */
       pregs[caps.npwm-1]->ctrl = 0;
@@ -287,7 +287,7 @@ int grpwm_test(int addr) {
       pregs[caps.npwm-1]->ctrl |= PWM_CTRL_EN;
 
       /* Wait a while */
-      for(i = 0; i < 2000; i++) tmp = i;
+      for(i = 0; i < 3000; i++) tmp = i;
       
       /* Stop PWM */
       pregs[caps.npwm-1]->ctrl = 0;

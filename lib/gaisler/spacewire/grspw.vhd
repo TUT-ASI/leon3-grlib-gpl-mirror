@@ -125,7 +125,9 @@ architecture rtl of grspw is
   signal irq          : std_ulogic;
   signal rxclk, nrxclk : std_logic_vector(ports-1 downto 0);
   signal testin       : std_logic_vector(3 downto 0);
-  
+
+  signal hwdata       : std_logic_vector(31 downto 0);
+  signal hrdata       : std_logic_vector(31 downto 0);
 begin  
 
   testin <= ahbmi.testen & "000";
@@ -155,7 +157,7 @@ rtl : if netlist = 0 generate
       hgrant       => ahbmi.hgrant(hindex),
       hready       => ahbmi.hready,   
       hresp        => ahbmi.hresp,
-      hrdata       => ahbmi.hrdata,
+      hrdata       => hrdata,
       --ahb mst out
       hbusreq      => ahbmo.hbusreq,
       hlock        => ahbmo.hlock,
@@ -165,7 +167,7 @@ rtl : if netlist = 0 generate
       hsize        => ahbmo.hsize,
       hburst       => ahbmo.hburst,
       hprot        => ahbmo.hprot,
-      hwdata       => ahbmo.hwdata,
+      hwdata       => hwdata,
       --apb slv in 
       psel	   => apbi.psel(pindex),
       penable	   => apbi.penable,
@@ -253,7 +255,7 @@ struct : if netlist = 1 generate
       hgrant       => ahbmi.hgrant(hindex),
       hready       => ahbmi.hready,   
       hresp        => ahbmi.hresp,
-      hrdata       => ahbmi.hrdata,
+      hrdata       => hrdata,
       --ahb mst out
       hbusreq      => ahbmo.hbusreq,
       hlock        => ahbmo.hlock,
@@ -263,7 +265,7 @@ struct : if netlist = 1 generate
       hsize        => ahbmo.hsize,
       hburst       => ahbmo.hburst,
       hprot        => ahbmo.hprot,
-      hwdata       => ahbmo.hwdata,
+      hwdata       => hwdata,
       --apb slv in 
       psel	   => apbi.psel(pindex),
       penable	   => apbi.penable,
@@ -334,6 +336,9 @@ end generate;
     apbo.pirq(pirq)  <= irq;
   end process;
 
+  hrdata           <= ahbreadword(ahbmi.hrdata);
+  
+  ahbmo.hwdata     <= ahbdrivedata(hwdata);
   ahbmo.hirq   	   <= (others => '0');
   ahbmo.hconfig    <= hconfig;
   ahbmo.hindex     <= hindex;

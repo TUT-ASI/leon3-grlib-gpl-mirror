@@ -124,7 +124,7 @@ architecture rtl of ahb2hpi2 is
   attribute syn_preserve                                                  : boolean;
   attribute syn_preserve of in_data_probe, out_data_probe, equality_probe : signal is true;
 
-
+  
 begin
 
   comb : process (INT, RDATA, HRESETn, ahbsi, r, rr)
@@ -141,6 +141,8 @@ begin
 
     variable tCNT : unsigned(counter_width-1 downto 0);  -- timing counter
 
+    variable hwdata : std_logic_vector(31 downto 0);
+    
   begin
 
     -- assign values from the register in the beginning
@@ -148,6 +150,8 @@ begin
     -- inputs from the bus
     v := r;
 
+    hwdata := ahbreadword(ahbsi.hwdata);
+    
 --    data_acquisition <= '0';
 
     if HRESETn = '0' then
@@ -215,12 +219,12 @@ begin
             -- take data from AHB write data bus but skip interrupt bit
             if BIG_ENDIAN then
 --              v.ctrlreg := ahbsi.hwdata(31 downto 31-data_width+1);
-              v.ctrlreg(15 downto 13) := ahbsi.hwdata(31 downto 29);
-              v.ctrlreg(11 downto 0)  := ahbsi.hwdata(27 downto 16);
+              v.ctrlreg(15 downto 13) := hwdata(31 downto 29);
+              v.ctrlreg(11 downto 0)  := hwdata(27 downto 16);
             else
 --              v.ctrlreg := ahbsi.hwdata(31-data_width downto 0);
-              v.ctrlreg(15 downto 13) := ahbsi.hwdata(15 downto 13);
-              v.ctrlreg(11 downto 0)  := ahbsi.hwdata(11 downto 0);
+              v.ctrlreg(15 downto 13) := hwdata(15 downto 13);
+              v.ctrlreg(11 downto 0)  := hwdata(11 downto 0);
             end if;
           else
             v.Din := v.ctrlreg;
@@ -245,9 +249,9 @@ begin
         -- only relevant for 16-bit accesses
         if v.counter = tCNT - 1 then
           if BIG_ENDIAN then
-            v.Dout := ahbsi.hwdata(31 downto 31-data_width+1);
+            v.Dout := hwdata(31 downto 31-data_width+1);
           else
-            v.Dout := ahbsi.hwdata(31-data_width downto 0);
+            v.Dout := hwdata(31-data_width downto 0);
           end if;
         else
           if BIG_ENDIAN then
@@ -325,8 +329,7 @@ begin
 
     -- output data is assigned to the both the high and the
     -- low word of the 32-bit data bus
-    ahbso.hrdata(31 downto 31-data_width+1) <= r.Din;
-    ahbso.hrdata(31-data_width downto 0)    <= r.Din;  --(others => '-');
+    ahbso.hrdata <= ahbdrivedata(r.Din);
 
 --    if v.addr(0) = '0' then
 --      if BIG_ENDIAN then

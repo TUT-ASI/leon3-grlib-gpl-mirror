@@ -91,7 +91,7 @@ function dec_fixed(scache : std_ulogic;
 	haddr : std_logic_vector(3 downto 0); cached : integer) return std_ulogic is
 begin
   if (cached /= 0) then return ctbl(conv_integer(haddr(3 downto 0)));
-  else return(scache); end if;
+  else return('1'); end if;
 end;
 
 signal r, rin : reg_type;
@@ -303,7 +303,7 @@ begin
     ahbo.haddr   <= haddr ;
     ahbo.htrans  <= htrans;
     ahbo.hbusreq <= hbusreq and not r.lb and not ((((not bo_icache) and r.ba) or nb) and r.bg);
-    ahbo.hwdata  <= hwdata;
+    ahbo.hwdata  <= ahbdrivedata(hwdata);
     ahbo.hlock   <= hlock and mcdi.read;
     ahbo.hwrite  <= hwrite;
     ahbo.hsize   <= hsize;
@@ -342,9 +342,9 @@ begin
 
   end process;
 
-  mcio.data  <= ahbi.hrdata;
-  mcdo.data  <= ahbi.hrdata;
-  mcmmo.data <= ahbi.hrdata;
+  mcio.data  <= ahbreadword(ahbi.hrdata);
+  mcdo.data  <= ahbreadword(ahbi.hrdata);
+  mcmmo.data <= ahbreadword(ahbi.hrdata);
   ahbo.hirq    <= (others => '0');
   ahbo.hconfig <= hconfig;
 

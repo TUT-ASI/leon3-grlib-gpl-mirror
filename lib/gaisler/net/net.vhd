@@ -46,6 +46,10 @@ package net is
     edcladdr   : std_logic_vector(3 downto 0);   
   end record;
 
+  constant eth_in_none : eth_in_type :=
+    ('0', '0', '0', '0', (others => '0'), '0', '0', '0', '0',
+     '0', '0', (others => '0'), (others => '0'));
+  
   type eth_out_type is record
     reset   : std_ulogic;
     txd     : std_logic_vector(7 downto 0);   
@@ -55,7 +59,10 @@ package net is
     mdio_o  : std_ulogic; 
     mdio_oe : std_ulogic;
   end record;
-     
+
+  constant eth_out_none : eth_out_type :=
+    ('0', (others => '0'), '0', '0', '0', '0', '1');
+  
   component eth_arb
     generic(
       fullduplex : integer := 0;
@@ -184,6 +191,7 @@ package net is
     giga           : integer range 0 to 1  := 0;
     oepol          : integer range 0 to 1  := 0;
     scanen         : integer range 0 to 1  := 0;
+    ft             : integer range 0 to 2  := 0;
     mdint_pol      : integer range 0 to 1  := 0;
     enable_mdint   : integer range 0 to 1  := 0;
     multicast      : integer range 0 to 1  := 0); 

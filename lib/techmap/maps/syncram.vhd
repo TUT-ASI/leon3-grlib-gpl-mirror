@@ -127,6 +127,16 @@ begin
          port map (clk, address, datain, dataoutx, enable, write);
   end generate;
 
+  proa3e : if tech = apa3e generate
+    x0 : proasic3e_syncram generic map (abits, dbits)
+         port map (clk, address, datain, dataoutx, enable, write);
+  end generate;
+
+  proa3l : if tech = apa3l generate
+    x0 : proasic3l_syncram generic map (abits, dbits)
+         port map (clk, address, datain, dataoutx, enable, write);
+  end generate;
+
   fus : if tech = actfus generate
     x0 : fusion_syncram generic map (abits, dbits)
          port map (clk, address, datain, dataoutx, enable, write);
@@ -200,6 +210,16 @@ begin
     x0 : smic13_syncram generic map (abits, dbits)
          port map (clk, address, datain, dataoutx, enable, write);
   end generate;
+
+  tm65gplu  : if tech = tm65gpl generate
+    x0 : tm65gplus_syncram generic map (abits, dbits)
+      port map (clk, address, datain, dataoutx, enable, write);
+   end generate;
+
+  cmos9sfx  : if tech = cmos9sf generate
+    x0 : cmos9sf_syncram generic map (abits, dbits)
+      port map (clk, address, datain, dataoutx, enable, write);
+   end generate;
 
 -- pragma translate_off
   noram : if has_sram(tech) = 0 generate

@@ -111,26 +111,31 @@ begin
                   hexread(L1, recaddr(23 downto 0));
 		when "0011" =>
                   hexread(L1, recaddr);
-		  recaddr(31 downto abits) := (others => '0');
 		when others => next;
 	      end case;
               hexread(L1, recdata);
               if index = 6 then
+	        recaddr(31 downto abits) := (others => '0');
 	        ai := conv_integer(recaddr);
  	        for i in 0 to 15 loop
                   MEMA(ai+i) := recdata((i*8) to (i*8+7));
 	        end loop;
               elsif (index = 4) or (index = 5) then
+	        recaddr(31 downto abits+1) := (others => '0');
 	        ai := conv_integer(recaddr)/2;
  	        for i in 0 to 7 loop
                   MEMA(ai+i) := recdata((i*16+(index-4)*8) to (i*16+(index-4)*8+7));
 	        end loop;
               else 
+	        recaddr(31 downto abits+2) := (others => '0');
 	        ai := conv_integer(recaddr)/4;
  	        for i in 0 to 3 loop
                   MEMA(ai+i) := recdata((i*32+index*8) to (i*32+index*8+7));
 	        end loop;
               end if;
+	      if ai = 0 then
+		ai := 1;
+	      end if;
             end if;
           end if;
         end if;

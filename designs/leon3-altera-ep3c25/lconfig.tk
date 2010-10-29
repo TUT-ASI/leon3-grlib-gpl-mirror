@@ -746,14 +746,17 @@ proc menu1 {w title} {
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Spartan2" -variable tmpvar_0 -value "Xilinx-Spartan2" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Spartan3" -variable tmpvar_0 -value "Xilinx-Spartan3" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Spartan3E" -variable tmpvar_0 -value "Xilinx-Spartan3E" -command "update_active"
+	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Spartan6" -variable tmpvar_0 -value "Xilinx-Spartan6" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Virtex" -variable tmpvar_0 -value "Xilinx-Virtex" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-VirtexE" -variable tmpvar_0 -value "Xilinx-VirtexE" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Virtex2" -variable tmpvar_0 -value "Xilinx-Virtex2" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Virtex4" -variable tmpvar_0 -value "Xilinx-Virtex4" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Virtex5" -variable tmpvar_0 -value "Xilinx-Virtex5" -command "update_active"
+	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Virtex6" -variable tmpvar_0 -value "Xilinx-Virtex6" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "UMC180" -variable tmpvar_0 -value "UMC180" -command "update_active"
+	$w.config.f.x0.x.menu add radiobutton -label "TM65Gplus" -variable tmpvar_0 -value "TM65Gplus" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "TSMC90" -variable tmpvar_0 -value "TSMC90" -command "update_active"
-	menusplit $w $w.config.f.x0.x.menu 35
+	menusplit $w $w.config.f.x0.x.menu 38
 	global tmpvar_1
 	minimenu $w.config.f 1 1 "Memory Library                           " tmpvar_1 CONFIG_MEM_INFERRED
 	menu $w.config.f.x1.x.menu -tearoffcommand "menutitle \"Memory Library                           \""
@@ -882,6 +885,8 @@ proc update_define_menu1 {} {
 	if {$tmpvar_0 == "Xilinx-Spartan3"} then {set CONFIG_SYN_SPARTAN3 1} else {set CONFIG_SYN_SPARTAN3 0}
 	global CONFIG_SYN_SPARTAN3E
 	if {$tmpvar_0 == "Xilinx-Spartan3E"} then {set CONFIG_SYN_SPARTAN3E 1} else {set CONFIG_SYN_SPARTAN3E 0}
+	global CONFIG_SYN_SPARTAN6
+	if {$tmpvar_0 == "Xilinx-Spartan6"} then {set CONFIG_SYN_SPARTAN6 1} else {set CONFIG_SYN_SPARTAN6 0}
 	global CONFIG_SYN_VIRTEX
 	if {$tmpvar_0 == "Xilinx-Virtex"} then {set CONFIG_SYN_VIRTEX 1} else {set CONFIG_SYN_VIRTEX 0}
 	global CONFIG_SYN_VIRTEXE
@@ -892,8 +897,12 @@ proc update_define_menu1 {} {
 	if {$tmpvar_0 == "Xilinx-Virtex4"} then {set CONFIG_SYN_VIRTEX4 1} else {set CONFIG_SYN_VIRTEX4 0}
 	global CONFIG_SYN_VIRTEX5
 	if {$tmpvar_0 == "Xilinx-Virtex5"} then {set CONFIG_SYN_VIRTEX5 1} else {set CONFIG_SYN_VIRTEX5 0}
+	global CONFIG_SYN_VIRTEX6
+	if {$tmpvar_0 == "Xilinx-Virtex6"} then {set CONFIG_SYN_VIRTEX6 1} else {set CONFIG_SYN_VIRTEX6 0}
 	global CONFIG_SYN_UMC
 	if {$tmpvar_0 == "UMC180"} then {set CONFIG_SYN_UMC 1} else {set CONFIG_SYN_UMC 0}
+	global CONFIG_SYN_TM65GPLUS
+	if {$tmpvar_0 == "TM65Gplus"} then {set CONFIG_SYN_TM65GPLUS 1} else {set CONFIG_SYN_TM65GPLUS 0}
 	global CONFIG_SYN_TSMC90
 	if {$tmpvar_0 == "TSMC90"} then {set CONFIG_SYN_TSMC90 1} else {set CONFIG_SYN_TSMC90 0}
 	global tmpvar_1
@@ -1271,11 +1280,12 @@ proc menu4 {w title} {
 	$w.config.f.x2.x.menu add radiobutton -label "5-cycles" -variable tmpvar_3 -value "5-cycles" -command "update_active"
 	menusplit $w $w.config.f.x2.x.menu 3
 	bool $w.config.f 4 3 "SPARC V8e SMAC/UMAC instructions     " CONFIG_IU_MUL_MAC
-	bool $w.config.f 4 4 "Single-vector trapping" CONFIG_IU_SVT
-	int $w.config.f 4 5 "Load delay" CONFIG_IU_LDELAY
-	int $w.config.f 4 6 "Hardware watchpoints" CONFIG_IU_WATCHPOINTS
-	bool $w.config.f 4 7 "Enable power-down mode " CONFIG_PWD
-	hex $w.config.f 4 8 " Reset start address (addr\[31:12\]) " CONFIG_IU_RSTADDR
+	bool $w.config.f 4 4 "Branch prediction     " CONFIG_IU_BP
+	bool $w.config.f 4 5 "Single-vector trapping" CONFIG_IU_SVT
+	int $w.config.f 4 6 "Load delay" CONFIG_IU_LDELAY
+	int $w.config.f 4 7 "Hardware watchpoints" CONFIG_IU_WATCHPOINTS
+	bool $w.config.f 4 8 "Enable power-down mode " CONFIG_PWD
+	hex $w.config.f 4 9 " Reset start address (addr\[31:12\]) " CONFIG_IU_RSTADDR
 
 
 
@@ -1325,18 +1335,21 @@ proc update_menu4 {} {
 	global CONFIG_IU_MUL_MAC
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_IU_V8MULDIV == 1) && ($CONFIG_IU_MUL_LATENCY_4 == 1 || $CONFIG_IU_MUL_LATENCY_5 == 1)} then {
 	configure_entry .menu4.config.f.x3 normal {n l y}} else {configure_entry .menu4.config.f.x3 disabled {y n l}}
-	global CONFIG_IU_SVT
+	global CONFIG_IU_BP
 	if {($CONFIG_LEON3 == 1)} then {
 	configure_entry .menu4.config.f.x4 normal {n l y}} else {configure_entry .menu4.config.f.x4 disabled {y n l}}
+	global CONFIG_IU_SVT
+	if {($CONFIG_LEON3 == 1)} then {
+	configure_entry .menu4.config.f.x5 normal {n l y}} else {configure_entry .menu4.config.f.x5 disabled {y n l}}
 	global CONFIG_IU_LDELAY
-	if {($CONFIG_LEON3 == 1)} then {.menu4.config.f.x5.x configure -state normal -foreground [ cget .ref -foreground ]; .menu4.config.f.x5.l configure -state normal; } else {.menu4.config.f.x5.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu4.config.f.x5.l configure -state disabled}
-	global CONFIG_IU_WATCHPOINTS
 	if {($CONFIG_LEON3 == 1)} then {.menu4.config.f.x6.x configure -state normal -foreground [ cget .ref -foreground ]; .menu4.config.f.x6.l configure -state normal; } else {.menu4.config.f.x6.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu4.config.f.x6.l configure -state disabled}
+	global CONFIG_IU_WATCHPOINTS
+	if {($CONFIG_LEON3 == 1)} then {.menu4.config.f.x7.x configure -state normal -foreground [ cget .ref -foreground ]; .menu4.config.f.x7.l configure -state normal; } else {.menu4.config.f.x7.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu4.config.f.x7.l configure -state disabled}
 	global CONFIG_PWD
 	if {($CONFIG_LEON3 == 1)} then {
-	configure_entry .menu4.config.f.x7 normal {n l y}} else {configure_entry .menu4.config.f.x7 disabled {y n l}}
+	configure_entry .menu4.config.f.x8 normal {n l y}} else {configure_entry .menu4.config.f.x8 disabled {y n l}}
 	global CONFIG_IU_RSTADDR
-	if {($CONFIG_LEON3 == 1)} then {.menu4.config.f.x8.x configure -state normal -foreground [ cget .ref -foreground ]; .menu4.config.f.x8.l configure -state normal; } else {.menu4.config.f.x8.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu4.config.f.x8.l configure -state disabled}
+	if {($CONFIG_LEON3 == 1)} then {.menu4.config.f.x9.x configure -state normal -foreground [ cget .ref -foreground ]; .menu4.config.f.x9.l configure -state normal; } else {.menu4.config.f.x9.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu4.config.f.x9.l configure -state disabled}
 }
 
 
@@ -1359,6 +1372,9 @@ proc update_define_menu4 {} {
 	global CONFIG_IU_MUL_MAC
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_IU_V8MULDIV == 1) && ($CONFIG_IU_MUL_LATENCY_4 == 1 || $CONFIG_IU_MUL_LATENCY_5 == 1)} then {
 	set CONFIG_IU_MUL_MAC [expr $CONFIG_IU_MUL_MAC&15]} else {set CONFIG_IU_MUL_MAC [expr $CONFIG_IU_MUL_MAC|16]}
+	global CONFIG_IU_BP
+	if {($CONFIG_LEON3 == 1)} then {
+	set CONFIG_IU_BP [expr $CONFIG_IU_BP&15]} else {set CONFIG_IU_BP [expr $CONFIG_IU_BP|16]}
 	global CONFIG_IU_SVT
 	if {($CONFIG_LEON3 == 1)} then {
 	set CONFIG_IU_SVT [expr $CONFIG_IU_SVT&15]} else {set CONFIG_IU_SVT [expr $CONFIG_IU_SVT|16]}
@@ -2579,6 +2595,7 @@ proc menu11 {w title} {
 	bool $w.config.f 11 5 "Enable AMBA AHB monitor              " CONFIG_AHB_MON
 	bool $w.config.f 11 6 "Report AHB errors                  " CONFIG_AHB_MONERR
 	bool $w.config.f 11 7 "Report AHB warings                 " CONFIG_AHB_MONWAR
+	bool $w.config.f 11 8 "Write trace to simulation console    " CONFIG_AHB_DTRACE
 
 
 
@@ -3815,12 +3832,15 @@ set CONFIG_SYN_SMIC13 0
 set CONFIG_SYN_SPARTAN2 0
 set CONFIG_SYN_SPARTAN3 0
 set CONFIG_SYN_SPARTAN3E 0
+set CONFIG_SYN_SPARTAN6 0
 set CONFIG_SYN_VIRTEX 0
 set CONFIG_SYN_VIRTEXE 0
 set CONFIG_SYN_VIRTEX2 0
 set CONFIG_SYN_VIRTEX4 0
 set CONFIG_SYN_VIRTEX5 0
+set CONFIG_SYN_VIRTEX6 0
 set CONFIG_SYN_UMC 0
+set CONFIG_SYN_TM65GPLUS 0
 set CONFIG_SYN_TSMC90 0
 set tmpvar_1 "(not set)"
 set CONFIG_MEM_INFERRED 0
@@ -3859,6 +3879,7 @@ set CONFIG_IU_MUL_LATENCY_2 0
 set CONFIG_IU_MUL_LATENCY_4 0
 set CONFIG_IU_MUL_LATENCY_5 0
 set CONFIG_IU_MUL_MAC 0
+set CONFIG_IU_BP 0
 set CONFIG_IU_SVT 0
 set CONFIG_IU_LDELAY 1
 set CONFIG_IU_WATCHPOINTS 0
@@ -4007,6 +4028,7 @@ set CONFIG_APB_HADDR 800
 set CONFIG_AHB_MON 0
 set CONFIG_AHB_MONERR 0
 set CONFIG_AHB_MONWAR 0
+set CONFIG_AHB_DTRACE 0
 set CONFIG_DSU_UART 0
 set CONFIG_DSU_JTAG 0
 set CONFIG_MCTRL_LEON2 0
@@ -4123,12 +4145,15 @@ proc writeconfig {file1 file2} {
 	if { $tmpvar_0 == "Xilinx-Spartan2" } then { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN2 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Xilinx-Spartan3" } then { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN3 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN3 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Xilinx-Spartan3E" } then { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN3E 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN3E 0 [list $notmod] 2 }
+	if { $tmpvar_0 == "Xilinx-Spartan6" } then { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN6 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN6 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Xilinx-Virtex" } then { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEX 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEX 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Xilinx-VirtexE" } then { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEXE 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEXE 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Xilinx-Virtex2" } then { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEX2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEX2 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Xilinx-Virtex4" } then { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEX4 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEX4 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Xilinx-Virtex5" } then { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEX5 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEX5 0 [list $notmod] 2 }
+	if { $tmpvar_0 == "Xilinx-Virtex6" } then { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEX6 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_VIRTEX6 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "UMC180" } then { write_tristate $cfg $autocfg CONFIG_SYN_UMC 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_UMC 0 [list $notmod] 2 }
+	if { $tmpvar_0 == "TM65Gplus" } then { write_tristate $cfg $autocfg CONFIG_SYN_TM65GPLUS 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_TM65GPLUS 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "TSMC90" } then { write_tristate $cfg $autocfg CONFIG_SYN_TSMC90 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_TSMC90 0 [list $notmod] 2 }
 	global tmpvar_1
 	global CONFIG_SYN_INFERRED
@@ -4204,6 +4229,8 @@ proc writeconfig {file1 file2} {
 	global CONFIG_IU_MUL_LATENCY_4
 	global CONFIG_IU_MUL_LATENCY_5
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_IU_V8MULDIV == 1) && ($CONFIG_IU_MUL_LATENCY_4 == 1 || $CONFIG_IU_MUL_LATENCY_5 == 1)} then {write_tristate $cfg $autocfg CONFIG_IU_MUL_MAC $CONFIG_IU_MUL_MAC [list $notmod] 2 }
+	global CONFIG_IU_BP
+	if {($CONFIG_LEON3 == 1)} then {write_tristate $cfg $autocfg CONFIG_IU_BP $CONFIG_IU_BP [list $notmod] 2 }
 	global CONFIG_IU_SVT
 	if {($CONFIG_LEON3 == 1)} then {write_tristate $cfg $autocfg CONFIG_IU_SVT $CONFIG_IU_SVT [list $notmod] 2 }
 	global CONFIG_IU_LDELAY
@@ -4419,6 +4446,8 @@ proc writeconfig {file1 file2} {
 	if {($CONFIG_AHB_MON == 1)} then {write_tristate $cfg $autocfg CONFIG_AHB_MONERR $CONFIG_AHB_MONERR [list $notmod] 2 }
 	global CONFIG_AHB_MONWAR
 	if {($CONFIG_AHB_MON == 1)} then {write_tristate $cfg $autocfg CONFIG_AHB_MONWAR $CONFIG_AHB_MONWAR [list $notmod] 2 }
+	global CONFIG_AHB_DTRACE
+	write_tristate $cfg $autocfg CONFIG_AHB_DTRACE $CONFIG_AHB_DTRACE [list $notmod] 2
 	write_comment $cfg $autocfg "Debug Link           "
 	global CONFIG_DSU_UART
 	write_tristate $cfg $autocfg CONFIG_DSU_UART $CONFIG_DSU_UART [list $notmod] 2
@@ -4567,12 +4596,15 @@ proc clear_choices { } {
 	global CONFIG_SYN_SPARTAN2; set CONFIG_SYN_SPARTAN2 0
 	global CONFIG_SYN_SPARTAN3; set CONFIG_SYN_SPARTAN3 0
 	global CONFIG_SYN_SPARTAN3E; set CONFIG_SYN_SPARTAN3E 0
+	global CONFIG_SYN_SPARTAN6; set CONFIG_SYN_SPARTAN6 0
 	global CONFIG_SYN_VIRTEX; set CONFIG_SYN_VIRTEX 0
 	global CONFIG_SYN_VIRTEXE; set CONFIG_SYN_VIRTEXE 0
 	global CONFIG_SYN_VIRTEX2; set CONFIG_SYN_VIRTEX2 0
 	global CONFIG_SYN_VIRTEX4; set CONFIG_SYN_VIRTEX4 0
 	global CONFIG_SYN_VIRTEX5; set CONFIG_SYN_VIRTEX5 0
+	global CONFIG_SYN_VIRTEX6; set CONFIG_SYN_VIRTEX6 0
 	global CONFIG_SYN_UMC; set CONFIG_SYN_UMC 0
+	global CONFIG_SYN_TM65GPLUS; set CONFIG_SYN_TM65GPLUS 0
 	global CONFIG_SYN_TSMC90; set CONFIG_SYN_TSMC90 0
 	global CONFIG_MEM_INFERRED; set CONFIG_MEM_INFERRED 0
 	global CONFIG_MEM_UMC; set CONFIG_MEM_UMC 0
@@ -4761,6 +4793,8 @@ proc update_choices { } {
 	if { $CONFIG_SYN_SPARTAN3 == 1 } then { set tmpvar_0 "Xilinx-Spartan3" }
 	global CONFIG_SYN_SPARTAN3E
 	if { $CONFIG_SYN_SPARTAN3E == 1 } then { set tmpvar_0 "Xilinx-Spartan3E" }
+	global CONFIG_SYN_SPARTAN6
+	if { $CONFIG_SYN_SPARTAN6 == 1 } then { set tmpvar_0 "Xilinx-Spartan6" }
 	global CONFIG_SYN_VIRTEX
 	if { $CONFIG_SYN_VIRTEX == 1 } then { set tmpvar_0 "Xilinx-Virtex" }
 	global CONFIG_SYN_VIRTEXE
@@ -4771,8 +4805,12 @@ proc update_choices { } {
 	if { $CONFIG_SYN_VIRTEX4 == 1 } then { set tmpvar_0 "Xilinx-Virtex4" }
 	global CONFIG_SYN_VIRTEX5
 	if { $CONFIG_SYN_VIRTEX5 == 1 } then { set tmpvar_0 "Xilinx-Virtex5" }
+	global CONFIG_SYN_VIRTEX6
+	if { $CONFIG_SYN_VIRTEX6 == 1 } then { set tmpvar_0 "Xilinx-Virtex6" }
 	global CONFIG_SYN_UMC
 	if { $CONFIG_SYN_UMC == 1 } then { set tmpvar_0 "UMC180" }
+	global CONFIG_SYN_TM65GPLUS
+	if { $CONFIG_SYN_TM65GPLUS == 1 } then { set tmpvar_0 "TM65Gplus" }
 	global CONFIG_SYN_TSMC90
 	if { $CONFIG_SYN_TSMC90 == 1 } then { set tmpvar_0 "TSMC90" }
 	global tmpvar_1

@@ -11,7 +11,7 @@
 NET "ddr_clk_fb" CLOCK_DEDICATED_ROUTE = FALSE;
 NET "ddr_clk_fb" MAXDELAY = 1660 ps;
 NET "*dqinl*" MAXDELAY = 1900 ps;
-NET "ddr2sp0.ddrc0/ddr32.ddrc/rwdata*" MAXDELAY = 2100 ps;
+#NET "ddr2sp0.ddrc0/ddrc/rwdata*" MAXDELAY = 2100 ps;
 NET "*rclk180b" MAXDELAY = 2040 ps;
 
 #######################################################################

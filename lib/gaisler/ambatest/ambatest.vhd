@@ -142,6 +142,7 @@ constant AHB_IDLE : ahb_mst_out_type := (
   hburst => HBURST_SINGLE,
   hprot => (others => '0'),
   hwdata => (others => '0'),
+  hwdata128 => (others => '0'),
   hirq => (others => '0'),
   hconfig => (others => zero32),
   hindex => 0
@@ -157,6 +158,7 @@ constant READ_SINGLE : ahb_mst_out_type := (
   hburst => HBURST_SINGLE,
   hprot => (others => '0'),
   hwdata => (others => '0'),
+  hwdata128 => (others => '0'),
   hirq => (others => '0'),
   hconfig => (others => zero32),
   hindex => 0
@@ -172,6 +174,7 @@ constant READ_INCR : ahb_mst_out_type := (
   hburst => HBURST_INCR,
   hprot => (others => '0'),
   hwdata => (others => '0'),
+  hwdata128 => (others => '0'),
   hirq => (others => '0'),
   hconfig => (others => zero32),
   hindex => 0
@@ -187,6 +190,7 @@ constant WRITE_SINGLE : ahb_mst_out_type := (
   hburst => HBURST_SINGLE,
   hprot => (others => '0'),
   hwdata => (others => '0'),
+  hwdata128 => (others => '0'),
   hirq => (others => '0'),
   hconfig => (others => zero32),
   hindex => 0
@@ -202,6 +206,7 @@ constant WRITE_INCR : ahb_mst_out_type := (
   hburst => HBURST_INCR,
   hprot => (others => '0'),
   hwdata => (others => '0'),
+  hwdata128 => (others => '0'),
   hirq => (others => '0'),
   hconfig => (others => zero32),
   hindex => 0

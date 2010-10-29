@@ -90,7 +90,6 @@ signal address : std_logic_vector(27 downto 0);
 signal data : std_logic_vector(15 downto 0);
 signal xdata : std_logic_vector(31 downto 0);
 signal romsn  	: std_logic;
-signal iosn : std_logic;
 signal writen, read 	: std_logic;
 signal oen 	: std_logic;
 signal flash_rstn  	: std_logic;
@@ -136,7 +135,7 @@ begin
   cpu : entity work.leon3mp
       generic map ( fabtech, memtech, padtech, ncpu, disas, dbguart, pclow )
       port map ( sys_rst_in, sys_clk, clk125, errorn, flash_rstn, address,
-	data, dsuen, dsubre, dsuact, oen, writen, read, iosn, romsn,
+	data, dsuen, dsubre, dsuact, oen, writen, read, romsn,
 	ddr_clk, ddr_clkb, ddr_clk_fb, ddr_clk_fb_out, ddr_cke, ddr_csb, 
 	ddr_web, ddr_rasb, ddr_casb, ddr_dm, ddr_dqs, ddr_ad, ddr_ba, ddr_dq, 
 	txd1, rxd1, 
@@ -193,10 +192,6 @@ begin
    end process;
 
   xdata <= "0000000000000000" & data;
-  test0 :  grtestmod
-    port map ( sys_rst_in, sys_clk, errorn, address(20 downto 1), xdata,
-    	       iosn, oen, writen, open);
-
 
   data <= buskeep(data), (others => 'H') after 250 ns;
   ddr_dq <= buskeep(ddr_dq), (others => 'H') after 250 ns;

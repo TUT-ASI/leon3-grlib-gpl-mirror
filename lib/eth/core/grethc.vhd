@@ -1027,14 +1027,25 @@ begin
        v.status.rxahberr := '1'; v.ctrl.rxen := '0';
      end if;
    when discard =>
-     if (r.rxdoneold = '0') or ((r.rxdoneold = '1') and
-        (conv_integer(r.rxcnt) < conv_integer(r.rxbytecount))) then
+     if (r.rxdoneold = '0') then
        if conv_integer(r.rfcnt) /= 0 then
          v.rfrpnt := r.rfrpnt + 1; v.rfcnt := r.rfcnt - 1;
          v.rxcnt := r.rxcnt + 4;
        end if;
-     elsif (r.rxdoneold = '1') then
-       v.rxdstate := idle; v.ctrlpkt := '0';
+     else 
+       if r.rxstatus(3) = '1' then
+         v.rfcnt := (others => '0'); v.rfwpnt := (others => '0');
+         v.rfrpnt := (others => '0'); v.writeok := '1';
+         v.rxbytecount := (others => '0'); v.rxlength := (others => '0');
+         v.rxdstate := idle;
+       elsif (conv_integer(r.rxcnt) < conv_integer(r.rxbytecount)) then
+         if conv_integer(r.rfcnt) /= 0 then
+           v.rfrpnt := r.rfrpnt + 1; v.rfcnt := r.rfcnt - 1;
+           v.rxcnt := r.rxcnt + 4;
+         end if;    
+       else
+         v.rxdstate := idle; v.ctrlpkt := '0';
+       end if;
      end if;
    when others =>
      null;

@@ -195,6 +195,7 @@ type pci_target_type is record
   thold    : std_logic; -- hold target while last word is transfered
   thold2   : std_logic; -- hold target while last word is transfered
   ready_del: std_logic; -- delayed ready
+  detectperr : std_logic_vector(1 downto 0);
 end record;
 
 type pci_master_type is record
@@ -214,6 +215,7 @@ type pci_master_type is record
   rmdone   : std_logic; -- bug fix ***
   stopframe: std_logic;
   lto      : std_logic; -- bug fix latency timer timeout
+  detectperr : std_logic_vector(1 downto 0);
 end record;
 
 type pci_sync_regs is array (0 to NO_PCI_REGS - 1) of std_logic_vector(csync downto 0);
@@ -303,8 +305,8 @@ signal clk_int : std_logic;
 signal pr : pci_input_type;
 signal r, rin : pci_reg_type;
 signal r2, r2in : cpu_reg_type;
-signal dmai : ahb_dma_in_type;
-signal dmao : ahb_dma_out_type;
+signal dmai : pci_ahb_dma_in_type;
+signal dmao : pci_ahb_dma_out_type;
 signal fifo1i, fifo2i, fifo3i, fifo4i, cbe_fifoi : pci_fifo_in_type;
 signal fifo1o, fifo2o, fifo3o, fifo4o, cbe_fifoo : pci_fifo_out_type;
 signal roe_ad, rioe_ad, ad, adin : std_logic_vector(31 downto 0); 
@@ -330,7 +332,7 @@ begin
     comb : process (rst, r2, r, dmao, ahbsi, fifo2o, fifo4o, apbi, pr,
                     cbe_fifoo, dmai, pcii)
         
-        variable vdmai : ahb_dma_in_type;
+        variable vdmai : pci_ahb_dma_in_type;
         variable v : cpu_reg_type;
         variable hready : std_logic;
         variable hresp, hsize : std_logic_vector(1 downto 0);
@@ -1051,7 +1053,7 @@ begin
         v.trans(5) := wmdone;
 
         -- input data for write accesses
-        if r2.s.pcicomm(0) = '1' then v.s.mdata := ahbsi.hwdata; end if;
+        if r2.s.pcicomm(0) = '1' then v.s.mdata := ahbreadword(ahbsi.hwdata); end if;
         -- output data for read accesses
 --    if (ahbsi.htrans(1) and not r2.s.hold and not r2.s.pcicomm(0)) = '1' then v.s.mdata := fifo4o.rdata(31 downto 0); end if;
         if (ahbsi.htrans(1) and not r2.s.pcicomm(0)) = '1' then v.s.mdata := fifo4o.rdata(31 downto 0); end if; -- bug fix ***
@@ -1084,7 +1086,7 @@ begin
         apbo.prdata  <= prdata;
         ahbso.hready <= r2.s.hready;
         ahbso.hresp  <= r2.s.hresp;
-        ahbso.hrdata <= byte_twist(r2.s.mdata, r.bt_enable);
+        ahbso.hrdata <= ahbdrivedata(byte_twist(r2.s.mdata, r.bt_enable));
         ahbso.hindex <= hslvndx;
 
         fifo1i.wen   <= fifom_write;
@@ -1209,7 +1211,8 @@ begin
 --    then ben_err := '0'; else ben_err := '1'; end if;
         ben_err := '0';
         
-        if r.stat.dpe = '0' then v.stat.dpe := not (r.pci.perr and r.pci.serr); end if;
+        --if r.stat.dpe = '0' then v.stat.dpe := not (r.pci.perr and r.pci.serr); end if;
+        if r.stat.dpe = '0' and (r.m.detectperr(1) = '1' or r.t.detectperr(1) = '1' or r.pci.serr = '0') then v.stat.dpe := not (r.pci.perr and r.pci.serr); end if;
 
 -------------------------
 ----- PCI TARGET --------
@@ -1354,11 +1357,13 @@ begin
         -- SERR, address phase parity error. Treat as non hit.
         v.pci.serr    := '1';
         v.pci.oe_serr := '1';
-        if pr.frame = '0' then
+        --if pr.frame = '0' then
+        if pr.frame = '0' and (r.t.state = idle or r.t.state = turn_ar) then -- Only signal address parity error on SERR#
             if ( (pcii.par xor xorv(pr.ad & pr.cbe)) = '1') then
                 v.pci.serr := '0';
                 chit := '0'; phit := '0'; mhit0 := '0'; mhit1 := '0'; 
-                if r.comm.ser = '1' then
+                --if r.comm.ser = '1' then
+                if r.comm.ser = '1' and r.comm.per = '1' then -- Address parity error only if "Parity Error Response" and "SERR# enable" is enabled.
                     v.pci.oe_serr := '0';
                     v.stat.sse := '1';
                 end if;
@@ -1422,6 +1427,7 @@ begin
         case r.t.state is
 
             when idle  =>
+                v.t.detectperr(0) := '0';
                 v.t.thold := '0';  
                 v.t.thold2 := '0';  
 
@@ -1433,6 +1439,7 @@ begin
                 v.t.csel := (pr.idsel or hosthit) and chit; v.t.psel := phit;
                 v.t.msel := r.comm.men and (mhit0 or mhit1); v.t.barsel := mhit1;
             when turn_ar =>
+                v.t.detectperr(0) := '0';
                 
                 if pr.frame = '1' then 
                     v.t.state := idle;
@@ -1451,6 +1458,7 @@ begin
                     v.t.state := idle;
 
                 elsif hit = '1' then
+                    v.t.detectperr(0) := '1';
                     v.t.state := s_data;
                     v.t.fifo.raddr := r.t.fifo.raddr + (r.t.read and r.t.msel);
                     readt_dly := '1';
@@ -1477,6 +1485,7 @@ begin
                     v.t.fifo.raddr := r.t.fifo.raddr - (r.t.read and r.t.msel and not fifort_limit);
                 end if;
             when backoff =>
+                v.t.detectperr(0) := '0';
                 
                 if pcii.frame = '1' then v.t.state := turn_ar; end if;
         end case;
@@ -1780,6 +1789,7 @@ begin
                     v.m.stopframe := '0'; 
                     v.m.state := m_data;
                 when m_data => -- Master transfers data
+                    if r.m.hwrite = '0' then v.m.detectperr(0) := '1'; end if; -- Only detect perr on read
                     if r.pci.frame = '1' then v.m.stopframe := '1'; end if; -- *** 
                     if (r.pci.frame = '0') or ((r.pci.frame and pcii.trdy and pcii.stop and not mto) = '1') then
                         v.m.state := m_data;
@@ -1789,12 +1799,13 @@ begin
                         v.m.stop_req := '1';
                     else v.m.state := turn_ar; end if;
                 when turn_ar => -- Transaction complete
-                    
+                    v.m.detectperr(0) := '0'; 
                     if pcii.gnt = '0' then
                         if m_request = '1' then v.m.state := addr;
                         else v.m.state := dr_bus; end if;
                     else v.m.state := idle; end if;
                 when s_tar => -- Stop was asserted
+                    v.m.detectperr(0) := '0';
                     
                     if pcii.gnt = '0' then v.m.state := dr_bus;
                     else v.m.state := idle; end if;
@@ -1856,13 +1867,20 @@ begin
 --- SHARED SIGNALS ---
 ----------------------
 
+        v.m.detectperr(1) := r.m.detectperr(0);
+        v.t.detectperr(1) := r.t.detectperr(0);
         
         -- Drive PAR one clock after AD
         v.pci.oe_par := r.pci.oe_ad; 
         v.pci.par := xorv(r.pci.ad & r.pci.cbe); -- Default asserted by master
         
         -- PERR error
-        v.pci.oe_perr := not(r.comm.per and r.pci.oe_par and not (pr.irdy and pr.trdy)) and (r.pci.oe_perr or r.pci.perr);
+        if (r.m.detectperr(0) = '1' or (r.m.detectperr(1) and not r.pci.perr) = '1') -- Drive perr for master:read 
+           or (r.t.detectperr(0) = '1' or (r.t.detectperr(1) and not r.pci.perr) = '1') then -- Drive perr for target:write
+          v.pci.oe_perr := not(r.comm.per and r.pci.oe_par and not (pr.irdy and pr.trdy)) and (r.pci.oe_perr or r.pci.perr);
+        else
+          v.pci.oe_perr := (r.pci.oe_perr or r.pci.perr); 
+        end if;
         v.pci.perr    := not (pcii.par xor xorv(pr.ad & pr.cbe)) or pr.irdy or pr.trdy; -- Detect parity error
         
         v.pci.ad := mad;  -- Default asserted by master
@@ -2004,6 +2022,7 @@ begin
             v.m.split := '0';
             v.m.last := '0'; v.t.last := '0';
             v.t.laddr := (others => '0'); -- to remove x problem in gate-simulation
+            v.m.detectperr(0) := '0'; v.t.detectperr(0) := '0';
         end if;
 
 

@@ -59,8 +59,13 @@ end;
 
 architecture struct of ahbjtag_bsd is
 
-  
-constant REVISION : integer := 0;
+
+-- Set REREAD to 1 to include support for re-read operation when host reads
+-- out data register before jtagcom has completed the current AMBA access and
+-- returned to state 'shft'.
+constant REREAD : integer := 1;
+
+constant REVISION : integer := REREAD;
 
 signal dmai : ahb_dma_in_type;
 signal dmao : ahb_dma_out_type;
@@ -70,10 +75,10 @@ signal ltapo : tap_out_type;
 begin
   
   ahbmst0 : ahbmst 
-    generic map (hindex => hindex, venid => VENDOR_GAISLER, devid => GAISLER_AHBJTAG)
+    generic map (hindex => hindex, venid => VENDOR_GAISLER, devid => GAISLER_AHBJTAG, version => REVISION)
     port map (rst, clk, dmai, dmao, ahbi, ahbo);
   
-  jtagcom0 : jtagcom generic map (isel => 1, nsync => nsync, ainst => ainst, dinst => dinst)
+  jtagcom0 : jtagcom generic map (isel => 1, nsync => nsync, ainst => ainst, dinst => dinst, reread => REREAD)
     port map (rst, clk, ltapo, ltapi, dmao, dmai);
 
   ltapo.asel  <= asel;

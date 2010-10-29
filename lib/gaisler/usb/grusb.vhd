@@ -52,6 +52,11 @@ package grusb is
     functesten     : std_ulogic;
     urstdrive      : std_ulogic;
   end record;
+
+  constant grusb_in_none : grusb_in_type :=
+    ((others => '0'), '0', '0', '0', '0', '0', (others => '0'),
+     '0', '0', '0', '0', '0', '0');
+  
   type grusb_out_type is record
     dataout           : std_logic_vector(15 downto 0);
     txvalid           : std_ulogic;
@@ -77,6 +82,11 @@ package grusb is
     tx_dat            : std_ulogic;
     tx_se0            : std_ulogic;
   end record;
+
+  constant grusb_out_none : grusb_out_type :=
+    ((others => '0'), '0', '0', (others => '0'), (others => '0'),
+     '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0',
+     '0', '0', '0', '0', '0', '0');
   
   type grusb_in_vector is array (natural range <>) of grusb_in_type;
   type grusb_out_vector is array (natural range <>) of grusb_out_type;
@@ -202,7 +212,7 @@ package grusb is
       ahbmo : out ahb_mst_out_type;
       ahbsi : in  ahb_slv_in_type;
       ahbso : out ahb_slv_out_type
-    );
+      );
   end component;
 
   component grusb_dcl is
@@ -219,7 +229,7 @@ package grusb is
       functesten : integer range 0 to 1   := 0;
       burstlength: integer range 1 to 512 := 8;
       scantest   : integer range 0 to 1   := 0
-    );
+      );
     port (
       uclk : in  std_ulogic;
       usbi : in  grusb_in_type;
@@ -228,7 +238,7 @@ package grusb is
       hrst : in  std_ulogic;
       ahbi : in  ahb_mst_in_type;
       ahbo : out ahb_mst_out_type
-    );
+      );
   end component grusb_dcl;
 
   component grusbhc_gen is
@@ -352,6 +362,139 @@ package grusb is
       testrst           : in  std_ulogic;
       scanen            : in  std_ulogic;
       testoen           : in  std_ulogic);
-  end component;  
+  end component;
+
+  component grusbdc_gen is
+    generic (
+      aiface     : integer range 0 to 1         := 0;
+      memtech    : integer range 0 to NTECH     := DEFMEMTECH;
+      uiface     : integer range 0 to 1         := 0;
+      dwidth     : integer range 8 to 16        := 8;
+      blen       : integer range 4 to 128       := 16;
+      nepi       : integer range 1 to 16        := 1;
+      nepo       : integer range 1 to 16        := 1;
+      i0         : integer range 8 to 3072      := 1024;
+      i1         : integer range 8 to 3072      := 1024;
+      i2         : integer range 8 to 3072      := 1024;
+      i3         : integer range 8 to 3072      := 1024;
+      i4         : integer range 8 to 3072      := 1024;
+      i5         : integer range 8 to 3072      := 1024;
+      i6         : integer range 8 to 3072      := 1024;
+      i7         : integer range 8 to 3072      := 1024;
+      i8         : integer range 8 to 3072      := 1024;
+      i9         : integer range 8 to 3072      := 1024;
+      i10        : integer range 8 to 3072      := 1024;
+      i11        : integer range 8 to 3072      := 1024;
+      i12        : integer range 8 to 3072      := 1024;
+      i13        : integer range 8 to 3072      := 1024;
+      i14        : integer range 8 to 3072      := 1024;
+      i15        : integer range 8 to 3072      := 1024;
+      o0         : integer range 8 to 3072      := 1024;
+      o1         : integer range 8 to 3072      := 1024;
+      o2         : integer range 8 to 3072      := 1024;
+      o3         : integer range 8 to 3072      := 1024;
+      o4         : integer range 8 to 3072      := 1024;
+      o5         : integer range 8 to 3072      := 1024;
+      o6         : integer range 8 to 3072      := 1024;
+      o7         : integer range 8 to 3072      := 1024;
+      o8         : integer range 8 to 3072      := 1024;
+      o9         : integer range 8 to 3072      := 1024;
+      o10        : integer range 8 to 3072      := 1024;
+      o11        : integer range 8 to 3072      := 1024;
+      o12        : integer range 8 to 3072      := 1024;
+      o13        : integer range 8 to 3072      := 1024;
+      o14        : integer range 8 to 3072      := 1024;
+      o15        : integer range 8 to 3072      := 1024;
+      oepol      : integer range 0 to 1         := 0;
+      syncprst   : integer range 0 to 1         := 0;
+      prsttime   : integer range 0 to 512       := 0;
+      sysfreq    : integer                      := 50000;
+      keepclk    : integer range 0 to 1         := 0;
+      sepirq     : integer range 0 to 1         := 0;
+      functesten : integer range 0 to 1         := 0;
+      scantest   : integer range 0 to 1         := 0);
+    port (
+      -- usb clock
+      uclk              : in  std_ulogic;
+      --usb in signals
+      datain            : in  std_logic_vector(15 downto 0);
+      rxactive          : in  std_ulogic;
+      rxvalid           : in  std_ulogic;
+      rxvalidh          : in  std_ulogic;
+      rxerror           : in  std_ulogic;
+      txready           : in  std_ulogic;
+      linestate         : in  std_logic_vector(1 downto 0);
+      nxt               : in  std_ulogic;
+      dir               : in  std_ulogic;
+      vbusvalid         : in  std_ulogic;
+      urstdrive         : in  std_ulogic;
+      --usb out signals
+      dataout           : out std_logic_vector(15 downto 0);
+      txvalid           : out std_ulogic;
+      txvalidh          : out std_ulogic;
+      opmode            : out std_logic_vector(1 downto 0);
+      xcvrselect        : out std_logic_vector(1 downto 0);
+      termselect        : out std_ulogic;
+      suspendm          : out std_ulogic;
+      reset             : out std_ulogic;
+      stp               : out std_ulogic;
+      oen               : out std_ulogic;
+      databus16_8       : out std_ulogic;
+      dppulldown        : out std_ulogic;
+      dmpulldown        : out std_ulogic;
+      idpullup          : out std_ulogic;
+      drvvbus           : out std_ulogic;
+      dischrgvbus       : out std_ulogic;
+      chrgvbus          : out std_ulogic;
+      txbitstuffenable  : out std_ulogic;
+      txbitstuffenableh : out std_ulogic;
+      fslsserialmode    : out std_ulogic;
+      tx_enable_n       : out std_ulogic;
+      tx_dat            : out std_ulogic;
+      tx_se0            : out std_ulogic;
+      -- amba clock/rst
+      hclk              : in  std_ulogic;
+      hrst              : in  std_ulogic;
+      --ahb master in signals
+      ahbmi_hgrant      : in  std_ulogic;
+      ahbmi_hready      : in  std_ulogic;
+      ahbmi_hresp       : in  std_logic_vector(1 downto 0);
+      ahbmi_hrdata      : in  std_logic_vector(31 downto 0);
+      --ahb master out signals    
+      ahbmo_hbusreq     : out std_ulogic;
+      ahbmo_hlock       : out std_ulogic;
+      ahbmo_htrans      : out std_logic_vector(1 downto 0);
+      ahbmo_haddr       : out std_logic_vector(31 downto 0);
+      ahbmo_hwrite      : out std_ulogic;
+      ahbmo_hsize       : out std_logic_vector(2 downto 0);
+      ahbmo_hburst      : out std_logic_vector(2 downto 0);
+      ahbmo_hprot       : out std_logic_vector(3 downto 0);
+      ahbmo_hwdata      : out std_logic_vector(31 downto 0);
+      --ahb slave in signals
+      ahbsi_hsel        : in  std_ulogic;
+      ahbsi_haddr       : in  std_logic_vector(31 downto 0);
+      ahbsi_hwrite      : in  std_ulogic;
+      ahbsi_htrans      : in  std_logic_vector(1 downto 0);
+      ahbsi_hsize       : in  std_logic_vector(2 downto 0);
+      ahbsi_hburst      : in  std_logic_vector(2 downto 0);
+      ahbsi_hwdata      : in  std_logic_vector(31 downto 0);
+      ahbsi_hprot       : in  std_logic_vector(3 downto 0);
+      ahbsi_hready      : in  std_ulogic;
+      ahbsi_hmaster     : in  std_logic_vector(3 downto 0);
+      ahbsi_hmastlock   : in  std_ulogic;
+      --ahb slave out signals
+      ahbso_hready      : out std_ulogic;
+      ahbso_hresp       : out std_logic_vector(1 downto 0);
+      ahbso_hrdata      : out std_logic_vector(31 downto 0);
+      ahbso_hsplit      : out std_logic_vector(15 downto 0);
+      -- misc
+      irq               : out std_logic_vector(2*sepirq downto 0);
+      -- scan signals
+      testen            : in  std_ulogic;
+      testrst           : in  std_ulogic;
+      scanen            : in  std_ulogic;
+      testoen           : in  std_ulogic
+      );
+    end component;
 end grusb;
 

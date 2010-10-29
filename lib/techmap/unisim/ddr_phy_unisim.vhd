@@ -1300,7 +1300,8 @@ entity virtex5_ddr2_phy is
            ddelayb6 : integer := 0; ddelayb7 : integer := 0; 
            numidelctrl : integer := 4; norefclk : integer := 0; 
            tech : integer := virtex5; odten : integer := 0;
-           eightbanks : integer  range 0 to 1 := 0);
+           eightbanks : integer  range 0 to 1 := 0;
+           dqsse : integer range 0 to 1 := 0);
   port (
     rst        : in  std_ulogic;
     clk        : in  std_logic;        -- input clock
@@ -1533,7 +1534,7 @@ signal refclk_rdy : std_logic_vector(numidelctrl-1 downto 0);
 
 constant DDR_FREQ : integer := (MHz * clk_mul) / clk_div;
 
-type ddelay_type is array (7 downto 0) of integer;
+type ddelay_type is array (0 to 7) of integer;
 constant ddelay : ddelay_type := (ddelayb0, ddelayb1, ddelayb2,
                                   ddelayb3, ddelayb4, ddelayb5,
                                   ddelayb6, ddelayb7);
@@ -1813,10 +1814,18 @@ begin
     doen_reg : FD port map ( Q => ddr_dqsoen_reg(i), C => clk180r, D => dqsoen);
     doen : FD port map ( Q => ddr_dqsoen(i), C => clk90r, D => ddr_dqsoen_reg(i));
 
-    dqs_pad : iopad_ds generic map (tech => virtex5, level => sstl18_ii)
-      port map (padp => ddr_dqs(i), padn => ddr_dqsn(i),i => ddr_dqsin(i), 
-                en => ddr_dqsoen(i), o => ddr_dqsoutl(i));
+    diffdqs : if dqsse = 0 generate
+      dqs_pad : iopad_ds generic map (tech => virtex5, level => sstl18_ii)
+        port map (padp => ddr_dqs(i), padn => ddr_dqsn(i),i => ddr_dqsin(i), 
+                  en => ddr_dqsoen(i), o => ddr_dqsoutl(i));
+    end generate;
 
+    sedqs : if dqsse /= 0 generate
+      dqs_pad : iopad generic map (tech => virtex5, level => sstl18_ii)
+        port map (pad => ddr_dqs(i), i => ddr_dqsin(i), 
+                  en => ddr_dqsoen(i), o => ddr_dqsoutl(i));
+    end generate;
+      
 --    del_dqs0 : IDELAY generic map(IOBDELAY_TYPE => "FIXED", IOBDELAY_VALUE => 10)
 --      port map(O => dqsclk(i), I => ddr_dqsoutl(i), C => gnd, CE => gnd,
 --               INC => gnd, RST => dllrst(0));

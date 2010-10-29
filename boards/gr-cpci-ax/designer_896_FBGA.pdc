@@ -592,6 +592,7 @@ set_io etxd\[1\]        -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pi
 set_io etxd\[2\]        -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname M24   -fixed yes
 set_io etxd\[3\]        -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname M23   -fixed yes
 set_io etx_er           -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname AD5   -fixed yes
+set_io emdint           -iostd LVTTL                                         -pinname AD5   -fixed yes
 
 set_io e0mdio           -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname AC4   -fixed yes
 set_io e0mdc            -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname AF1   -fixed yes
@@ -607,6 +608,7 @@ set_io e0rxd\[3\]       -iostd LVTTL                                          -p
 set_io e0tx_clk         -iostd LVTTL                                          -pinname M28   -fixed yes
 set_io e0tx_en          -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname AB7   -fixed yes
 set_io e0tx_er          -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname AD5   -fixed yes
+set_io e0mdint          -iostd LVTTL                                         -pinname AD5   -fixed yes
 set_io e0txd\[0\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname L27   -fixed yes
 set_io e0txd\[1\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname M27   -fixed yes
 set_io e0txd\[2\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname M24   -fixed yes
@@ -626,6 +628,7 @@ set_io e1rxd\[3\]       -iostd LVTTL                                          -p
 set_io e1tx_clk         -iostd LVTTL                                          -pinname T30   -fixed yes
 set_io e1tx_en          -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname V23   -fixed yes
 set_io e1tx_er          -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname T22   -fixed yes
+set_io e1mdint          -iostd LVTTL                                         -pinname T22   -fixed yes
 set_io e1txd\[0\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname V26   -fixed yes
 set_io e1txd\[1\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname Y25   -fixed yes
 set_io e1txd\[2\]       -iostd LVTTL -OUT_DRIVE 12 -SLEW Low -OUT_LOAD 15    -pinname AD30  -fixed yes

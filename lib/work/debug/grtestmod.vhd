@@ -107,7 +107,7 @@ begin
         subtest := conv_integer(ldata(7 downto 0));
 	if vendorid = VENDOR_GAISLER then
 	  case deviceid is
-	  when GAISLER_LEON3 => leon3_subtest(subtest);
+	  when GAISLER_LEON3 | GAISLER_LEON4 | GAISLER_L2CACHE=> leon3_subtest(subtest);
 	  when GAISLER_FTMCTRL => mctrl_subtest(subtest);
 	  when GAISLER_GPTIMER => gptimer_subtest(subtest);
 	  when GAISLER_LEON3DSU => dsu3_subtest(subtest);
@@ -122,6 +122,9 @@ begin
           when GAISLER_APBPS2 => apbps2_subtest(subtest);
           when GAISLER_I2CSLV => i2cslv_subtest(subtest);
           when GAISLER_PWM => grpwm_subtest(subtest);
+          when GAISLER_GPIO => grgpio_subtest(subtest);
+          when GAISLER_GRIOMMU => griommu_subtest(subtest);
+          when GAISLER_L4STAT => l4stat_subtest(subtest);
           when others =>
             print ("  subtest " & tost(subtest));
 	  end case;

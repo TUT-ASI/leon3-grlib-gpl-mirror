@@ -78,7 +78,7 @@ architecture rtl of mmulru is
   signal lrueo : mmulrueo_a (entries-1 downto 0);
 begin  
 
-  p0: process (rst, r, c, lrui, lrueo)
+  p0: process (rst, r, lrui, lrueo)
     variable v : lru_rtype;
     variable reinit : std_logic;
     variable v_lruei_clk : std_logic;

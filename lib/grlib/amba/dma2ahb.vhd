@@ -59,11 +59,7 @@
 --
 -- Library      : gaisler
 --
--- Authors      : Mr Sandi Habinc
---                Aeroflex Gaisler AB
---                Kungsgatan 12
---                SE-411 19 Göteborg
---                Sweden
+-- Authors      : Aeroflex Gaisler AB
 --
 -- Contact      : mailto:support@gaisler.com
 --                http://www.gaisler.com
@@ -191,7 +187,7 @@ begin
    -----------------------------------------------------------------------------
    AHBOut.HADDR               <= Address;                -- internal to external
 
-   AHBOut.HWDATA              <= DMAIn.Data;             -- combinatorial path
+   AHBOut.HWDATA              <= ahbdrivedata(DMAIn.Data); -- combinatorial path
 
    DMAOut.OKAY                <= '1' when AHBIn.HREADY='1' and
                                           DataPhase ='1' and
@@ -312,7 +308,7 @@ begin
 
             if    AHBIn.HREADY='1' and DataPhase='1' then
                -- sample AHB input data at end of data phase
-               DMAOut.Data          <= AHBIn.HRDATA;
+               DMAOut.Data          <= ahbreadword(AHBIn.HRDATA);
                DataPhase            <= '0';              -- data phase ends
                DMAOut.Ready         <= '1';
             else

@@ -147,21 +147,21 @@ extern line3();
 #define DTAGMASK (~((1<<DLINESZ)-1))
 #define DIAGADDRMASK ((1<<DTAGLOW)-1)
 
-static maintest();
+//static maintest();
 
 cachetest()
 {
     int tmp;
 
     tmp = maintest();
-    wsysreg(0, 0x81000f);
+    wsysreg(0, 0x0081000f);
     return(tmp);
 }
 
 long long int getdw();
 
     
-static maintest()
+ maintest()
 {
 
 	volatile double mrl[8192 + 8]; /* enough for 64 K caches */
@@ -186,7 +186,7 @@ static maintest()
 	do cachectrl = rsysreg(0); while(cachectrl & (CCTRL_IFP | CCTRL_DFP));
 	flush();
 	do cachectrl = rsysreg(0); while(cachectrl & (CCTRL_IFP | CCTRL_DFP));
-	cachectrl = rsysreg(0); wsysreg(0, cachectrl | 0x81000f);
+	cachectrl = rsysreg(0); wsysreg(0, cachectrl | 0x0081000f);
 
 	icconf = rsysreg(8);
 	dcconf = rsysreg(12);
@@ -244,8 +244,11 @@ static maintest()
 	  cachectrl = rsysreg(0);
 	  if (((cachectrl >> IDE_BIT) & 3) != 1) fail(2);
 	  
+	  asm("nop;");
 	  setitag((int) line2, 0, 0);
+	  asm("nop;");
 	  cachectrl = rsysreg(0); wsysreg(0, cachectrl & ~CPTB_MASK);
+	  asm("nop;");
 	  //setidata((int) line2, 0, 0);
 	  line2();
 	  cachectrl = rsysreg(0);

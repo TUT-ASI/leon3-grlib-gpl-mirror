@@ -116,7 +116,8 @@ component clkgen_axcelerator
     sdinvclk : integer := 0;
     pcien    : integer := 0;
     pcidll   : integer := 0;
-    pcisysclk: integer := 0);
+    pcisysclk: integer := 0;
+    freq     : integer := 25000);
   port (
     clkin   : in  std_logic;
     pciclkin: in  std_logic;
@@ -308,7 +309,9 @@ end component;
     clk_odiv : integer := 1;		-- output divider
     pcien    : integer := 0;
     pcisysclk: integer := 0;
-    freq     : integer := 25000);	-- clock frequency in KHz
+    freq     : integer := 25000;	-- clock frequency in KHz
+    clkb_odiv: integer := 0;
+    clkc_odiv: integer := 0);
   port (
     clkin   : in  std_ulogic;
     pciclkin: in  std_ulogic;
@@ -316,7 +319,9 @@ end component;
     sdclk   : out std_ulogic;			-- SDRAM clock
     pciclk  : out std_ulogic;
     cgi     : in clkgen_in_type;
-    cgo     : out clkgen_out_type);
+    cgo     : out clkgen_out_type;
+    clkb    : out std_logic; 
+    clkc    : out std_logic);
   end component;
 
   component clkgen_fusion
@@ -326,7 +331,9 @@ end component;
     clk_odiv : integer := 1;		-- output divider
     pcien    : integer := 0;
     pcisysclk: integer := 0;
-    freq     : integer := 25000);	-- clock frequency in KHz
+    freq     : integer := 25000;	-- clock frequency in KHz
+    clkb_odiv: integer := 0;
+    clkc_odiv: integer := 0);
   port (
     clkin   : in  std_ulogic;
     pciclkin: in  std_ulogic;
@@ -334,8 +341,54 @@ end component;
     sdclk   : out std_ulogic;			-- SDRAM clock
     pciclk  : out std_ulogic;
     cgi     : in clkgen_in_type;
-    cgo     : out clkgen_out_type);
+    cgo     : out clkgen_out_type;
+    clkb    : out std_logic; 
+    clkc    : out std_logic);
   end component; 
+
+  component clkgen_proasic3e
+  generic (
+    clk_mul  : integer := 1; 
+    clk_div  : integer := 1;
+    clk_odiv : integer := 1;		-- output divider
+    pcien    : integer := 0;
+    pcisysclk: integer := 0;
+    freq     : integer := 25000;	-- clock frequency in KHz
+    clkb_odiv: integer := 0;
+    clkc_odiv: integer := 0);
+  port (
+    clkin   : in  std_ulogic;
+    pciclkin: in  std_ulogic;
+    clk     : out std_ulogic;			-- main clock
+    sdclk   : out std_ulogic;			-- SDRAM clock
+    pciclk  : out std_ulogic;
+    cgi     : in clkgen_in_type;
+    cgo     : out clkgen_out_type;
+    clkb    : out std_logic; 
+    clkc    : out std_logic);
+  end component;
+
+  component clkgen_proasic3l
+  generic (
+    clk_mul  : integer := 1; 
+    clk_div  : integer := 1;
+    clk_odiv : integer := 1;		-- output divider
+    pcien    : integer := 0;
+    pcisysclk: integer := 0;
+    freq     : integer := 25000;	-- clock frequency in KHz
+    clkb_odiv: integer := 0;
+    clkc_odiv: integer := 0);
+  port (
+    clkin   : in  std_ulogic;
+    pciclkin: in  std_ulogic;
+    clk     : out std_ulogic;			-- main clock
+    sdclk   : out std_ulogic;			-- SDRAM clock
+    pciclk  : out std_ulogic;
+    cgi     : in clkgen_in_type;
+    cgo     : out clkgen_out_type;
+    clkb    : out std_logic; 
+    clkc    : out std_logic);
+  end component;
 
   component cyclone3_pll is
   generic (

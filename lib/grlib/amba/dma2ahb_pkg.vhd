@@ -41,13 +41,9 @@
 --
 -- Library      : gaisler
 --
--- Authors      : Mr Sandi Habinc
---                Gaisler Research AB
---                Forsta Langgantan 19
---                SE-413 27 Göteborg
---                Sweden
+-- Authors      : Aeroflex Gaisler AB
 --
--- Contact      : mailto:sandi@gaisler.com
+-- Contact      : mailto:support@gaisler.com
 --                http://www.gaisler.com
 --
 -- Disclaimer   : All information is provided "as is", there is no warranty that

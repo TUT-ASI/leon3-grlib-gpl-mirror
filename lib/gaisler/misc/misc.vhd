@@ -56,6 +56,8 @@ package misc is
     extclk   : std_ulogic;
   end record;
 
+  type gptimer_in_vector is array (natural range <>) of gptimer_in_type;
+  
   type gptimer_out_type is record
     tick     : std_logic_vector(0 to 7);
     timer1   : std_logic_vector(31 downto 0);
@@ -63,6 +65,13 @@ package misc is
     wdog    : std_ulogic;
   end record;
 
+  type gptimer_out_vector is array (natural range <>) of gptimer_out_type;
+  
+  constant gptimer_in_none : gptimer_in_type := ('0', '0');
+
+  constant gptimer_out_none : gptimer_out_type :=
+    ((others => '0'), (others => '0'), '1', '0');
+  
   component gptimer
   generic (
     pindex   : integer := 0;
@@ -93,7 +102,9 @@ package misc is
     haddr   : integer := 0;
     hmask   : integer := 16#fff#;
     tech    : integer := DEFMEMTECH;
-    kbytes  : integer := 1);
+    kbytes  : integer := 1;
+    pipe    : integer := 0;
+    maccsz  : integer := AHBDW);
   port (
     rst    : in  std_ulogic;
     clk    : in  std_ulogic;
@@ -180,11 +191,12 @@ package misc is
   component ahbtrace is
   generic (
     hindex  : integer := 0;
-    ioaddr    : integer := 16#000#;
-    iomask    : integer := 16#E00#;
+    ioaddr  : integer := 16#000#;
+    iomask  : integer := 16#E00#;
     tech    : integer := DEFMEMTECH;
     irq     : integer := 0;
-    kbytes  : integer := 1);
+    kbytes  : integer := 1;
+    ahbfilt : integer := 0);
   port (
     rst    : in  std_ulogic;
     clk    : in  std_ulogic;
@@ -194,26 +206,45 @@ package misc is
   );
   end component;
 
-type ahb_dma_in_type is record
-  address         : std_logic_vector(31 downto 0);
-  wdata           : std_logic_vector(31 downto 0);
-  start           : std_ulogic;
-  burst           : std_ulogic;
-  write           : std_ulogic;
-  busy            : std_ulogic;
-  irq             : std_ulogic;
-  size            : std_logic_vector(1 downto 0);
-end record;
+  component ahbtrace_mb is
+  generic (
+    hindex  : integer := 0;
+    ioaddr  : integer := 16#000#;
+    iomask  : integer := 16#E00#;
+    tech    : integer := DEFMEMTECH;
+    irq     : integer := 0;
+    kbytes  : integer := 1;
+    ahbfilt : integer := 0);
+  port (
+    rst    : in  std_ulogic;
+    clk    : in  std_ulogic;
+    ahbsi  : in  ahb_slv_in_type;       -- Register interface
+    ahbso  : out ahb_slv_out_type;
+    tahbmi : in  ahb_mst_in_type;       -- Trace
+    tahbsi : in  ahb_slv_in_type
+  );
+  end component;
 
-type ahb_dma_out_type is record
-  start           : std_ulogic;
-  active          : std_ulogic;
-  ready           : std_ulogic;
-  retry           : std_ulogic;
-  mexc            : std_ulogic;
-  haddr           : std_logic_vector(9 downto 0);
-  rdata           : std_logic_vector(31 downto 0);
-end record;
+  type ahb_dma_in_type is record
+    address         : std_logic_vector(31 downto 0);
+    wdata           : std_logic_vector(AHBDW-1 downto 0);
+    start           : std_ulogic;
+    burst           : std_ulogic;
+    write           : std_ulogic;
+    busy            : std_ulogic;
+    irq             : std_ulogic;
+    size            : std_logic_vector(2 downto 0);
+  end record;
+
+  type ahb_dma_out_type is record
+    start           : std_ulogic;
+    active          : std_ulogic;
+    ready           : std_ulogic;
+    retry           : std_ulogic;
+    mexc            : std_ulogic;
+    haddr           : std_logic_vector(9 downto 0);
+    rdata           : std_logic_vector(AHBDW-1 downto 0);
+  end record;
 
   component ahbmst
   generic (
@@ -234,6 +265,60 @@ end record;
       );
   end component;
 
+  type ahbmst2_request is record
+    req: std_logic;        -- Request enable bit
+    wr: std_logic;
+    hsize: std_logic_vector(2 downto 0);
+    hburst: std_logic_vector(2 downto 0);
+    hprot: std_logic_vector(3 downto 0);
+    addr: std_logic_vector(32-1 downto 0);    
+    burst_cont: std_logic; -- Set for all except the first request in a burst    
+    burst_wrap: std_logic; -- High for the request where wrap occurs
+  end record;
+
+  constant ahbmst2_request_none: ahbmst2_request := (
+    req => '0', wr => '0', hsize => "010", hburst => "000", burst_cont => '0',
+    burst_wrap => '0', addr => (others => '0'), hprot => "0011");
+  
+  type ahbmst2_in_type is record
+    request: ahbmst2_request;
+    wrdata: std_logic_vector(AHBDW-1 downto 0);
+    -- For back-to-back transfers or bursts, this must be set when done is high
+    -- and then copied over to request after the rising edge of clk.
+    next_request: ahbmst2_request;
+    -- Insert busy cycle, must only be asserted when request and next_request
+    -- are both part of the same burst.
+    busy: std_logic;
+    hlock: std_logic; -- Lock signal, passed through directly to AMBA.
+    keepreq: std_logic;  -- Keep bus request high even when no request needs it.
+  end record;
+
+  type ahbmst2_out_type is record
+    done: std_logic;
+    flip: std_logic;
+    fail: std_logic;
+    rddata: std_logic_vector(AHBDW-1 downto 0);
+  end record;
+
+  component ahbmst2 is
+    generic (
+      hindex: integer := 0;
+      venid: integer;
+      devid: integer;
+      version: integer;
+      dmastyle: integer range 1 to 3 := 3;
+      syncrst: integer range 0 to 1 := 1
+      );      
+    port (
+      clk: in std_logic;
+      rst: in std_logic;      
+      ahbi: in ahb_mst_in_type;
+      ahbo: out ahb_mst_out_type;
+      m2i: in ahbmst2_in_type;
+      m2o: out ahbmst2_out_type
+      );
+  end component;    
+  
   type gpio_in_type is record
     din      : std_logic_vector(31 downto 0);
     sig_in   : std_logic_vector(31 downto 0);
@@ -247,12 +332,6 @@ end record;
     sig_out  : std_logic_vector(31 downto 0);
   end record;
 
-  type ahb2ahb_ctrl_type is record
-    slck  : std_ulogic;
-    blck  : std_ulogic;
-    mlck  : std_ulogic;
-  end record;
-
  component grgpio
   generic (
     pindex   : integer := 0;
@@ -264,7 +343,9 @@ end record;
     syncrst  : integer := 0;
     bypass   : integer := 16#0000#;
     scantest : integer := 0;
-    bpdir    : integer := 16#0000#
+    bpdir    : integer := 16#0000#;
+    pirq     : integer := 0;
+    irqgen   : integer := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -276,81 +357,113 @@ end record;
   );
   end component;
 
+  type ahb2ahb_ctrl_type is record
+    slck  : std_ulogic;
+    blck  : std_ulogic;
+    mlck  : std_ulogic;
+  end record;
+
+  constant ahb2ahb_ctrl_none : ahb2ahb_ctrl_type := ('0', '0', '0');
+
+  type ahb2ahb_ifctrl_type is record
+    mstifen : std_ulogic;
+    slvifen : std_ulogic;
+  end record;
+
+  constant ahb2ahb_ifctrl_none : ahb2ahb_ifctrl_type := ('1', '1');
+  
   component ahb2ahb
   generic(
-    memtech : integer := 0;
-    hsindex : integer := 0;
-    hmindex : integer := 0;
-    slv     : integer := 0;
-    dir     : integer := 0;   -- 0 - down, 1 - up
-    ffact    : integer := 0;
-    pfen    : integer range 0 to 1 := 0;
-    rbufsz  : integer range 2 to 32 := 8;
-    wbufsz  : integer range 2 to 32 := 2;
-    iburst   : integer range 4 to 8 :=  8;
-    rburst   : integer range 2 to 32 := 8;
-    irqsync : integer range 0 to 2 := 0;
-    bar0     : integer range 0 to 1073741823 := 0;
-    bar1     : integer range 0 to 1073741823 := 0;
-    bar2     : integer range 0 to 1073741823 := 0;
-    bar3     : integer range 0 to 1073741823 := 0;
-    sbus     : integer := 0;
-    mbus     : integer := 0;
-    ioarea   : integer := 0;
-    ibrsten  : integer := 0;
-    lckdac   : integer range 0 to 2 := 0);
+    memtech     : integer := 0;
+    hsindex     : integer := 0;
+    hmindex     : integer := 0;
+    slv         : integer range 0 to 1 := 0;
+    dir         : integer range 0 to 1 := 0;   -- 0 - down, 1 - up
+    ffact       : integer range 0 to 15:= 2;
+    pfen        : integer range 0 to 1 := 0;
+    wburst      : integer range 2 to 32 := 8;
+    iburst      : integer range 4 to 8 :=  8;
+    rburst      : integer range 2 to 32 := 8;
+    irqsync     : integer range 0 to 2 := 0;
+    bar0        : integer range 0 to 1073741823 := 0;
+    bar1        : integer range 0 to 1073741823 := 0;
+    bar2        : integer range 0 to 1073741823 := 0;
+    bar3        : integer range 0 to 1073741823 := 0;
+    sbus        : integer := 0;
+    mbus        : integer := 0;
+    ioarea      : integer := 0;
+    ibrsten     : integer := 0;
+    lckdac      : integer range 0 to 2 := 0;
+    slvmaccsz   : integer range 32 to 256 := 32;
+    mstmaccsz   : integer range 32 to 256 := 32;
+    rdcomb      : integer range 0 to 2 := 0;
+    wrcomb      : integer range 0 to 2 := 0;
+    allbrst     : integer range 0 to 1 := 0;
+    ifctrlen    : integer range 0 to 1 := 0;
+    fcfs        : integer range 0 to NAHBMST := 0;
+    fcfsmtech   : integer range 0 to NTECH := inferred;
+    scantest    : integer range 0 to 1 := 0;
+    split       : integer range 0 to 1 := 1);
   port (
-    rstn   : in std_ulogic;
-    hclkm  : in std_ulogic;
-    hclks  : in std_ulogic;
-    ahbsi  : in ahb_slv_in_type;
-    ahbso  : out ahb_slv_out_type;
-    ahbmi  : in ahb_mst_in_type;
-    ahbmo  : out ahb_mst_out_type;
-    ahbso2 : in ahb_slv_out_vector;
-    lcki   : in ahb2ahb_ctrl_type;
-    lcko   : out ahb2ahb_ctrl_type
+    rstn        : in  std_ulogic;
+    hclkm       : in  std_ulogic;
+    hclks       : in  std_ulogic;
+    ahbsi       : in  ahb_slv_in_type;
+    ahbso       : out ahb_slv_out_type;
+    ahbmi       : in  ahb_mst_in_type;
+    ahbmo       : out ahb_mst_out_type;
+    ahbso2      : in  ahb_slv_out_vector;
+    lcki        : in  ahb2ahb_ctrl_type;
+    lcko        : out ahb2ahb_ctrl_type;
+    ifctrl      : in  ahb2ahb_ifctrl_type := ahb2ahb_ifctrl_none
     );
   end component;
 
   component ahbbridge
   generic(
     memtech     : integer := 0;
-    ffact       : integer := 2;
+    ffact       : integer range 0 to 15 := 2;
     -- high-speed bus
     hsb_hsindex : integer := 0;
     hsb_hmindex : integer := 0;
     hsb_iclsize : integer range 4 to 8 := 8;
-    hsb_bank0     : integer range 0 to 1073741823 := 0;
-    hsb_bank1     : integer range 0 to 1073741823 := 0;
-    hsb_bank2     : integer range 0 to 1073741823 := 0;
-    hsb_bank3     : integer range 0 to 1073741823 := 0;
-    hsb_ioarea   : integer := 0;
+    hsb_bank0   : integer range 0 to 1073741823 := 0;
+    hsb_bank1   : integer range 0 to 1073741823 := 0;
+    hsb_bank2   : integer range 0 to 1073741823 := 0;
+    hsb_bank3   : integer range 0 to 1073741823 := 0;
+    hsb_ioarea  : integer := 0;
     -- low-speed bus
     lsb_hsindex : integer := 0;
     lsb_hmindex : integer := 0;
     lsb_rburst  : integer range 16 to 32 := 16;
     lsb_wburst  : integer range 2 to 32 :=  8;
-    lsb_bank0     : integer range 0 to 1073741823 := 0;
-    lsb_bank1     : integer range 0 to 1073741823 := 0;
-    lsb_bank2     : integer range 0 to 1073741823 := 0;
-    lsb_bank3     : integer range 0 to 1073741823 := 0;
-    lsb_ioarea    : integer := 0;
-    lckdac        : integer range 0 to 2 := 0);
+    lsb_bank0   : integer range 0 to 1073741823 := 0;
+    lsb_bank1   : integer range 0 to 1073741823 := 0;
+    lsb_bank2   : integer range 0 to 1073741823 := 0;
+    lsb_bank3   : integer range 0 to 1073741823 := 0;
+    lsb_ioarea  : integer := 0;
+    --
+    lckdac      : integer range 0 to 2 := 2;
+    maccsz      : integer range 32 to 256 := 32;
+    rdcomb      : integer range 0 to 2 := 0;
+    wrcomb      : integer range 0 to 2 := 0;
+    allbrst     : integer range 0 to 1 := 0;
+    fcfs        : integer range 0 to NAHBMST := 0;
+    scantest    : integer range 0 to 1 := 0);
   port (
-    rstn    : in std_ulogic;
-    hsb_clk : in std_ulogic;
-    lsb_clk : in std_ulogic;
-    hsb_ahbsi : in  ahb_slv_in_type;
-    hsb_ahbso : out ahb_slv_out_type;
-    hsb_ahbsov: in  ahb_slv_out_vector;
-    hsb_ahbmi : in  ahb_mst_in_type;
-    hsb_ahbmo : out ahb_mst_out_type;
-    lsb_ahbsi : in  ahb_slv_in_type;
-    lsb_ahbso : out ahb_slv_out_type;
-    lsb_ahbsov: in  ahb_slv_out_vector;
-    lsb_ahbmi : in  ahb_mst_in_type;
-    lsb_ahbmo : out ahb_mst_out_type);
+    rstn        : in  std_ulogic;
+    hsb_clk     : in  std_ulogic;
+    lsb_clk     : in  std_ulogic;
+    hsb_ahbsi   : in  ahb_slv_in_type;
+    hsb_ahbso   : out ahb_slv_out_type;
+    hsb_ahbsov  : in  ahb_slv_out_vector;
+    hsb_ahbmi   : in  ahb_mst_in_type;
+    hsb_ahbmo   : out ahb_mst_out_type;
+    lsb_ahbsi   : in  ahb_slv_in_type;
+    lsb_ahbso   : out ahb_slv_out_type;
+    lsb_ahbsov  : in  ahb_slv_out_vector;
+    lsb_ahbmi   : in  ahb_mst_in_type;
+    lsb_ahbmo   : out ahb_mst_out_type);
   end component;
 
   function ahb2ahb_membar(memaddr : ahb_addr_type; prefetch, cache : std_ulogic;
@@ -534,6 +647,7 @@ end record;
     clk2        : integer := 15385;
     clk3        : integer := 0;
     burstlen    : integer range 2 to 8 := 8;
+    ahbaccsz    : integer := 32;
     asyncrst    : integer range 0 to 1 := 0
     );
   port (
@@ -717,7 +831,8 @@ end record;
       paddr  : integer;
       pmask  : integer;
       pirq   : integer;
-      oepol  : integer range 0 to 1 := 0
+      oepol  : integer range 0 to 1 := 0;
+      filter : integer range 2 to 512 := 2
       );
     port (
       rstn   : in  std_ulogic;
@@ -730,7 +845,9 @@ end record;
   end component;
 
   component i2cmst_gen
-    generic (oepol  : integer range 0 to 1 := 0);
+    generic (
+      oepol  : integer range 0 to 1 := 0;
+      filter : integer range 2 to 512 := 2);
     port (
       rstn        : in  std_ulogic;
       clk         : in  std_ulogic;
@@ -760,7 +877,8 @@ end record;
       hardaddr : integer range 0 to 1 := 0;
       tenbit   : integer range 0 to 1 := 0;
       i2caddr  : integer range 0 to 1023 := 0;
-      oepol    : integer range 0 to 1 := 0
+      oepol    : integer range 0 to 1 := 0;
+      filter   : integer range 2 to 512 := 2
       );
     port (
       rstn    : in  std_ulogic;
@@ -947,17 +1065,86 @@ end record;
         pmask    : integer := 16#fff#;
         nbits    : integer range 1 to 64 := 16;
         rstval   : integer := 0;
-        rstval2  : integer := 0
+        rstval2  : integer := 0;
+        extrst   : integer := 0
         );
     port (
         rst    : in  std_ulogic;
         clk    : in  std_ulogic;
         apbi   : in  apb_slv_in_type;
         apbo   : out apb_slv_out_type;
-        gprego : out std_logic_vector(nbits-1 downto 0)
+        gprego : out std_logic_vector(nbits-1 downto 0);
+        resval : in std_logic_vector(nbits-1 downto 0) := (others => '0')
         );
   end component;
 
+  -----------------------------------------------------------------------------
+  -- EDAC Memory scrubber
+  -----------------------------------------------------------------------------
+
+  type memscrub_in_type is record
+    cerror  : std_logic_vector(0 to NAHBSLV-1);
+    clrcount: std_logic;
+    start   : std_logic;
+  end record;
+  
+  component memscrub is
+    generic(
+      hmindex : integer := 0;
+      hsindex : integer := 0;    
+      ioaddr  : integer := 0;
+      iomask  : integer := 16#FFF#;
+      hirq    : integer := 0;
+      nftslv  : integer range 1 to NAHBSLV - 1 := 3;
+      memwidth: integer := AHBDW;
+      -- Read block (cache line) burst size, must be even mult of 2
+      burstlen: integer := 2;
+      countlen: integer := 8
+      );
+    port(
+      rst   : in std_ulogic;
+      clk   : in std_ulogic;
+      ahbmi : in ahb_mst_in_type;
+      ahbmo : out ahb_mst_out_type;
+      ahbsi : in ahb_slv_in_type;
+      ahbso : out ahb_slv_out_type;
+      scrubi: in memscrub_in_type
+      );
+  end component;
+
+  type ahb_mst_iface_in_type is record
+    req     : std_ulogic;
+    write   : std_ulogic; 
+    addr    : std_logic_vector(31 downto 0);
+    data    : std_logic_vector(31 downto 0);
+    size    : std_logic_vector(1 downto 0);
+  end record;
+
+  type ahb_mst_iface_out_type is record
+    grant   : std_ulogic;
+    ready   : std_ulogic;
+    error   : std_ulogic;
+    retry   : std_ulogic;
+    data    : std_logic_vector(31 downto 0);
+  end record;
+
+  component ahb_mst_iface is
+    generic(
+      hindex      : integer;
+      vendor      : integer;
+      device      : integer;
+      revision    : integer);
+    port(
+      rst         : in  std_ulogic;
+      clk         : in  std_ulogic;
+      ahbmi       : in  ahb_mst_in_type;
+      ahbmo       : out ahb_mst_out_type;
+      msti        : in  ahb_mst_iface_in_type;
+      msto        : out ahb_mst_iface_out_type
+    );
+  end component;
+  
+  
   -----------------------------------------------------------------------------
   -- Function declarations
   -----------------------------------------------------------------------------

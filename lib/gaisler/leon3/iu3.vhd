@@ -119,7 +119,7 @@ architecture rtl of iu3 is
   constant RS1OPT : boolean := (is_fpga(FABTECH) /= 0);
   constant DYNRST : boolean := (rstaddr = 16#FFFFF#);
   
---  constant BPRED : std_logic := '1';
+  constant CASAEN : boolean := (notag = 0) and (lddel = 1);
   signal BPRED : std_logic;
 
   subtype word is std_logic_vector(31 downto 0);
@@ -235,6 +235,8 @@ architecture rtl of iu3 is
     divz   : std_ulogic;
     su     : std_ulogic;
     mul    : std_ulogic;
+    casa   : std_ulogic;
+    casaz  : std_ulogic;
   end record;
 
   type exception_state is (run, trap, dsu1, dsu2);
@@ -496,13 +498,14 @@ architecture rtl of iu3 is
   begin
     asr17 := zero32;    
     asr17(31 downto 28) := conv_std_logic_vector(index, 4);
+    if bp = 2 then asr17(27) := r.w.s.dbp; end if;
+    if notag = 0 then asr17(26) := '1'; end if;  -- CASA/TADD present
     if (clk2x > 8) then
       asr17(16 downto 15) := conv_std_logic_vector(clk2x-8, 2);
       asr17(17) := '1'; 
     elsif (clk2x > 0) then
       asr17(16 downto 15) := conv_std_logic_vector(clk2x, 2);
     end if;
-    if bp = 2 then asr17(27) := r.w.s.dbp; end if;
     asr17(14) := r.w.s.dwt;
     if svt = 1 then asr17(13) := r.w.s.svt; end if;
     if lddel = 2 then asr17(12) := '1'; end if;
@@ -978,6 +981,11 @@ begin
       when LDA | LDUBA| LDSTUBA | LDUHA | LDSBA | LDSHA | STA | STBA | STHA |
 	   SWAPA => 
 	illegal_inst := inst(13); privileged_inst := not r.a.su;
+      when CASA =>
+	if CASAEN then
+	  illegal_inst := inst(13); 
+	  if (inst(12 downto 5) /= X"0A") then privileged_inst := not r.a.su; end if;
+	else illegal_inst := '1'; end if;
       when LDDF | STDF | LDF | LDFSR | STF | STFSR => 
 	if FPEN then fp_disabled := not r.w.s.ef;
 	else fp_disabled := '1'; end if;
@@ -1194,10 +1202,16 @@ end;
         ldcheck1 := '1'; ldchkra := '0';
 	case r.d.cnt is
 	when "00" =>
-          if (lddel = 2) and (op3(2) = '1') then ldcheck3 := '1'; end if; 
+          if (lddel = 2) and (op3(2) = '1') and (op3(5) = '0') then ldcheck3 := '1'; end if; 
           ldcheck2 := not i; ldchkra := '1';
-	when "01" => ldcheck2 := not i;
+	when "01" =>
+	  ldcheck2 := not i;
+          if (op3(5) and op3(2) and not op3(3)) = '1' then ldcheck1 := '0'; ldcheck2 := '0'; end if;  -- STF/STC
 	when others => ldchkex := '0';
+	  if CASAEN and (op3(5 downto 3) = "111") then
+	    ldcheck2 := '1';
+	  elsif (op3(5) = '1') or ((op3(5) & op3(3 downto 1)) = "0110") -- LDST
+	  then ldcheck1 := '0'; ldcheck2 := '0'; end if;
         end case;
         if  (op3(2 downto 0) = "011") then lddlock := true; end if;
         if op3(5) = '1' then fins := BPRED; end if; -- no BP on FPU/CP LD/ST
@@ -1356,11 +1370,12 @@ end;
       when others =>  -- LDST 
         case r.d.cnt is
         when "00" =>
-          if (op3(2) = '1') or (op3(1 downto 0) = "11") then -- ST/LDST/SWAP/LDD
+          if (op3(2) = '1') or (op3(1 downto 0) = "11") then -- ST/LDST/SWAP/LDD/CASA
  	    cnt := "01"; hold_pc := '1'; pv := '0';
           end if;
         when "01" =>
           if (op3(2 downto 0) = "111") or (op3(3 downto 0) = "1101") or
+	     (CASAEN and (op3(5 downto 4) = "11")) or	-- CASA
              ((CPEN or FPEN) and ((op3(5) & op3(2 downto 0)) = "1110"))
 	  then	-- LDD/STD/LDSTUB/SWAP
  	    cnt := "10"; pv := '0'; hold_pc := '1';
@@ -1467,7 +1482,7 @@ end;
         if (op3(2) = '0') and not ((CPEN or FPEN) and (op3(5) = '1')) 
         then write_reg := '1'; end if;
         case op3 is
-        when SWAP | SWAPA | LDSTUB | LDSTUBA =>
+        when SWAP | SWAPA | LDSTUB | LDSTUBA | CASA =>
 	  if r.d.cnt = "00" then write_reg := '1'; ld := '1'; end if;
         when others => null;
         end case;
@@ -1625,7 +1640,7 @@ end;
 	case op3 is
 	when LDD | LDDA | LDDC => alusel := EXE_RES_ADD;
 	when LDDF => alusel := EXE_RES_ADD;
-	when SWAP | SWAPA | LDSTUB | LDSTUBA => alusel := EXE_RES_ADD;
+	when SWAP | SWAPA | LDSTUB | LDSTUBA | CASA => alusel := EXE_RES_ADD;
 	when STF | STDF =>
 	when others =>
           aluop := EXE_PASS1;
@@ -1637,8 +1652,11 @@ end;
       when "10" =>
         aluop := EXE_PASS1;
         if op3(2) = '1' then  -- ST
-          if (op3(3) and not op3(1))= '1' then aluop := EXE_ONES; end if; -- LDSTUB/A
+          if (op3(3) and not op3(5) and not op3(1))= '1' then aluop := EXE_ONES; end if; -- LDSTUB
         end if;
+	if CASAEN and (r.m.casa = '1') then
+	  alusel := EXE_RES_ADD; aluadd := '0'; aop2 := not iop2; invop2 := '1';
+	end if;
       when others =>
       end case;
     end case;
@@ -1657,7 +1675,8 @@ end;
 
   procedure op_mux(r : in registers; rfd, ed, md, xd, im : in word; 
 	rsel : in std_logic_vector(2 downto 0); 
-	ldbp : out std_ulogic; d : out word) is
+	ldbp : out std_ulogic; d : out word; id : std_logic) is
+
   begin
     ldbp := '0';
     case rsel is
@@ -1670,6 +1689,7 @@ end;
     when "110" => d := r.w.result;
     when others => d := (others => '-');
     end case;
+    if CASAEN and (r.a.ctrl.cnt = "10") and ((r.m.casa and not id) = '1') then ldbp := '1'; end if;
   end;
 
   procedure op_find(r : in registers; ldchkra : std_ulogic; ldchkex : std_ulogic;
@@ -1706,6 +1726,10 @@ end;
       when SUBX | SUBXCC => cin := not ncin; 
       when others => null;
       end case;
+    when LDST =>
+      if CASAEN and (r.m.casa = '1') and (r.a.ctrl.cnt = "10") then
+	cin := '1';
+      end if;
     when others => null;
     end case;
   end;
@@ -1791,14 +1815,17 @@ end;
   procedure alu_select(r : registers; addout : std_logic_vector(32 downto 0);
 	op1, op2 : word; shiftout, logicout, miscout : word; res : out word; 
 	me_icc : std_logic_vector(3 downto 0);
-	icco : out std_logic_vector(3 downto 0); divz : out std_ulogic) is
+	icco : out std_logic_vector(3 downto 0); divz, mzero : out std_ulogic) is
   variable op : std_logic_vector(1 downto 0);
   variable op3 : std_logic_vector(5 downto 0);
   variable icc : std_logic_vector(3 downto 0);
   variable aluresult : word;
+  variable azero : std_logic;
   begin
     op   := r.e.ctrl.inst(31 downto 30); op3  := r.e.ctrl.inst(24 downto 19);
     icc := (others => '0');
+    if addout(32 downto 1) = zero32 then azero := '1'; else azero := '0'; end if;
+    mzero := azero;
     case r.e.alusel is
     when EXE_RES_ADD => 
       aluresult := addout(32 downto 1);
@@ -1827,7 +1854,7 @@ end;
         end case;
       end if;
 
-      if aluresult = zero32 then icc(2) := '1'; end if;
+      icc(2) := azero;
     when EXE_RES_SHIFT => aluresult := shiftout;
     when EXE_RES_LOGIC => aluresult := logicout;
       if aluresult = zero32 then icc(2) := '1'; end if;
@@ -1845,13 +1872,14 @@ end;
   end;
 
   procedure dcache_gen(r, v : registers; dci : out dc_in_type; 
-	link_pc, jump, force_a2, load : out std_ulogic) is
+	link_pc, jump, force_a2, load, mcasa : out std_ulogic) is
   variable op : std_logic_vector(1 downto 0);
   variable op3 : std_logic_vector(5 downto 0);
   variable su : std_ulogic;
   begin
     op := r.e.ctrl.inst(31 downto 30); op3 := r.e.ctrl.inst(24 downto 19);
     dci.signed := '0'; dci.lock := '0'; dci.dsuen := '0'; dci.size := SZWORD;
+    mcasa := '0';
     if op = LDST then
     case op3 is
       when LDUB | LDUBA => dci.size := SZBYTE;
@@ -1861,6 +1889,7 @@ end;
       when LDSH | LDSHA => dci.size := SZHALF; dci.signed := '1';
       when LD | LDA | LDF | LDC => dci.size := SZWORD;
       when SWAP | SWAPA => dci.size := SZWORD; dci.lock := '1'; 
+      when CASA => if CASAEN then dci.size := SZWORD; dci.lock := '1'; end if;
       when LDD | LDDA | LDDF | LDDC => dci.size := SZDBL;
       when STB | STBA => dci.size := SZBYTE;
       when STH | STHA => dci.size := SZHALF;
@@ -1891,25 +1920,28 @@ end;
       when LDST =>
           case r.e.ctrl.cnt is
 	  when "00" =>
-            dci.read := op3(3) or not op3(2);	-- LD/LDST/SWAP
+            dci.read := op3(3) or not op3(2);	-- LD/LDST/SWAP/CASA
             load := op3(3) or not op3(2);
-	    dci.enaddr := '1';
+            dci.enaddr := (not op3(2)) or op3(2)
+                           or (op3(3) and op3(2));
           when "01" =>
             force_a2 := not op3(2);	-- LDD
             load := not op3(2); dci.enaddr := not op3(2);
             if op3(3 downto 2) = "01" then		-- ST/STD
 	      dci.write := '1';
             end if;
-            if op3(3 downto 2) = "11" then		-- LDST/SWAP
+            if (CASAEN and (op3(5 downto 4) = "11")) or	-- CASA
+            	(op3(3 downto 2) = "11") then		-- LDST/SWAP
 	      dci.enaddr := '1';
             end if;
-          when "10" => 					-- STD/LDST/SWAP
+          when "10" => 					-- STD/LDST/SWAP/CASA
             dci.write := '1';
           when others => null;
 	  end case;
-	if (r.e.ctrl.trap or (v.x.ctrl.trap and not v.x.ctrl.annul)) = '1' then
-	  dci.enaddr := '0';
-	end if;
+	  if (r.e.ctrl.trap or (v.x.ctrl.trap and not v.x.ctrl.annul)) = '1' then
+	    dci.enaddr := '0';
+	  end if;
+          if (CASAEN and (op3(5 downto 4) = "11")) then mcasa := '1'; end if;
       when others => null;
       end case;
     end if;
@@ -1934,6 +1966,9 @@ end;
       if FPEN and (op = LDST) and  ((op3(5 downto 4) & op3(2)) = "101") and (r.e.ctrl.cnt /= "00") then
         edata2 := fpstdata; eres2 := fpstdata;
       end if;
+    end if;
+    if CASAEN and (r.m.casa = '1') and (r.e.ctrl.cnt = "10") then
+      edata2 := r.e.op1; eres2 := r.e.op1;
     end if;
   end;
   
@@ -1990,6 +2025,9 @@ end;
     iflush := '0'; trap := r.m.ctrl.trap; nullify := annul;
     tt := r.m.ctrl.tt; werr := (dco.werr or r.m.werr) and not r.w.s.dwt;
     nalign_d := r.m.nalign or r.m.result(2); 
+    if (trap = '1') and (r.m.ctrl.pv = '1') then
+      if op = LDST then nullify := '1'; end if;
+    end if;
     if ((annul or trap) /= '1') and (r.m.ctrl.pv = '1') then
       if (werr and holdn) = '1' then
 	trap := '1'; tt := TT_DSEX; werr := '0';
@@ -2058,7 +2096,7 @@ end;
 	      trap := '1'; tt := TT_UNALA; nullify := '1';
     	    elsif CPEN and ((cpo.exc and r.m.ctrl.pv) = '1') 
     	    then trap := '1'; tt := TT_CPEXC; nullify := '1'; end if;
- 	  when LD | LDA | ST | STA | SWAP | SWAPA =>
+ 	  when LD | LDA | ST | STA | SWAP | SWAPA | CASA =>
 	    if r.m.result(1 downto 0) /= "00" then
 	      trap := '1'; tt := TT_UNALA; nullify := '1';
 	    end if;
@@ -2315,7 +2353,7 @@ begin
 
   BPRED <= '0' when bp = 0 else '1' when bp = 1 else not r.w.s.dbp;
   comb : process(ico, dco, rfo, r, wpr, ir, dsur, rstn, holdn, irqi, dbgi, fpo, cpo, tbo,
-		 mulo, divo, dummy, rp)
+		 mulo, divo, dummy, rp, BPRED)
 
   variable v 	: registers;
   variable vp 	: pwd_register_type;
@@ -2572,6 +2610,10 @@ begin
     v.x.mac := r.m.mac; v.x.laddr := r.m.result(1 downto 0);
     v.x.ctrl.annul := r.m.ctrl.annul or v.x.annul_all; 
     
+    if CASAEN and (r.m.casa = '1') and (r.m.ctrl.cnt = "00") then
+      v.x.ctrl.inst(4 downto 0) := r.a.ctrl.inst(4 downto 0); -- restore rs2 for trace log
+    end if;
+
     mul_res(r, v.w.s.asr18, v.x.result, v.x.y, me_asr18, me_icc);
     mem_trap(r, wpr, v.x.ctrl.annul, holdn, v.x.ctrl.trap, me_iflush,
 	     me_nullify, v.m.werr, v.x.ctrl.tt);
@@ -2610,7 +2652,6 @@ begin
     dci.enaddr   <= r.m.dci.enaddr;
     dci.asi      <= r.m.dci.asi;
     dci.size     <= r.m.dci.size;
-    dci.nullify  <= me_nullify2;
     dci.lock     <= r.m.dci.lock and not r.m.ctrl.annul;
     dci.read     <= r.m.dci.read;
     dci.write    <= r.m.dci.write;
@@ -2651,17 +2692,22 @@ begin
     if ex_add_res(2 downto 1) = "00" then v.m.nalign := '0';
     else v.m.nalign := '1'; end if;
 
-    dcache_gen(r, v, ex_dci, ex_link_pc, ex_jump, ex_force_a2, ex_load );
+    dcache_gen(r, v, ex_dci, ex_link_pc, ex_jump, ex_force_a2, ex_load, v.m.casa);
     ex_jump_address := ex_add_res(32 downto PCLOW+1);
     logic_op(r, ex_op1, ex_op2, v.x.y, ex_ymsb, ex_logic_res, v.m.y);
     ex_shift_res := shift(r, ex_op1, ex_op2, ex_shcnt, ex_sari);
     misc_op(r, wpr, ex_op1, ex_op2, xc_df_result, v.x.y, ex_misc_res, ex_edata);
     ex_add_res(3):= ex_add_res(3) or ex_force_a2;    
     alu_select(r, ex_add_res, ex_op1, ex_op2, ex_shift_res, ex_logic_res,
-	ex_misc_res, ex_result, me_icc, v.m.icc, v.m.divz);    
+	ex_misc_res, ex_result, me_icc, v.m.icc, v.m.divz, v.m.casaz);    
     dbg_cache(holdn, dbgi, r, dsur, ex_result, ex_dci, ex_result2, v.m.dci);
     fpstdata(r, ex_edata, ex_result2, fpo.data, ex_edata2, v.m.result);
     cwp_ex(r, v.m.wcwp);    
+
+    if CASAEN and (r.e.ctrl.cnt = "10") and ((r.m.casa and not v.m.casaz) = '1') then
+      me_nullify2 := '1';
+    end if;
+    dci.nullify  <= me_nullify2;
     
     v.m.ctrl.annul := v.m.ctrl.annul or v.x.annul_all;
     v.m.ctrl.wicc := r.e.ctrl.wicc and not v.x.annul_all; 
@@ -2685,9 +2731,9 @@ begin
     
     exception_detect(r, wpr, dbgi, v.e.ctrl.trap, v.e.ctrl.tt);
     op_mux(r, rfo.data1, v.m.result, v.x.result, xc_df_result, zero32, 
-	r.a.rsel1, v.e.ldbp1, ra_op1);
+	r.a.rsel1, v.e.ldbp1, ra_op1, '0');
     op_mux(r, rfo.data2,  v.m.result, v.x.result, xc_df_result, r.a.imm, 
-	r.a.rsel2, ex_ldbp2, ra_op2);
+	r.a.rsel2, ex_ldbp2, ra_op2, '1');
     alu_op(r, ra_op1, ra_op2, v.m.icc, v.m.y(0), ex_ldbp2, v.e.op1, v.e.op2,
 	   v.e.aluop, v.e.alusel, v.e.aluadd, v.e.shcnt, v.e.sari, v.e.shleft,
 	   v.e.ymsb, v.e.mul, ra_div, v.e.mulstep, v.e.mac, v.e.ldbp2, v.e.invop2);
@@ -2706,6 +2752,13 @@ begin
     su_et_select(r, v.w.s.ps, v.w.s.s, v.w.s.et, v.a.su, v.a.et);
     wicc_y_gen(de_inst, v.a.ctrl.wicc, v.a.ctrl.wy);
     cwp_ctrl(r, v.w.s.wim, de_inst, de_cwp, v.a.wovf, v.a.wunf, de_wcwp);
+    if CASAEN and (de_inst(31 downto 30) = LDST) and (de_inst(24 downto 19) = CASA) then
+      case r.d.cnt is
+      when "00" | "01" => de_inst(4 downto 0) := "00000"; -- rs2=0
+      when others =>
+      end case;
+    end if;
+
     rs1_gen(r, de_inst, v.a.rs1, de_rs1mod); 
     de_rs2 := de_inst(4 downto 0);
     de_raddr1 := (others => '0'); de_raddr2 := (others => '0');

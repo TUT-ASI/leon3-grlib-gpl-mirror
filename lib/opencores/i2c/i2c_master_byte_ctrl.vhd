@@ -66,8 +66,9 @@
 --               Added headers.
 --
 
--- Modified by Jan Andersson (jan@gaisler.com). Changed std_logic_arith to numeric_std.
-
+-- Modified by Jan Andersson (jan@gaisler.com:.
+--      Changed std_logic_arith to numeric_std.
+--      Propagate filter generic
 
 --
 ------------------------------------------
@@ -80,7 +81,8 @@ library grlib;
 use grlib.stdlib.all;
 
 entity i2c_master_byte_ctrl is
-	port (
+  generic (filter : integer);
+  port (
 		clk    : in std_logic;
 		rst    : in std_logic; -- synchronous active high reset (WISHBONE compatible)
 		nReset : in std_logic;	-- asynchornous active low reset (FPGA compatible)
@@ -115,6 +117,7 @@ end entity i2c_master_byte_ctrl;
 
 architecture structural of i2c_master_byte_ctrl is
 	component i2c_master_bit_ctrl is
+        generic (filter : integer);
 	port (
 		clk    : in std_logic;
 		rst    : in std_logic;
@@ -166,7 +169,9 @@ architecture structural of i2c_master_byte_ctrl is
 
 begin
 	-- hookup bit_controller
-	bit_ctrl: i2c_master_bit_ctrl port map(
+	bit_ctrl: i2c_master_bit_ctrl
+          generic map (filter)
+          port map(
 		clk     => clk,
 		rst     => rst,
 		nReset  => nReset,

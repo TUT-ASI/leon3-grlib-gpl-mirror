@@ -36,7 +36,7 @@ package gencomp is
 
 -- technologies and libraries
 
-constant NTECH : integer := 37;
+constant NTECH : integer := 44;
 type tech_ability_type is array (0 to NTECH) of integer;
 
 constant inferred    : integer := 0;
@@ -77,6 +77,13 @@ constant axdsp       : integer := 34;
 constant spartan6    : integer := 35;
 constant virtex6     : integer := 36;
 constant actfus      : integer := 37;
+constant stratix4    : integer := 38;
+constant st65lp      : integer := 39;
+constant st65gp      : integer := 40;
+constant easic45     : integer := 41;
+constant cmos9sf     : integer := 42;
+constant apa3e       : integer := 43;
+constant apa3l       : integer := 44;
 
 constant DEFMEMTECH  : integer := inferred;
 constant DEFPADTECH  : integer := inferred;
@@ -88,7 +95,9 @@ constant is_fpga : tech_ability_type :=
          virtex4 => 1, lattice => 1, spartan3e => 1, virtex5 => 1,
 	 stratix1 => 1, stratix2 => 1, eclipse => 1,
 	 stratix3 => 1, cyclone3 => 1, axdsp => 1, 
-	 spartan6 => 1, virtex6 => 1, actfus => 1, others => 0);
+	 spartan6 => 1, virtex6 => 1, actfus => 1, 
+	 stratix4 => 1, easic45 => 1, apa3e => 1, apa3l => 1,
+	 others => 0);
 
 constant infer_mul : tech_ability_type := is_fpga;
 
@@ -100,7 +109,7 @@ constant regfile_3p_write_through : tech_ability_type :=
 
 constant regfile_3p_infer : tech_ability_type :=
 	(inferred => 1, rhumc => 1, ihp25 => 1, rhlib18t => 0,
-	 peregrine => 1, ihp25rh => 1, umc => 1, others => 0);
+	 peregrine => 1, ihp25rh => 1, umc => 1, custom1 => 1, others => 0);
 
 constant syncram_2p_dest_rw_collision : tech_ability_type :=
         (memartisan => 1, smic013 => 1, others => 0);
@@ -121,7 +130,8 @@ constant has_dpram : tech_ability_type :=
 	 custom1 => 1, stratix1 => 1, stratix2 => 1, stratix3 => 1,
 	 cyclone3 => 1, memvirage90 => 1, atc18rha => 1, smic013 => 1,
 	 tm65gpl => 1, axdsp => 1, spartan6 => 1, virtex6 => 1, 
-	 actfus => 1, others => 0);
+	 actfus => 1, stratix4 => 1, easic45 => 1, apa3e => 1,
+	 apa3l => 1, others => 0);
 
 constant has_sram64 : tech_ability_type :=
 	(inferred => 0, virtex2 => 1, spartan3 => 1, virtex4 => 1,
@@ -131,7 +141,7 @@ constant has_sram64 : tech_ability_type :=
 constant padoen_polarity : tech_ability_type :=
         (axcel => 1, proasic => 1, umc => 1, rhumc => 1, apa3 => 1,
          ihp25 => 1, ut25 => 1, peregrine => 1, easic90 => 1, axdsp => 1,
-	 actfus => 1, others => 0);
+	 actfus => 1, apa3e => 1, apa3l => 1, others => 0);
 
 constant has_pads : tech_ability_type :=
 	(inferred => 0, virtex => 1, virtex2 => 1, memvirage => 0,
@@ -140,7 +150,7 @@ constant has_pads : tech_ability_type :=
          ihp25 => 1, rhlib18t => 1, virtex4 => 1, lattice => 0,
 	 ut25 => 1, spartan3e => 1, peregrine => 1, virtex5 => 1, axdsp => 1,
 	 easic90 => 1, atc18rha => 1, spartan6 => 1, virtex6 => 1, 
-         actfus => 1, others => 0);
+         actfus => 1, apa3e => 1, apa3l => 1, others => 0);
 
 constant has_ds_pads : tech_ability_type :=
 	(inferred => 0, virtex => 1, virtex2 => 1, memvirage => 0,
@@ -148,7 +158,8 @@ constant has_ds_pads : tech_ability_type :=
 	 umc => 0, rhumc => 0, apa3 => 1, spartan3 => 1,
          ihp25 => 0, rhlib18t => 1, virtex4 => 1, lattice => 0,
 	 ut25 => 1, spartan3e => 1, virtex5 => 1, axdsp => 1,
-	 spartan6 => 1, virtex6 => 1, actfus => 1, others => 0);
+	 spartan6 => 1, virtex6 => 1, actfus => 1, 
+	 apa3e => 1, apa3l => 1, others => 0);
 
 constant has_ds_combo : tech_ability_type :=
 	( rhumc => 1, ut25 => 1, others => 0);
@@ -166,7 +177,8 @@ constant has_clkmux : tech_ability_type :=
 constant has_techbuf : tech_ability_type :=
         ( virtex => 1, virtex2 => 1, virtex4 => 1, virtex5 => 1,
           spartan3 => 1, spartan3e => 1, axcel => 1, ut25 => 1,
-	  apa3 => 1, easic90 => 1, axdsp => 1, actfus => 1, others => 0);
+	  apa3 => 1, easic90 => 1, axdsp => 1, actfus => 1, 
+	  apa3e => 1, apa3l => 1, others => 0);
 
 constant has_tapsel : tech_ability_type :=
         ( virtex => 1, virtex2 => 1, virtex4 => 1, virtex5 => 1,
@@ -176,12 +188,33 @@ constant has_tapsel : tech_ability_type :=
 constant need_extra_sync_reset : tech_ability_type :=
 	(axcel => 1, atc18s => 1, ut25 => 1, rhumc => 1, tsmc90 => 1,
 	 rhlib18t => 1, atc18rha => 1, easic90 => 1, tm65gpl => 1,
-         axdsp => 1, others => 0);
+         axdsp => 1, cmos9sf => 1, apa3 => 1, apa3e => 1, apa3l => 1,
+	 others => 0);
 
 constant is_unisim : tech_ability_type :=
         ( virtex => 1, virtex2 => 1, virtex4 => 1, virtex5 => 1,
           spartan3 => 1, spartan3e => 1,
 	  spartan6 => 1, virtex6 => 1, others => 0);
+
+constant has_tap : tech_ability_type :=
+	(inferred => 0, virtex => 1, virtex2 => 1, axcel => 0,
+	 proasic => 0, altera => 1, apa3 => 1, spartan3 => 1,
+         virtex4 => 1, lattice => 0, spartan3e => 1, virtex5 => 1,
+	 stratix1 => 1, stratix2 => 1, eclipse => 0,
+	 stratix3 => 1, cyclone3 => 1, axdsp => 0, 
+	 spartan6 => 1, virtex6 => 1, actfus => 1, 
+	 stratix4 => 1, easic45 => 0, apa3e => 1, apa3l => 1,
+	 others => 0);
+
+constant has_clkgen : tech_ability_type :=
+	(inferred => 0, virtex => 1, virtex2 => 1, axcel => 1,
+	 proasic => 1, altera => 1, apa3 => 1, spartan3 => 1,
+         virtex4 => 1, lattice => 0, spartan3e => 1, virtex5 => 1,
+	 stratix1 => 1, stratix2 => 1, eclipse => 0, rhumc => 1,
+	 stratix3 => 1, cyclone3 => 1, axdsp => 1, 
+	 spartan6 => 1, virtex6 => 1, actfus => 1, easic90 => 1,
+	 stratix4 => 1, easic45 => 0, apa3e => 1, apa3l => 1,
+	 rhlib18t => 1, others => 0);
 
 -- pragma translate_off
 
@@ -208,7 +241,11 @@ constant is_unisim : tech_ability_type :=
   easic90   => "nextreme  ", atc18rha  => "atc18rha  ",
   smic013   => "smic13    ", tm65gpl =>   "tm65gplus ",
   axdsp     => "axdsp     ", spartan6  => "spartan6  ",
-  virtex6   => "virtex6   ", actfus    => "fusion    "
+  virtex6   => "virtex6   ", actfus    => "fusion    ",
+  stratix4  => "stratix4  ", st65lp    => "st65lp    ",
+  st65gp    => "st65gp    ", easic45   => "easic45   ",
+  cmos9sf   => "cmos9sf   ", apa3e     => "proasic3e ",
+  apa3l     => "proasic3l "
 );
 
 -- pragma translate_on
@@ -330,9 +367,22 @@ constant dci      : integer := 5;
     testin   : in std_logic_vector(3 downto 0) := "0000");
   end component;
 
+-- 128-bit synchronous single-port ram with 32-bit write strobe
+  component syncram128
+  generic (tech : integer := 0; abits : integer := 6; testen : integer := 0);
+  port (
+    clk     : in  std_ulogic;
+    address : in  std_logic_vector (abits -1 downto 0);
+    datain  : in  std_logic_vector (127 downto 0);
+    dataout : out std_logic_vector (127 downto 0);
+    enable  : in  std_logic_vector (3 downto 0);
+    write   : in  std_logic_vector (3 downto 0);
+    testin   : in std_logic_vector(3 downto 0) := "0000");
+  end component;
+
   component syncramft
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
-	ft : integer range 0 to 2 := 0 );
+	ft : integer range 0 to 3 := 0; testen : integer := 0 );
   port (
     clk      : in std_ulogic;
     address  : in std_logic_vector((abits -1) downto 0);
@@ -341,12 +391,14 @@ constant dci      : integer := 5;
     write    : in std_ulogic;
     enable   : in std_ulogic;
     error    : out std_logic_vector(((dbits + 7) / 8)-1 downto 0);
-    testin   : in std_logic_vector(3 downto 0) := "0000");
+    testin   : in std_logic_vector(3 downto 0) := "0000";
+    errinj   : in std_logic_vector(((dbits + 7)/8)*2-1 downto 0) := (others => '0'));
   end component;
 
   component syncram_2pft
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
-	sepclk : integer := 0; wrfst : integer := 0; ft : integer := 0);
+	sepclk : integer := 0; wrfst : integer := 0; ft : integer := 0;
+           testen : integer := 0);
   port (
     rclk     : in std_ulogic;
     renable  : in std_ulogic;
@@ -376,6 +428,41 @@ constant dci      : integer := 5;
   );
   end component;
 
+  component syncram128bw
+  generic (tech : integer := 0; abits : integer := 6; testen : integer := 0);
+  port (
+    clk     : in  std_ulogic;
+    address : in  std_logic_vector (abits -1 downto 0);
+    datain  : in  std_logic_vector (127 downto 0);
+    dataout : out std_logic_vector (127 downto 0);
+    enable  : in  std_logic_vector (15 downto 0);
+    write   : in  std_logic_vector (15 downto 0);
+    testin  : in  std_logic_vector (3 downto 0) := "0000");
+  end component;
+
+  component syncram156bw
+  generic (tech : integer := 0; abits : integer := 6; testen : integer := 0);
+  port (
+    clk     : in  std_ulogic;
+    address : in  std_logic_vector (abits -1 downto 0);
+    datain  : in  std_logic_vector (155 downto 0);
+    dataout : out std_logic_vector (155 downto 0);
+    enable  : in  std_logic_vector (15 downto 0);
+    write   : in  std_logic_vector (15 downto 0);
+    testin  : in  std_logic_vector (3 downto 0) := "0000");
+  end component;
+
+  component syncram256bw is
+  generic (tech : integer := 0; abits : integer := 6; testen : integer := 0);
+  port (
+    clk     : in  std_ulogic;
+    address : in  std_logic_vector (abits -1 downto 0);
+    datain  : in  std_logic_vector (255 downto 0);
+    dataout : out std_logic_vector (255 downto 0);
+    enable  : in  std_logic_vector (31 downto 0);
+    write   : in  std_logic_vector (31 downto 0);
+    testin  : in  std_logic_vector (3 downto 0) := "0000");
+  end component;
 
 ---------------------------------------------------------------------------
 -- PADS
@@ -702,7 +789,9 @@ component clkgen
     freq     : integer := 25000;
     clk2xen  : integer := 0;
     clksel   : integer := 0;             -- enable clock select
-    clk_odiv : integer := 0);             -- Proasic3 output divider
+    clk_odiv : integer := 1;            -- Proasic3/Fusion output divider clkA
+    clkb_odiv: integer := 0;            -- Proasic3/Fusion output divider clkB
+    clkc_odiv: integer := 0);           -- Proasic3/Fusion output divider clkC
 port (
     clkin   : in  std_logic;
     pciclkin: in  std_logic;
@@ -715,7 +804,9 @@ port (
     cgo     : out clkgen_out_type;
     clk4x   : out std_logic;			-- 4x clock
     clk1xu  : out std_logic;			-- unscaled 1X clock
-    clk2xu  : out std_logic);			-- unscaled 2X clock
+    clk2xu  : out std_logic;			-- unscaled 2X clock
+    clkb    : out std_logic;            -- Proasic3/Fusion clkB
+    clkc    : out std_logic);           -- Proasic3/Fusion clkC
 end component;
 
 component clkand

@@ -350,8 +350,10 @@ begin
   prom0 : sram16 generic map (index => 4, abits => romdepth, fname => promfile)
 	port map (flash_a(romdepth-1 downto 0), flash_d(15 downto 0),
 		  gnd, gnd, flash_ce_b, flash_we_b, flash_oe_b);        
-     
+
+  phy0_mdio <= 'H';
   p0: phy
+    generic map (address => 7)
     port map(phy0_reset, phy0_mdio, phy0_txclk, phy0_rxclk, phy0_rxdl,
              phy0_rxctl_rxdv, phy0_rxer, open, open, phy0_txdl,
              phy0_txctl_txen, phy0_txer, phy0_mdc, '0');

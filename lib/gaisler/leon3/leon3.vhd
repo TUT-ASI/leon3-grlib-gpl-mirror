@@ -40,6 +40,8 @@ package leon3 is
     rst   	: std_ulogic;
     run   	: std_ulogic;
     rstvec	: std_logic_vector(31 downto 12);
+    iact        : std_ulogic;
+    index 	: std_logic_vector(3 downto 0);
   end record;
 
   type l3_irq_out_type is record
@@ -68,6 +70,15 @@ package leon3 is
     timer   :  std_logic_vector(30 downto 0);                                                -- 
   end record;
 
+  type l3_cstat_type is record
+    cmiss   : std_ulogic;			-- cache miss
+    tmiss   : std_ulogic;			-- TLB miss
+    chold   : std_ulogic;			-- cache hold
+    mhold   : std_ulogic;			-- cache mmu hold
+  end record;
+
+  constant cstat_none : l3_cstat_type := ('0', '0', '0', '0');
+
   type l3_debug_out_type is record
     data    : std_logic_vector(31 downto 0);
     crdy    : std_ulogic;
@@ -79,11 +90,42 @@ package leon3 is
     idle    : std_ulogic;
     ipend   : std_ulogic;
     icnt    : std_ulogic;
+    fcnt    : std_ulogic;
+    optype  : std_logic_vector(5 downto 0);	-- instruction type
+    bpmiss  : std_ulogic;			-- branch predict miss
+    istat   : l3_cstat_type;
+    dstat   : l3_cstat_type;
+    wbhold  : std_ulogic;			-- write buffer hold
+    su      : std_ulogic;			-- supervisor state
   end record;
 
   type l3_debug_in_vector is array (natural range <>) of l3_debug_in_type;
   type l3_debug_out_vector is array (natural range <>) of l3_debug_out_type;
   
+  constant dbgo_none : l3_debug_out_type := (X"00000000", '0', '0', '0', '0',
+	'0', '0', '0', '0', '0', '0', "000000", '0', cstat_none, cstat_none, '0', '0');
+
+  type tracebuf_in_type is record 
+    addr             : std_logic_vector(11 downto 0);
+    data             : std_logic_vector(127 downto 0);
+    enable           : std_logic;
+    write            : std_logic_vector(3 downto 0);
+    diag             : std_logic_vector(3 downto 0);
+  end record;
+
+  type tracebuf_out_type is record 
+    data             : std_logic_vector(127 downto 0);
+  end record;   
+
+  component tbufmem 
+  generic ( tech   : integer := 0; tbuf  : integer := 0; testen: integer := 0);
+  port (
+    clk : in std_ulogic;
+    di  : in tracebuf_in_type;
+    do  : out tracebuf_out_type);
+  end component;
+
+
   component leon3s
   generic (
     hindex    : integer               := 0;
@@ -390,6 +432,8 @@ package leon3 is
     data   : std_logic_vector(31 downto 0);
   end record;  
 
+  constant fpc_debug_none : fpc_debug_out_type := (data => X"00000000");
+
   type fpc_in_type is record
     flush  	: std_ulogic;			  -- pipeline flush
     exack    	: std_ulogic;			  -- FP exception acknowledge
@@ -413,6 +457,8 @@ package leon3 is
     dbg           : fpc_debug_out_type;             -- FP debug signals    
   end record;
   
+  constant fpc_out_none : fpc_out_type := (X"00000000", '0', "00", '1', '0', '1', fpc_debug_none); 
+
   type grfpu_in_type is record
     start   : std_logic;
     nonstd  : std_logic;
@@ -675,6 +721,31 @@ package leon3 is
   );
   end component;
 
+  component irqamp
+  generic (
+    pindex     : integer := 0;
+    paddr      : integer := 0;
+    pmask      : integer := 16#fff#;
+    ncpu       : integer := 1;
+    eirq       : integer := 0;
+    nctrl      : integer range 1 to 16 := 1;
+    tstamp     : integer range 0 to 16 := 0;
+    wdogen     : integer range 0 to 1 := 0;
+    nwdog      : integer range 1 to 16 := 1;
+    dynrstaddr : integer range 0 to 1 := 0;
+    rstaddr    : integer range 0 to 16#fffff# := 0
+  );
+  port (
+    rst    : in  std_ulogic;
+    clk    : in  std_ulogic;
+    apbi   : in  apb_slv_in_type;
+    apbo   : out apb_slv_out_type;
+    irqi   : in  irq_out_vector(0 to ncpu-1);
+    irqo   : out irq_in_vector(0 to ncpu-1);
+    wdog   : in  std_logic_vector(nwdog-1 downto 0) := (others => '0')
+  );
+  end component; 
+  
 component leon3ftsh
   generic (
     hindex    : integer               := 0;

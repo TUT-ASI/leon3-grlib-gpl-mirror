@@ -36,15 +36,18 @@ type ahbtbm_ctrl_type is record
   delay   : std_logic_vector(7 downto 0);
   dbgl    : integer;
   reset   : std_logic;
+  use128  : integer;
 end record;
 type ahbtbm_access_type is record
-  haddr   : std_logic_vector(31 downto 0);
-  hdata   : std_logic_vector(31 downto 0);
-  htrans  : std_logic_vector(1 downto 0);
-  hburst  : std_logic_vector(2 downto 0);
-  hsize   : std_logic_vector(2 downto 0);
-  hwrite  : std_logic;
-  ctrl    : ahbtbm_ctrl_type;
+  haddr     : std_logic_vector(31 downto 0);
+  hdata     : std_logic_vector(31 downto 0);
+  hdata128  : std_logic_vector(127 downto 0);
+  htrans    : std_logic_vector(1 downto 0);
+  hburst    : std_logic_vector(2 downto 0);
+  hsize     : std_logic_vector(2 downto 0);
+  hprot     : std_logic_vector(3 downto 0);
+  hwrite    : std_logic;
+  ctrl      : ahbtbm_ctrl_type;
 end record;
 type ahbtbm_status_type is record
   err     : std_logic;
@@ -60,12 +63,13 @@ type ahbtbm_ctrl_in_type is record
   ac  : ahbtbm_access_type;
 end record;
 type ahbtbm_ctrl_out_type is record
-  rst     : std_logic;
-  clk     : std_logic;
-  update  : std_logic;
-  dvalid  : std_logic;
-  hrdata  : std_logic_vector(31 downto 0);
-  status  : ahbtbm_status_type;
+  rst       : std_logic;
+  clk       : std_logic;
+  update    : std_logic;
+  dvalid    : std_logic;
+  hrdata    : std_logic_vector(31 downto 0);
+  hrdata128 : std_logic_vector(127 downto 0);
+  status    : ahbtbm_status_type;
 end record;
 
 type ahbtb_ctrl_type is record
@@ -74,12 +78,13 @@ type ahbtb_ctrl_type is record
 end record;
 
 constant ac_idle : ahbtbm_access_type :=
-  (haddr => x"00000000", hdata => x"00000000", htrans => "00", 
-   hburst =>"000", hsize => "000", hwrite => '0', 
-   ctrl => (delay => x"00", dbgl => 100, reset =>'0'));
+  (haddr => x"00000000", hdata => x"00000000", 
+   hdata128 => x"00000000000000000000000000000000", 
+   htrans => "00", hburst =>"000", hsize => "000", hprot => "0000", hwrite => '0', 
+   ctrl => (delay => x"00", dbgl => 100, reset =>'0', use128 => 0));
 constant ctrli_idle : ahbtbm_ctrl_in_type :=(ac => ac_idle);
 constant ctrlo_nodrive : ahbtbm_ctrl_out_type :=(rst => 'H', clk => 'H', 
-  update => 'H', dvalid => 'H', hrdata => (others => 'H'), 
+  update => 'H', dvalid => 'H', hrdata => (others => 'H'), hrdata128 => (others => 'H'),
   status => (err => 'H', ecount => (others => 'H'), eaddr => (others => 'H'),
              edatac => (others => 'H'), edatar => (others => 'H'),
              hresp => (others => 'H')));
@@ -182,6 +187,20 @@ procedure ahbwrite(
   signal   ctrl     : inout ahbtb_ctrl_type);
 
 -----------------------------------------------------------------------------
+-- AMBA AHB write access (htrans,hprot)
+-----------------------------------------------------------------------------
+procedure ahbwrite(
+  constant address  : in  std_logic_vector(31 downto 0);
+  constant data     : in  std_logic_vector(31 downto 0);
+  constant size     : in  std_logic_vector(1 downto 0);
+  constant htrans   : in  std_logic_vector(1 downto 0);
+  constant hburst   : in  std_logic;  
+  constant debug    : in  integer;
+  constant appidle  : in  boolean;
+  constant hprot    : in  std_logic_vector(3 downto 0);
+  signal   ctrl     : inout ahbtb_ctrl_type);
+
+-----------------------------------------------------------------------------
 -- AMBA AHB write access (Inc Burst)
 -----------------------------------------------------------------------------
 procedure ahbwrite(
@@ -217,6 +236,20 @@ procedure ahbread(
   signal   ctrl     : inout ahbtb_ctrl_type);
 
 -----------------------------------------------------------------------------
+-- AMBA AHB read access (htrans,hprot)
+-----------------------------------------------------------------------------
+procedure ahbread(
+  constant address  : in  std_logic_vector(31 downto 0); -- Address
+  constant data     : in  std_logic_vector(31 downto 0); -- Data
+  constant size     : in  std_logic_vector(1 downto 0);  
+  constant htrans   : in  std_logic_vector(1 downto 0);  
+  constant hburst   : in  std_logic;  
+  constant debug    : in  integer;
+  constant appidle  : in  boolean;
+  constant hprot    : in  std_logic_vector(3 downto 0);
+  signal   ctrl     : inout ahbtb_ctrl_type);
+
+-----------------------------------------------------------------------------
 -- AMBA AHB read access (Inc Burst)
 -----------------------------------------------------------------------------
 procedure ahbread(
@@ -225,6 +258,114 @@ procedure ahbread(
   constant size     : in  std_logic_vector(1 downto 0);
   constant count    : in  integer;
   constant debug    : in  integer;
+  signal   ctrl     : inout ahbtb_ctrl_type);
+
+-----------------------------------------------------------------------------
+-- AMBA AHB(128) write access (htrans)
+-----------------------------------------------------------------------------
+procedure ahb128write(
+  constant address  : in  std_logic_vector(31 downto 0);
+  constant data     : in  std_logic_vector(127 downto 0);
+  constant size     : in  std_logic_vector(2 downto 0);
+  constant htrans   : in  std_logic_vector(1 downto 0);
+  constant hburst   : in  std_logic;  
+  constant debug    : in  integer;
+  constant appidle  : in  boolean;
+  signal   ctrl     : inout ahbtb_ctrl_type);
+
+-----------------------------------------------------------------------------
+-- AMBA AHB(128) write access (htrans,hprot)
+-----------------------------------------------------------------------------
+procedure ahb128write(
+  constant address  : in  std_logic_vector(31 downto 0);
+  constant data     : in  std_logic_vector(127 downto 0);
+  constant size     : in  std_logic_vector(2 downto 0);
+  constant htrans   : in  std_logic_vector(1 downto 0);
+  constant hburst   : in  std_logic;  
+  constant debug    : in  integer;
+  constant appidle  : in  boolean;
+  constant hprot    : in  std_logic_vector(3 downto 0);
+  signal   ctrl     : inout ahbtb_ctrl_type);
+
+-----------------------------------------------------------------------------
+-- AMBA AHB(128) read access (htrans)
+-----------------------------------------------------------------------------
+procedure ahb128read(
+  constant address  : in  std_logic_vector(31 downto 0); -- Address
+  constant data     : in  std_logic_vector(127 downto 0); -- Data
+  constant size     : in  std_logic_vector(2 downto 0);  
+  constant htrans   : in  std_logic_vector(1 downto 0);  
+  constant hburst   : in  std_logic;  
+  constant debug    : in  integer;
+  constant appidle  : in  boolean;
+  signal   ctrl     : inout ahbtb_ctrl_type);
+
+-----------------------------------------------------------------------------
+-- AMBA AHB(128) read access (htrans,hprot)
+-----------------------------------------------------------------------------
+procedure ahb128read(
+  constant address  : in  std_logic_vector(31 downto 0); -- Address
+  constant data     : in  std_logic_vector(127 downto 0); -- Data
+  constant size     : in  std_logic_vector(2 downto 0);  
+  constant htrans   : in  std_logic_vector(1 downto 0);  
+  constant hburst   : in  std_logic;  
+  constant debug    : in  integer;
+  constant appidle  : in  boolean;
+  constant hprot    : in  std_logic_vector(3 downto 0);
+  signal   ctrl     : inout ahbtb_ctrl_type);
+
+-----------------------------------------------------------------------------
+-- AMBA AHB(64) write access (htrans)
+-----------------------------------------------------------------------------
+procedure ahb64write(
+  constant address  : in  std_logic_vector(31 downto 0);
+  constant data     : in  std_logic_vector(63 downto 0);
+  constant size     : in  std_logic_vector(2 downto 0);
+  constant htrans   : in  std_logic_vector(1 downto 0);
+  constant hburst   : in  std_logic;  
+  constant debug    : in  integer;
+  constant appidle  : in  boolean;
+  signal   ctrl     : inout ahbtb_ctrl_type);
+
+-----------------------------------------------------------------------------
+-- AMBA AHB(64) write access (htrans,hprot)
+-----------------------------------------------------------------------------
+procedure ahb64write(
+  constant address  : in  std_logic_vector(31 downto 0);
+  constant data     : in  std_logic_vector(63 downto 0);
+  constant size     : in  std_logic_vector(2 downto 0);
+  constant htrans   : in  std_logic_vector(1 downto 0);
+  constant hburst   : in  std_logic;  
+  constant debug    : in  integer;
+  constant appidle  : in  boolean;
+  constant hprot    : in  std_logic_vector(3 downto 0);
+  signal   ctrl     : inout ahbtb_ctrl_type);
+
+-----------------------------------------------------------------------------
+-- AMBA AHB(64) read access (htrans)
+-----------------------------------------------------------------------------
+procedure ahb64read(
+  constant address  : in  std_logic_vector(31 downto 0); -- Address
+  constant data     : in  std_logic_vector(63 downto 0); -- Data
+  constant size     : in  std_logic_vector(2 downto 0);  
+  constant htrans   : in  std_logic_vector(1 downto 0);  
+  constant hburst   : in  std_logic;  
+  constant debug    : in  integer;
+  constant appidle  : in  boolean;
+  signal   ctrl     : inout ahbtb_ctrl_type);
+
+-----------------------------------------------------------------------------
+-- AMBA AHB(64) read access (htrans,hprot)
+-----------------------------------------------------------------------------
+procedure ahb64read(
+  constant address  : in  std_logic_vector(31 downto 0); -- Address
+  constant data     : in  std_logic_vector(63 downto 0); -- Data
+  constant size     : in  std_logic_vector(2 downto 0);  
+  constant htrans   : in  std_logic_vector(1 downto 0);  
+  constant hburst   : in  std_logic;  
+  constant debug    : in  integer;
+  constant appidle  : in  boolean;
+  constant hprot    : in  std_logic_vector(3 downto 0);
   signal   ctrl     : inout ahbtb_ctrl_type);
 
 end ahbtbp;
@@ -327,10 +468,12 @@ procedure ahbwrite(
 begin
   --ctrl.o <= ctrlo_nodrive;
   wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+  ctrl.i.ac.ctrl.use128 <= 0;
   ctrl.i.ac.ctrl.dbgl <= debug;
   ctrl.i.ac.hburst <= "000"; ctrl.i.ac.hsize <= '0' & size;
   ctrl.i.ac.haddr <= address; ctrl.i.ac.hdata <= data;
   ctrl.i.ac.htrans <= "10"; ctrl.i.ac.hwrite <= '1'; ctrl.i.ac.hburst <= "000";
+  ctrl.i.ac.hprot <= "1110";
   if appidle = true then
     wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
     ctrl.i <= ctrli_idle;
@@ -352,11 +495,13 @@ procedure ahbwrite(
 begin
   --ctrl.o <= ctrlo_nodrive;
   wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+  ctrl.i.ac.ctrl.use128 <= 0;
   ctrl.i.ac.ctrl.dbgl <= debug;
   ctrl.i.ac.hburst <= "000"; ctrl.i.ac.hsize <= '0' & size;
   ctrl.i.ac.haddr <= address; ctrl.i.ac.hdata <= data;
   ctrl.i.ac.htrans <= htrans; ctrl.i.ac.hwrite <= '1'; 
   ctrl.i.ac.hburst <= "00" & hburst;
+  ctrl.i.ac.hprot <= "1110";
   if appidle = true then
     wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
     ctrl.i <= ctrli_idle;
@@ -380,9 +525,11 @@ begin
   --ctrl.o <= ctrlo_nodrive;
   vaddr := address; vdata := data; vhtrans := "10";
   wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+  ctrl.i.ac.ctrl.use128 <= 0;
   ctrl.i.ac.ctrl.dbgl <= debug;
   ctrl.i.ac.hburst <= "000"; ctrl.i.ac.hsize <= '0' & size;
   ctrl.i.ac.hwrite <= '1'; ctrl.i.ac.hburst <= "001";
+  ctrl.i.ac.hprot <= "1110";
   for i in 0 to count - 1 loop
     ctrl.i.ac.haddr <= vaddr; ctrl.i.ac.hdata <= vdata;
     ctrl.i.ac.htrans <= vhtrans; 
@@ -391,6 +538,35 @@ begin
     vhtrans := "11";
   end loop;
   ctrl.i <= ctrli_idle;
+end procedure ahbwrite;
+
+-----------------------------------------------------------------------------
+-- AMBA AHB write access (htrans,hprot)
+-----------------------------------------------------------------------------
+procedure ahbwrite(
+  constant address  : in  std_logic_vector(31 downto 0);
+  constant data     : in  std_logic_vector(31 downto 0);
+  constant size     : in  std_logic_vector(1 downto 0);
+  constant htrans   : in  std_logic_vector(1 downto 0);
+  constant hburst   : in  std_logic;  
+  constant debug    : in  integer;
+  constant appidle  : in  boolean;
+  constant hprot    : in  std_logic_vector(3 downto 0);
+  signal   ctrl     : inout ahbtb_ctrl_type) is
+begin
+  --ctrl.o <= ctrlo_nodrive;
+  wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+  ctrl.i.ac.ctrl.use128 <= 0;
+  ctrl.i.ac.ctrl.dbgl <= debug;
+  ctrl.i.ac.hburst <= "000"; ctrl.i.ac.hsize <= '0' & size;
+  ctrl.i.ac.haddr <= address; ctrl.i.ac.hdata <= data;
+  ctrl.i.ac.htrans <= htrans; ctrl.i.ac.hwrite <= '1'; 
+  ctrl.i.ac.hburst <= "00" & hburst;
+  ctrl.i.ac.hprot <= hprot;
+  if appidle = true then
+    wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+    ctrl.i <= ctrli_idle;
+  end if;
 end procedure ahbwrite;
 
 -----------------------------------------------------------------------------
@@ -406,10 +582,12 @@ procedure ahbread(
 begin
   --ctrl.o <= ctrlo_nodrive;
   wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+  ctrl.i.ac.ctrl.use128 <= 0;
   ctrl.i.ac.ctrl.dbgl <= debug;
   ctrl.i.ac.hsize <= '0' & size;
   ctrl.i.ac.haddr <= address; ctrl.i.ac.hdata <= data;
   ctrl.i.ac.htrans <= "10"; ctrl.i.ac.hwrite <= '0'; ctrl.i.ac.hburst <= "000";
+  ctrl.i.ac.hprot <= "1110";
   if appidle = true then
     wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
     ctrl.i <= ctrli_idle;
@@ -431,11 +609,13 @@ procedure ahbread(
 begin
   --ctrl.o <= ctrlo_nodrive;
   wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+  ctrl.i.ac.ctrl.use128 <= 0;
   ctrl.i.ac.ctrl.dbgl <= debug;
   ctrl.i.ac.hsize <= '0' & size;
   ctrl.i.ac.haddr <= address; ctrl.i.ac.hdata <= data;
   ctrl.i.ac.htrans <= htrans; ctrl.i.ac.hwrite <= '0'; 
   ctrl.i.ac.hburst <= "00" & hburst;
+  ctrl.i.ac.hprot <= "1110";
   if appidle = true then
     wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
     ctrl.i <= ctrli_idle;
@@ -459,9 +639,11 @@ begin
   --ctrl.o <= ctrlo_nodrive;
   vaddr := address; vdata := data; vhtrans := "10";
   wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+  ctrl.i.ac.ctrl.use128 <= 0;
   ctrl.i.ac.ctrl.dbgl <= debug;
   ctrl.i.ac.hburst <= "000"; ctrl.i.ac.hsize <= '0' & size;
   ctrl.i.ac.hwrite <= '0'; ctrl.i.ac.hburst <= "001";
+  ctrl.i.ac.hprot <= "1110";
   for i in 0 to count - 1 loop
     ctrl.i.ac.haddr <= vaddr; ctrl.i.ac.hdata <= vdata;
     ctrl.i.ac.htrans <= vhtrans; 
@@ -472,6 +654,262 @@ begin
   ctrl.i <= ctrli_idle;
 end procedure ahbread;
 
+-----------------------------------------------------------------------------
+-- AMBA AHB read access (htrans)
+-----------------------------------------------------------------------------
+procedure ahbread(
+  constant address  : in  std_logic_vector(31 downto 0);
+  constant data     : in  std_logic_vector(31 downto 0);
+  constant size     : in  std_logic_vector(1 downto 0);
+  constant htrans   : in  std_logic_vector(1 downto 0);
+  constant hburst   : in  std_logic;  
+  constant debug    : in  integer;
+  constant appidle  : in  boolean;
+  constant hprot    : in  std_logic_vector(3 downto 0);
+  signal   ctrl     : inout ahbtb_ctrl_type) is
+begin
+  --ctrl.o <= ctrlo_nodrive;
+  wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+  ctrl.i.ac.ctrl.use128 <= 0;
+  ctrl.i.ac.ctrl.dbgl <= debug;
+  ctrl.i.ac.hsize <= '0' & size;
+  ctrl.i.ac.haddr <= address; ctrl.i.ac.hdata <= data;
+  ctrl.i.ac.htrans <= htrans; ctrl.i.ac.hwrite <= '0'; 
+  ctrl.i.ac.hburst <= "00" & hburst;
+  ctrl.i.ac.hprot <= hprot;
+  if appidle = true then
+    wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+    ctrl.i <= ctrli_idle;
+  end if;
+end procedure ahbread;
+
+-----------------------------------------------------------------------------
+-- AMBA AHB(128) write access (htrans)
+-----------------------------------------------------------------------------
+procedure ahb128write(
+  constant address  : in  std_logic_vector(31 downto 0);
+  constant data     : in  std_logic_vector(127 downto 0);
+  constant size     : in  std_logic_vector(2 downto 0);
+  constant htrans   : in  std_logic_vector(1 downto 0);
+  constant hburst   : in  std_logic;  
+  constant debug    : in  integer;
+  constant appidle  : in  boolean;
+  signal   ctrl     : inout ahbtb_ctrl_type) is
+begin
+  --ctrl.o <= ctrlo_nodrive;
+  wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+  ctrl.i.ac.ctrl.use128 <= 1;
+  ctrl.i.ac.ctrl.dbgl <= debug;
+  ctrl.i.ac.hsize <= size;
+  ctrl.i.ac.haddr <= address; ctrl.i.ac.hdata128 <= data;
+  ctrl.i.ac.htrans <= htrans; ctrl.i.ac.hwrite <= '1'; 
+  ctrl.i.ac.hburst <= "00" & hburst;
+  ctrl.i.ac.hprot <= "1110";
+  if appidle = true then
+    wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+    ctrl.i <= ctrli_idle;
+  end if;
+end procedure ahb128write;
+
+-----------------------------------------------------------------------------
+-- AMBA AHB(128) write access (htrans,hprot)
+-----------------------------------------------------------------------------
+procedure ahb128write(
+  constant address  : in  std_logic_vector(31 downto 0);
+  constant data     : in  std_logic_vector(127 downto 0);
+  constant size     : in  std_logic_vector(2 downto 0);
+  constant htrans   : in  std_logic_vector(1 downto 0);
+  constant hburst   : in  std_logic;  
+  constant debug    : in  integer;
+  constant appidle  : in  boolean;
+  constant hprot    : in  std_logic_vector(3 downto 0);
+  signal   ctrl     : inout ahbtb_ctrl_type) is
+begin
+  --ctrl.o <= ctrlo_nodrive;
+  wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+  ctrl.i.ac.ctrl.use128 <= 1;
+  ctrl.i.ac.ctrl.dbgl <= debug;
+  ctrl.i.ac.hsize <= size;
+  ctrl.i.ac.haddr <= address; ctrl.i.ac.hdata128 <= data;
+  ctrl.i.ac.htrans <= htrans; ctrl.i.ac.hwrite <= '1'; 
+  ctrl.i.ac.hburst <= "00" & hburst;
+  ctrl.i.ac.hprot <= hprot;
+  if appidle = true then
+    wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+    ctrl.i <= ctrli_idle;
+  end if;
+end procedure ahb128write;
+
+-----------------------------------------------------------------------------
+-- AMBA AHB(128) read access (htrans)
+-----------------------------------------------------------------------------
+procedure ahb128read(
+  constant address  : in  std_logic_vector(31 downto 0);
+  constant data     : in  std_logic_vector(127 downto 0);
+  constant size     : in  std_logic_vector(2 downto 0);
+  constant htrans   : in  std_logic_vector(1 downto 0);
+  constant hburst   : in  std_logic;  
+  constant debug    : in  integer;
+  constant appidle  : in  boolean;
+  signal   ctrl     : inout ahbtb_ctrl_type) is
+begin
+  --ctrl.o <= ctrlo_nodrive;
+  wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+  ctrl.i.ac.ctrl.use128 <= 1;
+  ctrl.i.ac.ctrl.dbgl <= debug;
+  ctrl.i.ac.hsize <= size;
+  ctrl.i.ac.haddr <= address; ctrl.i.ac.hdata128 <= data;
+  ctrl.i.ac.htrans <= htrans; ctrl.i.ac.hwrite <= '0'; 
+  ctrl.i.ac.hburst <= "00" & hburst;
+  ctrl.i.ac.hprot <= "1110";
+  if appidle = true then
+    wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+    ctrl.i <= ctrli_idle;
+  end if;
+end procedure ahb128read;
+
+-----------------------------------------------------------------------------
+-- AMBA AHB(128) read access (htrans,hprot)
+-----------------------------------------------------------------------------
+procedure ahb128read(
+  constant address  : in  std_logic_vector(31 downto 0);
+  constant data     : in  std_logic_vector(127 downto 0);
+  constant size     : in  std_logic_vector(2 downto 0);
+  constant htrans   : in  std_logic_vector(1 downto 0);
+  constant hburst   : in  std_logic;  
+  constant debug    : in  integer;
+  constant appidle  : in  boolean;
+  constant hprot    : in  std_logic_vector(3 downto 0);
+  signal   ctrl     : inout ahbtb_ctrl_type) is
+begin
+  --ctrl.o <= ctrlo_nodrive;
+  wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+  ctrl.i.ac.ctrl.use128 <= 1;
+  ctrl.i.ac.ctrl.dbgl <= debug;
+  ctrl.i.ac.hsize <= size;
+  ctrl.i.ac.haddr <= address; ctrl.i.ac.hdata128 <= data;
+  ctrl.i.ac.htrans <= htrans; ctrl.i.ac.hwrite <= '0'; 
+  ctrl.i.ac.hburst <= "00" & hburst;
+  ctrl.i.ac.hprot <= hprot;
+  if appidle = true then
+    wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+    ctrl.i <= ctrli_idle;
+  end if;
+end procedure ahb128read;
+
+-----------------------------------------------------------------------------
+-- AMBA AHB(64) write access (htrans)
+-----------------------------------------------------------------------------
+procedure ahb64write(
+  constant address  : in  std_logic_vector(31 downto 0);
+  constant data     : in  std_logic_vector(63 downto 0);
+  constant size     : in  std_logic_vector(2 downto 0);
+  constant htrans   : in  std_logic_vector(1 downto 0);
+  constant hburst   : in  std_logic;  
+  constant debug    : in  integer;
+  constant appidle  : in  boolean;
+  signal   ctrl     : inout ahbtb_ctrl_type) is
+begin
+  --ctrl.o <= ctrlo_nodrive;
+  wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+  ctrl.i.ac.ctrl.use128 <= 1;
+  ctrl.i.ac.ctrl.dbgl <= debug;
+  ctrl.i.ac.hsize <= size;
+  ctrl.i.ac.haddr <= address; ctrl.i.ac.hdata128 <= data & data;
+  ctrl.i.ac.htrans <= htrans; ctrl.i.ac.hwrite <= '1'; 
+  ctrl.i.ac.hburst <= "00" & hburst;
+  ctrl.i.ac.hprot <= "1110";
+  if appidle = true then
+    wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+    ctrl.i <= ctrli_idle;
+  end if;
+end procedure ahb64write;
+
+-----------------------------------------------------------------------------
+-- AMBA AHB(64) write access (htrans,hprot)
+-----------------------------------------------------------------------------
+procedure ahb64write(
+  constant address  : in  std_logic_vector(31 downto 0);
+  constant data     : in  std_logic_vector(63 downto 0);
+  constant size     : in  std_logic_vector(2 downto 0);
+  constant htrans   : in  std_logic_vector(1 downto 0);
+  constant hburst   : in  std_logic;  
+  constant debug    : in  integer;
+  constant appidle  : in  boolean;
+  constant hprot    : in  std_logic_vector(3 downto 0);
+  signal   ctrl     : inout ahbtb_ctrl_type) is
+begin
+  --ctrl.o <= ctrlo_nodrive;
+  wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+  ctrl.i.ac.ctrl.use128 <= 1;
+  ctrl.i.ac.ctrl.dbgl <= debug;
+  ctrl.i.ac.hsize <= size;
+  ctrl.i.ac.haddr <= address; ctrl.i.ac.hdata128 <= data & data;
+  ctrl.i.ac.htrans <= htrans; ctrl.i.ac.hwrite <= '1'; 
+  ctrl.i.ac.hburst <= "00" & hburst;
+  ctrl.i.ac.hprot <= hprot;
+  if appidle = true then
+    wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+    ctrl.i <= ctrli_idle;
+  end if;
+end procedure ahb64write;
+
+-----------------------------------------------------------------------------
+-- AMBA AHB(64) read access (htrans)
+-----------------------------------------------------------------------------
+procedure ahb64read(
+  constant address  : in  std_logic_vector(31 downto 0);
+  constant data     : in  std_logic_vector(63 downto 0);
+  constant size     : in  std_logic_vector(2 downto 0);
+  constant htrans   : in  std_logic_vector(1 downto 0);
+  constant hburst   : in  std_logic;  
+  constant debug    : in  integer;
+  constant appidle  : in  boolean;
+  signal   ctrl     : inout ahbtb_ctrl_type) is
+begin
+  --ctrl.o <= ctrlo_nodrive;
+  wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+  ctrl.i.ac.ctrl.use128 <= 1;
+  ctrl.i.ac.ctrl.dbgl <= debug;
+  ctrl.i.ac.hsize <= size;
+  ctrl.i.ac.haddr <= address; ctrl.i.ac.hdata128 <= data & data;
+  ctrl.i.ac.htrans <= htrans; ctrl.i.ac.hwrite <= '0'; 
+  ctrl.i.ac.hburst <= "00" & hburst;
+  ctrl.i.ac.hprot <= "1110";
+  if appidle = true then
+    wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+    ctrl.i <= ctrli_idle;
+  end if;
+end procedure ahb64read;
+
+-----------------------------------------------------------------------------
+-- AMBA AHB(64) read access (htrans,hprot)
+-----------------------------------------------------------------------------
+procedure ahb64read(
+  constant address  : in  std_logic_vector(31 downto 0);
+  constant data     : in  std_logic_vector(63 downto 0);
+  constant size     : in  std_logic_vector(2 downto 0);
+  constant htrans   : in  std_logic_vector(1 downto 0);
+  constant hburst   : in  std_logic;  
+  constant debug    : in  integer;
+  constant appidle  : in  boolean;
+  constant hprot    : in  std_logic_vector(3 downto 0);
+  signal   ctrl     : inout ahbtb_ctrl_type) is
+begin
+  --ctrl.o <= ctrlo_nodrive;
+  wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+  ctrl.i.ac.ctrl.use128 <= 1;
+  ctrl.i.ac.ctrl.dbgl <= debug;
+  ctrl.i.ac.hsize <= size;
+  ctrl.i.ac.haddr <= address; ctrl.i.ac.hdata128 <= data & data;
+  ctrl.i.ac.htrans <= htrans; ctrl.i.ac.hwrite <= '0'; 
+  ctrl.i.ac.hburst <= "00" & hburst;
+  ctrl.i.ac.hprot <= hprot;
+  if appidle = true then
+    wait until ctrl.o.update = '1' and rising_edge(ctrl.o.clk);
+    ctrl.i <= ctrli_idle;
+  end if;
+end procedure ahb64read;
 -- pragma translate_on
 
 end ahbtbp;

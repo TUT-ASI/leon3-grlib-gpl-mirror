@@ -83,6 +83,10 @@ constant ICREPLACE : integer range 0 to 2  := irepl;
 
 constant lline : std_logic_vector((ILINE_BITS -1) downto 0) := (others=>'1');
 
+constant LRAM_START : std_logic_vector(7 downto 0) := conv_std_logic_vector(lramstart, 8);
+constant LRAM_BITS : integer := log2(lramsize) + 10;
+constant LRAMCS_EN  : boolean := false;
+
 constant SETBITS : integer := log2x(ISETS); 
 constant ILRUBITS  : integer := lru_table(ISETS);
 subtype lru_type is std_logic_vector(ILRUBITS-1 downto 0);
@@ -196,7 +200,7 @@ signal r, c : icache_control_type;	-- r is registers, c is combinational
 signal rl, cl : lru_reg_type;           -- rl is registers, cl is combinational
 
 constant icfg : std_logic_vector(31 downto 0) := 
-	cache_cfg(irepl, isets, ilinesize, isetsize, isetlock, 0, lram, log2(lramsize), lramstart, mmuen);
+	cache_cfg(irepl, isets, ilinesize, isetsize, isetlock, 0, lram, lramsize, lramstart, mmuen);
 
 
 begin
@@ -230,6 +234,7 @@ begin
   variable lock : std_logic_vector(0 to ISETS-1);
   variable wlock, sidle : std_logic;
   variable tag : cdatatype;
+  variable lramacc, ilramwr, lramcs  : std_ulogic;
 
   variable pftag : std_logic_vector(31 downto 2);
   variable mmuici_trans_op : std_logic;
@@ -259,7 +264,8 @@ begin
     tparerr := (others => '0'); dparerr := (others => '0');
 
     set := 0; ctwrite := (others => '0'); cdwrite := (others => '0');
-    vdiagset := 0; rdiagset := 0; lock := (others => '0');
+    vdiagset := 0; rdiagset := 0; lock := (others => '0'); ilramwr := '0';
+    lramacc := '0'; lramcs := '0';
     pftag := (others => '0');
 
     v.trans_op := r.trans_op and (not mmuico.grant);
@@ -274,6 +280,8 @@ begin
       else v.rndcnt := r.rndcnt + 1; end if;
     end if;
 
+    --local ram access
+    if (lram = 1) and (ici.fpc(31 downto 24) = LRAM_START) then lramacc := '1'; end if;
 
 -- generate lock bits
     if ICLOCK_BIT = 1 then 
@@ -289,6 +297,8 @@ begin
       validv(i) := genmux(ici.fpc(LINE_HIGH downto LINE_LOW), 
 		          icramo.tag(i)(ilinesize -1 downto 0));
     end loop;
+
+    if (lramacc = '1') and (ISETS > 1) then set := 1; end if;
 
     if ici.fpc(LINE_HIGH downto LINE_LOW) = lline then lastline := '1';
     else lastline := '0'; end if;
@@ -330,7 +340,7 @@ begin
         taddr := ici.fpc(TAG_HIGH downto LINE_LOW);
       else taddr := ici.rpc(TAG_HIGH downto LINE_LOW); end if;
       v.burst := dco.icdiag.cctrl.burst and not lastline;
-      if (eholdn and not ici.inull ) = '1' then
+      if (eholdn and not (ici.inull or lramacc)) = '1' then
 	if not (cacheon and hit and valid) = '1' then  
 	  v.istate := streaming;  
           v.holdn := '0'; v.overrun := '1';
@@ -455,6 +465,14 @@ begin
 
     if mcio.retry = '1' then v.req := '1'; end if;
 
+    if lram = 1 then
+      if LRAMCS_EN then
+        if taddr(31 downto 24) = LRAM_START then lramcs := '1'; else lramcs := '0'; end if;
+      else
+        lramcs := '1';
+      end if;
+    end if;
+
 -- Generate new valid bits write strobe
 
     vmaskraw := decode(r.waddress(LINE_HIGH downto LINE_LOW));
@@ -490,11 +508,15 @@ begin
 -- diagnostic cache access
 
     if diagen = '1' then
-     if (ISETS /= 1) then 
-       v.diagset := dco.icdiag.addr(SETBITS -1 + TAG_LOW downto TAG_LOW);
+     if (ISETS /= 1) then
+       if (dco.icdiag.ilramen = '1') and (lram = 1) then
+         v.diagset := conv_std_logic_vector(1, SETBITS);
+       else
+         v.diagset := dco.icdiag.addr(SETBITS -1 + TAG_LOW downto TAG_LOW);
+       end if;
      end if;
-   end if;
-     
+    end if;
+
     if (ISETS /= 1) then 
       rdiagset := conv_integer(r.diagset);
       vdiagset := conv_integer(v.diagset);
@@ -502,11 +524,13 @@ begin
 
     diagdata := icramo.data(rdiagset);
     if diagen = '1' then -- diagnostic access
-      taddr(OFFSET_HIGH downto LINE_LOW) := dco.icdiag.addr(OFFSET_HIGH downto LINE_LOW);
+      taddr(TAG_HIGH downto LINE_LOW) := dco.icdiag.addr(TAG_HIGH downto LINE_LOW);
       wtag(TAG_HIGH downto TAG_LOW) := dci.maddress(TAG_HIGH downto TAG_LOW);
       wlrr := dci.maddress(CTAG_LRRPOS);
       wlock := dci.maddress(CTAG_LOCKPOS);
-      if dco.icdiag.tag = '1' then
+      if (dco.icdiag.ilramen = '1') and (lram = 1) then
+        ilramwr := not dco.icdiag.read;
+      elsif dco.icdiag.tag = '1' then
 	twrite := not dco.icdiag.read; dwrite := '0';
         ctwrite := (others => '0'); cdwrite := (others => '0');
 	ctwrite(vdiagset) := not dco.icdiag.read;
@@ -518,6 +542,9 @@ begin
       end if;
       vmask := dci.maddress(ilinesize -1 downto 0);
       v.diagrdy := '1';
+      if (dco.icdiag.ilramen = '1') and (lram = 1) and (r.flush2 = '1') then
+        v.diagrdy := '0';
+      end if;
     end if;
 
 -- select data to return on read access
@@ -602,12 +629,16 @@ begin
 
     -- data ram inputs
     icrami.denable   <= enable;
-    icrami.address(19 downto (OFFSET_HIGH - LINE_LOW +1)) <= 
-        zero32(19 downto (OFFSET_HIGH - LINE_LOW +1));
-    icrami.address(OFFSET_HIGH - LINE_LOW downto 0) <= taddr(OFFSET_HIGH downto LINE_LOW);
+    icrami.address  <= taddr(19+LINE_LOW downto LINE_LOW);
     icrami.data     <= ddatain;
     icrami.dwrite    <= cdwrite; 
     
+    -- local ram inputs
+    icrami.ldramin.enable <= (dco.icdiag.ilramen or lramcs or lramacc) and not dco.icdiag.scanen;
+    icrami.ldramin.read  <= dco.icdiag.ilramen or lramacc;
+    icrami.ldramin.write <= ilramwr;
+    
+
     -- memory controller inputs
     mcii.address(31 downto 2)  <= r.waddress(31 downto 2);
     mcii.address(1 downto 0)  <= "00";

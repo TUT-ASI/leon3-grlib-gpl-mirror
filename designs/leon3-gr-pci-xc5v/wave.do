@@ -38,20 +38,15 @@ add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/ahbsi
 add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/ahbso
 add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/ahbmi
 add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/ahbmo
-add wave -noupdate -format Logic /testbench/etx_clk
-add wave -noupdate -format Logic /testbench/erx_clk
-add wave -noupdate -format Logic /testbench/erx_dv
-add wave -noupdate -format Logic /testbench/erx_er
-add wave -noupdate -format Logic /testbench/erx_col
-add wave -noupdate -format Logic /testbench/eth_gtxclk
-add wave -noupdate -format Logic /testbench/erx_crs
-add wave -noupdate -format Logic /testbench/etx_en
-add wave -noupdate -format Logic /testbench/etx_er
-add wave -noupdate -format Logic /testbench/eth_macclk
-add wave -noupdate -format Literal -radix hexadecimal /testbench/erxd
-add wave -noupdate -format Literal -radix hexadecimal /testbench/etxd
-add wave -noupdate -format Logic /testbench/emdc
-add wave -noupdate -format Logic /testbench/emdio
+add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/cpu__0/nosh/u0/p0/rfi
+add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/cpu__0/nosh/u0/p0/rfo
+add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/cpu__0/nosh/u0/p0/crami
+add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/cpu__0/nosh/u0/p0/cramo
+add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/cpu__0/nosh/u0/p0/ici
+add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/cpu__0/nosh/u0/p0/ico
+add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/cpu__0/nosh/u0/p0/dci
+add wave -noupdate -format Literal -radix hexadecimal /testbench/d3/cpu__0/nosh/u0/p0/dco
+add wave -noupdate -format Logic /testbench/d3/cpu__0/nosh/u0/p0/holdnx
 TreeUpdate [SetDefaultTree]
 WaveRestoreCursors {{Cursor 1} {0 ps} 0}
 configure wave -namecolwidth 150

@@ -19,7 +19,7 @@ int pcif_test(unsigned int base_addr, unsigned int conf_addr, unsigned int apb_a
   *(apb)   = 0xffffffff;
   *(apb+1) = 0xffffffff;
   if (*(apb)   != 0xf0000000) fail(1);
-  if (*(apb+1) != 0xf0000000) fail(1);
+  if (*(apb+1) != 0xff800000) fail(1);
   *(apb)   = 0xa0000000;
   *(apb+1) = 0x80000000;
   if (*(apb)   != 0xa0000000) fail(2);
@@ -30,12 +30,12 @@ int pcif_test(unsigned int base_addr, unsigned int conf_addr, unsigned int apb_a
   *(apb+17) = 0xffffffff;
   *(apb+18) = 0xffffffff;
   *(apb+19) = 0xffffffff;
-  if (*(apb+16) != 0xe0000000) fail(1);
-  if (*(apb+17) != 0xe0000000) fail(1);
-  if (*(apb+18) != 0xe0000000) fail(1);
-  if (*(apb+19) != 0xe0000000) fail(1);
-  *(apb+16) = 0x20000000;
-  if (*(apb+16) != 0x20000000) fail(2);
+  if (*(apb+16) != 0xc0000000) fail(1);
+  if (*(apb+17) != 0xc0000000) fail(1);
+  if (*(apb+18) != 0xc0000000) fail(1);
+  if (*(apb+19) != 0xc0000000) fail(1);
+  *(apb+16) = 0xc0000000;
+  if (*(apb+16) != 0xc0000000) fail(2);
 
   // AHB => PCI IO
   *(apb+5) = 0xffffffff;
@@ -57,7 +57,7 @@ int pcif_test(unsigned int base_addr, unsigned int conf_addr, unsigned int apb_a
   *(conf+7) = 0xffffffff;
   if (*(conf+4) != 0xfffff000) fail(2);
   if (*(conf+5) != 0xf0000000) fail(2);
-  if (*(conf+6) != 0xf0000000) fail(2);
+  if (*(conf+6) != 0xff800000) fail(2);
   if (*(conf+7) != 0x00000000) fail(2);
   *(conf+4) = 0x10000000;
   *(conf+5) = 0x40000000;
@@ -69,9 +69,9 @@ int pcif_test(unsigned int base_addr, unsigned int conf_addr, unsigned int apb_a
   *(conf+0x2a00+1) = 0x00000146;
   if (*(conf+0x2a00) != 0x3badaffe) fail(4);
   if ((*(apb+6) & 0x30000000) != 0) fail(5);
-  *(conf+0x2a00+4) = 0x20000000;
+  *(conf+0x2a00+4) = 0xc0000000;
   *(conf+0x2a00+5) = 0x30000000;
-  if (*(conf+0x2a00+4) != 0x20000000) fail(6);
+  if (*(conf+0x2a00+4) != 0xc0000000) fail(6);
   if (*(conf+0x2a00+5) != 0x30000001) fail(6);
   if ((*(apb+6) & 0x30000000) != 0) fail(7);
   

@@ -799,8 +799,10 @@ begin
         case rtype is 
           when "0001" =>
             hexread(fline, raddr(15 downto 0));
+            raddr(31 downto 16) := (others => '0');
           when "0010" =>
             hexread(fline, raddr(23 downto 0));
+            raddr(31 downto 24) := (others => '0');
           when "0011" =>
             hexread(fline, raddr);
             raddr(31 downto 24) := (others => '0');

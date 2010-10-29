@@ -37,7 +37,9 @@ library gaisler;
 use gaisler.misc.all;
 
 entity i2cmst_gen is
-  generic (oepol  : integer range 0 to 1 := 0);  -- output enable polarity
+  generic (
+    oepol  : integer range 0 to 1 := 0;    -- output enable polarity
+    filter : integer range 2 to 512 := 2); -- filter length
   port (
     rstn        : in  std_ulogic;
     clk         : in  std_ulogic;
@@ -100,7 +102,7 @@ begin
   
   i2c0 : i2cmst
     generic map (pindex => 0, paddr => 0, pmask => 0, pirq => 0,
-                 oepol  => oepol)
+                 oepol  => oepol, filter => filter)
     port map (rstn, clk, apbi, apbo, i2ci, i2co);
   
 end architecture rtl;

@@ -1,4 +1,4 @@
--- Copyright (C) 1991-2007 Altera Corporation
+-- Copyright (C) 1991-2009 Altera Corporation
 -- Your use of Altera Corporation's design tools, logic functions 
 -- and other software and tools, and its AMPP partner logic 
 -- functions, and any output files from any of the foregoing 
@@ -11,10 +11,7 @@
 -- programming logic devices manufactured by Altera and sold by 
 -- Altera or its authorized distributors.  Please refer to the 
 -- applicable agreement for further details.
-
-
--- Quartus II 7.1 Build 156 04/30/2007
-
+-- Quartus II 9.0 Build 235 03/01/2009
 
 library IEEE;
 use IEEE.std_logic_1164.all;
@@ -68,6 +65,14 @@ function int2str( value : integer ) return string;
 function map_x_to_0 (value : std_logic) return std_logic;
 
 function SelectDelay (CONSTANT Paths: IN  VitalPathArray01Type) return TIME;
+
+function int2bit (arg : boolean) return std_logic;
+function int2bit (arg : integer) return std_logic;
+function bin2int (s : std_logic_vector) return integer;
+function bin2int (s : std_logic) return integer;
+function int2bin (arg : integer; size : integer) return std_logic_vector;
+function int2bin (arg : boolean; size : integer) return std_logic_vector;
+function calc_sum_len( widtha : integer; widthb : integer) return integer;
 
 end cycloneiii_atom_pack;
 
@@ -222,6 +227,96 @@ begin
 
 end;
 
+function int2bit (arg : integer) return std_logic is
+    variable int_val : integer := arg;
+    variable result : std_logic;
+    begin
+        
+            if (int_val  = 0) then
+                result := '0';
+            else
+                result := '1';
+            end if;
+            
+        return result;
+end int2bit;
+
+function int2bit (arg : boolean) return std_logic is
+    variable int_val : boolean := arg;
+    variable result : std_logic;
+    begin
+        
+            if (int_val ) then
+                result := '1';
+            else
+                result := '0';
+            end if;
+            
+        return result;
+end int2bit;
+
+function bin2int (s : std_logic_vector) return integer is
+
+      constant temp      : std_logic_vector(s'high-s'low DOWNTO 0) := s;      
+      variable result      : integer := 0;
+   begin
+      for i in temp'range loop
+         if (temp(i) = '1') then
+            result := result + (2**i);
+         end if;
+      end loop;
+      return(result);
+   end bin2int;
+                  
+function bin2int (s : std_logic) return integer is
+      constant temp      : std_logic := s;      
+      variable result      : integer := 0;
+   begin
+         if (temp = '1') then
+            result := 1;
+         else
+         	result := 0;
+     	 end if;
+      return(result);
+	end bin2int;
+
+	function int2bin (arg : integer; size : integer) return std_logic_vector is
+    variable int_val : integer := arg;
+    variable result : std_logic_vector(size-1 downto 0);
+    begin
+        for i in 0 to result'left loop
+            if ((int_val mod 2) = 0) then
+                result(i) := '0';
+            else
+                result(i) := '1';
+            end if;
+            int_val := int_val/2;
+        end loop;
+        return result;
+    end int2bin;
+    
+function int2bin (arg : boolean; size : integer) return std_logic_vector is
+    variable result : std_logic_vector(size-1 downto 0);
+    begin
+		if(arg)then
+			result := (OTHERS => '1');
+		else
+			result := (OTHERS => '0');
+		end if;
+        return result;
+    end int2bin;
+
+function calc_sum_len( widtha : integer; widthb : integer) return integer is
+variable result: integer;
+begin
+	if(widtha >= widthb) then
+		result := widtha + 1;
+	else
+		result := widthb + 1;
+	end if;
+	return result;
+end calc_sum_len;
+
 end cycloneiii_atom_pack;
 
 Library ieee;
@@ -248,6 +343,11 @@ Package cycloneiii_pllpack is
                                             clk4_div : in integer; clk5_div : in integer;
                                             clk6_div : in integer; clk7_div : in integer;
                                             clk8_div : in integer; clk9_div : in integer;
+                                            clk0_used : in string; clk1_used : in string;
+                                            clk2_used : in string; clk3_used : in string;
+                                            clk4_used : in string; clk5_used : in string;
+                                            clk6_used : in string; clk7_used : in string;
+                                            clk8_used : in string; clk9_used : in string;
                                             m : out integer;
                                             n : out integer );
 
@@ -409,6 +509,11 @@ procedure find_m_and_n_4_manual_phase ( inclock_period : in integer;
                                         clk4_div : in integer; clk5_div : in integer;
                                         clk6_div : in integer; clk7_div : in integer;
                                         clk8_div : in integer; clk9_div : in integer;
+                                        clk0_used : in string; clk1_used : in string;
+                                        clk2_used : in string; clk3_used : in string;
+                                        clk4_used : in string; clk5_used : in string;
+                                        clk6_used : in string; clk7_used : in string;
+                                        clk8_used : in string; clk9_used : in string;
                                         m : out integer;
                                         n : out integer ) is
         constant MAX_M : integer := 511;
@@ -417,6 +522,7 @@ procedure find_m_and_n_4_manual_phase ( inclock_period : in integer;
         constant MIN_PFD : integer := 5;
         constant MAX_VCO : integer := 1300;
         constant MIN_VCO : integer := 300;
+        constant MAX_OFFSET : real := 0.004;
 
         variable vco_period : integer;
         variable pfd_freq : integer;
@@ -425,65 +531,115 @@ procedure find_m_and_n_4_manual_phase ( inclock_period : in integer;
 
         variable i_m : integer;
         variable i_n : integer;
+
         variable i_pre_m : integer;
         variable i_pre_n : integer;
 
+        variable closest_vco_step_value : integer;
+
         variable i_max_iter : integer;
         variable loop_iter : integer;
+        
+        variable clk0_div_factor_real : real;
+        variable clk1_div_factor_real : real;
+        variable clk2_div_factor_real : real;
+        variable clk3_div_factor_real : real;
+        variable clk4_div_factor_real : real;
+        variable clk5_div_factor_real : real;
+        variable clk6_div_factor_real : real;
+        variable clk7_div_factor_real : real;
+        variable clk8_div_factor_real : real;
+        variable clk9_div_factor_real : real;
+        variable clk0_div_factor_int : integer;
+        variable clk1_div_factor_int : integer;
+        variable clk2_div_factor_int : integer;
+        variable clk3_div_factor_int : integer;
+        variable clk4_div_factor_int : integer;
+        variable clk5_div_factor_int : integer;
+        variable clk6_div_factor_int : integer;
+        variable clk7_div_factor_int : integer;
+        variable clk8_div_factor_int : integer;
+        variable clk9_div_factor_int : integer;
 begin
-
-    loop_iter  := 0;
-    i_max_iter := MAX_N;
     vco_period := vco_phase_shift_step * 8;
+    i_pre_m := 0;
+    i_pre_n := 0;
+    closest_vco_step_value := 0;
 
-    while (loop_iter < i_max_iter) loop
-        loop_iter := loop_iter+1;
+    LOOP_1 :   for i_n_out in 1 to MAX_N loop
+        for i_m_out in 1 to MAX_M loop
+        
+	    clk0_div_factor_real := real(clk0_div * i_m_out) / real(clk0_mult * i_n_out);
+            clk1_div_factor_real := real(clk1_div * i_m_out) / real(clk1_mult * i_n_out);
+            clk2_div_factor_real := real(clk2_div * i_m_out) / real(clk2_mult * i_n_out);
+            clk3_div_factor_real := real(clk3_div * i_m_out) / real(clk3_mult * i_n_out);
+            clk4_div_factor_real := real(clk4_div * i_m_out) / real(clk4_mult * i_n_out);
+            clk5_div_factor_real := real(clk5_div * i_m_out) / real(clk5_mult * i_n_out);
+            clk6_div_factor_real := real(clk6_div * i_m_out) / real(clk6_mult * i_n_out);
+            clk7_div_factor_real := real(clk7_div * i_m_out) / real(clk7_mult * i_n_out);
+            clk8_div_factor_real := real(clk8_div * i_m_out) / real(clk8_mult * i_n_out);
+            clk9_div_factor_real := real(clk9_div * i_m_out) / real(clk9_mult * i_n_out);
 
-        i_pre_m := i_m;
-        i_pre_n := i_n;
-
-        find_simple_integer_fraction(inclock_period, vco_period,
-                    loop_iter, i_m, i_n);
-
-        if (((clk0_div * i_m) rem (clk0_mult * i_n) /= 0) or
-            ((clk1_div * i_m) rem (clk1_mult * i_n) /= 0) or
-            ((clk2_div * i_m) rem (clk2_mult * i_n) /= 0) or
-            ((clk3_div * i_m) rem (clk3_mult * i_n) /= 0) or
-            ((clk4_div * i_m) rem (clk4_mult * i_n) /= 0) or
-            ((clk5_div * i_m) rem (clk5_mult * i_n) /= 0) or
-            ((clk6_div * i_m) rem (clk6_mult * i_n) /= 0) or
-            ((clk7_div * i_m) rem (clk7_mult * i_n) /= 0) or
-            ((clk8_div * i_m) rem (clk8_mult * i_n) /= 0) or
-            ((clk9_div * i_m) rem (clk9_mult * i_n) /= 0) )
-        then
-            if (loop_iter = 1)
+            clk0_div_factor_int := integer(clk0_div_factor_real);
+            clk1_div_factor_int := integer(clk1_div_factor_real);
+            clk2_div_factor_int := integer(clk2_div_factor_real);
+            clk3_div_factor_int := integer(clk3_div_factor_real);
+            clk4_div_factor_int := integer(clk4_div_factor_real);
+            clk5_div_factor_int := integer(clk5_div_factor_real);
+            clk6_div_factor_int := integer(clk6_div_factor_real);
+            clk7_div_factor_int := integer(clk7_div_factor_real);
+            clk8_div_factor_int := integer(clk8_div_factor_real);
+            clk9_div_factor_int := integer(clk9_div_factor_real);
+	                
+            if (((abs(clk0_div_factor_real - real(clk0_div_factor_int)) < MAX_OFFSET) or (clk0_used = "unused")) and
+                ((abs(clk1_div_factor_real - real(clk1_div_factor_int)) < MAX_OFFSET) or (clk1_used = "unused")) and
+                ((abs(clk2_div_factor_real - real(clk2_div_factor_int)) < MAX_OFFSET) or (clk2_used = "unused")) and
+                ((abs(clk3_div_factor_real - real(clk3_div_factor_int)) < MAX_OFFSET) or (clk3_used = "unused")) and
+                ((abs(clk4_div_factor_real - real(clk4_div_factor_int)) < MAX_OFFSET) or (clk4_used = "unused")) and
+                ((abs(clk5_div_factor_real - real(clk5_div_factor_int)) < MAX_OFFSET) or (clk5_used = "unused")) and
+                ((abs(clk6_div_factor_real - real(clk6_div_factor_int)) < MAX_OFFSET) or (clk6_used = "unused")) and
+                ((abs(clk7_div_factor_real - real(clk7_div_factor_int)) < MAX_OFFSET) or (clk7_used = "unused")) and
+                ((abs(clk8_div_factor_real - real(clk8_div_factor_int)) < MAX_OFFSET) or (clk8_used = "unused")) and
+                ((abs(clk9_div_factor_real - real(clk9_div_factor_int)) < MAX_OFFSET) or (clk9_used = "unused")) )
             then
-                n := 1;
-                m := lcm  (clk0_mult, clk1_mult, clk2_mult, clk3_mult,
-                        clk4_mult, clk5_mult, clk6_mult,
-                        clk7_mult, clk8_mult, clk9_mult, inclock_period);
-            else
-                m := i_pre_m;
-                n := i_pre_n;
+                if ((i_m_out /= 0) and (i_n_out /= 0))
+                then
+                    pfd_freq := 1000000 / (inclock_period * i_n_out);
+                    vco_freq := (1000000 * i_m_out) / (inclock_period * i_n_out);
+                    vco_ps_step_value := (inclock_period * i_n_out) / (8 * i_m_out);
+    
+                    if ( (i_m_out < max_m) and (i_n_out < max_n) and (pfd_freq >= min_pfd) and (pfd_freq <= max_pfd) and
+                        (vco_freq >= min_vco) and (vco_freq <= max_vco) )
+                    then
+                        if (abs(vco_ps_step_value - vco_phase_shift_step) <= 2)
+                        then
+                            i_pre_m := i_m_out;
+                            i_pre_n := i_n_out;
+                            exit LOOP_1;
+                        else
+                            if (abs(vco_ps_step_value - vco_phase_shift_step) < abs(closest_vco_step_value - vco_phase_shift_step))
+                            then
+                                i_pre_m := i_m_out;
+                                i_pre_n := i_n_out;
+                                closest_vco_step_value := vco_ps_step_value;
+                            end if;
+                        end if;
+                    end if;
+                end if;
             end if;
-
-            i_max_iter := loop_iter;
-        else
-            m := i_m;
-            n := i_n;
-        end if;
-
-        pfd_freq := 1000000 / (inclock_period * i_n);
-        vco_freq := (1000000 * i_m) / (inclock_period * i_n);
-        vco_ps_step_value := (inclock_period * i_n) / (8 * i_m);
-
-        if ( (i_m < max_m) and (i_n < max_n) and (pfd_freq >= min_pfd) and (pfd_freq <= max_pfd) and
-            (vco_freq >= min_vco) and (vco_freq <= max_vco) and 
-            (abs(vco_ps_step_value - vco_phase_shift_step) <= 2) )
-        then
-            i_max_iter := loop_iter;
-        end if;
+        end loop;
     end loop;
+    
+    if ((i_pre_m /= 0) and (i_pre_n /= 0))
+    then
+        find_simple_integer_fraction(i_pre_m, i_pre_n,
+                    MAX_N, m, n);
+    else
+        n := 1;
+        m := lcm  (clk0_mult, clk1_mult, clk2_mult, clk3_mult,
+                clk4_mult, clk5_mult, clk6_mult,
+                clk7_mult, clk8_mult, clk9_mult, inclock_period);
+    end if;
 end find_m_and_n_4_manual_phase;
 
 -- find the greatest common denominator of X and Y
@@ -563,7 +719,9 @@ begin
     M9 := (M8 * A10)/gcd(M8, A10);
     if (M9 < 3) then
         R := 10;
-    elsif ((M9 <= 10) and (M9 >= 3)) then
+    elsif (M9 = 3) then
+        R := 9;
+    elsif ((M9 <= 10) and (M9 > 3)) then
         R := 4 * M9;
     elsif (M9 > 1000) then
         R := scale_num(M9,3);
@@ -577,9 +735,11 @@ end lcm;
 -- find the factor of division of the output clock frequency compared to the VCO
 function output_counter_value (clk_divide: integer; clk_mult: integer ;
                                 M: integer; N: integer ) return integer is
-variable R: integer := 1;
+variable r_real : real := 1.0;
+variable r: integer := 1;
 begin
-    R := (clk_divide * M)/(clk_mult * N);
+    r_real := real(clk_divide * M)/ real(clk_mult * N);
+    r := integer(r_real);
 
     return R;
 end output_counter_value;
@@ -632,6 +792,10 @@ begin
     end if;
 
     R := output_counter_value - R1;
+
+    if (R = 0) then
+        R := 1;
+    end if;
 
     return R;
 end;
@@ -714,7 +878,7 @@ function counter_initial (tap_phase: integer; m: integer; n: integer)
 variable R: integer;
 variable R1: real;
 begin
-    R1 := (real(abs(tap_phase)) * real(m))/(360.0 * real(n)) + 0.5;
+    R1 := (real(abs(tap_phase)) * real(m))/(360.0 * real(n)) + 0.6;
     -- Note NCSim VHDL had problem in rounding up for 0.5 - 0.99. 
     -- This checking will ensure that the rounding up is done.
     if (R1 >= 0.5) and (R1 <= 1.0) then
@@ -731,7 +895,7 @@ function counter_ph (tap_phase: integer; m: integer; n: integer) return integer 
 variable R: integer := 0;
 begin
     -- 0.5 is added for proper rounding of the tap_phase.
-    R := (integer(real(tap_phase * m / n)+ 0.5) REM 360)/45;
+    R := integer(real(integer(real(tap_phase * m / n)+ 0.5) REM 360)/45.0) rem 8;
 
     return R;
 end;
@@ -1567,16 +1731,16 @@ begin
             first_rising_edge := true;
         elsif (clk'event) then
             if (clk = '1' and first_rising_edge) then
-                first_rising_edge := false;
-                tmp_cout := clk;
-            elsif (not first_rising_edge) then
-                if (count < modulus) then
-                    count := count + 1;
-                else
-                    count := 1;
-                    tmp_cout := not tmp_cout;
-                end if;
+            first_rising_edge := false;
+            tmp_cout := clk;
+        elsif (not first_rising_edge) then
+            if (count < modulus) then
+                count := count + 1;
+            else
+                count := 1;
+                tmp_cout := not tmp_cout;
             end if;
+        end if;
         end if;
         cout <= transport tmp_cout after time_delay * 1 ps;
     end process;
@@ -1871,7 +2035,7 @@ ENTITY cycloneiii_pll is
         vco_phase_shift_step        : integer := 0;
         
         charge_pump_current         : integer := 10;
-        loop_filter_r               : string := "1.0";
+        loop_filter_r               : string := " 1.0";
         loop_filter_c               : integer := 0;
 
         
@@ -1911,9 +2075,11 @@ ENTITY cycloneiii_pll is
         test_volt_reg_output_mode_bits : integer := 0;
         test_volt_reg_output_voltage_bits : integer := 0;
         test_volt_reg_test_mode : string := "false";
-        vco_range_detector_high_bits : integer := 0;
-        vco_range_detector_low_bits : integer := 0;
-     
+        vco_range_detector_high_bits : integer := -1;
+        vco_range_detector_low_bits : integer := -1;
+        scan_chain_mif_file : string := "";
+
+        auto_settings : string  := "true";     
 -- Simulation only generics
         family_name                 : string  := "Cyclone III";
 
@@ -1954,7 +2120,7 @@ ENTITY cycloneiii_pll is
         pfdena                      : in std_logic := '1';
         scandata                    : in std_logic := '0';
         scanclk                     : in std_logic := '0';
-        scanclkena                  : in std_logic := '0';
+        scanclkena                  : in std_logic := '1';
         configupdate                : in std_logic := '0';
         clk                         : out std_logic_vector(4 downto 0);
         phasecounterselect          : in std_logic_vector(2 downto 0) := "000";
@@ -1980,8 +2146,8 @@ TYPE str_array1 is ARRAY(NATURAL RANGE <>) of string(1 to 9);
 TYPE std_logic_array is ARRAY(NATURAL RANGE <>) of std_logic;
 
 -- internal advanced parameter signals
-signal   i_vco_min      : integer;
-signal   i_vco_max      : integer;
+signal   i_vco_min      : integer := vco_min * (vco_post_scale/2);
+signal   i_vco_max      : integer := vco_max * (vco_post_scale/2);
 signal   i_vco_center   : integer;
 signal   i_pfd_min      : integer;
 signal   i_pfd_max      : integer;
@@ -1991,6 +2157,7 @@ signal   i_pfd_max      : integer;
  signal   c_low_val      : int_array(0 to 4) := (OTHERS => 1);
  signal   c_initial_val  : int_array(0 to 4) := (OTHERS => 1);
  signal   c_mode_val     : str_array(0 to 4);
+ signal   clk_num     : str_array(0 to 4);
 
 -- old values
  signal   c_high_val_old : int_array(0 to 4) := (OTHERS => 1);
@@ -2019,25 +2186,25 @@ signal   i_loop_filter_r        : integer;
 -- end internal advanced parameter signals
 
 -- CONSTANTS
-CONSTANT SCAN_CHAIN : integer := 144;
-CONSTANT GPP_SCAN_CHAIN : integer := 234;
-CONSTANT FAST_SCAN_CHAIN : integer := 180;
+CONSTANT    SCAN_CHAIN : integer := 144;
+CONSTANT    GPP_SCAN_CHAIN : integer := 234;
+CONSTANT    FAST_SCAN_CHAIN : integer := 180;
  CONSTANT cntrs : str_array(4 downto 0) := ("    C4", "    C3", "    C2", "    C1", "    C0");
-CONSTANT ss_cntrs : str_array(0 to 3) := ("     M", "    M2", "     N", "    N2");
+CONSTANT    ss_cntrs : str_array(0 to 3) := ("     M", "    M2", "     N", "    N2");
+            
+CONSTANT    loop_filter_c_arr : int_array(0 to 3) := (0,0,0,0);
+CONSTANT    fpll_loop_filter_c_arr : int_array(0 to 3) := (0,0,0,0);
+CONSTANT    charge_pump_curr_arr : int_array(0 to 15) := (0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
-CONSTANT loop_filter_c_arr : int_array(0 to 3) := (0,0,0,0);
-CONSTANT fpll_loop_filter_c_arr : int_array(0 to 3) := (0,0,0,0);
-CONSTANT charge_pump_curr_arr : int_array(0 to 15) := (0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-
-CONSTANT num_phase_taps : integer := 8;
+CONSTANT    num_phase_taps : integer := 8;
 -- signals
 
-signal vcc : std_logic := '1';
-
-signal fbclk       : std_logic;
-signal refclk      : std_logic;
-signal vco_over    : std_logic := '0';
-signal vco_under   : std_logic := '1';
+signal    vcc : std_logic := '1';
+          
+signal    fbclk       : std_logic;
+signal    refclk      : std_logic;
+signal    vco_over    : std_logic := '0';
+signal    vco_under   : std_logic := '1';
 
 signal pll_locked : boolean := false;
 
@@ -2046,63 +2213,65 @@ signal pll_locked : boolean := false;
 signal vco_out : std_logic_vector(7 downto 0) := (OTHERS => '0');
 
 -- signals to assign values to counter params
-signal m_val : integer := 1;
-signal n_val : integer := 1;
-signal m_ph_val : integer := 0;
-signal m_ph_initial : integer := 0;
-signal m_ph_val_tmp  : integer := 0;
-signal m_initial_val : integer := m_initial;
-
-signal m_mode_val : string(1 to 6) := "      ";
-signal n_mode_val : string(1 to 6) := "      ";
-signal lfc_val : integer := 0;
-signal cp_curr_val : integer := 0;
-signal lfr_val : string(1 to 2) := "  ";
-
-signal cp_curr_old_bit_setting : std_logic_vector(14 to 16) := (OTHERS => '0');
-signal cp_curr_val_bit_setting : std_logic_vector(14 to 16) := (OTHERS => '0');
-signal lfr_old_bit_setting : std_logic_vector(3 to 7) := (OTHERS => '0');
-signal lfr_val_bit_setting : std_logic_vector(3 to 7) := (OTHERS => '0');
-signal lfc_old_bit_setting : std_logic_vector(1 to 2) := (OTHERS => '0'); 
-signal lfc_val_bit_setting : std_logic_vector(1 to 2) := (OTHERS => '0');
-
-signal pll_reconfig_display_full_setting : boolean := FALSE; -- display full setting, change to true
--- old values
-signal m_val_old : integer := 1;
-signal n_val_old : integer := 1;
-signal m_mode_val_old : string(1 to 6) := "      ";
-signal n_mode_val_old : string(1 to 6) := "      ";
-signal m_ph_val_old : integer := 0;
-signal lfc_old : integer := 0;
-signal cp_curr_old : integer := 0;
-signal lfr_old : string(1 to 2) := "  ";
+signal    m_val : integer := 1;
+signal    n_val : integer := 1;
+signal    m_ph_val : integer := 0;
+signal    m_ph_initial : integer := 0;
+signal    m_ph_val_tmp  : integer := 0;
+signal    m_initial_val : integer := m_initial;
+         
+signal    m_mode_val : string(1 to 6) := "      ";
+signal    n_mode_val : string(1 to 6) := "      ";
+signal    lfc_val : integer := 0;
+signal    vco_cur : integer := vco_post_scale;
+signal    cp_curr_val : integer := 0;
+signal    lfr_val : string(1 to 2) := "  ";
+         
+signal    cp_curr_old_bit_setting : integer := charge_pump_current_bits;
+signal    cp_curr_val_bit_setting : std_logic_vector(2 downto 0) := (OTHERS => '0');
+signal    lfr_old_bit_setting : integer := loop_filter_r_bits;
+signal    lfr_val_bit_setting : std_logic_vector(4 downto 0) := (OTHERS => '0');
+signal    lfc_old_bit_setting : integer := loop_filter_c_bits; 
+signal    lfc_val_bit_setting : std_logic_vector(1 downto 0) := (OTHERS => '0');
+         
+signal    pll_reconfig_display_full_setting : boolean := FALSE; -- display full setting, change to true
+-- old    values
+signal    m_val_old : integer := 1;
+signal    n_val_old : integer := 1;
+signal    m_mode_val_old : string(1 to 6) := "      ";
+signal    n_mode_val_old : string(1 to 6) := "      ";
+signal    m_ph_val_old : integer := 0;
+signal    lfc_old : integer := 0;
+signal    vco_old : integer := 0;
+signal    cp_curr_old : integer := 0;
+signal    lfr_old : string(1 to 2) := "  ";
  signal num_output_cntrs : integer := 5;
-signal scanclk_period : time := 1 ps;
+signal    scanclk_period : time := 1 ps;
  signal scan_data : std_logic_vector(0 to 143) := (OTHERS => '0');
 
 
  signal clk_pfd : std_logic_vector(0 to 4);
-signal clk0_tmp : std_logic;
-signal clk1_tmp : std_logic;
-signal clk2_tmp : std_logic;
-signal clk3_tmp : std_logic;
-signal clk4_tmp : std_logic;
+signal    clk0_tmp : std_logic;
+signal    clk1_tmp : std_logic;
+signal    clk2_tmp : std_logic;
+signal    clk3_tmp : std_logic;
+signal    clk4_tmp : std_logic;
 
-signal update_conf_latches : std_logic := '0';
-signal update_conf_latches_reg : std_logic := '0';
+signal    update_conf_latches : std_logic := '0';
+signal    update_conf_latches_reg : std_logic := '0';
 
-signal clkin : std_logic := '0';
-signal gate_locked : std_logic := '0';
-signal pfd_locked : std_logic := '0';
-signal lock : std_logic := '0';
-signal about_to_lock : boolean := false;
-signal reconfig_err : boolean := false;
+signal    clkin : std_logic := '0';
+signal    gate_locked : std_logic := '0';
+signal    pfd_locked : std_logic := '0';
+signal    lock : std_logic := '0';
+signal    about_to_lock : boolean := false;
+signal    reconfig_err : boolean := false;
 
-signal inclk_c0 : std_logic;
-signal inclk_c1 : std_logic;
-signal inclk_c2 : std_logic;
-signal inclk_c3 : std_logic;
-signal inclk_c4 : std_logic;
+signal    inclk_c0 : std_logic;
+signal    inclk_c1 : std_logic;
+signal    inclk_c2 : std_logic;
+signal    inclk_c3 : std_logic;
+signal    inclk_c4 : std_logic;
 signal inclk_m : std_logic;
 signal devpor : std_logic;
 signal devclrn : std_logic;
@@ -2144,7 +2313,7 @@ signal reset_low : std_logic := '0';
 
 -- Phase Reconfig
 
-    SIGNAL phasecounterselect_reg   :  std_logic_vector(2 DOWNTO 0);
+ SIGNAL phasecounterselect_reg   :  std_logic_vector(2 DOWNTO 0);
 
 SIGNAL phaseupdown_reg          :  std_logic := '0';
 SIGNAL phasestep_reg            :  std_logic := '0';
@@ -2163,10 +2332,22 @@ signal schedule_vco : std_logic := '0';
 
 signal areset_ena_sig : std_logic := '0';
 signal pll_in_test_mode : boolean := false;
+signal pll_has_just_been_reconfigured : boolean := false;
 
  signal inclk_c_from_vco : std_logic_array(0 to 4);
 
 signal inclk_m_from_vco : std_logic;
+
+   SIGNAL inclk0_period              : time := 0 ps;
+   SIGNAL last_inclk0_period         : time := 0 ps;
+   SIGNAL last_inclk0_edge         : time := 0 ps;
+   SIGNAL first_inclk0_edge_detect : STD_LOGIC := '0';
+   SIGNAL inclk1_period              : time := 0 ps;
+   SIGNAL last_inclk1_period         : time := 0 ps;
+   SIGNAL last_inclk1_edge         : time := 0 ps;
+   SIGNAL first_inclk1_edge_detect : STD_LOGIC := '0';
+
+
 
 COMPONENT cycloneiii_mn_cntr
     PORT (
@@ -2285,6 +2466,37 @@ inclk_m <=  fbclk when m_test_source = 0 else
     -- in different simulation deltas.
     inclk1_tmp <= inclk1_ipd;
 
+    -- Calculate the inclk0 period
+   PROCESS
+   VARIABLE inclk0_period_tmp : time := 0 ps;
+   BEGIN
+   WAIT UNTIL (inclk0_ipd'EVENT AND inclk0_ipd = '1');
+      IF (first_inclk0_edge_detect = '0') THEN
+         first_inclk0_edge_detect <= '1';
+      ELSE
+         last_inclk0_period <= inclk0_period;
+         inclk0_period_tmp  := NOW - last_inclk0_edge;
+      END IF;
+      last_inclk0_edge <= NOW;
+      inclk0_period <= inclk0_period_tmp;
+   END PROCESS;
+   
+   
+       -- Calculate the inclk1 period
+   PROCESS
+   VARIABLE inclk1_period_tmp : time := 0 ps;
+   BEGIN
+   WAIT UNTIL (inclk1_ipd'EVENT AND inclk1_ipd = '1');
+      IF (first_inclk1_edge_detect = '0') THEN
+         first_inclk1_edge_detect <= '1';
+      ELSE
+         last_inclk1_period <= inclk1_period;
+         inclk1_period_tmp  := NOW - last_inclk1_edge;
+      END IF;
+      last_inclk1_edge <= NOW;
+      inclk1_period <= inclk1_period_tmp;
+   END PROCESS;
+
     process (inclk0_ipd, inclk1_tmp, clkswitch_ipd)
     variable input_value : std_logic := '0';
     variable current_clock : integer := 0;
@@ -2296,6 +2508,10 @@ inclk_m <=  fbclk when m_test_source = 0 else
     variable switch_over_count : integer := 0;
     variable active_clock : std_logic := '0';
     variable external_switch : boolean := false;
+    variable diff_percent_period : integer := 0;
+    variable buf : line;
+    variable switch_clock : boolean := false;
+
     begin
         if (now = 0 ps) then
             if (switch_over_type = "manual" and clkswitch_ipd = '1') then
@@ -2307,17 +2523,27 @@ inclk_m <=  fbclk when m_test_source = 0 else
             external_switch := true;
         elsif (switch_over_type = "manual") then
             if (clkswitch_ipd'event and clkswitch_ipd = '1') then
-                if (current_clock = 0) then
-                current_clock := 1;
-                active_clock := '1';
-                clkin <= transport inclk1_tmp;
-                elsif (current_clock = 1) then
-                current_clock := 0;
-                active_clock := '0';
-                clkin <= transport inclk0_ipd;
+                switch_clock := true;
+            elsif (clkswitch_ipd'event and clkswitch_ipd = '0') then
+                switch_clock := false;
             end if;
         end if;
+
+        if (switch_clock = true) then
+            if (inclk0_ipd'event or inclk1_tmp'event) then
+	            if (current_clock = 0) then
+	                current_clock := 1;
+	                active_clock := '1';
+	                clkin <= transport inclk1_tmp;
+				elsif (current_clock = 1) then
+	                current_clock := 0;
+	                active_clock := '0';
+	                clkin <= transport inclk0_ipd;
+	            end if;
+	            switch_clock := false;
+	        end if;
         end if;
+
         -- save the current inclk event value
         if (inclk0_ipd'event) then
             input_value := inclk0_ipd;
@@ -2385,9 +2611,20 @@ inclk_m <=  fbclk when m_test_source = 0 else
             if (input_value = '1' and enable_switch_over_counter = "on" and primary_clk_is_bad) then
                 switch_over_count := switch_over_count + 1;
             end if;
-            if (input_value = '0') then
+            if ((input_value = '0')) then
                 if (external_switch and (got_curr_clk_falling_edge_after_clkswitch or current_clk_is_bad)) or (primary_clk_is_bad and clkswitch_ipd /= '1' and (enable_switch_over_counter = "off" or switch_over_count = switch_over_counter)) then
                     got_curr_clk_falling_edge_after_clkswitch := false;
+                    
+                    if(inclk0_period > inclk1_period) then
+                        diff_percent_period := (( inclk0_period - inclk1_period ) * 100) / inclk1_period;
+                    else
+                        diff_percent_period := (( inclk1_period - inclk0_period ) * 100) / inclk0_period;
+                    end if;
+                     if((diff_percent_period > 20)and ( switch_over_type = "auto")) then
+                          WRITE(buf,string'("Warning : The input clock frequencies specified for the specified PLL are too far apart for auto-switch-over feature to work properly. Please make sure that the clock frequencies are 20 percent apart for correct functionality."));
+                          writeline(output, buf);
+                      end if;
+
                     if (current_clock = 0) then
                         current_clock := 1;
                     else
@@ -2397,8 +2634,20 @@ inclk_m <=  fbclk when m_test_source = 0 else
                     switch_over_count := 0;
                     external_switch := false;
                     current_clk_is_bad := false;
-                end if;
-       
+                else
+                    if(switch_over_type = "auto") then
+                        if(current_clock = 0 and clk0_is_bad = '1' and clk1_is_bad = '0' ) then
+                            current_clock := 1;
+                            active_clock := not active_clock;
+                        end if;
+                
+                        if(current_clock = 1 and clk0_is_bad = '0' and clk1_is_bad = '1' ) then
+                            current_clock := 0;
+                            active_clock := not active_clock;
+                        end if;
+                    end if;
+                end if;         
+                
             end if;
         end if;
 
@@ -2500,15 +2749,24 @@ inclk_c2 <= refclk when c2_test_source = 1 else
                 mode           => c_mode_val(4),
                 ph_tap         => c_ph_val(4));
 
-                
+            
 
-                
+            
 
-                
+            
 
-                
+            
+
+            
     
-                
+    process(scandone_tmp, lock)
+    begin
+        if (scandone_tmp'event and (scandone_tmp = '1')) then
+            pll_has_just_been_reconfigured <= true;
+        elsif (lock'event and (lock = '1')) then
+            pll_has_just_been_reconfigured <= false;
+        end if;
+    end process;
     
     process(inclk_c0, inclk_c1, areset_ipd, sig_stop_vco)
     variable c0_got_first_rising_edge : boolean := false;
@@ -2609,6 +2867,8 @@ inclk_c2 <= refclk when c2_test_source = 1 else
                 writeline (output, buf);
 
                 for i in 0 to (num_output_cntrs-1) loop
+                    write (buf, clk_num(i));
+                    write (buf, string'(" : "));
                     write (buf, cntrs(i));
                     write (buf, string'(" :   high = "));
                     write (buf, c_high_val(i));
@@ -2654,31 +2914,48 @@ inclk_c2 <= refclk when c2_test_source = 1 else
                 write (buf, lfr_old);
                 write (buf, string'(" ) "));
                 writeline (output, buf);
+                
+                write (buf, string'("    VCO_Post_Scale = "));
+                write (buf, vco_cur);
+                write (buf, string'(" ( "));
+                write (buf, vco_old);
+                write (buf, string'(" ) "));
+                writeline (output, buf);
+
+                
                 ELSE
                 write (buf, string'("    Charge Pump Current  (bit setting) = "));
                 write (buf, alt_conv_integer(cp_curr_val_bit_setting));
                 write (buf, string'(" ( "));
-                write (buf, alt_conv_integer(cp_curr_old_bit_setting));
+                write (buf, cp_curr_old_bit_setting);
                 write (buf, string'(" ) "));
                 writeline (output, buf);
 
                 write (buf, string'("    Loop Filter Capacitor (bit setting)  = "));
                 write (buf, alt_conv_integer(lfc_val_bit_setting));
                 write (buf, string'(" ( "));
-                write (buf, alt_conv_integer(lfc_old_bit_setting));
+                write (buf, lfc_old_bit_setting);
                 write (buf, string'(" ) "));
                 writeline (output, buf);
 
                 write (buf, string'("    Loop Filter Resistor (bit setting)  = "));
                 write (buf, alt_conv_integer(lfr_val_bit_setting));
                 write (buf, string'(" ( "));
-                write (buf, alt_conv_integer(lfr_old_bit_setting));
+                write (buf, lfr_old_bit_setting);
                 write (buf, string'(" ) "));
                 writeline (output, buf);
+                
+                write (buf, string'("    VCO_Post_Scale = "));
+                write (buf, vco_cur);
+                write (buf, string'(" ( "));
+                write (buf, vco_old);
+                write (buf, string'(" ) "));
+                writeline (output, buf);
+                
                 END IF;
-                cp_curr_old_bit_setting <= cp_curr_val_bit_setting;
-                lfc_old_bit_setting <= lfc_val_bit_setting;
-                lfr_old_bit_setting <= lfr_val_bit_setting;
+                cp_curr_old_bit_setting <= alt_conv_integer(cp_curr_val_bit_setting);
+                lfc_old_bit_setting <= alt_conv_integer(lfc_val_bit_setting);
+                lfr_old_bit_setting <= alt_conv_integer(lfr_val_bit_setting);
             else ASSERT false REPORT "Errors were encountered during PLL reprogramming. Please refer to error/warning messages above." severity warning;
             end if;
         end if;
@@ -2905,6 +3182,34 @@ inclk_c2 <= refclk when c2_test_source = 1 else
         return index;
     end extract_cntr_index;
 
+    function output_cntr_num (arg:string) return string is
+    variable str : string(1 to 6) := "unused";
+    begin
+        if (arg = "c0") then
+            str := "  clk0";
+        elsif (arg = "c1") then
+            str := "  clk1";
+        elsif (arg = "c2") then
+            str := "  clk2";
+        elsif (arg = "c3") then
+            str := "  clk3";
+        elsif (arg = "c4") then
+            str := "  clk4";
+        elsif (arg = "c5") then
+            str := "  clk5";
+        elsif (arg = "c6") then
+            str := "  clk6";
+        elsif (arg = "c7") then
+            str := "  clk7";
+        elsif (arg = "c8") then
+            str := "  clk8";
+        elsif (arg = "c9") then
+            str := "  clk9";
+        else str := "unused";
+        end if;
+        return str;
+    end output_cntr_num;
+
     begin
         IF (areset_ipd'EVENT AND areset_ipd = '1') then
             c_ph_val <= i_c_ph;
@@ -2925,6 +3230,11 @@ inclk_c2 <= refclk when c2_test_source = 1 else
                 clk0_cntr  := extract_cntr_string(clk0_counter);
             end if;
 
+                clk_num(4)  <= output_cntr_num(clk4_counter);
+                clk_num(3)  <= output_cntr_num(clk3_counter);
+                clk_num(2)  <= output_cntr_num(clk2_counter);
+                clk_num(1)  <= output_cntr_num(clk1_counter);
+                clk_num(0)  <= output_cntr_num(clk0_counter);
             
             i_clk0_counter <= extract_cntr_index(clk0_cntr);
             i_clk1_counter <= extract_cntr_index(clk1_cntr);
@@ -2961,6 +3271,10 @@ inclk_c2 <= refclk when c2_test_source = 1 else
                                 i_clk2_div_by, i_clk3_div_by,
                                 i_clk4_div_by, 
                                  1,1,1,1,1,
+                                clk0_counter, clk1_counter,
+                                clk2_counter, clk3_counter,
+                                clk4_counter, 
+                                 "unused","unused","unused","unused","unused",
                         i_m, i_n);
                 elsif (((pll_type = "fast") or (pll_type = "lvds") OR (pll_type = "left_right")) and ((vco_multiply_by /= 0) and (vco_divide_by /= 0))) then
                     i_n := vco_divide_by;
@@ -3160,6 +3474,7 @@ inclk_c2 <= refclk when c2_test_source = 1 else
                 cp_curr_old <= cp_curr_val;    
                 lfc_old <= lfc_val;    
                 lfr_old <= lfr_val;    
+                vco_old <= vco_cur;   
                 -- LF unused : bit 0,1
                 -- LF Capacitance : bits 2,3 : all values are legal
                 buf_scan_data := scan_data(2 TO 3);
@@ -3189,11 +3504,17 @@ inclk_c2 <= refclk when c2_test_source = 1 else
                     lfr_val <= "01";
                 END IF;
             
-                IF (NOT (((scan_data(4 TO 8) = "00000") OR (scan_data(4 TO 8) = "00100")) OR ((scan_data(4 TO 8) = "10000") OR (scan_data(4 TO 8) = "10100")) OR ((scan_data(4 TO 8) = "11000") OR (scan_data(4 TO 8) = "11011")) OR ((scan_data(4 TO 8) = "11100") OR (scan_data(4 TO 8) = "11110")))) THEN
-                    WRITE(buf, string'("Illegal bit settings for Loop Filter Resistance. Legal bit values range from 000000 to 001111, 011000 to 011111, 101000 to 101111 and 111000 to 111111. Reconfiguration may not work."));   
-                    writeline(output,buf);
-                    reconfig_err <= TRUE;    
-                END IF;
+             
+                -- VCO post scale assignment   
+                if (scan_data(9) = '1') then  -- vco_post_scale = 1
+                    i_vco_max <= vco_max/2;
+                    i_vco_min <= vco_min/2;
+                    vco_cur <= 1;
+                else
+                    i_vco_max <= vco_max;
+                    i_vco_min <= vco_min;  
+                    vco_cur <= 2;
+                end if;             
                 -- CP
                 -- Bit 9 : CRBYPASS
                 -- Bit 10-14 : unused
@@ -3221,40 +3542,40 @@ inclk_c2 <= refclk when c2_test_source = 1 else
                 -- 1. Mode - bypass (bit 18)
                 
                 IF (scan_data(18) = '1') THEN
-                    m_mode_val <= "bypass";   
+                    n_mode_val <= "bypass"; 
                 -- 3. Mode - odd/even (bit 27)
                 ELSIF (scan_data(27) = '1') THEN
-                    m_mode_val <= "   odd";    
+                    n_mode_val <= "   odd";
                 ELSE
-                    m_mode_val <= "  even";  
+                    n_mode_val <= "  even"; 
                 END IF;
         
                 -- 2. High (bit 19-26)
                 
-                m_hi := scan_data(19 TO 26);    
+                n_hi := scan_data(19 TO 26);    
                 
                 -- 4. Low (bit 28-35)
                 
-                m_lo := scan_data(28 TO 35);    
+                n_lo := scan_data(28 TO 35);    
                 -- N counter
                 -- 1. Mode - bypass (bit 36)
                 
                 IF (scan_data(36) = '1') THEN
-                    n_mode_val <= "bypass";    
+                    m_mode_val <= "bypass";    
                 -- 3. Mode - odd/even (bit 45)
                 ELSIF  (scan_data(45) = '1') THEN
-                    n_mode_val <= "   odd";    
+                    m_mode_val <= "   odd"; 
                 ELSE
-                    n_mode_val <= "  even";    
+                    m_mode_val <= "  even";   
                 END IF;
         
                 -- 2. High (bit 37-44)
                 
-                n_hi := scan_data(37 TO 44);    
+                m_hi := scan_data(37 TO 44);    
                 
                 -- 4. Low (bit 46-53)
                 
-                n_lo := scan_data(46 TO 53);    
+                m_lo := scan_data(46 TO 53);    
                 -- C counters (start bit 54) bit 1:mode(bypass),bit 2-9:high,bit 10:mode(odd/even),bit 11-18:low
                 
                 i := 0;
@@ -3275,6 +3596,8 @@ inclk_c2 <= refclk when c2_test_source = 1 else
                     c_hval(i) := alt_conv_integer(high);
                     IF (c_hval(i) /= 0) THEN
                         c_high_val_tmp(i) := c_hval(i);
+                    ELSE
+                        c_high_val_tmp(i) := alt_conv_integer("000000001");
                     END IF;
                     
                     -- 4. Low 
@@ -3283,30 +3606,41 @@ inclk_c2 <= refclk when c2_test_source = 1 else
                     c_lval(i) := alt_conv_integer(low);
                     IF (c_lval(i) /= 0) THEN
                         c_low_val_tmp(i) := c_lval(i);
+                    ELSE
+                         c_low_val_tmp(i) := alt_conv_integer("000000001");
                     END IF;
                     i := i + 1;
                 END LOOP;
         -- Legality Checks
                
                 --  M counter value
-                  
-                IF ((m_hi /= m_lo) AND (scan_data(18) /= '1')) THEN
+    IF(scan_data(36) /= '1') THEN
+       IF ((m_hi /= m_lo) and (scan_data(45) /= '1')) THEN           
                     reconfig_err <= TRUE;    
                     WRITE(buf,string'("Warning : The M counter of the " & family_name & " Fast PLL should be configured for 50%% duty cycle only. In this case the HIGH and LOW moduli programmed will result in a duty cycle other than 50%%, which is illegal. Reconfiguration may not work"));   
                     writeline(output, buf);
                 ELSIF (m_hi /= "00000000") THEN
                     m_val_tmp := alt_conv_integer(m_hi) + alt_conv_integer(m_lo);    
+                ELSE
+                    m_val_tmp := alt_conv_integer("000000001");
                 END IF;
-                
+                ELSE
+                    m_val_tmp := alt_conv_integer("10000000");
+                END IF;
                 -- N counter value
-                IF ((n_hi /= n_lo) AND (scan_data(36) /= '1')) THEN
+    IF(scan_data(18) /= '1') THEN             
+         IF ((n_hi /= n_lo)and (scan_data(27) /= '1')) THEN         
                     reconfig_err <= TRUE;    
                     WRITE(buf,string'("Warning : The N counter of the " & family_name & " Fast PLL should be configured for 50%% duty cycle only. In this case the HIGH and LOW moduli programmed will result in a duty cycle other than 50%%, which is illegal. Reconfiguration may not work"));   
                     writeline(output, buf);
                 ELSIF (n_hi /= "00000000") THEN
                     n_val <= alt_conv_integer(n_hi) + alt_conv_integer(n_lo);    
+                ELSE
+                    n_val <= alt_conv_integer("000000001");
                 END IF;
-                
+                ELSE
+                    n_val <= alt_conv_integer("10000000");
+                END IF;
                 -- TODO : Give warnings/errors in the following cases?
                 -- 1. Illegal counter values (error)
                 -- 2. Change of mode (warning)
@@ -3640,6 +3974,7 @@ BEGIN
           -- start reconfiguration
            IF (phasecounterselect_ipd < "111")  THEN -- no counters selected
              IF (phasecounterselect_ipd = "000") THEN
+                            i := 0;
                             WHILE (i < num_output_cntrs) LOOP
                                 c_ph := c_ph_val(i);
                                 IF (phaseupdown_ipd = '1') THEN
@@ -3797,6 +4132,8 @@ END PROCESS;
 
             if (areset_ipd = '1') then
                 pll_is_in_reset := true;
+                got_first_refclk := false;
+                got_second_refclk := false;
             end if;
 
             -- drop VCO taps to 0
@@ -3960,7 +4297,7 @@ if (refclk'event and refclk = '1' and areset_ipd = '0') then
             cycles_pfd_low := 0;
             if (pfd_locked = '0') then
                 if (cycles_pfd_high = lock_high) then
-                    assert false report family_name & " PLL locked in test mode on PFD enable assertion.";
+                    assert false report family_name & " PLL locked in test mode on PFD enable assertion." severity warning;
                     pfd_locked <= '1';
                 end if;
                 cycles_pfd_high := cycles_pfd_high + 1;
@@ -3971,7 +4308,7 @@ if (refclk'event and refclk = '1' and areset_ipd = '0') then
             cycles_pfd_high := 0;
             if (pfd_locked = '1') then
                 if (cycles_pfd_low = lock_low) then
-                    assert false report family_name & " PLL lost lock in test mode on PFD enable de-assertion.";
+                    assert false report family_name & " PLL lost lock in test mode on PFD enable de-assertion." severity warning;
                     pfd_locked <= '0';
                 end if;
                 cycles_pfd_low := cycles_pfd_low + 1;
@@ -3990,15 +4327,15 @@ if (refclk'event and refclk = '1' and areset_ipd = '0') then
 
                 -- check if incoming freq. will cause VCO range to be
                 -- exceeded
-                if ( (vco_max /= 0 and vco_min /= 0 and pfdena_ipd = '1') and
-                    (((refclk_period/1 ps)/loop_xplier > vco_max) or
-                    ((refclk_period/1 ps)/loop_xplier < vco_min)) ) then
+                if ( (i_vco_max /= 0 and i_vco_min /= 0 and pfdena_ipd = '1') and
+                    (((refclk_period/1 ps)/loop_xplier > i_vco_max) or
+                    ((refclk_period/1 ps)/loop_xplier < i_vco_min)) ) then
                     if (pll_is_locked) then
-                        if ((refclk_period/1 ps)/loop_xplier > vco_max) then
+                        if ((refclk_period/1 ps)/loop_xplier > i_vco_max) then
                            assert false report "Input clock freq. is over VCO range. " & family_name & " PLL may lose lock" severity warning;
                            vco_over <= '1';
                         end if;
-                        if ((refclk_period/1 ps)/loop_xplier < vco_min) then
+                        if ((refclk_period/1 ps)/loop_xplier < i_vco_min) then
                            assert false report "Input clock freq. is under VCO range. " & family_name & " PLL may lose lock" severity warning;
                            vco_under <= '1';
                         end if;
@@ -4011,11 +4348,11 @@ if (refclk'event and refclk = '1' and areset_ipd = '0') then
                             assert false report family_name & " PLL lost lock." severity note;
                         end if;
                     elsif (not no_warn) then
-                        if ((refclk_period/1 ps)/loop_xplier > vco_max) then
+                        if ((refclk_period/1 ps)/loop_xplier > i_vco_max) then
                            assert false report "Input clock freq. is over VCO range. " & family_name & " PLL may lose lock" severity warning;
                            vco_over <= '1';
                         end if;
-                        if ((refclk_period/1 ps)/loop_xplier < vco_min) then
+                        if ((refclk_period/1 ps)/loop_xplier < i_vco_min) then
                            assert false report "Input clock freq. is under VCO range. " & family_name & " PLL may lose lock" severity warning;
                            vco_under <= '1';
                         end if;
@@ -4027,6 +4364,7 @@ if (refclk'event and refclk = '1' and areset_ipd = '0') then
                     vco_over  <= '0';
                     vco_under <= '0';
                     inclk_out_of_range := false;
+                    no_warn := false;
                 end if;
             end if;
         end if;
@@ -4052,7 +4390,9 @@ if (refclk'event and refclk = '1' and areset_ipd = '0') then
             end if;
 
             -- need refclk_period here, so initialized to proper value above
-            if ( ( (now - refclk_time > 1.5 * refclk_period) and pfdena_ipd = '1' and pll_is_locked) or ( (now - refclk_time > 5 * refclk_period) and pfdena_ipd = '1') ) then
+            if ( ( (now - refclk_time > 1.5 * refclk_period) and pfdena_ipd = '1' and pll_is_locked) or
+                ( (now - refclk_time > 5 * refclk_period) and pfdena_ipd = '1' and pll_has_just_been_reconfigured = false) or
+                ( (now - refclk_time > 50 * refclk_period) and pfdena_ipd = '1' and pll_has_just_been_reconfigured = true) ) then
                 stop_vco := true;
                 -- reset
                 got_first_refclk := false;
@@ -4061,7 +4401,10 @@ if (refclk'event and refclk = '1' and areset_ipd = '0') then
                 if (pll_is_locked) then
                     pll_is_locked := false;
                     locked_tmp := '0';
-                    assert false report family_name & " PLL lost lock due to loss of input clock" severity note;
+                    assert false report family_name & " PLL lost lock due to loss of input clock or the input clock is not detected within the allowed time frame." severity note;
+                    if ((i_vco_max = 0) and (i_vco_min = 0)) then
+                        assert false report "Please run timing simulation to check whether the input clock is operating within the supported VCO range or not." severity note;
+                    end if;
                 end if;
                 cycles_to_lock := 0;
                 cycles_to_unlock := 0;
@@ -4107,6 +4450,9 @@ if (refclk'event and refclk = '1' and areset_ipd = '0') then
                         vco_period_was_phase_adjusted := false;
                         phase_adjust_was_scheduled := false;
                         assert false report family_name & " PLL lost lock." severity note;
+                        got_first_refclk := false;
+                        got_first_fbclk := false;
+                        got_second_refclk := false;
                     end if;
                 end if;
                 if ( abs(refclk_period - fbclk_period) <= 2 ps ) then
@@ -4203,7 +4549,9 @@ if (refclk'event and refclk = '1' and areset_ipd = '0') then
 scandataout <= scandata_out;
 scandone <= NOT scandone_tmp;
 phasedone <= NOT update_phase;
-
+vcooverrange <= 'Z' WHEN (vco_range_detector_high_bits = -1) ELSE vco_over;
+vcounderrange <= 'Z' WHEN (vco_range_detector_low_bits = -1) ELSE vco_under;
+fbout <= fbclk;
 end vital_pll;
 -- END ARCHITECTURE VITAL_PLL
 ---------------------------------------------------------------------
@@ -4473,7 +4821,7 @@ asdatadelaybuffer1: cycloneiii_and1
                      Tviol_sclr_clk or Tviol_sload_clk or Tviol_ena_clk;
     
     
-        if ((devpor = '0') or (devclrn = '0') or (clrn_ipd = '1'))  then
+        if ((devpor = '0') or (devclrn = '0') or (clrn_ipd = '0'))  then
             iq := '0';
         elsif (aload_ipd = '1') then
             iq := asdata_dly1;
@@ -4580,7 +4928,7 @@ BEGIN
      VitalWireDelay (stall_ipd, stall, tipd_stall);
 END BLOCK;
 
--- REMCYCLONEIII PROCESS (d_ipd,ena_ipd,clk_ipd,aclr_ipd,devclrn,devpor)
+-- REMCUDA PROCESS (d_ipd,ena_ipd,clk_ipd,aclr_ipd,devclrn,devpor)
     PROCESS (d_ipd,ena_ipd,stall_ipd,clk_ipd,aclr_ipd,devclrn,devpor)
 VARIABLE Tviol_clk_ena        : STD_ULOGIC := '0';
 VARIABLE Tviol_clk_aclr       : STD_ULOGIC := '0';
@@ -4722,9 +5070,9 @@ ATTRIBUTE VITAL_Level0 OF cycloneiii_ram_pulse_generator:ENTITY IS TRUE;
 END cycloneiii_ram_pulse_generator;
 
 ARCHITECTURE pgen_arch OF cycloneiii_ram_pulse_generator IS
-ATTRIBUTE VITAL_Level0 OF pgen_arch:ARCHITECTURE IS TRUE;
 SIGNAL clk_ipd,ena_ipd : STD_LOGIC;
 SIGNAL state : STD_LOGIC;
+ATTRIBUTE VITAL_Level0 OF pgen_arch:ARCHITECTURE IS TRUE;
 BEGIN
 
 WireDelay : BLOCK
@@ -4833,6 +5181,7 @@ ENTITY cycloneiii_ram_block IS
         clk1_input_clock_enable  : STRING := "none"; -- ena1,ena3,none
         clk1_core_clock_enable   : STRING := "none"; -- ena1,ena3,none
         clk1_output_clock_enable : STRING := "none"; -- ena1,none
+	-- REMStratix IV -- REMArria II GX -- REMHardCopy III clock_duty_cycle_dependence : STRING := "Auto";
         mem_init0 : BIT_VECTOR  := X"0";
         mem_init1 : BIT_VECTOR  := X"0";
         mem_init2 : BIT_VECTOR := X"0";
@@ -5058,6 +5407,7 @@ CONSTANT mem_x : mem_type     := (OTHERS => (OTHERS => (OTHERS => 'X')));
 CONSTANT row_x : mem_row_type := (OTHERS => (OTHERS => 'X'));
 CONSTANT col_x : mem_col_type := (OTHERS => 'X');
 SIGNAL   mem_data : mem_row_type;
+SIGNAL   old_mem_data : mem_row_type;
 SIGNAL   mem_unit_data : mem_col_type;
 
 -- latches
@@ -5145,7 +5495,7 @@ BEGIN
                                                              both_new_data_same_port
                                                              )) ELSE
                                          " DW";
-    delay_write_pulse_a <= '1' WHEN (hw_write_mode_a /= " FW") ELSE '0';
+     delay_write_pulse_a <= '1' WHEN (hw_write_mode_a /= " FW") ELSE '0';
     delay_write_pulse_b <= '1' WHEN (hw_write_mode_b /= " FW") ELSE '0' ;
     read_before_write_a <= (hw_write_mode_a = "R+W");
     read_before_write_b <= (hw_write_mode_b = "R+W");
@@ -5529,9 +5879,12 @@ BEGIN
     TYPE rw_type IS ARRAY (port_type'HIGH DOWNTO port_type'LOW) OF BOOLEAN;
     VARIABLE addr_range_init,row,col,index :  INTEGER;
     VARIABLE mem_init_std :  STD_LOGIC_VECTOR((port_a_last_address - port_a_first_address + 1)*port_a_data_width - 1 DOWNTO 0);
+    VARIABLE mem_init :  bit_vector(mem_init4'length + mem_init3'length + mem_init2'length + mem_init1'length + mem_init0'length - 1 DOWNTO 0);
+
     VARIABLE mem_val : mem_type; 
     -- read/write
     VARIABLE mem_data_p : mem_row_type;
+    VARIABLE old_mem_data_p : mem_row_type;
     VARIABLE row_prime,col_prime  : INTEGER;
     VARIABLE access_same_location : BOOLEAN;
     VARIABLE read_during_write    : rw_type;
@@ -5576,7 +5929,8 @@ BEGIN
                 addr_range_init := port_b_last_address - port_b_first_address + 1;
             END IF;
             IF (init_file_layout = "port_a" OR init_file_layout = "port_b") THEN
-                 mem_init_std := to_stdlogicvector(mem_init4 & mem_init3 & mem_init2 & mem_init1 & mem_init0)((port_a_last_address - port_a_first_address + 1)*port_a_data_width - 1 DOWNTO 0);
+                 mem_init := mem_init4 & mem_init3 & mem_init2 & mem_init1 & mem_init0;
+                mem_init_std := to_stdlogicvector(mem_init) ((port_a_last_address - port_a_first_address + 1)*port_a_data_width - 1 DOWNTO 0);
                 FOR row IN 0 TO addr_range_init - 1 LOOP
                     FOR col IN 0 to num_cols - 1 LOOP
                         index := row * data_width;
@@ -5629,6 +5983,7 @@ BEGIN
         -- Write stage 2 : actual data to memory
     	IF (write_pulse(primary)'EVENT) THEN
     	    IF (write_pulse(primary) = '1') THEN
+    	        old_mem_data_p := mem(addr_prime_reg);
     	        mem_data_p := mem(addr_prime_reg);
     	        FOR i IN 0 TO num_cols - 1 LOOP
     	            mem_data_p(i) := mem_data_p(i) XOR 
@@ -5636,7 +5991,7 @@ BEGIN
     	        END LOOP;
     	        read_during_write(secondary) := (access_same_location AND read_pulse(secondary)'EVENT AND read_pulse(secondary) = '1');
     	        IF (read_during_write(secondary)) THEN    
-    	            read_latch.sec <= mem_data_p(col_sec);
+    	            read_latch.sec <= old_mem_data_p(col_sec);
     	        ELSE
     	            mem_data <= mem_data_p;
     	        END IF;
@@ -5920,12 +6275,12 @@ ENTITY cycloneiii_mac_data_reg IS
              tipd_clk : VitalDelayType01 := DefPropDelay01;
              tipd_ena : VitalDelayType01 := DefPropDelay01;
              tipd_aclr : VitalDelayType01 := DefPropDelay01;
-             tsetup_data_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
-             thold_data_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+      		 tsetup_data_clk_noedge_posedge : VitalDelayArrayType(17 downto 0) := (OTHERS => DefSetupHoldCnst);
+      		 thold_data_clk_noedge_posedge : VitalDelayArrayType(17 downto 0) := (OTHERS => DefSetupHoldCnst);
              tsetup_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
-             thold_ena_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
-             tpd_aclr_dataout_posedge : VitalDelayType01 := DefPropDelay01;
-             tpd_clk_dataout_posedge : VitalDelayType01 := DefPropDelay01;
+      		 thold_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
+             tpd_aclr_dataout_posedge : VitalDelayArrayType01(17 downto 0) := (OTHERS => DefPropDelay01);
+             tpd_clk_dataout_posedge : VitalDelayArrayType01(17 downto 0) := (OTHERS => DefPropDelay01);
              data_width : integer := 18
             );    
     PORT (
@@ -5939,7 +6294,7 @@ ENTITY cycloneiii_mac_data_reg IS
          );
 END cycloneiii_mac_data_reg;
 
-ARCHITECTURE vital_cycloneiii_mac_data_reg OF cycloneiii_mac_data_reg IS
+ARCHITECTURE vital_cuda_mac_data_reg OF cycloneiii_mac_data_reg IS
 
     SIGNAL data_ipd : std_logic_vector(17 DOWNTO 0);   
     SIGNAL aclr_ipd : std_logic;   
@@ -5962,7 +6317,21 @@ BEGIN
         VitalWireDelay (ena_ipd, ena, tipd_ena);
     end block;
 
-    VITALtiming :  process (clk_ipd, aclr_ipd, data_ipd)
+        
+    process (clk_ipd, aclr_ipd, data_ipd)
+	begin
+    if (aclr_ipd = '1') then
+            dataout_tmp <= (OTHERS => '0');
+        elsif (clk_ipd'event and clk_ipd = '1' and (ena_ipd = '1')) then
+            dataout_tmp <= data_ipd;
+        end if;
+
+    end process;
+    
+    sh: block
+		begin
+		g0 : for i in data'range generate
+    	process (data_ipd(i),clk_ipd,ena_ipd)
     variable Tviol_data_clk : std_ulogic := '0';
     variable TimingData_data_clk : VitalTimingDataType := VitalTimingDataInit;
     variable Tviol_ena_clk : std_ulogic := '0';
@@ -5977,14 +6346,14 @@ BEGIN
             VitalSetupHoldCheck (
                 Violation       => Tviol_data_clk,
                 TimingData      => TimingData_data_clk,
-                TestSignal      => data,
-                TestSignalName  => "D",
+                TestSignal      => data_ipd(i),
+                TestSignalName  => "DATA(i)",
                 RefSignal       => clk_ipd,
                 RefSignalName   => "CLK",
-                SetupHigh       => tsetup_data_clk_noedge_posedge,
-                SetupLow        => tsetup_data_clk_noedge_posedge,
-                HoldHigh        => thold_data_clk_noedge_posedge,
-                HoldLow         => thold_data_clk_noedge_posedge,
+                SetupHigh       => tsetup_data_clk_noedge_posedge(i),
+                SetupLow        => tsetup_data_clk_noedge_posedge(i),
+                HoldHigh        => thold_data_clk_noedge_posedge(i),
+                HoldLow         => thold_data_clk_noedge_posedge(i),
                 CheckEnabled    => TO_X01((aclr) OR
                                           (NOT ena)) /= '1',
                 RefTransition   => '/',
@@ -6011,13 +6380,9 @@ BEGIN
             
         end if;
 
-        if (aclr_ipd = '1') then
-            dataout_tmp <= (OTHERS => '0');
-        elsif (clk_ipd'event and clk_ipd = '1' and (ena_ipd = '1')) then
-            dataout_tmp <= data_ipd;
-        end if;
-
-    end process;
+    END PROCESS;
+    end generate g0;
+    end block;
 
     ----------------------
     --  Path Delay Section
@@ -6031,8 +6396,8 @@ BEGIN
             VitalPathDelay01 (OutSignal => dataout(i),
                               OutSignalName => "DATAOUT",
                               OutTemp => dataout_tmp(i),
-                              Paths => (0 => (clk_ipd'last_event,  tpd_clk_dataout_posedge,  TRUE),
-                                        1 => (aclr_ipd'last_event, tpd_aclr_dataout_posedge, TRUE)),
+                              Paths => (0 => (clk_ipd'last_event,  tpd_clk_dataout_posedge(i),  TRUE),
+                                        1 => (aclr_ipd'last_event, tpd_aclr_dataout_posedge(i), TRUE)),
                               GlitchData => dataout_VitalGlitchData,
                               Mode => DefGlitchMode,
                               XOn  => XOn,
@@ -6041,7 +6406,7 @@ BEGIN
         end generate;
     end block;
 
-END vital_cycloneiii_mac_data_reg;
+END vital_cuda_mac_data_reg;
 
 --------------------------------------------------------------------
 --
@@ -6211,10 +6576,10 @@ ENTITY cycloneiii_mac_mult_internal IS
                                    := (OTHERS => DefPropDelay01);
              tipd_signa : VitalDelayType01 := DefPropDelay01;
              tipd_signb : VitalDelayType01 := DefPropDelay01;
-             tpd_dataa_dataout : VitalDelayType01 := DefPropDelay01;
-             tpd_datab_dataout : VitalDelayType01 := DefPropDelay01;
-             tpd_signa_dataout : VitalDelayType01 := DefPropDelay01;
-             tpd_signb_dataout : VitalDelayType01 := DefPropDelay01;
+             tpd_dataa_dataout : VitalDelayArrayType01(18*36 -1 downto 0) :=(others => DefPropDelay01);
+             tpd_datab_dataout : VitalDelayArrayType01(18*36 -1 downto 0) :=(others => DefPropDelay01);
+             tpd_signa_dataout : VitalDelayArrayType01(35 downto 0) :=(others => DefPropDelay01);
+             tpd_signb_dataout : VitalDelayArrayType01(35 downto 0) :=(others => DefPropDelay01);
              dataa_width : integer := 18;    
              datab_width : integer := 18
             );
@@ -6227,7 +6592,7 @@ ENTITY cycloneiii_mac_mult_internal IS
          );   
 END cycloneiii_mac_mult_internal;
 
-ARCHITECTURE vital_cycloneiii_mac_mult_internal OF cycloneiii_mac_mult_internal IS
+ARCHITECTURE vital_cuda_mac_mult_internal OF cycloneiii_mac_mult_internal IS
 
     -- Internal variables
     SIGNAL dataa_ipd : std_logic_vector(17 DOWNTO 0);   
@@ -6291,10 +6656,10 @@ BEGIN
               VitalPathDelay01 (OutSignal => dataout(i),
                                 OutSignalName => "dataout",
                                 OutTemp => dataout_tmp(i),
-                                Paths => (0 => (dataa_ipd'last_event, tpd_dataa_dataout, TRUE),
-                                          1 => (datab_ipd'last_event, tpd_datab_dataout, TRUE),
-                                          2 => (signa'last_event, tpd_signa_dataout, TRUE),
-                                          3 => (signb'last_event, tpd_signb_dataout, TRUE)),
+                                Paths => (0 => (dataa_ipd'last_event, tpd_dataa_dataout(i), TRUE),
+                                          1 => (datab_ipd'last_event, tpd_datab_dataout(i), TRUE),
+                                          2 => (signa'last_event, tpd_signa_dataout(i), TRUE),
+                                          3 => (signb'last_event, tpd_signb_dataout(i), TRUE)),
                                 GlitchData => dataout_VitalGlitchData,
                                 Mode => DefGlitchMode,
                                 MsgOn => FALSE,
@@ -6303,7 +6668,7 @@ BEGIN
         end generate;
     end block;
 
-END vital_cycloneiii_mac_mult_internal;
+END vital_cuda_mac_mult_internal;
 
 --------------------------------------------------------------------
 --
@@ -6355,7 +6720,7 @@ ENTITY cycloneiii_mac_mult IS
          );   
 END cycloneiii_mac_mult;
 
-ARCHITECTURE vital_cycloneiii_mac_mult OF cycloneiii_mac_mult IS
+ARCHITECTURE vital_cuda_mac_mult OF cycloneiii_mac_mult IS
 
     COMPONENT cycloneiii_mac_data_reg
         GENERIC (
@@ -6369,12 +6734,12 @@ ARCHITECTURE vital_cycloneiii_mac_mult OF cycloneiii_mac_mult IS
                  tipd_clk : VitalDelayType01 := DefPropDelay01;
                  tipd_ena : VitalDelayType01 := DefPropDelay01;
                  tipd_aclr : VitalDelayType01 := DefPropDelay01;
-                 tsetup_data_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
-                 thold_data_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
+      		 tsetup_data_clk_noedge_posedge : VitalDelayArrayType(17 downto 0) := (OTHERS => DefSetupHoldCnst);
+      		 thold_data_clk_noedge_posedge : VitalDelayArrayType(17 downto 0) := (OTHERS => DefSetupHoldCnst);
                  tsetup_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
-                 thold_ena_clk_noedge_posedge	: VitalDelayType := DefSetupHoldCnst;
-                 tpd_aclr_dataout_posedge : VitalDelayType01 := DefPropDelay01;
-                 tpd_clk_dataout_posedge : VitalDelayType01 := DefPropDelay01;
+      		 thold_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
+             tpd_aclr_dataout_posedge : VitalDelayArrayType01(17 downto 0) := (OTHERS => DefPropDelay01);
+             tpd_clk_dataout_posedge : VitalDelayArrayType01(17 downto 0) := (OTHERS => DefPropDelay01);
                  data_width : integer := 18
                 );    
         PORT (
@@ -6433,10 +6798,10 @@ ARCHITECTURE vital_cycloneiii_mac_mult OF cycloneiii_mac_mult IS
                                        := (OTHERS => DefPropDelay01);
                  tipd_signa : VitalDelayType01 := DefPropDelay01;
                  tipd_signb : VitalDelayType01 := DefPropDelay01;
-                 tpd_dataa_dataout : VitalDelayType01 := DefPropDelay01;
-                 tpd_datab_dataout : VitalDelayType01 := DefPropDelay01;
-                 tpd_signa_dataout : VitalDelayType01 := DefPropDelay01;
-                 tpd_signb_dataout : VitalDelayType01 := DefPropDelay01;
+             	tpd_dataa_dataout : VitalDelayArrayType01(18*36 -1 downto 0) :=(others => DefPropDelay01);
+             	tpd_datab_dataout : VitalDelayArrayType01(18*36 -1 downto 0) :=(others => DefPropDelay01);
+             	tpd_signa_dataout : VitalDelayArrayType01(35 downto 0) :=(others => DefPropDelay01);
+             	tpd_signb_dataout : VitalDelayArrayType01(35 downto 0) :=(others => DefPropDelay01);
                  dataa_width : integer := 18;    
                  datab_width : integer := 18
                 );
@@ -6530,7 +6895,7 @@ BEGIN
               signb => isignb_int,
               dataout => dataout
              );   
-END vital_cycloneiii_mac_mult;
+END vital_cuda_mac_mult;
 
 --------------------------------------------------------------------
 --
@@ -6559,11 +6924,11 @@ ENTITY cycloneiii_mac_out IS
              tipd_clk : VitalDelayType01 := DefPropDelay01;
              tipd_ena : VitalDelayType01 := DefPropDelay01;
              tipd_aclr : VitalDelayType01 := DefPropDelay01;
-             tpd_dataa_dataout : VitalDelayType01 := DefPropDelay01;
-             tpd_aclr_dataout_posedge : VitalDelayType01 := DefPropDelay01;
-             tpd_clk_dataout_posedge : VitalDelayType01 := DefPropDelay01;
-             tsetup_dataa_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
-             thold_dataa_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
+             tpd_dataa_dataout :VitalDelayArrayType01(36*36 -1 downto 0) :=(others => DefPropDelay01);
+             tpd_aclr_dataout_posedge : VitalDelayArrayType01(35 downto 0) :=(others => DefPropDelay01);
+             tpd_clk_dataout_posedge :VitalDelayArrayType01(35  downto 0) :=(others => DefPropDelay01);
+             tsetup_dataa_clk_noedge_posedge : VitalDelayArrayType(35 downto 0) := (OTHERS => DefSetupHoldCnst);
+             thold_dataa_clk_noedge_posedge :  VitalDelayArrayType(35 downto 0) := (OTHERS => DefSetupHoldCnst);
              tsetup_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
              thold_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
              dataa_width : integer := 1;
@@ -6581,7 +6946,7 @@ ENTITY cycloneiii_mac_out IS
          );   
 END cycloneiii_mac_out;
 
-ARCHITECTURE vital_cycloneiii_mac_out OF cycloneiii_mac_out IS
+ARCHITECTURE vital_cuda_mac_out OF cycloneiii_mac_out IS
 
     --  internal variables
     SIGNAL dataa_ipd : std_logic_vector(dataa'range);
@@ -6610,9 +6975,9 @@ BEGIN
                   OutSignal => dataout(i),
                   OutSignalName => "DATAOUT",
                   OutTemp => dataout_tmp(i),
-                  Paths => (0 => (clk_ipd'last_event, tpd_clk_dataout_posedge, use_reg = '1'),
-                            1 => (aclr_ipd'last_event, tpd_aclr_dataout_posedge, use_reg = '1'),
-                            2 => (dataa_ipd(i)'last_event, tpd_dataa_dataout, use_reg = '0')),
+                  Paths => (0 => (clk_ipd'last_event, tpd_clk_dataout_posedge(i), use_reg = '1'),
+                            1 => (aclr_ipd'last_event, tpd_aclr_dataout_posedge(i), use_reg = '1'),
+                            2 => (dataa_ipd(i)'last_event, tpd_dataa_dataout(i), use_reg = '0')),
                   GlitchData => dataout_VitalGlitchData,
                   Mode => DefGlitchMode,
                   XOn  => XOn,
@@ -6628,7 +6993,10 @@ BEGIN
 
     use_reg <= '1' WHEN (output_clock /= "none") ELSE '0';
     
-    VITALtiming :  process (clk_ipd, aclr_ipd, dataa_ipd)
+    sh: block
+	begin
+	g0 : for i in dataa'range generate
+    VITALtiming :  process (clk_ipd, ena_ipd, dataa_ipd(i))
     variable Tviol_dataa_clk : std_ulogic := '0';
     variable TimingData_dataa_clk : VitalTimingDataType := VitalTimingDataInit;
     variable Tviol_ena_clk : std_ulogic := '0';
@@ -6643,14 +7011,14 @@ BEGIN
             VitalSetupHoldCheck (
                 Violation       => Tviol_dataa_clk,
                 TimingData      => TimingData_dataa_clk,
-                TestSignal      => dataa,
+                TestSignal      => dataa(i),
                 TestSignalName  => "D",
                 RefSignal       => clk_ipd,
                 RefSignalName   => "CLK",
-                SetupHigh       => tsetup_dataa_clk_noedge_posedge,
-                SetupLow        => tsetup_dataa_clk_noedge_posedge,
-                HoldHigh        => thold_dataa_clk_noedge_posedge,
-                HoldLow         => thold_dataa_clk_noedge_posedge,
+                SetupHigh       => tsetup_dataa_clk_noedge_posedge(i),
+                SetupLow        => tsetup_dataa_clk_noedge_posedge(i),
+                HoldHigh        => thold_dataa_clk_noedge_posedge(i),
+                HoldLow         => thold_dataa_clk_noedge_posedge(i),
                 CheckEnabled    => TO_X01((aclr) OR (NOT use_reg) OR
                                           (NOT ena)) /= '1',
                 RefTransition   => '/',
@@ -6677,8 +7045,13 @@ BEGIN
                 MsgOn           => MsgOnChecks );
             
         end if;
+        END PROCESS;
+    end generate g0;
+    end block;
 
-        if (use_reg = '0') then
+    process (clk_ipd, aclr_ipd,ena_ipd, dataa_ipd)
+    begin
+            if (use_reg = '0') then
             dataout_tmp <= dataa_ipd;
         else
             if (aclr_ipd = '1') then
@@ -6690,8 +7063,9 @@ BEGIN
 
     end process;
 
-END vital_cycloneiii_mac_out;
+END vital_cuda_mac_out;
 
+    
 ---------------------------------------------------------------------
 --
 -- Entity Name :  cycloneiii_io_ibuf
@@ -6717,6 +7091,7 @@ ENTITY cycloneiii_io_ibuf IS
              MsgOn                         : Boolean := DefGlitchMsgOn;
              differential_mode       :  string := "false";
              bus_hold                :  string := "false";
+             simulate_z_as          : string    := "Z";
              lpm_type                :  string := "cycloneiii_io_ibuf"
             );    
     PORT (
@@ -6757,13 +7132,19 @@ BEGIN
                 ELSIF (( i_ipd =  '1' ) and (ibar_ipd = '0')) then
                     o_tmp <= '1';                             
                 ELSIF((( i_ipd =  '1' ) and (ibar_ipd = '1'))  or (( i_ipd =  '0' ) and (ibar_ipd = '0')))then    
-                	o_tmp <= 'X';
-                ELSE	                               
+                    o_tmp <= 'X';
+                ELSE                                   
                     o_tmp <= 'X';                             
                 END IF;                                   
             END IF;        
         END PROCESS;
-    out_tmp <= prev_value when (bus_hold = "true") else o_tmp;    
+                
+    out_tmp <= prev_value when (bus_hold = "true") else 
+                'Z' when((o_tmp = 'Z') AND (simulate_z_as = "Z")) else
+                'X' when((o_tmp = 'Z') AND (simulate_z_as = "X")) else
+                '1' when((o_tmp = 'Z') AND (simulate_z_as = "vcc")) else
+                '0' when((o_tmp = 'Z') AND (simulate_z_as = "gnd")) else
+                o_tmp;    
              ----------------------
              --  Path Delay Section
              ----------------------
@@ -6842,7 +7223,7 @@ BEGIN
 WireDelay : block
     begin                                                             
         VitalWireDelay (i_ipd, i, tipd_i);          
-        VitalWireDelay (oe_ipd, oe, tipd_oe);  
+        VitalWireDelay (oe_ipd, oe, tipd_oe); 
     end block;                                                                              
     PROCESS( i_ipd, oe_ipd)
         BEGIN                                              
@@ -6883,7 +7264,7 @@ WireDelay : block
             END IF;                                     
     END PROCESS;
     o_tmp1 <= prev_value WHEN (bus_hold = "true") ELSE out_tmp;
-    obar_tmp1 <= NOT prev_value WHEN (bus_hold = "true") ELSE out_tmp_bar; 
+    obar_tmp1 <= NOT prev_value WHEN (bus_hold = "true") ELSE out_tmp_bar;  
     o_tmp <= o_tmp1 WHEN (devoe = '1') ELSE 'Z';
     obar_tmp <= obar_tmp1 WHEN (devoe = '1') ELSE 'Z';
          ---------------------
@@ -6933,7 +7314,7 @@ use IEEE.std_logic_1164.all;
 use IEEE.std_logic_arith.all;
 use IEEE.VITAL_Timing.all;
 use IEEE.VITAL_Primitives.all;
-use altera.altera_primitives_components.all;
+use altera.all;
 use work.cycloneiii_atom_pack.all;
 
 
@@ -7152,7 +7533,148 @@ BEGIN
     dffhi <= dffhi_tmp ;
     
 END arch;
-
+---------------------------------------------------------------------                  
+--                                                                                     
+-- Entity Name :  cycloneiii_latch                                                          
+--                                                                                     
+-- Description :  Cyclone III latch VHDL simulation model                                     
+--                                                                                     
+--                                                                                     
+---------------------------------------------------------------------                  
+                                                                                       
+Library ieee;                                                                          
+use ieee.std_logic_1164.all;                                                           
+use IEEE.VITAL_Timing.all;                                                             
+use IEEE.VITAL_Primitives.all;                                                         
+use work.cycloneiii_atom_pack.all;                                                          
+entity cycloneiii_latch is                                                                  
+    generic(                                                                           
+        is_wysiwyg : string := "false";                                                
+        x_on_violation : string := "on";                                               
+        lpm_type : string := "cycloneiii_latch";                                            
+        tsetup_d_ena_noedge_posedge : VitalDelayType := DefSetupHoldCnst;              
+        thold_d_ena_noedge_negedge : VitalDelayType := DefSetupHoldCnst;               
+        tpd_d_q : VitalDelayType01 := DefPropDelay01;                                  
+        tpd_ena_q_posedge : VitalDelayType01 := DefPropDelay01;                        
+        tpd_clr_q_negedge : VitalDelayType01 := DefPropDelay01;                        
+        tpd_pre_q_negedge : VitalDelayType01 := DefPropDelay01;                        
+        tipd_d : VitalDelayType01 := DefPropDelay01;                                   
+        tipd_clr : VitalDelayType01 := DefPropDelay01;                                 
+        tipd_pre : VitalDelayType01 := DefPropDelay01;                                 
+        tipd_ena : VitalDelayType01 := DefPropDelay01;                                 
+        TimingChecksOn: Boolean := True;                                               
+        MsgOn: Boolean := DefGlitchMsgOn;                                              
+        XOn: Boolean := DefGlitchXOn;                                                  
+        MsgOnChecks: Boolean := DefMsgOnChecks;                                        
+        XOnChecks: Boolean := DefXOnChecks;                                            
+        InstancePath: STRING := "*"                                                    
+    );                                                                                 
+                                                                                       
+    port(                                                                              
+        d : in std_logic := '0';                                                       
+        ena : in std_logic := '1';                                                     
+        clr : in std_logic := '1';                                                     
+        pre : in std_logic := '1';                                                     
+        q : out std_logic                                                              
+    );                                                                                 
+    attribute VITAL_LEVEL0 of cycloneiii_latch : entity is TRUE;                            
+end cycloneiii_latch;                                                                       
+                                                                                       
+                                                                                       
+architecture vital_latch of cycloneiii_latch is                                             
+    attribute VITAL_LEVEL0 of vital_latch : architecture is TRUE;                      
+    signal d_ipd : std_logic;                                                          
+    signal d_dly : std_logic;                                                          
+    signal clr_ipd : std_logic;                                                        
+    signal pre_ipd : std_logic;                                                        
+    signal ena_ipd : std_logic;                                                        
+                                                                                       
+begin                                                                                  
+                                                                                       
+    d_dly <= d_ipd;                                                                    
+                                                                                       
+    ---------------------                                                              
+    --  INPUT PATH DELAYs                                                              
+    ---------------------                                                              
+    WireDelay : block                                                                  
+    begin                                                                              
+        VitalWireDelay (d_ipd, d, tipd_d);                                             
+        VitalWireDelay (clr_ipd, clr, tipd_clr);                                       
+        VitalWireDelay (pre_ipd, pre, tipd_pre);                                       
+        VitalWireDelay (ena_ipd, ena, tipd_ena);                                       
+    end block;                                                                         
+                                                                                       
+    VITALtiming : process (  d_dly,  clr_ipd, pre_ipd,ena_ipd)                         
+                                                                                       
+    variable Tviol_d_ena : std_ulogic := '0';                                          
+    variable TimingData_d_ena : VitalTimingDataType := VitalTimingDataInit;            
+    variable q_VitalGlitchData : VitalGlitchDataType;                                  
+                                                                                       
+    variable iq : std_logic := '0';                                                    
+    variable idata: std_logic := '0';                                                  
+                                                                                       
+    -- variables for 'X' generation                                                    
+    variable violation : std_logic := '0';                                             
+                                                                                       
+    begin                                                                              
+                                                                                       
+                                                                                       
+        ------------------------                                                       
+        --  Timing Check Section                                                       
+        ------------------------                                                       
+        if (TimingChecksOn) then                                                       
+                                                                                       
+            VitalSetupHoldCheck (                                                      
+                Violation       => Tviol_d_ena,                                        
+                TimingData      => TimingData_d_ena,                                   
+                TestSignal      => d_ipd,                                              
+                TestSignalName  => "DATAIN",                                           
+                RefSignal       => ena_ipd,                                            
+                RefSignalName   => "ENA",                                              
+                SetupHigh       => tsetup_d_ena_noedge_posedge,                        
+                SetupLow        => tsetup_d_ena_noedge_posedge,                        
+                HoldHigh        => thold_d_ena_noedge_negedge,                         
+                HoldLow         => thold_d_ena_noedge_negedge,                         
+                CheckEnabled    => TRUE,                                               
+                RefTransition   => '/',                                                
+                HeaderMsg       => InstancePath & "/cycloneiii_latch",                      
+                XOn             => XOnChecks,                                          
+                MsgOn           => MsgOnChecks );                                      
+                                                                                       
+                                                                                       
+                                                                                       
+        violation := Tviol_d_ena;                                                      
+                                                                                       
+                                                                                       
+        if ( (clr_ipd = '0'))  then                                                    
+            iq := '0';                                                                 
+        elsif (pre_ipd = '0') then                                                     
+            iq := '1';                                                                 
+        elsif (violation = 'X' and x_on_violation = "on") then                         
+            iq := 'X';                                                                 
+         elsif (ena_ipd = '1') then                                                    
+            iq := d_dly;                                                               
+         end if;                                                                       
+         end if;                                                                       
+                                                                                       
+        ----------------------                                                         
+        --  Path Delay Section                                                         
+        ----------------------                                                         
+        VitalPathDelay01 (                                                             
+            OutSignal => q,                                                            
+            OutSignalName => "Q",                                                      
+            OutTemp => iq,                                                             
+            Paths =>   (0 => (clr_ipd'last_event, tpd_clr_q_negedge, TRUE),            
+                        1 => (pre_ipd'last_event, tpd_pre_q_negedge, TRUE),            
+                        2 => (ena_ipd'last_event, tpd_ena_q_posedge, TRUE)),           
+            GlitchData => q_VitalGlitchData,                                           
+            Mode => DefGlitchMode,                                                     
+            XOn  => XOn,                                                               
+            MsgOn  => MsgOn );                                                         
+                                                                                       
+    end process;                                                                       
+                                                                                       
+end vital_latch;                                                                       
 ---------------------------------------------------------------------
 --
 -- Entity Name :  cycloneiii_ddio_out
@@ -7168,7 +7690,7 @@ use IEEE.std_logic_1164.all;
 use IEEE.std_logic_arith.all;
 use IEEE.VITAL_Timing.all;
 use IEEE.VITAL_Primitives.all;
-use altera.altera_primitives_components.all;
+use altera.all;
 use work.cycloneiii_atom_pack.all;
 
 ENTITY cycloneiii_ddio_out IS
@@ -7176,6 +7698,9 @@ ENTITY cycloneiii_ddio_out IS
             tipd_datainlo                      : VitalDelayType01 := DefPropDelay01;
             tipd_datainhi                      : VitalDelayType01 := DefPropDelay01;
             tipd_clk                           : VitalDelayType01 := DefPropDelay01;
+            tipd_clkhi                         : VitalDelayType01 := DefPropDelay01;
+            tipd_clklo                         : VitalDelayType01 := DefPropDelay01;
+            tipd_muxsel                        : VitalDelayType01 := DefPropDelay01;
             tipd_ena                           : VitalDelayType01 := DefPropDelay01;
             tipd_areset                        : VitalDelayType01 := DefPropDelay01;
             tipd_sreset                        : VitalDelayType01 := DefPropDelay01;
@@ -7184,12 +7709,16 @@ ENTITY cycloneiii_ddio_out IS
             power_up                           :  string := "low";          
             async_mode                         :  string := "none";       
             sync_mode                          :  string := "none";
+            use_new_clocking_model             :  string := "false";
             lpm_type                           :  string := "cycloneiii_ddio_out"
            );
     PORT (
           datainlo                : IN std_logic := '0';   
           datainhi                : IN std_logic := '0';   
-          clk                     : IN std_logic := '0';   
+          clk                     : IN std_logic := '0'; 
+          clkhi                   : IN std_logic := '0'; 
+          clklo                   : IN std_logic := '0'; 
+          muxsel                  : IN std_logic := '0';   
           ena                     : IN std_logic := '1';   
           areset                  : IN std_logic := '0';   
           sreset                  : IN std_logic := '0';   
@@ -7278,10 +7807,45 @@ component dffeas
          );          
 end component;
    
+component cycloneiii_latch                                                                  
+    generic(                                                                           
+        is_wysiwyg : string := "false";                                                
+        x_on_violation : string := "on";                                               
+        lpm_type : string := "cycloneiii_latch";                                            
+        tsetup_d_ena_noedge_posedge : VitalDelayType := DefSetupHoldCnst;              
+        thold_d_ena_noedge_negedge : VitalDelayType := DefSetupHoldCnst;               
+        tpd_d_q : VitalDelayType01 := DefPropDelay01;                                  
+        tpd_ena_q_posedge : VitalDelayType01 := DefPropDelay01;                        
+        tpd_clr_q_negedge : VitalDelayType01 := DefPropDelay01;                        
+        tpd_pre_q_negedge : VitalDelayType01 := DefPropDelay01;                        
+        tipd_d : VitalDelayType01 := DefPropDelay01;                                   
+        tipd_clr : VitalDelayType01 := DefPropDelay01;                                 
+        tipd_pre : VitalDelayType01 := DefPropDelay01;                                 
+        tipd_ena : VitalDelayType01 := DefPropDelay01;                                 
+        TimingChecksOn: Boolean := True;                                               
+        MsgOn: Boolean := DefGlitchMsgOn;                                              
+        XOn: Boolean := DefGlitchXOn;                                                  
+        MsgOnChecks: Boolean := DefMsgOnChecks;                                        
+        XOnChecks: Boolean := DefXOnChecks;                                            
+        InstancePath: STRING := "*"                                                    
+    );                                                                                 
+                                                                                       
+    port(                                                                              
+        d : in std_logic := '0';                                                       
+        ena : in std_logic := '1';                                                     
+        clr : in std_logic := '1';                                                     
+        pre : in std_logic := '1';                                                     
+        q : out std_logic                                                              
+    );                                                                                 
+end component;                                                                         
+   
     --Internal Signals
     SIGNAL datainlo_ipd             : std_logic := '0';  
     SIGNAL datainhi_ipd             : std_logic := '0';             
-    SIGNAL clk_ipd                  : std_logic := '0';         
+    SIGNAL clk_ipd                  : std_logic := '0'; 
+    SIGNAL clkhi_ipd                : std_logic := '0';
+    SIGNAL clklo_ipd                : std_logic := '0';
+    SIGNAL muxsel_ipd               : std_logic := '0';        
     SIGNAL ena_ipd                  : std_logic := '0';         
     SIGNAL areset_ipd               : std_logic := '0';         
     SIGNAL sreset_ipd               : std_logic := '0';         
@@ -7294,11 +7858,20 @@ end component;
     SIGNAL dffhi_tmp                :  std_logic;  
     SIGNAL dataout_tmp              :  std_logic; 
     Signal mux_sel                  :  std_logic;
-    Signal mux_lo                   :  std_logic;
-   Signal sel_mux_lo_in             :  std_logic;
-   Signal sel_mux_select            :  std_logic;
+    Signal mux_hi                   :  std_logic;
+   Signal sel_mux_hi_in             :  std_logic;
    signal clk1                      :  std_logic;
+   signal clk_hi                    :  std_logic;
+   signal clk_lo                    :  std_logic;
 
+    signal muxsel1 : std_logic;
+    signal muxsel2: std_logic;
+    signal clk2   : std_logic;
+    signal muxsel_tmp: std_logic;
+    signal sel_mux_lo_in : std_logic;
+    signal datainlo_tmp : std_logic;
+    signal datainhi_tmp : std_logic;
+    signal dffhi_tmp1 : std_logic;    
 
 BEGIN
 
@@ -7306,7 +7879,10 @@ WireDelay : block
     begin                                                    
         VitalWireDelay (datainlo_ipd, datainlo, tipd_datainlo);  
         VitalWireDelay (datainhi_ipd, datainhi, tipd_datainhi);             
-        VitalWireDelay (clk_ipd, clk, tipd_clk);             
+        VitalWireDelay (clk_ipd, clk, tipd_clk);  
+        VitalWireDelay (clkhi_ipd, clkhi, tipd_clkhi); 
+        VitalWireDelay (clklo_ipd, clklo, tipd_clklo); 
+        VitalWireDelay (muxsel_ipd, muxsel, tipd_muxsel);            
         VitalWireDelay (ena_ipd, ena, tipd_ena);             
         VitalWireDelay (areset_ipd, areset, tipd_areset);    
         VitalWireDelay (sreset_ipd, sreset, tipd_sreset);    
@@ -7345,33 +7921,40 @@ WireDelay : block
             clk1 <= clk_ipd;
     end process;
 
-    --DDIO OE Register  
-    ddioreg_hi : dffeas 
-        GENERIC MAP (
-                     power_up => power_up
-                    )
-        PORT MAP (
-                  d => datainhi,               
-                  clk => clk_ipd,                  
-                  clrn => ddioreg_aclr,        
-                  prn => ddioreg_prn,      
-                  sclr => ddioreg_sclr,        
-                  sload => ddioreg_sload,      
-                  asdata => ddioreg_adatasdata,
-                  ena => ena_ipd,                  
-                  q => dffhi_tmp,              
-                  devpor => devpor,            
-                  devclrn => devclrn           
-                );   
+   process(muxsel_ipd)
+        begin                   
+            muxsel1 <= muxsel_ipd;
+    end process;
+    
+    process(dffhi_tmp)                
+        begin                          
+            dffhi_tmp1 <= dffhi_tmp;   
+        end process;                  
+        
+
+    --DDIO HIGH Register 
+    clk_hi <= ((NOT clkhi_ipd) and ena_ipd) when(use_new_clocking_model = "true") else ((NOT clk_ipd) and ena_ipd); 
+    datainhi_tmp <= '1' when (ddioreg_sclr ='0'and  ddioreg_sload = '1')else '0'when (ddioreg_sclr ='1'and  ddioreg_sload = '0') else datainhi;
+
+       ddioreg_hi : cycloneiii_latch                         
+       PORT MAP (                                       
+                    d=> datainhi_tmp,                   
+                    ena =>  clk_hi,                     
+                    pre => ddioreg_prn,                 
+                    clr => ddioreg_aclr,                
+                    q => dffhi_tmp                      
+                    );                                  
         
     --DDIO Low Register
+    clk_lo <= clklo_ipd when(use_new_clocking_model = "true") else clk_ipd;
+    datainlo_tmp <= datainlo;
     ddioreg_lo : dffeas 
         GENERIC MAP (
                       power_up => power_up
                     )
         PORT MAP (
-                  d => datainlo,               
-                  clk => clk_ipd,                  
+                  d => datainlo_tmp,               
+                  clk => clk_lo,                  
                   clrn => ddioreg_aclr,        
                   prn => ddioreg_prn,      
                   sclr => ddioreg_sclr,        
@@ -7382,25 +7965,111 @@ WireDelay : block
                   devpor => devpor,            
                   devclrn => devclrn           
                 );   
-                
                                                       
-  mux_sel <= clk1;                      
-  mux_lo <= dfflo_tmp;
   
-  sel_mux_lo_in <= dfflo_tmp;       
-  sel_mux_select <= mux_sel;        
+  muxsel2 <= muxsel1;
+  clk2 <= clk1;
+  mux_sel <= muxsel2 when(use_new_clocking_model = "true") else clk2;       
+  muxsel_tmp <= NOT mux_sel;  
+  sel_mux_lo_in <= dfflo_tmp;              
+  sel_mux_hi_in <= dffhi_tmp1;       
   
   sel_mux : cycloneiii_mux21
         port map (
-                   A => sel_mux_lo_in,
-                   B => dffhi_tmp,
-                   S => sel_mux_select,
+                   A => sel_mux_hi_in, 
+                   B => sel_mux_lo_in, 
+                   S => muxsel_tmp, 
                    MO => dataout  
                   );              
 
     dfflo <= dfflo_tmp;
-    dffhi <= dffhi_tmp;
-                                           
+    dffhi <= dffhi_tmp; 
+END arch;
+----------------------------------------------------------------------------------
+--Module Name:                    cycloneiii_pseudo_diff_out                          --
+--Description:                    Simulation model for Cyclone III Pseudo Differential --
+--                                Output Buffer                                  --
+----------------------------------------------------------------------------------
+
+
+LIBRARY IEEE;
+use IEEE.std_logic_1164.all;
+use IEEE.std_logic_arith.all;
+use IEEE.VITAL_Timing.all;
+use IEEE.VITAL_Primitives.all;
+use work.cycloneiii_atom_pack.all;
+
+ENTITY cycloneiii_pseudo_diff_out IS
+ GENERIC (
+             tipd_i                           : VitalDelayType01 := DefPropDelay01;
+             tpd_i_o                          : VitalDelayType01 := DefPropDelay01;
+             tpd_i_obar                       : VitalDelayType01 := DefPropDelay01;
+             XOn                           : Boolean := DefGlitchXOn;
+             MsgOn                         : Boolean := DefGlitchMsgOn;
+             lpm_type                         :  string := "cycloneiii_pseudo_diff_out"
+            );
+ PORT (
+           i                       : IN std_logic := '0';
+           o                       : OUT std_logic;
+           obar                    : OUT std_logic
+         );
+END cycloneiii_pseudo_diff_out;
+
+ARCHITECTURE arch OF cycloneiii_pseudo_diff_out IS
+        SIGNAL i_ipd                  : std_logic ;
+        SIGNAL o_tmp                  :  std_logic ;
+        SIGNAL obar_tmp               :  std_logic;
+
+BEGIN
+    WireDelay : block
+    begin
+        VitalWireDelay (i_ipd, i, tipd_i);
+    end block;
+
+    PROCESS( i_ipd)
+        BEGIN
+            IF (i_ipd = '0') THEN
+                o_tmp <= '0';
+                obar_tmp <= '1';
+            ELSE
+                IF (i_ipd = '1') THEN
+                    o_tmp <= '1';
+                    obar_tmp <= '0';
+                ELSE
+                    o_tmp <= i_ipd;
+                    obar_tmp <= i_ipd;
+                END IF;
+            END IF;
+        END PROCESS;
+
+        ---------------------
+     --  Path Delay Section
+     ----------------------
+    PROCESS( o_tmp,obar_tmp)
+        variable o_VitalGlitchData : VitalGlitchDataType;
+        variable obar_VitalGlitchData : VitalGlitchDataType;
+        BEGIN
+            VitalPathDelay01 (
+                              OutSignal => o,
+                              OutSignalName => "o",
+                              OutTemp => o_tmp,
+                              Paths => (0 => (i_ipd'last_event, tpd_i_o, TRUE)),
+                              GlitchData => o_VitalGlitchData,
+                              Mode => DefGlitchMode,
+                              XOn  => XOn,
+                              MsgOn  => MsgOn
+                              );
+            VitalPathDelay01 (
+                  OutSignal => obar,
+                  OutSignalName => "obar",
+                  OutTemp => obar_tmp,
+                  Paths => (0 => (i_ipd'last_event, tpd_i_obar, TRUE)),
+                  GlitchData => obar_VitalGlitchData,
+                  Mode => DefGlitchMode,
+                  XOn  => XOn,
+                  MsgOn  => MsgOn
+                  );
+        END PROCESS;
 END arch;
 ----------------------------------------------------------------------------
 -- Module Name     : cycloneiii_io_pad
@@ -7522,7 +8191,7 @@ begin
             q_reg := '1';
         elsif (clrn = '0') then
             q_reg := '0';
-        elsif (clk_ipd'event and clk_ipd = '1' and (ena = '1')) then
+        elsif (clk_ipd'event and clk_ipd = '1' and clk_ipd'last_value = '0' and (ena = '1')) then
             q_reg := d_ipd;
         end if;
 
@@ -7739,7 +8408,7 @@ entity  cycloneiii_apfcontroller is
 	);
 	port 
 	(
-		usermode   : out std_logic; 
+		usermode   : out std_logic;  --REM_TARPON
 		nceout		: out std_logic
 	);
 
@@ -7871,6 +8540,7 @@ architecture architecture_crcblock of cycloneiii_crcblock is
 begin
 
 end architecture_crcblock;
+
 --
 --
 --  CYCLONEIII_OSCILLATOR Model
@@ -7879,25 +8549,69 @@ end architecture_crcblock;
 LIBRARY IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.std_logic_arith.all;
+use IEEE.VITAL_Timing.all;
+use IEEE.VITAL_Primitives.all;
 use work.cycloneiii_atom_pack.all;
 
 entity  cycloneiii_oscillator is
 	generic
 	(
-		lpm_type: string := "cycloneiii_oscillator"
+            lpm_type: string := "cycloneiii_oscillator";
+            TimingChecksOn: Boolean := True;
+            XOn: Boolean := DefGlitchXOn;
+            MsgOn: Boolean := DefGlitchMsgOn;
+            tpd_oscena_clkout_posedge  : VitalDelayType01 := DefPropDelay01;
+            tipd_oscena : VitalDelayType01 := DefPropDelay01
 	);
 	port 
 	(
-		oscena	        : in std_logic; 
-		clkout		: out std_logic
+            oscena : in std_logic; 
+            clkout : out std_logic
 	);
 
 end cycloneiii_oscillator;
 
 architecture architecture_oscillator of cycloneiii_oscillator is
+    signal oscena_ipd : std_logic;
+    signal int_osc : std_logic := '0';
 
+begin        
 
-begin
+    ---------------------
+    --  INPUT PATH DELAYs
+    ---------------------
+    WireDelay : block
+    begin
+        VitalWireDelay (oscena_ipd, oscena, tipd_oscena);
+    end block;
+
+    VITAL_osc : process(oscena_ipd, int_osc)
+        variable OSC_PW : time := 6250 ps; -- pulse width for 80MHz clock
+        variable osc_VitalGlitchData : VitalGlitchDataType;
+    begin
+        if (oscena_ipd = '1') then
+            if ((int_osc = '0') or (int_osc = '1')) then
+                int_osc <= not int_osc after OSC_PW;
+            else
+                int_osc <= '0' after OSC_PW;
+            end if;
+        end if;
+
+        ----------------------
+        --  Path Delay Section
+        ----------------------
+        VitalPathDelay01 (
+            OutSignal     => clkout,
+            OutSignalName => "osc",
+            OutTemp       => int_osc,
+            Paths         => (0 => (InputChangeTime => oscena_ipd'last_event,
+                                    PathDelay => tpd_oscena_clkout_posedge,
+                                    PathCondition => (oscena_ipd = '1'))),
+            GlitchData    => osc_VitalGlitchData,
+            Mode          => DefGlitchMode,
+            XOn           => XOn,
+            MsgOn         => MsgOn );
+    end process;
 
 end architecture_oscillator;
 

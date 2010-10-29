@@ -81,6 +81,7 @@ begin
   log : process(clk, ahbsi )
   variable errno, errcnt, subtest, vendorid, deviceid : integer;
   variable addr : std_logic_vector(21 downto 2);
+  variable hwdata : std_logic_vector(31 downto 0);
   variable v : reg_type;
   begin
   if falling_edge(clk) then
@@ -89,13 +90,14 @@ begin
       v.hwrite := ahbsi.hwrite; v.htrans := ahbsi.htrans;
     end if;
     if (r.hsel and r.htrans(1) and r.hwrite and rst) = '1' then
+      hwdata := ahbreadword(ahbsi.hwdata, r.haddr(4 downto 2));
       case r.haddr(7 downto 2) is
       when "000000" =>
-        vendorid := conv_integer(ahbsi.hwdata(31 downto 24));
-        deviceid := conv_integer(ahbsi.hwdata(23 downto 12));
+        vendorid := conv_integer(hwdata(31 downto 24));
+        deviceid := conv_integer(hwdata(23 downto 12));
 	print(iptable(vendorid).device_table(deviceid));
       when "000001" =>
-        errno := conv_integer(ahbsi.hwdata(15 downto 0));
+        errno := conv_integer(hwdata(15 downto 0));
 	if  (halt = 1) then
 	  assert false
 	  report "test failed, error (" & tost(errno) & ")"
@@ -106,10 +108,10 @@ begin
 	  severity warning;
 	end if;
       when "000010" =>
-        subtest := conv_integer(ahbsi.hwdata(7 downto 0));
+        subtest := conv_integer(hwdata(7 downto 0));
 	if vendorid = VENDOR_GAISLER then
 	  case deviceid is
-	  when GAISLER_LEON3 => leon3_subtest(subtest);
+	  when GAISLER_LEON3 | GAISLER_LEON4 | GAISLER_L2CACHE=> leon3_subtest(subtest);
 	  when GAISLER_FTMCTRL => mctrl_subtest(subtest);
 	  when GAISLER_GPTIMER => gptimer_subtest(subtest);
 	  when GAISLER_LEON3DSU => dsu3_subtest(subtest);
@@ -124,6 +126,9 @@ begin
           when GAISLER_APBPS2 => apbps2_subtest(subtest);
           when GAISLER_I2CSLV => i2cslv_subtest(subtest);
           when GAISLER_PWM => grpwm_subtest(subtest);
+          when GAISLER_GPIO => grgpio_subtest(subtest);
+          when GAISLER_GRIOMMU => griommu_subtest(subtest);
+          when GAISLER_L4STAT => l4stat_subtest(subtest);
           when others =>
             print ("  subtest " & tost(subtest));
 	  end case;

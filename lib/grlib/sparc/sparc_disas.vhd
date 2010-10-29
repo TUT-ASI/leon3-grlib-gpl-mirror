@@ -704,7 +704,7 @@ end;
 procedure print_fpinsn(ndx: integer; pc, op : std_logic_vector(31 downto 0);
                        res : std_logic_vector(63 downto 0);
                        dpres, valid, trap, wr : boolean) is
-variable t : integer;
+variable t : natural;
 begin
   if valid then
     t := now / 1 ns;

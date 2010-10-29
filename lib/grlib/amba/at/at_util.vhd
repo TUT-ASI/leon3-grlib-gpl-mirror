@@ -95,6 +95,19 @@ package at_util is
     constant bank:          in   integer := 0;
     signal   dbgi:          out  at_slv_dbg_in_type;
     signal   dbgo:          in   at_slv_dbg_out_type);
+
+  ----------------------------------------------------------------------------
+  -- Load octet_vector with contents from memory
+  ----------------------------------------------------------------------------
+  procedure loadmemory(
+    variable octets:        out  octet_vector;
+    constant size:          in   integer;
+    constant address:       in   std_logic_vector(31 downto 0);
+    constant screen:        in   boolean := false;
+    constant bank:          in   integer := 0;
+    signal   dbgi:          out  at_slv_dbg_in_type;
+    signal   dbgo:          in   at_slv_dbg_out_type);
+  
 end package at_util;
 
 package body at_util is
@@ -404,5 +417,65 @@ package body at_util is
       end case;
     end loop;
   end fillmemory;
+
+  procedure loadmemory(
+    variable octets:        out  octet_vector;
+    constant size:          in   integer;
+    constant address:       in   std_logic_vector(31 downto 0);
+    constant screen:        in   boolean := false;
+    constant bank:          in   integer := 0;
+    signal   dbgi:          out  at_slv_dbg_in_type;
+    signal   dbgo:          in   at_slv_dbg_out_type) is
+    variable caddr:              std_logic_vector(31 downto 0);
+    variable cnt:                integer;
+    variable i:                  integer;
+    variable data:               std_logic_vector(31 downto 0);
+  begin
+    caddr := address; cnt := size;  i := octets'low;
+    while cnt > 0 loop
+      case caddr(1 downto 0) is
+        when "00" =>
+          if cnt >= 4 then    --word access
+            ahbslv_read (caddr, data, bank, dbgi, dbgo);
+            for j in 0 to 3 loop
+              octets(i+j) := data(31-8*j downto 24-8*j);
+            end loop;
+            cnt := cnt - 4; i := i + 4; caddr := caddr + 4;
+          elsif cnt >= 2 then --halfword access
+            ahbslv_read (caddr, data(15 downto 0), bank, dbgi, dbgo);
+            for j in 0 to 1 loop
+              octets(i+j) := data(15-8*j downto 8-8*j);
+            end loop;
+            cnt := cnt - 2; i := i + 2; caddr := caddr + 2;
+          else                --byte access
+            ahbslv_read (caddr, data(7 downto 0), bank, dbgi, dbgo);
+            octets(i) := data(7 downto 0);
+            cnt := cnt - 1; i := i + 1; caddr := caddr + 1;
+          end if;
+        when "01" =>
+          ahbslv_read (caddr, data(7 downto 0), bank, dbgi, dbgo);
+          octets(i) := data(7 downto 0); 
+          cnt := cnt - 1; i := i + 1; caddr := caddr + 1;
+        when "10" =>
+          if cnt >= 2 then --halfword access
+            ahbslv_read (caddr, data(15 downto 0), bank, dbgi, dbgo);
+            for j in 0 to 1 loop
+              octets(i+j) := data(15-8*j downto 8-8*j);
+            end loop;
+            cnt := cnt - 2; i := i + 2; caddr := caddr + 2;
+          else                --byte access
+            ahbslv_read (caddr, data(7 downto 0), bank, dbgi, dbgo);
+            octets(i) := data(7 downto 0);
+            cnt := cnt - 1; i := i + 1; caddr := caddr + 1;
+          end if;
+        when "11" =>
+          ahbslv_read (caddr, data(7 downto 0), bank, dbgi, dbgo);
+          octets(i) := data(7 downto 0);
+          cnt := cnt - 1; i := i + 1; caddr := caddr + 1;
+        when others =>
+          null;
+      end case;
+    end loop;
+  end procedure;
 end package body at_util;
 

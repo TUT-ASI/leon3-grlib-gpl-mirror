@@ -30,6 +30,10 @@
 #define INITIATOR 1
 #endif
 
+#ifndef SPW_PORT
+#define SPW_PORT 0
+#endif
+
 #include <stdlib.h>
 #include "spwapi.h"
 #include "rmapapi.h"
@@ -39,22 +43,22 @@
 
 #define PKTTESTMAX  128
 #define DESCPKT     1024
-#define MAXSIZE     16777215     /*must not be set to more than 16777216 (2^24)*/
+#define MAXSIZE     2000000 /*16777215*/     /*must not be set to more than 16777216 (2^24)*/
 #define RMAPSIZE    1024
 #define RMAPCRCSIZE 1024
 #define LOOPPKTSIZE 65536
 
 #define TEST1       1
-#define TEST2       0
-#define TEST3       0
-#define TEST4       0
-#define TEST5       0
-#define TEST6       0
-#define TEST7       0
-#define TEST8       0
-#define TEST9       0
-#define TEST10      0
-#define TEST11      0
+#define TEST2       1
+#define TEST3       1
+#define TEST4       1
+#define TEST5       1
+#define TEST6       1
+#define TEST7       1
+#define TEST8       1
+#define TEST9       1
+#define TEST10      1
+#define TEST11      1
 #define TEST12      1
 
 static inline char loadb(int addr)
@@ -310,7 +314,7 @@ int main(int argc, char *argv[])
 
 #if INITIATOR == 1 
   
-        if (spw_setparam(0x1, SPW_CLKDIV, 0xBF, 0, 0, SPW_ADDR, AHBFREQ, spw) ) {
+        if (spw_setparam(0x1, SPW_CLKDIV, 0xBF, 0, 0, SPW_ADDR, AHBFREQ, spw, SPW_PORT) ) {
                 printf("Illegal parameters to spacewire\n");
                 exit(1);
         }
@@ -321,7 +325,7 @@ int main(int argc, char *argv[])
         
 #else
         
-        if (spw_setparam(0x2, SPW_CLKDIV, 0xBF, 0, 0, SPW_ADDR, AHBFREQ ,spw) ) {
+        if (spw_setparam(0x2, SPW_CLKDIV, 0xBF, 0, 0, SPW_ADDR, AHBFREQ , spw, SPW_PORT) ) {
                 printf("Illegal parameters to spacewire\n");
                 exit(1);
         }
@@ -1062,12 +1066,17 @@ int main(int argc, char *argv[])
 /*   /\************************ TEST 8 **************************************\/ */
 #if TEST8 == 1
         printf("TEST 8: Transmission and reception of maximum size packets\n");
+        spw->dma[0].rxmaxlen = MAXSIZE+4;
+        if (spw_set_rxmaxlength(0, spw) ) {
+                printf("Max length change failed\n");
+                exit(1);
+        }
         rxbuf = malloc(MAXSIZE);
         txbuf = malloc(MAXSIZE+1);
         tx0   = malloc(64);
 
 #if INITIATOR == 0
-        if ((rxbuf == NULL) || (txbuf == NULL) || (tx0 == NULL)) {
+	if ((rxbuf == NULL) || (txbuf == NULL) || (tx0 == NULL)) {
                 printf("Memory allocation failed\n");
                 exit(1);
         }
@@ -1101,15 +1110,10 @@ int main(int argc, char *argv[])
                 }
         }
 #else
-        for (i = 0; i < 64; i++) {
+	for (i = 0; i < 64; i++) {
                 while (spw_rx(0, rxbuf, spw)) {
                         for (k = 0; k < 64; k++) {}
                 }
-        }
-        spw->dma[0].rxmaxlen = MAXSIZE+4;
-        if (spw_set_rxmaxlength(0, spw) ) {
-                printf("Max length change failed\n");
-                exit(1);
         }
         t1 = clock();
         for (i = 0; i < 64; i++) {
@@ -2440,7 +2444,6 @@ int main(int argc, char *argv[])
 #endif
 /*   /\************************ TEST 11 **************************************\/ */
 #if TEST11 == 1
-  spw_rmapdis(spw);
   printf("TEST 11: DMA channel RMAP CRC test\n\n");
   if ((spw->rmapcrc == 1) || (spw->rmap == 1)) {
           tx0 = (char *)malloc(64);
@@ -2449,52 +2452,51 @@ int main(int argc, char *argv[])
           for(i = 0; i < RMAPCRCSIZE; i++) {
                   printf(".");
                   for(m = 0; m < 6; m++) {
-                          
                           for(k = 0; k < i; k++) {
                                   tx1[k]  = ~tx1[k];
                           }
                           switch (m) {
                                   case 0:
-                                          cmd->type     = writecmd;
-                                          cmd->verify   = no;
-                                          j = i;
-                                          l = 1;
-                                          break;
-                                  case 1:
-                                          cmd->type     = readcmd;
-                                          cmd->verify   = no;
-                                          j = 0;
-                                          l = 0;
-                                          break;
-                                  case 2:
-                                          cmd->type     = rmwcmd;
-                                          j           = (i % 8);
-                                          cmd->verify   = yes;
-                                          l = 1;
-                                          break;
-                                  case 3:
                                           cmd->type     = writerep;
                                           j           = 0;
                                           cmd->verify   = no;
                                           l = 0;
                                           break;
-                                  case 4:
+                                  case 1:
                                           cmd->type     = readrep;
                                           cmd->verify   = no;
                                           j           = i;
                                           l = 1;
                                           break;
-                                  case 5:
+                                  case 2:
                                           cmd->type     = rmwrep;
                                           j           = (i/2);
                                           cmd->verify   = yes;
                                           l = 1;
                                           break;
+                                  case 3:
+                                          cmd->type     = writecmd;
+                                          cmd->verify   = no;
+                                          j = i;
+                                          l = 1;
+                                          break;
+                                  case 4:
+                                          cmd->type     = readcmd;
+                                          cmd->verify   = no;
+                                          j = 0;
+                                          l = 0;
+                                          break;
+                                  case 5:
+                                          cmd->type     = rmwcmd;
+                                          j           = (i % 8);
+                                          cmd->verify   = yes;
+                                          l = 1;
+                                          break;        
                                   default:
                                           break;
                           }
                           
-                          if (m < 3) {
+                          if (m > 2) {
                                   cmd->destaddr = 0x2;
                                   cmd->srcaddr  = 0x1;
                           }
@@ -2575,7 +2577,9 @@ int main(int argc, char *argv[])
                                           exit(1);
                                   }
                           }
-                          
+                          if ((i == 0) && (m == 0)) {
+                                  spw_rmapdis(spw);
+                          }
 #endif
                           /* if (((i % 4) == 0) && ((m % 3) == 0)) { */
 /*                                   printf("Packet  %i, type %i\n", i, m); */

@@ -24,6 +24,13 @@
 --		common prescaler. Then number of timers and the width of
 --		the timers is propgrammable through generics
 ------------------------------------------------------------------------------
+-- GRLIB2 CORE
+-- VENDOR:      VENDOR_GAISLER
+-- DEVICE:      GAISLER_GPTIMER
+-- VERSION:     0
+-- APB:         0
+-- BAR: 0       TYPE: 0010      PREFETCH: 0     CACHE: 0        DESC: IO_AREA
+-------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -222,7 +229,7 @@ begin
               when "00" => v.timers(i).value   := apbi.pwdata(nbits-1 downto 0);
               when "01" => v.timers(i).reload  := apbi.pwdata(nbits-1 downto 0);
               when "10" => v.timers(i).chain   := apbi.pwdata(5);
-                           v.timers(i).irqpen  := apbi.pwdata(4);
+                           v.timers(i).irqpen  := v.timers(i).irqpen and not apbi.pwdata(4);
 			   v.timers(i).irqen   := apbi.pwdata(3);
 			   v.timers(i).load    := apbi.pwdata(2);
 			   v.timers(i).restart := apbi.pwdata(1);
@@ -239,7 +246,7 @@ begin
 
     if rst = '0' then 
       for i in 1 to ntimers loop
-        v.timers(i).enable := '0'; v.timers(i).irqen := '0';
+        v.timers(i).enable := '0'; v.timers(i).irqen := '0'; v.timers(i).irqpen := '0';
       end loop;
       v.scaler := (others => '1'); v.reload := (others => '1'); 
       v.tsel := 0; v.dishlt := '0'; v.timers(ntimers).irq := '0';

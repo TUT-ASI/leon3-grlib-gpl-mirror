@@ -30,6 +30,8 @@
 #define CONFIG_SYN_TECH ihp25
 #elif defined CONFIG_SYN_IHP25RH
 #define CONFIG_SYN_TECH ihp25rh
+#elif defined CONFIG_SYN_CMOS9SF
+#define CONFIG_SYN_TECH cmos9sf
 #elif defined CONFIG_SYN_LATTICE
 #define CONFIG_SYN_TECH lattice
 #elif defined CONFIG_SYN_ECLIPSE
@@ -40,6 +42,10 @@
 #define CONFIG_SYN_TECH proasic
 #elif defined CONFIG_SYN_PROASIC3
 #define CONFIG_SYN_TECH apa3
+#elif defined CONFIG_SYN_PROASIC3E
+#define CONFIG_SYN_TECH apa3e
+#elif defined CONFIG_SYN_PROASIC3L
+#define CONFIG_SYN_TECH apa3l
 #elif defined CONFIG_SYN_IGLOO
 #define CONFIG_SYN_TECH apa3
 #elif defined CONFIG_SYN_FUSION
@@ -72,6 +78,8 @@
 #define CONFIG_SYN_TECH ut25
 #elif defined CONFIG_SYN_TSMC90
 #define CONFIG_SYN_TECH tsmc90
+#elif defined CONFIG_SYN_TM65GPLUS
+#define CONFIG_SYN_TECH tm65gpl
 #elif defined CONFIG_SYN_CUSTOM1
 #define CONFIG_SYN_TECH custom1
 #else

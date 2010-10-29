@@ -182,6 +182,7 @@ begin
 	DMAtip, DMARxEmpty, DMATxFull, DMA_dmarq)
   variable v      : reg_type;    -- local variables for registers
   variable int    : std_logic;
+  variable hwdata : std_logic_vector(31 downto 0);
   begin
 
 -- Variable default settings to avoid latches
@@ -192,8 +193,8 @@ begin
    v.irq := irq;
    v.irqv(pirq) := v.irq and not r.irq;
    v.pioack := PIOack;
-
-
+   hwdata := ahbreadword(ahbsi.hwdata, r.haddr(4 downto 2));
+   
    if (ahbsi.hready = '1') and (ahbsi.hsel(hindex) and ahbsi.htrans(1)) = '1' then       
          v.size   := ahbsi.hsize(1 downto 0); 
          v.hwrite := ahbsi.hwrite;
@@ -226,36 +227,36 @@ begin
    if r.hsel = '1' and r.atasel = '0' and r.hwrite = '1' then -- Write
       case r.haddr(5 downto 2) is
       when "0000" =>    -- Control register 0x0
-         v.ctrlreg := ahbsi.hwdata;
+         v.ctrlreg := hwdata;
       when "0001" =>    -- Status register 0x4
-         int := ahbsi.hwdata(0); -- irq bit in status reg
+         int := hwdata(0); -- irq bit in status reg
       when "0010" =>    -- PIO Compatible timing register 0x8
-         v.pio_cmd.T1 := ahbsi.hwdata(7 downto 0);
-         v.pio_cmd.T2 := ahbsi.hwdata(15 downto 8);
-         v.pio_cmd.T4 := ahbsi.hwdata(23 downto 16);
-         v.pio_cmd.Teoc := ahbsi.hwdata(31 downto 24);
+         v.pio_cmd.T1 := hwdata(7 downto 0);
+         v.pio_cmd.T2 := hwdata(15 downto 8);
+         v.pio_cmd.T4 := hwdata(23 downto 16);
+         v.pio_cmd.Teoc := hwdata(31 downto 24);
       when "0011" =>    -- PIO Fast timing register device 0 0xc
-         v.pio_dp0.T1 := ahbsi.hwdata(7 downto 0);
-         v.pio_dp0.T2 := ahbsi.hwdata(15 downto 8);
-         v.pio_dp0.T4 := ahbsi.hwdata(23 downto 16);
-         v.pio_dp0.Teoc := ahbsi.hwdata(31 downto 24);
+         v.pio_dp0.T1 := hwdata(7 downto 0);
+         v.pio_dp0.T2 := hwdata(15 downto 8);
+         v.pio_dp0.T4 := hwdata(23 downto 16);
+         v.pio_dp0.Teoc := hwdata(31 downto 24);
       when "0100" =>    -- PIO Fast timing register device 1 0x10
-         v.pio_dp1.T1 := ahbsi.hwdata(7 downto 0);
-         v.pio_dp1.T2 := ahbsi.hwdata(15 downto 8);
-         v.pio_dp1.T4 := ahbsi.hwdata(23 downto 16);
-         v.pio_dp1.Teoc := ahbsi.hwdata(31 downto 24);
+         v.pio_dp1.T1 := hwdata(7 downto 0);
+         v.pio_dp1.T2 := hwdata(15 downto 8);
+         v.pio_dp1.T4 := hwdata(23 downto 16);
+         v.pio_dp1.Teoc := hwdata(31 downto 24);
       when "0101" =>    -- DMA timing register device 0 0x14
-         v.dma_dev0.Tm := ahbsi.hwdata(7 downto 0);
-         v.dma_dev0.Td := ahbsi.hwdata(15 downto 8);
-         v.dma_dev0.Teoc := ahbsi.hwdata(31 downto 24);
+         v.dma_dev0.Tm := hwdata(7 downto 0);
+         v.dma_dev0.Td := hwdata(15 downto 8);
+         v.dma_dev0.Teoc := hwdata(31 downto 24);
       when "0110" =>    -- DMA timing register device 1 0x18
-         v.dma_dev1.Tm := ahbsi.hwdata(7 downto 0);
-         v.dma_dev1.Td := ahbsi.hwdata(15 downto 8);
-         v.dma_dev1.Teoc := ahbsi.hwdata(31 downto 24);
+         v.dma_dev1.Tm := hwdata(7 downto 0);
+         v.dma_dev1.Td := hwdata(15 downto 8);
+         v.dma_dev1.Teoc := hwdata(31 downto 24);
       when others => null;
       end case;
    elsif r.hsel = '1' and r.atasel = '1' and r.hwrite = '1' then  -- ATA IO device 0x40-
-      v.hwdata := ahbsi.hwdata;
+      v.hwdata := hwdata;
    end if;
    
    if r.hsel = '1' and r.atasel = '0' and r.hwrite = '0' then -- Read
@@ -379,7 +380,7 @@ begin
 
    ahbso.hready  <= r.hready;
    ahbso.hresp   <= r.hresp;
-   ahbso.hrdata  <= r.hrdata;
+   ahbso.hrdata  <= ahbdrivedata(r.hrdata);
    ahbso.hconfig <= hconfig;
    ahbso.hcache  <= '0';
    ahbso.hirq    <= r.irqv;

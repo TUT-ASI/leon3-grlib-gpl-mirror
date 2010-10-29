@@ -57,8 +57,16 @@ begin
     u0 : axcel_toutpad generic map (level, slew, voltage, strength)
 	 port map (pad, i, oen);
   end generate;
-  pa : if (tech = proasic) or (tech = apa3) generate
+  pa3 : if (tech = proasic) or (tech = apa3) generate
     u0 : apa3_toutpad generic map (level, slew, voltage, strength)
+	 port map (pad, i, oen);
+  end generate;
+  pa3e : if (tech = apa3e) generate
+    u0 : apa3e_toutpad generic map (level, slew, voltage, strength)
+	 port map (pad, i, oen);
+  end generate;
+  pa3l : if (tech = apa3l) generate
+    u0 : apa3l_toutpad generic map (level, slew, voltage, strength)
 	 port map (pad, i, oen);
   end generate;
   fus : if (tech = actfus) generate

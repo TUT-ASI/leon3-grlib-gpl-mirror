@@ -1,0 +1,56 @@
+
+----------------------- Release 1.1.0-b4105 ----------------------------
+
+2010-10-29	Added design for TerASIC Altera Cyclone-IV DE2-115 board
+
+2010-10-29	Improved flow for Quartus-10
+
+2010-10-14	DDR2SPA: Reimplement DDR2 controller to merge all data sizes.
+
+----------------------- Release 1.1.0-b4102 ----------------------------
+
+2010-10-12	Support for Xilinx ISE12 flow.
+
+2010-10-01	Improved generation of Actel Libero project file to avoid
+		large amount of bogus warnings.
+
+2010-09-23	DDR2SPA: Support single-ended DQS for Virtex4-6
+
+2010-09-12	GPTIMER: IP field in timer control register is now write-clear
+
+2010-08-09	GRGPIO: Add generic to specify the first interrupt line the core
+		should drive. Add support to dynamically specify the interrupt
+		line to use for each GPIO line.
+
+2010-06-28	Added Testbench framework for PCI.
+
+2010-06-28	PCI_TARGET: Added support for PCI bus in big-little mode
+		and support for byte and half word PCI accesses. 
+
+2010-06-07      I2CMST/I2CSLV: Added generic that adjusts low-pass filter
+
+2010-05-19      AHBJTAG: Use bit 32 in read data to indicate if AHB access has
+                finished. Increased core version to 1.
+
+2010-05-10      SPICTRL: Extended system test with test that uses an external
+                simulation device. Function now has one additional argument.
+
+2010-05-06      XST: Remove -read_cores yes from XST script generation as yes
+                is the default read_cores setting. This allows specifying 
+                -read_cores yes, no or optimize via the XSTOPT variable.
+
+2010-05-05      FPU: GRFPU and GRFPU-lite netlists in both LEON3 and LEON4 
+                versions are now available for Cyclone2, Cyclone3, Stratix2,
+                Stratix3, Spartan3, Virtex2, Virtex4 and Virtex5.
+
+2010-05-05      FPU: Always use FPU netlists in distributions lacking FPU 
+                source code.
+
+2010-05-05      FPU: Use EDIF netlists for FPU netlist synthesis on Xilinx
+
+2010-03-21      Improved input data filtering in serial DSU link (DCOM_UART).
+
+2010-02-15	Added template design for Xilinx SP601 Spartan6 board
+
+2010-02-01	Support for 64- and 128-bit AHB buses
+

@@ -161,6 +161,54 @@ component apa3_iddr_reg is
     S  : in std_ulogic);
 end component;
 
+component apa3e_oddr_reg is
+  port(
+    Q : out std_ulogic;
+    C1 : in std_ulogic;
+    C2 : in std_ulogic;
+    CE : in std_ulogic;
+    D1 : in std_ulogic;
+    D2 : in std_ulogic;
+    R : in std_ulogic;
+    S : in std_ulogic);                        
+end component;
+
+component apa3e_iddr_reg is
+  port(
+    Q1 : out std_ulogic;
+    Q2 : out std_ulogic;
+    C1 : in std_ulogic;
+    C2 : in std_ulogic;
+    CE : in std_ulogic;
+    D  : in std_ulogic;
+    R  : in std_ulogic;
+    S  : in std_ulogic);
+end component;
+
+component apa3l_oddr_reg is
+  port(
+    Q : out std_ulogic;
+    C1 : in std_ulogic;
+    C2 : in std_ulogic;
+    CE : in std_ulogic;
+    D1 : in std_ulogic;
+    D2 : in std_ulogic;
+    R : in std_ulogic;
+    S : in std_ulogic);                        
+end component;
+
+component apa3l_iddr_reg is
+  port(
+    Q1 : out std_ulogic;
+    Q2 : out std_ulogic;
+    C1 : in std_ulogic;
+    C2 : in std_ulogic;
+    CE : in std_ulogic;
+    D  : in std_ulogic;
+    R  : in std_ulogic;
+    S  : in std_ulogic);
+end component;
+
 component spartan3e_ddr_phy
   generic (MHz : integer := 100; rstdelay : integer := 200;
 	dbits : integer := 16; clk_mul : integer := 2 ;
@@ -483,7 +531,8 @@ component virtex5_ddr2_phy
     ddelayb3    : integer := 0;         ddelayb4   : integer := 0;      ddelayb5 : integer := 0;
     ddelayb6    : integer := 0;         ddelayb7   : integer := 0;
     numidelctrl : integer := 4;         norefclk   : integer := 0; 
-    tech        : integer := virtex5;   eightbanks : integer range 0 to 1 := 0);
+    tech        : integer := virtex5;   eightbanks : integer range 0 to 1 := 0;
+    dqsse       : integer range 0 to 1 := 0);
   port (
     rst       : in  std_ulogic;
     clk       : in  std_logic;          	-- input clock

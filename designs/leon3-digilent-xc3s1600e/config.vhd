@@ -1,8 +1,6 @@
 
 
 
-
-
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
 -- Copyright (C) 2009 Aeroflex Gaisler
@@ -23,7 +21,9 @@ package config is
   constant CFG_CLKTECH : integer := spartan3e;
   constant CFG_CLKMUL : integer := (4);
   constant CFG_CLKDIV : integer := (5);
-  constant CFG_OCLKDIV : integer := 2;
+  constant CFG_OCLKDIV : integer := 1;
+  constant CFG_OCLKBDIV : integer := 0;
+  constant CFG_OCLKCDIV : integer := 0;
   constant CFG_PCIDLL : integer := 0;
   constant CFG_PCISYSCLK: integer := 0;
   constant CFG_CLK_NOFB : integer := 0;
@@ -33,12 +33,14 @@ package config is
   constant CFG_NWIN : integer := (8);
   constant CFG_V8 : integer := 2;
   constant CFG_MAC : integer := 0;
-  constant CFG_SVT : integer := 0;
+  constant CFG_BP : integer := 1;
+  constant CFG_SVT : integer := 1;
   constant CFG_RSTADDR : integer := 16#00000#;
   constant CFG_LDDEL : integer := (1);
+  constant CFG_NOTAG : integer := 1;
   constant CFG_NWP : integer := (2);
-  constant CFG_PWD : integer := 0*2;
-  constant CFG_FPU : integer := (8+0) + 16*0;
+  constant CFG_PWD : integer := 1*2;
+  constant CFG_FPU : integer := 0 + 16*0;
   constant CFG_GRFPUSH : integer := 0;
   constant CFG_ICEN : integer := 1;
   constant CFG_ISETS : integer := 2;
@@ -65,6 +67,7 @@ package config is
   constant CFG_DTLBNUM : integer := 8;
   constant CFG_TLB_TYPE : integer := 0 + 1*2;
   constant CFG_TLB_REP : integer := 0;
+  constant CFG_MMU_PAGE : integer := 0;
   constant CFG_DSU : integer := 1;
   constant CFG_ITBSZ : integer := 4;
   constant CFG_ATBSZ : integer := 4;
@@ -86,6 +89,7 @@ package config is
   constant CFG_AHB_MON : integer := 0;
   constant CFG_AHB_MONERR : integer := 0;
   constant CFG_AHB_MONWAR : integer := 0;
+  constant CFG_AHB_DTRACE : integer := 0;
 -- DSU UART
   constant CFG_AHB_UART : integer := 1;
 -- JTAG based DSU interface
@@ -110,7 +114,7 @@ package config is
 -- DDR controller
   constant CFG_DDRSP : integer := 1;
   constant CFG_DDRSP_INIT : integer := 1;
-  constant CFG_DDRSP_FREQ : integer := (100);
+  constant CFG_DDRSP_FREQ : integer := (90);
   constant CFG_DDRSP_COL : integer := (10);
   constant CFG_DDRSP_SIZE : integer := (64);
   constant CFG_DDRSP_RSKEW : integer := (40);
@@ -133,6 +137,7 @@ package config is
   constant CFG_UART1_FIFO : integer := 8;
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE : integer := 1;
+  constant CFG_IRQ3_NSEC : integer := 0;
 
 -- Modular timer
   constant CFG_GPT_ENABLE : integer := 1;

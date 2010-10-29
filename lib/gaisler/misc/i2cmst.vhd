@@ -48,6 +48,9 @@
 --
 -- Revision 1 of this core also sets the TIP bit when STO is set.
 --
+-- Revision 2 of this core adds a filter generic to adjust the low pass filter
+--
+--
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -71,18 +74,19 @@ entity i2cmst is
     paddr   : integer := 0;
     pmask   : integer := 16#fff#;
     pirq    : integer := 0;                -- interrupt index
-    oepol   : integer range 0 to 1 := 0);  -- output enable polarity
+    oepol   : integer range 0 to 1 := 0;   -- output enable polarity
+    filter  : integer range 2 to 512 := 2);
   port (
-    rstn : in std_ulogic;
-    clk  : in std_ulogic;
+    rstn  : in std_ulogic;
+    clk   : in std_ulogic;
     
     -- APB signals
-    apbi  : in apb_slv_in_type;
+    apbi  : in  apb_slv_in_type;
     apbo  : out apb_slv_out_type;
 
     -- I2C signals
-    i2ci    : in  i2c_in_type;
-    i2co    : out i2c_out_type
+    i2ci  : in  i2c_in_type;
+    i2co  : out i2c_out_type
     );
 end entity i2cmst;
 
@@ -91,7 +95,7 @@ architecture rtl of i2cmst is
   -- Constants
   -----------------------------------------------------------------------------
 
-  constant I2CMST_REV : integer := 1;
+  constant I2CMST_REV : integer := 2;
   
   constant PCONFIG : apb_config_type := (
   0 => ahb_device_reg(VENDOR_GAISLER, GAISLER_I2CMST, 0, I2CMST_REV, pirq),
@@ -161,6 +165,7 @@ begin
 
   vcc <= '1';
   byte_ctrl: i2c_master_byte_ctrl
+    generic map (filter)
     port map (clk, irst, vcc, r.ctrl.en, r.prer, r.cmd.sta,
               r.cmd.sto, r.cmd.rd, r.cmd.wr, r.cmd.ack, r.txr, done,
               rxack, busy, al, rxr, i2ci.scl, i2co.scl, iscloen,

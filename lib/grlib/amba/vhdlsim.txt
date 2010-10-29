@@ -1,4 +1,8 @@
-ahbmon.vhd apbmon.vhd ambamon.vhd dma2ahb_tp.vhd ahbctrl_sim.vhd amba_tp.vhd
+ahbmon.vhd 
+apbmon.vhd 
+ambamon.vhd 
+dma2ahb_tp.vhd 
+amba_tp.vhd
 at/at_pkg.vhd
 at/at_ahb_mst_pkg.vhd
 at/at_ahb_slv_pkg.vhd

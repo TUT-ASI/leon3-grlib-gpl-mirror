@@ -12,11 +12,15 @@
 
 #define SPW1_ADDR    0x80000a00
 #define SPW2_ADDR    0x80000b00 
-#define SPW1_FREQ    50000       /* Frequency of txclk in khz, set to 0 to use reset value  */
-#define SPW2_FREQ    50000       /* Frequency of txclk in khz, set to 0 to use reset value  */
-#define AHBFREQ      75000        /* Set to zero to leave reset values */
+#define SPW1_FREQ    200000       /* Frequency of txclk in khz, set to 0 to use reset value  */
+#define SPW2_FREQ    200000       /* Frequency of txclk in khz, set to 0 to use reset value  */
+#define AHBFREQ      50000        /* Set to zero to leave reset values */
 
-#define SPW_CLKDIV   5
+#define SPW_CLKDIV   0
+
+#ifndef SPW_PORT
+#define SPW_PORT 0
+#endif
 
 #include <stdlib.h>
 #include "spwapi.h"
@@ -145,11 +149,11 @@ int main(int argc, char *argv[])
   /************************ TEST INIT ***********************************/
   /*Initalize link*/
   /*initialize parameters*/
-  if (spw_setparam(0x1, SPW_CLKDIV, 0xBF, 0, 0, SPW1_ADDR, AHBFREQ, spw1) ) {
+  if (spw_setparam(0x1, SPW_CLKDIV, 0xBF, 0, 0, SPW1_ADDR, AHBFREQ, spw1, SPW_PORT) ) {
     printf("Illegal parameters to spacewire\n");
     exit(1);
   }
-  if (spw_setparam(0x2, SPW_CLKDIV, 0xBF, 0, 0, SPW2_ADDR, AHBFREQ ,spw2) ) {
+  if (spw_setparam(0x2, SPW_CLKDIV, 0xBF, 0, 0, SPW2_ADDR, AHBFREQ ,spw2, SPW_PORT) ) {
     printf("Illegal parameters to spacewire\n");
     exit(1);
   }
@@ -823,6 +827,11 @@ int main(int argc, char *argv[])
 /*   /\************************ TEST 8 **************************************\/ */
 #if TEST8 == 1
   printf("TEST 8: Transmission and reception of maximum size packets\n");
+  spw2->dma[0].rxmaxlen = MAXSIZE+4;
+  if (spw_set_rxmaxlength(0, spw2) ) {
+    printf("Max length change failed\n");
+    exit(1);
+  }
   txbuf = malloc(MAXSIZE+1);
   rxbuf = malloc(MAXSIZE);
   rx0   = malloc(MAXSIZE);
@@ -841,11 +850,6 @@ int main(int argc, char *argv[])
           while (spw_rx(0, rxbuf, spw2)) {
                   for (k = 0; k < 64; k++) {}
           }
-  }
-  spw2->dma[0].rxmaxlen = MAXSIZE+4;
-  if (spw_set_rxmaxlength(0, spw2) ) {
-    printf("Max length change failed\n");
-    exit(1);
   }
   printf("Maximum speed test started (several minutes can pass before the next output on screen)\n");
   t1 = clock();
@@ -2016,7 +2020,8 @@ int main(int argc, char *argv[])
 /*   /\************************ TEST 11 **************************************\/ */
 #if TEST11 == 1
   printf("TEST 11: DMA channel RMAP CRC test\n\n");
-  if ((spw2->rmapcrc == 1) && (spw2->rmap == 0)) {
+  if ((spw2->rmapcrc == 1) || (spw2->rmap == 1)) {
+    spw_rmapdis(spw2);      
     tx0 = (char *)malloc(64);
     tx1 = (char *)calloc(RMAPCRCSIZE, 1);
     rx1 = (char *)malloc(32+RMAPCRCSIZE);
@@ -2146,7 +2151,6 @@ int main(int argc, char *argv[])
             exit(1);
           }
         }
-    
         if (((i % 4) == 0) && ((m % 3) == 0)) {
           printf("Packet  %i, type %i\n", i, m);
         }

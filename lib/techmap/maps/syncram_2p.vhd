@@ -68,12 +68,13 @@ signal r2 : wrfst_type2;
 signal dataoutx  : std_logic_vector((dbits -1) downto 0);
 signal databp, testdata : std_logic_vector((dbits -1) downto 0);
 constant SCANTESTBP : boolean := (testen = 1) and (tech /= 0);
+constant iwrfst : integer := (1-syncram_2p_write_through(tech)) * wrfst;
 
 begin
 
   vcc <= '1'; gnd <= '0'; vgnd <= (others => '0');
 
-  no_wrfst : if wrfst = 0 generate
+  no_wrfst : if iwrfst = 0 generate
     scanbp : if SCANTESTBP generate
       comb : process (waddress, raddress, datain, renable, write, testin)
       variable tmp : std_logic_vector((dbits -1) downto 0);
@@ -97,7 +98,7 @@ begin
     noscanbp : if not SCANTESTBP generate dataout <= dataoutx; end generate;
   end generate;
 
-  wrfst_gen : if wrfst = 1 generate
+  wrfst_gen : if iwrfst = 1 generate
     comb : process(r, r2, dataoutx, testin) begin
       if (SCANTESTBP and (testin(3) = '1')) or
 	(((r.write and r.renable) = '1') and (r.raddr = r.waddr)) then
@@ -139,7 +140,7 @@ begin
   end generate;
 
   xc2v : if (is_unisim(tech) = 1) and (tech /= virtex)generate
-    x0 : unisim_syncram_2p generic map (abits, dbits, sepclk, wrfst)
+    x0 : unisim_syncram_2p generic map (abits, dbits, sepclk, iwrfst)
          port map (rclk, renable, raddress, dataoutx, wclk,
 		   write, waddress, datain);
   end generate;
@@ -176,7 +177,19 @@ begin
   end generate;
 
   proa3 : if tech = apa3 generate
-    x0 : proasic3_syncram_2p generic map (abits, dbits)
+    x0 : proasic3_syncram_2p generic map (abits, dbits, sepclk)
+         port map (rclk, renable, raddress, dataoutx,
+		   wclk, waddress, datain, write);
+  end generate;
+
+  proa3e : if tech = apa3e generate
+    x0 : proasic3e_syncram_2p generic map (abits, dbits, sepclk)
+         port map (rclk, renable, raddress, dataoutx,
+		   wclk, waddress, datain, write);
+  end generate;
+
+  proa3l : if tech = apa3l generate
+    x0 : proasic3l_syncram_2p generic map (abits, dbits, sepclk)
          port map (rclk, renable, raddress, dataoutx,
 		   wclk, waddress, datain, write);
   end generate;
@@ -252,6 +265,18 @@ begin
          port map (rclk, renable, raddress, dataoutx,
 		   wclk, write, waddress, datain);
   end generate;
+
+  tm65gplu : if tech = tm65gpl generate 
+    x0 : tm65gplus_syncram_2p generic map (abits, dbits)
+         port map (rclk, renable, raddress, dataoutx, 
+                   wclk, write, waddress, datain);
+  end generate; 
+
+  cmos9sfx : if tech = cmos9sf generate 
+    x0 : cmos9sf_syncram_2p generic map (abits, dbits)
+         port map (rclk, renable, raddress, dataoutx, 
+                   wclk, write, waddress, datain);
+  end generate; 
 
 -- pragma translate_off
   noram : if has_2pram(tech) = 0 generate

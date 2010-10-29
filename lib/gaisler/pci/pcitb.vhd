@@ -30,8 +30,8 @@ library ieee;
 use ieee.std_logic_1164.all;
 library grlib;
 use grlib.stdlib.all;
-library gaisler;
-use gaisler.ambatest.all;
+--library gaisler;
+--use gaisler.ambatest.all;
 
 package pcitb is
 

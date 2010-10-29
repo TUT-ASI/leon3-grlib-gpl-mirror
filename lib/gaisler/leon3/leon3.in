@@ -19,6 +19,7 @@ if [ "$CONFIG_LEON3" = "y" ]; then
     fi
     bool 'Branch prediction     ' CONFIG_IU_BP
     bool 'Single-vector trapping' CONFIG_IU_SVT
+    bool 'Disable tagged ADD/SUB and CASA' CONFIG_NOTAG
     int 'Load delay' CONFIG_IU_LDELAY 1
     int 'Hardware watchpoints' CONFIG_IU_WATCHPOINTS 0
     bool 'Enable power-down mode ' CONFIG_PWD

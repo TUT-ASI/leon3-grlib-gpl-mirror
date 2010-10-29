@@ -196,6 +196,7 @@ signal i2co : i2c_out_type;
 
 constant BOARD_FREQ : integer := 100000;   -- input frequency in KHz
 constant CPU_FREQ : integer := BOARD_FREQ * CFG_CLKMUL / CFG_CLKDIV;  -- cpu frequency in KHz
+constant I2C_FILTER : integer := (CPU_FREQ*5+50000)/100000+1;
 constant IOAEN : integer := CFG_DDRSP;
 
 signal stati : ahbstat_in_type;
@@ -522,7 +523,8 @@ begin
 
   i2cm: if CFG_I2C_ENABLE = 1 generate  -- I2C master
     i2c0 : i2cmst
-      generic map (pindex => 12, paddr => 12, pmask => 16#FFF#, pirq => 11)
+      generic map (pindex => 12, paddr => 12, pmask => 16#FFF#,
+                   pirq => 11, filter => I2C_FILTER)
       port map (rstn, clkm, apbi, apbo(12), i2ci, i2co);
     i2c_scl_pad : iopad generic map (tech => padtech)
       port map (iic_scl, i2co.scl, i2co.scloen, i2ci.scl);

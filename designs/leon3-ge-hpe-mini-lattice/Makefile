@@ -6,7 +6,7 @@ DEVICE=$(PART)-$(PACKAGE)$(SPEED)
 UCF=$(GRLIB)/boards/$(BOARD)/$(TOP).lpf
 QSF=$(GRLIB)/boards/$(BOARD)/$(TOP).qsf
 EFFORT=1
-XSTOPT=
+XSTOPT=""
 VHDLSYNFILES=config.vhd ahbrom.vhd clkgen_lattice_ea.vhd leon3mini.vhd
 VHDLSIMFILES=testbench.vhd
 SIMTOP=testbench
@@ -16,8 +16,11 @@ CLEAN=soft-clean
 
 TECHLIBS = ec 
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
-	tmtc openchip cypress ihp usbhc gleichmann
-DIRSKIP = pcif leon2 leon2ft crypto pci ambatest usb grusbhc b1553 satcan usbhc
+	tmtc openchip cypress ihp usbhc
+DIRSKIP = pcif leon2 leon2ft crypto pci ambatest usb grusbhc b1553 satcan usbhc \
+	leon3ft leon4 leon4b64 l2cache spacewire slink ascs pwm haps coremp7 \
+	gr1553b iommu
+
 FILESKIP = vgaclkgen.vhd
 
 include $(GRLIB)/bin/Makefile

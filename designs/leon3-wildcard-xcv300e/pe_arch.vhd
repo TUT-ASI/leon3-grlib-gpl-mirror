@@ -25,8 +25,7 @@
 --
 -- Library      : PE_Lib
 --
--- Authors      : Mr Sandi Alexander Habinc
---                Gaisler Research
+-- Authors      : Aeroflex Gaisler AB
 --
 -- Contact      : mailto:support@gaisler.com
 --                http://www.gaisler.com

@@ -101,6 +101,7 @@ type mmudc_out_type is record
   mmctrl2          : mmctrl_type2;
   -- writebuffer out
   wbtransdata      : mmuidc_data_out_type;
+  tlbmiss          : std_logic;
 end record;
 
 type mmuic_in_type is record
@@ -111,12 +112,13 @@ end record;
 type mmuic_out_type is record
   grant            : std_logic;
   transdata        : mmuidc_data_out_type;
+  tlbmiss          : std_logic;
 end record;
 
 constant mmudco_zero : mmudc_out_type := ('0', mmuidco_zero,
-	mmctrl2_zero, mmuidco_zero);
+	mmctrl2_zero, mmuidco_zero, '0');
 
-constant mmuico_zero : mmuic_out_type := ('0', mmuidco_zero);
+constant mmuico_zero : mmuic_out_type := ('0', mmuidco_zero, '0');
 
 --#lrue i/o
 type mmulrue_in_type is record
@@ -179,7 +181,7 @@ end record;
 type mmutw_in_type is record
   walk_op_ur       : std_logic;
   areq_ur          : std_logic;
-  
+  tlbmiss          : std_logic;
   data             : std_logic_vector(31 downto 0);
   adata            : std_logic_vector(31 downto 0);
   aaddr            : std_logic_vector(31 downto 0);
@@ -202,14 +204,12 @@ type mmutwo_a is array (natural range <>) of mmutw_out_type;
 
 type mmutlb_in_type is record
   flush_op    : std_logic;
-  diag_op_ur  : std_logic;
   wb_op       : std_logic;
   
   trans_op    : std_logic;
   transdata   : mmuidc_data_in_type;
   s2valid     : std_logic;
   
-  annul       : std_logic;
   mmctrl1     : mmctrl_type1;
   
   -- fast writebuffer signals

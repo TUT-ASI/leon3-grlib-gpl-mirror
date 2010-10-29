@@ -22,7 +22,12 @@
 -- Author:      Edvin Catovic, Jiri Gaisler - Gaisler Research
 -- Description: JTAG communication link with AHB master interface
 ------------------------------------------------------------------------------  
-
+-- GRLIB2 CORE
+-- VENDOR:      VENDOR_GAISLER
+-- DEVICE:      GAISLER_AHBJTAG
+-- VERSION:     1
+-- AHBMASTER:   0
+-------------------------------------------------------------------------------
 library ieee;
 use ieee.std_logic_1164.all;
 library grlib;
@@ -72,8 +77,12 @@ end;
 
 architecture struct of ahbjtag is
 
-  
-constant REVISION : integer := 0;
+-- Set REREAD to 1 to include support for re-read operation when host reads
+-- out data register before jtagcom has completed the current AMBA access and
+-- returned to state 'shft'.
+constant REREAD : integer := 1;
+
+constant REVISION : integer := REREAD;
 constant TAPSEL   : integer := has_tapsel(tech);
 
 signal dmai : ahb_dma_in_type;
@@ -84,7 +93,8 @@ signal ltapo : tap_out_type;
 begin
 
   ahbmst0 : ahbmst 
-    generic map (hindex => hindex, venid => VENDOR_GAISLER, devid => GAISLER_AHBJTAG)
+    generic map (hindex => hindex, venid => VENDOR_GAISLER,
+                 devid => GAISLER_AHBJTAG, version => REVISION)
     port map (rst, clk, dmai, dmao, ahbi, ahbo);
 
   tap0 : tap generic map (tech => tech, irlen => 6, idcode => idcode, 
@@ -93,7 +103,7 @@ begin
               ltapo.shift, ltapo.upd, ltapo.asel, ltapo.dsel, ltapi.en, ltapi.tdo, tapi_tdo,
 	      ahbi.testen, ahbi.testrst, tdoen);
   
-  jtagcom0 : jtagcom generic map (isel => TAPSEL, nsync => nsync, ainst => ainst, dinst => dinst)
+  jtagcom0 : jtagcom generic map (isel => TAPSEL, nsync => nsync, ainst => ainst, dinst => dinst, reread => REREAD)
     port map (rst, clk, ltapo, ltapi, dmao, dmai);
 
   tapo_tck <= ltapo.tck; tapo_tdi <= ltapo.tdi; tapo_inst <= ltapo.inst;  

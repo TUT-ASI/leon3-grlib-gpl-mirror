@@ -56,8 +56,16 @@ begin
     x0 : axcel_iopad generic map (level, slew, voltage, strength)
 	 port map (pad, i, oen, o);
   end generate;
-  pa : if (tech = proasic) or (tech = apa3) generate
+  pa3 : if (tech = proasic) or (tech = apa3) generate
     x0 : apa3_iopad generic map (level, slew, voltage, strength, filter)
+	 port map (pad, i, oen, o);
+  end generate;
+  pa3e : if (tech = apa3e) generate
+    x0 : apa3e_iopad generic map (level, slew, voltage, strength, filter)
+	 port map (pad, i, oen, o);
+  end generate;
+  pa3l : if (tech = apa3l) generate
+    x0 : apa3l_iopad generic map (level, slew, voltage, strength, filter)
 	 port map (pad, i, oen, o);
   end generate;
   fus : if (tech = actfus) generate

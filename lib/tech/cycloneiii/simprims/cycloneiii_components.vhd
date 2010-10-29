@@ -1,4 +1,4 @@
--- Copyright (C) 1991-2007 Altera Corporation
+-- Copyright (C) 1991-2009 Altera Corporation
 -- Your use of Altera Corporation's design tools, logic functions 
 -- and other software and tools, and its AMPP partner logic 
 -- functions, and any output files from any of the foregoing 
@@ -11,10 +11,7 @@
 -- programming logic devices manufactured by Altera and sold by 
 -- Altera or its authorized distributors.  Please refer to the 
 -- applicable agreement for further details.
-
-
--- Quartus II 7.1 Build 156 04/30/2007
-
+-- Quartus II 9.0 Build 235 03/01/2009
 
 LIBRARY IEEE;
 use IEEE.STD_LOGIC_1164.all;
@@ -23,14 +20,9 @@ use work.cycloneiii_atom_pack.all;
 
 package CYCLONEIII_COMPONENTS is
 
----------------------------------------------------------------------
 --
--- Entity Name :  cycloneiii_ff
+-- cycloneiii_ff
 -- 
--- Description :  Cyclone III FF VHDL simulation model
---  
---
----------------------------------------------------------------------
 
 component cycloneiii_ff
     generic (
@@ -142,6 +134,7 @@ component cycloneiii_ram_block
       clk1_input_clock_enable  : STRING := "none"; -- ena1,ena3,none
       clk1_core_clock_enable   : STRING := "none"; -- ena1,ena3,none
       clk1_output_clock_enable : STRING := "none"; -- ena1,none
+	-- REMStratix IV -- REMArria II GX -- REMHardCopy III clock_duty_cycle_dependence : STRING := "Auto";
       port_a_read_during_write_mode  :  STRING  := "new_data_no_nbe_read";
       port_b_read_during_write_mode  :  STRING  := "new_data_no_nbe_read";
         mem_init0 : BIT_VECTOR  := X"0";
@@ -291,7 +284,7 @@ COMPONENT cycloneiii_pll
         
         self_reset_on_loss_lock     : string  := "off";
         switch_over_type            : string  := "auto";
-	switch_over_counter         : integer := 1;
+    switch_over_counter         : integer := 1;
         enable_switch_over_counter  : string := "off";
         
         
@@ -420,7 +413,7 @@ COMPONENT cycloneiii_pll
         
         lpm_type                    : string := "cycloneiii_pll";
         charge_pump_current         : integer := 10;
-        loop_filter_r               : string := "1.0";
+        loop_filter_r               : string := " 1.0";
         loop_filter_c               : integer := 0;
 
         
@@ -459,8 +452,10 @@ COMPONENT cycloneiii_pll
         test_volt_reg_output_mode_bits : integer := 0;
         test_volt_reg_output_voltage_bits : integer := 0;
         test_volt_reg_test_mode : string := "false";
-        vco_range_detector_high_bits : integer := 0;
-        vco_range_detector_low_bits : integer := 0;
+        vco_range_detector_high_bits : integer := -1;
+        vco_range_detector_low_bits : integer := -1;
+    scan_chain_mif_file : string := "";
+         auto_settings : string  := "true";    
 --REM_MF        -- VITAL generics
 --REM_MF        XOn                         : Boolean := DefGlitchXOn;
 --REM_MF        MsgOn                       : Boolean := DefGlitchMsgOn;
@@ -497,7 +492,7 @@ COMPONENT cycloneiii_pll
         pfdena                      : in std_logic := '1';
         scandata                    : in std_logic := '0';
         scanclk                     : in std_logic := '0';
-        scanclkena                  : in std_logic := '0';
+        scanclkena                  : in std_logic := '1';
         configupdate                : in std_logic := '0';
         clk                         : out std_logic_vector(4 downto 0);
         phasecounterselect          : in std_logic_vector(2 downto 0) := "000";
@@ -566,11 +561,11 @@ component cycloneiii_mac_out
              tipd_clk : VitalDelayType01 := DefPropDelay01;
              tipd_ena : VitalDelayType01 := DefPropDelay01;
              tipd_aclr : VitalDelayType01 := DefPropDelay01;
-             tpd_dataa_dataout : VitalDelayType01 := DefPropDelay01;
-             tpd_aclr_dataout_posedge : VitalDelayType01 := DefPropDelay01;
-             tpd_clk_dataout_posedge : VitalDelayType01 := DefPropDelay01;
-             tsetup_dataa_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
-             thold_dataa_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
+             tpd_dataa_dataout :VitalDelayArrayType01(36*36 -1 downto 0) :=(others => DefPropDelay01);
+             tpd_aclr_dataout_posedge : VitalDelayArrayType01(35 downto 0) :=(others => DefPropDelay01);
+             tpd_clk_dataout_posedge :VitalDelayArrayType01(35  downto 0) :=(others => DefPropDelay01);
+             tsetup_dataa_clk_noedge_posedge : VitalDelayArrayType(35 downto 0) := (OTHERS => DefSetupHoldCnst);
+             thold_dataa_clk_noedge_posedge :  VitalDelayArrayType(35 downto 0) := (OTHERS => DefSetupHoldCnst);
              tsetup_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
              thold_ena_clk_noedge_posedge : VitalDelayType := DefSetupHoldCnst;
              dataa_width                    :  integer := 1;    
@@ -588,6 +583,10 @@ component cycloneiii_mac_out
           devpor : IN std_logic := '1'
          );   
 end component;
+
+--
+-- cycloneiii_termination Model
+--
 
 COMPONENT cycloneiii_termination
     GENERIC (
@@ -629,6 +628,7 @@ COMPONENT cycloneiii_io_ibuf
              MsgOn                         : Boolean := DefGlitchMsgOn;
              differential_mode       :  string := "false";
              bus_hold                :  string := "false";
+             simulate_z_as          : string    := "Z";
              lpm_type                :  string := "cycloneiii_io_ibuf"
             );    
     PORT (
@@ -709,6 +709,9 @@ COMPONENT cycloneiii_ddio_out
             tipd_datainlo                      : VitalDelayType01 := DefPropDelay01;
             tipd_datainhi                      : VitalDelayType01 := DefPropDelay01;
             tipd_clk                           : VitalDelayType01 := DefPropDelay01;
+            tipd_clkhi                         : VitalDelayType01 := DefPropDelay01;
+            tipd_clklo                         : VitalDelayType01 := DefPropDelay01;
+            tipd_muxsel                        : VitalDelayType01 := DefPropDelay01;
             tipd_ena                           : VitalDelayType01 := DefPropDelay01;
             tipd_areset                        : VitalDelayType01 := DefPropDelay01;
             tipd_sreset                        : VitalDelayType01 := DefPropDelay01;
@@ -716,13 +719,17 @@ COMPONENT cycloneiii_ddio_out
             MsgOn                              : Boolean := DefGlitchMsgOn;         
             power_up                           :  string := "low";          
             async_mode                         :  string := "none";       
-            sync_mode                          :  string := "none";   
+            sync_mode                          :  string := "none";
+            use_new_clocking_model             :  string := "false";
             lpm_type                           :  string := "cycloneiii_ddio_out"
            );
     PORT (
           datainlo                : IN std_logic := '0';   
           datainhi                : IN std_logic := '0';   
-          clk                     : IN std_logic := '0';   
+          clk                     : IN std_logic := '0'; 
+          clkhi                   : IN std_logic := '0'; 
+          clklo                   : IN std_logic := '0'; 
+          muxsel                  : IN std_logic := '0';   
           ena                     : IN std_logic := '1';   
           areset                  : IN std_logic := '0';   
           sreset                  : IN std_logic := '0';   
@@ -735,6 +742,26 @@ COMPONENT cycloneiii_ddio_out
 END COMPONENT;
 
 
+--
+-- cycloneiii_pseudo_diff_out
+--
+
+COMPONENT cycloneiii_pseudo_diff_out
+ GENERIC (
+          tipd_i          : VitalDelayType01 := DefPropDelay01;
+          tpd_i_o         : VitalDelayType01 := DefPropDelay01;
+          tpd_i_obar      : VitalDelayType01 := DefPropDelay01;
+          XOn             : Boolean := DefGlitchXOn;
+          MsgOn           : Boolean := DefGlitchMsgOn;
+          lpm_type        :  string := "cycloneiii_pseudo_diff_out"
+         );
+
+ PORT (
+        i                       : IN std_logic := '0';
+        o                       : OUT std_logic;
+        obar                    : OUT std_logic
+      );
+END COMPONENT;
 --
 -- CYCLONEIII_IO_PAD
 --
@@ -787,7 +814,7 @@ component  cycloneiii_apfcontroller
 	);
 	port 
 	(
-		usermode  : out std_logic; 
+		usermode  : out std_logic;  --REM_TARPON
 		nceout	: out std_logic
 	);
 end component;
@@ -807,7 +834,7 @@ component  cycloneiii_jtag
 --REM_CYCyclone III            ntrst : in std_logic := '0'; 
             tdoutap : in std_logic := '0'; 
             tdouser : in std_logic := '0'; 
-            tdo: out std_logic; 
+            tdo: out std_logic;
             tmsutap: out std_logic; 
             tckutap: out std_logic; 
             tdiutap: out std_logic; 
@@ -838,6 +865,7 @@ component  cycloneiii_crcblock
             regout      : out std_logic
             ); 
 end component;
+
 --
 --
 --  CYCLONEIII_OSCILLATOR

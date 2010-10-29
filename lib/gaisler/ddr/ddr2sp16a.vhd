@@ -20,7 +20,7 @@
 -- Entity:      ddr2sp16a
 -- File:        ddr2sp16a.vhd
 -- Author:      Nils-Johan Wessman - Gaisler Research
--- Description: 16-bit DDR2 memory controller with asych AHB interface
+-- Description: 16-bit DDR2 memory controller with asynch AHB interface
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -36,24 +36,24 @@ use techmap.gencomp.all;
 
 entity ddr2sp16a is
    generic (
-      memtech : integer := 0;
-      hindex  : integer := 0;
-      haddr   : integer := 0;
-      hmask   : integer := 16#f00#;
-      ioaddr  : integer := 16#000#;
-      iomask  : integer := 16#fff#;
-      MHz     : integer := 100;
-      TRFC    : integer := 130;
-      col     : integer := 9;
-      Mbyte   : integer := 8;
-      fast    : integer := 0;
-      pwron   : integer := 0;
-      oepol   : integer := 0;
-      readdly : integer := 1;
-      odten   : integer := 0;
-      octen   : integer := 0;
-      dqsgating : integer := 0;
-      nosync    : integer := 0;
+      memtech    : integer := 0;
+      hindex     : integer := 0;
+      haddr      : integer := 0;
+      hmask      : integer := 16#f00#;
+      ioaddr     : integer := 16#000#;
+      iomask     : integer := 16#fff#;
+      MHz        : integer := 100;
+      TRFC       : integer := 130;
+      col        : integer := 9;
+      Mbyte      : integer := 8;
+      fast       : integer := 0;
+      pwron      : integer := 0;
+      oepol      : integer := 0;
+      readdly    : integer := 1;
+      odten      : integer := 0;
+      octen      : integer := 0;
+      dqsgating  : integer := 0;
+      nosync     : integer := 0;
       eightbanks : integer range 0 to 1 := 0; -- Set to 1 if 8 banks instead of 4
       dqsse      : integer range 0 to 1 := 0  -- single ended DQS
    );
@@ -137,7 +137,6 @@ type ahb_reg_type is record
    state       : ahb_state_type;
    haddr       : std_logic_vector(31 downto 0);
    hrdata      : std_logic_vector(31 downto 0);
-   hwdata      : std_logic_vector(31 downto 0);
    hwrite      : std_ulogic;
    htrans      : std_logic_vector(1 downto 0);
    hresp       : std_logic_vector(1 downto 0);
@@ -191,6 +190,7 @@ signal vcc, rwrite : std_ulogic;
 signal r, ri : ddr_reg_type;
 signal ra, rai : ahb_reg_type;
 signal rdata, wdata, rwdata, rbdrive, ribdrive : std_logic_vector(31 downto 0);
+signal hwdata : std_logic_vector(31 downto 0);
 signal waddr2 : std_logic_vector(abuf-1 downto 0);
 signal ddr_rst : std_logic;
 signal ddr_rst_gen  : std_logic_vector(3 downto 0);
@@ -281,8 +281,6 @@ begin
          end if;
       end case;
 
-      v.hwdata := ahbsi.hwdata;
-
       if (ahbsi.hready and ahbsi.hsel(hindex) ) = '1' then
          if ahbsi.htrans(1) = '0' then v.hready := '1'; end if;
       end if;
@@ -301,7 +299,7 @@ begin
       rai <= v;
       ahbso.hready  <= ra.hready;
       ahbso.hresp   <= ra.hresp;
-      ahbso.hrdata  <= dout;
+      ahbso.hrdata  <= ahbdrivedata(dout);
       ahbso.hcache  <= not ra.hio;
 
    end process;
@@ -932,6 +930,8 @@ begin
    sdo.dqs_gate <= r.dqsgate when r.cfg.dqsctrl(0) = '0' else
                    dqsgate180;
 
+   hwdata <= ahbreadword(ahbsi.hwdata, ra.haddr(4 downto 2));
+   
    read_buff : syncram_2p
    generic map (tech => memtech, abits => 6, dbits => 32, sepclk => 1, wrfst => ramwt)
    port map ( rclk => clk_ahb, renable => vcc, raddress => rai.raddr,
@@ -942,7 +942,7 @@ begin
    generic map (tech => memtech, abits => 6, dbits => 32, sepclk => 1, wrfst => 0)
    port map ( rclk => clk_ddr, renable => vcc, raddress => r.waddr,
               dataout => wdata, wclk => clk_ahb, write => ra.write,
-              waddress => ra.haddr(7 downto 2), datain => ahbsi.hwdata);
+              waddress => ra.haddr(7 downto 2), datain => hwdata);
 
 -- pragma translate_off
    bootmsg : report_version 

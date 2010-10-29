@@ -22,6 +22,122 @@
 -- Author:	Jiri Gaisler, Edvin Catovic, Gaisler Research
 -- Description:	Top-level LEON3 component
 ------------------------------------------------------------------------------
+-- GRLIB2 CORE
+-- VENDOR:      VENDOR_GAISLER
+-- DEVICE:      GAISLER_LEON3
+-- VERSION:     0
+-- AHBMASTER:   0
+-------------------------------------------------------------------------------
+--                                 GENERICS                                  --
+-------------------------------------------------------------------------------
+-- hindex: AHB master index
+--
+-- fabtech: Target technology
+--
+-- memtech: Vendor library for regfile and cache RAMs
+--
+-- nwindows: Number of SPARC register windows. Choose 8 windows to be
+-- compatible with Bare-C and RTEMS cross-compilers.
+--
+-- dsu: Enable Debug Support Unit (DSU) interface
+--
+-- fpu: Floating-point Unit 0 : no FPU 1 - 7: GRFPU 1 - inferred
+-- multiplier, 2 - DW multiplier, 3 - Module Generator multiplier 8
+-- - 14: GRFPU-Lite 8 - simple FPC, 9 - data forwarding FPC, 10 -
+-- non-blocking FPC 15: Meiko 16 - 31: as above (modulo 16) but use
+-- netlist
+--
+-- v8: Generate SPARC V8 MUL and DIV instructions 0 : No multiplier or
+-- divider 1 : 16x16 multiplier 2: 16x16 pipelined multiplier 16#32# :
+-- 32x32 pipelined multiplier
+-- 
+-- cp: Generate co-processor interface
+--
+-- mac: Generate SPARC V8e SMAC/UMAC instruction
+--
+-- pclow: Least significant bit of PC (Program Counter) that is
+-- actually generated. PC[1:0] are always zero and are normally not
+-- generated. Generating PC[1:0] makes VHDL-debugging easier.
+--
+-- notag: Currently not used
+--
+-- nwp: Currently not used
+--
+-- icen: Enable instruction cache
+--
+-- irepl: Instruction cache replacement policy. 0 - least recently
+-- used (LRU), 1 - least recently replaced (LRR), 2 - random
+--
+-- isets: Number of instruction cache sets
+--
+-- ilinesize: Instruction cache line size in number of words
+--
+-- isetsize: Number of instruction cache sets
+--
+-- isetlock: Enable instruction cache line locking
+--
+-- dcen: Data cache enable
+--
+-- drepl: Data cache replacement policy. 0 - least recently used
+-- (LRU), 1 - least recently replaced (LRR), 2 - random
+--
+-- dsets: Number of data cache sets
+--
+-- dlinesize: Data cache line size in number of words
+--
+-- dsetsize: Size of each data cache set in kByte
+--
+-- dsetlock: Enable data cache line locking
+--
+-- dsnoop: Enable data cache snooping Bit 0-1: 0: disable, 1: slow, 2:
+-- fast (see text) Bit 2: 0: simple snooping, 1: save extra physical
+-- tags (MMU snooping)
+--
+-- ilram: Enable local instruction RAM
+--
+-- ilramsize: Local instruction RAM size in kB
+--
+-- ilramstart: 8 MSB bits used to decode local instruction RAM area
+--
+-- dlram: Enable local data RAM (scratch-pad RAM)
+--
+-- dlramsize: Local data RAM size in kB
+--
+-- dlramstart: 8 MSB bits used to decode local data RAM area
+--
+-- mmuen: Enable memory management unit (MMU)
+--
+-- itlbnum: Number of instruction TLB entries
+--
+-- dtlbnum: Number of data TLB entries
+--
+-- tlb_type: 0 : separate TLB with slow write 1: shared TLB with slow
+-- write 2: separate TLB with fast write
+--
+-- tlb_rep: LRU (0) or Random (1) TLB replacement
+--
+-- lddel: Load delay. One cycle gives best performance, but might
+-- create a critical path on targets with slow (data) cache memories.
+-- A 2-cycle delay can improve timing but will reduce performance with
+-- about 5%.
+--
+-- disas: Print instruction disassembly in VHDL simulator console.
+--
+-- tbuf: Size of instruction trace buffer in kB (0 - instruction trace
+-- disabled)
+--
+-- pwd: Power-down. 0 - disabled, 1 - area efficient, 2 - timing efficient.
+--
+-- svt: Enable single-vector trapping
+--
+-- rstaddr: Default reset start address
+--
+-- smp: Enable multi-processor support
+--
+-- cached: Fixed cacheability mask
+--
+-- scantest: Enable scan test support
+-------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -95,7 +211,7 @@ entity leon3s is
     ahbi   : in  ahb_mst_in_type;
     ahbo   : out ahb_mst_out_type;
     ahbsi  : in  ahb_slv_in_type;
-    ahbso  : in  ahb_slv_out_vector;    
+    ahbso  : in  ahb_slv_out_vector;
     irqi   : in  l3_irq_in_type;
     irqo   : out l3_irq_out_type;
     dbgi   : in  l3_debug_in_type;
@@ -125,6 +241,7 @@ signal cpodb : fpc_debug_out_type;
 signal rd1, rd2, wd : std_logic_vector(35 downto 0);
 signal gnd, vcc : std_logic;
 
+constant IRFWT     : integer := 1;--regfile_3p_write_through(memtech);
 constant FPURFHARD : integer := 1; --1-is_fpga(memtech);
 constant fpuarch   : integer := fpu mod 16;
 constant fpunet    : integer := fpu / 16;
@@ -150,7 +267,7 @@ begin
   
 -- IU register file
   
-    rf0 : regfile_3p generic map (memtech, IRFBITS, 32, syncram_2p_write_through(memtech), IREGNUM)
+    rf0 : regfile_3p generic map (memtech, IRFBITS, 32, IRFWT, IREGNUM)
         port map (clk, rfi.waddr(IRFBITS-1 downto 0), rfi.wdata, rfi.wren, 
 		  clk, rfi.raddr1(IRFBITS-1 downto 0), rfi.ren1, rfo.data1, 
 		  rfi.raddr2(IRFBITS-1 downto 0), rfi.ren2, rfo.data2, rfi.diag);
@@ -173,9 +290,7 @@ begin
     
 -- FPU
 
-  fpu0 : if (fpu = 0) generate fpo.ldlock <= '0'; fpo.ccv <= '1'; fpo.holdn <= '1';
-                               fpo.dbg.data <= (others=>'0');
-  end generate;
+  fpu0 : if (fpu = 0) generate fpo <= fpc_out_none; end generate;
 
   grfpw0gen : if (fpuarch > 0) and (fpuarch < 8) generate
     fpu0: grfpwx

@@ -96,7 +96,7 @@ begin
     if dmao.active = '1' then
       if r.write = '0' then
 	if dmao.ready = '1' then
-	  v.data(r.cnt) := dmao.rdata;
+	  v.data(r.cnt) := ahbreadword(dmao.rdata);
 	  if r.cnt = dbuf-1 then 
 	    v.write := '1'; v.cnt := 0; v.inhibit := '1';
 	    address := r.dstaddr; size := r.dstinc;
@@ -158,7 +158,7 @@ begin
     rin <= v;
     apbo.prdata  <= regd;
     dmai.address <= address;
-    dmai.wdata   <= r.data(r.cnt);
+    dmai.wdata   <= ahbdrivedata(r.data(r.cnt));
     dmai.start   <= start and not v.inhibit;
     dmai.burst   <= burst;
     dmai.write   <= v.write;

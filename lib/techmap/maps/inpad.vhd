@@ -47,8 +47,14 @@ begin
   axc : if (tech = axcel) or (tech = axdsp) generate
     x0 : axcel_inpad generic map (level, voltage) port map (pad, o);
   end generate;
-  pa : if (tech = proasic) or (tech = apa3) generate
+  pa3 : if (tech = proasic) or (tech = apa3) generate
     x0 : apa3_inpad generic map (level, voltage, filter) port map (pad, o);
+  end generate;
+  pa3e : if (tech = apa3e) generate
+    x0 : apa3e_inpad generic map (level, voltage, filter) port map (pad, o);
+  end generate;
+  pa3l : if (tech = apa3l) generate
+    x0 : apa3l_inpad generic map (level, voltage, filter) port map (pad, o);
   end generate;
   fus : if (tech = actfus) generate
     x0 : fusion_inpad generic map (level, voltage, filter) port map (pad, o);

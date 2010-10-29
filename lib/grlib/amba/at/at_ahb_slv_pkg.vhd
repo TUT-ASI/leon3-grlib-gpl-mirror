@@ -129,6 +129,10 @@ package at_ahb_slv_pkg is
   --                    set to x the slave model will reply with the default response
   --                    for x accesses and the return the customized response.
   --
+  --    hprot           HPROT value that response is valid for
+  --
+  --    anyhprot        Response is valid for any value of HPROT
+  --
   -- Description: Inserts a customized response into the AHB slave's response
   --              queue. The address parameters contain the complete AMBA address.
   --              They are not relative to the bank start.
@@ -137,7 +141,30 @@ package at_ahb_slv_pkg is
     constant address_stop   : in  std_logic_vector(ADDR_R);
     constant bank           : in  integer;
     constant response       : in  std_logic_vector(1 downto 0);
-    constant data           : in  std_logic_vector(DATA_R);
+    constant data           : in  std_logic_vector;
+    constant master         : in  integer range 0 to NAHBMST-1;
+    constant anymst         : in  boolean;
+    variable id             : out integer;
+    signal   dbgi           : out at_slv_dbg_in_type;
+    signal   dbgo           : in  at_slv_dbg_out_type;
+    constant ws             : in  integer := 0;
+    constant repeat         : in  integer := 1;
+    constant count          : in  integer := 1;
+    constant splitcnt       : in  integer := 5;
+    constant mem_access     : in  boolean := false;
+    constant read_response  : in  boolean := true;
+    constant write_response : in  boolean := true;
+    constant lock           : in  boolean := false;
+    constant delay          : in  integer := 0;
+    constant hprot          : in  std_logic_vector(3 downto 0);
+    constant anyhprot       : in  boolean);
+
+  procedure ahbslv_response (
+    constant address_start  : in  std_logic_vector(ADDR_R);
+    constant address_stop   : in  std_logic_vector(ADDR_R);
+    constant bank           : in  integer;
+    constant response       : in  std_logic_vector(1 downto 0);
+    constant data           : in  std_logic_vector;
     constant master         : in  integer range 0 to NAHBMST-1;
     constant anymst         : in  boolean;
     variable id             : out integer;
@@ -153,12 +180,33 @@ package at_ahb_slv_pkg is
     constant lock           : in  boolean := false;
     constant delay          : in  integer := 0);
 
+  procedure ahbslv_response (
+    constant address_start  : in  std_logic_vector(ADDR_R);
+    constant address_stop   : in  std_logic_vector(ADDR_R);
+    constant bank           : in  integer;
+    constant response       : in  std_logic_vector(1 downto 0);
+    constant data           : in  std_logic_vector;
+    variable id             : out integer;
+    signal   dbgi           : out at_slv_dbg_in_type;
+    signal   dbgo           : in  at_slv_dbg_out_type;
+    constant ws             : in  integer := 0;
+    constant repeat         : in  integer := 1;
+    constant count          : in  integer := 1;
+    constant splitcnt       : in  integer := 5;
+    constant mem_access     : in  boolean := false;
+    constant read_response  : in  boolean := true;
+    constant write_response : in  boolean := true;
+    constant lock           : in  boolean := false;
+    constant delay          : in  integer := 0;
+    constant hprot          : in  std_logic_vector(3 downto 0);
+    constant anyhprot       : in  boolean);
+
    procedure ahbslv_response (
     constant address_start  : in  std_logic_vector(ADDR_R);
     constant address_stop   : in  std_logic_vector(ADDR_R);
     constant bank           : in  integer;
     constant response       : in  std_logic_vector(1 downto 0);
-    constant data           : in  std_logic_vector(DATA_R);
+    constant data           : in  std_logic_vector;
     constant master         : in  integer range 0 to NAHBMST-1;
     variable id             : out integer;
     signal   dbgi           : out at_slv_dbg_in_type;
@@ -178,7 +226,7 @@ package at_ahb_slv_pkg is
     constant address_stop   : in  std_logic_vector(ADDR_R);
     constant bank           : in  integer;
     constant response       : in  std_logic_vector(1 downto 0);
-    constant data           : in  std_logic_vector(DATA_R);
+    constant data           : in  std_logic_vector;
     variable id             : out integer;
     signal   dbgi           : out at_slv_dbg_in_type;
     signal   dbgo           : in  at_slv_dbg_out_type;
@@ -323,6 +371,14 @@ package at_ahb_slv_pkg is
     signal   dbgi        : out at_slv_dbg_in_type;
     signal   dbgo        : in  at_slv_dbg_out_type);
 
+  -- Subprogram: ahbslv_set_dbglbl
+  -- Description: Sets debug level
+  procedure ahbslv_set_dbglvl (
+    constant bank        : in  integer;
+    constant dbglvl      : in integer;
+    signal   dbgi        : out at_slv_dbg_in_type;
+    signal   dbgo        : in  at_slv_dbg_out_type);
+  
   -- Subprogram: ahbslv_enable_split
   -- Description: Enable AMBA SPLIT responses with a 50 % probability for bank 'bank'
   procedure ahbslv_enable_split (
@@ -399,6 +455,13 @@ package at_ahb_slv_pkg is
     signal   dbgi : out at_slv_dbg_in_type;
     signal   dbgo : in  at_slv_dbg_out_type);
 
+  procedure ahbslv_set_ws (
+    constant bank : in integer;
+    constant ws   : in integer;
+    constant rws  : in integer;
+    signal   dbgi : out at_slv_dbg_in_type;
+    signal   dbgo : in  at_slv_dbg_out_type);
+
   -- Subprogram: ahbslv_get_ws
   -- Description: Gets the number of waitstates (ws) for a bank
   procedure ahbslv_get_ws (
@@ -462,7 +525,7 @@ package at_ahb_slv_pkg is
     -- Data phase information
     variable dvalid   : out std_ulogic;
     variable waddr    : out std_logic_vector(ADDR_R);
-    variable wdata    : out std_logic_vector(DATA_R);
+    variable wdata    : out std_logic_vector;
     variable wbank    : out std_logic_vector(BANK_R);
     variable wsize    : out std_logic_vector(SIZE_R);
     signal   dbgi     : out at_slv_dbg_in_type;
@@ -490,7 +553,7 @@ package at_ahb_slv_pkg is
   --
   procedure ahbslv_interactive_response (
     constant default  : in boolean;
-    constant data     : in std_logic_vector(DATA_R);
+    constant data     : in std_logic_vector;
     constant resp     : in std_logic_vector(1 downto 0);
     signal   dbgi     : out at_slv_dbg_in_type;
     signal   dbgo     : in  at_slv_dbg_out_type;
@@ -516,23 +579,42 @@ package body at_ahb_slv_pkg is
     variable lbank : std_logic_vector(BANK_R) := (others => '0');
   begin  -- ahbslv_write
     case data'length is
+      when 256 =>
+        dbgi.size <= HSIZE_8WORD;
+        assert address(4 downto 0) = "00000"
+          report "ahbslv_write: Unaligned word access to address " & tost(address)
+          severity error;
+      when 128 => 
+        dbgi.size <= HSIZE_4WORD;
+        assert address(3 downto 0) = "0000"
+          report "ahbslv_write: Unaligned word access to address " & tost(address)
+          severity error;
+      when 64 =>
+        dbgi.size <= HSIZE_DWORD;
+        assert address(2 downto 0) = "000"
+          report "ahbslv_write: Unaligned word access to address " & tost(address)
+          severity error;
       when 32 =>
-        dbgi.size <= HSIZE32;
+        dbgi.size <= HSIZE_WORD;
         assert address(1 downto 0) = "00"
-          report "ahbslv_wmem: Unaligned word access to address " & tost(address)
+          report "ahbslv_write: Unaligned word access to address " & tost(address)
           severity error;
       when 16 =>
-        dbgi.size <= HSIZE16;
+        dbgi.size <= HSIZE_HWORD;
         assert address(0) = '0'
-          report "ahbslv_wmem: Unaligned halfword access to address " & tost(address)
+          report "ahbslv_write: Unaligned halfword access to address " & tost(address)
           severity error;
-      when 8 => dbgi.size <= HSIZE8;
+      when 8 => dbgi.size <= HSIZE_BYTE;
       when others =>
         assert false
-          report "ahbslv_wmem: Illegal data length! on write to address " & tost(address)
+          report "ahbslv_write: Illegal data length! on write to address " & tost(address)
           severity error;
     end case;
-
+    
+    assert dbgo.data'length >= data'length
+         report "ahbslv_write data input length too long (" &
+                 tost(data'length) & ")" severity failure;
+    
     dbgi.acc <= d;
     dbgi.wr <= '1';
     dbgi.addr <= address;
@@ -553,44 +635,56 @@ package body at_ahb_slv_pkg is
     signal   dbgi    : out at_slv_dbg_in_type;
     signal   dbgo    : in  at_slv_dbg_out_type) is
     variable lbank : std_logic_vector(BANK_R) := (others => '0');
-    variable lsize : std_logic_vector(SIZE_R);
-    variable index : integer;
+    variable size : std_logic_vector(SIZE_R);
+    variable off : integer;
   begin  -- ahbslv_read
     case data'length is
+      when 256 =>
+        assert address(4 downto 0) = "00000"
+          report "ahbslv_read: Unaligned 8word access to address " & tost(address)
+          severity failure;
+        size := HSIZE_8WORD;
+      when 128 =>
+        assert address(3 downto 0) = "0000"
+          report "ahbslv_read: Unaligned 4word access to address " & tost(address)
+          severity failure;
+        size := HSIZE_4WORD;
+      when 64 =>
+        assert address(2 downto 0) = "000"
+          report "ahbslv_read: Unaligned dword access to address " & tost(address)
+          severity failure;
+        size := HSIZE_DWORD;
       when 32 =>
         assert address(1 downto 0) = "00"
-          report "ahbslv_wmem: Unaligned word access to address " & tost(address)
-          severity error;
-        lsize := HSIZE32;
+          report "ahbslv_read: Unaligned word access to address " & tost(address)
+          severity failure;
+        size := HSIZE_WORD;
       when 16 =>
         assert address(0) = '0'
-          report "ahbslv_wmem: Unaligned halfword access to address " & tost(address)
-          severity error;
-        lsize := HSIZE16;
-      when 8 => lsize := HSIZE8;
+          report "ahbslv_read: Unaligned halfword access to address " & tost(address)
+          severity failure;
+        size := HSIZE_HWORD;
+      when 8 =>
+        size := HSIZE_BYTE;
       when others =>
         assert false
-          report "ahbslv_wmem: Illegal data length! on write to address " & tost(address)
-          severity error;
+          report "ahbslv_read: Illegal data length! on write to address " & tost(address)
+          severity failure;
     end case;
     dbgi.acc <= d;
     dbgi.wr <= '0';
     dbgi.addr <= address;
     lbank(bank) := '1';
     dbgi.bank <= lbank;
-    dbgi.size <= lsize;
+    dbgi.size <= size;
     dbgi.req <= '1';
     wait until dbgo.ack = '1';
-    index := conv_integer(address(1 downto 0))*8;
-    case lsize is
-      when HSIZE8  => data := dbgo.data((31-index) downto (24-index));
-      when HSIZE16 => data := dbgo.data((31-index) downto (16-index));
-      when HSIZE32 => data := dbgo.data;
-      when others =>
-        assert false
-          report "ahbslv_read needs to be updated for access size"
-          severity error;
-    end case;
+    if data'length < 256 and dbgo.data'left >= 255 and address(4) = '0' then off := 128; else off := 0; end if;
+    if data'length < 128 and dbgo.data'left >= 127 and address(3) = '0' then off := off + 64; end if;
+    if data'length < 64 and dbgo.data'left >= 63 and address(2) = '0' then off := off + 32; end if;
+    if data'length < 32 and address(1) = '0' then off := off + 16; end if;
+    if data'length < 16 and address(0) = '0' then off := off + 8; end if;
+    data := dbgo.data(data'length-1+off downto off);
     dbgi.req <= '0';
     wait until dbgo.ack = '0';
   end ahbslv_read;
@@ -600,7 +694,72 @@ package body at_ahb_slv_pkg is
     constant address_stop   : in  std_logic_vector(ADDR_R);
     constant bank           : in  integer;
     constant response       : in  std_logic_vector(1 downto 0);
-    constant data           : in  std_logic_vector(DATA_R);
+    constant data           : in  std_logic_vector;
+    constant master         : in  integer range 0 to NAHBMST-1;
+    constant anymst         : in  boolean;
+    variable id             : out integer;
+    signal   dbgi           : out at_slv_dbg_in_type;
+    signal   dbgo           : in  at_slv_dbg_out_type;
+    constant ws             : in  integer := 0;
+    constant repeat         : in  integer := 1;
+    constant count          : in  integer := 1;
+    constant splitcnt       : in  integer := 5;
+    constant mem_access     : in  boolean := false;
+    constant read_response  : in  boolean := true;
+    constant write_response : in  boolean := true;
+    constant lock           : in  boolean := false;
+    constant delay          : in  integer := 0;
+    constant hprot          : in  std_logic_vector(3 downto 0);
+    constant anyhprot       : in  boolean) is
+    variable lbank : std_logic_vector(BANK_R) := (others => '0');
+    variable off   : integer;
+  begin  -- ahbslv_response
+    lbank(bank) := '1';
+
+    assert data'length <= dbgi.resp.resp.data'length
+      report "Response data vector too long"
+        severity failure;
+    
+    dbgi.acc                        <= ri;
+    dbgi.bank                       <= lbank;
+    dbgi.resp.addr1                 <= address_start;
+    dbgi.resp.addr2                 <= address_stop;
+    if address_start = address_stop then
+      off := ahb_doff(AHBDW, data'length, address_start(4 downto 0));
+      dbgi.resp.resp.data(data'length-1+off downto off) <= data;
+    else
+      for i in 0 to AHBDW/data'length-1 loop
+        dbgi.resp.resp.data(data'length-1+data'length*i downto data'length*i) <= data;
+      end loop;
+    end if;
+    dbgi.resp.resp.resp             <= response;
+    dbgi.resp.resp.ws               <= ws;
+    dbgi.resp.resp.lock             <= lock;
+    dbgi.resp.resp.repeat           <= repeat;
+    dbgi.resp.resp.splitcnt         <= splitcnt;
+    dbgi.resp.accmem                <= mem_access;
+    dbgi.resp.read                  <= read_response;
+    dbgi.resp.write                 <= write_response;
+    dbgi.resp.count                 <= count;
+    dbgi.resp.anymst                <= anymst;
+    dbgi.resp.mst                   <= master;
+    dbgi.resp.delay                 <= delay;
+    dbgi.resp.anyhprot              <= anyhprot;
+    dbgi.resp.hprot                 <= hprot;
+    
+    dbgi.req <= '1';
+    wait until dbgo.ack = '1';
+    id := dbgo.id;
+    dbgi.req <= '0';
+    wait until dbgo.ack = '0';
+  end ahbslv_response;
+
+   procedure ahbslv_response (
+    constant address_start  : in  std_logic_vector(ADDR_R);
+    constant address_stop   : in  std_logic_vector(ADDR_R);
+    constant bank           : in  integer;
+    constant response       : in  std_logic_vector(1 downto 0);
+    constant data           : in  std_logic_vector;
     constant master         : in  integer range 0 to NAHBMST-1;
     constant anymst         : in  boolean;
     variable id             : out integer;
@@ -615,33 +774,29 @@ package body at_ahb_slv_pkg is
     constant write_response : in  boolean := true;
     constant lock           : in  boolean := false;
     constant delay          : in  integer := 0) is
-    variable lbank : std_logic_vector(BANK_R) := (others => '0');
-  begin  -- ahbslv_response
-    lbank(bank) := '1';
-    
-    dbgi.acc                 <= ri;
-    dbgi.bank                <= lbank;
-    dbgi.resp.addr1          <= address_start;
-    dbgi.resp.addr2          <= address_stop;
-    dbgi.resp.resp.data      <= data;
-    dbgi.resp.resp.resp      <= response;
-    dbgi.resp.resp.ws        <= ws;
-    dbgi.resp.resp.lock      <= lock;
-    dbgi.resp.resp.repeat    <= repeat;
-    dbgi.resp.resp.splitcnt  <= splitcnt;
-    dbgi.resp.accmem         <= mem_access;
-    dbgi.resp.read           <= read_response;
-    dbgi.resp.write          <= write_response;
-    dbgi.resp.count          <= count;
-    dbgi.resp.anymst         <= anymst;
-    dbgi.resp.mst            <= master;
-    dbgi.resp.delay          <= delay;
-    
-    dbgi.req <= '1';
-    wait until dbgo.ack = '1';
-    id := dbgo.id;
-    dbgi.req <= '0';
-    wait until dbgo.ack = '0';
+   begin  -- ahbslv_response
+    ahbslv_response(
+      address_start  => address_start,
+      address_stop   => address_stop,
+      bank           => bank,
+      response       => response,     
+      data           => data,
+      master         => master,
+      anymst         => anymst,
+      id             => id,
+      dbgi           => dbgi,
+      dbgo           => dbgo,
+      ws             => ws,
+      repeat         => repeat,
+      count          => count,
+      splitcnt       => splitcnt,
+      mem_access     => mem_access,
+      read_response  => read_response,
+      write_response => write_response,
+      lock           => lock,
+      delay          => delay,
+      hprot          => "0000",
+      anyhprot       => true);
   end ahbslv_response;
 
   procedure ahbslv_response (
@@ -649,7 +804,52 @@ package body at_ahb_slv_pkg is
     constant address_stop   : in  std_logic_vector(ADDR_R);
     constant bank           : in  integer;
     constant response       : in  std_logic_vector(1 downto 0);
-    constant data           : in  std_logic_vector(DATA_R);
+    constant data           : in  std_logic_vector;
+    variable id             : out integer;
+    signal   dbgi           : out at_slv_dbg_in_type;
+    signal   dbgo           : in  at_slv_dbg_out_type;
+    constant ws             : in  integer := 0;
+    constant repeat         : in  integer := 1;
+    constant count          : in  integer := 1;
+    constant splitcnt       : in  integer := 5;
+    constant mem_access     : in  boolean := false;
+    constant read_response  : in  boolean := true;
+    constant write_response : in  boolean := true;
+    constant lock           : in  boolean := false;
+    constant delay          : in  integer := 0;
+    constant hprot          : in  std_logic_vector(3 downto 0);
+    constant anyhprot       : in  boolean) is
+   begin  -- ahbslv_response
+    ahbslv_response(
+      address_start  => address_start,
+      address_stop   => address_stop,
+      bank           => bank,
+      response       => response,     
+      data           => data,
+      master         => 0,
+      anymst         => true,
+      id             => id,
+      dbgi           => dbgi,
+      dbgo           => dbgo,
+      ws             => ws,
+      repeat         => repeat,
+      count          => count,
+      splitcnt       => splitcnt,
+      mem_access     => mem_access,
+      read_response  => read_response,
+      write_response => write_response,
+      lock           => lock,
+      delay          => delay,
+      hprot          => "0000",
+      anyhprot       => true);
+  end ahbslv_response;
+  
+  procedure ahbslv_response (
+    constant address_start  : in  std_logic_vector(ADDR_R);
+    constant address_stop   : in  std_logic_vector(ADDR_R);
+    constant bank           : in  integer;
+    constant response       : in  std_logic_vector(1 downto 0);
+    constant data           : in  std_logic_vector;
     constant master         : in  integer range 0 to NAHBMST-1;
     variable id             : out integer;
     signal   dbgi           : out at_slv_dbg_in_type;
@@ -691,7 +891,7 @@ package body at_ahb_slv_pkg is
     constant address_stop   : in  std_logic_vector(ADDR_R);
     constant bank           : in  integer;
     constant response       : in  std_logic_vector(1 downto 0);
-    constant data           : in  std_logic_vector(DATA_R);
+    constant data           : in  std_logic_vector;
     variable id             : out integer;
     signal   dbgi           : out at_slv_dbg_in_type;
     signal   dbgo           : in  at_slv_dbg_out_type;
@@ -839,7 +1039,7 @@ package body at_ahb_slv_pkg is
       address_stop   => address_stop,
       bank           => bank,
       response       => HRESP_OKAY,
-      data           => (others => '0'),
+      data           => zahbdw(DATA_R),
       master         => master,
       anymst         => anymst,
       id             => id,
@@ -951,6 +1151,21 @@ package body at_ahb_slv_pkg is
     wait until dbgo.ack = '0';
   end ahbslv_getconfig;  
 
+  procedure ahbslv_set_dbglvl (
+    constant bank        : in  integer;
+    constant dbglvl      : in integer;
+    signal   dbgi        : out at_slv_dbg_in_type;
+    signal   dbgo        : in  at_slv_dbg_out_type) is
+    variable ws, rws, sc, rsc, ldbglvl : integer;
+    variable retry_prob, split_prob : real;
+    variable iv : boolean;
+  begin
+    ahbslv_getconfig(bank, ws, rws, retry_prob, split_prob, sc, rsc,
+                     iv, ldbglvl, dbgi, dbgo);
+    ahbslv_setconfig(bank, ws, rws, retry_prob, split_prob, sc, rsc,
+                     iv, dbglvl, dbgi, dbgo);
+  end procedure;
+    
   procedure ahbslv_enable_split (
     constant bank : in integer;
     signal   dbgi : out at_slv_dbg_in_type;
@@ -1111,6 +1326,23 @@ package body at_ahb_slv_pkg is
                      iv, dbglvl, dbgi, dbgo);
   end ahbslv_set_ws;
 
+  procedure ahbslv_set_ws (
+    constant bank : in integer;
+    constant ws   : in integer;
+    constant rws  : in integer;
+    signal   dbgi : out at_slv_dbg_in_type;
+    signal   dbgo : in  at_slv_dbg_out_type) is
+    variable tws, trws, sc, rsc, dbglvl : integer;
+    variable retry_prob : real;
+    variable split_prob : real;
+    variable iv : boolean;
+  begin  -- ahbslv_set_ws
+    ahbslv_getconfig(bank, tws, trws, retry_prob, split_prob, sc, rsc,
+                     iv, dbglvl, dbgi, dbgo);
+    ahbslv_setconfig(bank, ws, rws, retry_prob, split_prob, sc, rsc,
+                     iv, dbglvl, dbgi, dbgo);
+  end ahbslv_set_ws;
+
   procedure ahbslv_get_ws (
     constant bank : in integer;
     variable ws   : out integer;
@@ -1138,7 +1370,7 @@ package body at_ahb_slv_pkg is
     -- Data phase information
     variable dvalid   : out std_ulogic;
     variable waddr    : out std_logic_vector(ADDR_R);
-    variable wdata    : out std_logic_vector(DATA_R);
+    variable wdata    : out std_logic_vector;
     variable wbank    : out std_logic_vector(BANK_R);
     variable wsize    : out std_logic_vector(SIZE_R);
     signal   dbgi     : out at_slv_dbg_in_type;
@@ -1157,14 +1389,14 @@ package body at_ahb_slv_pkg is
     locked := dbgo.locked;
     dvalid := dbgo.dvalid;
     waddr  := dbgo.waddr;
-    wdata  := dbgo.wdata;
+    wdata  := dbgo.wdata(wdata'range);
     wbank  := dbgo.wbank;
     wsize  := dbgo.wsize;
   end ahbslv_interactive_wait;
     
   procedure ahbslv_interactive_response (
     constant default  : in boolean;
-    constant data     : in std_logic_vector(DATA_R);
+    constant data     : in std_logic_vector;
     constant resp     : in std_logic_vector(1 downto 0);
     signal   dbgi     : out at_slv_dbg_in_type;
     signal   dbgo     : in  at_slv_dbg_out_type;
@@ -1174,17 +1406,17 @@ package body at_ahb_slv_pkg is
     constant splitcnt : in integer := 2) is
   begin  -- ahbslv_interactive_response
     -- Some signals are not exposed to the caller at this stage
-    dbgi.id                 <= RESERVED_RESP_ID;
-    dbgi.iwdata             <= dbgo.wr = '1';
-    dbgi.icompid            <= false;
+    dbgi.id                         <= RESERVED_RESP_ID;
+    dbgi.iwdata                     <= dbgo.wr = '1';
+    dbgi.icompid                    <= false;
     --
-    dbgi.idflt              <= default;
-    dbgi.resp.resp.data     <= data;
-    dbgi.resp.resp.resp     <= resp;
-    dbgi.resp.resp.ws       <= ws;
-    dbgi.resp.resp.lock     <= lock;
-    dbgi.resp.resp.repeat   <= repeat;
-    dbgi.resp.resp.splitcnt <= splitcnt;
+    dbgi.idflt                      <= default;
+    dbgi.resp.resp.data(data'range) <= data;
+    dbgi.resp.resp.resp             <= resp;
+    dbgi.resp.resp.ws               <= ws;
+    dbgi.resp.resp.lock             <= lock;
+    dbgi.resp.resp.repeat           <= repeat;
+    dbgi.resp.resp.splitcnt         <= splitcnt;
     dbgi.iack <= '1';
     wait until dbgo.ireq = '0';
     dbgi.iack <= '0';

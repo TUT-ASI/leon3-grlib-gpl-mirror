@@ -269,7 +269,9 @@ begin
       led(2) <= dsuo.active;
     end generate;
   end generate;
-  nodcom : if CFG_DSU = 0 generate ahbso(2) <= ahbs_none; end generate;
+  nodsu : if CFG_DSU = 0 generate 
+    ahbso(2) <= ahbs_none; dsuo.tstop <= '0'; dsuo.active <= '0';
+  end generate;
 
   -- Debug UART
   dcomgen : if CFG_AHB_UART = 1 generate
@@ -419,7 +421,7 @@ begin
                    sepirq => CFG_GPT_SEPIRQ, sbits => CFG_GPT_SW,
                    ntimers => CFG_GPT_NTIM, nbits  => CFG_GPT_TW)
       port map (rstn, clkm, apbi, apbo(3), gpti, open);
-    gpti.dhalt  <= dsuo.active;
+    gpti.dhalt  <= dsuo.tstop;
     gpti.extclk <= '0';
   end generate;
   notim : if CFG_GPT_ENABLE = 0 generate apbo(3) <= apb_none; end generate;

@@ -1,3 +1,11 @@
+/* 
+ * This file contains code from the Linux kernel:
+ *
+ * pgtsrmmu.h:  SRMMU page table defines and code.
+ *
+ * Copyright (C) 1995 David S. Miller (davem@caip.rutgers.edu)
+ */
+
 #ifndef _MMU_H
 #define _MMU_H
 
