@@ -64,6 +64,7 @@
 --                                  Adjusted printouts
 -- 1.9.3    JA       14 Dec 2007    Support for halfword and byte bursts
 -- 1.9.4    MI        4 Aug 2008    Support for Lock
+-- 1.9.5    SH        4 Mar 2011    Modifed burst accesses to mimic real hw
 --------------------------------------------------------------------------------
 library  IEEE;
 use      IEEE.Std_Logic_1164.all;
@@ -108,6 +109,23 @@ package DMA2AHB_TestPackage is
       signal   dmai:          out   dma_in_type;
       constant InstancePath:  in    String  := "DMAInit";
       constant ScreenOutput:  in    Boolean := False);
+
+
+   -----------------------------------------------------------------------------
+   -- AMBA AHB write access
+   -----------------------------------------------------------------------------
+   procedure DMAWriteQuiet(
+      constant Address:       in    Std_Logic_Vector(31 downto 0);
+      constant Data:          in    Std_Logic_Vector(31 downto 0);
+      signal   HCLK:          in    Std_ULogic;
+      signal   dmai:          out   dma_in_type;
+      signal   dmao:          in    dma_out_type;
+      variable TP:            inout Boolean;
+      constant InstancePath:  in    String  := "DMAWrite";
+      constant ScreenOutput:  in    Boolean := False;
+      constant cBack2Back:    in    Boolean := False;
+      constant Size:          in    Integer := 32;
+      constant Lock:          in    Boolean := False);
 
    -----------------------------------------------------------------------------
    -- AMBA AHB write access
@@ -1164,14 +1182,11 @@ package body DMA2AHB_TestPackage is
       end if;
 
       -- wait for first grant, indicating start of accesses
-      wait for 1 ns;
+      Synchronise(HCLK, 0 ns);
       if dmao.Grant='0' then
          while dmao.Grant='0' loop
-            Synchronise(HCLK);
+            Synchronise(HCLK, 0 ns);
          end loop;
-         Synchronise(HCLK);
-      else
-         Synchronise(HCLK);
       end if;
       GCount := GCount-1;
 
@@ -1199,6 +1214,7 @@ package body DMA2AHB_TestPackage is
          end if;
 
          Synchronise(HCLK, 0 ns);
+
          while dmao.Grant='0' and dmao.Ready='0' and dmao.OKAY='0' and dmao.Retry='0' and dmao.Fault='0' loop
             Synchronise(HCLK, 0 ns);
          end loop;
@@ -1234,6 +1250,10 @@ package body DMA2AHB_TestPackage is
                while dmao.Ready='0' loop
                   Synchronise(HCLK, 0 ns);
                end loop;
+               if GCount/=0 then
+                  report "DMAWriteQuietBurst: Too few grants received!"
+                  severity Failure;
+               end if;
                exit;
             else
                if Size=32 then
@@ -1250,7 +1270,6 @@ package body DMA2AHB_TestPackage is
                DCount      := DCount+1;
             end if;
          end if;
-
 
          if dmao.Retry='1' then
            if ScreenOutput then
@@ -1306,7 +1325,6 @@ package body DMA2AHB_TestPackage is
          TP    := False;
       end if;
    end procedure DMAWriteBurst;
-
    -----------------------------------------------------------------------------
    -- AMBA AHB read access
    -----------------------------------------------------------------------------
@@ -1329,7 +1347,7 @@ package body DMA2AHB_TestPackage is
       variable DCount:              Integer := 1;
       variable DataPart:            Integer := 0;
    begin
-      -- do not Synchronise when a back-to-back access is requested
+      -- do not synchronise when a back-to-back access is requested
       if not cBack2Back then
          Synchronise(HCLK);
       end if;
@@ -1387,16 +1405,12 @@ package body DMA2AHB_TestPackage is
         dmai.Lock    <= '0';
       end if;
 
-
       -- wait for first grant, indicating start of accesses
-      wait for 1 ns;
+      Synchronise(HCLK, 0 ns);
       if dmao.Grant='0' then
          while dmao.Grant='0' loop
-            Synchronise(HCLK);
+            Synchronise(HCLK, 0 ns);
          end loop;
-         Synchronise(HCLK);
-      else
-         Synchronise(HCLK);
       end if;
       GCount := GCount-1;
 
@@ -1414,9 +1428,10 @@ package body DMA2AHB_TestPackage is
             end if;
          end if;
 
-         Synchronise(HCLK);
+         Synchronise(HCLK, 0 ns);
+
          while dmao.Grant='0' and dmao.Ready='0' and dmao.Retry='0' and dmao.Fault='0' loop
-            Synchronise(HCLK);
+            Synchronise(HCLK, 0 ns);
          end loop;
 
          if    dmao.Fault='1' then
@@ -1458,6 +1473,10 @@ package body DMA2AHB_TestPackage is
                dmai.Address   <= (others => '0');
                dmai.Beat      <= (others => '0');
                dmai.Size      <= (others => '0');
+               if GCount/=0 then
+                  report "DMAQuietBurst: Too few grants received!"
+                  severity Failure;
+               end if;
                exit;
             else
                DCount         := DCount+1;
@@ -1476,7 +1495,6 @@ package body DMA2AHB_TestPackage is
          end if;
       end loop;
    end procedure DMAQuietBurst;
-
 
    -----------------------------------------------------------------------------
    -- AMBA AHB read access

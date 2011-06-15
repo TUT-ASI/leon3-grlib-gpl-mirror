@@ -181,7 +181,7 @@ begin
       when "1101" => res := "01";
       when "1110" => res := "00";
       when "0011" => res := "10";
-      when "1100" => res := "01";
+      when "1100" => res := "00";
       when others => res := "00";
     end case;
   else                -- Big (PCI) to big (AHB) endian

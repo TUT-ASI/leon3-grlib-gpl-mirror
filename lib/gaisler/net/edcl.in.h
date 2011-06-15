@@ -38,3 +38,7 @@
 #define CONFIG_DSU_ETH_PROG 0
 #endif
 
+#ifndef CONFIG_DSU_ETH_DIS
+#define CONFIG_DSU_ETH_DIS 0
+#endif
+

@@ -76,11 +76,11 @@ architecture behav of testbench is
   signal iosn       : std_ulogic;
 
   -- DDR2 memory
-  signal ddr_clk    : std_logic_vector(1 downto 0);
-  signal ddr_clkb   : std_logic_vector(1 downto 0);
+  signal ddr_clk    : std_logic;
+  signal ddr_clkb   : std_logic;
   signal ddr_clk_fb : std_logic;
   signal ddr_cke    : std_logic;
-  signal ddr_csb    : std_logic;
+  signal ddr_csb    : std_logic := '0';
   signal ddr_we     : std_ulogic;                       -- write enable
   signal ddr_ras    : std_ulogic;                       -- ras
   signal ddr_cas    : std_ulogic;                       -- cas
@@ -92,6 +92,8 @@ architecture behav of testbench is
   signal ddr_dq     : std_logic_vector(15 downto 0);    -- data
   signal ddr_dq2    : std_logic_vector(15 downto 0);    -- data
   signal ddr_odt    : std_logic;
+  signal ddr_rzq    : std_logic;
+  signal ddr_zio    : std_logic;
   
   -- Debug support unit
   signal dsubre     : std_ulogic;
@@ -168,20 +170,18 @@ begin
       -- DDR2
       ddr_clk        => ddr_clk,
       ddr_clkb       => ddr_clkb,
-      ddr_clk_fb_out => ddr_clk_fb,
-      ddr_clk_fb     => ddr_clk_fb,
       ddr_cke        => ddr_cke,
-      ddr_csb        => ddr_csb,
       ddr_we         => ddr_we,
       ddr_ras        => ddr_ras,
       ddr_cas        => ddr_cas,
       ddr_dm         => ddr_dm,
       ddr_dqs        => ddr_dqs,
-      ddr_dqsn       => ddr_dqsn,
       ddr_ad         => ddr_ad,
       ddr_ba         => ddr_ba,
       ddr_dq         => ddr_dq,
       ddr_odt        => ddr_odt,
+      ddr_rzq        => ddr_rzq,
+      ddr_zio        => ddr_zio,
       
       -- Debug Unit
       dsubre    => dsubre,
@@ -205,14 +205,30 @@ begin
       emdio     => emdio,
 
       -- SPI flash select
-      spi_sel_n => spi_sel_n,
-      spi_clk   => spi_clk,
-      spi_mosi  => spi_mosi,
+--      spi_sel_n => spi_sel_n,
+--      spi_clk   => spi_clk,
+--      spi_mosi  => spi_mosi,
 
       -- Output signals for LEDs
       led       => led
       );
 
+
+  migddr2mem : if (CFG_MIG_DDR2 = 1) generate 
+    ddr2mem0 : for i in 0 to 0 generate
+      u1 : HY5PS121621F
+        generic map (TimingCheckFlag => true, PUSCheckFlag => false,
+                     index => i, bbits => 16, fname => sdramfile,
+			fdelay => 150)
+        port map (DQ => ddr_dq(i*16+15 downto i*16),
+                  LDQS  => ddr_dqs(i*2), LDQSB => ddr_dqsn(i*2),
+                  UDQS => ddr_dqs(i*2+1), UDQSB => ddr_dqsn(i*2+1),
+                  LDM => ddr_dm(i*2), WEB => ddr_we, CASB => ddr_cas,
+                  RASB => ddr_ras, CSB => ddr_csb, BA => ddr_ba(1 downto 0),
+                  ADDR => ddr_ad(12 downto 0), CKE => ddr_cke,
+                  CLK => ddr_clk, CLKB => ddr_clkb, UDM => ddr_dm(i*2+1));
+    end generate;
+  end generate;
   ddr2mem : if (CFG_DDR2SP /= 0) generate 
     ddr2mem0 : for i in 0 to 0 generate
       u1 : HY5PS121621F
@@ -224,9 +240,8 @@ begin
                   LDM => ddr_dm(i*2), WEB => ddr_we, CASB => ddr_cas,
                   RASB => ddr_ras, CSB => ddr_csb, BA => ddr_ba(1 downto 0),
                   ADDR => ddr_ad(12 downto 0), CKE => ddr_cke,
-                  CLK => ddr_clk(i), CLKB => ddr_clkb(i), UDM => ddr_dm(i*2+1));
+                  CLK => ddr_clk, CLKB => ddr_clkb, UDM => ddr_dm(i*2+1));
     end generate;
-
     ddr2delay0 : delay_wire 
       generic map(data_width => ddr_dq'length, delay_atob => 0.0, delay_btoa => 10.0)
       port map(a => ddr_dq, b => ddr_dq2);

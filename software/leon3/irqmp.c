@@ -122,7 +122,7 @@ int irqtest(int addr)
                 irqtbl[0] = 1;		/* init irqtable */
                 psr = xgetpsr() | (15 << 8);
                 setpsr(psr); /* PIL = 15 */
-                lr->irqmask = -1;	/* enable all interrupts */
+                lr->irqmask =  0x0fffe;	/* enable all interrupts (no ext irq) */
                 while (!lr->irqmask);   /* avoid compiler optimisation */
                 if (irqtbl[0] != 2) fail(14);
                 if (irqtbl[1] != 0x1f) fail(15);

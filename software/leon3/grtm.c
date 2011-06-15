@@ -425,25 +425,25 @@ grtm_test(int paddr, int descsize, int buffersize, int buffers, int rsdepth, int
    long int SequenceCount = 0;
 
    memorytx = (int*)framememorybase;
-   TMTF(SCID, 6, OCF, MCFrameCntr, VCFrameCntr, 0, 0, 0, 3, 0, 0xBAADCAAD, 1, SequenceCount, rsdepth*(223+16*reed8), memorytx);
+   TMTF(SCID, 6, OCF, MCFrameCntr, VCFrameCntr, 0, 0, 0, 3, 0, 0xBAADCAAD, 1, SequenceCount, rsdepth*(223+16*reed8), (char*)memorytx);
    MCFrameCntr++;
    VCFrameCntr++;
    SequenceCount++;
 
    memorytx = (int*)(framememorybase+buffersize);
-   TMTF(SCID, 6, OCF, MCFrameCntr, VCFrameCntr, 0, 0, 0, 3, 0, 0xBAADCAAD, 1, SequenceCount, rsdepth*(223+16*reed8), memorytx);
+   TMTF(SCID, 6, OCF, MCFrameCntr, VCFrameCntr, 0, 0, 0, 3, 0, 0xBAADCAAD, 1, SequenceCount, rsdepth*(223+16*reed8), (char*)memorytx);
    MCFrameCntr++;
    VCFrameCntr++;
    SequenceCount++;
 
    memorytx = (int*)(framememorybase+buffersize*2);
-   TMTF(SCID, 6, OCF, MCFrameCntr, VCFrameCntr, 0, 0, 0, 3, 0, 0xBAADCAAD, 1, SequenceCount, rsdepth*(223+16*reed8), memorytx);
+   TMTF(SCID, 6, OCF, MCFrameCntr, VCFrameCntr, 0, 0, 0, 3, 0, 0xBAADCAAD, 1, SequenceCount, rsdepth*(223+16*reed8), (char*)memorytx);
    MCFrameCntr++;
    VCFrameCntr++;
    SequenceCount++;
 
    memorytx = (int*)(framememorybase+buffersize*3);
-   TMTF(SCID, 6, OCF, MCFrameCntr, VCFrameCntr, 0, 0, 0, 3, 0, 0xBAADCAAD, 1, SequenceCount, rsdepth*(223+16*reed8), memorytx);
+   TMTF(SCID, 6, OCF, MCFrameCntr, VCFrameCntr, 0, 0, 0, 3, 0, 0xBAADCAAD, 1, SequenceCount, rsdepth*(223+16*reed8), (char*)memorytx);
    MCFrameCntr++;
    VCFrameCntr++;
    SequenceCount++;

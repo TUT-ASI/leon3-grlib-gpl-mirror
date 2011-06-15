@@ -3,15 +3,6 @@
  *
  * Copyright (c) 2010 Aeroflex Gaisler
  *
- * Function        Description
- * --------        -----------
- * _flush          Performs flush operation and waits for completion
- * _flush_start    Starts flush operation and returns
- * _flush_wait     Returns when flush operation has completed
- * _derrinj        Injects error at specified line in data RAM
- * _terrinj        Injects error at specified line in tag RAM
- * _test           System test, see function description below
- *
  */
 
 #include "testmod.h"

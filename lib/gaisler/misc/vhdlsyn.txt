@@ -5,6 +5,7 @@ ahbram.vhd
 ahbdpram.vhd
 ahbtrace.vhd
 ahbtrace_mb.vhd
+ahbtrace_mmb.vhd
 ahbmst.vhd
 grgpio.vhd
 ftahbram.vhd
@@ -23,6 +24,7 @@ grfifo.vhd
 gradcdac.vhd
 i2cmst.vhd
 i2cmst_gen.vhd
+spictrlx.vhd
 spictrl.vhd
 i2cslv.vhd
 wild.vhd

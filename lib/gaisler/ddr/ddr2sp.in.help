@@ -49,7 +49,7 @@ CONFIG_DDR2SP_MBYTE
   select size can always be programmed by software as well.
 
 Read data delay
-CONFIG_DDR2SP_DELAY0 CONFIG_DDR2SP_DELAY1 CONFIG_DDR2SP_DELAY2 CONFIG_DDR2SP_DELAY3 CONFIG_DDR2SP_DELAY4 CONFIG_DDR2SP_DELAY5 CONFIG_DDR2SP_DELAY6 CONFIG_DDR2SP_DELAY7
+CONFIG_DDR2SP_DELAY0 CONFIG_DDR2SP_DELAY1 CONFIG_DDR2SP_DELAY2 CONFIG_DDR2SP_DELAY3 CONFIG_DDR2SP_DELAY4 CONFIG_DDR2SP_DELAY5 CONFIG_DDR2SP_DELAY6 CONFIG_DDR2SP_DELAY7 CONFIG_DDR2SP_CBDELAY0 CONFIG_DDR2SP_CBDELAY1 CONFIG_DDR2SP_CBDELAY2 CONFIG_DDR2SP_CBDELAY3
   On Xilinx targets (virtex4 and virtex5), input delays are added to 
   all data bits to align read data to the internal DDR clock signal.
   The delay can be set to a value of 0 to 63 tap-delays. Each tap- 
@@ -57,3 +57,12 @@ CONFIG_DDR2SP_DELAY0 CONFIG_DDR2SP_DELAY1 CONFIG_DDR2SP_DELAY2 CONFIG_DDR2SP_DEL
   This delay value is only a reset valus, it can be changed dynamically 
   via a configuration register.
 
+Fault-Tolenant version
+CONFIG_DDR2SP_FTEN
+  Say Y here to enable the fault-tolerant version of the DDR2 controller. 
+  In this version, the data bus is enlarged by 25% or 50% and the added 
+  bits are used to store checkbits. The checkbits are generated and 
+  checked using a Reed-Solomon codec.
+
+  This option is only available in the FT version of GRLIB and supported 
+  only in some template designs.

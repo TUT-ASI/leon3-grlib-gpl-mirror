@@ -54,7 +54,8 @@ entity gptimer is
     sbits    : integer := 16;			-- scaler bits
     ntimers  : integer range 1 to 7 := 1; 	-- number of timers
     nbits    : integer := 32;			-- timer bits
-    wdog     : integer := 0
+    wdog     : integer := 0;
+    ewdogen  : integer := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -251,7 +252,9 @@ begin
       v.scaler := (others => '1'); v.reload := (others => '1'); 
       v.tsel := 0; v.dishlt := '0'; v.timers(ntimers).irq := '0';
       if (wdog /= 0) then
-	v.timers(ntimers).enable := '1'; v.timers(ntimers).load := '1';
+        if ewdogen /= 0 then v.timers(ntimers).enable := gpti.wdogen;
+        else v.timers(ntimers).enable := '1'; end if;
+        v.timers(ntimers).load := '1';
 	v.timers(ntimers).reload := conv_std_logic_vector(wdog, nbits);
 	v.timers(ntimers).chain := '0'; v.timers(ntimers).irqen := '1';
 	v.timers(ntimers).irqpen := '0'; v.timers(ntimers).restart := '0';

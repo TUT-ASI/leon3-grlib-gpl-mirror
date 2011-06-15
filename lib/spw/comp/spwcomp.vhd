@@ -120,7 +120,8 @@ package spwcomp is
       testen       : in   std_ulogic := '0';
       --parallel rx data out
       rxdav        : out  std_ulogic;
-      rxdataout    : out  std_logic_vector(8 downto 0)
+      rxdataout    : out  std_logic_vector(8 downto 0);
+      loopback     : out  std_ulogic
     );
   end component;
    
@@ -512,6 +513,7 @@ package spwcomp is
     rxwdata      : out std_logic_vector(9 downto 0);
     rxwaddress   : out std_logic_vector(10 downto 0);
     rxrdata      : in  std_logic_vector(9 downto 0);
+    rxaccess     : out std_ulogic;
     --rx iface
     rxicharav    : out std_ulogic;
     rxicharcnt   : out std_logic_vector(11 downto 0);
@@ -525,12 +527,15 @@ package spwcomp is
     txwdata      : out std_logic_vector(8 downto 0);
     txwaddress   : out std_logic_vector(10 downto 0);
     txrdata      : in  std_logic_vector(8 downto 0);
+    txaccess     : out std_ulogic;
     --tx iface
     txicharcnt   : out std_logic_vector(11 downto 0);
     txifull      : out std_ulogic;
+    txiempty     : out std_ulogic;
     txiwrite     : in  std_ulogic;
     txichar      : in  std_logic_vector(8 downto 0);
     txififorst   : in  std_ulogic;
+    txififorstact: out std_ulogic;
     --time iface
     tickin       : in  std_ulogic;
     timein       : in  std_logic_vector(7 downto 0);

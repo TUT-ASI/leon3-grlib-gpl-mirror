@@ -273,7 +273,7 @@ int greth_test(int apbaddr)
         if (greth.edcl) {
                 /* read ip address */ 
                 ipaddr = load((int)&greth.regs->edclip);
-                
+
                 buf = malloc(256);
                 /* send arp packet to acquire edcl mac address */
                 build_arp(0xDEADBE, 0xEF0020, 0xDDEEFFCC, ipaddr, buf, len);

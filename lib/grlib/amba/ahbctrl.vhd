@@ -680,19 +680,25 @@ begin
     variable hwrite : std_logic;
     variable hsize : std_logic_vector(2 downto 0);
     variable htrans : std_logic_vector(1 downto 0);
+    variable hmaster : std_logic_vector(3 downto 0);
     variable haddr : std_logic_vector(31 downto 0);
     variable hwdata, hrdata : std_logic_vector(127 downto 0);
-    variable mbit : integer;
+    variable mbit, bitoffs : integer;
     variable t : integer;
     begin
       if rising_edge(clk) then
-        if (htrans(1) and lmsti.hready) = '1' then
+        if ((htrans(1) and lmsti.hready) = '1') and (lmsti.hresp = "00") then
 	  mbit :=  2**conv_integer(hsize)*8;
+          bitoffs := 0;
+          if mbit < ahbdw then
+            bitoffs := mbit * conv_integer(haddr(log2(ahbdw/8)-1 downto conv_integer(hsize)));
+            bitoffs := lslvi.hwdata'length-mbit-bitoffs;
+          end if;
 	  t := (now/1 ns);
           if hwrite = '1' then
-	    print(tost(t) & " ahb" & tost(index) & " AHB write " & tost(mbit/8) & " bytes : " & tost(haddr) & " " & tost(lslvi.hwdata(mbit-1 downto 0)));
+	    grlib.testlib.print("mst" & tost(hmaster) & ": " & tost(haddr) & "    write " & tost(mbit/8) & " bytes  [" & tost(lslvi.hwdata(mbit-1+bitoffs downto bitoffs)) & "]");
 	  else
-	    print(tost(t) & " ahb" & tost(index) & " AHB read  " & tost(mbit/8) & " bytes : " & tost(haddr) & " " & tost(lmsti.hrdata(mbit-1 downto 0)));
+	    grlib.testlib.print("mst" & tost(hmaster) & ": " & tost(haddr) & "    read  " & tost(mbit/8) & " bytes  [" & tost(lmsti.hrdata(mbit-1+bitoffs downto bitoffs)) & "]");
 	  end if;
         end if;
         if lmsti.hready = '1' then
@@ -700,6 +706,7 @@ begin
           hsize := lslvi.hsize;
           haddr := lslvi.haddr;
           htrans := lslvi.htrans;
+          hmaster := lslvi.hmaster;
         end if;
       end if;
     end process;

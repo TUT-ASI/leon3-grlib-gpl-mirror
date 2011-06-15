@@ -137,7 +137,8 @@ begin
   gpio(CFG_GRGPIO_WIDTH-1 downto 3) <= (others => 'H');
   eth_macclk <= not eth_macclk after 4 ns;
   
-
+  ereset <= 'H';
+  
   d3 : entity work.leon3mp
         generic map ( fabtech, memtech, padtech, clktech, disas, dbguart, pclow )
         port map (rst, clk, error, address(22 downto 0), data, 
@@ -145,7 +146,7 @@ begin
 	sdrasn, sdcasn, sddqm, dsutx, dsurx, dsubre, dsuact,
 	oen, writen, open, open, romsn, gpio,
         emdio, eth_macclk, etx_clk, erx_clk, erxd(3 downto 0), erx_dv, erx_er,
-        erx_col, erx_crs, emdintn, etxd(3 downto 0), etx_en, etx_er, emdc, 
+        erx_col, erx_crs, emdintn, ereset, etxd(3 downto 0), etx_en, etx_er, emdc, 
 	can_txd, can_rxd, can_stb
 	);
 
@@ -179,7 +180,7 @@ begin
     emdio <= 'H'; 
     p0: phy
       generic map(address => 16)
-      port map(rst, emdio, etx_clk, erx_clk, erxd, erx_dv,
+      port map(ereset, emdio, etx_clk, erx_clk, erxd, erx_dv,
         erx_er, erx_col, erx_crs, etxd, etx_en, etx_er, emdc, eth_macclk);
   end generate;
 

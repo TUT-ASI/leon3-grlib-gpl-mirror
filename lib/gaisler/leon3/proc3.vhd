@@ -55,13 +55,13 @@ entity proc3 is
     notag     : integer range 0 to 1  := 0;
     nwp       : integer range 0 to 4  := 0;
     icen      : integer range 0 to 1  := 0;
-    irepl     : integer range 0 to 2  := 2;
+    irepl     : integer range 0 to 3  := 2;
     isets     : integer range 1 to 4  := 1;
     ilinesize : integer range 4 to 8  := 4;
     isetsize  : integer range 1 to 256 := 1;
     isetlock  : integer range 0 to 1  := 0;
     dcen      : integer range 0 to 1  := 0;
-    drepl     : integer range 0 to 2  := 2;
+    drepl     : integer range 0 to 3  := 2;
     dsets     : integer range 1 to 4  := 1;
     dlinesize : integer range 4 to 8  := 4;
     dsetsize  : integer range 1 to 256 := 1;
@@ -149,7 +149,7 @@ begin
 -- multiply and divide units
 
   mgen : if v8 /= 0 generate
-    mul0 : mul32 generic map (fabtech, v8/16, (v8 mod 4)/2, mac)
+    mul0 : mul32 generic map (fabtech, v8/16, (v8 mod 4)/2, mac, (v8 mod 16)/4)
 	    port map (rstn, clk, holdnx, muli, mulo);
     div0 : div32 port map (rstn, clk, holdnx, divi, divo);
   end generate;

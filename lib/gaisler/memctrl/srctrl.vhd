@@ -421,7 +421,7 @@ begin
   sdo.cal_en <= (others => '0'); sdo.sdck <= (others => '0');
   sdo.ba <= (others => '0'); sdo.cb <= (others => '0');
   sdo.vbdrive <= (others => '0'); sdo.qdrive <= '0'; sdo.bdrive <= '0';
-  sdo.oct  <= '0'; sdo.dqs_gate  <= '0'; 
+  sdo.oct  <= '0'; 
   sro.mben  <= r.mben;
 
   regs : process(clk,rst)

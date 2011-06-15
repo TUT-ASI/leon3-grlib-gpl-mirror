@@ -34,7 +34,8 @@ Entity HY5PS121621F Is
      Part_Number     : PART_NUM_TYPE := B400;
      index           : integer := 0;
      bbits           : natural := 64;
-     fname           : string  := "sdram.srec");
+     fname           : string  := "sdram.srec";
+     fdelay          : integer  := 0);
   Port (  DQ    :  inout   std_logic_vector(15 downto 0) := (others => 'Z');
           LDQS  :  inout   std_logic := 'Z';
           LDQSB :  inout   std_logic := 'Z';
@@ -141,6 +142,7 @@ signal ExtModeRegister : EMR_TYPE := (
 signal ExtModeRegister2 : EMR2_TYPE := (
   SREF_HOT => '0'               );
 signal last_ocd_adjust_cmd, clk_cycle : time := 0 ns;
+signal clk_cycle_count: integer := 0;
 signal clk_last_rising : time := 0 ns;
 signal cke_last_rising : time := 0 ns;
 signal clk_last_falling : time := 0 ns;
@@ -163,16 +165,22 @@ signal b0_last_column_access : time := 0 ns;
 signal b1_last_column_access : time := 0 ns;
 signal b2_last_column_access : time := 0 ns;
 signal b3_last_column_access : time := 0 ns;
+signal b0_last_column_access_cycle : integer := -100;
+signal b1_last_column_access_cycle : integer := -100;
+signal b2_last_column_access_cycle : integer := -100;
+signal b3_last_column_access_cycle : integer := -100;
 signal b0_last_data_in : time := 0 ns;
 signal b1_last_data_in : time := 0 ns;
 signal b2_last_data_in : time := 0 ns;
 signal b3_last_data_in : time := 0 ns;
 signal last_mrs_set : time := 0 ns;
+signal last_mrs_set_cycle: integer := -100;
 signal last_aref : time := 0 ns;
 signal tCH : time := 0 ns;
 signal tCL : time := 0 ns;
 signal tWPRE : time := 0 ns;
 signal tRAS, tRCD, tRP, tRC, tCCD : time := 0 ns;
+signal tCCD_cycles: positive;
 signal tWTR : time := 0 ns;
 signal tDQSH : time := 0 ns;
 signal tDQSL : time := 0 ns;
@@ -181,6 +189,7 @@ signal tWPSTmax : time := 0 ns;
 signal tDQSSmin : time := 0 ns;
 signal tDQSSmax : time := 0 ns;
 signal tMRD : time := 0 ns;
+signal tMRD_cycles: positive;
 signal cke_ch : time := 0 ns;
 signal rasb_ch : time := 0 ns;
 signal casb_ch : time := 0 ns;
@@ -235,6 +244,7 @@ begin
   if (rising_edge(CLK)) then
     clk_cycle <= transport now - clk_cycle_rising;
     clk_cycle_rising <= transport now;
+    clk_cycle_count <= transport (clk_cycle_count+1) mod 2000000000;
   end if;
 end Process;
 
@@ -786,7 +796,7 @@ variable rdata : std_logic_vector(0 to 16*8-1);
 begin
 
   -- Load initial memory data from file
-  if load_file = '1' then
+  if (now >= (fdelay * 1 us)) and (load_file = '1') then
   
     load_file <= '0';
 
@@ -2120,6 +2130,7 @@ begin
         end if;
         tRC <= tRAS + tRP;
         tCCD <= 2 * clk_cycle;
+        tCCD_cycles <= 2;
         tDQSH <= 0.35 * clk_cycle;
         tDQSL <= 0.35 * clk_cycle;
         tWPSTmin <= 0.4 * clk_cycle;
@@ -2127,6 +2138,7 @@ begin
         tDQSSmin <= 0.75 * clk_cycle;
         tDQSSmax <= 1.25 * clk_cycle;
         tMRD <= 2 * clk_cycle;
+        tMRD_cycles <= 2;
         tWPRE <= 0.25 * clk_cycle;
         tCH <= 0.45 * clk_cycle;
         tCL <= 0.45 * clk_cycle;
@@ -2138,9 +2150,11 @@ begin
       "ERROR : (CLK_TIMING) : Clock period is too large."
       severity error;
     end if;
-    assert (now - clk_last_falling >= tCL) report
-    "ERROR : (CLK_TIMING) : Clock low time is too small."
-    severity error;
+    if (TimingCheckFlag = TRUE and ModeRegisterSetFlag = TRUE) then
+      assert (now - clk_last_falling >= tCL) report
+        "ERROR : (CLK_TIMING) : Clock low time is too small."
+        severity error;
+    end if;
     clk_last_rising <= transport now;
   end if;
   if (CLK'event and CLK = '0') then
@@ -2480,21 +2494,25 @@ if (TimingCheckFlag = TRUE and ModeRegisterSetFlag = TRUE) then
     "ERROR : (tRCD_CHECK) : Active to column Access delay time violation."
     severity error;
     b0_last_column_access <= transport now after 1 ns;
+    b0_last_column_access_cycle <= transport clk_cycle_count;
   elsif (BkAdd = "01" and ((casp6_rd'event and casp6_rd = '1') or (casp6_wt'event and casp6_wt = '1'))) then
     assert ((now - b1_last_activate - 1.5 ns) >= tRCD) report
     "ERROR : (tRCD_CHECK) : Active to column Access delay time violation."
     severity error;
     b1_last_column_access <= transport now after 1 ns;
+    b1_last_column_access_cycle <= transport clk_cycle_count;
   elsif (BkAdd = "10" and ((casp6_rd'event and casp6_rd = '1') or (casp6_wt'event and casp6_wt = '1'))) then
     assert ((now - b2_last_activate - 1.5 ns) >= tRCD) report
     "ERROR : (tRCD_CHECK) : Active to column Access delay time violation."
     severity error;
     b2_last_column_access <= transport now after 1 ns;
+    b2_last_column_access_cycle <= transport clk_cycle_count;
   elsif (BkAdd = "11" and ((casp6_rd'event and casp6_rd = '1') or (casp6_wt'event and casp6_wt = '1'))) then
     assert ((now - b3_last_activate - 1.5 ns) >= tRCD) report
     "ERROR : (tRCD_CHECK) : Active to column Access delay time violation."
     severity error;
     b3_last_column_access <= transport now after 1 ns;
+    b3_last_column_access_cycle <= transport clk_cycle_count;
   end if;
 end if;
 end process;
@@ -2594,18 +2612,42 @@ tCCD_CHECK : process (casp6_rd, casp6_wt)
 begin
 if (TimingCheckFlag = TRUE and ModeRegisterSetFlag = TRUE) then
   if ((casp6_rd'EVENT and casp6_rd = '1') or (casp6_wt'EVENT and casp6_wt = '1')) then
-    assert ((now - b0_last_column_access) >= tCCD) report
+--    print("last_column_access : " &
+--          tost(b0_last_column_access_cycle) & " " & 
+--          tost(b1_last_column_access_cycle) & " " & 
+--          tost(b2_last_column_access_cycle) & " " & 
+--          tost(b3_last_column_access_cycle) & " " & 
+--          "clk_cycle_count: " & tost(clk_cycle_count));
+    
+    assert (clk_cycle_count - b0_last_column_access_cycle >= tCCD_cycles or
+            clk_cycle_count <= b0_last_column_access_cycle) report
     "ERROR : (tCCD_CHECK) : Column access to column access delay time violation."
     severity error;
-    assert ((now - b1_last_column_access) >= tCCD) report
+    assert (clk_cycle_count - b1_last_column_access_cycle >= tCCD_cycles or
+            clk_cycle_count <= b1_last_column_access_cycle) report
     "ERROR : (tCCD_CHECK) : Column access to column access delay time violation."
     severity error;
-    assert ((now - b2_last_column_access) >= tCCD) report
+    assert (clk_cycle_count - b2_last_column_access_cycle >= tCCD_cycles or
+            clk_cycle_count <= b2_last_column_access_cycle) report
     "ERROR : (tCCD_CHECK) : Column access to column access delay time violation."
     severity error;
-    assert ((now - b3_last_column_access) >= tCCD) report
+    assert (clk_cycle_count - b3_last_column_access_cycle >= tCCD_cycles or
+            clk_cycle_count <= b3_last_column_access_cycle) report
     "ERROR : (tCCD_CHECK) : Column access to column access delay time violation."
     severity error;
+    
+--    assert ((now - b0_last_column_access) >= tCCD) report
+--    "ERROR : (tCCD_CHECK) : Column access to column access delay time violation."
+--    severity error;
+--    assert ((now - b1_last_column_access) >= tCCD) report
+--    "ERROR : (tCCD_CHECK) : Column access to column access delay time violation."
+--    severity error;
+--    assert ((now - b2_last_column_access) >= tCCD) report
+--    "ERROR : (tCCD_CHECK) : Column access to column access delay time violation."
+--    severity error;
+--    assert ((now - b3_last_column_access) >= tCCD) report
+--    "ERROR : (tCCD_CHECK) : Column access to column access delay time violation."
+--    severity error;
   end if;
 end if;
 end process;
@@ -2677,10 +2719,16 @@ end process;
 tMRD_CHECK : process (mrs_cmd_in)
 begin
 if (mrs_cmd_in'event and mrs_cmd_in = '1') then
-  assert ((now - last_mrs_set) >= tMRD) report
-  "ERROR : (tMRD_CHECK) : MRS to MRS delay violation."
-  severity error;
+--  assert ((now - last_mrs_set) >= tMRD) report
+--  "ERROR : (tMRD_CHECK) : MRS to MRS delay violation."
+--  severity error;
+  -- print("clk_cycle_count: " & tost(clk_cycle_count) & " last_mrs_set_cycle:" & tost(last_mrs_set_cycle));
+  assert (clk_cycle_count-last_mrs_set_cycle >= tMRD_cycles or
+          clk_cycle_count <= last_mrs_set_cycle) report
+    "ERROR : (tMRD_CHECK) : MRS to MRS delay violation."
+    severity error;
   last_mrs_set <= transport now;
+  last_mrs_set_cycle <= transport clk_cycle_count;
 end if;
 end process;
 

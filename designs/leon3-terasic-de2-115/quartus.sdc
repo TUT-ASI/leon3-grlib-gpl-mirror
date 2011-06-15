@@ -26,7 +26,7 @@
 create_clock -name "CLOCK_50" -period 20ns [get_ports {CLOCK_50}] -waveform {0.000ns 10.000ns}
 create_clock -name "ENET0_RX_CLK" -period 40ns [get_ports {ENET0_RX_CLK}] -waveform {0.000ns 20.000ns}
 create_clock -name "ENET0_TX_CLK" -period 40ns [get_ports {ENET0_TX_CLK}] -waveform {0.000ns 25.000ns}
-create_clock -name "ENET0_BTX_CLK" -period 8ns [get_ports {ENET0_BTX_CLK}] -waveform {0.000ns 4.000ns}
+create_clock -name "ENET0_GTX_CLK" -period 8ns [get_ports {ENET0_GTX_CLK}] -waveform {0.000ns 4.000ns}
 
 
 

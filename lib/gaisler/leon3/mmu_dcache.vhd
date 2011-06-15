@@ -42,7 +42,7 @@ entity mmu_dcache is
   generic (
     dsu       : integer range 0 to 1  := 0;
     dcen      : integer range 0 to 1  := 0;
-    drepl     : integer range 0 to 2  := 0;
+    drepl     : integer range 0 to 3  := 0;
     dsets     : integer range 1 to 4  := 1;
     dlinesize : integer range 4 to 8  := 4;
     dsetsize  : integer range 1 to 256 := 1;
@@ -113,6 +113,7 @@ constant SETBITS : integer := log2x(DSETS);
 constant DLRUBITS  : integer := lru_table(DSETS);
 constant LOCAL_RAM_START : std_logic_vector(7 downto 0) := conv_std_logic_vector(dlramstart, 8);
 constant ILRAM_START : std_logic_vector(7 downto 0) := conv_std_logic_vector(ilramstart, 8);
+constant DIR_BITS: integer := log2x(DSETS);
 
 type rdatatype is (dtag, ddata, dddata, dctx, icache, memory, sysr , misc, mmusnoop_dtag);  -- sources during cache read
 type vmasktype is (clearone, clearall, merge, tnew);	-- valid bits operation
@@ -166,6 +167,7 @@ type dcache_control_type is record			-- all registers
   ready         : std_logic;
   wbinit        : std_logic;
   cache         : std_logic;
+  dlock         : std_logic;
   su            : std_logic;
   dblwdata      : std_logic;
 
@@ -346,7 +348,6 @@ begin
   variable mmuisdis : std_logic;
   variable ctxp : std_logic;
   variable sidle : std_logic;
-  variable wbread : std_logic;
   
   variable mmudci_transdata_data : std_logic_vector(31 downto 0);
   variable paddress : std_logic_vector(31 downto 0);		-- physical address buffer
@@ -484,11 +485,11 @@ begin
     if (dci.write or not r.holdn) = '1' then
       maddress := r.xaddress(31 downto 0);
       read := r.read; size := r.size; edata := dci.maddress;
-      mmudci_su := r.su; mmudci_read := r.read;
+      mmudci_su := r.su; mmudci_read := r.read and not r.dlock;
     else
       maddress := dci.maddress(31 downto 0);
       read := dci.read; size := dci.size; edata := dci.edata;
-      mmudci_su := dci.msu; mmudci_read := dci.read;
+      mmudci_su := dci.msu; mmudci_read := dci.read and not dci.lock;
     end if;
 
     newtag := dci.maddress(TAG_HIGH downto TAG_LOW);
@@ -519,21 +520,30 @@ begin
       validv(i) := validrawv(i);
     end loop;
 
-    hit := orv(hitv) and not r.flush and (not r.flush2);
+    if drepl = dir then 
+      hit := hitv(conv_integer(dci.maddress(OFFSET_HIGH+DIR_BITS downto OFFSET_HIGH+1))) and not r.flush and (not r.flush2);
+      validraw := validrawv(conv_integer(dci.maddress(OFFSET_HIGH+DIR_BITS downto OFFSET_HIGH+1)));
+      valid := validv(conv_integer(dci.maddress(OFFSET_HIGH+DIR_BITS downto OFFSET_HIGH+1)));
+    else
+      hit := orv(hitv) and not r.flush and (not r.flush2);
+      validraw := orv(validrawv);
+      valid := orv(validv);
+    end if;
 
     -- cache hit disabled if mmu-enabled but off or BYPASS
     if (M_EN) and (dci.asi(4 downto 0) = ASI_MMU_BP) then  -- or (r.mmctrl1.e = '0')
       hit := '0';
     end if;
 
-    validraw := orv(validrawv);
-    valid := orv(validv);
     if DSETS > 1 then 
-      for i in DSETS-1 downto 0 loop 
-        if (hitv(i) = '1') then
-	  set := i;
-        end if;
-      end loop;
+      if drepl = dir then set := conv_integer(dci.maddress(OFFSET_HIGH+DIR_BITS downto OFFSET_HIGH+1));
+      else
+        for i in DSETS-1 downto 0 loop 
+          if (hitv(i) = '1') then
+	    set := i;
+          end if;
+        end loop;
+      end if;
       if rlramrd = '1' then set := 1; end if;
     else set := 0; end if;
 
@@ -549,7 +559,7 @@ begin
         v.hit := hit; v.xaddress := dci.maddress;      
 	v.read := dci.read; v.size := dci.size;
 	v.asi := dci.asi(4 downto 0);
-        v.su := dci.msu;
+        v.su := dci.msu; v.dlock := dci.lock;
     end if;
 
 -- Store buffer
@@ -621,9 +631,16 @@ begin
 	v.wb.addr := dci.maddress; v.wb.size := dci.size; 
 	v.wb.read := dci.read; v.wb.data1 := dci.edata; v.wb.lock := dci.lock and not dci.nullify and ico.hold;
 	v.wb.asi := dci.asi(3 downto 0); 
-        if ((M_EN) and (dci.asi(4 downto 0) /= ASI_MMU_BP) and (r.mmctrl1.e = '1') and (M_TLB_FASTWRITE /= 0) ) then
-          v.wb.addr := mmudco.wbtransdata.data;
-          newptag := mmudco.wbtransdata.data(TAG_HIGH downto TAG_LOW);
+        if ((M_EN) and (dci.asi(4 downto 0) /= ASI_MMU_BP) and (r.mmctrl1.e = '1') and 
+ 	  ((M_TLB_FASTWRITE /= 0) or ((dci.enaddr and eholdn and dci.lock and not dci.read) = '1')))
+        then
+ 	  if (dci.enaddr and eholdn and dci.lock and not dci.read) = '1' then -- skip address translation on store in LDST
+ 	    v.wb.addr := r.wb.addr(31 downto 8) & dci.maddress(7 downto 0);
+             newptag := r.wb.addr(TAG_HIGH downto TAG_LOW);
+          else 
+ 	    v.wb.addr := mmudco.wbtransdata.data; 
+            newptag := mmudco.wbtransdata.data(TAG_HIGH downto TAG_LOW);
+ 	  end if;
         end if;
       end if;
       if (eholdn and (not r.nomds)) = '1' then -- avoid false path through nullify
@@ -782,7 +799,8 @@ begin
                 end if;
               else
               -- ## mmu case >  false and
-                if  ((r.stpend  = '0') or ((mcdo.ready and not r.req)= '1')) and ( mmudco.wbtransdata.accexc = '0' ) and (M_TLB_FASTWRITE /= 0)
+                if  ((r.stpend  = '0') or ((mcdo.ready and not r.req)= '1')) and 
+		  (((mmudco.wbtransdata.accexc = '0') and (M_TLB_FASTWRITE /= 0)) or (dci.lock = '1'))
                 then
                   v.req := '1'; v.stpend := '1'; 
                   v.burst := dci.size(1) and dci.size(0);
@@ -837,6 +855,8 @@ begin
                 else
                   v.setrepl := r.rndcnt;
                 end if;
+              when dir =>
+                v.setrepl := dci.maddress(OFFSET_HIGH+log2x(DSETS) downto OFFSET_HIGH+1);
               when lru =>
                 v.setrepl := lru_set(rl.lru(conv_integer(dci.maddress(OFFSET_HIGH downto OFFSET_LOW))), lock(0 to DSETS-1));
               when lrr =>
@@ -1085,7 +1105,7 @@ begin
         miscdata(MMCTRL_IMPL_U downto MMCTRL_IMPL_D) := "0000";
         miscdata(23 downto 21) := conv_std_logic_vector(M_ENT_ILOG,3);
         miscdata(20 downto 18) := conv_std_logic_vector(M_ENT_DLOG,3);
-        if M_TLB_TYPE = 0 then miscdata(17) := '1'; else
+        if M_TLB_TYPE = 0 then miscdata(MMCTRL_TLBSEP) := '1'; else
           miscdata(23 downto 21) := conv_std_logic_vector(M_ENT_CLOG,3);
           miscdata(20 downto 18) := (others => '0');
         end if;
@@ -1411,10 +1431,6 @@ begin
     if dsnoop = 0 then v.cctrl.dsnoop := '0'; end if;
     if not M_EN then v.mmctrl1 := mmctrl_type1_none; end if; -- kill MMU regs if not enabled
 
-    -- Needed for HLOCK generation during LDST for slow MMU write
-    if (M_TLB_FASTWRITE = 0) and (r.dstate = wtrans) and (r.wb.lock = '1') 
-    then wbread := '1'; else wbread := r.wb.read; end if;
-
 -- Drive signals
 
     c <= v; cs <= vs;	ch <= vh; -- register inputs
@@ -1464,7 +1480,7 @@ begin
     mcdi.data     <= r.wb.data1;
     mcdi.burst    <= r.burst;
     mcdi.size     <= r.wb.size;
-    mcdi.read     <= wbread;
+    mcdi.read     <= r.wb.read;
     mcdi.asi      <= r.wb.asi;
     mcdi.lock     <= r.wb.lock;
     mcdi.req      <= r.req;
@@ -1551,7 +1567,10 @@ begin
   chk : process
   begin
     assert not ((DSETS > 2) and (drepl = lrr)) report
-	"Wrong data cache configuration detected: LRR replacement requires 2 sets"
+	"Wrong data cache configuration detected: LRR replacement requires 2 ways"
+    severity failure;
+    assert not ((DSETS = 3) and (drepl = dir)) report
+	"Wrong data cache configuration detected: Direct replacement requires 2 or 4 ways"
     severity failure;
     wait;
   end process;

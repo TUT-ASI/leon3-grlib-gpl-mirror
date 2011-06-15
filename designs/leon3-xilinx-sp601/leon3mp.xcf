@@ -1,5 +1,5 @@
 
-NET clk27 	PERIOD = 37.000 ;
+NET clk27 	PERIOD = 37.037 ;
 NET clk200_p	PERIOD = 5.000 ;
 NET erx_clk	PERIOD = 40.000 ;
 NET etx_clk	PERIOD = 40.000 ;

@@ -21,6 +21,8 @@
 #define CFG_CLK_TECH rhlib18t
 #elif defined CONFIG_CLK_RHUMC
 #define CFG_CLK_TECH rhumc
+#elif defined CONFIG_CLK_UT130HBD
+#define CFG_CLK_TECH ut130
 #else
 #define CFG_CLK_TECH inferred
 #endif

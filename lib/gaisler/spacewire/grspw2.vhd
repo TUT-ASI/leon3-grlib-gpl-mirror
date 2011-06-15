@@ -230,7 +230,8 @@ rtl : if netlist = 0 generate
       testrst      => ahbmi.testrst,
       testen       => ahbmi.testen,
       rxdataout    => swno.rxdataout,
-      rxdav        => swno.rxdav
+      rxdav        => swno.rxdav,
+      loopback     => swno.loopback
       );
   end generate;
 
@@ -320,7 +321,8 @@ rtl : if netlist = 0 generate
       linkdis      => swno.linkdis,
       testclk      => clk,
       testrst      => ahbmi.testrst,
-      testen       => ahbmi.testen
+      testen       => ahbmi.testen,
+      loopback     => swno.loopback
       );
   end generate;
 

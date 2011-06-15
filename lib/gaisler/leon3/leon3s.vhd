@@ -170,13 +170,13 @@ entity leon3s is
     notag     : integer range 0 to 1  := 0;
     nwp       : integer range 0 to 4  := 0;
     icen      : integer range 0 to 1  := 0;
-    irepl     : integer range 0 to 2  := 2;
+    irepl     : integer range 0 to 3  := 2;
     isets     : integer range 1 to 4  := 1;
     ilinesize : integer range 4 to 8  := 4;
     isetsize  : integer range 1 to 256 := 1;
     isetlock  : integer range 0 to 1  := 0;
     dcen      : integer range 0 to 1  := 0;
-    drepl     : integer range 0 to 2  := 2;
+    drepl     : integer range 0 to 3  := 2;
     dsets     : integer range 1 to 4  := 1;
     dlinesize : integer range 4 to 8  := 4;
     dsetsize  : integer range 1 to 256 := 1;

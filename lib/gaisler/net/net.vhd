@@ -43,12 +43,14 @@ package net is
     mdio_i     : std_ulogic;
     mdint      : std_ulogic;
     phyrstaddr : std_logic_vector(4 downto 0);
-    edcladdr   : std_logic_vector(3 downto 0);   
+    edcladdr   : std_logic_vector(3 downto 0);
+    edclsepahb : std_ulogic;
+    edcldisable: std_ulogic;
   end record;
 
   constant eth_in_none : eth_in_type :=
     ('0', '0', '0', '0', (others => '0'), '0', '0', '0', '0',
-     '0', '0', (others => '0'), (others => '0'));
+     '0', '0', (others => '0'), (others => '0'), '0', '0');
   
   type eth_out_type is record
     reset   : std_ulogic;
@@ -96,7 +98,7 @@ package net is
       enable_mdio    : integer range 0 to 1 := 0;
       fifosize       : integer range 4 to 512 := 8;
       nsync          : integer range 1 to 2 := 2;
-      edcl           : integer range 0 to 2 := 0;
+      edcl           : integer range 0 to 3 := 0;
       edclbufsz      : integer range 1 to 64 := 1;
       macaddrh       : integer := 16#00005E#;
       macaddrl       : integer := 16#000000#;
@@ -107,9 +109,11 @@ package net is
       oepol          : integer range 0 to 1  := 0; 
       scanen         : integer range 0 to 1  := 0;
       ft             : integer range 0 to 2  := 0;
+      edclft         : integer range 0 to 2  := 0;
       mdint_pol      : integer range 0 to 1  := 0;
       enable_mdint   : integer range 0 to 1  := 0;
-      multicast      : integer range 0 to 1  := 0); 
+      multicast      : integer range 0 to 1  := 0;
+      ramdebug       : integer range 0 to 2  := 0); 
     port(
      rst            : in  std_ulogic;
      clk            : in  std_ulogic;
@@ -119,6 +123,101 @@ package net is
      apbo           : out apb_slv_out_type;
      ethi           : in  eth_in_type;
      etho           : out eth_out_type
+    );
+  end component;
+
+  component greth_mb is
+    generic(
+      hindex         : integer := 0;
+      ehindex        : integer := 0;
+      pindex         : integer := 0;
+      paddr          : integer := 0;
+      pmask          : integer := 16#FFF#;
+      pirq           : integer := 0;
+      memtech        : integer := 0;
+      ifg_gap        : integer := 24; 
+      attempt_limit  : integer := 16;
+      backoff_limit  : integer := 10;
+      slot_time      : integer := 128;
+      mdcscaler      : integer range 0 to 255 := 25; 
+      enable_mdio    : integer range 0 to 1 := 0;
+      fifosize       : integer range 4 to 512 := 8;
+      nsync          : integer range 1 to 2 := 2;
+      edcl           : integer range 0 to 3 := 0;
+      edclbufsz      : integer range 1 to 64 := 1;
+      macaddrh       : integer := 16#00005E#;
+      macaddrl       : integer := 16#000000#;
+      ipaddrh        : integer := 16#c0a8#;
+      ipaddrl        : integer := 16#0035#;
+      phyrstadr      : integer range 0 to 32 := 0;
+      rmii           : integer range 0 to 1  := 0;
+      oepol	     : integer range 0 to 1  := 0; 
+      scanen	     : integer range 0 to 1  := 0;
+      ft             : integer range 0 to 2  := 0;
+      edclft         : integer range 0 to 2  := 0;
+      mdint_pol      : integer range 0 to 1  := 0;
+      enable_mdint   : integer range 0 to 1  := 0;
+      multicast      : integer range 0 to 1  := 0;
+      edclsepahb     : integer range 0 to 1  := 0;
+      ramdebug       : integer range 0 to 2  := 0);
+    port(
+      rst            : in  std_ulogic;
+      clk            : in  std_ulogic;
+      ahbmi          : in  ahb_mst_in_type;
+      ahbmo          : out ahb_mst_out_type;
+      ahbmi2         : in  ahb_mst_in_type;
+      ahbmo2         : out ahb_mst_out_type;
+      apbi           : in  apb_slv_in_type;
+      apbo           : out apb_slv_out_type;
+      ethi           : in  eth_in_type;
+      etho           : out eth_out_type
+    );
+  end component;
+
+  component greth_gbit_mb is
+    generic(
+      hindex         : integer := 0;
+      ehindex        : integer := 0;
+      pindex         : integer := 0;
+      paddr          : integer := 0;
+      pmask          : integer := 16#FFF#;
+      pirq           : integer := 0;
+      memtech        : integer := 0;
+      ifg_gap        : integer := 24; 
+      attempt_limit  : integer := 16;
+      backoff_limit  : integer := 10;
+      slot_time      : integer := 128;
+      mdcscaler      : integer range 0 to 255 := 25; 
+      nsync          : integer range 1 to 2 := 2;
+      edcl           : integer range 0 to 3 := 0;
+      edclbufsz      : integer range 1 to 64 := 1;
+      burstlength    : integer range 4 to 128 := 32;
+      macaddrh       : integer := 16#00005E#;
+      macaddrl       : integer := 16#000000#;
+      ipaddrh        : integer := 16#c0a8#;
+      ipaddrl        : integer := 16#0035#;
+      phyrstadr      : integer range 0 to 32 := 0;
+      sim            : integer range 0 to 1 := 0;
+      oepol          : integer range 0 to 1  := 0; 
+      scanen         : integer range 0 to 1  := 0;
+      ft             : integer range 0 to 2 := 0;
+      edclft         : integer range 0 to 2 := 0;
+      mdint_pol      : integer range 0 to 1  := 0;
+      enable_mdint   : integer range 0 to 1  := 0;
+      multicast      : integer range 0 to 1  := 0;
+      edclsepahb     : integer range 0 to 1  := 0;
+      ramdebug       : integer range 0 to 2  := 0); 
+    port(
+      rst            : in  std_ulogic;
+      clk            : in  std_ulogic;
+      ahbmi          : in  ahb_mst_in_type;
+      ahbmo          : out ahb_mst_out_type;
+      ahbmi2         : in  ahb_mst_in_type;
+      ahbmo2         : out ahb_mst_out_type;
+      apbi           : in  apb_slv_in_type;
+      apbo           : out apb_slv_out_type;
+      ethi           : in  eth_in_type;
+      etho           : out eth_out_type
     );
   end component;
 
@@ -136,7 +235,7 @@ package net is
       slot_time      : integer := 128;
       mdcscaler      : integer range 0 to 255 := 25; 
       nsync          : integer range 1 to 2 := 2;
-      edcl           : integer range 0 to 2 := 0;
+      edcl           : integer range 0 to 3 := 0;
       edclbufsz      : integer range 1 to 64 := 1;
       burstlength    : integer range 4 to 128 := 32;
       macaddrh       : integer := 16#00005E#;
@@ -147,9 +246,12 @@ package net is
       sim            : integer range 0 to 1 := 0;
       oepol          : integer range 0 to 1  := 0; 
       scanen         : integer range 0 to 1  := 0;
+      ft             : integer range 0 to 2 := 0;
+      edclft         : integer range 0 to 2 := 0;
       mdint_pol      : integer range 0 to 1  := 0;
       enable_mdint   : integer range 0 to 1  := 0;
-      multicast      : integer range 0 to 1  := 0); 
+      multicast      : integer range 0 to 1  := 0;
+      ramdebug       : integer range 0 to 2  := 0); 
     port(
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;
@@ -178,7 +280,7 @@ package net is
     enable_mdio    : integer range 0 to 1 := 0;
     fifosize       : integer range 4 to 64 := 8;
     nsync          : integer range 1 to 2 := 2;
-    edcl           : integer range 0 to 2 := 0;
+    edcl           : integer range 0 to 3 := 0;
     edclbufsz      : integer range 1 to 64 := 1;
     burstlength    : integer range 4 to 128 := 32;
     macaddrh       : integer := 16#00005E#;
@@ -192,9 +294,11 @@ package net is
     oepol          : integer range 0 to 1  := 0;
     scanen         : integer range 0 to 1  := 0;
     ft             : integer range 0 to 2  := 0;
+    edclft         : integer range 0 to 1  := 0;
     mdint_pol      : integer range 0 to 1  := 0;
     enable_mdint   : integer range 0 to 1  := 0;
-    multicast      : integer range 0 to 1  := 0); 
+    multicast      : integer range 0 to 1  := 0;
+    ramdebug       : integer range 0 to 2  := 0); 
   port(
     rst            : in  std_ulogic;
     clk            : in  std_ulogic;

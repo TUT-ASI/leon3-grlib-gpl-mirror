@@ -20,7 +20,7 @@
   constant CFG_LEON3  	: integer := CONFIG_LEON3;
   constant CFG_NCPU 	: integer := CONFIG_PROC_NUM;
   constant CFG_NWIN 	: integer := CONFIG_IU_NWINDOWS;
-  constant CFG_V8   	: integer := CFG_IU_V8;
+  constant CFG_V8   	: integer := CFG_IU_V8 + 4*CFG_IU_MUL_STRUCT;
   constant CFG_MAC  	: integer := CONFIG_IU_MUL_MAC;
   constant CFG_BP   	: integer := CONFIG_IU_BP;
   constant CFG_SVT  	: integer := CONFIG_IU_SVT;
@@ -88,7 +88,7 @@
   constant CFG_AHB_JTAG	: integer := CONFIG_DSU_JTAG;
 
 -- Ethernet DSU
-  constant CFG_DSU_ETH	: integer := CONFIG_DSU_ETH + CONFIG_DSU_ETH_PROG;
+  constant CFG_DSU_ETH	: integer := CONFIG_DSU_ETH + CONFIG_DSU_ETH_PROG + CONFIG_DSU_ETH_DIS;
   constant CFG_ETH_BUF 	: integer := CFG_DSU_ETHB;
   constant CFG_ETH_IPM 	: integer := 16#CONFIG_DSU_IPMSB#;
   constant CFG_ETH_IPL 	: integer := 16#CONFIG_DSU_IPLSB#;
@@ -185,6 +185,8 @@
   constant CFG_SPICTRL_ASEL    : integer := CONFIG_SPICTRL_ASEL;
   constant CFG_SPICTRL_TWEN    : integer := CONFIG_SPICTRL_TWEN;
   constant CFG_SPICTRL_MAXWLEN : integer := CONFIG_SPICTRL_MAXWLEN;
+  constant CFG_SPICTRL_SYNCRAM : integer := CONFIG_SPICTRL_SYNCRAM;
+  constant CFG_SPICTRL_FT      : integer := CONFIG_SPICTRL_FT;
 
 -- LCD SVGA controller
   constant CFG_LCD_ENABLE : integer := CONFIG_LCD_ENABLE;

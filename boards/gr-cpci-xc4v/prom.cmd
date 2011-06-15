@@ -24,6 +24,6 @@ setAttribute -position 1 -attr configFileName -value "gr-cpci-xc4v_0.mcs"
 #setAttribute -position 2 -attr devicePartName -value "xcf32p"
 #setAttribute -position 2 -attr configFileName -value "gr-cpci-xc4v_1.mcs"
 
-Program -p 1 -e -v -parallel
-#Program -p 1 2 -e -v -parallel
+Program -p 1 -e -v -r -parallel
+#Program -p 1 2 -e -v -r -parallel
 quit

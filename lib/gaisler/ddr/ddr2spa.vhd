@@ -64,6 +64,10 @@ entity ddr2spa is
     ddelayb5       :       integer := 0;  -- Data delay value (0 - 63)
     ddelayb6       :       integer := 0;  -- Data delay value (0 - 63)
     ddelayb7       :       integer := 0;  -- Data delay value (0 - 63)
+    cbdelayb0      :       integer := 0;  -- Data delay value (0 - 63)
+    cbdelayb1      :       integer := 0;  -- Data delay value (0 - 63)
+    cbdelayb2      :       integer := 0;  -- Data delay value (0 - 63)
+    cbdelayb3      :       integer := 0;  -- Data delay value (0 - 63)    
     numidelctrl    :       integer := 4;
     norefclk       :       integer := 0;
     odten          :       integer := 0;
@@ -73,7 +77,11 @@ entity ddr2spa is
     eightbanks     :       integer range 0 to 1 := 0;
     dqsse          :       integer range 0 to 1 := 0;  -- single ended DQS
     burstlen       :       integer range 4 to 128 := 8;
-    ahbbits        :       integer := ahbdw
+    ahbbits        :       integer := ahbdw;
+    ft             :       integer range 0 to 1 := 0;
+    ftbits         :       integer := 0;
+    bigmem         :       integer range 0 to 1 := 0;
+    raspipe        :       integer range 0 to 1 := 0
     );
   port (
     rst_ddr        : in    std_ulogic;
@@ -95,13 +103,14 @@ entity ddr2spa is
     ddr_web        : out   std_ulogic;                              -- ddr write enable
     ddr_rasb       : out   std_ulogic;                              -- ddr ras
     ddr_casb       : out   std_ulogic;                              -- ddr cas
-    ddr_dm         : out   std_logic_vector(ddrbits/8-1 downto 0);  -- ddr dm
-    ddr_dqs        : inout std_logic_vector(ddrbits/8-1 downto 0);  -- ddr dqs
-    ddr_dqsn       : inout std_logic_vector(ddrbits/8-1 downto 0);  -- ddr dqsn
+    ddr_dm         : out   std_logic_vector((ddrbits+ftbits)/8-1 downto 0);  -- ddr dm
+    ddr_dqs        : inout std_logic_vector((ddrbits+ftbits)/8-1 downto 0);  -- ddr dqs
+    ddr_dqsn       : inout std_logic_vector((ddrbits+ftbits)/8-1 downto 0);  -- ddr dqsn
     ddr_ad         : out   std_logic_vector(13 downto 0);           -- ddr address
     ddr_ba         : out   std_logic_vector(1+eightbanks downto 0); -- ddr bank address
-    ddr_dq         : inout std_logic_vector(ddrbits-1 downto 0);    -- ddr data
-    ddr_odt        : out   std_logic_vector(1 downto 0)
+    ddr_dq         : inout std_logic_vector((ddrbits+ftbits)-1 downto 0);    -- ddr data
+    ddr_odt        : out   std_logic_vector(1 downto 0);
+    ce             : out   std_logic   -- Corrected error (for FT)
     );
 end;
 
@@ -113,26 +122,105 @@ signal sdi     : sdctrl_in_type;
 signal sdo     : sdctrl_out_type;
 --signal clkread  : std_ulogic;
 
+-- Reset scheme:
+-- 1. rst_ddr inport is a raw async reset brought in from the outside - goes to PHY/PLL:s
+-- 2. lock signal from PHY/PLLs goes out through lock outport to external
+--    ahb rstgen and internal ddr reset gen
+-- 3. AMBA synchronous reset signal rst_ahb comes back in
+
+-- DDR Clock scheme:
+-- 1. clk_ddr (and clkref200) goes into PHY
+-- 2. clkddro comes out from PHY and goes out through clkddro port
+-- 3. clkddri comes back in and is used to clock DDR-side logic
+
+signal ilock: std_ulogic;
+
+signal ddr_rst: std_logic;
+signal ddr_rst_gen: std_logic_vector(3 downto 0);
+
+constant ddr_syncrst: integer := 0;
+
 begin
 
-  ddr_phy0 : ddr2_phy generic map (tech => fabtech, MHz => MHz,
-      dbits => ddrbits, rstdelay => rstdel, clk_mul => clkmul,
-      clk_div => clkdiv,
-      ddelayb0 => ddelayb0, ddelayb1 => ddelayb1, ddelayb2 => ddelayb2,
-      ddelayb3 => ddelayb3, ddelayb4 => ddelayb4, ddelayb5 => ddelayb5,
-      ddelayb6 => ddelayb6, ddelayb7 => ddelayb7,
-      numidelctrl => numidelctrl, norefclk => norefclk, rskew => rskew,
-      eightbanks => eightbanks, dqsse => dqsse)
-  port map (rst_ddr, clk_ddr, clkref200, clkddro, lock,
-      ddr_clk, ddr_clkb, ddr_clk_fb_out, ddr_clk_fb,
-      ddr_cke, ddr_csb, ddr_web, ddr_rasb, ddr_casb, ddr_dm, 
-      ddr_dqs, ddr_dqsn, ddr_ad, ddr_ba, ddr_dq, ddr_odt, sdi, sdo);
+  lock <= ilock;
+  
+  ddr_rst <= (ddr_rst_gen(3) and ddr_rst_gen(2) and ddr_rst_gen(1) and rst_ahb); -- Reset signal in DDR clock domain
 
+  ddrrstproc: process(rst_ahb,clkddri)
+  begin
+    if rising_edge(clkddri) then
+      ddr_rst_gen <= ddr_rst_gen(2 downto 0) & '1';
+      if ddr_syncrst /= 0 and rst_ahb='0' then
+        ddr_rst_gen <= "0000";
+      end if;
+    end if;
+    if ddr_syncrst=0 and ilock='0' then
+      ddr_rst_gen <= "0000";
+    end if;
+  end process;
+      
+  ftphy: if ftbits > 0 generate
+    ddr_phy0 : ddr2phy_wrap
+      generic map (
+        tech => fabtech, MHz => MHz,
+        dbits => ddrbits, rstdelay => rstdel, clk_mul => clkmul,
+        clk_div => clkdiv,
+        ddelayb0 => ddelayb0, ddelayb1 => ddelayb1, ddelayb2 => ddelayb2,
+        ddelayb3 => ddelayb3, ddelayb4 => ddelayb4, ddelayb5 => ddelayb5,
+        ddelayb6 => ddelayb6, ddelayb7 => ddelayb7, cbdelayb0=> cbdelayb0,
+        cbdelayb1=> cbdelayb1, cbdelayb2=> cbdelayb2,cbdelayb3=> cbdelayb3,
+        numidelctrl => numidelctrl, norefclk => norefclk, rskew => rskew,
+        eightbanks => eightbanks, dqsse => dqsse,
+        cben => 1, chkbits => ftbits, ctrl2en => 0 )
+      port map (
+        rst_ddr, clk_ddr, clkref200, clkddro, ilock,
+        ddr_clk, ddr_clkb, ddr_clk_fb_out, ddr_clk_fb,
+        ddr_cke, ddr_csb, ddr_web, ddr_rasb, ddr_casb,
+        ddr_dm(ddrbits/8-1 downto 0), 
+        ddr_dqs(ddrbits/8-1 downto 0),
+        ddr_dqsn(ddrbits/8-1 downto 0),
+        ddr_ad, ddr_ba, ddr_dq(ddrbits-1 downto 0), ddr_odt,
+        ddr_dm((ddrbits+ftbits)/8-1 downto ddrbits/8),
+        ddr_dqs((ddrbits+ftbits)/8-1 downto ddrbits/8),
+        ddr_dqsn((ddrbits+ftbits)/8-1 downto ddrbits/8),
+        ddr_dq((ddrbits+ftbits)-1 downto ddrbits),
+        open, open, open, open, open,
+        sdi, sdo);
+    end generate;
+
+    nftphy: if ftbits = 0 generate
+      ddr_phy0 : ddr2phy_wrap_cbd
+        generic map (
+          tech => fabtech, MHz => MHz,
+          dbits => ddrbits, rstdelay => rstdel, clk_mul => clkmul,
+          clk_div => clkdiv,
+          ddelayb0 => ddelayb0, ddelayb1 => ddelayb1, ddelayb2 => ddelayb2,
+          ddelayb3 => ddelayb3, ddelayb4 => ddelayb4, ddelayb5 => ddelayb5,
+          ddelayb6 => ddelayb6, ddelayb7 => ddelayb7, cbdelayb0=> cbdelayb0,
+          cbdelayb1=> cbdelayb1, cbdelayb2=> cbdelayb2,cbdelayb3=> cbdelayb3,
+          numidelctrl => numidelctrl, norefclk => norefclk, rskew => rskew,
+          eightbanks => eightbanks, dqsse => dqsse,
+          chkbits => 0, ctrl2en => 0 )
+        port map (
+          rst_ddr, clk_ddr, clkref200, clkddro, ilock,
+          ddr_clk, ddr_clkb, ddr_clk_fb_out, ddr_clk_fb,
+          ddr_cke, ddr_csb, ddr_web, ddr_rasb, ddr_casb,
+          ddr_dm(ddrbits/8-1 downto 0), 
+          ddr_dqs(ddrbits/8-1 downto 0),
+          ddr_dqsn(ddrbits/8-1 downto 0),
+          ddr_ad, ddr_ba, ddr_dq(ddrbits-1 downto 0), ddr_odt,
+          open, open, open, open, open,
+          sdi, sdo);
+    end generate;
+    
     ddrc : ddr2spax generic map (memtech => memtech, hindex => hindex, 
       haddr => haddr, hmask => hmask, ioaddr => ioaddr, iomask => iomask, ddrbits => ddrbits,
       pwron => pwron, MHz => DDR_FREQ, TRFC => TRFC, col => col, Mbyte => Mbyte,
       fastahb => FAST_AHB, readdly => readdly, odten => odten, octen => octen, dqsgating => dqsgating,
-      nosync => nosync, eightbanks => eightbanks, dqsse => dqsse, burstlen => burstlen, ahbbits => ahbbits)
-    port map (rst_ahb, clkddri, clk_ahb, ahbsi, ahbso, sdi, sdo);
+      nosync => nosync, eightbanks => eightbanks, dqsse => dqsse, burstlen => burstlen, ahbbits => ahbbits,
+      ft => ft, ddr_syncrst => ddr_syncrst, bigmem => bigmem, raspipe => raspipe, hwidthen => 0)
+    port map (ddr_rst, rst_ahb, clkddri, clk_ahb, ahbsi, ahbso, sdi, sdo, '0');
 
+  ce <= sdo.ce;
+  
 end;

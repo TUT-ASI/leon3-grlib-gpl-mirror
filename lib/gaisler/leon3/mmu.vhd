@@ -386,7 +386,11 @@ begin
         if (mmudci.trans_op or mmudci.flush_op or mmuici.trans_op) = '1' then
           v.cmb_s1.tlbactive := '1';
         end if;
-        if mmudci.trans_op = '1' then
+        if mmuici.trans_op = '1' then
+          mmuico_grant := '1'; 
+          v.cmb_s1.tlbowner := id_icache;
+          v.cmb_s1.op.trans_op := '1';
+        elsif mmudci.trans_op = '1' then
           mmudco_grant := '1';
           v.cmb_s1.tlbowner := id_dcache;
           v.cmb_s1.op.trans_op := '1';
@@ -394,10 +398,6 @@ begin
           mmudco_grant := '1';
           v.cmb_s1.tlbowner := id_dcache;
           v.cmb_s1.op.flush_op := '1';
-        elsif mmuici.trans_op = '1' then
-          mmuico_grant := '1'; 
-          v.cmb_s1.tlbowner := id_icache;
-          v.cmb_s1.op.trans_op := '1';
         end if;
       end if;
     

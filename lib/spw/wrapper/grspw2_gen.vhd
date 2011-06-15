@@ -105,7 +105,8 @@ entity grspw2_gen is
     rmapen       : in   std_ulogic;
     --parallel rx data out
     rxdav        : out  std_ulogic;
-    rxdataout    : out  std_logic_vector(8 downto 0)
+    rxdataout    : out  std_logic_vector(8 downto 0);
+    loopback     : out  std_ulogic
     );
 end entity;
 
@@ -255,7 +256,8 @@ begin
       testen       => testen,
       --parallel rx data out
       rxdav        => rxdav,
-      rxdataout    => rxdataout);
+      rxdataout    => rxdataout,
+      loopback     => loopback);
 
   ------------------------------------------------------------------------------
   -- FIFOS ---------------------------------------------------------------------

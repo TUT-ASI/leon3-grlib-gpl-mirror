@@ -48,7 +48,7 @@ constant has_sram156bw : tech_ability_type := (
 	virtex2 => 0, virtex4 => 0, virtex5 => 0, spartan3 => 0,
 	spartan3e => 0, spartan6 => 0, virtex6 => 0, 
 	altera => 0, cyclone3 => 0, stratix2 => 0, stratix3 => 0,
-	tm65gpl => 0, others => 0);
+	tm65gpl => 0, custom1 => 1, ut90 => 1, others => 0);
 
 --  component unisim_syncram128bw
 --  generic ( abits : integer := 9);
@@ -74,22 +74,34 @@ constant has_sram156bw : tech_ability_type := (
 --  );
 --  end component;
 --
---  component tm65gpl_syncram128bw
---  generic ( abits : integer := 9);
---  port (
---    clk     : in  std_ulogic;
---    address : in  std_logic_vector (abits -1 downto 0);
---    datain  : in  std_logic_vector (127 downto 0);
---    dataout : out std_logic_vector (127 downto 0);
---    enable  : in  std_logic_vector (15 downto 0);
---    write   : in  std_logic_vector (15 downto 0);
---    testin  : in  std_logic_vector (3 downto 0) := "0000"
---  );
---  end component;
+  component cust1_syncram156bw
+  generic ( abits : integer := 14; testen : integer := 0);
+  port (
+    clk     : in  std_ulogic;
+    address : in  std_logic_vector (abits -1 downto 0);
+    datain  : in  std_logic_vector (155 downto 0);
+    dataout : out std_logic_vector (155 downto 0);
+    enable  : in  std_logic_vector (15 downto 0);
+    write   : in  std_logic_vector (15 downto 0);
+    testin  : in  std_logic_vector (3 downto 0) := "0000"
+  );
+  end component;
+
+  component ut90nhbd_syncram156bw
+  generic (abits : integer := 14; testen : integer := 0);
+  port (
+    clk     : in  std_ulogic;
+    address : in  std_logic_vector (abits -1 downto 0);
+    datain  : in  std_logic_vector (155 downto 0);
+    dataout : out std_logic_vector (155 downto 0);
+    enable  : in  std_logic_vector (15 downto 0);
+    write   : in  std_logic_vector (15 downto 0);
+    testin  : in  std_logic_vector (3 downto 0) := "0000");
+  end component;
 
 begin
 
---  s64 : if has_sram128bw(tech) = 1 generate
+  s156 : if has_sram156bw(tech) = 1 generate
 --    xc2v : if (is_unisim(tech) = 1) generate 
 --      x0 : unisim_syncram128bw generic map (abits)
 --         port map (clk, address, datain, dataout, enable, write);
@@ -99,13 +111,17 @@ begin
 --      x0 : altera_syncram128bw generic map (abits)
 --         port map (clk, address, datain, dataout, enable, write);
 --    end generate;
---    tm65: if tech = tm65gpl generate
---      x0 : tm65gpl_syncram128bw generic map (abits)
---         port map (clk, address, datain, dataout, enable, write, testin);
---    end generate;
---  end generate;
+    cust1u : if tech = custom1 generate
+      x0 : cust1_syncram156bw generic map (abits, testen)
+         port map (clk, address, datain, dataout, enable, write, testin);
+    end generate;
+    ut90u : if tech = ut90 generate
+      x0 : ut90nhbd_syncram156bw generic map (abits, testen)
+         port map (clk, address, datain, dataout, enable, write, testin);
+    end generate;
+  end generate;
 
-  nos64 : if has_sram156bw(tech) = 0 generate
+  nos156 : if has_sram156bw(tech) = 0 generate
     rx : for i in 0 to 15 generate
       x0 : syncram generic map (tech, abits, 8, testen)
         port map (clk, address, datain(i*8+7 downto i*8), 

@@ -28,7 +28,10 @@ library ieee;
 library techmap;
 use ieee.std_logic_1164.all;
 use techmap.gencomp.all;
-  
+library grlib;
+use grlib.config.all;
+use grlib.stdlib.all;
+
 entity syncram128bw is
   generic (tech : integer := 0; abits : integer := 6; testen : integer := 0);
   port (
@@ -47,7 +50,7 @@ constant has_sram128bw : tech_ability_type := (
 	virtex2 => 1, virtex4 => 1, virtex5 => 1, spartan3 => 1,
 	spartan3e => 1, spartan6 => 1, virtex6 => 1, 
 	altera => 1, cyclone3 => 1, stratix2 => 1, stratix3 => 1,
-	tm65gpl => 0, others => 0);
+	ut90 => 1, others => 0);
 
   component unisim_syncram128bw
   generic ( abits : integer := 9);
@@ -86,6 +89,19 @@ constant has_sram128bw : tech_ability_type := (
   );
   end component;
 
+  component ut90nhbd_syncram128bw
+  generic ( abits : integer := 9);
+  port (
+    clk     : in  std_ulogic;
+    address : in  std_logic_vector (abits -1 downto 0);
+    datain  : in  std_logic_vector (127 downto 0);
+    dataout : out std_logic_vector (127 downto 0);
+    enable  : in  std_logic_vector (15 downto 0);
+    write   : in  std_logic_vector (15 downto 0);
+    testin  : in  std_logic_vector (3 downto 0) := "0000"
+  );
+  end component;
+
 begin
 
   s64 : if has_sram128bw(tech) = 1 generate
@@ -102,6 +118,21 @@ begin
       x0 : tm65gpl_syncram128bw generic map (abits)
          port map (clk, address, datain, dataout, enable, write, testin);
     end generate;
+    ut09: if tech = ut90 generate
+      x0 : ut90nhbd_syncram128bw generic map (abits)
+         port map (clk, address, datain, dataout, enable, write, testin);
+    end generate;
+-- pragma translate_off
+    dmsg : if grlib_debug_level >= 2 generate
+      x : process
+      begin
+        assert false report "syncram128bw: " & tost(2**abits) & "x128" &
+         " (" & tech_table(tech) & ")"
+        severity note;
+        wait;
+      end process;
+    end generate;
+-- pragma translate_on
   end generate;
 
   nos64 : if has_sram128bw(tech) = 0 generate

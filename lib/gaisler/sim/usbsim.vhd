@@ -561,9 +561,12 @@ package body usbsim is
     variable fw, fs, fc : boolean := false;
     variable suspend : std_ulogic := '1';
   begin
-    if usbo.dataout(7 downto 6) /= "10" then
-      wait until usbo.dataout(7 downto 6) = "10";
-    end if;
+--    if usbo.dataout(7 downto 6) /= "10" then
+--      wait until usbo.dataout(7 downto 6) = "10";
+--    end if;
+    while usbo.dataout(7 downto 6) /= "10" loop
+      wait for 1 ns;
+    end loop;
     wait until rising_edge(clk);
     wait for 1 ps;
     usbi.nxt <= '1';
@@ -616,9 +619,12 @@ package body usbsim is
     signal usbo : in grusb_out_type;
     constant vbus : in std_ulogic) is
   begin
-    if usbo.dataout(7 downto 6) /= "11" then
-      wait until usbo.dataout(7 downto 6) = "11";
-    end if;
+--    if usbo.dataout(7 downto 6) /= "11" then
+--      wait until usbo.dataout(7 downto 6) = "11";
+--    end if;
+    while usbo.dataout(7 downto 6) /= "11" loop
+      wait for 1 ns;
+    end loop;
     wait until rising_edge(clk);
     usbi.nxt <= '1';
     wait until rising_edge(clk);
@@ -674,11 +680,14 @@ package body usbsim is
       accept_regwrite(clk,usbi,usbo,uctrl);
     end if;
         
-    -- Wait for suspend (due to no vbus)
     if not keepclk then
       accept_regwrite(clk,usbi,usbo,uctrl);
       if usbo.suspendm = '1' then
-        wait until usbo.suspendm = '0';
+        if usbo.xcvrselect /= "00" or usbo.termselect /= '0' or
+          usbo.opmode /= "00" then
+          -- Wait for suspend (due to no vbus)
+          wait until usbo.suspendm = '0';
+        end if;
       end if;
     end if;
     
@@ -861,9 +870,12 @@ package body usbsim is
       end if;
     else
       i := 0;
-      if usbo.dataout(7 downto 6) /= "01" then
-        wait until usbo.dataout(7 downto 6) = "01" for 500 ns;
-      end if;
+--      if usbo.dataout(7 downto 6) /= "01" then
+--        wait until usbo.dataout(7 downto 6) = "01" for 500 ns;
+--      end if;
+      while usbo.dataout(7 downto 6) /= "01" loop
+        wait for 1 ns;
+      end loop;
       if usbo.dataout(7 downto 6) /= "01" then
         timeout := true;
       else

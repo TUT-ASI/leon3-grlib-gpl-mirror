@@ -17,8 +17,8 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------   
--- Entity:      tap_gen
--- File:        tap_gen.vhd
+-- Package:     alltap
+-- File:        alltap.vhd
 -- Author:      Edvin Catovic - Gaisler Research
 -- Description: JTAG Test Access Port (TAP) Controller component declaration
 ------------------------------------------------------------------------------
@@ -263,5 +263,62 @@ port (
      tapo_xsel2  : out std_ulogic
     );
 end component;
+
+-------------------------------------------------------------------------------
+
+component scanregi_inf
+  port (
+    pad     : in std_ulogic;
+    core    : out std_ulogic;
+    tck     : in std_ulogic;
+    tdi     : in std_ulogic;
+    tdo     : out std_ulogic;
+    bsshft  : in std_ulogic;
+    bscapt  : in std_ulogic;    -- capture signal to scan reg on next tck edge
+    bsupd   : in std_ulogic;    -- update data reg from scan reg on next tck edge
+    bsdrive : in std_ulogic;     -- drive data reg to core
+    bshighz : in std_ulogic
+    );
+end component;
+
+component scanrego_inf
+  port (
+    pad     : out std_ulogic;
+    core    : in std_ulogic;
+    samp    : in std_ulogic;    -- normally same as core unless outpad has feedback
+    tck     : in std_ulogic;   
+    tdi     : in std_ulogic;
+    tdo     : out std_ulogic;
+    bsshft  : in std_ulogic;
+    bscapt  : in std_ulogic;    -- capture signal to scan reg on next tck edge
+    bsupd   : in std_ulogic;    -- update data reg from scan reg on next tck edge
+    bsdrive : in std_ulogic     -- drive data reg to pad
+    );
+end component;
+
+component scanregio_inf -- 3 scan registers: tdo<--input<--output<--outputen<--tdi
+  generic (
+    hzsup   : integer range 0 to 1 := 1
+    );
+  port (
+    pado    : out std_ulogic;
+    padoen  : out std_ulogic;
+    padi    : in std_ulogic;
+    coreo   : in std_ulogic;
+    coreoen : in std_ulogic;
+    corei   : out std_ulogic;
+    tck     : in std_ulogic;
+    tdi     : in std_ulogic;
+    tdo     : out std_ulogic;
+    bsshft  : in std_ulogic;
+    bscapt  : in std_ulogic;    -- capture signals to scan regs on next tck edge
+    bsupdi  : in std_ulogic;    -- update indata reg from scan reg on next tck edge
+    bsupdo  : in std_ulogic;    -- update outdata reg from scan reg on next tck edge
+    bsdrive : in std_ulogic;    -- drive outdata regs to pad,
+                                -- drive datareg(coreoen=0) or coreo(coreoen=1) to corei
+    bshighz : in std_ulogic
+    );
+end component;
+
 
 end;

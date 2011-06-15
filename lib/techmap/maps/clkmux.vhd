@@ -60,8 +60,11 @@ begin
     rhl : if tech = rhlib18t generate
       buf : clkmux_rhlib18t port map(sel => seli, I0 => i0, I1 => i1, O => o);
     end generate;
-    
-    noxil : if not((is_unisim(tech) = 1) or (tech = rhlib18t)) generate
+    ut13 : if tech = ut130 generate
+      x0 : clkmux_ut130hbd port map (i0 => i0, i1 => i1, sel => sel, o => o);
+    end generate;
+
+    noxil : if not((is_unisim(tech) = 1) or (tech = rhlib18t) or (tech = ut130)) generate
       o <= i0 when seli = '0' else i1;
     end generate;
 

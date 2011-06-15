@@ -86,9 +86,14 @@ entity pads is
 
     roen        : in  std_ulogic;
     roout       : out std_ulogic;
-    nandout	: out std_ulogic;
     test       	: in  std_ulogic;
 
+    trst        : in std_ulogic;
+    tck         : in std_ulogic;
+    tms         : in std_ulogic;
+    tdi         : in std_ulogic;
+    tdo         : out std_ulogic;
+    
     lresetn	: out std_ulogic;
     lclksel 	: out std_logic_vector (1 downto 0);
     lclk	: out std_ulogic;
@@ -148,9 +153,15 @@ entity pads is
 
     lroen       : out std_ulogic;
     lroout      : in  std_ulogic;
-    lnandout	: in  std_ulogic;
     ltest       : out std_ulogic;
-    gnd       	: in  std_ulogic
+    gnd       	: in  std_ulogic;
+
+    ltrst        : out std_ulogic;
+    ltck         : out std_ulogic;
+    ltms         : out std_ulogic;
+    ltdi         : out std_ulogic;
+    ltdo         : in std_ulogic
+    
 
 	);
 end;
@@ -177,8 +188,14 @@ begin
   roen_pad : inpad generic map (tech => padtech, filter => pullup) port map (roen, lroen); 
   roout_pad : outpad generic map (tech => padtech, strength => 4) 
     port map (roout, lroout);
-  nandout_pad : outpad generic map (tech => padtech, strength => 4) 
-    port map (nandout, lnandout);
+  -- FIXME: Check pullup/pulldown for JTAG signals
+  trst_pad : inpad generic map (tech => padtech, filter => pullup) port map (trst, ltrst);
+  tck_pad : inpad generic map (tech => padtech) port map (tck, ltck);
+  tms_pad : inpad generic map (tech => padtech) port map (tms, ltms);
+  tdi_pad : inpad generic map (tech => padtech) port map (tdi, ltdi);
+  tdo_pad : outpad generic map (tech => padtech) port map (tdo, ltdo);
+  
+  
   clk_pad : inpad generic map (tech => clkpadtech, filter => schmitt) port map (clk, clkin); 
   spw_clk_pad : inpad generic map (tech => clkpadtech, filter => schmitt) port map (spw_clk, lspw_clk); 
   resetn_pad : inpad generic map (tech => padtech, filter => schmitt) 

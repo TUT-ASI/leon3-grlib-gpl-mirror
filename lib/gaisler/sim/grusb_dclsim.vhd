@@ -172,7 +172,9 @@ begin
     end loop;
     ulpi_reset(clko_int, usbi, usbo, uctrl, false, keepclk = 1);
     
-    if keepclk = 0 then
+    if keepclk = 0 and (usbo.xcvrselect /= "00" or
+                        usbo.termselect /= '0' or
+                        usbo.opmode /= "00") then
       wait for 10 us;
       -- assert vbus so that device can wake up from suspend
       usbi.datain(1 downto 0) <= J_STATE;
@@ -191,12 +193,18 @@ begin
       accept_regread(clko_int,usbi,usbo,'1');
     end if;
 
-    accept_regwrite(clko_int,usbi,usbo,uctrl);
+    if keepclk = 1 or usbo.xcvrselect /= "00" or usbo.termselect /= '0' or
+      usbo.opmode /= "00" then
+      accept_regwrite(clko_int,usbi,usbo,uctrl);
+    end if;
     if functm = 0 then
       hs_handshake(clko_int,usbi,usbo,uctrl,usb_hs,1);
       wait for 5 us;
     elsif keepclk = 1 then
-      accept_regwrite(clko_int,usbi,usbo,uctrl);
+      if usbo.xcvrselect /= "00" or usbo.termselect /= '0' or
+        usbo.opmode /= "00" then
+        accept_regwrite(clko_int,usbi,usbo,uctrl);
+      end if;
     end if;
         
     ---------------------------------------------------------------------------
@@ -340,10 +348,10 @@ begin
                 toggleo := not toggleo;
                 
                 if togglei = '0' then
-                  rdata(clko_int, DATA0, true, dlenv, data, 1, "0000001", usb_rand, 1, 8,
+                  rdata(clko_int, DATA0, true, dlenv, data2, 1, "0000001", usb_rand, 1, 8,
                         usbi, usbo, TP, false, usb_hs, false, timeout, data, false);
                 else
-                  rdata(clko_int, DATA1, true, dlenv, data, 1, "0000001", usb_rand, 1, 8,
+                  rdata(clko_int, DATA1, true, dlenv, data2, 1, "0000001", usb_rand, 1, 8,
                         usbi, usbo, TP, false, usb_hs, false, timeout, data, false);
                 end if;
                 shandshake(clko_int, TACK, 1, 8, usb_rand, usbi, usb_hs);
@@ -428,10 +436,10 @@ begin
           toggleo := not toggleo;
 
           if togglei = '0' then
-            rdata(clko_int, DATA0, true, dlenv, data, 1, "0000001", usb_rand, 1, 8,
+            rdata(clko_int, DATA0, true, dlenv, data2, 1, "0000001", usb_rand, 1, 8,
                   usbi, usbo, TP, false, usb_hs, false, timeout, data, false);
           else
-            rdata(clko_int, DATA1, true, dlenv, data, 1, "0000001", usb_rand, 1, 8,
+            rdata(clko_int, DATA1, true, dlenv, data2, 1, "0000001", usb_rand, 1, 8,
                   usbi, usbo, TP, false, usb_hs, false, timeout, data, false);
           end if;
           shandshake(clko_int, TACK, 1, 8, usb_rand, usbi, usb_hs);

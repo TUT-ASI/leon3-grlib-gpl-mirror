@@ -15,6 +15,7 @@ mainmenu_name "LEON3MP Design Configuration"
 mainmenu_option next_comment
   comment 'Synthesis      '
   source lib/techmap/gencomp/tech.in
+  source lib/gaisler/jtag/bscan.in
 endmenu
 
 mainmenu_option next_comment

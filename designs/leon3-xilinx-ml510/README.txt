@@ -2,8 +2,12 @@
 This LEON3 design is tailored to the Xilinx Virtex5 ML510 board
 ---------------------------------------------------------------------
 
-NOTE: The ML510 has a bug that prevents the use of 64 bit DDR2. See
-      description of the DDR2 interface below.
+NOTE1: To use LEON/GRLIB on this board with the DDR2SPA controller, you
+       must use unbuffered/unregistered DDR2 memory devices. The devices
+       delivered with the ML510 kit are buffered and cannot be used.
+
+NOTE2: The ML510 has a bug that prevents the use of 64 bit DDR2. See
+       description of the DDR2 interface below.
 
 Design specifics:
 
@@ -55,11 +59,19 @@ Design specifics:
   frequency, the delay on the data signals might need to be changed too.
   How to do this is described in the DDR2SPA section of grip.pdf (see 
   description of SDCFG3 register).
+
   The ML510 board has the DDR clk 1 inverted (DIMM*_DDR2_CK2_N and
   DIMM*_DDR2_CK2_P have been flipped). This prevents DDR2SPA from
   using the full 64-bit interface. Instead the core is instantiated
   with a 32-bit data width. This means that only half of the available
   memory on a DIMM will be used.
+
+  The DDR2 DIMMs shipped with the ML510 use registered DDR2 and only 
+  makes use of DIMM*_DDR2_CK0_*. Therefore designs using memory controllers
+  from Xilinx, that support registered DDR2, works with 64-bit memory width.
+  DDR2SPA from GRLIB does not support registered DDR2 at this time and
+  therefore requires all three clocks to be correctly connected.
+
   The core can be configured, via xconfig, to use 64-bit data with. Do
   not select this setting unless you have a modified board.
   When connecting with GRMON it will set the stack pointer to the top of RAM 

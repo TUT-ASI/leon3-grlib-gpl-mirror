@@ -44,7 +44,7 @@ begin
   oen <= not en when oepol /= padoen_polarity(tech) else en;
   gen0 : if has_ds_pads(tech) = 0 or (is_unisim(tech) = 1) or
            tech = axcel or tech = axdsp or tech = rhlib18t or
-           tech = ut25 
+           tech = ut25 or tech = ut130 
            generate
     padp <= i after 2 ns when oen = '0'
 -- pragma translate_off

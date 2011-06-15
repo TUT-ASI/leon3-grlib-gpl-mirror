@@ -374,7 +374,7 @@ grtc_test(int paddr, int buffersize)
 
 
    // Receive Write Pointer Register (RWP)
-   int RXWRPR = memoryrx;
+   int RXWRPR = (int)memoryrx;
    if (ltc->rwp != RXWRPR) fail(5);
 
    report_subtest(0x6);

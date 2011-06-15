@@ -85,7 +85,7 @@ architecture rtl of ddr2spax_ahb is
     return r;
   end zerov;
 
-  constant l2blen: integer := log2(burstlen*32);
+  constant l2blen: integer := log2(burstlen)+log2(32);
   constant l2ahbw: integer := log2(ahbbits);
   
   -- Write buffer dimensions
@@ -146,7 +146,8 @@ begin
     wbw := '0';
     wbwb := '0';
     wbwa := ar.start_tog & ar.ramaddr;
-    wbwd := ahbsi.hwdata;
+    wbwd := ahbreaddata(ahbsi.hwdata,ar.haddr(4 downto 2),
+                        std_logic_vector(to_unsigned(log2(ahbbits/8),3)));
     rbra := ar.ramaddr(l2blen-4 downto l2ahbw-3);
         
     
@@ -204,7 +205,8 @@ begin
                      endaddr   => ha0(9 downto 0),
                      hsize     => ahbsi.hsize,
                      hwrite    => ahbsi.hwrite,
-                     hio       => ahbsi.hmbsel(1));
+                     hio       => ahbsi.hmbsel(1),
+                     maskdata  => '0', maskcb => '0');
           
           if ahbsi.hwrite='0' then
             if ahbsi.htrans(0)='0' or canburst='0' then
@@ -273,7 +275,8 @@ begin
                     endaddr   => ar.haddr(9 downto 0),
                     hsize     => ar.hsize,
                     hwrite    => ar.hwrite,
-                    hio       => ar.hio);
+                    hio       => ar.hio,
+                    maskdata  => '0', maskcb => '0');
         if ahbsi.hready='1' and ahbsi.hsel(hindex)='1' and ahbsi.htrans(1)='1' then
           if ahbsi.htrans(0)='0' or canburst='0' then
             av.so_hready := '0';
@@ -305,7 +308,8 @@ begin
                      endaddr   => ar.haddr(9 downto 0),
                      hsize     => ar.hsize,
                      hwrite    => ar.hwrite,
-                     hio       => ar.hio);
+                     hio       => ar.hio,
+                     maskdata  => '0', maskcb => '0');
           av.hwrite := '0';
           av.start_tog := not ar.start_tog;
           av.s := asnormal;
@@ -323,7 +327,8 @@ begin
                         endaddr   => ar.haddr(9 downto 0),
                         hsize     => ar.hsize,
                         hwrite    => ar.hwrite,
-                        hio       => ar.hio);
+                        hio       => ar.hio,
+                        maskdata  => '0', maskcb => '0');
             av.so_hready := '1';
             av.s := asww1;
           else
@@ -349,7 +354,7 @@ begin
     if CORE_ACDM /= 0 then
       so.hrdata := ahbdrivedata(rbrdata);
     else
-      so.hrdata := ahbselectdata(rbrdata,ar.haddr(4 downto 2),ar.hsize);
+      so.hrdata := ahbselectdata(ahbdrivedata(rbrdata),ar.haddr(4 downto 2),ar.hsize);
     end if;
 
     if rst='0' then

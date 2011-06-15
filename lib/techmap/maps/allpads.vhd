@@ -496,13 +496,13 @@ component unisim_clkpad
 end component; 
 
 component unisim_inpad_ds
-  generic (level : integer := lvds; voltage : integer := x33v);
+  generic (level : integer := lvds; voltage : integer := x33v; term : integer := 0);
   port (padp, padn : in std_ulogic; o : out std_ulogic);
 end component; 
 
 component unisim_iopad_ds
   generic (level : integer := 0; slew : integer := 0;
-	   voltage : integer := x33v; strength : integer := 12);
+	   voltage : integer := x33v; strength : integer := 12; term : integer := 0);
   port (padp, padn : inout std_ulogic; i, en : in std_ulogic; o : out std_ulogic);
 end component;
 
@@ -512,7 +512,7 @@ component unisim_outpad_ds
 end component;
 
 component unisim_clkpad_ds is
-  generic (level : integer := lvds; voltage : integer := x33v);
+  generic (level : integer := lvds; voltage : integer := x33v; term : integer := 0);
   port (padp, padn : in std_ulogic; o : out std_ulogic);
 end component; 
 
@@ -573,6 +573,83 @@ component ut025crh_lvds_combo
         odval, osval, en : in std_logic_vector(0 to width-1); 
 	idpadp, idpadn, ispadp, ispadn : in std_logic_vector(0 to width-1);
 	idval, isval : out std_logic_vector(0 to width-1));
+end component;
+
+component ut130hbd_inpad
+  generic ( level : integer := 0; voltage : integer := 0; filter : integer := 0);
+  port (pad : in std_logic; o : out std_logic);
+end component; 
+
+component ut130hbd_iopad  is
+  generic (level : integer := 0; slew : integer := 0;
+	   voltage : integer := 0; strength : integer := 0);
+  port (pad : inout std_ulogic; i, en : in std_ulogic; o : out std_ulogic);
+end component;
+
+component ut130hbd_outpad
+  generic (level : integer := 0; slew : integer := 0;
+	   voltage : integer := 0; strength : integer := 0);
+  port (pad : out std_ulogic; i : in std_ulogic);
+end component;
+
+component ut130hbd_toutpad 
+  generic (level : integer := 0; slew : integer := 0;
+	   voltage : integer := 0; strength : integer := 0);
+  port (pad : out std_ulogic; i, en : in std_ulogic);
+end component;
+
+component ut130hbd_lvds_combo 
+  generic (voltage : integer := 0; width : integer := 1);
+  port (odpadp, odpadn, ospadp, ospadn : out std_logic_vector(0 to width-1); 
+        odval, osval, en : in std_logic_vector(0 to width-1); 
+	idpadp, idpadn, ispadp, ispadn : in std_logic_vector(0 to width-1);
+	idval, isval : out std_logic_vector(0 to width-1));
+end component;
+
+component ut90nhbd_inpad is
+  generic (
+    level   : integer := 0;
+    voltage : integer := 0;
+    filter  : integer := 0);
+  port (
+    pad     : in  std_ulogic;
+    o       : out std_ulogic);
+end component;
+
+component ut90nhbd_iopad  is
+  generic(
+    level    : integer := 0;
+    slew     : integer := 0;
+    voltage  : integer := 0;
+    strength : integer := 0);
+  port(
+    pad      : inout std_ulogic;
+    i        : in std_ulogic;
+    en       : in std_ulogic;
+    o        : out std_ulogic);
+end component;
+
+component ut90nhbd_outpad is
+  generic (
+    level    : integer := 0;
+    slew     : integer := 0;
+    voltage  : integer := 0;
+    strength : integer := 0);
+  port(
+    pad      : out std_ulogic;
+    i        : in std_ulogic);
+end component;
+
+component ut90nhbd_toutpad  is
+  generic (
+    level    : integer := 0;
+    slew     : integer := 0;
+    voltage  : integer := 0;
+    strength : integer := 0);
+  port (
+    pad      : out std_ulogic;
+    i        : in  std_ulogic;
+    en       : in  std_ulogic);
 end component;
 
 component rhumc_lvds_combo 
@@ -661,5 +738,44 @@ component atc18rha_clkpad
   generic (level : integer := 0; voltage : integer := 0);
   port (pad : in std_logic; o : out std_logic);
 end component; 
+
+component n2x_inpad
+  generic (level : integer := 0; voltage : integer := x33v);
+  port (pad : in  std_ulogic; o : out std_ulogic);
+end component; 
+
+component n2x_iopad
+  generic (level : integer := 0; slew : integer := 0;
+  voltage  : integer := x33v; strength : integer := 12);
+  port (pad : inout std_ulogic; i, en  : in std_ulogic; o : out std_ulogic);
+end component;
+
+component n2x_outpad
+  generic (level : integer := 0; slew : integer := 0;
+  voltage : integer := 0; strength : integer := 12);
+  port (pad : out std_ulogic; i : in std_ulogic);
+end component;
+
+component n2x_toutpad
+  generic (level : integer := 0; slew : integer := 0;
+  voltage  : integer := 0; strength : integer := 12);
+  port (pad : out std_ulogic; i, en : in  std_ulogic);
+end component;
+
+component n2x_inpad_ds
+  generic (level : integer := lvds; voltage : integer := x33v);
+  port (padp, padn : in std_ulogic; o : out std_ulogic);
+end component;
+
+component n2x_iopad_ds
+  generic (level : integer := 0; slew : integer := 0;
+  voltage : integer := x33v; strength : integer := 12);
+  port (padp, padn : inout std_ulogic; i, en : in std_ulogic; o : out std_ulogic);
+end component;
+
+component n2x_outpad_ds
+  generic (level : integer := lvds; voltage : integer := x33v);
+  port (padp, padn : out std_ulogic; i : in std_ulogic);
+end component;
 
 end;

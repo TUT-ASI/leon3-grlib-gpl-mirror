@@ -54,7 +54,8 @@ entity apbuart is
     parity   : integer := 1;
     flow     : integer := 1;
     fifosize : integer range 1 to 32 := 1;
-    abits    : integer := 8);
+    abits    : integer := 8;
+    sbits    : integer range 12 to 32 := 12);
   port (
     rst    : in  std_ulogic;
     clk    : in  std_ulogic;
@@ -116,8 +117,8 @@ type uartregs is record
   dpar       	:  std_ulogic;	-- rx data parity (internal)
   rxtick     	:  std_ulogic;	-- rx clock (internal)
   tick     	:  std_ulogic;	-- rx clock (internal)
-  scaler	:  std_logic_vector(11 downto 0);
-  brate 	:  std_logic_vector(11 downto 0);
+  scaler	:  std_logic_vector(sbits-1 downto 0);
+  brate 	:  std_logic_vector(sbits-1 downto 0);
   rxf    	:  std_logic_vector(4 downto 0); --  rx data filtering buffer
   txd        	:  std_ulogic;	-- transmitter data
   rfifoirqen    :  std_ulogic;  -- receiver fifo interrupt enable
@@ -139,7 +140,7 @@ signal r, rin : uartregs;
 begin
   uartop : process(rst, r, apbi, uarti )
   variable rdata : std_logic_vector(31 downto 0);
-  variable scaler : std_logic_vector(11 downto 0);
+  variable scaler : std_logic_vector(sbits-1 downto 0);
   variable rxclk, txclk : std_logic_vector(2 downto 0);
   variable rxd, ctsn : std_ulogic;
   variable irq : std_logic_vector(NAHBIRQ-1 downto 0);
@@ -186,7 +187,7 @@ begin
     scaler := r.scaler - 1;
     if (r.rxen or r.txen) = '1' then
       v.scaler := scaler;
-      v.tick := scaler(11) and not r.scaler(11);
+      v.tick := scaler(sbits-1) and not r.scaler(sbits-1);
       if v.tick = '1' then v.scaler := r.brate; end if;
     end if;
 
@@ -232,7 +233,7 @@ begin
       rdata(8 downto 0) := r.extclken & r.loopb &
            r.flow & r.paren & r.parsel & r.tirqen & r.rirqen & r.txen & r.rxen;
     when "000011" =>
-      rdata(11 downto 0) := r.brate;
+      rdata(sbits-1 downto 0) := r.brate;
     when "000100" =>
     
         -- Read TX FIFO.
@@ -278,8 +279,8 @@ begin
 	v.txen 	     := apbi.pwdata(1);
 	v.rxen 	     := apbi.pwdata(0);
       when "000011" =>
-	v.brate      := apbi.pwdata(11 downto 0);
-	v.scaler     := apbi.pwdata(11 downto 0);
+	v.brate      := apbi.pwdata(sbits-1 downto 0);
+	v.scaler     := apbi.pwdata(sbits-1 downto 0);
       when "000100" =>
         -- Write RX fifo and generate irq
 	if flow /= 0 then
@@ -521,11 +522,13 @@ begin
 -- drive outputs
 
     uarto.txd <= r.txd; uarto.rtsn <= r.rtsn;
-    uarto.scaler <= "000000" & r.scaler;
+    uarto.scaler <= (others => '0');
+    uarto.scaler(sbits-1 downto 0) <= r.scaler;
     apbo.prdata <= rdata; apbo.pirq <= irq;
     apbo.pindex <= pindex;
     uarto.txen <= r.txen; uarto.rxen <= r.rxen;
-
+    uarto.flow <= '0';
+  
   end process;
 
   apbo.pconfig <= pconfig;
@@ -537,7 +540,7 @@ begin
     bootmsg : report_version
     generic map ("apbuart" & tost(pindex) &
 	": Generic UART rev " & tost(REVISION) & ", fifo " & tost(fifosize) &
-	", irq " & tost(pirq));
+	", irq " & tost(pirq) & ", scaler bits " & tost(sbits));
 -- pragma translate_on
 
 end;

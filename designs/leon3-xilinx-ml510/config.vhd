@@ -1,7 +1,5 @@
 
 
-
-
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
 -- Copyright (C) 2009 Aeroflex Gaisler
@@ -22,7 +20,9 @@ package config is
   constant CFG_CLKTECH : integer := virtex5;
   constant CFG_CLKMUL : integer := (8);
   constant CFG_CLKDIV : integer := (10);
-  constant CFG_OCLKDIV : integer := 2;
+  constant CFG_OCLKDIV : integer := 1;
+  constant CFG_OCLKBDIV : integer := 0;
+  constant CFG_OCLKCDIV : integer := 0;
   constant CFG_PCIDLL : integer := 0;
   constant CFG_PCISYSCLK: integer := 0;
   constant CFG_CLK_NOFB : integer := 1;
@@ -30,11 +30,13 @@ package config is
   constant CFG_LEON3 : integer := 1;
   constant CFG_NCPU : integer := (1);
   constant CFG_NWIN : integer := (8);
-  constant CFG_V8 : integer := 16#32#;
+  constant CFG_V8 : integer := 16#32# + 4*0;
   constant CFG_MAC : integer := 0;
+  constant CFG_BP : integer := 1;
   constant CFG_SVT : integer := 1;
   constant CFG_RSTADDR : integer := 16#00000#;
   constant CFG_LDDEL : integer := (1);
+  constant CFG_NOTAG : integer := 0;
   constant CFG_NWP : integer := (2);
   constant CFG_PWD : integer := 1*2;
   constant CFG_FPU : integer := 0 + 16*0;
@@ -86,12 +88,13 @@ package config is
   constant CFG_AHB_MON : integer := 1;
   constant CFG_AHB_MONERR : integer := 1;
   constant CFG_AHB_MONWAR : integer := 1;
+  constant CFG_AHB_DTRACE : integer := 0;
 -- DSU UART
   constant CFG_AHB_UART : integer := 1;
 -- JTAG based DSU interface
   constant CFG_AHB_JTAG : integer := 1;
 -- Ethernet DSU
-  constant CFG_DSU_ETH : integer := 1 + 0;
+  constant CFG_DSU_ETH : integer := 1 + 0 + 0;
   constant CFG_ETH_BUF : integer := 2;
   constant CFG_ETH_IPM : integer := 16#C0A8#;
   constant CFG_ETH_IPL : integer := 16#0034#;
@@ -170,12 +173,17 @@ package config is
 
 -- SPI controller
   constant CFG_SPICTRL_ENABLE : integer := 1;
+  constant CFG_SPICTRL_NUM : integer := (1);
   constant CFG_SPICTRL_SLVS : integer := (1);
   constant CFG_SPICTRL_FIFO : integer := (2);
   constant CFG_SPICTRL_SLVREG : integer := 1;
   constant CFG_SPICTRL_ODMODE : integer := 0;
   constant CFG_SPICTRL_AM : integer := 0;
   constant CFG_SPICTRL_ASEL : integer := 0;
+  constant CFG_SPICTRL_TWEN : integer := 0;
+  constant CFG_SPICTRL_MAXWLEN : integer := (0);
+  constant CFG_SPICTRL_SYNCRAM : integer := 0;
+  constant CFG_SPICTRL_FT : integer := 0;
 
 -- PCI interface
   constant CFG_PCI : integer := 3;

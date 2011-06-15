@@ -84,7 +84,9 @@ function "+" (d : std_logic_vector; i : std_ulogic) return std_logic_vector;
 function "-" (a, b : std_logic_vector) return std_logic_vector;
 function "+" (a, b : std_logic_vector) return std_logic_vector;
 function "*" (a, b : std_logic_vector) return std_logic_vector;
+function unsigned_mul (a, b : std_logic_vector) return std_logic_vector;
 function signed_mul (a, b : std_logic_vector) return std_logic_vector;
+function mixed_mul (a, b : std_logic_vector; sign : std_logic) return std_logic_vector;
 --function ">" (a, b : std_logic_vector) return boolean;
 function "<" (i : integer; b : std_logic_vector) return boolean;
 function conv_integer(v : std_logic_vector) return integer;
@@ -214,6 +216,42 @@ begin
   if notx(a&b) then
 -- pragma translate_on
     return(std_logic_vector(signed(a) * signed(b)));
+-- pragma translate_off
+  else
+     z := (others =>'X'); return(z);
+  end if;
+-- pragma translate_on
+end;
+
+-- unsigned multiplication
+
+function unsigned_mul (a, b : std_logic_vector) return std_logic_vector is
+variable z : std_logic_vector(a'length+b'length-1 downto 0);
+begin
+-- pragma translate_off
+  if notx(a&b) then
+-- pragma translate_on
+    return(std_logic_vector(unsigned(a) * unsigned(b)));
+-- pragma translate_off
+  else
+     z := (others =>'X'); return(z);
+  end if;
+-- pragma translate_on
+end;
+
+-- signed/unsigned multiplication
+
+function mixed_mul (a, b : std_logic_vector; sign : std_logic) return std_logic_vector is
+variable z : std_logic_vector(a'length+b'length-1 downto 0);
+begin
+-- pragma translate_off
+  if notx(a&b) then
+-- pragma translate_on
+    if sign = '0' then
+      return(std_logic_vector(unsigned(a) * unsigned(b)));
+    else
+      return(std_logic_vector(signed(a) * signed(b)));
+    end if;
 -- pragma translate_off
   else
      z := (others =>'X'); return(z);
@@ -513,7 +551,9 @@ function tost(r: real) return string is
   variable s: string(1 to 30);
   variable c: character;
 begin
-  if r < 0.0 then
+  if r = 0.0 then
+    return "0.0000";
+  elsif r < 0.0 then
     return "-" & tost(-r);
   elsif r < 0.001 then
     x:=r; i:=0;

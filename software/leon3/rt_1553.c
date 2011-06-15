@@ -95,7 +95,7 @@ int rt_1553_test(unsigned int brm_addr, unsigned int mem_addr, unsigned int gpio
   int i = 0;
   int ec = 0;
   int temp;
-  volatile unsigned int *gpio = gpio_addr;
+  volatile unsigned int *gpio = (unsigned int*)gpio_addr;
   volatile unsigned int *mem;
 
   report_device(0x01071000);

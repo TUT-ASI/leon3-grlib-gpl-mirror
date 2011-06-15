@@ -227,33 +227,37 @@ entity ddr2phy is
 	ddelayb0 : integer := 0; ddelayb1 : integer := 0; ddelayb2 : integer := 0;
 	ddelayb3 : integer := 0; ddelayb4 : integer := 0; ddelayb5 : integer := 0;
 	ddelayb6 : integer := 0; ddelayb7 : integer := 0;
+        cbdelayb0: integer := 0;
+	cbdelayb1: integer := 0; cbdelayb2: integer := 0; cbdelayb3: integer := 0;        
         numidelctrl : integer := 4; norefclk : integer := 0; rskew : integer := 0;
-        eightbanks  : integer  range 0 to 1 := 0; dqsse : integer range 0 to 1 := 0);
+        eightbanks  : integer  range 0 to 1 := 0; dqsse : integer range 0 to 1 := 0;
+        abits       : integer := 14;   nclk: integer := 3; ncs: integer := 2;
+        cben: integer := 0; chkbits: integer := 8; ctrl2en: integer := 0);
   port (
     rst            : in    std_ulogic;
     clk            : in    std_logic;   -- input clock
-    clkref200      : in    std_logic;   -- input 200MHz clock
+    clkref         : in    std_logic;   -- input 200MHz clock
     clkout         : out   std_ulogic;  -- system clock
     lock           : out   std_ulogic;  -- DCM locked
 
-    ddr_clk        : out   std_logic_vector(2 downto 0);
-    ddr_clkb       : out   std_logic_vector(2 downto 0);
+    ddr_clk        : out   std_logic_vector(nclk-1 downto 0);
+    ddr_clkb       : out   std_logic_vector(nclk-1 downto 0);
     ddr_clk_fb_out : out   std_logic;
     ddr_clk_fb     : in    std_logic;
-    ddr_cke        : out   std_logic_vector(1 downto 0);
-    ddr_csb        : out   std_logic_vector(1 downto 0);
+    ddr_cke        : out   std_logic_vector(ncs-1 downto 0);
+    ddr_csb        : out   std_logic_vector(ncs-1 downto 0);
     ddr_web        : out   std_ulogic;  -- ddr write enable
     ddr_rasb       : out   std_ulogic;  -- ddr ras
     ddr_casb       : out   std_ulogic;  -- ddr cas
     ddr_dm         : out   std_logic_vector (dbits/8-1 downto 0);    -- ddr dm
     ddr_dqs        : inout std_logic_vector (dbits/8-1 downto 0);    -- ddr dqs
     ddr_dqsn       : inout std_logic_vector (dbits/8-1 downto 0);    -- ddr dqsn
-    ddr_ad         : out   std_logic_vector (13 downto 0);           -- ddr address
+    ddr_ad         : out   std_logic_vector (abits-1 downto 0);           -- ddr address
     ddr_ba         : out   std_logic_vector (1+eightbanks downto 0); -- ddr bank address
     ddr_dq         : inout std_logic_vector (dbits-1 downto 0);      -- ddr data
-    ddr_odt        : out   std_logic_vector(1 downto 0);
+    ddr_odt        : out   std_logic_vector(ncs-1 downto 0);
 
-    addr           : in    std_logic_vector (13 downto 0);
+    addr           : in    std_logic_vector (abits-1 downto 0);
     ba             : in    std_logic_vector ( 2 downto 0);
     dqin           : out   std_logic_vector (dbits*2-1 downto 0);  -- ddr output data
     dqout          : in    std_logic_vector (dbits*2-1 downto 0);  -- ddr input data
@@ -264,21 +268,73 @@ entity ddr2phy is
     rasn           : in    std_ulogic;
     casn           : in    std_ulogic;
     wen            : in    std_ulogic;
-    csn            : in    std_logic_vector(1 downto 0);
-    cke            : in    std_logic_vector(1 downto 0);
+    csn            : in    std_logic_vector(ncs-1 downto 0);
+    cke            : in    std_logic_vector(ncs-1 downto 0);
     cal_en         : in    std_logic_vector(dbits/8-1 downto 0);
     cal_inc        : in    std_logic_vector(dbits/8-1 downto 0);
     cal_pll        : in    std_logic_vector(1 downto 0);
     cal_rst        : in    std_logic;
-    odt            : in    std_logic_vector(1 downto 0);
+    odt            : in    std_logic_vector(ncs-1 downto 0);
     oct            : in    std_logic;
-    dqs_gate       : in    std_ulogic
+    read_pend      : in    std_logic_vector(7 downto 0);
+    regwdata       : in    std_logic_vector(63 downto 0);
+    regwrite       : in    std_logic_vector(1 downto 0);
+    regrdata       : out   std_logic_vector(63 downto 0);
+
+    ddr_cbdm   : out std_logic_vector(chkbits/8-1 downto 0);
+    ddr_cbdqs  : inout std_logic_vector(chkbits/8-1 downto 0);
+    ddr_cbdqsn : inout std_logic_vector(chkbits/8-1 downto 0);
+    ddr_cbdq   : inout std_logic_vector(chkbits-1 downto 0);
+    cbdqin     : out std_logic_vector(chkbits*2-1 downto 0);
+    cbdqout    : in std_logic_vector(chkbits*2-1 downto 0);
+    cbdm       : in std_logic_vector(chkbits/4-1 downto 0);
+    cbcal_en   : in std_logic_vector(chkbits/8-1 downto 0);
+    cbcal_inc  : in std_logic_vector(chkbits/8-1 downto 0);
+
+    -- Copy of control signals for 2nd DIMM
+    ddr_web2    : out std_ulogic;                               -- ddr write enable
+    ddr_rasb2   : out std_ulogic;                               -- ddr ras
+    ddr_casb2   : out std_ulogic;                               -- ddr cas
+    ddr_ad2     : out std_logic_vector (abits-1 downto 0);           -- ddr address
+    ddr_ba2     : out std_logic_vector (1+eightbanks downto 0)  -- ddr bank address        
     );
 end;
 
 architecture rtl of ddr2phy is
 begin
 
+  -- For technologies without PHY-specific registers
+  nreggen: if ddr2phy_has_reg(tech)=0 generate
+    regrdata <= x"0000000000000000";
+  end generate;
+
+  -- For technologies without checkbit support
+  ncbgen: if ddr2phy_has_cb(tech)=0 generate
+    ddr_cbdm <= (others => '0');
+    cbdqin <= (others => '0');
+  end generate;
+  
+  inf : if (has_ddr2phy(tech) = 0) generate
+    ddr_phy0 : generic_ddr2_phy
+     generic map (MHz => MHz, rstdelay => rstdelay
+-- reduce 200 us start-up delay during simulation
+-- pragma translate_off
+        / 200
+-- pragma translate_on
+        , clk_mul => clk_mul, clk_div => clk_div, dbits => dbits, rskew => rskew,
+        eightbanks => eightbanks, abits => abits, cben => cben, chkbits => chkbits
+        )
+     port map (
+        rst, clk, clkout, lock,
+        ddr_clk, ddr_clkb, ddr_clk_fb_out, ddr_clk_fb,
+        ddr_cke, ddr_csb, ddr_web, ddr_rasb, ddr_casb, 
+        ddr_dm, ddr_dqs, ddr_ad, ddr_ba, ddr_dq, ddr_odt,
+        addr, ba, dqin, dqout, dm, oen, dqs, dqsoen,
+        rasn, casn, wen, csn, cke, "111", odt,
+        ddr_cbdm, ddr_cbdqs, ddr_cbdqsn, ddr_cbdq, cbdqin, cbdqout, cbdm
+        );
+  end generate;
+  
   xc4v : if (tech = virtex4) or (tech = virtex5) or (tech = virtex6) generate
 
     ddr_phy0 : virtex5_ddr2_phy 
@@ -286,17 +342,23 @@ begin
 	clk_mul => clk_mul, clk_div => clk_div, dbits => dbits,
 	ddelayb0 => ddelayb0, ddelayb1 => ddelayb1, ddelayb2 => ddelayb2, 
 	ddelayb3 => ddelayb3, ddelayb4 => ddelayb4, ddelayb5 => ddelayb5, 
-	ddelayb6 => ddelayb6, ddelayb7 => ddelayb7,
+	ddelayb6 => ddelayb6, ddelayb7 => ddelayb7, cbdelayb0 => cbdelayb0,
+	cbdelayb1 => cbdelayb1, cbdelayb2 => cbdelayb2, cbdelayb3 => cbdelayb3,
         numidelctrl => numidelctrl, norefclk => norefclk, 
-        tech => tech, eightbanks => eightbanks, dqsse => dqsse
+        tech => tech, eightbanks => eightbanks, dqsse => dqsse,
+        abits => abits, nclk => nclk, ncs => ncs,
+        cben => cben, chkbits => chkbits, ctrl2en => ctrl2en
 	)
      port map (
-	rst, clk, clkref200, clkout, lock,
+	rst, clk, clkref, clkout, lock,
 	ddr_clk, ddr_clkb,
 	ddr_cke, ddr_csb, ddr_web, ddr_rasb, ddr_casb, 
 	ddr_dm, ddr_dqs, ddr_dqsn, ddr_ad, ddr_ba, ddr_dq, ddr_odt,
 	addr, ba, dqin, dqout, dm, oen, dqs, dqsoen,
-	rasn, casn, wen, csn, cke, cal_en, cal_inc, cal_rst, odt);
+	rasn, casn, wen, csn, cke, cal_en, cal_inc, cal_rst, odt,
+        ddr_cbdm, ddr_cbdqs, ddr_cbdqsn, ddr_cbdq,
+        cbdqin, cbdqout, cbdm, cbcal_en, cbcal_inc,
+        ddr_web2,ddr_rasb2,ddr_casb2,ddr_ad2,ddr_ba2);
 
   end generate;
 
@@ -327,7 +389,7 @@ begin
         tech => tech, rskew => rskew, eightbanks => eightbanks
 	)
      port map (
-	rst, clk, clkref200, clkout, lock,
+	rst, clk, clkref, clkout, lock,
 	ddr_clk, ddr_clkb, 
 	ddr_cke, ddr_csb, ddr_web, ddr_rasb, ddr_casb, 
 	ddr_dm, ddr_dqs, ddr_dqsn, ddr_ad, ddr_ba, ddr_dq, ddr_odt,
@@ -363,7 +425,7 @@ begin
 	ddr_cke, ddr_csb, ddr_web, ddr_rasb, ddr_casb, 
 	ddr_dm, ddr_dqs, ddr_dqsn, ddr_ad, ddr_ba, ddr_dq, ddr_odt,
 	addr, ba, dqin, dqout, dm, oen, dqs, dqsoen,
-	rasn, casn, wen, csn, cke, odt, dqs_gate);
+	rasn, casn, wen, csn, cke, odt, '1');
   end generate;
 
   sp6 : if  (tech = spartan6) generate
@@ -379,4 +441,28 @@ begin
                   rasn, casn, wen, csn, cke, cal_pll, odt);
   end generate;
 
+  nextreme2 : if (tech = easic45) generate
+    ddr_phy0 :  n2x_ddr2_phy
+      generic map (
+        MHz => MHz, rstdelay => rstdelay,
+        dbits => dbits, clk_mul => clk_mul, clk_div => clk_div, norefclk => norefclk,
+        eightbanks => eightbanks, dqsse => dqsse, abits => abits,
+        nclk => nclk, ncs => ncs, ctrl2en => ctrl2en )
+      port map (
+        rst => rst, clk => clk, clk270d => clkref, clkout => clkout, lock => lock,
+        ddr_clk => ddr_clk, ddr_clkb => ddr_clkb, ddr_cke => ddr_cke,
+        ddr_csb => ddr_csb, ddr_web => ddr_web, ddr_rasb => ddr_rasb, ddr_casb => ddr_casb,
+        ddr_dm => ddr_dm, ddr_dqs => ddr_dqs, ddr_dqsn => ddr_dqsn, ddr_ad => ddr_ad, ddr_ba => ddr_ba,
+        ddr_dq => ddr_dq, ddr_odt => ddr_odt,
+        addr => addr, ba => ba, dqin => dqin, dqout => dqout, dm => dm,
+        oen => oen, dqs => dqs, dqsoen => dqsoen,
+        rasn => rasn, casn => casn, wen => wen, csn => csn, cke => cke,
+        odt => odt, read_pend => read_pend,
+        regwdata => regwdata, regwrite => regwrite, regrdata => regrdata,
+        ddr_web2 => ddr_web2, ddr_rasb2 => ddr_rasb2, ddr_casb2 => ddr_casb2,
+        ddr_ad2 => ddr_ad2, ddr_ba2 => ddr_ba2
+        );
+    ddr_clk_fb_out <= '0';
+  end generate;
+  
 end;

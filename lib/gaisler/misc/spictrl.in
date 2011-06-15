@@ -11,6 +11,13 @@
      bool 'Support open drain mode      '   CONFIG_SPICTRL_ODMODE
      bool 'Support three-wire mode      '   CONFIG_SPICTRL_TWEN
      int  'Maximum supported word length (see help!) ' CONFIG_SPICTRL_MAXWLEN 0
+     bool 'Use SYNCRAM for rx and tx queues '  CONFIG_SPICTRL_SYNCRAM
+     if [ "$CONFIG_SPICTRL_SYNCRAM" = "y" ]; then
+      choice 'Fault-tolerance' \
+	"None		CONFIG_SPICTRL_NOFT \
+	 Parity-DMR	CONFIG_SPICTRL_DMRFT \
+	 TMR		CONFIG_SPICTRL_TMRFT" None
+     fi
     fi
   endmenu
 

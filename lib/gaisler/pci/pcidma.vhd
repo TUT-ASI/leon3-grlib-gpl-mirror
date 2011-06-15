@@ -66,7 +66,8 @@ entity pcidma is
     irq       : integer := 0;
     irqmask   : integer := 0;
     scanen    : integer := 0;
-    hostrst   : integer := 0
+    hostrst   : integer := 0;
+    syncrst   : integer := 0
 );
    port(
       rst       : in std_logic;
@@ -97,7 +98,7 @@ begin
       pci : pci_mtf generic map (memtech => memtech, hmstndx => mstndx, dmamst => dmstndx, 
 	fifodepth => fifodepth, device_id => device_id, vendor_id => vendor_id,
       	hslvndx => slvndx, pindex => apbndx, paddr => apbaddr, irq => irq, irqmask => irqmask, 
-	haddr => haddr, hmask => hmask, ioaddr => ioaddr, abits => abits, 
+	haddr => haddr, hmask => hmask, ioaddr => ioaddr, abits => abits, syncrst => syncrst,
 	dmaabits => dmaabits, nsync => nsync, oepol => oepol, endian => endian,
 	class_code => class_code, rev => rev, scanen => scanen, hostrst => hostrst)
       port map (rst, clk, pciclk, pcii, pcio, apbi, apbo, ahbmi, ahbmo, ahbsi2, ahbso2);

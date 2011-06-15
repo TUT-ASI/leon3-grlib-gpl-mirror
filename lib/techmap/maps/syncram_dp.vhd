@@ -28,6 +28,9 @@ library techmap;
 use ieee.std_logic_1164.all;
 use techmap.gencomp.all;
 use work.allmem.all;
+library grlib;
+use grlib.config.all;
+use grlib.stdlib.all;
 
 entity syncram_dp is
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
@@ -61,6 +64,16 @@ begin
       wait;
     end process;
   end generate;
+  dmsg : if grlib_debug_level >= 2 generate
+    x : process
+    begin
+      assert false report "syncram_dp: " & tost(2**abits) & "x" & tost(dbits) &
+       " (" & tech_table(tech) & ")"
+      severity note;
+      wait;
+    end process;
+  end generate;
+
 -- pragma translate_on
 
   xcv : if (tech = virtex) generate
@@ -154,6 +167,18 @@ begin
          port map (clk1, address1, datain1, dataout1, enable1, write1,
                    clk2, address2, datain2, dataout2, enable2, write2);
    end generate;
+
+  n2x : if tech = easic45 generate
+    x0 : n2x_syncram_dp generic map (abits => abits, dbits => dbits, sepclk => 1)
+      port map (clk1, address1, datain1, dataout1, enable1, write1,
+                clk2, address2, datain2, dataout2, enable2, write2);
+  end generate;
+
+  ut9 : if tech = ut90 generate
+    x0 : ut90nhbd_syncram_dp generic map (abits => abits, dbits => dbits)
+      port map (clk1, address1, datain1, dataout1, enable1, write1,
+                clk2, address2, datain2, dataout2, enable2, write2);
+  end generate;
 
 end;
 

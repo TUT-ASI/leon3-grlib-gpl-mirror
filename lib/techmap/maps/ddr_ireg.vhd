@@ -68,4 +68,10 @@ begin
     xil0 : unisim_iddr_reg generic map (tech) port map (Q1, Q2, C1, C2, CE, D, R, S);
   end generate;
 
+--pragma translate_off
+  assert (tech /= easic45) and (tech /= easic90)
+    report "ddr_ireg: Not supported on eASIC. Use DDR pad instead."
+    severity failure;
+--pragma translate_on
+  
 end architecture;

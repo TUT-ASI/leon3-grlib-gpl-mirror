@@ -83,11 +83,20 @@ begin
   ut025 : if (tech = ut25) generate
     x0 : ut025crh_inpad generic map (level, voltage, filter) port map(pad, o);
   end generate;
+  ut13  : if (tech = ut130) generate
+    x0 : ut130hbd_inpad generic map (level, voltage, filter) port map(pad, o);
+  end generate;
   pereg : if (tech = peregrine) generate
     x0 : peregrine_inpad generic map (level, voltage, filter, strength) port map(pad, o);
   end generate;
   eas : if (tech = easic90) generate
     x0 : nextreme_inpad generic map (level, voltage) port map (pad, o);
+  end generate;
+  n2x : if (tech = easic45) generate
+    x0 : n2x_inpad generic map (level, voltage) port map (pad, o);
+  end generate;
+  ut90nhbd : if (tech = ut90) generate
+    x0 : ut90nhbd_inpad generic map (level, voltage, filter) port map(pad, o);
   end generate;
 end;
 

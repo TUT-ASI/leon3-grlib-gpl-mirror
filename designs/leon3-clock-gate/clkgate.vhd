@@ -24,7 +24,7 @@ library techmap;
 use techmap.gencomp.all;
 
 entity clkgate is
-  generic (tech : integer := 0; ncpu : integer := 1);
+  generic (tech : integer := 0; ncpu : integer := 1; dsuen : integer := 1);
   port (
     rst     : in  std_ulogic;
     clkin   : in  std_ulogic;
@@ -35,10 +35,10 @@ entity clkgate is
 end;
 
 architecture rtl of clkgate is
-signal npwd : std_logic_vector(ncpu-1 downto 0);
-signal vrst : std_logic_vector(ncpu-1 downto 0);
+signal npwd, xpwd, ypwd : std_logic_vector(ncpu-1 downto 0);
+signal vrst, wrst : std_logic_vector(ncpu-1 downto 0);
 signal clken: std_logic_vector(ncpu-1 downto 0);
-signal vcc : std_ulogic;
+signal xrst, vcc : std_ulogic;
 begin
 
   vcc <= '1';
@@ -49,11 +49,30 @@ begin
   cand0 : clkand generic map (tech) port map (clkin, vcc, clkahb);
 
   vrst <= (others => rst);
-  nreg : process(clkin)
-  begin 
-    if falling_edge(clkin) then 
-      npwd <= pwd and vrst;
-    end if;
-  end process;
+  r1 : if dsuen = 1 generate
+    nreg : process(clkin)
+    begin 
+      if falling_edge(clkin) then 
+        npwd <= pwd and vrst;
+      end if;
+    end process;
+  end generate;
+
+  r2 : if dsuen = 0 generate
+    reg : process(clkin)
+    begin 
+      if rising_edge(clkin) then 
+        xrst <= rst;
+        xpwd <= pwd and wrst;
+      end if;
+    end process;
+    wrst <= (others => xrst);
+    nreg : process(clkin)
+    begin 
+      if falling_edge(clkin) then 
+        npwd <= xpwd;
+      end if;
+    end process;
+  end generate;
 
 end;

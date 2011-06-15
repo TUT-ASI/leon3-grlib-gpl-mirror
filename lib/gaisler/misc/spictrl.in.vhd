@@ -9,4 +9,6 @@
   constant CFG_SPICTRL_ASEL    : integer := CONFIG_SPICTRL_ASEL;
   constant CFG_SPICTRL_TWEN    : integer := CONFIG_SPICTRL_TWEN;
   constant CFG_SPICTRL_MAXWLEN : integer := CONFIG_SPICTRL_MAXWLEN;
+  constant CFG_SPICTRL_SYNCRAM : integer := CONFIG_SPICTRL_SYNCRAM;
+  constant CFG_SPICTRL_FT      : integer := CONFIG_SPICTRL_FT;
 

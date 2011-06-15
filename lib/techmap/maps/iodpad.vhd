@@ -93,6 +93,9 @@ begin
     x0 : ut025crh_iopad generic map (strength)
          port map (pad, gnd, oen, o);
     end generate;
+  ut13 : if (tech = ut130) generate
+    x0 : ut130hbd_iopad generic map (strength) port map (pad, gnd, oen, o);
+  end generate;
   pere  : if (tech = peregrine) generate
     x0 : peregrine_iopad generic map (level, slew, voltage, strength)
          port map(pad, gnd, oen, o);

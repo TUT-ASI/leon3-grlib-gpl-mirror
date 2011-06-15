@@ -230,7 +230,7 @@ begin
 	CFG_CLK_NOFB, CFG_PCI, CFG_PCIDLL, CFG_PCISYSCLK)
     port map (lclk, pci_lclk, clkx, open, open, sdclkl, pciclk, cgi, cgo);
 
-  clkpwd : entity work.clkgate generic map (fabtech, NCPU) 
+  clkpwd : entity work.clkgate generic map (fabtech, NCPU, CFG_DSU) 
 	port map (rstn, clkx, dsuo.pwd(NCPU-1 downto 0), clkm, gclk);
   sdclk_pad : outpad generic map (tech => padtech, slew => 1, strength => 24) 
 	port map (sdclk, sdclkl);
@@ -282,6 +282,7 @@ begin
 
   nodsu : if CFG_DSU = 0 generate 
     ahbso(2) <= ahbs_none; dsuo.tstop <= '0'; dsuo.active <= '0';
+    dbgi <= (others => dbgi_none);
   end generate;
 
   dcomgen : if CFG_AHB_UART = 1 generate

@@ -65,6 +65,9 @@ begin
   rht : if (tech = rhlib18t) generate
     u0 : rh_lib18t_outpad_ds port map (padp, padn, i, oen);
   end generate;
+  n2x : if (tech = easic45) generate
+    u0 : n2x_outpad_ds generic map (level, voltage) port map (padp, padn, i);
+  end generate;
 end;
 
 library ieee;

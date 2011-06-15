@@ -98,7 +98,7 @@ signal clkread  : std_ulogic;
 
 begin
 
-  ddr_phy0 : ddr_phy generic map (tech => fabtech, MHz => MHz,  
+  ddr_phy0 : ddrphy_wrap generic map (tech => fabtech, MHz => MHz,  
 	dbits => ddrbits, rstdelay => rstdel, clk_mul => clkmul, 
 	clk_div => clkdiv, rskew => rskew, mobile => mobile)
   port map (

@@ -98,6 +98,16 @@ CONFIG_OCLK_DIV
   Static PLL configurator. The mul/div factors can then be read
   out from tool.
 
+Output clock divider, 2nd clock
+CONFIG_OCLKB_DIV
+  See help for 'Ouput division factor'. Set this to 0 to disable the
+  second clock output.
+
+Output clock divider, 3rd clock
+CONFIG_OCLKC_DIV
+  See help for 'Ouput division factor'. Set this to 0 to disable the
+  third clock output.
+
 System clock multiplier
 CONFIG_CLKDLL_1_2
   The Xilinx CLKDLL can scale the input clock with a factor of 0.5, 1.0, 
@@ -172,13 +182,30 @@ CONFIG_IU_MUL_LATENCY_2
   4-clocks    16x16 standard multiplier      4/4
   5-clocks    16x16 pipelined multiplier     4/5
 
-Multiplier latency
+MAC operation
 CONFIG_IU_MUL_MAC
   If you say Y here, the SPARC V8e UMAC/SMAC (multiply-accumulate)
   instructions will be enabled. The instructions implement a
   single-cycle 16x16->32 bits multiply with a 40-bits accumulator.
   The details of these instructions can be found in the LEON manual,
   This option is only available when 16x16 multiplier is used.
+
+Multiplier structure
+CONFIG_IU_MUL_INFERRED
+  Structure options for the integer multiplier. The multiplier
+  can be implemented with the following structures:
+
+  * Inferred by the synthesis tool
+  * Generated using Module Generators from NTNU
+  * Using technology specific netlists (TechSpec)
+  * Using Synopsys Designware (DW02_mult and DW_mult_pipe)
+
+Branch prediction
+CONFIG_IU_BP
+  Enabling branch prediction will improve performance with
+  up to 20%, depending on application. The timing and area
+  overhead are minor, so it is recommended to always enable
+  this option.
 
 Single vector trapping
 CONFIG_IU_SVT
@@ -204,6 +231,12 @@ CONFIG_IU_RSTADDR
   By default, a SPARC processor starts execution at address 0.
   With this option, any 4-kbyte aligned reset start address can be
   choosen. Keep at 0 unless you really know what you are doing.
+
+No tagged arithmetic
+CONFIG_NOTAG
+  Say Y here to disable tagged arithmetic and the CASA instructions.
+  This will save some area in minimal systems that do not need
+  these features.
 
 Power-down
 CONFIG_PWD
@@ -285,21 +318,21 @@ CONFIG_DCACHE_ENABLE
 
 Instruction cache associativity
 CONFIG_ICACHE_ASSO1
-  The instruction cache can be implemented as a multi-set cache with
-  1 - 4 sets. Higher associativity usually increases the cache hit
+  The instruction cache can be implemented as a multi-way cache with
+  1 - 4 ways. Higher associativity usually increases the cache hit
   rate and thereby the performance. The downside is higher power
   consumption and increased gate-count for tag comparators.
 
-  Note that a 1-set cache is effectively a direct-mapped cache.
+  Note that a 1-way cache is effectively a direct-mapped cache.
 
-Instruction cache set size
+Instruction cache way size
 CONFIG_ICACHE_SZ1
-  The size of each set in the instuction cache (kbytes). Valid values
+  The size of each way in the instuction cache (kbytes). Valid values
   are 1 - 64 in binary steps. Note that the full range is only supported
   by the generic and virtex2 targets. Most target packages are limited
-  to 2 - 16 kbyte. Large set size gives higher performance but might
+  to 2 - 16 kbyte. Large way size gives higher performance but might
   affect the maximum frequency (on ASIC targets). The total instruction
-  cache size is the number of set multiplied with the set size.
+  cache size is the number of way multiplied with the way size.
 
 Instruction cache line size
 CONFIG_ICACHE_LZ16
@@ -310,17 +343,17 @@ CONFIG_ICACHE_LZ16
 
 Instruction cache replacement algorithm
 CONFIG_ICACHE_ALGORND
-  Cache replacement algorithm for caches with 2 - 4 sets. The 'random'
-  algorithm selects the set to evict randomly. The least-recently-replaced
-  (LRR) algorithm evicts the set least recently replaced. The least-
-  recently-used (LRU) algorithm evicts the set least recently accessed.
+  Cache replacement algorithm for caches with 2 - 4 ways. The 'random'
+  algorithm selects the way to evict randomly. The least-recently-replaced
+  (LRR) algorithm evicts the way least recently replaced. The least-
+  recently-used (LRU) algorithm evicts the way least recently accessed.
   The random algorithm uses a simple 1- or 2-bit counter to select
-  the eviction set and has low area overhead. The LRR scheme uses one
+  the eviction way and has low area overhead. The LRR scheme uses one
   extra bit in the tag ram and has therefore also low area overhead.
-  However, the LRR scheme can only be used with 2-set caches. The LRU
+  However, the LRR scheme can only be used with 2-way caches. The LRU
   scheme has typically the best performance but also highest area overhead.
-  A 2-set LRU uses 1 flip-flop per line, a 3-set LRU uses 3 flip-flops
-  per line, and a 4-set LRU uses 5 flip-flops per line to store the access
+  A 2-way LRU uses 1 flip-flop per line, a 3-way LRU uses 3 flip-flops
+  per line, and a 4-way LRU uses 5 flip-flops per line to store the access
   history.
 
 Instruction cache locking
@@ -332,22 +365,22 @@ CONFIG_ICACHE_LOCK
 
 Data cache associativity
 CONFIG_DCACHE_ASSO1
-  The data cache can be implemented as a multi-set cache with
-  1 - 4 sets. Higher associativity usually increases the cache hit
+  The data cache can be implemented as a multi-way cache with
+  1 - 4 ways. Higher associativity usually increases the cache hit
   rate and thereby the performance. The downside is higher power
   consumption and increased gate-count for tag comparators.
 
-  Note that a 1-set cache is effectively a direct-mapped cache.
+  Note that a 1-way cache is effectively a direct-mapped cache.
 
-Data cache set size
+Data cache way size
 CONFIG_DCACHE_SZ1
-  The size of each set in the data cache (kbytes). Valid values are
+  The size of each way in the data cache (kbytes). Valid values are
   1 - 64 in binary steps. Note that the full range is only supported
   by the generic and virtex2 targets. Most target packages are limited
   to 2 - 16 kbyte. A large cache gives higher performance but the
   data cache is timing critical an a too large setting might affect
   the maximum frequency (on ASIC targets). The total data cache size
-  is the number of set multiplied with the set size.
+  is the number of way multiplied with the way size.
 
 Data cache line size
 CONFIG_DCACHE_LZ16
@@ -602,6 +635,10 @@ Report AHB warnings
 CONFIG_AHB_MONWAR
   Print out detected AHB warnings on console.
 
+Write trace to console
+CONFIG_AHB_DTRACE
+  Say yes here to write a trace of all AHB transfers to the
+  simulator console. Has not impact on final netlist.
 
 DSU enable
 CONFIG_DSU_UART
@@ -612,8 +649,15 @@ JTAG Enable
 CONFIG_DSU_JTAG
   Say Y to enable the JTAG debug link (JTAG-to-AHB). Debugging is done 
   with GRMON through the boards JTAG chain at speeds of up to 800 kbits/s. 
+
+  The TAP controller can be implemented in custom macros on
+  Altera, Actel Proasic/3 and Xilinx devices. The commercial
+  GRLIB also includes a generic TAP controller in VHDL.
+
   Supported JTAG cables are Xilinx Parallel Cable III and IV, 
-  Xilinx Platform cables (USB), and Altera parallel and USB cables.
+  Xilinx Platform cables (USB), and Altera parallel and USB cables,
+  Amontech JTAG key, various FTDI chip based USB/JTAG devices, and
+  Actel Flash Pro 3/4 cable.
 
 Ethernet DSU enable
 CONFIG_DSU_ETH
@@ -776,7 +820,7 @@ CONFIG_DDR2SP_MBYTE
   select size can always be programmed by software as well.
 
 Read data delay
-CONFIG_DDR2SP_DELAY0 CONFIG_DDR2SP_DELAY1 CONFIG_DDR2SP_DELAY2 CONFIG_DDR2SP_DELAY3 CONFIG_DDR2SP_DELAY4 CONFIG_DDR2SP_DELAY5 CONFIG_DDR2SP_DELAY6 CONFIG_DDR2SP_DELAY7
+CONFIG_DDR2SP_DELAY0 CONFIG_DDR2SP_DELAY1 CONFIG_DDR2SP_DELAY2 CONFIG_DDR2SP_DELAY3 CONFIG_DDR2SP_DELAY4 CONFIG_DDR2SP_DELAY5 CONFIG_DDR2SP_DELAY6 CONFIG_DDR2SP_DELAY7 CONFIG_DDR2SP_CBDELAY0 CONFIG_DDR2SP_CBDELAY1 CONFIG_DDR2SP_CBDELAY2 CONFIG_DDR2SP_CBDELAY3
   On Xilinx targets (virtex4 and virtex5), input delays are added to 
   all data bits to align read data to the internal DDR clock signal.
   The delay can be set to a value of 0 to 63 tap-delays. Each tap- 
@@ -784,6 +828,15 @@ CONFIG_DDR2SP_DELAY0 CONFIG_DDR2SP_DELAY1 CONFIG_DDR2SP_DELAY2 CONFIG_DDR2SP_DEL
   This delay value is only a reset valus, it can be changed dynamically 
   via a configuration register.
 
+Fault-Tolenant version
+CONFIG_DDR2SP_FTEN
+  Say Y here to enable the fault-tolerant version of the DDR2 controller. 
+  In this version, the data bus is enlarged by 25% or 50% and the added 
+  bits are used to store checkbits. The checkbits are generated and 
+  checked using a Reed-Solomon codec.
+
+  This option is only available in the FT version of GRLIB and supported 
+  only in some template designs.
 AHB status register
 CONFIG_AHBSTAT_ENABLE
   Say Y here to enable the AHB status register (AHBSTAT IP).
@@ -957,7 +1010,28 @@ CONFIG_I2C_ENABLE
   Say Y here to enable the OpenCores I2C master.
 Gaisler Research SPI controller
 CONFIG_SPICTRL_ENABLE
-  Say Y here to enable the SPI controller
+  Say Y here to enable the SPI controller(s)
+
+CONFIG_SPICTRL_NUM
+  Number of SPI controllers to implement in design. Note that most
+  template designs are limited to one SPI controller.
+  Configuration options made here in xconfig will apply to all
+  implemented SPI controllers.
+
+CONFIG_SPICTRL_MAXWLEN
+  0: Core will support lengths up to 32 bits
+  1-2: Illegal values
+  3-15: Maximum word length will be value+1 (4-16)
+
+CONFIG_SPICTRL_SYNCRAM
+  Say Y here to use SYNCRAM_2P components for the core's receive
+  and transmit queues. This is the recommended setting, particularly
+  if the core is implemented with support for automatic mode.
+
+CONFIG_SPICTRL_FT
+  Fault-tolerance for internal buffers. Only applicable if core
+  buffers are implemented with SYNCRAM components.
+
 PCI interface type
 CONFIG_PCI_SIMPLE_TARGET
   The target-only PCI interface provides a simple target interface

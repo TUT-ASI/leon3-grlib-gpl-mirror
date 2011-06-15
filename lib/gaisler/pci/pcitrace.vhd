@@ -217,11 +217,11 @@ begin
     pcictrl <= pcictrlin; pciad <= pcii.ad;
   end generate;    
 
-  admem : syncram_2p generic map (tech => memtech, abits => depth, dbits => 32)
+  admem : syncram_2p generic map (tech => memtech, abits => depth, dbits => 32, sepclk => 1)
   port map (clk, csad, apbi.paddr(depth+1 downto 2), bufout(31 downto 0), 
 	    pciclk, pr.sample, pr.baddr, pciad);
 
-  ctrlmem : syncram_2p generic map (tech => memtech, abits => depth, dbits => 16)
+  ctrlmem : syncram_2p generic map (tech => memtech, abits => depth, dbits => 16, sepclk => 1)
   port map (clk, csctrl, apbi.paddr(depth+1 downto 2), bufout(47 downto 32), 
 	    pciclk, pr.sample, pr.baddr, pcictrl);
 

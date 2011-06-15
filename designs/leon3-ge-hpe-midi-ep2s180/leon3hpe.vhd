@@ -1112,7 +1112,10 @@ begin
         pirq     => 5,
         fdepth   => CFG_SPICTRL_FIFO,                  -- FIFO depth is 2^fdepth
         slvselen => CFG_SPICTRL_SLVREG,                  -- Slave select register enable
-        slvselsz => CFG_SPICTRL_SLVS)                  -- Number of slave select signal
+        slvselsz => CFG_SPICTRL_SLVS,                  -- Number of slave select signal
+        netlist  => 0,
+        syncram  => CFG_SPICTRL_SYNCRAM,
+        ft       => CFG_SPICTRL_FT)
       port map (
         rstn => rstn,
         clk  => clkm,

@@ -30,6 +30,8 @@
 #define CONFIG_SYN_TECH ihp25
 #elif defined CONFIG_SYN_IHP25RH
 #define CONFIG_SYN_TECH ihp25rh
+#elif defined CONFIG_SYN_CMOS9SF
+#define CONFIG_SYN_TECH cmos9sf
 #elif defined CONFIG_SYN_LATTICE
 #define CONFIG_SYN_TECH lattice
 #elif defined CONFIG_SYN_ECLIPSE
@@ -40,8 +42,14 @@
 #define CONFIG_SYN_TECH proasic
 #elif defined CONFIG_SYN_PROASIC3
 #define CONFIG_SYN_TECH apa3
+#elif defined CONFIG_SYN_PROASIC3E
+#define CONFIG_SYN_TECH apa3e
+#elif defined CONFIG_SYN_PROASIC3L
+#define CONFIG_SYN_TECH apa3l
 #elif defined CONFIG_SYN_IGLOO
 #define CONFIG_SYN_TECH apa3
+#elif defined CONFIG_SYN_FUSION
+#define CONFIG_SYN_TECH actfus
 #elif defined CONFIG_SYN_SPARTAN2
 #define CONFIG_SYN_TECH virtex
 #elif defined CONFIG_SYN_VIRTEX
@@ -68,8 +76,12 @@
 #define CONFIG_SYN_TECH smic013
 #elif defined CONFIG_SYN_UT025CRH
 #define CONFIG_SYN_TECH ut25
+#elif defined CONFIG_SYN_UT130HBD
+#define CONFIG_SYN_TECH ut130
 #elif defined CONFIG_SYN_TSMC90
 #define CONFIG_SYN_TECH tsmc90
+#elif defined CONFIG_SYN_TM65GPLUS
+#define CONFIG_SYN_TECH tm65gpl
 #elif defined CONFIG_SYN_CUSTOM1
 #define CONFIG_SYN_TECH custom1
 #else
@@ -119,6 +131,12 @@
 #define CFG_CLK_TECH lattice
 #elif defined CONFIG_CLK_PRO3PLL
 #define CFG_CLK_TECH apa3
+#elif defined CONFIG_CLK_PRO3EPLL
+#define CFG_CLK_TECH apa3e
+#elif defined CONFIG_CLK_PRO3LPLL
+#define CFG_CLK_TECH apa3l
+#elif defined CONFIG_CLK_FUSPLL
+#define CFG_CLK_TECH actfus
 #elif defined CONFIG_CLK_CLKDLL
 #define CFG_CLK_TECH virtex
 #elif defined CONFIG_CLK_DCM
@@ -127,6 +145,8 @@
 #define CFG_CLK_TECH rhlib18t
 #elif defined CONFIG_CLK_RHUMC
 #define CFG_CLK_TECH rhumc
+#elif defined CONFIG_CLK_UT130HBD
+#define CFG_CLK_TECH ut130
 #else
 #define CFG_CLK_TECH inferred
 #endif
@@ -140,7 +160,15 @@
 #endif
 
 #ifndef CONFIG_OCLK_DIV
-#define CONFIG_OCLK_DIV 2
+#define CONFIG_OCLK_DIV 1
+#endif
+
+#ifndef CONFIG_OCLKB_DIV
+#define CONFIG_OCLKB_DIV 0
+#endif
+
+#ifndef CONFIG_OCLKC_DIV
+#define CONFIG_OCLKC_DIV 0
 #endif
 
 #ifndef CONFIG_PCI_CLKDLL
@@ -190,6 +218,16 @@
 #define CFG_IU_V8 0
 #endif
 
+#ifdef CONFIG_IU_MUL_MODGEN
+#define CFG_IU_MUL_STRUCT 1
+#elif defined CONFIG_IU_MUL_TECHSPEC
+#define CFG_IU_MUL_STRUCT 2
+#elif defined CONFIG_IU_MUL_DW
+#define CFG_IU_MUL_STRUCT 3
+#else
+#define CFG_IU_MUL_STRUCT 0
+#endif
+
 #ifndef CONFIG_PWD
 #define CONFIG_PWD 0
 #endif
@@ -200,6 +238,10 @@
 
 #ifndef CONFIG_IU_BP
 #define CONFIG_IU_BP 0
+#endif
+
+#ifndef CONFIG_NOTAG
+#define CONFIG_NOTAG 0
 #endif
 
 #ifndef CONFIG_IU_SVT
@@ -290,7 +332,9 @@
 #define CFG_ILINE_SZ 8
 #endif
 
-#if defined CONFIG_ICACHE_ALGORND
+#if defined CONFIG_ICACHE_ALGODIR
+#define CFG_ICACHE_ALGORND 3
+#elif defined CONFIG_ICACHE_ALGORND
 #define CFG_ICACHE_ALGORND 2
 #elif defined CONFIG_ICACHE_ALGOLRR
 #define CFG_ICACHE_ALGORND 1
@@ -375,7 +419,9 @@
 #define CFG_DLINE_SZ 8
 #endif
 
-#if defined CONFIG_DCACHE_ALGORND
+#if defined CONFIG_DCACHE_ALGODIR
+#define CFG_DCACHE_ALGORND 3
+#elif defined CONFIG_DCACHE_ALGORND
 #define CFG_DCACHE_ALGORND 2
 #elif defined CONFIG_DCACHE_ALGOLRR
 #define CFG_DCACHE_ALGORND 1
@@ -625,6 +671,10 @@
 
 #ifndef CONFIG_AHB_MONWAR
 #define CONFIG_AHB_MONWAR 0
+#endif
+
+#ifndef CONFIG_AHB_DTRACE
+#define CONFIG_AHB_DTRACE 0
 #endif
 
 #ifndef CONFIG_DSU_UART

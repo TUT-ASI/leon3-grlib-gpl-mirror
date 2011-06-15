@@ -30,7 +30,7 @@ use techmap.gencomp.all;
 use techmap.allpads.all;
 
 entity inpad_ds is
-  generic (tech : integer := 0; level : integer := lvds; voltage : integer := x33v);
+  generic (tech : integer := 0; level : integer := lvds; voltage : integer := x33v; term : integer := 0);
   port (padp, padn : in std_ulogic; o : out std_ulogic);
 end;
 
@@ -41,10 +41,10 @@ begin
   gen0 : if has_ds_pads(tech) = 0 generate
     o <= to_X01(padp) after 1 ns;
   end generate;
-  xcv : if (tech = virtex2) or (tech = spartan3) or (tech = spartan6) or (tech = virtex6) generate
-    u0 : unisim_inpad_ds generic map (level, voltage) port map (padp, padn, o);
+  xcv : if (tech = virtex2) or (tech = spartan3) generate
+    u0 : unisim_inpad_ds generic map (level, voltage, term) port map (padp, padn, o);
   end generate;
-  xc4v : if (tech = virtex4) or (tech = spartan3e) or (tech = virtex5) generate
+  xc4v : if (tech = virtex4) or (tech = spartan3e) or (tech = virtex5) or (tech = spartan6) or (tech = virtex6) generate
     u0 : virtex4_inpad_ds generic map (level, voltage) port map (padp, padn, o);
   end generate;
   axc : if (tech = axcel) or (tech = axdsp) generate
@@ -64,6 +64,9 @@ begin
   end generate;
   rht : if (tech = rhlib18t) generate
     u0 : rh_lib18t_inpad_ds port map (padp, padn, o, gnd);
+  end generate;
+  n2x : if (tech = easic45) generate
+    u0 : n2x_inpad_ds generic map (level, voltage) port map (padp, padn, o);
   end generate;
 end;
 

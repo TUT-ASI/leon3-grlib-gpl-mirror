@@ -350,6 +350,7 @@ constant MMCTRL_VER_D : integer := 24;
 constant MMCTRL_IMPL_U : integer := 31;
 constant MMCTRL_IMPL_D : integer := 28;
 constant MMCTRL_TLBDIS : integer := 15;
+constant MMCTRL_TLBSEP : integer := 14;
 
 constant MMCTXP_U : integer := 31;
 constant MMCTXP_D : integer := 2;

@@ -29,7 +29,7 @@ use techmap.gencomp.all;
 
 entity techbuf is
   generic(
-    buftype  :  integer range 0 to 4 := 0;
+    buftype  :  integer range 0 to 6 := 0;
     tech     :  integer range 0 to NTECH := inferred);
   port( i :  in  std_ulogic; o :  out std_ulogic);
 end entity;
@@ -47,7 +47,7 @@ end component;
 component clkbuf_apa3l is generic( buftype :  integer range 0 to 3 := 0);
   port( i :  in  std_ulogic; o :  out std_ulogic);
 end component;
-component clkbuf_actel is generic( buftype :  integer range 0 to 3 := 0);
+component clkbuf_actel is generic( buftype :  integer range 0 to 6 := 0);
   port( i :  in  std_ulogic; o :  out std_ulogic);
 end component;
 component clkbuf_xilinx is generic( buftype :  integer range 0 to 3 := 0);
@@ -56,7 +56,13 @@ end component;
 component clkbuf_ut025crh is generic( buftype :  integer range 0 to 3 := 0);
   port( i :  in  std_ulogic; o :  out std_ulogic);
 end component;
+component clkbuf_ut130hbd is generic( buftype :  integer range 0 to 3 := 0);
+  port( i :  in  std_ulogic; o :  out std_ulogic);
+end component;
 component clkbuf_nextreme is generic( buftype :  integer range 0 to 3 := 0);
+  port( i :  in  std_ulogic; o :  out std_ulogic);
+end component;
+component clkbuf_n2x is generic(buftype : integer range 0 to 3 := 0);
   port( i :  in  std_ulogic; o :  out std_ulogic);
 end component;
 
@@ -85,7 +91,14 @@ begin
   ut  : if (tech = ut25) generate
     ut0 : clkbuf_ut025crh generic map (buftype => buftype) port map(i => i, o => o);
   end generate;
+  ut13  : if (tech = ut130) generate
+    ut0 : clkbuf_ut130hbd generic map (buftype => buftype) port map(i => i, o => o);
+  end generate;
   easic: if tech = easic90 generate
     eas : clkbuf_nextreme generic map (buftype => buftype) port map(i => i, o => o);
   end generate easic;
+  n2x : if tech = easic45 generate
+    n2x0 : clkbuf_n2x generic map (buftype => buftype) port map(i => i, o => o);
+  end generate;
+  
 end architecture;

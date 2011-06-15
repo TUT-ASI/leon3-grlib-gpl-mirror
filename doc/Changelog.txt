@@ -1,5 +1,49 @@
 
+----------------------- Release 1.1.0-b4108 ----------------------------
+
+2011-06-15	Added DDR2 MIG wrapper for template design for 
+		Xilinx SP601 Spartan6 board.
+
+2011-06-13	Added template design for new Pender Spartan-6 board,
+		including a wrapper for Xilinx MIG 16-bit DDR2 controller.
+
+2011-06-13	Added template designs for Xilinx ML605 board, including
+		a wrapper for Xilinx MIG 64-bit DDR3 controller.
+
+2011-06-01	Added template design for Altera DE2 board, including
+		16-bit SDRAM controller.
+
+2011-05-18	SPICTRL: Allow use of SYNCRAM_2P for buffers
+
+2011-04-12	Expanded section "9. Extending GRLIB" of GRLIB User's Manual
+
+2011-03-17	Added AHBTRACE_MMB capable of multi-bus tracing.
+
+2011-01-31	GRFPU-lite netlists for Altera could not be synthesized
+
+2011-01-13	SPICTRL: 3-wire transfer direction order can now be configured
+
+2011-01-09	Added template design for BeMicro SDK (leon3-arrow-bemicro-sdk)
+
+2011-01-04	Hynix DDR2 model, fix spurious error messages in simulation
+
 ----------------------- Release 1.1.0-b4105 ----------------------------
+
+2010-11-29	DDR2SPA: Fast acknowlege on read was one cycle too early
+
+2010-11-22	DDR2SPA: Fix data selection for AHB buses wider than 2xDDR
+
+2010-11-17	DDR2SPA: Write mode register correctly based on CAS/TWR settings
+
+2010-11-15	DDR2SPA: Add bigmem generic to enable >1GB RAM bank support
+
+2010-11-16	APBUART: Set number of scaler bits via VHDL generic
+
+2010-11-15	DDR2SPA: Separate reset generation for AHB/DDR clock domains
+
+2010-11-12	GPTIMER: Allow external watchdog enable/disable.
+
+----------------------- Release 1.1.0-b4104 ----------------------------
 
 2010-10-29	Added design for TerASIC Altera Cyclone-IV DE2-115 board
 

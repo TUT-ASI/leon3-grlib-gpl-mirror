@@ -1,6 +1,7 @@
     choice 'Clock generator                     ' \
 	"Inferred		CONFIG_CLK_INFERRED \
 	Actel-HCLKBUF		CONFIG_CLK_HCLKBUF \
+	Aeroflex-UT130HBD	CONFIG_CLK_UT130HBD \
 	Altera-ALTPLL		CONFIG_CLK_ALTDLL \
 	Lattice-EXPLL		CONFIG_CLK_LATDLL \
 	Proasic3-PLL		CONFIG_CLK_PRO3PLL \

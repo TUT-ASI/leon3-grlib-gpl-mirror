@@ -94,6 +94,7 @@ entity leon3mp is
     enet0_rx_col : in std_logic;
     enet0_rx_crs : in std_logic;
     enet0_int_n  : in std_logic;
+    enet0_rst_n  : out std_logic;
     enet0_tx_data: out std_logic_vector(3 downto 0);   
     enet0_tx_en : out std_logic; 
     enet0_tx_er : out std_logic; 
@@ -464,6 +465,9 @@ begin
       port map (enet0_tx_er, etho.tx_er);
     emdc_pad : outpad generic map (tech => padtech)
       port map (enet0_mdc, etho.mdc);
+
+    eth0_rst_pad : odpad generic map (tech => padtech) 
+      port map (enet0_rst_n, rstn);
     
 --      emdis_pad : outpad generic map (tech => padtech) 
 --	port map (emddis, vcc(0));

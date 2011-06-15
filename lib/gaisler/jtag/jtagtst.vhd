@@ -88,6 +88,18 @@ package jtagtst is
                   cp                   : in integer;
                   reread               : in boolean := false;
                   assertions           : in boolean := false);
+
+  procedure bscantest(signal tdo : in std_ulogic;
+                      signal tck, tms, tdi : out std_ulogic;
+                      cp: in integer);
+
+  procedure bscansampre(signal tdo : in std_ulogic;
+                        signal tck, tms, tdi : out std_ulogic;
+                        nsigs: in integer;
+                        sigpre: in std_logic_vector; sigsamp: out std_logic_vector;
+                        cp: in integer);
+
+  
 end;  
 
 
@@ -258,7 +270,7 @@ package body jtagtst is
     end loop;
     data(data'right) := dr(31 downto 0);
   end;
-  
+
 procedure jtagcom(signal tdo : in std_ulogic;
                   signal tck, tms, tdi : out std_ulogic;
                   cp, start, addr  : in integer;
@@ -372,7 +384,63 @@ begin
   end if;
   
   end procedure;
-    
+
+  -- Sample/Preload
+  procedure bscansampre(signal tdo : in std_ulogic;
+                        signal tck, tms, tdi : out std_ulogic;
+                        nsigs: in integer;
+                        sigpre: in std_logic_vector; sigsamp: out std_logic_vector;
+                        cp: in integer) is
+    variable tmp: std_logic_vector(5 downto 0);
+  begin
+    shift(false,6, conv_std_logic_vector(5,6), tmp, tck,tms,tdi,tdo, cp);
+    shift(true, nsigs, sigpre, sigsamp, tck,tms,tdi,tdo, cp);
+  end procedure;
+
+  -- Boundary scan test
+  procedure bscantest(signal tdo : in std_ulogic;
+                      signal tck, tms, tdi : out std_ulogic;
+                      cp: in integer) is
+    variable tmpin,tmpout: std_logic_vector(1499 downto 0);
+    variable i,bslen: integer;
+    variable dc: std_logic;
+    variable tmp6: std_logic_vector(5 downto 0);
+    variable tmp1: std_logic_vector(0 downto 0);
+  begin
+    print("[bscan] Boundary scan test starting...");
+    for i in 1 to 5 loop     -- reset
+      clkj('1', '0', dc, tck, tms, tdi, tdo, cp);
+    end loop;        
+    clkj('0', '0', dc, tck, tms, tdi, tdo, cp);
+    -- Probe length of boundary scan chain    
+    tmpin := (others => '0');
+    tmpin(tmpin'length/2) := '1';
+    bscansampre(tdo,tck,tms,tdi,tmpin'length,tmpin,tmpout,cp);
+    i := tmpout'length/2;
+    for x in tmpout'length/2 to tmpout'high loop
+      if tmpout(x)='1' then
+        -- print("tmpout(" & tost(x) & ") set");
+        i := x;
+      end if;
+    end loop;
+    bslen := i-tmpout'length/2;
+    print("[bscan] Detected boundary scan chain length: " & tost(bslen));
+    print("[bscan] Looping over outputs...");
+    shift(false,6, conv_std_logic_vector(6,6), tmp6, tck,tms,tdi,tdo, cp);  -- extest
+    for x in 0 to bslen loop
+      tmpin :=(others => '0');
+      tmpin(x) := '1';
+      shift(true, bslen, tmpin(bslen-1 downto 0), tmpout(bslen-1 downto 0), tck,tms,tdi,tdo, cp);
+    end loop;
+    print("[bscan] Looping over inputs...");
+    shift(false,6, conv_std_logic_vector(7,6), tmp6, tck,tms,tdi,tdo, cp);  -- intest
+    for x in 0 to bslen loop
+      tmpin :=(others => '0');
+      tmpin(x) := '1';
+      shift(true, bslen, tmpin(bslen-1 downto 0), tmpout(bslen-1 downto 0), tck,tms,tdi,tdo, cp);
+    end loop;
+  end procedure;
+  
 end;
 
 -- pragma translate_on

@@ -15,6 +15,7 @@
 int build_rmap_hdr(struct rmap_pkt *pkt, char *hdr, int *size)
 {
         int i;
+        int j;
         int type;
         int write;
         int srcspalen;
@@ -80,20 +81,27 @@ int build_rmap_hdr(struct rmap_pkt *pkt, char *hdr, int *size)
                 hdr[pkt->dstspalen+2] = hdr[pkt->dstspalen+2] | (type << 6) | 
                         (write << 5) | (pkt->verify << 4) | (pkt->ack << 3) | (pkt->incr << 2) | srcspalen;
                 hdr[pkt->dstspalen+3] = (char)pkt->destkey;
-                for(i = 0; i < pkt->srcspalen; i++) {
-                        hdr[pkt->dstspalen+4+i] = pkt->srcspa[i];
+                j = 0;
+                for(i = 0; i < srcspalen*4; i++) {
+                        if ((srcspalen*4-i) > (pkt->srcspalen)) {
+                                hdr[pkt->dstspalen+4+i] = 0x00;
+                        } else {
+                                hdr[pkt->dstspalen+4+i] = pkt->srcspa[j];
+                                j++;
+                        }
+                        
                 }
-                hdr[pkt->dstspalen+4+pkt->srcspalen] = (char)pkt->srcaddr;
-                hdr[pkt->dstspalen+5+pkt->srcspalen] = (char)((pkt->tid >> 8) & 0xFF);
-                hdr[pkt->dstspalen+6+pkt->srcspalen] = (char)(pkt->tid & 0xFF);
-                hdr[pkt->dstspalen+7+pkt->srcspalen] = (char)0;
-                hdr[pkt->dstspalen+8+pkt->srcspalen] = (char)((pkt->addr >> 24) & 0xFF);
-                hdr[pkt->dstspalen+9+pkt->srcspalen] = (char)((pkt->addr >> 16) & 0xFF);
-                hdr[pkt->dstspalen+10+pkt->srcspalen] = (char)((pkt->addr >> 8) & 0xFF);
-                hdr[pkt->dstspalen+11+pkt->srcspalen] = (char)(pkt->addr & 0xFF);
-                hdr[pkt->dstspalen+12+pkt->srcspalen] = (char)((pkt->len >> 16) & 0xFF);
-                hdr[pkt->dstspalen+13+pkt->srcspalen] = (char)((pkt->len >> 8) & 0xFF);
-                hdr[pkt->dstspalen+14+pkt->srcspalen] = (char)(pkt->len & 0xFF);
+                hdr[pkt->dstspalen+4+srcspalen*4] = (char)pkt->srcaddr;
+                hdr[pkt->dstspalen+5+srcspalen*4] = (char)((pkt->tid >> 8) & 0xFF);
+                hdr[pkt->dstspalen+6+srcspalen*4] = (char)(pkt->tid & 0xFF);
+                hdr[pkt->dstspalen+7+srcspalen*4] = (char)0;
+                hdr[pkt->dstspalen+8+srcspalen*4] = (char)((pkt->addr >> 24) & 0xFF);
+                hdr[pkt->dstspalen+9+srcspalen*4] = (char)((pkt->addr >> 16) & 0xFF);
+                hdr[pkt->dstspalen+10+srcspalen*4] = (char)((pkt->addr >> 8) & 0xFF);
+                hdr[pkt->dstspalen+11+srcspalen*4] = (char)(pkt->addr & 0xFF);
+                hdr[pkt->dstspalen+12+srcspalen*4] = (char)((pkt->len >> 16) & 0xFF);
+                hdr[pkt->dstspalen+13+srcspalen*4] = (char)((pkt->len >> 8) & 0xFF);
+                hdr[pkt->dstspalen+14+srcspalen*4] = (char)(pkt->len & 0xFF);
         } else {
                 type = 0;
                 if (pkt->type == writerep) {

@@ -16,7 +16,7 @@ SDCFILE=$(GRLIB)/boards/$(BOARD)/default.sdc
 BITGEN=$(GRLIB)/boards/$(BOARD)/default.ut
 CLEAN=soft-clean
 
-TECHLIBS = unisim
+TECHLIBS = unisim secureip
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF gsi \
 	tmtc openchip hynix cypress ihp gleichmann fmf spansion usbhc
 DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan ddr usb ata grusbhc haps \

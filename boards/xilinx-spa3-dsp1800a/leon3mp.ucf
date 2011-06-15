@@ -42,13 +42,13 @@ INST "ethpads.erxc_pad/xcv2.u0/g2.ttl0.bf" LOC = "BUFGMUX_X0Y4";
 # ethi_tx_clk  
 INST "ethpads.etxc_pad/xcv2.u0/g2.ttl0.bf" LOC = "BUFGMUX_X0Y5";
 # clkml
-INST "ddr2sp0.ddrc0/ddr_phy0/ddr_phy0/sp3a.ddr_phy0/noclkscale.mbufg0" LOC = "BUFGMUX_X2Y10";
-# ddr2sp0.ddrc0/ddr_phy0/ddr_phy0/sp3a.ddr_phy0/rclk270b 
-INST "ddr2sp0.ddrc0/ddr_phy0/ddr_phy0/sp3a.ddr_phy0/bufg8" LOC = "BUFGMUX_X0Y9";
-# ddr2sp0.ddrc0/ddr_phy0/ddr_phy0/sp3a.ddr_phy0/rclk90b   
-INST "ddr2sp0.ddrc0/ddr_phy0/ddr_phy0/sp3a.ddr_phy0/bufg7" LOC = "BUFGMUX_X0Y8";
-# ddr2sp0.ddrc0/ddr_phy0/ddr_phy0/sp3a.ddr_phy0/clk90r   
-INST "ddr2sp0.ddrc0/ddr_phy0/ddr_phy0/sp3a.ddr_phy0/bufg2" LOC = "BUFGMUX_X2Y0";
+INST "ddr2sp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/sp3a.ddr_phy0/noclkscale.mbufg0" LOC = "BUFGMUX_X2Y10";
+# ddr2sp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/sp3a.ddr_phy0/rclk270b 
+INST "ddr2sp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/sp3a.ddr_phy0/bufg8" LOC = "BUFGMUX_X0Y9";
+# ddr2sp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/sp3a.ddr_phy0/rclk90b   
+INST "ddr2sp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/sp3a.ddr_phy0/bufg7" LOC = "BUFGMUX_X0Y8";
+# ddr2sp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/sp3a.ddr_phy0/clk90r   
+INST "ddr2sp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/sp3a.ddr_phy0/bufg2" LOC = "BUFGMUX_X2Y0";
 # BUFGs in clkgen
 INST "clkgen0/xc3s.v/bufg0" LOC = "BUFGMUX_X2Y11";
 INST "clkgen0/xc3s.v/bufg1" LOC = "BUFGMUX_X1Y11";
@@ -57,8 +57,8 @@ INST "lclk_vga_cb" LOC = "BUFGMUX_X3Y8";
 
 # DCM placements
 INST "clkgen0/xc3s.v/dll0/DCM_SP" LOC = "DCM_X1Y3";
-INST "ddr2sp0.ddrc0/ddr_phy0/ddr_phy0/sp3a.ddr_phy0/dll/DCM_SP" LOC = "DCM_X2Y0";
-INST "ddr2sp0.ddrc0/ddr_phy0/ddr_phy0/sp3a.ddr_phy0/read_dll/DCM_SP" LOC = "DCM_X0Y1";
+INST "ddr2sp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/sp3a.ddr_phy0/dll/DCM_SP" LOC = "DCM_X2Y0";
+INST "ddr2sp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/sp3a.ddr_phy0/read_dll/DCM_SP" LOC = "DCM_X0Y1";
 
 # Avoid false paths between main clock and DDR clock
 NET "clkm"  TNM_NET = "clkm";
@@ -68,9 +68,9 @@ TIMESPEC "TS_clkml_clkm" = FROM "clkml" TO "clkm" TIG;
 
 INST "clkgen0_xc3s_v_dll0" LOC = DCM_X2Y3;
 INST "clkgen0/xc3s.v/dll0" LOC = DCM_X2Y3;
-INST "ddr2sp0.ddrc0/ddr_phy0/ddr_phy0/sp3a.ddr_phy0/read_dll" LOC = DCM_X0Y1;
+INST "ddr2sp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/sp3a.ddr_phy0/read_dll" LOC = DCM_X0Y1;
 INST "ddr2sp0.ddrc0_ddr_phy0_ddr_phy0_sp3a.ddr_phy0_read_dll" LOC = DCM_X0Y1;
-INST "ddr2sp0.ddrc0/ddr_phy0/ddr_phy0/sp3a.ddr_phy0/dll" LOC = DCM_X1Y0;
+INST "ddr2sp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/sp3a.ddr_phy0/dll" LOC = DCM_X1Y0;
 INST "ddr2sp0_ddrc0_ddr_phy0_ddr_phy0_sp3a_ddr_phy0_dll" LOC = DCM_X1Y0;
 
 # ==== Pushbuttons ====

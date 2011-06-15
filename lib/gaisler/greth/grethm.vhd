@@ -62,10 +62,11 @@ entity grethm is
     oepol          : integer range 0 to 1  := 0;
     scanen         : integer range 0 to 1  := 0;
     ft             : integer range 0 to 2  := 0;
+    edclft         : integer range 0 to 1  := 1;
     mdint_pol      : integer range 0 to 1  := 0;
     enable_mdint   : integer range 0 to 1  := 0;
-    multicast      : integer range 0 to 1  := 0
-  ); 
+    multicast      : integer range 0 to 1  := 0;
+    ramdebug       : integer range 0 to 2  := 0); 
   port(
     rst            : in  std_ulogic;
     clk            : in  std_ulogic;
@@ -82,21 +83,90 @@ architecture rtl of grethm is
 begin
 
   m100 : if giga = 0 generate
-    u0 : greth generic map ( hindex, pindex, paddr, pmask, pirq, 
-    	memtech, ifg_gap, attempt_limit, backoff_limit, slot_time, mdcscaler, 
-    	enable_mdio, fifosize, nsync, edcl, edclbufsz, macaddrh, macaddrl, 
-    	ipaddrh, ipaddrl, phyrstadr, rmii, oepol, scanen, ft, mdint_pol,
-        enable_mdint, multicast)
-    port map ( rst, clk, ahbmi, ahbmo, apbi, apbo, ethi, etho);
-
+    u0 : greth
+      generic map (
+        hindex         => hindex,
+        pindex         => pindex,
+        paddr          => paddr,
+        pmask          => pmask,
+        pirq           => pirq,
+        memtech        => memtech,
+        ifg_gap        => ifg_gap,
+        attempt_limit  => attempt_limit,
+        backoff_limit  => backoff_limit,
+        slot_time      => slot_time,
+        mdcscaler      => mdcscaler,
+        enable_mdio    => enable_mdio,
+        fifosize       => fifosize,
+        nsync          => nsync,
+        edcl           => edcl,
+        edclbufsz      => edclbufsz,
+        macaddrh       => macaddrh,
+        macaddrl       => macaddrl,
+        ipaddrh        => ipaddrh,
+        ipaddrl        => ipaddrl,
+        phyrstadr      => phyrstadr,
+        rmii           => rmii,
+        oepol          => oepol,
+        scanen         => scanen,
+        ft             => ft,
+        edclft         => edclft,
+        mdint_pol      => mdint_pol,
+        enable_mdint   => enable_mdint,
+        multicast      => multicast,
+        ramdebug       => ramdebug) 
+      port map (
+        rst            => rst,
+        clk            => clk,
+        ahbmi          => ahbmi,
+        ahbmo          => ahbmo,
+        apbi           => apbi,
+        apbo           => apbo,
+        ethi           => ethi,
+        etho           => etho);
   end generate;
 
   m1000 : if giga = 1 generate
-    u0 : greth_gbit generic map ( hindex, pindex, paddr, pmask, pirq, 
-    	memtech, ifg_gap, attempt_limit, backoff_limit, slot_time, mdcscaler, 
-    	nsync, edcl, edclbufsz, burstlength, macaddrh, macaddrl, ipaddrh,
-	ipaddrl, phyrstadr, sim, oepol, scanen, mdint_pol, enable_mdint, multicast)
-    port map ( rst, clk, ahbmi, ahbmo, apbi, apbo, ethi, etho);
+    u0 : greth_gbit
+      generic map (
+        hindex         => hindex,
+        pindex         => pindex,
+        paddr          => paddr,
+        pmask          => pmask,
+        pirq           => pirq,
+        memtech        => memtech,
+        ifg_gap        => ifg_gap,
+        attempt_limit  => attempt_limit,
+        backoff_limit  => backoff_limit,
+        slot_time      => slot_time,
+        mdcscaler      => mdcscaler,
+        nsync          => nsync,
+        edcl           => edcl,
+        edclbufsz      => edclbufsz,
+        burstlength    => burstlength,
+        macaddrh       => macaddrh,
+        macaddrl       => macaddrl,
+        ipaddrh        => ipaddrh,
+        ipaddrl        => ipaddrl,
+        phyrstadr      => phyrstadr,
+        sim            => sim,
+        oepol          => oepol,
+        scanen         => scanen,
+        ft             => ft,
+        edclft         => edclft,
+        mdint_pol      => mdint_pol,
+        enable_mdint   => enable_mdint,
+        multicast      => multicast,
+        ramdebug       => ramdebug) 
+      port map (
+        rst            => rst,
+        clk            => clk,
+        ahbmi          => ahbmi,
+        ahbmo          => ahbmo,
+        apbi           => apbi,
+        apbo           => apbo,
+        ethi           => ethi,
+        etho           => etho);
   end generate;
 
 end architecture;

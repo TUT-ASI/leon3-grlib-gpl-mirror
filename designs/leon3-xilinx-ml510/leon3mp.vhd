@@ -886,7 +886,8 @@ begin
     spi1 : spictrl
       generic map (pindex => 10, paddr  => 10, pmask  => 16#fff#, pirq => 12,
                    fdepth => CFG_SPICTRL_FIFO, slvselen => CFG_SPICTRL_SLVREG,
-                   slvselsz => CFG_SPICTRL_SLVS, odmode => 0)
+                   slvselsz => CFG_SPICTRL_SLVS, odmode => 0, netlist => 0,
+                   syncram => CFG_SPICTRL_SYNCRAM, ft => CFG_SPICTRL_FT)
       port map (rstn, clkm, apbi, apbo(10), spii, spio, slvsel);
     spii.spisel <= '1';                 -- Master only
     miso_pad : inpad generic map (tech => padtech)

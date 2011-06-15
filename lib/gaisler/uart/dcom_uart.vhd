@@ -301,7 +301,8 @@ begin
 
 -- drive outputs
     uo.txd <= r.tshift(0);
-    uo.scaler <= r.brate;
+    uo.scaler(31 downto 18) <= (others => '0');
+    uo.scaler(17 downto 0) <= r.brate;
     uo.rtsn <= '0';
     uo.rxen <= andv(r.tcnt);
     uarto.dready <= r.dready;

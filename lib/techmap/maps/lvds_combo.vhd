@@ -61,6 +61,11 @@ begin
         port map (odpadp, odpadn, ospadp, ospadn, odval, osval, oen, 
 		  idpadp, idpadn, ispadp, ispadn, idval, isval);
     end generate;
+    ut13  : if tech = ut130 generate
+      u0: ut130hbd_lvds_combo generic map (voltage, width)
+        port map (odpadp, odpadn, ospadp, ospadn, odval, osval, oen, 
+		  idpadp, idpadn, ispadp, ispadn, idval, isval);
+    end generate;
     um : if tech = umc generate
       u0: umc_lvds_combo generic map (voltage, width)
         port map (odpadp, odpadn, ospadp, ospadn, odval, osval, oen, 

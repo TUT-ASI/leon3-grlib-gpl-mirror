@@ -60,8 +60,14 @@ begin
     cmos_33 : if voltage = x33v generate
       ip : IBUF generic map (IOSTANDARD => "LVCMOS33") port map (O => o, I => pad);
     end generate;
-    cmos_25 : if voltage /= x33v generate
+    cmos_25 : if voltage = x25v generate
       ip : IBUF generic map (IOSTANDARD => "LVCMOS25") port map (O => o, I => pad);
+    end generate;
+    cmos_18 : if voltage = x18v generate
+      ip : IBUF generic map (IOSTANDARD => "LVCMOS18") port map (O => o, I => pad);
+    end generate;
+    cmos_15 : if voltage = x15v generate
+      ip : IBUF generic map (IOSTANDARD => "LVCMOS15") port map (O => o, I => pad);
     end generate;
   end generate;
   sstl2x : if level = sstl2_i generate
@@ -626,7 +632,7 @@ use unisim.IBUFDS_LVDS_33;
 -- pragma translate_on
 
 entity unisim_inpad_ds is
-  generic (level : integer := lvds; voltage : integer := x33v);
+  generic (level : integer := lvds; voltage : integer := x33v; term : integer := 0);
   port (padp, padn : in std_ulogic; o : out std_ulogic);
 end; 
 
@@ -662,7 +668,7 @@ use unisim.IBUFGDS_LVDS_33;
 -- pragma translate_on
 
 entity unisim_clkpad_ds is
-  generic (level : integer := lvds; voltage : integer := x33v);
+  generic (level : integer := lvds; voltage : integer := x33v; term : integer := 0);
   port (padp, padn : in std_ulogic; o : out std_ulogic);
 end; 
 
@@ -743,7 +749,7 @@ use unisim.IBUFGDS;
 -- pragma translate_on
 
 entity virtex4_clkpad_ds is
-  generic (level : integer := lvds; voltage : integer := x33v);
+  generic (level : integer := lvds; voltage : integer := x33v; term : integer := 0);
   port (padp, padn : in std_ulogic; o : out std_ulogic);
 end; 
 
@@ -785,7 +791,7 @@ use unisim.IOBUFDS;
 
 entity unisim_iopad_ds  is
   generic (level : integer := 0; slew : integer := 0;
-	   voltage : integer := x33v; strength : integer := 12);
+	   voltage : integer := x33v; strength : integer := 12; term : integer := 0);
   port (padp, padn : inout std_ulogic; i, en : in std_ulogic; o : out std_ulogic);
 end ;
 architecture rtl of unisim_iopad_ds is

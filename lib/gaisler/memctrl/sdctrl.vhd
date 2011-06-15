@@ -145,6 +145,7 @@ type reg_type is record
 
   idlecnt       : std_logic_vector(3 downto 0); -- Counter, 16 idle clock sycles before entering Power-Saving mode
   sref_tmpcom   : std_logic_vector(2 downto 0); -- Save SD command when exit sref
+  pwron         : std_ulogic;
 end record;
 
 signal r, ri : reg_type;
@@ -544,7 +545,7 @@ begin
     case r.istate is
     when iidle =>
       v.cfg.cke := '1';
-      if r.cfg.renable = '1' and r.cfg.cke = '1' then
+      if (r.cfg.renable = '1' or (pwron /= 0 and r.pwron = '1')) and r.cfg.cke = '1' then
         v.cfg.command := "010"; v.istate := pre;
       end if;
     when pre =>
@@ -569,6 +570,7 @@ begin
         v.istate := finish;
       end if;
     when others =>
+      if pwron /= 0 then v.pwron := '0'; end if;
       if r.cfg.renable = '0' and r.sdstate /= dpd then
         v.istate := iidle;
       end if;
@@ -692,8 +694,7 @@ begin
       v.cfg.bsize     := "000";
       v.cfg.casdel    :=  '1';
       v.cfg.trfc      := "111";
-      if pwron = 1 then v.cfg.renable :=  '1';
-      else v.cfg.renable :=  '0'; end if;
+      v.cfg.renable   :=  '0';
       v.cfg.trp       :=  '1';
       v.dqm           := (others => '1');
       v.sdwen         := '1';
@@ -702,6 +703,7 @@ begin
       v.hready        := '1';
       v.bsel          := '0';
       v.startsd       := '0';
+      if pwron /= 0 then v.pwron :=  '1'; end if;
       if (pageburst = 2) then
         v.cfg.pageburst   :=  '0';
       end if;
@@ -717,8 +719,12 @@ begin
       else v.cfg.cke       := '1'; end if;
       v.sref_tmpcom   := "000";
       v.idlecnt := (others => '1');
+      v.hio := '0';
     end if;
 
+    if pwron = 0 then v.pwron := '0'; end if;
+    if not WPROTEN then v.wprothit := '0'; end if;
+    
     ri <= v; 
     ribdrive <= vbdrive;
 

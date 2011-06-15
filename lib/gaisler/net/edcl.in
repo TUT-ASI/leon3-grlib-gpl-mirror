@@ -14,6 +14,7 @@ if [ "$CONFIG_GRETH_ENABLE" = "y" ]; then
     hex 'LSB 24 bits of ethern number (hex)    ' CONFIG_DSU_ETHLSB 000000
     if [ "$CONFIG_GRETH_GIGA" = "n" ]; then
       bool 'Programmable 4-bit LSB of MAC/IP address' CONFIG_DSU_ETH_PROG
+      bool 'EDCL disable pin                        ' CONFIG_DSU_ETH_DIS 
     fi
   fi
 fi

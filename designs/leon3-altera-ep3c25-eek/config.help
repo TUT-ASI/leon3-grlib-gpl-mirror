@@ -182,13 +182,23 @@ CONFIG_IU_MUL_LATENCY_2
   4-clocks    16x16 standard multiplier      4/4
   5-clocks    16x16 pipelined multiplier     4/5
 
-Multiplier latency
+MAC operation
 CONFIG_IU_MUL_MAC
   If you say Y here, the SPARC V8e UMAC/SMAC (multiply-accumulate)
   instructions will be enabled. The instructions implement a
   single-cycle 16x16->32 bits multiply with a 40-bits accumulator.
   The details of these instructions can be found in the LEON manual,
   This option is only available when 16x16 multiplier is used.
+
+Multiplier structure
+CONFIG_IU_MUL_INFERRED
+  Structure options for the integer multiplier. The multiplier
+  can be implemented with the following structures:
+
+  * Inferred by the synthesis tool
+  * Generated using Module Generators from NTNU
+  * Using technology specific netlists (TechSpec)
+  * Using Synopsys Designware (DW02_mult and DW_mult_pipe)
 
 Branch prediction
 CONFIG_IU_BP
@@ -308,21 +318,21 @@ CONFIG_DCACHE_ENABLE
 
 Instruction cache associativity
 CONFIG_ICACHE_ASSO1
-  The instruction cache can be implemented as a multi-set cache with
-  1 - 4 sets. Higher associativity usually increases the cache hit
+  The instruction cache can be implemented as a multi-way cache with
+  1 - 4 ways. Higher associativity usually increases the cache hit
   rate and thereby the performance. The downside is higher power
   consumption and increased gate-count for tag comparators.
 
-  Note that a 1-set cache is effectively a direct-mapped cache.
+  Note that a 1-way cache is effectively a direct-mapped cache.
 
-Instruction cache set size
+Instruction cache way size
 CONFIG_ICACHE_SZ1
-  The size of each set in the instuction cache (kbytes). Valid values
+  The size of each way in the instuction cache (kbytes). Valid values
   are 1 - 64 in binary steps. Note that the full range is only supported
   by the generic and virtex2 targets. Most target packages are limited
-  to 2 - 16 kbyte. Large set size gives higher performance but might
+  to 2 - 16 kbyte. Large way size gives higher performance but might
   affect the maximum frequency (on ASIC targets). The total instruction
-  cache size is the number of set multiplied with the set size.
+  cache size is the number of way multiplied with the way size.
 
 Instruction cache line size
 CONFIG_ICACHE_LZ16
@@ -333,17 +343,17 @@ CONFIG_ICACHE_LZ16
 
 Instruction cache replacement algorithm
 CONFIG_ICACHE_ALGORND
-  Cache replacement algorithm for caches with 2 - 4 sets. The 'random'
-  algorithm selects the set to evict randomly. The least-recently-replaced
-  (LRR) algorithm evicts the set least recently replaced. The least-
-  recently-used (LRU) algorithm evicts the set least recently accessed.
+  Cache replacement algorithm for caches with 2 - 4 ways. The 'random'
+  algorithm selects the way to evict randomly. The least-recently-replaced
+  (LRR) algorithm evicts the way least recently replaced. The least-
+  recently-used (LRU) algorithm evicts the way least recently accessed.
   The random algorithm uses a simple 1- or 2-bit counter to select
-  the eviction set and has low area overhead. The LRR scheme uses one
+  the eviction way and has low area overhead. The LRR scheme uses one
   extra bit in the tag ram and has therefore also low area overhead.
-  However, the LRR scheme can only be used with 2-set caches. The LRU
+  However, the LRR scheme can only be used with 2-way caches. The LRU
   scheme has typically the best performance but also highest area overhead.
-  A 2-set LRU uses 1 flip-flop per line, a 3-set LRU uses 3 flip-flops
-  per line, and a 4-set LRU uses 5 flip-flops per line to store the access
+  A 2-way LRU uses 1 flip-flop per line, a 3-way LRU uses 3 flip-flops
+  per line, and a 4-way LRU uses 5 flip-flops per line to store the access
   history.
 
 Instruction cache locking
@@ -355,22 +365,22 @@ CONFIG_ICACHE_LOCK
 
 Data cache associativity
 CONFIG_DCACHE_ASSO1
-  The data cache can be implemented as a multi-set cache with
-  1 - 4 sets. Higher associativity usually increases the cache hit
+  The data cache can be implemented as a multi-way cache with
+  1 - 4 ways. Higher associativity usually increases the cache hit
   rate and thereby the performance. The downside is higher power
   consumption and increased gate-count for tag comparators.
 
-  Note that a 1-set cache is effectively a direct-mapped cache.
+  Note that a 1-way cache is effectively a direct-mapped cache.
 
-Data cache set size
+Data cache way size
 CONFIG_DCACHE_SZ1
-  The size of each set in the data cache (kbytes). Valid values are
+  The size of each way in the data cache (kbytes). Valid values are
   1 - 64 in binary steps. Note that the full range is only supported
   by the generic and virtex2 targets. Most target packages are limited
   to 2 - 16 kbyte. A large cache gives higher performance but the
   data cache is timing critical an a too large setting might affect
   the maximum frequency (on ASIC targets). The total data cache size
-  is the number of set multiplied with the set size.
+  is the number of way multiplied with the way size.
 
 Data cache line size
 CONFIG_DCACHE_LZ16
@@ -1026,6 +1036,16 @@ CONFIG_SPICTRL_MAXWLEN
   0: Core will support lengths up to 32 bits
   1-2: Illegal values
   3-15: Maximum word length will be value+1 (4-16)
+
+CONFIG_SPICTRL_SYNCRAM
+  Say Y here to use SYNCRAM_2P components for the core's receive
+  and transmit queues. This is the recommended setting, particularly
+  if the core is implemented with support for automatic mode.
+
+CONFIG_SPICTRL_FT
+  Fault-tolerance for internal buffers. Only applicable if core
+  buffers are implemented with SYNCRAM components.
+
 LCD frame buffer
 CONFIG_LCD_ENABLE
   Say Y here to enable a graphical frame buffer. The frame buffer

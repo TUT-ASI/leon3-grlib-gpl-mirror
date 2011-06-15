@@ -98,7 +98,12 @@ begin
     pad <= padx;
   end generate;
   ut025 : if (tech = ut25) generate
-    x0 : ut025crh_iopad generic map (strength)
+    x0 : ut025crh_iopad generic map (level, slew, voltage, strength)
+         port map (padx, gnd, oen, open);
+    pad <= padx;
+  end generate;
+  ut13 : if (tech = ut130) generate
+    x0 : ut130hbd_iopad generic map (level, slew, voltage, strength)
          port map (padx, gnd, oen, open);
     pad <= padx;
   end generate;

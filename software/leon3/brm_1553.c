@@ -137,7 +137,7 @@ int brm_1553_test(unsigned int brm_addr, unsigned int mem_addr, unsigned int gpi
   int temp,tmp;
   volatile unsigned int brm_bcmemx[64*1024];
   volatile unsigned int *mem;
-  volatile unsigned int *gpio = gpio_addr;
+  volatile unsigned int *gpio = (unsigned int*)gpio_addr;
 
 
   report_device(0x01072000);

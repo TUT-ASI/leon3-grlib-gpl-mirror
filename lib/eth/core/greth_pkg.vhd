@@ -367,6 +367,17 @@ package grethpkg is
       rmsti       : in  eth_rx_gbit_ahb_in_type;
       rmsto       : out eth_rx_ahb_out_type);
   end component;
+
+  component eth_edcl_ahb_mst is
+  port(
+    rst         : in  std_ulogic;
+    clk         : in  std_ulogic;
+    ahbmi       : in  ahbc_mst_in_type;
+    ahbmo       : out ahbc_mst_out_type;
+    tmsti       : in  eth_tx_ahb_in_type;
+    tmsto       : out eth_tx_ahb_out_type
+  );
+  end component;
  
   function mirror(din : in std_logic_vector) return std_logic_vector;
 

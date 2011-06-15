@@ -20,7 +20,7 @@ SDCFILE=default.sdc
 BITGEN=$(GRLIB)/boards/$(BOARD)/default.ut
 CLEAN=soft-clean
 VCOMOPT=-explicit
-TECHLIBS = unisim
+TECHLIBS = secureip unisim
 
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip hynix cypress ihp gleichmann gsi fmf spansion

@@ -352,6 +352,29 @@ void send_time(struct spwvars *spw)
         spw->regs->ctrl = loadmem((int)&(spw->regs->ctrl)) | (1 << 4);
 }
 
+int send_time_exp(int ctrl, int time, struct spwvars *spw)
+{
+        int i;
+        int code;
+        if ((time < 0) || (time > 63)) {
+                printf("Illegal time-value");
+                return -1;
+        }
+        if (time == 0) {
+                time = 63;
+        } else {
+                time = time - 1;
+        }
+        code = ((ctrl << 6) & 0xC0) | time;
+        
+        while( ((loadmem((int)&(spw->regs->ctrl)) >> 4) & 1)) {
+                for(i = 0; i < 16; i++) {}
+        }
+        spw->regs->timereg = (loadmem((int)&(spw->regs->timereg)) & 0xFFFFFF00) | (0xFF & code);
+        spw->regs->ctrl = loadmem((int)&(spw->regs->ctrl)) | (1 << 4);
+        return 0;
+}
+
 int check_time(struct spwvars *spw) 
 {
         int tmp = loadmem((int)&(spw->regs->status)) & 1;
@@ -364,6 +387,11 @@ int check_time(struct spwvars *spw)
 int get_time(struct spwvars *spw) 
 {
         return (loadmem((int)&(spw->regs->timereg)) & 0x3F );
+}
+
+int get_time_ctrl(struct spwvars *spw) 
+{
+        return ((loadmem((int)&(spw->regs->timereg)) >> 6) & 0x3);
 }
 
 void spw_reset(struct spwvars *spw) 

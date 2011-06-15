@@ -2600,6 +2600,7 @@ begin
     end if;
     
     if not FPEN then v.w.s.ef := '0'; end if;
+    if not CPEN then v.w.s.ec := '0'; end if;
 
 -----------------------------------------------------------------------
 -- MEMORY STAGE
@@ -3028,6 +3029,10 @@ begin
         else
           dsur.crdy <= dsuin.crdy;
         end if;
+        if need_extra_sync_reset(fabtech) /= 0 and (rstn = '0') then 
+          dsur.err <= '0'; dsur.tbufcnt <= (others => '0'); dsur.tt <= (others => '0');
+          dsur.asi <= (others => '0'); dsur.crdy <= (others => '0');
+	end if;
       end if;
     end process;
   end generate;

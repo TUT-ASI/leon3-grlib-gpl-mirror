@@ -191,4 +191,22 @@ begin
     cgo.clklock <= lock;
     cgo.pcilock <= lock;
   end generate;
+
+  n2x : if tech = easic45 generate
+    v : clkgen_n2x
+      generic map (clk_mul, clk_div, sdramen, noclkfb, pcien, pcidll,
+                   pcisysclk, freq, clk2xen, clksel, 0)
+      port map (clkin, pciclkin, clk, clkn, clk2x, sdclk, pciclk, cgi,
+                cgo, clk1xu, clk2xu, open);
+  end generate;
+  ut13 : if (tech = ut130) generate
+    v : clkgen_ut130hbd
+    generic map (clk_mul, clk_div, sdramen, noclkfb, pcien, pcidll, pcisysclk, freq, clk2xen, clksel)
+    port map (clkin, pciclkin, clk, clkn, clk2x, sdclk, pciclk, cgi, cgo, clk1xu, clk2xu);
+  end generate;
+  ut90nhbd : if (tech = ut90) generate
+    v : clkgen_ut90nhbd
+    generic map (clk_mul, clk_div, sdramen, noclkfb, pcien, pcidll, pcisysclk, freq, clk2xen, clksel)
+    port map (clkin, pciclkin, clk, clkn, clk2x, sdclk, pciclk, cgi, cgo, clk1xu, clk2xu);
+  end generate;
 end;

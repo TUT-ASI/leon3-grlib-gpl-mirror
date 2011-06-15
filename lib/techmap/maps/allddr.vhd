@@ -17,8 +17,8 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------
--- Entity:      libddr
--- File:        libddr.vhd
+-- Package:     allddr
+-- File:        allddr.vhd
 -- Author:      David Lindh, Jiri Gaisler - Gaisler Research
 -- Description: DDR input/output registers
 ------------------------------------------------------------------------------
@@ -529,10 +529,13 @@ component virtex5_ddr2_phy
     dbits       : integer := 16;        clk_mul    : integer := 2 ;     clk_div  : integer := 2; 
     ddelayb0    : integer := 0;         ddelayb1   : integer := 0;      ddelayb2 : integer := 0;
     ddelayb3    : integer := 0;         ddelayb4   : integer := 0;      ddelayb5 : integer := 0;
-    ddelayb6    : integer := 0;         ddelayb7   : integer := 0;
+    ddelayb6    : integer := 0;         ddelayb7   : integer := 0;      cbdelayb0: integer := 0;
+    cbdelayb1   : integer := 0;         cbdelayb2  : integer := 0;      cbdelayb3: integer := 0;    
     numidelctrl : integer := 4;         norefclk   : integer := 0; 
     tech        : integer := virtex5;   eightbanks : integer range 0 to 1 := 0;
-    dqsse       : integer range 0 to 1 := 0);
+    dqsse       : integer range 0 to 1 := 0;
+    abits       : integer := 14;        nclk       : integer := 3;      ncs      : integer := 2;
+    cben        : integer := 0;         chkbits    : integer := 8;      ctrl2en  : integer := 0);
   port (
     rst       : in  std_ulogic;
     clk       : in  std_logic;          	-- input clock
@@ -540,22 +543,22 @@ component virtex5_ddr2_phy
     clkout    : out std_ulogic;			-- system clock
     lock      : out std_ulogic;			-- DCM locked
 
-    ddr_clk 	: out std_logic_vector(2 downto 0);
-    ddr_clkb	: out std_logic_vector(2 downto 0);
-    ddr_cke  	: out std_logic_vector(1 downto 0);
-    ddr_csb  	: out std_logic_vector(1 downto 0);
+    ddr_clk 	: out std_logic_vector(nclk-1 downto 0);
+    ddr_clkb	: out std_logic_vector(nclk-1 downto 0);
+    ddr_cke  	: out std_logic_vector(ncs-1 downto 0);
+    ddr_csb  	: out std_logic_vector(ncs-1 downto 0);
     ddr_web  	: out std_ulogic;                               -- ddr write enable
     ddr_rasb  	: out std_ulogic;                               -- ddr ras
     ddr_casb  	: out std_ulogic;                               -- ddr cas
     ddr_dm   	: out std_logic_vector (dbits/8-1 downto 0);    -- ddr dm
     ddr_dqs  	: inout std_logic_vector (dbits/8-1 downto 0);  -- ddr dqs
     ddr_dqsn  	: inout std_logic_vector (dbits/8-1 downto 0);  -- ddr dqsn
-    ddr_ad      : out std_logic_vector (13 downto 0);           -- ddr address
+    ddr_ad      : out std_logic_vector (abits-1 downto 0);           -- ddr address
     ddr_ba      : out std_logic_vector (1+eightbanks downto 0); -- ddr bank address
     ddr_dq    	: inout  std_logic_vector (dbits-1 downto 0);   -- ddr data
-    ddr_odt	: out std_logic_vector(1 downto 0);
+    ddr_odt	: out std_logic_vector(ncs-1 downto 0);
 
-    addr  	: in  std_logic_vector (13 downto 0);        -- ddr addr
+    addr  	: in  std_logic_vector (abits-1 downto 0);        -- ddr addr
     ba    	: in  std_logic_vector ( 2 downto 0);        -- ddr bank address
     dqin  	: out std_logic_vector (dbits*2-1 downto 0); -- ddr input data
     dqout 	: in  std_logic_vector (dbits*2-1 downto 0); -- ddr input data
@@ -566,12 +569,29 @@ component virtex5_ddr2_phy
     rasn      	: in  std_ulogic;
     casn      	: in  std_ulogic;
     wen       	: in  std_ulogic;
-    csn       	: in  std_logic_vector(1 downto 0);
-    cke       	: in  std_logic_vector(1 downto 0);
+    csn       	: in  std_logic_vector(ncs-1 downto 0);
+    cke       	: in  std_logic_vector(ncs-1 downto 0);
     cal_en	: in  std_logic_vector(dbits/8-1 downto 0);
     cal_inc	: in  std_logic_vector(dbits/8-1 downto 0);
     cal_rst	: in  std_logic;
-    odt     : in  std_logic_vector(1 downto 0)
+    odt     : in  std_logic_vector(ncs-1 downto 0);
+
+    ddr_cbdm   : out std_logic_vector(chkbits/8-1 downto 0);
+    ddr_cbdqs  : inout std_logic_vector(chkbits/8-1 downto 0) := (others => 'Z');
+    ddr_cbdqsn : inout std_logic_vector(chkbits/8-1 downto 0) := (others => 'Z');
+    ddr_cbdq   : inout std_logic_vector(chkbits-1 downto 0) := (others => 'Z');
+    cbdqin     : out std_logic_vector(chkbits*2-1 downto 0);
+    cbdqout    : in std_logic_vector(chkbits*2-1 downto 0) := (others => '0');
+    cbdm       : in std_logic_vector(chkbits/4-1 downto 0) := (others => '1');
+    cbcal_en   : in std_logic_vector(chkbits/8-1 downto 0) := (others => '0');
+    cbcal_inc  : in std_logic_vector(chkbits/8-1 downto 0) := (others => '0');
+
+    -- Copy of control signals for 2nd DIMM
+    ddr_web2    : out std_ulogic;                               -- ddr write enable
+    ddr_rasb2   : out std_ulogic;                               -- ddr ras
+    ddr_casb2   : out std_ulogic;                               -- ddr cas
+    ddr_ad2     : out std_logic_vector (abits-1 downto 0);      -- ddr address
+    ddr_ba2     : out std_logic_vector (1+eightbanks downto 0)  -- ddr bank address        
  );
 end component;
 
@@ -812,6 +832,130 @@ component spartan6_ddr2_phy
     cal_pll        : in    std_logic_vector(1 downto 0);
     odt            : in    std_logic_vector(1 downto 0)
     );
+end component;
+
+component generic_ddr2_phy
+  generic (MHz : integer := 100; rstdelay : integer := 200;
+           dbits : integer := 16; clk_mul : integer := 2 ;
+           clk_div : integer := 2; rskew : integer := 0;
+           eightbanks: integer := 0; abits: integer := 14;
+           cben: integer := 0; chkbits: integer := 8);
+
+  port (
+    rst         : in  std_ulogic;
+    clk         : in  std_logic;    -- input clock
+    clkout      : out std_ulogic;   -- system clock
+    lock        : out std_ulogic;   -- DCM locked
+
+    ddr_clk     : out std_logic_vector(2 downto 0);
+    ddr_clkb    : out std_logic_vector(2 downto 0);
+    ddr_clk_fb_out : out std_logic;
+    ddr_clk_fb  : in std_logic;
+    ddr_cke     : out std_logic_vector(1 downto 0);
+    ddr_csb     : out std_logic_vector(1 downto 0);
+    ddr_web     : out std_ulogic;                             -- ddr write enable
+    ddr_rasb    : out std_ulogic;                             -- ddr ras
+    ddr_casb    : out std_ulogic;                             -- ddr cas
+    ddr_dm      : out std_logic_vector (dbits/8-1 downto 0);  -- ddr dm
+    ddr_dqs     : inout std_logic_vector (dbits/8-1 downto 0);-- ddr dqs
+    ddr_ad      : out std_logic_vector (abits-1 downto 0);         -- ddr address
+    ddr_ba      : out std_logic_vector (1+eightbanks downto 0);          -- ddr bank address
+    ddr_dq      : inout  std_logic_vector (dbits-1 downto 0); -- ddr data
+    ddr_odt     : out std_logic_vector(1 downto 0);
+
+    addr        : in  std_logic_vector (abits-1 downto 0);         -- data mask
+    ba          : in  std_logic_vector (2 downto 0);         -- data mask
+    dqin        : out std_logic_vector (dbits*2-1 downto 0);  -- ddr input data
+    dqout       : in  std_logic_vector (dbits*2-1 downto 0);  -- ddr input data
+    dm          : in  std_logic_vector (dbits/4-1 downto 0);  -- data mask
+    oen         : in  std_ulogic;
+    dqs         : in  std_ulogic;
+    dqsoen      : in  std_ulogic;
+    rasn        : in  std_ulogic;
+    casn        : in  std_ulogic;
+    wen         : in  std_ulogic;
+    csn         : in  std_logic_vector(1 downto 0);
+    cke         : in  std_logic_vector(1 downto 0);
+    ck          : in  std_logic_vector(2 downto 0);
+    odt         : in  std_logic_vector(1 downto 0);
+
+    ddr_cbdm   : out std_logic_vector(chkbits/8-1 downto 0);
+    ddr_cbdqs  : inout std_logic_vector(chkbits/8-1 downto 0) := (others => 'Z');
+    ddr_cbdqsn : inout std_logic_vector(chkbits/8-1 downto 0) := (others => 'Z');
+    ddr_cbdq   : inout std_logic_vector(chkbits-1 downto 0) := (others => 'Z');
+    cbdqin     : out std_logic_vector(chkbits*2-1 downto 0);
+    cbdqout    : in std_logic_vector(chkbits*2-1 downto 0) := (others => '0');
+    cbdm       : in std_logic_vector(chkbits/4-1 downto 0) := (others => '1');
+    cbcal_en   : in std_logic_vector(chkbits/8-1 downto 0) := (others => '0');
+    cbcal_inc  : in std_logic_vector(chkbits/8-1 downto 0) := (others => '0')    
+  );
+
+end component;
+
+component n2x_ddr2_phy is
+  generic (
+    MHz        : integer := 100;
+    rstdelay   : integer := 200;
+    dbits      : integer := 16;
+    clk_mul    : integer := 2;
+    clk_div    : integer := 2;
+    norefclk   : integer := 0; 
+    eightbanks : integer  range 0 to 1 := 0;
+    dqsse      : integer range 0 to 1 := 0;
+    abits      : integer := 14;
+    nclk       : integer := 3;
+    ncs        : integer := 2;
+    ctrl2en    : integer := 0);
+  port (
+    rst        : in  std_ulogic;
+    clk        : in  std_logic;        -- input clock
+    clk270d    : in  std_logic;        -- input clock shifted 270 degrees
+                                       -- for operating without PLL
+    clkout     : out std_ulogic;       -- system clock
+    lock       : out std_ulogic;       -- DCM locked
+
+    ddr_clk    : out std_logic_vector(nclk-1 downto 0);
+    ddr_clkb   : out std_logic_vector(nclk-1 downto 0);
+    ddr_cke    : out std_logic_vector(ncs-1 downto 0);
+    ddr_csb    : out std_logic_vector(ncs-1 downto 0);
+    ddr_web    : out std_ulogic;                               -- ddr write enable
+    ddr_rasb   : out std_ulogic;                               -- ddr ras
+    ddr_casb   : out std_ulogic;                               -- ddr cas
+    ddr_dm     : out std_logic_vector (dbits/8-1 downto 0);    -- ddr dm
+    ddr_dqs    : inout std_logic_vector (dbits/8-1 downto 0);  -- ddr dqs
+    ddr_dqsn   : inout std_logic_vector (dbits/8-1 downto 0);  -- ddr dqsn
+    ddr_ad     : out std_logic_vector (abits-1 downto 0);           -- ddr address
+    ddr_ba     : out std_logic_vector (1+eightbanks downto 0); -- ddr bank address
+    ddr_dq     : inout  std_logic_vector (dbits-1 downto 0);   -- ddr data
+    ddr_odt    : out std_logic_vector(ncs-1 downto 0);
+
+    addr       : in  std_logic_vector (abits-1 downto 0);           -- ddr address
+    ba         : in  std_logic_vector ( 2 downto 0);           -- ddr bank address
+    dqin       : out std_logic_vector (dbits*2-1 downto 0);    -- ddr input data
+    dqout      : in  std_logic_vector (dbits*2-1 downto 0);    -- ddr input data
+    dm         : in  std_logic_vector (dbits/4-1 downto 0);    -- data mask
+    oen        : in  std_ulogic;
+    dqs        : in  std_ulogic;
+    dqsoen     : in  std_ulogic;
+    rasn       : in  std_ulogic;
+    casn       : in  std_ulogic;
+    wen        : in  std_ulogic;
+    csn        : in  std_logic_vector(ncs-1 downto 0);
+    cke        : in  std_logic_vector(ncs-1 downto 0);
+    odt        : in  std_logic_vector(ncs-1 downto 0);
+    read_pend  : in  std_logic_vector(7 downto 0);    
+    regwdata   : in  std_logic_vector(63 downto 0);
+    regwrite   : in  std_logic_vector(1 downto 0);
+    regrdata   : out std_logic_vector(63 downto 0);
+
+    -- Copy of control signals for 2nd DIMM
+    ddr_web2    : out std_ulogic;                               -- ddr write enable
+    ddr_rasb2   : out std_ulogic;                               -- ddr ras
+    ddr_casb2   : out std_ulogic;                               -- ddr cas
+    ddr_ad2     : out std_logic_vector (abits-1 downto 0);      -- ddr address
+    ddr_ba2     : out std_logic_vector (1+eightbanks downto 0)  -- ddr bank address        
+  );
+
 end component;
 
 end;

@@ -28,7 +28,10 @@ library ieee;
 library techmap;
 use ieee.std_logic_1164.all;
 use techmap.gencomp.all;
-  
+library grlib;
+use grlib.config.all;
+use grlib.stdlib.all;
+
 entity syncram64 is
   generic (tech : integer := 0; abits : integer := 6; testen : integer := 0);
   port (
@@ -109,6 +112,17 @@ begin
       x0 : smic13_syncram64 generic map (abits)
          port map (clk, address, datain, dataout, enable, write);
     end generate;
+-- pragma translate_off
+    dmsg : if grlib_debug_level >= 2 generate
+      x : process
+      begin
+        assert false report "syncram64: " & tost(2**abits) & "x64" &
+         " (" & tech_table(tech) & ")"
+        severity note;
+        wait;
+      end process;
+    end generate;
+-- pragma translate_on
   end generate;
 
   nos64 : if has_sram64(tech) = 0 generate

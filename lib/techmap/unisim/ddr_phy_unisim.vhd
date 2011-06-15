@@ -1297,11 +1297,16 @@ entity virtex5_ddr2_phy is
            dbits : integer := 16; clk_mul : integer := 2; clk_div : integer := 2;
            ddelayb0 : integer := 0; ddelayb1 : integer := 0; ddelayb2 : integer := 0;
            ddelayb3 : integer := 0; ddelayb4 : integer := 0; ddelayb5 : integer := 0;
-           ddelayb6 : integer := 0; ddelayb7 : integer := 0; 
+           ddelayb6 : integer := 0; ddelayb7 : integer := 0; cbdelayb0 : integer := 0;
+           cbdelayb1 : integer := 0; cbdelayb2: integer := 0; cbdelayb3: integer := 0;
            numidelctrl : integer := 4; norefclk : integer := 0; 
            tech : integer := virtex5; odten : integer := 0;
            eightbanks : integer  range 0 to 1 := 0;
-           dqsse : integer range 0 to 1 := 0);
+           dqsse : integer range 0 to 1 := 0; abits: integer := 14; nclk: integer := 3;
+           ncs: integer := 2;
+           cben : integer := 0;
+           chkbits : integer := 8;
+           ctrl2en : integer := 0);
   port (
     rst        : in  std_ulogic;
     clk        : in  std_logic;        -- input clock
@@ -1309,22 +1314,22 @@ entity virtex5_ddr2_phy is
     clkout     : out std_ulogic;       -- system clock
     lock       : out std_ulogic;       -- DCM locked
 
-    ddr_clk    : out std_logic_vector(2 downto 0);
-    ddr_clkb   : out std_logic_vector(2 downto 0);
-    ddr_cke    : out std_logic_vector(1 downto 0);
-    ddr_csb    : out std_logic_vector(1 downto 0);
+    ddr_clk    : out std_logic_vector(nclk-1 downto 0);
+    ddr_clkb   : out std_logic_vector(nclk-1 downto 0);
+    ddr_cke    : out std_logic_vector(ncs-1 downto 0);
+    ddr_csb    : out std_logic_vector(ncs-1 downto 0);
     ddr_web    : out std_ulogic;                               -- ddr write enable
     ddr_rasb   : out std_ulogic;                               -- ddr ras
     ddr_casb   : out std_ulogic;                               -- ddr cas
     ddr_dm     : out std_logic_vector (dbits/8-1 downto 0);    -- ddr dm
     ddr_dqs    : inout std_logic_vector (dbits/8-1 downto 0);  -- ddr dqs
     ddr_dqsn   : inout std_logic_vector (dbits/8-1 downto 0);  -- ddr dqsn
-    ddr_ad     : out std_logic_vector (13 downto 0);           -- ddr address
+    ddr_ad     : out std_logic_vector (abits-1 downto 0);           -- ddr address
     ddr_ba     : out std_logic_vector (1+eightbanks downto 0); -- ddr bank address
     ddr_dq     : inout  std_logic_vector (dbits-1 downto 0);   -- ddr data
-    ddr_odt    : out std_logic_vector(1 downto 0);
+    ddr_odt    : out std_logic_vector(ncs-1 downto 0);
 
-    addr       : in  std_logic_vector (13 downto 0);           -- ddr address
+    addr       : in  std_logic_vector (abits-1 downto 0);           -- ddr address
     ba         : in  std_logic_vector ( 2 downto 0);           -- ddr bank address
     dqin       : out std_logic_vector (dbits*2-1 downto 0);    -- ddr input data
     dqout      : in  std_logic_vector (dbits*2-1 downto 0);    -- ddr input data
@@ -1335,12 +1340,31 @@ entity virtex5_ddr2_phy is
     rasn       : in  std_ulogic;
     casn       : in  std_ulogic;
     wen        : in  std_ulogic;
-    csn        : in  std_logic_vector(1 downto 0);
-    cke        : in  std_logic_vector(1 downto 0);
+    csn        : in  std_logic_vector(ncs-1 downto 0);
+    cke        : in  std_logic_vector(ncs-1 downto 0);
     cal_en     : in  std_logic_vector(dbits/8-1 downto 0);
     cal_inc    : in  std_logic_vector(dbits/8-1 downto 0);
     cal_rst    : in  std_logic;
-    odt        : in  std_logic_vector(1 downto 0)
+    odt        : in  std_logic_vector(ncs-1 downto 0);
+
+    -- Checkbit signals, memory side
+    ddr_cbdm   : out std_logic_vector(chkbits/8-1 downto 0);
+    ddr_cbdqs  : inout std_logic_vector(chkbits/8-1 downto 0) := (others => 'Z');
+    ddr_cbdqsn : inout std_logic_vector(chkbits/8-1 downto 0) := (others => 'Z');
+    ddr_cbdq   : inout std_logic_vector(chkbits-1 downto 0) := (others => 'Z');
+    -- Checkbit signals, controller side
+    cbdqin     : out std_logic_vector(chkbits*2-1 downto 0);
+    cbdqout    : in std_logic_vector(chkbits*2-1 downto 0) := (others => '0');
+    cbdm       : in std_logic_vector(chkbits/4-1 downto 0) := (others => '1');
+    cbcal_en   : in std_logic_vector(chkbits/8-1 downto 0) := (others => '0');
+    cbcal_inc  : in std_logic_vector(chkbits/8-1 downto 0) := (others => '0');
+
+    -- Copy of control signals for 2nd DIMM
+    ddr_web2    : out std_ulogic;                               -- ddr write enable
+    ddr_rasb2   : out std_ulogic;                               -- ddr ras
+    ddr_casb2   : out std_ulogic;                               -- ddr cas
+    ddr_ad2     : out std_logic_vector (abits-1 downto 0);      -- ddr address
+    ddr_ba2     : out std_logic_vector (1+eightbanks downto 0)  -- ddr bank address        
   );
 
 end;
@@ -1499,12 +1523,14 @@ architecture rtl of virtex5_ddr2_phy is
 --signal vcc, gnd, dqsn, oe, lockl : std_ulogic;
 signal vcc, gnd, oe, lockl : std_ulogic;
 signal dqsn : std_logic_vector(dbits/8-1 downto 0);
+signal cbdqsn : std_logic_vector(dbits/8-1 downto 0);
 
 signal ddr_clk_fb_outr : std_ulogic;
 signal ddr_clk_fbl, fbclk : std_ulogic;
 signal ddr_rasnr, ddr_casnr, ddr_wenr : std_ulogic;
-signal ddr_clkl, ddr_clkbl : std_logic_vector(2 downto 0);
-signal ddr_csnr, ddr_ckenr, ckel : std_logic_vector(1 downto 0);
+signal ddr_rasnr2, ddr_casnr2, ddr_wenr2 : std_ulogic;
+signal ddr_clkl, ddr_clkbl : std_logic_vector(nclk-1 downto 0);
+signal ddr_csnr, ddr_ckenr, ckel : std_logic_vector(ncs-1 downto 0);
 signal clk_0ro, clk_90ro, clk_180ro, clk_270ro : std_ulogic;
 signal clk_0r, clk_90r, clk_180r, clk_270r : std_ulogic;
 signal clk0r, clk90r, clk180r, clk270r : std_ulogic;
@@ -1513,23 +1539,34 @@ signal locked, vlockl, ddrclkfbl, dllfb : std_ulogic;
 signal ddr_dqin, ddr_dqin_nodel : std_logic_vector (dbits-1 downto 0); -- ddr data
 signal ddr_dqout     : std_logic_vector (dbits-1 downto 0);      -- ddr data
 signal ddr_dqoen     : std_logic_vector (dbits-1 downto 0);      -- ddr data
-signal ddr_adr       : std_logic_vector (13 downto 0);           -- ddr address
+signal ddr_cbdqin, ddr_cbdqin_nodel : std_logic_vector (dbits-1 downto 0); -- ddr checkbits
+signal ddr_cbdqout   : std_logic_vector (dbits-1 downto 0);      -- ddr checkbits
+signal ddr_cbdqoen   : std_logic_vector (dbits-1 downto 0);      -- ddr checkbits
+signal ddr_adr       : std_logic_vector (abits-1 downto 0);           -- ddr address
 signal ddr_bar       : std_logic_vector (1+eightbanks downto 0); -- ddr address
-signal ddr_dmr       : std_logic_vector (dbits/8-1 downto 0);    -- ddr address
+signal ddr_adr2      : std_logic_vector (abits-1 downto 0);           -- ddr address
+signal ddr_bar2      : std_logic_vector (1+eightbanks downto 0); -- ddr address
+signal ddr_dmr       : std_logic_vector (dbits/8-1 downto 0);    -- ddr data mask
+signal ddr_cbdmr     : std_logic_vector (dbits/8-1 downto 0);    -- ddr checkbit mask
 signal ddr_dqsin     : std_logic_vector (dbits/8-1 downto 0);    -- ddr dqs
 signal ddr_dqsoen_reg: std_logic_vector (dbits/8-1 downto 0);    -- ddr dqs reg
 signal ddr_dqsoen    : std_logic_vector (dbits/8-1 downto 0);    -- ddr dqs
 signal ddr_dqsoutl   : std_logic_vector (dbits/8-1 downto 0);    -- ddr dqs
+signal ddr_cbdqsin     : std_logic_vector (dbits/8-1 downto 0);    -- ddr dqs
+signal ddr_cbdqsoen_reg: std_logic_vector (dbits/8-1 downto 0);    -- ddr dqs reg
+signal ddr_cbdqsoen    : std_logic_vector (dbits/8-1 downto 0);    -- ddr dqs
+signal ddr_cbdqsoutl   : std_logic_vector (dbits/8-1 downto 0);    -- ddr dqs
 signal dqsdel, dqsclk, dqsclkn : std_logic_vector (dbits/8-1 downto 0);    -- ddr dqs
 signal da            : std_logic_vector (dbits-1 downto 0); -- ddr data
 signal dqinl         : std_logic_vector (dbits-1 downto 0); -- ddr data
+signal cbdqinl         : std_logic_vector (chkbits-1 downto 0); -- ddr data
 signal dllrst        : std_logic_vector(0 to 3);
 signal dll0rst, dll2rst : std_logic_vector(0 to 3);
 signal mlock, mclkfb, mclk, mclkfx, mclk0 : std_ulogic;
 signal rclk270b, rclk90b, rclk0b : std_ulogic;
 signal rclk270, rclk90, rclk0 : std_ulogic;
 signal clk200, clk200_0, clk200fb, clk200fx, lock200 : std_logic;
-signal odtl : std_logic_vector(1 downto 0);
+signal odtl : std_logic_vector(ncs-1 downto 0);
 signal refclk_rdy : std_logic_vector(numidelctrl-1 downto 0);
 
 constant DDR_FREQ : integer := (MHz * clk_mul) / clk_div;
@@ -1538,6 +1575,7 @@ type ddelay_type is array (0 to 7) of integer;
 constant ddelay : ddelay_type := (ddelayb0, ddelayb1, ddelayb2,
                                   ddelayb3, ddelayb4, ddelayb5,
                                   ddelayb6, ddelayb7);
+constant cbdelay : ddelay_type := (cbdelayb0, cbdelayb1, cbdelayb2, cbdelayb3, 0,0,0,0);
 
 attribute syn_noprune : boolean;
 attribute syn_noprune of IDELAYCTRL : component is true;
@@ -1725,7 +1763,7 @@ begin
   lock <= locked and orv(refclk_rdy);
 
   -- Generate external DDR clock
-  ddrclocks : for i in 0 to 2 generate
+  ddrclocks : for i in 0 to nclk-1 generate
     dclk0r : ODDR port map ( Q => ddr_clkl(i), C => clk90r, CE => vcc,
                              D1 => vcc, D2 => gnd, R => gnd, S => gnd);
     ddrclk_pad : outpad generic map (tech => virtex5, level => sstl18_i) 
@@ -1740,13 +1778,13 @@ begin
   end generate;
 
   -- ODT pads
-  odtgen : for i in 0 to 1 generate
+  odtgen : for i in 0 to ncs-1 generate
     odtl(i) <= locked and orv(refclk_rdy) and odt(i);
     ddr_odt_pad  : outpad generic map (tech => virtex5, level => sstl18_i)
       port map (ddr_odt(i), odtl(i));
   end generate;
 
-  ddrbanks : for i in 0 to 1 generate
+  ddrbanks : for i in 0 to ncs-1 generate
     csn0gen : ODDR  generic map (DDR_CLK_EDGE => "SAME_EDGE")
       port map ( Q => ddr_csnr(i), C => clk180r, CE => vcc,
                  D1 => csn(i), D2 => csn(i), R => gnd, S => gnd);
@@ -1787,6 +1825,16 @@ begin
       port map (ddr_dm(i), ddr_dmr(i));
   end generate;
 
+  cbdmgen: if cben/=0 generate
+    g0: for i in 0 to chkbits/8-1 generate
+      da0 : ODDR generic map (DDR_CLK_EDGE => "SAME_EDGE")
+        port map ( Q => ddr_cbdmr(i), C => clk0r, CE => vcc,
+                   D1 => cbdm(i+chkbits/8), D2 => cbdm(i), R => gnd, S => gnd);
+      ddr_bm_pad  : outpad generic map (tech => virtex5, level => sstl18_i) 
+        port map (ddr_cbdm(i), ddr_cbdmr(i));
+    end generate;
+  end generate;
+  
   bagen : for i in 0 to 1+eightbanks generate
     da0 : ODDR generic map (DDR_CLK_EDGE => "SAME_EDGE")
       port map ( Q => ddr_bar(i), C => clk180r, CE => vcc,
@@ -1795,7 +1843,7 @@ begin
       port map (ddr_ba(i), ddr_bar(i));
   end generate;
 
-  dagen : for i in 0 to 13 generate
+  dagen : for i in 0 to abits-1 generate
     da0 : ODDR generic map (DDR_CLK_EDGE => "SAME_EDGE")
       port map ( Q => ddr_adr(i), C => clk180r, CE => vcc,
                  D1 => addr(i), D2 => addr(i), R => gnd, S => gnd);
@@ -1833,6 +1881,29 @@ begin
 --    dqsclkn(i) <= not dqsclk(i);
   end generate;
 
+  cbdqsgen: if cben /= 0 generate
+    g1: for i in 0 to chkbits/8-1 generate
+      dsqreg : FD port map ( Q => cbdqsn(i), C => clk180r, D => oe);
+      da0 : ODDR generic map (DDR_CLK_EDGE => "SAME_EDGE")
+        port map ( Q => ddr_cbdqsin(i), C => clk90r, CE => vcc,
+                   D1 => cbdqsn(i), D2 => gnd, R => gnd, S => gnd);
+      doen_reg : FD port map ( Q => ddr_cbdqsoen_reg(i), C => clk180r, D => dqsoen);
+      doen : FD port map ( Q => ddr_cbdqsoen(i), C => clk90r, D => ddr_cbdqsoen_reg(i));
+      
+      diffdqs : if dqsse = 0 generate
+        dqs_pad : iopad_ds generic map (tech => virtex5, level => sstl18_ii)
+          port map (padp => ddr_cbdqs(i), padn => ddr_cbdqsn(i),i => ddr_cbdqsin(i), 
+                    en => ddr_cbdqsoen(i), o => ddr_cbdqsoutl(i));
+      end generate;
+      
+      sedqs : if dqsse /= 0 generate
+        dqs_pad : iopad generic map (tech => virtex5, level => sstl18_ii)
+          port map (pad => ddr_cbdqs(i), i => ddr_cbdqsin(i), 
+                    en => ddr_cbdqsoen(i), o => ddr_cbdqsoutl(i));
+      end generate;
+    end generate;
+  end generate;
+  
   -- Data bus
     ddgen : for i in 0 to dbits-1 generate
       del_dq0 : IDELAY generic map(IOBDELAY_TYPE => "VARIABLE", IOBDELAY_VALUE => ddelay(i/8))
@@ -1863,11 +1934,87 @@ begin
       dout : ODDR generic map (DDR_CLK_EDGE => "SAME_EDGE")
         port map ( Q => ddr_dqout(i), C => clk0r, CE => vcc,
                    D1 => dqout(i+dbits), D2 => dqout(i), R => gnd, S => gnd);
-      doen : FD port map ( Q => ddr_dqoen(i), C => clk0r, D => oen);
+      doen : FD
+        generic map (INIT => '1')
+        port map ( Q => ddr_dqoen(i), C => clk0r, D => oen);
 
       dq_pad : iopad generic map (tech => virtex5, level => sstl18_ii)
          port map (pad => ddr_dq(i), i => ddr_dqout(i), en => ddr_dqoen(i), o => ddr_dqin_nodel(i)); --o => ddr_dqin(i)); 
     end generate;
+
+  cbdgen : if cben /= 0 generate
+    g2: for i in 0 to chkbits-1 generate
+      del_dq0 : IDELAY generic map(IOBDELAY_TYPE => "VARIABLE", IOBDELAY_VALUE => cbdelay(i/8))
+        port map(O => ddr_cbdqin(i), I => ddr_cbdqin_nodel(i), C => clk0r, CE => cbcal_en(i/8),
+                 INC => cbcal_inc(i/8), RST => cal_rst);
+      
+      qi : IDDR generic map (DDR_CLK_EDGE => "OPPOSITE_EDGE")
+      port map ( Q1 => cbdqinl(i),   --(i+dbits), -- 1-bit output for positive edge of clock 
+                 Q2 => cbdqin(i),    --dqin(i), -- 1-bit output for negative edge of clock 
+                 C => clk180r,     --clk270r, --dqsclk((2*i)/dbits), -- 1-bit clock input 
+                 CE => vcc,        -- 1-bit clock enable input 
+                 D => ddr_cbdqin(i), -- 1-bit DDR data input 
+                 R => gnd,         -- 1-bit reset 
+                 S => gnd          -- 1-bit set 
+               );
+      dinq1 : FD port map ( Q => cbdqin(i+chkbits), C => clk0r, D => cbdqinl(i));
+
+      dout : ODDR generic map (DDR_CLK_EDGE => "SAME_EDGE")
+        port map ( Q => ddr_cbdqout(i), C => clk0r, CE => vcc,
+                   D1 => cbdqout(i+chkbits), D2 => cbdqout(i), R => gnd, S => gnd);
+      doen : FD
+        generic map (INIT => '1')
+        port map ( Q => ddr_cbdqoen(i), C => clk0r, D => oen);
+
+      dq_pad : iopad generic map (tech => virtex5, level => sstl18_ii)
+         port map (pad => ddr_cbdq(i), i => ddr_cbdqout(i), en => ddr_cbdqoen(i), o => ddr_cbdqin_nodel(i));
+    end generate;
+    
+  end generate;
+
+  ctrl2gen: if ctrl2en /= 0 generate
+        
+    rasgen : ODDR  generic map (DDR_CLK_EDGE => "SAME_EDGE")
+      port map ( Q => ddr_rasnr2, C => clk180r, CE => vcc,
+                 D1 => rasn, D2 => rasn, R => gnd, S => gnd);
+    rasn_pad : outpad generic map (tech => virtex5, level => sstl18_i) 
+      port map (ddr_rasb2, ddr_rasnr2);
+    
+    casgen : ODDR  generic map (DDR_CLK_EDGE => "SAME_EDGE")
+      port map ( Q => ddr_casnr2, C => clk180r, CE => vcc,
+                   D1 => casn, D2 => casn, R => gnd, S => gnd);
+    casn_pad : outpad generic map (tech => virtex5, level => sstl18_i) 
+      port map (ddr_casb2, ddr_casnr2);
+    
+    wengen : ODDR  generic map (DDR_CLK_EDGE => "SAME_EDGE")
+      port map ( Q => ddr_wenr2, C => clk180r, CE => vcc,
+                 D1 => wen, D2 => wen, R => gnd, S => gnd);
+    wen_pad : outpad generic map (tech => virtex5, level => sstl18_i) 
+      port map (ddr_web2, ddr_wenr2);
+
+    bagen : for i in 0 to 1+eightbanks generate
+      da0 : ODDR generic map (DDR_CLK_EDGE => "SAME_EDGE")
+        port map ( Q => ddr_bar2(i), C => clk180r, CE => vcc,
+                   D1 => ba(i), D2 => ba(i), R => gnd, S => gnd);
+      ddr_ba_pad  : outpad generic map (tech => virtex5, level => sstl18_i)
+        port map (ddr_ba2(i), ddr_bar2(i));
+    end generate;
+    
+    dagen : for i in 0 to abits-1 generate
+      da0 : ODDR generic map (DDR_CLK_EDGE => "SAME_EDGE")
+        port map ( Q => ddr_adr2(i), C => clk180r, CE => vcc,
+                   D1 => addr(i), D2 => addr(i), R => gnd, S => gnd);
+      ddr_ad_pad  : outpad generic map (tech => virtex5, level => sstl18_i) 
+        port map (ddr_ad2(i), ddr_adr2(i));
+    end generate;
+    
+  end generate;
+
+  ctrl2ngen: if ctrl2en = 0 generate
+    ddr_web2 <= '0'; ddr_rasb2 <= '0'; ddr_casb2 <= '0';
+    ddr_ad2 <= (others => '0'); ddr_ba2 <= (others => '0');
+  end generate;
+  
 end;
 
 

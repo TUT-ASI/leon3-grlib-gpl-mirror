@@ -1,7 +1,7 @@
 /*
  * GRLIB system test software for GRIOMMU core
  *
- * Copyright (c) 2010 Aeroflex Gaisler
+ * Copyright (c) 2010-2011 Aeroflex Gaisler AB
  *
  */
 
@@ -14,13 +14,15 @@ struct griommu_reg {
         volatile unsigned int mask;        /* 0x1C */
         volatile unsigned int fail;        /* 0x20 */
         volatile unsigned int dummy1[7];   /* 0x24 - 0x3C */
-        volatile unsigned int mstgrp[16];  /* 0x40 - 0x7C */
+        volatile unsigned int mstcfg[16];  /* 0x40 - 0x7C */
         volatile unsigned int grpctrl[16]; /* 0x80-0xBC */
         volatile unsigned int diaga;       /* 0xC0 */
         volatile unsigned int diagd[8];    /* 0xC4 - 0xE0 */
         volatile unsigned int diagt;       /* 0xE4 */
         volatile unsigned int derri;       /* 0xE8 */
         volatile unsigned int terri;       /* 0xEC */
+        volatile unsigned int dummy2[4];   /* 0xF0 - 0xFC */
+        volatile unsigned int asmpacc[15]; /* 0x100 - 0x138 */
 };
 
 /*
@@ -32,12 +34,15 @@ struct griommu_reg {
 #define GRIOMMU_CAP0_AC      (1 << 30)
 #define GRIOMMU_CAP0_CA      (1 << 29)
 #define GRIOMMU_CAP0_CP      (1 << 28)
+#define GRIOMMU_CAP0_NARB    20
+#define GRIOMMU_CAP0_CS      19
 #define GRIOMMU_CAP0_FT      17
 #define GRIOMMU_CAP0_ST      (1 << 16)
 #define GRIOMMU_CAP0_I       (1 << 15)
 #define GRIOMMU_CAP0_IT      (1 << 14)
 #define GRIOMMU_CAP0_IA      (1 << 13)
 #define GRIOMMU_CAP0_IP      (1 << 12)
+#define GRIOMMU_CAP0_MB      (1 << 8)
 #define GRIOMMU_CAP0_GRPS    4
 #define GRIOMMU_CAP0_MSTS    0
 
@@ -57,6 +62,8 @@ struct griommu_reg {
 #define GRIOMMU_CAP2_TLBENT  0
 
 /* Control register */
+#define GRIOMMU_CTRL_PGSZ    18
+#define GRIOMMU_CTRL_LB      (1 << 17)
 #define GRIOMMU_CTRL_SP      (1 << 16)
 #define GRIOMMU_CTRL_ITR     12
 #define GRIOMMU_CTRL_DP      (1 << 11)
@@ -96,8 +103,7 @@ struct griommu_reg {
 #define GRIOMMU_FAIL_FMASTER 0
 
 /* Group control register(s) */
-#define GRIOMMU_GRPCTRL_BASE_APV  17
-#define GRIOMMU_GRPCTRL_BASE_IOMMU  14
+#define GRIOMMU_GRPCTRL_BASE  2
 #define GRIOMMU_GRPCTRL_P     (1 << 1)
 #define GRIOMMU_GRPCTRL_AG    (1 << 0)
 
@@ -106,6 +112,13 @@ struct griommu_reg {
 #define GRIOMMU_DIAGA_RW      (1 << 30)
 #define GRIOMMU_DIAGA_DP      (1 << 21)
 #define GRIOMMU_DIAGA_TP      (1 << 20)
+
+
+/* ASMP Register Block access control register */
+#define GRIOMMU_ASMPCC_FC     (1 << 18)
+#define GRIOMMU_ASMPCC_SC     (1 << 17)
+#define GRIOMMU_ASMPCC_MC     (1 << 16)
+#define GRIOMMU_ASMPCC_GRP    0
 
 
 int griommu_flush(unsigned int addr);

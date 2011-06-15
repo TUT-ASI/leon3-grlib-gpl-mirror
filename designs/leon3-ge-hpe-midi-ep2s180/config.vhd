@@ -2,21 +2,9 @@
 
 
 
-
-
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
--- Copyright (C) 2004 Jiri Gaisler, Gaisler Research
---
--- This program is free software; you can redistribute it and/or modify
--- it under the terms of the GNU General Public License as published by
--- the Free Software Foundation; either version 2 of the License, or
--- (at your option) any later version.
---
--- This program is distributed in the hope that it will be useful,
--- but WITHOUT ANY WARRANTY; without even the implied warranty of
--- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
--- GNU General Public License for more details.
+-- Copyright (C) 2009 Aeroflex Gaisler
 ------------------------------------------------------------------------------
 
 
@@ -69,7 +57,9 @@ package config is
   constant CFG_CLKTECH : integer := stratix2;
   constant CFG_CLKMUL : integer := (4);
   constant CFG_CLKDIV : integer := (4);
-  constant CFG_OCLKDIV : integer := 2;
+  constant CFG_OCLKDIV : integer := 1;
+  constant CFG_OCLKBDIV : integer := 0;
+  constant CFG_OCLKCDIV : integer := 0;
   constant CFG_PCIDLL : integer := 0;
   constant CFG_PCISYSCLK: integer := 0;
   constant CFG_CLK_NOFB : integer := 0;
@@ -77,11 +67,13 @@ package config is
   constant CFG_LEON3 : integer := 1;
   constant CFG_NCPU : integer := (1);
   constant CFG_NWIN : integer := (8);
-  constant CFG_V8 : integer := 2;
+  constant CFG_V8 : integer := 2 + 4*0;
   constant CFG_MAC : integer := 0;
+  constant CFG_BP : integer := 0;
   constant CFG_SVT : integer := 1;
   constant CFG_RSTADDR : integer := 16#00000#;
   constant CFG_LDDEL : integer := (1);
+  constant CFG_NOTAG : integer := 0;
   constant CFG_NWP : integer := (2);
   constant CFG_PWD : integer := 0*2;
   constant CFG_FPU : integer := 0 + 16*0;
@@ -111,6 +103,7 @@ package config is
   constant CFG_DTLBNUM : integer := 8;
   constant CFG_TLB_TYPE : integer := 0 + 1*2;
   constant CFG_TLB_REP : integer := 0;
+  constant CFG_MMU_PAGE : integer := 0;
   constant CFG_DSU : integer := 1;
   constant CFG_ITBSZ : integer := 2;
   constant CFG_ATBSZ : integer := 2;
@@ -132,12 +125,13 @@ package config is
   constant CFG_AHB_MON : integer := 0;
   constant CFG_AHB_MONERR : integer := 0;
   constant CFG_AHB_MONWAR : integer := 0;
+  constant CFG_AHB_DTRACE : integer := 0;
 -- DSU UART
   constant CFG_AHB_UART : integer := 1;
 -- JTAG based DSU interface
   constant CFG_AHB_JTAG : integer := 1;
 -- Ethernet DSU
-  constant CFG_DSU_ETH : integer := 1 + 0;
+  constant CFG_DSU_ETH : integer := 1 + 0 + 0;
   constant CFG_ETH_BUF : integer := 2;
   constant CFG_ETH_IPM : integer := 16#C0A8#;
   constant CFG_ETH_IPL : integer := 16#0034#;
@@ -195,9 +189,17 @@ package config is
   constant CFG_CANFT : integer := 0;
 -- SPI controller
   constant CFG_SPICTRL_ENABLE : integer := 0;
+  constant CFG_SPICTRL_NUM : integer := 1;
   constant CFG_SPICTRL_SLVS : integer := 1;
   constant CFG_SPICTRL_FIFO : integer := 1;
   constant CFG_SPICTRL_SLVREG : integer := 0;
+  constant CFG_SPICTRL_ODMODE : integer := 0;
+  constant CFG_SPICTRL_AM : integer := 0;
+  constant CFG_SPICTRL_ASEL : integer := 0;
+  constant CFG_SPICTRL_TWEN : integer := 0;
+  constant CFG_SPICTRL_MAXWLEN : integer := 0;
+  constant CFG_SPICTRL_SYNCRAM : integer := 0;
+  constant CFG_SPICTRL_FT : integer := 0;
 -- UART 1
   constant CFG_UART1_ENABLE : integer := 1;
   constant CFG_UART1_FIFO : integer := 4;

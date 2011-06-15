@@ -53,21 +53,26 @@ entity ddr2spax_ddr is
       dqsgating  : integer := 0;
       eightbanks : integer range 0 to 1 := 0; -- Set to 1 if 8 banks instead of 4
       dqsse      : integer range 0 to 1 := 0;  -- single ended DQS
-      ddr_syncrst: integer range 0 to 1 := 0
+      ddr_syncrst: integer range 0 to 1 := 0;
+      chkbits     : integer := 0;
+      bigmem     : integer range 0 to 1 := 0;
+      raspipe    : integer range 0 to 1 := 0;
+      hwidthen   : integer range 0 to 1 := 0
    );
    port (
-      rst     : in  std_ulogic;
-      clk_ddr : in  std_ulogic;
-      request  : in ddr_request_type;
-      start_tog: in std_logic;
+      ddr_rst  : in  std_ulogic;
+      clk_ddr  : in  std_ulogic;
+      request  : in  ddr_request_type;
+      start_tog: in  std_logic;
       done_tog : out std_logic;
       sdi      : in  sdctrl_in_type;
       sdo      : out sdctrl_out_type;
       wbraddr  : out std_logic_vector(log2((16*burstlen)/ddrbits) downto 0);
-      wbrdata  : in std_logic_vector(2*ddrbits-1 downto 0);
+      wbrdata  : in  std_logic_vector(2*(ddrbits+chkbits)-1 downto 0);
       rbwaddr  : out std_logic_vector(log2((16*burstlen)/ddrbits)-1 downto 0);
-      rbwdata  : out std_logic_vector(2*ddrbits-1 downto 0);
-      rbwrite  : out std_logic
+      rbwdata  : out std_logic_vector(2*(ddrbits+chkbits)-1 downto 0);
+      rbwrite  : out std_logic;
+      hwidth   : in std_ulogic
    );  
 end ddr2spax_ddr;
 
@@ -89,7 +94,7 @@ architecture rtl of ddr2spax_ddr is
     return r;
   end zerov;
 
-  constant l2blen: integer := log2(burstlen*32);
+  constant l2blen: integer := log2(burstlen)+log2(32);
   constant l2ddrw: integer := log2(ddrbits*2);
   
   constant oepols: std_logic := tosl(oepol);
@@ -100,13 +105,13 @@ architecture rtl of ddr2spax_ddr is
   constant wbuf_rdbits: integer := 2*ddrbits;
   -- Read buffer dimensions
   constant rbuf_wabits: integer := l2blen-l2ddrw; -- log2((burstlen*32)/(2*ddrbits));
-  constant rbuf_wdbits: integer := 2*ddrbits;
+  constant rbuf_wdbits: integer := 2*(ddrbits+chkbits);
   
   -- sdram configuration register
   type sdram_cfg_type is record
     command    : std_logic_vector(2 downto 0);
     csize      : std_logic_vector(1 downto 0);
-    bsize      : std_logic_vector(2 downto 0);
+    bsize      : std_logic_vector(3 downto 0);
     trcd       : std_logic_vector(2 downto 0);  -- tRCD : 2-9 clock cycles
     trfc       : std_logic_vector(7 downto 0);
     trp        : std_logic_vector(2 downto 0);  -- precharge to activate: 2-9 clock cycles
@@ -117,9 +122,11 @@ architecture rtl of ddr2spax_ddr is
     cke        : std_ulogic;
     cal_en     : std_logic_vector(7 downto 0);
     cal_inc    : std_logic_vector(7 downto 0);
+    cbcal_en   : std_logic_vector(3 downto 0);
+    cbcal_inc  : std_logic_vector(3 downto 0);    
     cal_pll    : std_logic_vector(1 downto 0);  -- *** ??? pll_reconf
     cal_rst    : std_logic;
-    readdly    : std_logic_vector(1 downto 0);
+    readdly    : std_logic_vector(3 downto 0);
     twr        : std_logic_vector(4 downto 0);
     emr        : std_logic_vector(1 downto 0); -- selects EM register
     ocd        : std_ulogic; -- enable/disable ocd
@@ -141,7 +148,9 @@ architecture rtl of ddr2spax_ddr is
     s             : ddrstate;
     cmds          : ddrcmdstate;
     done_tog      : std_logic;
+    done_tog_prev : std_logic;
     cfg           : sdram_cfg_type;
+    rowsel        : std_logic_vector(2 downto 0);
     endaddr       : std_logic_vector(l2blen-4 downto 2);
     addrlo        : std_logic_vector(l2ddrw-4 downto 0);
     col           : std_logic_vector(13 downto 0);
@@ -149,6 +158,7 @@ architecture rtl of ddr2spax_ddr is
     hsize         : std_logic_vector(2 downto 0);
     ctr           : std_logic_vector(7 downto 0);
     casctr        : std_logic_vector(l2ddr_burstlen-1 downto 0);
+    datacas       : std_logic;
     prectr        : std_logic_vector(5 downto 0);
     rastimer      : std_logic_vector(4 downto 0);
     tras_met      : std_logic;
@@ -160,36 +170,68 @@ architecture rtl of ddr2spax_ddr is
     sdo_wen       : std_ulogic;
     wen_prev      : std_ulogic;
     sdo_rasn      : std_ulogic;
+    rasn_pre      : std_ulogic;
     sdo_casn      : std_ulogic;
     sdo_dqm       : std_logic_vector(15 downto 0);
     dqm_prev      : std_logic_vector(15 downto 0);
     twr_plus_cl   : std_logic_vector(5 downto 0);
+    request_row   : std_logic_vector(14 downto 0);
+    request_bank  : std_logic_vector(2 downto 0);
+    request_cs    : std_logic_vector(0 downto 0);
     row           : std_logic_vector(14 downto 0);
+    setrow        : std_logic;
     samerow       : std_logic;
     start_tog_prev: std_logic;
     sdo_bdrive    : std_ulogic;
     sdo_qdrive    : std_ulogic;
     sdo_address   : std_logic_vector(14 downto 0);
+    sdo_address_prev: std_logic_vector(14 downto 0);
     sdo_ba        : std_logic_vector(2 downto 0);
-    sdo_data      : std_logic_vector(127 downto 0);
+    sdo_data      : std_logic_vector(sdo.data'length-1 downto 0);
+    sdo_cb        : std_logic_vector(sdo.cb'length-1 downto 0);
     sdo_odt       : std_logic;
     sdo_oct       : std_logic;
     rbwrite       : std_logic;
     rbwdata       : std_logic_vector(rbuf_wdbits-1 downto 0);
     ramaddr       : std_logic_vector(rbuf_wabits-1 downto 0);
     ramaddr_prev  : std_logic_vector(rbuf_wabits-1 downto 0);
+    mr_twr        : std_logic_vector(2 downto 0);
+    mr_tcl        : std_logic_vector(2 downto 0);
+    read_pend     : std_logic_vector(15 downto 0);
     req1,req2     : ddr_request_type;
     start1,start2 : std_logic;
+    hwidth1       : std_logic;
+    hwidth        : std_logic;    
+    hwcas         : std_logic;
+    hwctr         : std_logic;
   end record;
 
   signal dr,ndr    : ddr_reg_type;
 
-  signal ddr_rst: std_logic;
-  signal ddr_rst_gen: std_logic_vector(3 downto 0);
+  signal muxsel2,muxsel1,muxsel0: std_ulogic;
+  signal muxin4: std_logic_vector(31 downto 0);
+  signal muxout4: std_logic_vector(3 downto 0);
 
+  attribute syn_keep: boolean;
+  attribute syn_keep of muxsel2:signal is true;
+  attribute syn_keep of muxsel1:signal is true;
+  attribute syn_keep of muxsel0:signal is true;
+  
 begin
 
-  ddrcomb : process(ddr_rst,sdi,request,start_tog,dr,wbrdata)
+  muxsel2 <= dr.rowsel(2);
+  muxsel1 <= dr.rowsel(1);
+  muxsel0 <= dr.rowsel(0);
+  
+  muxproc : process(muxin4,muxsel2,muxsel1,muxsel0)
+  begin
+    muxout4(3) <= genmux((muxsel2 & muxsel1 & muxsel0),muxin4(31 downto 24));
+    muxout4(2) <= genmux((muxsel2 & muxsel1 & muxsel0),muxin4(23 downto 16));
+    muxout4(1) <= genmux((muxsel2 & muxsel1 & muxsel0),muxin4(15 downto 8));
+    muxout4(0) <= genmux((muxsel2 & muxsel1 & muxsel0),muxin4(7 downto 0));
+  end process;
+  
+  ddrcomb : process(ddr_rst,sdi,request,start_tog,dr,wbrdata,muxout4,hwidth)
     constant plmemwrite: boolean := false;
     constant plmemread: boolean := false;
     
@@ -214,6 +256,7 @@ begin
     variable regsd3   : std_logic_vector(31 downto 0);   -- data from registers
     variable regsd4   : std_logic_vector(31 downto 0);   -- data from registers
     variable regsd5   : std_logic_vector(31 downto 0);   -- data from registers
+    variable mr       : std_logic_vector(14 downto 0);  -- DDR2 Mode register
     variable mask: std_logic_vector(15 downto 0);
     variable hio1: std_logic;
     variable w5: std_logic;
@@ -221,21 +264,26 @@ begin
     variable precharge_notras: std_logic;
     variable goto_caslat: std_logic;
     variable block_precharge: std_logic;
+    variable regt0,regt1: std_logic_vector(ddrbits-1 downto 0);
+    variable addrtemp3,addrtemp2,addrtemp1,addrtemp0: std_logic_vector(7 downto 0);
+    variable expcsize: std_logic_vector(2 downto 0);
   begin
     
     
-    dv := dr;
+    dv := dr;    
     o := (sdcke => (others => dr.cfg.cke),       sdcsn => dr.sdo_csn,       sdwen => dr.wen_prev,
-          rasn => dr.sdo_rasn,       casn => dr.sdo_casn,       dqm => dr.dqm_prev,
+          rasn => dr.sdo_rasn and dr.rasn_pre,   casn => dr.sdo_casn and dr.datacas, dqm => dr.dqm_prev,
           bdrive => dr.sdo_bdrive,   qdrive => dr.sdo_qdrive,
           address => dr.sdo_address, data => dr.sdo_data,       ba => dr.sdo_ba,
           cal_en => dr.cfg.cal_en,   cal_inc => dr.cfg.cal_inc, cal_pll => dr.cfg.cal_pll,
-          cal_rst => dr.cfg.cal_rst, odt => (others => dr.sdo_odt),         dqs_gate => '0',
-          oct => dr.sdo_oct,
+          cal_rst => dr.cfg.cal_rst, odt => (others => dr.sdo_odt),
+          oct => dr.sdo_oct,         cb => dr.sdo_cb,           cbdqm => (others => '0'),
+          cbcal_en => dr.cfg.cbcal_en, cbcal_inc => dr.cfg.cbcal_inc,
+          regwdata => (others => '0'), regwrite => "00",
           -- Unused elements
-          vbdrive => (others => '0'), cb => (others => '0'), ce => '0',
+          vbdrive => (others => '0'), ce => '0',
           sdck => "000", moben => '0', conf => (others => '0'),
-          vcbdrive => (others => '0'));    
+          vcbdrive => (others => '0'), read_pend => dr.read_pend(7 downto 0));
     rbw  := dr.rbwrite;
     rbwd := dr.rbwdata;
     rbwa := (others => '0');
@@ -245,17 +293,66 @@ begin
     dv.ramaddr_prev := dr.ramaddr;
     dv.dqm_prev := dr.sdo_dqm;
     dv.wen_prev := dr.sdo_wen;
-
+    dv.done_tog_prev := dr.done_tog;
+    dv.sdo_address_prev := dr.sdo_address;
+    
     dv.cfg.cal_en := (others => '0');
     dv.cfg.cal_inc := (others => '0');
     dv.cfg.cal_pll := (others => '0');
     dv.cfg.cal_rst := '0';
+    dv.cfg.cbcal_en := (others => '0');
+    dv.cfg.cbcal_inc := (others => '0');
     
     dv.sdo_data := (others => '0');
-    dv.sdo_data(2*ddrbits-1 downto 0) := wbrdata;
+    dv.sdo_data(2*ddrbits-1 downto ddrbits) := wbrdata(2*ddrbits+chkbits-1 downto ddrbits+chkbits);
+    dv.sdo_data(ddrbits-1 downto 0) := wbrdata(ddrbits-1 downto 0);
 
-    dv.rbwdata := sdi.data(2*ddrbits-1 downto 0);
-                  
+    dv.sdo_cb := (others => '0');
+    if chkbits > 0 then
+      dv.sdo_cb(2*chkbits-1 downto chkbits) := wbrdata(2*ddrbits+2*chkbits-1 downto 2*ddrbits+chkbits);
+      dv.sdo_cb(chkbits-1 downto 0) := wbrdata(ddrbits+chkbits-1 downto ddrbits);
+    end if;
+    
+    if hwidthen/=0 and dr.hwidth='1' and dr.hwctr='1' then
+      dv.sdo_data(ddrbits-1 downto 0) := dr.sdo_data(2*ddrbits-1 downto ddrbits);
+      if chkbits > 0 then
+        dv.sdo_cb(chkbits-1 downto 0) := dr.sdo_cb(2*chkbits-1 downto chkbits);
+      end if;
+    end if;
+
+    dv.rbwdata(2*ddrbits+chkbits-1 downto ddrbits+chkbits) := sdi.data(2*ddrbits-1 downto ddrbits);
+    dv.rbwdata(ddrbits-1 downto 0) := sdi.data(ddrbits-1 downto 0);
+    if chkbits > 0 then
+      dv.rbwdata(2*ddrbits+2*chkbits-1 downto 2*ddrbits+chkbits) := sdi.cb(2*chkbits-1 downto chkbits);
+      dv.rbwdata(ddrbits+chkbits-1 downto ddrbits) := sdi.cb(chkbits-1 downto 0);
+    end if;
+
+    -- Half-width input data muxing
+    if hwidthen/=0 and dr.hwidth='1' and dr.hwctr='1' then      
+      dv.rbwdata(2*ddrbits+chkbits-1 downto 2*ddrbits+chkbits-ddrbits/2) :=
+        dr.rbwdata(2*ddrbits+chkbits-ddrbits/2-1 downto ddrbits+chkbits);      
+      dv.rbwdata(2*ddrbits+chkbits-ddrbits/2-1 downto ddrbits+chkbits) :=
+        dr.rbwdata(ddrbits/2-1 downto 0);      
+      dv.rbwdata(ddrbits-1 downto ddrbits/2) :=
+        sdi.data(ddrbits+ddrbits/2-1 downto ddrbits);
+
+      if chkbits > 0 then
+        dv.rbwdata(2*ddrbits+2*chkbits-1 downto 2*ddrbits+2*chkbits-chkbits/2) :=
+          dr.rbwdata(2*ddrbits+2*chkbits-chkbits/2-1 downto 2*ddrbits+chkbits);
+        dv.rbwdata(2*ddrbits+2*chkbits-chkbits/2-1 downto 2*ddrbits+chkbits) :=
+          dr.rbwdata(ddrbits+chkbits/2-1 downto ddrbits);
+        dv.rbwdata(ddrbits+chkbits-1 downto ddrbits+chkbits/2) :=
+          sdi.cb(chkbits+chkbits/2-1 downto chkbits);
+      end if;
+      
+    end if;
+
+    -- hwidth input should be constant but sample it for robustness
+    -- then sample in one more stage to allow replication if necessary
+    dv.hwidth1 := hwidth;
+    dv.hwidth := dr.hwidth1;
+    if hwidthen=0 then dv.hwidth:='0'; end if;
+    
     -- Synchronize 1/2 stages
     dv.req1 := request; dv.req2 := dr.req1;
     dv.start1 := start_tog; dv.start2 := dr.start1;
@@ -266,16 +363,21 @@ begin
     dv.start_tog_prev := vstart;
 
     regsd1 := (others => '0');
-    regsd1(31 downto 15) := dr.cfg.refon & dr.cfg.ocd & dr.cfg.emr & '0' & dr.cfg.trcd(0) &
-                            dr.cfg.bsize & dr.cfg.csize & dr.cfg.command &
+    regsd1(31 downto 15) := dr.cfg.refon & dr.cfg.ocd & dr.cfg.emr & dr.cfg.bsize(3) & dr.cfg.trcd(0) &
+                            dr.cfg.bsize(2 downto 0) & dr.cfg.csize & dr.cfg.command &
                             dr.cfg.dllrst & dr.cfg.renable & dr.cfg.cke;
     regsd1(11 downto 0) := dr.cfg.refresh;
-    regsd2 := (others => '0');    
+    regsd2 := (others => '0');
+    if bigmem /= 0 then regsd2(17):='1'; end if;
+    if chkbits > 0 then regsd2(16):='1'; end if;
     regsd2(15 downto 0) := "1" &
                            std_logic_vector(to_unsigned(log2(ddrbits/8),3)) &
                            std_logic_vector(to_unsigned(MHz,12));
+    if dr.hwidth='1' then
+      regsd2(14 downto 12) := std_logic_vector(to_unsigned(log2((ddrbits/2)/8),3));
+    end if;
     regsd3 := (others => '0');    
-    regsd3(17 downto 16) := dr.cfg.readdly;
+    regsd3(17 downto 16) := dr.cfg.readdly(1 downto 0);
     regsd3(22 downto 18) := dr.cfg.trfc(4 downto 0);
     regsd3(27 downto 23) := dr.cfg.twr;
     regsd3(28) := dr.cfg.trp(0);
@@ -288,33 +390,95 @@ begin
     regsd5(17 downto 16) := dr.cfg.odten;
     regsd5(10 downto 8)  := dr.cfg.trcd;
     regsd5(4 downto 0)   := dr.cfg.tras;
+
+    case ddrbits is
+      when 16 => o.regwdata := dr.sdo_data(31 downto 0) & dr.sdo_data(31 downto 0);
+      when 32 => o.regwdata := dr.sdo_data(31 downto 0) & dr.sdo_data(63 downto 32);
+      when 64 => o.regwdata := dr.sdo_data(31 downto 0) & dr.sdo_data(63 downto 32);
+      when others => o.regwdata := dr.sdo_data(2*ddrbits-7*32-1 downto 2*ddrbits-8*32) &
+                                   dr.sdo_data(2*ddrbits-6*32-1 downto 2*ddrbits-7*32);
+    end case;
+    
+    -- Mode register
+    dv.mr_twr := std_logic_vector(unsigned(dr.cfg.twr(2 downto 0))-3);
+    if dv.mr_twr="110" or dv.mr_twr="111" or dv.mr_twr="000" then
+      dv.mr_twr := "101";
+    end if;
+    dv.mr_tcl := std_logic_vector(unsigned('0' & dr.cfg.caslat)+3);
+    
+    mr := (others => '0');
+    mr(12)          := '0';             -- Power down exit time
+    mr(11 downto 9) := dr.mr_twr;       -- WR-1
+    mr(8)           := dr.cfg.dllrst;   -- DLL Reset
+    mr(7)           := '0';             -- Test mode
+    mr(6 downto 4)  := dr.mr_tcl;       -- CL
+    mr(3)           := '0';             -- Burst type, 0=seq 1=interl
+    mr(2 downto 0)  := "010";           -- Burst len 010=4, 011=8
     
     -- Calculate address parts from a2ds.haddr and a2ds.startword
-    case dr.cfg.csize is
-      when "00"   => arow := vreqf.startaddr(l2ddrw+19 downto l2ddrw+5);
-      when "01"   => arow := vreqf.startaddr(l2ddrw+20 downto l2ddrw+6);
-      when "10"   => arow := vreqf.startaddr(l2ddrw+21 downto l2ddrw+7);
-      when others => arow := vreqf.startaddr(l2ddrw+22 downto l2ddrw+8);
+    expcsize := dr.hwidth & dr.cfg.csize;
+    case expcsize is
+      when         "011"   => arow := vreqf.startaddr(l2ddrw+22 downto l2ddrw+8);
+      when "111" | "010"   => arow := vreqf.startaddr(l2ddrw+21 downto l2ddrw+7);                              
+      when "110" | "001"   => arow := vreqf.startaddr(l2ddrw+20 downto l2ddrw+6);
+      when "101" | "000"   => arow := vreqf.startaddr(l2ddrw+19 downto l2ddrw+5);                              
+      when others          => arow := vreqf.startaddr(l2ddrw+18 downto l2ddrw+4);
     end case;
 
-    abank := genmux(dr.cfg.bsize, vreqf.startaddr(29 downto 22)) &
-             genmux(dr.cfg.bsize, vreqf.startaddr(28 downto 21)) &
-             genmux(dr.cfg.bsize, vreqf.startaddr(27 downto 20));
+    dv.rowsel := dr.cfg.bsize(2 downto 0);
+    if bigmem /= 0 and dr.cfg.bsize(3 downto 1)="000" then
+      dv.rowsel := "010";
+    end if;
+    if bigmem = 0 and dr.cfg.bsize(3)='1' then
+      dv.rowsel := "111";
+    end if;
+    
+    addrtemp3 := vreqf.startaddr(30 downto 23);  --CS
+    addrtemp2 := vreqf.startaddr(29 downto 22);  --BA2/1
+    addrtemp1 := vreqf.startaddr(28 downto 21);  --BA1/0
+    addrtemp0 := vreqf.startaddr(27 downto 20);  --BA0/-
+    if bigmem=1 then
+      addrtemp3(1 downto 0) := "0" & vreqf.startaddr(31);
+      addrtemp2(1 downto 0) := vreqf.startaddr(31 downto 30);
+      addrtemp1(1 downto 0) := vreqf.startaddr(30 downto 29);
+      addrtemp0(1 downto 0) := vreqf.startaddr(29 downto 28);
+    end if;
+    muxin4 <= addrtemp3 & addrtemp2 & addrtemp1 & addrtemp0;
+    
+    abank := muxout4(2 downto 0);
     if dr.cfg.eightbanks='0' then
       abank := '0' & abank(2) & abank(1);
     end if;
 
-    acol := vreq.startaddr(log2(ddrbits/8)+13 downto log2(ddrbits/8));
+    acol := vreqf.startaddr(log2(ddrbits/8)+13 downto log2(ddrbits/8));
     if ddrbits=16 then acol(0):='0'; end if;  -- Always align to at least 32 bits
 
-    acsn(0) := genmux(dr.cfg.bsize, vreqf.startaddr(30 downto 23));
+    acsn(0) := muxout4(3);
     acsn(1) := not acsn(0);
 
+    dv.setrow := '0';
+    if dr.setrow='1' then
+      dv.row := dr.sdo_address_prev;
+    end if;
+    
     dv.samerow := '0';
     if abank=dr.sdo_ba and acsn=dr.sdo_csn and arow=dr.row then
       dv.samerow := '1';
     end if;
 
+    dv.request_row := arow;
+    dv.request_cs  := acsn(0 downto 0);
+    dv.request_bank := abank;
+
+    hio1 := vreqf.hio;
+    if raspipe /= 0 then
+      vstart := dr.start_tog_prev;
+      arow := dr.request_row;
+      acsn := (not dr.request_cs) & dr.request_cs;
+      abank := dr.request_bank;
+      hio1 := vreq.hio;
+    end if;
+    
     aendaddr := vreq.endaddr(log2(4*burstlen)-1 downto 2);
     if vreq.hsize(1 downto 0)="11" and vreq.hio='0' then
       aendaddr(2):='1';
@@ -367,7 +531,9 @@ begin
     end if;
     -- Last access
     if dr.ramaddr = dr.endaddr(log2(4*burstlen)-1 downto log2(2*ddrbits/8)) then
-      dv.pastlast := '1';
+      if hwidthen=0 or dr.hwidth='0' or dr.hwctr='1' then
+        dv.pastlast := '1';
+      end if;
       case ddrbits is
         when 16 => null;
         when 32 =>
@@ -394,6 +560,12 @@ begin
     dv.rbwrite := '0';
     
     dv.ctr := std_logic_vector(unsigned(dr.ctr)+1);
+
+    if hwidthen/=0 and dr.hwidth='1' and dr.s=dsdata then
+      dv.hwctr := not dr.hwctr;
+      if dr.hwctr='0' then dv.ctr := dr.ctr; end if;
+    end if;
+    
     dv.rastimer := std_logic_vector(unsigned(dr.rastimer)+1);
     if dr.rastimer=dr.cfg.tras then dv.tras_met := '1'; end if;
 
@@ -410,6 +582,7 @@ begin
     case dr.s is
       when dsidle =>
         dv.ctr := (others => '0');
+        dv.hwctr := '0';
         dv.sdo_bdrive := not oepols;
         dv.sdo_qdrive := not oepols;
         dv.col := acol;
@@ -427,7 +600,7 @@ begin
 
         elsif vstart /= dr.done_tog and (dr.cmds=dcon or (dr.cmds=dcoff and dr.cfg.renable='0')) then
           -- R/W data
-          dv.sdo_rasn := '0' or vreqf.hio;
+          dv.sdo_rasn := '0' or hio1;
           dv.sdo_csn := acsn;
           dv.sdo_address := arow;
           dv.sdo_ba := abank;
@@ -442,7 +615,7 @@ begin
             dv.sdo_ba := "00" & dr.cfg.command(0);
             if dr.cfg.command(0)='0' or dr.cfg.emr="00" then
               dv.sdo_ba := "000";
-              dv.sdo_address := "000010" & dr.cfg.dllrst & "0" & "01" & "10010";  -- CAS = 3 WR = 3 burts = 4
+              dv.sdo_address := mr;
             else
               dv.sdo_ba := "0" & dr.cfg.emr;
               if dr.cfg.emr="01" then
@@ -472,17 +645,22 @@ begin
           -- pragma translate_off
           assert dr.ctr="00000000" severity failure;
           -- pragma translate_on
-          dv.row := dr.sdo_address;
+          -- dv.row := dr.sdo_address;
+          dv.setrow := '1';
         end if;
         dv.hwrite := vreq.hwrite;
         dv.hsize := vreq.hsize;
         dv.endaddr := aendaddr;
         dv.addrlo := aloa;
         dv.sdo_address := dr.col(13 downto 10) & '0' & dr.col(9 downto 1) & '0';
-                
+        if dr.hwidth='1' then
+          dv.sdo_address := dr.col(12 downto 9) & '0' & dr.col(8 downto 1) & "00";
+        end if;
+        
         if vreq.hio='1' and dr.ctr(0)='1' then
           dv.s := dsreg;
           dv.ctr := (others => '0');          
+          dv.hwctr := '0';
         elsif vreq.hio='0' and dr.ctr(2 downto 0)=dr.cfg.trcd then
           goto_caslat := '1';          
         end if;
@@ -498,6 +676,7 @@ begin
             dv.s := dsreaddly;
           end if;
           dv.ctr := (others => '0');
+          dv.hwctr := '0';
           dv.sdo_qdrive := not (dr.hwrite xor oepols);
         end if;
 
@@ -505,15 +684,16 @@ begin
         dv.sdo_odt := dr.hwrite;
         dv.sdo_oct := not dr.hwrite;
         dv.pastlast := '0';
-        if dr.ctr(1 downto 0)=dr.cfg.readdly then
+        if dr.ctr(3 downto 0)=dr.cfg.readdly then
           dv.s := dsdata;
           dv.ctr := (others => '0');
+          dv.hwctr := '0';
         end if;
         
       when dsdata =>
         -- The first request may be on a 2-odd column to get the first data first
         -- Make sure following requests are on even mult of 4xcolumns
-        if dr.ctr(0)='1' then
+        if dr.ctr(0)='1' and (hwidthen=0 or dr.hwidth='0' or dr.hwctr='1') then
           dv.col(1) := '0';
         end if;
         
@@ -524,18 +704,27 @@ begin
         dv.sdo_bdrive := not (dr.hwrite xor oepols);
         dv.sdo_qdrive := not (dr.hwrite xor oepols);
         
-        if (dr.hwrite='0' and fastahb=0 and
-            dr.ctr(dr.ctr'high downto 1)=zerov(dr.ctr'length-1) and
-            ((dr.ctr(0)='1' and plmemwrite) or (dr.ctr(0)='0' and not plmemwrite))) then
-          
-          dv.done_tog := not dr.done_tog;
-        end if;
-                  
-        if dr.ctr(log2(ddr_burstlen)-1 downto 0)=(not zerov(l2ddr_burstlen)) then
-          dv.s := dsdone;
-          if not (dr.hwrite='0' and fastahb=0) then
-            dv.done_tog := not dr.done_tog;
-          end if;                    
+        -- Fast acknowledge for reads from memory if AHB is slower (fastahb=0)
+        -- We need an extra cycle if we're reading an odd column and there
+        -- may be more data in the burst
+
+        if hwidthen=0 or dr.hwidth='0' or dr.hwctr='1' then
+          if (dr.hwrite='0' and fastahb=0) then
+            if ddr_burstlen>1 and dr.col(1)='1' then
+              if dr.ctr=std_logic_vector(to_unsigned(1,dr.ctr'length)) then
+                dv.done_tog := not dr.done_tog;
+              end if;
+            elsif dr.ctr=zerov(dr.ctr'length) then
+              dv.done_tog := not dr.done_tog;
+            end if;
+          end if;
+        
+          if dr.ctr(log2(ddr_burstlen)-1 downto 0)=(not zerov(l2ddr_burstlen)) then
+            dv.s := dsdone;
+            if not (dr.hwrite='0' and fastahb=0) then
+              dv.done_tog := not dr.done_tog;
+            end if;                    
+          end if;
         end if;
 
       when dsdone =>
@@ -555,6 +744,7 @@ begin
           dv.hwrite := vreq.hwrite;
           dv.hsize := vreq.hsize;
           dv.s := dsagain;
+          dv.sdo_qdrive := not oepols;
         end if;
 
       when dsagain =>
@@ -567,74 +757,106 @@ begin
         -- smaller widths
         dv.rbwrite := '1';
         
-        -- DDR2CFG1-4 read
+        -- DDR2CFG1-5,PHYCFG read
+        regt0 := (others => '0'); regt1 := (others => '0');
         case ddrbits is
           when 16 =>
             case dr.endaddr(4 downto 2) is
-              when "000"  => dv.rbwdata(ddrbits*2-1 downto ddrbits*2-32) := regsd1;                               
-              when "001"  => dv.rbwdata(ddrbits*2-1 downto ddrbits*2-32) := regsd2;
-              when "010"  => dv.rbwdata(ddrbits*2-1 downto ddrbits*2-32) := regsd3;
-              when "011"  => dv.rbwdata(ddrbits*2-1 downto ddrbits*2-32) := regsd4;
-              when others => dv.rbwdata(ddrbits*2-1 downto ddrbits*2-32) := regsd5;
+              when "000"  => regt0 := regsd1(31 downto 16); regt1 := regsd1(15 downto 0);
+              when "001"  => regt0 := regsd2(31 downto 16); regt1 := regsd2(15 downto 0);
+              when "010"  => regt0 := regsd3(31 downto 16); regt1 := regsd3(15 downto 0);
+              when "011"  => regt0 := regsd4(31 downto 16); regt1 := regsd4(15 downto 0);
+              when "100" | "101"  => regt0 := regsd5(31 downto 16); regt1 := regsd5(15 downto 0);
+              when "110"  => regt0 := sdi.regrdata(31 downto 16); regt1 := sdi.regrdata(15 downto 0);
+              when others => regt0 := sdi.regrdata(63 downto 48); regt1 := sdi.regrdata(47 downto 32);
             end case;
           when 32 =>
             case dr.endaddr(4 downto 3) is
-              when "00" =>   dv.rbwdata(ddrbits*2-1 downto ddrbits*2-64) := regsd1 & regsd2;
-              when "01" =>   dv.rbwdata(ddrbits*2-1 downto ddrbits*2-64) := regsd3 & regsd4;
-              when others => dv.rbwdata(ddrbits*2-1 downto ddrbits*2-64) := regsd5 & regsd2;
+              when "00"   => regt0 := regsd1; regt1 := regsd2;
+              when "01"   => regt0 := regsd3; regt1 := regsd4;
+              when "10"   => regt0 := regsd5; regt1 := regsd2;
+              when others => regt0 := sdi.regrdata(31 downto 0); regt1 := sdi.regrdata(63 downto 32);
             end case;
           when 64 =>
             case dr.endaddr(4) is
-              when '0'    => dv.rbwdata(ddrbits*2-1 downto ddrbits*2-128) := regsd1 & regsd2 & regsd3 & regsd4;
-              when others => dv.rbwdata(ddrbits*2-1 downto ddrbits*2-128) := regsd5 & regsd2 & regsd3 & regsd4;
+              when '0'    => regt0 := regsd1 & regsd2; regt1 := regsd3 & regsd4;
+              when others => regt0 := regsd5 & regsd2; regt1 := sdi.regrdata(31 downto 0) & sdi.regrdata(63 downto 32);
             end case;
+          when 128 =>
+            regt0 := regsd1 & regsd2 & regsd3 & regsd4;
+            regt1 := regsd5 & regsd2 & sdi.regrdata(31 downto 0) & sdi.regrdata(63 downto 32);
           when others =>
-            dv.rbwdata(ddrbits*2-1 downto ddrbits*2-160) := regsd1 & regsd2 & regsd3 & regsd4 & regsd5;
+            regt0(ddrbits-1 downto ddrbits-255) := regsd1 & regsd2 & regsd3 & regsd4 &
+                                                   regsd5 & x"00000000" & sdi.regrdata(31 downto 0) & sdi.regrdata(63 downto 32);
         end case;
-
-        -- Note write data is one cycle behind
-        if dr.hwrite='1' and dr.ctr(0)='1' then
+        dv.rbwdata(ddrbits*2+chkbits-1 downto ddrbits+chkbits) := regt0;
+        dv.rbwdata(ddrbits-1 downto 0) := regt1;
+        
+        -- Note write data is two cycles behind
+        regt0 := dr.sdo_data(ddrbits*2-1 downto ddrbits);
+        regt1 := dr.sdo_data(ddrbits-1 downto 0);
+        if dr.hwrite='1' and dr.ctr(2 downto 0)="010" then
           w5 := '0';
           case ddrbits is
             when 16 =>
               case dr.endaddr(4 downto 2) is
-                when "000"  => regsd1 := wbrdata(ddrbits*2-01 downto ddrbits*2-32);
-                when "001"  => regsd2 := wbrdata(ddrbits*2-01 downto ddrbits*2-32);
-                when "010"  => regsd3 := wbrdata(ddrbits*2-01 downto ddrbits*2-32);
-                when "011"  => regsd4 := wbrdata(ddrbits*2-01 downto ddrbits*2-32);
-                when "100"  => regsd5 := wbrdata(ddrbits*2-01 downto ddrbits*2-32);
+                when "000"  => regsd1 := regt0 & regt1;
+                when "001"  => regsd2 := regt0 & regt1;
+                when "010"  => regsd3 := regt0 & regt1;
+                when "011"  => regsd4 := regt0 & regt1;
+                when "100"  => regsd5 := regt0 & regt1;
                                w5 := '1';
+                when "110"  => o.regwrite(0) := '1';
+                when "111"  => o.regwrite(1) := '1';
                 when others => null;
               end case;
             when 32 => 
               case dr.endaddr(4 downto 2) is
-                when "000"  => regsd1 := wbrdata(ddrbits*2-01 downto ddrbits*2-32);
-                when "001"  => regsd2 := wbrdata(ddrbits*2-33 downto ddrbits*2-64);
-                when "010"  => regsd3 := wbrdata(ddrbits*2-01 downto ddrbits*2-32);
-                when "011"  => regsd4 := wbrdata(ddrbits*2-33 downto ddrbits*2-64);
-                when "100"  => regsd5 := wbrdata(ddrbits*2-01 downto ddrbits*2-32);
+                when "000"  => regsd1 := regt0;
+                when "001"  => regsd2 := regt1;
+                when "010"  => regsd3 := regt0;
+                when "011"  => regsd4 := regt1;
+                when "100"  => regsd5 := regt0;
                                w5 := '1';
+                when "110"  => o.regwrite(0) := '1';
+                when "111"  => o.regwrite(1) := '1';
                 when others => null;
               end case;
             when 64 =>
               case dr.endaddr(4 downto 2) is
-                when "000"  => regsd1 := wbrdata(ddrbits*2-01 downto ddrbits*2-32);
-                when "001"  => regsd2 := wbrdata(ddrbits*2-33 downto ddrbits*2-64);
-                when "010"  => regsd3 := wbrdata(ddrbits*2-65 downto ddrbits*2-96);
-                when "011"  => regsd4 := wbrdata(ddrbits*2-97 downto ddrbits*2-128);
-                when "100"  => regsd5 := wbrdata(ddrbits*2-01 downto ddrbits*2-32);
+                when "000"  => regsd1 := regt0(63 downto 32);
+                when "001"  => regsd2 := regt0(31 downto 0);
+                when "010"  => regsd3 := regt1(63 downto 32);
+                when "011"  => regsd4 := regt1(31 downto 0);
+                when "100"  => regsd5 := regt0(63 downto 32);
                                w5 := '1';
+                when "110"  => o.regwrite(0) := '1';
+                when "111"  => o.regwrite(1) := '1';
                 when others => null;
+              end case;
+            when 128 =>
+              case dr.endaddr(4 downto 2) is
+                when "000"  => regsd1 := regt0(127 downto 96);
+                when "001"  => regsd2 := regt0(95 downto 64);
+                when "010"  => regsd3 := regt0(63 downto 32);
+                when "011"  => regsd4 := regt0(31 downto 0);
+                when "100"  => regsd5 := regt1(127 downto 96);
+                               w5 := '1';
+                when "110"  => o.regwrite(0) := '1';
+                when "111"  => o.regwrite(1) := '1';
+                when others => null;                               
               end case;
             when others =>
               case dr.endaddr(4 downto 2) is
-                when "000"  => regsd1 := wbrdata(ddrbits*2-01 downto ddrbits*2-32);
-                when "001"  => regsd2 := wbrdata(ddrbits*2-33 downto ddrbits*2-64);
-                when "010"  => regsd3 := wbrdata(ddrbits*2-65 downto ddrbits*2-96);
-                when "011"  => regsd4 := wbrdata(ddrbits*2-97 downto ddrbits*2-128);
-                when "100"  => regsd5 := wbrdata(ddrbits*2-129 downto ddrbits*2-160);
+                when "000"  => regsd1 := regt0(ddrbits-1 downto ddrbits-32);
+                when "001"  => regsd2 := regt0(ddrbits-33 downto ddrbits-64);
+                when "010"  => regsd3 := regt0(ddrbits-65 downto ddrbits-96);
+                when "011"  => regsd4 := regt0(ddrbits-97 downto ddrbits-128);
+                when "100"  => regsd5 := regt0(ddrbits-129 downto ddrbits-160);
                                w5 := '1';
-                when others => null;
+                when "110"  => o.regwrite(0) := '1';
+                when "111"  => o.regwrite(1) := '1';
+                when others => null;                               
               end case;
           end case;
           -- Update lsb aliases for expanded fields in ddr2cfg5
@@ -646,26 +868,26 @@ begin
           
         end if;
 
-        if (dr.hwrite='1' and dr.ctr(0)='1') or dr.hwrite='0' then
+        if (dr.hwrite='1' and dr.ctr(2 downto 1)="11") or dr.hwrite='0' then
           dv.s := dsidle;
           dv.done_tog := not dr.done_tog;
         end if;
 
         dv.cfg := (refon => regsd1(31), ocd => regsd1(30), emr => regsd1(29 downto 28),
                    trcd => regsd5(10 downto 9) & regsd1(26),
-                   bsize => regsd1(25 downto 23), csize => regsd1(22 downto 21),
+                   bsize => regsd1(27) & regsd1(25 downto 23), csize => regsd1(22 downto 21),
                    command => regsd1(20 downto 18), dllrst => regsd1(17), renable => regsd1(16),
                    cke => regsd1(15), refresh => regsd1(11 downto 0),
                    cal_pll => regsd3(30 downto 29), cal_rst => regsd3(31),
                    trp => regsd5(30 downto 29) & regsd3(28),
                    twr => regsd3(27 downto 23),
                    trfc => regsd5(25 downto 23) & regsd3(22 downto 18),
-                   readdly => regsd3(17 downto 16), cal_inc => regsd3(15 downto 8),
+                   readdly => regsd4(23 downto 22) & regsd3(17 downto 16), cal_inc => regsd3(15 downto 8),
                    cal_en => regsd3(7 downto 0),
                    eightbanks => regsd4(8), dqsctrl => regsd4(7 downto 0),
                    caslat => regsd4(10 downto 9),
                    odten => regsd5(17 downto 16), tras => regsd5(4 downto 0),
-                   trtp => regsd4(13)
+                   trtp => regsd4(13), cbcal_inc => regsd4(31 downto 28), cbcal_en => regsd4(27 downto 24)
                    );
 
       when dsrefresh =>
@@ -686,6 +908,7 @@ begin
         dv.ctr(2 downto 0) := "111";
       end if;
       dv.casctr := std_logic_vector(to_unsigned(ddr_burstlen/2, dv.casctr'length));
+      dv.hwcas := '0';
       dv.pchpend := '1';      
     end if;
     
@@ -697,10 +920,36 @@ begin
       dv.prectr := std_logic_vector(unsigned(dr.prectr)-1);
     end if;
 
+    dv.read_pend := '0' & dr.read_pend(dr.read_pend'high downto 1);
+    
+    dv.datacas := '1';
     if dr.casctr /= zerov(dr.casctr'length) then
-      if dr.sdo_casn='1' then
-        dv.sdo_casn := '0';
+      if dr.datacas='1' then
+        dv.datacas := '0';
+        -- dv.sdo_casn := '0';
         dv.sdo_wen := not dr.hwrite;
+        if dr.hwrite='0' then
+          case dr.cfg.caslat is
+            when "00"   => dv.read_pend(2+ddr_burstlen downto 3) := (others => '1');
+            when "01"   => dv.read_pend(3+ddr_burstlen downto 4) := (others => '1');
+            when "10"   => dv.read_pend(4+ddr_burstlen downto 5) := (others => '1');
+            when others => dv.read_pend(5+ddr_burstlen downto 6) := (others => '1');
+          end case;
+        end if;
+      elsif dr.hwidth='1' then
+
+        dv.hwcas := not dr.hwcas;
+        if dr.hwcas='1' then          
+          dv.casctr := std_logic_vector(unsigned(dr.casctr)-1);
+          if l2blen-l2ddrw > 1 then
+            dv.sdo_address(l2blen-l2ddrw+1 downto 3) :=
+              std_logic_vector(unsigned(dr.sdo_address(l2blen-l2ddrw+1 downto 3)+1));
+          end if;
+          dv.sdo_address(2) := '0';
+        else
+          dv.sdo_address(2) := not dr.sdo_address(2);
+        end if;
+        
       else
         dv.casctr := std_logic_vector(unsigned(dr.casctr)-1);
         if l2blen-l2ddrw > 1 then
@@ -717,10 +966,12 @@ begin
       end if;
     end if;
 
+    dv.rasn_pre := '1';
     if precharge_next='1' and block_precharge='0' then
       dv.pchpend := '0';
       dv.sdo_wen := '0';
-      dv.sdo_rasn := '0';
+      -- dv.sdo_rasn := '0';
+      dv.rasn_pre := '0';
       dv.prectr := "000" & dr.cfg.trp;
     end if;
     
@@ -803,6 +1054,43 @@ begin
     
     
     if eightbanks=0 then dv.cfg.eightbanks:='0'; end if;    
+
+    rbwd := dv.rbwdata;
+    rbwa := dr.ramaddr;
+    rbw  := dv.rbwrite;
+
+    if plmemwrite then
+      rbwd := dr.rbwdata;
+      rbwa := dr.ramaddr_prev;
+      rbw  := dr.rbwrite;
+    end if;
+
+    if not plmemread then
+      o.dqm   := dr.sdo_dqm;
+      o.sdwen := dr.sdo_wen;
+      o.data  := dv.sdo_data;
+      o.cb    := dv.sdo_cb;
+    end if;
+
+    -- half-width output data muxing, placed after (potential) pipeline regs.
+    if hwidthen/=0 and dr.hwidth='1' then
+      if dr.hwctr='1' then
+        o.data(ddrbits/2-1 downto 0) := o.data(2*ddrbits-ddrbits/2-1 downto ddrbits);
+        o.data(2*ddrbits-ddrbits/2-1 downto ddrbits) := o.data(2*ddrbits-1 downto 2*ddrbits-ddrbits/2);
+        if chkbits > 0 then
+          o.cb(chkbits/2-1 downto 0) := o.cb(2*chkbits-chkbits/2-1 downto chkbits);
+          o.cb(2*chkbits-chkbits/2-1 downto chkbits) := o.cb(2*chkbits-1 downto 2*chkbits-chkbits/2);
+        end if;
+        o.dqm(ddrbits/16-1 downto 0) := o.dqm(ddrbits/4-ddrbits/16-1 downto ddrbits/8);
+        o.dqm(ddrbits/4-ddrbits/16-1 downto ddrbits/8) := o.dqm(ddrbits/4-1 downto ddrbits/4-ddrbits/16);
+      else
+        o.data(2*ddrbits-ddrbits/2-1 downto ddrbits) := o.data(ddrbits-1 downto ddrbits/2);
+        if chkbits > 0 then
+          o.cb(2*chkbits-chkbits/2-1 downto chkbits) := o.cb(chkbits-1 downto chkbits/2);
+        end if;
+        o.dqm(ddrbits/4-ddrbits/16-1 downto ddrbits/8) := o.dqm(ddrbits/8-1 downto ddrbits/16);
+      end if;
+    end if;
     
     if ddr_rst='0' then
       dv.s := dsidle;
@@ -816,7 +1104,7 @@ begin
       dv.cfg.command  := "000";
       dv.cfg.emr      := "00";
       dv.cfg.csize    := conv_std_logic_vector(col-9, 2);
-      dv.cfg.bsize    := conv_std_logic_vector(log2(Mbyte/8), 3);
+      dv.cfg.bsize    := conv_std_logic_vector(log2(Mbyte/8), 4);
       dv.cfg.refon    :=  '0';
       dv.cfg.trfc     := conv_std_logic_vector(TRFC*MHz/1000-2, 8);
       dv.cfg.refresh  := conv_std_logic_vector(7800*MHz/1000, 12);
@@ -825,7 +1113,7 @@ begin
       dv.cfg.dllrst   := '0';
       dv.cfg.cke      := '0';
       dv.cfg.ocd      := '0';
-      dv.cfg.readdly  := conv_std_logic_vector(readdly, 2);
+      dv.cfg.readdly  := conv_std_logic_vector(readdly, 4);
       dv.cfg.eightbanks := conv_std_logic_vector(eightbanks, 1)(0);
       dv.cfg.odten := std_logic_vector(to_unsigned(odten,2));
       dv.cfg.dqsctrl := (others => '0');      
@@ -858,7 +1146,7 @@ begin
       dv.sdo_address := (others => '0');
       -- Default to min 45 ns tRAS
       dv.cfg.tras := std_logic_vector(to_unsigned((45*MHz+999)/1000 - 2, 5));
-      
+      dv.read_pend := (others => '0');
       if ddr_syncrst /= 0 then 
         dv.cfg.cke := '0';
         dv.sdo_bdrive := not oepols;
@@ -875,26 +1163,25 @@ begin
       dv.sdo_oct := '0';
     end if;
     
-    rbwd := dv.rbwdata;
-    rbwa := dr.ramaddr;
-    rbw  := dv.rbwrite;
+    for x in 0 to chkbits/4-1 loop
+      o.cbdqm(x) := o.dqm(x*ddrbits/chkbits);
+    end loop;
 
-    if plmemwrite then
-      rbwd := dr.rbwdata;
-      rbwa := dr.ramaddr_prev;
-      rbw  := dr.rbwrite;
+    if vreq.maskdata='1' then
+      o.dqm := (others => '1');
     end if;
-
-    if not plmemread then
-      o.dqm   := dr.sdo_dqm;
-      o.sdwen := dr.sdo_wen;
-      o.data  := dv.sdo_data;      
+    if vreq.maskcb='1' then
+      o.cbdqm := (others => '1');
     end if;
     
     if dr.cfg.command /= "000" then
       -- print("Command: " & tost(dr.cfg.command) & " -> casn:" & tost(dv.sdo_casn) & ",rasn:" & tost(dv.sdo_rasn) & ",wen:" & tost(dv.sdo_wen));
     end if;
-    done_tog <= dr.done_tog;
+    if plmemwrite then
+      done_tog <= dr.done_tog_prev;
+    else
+      done_tog <= dr.done_tog;
+    end if;
     rbwdata <= rbwd;
     rbwaddr <= rbwa;
     rbwrite <= rbw;
@@ -903,19 +1190,11 @@ begin
     ndr     <= dv;
   end process;
 
-  ddr_rst <= (ddr_rst_gen(3) and ddr_rst_gen(2) and ddr_rst_gen(1) and rst); -- Reset signal in DDR clock domain
   
-  ddrregs: process(clk_ddr,ddr_rst,rst)
+  ddrregs: process(clk_ddr,ddr_rst)
   begin
     if rising_edge(clk_ddr) then
       dr <= ndr;
-      ddr_rst_gen <= ddr_rst_gen(2 downto 0) & '1';
-      if ddr_syncrst /= 0 and rst='0' then
-        ddr_rst_gen <= "0000";
-      end if;
-    end if;
-    if ddr_syncrst=0 and rst='0' then
-      ddr_rst_gen <= "0000";
     end if;
     if ddr_syncrst=0 and ddr_rst='0' then
       dr.cfg.cke <= '0';

@@ -37,7 +37,7 @@ use gaisler.mmuiface.all;
 entity mmu_icache is
   generic (
     icen      : integer range 0 to 1  := 0;
-    irepl     : integer range 0 to 2  := 0;
+    irepl     : integer range 0 to 3  := 0;
     isets     : integer range 1 to 4  := 1;
     ilinesize : integer range 4 to 8  := 4;
     isetsize  : integer range 1 to 256 := 1;
@@ -79,7 +79,7 @@ constant LRR_BIT    : integer := TAG_HIGH + 1;
 constant PCLOW : integer  := 2;
 constant ILINE_SIZE : integer := ilinesize;
 constant ICLOCK_BIT : integer := isetlock;
-constant ICREPLACE : integer range 0 to 2  := irepl;
+constant ICREPLACE : integer range 0 to 3  := irepl;
 
 constant lline : std_logic_vector((ILINE_BITS -1) downto 0) := (others=>'1');
 
@@ -290,13 +290,22 @@ begin
       
 -- generate cache hit and valid bits    
     hit := '0';
-    for i in ISETS-1 downto 0 loop
-      if (icramo.tag(i)(TAG_HIGH downto TAG_LOW) = ici.fpc(TAG_HIGH downto TAG_LOW))
-        and ((icramo.ctx(i) = mmudci.mmctrl1.ctx) or (mmudci.mmctrl1.e = '0') or not M_EN)
-      then hit := not r.flush; set := i; end if;
-      validv(i) := genmux(ici.fpc(LINE_HIGH downto LINE_LOW), 
+    if irepl = dir then
+      set := conv_integer(ici.fpc(OFFSET_HIGH + SETBITS downto OFFSET_HIGH+1));
+      if (icramo.tag(set)(TAG_HIGH downto TAG_LOW) = ici.fpc(TAG_HIGH downto TAG_LOW))
+          and ((icramo.ctx(set) = mmudci.mmctrl1.ctx) or (mmudci.mmctrl1.e = '0') or not M_EN)
+      then hit := not r.flush; end if;
+      validv(set) := genmux(ici.fpc(LINE_HIGH downto LINE_LOW), 
+		          icramo.tag(set)(ilinesize -1 downto 0));
+    else
+      for i in ISETS-1 downto 0 loop
+        if (icramo.tag(i)(TAG_HIGH downto TAG_LOW) = ici.fpc(TAG_HIGH downto TAG_LOW))
+          and ((icramo.ctx(i) = mmudci.mmctrl1.ctx) or (mmudci.mmctrl1.e = '0') or not M_EN)
+        then hit := not r.flush; set := i; end if;
+        validv(i) := genmux(ici.fpc(LINE_HIGH downto LINE_LOW), 
 		          icramo.tag(i)(ilinesize -1 downto 0));
-    end loop;
+      end loop;
+    end if;
 
     if (lramacc = '1') and (ISETS > 1) then set := 1; end if;
 
@@ -389,6 +398,8 @@ begin
             else
               v.setrepl := r.rndcnt;
             end if;
+          when dir =>
+             v.setrepl := ici.fpc(OFFSET_HIGH+SETBITS downto OFFSET_HIGH+1);
           when lru =>
              v.setrepl :=  lru_set(rl.lru(conv_integer(ici.fpc(OFFSET_HIGH downto OFFSET_LOW))), lock(0 to ISETS-1));
           when lrr =>

@@ -3,12 +3,3 @@ apbmon.vhd
 ambamon.vhd 
 dma2ahb_tp.vhd 
 amba_tp.vhd
-at/at_pkg.vhd
-at/at_ahb_mst_pkg.vhd
-at/at_ahb_slv_pkg.vhd
-at/at_util.vhd
-at/at_ahb_mst.vhd
-at/at_ahb_slv.vhd
-at/at_ahbs.vhd
-at/at_ahb_ctrl.vhd
-

@@ -173,7 +173,9 @@ begin
         if wea = '1' then
           rfd(to_integer(unsigned(addra))) := dia;
         end if;
-          doa <= rfd(to_integer(unsigned(addra)));
+        doa <= rfd(to_integer(unsigned(addra)));
+      else
+        doa <= (others => '1');
       end if;
     end if;
 
@@ -182,8 +184,10 @@ begin
         if web = '1' then
           rfd(to_integer(unsigned(addrb))) := dib;
         end if;
-          dob <= rfd(to_integer(unsigned(addrb)));
-        end if;
+        dob <= rfd(to_integer(unsigned(addrb)));
+      else
+        dob <= (others => '1');
+      end if;
     end if;
 
   end process;

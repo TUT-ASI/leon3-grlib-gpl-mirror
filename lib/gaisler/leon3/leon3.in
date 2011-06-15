@@ -16,6 +16,11 @@ if [ "$CONFIG_LEON3" = "y" ]; then
       if [ "$CONFIG_IU_MUL_LATENCY_4" = "y" -o "$CONFIG_IU_MUL_LATENCY_5" = "y" ]; then
         bool 'SPARC V8e SMAC/UMAC instructions     ' CONFIG_IU_MUL_MAC
       fi
+      choice 'Multipler structure        ' \
+	"Inferred		CONFIG_IU_MUL_INFERRED \
+	NTNU_Modgen		CONFIG_IU_MUL_MODGEN \
+	TechSpec		CONFIG_IU_MUL_TECHSPEC \
+	Designware		CONFIG_IU_MUL_DW" Inferred
     fi
     bool 'Branch prediction     ' CONFIG_IU_BP
     bool 'Single-vector trapping' CONFIG_IU_SVT
@@ -40,7 +45,7 @@ if [ "$CONFIG_LEON3" = "y" ]; then
    	  ModGen                CONFIG_FPU_GRFPU_MODGEN \
    	  TechSpec              CONFIG_FPU_GRFPU_TECHSPEC" Inferred
       fi
-      if [ "$CONFIG_HAS_SHARED_GRFPU" = "y" ]; then
+      if [ "$CONFIG_HAS_SHARED_GRFPU" = "y" -a "$CONFIG_FPU_GRFPU" = "y" ]; then
 	bool 'Shared GRFPU                      ' CONFIG_FPU_GRFPU_SH
       fi
       if [ "$CONFIG_FPU_GRFPULITE" = "y" ]; then
@@ -61,7 +66,7 @@ if [ "$CONFIG_LEON3" = "y" ]; then
 	2		CONFIG_ICACHE_ASSO2 \
 	3		CONFIG_ICACHE_ASSO3 \
 	4		CONFIG_ICACHE_ASSO4" 1
-      choice 'Set size (kbytes/set)' \
+      choice 'Way size (kbytes/way)' \
 	"1		CONFIG_ICACHE_SZ1 \
 	2		CONFIG_ICACHE_SZ2 \
 	4		CONFIG_ICACHE_SZ4 \
@@ -77,6 +82,7 @@ if [ "$CONFIG_LEON3" = "y" ]; then
       if [ "$CONFIG_ICACHE_ASSO1" != "y" ]; then
         choice 'Replacement alorithm' \
 	"Random		CONFIG_ICACHE_ALGORND \
+	Direct		CONFIG_ICACHE_ALGODIR \
 	LRR		CONFIG_ICACHE_ALGOLRR \
 	LRU		CONFIG_ICACHE_ALGOLRU" Random
         bool 'Cache locking      ' CONFIG_ICACHE_LOCK
@@ -121,6 +127,7 @@ if [ "$CONFIG_LEON3" = "y" ]; then
       if [ "$CONFIG_DCACHE_ASSO1" != "y" ]; then
         choice 'Replacement alorithm' \
 	"Random		CONFIG_DCACHE_ALGORND \
+	Direct		CONFIG_DCACHE_ALGODIR \
 	LRR		CONFIG_DCACHE_ALGOLRR \
 	LRU		CONFIG_DCACHE_ALGOLRU" Random
         bool 'Cache locking      ' CONFIG_DCACHE_LOCK

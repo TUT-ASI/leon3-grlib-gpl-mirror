@@ -1,5 +1,6 @@
 greth_pkg.vhd
 eth_rstgen.vhd
+eth_edcl_ahb_mst.vhd
 eth_ahb_mst_gbit.vhd
 eth_ahb_mst.vhd
 greth_gbit_rx.vhd

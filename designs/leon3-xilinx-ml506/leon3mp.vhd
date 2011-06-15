@@ -284,6 +284,10 @@ attribute syn_keep of clk40 : signal is true;
 attribute syn_preserve of clk40 : signal is true;
 attribute syn_keep of clk65 : signal is true;
 attribute syn_preserve of clk65 : signal is true;
+attribute syn_keep of clk_200 : signal is true;
+attribute syn_preserve of clk_200 : signal is true;
+
+
 attribute keep : boolean;
 attribute keep of lock : signal is true;
 attribute keep of clkml : signal is true;
@@ -293,6 +297,7 @@ attribute keep of clkvga : signal is true;
 attribute keep of clk25 : signal is true;
 attribute keep of clk40 : signal is true;
 attribute keep of clk65 : signal is true;
+attribute keep of clk_200 : signal is true;
 
 attribute syn_noprune : boolean;
 attribute syn_noprune of clk_33_pad : label is true;

@@ -39,7 +39,11 @@ begin
     x0 : clkmux_rhlib18t port map (i0 => ip0, i1 => ip1, sel => sel, o => op);
   end generate;
 
-  behav : if tech /= rhlib18t generate
+  ut13 : if tech = ut130 generate
+    x0 : clkmux_ut130hbd port map (i0 => ip0, i1 => ip1, sel => sel, o => op);
+  end generate;
+
+  behav : if (tech /= rhlib18t) and (tech /= ut130)  generate
     op <= ip0 when sel = '0' else ip1;
   end generate;
 

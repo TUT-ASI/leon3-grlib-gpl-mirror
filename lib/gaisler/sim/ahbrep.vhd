@@ -21,6 +21,12 @@
 -- File:	ahbrep.vhd
 -- Author:	Jiri Gaisler - Gaisler Reserch
 -- Description:	Test report module with AHB interface
+--
+-- See also the work.debug.grtestmod module for a module connected via a
+-- PROM/IO interface.
+--
+-- The base address of the module can be defined for the systest software via
+-- the define GRLIB_REPORTDEV_BASE.
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -109,40 +115,7 @@ begin
 	end if;
       when "000010" =>
         subtest := conv_integer(hwdata(7 downto 0));
-	if vendorid = VENDOR_GAISLER then
-	  case deviceid is
-	  when GAISLER_LEON3 | GAISLER_LEON4 | GAISLER_L2CACHE=> leon3_subtest(subtest);
-	  when GAISLER_FTMCTRL => mctrl_subtest(subtest);
-	  when GAISLER_GPTIMER => gptimer_subtest(subtest);
-	  when GAISLER_LEON3DSU => dsu3_subtest(subtest);
-	  when GAISLER_SPW => spw_subtest(subtest);
-          when GAISLER_SPICTRL => spictrl_subtest(subtest); 
-          when GAISLER_I2CMST => i2cmst_subtest(subtest);
-          when GAISLER_UHCI => uhc_subtest(subtest);
-          when GAISLER_EHCI => ehc_subtest(subtest);
-          when GAISLER_IRQMP => irqmp_subtest(subtest);
-          when GAISLER_SPIMCTRL => spimctrl_subtest(subtest);
-          when GAISLER_SVGACTRL => svgactrl_subtest(subtest);
-          when GAISLER_APBPS2 => apbps2_subtest(subtest);
-          when GAISLER_I2CSLV => i2cslv_subtest(subtest);
-          when GAISLER_PWM => grpwm_subtest(subtest);
-          when GAISLER_GPIO => grgpio_subtest(subtest);
-          when GAISLER_GRIOMMU => griommu_subtest(subtest);
-          when GAISLER_L4STAT => l4stat_subtest(subtest);
-          when others =>
-            print ("  subtest " & tost(subtest));
-	  end case;
-	elsif vendorid = VENDOR_ESA then
-	  case deviceid is
-	  when ESA_LEON2 => leon3_subtest(subtest);
-	  when ESA_MCTRL => mctrl_subtest(subtest);
-	  when ESA_TIMER => gptimer_subtest(subtest);
-	  when others =>
-            print ("subtest " & tost(subtest));
-	  end case;
-	else
-          print ("subtest " & tost(subtest));
-	end if;
+	call_subtest(vendorid, deviceid, subtest);
       when "000100" =>
         print ("");
         print ("**** GRLIB system test starting ****");

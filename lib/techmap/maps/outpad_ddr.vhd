@@ -56,11 +56,12 @@ signal q, oe, vcc : std_ulogic;
 begin
   vcc <= '1';
   
-  def: if (tech /= easic90) generate
+  def: if (tech /= easic90) and (tech /= easic45) generate
     ddrreg : ddr_oreg generic map (tech)
       port map (q, c1, c2, ce, i1, i2, r, s);
     p : outpad generic map (tech, level, slew, voltage, strength)
       port map (pad, q);
+    oe <= '0';
   end generate def;
 
   nex  : if (tech = easic90) generate
@@ -68,7 +69,18 @@ begin
       port map (ck => c1, dh => i1, dl => i2, doe => vcc, q => q, oe => oe, rstb => r);
     p : nextreme_toutpad generic map (level, slew, voltage, strength)
       port map(pad, q, oe);
-  end generate; 
+  end generate;
+
+  n2x : if (tech = easic45) generate
+--    ddrpad : n2x_outpad_ddr  generic map (level, slew, voltage, strength)
+--      port map ();
+--pragma translate_off
+    assert false report "outpad_ddr: Not yet supported on Nextreme2"
+      severity failure;
+--pragma translate_on
+    q <= '0'; oe <= '0';
+  end generate;
+  
 end;
 
 library techmap;

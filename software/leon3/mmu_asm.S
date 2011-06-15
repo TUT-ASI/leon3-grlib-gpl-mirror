@@ -18,7 +18,8 @@ mmu_double:
 1:      lda    [%g0] 2,%g2
         andcc   %g2, %g1, %g0
         bne     1b
-         nop
+        nop
+	ldstub [%fp-8], %l6 	! locked acess with page fault
 	save  %sp, -112, %sp
 	save  %sp, -112, %sp
 	save  %sp, -112, %sp

@@ -467,7 +467,8 @@ begin
     spi1 : spictrl
       generic map (pindex => 7, paddr  => 7, pmask  => 16#fff#, pirq => 11,
                    fdepth => CFG_SPICTRL_FIFO, slvselen => CFG_SPICTRL_SLVREG,
-                   slvselsz => CFG_SPICTRL_SLVS, odmode => 0)
+                   slvselsz => CFG_SPICTRL_SLVS, odmode => 0, netlist => 0,
+                   syncram => CFG_SPICTRL_SYNCRAM, ft => CFG_SPICTRL_FT)
       port map (rstn, clkm, apbi, apbo(7), spii, spio, slvsel);
     spii.spisel <= '1';                 -- Master only
     -- MISO is shared with Flash data 0

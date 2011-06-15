@@ -2,7 +2,7 @@
 #hs.vhd 
 #ahb_slv.vhd 
 #ddrctrl.vhd
-ddr_phy.vhd 
+ddrphy_wrap.vhd 
 #ddrsp.vhd 
 ddrsp16a.vhd 
 ddrsp32a.vhd 
@@ -16,3 +16,4 @@ ddr2buf.vhd
 ddr2spax.vhd
 ddr2spax_ahb.vhd
 ddr2spax_ddr.vhd
+ft_ddr2spax_ahb.vhd

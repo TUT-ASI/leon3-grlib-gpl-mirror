@@ -122,7 +122,8 @@ entity grspwc2_net is
     linkdis      : out  std_ulogic;
     testclk      : in   std_ulogic := '0';
     testrst      : in   std_ulogic := '0';
-    testen       : in   std_ulogic := '0'
+    testen       : in   std_ulogic := '0';
+    loopback     : out  std_ulogic
   );
 end entity;
 

@@ -48,9 +48,6 @@ end;
   
 architecture rtl of unisim_iddr_reg is
     attribute BOX_TYPE : string;
---    attribute syn_useioff : boolean; 
---    attribute syn_useioff of rtl : architecture is false;
-
     component IDDR
       generic ( DDR_CLK_EDGE : string := "SAME_EDGE";
           INIT_Q1 : bit := '0';
@@ -66,6 +63,28 @@ architecture rtl of unisim_iddr_reg is
           S : in std_ulogic);
     end component;
     attribute BOX_TYPE of IDDR : component is "PRIMITIVE";
+
+    component IDDR2
+	generic
+	(
+		DDR_ALIGNMENT : string := "NONE";
+		INIT_Q0 : bit := '0';
+		INIT_Q1 : bit := '0';
+		SRTYPE : string := "SYNC"
+	);
+	port
+	(
+		Q0 : out std_ulogic;
+		Q1 : out std_ulogic;
+		C0 : in std_ulogic;
+		C1 : in std_ulogic;
+		CE : in std_ulogic;
+		D : in std_ulogic;
+		R : in std_ulogic;
+		S : in std_ulogic
+	);
+    end component;
+
   signal preQ2 : std_ulogic;
    
 begin
@@ -86,7 +105,22 @@ begin
        end process;
      end generate;
 
-    V2 : if tech = virtex2 or tech = spartan3 or tech = spartan6 generate
+     S6 : if (tech = spartan6) generate
+       U0 : IDDR2 
+         Port map( Q0 => Q1, Q1 => preQ2, C0 => C1, C1 => C2, CE => CE,                 
+           	   D => D, R => R,    S => S);
+
+       q3reg : process (C1, preQ2, R)
+       begin
+          if R='1' then --asynchronous reset, active high
+            Q2 <= '0';
+          elsif C1'event and C1='1' then --Clock event - posedge
+            Q2 <= preQ2;
+          end if;
+       end process;
+     end generate;
+
+    V2 : if tech = virtex2 or tech = spartan3 generate
 
       -- CE and S inputs inactive for virtex 2
       
@@ -119,6 +153,13 @@ begin
 
     end generate;
       
+--    S6 : if tech = spartan6 generate
+--
+--      x0 : IFDDRRSE port map (
+--	Q0 => Q1, Q1 => Q2, C0 => C1, C1 => C2, CE => CE,
+--	D => D, R => R, S => S);
+--
+--    end generate;
 end;
 
 library ieee;

@@ -238,7 +238,7 @@ type dcram_in_type is record
   senable	: std_logic_vector(0 to 3);
   swrite	: std_logic_vector(0 to 3);
   saddress	: std_logic_vector(19 downto 0);
---  stag    	: std_logic_vector(31 downto 0);
+  faddress	: std_logic_vector(19 downto 0);
   spar          : std_logic;
   ldramin	: ldram_in_type;
   ctx           : ctxdatatype;
@@ -315,11 +315,12 @@ type memory_dc_out_type is record
   testen           : std_ulogic;
 end record;
 
+constant dir : integer := 3;
 constant rnd : integer := 2;
 constant lrr : integer := 1;
 constant lru : integer := 0;
-type cache_replalgbits_type is array (0 to 2) of integer;
-constant creplalg_tbl : cache_replalgbits_type := (0, 1, 0);
+type cache_replalgbits_type is array (0 to 3) of integer;
+constant creplalg_tbl : cache_replalgbits_type := (0, 1, 0, 0);
 type lru_bits_type is array(1 to 4) of integer;
 constant lru_table  : lru_bits_type := (1,1,3,5);
 
@@ -348,7 +349,7 @@ constant lru_table  : lru_bits_type := (1,1,3,5);
   generic (
     dsu       : integer range 0 to 1  := 0;
     dcen      : integer range 0 to 1  := 0;
-    drepl     : integer range 0 to 2  := 0;
+    drepl     : integer range 0 to 3  := 0;
     dsets     : integer range 1 to 4  := 1;
     dlinesize : integer range 4 to 8  := 4;
     dsetsize  : integer range 1 to 256 := 1;
@@ -380,7 +381,7 @@ constant lru_table  : lru_bits_type := (1,1,3,5);
   component icache 
   generic (
     icen      : integer range 0 to 1  := 0;
-    irepl     : integer range 0 to 2  := 0;
+    irepl     : integer range 0 to 3  := 0;
     isets     : integer range 1 to 4  := 1;
     ilinesize : integer range 4 to 8  := 4;
     isetsize  : integer range 1 to 256 := 1;
@@ -407,13 +408,13 @@ constant lru_table  : lru_bits_type := (1,1,3,5);
     hindex    : integer              := 0;
     dsu       : integer range 0 to 1 := 0;
     icen      : integer range 0 to 1  := 0;
-    irepl     : integer range 0 to 2 := 0;
+    irepl     : integer range 0 to 3 := 0;
     isets     : integer range 1 to 4 := 1;
     ilinesize : integer range 4 to 8 := 4;
     isetsize  : integer range 1 to 256:= 1;
     isetlock  : integer range 0 to 1 := 0;
     dcen      : integer range 0 to 1  := 0;
-    drepl     : integer range 0 to 2 := 0;
+    drepl     : integer range 0 to 3 := 0;
     dsets     : integer range 1 to 4 := 1;
     dlinesize : integer range 4 to 8 := 4;
     dsetsize  : integer range 1 to 256:= 1;
@@ -452,13 +453,13 @@ constant lru_table  : lru_bits_type := (1,1,3,5);
   generic (
     tech      : integer range 0 to NTECH := 0;
     icen      : integer range 0 to 1 := 0;
-    irepl     : integer range 0 to 2 := 0;
+    irepl     : integer range 0 to 3 := 0;
     isets     : integer range 1 to 4 := 1;
     ilinesize : integer range 4 to 8 := 4;
     isetsize  : integer range 1 to 256 := 1;
     isetlock  : integer range 0 to 1 := 0;
     dcen      : integer range 0 to 1 := 0;
-    drepl     : integer range 0 to 2 := 0;
+    drepl     : integer range 0 to 3 := 0;
     dsets     : integer range 1 to 4 := 1;
     dlinesize : integer range 4 to 8 := 4;
     dsetsize  : integer range 1 to 256 := 1;
@@ -506,7 +507,7 @@ constant lru_table  : lru_bits_type := (1,1,3,5);
   component mmu_icache 
     generic (
       icen      : integer range 0 to 1  := 0;
-      irepl     : integer range 0 to 2  := 0;
+      irepl     : integer range 0 to 3  := 0;
       isets     : integer range 1 to 4  := 1;
       ilinesize : integer range 4 to 8  := 4;
       isetsize  : integer range 1 to 256 := 1;
@@ -538,7 +539,7 @@ constant lru_table  : lru_bits_type := (1,1,3,5);
     generic (
       dsu       : integer range 0 to 1  := 0;
       dcen      : integer range 0 to 1  := 0;
-      drepl     : integer range 0 to 2  := 0;
+      drepl     : integer range 0 to 3  := 0;
       dsets     : integer range 1 to 4  := 1;
       dlinesize : integer range 4 to 8  := 4;
       dsetsize  : integer range 1 to 256 := 1;
@@ -582,13 +583,13 @@ constant lru_table  : lru_bits_type := (1,1,3,5);
       memtech   : integer range 0 to NTECH := 0;
       dsu       : integer range 0 to 1 := 0;
       icen      : integer range 0 to 1 := 0;
-      irepl     : integer range 0 to 2 := 0;
+      irepl     : integer range 0 to 3 := 0;
       isets     : integer range 1 to 4 := 1;
       ilinesize : integer range 4 to 8 := 4;
       isetsize  : integer range 1 to 256 := 1;
       isetlock  : integer range 0 to 1 := 0;
       dcen      : integer range 0 to 1 := 0;
-      drepl     : integer range 0 to 2 := 0;
+      drepl     : integer range 0 to 3 := 0;
       dsets     : integer range 1 to 4 := 1;
       dlinesize : integer range 4 to 8 := 4;
       dsetsize  : integer range 1 to 256 := 1;

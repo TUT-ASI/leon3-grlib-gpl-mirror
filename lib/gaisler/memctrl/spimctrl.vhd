@@ -1050,7 +1050,7 @@ begin  -- rtl
     end if;
     ahbso.hrdata  <= ahbdrivedata(hrdata);
     ahbso.hconfig <= HCONFIG;
-    ahbso.hcache  <= r.hmbsel(FLASH_BANK);
+    ahbso.hcache  <= '0';
     ahbso.hirq    <= ahbirq;
     ahbso.hindex  <= hindex;
     ahbso.hsplit  <= hsplit;

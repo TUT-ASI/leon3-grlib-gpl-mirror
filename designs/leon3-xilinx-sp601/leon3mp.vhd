@@ -72,23 +72,22 @@ entity leon3mp is
 -- pragma translate_on 
 
     -- DDR2 memory  
-    ddr_clk        : out   std_logic_vector(1 downto 0);
-    ddr_clkb       : out   std_logic_vector(1 downto 0);
-    ddr_clk_fb_out : out   std_logic;
-    ddr_clk_fb     : in    std_logic;
+    ddr_clk        : out   std_logic;
+    ddr_clkb       : out   std_logic;
     ddr_cke        : out   std_logic;
-    ddr_csb        : out   std_logic;
     ddr_we         : out   std_ulogic;                     -- write enable
     ddr_ras        : out   std_ulogic;                     -- ras
     ddr_cas        : out   std_ulogic;                     -- cas
     ddr_dm         : out   std_logic_vector(1 downto 0);   -- dm
     ddr_dqs        : inout std_logic_vector(1 downto 0);   -- dqs
-    ddr_dqsn       : inout std_logic_vector(1 downto 0);   -- dqsn
+--    ddr_dqsn       : inout std_logic_vector(1 downto 0);   -- dqsn
     ddr_ad         : out   std_logic_vector(12 downto 0);  -- address
     ddr_ba         : out   std_logic_vector(2 downto 0);   -- bank address
     ddr_dq         : inout std_logic_vector(15 downto 0);  -- data
     ddr_odt        : out   std_logic;
-    
+    ddr_rzq        : inout std_logic;
+    ddr_zio        : inout std_logic;
+
     -- Debug support unit
     dsubre    : in    std_ulogic;       -- Debug Unit break (connect to button)
 
@@ -111,9 +110,9 @@ entity leon3mp is
     emdio     : inout std_logic;
 
     -- SPI flash
-    spi_sel_n : inout std_ulogic;
-    spi_clk   : out   std_ulogic;
-    spi_mosi  : out   std_ulogic;
+--    spi_sel_n : inout std_ulogic;
+--    spi_clk   : out   std_ulogic;
+--    spi_mosi  : out   std_ulogic;
 
     -- Output signals to LEDs
     led       : out   std_logic_vector(2 downto 0)
@@ -123,6 +122,9 @@ end;
 architecture rtl of leon3mp is
   signal vcc : std_logic;
   signal gnd : std_logic;
+  signal ddr_dqsn       : std_logic_vector(1 downto 0);   -- dqsn
+  signal ddr_clk_fb_out : std_logic;
+  signal ddr_clk_fb     : std_logic;
 
   signal memi : memory_in_type;
   signal memo : memory_out_type;
@@ -217,8 +219,8 @@ begin
     port map (reset, clkm, lock, rstn, rstraw);
   
   clk27_pad : clkpad generic map (tech => padtech) port map (clk27, lclk); 
-  clk200_pad : inpad_ds generic map (tech => padtech, voltage => x25v) 
-  	port map (clk200_p, clk200_n, lclk200); 
+--  clk200_pad : inpad_ds generic map (tech => padtech, voltage => x25v) 
+--  	port map (clk200_p, clk200_n, lclk200); 
 
   -- clock generator
   clkgen0 : clkgen
@@ -233,7 +235,7 @@ begin
     generic map (defmast => CFG_DEFMST, split => CFG_SPLIT,
                  rrobin  => CFG_RROBIN, ioaddr => CFG_AHBIO, ioen => 1, 
                  nahbm => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH, 
-                 nahbs => 8)
+                 nahbs => 8, devid => XILINX_SP601)
     port map (rstn, clkm, ahbmi, ahbmo, ahbsi, ahbso);
 
 ----------------------------------------------------------------------
@@ -354,43 +356,78 @@ begin
         core_ddr_csb, ddr_we, ddr_ras, ddr_cas, ddr_dm, ddr_dqs, ddr_dqsn,
         core_ddr_ad, ddr_ba, ddr_dq, core_ddr_odt);
 
-    ddr_clk(1 downto 0)  <= core_ddr_clk(1 downto 0);
-    ddr_clkb(1 downto 0) <= core_ddr_clkb(1 downto 0);
+    ddr_clk              <= core_ddr_clk(0);
+    ddr_clkb             <= core_ddr_clkb(0);
     ddr_cke              <= core_ddr_cke(0);
-    ddr_csb              <= core_ddr_csb(0);
     ddr_ad               <= core_ddr_ad(12 downto 0);
     ddr_odt              <= core_ddr_odt(0);
   end generate;
 
-  noddr : if (CFG_DDR2SP = 0) generate lock <= '1'; end generate;
+  mig_gen : if (CFG_MIG_DDR2 = 1) generate 
+    ddrc : entity work.ahb2mig_sp601 generic map( 
+	hindex => 4, haddr => 16#400#, hmask => 16#F80#,
+	pindex => 5, paddr => 5)  
+    port map(
+   	mcb3_dram_dq  	=> ddr_dq,
+   	mcb3_dram_a	=> ddr_ad,
+   	mcb3_dram_ba  	=> ddr_ba,
+   	mcb3_dram_ras_n	=> ddr_ras,
+   	mcb3_dram_cas_n	=> ddr_cas,
+   	mcb3_dram_we_n	=> ddr_we,
+   	mcb3_dram_odt	=> ddr_odt,
+   	mcb3_dram_cke	=> ddr_cke,
+   	mcb3_dram_dm	=> ddr_dm(0),
+   	mcb3_dram_udqs	=> ddr_dqs(1),
+   	mcb3_rzq	=> ddr_rzq,
+   	mcb3_zio	=> ddr_zio,
+   	mcb3_dram_udm	=> ddr_dm(1),
+	mcb3_dram_dqs	=> ddr_dqs(0),
+   	mcb3_dram_ck	=> ddr_clk,
+   	mcb3_dram_ck_n	=> ddr_clkb,
+	ahbsi		=> ahbsi,
+	ahbso		=> ahbso(4),
+	apbi 		=> apbi,
+	apbo 		=> apbo(5),
+	calib_done	=> lock,
+	rst_n_syn	=> rstn,
+	rst_n_async	=> rstraw,  
+	clk_amba	=> clkm,
+	clk_mem_n	=> clk200_n,
+	clk_mem_p	=> clk200_p,
+	
+	test_error	=> open
+	);
+
+  end generate;
+  noddr : if (CFG_DDR2SP+CFG_MIG_DDR2) = 0 generate lock <= '1'; end generate;
 
 ----------------------------------------------------------------------
 ---  SPI Memory Controller--------------------------------------------
 ----------------------------------------------------------------------
 
-  spimc: if CFG_SPICTRL_ENABLE = 0 and CFG_SPIMCTRL = 1 generate
-    spimctrl0 : spimctrl        -- SPI Memory Controller
-      generic map (hindex => 7, hirq => 11, faddr => 16#e00#, fmask => 16#ff8#,
-                   ioaddr => 16#002#, iomask => 16#fff#,
-                   spliten => CFG_SPLIT, oepol  => 0,
-                   sdcard => CFG_SPIMCTRL_SDCARD,
-                   readcmd => CFG_SPIMCTRL_READCMD,
-                   dummybyte => CFG_SPIMCTRL_DUMMYBYTE,
-                   dualoutput => CFG_SPIMCTRL_DUALOUTPUT,
-                   scaler => CFG_SPIMCTRL_SCALER,
-                   altscaler => CFG_SPIMCTRL_ASCALER,
-                   pwrupcnt => CFG_SPIMCTRL_PWRUPCNT)
-      port map (rstn, clkm, ahbsi, ahbso(7), spmi, spmo);
-
-    -- MISO is shared with Flash data 0
-    spmi.miso <= memi.data(24);
-    mosi_pad : outpad generic map (tech => padtech)
-      port map (spi_mosi, spmo.mosi);
-    sck_pad  : outpad generic map (tech => padtech)
-      port map (spi_clk, spmo.sck);
-    slvsel0_pad : odpad generic map (tech => padtech)
-      port map (spi_sel_n, spmo.csn);  
-  end generate;
+--  spimc: if CFG_SPICTRL_ENABLE = 0 and CFG_SPIMCTRL = 1 generate
+--    spimctrl0 : spimctrl        -- SPI Memory Controller
+--      generic map (hindex => 7, hirq => 11, faddr => 16#e00#, fmask => 16#ff8#,
+--                   ioaddr => 16#002#, iomask => 16#fff#,
+--                   spliten => CFG_SPLIT, oepol  => 0,
+--                   sdcard => CFG_SPIMCTRL_SDCARD,
+--                   readcmd => CFG_SPIMCTRL_READCMD,
+--                   dummybyte => CFG_SPIMCTRL_DUMMYBYTE,
+--                   dualoutput => CFG_SPIMCTRL_DUALOUTPUT,
+--                   scaler => CFG_SPIMCTRL_SCALER,
+--                   altscaler => CFG_SPIMCTRL_ASCALER,
+--                   pwrupcnt => CFG_SPIMCTRL_PWRUPCNT)
+--      port map (rstn, clkm, ahbsi, ahbso(7), spmi, spmo);
+--
+--    -- MISO is shared with Flash data 0
+--    spmi.miso <= memi.data(24);
+--    mosi_pad : outpad generic map (tech => padtech)
+--      port map (spi_mosi, spmo.mosi);
+--    sck_pad  : outpad generic map (tech => padtech)
+--      port map (spi_clk, spmo.sck);
+--    slvsel0_pad : odpad generic map (tech => padtech)
+--      port map (spi_sel_n, spmo.csn);  
+--  end generate;
   
 ----------------------------------------------------------------------
 ---  APB Bridge and various periherals -------------------------------
@@ -448,34 +485,31 @@ begin
   end generate;
   noua0 : if CFG_UART1_ENABLE = 0 generate apbo(1) <= apb_none; end generate;
 
-  -- There is no PS/2 port
-  apbo(5) <= apb_none;
-  
-  spic: if CFG_SPICTRL_ENABLE = 1 generate  -- SPI controller
-    spi1 : spictrl
-      generic map (pindex => 7, paddr  => 7, pmask  => 16#fff#, pirq => 11,
-                   fdepth => CFG_SPICTRL_FIFO, slvselen => CFG_SPICTRL_SLVREG,
-                   slvselsz => CFG_SPICTRL_SLVS, odmode => 0)
-      port map (rstn, clkm, apbi, apbo(7), spii, spio, slvsel);
-    spii.spisel <= '1';                 -- Master only
-    -- MISO is shared with Flash data 0
-    spii.miso <= memi.data(24);
-    mosi_pad : outpad generic map (tech => padtech)
-      port map (spi_mosi, spio.mosi);
-    sck_pad  : outpad generic map (tech => padtech)
-      port map (spi_clk, spio.sck);
-    slvsel_pad : odpad generic map (tech => padtech)
-      port map (spi_sel_n, slvsel(0));
-  end generate spic;
+--  spic: if CFG_SPICTRL_ENABLE = 1 generate  -- SPI controller
+--    spi1 : spictrl
+--      generic map (pindex => 7, paddr  => 7, pmask  => 16#fff#, pirq => 11,
+--                   fdepth => CFG_SPICTRL_FIFO, slvselen => CFG_SPICTRL_SLVREG,
+--                   slvselsz => CFG_SPICTRL_SLVS, odmode => 0)
+--      port map (rstn, clkm, apbi, apbo(7), spii, spio, slvsel);
+--    spii.spisel <= '1';                 -- Master only
+--    -- MISO is shared with Flash data 0
+--    spii.miso <= memi.data(24);
+--    mosi_pad : outpad generic map (tech => padtech)
+--      port map (spi_mosi, spio.mosi);
+--    sck_pad  : outpad generic map (tech => padtech)
+--      port map (spi_clk, spio.sck);
+--    slvsel_pad : odpad generic map (tech => padtech)
+--      port map (spi_sel_n, slvsel(0));
+--  end generate spic;
 
   nospi: if CFG_SPICTRL_ENABLE = 0 and CFG_SPIMCTRL = 0 generate
     apbo(7) <= apb_none;
-    mosi_pad : outpad generic map (tech => padtech)
-      port map (spi_mosi, gnd);
-    sck_pad  : outpad generic map (tech => padtech)
-      port map (spi_clk, gnd);
-    slvsel_pad : odpad generic map (tech => padtech)
-      port map (spi_sel_n, vcc);
+--    mosi_pad : outpad generic map (tech => padtech)
+--      port map (spi_mosi, gnd);
+--    sck_pad  : outpad generic map (tech => padtech)
+--      port map (spi_clk, gnd);
+--    slvsel_pad : odpad generic map (tech => padtech)
+--      port map (spi_sel_n, vcc);
   end generate;
 
 -----------------------------------------------------------------------

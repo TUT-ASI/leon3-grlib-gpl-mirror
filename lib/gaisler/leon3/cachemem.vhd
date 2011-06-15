@@ -38,13 +38,13 @@ entity cachemem is
   generic (
     tech      : integer range 0 to NTECH := 0;
     icen      : integer range 0 to 1 := 0;
-    irepl     : integer range 0 to 2 := 0;
+    irepl     : integer range 0 to 3 := 0;
     isets     : integer range 1 to 4 := 1;
     ilinesize : integer range 4 to 8 := 4;
     isetsize  : integer range 1 to 256 := 1;
     isetlock  : integer range 0 to 1 := 0;
     dcen      : integer range 0 to 1 := 0;
-    drepl     : integer range 0 to 2 := 0;
+    drepl     : integer range 0 to 3 := 0;
     dsets     : integer range 1 to 4 := 1;
     dlinesize : integer range 4 to 8 := 4;
     dsetsize  : integer range 1 to 256 := 1;
@@ -189,16 +189,18 @@ begin
         vdtdatain(i)(DTWIDTH-DLRR_BIT) := crami.dcramin.tag(i)(CTAG_LRRPOS);          
       end if;
       vdtdatain(i)(DTAG_BITS-1 downto 0) := crami.dcramin.tag(i)(TAG_HIGH downto DTAG_LOW) & crami.dcramin.tag(i)(dlinesize-1 downto 0);
-      if (DSETS > 1) and (crami.dcramin.flush = '1') then
-	vdtdatain(i)(dlinesize+1 downto dlinesize) :=  conv_std_logic_vector(i,2);
+      if (crami.dcramin.flush = '1') then
+        vdtdatain(i)(DTAG_BITS-1 downto DTAG_BITS-4) :=  "1111";
+        vdtdatain(i)(DTAG_BITS-5 downto DTAG_BITS-6) :=  conv_std_logic_vector(i,2);
+        vdtdatain(i)(DTAG_BITS-7 downto DTAG_BITS-8) :=  conv_std_logic_vector(i,2);
       end if;
     end loop;
 
     vdtdatain2 := (others => (others => '0'));
     for i in 0 to DSETS-1 loop
-      if (DSETS > 1) then 
-        vdtdatain2(i)(dlinesize+1 downto dlinesize) := conv_std_logic_vector(i,2);
-      end if;
+      vdtdatain2(i)(DTAG_BITS-1 downto DTAG_BITS-4) :=  "1111";
+      vdtdatain2(i)(DTAG_BITS-5 downto DTAG_BITS-6) :=  conv_std_logic_vector(i,2);
+      vdtdatain2(i)(DTAG_BITS-7 downto DTAG_BITS-8) :=  conv_std_logic_vector(i,2); 
     end loop;
     vdddatain := crami.dcramin.data;
 
@@ -219,8 +221,10 @@ begin
         vitdatain(i)(ITWIDTH-ILRR_BIT) := crami.icramin.tag(i)(CTAG_LRRPOS);
       end if;
       vitdatain(i)(ITAG_BITS-1 downto 0) := crami.icramin.tag(i)(TAG_HIGH downto ITAG_LOW) & crami.icramin.tag(i)(ilinesize-1 downto 0);
-      if (ISETS > 1) and (crami.icramin.flush = '1') then
-	vitdatain(i)(ilinesize+1 downto ilinesize) :=  conv_std_logic_vector(i,2);
+      if (crami.icramin.flush = '1') then
+        vitdatain(i)(ITAG_BITS-1 downto ITAG_BITS-4) :=  "1111";
+        vitdatain(i)(ITAG_BITS-5 downto ITAG_BITS-6) :=  conv_std_logic_vector(i,2);
+        vitdatain(i)(ITAG_BITS-7 downto ITAG_BITS-8) :=  conv_std_logic_vector(i,2);
       end if;
     end loop;
 
@@ -322,7 +326,7 @@ begin
 	    clk, dtaddr, dtdatain(i)(DTWIDTH-1 downto 0), 
 		 dtdataout(i)(DTWIDTH-1 downto 0), dtenable(i), dtwrite(i));
           dtags1 : syncram_2p
-          generic map (tech, DOFFSET_BITS, DPTAG_BITS, 1, 1-syncram_2p_write_through(tech), testen) port map (
+          generic map (tech, DOFFSET_BITS, DPTAG_BITS, 0, 1, testen) port map (
             sclk, dtenable2(i), dtaddr2, dtdataout3(i)(DTAG_BITS-1 downto DTAG_BITS-DPTAG_BITS),
             clk, dtwrite3(i), dtaddr, dtdatain3(i)(DTAG_BITS-1 downto DTAG_BITS-DPTAG_BITS));
         end generate;

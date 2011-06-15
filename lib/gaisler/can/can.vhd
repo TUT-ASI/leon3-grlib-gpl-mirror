@@ -78,7 +78,7 @@ package can is
     memtech   : integer := DEFMEMTECH;
     ncores    : integer range 1 to 8 := 1;
     sepirq    : integer range 0 to 1 := 0;
-    syncrst   : integer range 0 to 1 := 0;
+    syncrst   : integer range 0 to 2 := 0;
     ft        : integer range 0 to 1 := 0);
   port (
     resetn  : in  std_logic;

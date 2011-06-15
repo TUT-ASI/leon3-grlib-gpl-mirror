@@ -94,23 +94,23 @@ TIMESPEC "TSTFT65_TFT40" = FROM "clk65" TO "clk40" TIG;
 // IDELAYCTRL LOC properties
 /////////////////////////////////////////////////////
 
-INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.0.u" LOC = "IDELAYCTRL_X0Y3";
-INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.1.u" LOC = "IDELAYCTRL_X0Y6";
+INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.0.u" LOC = "IDELAYCTRL_X0Y3";
+INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.1.u" LOC = "IDELAYCTRL_X0Y6";
 # Not used when instantiating 32 bits
-INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.2.u" LOC = "IDELAYCTRL_X0Y4";
-INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[0].u" LOC = "IDELAYCTRL_X0Y3";
-INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[1].u" LOC = "IDELAYCTRL_X0Y6";
+INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.2.u" LOC = "IDELAYCTRL_X0Y4";
+INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[0].u" LOC = "IDELAYCTRL_X0Y3";
+INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[1].u" LOC = "IDELAYCTRL_X0Y6";
 # Not used when instantiating 32 bits
-INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[2].u" LOC = "IDELAYCTRL_X0Y4";
+INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[2].u" LOC = "IDELAYCTRL_X0Y4";
 
-INST "ddrsp0.ddrc1/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.0.u" LOC = "IDELAYCTRL_X0Y2";
-INST "ddrsp0.ddrc1/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.1.u" LOC = "IDELAYCTRL_X0Y7";
+INST "ddrsp0.ddrc1/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.0.u" LOC = "IDELAYCTRL_X0Y2";
+INST "ddrsp0.ddrc1/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.1.u" LOC = "IDELAYCTRL_X0Y7";
 # Not used when instantiating 32 bits
-INST "ddrsp0.ddrc1/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.2.u" LOC = "IDELAYCTRL_X0Y8";
-INST "ddrsp0.ddrc1/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[0].u" LOC = "IDELAYCTRL_X0Y2";
-INST "ddrsp0.ddrc1/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[1].u" LOC = "IDELAYCTRL_X0Y7";
+INST "ddrsp0.ddrc1/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.2.u" LOC = "IDELAYCTRL_X0Y8";
+INST "ddrsp0.ddrc1/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[0].u" LOC = "IDELAYCTRL_X0Y2";
+INST "ddrsp0.ddrc1/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[1].u" LOC = "IDELAYCTRL_X0Y7";
 # Not used when instantiating 32 bits
-INST "ddrsp0.ddrc1/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[2].u" LOC = "IDELAYCTRL_X0Y8";
+INST "ddrsp0.ddrc1/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[2].u" LOC = "IDELAYCTRL_X0Y8";
 
 /////////////////////////////////////////////////////
 // Flash

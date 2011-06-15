@@ -68,6 +68,8 @@
 #define SPIC_OD     (1 << 12)
 #define SPIC_CG     7
 #define SPIC_ASDEL  5
+#define SPIC_TAC    (1 << 4)
+#define SPIC_TTO    (1 << 3)
 /* Event and Mask registers */
 #define SPIC_TIP    (1 << 31)
 #define SPIC_LT     (1 << 14)

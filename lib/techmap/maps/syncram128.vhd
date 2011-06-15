@@ -20,7 +20,7 @@
 -- Entity: 	syncram128
 -- File:	syncram128.vhd
 -- Author:	Jiri Gaisler - Gaisler Research
--- Description:	64-bit syncronous 1-port ram with 32-bit write strobes
+-- Description:	128-bit syncronous 1-port ram with 32-bit write strobes
 --		and tech selection
 ------------------------------------------------------------------------------
 
@@ -28,7 +28,10 @@ library ieee;
 library techmap;
 use ieee.std_logic_1164.all;
 use techmap.gencomp.all;
-  
+library grlib;
+use grlib.config.all;
+use grlib.stdlib.all;
+
 entity syncram128 is
   generic (tech : integer := 0; abits : integer := 6; testen : integer := 0);
   port (
@@ -65,6 +68,17 @@ begin
       x0 : unisim_syncram128 generic map (abits)
          port map (clk, address, datain, dataout, enable, write);
     end generate;
+-- pragma translate_off
+    dmsg : if grlib_debug_level >= 2 generate
+      x : process
+      begin
+        assert false report "syncram128: " & tost(2**abits) & "x128" &
+         " (" & tech_table(tech) & ")"
+        severity note;
+        wait;
+      end process;
+    end generate;
+-- pragma translate_on
   end generate;
 
   nos128 : if has_sram128(tech) = 0 generate

@@ -301,7 +301,8 @@ component pcidma
     irq       : integer := 0;
     irqmask   : integer := 0;
     scanen    : integer := 0;
-    hostrst   : integer := 0);
+    hostrst   : integer := 0;
+    syncrst   : integer := 0);
    port(
       rst       : in std_logic;
       clk       : in std_logic;
@@ -440,6 +441,80 @@ end component;
       ahbso     : out ahb_slv_out_type--;
       --debug     : out std_logic_vector(255 downto 0)
    );
+end component;
+
+component grpci2
+  generic (
+    memtech     : integer := DEFMEMTECH;
+    oepol       : integer := 0;
+    hmindex     : integer := 0;
+    hdmindex    : integer := 0;
+    hsindex     : integer := 0;
+    haddr       : integer := 0;
+    hmask       : integer := 0;
+    ioaddr      : integer := 0;
+    pindex      : integer := 0;
+    paddr       : integer := 0;
+    pmask       : integer := 16#FFF#;
+    irq         : integer := 0;
+    irqmode     : integer range 0 to 3 := 0;
+    master      : integer range 0 to 1 := 1;
+    target      : integer range 0 to 1 := 1;
+    dma         : integer range 0 to 1 := 1;
+    tracebuffer : integer range 0 to 16384 := 0;
+    confspace   : integer range 0 to 1 := 1;
+    vendorid    : integer := 16#0000#;
+    deviceid    : integer := 16#0000#;
+    classcode   : integer := 16#000000#;
+    revisionid  : integer := 16#00#;
+    cap_pointer : integer := 16#40#;
+    ext_cap_pointer : integer := 16#00#;
+    iobase      : integer := 16#FFF#;
+    extcfg      : integer := 16#0000000#;
+    bar0        : integer range 0 to 31 := 28;
+    bar1        : integer range 0 to 31 := 0;
+    bar2        : integer range 0 to 31 := 0;
+    bar3        : integer range 0 to 31 := 0;
+    bar4        : integer range 0 to 31 := 0;
+    bar5        : integer range 0 to 31 := 0;
+    barprefetch : integer range 0 to 63 := 16#0#;
+    barminsize  : integer range 12 to 31 := 12;
+    fifo_depth  : integer range 3 to 7 := 3;
+    fifo_count  : integer range 2 to 4 := 2; 
+    conv_endian : integer range 0 to 1 := 0; -- 1: little (PCI) <~> big (AHB), 0: big (PCI) <=> big (AHB)   
+    deviceirq   : integer range 0 to 1 := 1;
+    deviceirqmask : integer range 0 to 15 := 16#0#;
+    hostirq     : integer range 0 to 1 := 1;
+    hostirqmask : integer range 0 to 15 := 16#0#;
+    nsync       : integer range 0 to 2 := 2; 
+    hostrst     : integer range 0 to 2 := 0;-- 0: PCI reset is never driven, 1: PCI reset is driven from AHB reset if host, 2: PCI reset is always driven from AHB reset
+    bypass      : integer range 0 to 1 := 1;
+    ft          : integer range 0 to 1 := 0;
+    scantest    : integer range 0 to 1 := 0;
+    debug       : integer range 0 to 1 := 0;
+    tbapben     : integer range 0 to 1 := 0;
+    tbpindex    : integer := 0;
+    tbpaddr     : integer := 0;
+    tbpmask     : integer := 16#F00#);
+   port(
+      rst       : in std_logic;
+      clk       : in std_logic;
+      pciclk    : in std_logic;
+      dirq      : in  std_logic_vector(3 downto 0);
+      pcii      : in  pci_in_type;
+      pcio      : out pci_out_type;
+      apbi      : in apb_slv_in_type;
+      apbo      : out apb_slv_out_type;
+      ahbsi     : in  ahb_slv_in_type;
+      ahbso     : out ahb_slv_out_type;
+      ahbmi     : in  ahb_mst_in_type;
+      ahbmo     : out ahb_mst_out_type;
+      ahbdmo    : out ahb_mst_out_type;
+      ptarst    : out std_logic;
+      tbapbi    : in apb_slv_in_type := apb_slv_in_none;
+      tbapbo    : out apb_slv_out_type;
+      debugo    : out std_logic_vector(debug*255 downto 0)
+);
 end component;
 
   constant PCI_VENDOR_ESA      : integer := 16#16E3#;

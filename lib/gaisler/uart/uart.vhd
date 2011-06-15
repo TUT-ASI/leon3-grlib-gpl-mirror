@@ -39,7 +39,7 @@ end record;
 type uart_out_type is record
   rtsn   	: std_ulogic;
   txd   	: std_ulogic;
-  scaler	: std_logic_vector(17 downto 0);
+  scaler	: std_logic_vector(31 downto 0);
   txen     	: std_ulogic;
   flow   	: std_ulogic;
   rxen     	: std_ulogic;
@@ -55,7 +55,8 @@ component apbuart
     parity   : integer := 1; 
     flow     : integer := 1;
     fifosize : integer range 1 to 32 := 1;
-    abits    : integer := 8);
+    abits    : integer := 8;
+    sbits    : integer range 12 to 32 := 12);
   port (
     rst    : in  std_ulogic;
     clk    : in  std_ulogic;

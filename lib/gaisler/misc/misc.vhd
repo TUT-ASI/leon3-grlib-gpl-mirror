@@ -54,6 +54,7 @@ package misc is
   type gptimer_in_type is record
     dhalt    : std_ulogic;
     extclk   : std_ulogic;
+    wdogen   : std_ulogic;
   end record;
 
   type gptimer_in_vector is array (natural range <>) of gptimer_in_type;
@@ -67,7 +68,7 @@ package misc is
 
   type gptimer_out_vector is array (natural range <>) of gptimer_out_type;
   
-  constant gptimer_in_none : gptimer_in_type := ('0', '0');
+  constant gptimer_in_none : gptimer_in_type := ('0', '0', '0');
 
   constant gptimer_out_none : gptimer_out_type :=
     ((others => '0'), (others => '0'), '1', '0');
@@ -82,7 +83,8 @@ package misc is
     sbits    : integer := 16;			-- scaler bits
     ntimers  : integer range 1 to 7 := 1; 	-- number of timers
     nbits    : integer := 32;			-- timer bits
-    wdog     : integer := 0
+    wdog     : integer := 0;
+    ewdogen  : integer := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -225,6 +227,27 @@ package misc is
   );
   end component;
 
+  component ahbtrace_mmb is
+  generic (
+    hindex  : integer := 0;
+    ioaddr  : integer := 16#000#;
+    iomask  : integer := 16#E00#;
+    tech    : integer := DEFMEMTECH;
+    irq     : integer := 0;
+    kbytes  : integer := 1;
+    ahbfilt : integer := 0;
+    ntrace  : integer range 1 to 8 := 1);
+  port (
+    rst     : in  std_ulogic;
+    clk     : in  std_ulogic;
+    ahbsi   : in  ahb_slv_in_type;       -- Register interface
+    ahbso   : out ahb_slv_out_type;
+    tahbmiv : in  ahb_mst_in_vector_type(0 to ntrace-1);       -- Trace
+    tahbsiv : in  ahb_slv_in_vector_type(0 to ntrace-1)
+  );
+  end component;
+
+  
   type ahb_dma_in_type is record
     address         : std_logic_vector(31 downto 0);
     wdata           : std_logic_vector(AHBDW-1 downto 0);
@@ -398,6 +421,7 @@ package misc is
     mstmaccsz   : integer range 32 to 256 := 32;
     rdcomb      : integer range 0 to 2 := 0;
     wrcomb      : integer range 0 to 2 := 0;
+    combmask    : integer := 16#ffff#;
     allbrst     : integer range 0 to 1 := 0;
     ifctrlen    : integer range 0 to 1 := 0;
     fcfs        : integer range 0 to NAHBMST := 0;
@@ -447,6 +471,7 @@ package misc is
     maccsz      : integer range 32 to 256 := 32;
     rdcomb      : integer range 0 to 2 := 0;
     wrcomb      : integer range 0 to 2 := 0;
+    combmask    : integer := 16#ffff#;
     allbrst     : integer range 0 to 1 := 0;
     fcfs        : integer range 0 to NAHBMST := 0;
     scantest    : integer range 0 to 1 := 0);
@@ -919,16 +944,21 @@ package misc is
       paddr    : integer := 0;
       pmask    : integer := 16#fff#;
       pirq     : integer := 0;
-      fdepth   : integer range 1 to 7  := 1;
-      slvselen : integer range 0 to 1  := 0;
-      slvselsz : integer range 1 to 32 := 1;
-      oepol    : integer range 0 to 1  := 0;
-      odmode   : integer range 0 to 1  := 0;
-      automode : integer range 0 to 1  := 0;
-      acntbits : integer range 1 to 32 := 32;
-      aslvsel  : integer range 0 to 1  := 0;
-      twen     : integer range 0 to 1  := 1;
-      maxwlen  : integer range 0 to 15 := 0
+      fdepth   : integer range 1 to 7       := 1;
+      slvselen : integer range 0 to 1       := 0;
+      slvselsz : integer range 1 to 32      := 1;
+      oepol    : integer range 0 to 1       := 0;
+      odmode   : integer range 0 to 1       := 0;
+      automode : integer range 0 to 1       := 0;
+      acntbits : integer range 1 to 32      := 32;
+      aslvsel  : integer range 0 to 1       := 0;
+      twen     : integer range 0 to 1       := 1;
+      maxwlen  : integer range 0 to 15      := 0;
+      netlist  : integer range 0 to NTECH   := 0;
+      syncram  : integer range 0 to 1       := 1;
+      memtech  : integer range 0 to NTECH   := 0;
+      ft       : integer range 0 to 2       := 0;
+      scantest : integer range 0 to 1       := 0
       );
     port (
       rstn   : in std_ulogic;

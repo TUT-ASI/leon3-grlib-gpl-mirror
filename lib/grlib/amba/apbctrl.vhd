@@ -105,13 +105,13 @@ begin
   variable pwdata : std_logic_vector(31 downto 0);
   variable apbaddr : std_logic_vector(apbmax downto 0);
   variable apbaddr2 : std_logic_vector(31 downto 0);
-  variable hirq, pirq : std_logic_vector(NAHBIRQ-1 downto 0);
+  variable pirq : std_logic_vector(NAHBIRQ-1 downto 0);
   variable nslave : integer range 0 to nslaves-1;
   variable bnslave : std_logic_vector(3 downto 0);
   begin
 
     v := r; v.psel := '0'; v.penable := '0'; psel := (others => '0');
-    hirq := (others => '0');  pirq := (others => '0'); 
+    pirq := (others => '0'); 
 
     -- detect start of cycle
     if (ahbi.hready = '1') then
@@ -197,8 +197,9 @@ begin
     apbi.scanen <= ahbi.scanen;
     apbi.testrst <= ahbi.testrst;
 
+    apbi.psel <= (others => '0');
     for i in 0 to nslaves-1 loop apbi.psel(i) <= psel(i) and r.psel; end loop;
-
+    
 --pragma translate_off
     lapbi.paddr   <= apbaddr2;
     lapbi.pwdata  <= r.pwdata;

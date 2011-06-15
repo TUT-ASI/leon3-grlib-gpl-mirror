@@ -79,7 +79,8 @@ generic (
     tech    : integer := 0;
     multype : integer := 0;
     pipe    : integer := 0;
-    mac     : integer := 0
+    mac     : integer := 0;
+    arch    : integer range 0 to 3 := 0
 );
 port (
     rst     : in  std_ulogic;
@@ -91,6 +92,7 @@ port (
 end component;
 
 function smult ( a, b  : in  std_logic_vector) return std_logic_vector;
+function umult ( a, b  : in  std_logic_vector) return std_logic_vector;
 
 end;
 
@@ -104,6 +106,27 @@ function smult ( a, b  : in  std_logic_vector) return std_logic_vector is
 begin
 
   sa := signed(a); sb := signed(b);
+-- pragma translate_off
+  if is_x(a) or is_x(b) then
+    sc := (others => 'X');
+  else
+-- pragma translate_on
+    sc := sa * sb;
+-- pragma translate_off
+  end if;
+-- pragma translate_on
+  res := std_logic_vector(sc);
+  return(res);
+end;
+
+function umult ( a, b  : in  std_logic_vector) return std_logic_vector is
+  variable sa : unsigned (a'length-1 downto 0);
+  variable sb : unsigned (b'length-1 downto 0);
+  variable sc : unsigned ((a'length + b'length) -1 downto 0);
+  variable res : std_logic_vector ((a'length + b'length) -1 downto 0);
+begin
+
+  sa := unsigned(a); sb := unsigned(b);
 -- pragma translate_off
   if is_x(a) or is_x(b) then
     sc := (others => 'X');

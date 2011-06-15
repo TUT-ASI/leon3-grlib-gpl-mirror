@@ -43,7 +43,7 @@ entity can_mc is
     memtech   : integer := DEFMEMTECH;
     ncores    : integer range 1 to 8 := 1;
     sepirq    : integer range 0 to 1 := 0;
-    syncrst   : integer range 0 to 1 := 0;
+    syncrst   : integer range 0 to 2 := 0;
     ft        : integer range 0 to 1 := 0);
    port (                          
       resetn  : in  std_logic;        
@@ -89,6 +89,8 @@ signal vcc, gnd : std_ulogic;
 
 signal r, rin : ahbregs;
 
+attribute sync_set_reset : string;
+attribute sync_set_reset of reset : signal is "true";
 begin
 
   gnd <= '0'; vcc <= '1'; reset <= not resetn;

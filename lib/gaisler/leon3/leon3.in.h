@@ -34,6 +34,16 @@
 #define CFG_IU_V8 0
 #endif
 
+#ifdef CONFIG_IU_MUL_MODGEN
+#define CFG_IU_MUL_STRUCT 1
+#elif defined CONFIG_IU_MUL_TECHSPEC
+#define CFG_IU_MUL_STRUCT 2
+#elif defined CONFIG_IU_MUL_DW
+#define CFG_IU_MUL_STRUCT 3
+#else
+#define CFG_IU_MUL_STRUCT 0
+#endif
+
 #ifndef CONFIG_PWD
 #define CONFIG_PWD 0
 #endif
@@ -138,7 +148,9 @@
 #define CFG_ILINE_SZ 8
 #endif
 
-#if defined CONFIG_ICACHE_ALGORND
+#if defined CONFIG_ICACHE_ALGODIR
+#define CFG_ICACHE_ALGORND 3
+#elif defined CONFIG_ICACHE_ALGORND
 #define CFG_ICACHE_ALGORND 2
 #elif defined CONFIG_ICACHE_ALGOLRR
 #define CFG_ICACHE_ALGORND 1
@@ -223,7 +235,9 @@
 #define CFG_DLINE_SZ 8
 #endif
 
-#if defined CONFIG_DCACHE_ALGORND
+#if defined CONFIG_DCACHE_ALGODIR
+#define CFG_DCACHE_ALGORND 3
+#elif defined CONFIG_DCACHE_ALGORND
 #define CFG_DCACHE_ALGORND 2
 #elif defined CONFIG_DCACHE_ALGOLRR
 #define CFG_DCACHE_ALGORND 1

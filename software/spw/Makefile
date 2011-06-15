@@ -16,5 +16,15 @@ single: rmapapi.h spwapi.h spwapi.c rmapapi.c spwtest.c
 router: rmapapi.h spwapi.h spwapi.c rmapapi.c router_test.c
 	$(CC) $(CCOPT) -o router_test router_test.c spwapi.c rmapapi.c
 
+router_dual: rmapapi.h spwapi.h spwapi.c rmapapi.c router_test_dual.c
+	$(CC) $(CCOPT) -o router_test_dual router_test_dual.c spwapi.c rmapapi.c
+
+router_test_18x: rmapapi.h spwapi.h spwapi.c rmapapi.c router_test_18x.c
+	$(CC) $(CCOPT) -o router_test_18x router_test_18x.c spwapi.c rmapapi.c
+
+router_dual_single: rmapapi.h spwapi.h spwapi.c rmapapi.c router_test_dual_single_link.c
+	$(CC) $(CCOPT) -o router_test_dual_single router_test_dual_single_link.c spwapi.c rmapapi.c
+
 clean:
 	-rm -rf router_test spw_test spw_test_dual_init spw_test_dual_targ spw_test_dual
+

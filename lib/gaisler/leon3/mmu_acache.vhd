@@ -71,7 +71,6 @@ type reg_type is record
   retry2 : std_ulogic;	-- retry/split pending
   werr   : std_logic;	-- write error
   hlocken : std_ulogic; -- ready to perform locked transaction
-  lock   : std_ulogic;  -- keep bus locked during SWAP sequence
   hcache : std_logic;	-- cacheable access
   nba    :  std_ulogic;
   nbo    : std_logic_vector(1 downto 0);       -- bus owner
@@ -87,8 +86,7 @@ constant hconfig : ahb_config_type := (
   others => zero32);
 
 constant ctbl : std_logic_vector(15 downto 0) := conv_std_logic_vector(cached, 16);
-function dec_fixed(scache : std_ulogic; 
-	haddr : std_logic_vector(3 downto 0); cached : integer) return std_ulogic is
+function dec_fixed(haddr : std_logic_vector(3 downto 0); cached : integer) return std_ulogic is
 begin
   if (cached /= 0) then return ctbl(conv_integer(haddr(3 downto 0)));
   else return('1'); end if;
@@ -96,6 +94,7 @@ end;
 
 signal r, rin : reg_type;
 signal r2, r2in : reg2_type;
+
 begin
 
   comb : process(ahbi, r, rst, mcii, mcdi, mcmmi, ahbso, hclken, r2)
@@ -119,7 +118,8 @@ begin
   variable nbo : std_logic_vector(1 downto 0);
   variable su, nb, bo_icache : std_logic;   
   variable scanen : std_ulogic;
-  
+  variable vreqmsk: std_ulogic;
+
   begin
 
     -- initialisation
@@ -141,6 +141,7 @@ begin
     if ahbi.hready = '1' then v.lb := '0'; end if;
     if scantest = 1 then scanen := ahbi.scanen; else scanen  := '0'; end if;
     v.retry2 := (r.retry or r.retry2) and not (r.ba and not r.retry);
+    vreqmsk := orv(r2.reqmsk);
 
     -- generate AHB signals
 
@@ -160,7 +161,7 @@ begin
       nbo := "01";
       hbusreq := '1';
       if (not mcdi.lock or r.hlocken) = '1' then htrans := HTRANS_NONSEQ; end if;
-    elsif (mcmmi.req = '1') and ((clk2x = 0) or (r2.reqmsk(0) = '1')) and 
+    elsif (mcmmi.req = '1') and ((clk2x = 0) or (r2.reqmsk(0) = '1')) and (r.hlocken = '0') and
       not (( ((r.ba and mcii.req) = '1') and (r.bo = "00")) or
            ( ((r.ba and dreq) = '1') and (r.bo = "01"))) then
       nbo := "10";
@@ -187,7 +188,7 @@ begin
       hlock := mcmmi.lock;
       htrans := HTRANS_NONSEQ; hburst := HBURST_SINGLE; 
       if (mcmmi.req and r.bg and ahbi.hready and not r.retry) = '1' 
-      then mmgrant := '1'; v.hcache := dec_fixed(ahbi.hcache, haddr(31 downto 28), cached); end if; 
+      then mmgrant := '1'; v.hcache := dec_fixed(haddr(31 downto 28), cached); end if; 
     elsif nbo = "00" then
       haddr := mcii.address; hwrite := '0'; hsize := HSIZE_WORD; hlock := '0';
       su := mcii.su;
@@ -200,7 +201,7 @@ begin
       if mcii.burst = '1' then hburst := HBURST_INCR; 
       else hburst := HBURST_SINGLE; end if;
       if (mcii.req and r.bg and ahbi.hready and not r.retry) = '1' 
-      then igrant := '1'; v.hcache := dec_fixed(ahbi.hcache, haddr(31 downto 28), cached); end if; 
+      then igrant := '1'; v.hcache := dec_fixed(haddr(31 downto 28), cached); end if; 
     elsif nbo = "01" then
       haddr := mcdi.address; hwrite := not mcdi.read; hsize := '0' & mcdi.size;
       hlock := mcdi.lock; 
@@ -212,7 +213,7 @@ begin
         hburst := HBURST_INCR; 
       end if;
       if (dreq and r.bg and ahbi.hready and not r.retry) = '1' 
-      then dgrant := not mcdi.lock or r.hlocken; v.hcache := dec_hcache; end if;
+      then dgrant := (not mcdi.lock or r.hlocken) or r.retry2; v.hcache := dec_hcache; end if;
     end if;
 
     if (hclken = '1') or (clk2x = 0) then
@@ -250,23 +251,20 @@ begin
 	dhcache := r.hcache;
         if ahbi.hready = '1' then
 	  case ahbi.hresp is
-	  when HRESP_OKAY => dready := '1'; v.lock := mcdi.lock and mcdi.read;
+	  when HRESP_OKAY => dready := '1';
 	  when HRESP_RETRY | HRESP_SPLIT=> dretry := '1'; 
 	  when others => dready := '1'; dmexc := '1'; v.werr := not mcdi.read;
 	  end case;
         end if;
       end if;
-      hlock := mcdi.lock;
+      hlock := mcdi.lock or ((r.retry or (r.retry2 and not r.ba)) and r.hlocken);
     end if;
 
-    if r.lock = '1' then hlock := mcdi.lock; end if;
-    if (r.lock = '1') and (nbo = "01") then v.lock := '0'; end if;
-   
-    
     if (nbo = "01") and ((hsize = "011") or ((dec_hcache and mcdi.read and mcdi.cache) = '1')) then 
       hsize := "010"; haddr(1 downto 0) := "00";
     end if;
 
+    if (r.bo = "01") and (hlock = '1') then nbo := "01"; end if;
     if ahbi.hready = '1' then
       if r.retry = '0' then v.bo := nbo; end if;
       v.bg := ahbi.hgrant(hindex);
@@ -274,7 +272,12 @@ begin
 	v.ba := r.bg;
       else v.ba := '0'; end if;
       v.hlocken := hlock and ahbi.hgrant(hindex);
-      if (clk2x /= 0) then v.hlocken := v.hlocken and r2.reqmsk(1); end if;
+      if (clk2x /= 0) then 
+        igrant := igrant and vreqmsk;
+        dgrant := dgrant and vreqmsk;
+        mmgrant := mmgrant and vreqmsk;
+        if (r.bo = nbo) then v.ba := v.ba and vreqmsk; end if;
+      end if;
     end if;
 
     if hburst = HBURST_SINGLE then nb := '1'; else nb := '0'; end if;
@@ -294,7 +297,7 @@ begin
 
     if rst = '0' then
       v.bg := '0'; v.bo := "00"; v.ba := '0'; v.retry := '0'; v.werr := '0'; v.lb := '0';
-      v.hcache := '0'; v.lock := '0'; v.hlocken := '0'; v.nba := '0'; v.nbo := "00";
+      v.hcache := '0'; v.hlocken := '0'; v.nba := '0'; v.nbo := "00";
       v.retry2 := '0';
     end if;
 
@@ -304,14 +307,14 @@ begin
     ahbo.htrans  <= htrans;
     ahbo.hbusreq <= hbusreq and not r.lb and not ((((not bo_icache) and r.ba) or nb) and r.bg);
     ahbo.hwdata  <= ahbdrivedata(hwdata);
-    ahbo.hlock   <= hlock and mcdi.read;
+    ahbo.hlock   <= hlock;
     ahbo.hwrite  <= hwrite;
     ahbo.hsize   <= hsize;
     ahbo.hburst  <= hburst;
     ahbo.hindex  <= hindex;
     if nbo = "00" then ahbo.hprot <= "11" & su & '0';
     else ahbo.hprot <= "11" & su & '1'; end if;
-    
+
     mcio.grant   <= igrant;
     mcio.ready   <= iready;
     mcio.mexc    <= imexc;
@@ -325,7 +328,6 @@ begin
     mcdo.cache   <= dhcache;
     mcdo.ba      <= r.ba;
     mcdo.bg      <= r.bg and not v.bo(1);
-
 
     mcmmo.grant   <= mmgrant;
     mcmmo.ready   <= mmready;

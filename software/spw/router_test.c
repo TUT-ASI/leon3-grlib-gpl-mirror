@@ -9,7 +9,7 @@
 
 /*   See the file COPYING for the full details of the license. */
 /******************************************************************************/
-#define PORTS 10
+#define PORTS 18
 #define STARTINDEX 0
 #define INTERNALPORTS 1
 

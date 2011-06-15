@@ -8,7 +8,7 @@ PART=XC6SLX16
 PACKAGE=csg324
 SPEED=-2
 SYNFREQ=220
-PROMGENPAR=-x xcf08p -u 0 $(TOP).bit -p mcs -w -o xilinx-sp601-xc6slx16
+PROMGENPAR= -c FF -s 8192 -u 0 $(TOP).bit -p mcs -spi -w -o xilinx-sp601-xc6slx16
 
 MANUFACTURER=Xilinx
 MGCPART=XC6SLX16$(PACKAGE)

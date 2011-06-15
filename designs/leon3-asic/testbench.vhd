@@ -121,6 +121,8 @@ signal spw_rxsn : std_logic_vector(0 to CFG_SPW_NUM-1);
 signal spw_txdn : std_logic_vector(0 to CFG_SPW_NUM-1);
 signal spw_txsn : std_logic_vector(0 to CFG_SPW_NUM-1);
 
+signal trst,tck,tms,tdi,tdo: std_ulogic;
+
 begin
 
 -- clock and reset
@@ -154,7 +156,7 @@ begin
   promedac <= '0';
   prom32 <= '1';
   rxd2 <= txd2;
-
+  
   d3 : entity work.leon3mp
         generic map ( fabtech, memtech, padtech, clktech, disas, dbguart, pclow )
         port map (rst, clksel, clk, lock, error, wdogn, address, data, 
@@ -164,7 +166,8 @@ begin
 	ramsn, ramoen, rwen, oen, writen, read, iosn, romsn, brdyn, bexcn, gpio,
 	prom32, promedac,
 	spw_clksel, spw_clk, spw_rxdp, spw_rxdn, spw_rxsp, spw_rxsn, spw_txdp, spw_txdn,
-        spw_txsp, spw_txsn, gnd(0), roen, roout, nandout, test);
+        spw_txsp, spw_txsn, gnd(0), roen, roout, test,
+        trst, tck, tms, tdi, tdo);
 
 -- optional sdram
 
@@ -213,11 +216,28 @@ begin
    begin
      wait for 2500 ns;
      if to_x01(error) = '1' then wait on error; end if;
-     assert (to_x01(error) = '1') 
-       report "*** IU in error mode, simulation halted ***"
-         severity failure ;
+--     assert (to_x01(error) = '1') 
+--       report "*** IU in error mode, simulation halted ***"
+--         severity failure ;
    end process;
 
+  bst0: process
+  begin
+    trst <= '0';
+    tck <= '0';
+    tms <= '1';
+    tdi <= '0';
+    wait for 2500 ns;
+    trst <= '1';
+    if to_x01(error) = '1' then wait on error; end if;
+    bscantest(tdo,tck,tms,tdi,10);
+    assert false
+       report "*** IU in error mode, simulation halted ***"
+       severity failure ;
+    
+  end process;
+
+  
   test0 :  grtestmod
     port map ( rst, clk, error, address(21 downto 2), data,
     	       iosn, oen, writen, brdyn);

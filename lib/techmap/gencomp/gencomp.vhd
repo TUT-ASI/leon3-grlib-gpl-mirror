@@ -36,7 +36,7 @@ package gencomp is
 
 -- technologies and libraries
 
-constant NTECH : integer := 44;
+constant NTECH : integer := 46;
 type tech_ability_type is array (0 to NTECH) of integer;
 
 constant inferred    : integer := 0;
@@ -84,6 +84,8 @@ constant easic45     : integer := 41;
 constant cmos9sf     : integer := 42;
 constant apa3e       : integer := 43;
 constant apa3l       : integer := 44;
+constant ut130       : integer := 45;
+constant ut90        : integer := 46;
 
 constant DEFMEMTECH  : integer := inferred;
 constant DEFPADTECH  : integer := inferred;
@@ -96,7 +98,7 @@ constant is_fpga : tech_ability_type :=
 	 stratix1 => 1, stratix2 => 1, eclipse => 1,
 	 stratix3 => 1, cyclone3 => 1, axdsp => 1, 
 	 spartan6 => 1, virtex6 => 1, actfus => 1, 
-	 stratix4 => 1, easic45 => 1, apa3e => 1, apa3l => 1,
+	 stratix4 => 1, apa3e => 1, apa3l => 1,
 	 others => 0);
 
 constant infer_mul : tech_ability_type := is_fpga;
@@ -109,10 +111,10 @@ constant regfile_3p_write_through : tech_ability_type :=
 
 constant regfile_3p_infer : tech_ability_type :=
 	(inferred => 1, rhumc => 1, ihp25 => 1, rhlib18t => 0,
-	 peregrine => 1, ihp25rh => 1, umc => 1, custom1 => 1, others => 0);
+	 peregrine => 1, ihp25rh => 1, umc => 1, custom1 => 0, others => 0);
 
 constant syncram_2p_dest_rw_collision : tech_ability_type :=
-        (memartisan => 1, smic013 => 1, others => 0);
+        (memartisan => 1, smic013 => 1, easic45 => 1, others => 0);
 
 constant syncram_dp_dest_rw_collision : tech_ability_type :=
         (memartisan => 1, smic013 => 1, others => 0);
@@ -131,7 +133,7 @@ constant has_dpram : tech_ability_type :=
 	 cyclone3 => 1, memvirage90 => 1, atc18rha => 1, smic013 => 1,
 	 tm65gpl => 1, axdsp => 1, spartan6 => 1, virtex6 => 1, 
 	 actfus => 1, stratix4 => 1, easic45 => 1, apa3e => 1,
-	 apa3l => 1, others => 0);
+	 apa3l => 1, ut90 => 1, others => 0);
 
 constant has_sram64 : tech_ability_type :=
 	(inferred => 0, virtex2 => 1, spartan3 => 1, virtex4 => 1,
@@ -141,7 +143,8 @@ constant has_sram64 : tech_ability_type :=
 constant padoen_polarity : tech_ability_type :=
         (axcel => 1, proasic => 1, umc => 1, rhumc => 1, apa3 => 1,
          ihp25 => 1, ut25 => 1, peregrine => 1, easic90 => 1, axdsp => 1,
-	 actfus => 1, apa3e => 1, apa3l => 1, others => 0);
+	 actfus => 1, apa3e => 1, apa3l => 1, ut130 => 1, easic45 => 1,
+         ut90 => 1, others => 0);
 
 constant has_pads : tech_ability_type :=
 	(inferred => 0, virtex => 1, virtex2 => 1, memvirage => 0,
@@ -150,7 +153,8 @@ constant has_pads : tech_ability_type :=
          ihp25 => 1, rhlib18t => 1, virtex4 => 1, lattice => 0,
 	 ut25 => 1, spartan3e => 1, peregrine => 1, virtex5 => 1, axdsp => 1,
 	 easic90 => 1, atc18rha => 1, spartan6 => 1, virtex6 => 1, 
-         actfus => 1, apa3e => 1, apa3l => 1, others => 0);
+         actfus => 1, apa3e => 1, apa3l => 1, ut130 => 1, easic45 => 1,
+         ut90 => 1, others => 0);
 
 constant has_ds_pads : tech_ability_type :=
 	(inferred => 0, virtex => 1, virtex2 => 1, memvirage => 0,
@@ -159,26 +163,29 @@ constant has_ds_pads : tech_ability_type :=
          ihp25 => 0, rhlib18t => 1, virtex4 => 1, lattice => 0,
 	 ut25 => 1, spartan3e => 1, virtex5 => 1, axdsp => 1,
 	 spartan6 => 1, virtex6 => 1, actfus => 1, 
-	 apa3e => 1, apa3l => 1, others => 0);
+	 apa3e => 1, apa3l => 1, ut130 => 0, easic45 => 1,
+         others => 0);
 
 constant has_ds_combo : tech_ability_type :=
-	( rhumc => 1, ut25 => 1, others => 0);
+	( rhumc => 1, ut25 => 1, ut130 => 1, others => 0);
 
 constant has_clkand : tech_ability_type :=
 	( virtex => 1, virtex2 => 1, spartan3 => 1, spartan3e => 1, virtex4 => 1,
 	  virtex5 => 1, ut25 => 1, rhlib18t => 1,
-	 spartan6 => 1, virtex6 => 1, others => 0);
+          spartan6 => 1, virtex6 => 1, ut130 => 1, easic45 => 1,
+          others => 0);
 
 constant has_clkmux : tech_ability_type :=
 	( virtex => 1, virtex2 => 1, spartan3 => 1, spartan3e => 1, 
 	  virtex4 => 1, virtex5 => 1,  rhlib18t => 1,
-	 spartan6 => 1, virtex6 => 1, others => 0);
+	 spartan6 => 1, virtex6 => 1, ut130 => 1, others => 0);
 
 constant has_techbuf : tech_ability_type :=
         ( virtex => 1, virtex2 => 1, virtex4 => 1, virtex5 => 1,
           spartan3 => 1, spartan3e => 1, axcel => 1, ut25 => 1,
 	  apa3 => 1, easic90 => 1, axdsp => 1, actfus => 1, 
-	  apa3e => 1, apa3l => 1, others => 0);
+	  apa3e => 1, apa3l => 1, ut130 => 1, easic45 => 1,
+          spartan6 => 1, others => 0);
 
 constant has_tapsel : tech_ability_type :=
         ( virtex => 1, virtex2 => 1, virtex4 => 1, virtex5 => 1,
@@ -189,7 +196,7 @@ constant need_extra_sync_reset : tech_ability_type :=
 	(axcel => 1, atc18s => 1, ut25 => 1, rhumc => 1, tsmc90 => 1,
 	 rhlib18t => 1, atc18rha => 1, easic90 => 1, tm65gpl => 1,
          axdsp => 1, cmos9sf => 1, apa3 => 1, apa3e => 1, apa3l => 1,
-	 others => 0);
+	 ut130 => 1, others => 0);
 
 constant is_unisim : tech_ability_type :=
         ( virtex => 1, virtex2 => 1, virtex4 => 1, virtex5 => 1,
@@ -213,8 +220,24 @@ constant has_clkgen : tech_ability_type :=
 	 stratix1 => 1, stratix2 => 1, eclipse => 0, rhumc => 1,
 	 stratix3 => 1, cyclone3 => 1, axdsp => 1, 
 	 spartan6 => 1, virtex6 => 1, actfus => 1, easic90 => 1,
-	 stratix4 => 1, easic45 => 0, apa3e => 1, apa3l => 1,
-	 rhlib18t => 1, others => 0);
+	 stratix4 => 1, easic45 => 1, apa3e => 1, apa3l => 1,
+	 rhlib18t => 1, ut130 => 1, others => 0);
+
+constant has_ddr2phy: tech_ability_type :=
+  (inferred => 0, stratix2 => 1, stratix3 => 1, spartan3 => 1, 
+	easic90 => 1, spartan6 => 1, easic45 => 1,
+	virtex4 => 1, virtex5 => 1, virtex6 => 1, others => 0);
+
+constant ddr2phy_has_cb: tech_ability_type :=
+  (inferred => 1, virtex4 => 1, virtex5 => 1, virtex6 => 1, others => 0);
+
+constant ddr2phy_has_reg: tech_ability_type :=
+  (easic45 => 1, others => 0);
+
+constant ddr2phy_refclk_type: tech_ability_type :=
+  (virtex4 => 1, virtex5 => 1, virtex6 => 1,  -- 1: 200 MHz reference
+   easic45 => 2,                              -- 2: 270 degree shifted clock
+   others => 0);                              -- 0: None
 
 -- pragma translate_off
 
@@ -243,15 +266,17 @@ constant has_clkgen : tech_ability_type :=
   axdsp     => "axdsp     ", spartan6  => "spartan6  ",
   virtex6   => "virtex6   ", actfus    => "fusion    ",
   stratix4  => "stratix4  ", st65lp    => "st65lp    ",
-  st65gp    => "st65gp    ", easic45   => "easic45   ",
+  st65gp    => "st65gp    ", easic45   => "nextreme2 ",
   cmos9sf   => "cmos9sf   ", apa3e     => "proasic3e ",
-  apa3l     => "proasic3l "
-);
+  apa3l     => "proasic3l ", ut130     => "ut130hbd  ",
+  ut90      => "ut90nhbd  ");
 
 -- pragma translate_on
 
 -- input/output voltage
 
+constant x12v      : integer := 12;
+constant x15v      : integer := 15;
 constant x18v      : integer := 1;
 constant x25v      : integer := 2;
 constant x33v      : integer := 3;
@@ -302,7 +327,8 @@ constant dci      : integer := 5;
 -- synchronous two-port ram (1 read, 1 write port)
   component syncram_2p
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
-	sepclk : integer := 0; wrfst : integer := 0; testen : integer := 0);
+	sepclk : integer := 0; wrfst : integer := 0; testen : integer := 0;
+	words : integer := 0);
   port (
     rclk     : in std_ulogic;
     renable  : in std_ulogic;
@@ -398,7 +424,7 @@ constant dci      : integer := 5;
   component syncram_2pft
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
 	sepclk : integer := 0; wrfst : integer := 0; ft : integer := 0;
-           testen : integer := 0);
+        testen : integer := 0; words : integer := 0);
   port (
     rclk     : in std_ulogic;
     renable  : in std_ulogic;
@@ -629,18 +655,18 @@ component clkpad
 end component;
 
 component inpad_ds
-  generic (tech : integer := 0; level : integer := lvds; voltage : integer := x33v);
+  generic (tech : integer := 0; level : integer := lvds; voltage : integer := x33v; term : integer := 0);
   port (padp, padn : in std_ulogic; o : out std_ulogic);
 end component;
 
 component clkpad_ds
-  generic (tech : integer := 0; level : integer := lvds; voltage : integer := x33v);
+  generic (tech : integer := 0; level : integer := lvds; voltage : integer := x33v; term : integer := 0);
   port (padp, padn : in std_ulogic; o : out std_ulogic);
 end component;
 
 component inpad_dsv
   generic (tech : integer := 0; level : integer := lvds;
-	   voltage : integer := x33v; width : integer := 1);
+	   voltage : integer := x33v; width : integer := 1; term : integer := 0);
   port (
     padp : in  std_logic_vector(width-1 downto 0);
     padn : in  std_logic_vector(width-1 downto 0);
@@ -650,7 +676,7 @@ end component;
 component iopad_ds
   generic (tech : integer := 0; level : integer := 0; slew : integer := 0;
 	   voltage : integer := x33v; strength : integer := 12;
-	   oepol : integer := 0);
+	   oepol : integer := 0; term : integer := 0);
   port (padp, padn : inout std_ulogic; i, en : in std_ulogic; o : out std_ulogic);
 end component;
 
@@ -671,7 +697,7 @@ end component;
 
 component lvds_combo  is
   generic (tech : integer := 0; voltage : integer := 0; width : integer := 1;
-		oepol : integer := 0);
+		oepol : integer := 0; term : integer := 0);
   port (odpadp, odpadn, ospadp, ospadn : out std_logic_vector(0 to width-1);
         odval, osval, en : in std_logic_vector(0 to width-1);
 	idpadp, idpadn, ispadp, ispadn : in std_logic_vector(0 to width-1);
@@ -752,7 +778,7 @@ end component;
 
   component techbuf is
     generic(
-      buftype  :  integer range 0 to 4 := 0;
+      buftype  :  integer range 0 to 6 := 0;
       tech     :  integer range 0 to NTECH := inferred);
     port(
       i        :  in  std_ulogic;
@@ -831,11 +857,20 @@ component clkmux
   );
 end component;
 
+component clkrand is
+  generic( tech : integer := 0);
+  port(
+    i      :  in  std_ulogic;
+    en     :  in  std_ulogic;
+    o      :  out std_ulogic;
+    tsten  :  in  std_ulogic := '0'
+  );
+end component;
 
 
 
 ---------------------------------------------------------------------------
--- TAP controller
+-- TAP controller and boundary scan
 ---------------------------------------------------------------------------
 
 component tap
@@ -872,6 +907,67 @@ component tap
     );
 end component;
 
+component scanregi
+  generic (
+    tech : integer := 0
+    );
+  port (
+    pad     : in std_ulogic;
+    core    : out std_ulogic;
+    tck     : in std_ulogic;
+    tdi     : in std_ulogic;
+    tdo     : out std_ulogic;
+    bsshft  : in std_ulogic;
+    bscapt  : in std_ulogic;    -- capture signal to scan reg on next tck edge
+    bsupd   : in std_ulogic;    -- update data reg from scan reg on next tck edge
+    bsdrive : in std_ulogic;     -- drive data reg to core
+    bshighz : in std_ulogic
+    );
+end component;
+
+component scanrego
+  generic (
+    tech : integer := 0
+    );
+  port (
+    pad     : out std_ulogic;
+    core    : in std_ulogic;
+    samp    : in std_ulogic;    -- normally same as core unless outpad has feedback
+    tck     : in std_ulogic;   
+    tdi     : in std_ulogic;
+    tdo     : out std_ulogic;
+    bsshft  : in std_ulogic;
+    bscapt  : in std_ulogic;    -- capture signal to scan reg on next tck edge
+    bsupd   : in std_ulogic;    -- update data reg from scan reg on next tck edge
+    bsdrive : in std_ulogic     -- drive data reg to pad
+    );
+end component;
+
+component scanregio -- 3 scan registers: tdo<--input<--output<--outputen<--tdi
+  generic (
+    tech : integer := 0;
+    hzsup: integer range 0 to 1 := 1
+    );
+  port (
+    pado    : out std_ulogic;
+    padoen  : out std_ulogic;
+    padi    : in std_ulogic;
+    coreo   : in std_ulogic;
+    coreoen : in std_ulogic;
+    corei   : out std_ulogic;
+    tck     : in std_ulogic;
+    tdi     : in std_ulogic;
+    tdo     : out std_ulogic;
+    bsshft  : in std_ulogic;
+    bscapt  : in std_ulogic;    -- capture signals to scan regs on next tck edge
+    bsupdi  : in std_ulogic;    -- update indata reg from scan reg on next tck edge
+    bsupdo  : in std_ulogic;    -- update outdata reg from scan reg on next tck edge
+    bsdrive : in std_ulogic;    -- drive outdata regs to pad,
+                                -- drive datareg(coreoen=0) or coreo(coreoen=1) to corei
+    bshighz : in std_ulogic     -- tri-state output
+    );
+end component;
+  
 ---------------------------------------------------------------------------
 -- DDR registers and PHY
 ---------------------------------------------------------------------------
@@ -951,33 +1047,37 @@ component ddr2phy
     ddelayb0    : integer := 0;       ddelayb1 : integer := 0; ddelayb2 : integer := 0;
     ddelayb3    : integer := 0;       ddelayb4 : integer := 0; ddelayb5 : integer := 0;
     ddelayb6    : integer := 0;       ddelayb7 : integer := 0;
+    cbdelayb0   : integer := 0;
+    cbdelayb1   : integer := 0;       cbdelayb2: integer := 0; cbdelayb3: integer := 0;    
     numidelctrl : integer := 4;       norefclk : integer := 0; rskew    : integer := 0;
-    eightbanks  : integer range 0 to 1 := 0; dqsse : integer range 0 to 1 := 0);
+    eightbanks  : integer range 0 to 1 := 0; dqsse : integer range 0 to 1 := 0;
+    abits       : integer := 14;   nclk: integer := 3; ncs: integer := 2;    
+    cben        : integer := 0; chkbits : integer := 8; ctrl2en: integer := 0);
   port (
     rst            : in    std_ulogic;
     clk            : in    std_logic;   -- input clock
-    clkref200      : in    std_logic;   -- input 200MHz clock
+    clkref         : in    std_logic;   -- input reference clock
     clkout         : out   std_ulogic;  -- system clock
     lock           : out   std_ulogic;  -- DCM locked
 
-    ddr_clk        : out   std_logic_vector(2 downto 0);
-    ddr_clkb       : out   std_logic_vector(2 downto 0);
+    ddr_clk        : out   std_logic_vector(nclk-1 downto 0);
+    ddr_clkb       : out   std_logic_vector(nclk-1 downto 0);
     ddr_clk_fb_out : out   std_logic;
     ddr_clk_fb     : in    std_logic;
-    ddr_cke        : out   std_logic_vector(1 downto 0);
-    ddr_csb        : out   std_logic_vector(1 downto 0);
+    ddr_cke        : out   std_logic_vector(ncs-1 downto 0);
+    ddr_csb        : out   std_logic_vector(ncs-1 downto 0);
     ddr_web        : out   std_ulogic;                               -- ddr write enable
     ddr_rasb       : out   std_ulogic;                               -- ddr ras
     ddr_casb       : out   std_ulogic;                               -- ddr cas
     ddr_dm         : out   std_logic_vector (dbits/8-1 downto 0);    -- ddr dm
     ddr_dqs        : inout std_logic_vector (dbits/8-1 downto 0);    -- ddr dqs
     ddr_dqsn       : inout std_logic_vector (dbits/8-1 downto 0);    -- ddr dqsn
-    ddr_ad         : out   std_logic_vector (13 downto 0);           -- ddr address
+    ddr_ad         : out   std_logic_vector (abits-1 downto 0);           -- ddr address
     ddr_ba         : out   std_logic_vector (1+eightbanks downto 0); -- ddr bank address
     ddr_dq         : inout std_logic_vector (dbits-1 downto 0);      -- ddr data
-    ddr_odt        : out   std_logic_vector(1 downto 0);
+    ddr_odt        : out   std_logic_vector(ncs-1 downto 0);
 
-    addr           : in    std_logic_vector (13 downto 0);
+    addr           : in    std_logic_vector (abits-1 downto 0);
     ba             : in    std_logic_vector ( 2 downto 0);
     dqin           : out   std_logic_vector (dbits*2-1 downto 0);    -- ddr output data
     dqout          : in    std_logic_vector (dbits*2-1 downto 0);    -- ddr input data
@@ -988,15 +1088,35 @@ component ddr2phy
     rasn           : in    std_ulogic;
     casn           : in    std_ulogic;
     wen            : in    std_ulogic;
-    csn            : in    std_logic_vector(1 downto 0);
-    cke            : in    std_logic_vector(1 downto 0);
+    csn            : in    std_logic_vector(ncs-1 downto 0);
+    cke            : in    std_logic_vector(ncs-1 downto 0);
     cal_en         : in    std_logic_vector(dbits/8-1 downto 0);
     cal_inc        : in    std_logic_vector(dbits/8-1 downto 0);
     cal_pll        : in    std_logic_vector(1 downto 0);
     cal_rst        : in    std_logic;
-    odt            : in    std_logic_vector(1 downto 0);
+    odt            : in    std_logic_vector(ncs-1 downto 0);
     oct            : in    std_logic;
-    dqs_gate       : in    std_ulogic
+    read_pend      : in    std_logic_vector(7 downto 0);
+    regwdata       : in    std_logic_vector(63 downto 0);
+    regwrite       : in    std_logic_vector(1 downto 0);
+    regrdata       : out   std_logic_vector(63 downto 0);
+    
+    ddr_cbdm   : out std_logic_vector(chkbits/8-1 downto 0);
+    ddr_cbdqs  : inout std_logic_vector(chkbits/8-1 downto 0);
+    ddr_cbdqsn : inout std_logic_vector(chkbits/8-1 downto 0);
+    ddr_cbdq   : inout std_logic_vector(chkbits-1 downto 0);
+    cbdqin     : out std_logic_vector(chkbits*2-1 downto 0);
+    cbdqout    : in std_logic_vector(chkbits*2-1 downto 0);
+    cbdm       : in std_logic_vector(chkbits/4-1 downto 0);
+    cbcal_en   : in std_logic_vector(chkbits/8-1 downto 0);
+    cbcal_inc  : in std_logic_vector(chkbits/8-1 downto 0);
+
+    -- Copy of control signals for 2nd DIMM
+    ddr_web2    : out std_ulogic;                               -- ddr write enable
+    ddr_rasb2   : out std_ulogic;                               -- ddr ras
+    ddr_casb2   : out std_ulogic;                               -- ddr cas
+    ddr_ad2     : out std_logic_vector (abits-1 downto 0);      -- ddr address
+    ddr_ba2     : out std_logic_vector (1+eightbanks downto 0)  -- ddr bank address            
     );
 end component;
 
@@ -1099,6 +1219,23 @@ end component;
 
 component grmux2 is generic( tech : integer := inferred; imp :  integer := 0);
   port( ip0, ip1, sel : in std_logic; op : out std_ulogic); end component;
+
+component techmult
+    generic ( 
+         tech          : integer := 0;
+         arch          : integer := 0;
+         a_width       : positive := 2;                      -- multiplier word width
+         b_width       : positive := 2;                      -- multiplicand word width
+         num_stages    : positive := 2;                 -- number of pipeline stages
+         stall_mode    : natural range 0 to 1 := 1      -- '0': non-stallable; '1': stallable
+    );   
+    port(a       : in std_logic_vector(a_width-1 downto 0);  
+         b       : in std_logic_vector(b_width-1 downto 0);
+         clk     : in std_logic;     
+         en      : in std_logic;     
+         sign    : in std_logic;     
+         product : out std_logic_vector(a_width+b_width-1 downto 0));
+end component;
 
 end;
 

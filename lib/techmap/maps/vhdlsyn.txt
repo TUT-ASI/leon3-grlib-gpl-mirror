@@ -1,6 +1,7 @@
 allclkgen.vhd
 allddr.vhd
 allmem.vhd
+allmul.vhd
 allpads.vhd
 alltap.vhd
 clkgen.vhd
@@ -29,12 +30,13 @@ grlfpw4_net.vhd
 grfpw_net.vhd
 grfpw4_net.vhd
 leon3ft_net.vhd
+leon4_net.vhd
 mul_61x61.vhd
 cpu_disas_net.vhd
-#grusbhc_net.vhd
+grusbhc_net.vhd
 ringosc.vhd
-#ssrctrl_net.vhd
-#ftmctrl_net.vhd
+ssrctrl_net.vhd
+ftmctrl_net.vhd
 ftsrctrl_net.vhd
 corepcif_net.vhd
 pci_arb_net.vhd
@@ -44,3 +46,6 @@ inpad_ddr.vhd outpad_ddr.vhd iopad_ddr.vhd
 syncram128bw.vhd syncram256bw.vhd
 syncram128.vhd syncramww.vhd
 syncram156bw.vhd 
+techmult.vhd
+spictrl_net.vhd
+scanreg.vhd

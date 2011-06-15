@@ -66,3 +66,75 @@ begin
     PRODUCT <= r2;
 end;
 
+library IEEE;
+use IEEE.std_logic_1164.all;
+use IEEE.std_logic_arith.all;
+library grlib;
+use grlib.stdlib.all;
+
+entity gen_mult_pipe is
+  generic (
+    a_width       : positive;                      -- multiplier word width
+    b_width       : positive;                      -- multiplicand word width
+    num_stages    : positive := 2;                 -- number of pipeline stages
+    stall_mode    : natural range 0 to 1 := 1);     -- '0': non-stallable; '1': stallable
+  port (
+    clk     : in  std_logic;          -- register clock
+    en      : in  std_logic;          -- register enable
+    tc      : in  std_logic;          -- '0' : unsigned, '1' : signed
+    a       : in  std_logic_vector(a_width-1 downto 0);  -- multiplier
+    b       : in  std_logic_vector(b_width-1 downto 0);  -- multiplicand
+    product : out std_logic_vector(a_width+b_width-1 downto 0));  -- product
+end ;
+
+architecture simple of gen_mult_pipe is
+
+subtype resw is  std_logic_vector(A_width+B_width-1 downto 0);
+type pipet is array (num_stages-1 downto 1) of resw;
+signal p_i : pipet;
+signal prod :  resw;
+  
+begin
+
+  comb : process(A, B, TC)
+  begin 
+-- pragma translate_off
+    if notx(A) and notx(B) and notx(tc) then
+-- pragma translate_on
+      if TC = '1' then
+        prod <= signed(A) * signed(B);
+      else
+        prod <= unsigned(A) * unsigned(B);
+      end if;
+-- pragma translate_off
+    else
+      prod <= (others => 'X');
+    end if;
+-- pragma translate_on
+  end process;
+
+  w2 : if num_stages = 2 generate
+    reg : process(clk)
+    begin
+      if rising_edge(clk) then
+        if (stall_mode = 0) or (en = '1') then
+          p_i(1) <= prod;
+        end if;
+      end if;
+    end process;
+  end generate;
+
+  w3 : if num_stages > 2 generate
+    reg : process(clk)
+    begin
+      if rising_edge(clk) then
+        if (stall_mode = 0) or (en = '1') then
+          p_i <= p_i(num_stages-2 downto 1) & prod;
+        end if;
+      end if;
+    end process;
+  end generate;
+
+  product <= p_i(num_stages-1);
+end;
+

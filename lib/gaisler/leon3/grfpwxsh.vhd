@@ -142,7 +142,7 @@ architecture rtl of grfpwxsh is
     flush       : out std_logic;
     flushid     : out std_logic_vector(5 downto 0);
     rndmode     : out std_logic_vector(1 downto 0);
-    req         : out std_logic;
+    req         : out std_logic_vector(2 downto 0);
     res         : in std_logic_vector(63 downto 0);
     exc         : in std_logic_vector(5 downto 0);
     allow       : in std_logic_vector(2 downto 0);

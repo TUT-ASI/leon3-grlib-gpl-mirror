@@ -153,14 +153,19 @@ int spw_checkrx(int dmachan, int *size, struct rxstatus *rxs, struct spwvars *sp
   1 if packet was correctly transmitted and 2 if an error occured*/
 int spw_checktx(int dmachan, struct spwvars *spw);
 
-/*Send time-codee*/
+/*Send time-code*/
 void send_time(struct spwvars *spw);
+
+int send_time_exp(int ctrl, int time, struct spwvars *spw);
 
 /*Check if time-code has been received*/
 int check_time(struct spwvars *spw);
 
-/*Get the current time-code value*/
+/* Get the current time-code count value */
 int get_time(struct spwvars *spw);
+
+/* Get the current time-code ctrl value */
+int get_time_ctrl(struct spwvars *spw);
 
 /*Reset GRSPW*/
 void spw_reset(struct spwvars *spw);

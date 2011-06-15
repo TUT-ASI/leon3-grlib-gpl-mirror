@@ -149,7 +149,9 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
 
 -- array types
   type ahb_mst_out_vector_type is array (natural range <>) of ahb_mst_out_type;
+  type ahb_mst_in_vector_type is array (natural range <>) of ahb_mst_in_type;
   type ahb_slv_out_vector_type is array (natural range <>) of ahb_slv_out_type;
+  type ahb_slv_in_vector_type is array (natural range <>) of ahb_slv_in_type;
   subtype ahb_mst_out_vector is ahb_mst_out_vector_type(NAHBMST-1 downto 0);
   subtype ahb_slv_out_vector is ahb_slv_out_vector_type(NAHBSLV-1 downto 0);
   type ahb_mst_out_bus_vector is array (0 to NBUS-1) of ahb_mst_out_vector;
@@ -367,6 +369,21 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
     hdata : std_logic_vector(AHBDW-1 downto 0);
     hsize : std_logic_vector(2 downto 0))
     return std_logic_vector;
+
+  procedure ahbmomux (
+    signal ai  : in  ahb_mst_out_type;
+    signal ao  : out ahb_mst_out_type;
+    signal en  : in  std_ulogic);
+
+  procedure ahbsomux (
+    signal ai  : in  ahb_slv_out_type;
+    signal ao  : out ahb_slv_out_type;
+    signal en  : in  std_ulogic);
+
+  procedure apbsomux (
+    signal ai  : in  apb_slv_out_type;
+    signal ao  : out apb_slv_out_type;
+    signal en  : in  std_ulogic);
 
 -------------------------------------------------------------------------------
 -- Components
@@ -1050,5 +1067,41 @@ package body amba is
     return ahbreadword(hdata);
   end ahbreaddata;
 
+  -- a*mux below drives their amba output records with the amba input record if
+  -- the en input is '1'. Otherwise the amba output record is driven to an idle
+  -- state. Plug'n'play information is kept constant.
+  procedure ahbmomux (
+    signal ai  : in  ahb_mst_out_type;
+    signal ao  : out ahb_mst_out_type;
+    signal en  : in  std_ulogic) is
+  begin
+    if en = '1' then ao <= ai;
+    else ao <= ahbm_none; end if;
+    ao.hconfig <= ai.hconfig;
+    ao.hindex  <= ai.hindex;
+  end ahbmomux;
+
+  procedure ahbsomux (
+    signal ai  : in  ahb_slv_out_type;
+    signal ao  : out ahb_slv_out_type;
+    signal en  : in  std_ulogic) is
+  begin
+    if en = '1' then ao <= ai;
+    else ao <= ahbs_none; end if;
+    ao.hconfig <= ai.hconfig;
+    ao.hindex  <= ai.hindex;
+  end ahbsomux;
+
+  procedure apbsomux (
+    signal ai  : in  apb_slv_out_type;
+    signal ao  : out apb_slv_out_type;
+    signal en  : in  std_ulogic) is
+  begin
+    if en = '1' then ao <= ai;
+    else ao <= apb_none; end if;
+    ao.pconfig <= ai.pconfig;
+    ao.pindex  <= ai.pindex;
+  end apbsomux;
+  
 end;
 

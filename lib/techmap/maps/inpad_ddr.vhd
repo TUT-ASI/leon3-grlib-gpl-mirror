@@ -55,7 +55,7 @@ architecture rtl of inpad_ddr is
   signal d : std_ulogic;
   
 begin
-  def: if (tech /= easic90) generate
+  def: if (tech /= easic90) and (tech /= easic45) generate
     p : inpad generic map (tech, level, voltage, filter, strength)
       port map (pad, d);  
     ddrreg : ddr_ireg generic map (tech)
@@ -67,7 +67,16 @@ begin
       port map(pad, d);
     ddrreg : nextreme_iddr_reg
       port map (ck => c1, d => d, qh => o1, ql => o2, rstb => r);
-  end generate; 
+  end generate;
+
+  n2x : if (tech = easic45) generate
+--pragma translate_off
+    assert false report "inpad_ddr: Not yet supported on Nextreme2"
+      severity failure;
+--pragma translate_on
+    d <= '0';
+  end generate;
+  
 end;
 
 library techmap;

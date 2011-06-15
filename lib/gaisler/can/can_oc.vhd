@@ -87,6 +87,8 @@ signal vcc, gnd : std_ulogic;
 
 signal r, rin : ahbregs;
 
+attribute sync_set_reset : string;
+attribute sync_set_reset of reset : signal is "true";
 begin
 
   gnd <= '0'; vcc <= '1'; reset <= not resetn;

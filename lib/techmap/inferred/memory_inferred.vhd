@@ -131,7 +131,6 @@ architecture behav of generic_syncram_2p is
   type dregtype is array (0 to 2**abits - 1) 
 	of std_logic_vector(dbits -1 downto 0);
   signal rfd : dregtype;
-  signal wa, ra : std_logic_vector (abits -1 downto 0);
 begin
 
   wp : process(wclk)

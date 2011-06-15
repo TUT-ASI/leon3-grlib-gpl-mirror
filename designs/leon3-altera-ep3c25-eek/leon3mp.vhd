@@ -595,7 +595,8 @@ begin
     spi1 : spictrl
     generic map (pindex => 9, paddr  => 9, pmask  => 16#fff#, pirq => 9,
                  fdepth => CFG_SPICTRL_FIFO, slvselen => CFG_SPICTRL_SLVREG,
-                 slvselsz => CFG_SPICTRL_SLVS, odmode => 1)
+                 slvselsz => CFG_SPICTRL_SLVS, odmode => 1,
+                 syncram => CFG_SPICTRL_SYNCRAM, ft => CFG_SPICTRL_FT)
     port map (rstn, clkm, apbi, apbo(9), spii, spio, slvsel);
    miso_pad : iopad generic map (tech => padtech)
      port map (hc_sd_dat, spio.miso, spio.misooen, spii.miso);
@@ -666,7 +667,8 @@ begin
     -- Interrupt and busy signals not connected
     touch3spi1 : spictrl
       generic map (pindex => 12, paddr  => 12, pmask  => 16#fff#, pirq => 12,
-                   fdepth => 2, slvselen => 1, slvselsz => 2, odmode => 0)
+                   fdepth => 2, slvselen => 1, slvselsz => 2, odmode => 0,
+                   syncram => 0, ft => 0)
       port map (rstn, clkm, apbi, apbo(12), lcdspii, lcdspio, lcdslvsel);
     adc_miso_pad : inpad generic map (tech => padtech)
       port map (hc_adc_dout, lcdspii.miso);

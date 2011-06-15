@@ -32,7 +32,7 @@ struct l2c_regs {
  * regaddr - L2C register base address
  *
  */
-int l2c_enable(unsigned int regaddr)
+int l2c_enable(unsigned int regaddr, unsigned int ften)
 {
   int i;
   unsigned int ctrl;
@@ -46,13 +46,14 @@ int l2c_enable(unsigned int regaddr)
   
   // Fluch and enable L2-Cache  
   ctrl = l2c->ctrl;
-  if ((ctrl >> 31) == 0){
+  if ((ctrl >> 31) == 0) {
     l2c->flush_mem = 5;
-    l2c->ctrl = ctrl | (1<<31);
+    l2c->ctrl = ctrl | (1<<31) | (ften << 30);
   };
   
   return 0;
 }
+
 /*
  * l2c_test(..)
  *

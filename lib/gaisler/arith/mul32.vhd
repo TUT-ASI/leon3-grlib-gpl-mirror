@@ -39,7 +39,8 @@ generic (
     tech    : integer := 0;
     multype : integer range 0 to 3 := 0;
     pipe    : integer range 0 to 1 := 0;
-    mac     : integer range 0 to 1 := 0
+    mac     : integer range 0 to 1 := 0;
+    arch    : integer range 0 to 3 := 0
 );
 port (
     rst     : in  std_ulogic;
@@ -51,16 +52,6 @@ port (
 end;
 
 architecture rtl of mul32 is
-component axcel_mul_33x33_signed
-   generic (
-      pipe:          Integer := 0);
-   port (
-      a:       in    Std_Logic_Vector(32 downto 0);
-      b:       in    Std_Logic_Vector(32 downto 0);
-      en:      in    Std_Logic;
-      clk:     in    Std_Logic;
-      p:       out   Std_Logic_Vector(65 downto 0));
-end component;
 
 --attribute sync_set_reset : string;
 --attribute sync_set_reset of rst : signal is "true";
@@ -70,20 +61,6 @@ constant m32x8  : integer := 1;
 constant m32x16 : integer := 2;
 constant m32x32 : integer := 3;
 
-function check_actel(multype, tech: Integer) return Integer is
-begin
-   if multype=m32x32 and tech=axdsp then
-      return 0;
---   elsif tech=axcel then
---      return 0;
---   elsif tech=apa3 then
---      return 0;
-   else
-      return is_fpga(tech);
-   end if;
-end function;
-
-constant INFER : integer := check_actel(multype, tech);
 constant MULTIPLIER : integer := multype;
 constant MULPIPE : boolean := ((multype = 0) or (multype = 3)) and (pipe = 1);
 constant MACEN  : boolean := (multype = 0) and (mac = 1);
@@ -106,8 +83,11 @@ signal mm, mmin : mac_regtype;
 signal ma, mb : std_logic_vector(32 downto 0);
 signal prod : std_logic_vector(65 downto 0);
 signal mreg : std_logic_vector(49 downto 0);
+signal vcc : std_logic;
 
 begin
+
+  vcc <= '1'; 
 
   mulcomb : process(rst, rm, muli, mreg, prod, mm)
   variable mop1, mop2 : std_logic_vector(32 downto 0);
@@ -352,24 +332,8 @@ begin
   end process;
 
   xm1616 : if MULTIPLIER = m16x16 generate
-    i0 : if (INFER = 1) and (pipe = 0) generate
-      prod(33 downto 0) <= smult (ma(16 downto 0), mb(16 downto 0));
-    end generate;
-    i1 : if (INFER = 1) and (pipe = 1) generate
-      reg : process(clk) begin
-        if rising_edge(clk) then
-          if (holdn = '1') then
-            prod(33 downto 0) <= smult (ma(16 downto 0), mb(16 downto 0));
-	  end if;
-        end if;
-      end process;
-    end generate;
-    i2 : if INFER = 0 generate
-      m0 : mul_17_17
-         generic map (pipe)
-         port map (clk, holdn, ma(16 downto 0), mb(16 downto 0), prod(33 downto 0));
-
-    end generate;
+    m1616 : techmult generic map (tech, arch, 17, 17, pipe+1, pipe)
+      port map (ma(16 downto 0), mb(16 downto 0), clk, holdn, vcc,  prod(33 downto 0));
     reg : process(clk)
     begin
       if rising_edge(clk) then
@@ -382,69 +346,18 @@ begin
 
   end generate;
   xm3208 : if MULTIPLIER = m32x8 generate
-    i0 : if INFER = 1 generate
-      prod(41 downto 0) <= smult (ma(32 downto 0), mb(8 downto 0));
-    end generate;
-    i1 : if INFER = 0 generate
-      m0 : mul_33_9
-         port map (ma(32 downto 0), mb(8 downto 0), prod(41 downto 0));
-    end generate;
-
-    reg : process(clk)
-    begin
-      if rising_edge(clk) then
-        if (holdn = '1') then
-          mreg(41 downto 0) <= prod(41 downto 0);
-	end if;
-      end if;
-    end process;
-
+    m3208 : techmult generic map (tech, arch, 33, 8, 2, 1)
+      port map (ma(32 downto 0), mb(8 downto 0), clk, holdn, vcc,  mreg(41 downto 0));
   end generate;
 
   xm3216 : if MULTIPLIER = m32x16 generate
-    i1 : if INFER = 1 generate
-      prod(49 downto 0) <= smult (ma(32 downto 0), mb(16 downto 0));
-    end generate;
-    i2 : if INFER = 0 generate
-      m0 : mul_33_17
-         port map (ma(32 downto 0), mb(16 downto 0), prod(49 downto 0));
-    end generate;
-
-    reg : process(clk)
-    begin
-      if rising_edge(clk) then
-        if (holdn = '1') then
-          mreg(49 downto 0) <= prod(49 downto 0);
-	end if;
-      end if;
-    end process;
-
+    m3216 : techmult generic map (tech, arch, 33, 17, 2, 1)
+      port map (ma(32 downto 0), mb(16 downto 0), clk, holdn, vcc,  mreg(49 downto 0));
   end generate;
 
   xm3232 : if MULTIPLIER = m32x32 generate
-    i1 : if (INFER = 1) and (pipe = 1) generate
-      reg : process(clk) begin
-        if rising_edge(clk) then
-          if (holdn = '1') then
-            prod(65 downto 0) <= smult (ma(32 downto 0), mb(32 downto 0));
-	  end if;
-        end if;
-      end process;
-    end generate;
-
-    i0 : if (INFER = 1) and (pipe = 0) generate
-      prod(65 downto 0) <= smult (ma(32 downto 0), mb(32 downto 0));
-    end generate;
-    i2 : if INFER = 0 generate
-      nontech: if tech /= axdsp generate
-         m0 : mul_33_33 generic map (pipe)
-            port map (clk, holdn, ma(32 downto 0), mb(32 downto 0), prod(65 downto 0));
-      end generate;
-      axd: if tech = axdsp generate
-         axd0 : axcel_mul_33x33_signed generic map (pipe)
-            port map (ma(32 downto 0), mb(32 downto 0), holdn, clk, prod(65 downto 0));
-      end generate;
-    end generate;
+    m3232 : techmult generic map (tech, arch, 33, 33, pipe+1, pipe)
+      port map (ma(32 downto 0), mb(32 downto 0), clk, holdn, vcc,  prod(65 downto 0));
   end generate;
 
 

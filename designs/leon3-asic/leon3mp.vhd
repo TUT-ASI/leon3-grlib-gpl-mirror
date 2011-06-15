@@ -95,9 +95,15 @@ entity leon3mp is
 
     roen        : in  std_ulogic;
     roout       : out std_ulogic;
-    nandout     : out std_ulogic;
+    
+    testen       	: in  std_ulogic;
 
-    testen       	: in  std_ulogic
+    trst : in std_ulogic;
+    tck  : in std_ulogic;
+    tms  : in std_ulogic;
+    tdi  : in std_ulogic;
+    tdo  : out std_ulogic
+    
 	);
 end;
 
@@ -158,6 +164,8 @@ signal lspw_ten  : std_logic_vector(0 to CFG_SPW_NUM-1);
 
 signal llock, lroen, lroout : std_ulogic;
 
+signal ltrst,ltck,ltms,ltdi,ltdo: std_ulogic;
+
 signal ltest, gnd : std_ulogic;
 signal lclk2x, lclk4x, lclkdis, lclklock : std_ulogic;
 constant OEPOL 	: integer := padoen_polarity(padtech);
@@ -174,7 +182,8 @@ begin
       ramsn, ramoen, rwen, oen, writen, read, iosn,
       romsn, brdyn, bexcn, wdogn, gpio, prom32, promedac,
       spw_clksel, clkb, spw_rxdp, spw_rxdn, spw_rxsp, spw_rxsn, spw_txdp, spw_txdn, 
-      spw_txsp, spw_txsn, lvdsref, roen, roout, nandout, testen,
+      spw_txsp, spw_txsn, lvdsref, roen, roout, testen,
+      trst, tck, tms, tdi, tdo,
       lresetn, lclksel, lclk, lerrorn, laddress, datain,
       dataout, dataen, cbin, cbout, cben, lsdclk, lsdcsn, 
       lsdwen, lsdrasn, lsdcasn, lsddqm, ldsutx, ldsurx, 
@@ -182,17 +191,20 @@ begin
       lramsn, lramoen, lrwen, loen, lwriten, lread, liosn,
       lromsn, lbrdyn, lbexcn, lwdogn, gpioin, gpioout, gpioen, lprom32, lpromedac,
       lspw_clksel, lspw_clk, lspw_rxd, lspw_rxs, lspw_txd, lspw_txs, lspw_ten,
-      lclk2x, lclk4x, lclkdis, lclklock, llock, lroen, lroout, lnandout, ltest, gnd);
+      lclk2x, lclk4x, lclkdis, lclklock, llock, lroen, lroout, ltest, gnd,
+      ltrst, ltck, ltms, ltdi, ltdo);
 
   core0 : entity work.core
     generic map (fabtech, memtech, padtech, clktech, disas, dbguart, pclow, scantest)
-    port map (lresetn, lclksel, lclk, lerrorn, laddress, datain,
+    port map (
+      lresetn, lclksel, lclk, lerrorn, laddress, datain,
       dataout, dataen, cbin, cbout, cben, lsdclk, lsdcsn, 
       lsdwen, lsdrasn, lsdcasn, lsddqm, ldsutx, ldsurx, 
       ldsuen, ldsubre, ldsuact, ltxd1, lrxd1, ltxd2, lrxd2,
       lramsn, lramoen, lrwen, loen, lwriten, lread, liosn,
       lromsn, lbrdyn, lbexcn, lwdogn, gpioin, gpioout, gpioen, lprom32, lpromedac,
       lspw_clksel, lspw_clk, lspw_rxd, lspw_rxs, lspw_txd, lspw_txs, lspw_ten,
-      lclk2x, lclk4x, lclkdis, lclklock, llock, lroen, lroout, lnandout, ltest, gnd);
+      lclk2x, lclk4x, lclkdis, lclklock, llock, lroen, lroout, ltest, gnd,
+      ltrst, ltck, ltms, ltdi, ltdo);
 
 end;

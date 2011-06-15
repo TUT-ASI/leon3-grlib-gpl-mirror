@@ -6086,12 +6086,14 @@ BEGIN
                                                                                                                IF (rst = '1') THEN
                                                                                                                   transmit_irq <= '0';
                                                                                                                ELSif clk'event and clk = '1' then
-                                                                                                                  IF ((reset_mode_xhdl3 OR reset_irq_reg) = '1') THEN
+                                                                                                                  IF (reset_mode_xhdl3 = '1') THEN
                                                                                                                      transmit_irq <= '0' ;
                                                                                                                   ELSE
                                                                                                                      IF (((transmit_buffer_status AND (NOT transmit_buffer_status_q)) AND transmit_irq_en) = '1') THEN
                                                                                                                         transmit_irq <= '1' ;
-                                                                                                                     END IF;
+                                                                                                                     elsif (reset_irq_reg = '1') then
+                                                                                                                        transmit_irq <= '0';
+                                                                                                                     end if;
                                                                                                                   END IF;
                                                                                                                END IF;
                                                                                                             END PROCESS;

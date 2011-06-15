@@ -3,3 +3,4 @@ tap_inferred.vhd
 ddr_inferred.vhd
 mul_inferred.vhd
 ddr_phy_inferred.vhd
+scanreg_inferred.vhd

@@ -16,6 +16,39 @@
 --  You should have received a copy of the GNU General Public License
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+-----------------------------------------------------------------------------
+-- Entity: 	grtestmod
+-- File:	grtestmod.vhd
+-- Author:	Jiri Gaisler, Gaisler Research
+-- Modified:    Jan Andersson, Aeroflex Gaisler
+-- Contact:     support@gaisler.com
+-- Description:	Test report module
+--
+-- See also the gaiser.sim.ahbrep module for a module connected via AHB for
+-- for use internally on SoC.
+--
+-- This module supports a 16- or 32-bit interface as selected via the 'width'
+-- generic. 
+--
+-- In 32-bit mode the module has the following memory map:
+--
+--  0x00 : sets and prints vendor id from data[31:24] and
+--         device id from data[23:12]
+--  0x04 : asserts error number data[15:0]
+--  0x08 : calls subtest data[7:0]
+--  0x10 : prints *** GRLIB system test starting ***
+--  0x14 : prints Test passed / errors detected
+--
+-- In 16-bit mode the module has the following memory map:
+--
+--  0x00 : sets vendor id from data[15:8] and MSbs of device id from data[7:0]
+--  0x04 : asserts error number data[15:0]
+--  0x08 : calls subtest data[7:0]
+--  0x0C : sets LSbs of device id from data[15:12], prints vendor and device id
+--  0x10 : prints *** GRLIB system test starting ***
+--  0x14 : prints Test passed / errors detected 
+--
+-- The width is defined for the systest software via GRLIB_REPORTDEV_WIDTH
 ------------------------------------------------------------------------------
 
 -- pragma translate_off
@@ -32,13 +65,15 @@ use grlib.devices.all;
 use std.textio.all;
 
 entity grtestmod is
-  generic (halt : integer := 0);
+  generic (
+    halt        : integer := 0;
+    width       : integer := 32);
   port (
     resetn	: in  std_ulogic;
     clk		: in  std_ulogic;
     errorn	: in std_ulogic;
     address 	: in std_logic_vector(21 downto 2);
-    data	: inout std_logic_vector(31 downto 0);
+    data	: inout std_logic_vector(width-1 downto 0);
     iosn        : in std_ulogic;
     oen         : in std_ulogic;
     writen  	: in std_ulogic; 		
@@ -70,7 +105,7 @@ begin
   log : process(ior, iow, clk)
   variable errno, errcnt, subtest, vendorid, deviceid : integer;
   variable addr : std_logic_vector(21 downto 2);
-  variable ldata : std_logic_vector(31 downto 0);
+  variable ldata : std_logic_vector(width-1 downto 0);
   begin
     if rising_edge(clk) then
       addr := to_X01(address);
@@ -89,9 +124,14 @@ begin
 --      addr := to_X01(address);
       case addr(7 downto 2) is
       when "000000" =>
-        vendorid := conv_integer(ldata(31 downto 24));
-        deviceid := conv_integer(ldata(23 downto 12));
-	print(iptable(vendorid).device_table(deviceid));
+        if width = 32 then
+          vendorid := conv_integer(ldata(31*(width/32) downto 24*(width/32)));
+          deviceid := conv_integer(ldata(23*(width/32) downto 12*(width/32)));
+          print(iptable(vendorid).device_table(deviceid));
+        else
+          vendorid := conv_integer(ldata(15 downto 8));
+          deviceid := 2**4*conv_integer(ldata(7 downto 0));
+        end if;
       when "000001" =>
         errno := conv_integer(ldata(15 downto 0));
 	if  (halt = 0) then
@@ -105,40 +145,12 @@ begin
 	end if;
       when "000010" =>
         subtest := conv_integer(ldata(7 downto 0));
-	if vendorid = VENDOR_GAISLER then
-	  case deviceid is
-	  when GAISLER_LEON3 | GAISLER_LEON4 | GAISLER_L2CACHE=> leon3_subtest(subtest);
-	  when GAISLER_FTMCTRL => mctrl_subtest(subtest);
-	  when GAISLER_GPTIMER => gptimer_subtest(subtest);
-	  when GAISLER_LEON3DSU => dsu3_subtest(subtest);
-	  when GAISLER_SPW => spw_subtest(subtest);
-          when GAISLER_SPICTRL => spictrl_subtest(subtest); 
-          when GAISLER_I2CMST => i2cmst_subtest(subtest);
-          when GAISLER_UHCI => uhc_subtest(subtest);
-          when GAISLER_EHCI => ehc_subtest(subtest);                    
-          when GAISLER_IRQMP => irqmp_subtest(subtest);                    
-          when GAISLER_SPIMCTRL => spimctrl_subtest(subtest);                      
-          when GAISLER_SVGACTRL => svgactrl_subtest(subtest);
-          when GAISLER_APBPS2 => apbps2_subtest(subtest);
-          when GAISLER_I2CSLV => i2cslv_subtest(subtest);
-          when GAISLER_PWM => grpwm_subtest(subtest);
-          when GAISLER_GPIO => grgpio_subtest(subtest);
-          when GAISLER_GRIOMMU => griommu_subtest(subtest);
-          when GAISLER_L4STAT => l4stat_subtest(subtest);
-          when others =>
-            print ("  subtest " & tost(subtest));
-	  end case;
-	elsif vendorid = VENDOR_ESA then
-	  case deviceid is
-	  when ESA_LEON2 => leon3_subtest(subtest);
-	  when ESA_MCTRL => mctrl_subtest(subtest);
-	  when ESA_TIMER => gptimer_subtest(subtest);
-	  when others =>
-            print ("subtest " & tost(subtest));
-	  end case;
-	else
-          print ("subtest " & tost(subtest));
-	end if;
+	call_subtest(vendorid, deviceid, subtest);
+      when "000011" =>
+        if width = 16 then
+          deviceid := deviceid + conv_integer(ldata(15 downto 12));
+          print(iptable(vendorid).device_table(deviceid));
+        end if;
       when "000100" =>
         print ("");
         print ("**** GRLIB system test starting ****");

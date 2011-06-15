@@ -29,6 +29,8 @@ library techmap;
 use techmap.gencomp.all;
 library opencores;
 use opencores.cancomp.all;
+library grlib;
+use grlib.stdlib.all;
 
 entity can_mod is
    generic (memtech : integer := DEFMEMTECH; syncrst : integer := 0;
@@ -50,27 +52,80 @@ end;
 
 architecture rtl of can_mod is 
 
+type reg_type is record
+  waddr    : std_logic_vector(5 downto 0);
+  ready    : std_ulogic;
+end record;
+
 -- // port connections for Ram
 --//64x8
 signal q_dp_64x8	: std_logic_vector(7 downto 0);
 signal data_64x8	: std_logic_vector(7 downto 0);
+signal ldata_64x8	: std_logic_vector(7 downto 0);
 signal wren_64x8	: std_logic;
+signal lwren_64x8	: std_logic;
 signal rden_64x8	: std_logic;
 signal wraddress_64x8	: std_logic_vector(5 downto 0);
+signal lwraddress_64x8	: std_logic_vector(5 downto 0);
 signal rdaddress_64x8	: std_logic_vector(5 downto 0);
 --//64x4
 signal q_dp_64x4	: std_logic_vector(3 downto 0);
+signal lq_dp_64x4	: std_logic_vector(4 downto 0);
 signal data_64x4	: std_logic_vector(3 downto 0);
+signal ldata_64x4	: std_logic_vector(4 downto 0);
 signal wren_64x4x1	: std_logic;
+signal lwren_64x4x1	: std_logic;
 signal wraddress_64x4x1 : std_logic_vector(5 downto 0);
+signal lwraddress_64x4x1 : std_logic_vector(5 downto 0);
 signal rdaddress_64x4x1	: std_logic_vector(5 downto 0);
 --//64x1
 signal q_dp_64x1	: std_logic_vector(0 downto 0);
 signal data_64x1	: std_logic_vector(0 downto 0);
+signal ldata_64x1	: std_logic_vector(0 downto 0);
 signal vcc, gnd : std_ulogic;
 signal testin	: std_logic_vector(3 downto 0);
 
+signal r, rin : reg_type;
+
 begin
+
+  ramclear : if syncrst = 2 generate
+    comb : process(r, reset, wren_64x8, data_64x8, wraddress_64x8,
+	data_64x4, wren_64x4x1, wraddress_64x4x1)
+    variable v : reg_type;
+    begin
+      v := r;
+      if r.ready = '0' then
+	v.waddr := r.waddr + 1;
+        if (r.waddr(5) and not v.waddr(5)) = '1' then v.ready := '1'; end if;
+        lwren_64x8 <= '1'; ldata_64x8 <= (others => '0');
+        lwraddress_64x8 <= r.waddr;
+        ldata_64x4 <= (others => '0'); lwren_64x4x1 <= '1';
+        lwraddress_64x4x1 <= r.waddr;
+        ldata_64x1 <= "0";
+      else
+        lwren_64x8 <= wren_64x8; ldata_64x8 <= data_64x8;
+        lwraddress_64x8 <= wraddress_64x8;
+        ldata_64x4 <= data_64x1 & data_64x4; lwren_64x4x1 <= wren_64x4x1;
+        lwraddress_64x4x1 <= wraddress_64x4x1;
+        ldata_64x1 <= data_64x1;
+      end if;
+      if reset = '1' then
+	v.ready := '0'; v.waddr := (others => '0');
+      end if;
+      rin <= v;
+    end process;
+    regs : process(clk)
+    begin if rising_edge(clk) then r <= rin; end if; end process;
+  end generate;
+
+  noramclear : if syncrst /= 2 generate
+    lwren_64x8 <= wren_64x8; ldata_64x8 <= data_64x8;
+    lwraddress_64x8 <= wraddress_64x8;
+    ldata_64x4 <= data_64x1 & data_64x4; lwren_64x4x1 <= wren_64x4x1;
+    lwraddress_64x4x1 <= wraddress_64x4x1;
+    ldata_64x1 <= data_64x1;
+  end generate;
 
   gnd <= '0'; vcc <= '1';
   testin <= testen & "000";
@@ -105,36 +160,37 @@ begin
   noft : if (ft = 0) or (memtech = 0) generate
     fifo : syncram_2p generic map(memtech,6,8,0)
     port map(rclk => clk, renable => rden_64x8, wclk => clk,
-	raddress => rdaddress_64x8, waddress => wraddress_64x8,
-	datain => data_64x8, write => wren_64x8, dataout => q_dp_64x8,
+	raddress => rdaddress_64x8, waddress => lwraddress_64x8,
+	datain => ldata_64x8, write => lwren_64x8, dataout => q_dp_64x8,
 	testin => testin);
 
-    info_fifo : syncram_2p generic map(memtech,6,4,0)
+    info_fifo : syncram_2p generic map(memtech,6,5,0)
     port map(rclk => clk, wclk => clk, raddress => rdaddress_64x4x1,
-	waddress => wraddress_64x4x1, datain => data_64x4,
-     	write => wren_64x4x1, dataout => q_dp_64x4, renable =>vcc,
+	waddress => lwraddress_64x4x1, datain => ldata_64x4,
+     	write => lwren_64x4x1, dataout => lq_dp_64x4, renable =>vcc,
 	testin => testin);
-	
   end generate;
 
   ften : if not((ft = 0) or (memtech = 0)) generate
     fifo : syncram_2pft generic map(memtech,6,8,0,0,2)
     port map(rclk => clk, renable => rden_64x8, wclk => clk,
-	raddress => rdaddress_64x8, waddress => wraddress_64x8,
-	datain => data_64x8, write => wren_64x8, dataout => q_dp_64x8,
+	raddress => rdaddress_64x8, waddress => lwraddress_64x8,
+	datain => ldata_64x8, write => lwren_64x8, dataout => q_dp_64x8,
 	testin => testin);
 
-    info_fifo : syncram_2pft generic map(memtech,6,4,0,0,2)
+    info_fifo : syncram_2pft generic map(memtech,6,5,0,0,2)
     port map(rclk => clk, wclk => clk, raddress => rdaddress_64x4x1,
-	waddress => wraddress_64x4x1, datain => data_64x4,
-     	write => wren_64x4x1, dataout => q_dp_64x4, renable =>vcc,
+	waddress => lwraddress_64x4x1, datain => ldata_64x4,
+     	write => lwren_64x4x1, dataout => lq_dp_64x4, renable =>vcc,
 	testin => testin);
-	
   end generate;
 
-  overrun_fifo : syncram_2p generic map(0,6,1,0) 
-  port map(rclk => clk, wclk => clk, raddress => rdaddress_64x4x1,
-	waddress => wraddress_64x4x1, datain => data_64x1,
-     	write  => wren_64x4x1, dataout => q_dp_64x1, renable => vcc,
-	testin => testin);
+  q_dp_64x4 <= lq_dp_64x4(3 downto 0);
+  q_dp_64x1 <= lq_dp_64x4(4 downto 4);
+
+--  overrun_fifo : syncram_2p generic map(0,6,1,0) 
+--  port map(rclk => clk, wclk => clk, raddress => rdaddress_64x4x1,
+--	waddress => lwraddress_64x4x1, datain => ldata_64x1,
+--     	write  => lwren_64x4x1, dataout => q_dp_64x1, renable => vcc,
+--	testin => testin);
 end;

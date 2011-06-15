@@ -46,19 +46,19 @@ TIMESPEC "TSTFT65_TFT25" = FROM "clk65" TO "clk25" TIG;
 TIMESPEC "TSTFT65_TFT40" = FROM "clk65" TO "clk40" TIG;
 ////////////////////////////////////////////////////////////////////////////
 
-#NET "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/dqsclk(*)" TNM_NET = "dqsclk"; 
+#NET "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/dqsclk(*)" TNM_NET = "dqsclk"; 
 #TIMEGRP "dqsclk_rise" = FALLING "dqsclk";
 #TIMEGRP "clkml_rise" = RISING "clkml";
 #TIMESPEC "TS_dqsclk_clkml_rise" = FROM "dqsclk_rise" TO "clkml_rise" 3.500;
 
-INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.0.u" LOC = "IDELAYCTRL_X2Y4";
-#INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.1.u" LOC = "IDELAYCTRL_X2Y3";
-INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.2.u" LOC = "IDELAYCTRL_X2Y2";
-INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.3.u" LOC = "IDELAYCTRL_X0Y0";
-INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[0].u" LOC = "IDELAYCTRL_X2Y4";
-#INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[1].u" LOC = "IDELAYCTRL_X2Y3";
-INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[2].u" LOC = "IDELAYCTRL_X2Y2";
-INST "ddrsp0.ddrc0/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[3].u" LOC = "IDELAYCTRL_X0Y0";
+INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.0.u" LOC = "IDELAYCTRL_X2Y4";
+#INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.1.u" LOC = "IDELAYCTRL_X2Y3";
+INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.2.u" LOC = "IDELAYCTRL_X2Y2";
+INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.3.u" LOC = "IDELAYCTRL_X0Y0";
+INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[0].u" LOC = "IDELAYCTRL_X2Y4";
+#INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[1].u" LOC = "IDELAYCTRL_X2Y3";
+INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[2].u" LOC = "IDELAYCTRL_X2Y2";
+INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[3].u" LOC = "IDELAYCTRL_X0Y0";
 
 
 NET clk_100 period = 10.000 ;

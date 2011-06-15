@@ -8,3 +8,6 @@ dmactrl.vhd
 pci_mtf.vhd
 pcipads.vhd
 pcidma.vhd
+grpci2/pcilib2.vhd
+grpci2/grpci2_ahb_mst.vhd
+grpci2/grpci2.vhd

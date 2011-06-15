@@ -24,6 +24,8 @@
 #define CONFIG_SYN_TECH stratix3
 #elif defined CONFIG_SYN_CYCLONEIII
 #define CONFIG_SYN_TECH cyclone3
+#elif defined CONFIG_SYN_EASIC45
+#define CONFIG_SYN_TECH easic45
 #elif defined CONFIG_SYN_EASIC90
 #define CONFIG_SYN_TECH easic90
 #elif defined CONFIG_SYN_IHP25
@@ -76,6 +78,10 @@
 #define CONFIG_SYN_TECH smic013
 #elif defined CONFIG_SYN_UT025CRH
 #define CONFIG_SYN_TECH ut25
+#elif defined CONFIG_SYN_UT130HBD
+#define CONFIG_SYN_TECH ut130
+#elif defined CONFIG_SYN_UT90NHBD
+#define CONFIG_SYN_TECH ut90
 #elif defined CONFIG_SYN_TSMC90
 #define CONFIG_SYN_TECH tsmc90
 #elif defined CONFIG_SYN_TM65GPLUS

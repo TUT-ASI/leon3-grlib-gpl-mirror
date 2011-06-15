@@ -14,7 +14,7 @@ use gaisler.leon3.all;
 
 
 entity grfpushwx is
-  generic (mul    : integer range 0 to 3 := 0;
+  generic (mul    : integer              := 0;
            nshare : integer range 0 to 8 := 0;
            tech   : integer);
   port(
@@ -44,7 +44,7 @@ component grfpushw
     cpu0_flush   : in std_logic;
     cpu0_flushid : in std_logic_vector(5 downto 0);
     cpu0_rndmode : in std_logic_vector(1 downto 0);
-    cpu0_req     : in std_logic;
+    cpu0_req     : in std_logic_vector(2 downto 0);
     cpu0_res     : out std_logic_vector(63 downto 0);
     cpu0_exc     : out std_logic_vector(5 downto 0);
     cpu0_allow   : out std_logic_vector(2 downto 0);
@@ -60,7 +60,7 @@ component grfpushw
     cpu1_flush   : in std_logic;
     cpu1_flushid : in std_logic_vector(5 downto 0);
     cpu1_rndmode : in std_logic_vector(1 downto 0);
-    cpu1_req     : in std_logic;
+    cpu1_req     : in std_logic_vector(2 downto 0);
     cpu1_res     : out std_logic_vector(63 downto 0);
     cpu1_exc     : out std_logic_vector(5 downto 0);
     cpu1_allow   : out std_logic_vector(2 downto 0);
@@ -76,7 +76,7 @@ component grfpushw
     cpu2_flush   : in std_logic;
     cpu2_flushid : in std_logic_vector(5 downto 0);
     cpu2_rndmode : in std_logic_vector(1 downto 0);
-    cpu2_req     : in std_logic;
+    cpu2_req     : in std_logic_vector(2 downto 0);
     cpu2_res     : out std_logic_vector(63 downto 0);
     cpu2_exc     : out std_logic_vector(5 downto 0);
     cpu2_allow   : out std_logic_vector(2 downto 0);
@@ -92,7 +92,7 @@ component grfpushw
     cpu3_flush   : in std_logic;
     cpu3_flushid : in std_logic_vector(5 downto 0);
     cpu3_rndmode : in std_logic_vector(1 downto 0);
-    cpu3_req     : in std_logic;
+    cpu3_req     : in std_logic_vector(2 downto 0);
     cpu3_res     : out std_logic_vector(63 downto 0);
     cpu3_exc     : out std_logic_vector(5 downto 0);
     cpu3_allow   : out std_logic_vector(2 downto 0);
@@ -108,7 +108,7 @@ component grfpushw
     cpu4_flush   : in std_logic;
     cpu4_flushid : in std_logic_vector(5 downto 0);
     cpu4_rndmode : in std_logic_vector(1 downto 0);
-    cpu4_req     : in std_logic;
+    cpu4_req     : in std_logic_vector(2 downto 0);
     cpu4_res     : out std_logic_vector(63 downto 0);
     cpu4_exc     : out std_logic_vector(5 downto 0);
     cpu4_allow   : out std_logic_vector(2 downto 0);
@@ -124,7 +124,7 @@ component grfpushw
     cpu5_flush   : in std_logic;
     cpu5_flushid : in std_logic_vector(5 downto 0);
     cpu5_rndmode : in std_logic_vector(1 downto 0);
-    cpu5_req     : in std_logic;
+    cpu5_req     : in std_logic_vector(2 downto 0);
     cpu5_res     : out std_logic_vector(63 downto 0);
     cpu5_exc     : out std_logic_vector(5 downto 0);
     cpu5_allow   : out std_logic_vector(2 downto 0);
@@ -140,7 +140,7 @@ component grfpushw
     cpu6_flush   : in std_logic;
     cpu6_flushid : in std_logic_vector(5 downto 0);
     cpu6_rndmode : in std_logic_vector(1 downto 0);
-    cpu6_req     : in std_logic;
+    cpu6_req     : in std_logic_vector(2 downto 0);
     cpu6_res     : out std_logic_vector(63 downto 0);
     cpu6_exc     : out std_logic_vector(5 downto 0);
     cpu6_allow   : out std_logic_vector(2 downto 0);
@@ -156,7 +156,7 @@ component grfpushw
     cpu7_flush   : in std_logic;
     cpu7_flushid : in std_logic_vector(5 downto 0);
     cpu7_rndmode : in std_logic_vector(1 downto 0);
-    cpu7_req     : in std_logic;
+    cpu7_req     : in std_logic_vector(2 downto 0);
     cpu7_res     : out std_logic_vector(63 downto 0);
     cpu7_exc     : out std_logic_vector(5 downto 0);
     cpu7_allow   : out std_logic_vector(2 downto 0);

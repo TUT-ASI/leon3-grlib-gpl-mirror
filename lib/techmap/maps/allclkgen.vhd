@@ -17,8 +17,8 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------
--- Entity: 	libclk
--- File:	libclk.vhd
+-- Package: 	allclkgen
+-- File:	allclkgen.vhd
 -- Author:	Jiri Gaisler - Gaisler Research
 -- Description:	Clock generator interface package
 ------------------------------------------------------------------------------
@@ -261,6 +261,23 @@ component clkand_ut025crh
   );
 end component;
 
+component clkand_ut130hbd
+  port(
+    i      :  in  std_ulogic;
+    en     :  in  std_ulogic;
+    o      :  out std_ulogic;
+    tsten  :  in  std_ulogic
+  );
+end component;
+
+component clkrand_ut130hbd
+  port(
+    i      :  in  std_ulogic;
+    en     :  in  std_ulogic;
+    o      :  out std_ulogic
+  );
+end component;
+
 component clkand_rh_lib18t
   port(
     i      :  in  std_ulogic;
@@ -271,6 +288,14 @@ component clkand_rh_lib18t
 end component;
 
 component clkmux_unisim
+  port(
+    i0, i1  :  in  std_ulogic;
+    sel     :  in  std_ulogic;
+    o       :  out std_ulogic
+  );
+end component;
+
+component clkmux_ut130hbd
   port(
     i0, i1  :  in  std_ulogic;
     sel     :  in  std_ulogic;
@@ -460,5 +485,97 @@ component clkmux_rhlib18t
     sel    :  in  std_ulogic;
     o      :  out std_ulogic);
 end component;
+
+component clkand_n2x
+  port(
+    i      :  in  std_ulogic;
+    en     :  in  std_ulogic;
+    o      :  out std_ulogic;
+    tsten  :  in  std_ulogic := '0'
+  );
+end component;
+
+component clkgen_n2x
+  generic (
+    clk_mul  : integer := 1; 
+    clk_div  : integer := 1;
+    sdramen  : integer := 0;
+    noclkfb  : integer := 0;
+    pcien    : integer := 0;
+    pcidll   : integer := 0;
+    pcisysclk: integer := 0;
+    freq     : integer := 25000;        -- clock frequency in KHz
+    clk2xen  : integer := 0;
+    clksel   : integer := 0;            -- enable clock select     
+    clk270en : integer := 0);
+  port (
+    clkin   : in  std_ulogic;
+    pciclkin: in  std_ulogic;
+    clk     : out std_ulogic;           -- main clock
+    clkn    : out std_ulogic;           -- inverted main clock
+    clk2x   : out std_ulogic;           -- double clock
+    sdclk   : out std_ulogic;           -- SDRAM clock
+    pciclk  : out std_ulogic;           -- PCI clock
+    cgi     : in  clkgen_in_type;
+    cgo     : out clkgen_out_type;
+    clk1xu  : out std_ulogic;           -- unscaled clock
+    clk2xu  : out std_ulogic;           -- unscaled 2X clock
+    clk270  : out std_ulogic            -- clk shifted 270 degrees
+  );
+end component; 
+
+component clkgen_ut130hbd
+  generic (
+    clk_mul  : integer := 1; 
+    clk_div  : integer := 1;
+    sdramen  : integer := 0;
+    noclkfb  : integer := 0;
+    pcien    : integer := 0;
+    pcidll   : integer := 0;
+    pcisysclk: integer := 0;
+    freq     : integer := 25000;	-- clock frequency in KHz
+    clk2xen  : integer := 0;
+    clksel   : integer := 0);             -- enable clock select     
+  port (
+    clkin   : in  std_ulogic;
+    pciclkin: in  std_ulogic;
+    clk     : out std_ulogic;			-- main clock
+    clkn    : out std_ulogic;			-- inverted main clock
+    clk2x   : out std_ulogic;			-- double clock
+    sdclk   : out std_ulogic;			-- SDRAM clock
+    pciclk  : out std_ulogic;			-- PCI clock
+    cgi     : in clkgen_in_type;
+    cgo     : out clkgen_out_type;
+    clk1xu  : out std_ulogic;			-- unscaled clock
+    clk2xu  : out std_ulogic			-- unscaled 2X clock
+  );
+end component;
+
+component clkgen_ut90nhbd is
+  generic (
+    clk_mul  : integer := 1; 
+    clk_div  : integer := 1;
+    sdramen  : integer := 0;
+    noclkfb  : integer := 0;
+    pcien    : integer := 0;
+    pcidll   : integer := 0;
+    pcisysclk: integer := 0;
+    freq     : integer := 25000;	-- clock frequency in KHz
+    clk2xen  : integer := 0;
+    clksel   : integer := 0);             -- enable clock select     
+  port (
+    clkin   : in  std_ulogic;
+    pciclkin: in  std_ulogic;
+    clk     : out std_ulogic;			-- main clock
+    clkn    : out std_ulogic;			-- inverted main clock
+    clk2x   : out std_ulogic;			-- double clock
+    sdclk   : out std_ulogic;			-- SDRAM clock
+    pciclk  : out std_ulogic;			-- PCI clock
+    cgi     : in clkgen_in_type;
+    cgo     : out clkgen_out_type;
+    clk1xu  : out std_ulogic;			-- unscaled clock
+    clk2xu  : out std_ulogic			-- unscaled 2X clock
+  );
+end component; 
 
 end;

@@ -53,4 +53,7 @@ constant CFG_AHBDW     : integer := 32;
 --
 constant CFG_AHB_ACDM : integer := 0; 
 
+constant grlib_debug_level : integer := 0; 
+constant grlib_debug_mask  : integer := 0; 
+
 end;

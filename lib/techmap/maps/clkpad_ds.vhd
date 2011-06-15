@@ -30,7 +30,8 @@ use techmap.gencomp.all;
 use techmap.allpads.all;
 
 entity clkpad_ds is
-  generic (tech : integer := 0; level : integer := lvds; voltage : integer := x33v);
+  generic (tech : integer := 0; level : integer := lvds;
+	   voltage : integer := x33v; term : integer := 0);
   port (padp, padn : in std_ulogic; o : out std_ulogic);
 end;
 
