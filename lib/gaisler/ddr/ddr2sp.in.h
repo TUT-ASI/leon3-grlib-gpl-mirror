@@ -85,3 +85,7 @@
 #ifndef CONFIG_DDR2SP_FTEN
 #define CONFIG_DDR2SP_FTEN 0
 #endif
+
+#ifndef CONFIG_DDR2SP_FTWIDTH
+#define CONFIG_DDR2SP_FTWIDTH 0
+#endif

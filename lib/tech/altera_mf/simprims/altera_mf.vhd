@@ -54326,6 +54326,15 @@ begin  -- structural
 --            virtual_state_uir  => virtual_state_uir,
 --            virtual_ir_in      => ir_in);
 
+-- dummy drivers to avoid modelsim warnings
+
+	tck <= '0';
+	tdi <= '0';
+	ir_in <= (others => '0');
+	virtual_state_cdr <= '0';
+	virtual_state_sdr <= '0';
+	virtual_state_udr <= '0';
+
 end structural;
 library ieee;
 use ieee.std_logic_1164.all;

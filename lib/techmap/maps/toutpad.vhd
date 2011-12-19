@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -33,7 +33,8 @@ entity toutpad is
   generic (tech : integer := 0; level : integer := 0; slew : integer := 0;
 	   voltage : integer := x33v; strength : integer := 12;
 	   oepol : integer := 0);
-  port (pad : out std_ulogic; i, en : in std_ulogic);
+  port (pad : out std_ulogic; i, en : in std_ulogic;
+        cfgi: in std_logic_vector(19 downto 0) := "00000000000000000000");
 end;
 
 architecture rtl of toutpad is
@@ -43,11 +44,19 @@ begin
   gnd <= '0';
   oen <= not en when oepol /= padoen_polarity(tech) else en;
   gen0 : if has_pads(tech) = 0 generate
-    pad <= i after 2 ns when oen = '0'
+    pad <= i 
+-- pragma translate_off
+	after 2 ns 
+-- pragma translate_on
+	when oen = '0'
 -- pragma translate_off
            else 'X' after 2 ns when is_x(en)
 -- pragma translate_on
-           else 'Z' after 2 ns;
+           else 'Z' 
+-- pragma translate_off
+	after 2 ns
+-- pragma translate_on
+	;
   end generate;
   xcv : if (is_unisim(tech) = 1) generate
     u0 : unisim_toutpad generic map (level, slew, voltage, strength)
@@ -119,7 +128,8 @@ begin
   end generate;
   n2x :  if (tech = easic45) generate
     u0 : n2x_toutpad generic map (level, slew, voltage, strength)
-	 port map (pad, i, oen);
+	 port map (pad, i, oen, cfgi(0), cfgi(1),
+                  cfgi(19 downto 15), cfgi(14 downto 10), cfgi(9 downto 6), cfgi(5 downto 2));
   end generate;
   ut90nhbd : if (tech = ut90) generate
     u0 : ut90nhbd_toutpad generic map (level, slew, voltage, strength)
@@ -139,13 +149,15 @@ entity toutpadv is
   port (
     pad : out std_logic_vector(width-1 downto 0);
     i   : in  std_logic_vector(width-1 downto 0);
-    en  : in  std_ulogic);
+    en  : in  std_ulogic;
+    cfgi: in std_logic_vector(19 downto 0) := "00000000000000000000"
+    );
 end;
 architecture rtl of toutpadv is
 begin
   v : for j in width-1 downto 0 generate
     u0 : toutpad generic map (tech, level, slew, voltage, strength, oepol)
-	 port map (pad(j), i(j), en);
+	 port map (pad(j), i(j), en, cfgi);
   end generate;
 end;
 
@@ -161,12 +173,13 @@ entity toutpadvv is
   port (
     pad : out std_logic_vector(width-1 downto 0);
     i   : in  std_logic_vector(width-1 downto 0);
-    en  : in  std_logic_vector(width-1 downto 0));
+    en  : in  std_logic_vector(width-1 downto 0);
+    cfgi: in std_logic_vector(19 downto 0) := "00000000000000000000");
 end;
 architecture rtl of toutpadvv is
 begin
   v : for j in width-1 downto 0 generate
     u0 : toutpad generic map (tech, level, slew, voltage, strength, oepol)
-	 port map (pad(j), i(j), en(j));
+	 port map (pad(j), i(j), en(j), cfgi);
   end generate;
 end;

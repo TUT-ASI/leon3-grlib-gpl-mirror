@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -1475,6 +1475,14 @@ begin
     dcrami.ldramin.read   <= rlramrd;
     dcrami.ldramin.write  <= lramwr;
 
+    dcrami.spar <= '0';
+    dcrami.faddress <= (others => '0');
+    dcrami.dpar <= (others => (others => '0'));
+    dcrami.tpar <= (others => (others => '0'));
+    dcrami.tdiag <= mcdo.testen & mcdo.scanen & "00";
+    dcrami.sdiag <= mcdo.testen & mcdo.scanen & "00";
+    dcrami.ddiag <= mcdo.testen & mcdo.scanen & "00";
+
     -- memory controller inputs
     mcdi.address  <= r.wb.addr;
     mcdi.data     <= r.wb.data1;
@@ -1507,6 +1515,7 @@ begin
     dco.hold <= r.holdn;
     dco.mds  <= mds;
     dco.werr <= mcdo.werr;
+    dco.cache <= '0';
     dco.idle  <= sidle and not r.stpend;
     dco.scanen  <= mcdo.scanen;
     dco.testen  <= mcdo.testen;

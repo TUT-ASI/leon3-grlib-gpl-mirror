@@ -12,11 +12,6 @@
 --  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 --  GNU General Public License for more details.
 ------------------------------------------------------------------------------
---  modified by Thomas Ameseder, Gleichmann Electronics 2004, 2005 to
---  support the use of an external AHB slave and different HPE board versions
-------------------------------------------------------------------------------
---  further adapted from Hpe_compact to Hpe_mini (Feb. 2005)
-------------------------------------------------------------------------------
 
 
 library ieee;
@@ -61,7 +56,8 @@ architecture behav of testbench is
 
 
   signal   clk : std_logic := '0';
-  signal   Rst : std_logic := '0';      -- Reset
+  signal   rst : std_logic := '1';      -- Reset
+  signal   rstn: std_logic := '0';      -- Reset
   constant ct  : integer   := clkperiod/2;
 
   signal address : std_logic_vector(22 downto 0);
@@ -103,15 +99,18 @@ architecture behav of testbench is
   signal NC   : std_ulogic := 'Z';
   signal clk2 : std_ulogic := '1';
   signal clk50 : std_ulogic := '1';
+  signal clk_200p : std_ulogic := '0';
+  signal clk_200n : std_ulogic := '1';
 
   signal plllock : std_ulogic;
 
 -- pulled up high, therefore std_logic
   signal txd1, rxd1 : std_logic;
 
-  signal etx_clk, erx_clk, erx_dv, erx_er, erx_col, erx_crs, etx_en, etx_er : std_logic                    := '0';
-  signal erxd, etxd                                                         : std_logic_vector(3 downto 0) := (others => '0');
-  signal emdc, emdio                                                        : std_logic;  --dummy signal for the mdc,mdio in the phy which is not used
+  signal eth_macclk, etx_clk, erx_clk, erx_dv, erx_er, erx_col, erx_crs, etx_en, etx_er : std_logic := '0';
+  signal erxd, etxd    : std_logic_vector(3 downto 0) := (others => '0');
+  signal erxdt, etxdt  : std_logic_vector(7 downto 0) := (others => '0');
+  signal emdc, emdio   : std_logic;  --dummy signal for the mdc,mdio in the phy which is not used
 
   constant lresp : boolean := false;
 
@@ -127,7 +126,10 @@ begin
 
   clk     <= not clk after ct * 1 ns;
   clk50   <= not clk50 after 10 ns;
+  clk_200p   <= not clk_200p after 2.5 ns;
+  clk_200n   <= not clk_200n after 2.5 ns;
   rst     <= '1', '0' after 1000 ns;
+  rstn <= not rst;
   dsuen   <= '0'; dsubre <= '0'; rxd1 <= 'H';
   address(0) <= '0';
   ddr_dqs <= (others => 'L');
@@ -137,6 +139,8 @@ begin
       resoutn => resoutn,
       clk_100mhz     => clk,
       clk_50mhz     => clk50,
+      clk_200p     => clk_200p,
+      clk_200n     => clk_200n,
       errorn  => error,
       address => address(22 downto 1),
       data    => data(31 downto 16),
@@ -187,7 +191,7 @@ begin
   ddr_clk_fb <= ddr_clk;
   
   u1 : mt46v16m16 
-    generic map (index => -1, fname => sdramfile)
+    generic map (index => -1, fname => sdramfile, fdelay => 300*CFG_MIG_DDR2)
     port map(
       Dq => ddr_dq(15 downto 0), Dqs => ddr_dqs(1 downto 0), Addr => ddr_ad,
       Ba => ddr_ba, Clk => ddr_clk,  Clk_n => ddr_clkb, Cke => ddr_cke,
@@ -201,11 +205,16 @@ begin
   end generate;
 
 
---  phy0 : if CFG_GRETH > 0 generate
---    p0 : phy
---      port map(rst, led_cfg, open, etx_clk, erx_clk, erxd, erx_dv,
---               erx_er, erx_col, erx_crs, etxd, etx_en, etx_er, emdc);
---  end generate;
+  phy0 : if (CFG_GRETH = 1) generate
+    emdio <= 'H';
+    erxd <= erxdt(3 downto 0);
+    etxdt <= "0000" & etxd;
+    p0: phy
+      generic map(base1000_t_fd => 0, base1000_t_hd => 0, address => 3)
+      port map(resoutn, emdio, etx_clk, erx_clk, erxdt, erx_dv,
+        erx_er, erx_col, erx_crs, etxdt, etx_en, etx_er, emdc, eth_macclk);
+  end generate;
+
   error <= 'H';                         -- ERROR pull-up
 
   iuerr : process
@@ -217,7 +226,7 @@ begin
   end process;
 
   test0 :  grtestmod
-    port map ( rst, clk, error, address(21 downto 2), data,
+    port map ( rstn, clk, error, address(21 downto 2), data,
     	       iosn, oen, writen, brdyn);
 
   data <= buskeep(data) after 5 ns;

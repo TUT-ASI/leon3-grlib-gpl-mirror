@@ -143,7 +143,7 @@ proc hex2int { h } {
     return $r;
 }
 
-puts [ i4encode "0123456789ABCDEF" A 64 ]
+# puts [ i4encode "0123456789ABCDEF" A 64 ]
 
 if {$argc > 0} then {
     set ddrbits [lindex $argv 0]

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -33,10 +33,13 @@ use grlib.amba.all;
 use grlib.devices.all;
 library gaisler;
 use gaisler.memctrl.all;
+library techmap;
+use techmap.gencomp.ddr2phy_has_datavalid;
 
 entity ddr2spax is
    generic (
       memtech    : integer := 0;
+      phytech    : integer := 0;
       hindex     : integer := 0;
       haddr      : integer := 0;
       hmask      : integer := 16#f00#;
@@ -81,7 +84,7 @@ end ddr2spax;
 
 architecture rtl of ddr2spax is
 
-  constant REVISION  : integer := 0;
+  constant REVISION  : integer := 1;
 
   constant ramwt: integer := 0;
   
@@ -149,7 +152,7 @@ begin
   gft0: if ft=0 generate
     ahbc : ddr2spax_ahb
       generic map (hindex => hindex, haddr => haddr, hmask => hmask, ioaddr => ioaddr, iomask => iomask,
-                   nosync => nosync, burstlen => burstlen, ahbbits => xahbw)
+                   nosync => nosync, burstlen => burstlen, ahbbits => xahbw, revision => revision)
       port map (ahb_rst, clk_ahb, ahbsi, ahbso, request, start_tog, done_tog,
                 wbwaddr, wbwdata, wbwrite, wbwritebig, rbraddr, rbrdata);
     ce <= '0';
@@ -159,9 +162,9 @@ begin
     ftc: ft_ddr2spax_ahb
       generic map (hindex => hindex, haddr => haddr, hmask => hmask, ioaddr => ioaddr, iomask => iomask,
                    nosync => nosync, burstlen => burstlen, ahbbits => xahbw, bufbits => xahbw+xahbw/2,
-                   ddrbits => ddrbits, hwidthen => hwidthen)
+                   ddrbits => ddrbits, hwidthen => hwidthen, revision => revision)
       port map (ahb_rst, clk_ahb, ahbsi, ahbso, ce, request, start_tog, done_tog,
-                wbwaddr, wbwdata, wbwrite, wbwritebig, rbraddr, rbrdata, hwidth);
+                wbwaddr, wbwdata, wbwrite, wbwritebig, rbraddr, rbrdata, hwidth, '0', open, open);
   end generate;
   
   ddrc : ddr2spax_ddr
@@ -170,9 +173,10 @@ begin
                  fastahb => xfastahb, readdly => readdly, odten => odten, octen => octen, dqsgating => dqsgating,
                  nosync => nosync, eightbanks => eightbanks, dqsse => dqsse, burstlen => burstlen,
                  chkbits => ft*ddrbits/2, bigmem => bigmem, raspipe => raspipe,
-                 hwidthen => hwidthen)
+                 hwidthen => hwidthen, phytech => phytech, hasdqvalid => ddr2phy_has_datavalid(phytech))
     port map (ddr_rst, clk_ddr, request, start_tog, done_tog, sdi, sdox,
-              wbraddr, wbrdata, rbwaddr, rbwdata, rbwrite, hwidth);
+              wbraddr, wbrdata, rbwaddr, rbwdata, rbwrite, hwidth,
+              '0', ddr_request_none, open);
 
 
   sdoproc: process(sdox,ce)

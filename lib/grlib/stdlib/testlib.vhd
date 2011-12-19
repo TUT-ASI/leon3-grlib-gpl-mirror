@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 -- description:	package for common vhdl functions for testbenches
 ------------------------------------------------------------------------------
 
+-- pragma translate_off
 library  std;
 use      std.standard.all;
 use      std.textio.all;
@@ -35,8 +36,10 @@ use      ieee.math_real.all;
 library  grlib;
 use      grlib.stdio.all;
 use      grlib.stdlib.tost;
+-- pragma translate_on
 
 package testlib is
+-- pragma translate_off
    type octet_vector   is array (natural range <>) of std_logic_vector(7 downto 0);
    subtype data_vector8 is octet_vector;
    type data_vector16  is array (natural range <>) of std_logic_vector(15 downto 0);
@@ -215,9 +218,11 @@ package testlib is
      constant size : integer;           -- access size
      constant addr : std_logic_vector(4 downto 0))
      return integer;
+-- pragma translate_on
    
 end package testlib;
 
+-- pragma translate_off
 --============================================================================--
 
 package body testlib is
@@ -799,4 +804,5 @@ package body testlib is
    end ahb_doff;
    
 end package body ; --=======================================--
+-- pragma translate_on
 

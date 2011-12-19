@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -270,6 +270,15 @@ component clkand_ut130hbd
   );
 end component;
 
+component clkand_ut90nhbd
+  port(
+    i      :  in  std_ulogic;
+    en     :  in  std_ulogic;
+    o      :  out std_ulogic;
+    tsten  :  in  std_ulogic
+  );
+end component;
+
 component clkrand_ut130hbd
   port(
     i      :  in  std_ulogic;
@@ -495,6 +504,13 @@ component clkand_n2x
   );
 end component;
 
+component clkmux_n2x
+  port (
+    i0, i1  :  in  std_ulogic;
+    sel     :  in  std_ulogic;
+    o       :  out std_ulogic);
+end component;
+
 component clkgen_n2x
   generic (
     clk_mul  : integer := 1; 
@@ -577,5 +593,31 @@ component clkgen_ut90nhbd is
     clk2xu  : out std_ulogic			-- unscaled 2X clock
   );
 end component; 
+
+component sim_pll is
+  generic (
+    clkmul: integer := 1;
+    clkdiv1: integer := 1;
+    clkphase1: integer := 0;
+    clkdiv2: integer := 1;
+    clkphase2: integer := 0;
+    clkdiv3: integer := 1;
+    clkphase3: integer := 0;
+    clkdiv4: integer := 1;
+    clkphase4: integer := 0;
+    -- Frequency limits in kHz, for checking only
+    minfreq: integer := 0;
+    maxfreq: integer := 10000000
+    );
+  port (
+    i: in std_logic;
+    o1: out std_logic;
+    o2: out std_logic;
+    o3: out std_logic;
+    o4: out std_logic;
+    lock: out std_logic;
+    rst: in std_logic
+    );
+end component;
 
 end;

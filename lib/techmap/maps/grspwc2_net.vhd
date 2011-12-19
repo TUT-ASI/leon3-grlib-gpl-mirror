@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@ entity grspwc2_net is
     ports        : integer range 1 to 2 := 1;
     dmachan      : integer range 1 to 4 := 1;
     tech         : integer;
-    input_type   : integer range 0 to 3 := 0;
+    input_type   : integer range 0 to 4 := 0;
     output_type  : integer range 0 to 2 := 0;
     rxtx_sameclk : integer range 0 to 1 := 0
   );
@@ -81,8 +81,13 @@ entity grspwc2_net is
     do           : out  std_logic_vector(3 downto 0);
     so           : out  std_logic_vector(3 downto 0);
     --time iface
-    tickin       : in   std_ulogic;
-    tickout      : out  std_ulogic;
+    tickin       : in   std_logic;
+    tickinraw    : in   std_logic;
+    timein       : in   std_logic_vector(7 downto 0);
+    tickindone   : out  std_logic;
+    tickout      : out  std_logic;
+    tickoutraw   : out  std_logic;
+    timeout      : out  std_logic_vector(7 downto 0);
     --irq
     irq          : out  std_logic;
     --misc
@@ -120,16 +125,18 @@ entity grspwc2_net is
     rmwaddress   : out  std_logic_vector(7 downto 0);
     rmrdata      : in   std_logic_vector(7 downto 0);
     linkdis      : out  std_ulogic;
-    testclk      : in   std_ulogic := '0';
-    testrst      : in   std_ulogic := '0';
-    testen       : in   std_ulogic := '0';
-    loopback     : out  std_ulogic
+    testclk      : in   std_ulogic;
+    testrst      : in   std_logic;
+    testen       : in   std_logic;
+    rxdav        : out  std_logic;
+    rxdataout    : out  std_logic_vector(8 downto 0);
+    loopback     : out  std_logic
   );
 end entity;
 
 architecture rtl of grspwc2_net is
-
-component grspwc2_unisim
+ 
+component grspwc2_unisim is
   generic(
     rmap         : integer range 0 to 1  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
@@ -153,11 +160,11 @@ component grspwc2_unisim
     txclkn       : in  std_ulogic;
     --ahb mst in
     hgrant       : in  std_ulogic;
-    hready       : in  std_ulogic;
+    hready       : in  std_ulogic;   
     hresp        : in  std_logic_vector(1 downto 0);
-    hrdata       : in  std_logic_vector(31 downto 0);
+    hrdata       : in  std_logic_vector(31 downto 0); 
     --ahb mst out
-    hbusreq      : out  std_ulogic;
+    hbusreq      : out  std_ulogic;        
     hlock        : out  std_ulogic;
     htrans       : out  std_logic_vector(1 downto 0);
     haddr        : out  std_logic_vector(31 downto 0);
@@ -166,7 +173,7 @@ component grspwc2_unisim
     hburst       : out  std_logic_vector(2 downto 0);
     hprot        : out  std_logic_vector(3 downto 0);
     hwdata       : out  std_logic_vector(31 downto 0);
-    --apb slv in
+    --apb slv in 
     psel	 : in   std_ulogic;
     penable	 : in   std_ulogic;
     paddr	 : in   std_logic_vector(31 downto 0);
@@ -182,14 +189,17 @@ component grspwc2_unisim
     do           : out  std_logic_vector(3 downto 0);
     so           : out  std_logic_vector(3 downto 0);
     --time iface
-    tickin       : in   std_ulogic;
-    tickout      : out  std_ulogic;
+    tickin       : in   std_logic;
+    tickinraw    : in   std_logic;
+    timein       : in   std_logic_vector(7 downto 0);
+    tickindone   : out  std_logic;
+    tickout      : out  std_logic;
+    tickoutraw   : out  std_logic;
+    timeout      : out  std_logic_vector(7 downto 0);
     --irq
     irq          : out  std_logic;
-    --misc
+    --misc     
     clkdiv10     : in   std_logic_vector(7 downto 0);
-    dcrstval     : in   std_logic_vector(9 downto 0);
-    timerrstval  : in   std_logic_vector(11 downto 0);
     --rmapen
     rmapen       : in   std_ulogic;
     --rx ahb fifo
@@ -198,14 +208,14 @@ component grspwc2_unisim
     rxwrite      : out  std_ulogic;
     rxwdata      : out  std_logic_vector(31 downto 0);
     rxwaddress   : out  std_logic_vector(4 downto 0);
-    rxrdata      : in   std_logic_vector(31 downto 0);
+    rxrdata      : in   std_logic_vector(31 downto 0);    
     --tx ahb fifo
     txrenable    : out  std_ulogic;
     txraddress   : out  std_logic_vector(4 downto 0);
     txwrite      : out  std_ulogic;
     txwdata      : out  std_logic_vector(31 downto 0);
     txwaddress   : out  std_logic_vector(4 downto 0);
-    txrdata      : in   std_logic_vector(31 downto 0);
+    txrdata      : in   std_logic_vector(31 downto 0);    
     --nchar fifo
     ncrenable    : out  std_ulogic;
     ncraddress   : out  std_logic_vector(5 downto 0);
@@ -221,13 +231,15 @@ component grspwc2_unisim
     rmwaddress   : out  std_logic_vector(7 downto 0);
     rmrdata      : in   std_logic_vector(7 downto 0);
     linkdis      : out  std_ulogic;
-    testclk      : in   std_ulogic := '0';
-    testrst      : in   std_ulogic := '0';
-    testen       : in   std_ulogic := '0'
+    testrst      : in   std_logic;
+    testen       : in   std_logic;
+    rxdav        : out  std_logic;
+    rxdataout    : out  std_logic_vector(8 downto 0);
+    loopback     : out  std_logic
   );
 end component;
 
-component grspwc2_axcelerator
+component grspwc2_axcelerator is
   generic(
     rmap         : integer range 0 to 1  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
@@ -251,11 +263,11 @@ component grspwc2_axcelerator
     txclkn       : in  std_ulogic;
     --ahb mst in
     hgrant       : in  std_ulogic;
-    hready       : in  std_ulogic;
+    hready       : in  std_ulogic;   
     hresp        : in  std_logic_vector(1 downto 0);
-    hrdata       : in  std_logic_vector(31 downto 0);
+    hrdata       : in  std_logic_vector(31 downto 0); 
     --ahb mst out
-    hbusreq      : out  std_ulogic;
+    hbusreq      : out  std_ulogic;        
     hlock        : out  std_ulogic;
     htrans       : out  std_logic_vector(1 downto 0);
     haddr        : out  std_logic_vector(31 downto 0);
@@ -264,7 +276,7 @@ component grspwc2_axcelerator
     hburst       : out  std_logic_vector(2 downto 0);
     hprot        : out  std_logic_vector(3 downto 0);
     hwdata       : out  std_logic_vector(31 downto 0);
-    --apb slv in
+    --apb slv in 
     psel	 : in   std_ulogic;
     penable	 : in   std_ulogic;
     paddr	 : in   std_logic_vector(31 downto 0);
@@ -280,14 +292,17 @@ component grspwc2_axcelerator
     do           : out  std_logic_vector(3 downto 0);
     so           : out  std_logic_vector(3 downto 0);
     --time iface
-    tickin       : in   std_ulogic;
-    tickout      : out  std_ulogic;
+    tickin       : in   std_logic;
+    tickinraw    : in   std_logic;
+    timein       : in   std_logic_vector(7 downto 0);
+    tickindone   : out  std_logic;
+    tickout      : out  std_logic;
+    tickoutraw   : out  std_logic;
+    timeout      : out  std_logic_vector(7 downto 0);
     --irq
     irq          : out  std_logic;
-    --misc
+    --misc     
     clkdiv10     : in   std_logic_vector(7 downto 0);
-    dcrstval     : in   std_logic_vector(9 downto 0);
-    timerrstval  : in   std_logic_vector(11 downto 0);
     --rmapen
     rmapen       : in   std_ulogic;
     --rx ahb fifo
@@ -296,14 +311,14 @@ component grspwc2_axcelerator
     rxwrite      : out  std_ulogic;
     rxwdata      : out  std_logic_vector(31 downto 0);
     rxwaddress   : out  std_logic_vector(4 downto 0);
-    rxrdata      : in   std_logic_vector(31 downto 0);
+    rxrdata      : in   std_logic_vector(31 downto 0);    
     --tx ahb fifo
     txrenable    : out  std_ulogic;
     txraddress   : out  std_logic_vector(4 downto 0);
     txwrite      : out  std_ulogic;
     txwdata      : out  std_logic_vector(31 downto 0);
     txwaddress   : out  std_logic_vector(4 downto 0);
-    txrdata      : in   std_logic_vector(31 downto 0);
+    txrdata      : in   std_logic_vector(31 downto 0);    
     --nchar fifo
     ncrenable    : out  std_ulogic;
     ncraddress   : out  std_logic_vector(5 downto 0);
@@ -319,13 +334,15 @@ component grspwc2_axcelerator
     rmwaddress   : out  std_logic_vector(7 downto 0);
     rmrdata      : in   std_logic_vector(7 downto 0);
     linkdis      : out  std_ulogic;
-    testclk      : in   std_ulogic := '0';
-    testrst      : in   std_ulogic := '0';
-    testen       : in   std_ulogic := '0'
+    testrst      : in   std_logic;
+    testen       : in   std_logic;
+    rxdav        : out  std_logic;
+    rxdataout    : out  std_logic_vector(8 downto 0);
+    loopback     : out  std_logic
   );
 end component;
 
-component grspwc2_proasic3
+component grspwc2_proasic3 is
   generic(
     rmap         : integer range 0 to 1  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
@@ -349,11 +366,11 @@ component grspwc2_proasic3
     txclkn       : in  std_ulogic;
     --ahb mst in
     hgrant       : in  std_ulogic;
-    hready       : in  std_ulogic;
+    hready       : in  std_ulogic;   
     hresp        : in  std_logic_vector(1 downto 0);
-    hrdata       : in  std_logic_vector(31 downto 0);
+    hrdata       : in  std_logic_vector(31 downto 0); 
     --ahb mst out
-    hbusreq      : out  std_ulogic;
+    hbusreq      : out  std_ulogic;        
     hlock        : out  std_ulogic;
     htrans       : out  std_logic_vector(1 downto 0);
     haddr        : out  std_logic_vector(31 downto 0);
@@ -362,7 +379,7 @@ component grspwc2_proasic3
     hburst       : out  std_logic_vector(2 downto 0);
     hprot        : out  std_logic_vector(3 downto 0);
     hwdata       : out  std_logic_vector(31 downto 0);
-    --apb slv in
+    --apb slv in 
     psel	 : in   std_ulogic;
     penable	 : in   std_ulogic;
     paddr	 : in   std_logic_vector(31 downto 0);
@@ -378,14 +395,17 @@ component grspwc2_proasic3
     do           : out  std_logic_vector(3 downto 0);
     so           : out  std_logic_vector(3 downto 0);
     --time iface
-    tickin       : in   std_ulogic;
-    tickout      : out  std_ulogic;
+    tickin       : in   std_logic;
+    tickinraw    : in   std_logic;
+    timein       : in   std_logic_vector(7 downto 0);
+    tickindone   : out  std_logic;
+    tickout      : out  std_logic;
+    tickoutraw   : out  std_logic;
+    timeout      : out  std_logic_vector(7 downto 0);
     --irq
     irq          : out  std_logic;
-    --misc
+    --misc     
     clkdiv10     : in   std_logic_vector(7 downto 0);
-    dcrstval     : in   std_logic_vector(9 downto 0);
-    timerrstval  : in   std_logic_vector(11 downto 0);
     --rmapen
     rmapen       : in   std_ulogic;
     --rx ahb fifo
@@ -394,14 +414,14 @@ component grspwc2_proasic3
     rxwrite      : out  std_ulogic;
     rxwdata      : out  std_logic_vector(31 downto 0);
     rxwaddress   : out  std_logic_vector(4 downto 0);
-    rxrdata      : in   std_logic_vector(31 downto 0);
+    rxrdata      : in   std_logic_vector(31 downto 0);    
     --tx ahb fifo
     txrenable    : out  std_ulogic;
     txraddress   : out  std_logic_vector(4 downto 0);
     txwrite      : out  std_ulogic;
     txwdata      : out  std_logic_vector(31 downto 0);
     txwaddress   : out  std_logic_vector(4 downto 0);
-    txrdata      : in   std_logic_vector(31 downto 0);
+    txrdata      : in   std_logic_vector(31 downto 0);    
     --nchar fifo
     ncrenable    : out  std_ulogic;
     ncraddress   : out  std_logic_vector(5 downto 0);
@@ -417,13 +437,15 @@ component grspwc2_proasic3
     rmwaddress   : out  std_logic_vector(7 downto 0);
     rmrdata      : in   std_logic_vector(7 downto 0);
     linkdis      : out  std_ulogic;
-    testclk      : in   std_ulogic := '0';
     testrst      : in   std_ulogic := '0';
-    testen       : in   std_ulogic := '0'
+    testen       : in   std_ulogic := '0';
+    rxdav        : out  std_logic;
+    rxdataout    : out  std_logic_vector(8 downto 0);
+    loopback     : out  std_logic
   );
 end component;
 
-component grspwc2_proasic3e
+component grspwc2_proasic3e is
   generic(
     rmap         : integer range 0 to 1  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
@@ -447,11 +469,11 @@ component grspwc2_proasic3e
     txclkn       : in  std_ulogic;
     --ahb mst in
     hgrant       : in  std_ulogic;
-    hready       : in  std_ulogic;
+    hready       : in  std_ulogic;   
     hresp        : in  std_logic_vector(1 downto 0);
-    hrdata       : in  std_logic_vector(31 downto 0);
+    hrdata       : in  std_logic_vector(31 downto 0); 
     --ahb mst out
-    hbusreq      : out  std_ulogic;
+    hbusreq      : out  std_ulogic;        
     hlock        : out  std_ulogic;
     htrans       : out  std_logic_vector(1 downto 0);
     haddr        : out  std_logic_vector(31 downto 0);
@@ -460,7 +482,7 @@ component grspwc2_proasic3e
     hburst       : out  std_logic_vector(2 downto 0);
     hprot        : out  std_logic_vector(3 downto 0);
     hwdata       : out  std_logic_vector(31 downto 0);
-    --apb slv in
+    --apb slv in 
     psel	 : in   std_ulogic;
     penable	 : in   std_ulogic;
     paddr	 : in   std_logic_vector(31 downto 0);
@@ -476,14 +498,17 @@ component grspwc2_proasic3e
     do           : out  std_logic_vector(3 downto 0);
     so           : out  std_logic_vector(3 downto 0);
     --time iface
-    tickin       : in   std_ulogic;
-    tickout      : out  std_ulogic;
+    tickin       : in   std_logic;
+    tickinraw    : in   std_logic;
+    timein       : in   std_logic_vector(7 downto 0);
+    tickindone   : out  std_logic;
+    tickout      : out  std_logic;
+    tickoutraw   : out  std_logic;
+    timeout      : out  std_logic_vector(7 downto 0);
     --irq
     irq          : out  std_logic;
-    --misc
+    --misc     
     clkdiv10     : in   std_logic_vector(7 downto 0);
-    dcrstval     : in   std_logic_vector(9 downto 0);
-    timerrstval  : in   std_logic_vector(11 downto 0);
     --rmapen
     rmapen       : in   std_ulogic;
     --rx ahb fifo
@@ -492,14 +517,14 @@ component grspwc2_proasic3e
     rxwrite      : out  std_ulogic;
     rxwdata      : out  std_logic_vector(31 downto 0);
     rxwaddress   : out  std_logic_vector(4 downto 0);
-    rxrdata      : in   std_logic_vector(31 downto 0);
+    rxrdata      : in   std_logic_vector(31 downto 0);    
     --tx ahb fifo
     txrenable    : out  std_ulogic;
     txraddress   : out  std_logic_vector(4 downto 0);
     txwrite      : out  std_ulogic;
     txwdata      : out  std_logic_vector(31 downto 0);
     txwaddress   : out  std_logic_vector(4 downto 0);
-    txrdata      : in   std_logic_vector(31 downto 0);
+    txrdata      : in   std_logic_vector(31 downto 0);    
     --nchar fifo
     ncrenable    : out  std_ulogic;
     ncraddress   : out  std_logic_vector(5 downto 0);
@@ -515,13 +540,15 @@ component grspwc2_proasic3e
     rmwaddress   : out  std_logic_vector(7 downto 0);
     rmrdata      : in   std_logic_vector(7 downto 0);
     linkdis      : out  std_ulogic;
-    testclk      : in   std_ulogic := '0';
     testrst      : in   std_ulogic := '0';
-    testen       : in   std_ulogic := '0'
+    testen       : in   std_ulogic := '0';
+    rxdav        : out  std_logic;
+    rxdataout    : out  std_logic_vector(8 downto 0);
+    loopback     : out  std_logic
   );
 end component;
 
-component grspwc2_proasic3l
+component grspwc2_proasic3l is
   generic(
     rmap         : integer range 0 to 1  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
@@ -545,11 +572,11 @@ component grspwc2_proasic3l
     txclkn       : in  std_ulogic;
     --ahb mst in
     hgrant       : in  std_ulogic;
-    hready       : in  std_ulogic;
+    hready       : in  std_ulogic;   
     hresp        : in  std_logic_vector(1 downto 0);
-    hrdata       : in  std_logic_vector(31 downto 0);
+    hrdata       : in  std_logic_vector(31 downto 0); 
     --ahb mst out
-    hbusreq      : out  std_ulogic;
+    hbusreq      : out  std_ulogic;        
     hlock        : out  std_ulogic;
     htrans       : out  std_logic_vector(1 downto 0);
     haddr        : out  std_logic_vector(31 downto 0);
@@ -558,7 +585,7 @@ component grspwc2_proasic3l
     hburst       : out  std_logic_vector(2 downto 0);
     hprot        : out  std_logic_vector(3 downto 0);
     hwdata       : out  std_logic_vector(31 downto 0);
-    --apb slv in
+    --apb slv in 
     psel	 : in   std_ulogic;
     penable	 : in   std_ulogic;
     paddr	 : in   std_logic_vector(31 downto 0);
@@ -574,14 +601,17 @@ component grspwc2_proasic3l
     do           : out  std_logic_vector(3 downto 0);
     so           : out  std_logic_vector(3 downto 0);
     --time iface
-    tickin       : in   std_ulogic;
-    tickout      : out  std_ulogic;
+    tickin       : in   std_logic;
+    tickinraw    : in   std_logic;
+    timein       : in   std_logic_vector(7 downto 0);
+    tickindone   : out  std_logic;
+    tickout      : out  std_logic;
+    tickoutraw   : out  std_logic;
+    timeout      : out  std_logic_vector(7 downto 0);
     --irq
     irq          : out  std_logic;
-    --misc
+    --misc     
     clkdiv10     : in   std_logic_vector(7 downto 0);
-    dcrstval     : in   std_logic_vector(9 downto 0);
-    timerrstval  : in   std_logic_vector(11 downto 0);
     --rmapen
     rmapen       : in   std_ulogic;
     --rx ahb fifo
@@ -590,14 +620,14 @@ component grspwc2_proasic3l
     rxwrite      : out  std_ulogic;
     rxwdata      : out  std_logic_vector(31 downto 0);
     rxwaddress   : out  std_logic_vector(4 downto 0);
-    rxrdata      : in   std_logic_vector(31 downto 0);
+    rxrdata      : in   std_logic_vector(31 downto 0);    
     --tx ahb fifo
     txrenable    : out  std_ulogic;
     txraddress   : out  std_logic_vector(4 downto 0);
     txwrite      : out  std_ulogic;
     txwdata      : out  std_logic_vector(31 downto 0);
     txwaddress   : out  std_logic_vector(4 downto 0);
-    txrdata      : in   std_logic_vector(31 downto 0);
+    txrdata      : in   std_logic_vector(31 downto 0);    
     --nchar fifo
     ncrenable    : out  std_ulogic;
     ncraddress   : out  std_logic_vector(5 downto 0);
@@ -613,9 +643,11 @@ component grspwc2_proasic3l
     rmwaddress   : out  std_logic_vector(7 downto 0);
     rmrdata      : in   std_logic_vector(7 downto 0);
     linkdis      : out  std_ulogic;
-    testclk      : in   std_ulogic := '0';
     testrst      : in   std_ulogic := '0';
-    testen       : in   std_ulogic := '0'
+    testen       : in   std_ulogic := '0';
+    rxdav        : out  std_logic;
+    rxdataout    : out  std_logic_vector(8 downto 0);
+    loopback     : out  std_logic
   );
 end component;
 
@@ -664,13 +696,16 @@ begin
       so           => so,
       --time iface
       tickin       => tickin,
+      tickinraw    => tickinraw,
+      timein       => timein,
+      tickindone   => tickindone,
       tickout      => tickout,
+      tickoutraw   => tickoutraw,
+      timeout      => timeout,
       --irq
       irq          => irq,
       --misc
       clkdiv10     => clkdiv10,
-      dcrstval     => dcrstval,
-      timerrstval  => timerrstval,
       --rmapen
       rmapen       => rmapen,
       --rx ahb fifo
@@ -702,9 +737,11 @@ begin
       rmwaddress   => rmwaddress,
       rmrdata      => rmrdata,
       linkdis      => linkdis,
-      testclk      => testclk,
       testrst      => testrst,
-      testen       => testen
+      testen       => testen,
+      rxdav        => rxdav,
+      rxdataout    => rxdataout,
+      loopback     => loopback
       );
   end generate;
 
@@ -751,13 +788,16 @@ begin
       so           => so,
       --time iface
       tickin       => tickin,
+      tickinraw    => tickinraw,
+      timein       => timein,
+      tickindone   => tickindone,
       tickout      => tickout,
+      tickoutraw   => tickoutraw,
+      timeout      => timeout,
       --irq
       irq          => irq,
       --misc
       clkdiv10     => clkdiv10,
-      dcrstval     => dcrstval,
-      timerrstval  => timerrstval,
       --rmapen
       rmapen       => rmapen,
       --rx ahb fifo
@@ -789,9 +829,11 @@ begin
       rmwaddress   => rmwaddress,
       rmrdata      => rmrdata,
       linkdis      => linkdis,
-      testclk      => testclk,
       testrst      => testrst,
-      testen       => testen
+      testen       => testen,
+      rxdav        => rxdav,
+      rxdataout    => rxdataout,
+      loopback     => loopback
       );
   end generate;
 
@@ -838,13 +880,16 @@ begin
       so           => so,
       --time iface
       tickin       => tickin,
+      tickinraw    => tickinraw,
+      timein       => timein,
+      tickindone   => tickindone,
       tickout      => tickout,
+      tickoutraw   => tickoutraw,
+      timeout      => timeout,
       --irq
       irq          => irq,
       --misc
       clkdiv10     => clkdiv10,
-      dcrstval     => dcrstval,
-      timerrstval  => timerrstval,
       --rmapen
       rmapen       => rmapen,
       --rx ahb fifo
@@ -876,9 +921,11 @@ begin
       rmwaddress   => rmwaddress,
       rmrdata      => rmrdata,
       linkdis      => linkdis,
-      testclk      => testclk,
       testrst      => testrst,
-      testen       => testen
+      testen       => testen,
+      rxdav        => rxdav,
+      rxdataout    => rxdataout,
+      loopback     => loopback
       );
   end generate;
 
@@ -925,13 +972,16 @@ begin
       so           => so,
       --time iface
       tickin       => tickin,
+      tickinraw    => tickinraw,
+      timein       => timein,
+      tickindone   => tickindone,
       tickout      => tickout,
+      tickoutraw   => tickoutraw,
+      timeout      => timeout,
       --irq
       irq          => irq,
       --misc
       clkdiv10     => clkdiv10,
-      dcrstval     => dcrstval,
-      timerrstval  => timerrstval,
       --rmapen
       rmapen       => rmapen,
       --rx ahb fifo
@@ -963,9 +1013,11 @@ begin
       rmwaddress   => rmwaddress,
       rmrdata      => rmrdata,
       linkdis      => linkdis,
-      testclk      => testclk,
       testrst      => testrst,
-      testen       => testen
+      testen       => testen,
+      rxdav        => rxdav,
+      rxdataout    => rxdataout,
+      loopback     => loopback
       );
   end generate;
 
@@ -1012,13 +1064,16 @@ begin
       so           => so,
       --time iface
       tickin       => tickin,
+      tickinraw    => tickinraw,
+      timein       => timein,
+      tickindone   => tickindone,
       tickout      => tickout,
+      tickoutraw   => tickoutraw,
+      timeout      => timeout,
       --irq
       irq          => irq,
       --misc
       clkdiv10     => clkdiv10,
-      dcrstval     => dcrstval,
-      timerrstval  => timerrstval,
       --rmapen
       rmapen       => rmapen,
       --rx ahb fifo
@@ -1050,9 +1105,11 @@ begin
       rmwaddress   => rmwaddress,
       rmrdata      => rmrdata,
       linkdis      => linkdis,
-      testclk      => testclk,
       testrst      => testrst,
-      testen       => testen
+      testen       => testen,
+      rxdav        => rxdav,
+      rxdataout    => rxdataout,
+      loopback     => loopback
       );
   end generate;
 

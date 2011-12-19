@@ -1,4 +1,4 @@
-#define MCFG1 0x10380033
+#define MCFG1 0x10380133
 #define MCFG2 0xe6B86e60
 #define MCFG3 0x000ff000
 #define ASDCFG 0x80000000

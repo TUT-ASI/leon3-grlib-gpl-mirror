@@ -1,8 +1,9 @@
 
   mainmenu_option next_comment
   comment 'DDR2 SDRAM controller             '
-    bool 'Enable DDR2 SDRAM controller       ' CONFIG_DDR2SP
-    if [ "$CONFIG_DDR2SP" = "y" ]; then
+    if [ "$CONFIG_MIG_DDR2" != "y" ]; then
+      bool 'Enable DDR2 SDRAM controller       ' CONFIG_DDR2SP
+      if [ "$CONFIG_DDR2SP" = "y" ]; then
       bool 'Enable power-on initialization       ' CONFIG_DDR2SP_INIT
       bool 'DDR clock is aligned to system clock ' CONFIG_DDR2SP_NOSYNC
       if [ "$CONFIG_DDR2SP_NOSYNC" = "n" ]; then
@@ -31,6 +32,7 @@
         int 'Input pad delay for checkbits 15:8 (0 - 63)' CONFIG_DDR2SP_CBDELAY1 0
         int 'Input pad delay for checkbits 23:16 (0 - 63)' CONFIG_DDR2SP_CBDELAY2 0
         int 'Input pad delay for checkbits 31:24 (0 - 63)' CONFIG_DDR2SP_CBDELAY3 0
+      fi
       fi
     fi
   endmenu

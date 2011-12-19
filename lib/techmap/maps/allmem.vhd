@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -1012,6 +1012,71 @@ end component;
     write    : in std_ulogic;
     waddress : in std_logic_vector((abits -1) downto 0);
     datain   : in std_logic_vector((dbits -1) downto 0));
+  end component;
+
+  component n2x_syncram_we                -- syncram with 32-bit write strobes
+  generic (
+    abits   : integer := 6;
+    dbits   : integer := 8);
+  port (
+    clk     : in  std_ulogic;
+    address : in  std_logic_vector((abits-1) downto 0);
+    datain  : in  std_logic_vector((dbits-1) downto 0);
+    dataout : out std_logic_vector((dbits-1) downto 0);
+    enable  : in  std_logic_vector((dbits/32)-1 downto 0);
+    write   : in  std_logic_vector((dbits/32)-1 downto 0));
+  end component;
+
+  component n2x_syncram_be                -- syncram with 8-bit write strobes
+  generic (
+    abits   : integer := 6;
+    dbits   : integer := 8);
+  port (
+    clk     : in  std_ulogic;
+    address : in  std_logic_vector((abits-1) downto 0);
+    datain  : in  std_logic_vector((dbits-1) downto 0);
+    dataout : out std_logic_vector((dbits-1) downto 0);
+    enable  : in  std_logic_vector((dbits/8)-1 downto 0);
+    write   : in  std_logic_vector((dbits/8)-1 downto 0)
+  );
+  end component;
+
+  component n2x_syncram_dp_be
+  generic (
+    abits    : integer := 6;
+    dbits    : integer := 8;
+    sepclk   : integer := 1
+  );
+  port (
+    clk1     : in  std_ulogic;
+    address1 : in  std_logic_vector((abits-1) downto 0);
+    datain1  : in  std_logic_vector((dbits-1) downto 0);
+    dataout1 : out std_logic_vector((dbits-1) downto 0);
+    enable1  : in  std_logic_vector((dbits/8-1) downto 0);
+    write1   : in  std_logic_vector((dbits/8-1) downto 0);
+    clk2     : in  std_ulogic;
+    address2 : in  std_logic_vector((abits-1) downto 0);
+    datain2  : in  std_logic_vector((dbits-1) downto 0);
+    dataout2 : out std_logic_vector((dbits-1) downto 0);
+    enable2  : in  std_logic_vector((dbits/8-1) downto 0);
+    write2   : in  std_logic_vector((dbits/8-1) downto 0));
+  end component;
+
+  component n2x_syncram_2p_be
+  generic (
+    abits    : integer := 6;
+    dbits    : integer := 8;
+    sepclk   : integer := 0;
+    wrfst    : integer := 0);
+  port (
+    rclk     : in  std_ulogic;
+    renable  : in  std_logic_vector((dbits/8-1) downto 0);
+    raddress : in  std_logic_vector((abits-1) downto 0);
+    dataout  : out std_logic_vector((dbits-1) downto 0);
+    wclk     : in  std_ulogic;
+    write    : in  std_logic_vector((dbits/8-1) downto 0);
+    waddress : in  std_logic_vector((abits-1) downto 0);
+    datain   : in  std_logic_vector((dbits-1) downto 0));
   end component;
   
   component ut90nhbd_syncram

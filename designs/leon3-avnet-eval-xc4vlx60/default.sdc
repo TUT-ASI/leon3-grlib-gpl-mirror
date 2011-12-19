@@ -11,6 +11,7 @@
 # Clocks
 #
 define_clock {clk_100mhz}           -name {clk_100mhz}  -freq 120.000 -clockgroup ddr_clkgroup
+define_clock {clk_200p}           -name {clk_200p}  -freq 220.000 -clockgroup ddr_clkgroup
 define_clock {clk_50mhz}           -name {clk_50mhz}  -freq 60.000 -clockgroup ahb_clkgroup
 define_clock {etx_clk}           -name {etx_clk}  -freq 25.000 -route 10.00 -clockgroup phy_rx_clkgroup
 define_clock {erx_clk}           -name {erx_clk}  -freq 25.000 -route 10.00 -clockgroup phy_tx_clkgroup 

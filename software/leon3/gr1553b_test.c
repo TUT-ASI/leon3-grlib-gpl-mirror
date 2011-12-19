@@ -155,7 +155,9 @@ void gr1553b_test_bcbm(unsigned long regaddr, unsigned long memaddr)
     /* Start transfer list */
     r->bcnextptr = memaddr+256;
     r->bcact = 0x15520001;
-    asm __volatile__ (" nop; nop; nop; nop; ");    
+    for (i=0;i<6;i++) {
+       asm __volatile__ (" nop; nop; nop; nop; ");
+    }
 
     /* Check that it's waiting for trigger */
     l = r->bcstat;

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -294,7 +294,7 @@ component grspwc_net
   );
 end component;
 
-component grspwc2_net
+component grspwc2_net is
   generic(
     rmap         : integer range 0 to 1  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
@@ -306,7 +306,7 @@ component grspwc2_net
     ports        : integer range 1 to 2 := 1;
     dmachan      : integer range 1 to 4 := 1;
     tech         : integer;
-    input_type   : integer range 0 to 3 := 0;
+    input_type   : integer range 0 to 4 := 0;
     output_type  : integer range 0 to 2 := 0;
     rxtx_sameclk : integer range 0 to 1 := 0
   );
@@ -318,11 +318,11 @@ component grspwc2_net
     txclkn       : in  std_ulogic;
     --ahb mst in
     hgrant       : in  std_ulogic;
-    hready       : in  std_ulogic;   
+    hready       : in  std_ulogic;
     hresp        : in  std_logic_vector(1 downto 0);
-    hrdata       : in  std_logic_vector(31 downto 0); 
+    hrdata       : in  std_logic_vector(31 downto 0);
     --ahb mst out
-    hbusreq      : out  std_ulogic;        
+    hbusreq      : out  std_ulogic;
     hlock        : out  std_ulogic;
     htrans       : out  std_logic_vector(1 downto 0);
     haddr        : out  std_logic_vector(31 downto 0);
@@ -331,7 +331,7 @@ component grspwc2_net
     hburst       : out  std_logic_vector(2 downto 0);
     hprot        : out  std_logic_vector(3 downto 0);
     hwdata       : out  std_logic_vector(31 downto 0);
-    --apb slv in 
+    --apb slv in
     psel	 : in   std_ulogic;
     penable	 : in   std_ulogic;
     paddr	 : in   std_logic_vector(31 downto 0);
@@ -347,11 +347,16 @@ component grspwc2_net
     do           : out  std_logic_vector(3 downto 0);
     so           : out  std_logic_vector(3 downto 0);
     --time iface
-    tickin       : in   std_ulogic;
-    tickout      : out  std_ulogic;
+    tickin       : in   std_logic;
+    tickinraw    : in   std_logic;
+    timein       : in   std_logic_vector(7 downto 0);
+    tickindone   : out  std_logic;
+    tickout      : out  std_logic;
+    tickoutraw   : out  std_logic;
+    timeout      : out  std_logic_vector(7 downto 0);
     --irq
     irq          : out  std_logic;
-    --misc     
+    --misc
     clkdiv10     : in   std_logic_vector(7 downto 0);
     dcrstval     : in   std_logic_vector(9 downto 0);
     timerrstval  : in   std_logic_vector(11 downto 0);
@@ -363,14 +368,14 @@ component grspwc2_net
     rxwrite      : out  std_ulogic;
     rxwdata      : out  std_logic_vector(31 downto 0);
     rxwaddress   : out  std_logic_vector(4 downto 0);
-    rxrdata      : in   std_logic_vector(31 downto 0);    
+    rxrdata      : in   std_logic_vector(31 downto 0);
     --tx ahb fifo
     txrenable    : out  std_ulogic;
     txraddress   : out  std_logic_vector(4 downto 0);
     txwrite      : out  std_ulogic;
     txwdata      : out  std_logic_vector(31 downto 0);
     txwaddress   : out  std_logic_vector(4 downto 0);
-    txrdata      : in   std_logic_vector(31 downto 0);    
+    txrdata      : in   std_logic_vector(31 downto 0);
     --nchar fifo
     ncrenable    : out  std_ulogic;
     ncraddress   : out  std_logic_vector(5 downto 0);
@@ -386,10 +391,12 @@ component grspwc2_net
     rmwaddress   : out  std_logic_vector(7 downto 0);
     rmrdata      : in   std_logic_vector(7 downto 0);
     linkdis      : out  std_ulogic;
-    testclk      : in   std_ulogic := '0';
-    testrst      : in   std_ulogic := '0';
-    testen       : in   std_ulogic := '0';
-    loopback     : out  std_ulogic
+    testclk      : in   std_ulogic;
+    testrst      : in   std_logic;
+    testen       : in   std_logic;
+    rxdav        : out  std_logic;
+    rxdataout    : out  std_logic_vector(8 downto 0);
+    loopback     : out  std_logic
   );
 end component;
 
@@ -624,6 +631,7 @@ end component;
       irqo_intack:      out   std_ulogic;
       irqo_irl:         out   std_logic_vector(3 downto 0);
       irqo_pwd:         out   std_ulogic;
+      irqo_fpen:        out   std_ulogic;
 
       dbgi_dsuen:       in    std_ulogic;                               -- DSU enable
       dbgi_denable:     in    std_ulogic;                               -- diagnostic register access enable
@@ -651,7 +659,20 @@ end component;
       dbgo_pwd:         out   std_ulogic;
       dbgo_idle:        out   std_ulogic;
       dbgo_ipend:       out   std_ulogic;
-      dbgo_icnt:        out   std_ulogic
+      dbgo_icnt:        out   std_ulogic;
+      dbgo_fcnt    : 	out   std_ulogic;
+      dbgo_optype  : 	out   std_logic_vector(5 downto 0);	-- instruction type
+      dbgo_bpmiss  : 	out   std_ulogic;			-- branch predict miss
+      dbgo_istat_cmiss:  out   std_ulogic;
+      dbgo_istat_tmiss:  out   std_ulogic;
+      dbgo_istat_chold:  out   std_ulogic;
+      dbgo_istat_mhold:  out   std_ulogic;
+      dbgo_dstat_cmiss:  out   std_ulogic;
+      dbgo_dstat_tmiss:  out   std_ulogic;
+      dbgo_dstat_chold:  out   std_ulogic;
+      dbgo_dstat_mhold:  out   std_ulogic;
+      dbgo_wbhold  : 	out   std_ulogic;			-- write buffer hold
+      dbgo_su      : 	out   std_ulogic
 );
 
   end component;
@@ -1221,6 +1242,260 @@ end component;
       dbgo_dstat_mhold:  out   std_ulogic;
       dbgo_wbhold  : 	out   std_ulogic;			-- write buffer hold
       dbgo_su      : 	out   std_ulogic);
+  end component;
+
+  component grpci2_phy_net is
+    generic(
+      tech    : integer := DEFMEMTECH;
+      oepol   : integer := 0;
+      bypass  : integer range 0 to 1 := 1;
+      netlist : integer := 0
+    );
+    port(
+      pciclk  : in  std_logic;
+  
+      pcii_rst                  : in  std_ulogic;
+      pcii_gnt                  : in  std_ulogic;
+      pcii_idsel                : in  std_ulogic;
+      pcii_ad                   : in  std_logic_vector(31 downto 0);
+      pcii_cbe                  : in  std_logic_vector(3 downto 0);
+      pcii_frame                : in  std_ulogic;
+      pcii_irdy                 : in  std_ulogic;
+      pcii_trdy                 : in  std_ulogic;
+      pcii_devsel               : in  std_ulogic;
+      pcii_stop                 : in  std_ulogic;
+      pcii_lock                 : in  std_ulogic;
+      pcii_perr                 : in  std_ulogic;
+      pcii_serr                 : in  std_ulogic;
+      pcii_par                  : in  std_ulogic;
+      pcii_host                 : in  std_ulogic;
+      pcii_pci66                : in  std_ulogic;
+      pcii_pme_status           : in  std_ulogic;
+      pcii_int                  : in  std_logic_vector(3 downto 0);
+      
+      phyi_pcirstout            : in  std_logic;
+      phyi_pciasyncrst          : in  std_logic;
+      phyi_pciinten             : in  std_logic;
+      phyi_m_request            : in  std_logic;
+      phyi_m_mabort             : in  std_logic;
+      phyi_pr_m_fstate          : in  std_logic_vector(1 downto 0);
+      
+      phyi_pr_m_cfifo_0_data    : in  std_logic_vector(31 downto 0);
+      phyi_pr_m_cfifo_0_last    : in  std_logic;
+      phyi_pr_m_cfifo_0_stlast  : in  std_logic;
+      phyi_pr_m_cfifo_0_hold    : in  std_logic;
+      phyi_pr_m_cfifo_0_valid   : in  std_logic;
+      phyi_pr_m_cfifo_0_err     : in  std_logic;
+      phyi_pr_m_cfifo_1_data    : in  std_logic_vector(31 downto 0);
+      phyi_pr_m_cfifo_1_last    : in  std_logic;
+      phyi_pr_m_cfifo_1_stlast  : in  std_logic;
+      phyi_pr_m_cfifo_1_hold    : in  std_logic;
+      phyi_pr_m_cfifo_1_valid   : in  std_logic;
+      phyi_pr_m_cfifo_1_err     : in  std_logic;
+      phyi_pr_m_cfifo_2_data    : in  std_logic_vector(31 downto 0);
+      phyi_pr_m_cfifo_2_last    : in  std_logic;
+      phyi_pr_m_cfifo_2_stlast  : in  std_logic;
+      phyi_pr_m_cfifo_2_hold    : in  std_logic;
+      phyi_pr_m_cfifo_2_valid   : in  std_logic;
+      phyi_pr_m_cfifo_2_err     : in  std_logic;
+    
+      phyi_pv_m_cfifo_0_data    : in  std_logic_vector(31 downto 0);
+      phyi_pv_m_cfifo_0_last    : in  std_logic;
+      phyi_pv_m_cfifo_0_stlast  : in  std_logic;
+      phyi_pv_m_cfifo_0_hold    : in  std_logic;
+      phyi_pv_m_cfifo_0_valid   : in  std_logic;
+      phyi_pv_m_cfifo_0_err     : in  std_logic;
+      phyi_pv_m_cfifo_1_data    : in  std_logic_vector(31 downto 0);
+      phyi_pv_m_cfifo_1_last    : in  std_logic;
+      phyi_pv_m_cfifo_1_stlast  : in  std_logic;
+      phyi_pv_m_cfifo_1_hold    : in  std_logic;
+      phyi_pv_m_cfifo_1_valid   : in  std_logic;
+      phyi_pv_m_cfifo_1_err     : in  std_logic;
+      phyi_pv_m_cfifo_2_data    : in  std_logic_vector(31 downto 0);
+      phyi_pv_m_cfifo_2_last    : in  std_logic;
+      phyi_pv_m_cfifo_2_stlast  : in  std_logic;
+      phyi_pv_m_cfifo_2_hold    : in  std_logic;
+      phyi_pv_m_cfifo_2_valid   : in  std_logic;
+      phyi_pv_m_cfifo_2_err     : in  std_logic;
+      
+      phyi_pr_m_addr            : in  std_logic_vector(31 downto 0);
+      phyi_pr_m_cbe_data        : in  std_logic_vector(3 downto 0);
+      phyi_pr_m_cbe_cmd         : in  std_logic_vector(3 downto 0);
+      phyi_pr_m_first           : in  std_logic_vector(1 downto 0);
+      phyi_pv_m_term            : in  std_logic_vector(1 downto 0);
+      phyi_pr_m_ltimer          : in  std_logic_vector(7 downto 0);
+      phyi_pr_m_burst           : in  std_logic;
+      phyi_pr_m_abort           : in  std_logic_vector(0 downto 0);
+      phyi_pr_m_perren          : in  std_logic_vector(0 downto 0);
+      phyi_pr_m_done_fifo       : in  std_logic;
+      
+      phyi_t_abort              : in  std_logic;
+      phyi_t_ready              : in  std_logic;
+      phyi_t_retry              : in  std_logic;
+      phyi_pr_t_state           : in  std_logic_vector(2 downto 0);
+      phyi_pv_t_state           : in  std_logic_vector(2 downto 0);
+      phyi_pr_t_fstate          : in  std_logic_vector(1 downto 0);
+  
+      phyi_pr_t_cfifo_0_data    : in  std_logic_vector(31 downto 0);
+      phyi_pr_t_cfifo_0_last    : in  std_logic;
+      phyi_pr_t_cfifo_0_stlast  : in  std_logic;
+      phyi_pr_t_cfifo_0_hold    : in  std_logic;
+      phyi_pr_t_cfifo_0_valid   : in  std_logic;
+      phyi_pr_t_cfifo_0_err     : in  std_logic;
+      phyi_pr_t_cfifo_1_data    : in  std_logic_vector(31 downto 0);
+      phyi_pr_t_cfifo_1_last    : in  std_logic;
+      phyi_pr_t_cfifo_1_stlast  : in  std_logic;
+      phyi_pr_t_cfifo_1_hold    : in  std_logic;
+      phyi_pr_t_cfifo_1_valid   : in  std_logic;
+      phyi_pr_t_cfifo_1_err     : in  std_logic;
+      phyi_pr_t_cfifo_2_data    : in  std_logic_vector(31 downto 0);
+      phyi_pr_t_cfifo_2_last    : in  std_logic;
+      phyi_pr_t_cfifo_2_stlast  : in  std_logic;
+      phyi_pr_t_cfifo_2_hold    : in  std_logic;
+      phyi_pr_t_cfifo_2_valid   : in  std_logic;
+      phyi_pr_t_cfifo_2_err     : in  std_logic;
+      phyi_pv_t_diswithout      : in  std_logic;
+      phyi_pr_t_stoped          : in  std_logic;
+      phyi_pr_t_lcount          : in  std_logic_vector(2 downto 0);
+      phyi_pr_t_first_word      : in  std_logic;
+      phyi_pr_t_cur_acc_0_read  : in  std_logic;
+      phyi_pv_t_hold_write      : in  std_logic;
+      phyi_pv_t_hold_reset      : in  std_logic;
+      phyi_pr_conf_comm_perren  : in  std_logic;
+      phyi_pr_conf_comm_serren  : in  std_logic;
+      
+      pcio_aden                 : out std_ulogic;
+      pcio_vaden                : out std_logic_vector(31 downto 0);
+      pcio_cbeen                : out std_logic_vector(3 downto 0);
+      pcio_frameen              : out std_ulogic;
+      pcio_irdyen               : out std_ulogic;
+      pcio_trdyen               : out std_ulogic;
+      pcio_devselen             : out std_ulogic;
+      pcio_stopen               : out std_ulogic;
+      pcio_ctrlen               : out std_ulogic;
+      pcio_perren               : out std_ulogic;
+      pcio_paren                : out std_ulogic;
+      pcio_reqen                : out std_ulogic;
+      pcio_locken               : out std_ulogic;
+      pcio_serren               : out std_ulogic;
+      pcio_inten                : out std_ulogic;
+      pcio_req                  : out std_ulogic;
+      pcio_ad                   : out std_logic_vector(31 downto 0);
+      pcio_cbe                  : out std_logic_vector(3 downto 0);
+      pcio_frame                : out std_ulogic;
+      pcio_irdy                 : out std_ulogic;
+      pcio_trdy                 : out std_ulogic;
+      pcio_devsel               : out std_ulogic;
+      pcio_stop                 : out std_ulogic;
+      pcio_perr                 : out std_ulogic;
+      pcio_serr                 : out std_ulogic;
+      pcio_par                  : out std_ulogic;
+      pcio_lock                 : out std_ulogic;
+      pcio_power_state          : out std_logic_vector(1 downto 0);
+      pcio_pme_enable           : out std_ulogic;
+      pcio_pme_clear            : out std_ulogic;
+      pcio_int                  : out std_ulogic;
+      pcio_rst                  : out std_ulogic;
+      
+      phyo_pciv_rst             : out std_ulogic;
+      phyo_pciv_gnt             : out std_ulogic;
+      phyo_pciv_idsel           : out std_ulogic;
+      phyo_pciv_ad              : out std_logic_vector(31 downto 0);
+      phyo_pciv_cbe             : out std_logic_vector(3 downto 0);
+      phyo_pciv_frame           : out std_ulogic;
+      phyo_pciv_irdy            : out std_ulogic;
+      phyo_pciv_trdy            : out std_ulogic;
+      phyo_pciv_devsel          : out std_ulogic;
+      phyo_pciv_stop            : out std_ulogic;
+      phyo_pciv_lock            : out std_ulogic;
+      phyo_pciv_perr            : out std_ulogic;
+      phyo_pciv_serr            : out std_ulogic;
+      phyo_pciv_par             : out std_ulogic;
+      phyo_pciv_host            : out std_ulogic;
+      phyo_pciv_pci66           : out std_ulogic;
+      phyo_pciv_pme_status      : out std_ulogic;
+      phyo_pciv_int             : out std_logic_vector(3 downto 0);
+  
+      phyo_pr_m_state           : out std_logic_vector(2 downto 0);
+      phyo_pr_m_last            : out std_logic_vector(1 downto 0);
+      phyo_pr_m_hold            : out std_logic_vector(1 downto 0);
+      phyo_pr_m_term            : out std_logic_vector(1 downto 0);
+      phyo_pr_t_hold            : out std_logic_vector(0 downto 0);
+      phyo_pr_t_stop            : out std_logic;
+      phyo_pr_t_abort           : out std_logic;
+      phyo_pr_t_diswithout      : out std_logic;
+      phyo_pr_t_addr_perr       : out std_logic;
+      phyo_pcirsto              : out std_logic_vector(0 downto 0);
+      
+      phyo_pr_po_ad             : out std_logic_vector(31 downto 0);
+      phyo_pr_po_aden           : out std_logic_vector(31 downto 0);
+      phyo_pr_po_cbe            : out std_logic_vector(3 downto 0); 
+      phyo_pr_po_cbeen          : out std_logic_vector(3 downto 0); 
+      phyo_pr_po_frame          : out std_logic;
+      phyo_pr_po_frameen        : out std_logic;
+      phyo_pr_po_irdy           : out std_logic;
+      phyo_pr_po_irdyen         : out std_logic;
+      phyo_pr_po_trdy           : out std_logic;
+      phyo_pr_po_trdyen         : out std_logic;
+      phyo_pr_po_stop           : out std_logic;
+      phyo_pr_po_stopen         : out std_logic;
+      phyo_pr_po_devsel         : out std_logic;
+      phyo_pr_po_devselen       : out std_logic;
+      phyo_pr_po_par            : out std_logic;
+      phyo_pr_po_paren          : out std_logic;
+      phyo_pr_po_perr           : out std_logic;
+      phyo_pr_po_perren         : out std_logic;
+      phyo_pr_po_lock           : out std_logic;
+      phyo_pr_po_locken         : out std_logic;
+      phyo_pr_po_req            : out std_logic;
+      phyo_pr_po_reqen          : out std_logic;
+      phyo_pr_po_serren         : out std_logic;
+      phyo_pr_po_inten          : out std_logic;
+  
+      phyo_pio_rst              : out std_ulogic;
+      phyo_pio_gnt              : out std_ulogic;
+      phyo_pio_idsel            : out std_ulogic;
+      phyo_pio_ad               : out std_logic_vector(31 downto 0);
+      phyo_pio_cbe              : out std_logic_vector(3 downto 0);
+      phyo_pio_frame            : out std_ulogic;
+      phyo_pio_irdy             : out std_ulogic;
+      phyo_pio_trdy             : out std_ulogic;
+      phyo_pio_devsel           : out std_ulogic;
+      phyo_pio_stop             : out std_ulogic;
+      phyo_pio_lock             : out std_ulogic;
+      phyo_pio_perr             : out std_ulogic;
+      phyo_pio_serr             : out std_ulogic;
+      phyo_pio_par              : out std_ulogic;
+      phyo_pio_host             : out std_ulogic;
+      phyo_pio_pci66            : out std_ulogic;
+      phyo_pio_pme_status       : out std_ulogic;
+      phyo_pio_int              : out std_logic_vector(3 downto 0);
+  
+      phyo_poo_ad               : out std_logic_vector(31 downto 0);
+      phyo_poo_aden             : out std_logic_vector(31 downto 0);
+      phyo_poo_cbe              : out std_logic_vector(3 downto 0); 
+      phyo_poo_cbeen            : out std_logic_vector(3 downto 0); 
+      phyo_poo_frame            : out std_logic;
+      phyo_poo_frameen          : out std_logic;
+      phyo_poo_irdy             : out std_logic;
+      phyo_poo_irdyen           : out std_logic;
+      phyo_poo_trdy             : out std_logic;
+      phyo_poo_trdyen           : out std_logic;
+      phyo_poo_stop             : out std_logic;
+      phyo_poo_stopen           : out std_logic;
+      phyo_poo_devsel           : out std_logic;
+      phyo_poo_devselen         : out std_logic;
+      phyo_poo_par              : out std_logic;
+      phyo_poo_paren            : out std_logic;
+      phyo_poo_perr             : out std_logic;
+      phyo_poo_perren           : out std_logic;
+      phyo_poo_lock             : out std_logic;
+      phyo_poo_locken           : out std_logic;
+      phyo_poo_req              : out std_logic;
+      phyo_poo_reqen            : out std_logic;
+      phyo_poo_serren           : out std_logic;
+      phyo_poo_inten            : out std_logic
+    );
   end component;
 
 end;

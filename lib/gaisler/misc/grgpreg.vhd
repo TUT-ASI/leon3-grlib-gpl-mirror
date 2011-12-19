@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -74,7 +74,7 @@ architecture rtl of grgpreg is
 
 begin
 
-    comb : process(rst, r, apbi)
+    comb : process(rst, r, apbi, resval)
         variable readdata : std_logic_vector(31 downto 0);
         variable v        : registers;
     begin

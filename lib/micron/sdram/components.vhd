@@ -94,7 +94,8 @@ package components is
         cols_bits : INTEGER :=  9;
         index     : INTEGER :=  0;
 	fname     : string := "sdram.srec";	-- File to read from
-        bbits     : INTEGER :=  16
+        bbits     : INTEGER :=  16;
+        fdelay    : INTEGER :=  0
     );
     PORT (
         Dq    : INOUT STD_LOGIC_VECTOR (data_bits - 1 DOWNTO 0) := (OTHERS => 'Z');

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -39,7 +39,11 @@ signal gnd : std_ulogic;
 begin
   gnd <= '0';
   gen0 : if has_ds_pads(tech) = 0 generate
-    o <= to_X01(padp) after 1 ns;
+    o <= to_X01(padp) 
+-- pragma translate_off
+	after 1 ns
+-- pragma translate_on
+	;
   end generate;
   xcv : if (tech = virtex2) or (tech = spartan3) generate
     u0 : unisim_inpad_ds generic map (level, voltage, term) port map (padp, padn, o);

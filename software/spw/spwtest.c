@@ -19,6 +19,7 @@
 #include "rmapapi.h"
 
 #define SPW_ADDR    0x80000a00
+#define SPWFREQ     200000
 #define AHBFREQ     40000
 
 #define PKTTESTMAX  128
@@ -87,7 +88,7 @@ int main(void)
   /************************ TEST INIT ***********************************/
   /*Initalize link*/
   /*initialize parameters*/
-  if (spw_setparam(0x14, 0, 0xBF, 1, 1, SPW_ADDR, AHBFREQ, spw, 0) ) {
+  if (spw_setparam(0x14, 0, 0xBF, 1, 1, SPW_ADDR, AHBFREQ, spw, 0, SPWFREQ/10000-1) ) {
     printf("Illegal parameters to spacewire\n");
     exit(1);
   }

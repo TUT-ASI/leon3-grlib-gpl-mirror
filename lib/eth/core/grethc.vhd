@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -147,6 +147,7 @@ entity grethc is
     edclsepahb     : in   std_ulogic;
     edcldisable    : in   std_ulogic
   );
+  attribute sync_set_reset of rst : signal is "true";
 end entity;
   
 architecture rtl of grethc is
@@ -462,8 +463,8 @@ architecture rtl of grethc is
 
   signal r, rin           : reg_type;
 
-  attribute sync_set_reset : string;
   attribute sync_set_reset of irst : signal is "true";
+  attribute async_set_reset of arst : signal is "true";
 
 begin
    
@@ -1548,7 +1549,7 @@ begin
              when 7 =>
                v.rcntm := r.rcntm + 1; v.rcntl := r.rcntl + 1;
                if (rxo.dataout(31 downto 18) = r.seq) then
-                 v.seq := r.seq + 1; v.nak := '0'; 
+                 v.nak := '0'; 
                else
                  v.nak := '1'; 
                  veri.datain(31 downto 18) := r.seq;
@@ -1613,6 +1614,9 @@ begin
          if rxstart = '0' then
            v.abufs := r.abufs + 1; v.rpnt := r.rpnt + 1;
            veri.writel := '1'; veri.writem := '1';
+         end if;
+         if r.nak = '0' then
+           v.seq := r.seq + 1;
          end if;
          v.edclrstate := idle;
          veri.datain(31 downto 0) := (others => '0');
@@ -2025,10 +2029,40 @@ begin
         v.mdio_ctrl.regadr := (others => '0');
         v.ctrl.reset := '0'; v.mdio_ctrl.linkfail := '1';
         if OEPOL = 0 then v.mdioen := '1'; else v.mdioen := '0'; end if;
+        v.cnt := (others => '0');
       end if;
       if edclsepahbg /= 0 then
         v.edclsepahb := edclsepahb;
       end if;
+     v.txcnt := (others => '0'); v.txburstcnt := (others => '0');
+     v.tedcl := '0'; v.erenable := '0';
+     v.rmsto.req := '0'; v.rmsto.write := '0'; v.addrok := '0';
+     v.rxburstcnt := (others => '0'); v.addrdone := '0';
+     v.rxcnt := (others => '0'); v.rxdoneold := '0';
+     v.ctrlpkt := '0'; v.bcast := '0'; v.edclactive := '0';
+     v.msbgood := '0'; v.rxrenable := '0';
+     if multicast = 1 then
+       v.mcast := '0'; v.mcastacc := '0';
+     end if;
+     v.tnak := '0'; v.tedcl := '0'; v.edclbcast := '0';
+     v.gotframe := '0';
+     v.rxbytecount := (others => '0'); v.rxlength := (others => '0');
+     v.txburstav := '0'; v.txdataav := '0';
+     v.txstatus := (others => '0'); v.txstart := '0'; 
+     v.tfcnt := (others => '0'); v.tfrpnt := (others => '0');
+     v.tfwpnt := (others => '0'); v.txaddr := (others => '0');
+     v.cnt := (others => '0');
+     v.rxaddr := (others => '0');
+     v.rxstatus := (others => '0');
+     v.rxwrap := '0'; v.rxden := '0';
+     v.rmsto.addr := (others => '0');
+     v.tmsto.addr := (others => '0');
+     v.nak := '0'; v.ewr := '0';
+     v.write := (others => '0');
+     v.applength := (others => '0');
+     v.oplen := (others => '0');
+     v.udpsrc := (others => '0'); v.ecnt := (others => '0');
+     v.rcntm := (others => '0'); v.rcntl := (others => '0');
     end if;
 -------------------------------------------------------------------------------
 -- SIGNAL ASSIGNMENTS ---------------------------------------------------------

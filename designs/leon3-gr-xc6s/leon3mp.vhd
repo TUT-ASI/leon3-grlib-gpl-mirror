@@ -225,7 +225,6 @@ signal clkm, rstn, rstraw, sdclkl : std_ulogic;
 signal clk_200 : std_ulogic;
 signal clk25, clk40, clk65 : std_ulogic;
 
-
 signal cgi, cgi2   : clkgen_in_type;
 signal cgo, cgo2   : clkgen_out_type;
 signal u1i, u2i, dui : uart_in_type;
@@ -242,6 +241,7 @@ signal dsuo : dsu_out_type;
 
 signal gmiii, rgmiii : eth_in_type;
 signal gmiio, rgmiio : eth_out_type;
+signal rgmii_lock : std_ulogic;
 
 signal gpti : gptimer_in_type;
 signal gpto : gptimer_out_type;
@@ -266,7 +266,6 @@ signal tck, tckn, tms, tdi, tdo : std_ulogic;
 signal uclk : std_ulogic;
 signal usbi : grusb_in_vector(0 downto 0);
 signal usbo : grusb_out_vector(0 downto 0);
-
 
 signal ethclk, ddr2clk : std_ulogic;
 
@@ -323,7 +322,7 @@ constant SPW_LOOP_BACK : integer := 0;
 signal video_clk, clk50, clk100, spw100 : std_logic;  -- signals to vga_clkgen.
 signal clk_sel : std_logic_vector(1 downto 0);
 signal clkvga, clkvga_p, clkvga_n : std_ulogic;
-                         
+
 attribute keep : boolean;
 attribute syn_keep : boolean;
 attribute syn_preserve : boolean;
@@ -339,8 +338,6 @@ attribute syn_preserve of spw100 : signal is true;
 attribute keep of spw100 : signal is true;
 attribute syn_preserve of clkm : signal is true;
 attribute keep of clkm : signal is true;
-
-
 
 begin
 
@@ -523,26 +520,6 @@ begin
 ---  DDR2 memory controller ------------------------------------------
 ----------------------------------------------------------------------
   
---  ddr2sp0 : if (CFG_DDR2SP /= 0) generate 
---    ddrc0 : ddr2spa generic map ( fabtech => fabtech, memtech => memtech,
---      hindex => 5, haddr => 16#400#, hmask => 16#F00#, ioaddr => 1, 
---      pwron => CFG_DDR2SP_INIT, MHz => DDR2_FREQ/1000, clkmul => 5, clkdiv => 8,
---      TRFC => CFG_DDR2SP_TRFC,
---      ahbfreq => CPU_FREQ/1000, col => CFG_DDR2SP_COL, Mbyte => CFG_DDR2SP_SIZE,
---      ddrbits => 16, eightbanks => 1, odten => 0)
---    port map ( cgo.clklock, rstn, ddr2clk, clkm, vcc, lock, clkml, clkml, ahbsi, ahbso(5),
---        core_ddr_clk, core_ddr_clkb, ddr_clk_fb_out, ddr_clk_fb, core_ddr_cke,
---        core_ddr_csb, ddr_we, ddr_ras, ddr_cas, ddr_dm, ddr_dqs, ddr_dqsn,
---        core_ddr_ad, ddr_ba, ddr_dq, core_ddr_odt);
---
---    ddr_clk      <= core_ddr_clk(0);
---    ddr_clkb     <= core_ddr_clkb(0);
---    ddr_cke      <= core_ddr_cke(0);
---    ddr_csb      <= core_ddr_csb(0);
---    ddr_ad       <= core_ddr_ad(13 downto 0);
---    ddr_odt      <= core_ddr_odt(0);
---  end generate;
-
   mig_gen : if (CFG_MIG_DDR2 = 1) generate 
     ddrc : entity work.ahb2mig_grxc6s_2p generic map( 
 	hindex => 4, haddr => 16#400#, hmask => 16#F80#, 
@@ -818,17 +795,15 @@ begin
    apbi => apbi, apbo => apbo(14), ethi => gmiii, etho => gmiio); 
     end generate;
 
-    rgmii0 : entity work.rgmii generic map (fabtech, 0, CFG_GRETH1G)
-      port map (rstn, lclk, gmiii, gmiio, rgmiii, rgmiio);
+    rgmii0 : entity work.rgmii generic map (fabtech, 2, CFG_GRETH1G, 0)
+      port map (rstn, lclk, rgmii_lock, gmiii, gmiio, rgmiii, rgmiio);
 
     ethpads : if (CFG_GRETH = 1) generate -- eth pads
-      clk125_pad : clkpad generic map (tech => padtech, arch => 2) 
-   	port map (clk125, rgmiii.gtx_clk);
       emdio_pad : iopad generic map (tech => padtech) 
         port map (emdio, rgmiio.mdio_o, rgmiio.mdio_oe, rgmiii.mdio_i);
       etxc_pad : outpad generic map (tech => padtech) 
    	port map (etx_clk, rgmiio.tx_er);
-      erxc_pad : clkpad generic map (tech => padtech, arch => 2) 
+      erxc_pad : inpad generic map (tech => padtech) 
    	port map (erx_clk, rgmiii.rx_clk);
       erxd_pad : inpadv generic map (tech => padtech, width => 4) 
    	port map (erxd, rgmiii.rxd(3 downto 0));

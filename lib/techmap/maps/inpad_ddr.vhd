@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -70,10 +70,8 @@ begin
   end generate;
 
   n2x : if (tech = easic45) generate
---pragma translate_off
-    assert false report "inpad_ddr: Not yet supported on Nextreme2"
-      severity failure;
---pragma translate_on
+    p :  n2x_inpad_ddr generic map (level, voltage)
+      port map (pad, o1, o2, c1, c2, ce, r, s);
     d <= '0';
   end generate;
   
@@ -83,6 +81,7 @@ library techmap;
 library ieee;
 use ieee.std_logic_1164.all;
 use techmap.gencomp.all;
+use techmap.allpads.all;
 
 entity inpad_ddrv is
   generic (
@@ -105,8 +104,14 @@ end;
 
 architecture rtl of inpad_ddrv is
 begin
-  v : for i in width-1 downto 0 generate
-    x0 : inpad_ddr generic map (tech, level, voltage, filter, strength)
-      port map (pad(i), o1(i), o2(i), c1, c2, ce, r, s);
+  n2x : if (tech = easic45) generate
+    p :  n2x_inpad_ddrv generic map (level, voltage, width)
+      port map (pad, o1, o2, c1, c2, ce, r, s);
+  end generate;
+  base : if (tech /= easic45) generate
+    v : for i in width-1 downto 0 generate
+      x0 : inpad_ddr generic map (tech, level, voltage, filter, strength)
+        port map (pad(i), o1(i), o2(i), c1, c2, ce, r, s);
+    end generate;
   end generate;
 end;

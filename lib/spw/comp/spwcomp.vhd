@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ package spwcomp is
       ports        : integer range 1 to 2 := 1;
       dmachan      : integer range 1 to 4 := 1;
       tech         : integer;
-      input_type   : integer range 0 to 3 := 0;
+      input_type   : integer range 0 to 4 := 0;
       output_type  : integer range 0 to 2 := 0;
       rxtx_sameclk : integer range 0 to 1 := 0);
     port(
@@ -469,7 +469,7 @@ package spwcomp is
   component grspw_codec_core is
   generic(
     ports        : integer range 1 to 2 := 1;
-    input_type   : integer range 0 to 3 := 0;
+    input_type   : integer range 0 to 4 := 0;
     output_type  : integer range 0 to 2 := 0;
     rxtx_sameclk : integer range 0 to 1 := 0;
     fifosize     : integer range 16 to 2048 := 64;
@@ -557,7 +557,7 @@ package spwcomp is
       ports        : integer range 1 to 2 := 1;
       dmachan      : integer range 1 to 4 := 1;
       tech         : integer;
-      input_type   : integer range 0 to 3 := 0;
+      input_type   : integer range 0 to 4 := 0;
       output_type  : integer range 0 to 2 := 0;
       rxtx_sameclk : integer range 0 to 1 := 0;
       ft           : integer range 0 to 2 := 0;
@@ -622,5 +622,75 @@ package spwcomp is
       rxdataout    : out  std_logic_vector(8 downto 0)
     );
   end component;
+
+
+  component grspw_codec_gen is
+    generic(
+      ports        : integer range 1 to 2 := 1;
+      input_type   : integer range 0 to 4 := 0;
+      output_type  : integer range 0 to 2 := 0;
+      rxtx_sameclk : integer range 0 to 1 := 0;
+      fifosize     : integer range 16 to 2048 := 64;
+      tech         : integer;
+      scantest     : integer range 0 to 1 := 0;
+      techfifo     : integer range 0 to 1 := 0;
+      ft           : integer range 0 to 2 := 0
+      );
+    port(
+      rst          : in  std_ulogic;
+      clk          : in  std_ulogic;
+      rxclk0       : in  std_ulogic;
+      rxclk1       : in  std_ulogic;
+      txclk        : in  std_ulogic;
+      txclkn       : in  std_ulogic;
+      testen       : in  std_ulogic;
+      testrst      : in  std_ulogic;
+      --spw in 
+      d            : in  std_logic_vector(3 downto 0);
+      dv           : in  std_logic_vector(3 downto 0);
+      dconnect     : in  std_logic_vector(3 downto 0);
+      --spw out
+      do           : out std_logic_vector(3 downto 0);
+      so           : out std_logic_vector(3 downto 0);
+      --link fsm
+      linkdisabled : in  std_ulogic;
+      linkstart    : in  std_ulogic;
+      autostart    : in  std_ulogic;
+      portsel      : in  std_ulogic;
+      noportforce  : in  std_ulogic;
+      rdivisor     : in  std_logic_vector(7 downto 0);
+      idivisor     : in  std_logic_vector(7 downto 0);
+      state        : out std_logic_vector(2 downto 0);
+      actport      : out std_ulogic;
+      dconnecterr  : out std_ulogic;
+      crederr      : out std_ulogic;
+      escerr       : out std_ulogic;
+      parerr       : out std_ulogic;
+      --rx iface
+      rxicharav    : out std_ulogic;
+      rxicharcnt   : out std_logic_vector(11 downto 0);
+      rxichar      : out std_logic_vector(8 downto 0);
+      rxiread      : in  std_ulogic;
+      rxififorst   : in  std_ulogic;
+      --tx iface
+      txicharcnt   : out std_logic_vector(11 downto 0);
+      txifull      : out std_ulogic;
+      txiempty     : out std_ulogic;
+      txiwrite     : in  std_ulogic;
+      txichar      : in  std_logic_vector(8 downto 0);
+      txififorst   : in  std_ulogic;
+      txififorstact: out std_ulogic;
+      --time iface
+      tickin       : in  std_ulogic;
+      timein       : in  std_logic_vector(7 downto 0);
+      tickin_done  : out std_ulogic;
+      tickout      : out std_ulogic;
+      timeout      : out std_logic_vector(7 downto 0);
+      --misc
+      merror       : out std_ulogic
+    );
+  end component;
+
+  
 
 end package;

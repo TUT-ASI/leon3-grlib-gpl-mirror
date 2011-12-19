@@ -220,10 +220,9 @@ if [ "$CONFIG_LEON3" = "y" ]; then
     fi
   endmenu
 
-#  define_bool CONFIG_LEON3FT_EN n
   mainmenu_option next_comment
   comment 'Fault-tolerance  '
-   if [ "$CONFIG_LEON3FT_PRESENT" = "y" ]; then
+#   if [ "$CONFIG_LEON3FT_PRESENT" = "y" ]; then
     bool 'Use LEON3-FT processor core      ' CONFIG_LEON3FT_EN
     if [ "$CONFIG_LEON3FT_EN" = "y" ]; then
       choice 'IU Register file protection     ' \
@@ -240,7 +239,7 @@ if [ "$CONFIG_LEON3" = "y" ]; then
       int 'Cache memory error injection' CONFIG_CACHE_ERRINJ 0
       bool 'Use LEON3FT netlist         ' CONFIG_LEON3_NETLIST
     fi
-   fi
+#   fi
   endmenu
   mainmenu_option next_comment
     comment 'VHDL debug settings       '

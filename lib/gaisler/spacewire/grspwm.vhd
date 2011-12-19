@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -57,7 +57,7 @@ entity grspwm is
     dmachan      : integer range 1 to 4 := 1;                 -- spw2
     memtech      : integer range 0 to NTECH := DEFMEMTECH;
     spwcore      : integer range 1 to 2 := 2;                 
-    input_type   : integer range 0 to 3 := 0;                 
+    input_type   : integer range 0 to 4 := 0;                 
     output_type  : integer range 0 to 2 := 0;                 
     rxtx_sameclk : integer range 0 to 1 := 0
   ); 

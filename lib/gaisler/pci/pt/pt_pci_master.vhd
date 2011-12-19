@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -499,7 +499,22 @@ begin
   pciout.ifc.irdy <= r.pci.ifc.irdy after tval when r.pcien(1) = '1' else 'Z' after tval;
   pciout.err.perr <= r.pci.err.perr after tval when (r.pcien(2) and r.perren(1)) = '1' else 'Z' after tval;
   pciout.err.serr <= r.pci.err.serr after tval when r.pcien(2) = '1' else 'Z' after tval;
+  -- Unused signals
+  pciout.arb <= arb_const;
+  
   pciout.arb.req(slot) <= r.pci.arb.req(slot) after tval;
+  
+  -- Unused signals
+  pciout.ifc.trdy <= 'Z';
+  pciout.ifc.stop <= 'Z';
+  pciout.ifc.devsel <= 'Z';
+  pciout.ifc.lock <= 'Z';
+  pciout.ifc.idsel <= (others => 'Z');
+  pciout.err.serr <= 'Z';
+  pciout.syst <= syst_const;
+  pciout.ext64 <= ext64_const;
+  pciout.cache <= cache_const;
+  pciout.int <= (others => 'Z');
 
 end;
 

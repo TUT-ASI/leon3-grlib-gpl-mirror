@@ -6,25 +6,14 @@ libiu.vhd
 libcache.vhd
 libproc3.vhd
 cachemem.vhd
-mmu_icache.vhd
-mmu_dcache.vhd
-mmu_acache.vhd
-mmutlbcam.vhd
-mmulrue.vhd
-mmulru.vhd
-mmutlb.vhd
-mmutw.vhd
-mmu.vhd
+mmu_icache.vhd mmu_dcache.vhd mmu_acache.vhd
+mmutlbcam.vhd mmulrue.vhd mmulru.vhd mmutlb.vhd mmutw.vhd mmu.vhd
 mmu_cache.vhd
-#acache.vhd
-#dcache.vhd
-#icache.vhd
-#cache.vhd
 cpu_disasx.vhd
 iu3.vhd
-grfpwx.vhd
-mfpwx.vhd
-grlfpwx.vhd
+libfpu.vhd grfpc.vhd grfpw.vhd grfpwsh.vhd
+libgrlfpc.vhd grlfpc.vhd grlfpc2.vhd grlfpw.vhd
+grfpwx.vhd mfpwx.vhd grlfpwx.vhd
 tbufmem.vhd
 dsu3x.vhd
 dsu3.vhd

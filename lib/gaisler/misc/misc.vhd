@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -422,7 +422,7 @@ package misc is
     rdcomb      : integer range 0 to 2 := 0;
     wrcomb      : integer range 0 to 2 := 0;
     combmask    : integer := 16#ffff#;
-    allbrst     : integer range 0 to 1 := 0;
+    allbrst     : integer range 0 to 2 := 0;
     ifctrlen    : integer range 0 to 1 := 0;
     fcfs        : integer range 0 to NAHBMST := 0;
     fcfsmtech   : integer range 0 to NTECH := inferred;
@@ -472,7 +472,7 @@ package misc is
     rdcomb      : integer range 0 to 2 := 0;
     wrcomb      : integer range 0 to 2 := 0;
     combmask    : integer := 16#ffff#;
-    allbrst     : integer range 0 to 1 := 0;
+    allbrst     : integer range 0 to 2 := 0;
     fcfs        : integer range 0 to NAHBMST := 0;
     scantest    : integer range 0 to 1 := 0);
   port (
@@ -852,12 +852,13 @@ package misc is
   -- AMBA wrapper for OC I2C-master
   component i2cmst
     generic (
-      pindex : integer;
-      paddr  : integer;
-      pmask  : integer;
-      pirq   : integer;
-      oepol  : integer range 0 to 1 := 0;
-      filter : integer range 2 to 512 := 2
+      pindex  : integer;
+      paddr   : integer;
+      pmask   : integer;
+      pirq    : integer;
+      oepol   : integer range 0 to 1 := 0;
+      filter  : integer range 2 to 512 := 2;
+      dynfilt : integer range 0 to 1 := 0
       );
     port (
       rstn   : in  std_ulogic;
@@ -872,7 +873,9 @@ package misc is
   component i2cmst_gen
     generic (
       oepol  : integer range 0 to 1 := 0;
-      filter : integer range 2 to 512 := 2);
+      filter  : integer range 2 to 512 := 2;
+      dynfilt : integer range 0 to 1 := 0
+      );
     port (
       rstn        : in  std_ulogic;
       clk         : in  std_ulogic;
@@ -893,6 +896,7 @@ package misc is
       );
   end component;
 
+  -- I2C slave
   component i2cslv
     generic (
       pindex  : integer := 0;
@@ -915,6 +919,109 @@ package misc is
       );
   end component;
 
+  -- I2C to AHB bridge
+
+  type i2c2ahb_in_type is record
+    haddr   : std_logic_vector(31 downto 0);
+    hmask   : std_logic_vector(31 downto 0);
+    slvaddr : std_logic_vector(6 downto 0);
+    cfgaddr : std_logic_vector(6 downto 0);
+    en      : std_ulogic;
+  end record;
+
+  type i2c2ahb_out_type is record
+    dma     : std_ulogic;
+    wr      : std_ulogic;
+    prot    : std_ulogic;
+  end record;
+
+  component i2c2ahb
+    generic (
+      -- AHB Configuration
+      hindex     : integer := 0;
+      --
+      ahbaddrh   : integer := 0;
+      ahbaddrl   : integer := 0;
+      ahbmaskh   : integer := 0;
+      ahbmaskl   : integer := 0;
+      -- I2C configuration
+      i2cslvaddr : integer range 0 to 127 := 0;
+      i2ccfgaddr : integer range 0 to 127 := 0;
+      oepol      : integer range 0 to 1 := 0;
+      --
+      filter     : integer range 2 to 512 := 2
+      );
+    port (
+      rstn   : in  std_ulogic;
+      clk    : in  std_ulogic;
+      -- AHB master interface
+      ahbi   : in  ahb_mst_in_type;
+      ahbo   : out ahb_mst_out_type;
+      -- I2C signals
+      i2ci   : in  i2c_in_type;
+      i2co   : out i2c_out_type
+      );
+  end component;
+  
+  component i2c2ahb_apb
+    generic (
+      -- AHB Configuration
+      hindex     : integer := 0;
+      --
+      ahbaddrh   : integer := 0;
+      ahbaddrl   : integer := 0;
+      ahbmaskh   : integer := 0;
+      ahbmaskl   : integer := 0;
+      resen      : integer := 0;
+      -- APB configuration
+      pindex     : integer := 0;
+      paddr      : integer := 0;
+      pmask      : integer := 16#fff#;
+      pirq       : integer := 0;
+      -- I2C configuration
+      i2cslvaddr : integer range 0 to 127 := 0;
+      i2ccfgaddr : integer range 0 to 127 := 0;
+      oepol      : integer range 0 to 1 := 0;
+      --
+      filter     : integer range 2 to 512 := 2
+      );
+    port (
+      rstn   : in  std_ulogic;
+      clk    : in  std_ulogic;
+      -- AHB master interface
+      ahbi   : in  ahb_mst_in_type;
+      ahbo   : out ahb_mst_out_type;
+      --
+      apbi   : in  apb_slv_in_type;
+      apbo   : out apb_slv_out_type;
+      -- I2C signals
+      i2ci   : in  i2c_in_type;
+      i2co   : out i2c_out_type
+      );
+  end component;
+
+  component i2c2ahbx
+    generic (
+      -- AHB configuration
+      hindex   : integer := 0;
+      oepol    : integer range 0 to 1 := 0;
+      filter   : integer range 2 to 512 := 2
+      );
+    port (
+      rstn     : in  std_ulogic;
+      clk      : in  std_ulogic;
+      -- AHB master interface
+      ahbi     : in  ahb_mst_in_type;
+      ahbo     : out ahb_mst_out_type;
+      -- I2C signals
+      i2ci     : in  i2c_in_type;
+      i2co     : out i2c_out_type;
+      --
+      i2c2ahbi : in  i2c2ahb_in_type;
+      i2c2ahbo : out i2c2ahb_out_type
+      );
+  end component;
+
   -----------------------------------------------------------------------------
   -- SPI controller
   -----------------------------------------------------------------------------
@@ -926,6 +1033,8 @@ package misc is
     astart  : std_ulogic;
   end record;
 
+  constant spi_in_none : spi_in_type := ('0', '0', '0', '0', '0');
+  
   type spi_out_type is record
     miso     : std_ulogic;
     misooen  : std_ulogic;
@@ -938,6 +1047,9 @@ package misc is
     astart   : std_ulogic;
   end record;
 
+  constant spi_out_none : spi_out_type := ('0', '0', '0', '0', '0', '0',
+                                           (others => '0'), '0', '0');
+  
   component spictrl
     generic (
       pindex   : integer := 0;
@@ -1106,6 +1218,24 @@ package misc is
         gprego : out std_logic_vector(nbits-1 downto 0);
         resval : in std_logic_vector(nbits-1 downto 0) := (others => '0')
         );
+  end component;
+
+  component grgprbank is
+    generic (
+      pindex: integer := 0;
+      paddr : integer := 0;
+      pmask : integer := 16#fff#;
+      regbits: integer range 1 to 32 := 32;
+      nregs : integer  range 1 to 32 := 1;
+      rstval: integer := 0
+      );
+    port (
+      rst     : in  std_ulogic;
+      clk     : in  std_ulogic;
+      apbi    : in  apb_slv_in_type;
+      apbo    : out apb_slv_out_type;
+      rego    : out std_logic_vector(nregs*regbits-1 downto 0)
+      );
   end component;
 
   -----------------------------------------------------------------------------

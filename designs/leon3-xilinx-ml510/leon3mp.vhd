@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -43,6 +43,7 @@ library esa;
 use esa.memoryctrl.all;
 use esa.pcicomp.all;
 use work.config.all;
+use work.ml510.all;
 
 -- pragma translate_off
 library unisim;
@@ -91,9 +92,9 @@ entity leon3mp is
     dimm1_ddr2_dqs_p : inout std_logic_vector(8 downto 0);
     dimm1_ddr2_dqs_n : inout std_logic_vector(8 downto 0);
     dimm1_ddr2_dqm   : out std_logic_vector(8 downto 0);
-    dimm1_ddr2_dq    : inout std_logic_vector(63 downto 0);
+    dimm1_ddr2_dq    : inout std_logic_vector(71 downto 0);
     dimm1_ddr2_cke   : out std_logic_vector(1 downto 0);
-    dimm1_ddr2_cb    : inout std_logic_vector(7 downto 0);
+--    dimm1_ddr2_cb    : inout std_logic_vector(7 downto 0);
     dimm1_ddr2_cas_b : out std_ulogic;
     dimm1_ddr2_ba    : out std_logic_vector(2 downto 0);
     dimm1_ddr2_a     : out std_logic_vector(13 downto 0);
@@ -108,12 +109,13 @@ entity leon3mp is
     dimm0_ddr2_dqs_p : inout std_logic_vector(8 downto 0);
     dimm0_ddr2_dqs_n : inout std_logic_vector(8 downto 0);
     dimm0_ddr2_dqm   : out std_logic_vector(8 downto 0);
-    dimm0_ddr2_dq    : inout std_logic_vector(63 downto 0);
+    dimm0_ddr2_dq    : inout std_logic_vector(71 downto 0);
     dimm0_ddr2_cke   : out std_logic_vector(1 downto 0);
-    dimm0_ddr2_cb    : inout std_logic_vector(7 downto 0);
+--    dimm0_ddr2_cb    : inout std_logic_vector(7 downto 0);
     dimm0_ddr2_cas_b : out std_ulogic;
     dimm0_ddr2_ba    : out std_logic_vector(2 downto 0);
     dimm0_ddr2_a     : out std_logic_vector(13 downto 0);
+    dimm0_ddr2_reset_n : out std_ulogic;
 
     -- Ethernet PHY
     phy0_txer        : out std_ulogic;
@@ -215,18 +217,151 @@ entity leon3mp is
     uart1_cts_b      : in  std_ulogic;
     uart0_txd        : out std_ulogic;
     uart0_rxd        : in  std_ulogic;
-    uart0_rts_b      : out std_ulogic;
+    uart0_rts_b      : out std_ulogic
 --    uart0_cts_b      : in  std_ulogic
 
     -- System monitor
 --    test_mon_vrefp   : in std_ulogic;
-    test_mon_vp0_p   : in std_ulogic;
-    test_mon_vn0_n   : in std_ulogic
+--    test_mon_vp0_p   : in std_ulogic;
+--    test_mon_vn0_n   : in std_ulogic
 --    test_mon_avdd    : in std_ulogic    
     );
 end;
 
 architecture rtl of leon3mp is
+
+  component mig_36_1
+  generic(
+   BANK_WIDTH               : integer := 2; 
+                              -- # of memory bank addr bits.
+   CKE_WIDTH                : integer := 1; 
+                              -- # of memory clock enable outputs.
+   CLK_WIDTH                : integer := 1; 
+                              -- # of clock outputs.
+   COL_WIDTH                : integer := 10; 
+                              -- # of memory column bits.
+   CS_NUM                   : integer := 1; 
+                              -- # of separate memory chip selects.
+   CS_WIDTH                 : integer := 1; 
+                              -- # of total memory chip selects.
+   CS_BITS                  : integer := 0; 
+                              -- set to log2(CS_NUM) (rounded up).
+   DM_WIDTH                 : integer := 9; 
+                              -- # of data mask bits.
+   DQ_WIDTH                 : integer := 72; 
+                              -- # of data width.
+   DQ_PER_DQS               : integer := 8; 
+                              -- # of DQ data bits per strobe.
+   DQS_WIDTH                : integer := 9; 
+                              -- # of DQS strobes.
+   DQ_BITS                  : integer := 7; 
+                              -- set to log2(DQS_WIDTH*DQ_PER_DQS).
+   DQS_BITS                 : integer := 4; 
+                              -- set to log2(DQS_WIDTH).
+   ODT_WIDTH                : integer := 1; 
+                              -- # of memory on-die term enables.
+   ROW_WIDTH                : integer := 14; 
+                              -- # of memory row and # of addr bits.
+   ADDITIVE_LAT             : integer := 0; 
+                              -- additive write latency.
+   BURST_LEN                : integer := 4; 
+                              -- burst length (in double words).
+   BURST_TYPE               : integer := 0; 
+                              -- burst type (=0 seq; =1 interleaved).
+   CAS_LAT                  : integer := 3; 
+                              -- CAS latency.
+   ECC_ENABLE               : integer := 0; 
+                              -- enable ECC (=1 enable).
+   APPDATA_WIDTH            : integer := 144; 
+                              -- # of usr read/write data bus bits.
+   MULTI_BANK_EN            : integer := 1; 
+                              -- Keeps multiple banks open. (= 1 enable).
+   TWO_T_TIME_EN            : integer := 0; 
+                              -- 2t timing for unbuffered dimms.
+   ODT_TYPE                 : integer := 1; 
+                              -- ODT (=0(none),=1(75),=2(150),=3(50)).
+   REDUCE_DRV               : integer := 0; 
+                              -- reduced strength mem I/O (=1 yes).
+   REG_ENABLE               : integer := 1; 
+                              -- registered addr/ctrl (=1 yes).
+   TREFI_NS                 : integer := 7800; 
+                              -- auto refresh interval (ns).
+   TRAS                     : integer := 40000; 
+                              -- active->precharge delay.
+   TRCD                     : integer := 15000; 
+                              -- active->read/write delay.
+   TRFC                     : integer := 105000; 
+                              -- refresh->refresh, refresh->active delay.
+   TRP                      : integer := 15000; 
+                              -- precharge->command delay.
+   TRTP                     : integer := 7500; 
+                              -- read->precharge delay.
+   TWR                      : integer := 15000; 
+                              -- used to determine write->precharge.
+   TWTR                     : integer := 10000; 
+                              -- write->read delay.
+   HIGH_PERFORMANCE_MODE    : boolean := TRUE; 
+                              -- # = TRUE, the IODELAY performance mode is set
+                              -- to high.
+                              -- # = FALSE, the IODELAY performance mode is set
+                              -- to low.
+   SIM_ONLY                 : integer := 0; 
+                              -- = 1 to skip SDRAM power up delay.
+   DEBUG_EN                 : integer := 0; 
+                              -- Enable debug signals/controls.
+                              -- When this parameter is changed from 0 to 1,
+                              -- make sure to uncomment the coregen commands
+                              -- in ise_flow.bat or create_ise.bat files in
+                              -- par folder.
+   CLK_PERIOD               : integer := 5000; 
+                              -- Core/Memory clock period (in ps).
+   DLL_FREQ_MODE            : string := "HIGH"; 
+                              -- DCM Frequency range.
+   CLK_TYPE                 : string := "SINGLE_ENDED"; 
+                              -- # = "DIFFERENTIAL " ->; Differential input clocks ,
+                              -- # = "SINGLE_ENDED" -> Single ended input clocks.
+   NOCLK200                 : boolean := FALSE; 
+                              -- clk200 enable and disable
+   RST_ACT_LOW              : integer := 1  
+                              -- =1 for active low reset, =0 for active high.
+   );
+  port(
+   ddr2_dq               : inout  std_logic_vector((DQ_WIDTH-1) downto 0);
+   ddr2_a                : out   std_logic_vector((ROW_WIDTH-1) downto 0);
+   ddr2_ba               : out   std_logic_vector((BANK_WIDTH-1) downto 0);
+   ddr2_ras_n            : out   std_logic;
+   ddr2_cas_n            : out   std_logic;
+   ddr2_we_n             : out   std_logic;
+   ddr2_cs_n             : out   std_logic_vector((CS_WIDTH-1) downto 0);
+   ddr2_odt              : out   std_logic_vector((ODT_WIDTH-1) downto 0);
+   ddr2_cke              : out   std_logic_vector((CKE_WIDTH-1) downto 0);
+   ddr2_reset_n          : out   std_logic;
+   ddr2_dm               : out   std_logic_vector((DM_WIDTH-1) downto 0);
+   sys_clk               : in    std_logic;
+   idly_clk_200          : in    std_logic;
+   sys_rst_n             : in    std_logic;
+   phy_init_done         : out   std_logic;
+   rst0_tb               : out   std_logic;
+   clk0_tb               : out   std_logic;
+   app_wdf_afull         : out   std_logic;
+   app_af_afull          : out   std_logic;
+   rd_data_valid         : out   std_logic;
+   app_wdf_wren          : in    std_logic;
+   app_af_wren           : in    std_logic;
+   app_af_addr           : in    std_logic_vector(30 downto 0);
+   app_af_cmd            : in    std_logic_vector(2 downto 0);
+   rd_data_fifo_out      : out   std_logic_vector((APPDATA_WIDTH-1) downto 0);
+   app_wdf_data          : in    std_logic_vector((APPDATA_WIDTH-1) downto 0);
+   app_wdf_mask_data     : in    std_logic_vector((APPDATA_WIDTH/8-1) downto 0);
+   ddr2_dqs              : inout  std_logic_vector((DQS_WIDTH-1) downto 0);
+   ddr2_dqs_n            : inout  std_logic_vector((DQS_WIDTH-1) downto 0);
+   ddr2_ck               : out   std_logic_vector((CLK_WIDTH-1) downto 0);
+   ddr2_ck_n             : out   std_logic_vector((CLK_WIDTH-1) downto 0);
+   clk100 		 : out   std_ulogic;
+   clkdiv		 : out   std_ulogic
+   );
+
+end component;
 
 component svga2ch7301c
   generic (
@@ -371,6 +506,12 @@ signal pcii : pci_in_type;
 signal pcio : pci_out_type;
 signal clkma, clkmb, clkmc : std_ulogic;
 
+  -- Used for connecting input/output signals to the DDR3 controller
+  signal migi		: mig_app_in_type;
+  signal migo		: mig_app_out_type;
+
+signal clk0_tb, rst0_tb, rst0_tbn : std_ulogic;
+signal phy_init_done : std_ulogic;
 -- Logan signals
 signal signals : std_logic_vector(63*CFG_LOGAN downto 0);       
 
@@ -392,6 +533,8 @@ attribute syn_keep of clk40 : signal is true;
 attribute syn_preserve of clk40 : signal is true;
 attribute syn_keep of clk65 : signal is true;
 attribute syn_preserve of clk65 : signal is true;
+attribute syn_keep of phy_init_done : signal is true;
+attribute syn_preserve of phy_init_done : signal is true;
 
 attribute keep : boolean;
 attribute keep of lock0 : signal is true;
@@ -411,14 +554,11 @@ attribute syn_noprune of sysace_fpga_clk_pad : label is true;
 begin
 
   vcc <= (others => '1'); gnd <= (others => '0');
-  
+  rst0_tbn <= not rst0_tb; 
 ----------------------------------------------------------------------
 ---  Reset and Clock generation  -------------------------------------
 ----------------------------------------------------------------------
   
-  clk_pad : clkpad generic map (tech => padtech, arch => 2, level => cmos, voltage => x25v) 
-    port map (user_clksys, lclk); 
-
   flashclk_pad : outpad generic map (tech => padtech, slew => 1, strength => 24) 
     port map (flash_clk, flashclkl);
 
@@ -588,9 +728,74 @@ begin
   flash_d_pads : iopadvv generic map (tech => padtech, width => 16)
       port map (flash_d, memo.data(31 downto 16), 
 		memo.vbdrive(31 downto 16), memi.data(31 downto 16));
+
+  migsp0 : if (CFG_MIG_DDR2 = 1) generate
+
+    ahb2mig0 : entity work.ahb2mig_ml510
+    generic map ( hindex => 0, haddr => 16#400#, hmask => 16#E00#,
+	MHz => 400, Mbyte => 512, nosync => 0) --boolean'pos(CFG_MIG_CLK4=12)) --CFG_CLKDIV/12)
+    port map (
+	rst_ahb => rstn, rst_ddr => rst0_tbn, clk_ahb => clkm, clk_ddr => clk0_tb,
+	ahbsi => ahbsi, ahbso => ahbso(0), migi => migi, migo => migo);
+
+    BUFGCLK200 : BUFG port map (I => clk_200, O => clkddr);
+
+    migv5 : mig_36_1 
+--     generic map (SIM_BYPASS_INIT_CAL => "FAST", CLKOUT_DIVIDE4 => CFG_MIG_CLK4)
+     generic map (NOCLK200 => true, SIM_ONLY => 1)
+     port map(  -- sys_clk_p, sys_clk_n, 
+--      clk_ref_p, clk_ref_n, 
+      ddr2_dq => dimm0_ddr2_dq(DQ_WIDTH-1 downto 0),
+      ddr2_a => dimm0_ddr2_a(ROW_WIDTH-1 downto 0),
+      ddr2_ba => dimm0_ddr2_ba(1 downto 0), ddr2_ras_n => dimm0_ddr2_ras_b, 
+      ddr2_cas_n => dimm0_ddr2_cas_b, ddr2_we_n => dimm0_ddr2_we_b,
+      ddr2_cs_n => dimm0_ddr2_s_b(0 downto 0), ddr2_odt => dimm0_ddr2_odt(0 downto 0),
+      ddr2_cke => dimm0_ddr2_cke(0 downto 0),
+      ddr2_dm => dimm0_ddr2_dqm(DM_WIDTH-1 downto 0), 
+      ddr2_reset_n => dimm0_ddr2_reset_n,
+      sys_clk => user_clksys, idly_clk_200 => clkddr, sys_rst_n => rstraw,
+      phy_init_done => phy_init_done, 
+      rst0_tb => rst0_tb, clk0_tb => clk0_tb,  
+      app_wdf_afull => migo.app_wdf_afull,
+      app_af_afull => migo.app_af_afull,
+      rd_data_valid => migo.app_rd_data_valid, 
+      app_wdf_wren => migi.app_wdf_wren,
+      app_af_wren => migi.app_en, app_af_addr =>  migi.app_addr,
+      app_af_cmd => migi.app_cmd,
+      rd_data_fifo_out => migo.app_rd_data, app_wdf_data => migi.app_wdf_data,
+      app_wdf_mask_data => migi.app_wdf_mask, 
+      ddr2_dqs => dimm0_ddr2_dqs_p(DQS_WIDTH-1 downto 0),
+      ddr2_dqs_n => dimm0_ddr2_dqs_n(DQS_WIDTH-1 downto 0), 
+      ddr2_ck => ddr0_clkv((CK_WIDTH-1) downto 0),
+      ddr2_ck_n => ddr0_clkbv((CK_WIDTH-1) downto 0),
+      clk100 => lclk
+    );
+
+    dimm0_ddr2_pll_clkin_p <= ddr0_clkv(0);
+    dimm0_ddr2_pll_clkin_n <= ddr0_clkbv(0);
+    lock0 <= phy_init_done;
+    lock1 <= phy_init_done;
+    -- Tri-state unused data strobe
+    xtra : if DQS_WIDTH = 8 generate
+      dimm0_dqsp_notused8_pad : iopad generic map (tech => padtech, level => SSTL18_II)
+        port map (dimm0_ddr2_dqs_p(8), gnd(0), vcc(0), open);
+      dimm0_dqsn_notused8_pad : iopad generic map (tech => padtech, level => SSTL18_II)
+        port map (dimm0_ddr2_dqs_n(8), gnd(0), vcc(0), open);
+    end generate;
+  end generate;
       
+  dbg_led0_pad : outpad generic map (tech => padtech, level => cmos, voltage => x33v)
+    port map (dbg_led(3), phy_init_done);
+  nomigsp0 : if (CFG_MIG_DDR2 = 0) generate
+    clk_pad : clkpad generic map (tech => padtech, arch => 2, level => cmos, voltage => x25v) 
+      port map (user_clksys, lclk); 
+  end generate;
+
+    clkm <= clkma; clkma <= clkmb; clkmb <= clkmc;
+
   ddrsp0 : if (CFG_DDR2SP /= 0) generate
 
+    phy_init_done <= '1';
     -- DDR clock selection
     -- If the synchronization registers are removed in the DDR controller, we
     -- assume that the user wants to run at 2x the system clock. Otherwise the
@@ -601,8 +806,8 @@ begin
     ddrclksel2x: if CFG_DDR2SP_NOSYNC /= 0 generate
       clkddr <= clkm2x;
     end generate;
-    clkm <= clkma; clkma <= clkmb; clkmb <= clkmc;
-    
+    dimm0_ddr2_reset_n_pad : outpad generic map (tech => padtech, level => cmos, voltage => x33v)
+      port map (dimm0_ddr2_reset_n, rst);
     -- Slot 0
     ddrc0 : ddr2spa generic map ( fabtech => fabtech, memtech => memtech, 
       hindex => 0, haddr => 16#400#, hmask => 16#e00#, ioaddr => 1, 
@@ -640,7 +845,7 @@ begin
       port map (dimm0_ddr2_dqs_n(8), gnd(0), vcc(0), open);
     -- Tristate unused check bits
     dimm0_cb_notused_pad : iopadv generic map (tech => padtech, width => 8, level => SSTL18_II)
-      port map (dimm0_ddr2_cb, gnd(7 downto 0), vcc(0), open);
+      port map (dimm0_ddr2_dq(71 downto 64), gnd(7 downto 0), vcc(0), open);
     -- Handle signals not used with 32-bit interface
     ddr032bit: if CFG_DDR2SP_DATAWIDTH /= 64 generate
       dimm0_ddr2_dqm_notused30_pads : outpadv generic map (tech => padtech, width => 4, level => SSTL18_I)
@@ -690,7 +895,7 @@ begin
       port map (dimm1_ddr2_dqs_n(8), gnd(0), vcc(0), open);
     -- Tristate unused check bits
     dimm1_cb_notused_pad : iopadv generic map (tech => padtech, width => 8, level => SSTL18_II)
-      port map (dimm1_ddr2_cb, gnd(7 downto 0), vcc(0), open);
+      port map (dimm1_ddr2_dq(71 downto 64), gnd(7 downto 0), vcc(0), open);
     -- Handle signals not used with 32-bit interface
     ddr132bit: if CFG_DDR2SP_DATAWIDTH /= 64 generate
       dimm1_ddr2_dqm_notused30_pads : outpadv generic map (tech => padtech, width => 4, level => SSTL18_I)
@@ -704,7 +909,7 @@ begin
     end generate;
   end generate;
 
-  noddr :  if (CFG_DDR2SP = 0) generate lock0 <= '1'; lock1 <= '1'; end generate;
+--  noddr :  if (CFG_DDR2SP = 0) generate lock0 <= '1'; lock1 <= '1'; end generate;
   
 ----------------------------------------------------------------------
 ---  System ACE I/F Controller ---------------------------------------
@@ -845,9 +1050,9 @@ begin
     gpioo.dout <= (others => '1');
   end generate;
   
-  dbg_led_pads : iopadvv generic map (tech => padtech, width => 4)
-    port map (dbg_led, gpioo.dout(3 downto 0), gpioo.oen(3 downto 0), 
-		gpioi.din(3 downto 0));
+  dbg_led_pads : iopadvv generic map (tech => padtech, width => 3,  level => cmos, voltage => x33v)
+    port map (dbg_led(2 downto 0), gpioo.dout(2 downto 0), gpioo.oen(2 downto 0), 
+		gpioi.din(2 downto 0));
   dvi_gpio_pad : iopad generic map (tech => padtech)
     port map (dvi_gpio1, gpioo.dout(4), gpioo.oen(4), gpioi.din(4));
   iic_therm_b_pad : inpad generic map (tech => padtech)
@@ -1058,8 +1263,8 @@ begin
     sysmoni.convstclk <= '0';
     sysmoni.vauxn <= (others => '0');
     sysmoni.vauxp <= (others => '0');
-    sysmoni.vn <= test_mon_vn0_n;
-    sysmoni.vp <= test_mon_vp0_p;
+--    sysmoni.vn <= test_mon_vn0_n;
+--    sysmoni.vp <= test_mon_vp0_p;
   end generate grsmon;
   
 -----------------------------------------------------------------------

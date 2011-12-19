@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -60,6 +60,7 @@ entity dsu3x is
     dsuo   : out dsu_out_type;
     hclken : in std_ulogic
   );
+  attribute sync_set_reset of rst : signal is "true"; 
 end; 
 
 architecture rtl of dsu3x is
@@ -549,6 +550,7 @@ begin
       tv.tbreg1.read := '0'; tv.tbreg1.write := '0';
       tv.tbreg2.read := '0'; tv.tbreg2.write := '0';
       v.slv.hready := '1'; v.halt := (others => '0');
+      v.act := '0'; v.tstop := '0';
     end if;
     vabufi.enable := vabufi.enable and not ahbsi.scanen;
     vabufi.diag := ahbsi.testen & "000";

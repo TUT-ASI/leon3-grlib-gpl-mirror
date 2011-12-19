@@ -414,6 +414,7 @@ int main(int argc, char *argv[])
         char *tx3;
         char *tx[64];
         char *rx[128];
+        char *tx_addr[16];
         struct rxstatus *rxs;
         struct spwvars *spw[30];
         struct rmap_pkt *cmd;
@@ -451,14 +452,6 @@ int main(int argc, char *argv[])
         printf("**** GRSPW ROUTER TEST DUAL **** \n\n");
         for (i = 0; i < PORTS; i++) {
                 spw[i] = (struct spwvars *) malloc(sizeof(struct spwvars));
-                if (SPW_FREQ == 0) {
-                        spw[i]->clkdivs = loadmem((int)&(spw[i]->regs->clkdiv));
-                } else {
-                        spw[i]->clkdivs = SPW_FREQ/10000;
-                        if (spw[i]->clkdivs)
-                                spw[i]->clkdivs--;
-                }
-                
         }
         
         rxs = (struct rxstatus *) malloc(sizeof(struct rxstatus));
@@ -474,7 +467,7 @@ int main(int argc, char *argv[])
         /************************ TEST INIT ***********************************/
         printf("Initalizing parameters and links");
         for(i = 0; i < PORTS; i++) {
-                if (spw_setparam(i+1, SPW_CLKDIV, 0xBF, 1, 1, SPW_ADDR[i], AHBFREQ, spw[i], 0) ) {
+                if (spw_setparam(i+1, SPW_CLKDIV, 0xBF, 1, 1, SPW_ADDR[i], AHBFREQ, spw[i], 0, SPW_FREQ/10000-1) ) {
                         printf("Illegal parameters to spacewire\n");
                         exit(1);
                 }
@@ -1171,6 +1164,7 @@ int main(int argc, char *argv[])
         for(i = 0; i < PORTS; i++) {
                 tx[i] = malloc(64);
                 rx[i] = malloc(64);
+                tx_addr[i] = malloc(4);
         }
         printf("Enabling reception\n");
         for(i = 0; i < PORTS; i++) {
@@ -1184,18 +1178,20 @@ int main(int argc, char *argv[])
         printf("Transmitting\n");
         for(i = 0; i < PORTS; i++) {
                 if (i == 0) {
-                        tx[i][0] = 2;
-                        tx[i][1] = 2;
+                        tx_addr[0][0] = 2;
+                        tx_addr[0][1] = 4;
+                        tx_addr[0][2] = 6;
+                        tx_addr[0][3] = 2;
                 } else {
-                        tx[i][0] = 1;
-                        tx[i][1] = 1;
+                        tx_addr[1][0] = 5;
+                        tx_addr[1][1] = 3;
+                        tx_addr[1][2] = 1;
+                        tx_addr[1][3] = 1;
                 }
-                
-                 
-                for(j = 2; j < 64; j++) {
+                for(j = 0; j < 64; j++) {
                         tx[i][j] = j+i*4;
                 }
-                tmp = spw_tx(0, 0, 0, 0, 0, tx[i], 64, tx[i], spw[i]);
+                tmp = spw_tx(0, 0, 0, 0, 4, tx_addr[i], 64, tx[i], spw[i]);
                 if (tmp != 0) {
                         printf("ERROR: spw_tx failed: %d\n", tmp);
                         exit(1);
@@ -1228,13 +1224,13 @@ int main(int argc, char *argv[])
                         printf("Received packet terminated with eep link: %d\n", i);
                         exit(1);
                 }
-                if (*size != 63) {
+                if (*size != 64) {
                         printf("Received packet has wrong length link: %d\n", i);
                         exit(1);
                 }
-                for(j = 0; j < 63; j++) {
-                        if (loadb((int)&(rx[i][j])) != tx[PORTS-i-1][j+1]) {
-                                printf("Compare error buf %d, index: %d, Data: %x Expected: %x \n", i, j, (unsigned)loadb((int)&(rx[i][j])), (unsigned)tx[PORTS-i-1][j+1]);
+                for(j = 0; j < 64; j++) {
+                        if (loadb((int)&(rx[i][j])) != tx[PORTS-i-1][j]) {
+                                printf("Compare error buf %d, index: %d, Data: %x Expected: %x \n", i, j, (unsigned)loadb((int)&(rx[i][j])), (unsigned)tx[PORTS-i-1][j]);
                                 exit(1);
                         }
                         

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 library techmap;
 use techmap.gencomp.all;
+use techmap.allclkgen.all;
 
 entity techbuf is
   generic(
@@ -66,7 +67,12 @@ component clkbuf_n2x is generic(buftype : integer range 0 to 3 := 0);
   port( i :  in  std_ulogic; o :  out std_ulogic);
 end component;
 
+signal vcc, gnd : std_ulogic;
+
 begin
+
+  vcc <= '1'; gnd <= '0';
+
   gen : if has_techbuf(tech) = 0 generate
     o <= i;
   end generate;
@@ -93,6 +99,9 @@ begin
   end generate;
   ut13  : if (tech = ut130) generate
     ut0 : clkbuf_ut130hbd generic map (buftype => buftype) port map(i => i, o => o);
+  end generate;
+  ut09  : if (tech = ut90) generate
+    ut0 : clkand_ut90nhbd port map(i => i, en => vcc, o => o, tsten => gnd);
   end generate;
   easic: if tech = easic90 generate
     eas : clkbuf_nextreme generic map (buftype => buftype) port map(i => i, o => o);

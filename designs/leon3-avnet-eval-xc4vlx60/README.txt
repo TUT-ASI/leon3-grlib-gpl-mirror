@@ -1,7 +1,5 @@
 
-This leon3 design is tailored to the Avnet Virtex4 LX60 Evaluation board:
-
-http://www.em.avnet.com/evk/home/0,1719,RID%253D0%2526CID%253D16863%2526CCD%253DUSA%2526SID%253D4746%2526DID%253DDF2%2526SRT%253D1%2526LID%253D0%2526PRT%253D0%2526PVW%253D%2526BID%253DDF2%2526CTP%253DEVK,00.html
+This leon3 design is tailored to the Avnet Virtex4 LX60 Evaluation board
 
 Design specifics:
 
@@ -25,13 +23,19 @@ Design specifics:
   90 - 130 MHz. The processor and AMBA system runs on a different
   clock, and can typically reach 70 - 80 MHz.
 
+* Two different DDR controllers can be use, the GRLIB DDRSPA and
+  the Xilinx MIG. To use the MIG, first generate it by doing 
+  'make mig', and the re-create the scripts with 'make distclean scripts'.
+  To simulate the system using the MIG, first install the secureip
+  libraries with 'make distclean install-unisim install-secureip'.
+
 * The board comes in two variations: one with an LX25 FPGA and one
   with an LX60 device. It is possible to choose the correct FPGA
   in the xconfig setup under the 'Board options' menu.
 
 * Output from GRMON info sys is:
 
-$ grmon -eth -u -ip 192.168.0.69 -nb
+$ grmon -eth -u -ip 192.168.1.10 -nb
 
  GRMON LEON debug monitor v1.1.27b
 

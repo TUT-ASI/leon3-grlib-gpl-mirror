@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -838,34 +838,82 @@ use unisim.OBUFDS;
 -- pragma translate_on
 
 entity unisim_outpad_ds  is
-  generic (level : integer := lvds; voltage : integer := x33v);
+  generic (level : integer := lvds; slew : integer := 0; voltage : integer := x33v);
   port (padp, padn : out std_ulogic; i : in std_ulogic);
 end ;
 architecture rtl of unisim_outpad_ds is
-  component OBUFDS generic( IOSTANDARD  : string := "DEFAULT");
-     port ( O : out std_ulogic; OB : out std_ulogic; I : in std_ulogic);
+  component OBUFDS
+	generic(
+		CAPACITANCE : string := "DONT_CARE";
+		IOSTANDARD : string := "DEFAULT";
+     		SLEW : string := "SLOW"
+	);
+	port(
+		O : out std_ulogic;
+		OB : out std_ulogic;
+		I : in std_ulogic
+	);
   end component;
 
   attribute syn_noprune : boolean;
   attribute syn_noprune of OBUFDS : component is true;
   
 begin
-  xlvds : if level = lvds generate
-    lvds_33 : if voltage = x33v generate
-      op : OBUFDS generic map(IOSTANDARD  => "LVDS_33")
-         port map (O => padp, OB => padn, I => i);
+  slow : if slew = 0 generate
+    xlvds : if level = lvds generate
+      lvds_33 : if voltage = x33v generate
+        op : OBUFDS generic map(IOSTANDARD  => "LVDS_33")
+           port map (O => padp, OB => padn, I => i);
+      end generate;
+      lvds_25 : if voltage /= x33v generate
+        op : OBUFDS generic map(IOSTANDARD  => "LVDS_25")
+           port map (O => padp, OB => padn, I => i);
+      end generate;
     end generate;
-    lvds_25 : if voltage /= x33v generate
-      op : OBUFDS generic map(IOSTANDARD  => "LVDS_25")
-         port map (O => padp, OB => padn, I => i);
+    xsstl2_i : if level = sstl2_i generate
+        op : OBUFDS generic map(IOSTANDARD  => "DIFF_SSTL2_I")
+           port map (O => padp, OB => padn, I => i);
+    end generate;
+    xsstl2_ii : if level = sstl2_ii generate
+        op : OBUFDS generic map(IOSTANDARD  => "DIFF_SSTL2_II")
+           port map (O => padp, OB => padn, I => i);
+    end generate;
+    xsstl18_i : if level = sstl18_i generate
+        op : OBUFDS generic map(IOSTANDARD  => "DIFF_SSTL18_I")
+           port map (O => padp, OB => padn, I => i);
+    end generate;
+    xsstl18_ii : if level = sstl18_ii generate
+        op : OBUFDS generic map(IOSTANDARD  => "DIFF_SSTL18_II")
+           port map (O => padp, OB => padn, I => i);
     end generate;
   end generate;
-  xsstl18_i : if level = sstl18_i generate
-      op : OBUFDS generic map(IOSTANDARD  => "DIFF_SSTL18_I")
-         port map (O => padp, OB => padn, I => i);
-  end generate;
-  xsstl18_ii : if level = sstl18_ii generate
-      op : OBUFDS generic map(IOSTANDARD  => "DIFF_SSTL18_II")
-         port map (O => padp, OB => padn, I => i);
+
+  fast : if slew = 1 generate
+    xlvds : if level = lvds generate
+      lvds_33 : if voltage = x33v generate
+        op : OBUFDS generic map(IOSTANDARD  => "LVDS_33", SLEW => "FAST")
+           port map (O => padp, OB => padn, I => i);
+      end generate;
+      lvds_25 : if voltage /= x33v generate
+        op : OBUFDS generic map(IOSTANDARD  => "LVDS_25", SLEW => "FAST")
+           port map (O => padp, OB => padn, I => i);
+      end generate;
+    end generate;
+    xsstl2_i : if level = sstl2_i generate
+        op : OBUFDS generic map(IOSTANDARD  => "DIFF_SSTL2_I", SLEW => "FAST")
+           port map (O => padp, OB => padn, I => i);
+    end generate;
+    xsstl2_ii : if level = sstl2_ii generate
+        op : OBUFDS generic map(IOSTANDARD  => "DIFF_SSTL2_II", SLEW => "FAST")
+           port map (O => padp, OB => padn, I => i);
+    end generate;
+    xsstl18_i : if level = sstl18_i generate
+        op : OBUFDS generic map(IOSTANDARD  => "DIFF_SSTL18_I", SLEW => "FAST")
+           port map (O => padp, OB => padn, I => i);
+    end generate;
+    xsstl18_ii : if level = sstl18_ii generate
+        op : OBUFDS generic map(IOSTANDARD  => "DIFF_SSTL18_II", SLEW => "FAST")
+           port map (O => padp, OB => padn, I => i);
+    end generate;
   end generate;
 end;

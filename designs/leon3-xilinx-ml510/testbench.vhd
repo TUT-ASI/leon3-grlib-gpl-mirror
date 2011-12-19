@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,8 +28,6 @@ use gaisler.libdcom.all;
 use gaisler.sim.all;
 library techmap;
 use techmap.gencomp.all;
-library micron;
-use micron.components.all;
 library cypress;
 use cypress.components.all;
 library hynix;
@@ -37,6 +35,7 @@ use hynix.components.all;
 use work.debug.all;
 
 use work.config.all;	-- configuration
+use work.ml510.all;	-- configuration
 
 entity testbench is
   generic (
@@ -86,10 +85,9 @@ signal dimm1_ddr2_odt   : std_logic_vector(1 downto 0);
 signal dimm1_ddr2_dqs_p : std_logic_vector(8 downto 0);
 signal dimm1_ddr2_dqs_n : std_logic_vector(8 downto 0);
 signal dimm1_ddr2_dqm   : std_logic_vector(8 downto 0);
-signal dimm1_ddr2_dq    : std_logic_vector(63 downto 0);
-signal dimm1_ddr2_dq2   : std_logic_vector(63 downto 0);
+signal dimm1_ddr2_dq    : std_logic_vector(71 downto 0);
+signal dimm1_ddr2_dq2   : std_logic_vector(71 downto 0);
 signal dimm1_ddr2_cke   : std_logic_vector(1 downto 0);
-signal dimm1_ddr2_cb    : std_logic_vector(7 downto 0);
 signal dimm1_ddr2_cas_b : std_ulogic;
 signal dimm1_ddr2_ba    : std_logic_vector(2 downto 0);
 signal dimm1_ddr2_a     : std_logic_vector(13 downto 0);
@@ -102,10 +100,9 @@ signal dimm0_ddr2_odt   : std_logic_vector(1 downto 0);
 signal dimm0_ddr2_dqs_p : std_logic_vector(8 downto 0);
 signal dimm0_ddr2_dqs_n : std_logic_vector(8 downto 0);
 signal dimm0_ddr2_dqm   : std_logic_vector(8 downto 0);
-signal dimm0_ddr2_dq    : std_logic_vector(63 downto 0);
-signal dimm0_ddr2_dq2   : std_logic_vector(63 downto 0);
+signal dimm0_ddr2_dq    : std_logic_vector(71 downto 0);
+signal dimm0_ddr2_dq2   : std_logic_vector(71 downto 0);
 signal dimm0_ddr2_cke   : std_logic_vector(1 downto 0);
-signal dimm0_ddr2_cb    : std_logic_vector(7 downto 0);
 signal dimm0_ddr2_cas_b : std_ulogic;
 signal dimm0_ddr2_ba    : std_logic_vector(2 downto 0);
 signal dimm0_ddr2_a     : std_logic_vector(13 downto 0);
@@ -256,13 +253,14 @@ begin
                 dimm1_ddr2_pll_clkin_p, dimm1_ddr2_pll_clkin_n,
                 dimm1_ddr2_odt, dimm1_ddr2_dqs_p, dimm1_ddr2_dqs_n,
                 dimm1_ddr2_dqm, dimm1_ddr2_dq, dimm1_ddr2_cke,
-                dimm1_ddr2_cb, dimm1_ddr2_cas_b, dimm1_ddr2_ba, dimm1_ddr2_a,
+                dimm1_ddr2_cas_b, dimm1_ddr2_ba, dimm1_ddr2_a,
                 -- DDR2 slot 0
                 dimm0_ddr2_we_b, dimm0_ddr2_s_b, dimm0_ddr2_ras_b,
                 dimm0_ddr2_pll_clkin_p, dimm0_ddr2_pll_clkin_n,
                 dimm0_ddr2_odt, dimm0_ddr2_dqs_p, dimm0_ddr2_dqs_n,
                 dimm0_ddr2_dqm, dimm0_ddr2_dq, dimm0_ddr2_cke,
-                dimm0_ddr2_cb, dimm0_ddr2_cas_b, dimm0_ddr2_ba, dimm0_ddr2_a,
+                dimm0_ddr2_cas_b, dimm0_ddr2_ba, dimm0_ddr2_a,
+		open, 
                 -- Ethernet PHY
                 phy0_txer, phy0_txd, phy0_txctl_txen, phy0_txclk,
                 phy0_rxer, phy0_rxd, phy0_rxctl_rxdv, phy0_rxclk,
@@ -295,9 +293,9 @@ begin
                 spi_data_out, spi_data_in, spi_data_cs_b, spi_clk,
                 -- UARTs
                 uart1_txd, uart1_rxd, uart1_rts_b, uart1_cts_b,
-                uart0_txd, uart0_rxd, uart0_rts_b, --uart0_cts_b
+                uart0_txd, uart0_rxd, uart0_rts_b--, --uart0_cts_b
                 -- System monitor
-                test_mon_vp0_p, test_mon_vn0_n
+--                test_mon_vp0_p, test_mon_vn0_n
 	);
 
   
@@ -305,7 +303,7 @@ begin
     u1 : HY5PS121621F
       generic map (TimingCheckFlag => true, PUSCheckFlag => false,
                    index => (1 + 2*(CFG_DDR2SP_DATAWIDTH/64))-i, bbits => CFG_DDR2SP_DATAWIDTH,
-                   fname => sdramfile)
+                   fname => sdramfile, fdelay => 100*CFG_MIG_DDR2)
       port map (DQ => dimm0_ddr2_dq2(i*16+15+32*(32/CFG_DDR2SP_DATAWIDTH) downto i*16+32*(32/CFG_DDR2SP_DATAWIDTH)),
                 LDQS  => dimm0_ddr2_dqs_p(i*2+4*(32/CFG_DDR2SP_DATAWIDTH)),
                 LDQSB => dimm0_ddr2_dqs_n(i*2+4*(32/CFG_DDR2SP_DATAWIDTH)),
@@ -320,15 +318,11 @@ begin
                 UDM => dimm0_ddr2_dqm(i*2+1+4*(32/CFG_DDR2SP_DATAWIDTH)));
   end generate;
 
-  ddr2delay0 : delay_wire 
-    generic map(data_width => dimm0_ddr2_dq'length, delay_atob => 0.0, delay_btoa => 2.5)
-    port map(a => dimm0_ddr2_dq, b => dimm0_ddr2_dq2);
-
   ddr2mem1: for i in 0 to (1 + 2*(CFG_DDR2SP_DATAWIDTH/64)) generate
     u1 : HY5PS121621F
       generic map (TimingCheckFlag => true, PUSCheckFlag => false,
                    index => (1 + 2*(CFG_DDR2SP_DATAWIDTH/64))-i, bbits => CFG_DDR2SP_DATAWIDTH,
-                   fname => sdramfile)
+                   fname => sdramfile, fdelay => 100*CFG_MIG_DDR2)
       port map (DQ => dimm1_ddr2_dq2(i*16+15+32*(32/CFG_DDR2SP_DATAWIDTH) downto i*16+32*(32/CFG_DDR2SP_DATAWIDTH)),
                 LDQS  => dimm1_ddr2_dqs_p(i*2+4*(32/CFG_DDR2SP_DATAWIDTH)),
                 LDQSB => dimm1_ddr2_dqs_n(i*2+4*(32/CFG_DDR2SP_DATAWIDTH)),
@@ -343,10 +337,24 @@ begin
                 UDM => dimm1_ddr2_dqm(i*2+1+4*(32/CFG_DDR2SP_DATAWIDTH)));
   end generate;
 
-  ddr2delay1 : delay_wire 
-    generic map(data_width => dimm1_ddr2_dq'length, delay_atob => 0.0, delay_btoa => 2.5)
-    port map(a => dimm1_ddr2_dq, b => dimm1_ddr2_dq2);
-  
+  nodelgen : if CFG_MIG_DDR2 = 1 generate
+    ddr2delay0 : delay_wire 
+      generic map(data_width => dimm0_ddr2_dq'length, delay_atob => 0.0, delay_btoa => 0.0)
+      port map(a => dimm0_ddr2_dq, b => dimm0_ddr2_dq2);
+    ddr2delay1 : delay_wire 
+      generic map(data_width => dimm1_ddr2_dq'length, delay_atob => 0.0, delay_btoa => 0.0)
+      port map(a => dimm1_ddr2_dq, b => dimm1_ddr2_dq2);
+  end generate;
+
+  delgen : if CFG_MIG_DDR2 = 0 generate
+    ddr2delay0 : delay_wire 
+      generic map(data_width => dimm0_ddr2_dq'length, delay_atob => 0.0, delay_btoa => 2.5)
+      port map(a => dimm0_ddr2_dq, b => dimm0_ddr2_dq2);
+    ddr2delay1 : delay_wire 
+      generic map(data_width => dimm1_ddr2_dq'length, delay_atob => 0.0, delay_btoa => 2.5)
+      port map(a => dimm1_ddr2_dq, b => dimm1_ddr2_dq2);
+  end generate;
+
   prom0 : sram16 generic map (index => 4, abits => romdepth, fname => promfile)
 	port map (flash_a(romdepth-1 downto 0), flash_d(15 downto 0),
 		  gnd, gnd, flash_ce_b, flash_we_b, flash_oe_b);        

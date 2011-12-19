@@ -93,6 +93,7 @@
 --               Added headers.
 --
 -- Modified by Jan Andersson (jan@gaisler.com):
+--
 --              * Added two start states to fulfill Set-up time for
 --                repeated START condition.
 --              * Modified synchronization of SCL and SDA. START and STOP detection
@@ -119,6 +120,13 @@
 --                it should do a better job of ignoring 50 ns pulses and still
 --                allow us to respond quickly to events on the line - assuming
 --                that the core has been correctly configured.
+--                Core revision has been increased to 2 (in GRLIB PnP)
+--              * Added 'dynfilt' generic to allow dynamic adjustment of the
+--                filter. This component takes in a filt vector that is used to
+--                reload a filter counter. The filt vector is assigned via the
+--                core's APB interface.
+--                Reorganized parts of the code, moving signals into blocks.
+--                Core revision increased to 3.
 -- 
 -------------------------------------
 -- Bit controller section
@@ -164,7 +172,7 @@ library grlib;
 use grlib.stdlib.all;
 
 entity i2c_master_bit_ctrl is
-        generic (filter : integer);
+        generic (filter : integer; dynfilt : integer);
 	port (
 		clk    : in std_logic;
 		rst    : in std_logic;
@@ -180,6 +188,8 @@ entity i2c_master_bit_ctrl is
 
 		din  : in std_logic;
 		dout : out std_logic;
+
+                filt   : in std_logic_vector((filter-1)*dynfilt downto 0);
 
 		-- i2c lines
 		scl_i   : in std_logic;  -- i2c clock line input
@@ -197,44 +207,20 @@ architecture structural of i2c_master_bit_ctrl is
 	constant I2C_CMD_STOP   : std_logic_vector(3 downto 0) := "0010";
 	constant I2C_CMD_READ   : std_logic_vector(3 downto 0) := "0100";
 	constant I2C_CMD_WRITE  : std_logic_vector(3 downto 0) := "1000";
-
-        constant FR : integer := filter;  -- Filter range MSb
-        constant DR : integer := filter + 1;  -- Delayed SCL/SDA range MSb
         
 	type states is (idle, start_a, start_b, start_c, start_d, start_e, start_f, start_g,
 	                stop_a, stop_b, stop_c, stop_d, rd_a, rd_b, rd_c, rd_d, wr_a, wr_b, wr_c, wr_d);
 	signal c_state, s_state : states;
 
 	signal iscl_oen, isda_oen : std_logic;                     -- internal I2C lines
-        signal disda_oen          : std_logic_vector(DR downto 0); -- delayed isda_oen
 	signal sda_chk            : std_logic;          -- check SDA status (multi-master arbitration)
-	signal discl_oen           : std_logic_vector(DR downto 0); -- delayed scl_oen signal
-        signal sSCL, sSDA         : std_logic_vector(FR downto 0); -- synchronized SCL and SDA inputs
         signal fSCL, fSDA         : std_logic_vector(1 downto 0);  -- Filtered SCL and SDA inputs
 	signal clk_en, slave_wait : std_logic;          -- clock generation signals
 	signal ial                : std_logic;          -- internal arbitration lost signal
 	signal cnt                : std_logic_vector(15 downto 0); -- clock divider counter
         signal csync              : std_logic;          -- Need to synchronize clock with other master
-        signal slvw_dis           : std_logic;          -- Slave wait disable;
         
-begin
-	-- whenever the slave is not ready it can delay the cycle by pulling SCL low
-	-- delay scl_oen
-	process (clk)
-	begin
-          if (clk'event and clk = '1') then
-            -- Keep SCL output enable values
-            discl_oen <= discl_oen(DR-1 downto 0) & iscl_oen;
-            -- Disable slave stretch detection when other device drives SCL
-            -- H->L (only a master should to this).
-            slvw_dis <= (slvw_dis or csync) and discl_oen(0);
-          end if;
-	end process;        
-        -- SCL forced low after master tried to assert, slave is stretching clock
-        slave_wait <= andv(discl_oen(DR downto 1)) and not fSCL(0) and not (slvw_dis or fSCL(1));
-        -- SCL HIGH time cut short, master clock synchronization
-        csync <= andv(discl_oen(DR downto 1)) and not fSCL(0) and fSCL(1);
-        
+begin   
 	-- generate clk enable signal
 	gen_clken: process(clk, nReset)
 	begin
@@ -268,10 +254,22 @@ begin
 	  signal sto_condition       : std_logic;  -- stop detected
 	  signal cmd_stop            : std_logic;  -- STOP command
 	  signal ibusy               : std_logic;  -- internal busy signal
+          signal slvw_dis            : std_logic;          -- Slave wait disable;
 	begin
-	    -- synchronize SCL and SDA inputs
-	    synch_scl_sda: process(clk, nReset)
-	    begin
+
+          -- Static filter
+          staticfilt : if dynfilt = 0 generate
+            sfblock : block
+              constant FR : integer := filter;  -- Filter range MSb
+              constant DR : integer := filter + 1;  -- Delayed SCL/SDA range MSb
+              
+              signal sSCL, sSDA : std_logic_vector(FR downto 0); -- synchronized SCL and SDA inputs
+              signal discl_oen  : std_logic_vector(DR downto 0); -- delayed scl_oen signal
+              signal disda_oen  : std_logic_vector(DR downto 0); -- delayed isda_oen
+            begin
+              -- synchronize SCL and SDA inputs
+              synch_scl_sda: process(clk, nReset)
+              begin
 	        if (nReset = '0') then                  
 	          sSCL <= (others => '1');
 	          sSDA <= (others => '1');
@@ -303,11 +301,191 @@ begin
                     end if;
 	          end if;
 	        end if;
-	    end process synch_SCL_SDA;
-            
-	    -- detect start condition => detect falling edge on SDA while SCL is high
-	    -- detect stop condition  => detect rising edge on SDA while SCL is high
-	    detect_sta_sto: process(clk, nReset)
+              end process synch_SCL_SDA;
+
+              -- whenever the slave is not ready it can delay the cycle by pulling SCL low
+              -- delay scl_oen
+              process (clk)
+              begin
+                if (clk'event and clk = '1') then
+                  if rst = '1' then
+                    discl_oen <= (others => '1');
+                    slvw_dis <= '0';
+                  else
+                    -- Keep SCL output enable values
+                    discl_oen <= discl_oen(DR-1 downto 0) & iscl_oen;
+                    -- Disable slave stretch detection when other device drives SCL
+                    -- H->L (only a master should to this).
+                    slvw_dis <= (slvw_dis or csync) and discl_oen(0);
+                  end if;
+                end if;
+              end process;        
+              -- SCL forced low after master tried to assert, slave is stretching clock
+              slave_wait <= andv(discl_oen(DR downto 1)) and not fSCL(0) and not (slvw_dis or fSCL(1));
+              -- SCL HIGH time cut short, master clock synchronization
+              csync <= andv(discl_oen(DR downto 1)) and not fSCL(0) and fSCL(1);
+
+              -- generate arbitration lost signal
+              -- aribitration lost when:
+              -- 1) master drives SDA high, but the i2c bus is low
+              -- 2) stop detected while not requested (detect during 'idle' state)
+              gen_al: process(clk, nReset)
+              begin
+                if (nReset = '0') then
+                  cmd_stop  <= '0';
+                  ial       <= '0';
+                  disda_oen <= (others => '1');
+                elsif (clk'event and clk = '1') then
+                  if (rst = '1') then
+                    cmd_stop  <= '0';
+                    ial       <= '0';
+                    disda_oen <= (others => '1');
+                  else
+                    if (clk_en = '1') then
+                      if (cmd = I2C_CMD_STOP) then
+                        cmd_stop <= '1';
+                      else
+                        cmd_stop <= '0';
+                      end if;
+                    end if;
+
+                    if (c_state = idle) then
+                      ial <= (sda_chk and not fSDA(0) and disda_oen(DR)); 
+                    else
+                      ial <= (sda_chk and not fSDA(0) and disda_oen(DR)) or
+                             (sto_condition and not cmd_stop);
+                    end if;
+                  end if;
+                  disda_oen <= disda_oen(DR-1 downto 0) & isda_oen;
+                end if;
+              end process gen_al;
+            end block sfblock;            
+          end generate staticfilt;
+
+          -- Dynamic filter
+          dynamicfilt : if dynfilt /= 0 generate
+            -- Fixed window
+            dfblock : block
+              signal filtcnt : std_logic_vector(filter-1 downto 0);
+              signal sSCL, sSDA : std_logic_vector(1 downto 0); -- synchronized SCL and SDA inputs
+              signal fiscl_oen : std_logic_vector(1 downto 0);  -- "filtered" scl_oen signal
+              signal fisda_oen : std_ulogic;  -- "filtered" sda_oen signal
+              signal fSCL_chg, fSDA_chg, fiscl_oen_chg, fisda_oen_chg : std_ulogic;
+              signal discl_oen : std_ulogic;  -- delayed scl_oen signal
+              signal disda_oen : std_ulogic;  -- delayed sda_oen signal
+            begin
+              -- Provides filtered signals for SCL and SDA, and corresponding
+              -- output enable signals.
+              sync_scl_sda: process(clk, nReset, fSCL_chg, fSDA_chg, fiscl_oen_chg, fisda_oen_chg)
+                variable scl_chg, sda_chg, iscl_oen_chg, isda_oen_chg : std_ulogic;
+              begin
+                scl_chg := fSCL_chg; sda_chg := fSDA_chg;
+                iscl_oen_chg := fiscl_oen_chg; isda_oen_chg := fisda_oen_chg;
+	        if (nReset = '0') then                  
+                  filtcnt <= (others => '0');
+                  fSCL <= (others => '1'); fSDA <= (others => '1');
+                  fSCL_chg <= '0'; fSDA_chg <= '0';
+                  fiscl_oen <= (others => '1'); fiscl_oen_chg <= '0';
+                  fisda_oen <= '1'; fisda_oen_chg <= '0';
+	        elsif (clk'event and clk = '1') then
+	          if (rst = '1') or (ena = '0') then                    
+                    filtcnt <= (others => '0');
+                    fSCL <= (others => '1'); fSDA <= (others => '1');
+                    fSCL_chg <= '0'; fSDA_chg <= '0';
+                    fiscl_oen <= (others => '1'); fiscl_oen_chg <= '0';
+                    fisda_oen <= '1'; fisda_oen_chg <= '0';
+                  else
+                    if (sSCL(1) xor fSCL(0)) = '0' then scl_chg := '0'; end if;
+                    if (sSDA(1) xor fSDA(0)) = '0' then sda_chg := '0'; end if;
+                    if (discl_oen xor fiscl_oen(0)) = '0' then iscl_oen_chg := '0'; end if;
+                    if (disda_oen xor fisda_oen) = '0' then isda_oen_chg := '0'; end if;
+                    if filtcnt = zero32((filter-1)*dynfilt downto 0) then
+                      filtcnt <= filt;
+                      fSCL <= fSCL(0) & (fSCL(0) xor scl_chg);
+                      fSDA <= fSDA(0) & (fSDA(0) xor sda_chg);
+                      fSCL_chg <= '1'; fSDA_chg <= '1';
+                      fiscl_oen <= fiscl_oen(0) & (fiscl_oen(0) xor iscl_oen_chg);
+                      fiscl_oen_chg <= '1';
+                      fisda_oen <= fisda_oen xor isda_oen_chg;
+                      fisda_oen_chg <= '1';
+                    else
+                      filtcnt <= filtcnt - 1;
+                      fSDA <= fSDA; fSCL <= fSCL;
+                      fSCL_chg <= scl_chg; fSDA_chg <= sda_chg;
+                      fiscl_oen <= fiscl_oen;
+                      fiscl_oen_chg <= iscl_oen_chg;
+                      fisda_oen <= fisda_oen;
+                      fisda_oen_chg <= isda_oen_chg;
+                    end if;
+                  end if;
+                  sSCL <= sSCL(0) & scl_i;
+                  sSDA <= sSDA(0) & sda_i;
+	        end if;
+              end process sync_SCL_SDA;
+
+              -- whenever the slave is not ready it can delay the cycle by pulling SCL low
+              -- delay scl_oen
+              process (clk)
+              begin
+                if (clk'event and clk = '1') then
+                  if rst = '1' then
+                    discl_oen <= '1';
+                    slvw_dis <= '0';
+                  else
+                    -- Keep SCL output enable values
+                    discl_oen <= iscl_oen;
+                    -- Disable slave stretch detection when other device drives SCL
+                    -- H->L (only a master should to this).
+                    slvw_dis <= (slvw_dis or csync) and discl_oen;
+                  end if;
+                end if;
+              end process;        
+              -- SCL forced low after master tried to assert, slave is stretching clock
+              slave_wait <= andv(fiscl_oen) and not fSCL(0) and not (slvw_dis or fSCL(1));
+              -- SCL HIGH time cut short, master clock synchronization
+              csync <= andv(fiscl_oen) and not fSCL(0) and fSCL(1);
+
+              -- generate arbitration lost signal
+              -- aribitration lost when:
+              -- 1) master drives SDA high, but the i2c bus is low
+              -- 2) stop detected while not requested (detect during 'idle' state)
+              gen_ald: process(clk, nReset)
+              begin
+                if (nReset = '0') then
+                  cmd_stop  <= '0';
+                  ial       <= '0';
+                  disda_oen <= '1';
+                elsif (clk'event and clk = '1') then
+                  if (rst = '1') then
+                    cmd_stop  <= '0';
+                    ial       <= '0';
+                    disda_oen <= '1';
+                  else
+                    if (clk_en = '1') then
+                      if (cmd = I2C_CMD_STOP) then
+                        cmd_stop <= '1';
+                      else
+                        cmd_stop <= '0';
+                      end if;
+                    end if;
+                    if (c_state = idle) then
+                      ial <= (sda_chk and not fSDA(0) and fisda_oen); 
+                    else
+                      ial <= (sda_chk and not fSDA(0) and fisda_oen) or
+                             (sto_condition and not cmd_stop);
+                    end if;
+                    disda_oen <= isda_oen;
+                  end if;
+                end if;
+              end process gen_ald;
+            end block dfblock;
+          end generate dynamicfilt;
+          
+          al <= ial;
+          
+          -- detect start condition => detect falling edge on SDA while SCL is high
+          -- detect stop condition  => detect rising edge on SDA while SCL is high
+          detect_sta_sto: process(clk, nReset)
 	    begin
 	        if (nReset = '0') then
 	          sta_condition <= '0';
@@ -345,43 +523,6 @@ begin
 	        end if;
 	    end process gen_busy;
 	    busy <= ibusy;
-
-
-	    -- generate arbitration lost signal
-	    -- aribitration lost when:
-	    -- 1) master drives SDA high, but the i2c bus is low
-	    -- 2) stop detected while not requested (detect during 'idle' state)
-	    gen_al: process(clk, nReset)
-	    begin
-	      if (nReset = '0') then
-	        cmd_stop  <= '0';
-	        ial       <= '0';
-                disda_oen <= (others => '1');
-	      elsif (clk'event and clk = '1') then
-	        if (rst = '1') then
-	          cmd_stop  <= '0';
-	          ial       <= '0';
-                  disda_oen <= (others => '1');
-	        else
-	          if (clk_en = '1') then
-	            if (cmd = I2C_CMD_STOP) then
-	              cmd_stop <= '1';
-	            else
-	              cmd_stop <= '0';
-	            end if;
-	          end if;
-
-	          if (c_state = idle) then
-	            ial <= (sda_chk and not fSDA(0) and disda_oen(DR)); 
-	          else
-                    ial <= (sda_chk and not fSDA(0) and disda_oen(DR)) or
-                           (sto_condition and not cmd_stop);
-	          end if;
-	        end if;
-                disda_oen <= disda_oen(DR-1 downto 0) & isda_oen;
-	      end if;
-	    end process gen_al;
-	    al <= ial;
 
 	    -- generate dout signal, store dout on rising edge of SCL
 	    gen_dout: process(clk)

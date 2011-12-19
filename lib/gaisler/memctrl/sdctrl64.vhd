@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -135,7 +135,7 @@ type reg_type is record
   cfg           : sdram_cfg_type;
   trfc          : std_logic_vector(3 downto 0);
   refresh       : std_logic_vector(14 downto 0);
-  sdcsn         : std_logic_vector(1  downto 0);
+  sdcsn         : std_logic_vector(3  downto 0);
   sdwen         : std_ulogic;
   rasn          : std_ulogic;
   casn          : std_ulogic;
@@ -161,8 +161,9 @@ begin
   variable regsd   : std_logic_vector(31 downto 0); -- data from registers
   variable dqm     : std_logic_vector(7 downto 0);
   variable raddr   : std_logic_vector(12 downto 0);
-  variable adec    : std_ulogic;
-  variable rams    : std_logic_vector(1 downto 0);
+  variable adec0   : std_ulogic;
+  variable adec1   : std_ulogic;
+  variable rams    : std_logic_vector(3 downto 0);
   variable ba      : std_logic_vector(1 downto 0);
   variable haddr   : std_logic_vector(31 downto 0);
   variable dout    : std_logic_vector(63 downto 0);
@@ -300,9 +301,10 @@ begin
 
 -- generate chip select
 
-    adec := genmux(r.cfg.bsize, haddr(29 downto 22));
+    adec0 := genmux(r.cfg.bsize, haddr(29 downto 22));
+    adec1 := genmux(r.cfg.bsize, haddr(30 downto 23));
     
-    rams := adec & not adec;
+    rams := (adec1 and adec0) & (adec1 and not adec0) & (not adec1 and adec0) & (not adec1 and not adec0);
 
 -- sdram access FSM
 
@@ -314,7 +316,7 @@ begin
     when sidle =>
       if (startsd = '1') and (r.cfg.command = "000") and (r.cmstate = midle) then
         v.address(16 downto 1) := ba & raddr & '0';
-        v.sdcsn := not rams(1 downto 0); v.rasn := '0'; v.sdstate := act1;
+        v.sdcsn := not rams(3 downto 0); v.rasn := '0'; v.sdstate := act1;
         v.startsd := '0';
       elsif (r.idlecnt = "0000") and (r.cfg.command = "000") 
             and (r.cmstate = midle) and (r.cfg.mobileen(1) = '1') then
@@ -380,11 +382,11 @@ begin
       if (r.cfg.trp = '1') then
         v.rasn := '0'; v.sdwen := '0'; v.sdstate := wr4;
       else
-        v.sdcsn := "11"; v.rasn := '1'; v.sdwen := '1'; v.sdstate := sidle;
+        v.sdcsn := "1111"; v.rasn := '1'; v.sdwen := '1'; v.sdstate := sidle;
         v.idlecnt := (others => '1');
       end if;
     when wr4 =>
-      v.sdcsn := "11"; v.rasn := '1'; v.sdwen := '1';
+      v.sdcsn := "1111"; v.rasn := '1'; v.sdwen := '1';
       if (r.cfg.trp = '1') then v.sdstate := wr5;
       else v.sdstate := sidle; v.idlecnt := (others => '1'); end if;
     when wr5 =>
@@ -427,7 +429,7 @@ begin
     when rd3 =>
       v.sdstate := rd4; v.hready := '1'; v.casn := '1';
       if r.sdwen = '0' then
-        v.rasn := '1'; v.sdwen := '1'; v.sdcsn := "11"; v.dqm := (others => '1');
+        v.rasn := '1'; v.sdwen := '1'; v.sdcsn := "1111"; v.dqm := (others => '1');
       else
 	if (ahbsi.htrans = "11") then
 	  if r.size = "11" then v.address(9 downto 1) := r.address(9 downto 1) + 2;
@@ -438,11 +440,11 @@ begin
 
     when rd4 =>
       v.hready := '1'; v.casn := '1';
-      if (ahbsi.htrans /= "11") or (r.sdcsn = "11") or
+      if (ahbsi.htrans /= "11") or (r.sdcsn = "1111") or
          ((r.haddr(5 downto 2) = ("111" & not r.size(0))) and (r.cfg.command = "100")) -- exit on refresh
       then
         v.hready := '0'; v.dqm := (others => '1');
-        if (r.sdcsn /= "11") then
+        if (r.sdcsn /= "1111") then
           v.rasn := '0'; v.sdwen := '0'; v.sdstate := rd5;
         else
           if r.cfg.trp = '1' then v.sdstate := rd6;
@@ -746,6 +748,17 @@ begin
   sdo.cal_pll  <= (others => '0'); sdo.cal_inc  <= (others => '0');
   sdo.conf <= (others => '0'); sdo.odt  <= (others => '0');
   sdo.oct  <= '0'; 
+  sdo.qdrive  <= '0'; 
+  sdo.ce  <= '0'; 
+  sdo.moben  <= '0'; 
+  sdo.cal_rst  <= '0'; 
+  sdo.vcbdrive  <= (others => '0'); 
+  sdo.cbdqm  <= (others => '0'); 
+  sdo.cbcal_en  <= (others => '0'); 
+  sdo.cbcal_inc  <= (others => '0'); 
+  sdo.read_pend  <= (others => '0'); 
+  sdo.regwdata  <= (others => '0'); 
+  sdo.regwrite  <= (others => '0'); 
 
   regs : process(clk, rst) begin
     if rising_edge(clk) then
@@ -763,7 +776,8 @@ begin
     sdo.address  <= r.address(16 downto 2);
     sdo.bdrive   <= r.nbdrive when oepol = 1 else r.bdrive;
     sdo.vbdrive  <= rbdrive;
-    sdo.sdcsn    <= r.sdcsn;
+    sdo.sdcsn    <= r.sdcsn(1 downto 0);
+    sdo.xsdcsn   <= "1111" & r.sdcsn;
     sdo.sdwen    <= r.sdwen;
     sdo.dqm      <= "11111111" & r.dqm;
     sdo.rasn     <= r.rasn;
@@ -778,7 +792,8 @@ begin
         if oepol = 1 then sdo.bdrive <= r.nbdrive;
         else sdo.bdrive <= r.bdrive; end if;
         sdo.vbdrive  <= rbdrive;
-        sdo.sdcsn    <= r.sdcsn;
+        sdo.sdcsn    <= r.sdcsn(1 downto 0);
+        sdo.xsdcsn   <= "1111" & r.sdcsn;
         sdo.sdwen    <= r.sdwen;
         sdo.dqm      <= "11111111" & r.dqm;
         sdo.rasn     <= r.rasn;

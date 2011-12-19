@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@ entity testbench is
     pclow     : integer := CFG_PCLOW;
 
     clkperiod : integer := 20;		-- system clock period
-    romwidth  : integer := 32;		-- rom data width (8/32)
+    romwidth  : integer := 8+8*CFG_MCTRL_RAM16BIT;	-- rom data width (8/16)
     romdepth  : integer := 16;		-- rom address depth
     sramwidth  : integer := 32;		-- ram data width (8/16/32)
     sramdepth  : integer := 18;		-- ram address depth
@@ -258,9 +258,20 @@ begin
             Ba => ba(3 downto 2), Clk => sdclk, Cke => sdcke,
             Cs_n => sdcsn, Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
             Dqm => sddqm(1 downto 0));
-  prom0 : sram generic map (index => 6, abits => romdepth, fname => promfile)
-	port map (address(romdepth-1 downto 0), flash_d(7 downto 0), romsn,
-		  writen, oen);
+
+  rom8 : if romwidth /= 16 generate
+    prom0 : sram16 generic map (index => 4, abits => romdepth, fname => promfile)
+	port map (address(romdepth downto 1), flash_d(15 downto 0), gnd, gnd,
+		romsn, writen, oen);
+    address(0) <= flash_d(15);
+  end generate;
+
+  rom16 : if romwidth = 16 generate
+    prom0 : sram16 generic map (index => 4, abits => romdepth, fname => promfile)
+	port map (address(romdepth downto 1), flash_d(15 downto 0), gnd, gnd,
+		romsn, writen, oen);
+    address(0) <= '0';
+  end generate;
 
   emdio <= 'H';
   erxd <= erxdt(3 downto 0);
@@ -271,7 +282,6 @@ begin
     port map(rst, emdio, etx_clk, erx_clk, erxdt, erx_dv,
       erx_er, erx_col, erx_crs, etxdt, etx_en, etx_er, emdc, gtx_clk);
   error <= 'H';			  -- ERROR pull-up
-  address(0) <= flash_d(15);
 
    iuerr : process
    begin

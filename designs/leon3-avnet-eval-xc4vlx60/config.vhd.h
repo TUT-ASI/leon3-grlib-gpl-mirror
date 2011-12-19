@@ -10,6 +10,8 @@
   constant CFG_CLKMUL   : integer := CONFIG_CLK_MUL;
   constant CFG_CLKDIV   : integer := CONFIG_CLK_DIV;
   constant CFG_OCLKDIV  : integer := CONFIG_OCLK_DIV;
+  constant CFG_OCLKBDIV : integer := CONFIG_OCLKB_DIV;
+  constant CFG_OCLKCDIV : integer := CONFIG_OCLKC_DIV;
   constant CFG_PCIDLL   : integer := CONFIG_PCI_CLKDLL;
   constant CFG_PCISYSCLK: integer := CONFIG_PCI_SYSCLK;
   constant CFG_CLK_NOFB : integer := CONFIG_CLK_NOFB;
@@ -18,12 +20,13 @@
   constant CFG_LEON3  	: integer := CONFIG_LEON3;
   constant CFG_NCPU 	: integer := CONFIG_PROC_NUM;
   constant CFG_NWIN 	: integer := CONFIG_IU_NWINDOWS;
-  constant CFG_V8   	: integer := CFG_IU_V8;
+  constant CFG_V8   	: integer := CFG_IU_V8 + 4*CFG_IU_MUL_STRUCT;
   constant CFG_MAC  	: integer := CONFIG_IU_MUL_MAC;
   constant CFG_BP   	: integer := CONFIG_IU_BP;
   constant CFG_SVT  	: integer := CONFIG_IU_SVT;
   constant CFG_RSTADDR 	: integer := 16#CONFIG_IU_RSTADDR#;
   constant CFG_LDDEL	: integer := CONFIG_IU_LDELAY;
+  constant CFG_NOTAG	: integer := CONFIG_NOTAG;
   constant CFG_NWP  	: integer := CONFIG_IU_WATCHPOINTS;
   constant CFG_PWD 	: integer := CONFIG_PWD*2;
   constant CFG_FPU 	: integer := CONFIG_FPU + 16*CONFIG_FPU_NETLIST;
@@ -76,6 +79,7 @@
   constant CFG_AHB_MON 	  : integer := CONFIG_AHB_MON;
   constant CFG_AHB_MONERR : integer := CONFIG_AHB_MONERR;
   constant CFG_AHB_MONWAR : integer := CONFIG_AHB_MONWAR;
+  constant CFG_AHB_DTRACE : integer := CONFIG_AHB_DTRACE;
 
 -- DSU UART
   constant CFG_AHB_UART	: integer := CONFIG_DSU_UART;
@@ -84,7 +88,7 @@
   constant CFG_AHB_JTAG	: integer := CONFIG_DSU_JTAG;
 
 -- Ethernet DSU
-  constant CFG_DSU_ETH	: integer := CONFIG_DSU_ETH + CONFIG_DSU_ETH_PROG;
+  constant CFG_DSU_ETH	: integer := CONFIG_DSU_ETH + CONFIG_DSU_ETH_PROG + CONFIG_DSU_ETH_DIS;
   constant CFG_ETH_BUF 	: integer := CFG_DSU_ETHB;
   constant CFG_ETH_IPM 	: integer := 16#CONFIG_DSU_IPMSB#;
   constant CFG_ETH_IPL 	: integer := 16#CONFIG_DSU_IPLSB#;
@@ -109,6 +113,15 @@
   constant CFG_DDRSP_COL    	: integer := CONFIG_DDRSP_COL;
   constant CFG_DDRSP_SIZE  	: integer := CONFIG_DDRSP_MBYTE;
   constant CFG_DDRSP_RSKEW 	: integer := CONFIG_DDRSP_RSKEW;
+
+-- Xilinx MIG
+  constant CFG_MIG_DDR2    : integer := CONFIG_MIG_DDR2;
+  constant CFG_MIG_RANKS   : integer := CONFIG_MIG_RANKS;
+  constant CFG_MIG_COLBITS : integer := CONFIG_MIG_COLBITS;
+  constant CFG_MIG_ROWBITS : integer := CONFIG_MIG_ROWBITS;
+  constant CFG_MIG_BANKBITS: integer := CONFIG_MIG_BANKBITS;
+  constant CFG_MIG_HMASK   : integer := 16#CONFIG_MIG_HMASK#;
+
 
 -- AHB ROM
   constant CFG_AHBROMEN	: integer := CONFIG_AHBROM_ENABLE;

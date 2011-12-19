@@ -223,7 +223,7 @@ architecture rtl of pci_arb is
    signal rearb, rearbi     : std_logic;            -- re-arbitration flag
    signal tout, touti       : std_logic_vector(3 downto 0);  -- timeout counter
    signal turn, turni       : std_logic;            -- turnaround cycle
-   signal arb_lvl, arb_lvli : arb_lvl_t := ARB_LVL_C;  -- level registers
+   signal arb_lvl, arb_lvli : arb_lvl_t; -- := ARB_LVL_C;  -- level registers
 
    type nmstarr is array (0 to 3) of agentno_t;
    type nvalarr is array (0 to 3) of boolean;

@@ -18,11 +18,11 @@ add wave -noupdate -format Logic /testbench/flash_we_b
 add wave -noupdate -format Logic /testbench/flash_wait
 add wave -noupdate -format Logic /testbench/flash_reset_b
 add wave -noupdate -format Logic /testbench/flash_oe_b
-add wave -noupdate -format Literal /testbench/flash_d
+add wave -noupdate -format Literal -radix hexadecimal /testbench/flash_d
 add wave -noupdate -format Logic /testbench/flash_clk
 add wave -noupdate -format Logic /testbench/flash_ce_b
 add wave -noupdate -format Logic /testbench/flash_adv_b
-add wave -noupdate -format Literal /testbench/flash_a
+add wave -noupdate -format Literal -radix hexadecimal /testbench/flash_a
 add wave -noupdate -format Logic /testbench/sram_bw
 add wave -noupdate -format Literal /testbench/sim_d
 add wave -noupdate -format Logic /testbench/iosn
@@ -144,9 +144,64 @@ add wave -noupdate -format Literal /testbench/cpu/cgo
 add wave -noupdate -format Literal /testbench/cpu/cgo2
 add wave -noupdate -format Literal /testbench/cpu/clk_sel
 add wave -noupdate -format Logic /testbench/cpu/clkvga
+add wave -noupdate -format Literal -expand /testbench/cpu/migsp0/ahb2mig0/migi
+add wave -noupdate -format Literal -expand /testbench/cpu/migsp0/ahb2mig0/migo
+add wave -noupdate -format Literal -expand /testbench/cpu/migsp0/ahb2mig0/r
+add wave -noupdate -format Literal -radix hexadecimal -expand /testbench/cpu/migsp0/ahb2mig0/ra
+add wave -noupdate -format Literal /testbench/cpu/migsp0/migv5/ddr2_dq
+add wave -noupdate -format Literal /testbench/cpu/migsp0/migv5/ddr2_a
+add wave -noupdate -format Literal /testbench/cpu/migsp0/migv5/ddr2_ba
+add wave -noupdate -format Logic /testbench/cpu/migsp0/migv5/ddr2_ras_n
+add wave -noupdate -format Logic /testbench/cpu/migsp0/migv5/ddr2_cas_n
+add wave -noupdate -format Logic /testbench/cpu/migsp0/migv5/ddr2_we_n
+add wave -noupdate -format Literal /testbench/cpu/migsp0/migv5/ddr2_cs_n
+add wave -noupdate -format Literal /testbench/cpu/migsp0/migv5/ddr2_odt
+add wave -noupdate -format Literal /testbench/cpu/migsp0/migv5/ddr2_cke
+add wave -noupdate -format Literal /testbench/cpu/migsp0/migv5/ddr2_dm
+add wave -noupdate -format Logic /testbench/cpu/migsp0/migv5/sys_clk
+add wave -noupdate -format Logic /testbench/cpu/migsp0/migv5/idly_clk_200
+add wave -noupdate -format Logic /testbench/cpu/migsp0/migv5/sys_rst_n
+add wave -noupdate -format Logic /testbench/cpu/migsp0/migv5/phy_init_done
+add wave -noupdate -format Logic /testbench/cpu/migsp0/migv5/rst0_tb
+add wave -noupdate -format Logic /testbench/cpu/migsp0/migv5/clk0_tb
+add wave -noupdate -format Logic /testbench/cpu/migsp0/migv5/app_wdf_afull
+add wave -noupdate -format Logic /testbench/cpu/migsp0/migv5/app_af_afull
+add wave -noupdate -format Logic /testbench/cpu/migsp0/migv5/rd_data_valid
+add wave -noupdate -format Logic /testbench/cpu/migsp0/migv5/app_wdf_wren
+add wave -noupdate -format Logic /testbench/cpu/migsp0/migv5/app_af_wren
+add wave -noupdate -format Literal /testbench/cpu/migsp0/migv5/app_af_addr
+add wave -noupdate -format Literal /testbench/cpu/migsp0/migv5/app_af_cmd
+add wave -noupdate -format Literal /testbench/cpu/migsp0/migv5/rd_data_fifo_out
+add wave -noupdate -format Literal /testbench/cpu/migsp0/migv5/app_wdf_data
+add wave -noupdate -format Literal /testbench/cpu/migsp0/migv5/app_wdf_mask_data
+add wave -noupdate -format Literal /testbench/cpu/migsp0/migv5/ddr2_dqs
+add wave -noupdate -format Literal /testbench/cpu/migsp0/migv5/ddr2_dqs_n
+add wave -noupdate -format Literal /testbench/cpu/migsp0/migv5/ddr2_ck
+add wave -noupdate -format Literal /testbench/cpu/migsp0/migv5/ddr2_ck_n
+add wave -noupdate -format Logic /testbench/cpu/clkm
+add wave -noupdate -format Logic /testbench/cpu/clkm2x
+add wave -noupdate -format Logic /testbench/cpu/rstn
+add wave -noupdate -format Logic /testbench/cpu/rstraw
+add wave -noupdate -format Logic /testbench/cpu/clkddr
+add wave -noupdate -format Logic /testbench/cpu/clk_200
+add wave -noupdate -format Logic /testbench/cpu/clk25
+add wave -noupdate -format Logic /testbench/cpu/clk40
+add wave -noupdate -format Logic /testbench/cpu/clk65
+add wave -noupdate -format Literal -expand /testbench/cpu/cgi
+add wave -noupdate -format Literal /testbench/cpu/cgi3
+add wave -noupdate -format Literal /testbench/cpu/cgo3
+add wave -noupdate -format Logic /testbench/cpu/clklock
+add wave -noupdate -format Logic /testbench/cpu/lock0
+add wave -noupdate -format Logic /testbench/cpu/lock1
+add wave -noupdate -format Logic /testbench/cpu/lclk
+add wave -noupdate -format Logic /testbench/cpu/clkml0
+add wave -noupdate -format Logic /testbench/cpu/clkml1
+add wave -noupdate -format Logic /testbench/cpu/migsp0/migv5/u_ddr2_idelay_ctrl/clk200
+add wave -noupdate -format Logic /testbench/cpu/migsp0/migv5/u_ddr2_idelay_ctrl/rst200
+add wave -noupdate -format Logic /testbench/cpu/migsp0/migv5/u_ddr2_idelay_ctrl/idelay_ctrl_rdy
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {52212589 ps} 0}
-configure wave -namecolwidth 162
+WaveRestoreCursors {{Cursor 3} {515000 ps} 0} {{Cursor 5} {86792500 ps} 0}
+configure wave -namecolwidth 191
 configure wave -valuecolwidth 110
 configure wave -justifyvalue left
 configure wave -signalnamewidth 0
@@ -158,5 +213,6 @@ configure wave -gridoffset 0
 configure wave -gridperiod 1
 configure wave -griddelta 40
 configure wave -timeline 0
+configure wave -timelineunits ns
 update
-WaveRestoreZoom {157518816 ps} {178444826 ps}
+WaveRestoreZoom {0 ps} {140077875 ps}

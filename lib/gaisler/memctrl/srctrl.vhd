@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -402,7 +402,6 @@ begin
     sro.writen   <= r.writen;
     sro.ramn     <= r.ramsn;
     sro.romn     <= r.romsn;
-
     ahbso.hready  <= r.hready;
     ahbso.hresp   <= r.hresp;
     ahbso.hrdata  <= ahbdrivedata(hrdata);
@@ -422,7 +421,23 @@ begin
   sdo.ba <= (others => '0'); sdo.cb <= (others => '0');
   sdo.vbdrive <= (others => '0'); sdo.qdrive <= '0'; sdo.bdrive <= '0';
   sdo.oct  <= '0'; 
+  sdo.ce <= '0'; sdo.moben <= '0'; sdo.cal_rst <= '0';
+  sdo.xsdcsn <= (others => '0'); sdo.vcbdrive <= (others => '0');
+  sdo.cbdqm <= (others => '0'); sdo.cbcal_en <= (others => '0');
+  sdo.cbcal_inc <= (others => '0'); sdo.read_pend <= (others => '0');
+  sdo.regwdata <= (others => '0'); sdo.regwrite <= (others => '0');
   sro.mben  <= r.mben;
+  sro.sdram_en    <= '0';
+  sro.rs_edac_en  <= '0';
+  sro.ce          <= '0';
+  sro.sddata   <= (others => '0');
+  sro.svbdrive <= (others => '0');
+  sro.sa       <= (others => '0');
+  sro.cb       <= (others => '0');
+  sro.scb      <= (others => '0');
+  sro.vcdrive  <= (others => '0');
+  sro.svcdrive <= (others => '0');
+  sro.scb      <= (others => '0');
 
   regs : process(clk,rst)
   begin

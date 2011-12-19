@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -74,7 +74,8 @@ begin
 -- pragma translate_on
     ;
     clk1xu <= intclk; pciclk <= pciclkin; clk <= intclk; clkn <= not intclk;
-    cgo.clklock <= '1'; cgo.pcilock <= '1'; clk2x <= '0';
+    cgo.clklock <= '1'; cgo.pcilock <= '1'; clk2x <= '0'; clk4x <= '0';
+    clkb <= '0'; clkc <= '0';
   end generate;
   xc2v : if (tech = virtex2) or (tech = virtex4) generate
     v : clkgen_virtex2
@@ -157,21 +158,25 @@ begin
     v : clkgen_proasic3
     generic map (clk_mul, clk_div, clk_odiv, pcien, pcisysclk, freq, clkb_odiv, clkc_odiv)
     port map (clkin, pciclkin, clk, sdclk, pciclk, cgi, cgo, clkb, clkc);
+    clk2x <= '0';
   end generate;
   ap3e : if tech = apa3e generate
     v : clkgen_proasic3e
     generic map (clk_mul, clk_div, clk_odiv, pcien, pcisysclk, freq, clkb_odiv, clkc_odiv)
     port map (clkin, pciclkin, clk, sdclk, pciclk, cgi, cgo, clkb, clkc);
+    clk2x <= '0';
   end generate;
   ap3l : if tech = apa3l generate
     v : clkgen_proasic3l
     generic map (clk_mul, clk_div, clk_odiv, pcien, pcisysclk, freq, clkb_odiv, clkc_odiv)
     port map (clkin, pciclkin, clk, sdclk, pciclk, cgi, cgo, clkb, clkc);
+    clk2x <= '0';
   end generate;
   fus : if tech = actfus generate
     v : clkgen_fusion
     generic map (clk_mul, clk_div, clk_odiv, pcien, pcisysclk, freq, clkb_odiv, clkc_odiv)
     port map (clkin, pciclkin, clk, sdclk, pciclk, cgi, cgo, clkb, clkc);
+    clk2x <= '0';
   end generate;
   dr : if (tech = rhumc)  generate
    v : clkgen_dare

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@ entity leon3sh is
     memtech   : integer range 0 to NTECH  := DEFMEMTECH;
     nwindows  : integer range 2 to 32 := 8;
     dsu       : integer range 0 to 1  := 0;
-    fpu       : integer range 0 to 31 := 0;
+    fpu       : integer range 0 to 63 := 0;
     v8        : integer range 0 to 63 := 0;
     cp        : integer range 0 to 1  := 0;
     mac       : integer range 0 to 1  := 0;
@@ -129,7 +129,7 @@ signal gnd, vcc : std_logic;
 constant IRFWT     : integer := 1;--regfile_3p_write_through(memtech);
 constant FPURFHARD : integer := 1; --1-is_fpga(memtech);
 constant fpuarch   : integer := fpu mod 16;
-constant fpunet    : integer := fpu / 16;
+constant fpunet    : integer := (fpu mod 32) / 16;
 
 begin
 

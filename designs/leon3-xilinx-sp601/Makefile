@@ -12,14 +12,15 @@ EFFORT=high
 XSTOPT="-uc leon3mp.xcf"
 SYNPOPT="set_option -pipe 1; set_option -retiming 1; set_option -write_apr_constraint 0"
 
-VHDLSYNFILES= mig37/mig_37/user_design/rtl/iodrp_controller.vhd \
+VHDLOPTSYNFILES= mig37/mig_37/user_design/rtl/iodrp_controller.vhd \
 	mig37/mig_37/user_design/rtl/iodrp_mcb_controller.vhd \
 	mig37/mig_37/user_design/rtl/mcb_raw_wrapper.vhd \
 	mig37/mig_37/user_design/rtl/mcb_soft_calibration.vhd \
 	mig37/mig_37/user_design/rtl/mcb_soft_calibration_top.vhd \
 	mig37/mig_37/user_design/rtl/memc3_infrastructure.vhd \
 	mig37/mig_37/user_design/rtl/memc3_wrapper.vhd \
-	mig37/mig_37/user_design/rtl/mig_37.vhd \
+	mig37/mig_37/user_design/rtl/mig_37.vhd
+VHDLSYNFILES= \
 	config.vhd ahbrom.vhd ahb2mig_sp601.vhd leon3mp.vhd
 
 VHDLSIMFILES=testbench.vhd
@@ -35,6 +36,7 @@ LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan pci leon3ft ambatest can \
 	usb grusbhc spacewire ata haps coremp7 ascs slink spi hcan \
 	leon4 leon4b64 l2cache pwm gr1553b iommu
+FILEADD=MCB.vhd
 FILESKIP = grcan.vhd
 
 include $(GRLIB)/bin/Makefile

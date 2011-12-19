@@ -35,3 +35,7 @@ grgpreg.vhd
 ahbmst2.vhd
 memscrub.vhd
 ahb_mst_iface.vhd
+i2c2ahbx.vhd
+i2c2ahb.vhd
+i2c2ahb_apb.vhd
+grgprbank.vhd

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -33,7 +33,8 @@ entity iopad is
   generic (tech : integer := 0; level : integer := 0; slew : integer := 0;
 	   voltage : integer := x33v; strength : integer := 12;
 	   oepol : integer := 0; filter : integer := 0);
-  port (pad : inout std_ulogic; i, en : in std_ulogic; o : out std_ulogic);
+  port (pad : inout std_ulogic; i, en : in std_ulogic; o : out std_ulogic;
+        cfgi: in std_logic_vector(19 downto 0) := "00000000000000000000");
 end;
 
 architecture rtl of iopad is
@@ -41,15 +42,25 @@ signal oen : std_ulogic;
 begin
   oen <= not en when oepol /= padoen_polarity(tech) else en;
   gen0 : if has_pads(tech) = 0 generate
-    pad <= i after 2 ns when oen = '0' and slew = 0
-           else i when oen = '0'
+    pad <= transport i 
+-- pragma translate_off
+	after 2 ns 
+-- pragma translate_on
+	when oen = '0' and slew = 0 else i when oen = '0'
 -- pragma translate_off
            else 'X' after 2 ns when is_x(oen) and slew = 0
            else 'X' when is_x(oen)
 -- pragma translate_on
-           else 'Z' after 2 ns when slew = 0
-           else 'Z';
-    o <= to_X01(pad) after 1 ns;
+           else 'Z' 
+-- pragma translate_off
+	after 2 ns 
+-- pragma translate_on
+	when slew = 0 else 'Z';
+    o <= transport to_X01(pad) 
+-- pragma translate_off
+	after 1 ns
+-- pragma translate_on
+	;
   end generate;
   xcv : if (is_unisim(tech) = 1) generate
     x0 : unisim_iopad generic map (level, slew, voltage, strength)
@@ -108,7 +119,7 @@ begin
 	 port map (pad, i, oen, o);
   end generate;
   ut13  : if (tech = ut130) generate
-    x0 : ut130hbd_iopad generic map (level, slew, voltage, strength)
+    x0 : ut130hbd_iopad generic map (level, slew, voltage, strength, filter)
 	 port map (pad, i, oen, o);
   end generate;
   pere  : if (tech = peregrine) generate
@@ -121,7 +132,8 @@ begin
   end generate;
   n2x :  if (tech = easic45) generate
     x0 : n2x_iopad generic map (level, slew, voltage, strength)
-	 port map (pad, i, oen, o);
+	 port map (pad, i, oen, o, cfgi(0), cfgi(1),
+                   cfgi(19 downto 15), cfgi(14 downto 10), cfgi(9 downto 6), cfgi(5 downto 2));
   end generate;
   ut90nhbd : if (tech = ut90) generate
     x0 : ut90nhbd_iopad generic map (level, slew, voltage, strength)
@@ -142,13 +154,14 @@ entity iopadv is
     pad : inout std_logic_vector(width-1 downto 0);
     i   : in  std_logic_vector(width-1 downto 0);
     en  : in  std_ulogic;
-    o   : out std_logic_vector(width-1 downto 0));
+    o   : out std_logic_vector(width-1 downto 0);
+    cfgi: in std_logic_vector(19 downto 0) := "00000000000000000000");
 end;
 architecture rtl of iopadv is
 begin
   v : for j in width-1 downto 0 generate
     x0 : iopad generic map (tech, level, slew, voltage, strength, oepol)
-	 port map (pad(j), i(j), en, o(j));
+	 port map (pad(j), i(j), en, o(j), cfgi);
   end generate;
 end;
 
@@ -165,12 +178,13 @@ entity iopadvv is
     pad : inout std_logic_vector(width-1 downto 0);
     i   : in  std_logic_vector(width-1 downto 0);
     en  : in  std_logic_vector(width-1 downto 0);
-    o   : out std_logic_vector(width-1 downto 0));
+    o   : out std_logic_vector(width-1 downto 0);
+    cfgi: in std_logic_vector(19 downto 0) := "00000000000000000000");  
 end;
 architecture rtl of iopadvv is
 begin
   v : for j in width-1 downto 0 generate
     x0 : iopad generic map (tech, level, slew, voltage, strength, oepol)
-	 port map (pad(j), i(j), en(j), o(j));
+	 port map (pad(j), i(j), en(j), o(j), cfgi);
   end generate;
 end;

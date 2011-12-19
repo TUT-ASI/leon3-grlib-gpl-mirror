@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 -- File:        i2cmst_gen.vhd
 -- Author:      Jan Andersson - Aeroflex Gaisler
 -- Contact:     support@gaisler.com
--- Description: Generic I2CMST
+-- Description: Generic I2CMST, see i2cmst.vhd
 --
 
 library ieee;
@@ -39,7 +39,8 @@ use gaisler.misc.all;
 entity i2cmst_gen is
   generic (
     oepol  : integer range 0 to 1 := 0;    -- output enable polarity
-    filter : integer range 2 to 512 := 2); -- filter length
+    filter  : integer range 2 to 512 := 2; -- filter bit size
+    dynfilt : integer range 0 to 1 := 0);
   port (
     rstn        : in  std_ulogic;
     clk         : in  std_ulogic;
@@ -102,7 +103,7 @@ begin
   
   i2c0 : i2cmst
     generic map (pindex => 0, paddr => 0, pmask => 0, pirq => 0,
-                 oepol  => oepol, filter => filter)
+                 oepol  => oepol, filter => filter, dynfilt => dynfilt)
     port map (rstn, clk, apbi, apbo, i2ci, i2co);
   
 end architecture rtl;

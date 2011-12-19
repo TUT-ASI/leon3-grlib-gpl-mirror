@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -710,7 +710,18 @@ begin
   pciout.ifc.stop <= r.pci.ifc.stop after tval when r.pcien = '0' else 'Z' after tval;
   pciout.ifc.devsel <= r.pci.ifc.devsel after tval when r.pcien = '0' else 'Z' after tval;
   pciout.err.perr <= r.pci.err.perr after tval when r.erren = '0' else 'Z' after tval;
-
+  -- Unused signals
+  pciout.ad.cbe <= (others => 'Z');
+  pciout.ifc.frame <= 'Z';
+  pciout.ifc.irdy <= 'Z';
+  pciout.ifc.lock <= 'Z';
+  pciout.ifc.idsel <= (others => 'Z');
+  pciout.err.serr <= 'Z';
+  pciout.arb <= arb_const;
+  pciout.syst <= syst_const;
+  pciout.ext64 <= ext64_const;
+  pciout.cache <= cache_const;
+  pciout.int <= (others => 'Z');
 end;
 
 -- pragma translate_on

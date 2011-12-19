@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -275,7 +275,8 @@ begin
 ----------------------------------------------------------------------
 
   memi.brdyn <= '1'; memi.bexcn <= '1';
-  memi.writen <= '1'; memi.wrn <= "1111"; memi.bwidth <= "00";
+  memi.writen <= '1'; memi.wrn <= "1111"; 
+  memi.bwidth <= "00" when CFG_MCTRL_RAM16BIT = 0 else "01";
 
   mg2 : if CFG_MCTRL_LEON2 = 1 generate 	-- LEON2 memory controller
     sr1 : entity work.smc_mctrl generic map (hindex => 0, pindex => 0, paddr => 0, 
@@ -294,12 +295,18 @@ begin
 	port map (flash_oen, memo.oen);
     wri_pad  : outpad generic map (tech => padtech) 
 	port map (flash_wen, memo.writen);
-    data_pad : iopadv generic map (tech => padtech, width => 8)
-      port map (flash_d(7 downto 0), memo.data(31 downto 24),
-	memo.bdrive(0), memi.data(31 downto 24));
-    data15_pad : iopad generic map (tech => padtech)
-      port map (flash_d(15), memo.address(0), gnd(0), open);
-
+    rom8 : if CFG_MCTRL_RAM16BIT = 0 generate
+      data_pad : iopadv generic map (tech => padtech, width => 8)
+        port map (flash_d(7 downto 0), memo.data(31 downto 24),
+	  memo.bdrive(0), memi.data(31 downto 24));
+      data15_pad : iopad generic map (tech => padtech)
+        port map (flash_d(15), memo.address(0), gnd(0), open);
+    end generate;
+    rom16 : if CFG_MCTRL_RAM16BIT = 1 generate
+      data_pad : iopadv generic map (tech => padtech, width => 16)
+        port map (flash_d(15 downto 0), memo.data(31 downto 16),
+	  memo.bdrive(0), memi.data(31 downto 16));
+    end generate;
 
       sa_pad : outpadv generic map (width => 12, tech => padtech) 
 	   port map (sdram_a, memo.sa(11 downto 0));
@@ -503,7 +510,12 @@ begin
   led_pad : outpadv generic map (width => 8, tech => padtech) 
     port map (led, ledo);
 
-  byte_pad  : outpad generic map (tech => padtech) port map (flash_byte, gnd(0));
+  rom8 : if CFG_MCTRL_RAM16BIT = 0 generate
+    byte_pad  : outpad generic map (tech => padtech) port map (flash_byte, gnd(0));
+  end generate;
+  rom16 : if CFG_MCTRL_RAM16BIT = 1 generate
+    byte_pad  : outpad generic map (tech => padtech) port map (flash_byte, vcc(0));
+  end generate;
   rpn_pad   : outpad generic map (tech => padtech) port map (flash_rpn, rstn);
   wpn_pad   : outpad generic map (tech => padtech) port map (flash_wpn, vcc(0));
   ready_pad : inpad generic map (tech => padtech) port map (flash_ready, open); 

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -42,12 +42,24 @@ begin
   oen <= not i when oepol /= padoen_polarity(tech) else i;
   gnd <= '0';
   gen0 : if has_pads(tech) = 0 generate
-    pad <= '0' after 2 ns when oen = '0'
+    pad <= '0' 
+-- pragma translate_off
+	after 2 ns 
+-- pragma translate_on
+	when oen = '0'
 -- pragma translate_off
            else 'X' after 2 ns when is_x(i)
 -- pragma translate_on
-           else 'Z' after 2 ns;
-    o <= to_X01(pad) after 1 ns;
+           else 'Z' 
+-- pragma translate_off
+	after 2 ns
+-- pragma translate_on
+	;
+    o <= to_X01(pad) 
+-- pragma translate_off
+	after 1 ns
+-- pragma translate_on
+	;
   end generate;
   xcv : if (is_unisim(tech) = 1) generate
     x0 : unisim_iopad generic map (level, slew, voltage, strength)

@@ -98,7 +98,7 @@ int wait_running(struct spwvars *spw);
 /*sets node specific parameters in the spwvars structure */
 int spw_setparam(int nodeaddr, int clkdiv, int destkey,
                  int timetxen, int timerxen, int spwadr, 
-                 int khz, struct spwvars *spw, int port);
+                 int khz, struct spwvars *spw, int port, int clkdivs);
 
 int spw_setparam_dma(int dmachan, int addr, int mask, int nospill, int rxmaxlen, struct spwvars *spw);
 

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -48,6 +48,7 @@ entity can_mod is
       txo     : out std_logic;    
       testen  : in  std_logic
    );                           
+  attribute sync_set_reset of reset : signal is "true";
 end;                               
 
 architecture rtl of can_mod is 
@@ -91,7 +92,7 @@ begin
 
   ramclear : if syncrst = 2 generate
     comb : process(r, reset, wren_64x8, data_64x8, wraddress_64x8,
-	data_64x4, wren_64x4x1, wraddress_64x4x1)
+	data_64x4, wren_64x4x1, wraddress_64x4x1, data_64x1)
     variable v : reg_type;
     begin
       v := r;

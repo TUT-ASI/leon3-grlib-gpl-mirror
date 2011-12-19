@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -458,15 +458,9 @@ begin
       end if;
       v.underrun := (v.underrun or branch) and not v.overrun;
       v.holdn := not (v.overrun or v.underrun);
-      if (mcio.ready = '1') and (r.req = '0') then --(v.burst = '0') then
+      if (mcio.ready = '1') and (r.req = '0') then
         v.underrun := '0'; v.overrun := '0';
-        if (dco.icdiag.cctrl.ics(0) and not r.flush2) = '1' then
-	  v.istate := stop; v.holdn := '0';
-	else
-          v.istate := idle; v.flush := r.flush2; v.holdn := '1';
-	  if r.overrun = '1' then taddr := ici.fpc(TAG_HIGH downto LINE_LOW);
-	  else taddr := ici.rpc(TAG_HIGH downto LINE_LOW); end if;
-	end if;
+	v.istate := stop; v.holdn := '0';
       end if;
     when stop => 		-- return to main
       taddr := ici.fpc(TAG_HIGH downto LINE_LOW);
@@ -637,6 +631,8 @@ begin
     icrami.twrite    <= ctwrite;
     icrami.flush    <= r.flush2;
     icrami.ctx      <= mmudci.mmctrl1.ctx;
+    icrami.dpar <= (others => '0');
+    icrami.tpar <= (others => (others => '0'));
 
     -- data ram inputs
     icrami.denable   <= enable;
@@ -677,7 +673,10 @@ begin
     ico.set       <= conv_std_logic_vector(set, 2);
     ico.cfg  	  <= icfg;
     ico.idle      <= sidle;
-
+    ico.cstat.chold <= not r.holdn;
+    ico.cstat.mhold <= '0';
+    ico.cstat.tmiss <= mmuico.tlbmiss;
+    ico.cstat.cmiss <= '0';
   end process;
 
 -- Local registers

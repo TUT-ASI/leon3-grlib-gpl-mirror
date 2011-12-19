@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -52,8 +52,10 @@ end;
 architecture rtl of techmult is
   
   signal gnd, vcc       : std_ulogic;
+-- pragma translate_off
   signal pres : std_ulogic := '0';
   signal sonly : std_ulogic := '0';
+-- pragma translate_on
 
 begin
 
@@ -62,26 +64,36 @@ begin
   np : if num_stages = 1 generate
     arch0 : if (arch = 0) generate	--inferred
       product <= mixed_mul(a, b, sign);
+-- pragma translate_off
       pres <= '1';
+-- pragma translate_on
     end generate;
     arch1 : if (arch = 1) generate	-- modgen
       m1717 : if (a_width = 17) and (b_width = 17) generate
         m17 : mul_17_17 generic map (mulpipe => 0)
 		port map (clk, vcc, a, b, product);
+-- pragma translate_off
         pres <= '1'; sonly <= '1';
+-- pragma translate_on
       end generate;
       m3317 : if (a_width = 33) and (b_width = 17) generate
         m33 : mul_33_17 port map (a, b, product);
+-- pragma translate_off
         pres <= '1'; sonly <= '1';
+-- pragma translate_on
       end generate;
       m339 : if (a_width = 33) and (b_width = 9) generate
         m33 : mul_33_9 port map (a, b, product);
+-- pragma translate_off
         pres <= '1'; sonly <= '1';
+-- pragma translate_on
       end generate;
       m3333 : if (a_width = 33) and (b_width = 33) generate
         m33 : mul_33_33 generic map (mulpipe => 0)
 		port map (clk, vcc, a, b, product);
+-- pragma translate_off
         pres <= '1'; sonly <= '1';
+-- pragma translate_on
       end generate;
       mgen  : if not(((a_width = 17) and (b_width = 17)) or
                      ((a_width = 33) and (b_width = 33)) or
@@ -89,14 +101,18 @@ begin
                      ((a_width = 33) and (b_width = 9)))
       generate
         product <= mixed_mul(a, b, sign);
+-- pragma translate_off
         pres <= '1';
+-- pragma translate_on
       end generate;
     end generate;
     arch2 : if (arch = 2) generate	--techspec
     axd : if (tech = axdsp) and (a_width = 33) and (b_width = 33) generate
          m33 : axcel_mul_33x33_signed generic map (pipe => 0)
 		port map (a, b, vcc, clk, product);
+-- pragma translate_off
         pres <= '1'; sonly <= '1';
+-- pragma translate_on
       end generate;
     end generate;
 
@@ -106,7 +122,9 @@ begin
 		num_stages => 1, stall_mode => 0)
         port map (a => a, b => b, clk => clk, en => en, sign => sign, 
 		  product => product);
+-- pragma translate_off
         pres <= '1';
+-- pragma translate_on
     end generate;
   end generate;
 
@@ -117,25 +135,33 @@ begin
 		num_stages => num_stages, stall_mode => stall_mode)
         port map (a => a, b => b, clk => clk, en => en, tc => sign, 
 		  product => product);
+-- pragma translate_off
         pres <= '1';
+-- pragma translate_on
     end generate;
     arch1 : if (arch = 1) generate	-- modgen
       m1717 : if (a_width = 17) and (b_width = 17) generate
         m17 : mul_17_17 generic map (mulpipe => 1)
 		port map (clk, en, a, b, product);
+-- pragma translate_off
         pres <= '1'; sonly <= '1';
+-- pragma translate_on
       end generate;
       m3333 : if (a_width = 33) and (b_width = 33) generate
         m33 : mul_33_33 generic map (mulpipe => 1)
 		port map (clk, en, a, b, product);
+-- pragma translate_off
         pres <= '1'; sonly <= '1';
+-- pragma translate_on
       end generate;
     end generate;
     arch2 : if (arch = 2) generate	--techspec
     axd : if (tech = axdsp) and (a_width = 33) and (b_width = 33) generate
          m33 : axcel_mul_33x33_signed generic map (pipe => 1)
 		port map (a, b, en, clk, product);
+-- pragma translate_off
         pres <= '1'; sonly <= '1';
+-- pragma translate_on
       end generate;
     end generate;
     arch3 : if (arch = 3) generate	-- designware
@@ -144,7 +170,9 @@ begin
 		num_stages => num_stages, stall_mode => stall_mode)
         port map (a => a, b => b, clk => clk, en => en, sign => sign, 
 		  product => product);
+-- pragma translate_off
         pres <= '1';
+-- pragma translate_on
     end generate;
   end generate;
 
@@ -155,7 +183,9 @@ begin
 		num_stages => num_stages, stall_mode => stall_mode)
         port map (a => a, b => b, clk => clk, en => en, tc => sign, 
 		  product => product);
+-- pragma translate_off
         pres <= '1';
+-- pragma translate_on
     end generate;
     arch3 : if (arch = 3) generate	-- designware
       dwm : mul_dw
@@ -163,7 +193,9 @@ begin
 		num_stages => num_stages, stall_mode => stall_mode)
         port map (a => a, b => b, clk => clk, en => en, sign => sign, 
 		  product => product);
+-- pragma translate_off
         pres <= '1';
+-- pragma translate_on
     end generate;
 
   end generate;

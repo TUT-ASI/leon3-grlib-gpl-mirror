@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -57,7 +57,7 @@ entity grspw2 is
     ports        : integer range 1 to 2 := 1;
     dmachan      : integer range 1 to 4 := 1;
     memtech      : integer range 0 to NTECH := DEFMEMTECH;
-    input_type   : integer range 0 to 3 := 0;
+    input_type   : integer range 0 to 4 := 0;
     output_type  : integer range 0 to 2 := 0;
     rxtx_sameclk : integer range 0 to 1 := 0;
     netlist      : integer range 0 to 1 := 0
@@ -281,7 +281,12 @@ rtl : if netlist = 0 generate
       so           => swno.s,
       --time iface
       tickin       => swni.tickin,
+      tickinraw    => swni.tickinraw,
+      timein       => swni.timein,
+      tickindone   => swno.tickindone,
       tickout      => swno.tickout,
+      tickoutraw   => swno.tickoutraw,
+      timeout      => swno.timeout,
       --irq
       irq          => irq,
       --misc     
@@ -322,6 +327,8 @@ rtl : if netlist = 0 generate
       testclk      => clk,
       testrst      => ahbmi.testrst,
       testen       => ahbmi.testen,
+      rxdataout    => swno.rxdataout,
+      rxdav        => swno.rxdav,
       loopback     => swno.loopback
       );
   end generate;
@@ -341,6 +348,8 @@ rtl : if netlist = 0 generate
   
   apbo.pconfig <= pconfig;
   apbo.pindex  <= pindex;
+
+  swno.rmapact     <= '0'; --unused
  
   ------------------------------------------------------------------------------
   -- FIFOS ---------------------------------------------------------------------

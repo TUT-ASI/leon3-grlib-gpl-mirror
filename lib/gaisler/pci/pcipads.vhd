@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -64,7 +64,7 @@ entity pcipads is
     pci_66	: in std_ulogic;
     pcii   	: out pci_in_type;
     pcio   	: in  pci_out_type;
-    pci_int     : inout std_logic_vector(3 downto 0) := conv_std_logic_vector(16#F#, 4) -- Disable int by default
+    pci_int     : inout std_logic_vector(3 downto 0) --:= conv_std_logic_vector(16#F#, 4) -- Disable int by default
     --pci_int     : inout std_logic_vector(3 downto 0) := 
     --                 conv_std_logic_vector(16#F# - (16#F# * oepol), 4) -- Disable int by default
   );
@@ -168,7 +168,17 @@ begin
   -- int = 12 => PCI_INT[C] = inout, PCI_INT[A,B,D] = in
   -- int = 13 => PCI_INT[D] = inout, PCI_INT[A,B,C] = in
 
-  -- int > 13 => PCI_INT[A,B,C,D] = in
+  -- int = 14 => PCI_INT[A,B,C,D] = in
+  
+  -- int = 100 => PCI_INT[A]        = out, PCI_INT[B,C,D]   = Not connected
+  -- int = 101 => PCI_INT[A,B]      = out, PCI_INT[C,D]     = Not connected
+  -- int = 102 => PCI_INT[A,B,C]    = out, PCI_INT[D]       = Not connected
+  -- int = 103 => PCI_INT[A,B,C,D]  = out
+  
+  -- int = 110 => PCI_INT[A]       = inout, PCI_INT[B,C,D]  = in
+  -- int = 111 => PCI_INT[A,B]     = inout, PCI_INT[C,D]    = in
+  -- int = 112 => PCI_INT[A,B,C]   = inout, PCI_INT[D]      = in
+  -- int = 113 => PCI_INT[A,B,C,D] = inout 
 
   interrupt : if int /= 0 generate
     x : for i in 0 to 3 generate 
@@ -176,15 +186,41 @@ begin
         pad_pci_int : odpad generic map (tech => padtech, level => pci33, oepol => oepol)
           port map (pci_int(i), pcio.inten);
       end generate;
-      xio : if i = (int - 10) and int >= 10 generate
+      xonon : if i /= int - 1 and int < 10 and int < 100 generate
+        pci_int(i) <= '1';
+      end generate;
+      xio : if i = (int - 10) and int >= 10 and int < 100 generate
         pad_pci_int : iodpad generic map (tech => padtech, level => pci33, oepol => oepol)
           port map (pci_int(i), pcio.inten, pcii.int(i));
       end generate;
-      xi  : if i /= (int - 10) and int >= 10 generate
+      xi  : if i /= (int - 10) and int >= 10 and int < 100 generate
         pad_pci_int : inpad generic map (tech => padtech, level => pci33)
           port map (pci_int(i), pcii.int(i));
       end generate;
+      
+      x2o : if i <= (int - 100) and int < 110 and int >= 100 generate
+        pad_pci_int : odpad generic map (tech => padtech, level => pci33, oepol => oepol)
+          port map (pci_int(i), pcio.vinten(i));
+      end generate;
+      x2onon : if i > (int - 100) and int < 110 and int >= 100 generate
+        pci_int(i) <= '1';
+      end generate;
+      
+      x2oi : if i <= (int - 110) and int >= 110 generate
+        pad_pci_int : iodpad generic map (tech => padtech, level => pci33, oepol => oepol)
+          port map (pci_int(i), pcio.vinten(i), pcii.int(i));
+      end generate;
+      x2i : if i > (int - 110) and int >= 110 generate
+        pad_pci_int : inpad generic map (tech => padtech, level => pci33)
+          port map (pci_int(i), pcii.int(i));
+      end generate;
+
+
     end generate;
   end generate;
+  nointerrupt : if int = 0 generate
+    pcii.int <= (others => '0');
+  end generate;
+  pcii.pme_status <= '0';
 
 end;

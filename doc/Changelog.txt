@@ -1,4 +1,44 @@
 
+----------------------- Release 1.1.0-b4111 ----------------------------
+
+2011-12-19	Added RGMII interface for GR-XC6S-LX75 board.
+
+2011-11-29	Work-around for Xilinx SecureIP compilation bug
+
+2011-11-29	Added MIG wrapper to a few additional template designs
+
+2011-11-28	Added support for Xilinx ISIM simulator.
+
+2011-11-18	Improved Actel Libero script generation
+
+2011-10-14	MMU system test software: Do not use %local register in leaf
+		function. Could lead to test freeze with GCC 4.4.2.
+
+2011-10-06	DDR2SPA: Added support for registered SDRAM, and read-only
+		tech field to DDR2CFG2 register. Increased core revision to 1
+		in PnP entry.
+
+2011-09-29	SPICTRL: User was allowed to start a new transfer before SCK
+		had transitioned to idle state. If a transfer was started
+		early this could affect the clock phase for CPHA = 0.
+
+2011-09-26	Removed script support for early versions of eTools
+
+2011-09-26	Updated SPICTRL to rev 5 adding SCK filtering in slave mode
+
+2011-09-18	Added "Extending the xconfig GUI configuration" section to
+		GRLIB User's Manual (grlib.pdf).
+
+2011-09-18	Added I2C to AHB bridge (I2C2AHB) core
+
+2011-09-06	AHBCTRL: Update memory map intersection checks and clarify
+		in documentation that the AHB I/O area can be placed within
+		a slave memory area
+
+2011-08-06	Enable 16-bit FLASH interface in leon3-nuhorizon design
+
+2011-07-06	I2CMST: Added option to use dynamic filter
+
 ----------------------- Release 1.1.0-b4108 ----------------------------
 
 2011-06-15	Added DDR2 MIG wrapper for template design for 

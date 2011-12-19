@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -230,11 +230,11 @@ begin
     wait for 2500 ns;
     trst <= '1';
     if to_x01(error) = '1' then wait on error; end if;
-    bscantest(tdo,tck,tms,tdi,10);
+    if CFG_BOUNDSCAN_EN /= 0 then bscantest(tdo,tck,tms,tdi,10); end if;
     assert false
        report "*** IU in error mode, simulation halted ***"
        severity failure ;
-    
+    wait;
   end process;
 
   

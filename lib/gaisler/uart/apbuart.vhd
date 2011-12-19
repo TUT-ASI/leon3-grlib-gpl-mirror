@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -144,7 +144,7 @@ begin
   variable rxclk, txclk : std_logic_vector(2 downto 0);
   variable rxd, ctsn : std_ulogic;
   variable irq : std_logic_vector(NAHBIRQ-1 downto 0);
-  variable paddr : std_logic_vector(7 downto 2);
+  variable paddress : std_logic_vector(7 downto 2);
   variable v : uartregs;
   variable thalffull : std_ulogic;
   variable rhalffull : std_ulogic;
@@ -166,6 +166,8 @@ begin
     rdata := (others => '0'); v.rxdb(1) := r.rxdb(0);
     dready := '0'; thempty := '1'; thalffull := '1'; rhalffull := '0';
     v.ctsn := r.ctsn(0) & uarti.ctsn;
+    paddress := (others => '0');
+    paddress(abits-1 downto 2) := apbi.paddr(abits-1 downto 2);
 
     if fifosize = 1 then
       dready := r.rcnt(0); rfull := dready; tfull := r.tcnt(0);
@@ -198,7 +200,7 @@ begin
 -- read/write registers
 
   if (apbi.psel(pindex) and apbi.penable and (not apbi.pwrite)) = '1' then
-    case paddr(7 downto 2) is
+    case paddress(7 downto 2) is
     when "000000" =>
       rdata(7 downto 0) := r.rhold(conv_integer(r.rraddr));
 	if fifosize = 1 then v.rcnt(0) := '0';
@@ -251,9 +253,8 @@ begin
     end case;
   end if;
 
-    paddr := "000000"; paddr(abits-1 downto 2) := apbi.paddr(abits-1 downto 2);
     if (apbi.psel(pindex) and apbi.penable and apbi.pwrite) = '1' then
-      case paddr(7 downto 2) is
+      case paddress(7 downto 2) is
       when "000000" =>
       when "000001" =>
 	v.frame      := apbi.pwdata(6);
@@ -389,7 +390,7 @@ begin
 -- operation of thempty flag
 
     if (apbi.psel(pindex) and apbi.penable and apbi.pwrite) = '1' then
-      case paddr(4 downto 2) is
+      case paddress(4 downto 2) is
       when "000" =>
         if fifosize = 1 then
 	  v.thold(0) := apbi.pwdata(7 downto 0); v.tcnt(0) := '1';

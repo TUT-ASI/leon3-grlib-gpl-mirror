@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -73,7 +73,8 @@ type pci_out_type is record
   reqen		: std_ulogic;
   locken    	: std_ulogic;
   serren    	: std_ulogic;
-  inten     	: std_ulogic;
+  inten     	: std_logic;
+  vinten     	: std_logic_vector(3 downto 0);
   req    	: std_ulogic;
   ad 	   	: std_logic_vector(31 downto 0);
   cbe 	   	: std_logic_vector(3 downto 0);
@@ -89,7 +90,7 @@ type pci_out_type is record
   power_state	: std_logic_vector(1 downto 0);
   pme_enable	: std_ulogic;
   pme_clear	: std_ulogic;
-  int		: std_ulogic;
+  int		: std_logic;
   rst           : std_ulogic;
 end record;
 
@@ -97,7 +98,7 @@ constant pci_out_none : pci_out_type := (
   aden => '1', vaden => (others => '1'), cbeen => (others => '1'),
   frameen => '1', irdyen => '1', trdyen => '1', devselen => '1',
   stopen => '1', ctrlen => '1', perren => '1', paren => '1', reqen => '1',
-  locken => '1', serren => '1', inten => '1', req => '1', ad => (others => '0'),
+  locken => '1', serren => '1', inten => '1', vinten => (others => '1'), req => '1', ad => (others => '0'),
   cbe => (others => '1'), frame => '1', irdy => '1', trdy => '1', devsel => '1',
   stop => '1', perr => '1', serr => '1', par => '1', lock => '1',
   power_state => (others => '1'), pme_enable => '1',pme_clear => '1',
@@ -477,8 +478,14 @@ component grpci2
     bar3        : integer range 0 to 31 := 0;
     bar4        : integer range 0 to 31 := 0;
     bar5        : integer range 0 to 31 := 0;
-    barprefetch : integer range 0 to 63 := 16#0#;
-    barminsize  : integer range 12 to 31 := 12;
+    bar0_map    : integer := 16#000000#;
+    bar1_map    : integer := 16#000000#;
+    bar2_map    : integer := 16#000000#;
+    bar3_map    : integer := 16#000000#;
+    bar4_map    : integer := 16#000000#;
+    bar5_map    : integer := 16#000000#;
+    bartype     : integer range 0 to 65535 := 16#0000#;
+    barminsize  : integer range 5 to 31 := 12;
     fifo_depth  : integer range 3 to 7 := 3;
     fifo_count  : integer range 2 to 4 := 2; 
     conv_endian : integer range 0 to 1 := 0; -- 1: little (PCI) <~> big (AHB), 0: big (PCI) <=> big (AHB)   
@@ -495,7 +502,31 @@ component grpci2
     tbapben     : integer range 0 to 1 := 0;
     tbpindex    : integer := 0;
     tbpaddr     : integer := 0;
-    tbpmask     : integer := 16#F00#);
+    tbpmask     : integer := 16#F00#;
+    netlist     : integer range 0 to 1 := 0;
+    multifunc   : integer range 0 to 1 := 0; -- Enables Multi-function support
+    multiint    : integer range 0 to 1 := 0;
+    masters     : integer := 16#FFFF#;
+    mf1_deviceid        : integer := 16#0000#;
+    mf1_classcode       : integer := 16#000000#;
+    mf1_revisionid      : integer := 16#00#;
+    mf1_bar0            : integer range 0 to 31 := 0;
+    mf1_bar1            : integer range 0 to 31 := 0;
+    mf1_bar2            : integer range 0 to 31 := 0;
+    mf1_bar3            : integer range 0 to 31 := 0;
+    mf1_bar4            : integer range 0 to 31 := 0;
+    mf1_bar5            : integer range 0 to 31 := 0;
+    mf1_bartype         : integer range 0 to 65535 := 16#0000#;
+    mf1_bar0_map        : integer := 16#000000#;
+    mf1_bar1_map        : integer := 16#000000#;
+    mf1_bar2_map        : integer := 16#000000#;
+    mf1_bar3_map        : integer := 16#000000#;
+    mf1_bar4_map        : integer := 16#000000#;
+    mf1_bar5_map        : integer := 16#000000#;
+    mf1_cap_pointer     : integer := 16#40#;
+    mf1_ext_cap_pointer : integer := 16#00#;
+    mf1_extcfg          : integer := 16#0000000#;
+    mf1_masters         : integer := 16#0000#);
    port(
       rst       : in std_logic;
       clk       : in std_logic;

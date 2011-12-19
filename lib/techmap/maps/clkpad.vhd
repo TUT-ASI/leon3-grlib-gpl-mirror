@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ use techmap.allpads.all;
 entity clkpad is
   generic (tech : integer := 0; level : integer := 0;
 	   voltage : integer := x33v; arch : integer := 0;
-           hf : integer := 0);
+           hf : integer := 0; filter : integer := 0);
   port (pad : in std_ulogic; o : out std_ulogic; rstn : in std_ulogic := '1'; lock : out std_ulogic);
 end;
 
@@ -81,7 +81,8 @@ begin
     u0 : ut025crh_inpad port map (pad, o); lock <= '1';
   end generate;
   ut13 : if (tech = ut130) generate
-    u0 : ut130hbd_inpad port map (pad, o); lock <= '1';
+    u0 : ut130hbd_inpad generic map (level, voltage, filter) 
+	 port map (pad, o); lock <= '1';
   end generate;
   ut9 : if (tech = ut90) generate
     u0 : ut90nhbd_inpad port map (pad, o); lock <= '1';

@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -138,14 +138,14 @@ component leon3mp
     vid_b       : out std_logic_vector(7 downto 0);
 
     spw_clk	: in  std_ulogic;
-    spw_rxdp    : in  std_logic_vector(0 to 2);
-    spw_rxdn    : in  std_logic_vector(0 to 2);
-    spw_rxsp    : in  std_logic_vector(0 to 2);
-    spw_rxsn    : in  std_logic_vector(0 to 2);
-    spw_txdp    : out std_logic_vector(0 to 2);
-    spw_txdn    : out std_logic_vector(0 to 2);
-    spw_txsp    : out std_logic_vector(0 to 2);
-    spw_txsn    : out std_logic_vector(0 to 2);
+    spw_rxdp    : in  std_logic_vector(0 to CFG_SPW_NUM-1);
+    spw_rxdn    : in  std_logic_vector(0 to CFG_SPW_NUM-1);
+    spw_rxsp    : in  std_logic_vector(0 to CFG_SPW_NUM-1);
+    spw_rxsn    : in  std_logic_vector(0 to CFG_SPW_NUM-1);
+    spw_txdp    : out std_logic_vector(0 to CFG_SPW_NUM-1);
+    spw_txdn    : out std_logic_vector(0 to CFG_SPW_NUM-1);
+    spw_txsp    : out std_logic_vector(0 to CFG_SPW_NUM-1);
+    spw_txsn    : out std_logic_vector(0 to CFG_SPW_NUM-1);
 
     usb_clkout    : in std_ulogic;
     usb_d         : inout std_logic_vector(15 downto 0);
@@ -241,14 +241,14 @@ signal vid_b       : std_logic_vector(7 downto 0);
 signal clk3        : std_ulogic := '0';
 
 signal spw_clk	: std_ulogic := '0';
-signal spw_rxdp : std_logic_vector(0 to 2) := "000";
-signal spw_rxdn : std_logic_vector(0 to 2) := "000";
-signal spw_rxsp : std_logic_vector(0 to 2) := "000";
-signal spw_rxsn : std_logic_vector(0 to 2) := "000";
-signal spw_txdp : std_logic_vector(0 to 2);
-signal spw_txdn : std_logic_vector(0 to 2);
-signal spw_txsp : std_logic_vector(0 to 2);
-signal spw_txsn : std_logic_vector(0 to 2);
+signal spw_rxdp : std_logic_vector(0 to CFG_SPW_NUM-1) := (others => '0');
+signal spw_rxdn : std_logic_vector(0 to CFG_SPW_NUM-1) := (others => '0');
+signal spw_rxsp : std_logic_vector(0 to CFG_SPW_NUM-1) := (others => '0');
+signal spw_rxsn : std_logic_vector(0 to CFG_SPW_NUM-1) := (others => '0');
+signal spw_txdp : std_logic_vector(0 to CFG_SPW_NUM-1);
+signal spw_txdn : std_logic_vector(0 to CFG_SPW_NUM-1);
+signal spw_txsp : std_logic_vector(0 to CFG_SPW_NUM-1);
+signal spw_txsn : std_logic_vector(0 to CFG_SPW_NUM-1);
 
 signal usb_clkout    : std_ulogic := '0';
 signal usb_d         : std_logic_vector(15 downto 0);

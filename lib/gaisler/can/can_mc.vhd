@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -53,6 +53,7 @@ entity can_mc is
       can_rxi : in  std_logic_vector(0 to 7);      
       can_txo : out std_logic_vector(0 to 7)
    );                           
+  attribute sync_set_reset of resetn : signal is "true";
 end;                               
 
 architecture rtl of can_mc is 
@@ -157,14 +158,14 @@ begin
   reg : process(clk)
   begin if clk'event and clk = '1' then r <= rin; end if; end process;
 
-  cgen : for i in 0 to ncores-1 generate
+  cgen : for i in 0 to 7 generate
    c0 : if i < ncores generate
       cmod : can_mod generic map (memtech, syncrst, ft)
       port map (reset, clk, cs(i), r.hwrite2, r.haddr(7 downto 0), r.hwdata, 
 	data_out(i), irqo(i), can_rxi(i), can_txo(i), ahbsi.testen);
    end generate;
    c1 : if i >= ncores generate
-      can_txo(i) <= '0'; data_out(i) <= (others => '0'); irqo(i) <= '1';
+      can_txo(i) <= '0'; data_out(i) <= (others => '0');
    end generate;
   end generate;
     

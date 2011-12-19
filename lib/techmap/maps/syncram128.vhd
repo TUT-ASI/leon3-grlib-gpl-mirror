@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@ library ieee;
 library techmap;
 use ieee.std_logic_1164.all;
 use techmap.gencomp.all;
+use techmap.allmem.all;
 library grlib;
 use grlib.config.all;
 use grlib.stdlib.all;
@@ -60,13 +61,17 @@ architecture rtl of syncram128 is
 constant has_sram128 : tech_ability_type := (
 	virtex2 => 1, virtex4 => 1, virtex5 => 1, spartan3 => 1,
 	spartan3e => 1, spartan6 => 1, virtex6 => 1, 
-	tm65gpl => 0, others => 0);
+	tm65gpl => 0, easic45 => 1, others => 0);
 begin
 
   s128 : if has_sram128(tech) = 1 generate
     uni : if (is_unisim(tech) = 1) generate 
       x0 : unisim_syncram128 generic map (abits)
          port map (clk, address, datain, dataout, enable, write);
+    end generate;
+    n2x : if (tech = easic45) generate
+      x0 : n2x_syncram_we generic map (abits => abits, dbits => 128)
+        port map(clk, address, datain, dataout, enable, write);
     end generate;
 -- pragma translate_off
     dmsg : if grlib_debug_level >= 2 generate

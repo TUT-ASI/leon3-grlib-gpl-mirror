@@ -299,14 +299,6 @@ int main(int argc, char *argv[])
         cmdsize = (int *) malloc(sizeof(int));
         replysize = (int *) malloc(sizeof(int));
         
-        if (SPW_FREQ == 0) {
-                spw->clkdivs = loadmem((int)&(spw->regs->clkdiv));
-        } else {
-                spw->clkdivs = SPW_FREQ/10000;
-                if (spw->clkdivs)
-                        spw->clkdivs--;
-        }
-        
         printf("**** TEST STARTED **** \n\n");
         /************************ TEST INIT ***********************************/
         /*Initalize link*/
@@ -314,7 +306,7 @@ int main(int argc, char *argv[])
 
 #if INITIATOR == 1 
   
-        if (spw_setparam(0x1, SPW_CLKDIV, 0xBF, 0, 0, SPW_ADDR, AHBFREQ, spw, SPW_PORT) ) {
+        if (spw_setparam(0x1, SPW_CLKDIV, 0xBF, 0, 0, SPW_ADDR, AHBFREQ, spw, SPW_PORT, SPW_FREQ/10000-1) ) {
                 printf("Illegal parameters to spacewire\n");
                 exit(1);
         }
@@ -325,7 +317,7 @@ int main(int argc, char *argv[])
         
 #else
         
-        if (spw_setparam(0x2, SPW_CLKDIV, 0xBF, 0, 0, SPW_ADDR, AHBFREQ , spw, SPW_PORT) ) {
+        if (spw_setparam(0x2, SPW_CLKDIV, 0xBF, 0, 0, SPW_ADDR, AHBFREQ , spw, SPW_PORT, SPW_FREQ/10000-1) ) {
                 printf("Illegal parameters to spacewire\n");
                 exit(1);
         }

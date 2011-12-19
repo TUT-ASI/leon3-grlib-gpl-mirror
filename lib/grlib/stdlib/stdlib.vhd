@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -94,6 +94,8 @@ function conv_integer(v : std_logic) return integer;
 function conv_std_logic_vector(i : integer; w : integer) return std_logic_vector;
 function conv_std_logic_vector_signed(i : integer; w : integer) return std_logic_vector;
 function conv_std_logic(b : boolean) return std_ulogic;
+attribute sync_set_reset : string;
+attribute async_set_reset : string;
 
 -- Reporting and diagnostics
 

@@ -11,5 +11,5 @@
     <!--                                                                   -->
   </header>
 
-  <version xil_pn:ise_version="11.1" xil_pn:schema_version="2"/>
+  <version xil_pn:ise_version="13.1" xil_pn:schema_version="2"/>
 

@@ -41,12 +41,16 @@ static inline int loadmem(int addr)
 
 int spw_setparam(int nodeaddr, int clkdiv, int destkey,
                  int timetxen, int timerxen, int spwadr, 
-                 int khz, struct spwvars *spw, int port) 
+                 int khz, struct spwvars *spw, int port,
+                 int clkdivs) 
 {
         if ((nodeaddr < 0) || (nodeaddr > 255)) {
                 return 1;
         }
         if ((clkdiv < 0) || (clkdiv > 255)) {
+                return 1;
+        }
+        if ((clkdivs < 0) || (clkdivs > 255)) {
                 return 1;
         }
         if ((destkey < 0) || (destkey > 255)) {
@@ -63,6 +67,7 @@ int spw_setparam(int nodeaddr, int clkdiv, int destkey,
         spw->destkey = destkey;
         spw->nodeaddr = nodeaddr;
         spw->clkdiv = clkdiv;
+        spw->clkdivs = clkdivs;
         spw->khz = khz;
 	spw->port = port;
         spw->regs = (struct spwregs *) spwadr;
@@ -107,9 +112,15 @@ int spw_init(struct spwvars *spw)
         spw->rxunaligned = (tmp >> 30) & 1;
         spw->rmapcrc = (tmp >> 29) & 1;
         spw->dmachan = ((tmp >> 27) & 3) + 1;
+        /*reset core */
+        spw->regs->ctrl = (1 << 6); 
+        tmp = loadmem((int)&(spw->regs->ctrl));
+        while ((tmp >> 6) & 1) {
+                tmp = loadmem((int)&(spw->regs->ctrl));
+        }
         spw->regs->nodeaddr = spw->nodeaddr; /*set node address*/
-        spw->regs->clkdiv = spw->clkdiv | (spw->clkdivs << 8); /* set clock divisor */
-        
+        spw->regs->clkdiv = spw->clkdiv | (spw->clkdivs << 8);  /* set clock divisor */
+
         for(i = 0; i < spw->dmachan; i++) {
                 spw->regs->dma[i].rxmaxlen = spw->dma[i].rxmaxlen; /*set rx maxlength*/
                 if (loadmem((int)&(spw->regs->dma[i].rxmaxlen)) != spw->dma[i].rxmaxlen) {

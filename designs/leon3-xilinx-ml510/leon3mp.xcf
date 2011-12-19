@@ -1,9 +1,9 @@
 NET "clkm"              TNM_NET = "clkm";
-NET "clkml0"             TNM_NET = "clkml0";
-NET "clkml1"             TNM_NET = "clkml1";
 
 ############################################################################
 # Enable these if you run the DDR2 controller unsynchronized from AHB clock
+#NET "clkml0"             TNM_NET = "clkml0";
+#NET "clkml1"             TNM_NET = "clkml1";
 #TIMESPEC "TS_clkm_clkml0" = FROM "clkm" TO "clkml0" TIG;
 #TIMESPEC "TS_clkm_clkml1" = FROM "clkm" TO "clkml1" TIG;
 #TIMESPEC "TS_clkml_clkm0" = FROM "clkml0" TO "clkm" TIG;

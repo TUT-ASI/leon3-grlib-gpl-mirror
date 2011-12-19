@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -266,6 +266,7 @@ begin
       edclsepahb     => ethi.edclsepahb,
       edcldisable    => ethi.edcldisable);
 
+  etho.txd(7 downto 4) <= "0000";
   etho.mdio_oe <= ahbmi.testoen when (scanen = 1) and (ahbmi.testen = '1')
 	else lmdio_oe;
   irqdrv : process(irq)

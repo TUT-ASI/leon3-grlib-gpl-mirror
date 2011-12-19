@@ -12,7 +12,7 @@ EFFORT=high
 XSTOPT="-uc leon3mp.xcf"
 SYNPOPT="set_option -pipe 1; set_option -retiming 0; set_option -enable_prepacking 1;\
 set_option -write_apr_constraint 0;set_option -resource_sharing 1; set_option -symbolic_fsm_compiler 1"
-VHDLSYNFILES= \
+VHDLOPTSYNFILES= \
 	mig_37/user_design/rtl/controller/arb_mux.vhd \
 	mig_37/user_design/rtl/controller/arb_row_col.vhd \
 	mig_37/user_design/rtl/controller/arb_select.vhd \
@@ -63,7 +63,8 @@ VHDLSYNFILES= \
 	mig_37/user_design/rtl/ui/ui_cmd.vhd \
 	mig_37/user_design/rtl/ui/ui_rd_data.vhd \
 	mig_37/user_design/rtl/ui/ui_top.vhd \
-	mig_37/user_design/rtl/ui/ui_wr_data.vhd \
+	mig_37/user_design/rtl/ui/ui_wr_data.vhd
+VHDLSYNFILES= \
 	ahb2mig_ml605.vhd config.vhd ahbrom.vhd \
 	svga2ch7301c.vhd gtxclk.vhd leon3mp.vhd
 VHDLSIMFILES=testbench.vhd
@@ -71,7 +72,7 @@ SIMTOP=testbench
 SDCFILE=default.sdc
 BITGEN=$(GRLIB)/boards/$(BOARD)/default.ut
 CLEAN=soft-clean
-TECHLIBS = unisim secureip 
+TECHLIBS = secureip unisim
 
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp gleichmann usbhc spw gsi cypress hynix \

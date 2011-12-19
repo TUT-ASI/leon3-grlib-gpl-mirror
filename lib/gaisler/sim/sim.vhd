@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -240,7 +240,8 @@ package sim is
       dlen   : in    std_logic_vector(14 downto 0);
       ddi    : in    grusb_dcl_debug_data;
       ddone  : out   std_ulogic;
-      ddo    : out   grusb_dcl_debug_data);
+      ddo    : out   grusb_dcl_debug_data;
+      start  : in    std_ulogic := '1');
   end component;
   
   component ulpi

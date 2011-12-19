@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -415,11 +415,12 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
     hslvdisable : integer := 0; --disable slave checks
     arbdisable  : integer := 0; --disable arbiter checks
     mprio       : integer := 0; --master with highest priority
-    mcheck      : integer := 1; --check memory map for intersects
+    mcheck      : integer range 0 to 2 := 1;  --check memory map for intersects
     ccheck      : integer range 0 to 1 := 1;  --perform sanity checks on pnp config
     acdm        : integer := 0;  --AMBA compliant data muxing (for hsize > word)
     index       : integer := 0;  --index for trace print-out
-    ahbtrace    : integer := 0  --AHB trace enable
+    ahbtrace    : integer := 0;  --AHB trace enable
+    hwdebug     : integer := 0
   );
   port (
     rst     : in  std_ulogic;
@@ -487,7 +488,7 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
     hslvdisable : integer := 0; --disable slave checks
     arbdisable  : integer := 0; --disable arbiter checks
     mprio       : integer := 0; --master with highest priority
-    mcheck      : integer := 1; --check memory map for intersect
+    mcheck      : integer range 0 to 2 := 1;  --check memory map for intersect
     ccheck      : integer range 0 to 1 := 1;  --perform sanity checks on pnp config
     acdm        : integer := 0  --AMBA compliant data muxing (for hsize > word)
   );

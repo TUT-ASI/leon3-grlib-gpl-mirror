@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -424,6 +424,10 @@ begin
       end if;
     end loop;
     bslen := i-tmpout'length/2;
+    if bslen=0 then
+      print("[bscan] Scan chain not present, skipping test");
+      return;
+    end if;
     print("[bscan] Detected boundary scan chain length: " & tost(bslen));
     print("[bscan] Looping over outputs...");
     shift(false,6, conv_std_logic_vector(6,6), tmp6, tck,tms,tdi,tdo, cp);  -- extest
@@ -439,6 +443,7 @@ begin
       tmpin(x) := '1';
       shift(true, bslen, tmpin(bslen-1 downto 0), tmpout(bslen-1 downto 0), tck,tms,tdi,tdo, cp);
     end loop;
+    shift(false,6, conv_std_logic_vector(11,6), tmp6, tck,tms,tdi,tdo, cp);  -- MBIST command
   end procedure;
   
 end;

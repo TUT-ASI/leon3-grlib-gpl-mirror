@@ -198,7 +198,7 @@ begin
   oe <= not oen;
   vcc <= '1'; gnd <= '0';
   reset <= not rst;
-  
+  ddr_clk_fb_out <= '0';
   -- Optional DDR clock multiplication
 
   pll0 : apll 

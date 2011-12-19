@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -46,16 +46,32 @@ begin
            tech = axcel or tech = axdsp or tech = rhlib18t or
            tech = ut25 or tech = ut130 
            generate
-    padp <= i after 2 ns when oen = '0'
+    padp <= i 
+-- pragma translate_off
+	after 2 ns 
+-- pragma translate_on
+	when oen = '0'
 -- pragma translate_off
            else 'X' after 2 ns when is_x(en)
 -- pragma translate_on
-           else 'Z' after 2 ns;
-    padn <= not i after 2 ns when oen = '0'
+           else 'Z' 
+-- pragma translate_off
+	after 2 ns
+-- pragma translate_on
+	;
+    padn <= not i 
+-- pragma translate_off
+	after 2 ns 
+-- pragma translate_on
+	when oen = '0'
 -- pragma translate_off
            else 'X' after 2 ns when is_x(en)
 -- pragma translate_on
-           else 'Z' after 2 ns;
+           else 'Z' 
+-- pragma translate_off
+	after 2 ns
+-- pragma translate_on
+	;
   end generate;
   pa3 : if (tech = apa3) generate
     u0 : apa3_toutpad_ds generic map (level)

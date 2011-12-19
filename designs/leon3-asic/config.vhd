@@ -17,7 +17,7 @@ package config is
   constant CFG_NOASYNC : integer := 1;
   constant CFG_SCAN : integer := 1;
 -- JTAG boundary-scan chain
-  constant CFG_BOUNDSCAN_EN : integer := 1;
+  constant CFG_BOUNDSCAN_EN : integer := 0;
 -- Clock generator
   constant CFG_CLKTECH : integer := inferred;
   constant CFG_CLKMUL : integer := 2;

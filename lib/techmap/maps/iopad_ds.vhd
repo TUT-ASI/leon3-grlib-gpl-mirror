@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -43,17 +43,37 @@ begin
   gen0 : if has_ds_pads(tech) = 0 or 
            tech = axcel or tech = axdsp or tech = rhlib18t or
            tech = ut25 or tech = ut130 generate
-    padp <= i after 2 ns when oen = '0'
+    padp <= transport i 
+-- pragma translate_off
+	after 2 ns 
+-- pragma translate_on
+	when oen = '0' and slew = 0 else i when oen = '0'
 -- pragma translate_off
            else 'X' after 2 ns when is_x(oen)
 -- pragma translate_on
-           else 'Z' after 2 ns;
-    padn <= not i after 2 ns when oen = '0'
+           else 'Z' 
+-- pragma translate_off
+	after 2 ns
+-- pragma translate_on
+	;
+    padn <= transport not i 
+-- pragma translate_off
+	after 2 ns 
+-- pragma translate_on
+	when oen = '0' and slew = 0 else not i when oen = '0'
 -- pragma translate_off
            else 'X' after 2 ns when is_x(oen)
 -- pragma translate_on
-           else 'Z' after 2 ns;
-    o <= to_X01(padp) after 1 ns;
+           else 'Z' 
+-- pragma translate_off
+	after 2 ns
+-- pragma translate_on
+	;
+    o <= to_X01(padp) 
+-- pragma translate_off
+	after 1 ns
+-- pragma translate_on
+	;
   end generate;
   xcv : if is_unisim(tech) = 1 generate
     x0 : unisim_iopad_ds generic map (level, slew, voltage, strength)

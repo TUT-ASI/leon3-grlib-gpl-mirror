@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -112,7 +112,6 @@ type icdiag_in_type is record
   pflush           : std_ulogic;
   pflushaddr       : std_logic_vector(VA_I_U downto VA_I_D); 
   pflushtyp        : std_ulogic;
-  ilock            : std_logic_vector(0 to 3); 
   scanen           : std_ulogic;
 end record;
 

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -87,7 +87,7 @@ architecture rtl of spictrl is
   -----------------------------------------------------------------------------
   -- Constants
   -----------------------------------------------------------------------------
-  constant SPICTRL_REV : integer := 4;
+  constant SPICTRL_REV : integer := 5;
   
   constant PCONFIG : apb_config_type := (
   0 => ahb_device_reg(VENDOR_GAISLER, GAISLER_SPICTRL, 0, SPICTRL_REV, pirq),
@@ -250,10 +250,13 @@ begin
 
   spio.ssn <= (others => '0');
 
-  irqgen : for i in NAHBIRQ-1 downto 0 generate
-    apbo.pirq(i) <= apbo_pirq when i = pirq else '0';
-  end generate irqgen;
-  
+  irqgen : process(apbo_pirq)
+    variable irq : std_logic_vector(NAHBIRQ-1 downto 0);
+  begin
+     irq := (others => '0'); irq(pirq) := apbo_pirq;
+     apbo.pirq <= irq;
+  end process;
+
   apbo.pconfig <= PCONFIG;
   apbo.pindex <= pindex;
   

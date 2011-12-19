@@ -1,8 +1,6 @@
 
 
 
-
-
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
 -- Copyright (C) 2009 Aeroflex Gaisler
@@ -21,9 +19,11 @@ package config is
   constant CFG_SCAN : integer := 0;
 -- Clock generator
   constant CFG_CLKTECH : integer := virtex4;
-  constant CFG_CLKMUL : integer := (5);
+  constant CFG_CLKMUL : integer := (7);
   constant CFG_CLKDIV : integer := (5);
-  constant CFG_OCLKDIV : integer := 2;
+  constant CFG_OCLKDIV : integer := 1;
+  constant CFG_OCLKBDIV : integer := 0;
+  constant CFG_OCLKCDIV : integer := 0;
   constant CFG_PCIDLL : integer := 0;
   constant CFG_PCISYSCLK: integer := 0;
   constant CFG_CLK_NOFB : integer := 0;
@@ -31,21 +31,22 @@ package config is
   constant CFG_LEON3 : integer := 1;
   constant CFG_NCPU : integer := (1);
   constant CFG_NWIN : integer := (8);
-  constant CFG_V8 : integer := 16#32#;
+  constant CFG_V8 : integer := 16#32# + 4*0;
   constant CFG_MAC : integer := 0;
-  constant CFG_BP : integer := 0;
+  constant CFG_BP : integer := 1;
   constant CFG_SVT : integer := 1;
   constant CFG_RSTADDR : integer := 16#00000#;
   constant CFG_LDDEL : integer := (1);
+  constant CFG_NOTAG : integer := 0;
   constant CFG_NWP : integer := (2);
   constant CFG_PWD : integer := 1*2;
-  constant CFG_FPU : integer := 0 + 16*0;
+  constant CFG_FPU : integer := (8+0) + 16*0;
   constant CFG_GRFPUSH : integer := 0;
   constant CFG_ICEN : integer := 1;
   constant CFG_ISETS : integer := 2;
   constant CFG_ISETSZ : integer := 8;
   constant CFG_ILINE : integer := 8;
-  constant CFG_IREPL : integer := 1;
+  constant CFG_IREPL : integer := 0;
   constant CFG_ILOCK : integer := 0;
   constant CFG_ILRAMEN : integer := 0;
   constant CFG_ILRAMADDR: integer := 16#8E#;
@@ -54,9 +55,9 @@ package config is
   constant CFG_DSETS : integer := 2;
   constant CFG_DSETSZ : integer := 4;
   constant CFG_DLINE : integer := 4;
-  constant CFG_DREPL : integer := 1;
+  constant CFG_DREPL : integer := 0;
   constant CFG_DLOCK : integer := 0;
-  constant CFG_DSNOOP : integer := 1 + 0 + 4*0;
+  constant CFG_DSNOOP : integer := 0 + 0 + 4*0;
   constant CFG_DFIXED : integer := 16#0#;
   constant CFG_DLRAMEN : integer := 0;
   constant CFG_DLRAMADDR: integer := 16#8F#;
@@ -88,16 +89,17 @@ package config is
   constant CFG_AHB_MON : integer := 0;
   constant CFG_AHB_MONERR : integer := 0;
   constant CFG_AHB_MONWAR : integer := 0;
+  constant CFG_AHB_DTRACE : integer := 0;
 -- DSU UART
   constant CFG_AHB_UART : integer := 0;
 -- JTAG based DSU interface
   constant CFG_AHB_JTAG : integer := 1;
 -- Ethernet DSU
-  constant CFG_DSU_ETH : integer := 1 + 0;
-  constant CFG_ETH_BUF : integer := 2;
+  constant CFG_DSU_ETH : integer := 1 + 0 + 0;
+  constant CFG_ETH_BUF : integer := 4;
   constant CFG_ETH_IPM : integer := 16#C0A8#;
-  constant CFG_ETH_IPL : integer := 16#0045#;
-  constant CFG_ETH_ENM : integer := 16#020000#;
+  constant CFG_ETH_IPL : integer := 16#010a#;
+  constant CFG_ETH_ENM : integer := 16#020060#;
   constant CFG_ETH_ENL : integer := 16#000015#;
 -- LEON2 memory controller
   constant CFG_MCTRL_LEON2 : integer := 1;
@@ -110,12 +112,19 @@ package config is
   constant CFG_MCTRL_SD64 : integer := 0;
   constant CFG_MCTRL_PAGE : integer := 0 + 0;
 -- DDR controller
-  constant CFG_DDRSP : integer := 1;
-  constant CFG_DDRSP_INIT : integer := 1;
-  constant CFG_DDRSP_FREQ : integer := (90);
-  constant CFG_DDRSP_COL : integer := (9);
-  constant CFG_DDRSP_SIZE : integer := (32);
-  constant CFG_DDRSP_RSKEW : integer := (0);
+  constant CFG_DDRSP : integer := 0;
+  constant CFG_DDRSP_INIT : integer := 0;
+  constant CFG_DDRSP_FREQ : integer := 100;
+  constant CFG_DDRSP_COL : integer := 9;
+  constant CFG_DDRSP_SIZE : integer := 8;
+  constant CFG_DDRSP_RSKEW : integer := 0;
+-- Xilinx MIG
+  constant CFG_MIG_DDR2 : integer := 1;
+  constant CFG_MIG_RANKS : integer := (1);
+  constant CFG_MIG_COLBITS : integer := (10);
+  constant CFG_MIG_ROWBITS : integer := (13);
+  constant CFG_MIG_BANKBITS: integer := (2);
+  constant CFG_MIG_HMASK : integer := 16#FE0#;
 -- AHB ROM
   constant CFG_AHBROMEN : integer := 0;
   constant CFG_AHBROPIP : integer := 0;
@@ -130,9 +139,11 @@ package config is
   constant CFG_GRETH : integer := 1;
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 32;
+
 -- UART 1
   constant CFG_UART1_ENABLE : integer := 1;
   constant CFG_UART1_FIFO : integer := 8;
+
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE : integer := 1;
   constant CFG_IRQ3_NSEC : integer := 0;

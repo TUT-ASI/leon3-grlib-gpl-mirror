@@ -444,14 +444,6 @@ int main(int argc, char *argv[])
         printf("**** GRSPW ROUTER TEST **** \n\n");
         for (i = 0; i < PORTS; i++) {
                 spw[i] = (struct spwvars *) malloc(sizeof(struct spwvars));
-                if (SPW_FREQ == 0) {
-                        spw[i]->clkdivs = loadmem((int)&(spw[i]->regs->clkdiv));
-                } else {
-                        spw[i]->clkdivs = SPW_FREQ/10000;
-                        if (spw[i]->clkdivs)
-                                spw[i]->clkdivs--;
-                }
-                
         }
         
         rxs = (struct rxstatus *) malloc(sizeof(struct rxstatus));
@@ -467,7 +459,7 @@ int main(int argc, char *argv[])
         /************************ TEST INIT ***********************************/
         printf("Initalizing parameters and links");
         for(i = 0; i < PORTS; i++) {
-                if (spw_setparam(i+1, SPW_CLKDIV, 0xBF, 1, 1, SPW_ADDR[i], AHBFREQ, spw[i], 0) ) {
+                if (spw_setparam(i+1, SPW_CLKDIV, 0xBF, 1, 1, SPW_ADDR[i], AHBFREQ, spw[i], 0, SPW_FREQ/10000-1) ) {
                         printf("Illegal parameters to spacewire\n");
                         exit(1);
                 }

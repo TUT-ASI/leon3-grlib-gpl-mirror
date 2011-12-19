@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -396,81 +396,6 @@ package leon3 is
   );
   end component;
 
-  component leon3ft2x
-  generic (
-    hindex    : integer               := 0;
-    fabtech   : integer range 0 to NTECH  := DEFFABTECH;
-    memtech   : integer range 0 to NTECH  := DEFMEMTECH;
-    nwindows  : integer range 2 to 32 := 8;
-    dsu       : integer range 0 to 1  := 0;
-    fpu       : integer range 0 to 31 := 0;
-    v8        : integer range 0 to 63 := 0;
-    cp        : integer range 0 to 1  := 0;
-    mac       : integer range 0 to 1  := 0;
-    pclow     : integer range 0 to 2  := 2;
-    notag     : integer range 0 to 1  := 0;
-    nwp       : integer range 0 to 4  := 0;
-    icen      : integer range 0 to 1  := 0;
-    irepl     : integer range 0 to 3  := 2;
-    isets     : integer range 1 to 4  := 1;
-    ilinesize : integer range 4 to 8  := 4;
-    isetsize  : integer range 1 to 256 := 1;
-    isetlock  : integer range 0 to 1  := 0;
-    dcen      : integer range 0 to 1  := 0;
-    drepl     : integer range 0 to 3  := 2;
-    dsets     : integer range 1 to 4  := 1;
-    dlinesize : integer range 4 to 8  := 4;
-    dsetsize  : integer range 1 to 256 := 1;
-    dsetlock  : integer range 0 to 1  := 0;
-    dsnoop    : integer range 0 to 6  := 0;
-    ilram      : integer range 0 to 1 := 0;
-    ilramsize  : integer range 1 to 512 := 1;
-    ilramstart : integer range 0 to 255 := 16#8e#;
-    dlram      : integer range 0 to 1 := 0;
-    dlramsize  : integer range 1 to 512 := 1;
-    dlramstart : integer range 0 to 255 := 16#8f#;
-    mmuen     : integer range 0 to 1  := 0;
-    itlbnum   : integer range 2 to 64 := 8;
-    dtlbnum   : integer range 2 to 64 := 8;
-    tlb_type  : integer range 0 to 3  := 1;
-    tlb_rep   : integer range 0 to 1  := 0;
-    lddel     : integer range 1 to 2  := 2;
-    disas     : integer range 0 to 2  := 0;
-    tbuf      : integer range 0 to 64 := 0;
-    pwd       : integer range 0 to 2  := 2;     -- power-down
-    svt       : integer range 0 to 1  := 1;     -- single vector trapping
-    rstaddr   : integer               := 0;
-    smp       : integer range 0 to 15 := 0;    -- support SMP systems
-    iuft      : integer range 0 to 4  := 0;
-    fpft      : integer range 0 to 4  := 0;
-    cmft      : integer range 0 to 1  := 0;
-    iuinj     : integer               := 0;
-    ceinj     : integer range 0 to 3  := 0;
-    cached    : integer               := 0;
-    clk2x     : integer               := 1;
-    netlist   : integer               := 0;
-    scantest  : integer               := 0;
-    mmupgsz   : integer range 0 to 5  := 0;
-    bp        : integer               := 1
-  );
-  port (
-    clk    : in  std_ulogic;	-- free-running clock
-    gclk2  : in  std_ulogic;	-- gated 2x clock
-    gfclk2 : in  std_ulogic;	-- gated 2x FPU clock
-    clk2   : in  std_ulogic;    -- free-running 2x clock
-    rstn   : in  std_ulogic;
-    ahbi   : in  ahb_mst_in_type;
-    ahbo   : out ahb_mst_out_type;
-    ahbsi  : in  ahb_slv_in_type;
-    ahbso  : in  ahb_slv_out_vector;    
-    irqi   : in  l3_irq_in_type;
-    irqo   : out l3_irq_out_type;
-    dbgi   : in  l3_debug_in_type;
-    dbgo   : out l3_debug_out_type;
-    clken  : in  std_ulogic
-  );
-  end component; 
-
     -- GRFPU interface
 
   type fp_rf_in_type is record
@@ -507,9 +432,13 @@ package leon3 is
 
   type fpc_debug_out_type is record
     data   : std_logic_vector(31 downto 0);
+    wdata  : std_logic_vector(63 downto 0);
+    wren   : std_logic_vector(1 downto 0);
+    rd     : std_logic_vector(3 downto 0);
   end record;  
 
-  constant fpc_debug_none : fpc_debug_out_type := (data => X"00000000");
+  constant fpc_debug_none : fpc_debug_out_type := 
+	(data => X"00000000", wdata => X"0000000000000000", wren => "00", rd => "0000");
 
   type fpc_in_type is record
     flush  	: std_ulogic;			  -- pipeline flush
@@ -606,7 +535,7 @@ package leon3 is
     memtech   : integer range 0 to NTECH  := DEFMEMTECH;
     nwindows  : integer range 2 to 32 := 8;
     dsu       : integer range 0 to 1  := 0;
-    fpu       : integer range 0 to 31 := 0;
+    fpu       : integer range 0 to 63 := 0;
     v8        : integer range 0 to 63 := 0;
     cp        : integer range 0 to 1  := 0;
     mac       : integer range 0 to 1  := 0;
@@ -664,6 +593,83 @@ package leon3 is
     fpuo   : in  grfpu_out_type
   );
   end component;
+
+  component leon3ft2x
+  generic (
+    hindex    : integer               := 0;
+    fabtech   : integer range 0 to NTECH  := DEFFABTECH;
+    memtech   : integer range 0 to NTECH  := DEFMEMTECH;
+    nwindows  : integer range 2 to 32 := 8;
+    dsu       : integer range 0 to 1  := 0;
+    fpu       : integer range 0 to 63 := 0;
+    v8        : integer range 0 to 63 := 0;
+    cp        : integer range 0 to 1  := 0;
+    mac       : integer range 0 to 1  := 0;
+    pclow     : integer range 0 to 2  := 2;
+    notag     : integer range 0 to 1  := 0;
+    nwp       : integer range 0 to 4  := 0;
+    icen      : integer range 0 to 1  := 0;
+    irepl     : integer range 0 to 3  := 2;
+    isets     : integer range 1 to 4  := 1;
+    ilinesize : integer range 4 to 8  := 4;
+    isetsize  : integer range 1 to 256 := 1;
+    isetlock  : integer range 0 to 1  := 0;
+    dcen      : integer range 0 to 1  := 0;
+    drepl     : integer range 0 to 3  := 2;
+    dsets     : integer range 1 to 4  := 1;
+    dlinesize : integer range 4 to 8  := 4;
+    dsetsize  : integer range 1 to 256 := 1;
+    dsetlock  : integer range 0 to 1  := 0;
+    dsnoop    : integer range 0 to 6  := 0;
+    ilram      : integer range 0 to 1 := 0;
+    ilramsize  : integer range 1 to 512 := 1;
+    ilramstart : integer range 0 to 255 := 16#8e#;
+    dlram      : integer range 0 to 1 := 0;
+    dlramsize  : integer range 1 to 512 := 1;
+    dlramstart : integer range 0 to 255 := 16#8f#;
+    mmuen     : integer range 0 to 1  := 0;
+    itlbnum   : integer range 2 to 64 := 8;
+    dtlbnum   : integer range 2 to 64 := 8;
+    tlb_type  : integer range 0 to 3  := 1;
+    tlb_rep   : integer range 0 to 1  := 0;
+    lddel     : integer range 1 to 2  := 2;
+    disas     : integer range 0 to 2  := 0;
+    tbuf      : integer range 0 to 64 := 0;
+    pwd       : integer range 0 to 2  := 2;     -- power-down
+    svt       : integer range 0 to 1  := 1;     -- single vector trapping
+    rstaddr   : integer               := 0;
+    smp       : integer range 0 to 15 := 0;    -- support SMP systems
+    iuft      : integer range 0 to 4  := 0;
+    fpft      : integer range 0 to 4  := 0;
+    cmft      : integer range 0 to 1  := 0;
+    iuinj     : integer               := 0;
+    ceinj     : integer range 0 to 3  := 0;
+    cached    : integer               := 0;
+    clk2x     : integer               := 1;
+    netlist   : integer               := 0;
+    scantest  : integer               := 0;
+    mmupgsz   : integer range 0 to 5  := 0;
+    bp        : integer               := 1
+  );
+  port (
+    clk    : in  std_ulogic;	-- free-running clock
+    gclk2  : in  std_ulogic;	-- gated 2x clock
+    gfclk2 : in  std_ulogic;	-- gated 2x FPU clock
+    clk2   : in  std_ulogic;    -- free-running 2x clock
+    rstn   : in  std_ulogic;
+    ahbi   : in  ahb_mst_in_type;
+    ahbo   : out ahb_mst_out_type;
+    ahbsi  : in  ahb_slv_in_type;
+    ahbso  : in  ahb_slv_out_vector;    
+    irqi   : in  l3_irq_in_type;
+    irqo   : out l3_irq_out_type;
+    dbgi   : in  l3_debug_in_type;
+    dbgo   : out l3_debug_out_type;
+    fpui   : out grfpu_in_type;
+    fpuo   : in  grfpu_out_type;
+    clken  : in  std_ulogic
+  );
+  end component; 
 
   type dsu_in_type is record
     enable  : std_ulogic;

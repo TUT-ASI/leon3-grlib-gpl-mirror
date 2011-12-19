@@ -2,12 +2,13 @@
 This LEON3 design is tailored to the Xilinx Virtex5 ML510 board
 ---------------------------------------------------------------------
 
-NOTE1: To use LEON/GRLIB on this board with the DDR2SPA controller, you
-       must use unbuffered/unregistered DDR2 memory devices. The devices
-       delivered with the ML510 kit are buffered and cannot be used.
+NOTE1: With revision 1 of the DDR2SPA controller, the controller can 
+       support both registered and unbuffered memory modules. The devices 
+       delivered with the ML510 kit are registered, and when connecting with
+       GRMON the flag -regmem should be specified.
 
-NOTE2: The ML510 has a bug that prevents the use of 64 bit DDR2. See
-       description of the DDR2 interface below.
+NOTE2: The ML510 has a bug that prevents the use of 64 bit unbuffered DDR2. 
+       See description of the DDR2 interface below.
 
 Design specifics:
 
@@ -54,31 +55,30 @@ Design specifics:
 
 * DDR2 is supported and runs OK at 200 MHz. The default setting is
   to run the DDR controller on 2x the system clock. This leads to
-  lower latencies. If the CFG_DDR2SP_NOSYNC generic is set to 0 it
-  is possible to specify the DDR frequency via xconfig. When changing
-  frequency, the delay on the data signals might need to be changed too.
-  How to do this is described in the DDR2SPA section of grip.pdf (see 
-  description of SDCFG3 register).
+  lower latencies since synchronization registers are not needed. 
+  If the CFG_DDR2SP_NOSYNC generic is set to 0, the DDR2 runs 
+  asynchronously and the DDR frequency can be set (in steps of 10 MHz)
+  via xconfig. When changing frequency, the delay on the data signals
+  might need to be changed too. How to do this is described in the DDR2SPA
+  section of grip.pdf (see description of SDCFG3 register), see also the
+  DDR2SPA section in the GRMON manual.
 
   The ML510 board has the DDR clk 1 inverted (DIMM*_DDR2_CK2_N and
-  DIMM*_DDR2_CK2_P have been flipped). This prevents DDR2SPA from
-  using the full 64-bit interface. Instead the core is instantiated
-  with a 32-bit data width. This means that only half of the available
-  memory on a DIMM will be used.
+  DIMM*_DDR2_CK2_P have been flipped). The DDR2 DIMMs shipped with the 
+  ML510 use registered DDR2 and only makes use of DIMM*_DDR2_CK0_*, therefore
+  they are not affected.
 
-  The DDR2 DIMMs shipped with the ML510 use registered DDR2 and only 
-  makes use of DIMM*_DDR2_CK0_*. Therefore designs using memory controllers
-  from Xilinx, that support registered DDR2, works with 64-bit memory width.
-  DDR2SPA from GRLIB does not support registered DDR2 at this time and
-  therefore requires all three clocks to be correctly connected.
+  For unbuffered DIMM:s, the upper half of the memory bus will not work due
+  to this bug, and the DDR controller needs to be configured for 32 bits 
+  operation in this case. The DDR2 data width of the core can be configured
+  via xconfig.
 
-  The core can be configured, via xconfig, to use 64-bit data with. Do
-  not select this setting unless you have a modified board.
   When connecting with GRMON it will set the stack pointer to the top of RAM 
-  of the first memory controller. To have an OS access the full memory the 
-  stack pointer can be manually set to the end of the second memory 
-  controller's area. For the template design the correct switch to GRMON 
-  is -stack 0x7ffffff0.
+  of the first memory controller. If you have 512 MB memory (or more) in 
+  the first slot, you can make the OS access both DIMM:s as one big memory.
+  To do this, the stack pointer needs to be manually set to the end of the 
+  second memory controller's area. For this template design with 512 MB memory
+  in both DIMM:s, the correct switch to GRMON is -stack 0x7ffffff0. 
 
 * The FLASH memory can be programmed using GRMON
 
@@ -357,4 +357,14 @@ Found PCI device in slot 21, function 0, (0xfff5a800) - vendor: 0x10b9, device: 
 grlib>
 grlib> 
 
+* Example MKPROM2 command line, creating bootable image from the application
+  "hello":
+
+mkprom2 -v -dump -freq 80 -romws 15 -romwidth 16 -ddrram 512 -ddrbanks 8 \
+-ddrfreq 160 -ddrcol 1024 -uart 0xc0000100 -baud 38400 -irqmp 0xc0000200 \
+-gpt 0xc0000300 -memc 0xc0000000 -stack 0x5ffffff0 hello
+
+
+Make sure that DIP switch 1 (DSU break) is OFF to allow the processor to
+start execution after system reset.
 

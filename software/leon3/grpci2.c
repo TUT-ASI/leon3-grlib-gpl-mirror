@@ -16,6 +16,15 @@
       Check the incremental data in data[]
       done
 */
+static inline int loadmem(int addr)
+{
+  int tmp;        
+  asm volatile (" lda [%1]1, %0 "
+    : "=r"(tmp)
+    : "r"(addr)
+  );
+  return tmp;
+}
 int grpci2_test(unsigned int base_addr, unsigned int conf_addr, unsigned int apb_addr, int slot) {
   volatile unsigned int *base   = (unsigned int *) base_addr; 
   volatile unsigned int *baseio = (unsigned int *) (conf_addr); 
@@ -39,17 +48,18 @@ int grpci2_test(unsigned int base_addr, unsigned int conf_addr, unsigned int apb
   // Enable PCI master and mem access
   *(conf+1) = tw(0x00000146);
   *(conf+3) = tw(0x00004000);
+  *(conf+0x60/4) = tw(0x00000001);
 
   // BAR0
   *(conf+4) = tw(0x40000000);
-  if (*(conf+4) != tw(0x40000000)) fail(1);
+  if ((*(conf+4) & 0xf0ffffff) != tw(0x40000000)) fail(1);
   // BAR0 to AHB
   //*(conf+17) = tw(0x00000000);
   //if (*(conf+17) != tw(0x00000000)) fail(2);
   *(conf+17) = tw(0xffffffff);
-  tmp = tw(*(conf+17));
+  tmp = tw((*(conf+17) & 0xf0ffffff));
   *(conf+17) = tw(data_addr);
-  if (*(conf+17) != tw((data_addr & tmp))) fail(2);
+  if ((*(conf+17) & 0xf0ffffff) != tw((data_addr & tmp))) fail(2);
 
   // AHB master to PCI
   for (i=0; i<16; i++){
@@ -108,7 +118,8 @@ int grpci2_test(unsigned int base_addr, unsigned int conf_addr, unsigned int apb
   // check data
   report_subtest(5);
   for (i=0;i<16;i++){
-    if (data[i] != i)fail(1);
+    //if (data[i] != i)fail(1);
+    if (loadmem(&data[i]) != i)fail(1);
   }
 
 

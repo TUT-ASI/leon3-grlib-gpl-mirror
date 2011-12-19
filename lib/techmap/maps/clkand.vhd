@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -67,6 +67,10 @@ begin
 
     ut13 : if (tech = ut130) generate
       clkgate : clkand_ut130hbd port map(I => i, en => eni, O => o, tsten => tsten);
+    end generate;
+
+    ut09 : if (tech = ut90) generate
+      clkgate : clkand_ut90nhbd port map(I => i, en => eni, O => o, tsten => tsten);
     end generate;
 
     n2x : if (tech = easic45) generate

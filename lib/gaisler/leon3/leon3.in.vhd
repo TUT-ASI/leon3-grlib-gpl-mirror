@@ -11,7 +11,7 @@
   constant CFG_NOTAG	: integer := CONFIG_NOTAG;
   constant CFG_NWP  	: integer := CONFIG_IU_WATCHPOINTS;
   constant CFG_PWD 	: integer := CONFIG_PWD*2;
-  constant CFG_FPU 	: integer := CONFIG_FPU + 16*CONFIG_FPU_NETLIST;
+  constant CFG_FPU 	: integer := CONFIG_FPU + 16*CONFIG_FPU_NETLIST + 32*CONFIG_FPU_GRFPU_SHARED;
   constant CFG_GRFPUSH  : integer := CONFIG_FPU_GRFPU_SHARED;
   constant CFG_ICEN  	: integer := CONFIG_ICACHE_ENABLE;
   constant CFG_ISETS	: integer := CFG_IU_ISETS;

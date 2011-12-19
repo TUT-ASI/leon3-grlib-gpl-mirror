@@ -25,7 +25,7 @@ TECHLIBS = secureip unisim
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip hynix cypress ihp gleichmann gsi fmf spansion
 DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan pci leon3ft ambatest ddr \
-	leon4 leon4b64 l2cache gr1553b iommu haps ascs slink coremp7
+	leon4 leon4b64 l2cache gr1553b iommu haps ascs slink coremp7 pwm
 FILESKIP = grcan.vhd
 
 include $(GRLIB)/bin/Makefile

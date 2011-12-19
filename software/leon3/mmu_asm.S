@@ -19,7 +19,7 @@ mmu_double:
         andcc   %g2, %g1, %g0
         bne     1b
         nop
-	ldstub [%fp-8], %l6 	! locked acess with page fault
+	ldstub [%fp-8], %g2 	! locked acess with page fault
 	save  %sp, -112, %sp
 	save  %sp, -112, %sp
 	save  %sp, -112, %sp

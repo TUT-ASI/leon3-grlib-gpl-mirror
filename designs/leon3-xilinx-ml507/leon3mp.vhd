@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -370,6 +370,7 @@ begin
       port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso, 
     		irqi(i), irqo(i), dbgi(i), dbgo(i));
     end generate;
+    bus_error(1) <= '0';
     bus_error(0) <= not dbgo(0).error;
   
     dsugen : if CFG_DSU = 1 generate
@@ -400,6 +401,8 @@ begin
 
   txd1 <= duo.txd when  gpioo.val(0) = '1' else u1o.txd;
 
+  txd2 <= '0';                          -- Second UART unused
+  
   ahbjtaggen0 :if CFG_AHB_JTAG = 1 generate
     ahbjtag0 : ahbjtag generic map(tech => fabtech, hindex => NCPU+CFG_AHB_UART)
       port map(rstn, clkm, tck, tms, tdi, tdo, ahbmi, ahbmo(NCPU+CFG_AHB_UART),
@@ -530,7 +533,9 @@ begin
 
   led(0) <= gpioo.val(0); led(1) <= not rxd1;
   led(2) <= not duo.txd when gpioo.val(0) = '1' else not u1o.txd;
-
+  led(3) <= '0';
+  led(12 downto 5) <= (others => '0');
+  
   irqctrl : if CFG_IRQ3_ENABLE /= 0 generate
     irqctrl0 : irqmp			-- interrupt controller
     generic map (pindex => 2, paddr => 2, ncpu => NCPU)

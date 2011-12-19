@@ -19,6 +19,7 @@ define_clock            {n:clkvgap} -name {leon3mp|clkvgap}  -clockgroup vga_clk
 define_clock            {n:clk65} -name {leon3mp|clk65} -freq 65.000 -clockgroup vga65_clkgroup
 define_clock            {n:clk40} -name {leon3mp|clk40} -freq 40.000 -clockgroup vga40_clkgroup
 define_clock            {n:clk25} -name {leon3mp|clk25} -freq 25.000 -clockgroup vga25_clkgroup
+#define_clock -name {n:u_ddr2_infrastructure.sys_clk_ibufg} -period 3.333
 
 #
 # Clock to Clock

@@ -356,11 +356,13 @@ end;
 library ieee; use ieee.std_logic_1164.all;
 entity OBUFDS is
   generic(CAPACITANCE : string := "DONT_CARE";
-	IOSTANDARD  : string  := "DEFAULT");
+	IOSTANDARD  : string  := "DEFAULT";
+     	SLEW : string := "SLOW");
   port (O, OB : out std_ulogic; I : in std_ulogic); end;
 architecture beh of OBUFDS is
 begin
-  o <= to_X01(i) after 1 ns; ob <= not to_X01(i) after 1 ns;
+  o <= to_X01(i) after 2 ns when SLEW = "SLOW" else to_X01(i) after 1 ns;
+  ob <= not to_X01(i) after 2 ns when SLEW = "SLOW" else not to_X01(i) after 1 ns;
 end;
 
 library ieee; use ieee.std_logic_1164.all;
@@ -5714,6 +5716,7 @@ begin
       status(2) <= status_out(2);
     end if;    
    
+   status(7 downto 3) <= "00000";
    wait on clk0_out, clk2x_out, clkdv_out, clkfx_out, first_time_locked, locked_out, rst_ipd, status_out;
    end process;
  
@@ -7673,6 +7676,7 @@ begin
       status(2) <= status_out(2);
     end if;    
    
+   status(7 downto 3) <= "00000";
    wait on clk0_out, clk2x_out, clkdv_out, clkfx_out, first_time_locked, locked_out, rst_ipd, status_out;
    end process;
  

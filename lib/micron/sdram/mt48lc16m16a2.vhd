@@ -1219,7 +1219,11 @@ BEGIN
 		    recaddr(31 downto 24) := (others => '0');
 		  when others => next;
 		  end case;
-                  hexread(l, recdata);
+                  if L.all'length*4 < recdata'length then
+                    hexread(l, recdata(0 to L.all'length*4-1));
+                  else
+                    hexread(l, recdata);
+                  end if;
 
 	 	  if index < 32 then
 		    Bank_Load := recaddr(25 downto 24);

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -507,7 +507,7 @@ component unisim_iopad_ds
 end component;
 
 component unisim_outpad_ds
-  generic (level : integer := lvds; voltage : integer := x33v);
+  generic (level : integer := lvds; slew : integer := 0; voltage : integer := x33v);
   port (padp, padn : out std_ulogic; i : in std_ulogic);
 end component;
 
@@ -582,7 +582,8 @@ end component;
 
 component ut130hbd_iopad  is
   generic (level : integer := 0; slew : integer := 0;
-	   voltage : integer := 0; strength : integer := 0);
+	   voltage : integer := 0; strength : integer := 0;
+	   filter : integer :=0 );
   port (pad : inout std_ulogic; i, en : in std_ulogic; o : out std_ulogic);
 end component;
 
@@ -739,6 +740,9 @@ component atc18rha_clkpad
   port (pad : in std_logic; o : out std_logic);
 end component; 
 
+constant n2x_padcontrol_bits: integer := 22;
+constant n2x_padcontrol_none: std_logic_vector(n2x_padcontrol_bits-1 downto 0) := (others => '0');
+
 component n2x_inpad
   generic (level : integer := 0; voltage : integer := x33v);
   port (pad : in  std_ulogic; o : out std_ulogic);
@@ -747,19 +751,28 @@ end component;
 component n2x_iopad
   generic (level : integer := 0; slew : integer := 0;
   voltage  : integer := x33v; strength : integer := 12);
-  port (pad : inout std_ulogic; i, en  : in std_ulogic; o : out std_ulogic);
+  port (pad : inout std_ulogic; i, en  : in std_ulogic; o : out std_ulogic;
+        compen, compupd: in std_ulogic;
+        pcomp, ncomp: in std_logic_vector(4 downto 0);
+        pslew, nslew: in std_logic_vector(3 downto 0));
 end component;
 
 component n2x_outpad
   generic (level : integer := 0; slew : integer := 0;
   voltage : integer := 0; strength : integer := 12);
-  port (pad : out std_ulogic; i : in std_ulogic);
+  port (pad : out std_ulogic; i : in std_ulogic;
+        compen, compupd: in std_ulogic;
+        pcomp, ncomp: in std_logic_vector(4 downto 0);
+        pslew, nslew: in std_logic_vector(3 downto 0));
 end component;
 
 component n2x_toutpad
   generic (level : integer := 0; slew : integer := 0;
   voltage  : integer := 0; strength : integer := 12);
-  port (pad : out std_ulogic; i, en : in  std_ulogic);
+  port (pad : out std_ulogic; i, en : in  std_ulogic;
+        compen, compupd: in std_ulogic;
+        pcomp, ncomp: in std_logic_vector(4 downto 0);
+        pslew, nslew: in std_logic_vector(3 downto 0));
 end component;
 
 component n2x_inpad_ds
@@ -776,6 +789,21 @@ end component;
 component n2x_outpad_ds
   generic (level : integer := lvds; voltage : integer := x33v);
   port (padp, padn : out std_ulogic; i : in std_ulogic);
+end component;
+
+component n2x_inpad_ddr
+  generic (level : integer := 0; voltage : integer := x33v);
+  port (pad : in std_ulogic; o1, o2 : out std_ulogic; c1, c2 : in std_ulogic;
+  ce : in std_ulogic; r : in std_ulogic; s : in std_ulogic);
+end component;
+
+component n2x_inpad_ddrv
+  generic (level : integer := 0; voltage : integer := x33v; width : integer := 1);
+  port (
+    pad    : in  std_logic_vector(width-1 downto 0);
+    o1, o2 : out std_logic_vector(width-1 downto 0);
+    c1, c2 : in  std_ulogic; ce : in  std_ulogic;
+    r      : in  std_ulogic; s  : in  std_ulogic);
 end component;
 
 end;

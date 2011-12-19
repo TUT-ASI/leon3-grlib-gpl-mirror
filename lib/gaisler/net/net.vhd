@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -53,17 +53,19 @@ package net is
      '0', '0', (others => '0'), (others => '0'), '0', '0');
   
   type eth_out_type is record
-    reset   : std_ulogic;
-    txd     : std_logic_vector(7 downto 0);   
-    tx_en   : std_ulogic; 
-    tx_er   : std_ulogic; 
-    mdc     : std_ulogic;    
-    mdio_o  : std_ulogic; 
-    mdio_oe : std_ulogic;
+    reset          : std_ulogic;
+    txd            : std_logic_vector(7 downto 0);   
+    tx_en          : std_ulogic; 
+    tx_er          : std_ulogic; 
+    mdc            : std_ulogic;    
+    mdio_o         : std_ulogic; 
+    mdio_oe        : std_ulogic;
+    gbit           : std_ulogic;
+    speed          : std_ulogic;
   end record;
 
   constant eth_out_none : eth_out_type :=
-    ('0', (others => '0'), '0', '0', '0', '0', '1');
+    ('0', (others => '0'), '0', '0', '0', '0', '1', '0', '0');
   
   component eth_arb
     generic(

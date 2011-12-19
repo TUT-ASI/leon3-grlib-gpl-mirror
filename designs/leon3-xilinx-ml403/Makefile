@@ -22,9 +22,9 @@ CLEAN=soft-clean
 TECHLIBS = unisim
 
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
-	tmtc openchip hynix ihp gleichmann
+	tmtc openchip hynix ihp gleichmann fmf gsi spansion
 DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan pci leon3ft ambatest can usb \
-	hcan
+	hcan leon4 leon4b64 l2cache slink ascs pwm haps coremp7 gr1553b iommu
 FILESKIP = grcan.vhd simple_spi_top.v
 
 include $(GRLIB)/software/leon3/Makefile

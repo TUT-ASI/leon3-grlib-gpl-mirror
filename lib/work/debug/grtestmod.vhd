@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -94,6 +94,8 @@ constant msg : msgarr := (
 );
 
 signal ior, iow : std_ulogic;
+signal addr : std_logic_vector(21 downto 2);
+signal ldata : std_logic_vector(width-1 downto 0);
 
 begin
 
@@ -102,15 +104,18 @@ begin
 
   data <= (others => 'Z');
 
-  log : process(ior, iow, clk)
+  addr <= to_X01(address) after 1 ns;
+  ldata <= to_X01(data) after 1 ns;
+  
+  log : process(ior, iow) --, clk)
   variable errno, errcnt, subtest, vendorid, deviceid : integer;
-  variable addr : std_logic_vector(21 downto 2);
-  variable ldata : std_logic_vector(width-1 downto 0);
+  --variable addr : std_logic_vector(21 downto 2);
+  --variable ldata : std_logic_vector(width-1 downto 0);
   begin
-    if rising_edge(clk) then
-      addr := to_X01(address);
-      ldata := to_X01(data);
-    end if;
+    --if rising_edge(clk) then
+    --  addr := to_X01(address);
+    --  ldata := to_X01(data);
+    --end if;
     if falling_edge (ior) then
       brdyn <= '1', '0' after 100 ns;
       if addr(15) = '1' then bexcn <= '1', '0' after 100 ns; end if;

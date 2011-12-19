@@ -1,6 +1,7 @@
 devices 
 arith 
 memctrl
+grfpu 
 fpu 
 leon3 
 leon3ft 

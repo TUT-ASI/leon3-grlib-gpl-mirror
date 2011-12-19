@@ -96,6 +96,10 @@ int spw_test(int addr)
   /*initiate registers*/
   regs->ctrl = 0x2;
   regs->ctrl = 0x2;
+  regs->ctrl = 0x2;
+  regs->ctrl = 0x2;
+  regs->ctrl = 0x2;
+  regs->ctrl = 0x2;
   regs->status = 0xFFFFFFFF;
   regs->nodeaddr = 0xFE;
   regs->clkdiv = 0;

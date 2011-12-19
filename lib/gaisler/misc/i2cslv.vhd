@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -553,6 +553,7 @@ begin
    i2co.scloen <= r.scloen;
    i2co.sda <= '0';
    i2co.sdaoen <= r.sdaoen;
+   i2co.enable <= r.reg.ctrl.en;
  end process comb;
 
  reg: process (clk)

@@ -106,6 +106,10 @@
   constant CFG_MCTRL_SD64     : integer := CONFIG_MCTRL_SDRAM_BUS64;
   constant CFG_MCTRL_PAGE     : integer := CONFIG_MCTRL_PAGE + CONFIG_MCTRL_PROGPAGE;
 
+-- Xilinx MIG
+  constant CFG_MIG_DDR2 : integer := CONFIG_MIG_DDR2;
+
+
 -- DDR controller
   constant CFG_DDR2SP  		       : integer := CONFIG_DDR2SP;
   constant CFG_DDR2SP_INIT  	   : integer := CONFIG_DDR2SP_INIT;

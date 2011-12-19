@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -106,7 +106,8 @@ package gr1553b_pkg is
       bc_rtbusmask: integer range 0 to 1 := 1;
       extra_regkeys: integer range 0 to 1 := 0;
       syncrst: integer range 0 to 2 := 1;
-      ahbendian: integer range 0 to 1 := 0
+      ahbendian: integer range 0 to 1 := 0;
+      bm_filters: integer range 0 to 1 := 1
       );
     port(
       clk: in std_logic;

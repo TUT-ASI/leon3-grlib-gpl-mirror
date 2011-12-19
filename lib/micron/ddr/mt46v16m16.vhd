@@ -73,7 +73,8 @@ ENTITY MT46V16M16 IS
         cols_bits : INTEGER :=  9;
         index     : INTEGER :=  0;
 	fname     : string := "sdram.srec";	-- File to read from
-        bbits     : INTEGER :=  16
+        bbits     : INTEGER :=  16;
+        fdelay    : INTEGER :=  0
     );
     PORT (
         Dq    : INOUT STD_LOGIC_VECTOR (data_bits - 1 DOWNTO 0) := (OTHERS => 'Z');
@@ -93,9 +94,9 @@ END MT46V16M16;
 
 ARCHITECTURE behave OF MT46V16M16 IS
     -- Array for Read pipeline
-    TYPE Array_Read_cmnd IS ARRAY (8 DOWNTO 0) OF STD_LOGIC;
-    TYPE Array_Read_bank IS ARRAY (8 DOWNTO 0) OF STD_LOGIC_VECTOR (1 DOWNTO 0);
-    TYPE Array_Read_cols IS ARRAY (8 DOWNTO 0) OF STD_LOGIC_VECTOR (cols_bits - 1 DOWNTO 0);
+    TYPE Array_Read_cmnd IS ARRAY (cols_bits-1 DOWNTO 0) OF STD_LOGIC;
+    TYPE Array_Read_bank IS ARRAY (cols_bits-1 DOWNTO 0) OF STD_LOGIC_VECTOR (1 DOWNTO 0);
+    TYPE Array_Read_cols IS ARRAY (cols_bits-1 DOWNTO 0) OF STD_LOGIC_VECTOR (cols_bits - 1 DOWNTO 0);
 
     -- Array for Write pipeline
     TYPE Array_Write_cmnd IS ARRAY (2 DOWNTO 0) OF STD_LOGIC;
@@ -108,12 +109,12 @@ ARCHITECTURE behave OF MT46V16M16 IS
     TYPE Array_Count_precharge IS ARRAY (3 DOWNTO 0) OF INTEGER;
 
     -- Array for Manual Precharge
-    TYPE Array_A10_precharge  IS ARRAY (8 DOWNTO 0) OF STD_LOGIC;
-    TYPE Array_Bank_precharge IS ARRAY (8 DOWNTO 0) OF STD_LOGIC_VECTOR (1 DOWNTO 0);
-    TYPE Array_Cmnd_precharge IS ARRAY (8 DOWNTO 0) OF STD_LOGIC;
+    TYPE Array_A10_precharge  IS ARRAY (cols_bits-1 DOWNTO 0) OF STD_LOGIC;
+    TYPE Array_Bank_precharge IS ARRAY (cols_bits-1 DOWNTO 0) OF STD_LOGIC_VECTOR (1 DOWNTO 0);
+    TYPE Array_Cmnd_precharge IS ARRAY (cols_bits-1 DOWNTO 0) OF STD_LOGIC;
     
     -- Array for Burst Terminate
-    TYPE Array_Cmnd_bst IS ARRAY (8 DOWNTO 0) OF STD_LOGIC;
+    TYPE Array_Cmnd_bst IS ARRAY (cols_bits-1 DOWNTO 0) OF STD_LOGIC;
 
     -- Array for Memory Access
     TYPE Array_ram_type IS ARRAY (2**cols_bits - 1 DOWNTO 0) OF STD_LOGIC_VECTOR (data_bits - 1 DOWNTO 0);
@@ -277,9 +278,9 @@ BEGIN
         FILE     file_load : TEXT open read_mode is fname;   -- Data load
         FILE     file_dump : TEXT open write_mode is "dumpdata.txt";   -- Data dump
         VARIABLE Bank_Load : std_logic_vector ( 1 DOWNTO 0);
-        VARIABLE rows_load : std_logic_vector (12 DOWNTO 0);
-        VARIABLE cols_load : std_logic_vector ( 8 DOWNTO 0);
-        VARIABLE data_load : std_logic_vector (15 DOWNTO 0);
+        VARIABLE Rows_Load : std_logic_vector (addr_bits-1 DOWNTO 0);
+        VARIABLE Cols_Load : std_logic_vector ( cols_bits-1 DOWNTO 0);
+        VARIABLE Data_Load : std_logic_vector (15 DOWNTO 0);
         VARIABLE i, j      : INTEGER;
         VARIABLE good_load : BOOLEAN;
         VARIABLE l         : LINE;
@@ -1154,23 +1155,23 @@ BEGIN
                 IF Cas_latency_15 = '1' THEN
                     Read_cmnd (3) := '1';
                     Read_bank (3) := Ba;
-                    Read_cols (3) := Addr (8 DOWNTO 0);
+                    Read_cols (3) := Addr (cols_bits-1 DOWNTO 0);
                 ELSIF Cas_latency_2 = '1' THEN
                     Read_cmnd (4) := '1';
                     Read_bank (4) := Ba;
-                    Read_cols (4) := Addr (8 DOWNTO 0);
+                    Read_cols (4) := Addr (cols_bits-1 DOWNTO 0);
                 ELSIF Cas_latency_25 = '1' THEN
                     Read_cmnd (5) := '1';
                     Read_bank (5) := Ba;
-                    Read_cols (5) := Addr (8 DOWNTO 0);
+                    Read_cols (5) := Addr (cols_bits-1 DOWNTO 0);
                 ELSIF Cas_latency_3 = '1' THEN
                     Read_cmnd (6) := '1';
                     Read_bank (6) := Ba;
-                    Read_cols (6) := Addr (8 DOWNTO 0);
+                    Read_cols (6) := Addr (cols_bits-1 DOWNTO 0);
                 ELSIF Cas_latency_4 = '1' THEN
                     Read_cmnd (8) := '1';
                     Read_bank (8) := Ba;
-                    Read_cols (8) := Addr (8 DOWNTO 0);
+                    Read_cols (8) := Addr (cols_bits-1 DOWNTO 0);
                 END IF;
 
                 -- Write to Read: Terminate Write Immediately
@@ -1230,7 +1231,7 @@ BEGIN
                 -- Pipeline for Write
                 Write_cmnd (2) := '1';
                 Write_bank (2) := Ba;
-                Write_cols (2) := Addr (8 DOWNTO 0);
+                Write_cols (2) := Addr (cols_bits-1 DOWNTO 0);
 
                 -- Interrupting a Write with Auto Precharge (same bank only)
                 ASSERT (Write_precharge(CONV_INTEGER(Ba)) = '0')
@@ -1261,7 +1262,7 @@ BEGIN
             END IF;
         END IF;
 
-        IF not file_loaded THEN 		--'
+        IF (now >= (fdelay * 1 us)) and not file_loaded THEN 		--'
 	    file_loaded := true;
             WHILE NOT endfile(file_load) LOOP
                 readline(file_load, l);
@@ -1285,11 +1286,11 @@ BEGIN
 		  end case;
 	 	  case bbits is
 		  when 64 =>	-- 64-bit bank with four 16-bit DDRs
-		    recaddr(31 downto 27) := (others => '0');
+		    recaddr(31 downto 18+cols_bits) := (others => '0');
                     hexread(l, recdata);
-		    Bank_Load := recaddr(26 downto 25);
-		    Rows_Load := recaddr(24 downto 12);
-		    Cols_Load := recaddr(11 downto 3);
+		    Bank_Load := recaddr(17+cols_bits downto 16+cols_bits);
+		    Rows_Load := recaddr(15+cols_bits downto 3+cols_bits);
+		    Cols_Load := recaddr(2+cols_bits downto 3);
                     Init_mem (Bank_Load, To_Integer(Rows_Load));
                     IF Bank_Load = "00" THEN
 		      for i in 0 to 1 loop
@@ -1310,11 +1311,11 @@ BEGIN
                     END IF;
 
 		  when 32 =>	-- 32-bit bank with two 16-bit DDRs
-		    recaddr(31 downto 26) := (others => '0');
+		    recaddr(31 downto 17+cols_bits) := (others => '0');
                     hexread(l, recdata);
-		    Bank_Load := recaddr(25 downto 24);
-		    Rows_Load := recaddr(23 downto 11);
-		    Cols_Load := recaddr(10 downto 2);
+		    Bank_Load := recaddr(16+cols_bits downto 15+cols_bits);
+		    Rows_Load := recaddr(14+cols_bits downto 2+cols_bits);
+		    Cols_Load := recaddr(1+cols_bits downto 2);
                     Init_mem (Bank_Load, To_Integer(Rows_Load));
 
                     IF Bank_Load = "00" THEN
@@ -1338,9 +1339,9 @@ BEGIN
 		  when others =>	-- 16-bit bank with one 16-bit DDR
                     hexread(l, recdata);
 		    recaddr(31 downto 25) := (others => '0');
-		    Bank_Load := recaddr(24 downto 23);
-		    Rows_Load := recaddr(22 downto 10);
-		    Cols_Load := recaddr(9 downto 1);
+		    Bank_Load := recaddr(15+cols_bits downto 14+cols_bits);
+		    Rows_Load := recaddr(13+cols_bits downto 1+cols_bits);
+		    Cols_Load := recaddr(cols_bits downto 1);
                     Init_mem (Bank_Load, To_Integer(Rows_Load));
 
                     IF Bank_Load = "00" THEN

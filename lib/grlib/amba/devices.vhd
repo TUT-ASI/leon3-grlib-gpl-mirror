@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -69,6 +69,7 @@ package devices is
   constant GAISLER_SRCTRL    : amba_device_type := 16#008#;
   constant GAISLER_SDCTRL    : amba_device_type := 16#009#;
   constant GAISLER_SSRCTRL   : amba_device_type := 16#00A#;
+  constant GAISLER_I2C2AHB   : amba_device_type := 16#00B#;
   constant GAISLER_APBUART   : amba_device_type := 16#00C#;
   constant GAISLER_IRQMP     : amba_device_type := 16#00D#;
   constant GAISLER_AHBRAM    : amba_device_type := 16#00E#;
@@ -145,6 +146,9 @@ package devices is
   constant GAISLER_FTSRCTRL8 : amba_device_type := 16#056#;
   constant GAISLER_MEMSCRUB  : amba_device_type := 16#057#;
   constant GAISLER_FTSDCTRL64: amba_device_type := 16#058#;
+  constant GAISLER_NANDFCTRL : amba_device_type := 16#059#;
+  constant GAISLER_N2DLLCTRL : amba_device_type := 16#05A#;
+  constant GAISLER_N2PLLCTRL : amba_device_type := 16#05B#;
 
   constant GAISLER_APBPS2    : amba_device_type := 16#060#;
   constant GAISLER_VGACTRL   : amba_device_type := 16#061#;
@@ -191,6 +195,7 @@ package devices is
   constant GAISLER_EDCLMST   : amba_device_type := 16#08C#;
   constant GAISLER_GRPWTX    : amba_device_type := 16#08D#;
   constant GAISLER_GRPWRX    : amba_device_type := 16#08E#;
+  constant GAISLER_GPREGBANK : amba_device_type := 16#08F#;
 
 
 -- Sun Microsystems
@@ -301,7 +306,13 @@ package devices is
   constant LEON3_NEXTREME1      : system_device_type := 16#0101#;
   constant LEON4_NEXTREME1      : system_device_type := 16#0102#;
   constant LEON3_ACT_FUSION     : system_device_type := 16#0105#;
+  constant LEON3_RTAX_IAA       : system_device_type := 16#0198#;
+  constant LEON3_RTAX_TECNOBIT  : system_device_type := 16#0199#;
+  constant LEON3_RTAX_TDP8      : system_device_type := 16#0200#;
+  constant LEON3_RTAX_CID1      : system_device_type := 16#0201#;
   constant LEON3_RTAX_CID2      : system_device_type := 16#0202#;
+  constant LEON3_RTAX_CID3      : system_device_type := 16#0203#;
+  constant LEON3_RTAX_CID4      : system_device_type := 16#0204#;
   constant LEON3_RTAX_CID5      : system_device_type := 16#0205#;
   constant LEON3_RTAX_CID6      : system_device_type := 16#0206#;
   constant LEON3_RTAX_CID7      : system_device_type := 16#0207#;
@@ -322,9 +333,12 @@ package devices is
   constant ORBITA_1             : system_device_type := 16#0631#;
   constant AEROFLEX_UT699       : system_device_type := 16#0699#;
   constant AEROFLEX_UT700       : system_device_type := 16#0700#;
+  constant GAISLER_GR701        : system_device_type := 16#0701#;
   constant GAISLER_GR702        : system_device_type := 16#0702#;
+  constant GAISLER_GR703        : system_device_type := 16#0703#;
   constant GAISLER_DARE1        : system_device_type := 16#0704#;
   constant GAISLER_GR712RC      : system_device_type := 16#0712#;
+  constant AEROFLEX_UT840       : system_device_type := 16#0840#;
 
 -- pragma translate_off
 
@@ -458,7 +472,11 @@ package devices is
    GAISLER_GRPWTX    => "PacketWire Transmitter with DMA",
    GAISLER_GRPWRX    => "PacketWire Receiver with DMA   ",
    GAISLER_GRIOMMU2  => "IOMMU secondary master i/f     ",
-
+   GAISLER_I2C2AHB   => "I2C to AHB bridge              ",
+   GAISLER_NANDFCTRL => "NAND Flash Controller          ",
+   GAISLER_N2PLLCTRL => "N2X PLL dyncamic cfg. i/f      ",
+   GAISLER_N2DLLCTRL => "N2X DLL dyncamic cfg. i/f      ",
+   GAISLER_GPREGBANK => "General Purpose Register Bank  ",
    others            => "Unknown Device                 ");
 
    constant gaisler_lib : vendor_library_type := (

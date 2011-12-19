@@ -154,12 +154,12 @@ package config is
   constant CFG_MCTRL_SD64 : integer := 0;
   constant CFG_MCTRL_PAGE : integer := 0 + 0;
 -- DDRMP controller
-  constant CFG_DDRMP_EN : integer := 1;
+  constant CFG_DDRMP_EN : integer := 0;
   constant CFG_DDRMP_EN2P : integer := 0;
-  constant CFG_DDRMP_NCS : integer := (1);
-  constant CFG_DDRMP_NDEV : integer := (2);
-  constant CFG_DDRMP_NBITS : integer := (16);
-  constant CFG_DDRMP_MBITS : integer := (64);
+  constant CFG_DDRMP_NCS : integer := 1;
+  constant CFG_DDRMP_NDEV : integer := 2;
+  constant CFG_DDRMP_NBITS : integer := 16;
+  constant CFG_DDRMP_MBITS : integer := 64;
   constant CFG_DDRMP_PERIOD : integer := 1000/100;
 -- AHB ROM
   constant CFG_AHBROMEN : integer := 0;

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -387,6 +387,9 @@ begin
     ictx : if mmuen = 1 generate
       cramo.icramo.ctx(i) <= itdataout(i)((ITWIDTH - (ILRR_BIT+ICLOCK_BIT+1)) downto (ITWIDTH - (ILRR_BIT+ICLOCK_BIT+M_CTX_SZ)));
     end generate;
+    noictx : if mmuen = 0 generate
+      cramo.icramo.ctx(i) <= (others => '0');
+    end generate;
     cramo.icramo.data(i) <= ildataout when (ilram = 1) and ((ISETS = 1) or (i = 1)) and (crami.icramin.ldramin.read = '1') else iddataout(i)(31 downto 0);
     itv : if ilinesize = 4 generate
       cramo.icramo.tag(i)(7 downto 4) <= (others => '0');
@@ -399,20 +402,22 @@ begin
   itx2 : for i in ISETS to MAXSETS-1 generate
     cramo.icramo.tag(i) <= (others => '0');
     cramo.icramo.data(i) <= (others => '0');
+    cramo.icramo.ctx(i) <= (others => '0');
   end generate;
 
 
   itd : for i in 0 to DSETS-1 generate
     cramo.dcramo.tag(i)(TAG_HIGH downto DTAG_LOW) <= dtdataout(i)(DTAG_BITS-1 downto (DTAG_BITS-1) - (TAG_HIGH - DTAG_LOW));
-    --(DTWIDTH-1-(DLRR_BIT+DCLOCK_BIT) downto DTWIDTH-(TAG_HIGH-DTAG_LOW)-(DLRR_BIT+DCLOCK_BIT)-1);
-    --cramo.dcramo.tag(i)(TAG_HIGH downto DTAG_LOW) <= dtdataout(i)(DTWIDTH-1-(DLRR_BIT+DCLOCK_BIT) downto DTWIDTH-(TAG_HIGH-DTAG_LOW)-(DLRR_BIT+DCLOCK_BIT)-1);
     cramo.dcramo.tag(i)(dlinesize-1 downto 0) <= dtdataout(i)(dlinesize-1 downto 0);
     cramo.dcramo.tag(i)(CTAG_LRRPOS) <= dtdataout(i)(DTWIDTH - (1+DCLOCK_BIT));
     cramo.dcramo.tag(i)(CTAG_LOCKPOS) <= dtdataout(i)(DTWIDTH-1);     
-    ictx : if mmuen /= 0 generate
+    dctx : if mmuen /= 0 generate
       cramo.dcramo.ctx(i) <= dtdataout(i)((DTWIDTH - (DLRR_BIT+DCLOCK_BIT+1)) downto (DTWIDTH - (DLRR_BIT+DCLOCK_BIT+M_CTX_SZ)));
     end generate;
-    
+    nodctx : if mmuen = 0 generate
+      cramo.dcramo.ctx(i) <= (others => '0');
+    end generate;
+
     cramo.dcramo.stag(i)(TAG_HIGH downto DTAG_LOW) <= dtdataout3(i)(DTAG_BITS-1 downto (DTAG_BITS-1) - (TAG_HIGH - DTAG_LOW))
     when DSNOOPSEP else dtdataout2(i)(DTAG_BITS-1 downto (DTAG_BITS-1) - (TAG_HIGH - DTAG_LOW));
     
@@ -431,6 +436,7 @@ begin
     cramo.dcramo.tag(i) <= (others => '0');
     cramo.dcramo.stag(i) <= (others => '0');
     cramo.dcramo.data(i) <= (others => '0');
+    cramo.dcramo.ctx(i) <= (others => '0');
   end generate;
 
   nodrv : for i in 0 to MAXSETS-1 generate
@@ -439,10 +445,6 @@ begin
     cramo.dcramo.spar(i) <= '0';
     cramo.icramo.tpar(i) <= (others => '0');
     cramo.icramo.dpar(i) <= (others => '0');
-    nommu : if mmuen = 0 generate
-      cramo.icramo.ctx(i) <= (others => '0');
-      cramo.dcramo.ctx(i) <= (others => '0');
-    end generate;
   end generate;
 
 end ;

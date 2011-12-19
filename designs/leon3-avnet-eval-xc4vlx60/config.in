@@ -39,6 +39,7 @@ comment 'Peripherals             '
   comment 'Memory controllers             '
     source lib/esa/memoryctrl/mctrl.in
     source lib/gaisler/ddr/ddrsp.in
+    source lib/gaisler/ddr/mig.in
   endmenu
 
   mainmenu_option next_comment

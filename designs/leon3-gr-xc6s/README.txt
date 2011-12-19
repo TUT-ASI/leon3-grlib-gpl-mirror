@@ -37,6 +37,8 @@ Design specifics
 
 * The GRETH core is enabled and runs without problems at 100 Mbit.
   Ethernet debug link is enabled and has IP 192.168.0.51.
+  1 Gbit operation is also possible (requires grlib com release),
+  uncomment related timing constraints in the leon3mp.ucf first.
 
 * 8-bit flash prom can be read at address 0. It can be programmed
   with GRMON version 1.1.16 or later.

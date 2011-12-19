@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -369,6 +369,8 @@ begin
 
     ri<=v;
   end process comb;
+  atao.iordy <= '1';
+  atao.pdiag <= '0';
 
   with r.ram.oe select
     s_d<=r.ram_dta when '1',

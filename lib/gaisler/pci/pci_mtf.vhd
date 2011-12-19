@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -81,6 +81,7 @@ entity pci_mtf is
       ahbsi     : in  ahb_slv_in_type;
       ahbso     : out ahb_slv_out_type
 );
+  attribute sync_set_reset of rst : signal is "true"; 
 end;
 
 architecture rtl of pci_mtf is
@@ -317,6 +318,7 @@ attribute sync_set_reset : string;
 attribute sync_set_reset of prrst : signal is "true";
 attribute async_set_reset : string;
 attribute async_set_reset of pcirst : signal is "true";
+attribute sync_set_reset of pcirst : signal is "true";
 
 attribute syn_preserve : boolean;
 attribute syn_preserve of roe_ad : signal is true; 
@@ -1081,6 +1083,7 @@ begin
             v.bus_nr  := (others => '0');
             v.irq     := (others => '0');
             v.irq_en  := (others => '0');
+            v.m.cbe_prep_cnt := '0';
         end if;
 
         apbo.prdata  <= prdata;
@@ -1123,7 +1126,7 @@ begin
 ---------------------------------
     
     pcicomb : process(pr, pcii, r, r2, fifo1o, fifo3o, roe_ad, prrst, ahbmi,
-                      pcirstin)
+                      pcirstin, ad)
         
         variable v : pci_reg_type;
         variable chit, mhit0, mhit1, phit, hit, hosthit, ready, cwrite, retry : std_logic;

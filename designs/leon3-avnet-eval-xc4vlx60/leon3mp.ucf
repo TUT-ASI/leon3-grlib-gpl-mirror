@@ -1,9 +1,15 @@
-NET "clk_100mhz" 		LOC = "C13";  
+NET "clk_100mhz" 		LOC = "C13" | IOSTANDARD=LVCMOS25;  
 NET "clk_100mhz" 		TNM_NET = "clk_100mhz";
 TIMESPEC "TS_clk_100mhz" = PERIOD "clk_100mhz" 10.00 ns HIGH 50 %;
-NET "clk_50mhz" 		LOC = "B17";  
+NET "clk_50mhz" 		LOC = "B17" | IOSTANDARD=LVCMOS25;  
 NET "clk_50mhz" 		TNM_NET = "clk_50mhz";
 TIMESPEC "TS_clk_50mhz" = PERIOD "clk_50mhz" 20.00 ns HIGH 50 %;
+
+#Enable this for the MIG
+NET  "clk_200p"  LOC = C15 | IOSTANDARD = LVDS_25;
+NET  "clk_200n"  LOC = C14 | IOSTANDARD = LVDS_25;
+NET "clk_200p" 		TNM_NET = "clk_200p";
+TIMESPEC "TS_clk_200p" = PERIOD "clk_200p" 5.00 ns HIGH 50 %;
 
 # Enable those for ISE10
 NET "etx_clk" CLOCK_DEDICATED_ROUTE = FALSE;
@@ -31,8 +37,10 @@ NET	 "dsuact"            LOC = "AC6"	| IOSTANDARD=LVCMOS33;
 NET	 "errorn"            LOC = "AD6"	| IOSTANDARD=LVCMOS33;      
 NET	 "LED<2>"            LOC = "AF6";      
 NET	 "LED<3>"            LOC = "AE6";      
-NET	 "LED<4>"            LOC = "AD5";      
-NET	 "LED<5>"            LOC = "AE4";      
+#NET	 "LED<4>"            LOC = "AD5";      
+NET	 "rst_done"            LOC = "AD5"  | IOSTANDARD=LVCMOS33;      
+#NET	 "LED<5>"            LOC = "AE4";      
+NET	 "phy_done"          LOC = "AE4"  | IOSTANDARD=LVCMOS33;      
 #NET	 "LED<6>"            LOC = "AF4";      
 NET	 "led_rx"            LOC = "AF4" | IOSTANDARD=LVCMOS33;      
 #NET	 "LED<7>"            LOC = "AF3";      
@@ -55,8 +63,8 @@ NET  "dsubre"         LOC = "T1"	| IOSTANDARD=LVCMOS25;
 #               DDR SDRAM                               #
 #########################################################
 NET	 "DDR_CKE0"       IOSTANDARD = SSTL2_I;   
-NET	 "DDR_CLK0"       IOSTANDARD = SSTL2_I;   
-NET	 "DDR_CLK0B"      IOSTANDARD = SSTL2_I;   
+NET	 "DDR_CLK0"       IOSTANDARD = DIFF_SSTL2_II;   
+NET	 "DDR_CLK0B"      IOSTANDARD = DIFF_SSTL2_II;   
 NET  	 "DDR_CLK_FB"     IOSTANDARD = LVCMOS25;  
 #NET 	 "DDR_CLK_FB" 	  TNM_NET = "DDR_CLK_FB";
 #TIMESPEC "TS_DDR_CLK_FB" = PERIOD "DDR_CLK_FB" 9.75 ns HIGH 50 %;
@@ -499,6 +507,10 @@ NET etx_clk 	LOC = Y4 | IOSTANDARD=LVCMOS33;
 NET erx_clk 	LOC = Y5 | IOSTANDARD=LVCMOS33;
 NET erstn   	LOC = AF24 | IOSTANDARD=LVCMOS33;
 
+#NET "erx_clk" 		TNM_NET = "erx_clk";
+#TIMESPEC "TS_erx_clk" = PERIOD "erx_clk" 40.00 ns HIGH 50 %;
+#NET "etx_clk" 		TNM_NET = "etx_clk";
+#TIMESPEC "TS_etx_clk" = PERIOD "etx_clk" 40.00 ns HIGH 50 %;
 NET erx_clk PERIOD = 40.000 ;
 OFFSET = IN : 10.000 : BEFORE erx_clk ;
 NET etx_clk PERIOD = 40.000 ;
@@ -511,15 +523,15 @@ TIMESPEC "TS_ddr_clk_fb" = PERIOD "ddr_clk_fb" 8.00 ns HIGH 50 %;
 #TIMESPEC "TS_sepclk1" = FROM "clkgen0_clkin" TO "ddrsp0_ddr_phy0_clk" TIG;
 #TIMESPEC "TS_sepclk2" = FROM "ddrsp0_ddr_phy0_clk" TO "clkgen0_clkin" TIG;
 
-NET "clkm" 		 TNM_NET = "clkm";
-NET "clkml" 		 TNM_NET = "clkml";
-TIMESPEC "TS_clkm_clkml" = FROM "clkm" TO "clkml" TIG;
-TIMESPEC "TS_clkml_clkm" = FROM "clkml" TO "clkm" TIG;
-NET "lock"  TIG;
-NET "ddrsp0.ddrc/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/rclk90b" TNM_NET = "rclk90b"; 
-TIMEGRP "rclk270b_rise" = FALLING "rclk90b";
-TIMEGRP "clkml_rise" = RISING "clkml";
-TIMESPEC "TS_rclk270b_clkml_rise" = FROM "rclk270b_rise" TO "clkml_rise" 5.500;
-NET "*dqinl*" MAXDELAY = 1900 ps;
-NET "ddrsp0.ddrc/ddr16.ddrc/rwdata*" MAXDELAY = 2100 ps;
-#NET "*rclk180b" MAXDELAY = 2040 ps;
+# Enable for DDRSPA, disable for MIG
+#NET "clkm" 		 TNM_NET = "clkm";
+#NET "clkml" 		 TNM_NET = "clkml";
+#TIMESPEC "TS_clkm_clkml" = FROM "clkm" TO "clkml" TIG;
+#TIMESPEC "TS_clkml_clkm" = FROM "clkml" TO "clkm" TIG;
+#NET "lock"  TIG;
+#NET "ddrsp0.ddrc/ddr_phy0/ddr_phy0/xc4v.ddr_phy0/rclk90b" TNM_NET = "rclk90b"; 
+#TIMEGRP "rclk270b_rise" = FALLING "rclk90b";
+#TIMEGRP "clkml_rise" = RISING "clkml";
+#TIMESPEC "TS_rclk270b_clkml_rise" = FROM "rclk270b_rise" TO "clkml_rise" 5.500;
+#NET "*dqinl*" MAXDELAY = 1900 ps;
+#NET "ddrsp0.ddrc/ddr16.ddrc/rwdata*" MAXDELAY = 2100 ps;

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -146,7 +146,7 @@ begin
   
   ddr_rst <= (ddr_rst_gen(3) and ddr_rst_gen(2) and ddr_rst_gen(1) and rst_ahb); -- Reset signal in DDR clock domain
 
-  ddrrstproc: process(rst_ahb,clkddri)
+  ddrrstproc: process(clkddri, ilock)
   begin
     if rising_edge(clkddri) then
       ddr_rst_gen <= ddr_rst_gen(2 downto 0) & '1';
@@ -171,9 +171,9 @@ begin
         cbdelayb1=> cbdelayb1, cbdelayb2=> cbdelayb2,cbdelayb3=> cbdelayb3,
         numidelctrl => numidelctrl, norefclk => norefclk, rskew => rskew,
         eightbanks => eightbanks, dqsse => dqsse,
-        cben => 1, chkbits => ftbits, ctrl2en => 0 )
+        cben => 1, chkbits => ftbits, ctrl2en => 0, resync => 0, custombits => 8 )
       port map (
-        rst_ddr, clk_ddr, clkref200, clkddro, ilock,
+        rst_ddr, clk_ddr, clkref200, clkddro, clkddri, clkddri, ilock,
         ddr_clk, ddr_clkb, ddr_clk_fb_out, ddr_clk_fb,
         ddr_cke, ddr_csb, ddr_web, ddr_rasb, ddr_casb,
         ddr_dm(ddrbits/8-1 downto 0), 
@@ -185,7 +185,8 @@ begin
         ddr_dqsn((ddrbits+ftbits)/8-1 downto ddrbits/8),
         ddr_dq((ddrbits+ftbits)-1 downto ddrbits),
         open, open, open, open, open,
-        sdi, sdo);
+        sdi, sdo,
+        clkddri, "00000000", open);
     end generate;
 
     nftphy: if ftbits = 0 generate
@@ -200,9 +201,9 @@ begin
           cbdelayb1=> cbdelayb1, cbdelayb2=> cbdelayb2,cbdelayb3=> cbdelayb3,
           numidelctrl => numidelctrl, norefclk => norefclk, rskew => rskew,
           eightbanks => eightbanks, dqsse => dqsse,
-          chkbits => 0, ctrl2en => 0 )
+          chkbits => 0, ctrl2en => 0, resync => 0, custombits => 8 )
         port map (
-          rst_ddr, clk_ddr, clkref200, clkddro, ilock,
+          rst_ddr, clk_ddr, clkref200, clkddro, clkddri, clkddri, ilock,
           ddr_clk, ddr_clkb, ddr_clk_fb_out, ddr_clk_fb,
           ddr_cke, ddr_csb, ddr_web, ddr_rasb, ddr_casb,
           ddr_dm(ddrbits/8-1 downto 0), 
@@ -210,10 +211,10 @@ begin
           ddr_dqsn(ddrbits/8-1 downto 0),
           ddr_ad, ddr_ba, ddr_dq(ddrbits-1 downto 0), ddr_odt,
           open, open, open, open, open,
-          sdi, sdo);
+          sdi, sdo, clkddri, "00000000", open);
     end generate;
     
-    ddrc : ddr2spax generic map (memtech => memtech, hindex => hindex, 
+    ddrc : ddr2spax generic map (memtech => memtech, phytech => fabtech, hindex => hindex, 
       haddr => haddr, hmask => hmask, ioaddr => ioaddr, iomask => iomask, ddrbits => ddrbits,
       pwron => pwron, MHz => DDR_FREQ, TRFC => TRFC, col => col, Mbyte => Mbyte,
       fastahb => FAST_AHB, readdly => readdly, odten => odten, octen => octen, dqsgating => dqsgating,

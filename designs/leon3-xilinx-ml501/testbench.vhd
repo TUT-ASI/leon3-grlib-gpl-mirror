@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@ use cypress.components.all;
 library hynix;
 use hynix.components.all;
 use work.debug.all;
+use work.ml50x.all;
 
 use work.config.all;	-- configuration
 
@@ -200,21 +201,31 @@ begin
 --       rdqs_n => ddr_rdqs(i*2+1 downto i*2), odt => ddr_odt(0));
 --   end generate;
 
-  ddr2mem: for i in 0 to 3 generate
+  ddr2ranks: for j in 0 to CS_NUM-1 generate
+    ddr2chips: for i in 0 to 3 generate
     u1 : HY5PS121621F
       generic map (TimingCheckFlag => true, PUSCheckFlag => false,
-                   index => 3-i, fname => sdramfile)
+                   index => 3-i, fname => sdramfile, fdelay => 100*CFG_MIG_DDR2)
       port map (DQ => ddr_dq2(i*16+15 downto i*16), LDQS  => ddr_dqsp(i*2),
                 LDQSB => ddr_dqsn(i*2), UDQS => ddr_dqsp(i*2+1),
                 UDQSB => ddr_dqsn(i*2+1), LDM => ddr_dm(i*2),
-                WEB => ddr_web, CASB => ddr_casb, RASB  => ddr_rasb, CSB => ddr_csb(0),
-                BA => ddr_ba, ADDR => ddr_ad(12 downto 0), CKE => ddr_cke(0),
-                CLK => ddr_clk(0), CLKB => ddr_clkb(0), UDM => ddr_dm(i*2+1));
+                WEB => ddr_web, CASB => ddr_casb, RASB  => ddr_rasb, CSB => ddr_csb(j),
+                BA => ddr_ba, ADDR => ddr_ad(12 downto 0), CKE => ddr_cke(j),
+                CLK => ddr_clk(j), CLKB => ddr_clkb(j), UDM => ddr_dm(i*2+1));
+    end generate;
   end generate;
 
-  ddr2delay : delay_wire 
-    generic map(data_width => ddr_dq'length, delay_atob => 0.0, delay_btoa => 2.5)
-    port map(a => ddr_dq, b => ddr_dq2);
+  nodqdel : if (CFG_MIG_DDR2 = 1) generate
+    ddr2delay : delay_wire 
+      generic map(data_width => ddr_dq'length, delay_atob => 0.0, delay_btoa => 0.0)
+      port map(a => ddr_dq, b => ddr_dq2);
+  end generate;
+  
+  dqdel : if (CFG_MIG_DDR2 = 0) generate
+    ddr2delay : delay_wire 
+      generic map(data_width => ddr_dq'length, delay_atob => 0.0, delay_btoa => 4.5)
+      port map(a => ddr_dq, b => ddr_dq2);
+  end generate;
   
   sram01 : for i in 0 to 1 generate
       sr0 : sram generic map (index => i, abits => sramdepth, fname => sramfile)
@@ -231,6 +242,15 @@ begin
   prom0 : sram16 generic map (index => 4, abits => romdepth, fname => promfile)
 	port map (sram_flash_addr(romdepth-1 downto 0), sram_flash_data(15 downto 0),
 		  gnd, gnd, flash_cen, sram_flash_we_n, flash_oen);
+
+  phy0 : if (CFG_GRETH = 1) generate
+    phy_mii_data <= 'H';
+    p0: phy
+      generic map (address => 7)
+      port map(sys_rst_in, phy_mii_data, phy_tx_clk, phy_rx_clk, phy_rx_data,
+               phy_dv, phy_rx_er, phy_col, phy_crs, phy_tx_data, phy_tx_en,
+               phy_tx_er, phy_mii_clk, phy_gtx_clk);
+  end generate;
 
 --  p0: phy 
 --      port map(rst, led_cfg, open, etx_clk, erx_clk, erxd, erx_dv,

@@ -38,7 +38,7 @@ NET "SYSACE_FPGA_CLK" period = 29.000;
 
 NET "clkm" 		TNM_NET = "clkm";
 NET "clkml0" 		TNM_NET = "clkml0";
-NET "clkml1" 		TNM_NET = "clkml1";
+#NET "clkml1" 		TNM_NET = "clkml1";
 
 ############################################################################
 # Enable these if you run the DDR2 controller unsynchronized from AHB clock
@@ -94,23 +94,23 @@ TIMESPEC "TSTFT65_TFT40" = FROM "clk65" TO "clk40" TIG;
 // IDELAYCTRL LOC properties
 /////////////////////////////////////////////////////
 
-INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.0.u" LOC = "IDELAYCTRL_X0Y3";
-INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.1.u" LOC = "IDELAYCTRL_X0Y6";
+INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/seppads.phywop/xc4v.ddr_phy0/idelctrl.0.u" LOC = "IDELAYCTRL_X0Y3";
+INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/seppads.phywop/xc4v.ddr_phy0/idelctrl.1.u" LOC = "IDELAYCTRL_X0Y6";
 # Not used when instantiating 32 bits
-INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.2.u" LOC = "IDELAYCTRL_X0Y4";
-INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[0].u" LOC = "IDELAYCTRL_X0Y3";
-INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[1].u" LOC = "IDELAYCTRL_X0Y6";
+INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/seppads.phywop/xc4v.ddr_phy0/idelctrl.2.u" LOC = "IDELAYCTRL_X0Y4";
+INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/seppads.phywop/xc4v.ddr_phy0/idelctrl[0].u" LOC = "IDELAYCTRL_X0Y3";
+INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/seppads.phywop/xc4v.ddr_phy0/idelctrl[1].u" LOC = "IDELAYCTRL_X0Y6";
 # Not used when instantiating 32 bits
-INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[2].u" LOC = "IDELAYCTRL_X0Y4";
+INST "ddrsp0.ddrc0/nftphy.ddr_phy0/ddr_phy0/seppads.phywop/xc4v.ddr_phy0/idelctrl[2].u" LOC = "IDELAYCTRL_X0Y4";
 
-INST "ddrsp0.ddrc1/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.0.u" LOC = "IDELAYCTRL_X0Y2";
-INST "ddrsp0.ddrc1/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.1.u" LOC = "IDELAYCTRL_X0Y7";
+INST "ddrsp0.ddrc1/nftphy.ddr_phy0/ddr_phy0/seppads.phywop/xc4v.ddr_phy0/idelctrl.0.u" LOC = "IDELAYCTRL_X0Y2";
+INST "ddrsp0.ddrc1/nftphy.ddr_phy0/ddr_phy0/seppads.phywop/xc4v.ddr_phy0/idelctrl.1.u" LOC = "IDELAYCTRL_X0Y7";
 # Not used when instantiating 32 bits
-INST "ddrsp0.ddrc1/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl.2.u" LOC = "IDELAYCTRL_X0Y8";
-INST "ddrsp0.ddrc1/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[0].u" LOC = "IDELAYCTRL_X0Y2";
-INST "ddrsp0.ddrc1/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[1].u" LOC = "IDELAYCTRL_X0Y7";
+INST "ddrsp0.ddrc1/nftphy.ddr_phy0/ddr_phy0/seppads.phywop/xc4v.ddr_phy0/idelctrl.2.u" LOC = "IDELAYCTRL_X0Y8";
+INST "ddrsp0.ddrc1/nftphy.ddr_phy0/ddr_phy0/seppads.phywop/xc4v.ddr_phy0/idelctrl[0].u" LOC = "IDELAYCTRL_X0Y2";
+INST "ddrsp0.ddrc1/nftphy.ddr_phy0/ddr_phy0/seppads.phywop/xc4v.ddr_phy0/idelctrl[1].u" LOC = "IDELAYCTRL_X0Y7";
 # Not used when instantiating 32 bits
-INST "ddrsp0.ddrc1/nftphy.ddr_phy0/ddr_phy0/xc4v.ddr_phy0/idelctrl[2].u" LOC = "IDELAYCTRL_X0Y8";
+INST "ddrsp0.ddrc1/nftphy.ddr_phy0/ddr_phy0/seppads.phywop/xc4v.ddr_phy0/idelctrl[2].u" LOC = "IDELAYCTRL_X0Y8";
 
 /////////////////////////////////////////////////////
 // Flash
@@ -300,6 +300,15 @@ NET "DIMM1_DDR2_A(10)" LOC ="W42";
 NET "DIMM1_DDR2_A(1)" LOC ="J41";
 NET "DIMM1_DDR2_A(0)" LOC ="R40";
 
+NET  "DIMM0_DDR2_DQ[*]"                               IOSTANDARD = SSTL18_II_DCI;
+NET  "DIMM0_DDR2_DQM[*]"                               IOSTANDARD = SSTL18_II_DCI;
+NET  "DIMM0_DDR2_DQS_P[*]"                               IOSTANDARD = DIFF_SSTL18_II_DCI;
+NET  "DIMM0_DDR2_DQS_N[*]"                               IOSTANDARD = DIFF_SSTL18_II_DCI;
+NET  "DIMM1_DDR2_DQ[*]"                               IOSTANDARD = SSTL18_II_DCI;
+NET  "DIMM1_DDR2_DQM[*]"                               IOSTANDARD = SSTL18_II_DCI;
+NET  "DIMM1_DDR2_DQS_P[*]"                               IOSTANDARD = DIFF_SSTL18_II_DCI;
+NET  "DIMM1_DDR2_DQS_N[*]"                               IOSTANDARD = DIFF_SSTL18_II_DCI;
+
 # DIMM0
 NET "DIMM0_DDR2_WE_B" LOC ="Y40";
 NET "DIMM0_DDR2_S_B(1)" LOC ="M37";
@@ -402,6 +411,8 @@ NET "DIMM0_DDR2_DQ(1)" LOC ="G31";
 NET "DIMM0_DDR2_DQ(0)" LOC ="E35";
 NET "DIMM0_DDR2_CKE(1)" LOC ="L37";
 NET "DIMM0_DDR2_CKE(0)" LOC ="M31";
+NET  "dimm0_ddr2_reset_n"                             IOSTANDARD = LVCMOS33;
+NET  "dimm0_ddr2_reset_n"                              LOC = "AG33" ;       #Bank 11
 NET "DIMM0_DDR2_CB(7)" LOC ="H39";
 NET "DIMM0_DDR2_CB(6)" LOC ="G38";
 NET "DIMM0_DDR2_CB(5)" LOC ="E39";

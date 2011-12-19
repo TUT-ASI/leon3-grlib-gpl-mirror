@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -79,7 +79,7 @@ type reg_type is record
 end record;
 
 signal r, c     : reg_type;
-signal ramsel   : std_ulogic;
+signal ramsel   : std_logic_vector(dw/8-1 downto 0);
 signal write    : std_logic_vector(dw/8-1 downto 0);
 signal ramaddr  : std_logic_vector(abits-1 downto 0);
 signal ramdata  : std_logic_vector(dw-1 downto 0);
@@ -210,7 +210,7 @@ begin
 
 
     if rst = '0' then v.hwrite := '0'; v.hready := '1'; end if;
-    write <= bs; ramsel <= v.hsel or r.hwrite; 
+    write <= bs; for i in 0 to dw/8-1 loop ramsel(i) <= v.hsel or r.hwrite; end loop;
     ramaddr <= haddr; c <= v; 
 
     ahbso.hrdata <= ahbdrivedata(hrdata);
@@ -229,12 +229,9 @@ begin
   hwdata <= ahbreaddata(ahbsi.hwdata, r.addr(4 downto 2),
                         conv_std_logic_vector(log2(dw/8), 3));
   
-  ra : for i in 0 to (dw/8-1) generate
-    aram :  syncram generic map (tech, abits, 8) port map (
-	clk, ramaddr, hwdata(i*8+7 downto i*8),
-	ramdata(i*8+7 downto i*8), ramsel, write(i)); 
-  end generate;
-
+  aram : syncrambw generic map (tech, abits, dw) port map (
+	clk, ramaddr, hwdata, ramdata, ramsel, write); 
+  
   reg : process (clk)
   begin
     if rising_edge(clk ) then r <= c; end if;

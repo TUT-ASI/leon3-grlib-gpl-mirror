@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 library techmap;
+use techmap.gencomp.all;
 use techmap.alltap.all;
 
 entity scanregi is
@@ -47,10 +48,21 @@ entity scanregi is
 end;
 
 architecture tmap of scanregi is
+signal d1, d2, q1, q2, m3i, o1o : std_ulogic;
 begin
 
-  gen0: if true generate
+  gen0: if tech = 0 generate
     x: scanregi_inf port map (pad,core,tck,tdi,tdo,bsshft,bscapt,bsupd,bsdrive,bshighz);
+  end generate;
+  map0: if tech /= 0 generate
+    m1 : grmux2 generic map (tech) port map (pad, q1, bsdrive, core);
+    m2 : grmux2 generic map (tech) port map (q1, q2, bsupd, d1);
+    m3 : grmux2 generic map (tech) port map (m3i, tdi, bsshft, d2);
+    m4 : grmux2 generic map (tech) port map (q2, o1o, bscapt, m3i);
+    o1 : gror2  generic map (tech) port map (pad, bshighz, o1o);
+    f1 : grdff  generic map (tech) port map (tck, d1, q1);
+    f2 : grdff  generic map (tech) port map (tck, d2, q2);
+    tdo <= q2;
   end generate;
   
 end;
@@ -60,6 +72,7 @@ end;
 library ieee;
 use ieee.std_logic_1164.all;
 library techmap;
+use techmap.gencomp.all;
 use techmap.alltap.all;
 
 entity scanrego is
@@ -81,25 +94,91 @@ entity scanrego is
 end;
 
 architecture tmap of scanrego is
+signal d1, d2, q1, q2, m3i, o1o : std_ulogic;
+
 begin
 
-  gen0: if true generate
+  gen0: if tech = 0 generate
     x: scanrego_inf port map (pad,core,samp,tck,tdi,tdo,bsshft,bscapt,bsupd,bsdrive);
   end generate;
-  
+ 
+  map0: if tech /= 0 generate
+    m1 : grmux2 generic map (tech) port map (core, q1, bsdrive, pad);
+    m2 : grmux2 generic map (tech) port map (q1, q2, bsupd, d1);
+    m3 : grmux2 generic map (tech) port map (m3i, tdi, bsshft, d2);
+    m4 : grmux2 generic map (tech) port map (q2, samp, bscapt, m3i);
+    f1 : grdff  generic map (tech) port map (tck, d1, q1);
+    f2 : grdff  generic map (tech) port map (tck, d2, q2);
+    tdo <= q2;
+  end generate;
+
 end;
 
+
+library ieee;
+use ieee.std_logic_1164.all;
+library techmap;
+use techmap.gencomp.all;
+use techmap.alltap.all;
+
+entity scanregto is
+  generic (
+    tech : integer := 0;
+    hzsup: integer range 0 to 1 := 1;
+    oepol: integer range 0 to 1 := 1
+    );
+  port (
+    pado    : out std_ulogic;
+    padoen  : out std_ulogic;
+    samp    : in std_ulogic;
+    coreo   : in std_ulogic;
+    coreoen : in std_ulogic;
+    tck     : in std_ulogic;
+    tdi     : in std_ulogic;
+    tdo     : out std_ulogic;
+    bsshft  : in std_ulogic;
+    bscapt  : in std_ulogic;
+    bsupdo  : in std_ulogic;
+    bsdrive : in std_ulogic;
+    bshighz : in std_ulogic
+    );
+end;
+
+architecture tmap of scanregto is
+signal tdo1, padoenx : std_ulogic;
+begin
+
+    x1: scanrego generic map (tech)
+	port map (pado, coreo, samp, tck, tdo1, tdo, bsshft, bscapt, bsupdo, bsdrive);
+    x2: scanrego generic map (tech)
+	port map (padoenx, coreoen, coreoen, tck, tdi, tdo1, bsshft, bscapt, bsupdo, bsdrive);
+
+    hz : if hzsup = 1 generate
+      x3 : if oepol = 0 generate
+        x33 : gror2 generic map (tech) port map (padoenx, bshighz, padoen);
+      end generate;
+      x4 : if oepol = 1 generate
+        x33 : grand12 generic map (tech) port map (padoenx, bshighz, padoen);
+      end generate;
+    end generate;
+    nohz : if hzsup = 0 generate
+      padoen <= '0';
+    end generate;
+
+end;
 -------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;
 library techmap;
+use techmap.gencomp.all;
 use techmap.alltap.all;
 
 entity scanregio is
   generic (
     tech : integer := 0;
-    hzsup: integer range 0 to 1 := 1
+    hzsup: integer range 0 to 1 := 1;
+    oepol: integer range 0 to 1 := 1
     );
   port (
     pado    : out std_ulogic;
@@ -121,13 +200,21 @@ entity scanregio is
 end;
 
 architecture tmap of scanregio is
+signal tdo1, tdo2, padoenx : std_ulogic;
 begin
 
-  gen0: if true generate
+  gen0: if tech = 0 generate
     x: scanregio_inf
       generic map (hzsup)
       port map (pado,padoen,padi,coreo,coreoen,corei,tck,tdi,tdo,
                 bsshft,bscapt,bsupdi,bsupdo,bsdrive,bshighz);
+  end generate;
+  map0: if tech /= 0 generate
+    x0: scanregi generic map (tech) 
+	port map (padi, corei, tck, tdo1, tdo, bsshft, bscapt, bsupdi, bsdrive, bshighz);
+    x1: scanregto generic map (tech, hzsup, oepol)
+	port map (pado, padoen, coreo, coreo, coreoen, 
+		 tck, tdi, tdo1, bsshft, bscapt, bsupdo, bsdrive, bshighz);
   end generate;
   
 end;

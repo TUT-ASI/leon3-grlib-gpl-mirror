@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -43,7 +43,8 @@ entity ddr2spax_ahb is
       iomask     : integer := 16#fff#;
       burstlen   : integer := 8;
       nosync     : integer := 0;
-      ahbbits    : integer := ahbdw
+      ahbbits    : integer := ahbdw;
+      revision   : integer := 0
    );
    port (
       rst      : in  std_ulogic;
@@ -63,8 +64,6 @@ entity ddr2spax_ahb is
 end ddr2spax_ahb;
 
 architecture rtl of ddr2spax_ahb is
-
-  constant REVISION  : integer := 0;
 
   constant CMD_PRE  : std_logic_vector(2 downto 0) := "010";
   constant CMD_REF  : std_logic_vector(2 downto 0) := "100";
@@ -112,6 +111,7 @@ architecture rtl of ddr2spax_ahb is
     hio       : std_logic;
     hsize     : std_logic_vector(2 downto 0);
     hwrite    : std_logic;
+    hburst0   : std_logic;
     -- AHB slave outputs
     so_hready : std_logic;
     -- From DDR layer
@@ -182,6 +182,7 @@ begin
       av.hio := ahbsi.hmbsel(1);
       av.hsize := ahbsi.hsize;
       av.hwrite := ahbsi.hwrite;
+      av.hburst0 := ahbsi.hburst(0);
       if ahbsi.htrans(0)='0' or canburst='0' then
         av.haddr_nonseq := ha0(9 downto 0);
       end if;
@@ -206,6 +207,7 @@ begin
                      hsize     => ahbsi.hsize,
                      hwrite    => ahbsi.hwrite,
                      hio       => ahbsi.hmbsel(1),
+                     burst     => ahbsi.hburst(0),
                      maskdata  => '0', maskcb => '0');
           
           if ahbsi.hwrite='0' then
@@ -276,6 +278,7 @@ begin
                     hsize     => ar.hsize,
                     hwrite    => ar.hwrite,
                     hio       => ar.hio,
+                    burst     => ar.hburst0,
                     maskdata  => '0', maskcb => '0');
         if ahbsi.hready='1' and ahbsi.hsel(hindex)='1' and ahbsi.htrans(1)='1' then
           if ahbsi.htrans(0)='0' or canburst='0' then
@@ -309,6 +312,7 @@ begin
                      hsize     => ar.hsize,
                      hwrite    => ar.hwrite,
                      hio       => ar.hio,
+                     burst     => ar.hburst0,
                      maskdata  => '0', maskcb => '0');
           av.hwrite := '0';
           av.start_tog := not ar.start_tog;
@@ -328,6 +332,7 @@ begin
                         hsize     => ar.hsize,
                         hwrite    => ar.hwrite,
                         hio       => ar.hio,
+                        burst     => ar.hburst0,
                         maskdata  => '0', maskcb => '0');
             av.so_hready := '1';
             av.s := asww1;

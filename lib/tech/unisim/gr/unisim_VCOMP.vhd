@@ -2,7 +2,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -1540,7 +1540,8 @@ end component;
   component OBUFDS
 	generic(
 		CAPACITANCE : string := "DONT_CARE";
-		IOSTANDARD : string := "DEFAULT"
+		IOSTANDARD : string := "DEFAULT";
+     		SLEW : string := "SLOW"
 	);
 	port(
 		O : out std_ulogic;

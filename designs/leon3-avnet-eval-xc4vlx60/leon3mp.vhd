@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -40,6 +40,7 @@ use gaisler.jtag.all;
 library esa;
 use esa.memoryctrl.all;
 use work.config.all;
+use work.avnet_eval.all;
 
 entity leon3mp is
   generic (
@@ -57,6 +58,8 @@ entity leon3mp is
     resoutn : out std_logic;
     clk_100mhz : in  std_ulogic;
     clk_50mhz : in  std_ulogic;
+    clk_200p : in  std_ulogic;
+    clk_200n : in  std_ulogic;
     errorn  : out   std_ulogic;
 
     -- prom interface
@@ -120,11 +123,48 @@ entity leon3mp is
     disp_csn  : out    std_ulogic;
     disp_rdn  : out    std_ulogic;
     disp_wrn  : out    std_ulogic;
-    disp_d    : inout  std_logic_vector(7 downto 0)
+    disp_d    : inout  std_logic_vector(7 downto 0);
+    phy_done  : out   std_ulogic;
+    rst_done  : out   std_ulogic
     );
 end;
 
 architecture rtl of leon3mp is
+
+  component mig_36_1
+  port(
+      cntrl0_ddr_dq                 : inout std_logic_vector(15 downto 0);
+      cntrl0_ddr_a                  : out   std_logic_vector(12 downto 0);
+      cntrl0_ddr_ba                 : out   std_logic_vector(1 downto 0);
+      cntrl0_ddr_cke                : out   std_logic;
+      cntrl0_ddr_cs_n               : out   std_logic;
+      cntrl0_ddr_ras_n              : out   std_logic;
+      cntrl0_ddr_cas_n              : out   std_logic;
+      cntrl0_ddr_we_n               : out   std_logic;
+      cntrl0_ddr_dm                 : out   std_logic_vector(1 downto 0);
+      sys_clk_p                     : in    std_logic;
+      sys_clk_n                     : in    std_logic;
+      clk200_p                      : in    std_logic;
+      clk200_n                      : in    std_logic;
+      init_done                     : out   std_logic;
+      sys_reset_in_n                : in    std_logic;
+      cntrl0_clk_tb                 : out   std_logic;
+      cntrl0_reset_tb               : out   std_logic;
+      cntrl0_wdf_almost_full        : out   std_logic;
+      cntrl0_af_almost_full         : out   std_logic;
+      cntrl0_read_data_valid        : out   std_logic;
+      cntrl0_app_wdf_wren           : in    std_logic;
+      cntrl0_app_af_wren            : in    std_logic;
+      cntrl0_burst_length_div2      : out   std_logic_vector(2 downto 0);
+      cntrl0_app_af_addr            : in    std_logic_vector(35 downto 0);
+      cntrl0_app_wdf_data           : in    std_logic_vector(31 downto 0);
+      cntrl0_read_data_fifo_out     : out   std_logic_vector(31 downto 0);
+      cntrl0_app_mask_data          : in    std_logic_vector(3 downto 0);
+      cntrl0_ddr_dqs                : inout std_logic_vector(1 downto 0);
+      cntrl0_ddr_ck                 : out   std_logic_vector(0 downto 0);
+      cntrl0_ddr_ck_n               : out   std_logic_vector(0 downto 0)
+         );
+  end component;
 
   constant blength   : integer := 12;
   constant fifodepth : integer := 8;
@@ -185,6 +225,12 @@ architecture rtl of leon3mp is
   signal txd1 : std_logic;
   signal lock : std_logic;
   signal lclk50 : std_logic;
+  signal rst0_tb, rst0_tbn, clk0_tb : std_logic;
+  signal migi		: mig_app_in_type;
+  signal migo		: mig_app_out_type;
+  signal init_done    : std_ulogic;
+  signal migrst    : std_ulogic;
+
 
   signal ddr_clk 	: std_logic_vector(2 downto 0);
   signal ddr_clkb	: std_logic_vector(2 downto 0);
@@ -215,12 +261,11 @@ begin
 ----------------------------------------------------------------------
 
   vcc <= (others => '1'); gnd <= (others => '0');
-  cgi.pllctrl <= "00"; cgi.pllrst <= rstraw;
+  cgi.pllctrl <= "00"; cgi.pllrst <= rstneg;
   rstneg <= not resetn;
 	
   rst0 : rstgen port map (rstneg, clkm, lock, rstn, rstraw);
   
-  clk_pad : clkpad generic map (tech => padtech) port map (clk_100mhz, lclk); 
   clk50_pad : clkpad generic map (tech => padtech) port map (clk_50mhz, lclk50); 
 
   clkgen0 : clkgen  		-- clock generator
@@ -252,7 +297,7 @@ begin
                    CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
                    CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP,
                    CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR,
-		   CFG_NCPU-1)
+		   CFG_NCPU-1, CFG_DFIXED, 0, CFG_MMU_PAGE, CFG_BP)
         port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso,
                 irqi(i), irqo(i), dbgi(i), dbgo(i));
       end generate;
@@ -264,7 +309,8 @@ begin
 		CFG_ISETSZ, CFG_ILOCK, CFG_DCEN, CFG_DREPL, CFG_DSETS, CFG_DLINE, CFG_DSETSZ,
 		CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
         	CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP, 
-        	CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1)
+        	CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, 
+		CFG_NCPU-1, CFG_DFIXED, 0, CFG_MMU_PAGE, CFG_BP)
         port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso, 
     		irqi(i), irqo(i), dbgi(i), dbgo(i), fpi(i), fpo(i));
       end generate;
@@ -319,7 +365,7 @@ begin
   memi.writen <= '1'; memi.wrn <= "1111"; memi.bwidth <= "01";
 
   mg0 : if (CFG_MCTRL_LEON2 = 0) generate 
-    apbo(0) <= apb_none; ahbso(0) <= ahbs_none;
+    apbo(0) <= apb_none; ahbso(5) <= ahbs_none;
     roms_pad : outpad generic map (tech => padtech)
       port map (romsn, vcc(0));
   end generate;
@@ -357,6 +403,7 @@ begin
 
   ddrsp0 : if (CFG_DDRSP /= 0) generate 
 
+    clk_pad : clkpad generic map (tech => padtech) port map (clk_100mhz, lclk); 
     ddrc : ddrspa generic map ( fabtech => virtex4, memtech => memtech, 
 	hindex => 4, haddr => 16#400#, hmask => 16#F00#, ioaddr => 1, 
 	pwron => CFG_DDRSP_INIT, MHz => 100, rskew => -95
@@ -376,7 +423,57 @@ begin
         ddr_ad <= ddr_adl(12 downto 0);
   end generate;
 
-  noddr :  if (CFG_DDRSP = 0) generate lock <= '1'; end generate;
+  migsp0 : if (CFG_MIG_DDR2 = 1) generate
+
+    ahb2mig0 : entity work.ahb2mig_avnet_eval
+    generic map ( hindex => 0, haddr => 16#400#, hmask => 16#FE0#,
+	MHz => 100, Mbyte => 32)
+    port map (
+	rst_ahb => rstn, rst_ddr => rst0_tbn, rst_50 => rstneg,
+	clk_ahb => clkm, clk_ddr => clk0_tb, clk_50 => lclk50,
+	init_done => init_done, ahbsi => ahbsi, ahbso => ahbso(0), migi => migi, migo => migo);
+
+    migv5 : mig_36_1 
+     port map(
+      cntrl0_ddr_dq => ddr_dq,
+      cntrl0_ddr_a => ddr_ad(12 downto 0),
+      cntrl0_ddr_ba => ddr_ba, 
+      cntrl0_ddr_cke => ddr_cke0,
+      cntrl0_ddr_cs_n => ddr_cs0b, 
+      cntrl0_ddr_ras_n => ddr_rasb, 
+      cntrl0_ddr_cas_n => ddr_casb,
+      cntrl0_ddr_we_n => ddr_web,
+      cntrl0_ddr_dm => ddr_dm,
+      sys_clk_p => clk_100mhz, clk200_p => clk_200p, 
+      sys_clk_n => clk_100mhz, clk200_n => clk_200n, 
+      init_done => init_done, 
+      sys_reset_in_n => migi.mig_rst,
+      cntrl0_reset_tb => rst0_tb, cntrl0_clk_tb => clk0_tb,  
+      cntrl0_wdf_almost_full => migo.app_wdf_afull,
+      cntrl0_af_almost_full => migo.app_af_afull,
+      cntrl0_read_data_valid => migo.app_rd_data_valid, 
+      cntrl0_app_wdf_wren => migi.app_wdf_wren,
+      cntrl0_app_af_wren => migi.app_en,
+      cntrl0_app_af_addr =>  migi.app_addr,
+      cntrl0_app_wdf_data => migi.app_wdf_data,
+      cntrl0_read_data_fifo_out => migo.app_rd_data, 
+      cntrl0_app_mask_data => migi.app_wdf_mask, 
+      cntrl0_ddr_dqs => ddr_dqs,
+      cntrl0_ddr_ck => ddr_clk(0 downto 0),
+      cntrl0_ddr_ck_n => ddr_clkb(0 downto 0)
+    );
+
+    ddr_clk0 <= ddr_clk(0); ddr_clk0b <= ddr_clkb(0);
+    rst0_tbn <= not rst0_tb; 
+--    lock <= cgo.clklock;
+    lock <= init_done and rst0_tbn;
+--    led(7) <= init_done;
+  end generate;
+
+  phy_done <= init_done;
+  rst_done <= migi.mig_rst;
+
+  noddr :  if (CFG_DDRSP + CFG_MIG_DDR2) = 0 generate lock <= '1'; end generate;
 
 ----------------------------------------------------------------------
 ---  APB Bridge and various periherals -------------------------------
@@ -456,9 +553,9 @@ begin
 
     emdio_pad : iopad generic map (tech => padtech)
       port map (emdio, etho.mdio_o, etho.mdio_oe, ethi.mdio_i);
-    etxc_pad : inpad generic map (tech => padtech)
+    etxc_pad : clkpad generic map (tech => padtech)
       port map (etx_clk, ethi.tx_clk);
-    erxc_pad : inpad generic map (tech => padtech)
+    erxc_pad : clkpad generic map (tech => padtech)
       port map (erx_clk, ethi.rx_clk);
     erxd_pad : inpadv generic map (tech => padtech, width => 4)
       port map (erxd, ethi.rxd(3 downto 0));

@@ -31,6 +31,30 @@ TIMESPEC "TS_videoclk_clkm" = FROM "video_clk" TO "clkm" TIG;
 
 ##################################################################
 
+
+##################################################################
+# Enable these is you have enabled Gigabit Ethernet
+#NET rgmii0/clkm0 period = 40.000 ;
+#NET "rgmii0/clkm0" 	TNM_NET = "clkm0";
+#TIMESPEC "TS_clkm_clkm0" = FROM "clkm" TO "clkm0" TIG;
+#TIMESPEC "TS_clkm0_clkm" = FROM "clkm0" TO "clkm" TIG;
+
+#NET rgmii0/clkm1 period = 8.000 ;
+#NET "rgmii0/clkm1" 	TNM_NET = "clkm1";
+#TIMESPEC "TS_clkm_clkm1" = FROM "clkm" TO "clkm1" TIG;
+#TIMESPEC "TS_clkm1_clkm" = FROM "clkm1" TO "clkm" TIG;
+
+#NET rgmii0/uclk125 period = 8.000;
+#NET "rgmii0/uclk125"	TNM_NET = "uclk125";
+#TIMESPEC "TS_clkm_uclkm125" = FROM "clkm" TO "uclk125" TIG;
+#TIMESPEC "TS_uclk125_clkm" = FROM "uclk125" TO "clkm" TIG;
+
+#NET rgmii0/clk25 period = 40.000;
+#NET "rgmii0/clk25"	TNM_NET = "clk25";
+#TIMESPEC "TS_clkm_clk25" = FROM "clkm" TO "clk25" TIG;
+#TIMESPEC "TS_clk25_clkm" = FROM "clk25" TO "clkm" TIG;
+##################################################################
+
 CONFIG VCCAUX = 3.3;
 
 NET "clk"  period = 20.000 ;
@@ -41,6 +65,8 @@ NET "clk2"  LOC = "K20" | IOSTANDARD =LVCMOS33; # socket - user provided frequen
 NET erx_clk PERIOD = 8.000 ;
 OFFSET = in : 10.000 : BEFORE erx_clk ;
 OFFSET = out : 15.000 : AFTER erx_clk ;
+#OFFSET = in : 10.000 : BEFORE rx_clki ;
+#OFFSET = out : 15.000 : AFTER rx_clki ;
 NET clk125 PERIOD = 8.000 ;
 OFFSET = out : 19.000 : AFTER clk125 ;
 OFFSET = in : 10.000 : BEFORE clk125 ;
@@ -210,12 +236,12 @@ NET "erxd(1)" LOC = "k17" | IOSTANDARD =LVCMOS33 | IOBDELAY = NONE;
 NET "erxd(2)" LOC = "n16" | IOSTANDARD =LVCMOS33 | IOBDELAY = NONE;
 NET "erxd(3)" LOC = "m17" | IOSTANDARD =LVCMOS33 | IOBDELAY = NONE;
 
-NET "etx_en"  LOC = "m18" | IOSTANDARD =LVTTL; 
-NET "etx_clk" LOC = "m19" | IOSTANDARD =LVTTL;
-NET "etxd(0)" LOC = "p17" | IOSTANDARD =LVTTL;
-NET "etxd(1)" LOC = "m16" | IOSTANDARD =LVTTL;
-NET "etxd(2)" LOC = "n19" | IOSTANDARD =LVTTL;
-NET "etxd(3)" LOC = "n20" | IOSTANDARD =LVTTL;
+NET "etx_en"  LOC = "m18" | IOSTANDARD =LVTTL | FAST | DRIVE=24; 
+NET "etx_clk" LOC = "m19" | IOSTANDARD =LVTTL | SLOW | DRIVE=12;
+NET "etxd(0)" LOC = "p17" | IOSTANDARD =LVTTL | FAST | DRIVE=24;
+NET "etxd(1)" LOC = "m16" | IOSTANDARD =LVTTL | FAST | DRIVE=24;
+NET "etxd(2)" LOC = "n19" | IOSTANDARD =LVTTL | FAST | DRIVE=24;
+NET "etxd(3)" LOC = "n20" | IOSTANDARD =LVTTL | FAST | DRIVE=24;
 
 
 # I2C interface conecting to Monitor via DVI-I connector J4

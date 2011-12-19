@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -186,7 +186,7 @@ package occomp is
 		PIOsel : in std_logic;                        -- PIO controller select
 		PIOack : out std_logic;                       -- PIO controller acknowledge
 		PIOq : out std_logic_vector(15 downto 0);     -- PIO data out
-		PIOtip : out std_logic :='0';              -- PIO transfer in progress
+		PIOtip : out std_logic;              -- PIO transfer in progress
 		PIOpp_full : out std_logic;                   -- PIO Write PingPong full
 
 		-- DMA registers
@@ -224,7 +224,7 @@ package occomp is
 		DDi	: in std_logic_vector(15 downto 0);
 		DDo : out std_logic_vector(15 downto 0);
 		DDoe : out std_logic;
-		DA	: out std_logic_vector(2 downto 0) := "000";
+		DA	: out std_logic_vector(2 downto 0);
 		CS0n	: out std_logic;
 		CS1n	: out std_logic;
 

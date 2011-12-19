@@ -34,7 +34,7 @@ report_device(int dev)
 	grtestmod[0] = dev >> (32 - GRLIB_REPORTDEV_WIDTH);
 #if GRLIB_REPORTDEV_WIDTH != 32
 	grtestmod[3*REPORTDEV_OFFSET] = dev;
-#endif;
+#endif
 	return(0);
 }
 

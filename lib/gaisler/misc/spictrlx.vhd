@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -26,12 +26,12 @@
 -- Description: SPI controller with an interface compatible with MPC83xx SPI.
 --              Relies on APB's wait state between back-to-back transfers.
 --
---  --[Revision 1 of this core introduced the following changes]--
+-- [Revision 1]
 --
 -- 3-wire mode. The core can be placed in 3-wire mode by writing bit 15 in the
 -- mode register.
 --
---  --[Revision 2 of this core introduced the following changes]--
+-- [Revision 2]
 --
 -- Added synhronization register on input data line so that asynchronous signals
 -- will not cause glitches in the combinational logic assigning position 0 in
@@ -52,16 +52,16 @@
 -- Support for automatic periodic transfers has been added, see the GRIP
 -- documentation for details.
 --
---  --[Enhancements after revision 2]--
+-- [Post revision 2]
 -- 
 -- Configurable maximum word length via the maxwlen generic
 --
--- --[Revision 3 of this core introduced the following change]--
+-- [Revision 3]
 --
 -- Selection of transfer direction ordering in 3-wire mode (bit 3 in Mode
 -- register).
 --
--- --[Revision 4 of this core introduced the following changes]--
+-- [Revision 4]
 --
 -- Add additional resets, change counters from integer -> std_logic_vector
 --
@@ -77,8 +77,19 @@
 --
 -- Support use of SYNCRAM_2PFT
 --
--- Change capability register layout
+-- Changed capability register layout
 --
+-- [Revision 5]
+--
+-- Support for SCK filtering in slave mode
+--
+-- Support for ignoring SPISEL input (IGSEL field in Mode register)
+--
+-- Bugfix for "almost" back-to-back transfers when CHPA = '0'. The core would
+-- regard a transfer as finished even if SCK /= CPOL. If a new transfer was
+-- started before SCK had transitioned to CPOL the core would use the wrong
+-- edge for sampling MISO and changing MOSI. Added Mode register CITE field.
+-- 
 
 library ieee;
 use ieee.numeric_std.all;
@@ -109,7 +120,7 @@ entity spictrlx is
     syncram   : integer range 0 to 1     := 1;  -- Use SYNCRAM for buffers
     memtech   : integer range 0 to NTECH := 0;  -- Memory technology
     ft        : integer range 0 to 2     := 0;  -- Fault-Tolerance
-    scantest  : integer range 0 to 1     := 0
+    scantest  : integer range 0 to 1     := 0   -- Scan test support
     );
   port (
     rstn          : in std_ulogic;
@@ -144,6 +155,7 @@ entity spictrlx is
     spio_astart   : out std_ulogic;
     slvsel        : out std_logic_vector((slvselsz-1) downto 0)
     );
+  attribute sync_set_reset of rstn : signal is "true"; 
 end entity spictrlx;
 
 architecture rtl of spictrlx is
@@ -231,7 +243,9 @@ architecture rtl of spictrlx is
     cg      : std_logic_vector(4 downto 0);  -- Clock gap
     aseldel : std_logic_vector(1 downto 0);  -- Asel delay
     tac     : std_ulogic;
-    tto     : std_ulogic;  -- Three-wire mode word order 
+    tto     : std_ulogic;  -- Three-wire mode word order
+    igsel   : std_ulogic;  -- Ignore spisel input 
+    cite    : std_ulogic;  -- Require SCK = CPOL for TIP end
   end record;
 
   type spi_em_rec is record             -- SPI Event and Mask registers
@@ -351,7 +365,8 @@ architecture rtl of spictrlx is
     aselcnt  : unsigned(1 downto 0);   -- ASEL delay
     cgasel   : std_ulogic;             -- ASEL when entering CG
     --
-    irq      :  std_ulogic;
+    irq      : std_ulogic;
+    --
     -- Automode
     am       : spi_am_rec;
     -- Sync registers for inputs
@@ -467,14 +482,14 @@ architecture rtl of spictrlx is
     
    -- purpose: Returns true when a slave is selected and the clock starts
   function slv_start (
-    signal spisel  : std_ulogic;
-    signal cpol    : std_ulogic;
-    signal sck     : std_ulogic;
-    signal prevsck : std_ulogic)
+    spisel   : std_ulogic;
+    cpol     : std_ulogic;
+    sck      : std_ulogic;
+    fsck_chg : std_ulogic)
     return boolean is
   begin  -- slv_start
     if spisel = '0' then          -- Slave is selected
-      if (sck xor prevsck) = '1' then  -- The clock has changed
+      if fsck_chg = '1' then      -- The clock has changed
         return (cpol xor sck) = '1';    -- The clock is not idle 
       end if;
     end if;
@@ -525,6 +540,13 @@ begin
     variable tx_rd    : std_ulogic;
     variable rx_wr    : std_ulogic;
     variable tx_wr    : std_ulogic;
+    --
+    variable tmp      : std_logic_vector(0 to 31);
+    --
+    variable fsck     : std_ulogic;
+    variable fsck_chg : std_ulogic;
+    --
+    variable spisel   : std_ulogic;
   begin  -- process comb
     v := r;  v.irq := '0';
     apbaddr := apbi_paddr(APBH downto 2); apbout := (others => '0');
@@ -532,12 +554,14 @@ begin
     v.syncsamp := r.syncsamp(0) & '0'; update := '0'; v.rxdone := '0';
     indata := '0'; sample := '0'; change := '0'; reload := '0';
     v.spio.astart := '0'; cgasel := '0'; v.ov2 := r.ov; txshift := '0';
-
+    tmp := (others => '0'); fsck := '0'; fsck_chg := '0';
+    spisel := r.spii(1).spisel or r.mode.igsel;
+    
     rx_rd := '0'; tx_rd := '0'; rx_wr := '0'; tx_wr := '0';
     
     rstop1 := '0'; rstop2 := '0'; rstop3 := '0';
     tstop1 := '0'; tstop2 := '0'; tstop3 := '0';
-
+    
     astart := '0'; v.am.txwrite := '0'; v.am.txwrite := '0'; v.am.rxread := '0';
     if AM_EN = 1 then
       v.am.at := r.event.at;
@@ -556,7 +580,8 @@ begin
                   r.mode.div16 & r.mode.rev & r.mode.ms & r.mode.en &
                   r.mode.len & r.mode.pm & r.mode.tw & r.mode.asel &
                   r.mode.fact & r.mode.od & r.mode.cg & r.mode.aseldel &
-                  r.mode.tac & r.mode.tto & zero32(2 downto 0);
+                  r.mode.tac & r.mode.tto & r.mode.igsel & r.mode.cite &
+                  zero32(0);
       elsif apbaddr = EVENT_ADDR then
         apbout := r.event.tip & zero32(30 downto 16) & r.event.at &
                   r.event.lt & zero32(13) & r.event.ov & r.event.un &
@@ -603,6 +628,8 @@ begin
           v.mode.tac     := apbi_pwdata(4);
         end if;
         if TW_EN = 1 then v.mode.tto := apbi_pwdata(3); end if;
+        v.mode.igsel := apbi_pwdata(2);
+        v.mode.cite  := apbi_pwdata(1);
       elsif apbaddr = EVENT_ADDR then
         wc(v.event.lt, r.event.lt, apbi_pwdata(14));
         wc(v.event.ov, r.event.ov, apbi_pwdata(12));
@@ -976,9 +1003,31 @@ begin
     end if;
 
     ---------------------------------------------------------------------------
+    -- SCK filtering, only used in slave mode
+    ---------------------------------------------------------------------------
+    fsck := r.psck;
+    if (r.mode.en and not r.mode.ms) = '1' then
+      if (r.spii(1).sck xor r.psck) = '0' then
+        reload := '1';
+      else
+        -- Detected SCK change
+        if r.divcnt = 0 then
+          v.psck := r.spii(1).sck;
+          fsck := r.spii(1).sck;
+          fsck_chg := '1';
+          reload := '1';
+        else
+          v.divcnt := r.divcnt - 1;
+        end if;
+      end if;
+    elsif r.mode.en = '1' then
+      v.psck := r.spii(1).sck;
+    end if;
+      
+    ---------------------------------------------------------------------------
     -- SPI bus control
     ---------------------------------------------------------------------------
-    if (r.mode.en and not r.running) = '1' then
+    if (r.mode.en and not r.running) = '1' and (r.mode.ms = '0' or r.divcnt = 0) then
       if r.mode.ms = '1' then
         if r.divcnt = 0 then
           v.spio.sck := r.mode.cpol;
@@ -994,12 +1043,12 @@ begin
         v.spio.sckoen := OUTPUT; 
         if TW_EN = 1 then v.twdir := OUTPUT xor r.mode.tto; end if;
       else
-        if (r.spii(1).spisel or r.mode.tw) = '0' then
+        if (spisel or r.mode.tw) = '0' then
           v.spio.misooen := OUTPUT;
         else
           v.spio.misooen := INPUT;
         end if;
-        if (not r.spii(1).spisel and r.mode.tw and r.mode.tto) = '0' then
+        if (not spisel and r.mode.tw and r.mode.tto) = '0' then
           v.spio.mosioen := INPUT;
         else
           v.spio.mosioen := OUTPUT;
@@ -1010,7 +1059,7 @@ begin
       if ((((AM_EN = 0 or r.mode.amen = '0') or
             (AM_EN = 1 and r.mode.amen = '1' and r.am.active = '1')) and
            r.mode.ms = '1' and r.tfreecnt /= FIFO_DEPTH and r.txdupd = '0') or 
-          slv_start(r.spii(1).spisel, r.mode.cpol, r.spii(1).sck, r.psck)) then
+          slv_start(spisel, r.mode.cpol, fsck, fsck_chg)) then
         -- Slave underrun detection
         if r.tfreecnt = FIFO_DEPTH then
           v.uf := '1';
@@ -1035,7 +1084,7 @@ begin
       v.cgcnt := (others => '0');
       v.rbitcnt := (others => '0'); v.tbitcnt := (others => '0');
       if r.mode.ms = '0' then
-        update := not (r.mode.cpha or (r.spii(1).sck xor r.mode.cpol));
+        update := not (r.mode.cpha or (fsck xor r.mode.cpol));
         if r.mode.cpha = '0' then
           -- Prepare first bit
           v.tbitcnt := (others => '0'); v.tbitcnt(0) := '1';
@@ -1046,7 +1095,7 @@ begin
       end if;
       
       -- samp and chng should not be changed on b2b
-      if r.spii(1).spisel /= '0' then
+      if spisel /= '0' then
         v.samp := not r.mode.cpha;
         v.chng := r.mode.cpha;
         v.psck := r.mode.cpol;
@@ -1091,21 +1140,21 @@ begin
       else
         v.divcnt := r.divcnt - 1;
       end if;
-    else
+    elsif r.mode.ms = '1' then
       v.divcnt := (others => '0');
     end if;
 
     if reload = '1' then
       -- Reload clock scale counter
       v.divcnt(4 downto 0) := unsigned('0' & r.mode.pm) + 1;
-      if r.mode.fact = '0' then
+      if (not r.mode.fact and r.mode.ms) = '1' then
         if r.mode.div16 = '1' then
           v.divcnt := shift_left(v.divcnt, 5) - 1;
         else
           v.divcnt := shift_left(v.divcnt, 1) - 1;
         end if;
       else
-        if r.mode.div16 = '1' then
+        if (r.mode.div16 and r.mode.ms) = '1' then
           v.divcnt := shift_left(v.divcnt, 4) - 1;
         else
           v.divcnt(9 downto 4) := (others => '0');
@@ -1131,7 +1180,7 @@ begin
       end if;
       
       -- Detect multiple-master errors (mode-fault)
-      if r.spii(1).spisel = '0' then
+      if spisel = '0' then
         v.mode.en := '0';
         v.mode.ms := '0';
         v.event.mme := '1';
@@ -1159,9 +1208,8 @@ begin
     -- Handle slave operation
     ---------------------------------------------------------------------------
     if (r.mode.en and not r.mode.ms) = '1' then
-      if r.spii(1).spisel = '0' then
-        v.psck := r.spii(1).sck;
-        if (r.psck xor r.spii(1).sck) = '1' then
+      if spisel = '0' then
+        if fsck_chg = '1' then
           sample := r.samp; v.samp := not r.samp;
           change := r.chng; v.chng := not r.chng;
         end if;
@@ -1277,9 +1325,14 @@ begin
         v.spio.mosioen := r.twdir;
       end if;
       if r.tbitcnt = len(log2(wlen+1)-1 downto 0) then
-        if r.mode.cpha = '1' then
-          v.cgcnt := unsigned(r.mode.cg & '0');
-          if ASEL_EN /= 0 then v.cgasel := r.mode.tac; end if;
+        if (TW_EN = 0 or r.mode.tw = '0' or r.mode.loopb = '1' or
+            (TW_EN = 1 and r.mode.tw = '1' and
+             (((r.mode.ms xor r.mode.tto) = '1' and r.twdir = INPUT) or
+              ((r.mode.ms xor r.mode.tto) = '0' and r.twdir = OUTPUT)))) then
+          if r.mode.cpha = '1' then
+            v.cgcnt := unsigned(r.mode.cg & '0');
+            if ASEL_EN /= 0 then v.cgasel := r.mode.tac; end if;
+          end if;
         end if;
         if (TW_EN = 0 or r.mode.tw = '0' or r.mode.loopb = '1' or r.twdir = OUTPUT) then
           if r.uf = '0' then
@@ -1358,7 +1411,9 @@ begin
     
     -- Transfer in progress interrupt generation
     if (not r.running and (r.ov2 or (r.rxdone2 or (not r.mode.ms and r.mode.tw)))) = '1' then
-      v.event.tip := '0'; v.rxdone2 := '0';
+      if r.mode.ms = '0' or r.mode.cite = '0' or r.divcnt = 0 then
+        v.event.tip := '0'; v.rxdone2 := '0';
+      end if;
     end if;
     if v.running = '1' then v.event.tip := '1'; end if;
     if (v.running and not r.event.tip and r.mask.tip and r.mode.en) = '1' then
@@ -1446,12 +1501,13 @@ begin
         v.am.rxsel := '0';
       end if;
       v.rxdone2 := '0';
+      v.divcnt := (others => '0');
     end if;
 
     -- Chip reset
     if rstn = '0' then
       v.mode := ('0','0','0','0','0','0','0','0',"0000","0000",
-                 '0','0','0','0',"00000","00", '0', '0');
+                 '0','0','0','0',"00000","00", '0', '0', '0', '0');
       v.event.tip := '0';
       v.event.lt := '0';
       v.event.ov := '0';
@@ -1487,7 +1543,6 @@ begin
       v.slvsel := (others => '1');
       v.cgcnt := (others => '0');
       v.rbitcnt := (others => '0'); v.tbitcnt := (others => '0');
-      v.divcnt := (others => '0');
       v.txd := (others => '0'); v.txd(0) := '1';
     end if;
     
@@ -1562,9 +1617,11 @@ begin
     else
       -- TX RAM(s) write
       -- TX RAM(s) are either written from TX register or AM TX area
+      tmp := reverse(r.td);
       for i in 0 to automode loop
         tx_di(i) <= r.td(wlen downto 0);
-        if r.mode.rev = '1' then tx_di(i) <= reverse(r.td)(31-wlen to 31); end if;
+--        if r.mode.rev = '1' then tx_di(i) <= reverse(r.td)(31-wlen to 31); end if;
+        if r.mode.rev = '1' then tx_di(i) <= tmp(31-wlen to 31); end if;
       end loop;
       for i in 0 to automode loop
         tx_wa(i) <= r.tdli;
@@ -1751,6 +1808,11 @@ begin
       r <= rin;
       if rstn = '0' then
         r.spio.sck <= '0';
+        r.rbitcnt <= (others => '0'); r.tbitcnt <= (others => '0');
+      else
+        r.spio.sck <= rin.spio.sck;
+        r.rbitcnt <= rin.rbitcnt;
+	r.tbitcnt <= rin.tbitcnt;
       end if;
     end if;
   end process reg;

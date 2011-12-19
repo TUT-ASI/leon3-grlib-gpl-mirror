@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -181,6 +181,8 @@ begin
   variable tahbsi : ahb_slv_in_type;
   variable vf : fregtype;
   variable vb : bregtype;
+  variable regaddr : std_logic_vector(4 downto 2);
+  variable tbaddr  : std_logic_vector(3 downto 2);
   begin
 
     v := r; regsd := (others => '0'); vabufi.enable := '0'; 
@@ -196,6 +198,7 @@ begin
       tahbmi := tahbmiv(conv_integer(rb.bsel));
       tahbsi := tahbsiv(conv_integer(rb.bsel));
     end if;
+    regaddr := r.haddr(4 downto 2); tbaddr := r.haddr(3 downto 2);
     
 -- trace buffer index and delay counters
     if r.enable = '1' then v.timer := r.timer + 1; end if;
@@ -285,7 +288,7 @@ begin
     if (r.hsel and not r.hready) = '1' then
       if r.regacc = '0' then		-- registers
         v.hready := '1';
-        case r.haddr(4 downto 2) is
+        case regaddr is
         when "000" =>
 	  regsd((TBUFABITS + 15) downto 16) := r.delaycnt;
           if ntrace /= 1 then
@@ -359,7 +362,7 @@ begin
           if r.hwrite = '1' then v.hready := '1'; else v.hready2 := not (r.hready2 or r.hready); end if;
           vabufi.enable := not r.enable;
 	  bufdata := tbo.data;
-          case r.haddr(3 downto 2) is
+          case tbaddr is
           when "00" =>
 	    v.hrdata := bufdata(127 downto 96);
 	    if r.hwrite = '1' then 

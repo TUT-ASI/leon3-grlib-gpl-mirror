@@ -20,11 +20,28 @@ Design specifics:
   Using 1 Gbit is also possible with the commercial grlib version.
   Ethernet debug link is enabled, default IP is 192.168.0.53.
 
-* DDR2 is supported. The default frequency is 140 MHz but it's
-  possible to go higher. When changing frequency the delay on the
-  data signals might need to be changed too. How to do this is
-  described in the DDR2SPA section of grip.pdf (see description of
-  SDCFG3 register).
+* DDR2 is supported either by the DDR2SPA core or by the Xilinx MIG.
+
+   DDR2SPA:  The default frequency is 140 MHz but it's
+   possible to go higher. When changing frequency the delay on the
+   data signals might need to be changed too. How to do this is
+   described in the DDR2SPA section of grip.pdf (see description of
+   SDCFG3 register). To select the DDR2SPA core, load the ddr2spa.cfg
+   file in xconfig menu 'Load configuration file'.
+
+   MIG: selecting the MIG controller is done in xconfig. To create
+   the MIG files, do 'make mig' and then 'make scripts'. This will
+   only work with ISE-13 or later. To simulate the template design,
+   the Xilinx SecureIP library must be installed. Use this command
+   to generate the MIG and install SecureIP:
+
+   make xconfig   (select MIG, deselect DDR2SPA)
+   make distclean install-secureip mig
+   make vsim
+   
+   The MIG memory parameters can be changed in of ahb2mig_ml50x.vhd,
+   without having to regenerate the MIG itself. The default settings
+   are compatible with the provided 256 Mbyte SODIMM.
 
 * The SSRAM can be interfaced with the LEON2 Memory controller. 
   Start GRMON with -ramrws 1 when the LEON2 controller is used.

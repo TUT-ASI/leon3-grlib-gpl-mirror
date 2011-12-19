@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -123,14 +123,14 @@ entity leon3mp is
     vid_b         : out std_logic_vector(7 downto 0);
 
     spw_clk	  : in  std_ulogic;
-    spw_rxdp      : in  std_logic_vector(0 to 2);
-    spw_rxdn      : in  std_logic_vector(0 to 2);
-    spw_rxsp      : in  std_logic_vector(0 to 2);
-    spw_rxsn      : in  std_logic_vector(0 to 2);
-    spw_txdp      : out std_logic_vector(0 to 2);
-    spw_txdn      : out std_logic_vector(0 to 2);
-    spw_txsp      : out std_logic_vector(0 to 2);
-    spw_txsn      : out std_logic_vector(0 to 2);
+    spw_rxdp      : in  std_logic_vector(0 to CFG_SPW_NUM-1);
+    spw_rxdn      : in  std_logic_vector(0 to CFG_SPW_NUM-1);
+    spw_rxsp      : in  std_logic_vector(0 to CFG_SPW_NUM-1);
+    spw_rxsn      : in  std_logic_vector(0 to CFG_SPW_NUM-1);
+    spw_txdp      : out std_logic_vector(0 to CFG_SPW_NUM-1);
+    spw_txdn      : out std_logic_vector(0 to CFG_SPW_NUM-1);
+    spw_txsp      : out std_logic_vector(0 to CFG_SPW_NUM-1);
+    spw_txsn      : out std_logic_vector(0 to CFG_SPW_NUM-1);
 
     usb_clkout    : in std_ulogic;
     usb_d         : inout std_logic_vector(15 downto 0);
@@ -700,33 +700,36 @@ begin
       port map(rstn, clkm, rxclko(i), rxclko(i), spw_clkl, spw_clkl, ahbmi,
         ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_GRETH+CFG_AHB_JTAG+CFG_SVGA_ENABLE+i), 
         apbi, apbo(10+i), spwi(i), spwo(i));
-     spwi(i).tickin <= '0'; spwi(i).rmapen <= '1';
-     spwi(i).clkdiv10 <= conv_std_logic_vector(CPU_FREQ/10000-1, 8) when CFG_SPW_GRSPW = 1
-	else conv_std_logic_vector((25*12/20)-1, 8);
 
-     spwlb0 : if SPW_LOOP_BACK = 1 generate
-       core0 : if CFG_SPW_GRSPW = 1 generate
-         spwi(i).d(0) <= spwo(i).d(0); spwi(i).s(0) <= spwo(i).s(0);
-       end generate;
-       core1 : if CFG_SPW_GRSPW = 2 generate
-         dtmp(i) <= spwo(i).d(0); stmp(i) <= spwo(i).s(0);
-       end generate;
-     end generate;
+      spwi(i).tickin <= '0'; spwi(i).rmapen <= '1';
+      spwi(i).clkdiv10 <= conv_std_logic_vector(CPU_FREQ/10000-1, 8) when CFG_SPW_GRSPW = 1
+	else conv_std_logic_vector((25*12/20)-1, 8);
+    end generate;
+  end generate;
+
+  swloop : for i in 0 to CFG_SPW_NUM-1 generate
+      spwlb0 : if SPW_LOOP_BACK = 1 generate
+        core0 : if CFG_SPW_GRSPW = 1 generate
+          spwi(i).d(0) <= spwo(i).d(0); spwi(i).s(0) <= spwo(i).s(0);
+        end generate;
+        core1 : if CFG_SPW_GRSPW = 2 generate
+          dtmp(i) <= spwo(i).d(0); stmp(i) <= spwo(i).s(0);
+        end generate;
+      end generate;
       
-     nospwlb0 : if SPW_LOOP_BACK = 0 generate
-       core0 : if CFG_SPW_GRSPW = 1 generate
-         spwi(i).d(0) <= dtmp(i); spwi(i).s(0) <= stmp(i);
-       end generate;
-       spw_rxd_pad : inpad_ds generic map (padtech, lvds, x25v)
-         port map (spw_rxdp(i), spw_rxdn(i), dtmp(i));
-       spw_rxs_pad : inpad_ds generic map (padtech, lvds, x25v)
-         port map (spw_rxsp(i), spw_rxsn(i), stmp(i));
-       spw_txd_pad : outpad_ds generic map (padtech, lvds, x25v)
-         port map (spw_txdp(i), spw_txdn(i), spwo(i).d(0), gnd(0));
-       spw_txs_pad : outpad_ds generic map (padtech, lvds, x25v)
-         port map (spw_txsp(i), spw_txsn(i), spwo(i).s(0), gnd(0));
-     end generate;
-   end generate;
+      nospwlb0 : if SPW_LOOP_BACK = 0 generate
+        core0 : if CFG_SPW_GRSPW = 1 generate
+          spwi(i).d(0) <= dtmp(i); spwi(i).s(0) <= stmp(i);
+        end generate;
+        spw_rxd_pad : inpad_ds generic map (padtech, lvds, x25v)
+          port map (spw_rxdp(i), spw_rxdn(i), dtmp(i));
+        spw_rxs_pad : inpad_ds generic map (padtech, lvds, x25v)
+          port map (spw_rxsp(i), spw_rxsn(i), stmp(i));
+        spw_txd_pad : outpad_ds generic map (padtech, lvds, x25v)
+          port map (spw_txdp(i), spw_txdn(i), spwo(i).d(0), gnd(0));
+        spw_txs_pad : outpad_ds generic map (padtech, lvds, x25v)
+          port map (spw_txsp(i), spw_txsn(i), spwo(i).s(0), gnd(0));
+      end generate;
   end generate;
 
 -------------------------------------------------------------------------------
@@ -738,7 +741,9 @@ begin
   -----------------------------------------------------------------------------
   -- Shared pads
   -----------------------------------------------------------------------------
-  usbpads: if (CFG_GRUSBDC + CFG_GRUSB_DCL) /= 0 generate
+  usbpads: if (CFG_GRUSBDC + CFG_GRUSB_DCL) = 0 generate
+    usbo.oen <= '1'; usbo.reset <= '1';
+  end generate;
     usb_clk_pad : clkpad generic map (tech => padtech, arch => 2)
       port map (usb_clkout, uclk);
     
@@ -774,7 +779,6 @@ begin
     usb_validh_pad:iopad generic map(tech => padtech, slew => 1)
       port map (usb_validh, usbo.txvalidh, usbo.oen, usbi.rxvalidh);
 
-  end generate;
   
   -----------------------------------------------------------------------------
   -- USB 2.0 Device Controller

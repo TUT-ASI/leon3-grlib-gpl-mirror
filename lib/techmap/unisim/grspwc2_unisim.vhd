@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -80,14 +80,17 @@ entity grspwc2_unisim is
     do           : out  std_logic_vector(3 downto 0);
     so           : out  std_logic_vector(3 downto 0);
     --time iface
-    tickin       : in   std_ulogic;
-    tickout      : out  std_ulogic;
+    tickin       : in   std_logic;
+    tickinraw    : in   std_logic;
+    timein       : in   std_logic_vector(7 downto 0);
+    tickindone   : out  std_logic;
+    tickout      : out  std_logic;
+    tickoutraw   : out  std_logic;
+    timeout      : out  std_logic_vector(7 downto 0);
     --irq
     irq          : out  std_logic;
     --misc     
     clkdiv10     : in   std_logic_vector(7 downto 0);
-    dcrstval     : in   std_logic_vector(9 downto 0);
-    timerrstval  : in   std_logic_vector(11 downto 0);
     --rmapen
     rmapen       : in   std_ulogic;
     --rx ahb fifo
@@ -119,90 +122,248 @@ entity grspwc2_unisim is
     rmwaddress   : out  std_logic_vector(7 downto 0);
     rmrdata      : in   std_logic_vector(7 downto 0);
     linkdis      : out  std_ulogic;
-    testclk      : in   std_ulogic := '0';
-    testrst      : in   std_ulogic := '0';
-    testen       : in   std_ulogic := '0'
+    testrst      : in   std_logic;
+    testen       : in   std_logic;
+    rxdav        : out  std_logic;
+    rxdataout    : out  std_logic_vector(8 downto 0);
+    loopback     : out  std_logic
   );
 end entity;
 
 architecture rtl of grspwc2_unisim is
 
-component grspwc2_unisim_rmap_16_16
+component grspwc2_unisim_16_16_rmap0 is
 port(
-  rst :  in std_logic;
-  clk :  in std_logic;
-  rxclk : in std_logic_vector(1 downto 0);
-  txclk :  in std_logic;
-  txclkn :  in std_logic;
-  hgrant :  in std_logic;
-  hready :  in std_logic;
-  hresp : in std_logic_vector(1 downto 0);
-  hrdata : in std_logic_vector(31 downto 0);
-  hbusreq :  out std_logic;
-  hlock :  out std_logic;
-  htrans : out std_logic_vector(1 downto 0);
-  haddr : out std_logic_vector(31 downto 0);
-  hwrite :  out std_logic;
-  hsize : out std_logic_vector(2 downto 0);
-  hburst : out std_logic_vector(2 downto 0);
-  hprot : out std_logic_vector(3 downto 0);
-  hwdata : out std_logic_vector(31 downto 0);
-  psel :  in std_logic;
-  penable :  in std_logic;
-  paddr : in std_logic_vector(31 downto 0);
-  pwrite :  in std_logic;
-  pwdata : in std_logic_vector(31 downto 0);
-  prdata : out std_logic_vector(31 downto 0);
-  d : in std_logic_vector(3 downto 0);
-  dv : in std_logic_vector(3 downto 0);
-  dconnect : in std_logic_vector(3 downto 0);
-  do : out std_logic_vector(3 downto 0);
-  so : out std_logic_vector(3 downto 0);
-  tickin :  in std_logic;
-  tickout :  out std_logic;
-  irq :  out std_logic;
-  clkdiv10 : in std_logic_vector(7 downto 0);
-  dcrstval : in std_logic_vector(9 downto 0);
-  timerrstval : in std_logic_vector(11 downto 0);
-  rmapen :  in std_logic;
-  rxrenable :  out std_logic;
-  rxraddress : out std_logic_vector(4 downto 0);
-  rxwrite :  out std_logic;
-  rxwdata : out std_logic_vector(31 downto 0);
-  rxwaddress : out std_logic_vector(4 downto 0);
-  rxrdata : in std_logic_vector(31 downto 0);
-  txrenable :  out std_logic;
-  txraddress : out std_logic_vector(4 downto 0);
-  txwrite :  out std_logic;
-  txwdata : out std_logic_vector(31 downto 0);
-  txwaddress : out std_logic_vector(4 downto 0);
-  txrdata : in std_logic_vector(31 downto 0);
-  ncrenable :  out std_logic;
-  ncraddress : out std_logic_vector(5 downto 0);
-  ncwrite :  out std_logic;
-  ncwdata : out std_logic_vector(9 downto 0);
-  ncwaddress : out std_logic_vector(5 downto 0);
-  ncrdata : in std_logic_vector(9 downto 0);
-  rmrenable :  out std_logic;
-  rmraddress : out std_logic_vector(7 downto 0);
-  rmwrite :  out std_logic;
-  rmwdata : out std_logic_vector(7 downto 0);
-  rmwaddress : out std_logic_vector(7 downto 0);
-  rmrdata : in std_logic_vector(7 downto 0);
-  linkdis :  out std_logic;
-  testclk :  in std_logic;
-  testrst :  in std_logic;
-  testen :  in std_logic);
-end component;
+rst :  in std_logic;
+clk :  in std_logic;
+rxclk0 :  in std_logic;
+rxclk1 :  in std_logic;
+txclk :  in std_logic;
+txclkn :  in std_logic;
+hgrant :  in std_logic;
+hready :  in std_logic;
+hresp : in std_logic_vector(1 downto 0);
+hrdata : in std_logic_vector(31 downto 0);
+hbusreq :  out std_logic;
+hlock :  out std_logic;
+htrans : out std_logic_vector(1 downto 0);
+haddr : out std_logic_vector(31 downto 0);
+hwrite :  out std_logic;
+hsize : out std_logic_vector(2 downto 0);
+hburst : out std_logic_vector(2 downto 0);
+hprot : out std_logic_vector(3 downto 0);
+hwdata : out std_logic_vector(31 downto 0);
+psel :  in std_logic;
+penable :  in std_logic;
+paddr : in std_logic_vector(31 downto 0);
+pwrite :  in std_logic;
+pwdata : in std_logic_vector(31 downto 0);
+prdata : out std_logic_vector(31 downto 0);
+d : in std_logic_vector(3 downto 0);
+dv : in std_logic_vector(3 downto 0);
+dconnect : in std_logic_vector(3 downto 0);
+do : out std_logic_vector(3 downto 0);
+so : out std_logic_vector(3 downto 0);
+tickin :  in std_logic;
+tickinraw :  in std_logic;
+timein : in std_logic_vector(7 downto 0);
+tickindone :  out std_logic;
+tickout :  out std_logic;
+tickoutraw :  out std_logic;
+timeout : out std_logic_vector(7 downto 0);
+irq :  out std_logic;
+clkdiv10 : in std_logic_vector(7 downto 0);
+rmapen :  in std_logic;
+rxrenable :  out std_logic;
+rxraddress : out std_logic_vector(4 downto 0);
+rxwrite :  out std_logic;
+rxwdata : out std_logic_vector(31 downto 0);
+rxwaddress : out std_logic_vector(4 downto 0);
+rxrdata : in std_logic_vector(31 downto 0);
+txrenable :  out std_logic;
+txraddress : out std_logic_vector(4 downto 0);
+txwrite :  out std_logic;
+txwdata : out std_logic_vector(31 downto 0);
+txwaddress : out std_logic_vector(4 downto 0);
+txrdata : in std_logic_vector(31 downto 0);
+ncrenable :  out std_logic;
+ncraddress : out std_logic_vector(5 downto 0);
+ncwrite :  out std_logic;
+ncwdata : out std_logic_vector(9 downto 0);
+ncwaddress : out std_logic_vector(5 downto 0);
+ncrdata : in std_logic_vector(9 downto 0);
+rmrenable :  out std_logic;
+rmraddress : out std_logic_vector(7 downto 0);
+rmwrite :  out std_logic;
+rmwdata : out std_logic_vector(7 downto 0);
+rmwaddress : out std_logic_vector(7 downto 0);
+rmrdata : in std_logic_vector(7 downto 0);
+linkdis :  out std_logic;
+testrst :  in std_logic;
+testen :  in std_logic;
+rxdav :  out std_logic;
+rxdataout : out std_logic_vector(8 downto 0);
+loopback :  out std_logic);
+end component grspwc2_unisim_16_16_rmap0;
+
+component grspwc2_unisim_16_16_rmap1 is
+port(
+rst :  in std_logic;
+clk :  in std_logic;
+rxclk0 :  in std_logic;
+rxclk1 :  in std_logic;
+txclk :  in std_logic;
+txclkn :  in std_logic;
+hgrant :  in std_logic;
+hready :  in std_logic;
+hresp : in std_logic_vector(1 downto 0);
+hrdata : in std_logic_vector(31 downto 0);
+hbusreq :  out std_logic;
+hlock :  out std_logic;
+htrans : out std_logic_vector(1 downto 0);
+haddr : out std_logic_vector(31 downto 0);
+hwrite :  out std_logic;
+hsize : out std_logic_vector(2 downto 0);
+hburst : out std_logic_vector(2 downto 0);
+hprot : out std_logic_vector(3 downto 0);
+hwdata : out std_logic_vector(31 downto 0);
+psel :  in std_logic;
+penable :  in std_logic;
+paddr : in std_logic_vector(31 downto 0);
+pwrite :  in std_logic;
+pwdata : in std_logic_vector(31 downto 0);
+prdata : out std_logic_vector(31 downto 0);
+d : in std_logic_vector(3 downto 0);
+dv : in std_logic_vector(3 downto 0);
+dconnect : in std_logic_vector(3 downto 0);
+do : out std_logic_vector(3 downto 0);
+so : out std_logic_vector(3 downto 0);
+tickin :  in std_logic;
+tickinraw :  in std_logic;
+timein : in std_logic_vector(7 downto 0);
+tickindone :  out std_logic;
+tickout :  out std_logic;
+tickoutraw :  out std_logic;
+timeout : out std_logic_vector(7 downto 0);
+irq :  out std_logic;
+clkdiv10 : in std_logic_vector(7 downto 0);
+rmapen :  in std_logic;
+rxrenable :  out std_logic;
+rxraddress : out std_logic_vector(4 downto 0);
+rxwrite :  out std_logic;
+rxwdata : out std_logic_vector(31 downto 0);
+rxwaddress : out std_logic_vector(4 downto 0);
+rxrdata : in std_logic_vector(31 downto 0);
+txrenable :  out std_logic;
+txraddress : out std_logic_vector(4 downto 0);
+txwrite :  out std_logic;
+txwdata : out std_logic_vector(31 downto 0);
+txwaddress : out std_logic_vector(4 downto 0);
+txrdata : in std_logic_vector(31 downto 0);
+ncrenable :  out std_logic;
+ncraddress : out std_logic_vector(5 downto 0);
+ncwrite :  out std_logic;
+ncwdata : out std_logic_vector(9 downto 0);
+ncwaddress : out std_logic_vector(5 downto 0);
+ncrdata : in std_logic_vector(9 downto 0);
+rmrenable :  out std_logic;
+rmraddress : out std_logic_vector(7 downto 0);
+rmwrite :  out std_logic;
+rmwdata : out std_logic_vector(7 downto 0);
+rmwaddress : out std_logic_vector(7 downto 0);
+rmrdata : in std_logic_vector(7 downto 0);
+linkdis :  out std_logic;
+testrst :  in std_logic;
+testen :  in std_logic;
+rxdav :  out std_logic;
+rxdataout : out std_logic_vector(8 downto 0);
+loopback :  out std_logic);
+end component grspwc2_unisim_16_16_rmap1;  
+
+
+component grspwc2_unisim_32_64_rmap1 is
+port(
+rst :  in std_logic;
+clk :  in std_logic;
+rxclk0 :  in std_logic;
+rxclk1 :  in std_logic;
+txclk :  in std_logic;
+txclkn :  in std_logic;
+hgrant :  in std_logic;
+hready :  in std_logic;
+hresp : in std_logic_vector(1 downto 0);
+hrdata : in std_logic_vector(31 downto 0);
+hbusreq :  out std_logic;
+hlock :  out std_logic;
+htrans : out std_logic_vector(1 downto 0);
+haddr : out std_logic_vector(31 downto 0);
+hwrite :  out std_logic;
+hsize : out std_logic_vector(2 downto 0);
+hburst : out std_logic_vector(2 downto 0);
+hprot : out std_logic_vector(3 downto 0);
+hwdata : out std_logic_vector(31 downto 0);
+psel :  in std_logic;
+penable :  in std_logic;
+paddr : in std_logic_vector(31 downto 0);
+pwrite :  in std_logic;
+pwdata : in std_logic_vector(31 downto 0);
+prdata : out std_logic_vector(31 downto 0);
+d : in std_logic_vector(3 downto 0);
+dv : in std_logic_vector(3 downto 0);
+dconnect : in std_logic_vector(3 downto 0);
+do : out std_logic_vector(3 downto 0);
+so : out std_logic_vector(3 downto 0);
+tickin :  in std_logic;
+tickinraw :  in std_logic;
+timein : in std_logic_vector(7 downto 0);
+tickindone :  out std_logic;
+tickout :  out std_logic;
+tickoutraw :  out std_logic;
+timeout : out std_logic_vector(7 downto 0);
+irq :  out std_logic;
+clkdiv10 : in std_logic_vector(7 downto 0);
+rmapen :  in std_logic;
+rxrenable :  out std_logic;
+rxraddress : out std_logic_vector(4 downto 0);
+rxwrite :  out std_logic;
+rxwdata : out std_logic_vector(31 downto 0);
+rxwaddress : out std_logic_vector(4 downto 0);
+rxrdata : in std_logic_vector(31 downto 0);
+txrenable :  out std_logic;
+txraddress : out std_logic_vector(4 downto 0);
+txwrite :  out std_logic;
+txwdata : out std_logic_vector(31 downto 0);
+txwaddress : out std_logic_vector(4 downto 0);
+txrdata : in std_logic_vector(31 downto 0);
+ncrenable :  out std_logic;
+ncraddress : out std_logic_vector(5 downto 0);
+ncwrite :  out std_logic;
+ncwdata : out std_logic_vector(9 downto 0);
+ncwaddress : out std_logic_vector(5 downto 0);
+ncrdata : in std_logic_vector(9 downto 0);
+rmrenable :  out std_logic;
+rmraddress : out std_logic_vector(7 downto 0);
+rmwrite :  out std_logic;
+rmwdata : out std_logic_vector(7 downto 0);
+rmwaddress : out std_logic_vector(7 downto 0);
+rmrdata : in std_logic_vector(7 downto 0);
+linkdis :  out std_logic;
+testrst :  in std_logic;
+testen :  in std_logic;
+rxdav :  out std_logic;
+rxdataout : out std_logic_vector(8 downto 0);
+loopback :  out std_logic);
+end component grspwc2_unisim_32_64_rmap1;
 
 begin
 
-rmap_f16_16 : if (fifosize1 = 16) and (fifosize2 = 16) and (rmap /= 0) generate
-    grspwc20 : grspwc2_unisim_rmap_16_16
+normap_f16_16 : if (fifosize1 = 16) and (fifosize2 = 16) and (rmap = 0) generate
+    grspwc20 : grspwc2_unisim_16_16_rmap0
     port map(
       rst          => rst,
       clk          => clk,
-      rxclk        => rxclk,
+      rxclk0       => rxclk(0),
+      rxclk1       => rxclk(1),
       txclk        => txclk,
       txclkn       => txclkn,
       --ahb mst in
@@ -237,13 +398,16 @@ rmap_f16_16 : if (fifosize1 = 16) and (fifosize2 = 16) and (rmap /= 0) generate
       so           => so,
       --time iface
       tickin       => tickin,
+      tickinraw    => tickinraw,
+      timein       => timein,
+      tickindone   => tickindone,
       tickout      => tickout,
+      tickoutraw   => tickoutraw,
+      timeout      => timeout,
       --irq
       irq          => irq,
       --misc     
       clkdiv10     => clkdiv10,
-      dcrstval     => dcrstval,
-      timerrstval  => timerrstval,
       --rmapen    
       rmapen       => rmapen, 
       --rx ahb fifo
@@ -275,21 +439,203 @@ rmap_f16_16 : if (fifosize1 = 16) and (fifosize2 = 16) and (rmap /= 0) generate
       rmwaddress   => rmwaddress,
       rmrdata      => rmrdata,
       linkdis      => linkdis,
-      testclk      => testclk,
       testrst      => testrst,
-      testen       => testen
+      testen       => testen,
+      rxdav        => rxdav,
+      rxdataout    => rxdataout,
+      loopback     => loopback
       );
 end generate;
 
+rmap_f16_16 : if (fifosize1 = 16) and (fifosize2 = 16) and (rmap /= 0) generate
+    grspwc20 : grspwc2_unisim_16_16_rmap1
+    port map(
+      rst          => rst,
+      clk          => clk,
+      rxclk0       => rxclk(0),
+      rxclk1       => rxclk(1),
+      txclk        => txclk,
+      txclkn       => txclkn,
+      --ahb mst in
+      hgrant       => hgrant,
+      hready       => hready,   
+      hresp        => hresp,
+      hrdata       => hrdata,
+      --ahb mst out
+      hbusreq      => hbusreq,
+      hlock        => hlock,
+      htrans       => htrans,
+      haddr        => haddr,
+      hwrite       => hwrite,
+      hsize        => hsize,
+      hburst       => hburst,
+      hprot        => hprot,
+      hwdata       => hwdata,
+      --apb slv in 
+      psel	   => psel,
+      penable	   => penable,
+      paddr	   => paddr,
+      pwrite	   => pwrite,
+      pwdata	   => pwdata,
+      --apb slv out
+      prdata       => prdata,
+      --spw in
+      d            => d,
+      dv           => dv,
+      dconnect  => dconnect,
+      --spw out
+      do           => do,
+      so           => so,
+      --time iface
+      tickin       => tickin,
+      tickinraw    => tickinraw,
+      timein       => timein,
+      tickindone   => tickindone,
+      tickout      => tickout,
+      tickoutraw   => tickoutraw,
+      timeout      => timeout,
+      --irq
+      irq          => irq,
+      --misc     
+      clkdiv10     => clkdiv10,
+      --rmapen    
+      rmapen       => rmapen, 
+      --rx ahb fifo
+      rxrenable    => rxrenable,
+      rxraddress   => rxraddress, 
+      rxwrite      => rxwrite,
+      rxwdata      => rxwdata, 
+      rxwaddress   => rxwaddress,
+      rxrdata      => rxrdata,  
+      --tx ahb fifo
+      txrenable    => txrenable,
+      txraddress   => txraddress, 
+      txwrite      => txwrite,
+      txwdata      => txwdata, 
+      txwaddress   => txwaddress,
+      txrdata      => txrdata,  
+      --nchar fifo
+      ncrenable    => ncrenable,
+      ncraddress   => ncraddress, 
+      ncwrite      => ncwrite,
+      ncwdata      => ncwdata, 
+      ncwaddress   => ncwaddress,
+      ncrdata      => ncrdata,  
+      --rmap buf
+      rmrenable    => rmrenable,
+      rmraddress   => rmraddress, 
+      rmwrite      => rmwrite,
+      rmwdata      => rmwdata, 
+      rmwaddress   => rmwaddress,
+      rmrdata      => rmrdata,
+      linkdis      => linkdis,
+      testrst      => testrst,
+      testen       => testen,
+      rxdav        => rxdav,
+      rxdataout    => rxdataout,
+      loopback     => loopback
+      );
+end generate;
+
+rmap_f32_64 : if (fifosize1 = 32) and (fifosize2 = 64) and (rmap /= 0) generate
+    grspwc20 : grspwc2_unisim_32_64_rmap1
+    port map(
+      rst          => rst,
+      clk          => clk,
+      rxclk0       => rxclk(0),
+      rxclk1       => rxclk(1),
+      txclk        => txclk,
+      txclkn       => txclkn,
+      --ahb mst in
+      hgrant       => hgrant,
+      hready       => hready,   
+      hresp        => hresp,
+      hrdata       => hrdata,
+      --ahb mst out
+      hbusreq      => hbusreq,
+      hlock        => hlock,
+      htrans       => htrans,
+      haddr        => haddr,
+      hwrite       => hwrite,
+      hsize        => hsize,
+      hburst       => hburst,
+      hprot        => hprot,
+      hwdata       => hwdata,
+      --apb slv in 
+      psel	   => psel,
+      penable	   => penable,
+      paddr	   => paddr,
+      pwrite	   => pwrite,
+      pwdata	   => pwdata,
+      --apb slv out
+      prdata       => prdata,
+      --spw in
+      d            => d,
+      dv           => dv,
+      dconnect  => dconnect,
+      --spw out
+      do           => do,
+      so           => so,
+      --time iface
+      tickin       => tickin,
+      tickinraw    => tickinraw,
+      timein       => timein,
+      tickindone   => tickindone,
+      tickout      => tickout,
+      tickoutraw   => tickoutraw,
+      timeout      => timeout,
+      --irq
+      irq          => irq,
+      --misc     
+      clkdiv10     => clkdiv10,
+      --rmapen    
+      rmapen       => rmapen, 
+      --rx ahb fifo
+      rxrenable    => rxrenable,
+      rxraddress   => rxraddress, 
+      rxwrite      => rxwrite,
+      rxwdata      => rxwdata, 
+      rxwaddress   => rxwaddress,
+      rxrdata      => rxrdata,  
+      --tx ahb fifo
+      txrenable    => txrenable,
+      txraddress   => txraddress, 
+      txwrite      => txwrite,
+      txwdata      => txwdata, 
+      txwaddress   => txwaddress,
+      txrdata      => txrdata,  
+      --nchar fifo
+      ncrenable    => ncrenable,
+      ncraddress   => ncraddress, 
+      ncwrite      => ncwrite,
+      ncwdata      => ncwdata, 
+      ncwaddress   => ncwaddress,
+      ncrdata      => ncrdata,  
+      --rmap buf
+      rmrenable    => rmrenable,
+      rmraddress   => rmraddress, 
+      rmwrite      => rmwrite,
+      rmwdata      => rmwdata, 
+      rmwaddress   => rmwaddress,
+      rmrdata      => rmrdata,
+      linkdis      => linkdis,
+      testrst      => testrst,
+      testen       => testen,
+      rxdav        => rxdav,
+      rxdataout    => rxdataout,
+      loopback     => loopback
+      );
+end generate;
+              
 -- pragma translate_off
 
   err : process 
   begin
-    assert (fifosize1 = 16) and (fifosize2 = 16) 
-	report "ERROR : AHB and RX fifos must be 16!"
+    assert ((fifosize1 = 16) and (fifosize2 = 16)) or ((fifosize1 = 32) and (fifosize2 = 64))
+	report "ERROR : AHB and RX fifos must be 16 or 32/64!"
     severity failure;
-    assert (input_type = 3) and (output_type = 0) and (rxtx_sameclk = 1) 
-	report "ERROR : input type must be 3, output type 0, rxtx_sameclk 1!"
+    assert (input_type = 3) and (output_type = 0)  
+	report "ERROR : input type must be 3, output type 0!"
     severity failure;
     assert ((rmap = 1) and (rmapbufs = 4)) or (rmap = 0) report "ERROR : RMAP buffer size must be 128 bytes!"
     severity failure;

@@ -81,7 +81,7 @@ library grlib;
 use grlib.stdlib.all;
 
 entity i2c_master_byte_ctrl is
-  generic (filter : integer);
+  generic (filter : integer; dynfilt : integer);
   port (
 		clk    : in std_logic;
 		rst    : in std_logic; -- synchronous active high reset (WISHBONE compatible)
@@ -97,7 +97,8 @@ entity i2c_master_byte_ctrl is
 		write,
 		ack_in : std_logic;
 		din    : in std_logic_vector(7 downto 0);
-
+                filt   : in std_logic_vector((filter-1)*dynfilt downto 0);
+                
 		-- output signals
 		cmd_ack  : out std_logic; -- command done
 		ack_out  : out std_logic;
@@ -117,7 +118,7 @@ end entity i2c_master_byte_ctrl;
 
 architecture structural of i2c_master_byte_ctrl is
 	component i2c_master_bit_ctrl is
-        generic (filter : integer);
+        generic (filter : integer; dynfilt : integer);
 	port (
 		clk    : in std_logic;
 		rst    : in std_logic;
@@ -133,6 +134,8 @@ architecture structural of i2c_master_byte_ctrl is
 
 		din  : in std_logic;
 		dout : out std_logic;
+
+                filt   : in std_logic_vector((filter-1)*dynfilt downto 0);
 
 		-- i2c lines
 		scl_i   : in std_logic;  -- i2c clock line input
@@ -164,13 +167,19 @@ architecture structural of i2c_master_byte_ctrl is
 	signal go, host_ack : std_logic;
         -- Added init value to dcnt to prevent simulation meta-value
         -- - jan@gaisler.com
-        signal dcnt : std_logic_vector(2 downto 0) := (others => '0'); -- data counter
+	-- removed init value as it is not compatible with Formality
+        -- - jiri@gaisler.com
+        signal dcnt : std_logic_vector(2 downto 0) 
+-- pragma translate_off
+		:= (others => '0')
+-- pragma translate_on
+	; -- data counter
 	signal cnt_done : std_logic;
 
 begin
 	-- hookup bit_controller
 	bit_ctrl: i2c_master_bit_ctrl
-          generic map (filter)
+          generic map (filter, dynfilt)
           port map(
 		clk     => clk,
 		rst     => rst,
@@ -183,6 +192,7 @@ begin
 		al      => al,
 		din     => core_txd,
 		dout    => core_rxd,
+                filt    => filt,
 		scl_i   => scl_i,
 		scl_o   => scl_o,
 		scl_oen => scl_oen,

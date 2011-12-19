@@ -4,7 +4,7 @@
 define_clock            -name {clk_100}  -freq 130.000 -route 1.0 -clockgroup default_clkgroup
 define_clock            -name {phy_tx_clk}  -freq 25.000 -clockgroup phy_tx_clkgroup -route 10.000
 #define_clock            -name {phy_gtx_clk}  -freq 125.000 -clockgroup phy_gtx_clkgroup -route 2.000
-define_clock            -name {leon3mp|egtx_clk}  -freq 125.000 -clockgroup phy_egtx_clkgroup -route 2.000
+define_clock            -name {n:egtx_clk}  -freq 125.000 -clockgroup phy_egtx_clkgroup -route 2.000
 define_clock            -name {phy_rx_clk}  -freq 125.000 -clockgroup phy_rx_clkgroup -route 2.000
 
 define_clock            -name {leon3mp|clkgen0.clkin}  -freq 100.000 -route 2.0 -clockgroup ahb_clkgroup

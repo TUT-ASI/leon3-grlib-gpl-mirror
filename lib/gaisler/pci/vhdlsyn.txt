@@ -10,4 +10,6 @@ pcipads.vhd
 pcidma.vhd
 grpci2/pcilib2.vhd
 grpci2/grpci2_ahb_mst.vhd
+grpci2/grpci2_phy.vhd
+grpci2/grpci2_phy_wrapper.vhd
 grpci2/grpci2.vhd

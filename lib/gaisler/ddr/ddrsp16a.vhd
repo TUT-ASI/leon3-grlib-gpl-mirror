@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -911,6 +911,7 @@ begin
 
   ahbso.hconfig <= hconfig;
   ahbso.hirq    <= (others => '0');
+  ahbso.hsplit  <= (others => '0');
   ahbso.hindex  <= hindex;
 
   ahbregs : process(clk_ahb) begin 
@@ -944,7 +945,7 @@ begin
   end process;
 
   sdo.address  <= '0' & r.address when regoutput = 1 else '0' & ri.address;                     -- *** ??? delay ctrl
-  sdo.ba(1 downto 0) <= r.ba when regoutput = 1 else ri.ba;                                     -- *** ??? delay ctrl
+  sdo.ba       <= '0' & r.ba when regoutput = 1 else '0' & ri.ba;                                     -- *** ??? delay ctrl
   sdo.bdrive   <= r.sdo_bdrive when regoutput = 1 else r.nbdrive when oepol = 1 else r.bdrive;  -- *** ??? delay ctrl
   sdo.qdrive   <= r.sdo_qdrive when regoutput = 1 else not (ri.qdrive or r.nbdrive);            -- *** ??? delay ctrl
   sdo.vbdrive(31 downto 0)  <= rbdrive;
@@ -959,6 +960,22 @@ begin
   sdo.sdcke    <= (others => r.cke_dly) when regoutput = 1 else (others => r.cfg.cke); -- *** ??? delay ctrl
   sdo.moben    <= r.cfg.mobileen(0);
   sdo.conf     <= r.cfg.conf;
+  sdo.ce       <= '0';
+  sdo.cal_rst  <= '0';
+  sdo.oct      <= '0';
+  sdo.xsdcsn   <= (others => '0');
+  sdo.cb       <= (others => '0');
+  sdo.cal_en   <= (others => '0');
+  sdo.cal_inc  <= (others => '0');
+  sdo.odt      <= (others => '0');
+  sdo.vcbdrive <= (others => '0');
+  sdo.cbdqm    <= (others => '0');
+  sdo.cbcal_en <= (others => '0');
+  sdo.cbcal_inc<= (others => '0');
+  sdo.read_pend<= (others => '0');
+  sdo.regwdata <= (others => '0');
+  sdo.regwrite <= (others => '0');
+  sdo.cal_pll  <= (others => '0');
 
   -- AMBA data mux:ing
   hwdata       <= ahbreadword(ahbsi.hwdata, ra.haddr(4 downto 2));

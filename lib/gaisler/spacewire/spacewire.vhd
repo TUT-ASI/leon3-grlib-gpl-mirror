@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -142,7 +142,6 @@ package spacewire is
     itickout     : std_ulogic;
     itimeout     : std_logic_vector(7 downto 0);
     --time iface
-    tickin_done  : std_ulogic;
     tickout      : std_ulogic;
     timeout      : std_logic_vector(7 downto 0);
     merror       : std_ulogic;
@@ -232,41 +231,6 @@ package spacewire is
     gerror       : std_ulogic;
     lerror       : std_ulogic;
     linkrun      : std_logic_vector(30 downto 0);
-    --debug
-    tick         : std_ulogic;
-    timetx       : std_logic_vector(5 downto 0);
-    s0currport   : std_logic_vector(3 downto 0);
-    s1currport   : std_logic_vector(3 downto 0);
-    s0charav     : std_ulogic;
-    s1charav     : std_ulogic;
-    rtvalid      : std_ulogic;
-    pevalid      : std_ulogic;
-    s1char       : std_logic_vector(8 downto 0);
-    p0insel      : std_logic_vector(3 downto 0); 
-    p0rxactive   : std_ulogic;
-    p0txactive   : std_ulogic;
-    p0active     : std_ulogic;
-    p0headerdel  : std_ulogic;
-    p0spill      : std_ulogic;
-    p0charav     : std_ulogic;
-    p0invaddr    : std_ulogic;
-    p0bufav      : std_ulogic;
-    p0pktdist    : std_ulogic; 
-    p0ports      : std_logic_vector(12 downto 0);
-    p1insel      : std_logic_vector(3 downto 0);
-    p1rxactive   : std_ulogic;
-    p1txactive   : std_ulogic;
-    p1active     : std_ulogic;
-    p1headerdel  : std_ulogic;
-    p1spill      : std_ulogic;
-    p1charav     : std_ulogic;
-    p1invaddr    : std_ulogic;
-    p1bufav      : std_ulogic;
-    p1pktdist    : std_ulogic;
-    p1ports      : std_logic_vector(12 downto 0);
-    rmapstate    : std_logic_vector(4 downto 0);
-    rmapen       : std_logic_vector(30 downto 0);
-    idivisor     : std_logic_vector(7 downto 0);
   end record;
 
   constant grspw_router_in_none : grspw_router_in_type :=
@@ -278,11 +242,7 @@ package spacewire is
   constant grspw_router_out_none : grspw_router_out_type :=
     ((others => '0'), (others => '0'), (others => '0'), (others => '0'),
      (others => (others => '0')), (others => '0'), (others => (others => '0')), '0',
-     '0', '0', (others => '0'), '0', (others => '0'), (others => '0'), (others => '0'),
-     '0', '0', '0', '0', (others => '0'), (others => '0'), '0', '0', '0', '0', '0',
-     '0', '0', '0', '0', (others => '0'), (others => '0'), '0', '0', '0', '0', '0',
-     '0', '0', '0', '0', (others => '0'), (others => '0'), (others => '0'),
-     (others => '0'));
+     '0', '0', (others => '0'));
   
   type spw_ahb_mst_out_vector is array (natural range <>) of
     ahb_mst_out_type;
@@ -291,9 +251,11 @@ package spacewire is
 
   component grspw2_phy is
     generic(
-      scantest   : integer;
-      tech       : integer;
-      input_type : integer --0=xor, 1=sample sdr, 2=sample ddr, 3=aeroflex phy
+      scantest      : integer;
+      tech          : integer;
+      input_type    : integer;
+      input_level   : integer := 0;
+      input_voltage : integer := x33v
       );
     port(
       rstn     : in std_ulogic;
@@ -332,7 +294,7 @@ package spacewire is
       ports        : integer range 1 to 2 := 1;
       dmachan      : integer range 1 to 4 := 1;
       memtech      : integer range 0 to NTECH := DEFMEMTECH;
-      input_type   : integer range 0 to 3 := 0;
+      input_type   : integer range 0 to 4 := 0;
       output_type  : integer range 0 to 2 := 0;
       rxtx_sameclk : integer range 0 to 1 := 0;
       netlist      : integer range 0 to 1 := 0
@@ -421,7 +383,7 @@ package spacewire is
       dmachan      : integer range 1 to 4 := 1;
       memtech      : integer range 0 to NTECH := DEFMEMTECH;
       spwcore      : integer range 1 to 2 := 2;
-      input_type   : integer range 0 to 3 := 0;                 
+      input_type   : integer range 0 to 4 := 0;                 
       output_type  : integer range 0 to 2 := 0;                 
       rxtx_sameclk : integer range 0 to 1 := 0
     ); 
@@ -444,7 +406,7 @@ package spacewire is
   component grspw_codec is
   generic(
     ports        : integer range 1 to 2 := 1;
-    input_type   : integer range 0 to 3 := 0;
+    input_type   : integer range 0 to 4 := 0;
     output_type  : integer range 0 to 2 := 0;
     rxtx_sameclk : integer range 0 to 1 := 0;
     fifosize     : integer range 16 to 2048 := 64;
@@ -469,13 +431,13 @@ package spacewire is
 
   component grspwrouter is
     generic(
-      input_type   : integer range 0 to 3 := 0;
+      input_type   : integer range 0 to 4 := 0;
       output_type  : integer range 0 to 2 := 0;
       rxtx_sameclk : integer range 0 to 1 := 0;
       fifosize     : integer range 16 to 2048 := 64;
       tech         : integer;
       scantest     : integer range 0 to 1 := 0;
-      techfifo     : integer range 0 to 1 := 0;
+      techfifo     : integer range 0 to 255 := 0;
       ft           : integer range 0 to 2 := 0;
       spwen        : integer range 0 to 1 := 1;
       ambaen       : integer range 0 to 1 := 0;
@@ -550,7 +512,7 @@ package spacewire is
       scantest     : integer range 0 to 1 := 0;
       dmachan      : integer range 1 to 4 := 1;
       tech         : integer range 0 to NTECH := inferred;
-      techfifo     : integer range 0 to 1 := 1;
+      techfifo     : integer range 0 to 7 := 1;
       ft           : integer range 0 to 2 := 0
     );
     port(

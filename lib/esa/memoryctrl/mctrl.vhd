@@ -981,8 +981,12 @@ begin
     memo.vcdrive	<= (others => '0');
     memo.scb		<= (others => '0');
     memo.cb		<= (others => '0');
-    memo.romn		<= '1';
-    memo.ramn		<= '1';
+    memo.romn		<= r.romsn(0);
+    memo.ramn		<= r.ramsn(0);
+    memo.sdram_en       <= r.mcfg2.sdren;         -- Unused
+    memo.rs_edac_en     <= '0';
+    memo.ce             <= '0';
+    
     sdi.idle 		<= bidle;
     sdi.haddr		<= haddr;
     sdi.rhaddr		<= r.haddr;
@@ -1061,6 +1065,8 @@ begin
         sdmo.address <= (others => '0'); sdmo.busy <= '0';
         sdmo.aload <= '0'; sdmo.bdrive <= '0'; sdmo.hready <= '1';
         sdmo.hresp <= "11";
+        memo.sddata <= (others => '0');
+        memo.sa <= (others => '0');
   end generate;
 
 end;

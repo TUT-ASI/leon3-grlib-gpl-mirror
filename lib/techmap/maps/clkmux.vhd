@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2010, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2011, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -63,8 +63,12 @@ begin
     ut13 : if tech = ut130 generate
       x0 : clkmux_ut130hbd port map (i0 => i0, i1 => i1, sel => sel, o => o);
     end generate;
-
-    noxil : if not((is_unisim(tech) = 1) or (tech = rhlib18t) or (tech = ut130)) generate
+    n2x : if tech = easic45 generate
+      mux : clkmux_n2x port map (i0 => i0, i1 => i1, sel => sel, o => o);
+    end generate;
+    
+    noxil : if not((is_unisim(tech) = 1) or (tech = rhlib18t) or (tech = ut130) or
+                   (tech = easic45)) generate
       o <= i0 when seli = '0' else i1;
     end generate;
 

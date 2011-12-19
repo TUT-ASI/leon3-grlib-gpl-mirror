@@ -27,7 +27,6 @@ setMode -pff
 setMode -sm
 setMode -bs
 setMode -bs
-setMode -ss
 setMode -sm
 setMode -bsfile
 setMode -dtconfig
