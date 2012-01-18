@@ -72,18 +72,6 @@
 #define CONFIG_SYN_TECH virtex5
 #elif defined CONFIG_SYN_VIRTEX6
 #define CONFIG_SYN_TECH virtex6
-#elif defined CONFIG_SYN_VIRTEX7
-#define CONFIG_SYN_TECH virtex7
-#elif defined CONFIG_SYN_KINTEX7
-#define CONFIG_SYN_TECH kintex7
-#elif defined CONFIG_SYN_ARTIX7
-#define CONFIG_SYN_TECH artix7
-#elif defined CONFIG_SYN_ZYNQ7000
-#define CONFIG_SYN_TECH zynq7000
-#elif defined CONFIG_SYN_ARTIX77
-#define CONFIG_SYN_TECH artix7
-#elif defined CONFIG_SYN_ZYNQ7000
-#define CONFIG_SYN_TECH zynq7000
 #elif defined CONFIG_SYN_RH_LIB18T
 #define CONFIG_SYN_TECH rhlib18t
 #elif defined CONFIG_SYN_SMIC13
@@ -479,10 +467,6 @@
 #ifdef CONFIG_MMU_I32
 #define CONFIG_ITLBNUM 32
 #endif
-#ifdef CONFIG_MMU_I64
-#define CONFIG_ITLBNUM 64
-#endif
-
 
 #define CONFIG_DTLBNUM 2
 #ifdef CONFIG_MMU_D2
@@ -504,10 +488,6 @@
 #ifdef CONFIG_MMU_D32
 #undef CONFIG_DTLBNUM
 #define CONFIG_DTLBNUM 32
-#endif
-#ifdef CONFIG_MMU_D64
-#undef CONFIG_DTLBNUM
-#define CONFIG_DTLBNUM 64
 #endif
 #ifdef CONFIG_MMU_FASTWB
 #define CFG_MMU_FASTWB 1

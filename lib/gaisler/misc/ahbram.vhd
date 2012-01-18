@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2012, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,13 @@
 -- Modified:    Jan Andersson - Aeroflex Gaisler
 -- Description:	AHB ram. 0-waitstate read, 0/1-waitstate write.
 ------------------------------------------------------------------------------
+-- GRLIB2 CORE
+-- VENDOR:      VENDOR_GAISLER
+-- DEVICE:      GAISLER_AHBRAM
+-- VERSION:     0
+-- AHBSLAVE:    0
+-- BAR: 0       TYPE: 0010      PREFETCH: 1     CACHE: 1        DESC: RAM_AREA
+-------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -69,8 +76,6 @@ type reg_type is record
   addr   : std_logic_vector(abits-1+log2(dw/8) downto 0);
   size   : std_logic_vector(2 downto 0);
   prdata : std_logic_vector((dw-1)*pipe downto 0);
-  pwrite : std_ulogic;
-  pready : std_ulogic;
 end record;
 
 signal r, c     : reg_type;
@@ -89,17 +94,9 @@ begin
   variable hrdata  : std_logic_vector(dw-1 downto 0);
   variable seldata : std_logic_vector(dw-1 downto 0);
   variable raddr   : std_logic_vector(3 downto 2);
-  variable adsel   : std_logic;
   begin
     v := r; v.hready := '1'; bs := (others => '0');
-    v.pready := r.hready;
-    if pipe=0 then
-      adsel := r.hwrite or not r.hready;
-    else
-      adsel := r.hwrite or r.pwrite;
-      v.hready := r.hready or not r.pwrite;
-    end if;
-    if adsel = '1' then
+    if (r.hwrite or not r.hready) = '1' then
       haddr := r.addr(abits-1+log2(dw/8) downto log2(dw/8));
     else
       haddr := ahbsi.haddr(abits-1+log2(dw/8) downto log2(dw/8));
@@ -107,20 +104,13 @@ begin
     end if;
     raddr := (others => '0');
 
-    v.pwrite := '0';
-    if pipe/=0 and (r.hready='1' or r.pwrite='0') then
-      v.addr := ahbsi.haddr(abits-1+log2(dw/8) downto 0);
-    end if;
-    if ahbsi.hready = '1' then
-      if pipe=0 then
-        v.addr := ahbsi.haddr(abits-1+log2(dw/8) downto 0);
-      end if;        
+    if ahbsi.hready = '1' then 
       v.hsel := ahbsi.hsel(hindex) and ahbsi.htrans(1);
-      v.size := ahbsi.hsize(2 downto 0);
       v.hwrite := ahbsi.hwrite and v.hsel;
-      if pipe = 1 and v.hsel = '1' and ahbsi.hwrite = '0' and (r.pready='1' or ahbsi.htrans(0)='0') then
+      v.addr := ahbsi.haddr(abits-1+log2(dw/8) downto 0); 
+      v.size := ahbsi.hsize(2 downto 0);
+      if pipe = 1 and v.hsel = '1' and ahbsi.hwrite = '0' then
         v.hready := '0';
-        v.pwrite := r.hwrite;
       end if;
     end if;
 
@@ -231,6 +221,7 @@ begin
   ahbso.hresp   <= "00"; 
   ahbso.hsplit  <= (others => '0'); 
   ahbso.hirq    <= (others => '0');
+  ahbso.hcache  <= '1';
   ahbso.hconfig <= hconfig;
   ahbso.hindex  <= hindex;
 

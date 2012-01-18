@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2012, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -41,8 +41,7 @@ entity tap is
     part   : integer range 0 to 65535 := 0;
     ver    : integer range 0 to 15 := 0;
     trsten : integer range 0 to 1 := 1;
-    scantest : integer := 0;
-    oepol  : integer := 1);
+    scantest : integer := 0);
   port (
     trst        : in std_ulogic;
     tck         : in std_ulogic;
@@ -63,7 +62,6 @@ entity tap is
     tapi_tdo2   : in std_ulogic;
     testen      : in std_ulogic := '0';
     testrst     : in std_ulogic := '1';
-    testoen     : in std_ulogic := '0';
     tdoen       : out std_ulogic
     );
 end;
@@ -102,26 +100,6 @@ begin
                                 tapo_capt, tapo_shft, tapo_upd, tapo_xsel1, tapo_xsel2);
      tapo_inst <= (others => '0'); tdoen <= '0'; tdo <= '0';
    end generate;
-
-   xc7v : if tech = virtex7 generate
-     u0 : virtex7_tap port map (tapi_tdo1, tapi_tdo1, tapo_tck, tapo_tdi, tapo_rst,   
-                                tapo_capt, tapo_shft, tapo_upd, tapo_xsel1, tapo_xsel2);
-     tapo_inst <= (others => '0'); tdoen <= '0'; tdo <= '0';
-   end generate;
-
-   kc7v : if tech = kintex7 generate
-     u0 : kintex7_tap port map (tapi_tdo1, tapi_tdo1, tapo_tck, tapo_tdi, tapo_rst,   
-                                tapo_capt, tapo_shft, tapo_upd, tapo_xsel1, tapo_xsel2);
-     tapo_inst <= (others => '0'); tdoen <= '0'; tdo <= '0';
-   end generate;
-
-
-   zynq7v : if tech = zynq7000 generate
-     u0 : virtex7_tap port map (tapi_tdo1, tapi_tdo1, tapo_tck, tapo_tdi, tapo_rst,   
-                                tapo_capt, tapo_shft, tapo_upd, tapo_xsel1, tapo_xsel2);
-     tapo_inst <= (others => '0'); tdoen <= '0'; tdo <= '0';
-   end generate;
-
 
    xc3s : if (tech = spartan3) or (tech = spartan3e) generate  
      u0 : spartan3_tap port map (tapi_tdo1, tapi_tdo1, tapo_tck, tapo_tdi, tapo_rst,   
@@ -174,12 +152,7 @@ begin
    asic : if is_fpga(tech) = 0 generate
      gscn : if scantest = 1 generate
        lltckn <= not tck;
-       usecmux: if has_clkmux(tech)/=0 generate
-         cmux0: clkmux generic map (tech) port map (lltckn, tck, testen, tckn);
-       end generate;
-       usegmux: if has_clkmux(tech)=0 generate
-         gmux2_0 : grmux2 generic map (tech) port map (lltckn, tck, testen, tckn);
-       end generate;
+       gmux2_0 : grmux2 generic map (tech) port map (lltckn, tck, testen, tckn);
      end generate;
      noscn : if scantest = 0 generate tckn <= not tck; end generate;
      pclk : techbuf generic map (tech => tech) port map (tck, ltck);
@@ -189,10 +162,10 @@ begin
      ltck <= tck; ltckn <= not tck;
    end generate;
       u0 : tap_gen generic map (irlen => irlen, manf => manf, part => part, ver => ver,
-		idcode => idcode, scantest => scantest, oepol => oepol)
+		idcode => idcode, scantest => scantest)
         port map (trst, ltck, ltckn, tms, tdi, tdo, tapi_en1, tapi_tdo1, tapi_tdo2, tapo_tck,
                   tapo_tdi, tapo_inst, tapo_rst, tapo_capt, tapo_shft, tapo_upd, tapo_xsel1,
-                  tapo_xsel2, testen, testrst, testoen, tdoen);
+                  tapo_xsel2, testen, testrst, tdoen);
    end generate;
   
 end;  

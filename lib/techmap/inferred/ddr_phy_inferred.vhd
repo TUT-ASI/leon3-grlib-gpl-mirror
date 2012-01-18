@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2012, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -279,8 +279,7 @@ entity generic_ddr2_phy_wo_pads is
     dbits : integer := 16; clk_mul : integer := 2 ;
     clk_div : integer := 2; rskew : integer := 0;
            eightbanks: integer := 0; abits: integer := 14;
-           cben: integer := 0; chkbits: integer := 8;
-           nclk: integer := 3; ncs: integer := 2);
+           cben: integer := 0; chkbits: integer := 8);
   port(
     rst         : in  std_ulogic;
     clk         : in  std_logic;  -- input clock
@@ -288,12 +287,12 @@ entity generic_ddr2_phy_wo_pads is
     clk0r       : in  std_ulogic; -- system clock returned
     lock        : out std_ulogic; -- DCM locked
 
-    ddr_clk     : out std_logic_vector(nclk-1 downto 0);
-    ddr_clkb    : out std_logic_vector(nclk-1 downto 0);
+    ddr_clk     : out std_logic_vector(2 downto 0);
+    ddr_clkb    : out std_logic_vector(2 downto 0);
     ddr_clk_fb_out  : out std_logic;
     ddr_clk_fb  : in std_logic;
-    ddr_cke     : out std_logic_vector(ncs-1 downto 0);
-    ddr_csb     : out std_logic_vector(ncs-1 downto 0);
+    ddr_cke     : out std_logic_vector(1 downto 0);
+    ddr_csb     : out std_logic_vector(1 downto 0);
     ddr_web     : out std_ulogic;                       -- ddr write enable
     ddr_rasb    : out std_ulogic;                       -- ddr ras
     ddr_casb    : out std_ulogic;                       -- ddr cas
@@ -306,7 +305,7 @@ entity generic_ddr2_phy_wo_pads is
     ddr_dq_in   : in  std_logic_vector (dbits-1 downto 0); -- ddr data
     ddr_dq_out  : out  std_logic_vector (dbits-1 downto 0); -- ddr data
     ddr_dq_oen  : out  std_logic_vector (dbits-1 downto 0); -- ddr data
-    ddr_odt     : out std_logic_vector(ncs-1 downto 0);  -- ddr odt
+    ddr_odt     : out std_logic_vector(1 downto 0);  -- ddr odt
 
     addr        : in  std_logic_vector (abits-1 downto 0); -- data mask
     ba          : in  std_logic_vector (2 downto 0); -- data mask
@@ -319,8 +318,8 @@ entity generic_ddr2_phy_wo_pads is
     rasn        : in  std_ulogic;
     casn        : in  std_ulogic;
     wen         : in  std_ulogic;
-    csn         : in  std_logic_vector(ncs-1 downto 0);
-    cke         : in  std_logic_vector(ncs-1 downto 0);
+    csn         : in  std_logic_vector(1 downto 0);
+    cke         : in  std_logic_vector(1 downto 0);
     ck          : in  std_logic_vector(2 downto 0);
     odt         : in  std_logic_vector(1 downto 0)
     );
@@ -444,7 +443,7 @@ begin
   dp0: ddrphy_datapath
     generic map (
       regtech => inferred, dbits => dbits, abits => abits,
-      bankbits => 2+EIGHTBANKS, ncs => ncs, nclk => nclk,
+      bankbits => 2+EIGHTBANKS, ncs => 2, nclk => 3,
       resync => 0 )
     port map (
       clk0 => clk0r,
@@ -484,7 +483,7 @@ begin
       odt => odt,
       dqs_en => dqs,
       dqs_oen => dqsoen,
-      ddrclk_en => ck(nclk-1 downto 0)
+      ddrclk_en => ck
       );
   
 end;

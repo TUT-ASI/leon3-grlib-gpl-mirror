@@ -72,18 +72,6 @@
 #define CONFIG_SYN_TECH virtex5
 #elif defined CONFIG_SYN_VIRTEX6
 #define CONFIG_SYN_TECH virtex6
-#elif defined CONFIG_SYN_VIRTEX7
-#define CONFIG_SYN_TECH virtex7
-#elif defined CONFIG_SYN_KINTEX7
-#define CONFIG_SYN_TECH kintex7
-#elif defined CONFIG_SYN_ARTIX7
-#define CONFIG_SYN_TECH artix7
-#elif defined CONFIG_SYN_ZYNQ7000
-#define CONFIG_SYN_TECH zynq7000
-#elif defined CONFIG_SYN_ARTIX77
-#define CONFIG_SYN_TECH artix7
-#elif defined CONFIG_SYN_ZYNQ7000
-#define CONFIG_SYN_TECH zynq7000
 #elif defined CONFIG_SYN_RH_LIB18T
 #define CONFIG_SYN_TECH rhlib18t
 #elif defined CONFIG_SYN_SMIC13
@@ -155,8 +143,6 @@
 #define CFG_CLK_TECH actfus
 #elif defined CONFIG_CLK_CLKDLL
 #define CFG_CLK_TECH virtex
-#elif defined CONFIG_CLK_CLKPLLE2
-#define CFG_CLK_TECH CONFIG_SYN_TECH
 #elif defined CONFIG_CLK_DCM
 #define CFG_CLK_TECH CONFIG_SYN_TECH
 #elif defined CONFIG_CLK_LIB18T
@@ -541,10 +527,6 @@
 #ifdef CONFIG_MMU_I32
 #define CONFIG_ITLBNUM 32
 #endif
-#ifdef CONFIG_MMU_I64
-#define CONFIG_ITLBNUM 64
-#endif
-
 
 #define CONFIG_DTLBNUM 2
 #ifdef CONFIG_MMU_D2
@@ -566,10 +548,6 @@
 #ifdef CONFIG_MMU_D32
 #undef CONFIG_DTLBNUM
 #define CONFIG_DTLBNUM 32
-#endif
-#ifdef CONFIG_MMU_D64
-#undef CONFIG_DTLBNUM
-#define CONFIG_DTLBNUM 64
 #endif
 #ifdef CONFIG_MMU_FASTWB
 #define CFG_MMU_FASTWB 1
@@ -799,10 +777,6 @@
 #define CONFIG_MCTRL_PROGPAGE 0
 #endif
 
-
-#ifndef CONFIG_MIG_DDR3
-#define CONFIG_MIG_DDR3 0
-#endif
 
 #ifndef CONFIG_MIG_DDR2
 #define CONFIG_MIG_DDR2 0
@@ -1034,10 +1008,6 @@
 
 #ifndef CONFIG_SPIMCTRL_PWRUPCNT
 #define CONFIG_SPIMCTRL_PWRUPCNT 0
-#endif
-
-#ifndef CONFIG_SPIMCTRL_OFFSET
-#define CONFIG_SPIMCTRL_OFFSET 0
 #endif
 #ifndef CONFIG_SPICTRL_ENABLE
 #define CONFIG_SPICTRL_ENABLE 0

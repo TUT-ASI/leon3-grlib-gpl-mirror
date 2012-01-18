@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2012, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -96,7 +96,7 @@ begin
   generic map(tech, hindex, pindex, paddr, pmask, pirq,
           rmap, rmapcrc, fifosize1, fifosize2, rxclkbuftype,
           rxunaligned, rmapbufs, ft, scantest, techfifo, ports,
-          dmachan, memtech, input_type, output_type, rxtx_sameclk, netlist, nodeaddr, destkey)
+          dmachan, memtech, input_type, output_type, rxtx_sameclk, netlist)
   port map(rst, clk, rxclk0, rxclk1, txclk, txclkn, ahbmi, ahbmo, apbi, apbo, swni, swno);
   end generate;
 

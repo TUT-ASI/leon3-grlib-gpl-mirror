@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2012, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -428,6 +428,7 @@ begin
    ahbso.hready  <= ra.hready;
    ahbso.hresp   <= ra.hresp;
    ahbso.hrdata <= ahbdrivedata(ra.hrdata);
+   ahbso.hcache  <= '1';
 
 --   migi.app_addr  <= '0' & ra.acc.haddr(28 downto 6) & "000";
    migi.app_addr  <= "00000" & ra.acc.haddr(28 downto 5) & "00";

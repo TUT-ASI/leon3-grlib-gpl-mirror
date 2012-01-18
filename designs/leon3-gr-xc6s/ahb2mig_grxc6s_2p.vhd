@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2012, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -56,12 +56,10 @@ entity ahb2mig_grxc6s_2p is
     mcb3_dram_cke     : out std_logic;
     mcb3_dram_dm      : out std_logic;
     mcb3_dram_udqs    : inout std_logic;
-    mcb3_dram_udqs_n  : inout std_logic;
     mcb3_rzq          : inout std_logic;
     mcb3_zio          : inout std_logic;
     mcb3_dram_udm     : out std_logic;
     mcb3_dram_dqs     : inout std_logic;
-    mcb3_dram_dqs_n   : inout std_logic;
     mcb3_dram_ck      : out std_logic;
     mcb3_dram_ck_n    : out std_logic;
 
@@ -74,13 +72,13 @@ entity ahb2mig_grxc6s_2p is
 
     calib_done        : out std_logic;
     test_error	      : out std_logic; 
-    rst_n_syn         : out std_logic;
+    rst_n_syn         : in std_logic;
     rst_n_async	      : in std_logic; 
-    clk_amba          : out std_logic;
+    clk_amba          : in std_logic;
     clk_mem_n         : in std_logic;
     clk_mem_p         : in std_logic;
     clk_125           : out std_logic;
-    clk_100           : out std_logic
+    clkout5           : out std_logic
    );
 end ;
 
@@ -126,7 +124,7 @@ generic
    c3_clk0                                 : out std_logic;
    c3_rst0                                 : out std_logic;
    clk_125                                 : out std_logic; -- 125 MHz for RGMII
-   clk_100                                 : out std_logic; -- Extra clock
+   clkout5                                 : out std_logic; -- Extra clock
    mcb3_dram_dqs                           : inout  std_logic;
    mcb3_dram_dqs_n                         : inout  std_logic;
    mcb3_dram_ck                            : out std_logic;
@@ -254,19 +252,10 @@ signal r, rin    : reg_type;
 signal r2, r2in  : reg2_type; 
 signal i         : mcb_type;
 signal p2        : p2_if_type;
-signal clk_amba_i : std_logic;
-signal rst_n_syn_i : std_logic;
-signal rst_syn : std_logic;
-signal calib_done_i : std_logic;
 
 begin
 
-  clk_amba  <= clk_amba_i;
-  rst_n_syn <= rst_n_syn_i and calib_done_i;
-  rst_n_syn_i <= not rst_syn;
-  calib_done <= calib_done_i;
-
-  comb: process( rst_n_syn_i, r, ahbsi, i )
+  comb: process( rst_n_syn, r, ahbsi, i )
   variable v : reg_type;
   variable wmask : std_logic_vector(3 downto 0);
   variable wr_en : std_logic;
@@ -388,7 +377,7 @@ begin
       rd_en := '1'; v.rd_cnt := r.rd_cnt - 1;
     end if;
 
-    if rst_n_syn_i = '0' then
+    if rst_n_syn = '0' then
       v.rd_cnt := "000000"; v.bstate := idle; v.hready := '1';
     end if;
 
@@ -413,21 +402,22 @@ begin
   ahbso.hirq    <= (others => '0');
   ahbso.hindex  <= hindex;
   ahbso.hsplit  <= (others => '0');
+  ahbso.hcache  <= '1';
 
   apbo.pindex <= pindex;
   apbo.pconfig <= pconfig;
   apbo.pirq <= (others => '0');
 
-  regs : process(clk_amba_i)
+  regs : process(clk_amba)
   begin
-    if rising_edge(clk_amba_i) then 
+    if rising_edge(clk_amba) then 
       r <= rin;
     end if;
   end process;   
 
 
   port2 : if vgamst /= 0 generate
-    comb2: process( rst_n_syn_i, r2, ahbmo, p2 )
+    comb2: process( rst_n_syn, r2, ahbmo, p2 )
     variable v2 : reg2_type;
     variable cmd_en         :  std_logic;
     variable rd_en          : std_logic;
@@ -475,7 +465,7 @@ begin
       end if;
       v2.haddr(1 downto 0) := "00";
 
-      if rst_n_syn_i = '0' then
+      if rst_n_syn = '0' then
         v2.rd_cnt := "000000"; v2.bstate := idle; v2.hready := '1';
       end if;
 
@@ -492,16 +482,16 @@ begin
     ahbmi.hresp <= "00";
     ahbmi.hgrant <= (others => '1');
     ahbmi.hready <= r2.hready;
+    ahbmi.hcache <= '1';
     ahbmi.testen <= '0';
     ahbmi.testrst <= '0';
     ahbmi.scanen <= '0';
     ahbmi.testoen <= '0';
     ahbmi.hirq <= (others => '0');
-    ahbmi.testin <= (others => '0');
-    
-    regs : process(clk_amba_i)
+
+    regs : process(clk_amba)
     begin
-      if rising_edge(clk_amba_i) then 
+      if rising_edge(clk_amba) then 
         r2 <= r2in;
       end if;
     end process;   
@@ -545,7 +535,6 @@ begin
    mcb3_dram_cke     => mcb3_dram_cke,   
    mcb3_dram_dm      => mcb3_dram_dm,     
    mcb3_dram_udqs    => mcb3_dram_udqs,   
-   mcb3_dram_udqs_n    => mcb3_dram_udqs_n,   
    mcb3_rzq          => mcb3_rzq,        
    mcb3_zio          => mcb3_zio,  
    mcb3_dram_udm     => mcb3_dram_udm, 
@@ -553,23 +542,22 @@ begin
 --   c3_sys_clk_n      => clk_mem_n,
    c3_sys_clk        => clk_mem_p,
    c3_sys_rst_n      => rst_n_async,
-   c3_calib_done     => calib_done_i,
-   c3_clk0           => clk_amba_i,
-   c3_rst0           => rst_syn,
+   c3_calib_done     => calib_done,
+   c3_clk0           => open,
+   c3_rst0           => open,
    clk_125           => clk_125,
-   clk_100           => clk_100,
+   clkout5           => clkout5,
    mcb3_dram_dqs     => mcb3_dram_dqs,
-   mcb3_dram_dqs_n     => mcb3_dram_dqs_n,
    mcb3_dram_ck      => mcb3_dram_ck,
    mcb3_dram_ck_n    => mcb3_dram_ck_n,
-   c3_p0_cmd_clk     => clk_amba_i,
+   c3_p0_cmd_clk     => clk_amba,
    c3_p0_cmd_en      => i.cmd_en,
    c3_p0_cmd_instr   => i.cmd_instr,
    c3_p0_cmd_bl      => i.cmd_bl,
    c3_p0_cmd_byte_addr   => i.cmd_byte_addr,
    c3_p0_cmd_empty   => i.cmd_empty,
    c3_p0_cmd_full    => i.cmd_full,
-   c3_p0_wr_clk      => clk_amba_i,
+   c3_p0_wr_clk      => clk_amba,
    c3_p0_wr_en       => i.wr_en,
    c3_p0_wr_mask     => i.wr_mask,
    c3_p0_wr_data     => i.wr_data,
@@ -578,7 +566,7 @@ begin
    c3_p0_wr_count    => i.wr_count,
    c3_p0_wr_underrun => i.wr_underrun,
    c3_p0_wr_error    => i.wr_error,
-   c3_p0_rd_clk      => clk_amba_i,
+   c3_p0_rd_clk      => clk_amba,
    c3_p0_rd_en       => i.rd_en,
    c3_p0_rd_data     => i.rd_data,
    c3_p0_rd_full     => i.rd_full,
@@ -586,14 +574,14 @@ begin
    c3_p0_rd_count    => i.rd_count,
    c3_p0_rd_overflow => i.rd_overflow,
    c3_p0_rd_error    => i.rd_error,
-   c3_p2_cmd_clk     => clk_amba_i,
+   c3_p2_cmd_clk     => clk_amba,
    c3_p2_cmd_en      => p2.cmd_en,      
    c3_p2_cmd_instr   => p2.cmd_instr,   
    c3_p2_cmd_bl      => p2.cmd_bl,      
    c3_p2_cmd_byte_addr => r2.haddr(29 downto 0),
    c3_p2_cmd_empty   => p2.cmd_empty,   
    c3_p2_cmd_full    => p2.cmd_full,    
-   c3_p2_rd_clk      => clk_amba_i,
+   c3_p2_rd_clk      => clk_amba,
    c3_p2_rd_en      => p2.rd_en,      
    c3_p2_rd_data    => p2.rd_data,    
    c3_p2_rd_full     => p2.rd_full,     

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2012, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -491,8 +491,7 @@ component unisim_skew_outpad
 end component;
 
 component unisim_clkpad 
-  generic (level : integer := 0; voltage : integer := x33v; arch : integer := 0; hf : integer := 0;
-           tech : integer := 0);
+  generic (level : integer := 0; voltage : integer := x33v; arch : integer := 0; hf : integer := 0);
   port (pad : in std_ulogic; o : out std_ulogic; rstn : std_ulogic := '1'; lock : out std_ulogic);
 end component; 
 

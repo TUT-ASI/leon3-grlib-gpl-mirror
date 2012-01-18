@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2012, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -290,7 +290,7 @@ begin
       txrdata, clk, txwrite, txwaddress(fabits1-1 downto 0), txwdata);
 
     --RMAP Buffer
-    rmap_ram : if (rmap /= 0) generate
+    rmap_ram : if (rmap = 1) generate
       ram0 : syncram_2p generic map(memtech, rfifo, 8)
       port map(clk, rmrenablex, rmraddress(rfifo-1 downto 0),
         rmrdata, clk, rmwrite, rmwaddress(rfifo-1 downto 0),
@@ -317,7 +317,7 @@ begin
       txrdata, clk, txwrite, txwaddress(fabits1-1 downto 0), txwdata);
 
     --RMAP Buffer
-    rmap_ram : if (rmap /= 0) generate
+    rmap_ram : if (rmap = 1) generate
       ram0 : syncram_2pft generic map(memtech, rfifo, 8, 0, 0, 2)
       port map(clk, rmrenablex, rmraddress(rfifo-1 downto 0),
         rmrdata, clk, rmwrite, rmwaddress(rfifo-1 downto 0),

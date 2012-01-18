@@ -2,8 +2,8 @@ This leon3 design is tailored to the Xilinx Virtex-6 ML605 board
 
 http://www.xilinx.com/ml605
 
-Simulation and synthesis for ISE-13
------------------------------------
+Simulation and synthesis
+------------------------
 
 The design uses the Xilinx MIG memory interface with an AHB-2.0
 interface. The MIG source code cannot be distributed due to the
@@ -27,42 +27,10 @@ and then
 
 to program the FPGA.
 
-Simulation and synthesis for ISE-14
------------------------------------
-
-The design uses the Xilinx MIG memory interface with an AHB-2.0
-interface. The MIG source code cannot be distributed due to the
-prohibitive Xilinx license, so the MIG must be re-generated with 
-coregen before simulation and synthesis can be done.
-
-To generate the MIG and install the Xilinx unisim simulation
-library, do as follows:
-
-  make mig39
-  make compile_xilinx_verilog_lib
-  make map_xilinx_verilog_lib
-
-To simulate and run systest.c on the Leon design using the memory 
-controller from Xilinx use the make targets:
-
-  make soft
-  make vsim-launch
-  
-This will ONLY work with ISE-14 installed, and the XILINX variable
-properly set in the shell. To build the design, do
-
-  make planAhead
-
-and then
-
-  make ise-prog-fpga
-
-to program the FPGA.
-
 Design specifics
 ----------------
 
-* Synthesis should be done using ISE-13 or ISE-14
+* Synthesis shold be done using ISE-13
 
 * The DDR3 controller is implemented with Xilinx MIG-3.7 and 
   runs of the 200 MHz clock. The DDR3 memory runs at 400 MHz
@@ -82,7 +50,7 @@ Design specifics
 
 * LED 2 indicates processor in debug mode
 
-* LED 7 indicates processor in error mode
+* LED 3 indicates DDR3 PHY initialization done
 
 * The GRETH core is enabled and runs without problems at both
   100 and 1000 Mbit. The 1000 Mbit operation requires the commercial
@@ -92,7 +60,7 @@ Design specifics
 * 16-bit flash prom can be read at address 0. It can be programmed
   with GRMON version 1.1.16 or later.
 
-* When using ISE-13 the system can be simulated if the secure IP models are installed:
+* The system can be simulated if the secure IP models are installed:
 
   make install-secureip
 
@@ -102,16 +70,8 @@ Design specifics
 
   Modelsim v6.5e or newer is required to build the secure IP models.
 
-* When using ISE-14 the system can be simulated if xilinx core libs are installed:
-
-  make compile_xilinx_verilog_lib
-  make map_xilinx_verilog_lib
-
-  Then rebuild the scripts and simulation model:
-
-  make distclean vsim-launch
-
-  Modelsim v10.1a has been used to run systest.c.
+  The normal leon3 test bench cannot be executed as the DDR3 model
+  does not support pre-loading.
 
 * The application UART1 is connected to the USB/RS232 connector
 
@@ -124,7 +84,7 @@ Design specifics
 
 * Output from GRMON is:
 
-grmon -eth -ip 192.168.0.51 -u -nb
+grmon -eth -ip 192.168.0.52 -u -nb
 
  GRMON LEON debug monitor v1.1.47 professional version
 

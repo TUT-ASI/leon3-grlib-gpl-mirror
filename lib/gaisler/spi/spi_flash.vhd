@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2012, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -307,7 +307,7 @@ architecture sim of spi_flash is
     
     
   begin  -- simple_spi_flash_model
-    di <= 'Z'; do <= 'Z';
+    di <= 'Z';
     loop 
       if csn /= '0' then wait until csn = '0'; end if;
 

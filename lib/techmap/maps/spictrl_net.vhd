@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2012, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -41,11 +41,7 @@ entity spictrl_net is
     acntbits  : integer range 1 to 32 := 32;
     aslvsel   : integer range 0 to 1  := 0;
     twen      : integer range 0 to 1  := 1;
-    maxwlen   : integer range 0 to 15 := 0;
-    automask0 : integer               := 0;
-    automask1 : integer               := 0;
-    automask2 : integer               := 0;
-    automask3 : integer               := 0
+    maxwlen   : integer range 0 to 15 := 0
   );
   port (
     rstn          : in std_ulogic;
@@ -68,7 +64,6 @@ entity spictrl_net is
     spii_sck      : in  std_ulogic;
     spii_spisel   : in  std_ulogic;
     spii_astart   : in  std_ulogic;
-    spii_cstart   : in  std_ulogic;
     spio_miso     : out std_ulogic;
     spio_misooen  : out std_ulogic;
     spio_mosi     : out std_ulogic;
@@ -77,7 +72,6 @@ entity spictrl_net is
     spio_sckoen   : out std_ulogic;
     spio_enable   : out std_ulogic;
     spio_astart   : out std_ulogic;
-    spio_aready   : out std_ulogic;
     slvsel        : out std_logic_vector((slvselsz-1) downto 0)
     );
 end entity spictrl_net;
@@ -109,7 +103,6 @@ architecture rtl of spictrl_net is
       spii_sck      : in  std_ulogic;
       spii_spisel   : in  std_ulogic;
       spii_astart   : in  std_ulogic;
-      spii_cstart   : in  std_ulogic;
       spio_miso     : out std_ulogic;
       spio_misooen  : out std_ulogic;
       spio_mosi     : out std_ulogic;
@@ -118,7 +111,6 @@ architecture rtl of spictrl_net is
       spio_sckoen   : out std_ulogic;
       spio_enable   : out std_ulogic;
       spio_astart   : out std_ulogic;
-      spio_aready   : out std_ulogic;
       slvsel        : out std_logic_vector((slvselsz-1) downto 0));
   end component;
 
@@ -150,7 +142,6 @@ begin
         spii_sck     => spii_sck,
         spii_spisel  => spii_spisel,
         spii_astart  => spii_astart,
-        spii_cstart  => spii_cstart,
         spio_miso    => spio_miso,
         spio_misooen => spio_misooen,
         spio_mosi    => spio_mosi,
@@ -159,7 +150,6 @@ begin
         spio_sckoen  => spio_sckoen,
         spio_enable  => spio_enable,
         spio_astart  => spio_astart,
-        spio_aready  => spio_aready,
         slvsel       => slvsel);
   end generate;
 

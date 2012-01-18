@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2012, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -105,7 +105,7 @@ constant M_ENT_CLOG     : integer := M_ENT_ILOG;     -- i/dcache tlb entries: ad
   component mmutlb
     generic ( 
       tech     : integer range 0 to NTECH := 0;
-      entries  : integer range 2 to 64 := 8;
+      entries  : integer range 2 to 32 := 8;
       tlb_type  : integer range 0 to 3 := 1;
       tlb_rep   : integer range 0 to 1 := 0;
       mmupgsz   : integer range 0 to 5  := 0
@@ -559,7 +559,9 @@ begin
       tlbi_a0.mmctrl1   <= mmudci.mmctrl1;
       tlbi_a0.wb_op     <= '0';
     end if;
-
+    tlbi_a0.tlbcami     <= (others => mmutlbcam_in_type_none);
+    tlbi_a1.tlbcami     <= (others => mmutlbcam_in_type_none);
+        
     mmudco.transdata <= mmudco_transdata;
     mmuico.transdata <= mmuico_transdata;
     mmudco.grant     <= mmudco_grant;

@@ -2,9 +2,9 @@
 use std.textio.all;
 -- pragma translate_on
 package version is
-  constant grlib_version : integer := 1202;
+  constant grlib_version : integer := 1100;
 -- pragma translate_off
-  constant grlib_date : string := "20130131";
+  constant grlib_date : string := "20120625";
 -- pragma translate_on
-  constant grlib_build : integer := 4123;
+  constant grlib_build : integer := 4116;
 end;

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2012, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -31,7 +31,6 @@ use techmap.gencomp.all;
 use techmap.allmem.all;
 library grlib;
 use grlib.config.all;
-use grlib.config_types.all;
 use grlib.stdlib.all;
 
 entity syncram128 is
@@ -44,7 +43,7 @@ entity syncram128 is
     dataout : out std_logic_vector (127+16*paren downto 0);
     enable  : in  std_logic_vector (3 downto 0);
     write   : in  std_logic_vector (3 downto 0);
-    testin  : in  std_logic_vector (TESTIN_WIDTH-1 downto 0) := testin_none);
+    testin  : in  std_logic_vector (3 downto 0) := "0000");
 end;
 
 architecture rtl of syncram128 is
@@ -60,26 +59,27 @@ architecture rtl of syncram128 is
   );
   end component;
 
+constant has_sram128 : tech_ability_type := (
+	virtex2 => 1, virtex4 => 1, virtex5 => 1, spartan3 => 1,
+	spartan3e => 1, spartan6 => 1, virtex6 => 1, 
+	tm65gpl => 0, easic45 => 1, others => 0);
+
 signal dinp, doutp : std_logic_vector(143 downto 0);
-signal xenable,xwrite : std_logic_vector(3 downto 0);
 
 begin
-
-  xenable <= enable when testen=0 or testin(TESTIN_WIDTH-2)='0' else "0000";
-  xwrite <= write when testen=0 or testin(TESTIN_WIDTH-2)='0' else "0000";
 
 nopar : if paren = 0 generate
   s128 : if has_sram128(tech) = 1 generate
     uni : if (is_unisim(tech) = 1) generate 
       x0 : unisim_syncram128 generic map (abits)
-         port map (clk, address, datain, dataout, xenable, xwrite);
+         port map (clk, address, datain, dataout, enable, write);
     end generate;
     n2x : if (tech = easic45) generate
       x0 : n2x_syncram_we generic map (abits => abits, dbits => 128)
-        port map(clk, address, datain, dataout, xenable, xwrite);
+        port map(clk, address, datain, dataout, enable, write);
     end generate;
 -- pragma translate_off
-    dmsg : if GRLIB_CONFIG_ARRAY(grlib_debug_level) >= 2 generate
+    dmsg : if grlib_debug_level >= 2 generate
       x : process
       begin
         assert false report "syncram128: " & tost(2**abits) & "x128" &

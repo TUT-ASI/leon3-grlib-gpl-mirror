@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2012, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ use spw.spwcomp.all;
 
 entity grspw2_gen is
   generic(
-    rmap         : integer range 0 to 2  := 0;
+    rmap         : integer range 0 to 1  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
     fifosize1    : integer range 4 to 32 := 32;
     fifosize2    : integer range 16 to 64 := 64;
@@ -48,10 +48,7 @@ entity grspw2_gen is
     rxtx_sameclk : integer range 0 to 1 := 0;
     ft           : integer range 0 to 2 := 0;
     techfifo     : integer range 0 to 1 := 1;
-    memtech      : integer := 0;
-    nodeaddr     : integer range 0 to 255 := 254;
-    destkey      : integer range 0 to 255 := 0
-    );
+    memtech      : integer := 0);
   port(
     rst          : in  std_ulogic;
     clk          : in  std_ulogic;
@@ -106,7 +103,6 @@ entity grspw2_gen is
     testen       : in   std_ulogic := '0';
     --rmapen
     rmapen       : in   std_ulogic;
-    rmapnodeaddr : in   std_logic_vector(7 downto 0);
     --parallel rx data out
     rxdav        : out  std_ulogic;
     rxdataout    : out  std_logic_vector(8 downto 0);
@@ -175,9 +171,7 @@ begin
       tech         => tech,
       input_type   => input_type,
       output_type  => output_type,
-      rxtx_sameclk => rxtx_sameclk,
-      nodeaddr     => nodeaddr,
-      destkey      => destkey)
+      rxtx_sameclk => rxtx_sameclk)
     port map(
       rst          => rst,
       clk          => clk,
@@ -229,7 +223,6 @@ begin
       clkdiv10     => clkdiv10,
       --rmapen
       rmapen       => rmapen,
-      rmapnodeaddr => rmapnodeaddr,
       --rx ahb fifo
       rxrenable    => rxrenable,
       rxraddress   => rxraddress,
@@ -289,7 +282,7 @@ begin
       txrdata, clk, txwrite, txwaddress(fabits1-1 downto 0), txwdata, testin);
 
     --RMAP Buffer
-    rmap_ram : if (rmap /= 0) generate
+    rmap_ram : if (rmap = 1) generate
       ram0 : syncram_2p generic map(memtech, rfifo, 8)
       port map(clk, rmrenable, rmraddress(rfifo-1 downto 0),
         rmrdata, clk, rmwrite, rmwaddress(rfifo-1 downto 0),
@@ -316,7 +309,7 @@ begin
       txrdata, clk, txwrite, txwaddress(fabits1-1 downto 0), txwdata, open, testin);
 
     --RMAP Buffer
-    rmap_ram : if (rmap /= 0) generate
+    rmap_ram : if (rmap = 1) generate
       ram0 : syncram_2pft generic map(memtech, rfifo, 8, 0, 0, 2)
       port map(clk, rmrenable, rmraddress(rfifo-1 downto 0),
         rmrdata, clk, rmwrite, rmwaddress(rfifo-1 downto 0),

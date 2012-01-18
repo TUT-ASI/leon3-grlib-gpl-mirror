@@ -339,10 +339,6 @@
 #ifdef CONFIG_MMU_I32
 #define CONFIG_ITLBNUM 32
 #endif
-#ifdef CONFIG_MMU_I64
-#define CONFIG_ITLBNUM 64
-#endif
-
 
 #define CONFIG_DTLBNUM 2
 #ifdef CONFIG_MMU_D2
@@ -364,10 +360,6 @@
 #ifdef CONFIG_MMU_D32
 #undef CONFIG_DTLBNUM
 #define CONFIG_DTLBNUM 32
-#endif
-#ifdef CONFIG_MMU_D64
-#undef CONFIG_DTLBNUM
-#define CONFIG_DTLBNUM 64
 #endif
 #ifdef CONFIG_MMU_FASTWB
 #define CFG_MMU_FASTWB 1

@@ -18,9 +18,9 @@ CLEAN=soft-clean
 
 TECHLIBS = unisim
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
-	tmtc openchip cypress ihp usbhc spw
+	tmtc openchip cypress ihp gleichmann usbhc spw
 DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan leon3ft grusbhc usb \
-	spi spacewire  slink ascs leon4 leon4v0 l2cache \
+	spi ata coremp7 spacewire  slink ascs haps leon4 leon4b64 l2cache \
 	pwm gr1553b iommu
 FILESKIP = grcan.vhd
 

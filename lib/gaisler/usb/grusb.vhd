@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2012, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -129,9 +129,7 @@ package grusb is
       memsel      : integer                      := 0;
       syncprst    : integer range 0 to 1         := 0;
       sysfreq     : integer                      := 65000;
-      pcidev      : integer range 0 to 1         := 0;
-      debug       : integer                      := 0;
-      debugsize   : integer                      := 8192);
+      pcidev      : integer range 0 to 1         := 0);
     port (
       clk       : in  std_ulogic;
       uclk      : in  std_ulogic;
@@ -271,9 +269,7 @@ package grusb is
       memsel      : integer                      := 0;
       syncprst    : integer range 0 to 1         := 0;
       sysfreq     : integer                      := 65000;
-      pcidev      : integer range 0 to 1         := 0;
-      debug       : integer                      := 0;
-      debugsize   : integer                      := 8192);
+      pcidev      : integer range 0 to 1         := 0);
     port (
       clk               : in  std_ulogic;
       uclk              : in  std_ulogic;

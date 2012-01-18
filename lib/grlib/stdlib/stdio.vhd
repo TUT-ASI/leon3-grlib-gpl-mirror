@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2012, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -195,8 +195,8 @@ package body StdIO is
       variable GOOD:             Boolean;
    begin
       HRead(L, VALUE, GOOD);
-      --assert GOOD
-      --   report "HREAD: access incorrect";
+      assert GOOD
+         report "HREAD: access incorrect";
    end HRead;
 
    procedure HRead(
@@ -206,8 +206,8 @@ package body StdIO is
       variable V:                Std_ULogic_Vector(0 to Value'Length-1);
    begin
       HRead(L, V, GOOD);
-      --assert GOOD
-      --   report "HREAD: access incorrect";
+      assert GOOD
+         report "HREAD: access incorrect";
       VALUE := to_bitvector(V);
    end HRead;
 
@@ -229,8 +229,8 @@ package body StdIO is
    begin
       HRead(L, V, GOOD);
       VALUE := Std_Logic_Vector(V);
-      --assert GOOD
-      --   report "HREAD: access incorrect";
+      assert GOOD
+         report "HREAD: access incorrect";
    end HRead;
 
    procedure HWrite(

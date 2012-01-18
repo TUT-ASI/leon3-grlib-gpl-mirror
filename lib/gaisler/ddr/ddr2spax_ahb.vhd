@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2012, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -154,7 +154,7 @@ begin
 
     av := ar;
     so := (hready => ar.so_hready, hresp => HRESP_OKAY, hrdata => (others => '0'),
-           hsplit => (others => '0'), hirq => (others => '0'),
+           hsplit => (others => '0'), hcache => not ar.hio, hirq => (others => '0'),
            hconfig => hconfig, hindex => hindex);
     wbw := '0';
     wbwb := '0';

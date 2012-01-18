@@ -1,1 +1,1 @@
-can i2c
+occomp can i2c spi ata ac97

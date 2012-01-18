@@ -39,7 +39,6 @@ entity spictrl_unisim is
     spii_sck      : in  std_ulogic;
     spii_spisel   : in  std_ulogic;
     spii_astart   : in  std_ulogic;
-    spii_cstart   : in  std_ulogic;
     spio_miso     : out std_ulogic;
     spio_misooen  : out std_ulogic;
     spio_mosi     : out std_ulogic;
@@ -48,7 +47,6 @@ entity spictrl_unisim is
     spio_sckoen   : out std_ulogic;
     spio_enable   : out std_ulogic;
     spio_astart   : out std_ulogic;
-    spio_aready   : out std_ulogic;
     slvsel        : out std_logic_vector((slvselsz-1) downto 0));
 end spictrl_unisim;
 
@@ -77,7 +75,6 @@ architecture rtl of spictrl_unisim is
       spii_sck      : in  std_ulogic;
       spii_spisel   : in  std_ulogic;
       spii_astart   : in  std_ulogic;
-      spii_cstart   : in  std_ulogic;
       spio_miso     : out std_ulogic;
       spio_misooen  : out std_ulogic;
       spio_mosi     : out std_ulogic;
@@ -86,7 +83,6 @@ architecture rtl of spictrl_unisim is
       spio_sckoen   : out std_ulogic;
       spio_enable   : out std_ulogic;
       spio_astart   : out std_ulogic;
-      spio_aready   : out std_ulogic;
       slvsel        : out std_logic_vector(31 downto 0));
   end component;
 
@@ -113,7 +109,6 @@ architecture rtl of spictrl_unisim is
       spii_sck      : in  std_ulogic;
       spii_spisel   : in  std_ulogic;
       spii_astart   : in  std_ulogic;
-      spii_cstart   : in  std_ulogic;
       spio_miso     : out std_ulogic;
       spio_misooen  : out std_ulogic;
       spio_mosi     : out std_ulogic;
@@ -122,7 +117,6 @@ architecture rtl of spictrl_unisim is
       spio_sckoen   : out std_ulogic;
       spio_enable   : out std_ulogic;
       spio_astart   : out std_ulogic;
-      spio_aready   : out std_ulogic;
       slvsel        : out std_logic_vector(31 downto 0));
   end component;
   
@@ -151,7 +145,6 @@ begin
         spii_sck     => spii_sck,
         spii_spisel  => spii_spisel,
         spii_astart  => spii_astart,
-        spii_cstart  => spii_cstart,
         spio_miso    => spio_miso,
         spio_misooen => spio_misooen,
         spio_mosi    => spio_mosi,
@@ -160,7 +153,6 @@ begin
         spio_sckoen  => spio_sckoen,
         spio_enable  => spio_enable,
         spio_astart  => spio_astart,
-        spio_aready  => spio_aready,
         slvsel       => slvsel);
   end generate;
 
@@ -187,7 +179,6 @@ begin
         spii_sck     => spii_sck,
         spii_spisel  => spii_spisel,
         spii_astart  => spii_astart,
-        spii_cstart  => spii_cstart,
         spio_miso    => spio_miso,
         spio_misooen => spio_misooen,
         spio_mosi    => spio_mosi,
@@ -196,7 +187,6 @@ begin
         spio_sckoen  => spio_sckoen,
         spio_enable  => spio_enable,
         spio_astart  => spio_astart,
-        spio_aready  => spio_aready,
         slvsel       => slvsel);
   end generate;
   

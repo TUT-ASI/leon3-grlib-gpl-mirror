@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2012, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -61,9 +61,7 @@ entity ddrspa is
     conf1   : integer := 0;
     regoutput : integer := 0;
     nosync    : integer := 0;
-    ddr400  : integer := 1;
-    scantest: integer := 0;
-    phyiconf : integer := 0
+    ddr400  : integer := 1
   );
   port (
     rst_ddr : in  std_ulogic;
@@ -127,21 +125,19 @@ begin
   
   ddr_phy0 : ddrphy_wrap_cbd generic map (tech => fabtech, MHz => MHz,  
 	dbits => ddrbits, rstdelay => 0, clk_mul => clkmul, 
-	clk_div => clkdiv, rskew => rskew, mobile => mobile,
-	scantest => scantest, phyiconf => phyiconf)
+	clk_div => clkdiv, rskew => rskew, mobile => mobile)
   port map (
 	rst_ddr, clk_ddr, clkddro, clkddri, clkread, ilock,
 	ddr_clk, ddr_clkb, ddr_clk_fb_out, ddr_clk_fb,
 	ddr_cke, ddr_csb, ddr_web, ddr_rasb, ddr_casb, 
-	ddr_dm, ddr_dqs, ddr_ad, ddr_ba, ddr_dq, sdi, sdo,
-        ahbsi.testen, ahbsi.testrst, ahbsi.scanen, ahbsi.testoen);
+	ddr_dm, ddr_dqs, ddr_ad, ddr_ba, ddr_dq, sdi, sdo);
 
   ddrc : ddr1spax generic map (ddrbits => ddrbits, memtech => memtech, phytech => fabtech,
         hindex => hindex, haddr => haddr, hmask => hmask, ioaddr => ioaddr, iomask => iomask,
 	pwron => pwron, MHz => DDR_FREQ, col => col, Mbyte => Mbyte,
         mobile => mobile, confapi => confapi, conf0 => conf0, 
         conf1 => conf1, regoutput => regoutput, nosync => nosync, ddr400 => ddr400, ahbbits => 32,
-        rstdel => rstdel, scantest => scantest)
+        rstdel => rstdel)
     port map (ddr_rst, rst_ahb, clkddri, clk_ahb, ahbsi, ahbso, sdi, sdo);
     
 end;

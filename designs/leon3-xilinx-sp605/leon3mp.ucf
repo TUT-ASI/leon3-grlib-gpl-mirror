@@ -13,13 +13,12 @@ NET "clk33"             TNM_NET = "clk33";
 TIMESPEC "TS_clkm_clk33" = FROM "clkm" TO "clk33" TIG;
 TIMESPEC "TS_clk33_clkm" = FROM "clk33" TO "clkm" TIG;
 
-# --- MIG37 ---
+# XST versions of MIG false paths
 NET "mig_gen.ddrc/MCB_inst/memc?_wrapper_inst/memc?_mcb_raw_wrapper_inst/selfrefresh_mcb_mode" TIG;
 NET "mig_gen.ddrc/MCB_inst/c?_pll_lock" TIG;
-#NET "mig_gen.ddrc/MCB_inst/memc?_wrapper_inst/memc?_mcb_raw_wrapper_inst/gen_term_calib.mcb_soft_calibration_top_inst/mcb_soft_calibration_inst/CKE_Train" TIG; ## This path exists for DDR2 only
-
-# --- MIG39 ---
 INST "mig_gen.ddrc/MCB_inst/memc?_wrapper_inst/memc?_mcb_raw_wrapper_inst/gen_term_calib.mcb_soft_calibration_top_inst/mcb_soft_calibration_inst/DONE_SOFTANDHARD_CAL*" TIG;
+#Please uncomment the below TIG if used in a design which enables self-refresh mode
+#NET "mig_gen.ddrc/MCB_inst/memc?_wrapper_inst/memc?_mcb_raw_wrapper_inst/gen_term_calib.mcb_soft_calibration_top_inst/mcb_soft_calibration_inst/SELFREFRESH_MCB_REQ" TIG;
 
 NET "address(0)"  LOC = "n22"   | IOSTANDARD =LVCMOS25;
 NET "address(1)"  LOC = "n20" | IOSTANDARD =LVCMOS25;

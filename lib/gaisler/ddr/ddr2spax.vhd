@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2012, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -36,7 +36,6 @@ use gaisler.memctrl.all;
 use gaisler.ddrpkg.all;
 library techmap;
 use techmap.gencomp.ddr2phy_has_datavalid;
-use techmap.gencomp.ddr2phy_ptctrl;
 
 entity ddr2spax is
    generic (
@@ -69,8 +68,7 @@ entity ddr2spax is
       bigmem     : integer range 0 to 1 := 0;
       raspipe    : integer range 0 to 1 := 0;
       hwidthen   : integer range 0 to 1 := 0;
-      rstdel     : integer := 200;
-      scantest   : integer := 0
+      rstdel     : integer := 200
    );
    port (
       ddr_rst : in  std_ulogic;
@@ -164,9 +162,9 @@ begin
     ftc: ft_ddr2spax_ahb
       generic map (hindex => hindex, haddr => haddr, hmask => hmask, ioaddr => ioaddr, iomask => iomask,
                    nosync => nosync, burstlen => burstlen, ahbbits => xahbw, bufbits => xahbw+xahbw/2,
-                   ddrbits => ddrbits, hwidthen => hwidthen, devid => GAISLER_DDR2SP, revision => revision)
+                   ddrbits => ddrbits, hwidthen => hwidthen, revision => revision)
       port map (ahb_rst, clk_ahb, ahbsi, ahbso, ce, request, start_tog, response,
-                wbwaddr, wbwdata, wbwrite, wbwritebig, rbraddr, rbrdata, hwidth, '0', open, open, FTFE_BEID_DDR2);
+                wbwaddr, wbwdata, wbwrite, wbwritebig, rbraddr, rbrdata, hwidth, '0', open, open);
   end generate;
   
   ddrc : ddr2spax_ddr
@@ -176,11 +174,10 @@ begin
                  nosync => nosync, eightbanks => eightbanks, dqsse => dqsse, burstlen => burstlen,
                  chkbits => ft*ddrbits/2, bigmem => bigmem, raspipe => raspipe,
                  hwidthen => hwidthen, phytech => phytech, hasdqvalid => ddr2phy_has_datavalid(phytech),
-                 rstdel => rstdel, phyptctrl => ddr2phy_ptctrl(phytech), scantest => scantest,
-                 ddr_syncrst => ddr_syncrst)
+                 rstdel => rstdel)
     port map (ddr_rst, clk_ddr, request, start_tog, response, sdi, sdox,
               wbraddr, wbrdata, rbwaddr, rbwdata, rbwrite, hwidth,
-              '0', ddr_request_none, open, ahbsi.testen, ahbsi.testrst, ahbsi.testoen);
+              '0', ddr_request_none, open);
 
 
   sdoproc: process(sdox,ce)

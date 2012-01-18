@@ -19,9 +19,9 @@ CLEAN=soft-clean
 
 TECHLIBS = unisim secureip
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
-	tmtc openchip hynix cypress ihp usbhc
-DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan ddr usb grusbhc \
-	ascs slink
+	tmtc openchip hynix cypress ihp gleichmann usbhc
+DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan ddr usb ata grusbhc \
+	haps ascs slink coremp7
 
 FILESKIP = grcan.vhd
 

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2012, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -42,8 +42,7 @@ entity ddrphy_wrap is
   generic (tech : integer := virtex2; MHz : integer := 100; 
 	rstdelay : integer := 200; dbits : integer := 16; 
 	clk_mul : integer := 2 ; clk_div : integer := 2;
-	rskew : integer :=0; mobile : integer := 0;
-        scantest : integer := 0; phyiconf : integer := 0);
+	rskew : integer :=0; mobile : integer := 0);
   port (
     rst       : in  std_ulogic;
     clk       : in  std_logic;          	-- input clock
@@ -68,12 +67,7 @@ entity ddrphy_wrap is
     ddr_dq    	: inout  std_logic_vector (dbits-1 downto 0); -- ddr data
  
     sdi         : out sdctrl_in_type;
-    sdo         : in  sdctrl_out_type;
-    
-    testen      : in std_ulogic;
-    testrst     : in std_ulogic;
-    scanen      : in std_ulogic;
-    testoen     : in std_ulogic);
+    sdo         : in  sdctrl_out_type);
 end;
 
 architecture rtl of ddrphy_wrap is
@@ -87,8 +81,7 @@ begin
 	/ 200
 -- pragma translate_on
 	, dbits => dbits, clk_mul => clk_mul, clk_div => clk_div, 
-	rskew => rskew, mobile => mobile, scantest => scantest,
-	phyiconf => phyiconf)
+	rskew => rskew, mobile => mobile)
      port map (
 	rst, clk, clkout, clkoutret, clkread, lock,
 	ddr_clk, ddr_clkb, ddr_clk_fb_out, ddr_clk_fb,
@@ -98,7 +91,7 @@ begin
 	sdi.data(dbits*2-1 downto 0), sdo.data(dbits*2-1 downto 0), 
 	sdo.dqm(dbits/4-1 downto 0), sdo.bdrive, sdo.bdrive, sdo.qdrive, 
 	sdo.rasn, sdo.casn, sdo.sdwen, sdo.sdcsn, sdo.sdcke, sdo.sdck(2 downto 0), sdo.moben,
-        sdi.datavalid, testen, testrst, scanen, testoen);
+        sdi.datavalid);
 
     drvdata : if dbits < 64 generate
       sdi.data(127 downto dbits*2) <= (others => '0');
@@ -131,8 +124,7 @@ entity ddrphy_wrap_cbd is
         chkbits: integer := 0; padbits : integer := 0;
 	clk_mul : integer := 2 ; clk_div : integer := 2;
 	rskew : integer :=0; mobile : integer := 0;
-        abits: integer := 14; nclk: integer := 3; ncs: integer := 2;
-        scantest: integer := 0; phyiconf : integer := 0);
+        abits: integer := 14; nclk: integer := 3; ncs: integer := 2);
   port (
     rst            : in    std_ulogic;
     clk            : in    std_logic;   -- input clock
@@ -157,12 +149,8 @@ entity ddrphy_wrap_cbd is
     ddr_dq         : inout std_logic_vector (dbits+padbits+chkbits-1 downto 0);      -- ddr data
     
     sdi            : out   sdctrl_in_type;
-    sdo            : in    sdctrl_out_type;
-
-    testen      : in std_ulogic;
-    testrst     : in std_ulogic;
-    scanen      : in std_ulogic;
-    testoen     : in std_ulogic);
+    sdo            : in    sdctrl_out_type
+    );
 end;
 
 architecture rtl of ddrphy_wrap_cbd is
@@ -300,8 +288,7 @@ begin
 -- pragma translate_on
 	, dbits     => dbits+padbits+chkbits,clk_mul  => clk_mul,  clk_div  => clk_div, 
         rskew    => rskew, mobile => mobile,
-        abits       => abits,       nclk    => nclk,      ncs      => ncs, scantest => scantest,
-        phyiconf => phyiconf)
+        abits       => abits,       nclk    => nclk,      ncs      => ncs)
      port map (
 	rst, clk, clkout, clkoutret, clkread, lock,
 	ddr_clk, ddr_clkb, ddr_clk_fb_out, ddr_clk_fb,
@@ -311,8 +298,7 @@ begin
 	sdo.address(1+abits downto 2), sdo.ba(1 downto 0),
 	dqin, dqout, 
 	dqm, sdo.bdrive, sdo.bdrive, sdo.qdrive, 
-	sdo.rasn, sdo.casn, sdo.sdwen, csn, cke, sdck, sdo.moben,sdi.datavalid,
-        testen,testrst,scanen,testoen);
+	sdo.rasn, sdo.casn, sdo.sdwen, csn, cke, sdck, sdo.moben,sdi.datavalid);
 
     sdi.regrdata <= (others => '0');
 
@@ -342,8 +328,7 @@ entity ddrphy_wrap_cbd_wo_pads is
 	clk_mul     : integer := 2 ;      clk_div    : integer := 2;
         rskew       : integer := 0;       mobile     : integer := 0;
         abits       : integer := 14;      nclk     : integer := 3;     ncs      : integer := 2;
-        chkbits  : integer := 0;
-        scantest : integer := 0; phyiconf : integer := 0);
+        chkbits  : integer := 0);
   port (
     rst            : in    std_ulogic;
     clk            : in    std_logic;   -- input clock
@@ -370,12 +355,8 @@ entity ddrphy_wrap_cbd_wo_pads is
     ddr_dq_out     : out   std_logic_vector (dbits+padbits+chkbits-1 downto 0);      -- ddr data
     ddr_dq_oen     : out   std_logic_vector (dbits+padbits+chkbits-1 downto 0);     
     sdi            : out   sdctrl_in_type;
-    sdo            : in    sdctrl_out_type;
-
-    testen      : in std_ulogic;
-    testrst     : in std_ulogic;
-    scanen      : in std_ulogic;
-    testoen     : in std_ulogic);
+    sdo            : in    sdctrl_out_type
+    );
 end;
 
 architecture rtl of ddrphy_wrap_cbd_wo_pads is
@@ -513,7 +494,7 @@ begin
 -- pragma translate_on
       , dbits => dbits+padbits+chkbits, clk_mul => clk_mul, clk_div => clk_div, 
       rskew => rskew,
-      abits => abits, nclk => nclk, ncs => ncs, mobile => mobile, scantest => scantest, phyiconf => phyiconf)
+      abits => abits, nclk => nclk, ncs => ncs, mobile => mobile)
     port map (
       rst => rst, clk => clk, clkout => clkout, clkoutret => clkoutret,
       lock => lock,
@@ -526,8 +507,7 @@ begin
       addr => sdo.address(1+abits downto 2), ba => sdo.ba(1 downto 0), dqin => dqin, dqout => dqout, dm => dqm,
       oen => sdo.bdrive,
       dqs => sdo.bdrive, dqsoen => sdo.qdrive, rasn => sdo.rasn, casn => sdo.casn, wen => sdo.sdwen, csn => csn,
-      cke => cke, ck => sdck, moben => sdo.moben, dqvalid => sdi.datavalid,
-      testen => testen, testrst => testrst, scanen => scanen, testoen => testoen
+      cke => cke, ck => sdck, moben => sdo.moben, dqvalid => sdi.datavalid
       );
   sdi.regrdata <= (others => '0');
   
@@ -577,8 +557,7 @@ entity ddr2phy_wrap is
         dqsse       : integer range 0 to 1 := 0;
         abits       : integer := 14;      nclk     : integer := 3;     ncs      : integer := 2;
         cben        : integer := 0;       chkbits  : integer := 8;     ctrl2en  : integer := 0;
-        resync      : integer := 0;       custombits: integer := 8;
-        scantest    : integer := 0);
+        resync      : integer := 0;       custombits: integer := 8);
   port (
     rst            : in    std_ulogic;
     clk            : in    std_logic;   -- input clock
@@ -619,12 +598,7 @@ entity ddr2phy_wrap is
 
     customclk      : in    std_ulogic;
     customdin      : in    std_logic_vector(custombits-1 downto 0);
-    customdout     : out   std_logic_vector(custombits-1 downto 0);
-
-    testen         : in    std_ulogic;
-    testrst        : in    std_ulogic;
-    scanen         : in    std_ulogic;
-    testoen        : in    std_ulogic
+    customdout     : out   std_logic_vector(custombits-1 downto 0)
     );
 end;
 
@@ -648,7 +622,7 @@ begin
                  ddelayb0,ddelayb1,ddelayb2,ddelayb3,ddelayb4,ddelayb5,ddelayb6,ddelayb7,
                  cbdelayb0,cbdelayb1,cbdelayb2,cbdelayb3,
                  numidelctrl,norefclk,odten,rskew,
-                 eightbanks,dqsse,abits,nclk,ncs,chkbits,resync,custombits,scantest)
+                 eightbanks,dqsse,abits,nclk,ncs,chkbits,resync,custombits)
     port map (
       rst,clk,clkref200,clkout,clkoutret,clkresync,lock,
       lddr_clk,lddr_clkb,lddr_clk_fb_out,lddr_clk_fb,
@@ -656,7 +630,7 @@ begin
       lddr_dqs_in,lddr_dqs_out,lddr_dqs_oen,
       lddr_ad,lddr_ba,lddr_dq_in,lddr_dq_out,lddr_dq_oen,
       lddr_odt,
-      sdi,sdo,customclk,customdin,customdout,testen,testrst,scanen,testoen);
+      sdi,sdo,customclk,customdin,customdout);
 
   -- Instantiate pads for control signals and data bus
   p0: ddr2pads
@@ -728,8 +702,7 @@ entity ddr2phy_wrap_cbd is
         dqsse       : integer range 0 to 1 := 0;
         abits       : integer := 14;      nclk     : integer := 3;     ncs      : integer := 2;
         chkbits  : integer := 0;          ctrl2en  : integer := 0;
-        resync      : integer := 0;       custombits: integer := 8;    extraio  : integer := 0;
-        scantest    : integer := 0);
+        resync      : integer := 0;       custombits: integer := 8;    extraio  : integer := 0);
   port (
     rst            : in    std_ulogic;
     clk            : in    std_logic;   -- input clock
@@ -766,12 +739,8 @@ entity ddr2phy_wrap_cbd is
 
     customclk      : in    std_ulogic;
     customdin      : in    std_logic_vector(custombits-1 downto 0);
-    customdout     : out   std_logic_vector(custombits-1 downto 0);
-
-    testen      : in std_ulogic;
-    testrst     : in std_ulogic;
-    scanen      : in std_ulogic;
-    testoen     : in std_ulogic);
+    customdout     : out   std_logic_vector(custombits-1 downto 0)
+    );
 end;
 
 architecture rtl of ddr2phy_wrap_cbd is
@@ -918,8 +887,7 @@ begin
         numidelctrl => numidelctrl, norefclk => norefclk, rskew    => rskew,
         eightbanks  => eightbanks,  dqsse => dqsse,
         abits       => abits,       nclk    => nclk,      ncs      => ncs,
-        ctrl2en  => ctrl2en, resync => resync, custombits => custombits, extraio => extraio,
-        scantest    => scantest)
+        ctrl2en  => ctrl2en, resync => resync, custombits => custombits, extraio => extraio)
      port map (
 	rst, clk, clkref200, clkout, clkoutret, clkresync, lock,
 	ddr_clk, ddr_clkb, ddr_clk_fb_out, ddr_clk_fb,
@@ -935,9 +903,7 @@ begin
         sdo.regwdata, sdo.regwrite, sdi.regrdata, sdi.datavalid,
         customclk, customdin, customdout,
         
-        ddr_web2, ddr_rasb2, ddr_casb2, ddr_ad2, ddr_ba2,
-
-        testen, testrst, scanen, testoen
+        ddr_web2, ddr_rasb2, ddr_casb2, ddr_ad2, ddr_ba2
         );
 end;
 
@@ -969,8 +935,7 @@ entity ddr2phy_wrap_cbd_wo_pads is
         rskew       : integer := 0;       eightbanks : integer range 0 to 1 := 0;
         dqsse       : integer range 0 to 1 := 0;
         abits       : integer := 14;      nclk     : integer := 3;     ncs      : integer := 2;
-        chkbits  : integer := 0;          resync     : integer := 0;   custombits: integer := 8;
-        scantest   : integer := 0);
+        chkbits  : integer := 0;          resync     : integer := 0;   custombits: integer := 8);
   port (
     rst            : in    std_ulogic;
     clk            : in    std_logic;   -- input clock
@@ -1005,12 +970,8 @@ entity ddr2phy_wrap_cbd_wo_pads is
 
     customclk      : in    std_ulogic;
     customdin      : in    std_logic_vector(custombits-1 downto 0);
-    customdout     : out   std_logic_vector(custombits-1 downto 0);
-
-    testen      : in std_ulogic;
-    testrst     : in std_ulogic;
-    scanen      : in std_ulogic;
-    testoen     : in std_ulogic);
+    customdout     : out   std_logic_vector(custombits-1 downto 0)
+    );
 end;
 
 architecture rtl of ddr2phy_wrap_cbd_wo_pads is
@@ -1160,8 +1121,7 @@ begin
         ddelayb9 => cbddelays(9), ddelayb10 => cbddelays(10), ddelayb11 => cbddelays(11),
        numidelctrl => numidelctrl, norefclk => norefclk, rskew    => rskew,
        eightbanks  => eightbanks,  dqsse => dqsse,
-       abits       => abits,       nclk    => nclk,      ncs      => ncs, resync => resync, custombits => custombits,
-       scantest => scantest)
+       abits       => abits,       nclk    => nclk,      ncs      => ncs, resync => resync, custombits => custombits)
      port map (
 	rst => rst, clk => clk, clkref => clkref200, clkout => clkout, clkoutret => clkoutret,
         clkresync => clkresync, lock => lock,
@@ -1178,7 +1138,6 @@ begin
         cke => cke, cal_en => cal_en, cal_inc => cal_inc, cal_pll => sdo.cal_pll, cal_rst => sdo.cal_rst, odt => odt,
         oct => sdo.oct, read_pend => sdo.read_pend, regwdata => sdo.regwdata, regwrite => sdo.regwrite,
         regrdata => sdi.regrdata, dqin_valid => sdi.datavalid,
-        customclk => customclk, customdin => customdin, customdout => customdout,
-        testen => testen, testrst => testrst, scanen => scanen, testoen => testoen
+        customclk => customclk, customdin => customdin, customdout => customdout
         );
 end;

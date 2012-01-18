@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2012, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,13 @@
 -- Author:      Jiri Gaisler - Gaisler Research
 -- Description: AMBA AHB/APB bridge with plug&play support
 ------------------------------------------------------------------------------ 
+-- GRLIB2 CORE
+-- VENDOR:      VENDOR_GAISLER
+-- DEVICE:      GAISLER_APBMST
+-- VERSION:     0
+-- AHBSLAVE:    0
+-- BAR: 0       TYPE: 0010      PREFETCH: 0     CACHE: 0        DESC: APB_AREA
+-------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -189,7 +196,6 @@ begin
     apbi.testoen <= ahbi.testoen;
     apbi.scanen <= ahbi.scanen;
     apbi.testrst <= ahbi.testrst;
-    apbi.testin  <= ahbi.testin;
 
     apbi.psel <= (others => '0');
     for i in 0 to nslaves-1 loop apbi.psel(i) <= psel(i) and r.psel; end loop;
@@ -208,6 +214,7 @@ begin
 
   ahbo.hindex <= hindex;
   ahbo.hconfig <= hconfig;
+  ahbo.hcache <= '0';
   ahbo.hsplit <= (others => '0');
   ahbo.hresp  <= HRESP_OKAY;
 
