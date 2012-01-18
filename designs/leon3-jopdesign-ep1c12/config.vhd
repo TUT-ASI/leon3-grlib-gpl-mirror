@@ -4,17 +4,7 @@
 
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
--- Copyright (C) 2004 Jiri Gaisler, Gaisler Research
---
--- This program is free software; you can redistribute it and/or modify
--- it under the terms of the GNU General Public License as published by
--- the Free Software Foundation; either version 2 of the License, or
--- (at your option) any later version.
---
--- This program is distributed in the hope that it will be useful,
--- but WITHOUT ANY WARRANTY; without even the implied warranty of
--- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
--- GNU General Public License for more details.
+-- Copyright (C) 2009 Aeroflex Gaisler
 ------------------------------------------------------------------------------
 
 
@@ -32,7 +22,9 @@ package config is
   constant CFG_CLKTECH : integer := inferred;
   constant CFG_CLKMUL : integer := 2;
   constant CFG_CLKDIV : integer := 2;
-  constant CFG_OCLKDIV : integer := 2;
+  constant CFG_OCLKDIV : integer := 1;
+  constant CFG_OCLKBDIV : integer := 0;
+  constant CFG_OCLKCDIV : integer := 0;
   constant CFG_PCIDLL : integer := 0;
   constant CFG_PCISYSCLK: integer := 0;
   constant CFG_CLK_NOFB : integer := 0;
@@ -40,14 +32,16 @@ package config is
   constant CFG_LEON3 : integer := 1;
   constant CFG_NCPU : integer := (1);
   constant CFG_NWIN : integer := (8);
-  constant CFG_V8 : integer := 2;
+  constant CFG_V8 : integer := 2 + 4*0;
   constant CFG_MAC : integer := 0;
+  constant CFG_BP : integer := 0;
   constant CFG_SVT : integer := 0;
   constant CFG_RSTADDR : integer := 16#00000#;
   constant CFG_LDDEL : integer := (1);
+  constant CFG_NOTAG : integer := 0;
   constant CFG_NWP : integer := (2);
   constant CFG_PWD : integer := 0*2;
-  constant CFG_FPU : integer := 0 + 16*0;
+  constant CFG_FPU : integer := 0 + 16*0 + 32*0;
   constant CFG_GRFPUSH : integer := 0;
   constant CFG_ICEN : integer := 1;
   constant CFG_ISETS : integer := 2;
@@ -74,6 +68,7 @@ package config is
   constant CFG_DTLBNUM : integer := 2;
   constant CFG_TLB_TYPE : integer := 1 + 0*2;
   constant CFG_TLB_REP : integer := 1;
+  constant CFG_MMU_PAGE : integer := 0;
   constant CFG_DSU : integer := 1;
   constant CFG_ITBSZ : integer := 0;
   constant CFG_ATBSZ : integer := 0;
@@ -90,22 +85,24 @@ package config is
   constant CFG_DEFMST : integer := (0);
   constant CFG_RROBIN : integer := 1;
   constant CFG_SPLIT : integer := 0;
+  constant CFG_FPNPEN : integer := 0;
   constant CFG_AHBIO : integer := 16#FFF#;
   constant CFG_APBADDR : integer := 16#800#;
   constant CFG_AHB_MON : integer := 0;
   constant CFG_AHB_MONERR : integer := 0;
   constant CFG_AHB_MONWAR : integer := 0;
+  constant CFG_AHB_DTRACE : integer := 0;
 -- DSU UART
   constant CFG_AHB_UART : integer := 1;
 -- JTAG based DSU interface
   constant CFG_AHB_JTAG : integer := 0;
 -- Ethernet DSU
-  constant CFG_DSU_ETH : integer := 0 + 0;
+  constant CFG_DSU_ETH : integer := 0 + 0 + 0;
   constant CFG_ETH_BUF : integer := 1;
   constant CFG_ETH_IPM : integer := 16#C0A8#;
   constant CFG_ETH_IPL : integer := 16#0033#;
   constant CFG_ETH_ENM : integer := 16#020000#;
-  constant CFG_ETH_ENL : integer := 16#000029#;
+  constant CFG_ETH_ENL : integer := 16#000009#;
 -- PROM/SRAM controller
   constant CFG_SRCTRL : integer := 1;
   constant CFG_SRCTRL_PROMWS : integer := (3);
@@ -145,6 +142,7 @@ package config is
   constant CFG_GRETH : integer := 0;
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 8;
+
 -- CAN 2.0 interface
   constant CFG_CAN : integer := 0;
   constant CFG_CANIO : integer := 16#0#;
@@ -152,19 +150,23 @@ package config is
   constant CFG_CANLOOP : integer := 0;
   constant CFG_CAN_SYNCRST : integer := 0;
   constant CFG_CANFT : integer := 0;
+
 -- PCI interface
   constant CFG_PCI : integer := 0;
   constant CFG_PCIVID : integer := 16#0#;
   constant CFG_PCIDID : integer := 16#0#;
   constant CFG_PCIDEPTH : integer := 8;
   constant CFG_PCI_MTF : integer := 1;
+
 -- PCI arbiter
   constant CFG_PCI_ARB : integer := 0;
   constant CFG_PCI_ARBAPB : integer := 0;
   constant CFG_PCI_ARB_NGNT : integer := 4;
+
 -- PCI trace buffer
   constant CFG_PCITBUFEN: integer := 0;
   constant CFG_PCITBUF : integer := 256;
+
 -- Spacewire interface
   constant CFG_SPW_EN : integer := 0;
   constant CFG_SPW_NUM : integer := 1;
@@ -176,15 +178,24 @@ package config is
   constant CFG_SPW_NETLIST : integer := 0;
   constant CFG_SPW_FT : integer := 0;
   constant CFG_SPW_GRSPW : integer := 2;
+  constant CFG_SPW_RXUNAL : integer := 0;
+  constant CFG_SPW_DMACHAN : integer := 1;
+  constant CFG_SPW_PORTS : integer := 1;
+  constant CFG_SPW_INPUT : integer := 2;
+  constant CFG_SPW_OUTPUT : integer := 0;
+  constant CFG_SPW_RTSAME : integer := 0;
 -- UART 1
   constant CFG_UART1_ENABLE : integer := 1;
   constant CFG_UART1_FIFO : integer := 1;
+
 -- UART 2
   constant CFG_UART2_ENABLE : integer := 0;
   constant CFG_UART2_FIFO : integer := 1;
+
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE : integer := 1;
   constant CFG_IRQ3_NSEC : integer := 0;
+
 -- Modular timer
   constant CFG_GPT_ENABLE : integer := 1;
   constant CFG_GPT_NTIM : integer := (2);
@@ -194,6 +205,7 @@ package config is
   constant CFG_GPT_SEPIRQ : integer := 1;
   constant CFG_GPT_WDOGEN : integer := 0;
   constant CFG_GPT_WDOG : integer := 16#0#;
+
 -- GPIO port
   constant CFG_GRGPIO_ENABLE : integer := 0;
   constant CFG_GRGPIO_IMASK : integer := 16#0000#;

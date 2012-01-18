@@ -129,6 +129,28 @@ that the jumper JP1 is set to short ping 2-3, rather than the 1-2 as
 is default. The ethernet debug link (EDCL) is enabled and set to IP
 192.168.0.51.
 
-5. Other functions
+5. SPI
+
+Two SPI cores can be enabled in the design. The signal map is as follows:
+
+SPICTRL SPI master controller:
+Design signal  SPI signal   JP5 pin
+  gpio(35)       miso         40
+  gpio(34)       mosi         39
+  gpio(33)       sck          38
+  gpio(32)      slv. sel.     37
+
+SPI2AHB SPI to AHB bridge:
+Design signal  SPI signal   JP5 pin
+  gpio(31)       miso         36
+  gpio(30)       mosi         35
+  gpio(29)       sck          34
+  gpio(28)      slv. sel.     33
+
+The general purpose I/O port (GRGPIO) is enabled by default in the
+design and maps gpio(0) to gpio(30). If SPI2AHB is enabled then the
+number of GPIO lines must be decreased to 28.
+
+6. Other functions
 
 Not yet supported: PS/2, SSRAM, VGA, video grabber, USB, audio ...

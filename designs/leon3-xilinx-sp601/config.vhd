@@ -40,7 +40,7 @@ package config is
   constant CFG_NOTAG : integer := 1;
   constant CFG_NWP : integer := (0);
   constant CFG_PWD : integer := 1*2;
-  constant CFG_FPU : integer := 0 + 16*0;
+  constant CFG_FPU : integer := 0 + 16*0 + 32*0;
   constant CFG_GRFPUSH : integer := 0;
   constant CFG_ICEN : integer := 1;
   constant CFG_ISETS : integer := 1;
@@ -83,7 +83,8 @@ package config is
 -- AMBA settings
   constant CFG_DEFMST : integer := (0);
   constant CFG_RROBIN : integer := 1;
-  constant CFG_SPLIT : integer := 1;
+  constant CFG_SPLIT : integer := 0;
+  constant CFG_FPNPEN : integer := 0;
   constant CFG_AHBIO : integer := 16#FFF#;
   constant CFG_APBADDR : integer := 16#800#;
   constant CFG_AHB_MON : integer := 0;
@@ -117,6 +118,8 @@ package config is
   constant CFG_DDR2SP_FREQ : integer := 100;
   constant CFG_DDR2SP_TRFC : integer := 130;
   constant CFG_DDR2SP_DATAWIDTH : integer := 64;
+  constant CFG_DDR2SP_FTEN : integer := 0;
+  constant CFG_DDR2SP_FTWIDTH : integer := 0;
   constant CFG_DDR2SP_COL : integer := 9;
   constant CFG_DDR2SP_SIZE : integer := 8;
   constant CFG_DDR2SP_DELAY0 : integer := 0;
@@ -128,6 +131,13 @@ package config is
   constant CFG_DDR2SP_DELAY6 : integer := 0;
   constant CFG_DDR2SP_DELAY7 : integer := 0;
   constant CFG_DDR2SP_NOSYNC : integer := 0;
+-- Xilinx MIG
+  constant CFG_MIG_DDR2 : integer := 1;
+  constant CFG_MIG_RANKS : integer := (1);
+  constant CFG_MIG_COLBITS : integer := (10);
+  constant CFG_MIG_ROWBITS : integer := (13);
+  constant CFG_MIG_BANKBITS: integer := (2);
+  constant CFG_MIG_HMASK : integer := 16#F00#;
 -- AHB ROM
   constant CFG_AHBROMEN : integer := 0;
   constant CFG_AHBROPIP : integer := 0;
@@ -141,10 +151,12 @@ package config is
 -- Gaisler Ethernet core
   constant CFG_GRETH : integer := 1;
   constant CFG_GRETH1G : integer := 0;
-  constant CFG_ETH_FIFO : integer := 16;
+  constant CFG_ETH_FIFO : integer := 32;
+
 -- UART 1
   constant CFG_UART1_ENABLE : integer := 1;
   constant CFG_UART1_FIFO : integer := 4;
+
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE : integer := 1;
   constant CFG_IRQ3_NSEC : integer := 0;
@@ -190,6 +202,4 @@ package config is
 
 -- GRLIB debugging
   constant CFG_DUART : integer := 0;
--- Xilinx MIG DDR2 controller
-  constant CFG_MIG_DDR2 : integer := 1;
 end;

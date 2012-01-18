@@ -32,7 +32,7 @@ comment 'Peripherals             '
   mainmenu_option next_comment
   comment 'Memory controllers             '
     source lib/gaisler/ddr/ddrsp.in
-    source lib/gaisler/memctrl/spimctrl.in
+    source lib/gaisler/spi/spimctrl.in
   endmenu
 
   mainmenu_option next_comment
@@ -54,7 +54,7 @@ comment 'Peripherals             '
     source lib/gaisler/misc/grgpio.in
   endmenu
 
-  source lib/gaisler/misc/spictrl.in
+  source lib/gaisler/spi/spictrl.in
 
 endmenu
 

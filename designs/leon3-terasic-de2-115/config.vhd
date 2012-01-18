@@ -1,5 +1,7 @@
 
 
+
+
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
 -- Copyright (C) 2009 Aeroflex Gaisler
@@ -30,7 +32,7 @@ package config is
   constant CFG_LEON3 : integer := 1;
   constant CFG_NCPU : integer := (1);
   constant CFG_NWIN : integer := (8);
-  constant CFG_V8 : integer := 16#32#;
+  constant CFG_V8 : integer := 16#32# + 4*0;
   constant CFG_MAC : integer := 0;
   constant CFG_BP : integer := 1;
   constant CFG_SVT : integer := 1;
@@ -39,7 +41,7 @@ package config is
   constant CFG_NOTAG : integer := 0;
   constant CFG_NWP : integer := (2);
   constant CFG_PWD : integer := 1*2;
-  constant CFG_FPU : integer := 0 + 16*0;
+  constant CFG_FPU : integer := 0 + 16*0 + 32*0;
   constant CFG_GRFPUSH : integer := 0;
   constant CFG_ICEN : integer := 1;
   constant CFG_ISETS : integer := 4;
@@ -83,6 +85,7 @@ package config is
   constant CFG_DEFMST : integer := (0);
   constant CFG_RROBIN : integer := 1;
   constant CFG_SPLIT : integer := 0;
+  constant CFG_FPNPEN : integer := 0;
   constant CFG_AHBIO : integer := 16#FFF#;
   constant CFG_APBADDR : integer := 16#800#;
   constant CFG_AHB_MON : integer := 0;
@@ -94,7 +97,7 @@ package config is
 -- JTAG based DSU interface
   constant CFG_AHB_JTAG : integer := 1;
 -- Ethernet DSU
-  constant CFG_DSU_ETH : integer := 1 + 0;
+  constant CFG_DSU_ETH : integer := 1 + 0 + 0;
   constant CFG_ETH_BUF : integer := 2;
   constant CFG_ETH_IPM : integer := 16#C0A8#;
   constant CFG_ETH_IPL : integer := 16#0033#;
@@ -129,6 +132,31 @@ package config is
   constant CFG_CANSEPIRQ: integer := 0;
   constant CFG_CAN_SYNCRST : integer := 0;
   constant CFG_CANFT : integer := 0;
+-- SPI controller
+  constant CFG_SPICTRL_ENABLE : integer := 1;
+  constant CFG_SPICTRL_NUM : integer := (1);
+  constant CFG_SPICTRL_SLVS : integer := (1);
+  constant CFG_SPICTRL_FIFO : integer := (2);
+  constant CFG_SPICTRL_SLVREG : integer := 1;
+  constant CFG_SPICTRL_ODMODE : integer := 1;
+  constant CFG_SPICTRL_AM : integer := 0;
+  constant CFG_SPICTRL_ASEL : integer := 0;
+  constant CFG_SPICTRL_TWEN : integer := 1;
+  constant CFG_SPICTRL_MAXWLEN : integer := (0);
+  constant CFG_SPICTRL_SYNCRAM : integer := 1;
+  constant CFG_SPICTRL_FT : integer := 0;
+
+-- SPI to AHB bridge
+  constant CFG_SPI2AHB : integer := 0;
+  constant CFG_SPI2AHB_APB : integer := 0;
+  constant CFG_SPI2AHB_ADDRH : integer := 16#0#;
+  constant CFG_SPI2AHB_ADDRL : integer := 16#0#;
+  constant CFG_SPI2AHB_MASKH : integer := 16#0#;
+  constant CFG_SPI2AHB_MASKL : integer := 16#0#;
+  constant CFG_SPI2AHB_RESEN : integer := 0;
+  constant CFG_SPI2AHB_FILTER : integer := 2;
+  constant CFG_SPI2AHB_CPOL : integer := 0;
+  constant CFG_SPI2AHB_CPHA : integer := 0;
 -- UART 1
   constant CFG_UART1_ENABLE : integer := 1;
   constant CFG_UART1_FIFO : integer := 4;

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2011, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2013, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -394,6 +394,7 @@ begin
     if rst = '0' then
       v.ahbactive := '0'; v.enable := '0'; v.timer := (others => '0');
       v.hsel := '0'; v.dcnten := '0'; v.bhit := '0';
+      v.regacc := '0'; v.hready := '1';
       v.tbreg1.read := '0'; v.tbreg1.write := '0';
       v.tbreg2.read := '0'; v.tbreg2.write := '0';
       if FILTEN then
@@ -408,7 +409,6 @@ begin
     ahbso.hconfig <= hconfig;
     ahbso.hirq    <= hirq;
     ahbso.hsplit  <= (others => '0');
-    ahbso.hcache  <= '0';
     ahbso.hrdata <= ahbdrivedata(r.hrdata);
     ahbso.hready <= r.hready;
     ahbso.hindex <= hindex;

@@ -15,7 +15,13 @@ CONFIG_AHB_SPLIT
   Unless you actually have an AHB slave that can generate AHB split
   responses, say N and save some gates.
 
-Default AHB master
+Enable full PnP decoding
+CONFIG_AHB_FPNPEN
+  Say Y here to enable full decoding of the PnP configuration records in
+  in the AHB arbiter. When disabled the user-defined registers in the
+  PnP configuration records are not mapped in the configuration area.
+
+IO area start address
 CONFIG_AHB_IOADDR
   Selects the MSB adddress (HADDR[31:20]) of the AHB IO area, as defined 
   in the plug&play extentions of the AMBA bus. Should be kept to FFF 

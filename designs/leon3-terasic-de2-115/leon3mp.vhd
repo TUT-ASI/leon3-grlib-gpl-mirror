@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2011, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2013, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@ use gaisler.memctrl.all;
 use gaisler.leon3.all;
 use gaisler.uart.all;
 use gaisler.misc.all;
+use gaisler.spi.all;
 use gaisler.can.all;
 use gaisler.net.all;
 use gaisler.jtag.all;
@@ -82,8 +83,9 @@ entity leon3mp is
     fl_wp_n   	: out std_logic;
     fl_ce_n  	: out std_logic;
 
-    gpio        : inout std_logic_vector(CFG_GRGPIO_WIDTH-1 downto 0); 	-- I/O port
-
+--    gpio        : inout std_logic_vector(CFG_GRGPIO_WIDTH-1 downto 0); 	-- I/O port
+    gpio        : inout std_logic_vector(35 downto 0); 	-- I/O port
+    
     enet0_mdio  : inout std_logic;		-- ethernet PHY interface
     enet0_gtx_clk  : in std_logic;
     enet0_rx_clk : in std_logic;
@@ -142,6 +144,10 @@ signal dbgo : l3_debug_out_vector(0 to CFG_NCPU-1);
 
 signal dsui : dsu_in_type;
 signal dsuo : dsu_out_type; 
+
+signal spii, spislvi : spi_in_type;
+signal spio, spislvo : spi_out_type;
+signal slvsel : std_logic_vector(CFG_SPICTRL_SLVS-1 downto 0);
 
 signal stati : ahbstat_in_type;
 
@@ -209,7 +215,7 @@ begin
   ahb0 : ahbctrl 		-- AHB arbiter/multiplexer
   generic map (defmast => CFG_DEFMST, split => CFG_SPLIT, 
 	rrobin => CFG_RROBIN, ioaddr => CFG_AHBIO, ioen => IOAEN,
-	nahbm => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+ CFG_GRETH,
+	nahbm => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SPI2AHB+CFG_GRETH,
 	nahbs => 8)
   port map (rstn, clkm, ahbmi, ahbmo, ahbsi, ahbso);
 
@@ -406,6 +412,59 @@ begin
       end generate;
    end generate;
 
+  spic: if CFG_SPICTRL_ENABLE = 1 generate  -- SPI controller
+    spi1 : spictrl
+      generic map (pindex => 10, paddr  => 10, pmask  => 16#fff#, pirq => 10,
+                   fdepth => CFG_SPICTRL_FIFO, slvselen => CFG_SPICTRL_SLVREG,
+                   slvselsz => CFG_SPICTRL_SLVS, odmode => 0, netlist => 0,
+                   syncram => CFG_SPICTRL_SYNCRAM, ft => CFG_SPICTRL_FT)
+      port map (rstn, clkm, apbi, apbo(10), spii, spio, slvsel);
+    spii.spisel <= '1';                 -- Master only
+    miso_pad : iopad generic map (tech => padtech)
+      port map (gpio(35), spio.miso, spio.misooen, spii.miso);
+    mosi_pad : iopad generic map (tech => padtech)
+      port map (gpio(34), spio.mosi, spio.mosioen, spii.mosi);
+    sck_pad  : iopad generic map (tech => padtech)
+      port map (gpio(33), spio.sck, spio.sckoen, spii.sck);
+    slvsel_pad : iopad generic map (tech => padtech)
+      port map (gpio(32), slvsel(0), gnd(0), open);
+  end generate spic;
+    
+  spibridge : if CFG_SPI2AHB /= 0 generate  -- SPI to AHB bridge
+    withapb : if CFG_SPI2AHB_APB /= 0 generate
+      spi2ahb0 : spi2ahb_apb
+        generic map(hindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG,
+          ahbaddrh => CFG_SPI2AHB_ADDRH, ahbaddrl => CFG_SPI2AHB_ADDRL,
+          ahbmaskh => CFG_SPI2AHB_MASKH, ahbmaskl => CFG_SPI2AHB_MASKL,
+          resen => CFG_SPI2AHB_RESEN, pindex => 11, paddr => 11, pmask => 16#fff#,
+          pirq => 11, filter => CFG_SPI2AHB_FILTER, cpol => CFG_SPI2AHB_CPOL,
+          cpha => CFG_SPI2AHB_CPHA)
+        port map (rstn, clkm, ahbmi, ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG),
+                  apbi, apbo(11), spislvi, spislvo);
+    end generate;
+    woapb : if CFG_SPI2AHB_APB = 0 generate
+      spi2ahb0 : spi2ahb
+        generic map(hindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG,
+          ahbaddrh => CFG_SPI2AHB_ADDRH, ahbaddrl => CFG_SPI2AHB_ADDRL,
+          ahbmaskh => CFG_SPI2AHB_MASKH, ahbmaskl => CFG_SPI2AHB_MASKL,
+          filter => CFG_SPI2AHB_FILTER,
+          cpol => CFG_SPI2AHB_CPOL, cpha => CFG_SPI2AHB_CPHA)
+        port map (rstn, clkm, ahbmi, ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG),
+                  spislvi, spislvo);
+    end generate;
+    spislv_miso_pad : iopad generic map (tech => padtech)
+      port map (gpio(31), spislvo.miso, spislvo.misooen, spislvi.miso);
+    spislvl_mosi_pad : iopad generic map (tech => padtech)
+      port map (gpio(30), spislvo.mosi, spislvo.mosioen, spislvi.mosi);
+    spislv_sck_pad  : iopad generic map (tech => padtech)
+      port map (gpio(29), spislvo.sck, spislvo.sckoen, spislvi.sck);
+    spislv_slvsel_pad : iopad generic map (tech => padtech)
+      port map (gpio(28), gnd(0), vcc(0), spislvi.spisel);
+  end generate;
+  nospibridge : if CFG_SPI2AHB = 0 or CFG_SPI2AHB_APB = 0 generate
+    apbo(11) <= apb_none;
+  end generate;
+  
   ahbs : if CFG_AHBSTAT = 1 generate	-- AHB status register
     stati.cerror(0) <= memo.ce;
     ahbstat0 : ahbstat generic map (pindex => 15, paddr => 15, pirq => 1,
@@ -419,8 +478,8 @@ begin
 -----------------------------------------------------------------------
   eth1 : if CFG_GRETH = 1 generate -- Gaisler ethernet MAC
     e1 : grethm generic map(
-      hindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG,
-      pindex => 14, paddr => 14, pirq => 14, memtech => memtech,
+      hindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SPI2AHB,
+      pindex => 14, paddr => 14, pirq => 12, memtech => memtech,
       mdcscaler => CPU_FREQ/1000, enable_mdio => 1, fifosize => CFG_ETH_FIFO,
       nsync => 1, edcl => CFG_DSU_ETH, edclbufsz => CFG_ETH_BUF,
       macaddrh => CFG_ETH_ENM, macaddrl => CFG_ETH_ENL, phyrstadr => 16,
@@ -428,8 +487,8 @@ begin
       enable_mdint => 1)
       port map(
         rst => rstn, clk => clkm, ahbmi => ahbmi,
-        ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG), apbi => apbi,
-        apbo => apbo(14), ethi => ethi, etho => etho);
+        ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SPI2AHB),
+        apbi => apbi, apbo => apbo(14), ethi => ethi, etho => etho);
 
     greth1g: if CFG_GRETH1G = 1 generate
       eth_macclk_pad : clkpad

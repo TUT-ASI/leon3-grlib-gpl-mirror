@@ -29,7 +29,7 @@
   constant CFG_NOTAG	: integer := CONFIG_NOTAG;
   constant CFG_NWP  	: integer := CONFIG_IU_WATCHPOINTS;
   constant CFG_PWD 	: integer := CONFIG_PWD*2;
-  constant CFG_FPU 	: integer := CONFIG_FPU + 16*CONFIG_FPU_NETLIST;
+  constant CFG_FPU 	: integer := CONFIG_FPU + 16*CONFIG_FPU_NETLIST + 32*CONFIG_FPU_GRFPU_SHARED;
   constant CFG_GRFPUSH  : integer := CONFIG_FPU_GRFPU_SHARED;
   constant CFG_ICEN  	: integer := CONFIG_ICACHE_ENABLE;
   constant CFG_ISETS	: integer := CFG_IU_ISETS;
@@ -74,6 +74,7 @@
   constant CFG_DEFMST  	  : integer := CONFIG_AHB_DEFMST;
   constant CFG_RROBIN  	  : integer := CONFIG_AHB_RROBIN;
   constant CFG_SPLIT   	  : integer := CONFIG_AHB_SPLIT;
+  constant CFG_FPNPEN  	  : integer := CONFIG_AHB_FPNPEN;
   constant CFG_AHBIO   	  : integer := 16#CONFIG_AHB_IOADDR#;
   constant CFG_APBADDR 	  : integer := 16#CONFIG_APB_HADDR#;
   constant CFG_AHB_MON 	  : integer := CONFIG_AHB_MON;
@@ -107,11 +108,13 @@
   constant CFG_MCTRL_PAGE     : integer := CONFIG_MCTRL_PAGE + CONFIG_MCTRL_PROGPAGE;
 
 -- DDR controller
-  constant CFG_DDR2SP  		       : integer := CONFIG_DDR2SP;
+  constant CFG_DDR2SP  		   : integer := CONFIG_DDR2SP;
   constant CFG_DDR2SP_INIT  	   : integer := CONFIG_DDR2SP_INIT;
   constant CFG_DDR2SP_FREQ   	   : integer := CONFIG_DDR2SP_FREQ;
   constant CFG_DDR2SP_TRFC   	   : integer := CONFIG_DDR2SP_TRFC;
-  constant CFG_DDR2SP_DATAWIDTH  : integer := CONFIG_DDR2SP_DATAWIDTH;
+  constant CFG_DDR2SP_DATAWIDTH    : integer := CONFIG_DDR2SP_DATAWIDTH;
+  constant CFG_DDR2SP_FTEN         : integer := CONFIG_DDR2SP_FTEN;
+  constant CFG_DDR2SP_FTWIDTH      : integer := CONFIG_DDR2SP_FTWIDTH;
   constant CFG_DDR2SP_COL    	   : integer := CONFIG_DDR2SP_COL;
   constant CFG_DDR2SP_SIZE  	   : integer := CONFIG_DDR2SP_MBYTE;
   constant CFG_DDR2SP_DELAY0 	   : integer := CONFIG_DDR2SP_DELAY0;
@@ -123,6 +126,15 @@
   constant CFG_DDR2SP_DELAY6 	   : integer := CONFIG_DDR2SP_DELAY6;
   constant CFG_DDR2SP_DELAY7 	   : integer := CONFIG_DDR2SP_DELAY7;
   constant CFG_DDR2SP_NOSYNC       : integer := CONFIG_DDR2SP_NOSYNC;
+
+-- Xilinx MIG
+  constant CFG_MIG_DDR2    : integer := CONFIG_MIG_DDR2;
+  constant CFG_MIG_RANKS   : integer := CONFIG_MIG_RANKS;
+  constant CFG_MIG_COLBITS : integer := CONFIG_MIG_COLBITS;
+  constant CFG_MIG_ROWBITS : integer := CONFIG_MIG_ROWBITS;
+  constant CFG_MIG_BANKBITS: integer := CONFIG_MIG_BANKBITS;
+  constant CFG_MIG_HMASK   : integer := 16#CONFIG_MIG_HMASK#;
+
 
 -- AHB ROM
   constant CFG_AHBROMEN	: integer := CONFIG_AHBROM_ENABLE;
@@ -173,6 +185,7 @@
   constant CFG_SPIMCTRL_SCALER     : integer := CONFIG_SPIMCTRL_SCALER;
   constant CFG_SPIMCTRL_ASCALER    : integer := CONFIG_SPIMCTRL_ASCALER;
   constant CFG_SPIMCTRL_PWRUPCNT   : integer := CONFIG_SPIMCTRL_PWRUPCNT;
+  constant CFG_SPIMCTRL_OFFSET     : integer := 16#CONFIG_SPIMCTRL_OFFSET#;
 
 -- SPI controller
   constant CFG_SPICTRL_ENABLE  : integer := CONFIG_SPICTRL_ENABLE;

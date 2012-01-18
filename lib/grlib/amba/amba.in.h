@@ -6,6 +6,10 @@
 #define CONFIG_AHB_RROBIN 0
 #endif
 
+#ifndef CONFIG_AHB_FPNPEN
+#define CONFIG_AHB_FPNPEN 0
+#endif
+
 #ifndef CONFIG_AHB_IOADDR
 #define CONFIG_AHB_IOADDR FFF
 #endif

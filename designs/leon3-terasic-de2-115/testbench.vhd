@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2011, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2013, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -82,7 +82,7 @@ signal dsuen, dsutx, dsurx, dsubre, dsuact : std_logic;
 signal dsurst   : std_logic;
 signal test     : std_logic;
 signal error    : std_logic;
-signal gpio	: std_logic_vector(CFG_GRGPIO_WIDTH-1 downto 0);
+signal gpio	: std_logic_vector(35 downto 0);
 signal GND      : std_logic := '0';
 signal VCC      : std_logic := '1';
 signal NC       : std_logic := 'Z';

@@ -1,5 +1,7 @@
 
 
+
+
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
 -- Copyright (C) 2009 Aeroflex Gaisler
@@ -34,7 +36,7 @@ package config is
   constant CFG_LEON3 : integer := 1;
   constant CFG_NCPU : integer := (1);
   constant CFG_NWIN : integer := (8);
-  constant CFG_V8 : integer := 2;
+  constant CFG_V8 : integer := 2 + 4*0;
   constant CFG_MAC : integer := 0;
   constant CFG_BP : integer := 1;
   constant CFG_SVT : integer := 1;
@@ -43,7 +45,7 @@ package config is
   constant CFG_NOTAG : integer := 1;
   constant CFG_NWP : integer := (2);
   constant CFG_PWD : integer := 1*2;
-  constant CFG_FPU : integer := 0 + 16*0;
+  constant CFG_FPU : integer := 0 + 16*0 + 32*0;
   constant CFG_GRFPUSH : integer := 0;
   constant CFG_ICEN : integer := 1;
   constant CFG_ISETS : integer := 2;
@@ -87,6 +89,7 @@ package config is
   constant CFG_DEFMST : integer := (0);
   constant CFG_RROBIN : integer := 1;
   constant CFG_SPLIT : integer := 0;
+  constant CFG_FPNPEN : integer := 0;
   constant CFG_AHBIO : integer := 16#FFF#;
   constant CFG_APBADDR : integer := 16#800#;
   constant CFG_AHB_MON : integer := 0;
@@ -98,7 +101,7 @@ package config is
 -- JTAG based DSU interface
   constant CFG_AHB_JTAG : integer := 1;
 -- Ethernet DSU
-  constant CFG_DSU_ETH : integer := 1 + 0;
+  constant CFG_DSU_ETH : integer := 1 + 0 + 0;
   constant CFG_ETH_BUF : integer := 2;
   constant CFG_ETH_IPM : integer := 16#C0A8#;
   constant CFG_ETH_IPL : integer := 16#0033#;

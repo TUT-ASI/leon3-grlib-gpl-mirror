@@ -10,6 +10,8 @@
   constant CFG_CLKMUL   : integer := CONFIG_CLK_MUL;
   constant CFG_CLKDIV   : integer := CONFIG_CLK_DIV;
   constant CFG_OCLKDIV  : integer := CONFIG_OCLK_DIV;
+  constant CFG_OCLKBDIV : integer := CONFIG_OCLKB_DIV;
+  constant CFG_OCLKCDIV : integer := CONFIG_OCLKC_DIV;
   constant CFG_PCIDLL   : integer := CONFIG_PCI_CLKDLL;
   constant CFG_PCISYSCLK: integer := CONFIG_PCI_SYSCLK;
   constant CFG_CLK_NOFB : integer := CONFIG_CLK_NOFB;
@@ -18,15 +20,16 @@
   constant CFG_LEON3  	: integer := CONFIG_LEON3;
   constant CFG_NCPU 	: integer := CONFIG_PROC_NUM;
   constant CFG_NWIN 	: integer := CONFIG_IU_NWINDOWS;
-  constant CFG_V8   	: integer := CFG_IU_V8;
+  constant CFG_V8   	: integer := CFG_IU_V8 + 4*CFG_IU_MUL_STRUCT;
   constant CFG_MAC  	: integer := CONFIG_IU_MUL_MAC;
   constant CFG_BP   	: integer := CONFIG_IU_BP;
   constant CFG_SVT  	: integer := CONFIG_IU_SVT;
   constant CFG_RSTADDR 	: integer := 16#CONFIG_IU_RSTADDR#;
   constant CFG_LDDEL	: integer := CONFIG_IU_LDELAY;
+  constant CFG_NOTAG	: integer := CONFIG_NOTAG;
   constant CFG_NWP  	: integer := CONFIG_IU_WATCHPOINTS;
   constant CFG_PWD 	: integer := CONFIG_PWD*2;
-  constant CFG_FPU 	: integer := CONFIG_FPU + 16*CONFIG_FPU_NETLIST;
+  constant CFG_FPU 	: integer := CONFIG_FPU + 16*CONFIG_FPU_NETLIST + 32*CONFIG_FPU_GRFPU_SHARED;
   constant CFG_GRFPUSH  : integer := CONFIG_FPU_GRFPU_SHARED;
   constant CFG_ICEN  	: integer := CONFIG_ICACHE_ENABLE;
   constant CFG_ISETS	: integer := CFG_IU_ISETS;
@@ -71,11 +74,13 @@
   constant CFG_DEFMST  	  : integer := CONFIG_AHB_DEFMST;
   constant CFG_RROBIN  	  : integer := CONFIG_AHB_RROBIN;
   constant CFG_SPLIT   	  : integer := CONFIG_AHB_SPLIT;
+  constant CFG_FPNPEN  	  : integer := CONFIG_AHB_FPNPEN;
   constant CFG_AHBIO   	  : integer := 16#CONFIG_AHB_IOADDR#;
   constant CFG_APBADDR 	  : integer := 16#CONFIG_APB_HADDR#;
   constant CFG_AHB_MON 	  : integer := CONFIG_AHB_MON;
   constant CFG_AHB_MONERR : integer := CONFIG_AHB_MONERR;
   constant CFG_AHB_MONWAR : integer := CONFIG_AHB_MONWAR;
+  constant CFG_AHB_DTRACE : integer := CONFIG_AHB_DTRACE;
 
 -- DSU UART
   constant CFG_AHB_UART	: integer := CONFIG_DSU_UART;
@@ -84,7 +89,7 @@
   constant CFG_AHB_JTAG	: integer := CONFIG_DSU_JTAG;
 
 -- Ethernet DSU
-  constant CFG_DSU_ETH	: integer := CONFIG_DSU_ETH + CONFIG_DSU_ETH_PROG;
+  constant CFG_DSU_ETH	: integer := CONFIG_DSU_ETH + CONFIG_DSU_ETH_PROG + CONFIG_DSU_ETH_DIS;
   constant CFG_ETH_BUF 	: integer := CFG_DSU_ETHB;
   constant CFG_ETH_IPM 	: integer := 16#CONFIG_DSU_IPMSB#;
   constant CFG_ETH_IPL 	: integer := 16#CONFIG_DSU_IPLSB#;
@@ -149,6 +154,33 @@
   constant CFG_PCIDEPTH : integer := CFG_PCIFIFO;
   constant CFG_PCI_MTF  : integer := CFG_PCI_ENFIFO;
 
+-- GRPCI2 interface
+  constant CFG_GRPCI2_MASTER    : integer := CFG_GRPCI2_MASTEREN;
+  constant CFG_GRPCI2_TARGET    : integer := CFG_GRPCI2_TARGETEN;
+  constant CFG_GRPCI2_DMA       : integer := CFG_GRPCI2_DMAEN;
+  constant CFG_GRPCI2_VID       : integer := 16#CONFIG_GRPCI2_VENDORID#;
+  constant CFG_GRPCI2_DID       : integer := 16#CONFIG_GRPCI2_DEVICEID#;
+  constant CFG_GRPCI2_CLASS     : integer := 16#CONFIG_GRPCI2_CLASS#;
+  constant CFG_GRPCI2_RID       : integer := 16#CONFIG_GRPCI2_REVID#;
+  constant CFG_GRPCI2_CAP       : integer := 16#CONFIG_GRPCI2_CAPPOINT#;
+  constant CFG_GRPCI2_NCAP      : integer := 16#CONFIG_GRPCI2_NEXTCAPPOINT#;
+  constant CFG_GRPCI2_BAR0      : integer := CONFIG_GRPCI2_BAR0;
+  constant CFG_GRPCI2_BAR1      : integer := CONFIG_GRPCI2_BAR1;
+  constant CFG_GRPCI2_BAR2      : integer := CONFIG_GRPCI2_BAR2;
+  constant CFG_GRPCI2_BAR3      : integer := CONFIG_GRPCI2_BAR3;
+  constant CFG_GRPCI2_BAR4      : integer := CONFIG_GRPCI2_BAR4;
+  constant CFG_GRPCI2_BAR5      : integer := CONFIG_GRPCI2_BAR5;
+  constant CFG_GRPCI2_FDEPTH    : integer := CFG_GRPCI2_FIFO;
+  constant CFG_GRPCI2_FCOUNT    : integer := CFG_GRPCI2_FIFOCNT;
+  constant CFG_GRPCI2_ENDIAN    : integer := CFG_GRPCI2_LENDIAN;
+  constant CFG_GRPCI2_DEVINT    : integer := CFG_GRPCI2_DINT;
+  constant CFG_GRPCI2_DEVINTMSK : integer := 16#CONFIG_GRPCI2_DINTMASK#;
+  constant CFG_GRPCI2_HOSTINT   : integer := CFG_GRPCI2_HINT;
+  constant CFG_GRPCI2_HOSTINTMSK: integer := 16#CONFIG_GRPCI2_HINTMASK#;
+  constant CFG_GRPCI2_TRACE     : integer := CFG_GRPCI2_TRACEDEPTH;
+  constant CFG_GRPCI2_TRACEAPB  : integer := CONFIG_GRPCI2_TRACEAPB;
+  constant CFG_GRPCI2_BYPASS    : integer := CFG_GRPCI2_INBYPASS;
+  constant CFG_GRPCI2_EXTCFG    : integer := CONFIG_GRPCI2_EXTCFG;
 -- PCI arbiter
   constant CFG_PCI_ARB  : integer := CONFIG_PCI_ARBITER;
   constant CFG_PCI_ARBAPB : integer := CONFIG_PCI_ARBITER_APB;

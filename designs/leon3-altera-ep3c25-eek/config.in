@@ -39,7 +39,7 @@ comment 'Peripherals             '
     source lib/esa/memoryctrl/mctrl.in
     source lib/gaisler/memctrl/ssrctrl.in
     source lib/gaisler/ddr/ddrsp.in
-    source lib/gaisler/memctrl/spimctrl.in
+    source lib/gaisler/spi/spimctrl.in
   endmenu
 
   mainmenu_option next_comment
@@ -63,9 +63,9 @@ comment 'Peripherals             '
 
   mainmenu_option next_comment
   comment 'Serial interfaces; I2C, PS/2 and SPI  '
-    source lib/gaisler/misc/i2c.in
+    source lib/gaisler/i2c/i2c.in
     source lib/gaisler/misc/ps2.in
-    source lib/gaisler/misc/spictrl.in
+    source lib/gaisler/spi/spictrl.in
   endmenu
 
   mainmenu_option next_comment

@@ -20,7 +20,7 @@
   constant CFG_LEON3  	: integer := CONFIG_LEON3;
   constant CFG_NCPU 	: integer := CONFIG_PROC_NUM;
   constant CFG_NWIN 	: integer := CONFIG_IU_NWINDOWS;
-  constant CFG_V8   	: integer := CFG_IU_V8;
+  constant CFG_V8   	: integer := CFG_IU_V8 + 4*CFG_IU_MUL_STRUCT;
   constant CFG_MAC  	: integer := CONFIG_IU_MUL_MAC;
   constant CFG_BP   	: integer := CONFIG_IU_BP;
   constant CFG_SVT  	: integer := CONFIG_IU_SVT;
@@ -29,7 +29,7 @@
   constant CFG_NOTAG	: integer := CONFIG_NOTAG;
   constant CFG_NWP  	: integer := CONFIG_IU_WATCHPOINTS;
   constant CFG_PWD 	: integer := CONFIG_PWD*2;
-  constant CFG_FPU 	: integer := CONFIG_FPU + 16*CONFIG_FPU_NETLIST;
+  constant CFG_FPU 	: integer := CONFIG_FPU + 16*CONFIG_FPU_NETLIST + 32*CONFIG_FPU_GRFPU_SHARED;
   constant CFG_GRFPUSH  : integer := CONFIG_FPU_GRFPU_SHARED;
   constant CFG_ICEN  	: integer := CONFIG_ICACHE_ENABLE;
   constant CFG_ISETS	: integer := CFG_IU_ISETS;
@@ -74,6 +74,7 @@
   constant CFG_DEFMST  	  : integer := CONFIG_AHB_DEFMST;
   constant CFG_RROBIN  	  : integer := CONFIG_AHB_RROBIN;
   constant CFG_SPLIT   	  : integer := CONFIG_AHB_SPLIT;
+  constant CFG_FPNPEN  	  : integer := CONFIG_AHB_FPNPEN;
   constant CFG_AHBIO   	  : integer := 16#CONFIG_AHB_IOADDR#;
   constant CFG_APBADDR 	  : integer := 16#CONFIG_APB_HADDR#;
   constant CFG_AHB_MON 	  : integer := CONFIG_AHB_MON;
@@ -88,7 +89,7 @@
   constant CFG_AHB_JTAG	: integer := CONFIG_DSU_JTAG;
 
 -- Ethernet DSU
-  constant CFG_DSU_ETH	: integer := CONFIG_DSU_ETH + CONFIG_DSU_ETH_PROG;
+  constant CFG_DSU_ETH	: integer := CONFIG_DSU_ETH + CONFIG_DSU_ETH_PROG + CONFIG_DSU_ETH_DIS;
   constant CFG_ETH_BUF 	: integer := CFG_DSU_ETHB;
   constant CFG_ETH_IPM 	: integer := 16#CONFIG_DSU_IPMSB#;
   constant CFG_ETH_IPL 	: integer := 16#CONFIG_DSU_IPLSB#;

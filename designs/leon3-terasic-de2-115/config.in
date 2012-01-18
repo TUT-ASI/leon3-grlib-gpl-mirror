@@ -57,6 +57,15 @@ comment 'Peripherals             '
   endmenu
 
   mainmenu_option next_comment
+  comment 'SPI                     '
+    source lib/gaisler/spi/spictrl.in
+    mainmenu_option next_comment
+    comment 'SPI to AHB bridge     '
+      source lib/gaisler/spi/spi2ahb.in
+    endmenu
+  endmenu
+
+  mainmenu_option next_comment
   comment 'UARTs, timers and I/O port         '
     source lib/gaisler/uart/uart1.in
     source lib/gaisler/leon3/irqmp.in

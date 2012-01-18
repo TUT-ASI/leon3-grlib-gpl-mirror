@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2011, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2013, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -32,6 +32,9 @@ use grlib.amba.apb_slv_in_type;
 use grlib.amba.apb_slv_out_type;
 
 package gr1553b_pkg is
+
+  constant gr1553b_version: integer := 0;
+  constant gr1553b_cfgver: integer := 0;
 
   -----------------------------------------------------------------------------
   -- Types and top level component
@@ -107,7 +110,9 @@ package gr1553b_pkg is
       extra_regkeys: integer range 0 to 1 := 0;
       syncrst: integer range 0 to 2 := 1;
       ahbendian: integer range 0 to 1 := 0;
-      bm_filters: integer range 0 to 1 := 1
+      bm_filters: integer range 0 to 1 := 1;
+      codecfreq: integer := 20;
+      sameclk: integer range 0 to 1 := 0
       );
     port(
       clk: in std_logic;
@@ -290,14 +295,13 @@ package gr1553b_pkg is
 
   component gr1553b_tgapb is
     generic(
-      codec_clk_freq_mhz: integer := 20;
-      sameclk: integer range 0 to 1 := 0;
       pindex : integer := 0;
       paddr: integer := 0;
       pmask : integer := 16#fff#;
+      codecfreq: integer := 20;
       extmodeen: integer range 0 to 1 := 0;
-      bitbangen: integer range 0 to 1 := 0;
-      memtech: integer := 0
+      rawmodeen: integer range 0 to 1 := 0;
+      rawmemtech: integer := 0
       );
     port(
       clk: in std_logic;
