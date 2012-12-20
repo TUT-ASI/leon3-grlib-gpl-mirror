@@ -45,8 +45,6 @@ type mmutlbcam_in_type is record
 end record;
 type mmutlbcami_a is array (natural range <>) of mmutlbcam_in_type;
 
-constant mmutlbcam_in_type_none : mmutlbcam_in_type := (mmctrl_type1_none, tlbcam_tfp_none,
-	tlbcam_reg_none, '0', '0', '0', '0', '0', '0');
 type mmutlbcam_out_type is record
   pteout   : std_logic_vector(31 downto 0);
   LVL      : std_logic_vector(1 downto 0);    -- level in pth
@@ -58,9 +56,6 @@ type mmutlbcam_out_type is record
   WBNEEDSYNC : std_logic;
 end record;
 type mmutlbcamo_a is array (natural range <>) of mmutlbcam_out_type;
-
-constant mmutlbcam_out_none : mmutlbcam_out_type := (zero32, "00",
-	'0', "00000000", '0', zero32, '0', '0');
 
 -- mmu i/o
 
@@ -211,10 +206,6 @@ type mmutlb_in_type is record
   s2valid     : std_logic;
   
   mmctrl1     : mmctrl_type1;
-  
-  -- fast writebuffer signals
-  tlbcami          : mmutlbcami_a (M_ENT_MAX-1 downto 0);
-  
 end record;
 type mmutlbi_a is array (natural range <>) of mmutlb_in_type;
 
@@ -237,9 +228,6 @@ type mmutlb_out_type is record
   fault       : mmutlbfault_out_type;
   nexttrans   : std_logic;
   s1finished  : std_logic;
-
-  -- fast writebuffer signals
-  tlbcamo          : mmutlbcamo_a (M_ENT_MAX-1 downto 0);
   
   -- writebuffer out
   wbtransdata      : mmuidc_data_out_type;

@@ -124,6 +124,7 @@ entity greth_gbit_gen is
     --scantest
     testrst        : in   std_ulogic;
     testen         : in   std_ulogic;
+    testoen        : in   std_ulogic;
     edcladdr       : in   std_logic_vector(3 downto 0);
     edclsepahb     : in   std_ulogic;
     edcldisable    : in   std_ulogic;
@@ -283,6 +284,7 @@ begin
       --scantest     
       testrst        => testrst,
       testen         => testen,
+      testoen        => testoen,
       edcladdr       => edcladdr,
       edclsepahb     => edclsepahb,
       edcldisable    => edcldisable,

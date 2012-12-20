@@ -270,7 +270,8 @@ package grethpkg is
     generic(
       nsync          : integer range 1 to 2 := 2;
       rmii           : integer range 0 to 1 := 0;
-      multicast      : integer range 0 to 1 := 0);
+      multicast      : integer range 0 to 1 := 0;
+      maxsize        : integer);
     port(
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;

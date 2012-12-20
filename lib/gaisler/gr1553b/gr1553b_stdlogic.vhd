@@ -151,7 +151,6 @@ begin
   mi.hready <= mi_hready;
   mi.hresp <= mi_hresp;
   mi.hrdata <= ahbdrivedata(mi_hrdata);
-  mi.hcache <= '0';
   mi.hirq <= (others => '0');
   mi.testen <= '0';
   mi.testrst <= '0';

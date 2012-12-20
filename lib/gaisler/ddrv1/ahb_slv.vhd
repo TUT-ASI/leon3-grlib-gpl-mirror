@@ -515,7 +515,6 @@ begin  -- rtl
   ahbri <= v;
   
   cso.ahbso.hsplit <= (others => '0');
-  cso.ahbso.hcache <= '1';
   cso.ahbso.hirq   <= (others => '0');
   cso.ahbso.hindex <= hindex;
   

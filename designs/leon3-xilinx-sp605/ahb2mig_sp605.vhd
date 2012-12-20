@@ -316,7 +316,6 @@ begin
   ahbso.hirq    <= (others => '0');
   ahbso.hindex  <= hindex;
   ahbso.hsplit  <= (others => '0');
-  ahbso.hcache  <= '1';
 
   apbo.pindex  <= pindex;
   apbo.pconfig <= pconfig;
@@ -396,7 +395,6 @@ begin
     ahbmi.hresp <= "00";
     ahbmi.hgrant <= (others => '1');
     ahbmi.hready <= r2.hready;
-    ahbmi.hcache <= '0';
     ahbmi.hirq <= (others => '0');
     ahbmi.testen <= '0';
     ahbmi.testrst <= '0';

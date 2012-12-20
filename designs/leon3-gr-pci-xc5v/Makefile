@@ -22,11 +22,11 @@ SYNPOPT="set_option -pipe 1; set_option -retiming 1; set_option -write_apr_const
 
 TECHLIBS = unisim secureip
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
-	tmtc openchip hynix cypress ihp gleichmann fmf spansion gsi
-DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan ddr ata haps \
-	slink ascs coremp7 ac97 leon4 leon4b64 l2cache iommu
+	tmtc openchip hynix cypress ihp fmf spansion gsi
+DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan ddr \
+	slink ascs leon4 leon4v0 l2cache iommu
 
-FILESKIP = grcan.vhd simple_spi_top.v ata_device.v i2c_slave_model.v
+FILESKIP = grcan.vhd i2c_slave_model.v
 
 include $(GRLIB)/bin/Makefile
 include $(GRLIB)/software/leon3/Makefile

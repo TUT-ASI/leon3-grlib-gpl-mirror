@@ -87,6 +87,11 @@ begin
     generic map (clk_mul, clk_div, sdramen, noclkfb, pcien, pcidll, pcisysclk, freq, clk2xen, clksel)
     port map (clkin, pciclkin, clk, clkn, clk2x, sdclk, pciclk, cgi, cgo, clk1xu, clk2xu);
   end generate;
+  xc7l : if (tech =virtex7) or (tech =kintex7) or (tech =artix7) or (tech =zynq7000) generate
+    v : clkgen_virtex7
+    generic map (clk_mul, clk_div, freq)
+    port map (clkin, clk, cgi, cgo);
+  end generate;
   xc3s : if (tech = spartan3) or (tech = spartan3e) or (tech = spartan6) generate
     v : clkgen_spartan3
     generic map (clk_mul, clk_div, sdramen, noclkfb, pcien, pcidll, pcisysclk, freq, clk2xen, clksel)

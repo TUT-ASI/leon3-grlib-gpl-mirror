@@ -23,13 +23,6 @@
 -- Description:	Multi-processor APB interrupt controller. Implements a
 --		two-level interrupt controller for 15 interrupts.
 ------------------------------------------------------------------------------
--- GRLIB2 CORE
--- VENDOR:      VENDOR_GAISLER
--- DEVICE:      GAISLER_IRQMP
--- VERSION:     3
--- APB:         0
--- BAR: 0       TYPE: 0010      PREFETCH: 0     CACHE: 0        DESC: IO_AREA
--------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;

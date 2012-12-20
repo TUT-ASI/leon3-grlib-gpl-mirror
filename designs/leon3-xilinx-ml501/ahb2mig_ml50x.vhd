@@ -428,7 +428,6 @@ begin
    ahbso.hready  <= ra.hready;
    ahbso.hresp   <= ra.hresp;
    ahbso.hrdata <= ahbdrivedata(ra.hrdata);
-   ahbso.hcache  <= '1';
 
 --   migi.app_addr  <= '0' & ra.acc.haddr(28 downto 6) & "000";
    migi.app_addr  <= "00000" & ra.acc.haddr(28 downto 5) & "00";

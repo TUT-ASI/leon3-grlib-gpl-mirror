@@ -290,7 +290,7 @@ begin
       txrdata, clk, txwrite, txwaddress(fabits1-1 downto 0), txwdata);
 
     --RMAP Buffer
-    rmap_ram : if (rmap = 1) generate
+    rmap_ram : if (rmap /= 0) generate
       ram0 : syncram_2p generic map(memtech, rfifo, 8)
       port map(clk, rmrenablex, rmraddress(rfifo-1 downto 0),
         rmrdata, clk, rmwrite, rmwaddress(rfifo-1 downto 0),
@@ -317,7 +317,7 @@ begin
       txrdata, clk, txwrite, txwaddress(fabits1-1 downto 0), txwdata);
 
     --RMAP Buffer
-    rmap_ram : if (rmap = 1) generate
+    rmap_ram : if (rmap /= 0) generate
       ram0 : syncram_2pft generic map(memtech, rfifo, 8, 0, 0, 2)
       port map(clk, rmrenablex, rmraddress(rfifo-1 downto 0),
         rmrdata, clk, rmwrite, rmwaddress(rfifo-1 downto 0),

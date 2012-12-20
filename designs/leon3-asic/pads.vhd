@@ -160,7 +160,8 @@ entity pads is
     ltck         : out std_ulogic;
     ltms         : out std_ulogic;
     ltdi         : out std_ulogic;
-    ltdo         : in std_ulogic
+    ltdo         : in  std_ulogic;
+    ltdoen       : in  std_ulogic
     
 
 	);
@@ -193,7 +194,7 @@ begin
   tck_pad : inpad generic map (tech => padtech) port map (tck, ltck);
   tms_pad : inpad generic map (tech => padtech) port map (tms, ltms);
   tdi_pad : inpad generic map (tech => padtech) port map (tdi, ltdi);
-  tdo_pad : outpad generic map (tech => padtech) port map (tdo, ltdo);
+  tdo_pad : toutpad generic map (tech => padtech, oepol => OEPOL) port map (tdo, ltdo, ltdoen);
   
   
   clk_pad : inpad generic map (tech => clkpadtech, filter => schmitt) port map (clk, clkin); 

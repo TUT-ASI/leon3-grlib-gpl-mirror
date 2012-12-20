@@ -59,7 +59,7 @@ entity sdram_phy is
     laddr     : in    std_logic_vector(aw-1 downto 0);
     ldq_din   : out   std_logic_vector(dw-1 downto 0);
     ldq_dout  : in    std_logic_vector(dw-1 downto 0);
-    ldq_oen   : in    std_logic;
+    ldq_oen   : in    std_logic_vector(dw-1 downto 0);
     lcke      : in    std_logic_vector(ncs-1 downto 0);
     lsn       : in    std_logic_vector(ncs-1 downto 0);
     lwen      : in    std_ulogic;
@@ -91,6 +91,7 @@ architecture rtl of sdram_phy is
   signal ldqmx     : std_logic_vector(dw/8-1 downto 0);
 
   signal oen       : std_ulogic;
+  signal voen      : std_logic_vector(dw-1 downto 0);
   
   -- Determines if there is a customized phy available for target tech,
   -- otherwise a generic PHY will be built
@@ -105,13 +106,14 @@ architecture rtl of sdram_phy is
     
 begin
 
-  oen <= not ldq_oen when padoen_polarity(tech) /= oepol else ldq_oen;
+  oen <= not ldq_oen(0) when padoen_polarity(tech) /= oepol else ldq_oen(0);
+  voen <= not ldq_oen when padoen_polarity(tech) /= oepol else ldq_oen;
   
   nopadregs : if (reg = 0) or (tech_has_padregs(tech) /= 0) generate
     laddrx    <= laddr;
     ldq_din   <= ldq_dinx;
     ldq_doutx <= ldq_dout;
-    ldq_oenx  <= (others => oen);
+    ldq_oenx  <= voen;
     lckex     <= lcke;
     lsnx      <= lsn;
     lwenx     <= lwen;

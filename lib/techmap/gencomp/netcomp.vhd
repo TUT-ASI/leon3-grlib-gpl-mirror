@@ -61,7 +61,9 @@ component grusbhc_net is
     memsel      : integer                  := 0;
     syncprst    : integer range 0 to 1     := 0;
     sysfreq     : integer                  := 65000;
-    pcidev      : integer range 0 to 1     := 0);
+    pcidev      : integer range 0 to 1     := 0;
+    debug       : integer                  := 0;
+    debug_abits : integer                  := 12);
   port (
     clk               : in  std_ulogic;
     uclk              : in  std_ulogic;
@@ -80,7 +82,6 @@ component grusbhc_net is
     ahbmi_hready      : in  std_ulogic;
     ahbmi_hresp       : in  std_logic_vector(1 downto 0);
     ahbmi_hrdata      : in  std_logic_vector(31 downto 0);
-    ahbmi_hcache      : in  std_ulogic;
     -- UHC ahb_slv_in_type unwrapped
     uhc_ahbsi_hsel    : in  std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
     uhc_ahbsi_haddr   : in  std_logic_vector(31 downto 0);
@@ -114,7 +115,6 @@ component grusbhc_net is
     uhc_ahbso_hresp   : out std_logic_vector((n_cc*2)*uhcgen downto 1*uhcgen);
     uhc_ahbso_hrdata  : out std_logic_vector((n_cc*32)*uhcgen downto 1*uhcgen);
     uhc_ahbso_hsplit  : out std_logic_vector((n_cc*16)*uhcgen downto 1*uhcgen);
-    uhc_ahbso_hcache  : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
     uhc_ahbso_hirq    : out std_logic_vector(n_cc*uhcgen downto 1*uhcgen);
     -- grusb_out_type_vector unwrapped
     xcvrsel           : out std_logic_vector(((nports*2)-1) downto 0);
@@ -195,7 +195,13 @@ component grusbhc_net is
     testen            : in  std_ulogic;
     testrst           : in  std_ulogic;
     scanen            : in  std_ulogic;
-    testoen           : in  std_ulogic);
+    testoen           : in  std_ulogic;
+    -- debug signals
+    debug_raddr       : out std_logic_vector(15 downto 0);
+    debug_waddr       : out std_logic_vector(15 downto 0);
+    debug_wdata       : out std_logic_vector(31 downto 0);
+    debug_we          : out std_ulogic;
+    debug_rdata       : in  std_logic_vector(31 downto 0));
   end component;
 
 component grspwc_net
@@ -204,13 +210,15 @@ component grspwc_net
     sysfreq      : integer := 40000;
     usegen       : integer range 0 to 1  := 1;
     nsync        : integer range 1 to 2  := 1;
-    rmap         : integer range 0 to 1  := 0;
+    rmap         : integer range 0 to 2  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
     fifosize1    : integer range 4 to 32 := 32;
     fifosize2    : integer range 16 to 64 := 64;
     rxunaligned  : integer range 0 to 1 := 0;
     rmapbufs     : integer range 2 to 8 := 4;
-    scantest     : integer range 0 to 1 := 0
+    scantest     : integer range 0 to 1 := 0;
+    nodeaddr     : integer range 0 to 255 := 254;
+    destkey      : integer range 0 to 255 := 0
   );
   port(
     rst          : in  std_ulogic;
@@ -298,7 +306,7 @@ end component;
 
 component grspwc2_net is
   generic(
-    rmap         : integer range 0 to 1  := 0;
+    rmap         : integer range 0 to 2  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
     fifosize1    : integer range 4 to 32 := 32;
     fifosize2    : integer range 16 to 64 := 64;
@@ -310,7 +318,9 @@ component grspwc2_net is
     tech         : integer;
     input_type   : integer range 0 to 4 := 0;
     output_type  : integer range 0 to 2 := 0;
-    rxtx_sameclk : integer range 0 to 1 := 0
+    rxtx_sameclk : integer range 0 to 1 := 0;
+    nodeaddr     : integer range 0 to 255 := 254;
+    destkey      : integer range 0 to 255 := 0
   );
   port(
     rst          : in  std_ulogic;
@@ -364,6 +374,7 @@ component grspwc2_net is
     timerrstval  : in   std_logic_vector(11 downto 0);
     --rmapen
     rmapen       : in   std_ulogic;
+    rmapnodeaddr : in   std_logic_vector(7 downto 0);
     --rx ahb fifo
     rxrenable    : out  std_ulogic;
     rxraddress   : out  std_logic_vector(4 downto 0);
@@ -782,14 +793,12 @@ component ssrctrl_net
       n_ahbsi_hmaster:  in    Std_Logic_Vector(3 downto 0);
       n_ahbsi_hmastlock:in    Std_Logic;
       n_ahbsi_hmbsel:   in    Std_Logic_Vector(0 to 3);
-      n_ahbsi_hcache:   in    Std_Logic;
       n_ahbsi_hirq:     in    Std_Logic_Vector(31 downto 0);
 
       n_ahbso_hready:   out   Std_Logic;
       n_ahbso_hresp:    out   Std_Logic_Vector(1 downto 0);
       n_ahbso_hrdata:   out   Std_Logic_Vector(31 downto 0);
       n_ahbso_hsplit:   out   Std_Logic_Vector(15 downto 0);
-      n_ahbso_hcache:   out   Std_Logic;
       n_ahbso_hirq:     out   Std_Logic_Vector(31 downto 0);
 
       n_apbi_psel:      in    Std_Logic_Vector(0 to 15);
@@ -1102,7 +1111,11 @@ end component;
       acntbits  : integer range 1 to 32 := 32;
       aslvsel   : integer range 0 to 1  := 0;
       twen      : integer range 0 to 1  := 1;
-      maxwlen   : integer range 0 to 15 := 0);
+      maxwlen   : integer range 0 to 15 := 0;
+      automask0 : integer               := 0;
+      automask1 : integer               := 0;
+      automask2 : integer               := 0;
+      automask3 : integer               := 0);
     port (
       rstn          : in std_ulogic;
       clk           : in std_ulogic;
@@ -1122,6 +1135,7 @@ end component;
       spii_sck      : in  std_ulogic;
       spii_spisel   : in  std_ulogic;
       spii_astart   : in  std_ulogic;
+      spii_cstart   : in  std_ulogic;
       spio_miso     : out std_ulogic;
       spio_misooen  : out std_ulogic;
       spio_mosi     : out std_ulogic;
@@ -1130,6 +1144,7 @@ end component;
       spio_sckoen   : out std_ulogic;
       spio_enable   : out std_ulogic;
       spio_astart   : out std_ulogic;
+      spio_aready   : out std_ulogic;
       slvsel        : out std_logic_vector((slvselsz-1) downto 0));
   end component;
 
@@ -1188,6 +1203,7 @@ end component;
    port (
       clk     : in  std_ulogic;
       gclk    : in  std_ulogic;
+      hclken  : in  std_ulogic;
       rstn    : in  std_ulogic;
       ahbix   : in  ahb_mst_in_type;
       ahbox   : out ahb_mst_out_type;
@@ -1204,6 +1220,7 @@ end component;
       irqo_irl:         out   std_logic_vector(3 downto 0);
       irqo_pwd:         out   std_ulogic;
       irqo_fpen:        out   std_ulogic;
+      irqo_idle:        out   std_ulogic;
 
       dbgi_dsuen:       in    std_ulogic;                               -- DSU enable
       dbgi_denable:     in    std_ulogic;                               -- diagnostic register access enable

@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2011, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2012, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -20,7 +20,6 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
-
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -42,7 +41,6 @@ use gaisler.net.all;
 use gaisler.jtag.all;
 use gaisler.spacewire.all;
 use gaisler.grusb.all;
---use gaisler.ata.all;
 -- pragma translate_off
 use gaisler.sim.all;
 -- pragma translate_on
@@ -158,24 +156,6 @@ entity leon3mp is
     usb_stp     : out std_logic;
     usb_dir     : in  std_logic;
     usb_resetn  : out std_ulogic;
-	
-	-- ATA / IDE Interface
-	
--- This interface shares pins with GENIO port.
-	
- --   ata_rstn  : out std_logic; 
- --   ata_data  : inout std_logic_vector(15 downto 0);
- --   ata_da    : out std_logic_vector(2 downto 0);  
- --   ata_cs0   : out std_logic;
- --   ata_cs1   : out std_logic;
- --  ata_dior  : out std_logic;
- --  ata_diow  : out std_logic;
- --   ata_iordy : in std_logic;
- --  ata_intrq : in std_logic;
- --  ata_dmarq : in std_logic; 
- --  ata_dmack : out std_logic;
- --   --ata_dasp  : in std_logic
- --   ata_csel  : out std_logic;
 
     -- SPI flash
     spi_sel_n : inout std_ulogic;
@@ -202,8 +182,7 @@ attribute syn_netlist_hierarchy of rtl : architecture is false;
 constant blength : integer := 12;
 constant fifodepth : integer := 8;
 constant maxahbm : integer := CFG_NCPU+CFG_AHB_UART+CFG_GRETH+
-   CFG_AHB_JTAG+CFG_SPW_NUM*CFG_SPW_EN+CFG_GRUSB_DCL+
-   CFG_ATA+CFG_GRUSBDC;
+   CFG_AHB_JTAG+CFG_SPW_NUM*CFG_SPW_EN;
 
    
 signal vcc, gnd   : std_logic;
@@ -290,7 +269,7 @@ signal spmo2 : spimctrl_out_type;
 
 constant BOARD_FREQ : integer := 50000;   -- input frequency in KHz
 constant CPU_FREQ : integer := BOARD_FREQ * CFG_CLKMUL / CFG_CLKDIV;  -- cpu frequency in KHz
-constant IOAEN : integer := CFG_CAN + CFG_ATA + CFG_GRUSBDC;
+constant IOAEN : integer := CFG_CAN;
 constant DDR2_FREQ  : integer := 200000;                               -- DDR2 input frequency in KHz
 
 
@@ -600,6 +579,15 @@ begin
       port map (spi_sel_n, spmo.csn);  
   end generate;
 
+  nospimc: if ((CFG_SPICTRL_ENABLE = 0 and CFG_SPIMCTRL = 0) or 
+               (CFG_SPICTRL_ENABLE = 1 and CFG_SPIMCTRL = 1) or
+               (CFG_SPICTRL_ENABLE = 1 and CFG_SPIMCTRL = 0))generate
+    mosi_pad : outpad generic map (tech => padtech)
+      port map (spi_mosi, '0');
+    sck_pad  : outpad generic map (tech => padtech)
+      port map (spi_clk, '0'); 
+  end generate;
+
 ----------------------------------------------------------------------
 ---  APB Bridge and various periherals -------------------------------
 ----------------------------------------------------------------------
@@ -624,6 +612,7 @@ begin
     rts1_pad : outpad generic map (tech => padtech) port map (rtsn1, u1o.rtsn);
   end generate;
   noua0 : if CFG_UART1_ENABLE = 0 generate apbo(1) <= apb_none; end generate;
+  rts1_pad : outpad generic map (tech => padtech) port map (rtsn2, '0');
 
   irqctrl : if CFG_IRQ3_ENABLE /= 0 generate
     irqctrl0 : irqmp         -- interrupt controller
@@ -751,9 +740,8 @@ begin
   
   
   -- make an additonal 32 bit GPIO port for genio(31..0)
-  -- Pins only usable if ATA interface is not enabled. 
   
-  gpio1 : if CFG_ATA /=1 and CFG_GRGPIO_ENABLE /= 0 generate     -- GPIO unit
+  gpio1 : if CFG_GRGPIO_ENABLE /= 0 generate     -- GPIO unit
     grgpio1: grgpio
     generic map(pindex => 11, paddr => 11, imask => CFG_GRGPIO_IMASK, nbits => 32)
     port map(rst => rstn, clk => clkm, apbi => apbi, apbo => apbo(11),
@@ -764,12 +752,8 @@ begin
     end generate;
 
   end generate;
-  
-  
-   -- make an additonal 28 bit GPIO port for genio(59..32) 
-  -- Pins only usable if ATA interface is not enabled.  
  
-   gpio2 : if CFG_ATA /=1 and CFG_GRGPIO_ENABLE /= 0 generate     -- GPIO unit
+   gpio2 : if CFG_GRGPIO_ENABLE /= 0 generate     -- GPIO unit
     grgpio2: grgpio
     generic map(pindex => 12, paddr => 12, imask => CFG_GRGPIO_IMASK, nbits => 28)
     port map(rst => rstn, clk => clkm, apbi => apbi, apbo => apbo(12),
@@ -973,37 +957,6 @@ begin
 -------------------------------------------------------------------------------
 -- USB ------------------------------------------------------------------------
 -------------------------------------------------------------------------------
-  -- Note that more than one USB component can not be instantiated at the same
-  -- time (board has only one USB transceiver), therefore they share AHB
-  -- master/slave indexes
-  -----------------------------------------------------------------------------
-  -- Shared pads
-  -----------------------------------------------------------------------------
-  usbpads: if (CFG_GRUSBHC + CFG_GRUSBDC + CFG_GRUSB_DCL) /= 0 generate
-    -- Incoming 60 MHz clock from transceiver, arch 3 = through BUFGDLL or
-    -- similiar.
---    usb_clkout_pad : clkpad generic map (tech => padtech, arch => 3) port map (usb_clk, uclk, cgo.clklock, ulock);
---    usb_clkout_pad : clkpad generic map (tech => padtech, arch => 0) port map (usb_clk, lusb_clk);
-    usb_clk_pad : clkpad generic map (tech => padtech, arch => 0) port map (usb_clk, uclk);
-
---    x0 : clkmul_virtex2 port map (rstn, lusb_clk, uclk, ulock);
-
-    usb_d_pad: iopadv
-      generic map(tech => padtech, width => 8)
-      port map (usb_d, usbo(0).dataout(7 downto 0), usbo(0).oen,
-                usbi(0).datain(7 downto 0));
-    usb_nxt_pad : inpad generic map (tech => padtech)
-      port map (usb_nxt, usbi(0).nxt);
-    usb_dir_pad : inpad generic map (tech => padtech)
-      port map (usb_dir, usbi(0).dir);
-    usb_resetn_pad : outpad generic map (tech => padtech, slew => 1)
-      port map (usb_resetn, usbo(0).reset);
-    usb_stp_pad : outpad generic map (tech => padtech, slew => 1)
-      port map (usb_stp, usbo(0).stp);
-  end generate usbpads;
-  nousb: if (CFG_GRUSBHC + CFG_GRUSBDC + CFG_GRUSB_DCL) = 0 generate
-    ulock <= '1';
-  end generate nousb;
   
   -----------------------------------------------------------------------------
   -- USB 2.0 Host Controller
@@ -1032,115 +985,36 @@ begin
               CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM+1),
         ahbso(8 downto 8),
         usbo,usbi);    
-  end generate usbhc0;
-
-  -----------------------------------------------------------------------------
-  -- USB 2.0 Device Controller
-  -----------------------------------------------------------------------------
-  usbdc0: if CFG_GRUSBDC = 1 generate
-    usbdc0: grusbdc
-      generic map(
-        hsindex => 8, hirq => 9, haddr => 16#004#, hmask => 16#FFC#,        
- --       hmindex => CFG_NCPU+CFG_AHB_UART+log2x(CFG_PCI)+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM,
-       hmindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM,
-        aiface => CFG_GRUSBDC_AIFACE, uiface => 1,
-        nepi => CFG_GRUSBDC_NEPI, nepo => CFG_GRUSBDC_NEPO,
-        i0 => CFG_GRUSBDC_I0, i1 => CFG_GRUSBDC_I1,
-        i2 => CFG_GRUSBDC_I2, i3 => CFG_GRUSBDC_I3,
-        i4 => CFG_GRUSBDC_I4, i5 => CFG_GRUSBDC_I5,
-        i6 => CFG_GRUSBDC_I6, i7 => CFG_GRUSBDC_I7,
-        i8 => CFG_GRUSBDC_I8, i9 => CFG_GRUSBDC_I9,
-        i10 => CFG_GRUSBDC_I10, i11 => CFG_GRUSBDC_I11,
-        i12 => CFG_GRUSBDC_I12, i13 => CFG_GRUSBDC_I13,
-        i14 => CFG_GRUSBDC_I14, i15 => CFG_GRUSBDC_I15,
-        o0 => CFG_GRUSBDC_O0, o1 => CFG_GRUSBDC_O1,
-        o2 => CFG_GRUSBDC_O2, o3 => CFG_GRUSBDC_O3,
-        o4 => CFG_GRUSBDC_O4, o5 => CFG_GRUSBDC_O5,
-        o6 => CFG_GRUSBDC_O6, o7 => CFG_GRUSBDC_O7,
-        o8 => CFG_GRUSBDC_O8, o9 => CFG_GRUSBDC_O9,
-        o10 => CFG_GRUSBDC_O10, o11 => CFG_GRUSBDC_O11,
-        o12 => CFG_GRUSBDC_O12, o13 => CFG_GRUSBDC_O13,
-        o14 => CFG_GRUSBDC_O14, o15 => CFG_GRUSBDC_O15,
-        memtech => memtech, keepclk => 1)
-      port map(
-        uclk  => uclk,
-        usbi  => usbi(0),
-        usbo  => usbo(0),
-        hclk  => clkm,
-        hrst  => rstn,
-        ahbmi => ahbmi,
---        ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+log2x(CFG_PCI)+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM),
-        ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM),
-        ahbsi => ahbsi,
-        ahbso => ahbso(8)
-        );
-  end generate usbdc0;
-
-  -----------------------------------------------------------------------------
-  -- USB DCL
-  -----------------------------------------------------------------------------
-  usb_dcl0: if CFG_GRUSB_DCL = 1 generate
-    usb_dcl0: grusb_dcl
-      generic map (
---        hindex => CFG_NCPU+CFG_AHB_UART+log2x(CFG_PCI)+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM,
-        hindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM,
-        memtech => memtech, keepclk => 1, uiface => 1)
-      port map (
-        uclk, usbi(0), usbo(0), clkm, rstn, ahbmi,
- --       ahbmo(CFG_NCPU+CFG_AHB_UART+log2x(CFG_PCI)+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM));
-       ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM));
-  end generate usb_dcl0;
   
------------------------------------------------------------------------
----  AHB ATA ----------------------------------------------------------
------------------------------------------------------------------------
+    -- Incoming 60 MHz clock from transceiver, arch 3 = through BUFGDLL or
+    -- similiar.
+--    usb_clkout_pad : clkpad generic map (tech => padtech, arch => 3) port map (usb_clk, uclk, cgo.clklock, ulock);
+--    usb_clkout_pad : clkpad generic map (tech => padtech, arch => 0) port map (usb_clk, lusb_clk);
+    usb_clk_pad : clkpad generic map (tech => padtech, arch => 0) port map (usb_clk, uclk);
 
---   ata0 : if CFG_ATA = 1 generate
---     atac0 : atactrl
---       generic map(
---         tech => 0, fdepth => CFG_ATAFIFO,
---         mhindex => CFG_NCPU+CFG_AHB_UART+CFG_GRETH+CFG_AHB_JTAG+CFG_SVGA_ENABLE+
--- 		CFG_SPW_NUM*CFG_SPW_EN+CFG_GRUSB_DCL+CFG_GRUSBDC,
---         shindex => 3, haddr => 16--A00--, hmask => 16--fff--, pirq  => CFG_ATAIRQ,
---         mwdma => CFG_ATADMA, TWIDTH   => 8,
---         -- PIO mode 0 settings (@100MHz clock)
---         PIO_mode0_T1   => 6,   -- 70ns
---         PIO_mode0_T2   => 28,  -- 290ns
---         PIO_mode0_T4   => 2,   -- 30ns
---         PIO_mode0_Teoc => 23   -- 240ns ==> T0 - T1 - T2 = 600 - 70 - 290 = 240
---         )
---       port map(
---         rst => rstn, arst => vcc, clk => clkm, ahbmi => ahbmi,
---         ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_GRETH+CFG_AHB_JTAG+
---                        CFG_SVGA_ENABLE+CFG_SPW_NUM*CFG_SPW_EN+
---                        CFG_GRUSB_DCL+CFG_GRUSBDC),
---         ahbsi => ahbsi, ahbso => ahbso(11), atai => idei, atao => ideo);
---     
---     ata_rstn_pad : outpad generic map (tech => padtech)
---       port map (ata_rstn, ideo.rstn);
---     ata_data_pad : iopadv generic map (tech => padtech, width => 16, oepol => 1)
---       port map (ata_data, ideo.ddo, ideo.oen, idei.ddi);
---     ata_da_pad : outpadv generic map (tech => padtech, width => 3)
---       port map (ata_da, ideo.da);
---     ata_cs0_pad : outpad generic map (tech => padtech)
---       port map (ata_cs0, ideo.cs0);
---     ata_cs1_pad : outpad generic map (tech => padtech)
---       port map (ata_cs1, ideo.cs1);
---     ata_dior_pad : outpad generic map (tech => padtech)
---       port map (ata_dior, ideo.dior);
---     ata_diow_pad : outpad generic map (tech => padtech)
---       port map (ata_diow, ideo.diow);
---     iordy_pad : inpad generic map (tech => padtech)
---       port map (ata_iordy, idei.iordy);
---     intrq_pad : inpad generic map (tech => padtech)
---       port map (ata_intrq, idei.intrq);
---     dmarq_pad : inpad generic map (tech => padtech)
---       port map (ata_dmarq, idei.dmarq);
---     dmack_pad : outpad generic map (tech => padtech)
---       port map (ata_dmack, ideo.dmack);
---     ata_csel <= '0';
---   end generate;
- 
+--    x0 : clkmul_virtex2 port map (rstn, lusb_clk, uclk, ulock);
+
+    usb_d_pad: iopadv
+      generic map(tech => padtech, width => 8)
+      port map (usb_d, usbo(0).dataout(7 downto 0), usbo(0).oen,
+                usbi(0).datain(7 downto 0));
+    usb_nxt_pad : inpad generic map (tech => padtech)
+      port map (usb_nxt, usbi(0).nxt);
+    usb_dir_pad : inpad generic map (tech => padtech)
+      port map (usb_dir, usbi(0).dir);
+    usb_resetn_pad : outpad generic map (tech => padtech, slew => 1)
+      port map (usb_resetn, usbo(0).reset);
+    usb_stp_pad : outpad generic map (tech => padtech, slew => 1)
+      port map (usb_stp, usbo(0).stp);
+  end generate usbhc0;
+  nousb: if CFG_GRUSBHC = 0 generate
+    ulock <= '1';
+    usb_resetn_pad : outpad generic map (tech => padtech, slew => 1)
+      port map (usb_resetn, '0');
+    usb_stp_pad : outpad generic map (tech => padtech, slew => 1)
+      port map (usb_stp, '0');
+  end generate nousb;
+   
  -----------------------------------------------------------------------
  ---  Drive unused bus elements  ---------------------------------------
  -----------------------------------------------------------------------

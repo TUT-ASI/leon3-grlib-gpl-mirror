@@ -66,7 +66,10 @@ entity grethm is
     mdint_pol      : integer range 0 to 1  := 0;
     enable_mdint   : integer range 0 to 1  := 0;
     multicast      : integer range 0 to 1  := 0;
-    ramdebug       : integer range 0 to 2  := 0); 
+    ramdebug       : integer range 0 to 2  := 0;
+    mdiohold       : integer := 1;
+    maxsize        : integer := 1500
+    );
   port(
     rst            : in  std_ulogic;
     clk            : in  std_ulogic;
@@ -114,7 +117,10 @@ begin
         mdint_pol      => mdint_pol,
         enable_mdint   => enable_mdint,
         multicast      => multicast,
-        ramdebug       => ramdebug) 
+        ramdebug       => ramdebug,
+        mdiohold       => mdiohold,
+        maxsize        => maxsize
+        )
       port map (
         rst            => rst,
         clk            => clk,
@@ -157,7 +163,8 @@ begin
         mdint_pol      => mdint_pol,
         enable_mdint   => enable_mdint,
         multicast      => multicast,
-        ramdebug       => ramdebug) 
+        ramdebug       => ramdebug,
+        mdiohold       => mdiohold) 
       port map (
         rst            => rst,
         clk            => clk,

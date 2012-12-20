@@ -96,7 +96,7 @@ begin
   generic map(tech, hindex, pindex, paddr, pmask, pirq,
           rmap, rmapcrc, fifosize1, fifosize2, rxclkbuftype,
           rxunaligned, rmapbufs, ft, scantest, techfifo, ports,
-          dmachan, memtech, input_type, output_type, rxtx_sameclk, netlist)
+          dmachan, memtech, input_type, output_type, rxtx_sameclk, netlist, nodeaddr, destkey)
   port map(rst, clk, rxclk0, rxclk1, txclk, txclkn, ahbmi, ahbmo, apbi, apbo, swni, swno);
   end generate;
 

@@ -60,7 +60,9 @@ entity ddr2spax_ddr is
       hwidthen   : integer range 0 to 1 := 0;
       phytech    : integer := 0;
       hasdqvalid : integer := 0;
-      rstdel     : integer := 200
+      rstdel     : integer := 200;
+      phyptctrl  : integer := 0;
+      scantest   : integer := 0
    );
    port (
       ddr_rst  : in  std_ulogic;
@@ -78,7 +80,10 @@ entity ddr2spax_ddr is
       hwidth   : in std_ulogic;
       reqsel   : in std_ulogic;
       frequest : in  ddr_request_type;
-      response2: out ddr_response_type
+      response2: out ddr_response_type;
+      testen   : in std_ulogic;
+      testrst  : in std_ulogic;
+      testoen  : in std_ulogic
    );  
 end ddr2spax_ddr;
 
@@ -224,6 +229,7 @@ architecture rtl of ddr2spax_ddr is
   signal muxout4: std_logic_vector(3 downto 0);
 
   signal start_tog_delta1,start_tog_delta2: std_logic;
+  signal arst: std_ulogic;
   
   attribute syn_keep: boolean;
   attribute syn_keep of muxsel2:signal is true;
@@ -232,6 +238,8 @@ architecture rtl of ddr2spax_ddr is
   
 begin
 
+  arst <= testrst when (scantest/=0 and ddr_syncrst=0) and testen='1' else ddr_rst;
+  
   start_tog_delta1 <= start_tog;
   start_tog_delta2 <= start_tog_delta1;
   
@@ -247,7 +255,7 @@ begin
     muxout4(0) <= genmux((muxsel2 & muxsel1 & muxsel0),muxin4(7 downto 0));
   end process;
   
-  ddrcomb : process(ddr_rst,sdi,request,frequest,start_tog_delta2,dr,wbrdata,muxout4,hwidth,reqsel)
+  ddrcomb : process(ddr_rst,sdi,request,frequest,start_tog_delta2,dr,wbrdata,muxout4,hwidth,reqsel,testen,testoen)
     constant plmemwrite: boolean := false;
     constant plmemread: boolean := false;
     
@@ -1287,10 +1295,15 @@ begin
         dv.sdo_bdrive := not oepols;
         dv.sdo_qdrive := not oepols;
         dv.sdo_odt := '0';
-        o.sdcke := "00";
+        if phyptctrl /= 0 then
+          o.sdcke := "00";
+          o.bdrive := not oepols;
+          o.qdrive := not oepols;
+          o.odt := (others => '0');
+        end if;
       end if;
     end if;
-
+    
     if dr.cfg.odten="00" then
       dv.sdo_odt := '0';
     end if;
@@ -1332,6 +1345,13 @@ begin
       resp := dr.response;
     end if;
     resp2 := dr.response2;
+
+    if scantest/=0 and phyptctrl/=0 then
+      if testen='1' then
+        o.bdrive := testoen;
+        o.qdrive := testoen;
+      end if;
+    end if;
     
     rbwdata <= rbwd;
     rbwaddr <= rbwa;
@@ -1344,12 +1364,12 @@ begin
   end process;
 
   
-  ddrregs: process(clk_ddr,ddr_rst)
+  ddrregs: process(clk_ddr,arst)
   begin
     if rising_edge(clk_ddr) then
       dr <= ndr;
     end if;
-    if ddr_syncrst=0 and ddr_rst='0' then
+    if ddr_syncrst=0 and arst='0' then
       dr.cfg.cke <= '0';
       dr.sdo_bdrive <= not oepols;
       dr.sdo_qdrive <= not oepols;

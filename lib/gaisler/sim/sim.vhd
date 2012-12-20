@@ -120,47 +120,6 @@ package sim is
       );
   end component;
 
-  type ata_in_type is record 			--signals from host to device
-    csel : std_logic;				--cable select
-    cs   : std_logic_vector(1 downto 0); 		--chip select
-    --dd   : std_logic_vector(15 downto 0);		--data bus
-    dasp : std_logic;				--Device active / slave present
-    da   : std_logic_vector(2 downto 0); 	        --device adress
-    dmack: std_logic;				--DMA acknowledge
-    dior : std_logic;				--I/O read strobe
-    diow : std_logic;				--I/O write strobe
-    reset: std_logic;				--Reset
-  end record;
-
-  constant ATAI_RESET_VECTOR : ata_in_type := ('0',(others=>'0'),'0',
-    (others=>'0'),'0','0','0','0');
-
-  type ata_out_type is record 			--signals from device to host
-    dmarq: std_logic;				--DMA request
-    intrq: std_logic;				--Interrupt request
-    iordy: std_logic;				--I/O ready
-    pdiag: std_logic;				--Passed diagnostics
-  end record;
-
-  constant ATAO_RESET_VECTOR : ata_out_type := ('0','0','1','0');
-
-  component ata_device is
-  generic(sector_length: integer :=512; --in bytes
-        disk_size: integer :=32; --in sectors
-        log2_size : integer :=14; --Log2(sector_length*disk_size), abits
-        Tlr : time := 35 ns;
-        sramfile : string := "disk.srec"
-        );
-  port(
-  --for convinience, not part of ATA interface
-    clk   : in std_logic;
-    rst   : in std_logic;
-  --interface to host bus adapter
-    d     : inout std_logic_vector(15 downto 0) := (others=>'Z');
-    atai  : in  ata_in_type := ATAI_RESET_VECTOR;
-    atao  : out ata_out_type:= ATAO_RESET_VECTOR);
-  end component;
-
   procedure leon3_subtest(subtest : integer);
   procedure mctrl_subtest(subtest : integer);
   procedure gptimer_subtest(subtest : integer);
@@ -560,6 +519,7 @@ package body sim is
     when 2 => print("  Loopback mode");
     when 3 => print("  AM Loopback mode");
     when 4 => print("  External device test");
+    when 5 => print("  Interrupt line test");
     when others => print("  sub-system test " & tost(subtest));
     end case;
 

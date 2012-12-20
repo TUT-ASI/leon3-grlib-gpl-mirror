@@ -108,6 +108,18 @@ component clkgen_virtex5
     clk2xu  : out std_ulogic);
 end component; 
 
+component clkgen_virtex7 
+  generic (
+    clk_mul  : integer := 1; 
+    clk_div  : integer := 1;
+    freq     : integer := 25000);
+  port (
+    clkin   : in  std_logic;
+    clk     : out std_logic;			-- main clock
+    cgi     : in clkgen_in_type;
+    cgo     : out clkgen_out_type);
+end component; 
+
 component clkgen_axcelerator 
   generic (
     clk_mul  : integer := 1; 
@@ -305,6 +317,14 @@ component clkmux_unisim
 end component;
 
 component clkmux_ut130hbd
+  port(
+    i0, i1  :  in  std_ulogic;
+    sel     :  in  std_ulogic;
+    o       :  out std_ulogic
+  );
+end component;
+
+component clkmux_ut90nhbd
   port(
     i0, i1  :  in  std_ulogic;
     sel     :  in  std_ulogic;

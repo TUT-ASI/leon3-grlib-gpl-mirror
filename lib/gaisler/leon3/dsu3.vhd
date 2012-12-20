@@ -22,13 +22,6 @@
 -- Author:	Jiri Gaisler, Edvin Catovic - Gaisler Research
 -- Description:	Combined LEON3 debug support and AHB trace unit
 ------------------------------------------------------------------------------
--- GRLIB2 CORE
--- VENDOR:      VENDOR_GAISLER
--- DEVICE:      GAISLER_LEON3DSU
--- VERSION:     1
--- AHBSLAVE:    0
--- BAR: 0       TYPE: 0010      PREFETCH: 0     CACHE: 0        DESC: DSU_AREA
--------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;

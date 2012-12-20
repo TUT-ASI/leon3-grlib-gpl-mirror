@@ -925,7 +925,7 @@ end component;
   
   component generic_regfile_4p
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 32;
-           wrfst : integer := 0; numregs : integer := 40);
+           wrfst : integer := 0; numregs : integer := 40; g0addr: integer := 0);
   port (
     wclk   : in  std_ulogic;
     waddr  : in  std_logic_vector((abits -1) downto 0);

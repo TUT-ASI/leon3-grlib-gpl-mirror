@@ -36,6 +36,7 @@ use gaisler.memctrl.all;
 use gaisler.ddrpkg.all;
 library techmap;
 use techmap.gencomp.ddr2phy_has_datavalid;
+use techmap.gencomp.ddr2phy_ptctrl;
 
 entity ddr2spax is
    generic (
@@ -68,7 +69,8 @@ entity ddr2spax is
       bigmem     : integer range 0 to 1 := 0;
       raspipe    : integer range 0 to 1 := 0;
       hwidthen   : integer range 0 to 1 := 0;
-      rstdel     : integer := 200
+      rstdel     : integer := 200;
+      scantest   : integer := 0
    );
    port (
       ddr_rst : in  std_ulogic;
@@ -162,9 +164,9 @@ begin
     ftc: ft_ddr2spax_ahb
       generic map (hindex => hindex, haddr => haddr, hmask => hmask, ioaddr => ioaddr, iomask => iomask,
                    nosync => nosync, burstlen => burstlen, ahbbits => xahbw, bufbits => xahbw+xahbw/2,
-                   ddrbits => ddrbits, hwidthen => hwidthen, revision => revision)
+                   ddrbits => ddrbits, hwidthen => hwidthen, devid => GAISLER_DDR2SP, revision => revision)
       port map (ahb_rst, clk_ahb, ahbsi, ahbso, ce, request, start_tog, response,
-                wbwaddr, wbwdata, wbwrite, wbwritebig, rbraddr, rbrdata, hwidth, '0', open, open);
+                wbwaddr, wbwdata, wbwrite, wbwritebig, rbraddr, rbrdata, hwidth, '0', open, open, FTFE_BEID_DDR2);
   end generate;
   
   ddrc : ddr2spax_ddr
@@ -174,10 +176,11 @@ begin
                  nosync => nosync, eightbanks => eightbanks, dqsse => dqsse, burstlen => burstlen,
                  chkbits => ft*ddrbits/2, bigmem => bigmem, raspipe => raspipe,
                  hwidthen => hwidthen, phytech => phytech, hasdqvalid => ddr2phy_has_datavalid(phytech),
-                 rstdel => rstdel)
+                 rstdel => rstdel, phyptctrl => ddr2phy_ptctrl(phytech), scantest => scantest,
+                 ddr_syncrst => ddr_syncrst)
     port map (ddr_rst, clk_ddr, request, start_tog, response, sdi, sdox,
               wbraddr, wbrdata, rbwaddr, rbwdata, rbwrite, hwidth,
-              '0', ddr_request_none, open);
+              '0', ddr_request_none, open, ahbsi.testen, ahbsi.testrst, ahbsi.testoen);
 
 
   sdoproc: process(sdox,ce)

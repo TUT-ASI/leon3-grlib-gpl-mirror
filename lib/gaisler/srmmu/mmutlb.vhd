@@ -38,7 +38,7 @@ use gaisler.libmmu.all;
 entity mmutlb is
   generic ( 
     tech     : integer range 0 to NTECH := 0;
-    entries  : integer range 2 to 32 := 8;
+    entries  : integer range 2 to 64 := 8;
     tlb_type  : integer range 0 to 3 := 1;
     tlb_rep  : integer range 0 to 1 := 1;
     mmupgsz   : integer range 0 to 5  := 0
@@ -99,8 +99,8 @@ architecture rtl of mmutlb is
       tlbcamo : out mmutlbcam_out_type
       );
   end component;
-  signal tlbcami     : mmutlbcami_a (M_ENT_MAX-1 downto 0);
-  signal tlbcamo     : mmutlbcamo_a (M_ENT_MAX-1 downto 0);
+  signal tlbcami     : mmutlbcami_a (entries-1 downto 0);
+  signal tlbcamo     : mmutlbcamo_a (entries-1 downto 0);
 
   -- least recently used
   component mmulru
@@ -130,7 +130,7 @@ begin
     variable v                    : tlb_rtype;
     variable finish, selstate      : std_logic;
 
-    variable cam_hitaddr          : std_logic_vector(M_ENT_MAX_LOG -1 downto 0);
+    variable cam_hitaddr          : std_logic_vector(entries_log-1 downto 0);
     variable cam_hit_all          : std_logic;
     variable mtag,ftag            : tlbcam_tfp;
 
@@ -165,7 +165,7 @@ begin
     variable NEEDSYNC             : std_logic;
 
     -- wb hit tlbcam's output 
-    variable wb_i_entry		  : integer range 0 to M_ENT_MAX-1;
+    variable wb_i_entry		  : integer range 0 to entries-1;
     variable wb_ACC               : std_logic_vector(2 downto 0);
     variable wb_PTE               : std_logic_vector(31 downto 0);
     variable wb_LVL               : std_logic_vector(1 downto 0);
@@ -185,8 +185,8 @@ begin
     variable store                : std_logic;
     
     variable reppos               : std_logic_vector(entries_log-1 downto 0);
-    variable i_entry		  : integer range 0 to M_ENT_MAX-1;
-    variable i_reppos		  : integer range 0 to M_ENT_MAX-1;
+    variable i_entry		  : integer range 0 to entries-1;
+    variable i_reppos		  : integer range 0 to entries-1;
     
     variable fault_pro, fault_pri  : std_logic;
     variable fault_mexc, fault_trans, fault_inv, fault_access  : std_logic;
@@ -575,8 +575,6 @@ begin
     tlbo.fault        <= fault;
     tlbo.nexttrans    <= store;
     tlbo.s1finished   <= tlbo_s1finished;
-
-    tlbo.tlbcamo <= (others => mmutlbcam_out_none);
     
     twi.walk_op_ur    <= twi_walk_op_ur;
     twi.data          <= r.s2_data;
@@ -610,18 +608,7 @@ begin
       tlbcami(i).write_op  <= tlbcam_write_op(i);
       tlbcami(i).mset  <= '0';
     end loop;  -- i
-    for i in M_ENT_MAX-1 downto entries loop
-      tlbcami(i).tagin     <= tlbcam_tfp_none;
-      tlbcami(i).trans_op  <= '0';
-      tlbcami(i).wb_op     <= '0';
-      tlbcami(i).flush_op  <= '0';
-      tlbcami(i).mmuen     <= '0';
-      tlbcami(i).tagwrite  <= tlbcam_reg_none;
-      tlbcami(i).write_op  <= '0';
-      tlbcami(i).mset  <= '0';
-      tlbcami(i).mmctrl    <= mmctrl_type1_none;
-    end loop;
-    
+
     c <= v;
   end process p0;
 
@@ -636,9 +623,6 @@ begin
       generic map ( tlb_type, mmupgsz )
       port map (rst, clk, tlbcami(i), tlbcamo(i));
   end generate tlbcam0;
-  tlbcamnone: for i in M_ENT_MAX-1 downto entries generate
-    tlbcamo(i) <= mmutlbcam_out_none;
-  end generate ;
 
   -- data-ram syncram 
   dataram : syncram

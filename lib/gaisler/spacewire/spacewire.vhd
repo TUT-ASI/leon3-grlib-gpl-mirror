@@ -256,7 +256,8 @@ package spacewire is
       tech          : integer;
       input_type    : integer;
       input_level   : integer := 0;
-      input_voltage : integer := x33v
+      input_voltage : integer := x33v;
+      rxclkbuftype  : integer range 0 to 2 := 0
       );
     port(
       rstn     : in std_ulogic;
@@ -282,7 +283,7 @@ package spacewire is
       paddr        : integer range 0 to 16#FFF#   := 0;
       pmask        : integer range 0 to 16#FFF#   := 16#FFF#;
       pirq         : integer range 0 to NAHBIRQ-1 := 0;
-      rmap         : integer range 0 to 1  := 0;
+      rmap         : integer range 0 to 2  := 0;
       rmapcrc      : integer range 0 to 1  := 0;
       fifosize1    : integer range 4 to 32 := 32;
       fifosize2    : integer range 16 to 64 := 64;
@@ -298,7 +299,9 @@ package spacewire is
       input_type   : integer range 0 to 4 := 0;
       output_type  : integer range 0 to 2 := 0;
       rxtx_sameclk : integer range 0 to 1 := 0;
-      netlist      : integer range 0 to 1 := 0
+      netlist      : integer range 0 to 1 := 0;
+      nodeaddr     : integer range 0 to 255 := 254;
+      destkey      : integer range 0 to 255 := 0
     );
     port(
       rst        : in  std_ulogic;
@@ -428,7 +431,8 @@ package spacewire is
     testen       : in  std_ulogic;
     testrst      : in  std_ulogic;
     lii          : in  grspw_codec_in_type;
-    lio          : out grspw_codec_out_type
+    lio          : out grspw_codec_out_type;
+    testin       : in  std_logic_vector(testin_width-1 downto 0) := testin_none
   );
   end component;
 
@@ -482,7 +486,8 @@ package spacewire is
       txclkn       : in  std_ulogic;
       testen       : in  std_ulogic;
       testrst      : in  std_ulogic;
-      testin       : in  std_ulogic;
+      scanen       : in  std_ulogic;
+      testoen      : in  std_ulogic;
       di           : in  std_logic_vector(spwports*(2+2*dualport)-spwen downto 0);
       dvi          : in  std_logic_vector(spwports*(2+2*dualport)-spwen downto 0);
       dconnect     : in  std_logic_vector(spwports*(2+2*dualport)-spwen downto 0);
@@ -531,7 +536,8 @@ package spacewire is
       lii          : in   grspw_dma_in_type;
       lio          : out  grspw_dma_out_type;
       testrst      : in   std_ulogic := '0';
-      testen       : in   std_ulogic := '0'
+      testen       : in   std_ulogic := '0';
+      testin       : in   std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
     );
   end component;
 
@@ -551,7 +557,8 @@ package spacewire is
       lii          : in   grspw_fifo_in_type;
       lio          : out  grspw_fifo_out_type;
       testrst      : in   std_ulogic := '0';
-      testen       : in   std_ulogic := '0'
+      testen       : in   std_ulogic := '0';
+      testin       : in   std_logic_vector(testin_width-1 downto 0) := testin_none
     );
   end component;
 

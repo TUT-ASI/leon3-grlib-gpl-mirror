@@ -34,13 +34,15 @@ entity grspwc_net is
     sysfreq      : integer := 40000;
     usegen       : integer range 0 to 1  := 1;
     nsync        : integer range 1 to 2  := 1;
-    rmap         : integer range 0 to 1  := 0;
+    rmap         : integer range 0 to 2  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
     fifosize1    : integer range 4 to 32 := 32;
     fifosize2    : integer range 16 to 64 := 64;
     rxunaligned  : integer range 0 to 1 := 0;
     rmapbufs     : integer range 2 to 8 := 4;
-    scantest     : integer range 0 to 1 := 0
+    scantest     : integer range 0 to 1 := 0;
+    nodeaddr     : integer range 0 to 255 := 254;
+    destkey      : integer range 0 to 255 := 0
   );
   port(
     rst          : in  std_ulogic;
@@ -133,13 +135,15 @@ component grspwc_unisim
     sysfreq      : integer := 40000;
     usegen       : integer range 0 to 1  := 1;
     nsync        : integer range 1 to 2  := 1;
-    rmap         : integer range 0 to 1  := 0;
+    rmap         : integer range 0 to 2  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
     fifosize1    : integer range 4 to 32 := 32;
     fifosize2    : integer range 16 to 64 := 64;
     rxunaligned  : integer range 0 to 1 := 0;
     rmapbufs     : integer range 2 to 8 := 4;
-    scantest     : integer range 0 to 1 := 0
+    scantest     : integer range 0 to 1 := 0;
+    nodeaddr     : integer range 0 to 255 := 254;
+    destkey      : integer range 0 to 255 := 0
   );
   port(
     rst          : in  std_ulogic;
@@ -230,13 +234,15 @@ component grspwc_axcelerator
     sysfreq      : integer := 40000;
     usegen       : integer range 0 to 1  := 1;
     nsync        : integer range 1 to 2  := 1;
-    rmap         : integer range 0 to 1  := 0;
+    rmap         : integer range 0 to 2  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
     fifosize1    : integer range 4 to 32 := 32;
     fifosize2    : integer range 16 to 64 := 64;
     rxunaligned  : integer range 0 to 1 := 0;
     rmapbufs     : integer range 2 to 8 := 4;
-    scantest     : integer range 0 to 1 := 0
+    scantest     : integer range 0 to 1 := 0;
+    nodeaddr     : integer range 0 to 255 := 254;
+    destkey      : integer range 0 to 255 := 0
   );
   port(
     rst          : in  std_ulogic;
@@ -327,13 +333,15 @@ component grspwc_proasic3
     sysfreq      : integer := 40000;
     usegen       : integer range 0 to 1  := 1;
     nsync        : integer range 1 to 2  := 1;
-    rmap         : integer range 0 to 1  := 0;
+    rmap         : integer range 0 to 2  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
     fifosize1    : integer range 4 to 32 := 32;
     fifosize2    : integer range 16 to 64 := 64;
     rxunaligned  : integer range 0 to 1 := 0;
     rmapbufs     : integer range 2 to 8 := 4;
-    scantest     : integer range 0 to 1 := 0
+    scantest     : integer range 0 to 1 := 0;
+    nodeaddr     : integer range 0 to 255 := 254;
+    destkey      : integer range 0 to 255 := 0
   );
   port(
     rst          : in  std_ulogic;
@@ -424,13 +432,15 @@ component grspwc_proasic3e
     sysfreq      : integer := 40000;
     usegen       : integer range 0 to 1  := 1;
     nsync        : integer range 1 to 2  := 1;
-    rmap         : integer range 0 to 1  := 0;
+    rmap         : integer range 0 to 2  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
     fifosize1    : integer range 4 to 32 := 32;
     fifosize2    : integer range 16 to 64 := 64;
     rxunaligned  : integer range 0 to 1 := 0;
     rmapbufs     : integer range 2 to 8 := 4;
-    scantest     : integer range 0 to 1 := 0
+    scantest     : integer range 0 to 1 := 0;
+    nodeaddr     : integer range 0 to 255 := 254;
+    destkey      : integer range 0 to 255 := 0
   );
   port(
     rst          : in  std_ulogic;
@@ -521,13 +531,15 @@ component grspwc_proasic3l
     sysfreq      : integer := 40000;
     usegen       : integer range 0 to 1  := 1;
     nsync        : integer range 1 to 2  := 1;
-    rmap         : integer range 0 to 1  := 0;
+    rmap         : integer range 0 to 2  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
     fifosize1    : integer range 4 to 32 := 32;
     fifosize2    : integer range 16 to 64 := 64;
     rxunaligned  : integer range 0 to 1 := 0;
     rmapbufs     : integer range 2 to 8 := 4;
-    scantest     : integer range 0 to 1 := 0
+    scantest     : integer range 0 to 1 := 0;
+    nodeaddr     : integer range 0 to 255 := 254;
+    destkey      : integer range 0 to 255 := 0
   );
   port(
     rst          : in  std_ulogic;
@@ -614,11 +626,10 @@ component grspwc_proasic3l
 end component;
 
 begin
-
   ax : if (tech = axcel) or (tech = axdsp) generate
     grspwc0 : grspwc_axcelerator
     generic map (sysfreq, usegen, nsync, rmap, rmapcrc, fifosize1, fifosize2,
-		 rxunaligned, rmapbufs, scantest)
+		 rxunaligned, rmapbufs, scantest, nodeaddr, destkey)
     port map(
       rst          => rst,
       clk          => clk,
@@ -706,7 +717,7 @@ begin
   xil : if (is_unisim(tech) = 1) generate
     grspwc0 : grspwc_unisim
     generic map (sysfreq, usegen, nsync, rmap, rmapcrc, fifosize1, fifosize2,
-		 rxunaligned, rmapbufs, scantest)
+		 rxunaligned, rmapbufs, scantest, nodeaddr, destkey)
     port map(
       rst          => rst,
       clk          => clk,
@@ -794,7 +805,7 @@ begin
   pa3 : if (tech = apa3) generate
     grspwc0 : grspwc_proasic3
     generic map (sysfreq, usegen, nsync, rmap, rmapcrc, fifosize1, fifosize2,
-		 rxunaligned, rmapbufs, scantest)
+		 rxunaligned, rmapbufs, scantest, nodeaddr, destkey)
     port map(
       rst          => rst,
       clk          => clk,
@@ -882,7 +893,7 @@ begin
   pa3e : if (tech = apa3e) generate
     grspwc0 : grspwc_proasic3e
     generic map (sysfreq, usegen, nsync, rmap, rmapcrc, fifosize1, fifosize2,
-		 rxunaligned, rmapbufs, scantest)
+		 rxunaligned, rmapbufs, scantest, nodeaddr, destkey)
     port map(
       rst          => rst,
       clk          => clk,
@@ -970,7 +981,7 @@ begin
   pa3l : if (tech = apa3l) generate
     grspwc0 : grspwc_proasic3l
     generic map (sysfreq, usegen, nsync, rmap, rmapcrc, fifosize1, fifosize2,
-		 rxunaligned, rmapbufs, scantest)
+		 rxunaligned, rmapbufs, scantest, nodeaddr, destkey)
     port map(
       rst          => rst,
       clk          => clk,

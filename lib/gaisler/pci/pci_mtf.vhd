@@ -1113,7 +1113,6 @@ begin
     end process;
 
     ahbso.hconfig <= hconfig when MASTER = 1 else (others => zero32);
-    ahbso.hcache  <= '0';
     apbo.pconfig  <= pconfig;
     apbo.pindex   <= pindex;
     ahbso.hsplit  <= (others => '0');

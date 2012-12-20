@@ -68,7 +68,9 @@ entity greth is
     mdint_pol      : integer range 0 to 1  := 0;
     enable_mdint   : integer range 0 to 1  := 0;
     multicast      : integer range 0 to 1  := 0;
-    ramdebug       : integer range 0 to 2  := 0);
+    ramdebug       : integer range 0 to 2  := 0;
+    mdiohold       : integer := 1;
+    maxsize        : integer := 1518);
   port(
     rst            : in  std_ulogic;
     clk            : in  std_ulogic;
@@ -171,7 +173,9 @@ begin
       enable_mdint   => enable_mdint,
       multicast      => multicast,
       edclsepahbg    => 0,
-      ramdebug       => ramdebug)
+      ramdebug       => ramdebug,
+      mdiohold       => mdiohold, 
+      maxsize        => maxsize)
     port map(
       rst            => rst,
       clk            => clk,
@@ -261,6 +265,7 @@ begin
       --scantest     
       testrst        => ahbmi.testrst,
       testen         => ahbmi.testen,
+      testoen        => ahbmi.testoen,
       edcladdr       => ethi.edcladdr,
       edclsepahb     => ethi.edclsepahb,
       edcldisable    => ethi.edcldisable,

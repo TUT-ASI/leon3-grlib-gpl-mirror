@@ -491,7 +491,8 @@ component unisim_skew_outpad
 end component;
 
 component unisim_clkpad 
-  generic (level : integer := 0; voltage : integer := x33v; arch : integer := 0; hf : integer := 0);
+  generic (level : integer := 0; voltage : integer := x33v; arch : integer := 0; hf : integer := 0;
+           tech : integer := 0);
   port (pad : in std_ulogic; o : out std_ulogic; rstn : std_ulogic := '1'; lock : out std_ulogic);
 end component; 
 

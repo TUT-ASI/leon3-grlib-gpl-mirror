@@ -158,7 +158,6 @@ begin
   ahbso.hresp   <= r.hresp; --"00"; 
   ahbso.hsplit  <= (others => '0'); 
   ahbso.hirq    <= (others => '0');
-  ahbso.hcache  <= '1';
   ahbso.hconfig <= hconfig;
   ahbso.hindex  <= hindex;
 

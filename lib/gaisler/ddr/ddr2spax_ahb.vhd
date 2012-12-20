@@ -154,7 +154,7 @@ begin
 
     av := ar;
     so := (hready => ar.so_hready, hresp => HRESP_OKAY, hrdata => (others => '0'),
-           hsplit => (others => '0'), hcache => not ar.hio, hirq => (others => '0'),
+           hsplit => (others => '0'), hirq => (others => '0'),
            hconfig => hconfig, hindex => hindex);
     wbw := '0';
     wbwb := '0';

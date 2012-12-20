@@ -22,14 +22,6 @@
 -- Author:      Marcus Hellqvist
 -- Description: VGA controller 
 -----------------------------------------------------------------------------
--- GRLIB2 CORE
--- VENDOR:      VENDOR_GAISLER
--- DEVICE:      GAISLER_VGACTRL
--- VERSION:     0
--- AHBMASTER:   0
--- APB:         0
--- BAR: 0       TYPE: 0010      PREFETCH: 0     CACHE: 0        DESC: IO_AREA
--------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;

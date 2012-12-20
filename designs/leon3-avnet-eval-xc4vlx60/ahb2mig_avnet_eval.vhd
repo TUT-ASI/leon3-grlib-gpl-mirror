@@ -289,7 +289,6 @@ begin
    ahbso.hready  <= ra.hready;
    ahbso.hresp   <= ra.hresp;
    ahbso.hrdata <= ahbdrivedata(ra.hrdata);
-   ahbso.hcache  <= '1';
 
 -- delayed reset for the MIG, will not work otherwise ...
 

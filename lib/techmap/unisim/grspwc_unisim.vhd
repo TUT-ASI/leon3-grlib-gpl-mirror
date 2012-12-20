@@ -19,7 +19,7 @@
 -----------------------------------------------------------------------------
 -- Entity: 	grspwc_unisim
 -- File:	grspwc_unisim.vhd
--- Author:	Jiri Gaisler - Gaisler Research 
+-- Author:	Jiri Gaisler - Gaisler Research
 -- Description: tech wrapper for xilinx/unisim grspwc netlist
 ------------------------------------------------------------------------------
 library ieee;
@@ -31,14 +31,16 @@ entity grspwc_unisim is
   generic(
     sysfreq      : integer := 40000;
     usegen       : integer range 0 to 1  := 1;
-    nsync        : integer range 1 to 2  := 1; 
-    rmap         : integer range 0 to 1  := 0;
+    nsync        : integer range 1 to 2  := 1;
+    rmap         : integer range 0 to 2  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
     fifosize1    : integer range 4 to 32 := 32;
     fifosize2    : integer range 16 to 64 := 64;
     rxunaligned  : integer range 0 to 1 := 0;
     rmapbufs     : integer range 2 to 8 := 4;
-    scantest     : integer range 0 to 1 := 0
+    scantest     : integer range 0 to 1 := 0;
+    nodeaddr     : integer range 0 to 255 := 254;
+    destkey      : integer range 0 to 255 := 0
   );
   port(
     rst          : in  std_ulogic;
@@ -46,11 +48,11 @@ entity grspwc_unisim is
     txclk        : in  std_ulogic;
     --ahb mst in
     hgrant       : in  std_ulogic;
-    hready       : in  std_ulogic;   
+    hready       : in  std_ulogic;
     hresp        : in  std_logic_vector(1 downto 0);
-    hrdata       : in  std_logic_vector(31 downto 0); 
+    hrdata       : in  std_logic_vector(31 downto 0);
     --ahb mst out
-    hbusreq      : out  std_ulogic;        
+    hbusreq      : out  std_ulogic;
     hlock        : out  std_ulogic;
     htrans       : out  std_logic_vector(1 downto 0);
     haddr        : out  std_logic_vector(31 downto 0);
@@ -59,7 +61,7 @@ entity grspwc_unisim is
     hburst       : out  std_logic_vector(2 downto 0);
     hprot        : out  std_logic_vector(3 downto 0);
     hwdata       : out  std_logic_vector(31 downto 0);
-    --apb slv in 
+    --apb slv in
     psel	 : in   std_ulogic;
     penable	 : in   std_ulogic;
     paddr	 : in   std_logic_vector(31 downto 0);
@@ -76,7 +78,7 @@ entity grspwc_unisim is
     tickout      : out  std_ulogic;
     --irq
     irq          : out  std_logic;
-    --misc     
+    --misc
     clkdiv10     : in   std_logic_vector(7 downto 0);
     dcrstval     : in   std_logic_vector(9 downto 0);
     timerrstval  : in   std_logic_vector(11 downto 0);
@@ -92,14 +94,14 @@ entity grspwc_unisim is
     rxwrite      : out  std_ulogic;
     rxwdata      : out  std_logic_vector(31 downto 0);
     rxwaddress   : out  std_logic_vector(4 downto 0);
-    rxrdata      : in   std_logic_vector(31 downto 0);    
+    rxrdata      : in   std_logic_vector(31 downto 0);
     --tx ahb fifo
     txrenable    : out  std_ulogic;
     txraddress   : out  std_logic_vector(4 downto 0);
     txwrite      : out  std_ulogic;
     txwdata      : out  std_logic_vector(31 downto 0);
     txwaddress   : out  std_logic_vector(4 downto 0);
-    txrdata      : in   std_logic_vector(31 downto 0);    
+    txrdata      : in   std_logic_vector(31 downto 0);
     --nchar fifo
     ncrenable    : out  std_ulogic;
     ncraddress   : out  std_logic_vector(5 downto 0);
@@ -269,7 +271,7 @@ f16_16 : if (fifosize1 = 16) and (fifosize2 = 16) and (rmap = 0) generate
       txclk        => txclk,
       --ahb mst in
       hgrant       => hgrant,
-      hready       => hready,   
+      hready       => hready,
       hresp        => hresp,
       hrdata       => hrdata,
       --ahb mst out
@@ -282,7 +284,7 @@ f16_16 : if (fifosize1 = 16) and (fifosize2 = 16) and (rmap = 0) generate
       hburst       => hburst,
       hprot        => hprot,
       hwdata       => hwdata,
-      --apb slv in 
+      --apb slv in
       psel	   => psel,
       penable	   => penable,
       paddr	   => paddr,
@@ -305,38 +307,38 @@ f16_16 : if (fifosize1 = 16) and (fifosize2 = 16) and (rmap = 0) generate
       rxclko       => rxclko,
       --irq
       irq          => irq,
-      --misc     
+      --misc
       clkdiv10     => clkdiv10,
       dcrstval     => dcrstval,
       timerrstval  => timerrstval,
-      --rmapen    
-      rmapen       => rmapen, 
+      --rmapen
+      rmapen       => rmapen,
       --rx ahb fifo
       rxrenable    => rxrenable,
-      rxraddress   => rxraddress, 
+      rxraddress   => rxraddress,
       rxwrite      => rxwrite,
-      rxwdata      => rxwdata, 
+      rxwdata      => rxwdata,
       rxwaddress   => rxwaddress,
-      rxrdata      => rxrdata,  
+      rxrdata      => rxrdata,
       --tx ahb fifo
       txrenable    => txrenable,
-      txraddress   => txraddress, 
+      txraddress   => txraddress,
       txwrite      => txwrite,
-      txwdata      => txwdata, 
+      txwdata      => txwdata,
       txwaddress   => txwaddress,
-      txrdata      => txrdata,  
+      txrdata      => txrdata,
       --nchar fifo
       ncrenable    => ncrenable,
-      ncraddress   => ncraddress, 
+      ncraddress   => ncraddress,
       ncwrite      => ncwrite,
-      ncwdata      => ncwdata, 
+      ncwdata      => ncwdata,
       ncwaddress   => ncwaddress,
-      ncrdata      => ncrdata,  
+      ncrdata      => ncrdata,
       --rmap buf
       rmrenable    => rmrenable,
-      rmraddress   => rmraddress, 
+      rmraddress   => rmraddress,
       rmwrite      => rmwrite,
-      rmwdata      => rmwdata, 
+      rmwdata      => rmwdata,
       rmwaddress   => rmwaddress,
       rmrdata      => rmrdata,
       linkdis      => linkdis,
@@ -354,7 +356,7 @@ rmap_f16_16 : if (fifosize1 = 16) and (fifosize2 = 16) and (rmap /= 0) generate
       txclk        => txclk,
       --ahb mst in
       hgrant       => hgrant,
-      hready       => hready,   
+      hready       => hready,
       hresp        => hresp,
       hrdata       => hrdata,
       --ahb mst out
@@ -367,7 +369,7 @@ rmap_f16_16 : if (fifosize1 = 16) and (fifosize2 = 16) and (rmap /= 0) generate
       hburst       => hburst,
       hprot        => hprot,
       hwdata       => hwdata,
-      --apb slv in 
+      --apb slv in
       psel	   => psel,
       penable	   => penable,
       paddr	   => paddr,
@@ -390,38 +392,38 @@ rmap_f16_16 : if (fifosize1 = 16) and (fifosize2 = 16) and (rmap /= 0) generate
       rxclko       => rxclko,
       --irq
       irq          => irq,
-      --misc     
+      --misc
       clkdiv10     => clkdiv10,
       dcrstval     => dcrstval,
       timerrstval  => timerrstval,
-      --rmapen    
-      rmapen       => rmapen, 
+      --rmapen
+      rmapen       => rmapen,
       --rx ahb fifo
       rxrenable    => rxrenable,
-      rxraddress   => rxraddress, 
+      rxraddress   => rxraddress,
       rxwrite      => rxwrite,
-      rxwdata      => rxwdata, 
+      rxwdata      => rxwdata,
       rxwaddress   => rxwaddress,
-      rxrdata      => rxrdata,  
+      rxrdata      => rxrdata,
       --tx ahb fifo
       txrenable    => txrenable,
-      txraddress   => txraddress, 
+      txraddress   => txraddress,
       txwrite      => txwrite,
-      txwdata      => txwdata, 
+      txwdata      => txwdata,
       txwaddress   => txwaddress,
-      txrdata      => txrdata,  
+      txrdata      => txrdata,
       --nchar fifo
       ncrenable    => ncrenable,
-      ncraddress   => ncraddress, 
+      ncraddress   => ncraddress,
       ncwrite      => ncwrite,
-      ncwdata      => ncwdata, 
+      ncwdata      => ncwdata,
       ncwaddress   => ncwaddress,
-      ncrdata      => ncrdata,  
+      ncrdata      => ncrdata,
       --rmap buf
       rmrenable    => rmrenable,
-      rmraddress   => rmraddress, 
+      rmraddress   => rmraddress,
       rmwrite      => rmwrite,
-      rmwdata      => rmwdata, 
+      rmwdata      => rmwdata,
       rmwaddress   => rmwaddress,
       rmrdata      => rmrdata,
       linkdis      => linkdis,
@@ -435,7 +437,7 @@ end generate;
 
 nomap : if not ((fifosize1 = 16) and (fifosize2 = 16)) generate
 
-  err : process 
+  err : process
   begin
     assert false report "ERROR : AHB and RX fifos must be 16!"
     severity failure;

@@ -401,7 +401,7 @@ begin
   procedure bscantest(signal tdo : in std_ulogic;
                       signal tck, tms, tdi : out std_ulogic;
                       cp: in integer) is
-    variable tmpin,tmpout: std_logic_vector(1499 downto 0);
+    variable tmpin,tmpout: std_logic_vector(1999 downto 0);
     variable i,bslen: integer;
     variable dc: std_logic;
     variable tmp6: std_logic_vector(5 downto 0);
@@ -443,7 +443,9 @@ begin
       tmpin(x) := '1';
       shift(true, bslen, tmpin(bslen-1 downto 0), tmpout(bslen-1 downto 0), tck,tms,tdi,tdo, cp);
     end loop;
+    print("[bscan] Shifting in MBIST command");
     shift(false,6, conv_std_logic_vector(11,6), tmp6, tck,tms,tdi,tdo, cp);  -- MBIST command
+    print("[bscan] Test done");
   end procedure;
   
 end;

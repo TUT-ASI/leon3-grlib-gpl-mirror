@@ -83,7 +83,8 @@ entity ddr2spa is
     ftbits         :       integer := 0;
     bigmem         :       integer range 0 to 1 := 0;
     raspipe        :       integer range 0 to 1 := 0;
-    nclk           :       integer range 1 to 3 := 3
+    nclk           :       integer range 1 to 3 := 3;
+    scantest       :       integer := 0
     );
   port (
     rst_ddr        : in    std_ulogic;
@@ -160,8 +161,8 @@ begin
     end if;
   end process;
       
-  ftphy: if ftbits > 0 generate
-    ddr_phy0 : ddr2phy_wrap
+  nftphy: if true generate
+    ddr_phy0 : ddr2phy_wrap_cbd
       generic map (
         tech => fabtech, MHz => MHz,
         dbits => ddrbits, rstdelay => 0, clk_mul => clkmul,
@@ -172,50 +173,19 @@ begin
         cbdelayb1=> cbdelayb1, cbdelayb2=> cbdelayb2,cbdelayb3=> cbdelayb3,
         numidelctrl => numidelctrl, norefclk => norefclk, rskew => rskew,
         eightbanks => eightbanks, dqsse => dqsse,
-        cben => 1, chkbits => ftbits, ctrl2en => 0, resync => 0, custombits => 8,
-	nclk => nclk )
+        chkbits => ftbits*ft, padbits => ftbits*(1-ft),
+        ctrl2en => 0, resync => 0, custombits => 8,
+        nclk => nclk, scantest => scantest )
       port map (
         rst_ddr, clk_ddr, clkref200, clkddro, clkddri, clkddri, ilock,
         ddr_clk, ddr_clkb, ddr_clk_fb_out, ddr_clk_fb,
         ddr_cke, ddr_csb, ddr_web, ddr_rasb, ddr_casb,
-        ddr_dm(ddrbits/8-1 downto 0), 
-        ddr_dqs(ddrbits/8-1 downto 0),
-        ddr_dqsn(ddrbits/8-1 downto 0),
-        ddr_ad, ddr_ba, ddr_dq(ddrbits-1 downto 0), ddr_odt,
-        ddr_dm((ddrbits+ftbits)/8-1 downto ddrbits/8),
-        ddr_dqs((ddrbits+ftbits)/8-1 downto ddrbits/8),
-        ddr_dqsn((ddrbits+ftbits)/8-1 downto ddrbits/8),
-        ddr_dq((ddrbits+ftbits)-1 downto ddrbits),
+        ddr_dm, ddr_dqs, ddr_dqsn,
+        ddr_ad, ddr_ba, ddr_dq, ddr_odt,
         open, open, open, open, open,
-        sdi, sdo,
-        clkddri, "00000000", open);
-    end generate;
-
-    nftphy: if ftbits = 0 generate
-      ddr_phy0 : ddr2phy_wrap_cbd
-        generic map (
-          tech => fabtech, MHz => MHz,
-          dbits => ddrbits, rstdelay => 0, clk_mul => clkmul,
-          clk_div => clkdiv,
-          ddelayb0 => ddelayb0, ddelayb1 => ddelayb1, ddelayb2 => ddelayb2,
-          ddelayb3 => ddelayb3, ddelayb4 => ddelayb4, ddelayb5 => ddelayb5,
-          ddelayb6 => ddelayb6, ddelayb7 => ddelayb7, cbdelayb0=> cbdelayb0,
-          cbdelayb1=> cbdelayb1, cbdelayb2=> cbdelayb2,cbdelayb3=> cbdelayb3,
-          numidelctrl => numidelctrl, norefclk => norefclk, rskew => rskew,
-          eightbanks => eightbanks, dqsse => dqsse,
-          chkbits => 0, ctrl2en => 0, resync => 0, custombits => 8,
-	  nclk => nclk )
-        port map (
-          rst_ddr, clk_ddr, clkref200, clkddro, clkddri, clkddri, ilock,
-          ddr_clk, ddr_clkb, ddr_clk_fb_out, ddr_clk_fb,
-          ddr_cke, ddr_csb, ddr_web, ddr_rasb, ddr_casb,
-          ddr_dm(ddrbits/8-1 downto 0), 
-          ddr_dqs(ddrbits/8-1 downto 0),
-          ddr_dqsn(ddrbits/8-1 downto 0),
-          ddr_ad, ddr_ba, ddr_dq(ddrbits-1 downto 0), ddr_odt,
-          open, open, open, open, open,
-          sdi, sdo, clkddri, "00000000", open);
-    end generate;
+        sdi, sdo, clkddri, "00000000", open,
+        ahbsi.testen, ahbsi.scanen, ahbsi.testrst, ahbsi.testoen);
+  end generate;
     
     ddrc : ddr2spax generic map (memtech => memtech, phytech => fabtech, hindex => hindex, 
       haddr => haddr, hmask => hmask, ioaddr => ioaddr, iomask => iomask, ddrbits => ddrbits,

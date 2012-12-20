@@ -38,6 +38,7 @@ use gaisler.misc.all;
 use gaisler.spi.all;
 use gaisler.net.all;
 use gaisler.jtag.all;
+use gaisler.ddrpkg.all;
 library esa;
 use esa.memoryctrl.all;
 use work.config.all;

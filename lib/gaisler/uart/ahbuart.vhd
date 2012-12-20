@@ -22,14 +22,6 @@
 -- Author:      Jiri Gaisler - Gaisler Research
 -- Description: UART with AHB master interface
 ------------------------------------------------------------------------------  
--- GRLIB2 CORE
--- VENDOR:      VENDOR_GAISLER
--- DEVICE:      GAISLER_AHBUART
--- VERSION:     0
--- AHBMASTER:   0
--- APB:         0
--- BAR: 0       TYPE: 0010      PREFETCH: 0     CACHE: 0        DESC: IO_AREA
--------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;

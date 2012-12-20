@@ -41,7 +41,8 @@ entity ddrphy is
 	rstdelay : integer := 200; dbits : integer := 16; 
 	clk_mul : integer := 2 ; clk_div : integer := 2;
 	rskew : integer :=0; mobile : integer := 0;
-        abits: integer := 14; nclk: integer := 3; ncs: integer := 2);
+        abits: integer := 14; nclk: integer := 3; ncs: integer := 2;
+        scantest: integer := 0; phyiconf : integer := 0);
   port (
     rst       : in  std_ulogic;
     clk       : in  std_logic;          	-- input clock
@@ -80,8 +81,12 @@ entity ddrphy is
     cke       	: in  std_logic_vector(ncs-1 downto 0);
     ck          : in  std_logic_vector(nclk-1 downto 0);
     moben       : in  std_logic;
-    dqvalid     : out std_ulogic
-  );
+    dqvalid     : out std_ulogic;
+
+    testen      : in  std_ulogic;
+    testrst     : in  std_ulogic;
+    scanen      : in  std_ulogic;
+    testoen     : in  std_ulogic);
 end;
 
 architecture rtl of ddrphy is
@@ -170,7 +175,8 @@ begin
 -- pragma translate_off
 	/ 200
 -- pragma translate_on
-	, clk_mul => clk_mul, clk_div => clk_div, dbits => dbits, rskew => rskew
+	, clk_mul => clk_mul, clk_div => clk_div, dbits => dbits, rskew => rskew,
+        phyiconf => phyiconf
 	)
      port map (
 	rst, clk, clkout, lock,
@@ -211,7 +217,7 @@ begin
     
     phywop: ddrphy_wo_pads
       generic map (tech,MHz,rstdelay,dbits,clk_mul,clk_div,
-                   rskew,mobile,abits,nclk,ncs)
+                   rskew,mobile,abits,nclk,ncs,scantest,phyiconf)
       port map (
         rst,clk,clkout,clkoutret,clkread,lock,
         
@@ -222,7 +228,7 @@ begin
         lddr_dq_in,lddr_dq_out,lddr_dq_oen,
         
         addr,ba,dqin,dqout,dm,oen,dqs,dqsoen,rasn,casn,wen,csn,cke,ck,
-        moben,dqvalid);
+        moben,dqvalid,testen,testrst,scanen,testoen);
 
     pads: ddrpads
       generic map (tech,dbits,abits,nclk,ncs,0)
@@ -271,7 +277,8 @@ entity ddrphy_wo_pads is
 	rstdelay : integer := 200; dbits : integer := 16; 
 	clk_mul : integer := 2; clk_div : integer := 2;
         rskew : integer := 0; mobile: integer := 0;
-        abits       : integer := 14;   nclk: integer := 3; ncs: integer := 2);
+        abits       : integer := 14;   nclk: integer := 3; ncs: integer := 2;
+        scantest : integer := 0; phyiconf : integer := 0);
   port (
     rst            : in    std_ulogic;
     clk            : in    std_logic;   -- input clock
@@ -314,8 +321,11 @@ entity ddrphy_wo_pads is
     cke            : in    std_logic_vector(ncs-1 downto 0);
     ck             : in    std_logic_vector(nclk-1 downto 0);
     moben          : in  std_logic;    
-    dqvalid        : out   std_ulogic
-    );
+    dqvalid        : out   std_ulogic;
+    testen      : in  std_ulogic;
+    testrst     : in  std_ulogic;
+    scanen      : in  std_ulogic;
+    testoen     : in  std_ulogic);
 end;
 
 architecture rtl of ddrphy_wo_pads is
@@ -332,7 +342,7 @@ begin
         ddr_clk, ddr_clkb, ddr_cke, ddr_csb, ddr_web, ddr_rasb, ddr_casb,
         ddr_dm, ddr_dqs_in, ddr_dqs_out, ddr_dqs_oen, ddr_ad, ddr_ba, ddr_dq_in, ddr_dq_out, ddr_dq_oen,
         addr, ba, dqin, dqout, dm, oen, dqs, dqsoen, rasn, casn, wen, csn, cke, ck,
-        moben, dqvalid
+        moben, dqvalid, testen, testrst, scanen, testoen
         );
 
     ddr_clk_fb_out <= '0';
@@ -757,7 +767,8 @@ entity ddr2phy is
         eightbanks  : integer  range 0 to 1 := 0; dqsse : integer range 0 to 1 := 0;
         abits       : integer := 14;   nclk: integer := 3; ncs: integer := 2;
         ctrl2en: integer := 0;
-        resync: integer := 0; custombits: integer := 8; extraio: integer := 0);
+        resync: integer := 0; custombits: integer := 8; extraio: integer := 0;
+        scantest: integer := 0);
   port (
     rst            : in    std_ulogic;
     clk            : in    std_logic;   -- input clock
@@ -819,8 +830,12 @@ entity ddr2phy is
     ddr_rasb2      : out std_ulogic;                               -- ddr ras
     ddr_casb2      : out std_ulogic;                               -- ddr cas
     ddr_ad2        : out std_logic_vector (abits-1 downto 0);           -- ddr address
-    ddr_ba2        : out std_logic_vector (1+eightbanks downto 0)  -- ddr bank address        
-    );
+    ddr_ba2        : out std_logic_vector (1+eightbanks downto 0); -- ddr bank address
+
+    testen      : in  std_ulogic;
+    testrst     : in  std_ulogic;
+    scanen      : in  std_ulogic;
+    testoen     : in  std_ulogic);
 end;
 
 architecture rtl of ddr2phy is
@@ -980,7 +995,7 @@ begin
                    ddelayb4,ddelayb5,ddelayb6,ddelayb7,
                    ddelayb8,ddelayb9,ddelayb10,ddelayb11,
                    numidelctrl,norefclk,rskew,eightbanks,dqsse,abits,nclk,ncs,
-                   resync,custombits)
+                   resync,custombits,scantest)
       port map (
         rst,clk,clkref,clkout,clkoutret,clkresync,lock,
         
@@ -992,7 +1007,8 @@ begin
         
         addr,ba,dqin,dqout,dm,oen,noen,dqs,dqsoen,rasn,casn,wen,csn,cke,
         cal_en,cal_inc,cal_pll,cal_rst,odt,oct,
-        read_pend,regwdata,regwrite,regrdata,dqin_valid,customclk,customdin,customdout);
+        read_pend,regwdata,regwrite,regrdata,dqin_valid,customclk,customdin,customdout,
+        testen,testrst,scanen,testoen);
 
     pads: ddr2pads
       generic map (tech,dbits,eightbanks,dqsse,abits,nclk,ncs,ctrl2en)
@@ -1056,7 +1072,7 @@ entity ddr2phy_wo_pads is
         numidelctrl : integer := 4; norefclk : integer := 0; rskew : integer := 0;
         eightbanks  : integer  range 0 to 1 := 0; dqsse : integer range 0 to 1 := 0;
         abits       : integer := 14;   nclk: integer := 3; ncs: integer := 2;
-        resync : integer := 0; custombits: integer := 8);
+        resync : integer := 0; custombits: integer := 8; scantest: integer := 0);
   port (
     rst            : in    std_ulogic;
     clk            : in    std_logic;   -- input clock
@@ -1113,8 +1129,12 @@ entity ddr2phy_wo_pads is
     dqin_valid     : out   std_ulogic;
     customclk      : in    std_ulogic;
     customdin      : in    std_logic_vector(custombits-1 downto 0);
-    customdout     : out   std_logic_vector(custombits-1 downto 0)
-    );
+    customdout     : out   std_logic_vector(custombits-1 downto 0);
+
+    testen      : in  std_ulogic;
+    testrst     : in  std_ulogic;
+    scanen      : in  std_ulogic;
+    testoen     : in  std_ulogic);
 end;
 
 architecture rtl of ddr2phy_wo_pads is
@@ -1160,7 +1180,7 @@ begin
     ddr_phy0 : generic_ddr2_phy_wo_pads
      generic map (MHz => MHz, rstdelay => rstdelay,
         clk_mul => clk_mul, clk_div => clk_div, dbits => dbits, rskew => rskew,
-        eightbanks => eightbanks, abits => abits
+        eightbanks => eightbanks, abits => abits, nclk => nclk, ncs => ncs
         )
      port map (
         rst, clk, clkout, clkoutret, lock,

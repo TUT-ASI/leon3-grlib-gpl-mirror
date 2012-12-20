@@ -24,13 +24,6 @@
 --		common prescaler. Then number of timers and the width of
 --		the timers is propgrammable through generics
 ------------------------------------------------------------------------------
--- GRLIB2 CORE
--- VENDOR:      VENDOR_GAISLER
--- DEVICE:      GAISLER_GPTIMER
--- VERSION:     0
--- APB:         0
--- BAR: 0       TYPE: 0010      PREFETCH: 0     CACHE: 0        DESC: IO_AREA
--------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;

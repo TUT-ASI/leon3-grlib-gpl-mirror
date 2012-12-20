@@ -51,6 +51,7 @@ entity jtagcom is
     dmao : in  ahb_dma_out_type;    
     dmai : out ahb_dma_in_type
     );
+  attribute sync_set_reset of rst : signal is "true";
 end;
 
 

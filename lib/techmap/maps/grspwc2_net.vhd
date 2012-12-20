@@ -30,7 +30,7 @@ use techmap.gencomp.all;
 
 entity grspwc2_net is
   generic(
-    rmap         : integer range 0 to 1  := 0;
+    rmap         : integer range 0 to 2  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
     fifosize1    : integer range 4 to 32 := 32;
     fifosize2    : integer range 16 to 64 := 64;
@@ -42,7 +42,9 @@ entity grspwc2_net is
     tech         : integer;
     input_type   : integer range 0 to 4 := 0;
     output_type  : integer range 0 to 2 := 0;
-    rxtx_sameclk : integer range 0 to 1 := 0
+    rxtx_sameclk : integer range 0 to 1 := 0;
+    nodeaddr     : integer range 0 to 255 := 254;
+    destkey      : integer range 0 to 255 := 0
   );
   port(
     rst          : in  std_ulogic;
@@ -96,6 +98,7 @@ entity grspwc2_net is
     timerrstval  : in   std_logic_vector(11 downto 0);
     --rmapen
     rmapen       : in   std_ulogic;
+    rmapnodeaddr : in   std_logic_vector(7 downto 0);
     --rx ahb fifo
     rxrenable    : out  std_ulogic;
     rxraddress   : out  std_logic_vector(4 downto 0);
@@ -135,10 +138,10 @@ entity grspwc2_net is
 end entity;
 
 architecture rtl of grspwc2_net is
- 
+
 component grspwc2_unisim is
   generic(
-    rmap         : integer range 0 to 1  := 0;
+    rmap         : integer range 0 to 2  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
     fifosize1    : integer range 4 to 32 := 32;
     fifosize2    : integer range 16 to 64 := 64;
@@ -150,7 +153,9 @@ component grspwc2_unisim is
     tech         : integer;
     input_type   : integer range 0 to 3 := 0;
     output_type  : integer range 0 to 2 := 0;
-    rxtx_sameclk : integer range 0 to 1 := 0
+    rxtx_sameclk : integer range 0 to 1 := 0;
+    nodeaddr     : integer range 0 to 255 := 254;
+    destkey      : integer range 0 to 255 := 0
   );
   port(
     rst          : in  std_ulogic;
@@ -160,11 +165,11 @@ component grspwc2_unisim is
     txclkn       : in  std_ulogic;
     --ahb mst in
     hgrant       : in  std_ulogic;
-    hready       : in  std_ulogic;   
+    hready       : in  std_ulogic;
     hresp        : in  std_logic_vector(1 downto 0);
-    hrdata       : in  std_logic_vector(31 downto 0); 
+    hrdata       : in  std_logic_vector(31 downto 0);
     --ahb mst out
-    hbusreq      : out  std_ulogic;        
+    hbusreq      : out  std_ulogic;
     hlock        : out  std_ulogic;
     htrans       : out  std_logic_vector(1 downto 0);
     haddr        : out  std_logic_vector(31 downto 0);
@@ -173,7 +178,7 @@ component grspwc2_unisim is
     hburst       : out  std_logic_vector(2 downto 0);
     hprot        : out  std_logic_vector(3 downto 0);
     hwdata       : out  std_logic_vector(31 downto 0);
-    --apb slv in 
+    --apb slv in
     psel	 : in   std_ulogic;
     penable	 : in   std_ulogic;
     paddr	 : in   std_logic_vector(31 downto 0);
@@ -198,24 +203,25 @@ component grspwc2_unisim is
     timeout      : out  std_logic_vector(7 downto 0);
     --irq
     irq          : out  std_logic;
-    --misc     
+    --misc
     clkdiv10     : in   std_logic_vector(7 downto 0);
     --rmapen
     rmapen       : in   std_ulogic;
+    rmapnodeaddr : in   std_logic_vector(7 downto 0);
     --rx ahb fifo
     rxrenable    : out  std_ulogic;
     rxraddress   : out  std_logic_vector(4 downto 0);
     rxwrite      : out  std_ulogic;
     rxwdata      : out  std_logic_vector(31 downto 0);
     rxwaddress   : out  std_logic_vector(4 downto 0);
-    rxrdata      : in   std_logic_vector(31 downto 0);    
+    rxrdata      : in   std_logic_vector(31 downto 0);
     --tx ahb fifo
     txrenable    : out  std_ulogic;
     txraddress   : out  std_logic_vector(4 downto 0);
     txwrite      : out  std_ulogic;
     txwdata      : out  std_logic_vector(31 downto 0);
     txwaddress   : out  std_logic_vector(4 downto 0);
-    txrdata      : in   std_logic_vector(31 downto 0);    
+    txrdata      : in   std_logic_vector(31 downto 0);
     --nchar fifo
     ncrenable    : out  std_ulogic;
     ncraddress   : out  std_logic_vector(5 downto 0);
@@ -241,7 +247,7 @@ end component;
 
 component grspwc2_axcelerator is
   generic(
-    rmap         : integer range 0 to 1  := 0;
+    rmap         : integer range 0 to 2  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
     fifosize1    : integer range 4 to 32 := 32;
     fifosize2    : integer range 16 to 64 := 64;
@@ -253,7 +259,9 @@ component grspwc2_axcelerator is
     tech         : integer;
     input_type   : integer range 0 to 3 := 0;
     output_type  : integer range 0 to 2 := 0;
-    rxtx_sameclk : integer range 0 to 1 := 0
+    rxtx_sameclk : integer range 0 to 1 := 0;
+    nodeaddr     : integer range 0 to 255 := 254;
+    destkey      : integer range 0 to 255 := 0
   );
   port(
     rst          : in  std_ulogic;
@@ -263,11 +271,11 @@ component grspwc2_axcelerator is
     txclkn       : in  std_ulogic;
     --ahb mst in
     hgrant       : in  std_ulogic;
-    hready       : in  std_ulogic;   
+    hready       : in  std_ulogic;
     hresp        : in  std_logic_vector(1 downto 0);
-    hrdata       : in  std_logic_vector(31 downto 0); 
+    hrdata       : in  std_logic_vector(31 downto 0);
     --ahb mst out
-    hbusreq      : out  std_ulogic;        
+    hbusreq      : out  std_ulogic;
     hlock        : out  std_ulogic;
     htrans       : out  std_logic_vector(1 downto 0);
     haddr        : out  std_logic_vector(31 downto 0);
@@ -276,7 +284,7 @@ component grspwc2_axcelerator is
     hburst       : out  std_logic_vector(2 downto 0);
     hprot        : out  std_logic_vector(3 downto 0);
     hwdata       : out  std_logic_vector(31 downto 0);
-    --apb slv in 
+    --apb slv in
     psel	 : in   std_ulogic;
     penable	 : in   std_ulogic;
     paddr	 : in   std_logic_vector(31 downto 0);
@@ -301,24 +309,25 @@ component grspwc2_axcelerator is
     timeout      : out  std_logic_vector(7 downto 0);
     --irq
     irq          : out  std_logic;
-    --misc     
+    --misc
     clkdiv10     : in   std_logic_vector(7 downto 0);
     --rmapen
     rmapen       : in   std_ulogic;
+    rmapnodeaddr : in   std_logic_vector(7 downto 0);
     --rx ahb fifo
     rxrenable    : out  std_ulogic;
     rxraddress   : out  std_logic_vector(4 downto 0);
     rxwrite      : out  std_ulogic;
     rxwdata      : out  std_logic_vector(31 downto 0);
     rxwaddress   : out  std_logic_vector(4 downto 0);
-    rxrdata      : in   std_logic_vector(31 downto 0);    
+    rxrdata      : in   std_logic_vector(31 downto 0);
     --tx ahb fifo
     txrenable    : out  std_ulogic;
     txraddress   : out  std_logic_vector(4 downto 0);
     txwrite      : out  std_ulogic;
     txwdata      : out  std_logic_vector(31 downto 0);
     txwaddress   : out  std_logic_vector(4 downto 0);
-    txrdata      : in   std_logic_vector(31 downto 0);    
+    txrdata      : in   std_logic_vector(31 downto 0);
     --nchar fifo
     ncrenable    : out  std_ulogic;
     ncraddress   : out  std_logic_vector(5 downto 0);
@@ -344,7 +353,7 @@ end component;
 
 component grspwc2_proasic3 is
   generic(
-    rmap         : integer range 0 to 1  := 0;
+    rmap         : integer range 0 to 2  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
     fifosize1    : integer range 4 to 32 := 32;
     fifosize2    : integer range 16 to 64 := 64;
@@ -356,7 +365,9 @@ component grspwc2_proasic3 is
     tech         : integer;
     input_type   : integer range 0 to 3 := 0;
     output_type  : integer range 0 to 2 := 0;
-    rxtx_sameclk : integer range 0 to 1 := 0
+    rxtx_sameclk : integer range 0 to 1 := 0;
+    nodeaddr     : integer range 0 to 255 := 254;
+    destkey      : integer range 0 to 255 := 0
   );
   port(
     rst          : in  std_ulogic;
@@ -366,11 +377,11 @@ component grspwc2_proasic3 is
     txclkn       : in  std_ulogic;
     --ahb mst in
     hgrant       : in  std_ulogic;
-    hready       : in  std_ulogic;   
+    hready       : in  std_ulogic;
     hresp        : in  std_logic_vector(1 downto 0);
-    hrdata       : in  std_logic_vector(31 downto 0); 
+    hrdata       : in  std_logic_vector(31 downto 0);
     --ahb mst out
-    hbusreq      : out  std_ulogic;        
+    hbusreq      : out  std_ulogic;
     hlock        : out  std_ulogic;
     htrans       : out  std_logic_vector(1 downto 0);
     haddr        : out  std_logic_vector(31 downto 0);
@@ -379,7 +390,7 @@ component grspwc2_proasic3 is
     hburst       : out  std_logic_vector(2 downto 0);
     hprot        : out  std_logic_vector(3 downto 0);
     hwdata       : out  std_logic_vector(31 downto 0);
-    --apb slv in 
+    --apb slv in
     psel	 : in   std_ulogic;
     penable	 : in   std_ulogic;
     paddr	 : in   std_logic_vector(31 downto 0);
@@ -404,24 +415,25 @@ component grspwc2_proasic3 is
     timeout      : out  std_logic_vector(7 downto 0);
     --irq
     irq          : out  std_logic;
-    --misc     
+    --misc
     clkdiv10     : in   std_logic_vector(7 downto 0);
     --rmapen
     rmapen       : in   std_ulogic;
+    rmapnodeaddr : in   std_logic_vector(7 downto 0);
     --rx ahb fifo
     rxrenable    : out  std_ulogic;
     rxraddress   : out  std_logic_vector(4 downto 0);
     rxwrite      : out  std_ulogic;
     rxwdata      : out  std_logic_vector(31 downto 0);
     rxwaddress   : out  std_logic_vector(4 downto 0);
-    rxrdata      : in   std_logic_vector(31 downto 0);    
+    rxrdata      : in   std_logic_vector(31 downto 0);
     --tx ahb fifo
     txrenable    : out  std_ulogic;
     txraddress   : out  std_logic_vector(4 downto 0);
     txwrite      : out  std_ulogic;
     txwdata      : out  std_logic_vector(31 downto 0);
     txwaddress   : out  std_logic_vector(4 downto 0);
-    txrdata      : in   std_logic_vector(31 downto 0);    
+    txrdata      : in   std_logic_vector(31 downto 0);
     --nchar fifo
     ncrenable    : out  std_ulogic;
     ncraddress   : out  std_logic_vector(5 downto 0);
@@ -447,7 +459,7 @@ end component;
 
 component grspwc2_proasic3e is
   generic(
-    rmap         : integer range 0 to 1  := 0;
+    rmap         : integer range 0 to 2  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
     fifosize1    : integer range 4 to 32 := 32;
     fifosize2    : integer range 16 to 64 := 64;
@@ -459,7 +471,9 @@ component grspwc2_proasic3e is
     tech         : integer;
     input_type   : integer range 0 to 3 := 0;
     output_type  : integer range 0 to 2 := 0;
-    rxtx_sameclk : integer range 0 to 1 := 0
+    rxtx_sameclk : integer range 0 to 1 := 0;
+    nodeaddr     : integer range 0 to 255 := 254;
+    destkey      : integer range 0 to 255 := 0
   );
   port(
     rst          : in  std_ulogic;
@@ -469,11 +483,11 @@ component grspwc2_proasic3e is
     txclkn       : in  std_ulogic;
     --ahb mst in
     hgrant       : in  std_ulogic;
-    hready       : in  std_ulogic;   
+    hready       : in  std_ulogic;
     hresp        : in  std_logic_vector(1 downto 0);
-    hrdata       : in  std_logic_vector(31 downto 0); 
+    hrdata       : in  std_logic_vector(31 downto 0);
     --ahb mst out
-    hbusreq      : out  std_ulogic;        
+    hbusreq      : out  std_ulogic;
     hlock        : out  std_ulogic;
     htrans       : out  std_logic_vector(1 downto 0);
     haddr        : out  std_logic_vector(31 downto 0);
@@ -482,7 +496,7 @@ component grspwc2_proasic3e is
     hburst       : out  std_logic_vector(2 downto 0);
     hprot        : out  std_logic_vector(3 downto 0);
     hwdata       : out  std_logic_vector(31 downto 0);
-    --apb slv in 
+    --apb slv in
     psel	 : in   std_ulogic;
     penable	 : in   std_ulogic;
     paddr	 : in   std_logic_vector(31 downto 0);
@@ -507,24 +521,25 @@ component grspwc2_proasic3e is
     timeout      : out  std_logic_vector(7 downto 0);
     --irq
     irq          : out  std_logic;
-    --misc     
+    --misc
     clkdiv10     : in   std_logic_vector(7 downto 0);
     --rmapen
     rmapen       : in   std_ulogic;
+    rmapnodeaddr : in   std_logic_vector(7 downto 0);
     --rx ahb fifo
     rxrenable    : out  std_ulogic;
     rxraddress   : out  std_logic_vector(4 downto 0);
     rxwrite      : out  std_ulogic;
     rxwdata      : out  std_logic_vector(31 downto 0);
     rxwaddress   : out  std_logic_vector(4 downto 0);
-    rxrdata      : in   std_logic_vector(31 downto 0);    
+    rxrdata      : in   std_logic_vector(31 downto 0);
     --tx ahb fifo
     txrenable    : out  std_ulogic;
     txraddress   : out  std_logic_vector(4 downto 0);
     txwrite      : out  std_ulogic;
     txwdata      : out  std_logic_vector(31 downto 0);
     txwaddress   : out  std_logic_vector(4 downto 0);
-    txrdata      : in   std_logic_vector(31 downto 0);    
+    txrdata      : in   std_logic_vector(31 downto 0);
     --nchar fifo
     ncrenable    : out  std_ulogic;
     ncraddress   : out  std_logic_vector(5 downto 0);
@@ -550,7 +565,7 @@ end component;
 
 component grspwc2_proasic3l is
   generic(
-    rmap         : integer range 0 to 1  := 0;
+    rmap         : integer range 0 to 2  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
     fifosize1    : integer range 4 to 32 := 32;
     fifosize2    : integer range 16 to 64 := 64;
@@ -562,7 +577,9 @@ component grspwc2_proasic3l is
     tech         : integer;
     input_type   : integer range 0 to 3 := 0;
     output_type  : integer range 0 to 2 := 0;
-    rxtx_sameclk : integer range 0 to 1 := 0
+    rxtx_sameclk : integer range 0 to 1 := 0;
+    nodeaddr     : integer range 0 to 255 := 254;
+    destkey      : integer range 0 to 255 := 0
   );
   port(
     rst          : in  std_ulogic;
@@ -572,11 +589,11 @@ component grspwc2_proasic3l is
     txclkn       : in  std_ulogic;
     --ahb mst in
     hgrant       : in  std_ulogic;
-    hready       : in  std_ulogic;   
+    hready       : in  std_ulogic;
     hresp        : in  std_logic_vector(1 downto 0);
-    hrdata       : in  std_logic_vector(31 downto 0); 
+    hrdata       : in  std_logic_vector(31 downto 0);
     --ahb mst out
-    hbusreq      : out  std_ulogic;        
+    hbusreq      : out  std_ulogic;
     hlock        : out  std_ulogic;
     htrans       : out  std_logic_vector(1 downto 0);
     haddr        : out  std_logic_vector(31 downto 0);
@@ -585,7 +602,7 @@ component grspwc2_proasic3l is
     hburst       : out  std_logic_vector(2 downto 0);
     hprot        : out  std_logic_vector(3 downto 0);
     hwdata       : out  std_logic_vector(31 downto 0);
-    --apb slv in 
+    --apb slv in
     psel	 : in   std_ulogic;
     penable	 : in   std_ulogic;
     paddr	 : in   std_logic_vector(31 downto 0);
@@ -610,24 +627,25 @@ component grspwc2_proasic3l is
     timeout      : out  std_logic_vector(7 downto 0);
     --irq
     irq          : out  std_logic;
-    --misc     
+    --misc
     clkdiv10     : in   std_logic_vector(7 downto 0);
     --rmapen
     rmapen       : in   std_ulogic;
+    rmapnodeaddr : in   std_logic_vector(7 downto 0);
     --rx ahb fifo
     rxrenable    : out  std_ulogic;
     rxraddress   : out  std_logic_vector(4 downto 0);
     rxwrite      : out  std_ulogic;
     rxwdata      : out  std_logic_vector(31 downto 0);
     rxwaddress   : out  std_logic_vector(4 downto 0);
-    rxrdata      : in   std_logic_vector(31 downto 0);    
+    rxrdata      : in   std_logic_vector(31 downto 0);
     --tx ahb fifo
     txrenable    : out  std_ulogic;
     txraddress   : out  std_logic_vector(4 downto 0);
     txwrite      : out  std_ulogic;
     txwdata      : out  std_logic_vector(31 downto 0);
     txwaddress   : out  std_logic_vector(4 downto 0);
-    txrdata      : in   std_logic_vector(31 downto 0);    
+    txrdata      : in   std_logic_vector(31 downto 0);
     --nchar fifo
     ncrenable    : out  std_ulogic;
     ncraddress   : out  std_logic_vector(5 downto 0);
@@ -657,7 +675,7 @@ begin
     grspwc20 : grspwc2_unisim
     generic map (rmap, rmapcrc, fifosize1, fifosize2,
 		 rxunaligned, rmapbufs, scantest, ports, dmachan,
-		tech, input_type, output_type, rxtx_sameclk)
+		tech, input_type, output_type, rxtx_sameclk, nodeaddr, destkey)
     port map(
       rst          => rst,
       clk          => clk,
@@ -708,6 +726,7 @@ begin
       clkdiv10     => clkdiv10,
       --rmapen
       rmapen       => rmapen,
+      rmapnodeaddr => rmapnodeaddr,
       --rx ahb fifo
       rxrenable    => rxrenable,
       rxraddress   => rxraddress,
@@ -749,7 +768,7 @@ begin
     grspwc20 : grspwc2_axcelerator
     generic map (rmap, rmapcrc, fifosize1, fifosize2,
 		 rxunaligned, rmapbufs, scantest, ports, dmachan,
-		tech, input_type, output_type, rxtx_sameclk)
+		tech, input_type, output_type, rxtx_sameclk, nodeaddr, destkey)
     port map(
       rst          => rst,
       clk          => clk,
@@ -800,6 +819,7 @@ begin
       clkdiv10     => clkdiv10,
       --rmapen
       rmapen       => rmapen,
+      rmapnodeaddr => rmapnodeaddr,
       --rx ahb fifo
       rxrenable    => rxrenable,
       rxraddress   => rxraddress,
@@ -841,7 +861,7 @@ begin
     grspwc20 : grspwc2_proasic3
     generic map (rmap, rmapcrc, fifosize1, fifosize2,
 		 rxunaligned, rmapbufs, scantest, ports, dmachan,
-		tech, input_type, output_type, rxtx_sameclk)
+		tech, input_type, output_type, rxtx_sameclk, nodeaddr, destkey)
     port map(
       rst          => rst,
       clk          => clk,
@@ -892,6 +912,7 @@ begin
       clkdiv10     => clkdiv10,
       --rmapen
       rmapen       => rmapen,
+      rmapnodeaddr => rmapnodeaddr,
       --rx ahb fifo
       rxrenable    => rxrenable,
       rxraddress   => rxraddress,
@@ -933,7 +954,7 @@ begin
     grspwc20 : grspwc2_proasic3e
     generic map (rmap, rmapcrc, fifosize1, fifosize2,
 		 rxunaligned, rmapbufs, scantest, ports, dmachan,
-		tech, input_type, output_type, rxtx_sameclk)
+		tech, input_type, output_type, rxtx_sameclk, nodeaddr, destkey)
     port map(
       rst          => rst,
       clk          => clk,
@@ -984,6 +1005,7 @@ begin
       clkdiv10     => clkdiv10,
       --rmapen
       rmapen       => rmapen,
+      rmapnodeaddr => rmapnodeaddr,
       --rx ahb fifo
       rxrenable    => rxrenable,
       rxraddress   => rxraddress,
@@ -1025,7 +1047,7 @@ begin
     grspwc20 : grspwc2_proasic3l
     generic map (rmap, rmapcrc, fifosize1, fifosize2,
 		 rxunaligned, rmapbufs, scantest, ports, dmachan,
-		tech, input_type, output_type, rxtx_sameclk)
+		tech, input_type, output_type, rxtx_sameclk, nodeaddr, destkey)
     port map(
       rst          => rst,
       clk          => clk,
@@ -1076,6 +1098,7 @@ begin
       clkdiv10     => clkdiv10,
       --rmapen
       rmapen       => rmapen,
+      rmapnodeaddr => rmapnodeaddr,
       --rx ahb fifo
       rxrenable    => rxrenable,
       rxraddress   => rxraddress,
@@ -1114,7 +1137,7 @@ begin
   end generate;
 
 -- pragma translate_off
-  nonet : if not ((is_unisim(tech) = 1) or (tech = axcel) or 
+  nonet : if not ((is_unisim(tech) = 1) or (tech = axcel) or
 	(tech = axdsp) or (tech = apa3) or (tech = apa3e) or (tech = apa3l)) generate
     err : process
     begin

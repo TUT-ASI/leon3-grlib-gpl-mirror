@@ -245,7 +245,9 @@ component pcipads
     no66         : integer := 0;
     onchipreqgnt : integer := 0;
     drivereset   : integer := 0;
-    constidsel   : integer := 0
+    constidsel   : integer := 0;
+    level        : integer := pci33;
+    voltage      : integer := x33v
   );
   port (
     pci_rst     : inout std_logic;
@@ -446,6 +448,7 @@ end component;
 component grpci2
   generic (
     memtech     : integer := DEFMEMTECH;
+    tbmemtech   : integer := DEFMEMTECH;
     oepol       : integer := 0;
     hmindex     : integer := 0;
     hdmindex    : integer := 0;

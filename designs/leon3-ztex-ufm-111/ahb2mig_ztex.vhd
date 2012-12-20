@@ -344,7 +344,6 @@ begin
   ahbso.hirq    <= (others => '0');
   ahbso.hindex  <= hindex;
   ahbso.hsplit  <= (others => '0');
-  ahbso.hcache  <= '1';
 
   apbo.pirq   <= (others => '0');
   apbo.pindex <= pindex;

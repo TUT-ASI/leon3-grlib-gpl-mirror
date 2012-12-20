@@ -19,7 +19,7 @@
 -----------------------------------------------------------------------------
 -- Entity: 	grspwc2_unisim
 -- File:	grspwc2_unisim.vhd
--- Author:	Jiri Gaisler - Gaisler Research 
+-- Author:	Jiri Gaisler - Gaisler Research
 -- Description: tech wrapper for xilinx/unisim grspwc2 netlist
 ------------------------------------------------------------------------------
 library ieee;
@@ -29,7 +29,7 @@ use unisim.all;
 
 entity grspwc2_unisim is
   generic(
-    rmap         : integer range 0 to 1  := 0;
+    rmap         : integer range 0 to 2  := 0;
     rmapcrc      : integer range 0 to 1  := 0;
     fifosize1    : integer range 4 to 32 := 32;
     fifosize2    : integer range 16 to 64 := 64;
@@ -41,7 +41,9 @@ entity grspwc2_unisim is
     tech         : integer;
     input_type   : integer range 0 to 3 := 0;
     output_type  : integer range 0 to 2 := 0;
-    rxtx_sameclk : integer range 0 to 1 := 0
+    rxtx_sameclk : integer range 0 to 1 := 0;
+    nodeaddr     : integer range 0 to 255 := 254;
+    destkey      : integer range 0 to 255 := 0
   );
   port(
     rst          : in  std_ulogic;
@@ -51,11 +53,11 @@ entity grspwc2_unisim is
     txclkn       : in  std_ulogic;
     --ahb mst in
     hgrant       : in  std_ulogic;
-    hready       : in  std_ulogic;   
+    hready       : in  std_ulogic;
     hresp        : in  std_logic_vector(1 downto 0);
-    hrdata       : in  std_logic_vector(31 downto 0); 
+    hrdata       : in  std_logic_vector(31 downto 0);
     --ahb mst out
-    hbusreq      : out  std_ulogic;        
+    hbusreq      : out  std_ulogic;
     hlock        : out  std_ulogic;
     htrans       : out  std_logic_vector(1 downto 0);
     haddr        : out  std_logic_vector(31 downto 0);
@@ -64,7 +66,7 @@ entity grspwc2_unisim is
     hburst       : out  std_logic_vector(2 downto 0);
     hprot        : out  std_logic_vector(3 downto 0);
     hwdata       : out  std_logic_vector(31 downto 0);
-    --apb slv in 
+    --apb slv in
     psel	 : in   std_ulogic;
     penable	 : in   std_ulogic;
     paddr	 : in   std_logic_vector(31 downto 0);
@@ -89,7 +91,7 @@ entity grspwc2_unisim is
     timeout      : out  std_logic_vector(7 downto 0);
     --irq
     irq          : out  std_logic;
-    --misc     
+    --misc
     clkdiv10     : in   std_logic_vector(7 downto 0);
     --rmapen
     rmapen       : in   std_ulogic;
@@ -99,14 +101,14 @@ entity grspwc2_unisim is
     rxwrite      : out  std_ulogic;
     rxwdata      : out  std_logic_vector(31 downto 0);
     rxwaddress   : out  std_logic_vector(4 downto 0);
-    rxrdata      : in   std_logic_vector(31 downto 0);    
+    rxrdata      : in   std_logic_vector(31 downto 0);
     --tx ahb fifo
     txrenable    : out  std_ulogic;
     txraddress   : out  std_logic_vector(4 downto 0);
     txwrite      : out  std_ulogic;
     txwdata      : out  std_logic_vector(31 downto 0);
     txwaddress   : out  std_logic_vector(4 downto 0);
-    txrdata      : in   std_logic_vector(31 downto 0);    
+    txrdata      : in   std_logic_vector(31 downto 0);
     --nchar fifo
     ncrenable    : out  std_ulogic;
     ncraddress   : out  std_logic_vector(5 downto 0);
@@ -278,7 +280,7 @@ testen :  in std_logic;
 rxdav :  out std_logic;
 rxdataout : out std_logic_vector(8 downto 0);
 loopback :  out std_logic);
-end component grspwc2_unisim_16_16_rmap1;  
+end component grspwc2_unisim_16_16_rmap1;
 
 
 component grspwc2_unisim_32_64_rmap1 is
@@ -368,7 +370,7 @@ normap_f16_16 : if (fifosize1 = 16) and (fifosize2 = 16) and (rmap = 0) generate
       txclkn       => txclkn,
       --ahb mst in
       hgrant       => hgrant,
-      hready       => hready,   
+      hready       => hready,
       hresp        => hresp,
       hrdata       => hrdata,
       --ahb mst out
@@ -381,7 +383,7 @@ normap_f16_16 : if (fifosize1 = 16) and (fifosize2 = 16) and (rmap = 0) generate
       hburst       => hburst,
       hprot        => hprot,
       hwdata       => hwdata,
-      --apb slv in 
+      --apb slv in
       psel	   => psel,
       penable	   => penable,
       paddr	   => paddr,
@@ -406,36 +408,36 @@ normap_f16_16 : if (fifosize1 = 16) and (fifosize2 = 16) and (rmap = 0) generate
       timeout      => timeout,
       --irq
       irq          => irq,
-      --misc     
+      --misc
       clkdiv10     => clkdiv10,
-      --rmapen    
-      rmapen       => rmapen, 
+      --rmapen
+      rmapen       => rmapen,
       --rx ahb fifo
       rxrenable    => rxrenable,
-      rxraddress   => rxraddress, 
+      rxraddress   => rxraddress,
       rxwrite      => rxwrite,
-      rxwdata      => rxwdata, 
+      rxwdata      => rxwdata,
       rxwaddress   => rxwaddress,
-      rxrdata      => rxrdata,  
+      rxrdata      => rxrdata,
       --tx ahb fifo
       txrenable    => txrenable,
-      txraddress   => txraddress, 
+      txraddress   => txraddress,
       txwrite      => txwrite,
-      txwdata      => txwdata, 
+      txwdata      => txwdata,
       txwaddress   => txwaddress,
-      txrdata      => txrdata,  
+      txrdata      => txrdata,
       --nchar fifo
       ncrenable    => ncrenable,
-      ncraddress   => ncraddress, 
+      ncraddress   => ncraddress,
       ncwrite      => ncwrite,
-      ncwdata      => ncwdata, 
+      ncwdata      => ncwdata,
       ncwaddress   => ncwaddress,
-      ncrdata      => ncrdata,  
+      ncrdata      => ncrdata,
       --rmap buf
       rmrenable    => rmrenable,
-      rmraddress   => rmraddress, 
+      rmraddress   => rmraddress,
       rmwrite      => rmwrite,
-      rmwdata      => rmwdata, 
+      rmwdata      => rmwdata,
       rmwaddress   => rmwaddress,
       rmrdata      => rmrdata,
       linkdis      => linkdis,
@@ -458,7 +460,7 @@ rmap_f16_16 : if (fifosize1 = 16) and (fifosize2 = 16) and (rmap /= 0) generate
       txclkn       => txclkn,
       --ahb mst in
       hgrant       => hgrant,
-      hready       => hready,   
+      hready       => hready,
       hresp        => hresp,
       hrdata       => hrdata,
       --ahb mst out
@@ -471,7 +473,7 @@ rmap_f16_16 : if (fifosize1 = 16) and (fifosize2 = 16) and (rmap /= 0) generate
       hburst       => hburst,
       hprot        => hprot,
       hwdata       => hwdata,
-      --apb slv in 
+      --apb slv in
       psel	   => psel,
       penable	   => penable,
       paddr	   => paddr,
@@ -496,36 +498,36 @@ rmap_f16_16 : if (fifosize1 = 16) and (fifosize2 = 16) and (rmap /= 0) generate
       timeout      => timeout,
       --irq
       irq          => irq,
-      --misc     
+      --misc
       clkdiv10     => clkdiv10,
-      --rmapen    
-      rmapen       => rmapen, 
+      --rmapen
+      rmapen       => rmapen,
       --rx ahb fifo
       rxrenable    => rxrenable,
-      rxraddress   => rxraddress, 
+      rxraddress   => rxraddress,
       rxwrite      => rxwrite,
-      rxwdata      => rxwdata, 
+      rxwdata      => rxwdata,
       rxwaddress   => rxwaddress,
-      rxrdata      => rxrdata,  
+      rxrdata      => rxrdata,
       --tx ahb fifo
       txrenable    => txrenable,
-      txraddress   => txraddress, 
+      txraddress   => txraddress,
       txwrite      => txwrite,
-      txwdata      => txwdata, 
+      txwdata      => txwdata,
       txwaddress   => txwaddress,
-      txrdata      => txrdata,  
+      txrdata      => txrdata,
       --nchar fifo
       ncrenable    => ncrenable,
-      ncraddress   => ncraddress, 
+      ncraddress   => ncraddress,
       ncwrite      => ncwrite,
-      ncwdata      => ncwdata, 
+      ncwdata      => ncwdata,
       ncwaddress   => ncwaddress,
-      ncrdata      => ncrdata,  
+      ncrdata      => ncrdata,
       --rmap buf
       rmrenable    => rmrenable,
-      rmraddress   => rmraddress, 
+      rmraddress   => rmraddress,
       rmwrite      => rmwrite,
-      rmwdata      => rmwdata, 
+      rmwdata      => rmwdata,
       rmwaddress   => rmwaddress,
       rmrdata      => rmrdata,
       linkdis      => linkdis,
@@ -548,7 +550,7 @@ rmap_f32_64 : if (fifosize1 = 32) and (fifosize2 = 64) and (rmap /= 0) generate
       txclkn       => txclkn,
       --ahb mst in
       hgrant       => hgrant,
-      hready       => hready,   
+      hready       => hready,
       hresp        => hresp,
       hrdata       => hrdata,
       --ahb mst out
@@ -561,7 +563,7 @@ rmap_f32_64 : if (fifosize1 = 32) and (fifosize2 = 64) and (rmap /= 0) generate
       hburst       => hburst,
       hprot        => hprot,
       hwdata       => hwdata,
-      --apb slv in 
+      --apb slv in
       psel	   => psel,
       penable	   => penable,
       paddr	   => paddr,
@@ -586,36 +588,36 @@ rmap_f32_64 : if (fifosize1 = 32) and (fifosize2 = 64) and (rmap /= 0) generate
       timeout      => timeout,
       --irq
       irq          => irq,
-      --misc     
+      --misc
       clkdiv10     => clkdiv10,
-      --rmapen    
-      rmapen       => rmapen, 
+      --rmapen
+      rmapen       => rmapen,
       --rx ahb fifo
       rxrenable    => rxrenable,
-      rxraddress   => rxraddress, 
+      rxraddress   => rxraddress,
       rxwrite      => rxwrite,
-      rxwdata      => rxwdata, 
+      rxwdata      => rxwdata,
       rxwaddress   => rxwaddress,
-      rxrdata      => rxrdata,  
+      rxrdata      => rxrdata,
       --tx ahb fifo
       txrenable    => txrenable,
-      txraddress   => txraddress, 
+      txraddress   => txraddress,
       txwrite      => txwrite,
-      txwdata      => txwdata, 
+      txwdata      => txwdata,
       txwaddress   => txwaddress,
-      txrdata      => txrdata,  
+      txrdata      => txrdata,
       --nchar fifo
       ncrenable    => ncrenable,
-      ncraddress   => ncraddress, 
+      ncraddress   => ncraddress,
       ncwrite      => ncwrite,
-      ncwdata      => ncwdata, 
+      ncwdata      => ncwdata,
       ncwaddress   => ncwaddress,
-      ncrdata      => ncrdata,  
+      ncrdata      => ncrdata,
       --rmap buf
       rmrenable    => rmrenable,
-      rmraddress   => rmraddress, 
+      rmraddress   => rmraddress,
       rmwrite      => rmwrite,
-      rmwdata      => rmwdata, 
+      rmwdata      => rmwdata,
       rmwaddress   => rmwaddress,
       rmrdata      => rmrdata,
       linkdis      => linkdis,
@@ -626,15 +628,15 @@ rmap_f32_64 : if (fifosize1 = 32) and (fifosize2 = 64) and (rmap /= 0) generate
       loopback     => loopback
       );
 end generate;
-              
+
 -- pragma translate_off
 
-  err : process 
+  err : process
   begin
     assert ((fifosize1 = 16) and (fifosize2 = 16)) or ((fifosize1 = 32) and (fifosize2 = 64))
 	report "ERROR : AHB and RX fifos must be 16 or 32/64!"
     severity failure;
-    assert (input_type = 3) and (output_type = 0)  
+    assert (input_type = 3) and (output_type = 0)
 	report "ERROR : input type must be 3, output type 0!"
     severity failure;
     assert ((rmap = 1) and (rmapbufs = 4)) or (rmap = 0) report "ERROR : RMAP buffer size must be 128 bytes!"

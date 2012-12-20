@@ -256,7 +256,7 @@ end component;
 component virtex4_ddr_phy
   generic (MHz : integer := 100; rstdelay : integer := 200;
 	dbits : integer := 16; clk_mul : integer := 2 ;
-	clk_div : integer := 2; rskew : integer := 0);
+	clk_div : integer := 2; rskew : integer := 0; phyiconf : integer := 0);
 
   port (
     rst       : in  std_ulogic;
@@ -830,7 +830,8 @@ component generic_ddr2_phy_wo_pads is
   generic (MHz : integer := 100; rstdelay : integer := 200;
     dbits : integer := 16; clk_mul : integer := 2 ;
     clk_div : integer := 2; rskew : integer := 0;
-           eightbanks: integer := 0; abits: integer := 14);
+           eightbanks: integer := 0; abits: integer := 14;
+           nclk: integer := 3; ncs: integer := 2);
   port(
     rst         : in  std_ulogic;
     clk         : in  std_logic;  -- input clock
@@ -998,7 +999,12 @@ component ut90nhbd_ddr_phy_wo_pads is
     cke       	: in  std_logic_vector(ncs-1 downto 0);
     ck          : in  std_logic_vector(nclk-1 downto 0);
     moben       : in  std_ulogic;
-    dqvalid     : out std_ulogic);
+    dqvalid     : out std_ulogic;
+
+    testen      : in  std_ulogic;
+    testrst     : in  std_ulogic;
+    scanen      : in  std_ulogic;
+    testoen     : in  std_ulogic);
 end component;
 
 

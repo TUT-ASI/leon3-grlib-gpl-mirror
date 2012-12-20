@@ -126,7 +126,7 @@ begin
     v.di := ahbsi.hwdata;
     vahbso.hready := '1'; vahbso.hresp := HRESP_OKAY;
     vahbso.hrdata := do; vahbso.hsplit := (others => '0');
-    vahbso.hcache := '0'; vahbso.hirq := (others => '0');
+    vahbso.hirq := (others => '0');
     vahbso.hconfig := hconfig;
 
     if ahbsi.hready = '1' then v.ad := ahbsi.haddr(abits-1 downto 0); end if;

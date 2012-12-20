@@ -18,13 +18,19 @@ interface. The MIG source code cannot be distributed due to the
 prohibitive Xilinx license, so the MIG must be re-generated with 
 coregen before simulation and synthesis can be done.
 
-To generate the MIG and install the Xilinx unisim simulation
+To generate the MIG using ISE13 and install tne Xilinx unisim simulation
 library, do as follows:
 
   make mig
   make install-secureip
 
-This will ONLY work with ISE-13 installed, and the XILINX variable
+To generate the MIG using ISE14 and install tne Xilinx unisim simulation
+library, do as follows:
+
+  make mig39
+  make install-secureip
+
+This will ONLY work with correct version of ISE installed, and the XILINX variable
 properly set in the shell. To synthesize the design, do
 
   make ise

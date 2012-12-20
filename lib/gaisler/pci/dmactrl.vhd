@@ -482,7 +482,6 @@ begin
    ahbsi1.hirq <= (others => '0');
    ahbsi1.hprot <= (others => '0');
    ahbsi1.hmastlock <= '0';
-   ahbsi1.hcache <= '0';
    ahbsi1.testen <= '0';
    ahbsi1.testrst <= '0';
    ahbsi1.scanen <= '0';

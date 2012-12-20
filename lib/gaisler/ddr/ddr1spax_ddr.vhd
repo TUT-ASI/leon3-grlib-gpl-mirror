@@ -69,7 +69,9 @@ entity ddr1spax_ddr is
       readdly    : integer := 0;
       regoutput  : integer := 1;
       ddr400     : integer := 1;
-      rstdel     : integer := 200
+      rstdel     : integer := 200;
+      phyptctrl  : integer := 0;
+      scantest   : integer := 0
    );
    port (
       ddr_rst  : in  std_ulogic;
@@ -86,7 +88,10 @@ entity ddr1spax_ddr is
       rbwrite  : out std_logic;
       reqsel   : in std_ulogic;
       frequest : in  ddr_request_type;
-      response2: out ddr_response_type
+      response2: out ddr_response_type;
+      testen   : in std_ulogic;
+      testrst  : in std_ulogic;
+      testoen  : in std_ulogic
    );  
 end ddr1spax_ddr;
 
@@ -172,10 +177,13 @@ architecture rtl of ddr1spax_ddr is
 
   constant onev: std_logic_vector(15 downto 0) := x"FFFF";
   constant zerov: std_logic_vector(15 downto 0) := x"0000";
-  
-begin
 
-  ddrcomb: process(ddr_rst,sdi,request,frequest,start_tog,dr,wbrdata)
+  signal arst : std_ulogic;
+begin
+  
+  arst <= testrst when (scantest/=0 and ddr_syncrst=0) and testen='1' else ddr_rst;
+  
+  ddrcomb: process(ddr_rst,sdi,request,frequest,start_tog,dr,wbrdata,testen,testoen)
 
     variable dv: ddr_reg_type;
     variable o: sdctrl_out_type;
@@ -567,6 +575,7 @@ begin
       when dsact3 =>
         dv.sdo_casn := '0';
         dv.sdo_wen := not vreq.hwrite;
+        dv.sdo_qdrive := not vreq.hwrite;
         -- dv.sdo_address := vcol(12 downto 10) & '0' & vcol(9 downto 1) & '0';
         -- Since part of column is stored in ramaddr in dsact1, use that to
         -- reduce fanout on vreq.startaddr
@@ -902,10 +911,12 @@ begin
       when disrstdel =>
         if dr.refctr=std_logic_vector(to_unsigned(MHz*rstdel,dr.refctr'length)) then
           dv.initstate := disidle;
+          if pwron=0 then dv.cfg.renable:='0'; end if;
         end if;
         -- Bypass reset delay by writing anything to regsd2        
         if vstartd='1' and (vreq.hio='1' and vreq.hwrite='1' and vreq.endaddr(4 downto 2)="001") then
           dv.initstate := disidle;
+          if pwron=0 then dv.cfg.renable:='0'; end if;
         end if;
         
       when disidle =>
@@ -945,6 +956,7 @@ begin
       dv.resp := ddr_response_none;
       dv.resp2 := ddr_response_none;
       dv.initstate := disrstdel;
+      dv.refpend := '0';
       -- Reset cfg record
       dv.cfg.command       := "000";
       dv.cfg.csize         := conv_std_logic_vector(col-9, 2);
@@ -968,10 +980,7 @@ begin
            dv.cfg.trp      := "01";
       else dv.cfg.trp      := "00";
       end if;
-      if pwron = 1 then
-           dv.cfg.renable  := '1';
-      else dv.cfg.renable  := '0';
-      end if;
+      dv.cfg.renable       := '1'; -- Updated in disrstdel state
       if mobile >= 2 then
            dv.cfg.mobileen := '1';   -- Default: Mobile DDR
       else dv.cfg.mobileen := '0';
@@ -981,6 +990,7 @@ begin
       else dv.cfg.trfc   := conv_std_logic_vector(75*MHz/1000-2, 5);
       end if;
       if ddr_syncrst /= 0 then
+        dv.sdo_ck := "000";
         if mobile >= 2 then
              dv.cfg.cke      := '1';
         else dv.cfg.cke      := '0';
@@ -992,14 +1002,27 @@ begin
       else
         dv.cfg.conf := (others => '0');
       end if;
-      dv.cfg.tras := "00";
-      dv.cfg.twr := '0';
+      if MHz > 175 then
+        dv.cfg.tras := "10";
+      elsif MHz > 150 then
+        dv.cfg.tras := "01";
+      else
+        dv.cfg.tras := "00";
+      end if;
+      if MHz > 133 then
+        dv.cfg.twr := '1';
+      else
+        dv.cfg.twr := '0';
+      end if;
       
       dv.sdo_csn := "11";
       dv.sdo_dqm         := (others => '1');
       dv.sdo_wen         := '1';
       dv.sdo_rasn          := '1';
       dv.sdo_casn          := '1';
+
+      -- Extra reset for X-sensitive techs
+      dv.ramaddr := (others => '0');
     end if;
 
     ---------------------------------------------------------------------------
@@ -1031,7 +1054,9 @@ begin
     -- Assign sdo
     o.bdrive := '1'; o.qdrive := '1';   --Temp.
     o.sdck := dr.sdo_ck;
-    if ddr_syncrst/=0 then o.sdck := o.sdck and (o.sdck'range => ddr_rst); end if;
+    if ddr_syncrst/=0 and phyptctrl/=0 then
+      o.sdck := o.sdck and (o.sdck'range => ddr_rst);
+    end if;
     
     if regoutput /= 0 then
       o.casn    := dr.sdo_casn;
@@ -1041,9 +1066,11 @@ begin
       o.ba      := '0' & dr.sdo_ba;
       o.address := dr.sdo_address;
       o.sdcke   := (others => dr.cfg.cke);
-      if ddr_syncrst/=0 and ddr_rst='0' then
-        if mobile >= 2 then o.sdcke := (others => '1');
-        else                o.sdcke := (others => '0');
+      if ddr_syncrst /= 0 and phyptctrl /= 0 then
+        if ddr_rst='0' then
+          if mobile >= 2 then o.sdcke := (others => '1');
+          else                o.sdcke := (others => '0');
+          end if;
         end if;
       end if;
       o.data(2*ddrbits-1 downto 0) := dr.sdo_data;
@@ -1082,6 +1109,13 @@ begin
       o.dqm := (others => '1');
     end if;
 
+    if scantest/=0 and phyptctrl/=0 then
+      if testen='1' then
+        o.bdrive := testoen;
+        o.qdrive := testoen;
+      end if;
+    end if;
+    
     ---------------------------------------------------------------------------
     -- Drive outputs
     ---------------------------------------------------------------------------
@@ -1095,12 +1129,12 @@ begin
     wbraddr <= vdone & dv.ramaddr;
   end process;
 
-  ddrregs: process(clk_ddr,ddr_rst)
+  ddrregs: process(clk_ddr,arst)
   begin
     if rising_edge(clk_ddr) then
       dr <= ndr;
     end if;
-    if ddr_syncrst=0 and ddr_rst='0' then
+    if ddr_syncrst=0 and arst='0' then
       dr.sdo_ck <= "000";
       if mobile >= 2 then
            dr.cfg.cke      <= '1';

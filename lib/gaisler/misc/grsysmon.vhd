@@ -430,7 +430,6 @@ begin  -- rtl
     end if;
     ahbso.hrdata  <= ahbdrivedata(hrdata);
     ahbso.hconfig <= HCONFIG;
-    ahbso.hcache  <= '0';
     ahbso.hirq    <= irq;
     ahbso.hindex  <= hindex;
     ahbso.hsplit  <= hsplit;

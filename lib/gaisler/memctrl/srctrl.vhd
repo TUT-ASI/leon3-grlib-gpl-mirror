@@ -406,7 +406,6 @@ begin
     ahbso.hresp   <= r.hresp;
     ahbso.hrdata  <= ahbdrivedata(hrdata);
     ahbso.hconfig <= hconfig;
-    ahbso.hcache  <= '1';
     ahbso.hirq    <= (others => '0');
     ahbso.hindex  <= hindex;
     ahbso.hsplit  <= (others => '0');

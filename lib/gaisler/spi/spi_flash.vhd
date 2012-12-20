@@ -307,7 +307,7 @@ architecture sim of spi_flash is
     
     
   begin  -- simple_spi_flash_model
-    di <= 'Z';
+    di <= 'Z'; do <= 'Z';
     loop 
       if csn /= '0' then wait until csn = '0'; end if;
 

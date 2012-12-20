@@ -731,7 +731,6 @@ begin
     ahbso.hready  <= r.hready;
     ahbso.hresp   <= r.hresp;
     ahbso.hrdata  <= ahbdrivedata(dout);
-    ahbso.hcache  <= not r.hio;
 
   end process;
 

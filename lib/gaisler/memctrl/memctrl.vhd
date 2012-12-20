@@ -160,18 +160,20 @@ type zbtssram_out_type is record
   addr      : std_logic_vector(22 downto 0);
   bwn       : std_logic_vector(15 downto 0);
   data      : std_logic_vector(127 downto 0);
-  dqoen     : std_ulogic;
+  dqoen     : std_logic_vector(127 downto 0);
   zz        : std_ulogic;
+  shutdown  : std_ulogic;
 end record;
 
 constant zbtssram_out_none : zbtssram_out_type := (
-  '1','1','1','1',(others => '0'),(others => '1'),(others => '0'),'1','0');
+  '1','1','1','1',(others => '0'),(others => '1'),(others => '0'),(others => '1'),'0','0');
 
 type zbtssram_in_type is record
   data      : std_logic_vector(127 downto 0);
+  mbe       : std_logic_vector(7 downto 0);
 end record;
 
-constant zbtssram_in_none : zbtssram_in_type := ( data => (others => '0') );
+constant zbtssram_in_none : zbtssram_in_type := ( data => (others => '0'), mbe => (others => '0') );
 
 component sdctrl
   generic (

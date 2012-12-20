@@ -72,8 +72,11 @@ end;
 
 architecture rtl of ddrphy_wrap is
 
+  signal gnd, vcc : std_ulogic;
+  
 begin
-
+  gnd <= '0'; vcc <= '0';
+  
     ddr_phy0 : ddrphy 
      generic map (tech => tech, MHz => MHz, rstdelay => rstdelay
 -- reduce 200 us start-up delay during simulation
@@ -91,7 +94,7 @@ begin
 	sdi.data(dbits*2-1 downto 0), sdo.data(dbits*2-1 downto 0), 
 	sdo.dqm(dbits/4-1 downto 0), sdo.bdrive, sdo.bdrive, sdo.qdrive, 
 	sdo.rasn, sdo.casn, sdo.sdwen, sdo.sdcsn, sdo.sdcke, sdo.sdck(2 downto 0), sdo.moben,
-        sdi.datavalid);
+        sdi.datavalid, gnd, vcc, gnd, vcc);
 
     drvdata : if dbits < 64 generate
       sdi.data(127 downto dbits*2) <= (others => '0');
@@ -198,9 +201,13 @@ architecture rtl of ddrphy_wrap_cbd is
 
   signal odt,csn,cke: std_logic_vector(ncs-1 downto 0);
   signal sdck: std_logic_vector(nclk-1 downto 0);
+
+  signal gnd, vcc : std_ulogic;
   
 begin
 
+  gnd <= '0'; vcc <= '1';
+  
   -- Merge checkbit and data buses
   comb: process(sdo,dqin)
     variable dq: std_logic_vector(2*dbits-1 downto 0);
@@ -216,7 +223,7 @@ begin
     variable vcsn,vcke: std_logic_vector(ncs-1 downto 0);
     variable vsdck: std_logic_vector(nclk-1 downto 0);
   begin
-
+    
     dq := sdo.data(2*dbits-1 downto 0);
     dqpad := ddr_widthconv(dq, dbits+padbits );
     if chkbits > 0 then
@@ -298,7 +305,8 @@ begin
 	sdo.address(1+abits downto 2), sdo.ba(1 downto 0),
 	dqin, dqout, 
 	dqm, sdo.bdrive, sdo.bdrive, sdo.qdrive, 
-	sdo.rasn, sdo.casn, sdo.sdwen, csn, cke, sdck, sdo.moben,sdi.datavalid);
+	sdo.rasn, sdo.casn, sdo.sdwen, csn, cke, sdck, sdo.moben,sdi.datavalid,
+        gnd, vcc, gnd, vcc);
 
     sdi.regrdata <= (others => '0');
 
@@ -404,10 +412,11 @@ architecture rtl of ddrphy_wrap_cbd_wo_pads is
   signal sdck: std_logic_vector(nclk-1 downto 0);
 
   signal gnd : std_logic_vector(chkbits*2-1 downto 0);
+  signal vcc : std_ulogic;
   
 begin
 
-  gnd <= (others => '0');
+  gnd <= (others => '0'); vcc <= '1';
   
   -- Merge checkbit and data buses
   comb: process(sdo,dqin)
@@ -507,7 +516,8 @@ begin
       addr => sdo.address(1+abits downto 2), ba => sdo.ba(1 downto 0), dqin => dqin, dqout => dqout, dm => dqm,
       oen => sdo.bdrive,
       dqs => sdo.bdrive, dqsoen => sdo.qdrive, rasn => sdo.rasn, casn => sdo.casn, wen => sdo.sdwen, csn => csn,
-      cke => cke, ck => sdck, moben => sdo.moben, dqvalid => sdi.datavalid
+      cke => cke, ck => sdck, moben => sdo.moben, dqvalid => sdi.datavalid,
+      testen => gnd(0), testrst => vcc, scanen => gnd(0), testoen => vcc
       );
   sdi.regrdata <= (others => '0');
   
@@ -794,9 +804,13 @@ architecture rtl of ddr2phy_wrap_cbd is
   signal cal_inc: std_logic_vector((chkbits+dbits+padbits)/8-1 downto 0);
 
   signal odt,csn,cke: std_logic_vector(ncs-1 downto 0);
+
+  signal gnd, vcc : std_ulogic;
   
 begin
 
+  gnd <= '0'; vcc <= '1';
+  
   -- Merge checkbit and data buses
   comb: process(sdo,dqin)
     variable dq: std_logic_vector(2*dbits-1 downto 0);
@@ -903,7 +917,8 @@ begin
         sdo.regwdata, sdo.regwrite, sdi.regrdata, sdi.datavalid,
         customclk, customdin, customdout,
         
-        ddr_web2, ddr_rasb2, ddr_casb2, ddr_ad2, ddr_ba2
+        ddr_web2, ddr_rasb2, ddr_casb2, ddr_ad2, ddr_ba2,
+        gnd, vcc, gnd, vcc
         );
 end;
 
@@ -1027,10 +1042,11 @@ architecture rtl of ddr2phy_wrap_cbd_wo_pads is
   signal odt,csn,cke: std_logic_vector(ncs-1 downto 0);
 
   signal gnd : std_logic_vector(chkbits*2-1 downto 0);
+  signal vcc : std_logic;
   
 begin
 
-  gnd <= (others => '0');
+  gnd <= (others => '0'); vcc <= '1';
   
   -- Merge checkbit and data buses
   comb: process(sdo,dqin)
@@ -1138,6 +1154,7 @@ begin
         cke => cke, cal_en => cal_en, cal_inc => cal_inc, cal_pll => sdo.cal_pll, cal_rst => sdo.cal_rst, odt => odt,
         oct => sdo.oct, read_pend => sdo.read_pend, regwdata => sdo.regwdata, regwrite => sdo.regwrite,
         regrdata => sdi.regrdata, dqin_valid => sdi.datavalid,
-        customclk => customclk, customdin => customdin, customdout => customdout
+        customclk => customclk, customdin => customdin, customdout => customdout,
+        testen => gnd(0), testrst => vcc, scanen => gnd(0), testoen => vcc
         );
 end;

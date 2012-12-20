@@ -162,7 +162,7 @@ begin
       end generate;
     end generate;
     nohz : if hzsup = 0 generate
-      padoen <= '0';
+      padoen <= padoenx;
     end generate;
 
 end;

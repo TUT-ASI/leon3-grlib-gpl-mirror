@@ -129,7 +129,9 @@ package grusb is
       memsel      : integer                      := 0;
       syncprst    : integer range 0 to 1         := 0;
       sysfreq     : integer                      := 65000;
-      pcidev      : integer range 0 to 1         := 0);
+      pcidev      : integer range 0 to 1         := 0;
+      debug       : integer                      := 0;
+      debugsize   : integer                      := 8192);
     port (
       clk       : in  std_ulogic;
       uclk      : in  std_ulogic;
@@ -269,7 +271,9 @@ package grusb is
       memsel      : integer                      := 0;
       syncprst    : integer range 0 to 1         := 0;
       sysfreq     : integer                      := 65000;
-      pcidev      : integer range 0 to 1         := 0);
+      pcidev      : integer range 0 to 1         := 0;
+      debug       : integer                      := 0;
+      debugsize   : integer                      := 8192);
     port (
       clk               : in  std_ulogic;
       uclk              : in  std_ulogic;

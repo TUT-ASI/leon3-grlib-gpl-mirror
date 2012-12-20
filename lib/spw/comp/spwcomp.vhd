@@ -23,7 +23,7 @@ use ieee.std_logic_1164.all;
 package spwcomp is
   component grspwc2 is
     generic(
-      rmap         : integer range 0 to 1  := 0;
+      rmap         : integer range 0 to 2  := 0;
       rmapcrc      : integer range 0 to 1  := 0;
       fifosize1    : integer range 4 to 32 := 32;
       fifosize2    : integer range 16 to 64 := 64;
@@ -35,7 +35,9 @@ package spwcomp is
       tech         : integer;
       input_type   : integer range 0 to 4 := 0;
       output_type  : integer range 0 to 2 := 0;
-      rxtx_sameclk : integer range 0 to 1 := 0);
+      rxtx_sameclk : integer range 0 to 1 := 0;
+      nodeaddr     : integer range 0 to 255 := 254;
+      destkey      : integer range 0 to 255 := 0);
     port(
       rst          : in  std_ulogic;
       clk          : in  std_ulogic;
@@ -87,7 +89,8 @@ package spwcomp is
       clkdiv10     : in   std_logic_vector(7 downto 0);
       --rmapen
       rmapen       : in   std_ulogic;
-      --rx ahb fifo
+      rmapnodeaddr : in   std_logic_vector(7 downto 0);
+    --rx ahb fifo
       rxrenable    : out  std_ulogic;
       rxraddress   : out  std_logic_vector(4 downto 0);
       rxwrite      : out  std_ulogic;
@@ -403,7 +406,7 @@ package spwcomp is
       sysfreq      : integer := 10000;
       usegen       : integer range 0 to 1  := 1;
       nsync        : integer range 1 to 2  := 1;
-      rmap         : integer range 0 to 1  := 0;
+      rmap         : integer range 0 to 2  := 0;
       rmapcrc      : integer range 0 to 1  := 0;
       fifosize1    : integer range 4 to 32 := 32;
       fifosize2    : integer range 16 to 64 := 64;
@@ -551,7 +554,7 @@ package spwcomp is
 
   component grspw2_gen is
     generic(
-      rmap         : integer range 0 to 1  := 0;
+      rmap         : integer range 0 to 2  := 0;
       rmapcrc      : integer range 0 to 1  := 0;
       fifosize1    : integer range 4 to 32 := 32;
       fifosize2    : integer range 16 to 64 := 64;
@@ -566,7 +569,9 @@ package spwcomp is
       rxtx_sameclk : integer range 0 to 1 := 0;
       ft           : integer range 0 to 2 := 0;
       techfifo     : integer range 0 to 1 := 1;
-      memtech      : integer := 0);
+      memtech      : integer := 0;
+      nodeaddr     : integer range 0 to 255 := 254;
+      destkey      : integer range 0 to 255 := 0);
     port(
       rst          : in  std_ulogic;
       clk          : in  std_ulogic;
@@ -621,6 +626,7 @@ package spwcomp is
       testen       : in   std_ulogic := '0';
       --rmapen
       rmapen       : in   std_ulogic;
+      rmapnodeaddr : in   std_logic_vector(7 downto 0);
       --parallel rx data out
       rxdav        : out  std_ulogic;
       rxdataout    : out  std_logic_vector(8 downto 0)

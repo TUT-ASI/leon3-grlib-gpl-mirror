@@ -66,9 +66,12 @@ begin
     n2x : if tech = easic45 generate
       mux : clkmux_n2x port map (i0 => i0, i1 => i1, sel => sel, o => o);
     end generate;
+    ut90n : if tech = ut90 generate
+      x0 : clkmux_ut90nhbd port map (i0 => i0, i1 => i1, sel => seli, o => o);
+    end generate;
     
     noxil : if not((is_unisim(tech) = 1) or (tech = rhlib18t) or (tech = ut130) or
-                   (tech = easic45)) generate
+                   (tech = easic45) or (tech = ut90)) generate
       o <= i0 when seli = '0' else i1;
     end generate;
 

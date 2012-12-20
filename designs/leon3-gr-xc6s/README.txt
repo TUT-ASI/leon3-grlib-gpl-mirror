@@ -10,13 +10,19 @@ interface. The MIG source code cannot be distributed due to the
 prohibitive Xilinx license, so the MIG must be re-generated with 
 coregen before simulation and synthesis can be done.
 
-To generate the MIG and install tne Xilinx unisim simulation
+To generate the MIG using ISE13 and install the Xilinx unisim simulation
 library, do as follows:
 
   make mig
   make install-secureip
 
-This will ONLY work with ISE-13 installed, and the XILINX variable
+To generate the MIG using ISE14 and install the Xilinx unisim simulation
+library, do as follows:
+
+  make mig39
+  make install-secureip
+
+This will ONLY work with correct version of ISE installed, and the XILINX variable
 properly set in the shell. To synthesize the design, do
 
   make ise
@@ -72,7 +78,14 @@ Design specifics
   D2:     Cpu halted due to error
   D4:D3   Ethernet speed. 00=10M, 01=100M, 10=1G
 
-* Output from GRMON is:
+* This template design previously contained the USB device controller.
+  Due to the timing of the FPGA, the USB transceiver having an IO
+  voltage of 1.8V and the design of the USB device core it is
+  unlikely that the required timing for the USB device interface can
+  be reached.
+  The kit is not suitable for use with the USBDC or USBDCL IP cores.
+
+* Example output from GRMON is:
 
 $ grmon -xilusb -u -nb
 

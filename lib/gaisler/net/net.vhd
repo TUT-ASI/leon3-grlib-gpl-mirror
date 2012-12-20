@@ -115,7 +115,10 @@ package net is
       mdint_pol      : integer range 0 to 1  := 0;
       enable_mdint   : integer range 0 to 1  := 0;
       multicast      : integer range 0 to 1  := 0;
-      ramdebug       : integer range 0 to 2  := 0); 
+      ramdebug       : integer range 0 to 2  := 0;
+      mdiohold       : integer := 1;
+      maxsize        : integer := 1500
+      );
     port(
      rst            : in  std_ulogic;
      clk            : in  std_ulogic;
@@ -161,7 +164,10 @@ package net is
       enable_mdint   : integer range 0 to 1  := 0;
       multicast      : integer range 0 to 1  := 0;
       edclsepahb     : integer range 0 to 1  := 0;
-      ramdebug       : integer range 0 to 2  := 0);
+      ramdebug       : integer range 0 to 2  := 0;
+      mdiohold       : integer := 1;
+      maxsize        : integer := 1500
+      );
     port(
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;
@@ -208,7 +214,8 @@ package net is
       enable_mdint   : integer range 0 to 1  := 0;
       multicast      : integer range 0 to 1  := 0;
       edclsepahb     : integer range 0 to 1  := 0;
-      ramdebug       : integer range 0 to 2  := 0); 
+      ramdebug       : integer range 0 to 2  := 0;
+      mdiohold       : integer := 1); 
     port(
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;
@@ -253,7 +260,8 @@ package net is
       mdint_pol      : integer range 0 to 1  := 0;
       enable_mdint   : integer range 0 to 1  := 0;
       multicast      : integer range 0 to 1  := 0;
-      ramdebug       : integer range 0 to 2  := 0); 
+      ramdebug       : integer range 0 to 2  := 0;
+      mdiohold       : integer := 1); 
     port(
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;
@@ -300,7 +308,8 @@ package net is
     mdint_pol      : integer range 0 to 1  := 0;
     enable_mdint   : integer range 0 to 1  := 0;
     multicast      : integer range 0 to 1  := 0;
-    ramdebug       : integer range 0 to 2  := 0); 
+    ramdebug       : integer range 0 to 2  := 0;
+    mdiohold       : integer := 1); 
   port(
     rst            : in  std_ulogic;
     clk            : in  std_ulogic;

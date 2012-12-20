@@ -72,12 +72,13 @@ package ddrpkg is
   type ddr_response_type is record
     done_tog : std_ulogic;
     rctr_gray: std_logic_vector(3 downto 0);
+    readerr  : std_ulogic;
   end record;
 
   constant ddr_request_none: ddr_request_type :=
     ((others => '0'), (others => '0'), "000", '0','0','0','0','0');
 
-  constant ddr_response_none: ddr_response_type := ('0',"0000");
+  constant ddr_response_none: ddr_response_type := ('0',"0000",'0');
   
 component ddr2spax_ahb is
    generic (
@@ -144,9 +145,15 @@ component ft_ddr2spax_ahb is
       hwidth    : in std_logic;
       synccfg   : in std_logic;
       request2  : out ddr_request_type;
-      start_tog2: out std_logic
+      start_tog2: out std_logic;
+      beid      : in  std_logic_vector(3 downto 0)
    );  
 end component;
+
+constant FTFE_BEID_DDR2: std_logic_vector(3 downto 0) := "0000";
+constant FTFE_BEID_SDR : std_logic_vector(3 downto 0) := "0001";
+constant FTFE_BEID_DDR1: std_logic_vector(3 downto 0) := "0010";
+constant FTFE_BEID_SSR : std_logic_vector(3 downto 0) := "0011";  
 
 component ddr2spax_ddr is
    generic (
@@ -172,7 +179,9 @@ component ddr2spax_ddr is
       hwidthen   : integer range 0 to 1 := 0;
       phytech    : integer := 0;
       hasdqvalid : integer := 0;
-      rstdel     : integer := 200
+      rstdel     : integer := 200;
+      phyptctrl  : integer := 0;
+      scantest   : integer := 0
    );
    port (
       ddr_rst  : in  std_ulogic;
@@ -191,7 +200,10 @@ component ddr2spax_ddr is
       -- dynamic sync (nosync=2)
       reqsel   : in std_ulogic;
       frequest : in ddr_request_type;
-      response2: out ddr_response_type
+      response2: out ddr_response_type;
+      testen   : in std_ulogic;
+      testrst  : in std_ulogic;
+      testoen  : in std_ulogic
    );  
 end component;
 
@@ -225,7 +237,8 @@ component ddr2spax is
       bigmem     : integer range 0 to 1 := 0;
       raspipe    : integer range 0 to 1 := 0;
       hwidthen   : integer range 0 to 1 := 0;
-      rstdel     : integer := 200
+      rstdel     : integer := 200;
+      scantest   : integer := 0
    );
    port (
       ddr_rst : in  std_ulogic;
@@ -288,7 +301,8 @@ component ddr2spa
     ftbits : integer := 0;
     bigmem : integer range 0 to 1 := 0;
     raspipe : integer range 0 to 1 := 0;
-    nclk    : integer range 1 to 3 := 3
+    nclk    : integer range 1 to 3 := 3;
+    scantest: integer := 0
   );
   port (
     rst_ddr    : in  std_ulogic;
@@ -335,7 +349,8 @@ component ddr2spa
     dqsse       : integer range 0 to 1 := 0;
     abits       : integer := 14;      nclk     : integer := 3;     ncs      : integer := 2;
     chkbits  : integer := 0;          ctrl2en  : integer := 0;
-    resync      : integer := 0;       custombits : integer := 8; extraio: integer := 0);
+    resync      : integer := 0;       custombits : integer := 8; extraio: integer := 0;
+    scantest    : integer := 0);
     port (
       rst            : in    std_ulogic;
       clk            : in    std_logic;   -- input clock
@@ -373,8 +388,12 @@ component ddr2spa
 
       customclk      : in    std_ulogic;
       customdin      : in    std_logic_vector(custombits-1 downto 0);
-      customdout     : out   std_logic_vector(custombits-1 downto 0)
-      );
+      customdout     : out   std_logic_vector(custombits-1 downto 0);
+    
+      testen      : in std_ulogic;
+      testrst     : in std_ulogic;
+      scanen      : in std_ulogic;
+      testoen     : in std_ulogic);
   end component;
 
   component ddr2phy_wrap_cbd_wo_pads is
@@ -390,7 +409,8 @@ component ddr2spa
         rskew       : integer := 0;       eightbanks : integer range 0 to 1 := 0;
         dqsse       : integer range 0 to 1 := 0;
         abits       : integer := 14;      nclk     : integer := 3;     ncs      : integer := 2;
-        chkbits     : integer := 0;       resync     : integer := 0;   custombits : integer := 8);
+        chkbits     : integer := 0;       resync     : integer := 0;   custombits : integer := 8;
+        scantest    : integer := 0);
     port (
       rst            : in    std_ulogic;
       clk            : in    std_logic;   -- input clock
@@ -425,8 +445,12 @@ component ddr2spa
 
       customclk      : in    std_ulogic;
       customdin      : in    std_logic_vector(custombits-1 downto 0);
-      customdout     : out   std_logic_vector(custombits-1 downto 0)
-      );
+      customdout     : out   std_logic_vector(custombits-1 downto 0);
+    
+      testen      : in std_ulogic;
+      testrst     : in std_ulogic;
+      scanen      : in std_ulogic;
+      testoen     : in std_ulogic);
   end component;
 
   component ddr2phy_wrap
@@ -443,7 +467,8 @@ component ddr2spa
       eightbanks  : integer range 0 to 1 := 0; dqsse : integer range 0 to 1 := 0;
       abits       : integer := 14;         nclk     : integer := 3;     ncs      : integer := 2;
       cben        : integer := 0;          chkbits  : integer := 8;     ctrl2en  : integer := 0;
-      resync      : integer := 0;          custombits: integer := 8);
+      resync      : integer := 0;          custombits: integer := 8;
+      scantest    : integer := 0);
     port (
       rst            : in    std_ulogic;
       clk            : in    std_logic;   -- input clock
@@ -484,8 +509,12 @@ component ddr2spa
 
       customclk      : in    std_ulogic;
       customdin      : in    std_logic_vector(custombits-1 downto 0);
-      customdout     : out   std_logic_vector(custombits-1 downto 0)
-      );
+      customdout     : out   std_logic_vector(custombits-1 downto 0);
+
+      testen      : in std_ulogic;
+      testrst     : in std_ulogic;
+      scanen      : in std_ulogic;
+      testoen     : in std_ulogic);
   end component;
   
   -----------------------------------------------------------------------------
@@ -512,7 +541,9 @@ component ddr2spa
       readdly    : integer := 0;
       regoutput  : integer := 1;
       ddr400     : integer := 1;
-      rstdel     : integer := 200
+      rstdel     : integer := 200;
+      phyptctrl  : integer := 0;
+      scantest   : integer := 0
       );
     port (
       ddr_rst  : in  std_ulogic;
@@ -529,7 +560,10 @@ component ddr2spa
       rbwrite  : out std_logic;
       reqsel   : in std_ulogic;
       frequest : in  ddr_request_type;
-      response2: out ddr_response_type
+      response2: out ddr_response_type;
+      testen   : in std_ulogic;
+      testrst  : in std_ulogic;
+      testoen  : in std_ulogic
       );  
   end component;
   
@@ -559,7 +593,8 @@ component ddr2spa
       regoutput  : integer := 0;
       ft         : integer := 0;
       ddr400     : integer := 1;
-      rstdel     : integer := 200
+      rstdel     : integer := 200;
+      scantest   : integer := 0
       );
     port (
       ddr_rst : in  std_ulogic;
@@ -598,7 +633,9 @@ component ddr2spa
       conf0   : integer := 0;
       conf1   : integer := 0;
       regoutput : integer  range 0 to 1 := 0;
-      ddr400  : integer := 1
+      ddr400  : integer := 1;
+      scantest: integer := 0;
+      phyiconf: integer := 0
       );
     port (
       rst_ddr : in  std_ulogic;
@@ -632,7 +669,8 @@ component ddr2spa
   generic (tech : integer := virtex2; MHz : integer := 100; 
 	rstdelay : integer := 200; dbits : integer := 16; 
 	clk_mul : integer := 2 ; clk_div : integer := 2;
-	rskew : integer := 0; mobile : integer := 0);
+	rskew : integer := 0; mobile : integer := 0;
+        scantest : integer := 0; phyiconf : integer := 0);
   port (
     rst       : in  std_ulogic;
     clk       : in  std_logic;          	-- input clock
@@ -656,7 +694,12 @@ component ddr2spa
     ddr_dq    	: inout  std_logic_vector (dbits-1 downto 0); -- ddr data
  
     sdi         : out sdctrl_in_type;
-    sdo         : in  sdctrl_out_type);
+    sdo         : in  sdctrl_out_type;
+    
+    testen      : in std_ulogic;
+    testrst     : in std_ulogic;
+    scanen      : in std_ulogic;
+    testoen     : in std_ulogic);
   end component;
 
   component ddrphy_wrap_cbd is
@@ -666,7 +709,8 @@ component ddr2spa
       chkbits: integer := 0; padbits : integer := 0;
       clk_mul : integer := 2 ; clk_div : integer := 2;
       rskew : integer :=0; mobile : integer := 0;
-      abits: integer := 14; nclk: integer := 3; ncs: integer := 2);
+      abits: integer := 14; nclk: integer := 3; ncs: integer := 2;
+      scantest : integer := 0; phyiconf : integer := 0);
     port (
       rst            : in    std_ulogic;
       clk            : in    std_logic;   -- input clock
@@ -691,8 +735,12 @@ component ddr2spa
       ddr_dq         : inout std_logic_vector (dbits+padbits+chkbits-1 downto 0);      -- ddr data
       
       sdi            : out   sdctrl_in_type;
-      sdo            : in    sdctrl_out_type
-      );
+      sdo            : in    sdctrl_out_type;
+    
+      testen      : in std_ulogic;
+      testrst     : in std_ulogic;
+      scanen      : in std_ulogic;
+      testoen     : in std_ulogic);
   end component;
 
   component ddrphy_wrap_cbd_wo_pads is
@@ -702,7 +750,7 @@ component ddr2spa
       clk_mul : integer := 2; clk_div : integer := 2;
       rskew : integer := 0; mobile: integer := 0;
       abits : integer := 14; nclk : integer := 3; ncs : integer := 2;
-      chkbits : integer := 0);
+      chkbits : integer := 0; scantest : integer := 0);
     port (
       rst            : in    std_ulogic;
       clk            : in    std_logic;   -- input clock
@@ -730,8 +778,12 @@ component ddr2spa
       ddr_dq_oen     : out   std_logic_vector (dbits+padbits+chkbits-1 downto 0);      -- ddr data
     
       sdi            : out   sdctrl_in_type;
-      sdo            : in    sdctrl_out_type
-      );
+      sdo            : in    sdctrl_out_type;
+          
+      testen      : in std_ulogic;
+      testrst     : in std_ulogic;
+      scanen      : in std_ulogic;
+      testoen     : in std_ulogic);
   end component;    
 
   -----------------------------------------------------------------------------

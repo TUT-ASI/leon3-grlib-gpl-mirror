@@ -37,7 +37,8 @@ component tap_gen
     part   : integer range 0 to 65535 := 0;
     ver    : integer range 0 to 15 := 0;
     trsten : integer range 0 to 1 := 1;    
-    scantest : integer := 0);
+    scantest : integer := 0;
+    oepol  : integer := 1);
   port (
     trst        : in std_ulogic;
     tckp        : in std_ulogic;
@@ -59,6 +60,7 @@ component tap_gen
     tapo_xsel2  : out std_ulogic;
     testen      : in std_ulogic := '0';
     testrst     : in std_ulogic := '1';
+    testoen     : in std_ulogic := '0';
     tdoen       : out std_ulogic
     );
 end component;
@@ -250,6 +252,50 @@ port (
 end component;
 
 component spartan6_tap 
+port (
+     tapi_tdo1   : in std_ulogic;
+     tapi_tdo2   : in std_ulogic;
+     tapo_tck    : out std_ulogic;
+     tapo_tdi    : out std_ulogic;
+     tapo_rst    : out std_ulogic;
+     tapo_capt   : out std_ulogic;
+     tapo_shft   : out std_ulogic;
+     tapo_upd    : out std_ulogic;
+     tapo_xsel1  : out std_ulogic;
+     tapo_xsel2  : out std_ulogic
+    );
+end component;
+
+component virtex7_tap 
+port (
+     tapi_tdo1   : in std_ulogic;
+     tapi_tdo2   : in std_ulogic;
+     tapo_tck    : out std_ulogic;
+     tapo_tdi    : out std_ulogic;
+     tapo_rst    : out std_ulogic;
+     tapo_capt   : out std_ulogic;
+     tapo_shft   : out std_ulogic;
+     tapo_upd    : out std_ulogic;
+     tapo_xsel1  : out std_ulogic;
+     tapo_xsel2  : out std_ulogic
+    );
+end component;
+
+component kintex7_tap 
+port (
+     tapi_tdo1   : in std_ulogic;
+     tapi_tdo2   : in std_ulogic;
+     tapo_tck    : out std_ulogic;
+     tapo_tdi    : out std_ulogic;
+     tapo_rst    : out std_ulogic;
+     tapo_capt   : out std_ulogic;
+     tapo_shft   : out std_ulogic;
+     tapo_upd    : out std_ulogic;
+     tapo_xsel1  : out std_ulogic;
+     tapo_xsel2  : out std_ulogic
+    );
+end component;
+component zynq_tap 
 port (
      tapi_tdo1   : in std_ulogic;
      tapi_tdo2   : in std_ulogic;

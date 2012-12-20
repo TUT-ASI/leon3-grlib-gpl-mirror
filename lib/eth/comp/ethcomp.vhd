@@ -44,7 +44,10 @@ package ethcomp is
       enable_mdint   : integer range 0 to 1  := 0;
       multicast      : integer range 0 to 1  := 0;
       edclsepahbg    : integer range 0 to 1  := 0;
-      ramdebug       : integer range 0 to 2  := 0);
+      ramdebug       : integer range 0 to 2  := 0;
+      mdiohold       : integer := 1;
+      maxsize        : integer
+      );
     port(
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;
@@ -134,6 +137,7 @@ package ethcomp is
       --scantest
       testrst        : in   std_ulogic;
       testen         : in   std_ulogic;
+      testoen        : in   std_ulogic;
       edcladdr       : in   std_logic_vector(3 downto 0) := "0000";
       edclsepahb     : in   std_ulogic;
       edcldisable    : in   std_ulogic;
@@ -164,7 +168,8 @@ package ethcomp is
       enable_mdint   : integer range 0 to 1 := 0;
       multicast      : integer range 0 to 1 := 0;
       edclsepahbg    : integer range 0 to 1 := 0;
-      ramdebug       : integer range 0 to 2 := 0);
+      ramdebug       : integer range 0 to 2 := 0;
+      mdiohold       : integer := 1);
     port(
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;
@@ -254,6 +259,7 @@ package ethcomp is
       --scantest
       testrst        : in   std_ulogic;
       testen         : in   std_ulogic;
+      testoen        : in   std_ulogic;
       edcladdr       : in   std_logic_vector(3 downto 0) := "0000";
       edclsepahb     : in   std_ulogic;
       edcldisable    : in   std_ulogic;
@@ -335,6 +341,7 @@ package ethcomp is
       --scantest
       testrst        : in   std_ulogic;
       testen         : in   std_ulogic;
+      testoen        : in   std_ulogic;
       edcladdr       : in   std_logic_vector(3 downto 0);
       edclsepahb     : in   std_ulogic;
       edcldisable    : in   std_ulogic;
@@ -435,6 +442,7 @@ package ethcomp is
       --scantest
       testrst        : in   std_ulogic;
       testen         : in   std_ulogic;
+      testoen        : in   std_ulogic;
       edcladdr       : in   std_logic_vector(3 downto 0);
       edclsepahb     : in   std_ulogic;
       edcldisable    : in   std_ulogic;

@@ -17,9 +17,9 @@ CLEAN=soft-clean
 
 TECHLIBS = altera altera_mf stratixii
 LIBSKIP = gsi spansion fmf core1553bbc core1553brm core1553brt gr1553 corePCIF \
-	tmtc openchip ihp gleichmann usbhc spw eth hynix
+	tmtc openchip ihp usbhc spw eth hynix
 DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan pci leon3ft ambatest can \
-	grusbhc spacewire usb greth net haps hcan
+	grusbhc spacewire usb greth net hcan leon4 leon4v0
 FILESKIP = grcan.vhd
 
 include $(GRLIB)/software/leon3/Makefile

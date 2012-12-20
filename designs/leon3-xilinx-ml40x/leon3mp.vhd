@@ -396,12 +396,13 @@ begin
       port map (sram_flash_data, memo.data, memo.vbdrive, memi.data);
  
   ddrsp0 : if (CFG_DDRSP /= 0) generate 
-
+    -- phyiconf => 1 = no diff pads for DDR clock pairs
     ddrc0 : ddrspa generic map ( fabtech => CFG_FABTECH, memtech => memtech, 
 	hindex => 0, haddr => 16#400#, hmask => 16#F00#, ioaddr => 1, 
 	pwron => CFG_DDRSP_INIT, MHz => BOARD_FREQ/1000, 
 	clkmul => CFG_DDRSP_FREQ/10, clkdiv => 10, ahbfreq => CPU_FREQ/1000,
-	col => CFG_DDRSP_COL, Mbyte => CFG_DDRSP_SIZE, ddrbits => 32)
+	col => CFG_DDRSP_COL, Mbyte => CFG_DDRSP_SIZE, ddrbits => 32,
+        phyiconf => 1)
      port map (
 	rst, rstn, lclk, clkm, lock, clkml, clkml, ahbsi, ahbso(0),
 	ddr_clkv, ddr_clkbv, open, ddr_clk_fb,

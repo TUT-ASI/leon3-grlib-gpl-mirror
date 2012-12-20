@@ -62,7 +62,6 @@ entity grspw is
     memtech      : integer range 0 to NTECH := DEFMEMTECH;
     nodeaddr     : integer range 0 to 255 := 254;
     destkey      : integer range 0 to 255 := 0
-
   );
   port(
     rst        : in  std_ulogic;
@@ -247,7 +246,9 @@ struct : if netlist = 1 generate
       fifosize2    => fifosize2,
       rxunaligned  => rxunaligned,
       rmapbufs     => rmapbufs,
-      scantest     => scantest)
+      scantest     => scantest,
+      nodeaddr     => nodeaddr,
+      destkey      => destkey)
     port map(
       rst          => rst,
       clk          => clk,
@@ -430,7 +431,7 @@ end generate;
          " bytes, irq " & tost(pirq));
     end generate;
 
-    msg1 : if (rmap = 1) generate
+    msg1 : if (rmap /= 0) generate
       bootmsg : report_version
         generic map ("grspw" & tost(pindex) &
 	  ": Spacewire link rev " & tost(REVISION) & ", AHB fifos 2x " &

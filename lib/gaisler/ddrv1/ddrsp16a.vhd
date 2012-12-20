@@ -293,7 +293,6 @@ begin
     ahbso.hready  <= ra.hready;
     ahbso.hresp   <= ra.hresp;
     ahbso.hrdata  <= ahbdrivedata(ra.hrdata);
-    ahbso.hcache  <= not ra.hio;
 
   end process;
 

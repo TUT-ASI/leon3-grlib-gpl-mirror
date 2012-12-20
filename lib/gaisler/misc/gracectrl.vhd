@@ -290,7 +290,6 @@ begin  -- rtl
     ahbso.hresp   <= r.hresp;
     ahbso.hrdata  <= ahbdrivedata(s.rdata); -- Bad, but does not toggle much
     ahbso.hconfig <= HCONFIG;
-    ahbso.hcache  <= '0';
     ahbso.hirq    <= irq;
     ahbso.hindex  <= hindex;
     ahbso.hsplit  <= hsplit;

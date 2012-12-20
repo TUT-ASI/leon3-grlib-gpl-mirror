@@ -195,8 +195,8 @@ package body StdIO is
       variable GOOD:             Boolean;
    begin
       HRead(L, VALUE, GOOD);
-      assert GOOD
-         report "HREAD: access incorrect";
+      --assert GOOD
+      --   report "HREAD: access incorrect";
    end HRead;
 
    procedure HRead(
@@ -206,8 +206,8 @@ package body StdIO is
       variable V:                Std_ULogic_Vector(0 to Value'Length-1);
    begin
       HRead(L, V, GOOD);
-      assert GOOD
-         report "HREAD: access incorrect";
+      --assert GOOD
+      --   report "HREAD: access incorrect";
       VALUE := to_bitvector(V);
    end HRead;
 
@@ -229,8 +229,8 @@ package body StdIO is
    begin
       HRead(L, V, GOOD);
       VALUE := Std_Logic_Vector(V);
-      assert GOOD
-         report "HREAD: access incorrect";
+      --assert GOOD
+      --   report "HREAD: access incorrect";
    end HRead;
 
    procedure HWrite(

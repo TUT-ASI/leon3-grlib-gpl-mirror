@@ -186,7 +186,6 @@ begin
     ahbso.hconfig <= hconfig;
     ahbso.hindex  <= slvndx; 
     ahbso.hsplit  <= (others => '0');
-    ahbso.hcache  <= '0';
     ahbso.hready  <= r.hready;
     
     

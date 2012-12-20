@@ -409,7 +409,6 @@ begin
     ahbso.hconfig <= hconfig;
     ahbso.hirq    <= hirq;
     ahbso.hsplit  <= (others => '0');
-    ahbso.hcache  <= '0';
     ahbso.hrdata <= ahbdrivedata(r.hrdata);
     ahbso.hready <= r.hready;
     ahbso.hindex <= hindex;

@@ -589,7 +589,6 @@ begin
       ahbso.hrdata <= ahbdrivedata(hrdata2x);
     end if;
     ahbso.hsplit <= (others => '0');
-    ahbso.hcache <= '0';
     ahbso.hirq   <= hirq;
     ahbso.hindex <= hindex;    
 

@@ -1,6 +1,8 @@
 
 
 
+
+
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
 -- Copyright (C) 2009 Aeroflex Gaisler
@@ -95,10 +97,6 @@ package config is
   constant CFG_AHB_UART : integer := 1;
 -- JTAG based DSU interface
   constant CFG_AHB_JTAG : integer := 1;
--- USB DSU
-  constant CFG_GRUSB_DCL : integer := 0;
-  constant CFG_GRUSB_DCL_UIFACE : integer := 1;
-  constant CFG_GRUSB_DCL_DW : integer := 8;
 -- Ethernet DSU
   constant CFG_DSU_ETH : integer := 1 + 0 + 0;
   constant CFG_ETH_BUF : integer := 16;
@@ -151,7 +149,6 @@ package config is
   constant CFG_AHBRODDR : integer := 16#000#;
   constant CFG_ROMADDR : integer := 16#000#;
   constant CFG_ROMMASK : integer := 16#E00# + 16#000#;
-
 -- AHB RAM
   constant CFG_AHBRAMEN : integer := 0;
   constant CFG_AHBRSZ : integer := 1;
@@ -162,13 +159,6 @@ package config is
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 32;
 
--- ATA interface
-  constant CFG_ATA : integer := 0;
-  constant CFG_ATAIO : integer := 16#0#;
-  constant CFG_ATAIRQ : integer := 0;
-  constant CFG_ATADMA : integer := 0;
-  constant CFG_ATAFIFO : integer := 8;
-
 -- CAN 2.0 interface
   constant CFG_CAN : integer := 0;
   constant CFG_CAN_NUM : integer := 1;
@@ -178,45 +168,6 @@ package config is
   constant CFG_CAN_SYNCRST : integer := 0;
   constant CFG_CANFT : integer := 0;
 
--- GR USB 2.0 Device Controller
-  constant CFG_GRUSBDC : integer := 0;
-  constant CFG_GRUSBDC_AIFACE : integer := 0;
-  constant CFG_GRUSBDC_UIFACE : integer := 1;
-  constant CFG_GRUSBDC_DW : integer := 8;
-  constant CFG_GRUSBDC_NEPI : integer := 1;
-  constant CFG_GRUSBDC_NEPO : integer := 1;
-  constant CFG_GRUSBDC_I0 : integer := 1024;
-  constant CFG_GRUSBDC_I1 : integer := 1024;
-  constant CFG_GRUSBDC_I2 : integer := 1024;
-  constant CFG_GRUSBDC_I3 : integer := 1024;
-  constant CFG_GRUSBDC_I4 : integer := 1024;
-  constant CFG_GRUSBDC_I5 : integer := 1024;
-  constant CFG_GRUSBDC_I6 : integer := 1024;
-  constant CFG_GRUSBDC_I7 : integer := 1024;
-  constant CFG_GRUSBDC_I8 : integer := 1024;
-  constant CFG_GRUSBDC_I9 : integer := 1024;
-  constant CFG_GRUSBDC_I10 : integer := 1024;
-  constant CFG_GRUSBDC_I11 : integer := 1024;
-  constant CFG_GRUSBDC_I12 : integer := 1024;
-  constant CFG_GRUSBDC_I13 : integer := 1024;
-  constant CFG_GRUSBDC_I14 : integer := 1024;
-  constant CFG_GRUSBDC_I15 : integer := 1024;
-  constant CFG_GRUSBDC_O0 : integer := 1024;
-  constant CFG_GRUSBDC_O1 : integer := 1024;
-  constant CFG_GRUSBDC_O2 : integer := 1024;
-  constant CFG_GRUSBDC_O3 : integer := 1024;
-  constant CFG_GRUSBDC_O4 : integer := 1024;
-  constant CFG_GRUSBDC_O5 : integer := 1024;
-  constant CFG_GRUSBDC_O6 : integer := 1024;
-  constant CFG_GRUSBDC_O7 : integer := 1024;
-  constant CFG_GRUSBDC_O8 : integer := 1024;
-  constant CFG_GRUSBDC_O9 : integer := 1024;
-  constant CFG_GRUSBDC_O10 : integer := 1024;
-  constant CFG_GRUSBDC_O11 : integer := 1024;
-  constant CFG_GRUSBDC_O12 : integer := 1024;
-  constant CFG_GRUSBDC_O13 : integer := 1024;
-  constant CFG_GRUSBDC_O14 : integer := 1024;
-  constant CFG_GRUSBDC_O15 : integer := 1024;
 -- USB Host Controller
   constant CFG_GRUSBHC : integer := 0;
   constant CFG_GRUSBHC_NPORTS : integer := 1;
@@ -293,6 +244,7 @@ package config is
   constant CFG_SPIMCTRL_SCALER : integer := (1);
   constant CFG_SPIMCTRL_ASCALER : integer := (8);
   constant CFG_SPIMCTRL_PWRUPCNT : integer := (0);
+  constant CFG_SPIMCTRL_OFFSET : integer := 16#0#;
 
 -- SPI controller
   constant CFG_SPICTRL_ENABLE : integer := 1;

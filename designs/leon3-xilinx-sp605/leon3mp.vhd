@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2011, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2012, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -20,7 +20,6 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
-
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -430,7 +429,7 @@ begin
         port map (data(15 downto 0), memo.data(31 downto 16),
      memo.vbdrive(31 downto 16), memi.data(31 downto 16));
   end generate;
-  nomctrl : if CFG_MCTRL_LEON2 /= 0 generate
+  nomctrl : if CFG_MCTRL_LEON2 = 0 generate
     roms_pad : outpad generic map (tech => padtech) 
      port map (romsn, vcc); --ahbso(0) <= ahbso_none;
   end generate;
@@ -524,6 +523,15 @@ begin
       port map (spi_clk, spmo.sck);
     slvsel0_pad : odpad generic map (tech => padtech)
       port map (spi_sel_n, spmo.csn);  
+  end generate;
+
+  nospimc: if ((CFG_SPICTRL_ENABLE = 0 and CFG_SPIMCTRL = 0) or 
+               (CFG_SPICTRL_ENABLE = 1 and CFG_SPIMCTRL = 1) or
+               (CFG_SPICTRL_ENABLE = 1 and CFG_SPIMCTRL = 0))generate
+    mosi_pad : outpad generic map (tech => padtech)
+      port map (spi_mosi, '0');
+    sck_pad  : outpad generic map (tech => padtech)
+      port map (spi_clk, '0'); 
   end generate;
 
 ----------------------------------------------------------------------

@@ -36,6 +36,7 @@ use gaisler.ddrpkg.all;
 library techmap;
 use techmap.gencomp.ddrphy_has_datavalid;
 use techmap.gencomp.ddrphy_latency;
+use techmap.gencomp.ddrphy_ptctrl;
 
 entity ddr1spax is
    generic (
@@ -63,7 +64,8 @@ entity ddr1spax is
       regoutput  : integer := 0;
       ft         : integer := 0;
       ddr400     : integer := 1;
-      rstdel     : integer := 200
+      rstdel     : integer := 200;
+      scantest   : integer := 0
    );
    port (
       ddr_rst : in  std_ulogic;
@@ -158,7 +160,7 @@ begin
                    nosync => nosync, burstlen => burstlen, ahbbits => xahbw, bufbits => xahbw+xahbw/2,
                    ddrbits => ddrbits, hwidthen => 0, revision => revision, devid => GAISLER_DDRSP)
       port map (ahb_rst, clk_ahb, ahbsi, ahbso, ce, request, start_tog, response,
-                wbwaddr, wbwdata, wbwrite, wbwritebig, rbraddr, rbrdata, '0', '0', open, open);
+                wbwaddr, wbwdata, wbwrite, wbwritebig, rbraddr, rbrdata, '0', '0', open, open, FTFE_BEID_DDR1);
   end generate;
   
   ddrc : ddr1spax_ddr
@@ -170,10 +172,10 @@ begin
                  hasdqvalid => ddrphy_has_datavalid(phytech),
                  ddr_syncrst => ddr_syncrst, regoutput => regoutput,
                  readdly => ddrphy_latency(phytech)+regoutput, ddr400 => ddr400,
-                 rstdel => rstdel)
+                 rstdel => rstdel, phyptctrl => ddrphy_ptctrl(phytech), scantest => scantest)
     port map (ddr_rst, clk_ddr, request, start_tog, response, sdi, sdox,
               wbraddr, wbrdata, rbwaddr, rbwdata, rbwrite, 
-              '0', ddr_request_none, open);
+              '0', ddr_request_none, open, ahbsi.testen, ahbsi.testrst, ahbsi.testoen);
 
 
   sdoproc: process(sdox,ce)
