@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2012, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2013, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -80,9 +80,11 @@ entity leon3mp is
     ddr_we         : out std_ulogic;                       -- ddr write enable
     ddr_ras        : out std_ulogic;                       -- ddr ras
 
+    ddr_csn        : out std_ulogic;                       -- ddr csn
     ddr_cas        : out std_ulogic;                       -- ddr cas
     ddr_dm         : out std_logic_vector (1 downto 0);    -- ddr dm
     ddr_dqs        : inout std_logic_vector (1 downto 0);  -- ddr dqs
+    ddr_dqsn       : inout std_logic_vector (1 downto 0);  -- ddr dqs n
     ddr_ad         : out std_logic_vector (12 downto 0);   -- ddr address
     ddr_ba         : out std_logic_vector (2 downto 0);    -- ddr bank address
     ddr_dq         : inout std_logic_vector (15 downto 0); -- ddr data
@@ -182,7 +184,7 @@ attribute syn_netlist_hierarchy of rtl : architecture is false;
 constant blength : integer := 12;
 constant fifodepth : integer := 8;
 constant maxahbm : integer := CFG_NCPU+CFG_AHB_UART+CFG_GRETH+
-   CFG_AHB_JTAG+CFG_SPW_NUM*CFG_SPW_EN;
+   CFG_AHB_JTAG+CFG_SPW_NUM*CFG_SPW_EN+CFG_GRUSBHC*CFG_GRUSBHC_UHC+1;
 
    
 signal vcc, gnd   : std_logic;
@@ -207,8 +209,8 @@ signal clkm, rstn, rstraw, sdclkl : std_ulogic;
 signal clk_200 : std_ulogic;
 signal clk25, clk40, clk65 : std_ulogic;
 
-signal cgi, cgi2   : clkgen_in_type;
-signal cgo, cgo2   : clkgen_out_type;
+signal cgi, cgi2, cgi3   : clkgen_in_type;
+signal cgo, cgo2, cgo3   : clkgen_out_type;
 signal u1i, u2i, dui : uart_in_type;
 signal u1o, u2o, duo : uart_out_type;
 
@@ -244,7 +246,7 @@ signal can_lrx, can_ltx   : std_logic_vector(0 to 7);
 signal lock, calib_done, clkml, lclk, rst, ndsuact, wdogl : std_ulogic;
 signal tck, tckn, tms, tdi, tdo : std_ulogic;
 
-signal uclk : std_ulogic;
+signal uclk, usb_clk_buf : std_ulogic;
 signal usbi : grusb_in_vector(0 downto 0);
 signal usbo : grusb_out_vector(0 downto 0);
 
@@ -269,7 +271,7 @@ signal spmo2 : spimctrl_out_type;
 
 constant BOARD_FREQ : integer := 50000;   -- input frequency in KHz
 constant CPU_FREQ : integer := BOARD_FREQ * CFG_CLKMUL / CFG_CLKDIV;  -- cpu frequency in KHz
-constant IOAEN : integer := CFG_CAN;
+constant IOAEN : integer := CFG_CAN + CFG_GRUSBHC*CFG_GRUSBHC_UHC; 
 constant DDR2_FREQ  : integer := 200000;                               -- DDR2 input frequency in KHz
 
 
@@ -279,6 +281,9 @@ signal dtmp    : std_logic_vector(CFG_SPW_NUM-1 downto 0);
 signal stmp    : std_logic_vector(CFG_SPW_NUM-1 downto 0);
 signal spw_clkl   : std_ulogic;
 signal spw_clkln  : std_ulogic;
+signal spw_rstn  : std_ulogic;
+signal spw_rstn_sync  : std_ulogic;
+
 signal rxclko     : std_logic_vector(CFG_SPW_NUM-1 downto 0);
 signal stati : ahbstat_in_type;
 signal lusb_clk  : std_ulogic;
@@ -302,7 +307,7 @@ signal clk_sel : std_logic_vector(1 downto 0);
 signal clkvga, clkvga_p, clkvga_n : std_ulogic;
 signal clk_125 : std_ulogic;
 signal nerror : std_ulogic;
-                         
+
 attribute keep : boolean;
 attribute syn_keep : boolean;
 attribute syn_preserve : boolean;
@@ -319,7 +324,13 @@ attribute syn_preserve of spw100 : signal is true;
 attribute keep of spw100 : signal is true;
 attribute syn_preserve of clkm : signal is true;
 attribute keep of clkm : signal is true;
+attribute syn_preserve of uclk : signal is true;
+attribute keep of uclk : signal is true;
 
+attribute maxdelay: string;
+attribute maxdelay of usb_dir: signal is "2000 ps";
+attribute maxskew: string;
+attribute maxskew of usb_dir : signal is "2000 ps";
 begin
 
 ----------------------------------------------------------------------
@@ -329,23 +340,31 @@ begin
   vcc <= '1'; gnd <= '0';
   cgi.pllctrl <= "00"; cgi.pllrst <= rstraw;
 
---  pllref_pad : clkpad generic map (tech => padtech) port map (pllref, cgi.pllref); 
---  ethclk_pad : inpad generic map (tech => padtech) port map(clk2, ethclk);
-  ethclk <= lclk;
   clk_pad : clkpad generic map (tech => padtech) port map (clk, lclk); 
---  clkddr_pad : clkpad generic map (tech => padtech) port map (clk, ddr2clk); 
-   ddr2clk <= lclk;
+  ddr2clk <= lclk;
+  ethclk  <= lclk;
+
+ no_clk_mig : if CFG_MIG_DDR2 = 0 generate
+
   clkgen0 : clkgen        -- clock generator
     generic map (clktech, CFG_CLKMUL, CFG_CLKDIV, CFG_MCTRL_SDEN,
    CFG_CLK_NOFB, 0, 0, 0, BOARD_FREQ)
     port map (lclk, lclk, clkm, open, open, sdclkl, open, cgi, cgo, open, clk50, clk100);
 
+  rst0 : rstgen         -- reset generator
+   port map (rst, clkm, lock, rstn, rstraw);
+
+ end generate;
+
+ clk_mig : if CFG_MIG_DDR2 = 1 generate
+   clk50 <= clkm;
+   rstraw <= rst;
+   cgo.clklock <= '1';
+ end generate;
 
   resetn_pad : inpad generic map (tech => padtech) port map (resetn, rst); 
-  rst0 : rstgen         -- reset generator
-  port map (rst, clkm, lock, rstn, rstraw);
---  lock <= cgo.clklock and calib_done when CFG_MIG_DDR2 = 1 else cgo.clklock;
-  lock <= calib_done;
+  
+  lock <= cgo.clklock and calib_done and ulock;
 
 ----------------------------------------------------------------------
 ---  AHB CONTROLLER --------------------------------------------------
@@ -508,47 +527,52 @@ begin
 ---  DDR2 memory controller ------------------------------------------
 ----------------------------------------------------------------------
   
+  ddr_csn <= '0';
+  
   mig_gen : if (CFG_MIG_DDR2 = 1) generate 
-    ddrc : entity work.ahb2mig_grxc6s_2p generic map( 
-	hindex => 4, haddr => 16#400#, hmask => 16#F80#, 
-	pindex => 0, paddr => 0, vgamst => CFG_SVGA_ENABLE, vgaburst => 64,
-	clkdiv => 10)  
+    ddrc : entity work.ahb2mig_grxc6s_2p 
+    generic map( 
+     hindex => 4, haddr => 16#400#, hmask => 16#F80#, 
+     pindex => 0, paddr => 0, vgamst => CFG_SVGA_ENABLE, vgaburst => 64,
+     clkdiv => 10)  
     port map(
-   	mcb3_dram_dq  	=> ddr_dq,
-   	mcb3_dram_a	=> ddr_ad,
-   	mcb3_dram_ba  	=> ddr_ba,
-   	mcb3_dram_ras_n	=> ddr_ras,
-   	mcb3_dram_cas_n	=> ddr_cas,
-   	mcb3_dram_we_n	=> ddr_we,
-   	mcb3_dram_odt	=> ddr_odt,
-   	mcb3_dram_cke	=> ddr_cke,
-   	mcb3_dram_dm	=> ddr_dm(0),
-   	mcb3_dram_udqs	=> ddr_dqs(1),
-   	mcb3_rzq	=> ddr_rzq,
-   	mcb3_zio	=> ddr_zio,
-   	mcb3_dram_udm	=> ddr_dm(1),
-	mcb3_dram_dqs	=> ddr_dqs(0),
-   	mcb3_dram_ck	=> ddr_clk,
-   	mcb3_dram_ck_n	=> ddr_clkb,
-	ahbsi		=> ahbsi,
-	ahbso		=> ahbso(4),
-	ahbmi		=> vahbmi,
-	ahbmo		=> vahbmo,
-	apbi 		=> apbi2,
-	apbo 		=> apbo2(0),
-	calib_done	=> calib_done,
-	rst_n_syn	=> rstn,
-	rst_n_async	=> rstraw,  
-	clk_amba	=> clkm,
-	clk_mem_n	=> ddr2clk,
-	clk_mem_p	=> ddr2clk,
-	test_error	=> open,
-	clk_125   	=> clk_125,
-	clkout5   	=> open
-	);
+     mcb3_dram_dq  	=> ddr_dq,
+     mcb3_dram_a	=> ddr_ad,
+     mcb3_dram_ba  	=> ddr_ba,
+     mcb3_dram_ras_n	=> ddr_ras,
+     mcb3_dram_cas_n	=> ddr_cas,
+     mcb3_dram_we_n	=> ddr_we,
+     mcb3_dram_odt	=> ddr_odt,
+     mcb3_dram_cke	=> ddr_cke,
+     mcb3_dram_dm	=> ddr_dm(0),
+     mcb3_dram_udqs	=> ddr_dqs(1),
+     mcb3_dram_udqs_n	=> ddr_dqsn(1),
+     mcb3_rzq	=> ddr_rzq,
+     mcb3_zio	=> ddr_zio,
+     mcb3_dram_udm	=> ddr_dm(1),
+     mcb3_dram_dqs	=> ddr_dqs(0),
+     mcb3_dram_dqs_n	=> ddr_dqsn(0),
+     mcb3_dram_ck	=> ddr_clk,
+     mcb3_dram_ck_n	=> ddr_clkb,
+     ahbsi => ahbsi,
+     ahbso => ahbso(4),
+     ahbmi => vahbmi,
+     ahbmo => vahbmo,
+     apbi  => apbi2,
+     apbo  => apbo2(0),
+     calib_done	=> calib_done,
+     rst_n_syn	=> rstn,
+     rst_n_async	=> rstraw,  
+     clk_amba	=> clkm,
+     clk_mem_n	=> ddr2clk,
+     clk_mem_p	=> ddr2clk,
+     test_error	=> open,
+     clk_125   	=> clk_125,
+     clk_100   	=> clk100
+    );
   end generate;
 
-  noddr : if (CFG_DDR2SP+CFG_MIG_DDR2) = 0 generate lock <= '1'; end generate;
+  noddr : if (CFG_DDR2SP+CFG_MIG_DDR2) = 0 generate calib_done <= '1'; end generate;
 
 ----------------------------------------------------------------------
 ---  SPI Memory Controller--------------------------------------------
@@ -678,7 +702,8 @@ begin
       vahbmo, clk_sel);
   end generate;
   
-  b0 : techbuf generic map (2, fabtech) port map (clk50, video_clk);
+  --b0 : techbuf generic map (2, fabtech) port map (clk50, video_clk);
+  video_clk <= clk50;
   vgadvi : if (CFG_VGA_ENABLE + CFG_SVGA_ENABLE) /= 0 generate 
     dvi0 : entity work.svga2ch7301c generic map (tech => fabtech, dynamic => 1)
       port map (clkm, vgao, video_clk, clkvga_p, clkvga_n, 
@@ -791,13 +816,11 @@ begin
 
     led(3 downto 2) <= not (gmiio.gbit & gmiio.speed);
 
-    rgmii0 : entity work.rgmii generic map (fabtech, CFG_GRETH1G, 1)
---    rgmii0 : entity work.rgmii generic map (fabtech, 1, 1)
-      port map (rstn, lclk, gmiii, gmiio, rgmiii, rgmiio);
+    rgmii0 : rgmii generic map (fabtech, CFG_GRETH1G, 1)
+      port map (rstn, clkm, clk_125, gmiii, gmiio, rgmiii, rgmiio);
     ethpads : if (CFG_GRETH = 1) generate -- eth pads
---      clk125_pad : inpad generic map (tech => padtech) 
---   	port map (clk125,  rgmiii.gtx_clk);
-      rgmiii.gtx_clk <= clk_125;
+      clk125_pad : inpad generic map (tech => padtech) 
+   	port map (clk125,  rgmiii.gtx_clk);
       emdio_pad : iopad generic map (tech => padtech) 
         port map (emdio, rgmiio.mdio_o, rgmiio.mdio_oe, rgmiii.mdio_i);
       etxc_pad : outpad generic map (tech => padtech) 
@@ -818,6 +841,7 @@ begin
       emdc_pad : outpad generic map (tech => padtech) 
    	port map (emdc, rgmiio.mdc);
     end generate;
+
 
 -----------------------------------------------------------------------
 ---  AHB RAM ----------------------------------------------------------
@@ -877,6 +901,7 @@ begin
   
     core0: if CFG_SPW_GRSPW = 1 generate
       spw_clkl <= clkm;
+      spw_rstn <= rstn;
     end generate;
     
     core1 : if CFG_SPW_GRSPW = 2 generate
@@ -888,6 +913,17 @@ begin
 --      port map (clk100, spw100);
       spw100 <= clk100;
       spw_clkl <= spw100; spw_clkln <= not spw100;
+      --spw_rstn <= rstn;
+       spw_rstn_sync_proc : process(rstn,spw_clkl)
+       begin
+         if rstn = '0' then
+           spw_rstn_sync <= '0';
+           spw_rstn      <= '0';
+         elsif rising_edge(spw_clkl) then 
+           spw_rstn_sync <= '1';
+           spw_rstn      <= spw_rstn_sync;
+         end if;
+       end process spw_rstn_sync_proc;   
     end generate;
         
     swloop : for i in 0 to CFG_SPW_NUM-1 generate
@@ -898,7 +934,7 @@ begin
             tech       => memtech,
             input_type => CFG_SPW_INPUT)
           port map(
-            rstn       => rstn,
+            rstn       => spw_rstn,
             rxclki     => spw_clkl,
             rxclkin    => spw_clkln,
             nrxclki    => spw_clkl,
@@ -941,7 +977,6 @@ begin
         core0 : if CFG_SPW_GRSPW = 1 generate
           spwi(i).d(0) <= dtmp(i); spwi(i).s(0) <= stmp(i);
         end generate;  	  
-	   
         spw_rxd_pad : inpad_ds generic map (padtech, lvds, x33v, 1)
           port map (spw_rxdp(i), spw_rxdn(i), dtmp(i));
         spw_rxs_pad : inpad_ds generic map (padtech, lvds, x33v, 1)
@@ -986,13 +1021,13 @@ begin
         ahbso(8 downto 8),
         usbo,usbi);    
   
-    -- Incoming 60 MHz clock from transceiver, arch 3 = through BUFGDLL or
-    -- similiar.
---    usb_clkout_pad : clkpad generic map (tech => padtech, arch => 3) port map (usb_clk, uclk, cgo.clklock, ulock);
---    usb_clkout_pad : clkpad generic map (tech => padtech, arch => 0) port map (usb_clk, lusb_clk);
-    usb_clk_pad : clkpad generic map (tech => padtech, arch => 0) port map (usb_clk, uclk);
+    -- Incoming 60 MHz clock from transceiver, arch 2 = through BUFG
+    usb_clk_pad : clkpad generic map (tech => padtech, arch => 2) port map (usb_clk,usb_clk_buf);
 
---    x0 : clkmul_virtex2 port map (rstn, lusb_clk, uclk, ulock);
+    -- Use a ADV PLL for clock network deskew.
+    clkgen_usb :entity  work.usb_spartan6_pll
+    generic map(16667,8,8,1)
+    port map (usb_clk_buf,rstraw,uclk,open,ulock);
 
     usb_d_pad: iopadv
       generic map(tech => padtech, width => 8)

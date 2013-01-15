@@ -37,7 +37,8 @@ Design specifics:
   make mig
   make install-unisim
 
-  It is essential to use ISE-13.4 or later.
+  It is essential to use ISE 13.4. MIG generation is not supported
+  for any other ISE version in this design.
 
 * The SSRAM can be interfaced with the LEON2 Memory controller. 
   Start GRMON with -ramrws 1 when the LEON2 controller is used.

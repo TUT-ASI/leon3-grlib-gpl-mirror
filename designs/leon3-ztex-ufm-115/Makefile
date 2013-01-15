@@ -83,6 +83,7 @@ mig39:
 	coregen -b mig39/mig.xco -p mig39
 	patch -p0 < mig_patch.txt
 	patch -p0 < memc3_infrastructure_patch.txt
+	patch -p0 < mcb_soft_calibration_patch.txt
 
 mig39clean:
 	-rm -rf mig39/mig_39* mig39/tmp

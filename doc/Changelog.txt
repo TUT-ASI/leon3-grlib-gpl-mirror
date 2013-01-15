@@ -1,3 +1,15 @@
+----------------------- Release 1.2.1-b4122 ----------------------------
+
+2013-01-15	Fixed soft calibration error for MIG39 in SPARTAN6 designs
+
+2013-01-15	TECHMAP: Add support for SPARTAN-6 LVDS IOs
+
+2013-01-15	leon3-gr-xc6s: Added clock deskew PLL to improve USB HOST timing
+
+2013-01-15	Made GRLIB RGMII block technology independent
+
+2013-01-15	Corrected erroneous instantiation of mig37 in ML605 design
+
 ----------------------- Release 1.2.0-b4121 ----------------------------
 
 2012-12-20	Added ISE14.3 and PlanAhead support for Virtex 6 and Spartan 6

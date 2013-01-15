@@ -6,18 +6,11 @@ use gaisler.net.all;
 library grlib;
 use grlib.stdlib.all;
 
--- pragma translate_off
-library unisim;
-use unisim.BUFG;
-use unisim.DCM;
--- pragma translate_on
-
 library techmap;
 use techmap.gencomp.all;
 use techmap.allclkgen.all;
 
 entity rgmii is
-  
   generic (
     tech    : integer := 0;
     gmii    : integer := 0;
@@ -26,38 +19,19 @@ entity rgmii is
   port (
     rstn        : in  std_ulogic;
     clk50       : in  std_ulogic;
-    gmiii	: out eth_in_type;
-    gmiio	: in  eth_out_type;
-    rgmiii	: in  eth_in_type;
-    rgmiio	: out eth_out_type
+    clk125      : in  std_ulogic;
+    gmiii : out eth_in_type;
+    gmiio : in  eth_out_type;
+    rgmiii  : in  eth_in_type;
+    rgmiio  : out eth_out_type
     );
-  
 end ;
 
 architecture rtl of rgmii is
 
-  component BUFG port (O : out std_logic; I : in std_logic); end component;
-
-  component FDDRRSE
-  generic (
-     INIT : bit := '0'
-  );
-  port (
-     Q : out std_ulogic;
-     C0 : in std_ulogic;
-     C1 : in std_ulogic;
-     CE : in std_ulogic;
-     D0 : in std_ulogic;
-     D1 : in std_ulogic;
-     R : in std_ulogic;
-     S : in std_ulogic
-  );
-  end component;
-
   attribute keep : boolean;
   attribute syn_keep : boolean;
   attribute syn_preserve : boolean;
-
 
   signal vcc, gnd : std_ulogic;
   signal tx_en, tx_ctlp, tx_ctl : std_ulogic;
@@ -65,12 +39,27 @@ architecture rtl of rgmii is
   signal rxd1, rxd2, rxd3, rxd4 : std_logic_vector(7 downto 0);
   signal rx_clk, nrx_clk : std_ulogic;
   signal rx_ctlp, rx_ctln : std_logic_vector(1 to 4);
-  signal clk25, clk25i, clk125i, clk2_5i : std_ulogic;
+  signal clk25, clk25i, clk25ni, clk125i, clk2_5i, clk2_5ni : std_ulogic;
   signal txp, txn, tx_clk_ddr, tx_clk, tx_clki, ntx_clk : std_ulogic;
   signal cnt2_5 : std_logic_vector(3 downto 0);
+
   attribute syn_preserve of tx_clk : signal is true;
   attribute syn_keep of tx_clk : signal is true;
   attribute keep of tx_clk : signal is true;
+  attribute syn_preserve of clk25ni : signal is true;
+  attribute syn_keep of clk25ni : signal is true;
+  attribute keep of clk25ni : signal is true;
+  attribute syn_preserve of clk2_5ni : signal is true;
+  attribute syn_keep of clk2_5ni : signal is true;
+  attribute keep of clk2_5ni : signal is true;
+  attribute syn_preserve of clk125i : signal is true;
+  attribute syn_keep of clk125i : signal is true;
+  attribute keep of clk125i : signal is true;
+
+  attribute clock_signal : string;
+  attribute clock_signal of clk25ni : signal is "yes";
+  attribute clock_signal of clk2_5ni : signal is "yes";
+  attribute clock_signal of tx_clki : signal is "yes";
   
 begin  -- rtl
 
@@ -78,39 +67,39 @@ begin  -- rtl
   txp <= '1'; txn <= '0';
 
   g1 : if (extclk = 0) and (gmii = 1) generate
-    x0 : clkmul_virtex2 generic map (5, 2) port map (rstn, clk50, clk125i);
+    clk125i <= clk125;
   end generate;
   g2 : if not ((extclk = 0) and (gmii = 1)) generate
     clk125i <=  rgmiii.gtx_clk;
   end generate;
 
   tx_clki <= clk125i when (gmii = 1) and (gmiio.gbit = '1') else 
-    clk25i when gmiio.speed = '1' else clk2_5i;
+    clk25ni when gmiio.speed = '1' else clk2_5ni;
   
-  bufg02 : BUFG port map (I => tx_clki, O => tx_clk);
-
+  -- Generate transmit clocks.
+  b1 : techbuf generic map (2, tech) port map (tx_clki, tx_clk);
   ntx_clk <= not tx_clk;
-  gmiii.gtx_clk <= tx_clk;
+  
+  gmiii.gtx_clk <= tx_clk;  
   gmiii.tx_clk <= tx_clk;
+
   gmiii.mdint <= rgmiii.mdint;
   gmiii.mdio_i <= rgmiii.mdio_i;
   rgmiio.mdio_o <= gmiio.mdio_o;
   rgmiio.mdio_oe <= gmiio.mdio_oe;
   rgmiio.mdc <= gmiio.mdc;
 
--- TX path
-
   rgmii_txd : for i in 0 to 3 generate
-      ddr_oreg0 : FDDRRSE
-        port map (q => rgmiio.txd(i), c0 => tx_clk, c1 => ntx_clk, ce => vcc,
-                  d0 => txd(i), d1 => txd1(i+4), r => gnd, s => gnd);
+      ddr_oreg0 : ddr_oreg generic map (tech)
+        port map (q => rgmiio.txd(i), c1 => tx_clk, c2 => ntx_clk, ce => vcc,
+                  d1 => txd(i), d2 => txd1(i+4), r => gnd, s => gnd);
   end generate;
-  rgmii_tx_ctl : FDDRRSE
-        port map (q => rgmiio.tx_en, c0 => tx_clk, c1 => ntx_clk, ce => vcc,
-                  d0 => tx_en, d1 => tx_ctl, r => gnd, s => gnd);
-  rgmii_tx_clk : FDDRRSE 
-        port map (q =>tx_clk_ddr, c0 => tx_clk, c1 => ntx_clk, ce => vcc,
-                  d0 => txp, d1 => txn, r => gnd, s => gnd);
+  rgmii_tx_ctl : ddr_oreg generic map (tech)
+        port map (q => rgmiio.tx_en, c1 => tx_clk, c2 => ntx_clk, ce => vcc,
+                  d1 => tx_en, d2 => tx_ctl, r => gnd, s => gnd);
+  rgmii_tx_clk : ddr_oreg generic map (tech) 
+        port map (q =>tx_clk_ddr, c1 => tx_clk, c2 => ntx_clk, ce => vcc,
+                  d1 => txp, d2 => txn, r => gnd, s => gnd);
   
   rgmiio.tx_er <= tx_clk_ddr;
   rgmiio.reset <= '0';
@@ -138,13 +127,15 @@ begin  -- rtl
   process (clk50)
   begin  -- process
     if rising_edge(clk50) then
-      clk25i <= not clk25i;
+      clk25i  <= not clk25i;
+      clk25ni <= not clk25i;
       if cnt2_5 = "1001" then cnt2_5 <= "0000"; clk2_5i <= not clk2_5i;
       else cnt2_5 <= cnt2_5 + 1; end if;
+      clk2_5ni <= not clk2_5i;
       if rstn = '0' then clk25i <= '0'; clk2_5i <= '0'; cnt2_5 <= "0000"; end if;
     end if;
   end process;
-
+  
 -- RX path
 
   rx_clk <= rgmiii.rx_clk;
@@ -165,11 +156,11 @@ begin  -- rtl
   rgmii_rxd : for i in 0 to 3 generate
       ddr_ireg0 : ddr_ireg generic map (tech)
         port map (q1 => rxd1(i), q2 => rxd1(i+4), c1 => rx_clk, c2 => nrx_clk,
-	 ce => vcc, d => rgmiii.rxd(i), r => gnd, s => gnd);
+   ce => vcc, d => rgmiii.rxd(i), r => gnd, s => gnd);
   end generate;
   ddr_ireg0 : ddr_ireg generic map (tech)
      port map (q1 => rx_ctlp(1), q2 => rx_ctln(1), c1 => rx_clk, c2 => nrx_clk,
-	 ce => vcc, d => rgmiii.rx_dv, r => gnd, s => gnd);
+   ce => vcc, d => rgmiii.rx_dv, r => gnd, s => gnd);
 
   process (rx_clk)
   begin

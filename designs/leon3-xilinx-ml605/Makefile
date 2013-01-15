@@ -67,7 +67,7 @@ VHDLOPTSYNFILES= \
 	mig_37/user_design/rtl/ui/ui_rd_data.vhd \
 	mig_37/user_design/rtl/ui/ui_top.vhd \
 	mig_37/user_design/rtl/ui/ui_wr_data.vhd
-VERILOGSYNFILES= \
+VERILOGOPTSYNFILES= \
 	mig/user_design/rtl/controller/*.v \
 	mig/user_design/rtl/ecc/*.v \
 	mig/user_design/rtl/ip_top/*.v \

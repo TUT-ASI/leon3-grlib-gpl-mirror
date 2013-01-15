@@ -4,7 +4,7 @@
     parameter DIVCLK_DIVIDE      = 1,     // write PLL VCO divisor
     parameter CLKOUT_DIVIDE      = 2,     // VCO output divisor for fast
                                           // (memory) clocks
-+   parameter DIVCLK4_DIVIDE     = 12,
++   parameter CLKOUT_DIVIDE4     = 12,
     parameter RST_ACT_LOW        = 1
     )
    (
@@ -22,7 +22,7 @@
    localparam CLKOUT1_DIVIDE   = CLKOUT_DIVIDE * nCK_PER_CLK;
    localparam CLKOUT2_DIVIDE   = CLKOUT_DIVIDE;
 +  localparam CLKOUT3_DIVIDE   = CLKOUT_DIVIDE * nCK_PER_CLK * 2;
-+  localparam CLKOUT4_DIVIDE   = DIVCLK4_DIVIDE;
++  localparam CLKOUT4_DIVIDE   = CLKOUT_DIVIDE4;
  
    localparam CLKOUT0_PERIOD = VCO_PERIOD * CLKOUT0_DIVIDE_F;
    localparam CLKOUT1_PERIOD = VCO_PERIOD * CLKOUT1_DIVIDE;

@@ -17,7 +17,7 @@
 +   parameter DIVCLK_DIVIDE           = 1,  // ML605 200MHz input clock (VCO = 1200MHz)use "2" for 400MHz SMA,
                                         // write PLL VCO divisor.
 -   parameter CLKOUT_DIVIDE           = 3,
-+   parameter DIVCLK4_DIVIDE          = 12, // Leon3 Amba clock control
++   parameter CLKOUT_DIVIDE4          = 12, // Leon3 Amba clock control
 +   parameter CLKOUT_DIVIDE           = 3,  //400MHz clock
                                         // VCO output divisor for fast (memory) clocks.
     parameter nCK_PER_CLK             = 2,
@@ -141,7 +141,7 @@
       .MMCM_ADV_BANDWIDTH (MMCM_ADV_BANDWIDTH),
       .CLKFBOUT_MULT_F    (CLKFBOUT_MULT_F),
       .DIVCLK_DIVIDE      (DIVCLK_DIVIDE),
-+     .DIVCLK4_DIVIDE     (DIVCLK4_DIVIDE),
++     .CLKOUT_DIVIDE4     (CLKOUT_DIVIDE4),
       .CLKOUT_DIVIDE      (CLKOUT_DIVIDE),
       .RST_ACT_LOW        (RST_ACT_LOW)
       )

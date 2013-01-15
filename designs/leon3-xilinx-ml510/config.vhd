@@ -113,13 +113,6 @@ package config is
   constant CFG_MCTRL_INVCLK : integer := 0;
   constant CFG_MCTRL_SD64 : integer := 0;
   constant CFG_MCTRL_PAGE : integer := 0 + 0;
--- Xilinx MIG
-  constant CFG_MIG_DDR2 : integer := 0;
-  constant CFG_MIG_RANKS : integer := 1;
-  constant CFG_MIG_COLBITS : integer := 10;
-  constant CFG_MIG_ROWBITS : integer := 13;
-  constant CFG_MIG_BANKBITS: integer := 2;
-  constant CFG_MIG_HMASK : integer := 16#F00#;
 -- DDR controller
   constant CFG_DDR2SP : integer := 1;
   constant CFG_DDR2SP_INIT : integer := 1;
@@ -148,12 +141,10 @@ package config is
   constant CFG_AHBRODDR : integer := 16#000#;
   constant CFG_ROMADDR : integer := 16#000#;
   constant CFG_ROMMASK : integer := 16#E00# + 16#000#;
-
 -- AHB RAM
   constant CFG_AHBRAMEN : integer := 0;
   constant CFG_AHBRSZ : integer := 1;
   constant CFG_AHBRADDR : integer := 16#A00#;
-
 -- Gaisler Ethernet core
   constant CFG_GRETH : integer := 1;
   constant CFG_GRETH1G : integer := 0;

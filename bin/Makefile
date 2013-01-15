@@ -1,6 +1,5 @@
-VER=$(VNAME)1.2.0
-BID=4121
-GVER=1200
+VER=$(VNAME)1.2.1
+BID=4122
 CC=gcc
 SED=sed
 DISTLIB=~/vhdl
@@ -587,7 +586,7 @@ ise-launch-synp: $(TOP).npl $(TOP)_synplify.prj synplify/$(TOP).edf $(TOP)_synpl
 
 $(TOP).xst: compile.xst
 	@touch $(TOP).xst; rm $(TOP).xst
-	@for i in $(VERILOGSYNFILES); do \
+	@for i in $(VERILOGOPTSYNFILES) $(VERILOGSYNFILES); do \
 		if test -r $$i; then \
 		  echo verilog work $$i >> $(TOP)_files.prj ; \
 		fi; \
@@ -607,7 +606,7 @@ ise-xstmod :
 
 ise-map xst-map ise-xst xst: $(TOP).ngc
 
-$(TOP).ngc: $(TOP).xst compile.xst
+$(TOP).ngc: $(TOP).xst $(VHDLSYNFILES) $(VERILOGSYNFILES) compile.xst
 	-rm -rf xst
 	@-mkdir xst xst/projnav.tmp
 	xst -ifn $(TOP).xst
@@ -758,22 +757,18 @@ install-simprim:
 	fi ; \
 
 compile_xilinx_verilog_lib: 
-#ifeq ($(CONFIG_MIG_SERIES7),y)
-	if test -d ./xilinx_lib; then \
+	@if test -d ./xilinx_lib; then \
 	echo "Xilinx library already compiled!"; else \
-	mkdir -p xilinx_lib ; \
 	compxlib -s mti_se -l verilog -arch $(TECHNOLOGY) -lib xilinxcorelib -w -dir ./xilinx_lib ; \
 	fi;
-#endif
 
 map_xilinx_verilog_lib:
-#ifeq ($(CONFIG_MIG_SERIES7),y)
-	if test -d ./xilinx_lib; then \
+	@if test -d ./xilinx_lib; then \
 	vmap secureip_ver ./xilinx_lib/secureip ; \
 	vmap unisims_ver ./xilinx_lib/unisims_ver ; \
-	vmap xilinxcorelib_ver ./xilinx_lib/xilinxcorelib_ver ; \
+	vmap xilinxcorelib_ver ./xilinx_lib/xilinxcorelib_ver ; else \
+	echo "Xilinx Verilog Library not found. Please make sure you have installed the correct version of the Xilinx Library" ; exit 1 ; \
 	fi;
-#endif
 
 clean_xilinx_verilog_lib:
 	\rm -rf xilinx_lib
@@ -781,7 +776,7 @@ clean_xilinx_verilog_lib:
 
 mig_series7_generate:
 ifeq ($(CONFIG_MIG_SERIES7),y)
-	if test -d ./mig; then \
+	@if test -d ./mig; then \
 	echo "Xilinx MIG already generated!"; else \
 	mkdir -p mig ; \
 	mkdir -p mig/mig ; \
@@ -828,7 +823,7 @@ ifneq ("$(PROTOBOARD)","")
 	@echo "set_property board $(PROTOBOARD) [current_project]"  >> ./planAhead/$(TOP)_planAhead.tcl
 endif
 	@echo "source ./compile.vivado" >> ./planAhead/$(TOP)_planAhead.tcl
-	@for i in $(VERILOGSYNFILES); do \
+	@for i in $(VERILOGOPTSYNFILES) $(VERILOGSYNFILES); do \
 	    if test -r $$i; then \
 		    echo read_verilog "-library work" $$i >> ./planAhead/$(TOP)_planAhead.tcl; \
 	    fi; \
@@ -863,6 +858,8 @@ ifeq ($(CONFIG_MIG_DDR2),y)
 	fi;
 endif
 	@echo "create_run synth_$(DESIGN) -flow {$(PLANAHEAD_SYNTH_FLOW)} -strategy {$(PLANAHEAD_SYNTH_STRATEGY)}" >> ./planAhead/$(TOP)_planAhead.tcl
+	@echo "set_property steps.xst.args.resource_sharing no [get_runs synth_1]" >> ./planAhead/$(TOP)_planAhead.tcl
+	@echo "set_property steps.xst.args.equivalent_register_removal no [get_runs synth_1]" >> ./planAhead/$(TOP)_planAhead.tcl
 	@echo "# Elaborate design to be able to apply SDC to top level" >> ./planAhead/$(TOP)_planAhead.tcl
 	@echo "launch_runs synth_1" >> ./planAhead/$(TOP)_planAhead.tcl
 	@echo "wait_on_run -timeout 120 synth_1" >> ./planAhead/$(TOP)_planAhead.tcl
@@ -897,7 +894,7 @@ vivado.tcl: compile.vivado
 	@echo "# Create a new project" >> ./vivado/$(TOP)_vivado.tcl
 	@echo "create_project $(DESIGN) ./vivado/$(DESIGN) -part ${DEVICE} -force" >> ./vivado/$(TOP)_vivado.tcl
 	@echo "source ./compile.vivado" >> ./vivado/$(TOP)_vivado.tcl
-	@for i in $(VERILOGSYNFILES); do \
+	@for i in $(VERILOGOPTSYNFILES) $(VERILOGSYNFILES); do \
 	    if test -r $$i; then \
 		    echo read_verilog "-library work" $$i >> ./vivado/$(TOP)_vivado.tcl; \
 	    fi; \
@@ -1043,7 +1040,7 @@ synplify/$(TOP).edf: $(VHDLSYNFILES) $(VERILOGSYNFILES)
 
 $(TOP)_synplify.prj: compile.synp
 	@echo source compile.synp > $(TOP)_synplify.prj
-	@for i in $(VERILOGSYNFILES); do \
+	@for i in $(VERILOGOPTSYNFILES) $(VERILOGSYNFILES); do \
 	    if test -r $$i; then \
 		echo add_file "-verilog -lib work" $$i >> $(TOP)_synplify.prj; \
 	    fi; \
@@ -1211,7 +1208,7 @@ dc: $(TOP)_dc.tcl
 
 $(TOP)_dc.tcl: compile.dc
 	@cp $(GRLIB)/bin/top.dc $(TOP)_dc.tcl
-	@for i in $(VERILOGSYNFILES); do \
+	@for i in $(VERILOGOPTSYNFILES) $(VERILOGSYNFILES); do \
 	 if test -r $$i; then \
 	    echo $(DCVLOG) work $$i >> $(TOP)_dc.tcl; \
 	    echo $(FMVLOG) $work $i >> fmref.tcl; \
@@ -1244,7 +1241,7 @@ $(TOP).rc: compile.rc
 	    echo "read_hdl -vhdl -lib work" $$i >> $(TOP).rc; \
 	 fi; \
 	done
-#	@for i in $(VERILOGSYNFILES); do echo "read_hdl " $$i >> $(TOP).rc; done
+#	@for i in $(VERILOGOPTSYNFILES) $(VERILOGSYNFILES); do echo "read_hdl " $$i >> $(TOP).rc; done
 	@echo elaborate $(TOP) >> $(TOP).rc
 	@echo  $(TOP).rc
 
@@ -1735,7 +1732,7 @@ compile.etools $(TOP).ldf :
 	 fi; \
 	done; \
 	echo "{work $$easic_lib}" >> easic.vhdl; \
-	for i in $(VERILOGSYNFILES); do \
+	for i in $(VERILOGOPTSYNFILES) $(VERILOGSYNFILES); do \
 	  echo $$i >> easic.vlog; \
 	done; \
 	echo "        "\<Source name=\"$(UCF)\" type=\"Logic Preference\" type_short=\"LPF\"\> >> $(TOP).ldf; \
@@ -1906,7 +1903,7 @@ compile.etools $(TOP).ldf :
 	cat compile.asim >> make.asim; \
 	printf "# Work-around for stupid secureip bug ...\n" >>  make.vsim; \
 	printf "\t@if test -r $(GRLIB)/lib/tech/secureip/ise/mcb_001.vp && test -r modelsim/secureip; then vlog -quiet -novopt -work secureip $(GRLIB)/lib/tech/secureip/ise/mcb_*.vp; fi\n" >> make.vsim; \
-	for i in $(VERILOGSYNFILES); do \
+	for i in $(VERILOGOPTSYNFILES) $(VERILOGSYNFILES); do \
 	 if test -r $$i; then \
 	  printf "\t$(VLOG) -work work $$i\n" >> make.vsim; \
 	  printf "\t$(ALOG) work ../../$$i\n" >> make.asim; \
@@ -1928,7 +1925,7 @@ compile.etools $(TOP).ldf :
 	  echo VALUE \"\<project\>/$$i,hdl\" >> libero_simlist; \
 	 fi; \
 	done; \
-	for i in $(VERILOGSYNFILES) $(VHDLOPTSYNFILES) $(VHDLSYNFILES); do \
+	for i in $(VERILOGOPTSYNFILES) $(VERILOGSYNFILES) $(VHDLOPTSYNFILES) $(VHDLSYNFILES); do \
 	 if test -r $$i; then \
 	  echo VALUE \"\<project\>/$$i,hdl\" >> libero_syn_files; \
 	  echo STATE=\"utd\" >> libero_syn_files; \
@@ -1947,7 +1944,7 @@ compile.etools $(TOP).ldf :
 	  echo VALUE \"\<project\>/$$i,hdl\" >> libero_sim_files; \
 	 fi; \
 	done; \
-	for i in $(VERILOGSYNFILES) $(VERILOGSIMFILES); do \
+	for i in $(VERILOGOPTSYNFILES) $(VERILOGSYNFILES) $(VERILOGSIMFILES); do \
 	 if test -r $$i; then \
 	  printf "\t$(VLOG) -work work $$i\n" >> make.vsim; \
 	  printf "\t$(ALOG) work ../../$$i\n" >> make.asim; \
@@ -2112,7 +2109,7 @@ scripts-clean:
 	alibs.do avhdl.tcl riviera.do \
 	$(TOP)_etools_create.tcl $(TOP).eprj $(EXTRACLEAN)
 
-distclean: $(CLEAN) clean scripts-clean
+distclean: $(CLEAN) clean scripts-clean clean_xilinx_verilog_lib
 
 libclean:
 	-@rm work.v; \

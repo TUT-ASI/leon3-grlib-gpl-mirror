@@ -14,7 +14,7 @@ EFFORT=high
 XSTOPT=-uc leon3mp.xcf
 SYNPOPT="set_option -pipe 1; set_option -retiming 1; set_option -write_apr_constraint 0"
 
-VHDLSYNFILES= mig37/mig_37/user_design/rtl/iodrp_controller.vhd \
+VHDLOPTSYNFILES= mig37/mig_37/user_design/rtl/iodrp_controller.vhd \
 	mig37/mig_37/user_design/rtl/iodrp_mcb_controller.vhd \
 	mig37/mig_37/user_design/rtl/mcb_raw_wrapper.vhd \
 	mig37/mig_37/user_design/rtl/mcb_soft_calibration.vhd \
@@ -63,6 +63,7 @@ migclean:
 mig39:
 	coregen -b mig39/mig.xco -p mig39
 	patch -p0 < mig_patch.txt
+	patch -p0 < mcb_soft_calibration_patch.txt
 
 mig39clean:
 	-rm -rf mig39/mig_39* mig39/tmp

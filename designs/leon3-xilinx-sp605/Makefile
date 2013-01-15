@@ -14,7 +14,7 @@ EFFORT=high
 ISEMAPOPT=-timing
 XSTOPT=
 SYNPOPT="set_option -maxfan 100; set_option -pipe 1; set_option -retiming 1; set_option -write_apr_constraint 0"
-VHDLSYNFILES= mig/mig_38/user_design/rtl/iodrp_controller.vhd \
+VHDLOPTSYNFILES= mig/mig_38/user_design/rtl/iodrp_controller.vhd \
 	mig/mig_38/user_design/rtl/iodrp_mcb_controller.vhd \
 	mig/mig_38/user_design/rtl/mcb_raw_wrapper.vhd \
 	mig/mig_38/user_design/rtl/mcb_soft_calibration.vhd \
@@ -66,6 +66,7 @@ mig39:
 	coregen -b mig39/mig.xco -p mig39
 	patch -p0 < mig_patch.txt
 	patch -p0 < memc3_infrastructure_patch.txt
+	patch -p0 < mcb_soft_calibration_patch.txt
 
 mig39clean:
 	-rm -rf mig39/mig_39* mig39/tmp

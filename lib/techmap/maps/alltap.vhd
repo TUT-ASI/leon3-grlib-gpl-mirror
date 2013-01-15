@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2012, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2013, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -313,6 +313,9 @@ end component;
 -------------------------------------------------------------------------------
 
 component scanregi_inf
+  generic (
+    intesten : integer := 1
+    );
   port (
     pad     : in std_ulogic;
     core    : out std_ulogic;
@@ -344,7 +347,8 @@ end component;
 
 component scanregio_inf -- 3 scan registers: tdo<--input<--output<--outputen<--tdi
   generic (
-    hzsup   : integer range 0 to 1 := 1
+    hzsup   : integer range 0 to 1 := 1;
+    intesten: integer := 1
     );
   port (
     pado    : out std_ulogic;

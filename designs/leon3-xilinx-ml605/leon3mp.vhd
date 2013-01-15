@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2012, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2013, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -430,7 +430,7 @@ begin
     ahbsi => ahbsi, ahbso => ahbso(0), migi => migi, migo => migo);
 
     ddr3ctrl : entity work.mig_37
-     generic map (SIM_BYPASS_INIT_CAL => SIM_BYPASS_INIT_CAL,DIVCLK4_DIVIDE => CFG_MIG_CLK4)
+     generic map (SIM_BYPASS_INIT_CAL => SIM_BYPASS_INIT_CAL,CLKOUT_DIVIDE4 => CFG_MIG_CLK4)
      port map(
       clk_ref_p         =>   clk_ref_p,
       clk_ref_n         =>   clk_ref_n,

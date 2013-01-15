@@ -1,60 +1,5 @@
-diff -Naur mig37/mig_37/user_design/rtl/memc3_infrastructure.vhd /home/jiri/ibm/vhdl/grlib/designs/leon3-gr-xc6s/mig37/mig_37/user_design/rtl/memc3_infrastructure.vhd
---- mig37/mig_37/user_design/rtl/memc3_infrastructure.vhd	2012-04-22 22:38:23.000000000 +0200
-+++ /home/jiri/ibm/vhdl/grlib/designs/leon3-gr-xc6s/mig37/mig_37/user_design/rtl/memc3_infrastructure.vhd	2012-04-22 22:41:09.259790939 +0200
-@@ -77,6 +77,7 @@
-     C_CLKOUT1_DIVIDE   : integer := 1;
-     C_CLKOUT2_DIVIDE   : integer := 16;
-     C_CLKOUT3_DIVIDE   : integer := 8;
-+    C_CLKOUT5_DIVIDE   : integer := 8;
-     C_CLKFBOUT_MULT   : integer := 2;
-     C_DIVCLK_DIVIDE   : integer := 1
- 
-@@ -95,7 +96,9 @@
-     mcb_drp_clk     : out std_logic;
-     pll_ce_0        : out std_logic;
-     pll_ce_90       : out std_logic;
--    pll_lock        : out std_logic
-+    pll_lock        : out std_logic;
-+    clk_125         : out std_logic;
-+    clkout5         : out std_logic
-   
- );
- end entity;
-@@ -164,7 +167,8 @@
-       --***********************************************************************
-       -- SINGLE_ENDED input clock input buffers
-       --***********************************************************************
--      u_ibufg_sys_clk : IBUFG
-+--      u_ibufg_sys_clk : IBUFG
-+      u_ibufg_sys_clk : BUFG
-         port map (
-           I  => sys_clk,
-           O  => sys_clk_ibufg
-@@ -185,8 +189,8 @@
-          CLKOUT1_DIVIDE     => C_CLKOUT1_DIVIDE,
-          CLKOUT2_DIVIDE     => C_CLKOUT2_DIVIDE,
-          CLKOUT3_DIVIDE     => C_CLKOUT3_DIVIDE,
--         CLKOUT4_DIVIDE     => 1,
--         CLKOUT5_DIVIDE     => 1,
-+         CLKOUT4_DIVIDE     => 4,
-+         CLKOUT5_DIVIDE     => C_CLKOUT5_DIVIDE,
-          CLKOUT0_PHASE      => 0.000,
-          CLKOUT1_PHASE      => 180.000,
-          CLKOUT2_PHASE      => 0.000,
-@@ -231,8 +235,8 @@
-            CLKOUT1          => clk_2x_180,
-            CLKOUT2          => clk0_bufg_in,
-            CLKOUT3          => mcb_drp_clk_bufg_in,
--           CLKOUT4          => open,
--           CLKOUT5          => open,
-+           CLKOUT4          => clk_125,
-+           CLKOUT5          => clkout5,
-            DO               => open,
-            DRDY             => open,
-            LOCKED           => locked
-diff -Naur mig37/mig_37/user_design/rtl/mig_37.vhd /home/jiri/ibm/vhdl/grlib/designs/leon3-gr-xc6s/mig37/mig_37/user_design/rtl/mig_37.vhd
---- mig37/mig_37/user_design/rtl/mig_37.vhd	2012-04-22 22:38:24.000000000 +0200
-+++ /home/jiri/ibm/vhdl/grlib/designs/leon3-gr-xc6s/mig37/mig_37/user_design/rtl/mig_37.vhd	2012-04-22 22:41:49.776513469 +0200
+--- ./mig37/mig_37/user_design/rtl/mig_37.vhd	2013-01-15 16:04:40.000000000 +0100
++++ ./p/a/t/c/h/mig37/mig_37/user_design/rtl/mig_37.vhd	2013-01-15 16:09:19.236761589 +0100
 @@ -95,8 +95,9 @@
                                         -- External memory data width.
      C3_MEM_ADDR_WIDTH       : integer := 13; 
@@ -71,7 +16,7 @@ diff -Naur mig37/mig_37/user_design/rtl/mig_37.vhd /home/jiri/ibm/vhdl/grlib/des
     c3_clk0                                 : out std_logic;
     c3_rst0                                 : out std_logic;
 +   clk_125                                 : out std_logic;
-+   clkout5                                 : out std_logic;
++   clk_100                                 : out std_logic;
     mcb3_dram_dqs                           : inout  std_logic;
     mcb3_dram_dqs_n                         : inout  std_logic;
     mcb3_dram_ck                            : out std_logic;
@@ -94,7 +39,7 @@ diff -Naur mig37/mig_37/user_design/rtl/mig_37.vhd /home/jiri/ibm/vhdl/grlib/des
 -      mcb_drp_clk                            : out   std_logic
 -
 +      clk_125                                : out   std_logic;
-+      clkout5                                : out   std_logic
++      clk_100                                : out   std_logic
        );
    end component;
  
@@ -117,7 +62,15 @@ diff -Naur mig37/mig_37/user_design/rtl/mig_37.vhd /home/jiri/ibm/vhdl/grlib/des
  
    signal  c3_sys_clk_p                             : std_logic;
    signal  c3_sys_clk_n                             : std_logic;
-@@ -468,6 +474,7 @@
+@@ -457,7 +463,6 @@
+ 
+ c3_sys_clk_p <= '0';
+ c3_sys_clk_n <= '0';
+-
+ memc3_infrastructure_inst : memc3_infrastructure
+ 
+ generic map
+@@ -468,6 +473,7 @@
     C_CLKOUT1_DIVIDE                  => C3_CLKOUT1_DIVIDE,
     C_CLKOUT2_DIVIDE                  => C3_CLKOUT2_DIVIDE,
     C_CLKOUT3_DIVIDE                  => C3_CLKOUT3_DIVIDE,
@@ -125,7 +78,7 @@ diff -Naur mig37/mig_37/user_design/rtl/mig_37.vhd /home/jiri/ibm/vhdl/grlib/des
     C_CLKFBOUT_MULT                   => C3_CLKFBOUT_MULT,
     C_DIVCLK_DIVIDE                   => C3_DIVCLK_DIVIDE,
     C_INCLK_PERIOD                    => C3_INCLK_PERIOD
-@@ -483,10 +490,12 @@
+@@ -483,10 +489,12 @@
     async_rst                       => c3_async_rst,
     sysclk_2x                       => c3_sysclk_2x,
     sysclk_2x_180                   => c3_sysclk_2x_180,
@@ -135,7 +88,100 @@ diff -Naur mig37/mig_37/user_design/rtl/mig_37.vhd /home/jiri/ibm/vhdl/grlib/des
     pll_lock                        => c3_pll_lock,
 -   mcb_drp_clk                     => c3_mcb_drp_clk
 +   clk_125                         => clk_125,
-+   clkout5                         => clkout5
++   clk_100                         => clk_100
     );
  
  
+--- ./mig37/mig_37/user_design/rtl/memc3_infrastructure.vhd	2013-01-15 16:04:40.000000000 +0100
++++ ./p/a/t/c/h/mig37/mig_37/user_design/rtl/memc3_infrastructure.vhd	2013-01-15 16:07:09.836762961 +0100
+@@ -77,6 +77,7 @@
+     C_CLKOUT1_DIVIDE   : integer := 1;
+     C_CLKOUT2_DIVIDE   : integer := 16;
+     C_CLKOUT3_DIVIDE   : integer := 8;
++    C_CLKOUT5_DIVIDE   : integer := 8;
+     C_CLKFBOUT_MULT   : integer := 2;
+     C_DIVCLK_DIVIDE   : integer := 1
+ 
+@@ -95,7 +96,10 @@
+     mcb_drp_clk     : out std_logic;
+     pll_ce_0        : out std_logic;
+     pll_ce_90       : out std_logic;
+-    pll_lock        : out std_logic
++    pll_lock        : out std_logic;
++    pll_lock0       : out std_logic;
++    clk_125         : out std_logic;
++    clk_100         : out std_logic
+   
+ );
+ end entity;
+@@ -129,6 +133,8 @@
+   signal   locked              : std_logic;
+   signal   bufpll_mcb_locked   : std_logic;
+   signal   mcb_drp_clk_sig     : std_logic;
++  signal   clk_125_in          : std_logic;
++  signal   clk_100_in          : std_logic;
+ 
+   attribute max_fanout : string;
+   attribute syn_maxfan : integer;
+@@ -141,6 +147,7 @@
+ 
+   sys_rst  <= not(sys_rst_n) when (C_RST_ACT_LOW /= 0) else sys_rst_n;
+   clk0     <= clk0_bufg;
++  pll_lock0 <= locked;
+   pll_lock <= bufpll_mcb_locked;
+   mcb_drp_clk <= mcb_drp_clk_sig;
+ 
+@@ -164,7 +171,8 @@
+       --***********************************************************************
+       -- SINGLE_ENDED input clock input buffers
+       --***********************************************************************
+-      u_ibufg_sys_clk : IBUFG
++--      u_ibufg_sys_clk : IBUFG
++      u_ibufg_sys_clk : BUFG
+         port map (
+           I  => sys_clk,
+           O  => sys_clk_ibufg
+@@ -183,10 +191,10 @@
+          CLKIN2_PERIOD      => CLK_PERIOD_NS,
+          CLKOUT0_DIVIDE     => C_CLKOUT0_DIVIDE,
+          CLKOUT1_DIVIDE     => C_CLKOUT1_DIVIDE,
+-         CLKOUT2_DIVIDE     => C_CLKOUT2_DIVIDE,
++         CLKOUT2_DIVIDE     => 10,
+          CLKOUT3_DIVIDE     => C_CLKOUT3_DIVIDE,
+-         CLKOUT4_DIVIDE     => 1,
+-         CLKOUT5_DIVIDE     => 1,
++         CLKOUT4_DIVIDE     => 4,
++         CLKOUT5_DIVIDE     => 5,
+          CLKOUT0_PHASE      => 0.000,
+          CLKOUT1_PHASE      => 180.000,
+          CLKOUT2_PHASE      => 0.000,
+@@ -231,8 +239,8 @@
+            CLKOUT1          => clk_2x_180,
+            CLKOUT2          => clk0_bufg_in,
+            CLKOUT3          => mcb_drp_clk_bufg_in,
+-           CLKOUT4          => open,
+-           CLKOUT5          => open,
++           CLKOUT4          => clk_125_in,
++           CLKOUT5          => clk_100_in,
+            DO               => open,
+            DRDY             => open,
+            LOCKED           => locked
+@@ -251,6 +259,18 @@
+      I => mcb_drp_clk_bufg_in
+      );
+ 
++   U_BUFG_CLK2 : BUFG 
++    port map (  
++     O => clk_125,
++     I => clk_125_in
++     );
++
++   U_BUFG_CLK3 : BUFG 
++    port map (  
++     O => clk_100,
++     I => clk_100_in
++     );
++
+    process (clk0_bufg, sys_rst)
+    begin
+       if(sys_rst = '1') then

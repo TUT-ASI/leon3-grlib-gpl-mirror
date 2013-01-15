@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2012, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2013, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -1064,7 +1064,8 @@ end component;
 
 component scanregi
   generic (
-    tech : integer := 0
+    tech : integer := 0;
+    intesten: integer := 1
     );
   port (
     pad     : in std_ulogic;
@@ -1125,7 +1126,8 @@ component scanregio -- 3 scan registers: tdo<--input<--output<--outputen<--tdi
   generic (
     tech : integer := 0;
     hzsup: integer range 0 to 1 := 1;
-    oepol: integer range 0 to 1 := 1
+    oepol: integer range 0 to 1 := 1;
+    intesten: integer range 0 to 1 := 1
     );
   port (
     pado    : out std_ulogic;
