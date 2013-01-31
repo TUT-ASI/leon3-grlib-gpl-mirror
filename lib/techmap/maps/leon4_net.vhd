@@ -330,7 +330,7 @@ signal disasen : std_ulogic;
    signal   ahbsi_hirq:       std_logic_vector(NAHBIRQ-1 downto 0);
 
    constant hconfig: ahb_config_type := (
-      0      => ahb_device_reg ( VENDOR_GAISLER, GAISLER_LEON3FT, 0, 0, 0),
+      0      => ahb_device_reg ( VENDOR_GAISLER, GAISLER_LEON4, 0, 0, 0),
       others => zero32);
 
 begin

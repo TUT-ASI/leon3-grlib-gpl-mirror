@@ -1,5 +1,5 @@
-VER=$(VNAME)1.2.1
-BID=4122
+VER=$(VNAME)1.2.2
+BID=4123
 CC=gcc
 SED=sed
 DISTLIB=~/vhdl
@@ -854,7 +854,7 @@ endif
 #endif
 ifeq ($(CONFIG_MIG_DDR2),y)
 	@if test -r mig/user_design/par/mig.ucf; then \
-	  @echo "read_ucf mig/user_design/par/mig.ucf" >> ./planAhead/$(TOP)_planAhead.tcl; \
+	  echo "read_ucf mig/user_design/par/mig.ucf" >> ./planAhead/$(TOP)_planAhead.tcl; \
 	fi;
 endif
 	@echo "create_run synth_$(DESIGN) -flow {$(PLANAHEAD_SYNTH_FLOW)} -strategy {$(PLANAHEAD_SYNTH_STRATEGY)}" >> ./planAhead/$(TOP)_planAhead.tcl
@@ -1464,7 +1464,7 @@ compile.etools $(TOP).ldf :
 		  if test -r $$k/$$l; then \
 		    echo -n " "$$l; \
 		  fi; \
-	    	  for i in vlogsyn vhdlsyn vhdlmtie vhdlsynpe vhdldce vhdlcdse vlogsim vhdlsim ; do \
+	    	  for i in vlogsyn vhdlsyn vhdlmtie vhdlsynpe vhdldce vhdlcdse vhdlxile vlogsim vhdlsim ; do \
 		   m=$$k/$$l/$$i; \
 		   if test -r $$m.txt; then \
 		    for q in `cat $$m.txt` $(FILEADD) ; do \
@@ -1492,7 +1492,6 @@ compile.etools $(TOP).ldf :
 	  		   echo ENDFILE >> libero_syn_files;; \
 			vhdlsynpe) \
 		           echo $(SYNPVHDL) $(VHDLOPT) $$bn $$f >> compile.synp; \
-		           echo $(VIVADOVHDL) $$bn $$f >> compile.vivado; \
 		           echo VALUE \"\<project\>/$$f,hdl\" >> libero_syn_files; \
 	    		   echo VALUE \"\<project\>/$$f,hdl\" >> libero_synlist; \
 	  		   echo STATE=\"utd\" >> libero_syn_files; \
@@ -1504,6 +1503,19 @@ compile.etools $(TOP).ldf :
 			vhdlcdse) \
 		           printf "\t$(NCVHDL) $(VHDLOPT) $$bn $$f\n" >> compile.ncsim; \
 		           echo $(RTLCVHDL) $(VHDLOPT) $$bn $$f >> compile.rc;; \
+			vhdlxile) \
+		           echo LIBFILE $$f $$bn vhdl >> tmp.npl; \
+		           echo xfile add \"$$f\" -lib_vhdl $$bn >> $(TOP)_ise.tcl; \
+		           echo puts \"$$f\" >> $(TOP)_ise.tcl; \
+			   echo "    "\<file xil_pn:name=\"$$f\" xil_pn:type=\"FILE_VHDL\"\> >>  $(TOP).xise; \
+			   echo "      "\<association xil_pn:name=\"BehavioralSimulation\"/\>  >>  $(TOP).xise; \
+			   echo "      "\<association xil_pn:name=\"Implementation\"/\>  >>  $(TOP).xise; \
+			   echo "      "\<library xil_pn:name=\"$$bn\"/\>  >>  $(TOP).xise; \
+			   echo "    "\</file\>  >>  $(TOP).xise; \
+		           echo $(XSTVHDL) $(VHDLOPT) $$bn -ifn $$f >> compile.xst; \
+		           echo vhdl $$bn  $$f >> $(TOP)_files.prj; \
+			   xfiles=`expr $$xfiles + 1`; \
+		           echo $(VIVADOVHDL) $$bn $$f >> compile.vivado;; \
 			vhdlsyn) \
 		           echo Project_File_$$nfiles = $$f >> tmp.mpf; \
 		           echo Project_File_P_$$nfiles = vhdl_novitalcheck 0 file_type VHDL group_id 0 vhdl_nodebug 0 vhdl_1164 1 vhdl_noload 0 vhdl_synth 0 folder {Top Level} last_compile 0 vhdl_disableopt 0 vhdl_vital 0 vhdl_warn1 0 vhdl_warn2 1 vhdl_explicit 0 vhdl_showsource 1 vhdl_warn3 1 vhdl_options {} vhdl_warn4 1 ood 0 vhdl_warn5 0 compile_to $$bn compile_order $$nfiles dont_compile 0 cover_stmt 1 vhdl_use93 93 >> tmp.mpf; \
@@ -1535,7 +1547,6 @@ compile.etools $(TOP).ldf :
 			    case $$l in $(XSYNPDIRSKIP) ) ;; *) \
 			      case $$q in $(SYNPSKIP) ) ;; *) \
 		                echo $(SYNPVHDL) $(VHDLOPT) $$bn $$f >> compile.synp; \
-		                echo $(VIVADOVHDL) $$bn $$f >> compile.vivado; \
 				echo "        "\<Source name=\"$$f\" type=\"VHDL\" type_short=\"VHDL\"\> >> $(TOP).ldf; \
 				echo "            "\<Options lib=\"$$bn\"\/\> >> $(TOP).ldf; \
 				echo "        "\<\/Source\> >> $(TOP).ldf;; \
@@ -1582,7 +1593,8 @@ compile.etools $(TOP).ldf :
 				 echo "    "\</file\>  >>  $(TOP).xise; \
 		                 echo $(XSTVHDL) $(VHDLOPT) $$bn -ifn $$f >> compile.xst; \
 		                 echo vhdl $$bn  $$f >> $(TOP)_files.prj; \
-			         xfiles=`expr $$xfiles + 1`;; \
+			         xfiles=`expr $$xfiles + 1`; \
+		                 echo $(VIVADOVHDL) $$bn $$f >> compile.vivado;; \
 			       esac; \
 			     esac; \
 			   esac; \

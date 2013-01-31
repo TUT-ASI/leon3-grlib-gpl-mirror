@@ -1,3 +1,8 @@
+----------------------- Release 1.2.2-b4123 ----------------------------
+
+2013-01-31	Fixed Makefile error that prevented script generation for
+		Xilinx PlanAhead when MIG DDR2 controller was enabled in design.
+
 ----------------------- Release 1.2.1-b4122 ----------------------------
 
 2013-01-15	Fixed soft calibration error for MIG39 in SPARTAN6 designs
