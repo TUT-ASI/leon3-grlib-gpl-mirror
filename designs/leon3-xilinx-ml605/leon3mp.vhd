@@ -191,7 +191,6 @@ architecture rtl of leon3mp is
   signal tb_rst        : std_logic;
   signal tb_clk        : std_logic;
   signal phy_init_done : std_logic;
-  signal sys_rst        : std_logic;
   signal lerrorn        : std_logic;
 
   -- RS232 APB Uart
@@ -219,10 +218,6 @@ architecture rtl of leon3mp is
   -- Used for connecting input/output signals to the DDR3 controller
   signal migi		: mig_app_in_type;
   signal migo		: mig_app_out_type;
-  
-  signal counter : unsigned(31 downto 0);
-  signal led_int : std_logic;
-
 
   attribute keep                     : boolean;
   attribute syn_keep                 : boolean;
@@ -276,7 +271,7 @@ begin
     cpu : for i in 0 to CFG_NCPU-1 generate
       l3ft : if CFG_LEON3FT_EN /= 0 generate
         leon3ft0 : leon3ft		-- LEON3 processor
-        generic map (i, fabtech, memtech, CFG_NWIN, CFG_DSU, CFG_FPU, CFG_V8,
+        generic map (i, fabtech, memtech, CFG_NWIN, CFG_DSU, CFG_FPU*(1-CFG_GRFPUSH), CFG_V8,
   	  0, CFG_MAC, pclow, CFG_NOTAG, CFG_NWP, CFG_ICEN, CFG_IREPL, CFG_ISETS, CFG_ILINE,
 	  CFG_ISETSZ, CFG_ILOCK, CFG_DCEN, CFG_DREPL, CFG_DSETS, CFG_DLINE, CFG_DSETSZ,
 	  CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
@@ -290,7 +285,7 @@ begin
 
       l3s : if CFG_LEON3FT_EN = 0 generate
         u0 : leon3s 		-- LEON3 processor
-        generic map (i, fabtech, memtech, CFG_NWIN, CFG_DSU, CFG_FPU, CFG_V8,
+        generic map (i, fabtech, memtech, CFG_NWIN, CFG_DSU, CFG_FPU*(1-CFG_GRFPUSH), CFG_V8,
 	  0, CFG_MAC, pclow, CFG_NOTAG, CFG_NWP, CFG_ICEN, CFG_IREPL, CFG_ISETS, CFG_ILINE,
 	  CFG_ISETSZ, CFG_ILOCK, CFG_DCEN, CFG_DREPL, CFG_DSETS, CFG_DLINE, CFG_DSETSZ,
 	  CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
@@ -430,7 +425,7 @@ begin
     ahbsi => ahbsi, ahbso => ahbso(0), migi => migi, migo => migo);
 
     ddr3ctrl : entity work.mig_37
-     generic map (SIM_BYPASS_INIT_CAL => SIM_BYPASS_INIT_CAL,CLKOUT_DIVIDE4 => CFG_MIG_CLK4)
+     generic map (SIM_BYPASS_INIT_CAL => SIM_BYPASS_INIT_CAL,CLKOUT_DIVIDE4 => work.config.CFG_MIG_CLK4)
      port map(
       clk_ref_p         =>   clk_ref_p,
       clk_ref_n         =>   clk_ref_n,
@@ -465,33 +460,17 @@ begin
       clk_ahb           =>   clkm,
       clk100            =>   clk100,
       phy_init_done     =>   phy_init_done,
-      sys_rst           =>   rstraw
+      sys_rst           =>   reset
     );
 
     led(3) <= phy_init_done;
-    led(4) <= ahbmi.hready;
+    led(4) <= rstn;
     led(5) <= reset;
-    led(6) <= led_int;
-    sys_rst <= reset;
+    led(6) <= '0';
     lock <= phy_init_done; -- and cgo.clklock;
 --   end generate;
 --  noddr : if (CFG_DDR2SP+CFG_MIG_DDR2) = 0 generate lock <= cgo.clklock; end generate;
 
- regs : process(clkm,rstn)
-  begin
-    if (rstn = '0') then
-       counter <= (others => '0');
-       led_int <= '0';
-    elsif rising_edge(clkm) then
-       if (counter >= 75000000) then
-          counter <= (others => '0');
-          led_int <= not led_int;
-       else
-          counter <= counter + 1;
-          led_int <= led_int;
-       end if;
-    end if;
-  end process;
 ----------------------------------------------------------------------
 ---  System ACE I/F Controller ---------------------------------------
 ----------------------------------------------------------------------
@@ -615,7 +594,7 @@ begin
 
     i2cdvi : i2cmst
       generic map (pindex => 9, paddr => 9, pmask => 16#FFF#,
-                   pirq => 14, filter => I2C_FILTER)
+                   pirq => 7, filter => I2C_FILTER)
       port map (rstn, clkm, apbi, apbo(9), dvi_i2ci, dvi_i2co);
   end generate;
 
@@ -719,7 +698,8 @@ begin
 
   ahbramgen : if CFG_AHBRAMEN = 1 generate
     ahbram0 : ahbram
-      generic map (hindex => 3, haddr => CFG_AHBRADDR, tech => CFG_MEMTECH, kbytes => CFG_AHBRSZ)
+      generic map (hindex => 3, haddr => CFG_AHBRADDR, tech => CFG_MEMTECH,
+                   kbytes => CFG_AHBRSZ, pipe => CFG_AHBRPIPE)
       port map (rstn, clkm, ahbsi, ahbso(3));
   end generate;
   nram : if CFG_AHBRAMEN = 0 generate ahbso(3) <= ahbs_none; end generate;
@@ -748,12 +728,10 @@ begin
 -----------------------------------------------------------------------
 
 -- pragma translate_off
-  x : report_version
+  x : report_design
     generic map (
       msg1 => "LEON3 Demonstration design for Xilinx Virtex6 ML605 board",
-      msg2 => "GRLIB Version " & tost(LIBVHDL_VERSION/1000) & "." & tost((LIBVHDL_VERSION mod 1000)/100)
-        & "." & tost(LIBVHDL_VERSION mod 100) & ", build " & tost(LIBVHDL_BUILD),
-      msg3 => "Target technology: " & tech_table(fabtech) & ",  memory library: " & tech_table(memtech),
+      fabtech => tech_table(fabtech), memtech => tech_table(memtech),
       mdel => 1
       );
 -- pragma translate_on

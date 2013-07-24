@@ -62,7 +62,9 @@ package libjtagcom is
     tapo : in tap_out_type;
     tapi : out tap_in_type;
     dmao : in  ahb_dma_out_type;    
-    dmai : out ahb_dma_in_type
+    dmai : out ahb_dma_in_type;
+    tck  : in std_ulogic;
+    trst : in std_ulogic
     );
   end component;
 

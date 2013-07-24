@@ -142,6 +142,8 @@ begin
 
   spw_rxd(0) <= spw_txd(0);
   spw_rxs(0) <= spw_txs(0);
+  spw_rxd(1) <= spw_txd(1);
+  spw_rxs(1) <= spw_txs(1);
   clk <= not clk after ct * 1 ns;
   rst <= dsurst;
   dsuen <= '1'; dsubre <= '0'; rxd1 <= '1';

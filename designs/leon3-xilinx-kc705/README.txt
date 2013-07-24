@@ -2,6 +2,16 @@ This leon3 design is tailored to the Xilinx kintex-7 KC705 board
 
 http://www.xilinx.com/kc705
 
+Note: This design requires that the GRLIB_SIMULATOR variable is
+correctly set. Please refer to the documentation in doc/grlib.pdf for
+additional information.
+
+Note: The Vivado flow and parts of this design are still
+experimental. Currently the design configuration should be left as-is.
+
+Note: You must have both Vivado and Xilinx ISE in your path for the
+make targets to work.
+
 Simulation and synthesis
 ------------------------
 
@@ -12,7 +22,8 @@ coregen before simulation and synthesis can be done.
 
 To generate the MIG and install the Xilinx unisim simulation
 library, do as follows:
-
+  
+  make map_xilinx_vhdl_lib
   make vsim
   make mig_series7
 
@@ -35,9 +46,9 @@ and then
 
   make vivado-prog-fpga
   
-  or use xilinx programming tool
+  or use xilinx iMPACT programming tool
   
-  impact -b vivado/leon3-xilinx-kc705/leon3-xilinx-kc705.runs/impl_1/leon3mp.bit
+  make ise-prog-fpga
 
 to program the FPGA.
 

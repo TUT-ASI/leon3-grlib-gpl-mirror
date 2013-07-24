@@ -248,22 +248,22 @@ begin
    end generate;
 
 -- pragma translate_off
-   nonet : if is_unisim(tech) = 0 generate
+   --nonet : if is_unisim(tech) = 0 generate
          err : process
          begin
             assert False report "ERROR : No ssrctrl netlist available for this technology!"
             severity Failure;
             wait;
          end process;
-      end generate;
-   nobus16 : if bus16 = 0 generate
-         err : process
-         begin
-            assert False report "ERROR : 16-bit PROM bus option not selected for ssrctrl netlist!"
-            severity Failure;
-            wait;
-         end process;
-      end generate;
+   --   end generate;
+   --nobus16 : if bus16 = 0 generate
+   --      err : process
+   --      begin
+   --         assert False report "ERROR : 16-bit PROM bus option not selected for ssrctrl netlist!"
+   --         severity Failure;
+   --         wait;
+   --      end process;
+   --   end generate;
 -- pragma translate_on
 
 end architecture;

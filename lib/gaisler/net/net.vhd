@@ -66,6 +66,24 @@ package net is
 
   constant eth_out_none : eth_out_type :=
     ('0', (others => '0'), '0', '0', '0', '0', '1', '0', '0');
+
+  type eth_sgmii_in_type is record
+    clkp           : std_ulogic;
+    clkn           : std_ulogic;
+    rxp            : std_ulogic;
+    rxn            : std_ulogic;
+    mdio_i         : std_ulogic;
+    mdint          : std_ulogic;
+  end record;
+
+  type eth_sgmii_out_type is record
+    reset          : std_ulogic;
+    txp            : std_ulogic;
+    txn            : std_ulogic;
+    mdc            : std_ulogic;
+    mdio_o         : std_ulogic;
+    mdio_oe        : std_ulogic;
+  end record;
   
   component eth_arb
     generic(

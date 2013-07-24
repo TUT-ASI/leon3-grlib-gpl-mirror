@@ -120,6 +120,7 @@ package config is
   constant CFG_AHBRAMEN : integer := 0;
   constant CFG_AHBRSZ : integer := 1;
   constant CFG_AHBRADDR : integer := 16#A00#;
+  constant CFG_AHBRPIPE : integer := 0;
 -- Gaisler Ethernet core
   constant CFG_GRETH : integer := 1;
   constant CFG_GRETH1G : integer := 0;
@@ -128,7 +129,7 @@ package config is
   constant CFG_CAN : integer := 0;
   constant CFG_CAN_NUM : integer := 1;
   constant CFG_CANIO : integer := 16#0#;
-  constant CFG_CANIRQ : integer := 0;
+  constant CFG_CANIRQ : integer := 4;
   constant CFG_CANSEPIRQ: integer := 0;
   constant CFG_CAN_SYNCRST : integer := 0;
   constant CFG_CANFT : integer := 0;
@@ -145,7 +146,6 @@ package config is
   constant CFG_SPICTRL_MAXWLEN : integer := (0);
   constant CFG_SPICTRL_SYNCRAM : integer := 1;
   constant CFG_SPICTRL_FT : integer := 0;
-
 -- SPI to AHB bridge
   constant CFG_SPI2AHB : integer := 0;
   constant CFG_SPI2AHB_APB : integer := 0;

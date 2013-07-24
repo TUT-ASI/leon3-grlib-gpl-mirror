@@ -22,9 +22,10 @@ library, do as follows:
   make mig39
   make install-secureip
 
-This will ONLY work with correct version of ISE installed, and the XILINX variable
-properly set in the shell. For ISE13 it is recommened to use the 'ise' make target
-and for ISE14 to use the 'planAhead' target. To synthesize the design, do
+This will ONLY work with correct version of ISE installed, and the
+XILINX variable properly set in the shell. For ISE13 it is recommened
+to use the 'ise' make target and for ISE14 to use the 'planAhead'
+target. To synthesize the design, do
 
   make ise (ISE13)
 
@@ -53,8 +54,11 @@ Design specifics
   the DDR2 controller runs at 250 MHz (DDR2-500).
 
 * The GRETH core is enabled and runs without problems at 100 Mbit.
-  Ethernet debug link is enabled and has IP 192.168.0.51.
+  Ethernet debug link is enabled and has IP 192.168.0.59.
   1 Gbit operation is also possible (requires grlib com release).
+  If GRETH_GBIT is to be included, do it via xconfig and not by
+  editing config.vhd directly, otherwise the appropriate constraints
+  will not be included.
 
 * 8-bit flash prom can be read at address 0. It can be programmed
   with GRMON version 1.1.16 or later.
@@ -89,16 +93,11 @@ Design specifics
   D2:     Cpu halted due to error
   D4:D3   Ethernet speed. 00=10M, 01=100M, 10=1G
 
-* If the GRUSBHC USB host controller is included then close attention must
-  be paid to the timing reports. The ULPI interface timing requirements
-  may be very difficult to meet with this FPGA device.
-
-* This template design previously contained the USB device controller.
+* This template design previously contained USB controllers.
   Due to the timing of the FPGA, the USB transceiver having an IO
   voltage of 1.8V and the design of the USB device core it is
-  unlikely that the required timing for the USB device interface can
-  be reached.
-  The kit is not suitable for use with the USBDC or USBDCL IP cores.
+  unlikely that the required timing for the USB interface can be
+  reached. The kit is not suitable for use with the USB IP cores.
 
 * Example output from GRMON is:
 

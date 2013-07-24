@@ -82,16 +82,22 @@ VHDLSIMFILES=testbench.vhd
 SIMTOP=testbench
 SDCFILE=default.sdc
 BITGEN=$(GRLIB)/boards/$(BOARD)/default.ut
-CLEAN=soft-clean
+CLEAN=soft-clean migclean
 TECHLIBS = secureip unisim
-VLOGOPT= +define+x1Gb +define+sg187E +define+x16
-VSIMOPT= -gdisas=1 -gDEBUG=0 -i -do preload_ddr3_dimm.do -t ps -novopt +notimingchecks -L secureip_ver -L xilinxcorelib_ver -L unisims_ver glbl $(SIMTOP)
+VLOGOPT= +define+x1Gb +define+sg187E +define+x16 -O0
+VCOMOPT= -explicit -O0 
+ifeq ("$(GRLIB_SIMULATOR)","ALDEC")
+VSIMOPT= +access +w -gdisas=1 -gDEBUG=0 -do riviera_preload_ddr3_dimm.do -t ps -novopt +notimingchecks -L secureip_ver -L xilinxcorelib_ver -L unisims_ver glbl $(SIMTOP)
+else
+VSIMOPT= -gdisas=1 -gDEBUG=0 -do preload_ddr3_dimm.do -t ps -novopt +notimingchecks -L secureip_ver -L xilinxcorelib_ver -L unisims_ver glbl $(SIMTOP)
+endif
+
 EXTRA_SOFT = gen_hex_dim16
 
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp usbhc spw gsi cypress hynix \
 	spansion
-DIRSKIP = b1553 pcif leon2 leon2ft crypto satcan pci ambatest can \
+DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan pci ambatest can \
 	usb grusbhc spacewire ascs slink spi hcan \
 	leon4 leon4v0 l2cache pwm gr1553b iommu ac97
 FILESKIP = grcan.vhd ddr2.v mobile_ddr.v
@@ -103,18 +109,17 @@ include $(GRLIB)/software/leon3/Makefile
 ##################  project specific targets ##########################
 
 mig_37 mig:
-	coregen -b mig.xco -p .
-	patch -p1 < mig.diff
-
-migclean:
-	-rm -rf mig_37* tmp coregen.log
+	cp grlib_mig/mig.* .
+	coregen -b mig.xco -p mig.cgp
+	patch -p1 < grlib_mig/mig.diff
 
 mig39:
+	cp grlib_mig/mig39.* .
 	coregen -b mig39.xco -p mig39.cgp
-	patch -p1 < mig_patch.txt
-	patch -p1 < mig_iodelay_ctrl_patch.txt
-	patch -p1 < mig_infrastructure_patch.txt
-	patch -p1 < mig_ucf_patch.txt
+	patch -p1 < grlib_mig/mig_patch.txt
+	patch -p1 < grlib_mig/mig_iodelay_ctrl_patch.txt
+	patch -p1 < grlib_mig/mig_infrastructure_patch.txt
+	patch -p1 < grlib_mig/mig_ucf_patch.txt
 
-mig39clean:
-	-rm -rf mig tmp coregen.log
+migclean:
+	-rm -rf tmp coregen* mig*

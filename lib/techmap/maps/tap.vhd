@@ -42,7 +42,8 @@ entity tap is
     ver    : integer range 0 to 15 := 0;
     trsten : integer range 0 to 1 := 1;
     scantest : integer := 0;
-    oepol  : integer := 1);
+    oepol  : integer := 1;
+    tcknen: integer := 0);
   port (
     trst        : in std_ulogic;
     tck         : in std_ulogic;
@@ -64,13 +65,14 @@ entity tap is
     testen      : in std_ulogic := '0';
     testrst     : in std_ulogic := '1';
     testoen     : in std_ulogic := '0';
-    tdoen       : out std_ulogic
+    tdoen       : out std_ulogic;
+    tckn        : in std_ulogic := '0'
     );
 end;
 
 
 architecture rtl of tap is
-signal tckn, ltck, ltckn, lltckn : std_ulogic;
+signal ltck, ltckn, lltckn, llltckn : std_ulogic;
 begin
   
    xcv : if tech = virtex generate
@@ -115,6 +117,11 @@ begin
      tapo_inst <= (others => '0'); tdoen <= '0'; tdo <= '0';
    end generate;
 
+   ac7v : if tech = artix7 generate
+     u0 : artix7_tap port map (tapi_tdo1, tapi_tdo1, tapo_tck, tapo_tdi, tapo_rst,   
+                                tapo_capt, tapo_shft, tapo_upd, tapo_xsel1, tapo_xsel2);
+     tapo_inst <= (others => '0'); tdoen <= '0'; tdo <= '0';
+   end generate;
 
    zynq7v : if tech = zynq7000 generate
      u0 : virtex7_tap port map (tapi_tdo1, tapi_tdo1, tapo_tck, tapo_tdi, tapo_rst,   
@@ -136,7 +143,7 @@ begin
    end generate;
 
   alt : if (tech = altera) or (tech = stratix1) or (tech = stratix2) or
-	(tech = stratix3) or (tech = cyclone3) generate
+	(tech = stratix3) or (tech = stratix4) or (tech = cyclone3) generate
      u0 : altera_tap port map (tapi_tdo1, tapi_tdo1, tapo_tck, tapo_tdi, tapo_inst, tapo_rst,   
                                 tapo_capt, tapo_shft, tapo_upd, tapo_xsel1, tapo_xsel2);
      tdoen <= '0'; tdo <= '0';
@@ -172,18 +179,25 @@ begin
    
    inf : if has_tap(tech) = 0 generate
    asic : if is_fpga(tech) = 0 generate
-     gscn : if scantest = 1 generate
+     gtn: if tcknen /= 0 generate
+       llltckn <= '0';
+       lltckn <= tckn;
+     end generate;
+     noscn : if tcknen=0 and scantest = 0 generate
+       llltckn <= '0';
        lltckn <= not tck;
+     end generate;
+     gscn : if tcknen=0 and scantest = 1 generate
+       llltckn <= not tck;
        usecmux: if has_clkmux(tech)/=0 generate
-         cmux0: clkmux generic map (tech) port map (lltckn, tck, testen, tckn);
+         cmux0: clkmux generic map (tech) port map (llltckn, tck, testen, lltckn);
        end generate;
        usegmux: if has_clkmux(tech)=0 generate
-         gmux2_0 : grmux2 generic map (tech) port map (lltckn, tck, testen, tckn);
+         gmux2_0 : grmux2 generic map (tech) port map (llltckn, tck, testen, lltckn);
        end generate;
      end generate;
-     noscn : if scantest = 0 generate tckn <= not tck; end generate;
      pclk : techbuf generic map (tech => tech) port map (tck, ltck);
-     nclk : techbuf generic map (tech => tech) port map (tckn, ltckn);
+     nclk : techbuf generic map (tech => tech) port map (lltckn, ltckn);
    end generate;
    fpga : if is_fpga(tech) = 1 generate
      ltck <= tck; ltckn <= not tck;

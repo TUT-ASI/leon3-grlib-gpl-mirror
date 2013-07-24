@@ -127,6 +127,7 @@ package config is
   constant CFG_AHBRAMEN : integer := 0;
   constant CFG_AHBRSZ : integer := 1;
   constant CFG_AHBRADDR : integer := 16#A00#;
+  constant CFG_AHBRPIPE : integer := 0;
 -- Gaisler Ethernet core
   constant CFG_GRETH : integer := 1;
   constant CFG_GRETH1G : integer := 0;
@@ -134,7 +135,7 @@ package config is
 -- CAN 2.0 interface
   constant CFG_CAN : integer := 1;
   constant CFG_CANIO : integer := 16#C00#;
-  constant CFG_CANIRQ : integer := (13);
+  constant CFG_CANIRQ : integer := (11);
   constant CFG_CANLOOP : integer := 0;
   constant CFG_CAN_SYNCRST : integer := 0;
   constant CFG_CANFT : integer := 0;
@@ -157,7 +158,6 @@ package config is
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE : integer := 1;
   constant CFG_IRQ3_NSEC : integer := 0;
-
 -- Modular timer
   constant CFG_GPT_ENABLE : integer := 1;
   constant CFG_GPT_NTIM : integer := (2);

@@ -48,6 +48,7 @@ constant JTAG_UT699RH      : integer range 0 to 65535 := 16#699#;
 constant JTAG_UT700RH      : integer range 0 to 65535 := 16#700#;
 constant JTAG_GR702        : integer range 0 to 65535 := 16#702#;
 constant JTAG_GR712        : integer range 0 to 65535 := 16#712#;
+constant JTAG_SPWRTRASIC   : integer range 0 to 65535 := 16#718#;
 constant JTAG_UT840        : integer range 0 to 65535 := 16#840#;
 
 component ahbjtag 
@@ -62,7 +63,8 @@ component ahbjtag
     ainst   : integer range 0 to 255 := 2;
     dinst   : integer range 0 to 255 := 3;
     scantest : integer := 0;
-    oepol  : integer := 1);
+    oepol  : integer := 1;
+    tcknen : integer := 0);
   port (
     rst     : in  std_ulogic;
     clk     : in  std_ulogic;
@@ -81,7 +83,8 @@ component ahbjtag
     tapo_upd    : out std_ulogic;
     tapi_tdo    : in std_ulogic;
     trst        : in std_ulogic := '1';
-    tdoen   : out std_ulogic
+    tdoen   : out std_ulogic;
+    tckn    : in std_ulogic := '0'
     );
 end component;      
 

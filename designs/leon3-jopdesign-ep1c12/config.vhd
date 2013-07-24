@@ -138,15 +138,15 @@ package config is
   constant CFG_AHBRAMEN : integer := 0;
   constant CFG_AHBRSZ : integer := 1;
   constant CFG_AHBRADDR : integer := 16#A00#;
+  constant CFG_AHBRPIPE : integer := 0;
 -- Gaisler Ethernet core
   constant CFG_GRETH : integer := 0;
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 8;
-
 -- CAN 2.0 interface
   constant CFG_CAN : integer := 0;
   constant CFG_CANIO : integer := 16#0#;
-  constant CFG_CANIRQ : integer := 0;
+  constant CFG_CANIRQ : integer := 1;
   constant CFG_CANLOOP : integer := 0;
   constant CFG_CAN_SYNCRST : integer := 0;
   constant CFG_CANFT : integer := 0;

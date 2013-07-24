@@ -112,13 +112,6 @@ signal spw_txdn : std_logic_vector(0 to CFG_SPW_NUM-1);
 signal spw_txsp : std_logic_vector(0 to CFG_SPW_NUM-1);
 signal spw_txsn : std_logic_vector(0 to CFG_SPW_NUM-1);
 
-signal usb_clkout    : std_ulogic := '0';
-signal usb_d         : std_logic_vector(7 downto 0);
-signal usb_nxt     : std_logic;
-signal usb_stp     : std_logic;
-signal usb_dir     : std_logic;
-signal usb_resetn  : std_ulogic;
-
 signal tft_lcd_data    : std_logic_vector(11 downto 0);
 signal tft_lcd_clk_p   : std_ulogic;
 signal tft_lcd_clk_n   : std_ulogic;
@@ -179,9 +172,6 @@ begin
   ps2clk <= "HH"; ps2data <= "HH";
   pio(4) <= pio(5); pio(1) <= pio(2); pio <= (others => 'H');
   wdogn <= 'H';
-  nousbtr: if (CFG_GRUSBHC = 0) generate
-    usb_clkout  <= not usb_clkout after 8.33 ns;     -- ~60MHz
-  end generate nousbtr;
   switch(7) <= '1';
   switch(8) <= '0';
   emdio <= 'H';
@@ -205,8 +195,6 @@ begin
 	tft_lcd_vsync, tft_lcd_de, tft_lcd_reset_b,
 	spw_clk, spw_rxdp, spw_rxdn,
         spw_rxsp,  spw_rxsn, spw_txdp, spw_txdn, spw_txsp, spw_txsn, 
-	usb_clkout,
-        usb_d, usb_nxt, usb_stp, usb_dir, usb_resetn,
 	spi_sel_n, spi_clk, spi_mosi
       );
 
@@ -243,11 +231,6 @@ begin
       port map(rst, emdio, open, open, erxd, erx_dv,
         erx_er, erx_col, erx_crs, etxd, etx_en, etx_er, emdc, etx_clk);
   end generate;
-
-  usbtr: if (CFG_GRUSBHC = 1) generate
-    u0: ulpi
-      port map (usb_clkout, usb_d, usb_nxt, usb_stp, usb_dir, usb_resetn);
-  end generate usbtr;
 
   data <= buskeep(data) after 5 ns;
 
@@ -352,5 +335,16 @@ begin
 
     wait;
   end process;
+
+  iuerr : process
+  begin
+    wait until dsurst = '1';
+    wait for 5000 ns;
+    if to_x01(errorn) = '1' then wait on errorn; end if;
+    assert (to_x01(errorn) = '1') 
+      report "*** IU in error mode, simulation halted ***"
+      severity failure ;
+  end process;
+
 end ;
 

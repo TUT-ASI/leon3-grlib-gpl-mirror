@@ -41,7 +41,7 @@ Design specifics
 
 * System reset is mapped to the CPU RESET button
 
-* The AHB and processor is clocked by a 60 MHz clock, generated
+* The AHB and processor is clocked by a 55 MHz clock, generated
   from the 33 MHz SYSACE clock using a DCM. You can change the frequency
   generation in the clocks menu of xconfig. The DDR3 (MIG) controller
   runs at 667 MHz.

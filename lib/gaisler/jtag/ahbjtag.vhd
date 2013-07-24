@@ -48,7 +48,8 @@ entity ahbjtag is
     ainst   : integer range 0 to 255 := 2;
     dinst   : integer range 0 to 255 := 3;
     scantest : integer := 0;
-    oepol  : integer := 1);
+    oepol  : integer := 1;
+    tcknen : integer := 0);
   port (
     rst         : in  std_ulogic;
     clk         : in  std_ulogic;
@@ -67,7 +68,8 @@ entity ahbjtag is
     tapo_upd    : out std_ulogic;    
     tapi_tdo    : in std_ulogic;
     trst        : in std_ulogic := '1';
-    tdoen       : out std_ulogic
+    tdoen       : out std_ulogic;
+    tckn        : in std_ulogic := '0'
     );
 end;      
 
@@ -86,6 +88,7 @@ signal dmao : ahb_dma_out_type;
 signal ltapi : tap_in_type;
 signal ltapo : tap_out_type;
 signal ltck: std_ulogic;
+signal ctrst: std_ulogic;
 
 begin
 
@@ -95,21 +98,29 @@ begin
     port map (rst, clk, dmai, dmao, ahbi, ahbo);
 
   tap0 : tap generic map (tech => tech, irlen => 6, idcode => idcode, 
-	manf => manf, part => part, ver => ver, scantest => scantest, oepol => oepol)
+	manf => manf, part => part, ver => ver, scantest => scantest, oepol => oepol,
+        tcknen => tcknen)
     port map (trst, tck, tms, tdi, tdo, ltck, ltapo.tdi, ltapo.inst, ltapo.reset, ltapo.capt,
               ltapo.shift, ltapo.upd, ltapo.asel, ltapo.dsel, ltapi.en, ltapi.tdo, tapi_tdo,
-	      ahbi.testen, ahbi.testrst, ahbi.testoen, tdoen);
+	      ahbi.testen, ahbi.testrst, ahbi.testoen, tdoen, tckn);
 
-  ltapo.tck <= ltapo.inst(0) when scantest/=0 and ahbi.testen='1' else ltck;
+  ltapo.tck <= ltck;
   
   jtagcom0 : jtagcom generic map (isel => TAPSEL, nsync => nsync, ainst => ainst, dinst => dinst, reread => REREAD)
-    port map (rst, clk, ltapo, ltapi, dmao, dmai);
+    port map (rst, clk, ltapo, ltapi, dmao, dmai, ltck, ctrst);
 
   tapo_tck <= ltck; tapo_tdi <= ltapo.tdi; tapo_inst <= ltapo.inst;
   tapo_rst <= ltapo.reset; tapo_capt <= ltapo.capt; tapo_shft <= ltapo.shift; 
-  tapo_upd <= ltapo.upd;  
-
+  tapo_upd <= ltapo.upd;
   
+  -- Async reset for tck-domain FFs in jtagcom. This reset is not needed
+  -- functionally but gives a clean reset state in simulation.
+  -- In FPGA configs use AMBA reset as real TRST may not be available.
+  -- For ASIC:s we want to use the real TRST to simplify constraining.
+  ctrst <= ahbi.testrst when scantest/=0 and ahbi.testen='1' else
+           rst when is_fpga(tech)/=0 else
+           trst;
+
 -- pragma translate_off
     bootmsg : report_version 
     generic map ("ahbjtag AHB Debug JTAG rev " & tost(REVISION));

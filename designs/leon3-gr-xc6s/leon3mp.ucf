@@ -199,12 +199,12 @@ NET "erxd(1)" LOC = "k17" | IOSTANDARD =LVCMOS33 | IOBDELAY = NONE;
 NET "erxd(2)" LOC = "n16" | IOSTANDARD =LVCMOS33 | IOBDELAY = NONE;
 NET "erxd(3)" LOC = "m17" | IOSTANDARD =LVCMOS33 | IOBDELAY = NONE;
 
-NET "etx_en"  LOC = "m18" | IOSTANDARD =LVTTL | FAST; 
-NET "etx_clk" LOC = "m19" | IOSTANDARD =LVTTL | SLOW;
-NET "etxd(0)" LOC = "p17" | IOSTANDARD =LVTTL | FAST;
-NET "etxd(1)" LOC = "m16" | IOSTANDARD =LVTTL | FAST;
-NET "etxd(2)" LOC = "n19" | IOSTANDARD =LVTTL | FAST;
-NET "etxd(3)" LOC = "n20" | IOSTANDARD =LVTTL | FAST;
+NET "etx_en"  LOC = "m18" | IOSTANDARD =LVTTL | FAST | DRIVE = 12; 
+NET "etx_clk" LOC = "m19" | IOSTANDARD =LVTTL | SLOW | DRIVE = 4;
+NET "etxd(0)" LOC = "p17" | IOSTANDARD =LVTTL | FAST | DRIVE = 12;
+NET "etxd(1)" LOC = "m16" | IOSTANDARD =LVTTL | FAST | DRIVE = 12;
+NET "etxd(2)" LOC = "n19" | IOSTANDARD =LVTTL | FAST | DRIVE = 12;
+NET "etxd(3)" LOC = "n20" | IOSTANDARD =LVTTL | FAST | DRIVE = 12;
 
 
 # I2C interface conecting to Monitor via DVI-I connector J4

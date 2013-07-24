@@ -215,7 +215,6 @@ signal memo  : memory_out_type;
 signal wpo   : wprot_out_type;
 signal sdi   : sdctrl_in_type;
 signal sdo   : sdctrl_out_type;
-signal sdo2, sdo3 : sdctrl_out_type;
 
 signal apbi  : apb_slv_in_type;
 signal apbo  : apb_slv_out_vector := (others => apb_none);
@@ -395,7 +394,7 @@ begin
     cpu : for i in 0 to NCPU-1 generate
       u0 : leon3s			-- LEON3 processor      
       generic map (i, fabtech, memtech, CFG_NWIN, CFG_DSU, CFG_FPU, CFG_V8, 
-	0, CFG_MAC, pclow, 0, CFG_NWP, CFG_ICEN, CFG_IREPL, CFG_ISETS, CFG_ILINE, 
+	0, CFG_MAC, pclow, CFG_NOTAG, CFG_NWP, CFG_ICEN, CFG_IREPL, CFG_ISETS, CFG_ILINE, 
 	CFG_ISETSZ, CFG_ILOCK, CFG_DCEN, CFG_DREPL, CFG_DSETS, CFG_DLINE, CFG_DSETSZ,
 	CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
         CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP, 
@@ -716,7 +715,7 @@ begin
   end generate;
 
   ahbs : if CFG_AHBSTAT = 1 generate	-- AHB status register
-    ahbstat0 : ahbstat generic map (pindex => 15, paddr => 15, pirq => 3,
+    ahbstat0 : ahbstat generic map (pindex => 15, paddr => 15, pirq => 1,
 	nftslv => CFG_AHBSTATN)
       port map (rstn, clkm, ahbmi, ahbsi, stati, apbi, apbo(15));
   end generate;
@@ -810,7 +809,7 @@ begin
 
   ocram : if CFG_AHBRAMEN = 1 generate 
     ahbram0 : ahbram generic map (hindex => 7, haddr => CFG_AHBRADDR, 
-	tech => CFG_MEMTECH, kbytes => CFG_AHBRSZ)
+	tech => CFG_MEMTECH, kbytes => CFG_AHBRSZ, pipe => CFG_AHBRPIPE)
     port map ( rstn, clkm, ahbsi, ahbso(7));
   end generate;
 
@@ -844,12 +843,10 @@ begin
 -----------------------------------------------------------------------
 
 -- pragma translate_off
-  x : report_version 
+  x : report_design
   generic map (
    msg1 => system_table(CFG_BOARD_SELECTION),
-   msg2 => "GRLIB Version " & tost(LIBVHDL_VERSION/1000) & "." & tost((LIBVHDL_VERSION mod 1000)/100)
-      & "." & tost(LIBVHDL_VERSION mod 100) & ", build " & tost(LIBVHDL_BUILD),
-   msg3 => "Target technology: " & tech_table(fabtech) & ",  memory library: " & tech_table(memtech),
+   fabtech => tech_table(fabtech), memtech => tech_table(memtech),
    mdel => 1
   );
 -- pragma translate_on

@@ -174,7 +174,7 @@ use unisim.FDDRRSE;
 --pragma translate_on
 
 entity unisim_oddr_reg is
-  generic ( tech : integer := virtex4); 
+  generic (tech : integer := virtex4; arch : integer := 0); 
   port
     ( Q : out std_ulogic;
       C1 : in std_ulogic;
@@ -254,14 +254,19 @@ begin
 
   V4 : if (tech = virtex4) or (tech = virtex5) or (tech = virtex6) generate
 
-    d2reg : process (C1, D2, R)
-       begin
-         if R='1' then --asynchronous reset, active high
-           preD2 <= '0';
-         elsif C1'event and C1='1' then --Clock event - posedge
-           preD2 <= D2;
-         end if;
-       end process;
+    d2r : if arch = 0 generate
+      d2reg : process (C1, D2, R)
+      begin
+        if R='1' then --asynchronous reset, active high
+          preD2 <= '0';
+        elsif C1'event and C1='1' then --Clock event - posedge
+          preD2 <= D2;
+        end if;
+      end process;
+    end generate;
+    nod2r : if arch /= 0 generate
+      preD2 <= D2;
+    end generate;
   
      U0 : ODDR generic map( DDR_CLK_EDGE => "OPPOSITE_EDGE" -- ,INIT => '0'
          , SRTYPE => "ASYNC")
@@ -277,6 +282,7 @@ begin
 
   V2 : if tech = virtex2 or tech = spartan3 generate
 
+    d2r : if arch = 0 generate
       d2reg : process (C1, D2, R)
       begin
         if R='1' then --asynchronous reset, active high
@@ -285,6 +291,10 @@ begin
           preD2 <= D2;
         end if;
       end process;
+    end generate;
+    nod2r : if arch /= 0 generate
+      preD2 <= D2;
+    end generate;
 
       c_dm : component FDDRRSE
 --        generic map( INIT => '0')
@@ -302,6 +312,7 @@ begin
 
   s6 : if tech = spartan6 generate
 
+    d2r : if arch = 0 generate
       d2reg : process (C1, D2, R)
       begin
         if R='1' then --asynchronous reset, active high
@@ -310,6 +321,10 @@ begin
           preD2 <= D2;
         end if;
       end process;
+    end generate;
+    nod2r : if arch /= 0 generate
+      preD2 <= D2;
+    end generate;
           
        c_dm : component ODDR2  
           port map ( 

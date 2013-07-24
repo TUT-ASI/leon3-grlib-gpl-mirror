@@ -1,7 +1,30 @@
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--
+--  This program is free software; you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation; either version 2 of the License, or
+--  (at your option) any later version.
+--
+--  This program is distributed in the hope that it will be useful,
+--  but WITHOUT ANY WARRANTY; without even the implied warranty of
+--  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+-----------------------------------------------------------------------------
+-- Entity: 	rgmii
+-- File:	rgmii.vhd
+-- Author:	Fredrik Ringhage - Aeroflex Gaisler
+-- Description: GMII to RGMII interface 
+------------------------------------------------------------------------------
 library ieee;
 use ieee.std_logic_1164.all;
 library gaisler;
-use gaisler.misc.all;
 use gaisler.net.all;
 library grlib;
 use grlib.stdlib.all;
@@ -77,7 +100,9 @@ begin  -- rtl
     clk25ni when gmiio.speed = '1' else clk2_5ni;
   
   -- Generate transmit clocks.
-  b1 : techbuf generic map (2, tech) port map (tx_clki, tx_clk);
+--  b1 : techbuf generic map (2, tech) port map (tx_clki, tx_clk);
+  tx_clk <= tx_clki;
+  
   ntx_clk <= not tx_clk;
   
   gmiii.gtx_clk <= tx_clk;  
@@ -90,14 +115,14 @@ begin  -- rtl
   rgmiio.mdc <= gmiio.mdc;
 
   rgmii_txd : for i in 0 to 3 generate
-      ddr_oreg0 : ddr_oreg generic map (tech)
+      ddr_oreg0 : ddr_oreg generic map (tech, arch => 1)
         port map (q => rgmiio.txd(i), c1 => tx_clk, c2 => ntx_clk, ce => vcc,
                   d1 => txd(i), d2 => txd1(i+4), r => gnd, s => gnd);
   end generate;
-  rgmii_tx_ctl : ddr_oreg generic map (tech)
+  rgmii_tx_ctl : ddr_oreg generic map (tech, arch => 1)
         port map (q => rgmiio.tx_en, c1 => tx_clk, c2 => ntx_clk, ce => vcc,
                   d1 => tx_en, d2 => tx_ctl, r => gnd, s => gnd);
-  rgmii_tx_clk : ddr_oreg generic map (tech) 
+  rgmii_tx_clk : ddr_oreg generic map (tech, arch => 1) 
         port map (q =>tx_clk_ddr, c1 => tx_clk, c2 => ntx_clk, ce => vcc,
                   d1 => txp, d2 => txn, r => gnd, s => gnd);
   

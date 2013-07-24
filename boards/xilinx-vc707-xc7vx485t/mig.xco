@@ -1,7 +1,7 @@
 ##############################################################
 #
-# Xilinx Core Generator version 14.2
-# Date: Mon Nov 12 08:14:48 2012
+# Xilinx Core Generator version 14.5
+# Date: Mon Jun 10 12:21:06 2013
 #
 ##############################################################
 #
@@ -12,7 +12,7 @@
 #
 ##############################################################
 #
-#  Generated from component: xilinx.com:ip:mig_7series:1.6
+#  Generated from component: xilinx.com:ip:mig_7series:1.9
 #
 ##############################################################
 #
@@ -36,14 +36,14 @@ SET verilogsim = true
 SET vhdlsim = false
 # END Project Options
 # BEGIN Select
-SELECT MIG_7_Series family Xilinx,_Inc. 1.6
+SELECT MIG_7_Series family Xilinx,_Inc. 1.9
 # END Select
 # BEGIN Parameters
 CSET component_name=mig
 CSET xml_input_file=./mig/mig.prj
 # END Parameters
 # BEGIN Extra information
-MISC pkg_timestamp=2012-07-21T06:31:03Z
+MISC pkg_timestamp=2013-03-27T03:45:13Z
 # END Extra information
 GENERATE
-# CRC: 4975eece
+# CRC: 71ee61b8
