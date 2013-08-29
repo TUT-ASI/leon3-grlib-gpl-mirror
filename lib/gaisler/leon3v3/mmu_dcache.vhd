@@ -518,7 +518,7 @@ begin
     if (r.mmctrl1.e = '0') then hcache := ahb_slv_dec_cache(dci.maddress, ahbso, cached);
     else hcache := '1'; end if;
     forcemiss := (not dci.asi(3)) or dci.lock;
-    if (M_EN and (dci.asi(4 downto 0) = ASI_MMU_BP)) or (r.cctrl.dcs = "00") or
+    if (M_EN and (dci.asi(4 downto 0) = ASI_MMU_BP)) or (r.cctrl.dcs(0) = '0') or
       ((r.flush or r.flush2) = '1')
     then hcache := '0'; end if;
 
@@ -540,7 +540,7 @@ begin
     end if;
 
     -- force cache miss if mmu-enabled but off or BYPASS, or on flush
-    if ((M_EN) and (dci.asi(4 downto 0) = ASI_MMU_BP)) or (r.cctrl.dcs = "00") or ((r.flush or r.flush2) = '1')
+    if ((M_EN) and (dci.asi(4 downto 0) = ASI_MMU_BP)) or (r.cctrl.dcs(0) = '0') or ((r.flush or r.flush2) = '1')
     then hit := '0'; end if;
     
     if DSETS > 1 then 
@@ -960,11 +960,11 @@ begin
               mds := '0';
             end if;
           end if;
-          dwrite := r.cache; rdatasel := memory;
+          dwrite := r.cache and r.cctrl.dcs(1); rdatasel := memory;
           mexc := mcdo.mexc;
           v.bmexc := r.bmexc or mcdo.mexc or dci.flushl;
           if r.req = '0' then
-            twrite := r.cache; tagclear := v.bmexc;
+            twrite := r.cache and r.cctrl.dcs(1); tagclear := v.bmexc;
             if (((dci.enaddr and not mds) = '1') or (dci.flushl = '1') or ((dci.enaddr and twrite) = '1')) 
                 and ((r.cctrl.dcs(0) = '1') or (dlram = 1))
             then v.dstate := loadpend; v.holdn := '0';
@@ -1222,7 +1222,7 @@ begin
         rdatav(0) := ico.cfg;
       when others =>
         rdatav(0) := cache_cfg(drepl, dsets, dlinesize, dsetsize, dsetlock, 
-                dsnoop, dlram, log2(dlramsize), dlramstart, mmuen);
+                dsnoop, dlram, dlramsize, dlramstart, mmuen);
       end case;
     end case;
 

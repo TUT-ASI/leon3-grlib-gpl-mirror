@@ -2,7 +2,7 @@
 TECHNOLOGY=Virtex7
 PART=XC7VX485T
 PACKAGE=ffg1761
-PROTOBOARD=vc707
+PROTOBOARD=xilinx.com:virtex7:vc707:a
 SPEED=2
 PROMGENPAR=-x xcf08p -u 0 $(TOP).bit -p mcs -w -o $(BOARD)
 

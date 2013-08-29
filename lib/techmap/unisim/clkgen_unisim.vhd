@@ -296,17 +296,21 @@ entity clkgen_virtex7 is
   generic (
     clk_mul  : integer := 1; 
     clk_div  : integer := 1;
-    freq     : integer := 200000000	-- clock frequency in KHz
+    freq     : integer := 200000	-- clock frequency in KHz
     );
   port (
     clkin   : in  std_ulogic;
-    clk     : out std_ulogic;			-- main clock
+    clk     : out std_ulogic;     -- main clock
+    clk90   : out std_ulogic;     -- main clock 90deg
+    clkio   : out std_ulogic;     -- IO ref clock
     cgi     : in clkgen_in_type;
     cgo     : out clkgen_out_type
   );
 end; 
 
-architecture struct of clkgen_virtex7 is 
+architecture struct of clkgen_virtex7 is
+
+component BUFG port (O : out std_logic; I : in std_logic); end component; 
 
 ----- component PLLE2_ADV -----
 component PLLE2_ADV
@@ -366,9 +370,13 @@ component PLLE2_ADV
 end component;
 constant VERSION : integer := 1;
 constant period : real := 1000000.0/real(freq);
+constant clkio_div : integer := freq*clk_mul/200000;
 signal CLKFBOUT : std_logic;
 signal CLKFBIN : std_logic;
 signal int_rst : std_logic;
+signal clk_nobuf : std_logic;
+signal clk90_nobuf : std_logic;
+signal clkio_nobuf : std_logic;
 
 begin
 
@@ -386,8 +394,8 @@ generic map (
    CLKIN2_PERIOD      => 0.0,
    -- CLKOUT0_DIVIDE - CLKOUT5_DIVIDE: Divide amount for CLKOUT (1-128)
    CLKOUT0_DIVIDE     => clk_div,
-   CLKOUT1_DIVIDE     => 1,
-   CLKOUT2_DIVIDE     => 1,
+   CLKOUT1_DIVIDE     => clk_div,
+   CLKOUT2_DIVIDE     => clkio_div,
    CLKOUT3_DIVIDE     => 1,
    CLKOUT4_DIVIDE     => 1,
    CLKOUT5_DIVIDE     => 1,
@@ -400,7 +408,7 @@ generic map (
    CLKOUT5_DUTY_CYCLE => 0.5,
    -- CLKOUT0_PHASE - CLKOUT5_PHASE: Phase offset for CLKOUT outputs (-360.000-360.000).
    CLKOUT0_PHASE      => 0.0,
-   CLKOUT1_PHASE      => 0.0,
+   CLKOUT1_PHASE      => 90.0,
    CLKOUT2_PHASE      => 0.0,
    CLKOUT3_PHASE      => 0.0,
    CLKOUT4_PHASE      => 0.0,
@@ -414,9 +422,9 @@ generic map (
   )
 port map (
    -- Clock Outputs: 1-bit (each) output: User configurable clock outputs
-   CLKOUT0           => clk,
-   CLKOUT1           => open,
-   CLKOUT2           => OPEN,
+   CLKOUT0           => clk_nobuf,
+   CLKOUT1           => clk90_nobuf,
+   CLKOUT2           => clkio_nobuf,
    CLKOUT3           => OPEN,
    CLKOUT4           => OPEN,
    CLKOUT5           => OPEN,
@@ -445,6 +453,10 @@ port map (
   );
 
   cgo.pcilock <= '0';
+
+  bufgclk0 : BUFG port map (I => clk_nobuf, O => clk);
+  bufgclk90 : BUFG port map (I => clk90_nobuf, O => clk90);
+  bufgclkio : BUFG port map (I => clkio_nobuf, O => clkio);
 
 -- pragma translate_off
   bootmsg : report_version 

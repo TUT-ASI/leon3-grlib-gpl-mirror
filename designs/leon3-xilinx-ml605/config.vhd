@@ -149,6 +149,13 @@ package config is
 -- AMBA System ACE Interface Controller
   constant CFG_GRACECTRL : integer := 1;
 
+-- PCIEXP interface
+ constant CFG_PCIEXP : integer := 0;
+ constant CFG_PCIE_TYPE : integer := 0;
+ constant CFG_PCIE_SIM_MAS : integer := 0;
+ constant CFG_PCIEXPVID : integer := 16#0#;
+ constant CFG_PCIEXPDID : integer := 16#0#;
+  constant CFG_NO_OF_LANES : integer := 1;
 -- GRLIB debugging
   constant CFG_DUART : integer := 0;
 -- Xilinx MIG DDR2 controller

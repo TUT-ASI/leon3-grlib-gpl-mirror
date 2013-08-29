@@ -9,15 +9,16 @@ additional information.
 Simulation and synthesis for ISE-13
 -----------------------------------
 
-The design uses the Xilinx MIG memory interface with an AHB-2.0
-interface. The MIG source code cannot be distributed due to the
-prohibitive Xilinx license, so the MIG must be re-generated with 
-coregen before simulation and synthesis can be done.
+The design uses the Xilinx MIG memory interface and Xilinx PCI Express endpoint
+with an AHB-2.0 interface. The source code cannot be distributed due to the
+prohibitive Xilinx license, so they must be re-generated with coregen before
+simulation and synthesis can be done.
 
-To generate the MIG and install the Xilinx unisim simulation
-library, do as follows:
+To generate the MIG and PCI Express and to install the Xilinx unisim
+simulation library, do as follows:
 
   make mig
+  make pcie (do if PCI Express is enabled)
   make install-secureip
 
 This will ONLY work with ISE-13 installed, and the XILINX variable
@@ -34,15 +35,17 @@ to program the FPGA.
 Simulation and synthesis for ISE-14
 -----------------------------------
 
-The design uses the Xilinx MIG memory interface with an AHB-2.0
-interface. The MIG source code cannot be distributed due to the
-prohibitive Xilinx license, so the MIG must be re-generated with 
-coregen before simulation and synthesis can be done.
+The design uses the Xilinx MIG memory interface and Xilinx PCI Express endpoint
+with an AHB-2.0 interface. The source code cannot be distributed due to the
+prohibitive Xilinx license, so they must be re-generated with coregen before
+simulation and synthesis can be done.
 
-To generate the MIG and install the Xilinx unisim simulation
-library, do as follows:
+To generate the MIG and PCI Express and to install the Xilinx unisim
+simulation library, do as follows:
 
   make mig39
+  make pcie (do if PCI Express is enabled)
+  make install-secureip (do if PCI Express is enabled)
   make compile_xilinx_verilog_lib
   make vsim
   make map_xilinx_verilog_lib

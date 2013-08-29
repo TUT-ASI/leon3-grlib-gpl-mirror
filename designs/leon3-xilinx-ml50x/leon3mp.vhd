@@ -45,7 +45,7 @@ library esa;
 use esa.memoryctrl.all;
 use work.config.all;
 use work.ml50x.all;
-
+use work.pcie.all;
 -- pragma translate_off
 library unisim;
 use unisim.ODDR;
@@ -151,7 +151,15 @@ entity leon3mp is
     sysace_mpirq    : in  std_ulogic;
     sysace_mpoe     : out std_ulogic;
     sysace_mpwe     : out std_ulogic;
-    sysace_d        : inout std_logic_vector(15 downto 0)
+    sysace_d        : inout std_logic_vector(15 downto 0);
+
+    pci_exp_txp     : out std_logic_vector(CFG_NO_OF_LANES-1 downto 0);
+    pci_exp_txn     : out std_logic_vector(CFG_NO_OF_LANES-1 downto 0);
+    pci_exp_rxp     : in std_logic_vector(CFG_NO_OF_LANES-1 downto 0);
+    pci_exp_rxn     : in std_logic_vector(CFG_NO_OF_LANES-1 downto 0);
+    sys_clk_p       : in  std_logic;
+    sys_clk_n       : in  std_logic;
+    sys_reset_n     : in  std_logic
     );
 end;
 
@@ -206,7 +214,7 @@ end component;
 constant blength : integer := 12;
 constant fifodepth : integer := 8;
 constant maxahbm : integer := NCPU+CFG_AHB_UART
-	+CFG_GRETH+CFG_AHB_JTAG+CFG_SVGA_ENABLE;
+	+CFG_GRETH+CFG_AHB_JTAG+CFG_SVGA_ENABLE+CFG_PCIEXP;
 
 signal ddr_clk_fb  : std_logic;
 signal vcc, gnd   : std_logic_vector(4 downto 0);
@@ -780,6 +788,106 @@ begin
       ethi.gtx_clk <= egtx_clk;
 
     end generate;
+-----------------PCI-EXPRESS-Master-Target------------------------------------------
+    pcie_mt : if CFG_PCIE_TYPE = 1 generate	-- master/target without fifo
+EP: pcie_master_target_virtex
+  generic map (
+    fabtech          => fabtech,
+    hmstndx          => NCPU+CFG_AHB_UART+CFG_GRETH+CFG_AHB_JTAG+CFG_SVGA_ENABLE,
+    hslvndx          => 6,
+    abits            => 21,
+    device_id        => CFG_PCIEXPDID,	       -- PCIE device ID
+    vendor_id        => CFG_PCIEXPVID,	 -- PCIE vendor ID
+    pcie_bar_mask    => 16#FFE#,
+    nsync            => 2,   -- 1 or 2 sync regs between clocks
+    haddr            => 16#a00#,    
+    hmask            => 16#fff#,   
+    pindex           => 10,   
+    paddr            => 10,   
+    pmask            => 16#fff#,
+    Master           => CFG_PCIE_SIM_MAS,  
+    lane_width       => CFG_NO_OF_LANES  
+          )
+  port map( 
+    rst              => rstn,
+    clk              => clkm,
+    -- System Interface
+    sys_clk_p        => sys_clk_p,
+    sys_clk_n        => sys_clk_n,
+    sys_reset_n      => sys_reset_n,
+    -- PCI Express Fabric Interface
+    pci_exp_txp      => pci_exp_txp,
+    pci_exp_txn      => pci_exp_txn,
+    pci_exp_rxp      => pci_exp_rxp,
+    pci_exp_rxn      => pci_exp_rxn,
+    
+    ahbso            => ahbso(6),        
+    ahbsi            => ahbsi,         
+    apbi             => apbi,	      
+    apbo             => apbo(10),	      
+    ahbmi            => ahbmi,
+    ahbmo            => ahbmo(NCPU+CFG_AHB_UART+CFG_GRETH+CFG_AHB_JTAG+CFG_SVGA_ENABLE)    
+  );
+    end generate;
+
+pcie_mf : if CFG_PCIE_TYPE = 3 generate	-- master with fifo and DMA
+dma:pciedma
+      generic map (fabtech => fabtech, memtech => memtech, dmstndx =>(NCPU+CFG_AHB_UART+CFG_GRETH+CFG_AHB_JTAG+CFG_SVGA_ENABLE), 
+	  dapbndx => 13, dapbaddr => 13,dapbirq => 13, blength => 12, abits => 21,
+
+	  device_id => CFG_PCIEXPDID, vendor_id => CFG_PCIEXPVID, pcie_bar_mask => 16#FFE#,
+	  slvndx => 6, apbndx => 10, apbaddr => 10, haddr => 16#A00#,hmask=> 16#FFF#,
+	  nsync => 2,lane_width => CFG_NO_OF_LANES)
+
+port map( 
+    rst          => rstn,
+    clk          => clkm,
+    -- System Interface
+    sys_clk_p    => sys_clk_p,
+    sys_clk_n    => sys_clk_n,
+    sys_reset_n  => sys_reset_n,
+    -- PCI Express Fabric Interface
+    pci_exp_txp  => pci_exp_txp,
+    pci_exp_txn  => pci_exp_txn,
+    pci_exp_rxp  => pci_exp_rxp,
+    pci_exp_rxn  => pci_exp_rxn,
+    
+    dapbo        => apbo(13),
+    dahbmo       => ahbmo(NCPU+CFG_AHB_UART+CFG_GRETH+CFG_AHB_JTAG+CFG_SVGA_ENABLE),
+    apbi         => apbi,
+    apbo         => apbo(10),
+    ahbmi        => ahbmi,
+    ahbsi        => ahbsi,
+    ahbso        => ahbso(6)
+  
+  );
+    end generate;
+----------------------------------------------------------------------
+pcie_mf_no_dma: if CFG_PCIE_TYPE = 2 generate	-- master with fifo 
+EP:pcie_master_fifo_virtex
+generic map (fabtech => fabtech, memtech => memtech, 
+   hslvndx => 6, abits => 21, device_id => CFG_PCIEXPDID, vendor_id => CFG_PCIEXPVID,
+   pcie_bar_mask => 16#FFE#, pindex => 10, paddr => 10,
+  haddr => 16#A00#, hmask => 16#FFF#, nsync => 2, lane_width => CFG_NO_OF_LANES)
+port map( 
+    rst          => rstn,
+    clk          => clkm,
+    -- System Interface
+    sys_clk_p    => sys_clk_p,
+    sys_clk_n    => sys_clk_n,
+    sys_reset_n  => sys_reset_n,
+    -- PCI Express Fabric Interface
+    pci_exp_txp  => pci_exp_txp,
+    pci_exp_txn  => pci_exp_txn,
+    pci_exp_rxp  => pci_exp_rxp,
+    pci_exp_rxn  => pci_exp_rxn,
+    
+    ahbso        => ahbso(6),        
+    ahbsi        => ahbsi,         
+    apbi         => apbi,        
+    apbo         => apbo(10)        
+  );
+end generate;
 
 -----------------------------------------------------------------------
 ---  SYSTEM MONITOR ---------------------------------------------------
@@ -832,7 +940,7 @@ begin
 ---  Drive unused bus elements  ---------------------------------------
 -----------------------------------------------------------------------
 
---  nam1 : for i in (NCPU+CFG_AHB_UART+CFG_ETH+CFG_AHB_ETH+CFG_AHB_JTAG) to NAHBMST-1 generate
+--  nam1 : for i in (NCPU+CFG_AHB_UART+CFG_ETH+CFG_AHB_ETH+CFG_AHB_JTAG+CFG_PCIEXP) to NAHBMST-1 generate
 --    ahbmo(i) <= ahbm_none;
 --  end generate;
 --  nap0 : for i in 11 to NAPBSLV-1 generate apbo(i) <= apb_none; end generate;

@@ -205,7 +205,7 @@ architecture rtl of mmu_icache is
 
   constant icfg : std_logic_vector(31 downto 0) := 
         cache_cfg(irepl, isets, ilinesize, isetsize, isetlock, 0,
-                  lram, log2(lramsize), lramstart, mmuen);
+                  lram, lramsize, lramstart, mmuen);
 
 begin
 

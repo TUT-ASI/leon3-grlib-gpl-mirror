@@ -262,8 +262,8 @@
 #define CONFIG_MIG_RANKS (1)
 #define CONFIG_MIG_COLBITS (10)
 #define CONFIG_MIG_ROWBITS (13)
-#define CONFIG_MIG_BANKBITS (3)
-#define CONFIG_MIG_HMASK F80
+#define CONFIG_MIG_BANKBITS (2)
+#define CONFIG_MIG_HMASK F00
 #define CONFIG_AHBSTAT_ENABLE 1
 #define CONFIG_AHBSTAT_NFTSLV (1)
 /*
@@ -324,6 +324,11 @@
  * System ACE Interface Controller
  */
 #define CONFIG_GRACECTRL 1
+/*
+ * PCI EXPRESS              
+ */
+#undef  CONFIG_PCIEXP_MASTER_TARGET
+#undef  CONFIG_PCIEXP_MASTER_FIFO
 /*
  * VHDL Debugging        
  */

@@ -761,6 +761,7 @@ begin
     pcio.perren   <= '1';
     pcio.serren   <= '1';
     pcio.inten    <= '1';
+    pcio.vinten   <= (others => '1');
     pcio.locken   <= '1';
   end generate;
 
@@ -768,6 +769,7 @@ begin
     pcio.perren   <= '0';
     pcio.serren   <= '0';
     pcio.inten    <= '0';
+    pcio.vinten   <= (others => '0');
     pcio.locken   <= '0';
   end generate;
 

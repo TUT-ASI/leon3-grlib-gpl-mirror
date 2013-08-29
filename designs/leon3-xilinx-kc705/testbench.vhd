@@ -69,8 +69,8 @@ constant SIMULATION          : string := "TRUE";
 
 
 constant promfile      : string := "prom.srec";  -- rom contents
-constant sramfile      : string := "sram.srec";  -- ram contents
-constant sdramfile     : string := "sdram.srec"; -- sdram contents
+constant sramfile      : string := "ram.srec";  -- ram contents
+constant sdramfile     : string := "ram.srec"; -- sdram contents
 
 signal clk             : std_logic := '0';
 signal Rst             : std_logic := '0';
@@ -229,19 +229,17 @@ component leon3mp is
     gtrefclk_p      : in    std_logic;
     gtrefclk_n      : in    std_logic;
     phy_gtxclk      : out   std_logic;
-    phy_txer        : out   std_ulogic;
-    phy_txd         : out   std_logic_vector(7 downto 0);
+    --phy_txer        : out   std_ulogic;
+    phy_txd         : out   std_logic_vector(3 downto 0);
     phy_txctl_txen  : out   std_ulogic;
-    phy_txclk       : in    std_ulogic;
-    phy_rxer        : in    std_ulogic;
-    phy_rxd         : in    std_logic_vector(7 downto 0);
+    --phy_txclk       : in    std_ulogic;
+    --phy_rxer        : in    std_ulogic;
+    phy_rxd         : in    std_logic_vector(3 downto 0);
     phy_rxctl_rxdv  : in    std_ulogic;
     phy_rxclk       : in    std_ulogic;
     phy_reset       : out   std_ulogic;
     phy_mdio        : inout std_logic;
     phy_mdc         : out   std_ulogic;
-    phy_col         : in    std_ulogic;
-    phy_crs         : in    std_ulogic;
     phy_int         : in    std_ulogic
    );
 end component;
@@ -263,13 +261,13 @@ component ddr3_model
     ras_n : in std_logic;
     cas_n : in std_logic;
     we_n : in std_logic;
-    dm_tdqs : inout std_logic_vector(DM_BITS-1 to 0);
-    ba : in std_logic_vector(BA_BITS-1 to 0);
-    addr : in std_logic_vector(ADDR_BITS-1 to 0);
-    dq : inout std_logic_vector(DQ_BITS-1 to 0);
-    dqs : inout std_logic_vector(DQS_BITS-1 to 0);
-    dqs_n : inout std_logic_vector(DQS_BITS-1 to 0);
-    tdqs_n : out std_logic_vector(DQS_BITS-1 to 0);
+    dm_tdqs : inout std_logic_vector(0 to 0);
+    ba : in std_logic_vector(2 downto 0);
+    addr : in std_logic_vector(13 downto 0);
+    dq : inout std_logic_vector(7 downto 0);
+    dqs : inout std_logic_vector(0 to 0);
+    dqs_n : inout std_logic_vector(0 to 0);
+    tdqs_n : out std_logic_vector(0 to 0);
     odt : in std_logic
   );
 end component;
@@ -343,19 +341,17 @@ begin
        gtrefclk_p      => clkethp,
        gtrefclk_n      => clkethn,
        phy_gtxclk      => phy_gtxclk,
-       phy_txer        => phy_txer,
-       phy_txd         => phy_txd,
+       --phy_txer        => phy_txer,
+       phy_txd         => phy_txd(3 downto 0),
        phy_txctl_txen  => phy_txctl_txen,
-       phy_txclk       => phy_txclk,
-       phy_rxer        => phy_rxer,
-       phy_rxd         => phy_rxd,
+       --phy_txclk       => phy_txclk,
+       --phy_rxer        => phy_rxer,
+       phy_rxd         => phy_rxd(3 downto 0),
        phy_rxctl_rxdv  => phy_rxctl_rxdv,
-       phy_rxclk       => phy_rxclk,
+       phy_rxclk       => phy_rxclk'delayed(1 ns),
        phy_reset       => phy_reset,
        phy_mdio        => phy_mdio,
        phy_mdc         => phy_mdc,
-       phy_col         => phy_col,
-       phy_crs         => phy_crs,
        phy_int         => phy_int
       );
 

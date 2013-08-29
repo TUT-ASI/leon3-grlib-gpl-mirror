@@ -104,11 +104,11 @@ component ddr2spax_ahb is
       start_tog : out std_logic;
       response  : in ddr_response_type;
       wbwaddr   : out std_logic_vector(log2(burstlen) downto 0);
-      wbwdata   : out std_logic_vector(ahbdw-1 downto 0);
+      wbwdata   : out std_logic_vector(ahbbits-1 downto 0);
       wbwrite   : out std_logic;
       wbwritebig: out std_logic;
-      rbraddr   : out std_logic_vector(log2(burstlen*32/ahbdw)-1 downto 0);
-      rbrdata   : in std_logic_vector(ahbdw-1 downto 0);
+      rbraddr   : out std_logic_vector(log2(burstlen*32/ahbbits)-1 downto 0);
+      rbrdata   : in std_logic_vector(ahbbits-1 downto 0);
       hwidth    : in std_logic;
       beid      : in std_logic_vector(3 downto 0)
    );  

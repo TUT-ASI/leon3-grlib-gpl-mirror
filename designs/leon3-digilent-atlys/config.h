@@ -206,7 +206,6 @@
 /*
  * Fault-tolerance  
  */
-#undef  CONFIG_LEON3FT_EN
 /*
  * VHDL debug settings       
  */

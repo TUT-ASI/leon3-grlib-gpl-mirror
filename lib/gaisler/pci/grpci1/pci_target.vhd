@@ -445,6 +445,7 @@ begin
     pcio.cbeen   <= (others => '1');
     pcio.serren  <= '1';
     pcio.inten   <= '1';
+    pcio.vinten  <= (others => '1');
     pcio.reqen   <= not pcii.rst;
     pcio.frameen <= '1';
     pcio.irdyen  <= '1';
@@ -456,6 +457,7 @@ begin
     pcio.cbeen   <= (others => '0');
     pcio.serren  <= '0';
     pcio.inten   <= '0';
+    pcio.vinten  <= (others => '0');
     pcio.reqen   <= pcii.rst;
     pcio.frameen <= '0';
     pcio.irdyen  <= '0';

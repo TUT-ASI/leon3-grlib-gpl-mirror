@@ -101,7 +101,8 @@ package sim is
       base1000_x_hd : integer range 0 to 1  := 0;
       base1000_t_fd : integer range 0 to 1  := 1;
       base1000_t_hd : integer range 0 to 1  := 1;
-      rmii          : integer range 0 to 1  := 0
+      rmii          : integer range 0 to 1  := 0;
+      rgmii         : integer range 0 to 1  := 0
       );
     port(
       rstn     : in std_logic;

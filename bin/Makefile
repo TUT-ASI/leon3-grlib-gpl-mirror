@@ -1,8 +1,7 @@
-VER=$(VNAME)1.3.0
-BID=4133
+VER=$(VNAME)1.3.1
+BID=4135
 CC=gcc
 SED=sed
-DISTLIB=~/vhdl
 
 ASICLIBS = ihp25 sgb25vrh ut025crh virage rh_lib18t rh_lib18t_io2 rh_lib13t\
 	atc18 artisan umc18 virage90 tsmc90 dare nextreme atc18rha_cell smic13 \
@@ -335,6 +334,15 @@ vsim-unisim: modelsim
 vsim-simprim: modelsim
 	vcom -quiet -explicit -work simprim -ignorevitalerrors $(SIMPRIMSRC)
 
+# Ugly hardcode of testbench.vhd..
+vsim-netgen-syn:
+	vcom -quiet -explicit -work work netgen/translate/$(TOP)_translate.vhd
+	vcom -quiet -explicit -work work testbench.vhd
+
+vsim-netgen-par:
+	vcom -quiet -explicit -work work netgen/par/$(TOP)_timesim.vhd
+	vcom -quiet -explicit -work work testbench.vhd
+
 vsim-clean:
 	-rm -rf modelsim transcript *.mti stdout.log vsim.wlf \
 	$(SIMTOP).mpf.bak $(SIMTOP).mti *.mpf
@@ -473,6 +481,10 @@ ifeq ("$(ISE11TECH)","")
 ISE11TECH=$(ISETECH)
 endif
 
+# Xilinx FT-FPGA addon package targets, note: may modify COMPXLIBTECH
+ifneq ("$(GRLIB)","")
+-include $(GRLIB)/bin/xtmr/Makefile
+endif
 
 ## Xilinx ISE project properties that can be overrideen
 # Pack I/O Registers/Latches into IOBs
@@ -572,6 +584,17 @@ $(TOP).ngc: $(TOP).xst $(VHDLSYNFILES) $(VERILOGSYNFILES) compile.xst
 	@-mkdir xst xst/projnav.tmp
 	xst -ifn $(TOP).xst
 
+$(TOP).ngd:
+	@if test -r "$(TOP).ngc"; then \
+	  ngdbuild $(TOP).ngc -aul $(NUCF) -p $(DEVICE) -sd $(GRLIB)/netlists/xilinx/$(NETLISTTECH) ; \
+	fi; \
+	if test -r "synplify/$(TOP).edf"; then \
+	  ngdbuild  synplify/$(TOP).edf -aul $(NUCF) -p $(DEVICE) -sd $(GRLIB)/netlists/xilinx/$(NETLISTTECH) ; \
+	fi; \
+	if test -r "precision/$(TOP).edf"; then \
+	  ngdbuild   precision/$(TOP).edf -aul $(NUCF) -p $(DEVICE) -sd $(GRLIB)/netlists/xilinx/$(NETLISTTECH) ; \
+	fi;
+
 $(TOP).ise: $(TOP)_ise.tcl
 	@echo "Creating $(TOP).ise using xtclsh - this can take up to 20 minutes."
 	xtclsh $(TOP)_ise.tcl
@@ -622,38 +645,37 @@ ise-prog-fpga-ref-usb: ise-cp-ref
 	cp $(TOP).msk $(BOARD).msk
 	impact -batch $(GRLIB)/boards/$(BOARD)/fpga-usb.cmd
 
+ise-netgen-syn: $(TOP).ngd
+	netgen -rpw 100 -tpw 100 -ar Structure -tm $(TOP) \
+	-w -dir netgen/translate -ofmt vhdl -sim $(TOP).ngd $(TOP)_translate.vhd
+
+ise-netgen-par:
+	netgen -s 1 -pcf $(TOP).pcf -rpw 100 -tpw 0 -ar Structure -tm $(TOP) \
+	-insert_pp_buffers true -w -dir netgen/par -ofmt vhdl -sim $(TOP).ncd $(TOP)_timesim.vhd
+
 ise-clean xst-clean:
 	-rm -rf xst *.srp xstmods *.twr *.pad _impact* coregen.log \
 	tmp.xst *.ngc __projnav* *.stx *.lso *.dhp automake.log \
-	$(TOP).prj  $(TOP)_vhdl.prj  *.bit *.bgn *.bld \
+	$(TOP)*.prj  $(TOP)*_vhdl.prj  *.bit *.bgn *.bld \
 	*.cmd_log *.ll *.mrp *.msk *.ncd *.ngd *.syr *.xpi *.csv \
 	*pad.txt *.ngm *.lst *.drc *.par *.pcf *.ngo *.mcs *.prm \
 	*.sig *.rba *.rbb *.rbd *.rbt *.msd _ngo _impact* stdout.log \
-	ngd2vhdl.log _xmsgs tmp.txt $(TOP).unroutes $(TOP)_usage.xml *.cfi \
-	$(TOP).ise* $(TOP).npl* xlnx_auto_0* *.xrpt *.ptwx $(TOP)_xdb \
-	$(TOP)_summary.html $(TOP).restore $(TOP).ntrc_log $(TOP).twx \
-	$(TOP)_map.map $(TOP).ngr $(TOP).xise $(TOP).gise \
-	device_usage_statistics.html* __*.lock $(TOP)_files.prj \
+	ngd2vhdl.log _xmsgs tmp.txt $(TOP)*.unroutes $(TOP)*_usage.xml *.cfi \
+	$(TOP)*.ise* $(TOP)*.npl* xlnx_auto_0* *.xrpt *.ptwx $(TOP)*_xdb \
+	$(TOP)*_summary.html $(TOP)*.restore $(TOP).ntrc_log $(TOP)*.twx \
+	$(TOP)*_map.map $(TOP)*.ngr $(TOP)*.xise $(TOP)*.gise \
+	device_usage_statistics.html* __*.lock $(TOP)*_files.prj \
 	*.xwbt *webtalk* par_usage_statistics.html fuse.log fuse.xmsgs \
 	fuseRelaunch.cmd iseconfig isim isim.cmd isim.log testbench_beh.prj \
-	version_isim_beh.wdb xilinxsim.ini .ngc2edfcache planAhead.*.log
-
-install-gtech:
-	@echo GTECH source path: $(SNPS_HOME)/packages/gtech/src; \
-	if test -r $(SNPS_HOME)/packages/gtech/src; then \
-	  cp $(SNPS_HOME)/packages/gtech/src/*.vhd $(GRLIB)/lib/tech/gtech/simprims; \
-        fi
-
-remove-gtech:
-	@-rm $(GRLIB)/lib/tech/gtech/simprims/*.vhd
-
+	version_isim_beh.wdb xilinxsim.ini .ngc2edfcache netgen
 
 UNISIM = $(XILINX)/vhdl/src/unisims
 UNISIMFILES = unisim_VPKG.vhd unisim_VCOMP.vhd unisim_VITAL.vhd \
 	unisim_virtex5_SMODEL.vhd secureip/MCB.vhd secureip/GTXE1.vhd \
 	secureip/GTP_DUAL.vhd secureip/GTPA1_DUAL.vhd secureip/GT11.vhd \
 	secureip/GT11CLK.vhd secureip/GT11CLK_MGT.vhd secureip/GT11_CUSTOM.vhd \
-	secureip/GT11_DUAL.vhd secureip/GTX_DUAL.vhd secureip/GTHE1_QUAD.vhd
+	secureip/GT11_DUAL.vhd secureip/GTX_DUAL.vhd secureip/GTHE1_QUAD.vhd \
+	secureip/PCIE_2_0.vhd secureip/PCIE_A1.vhd
 GRUNISIM = $(GRLIB)/lib/tech/unisim/ise
 SIMPRIM = $(XILINX)/vhdl/src/simprims
 UNIMACRO = $(XILINX)/vhdl/src/unimacro
@@ -704,6 +726,18 @@ else
 	@if (test -r $(XILINX)/secureip/mti/mcb_mti); then \
 	  echo  installing $(XILINX)/secureip ;\
 	  cp  $(XILINX)/secureip/mti/mcb_mti/*.vp  $(GRLIB)/lib/tech/secureip/ise;\
+	fi ; \
+	if (test -r $(XILINX)/secureip/mti/pcie_2_0_mti); then \
+	  cp  $(XILINX)/secureip/mti/pcie_2_0_mti/*.vp  $(GRLIB)/lib/tech/secureip/ise; \
+	fi ; \
+	if (test -r $(XILINX)/secureip/mti/gtxe1_mti); then \
+	  cp  $(XILINX)/secureip/mti/gtxe1_mti/*.vp  $(GRLIB)/lib/tech/secureip/ise; \
+	fi ; \
+	if (test -r $(XILINX)/secureip/mti/gtpa1_dual_mti); then \
+	  cp  $(XILINX)/secureip/mti/gtpa1_dual_mti/*.vp  $(GRLIB)/lib/tech/secureip/ise; \
+	fi ; \
+	if (test -r $(XILINX)/secureip/mti/pcie_a1_mti); then \
+	  cp  $(XILINX)/secureip/mti/pcie_a1_mti/*.vp  $(GRLIB)/lib/tech/secureip/ise; \
 	fi
 endif
 
@@ -714,6 +748,8 @@ remove-secureip uninstall-secureip remove-unisim uninstall-unisim:
 
 # Simulator compxlib
 ifeq ("$(GRLIB_XIL_compxlib_Simulator)","")
+# Set default to ModelSim for GRLIB_XIL_compxlib_Simulator
+GRLIB_XIL_compxlib_Simulator=mti_se
 ifeq ("$(GRLIB_SIMULATOR)","ModelSim")
 GRLIB_XIL_compxlib_Simulator=mti_se
 endif
@@ -728,11 +764,24 @@ GRLIB_XIL_compxlib_Simulator=riviera
 endif
 endif
 
-compile-simprim:
-	compxlib -s $(GRLIB_XIL_compxlib_Simulator) -l vhdl -arch $(TECHNOLOGY) -lib simprim -w -dir ./modelsim
+ifeq ("$(COMPXLIBTECH)","")
+COMPXLIBTECH=$(ISETECH)
+endif
 
 install-simprim:
 	@echo "install-simprim is not supported. compile-simprim can be used to compile simprim for ModelSim"
+
+compile-simprim:
+	compxlib -s $(GRLIB_XIL_compxlib_Simulator) -l vhdl -arch $(COMPXLIBTECH) -lib simprim -w -dir ./modelsim
+
+compile-xilinxcorelib:
+	compxlib -s $(GRLIB_XIL_compxlib_Simulator) -l vhdl -arch $(COMPXLIBTECH) -lib xilinxcorelib -w -dir ./modelsim
+
+compile-unisim:
+	compxlib -s $(GRLIB_XIL_compxlib_Simulator) -l vhdl -arch $(COMPXLIBTECH) -lib unisim -w -dir ./modelsim
+
+compile-xilinx-simlibs:
+	compxlib -s $(GRLIB_XIL_compxlib_Simulator) -l vhdl -arch $(COMPXLIBTECH) -lib unisim -lib simprim -lib xilinxcorelib -w -dir ./modelsim
 
 compile_xilinx_verilog_lib:
 ifneq ("$(GRLIB_SIMULATOR)","Xilinx")
@@ -740,7 +789,7 @@ ifneq ("$(GRLIB_SIMULATOR)","Xilinx")
 	-@vlib modelsim
 	@if [ -d ./xilinx_lib/unisims_ver ]; then \
 	echo "Xilinx library already compiled"; else \
-	compxlib -s $(GRLIB_XIL_compxlib_Simulator) -l verilog -arch $(TECHNOLOGY) -lib xilinxcorelib -dir ./xilinx_lib ; \
+	compxlib -s $(GRLIB_XIL_compxlib_Simulator) -l verilog -arch $(COMPXLIBTECH) -lib xilinxcorelib -dir ./xilinx_lib ; \
 	MTI_DEFAULT_LIB_TYPE=0 vsim -c -quiet -do "do libs.do; quit" ; \
 	fi;
 endif
@@ -751,7 +800,7 @@ ifneq ("$(GRLIB_SIMULATOR)","Xilinx")
 	-@vlib modelsim
 	@if [ -d ./modelsim/xilinxcorelib ]; then \
 	echo "Xilinx library already compiled"; else \
-	compxlib -s $(GRLIB_XIL_compxlib_Simulator) -l vhdl -arch $(TECHNOLOGY) -lib xilinxcorelib -dir ./modelsim ; \
+	compxlib -s $(GRLIB_XIL_compxlib_Simulator) -l vhdl -arch $(COMPXLIBTECH) -lib xilinxcorelib -dir ./modelsim ; \
 	MTI_DEFAULT_LIB_TYPE=0 vsim -c -quiet -do "do libs.do; quit" ; \
 	fi;
 endif
@@ -779,42 +828,65 @@ endif
 clean_xilinx_verilog_lib:
 	-rm -rf xilinx_lib compxlib.* .cxl.mti_se.version
 
-mig_series7_generate:
+ip_series7_generate: vivado/$(TOP)_vivado.tcl $(VHDLSYNFILES) $(VERILOGSYNFILES)
 ifeq ($(CONFIG_MIG_SERIES7),y)
-	@if [ -d ./mig ]; then \
-	echo "Xilinx MIG already generated!"; else \
-	mkdir -p mig ; \
-	mkdir -p mig/mig ; \
-	cp $(GRLIB)/boards/$(BOARD)/mig.xco ./mig/ ; \
-	cp $(GRLIB)/boards/$(BOARD)/mig.prj ./mig/mig ; \
-	cp $(GRLIB)/boards/$(BOARD)/mig.cgp ./mig/ ; \
-	coregen -b ./mig/mig.xco -p mig/mig.cgp ; \
-	if [ $$? -ne 0 ]; then rm -rf mig; fi; \
+	@if [ -d ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip ]; then \
+	echo "Xilinx IPs already generated!"; else \
+	vivado -mode batch -source ./vivado/$(TOP)_vivado.tcl ; \
 	fi;
 endif
 
-mig_series7: mig_series7_generate compile_xilinx_verilog_lib map_xilinx_verilog_lib
+mig_series7: ip_series7_generate compile_xilinx_verilog_lib map_xilinx_verilog_lib
 ifneq ("$(GRLIB_SIMULATOR)","Xilinx")
 ifeq ($(CONFIG_MIG_SERIES7),y)
-	if [ -f mig/mig/user_design/rtl/mig.v ]; then \
+	if [ -f ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/mig.v ]; then \
 	vlog -work gaisler \
-	mig/mig/user_design/rtl/mig.v \
-	mig/mig/user_design/rtl/*/*.v ;\
+	./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/mig.v \
+	./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/*/*.v ;\
 	vlog -work work $(XILINX)/verilog/src/glbl.v ;\
 	fi;
 endif
 endif
 
-mig_series7_clean:
-	-rm -rf mig
-
-.PHONY: compile_xilinx_verilog_lib compile_xilinx_vhdl_lib map_xilinx_verilog_lib map_xilinx_vhdl_lib clean_xilinx_verilog_lib mig_series7_generate mig_series7 mig_series7_clean
-
-#########    Xilinx FT-FPGA addon package targets   ############
-
-ifneq ("$(GRLIB)","")
--include $(GRLIB)/bin/xtmr/Makefile
+sgmii_series7: ip_series7_generate compile_xilinx_verilog_lib map_xilinx_verilog_lib
+ifneq ("$(GRLIB_SIMULATOR)","Xilinx")
+ifeq ($(CONFIG_GRETH_ENABLE),y)
+	if [ -f./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/synth/sgmii.v ]; then \
+	vlib modelsim/gig_ethernet_pcs_pma_v13_0 ;\
+	vmap -modelsimini ./modelsim.ini gig_ethernet_pcs_pma_v13_0 ./modelsim/gig_ethernet_pcs_pma_v13_0 ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//sync_block/sync_block_pack.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//sync_block/sync_block.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//ptp/ptp_pack.vhd ;\
+	vlog -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//ptp/gig_ethernet_pcs_pma_v13_0_timer_rx_latency_correct.v ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//ptp/rx_elastic_buffer_1588.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//tx/tx_pack.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//tx/tx.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//rx/rx_pack.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//rx/rx.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//management/management_pack.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//management/mdio_interface.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//management/management.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//auto_neg/auto_neg_pack.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//auto_neg/auto_neg.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//synchronise/synchronise_pack.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//synchronise/synchronise.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//TBI/tbi_pack.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//TBI/decode_8b10b.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//TBI/encode_8b10b.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//TBI/rx_elastic_buffer.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//TBI/rx_elastic_buffer_sgmii.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//TBI/tbi.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//gpcs_pma_gen.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//gpcs_pma_gen_pack.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//gig_ethernet_pcs_pma_v13_0.vhd ;\
+	vlog -work work \
+	./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/synth/*.v \
+	./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/synth/*/*.v ;\
+	fi;
 endif
+endif
+
+.PHONY: compile_xilinx_verilog_lib compile_xilinx_vhdl_lib map_xilinx_verilog_lib map_xilinx_vhdl_lib clean_xilinx_verilog_lib mig_series7_generate mig_series7 install-simprim compile-simprim compile-xilinxcorelib compile-unisim compile-xilinx-simlibs
 
 #########    Xilinx PlanAhead targets   ############
 
@@ -921,7 +993,7 @@ planAhead planahead: planAhead/$(TOP)_planAhead.tcl $(VHDLSYNFILES) $(VERILOGSYN
 	cp ./planAhead/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).msk .
 
 planAhead-clean:
-	-rm -rf ./planAhead planAhead.log planAhead*.jou
+	-rm -rf ./planAhead planAhead.log planAhead*.jou planAhead.*.log
 
 #########    Xilinx Vivado targets   ############
 
@@ -962,9 +1034,11 @@ vivado/$(TOP)_vivado.tcl: compile.vivado
 	@echo "create_project $(DESIGN) ./vivado/$(DESIGN) -part ${DEVICE} -force" > ./vivado/$(TOP)_vivado.tcl
 	@echo "create_fileset -simset sim_$(DESIGN)" >> ./vivado/$(TOP)_vivado.tcl
 	@echo "set_property top $(SIMTOP) [get_filesets sim_$(DESIGN)]" >> ./vivado/$(TOP)_vivado.tcl
+	@echo "set_property target_language verilog [current_project]" >> ./vivado/$(TOP)_vivado.tcl
 	@echo "# Add files for simulation and synthesis" >> ./vivado/$(TOP)_vivado.tcl
 	@echo "source ./compile.vivado" >> ./vivado/$(TOP)_vivado.tcl
 	@echo "add_files -fileset sim_$(DESIGN) $(VHDLSIMFILES)" >> ./vivado/$(TOP)_vivado.tcl
+	@echo "add_files -fileset sim_$(DESIGN) prom.srec ram.srec" >> ./vivado/$(TOP)_vivado.tcl
 ifneq ("$(GRLIB_XIL_Vivado_sim_verilog_define)","")
 	@echo "set_property verilog_define {$(GRLIB_XIL_Vivado_sim_verilog_define)} [get_filesets sim_$(DESIGN)]" >> ./vivado/$(TOP)_vivado.tcl
 endif
@@ -997,35 +1071,41 @@ ifneq ("$(PROTOBOARD)","")
 	@echo "set_property board $(PROTOBOARD) [current_project]"  >> ./vivado/$(TOP)_vivado.tcl
 endif
 ifeq ($(CONFIG_MIG_SERIES7),y)
-	@echo "import_ip -file ./mig/mig.xco -name mig" >> ./vivado/$(TOP)_vivado.tcl
-	@echo "generate_target  {instantiation_template Synthesis} [get_files $(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig.xco -of_objects [get_filesets sources_1]] -force " >> ./vivado/$(TOP)_vivado.tcl
+	@if test -r $(GRLIB)/boards/$(BOARD)/mig.xci; then \
+		echo "set_property target_language verilog [current_project]" >> ./vivado/$(TOP)_vivado.tcl; \
+		echo "import_ip -files $(GRLIB)/boards/$(BOARD)/mig.xci -name mig" >> ./vivado/$(TOP)_vivado.tcl; \
+		echo "exec -ignorestderr cp $(GRLIB)/boards/$(BOARD)/mig.prj ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/" >> ./vivado/$(TOP)_vivado.tcl; \
+		echo "generate_target  all [get_files ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig.xci] -force " >> ./vivado/$(TOP)_vivado.tcl; \
+	else \
+		echo "WARNING: No MIG Series7 IP was found"; \
+	fi;
 endif
 ifeq ($(CONFIG_GRETH_ENABLE),y)
-	@if test -r ./sgmii/sgmii.xco; then \
-	echo "import_ip -file ./sgmii/sgmii.xco -name sgmii" >> ./vivado/$(TOP)_vivado.tcl; \
-	echo "generate_target  {instantiation_template Synthesis} [get_files $(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/sgmii.xco -of_objects [get_filesets sources_1]] -force " >> ./vivado/$(TOP)_vivado.tcl; \
+	@if test -r $(GRLIB)/boards/$(BOARD)/sgmii.xci; then \
+		echo "set_property target_language verilog [current_project]" >> ./vivado/$(TOP)_vivado.tcl; \
+		echo "import_ip -files $(GRLIB)/boards/$(BOARD)/sgmii.xci -name sgmii" >> ./vivado/$(TOP)_vivado.tcl; \
+		echo "generate_target  all [get_files ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/sgmii.xci] -force " >> ./vivado/$(TOP)_vivado.tcl; \
 	fi;
 endif
 	@if test -r $(GRLIB)/netlists/xilinx/$(NETLISTTECH); then \
 		echo "import_files $(GRLIB)/netlists/xilinx/$(NETLISTTECH)" >> ./vivado/$(TOP)_vivado.tcl; \
 	fi;
-	@echo "# Elaborate design to be able to apply SDC to top level" > ./vivado/$(TOP)_vivado_run.tcl
-	@echo "synth_design -rtl -name rtl_1" >> ./vivado/$(TOP)_vivado_run.tcl
+	@echo "synth_design -rtl -name rtl_1" > ./vivado/$(TOP)_vivado_run.tcl
 	@echo "set_property flow {$(VIVADO_SYNTH_FLOW)} [get_runs synth_1]" >> ./vivado/$(TOP)_vivado_run.tcl
 	@echo "set_property strategy {$(VIVADO_SYNTH_STRATEGY)} [get_runs synth_1]" >> ./vivado/$(TOP)_vivado_run.tcl
 	@echo "launch_runs synth_1" >> ./vivado/$(TOP)_vivado_run.tcl
-	@echo "wait_on_run -timeout 120 synth_1" >> ./vivado/$(TOP)_vivado_run.tcl
+	@echo "wait_on_run -timeout 360 synth_1" >> ./vivado/$(TOP)_vivado_run.tcl
 	@echo "# Launch place and route" >> ./vivado/$(TOP)_vivado_run.tcl
 	@echo "set_property strategy {$(VIVADO_IMPL_STRATEGY)} [get_runs impl_1]" >> ./vivado/$(TOP)_vivado_run.tcl
 	@echo "set_property steps.write_bitstream.args.mask_file true [get_runs impl_1]" >> ./vivado/$(TOP)_vivado_run.tcl
 	@echo "launch_runs impl_1" >> ./vivado/$(TOP)_vivado_run.tcl
-	@echo "wait_on_run -timeout 120 impl_1" >> ./vivado/$(TOP)_vivado_run.tcl
+	@echo "wait_on_run -timeout 360 impl_1" >> ./vivado/$(TOP)_vivado_run.tcl
 	@echo "close_design" >> ./vivado/$(TOP)_vivado_run.tcl
 	@echo "open_run impl_1" >> ./vivado/$(TOP)_vivado_run.tcl
 	@echo "report_timing_summary -delay_type min_max -path_type full_clock_expanded -report_unconstrained -check_timing_verbose -max_paths 10 -nworst 1 -significant_digits 3 -input_pins -name timing_1 -file ./vivado/$(TOP)_post_timing.rpt" >> ./vivado/$(TOP)_vivado_run.tcl
 	@echo "report_drc -file $(TOP)_drc_route.rpt" >> ./vivado/$(TOP)_vivado_run.tcl
 	@echo "launch_runs impl_1 -to_step write_bitstream" >> ./vivado/$(TOP)_vivado_run.tcl
-	@echo "wait_on_run -timeout 120 impl_1" >> ./vivado/$(TOP)_vivado_run.tcl
+	@echo "wait_on_run -timeout 360 impl_1" >> ./vivado/$(TOP)_vivado_run.tcl
 
 
 vivado-launch: vivado/$(TOP)_vivado.tcl $(VHDLSYNFILES) $(VERILOGSYNFILES)
@@ -1336,6 +1416,18 @@ actel-clean:
 actel-from libero-from:
 	$(GRLIB)/bin/from.batch from.hex > from.ufc
 	$(GRLIB)/bin/from_mem.batch from.hex > from.mem
+
+############  Synopsys              ########################
+
+install-gtech:
+	@echo GTECH source path: $(SNPS_HOME)/packages/gtech/src; \
+	if test -r $(SNPS_HOME)/packages/gtech/src; then \
+	  cp $(SNPS_HOME)/packages/gtech/src/*.vhd $(GRLIB)/lib/tech/gtech/simprims; \
+        fi
+
+remove-gtech:
+	@-rm $(GRLIB)/lib/tech/gtech/simprims/*.vhd
+
 
 ############  Synopsys DC targets   ########################
 
@@ -1927,11 +2019,11 @@ compile.etools $(TOP).ldf make.riviera :
 		       fi ;; \
 	    	      esac; \
 	    	    done ; \
-		    if [[ -n "$$riv_fs" ]]; then \
-		      if [ "$$i" == 'vhdlsim' -o "$$i" == 'vhdlsyn' ]; then \
+		    if [ -n "$$riv_fs" ]; then \
+		      if [ "$$i" = 'vhdlsim' -o "$$i" = 'vhdlsyn' ]; then \
 			printf "\t$(VCOM) -work $$bn $$riv_fs\n" >> make.riviera; \
 		      fi; \
-		      if [ "$$i" == 'vlogsim' -o "$$i" == 'vlogsyn' ]; then \
+		      if [ "$$i" = 'vlogsim' -o "$$i" = 'vlogsyn' ]; then \
 			printf "\t$(VLOG) -work $$bn $$riv_fs\n" >> make.riviera; \
 		      fi; \
 		      unset riv_fs; \
@@ -2347,11 +2439,11 @@ scripts-clean:
 	.config.old hdl.var $(TOP)_dc.tcl  $(TOP).rc  \
 	$(TOP)_synplify.prj $(SIMTOP).mpf tmpmake.ghdl \
 	$(TOP)_designer.tcl $(TOP)_designer_act.tcl \
-	modelsim.ini \
+	modelsim.ini modelsim.ini.bak \
 	alibs.do avhdl.tcl riviera.do \
 	$(TOP)_etools_create.tcl $(TOP).eprj $(EXTRACLEAN)
 
-distclean: $(CLEAN) clean scripts-clean clean_xilinx_verilog_lib mig_series7_clean
+distclean: $(CLEAN) clean scripts-clean clean_xilinx_verilog_lib
 
 libclean:
 	-@rm work.v; \

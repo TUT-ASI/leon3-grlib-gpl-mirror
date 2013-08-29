@@ -2162,11 +2162,13 @@ begin
 
     oe0 : if oepol = 0 generate 
         pcio.inten    <= '1';
+        pcio.vinten   <= (others => '1');
         pcio.locken   <= '1';
     end generate;
 
     oe1 : if oepol = 1 generate
         pcio.inten    <= '0';
+        pcio.vinten   <= (others => '0');
         pcio.locken   <= '0';
     end generate;
     

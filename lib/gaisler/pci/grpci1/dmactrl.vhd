@@ -486,7 +486,8 @@ begin
    ahbsi1.testrst <= '0';
    ahbsi1.scanen <= '0';
    ahbsi1.testoen <= '0';
-
+   ahbsi1.testin <= ahbsi0.testin;
+   
    end process;
 
    cpur : process (clk)

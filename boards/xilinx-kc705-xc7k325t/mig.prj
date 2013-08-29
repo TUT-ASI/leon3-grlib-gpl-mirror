@@ -6,12 +6,12 @@
     <dci_inputs>1</dci_inputs>
     <Debug_En>OFF</Debug_En>
     <DataDepth_En>1024</DataDepth_En>
-    <LowPower_En>OFF</LowPower_En>
+    <LowPower_En>ON</LowPower_En>
     <XADC_En>Enabled</XADC_En>
     <TargetFPGA>xc7k325t-ffg900/-2</TargetFPGA>
-    <Version>1.9</Version>
+    <Version>2.0</Version>
     <SystemClock>Differential</SystemClock>
-    <ReferenceClock>Use System Clock</ReferenceClock>
+    <ReferenceClock>No Buffer</ReferenceClock>
     <SysResetPolarity>ACTIVE LOW</SysResetPolarity>
     <BankSelectionFlag>FALSE</BankSelectionFlag>
     <InternalVref>0</InternalVref>
@@ -156,8 +156,6 @@
             <Pin VCCAUX_IO="NORMAL" IOSTANDARD="SSTL15" PADName="AD9" SLEW="FAST" name="ddr3_ras_n" IN_TERM="" />
             <Pin VCCAUX_IO="NORMAL" IOSTANDARD="LVCMOS15" PADName="AK3" SLEW="FAST" name="ddr3_reset_n" IN_TERM="" />
             <Pin VCCAUX_IO="NORMAL" IOSTANDARD="SSTL15" PADName="AE9" SLEW="FAST" name="ddr3_we_n" IN_TERM="" />
-            <Pin VCCAUX_IO="DONTCARE" IOSTANDARD="DIFF_SSTL15" PADName="AD11" SLEW="" name="sys_clk_n" IN_TERM="" />
-            <Pin VCCAUX_IO="DONTCARE" IOSTANDARD="DIFF_SSTL15" PADName="AD12" SLEW="" name="sys_clk_p" IN_TERM="" />
         </PinSelection>
         <System_Clock>
             <Pin PADName="AD12/AD11(CC_P/N)" Bank="33" name="sys_clk_p/n" />

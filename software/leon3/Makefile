@@ -62,7 +62,7 @@ cgtest.o : cgtest.c
 lib3tests.a: $(OFILES)
 	$(XAR) -cr lib3tests.a $(OFILES)
 
-soft: prom.srec sram.srec sdram.srec $(EXTRA_SOFT)
+soft: prom.srec ram.srec $(EXTRA_SOFT)
 
 prom.o: prom.S prom.h
 	$(XAS) $<
@@ -75,11 +75,8 @@ prom.srec: prom.exe
 systest.exe: systest.c lib3tests.a
 	$(XCC) $(XCFLAGS) systest.c $(XLDFLAGS) -o systest.exe
 
-sdram.srec: systest.exe
-	sparc-elf-objcopy -O srec --gap-fill 0 systest.exe sdram.srec
-
-sram.srec: systest.exe
-	sparc-elf-objcopy -O srec systest.exe sram.srec
+ram.srec: systest.exe
+	sparc-elf-objcopy -O srec --gap-fill 0 systest.exe ram.srec
 
 soft-clean: gen_hex_clean
 	-rm -rf *.o *.exe *.a
@@ -93,7 +90,7 @@ standalone.exe: systest.c standalone.c lib3tests.a
 gen_hex: soft
 	sparc-elf-objdump -D prom.exe > prom.disas	
 	sparc-elf-objdump -D systest.exe > systest.disas	  
-	cp sdram.srec sdram.hex	
+	cp ram.srec sdram.hex	
 	sed -i '1d' sdram.hex	
 	sed -i '$$d' sdram.hex	
 	sed -i 's/\(.\{12\}\)//' sdram.hex	
@@ -143,7 +140,7 @@ gen_hex_dim: gen_hex
 gen_hex16: soft
 	sparc-elf-objdump -D prom.exe > prom.disas	
 	sparc-elf-objdump -D systest.exe > systest.disas	  
-	cp sdram.srec sdram.hex	
+	cp ram.srec sdram.hex	
 	sed -i '1d' sdram.hex	
 	sed -i '$$d' sdram.hex	
 	sed -i 's/\(.\{12\}\)//' sdram.hex	

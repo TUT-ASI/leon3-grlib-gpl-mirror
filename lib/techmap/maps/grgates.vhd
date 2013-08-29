@@ -223,3 +223,34 @@ begin
 
 end;
 
+library ieee;
+use ieee.std_logic_1164.all;
+library techmap;
+use techmap.gencomp.all;
+
+entity grnand2 is
+  generic (
+    tech: integer := 0;
+    imp: integer := 0
+    );
+  port (
+    i0: in  std_ulogic;
+    i1: in  std_ulogic;
+    q : out std_ulogic
+    );
+end;
+
+architecture rtl of grnand2 is
+
+  constant has_nand2: tech_ability_type := (others => 0);
+
+begin
+
+  y0: if has_nand2(tech)=1 generate
+  end generate;
+
+  y1: if has_nand2(tech)=0 generate
+    q <= not (i0 and i1);
+  end generate;
+
+end;

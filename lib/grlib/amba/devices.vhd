@@ -155,7 +155,7 @@ package devices is
   constant GAISLER_SPI2AHB   : amba_device_type := 16#05C#;
   constant GAISLER_DDRSDMUX  : amba_device_type := 16#05D#;
   constant GAISLER_AHBFROM   : amba_device_type := 16#05E#;
-
+  constant GAISLER_PCIEXP    : amba_device_type := 16#05F#;
   constant GAISLER_APBPS2    : amba_device_type := 16#060#;
   constant GAISLER_VGACTRL   : amba_device_type := 16#061#;
   constant GAISLER_LOGAN     : amba_device_type := 16#062#;
@@ -172,7 +172,6 @@ package devices is
   constant GAISLER_SWITCHOVER: amba_device_type := 16#06D#;
   constant GAISLER_FIFOUART  : amba_device_type := 16#06E#;
   constant GAISLER_MUXCTRL   : amba_device_type := 16#06F#;
-
   constant GAISLER_B1553BC   : amba_device_type := 16#070#;
   constant GAISLER_B1553RT   : amba_device_type := 16#071#;
   constant GAISLER_B1553BRM  : amba_device_type := 16#072#;
@@ -205,10 +204,11 @@ package devices is
   constant GAISLER_GRPWTX    : amba_device_type := 16#08D#;
   constant GAISLER_GRPWRX    : amba_device_type := 16#08E#;
   constant GAISLER_GPREGBANK : amba_device_type := 16#08F#;
-
   constant GAISLER_MIG_SERIES7   : amba_device_type := 16#090#;
-  constant GAISLER_SPWBIST       : amba_device_type := 16#091#;
-  constant GAISLER_SGMII         : amba_device_type := 16#092#;
+  constant GAISLER_SPWBIST   : amba_device_type := 16#091#;
+  constant GAISLER_SGMII     : amba_device_type := 16#092#;
+  constant GAISLER_RGMII     : amba_device_type := 16#093#;
+  constant GAISLER_IRQGEN    : amba_device_type := 16#094#;
 
 -- Sun Microsystems
 
@@ -502,10 +502,13 @@ package devices is
    GAISLER_SPI2AHB   => "SPI to AHB Bridge              ",
    GAISLER_DDRSDMUX  => "Muxed FT DDR/SDRAM controller  ",
    GAISLER_AHBFROM   => "Flash ROM Memory               ",
+   GAISLER_PCIEXP    => "Xilinx PCI EXPRESS Wrapper     ",
    GAISLER_MIG_SERIES7 => "Xilinx MIG DDR3 Controller     ",
    GAISLER_SPWBIST   => "GRSPW Router BIST              ",
    GAISLER_SGMII     => "XILINX SGMII Interface         ",
-
+   GAISLER_RGMII     => "Gaisler RGMII Interface        ",
+   GAISLER_IRQGEN    => "Interrupt generator            ",
+   
    others            => "Unknown Device                 ");
 
    constant gaisler_lib : vendor_library_type := (

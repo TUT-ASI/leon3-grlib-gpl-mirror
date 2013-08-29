@@ -431,7 +431,8 @@ begin
       SHIFT => shift1, 
       TDI => tdi1, 
       UPDATE => update1,
-      TDO => tapi_tdo1
+      TDO => tapi_tdo1,
+      TCK => tapo_tck
       );
 
   u1 : BSCAN_VIRTEX6 
@@ -448,7 +449,6 @@ begin
       );  
 
   tapo_capt <= capt1 when sel1 = '1' else capt2;
-  tapo_tck  <= drck1 when sel1 = '1' else drck2;
   tapo_rst  <= rst1 when sel1 = '1' else rst2;
   tapo_shft <= shift1 when sel1 = '1' else shift2;
   tapo_tdi  <= tdi1  when sel1 = '1' else tdi2;
@@ -522,7 +522,8 @@ begin
       SHIFT => shift1, 
       TDI => tdi1, 
       UPDATE => update1,
-      TDO => tapi_tdo1
+      TDO => tapi_tdo1,
+      TCK => tapo_tck
       );
 
   u1 : BSCAN_SPARTAN6 
@@ -539,7 +540,6 @@ begin
       );  
 
   tapo_capt <= capt1 when sel1 = '1' else capt2;
-  tapo_tck  <= drck1 when sel1 = '1' else drck2;
   tapo_rst  <= rst1 when sel1 = '1' else rst2;
   tapo_shft <= shift1 when sel1 = '1' else shift2;
   tapo_tdi  <= tdi1  when sel1 = '1' else tdi2;
@@ -614,7 +614,8 @@ begin
       SHIFT => shift1, 
       TDI => tdi1, 
       UPDATE => update1,
-      TDO => tapi_tdo1
+      TDO => tapi_tdo1,
+      TCK => tapo_tck
       );
 
   u1 : BSCANE2 
@@ -631,7 +632,6 @@ begin
       );  
 
   tapo_capt <= capt1 when sel1 = '1' else capt2;
-  tapo_tck  <= drck1 when sel1 = '1' else drck2;
   tapo_rst  <= rst1 when sel1 = '1' else rst2;
   tapo_shft <= shift1 when sel1 = '1' else shift2;
   tapo_tdi  <= tdi1  when sel1 = '1' else tdi2;
@@ -705,7 +705,8 @@ begin
       SHIFT => shift1, 
       TDI => tdi1, 
       UPDATE => update1,
-      TDO => tapi_tdo1
+      TDO => tapi_tdo1,
+      TCK => tapo_tck
       );
 
   u1 : BSCANE2 
@@ -722,7 +723,6 @@ begin
       );  
 
   tapo_capt <= capt1 when sel1 = '1' else capt2;
-  tapo_tck  <= drck1 when sel1 = '1' else drck2;
   tapo_rst  <= rst1 when sel1 = '1' else rst2;
   tapo_shft <= shift1 when sel1 = '1' else shift2;
   tapo_tdi  <= tdi1  when sel1 = '1' else tdi2;
@@ -796,7 +796,8 @@ begin
       SHIFT => shift1, 
       TDI => tdi1, 
       UPDATE => update1,
-      TDO => tapi_tdo1
+      TDO => tapi_tdo1,
+      TCK => tapo_tck
       );
 
   u1 : BSCANE2 
@@ -813,7 +814,6 @@ begin
       );  
 
   tapo_capt <= capt1 when sel1 = '1' else capt2;
-  tapo_tck  <= drck1 when sel1 = '1' else drck2;
   tapo_rst  <= rst1 when sel1 = '1' else rst2;
   tapo_shft <= shift1 when sel1 = '1' else shift2;
   tapo_tdi  <= tdi1  when sel1 = '1' else tdi2;

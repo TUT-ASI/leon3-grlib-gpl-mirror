@@ -386,7 +386,8 @@ package misc is
     fcfs        : integer range 0 to NAHBMST := 0;
     fcfsmtech   : integer range 0 to NTECH := inferred;
     scantest    : integer range 0 to 1 := 0;
-    split       : integer range 0 to 1 := 1);
+    split       : integer range 0 to 1 := 1;
+    pipe        : integer range 0 to 128 := 128);
   port (
     rstn        : in  std_ulogic;
     hclkm       : in  std_ulogic;
@@ -1250,6 +1251,24 @@ package misc is
       ahbo:    out   ahb_slv_out_type);
    end component;
 
+  -----------------------------------------------------------------------------
+  -- Interrupt generator
+  -----------------------------------------------------------------------------
+  component irqgen
+    generic (
+      pindex   : integer := 0;
+      paddr    : integer := 0;
+      pmask    : integer := 16#fff#;
+      ngen     : integer range 1 to 15 := 1
+      );
+    port (
+      rstn   : in  std_ulogic;
+      clk    : in  std_ulogic;
+      apbi   : in  apb_slv_in_type;
+      apbo   : out apb_slv_out_type
+      );
+  end component;
+  
   -----------------------------------------------------------------------------
   -- Function declarations
   -----------------------------------------------------------------------------

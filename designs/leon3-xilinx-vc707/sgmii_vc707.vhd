@@ -119,10 +119,18 @@ architecture top_level of sgmii_vc707 is
   ------------------------------------------------------------------------------
   -- Component Declaration for the Core Block (core wrapper).
   ------------------------------------------------------------------------------
-   component sgmii_block
+   component sgmii
       port(
       -- Transceiver Interface
       ------------------------
+
+      drpaddr_in           : in std_logic_vector(8 downto 0);
+      drpclk_in            : in std_logic;
+      drpdi_in             : in std_logic_vector(15 downto 0);
+      drpdo_out            : out std_logic_vector(15 downto 0);
+      drpen_in             : in std_logic;
+      drprdy_out           : out std_logic;
+      drpwe_in             : in std_logic;
 
       gtrefclk             : in std_logic;                     -- Very high quality 125MHz clock for GT transceiver
       txp                  : out std_logic;                    -- Differential +ve of serial transmission from PMA to PMD.
@@ -524,8 +532,16 @@ begin
   speed_is_10_100 <= not gmiio.gbit;
   speed_is_100    <= gmiio.speed;
 
-  core_wrapper : sgmii_block
+  core_wrapper : sgmii
     port map (
+
+      drpaddr_in           => "000000000", 
+      drpclk_in            => '0',
+      drpdi_in             => "0000000000000000",
+      drpdo_out            => OPEN,
+      drpen_in             => '0',
+      drprdy_out           => OPEN,
+      drpwe_in             => '0',
 
       gtrefclk             => gtrefclk,
       txp                  => sgmiio.txp,

@@ -45,6 +45,7 @@ library esa;
 use esa.memoryctrl.all;
 use work.config.all;
 use work.ml605.all;
+use work.pcie.all;
 -- pragma translate_off
 use gaisler.sim.all;
 -- pragma translate_on
@@ -137,6 +138,16 @@ entity leon3mp is
     sysace_mpoe     : out std_ulogic;
     sysace_mpwe     : out std_ulogic;
     sysace_d        : inout std_logic_vector(7 downto 0);
+
+    pci_exp_txp : out std_logic_vector(CFG_NO_OF_LANES-1 downto 0);
+    pci_exp_txn : out std_logic_vector(CFG_NO_OF_LANES-1 downto 0);
+    pci_exp_rxp : in std_logic_vector(CFG_NO_OF_LANES-1 downto 0);
+    pci_exp_rxn : in std_logic_vector(CFG_NO_OF_LANES-1 downto 0);
+
+    sys_clk_p   : in  std_logic;
+    sys_clk_n   : in  std_logic;
+    sys_reset_n : in  std_logic;
+
 
     -- Output signals to LEDs
     led       : out   std_logic_vector(6 downto 0)
@@ -234,6 +245,8 @@ architecture rtl of leon3mp is
   constant VCO_FREQ  : integer := 1200000;                               -- MMCM VCO frequency in KHz
   constant CPU_FREQ   : integer := VCO_FREQ / CFG_MIG_CLK4;  -- cpu frequency in KHz
   constant I2C_FILTER : integer := (CPU_FREQ*5+50000)/100000+1;
+  
+  signal sys_rst        : std_logic;
 
 begin
 
@@ -258,8 +271,8 @@ begin
   ahb0 : ahbctrl
     generic map (defmast => CFG_DEFMST, split => CFG_SPLIT,
                  rrobin  => CFG_RROBIN, ioaddr => CFG_AHBIO, ioen => 1,
-                 nahbm => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH+CFG_SVGA_ENABLE,
-                 nahbs => 8)
+                 nahbm => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH+CFG_SVGA_ENABLE+CFG_PCIEXP,
+                 nahbs => 9)
     port map (rstn, clkm, ahbmi, ahbmo, ahbsi, ahbso);
 
 ----------------------------------------------------------------------
@@ -460,17 +473,18 @@ begin
       clk_ahb           =>   clkm,
       clk100            =>   clk100,
       phy_init_done     =>   phy_init_done,
-      sys_rst           =>   reset
+      sys_rst           =>   reset  --rstraw
     );
 
-    led(3) <= phy_init_done;
-    led(4) <= rstn;
-    led(5) <= reset;
-    led(6) <= '0';
-    lock <= phy_init_done; -- and cgo.clklock;
---   end generate;
---  noddr : if (CFG_DDR2SP+CFG_MIG_DDR2) = 0 generate lock <= cgo.clklock; end generate;
-
+    led(3)  <= phy_init_done;
+    led(4)  <= rstn;
+    led(5)  <= reset;
+    led(6)  <= '0';
+    lock    <= phy_init_done; -- and cgo.clklock;
+--    sys_rst <= reset;
+--    end generate;
+--    noddr : if (CFG_DDR2SP+CFG_MIG_DDR2) = 0 generate lock <= cgo.clklock; end generate;
+ 
 ----------------------------------------------------------------------
 ---  System ACE I/F Controller ---------------------------------------
 ----------------------------------------------------------------------
@@ -500,7 +514,107 @@ begin
   sysace_mpirq_pad : inpad generic map (level => cmos, voltage => x25v, tech => padtech)
     port map (sysace_mpirq, acei.irq);
 
+-----------------PCI-EXPRESS-Master-Target------------------------------------------
+    pcie_mt : if CFG_PCIE_TYPE = 1 generate	-- master/target without fifo
+EP: pcie_master_target_virtex
+  generic map (
+    fabtech          => fabtech,
+    hmstndx          => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH+CFG_SVGA_ENABLE,
+    hslvndx          => 8,
+    abits            => 21,
+    device_id        => CFG_PCIEXPDID,	       -- PCIE device ID
+    vendor_id        => CFG_PCIEXPVID,	 -- PCIE vendor ID
+    pcie_bar_mask    => 16#FFE#,
+    nsync            => 2,   -- 1 or 2 sync regs between clocks
+    haddr            => 16#a00#,    
+    hmask            => 16#fff#,   
+    pindex           => 5,   
+    paddr            => 5,   
+    pmask            => 16#fff#,
+    Master           => CFG_PCIE_SIM_MAS,  
+    lane_width       => CFG_NO_OF_LANES  
+          )
+  port map( 
+    rst              => rstn,
+    clk              => clkm,
+    -- System Interface
+    sys_clk_p        => sys_clk_p,
+    sys_clk_n        => sys_clk_n,
+    sys_reset_n      => sys_reset_n,
+    -- PCI Express Fabric Interface
+    pci_exp_txp      => pci_exp_txp,
+    pci_exp_txn      => pci_exp_txn,
+    pci_exp_rxp      => pci_exp_rxp,
+    pci_exp_rxn      => pci_exp_rxn,
+    
+    ahbso            => ahbso(8),        
+    ahbsi            => ahbsi,         
+    apbi             => apbi,	      
+    apbo             => apbo(5),	      
+    ahbmi            => ahbmi,
+    ahbmo            => ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH+CFG_SVGA_ENABLE)    
+  );
+    end generate;
+------------------PCI-EXPRESS-Master-FIFO------------------------------------------
+pcie_mf : if CFG_PCIE_TYPE = 3 generate	-- master with fifo and DMA
+dma:pciedma
+      generic map (fabtech => fabtech, memtech => memtech, dmstndx =>(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH+CFG_SVGA_ENABLE), 
+	  dapbndx => 8, dapbaddr => 8,dapbirq => 8, blength => 12, abits => 21,
+	  device_id => CFG_PCIEXPDID, vendor_id => CFG_PCIEXPVID, pcie_bar_mask => 16#FFE#,
+	  slvndx => 8, apbndx => 5, apbaddr => 5, haddr => 16#A00#,hmask=> 16#FFF#,
+	  nsync => 2,lane_width => CFG_NO_OF_LANES)
+
+port map( 
+    rst          => rstn,
+    clk          => clkm,
+    -- System Interface
+    sys_clk_p    => sys_clk_p,
+    sys_clk_n    => sys_clk_n,
+    sys_reset_n  => sys_reset_n,
+    -- PCI Express Fabric Interface
+    pci_exp_txp  => pci_exp_txp,
+    pci_exp_txn  => pci_exp_txn,
+    pci_exp_rxp  => pci_exp_rxp,
+    pci_exp_rxn  => pci_exp_rxn,
+    
+    dapbo        => apbo(8),
+    dahbmo       => ahbmo((CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH+CFG_SVGA_ENABLE)),
+    apbi         => apbi,
+    apbo         => apbo(5),
+    ahbmi        => ahbmi,
+    ahbsi        => ahbsi,
+    ahbso        => ahbso(8)
+  
+  );
+    end generate;
 ----------------------------------------------------------------------
+pcie_mf_no_dma: if CFG_PCIE_TYPE = 2 generate	-- master with fifo 
+EP:pcie_master_fifo_virtex
+generic map (fabtech => fabtech, memtech => memtech, 
+   hslvndx => 8, abits => 21, device_id => CFG_PCIEXPDID, vendor_id => CFG_PCIEXPVID,
+   pcie_bar_mask => 16#FFE#, pindex => 5, paddr => 5,
+  haddr => 16#A00#, hmask => 16#FFF#, nsync => 2, lane_width => CFG_NO_OF_LANES)
+port map( 
+    rst          => rstn,
+    clk          => clkm,
+    -- System Interface
+    sys_clk_p    => sys_clk_p,
+    sys_clk_n    => sys_clk_n,
+    sys_reset_n  => sys_reset_n,
+    -- PCI Express Fabric Interface
+    pci_exp_txp  => pci_exp_txp,
+    pci_exp_txn  => pci_exp_txn,
+    pci_exp_rxp  => pci_exp_rxp,
+    pci_exp_rxn  => pci_exp_rxn,
+    
+    ahbso        => ahbso(8),        
+    ahbsi        => ahbsi,         
+    apbi         => apbi,        
+    apbo         => apbo(5)        
+  );
+end generate;
+----------------------------------------------------------------------
+
 ---  APB Bridge and various periherals -------------------------------
 ----------------------------------------------------------------------
 
@@ -719,7 +833,7 @@ begin
 ---  Drive unused bus elements  ---------------------------------------
 -----------------------------------------------------------------------
 
-  nam1 : for i in (CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH+1) to NAHBMST-1 generate
+  nam1 : for i in (CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH+1+CFG_PCIEXP) to NAHBMST-1 generate
     ahbmo(i) <= ahbm_none;
   end generate;
 

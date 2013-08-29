@@ -117,8 +117,8 @@ package config is
   constant CFG_MIG_RANKS : integer := (1);
   constant CFG_MIG_COLBITS : integer := (10);
   constant CFG_MIG_ROWBITS : integer := (13);
-  constant CFG_MIG_BANKBITS: integer := (3);
-  constant CFG_MIG_HMASK : integer := 16#F80#;
+  constant CFG_MIG_BANKBITS: integer := (2);
+  constant CFG_MIG_HMASK : integer := 16#F00#;
 -- AHB status register
   constant CFG_AHBSTAT : integer := 1;
   constant CFG_AHBSTATN : integer := (1);
@@ -192,6 +192,13 @@ package config is
 -- AMBA System ACE Interface Controller
   constant CFG_GRACECTRL : integer := 1;
 
+-- PCIEXP interface
+ constant CFG_PCIEXP : integer := 0;
+ constant CFG_PCIE_TYPE : integer := 0;
+ constant CFG_PCIE_SIM_MAS : integer := 0;
+ constant CFG_PCIEXPVID : integer := 16#0#;
+ constant CFG_PCIEXPDID : integer := 16#0#;
+  constant CFG_NO_OF_LANES : integer := 1;
 -- GRLIB debugging
   constant CFG_DUART : integer := 0;
 end;

@@ -1,3 +1,5 @@
+#GRLIB_SIMULATOR=ModelSim
+
 include .config
 
 GRLIB=../..
@@ -5,7 +7,6 @@ TOP=leon3mp
 BOARD=xilinx-kc705-xc7k325t
 DESIGN=leon3-xilinx-kc705
 include $(GRLIB)/boards/$(BOARD)/Makefile.inc
-
 DEVICE=$(PART)$(PACKAGE)-$(SPEED)
 XDC=$(GRLIB)/boards/$(BOARD)/$(BOARD).xdc
 
@@ -23,7 +24,7 @@ VLOGOPT= +define+x1Gb +define+sg125 +define+x8
 ifeq ("$(GRLIB_SIMULATOR)","ALDEC")
 VSIMOPT= +access +w -gUSE_MIG_INTERFACE_MODEL=true -gdisas=0 -gDEBUG=0 -do "do riviera_preload_ddr3_dimm.do; run -all" -t ps +notimingchecks -L secureip_ver -L xilinxcorelib_ver -L unisims_ver $(SIMTOP)
 else
-VSIMOPT= -gUSE_MIG_INTERFACE_MODEL=true -gdisas=0 -gDEBUG=0 -i -do "do preload_ddr3_dimm.do; run -all" -t ps +notimingchecks -L secureip_ver -L xilinxcorelib_ver -L unisims_ver $(SIMTOP)
+VSIMOPT= -gUSE_MIG_INTERFACE_MODEL=true -gdisas=1 -gDEBUG=0 -c -do "do preload_ddr3_dimm.do; run -all" -t ps +notimingchecks -L secureip_ver -L xilinxcorelib_ver -L unisims_ver $(SIMTOP)
 endif
 else
 VSIMOPT= -gdisas=1 -i -t ps $(SIMTOP)
@@ -42,6 +43,8 @@ FILESKIP = grcan.vhd ddr2.v mobile_ddr.v unisim_VPKG.vhd unisim_VCOMP.vhd simple
 include $(GRLIB)/bin/Makefile
 include $(GRLIB)/software/leon3/Makefile
 
+XCFLAGS=-O0 -g -msoft-float
+
 ##################  project specific targets ##########################
 
 all: help-local
@@ -56,7 +59,6 @@ help-local: help
 	@echo " make compile_xilinx_vhdl_lib      : compile xilinx vhdl library"
 	@echo " make clean_xilinx_vhdl_lib        : remove xilinx vhdl library"
 	@echo " make mig_series7                  : create xilinx memory controller using coregen."
-	@echo " make mig_series7_clean            : remove generated memory controller"
 	@echo
 	@echo " ================================================================"
 	@echo "         Quick start guide for simulation of systest.c"
@@ -73,4 +75,3 @@ help-local: help
 	@echo " For customizing the leon3 susbsystem run make 'xconfig'"
 	@echo " ================================================================"
 	@echo
-

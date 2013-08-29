@@ -248,6 +248,10 @@ constant has_tapsel : tech_ability_type :=
 	 spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
 	 artix7 => 1, zynq7000 => 1, others => 0);
 
+constant tap_tck_gated : tech_ability_type :=
+  ( virtex => 1, virtex2 => 1, virtex4 => 1, virtex5 => 1, spartan3 => 1, spartan3e => 1,
+    spartan6 => 0, others => 0);
+
 constant need_extra_sync_reset : tech_ability_type :=
 	(axcel => 1, atc18s => 1, ut25 => 1, rhumc => 1, tsmc90 => 1,
 	 rhlib18t => 1, atc18rha => 1, easic90 => 1, tm65gpl => 1,
@@ -1114,6 +1118,9 @@ component tap
     tapi_en1    : in std_ulogic;
     tapi_tdo1   : in std_ulogic;
     tapi_tdo2   : in std_ulogic;
+    tapo_ninst  : out std_logic_vector(7 downto 0);
+    tapo_iupd   : out std_ulogic;
+    tapo_tckn   : out std_ulogic;
     testen      : in std_ulogic := '0';
     testrst     : in std_ulogic := '1';
     testoen     : in std_ulogic := '0';
@@ -1131,6 +1138,7 @@ component scanregi
     pad     : in std_ulogic;
     core    : out std_ulogic;
     tck     : in std_ulogic;
+    tckn    : in std_ulogic;
     tdi     : in std_ulogic;
     tdo     : out std_ulogic;
     bsshft  : in std_ulogic;
@@ -1150,6 +1158,7 @@ component scanrego
     core    : in std_ulogic;
     samp    : in std_ulogic;    -- normally same as core unless outpad has feedback
     tck     : in std_ulogic;
+    tckn    : in std_ulogic;
     tdi     : in std_ulogic;
     tdo     : out std_ulogic;
     bsshft  : in std_ulogic;
@@ -1172,6 +1181,7 @@ component scanregto -- 2 scan registers: tdo<---output<--outputen<--tdi
     coreo   : in std_ulogic;
     coreoen : in std_ulogic;
     tck     : in std_ulogic;
+    tckn    : in std_ulogic;
     tdi     : in std_ulogic;
     tdo     : out std_ulogic;
     bsshft  : in std_ulogic;
@@ -1197,6 +1207,7 @@ component scanregio -- 3 scan registers: tdo<--input<--output<--outputen<--tdi
     coreoen : in std_ulogic;
     corei   : out std_ulogic;
     tck     : in std_ulogic;
+    tckn    : in std_ulogic;
     tdi     : in std_ulogic;
     tdo     : out std_ulogic;
     bsshft  : in std_ulogic;
@@ -1214,7 +1225,7 @@ end component;
 ---------------------------------------------------------------------------
 
 component ddr_ireg is
-generic ( tech : integer);
+generic ( tech : integer; arch : integer := 0);
 port ( Q1 : out std_ulogic;
          Q2 : out std_ulogic;
          C1 : in std_ulogic;
@@ -1777,6 +1788,8 @@ component grdff is generic( tech : integer := inferred; imp :  integer := 0);
 component gror2 is generic( tech : integer := inferred; imp :  integer := 0);
   port( i0, i1 : in std_ulogic; q : out std_ulogic); end component;
 component grand12 is generic( tech : integer := inferred; imp :  integer := 0);
+  port( i0, i1 : in std_ulogic; q : out std_ulogic); end component;
+component grnand2 is generic (tech: integer := inferred; imp: integer := 0);
   port( i0, i1 : in std_ulogic; q : out std_ulogic); end component;
 
 component techmult

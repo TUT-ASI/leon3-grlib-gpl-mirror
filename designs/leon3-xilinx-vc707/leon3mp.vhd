@@ -186,6 +186,7 @@ component ahb2mig_series7
     clk_amba          : in    std_logic;
     sys_clk_p         : in    std_logic;
     sys_clk_n         : in    std_logic;
+    clk_ref_i         : in    std_logic;
     ui_clk            : out   std_logic;
     ui_clk_sync_rst   : out   std_logic
    );
@@ -311,6 +312,8 @@ signal usbi : grusb_in_vector(0 downto 0);
 signal usbo : grusb_out_vector(0 downto 0);
 
 signal can_lrx, can_ltx   : std_logic_vector(0 to 7);
+
+signal clkref           : std_logic;
 
 attribute keep : boolean;
 attribute syn_keep : string;
@@ -547,9 +550,15 @@ begin
       clk_amba        => clkm,
       sys_clk_p       => clk200p,
       sys_clk_n       => clk200n,
+      clk_ref_i       => clkref,
       ui_clk          => clkm,
       ui_clk_sync_rst => open
      );
+
+     clkgenmigref0 : clkgen
+       generic map (clktech, 16, 8, 0,CFG_CLK_NOFB, 0, 0, 0, 100000)
+       port map (clkm, clkm, clkref, open, open, open, open, cgi, cgo, open, open, open);
+
   end generate;
 
   no_mig_gen : if (CFG_MIG_SERIES7 = 0) generate  
@@ -798,7 +807,7 @@ begin
       generic map (pindex => 9, paddr => 9, pmask => 16#FFF#,
                    pirq => 11, filter => 9)
       port map (rstn, clkm, apbi, apbo(9), i2ci, i2co);
-    -- The EEK does not use a bi-directional line for the I2C clock
+    -- Does not use a bi-directional line for the I2C clock
     i2ci.scl <= i2co.scloen;            -- No clock stretch possible
     -- When SCL output enable is activated the line should go low
     i2c_scl_pad : outpad generic map (tech => padtech, level => cmos, voltage => x18v)

@@ -82,7 +82,7 @@
 #undef  CONFIG_CLK_CLKPLLE2
 #undef  CONFIG_CLK_CLKDLL
 #define CONFIG_CLK_DCM 1
-#define CONFIG_CLK_MUL (8)
+#define CONFIG_CLK_MUL (6)
 #define CONFIG_CLK_DIV (10)
 #undef  CONFIG_PCI_CLKDLL
 #undef  CONFIG_CLK_NOFB
@@ -213,7 +213,6 @@
 /*
  * Fault-tolerance  
  */
-#undef  CONFIG_LEON3FT_EN
 /*
  * VHDL debug settings       
  */
@@ -336,6 +335,11 @@
  * System ACE Interface Controller
  */
 #define CONFIG_GRACECTRL 1
+/*
+ * PCI EXPRESS
+ */
+#undef  CONFIG_PCIEXP_MASTER_TARGET
+#undef  CONFIG_PCIEXP_MASTER_FIFO
 /*
  * VHDL Debugging        
  */

@@ -31,7 +31,7 @@ use techmap.gencomp.all;
 package allddr is
 
 component unisim_iddr_reg is
-  generic ( tech : integer := virtex4);
+  generic ( tech : integer := virtex4; arch : integer := 0);
   port(
          Q1 : out std_ulogic;
          Q2 : out std_ulogic;

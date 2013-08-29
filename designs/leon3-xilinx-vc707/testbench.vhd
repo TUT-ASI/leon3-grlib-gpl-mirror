@@ -69,8 +69,8 @@ constant SIMULATION          : string := "TRUE";
 
 
 constant promfile      : string := "prom.srec";  -- rom contents
-constant sramfile      : string := "sram.srec";  -- ram contents
-constant sdramfile     : string := "sdram.srec"; -- sdram contents
+constant sramfile      : string := "ram.srec";  -- ram contents
+constant sdramfile     : string := "ram.srec"; -- sdram contents
 
 signal clk             : std_logic := '0';
 signal Rst             : std_logic := '0';
@@ -289,13 +289,13 @@ component ddr3_model
     ras_n : in std_logic;
     cas_n : in std_logic;
     we_n : in std_logic;
-    dm_tdqs : inout std_logic_vector(DM_BITS-1 to 0);
-    ba : in std_logic_vector(BA_BITS-1 to 0);
-    addr : in std_logic_vector(ADDR_BITS-1 to 0);
-    dq : inout std_logic_vector(DQ_BITS-1 to 0);
-    dqs : inout std_logic_vector(DQS_BITS-1 to 0);
-    dqs_n : inout std_logic_vector(DQS_BITS-1 to 0);
-    tdqs_n : out std_logic_vector(DQS_BITS-1 to 0);
+    dm_tdqs : inout std_logic_vector(0 to 0);
+    ba : in std_logic_vector(2 downto 0);
+    addr : in std_logic_vector(13 downto 0);
+    dq : inout std_logic_vector(7 downto 0);
+    dqs : inout std_logic_vector(0 to 0);
+    dqs_n : inout std_logic_vector(0 to 0);
+    tdqs_n : out std_logic_vector(0 to 0);
     odt : in std_logic
   );
 end component;
@@ -376,14 +376,14 @@ begin
        usb_resetn      => usb_resetn,
        gtrefclk_p      => clkethp,
        gtrefclk_n      => clkethn,
-       txp             => txp1,
-       txn             => txn,
-       rxp             => rxp'delayed(1 ns),
-       rxn             => rxn'delayed(1 ns),
-       emdio           => phy_mii_data,
-       emdc            => phy_mii_clk,
+       txp             => OPEN,
+       txn             => OPEN,
+       rxp             => '1',
+       rxn             => '1',
+       emdio           => OPEN,
+       emdc            => OPEN,
        eint            => '0',
-       erst            => phy_rst_n,
+       erst            => OPEN,
        can_txd         => OPEN,
        can_rxd         => "0",
        spi_data_out    => '0',
@@ -445,66 +445,6 @@ begin
 
   errorn <= led(1);
   errorn <= 'H'; -- ERROR pull-up
-
-  -- SGMII simulation model is not yet complete!
-  phy0 : if (CFG_GRETH = 1) generate
-
-    phy_mii_data <= 'H';
-    p0: phy
-      generic map (address => 7)
-      port map(
-          phy_rst_n, phy_mii_data,
-          open, phy_rx_clk,
-          phy_rx_data,
-          phy_dv,
-          phy_rx_er,
-          phy_col,
-          phy_crs,
-          phy_tx_data,
-          phy_tx_en,
-          phy_tx_er,
-          phy_mii_clk,
-          phy_tx_clk
-         );
-
-    p1 : phy_sgmii
-      port map (
-          txp                    => txp1,
-          txn                    => txn,
-          rxp                    => rxp,
-          rxn                    => rxn,
-          gmii_tx_clk            => phy_tx_clk,
-          gmii_rx_clk            => phy_rx_clk,
-          gmii_txd               => phy_tx_data,
-          gmii_tx_en             => phy_tx_en,
-          gmii_tx_er             => phy_tx_er,
-          gmii_rxd               => phy_rx_data,
-          gmii_rx_dv             => phy_dv,
-          gmii_rx_er             => phy_rx_er,
-          speed_is_10_100        => speed_is_10_100,
-          speed_is_100           => speed_is_100,
-          configuration_finished => configuration_finished,
-          tx_monitor_finished    => open,
-          rx_monitor_finished    => open
-         );
-
-     sgmii_configuration : process
-     begin
-      configuration_finished <= false;
-      gmii_rx_clk <= '0';
-      gmii_rxd    <= (others => '0');
-      gmii_rx_dv  <= '0';
-      gmii_rx_er  <= '0';
-      speed_is_10_100 <= '0';
-      speed_is_100    <= '0';
-      wait on led(3);
-      wait for 50 us; -- Should really wait for Status[0] to be high!
-      wait for 1200 us;
-      configuration_finished <= true;
-      wait;
-     end process;
-
-  end generate;
 
   usbtr: if (CFG_GRUSBHC = 1) generate
     u0: ulpi

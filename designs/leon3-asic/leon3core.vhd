@@ -118,6 +118,7 @@ entity leon3core is
     testoen  	: in  std_ulogic;
 
     chain_tck   : out std_ulogic;
+    chain_tckn  : out std_ulogic;
     chain_tdi   : out std_ulogic;
     chain_tdo   : in std_ulogic;    
     bsshft      : out std_ulogic;
@@ -172,8 +173,8 @@ signal gpioi, gpioi2 : gpio_in_type;
 signal gpioo, gpioo2 : gpio_out_type;
 
 -- signal tck, tms, tdi, tdo : std_ulogic;
-signal jtck, jtdi, jrst, jtdo, jcapt, jshft, jupd: std_ulogic;
-signal jinst: std_logic_vector(7 downto 0);
+signal jtck, jtckn, jtdi, jrst, jtdo, jcapt, jshft, jupd, jiupd: std_ulogic;
+signal jninst: std_logic_vector(7 downto 0);
 
 signal spwi : grspw_in_type_vector(0 to CFG_SPW_NUM-1);
 signal spwo : grspw_out_type_vector(0 to CFG_SPW_NUM-1);
@@ -258,7 +259,7 @@ begin
     ahbjtag0 : ahbjtag generic map(tech => fabtech, part => JTAG_EXAMPLE_PART,
 	hindex => CFG_NCPU+CFG_AHB_UART, scantest => scantest, oepol => OEPOL)
       port map(rstn, clk, tck, tms, tdi, tdo, ahbmi, ahbmo(CFG_NCPU+CFG_AHB_UART),
-               jtck, jtdi, jinst, jrst, jcapt, jshft, jupd, jtdo, trst, tdoen);
+               jtck, jtdi, open, jrst, jcapt, jshft, jupd, jtdo, trst, tdoen, '0', jtckn, jninst, jiupd);
   end generate;
   
 ----------------------------------------------------------------------
@@ -377,16 +378,17 @@ begin
       t0: tap
         generic map (tech => fabtech, irlen => 6, scantest => scantest, oepol => OEPOL)
         port map (trst,tck,tms,tdi,tdo,
-                  jtck,jtdi,jinst,jrst,jcapt,jshft,jupd,open,open,'1',jtdo,'0',testen,testrst,testoen,tdoen);
+                  jtck,jtdi,open,jrst,jcapt,jshft,jupd,open,open,'1',jtdo,'0',jninst,jiupd,jtckn,testen,testrst,testoen,tdoen,'0');
     end generate;
     
     bc0: bscanctrl
       port map (
-        trst,jtck,jtdi,jinst,jrst,jcapt,jshft,jupd,jtdo,
+        trst,jtck,jtckn,jtdi,jninst,jiupd,jrst,jcapt,jshft,jupd,jtdo,
         chain_tdi, chain_tdo, bsshft, bscapt, bsupdi, bsupdo, bsdrive, bshighz,
         gnd(0), testen, testrst);
       
     chain_tck <= jtck;
+    chain_tckn <= jtckn;
 
   end generate;
   

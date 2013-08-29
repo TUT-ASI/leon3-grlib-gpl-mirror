@@ -80,6 +80,7 @@ entity ahb2mig_series7 is
     clk_amba          : in    std_logic;
     sys_clk_p         : in    std_logic;
     sys_clk_n         : in    std_logic;
+    clk_ref_i         : in    std_logic;
     ui_clk            : out   std_logic;
     ui_clk_sync_rst   : out   std_logic
    );
@@ -181,6 +182,7 @@ signal size_to_watch : std_logic_vector(2 downto 0) := HSIZE_4WORD;
     ddr3_odt             : out   std_logic_vector(0 downto 0);
     sys_clk_p            : in    std_logic;
     sys_clk_n            : in    std_logic;
+    clk_ref_i            : in    std_logic;
     app_addr             : in    std_logic_vector(27 downto 0);
     app_cmd              : in    std_logic_vector(2 downto 0);
     app_en               : in    std_logic;
@@ -193,11 +195,8 @@ signal size_to_watch : std_logic_vector(2 downto 0) := HSIZE_4WORD;
     app_rd_data_valid    : out   std_logic;
     app_rdy              : out   std_logic;
     app_wdf_rdy          : out   std_logic;
-    app_sr_req           : in    std_logic;
     app_sr_active        : out   std_logic;
-    app_ref_req          : in    std_logic;
     app_ref_ack          : out   std_logic;
-    app_zq_req           : in    std_logic;
     app_zq_ack           : out   std_logic;
     ui_clk               : out   std_logic;
     ui_clk_sync_rst      : out   std_logic;
@@ -691,6 +690,7 @@ begin
    ddr3_odt             => ddr3_odt,
    sys_clk_p            => sys_clk_p,
    sys_clk_n            => sys_clk_n,
+   clk_ref_i            => clk_ref_i,
    app_addr             => migin.app_addr,
    app_cmd              => migin.app_cmd,
    app_en               => migin.app_en,
@@ -703,11 +703,8 @@ begin
    app_rd_data          => migoutraw.app_rd_data,
    app_rd_data_end      => migoutraw.app_rd_data_end,
    app_rd_data_valid    => migoutraw.app_rd_data_valid,
-   app_sr_req           => '0',
    app_sr_active        => open,
-   app_ref_req          => '0',
    app_ref_ack          => open,
-   app_zq_req           => '0',
    app_zq_ack           => open,
    ui_clk               => ui_clk,
    ui_clk_sync_rst      => ui_clk_sync_rst,

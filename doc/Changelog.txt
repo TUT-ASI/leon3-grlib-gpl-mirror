@@ -1,3 +1,35 @@
+----------------------- Release 1.3.1-b4135 ----------------------------
+
+2013-08-29	Fix bashisms in scripts target
+
+2013-08-28	Add SRECs to XSim (Vivado) simulation fileset
+
+2013-08-16	Corrected default value in clkgen for Xilinx Series 7
+
+2013-08-16	leon3-gr-xc6s: Fix for Ethernet
+		- Script for correcting RGMII board timing
+		- Added instructions to README file for correcting board timing 
+
+2013-08-16	Updated Vivado Flow to only support version 2013.2 and newer
+		- Supported XILINX IP now generated via VIVADO
+		- Improved support for XSIM
+		Note: This will affect all XILINX Series 7 boards
+
+2013-08-16	AHB2MIG for 7-series: support for VIVADO 2013.2
+
+2013-08-16	SGMII: Updated SGMII to support VIVADO 2013.2
+
+2013-08-16	RGMII: Re-design of to get better timing in 10/100Mbit mode
+
+2013-08-16	AHBJTAG: Reimplement jtagcom with shift registers in TCK
+		domain to allow TCK clock rates faster than AHB clock.
+
+2013-08-06	LEON3: Bring back support for cache freeze
+
+2013-07-29	Replace sdram.srec and sram.srec with ram.srec. "make soft"
+		now creates ram.srec. External designs may need to be changed
+		to take this into consideration.
+
 ----------------------- Release 1.3.0-b4133 ----------------------------
 
 2013-07-24	Fix ML605 template design reset issue.

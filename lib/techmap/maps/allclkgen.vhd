@@ -115,7 +115,9 @@ component clkgen_virtex7
     freq     : integer := 25000);
   port (
     clkin   : in  std_logic;
-    clk     : out std_logic;			-- main clock
+    clk     : out std_logic;      -- main clock
+    clk90   : out std_ulogic;     -- main clock 90deg
+    clkio   : out std_ulogic;     -- IO ref clock
     cgi     : in clkgen_in_type;
     cgo     : out clkgen_out_type);
 end component; 

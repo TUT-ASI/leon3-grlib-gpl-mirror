@@ -1,0 +1,513 @@
+#-----------------------------------------------------------
+# PlanAhead v14.7 (64-bit)
+# Build 321239 by xbuild on Fri Sep 27 19:24:36 MDT 2013
+# Start of session at: Fri Mar  7 21:16:22 2014
+# Process ID: 1753
+# Log file: /home/jiri/tmp/grlib-gpl-1.3.1-b4135/designs/leon3-digilent-xc7z020/planAhead.log
+# Journal file: /home/jiri/tmp/grlib-gpl-1.3.1-b4135/designs/leon3-digilent-xc7z020/planAhead.jou
+#-----------------------------------------------------------
+INFO: [Common 17-78] Attempting to get a license: PlanAhead
+INFO: [Common 17-290] Got license for PlanAhead
+INFO: [Device 21-36] Loading parts and site information from /home/local/cad/xilinx/14.7/ISE_DS/PlanAhead/data/parts/arch.xml
+Parsing RTL primitives file [/home/local/cad/xilinx/14.7/ISE_DS/PlanAhead/data/parts/xilinx/rtl/prims/rtl_prims.xml]
+Finished parsing RTL primitives file [/home/local/cad/xilinx/14.7/ISE_DS/PlanAhead/data/parts/xilinx/rtl/prims/rtl_prims.xml]
+source ./planAhead/leon3mp_planAhead.tcl
+# create_project leon3-zedboard-xc7z020 ./planAhead/leon3-zedboard-xc7z020 -part XC7Z020CLG484-1 -force
+# set_property target_simulator ISim [current_project]
+# set_property top_lib work [current_fileset]
+# set_property top_arch rtl [current_fileset]
+# set_property top leon3mp [current_fileset]
+# set_property target_language VHDL [current_project]
+# set_property board zedBoard [current_project]
+# create_fileset -simset sim_leon3-zedboard-xc7z020
+# set_property top testbench [get_filesets sim_leon3-zedboard-xc7z020]
+# source ./compile.vivado
+## read_vhdl -library grlib ../../lib/grlib/stdlib/version.vhd
+## read_vhdl -library grlib ../../lib/grlib/stdlib/config_types.vhd
+## read_vhdl -library grlib ../../lib/grlib/stdlib/config.vhd
+## read_vhdl -library grlib ../../lib/grlib/stdlib/stdlib.vhd
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/grlib/stdlib/stdio.vhd
+## set_property library grlib [get_files ../../lib/grlib/stdlib/stdio.vhd]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/grlib/stdlib/testlib.vhd
+## set_property library grlib [get_files ../../lib/grlib/stdlib/testlib.vhd]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/grlib/util/util.vhd
+## set_property library grlib [get_files ../../lib/grlib/util/util.vhd]
+## read_vhdl -library grlib ../../lib/grlib/sparc/sparc.vhd
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/grlib/sparc/sparc_disas.vhd
+## set_property library grlib [get_files ../../lib/grlib/sparc/sparc_disas.vhd]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/grlib/sparc/cpu_disas.vhd
+## set_property library grlib [get_files ../../lib/grlib/sparc/cpu_disas.vhd]
+## read_vhdl -library grlib ../../lib/grlib/modgen/multlib.vhd
+## read_vhdl -library grlib ../../lib/grlib/modgen/leaves.vhd
+## read_vhdl -library grlib ../../lib/grlib/amba/amba.vhd
+## read_vhdl -library grlib ../../lib/grlib/amba/devices.vhd
+## read_vhdl -library grlib ../../lib/grlib/amba/defmst.vhd
+## read_vhdl -library grlib ../../lib/grlib/amba/apbctrl.vhd
+## read_vhdl -library grlib ../../lib/grlib/amba/ahbctrl.vhd
+## read_vhdl -library grlib ../../lib/grlib/amba/dma2ahb_pkg.vhd
+## read_vhdl -library grlib ../../lib/grlib/amba/dma2ahb.vhd
+## read_vhdl -library grlib ../../lib/grlib/amba/ahbmst.vhd
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/grlib/amba/dma2ahb_tp.vhd
+## set_property library grlib [get_files ../../lib/grlib/amba/dma2ahb_tp.vhd]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/grlib/amba/amba_tp.vhd
+## set_property library grlib [get_files ../../lib/grlib/amba/amba_tp.vhd]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/synplify/sim/synplify.vhd
+## set_property library synplify [get_files ../../lib/synplify/sim/synplify.vhd]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/synplify/sim/synattr.vhd
+## set_property library synplify [get_files ../../lib/synplify/sim/synattr.vhd]
+## read_vhdl -library techmap ../../lib/techmap/gencomp/gencomp.vhd
+## read_vhdl -library techmap ../../lib/techmap/gencomp/netcomp.vhd
+## read_vhdl -library techmap ../../lib/techmap/inferred/memory_inferred.vhd
+## read_vhdl -library techmap ../../lib/techmap/inferred/ddr_inferred.vhd
+## read_vhdl -library techmap ../../lib/techmap/inferred/mul_inferred.vhd
+## read_vhdl -library techmap ../../lib/techmap/inferred/ddr_phy_inferred.vhd
+## read_vhdl -library techmap ../../lib/techmap/inferred/ddrphy_datapath.vhd
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/techmap/inferred/sim_pll.vhd
+## set_property library techmap [get_files ../../lib/techmap/inferred/sim_pll.vhd]
+## read_vhdl -library techmap ../../lib/techmap/unisim/memory_unisim.vhd
+## read_vhdl -library techmap ../../lib/techmap/unisim/buffer_unisim.vhd
+## read_vhdl -library techmap ../../lib/techmap/unisim/pads_unisim.vhd
+## read_vhdl -library techmap ../../lib/techmap/unisim/clkgen_unisim.vhd
+## read_vhdl -library techmap ../../lib/techmap/unisim/tap_unisim.vhd
+## read_vhdl -library techmap ../../lib/techmap/unisim/ddr_unisim.vhd
+## read_vhdl -library techmap ../../lib/techmap/unisim/ddr_phy_unisim.vhd
+## read_vhdl -library techmap ../../lib/techmap/unisim/sysmon_unisim.vhd
+## read_vhdl -library techmap ../../lib/techmap/unisim/mul_unisim.vhd
+## read_vhdl -library techmap ../../lib/techmap/unisim/spictrl_unisim.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/allclkgen.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/allddr.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/allmem.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/allmul.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/allpads.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/alltap.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/clkgen.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/clkmux.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/clkand.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/ddr_ireg.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/ddr_oreg.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/ddrphy.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/syncram.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/syncram64.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/syncram_2p.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/syncram_dp.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/regfile_3p.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/tap.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/techbuf.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/nandtree.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/clkpad.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/clkpad_ds.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/inpad.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/inpad_ds.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/iodpad.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/iopad.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/iopad_ds.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/lvds_combo.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/odpad.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/outpad.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/outpad_ds.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/toutpad.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/skew_outpad.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/grlfpw_net.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/grfpw_net.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/leon4_net.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/mul_61x61.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/cpu_disas_net.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/ringosc.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/system_monitor.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/grgates.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/inpad_ddr.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/outpad_ddr.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/iopad_ddr.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/syncram128bw.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/syncram256bw.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/syncram128.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/syncram156bw.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/techmult.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/spictrl_net.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/scanreg.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/syncrambw.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/syncram_2pbw.vhd
+## read_vhdl -library techmap ../../lib/techmap/maps/sdram_phy.vhd
+## read_vhdl -library eth ../../lib/eth/comp/ethcomp.vhd
+## read_vhdl -library eth ../../lib/eth/core/greth_pkg.vhd
+## read_vhdl -library eth ../../lib/eth/core/eth_rstgen.vhd
+## read_vhdl -library eth ../../lib/eth/core/eth_edcl_ahb_mst.vhd
+## read_vhdl -library eth ../../lib/eth/core/eth_ahb_mst.vhd
+## read_vhdl -library eth ../../lib/eth/core/greth_tx.vhd
+## read_vhdl -library eth ../../lib/eth/core/greth_rx.vhd
+## read_vhdl -library eth ../../lib/eth/core/grethc.vhd
+## read_vhdl -library eth ../../lib/eth/wrapper/greth_gen.vhd
+## read_vhdl -library eth ../../lib/eth/wrapper/greth_gbit_gen.vhd
+## read_vhdl -library opencores ../../lib/opencores/i2c/i2c_master_bit_ctrl.vhd
+## read_vhdl -library opencores ../../lib/opencores/i2c/i2c_master_byte_ctrl.vhd
+## read_vhdl -library opencores ../../lib/opencores/i2c/i2coc.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/arith/arith.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/arith/mul32.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/arith/div32.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/memctrl/memctrl.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/memctrl/sdctrl.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/memctrl/sdctrl64.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/memctrl/sdmctrl.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/memctrl/srctrl.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/srmmu/mmuconfig.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/srmmu/mmuiface.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/srmmu/libmmu.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/srmmu/mmutlbcam.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/srmmu/mmulrue.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/srmmu/mmulru.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/srmmu/mmutlb.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/srmmu/mmutw.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/srmmu/mmu.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3/leon3.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3/tbufmem.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3/dsu3x.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3/dsu3.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3/grfpushwx.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3v3/libfpu.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3v3/libiu.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3v3/libcache.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3v3/libleon3.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3v3/regfile_3p_l3.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3v3/mmu_acache.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3v3/mmu_icache.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3v3/mmu_dcache.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3v3/cachemem.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3v3/mmu_cache.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3v3/grfpwx.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3v3/grlfpwx.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3v3/iu3.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3v3/proc3.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3v3/leon3cg.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3v3/leon3s.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3v3/leon3sh.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3v3/leon3x.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/leon3v3/grfpwxsh.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/irqmp/irqmp.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/misc/misc.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/misc/rstgen.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/misc/gptimer.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/misc/ahbram.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/misc/ahbdpram.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/misc/ahbtrace_mmb.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/misc/ahbtrace_mb.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/misc/ahbtrace.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/misc/grgpio.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/misc/ahbstat.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/misc/logan.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/misc/apbps2.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/misc/charrom_package.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/misc/charrom.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/misc/apbvga.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/misc/svgactrl.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/misc/grsysmon.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/misc/gracectrl.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/misc/grgpreg.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/misc/ahb_mst_iface.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/misc/grgprbank.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/net/net.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/uart/uart.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/uart/libdcom.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/uart/apbuart.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/uart/dcom.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/uart/dcom_uart.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/uart/ahbuart.vhd
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/gaisler/sim/sim.vhd
+## set_property library gaisler [get_files ../../lib/gaisler/sim/sim.vhd]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/gaisler/sim/sram.vhd
+## set_property library gaisler [get_files ../../lib/gaisler/sim/sram.vhd]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/gaisler/sim/sram16.vhd
+## set_property library gaisler [get_files ../../lib/gaisler/sim/sram16.vhd]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/gaisler/sim/phy.vhd
+## set_property library gaisler [get_files ../../lib/gaisler/sim/phy.vhd]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/gaisler/sim/ahbrep.vhd
+## set_property library gaisler [get_files ../../lib/gaisler/sim/ahbrep.vhd]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/gaisler/sim/delay_wire.vhd
+## set_property library gaisler [get_files ../../lib/gaisler/sim/delay_wire.vhd]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/gaisler/sim/pwm_check.vhd
+## set_property library gaisler [get_files ../../lib/gaisler/sim/pwm_check.vhd]
+## read_vhdl -library gaisler ../../lib/gaisler/jtag/jtag.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/jtag/libjtagcom.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/jtag/jtagcom.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/jtag/ahbjtag.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/jtag/ahbjtag_bsd.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/jtag/bscanregs.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/jtag/bscanregsbd.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/jtag/jtagcom2.vhd
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/gaisler/jtag/jtagtst.vhd
+## set_property library gaisler [get_files ../../lib/gaisler/jtag/jtagtst.vhd]
+## read_vhdl -library gaisler ../../lib/gaisler/greth/ethernet_mac.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/greth/greth.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/greth/greth_mb.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/greth/greth_gbit.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/greth/greth_gbit_mb.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/greth/grethm.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/greth/rgmii.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/ddr/ddrpkg.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/ddr/ddrphy_wrap.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/ddr/ddrspa.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/ddr/ddr2spa.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/ddr/ddr2buf.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/ddr/ddr2spax.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/ddr/ddr2spax_ahb.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/ddr/ddr2spax_ddr.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/ddr/ddr1spax.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/ddr/ddr1spax_ddr.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/ddr/ahb2mig_series7_pkg.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/ddr/ahb2mig_series7.vhd
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/gaisler/ddr/mig_interface_model.v
+## set_property library gaisler [get_files ../../lib/gaisler/ddr/mig_interface_model.v]
+## read_vhdl -library gaisler ../../lib/gaisler/i2c/i2c.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/i2c/i2cmst.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/i2c/i2cmst_gen.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/i2c/i2cslv.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/i2c/i2c2ahbx.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/i2c/i2c2ahb.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/i2c/i2c2ahb_apb.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/i2c/i2c2ahb_gen.vhd
+## read_vhdl -library gaisler ../../lib/gaisler/i2c/i2c2ahb_apb_gen.vhd
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/gaisler/i2c/i2c_slave_model.v
+## set_property library gaisler [get_files ../../lib/gaisler/i2c/i2c_slave_model.v]
+## read_vhdl -library esa ../../lib/esa/memoryctrl/memoryctrl.vhd
+## read_vhdl -library esa ../../lib/esa/memoryctrl/mctrl.vhd
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/fmf/utilities/conversions.vhd
+## set_property library fmf [get_files ../../lib/fmf/utilities/conversions.vhd]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/fmf/utilities/gen_utils.vhd
+## set_property library fmf [get_files ../../lib/fmf/utilities/gen_utils.vhd]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/fmf/flash/flash.vhd
+## set_property library fmf [get_files ../../lib/fmf/flash/flash.vhd]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/fmf/flash/s25fl064a.vhd
+## set_property library fmf [get_files ../../lib/fmf/flash/s25fl064a.vhd]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/fmf/flash/m25p80.vhd
+## set_property library fmf [get_files ../../lib/fmf/flash/m25p80.vhd]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/fmf/fifo/idt7202.vhd
+## set_property library fmf [get_files ../../lib/fmf/fifo/idt7202.vhd]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/micron/sdram/mobile_sdr.v
+## set_property library micron [get_files ../../lib/micron/sdram/mobile_sdr.v]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/micron/ddr_sdram/ddr3.v
+## set_property library micron [get_files ../../lib/micron/ddr_sdram/ddr3.v]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/micron/ddr_sdram/mobile_ddr_fe.v
+## set_property library micron [get_files ../../lib/micron/ddr_sdram/mobile_ddr_fe.v]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/micron/ddr_sdram/ddr3_model.v
+## set_property library micron [get_files ../../lib/micron/ddr_sdram/ddr3_model.v]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/work/debug/debug.vhd
+## set_property library work [get_files ../../lib/work/debug/debug.vhd]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/work/debug/grtestmod.vhd
+## set_property library work [get_files ../../lib/work/debug/grtestmod.vhd]
+## add_files -fileset sim_leon3-zedboard-xc7z020 -norecurse ../../lib/work/debug/cpu_disas.vhd
+## set_property library work [get_files ../../lib/work/debug/cpu_disas.vhd]
+# read_vhdl -library work config.vhd
+# read_vhdl -library work ahbrom.vhd
+# read_vhdl -library work leon3mp.vhd
+# add_files -fileset sim_leon3-zedboard-xc7z020 testbench.vhd leon3_zedboard_stub_sim.vhd
+# add_files ./planAhead/xps_files/leon3_zedboard/leon3_zedboard.xmp
+# make_wrapper -files [get_files ./planAhead/xps_files/leon3_zedboard/leon3_zedboard.xmp] -top -fileset [get_filesets sources_1] -import
+INFO: [Edk 24-182] Generating top-level vhdl wrapper for the XPS sub-design source 'leon3_zedboard'...
+
+Xilinx Platform Studio
+Xilinx EDK 14.7 Build EDK_P.20131013
+Copyright (c) 1995-2012 Xilinx, Inc.  All rights reserved.
+
+XPS% Evaluating file
+/home/jiri/tmp/grlib-gpl-1.3.1-b4135/designs/leon3-digilent-xc7z020/planAhead/xp
+s_files/leon3_zedboard/__xps/pa/_leon3_zedboard_top.tcl
+WARNING:EDK - IPNAME: processing_system7, INSTANCE: processing_system7_0 -
+   Pre-Production version not verified on hardware for architecture 'zynq' -
+   /home/jiri/tmp/grlib-gpl-1.3.1-b4135/designs/leon3-digilent-xc7z020/planAhead
+   /xps_files/leon3_zedboard/leon3_zedboard.mhs line 52 
+WARNING:EDK - IPNAME: processing_system7, INSTANCE: processing_system7_0 -
+   Pre-Production version not verified on hardware for architecture 'zynq' -
+   /home/jiri/tmp/grlib-gpl-1.3.1-b4135/designs/leon3-digilent-xc7z020/planAhead
+   /xps_files/leon3_zedboard/leon3_zedboard.mhs line 52 
+
+Overriding IP level properties ...
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_S_AXI_HP0_HIGHADDR value to 0x1FFFFFFF -
+   /home/local/cad/xilinx/14.7/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/process
+   ing_system7_v4_02_a/data/processing_system7_v2_1_0.mpd line 300 
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_S_AXI_HP1_HIGHADDR value to 0x1FFFFFFF -
+   /home/local/cad/xilinx/14.7/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/process
+   ing_system7_v4_02_a/data/processing_system7_v2_1_0.mpd line 304 
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_S_AXI_HP2_HIGHADDR value to 0x1FFFFFFF -
+   /home/local/cad/xilinx/14.7/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/process
+   ing_system7_v4_02_a/data/processing_system7_v2_1_0.mpd line 308 
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_S_AXI_HP3_HIGHADDR value to 0x1FFFFFFF -
+   /home/local/cad/xilinx/14.7/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/process
+   ing_system7_v4_02_a/data/processing_system7_v2_1_0.mpd line 312 
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_NUM_F2P_INTR_INPUTS value to 1 -
+   /home/local/cad/xilinx/14.7/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/process
+   ing_system7_v4_02_a/data/processing_system7_v2_1_0.mpd line 319 
+INFO:EDK - IPNAME: axi_interconnect, INSTANCE:axi_interconnect_0 - tcl is
+   overriding PARAMETER C_BASEFAMILY value to zynq -
+   /home/local/cad/xilinx/14.7/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/axi_int
+   erconnect_v1_06_a/data/axi_interconnect_v2_1_0.mpd line 81 
+
+Computing clock values...
+INFO:EDK - Frequency for Top-Level Input Clock 'processing_system7_0_PS_CLK' is
+   not specified. Clock DRCs will not be performed for IPs connected to that
+   clock port, unless they are connected through the clock generator IP. 
+
+
+Performing IP level DRCs on properties...
+
+Running DRC Tcl procedures for OPTION IPLEVEL_DRC_PROC...
+INFO:EDK - INFO: DDR Base and High address in current configuration is
+   0x00000000 and 0x1FFFFFFF respectively. 
+INFO:EDK - INFO: You can modify the DDR address range accessed by Programmable
+   Logic through the processing_system7 AXI slave interfaces. If MicroBlaze is a
+   master on processing_system7 AXI slave interfaces, please use the top half of
+   the address range (Base Address = 0x10000000; High Address = 0x1FFFFFFF). For
+   all other master, any subset of the DDR address can be used. See Xilinx
+   Answer 47167 for more information. 
+Address Map for Processor processing_system7_0
+
+
+WARNING:EDK - Peripheral ahblite_axi_bridge_0 is not accessible from any
+   processor in the system. Check Bus Interface connections and address
+   parameters. 
+
+Checking platform address map ...
+ERROR:EDK - INST:ahblite_axi_bridge_0 BASEADDR-HIGHADDR:0000000000-0x1fffffff
+   and INST:processing_system7_0 BASEADDR-HIGHADDR:0000000000-0x1fffffff -
+   address space overlap!
+
+Overriding IP level properties ...
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_S_AXI_HP0_HIGHADDR value to 0x1FFFFFFF -
+   /home/local/cad/xilinx/14.7/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/process
+   ing_system7_v4_02_a/data/processing_system7_v2_1_0.mpd line 300 
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_S_AXI_HP1_HIGHADDR value to 0x1FFFFFFF -
+   /home/local/cad/xilinx/14.7/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/process
+   ing_system7_v4_02_a/data/processing_system7_v2_1_0.mpd line 304 
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_S_AXI_HP2_HIGHADDR value to 0x1FFFFFFF -
+   /home/local/cad/xilinx/14.7/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/process
+   ing_system7_v4_02_a/data/processing_system7_v2_1_0.mpd line 308 
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_S_AXI_HP3_HIGHADDR value to 0x1FFFFFFF -
+   /home/local/cad/xilinx/14.7/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/process
+   ing_system7_v4_02_a/data/processing_system7_v2_1_0.mpd line 312 
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_NUM_F2P_INTR_INPUTS value to 1 -
+   /home/local/cad/xilinx/14.7/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/process
+   ing_system7_v4_02_a/data/processing_system7_v2_1_0.mpd line 319 
+INFO:EDK - IPNAME: axi_interconnect, INSTANCE:axi_interconnect_0 - tcl is
+   overriding PARAMETER C_BASEFAMILY value to zynq -
+   /home/local/cad/xilinx/14.7/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/axi_int
+   erconnect_v1_06_a/data/axi_interconnect_v2_1_0.mpd line 81 
+
+Computing clock values...
+INFO:EDK - Frequency for Top-Level Input Clock 'processing_system7_0_PS_CLK' is
+   not specified. Clock DRCs will not be performed for IPs connected to that
+   clock port, unless they are connected through the clock generator IP. 
+
+
+Performing IP level DRCs on properties...
+
+Running DRC Tcl procedures for OPTION IPLEVEL_DRC_PROC...
+INFO:EDK - INFO: DDR Base and High address in current configuration is
+   0x00000000 and 0x1FFFFFFF respectively. 
+INFO:EDK - INFO: You can modify the DDR address range accessed by Programmable
+   Logic through the processing_system7 AXI slave interfaces. If MicroBlaze is a
+   master on processing_system7 AXI slave interfaces, please use the top half of
+   the address range (Base Address = 0x10000000; High Address = 0x1FFFFFFF). For
+   all other master, any subset of the DDR address can be used. See Xilinx
+   Answer 47167 for more information. 
+Address Map for Processor processing_system7_0
+
+
+WARNING:EDK - Peripheral ahblite_axi_bridge_0 is not accessible from any
+   processor in the system. Check Bus Interface connections and address
+   parameters. 
+
+Checking platform address map ...
+ERROR:EDK - INST:ahblite_axi_bridge_0 BASEADDR-HIGHADDR:0000000000-0x1fffffff
+   and INST:processing_system7_0 BASEADDR-HIGHADDR:0000000000-0x1fffffff -
+   address space overlap!
+
+Command Line: platgen -p xc7z020clg484-1 -lang vhdl -intstyle pa -stubgen
+/home/jiri/tmp/grlib-gpl-1.3.1-b4135/designs/leon3-digilent-xc7z020/planAhead/xp
+s_files/leon3_zedboard/leon3_zedboard.mhs 
+
+Parse
+/home/jiri/tmp/grlib-gpl-1.3.1-b4135/designs/leon3-digilent-xc7z020/planAhead/xp
+s_files/leon3_zedboard/leon3_zedboard.mhs ...
+
+Create merged mhs ...
+WARNING:EDK:4092 - IPNAME: processing_system7, INSTANCE: processing_system7_0 -
+   Pre-Production version not verified on hardware for architecture 'zynq' -
+   /home/jiri/tmp/grlib-gpl-1.3.1-b4135/designs/leon3-digilent-xc7z020/planAhead
+   /xps_files/leon3_zedboard/leon3_zedboard.mhs line 52 
+
+Overriding IP level properties ...
+INFO:EDK:4130 - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl
+   is overriding PARAMETER C_S_AXI_HP0_HIGHADDR value to 0x1FFFFFFF -
+   /home/local/cad/xilinx/14.7/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/process
+   ing_system7_v4_02_a/data/processing_system7_v2_1_0.mpd line 300 
+INFO:EDK:4130 - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl
+   is overriding PARAMETER C_S_AXI_HP1_HIGHADDR value to 0x1FFFFFFF -
+   /home/local/cad/xilinx/14.7/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/process
+   ing_system7_v4_02_a/data/processing_system7_v2_1_0.mpd line 304 
+INFO:EDK:4130 - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl
+   is overriding PARAMETER C_S_AXI_HP2_HIGHADDR value to 0x1FFFFFFF -
+   /home/local/cad/xilinx/14.7/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/process
+   ing_system7_v4_02_a/data/processing_system7_v2_1_0.mpd line 308 
+INFO:EDK:4130 - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl
+   is overriding PARAMETER C_S_AXI_HP3_HIGHADDR value to 0x1FFFFFFF -
+   /home/local/cad/xilinx/14.7/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/process
+   ing_system7_v4_02_a/data/processing_system7_v2_1_0.mpd line 312 
+INFO:EDK:4130 - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl
+   is overriding PARAMETER C_NUM_F2P_INTR_INPUTS value to 1 -
+   /home/local/cad/xilinx/14.7/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/process
+   ing_system7_v4_02_a/data/processing_system7_v2_1_0.mpd line 319 
+INFO:EDK:4130 - IPNAME: axi_interconnect, INSTANCE:axi_interconnect_0 - tcl is
+   overriding PARAMETER C_BASEFAMILY value to zynq -
+   /home/local/cad/xilinx/14.7/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/axi_int
+   erconnect_v1_06_a/data/axi_interconnect_v2_1_0.mpd line 81 
+
+Computing clock values...
+INFO:EDK:1432 - Frequency for Top-Level Input Clock
+   'processing_system7_0_PS_CLK' is not specified. Clock DRCs will not be
+   performed for IPs connected to that clock port, unless they are connected
+   through the clock generator IP. 
+
+
+Performing IP level DRCs on properties...
+
+Running DRC Tcl procedures for OPTION IPLEVEL_DRC_PROC...
+INFO:EDK - INFO: DDR Base and High address in current configuration is
+   0x00000000 and 0x1FFFFFFF respectively. 
+INFO:EDK - INFO: You can modify the DDR address range accessed by Programmable
+   Logic through the processing_system7 AXI slave interfaces. If MicroBlaze is a
+   master on processing_system7 AXI slave interfaces, please use the top half of
+   the address range (Base Address = 0x10000000; High Address = 0x1FFFFFFF). For
+   all other master, any subset of the DDR address can be used. See Xilinx
+   Answer 47167 for more information. 
+Address Map for Processor processing_system7_0
+
+
+WARNING:EDK:2137 - Peripheral ahblite_axi_bridge_0 is not accessible from any
+   processor in the system. Check Bus Interface connections and address
+   parameters. 
+
+Checking platform address map ...
+ERROR:EDK:4056 - INST:ahblite_axi_bridge_0
+   BASEADDR-HIGHADDR:0000000000-0x1fffffff and INST:processing_system7_0
+   BASEADDR-HIGHADDR:0000000000-0x1fffffff - address space overlap!
+ERROR:EDK:440 - platgen failed with errors!
+ERROR:EDK -  
+   Error while running "platgen -p xc7z020clg484-1 -lang vhdl -intstyle pa
+   -stubgen  
+   /home/jiri/tmp/grlib-gpl-1.3.1-b4135/designs/leon3-digilent-xc7z020/planAhead
+   /xps_files/leon3_zedboard/leon3_zedboard.mhs".
+ERROR: [Edk 24-167] (make_wrapper): Failed to execute XPS script. Please check for any errors reported by the XPS application in the console: [/home/jiri/tmp/grlib-gpl-1.3.1-b4135/designs/leon3-digilent-xc7z020/planAhead/xps_files/leon3_zedboard/__xps/pa/_leon3_zedboard_top.tcl]
+
+    while executing
+"make_wrapper -files [get_files ./planAhead/xps_files/leon3_zedboard/leon3_zedboard.xmp] -top -fileset [get_filesets sources_1] -import"
+    (file "./planAhead/leon3mp_planAhead.tcl" line 21)
+INFO: [Common 17-206] Exiting PlanAhead at Fri Mar  7 21:23:06 2014...
+INFO: [Common 17-83] Releasing license: PlanAhead

@@ -84,7 +84,10 @@ component ahbjtag
     tapi_tdo    : in std_ulogic;
     trst        : in std_ulogic := '1';
     tdoen   : out std_ulogic;
-    tckn    : in std_ulogic := '0'
+    tckn    : in std_ulogic := '0';
+    tapo_tckn   : out std_ulogic;
+    tapo_ninst  : out std_logic_vector(7 downto 0);
+    tapo_iupd   : out std_ulogic
     );
 end component;      
 
@@ -123,8 +126,10 @@ component bscanctrl
   port (
     trst        : in std_ulogic;
     tapo_tck    : in std_ulogic;
+    tapo_tckn   : in std_ulogic;
     tapo_tdi    : in std_ulogic;
-    tapo_inst   : in std_logic_vector(7 downto 0);
+    tapo_ninst  : in std_logic_vector(7 downto 0);
+    tapo_iupd   : in std_ulogic;
     tapo_rst    : in std_ulogic;
     tapo_capt   : in std_ulogic;
     tapo_shft   : in std_ulogic;
@@ -155,6 +160,7 @@ component bscanregs
     sigi: in  std_logic_vector(nsigs-1 downto 0);
     sigo: out std_logic_vector(nsigs-1 downto 0);
     tck: in std_ulogic;
+    tckn:in std_ulogic;
     tdi: in std_ulogic;
     tdo: out std_ulogic;
     bsshft: in std_ulogic;
@@ -182,6 +188,7 @@ component bscanregsbd
     corei   : out std_logic_vector(nsigs-1 downto 0);
     
     tck     : in std_ulogic;
+    tckn    : in std_ulogic;
     tdi     : in std_ulogic;
     tdo     : out std_ulogic;
     bsshft  : in std_ulogic;

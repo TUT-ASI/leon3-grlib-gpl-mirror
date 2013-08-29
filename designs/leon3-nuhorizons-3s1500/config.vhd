@@ -131,7 +131,7 @@ package config is
 -- CAN 2.0 interface
   constant CFG_CAN : integer := 1;
   constant CFG_CANIO : integer := 16#C00#;
-  constant CFG_CANIRQ : integer := (4);
+  constant CFG_CANIRQ : integer := (13);
   constant CFG_CANLOOP : integer := 0;
   constant CFG_CAN_SYNCRST : integer := 0;
   constant CFG_CANFT : integer := 0;

@@ -58,6 +58,8 @@ component tap_gen
     tapo_upd    : out std_ulogic;
     tapo_xsel1  : out std_ulogic;
     tapo_xsel2  : out std_ulogic;
+    tapo_ninst  : out std_logic_vector(7 downto 0);
+    tapo_iupd   : out std_ulogic;
     testen      : in std_ulogic := '0';
     testrst     : in std_ulogic := '1';
     testoen     : in std_ulogic := '0';
@@ -336,6 +338,7 @@ component scanregi_inf
     pad     : in std_ulogic;
     core    : out std_ulogic;
     tck     : in std_ulogic;
+    tckn    : in std_ulogic;
     tdi     : in std_ulogic;
     tdo     : out std_ulogic;
     bsshft  : in std_ulogic;
@@ -352,6 +355,7 @@ component scanrego_inf
     core    : in std_ulogic;
     samp    : in std_ulogic;    -- normally same as core unless outpad has feedback
     tck     : in std_ulogic;   
+    tckn    : in std_ulogic;
     tdi     : in std_ulogic;
     tdo     : out std_ulogic;
     bsshft  : in std_ulogic;
@@ -374,6 +378,7 @@ component scanregio_inf -- 3 scan registers: tdo<--input<--output<--outputen<--t
     coreoen : in std_ulogic;
     corei   : out std_ulogic;
     tck     : in std_ulogic;
+    tckn    : in std_ulogic;
     tdi     : in std_ulogic;
     tdo     : out std_ulogic;
     bsshft  : in std_ulogic;

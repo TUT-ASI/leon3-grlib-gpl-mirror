@@ -58,6 +58,7 @@ entity leon3mp is
   port (
     resetn	: in  std_logic;
     clock_50	: in  std_logic;
+    sma_clkout  : out std_ulogic;
     errorn	: out std_logic;
 
     fl_addr 	: out std_logic_vector(22 downto 0);
@@ -195,9 +196,9 @@ begin
   clkgen0 : clkgen                      -- clock generator using toplevel generic 'freq'
     generic map (tech    => CFG_CLKTECH, clk_mul => CFG_CLKMUL,
                  clk_div => CFG_CLKDIV, sdramen => CFG_MCTRL_SDEN,
-                 noclkfb => CFG_CLK_NOFB, freq => BOARD_FREQ)
+                 noclkfb => CFG_CLK_NOFB, freq => BOARD_FREQ, clk2xen => 1)
     port map (clkin => clock_50, pciclkin => gnd(0), clk => clkm, clkn => open,
-              clk2x => open, sdclk => sdclkl, pciclk => open,
+              clk2x => sma_clkout, sdclk => sdclkl, pciclk => open,
               cgi   => cgi, cgo => cgo);
   sdclk_pad : outpad generic map (tech => padtech, slew => 1) 
 	port map (dram_clk, sdclkl);

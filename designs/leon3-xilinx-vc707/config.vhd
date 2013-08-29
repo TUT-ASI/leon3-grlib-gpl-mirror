@@ -1,6 +1,8 @@
 
 
 
+
+
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
 -- Copyright (C) 2009 Aeroflex Gaisler
@@ -96,7 +98,7 @@ package config is
 -- JTAG based DSU interface
   constant CFG_AHB_JTAG : integer := 1;
 -- USB DSU
-  constant CFG_GRUSB_DCL : integer := 1;
+  constant CFG_GRUSB_DCL : integer := 0;
   constant CFG_GRUSB_DCL_UIFACE : integer := 1;
   constant CFG_GRUSB_DCL_DW : integer := 8;
 -- Ethernet DSU

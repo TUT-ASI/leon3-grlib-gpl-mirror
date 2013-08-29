@@ -13,47 +13,47 @@ set_false_path -to   [get_ports switch*]
 
 # --- Flash
 # Outputs
-set_output_delay -clock [get_clocks clk200] -max 1.000 [get_ports oen]
-set_output_delay -clock [get_clocks clk200] -min -add_delay -1.000 [get_ports oen]
-set_output_delay -clock [get_clocks clk200] -max 1.000 [get_ports writen]
-set_output_delay -clock [get_clocks clk200] -min -add_delay -1.000 [get_ports writen]
-set_output_delay -clock [get_clocks clk200] -max 1.000 [get_ports romsn]
-set_output_delay -clock [get_clocks clk200] -min -add_delay -1.000 [get_ports romsn]
-set_output_delay -clock [get_clocks clk200] -max 1.000 [get_ports adv]
-set_output_delay -clock [get_clocks clk200] -min -add_delay -1.000 [get_ports adv]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -max 1.000 [get_ports oen]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -min -add_delay -1.000 [get_ports oen]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -max 1.000 [get_ports writen]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -min -add_delay -1.000 [get_ports writen]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -max 1.000 [get_ports romsn]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -min -add_delay -1.000 [get_ports romsn]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -max 1.000 [get_ports adv]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -min -add_delay -1.000 [get_ports adv]
 
 # BiDir
-set_input_delay -clock [get_clocks clk200] -max 3.000 [get_ports data*]
-set_input_delay -clock [get_clocks clk200] -min -add_delay 1.000 [get_ports data*]
-set_output_delay -clock [get_clocks clk200] -max -add_delay 1.000 [get_ports data*]
-set_output_delay -clock [get_clocks clk200] -min -add_delay -1.000 [get_ports data*]
+set_input_delay -clock [get_clocks -include_generated_clocks clk200] -max 3.000 [get_ports data*]
+set_input_delay -clock [get_clocks -include_generated_clocks clk200] -min -add_delay 1.000 [get_ports data*]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -max -add_delay 1.000 [get_ports data*]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -min -add_delay -1.000 [get_ports data*]
 
 # --- UART
 # Inputs
-set_input_delay -clock [get_clocks clk200] -max 3.000 [get_ports dsurx]
-set_input_delay -clock [get_clocks clk200] -min -add_delay 1.000 [get_ports dsurx]
-set_input_delay -clock [get_clocks clk200] -max 3.000 [get_ports dsuctsn]
-set_input_delay -clock [get_clocks clk200] -min -add_delay 1.000 [get_ports dsuctsn]
+set_input_delay -clock [get_clocks -include_generated_clocks clk200] -max 3.000 [get_ports dsurx]
+set_input_delay -clock [get_clocks -include_generated_clocks clk200] -min -add_delay 1.000 [get_ports dsurx]
+set_input_delay -clock [get_clocks -include_generated_clocks clk200] -max 3.000 [get_ports dsuctsn]
+set_input_delay -clock [get_clocks -include_generated_clocks clk200] -min -add_delay 1.000 [get_ports dsuctsn]
 
 # Outputs
-set_output_delay -clock [get_clocks clk200] -max 1.000 [get_ports dsutx]
-set_output_delay -clock [get_clocks clk200] -min -add_delay -1.000 [get_ports dsutx]
-set_output_delay -clock [get_clocks clk200] -max 1.000 [get_ports dsurtsn]
-set_output_delay -clock [get_clocks clk200] -min -add_delay -1.000 [get_ports dsurtsn]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -max 1.000 [get_ports dsutx]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -min -add_delay -1.000 [get_ports dsutx]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -max 1.000 [get_ports dsurtsn]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -min -add_delay -1.000 [get_ports dsurtsn]
 
 # --- JTAG
 # TBD....
 
 # --- I2C
 # BiDir
-set_input_delay -clock [get_clocks clk200] -max 3.000 [get_ports iic_scl*]
-set_input_delay -clock [get_clocks clk200] -min -add_delay 1.000 [get_ports iic_scl*]
-set_output_delay -clock [get_clocks clk200] -max -add_delay 1.000 [get_ports iic_scl*]
-set_output_delay -clock [get_clocks clk200] -min -add_delay -1.000 [get_ports iic_scl*]
-set_input_delay -clock [get_clocks clk200] -max 3.000 [get_ports iic_sda*]
-set_input_delay -clock [get_clocks clk200] -min -add_delay 1.000 [get_ports iic_sda*]
-set_output_delay -clock [get_clocks clk200] -max -add_delay 1.000 [get_ports iic_sda*]
-set_output_delay -clock [get_clocks clk200] -min -add_delay -1.000 [get_ports iic_sda*]
+set_input_delay -clock [get_clocks -include_generated_clocks clk200] -max 3.000 [get_ports iic_scl*]
+set_input_delay -clock [get_clocks -include_generated_clocks clk200] -min -add_delay 1.000 [get_ports iic_scl*]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -max -add_delay 1.000 [get_ports iic_scl*]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -min -add_delay -1.000 [get_ports iic_scl*]
+set_input_delay -clock [get_clocks -include_generated_clocks clk200] -max 3.000 [get_ports iic_sda*]
+set_input_delay -clock [get_clocks -include_generated_clocks clk200] -min -add_delay 1.000 [get_ports iic_sda*]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -max -add_delay 1.000 [get_ports iic_sda*]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -min -add_delay -1.000 [get_ports iic_sda*]
 
 
 # Pin and IO property
@@ -282,12 +282,12 @@ set_property PACKAGE_PIN AF35 [get_ports {can_rxd}]
 set_property PACKAGE_PIN AF36 [get_ports {can_txd}]
 
 # Inputs
-set_input_delay -clock [get_clocks clk200] -max 3.000 [get_ports can_rxd]
-set_input_delay -clock [get_clocks clk200] -min -add_delay 1.000 [get_ports can_rxd]
+set_input_delay -clock [get_clocks -include_generated_clocks clk200] -max 3.000 [get_ports can_rxd]
+set_input_delay -clock [get_clocks -include_generated_clocks clk200] -min -add_delay 1.000 [get_ports can_rxd]
 
 # Outputs
-set_output_delay -clock [get_clocks clk200] -max 1.000 [get_ports can_txd]
-set_output_delay -clock [get_clocks clk200] -min -add_delay -1.000 [get_ports can_txd]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -max 1.000 [get_ports can_txd]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -min -add_delay -1.000 [get_ports can_txd]
 
 
 #-----------------------------------------------------------
@@ -300,16 +300,16 @@ set_property PACKAGE_PIN AD36 [get_ports {spi_clk}]
 set_property PACKAGE_PIN AD37 [get_ports {spi_data_cs_b}]
 
 # Inputs
-set_input_delay -clock [get_clocks clk200] -max 3.000 [get_ports spi_data_out]
-set_input_delay -clock [get_clocks clk200] -min -add_delay 1.000 [get_ports spi_data_out]
+set_input_delay -clock [get_clocks -include_generated_clocks clk200] -max 3.000 [get_ports spi_data_out]
+set_input_delay -clock [get_clocks -include_generated_clocks clk200] -min -add_delay 1.000 [get_ports spi_data_out]
 
 # Outputs
-set_output_delay -clock [get_clocks clk200] -max 1.000 [get_ports spi_data_in]
-set_output_delay -clock [get_clocks clk200] -min -add_delay -1.000 [get_ports spi_data_in]
-set_output_delay -clock [get_clocks clk200] -max 1.000 [get_ports spi_clk]
-set_output_delay -clock [get_clocks clk200] -min -add_delay -1.000 [get_ports spi_clk]
-set_output_delay -clock [get_clocks clk200] -max 1.000 [get_ports spi_data_cs_b]
-set_output_delay -clock [get_clocks clk200] -min -add_delay -1.000 [get_ports spi_data_cs_b]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -max 1.000 [get_ports spi_data_in]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -min -add_delay -1.000 [get_ports spi_data_in]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -max 1.000 [get_ports spi_clk]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -min -add_delay -1.000 [get_ports spi_clk]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -max 1.000 [get_ports spi_data_cs_b]
+set_output_delay -clock [get_clocks -include_generated_clocks clk200] -min -add_delay -1.000 [get_ports spi_data_cs_b]
 
 
 #-----------------------------------------------------------

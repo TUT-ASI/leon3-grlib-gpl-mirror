@@ -237,11 +237,9 @@
 #undef  CONFIG_DSU_ETHSZ8
 #define CONFIG_DSU_ETHSZ16 1
 #define CONFIG_DSU_IPMSB C0A8
-#define CONFIG_DSU_IPLSB 003B
-#define CONFIG_DSU_ETHMSB 020765
-#define CONFIG_DSU_ETHLSB 003456
-#undef  CONFIG_DSU_ETH_PROG
-#undef  CONFIG_DSU_ETH_DIS
+#define CONFIG_DSU_IPLSB 0033
+#define CONFIG_DSU_ETHMSB 020000
+#define CONFIG_DSU_ETHLSB 000000
 /*
  * Peripherals             
  */
@@ -279,12 +277,7 @@
  * Ethernet             
  */
 #define CONFIG_GRETH_ENABLE 1
-#undef  CONFIG_GRETH_GIGA
-#undef  CONFIG_GRETH_FIFO4
-#undef  CONFIG_GRETH_FIFO8
-#undef  CONFIG_GRETH_FIFO16
-#define CONFIG_GRETH_FIFO32 1
-#undef  CONFIG_GRETH_FIFO64
+#define CONFIG_GRETH_GIGA 1
 /*
  * CAN                     
  */

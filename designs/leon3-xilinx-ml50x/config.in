@@ -81,6 +81,11 @@ comment 'Peripherals             '
   comment 'System ACE Interface Controller'
     source lib/gaisler/misc/gracectrl.in
   endmenu
+
+  mainmenu_option next_comment
+  comment 'PCI EXPRESS'
+    source lib/gaisler/pciexp/pciexp.in
+  endmenu
 endmenu
 
 mainmenu_option next_comment

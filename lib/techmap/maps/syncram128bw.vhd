@@ -109,7 +109,7 @@ begin
   xwrite <= write when testen=0 or testin(TESTIN_WIDTH-2)='0' else (others => '0');
 
   custominx(custominx'high downto custombits) <= (others => '0');
-  custominx(custombits-1 downto 0) <= customin;
+  custominx(custombits-1 downto 0) <= customin(custombits-1 downto 0);
 
   nocust: if syncram_has_customif(tech)=0 or has_sram128bw(tech)=0 generate
     customoutx <= (others => '0');

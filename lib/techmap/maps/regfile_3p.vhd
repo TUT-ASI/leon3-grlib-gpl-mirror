@@ -74,10 +74,10 @@ begin
       port map ( wclk, waddr, wdata, xwe, raddr1, xre1, rdata1, raddr2, xre2, rdata2);
     end generate;
     dp : if tech /= peregrine generate
-      x0 : syncram_2p generic map (tech, abits, dbits, 0, wrfst, testen, custombits)
+      x0 : syncram_2p generic map (tech, abits, dbits, 0, wrfst, testen, 0, custombits)
         port map (rclk, re1, raddr1, rdata1, wclk, we, waddr, wdata, testin,
                   customclk, customin(custombits-1 downto 0), customout(custombits-1 downto 0));
-      x1 : syncram_2p generic map (tech, abits, dbits, 0, wrfst, testen, custombits)
+      x1 : syncram_2p generic map (tech, abits, dbits, 0, wrfst, testen, 0, custombits)
         port map (rclk, re2, raddr2, rdata2, wclk, we, waddr, wdata, testin,
                   customclk, customin(2*custombits-1 downto custombits), customout(2*custombits-1 downto custombits));
     end generate;

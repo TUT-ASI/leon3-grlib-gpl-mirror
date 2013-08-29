@@ -8,7 +8,6 @@ DEVICE=$(PART)-$(PACKAGE)$(SPEED)
 #UCF=$(GRLIB)/boards/$(BOARD)/$(TOP).ucf
 UCF=$(TOP).ucf
 UCF_PLANAHEAD=$(TOP)_mig39.ucf
-
 #ISEMAPOPT=-timing
 QSF=$(GRLIB)/boards/$(BOARD)/$(TOP).qsf
 EFFORT=high
@@ -66,7 +65,63 @@ VHDLOPTSYNFILES= \
 	mig_37/user_design/rtl/ui/ui_cmd.vhd \
 	mig_37/user_design/rtl/ui/ui_rd_data.vhd \
 	mig_37/user_design/rtl/ui/ui_top.vhd \
-	mig_37/user_design/rtl/ui/ui_wr_data.vhd
+	mig_37/user_design/rtl/ui/ui_wr_data.vhd \
+	pcie/v6_pcie_v1_7/source/*.vhd \
+	$(GRLIB)/lib/gaisler/pciexp/pcie.vhd
+
+ifeq ("$(CONFIG_PCIEXP_MASTER_TARGET)","y")
+  ifeq ("$(CONFIG_LANE_WIDTH1)","y")
+  UCF+=pciexp_ucf/pcie_master_target_lane1.ucf
+  UCF_PLANAHEAD+=pciexp_ucf/pcie_master_target_lane1.ucf
+  endif
+  ifeq ("$(CONFIG_LANE_WIDTH2)","y")
+  UCF+=pciexp_ucf/pcie_master_target_lane2.ucf
+  UCF_PLANAHEAD+=pciexp_ucf/pcie_master_target_lane2.ucf
+  endif
+  ifeq ("$(CONFIG_LANE_WIDTH4)","y")
+  UCF+=pciexp_ucf/pcie_master_target_lane4.ucf
+  UCF_PLANAHEAD+=pciexp_ucf/pcie_master_target_lane4.ucf
+  endif
+  ifeq ("$(CONFIG_LANE_WIDTH8)","y")
+  UCF+=pciexp_ucf/pcie_master_target_lane8.ucf
+  UCF_PLANAHEAD+=pciexp_ucf/pcie_master_target_lane8.ucf
+  endif
+VHDLOPTSYNFILES+=$(GRLIB)/lib/gaisler/pciexp/pcie_master_target_virtex.vhd
+endif
+ifeq ("$(CONFIG_PCIEXP_MASTER_FIFO)","y")
+  ifeq ("$(CONFIG_PCIEXP_MASTER_FIFO_DMA)","y")
+    ifeq ("$(CONFIG_LANE_WIDTH1)","y")
+    UCF+=pciexp_ucf/pcie_master_fifo_dma_lane1.ucf
+    UCF_PLANAHEAD+=pciexp_ucf/pcie_master_fifo_dma_lane1.ucf
+    endif
+    ifeq ("$(CONFIG_LANE_WIDTH2)","y")
+    UCF+=pciexp_ucf/pcie_master_fifo_dma_lane2.ucf
+    UCF_PLANAHEAD+=pciexp_ucf/pcie_master_fifo_dma_lane2.ucf
+    endif
+    ifeq ("$(CONFIG_LANE_WIDTH4)","y")
+    UCF+=pciexp_ucf/pcie_master_fifo_dma_lane4.ucf
+    UCF_PLANAHEAD+=pciexp_ucf/pcie_master_fifo_dma_lane4.ucf
+    endif
+VHDLOPTSYNFILES+=$(GRLIB)/lib/gaisler/pciexp/pcie_master_fifo_virtex.vhd
+VHDLOPTSYNFILES+=$(GRLIB)/lib/gaisler/pciexp/pciedma.vhd
+  endif
+  ifneq ("$(CONFIG_PCIEXP_MASTER_FIFO_DMA)","y")
+    ifeq ("$(CONFIG_LANE_WIDTH1)","y")
+    UCF+=pciexp_ucf/pcie_master_fifo_lane1.ucf
+    UCF_PLANAHEAD+=pciexp_ucf/pcie_master_fifo_lane1.ucf
+    endif
+    ifeq ("$(CONFIG_LANE_WIDTH2)","y")
+    UCF+=pciexp_ucf/pcie_master_fifo_lane2.ucf
+    UCF_PLANAHEAD+=pciexp_ucf/pcie_master_fifo_lane2.ucf
+    endif
+    ifeq ("$(CONFIG_LANE_WIDTH4)","y")
+    UCF+=pciexp_ucf/pcie_master_fifo_lane4.ucf
+    UCF_PLANAHEAD+=pciexp_ucf/pcie_master_fifo_lane4.ucf
+    endif
+VHDLOPTSYNFILES+=$(GRLIB)/lib/gaisler/pciexp/pcie_master_fifo_virtex.vhd
+  endif
+endif
+
 VERILOGOPTSYNFILES= \
 	mig/user_design/rtl/controller/*.v \
 	mig/user_design/rtl/ecc/*.v \
@@ -78,11 +133,25 @@ VERILOGOPTSYNFILES= \
 VHDLSYNFILES= \
 	ahb2mig_ml605.vhd config.vhd ahbrom.vhd \
 	svga2ch7301c.vhd gtxclk.vhd leon3mp.vhd
+
 VHDLSIMFILES=testbench.vhd
+
+ifeq ("$(CONFIG_PCIEXP_MASTER_TARGET)","y")
+VHDLSIMFILES+=$(GRLIB)/lib/tech/unisim/ise/GTPA1_DUAL.vhd $(GRLIB)/lib/tech/unisim/ise/GTP_DUAL.vhd \
+$(GRLIB)/lib/tech/unisim/ise/GTXE1.vhd $(GRLIB)/lib/tech/unisim/ise/GTX_DUAL.vhd \
+$(GRLIB)/lib/tech/unisim/ise/PCIE_2_0.vhd $(GRLIB)/lib/tech/unisim/ise/PCIE_A1.vhd
+else 
+ifeq ("$(CONFIG_PCIEXP_MASTER_FIFO)","y")
+VHDLSIMFILES+=$(GRLIB)/lib/tech/unisim/ise/GTPA1_DUAL.vhd $(GRLIB)/lib/tech/unisim/ise/GTP_DUAL.vhd \
+$(GRLIB)/lib/tech/unisim/ise/GTXE1.vhd $(GRLIB)/lib/tech/unisim/ise/GTX_DUAL.vhd \
+$(GRLIB)/lib/tech/unisim/ise/PCIE_2_0.vhd $(GRLIB)/lib/tech/unisim/ise/PCIE_A1.vhd
+endif
+endif
+
 SIMTOP=testbench
 SDCFILE=default.sdc
 BITGEN=$(GRLIB)/boards/$(BOARD)/default.ut
-CLEAN=soft-clean migclean
+CLEAN=soft-clean migclean pcieclean
 TECHLIBS = secureip unisim
 VLOGOPT= +define+x1Gb +define+sg187E +define+x16 -O0
 VCOMOPT= -explicit -O0 
@@ -97,7 +166,7 @@ EXTRA_SOFT = gen_hex_dim16
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp usbhc spw gsi cypress hynix \
 	spansion
-DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan pci ambatest can \
+DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan ambatest can \
 	usb grusbhc spacewire ascs slink spi hcan \
 	leon4 leon4v0 l2cache pwm gr1553b iommu ac97
 FILESKIP = grcan.vhd ddr2.v mobile_ddr.v
@@ -123,3 +192,12 @@ mig39:
 
 migclean:
 	-rm -rf tmp coregen* mig*
+
+pcie:
+	coregen -b pcie/pcie.xco -p pcie
+	patch -p0 < pcie.diff
+
+pcieclean:
+	-rm -rf pcie/v6_pcie_v1_7* pcie/tmp pcie/coregen.cgc tx.dat rx.dat
+
+.PHONY : pcie pcieclean

@@ -44,3 +44,4 @@ ahbwbax.vhd
 ahbswba.vhd
 ahbswbav.vhd
 ahbmwba.vhd
+irqgen.vhd

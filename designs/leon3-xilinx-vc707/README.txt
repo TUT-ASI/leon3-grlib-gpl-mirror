@@ -9,8 +9,8 @@ additional information.
 Note: The Vivado flow and parts of this design are still
 experimental. Currently the design configuration should be left as-is.
 
-Note: You must have both Vivado and Xilinx ISE in your path for the
-make targets to work.
+Note: You must have both Vivado 2013.2 and Xilinx ISE 14.6 in your 
+path for the make targets to work.
 
 Simulation and synthesis
 ------------------------
@@ -21,47 +21,44 @@ source code cannot be distributed due to the prohibitive Xilinx
 license, so the MIG and/or the SGMII must be re-generated with 
 coregen before simulation and synthesis can be done.
 
-To generate the MIG, SGMII and install the Xilinx unisim simulation
-library, do as follows:
+Xilinx MIG and SGMII interface will automatically be generated when 
+Vivado is launched  
+
+To simulate using XSIM and run systest.c on the Leon design using the memory 
+controller from Xilinx use the make targets:
+
+  make soft
+  make vivado-launch
+
+To simulate using Modelsim/Aldec and run systest.c on the Leon design using 
+the memory controller from Xilinx use the make targets:
 
   make map_xilinx_vhdl_lib
   make vsim (only required if Modelsim is used as simulator)
   make mig_series7
   make sgmii_series7
 
-To simulate and run systest.c on the Leon design using the memory 
-controller from Xilinx use the make targets:
-
-  make soft
-  make vsim-launch
-
-With the generic USE_MIG_INTERFACE_MODEL can the user select to use the real
-XILINX memory contoller + MICRON memory model or a simplified model. For speed
-select the simplified model by setting the generic USE_MIG_INTERFACE_MODEL to TRUE.
-
-Synthesis will ONLY work with Vivado 2012.04 installed or newer, and 
+Synthesis will ONLY work with Vivado 2013.02 installed or newer, and 
 the XILINX variable properly set in the shell. To synthesize the design, do
 
   make vivado
 
-and then
-
-  make vivado-prog-fpga
-  
-or use iMPACT programming tool:
+and then use iMPACT programming tool:
   
   make ise-prog-fpga
 
 to program the FPGA.
 
-The MIG can be disabled either by deselecting the MIG controller in 'xconfig' or
-manually editing the config.vhd file. When no MIG is present in the system normal
-GRLIB flow can be used and no extra compile steps are needed. Also when when no
-MIG is present it is possible to control and set the system frequency via xconfig. 
-Note that the system frequency can be modified via Xilinx Coregen when the 
-MIG is present.
+The MIG and SGMII IP can be disabled either by deselecting the memory controller 
+and Gaisler Ethernet interface in 'xconfig' or manually editing the config.vhd file. 
+When no MIG and no SGMII block is present in the system normal GRLIB flow can be 
+used and no extra compile steps are needed. Also when when no MIG is present it 
+is possible to control and set the system frequency via xconfig. 
+Note that the system frequency can be modified via Vivado when the MIG is present
+by modifying within specified limits for the MIG IP.
 
-Compiling and launching modelsim when no memory controller is present:
+Compiling and launching modelsim when no memory controller and no ethernet interface
+is present:
 
   make vsim
   make vsim-launch
@@ -82,9 +79,9 @@ DEBUG - Enable extra debug information when using Micron DDR3 models
 Design specifics
 ----------------
 
-* Synthesis should be done using Vivado 2012.02 or newer
+* Synthesis should be done using Vivado 2013.02 or newer
 
-* The DDR3 controller is implemented with Xilinx MIG Series7 1.9 and 
+* The DDR3 controller is implemented with Xilinx MIG Series7 2.0 and 
   runs of the 200 MHz clock. The DDR3 memory runs at 400 MHz
   (DDR3-800). grmon-2.0.30-74 or later is needed to detect the
    DDR3 memory.
@@ -135,7 +132,6 @@ Design specifics
 
 * The JTAG DSU interface is enabled and accesible via the JTAG port.
   Start grmon with -xilusb to connect.
-
 
 * Output from GRMON is:
 

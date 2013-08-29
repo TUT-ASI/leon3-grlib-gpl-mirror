@@ -101,9 +101,9 @@ package config is
   constant CFG_DSU_ETH : integer := 1 + 0 + 0;
   constant CFG_ETH_BUF : integer := 16;
   constant CFG_ETH_IPM : integer := 16#C0A8#;
-  constant CFG_ETH_IPL : integer := 16#003B#;
-  constant CFG_ETH_ENM : integer := 16#020765#;
-  constant CFG_ETH_ENL : integer := 16#003456#;
+  constant CFG_ETH_IPL : integer := 16#0033#;
+  constant CFG_ETH_ENM : integer := 16#020000#;
+  constant CFG_ETH_ENL : integer := 16#000000#;
 -- LEON2 memory controller
   constant CFG_MCTRL_LEON2 : integer := 1;
   constant CFG_MCTRL_RAM8BIT : integer := 1;
@@ -156,8 +156,8 @@ package config is
   constant CFG_AHBRPIPE : integer := 0;
 -- Gaisler Ethernet core
   constant CFG_GRETH : integer := 1;
-  constant CFG_GRETH1G : integer := 0;
-  constant CFG_ETH_FIFO : integer := 32;
+  constant CFG_GRETH1G : integer := 1;
+  constant CFG_ETH_FIFO : integer := 8;
 
 -- CAN 2.0 interface
   constant CFG_CAN : integer := 0;

@@ -288,6 +288,11 @@
  */
 #define CONFIG_GRACECTRL 1
 /*
+ * PCI EXPRESS
+ */
+#undef  CONFIG_PCIEXP_MASTER_TARGET
+#undef  CONFIG_PCIEXP_MASTER_FIFO
+/*
  * VHDL Debugging        
  */
 #undef  CONFIG_DEBUG_UART
