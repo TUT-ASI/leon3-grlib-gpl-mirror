@@ -128,16 +128,19 @@ package config is
   constant CFG_GRETH : integer := 1;
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 32;
+
 -- PCI interface
   constant CFG_PCI : integer := 0;
   constant CFG_PCIVID : integer := 16#0#;
   constant CFG_PCIDID : integer := 16#0#;
   constant CFG_PCIDEPTH : integer := 8;
   constant CFG_PCI_MTF : integer := 1;
+
 -- PCI arbiter
   constant CFG_PCI_ARB : integer := 0;
   constant CFG_PCI_ARBAPB : integer := 0;
   constant CFG_PCI_ARB_NGNT : integer := 4;
+
 -- PCI trace buffer
   constant CFG_PCITBUFEN: integer := 0;
   constant CFG_PCITBUF : integer := 256;

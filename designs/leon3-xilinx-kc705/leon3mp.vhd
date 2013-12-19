@@ -177,11 +177,6 @@ component ddr_dummy
 end component ;
 
 component IBUFDS_GTE2
-  generic (
-     CLKCM_CFG : boolean := TRUE;
-     CLKRCV_TRST : boolean := TRUE;
-     CLKSWING_CFG : bit_vector := "11"
-  );
   port (
      O : out std_ulogic;
      ODIV2 : out std_ulogic;
@@ -326,6 +321,9 @@ signal io_ref           : std_logic;
 
 signal clkref           : std_logic;
 
+signal migrstn : std_logic;
+
+
 begin
 
 ----------------------------------------------------------------------
@@ -344,9 +342,13 @@ begin
 
   reset_pad : inpad generic map (tech => padtech, level => cmos, voltage => x15v) port map (reset, rst);
   rst0 : rstgen         -- reset generator
-  generic map (acthigh => 1)
+  generic map (acthigh => 1, syncin => 1)
   port map (rst, clkm, lock, rstn, rstraw);
   lock <= calib_done when CFG_MIG_SERIES7 = 1 else cgo.clklock;
+
+  rst1 : rstgen         -- reset generator
+  generic map (acthigh => 1)
+  port map (rst, clkm, '1', migrstn, open);
 
 ----------------------------------------------------------------------
 ---  AHB CONTROLLER --------------------------------------------------
@@ -551,7 +553,7 @@ begin
       apbi            => apbi,
       apbo            => apbo(4),
       calib_done      => calib_done,
-      rst_n_syn       => rstn,
+      rst_n_syn       => migrstn,
       rst_n_async     => rstraw,
       clk_amba        => clkm,
       sys_clk_p       => clk200p,
@@ -755,23 +757,19 @@ begin
 
 
 ----------------------------------------------------------------------
----  I2C Controller--------------------------------------------
+---  I2C Controller --------------------------------------------------
 ----------------------------------------------------------------------
 
-  i2cm: if CFG_I2C_ENABLE = 1 generate  -- I2C master
-    i2c0 : i2cmst
-      generic map (pindex => 9, paddr => 9, pmask => 16#FFF#,
-                   pirq => 11, filter => 9)
+   --i2cm: if CFG_I2C_ENABLE = 1 generate  -- I2C master
+    i2c0 : i2cmst generic map (pindex => 9, paddr => 9, pmask => 16#FFF#, pirq => 11, filter => 9)
       port map (rstn, clkm, apbi, apbo(9), i2ci, i2co);
-    -- Does not use a bi-directional line for the I2C clock
-    i2ci.scl <= i2co.scloen;            -- No clock stretch possible
-    -- When SCL output enable is activated the line should go low
-    i2c_scl_pad : outpad generic map (tech => padtech, level => cmos, voltage => x25v)
-      port map (iic_scl, i2co.scloen);
+
+    i2c_scl_pad : iopad generic map (tech => padtech, level => cmos, voltage => x25v)
+      port map (iic_scl, i2co.scl, i2co.scloen, i2ci.scl);
+
     i2c_sda_pad : iopad generic map (tech => padtech, level => cmos, voltage => x25v)
       port map (iic_sda, i2co.sda, i2co.sdaoen, i2ci.sda);
-  end generate i2cm;
-
+  --end generate i2cm;
 
 ----------------------------------------------------------------------
 ---  APB Bridge and various periherals -------------------------------

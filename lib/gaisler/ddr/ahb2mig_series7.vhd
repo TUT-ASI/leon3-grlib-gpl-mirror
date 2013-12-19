@@ -195,6 +195,9 @@ signal size_to_watch : std_logic_vector(2 downto 0) := HSIZE_4WORD;
     app_rd_data_valid    : out   std_logic;
     app_rdy              : out   std_logic;
     app_wdf_rdy          : out   std_logic;
+    app_sr_req           : in    std_logic;
+    app_ref_req          : in    std_logic;
+    app_zq_req           : in    std_logic;
     app_sr_active        : out   std_logic;
     app_ref_ack          : out   std_logic;
     app_zq_ack           : out   std_logic;
@@ -534,7 +537,8 @@ begin
     end if;
 
     if rst_n_syn = '0' then
-      v.bstate := idle; v.hready := '1'; v.cmd_en := '0'; v.wr_en := '0'; v.wr_end := '0';
+      v.bstate := idle; v.hready := '1'; v.cmd_en := '0'; v.wr_en := '0'; v.wr_end := '0'; 
+      --v.wdf_mask_buffer := (others => '0');  v.wdf_data_buffer := (others => '0'); v.haddr := (others => '0');
     end if;
 
     rin <= v;
@@ -703,6 +707,9 @@ begin
    app_rd_data          => migoutraw.app_rd_data,
    app_rd_data_end      => migoutraw.app_rd_data_end,
    app_rd_data_valid    => migoutraw.app_rd_data_valid,
+   app_sr_req           => '0',
+   app_ref_req          => '0',
+   app_zq_req           => '0',
    app_sr_active        => open,
    app_ref_ack          => open,
    app_zq_ack           => open,

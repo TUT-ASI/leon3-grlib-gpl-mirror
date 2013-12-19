@@ -431,6 +431,53 @@ component rhumc_toutpad
   port (pad : out std_logic; i, en : in std_logic);
 end component;
 
+component saed32_inpad 
+  generic (level : integer := 0; voltage : integer := 0; filter : integer := 0);
+  port (pad : in std_logic; o : out std_logic);
+end component; 
+
+component saed32_iopad 
+  generic (level : integer := 0; slew : integer := 0;
+	   voltage : integer := 0; strength : integer := 0);
+  port (pad : inout std_logic; i, en : in std_logic; o : out std_logic);
+end component;
+
+component saed32_outpad 
+  generic (level : integer := 0; slew : integer := 0;
+	   voltage : integer := 0; strength : integer := 0);
+  port (pad : out std_logic; i : in std_logic);
+end component;
+
+component saed32_toutpad 
+  generic (level : integer := 0; slew : integer := 0;
+	   voltage : integer := 0; strength : integer := 0);
+  port (pad : out std_logic; i, en : in std_logic);
+end component;
+
+component dare_inpad 
+  generic (level : integer := 0; voltage : integer := 0; filter : integer := 0);
+  port (pad : in std_logic; o : out std_logic);
+end component; 
+
+component dare_iopad 
+  generic (level : integer := 0; slew : integer := 0;
+	   voltage : integer := 0; strength : integer := 0);
+  port (pad : inout std_logic; i, en : in std_logic; o : out std_logic);
+end component;
+
+component dare_outpad 
+  generic (level : integer := 0; slew : integer := 0;
+	   voltage : integer := 0; strength : integer := 0);
+  port (pad : out std_logic; i : in std_logic);
+end component;
+
+component dare_toutpad 
+  generic (level : integer := 0; slew : integer := 0;
+	   voltage : integer := 0; strength : integer := 0);
+  port (pad : out std_logic; i, en : in std_logic);
+end component;
+
+
 component umc_inpad 
   generic (level : integer := 0; voltage : integer := 0; filter : integer := 0);
   port (pad : in std_logic; o : out std_logic);

@@ -1,4 +1,4 @@
-sh mkdir synopsys
+catch {sh mkdir synopsys}
 set objects synopsys
 #set trans_dc_max_depth 1
 #set hdlin_seqmap_sync_search_depth 1

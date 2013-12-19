@@ -21,6 +21,7 @@
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 
+
 library ieee;
 use ieee.std_logic_1164.all;
 library gaisler;
@@ -261,20 +262,17 @@ component ddr3_model
     ras_n : in std_logic;
     cas_n : in std_logic;
     we_n : in std_logic;
-    dm_tdqs : inout std_logic_vector(0 to 0);
+    dm_tdqs : inout std_logic;
     ba : in std_logic_vector(2 downto 0);
     addr : in std_logic_vector(13 downto 0);
     dq : inout std_logic_vector(7 downto 0);
-    dqs : inout std_logic_vector(0 to 0);
-    dqs_n : inout std_logic_vector(0 to 0);
+    dqs : inout std_logic;
+    dqs_n : inout std_logic;
     tdqs_n : out std_logic_vector(0 to 0);
     odt : in std_logic
   );
 end component;
 
-signal temp1 : std_logic_vector(0 downto 0);
-signal temp2 : std_logic_vector(0 downto 0);
-signal temp3 : std_logic_vector(0 downto 0);
 
 begin
 
@@ -366,9 +364,6 @@ begin
    ddr3mem : if (CFG_MIG_SERIES7 = 1) generate
     gen_mem: for i in 0 to 7 generate
 
-      temp1(0) <= ddr3_dm(i);
-      temp2(0) <= ddr3_dqs_p(i);
-      temp3(0) <= ddr3_dqs_n(i);
 
       u1: ddr3_model
         generic map(
@@ -387,13 +382,13 @@ begin
         ras_n   => ddr3_ras_n,
         cas_n   => ddr3_cas_n,
         we_n    => ddr3_we_n,
-        dm_tdqs => temp1,
+        dm_tdqs => ddr3_dm(i),
         ba      => ddr3_ba,
         addr    => ddr3_addr,
         dq      => ddr3_dq((8*i+7) downto (8*i)),
-        dqs     => temp2,
-        dqs_n   => temp3,
-        tdqs_n  => OPEN,
+        dqs     => ddr3_dqs_p(i),
+        dqs_n   => ddr3_dqs_n(i),
+        tdqs_n  => open,
         odt     => ddr3_odt(0)
         );
     end generate gen_mem;

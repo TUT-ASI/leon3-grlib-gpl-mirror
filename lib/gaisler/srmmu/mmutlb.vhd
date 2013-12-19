@@ -43,7 +43,8 @@ entity mmutlb is
     entries  : integer range 2 to 64 := 8;
     tlb_type  : integer range 0 to 3 := 1;
     tlb_rep  : integer range 0 to 1 := 1;
-    mmupgsz   : integer range 0 to 5  := 0
+    mmupgsz   : integer range 0 to 5  := 0;
+    ramcbits: integer := 1
   );
   port (
     rst   : in  std_logic;
@@ -51,7 +52,10 @@ entity mmutlb is
     tlbi  : in  mmutlb_in_type;
     tlbo  : out mmutlb_out_type;
     two   : in  mmutw_out_type;
-    twi   : out mmutw_in_type
+    twi   : out mmutw_in_type;
+    ramcclk: in std_ulogic;
+    ramcin : in std_logic_vector(ramcbits-1 downto 0);
+    ramcout: out std_logic_vector(ramcbits-1 downto 0)
     );
 end mmutlb;
 
@@ -657,8 +661,9 @@ begin
 
   -- data-ram syncram 
   dataram : syncram
-    generic map ( tech => tech, dbits => 30, abits => entries_log)
-    port map ( clk, dr1_addr, dr1_datain, dr1_dataout, dr1_enable, dr1_write);
+    generic map ( tech => tech, dbits => 30, abits => entries_log, custombits => ramcbits)
+    port map ( clk, dr1_addr, dr1_datain, dr1_dataout, dr1_enable, dr1_write,
+               tlbi.testin, ramcclk, ramcin, ramcout );
 
   -- lru
   lru0: if tlb_rep = 0 generate

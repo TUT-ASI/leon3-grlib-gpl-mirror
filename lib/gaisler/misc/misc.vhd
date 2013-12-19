@@ -40,7 +40,7 @@ package misc is
 
   component rstgen
   generic (acthigh : integer := 0; syncrst : integer := 0;
-	   scanen : integer := 0);
+	   scanen : integer := 0; syncin  : integer := 0);
   port (
     rstin     : in  std_ulogic;
     clk       : in  std_ulogic;
@@ -106,7 +106,8 @@ package misc is
     tech    : integer := DEFMEMTECH;
     kbytes  : integer := 1;
     pipe    : integer := 0;
-    maccsz  : integer := AHBDW);
+    maccsz  : integer := AHBDW;
+    scantest: integer := 0);
   port (
     rst    : in  std_ulogic;
     clk    : in  std_ulogic;
@@ -307,12 +308,16 @@ package misc is
     sig_en   : std_logic_vector(31 downto 0);
   end record;
 
+  type gpio_in_vector is array (natural range <>) of gpio_in_type;
+
   type gpio_out_type is record
     dout     : std_logic_vector(31 downto 0);
     oen      : std_logic_vector(31 downto 0);
     val      : std_logic_vector(31 downto 0);
     sig_out  : std_logic_vector(31 downto 0);
   end record;
+
+  type gpio_out_vector is array (natural range <>) of gpio_out_type;
 
  component grgpio
   generic (
@@ -387,7 +392,7 @@ package misc is
     fcfsmtech   : integer range 0 to NTECH := inferred;
     scantest    : integer range 0 to 1 := 0;
     split       : integer range 0 to 1 := 1;
-    pipe        : integer range 0 to 128 := 128);
+    pipe        : integer range 0 to 128 := 0);
   port (
     rstn        : in  std_ulogic;
     hclkm       : in  std_ulogic;

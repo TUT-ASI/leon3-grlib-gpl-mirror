@@ -32,8 +32,8 @@ use grlib.stdlib.all;
 use grlib.amba.all;
 use grlib.devices.all;
 library gaisler;
-use gaisler.memctrl.all;
 use gaisler.ddrpkg.all;
+use gaisler.ddrintpkg.all;
 
 entity ddr2spax_ahb is
    generic (

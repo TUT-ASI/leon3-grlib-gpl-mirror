@@ -144,6 +144,16 @@ begin
          port map (clk, address, datain, dataoutx, xenable, xwrite);
   end generate;
 
+  saed : if tech = saed32 generate
+    x0 : saed32_syncram generic map (abits, dbits)
+         port map (clk, address, datain, dataoutx, xenable, xwrite);
+  end generate;
+
+  dar  : if tech = dare generate
+    x0 : dare_syncram generic map (abits, dbits)
+         port map (clk, address, datain, dataoutx, xenable, xwrite);
+  end generate;
+
   proa3 : if tech = apa3 generate
     x0 : proasic3_syncram generic map (abits, dbits)
          port map (clk, address, datain, dataoutx, xenable, xwrite);
@@ -243,7 +253,7 @@ begin
          port map (clk, address, datain, dataoutx, xenable, xwrite);
   end generate;
 
-  tm65gplu  : if tech = tm65gpl generate
+  tm65gplu  : if tech = tm65gplus generate
     x0 : tm65gplus_syncram generic map (abits, dbits)
       port map (clk, address, datain, dataoutx, xenable, xwrite);
   end generate;

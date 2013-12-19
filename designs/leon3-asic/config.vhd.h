@@ -91,6 +91,14 @@
 -- JTAG based DSU interface
   constant CFG_AHB_JTAG	: integer := CONFIG_DSU_JTAG;
 
+-- Ethernet DSU
+  constant CFG_DSU_ETH	: integer := CONFIG_DSU_ETH + CONFIG_DSU_ETH_PROG + CONFIG_DSU_ETH_DIS;
+  constant CFG_ETH_BUF 	: integer := CFG_DSU_ETHB;
+  constant CFG_ETH_IPM 	: integer := 16#CONFIG_DSU_IPMSB#;
+  constant CFG_ETH_IPL 	: integer := 16#CONFIG_DSU_IPLSB#;
+  constant CFG_ETH_ENM 	: integer := 16#CONFIG_DSU_ETHMSB#;
+  constant CFG_ETH_ENL 	: integer := 16#CONFIG_DSU_ETHLSB#;
+
 -- LEON2 memory controller
   constant CFG_MCTRL_LEON2    : integer := CONFIG_MCTRL_LEON2;
   constant CFG_MCTRL_RAM8BIT  : integer := CONFIG_MCTRL_8BIT;
@@ -123,6 +131,48 @@
   constant CFG_SPW_INPUT   : integer := CONFIG_SPW_INPUT;
   constant CFG_SPW_OUTPUT  : integer := CONFIG_SPW_OUTPUT;
   constant CFG_SPW_RTSAME  : integer := CONFIG_SPW_RTSAME;
+-- Gaisler Ethernet core
+  constant CFG_GRETH   	    : integer := CONFIG_GRETH_ENABLE;
+  constant CFG_GRETH1G	    : integer := CONFIG_GRETH_GIGA;
+  constant CFG_ETH_FIFO     : integer := CFG_GRETH_FIFO;
+#ifdef CONFIG_LEON3FT_PRESENT
+  constant CFG_GRETH_FT     : integer := CONFIG_GRETH_FT;
+  constant CFG_GRETH_EDCLFT : integer := CONFIG_GRETH_EDCLFT;
+#endif
+-- SPI memory controller
+  constant CFG_SPIMCTRL            : integer := CONFIG_SPIMCTRL;
+  constant CFG_SPIMCTRL_SDCARD     : integer := CONFIG_SPIMCTRL_SDCARD;
+  constant CFG_SPIMCTRL_READCMD    : integer := 16#CONFIG_SPIMCTRL_READCMD#;
+  constant CFG_SPIMCTRL_DUMMYBYTE  : integer := CONFIG_SPIMCTRL_DUMMYBYTE;
+  constant CFG_SPIMCTRL_DUALOUTPUT : integer := CONFIG_SPIMCTRL_DUALOUTPUT;
+  constant CFG_SPIMCTRL_SCALER     : integer := CONFIG_SPIMCTRL_SCALER;
+  constant CFG_SPIMCTRL_ASCALER    : integer := CONFIG_SPIMCTRL_ASCALER;
+  constant CFG_SPIMCTRL_PWRUPCNT   : integer := CONFIG_SPIMCTRL_PWRUPCNT;
+  constant CFG_SPIMCTRL_OFFSET     : integer := 16#CONFIG_SPIMCTRL_OFFSET#;
+
+-- SPI controller
+  constant CFG_SPICTRL_ENABLE  : integer := CONFIG_SPICTRL_ENABLE;
+  constant CFG_SPICTRL_NUM     : integer := CONFIG_SPICTRL_NUM;
+  constant CFG_SPICTRL_SLVS    : integer := CONFIG_SPICTRL_SLVS;
+  constant CFG_SPICTRL_FIFO    : integer := CONFIG_SPICTRL_FIFO;
+  constant CFG_SPICTRL_SLVREG  : integer := CONFIG_SPICTRL_SLVREG;
+  constant CFG_SPICTRL_ODMODE  : integer := CONFIG_SPICTRL_ODMODE;
+  constant CFG_SPICTRL_AM      : integer := CONFIG_SPICTRL_AM;
+  constant CFG_SPICTRL_ASEL    : integer := CONFIG_SPICTRL_ASEL;
+  constant CFG_SPICTRL_TWEN    : integer := CONFIG_SPICTRL_TWEN;
+  constant CFG_SPICTRL_MAXWLEN : integer := CONFIG_SPICTRL_MAXWLEN;
+  constant CFG_SPICTRL_SYNCRAM : integer := CONFIG_SPICTRL_SYNCRAM;
+  constant CFG_SPICTRL_FT      : integer := CONFIG_SPICTRL_FT;
+
+-- CAN 2.0 interface
+  constant CFG_CAN      : integer := CONFIG_CAN_ENABLE;
+  constant CFG_CAN_NUM  : integer := CONFIG_CAN_NUM;
+  constant CFG_CANIO    : integer := 16#CONFIG_CANIO#;
+  constant CFG_CANIRQ   : integer := CONFIG_CANIRQ;
+  constant CFG_CANSEPIRQ: integer := CONFIG_CANSEPIRQ;
+  constant CFG_CAN_SYNCRST : integer := CONFIG_CAN_SYNCRST;
+  constant CFG_CANFT    : integer := CONFIG_CAN_FT;
+
 -- UART 1
   constant CFG_UART1_ENABLE : integer := CONFIG_UART1_ENABLE;
   constant CFG_UART1_FIFO   : integer := CFG_UA1_FIFO;
@@ -149,6 +199,9 @@
   constant CFG_GRGPIO_ENABLE : integer := CONFIG_GRGPIO_ENABLE;
   constant CFG_GRGPIO_IMASK  : integer := 16#CONFIG_GRGPIO_IMASK#;
   constant CFG_GRGPIO_WIDTH  : integer := CONFIG_GRGPIO_WIDTH;
+
+-- I2C master
+  constant CFG_I2C_ENABLE : integer := CONFIG_I2C_ENABLE;
 
 -- GRLIB debugging
   constant CFG_DUART    : integer := CONFIG_DEBUG_UART;

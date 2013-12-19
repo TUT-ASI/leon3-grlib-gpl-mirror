@@ -92,7 +92,7 @@ comment 'Peripherals             '
 
   mainmenu_option next_comment
   comment 'PCI EXPRESS'
-    source lib/gaisler/pciexp/pciexp.in
+    source lib/gaisler/pcie/pcie.in
   endmenu
 
 

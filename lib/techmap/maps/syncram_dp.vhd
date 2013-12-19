@@ -136,6 +136,18 @@ begin
                    clk2, address2, datain2, dataout2, xenable2, xwrite2);
   end generate;
 
+  saed  : if tech = saed32 generate
+    x0 : saed32_syncram_dp generic map (abits, dbits)
+         port map (clk1, address1, datain1, dataout1, xenable1, xwrite1,
+                   clk2, address2, datain2, dataout2, xenable2, xwrite2);
+  end generate;
+
+  dar   : if tech = dare generate
+    x0 : dare_syncram_dp generic map (abits, dbits)
+         port map (clk1, address1, datain1, dataout1, xenable1, xwrite1,
+                   clk2, address2, datain2, dataout2, xenable2, xwrite2);
+  end generate;
+
   fus  : if tech = actfus generate
     x0 : fusion_syncram_dp generic map (abits, dbits)
          port map (clk1, address1, datain1, dataout1, xenable1, xwrite1,
@@ -174,7 +186,7 @@ begin
                    clk2, address2, datain2, dataout2, xenable2, xwrite2);
   end generate;
 
-  tm65gplu  : if tech = tm65gpl generate
+  tm65gplu  : if tech = tm65gplus generate
     x0 : tm65gplus_syncram_dp generic map (abits, dbits)
          port map (clk1, address1, datain1, dataout1, xenable1, xwrite1,
                    clk2, address2, datain2, dataout2, xenable2, xwrite2);

@@ -732,6 +732,13 @@ begin
     variable t : integer;
     begin
       if rising_edge(clk) then
+        if htrans(1)='1' and lmsti.hready='0' and (lmsti.hresp="01") then
+          if hwrite = '1' then
+            grlib.testlib.print("mst" & tost(hmaster) & ": " & tost(haddr) & "    write " & tost(mbit/8) & " bytes  [" & tost(lslvi.hwdata(mbit-1+bitoffs downto bitoffs)) & "] - ERROR!");
+          else
+            grlib.testlib.print("mst" & tost(hmaster) & ": " & tost(haddr) & "    read  " & tost(mbit/8) & " bytes  [" & tost(lmsti.hrdata(mbit-1+bitoffs downto bitoffs)) & "] - ERROR!");
+          end if;
+        end if;
         if ((htrans(1) and lmsti.hready) = '1') and (lmsti.hresp = "00") then
           mbit :=  2**conv_integer(hsize)*8;
           bitoffs := 0;
@@ -937,6 +944,11 @@ begin
                   tost(iostart & (slvo(i).hconfig(j)(31 downto 20) and mask)) &
                   "00, the intended base address may have been " &
                   tost(iostart & slvo(i).hconfig(j)(31 downto 20)) & "00"
+                  severity warning;
+              else
+                assert false report
+                  "AHB slave " & tost(i) & " maps bar " & tost(j mod NAHBIR) &
+                  " to the IO area, but this AHBCTRL has been configured with VHDL generic ioen = 0"
                   severity warning;
               end if;
             when others =>

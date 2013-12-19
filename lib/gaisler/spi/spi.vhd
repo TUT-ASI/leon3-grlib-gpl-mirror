@@ -41,6 +41,8 @@ package spi is
     ignore  : std_ulogic;
   end record;
 
+  type spi_in_vector is array (natural range <>) of spi_in_type;
+
   constant spi_in_none : spi_in_type := ('0', '0', '0', '0', '0', '0', '0');
 
   type spi_out_type is record
@@ -55,6 +57,8 @@ package spi is
     astart   : std_ulogic;
     aready   : std_ulogic;
   end record;
+
+  type spi_out_vector is array (natural range <>) of spi_out_type;
 
   constant spi_out_none : spi_out_type := ('0', '0', '0', '0', '0', '0',
                                            (others => '0'), '0', '0', '0');

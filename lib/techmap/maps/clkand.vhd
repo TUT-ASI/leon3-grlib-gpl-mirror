@@ -76,6 +76,14 @@ begin
     n2x : if (tech = easic45) generate
       clkgate : clkand_n2x port map(i => i, en => eni, o => o, tsten => tsten);
     end generate;
+
+    saed : if (tech = saed32) generate
+      clkgate : clkand_saed32 port map(i => i, en => eni, o => o, tsten => tsten);
+    end generate;
+
+    dar : if (tech = dare) generate
+      clkgate : clkand_dare port map(i => i, en => eni, o => o, tsten => tsten);
+    end generate;
   end generate;
 
   gen : if has_clkand(tech) = 0 generate

@@ -157,8 +157,8 @@ architecture rtl of grsysmon is
      srdata    : std_logic_vector(15 downto 0);  -- SYSMON response data
      rrdata    : std_logic_vector(12 downto 0);  -- Register response data
      hresp     : std_logic_vector(1 downto 0);
-     splmst    : std_logic_vector(3 downto 0);   -- SPLIT:ed master
-     hsplit    : std_logic_vector(15 downto 0);  -- Other SPLIT:ed masters
+     splmst    : std_logic_vector(log2(NAHBMST)-1 downto 0);   -- SPLIT:ed master
+     hsplit    : std_logic_vector(NAHBMST-1 downto 0);  -- Other SPLIT:ed masters
      ahbcancel : std_ulogic;     -- Locked access cancels ongoing SPLIT
                                  -- response
   end record;
@@ -214,7 +214,7 @@ begin  -- rtl
     variable v       : grsysmon_reg_type;
     variable irq     : std_logic_vector((NAHBIRQ-1) downto 0);
     variable addr    : std_logic_vector(7 downto 0);
-    variable hsplit  : std_logic_vector(15 downto 0);
+    variable hsplit  : std_logic_vector(NAHBMST-1 downto 0);
     variable regaddr : std_ulogic;
     variable hrdata  : std_logic_vector(31 downto 0);
     variable hwdata  : std_logic_vector(31 downto 0);

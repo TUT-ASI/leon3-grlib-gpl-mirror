@@ -19,7 +19,6 @@
 -----------------------------------------------------------------------------
 -- Package: 	config_types
 -- File:	config_types.vhd
--- Author:	Jan Andersson - Aeroflex Gaisler AB
 -- Description:	GRLIB Global configuration types package.
 ------------------------------------------------------------------------------
 

@@ -32,8 +32,8 @@ use grlib.stdlib.all;
 use grlib.amba.all;
 use grlib.devices.all;
 library gaisler;
-use gaisler.memctrl.all;
 use gaisler.ddrpkg.all;
+use gaisler.ddrintpkg.all;
 
 entity ddr2spax_ddr is
    generic (
@@ -70,8 +70,8 @@ entity ddr2spax_ddr is
       request  : in  ddr_request_type;
       start_tog: in  std_logic;
       response : out ddr_response_type;
-      sdi      : in  sdctrl_in_type;
-      sdo      : out sdctrl_out_type;
+      sdi      : in  ddrctrl_in_type;
+      sdo      : out ddrctrl_out_type;
       wbraddr  : out std_logic_vector(log2((16*burstlen)/ddrbits) downto 0);
       wbrdata  : in  std_logic_vector(2*(ddrbits+chkbits)-1 downto 0);
       rbwaddr  : out std_logic_vector(log2((16*burstlen)/ddrbits)-1 downto 0);
@@ -260,7 +260,7 @@ begin
     constant plmemread: boolean := false;
     
     variable dv: ddr_reg_type;
-    variable o: sdctrl_out_type;
+    variable o: ddrctrl_out_type;
     variable bdrive,qdrive: std_logic;
     variable vreq,vreqf: ddr_request_type;
     variable resp,resp2: ddr_response_type;
@@ -302,7 +302,7 @@ begin
     
     
     dv := dr;
-    o := sdctrl_out_none;
+    o := ddrctrl_out_none;
     o.sdcke     := (others => dr.cfg.cke);
     o.sdcsn     := dr.sdo_csn;
     o.sdwen     := dr.wen_prev;

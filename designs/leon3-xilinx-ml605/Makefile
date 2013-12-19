@@ -67,58 +67,58 @@ VHDLOPTSYNFILES= \
 	mig_37/user_design/rtl/ui/ui_top.vhd \
 	mig_37/user_design/rtl/ui/ui_wr_data.vhd \
 	pcie/v6_pcie_v1_7/source/*.vhd \
-	$(GRLIB)/lib/gaisler/pciexp/pcie.vhd
+	$(GRLIB)/lib/gaisler/pcie/pcie.vhd
 
 ifeq ("$(CONFIG_PCIEXP_MASTER_TARGET)","y")
   ifeq ("$(CONFIG_LANE_WIDTH1)","y")
-  UCF+=pciexp_ucf/pcie_master_target_lane1.ucf
-  UCF_PLANAHEAD+=pciexp_ucf/pcie_master_target_lane1.ucf
+  UCF+=pcie_ucf/pcie_master_target_lane1.ucf
+  UCF_PLANAHEAD+=pcie_ucf/pcie_master_target_lane1.ucf
   endif
   ifeq ("$(CONFIG_LANE_WIDTH2)","y")
-  UCF+=pciexp_ucf/pcie_master_target_lane2.ucf
-  UCF_PLANAHEAD+=pciexp_ucf/pcie_master_target_lane2.ucf
+  UCF+=pcie_ucf/pcie_master_target_lane2.ucf
+  UCF_PLANAHEAD+=pcie_ucf/pcie_master_target_lane2.ucf
   endif
   ifeq ("$(CONFIG_LANE_WIDTH4)","y")
-  UCF+=pciexp_ucf/pcie_master_target_lane4.ucf
-  UCF_PLANAHEAD+=pciexp_ucf/pcie_master_target_lane4.ucf
+  UCF+=pcie_ucf/pcie_master_target_lane4.ucf
+  UCF_PLANAHEAD+=pcie_ucf/pcie_master_target_lane4.ucf
   endif
   ifeq ("$(CONFIG_LANE_WIDTH8)","y")
-  UCF+=pciexp_ucf/pcie_master_target_lane8.ucf
-  UCF_PLANAHEAD+=pciexp_ucf/pcie_master_target_lane8.ucf
+  UCF+=pcie_ucf/pcie_master_target_lane8.ucf
+  UCF_PLANAHEAD+=pcie_ucf/pcie_master_target_lane8.ucf
   endif
-VHDLOPTSYNFILES+=$(GRLIB)/lib/gaisler/pciexp/pcie_master_target_virtex.vhd
+VHDLOPTSYNFILES+=$(GRLIB)/lib/gaisler/pcie/pcie_master_target_virtex.vhd
 endif
 ifeq ("$(CONFIG_PCIEXP_MASTER_FIFO)","y")
   ifeq ("$(CONFIG_PCIEXP_MASTER_FIFO_DMA)","y")
     ifeq ("$(CONFIG_LANE_WIDTH1)","y")
-    UCF+=pciexp_ucf/pcie_master_fifo_dma_lane1.ucf
-    UCF_PLANAHEAD+=pciexp_ucf/pcie_master_fifo_dma_lane1.ucf
+    UCF+=pcie_ucf/pcie_master_fifo_dma_lane1.ucf
+    UCF_PLANAHEAD+=pcie_ucf/pcie_master_fifo_dma_lane1.ucf
     endif
     ifeq ("$(CONFIG_LANE_WIDTH2)","y")
-    UCF+=pciexp_ucf/pcie_master_fifo_dma_lane2.ucf
-    UCF_PLANAHEAD+=pciexp_ucf/pcie_master_fifo_dma_lane2.ucf
+    UCF+=pcie_ucf/pcie_master_fifo_dma_lane2.ucf
+    UCF_PLANAHEAD+=pcie_ucf/pcie_master_fifo_dma_lane2.ucf
     endif
     ifeq ("$(CONFIG_LANE_WIDTH4)","y")
-    UCF+=pciexp_ucf/pcie_master_fifo_dma_lane4.ucf
-    UCF_PLANAHEAD+=pciexp_ucf/pcie_master_fifo_dma_lane4.ucf
+    UCF+=pcie_ucf/pcie_master_fifo_dma_lane4.ucf
+    UCF_PLANAHEAD+=pcie_ucf/pcie_master_fifo_dma_lane4.ucf
     endif
-VHDLOPTSYNFILES+=$(GRLIB)/lib/gaisler/pciexp/pcie_master_fifo_virtex.vhd
-VHDLOPTSYNFILES+=$(GRLIB)/lib/gaisler/pciexp/pciedma.vhd
+VHDLOPTSYNFILES+=$(GRLIB)/lib/gaisler/pcie/pcie_master_fifo_virtex.vhd
+VHDLOPTSYNFILES+=$(GRLIB)/lib/gaisler/pcie/pciedma.vhd
   endif
   ifneq ("$(CONFIG_PCIEXP_MASTER_FIFO_DMA)","y")
     ifeq ("$(CONFIG_LANE_WIDTH1)","y")
-    UCF+=pciexp_ucf/pcie_master_fifo_lane1.ucf
-    UCF_PLANAHEAD+=pciexp_ucf/pcie_master_fifo_lane1.ucf
+    UCF+=pcie_ucf/pcie_master_fifo_lane1.ucf
+    UCF_PLANAHEAD+=pcie_ucf/pcie_master_fifo_lane1.ucf
     endif
     ifeq ("$(CONFIG_LANE_WIDTH2)","y")
-    UCF+=pciexp_ucf/pcie_master_fifo_lane2.ucf
-    UCF_PLANAHEAD+=pciexp_ucf/pcie_master_fifo_lane2.ucf
+    UCF+=pcie_ucf/pcie_master_fifo_lane2.ucf
+    UCF_PLANAHEAD+=pcie_ucf/pcie_master_fifo_lane2.ucf
     endif
     ifeq ("$(CONFIG_LANE_WIDTH4)","y")
-    UCF+=pciexp_ucf/pcie_master_fifo_lane4.ucf
-    UCF_PLANAHEAD+=pciexp_ucf/pcie_master_fifo_lane4.ucf
+    UCF+=pcie_ucf/pcie_master_fifo_lane4.ucf
+    UCF_PLANAHEAD+=pcie_ucf/pcie_master_fifo_lane4.ucf
     endif
-VHDLOPTSYNFILES+=$(GRLIB)/lib/gaisler/pciexp/pcie_master_fifo_virtex.vhd
+VHDLOPTSYNFILES+=$(GRLIB)/lib/gaisler/pcie/pcie_master_fifo_virtex.vhd
   endif
 endif
 
@@ -181,7 +181,7 @@ mig_37 mig:
 	cp grlib_mig/mig.* .
 	coregen -b mig.xco -p mig.cgp
 	patch -p1 < grlib_mig/mig.diff
-
+	patch -p0 < grlib_mig/mig_reset13.diff
 mig39:
 	cp grlib_mig/mig39.* .
 	coregen -b mig39.xco -p mig39.cgp
@@ -189,6 +189,7 @@ mig39:
 	patch -p1 < grlib_mig/mig_iodelay_ctrl_patch.txt
 	patch -p1 < grlib_mig/mig_infrastructure_patch.txt
 	patch -p1 < grlib_mig/mig_ucf_patch.txt
+	patch -p0 < grlib_mig/mig_reset14.diff
 
 migclean:
 	-rm -rf tmp coregen* mig*

@@ -38,6 +38,8 @@
 #undef  CONFIG_SYN_PEREGRINE
 #undef  CONFIG_SYN_RH_LIB18T
 #undef  CONFIG_SYN_RHUMC
+#undef  CONFIG_SYN_SAED32
+#undef  CONFIG_SYN_DARE
 #undef  CONFIG_SYN_SMIC13
 #undef  CONFIG_SYN_TM65GPLUS
 #undef  CONFIG_SYN_TSMC90
@@ -47,7 +49,6 @@
 #undef  CONFIG_SYN_SPARTAN3
 #undef  CONFIG_SYN_SPARTAN3E
 #undef  CONFIG_SYN_SPARTAN6
-#undef  CONFIG_SYN_VIRTEX
 #undef  CONFIG_SYN_VIRTEXE
 #undef  CONFIG_SYN_VIRTEX2
 #define CONFIG_SYN_VIRTEX4 1
@@ -76,6 +77,9 @@
 #undef  CONFIG_CLK_FUSPLL
 #undef  CONFIG_CLK_LIB18T
 #undef  CONFIG_CLK_RHUMC
+#undef  CONFIG_CLK_DARE
+#undef  CONFIG_CLK_SAED32
+#undef  CONFIG_CLK_EASIC45
 #undef  CONFIG_CLK_CLKPLLE2
 #undef  CONFIG_CLK_CLKDLL
 #define CONFIG_CLK_DCM 1
@@ -116,16 +120,7 @@
 /*
  * Floating-point unit
  */
-#define CONFIG_FPU_ENABLE 1
-#define CONFIG_FPU_GRFPU 1
-#undef  CONFIG_FPU_GRFPULITE
-#undef  CONFIG_FPU_MEIKO
-#define CONFIG_FPU_GRFPU_INFMUL 1
-#undef  CONFIG_FPU_GRFPU_DWMUL
-#undef  CONFIG_FPU_GRFPU_MODGEN
-#undef  CONFIG_FPU_GRFPU_TECHSPEC
-#undef  CONFIG_FPU_GRFPU_SH
-#undef  CONFIG_FPU_NETLIST
+#undef  CONFIG_FPU_ENABLE
 /*
  * Cache system
  */
@@ -220,7 +215,6 @@
 /*
  * Fault-tolerance  
  */
-#undef  CONFIG_LEON3FT_EN
 /*
  * VHDL debug settings       
  */

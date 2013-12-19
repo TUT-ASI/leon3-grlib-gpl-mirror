@@ -104,22 +104,22 @@ VHDLOPTSYNFILES= \
 	mig_36_1/user_design/rtl/ddr2_usr_top.vhd \
 	mig_36_1/user_design/rtl/ddr2_usr_wr.vhd \
 	mig_36_1/user_design/rtl/mig_36_1.vhd \
-        $(GRLIB)/lib/gaisler/pciexp/pcie.vhd
+        $(GRLIB)/lib/gaisler/pcie/pcie.vhd
 
 ifeq ("$(CONFIG_BOARD_ML505)","y")
   ifeq ("$(CONFIG_PCIEXP_MASTER_TARGET)","y")
   UCF+=pcie_master_target.ucf
-  VHDLOPTSYNFILES+=$(GRLIB)/lib/gaisler/pciexp/pcie_master_target_virtex.vhd
+  VHDLOPTSYNFILES+=$(GRLIB)/lib/gaisler/pcie/pcie_master_target_virtex.vhd
   endif
   ifeq ("$(CONFIG_PCIEXP_MASTER_FIFO)","y")
     ifneq ("$(CONFIG_PCIEXP_MASTER_FIFO_DMA)","y")
     UCF+=pcie_master_fifo.ucf
-    VHDLOPTSYNFILES+=$(GRLIB)/lib/gaisler/pciexp/pcie_master_fifo_virtex.vhd
+    VHDLOPTSYNFILES+=$(GRLIB)/lib/gaisler/pcie/pcie_master_fifo_virtex.vhd
     endif
     ifeq ("$(CONFIG_PCIEXP_MASTER_FIFO_DMA)","y")
     UCF+=pcie_master_fifo_with_dma.ucf
-    VHDLOPTSYNFILES+=$(GRLIB)/lib/gaisler/pciexp/pcie_master_fifo_virtex.vhd
-    VHDLOPTSYNFILES+=$(GRLIB)/lib/gaisler/pciexp/pciedma.vhd
+    VHDLOPTSYNFILES+=$(GRLIB)/lib/gaisler/pcie/pcie_master_fifo_virtex.vhd
+    VHDLOPTSYNFILES+=$(GRLIB)/lib/gaisler/pcie/pciedma.vhd
     endif
   endif
 endif

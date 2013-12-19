@@ -20,7 +20,7 @@ NET "ddr_clk_fb" TNM_NET = "ddr_clk_fb";
 TIMESPEC "TS_ddr_clk_fb" = PERIOD "ddr_clk_fb" 10.00 ns HIGH 50 %;
 NET "ddr_clk_fb" MAXDELAY = 1660 ps;
 NET "*dqinl*" MAXDELAY = 1900 ps;
-NET "ddrsp0.ddrc/ddr16.ddrc/rwdata*" MAXDELAY = 2100 ps;
+NET "ddrsp0.ddrc/ddrc/rbwdata*" MAXDELAY = 2100 ps;
 
 INST "ddrsp0.ddrc/ddr_phy0/ddr_phy0/xc3se.ddr_phy0/nops.read_dll" LOC = DCM_X1Y3;
 INST "ddrsp0.ddrc/ddr_phy0/ddr_phy0/xc3se.ddr_phy0/ps.read_dll" LOC = DCM_X1Y3;

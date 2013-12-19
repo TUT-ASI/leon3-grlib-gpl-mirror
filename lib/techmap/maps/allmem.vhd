@@ -190,6 +190,45 @@ package allmem is
     write : in std_ulogic);
   end component;
 
+  component saed32_syncram_2p
+  generic ( abits : integer := 8; dbits : integer := 32; sepclk : integer := 0);
+  port (
+    rclk  : in std_ulogic;
+    rena  : in std_ulogic;
+    raddr : in std_logic_vector (abits -1 downto 0);
+    dout  : out std_logic_vector (dbits -1 downto 0);
+    wclk  : in std_ulogic;
+    waddr : in std_logic_vector (abits -1 downto 0);
+    din   : in std_logic_vector (dbits -1 downto 0);
+    write : in std_ulogic);
+  end component;
+
+  component dare_syncram_2p
+  generic ( abits : integer := 8; dbits : integer := 32; sepclk : integer := 0);
+  port (
+    rclk  : in std_ulogic;
+    rena  : in std_ulogic;
+    raddr : in std_logic_vector (abits -1 downto 0);
+    dout  : out std_logic_vector (dbits -1 downto 0);
+    wclk  : in std_ulogic;
+    waddr : in std_logic_vector (abits -1 downto 0);
+    din   : in std_logic_vector (dbits -1 downto 0);
+    write : in std_ulogic);
+  end component;
+
+  component rhumc_syncram_2p
+  generic ( abits : integer := 8; dbits : integer := 32; sepclk : integer := 0);
+  port (
+    rclk  : in std_ulogic;
+    rena  : in std_ulogic;
+    raddr : in std_logic_vector (abits -1 downto 0);
+    dout  : out std_logic_vector (dbits -1 downto 0);
+    wclk  : in std_ulogic;
+    waddr : in std_logic_vector (abits -1 downto 0);
+    din   : in std_logic_vector (dbits -1 downto 0);
+    write : in std_ulogic);
+  end component;
+
   component proasic3l_syncram_dp is
   generic ( abits : integer := 6; dbits : integer := 8 );
   port (
@@ -568,6 +607,65 @@ end component;
     enable   : in std_ulogic;
     write    : in std_ulogic);
   end component;
+
+  component saed32_syncram
+  generic ( abits : integer := 10; dbits : integer := 8 );
+  port (
+    clk      : in std_ulogic;
+    address  : in std_logic_vector(abits -1 downto 0);
+    datain   : in std_logic_vector(dbits -1 downto 0);
+    dataout  : out std_logic_vector(dbits -1 downto 0);
+    enable   : in std_ulogic;
+    write    : in std_ulogic);
+  end component;
+
+  component saed32_syncram_dp is
+  generic ( abits : integer := 6; dbits : integer := 8 );
+  port (
+    clk1     : in std_ulogic;
+    address1 : in std_logic_vector((abits -1) downto 0);
+    datain1  : in std_logic_vector((dbits -1) downto 0);
+    dataout1 : out std_logic_vector((dbits -1) downto 0);
+    enable1  : in std_ulogic;
+    write1   : in std_ulogic;
+    clk2     : in std_ulogic;
+    address2 : in std_logic_vector((abits -1) downto 0);
+    datain2  : in std_logic_vector((dbits -1) downto 0);
+    dataout2 : out std_logic_vector((dbits -1) downto 0);
+    enable2  : in std_ulogic;
+    write2   : in std_ulogic
+   );
+  end component;
+
+  component dare_syncram
+  generic ( abits : integer := 10; dbits : integer := 8 );
+  port (
+    clk      : in std_ulogic;
+    address  : in std_logic_vector(abits -1 downto 0);
+    datain   : in std_logic_vector(dbits -1 downto 0);
+    dataout  : out std_logic_vector(dbits -1 downto 0);
+    enable   : in std_ulogic;
+    write    : in std_ulogic);
+  end component;
+
+  component dare_syncram_dp is
+  generic ( abits : integer := 6; dbits : integer := 8 );
+  port (
+    clk1     : in std_ulogic;
+    address1 : in std_logic_vector((abits -1) downto 0);
+    datain1  : in std_logic_vector((dbits -1) downto 0);
+    dataout1 : out std_logic_vector((dbits -1) downto 0);
+    enable1  : in std_ulogic;
+    write1   : in std_ulogic;
+    clk2     : in std_ulogic;
+    address2 : in std_logic_vector((abits -1) downto 0);
+    datain2  : in std_logic_vector((dbits -1) downto 0);
+    dataout2 : out std_logic_vector((dbits -1) downto 0);
+    enable2  : in std_ulogic;
+    write2   : in std_ulogic
+   );
+  end component;
+
 
   component virage_syncram
   generic ( abits : integer := 10; dbits : integer := 8 );

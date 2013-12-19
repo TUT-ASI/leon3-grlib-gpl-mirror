@@ -29,6 +29,8 @@ use ieee.std_logic_1164.all;
 library techmap;
 use techmap.gencomp.all;
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.amba.all;
 use grlib.sparc.all;
 use grlib.stdlib.all;
@@ -279,6 +281,86 @@ architecture rtl of mmu_dcache is
 
   subtype word is std_logic_vector(31 downto 0);
 
+  constant write_buffer_none : write_buffer_type := (
+    addr  => (others => '0'),
+    data1 => (others => '0'),
+    data2 => (others => '0'),
+    size  => (others => '0'),
+    asi   => (others => '0'),
+    read  => '0',
+    lock  => '0',
+    smask => (others => '0')
+    );
+  
+  constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant RRES : dcache_control_type := (
+    read       => '0',
+    size       => (others => '0'),
+    req        => '0',
+    burst      => '0',
+    rburst     => '0',
+    holdn      => '1',
+    nomds      => '0',
+    stpend     => '0',
+    xaddress   => (others => '0'),
+    paddress   => (others => '0'),
+    faddr      => (others => '0'),
+    efaddr     => (others => '0'),
+    dstate     => idle,
+    hit        => '0',
+    valid      => '0',
+    flush      => '0',
+    flush2     => '1',
+    mexc       => '0',
+    bmexc      => '0',
+    wb         => write_buffer_none,
+    asi        => (others => '0'),
+    icenable   => '0',
+    rndcnt     => (others => '0'),
+    setrepl    => (others => '0'),
+    lrr        => '0',
+    dsuset     => (others => '0'),
+    lock       => '0',
+    lramrd     => '0',
+    ilramen    => '0',
+    cctrl      => cctrl_none,
+    cctrlwr    => '0',
+    flushl2    => '0',
+    tadj       => (others => '0'),
+    dadj       => (others => '0'),
+    sadj       => (others => '0'),
+    mmctrl1    => mmctrl_type1_none,
+    mmctrl1wr  => '0',
+    pflush     => '0',
+    pflushr    => '0',
+    pflushaddr => (others => '0'),
+    pflushtyp  => '0',
+    vaddr      => (others => '0'),
+    ready      => '0',
+    wbinit     => '0',
+    cache      => '0',
+    dlock      => '0',
+    su         => '0',
+    trans_op   => '0',
+    flush_op   => '0',
+    diag_op    => '0',
+    reqst      => '0',
+    set        => 0,
+    noflush    => '0'
+    );
+  constant SRES : snoop_reg_type := (
+    snoop   => '0',
+    addr    => (others => '0'),
+    mask    => (others => '0'),
+    snhit   => (others => '0')
+    );
+  constant LRES : lru_reg_type := (
+    write => '0',
+    waddr => (others => '0'),
+    set   => (others => '0'),
+    lru   => (others => (others => '0'))
+    );
+  
   signal r, c : dcache_control_type;      -- r is registers, c is combinational
   signal rs, cs : snoop_reg_type;         -- rs is registers, cs is combinational
   signal rl, cl : lru_reg_type;           -- rl is registers, cl is combinational
@@ -1391,7 +1473,7 @@ begin
     
 -- reset
 
-    if rst = '0' then 
+    if (not RESET_ALL) and (rst = '0') then 
       v.dstate := idle; v.stpend  := '0'; v.req := '0'; v.burst := '0';
       v.read := '0'; v.flush := '0'; v.nomds := '0'; v.holdn := '1';
       v.rndcnt := (others => '0'); v.setrepl := (others => '0');
@@ -1525,18 +1607,28 @@ begin
     mmudci.diag_op <= mmudci_diag_op;
     mmudci.fsread <= mmudci_fsread;
     mmudci.mmctrl1 <= r.mmctrl1;
-
+    mmudci.testin <= ahbsi.testin;
                        
   end process;
 
 -- Local registers
 
     reg1 : process(clk)
-    begin if rising_edge(clk ) then r <= c; end if; end process;
+    begin
+      if rising_edge(clk) then
+        r <= c;
+        if RESET_ALL and (rst = '0') then r <= RRES; end if;
+      end if;
+    end process;
 
     sn2 : if DSNOOP2 /= 0 generate
       reg2 : process(sclk)
-      begin if rising_edge(sclk ) then rs <= cs; end if; end process;
+      begin
+        if rising_edge(sclk) then
+          rs <= cs;
+          if RESET_ALL and (rst = '0') then rs <= SRES; end if;
+        end if;
+      end process;
     end generate;
 
     nosn2 : if DSNOOP2 = 0 generate
@@ -1546,7 +1638,12 @@ begin
 
     reg2 : if (DSETS>1) and (drepl = lru) generate
       reg2 : process(clk)
-      begin if rising_edge(clk ) then rl <= cl; end if; end process;
+      begin
+        if rising_edge(clk) then
+          rl <= cl;
+          if RESET_ALL and (rst = '0') then rl <= LRES; end if;
+        end if;
+      end process;
     end generate;   
 
     noreg2 : if (DSETS = 1) or (drepl /= lru) generate

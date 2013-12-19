@@ -42,7 +42,8 @@ package libmmu is
       dtlbnum   : integer range 2 to 64 := 8;
       tlb_type  : integer range 0 to 3 := 1;
       tlb_rep   : integer range 0 to 1 := 0;
-      mmupgsz   : integer range 0 to 5 := 0
+      mmupgsz   : integer range 0 to 5 := 0;
+      ramcbits  : integer := 1
       );
     port (
       rst  : in std_logic;
@@ -55,7 +56,11 @@ package libmmu is
       mmuico : out mmuic_out_type;
       
       mcmmo  : in  memory_mm_out_type;
-      mcmmi  : out memory_mm_in_type
+      mcmmi  : out memory_mm_in_type;
+
+      ramcclk : in  std_ulogic := '0';
+      ramcin  : in  std_logic_vector(2*ramcbits-1 downto 0) := (others => '0');
+      ramcout : out std_logic_vector(2*ramcbits-1 downto 0)
     );
   end component;
 

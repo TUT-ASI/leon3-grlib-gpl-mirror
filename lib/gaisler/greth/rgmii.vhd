@@ -252,7 +252,7 @@ begin  -- rtl
 
   -- DDR inputs
   rgmii_rxd : for i in 0 to 3 generate
-      ddr_ireg0 : ddr_ireg generic map (tech)
+      ddr_ireg0 : ddr_ireg generic map (tech, arch => 1)
         port map (q1 => rxd_int(i), q2 => rxd_int(i+4), c1 => rx_clk, c2 => nrx_clk,
                   ce => vcc, d => rgmiii.rxd(i), r => gnd, s => gnd);
 
@@ -272,7 +272,7 @@ begin  -- rtl
      end generate;
 
   end generate;
-  ddr_dv0 : ddr_ireg generic map (tech)
+  ddr_dv0 : ddr_ireg generic map (tech, arch => 1)
      port map (q1 => rx_dv_int, q2 => rx_ctl_int, c1 => rx_clk, c2 => nrx_clk,
                ce => vcc, d => rgmiii.rx_dv, r => gnd, s => gnd);
  

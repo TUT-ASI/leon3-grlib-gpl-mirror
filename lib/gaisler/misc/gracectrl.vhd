@@ -114,8 +114,8 @@ architecture rtl of gracectrl is
      hready    : std_ulogic;
      wdata     : std_logic_vector(ACEDW-1 downto 0);
      hresp     : std_logic_vector(1 downto 0);
-     splmst    : std_logic_vector(3 downto 0);   -- SPLIT:ed master
-     hsplit    : std_logic_vector(15 downto 0);  -- Other SPLIT:ed masters
+     splmst    : std_logic_vector(log2(NAHBMST)-1 downto 0);   -- SPLIT:ed master
+     hsplit    : std_logic_vector(NAHBMST-1 downto 0);  -- Other SPLIT:ed masters
      ahbcancel : std_ulogic;     -- Locked access cancels ongoing SPLIT
                                  -- response
   end record;
@@ -153,7 +153,7 @@ begin  -- rtl
   combsys: process (r, s, rstn, ahbsi, acei.irq)
     variable v       : sys_reg_type;
     variable irq     : std_logic_vector((NAHBIRQ-1) downto 0);
-    variable hsplit  : std_logic_vector(15 downto 0);
+    variable hsplit  : std_logic_vector(NAHBMST-1 downto 0);
     variable hwdata  : std_logic_vector(31 downto 0);
   begin  -- process comb
     v := r; v.irq := '0'; irq := (others => '0'); irq(hirq) := r.irq;

@@ -433,14 +433,19 @@ begin
 end;
 
 function log2ext(i: integer) return integer is
-  variable v: std_logic_vector(31 downto 0);
+--  variable v: std_logic_vector(31 downto 0);
 begin
-  if i=0 then return 0; end if;
-  v := std_logic_vector(to_unsigned((i-1),v'length));
-  for x in v'high downto v'low loop
-    if v(x)='1' then return x+1; end if;
+-- workaround for DC bug
+--  if i=0 then return 0; end if;
+--  v := std_logic_vector(to_unsigned((i-1),v'length));
+--  for x in v'high downto v'low loop
+--    if v(x)='1' then return x+1; end if;
+--  end loop;
+--  return 0;
+  for x in 1 to 32 loop
+    if (2**x > i) then return (x-1); end if;
   end loop;
-  return 0;
+  return 32;
 end;
 
 -- pragma translate_off

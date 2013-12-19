@@ -447,10 +447,13 @@ int spictrl_test(int addr, int testsel)
   }
 
   /* Set AM mask register to used only the first two words */
-  *ammsk = 3;
+  *(ammsk+0) = 3;
+  *(ammsk+1) = 0;
+  *(ammsk+2) = 0;
+  *(ammsk+3) = 0;
   
   /* Set AM period register */
-  regs->amper = 0;
+  regs->amper = 3;
 
   /* Enable automated transfers */
   regs->amcfg = SPIC_ACT;
@@ -472,7 +475,7 @@ int spictrl_test(int addr, int testsel)
   regs->amcfg = 0;
   
   /* Wait for automated mode to be deactivated */
-  while (!(regs->amcfg & SPIC_ACT))
+  while ((regs->amcfg & SPIC_ACT))
      ;
   
   /* Deactivate core */

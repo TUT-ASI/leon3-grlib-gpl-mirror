@@ -19,7 +19,6 @@
 -----------------------------------------------------------------------------
 -- Package: 	config
 -- File:	config.vhd
--- Author:	Jiri Gaisler, Gaisler Research
 -- Description:	GRLIB Global configuration package. Can be overriden
 --		by local config packages in template designs.
 ------------------------------------------------------------------------------

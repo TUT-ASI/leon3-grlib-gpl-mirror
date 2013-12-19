@@ -162,7 +162,7 @@ begin
     dmai.start   <= start and not v.inhibit;
     dmai.burst   <= burst;
     dmai.write   <= v.write;
-    dmai.size    <= size;
+    dmai.size    <= '0' & size;
     apbo.pirq    <= (others =>'0');
     apbo.pindex  <= pindex;
     apbo.pconfig <= pconfig;

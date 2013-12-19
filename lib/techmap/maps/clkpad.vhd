@@ -71,6 +71,12 @@ begin
   rhu : if (tech = rhumc) generate
     u0 : rhumc_inpad generic map (level, voltage) port map (pad, o); lock <= '1';
   end generate;
+  saed : if (tech = saed32) generate
+    u0 : saed32_inpad generic map (level, voltage) port map (pad, o); lock <= '1';
+  end generate;
+  dar : if (tech = dare) generate
+    u0 : dare_inpad generic map (level, voltage) port map (pad, o); lock <= '1';
+  end generate;
   ihp : if (tech = ihp25) generate
     u0 : ihp25_clkpad generic map (level, voltage) port map (pad, o); lock <= '1';
   end generate;

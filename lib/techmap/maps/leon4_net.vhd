@@ -436,7 +436,7 @@ begin
   end generate;
 
       ahbi_hgrant(0)       <= ahbix.hgrant(hindex);
-      ahbi_hgrant(1 to 15) <= (others => '0');
+      ahbi_hgrant(1 to NAHBMST-1) <= (others => '0');
 
       ahbi_hready       <= ahbix.hready;
       ahbi_hresp        <= ahbix.hresp;

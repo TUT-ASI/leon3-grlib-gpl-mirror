@@ -102,12 +102,12 @@ package config is
   constant CFG_GRUSB_DCL_UIFACE : integer := 1;
   constant CFG_GRUSB_DCL_DW : integer := 8;
 -- Ethernet DSU
-  constant CFG_DSU_ETH : integer := 1 + 0 + 0;
-  constant CFG_ETH_BUF : integer := 2;
+  constant CFG_DSU_ETH : integer := 0 + 0 + 0;
+  constant CFG_ETH_BUF : integer := 1;
   constant CFG_ETH_IPM : integer := 16#C0A8#;
   constant CFG_ETH_IPL : integer := 16#0033#;
   constant CFG_ETH_ENM : integer := 16#020000#;
-  constant CFG_ETH_ENL : integer := 16#000000#;
+  constant CFG_ETH_ENL : integer := 16#000009#;
 -- LEON2 memory controller
   constant CFG_MCTRL_LEON2 : integer := 1;
   constant CFG_MCTRL_RAM8BIT : integer := 1;
@@ -127,6 +127,7 @@ package config is
   constant CFG_MIG_HMASK : integer := 16#F00#;
 -- Xilinx MIG Series 7
   constant CFG_MIG_SERIES7 : integer := 1;
+  constant CFG_MIG_SERIES7_MODEL : integer := 0;
 -- AHB status register
   constant CFG_AHBSTAT : integer := 0;
   constant CFG_AHBSTATN : integer := 1;
@@ -143,9 +144,12 @@ package config is
   constant CFG_AHBRADDR : integer := 16#A00#;
   constant CFG_AHBRPIPE : integer := 0;
 -- Gaisler Ethernet core
-  constant CFG_GRETH : integer := 1;
-  constant CFG_GRETH1G : integer := 1;
+  constant CFG_GRETH : integer := 0;
+  constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 8;
+
+  constant CFG_GRETH_FT : integer := 0;
+  constant CFG_GRETH_EDCLFT : integer := 0;
 
 -- USB Host Controller
   constant CFG_GRUSBHC : integer := 0;
@@ -205,10 +209,10 @@ package config is
   constant CFG_GRUSBDC_O14 : integer := 1024;
   constant CFG_GRUSBDC_O15 : integer := 1024;
 -- CAN 2.0 interface
-  constant CFG_CAN : integer := 1;
-  constant CFG_CAN_NUM : integer := (1);
-  constant CFG_CANIO : integer := 16#C00#;
-  constant CFG_CANIRQ : integer := (13);
+  constant CFG_CAN : integer := 0;
+  constant CFG_CAN_NUM : integer := 1;
+  constant CFG_CANIO : integer := 16#0#;
+  constant CFG_CANIRQ : integer := 0;
   constant CFG_CANSEPIRQ: integer := 0;
   constant CFG_CAN_SYNCRST : integer := 0;
   constant CFG_CANFT : integer := 0;

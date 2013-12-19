@@ -202,6 +202,14 @@ set_property PACKAGE_PIN AE26 [get_ports {led[4]}]
 set_property PACKAGE_PIN G19 [get_ports {led[5]}]
 set_property PACKAGE_PIN E18 [get_ports {led[6]}]
 
+set_property IOSTANDARD LVCMOS15 [get_ports {led[0]}]
+set_property IOSTANDARD LVCMOS15 [get_ports {led[1]}]
+set_property IOSTANDARD LVCMOS15 [get_ports {led[2]}]
+set_property IOSTANDARD LVCMOS15 [get_ports {led[3]}]
+set_property IOSTANDARD LVCMOS25 [get_ports {led[4]}]
+set_property IOSTANDARD LVCMOS25 [get_ports {led[5]}]
+set_property IOSTANDARD LVCMOS25 [get_ports {led[6]}]
+
 set_property PACKAGE_PIN P24 [get_ports {data[0]}]
 set_property PACKAGE_PIN R25 [get_ports {data[1]}]
 set_property PACKAGE_PIN R20 [get_ports {data[2]}]
@@ -218,6 +226,8 @@ set_property PACKAGE_PIN P28 [get_ports {data[12]}]
 set_property PACKAGE_PIN T30 [get_ports {data[13]}]
 set_property PACKAGE_PIN P26 [get_ports {data[14]}]
 set_property PACKAGE_PIN R26 [get_ports {data[15]}]
+
+set_property IOSTANDARD LVCMOS25 [get_ports data*]
 
 set_property PACKAGE_PIN M22 [get_ports {address[25]}]
 set_property PACKAGE_PIN M23 [get_ports {address[24]}]
@@ -246,26 +256,42 @@ set_property PACKAGE_PIN V24 [get_ports {address[2]}]
 set_property PACKAGE_PIN W21 [get_ports {address[1]}]
 set_property PACKAGE_PIN W22 [get_ports {address[0]}]
 
+set_property IOSTANDARD LVCMOS25 [get_ports address*]
+
 set_property PACKAGE_PIN M30 [get_ports adv]
 set_property PACKAGE_PIN U19 [get_ports romsn]
 set_property PACKAGE_PIN M24 [get_ports oen]
 set_property PACKAGE_PIN M25 [get_ports writen]
+
+set_property IOSTANDARD LVCMOS25 [get_ports adv]
+set_property IOSTANDARD LVCMOS25 [get_ports romsn]
+set_property IOSTANDARD LVCMOS25 [get_ports oen]
+set_property IOSTANDARD LVCMOS25 [get_ports writen]
 
 set_property PACKAGE_PIN K24 [get_ports dsutx]
 set_property PACKAGE_PIN K23 [get_ports dsuctsn]
 set_property PACKAGE_PIN M19 [get_ports dsurx]
 set_property PACKAGE_PIN L27 [get_ports dsurtsn]
 
+set_property IOSTANDARD LVCMOS25 [get_ports dsu*]
+
 set_property PACKAGE_PIN G12 [get_ports {button[0]}]
 set_property PACKAGE_PIN AA12 [get_ports {button[1]}]
 set_property PACKAGE_PIN AB12 [get_ports {button[2]}]
 set_property PACKAGE_PIN AC6 [get_ports {button[3]}]
+
+set_property IOSTANDARD LVCMOS15 [get_ports button*]
+set_property IOSTANDARD LVCMOS25 [get_ports {button[0]}]
 
 set_property PACKAGE_PIN Y28 [get_ports {switch[0]}]
 set_property PACKAGE_PIN AA28 [get_ports {switch[1]}]
 set_property PACKAGE_PIN W29 [get_ports {switch[2]}]
 set_property PACKAGE_PIN Y29 [get_ports {switch[3]}]
 
-set_property PACKAGE_PIN L21 [get_ports iic_scl]
-set_property PACKAGE_PIN K21 [get_ports iic_sda]
+set_property IOSTANDARD LVCMOS25 [get_ports switch*]
+
+set_property PACKAGE_PIN K21 [get_ports iic_scl]
+set_property PACKAGE_PIN L21 [get_ports iic_sda]
+
+set_property IOSTANDARD LVCMOS25 [get_ports iic*]
 

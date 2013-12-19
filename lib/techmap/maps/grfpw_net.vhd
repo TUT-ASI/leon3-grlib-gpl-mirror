@@ -719,7 +719,7 @@ begin
     	rfo1_data2, rfo2_data1, rfo2_data2 );
   end generate;
     
-  u0_tm65gplus : if tech = tm65gpl generate
+  u0_tm65gplus : if tech = tm65gplus generate
     grfpw0 : grfpw_tm65gplus
             port map (rst, clk, holdn, cpi_flush, cpi_exack, cpi_a_rs1, cpi_d_pc,
     	cpi_d_inst, cpi_d_cnt, cpi_d_trap, cpi_d_annul, cpi_d_pv, cpi_a_pc,

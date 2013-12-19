@@ -39,6 +39,8 @@
 #undef  CONFIG_SYN_PEREGRINE
 #undef  CONFIG_SYN_RH_LIB18T
 #undef  CONFIG_SYN_RHUMC
+#undef  CONFIG_SYN_SAED32
+#undef  CONFIG_SYN_DARE
 #undef  CONFIG_SYN_SMIC13
 #undef  CONFIG_SYN_TM65GPLUS
 #undef  CONFIG_SYN_TSMC90
@@ -48,7 +50,6 @@
 #undef  CONFIG_SYN_SPARTAN3
 #undef  CONFIG_SYN_SPARTAN3E
 #undef  CONFIG_SYN_SPARTAN6
-#undef  CONFIG_SYN_VIRTEX
 #undef  CONFIG_SYN_VIRTEXE
 #undef  CONFIG_SYN_VIRTEX2
 #undef  CONFIG_SYN_VIRTEX4
@@ -74,6 +75,9 @@
 #undef  CONFIG_CLK_FUSPLL
 #undef  CONFIG_CLK_LIB18T
 #undef  CONFIG_CLK_RHUMC
+#undef  CONFIG_CLK_DARE
+#undef  CONFIG_CLK_SAED32
+#undef  CONFIG_CLK_EASIC45
 #define CONFIG_CLK_CLKPLLE2 1
 #undef  CONFIG_CLK_CLKDLL
 #undef  CONFIG_CLK_DCM
@@ -230,16 +234,6 @@
 #define CONFIG_DSU_UART 1
 #define CONFIG_DSU_JTAG 1
 #undef  CONFIG_GRUSB_DCL
-#define CONFIG_DSU_ETH 1
-#undef  CONFIG_DSU_ETHSZ1
-#define CONFIG_DSU_ETHSZ2 1
-#undef  CONFIG_DSU_ETHSZ4
-#undef  CONFIG_DSU_ETHSZ8
-#undef  CONFIG_DSU_ETHSZ16
-#define CONFIG_DSU_IPMSB C0A8
-#define CONFIG_DSU_IPLSB 0033
-#define CONFIG_DSU_ETHMSB 020000
-#define CONFIG_DSU_ETHLSB 000000
 /*
  * Peripherals             
  */
@@ -262,6 +256,7 @@
  * MIG Series 7 memory controller   
  */
 #define CONFIG_MIG_SERIES7 1
+#undef  CONFIG_MIG_SERIES_7_MODEL
 #undef  CONFIG_AHBSTAT_ENABLE
 /*
  * On-chip RAM/ROM                 
@@ -286,8 +281,7 @@
 /*
  * Ethernet             
  */
-#define CONFIG_GRETH_ENABLE 1
-#define CONFIG_GRETH_GIGA 1
+#undef  CONFIG_GRETH_ENABLE
 /*
  * USB 2.0 Host Controller      
  */
@@ -299,13 +293,7 @@
 /*
  * CAN                     
  */
-#define CONFIG_CAN_ENABLE 1
-#define CONFIG_CAN_NUM (1)
-#define CONFIG_CANIO C00
-#define CONFIG_CANIRQ (13)
-#undef  CONFIG_CANSEPIRQ
-#undef  CONFIG_CAN_SYNCRST
-#undef  CONFIG_CAN_FT
+#undef  CONFIG_CAN_ENABLE
 /*
  * Spacewire 
  */

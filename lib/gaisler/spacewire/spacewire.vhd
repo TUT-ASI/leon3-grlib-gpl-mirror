@@ -461,6 +461,37 @@ package spacewire is
   );
   end component;
 
+component grspw_codec_clockgate is
+  generic(
+    tech         : integer;
+    scantest     : integer range 0 to 1 := 0;
+    ports        : integer range 1 to 2 := 1;
+    output_type  : integer range 0 to 2 := 0;
+    clkgate      : integer range 0 to 1 := 0
+    );
+  port(
+    rst           : in  std_ulogic;
+    clk           : in  std_ulogic;
+    rxclk0        : in  std_ulogic;
+    rxclk1        : in  std_ulogic;
+    txclk         : in  std_ulogic;
+    txclkn        : in  std_ulogic;
+    testen        : in  std_ulogic;
+    testrst       : in  std_ulogic;
+    disableclk    : in  std_ulogic;
+    disablerxclk0 : in  std_ulogic;
+    disablerxclk1 : in  std_ulogic;
+    disabletxclk  : in  std_ulogic;
+    disabletxclkn : in  std_ulogic;
+    gclk          : out std_ulogic;
+    grxclk0       : out std_ulogic;
+    grxclk1       : out std_ulogic;
+    gtxclk        : out std_ulogic;
+    gtxclkn       : out std_ulogic;
+    grst          : out std_ulogic
+  );
+  end component;
+
   component grspwrouter is
     generic(
       input_type   : integer range 0 to 4 := 0;

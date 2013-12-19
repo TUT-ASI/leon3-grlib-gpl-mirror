@@ -23,6 +23,12 @@
 #define CFG_CLK_TECH rhlib18t
 #elif defined CONFIG_CLK_RHUMC
 #define CFG_CLK_TECH rhumc
+#elif defined CONFIG_CLK_SAED32
+#define CFG_CLK_TECH saed32
+#elif defined CONFIG_CLK_DARE
+#define CFG_CLK_TECH dare
+#elif defined CONFIG_CLK_EASIC45
+#define CFG_CLK_TECH easic45
 #elif defined CONFIG_CLK_UT130HBD
 #define CFG_CLK_TECH ut130
 #else

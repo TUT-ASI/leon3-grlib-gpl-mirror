@@ -185,6 +185,17 @@ begin
     clk2x <= '0';
   end generate;
   dr : if (tech = rhumc)  generate
+   v : clkgen_rhumc
+   port map (clkin, clk, clk2x, sdclk, pciclk,
+	cgi, cgo, clk4x, clk1xu, clk2xu);
+   clk8x <= '0';
+  end generate;
+  saed : if (tech = saed32)  generate
+   v : clkgen_saed32
+   port map (clkin, clk, clk2x, sdclk, pciclk,
+	cgi, cgo, clk4x, clk1xu, clk2xu);
+  end generate;
+  dar : if (tech = dare)  generate
    v : clkgen_dare
    generic map (noclkfb)
    port map (clkin, clk, clk2x, sdclk, pciclk,

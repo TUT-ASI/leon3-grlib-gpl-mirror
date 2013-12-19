@@ -102,6 +102,14 @@ begin
     x0 : rhumc_iopad generic map (level, slew, voltage, strength)
 	 port map (pad, i, oen, o);
   end generate;
+  saed : if (tech = saed32) generate
+    x0 : saed32_iopad generic map (level, slew, voltage, strength)
+	 port map (pad, i, oen, o);
+  end generate;
+  dar : if (tech = dare) generate
+    x0 : dare_iopad generic map (level, slew, voltage, strength)
+	 port map (pad, i, oen, o);
+  end generate;
   ihp : if (tech = ihp25) generate
     x0 : ihp25_iopad generic map (level, slew, voltage, strength)
          port map (pad, i, oen, o);

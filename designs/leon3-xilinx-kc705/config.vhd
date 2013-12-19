@@ -59,7 +59,7 @@ package config is
   constant CFG_DLINE : integer := 4;
   constant CFG_DREPL : integer := 0;
   constant CFG_DLOCK : integer := 0;
-  constant CFG_DSNOOP : integer := 1 + 0 + 4*1;
+  constant CFG_DSNOOP : integer := 1 + 1 + 4*1;
   constant CFG_DFIXED : integer := 16#0#;
   constant CFG_DLRAMEN : integer := 0;
   constant CFG_DLRAMADDR: integer := 16#8F#;
@@ -123,6 +123,7 @@ package config is
   constant CFG_MIG_HMASK : integer := 16#F00#;
 -- Xilinx MIG Series 7
   constant CFG_MIG_SERIES7 : integer := 1;
+  constant CFG_MIG_SERIES7_MODEL : integer := 0;
 -- AHB status register
   constant CFG_AHBSTAT : integer := 0;
   constant CFG_AHBSTATN : integer := 1;
@@ -139,8 +140,11 @@ package config is
   constant CFG_AHBRPIPE : integer := 0;
 -- Gaisler Ethernet core
   constant CFG_GRETH : integer := 1;
-  constant CFG_GRETH1G : integer := 1;
+  constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 8;
+
+  constant CFG_GRETH_FT : integer := 0;
+  constant CFG_GRETH_EDCLFT : integer := 0;
 
 -- UART 1
   constant CFG_UART1_ENABLE : integer := 1;

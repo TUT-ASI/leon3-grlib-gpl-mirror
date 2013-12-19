@@ -128,6 +128,7 @@ package config is
   constant CFG_GRETH : integer := 1;
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 32;
+
 -- CAN 2.0 interface
   constant CFG_CAN : integer := 1;
   constant CFG_CANIO : integer := 16#C00#;
@@ -135,9 +136,11 @@ package config is
   constant CFG_CANLOOP : integer := 0;
   constant CFG_CAN_SYNCRST : integer := 0;
   constant CFG_CANFT : integer := 0;
+
 -- UART 1
   constant CFG_UART1_ENABLE : integer := 1;
   constant CFG_UART1_FIFO : integer := 8;
+
 -- UART 2
   constant CFG_UART2_ENABLE : integer := 0;
   constant CFG_UART2_FIFO : integer := 1;

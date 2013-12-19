@@ -289,6 +289,54 @@ package components is
       );
   end component;
   
+  component mobile_ddr2_fe
+    port (
+        ck      : in    std_logic;
+        ck_n    : in    std_logic;
+        cke     : in    std_logic;
+        cs_n    : in    std_logic;
+        ca      : in    std_logic_vector( 9 downto 0);
+        dm      : in    std_logic_vector( 1 downto 0);
+        dq      : inout std_logic_vector(15 downto 0) := (OTHERS => 'Z');
+        dqs     : inout std_logic_vector( 1 downto 0) := (OTHERS => 'Z');
+        dqs_n   : inout std_logic_vector( 1 downto 0) := (OTHERS => 'Z');
+        BEaddr  : out   std_logic_vector(27 downto 0);
+        BEwr_h  : out   std_logic_vector( 1 downto 0);
+        BEwr_l  : out   std_logic_vector( 1 downto 0);
+        BEdin_h : out   std_logic_vector(15 downto 0);
+        BEdin_l : out   std_logic_vector(15 downto 0);
+        BEdout_h: in    std_logic_vector(15 downto 0);
+        BEdout_l: in    std_logic_vector(15 downto 0);
+        BEclear : out   std_logic;
+        BEreload: out   std_logic;
+        BEsynco : out   std_logic;
+        BEsynci : in    std_logic
+      );
+  end component;
+
+  component mobile_ddr2_febe
+    generic (
+      dbits: integer := 32;
+      rampad: integer := 0;
+      fname: string := "dummy";
+      autoload: integer := 1;
+      rstmode: integer := 0;
+      rstdatah: integer := 16#DEAD#;
+      rstdatal: integer := 16#BEEF#
+      );
+    port (
+      ck      : in    std_logic;
+      ck_n    : in    std_logic;
+      cke     : in    std_logic;
+      cs_n    : in    std_logic;
+      ca      : in    std_logic_vector(        9 downto 0);
+      dm      : in    std_logic_vector(dbits/8-1 downto 0);
+      dq      : inout std_logic_vector(  dbits-1 downto 0) := (OTHERS => 'Z');
+      dqs     : inout std_logic_vector(dbits/8-1 downto 0) := (OTHERS => 'Z');
+      dqs_n   : inout std_logic_vector(dbits/8-1 downto 0) := (OTHERS => 'Z')
+      );
+  end component;
+  
   component mobile_sdr
     --GENERIC (
     --    DEBUG     : INTEGER := 1;

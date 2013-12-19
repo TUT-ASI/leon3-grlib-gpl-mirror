@@ -98,6 +98,14 @@ begin
     u0 : rhumc_toutpad generic map (level, slew, voltage, strength)
 	 port map (pad, i, oen);
   end generate;
+  saed : if (tech = saed32) generate
+    u0 : saed32_toutpad generic map (level, slew, voltage, strength)
+	 port map (pad, i, oen);
+  end generate;
+  dar : if (tech = dare) generate
+    u0 : dare_toutpad generic map (level, slew, voltage, strength)
+	 port map (pad, i, oen);
+  end generate;
   ihp : if (tech = ihp25) generate
     u0 : ihp25_toutpad generic map (level, slew, voltage, strength)
          port map(pad, i, oen);

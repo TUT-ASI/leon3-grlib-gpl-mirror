@@ -13,6 +13,10 @@
 #define CFG_CLK_TECH CONFIG_SYN_TECH
 #elif defined CONFIG_CLK_LIB18T
 #define CFG_CLK_TECH rhlib18t
+#elif defined CONFIG_CLK_DARE
+#define CFG_CLK_TECH dare
+#elif defined CONFIG_CLK_SAED32
+#define CFG_CLK_TECH saed32
 #else
 #define CFG_CLK_TECH inferred
 #endif

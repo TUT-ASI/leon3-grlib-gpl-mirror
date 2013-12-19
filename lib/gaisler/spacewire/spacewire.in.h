@@ -80,6 +80,8 @@
 #define CONFIG_SPW_INPUT 2
 #elif defined CONFIG_SPW_RX_DDR
 #define CONFIG_SPW_INPUT 3
+#elif defined CONFIG_SPW_RX_PAD
+#define CONFIG_SPW_INPUT 4
 #elif defined CONFIG_SPW_RX_XOR
 #define CONFIG_SPW_INPUT 0
 #elif defined CONFIG_SPW_RX_AFLEX

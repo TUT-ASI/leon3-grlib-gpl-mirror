@@ -478,6 +478,87 @@ end component;
     locked  : out std_ulogic);
   end component;
 
+  component clkgen_rhumc
+  port (
+    clkin   : in  std_logic;
+    clk     : out std_logic;			-- main clock
+    clk2x   : out std_logic;			-- 2x clock
+    sdclk   : out std_logic;			-- SDRAM clock
+    pciclk  : out std_logic;			-- PCI clock
+    cgi     : in clkgen_in_type;
+    cgo     : out clkgen_out_type;
+    clk4x   : out std_logic;			-- 4x clock
+    clk1xu  : out std_logic;			-- unscaled 1X clock
+    clk2xu  : out std_logic			-- unscaled 2X clock
+    );
+  end component;
+
+component clkinv_saed32
+  port(
+    i  :  in  std_ulogic;
+    o  :  out std_ulogic);
+end component;
+
+component clkand_saed32
+  port(
+    i      :  in  std_ulogic;
+    en     :  in  std_ulogic;
+    o      :  out std_ulogic;
+    tsten  :  in  std_ulogic := '0'
+  );
+end component;
+
+component clkmux_saed32
+  port (
+    i0, i1  :  in  std_ulogic;
+    sel     :  in  std_ulogic;
+    o       :  out std_ulogic);
+end component;
+
+  component clkgen_saed32
+  port (
+    clkin   : in  std_logic;
+    clk     : out std_logic;			-- main clock
+    clk2x   : out std_logic;			-- 2x clock
+    sdclk   : out std_logic;			-- SDRAM clock
+    pciclk  : out std_logic;			-- PCI clock
+    cgi     : in clkgen_in_type;
+    cgo     : out clkgen_out_type;
+    clk4x   : out std_logic;			-- 4x clock
+    clk1xu  : out std_logic;			-- unscaled 1X clock
+    clk2xu  : out std_logic 			-- unscaled 2X clock
+    );
+  end component;
+
+component clkinv_dare
+  port(
+    i  :  in  std_ulogic;
+    o  :  out std_ulogic);
+end component;
+
+component clkand_dare
+  port(
+    i      :  in  std_ulogic;
+    en     :  in  std_ulogic;
+    o      :  out std_ulogic;
+    tsten  :  in  std_ulogic := '0'
+  );
+end component;
+
+component clkmux_dare
+  port (
+    i0, i1  :  in  std_ulogic;
+    sel     :  in  std_ulogic;
+    o       :  out std_ulogic);
+end component;
+
+component clkmux_rhumc
+  port (
+    i0, i1  :  in  std_ulogic;
+    sel     :  in  std_ulogic;
+    o       :  out std_ulogic);
+end component;
+
   component clkgen_dare
   generic (
     noclkfb : integer := 1
@@ -492,8 +573,9 @@ end component;
     cgo     : out clkgen_out_type;
     clk4x   : out std_logic;			-- 4x clock
     clk1xu  : out std_logic;			-- unscaled 1X clock
-    clk2xu  : out std_logic;			-- unscaled 2X clock
-    clk8x   : out std_logic);
+    clk2xu  : out std_logic; 			-- unscaled 2X clock
+    clk8x   : out std_logic
+    );
   end component;
   
   component clkgen_easic90

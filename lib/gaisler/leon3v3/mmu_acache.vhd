@@ -26,6 +26,8 @@
 library ieee;
 use ieee.std_logic_1164.all;
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.amba.all;
 use grlib.stdlib.all;
 use grlib.devices.all;
@@ -83,6 +85,24 @@ architecture rtl of mmu_acache is
      hclken2 : std_ulogic;
   end record;
 
+  constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant RRES : reg_type := (
+    bg      => '0',
+    bo      => (others => '0'),
+    ba      => '0',
+    lb      => '0',
+    retry   => '0',
+    retry2  => '0',
+    werr    => '0',
+    hlocken => '0',
+    hcache  => '0',
+    nba     => '0',
+    nbo     => (others => '0')
+    );
+  constant R2RES : reg2_type := (
+    reqmsk => (others => '0'), hclken2 => '0'
+    );
+  
   constant L3DI :integer := GAISLER_LEON3 
                             ;
   constant hconfig : ahb_config_type := (
@@ -301,7 +321,7 @@ begin
     
     -- reset operation
 
-    if rst = '0' then
+    if (not RESET_ALL) and (rst = '0') then
       v.bg := '0'; v.bo := "00"; v.ba := '0'; v.retry := '0'; v.werr := '0'; v.lb := '0';
       v.hcache := '0'; v.hlocken := '0'; v.nba := '0'; v.nbo := "00";
       v.retry2 := '0';
@@ -360,13 +380,19 @@ begin
 
   reg : process(clk)
   begin
-    if rising_edge(clk) then r <= rin; end if;
+    if rising_edge(clk) then
+      r <= rin;
+      if RESET_ALL and (rst = '0') then r <= RRES; end if;
+    end if;
   end process;
 
   reg2gen : if (clk2x /= 0) generate
     reg2 : process(clk)
     begin
-      if rising_edge(clk) then r2 <= r2in; end if;
+      if rising_edge(clk) then
+        r2 <= r2in;
+        if RESET_ALL and (rst = '0') then r2 <= R2RES; end if;
+      end if;
     end process;  
   end generate;
 

@@ -43,7 +43,8 @@ entity ahbram is
     tech    : integer := DEFMEMTECH; 
     kbytes  : integer := 1;
     pipe    : integer := 0;
-    maccsz  : integer := AHBDW); 
+    maccsz  : integer := AHBDW;
+    scantest: integer := 0);
   port (
     rst     : in  std_ulogic;
     clk     : in  std_ulogic;
@@ -249,8 +250,8 @@ begin
   hwdata <= ahbreaddata(ahbsi.hwdata, r.addr(4 downto 2),
                         conv_std_logic_vector(log2(dw/8), 3));
   
-  aram : syncrambw generic map (tech, abits, dw) port map (
-	clk, ramaddr, hwdata, ramdata, ramsel, write); 
+  aram : syncrambw generic map (tech, abits, dw, scantest) port map (
+	clk, ramaddr, hwdata, ramdata, ramsel, write, ahbsi.testin);
   
   reg : process (clk)
   begin

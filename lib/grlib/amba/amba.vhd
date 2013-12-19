@@ -144,7 +144,7 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
     hready	: std_ulogic;                         	-- transfer done
     hresp	: std_logic_vector(1 downto 0); 	-- response type
     hrdata	: std_logic_vector(AHBDW-1 downto 0); 	-- read data bus
-    hsplit	: std_logic_vector(15 downto 0); 	-- split completion
+    hsplit	: std_logic_vector(NAHBMST-1 downto 0); -- split completion
     hirq   	: std_logic_vector(NAHBIRQ-1 downto 0); -- interrupt bus
     hconfig 	: ahb_config_type;	 		-- memory access reg.
     hindex  	: integer range 0 to NAHBSLV-1;	 	-- diagnostic use only
@@ -239,7 +239,7 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
   constant ahbm_in_none : ahb_mst_in_type := ((others => '0'), '0', (others => '0'),
    zahbdw, zxirq(NAHBIRQ-1 downto 0), '0', '0', '0', '0', ztestin);
   constant ahbs_none : ahb_slv_out_type := (
-   '1', "00", zahbdw, zx(15 downto 0), zxirq(NAHBIRQ-1 downto 0), (others => zx), 0);
+   '1', "00", zahbdw, zx(NAHBMST-1 downto 0), zxirq(NAHBIRQ-1 downto 0), (others => zx), 0);
   constant ahbs_in_none : ahb_slv_in_type := (
    zy(0 to NAHBSLV-1), zx, '0', "00", "000", "000", zahbdw,
    "0000", '1', "0000", '0', zy(0 to NAHBAMR-1), zxirq(NAHBIRQ-1 downto 0),

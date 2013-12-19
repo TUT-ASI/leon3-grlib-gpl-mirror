@@ -141,6 +141,7 @@ component sgmii_vc707
     gmiii     : out   eth_in_type;
     gmiio     : in    eth_out_type;
     reset     : in    std_logic;                     -- Asynchronous reset for entire core.
+    button    : in    std_logic;
     apb_clk   : in    std_logic;
     apb_rstn  : in    std_logic;
     apbi      : in    apb_slv_in_type;
@@ -261,6 +262,7 @@ signal sgmiii :  eth_sgmii_in_type;
 signal sgmiio :  eth_sgmii_out_type;
 
 signal sgmiirst : std_logic;
+signal buttonsgmi : std_logic;
 
 signal ethernet_phy_int : std_logic;
 
@@ -315,6 +317,8 @@ signal can_lrx, can_ltx   : std_logic_vector(0 to 7);
 
 signal clkref           : std_logic;
 
+signal migrstn : std_logic;
+
 attribute keep : boolean;
 attribute syn_keep : string;
 attribute keep of clkm : signal is true;
@@ -339,9 +343,13 @@ begin
 
   reset_pad : inpad generic map (tech => padtech, level => cmos, voltage => x18v) port map (reset, rst);
   rst0 : rstgen         -- reset generator
-  generic map (acthigh => 1)
+  generic map (acthigh => 1, syncin => 0)
   port map (rst, clkm, lock, rstn, rstraw);
   lock <= calib_done when CFG_MIG_SERIES7 = 1 else cgo.clklock;
+
+  rst1 : rstgen         -- reset generator
+  generic map (acthigh => 1)
+  port map (rst, clkm, '1', migrstn, open);
 
 ----------------------------------------------------------------------
 ---  AHB CONTROLLER --------------------------------------------------
@@ -545,7 +553,7 @@ begin
       apbi            => apbi,
       apbo            => apbo(4),
       calib_done      => calib_done,
-      rst_n_syn       => rstn,
+      rst_n_syn       => migrstn,
       rst_n_async     => rstraw,
       clk_amba        => clkm,
       sys_clk_p       => clk200p,
@@ -615,7 +623,7 @@ begin
         ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG), 
         apbi => apbi, apbo => apbo(14), ethi => gmiii, etho => gmiio); 
 
-       sgmiirst <= not rstn;
+       sgmiirst <= not rstraw;
 
        sgmii0 : sgmii_vc707
          generic map(
@@ -630,11 +638,15 @@ begin
            gmiii    => gmiii,
            gmiio    => gmiio,
            reset    => sgmiirst,
+           button   => buttonsgmi,
            apb_clk  => clkm,
            apb_rstn => rstn,
            apbi     => apbi,
            apbo     => apbo(11)
          );
+
+        pio_pad : inpad generic map (tech => padtech, level => cmos, voltage => x18v) port map (button(2), buttonsgmi);
+
 
       emdio_pad : iopad generic map (tech => padtech, level => cmos, voltage => x18v) 
         port map (emdio, sgmiio.mdio_o, sgmiio.mdio_oe, sgmiii.mdio_i);
@@ -799,23 +811,18 @@ begin
   end generate usb_dcl0;
 
 ----------------------------------------------------------------------
----  I2C Controller--------------------------------------------
+---  I2C Controller --------------------------------------------------
 ----------------------------------------------------------------------
-
-  i2cm: if CFG_I2C_ENABLE = 1 generate  -- I2C master
-    i2c0 : i2cmst
-      generic map (pindex => 9, paddr => 9, pmask => 16#FFF#,
-                   pirq => 11, filter => 9)
+  --i2cm: if CFG_I2C_ENABLE = 1 generate  -- I2C master
+    i2c0 : i2cmst generic map (pindex => 9, paddr => 9, pmask => 16#FFF#, pirq => 11, filter => 9)
       port map (rstn, clkm, apbi, apbo(9), i2ci, i2co);
-    -- Does not use a bi-directional line for the I2C clock
-    i2ci.scl <= i2co.scloen;            -- No clock stretch possible
-    -- When SCL output enable is activated the line should go low
-    i2c_scl_pad : outpad generic map (tech => padtech, level => cmos, voltage => x18v)
-      port map (iic_scl, i2co.scloen);
+
+    i2c_scl_pad : iopad generic map (tech => padtech, level => cmos, voltage => x18v)
+      port map (iic_scl, i2co.scl, i2co.scloen, i2ci.scl);
+
     i2c_sda_pad : iopad generic map (tech => padtech, level => cmos, voltage => x18v)
       port map (iic_sda, i2co.sda, i2co.sdaoen, i2ci.sda);
-  end generate i2cm;
-
+  --end generate i2cm;
 
 ----------------------------------------------------------------------
 ---  APB Bridge and various periherals -------------------------------
@@ -857,7 +864,7 @@ begin
         pio_pad : iopad generic map (tech => padtech, level => cmos, voltage => x18v)
             port map (switch(i), gpioo.dout(i), gpioo.oen(i), gpioi.din(i));
     end generate;
-    pio_pads2 : for i in 4 to 6 generate
+    pio_pads2 : for i in 4 to 5 generate
         pio_pad : inpad generic map (tech => padtech, level => cmos, voltage => x18v)
             port map (button(i-4), gpioi.din(i));
     end generate;

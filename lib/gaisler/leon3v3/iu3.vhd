@@ -27,6 +27,8 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.sparc.all;
 use grlib.stdlib.all;
 library techmap;
@@ -244,7 +246,7 @@ architecture rtl of iu3 is
     casa   : std_ulogic;
     casaz  : std_ulogic;
   end record;
-
+  
   type exception_state is (run, trap, dsu1, dsu2);
   
   type exception_reg_type is record
@@ -267,7 +269,7 @@ architecture rtl of iu3 is
     nerror : std_ulogic;
     ipmask : std_ulogic;
   end record;
-
+  
   type dsu_registers is record
     tt      : std_logic_vector(7 downto 0);
     err     : std_ulogic;
@@ -275,12 +277,12 @@ architecture rtl of iu3 is
     asi     : std_logic_vector(7 downto 0);
     crdy    : std_logic_vector(2 downto 1);  -- diag cache access ready
   end record;
-
+  
   type irestart_register is record
     addr   : pctype;
     pwd    : std_ulogic;
   end record;
-
+  
  
   type pwd_register_type is record
     pwd    : std_ulogic;
@@ -343,9 +345,6 @@ architecture rtl of iu3 is
   end record;
 
   type watchpoint_registers is array (0 to 3) of watchpoint_register;
-
-  constant wpr_none : watchpoint_register := (
-        zero32(31 downto 2), zero32(31 downto 2), '0', '0', '0');
 
   function dbgexc(r  : registers; dbgi : l3_debug_in_type; trap : std_ulogic; tt : std_logic_vector(7 downto 0)) return std_ulogic is
     variable dmode : std_ulogic;
@@ -730,7 +729,244 @@ architecture rtl of iu3 is
     end if;
   end;
 
-    
+
+  constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant dc_in_res : dc_in_type := (
+    signed => '0',
+    enaddr => '0',
+    read   => '0',
+    write  => '0',
+    lock   => '0',
+    dsuen  => '0',
+    size   => (others => '0'),
+    asi    => (others => '0'));
+  constant pipeline_ctrl_res :  pipeline_ctrl_type := (
+    pc    => (others => '0'),
+    inst  => (others => '0'),
+    cnt   => (others => '0'),
+    rd    => (others => '0'),
+    tt    => (others => '0'),
+    trap  => '0',
+    annul => '1',
+    wreg  => '0',
+    wicc  => '0',
+    wy    => '0',
+    ld    => '0',
+    pv    => '0',
+    rett  => '0');
+  constant fpc_res : pctype := conv_std_logic_vector(rstaddr, 20) & zero32(11 downto PCLOW);
+  
+  constant fetch_reg_res : fetch_reg_type := (
+    pc     => fpc_res,  -- Needs special handling
+    branch => '0'
+    );
+  constant decode_reg_res : decode_reg_type := (
+    pc     => (others => '0'),
+    inst   => (others => (others => '0')),
+    cwp    => (others => '0'),
+    set    => (others => '0'),
+    mexc   => '0',
+    cnt    => (others => '0'),
+    pv     => '0',
+    annul  => '1',
+    inull  => '0',
+    step   => '0',
+    divrdy => '0'
+    );
+  constant regacc_reg_res : regacc_reg_type := (
+    ctrl     => pipeline_ctrl_res,
+    rs1      => (others => '0'),
+    rfa1     => (others => '0'),
+    rfa2     => (others => '0'),
+    rsel1    => (others => '0'),
+    rsel2    => (others => '0'),
+    rfe1     => '0',
+    rfe2     => '0',
+    cwp      => (others => '0'),
+    imm      => (others => '0'),
+    ldcheck1 => '0',
+    ldcheck2 => '0',
+    ldchkra  => '1',
+    ldchkex  => '1',
+    su       => '1',
+    et       => '0',
+    wovf     => '0',
+    wunf     => '0',
+    ticc     => '0',
+    jmpl     => '0',
+    step     => '0',
+    mulstart => '0',
+    divstart => '0',
+    bp       => '0',
+    nobp     => '0'
+    );
+  constant execute_reg_res : execute_reg_type := (
+    ctrl    =>  pipeline_ctrl_res,
+    op1     => (others => '0'),
+    op2     => (others => '0'),
+    aluop   => (others => '0'),
+    alusel  => "11",
+    aluadd  => '1',
+    alucin  => '0',
+    ldbp1   => '0',
+    ldbp2   => '0',
+    invop2  => '0',
+    shcnt   => (others => '0'),
+    sari    => '0',
+    shleft  => '0',
+    ymsb    => '0',
+    rd      => (others => '0'),
+    jmpl    => '0',
+    su      => '0',
+    et      => '0',
+    cwp     => (others => '0'),
+    icc     => (others => '0'),
+    mulstep => '0',
+    mul     => '0',
+    mac     => '0',
+    bp      => '0',
+    rfe1    => '0',
+    rfe2    => '0'
+    );
+  constant memory_reg_res : memory_reg_type := (
+    ctrl   => pipeline_ctrl_res,
+    result => (others => '0'),
+    y      => (others => '0'),
+    icc    => (others => '0'),
+    nalign => '0',
+    dci    => dc_in_res,
+    werr   => '0',
+    wcwp   => '0',
+    irqen  => '0',
+    irqen2 => '0',
+    mac    => '0',
+    divz   => '0',
+    su     => '0',
+    mul    => '0',
+    casa   => '0',
+    casaz  => '0'
+    );
+  function xnpc_res return std_logic_vector is
+  begin
+    if v8 /= 0 then return "100"; end if;
+    return "011";
+  end function xnpc_res;
+  constant exception_reg_res : exception_reg_type := (
+    ctrl      => pipeline_ctrl_res,
+    result    => (others => '0'),
+    y         => (others => '0'),
+    icc       => (others => '0'),
+    annul_all => '1',
+    data      => (others => (others => '0')),
+    set       => (others => '0'),
+    mexc      => '0',
+    dci       => dc_in_res,
+    laddr     => (others => '0'),
+    rstate    => run,                   -- Has special handling
+    npc       => xnpc_res,
+    intack    => '0',
+    ipend     => '0',
+    mac       => '0',
+    debug     => '0',                   -- Has special handling
+    nerror    => '0',
+    ipmask    => '0'
+    );
+  constant DRES : dsu_registers := (
+    tt      => (others => '0'),
+    err     => '0',
+    tbufcnt => (others => '0'),
+    asi     => (others => '0'),
+    crdy    => (others => '0')
+    );
+  constant IRES : irestart_register := (
+    addr => (others => '0'), pwd => '0'
+    );
+  constant PRES : pwd_register_type := (
+    pwd => '0',                         -- Needs special handling
+    error => '0'
+    );
+  --constant special_register_res : special_register_type := (
+  --  cwp    => zero32(NWINLOG2-1 downto 0),
+  --  icc    => (others => '0'),
+  --  tt     => (others => '0'),
+  --  tba    => fpc_res(31 downto 12),
+  --  wim    => (others => '0'),
+  --  pil    => (others => '0'),
+  --  ec     => '0',
+  --  ef     => '0',
+  --  ps     => '1',
+  --  s      => '1',
+  --  et     => '0',
+  --  y      => (others => '0'),
+  --  asr18  => (others => '0'),
+  --  svt    => '0',
+  --  dwt    => '0',
+  --  dbp    => '0'
+  --  );
+  --XST workaround:
+  function special_register_res return special_register_type is
+    variable s : special_register_type;
+  begin
+    s.cwp   := zero32(NWINLOG2-1 downto 0);
+    s.icc   := (others => '0');
+    s.tt    := (others => '0');
+    s.tba   := fpc_res(31 downto 12);
+    s.wim   := (others => '0');
+    s.pil   := (others => '0');
+    s.ec    := '0';
+    s.ef    := '0';
+    s.ps    := '1';
+    s.s     := '1';
+    s.et    := '0';
+    s.y     := (others => '0');
+    s.asr18 := (others => '0');
+    s.svt   := '0';
+    s.dwt   := '0';
+    s.dbp   := '0';
+    return s;
+  end function special_register_res;
+  --constant write_reg_res : write_reg_type := (
+  --  s      => special_register_res,
+  --  result => (others => '0'),
+  --  wa     => (others => '0'),
+  --  wreg   => '0',
+  --  except => '0'
+  --  );
+  -- XST workaround:
+  function write_reg_res return write_reg_type is
+    variable w : write_reg_type;
+  begin
+    w.s      := special_register_res;
+    w.result := (others => '0');
+    w.wa     := (others => '0');
+    w.wreg   := '0';
+    w.except := '0';
+    return w;
+  end function write_reg_res;
+  constant RRES : registers := (
+    f => fetch_reg_res,
+    d => decode_reg_res,
+    a => regacc_reg_res,
+    e => execute_reg_res,
+    m => memory_reg_res,
+    x => exception_reg_res,
+    w => write_reg_res
+    );
+  constant exception_res : exception_type := (
+    pri   => '0',
+    ill   => '0',
+    fpdis => '0',
+    cpdis => '0',
+    wovf  => '0',
+    wunf  => '0',
+    ticc  => '0'
+    );
+  constant wpr_none : watchpoint_register := (
+    addr  => zero32(31 downto 2),
+    mask  => zero32(31 downto 2),
+    exec  => '0',
+    load  => '0',
+    store => '0');
 
   signal r, rin : registers;
   signal wpr, wprin : watchpoint_registers;
@@ -2631,21 +2867,22 @@ begin
     dbgo.optype <= r.x.ctrl.inst(31 downto 30) & r.x.ctrl.inst(24 downto 21);
     dci.intack <= r.x.intack and holdn;    
     
-    if (xc_rstn = '0') then 
-      v.w.except := '0'; v.w.s.et := '0'; v.w.s.svt := '0'; v.w.s.dwt := '0';
-      v.w.s.ef := '0';  -- needed for AX
-      if fabtech = rhlib18t then v.w.s.ef := '1'; end if;
+    if (not RESET_ALL) and (xc_rstn = '0') then 
+      v.w.except := RRES.w.except; v.w.s.et := RRES.w.s.et;
+      v.w.s.svt := RRES.w.s.svt; v.w.s.dwt := RRES.w.s.dwt;
+      v.w.s.ef := RRES.w.s.ef;
       if need_extra_sync_reset(fabtech) /= 0 then 
-        v.w.s.cwp := (others => '0');
-        v.w.s.icc := (others => '0');
+        v.w.s.cwp := RRES.w.s.cwp;
+        v.w.s.icc := RRES.w.s.icc;
       end if;
-      v.w.s.dbp := '0';
-      v.x.ipmask := '0';
-      v.w.s.tba := conv_std_logic_vector(rstaddr, 20);
-      v.x.annul_all := '1'; v.x.rstate := run; vir.pwd := '0'; 
-      vp.pwd := '0'; v.x.debug := '0'; 
-      v.x.nerror := '0'; --v.x.error := '0';
-      if svt = 1 then  v.w.s.tt := (others => '0'); end if;
+      v.w.s.dbp := RRES.w.s.dbp;
+      v.x.ipmask := RRES.x.ipmask;
+      v.w.s.tba := RRES.w.s.tba;
+      v.x.annul_all := RRES.x.annul_all;
+      v.x.rstate := RRES.x.rstate; vir.pwd := IRES.pwd; 
+      vp.pwd := PRES.pwd; v.x.debug := RRES.x.debug; 
+      v.x.nerror := RRES.x.nerror;
+      if svt = 1 then v.w.s.tt := RRES.w.s.tt; end if;
       if DBGUNIT then
         if (dbgi.dsuen and dbgi.dbreak) = '1' then
           v.x.rstate := dsu1; v.x.debug := '1';
@@ -2702,7 +2939,7 @@ begin
         v.x.data(0) := ld_align(v.x.data, v.x.set, me_size, me_laddr, me_signed);
       end if;
     end if;
-    if (is_fpga(fabtech) = 0) and (xc_rstn = '0') then
+    if (not RESET_ALL) and (is_fpga(fabtech) = 0) and (xc_rstn = '0') then
       v.x.data := (others => (others => '0')); --v.x.ldc := '0';
     end if;
     v.x.mexc := dco.mexc;
@@ -2720,7 +2957,7 @@ begin
     end if;
 
 
-    if (xc_rstn = '0') then 
+    if (not RESET_ALL) and (xc_rstn = '0') then 
         v.x.ctrl.trap := '0'; v.x.ctrl.annul := '1';
     end if;
     
@@ -2959,10 +3196,12 @@ begin
     fe_npc(31 downto 2) := fe_pc(31 downto 2) + 1;    -- Address incrementer
 
     if (xc_rstn = '0') then
-      v.f.pc := (others => '0'); v.f.branch := '0';
-      if DYNRST then v.f.pc(31 downto 12) := irqi.rstvec;
-      else
-        v.f.pc(31 downto 12) := conv_std_logic_vector(rstaddr, 20);
+      if (not RESET_ALL) then 
+        v.f.pc := (others => '0'); v.f.branch := '0';
+        if DYNRST then v.f.pc(31 downto 12) := irqi.rstvec;
+        else
+          v.f.pc(31 downto 12) := conv_std_logic_vector(rstaddr, 20);
+        end if;
       end if;
     elsif xc_exception = '1' then       -- exception
       v.f.branch := '1'; v.f.pc := xc_trap_address;
@@ -3100,8 +3339,17 @@ begin
   preg : process (sclk)
   begin 
     if rising_edge(sclk) then 
-      rp <= rpin; 
-      if rstn = '0' then rp.error <= '0'; end if;
+      rp <= rpin;
+      if rstn = '0' then
+        rp.error <= PRES.error;
+        if RESET_ALL then
+          if (index /= 0) and (irqi.run = '0') then
+            rp.pwd <= '1';
+          else
+            rp.pwd <= '0';
+          end if;
+        end if;
+      end if;
     end if;
   end process;
 
@@ -3123,14 +3371,26 @@ begin
         end if;
       end if;
       if rstn = '0' then
-        r.w.s.s <= '1'; r.w.s.ps <= '1'; 
-        if need_extra_sync_reset(fabtech) /= 0 then 
-          r.d.inst <= (others => (others => '0'));
-          r.x.mexc <= '0';
-        end if; 
-        if is_fpga(fabtech) = 0 then
-          r.f.pc(11 downto pclow) <= (others => '0');
-          r.f.pc(31 downto 12) <= conv_std_logic_vector(rstaddr, 20);
+        if RESET_ALL then
+          r <= RRES;
+          if DYNRST then
+            r.f.pc(31 downto 12) <= irqi.rstvec;
+            r.w.s.tba <= irqi.rstvec;
+          end if;
+          if DBGUNIT then
+            if (dbgi.dsuen and dbgi.dbreak) = '1' then
+              r.x.rstate <= dsu1; r.x.debug <= '1';
+            end if;
+          end if;
+          if (index /= 0) and irqi.run = '0' then
+            r.x.rstate <= dsu1;
+          end if;
+        else  
+          r.w.s.s <= '1'; r.w.s.ps <= '1'; 
+          if need_extra_sync_reset(fabtech) /= 0 then 
+            r.d.inst <= (others => (others => '0'));
+            r.x.mexc <= '0';
+          end if; 
         end if;
       end if; 
     end if;
@@ -3145,9 +3405,13 @@ begin
         else
           dsur.crdy <= dsuin.crdy;
         end if;
-        if need_extra_sync_reset(fabtech) /= 0 and (rstn = '0') then 
-          dsur.err <= '0'; dsur.tbufcnt <= (others => '0'); dsur.tt <= (others => '0');
-          dsur.asi <= (others => '0'); dsur.crdy <= (others => '0');
+        if rstn = '0' then
+          if RESET_ALL then
+            dsur <= DRES;
+          elsif need_extra_sync_reset(fabtech) /= 0 then
+            dsur.err <= '0'; dsur.tbufcnt <= (others => '0'); dsur.tt <= (others => '0');
+            dsur.asi <= (others => '0'); dsur.crdy <= (others => '0');
+          end if;
         end if;
       end if;
     end process;
@@ -3163,6 +3427,7 @@ begin
     dsureg : process(clk) begin
       if rising_edge(clk) then 
         if holdn = '1' then ir <= irin; end if;
+        if RESET_ALL and rstn = '0' then ir <= IRES; end if;
       end if;
     end process;
   end generate;
@@ -3179,8 +3444,12 @@ begin
         if rising_edge(clk) then
           if holdn = '1' then wpr(i) <= wprin(i); end if;
           if rstn = '0' then
-           wpr(i).exec <= '0'; wpr(i).load <= '0'; wpr(i).store <= '0';
-         end if;
+            if RESET_ALL then
+              wpr(i) <= wpr_none;
+            else
+              wpr(i).exec <= '0'; wpr(i).load <= '0'; wpr(i).store <= '0';
+            end if;
+          end if;
         end if;
       end process;
     end generate;

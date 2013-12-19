@@ -114,7 +114,11 @@ architecture rtl of mmu_cache is
   signal ahbi2  : ahb_mst_in_type;
   signal ahbo2  : ahb_mst_out_type;
 
+  signal gndv: std_logic_vector(1 downto 0);
+
 begin
+
+  gndv <= (others => '0');
 
   icache0 : mmu_icache 
     generic map (icen, irepl, isets, ilinesize, isetsize, isetlock, ilram,
@@ -139,8 +143,9 @@ begin
   -- MMU
   mmugen : if mmuen = 1 generate
     m0 : mmu
-      generic map (memtech, itlbnum, dtlbnum, tlb_type, tlb_rep, mmupgsz)
-      port map (rst, clk, mmudci, mmudco, mmuici, mmuico, mcmmo, mcmmi);
+      generic map (memtech, itlbnum, dtlbnum, tlb_type, tlb_rep, mmupgsz, 1)
+      port map (rst, clk, mmudci, mmudco, mmuici, mmuico, mcmmo, mcmmi,
+                gndv(0), gndv(1 downto 0), open);
   end generate;
   nommu : if mmuen = 0 generate
     mcmmi <= mci_zero; mmudco <= mmudco_zero; mmuico <= mmuico_zero;

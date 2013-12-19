@@ -143,6 +143,9 @@ package config is
   constant CFG_GRETH : integer := 0;
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 8;
+
+
+
 -- CAN 2.0 interface
   constant CFG_CAN : integer := 0;
   constant CFG_CANIO : integer := 16#0#;

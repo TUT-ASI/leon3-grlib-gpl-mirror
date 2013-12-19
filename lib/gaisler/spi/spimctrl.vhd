@@ -294,8 +294,8 @@ architecture rtl of spimctrl is
        frdata         : std_logic_vector(MAXDW-1 downto 0);  -- Flash response data
        rrdata         : std_logic_vector(7 downto 0);  -- Register response data
        hresp          : std_logic_vector(1 downto 0);
-       splmst         : std_logic_vector(3 downto 0);  -- SPLIT:ed master
-       hsplit         : std_logic_vector(15 downto 0);  -- Other SPLIT:ed masters
+       splmst         : std_logic_vector(log2(NAHBMST)-1 downto 0);  -- SPLIT:ed master
+       hsplit         : std_logic_vector(NAHBMST-1 downto 0);  -- Other SPLIT:ed masters
        ahbcancel      : std_ulogic;     -- Locked access cancels ongoing SPLIT
                                         -- response
        hburst         : std_logic_vector(0 downto 0);
@@ -317,7 +317,7 @@ begin  -- rtl
     variable v                : spim_reg_type;
     variable change           : std_ulogic;
     variable regaddr          : std_logic_vector(7 downto 2);
-    variable hsplit           : std_logic_vector(15 downto 0);
+    variable hsplit           : std_logic_vector(NAHBMST-1 downto 0);
     variable ahbirq           : std_logic_vector((NAHBIRQ-1) downto 0);
     variable lastbit          : std_ulogic;
     variable enable_altscaler : boolean;

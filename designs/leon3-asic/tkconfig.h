@@ -4,6 +4,10 @@
 #define CONFIG_SYN_TECH umc
 #elif defined CONFIG_SYN_RHUMC
 #define CONFIG_SYN_TECH rhumc
+#elif defined CONFIG_SYN_DARE
+#define CONFIG_SYN_TECH dare
+#elif defined CONFIG_SYN_SAED32
+#define CONFIG_SYN_TECH saed32
 #elif defined CONFIG_SYN_ATC18
 #define CONFIG_SYN_TECH atc18s
 #elif defined CONFIG_SYN_ATC18RHA
@@ -103,7 +107,7 @@
 #elif defined CONFIG_SYN_TSMC90
 #define CONFIG_SYN_TECH tsmc90
 #elif defined CONFIG_SYN_TM65GPLUS
-#define CONFIG_SYN_TECH tm65gpl
+#define CONFIG_SYN_TECH tm65gplus
 #elif defined CONFIG_SYN_CUSTOM1
 #define CONFIG_SYN_TECH custom1
 #else
@@ -116,6 +120,10 @@
 #define CFG_RAM_TECH umc
 #elif defined CONFIG_MEM_RHUMC
 #define CFG_RAM_TECH rhumc
+#elif defined CONFIG_MEM_DARE
+#define CFG_RAM_TECH dare
+#elif defined CONFIG_MEM_SAED32
+#define CFG_RAM_TECH saed32
 #elif defined CONFIG_MEM_VIRAGE
 #define CFG_RAM_TECH memvirage
 #elif defined CONFIG_MEM_ARTISAN
@@ -173,6 +181,12 @@
 #define CFG_CLK_TECH rhlib18t
 #elif defined CONFIG_CLK_RHUMC
 #define CFG_CLK_TECH rhumc
+#elif defined CONFIG_CLK_SAED32
+#define CFG_CLK_TECH saed32
+#elif defined CONFIG_CLK_DARE
+#define CFG_CLK_TECH dare
+#elif defined CONFIG_CLK_EASIC45
+#define CFG_CLK_TECH easic45
 #elif defined CONFIG_CLK_UT130HBD
 #define CFG_CLK_TECH ut130
 #else
@@ -726,6 +740,50 @@
 #define CONFIG_DSU_JTAG 0
 #endif
 
+#ifndef CONFIG_DSU_ETH
+#define CONFIG_DSU_ETH 0
+#endif
+
+#ifndef CONFIG_DSU_IPMSB
+#define CONFIG_DSU_IPMSB C0A8
+#endif
+
+#ifndef CONFIG_DSU_IPLSB
+#define CONFIG_DSU_IPLSB 0033
+#endif
+
+#ifndef CONFIG_DSU_ETHMSB
+#define CONFIG_DSU_ETHMSB 020000
+#endif
+
+#ifndef CONFIG_DSU_ETHLSB
+#define CONFIG_DSU_ETHLSB 000009
+#endif
+
+#if defined CONFIG_DSU_ETHSZ1
+#define CFG_DSU_ETHB 1
+#elif CONFIG_DSU_ETHSZ2
+#define CFG_DSU_ETHB 2
+#elif CONFIG_DSU_ETHSZ4
+#define CFG_DSU_ETHB 4
+#elif CONFIG_DSU_ETHSZ8
+#define CFG_DSU_ETHB 8
+#elif CONFIG_DSU_ETHSZ16
+#define CFG_DSU_ETHB 16
+#elif CONFIG_DSU_ETHSZ32
+#define CFG_DSU_ETHB 32
+#else
+#define CFG_DSU_ETHB 1
+#endif
+
+#ifndef CONFIG_DSU_ETH_PROG
+#define CONFIG_DSU_ETH_PROG 0
+#endif
+
+#ifndef CONFIG_DSU_ETH_DIS
+#define CONFIG_DSU_ETH_DIS 0
+#endif
+
 #ifndef CONFIG_MCTRL_LEON2
 #define CONFIG_MCTRL_LEON2 0
 #endif
@@ -860,6 +918,8 @@
 #define CONFIG_SPW_INPUT 2
 #elif defined CONFIG_SPW_RX_DDR
 #define CONFIG_SPW_INPUT 3
+#elif defined CONFIG_SPW_RX_PAD
+#define CONFIG_SPW_INPUT 4
 #elif defined CONFIG_SPW_RX_XOR
 #define CONFIG_SPW_INPUT 0
 #elif defined CONFIG_SPW_RX_AFLEX
@@ -881,6 +941,139 @@
 #ifndef CONFIG_SPW_RTSAME
 #define CONFIG_SPW_RTSAME 0
 #endif
+#ifndef CONFIG_GRETH_ENABLE
+#define CONFIG_GRETH_ENABLE 0
+#endif
+
+#ifndef CONFIG_GRETH_GIGA
+#define CONFIG_GRETH_GIGA 0
+#endif
+
+#if defined CONFIG_GRETH_FIFO4
+#define CFG_GRETH_FIFO 4
+#elif defined CONFIG_GRETH_FIFO8
+#define CFG_GRETH_FIFO 8
+#elif defined CONFIG_GRETH_FIFO16
+#define CFG_GRETH_FIFO 16
+#elif defined CONFIG_GRETH_FIFO32
+#define CFG_GRETH_FIFO 32
+#elif defined CONFIG_GRETH_FIFO64
+#define CFG_GRETH_FIFO 64
+#else
+#define CFG_GRETH_FIFO 8
+#endif
+
+#ifndef CONFIG_GRETH_FT
+#define CONFIG_GRETH_FT 0
+#endif
+
+#ifndef CONFIG_GRETH_EDCLFT
+#define CONFIG_GRETH_EDCLFT 0
+#endif
+
+#ifndef CONFIG_SPIMCTRL
+#define CONFIG_SPIMCTRL 0
+#endif
+
+#ifndef CONFIG_SPIMCTRL_SDCARD
+#define CONFIG_SPIMCTRL_SDCARD 0
+#endif
+
+#ifndef CONFIG_SPIMCTRL_READCMD
+#define CONFIG_SPIMCTRL_READCMD 0
+#endif
+
+#ifndef CONFIG_SPIMCTRL_DUMMYBYTE
+#define CONFIG_SPIMCTRL_DUMMYBYTE 0
+#endif
+
+#ifndef CONFIG_SPIMCTRL_DUALOUTPUT
+#define CONFIG_SPIMCTRL_DUALOUTPUT 0
+#endif
+
+#ifndef CONFIG_SPIMCTRL_SCALER
+#define CONFIG_SPIMCTRL_SCALER 1
+#endif
+
+#ifndef CONFIG_SPIMCTRL_ASCALER
+#define CONFIG_SPIMCTRL_ASCALER 1
+#endif
+
+#ifndef CONFIG_SPIMCTRL_PWRUPCNT
+#define CONFIG_SPIMCTRL_PWRUPCNT 0
+#endif
+
+#ifndef CONFIG_SPIMCTRL_OFFSET
+#define CONFIG_SPIMCTRL_OFFSET 0
+#endif
+#ifndef CONFIG_SPICTRL_ENABLE
+#define CONFIG_SPICTRL_ENABLE 0
+#endif
+#ifndef CONFIG_SPICTRL_NUM
+#define CONFIG_SPICTRL_NUM 1
+#endif
+#ifndef CONFIG_SPICTRL_SLVS
+#define CONFIG_SPICTRL_SLVS 1
+#endif
+#ifndef CONFIG_SPICTRL_FIFO
+#define CONFIG_SPICTRL_FIFO 1
+#endif
+#ifndef CONFIG_SPICTRL_SLVREG
+#define CONFIG_SPICTRL_SLVREG 0
+#endif
+#ifndef CONFIG_SPICTRL_ODMODE
+#define CONFIG_SPICTRL_ODMODE 0
+#endif
+#ifndef CONFIG_SPICTRL_AM
+#define CONFIG_SPICTRL_AM 0
+#endif
+#ifndef CONFIG_SPICTRL_ASEL
+#define CONFIG_SPICTRL_ASEL 0
+#endif
+#ifndef CONFIG_SPICTRL_TWEN
+#define CONFIG_SPICTRL_TWEN 0
+#endif
+#ifndef CONFIG_SPICTRL_MAXWLEN
+#define CONFIG_SPICTRL_MAXWLEN 0
+#endif
+#ifndef CONFIG_SPICTRL_SYNCRAM
+#define CONFIG_SPICTRL_SYNCRAM 0
+#endif
+#if defined(CONFIG_SPICTRL_DMRFT)
+#define CONFIG_SPICTRL_FT 1
+#elif defined(CONFIG_SPICTRL_TMRFT)
+#define CONFIG_SPICTRL_FT 2
+#else
+#define CONFIG_SPICTRL_FT 0
+#endif
+#ifndef CONFIG_CAN_ENABLE
+#define CONFIG_CAN_ENABLE 0
+#endif
+
+#ifndef CONFIG_CAN_NUM
+#define CONFIG_CAN_NUM 1
+#endif
+
+#ifndef CONFIG_CANIO
+#define CONFIG_CANIO 0
+#endif
+
+#ifndef CONFIG_CANIRQ
+#define CONFIG_CANIRQ 0
+#endif
+
+#ifndef CONFIG_CANSEPIRQ
+#define CONFIG_CANSEPIRQ 0
+#endif
+
+#ifndef CONFIG_CAN_SYNCRST
+#define CONFIG_CAN_SYNCRST 0
+#endif
+
+#ifndef CONFIG_CAN_FT
+#define CONFIG_CAN_FT 0
+#endif
+
 #ifndef CONFIG_UART1_ENABLE
 #define CONFIG_UART1_ENABLE 0
 #endif
@@ -992,6 +1185,9 @@
 #define CONFIG_GRGPIO_WIDTH 1
 #endif
 
+#ifndef CONFIG_I2C_ENABLE
+#define CONFIG_I2C_ENABLE 0
+#endif
 
 #ifndef CONFIG_DEBUG_UART
 #define CONFIG_DEBUG_UART 0

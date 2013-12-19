@@ -33,12 +33,20 @@ controller from Xilinx use the make targets:
 To simulate using Modelsim/Aldec and run systest.c on the Leon design using 
 the memory controller from Xilinx use the make targets:
 
-  make map_xilinx_vhdl_lib
-  make vsim (only required if Modelsim is used as simulator)
+  make vsim (only required if Modelsim/Aldec is used as simulator)
   make mig_series7
   make sgmii_series7
+  make soft
+  make vsim-launch
 
-Synthesis will ONLY work with Vivado 2013.02 installed or newer, and 
+To simulate using Aldec Riviera use the following make targets:
+
+  make riviera
+  make mig_series7
+  make soft
+  make riviera-launch
+
+Synthesis will ONLY work with Vivado 2013.03 installed or newer, and 
 the XILINX variable properly set in the shell. To synthesize the design, do
 
   make vivado
@@ -49,6 +57,37 @@ and then use iMPACT programming tool:
 
 to program the FPGA.
 
+After successfully programmed the FPGA using the target 'ise-prog-fpga' user might 
+have to press the 'CPU RESET' button in order to successfully complete the calibration
+process in the MIG. Led 1 and led 2 should be constant green if the Calibration 
+process has been successful.
+
+If user tries to connect to the board and the MIG has not been calibrated successfully
+'grmon' will output:
+
+$ grmon -xilusb -u -nb
+  
+  GRMON2 LEON debug monitor v2.0.43-2-g95d293c internal version
+  
+  Copyright (C) 2013 Aeroflex Gaisler - All rights reserved.
+  For latest updates, go to http://www.gaisler.com/
+  Comments or bug-reports to support@gaisler.com
+  
+Parsing -xilusb
+Parsing -u
+Parsing -nb
+
+Commands missing help:
+ datacache
+
+Xilusb: Cable type/rev : 0x3
+ JTAG chain (1):
+xc7vx485t
+
+AMBA plug&play not found!
+Failed to initialize target!
+Exiting GRMON
+
 The MIG and SGMII IP can be disabled either by deselecting the memory controller 
 and Gaisler Ethernet interface in 'xconfig' or manually editing the config.vhd file. 
 When no MIG and no SGMII block is present in the system normal GRLIB flow can be 
@@ -58,9 +97,10 @@ Note that the system frequency can be modified via Vivado when the MIG is presen
 by modifying within specified limits for the MIG IP.
 
 Compiling and launching modelsim when no memory controller and no ethernet interface
-is present:
+is present using Modelsim/Aldec simulator:
 
   make vsim
+  make soft
   make vsim-launch
 
 Simulation options
@@ -71,6 +111,7 @@ default value when launching the simulator. For Modelsim use the option "-g" i.e
 to enable processor disassembly to console launch modelsim with the option: "-gdisas=1"
 
 USE_MIG_INTERFACE_MODEL - Use MIG simulation model for faster simulation run time
+(Option can now be controlled via 'make xconfig')
 
 disas - Enable processor disassembly to console
 
@@ -111,7 +152,6 @@ Design specifics
   needs to be installed and compiled with the following command: Please, note the MIG Series7 
   only have to be generated if it is going to be used in the system.
 
-  make map_xilinx_vhdl_lib
   make vsim
   make mig_series7
   make sgmii_series7

@@ -1,6 +1,2 @@
 leon3.vhd
-tbufmem.vhd
-dsu3x.vhd
-dsu3.vhd
-dsu3_2x.vhd
 grfpushwx.vhd

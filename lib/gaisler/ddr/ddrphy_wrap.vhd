@@ -31,7 +31,6 @@ use grlib.stdlib.all;
 library techmap;
 use techmap.gencomp.all;
 library gaisler;
-use gaisler.memctrl.all;
 use gaisler.ddrpkg.all;
 
 ------------------------------------------------------------------
@@ -67,8 +66,8 @@ entity ddrphy_wrap is
     ddr_ba      : out std_logic_vector (1 downto 0);    -- ddr bank address
     ddr_dq    	: inout  std_logic_vector (dbits-1 downto 0); -- ddr data
  
-    sdi         : out sdctrl_in_type;
-    sdo         : in  sdctrl_out_type;
+    sdi         : out ddrctrl_in_type;
+    sdo         : in  ddrctrl_out_type;
     
     testen      : in std_ulogic;
     testrst     : in std_ulogic;
@@ -94,7 +93,7 @@ begin
 	ddr_clk, ddr_clkb, ddr_clk_fb_out, ddr_clk_fb,
 	ddr_cke, ddr_csb, ddr_web, ddr_rasb, ddr_casb, 
 	ddr_dm, ddr_dqs, ddr_ad, ddr_ba, ddr_dq,
-	sdo.address(15 downto 2), sdo.ba(1 downto 0),
+	sdo.address(13 downto 0), sdo.ba(1 downto 0),
 	sdi.data(dbits*2-1 downto 0), sdo.data(dbits*2-1 downto 0), 
 	sdo.dqm(dbits/4-1 downto 0), sdo.bdrive, sdo.bdrive, sdo.qdrive, 
 	sdo.rasn, sdo.casn, sdo.sdwen, sdo.sdcsn, sdo.sdcke, sdo.sdck(2 downto 0), sdo.moben,
@@ -104,7 +103,6 @@ begin
       sdi.data(127 downto dbits*2) <= (others => '0');
     end generate;
     sdi.cb <= (others => '0'); sdi.regrdata <= (others => '0');
-    sdi.wprot <= '0';        
 end;
 
 
@@ -118,7 +116,6 @@ use grlib.stdlib.all;
 library techmap;
 use techmap.gencomp.all;
 library gaisler;
-use gaisler.memctrl.all;
 use gaisler.ddrpkg.all;
 
 ------------------------------------------------------------------
@@ -156,8 +153,8 @@ entity ddrphy_wrap_cbd is
     ddr_ba         : out   std_logic_vector (1 downto 0); -- ddr bank address
     ddr_dq         : inout std_logic_vector (dbits+padbits+chkbits-1 downto 0);      -- ddr data
     
-    sdi            : out   sdctrl_in_type;
-    sdo            : in    sdctrl_out_type;
+    sdi            : out   ddrctrl_in_type;
+    sdo            : in    ddrctrl_out_type;
 
     testen      : in std_ulogic;
     testrst     : in std_ulogic;
@@ -258,7 +255,6 @@ begin
     if sdi.data'length > 2*dbits then
       sdi.data(sdi.data'length-1 downto 2*dbits) <= (others => '0');
     end if;
-    sdi.wprot <= '0';
     dm := sdo.dqm(dbits/4-1 downto 0);
     dmpad := ddr_widthconv(dm, (dbits+padbits)/8);
     if chkbits > 0 then
@@ -308,7 +304,7 @@ begin
 	ddr_cke, ddr_csb, ddr_web, ddr_rasb, ddr_casb, 
 	ddr_dm, ddr_dqs, ddr_ad, ddr_ba, ddr_dq, 
         
-	sdo.address(1+abits downto 2), sdo.ba(1 downto 0),
+	sdo.address(abits-1 downto 0), sdo.ba(1 downto 0),
 	dqin, dqout, 
 	dqm, sdo.bdrive, sdo.bdrive, sdo.qdrive, 
 	sdo.rasn, sdo.casn, sdo.sdwen, csn, cke, sdck, sdo.moben,sdi.datavalid,
@@ -329,7 +325,6 @@ use grlib.stdlib.all;
 library techmap;
 use techmap.gencomp.all;
 library gaisler;
-use gaisler.memctrl.all;
 use gaisler.ddrpkg.all;
 
 ------------------------------------------------------------------
@@ -369,8 +364,8 @@ entity ddrphy_wrap_cbd_wo_pads is
     ddr_dq_in      : in    std_logic_vector (dbits+padbits+chkbits-1 downto 0);      -- ddr data
     ddr_dq_out     : out   std_logic_vector (dbits+padbits+chkbits-1 downto 0);      -- ddr data
     ddr_dq_oen     : out   std_logic_vector (dbits+padbits+chkbits-1 downto 0);     
-    sdi            : out   sdctrl_in_type;
-    sdo            : in    sdctrl_out_type;
+    sdi            : out   ddrctrl_in_type;
+    sdo            : in    ddrctrl_out_type;
 
     testen      : in std_ulogic;
     testrst     : in std_ulogic;
@@ -473,7 +468,6 @@ begin
     if sdi.data'length > 2*dbits then
       sdi.data(sdi.data'length-1 downto 2*dbits) <= (others => '0');
     end if;
-    sdi.wprot <= '0';
     dm := sdo.dqm(dbits/4-1 downto 0);
     dmpad := ddr_widthconv(dm, (dbits+padbits)/8);
     if chkbits > 0 then
@@ -523,7 +517,7 @@ begin
       ddr_dm => ddr_dm, ddr_dqs_in => ddr_dqs_in, ddr_dqs_out => ddr_dqs_out, ddr_dqs_oen => ddr_dqs_oen,
       ddr_ad => ddr_ad, ddr_ba => ddr_ba, ddr_dq_in => ddr_dq_in, ddr_dq_out => ddr_dq_out, ddr_dq_oen => ddr_dq_oen,
       
-      addr => sdo.address(1+abits downto 2), ba => sdo.ba(1 downto 0), dqin => dqin, dqout => dqout, dm => dqm,
+      addr => sdo.address(abits-1 downto 0), ba => sdo.ba(1 downto 0), dqin => dqin, dqout => dqout, dm => dqm,
       oen => sdo.bdrive,
       dqs => sdo.bdrive, dqsoen => sdo.qdrive, rasn => sdo.rasn, casn => sdo.casn, wen => sdo.sdwen, csn => csn,
       cke => cke, ck => sdck, moben => sdo.moben, dqvalid => sdi.datavalid,
@@ -544,7 +538,6 @@ use grlib.stdlib.all;
 library techmap;
 use techmap.gencomp.all;
 library gaisler;
-use gaisler.memctrl.all;
 use gaisler.ddrpkg.all;
 
 ------------------------------------------------------------------
@@ -614,8 +607,8 @@ entity ddr2phy_wrap is
     ddr_ad2        : out   std_logic_vector (abits-1 downto 0);      -- ddr address
     ddr_ba2        : out   std_logic_vector (1+eightbanks downto 0); -- ddr bank address
     
-    sdi            : out   sdctrl_in_type;
-    sdo            : in    sdctrl_out_type;
+    sdi            : out   ddrctrl_in_type;
+    sdo            : in    ddrctrl_out_type;
 
     customclk      : in    std_ulogic;
     customdin      : in    std_logic_vector(custombits-1 downto 0);
@@ -707,7 +700,6 @@ use grlib.stdlib.all;
 library techmap;
 use techmap.gencomp.all;
 library gaisler;
-use gaisler.memctrl.all;
 use gaisler.ddrpkg.all;
 
 ------------------------------------------------------------------
@@ -761,8 +753,8 @@ entity ddr2phy_wrap_cbd is
     ddr_ad2        : out   std_logic_vector (abits-1 downto 0);      -- ddr address
     ddr_ba2        : out   std_logic_vector (1+eightbanks downto 0); -- ddr bank address
     
-    sdi            : out   sdctrl_in_type;
-    sdo            : in    sdctrl_out_type;
+    sdi            : out   ddrctrl_in_type;
+    sdo            : in    ddrctrl_out_type;
 
     customclk      : in    std_ulogic;
     customdin      : in    std_logic_vector(custombits-1 downto 0);
@@ -872,7 +864,6 @@ begin
     if sdi.data'length > 2*dbits then
       sdi.data(sdi.data'length-1 downto 2*dbits) <= (others => '0');
     end if;
-    sdi.wprot <= '0';
     dm := sdo.dqm(dbits/4-1 downto 0);
     dmpad := ddr_widthconv(dm, (dbits+padbits)/8);
     if chkbits > 0 then
@@ -926,7 +917,7 @@ begin
 	ddr_cke, ddr_csb, ddr_web, ddr_rasb, ddr_casb, 
 	ddr_dm, ddr_dqs, ddr_dqsn, ddr_ad, ddr_ba, ddr_dq, ddr_odt,
         
-	sdo.address(1+abits downto 2), sdo.ba,
+	sdo.address(abits-1 downto 0), sdo.ba,
 	dqin, dqout, 
 	dqm, sdo.bdrive, sdo.nbdrive, sdo.bdrive, sdo.qdrive, 
 	sdo.rasn, sdo.casn, sdo.sdwen, csn, cke, 
@@ -949,7 +940,6 @@ use grlib.stdlib.all;
 library techmap;
 use techmap.gencomp.all;
 library gaisler;
-use gaisler.memctrl.all;
 use gaisler.ddrpkg.all;
 
 ------------------------------------------------------------------
@@ -1000,8 +990,8 @@ entity ddr2phy_wrap_cbd_wo_pads is
     ddr_dq_oen     : out   std_logic_vector (dbits+padbits+chkbits-1 downto 0);      -- ddr data
     ddr_odt        : out   std_logic_vector(ncs-1 downto 0);
     
-    sdi            : out   sdctrl_in_type;
-    sdo            : in    sdctrl_out_type;
+    sdi            : out   ddrctrl_in_type;
+    sdo            : in    ddrctrl_out_type;
 
     customclk      : in    std_ulogic;
     customdin      : in    std_logic_vector(custombits-1 downto 0);
@@ -1115,7 +1105,6 @@ begin
     if sdi.data'length > 2*dbits then
       sdi.data(sdi.data'length-1 downto 2*dbits) <= (others => '0');
     end if;
-    sdi.wprot <= '0';
     dm := sdo.dqm(dbits/4-1 downto 0);
     dmpad := ddr_widthconv(dm, (dbits+padbits)/8);
     if chkbits > 0 then
@@ -1172,7 +1161,7 @@ begin
         ddr_ad => ddr_ad, ddr_ba => ddr_ba, ddr_dq_in => ddr_dq_in, ddr_dq_out => ddr_dq_out, ddr_dq_oen => ddr_dq_oen,
         ddr_odt => ddr_odt,
         
-	addr => sdo.address(1+abits downto 2), ba => sdo.ba, dqin => dqin, dqout => dqout, dm => dqm,
+	addr => sdo.address(abits-1 downto 0), ba => sdo.ba, dqin => dqin, dqout => dqout, dm => dqm,
         oen => sdo.bdrive, noen => sdo.nbdrive,
         dqs => sdo.bdrive, dqsoen => sdo.qdrive, rasn => sdo.rasn, casn => sdo.casn, wen => sdo.sdwen, csn => csn,
         cke => cke, cal_en => cal_en, cal_inc => cal_inc, cal_pll => sdo.cal_pll, cal_rst => sdo.cal_rst, odt => odt,
@@ -1182,3 +1171,250 @@ begin
         testen => testen, testrst => testrst, scanen => scanen, testoen => testoen
         );
 end;
+
+
+
+
+
+
+
+
+------------------------------------------------------------------
+-- LPDDR2/LPDDR3 PHY with checkbits merged on data bus, no pads --
+------------------------------------------------------------------
+
+library ieee;
+use ieee.std_logic_1164.all;
+
+library grlib;
+use grlib.stdlib.all;
+library techmap;
+use techmap.gencomp.all;
+library gaisler;
+use gaisler.ddrpkg.all;
+
+entity lpddr2phy_wrap_cbd_wo_pads is
+  generic (tech     : integer := virtex2;
+           dbits      : integer := 16;
+           nclk     : integer := 3;
+           ncs      : integer := 2;
+           chkbits  : integer := 0;
+           padbits  : integer := 0;
+           scantest : integer := 0);
+  port (
+    rst            : in    std_ulogic;
+    clkin          : in    std_ulogic;  -- input clock
+    clkin2         : in    std_ulogic;  -- input clock
+    clkout         : out   std_ulogic;  -- system clock
+    clkoutret      : in    std_ulogic;  -- system clock return
+    clkout2        : out   std_ulogic;  -- system clock
+    lock           : out   std_ulogic;  -- DCM locked
+
+    ddr_clk        : out   std_logic_vector(nclk-1 downto 0);
+    ddr_clkb       : out   std_logic_vector(nclk-1 downto 0);
+    ddr_cke        : out   std_logic_vector(ncs-1 downto 0);
+    ddr_csb        : out   std_logic_vector(ncs-1 downto 0);
+    ddr_ca         : out   std_logic_vector(9 downto 0);                             -- ddr cmd/addr
+    ddr_dm         : out   std_logic_vector ((dbits+padbits+chkbits)/8-1 downto 0);  -- ddr dm
+    ddr_dqs_in     : in    std_logic_vector ((dbits+padbits+chkbits)/8-1 downto 0);  -- ddr dqs
+    ddr_dqs_out    : out   std_logic_vector ((dbits+padbits+chkbits)/8-1 downto 0);  -- ddr dqs
+    ddr_dqs_oen    : out   std_logic_vector ((dbits+padbits+chkbits)/8-1 downto 0);  -- ddr dqs
+    ddr_dq_in      : in    std_logic_vector (dbits+padbits+chkbits-1 downto 0);      -- ddr data
+    ddr_dq_out     : out   std_logic_vector (dbits+padbits+chkbits-1 downto 0);      -- ddr data
+    ddr_dq_oen     : out   std_logic_vector (dbits+padbits+chkbits-1 downto 0);
+    sdi            : out   ddrctrl_in_type;
+    sdo            : in    ddrctrl_out_type;
+
+    testen      : in std_ulogic;
+    testrst     : in std_ulogic;
+    scanen      : in std_ulogic;
+    testoen     : in std_ulogic);
+end;
+
+architecture rtl of lpddr2phy_wrap_cbd_wo_pads is
+
+  function ddr_widthconv(x: std_logic_vector; ow: integer) return std_logic_vector is
+    variable r: std_logic_vector(2*ow-1 downto 0);
+    constant iw: integer := x'length/2;
+  begin
+    r := (others => '0');
+    if iw <= ow then
+      r(iw+ow-1 downto ow) := x(2*iw-1 downto iw);
+      r(iw-1 downto 0) := x(iw-1 downto 0);
+    else
+      r := x(iw+ow-1 downto iw) & x(ow-1 downto 0);
+    end if;
+    return r;
+  end;
+
+  function sdr_widthconv(x: std_logic_vector; ow: integer) return std_logic_vector is
+    variable r: std_logic_vector(ow-1 downto 0);
+    constant iw: integer := x'length;
+    variable xd : std_logic_vector(iw-1 downto 0);
+  begin
+    r := (others => '0'); xd := x;
+    if iw >= ow then
+      r := xd(ow-1 downto 0);
+    else
+      r(iw-1 downto 0) := xd;
+    end if;
+    return r;
+  end;
+
+  function ddrmerge(a,b: std_logic_vector) return std_logic_vector is
+    constant aw: integer := a'length/2;
+    constant bw: integer := b'length/2;
+  begin
+    return a(2*aw-1 downto aw) & b(2*bw-1 downto bw) & a(aw-1 downto 0) & b(bw-1 downto 0);
+  end;
+
+  signal dqin: std_logic_vector(2*(chkbits+dbits+padbits)-1 downto 0);
+  signal dqout: std_logic_vector(2*(chkbits+dbits+padbits)-1 downto 0);
+  signal dqm: std_logic_vector((chkbits+dbits+padbits)/4-1 downto 0);
+
+  signal odt,csn,cke: std_logic_vector(ncs-1 downto 0);
+  signal sdck: std_logic_vector(nclk-1 downto 0);
+
+  signal gnd : std_logic_vector(chkbits*2-1 downto 0);
+
+begin
+
+  gnd <= (others => '0');
+
+  -- Merge checkbit and data buses
+  comb: process(sdo,dqin)
+    variable dq: std_logic_vector(2*dbits-1 downto 0);
+    variable dqpad: std_logic_vector(2*(dbits+padbits)-1 downto 0);
+    variable cb: std_logic_vector(dbits-1 downto 0);
+    variable cbpad: std_logic_vector(2*chkbits downto 0);  -- Extra bit to handle chkbits=0
+    variable dqcb: std_logic_vector(2*(dbits+padbits+chkbits)-1 downto 0);
+    variable dm: std_logic_vector(dbits/4-1 downto 0);
+    variable dmpad: std_logic_vector((dbits+padbits)/4-1 downto 0);
+    variable cbdm: std_logic_vector(dbits/8-1 downto 0);
+    variable cbdmpad: std_logic_vector(chkbits/4 downto 0);
+    variable dqcbdm: std_logic_vector((dbits+padbits+chkbits)/4-1 downto 0);
+    variable vcsn,vcke: std_logic_vector(ncs-1 downto 0);
+    variable vsdck: std_logic_vector(nclk-1 downto 0);
+  begin
+
+    dq := sdo.data(2*dbits-1 downto 0);
+    dqpad := ddr_widthconv(dq, dbits+padbits );
+    if chkbits > 0 then
+      cb    := sdo.cb(dbits-1 downto 0);
+      cbpad := '0' & ddr_widthconv(cb, chkbits);
+      dqcb  := ddrmerge(cbpad(2*chkbits-1 downto 0), dqpad);
+    else
+      dqcb  := dqpad;
+    end if;
+    dqout <= dqcb;
+
+    dqcb := dqin;
+    if chkbits > 0 then
+      cbpad := '0' & dqin(2*(chkbits+dbits+padbits)-1 downto 2*(dbits+padbits)+chkbits) &
+               dqin(chkbits+dbits+padbits-1 downto dbits+padbits);
+      cb := ddr_widthconv(cbpad(2*chkbits-1 downto 0), dbits/2);
+    else
+      cb := (others => '0');
+    end if;
+    dq := dqcb(2*dbits+chkbits+padbits-1 downto dbits+chkbits+padbits) &
+          dqcb(dbits-1 downto 0);
+    sdi.cb(dbits-1 downto 0) <= cb;
+    sdi.data(2*dbits-1 downto 0) <= dq;
+    if sdi.cb'length > dbits then
+      sdi.cb(sdi.cb'length-1 downto dbits) <= (others => '0');
+    end if;
+    if sdi.data'length > 2*dbits then
+      sdi.data(sdi.data'length-1 downto 2*dbits) <= (others => '0');
+    end if;
+    dm := sdo.dqm(dbits/4-1 downto 0);
+    dmpad := ddr_widthconv(dm, (dbits+padbits)/8);
+    if chkbits > 0 then
+      cbdm := sdo.cbdqm(dbits/8-1 downto 0);
+      cbdmpad := '0' & ddr_widthconv(cbdm(dbits/8-1 downto 0), chkbits/8);
+      dqcbdm := ddrmerge(cbdmpad(chkbits/4-1 downto 0), dmpad);
+    else
+      dqcbdm := dmpad;
+    end if;
+    dqm <= dqcbdm;
+
+    vcsn := (others => '1');
+    for x in 0 to ncs-1 loop
+      if x<2 then
+        vcsn(x) := sdo.sdcsn(x);
+      end if;
+      vcke(x) := sdo.sdcke(x mod 2);
+    end loop;
+    for x in 0 to nclk-1 loop
+      vsdck(x) := sdo.sdck(x mod 2);
+    end loop;
+
+    csn <= vcsn;
+    cke <= vcke;
+    sdck <= vsdck;
+
+  end process;
+
+  -- Phy instantiation
+  ddr_phy0 : lpddr2phy_wo_pads
+    generic map (
+      tech => tech,
+      dbits => dbits+padbits+chkbits,
+      nclk => nclk,
+      ncs => ncs,
+      clkratio => 1,
+      scantest => scantest)
+    port map (
+      rst => rst,
+      clkin => clkin,
+      clkin2 => clkin2,
+      clkout => clkout,
+      clkoutret => clkoutret,
+      clkout2 => clkout2,
+      lock => lock,
+
+      ddr_clk => ddr_clk,
+      ddr_clkb => ddr_clkb,
+      ddr_cke => ddr_cke,
+      ddr_csb => ddr_csb,
+      ddr_ca => ddr_ca,
+      ddr_dm => ddr_dm,
+      ddr_dqs_in => ddr_dqs_in,
+      ddr_dqs_out => ddr_dqs_out,
+      ddr_dqs_oen => ddr_dqs_oen,
+      ddr_dq_in => ddr_dq_in,
+      ddr_dq_out => ddr_dq_out,
+      ddr_dq_oen => ddr_dq_oen,
+
+      ca => sdo.ca,
+      cke => cke,
+      csn => csn,
+      dqin => dqin,
+      dqout => dqout,
+      dm => dqm,
+      ckstop => sdo.sdck(0),
+      boot => sdo.boot,
+      wrpend => sdo.wrpend,
+      rdpend => sdo.read_pend,
+      wrreq(0) => sdi.writereq,
+      rdvalid(0) => sdi.datavalid,
+
+      refcal => '0',
+      refcalwu => '0',
+      refcaldone => open,
+
+      phycmd => "00000000",
+      phycmden => '0',
+      phycmdin => x"00000000",
+      phycmdout => open,
+
+      testen => '0',
+      testrst => '1',
+      scanen => '0',
+      testoen => '0'
+      );
+  sdi.regrdata <= (others => '0');
+
+end;
+
+
+

@@ -26,11 +26,15 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
+library techmap;
+use techmap.gencomp.all;
+
 entity rstgen is
   generic (
     acthigh : integer := 0;
     syncrst : integer := 0;
-    scanen  : integer := 0);
+    scanen  : integer := 0;
+    syncin  : integer := 0);
   port (
     rstin     : in  std_ulogic;
     clk       : in  std_ulogic;
@@ -44,16 +48,48 @@ end;
 
 architecture rtl of rstgen is
 signal r : std_logic_vector(4 downto 0);
-signal rst, rstoutl, arst : std_ulogic;
+signal rst, rstoutl, clklockl, arst : std_ulogic;
+
+signal rstsyncin      : std_ulogic;
+signal inrst_syncreg  : std_ulogic;
+signal genrst         : std_ulogic;
+signal genrst_syncreg : std_logic_vector(1 downto 0);
+
 begin
 
-  rst <= not rstin when acthigh = 1 else rstin;
-  rstoutraw <= rst;
+  nosyncinrst : if syncin = 0 generate
+    rst <= not rstin when acthigh = 1 else rstin;
+    clklockl <= clklock;
+  end generate;
+
+  syncinrst : if syncin = 1 generate
+    rstsyncin <= not rstin when acthigh = 1 else rstin;
+
+    syncreg0 : syncreg port map (clk, rstsyncin, inrst_syncreg);
+
+    genrst <= testrst when (scanen = 1) and (testen = '1') else inrst_syncreg;
+
+    gensyncrest : process (clk, genrst) begin
+      if rising_edge(clk) then 
+        genrst_syncreg(0) <= '1'; 
+        genrst_syncreg(1) <= genrst_syncreg(0); 
+      end if;
+      if ( genrst = '0') then genrst_syncreg <= (others => '0'); end if;
+    end process;
+    
+    rst <= genrst_syncreg(1);
+
+    syncreg1 : syncreg port map (clk, clklock, clklockl);
+    
+  end generate;
+
+  rstoutraw <= not rstin when acthigh = 1 else rstin;
+  
   arst <= testrst when (scanen = 1) and (testen = '1') else rst;
-  async : if syncrst = 0 generate
+  async : if (syncrst = 0 and syncin = 0) generate
     reg1 : process (clk, arst) begin
       if rising_edge(clk) then 
-        r <= r(3 downto 0) & clklock; 
+        r <= r(3 downto 0) & clklockl; 
         rstoutl <= r(4) and r(3) and r(2);
       end if;
       if (arst = '0') then r <= "00000"; rstoutl <= '0'; end if;
@@ -61,16 +97,15 @@ begin
     rstout <= (rstoutl and rst) when scanen = 1 else rstoutl;
   end generate;
 
-  sync : if syncrst = 1 generate
+  sync : if (syncrst = 1 or syncin = 1) generate
     reg1 : process (clk) begin
       if rising_edge(clk) then 
-        r <= (r(3 downto 0) & clklock) and (rst & rst & rst & rst & rst); 
+        r <= (r(3 downto 0) & clklockl) and (rst & rst & rst & rst & rst); 
         rstoutl <= r(4) and r(3) and r(2);
       end if;
     end process;
     rstout <= rstoutl and rst;
   end generate;
-
 
 end;
 

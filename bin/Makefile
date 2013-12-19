@@ -1,11 +1,11 @@
-VER=$(VNAME)1.3.1
-BID=4135
+VER=$(VNAME)1.3.4
+BID=4140
 CC=gcc
 SED=sed
 
 ASICLIBS = ihp25 sgb25vrh ut025crh virage rh_lib18t rh_lib18t_io2 rh_lib13t\
 	atc18 artisan umc18 virage90 tsmc90 dare nextreme atc18rha_cell smic13 \
-	tm65gplus st65lp st65gp cmos9sf nextreme2 gf65g
+	tm65gplus st65lp st65gp cmos9sf nextreme2 gf65g saed32
 FPGALIBS = apa proasic3 axcelerator ec fusion unisim secureip unimacro altera altera_mf \
 	 stratixii eclipsee cycloneiii stratixiii synplify simprim stratixiv \
 	proasic3e proasic3l
@@ -49,7 +49,7 @@ CONTRIBLIBS = openchip gleichmann contrib sun
 
 RMFTLIBS=ihp25 sgb25vrh ut025crh rh_lib18t rh_lib18t_io2 rh_lib13t pere05 \
 	rhumc dare tsmc90 atc18rha_cell
-RMCOMLIBS=artisan cust1 virage90 nextreme
+RMCOMLIBS=artisan cust1 virage90 nextreme nextreme2
 
 RMFTLIBSX = $(RMFTLIBS:%=lib/techmap/%) $(RMFTLIBS:%=lib/tech/%)
 RMCOMLIBSX = $(RMCOMLIBS:%=lib/techmap/%) $(RMCOMLIBS:%=lib/tech/%)
@@ -143,6 +143,8 @@ help:
 	@echo " make synplify        : synthesize design using synplify"
 	@echo " make vivado          : synthesize and place&route with Xilinx Vivado"
 	@echo " make planAhead       : synthesize and place&route with Xilinx PlanAhead"
+	@echo " make dc              : synthesize design usign Synopsys Design Compiler"
+	@echo " make fm              : Formal equivalence check using Synopsys Formality"
 	@echo " make scripts         : generate compile scripts only"
 	@echo " make clean           : remove all temporary files except scripts"
 	@echo " make distclean       : remove all temporary files"
@@ -259,7 +261,7 @@ else
 endif
 
 riviera-clean:
-	-rm -rf riviera vsimsa.cfg wave.asdb riviera.do library.cfg .riviera_project rlibs.do compile.riviera make.riviera
+	-rm -rf riviera vsimsa.cfg wave.asdb riviera.do library.cfg .riviera_project rlibs.do compile.riviera make.riviera dataset.asdb
 
 #########    Alint targets   ############
 
@@ -344,8 +346,8 @@ vsim-netgen-par:
 	vcom -quiet -explicit -work work testbench.vhd
 
 vsim-clean:
-	-rm -rf modelsim transcript *.mti stdout.log vsim.wlf \
-	$(SIMTOP).mpf.bak $(SIMTOP).mti *.mpf
+	-rm -rf modelsim transcript *.mti stdout.log vsim.wlf vsim_stacktrace.vstf \
+	$(SIMTOP).mpf.bak $(SIMTOP).mti *.mpf wlft*
 
 #########   GHDL targets   ############
 
@@ -852,33 +854,26 @@ sgmii_series7: ip_series7_generate compile_xilinx_verilog_lib map_xilinx_verilog
 ifneq ("$(GRLIB_SIMULATOR)","Xilinx")
 ifeq ($(CONFIG_GRETH_ENABLE),y)
 	if [ -f./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/synth/sgmii.v ]; then \
-	vlib modelsim/gig_ethernet_pcs_pma_v13_0 ;\
-	vmap -modelsimini ./modelsim.ini gig_ethernet_pcs_pma_v13_0 ./modelsim/gig_ethernet_pcs_pma_v13_0 ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//sync_block/sync_block_pack.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//sync_block/sync_block.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//ptp/ptp_pack.vhd ;\
-	vlog -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//ptp/gig_ethernet_pcs_pma_v13_0_timer_rx_latency_correct.v ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//ptp/rx_elastic_buffer_1588.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//tx/tx_pack.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//tx/tx.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//rx/rx_pack.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//rx/rx.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//management/management_pack.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//management/mdio_interface.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//management/management.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//auto_neg/auto_neg_pack.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//auto_neg/auto_neg.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//synchronise/synchronise_pack.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//synchronise/synchronise.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//TBI/tbi_pack.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//TBI/decode_8b10b.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//TBI/encode_8b10b.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//TBI/rx_elastic_buffer.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//TBI/rx_elastic_buffer_sgmii.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//TBI/tbi.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//gpcs_pma_gen.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//gpcs_pma_gen_pack.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v13_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v13_0//gig_ethernet_pcs_pma_v13_0.vhd ;\
+	vlib modelsim/gig_ethernet_pcs_pma_v14_0 ;\
+	vmap -modelsimini ./modelsim.ini gig_ethernet_pcs_pma_v14_0 ./modelsim/gig_ethernet_pcs_pma_v14_0 ;\
+	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/*pack.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/*/*pack.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/synchronise/synchronise.vhd ;\
+	vlog -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/ptp/gig_ethernet_pcs_pma_v14_0_timer_rx_latency_correct.v ;\
+	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/auto_neg/auto_neg.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/sync_block/sync_block.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/management/mdio_interface.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/management/management.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/ptp/rx_elastic_buffer_1588.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/rx/rx.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/tx/tx.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/TBI/rx_elastic_buffer_sgmii.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/TBI/rx_elastic_buffer.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/TBI/tbi.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/TBI/decode_8b10b.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/TBI/encode_8b10b.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/gpcs_pma_gen.vhd ;\
+	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/gig_ethernet_pcs_pma_v14_0.vhd  ;\
 	vlog -work work \
 	./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/synth/*.v \
 	./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/synth/*/*.v ;\
@@ -910,7 +905,7 @@ endif
 endif
 
 
-planAhead/$(TOP)_planAhead.tcl: compile.vivado
+planAhead/$(TOP)_planAhead.tcl: compile.planAhead
 	@-mkdir -p planAhead
 	@echo "# Xilinx planAhead script for LEON/GRLIB" > ./planAhead/$(TOP)_planAhead.tcl
 	@echo "# Create a new project" >> ./planAhead/$(TOP)_planAhead.tcl
@@ -927,7 +922,7 @@ endif
 	@echo "# Add files for simulation and synthesis" >> ./planAhead/$(TOP)_planAhead.tcl
 	@echo "create_fileset -simset sim_$(DESIGN)" >> ./planAhead/$(TOP)_planAhead.tcl
 	@echo "set_property top $(SIMTOP) [get_filesets sim_$(DESIGN)]" >> ./planAhead/$(TOP)_planAhead.tcl
-	@echo "source ./compile.vivado" >> ./planAhead/$(TOP)_planAhead.tcl
+	@echo "source ./compile.planAhead" >> ./planAhead/$(TOP)_planAhead.tcl
 	@for i in $(VERILOGOPTSYNFILES) $(VERILOGSYNFILES); do \
 	    if test -r $$i; then \
 		    echo read_verilog "-library work" $$i >> ./planAhead/$(TOP)_planAhead.tcl; \
@@ -967,15 +962,16 @@ ifeq ($(CONFIG_MIG_DDR2),y)
 	fi;
 endif
 	@echo "create_run synth_$(DESIGN) -flow {$(PLANAHEAD_SYNTH_FLOW)} -strategy {$(PLANAHEAD_SYNTH_STRATEGY)}" >> ./planAhead/$(TOP)_planAhead.tcl
-	@echo "set_property steps.xst.args.resource_sharing no [get_runs synth_1]" >> ./planAhead/$(TOP)_planAhead.tcl
-	@echo "set_property steps.xst.args.equivalent_register_removal no [get_runs synth_1]" >> ./planAhead/$(TOP)_planAhead.tcl
+	@echo "set_property steps.xst.args.netlist_hierarchy as_optimized [get_runs synth_1]" >> ./planAhead/$(TOP)_planAhead.tcl
 	@echo "# Elaborate design to be able to apply SDC to top level" >> ./planAhead/$(TOP)_planAhead_run.tcl
-	@echo "launch_runs synth_1" >> ./planAhead/$(TOP)_planAhead_run.tcl
+	@echo "launch_runs -jobs 4 synth_1" >> ./planAhead/$(TOP)_planAhead_run.tcl
 	@echo "wait_on_run -timeout 120 synth_1" >> ./planAhead/$(TOP)_planAhead_run.tcl
 	@echo "# Launch place and route" >> ./planAhead/$(TOP)_planAhead_run.tcl
 	@echo "set_property strategy $(PLANAHEAD_IMPL_STRATEGY) [get_runs impl_1]" >> ./planAhead/$(TOP)_planAhead_run.tcl
+	@echo "set_property steps.map.args.mt on [get_runs impl_1]" >> ./planAhead/$(TOP)_planAhead_run.tcl
+	@echo "set_property steps.par.args.mt 4 [get_runs impl_1]" >> ./planAhead/$(TOP)_planAhead_run.tcl
 	@echo "set_property steps.bitgen.args.m true [get_runs impl_1]" >> ./planAhead/$(TOP)_planAhead_run.tcl
-	@echo "launch_runs impl_1 -to_step Bitgen" >> ./planAhead/$(TOP)_planAhead_run.tcl
+	@echo "launch_runs -jobs 4 impl_1 -to_step Bitgen" >> ./planAhead/$(TOP)_planAhead_run.tcl
 	@echo "wait_on_run -timeout 120 impl_1" >> ./planAhead/$(TOP)_planAhead_run.tcl
 ifeq ("$(PROTOBOARD)","zedBoard")
 	@echo "export_hardware [get_files ./planAhead/xps_files/leon3_zedboard/leon3_zedboard.xmp] [get_runs impl_1] -bitstream" >> ./planAhead/$(TOP)_planAhead_run.tcl
@@ -993,7 +989,7 @@ planAhead planahead: planAhead/$(TOP)_planAhead.tcl $(VHDLSYNFILES) $(VERILOGSYN
 	cp ./planAhead/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).msk .
 
 planAhead-clean:
-	-rm -rf ./planAhead planAhead.log planAhead*.jou planAhead.*.log
+	-rm -rf ./planAhead planAhead.log planAhead*.jou planAhead*.*.log
 
 #########    Xilinx Vivado targets   ############
 
@@ -1002,9 +998,9 @@ VIVADOVLOG = read_verilog -library
 
 VIVADOLIBSKIPX = $(ASICLIBS) $(BRMLIBS) $(ACTELLIBS) $(ALTERALIBS) \
 	$(LATTICELIBS) $(COREPCILIB) $(SIMLIBS)
-VIVADOLIBSKIP = $(VIVADOLIBSKIPX:%=%|) dware
+VIVADOLIBSKIP = $(VIVADOLIBSKIPX:%=%|) dware | grdware
 VIVADODIRSKIPX = $(ASICLIBS) $(ACTELLIBS) $(ALTERALIBS) $(LATTICELIBS)
-VIVADODIRSKIP = $(VIVADODIRSKIPX:%=%|) dware
+VIVADODIRSKIP = $(VIVADODIRSKIPX:%=%|) dware | grdware
 VIVADOSKIP = $(VIVADOSKIPX) b1553* | pci_components* | pcicore* | snpsmul.vhd | clkgen_virtex.vhd | \
 	memory_virtex.vhd | simple_simprim.vhd | unisim_VCOMP.vhd | unisim_VITAL.vhd | unisim_VPKG.vhd
 
@@ -1055,12 +1051,25 @@ endif
 	done
 	@echo "# Read board specific constraints" >> ./vivado/$(TOP)_vivado.tcl
 ifneq ("$(XDC)","")
-	@echo "read_xdc $(XDC)" >> ./vivado/$(TOP)_vivado.tcl
-	@echo "set_property used_in_synthesis true [get_files $(XDC)]" >> ./vivado/$(TOP)_vivado.tcl
-	@echo "set_property used_in_implementation true [get_files $(XDC)]" >> ./vivado/$(TOP)_vivado.tcl
+	@for i in $(XDC); do \
+	  echo "read_xdc $$i" >> ./vivado/$(TOP)_vivado.tcl; \
+	  echo "set_property used_in_synthesis true [get_files $$i]" >> ./vivado/$(TOP)_vivado.tcl; \
+	  echo "set_property used_in_implementation true [get_files $$i]" >> ./vivado/$(TOP)_vivado.tcl; \
+	done;
+endif
+ifneq ("$(TCL)","")
+	@for i in $(TCL); do \
+	  echo "import_files -fileset constrs_1 -force $$i" >> ./vivado/$(TOP)_vivado.tcl; \
+#	  echo "set_property used_in_synthesis true [get_files $$i]" >> ./vivado/$(TOP)_vivado.tcl; \
+#	  echo "set_property used_in_implementation true [get_files $$i]" >> ./vivado/$(TOP)_vivado.tcl; \
+	done;
 endif
 ifneq ("$(UCF)","")
-	@echo "read_ucf $(UCF)" >> ./vivado/$(TOP)_vivado.tcl
+	@for i in $(UCF); do \
+	  echo "import_files $$i" >> ./vivado/$(TOP)_vivado.tcl; \
+	  echo "set_property used_in_synthesis true [get_files $$i]" >> ./vivado/$(TOP)_vivado.tcl; \
+	  echo "set_property used_in_implementation true [get_files $$i]" >> ./vivado/$(TOP)_vivado.tcl; \
+	done;
 endif
 	@echo "# Board, part and design properties" >> ./vivado/$(TOP)_vivado.tcl
 	@echo "set_property target_simulator $(GRLIB_XIL_Vivado_Simulator) [current_project]" >> ./vivado/$(TOP)_vivado.tcl
@@ -1074,7 +1083,7 @@ ifeq ($(CONFIG_MIG_SERIES7),y)
 	@if test -r $(GRLIB)/boards/$(BOARD)/mig.xci; then \
 		echo "set_property target_language verilog [current_project]" >> ./vivado/$(TOP)_vivado.tcl; \
 		echo "import_ip -files $(GRLIB)/boards/$(BOARD)/mig.xci -name mig" >> ./vivado/$(TOP)_vivado.tcl; \
-		echo "exec -ignorestderr cp $(GRLIB)/boards/$(BOARD)/mig.prj ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/" >> ./vivado/$(TOP)_vivado.tcl; \
+		echo "#upgrade_ip [get_ips mig]" >> ./vivado/$(TOP)_vivado.tcl; \
 		echo "generate_target  all [get_files ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig.xci] -force " >> ./vivado/$(TOP)_vivado.tcl; \
 	else \
 		echo "WARNING: No MIG Series7 IP was found"; \
@@ -1095,18 +1104,15 @@ endif
 	@echo "set_property strategy {$(VIVADO_SYNTH_STRATEGY)} [get_runs synth_1]" >> ./vivado/$(TOP)_vivado_run.tcl
 	@echo "launch_runs synth_1" >> ./vivado/$(TOP)_vivado_run.tcl
 	@echo "wait_on_run -timeout 360 synth_1" >> ./vivado/$(TOP)_vivado_run.tcl
+	@echo "get_ips" >> ./vivado/$(TOP)_vivado_run.tcl
 	@echo "# Launch place and route" >> ./vivado/$(TOP)_vivado_run.tcl
 	@echo "set_property strategy {$(VIVADO_IMPL_STRATEGY)} [get_runs impl_1]" >> ./vivado/$(TOP)_vivado_run.tcl
 	@echo "set_property steps.write_bitstream.args.mask_file true [get_runs impl_1]" >> ./vivado/$(TOP)_vivado_run.tcl
-	@echo "launch_runs impl_1" >> ./vivado/$(TOP)_vivado_run.tcl
-	@echo "wait_on_run -timeout 360 impl_1" >> ./vivado/$(TOP)_vivado_run.tcl
-	@echo "close_design" >> ./vivado/$(TOP)_vivado_run.tcl
-	@echo "open_run impl_1" >> ./vivado/$(TOP)_vivado_run.tcl
-	@echo "report_timing_summary -delay_type min_max -path_type full_clock_expanded -report_unconstrained -check_timing_verbose -max_paths 10 -nworst 1 -significant_digits 3 -input_pins -name timing_1 -file ./vivado/$(TOP)_post_timing.rpt" >> ./vivado/$(TOP)_vivado_run.tcl
-	@echo "report_drc -file $(TOP)_drc_route.rpt" >> ./vivado/$(TOP)_vivado_run.tcl
+	@echo "set_msg_config -suppress -id {Drc 23-20}" >> ./vivado/$(TOP)_vivado_run.tcl
 	@echo "launch_runs impl_1 -to_step write_bitstream" >> ./vivado/$(TOP)_vivado_run.tcl
 	@echo "wait_on_run -timeout 360 impl_1" >> ./vivado/$(TOP)_vivado_run.tcl
-
+	@echo "#report_timing_summary -delay_type min_max -path_type full_clock_expanded -report_unconstrained -check_timing_verbose -max_paths 10 -nworst 1 -significant_digits 3 -input_pins -name timing_1 -file ./vivado/$(TOP)_post_timing.rpt" >> ./vivado/$(TOP)_vivado_run.tcl
+	@echo "#report_drc -file $(TOP)_drc_route.rpt" >> ./vivado/$(TOP)_vivado_run.tcl
 
 vivado-launch: vivado/$(TOP)_vivado.tcl $(VHDLSYNFILES) $(VERILOGSYNFILES)
 	vivado -mode gui -source ./vivado/$(TOP)_vivado.tcl
@@ -1114,12 +1120,12 @@ vivado-launch: vivado/$(TOP)_vivado.tcl $(VHDLSYNFILES) $(VERILOGSYNFILES)
 	cp ./vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).msk .
 
 vivado: vivado/$(TOP)_vivado.tcl $(VHDLSYNFILES) $(VERILOGSYNFILES)
-	vivado -mode batch -source ./vivado/$(TOP)_vivado.tcl ./vivado/$(TOP)_vivado_run.tcl
+	vivado -mode batch -source ./vivado/$(TOP)_vivado.tcl ./vivado/$(TOP)_vivado_run.tcl | tee $(TOP)_vivado.log
 	cp ./vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).bit .
 	cp ./vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).msk .
 
 vivado-clean:
-	-rm -rf ./vivado vivado.log vivado*.jou .Xil
+	-rm -rf ./vivado *vivado.log vivado*.jou vivado*.backup.log vivado*.str .Xil
 
 vivado-prog-fpga:
 	@echo "fpga -f ./vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).bit" > ./xmd.ini
@@ -1136,6 +1142,7 @@ QUARTUS_FIT = quartus_fit
 QUARTUS_ASM = quartus_asm
 QUARTUS_STA = quartus_sta
 QUARTUS_PGM = quartus_pgm
+QUARTUS_SH = quartus_sh
 #else
 #QUARTUS_MAP = $(QUARTUS_ROOTDIR)/bin/quartus_map
 #QUARTUS_FIT = $(QUARTUS_ROOTDIR)/bin/quartus_fit
@@ -1172,9 +1179,12 @@ quartus: quartus-vqm
 quartus-synp:  $(TOP)_synplify.prj synplify/$(TOP).edf quartus-vqm
 	@-cp synplify/*.hex .
 	$(QUARTUS_MAP) --import_settings_files=on  --export_settings_files=off $(TOP)_synplify -c $(TOP)_synplify
+	    $(if $(strip $(QSF_NEXT)),$(QUARTUS_SH) -t $(QSF_NEXT) quartus_map $(TOP)_synplify $(TOP)_synplify,)
 	$(QUARTUS_CDB) --merge $(TOP)_synplify
 	$(QUARTUS_FIT) --import_settings_files=off --export_settings_files=off $(TOP)_synplify -c $(TOP)_synplify
+	    $(if $(strip $(QSF_NEXT)),$(QUARTUS_SH) -t $(QSF_NEXT) quartus_fit $(TOP)_synplify $(TOP)_synplify,)
 	$(QUARTUS_ASM) --import_settings_files=off --export_settings_files=off $(TOP)_synplify -c $(TOP)_synplify
+	    $(if $(strip $(QSF_NEXT)),$(QUARTUS_SH) -t $(QSF_NEXT) quartus_asm $(TOP)_synplify $(TOP)_synplify,)
 	$(QUARTUS_STA) $(TOP)_synplify
 
 quartus-launch: $(TOP)_quartus.qsf quartus-vqm
@@ -1185,11 +1195,14 @@ quartus-launch-synp:  $(TOP)_synplify.prj synplify/$(TOP).edf quartus-vqm
 
 quartus-map: $(TOP)_quartus.qsf quartus-vqm
 	$(QUARTUS_MAP) --import_settings_files=on  --export_settings_files=off $(TOP)_quartus -c $(TOP)_quartus
+	    $(if $(strip $(QSF_NEXT)),$(QUARTUS_SH) -t $(QSF_NEXT) quartus_map     $(TOP)_quartus $(TOP)_quartus,)
 
 quartus-route: $(TOP)_quartus.qsf
 	$(QUARTUS_CDB) --merge $(TOP)_quartus
 	$(QUARTUS_FIT) --import_settings_files=off --export_settings_files=off $(TOP)_quartus -c $(TOP)_quartus
+	    $(if $(strip $(QSF_NEXT)),$(QUARTUS_SH) -t $(QSF_NEXT) quartus_fit $(TOP)_quartus $(TOP)_quartus,)
 	$(QUARTUS_ASM) --import_settings_files=off --export_settings_files=off $(TOP)_quartus -c $(TOP)_quartus
+	    $(if $(strip $(QSF_NEXT)),$(QUARTUS_SH) -t $(QSF_NEXT) quartus_asm $(TOP)_quartus $(TOP)_quartus,)
 	$(QUARTUS_STA) $(TOP)_quartus
 
 quartus-prog-fpga:
@@ -1438,6 +1451,9 @@ FMVLOG = read_verilog -r -libname
 ifeq ("$(DCSCRIPT)","")
 DCSCRIPT=$(TOP)_dc.tcl
 endif
+ifeq ("$(FMSCRIPT)","")
+FMSCRIPT=$(TOP)_fm.tcl
+endif
 DCLIBSKIP = $(FPGALIBS) corePCIF
 DCDIRSKIP =  $(FPGALIBS) corePCIF pci/pcif
 #DCDIRSKIP =  corePCIF pcif
@@ -1446,12 +1462,16 @@ XDCDIRSKIP = $(DCDIRSKIP:%=% | ) dummy
 DCSKIP = $(DCLIBSKIP:%=*_%.vhd | ) dummy
 
 dc-launch: $(TOP)_dc.tcl
-	-mkdir synopsys
+	@-mkdir -p synopsys
 	design_compiler&
 
 dc: $(TOP)_dc.tcl
-	-mkdir synopsys
-	dc_shell-xg-t -f $(DCSCRIPT)
+	@-mkdir -p synopsys
+	dc_shell-xg-t $(DCOPT) -f $(DCSCRIPT) | tee $(DCSCRIPT).log
+
+fm: $(TOP)_dc.tcl
+	@-mkdir -p synopsys
+	fm_shell $(FMOPT) -f $(FMSCRIPT) | tee $(FMSCRIPT).log
 
 $(TOP)_dc.tcl: compile.dc
 	@cp $(GRLIB)/bin/top.dc $(TOP)_dc.tcl
@@ -1473,7 +1493,8 @@ $(TOP)_dc.tcl: compile.dc
 dc-clean:
 	-rm -rf synopsys view_command.log command.log dumpdata.txt filenames.log \
 	dc.log dwsvf* alib* $(TOP)_dc.tcl fmref.tcl fm_shell_command.log \
-	formality*.log formality_svf
+	formality*.log *.svf $(DCSCRIPT).log $(DCSCRIPT).log.swp FM_WORK $(FMSCRIPT).log formality_svf *.mr *.pvl \
+	ARCH ENTI PACK *.log.swp
 
 ############  Cadence RTL Compiler   ########################
 
@@ -1553,11 +1574,11 @@ sim-launch:
 
 ########## Generation of compile scripts ###############
 
-scripts: compile.dc compile.synp compile.vivado compile.son compile.vsim compile.asim compile.xst compile.ncsim compile.rc \
+scripts: compile.dc compile.synp compile.vivado compile.planAhead compile.son compile.vsim compile.asim compile.xst compile.ncsim compile.rc \
 	$(TOP)_synplify.prj $(TOP)_dc.tcl $(TOP).rc $(TOP).xst $(TOP).npl $(TOP)_ise.tcl $(TOP)_quartus.qsf \
 	$(TOP)_designer.tcl $(TOP)_libero.prj compile.etools $(TOP)_etools_create.tcl $(TOP).ldf make.riviera
 
-verilog.txt $(TOP)_libero.prj compile.dc compile.synp compile.vivado compile.son compile.vsim compile.asim compile.xst \
+verilog.txt $(TOP)_libero.prj compile.dc compile.synp compile.vivado compile.planAhead compile.son compile.vsim compile.asim compile.xst \
 compile.ncsim compile.rc compile.ghdl $(TOP).npl $(TOP)_ise.tcl $(TOP)_quartus.qsf $(TOP)_precision.tcl $(TOP).xise \
 compile.etools $(TOP).ldf make.riviera :
 	@touch libs.txt; rm libs.txt;
@@ -1567,8 +1588,10 @@ compile.etools $(TOP).ldf make.riviera :
 	    touch compile.$$i; rm compile.$$i ; \
 	done
 	@printf "\tmkdir xncsim\n" > compile.ncsim
-	@echo sh mkdir synopsys > compile.dc
+	@echo catch {sh mkdir synopsys} > compile.dc
 	@echo "# Formality script to read reference design" > fmref.tcl
+	@echo "# Vivado compile script to read reference design" > compile.vivado
+	@echo "# planAhead compile script to read reference design" > compile.planAhead
 	@echo set vhdlList     { > easic.vhdl
 	@echo set verilogList  { > easic.vlog
 	@echo vlib modelsim > libs.do
@@ -1694,10 +1717,10 @@ compile.etools $(TOP).ldf make.riviera :
 	        echo alib $$bn $$bn.lib "" >> alibs.do; \
 	      	printf "\tmkdir xncsim/$$bn\n" >> compile.ncsim; \
 	  	if (test $$bn != "dware"); then \
-	          echo sh mkdir synopsys/$$bn "" >> compile.dc; \
+	          echo catch {sh mkdir synopsys/$$bn} "" >> compile.dc; \
 	          echo define_design_lib $$bn -path synopsys/$$bn "" >> compile.dc; \
 		else \
-	          echo define_design_lib $$bn -path $(SNPS_HOME)/packages/dware/lib/DWARE "" >> compile.dc; \
+	          echo #define_design_lib $$bn -path $(SNPS_HOME)/packages/dware/lib/DWARE "" >> compile.dc; \
 		fi ; \
 	        case $$bn in \
 		work) \
@@ -1758,6 +1781,7 @@ compile.etools $(TOP).ldf make.riviera :
 		           echo Project_File_P_$$nfiles = vhdl_novitalcheck 0 file_type VHDL group_id 0 vhdl_nodebug 1 vhdl_1164 1 vhdl_noload 0 vhdl_synth 0 folder {Top Level} last_compile 0 vhdl_disableopt 0 vhdl_vital 0 vhdl_warn1 0 vhdl_warn2 1 vhdl_explicit 0 vhdl_showsource 1 vhdl_warn3 1 vhdl_options {} vhdl_warn4 1 ood 0 vhdl_warn5 0 compile_to $$bn compile_order $$nfiles dont_compile 0 cover_stmt 1 vhdl_use93 93 >> tmp.mpf; \
 			   nfiles=`expr $$nfiles + 1`; \
                            printf "\t$(VCOM) $(VHDLOPT) -work $$bn $$f\n" >> compile.vsim; \
+		           riv_fs="$$riv_fs $$f"; \
 	    		   echo VALUE \"\<project\>/$$f,hdl\" >> libero_syn_files; \
 	    		   echo VALUE \"\<project\>/$$f,hdl\" >> libero_sim_files; \
 	    		   echo VALUE \"\<project\>/$$f,hdl\" >> libero_simlist; \
@@ -1790,7 +1814,8 @@ compile.etools $(TOP).ldf make.riviera :
 		           echo $(XSTVHDL) $(VHDLOPT) $$bn -ifn $$f >> compile.xst; \
 		           echo vhdl $$bn  $$f >> $(TOP)_files.prj; \
 			   xfiles=`expr $$xfiles + 1`; \
-		           echo $(VIVADOVHDL) $$bn $$f >> compile.vivado;; \
+		           echo $(VIVADOVHDL) $$bn $$f >> compile.vivado; \
+		           echo $(VIVADOVHDL) $$bn $$f >> compile.planAhead;; \
 			vhdlprec) \
 		           echo add_input_file -format VHDL -work $$bn -enc $$f >> $(TOP)_precision.tcl;; \
 			vhdlsyn) \
@@ -1886,6 +1911,7 @@ compile.etools $(TOP).ldf make.riviera :
 			       esac; \
 			     esac; \
 			   esac; \
+			   echo $(VIVADOVHDL) $$bn $$f >> compile.planAhead; \
 			   case $$bn in $(QUARTUSLIBSKIP) )\
 				uu=0;; \
 			   *) \
@@ -1941,6 +1967,7 @@ compile.etools $(TOP).ldf make.riviera :
 		           echo puts \"$$f\" >> $(TOP)_ise.tcl; \
 		           echo $(SYNPVLOG) $$f >> compile.synp; \
 		           echo $(VIVADOVLOG) $$f >> compile.vivado; \
+		           echo $(VIVADOVLOG) $$f >> compile.planAhead; \
 		           echo add_input_file -format VERILOG -work $$bn  $$f >> $(TOP)_precision.tcl; \
 		           echo set_global_assignment -name VERILOG_FILE $$f -library $$bn >> $(TOP)_quartus.qsf;; \
 			vhdlsim) \
@@ -1977,6 +2004,8 @@ compile.etools $(TOP).ldf make.riviera :
 			       esac; \
 			     esac; \
 			   esac; \
+		           printf "add_files -fileset sim_$(DESIGN) -norecurse $$f\n" >> compile.planAhead; \
+		           printf "set_property library $$bn [get_files $$f]\n" >> compile.planAhead; \
 	                   if (test $$bn = "work"); then \
 		             printf "\t$(VHDLP) $(VHDLOPT) sonata $$f\n" >> compile.son; \
 	  		   else \
@@ -2013,6 +2042,8 @@ compile.etools $(TOP).ldf make.riviera :
 		           riv_fs="$$riv_fs $$f"; \
 		           printf "add_files -fileset sim_$(DESIGN) -norecurse $$f\n" >> compile.vivado; \
 		           printf "set_property library $$bn [get_files $$f]\n" >> compile.vivado; \
+		           printf "add_files -fileset sim_$(DESIGN) -norecurse $$f\n" >> compile.planAhead; \
+		           printf "set_property library $$bn [get_files $$f]\n" >> compile.planAhead; \
 		           printf "\t$(ALOG) $$bn ../../$$f\n" >> compile.asim; \
 		           printf "\t$(NCVLOG) $$bn $$f\n" >> compile.ncsim;; \
 			esac ; \
@@ -2021,6 +2052,9 @@ compile.etools $(TOP).ldf make.riviera :
 	    	    done ; \
 		    if [ -n "$$riv_fs" ]; then \
 		      if [ "$$i" = 'vhdlsim' -o "$$i" = 'vhdlsyn' ]; then \
+			printf "\t$(VCOM) -work $$bn $$riv_fs\n" >> make.riviera; \
+		      fi; \
+		      if [ "$$i" = 'vhdlmtie' ]; then \
 			printf "\t$(VCOM) -work $$bn $$riv_fs\n" >> make.riviera; \
 		      fi; \
 		      if [ "$$i" = 'vlogsim' -o "$$i" = 'vlogsyn' ]; then \
@@ -2223,6 +2257,7 @@ compile.etools $(TOP).ldf make.riviera :
         cat tmp.mpf >> $(SIMTOP).mpf; rm tmp.mpf; \
 	cat $(GRLIB)/bin/mt1.mpf >> $(SIMTOP).mpf; \
 	if test -r "$(QSF)"; then cat $(QSF) >> $(TOP)_quartus.qsf; fi; \
+	if test -r "$(QSF_APPEND)"; then cat $(QSF_APPEND) >> $(TOP)_quartus.qsf; fi; \
 	echo ncsim: > make.ncsim; cat compile.ncsim >> make.ncsim; \
 	echo vsim: > make.vsim; cat compile.vsim >> make.vsim; \
 	echo sonata-compile: > make.son; cat compile.son >> make.son; \

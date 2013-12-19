@@ -75,6 +75,12 @@ begin
   rhu : if (tech = rhumc) generate
     x0 : rhumc_inpad generic map (level, voltage, filter) port map (pad, o);
   end generate;
+  saed : if (tech = saed32) generate
+    x0 : saed32_inpad generic map (level, voltage, filter) port map (pad, o);
+  end generate;
+  dar : if (tech = dare) generate
+    x0 : dare_inpad generic map (level, voltage, filter) port map (pad, o);
+  end generate;
   ihp : if (tech = ihp25) generate
     x0 : ihp25_inpad generic map(level, voltage) port map(pad, o);
   end generate;

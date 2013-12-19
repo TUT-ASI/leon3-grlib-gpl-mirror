@@ -105,6 +105,7 @@ entity sgmii_vc707 is
       gmiio             : in  eth_out_type;
       -- Asynchronous reset for entire core.
       reset             : in std_logic;
+      button            : in std_logic;
       -- APB Status bus
       apb_clk           : in    std_logic;
       apb_rstn          : in    std_logic;
@@ -124,27 +125,23 @@ architecture top_level of sgmii_vc707 is
       -- Transceiver Interface
       ------------------------
 
-      drpaddr_in           : in std_logic_vector(8 downto 0);
-      drpclk_in            : in std_logic;
-      drpdi_in             : in std_logic_vector(15 downto 0);
-      drpdo_out            : out std_logic_vector(15 downto 0);
-      drpen_in             : in std_logic;
-      drprdy_out           : out std_logic;
-      drpwe_in             : in std_logic;
-
       gtrefclk             : in std_logic;                     -- Very high quality 125MHz clock for GT transceiver
       txp                  : out std_logic;                    -- Differential +ve of serial transmission from PMA to PMD.
       txn                  : out std_logic;                    -- Differential -ve of serial transmission from PMA to PMD.
       rxp                  : in std_logic;                     -- Differential +ve for serial reception from PMD to PMA.
       rxn                  : in std_logic;                     -- Differential -ve for serial reception from PMD to PMA.
 
-      txoutclk             : out std_logic;                    -- txoutclk from GT transceiver (62.5MHz)
       resetdone            : out std_logic;                    -- The GT transceiver has completed its reset cycle
-      mmcm_locked          : in std_logic;                     -- Locked signal from MMCM
+      cplllock             : out std_logic;
+      txoutclk             : out std_logic;                    -- txoutclk from GT transceiver (62.5MHz)
+      rxoutclk             : out std_logic;                    -- txoutclk from GT transceiver (62.5MHz)
       userclk              : in std_logic;                     -- 62.5MHz clock.
       userclk2             : in std_logic;                     -- 125MHz clock.
+      rxuserclk            : in std_logic;                     -- 125MHz clock.
+      rxuserclk2           : in std_logic;                     -- 125MHz clock.
       independent_clock_bufg : in std_logic;
       pma_reset            : in std_logic;                     -- transceiver PMA reset signal
+      mmcm_locked          : in std_logic;                     -- Locked signal from MMCM
 
 
       -- GMII Interface
@@ -169,7 +166,6 @@ architecture top_level of sgmii_vc707 is
       an_interrupt         : out std_logic;                    -- Interrupt to processor to signal that Auto-Negotiation has completed
       an_adv_config_vector : in std_logic_vector(15 downto 0); -- Alternate interface to program REG4 (AN ADV)
       an_restart_config    : in std_logic;                     -- Alternate signal to modify AN restart bit in REG0
-      link_timer_value     : in std_logic_vector(8 downto 0);  -- Programmable Auto-Negotiation Link Timer Control
 
       -- Speed Control
       ----------------
@@ -180,7 +176,9 @@ architecture top_level of sgmii_vc707 is
       ---------------
       status_vector        : out std_logic_vector(15 downto 0); -- Core status.
       reset                : in std_logic;                     -- Asynchronous reset for entire core.
-      signal_detect        : in std_logic                      -- Input from PMD to indicate presence of optical input.
+      signal_detect        : in std_logic;                      -- Input from PMD to indicate presence of optical input.
+      gt0_qplloutclk_in    : in std_logic;                      -- Input from PMD to indicate presence of optical input.
+      gt0_qplloutrefclk_in : in std_logic                      -- Input from PMD to indicate presence of optical input.
 
       );
 
@@ -191,46 +189,45 @@ component MMCME2_ADV
      BANDWIDTH : string := "OPTIMIZED";
      CLKFBOUT_MULT_F : real := 5.000;
      CLKFBOUT_PHASE : real := 0.000;
-     CLKFBOUT_USE_FINE_PS : boolean := FALSE;
+     --CLKFBOUT_USE_FINE_PS : boolean := FALSE;
      CLKIN1_PERIOD : real := 0.000;
      CLKIN2_PERIOD : real := 0.000;
      CLKOUT0_DIVIDE_F : real := 1.000;
      CLKOUT0_DUTY_CYCLE : real := 0.500;
      CLKOUT0_PHASE : real := 0.000;
-     CLKOUT0_USE_FINE_PS : boolean := FALSE;
+     --CLKOUT0_USE_FINE_PS : boolean := FALSE;
      CLKOUT1_DIVIDE : integer := 1;
      CLKOUT1_DUTY_CYCLE : real := 0.500;
      CLKOUT1_PHASE : real := 0.000;
-     CLKOUT1_USE_FINE_PS : boolean := FALSE;
+     --CLKOUT1_USE_FINE_PS : boolean := FALSE;
      CLKOUT2_DIVIDE : integer := 1;
      CLKOUT2_DUTY_CYCLE : real := 0.500;
      CLKOUT2_PHASE : real := 0.000;
-     CLKOUT2_USE_FINE_PS : boolean := FALSE;
+     --CLKOUT2_USE_FINE_PS : boolean := FALSE;
      CLKOUT3_DIVIDE : integer := 1;
      CLKOUT3_DUTY_CYCLE : real := 0.500;
      CLKOUT3_PHASE : real := 0.000;
-     CLKOUT3_USE_FINE_PS : boolean := FALSE;
-     CLKOUT4_CASCADE : boolean := FALSE;
+     --CLKOUT3_USE_FINE_PS : boolean := FALSE;
+     --CLKOUT4_CASCADE : boolean := FALSE;
      CLKOUT4_DIVIDE : integer := 1;
      CLKOUT4_DUTY_CYCLE : real := 0.500;
      CLKOUT4_PHASE : real := 0.000;
-     CLKOUT4_USE_FINE_PS : boolean := FALSE;
+     --CLKOUT4_USE_FINE_PS : boolean := FALSE;
      CLKOUT5_DIVIDE : integer := 1;
      CLKOUT5_DUTY_CYCLE : real := 0.500;
      CLKOUT5_PHASE : real := 0.000;
-     CLKOUT5_USE_FINE_PS : boolean := FALSE;
+     --CLKOUT5_USE_FINE_PS : boolean := FALSE;
      CLKOUT6_DIVIDE : integer := 1;
      CLKOUT6_DUTY_CYCLE : real := 0.500;
      CLKOUT6_PHASE : real := 0.000;
-     CLKOUT6_USE_FINE_PS : boolean := FALSE;
+     --CLKOUT6_USE_FINE_PS : boolean := FALSE;
      COMPENSATION : string := "ZHOLD";
      DIVCLK_DIVIDE : integer := 1;
      REF_JITTER1 : real := 0.0;
      REF_JITTER2 : real := 0.0;
-     SS_EN : string := "FALSE";
+     --SS_EN : string := "FALSE";
      SS_MODE : string := "CENTER_HIGH";
-     SS_MOD_PERIOD : integer := 10000;
-     STARTUP_WAIT : boolean := FALSE
+     SS_MOD_PERIOD : integer := 10000
   );
   port (
      CLKFBOUT : out std_ulogic := '0';
@@ -271,17 +268,25 @@ end component;
 
 ----- component IBUFDS_GTE2 -----
 component IBUFDS_GTE2
-  generic (
-     CLKCM_CFG : boolean := TRUE;
-     CLKRCV_TRST : boolean := TRUE;
-     CLKSWING_CFG : bit_vector := "11"
-  );
   port (
      O : out std_ulogic;
      ODIV2 : out std_ulogic;
      CEB : in std_ulogic;
      I : in std_ulogic;
      IB : in std_ulogic
+  );
+end component;
+
+----- component BUFGMUX -----
+component BUFGMUX
+  generic (
+     CLK_SEL_TYPE : string := "ASYNC"
+  );
+  port (
+     O : out std_ulogic := '0';
+     I0 : in std_ulogic := '0';
+     I1 : in std_ulogic := '0';
+     S : in std_ulogic := '0'
   );
 end component;
 
@@ -296,6 +301,7 @@ constant pconfig : apb_config_type := (
   -- clock generation signals for tranceiver
   signal gtrefclk              : std_logic;
   signal txoutclk              : std_logic;
+  signal rxoutclk              : std_logic;
   signal resetdone             : std_logic;
   signal mmcm_locked           : std_logic;
   signal mmcm_reset            : std_logic;
@@ -304,6 +310,8 @@ constant pconfig : apb_config_type := (
   signal clkout1               : std_logic;
   signal userclk               : std_logic;
   signal userclk2              : std_logic;
+  signal rxuserclk               : std_logic;
+  signal rxuserclk2              : std_logic;
 
   -- PMA reset generation signals for tranceiver
   signal pma_reset_pipe        : std_logic_vector(3 downto 0);
@@ -368,10 +376,11 @@ begin
    -----------------------------------------------------------------------------
 
   -- Remove AN during simulation i.e. "00000"
-  configuration_vector <= "10000" when (autonegotiation = 1) else "00000";
+  configuration_vector <= "10000" when (autonegotiation = 1 or button = '1') else "00000";
 
   --an_adv_config_vector <= x"4001";
-  an_adv_config_vector <= "0000000000100001";
+  --an_adv_config_vector <= "0000000000100001";
+  an_adv_config_vector <= "0001100000000001";
   an_restart_config    <= '0';
   link_timer_value     <= "000110010";
 
@@ -386,9 +395,9 @@ begin
   apbo.prdata(31 downto 16)  <= (others => '0');
   apbo.prdata(15 downto  0)   <= status_vector_apb;
 
-  gmiii.gtx_clk <= sgmii_clk;
-  gmiii.tx_clk  <= sgmii_clk;
-  gmiii.rx_clk  <= sgmii_clk;
+  gmiii.gtx_clk <= userclk2;
+  gmiii.tx_clk  <= userclk2;
+  gmiii.rx_clk  <= userclk2;
   gmii_txd      <= gmiio.txd;
   gmii_tx_en    <= gmiio.tx_en;
   gmii_tx_er    <= gmiio.tx_er;
@@ -433,21 +442,21 @@ begin
   mmcm_adv_inst : MMCME2_ADV
   generic map
    (BANDWIDTH            => "OPTIMIZED",
-    CLKOUT4_CASCADE      => FALSE,
+    --CLKOUT4_CASCADE      => FALSE,
     COMPENSATION         => "ZHOLD",
 --    STARTUP_WAIT         => FALSE,
     DIVCLK_DIVIDE        => 1,
     CLKFBOUT_MULT_F      => 16.000,
     CLKFBOUT_PHASE       => 0.000,
-    CLKFBOUT_USE_FINE_PS => FALSE,
+    --CLKFBOUT_USE_FINE_PS => FALSE,
     CLKOUT0_DIVIDE_F     => 8.000,
     CLKOUT0_PHASE        => 0.000,
     CLKOUT0_DUTY_CYCLE   => 0.5,
-    CLKOUT0_USE_FINE_PS  => FALSE,
+    --CLKOUT0_USE_FINE_PS  => FALSE,
     CLKOUT1_DIVIDE       => 16,
     CLKOUT1_PHASE        => 0.000,
     CLKOUT1_DUTY_CYCLE   => 0.5,
-    CLKOUT1_USE_FINE_PS  => FALSE,
+    --CLKOUT1_USE_FINE_PS  => FALSE,
     CLKIN1_PERIOD        => 16.0,
     REF_JITTER1          => 0.010)
   port map
@@ -509,6 +518,16 @@ begin
       O     => userclk2
    );
 
+
+   -- This 62.5MHz clock is placed onto global clock routing and is then used
+   -- for tranceiver TXUSRCLK/RXUSRCLK.
+   bufg_rxuserclk: BUFG
+   port map (
+      I     => rxoutclk,
+      O     => rxuserclk
+   );
+
+
    -----------------------------------------------------------------------------
    -- Transceiver PMA reset circuitry
    -----------------------------------------------------------------------------
@@ -535,62 +554,45 @@ begin
   core_wrapper : sgmii
     port map (
 
-      drpaddr_in           => "000000000", 
-      drpclk_in            => '0',
-      drpdi_in             => "0000000000000000",
-      drpdo_out            => OPEN,
-      drpen_in             => '0',
-      drprdy_out           => OPEN,
-      drpwe_in             => '0',
-
-      gtrefclk             => gtrefclk,
-      txp                  => sgmiio.txp,
-      txn                  => sgmiio.txn,
-      rxp                  => sgmiii.rxp,
-      rxn                  => sgmiii.rxn,
-      txoutclk             => txoutclk,
-      resetdone            => resetdone,
-      mmcm_locked          => mmcm_locked,
-      userclk              => userclk,
-      userclk2             => userclk2,
+      gtrefclk               => gtrefclk,
+      txp                    => sgmiio.txp,
+      txn                    => sgmiio.txn,
+      rxp                    => sgmiii.rxp,
+      rxn                    => sgmiii.rxn,
+      resetdone              => resetdone,
+      cplllock               => OPEN ,
+      txoutclk               => txoutclk,
+      rxoutclk               => rxoutclk ,
+      userclk                => userclk,
+      userclk2               => userclk2,
+      rxuserclk              => rxuserclk ,
+      rxuserclk2             => rxuserclk ,
       independent_clock_bufg => apb_clk,
       pma_reset              => pma_reset,
-      sgmii_clk_r          => sgmii_clk_r,
-      sgmii_clk_f          => sgmii_clk_f,
-      sgmii_clk_en         => sgmii_clk_en,
-      gmii_txd             => gmii_txd_int,
-      gmii_tx_en           => gmii_tx_en_int,
-      gmii_tx_er           => gmii_tx_er_int,
-      gmii_rxd             => gmii_rxd_int,
-      gmii_rx_dv           => gmii_rx_dv_int,
-      gmii_rx_er           => gmii_rx_er_int,
-      gmii_isolate         => gmii_isolate,
-      configuration_vector => configuration_vector,
-      an_interrupt         => an_interrupt,
-      an_adv_config_vector => an_adv_config_vector,
-      an_restart_config    => an_restart_config,
-      link_timer_value     => link_timer_value,
-      speed_is_10_100      => speed_is_10_100,
-      speed_is_100         => speed_is_100,
-      status_vector        => status_vector_int,
-      reset                => reset,
-      signal_detect        => signal_detect
+      mmcm_locked            => mmcm_locked,
+      sgmii_clk_r            => sgmii_clk_r,
+      sgmii_clk_f            => sgmii_clk_f,
+      sgmii_clk_en           => sgmii_clk_en,
+      gmii_txd               => gmii_txd,
+      gmii_tx_en             => gmii_tx_en,
+      gmii_tx_er             => gmii_tx_er,
+      gmii_rxd               => gmii_rxd,
+      gmii_rx_dv             => gmii_rx_dv,
+      gmii_rx_er             => gmii_rx_er,
+      gmii_isolate           => gmii_isolate,
+      configuration_vector   => configuration_vector,
+      an_interrupt           => an_interrupt,
+      an_adv_config_vector   => an_adv_config_vector,
+      an_restart_config      => an_restart_config,
+      speed_is_10_100        => speed_is_10_100,
+      speed_is_100           => speed_is_100,
+      status_vector          => status_vector_int,
+      reset                  => reset,
+      signal_detect          => signal_detect,
+      gt0_qplloutclk_in      => '0',
+      gt0_qplloutrefclk_in   => '0'
       );
 
-   -----------------------------------------------------------------------------
-   -- GMII transmitter data logic
-   -----------------------------------------------------------------------------
-
-   -- Drive input GMII signals through IOB input flip-flops (inferred).
-   process (userclk2)
-   begin
-      if userclk2'event and userclk2 = '1' then
-         gmii_txd_int    <= gmii_txd;
-         gmii_tx_en_int  <= gmii_tx_en;
-         gmii_tx_er_int  <= gmii_tx_er;
-
-      end if;
-   end process;
 
    -----------------------------------------------------------------------------
    -- SGMII clock logic
@@ -603,22 +605,14 @@ begin
       end if;
    end process;
 
-   sgmii_clk <= userclk2 when (gmiio.gbit = '1') else sgmii_clk_int;
-
-   -----------------------------------------------------------------------------
-   -- GMII receiver data logic
-   -----------------------------------------------------------------------------
-
-   -- Drive input GMII signals through IOB output flip-flops (inferred).
-   process (userclk2)
-   begin
-      if userclk2'event and userclk2 = '1' then
-         gmii_rxd    <= gmii_rxd_int;
-         gmii_rx_dv  <= gmii_rx_dv_int;
-         gmii_rx_er  <= gmii_rx_er_int;
-
-      end if;
-   end process;
+   bufgmux_sgmiiclk: BUFGMUX
+   generic map ("ASYNC")
+   port map (
+     O   => sgmii_clk,
+     I0  => userclk2,
+     I1  => sgmii_clk_int,
+     S   => speed_is_10_100
+   );
 
    -----------------------------------------------------------------------------
    -- Extra registers to ease IOB placement

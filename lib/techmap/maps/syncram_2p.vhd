@@ -230,6 +230,27 @@ begin
 		   wclk, waddress, datain, xwrite);
   end generate;
 
+  saed : if tech = saed32 generate
+--    x0 : saed32_syncram_2p generic map (abits, dbits, sepclk)
+--         port map (rclk, renable2, raddress, dataoutx,
+--		   wclk, waddress, datain, xwrite);
+       x0 : generic_syncram_2p generic map (abits, dbits, sepclk)
+         port map (rclk, wclk, raddress, waddress, datain, write, dataoutx);
+
+  end generate;
+
+  dar : if tech = dare generate
+    x0 : dare_syncram_2p generic map (abits, dbits, sepclk)
+         port map (rclk, renable2, raddress, dataoutx,
+		   wclk, waddress, datain, xwrite);
+  end generate;
+
+  rhu : if tech = rhumc generate
+    x0 : rhumc_syncram_2p generic map (abits, dbits, sepclk)
+         port map (rclk, renable2, raddress, dataoutx,
+		   wclk, waddress, datain, xwrite);
+  end generate;
+
   fus : if tech = actfus generate
     x0 : fusion_syncram_2p generic map (abits, dbits)
          port map (rclk, renable2, raddress, dataoutx,
@@ -315,7 +336,7 @@ begin
 		   wclk, xwrite, waddress, datain);
   end generate;
 
-  tm65gplu : if tech = tm65gpl generate
+  tm65gplu : if tech = tm65gplus generate
     x0 : tm65gplus_syncram_2p generic map (abits, dbits)
          port map (rclk, renable2, raddress, dataoutx,
                    wclk, xwrite, waddress, datain);

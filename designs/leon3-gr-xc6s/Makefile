@@ -64,7 +64,7 @@ DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan pci ambatest ddr \
 	leon4 leon4v0 l2cache gr1553b iommu ascs slink pwm \
 	hcan
 #FILEADD = MCB.vhd
-FILESKIP = grcan.vhd ddr2.v mobile_ddr.v unisim_VPKG.vhd unisim_VCOMP.vhd simple_simprim.vhd unisim_VITAL.vhd
+FILESKIP = grcan.vhd ddr2.v mobile_ddr.v
 
 include $(GRLIB)/bin/Makefile
 include $(GRLIB)/software/leon3/Makefile

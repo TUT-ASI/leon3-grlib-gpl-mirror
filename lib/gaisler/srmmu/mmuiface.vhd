@@ -30,6 +30,9 @@ use grlib.amba.all;
 use grlib.stdlib.all;
 library gaisler;
 use gaisler.mmuconfig.all;
+library techmap;
+use techmap.gencomp.all;
+
 package mmuiface is
 
 type mmutlbcam_in_type is record
@@ -87,6 +90,8 @@ type mmudc_in_type is record
 
   fsread           : std_logic;
   mmctrl1          : mmctrl_type1;
+
+  testin           : std_logic_vector(TESTIN_WIDTH-1 downto 0);
 end record;
 
 type mmudc_out_type is record
@@ -206,6 +211,8 @@ type mmutlb_in_type is record
   s2valid     : std_logic;
   
   mmctrl1     : mmctrl_type1;
+
+  testin      : std_logic_vector(TESTIN_WIDTH-1 downto 0);
 end record;
 type mmutlbi_a is array (natural range <>) of mmutlb_in_type;
 

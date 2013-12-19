@@ -30,7 +30,6 @@ use grlib.amba.all;
 use grlib.stdlib.all;
 library gaisler;
 use grlib.devices.all;
-use gaisler.memctrl.all;
 use gaisler.ddrpkg.all;
 library techmap;
 use techmap.gencomp.all;
@@ -120,8 +119,8 @@ end;
 architecture rtl of ddr2spa is
 
 constant DDR_FREQ : integer := (clkmul * MHz) / clkdiv;
-signal sdi     : sdctrl_in_type;
-signal sdo     : sdctrl_out_type;
+signal sdi     : ddrctrl_in_type;
+signal sdo     : ddrctrl_out_type;
 --signal clkread  : std_ulogic;
 
 -- Reset scheme:

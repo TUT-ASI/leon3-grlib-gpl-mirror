@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------------
 --  LEON3 Demonstration design test bench
---  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+--  Copyright (C) 2013 Aeroflex Gaisler AB
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research

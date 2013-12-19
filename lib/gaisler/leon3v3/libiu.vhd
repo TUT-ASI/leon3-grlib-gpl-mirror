@@ -67,7 +67,12 @@ package libiu is
      dcs    : std_logic_vector(1 downto 0);        -- dcache state
      ics    : std_logic_vector(1 downto 0);        -- icache state
   end record;
-
+  
+  constant cctrl_none : cctrltype := (
+    burst => '0', dfrz => '0', ifrz => '0', dsnoop => '0',
+    dcs => (others => '0'), ics => (others => '0')
+    );
+  
   type icache_in_type is record
      rpc              : std_logic_vector(31 downto 0); -- raw address (npc)
      fpc              : std_logic_vector(31 downto 0); -- latched address (fpc)

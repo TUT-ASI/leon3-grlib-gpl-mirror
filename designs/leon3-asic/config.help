@@ -716,6 +716,40 @@ CONFIG_DSU_JTAG
   Amontech JTAG key, various FTDI chip based USB/JTAG devices, and
   Actel Flash Pro 3/4 cable.
 
+Ethernet DSU enable
+CONFIG_DSU_ETH
+  Say Y to enable the Ethernet Debug Communication Link (EDCL). The link
+  provides a DSU gateway between ethernet and the AHB bus. Debugging is
+  done at 10 or 100 Mbit/s, using the GRMON debug monitor. You must
+  enable the GRETH Ethernet MAC for this option to become active.
+
+Size of EDCL trace buffer
+CONFIG_DSU_ETHSZ1
+  Select the buffer size (in kbytes) for the EDCL. 1 or 2 kbyte is
+  usually enough, while a larger buffer will increase the transfer rate.
+  When operating at 100 Mbit, use a buffer size of at least 8 kbyte for
+  maximum throughput.
+
+MSB IP address
+CONFIG_DSU_IPMSB
+  Set the MSB 16 bits of the IP address of the EDCL.
+
+LSB IP address
+CONFIG_DSU_IPLSB
+  Set the LSB 16 bits of the IP address of the EDCL.
+
+MSB ethernet address
+CONFIG_DSU_ETHMSB
+  Set the MSB 24 bits of the ethernet address of the EDCL.
+
+LSB ethernet address
+CONFIG_DSU_ETHLSB
+  Set the LSB 24 bits of the ethernet address of the EDCL.
+
+Programmable MAC/IP address
+CONFIG_DSU_ETH_PROG
+  Say Y to make the LSB 4 bits of the EDCL MAC and IP address
+  configurable using the ethi.edcladdr inputs.
 Leon2 memory controller
 CONFIG_MCTRL_LEON2
   Say Y here to enable the LEON2 memory controller. The controller
@@ -896,6 +930,141 @@ CONFIG_SPW_TX_SDR
   transmitter clock frequency. DDR is the same except DDR registers are used.
   Aeroflex sets the transmitter in a mode compatible with the Aeroflex
   SpaceWire transceiver.
+Gaisler Ethernet MAC enable
+CONFIG_GRETH_ENABLE
+  Say Y here to enable the Gaisler Research Ethernet MAC . The MAC has 
+  one AHB master interface to read and write packets to memory, and one
+  APB slave interface for accessing the control registers. 
+
+Gaisler Ethernet 1G MAC enable
+CONFIG_GRETH_GIGA
+  Say Y here to enable the Gaisler Research 1000 Mbit Ethernet MAC . 
+  The 1G MAC is only available in the commercial version of GRLIB,
+  so do NOT enable it if you are using the GPL version.
+
+CONFIG_GRETH_FIFO4
+  Set the depth of the receive and transmit FIFOs in the MAC core.
+  The MAC core will perform AHB burst read/writes with half the
+  size of the FIFO depth.
+
+CONFIG_GRETH_FT
+  Enable fault-tolerance (parity with sparing) for internal RAM
+  in Ethernet core. Note that FT for EDCL buffer is enabled via
+  separate setting.
+
+CONFIG_GRETH_EDCLFT
+  Enable protection for EDCL buffer. This is typically not used as
+  the EDCL debug link is not used in harsh environments.
+SPI memory controller
+CONFIG_SPIMCTRL
+  Say Y here to enable a simple SPI memory controller.
+  The controller maps a SPI memory device into AMBA address space and
+  also has a simple interface that allows sending commands directly
+  to the SPI device.
+
+SD card support
+CONFIG_SPIMCTRL_SDCARD
+  Memory device connected to controller is SD card.
+
+Read command
+CONFIG_SPIMCTRL_READCMD
+  Read instruction for SPI memory device (hex).
+
+Dummy byte
+CONFIG_SPIMCTRL_DUMMYBYTE
+  Output dummy byte after address when issuing read instruction.
+
+Dual output
+CONFIG_SPIMCTRL_DUALOUTPUT
+  Memory device supports dual output when reading data.
+
+Address offset
+CONFIG_SPIMCTRL_OFFSET
+  Offset that will be added by core on SPI memory address (hex).
+
+Clock scaler
+CONFIG_SPIMCTRL_SCALER
+  Selects the divisor used when dividing the system clock to produce
+  the memory device clock. The divisor used is two to the power of the
+  specified value. This value must be at least 1.
+
+Alternate clock scaler
+CONFIG_SPIMCTRL_ASCALER
+  Selects the divisor used when dividing the system clock to produce 
+  the alternate memory device clock. If the selected memory device is 
+  a SD Card this clock will be used during card initialization. The
+  divisor used is two to the power of the specified value. This
+  value must be at least 1.
+
+Power-up cnt
+CONFIG_SPIMCTRL_PWRUPCNT
+  Number of system clock cycles to wait before issuing first command.
+Gaisler Research SPI controller
+CONFIG_SPICTRL_ENABLE
+  Say Y here to enable the SPI controller(s)
+
+CONFIG_SPICTRL_NUM
+  Number of SPI controllers to implement in design. Note that most
+  template designs are limited to one SPI controller.
+  Configuration options made here in xconfig will apply to all
+  implemented SPI controllers.
+
+CONFIG_SPICTRL_MAXWLEN
+  0: Core will support lengths up to 32 bits
+  1-2: Illegal values
+  3-15: Maximum word length will be value+1 (4-16)
+
+CONFIG_SPICTRL_SYNCRAM
+  Say Y here to use SYNCRAM_2P components for the core's receive
+  and transmit queues. This is the recommended setting, particularly
+  if the core is implemented with support for automatic mode.
+
+CONFIG_SPICTRL_FT
+  Fault-tolerance for internal buffers. Only applicable if core
+  buffers are implemented with SYNCRAM components.
+
+CAN interface enable
+CONFIG_CAN_ENABLE
+  Say Y here to enable one or more CAN cores. The cores has one
+  AHB slave interface for accessing the control registers. The CAN core
+  is register-compatible with the SAJ1000 core from Philips, with a
+  few exceptions. See the GRLIP IP manual for details.
+
+CONFIG_CAN_NUM
+  Number of CAN cores. The module allows up to 8 independent
+  CAN cores to be implemented.
+
+CAN register address
+CONFIG_CANIO
+  The control registers of each CAN core occupies 256 bytes, and 
+  address space needed for the full module is thus 2 Kbyte. The cores
+  are mapped in the AHB bus I/O area (0xFFF00000 - 0xFFFFF000). 
+  This setting defines at which address in the I/O area the registers
+  appear (HADDR[19:8]).
+
+CAN interrupt
+CONFIG_CANIRQ
+  Defines which interrupt number the CAN core will generate.
+
+CAN interrupt
+CONFIG_CANSEPIRQ
+  Say Y here to assign an individual interrupt to each CAN core,
+  starting from the base interrupt number. If set to N, all
+  CAN cores will generate the same interrupt.
+
+CAN FT memories
+CONFIG_CAN_FT
+  If you say Y here, the CAN FIFOs will be implemented using
+  SEU protected RAM blocks. Only applicable to the FT version
+  of grlib.
+
+CAN Synchronous reset
+CONFIG_CAN_SYNCRST
+  If you say Y here, the CAN core will be implemented with
+  synchronous reset rather than asynchronous. This is needed
+  when the target library does not implement registers with
+  async reset. Unless you know what you are doing, say N.
+
 UART1 enable
 CONFIG_UART1_ENABLE
   Say Y here to enable UART1, or the console UART. This is needed to
@@ -1001,6 +1170,9 @@ CONFIG_GRGPIO_IMASK
   The I/O port interrupt mask defines which bits in the I/O port
   should be able to create an interrupt. 
 
+OpenCores I2C Master 
+CONFIG_I2C_ENABLE
+  Say Y here to enable the OpenCores I2C master.
 UART debugging
 CONFIG_DEBUG_UART
   During simulation, the output from the UARTs is printed on the

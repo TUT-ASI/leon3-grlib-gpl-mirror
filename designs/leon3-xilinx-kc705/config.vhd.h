@@ -118,6 +118,7 @@
 
 -- Xilinx MIG Series 7
   constant CFG_MIG_SERIES7    : integer := CONFIG_MIG_SERIES7;
+  constant CFG_MIG_SERIES7_MODEL    : integer := CONFIG_MIG_SERIES7_MODEL;
 
 -- AHB status register
   constant CFG_AHBSTAT 	: integer := CONFIG_AHBSTAT_ENABLE;
@@ -136,10 +137,13 @@
   constant CFG_AHBRADDR	: integer := 16#CONFIG_AHBRAM_START#;
   constant CFG_AHBRPIPE : integer := CONFIG_AHBRAM_PIPE;
 -- Gaisler Ethernet core
-  constant CFG_GRETH   	: integer := CONFIG_GRETH_ENABLE;
-  constant CFG_GRETH1G	: integer := CONFIG_GRETH_GIGA;
-  constant CFG_ETH_FIFO : integer := CFG_GRETH_FIFO;
-
+  constant CFG_GRETH   	    : integer := CONFIG_GRETH_ENABLE;
+  constant CFG_GRETH1G	    : integer := CONFIG_GRETH_GIGA;
+  constant CFG_ETH_FIFO     : integer := CFG_GRETH_FIFO;
+#ifdef CONFIG_LEON3FT_PRESENT
+  constant CFG_GRETH_FT     : integer := CONFIG_GRETH_FT;
+  constant CFG_GRETH_EDCLFT : integer := CONFIG_GRETH_EDCLFT;
+#endif
 -- UART 1
   constant CFG_UART1_ENABLE : integer := CONFIG_UART1_ENABLE;
   constant CFG_UART1_FIFO   : integer := CFG_UA1_FIFO;

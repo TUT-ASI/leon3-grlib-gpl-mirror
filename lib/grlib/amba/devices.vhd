@@ -209,6 +209,9 @@ package devices is
   constant GAISLER_SGMII     : amba_device_type := 16#092#;
   constant GAISLER_RGMII     : amba_device_type := 16#093#;
   constant GAISLER_IRQGEN    : amba_device_type := 16#094#;
+  constant GAISLER_GRDMAC    : amba_device_type := 16#095#;
+  constant GAISLER_AHB2AVLA  : amba_device_type := 16#096#;
+  constant GAISLER_SPWTDP    : amba_device_type := 16#097#;
 
 -- Sun Microsystems
 
@@ -508,6 +511,9 @@ package devices is
    GAISLER_SGMII     => "XILINX SGMII Interface         ",
    GAISLER_RGMII     => "Gaisler RGMII Interface        ",
    GAISLER_IRQGEN    => "Interrupt generator            ",
+   GAISLER_GRDMAC    => "DMA Controller with APB bridge ",
+   GAISLER_AHB2AVLA  => "Avalon-MM memory controller    ",
+   GAISLER_SPWTDP    => "CCSDS TDP / SpaceWire I/F      ",
    
    others            => "Unknown Device                 ");
 

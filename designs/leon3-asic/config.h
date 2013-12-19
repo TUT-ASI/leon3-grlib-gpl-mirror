@@ -37,16 +37,17 @@
 #undef  CONFIG_SYN_PEREGRINE
 #undef  CONFIG_SYN_RH_LIB18T
 #undef  CONFIG_SYN_RHUMC
+#define CONFIG_SYN_SAED32 1
+#undef  CONFIG_SYN_DARE
 #undef  CONFIG_SYN_SMIC13
 #undef  CONFIG_SYN_TM65GPLUS
 #undef  CONFIG_SYN_TSMC90
-#define CONFIG_SYN_UMC 1
+#undef  CONFIG_SYN_UMC
 #undef  CONFIG_SYN_ARTIX7
 #undef  CONFIG_SYN_KINTEX7
 #undef  CONFIG_SYN_SPARTAN3
 #undef  CONFIG_SYN_SPARTAN3E
 #undef  CONFIG_SYN_SPARTAN6
-#undef  CONFIG_SYN_VIRTEX
 #undef  CONFIG_SYN_VIRTEXE
 #undef  CONFIG_SYN_VIRTEX2
 #undef  CONFIG_SYN_VIRTEX4
@@ -55,10 +56,13 @@
 #undef  CONFIG_SYN_VIRTEX7
 #undef  CONFIG_SYN_ZYNQ7000
 #undef  CONFIG_MEM_INFERRED
-#define CONFIG_MEM_UMC 1
+#undef  CONFIG_MEM_UMC
 #undef  CONFIG_MEM_RHUMC
+#define CONFIG_MEM_SAED32 1
+#undef  CONFIG_MEM_DARE
 #undef  CONFIG_MEM_ARTISAN
 #undef  CONFIG_MEM_CUSTOM1
+#undef  CONFIG_MEM_EASIC45
 #undef  CONFIG_MEM_VIRAGE
 #undef  CONFIG_MEM_VIRAGE90
 #undef  CONFIG_SYN_INFER_RAM
@@ -69,7 +73,7 @@
 /*
  * Clock generation
  */
-#define CONFIG_CLK_INFERRED 1
+#undef  CONFIG_CLK_INFERRED
 #undef  CONFIG_CLK_HCLKBUF
 #undef  CONFIG_CLK_UT130HBD
 #undef  CONFIG_CLK_ALTDLL
@@ -80,6 +84,9 @@
 #undef  CONFIG_CLK_FUSPLL
 #undef  CONFIG_CLK_LIB18T
 #undef  CONFIG_CLK_RHUMC
+#undef  CONFIG_CLK_DARE
+#define CONFIG_CLK_SAED32 1
+#undef  CONFIG_CLK_EASIC45
 #undef  CONFIG_CLK_CLKPLLE2
 #undef  CONFIG_CLK_CLKDLL
 #undef  CONFIG_CLK_DCM
@@ -200,6 +207,7 @@
  */
 #define CONFIG_DSU_UART 1
 #undef  CONFIG_DSU_JTAG
+#undef  CONFIG_DSU_ETH
 /*
  * Memory controllers             
  */
@@ -222,6 +230,41 @@
  * Spacewire 
  */
 #undef  CONFIG_SPW_ENABLE
+/*
+ * Ethernet             
+ */
+#define CONFIG_GRETH_ENABLE 1
+#undef  CONFIG_GRETH_GIGA
+#undef  CONFIG_GRETH_FIFO4
+#define CONFIG_GRETH_FIFO8 1
+#undef  CONFIG_GRETH_FIFO16
+#undef  CONFIG_GRETH_FIFO32
+#undef  CONFIG_GRETH_FIFO64
+/*
+ * SPI
+ */
+/*
+ * SPI memory controller 
+ */
+#undef  CONFIG_SPIMCTRL
+/*
+ * SPI controller(s) 
+ */
+#define CONFIG_SPICTRL_ENABLE 1
+#define CONFIG_SPICTRL_NUM (1)
+#define CONFIG_SPICTRL_SLVS (6)
+#define CONFIG_SPICTRL_FIFO (4)
+#define CONFIG_SPICTRL_SLVREG 1
+#undef  CONFIG_SPICTRL_ASEL
+#undef  CONFIG_SPICTRL_AM
+#undef  CONFIG_SPICTRL_ODMODE
+#undef  CONFIG_SPICTRL_TWEN
+#define CONFIG_SPICTRL_MAXWLEN (0)
+#undef  CONFIG_SPICTRL_SYNCRAM
+/*
+ * CAN                     
+ */
+#undef  CONFIG_CAN_ENABLE
 /*
  * UARTs, timers and irq control         
  */
@@ -252,6 +295,7 @@
 #define CONFIG_GRGPIO_ENABLE 1
 #define CONFIG_GRGPIO_WIDTH (16)
 #define CONFIG_GRGPIO_IMASK FE
+#define CONFIG_I2C_ENABLE 1
 /*
  * VHDL Debugging        
  */

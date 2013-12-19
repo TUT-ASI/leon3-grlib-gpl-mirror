@@ -1,5 +1,6 @@
 ddrpkg.vhd
-ddrphy_wrap.vhd 
+ddrintpkg.vhd
+ddrphy_wrap.vhd
 ddrspa.vhd
 ddr2spa.vhd
 ddr2buf.vhd
@@ -16,4 +17,6 @@ ddrmuxctrl.vhd
 muxbesdr.vhd
 muxbesdrc64.vhd
 muxbessr.vhd
-
+ahb2avl_async.vhd
+ahb2avl_async_be.vhd
+muxbe_lpddr2.vhd

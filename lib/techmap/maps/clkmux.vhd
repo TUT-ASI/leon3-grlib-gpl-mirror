@@ -69,9 +69,18 @@ begin
     ut90n : if tech = ut90 generate
       x0 : clkmux_ut90nhbd port map (i0 => i0, i1 => i1, sel => seli, o => o);
     end generate;
-    
+    saed : if tech = saed32 generate
+      x0 : clkmux_saed32 port map (i0 => i0, i1 => i1, sel => seli, o => o);
+    end generate;
+    dar : if tech = dare generate
+      x0 : clkmux_dare port map (i0 => i0, i1 => i1, sel => seli, o => o);
+    end generate;
+    rhu : if tech = rhumc generate
+      x0 : clkmux_rhumc port map (i0 => i0, i1 => i1, sel => seli, o => o);
+    end generate;
+   
     noxil : if not((is_unisim(tech) = 1) or (tech = rhlib18t) or (tech = ut130) or
-                   (tech = easic45) or (tech = ut90)) generate
+                   (tech = easic45) or (tech = ut90) or (tech = saed32) or (tech = dare) or (tech = rhumc)) generate
       o <= i0 when seli = '0' else i1;
     end generate;
 

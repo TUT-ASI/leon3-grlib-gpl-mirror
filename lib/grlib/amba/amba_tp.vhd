@@ -242,7 +242,7 @@ package AMBA_TestPackage is
       HWRITE:        Std_ULogic;
       HWDATA:        Std_Logic_Vector(31 downto 0);
       HRESP:         Std_Logic_Vector(1  downto 0);      -- response type
-      HSPLIT:        Std_Logic_Vector(15 downto 0);      -- split completion
+      HSPLIT:        Std_Logic_Vector(NAHBMST-1 downto 0);      -- split completion
    end record AHB_Diagnostics_In_Type;
 
    type AHB_Diagnostics_Out_Type is
@@ -251,7 +251,7 @@ package AMBA_TestPackage is
    end record AHB_Diagnostics_Out_Type;
 
    constant AHB_Diagnostics_Init: AHB_Diagnostics_In_Type :=
-               (X"00000000", '0', X"00000000", HRESP_OKAY, X"0000");
+               (X"00000000", '0', X"00000000", HRESP_OKAY, zero32(NAHBMST-1 downto 0));
 
    -----------------------------------------------------------------------------
    -- Behavioural model of memory with AHB interface, no wait states
@@ -348,7 +348,7 @@ package AMBA_TestPackage is
    -- Routine for generating a split ack from AHB memory
    -----------------------------------------------------------------------------
    procedure SplitAHBMem32(
-      constant Split:      in    Integer range 0 to 15;
+      constant Split:      in    Integer range 0 to NAHBMST-1;
       signal   HCLK:       in    Std_ULogic;
       signal   AHBInDiag:  out   AHB_Diagnostics_In_Type;
       signal   AHBOutDiag: in   AHB_Diagnostics_Out_Type;
@@ -1657,7 +1657,7 @@ package body AMBA_TestPackage is
    -- Routine for generating a split ack from AHB memory
    -----------------------------------------------------------------------------
    procedure SplitAHBMem32(
-      constant Split:      in    Integer range 0 to 15;
+      constant Split:      in    Integer range 0 to NAHBMST-1;
       signal   HCLK:       in    Std_ULogic;
       signal   AHBInDiag:  out   AHB_Diagnostics_In_Type;
       signal   AHBOutDiag: in   AHB_Diagnostics_Out_Type;

@@ -147,12 +147,14 @@ begin
   end if;
   -- Filter on master mask
   for i in rf.mmask'range loop
+    if i > NAHBMST-1 then exit; end if;
     if i = conv_integer(r.thmaster) and rf.mmask(i) = '1' then
       hit := true;
     end if;
   end loop;
   -- Filter on slave mask
   for i in rf.smask'range loop
+    if i > NAHBSLV-1 then exit; end if;
     if (rf.shsel(i) and rf.smask(i)) /= '0' then
       hit := true;
     end if;    

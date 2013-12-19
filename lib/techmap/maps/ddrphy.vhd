@@ -1201,3 +1201,132 @@ begin
   end generate;
     
 end;
+
+
+
+-------------------------------------------------------------------------------
+-- LPDDR2 phy
+-------------------------------------------------------------------------------
+
+library ieee;
+use ieee.std_logic_1164.all;
+library techmap;
+use techmap.gencomp.all;
+use techmap.allddr.all;
+
+entity lpddr2phy_wo_pads is
+  generic (
+    tech : integer := virtex5;
+    dbits : integer := 16;
+    nclk: integer := 3;
+    ncs: integer := 2;
+    clkratio: integer := 1;
+    scantest: integer := 0);
+  port (
+    rst            : in    std_ulogic;
+    clkin          : in    std_ulogic;
+    clkin2         : in    std_ulogic;
+    clkout         : out   std_ulogic;
+    clkoutret      : in    std_ulogic;    -- ckkout returned
+    clkout2        : out   std_ulogic;
+    lock           : out   std_ulogic;
+
+    ddr_clk        : out   std_logic_vector(nclk-1 downto 0);
+    ddr_clkb       : out   std_logic_vector(nclk-1 downto 0);
+    ddr_cke        : out   std_logic_vector(ncs-1 downto 0);
+    ddr_csb        : out   std_logic_vector(ncs-1 downto 0);
+    ddr_ca         : out   std_logic_vector(9 downto 0);
+    ddr_dm         : out   std_logic_vector (dbits/8-1 downto 0);    -- ddr dm
+    ddr_dqs_in     : in    std_logic_vector (dbits/8-1 downto 0);    -- ddr dqs
+    ddr_dqs_out    : out   std_logic_vector (dbits/8-1 downto 0);    -- ddr dqs
+    ddr_dqs_oen    : out   std_logic_vector (dbits/8-1 downto 0);    -- ddr dqs
+    ddr_dq_in      : in    std_logic_vector (dbits-1 downto 0);      -- ddr data
+    ddr_dq_out     : out   std_logic_vector (dbits-1 downto 0);      -- ddr data
+    ddr_dq_oen     : out   std_logic_vector (dbits-1 downto 0);      -- ddr data
+
+    ca             : in    std_logic_vector (10*2*clkratio-1 downto 0);
+    cke            : in    std_logic_vector (ncs*clkratio-1 downto 0);
+    csn            : in    std_logic_vector (ncs*clkratio-1 downto 0);
+    dqin           : out   std_logic_vector (dbits*2*clkratio-1 downto 0);  -- ddr output data
+    dqout          : in    std_logic_vector (dbits*2*clkratio-1 downto 0);  -- ddr input data
+    dm             : in    std_logic_vector (dbits/4*clkratio-1 downto 0);  -- data mask
+    ckstop         : in    std_ulogic;
+    boot           : in    std_ulogic;
+    wrpend         : in    std_logic_vector(7 downto 0);
+    rdpend         : in    std_logic_vector(7 downto 0);
+    wrreq          : out   std_logic_vector(clkratio-1 downto 0);
+    rdvalid        : out   std_logic_vector(clkratio-1 downto 0);
+
+    refcal         : in    std_ulogic;
+    refcalwu       : in    std_ulogic;
+    refcaldone     : out   std_ulogic;
+
+    phycmd         : in    std_logic_vector(7 downto 0);
+    phycmden       : in    std_ulogic;
+    phycmdin       : in    std_logic_vector(31 downto 0);
+    phycmdout      : out   std_logic_vector(31 downto 0);
+
+    testen      : in  std_ulogic;
+    testrst     : in  std_ulogic;
+    scanen      : in  std_ulogic;
+    testoen     : in  std_ulogic);
+end;
+
+architecture tmap of lpddr2phy_wo_pads is
+begin
+
+  inf: if true generate
+    phy0: generic_lpddr2phy_wo_pads
+      generic map (
+        tech => tech,
+        dbits => dbits,
+        nclk => nclk,
+        ncs => ncs,
+        clkratio => clkratio,
+        scantest => scantest)
+      port map (
+        rst => rst,
+        clkin => clkin,
+        clkin2 => clkin2,
+        clkout => clkout,
+        clkoutret => clkoutret,
+        clkout2 => clkout2,
+        lock => lock,
+        ddr_clk => ddr_clk,
+        ddr_clkb => ddr_clkb,
+        ddr_cke => ddr_cke,
+        ddr_csb => ddr_csb,
+        ddr_ca => ddr_ca,
+        ddr_dm => ddr_dm,
+        ddr_dqs_in => ddr_dqs_in,
+        ddr_dqs_out => ddr_dqs_out,
+        ddr_dqs_oen => ddr_dqs_oen,
+        ddr_dq_in => ddr_dq_in,
+        ddr_dq_out => ddr_dq_out,
+        ddr_dq_oen => ddr_dq_oen,
+        ca => ca,
+        cke => cke,
+        csn => csn,
+        dqin => dqin,
+        dqout => dqout,
+        dm => dm,
+        ckstop => ckstop,
+        boot => boot,
+        wrpend => wrpend,
+        rdpend => rdpend,
+        wrreq => wrreq,
+        rdvalid => rdvalid,
+        refcal => refcal,
+        refcalwu => refcalwu,
+        refcaldone => refcaldone,
+        phycmd => phycmd,
+        phycmden => phycmden,
+        phycmdin => phycmdin,
+        phycmdout => phycmdout,
+        testen => testen,
+        testrst => testrst,
+        scanen => scanen,
+        testoen => testoen);
+  end generate;
+
+end;

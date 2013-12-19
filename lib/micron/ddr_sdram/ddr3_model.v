@@ -3027,12 +3027,12 @@ module ddr3_model (
     input   ras_n;
     input   cas_n;
     input   we_n;
-    inout   [DM_BITS-1:0]   dm_tdqs;
+    inout   dm_tdqs;
     input   [BA_BITS-1:0]   ba;
     input   [ADDR_BITS-1:0] addr;
     inout   [DQ_BITS-1:0]   dq;
-    inout   [DQS_BITS-1:0]  dqs;
-    inout   [DQS_BITS-1:0]  dqs_n;
+    inout   dqs;
+    inout   dqs_n;
     output  [DQS_BITS-1:0]  tdqs_n;
     input   odt;
 

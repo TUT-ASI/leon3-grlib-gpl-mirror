@@ -16,6 +16,7 @@ syncram_2p.vhd
 syncram_dp.vhd
 syncramft.vhd
 syncram_2pft.vhd
+syncrambwft.vhd
 regfile_3p.vhd
 tap.vhd
 techbuf.vhd
@@ -54,3 +55,6 @@ syncram_2pbw.vhd
 obt1553_net.vhd
 sdram_phy.vhd
 from.vhd
+syncreg.vhd
+clkinv.vhd
+

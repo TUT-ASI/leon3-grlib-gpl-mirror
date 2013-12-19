@@ -32,8 +32,8 @@ use grlib.stdlib.all;
 use grlib.amba.all;
 use grlib.devices.all;
 library gaisler;
-use gaisler.memctrl.all;
 use gaisler.ddrpkg.all;
+use gaisler.ddrintpkg.all;
 library techmap;
 use techmap.gencomp.ddr2phy_has_datavalid;
 use techmap.gencomp.ddr2phy_ptctrl;
@@ -79,8 +79,8 @@ entity ddr2spax is
       clk_ahb : in  std_ulogic;
       ahbsi   : in  ahb_slv_in_type;
       ahbso   : out ahb_slv_out_type;
-      sdi     : in  sdctrl_in_type;
-      sdo     : out sdctrl_out_type;
+      sdi     : in  ddrctrl_in_type;
+      sdo     : out ddrctrl_out_type;
       hwidth  : in  std_ulogic
    );  
 end ddr2spax;
@@ -143,7 +143,7 @@ architecture rtl of ddr2spax is
   
   signal vcc: std_ulogic;
 
-  signal sdox: sdctrl_out_type;
+  signal sdox: ddrctrl_out_type;
   signal ce: std_logic;
 
 begin
@@ -184,7 +184,7 @@ begin
 
 
   sdoproc: process(sdox,ce)
-    variable o: sdctrl_out_type;
+    variable o: ddrctrl_out_type;
   begin
     o := sdox;
     o.ce := ce;

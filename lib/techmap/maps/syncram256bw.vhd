@@ -86,7 +86,7 @@ architecture rtl of syncram256bw is
   );
   end component;
 
-  component tm65gpl_syncram256bw
+  component tm65gplus_syncram256bw
   generic ( abits : integer := 9);
   port (
     clk     : in  std_ulogic;
@@ -142,8 +142,8 @@ begin
          port map (clk, address, datain, dataout, xenable, xwrite);
     end generate;
 
-    tm65: if tech = tm65gpl generate
-      x0 : tm65gpl_syncram256bw generic map (abits)
+    tm65: if tech = tm65gplus generate
+      x0 : tm65gplus_syncram256bw generic map (abits)
          port map (clk, address, datain, dataout, xenable, xwrite, testin);
     end generate;
 

@@ -111,16 +111,33 @@ begin
      end generate;
 
      S6 : if (tech = spartan6) generate
-       U0 : IDDR2 generic map( DDR_ALIGNMENT => "C0")
-         Port map( Q0 => preQ1, Q1 => Q2, C0 => C1, C1 => C2, CE => CE,
-               D => D, R => R, S => S);
 
-       q3reg : process (C1)
-       begin
-          if C1'event and C1='1' then --Clock event - posedge
-            Q1 <= preQ1;
-          end if;
-       end process;
+       noalign : if arch = 0 generate
+         U0 : IDDR2 generic map( DDR_ALIGNMENT => "NONE")
+           Port map( Q0 => Q1, Q1 => preQ2, C0 => C1, C1 => C2, CE => CE,
+                 D => D, R => R, S => S);
+         q3reg : process (C1)
+         begin
+            if C1'event and C1='1' then --Clock event - posedge
+              Q2 <= preQ2;
+            end if;
+         end process;
+
+       end generate;
+       
+       align : if arch /= 0 generate
+         U0 : IDDR2 generic map( DDR_ALIGNMENT => "C0")
+           Port map( Q0 => preQ1, Q1 => Q2, C0 => C1, C1 => C2, CE => CE,
+                 D => D, R => R, S => S);
+         q3reg : process (C1)
+         begin
+            if C1'event and C1='1' then --Clock event - posedge
+              Q1 <= preQ1;
+            end if;
+         end process;
+
+       end generate;
+
      end generate;
 
     V2 : if tech = virtex2 or tech = spartan3 generate
@@ -173,7 +190,7 @@ use techmap.gencomp.all;
 library unisim;
 use unisim.oddr;
 use unisim.oddr2;
-use unisim.FDDRRSE;
+--use unisim.FDDRRSE;
 --pragma translate_on
 
 entity unisim_oddr_reg is
@@ -361,7 +378,7 @@ use techmap.gencomp.all;
 -- pragma translate_off
 library unisim;
 use unisim.fd;
-use unisim.FDDRRSE;
+--use unisim.FDDRRSE;
 --pragma translate_on
 
 entity oddrv2 is

@@ -354,13 +354,23 @@ begin
           port map (O => pad, I => i, T => en);
       end generate;
     end generate;
-    cmos_25 : if voltage /= x33v generate
+    cmos_25 : if voltage = x25v generate
       slow0 : if slew = 0 generate
         op : OBUFT generic map (drive => strength, IOSTANDARD => "LVCMOS25")
           port map (O => pad, I => i, T => en);
       end generate;
       fast0 : if slew /= 0 generate
         op : OBUFT generic map (drive => strength, IOSTANDARD => "LVCMOS25", SLEW => "FAST")
+          port map (O => pad, I => i, T => en);
+      end generate;
+    end generate;
+    cmos_18 : if voltage = x18v generate
+      slow0 : if slew = 0 generate
+        op : OBUFT generic map (drive => strength, IOSTANDARD => "LVCMOS18")
+          port map (O => pad, I => i, T => en);
+      end generate;
+      fast0 : if slew /= 0 generate
+        op : OBUFT generic map (drive => strength, IOSTANDARD => "LVCMOS18", SLEW => "FAST")
           port map (O => pad, I => i, T => en);
       end generate;
     end generate;
@@ -604,8 +614,11 @@ begin
       cmos_33 : if voltage = x33v generate
         ip : IBUFG generic map (IOSTANDARD => "LVCMOS33") port map (O => o, I => pad);
       end generate;
-      cmos_25 : if voltage /= x33v generate
+      cmos_25 : if voltage = x25v generate
         ip : IBUFG generic map (IOSTANDARD => "LVCMOS25") port map (O => o, I => pad);
+      end generate;
+      cmos_18 : if voltage = x18v generate
+        ip : IBUFG generic map (IOSTANDARD => "LVCMOS18") port map (O => o, I => pad);
       end generate;
     end generate;
     sstl2 : if level = sstl2_ii generate
@@ -661,8 +674,12 @@ begin
         ip : IBUFG generic map (IOSTANDARD => "LVCMOS33") port map (O => ol, I => pad);
         bf : BUFG port map (O => o, I => ol);
       end generate;
-      cmos_25 : if voltage /= x33v generate
+      cmos_25 : if voltage = x25v generate
         ip : IBUFG generic map (IOSTANDARD => "LVCMOS25") port map (O => ol, I => pad);
+        bf : BUFG port map (O => o, I => ol);
+      end generate;
+      cmos_18 : if voltage = x18v generate
+        ip : IBUFG generic map (IOSTANDARD => "LVCMOS18") port map (O => ol, I => pad);
         bf : BUFG port map (O => o, I => ol);
       end generate;
     end generate;

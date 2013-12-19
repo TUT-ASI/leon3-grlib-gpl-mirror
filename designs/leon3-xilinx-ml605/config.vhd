@@ -120,6 +120,8 @@ package config is
   constant CFG_GRETH : integer := 1;
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 16;
+  constant CFG_GRETH_FT : integer := 0;
+  constant CFG_GRETH_EDCLFT : integer := 0;
 -- UART 1
   constant CFG_UART1_ENABLE : integer := 1;
   constant CFG_UART1_FIFO : integer := 8;
@@ -141,6 +143,7 @@ package config is
   constant CFG_GRGPIO_WIDTH : integer := (8);
 -- I2C master
   constant CFG_I2C_ENABLE : integer := 1;
+
 -- VGA and PS2/ interface
   constant CFG_KBD_ENABLE : integer := 0;
   constant CFG_VGA_ENABLE : integer := 0;

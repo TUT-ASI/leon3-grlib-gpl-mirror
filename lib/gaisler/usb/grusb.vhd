@@ -324,7 +324,7 @@ package grusb is
       uhc_ahbso_hready  : out std_logic_vector((n_cc-1)*uhcgen downto 0);
       uhc_ahbso_hresp   : out std_logic_vector(((n_cc*2)-1)*uhcgen downto 0);
       uhc_ahbso_hrdata  : out std_logic_vector(((n_cc*32)-1)*uhcgen downto 0);
-      uhc_ahbso_hsplit  : out std_logic_vector(((n_cc*16)-1)*uhcgen downto 0);
+      uhc_ahbso_hsplit  : out std_logic_vector(((n_cc*NAHBMST)-1)*uhcgen downto 0);
       uhc_irq           : out std_logic_vector((n_cc-1)*uhcgen downto 0);
       -- ULPI/UTMI+ output signals
       xcvrselect        : out std_logic_vector(((nports*2)-1) downto 0);
@@ -493,7 +493,7 @@ package grusb is
       ahbso_hready      : out std_ulogic;
       ahbso_hresp       : out std_logic_vector(1 downto 0);
       ahbso_hrdata      : out std_logic_vector(31 downto 0);
-      ahbso_hsplit      : out std_logic_vector(15 downto 0);
+      ahbso_hsplit      : out std_logic_vector(NAHBMST-1 downto 0);
       -- misc
       irq               : out std_logic_vector(2*sepirq downto 0);
       -- scan signals

@@ -167,7 +167,13 @@ int greth_init(struct greth_info *greth) {
                     gbit = 0; speed = 0;
             }
             duplex = (tmp >> 8) & 1;
-            
+
+            /* Disable Gbit PHY if Gigabit GRETH isn't included */
+            if (!greth->gbit) { 
+               gbit = 0; 
+               write_mii(greth->phyaddr, 0x9, 0x0000 , greth->regs);
+            }
+ 
             save((int)&greth->regs->control, (duplex << 4) | (speed << 7) | (gbit << 8));
     } else {
             /* wait for edcl phy initialisation to finish */

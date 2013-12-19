@@ -49,7 +49,8 @@ entity ahbjtag is
     dinst   : integer range 0 to 255 := 3;
     scantest : integer := 0;
     oepol  : integer := 1;
-    tcknen : integer := 0);
+    tcknen : integer := 0;
+    versel : integer range 0 to 1 := 1);
   port (
     rst         : in  std_ulogic;
     clk         : in  std_ulogic;
@@ -65,7 +66,7 @@ entity ahbjtag is
     tapo_rst    : out std_ulogic;
     tapo_capt   : out std_ulogic;
     tapo_shft   : out std_ulogic;
-    tapo_upd    : out std_ulogic;    
+    tapo_upd    : out std_ulogic;
     tapi_tdo    : in std_ulogic;
     trst        : in std_ulogic := '1';
     tdoen       : out std_ulogic;
@@ -80,7 +81,8 @@ architecture struct of ahbjtag is
 
 -- Use old jtagcom that only supports AHB clock up to 1/3 of JTAG clock
 -- Must be used for certain techs where we don't have full access to TCK
-constant USEOLDCOM : integer := tap_tck_gated(tech);
+-- Can also be forced by setting versel generic to 0
+constant USEOLDCOM : integer := 1 - (1-tap_tck_gated(tech))*(versel);
 
 -- Set REREAD to 1 to include support for re-read operation when host reads
 -- out data register before jtagcom has completed the current AMBA access and

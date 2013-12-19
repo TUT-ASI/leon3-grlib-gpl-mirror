@@ -245,8 +245,6 @@ architecture rtl of leon3mp is
   constant VCO_FREQ  : integer := 1200000;                               -- MMCM VCO frequency in KHz
   constant CPU_FREQ   : integer := VCO_FREQ / CFG_MIG_CLK4;  -- cpu frequency in KHz
   constant I2C_FILTER : integer := (CPU_FREQ*5+50000)/100000+1;
-  
-  signal sys_rst        : std_logic;
 
 begin
 
@@ -473,7 +471,8 @@ begin
       clk_ahb           =>   clkm,
       clk100            =>   clk100,
       phy_init_done     =>   phy_init_done,
-      sys_rst           =>   reset  --rstraw
+      sys_rst_13        =>   reset,
+      sys_rst_14        =>   rstraw
     );
 
     led(3)  <= phy_init_done;
@@ -481,7 +480,7 @@ begin
     led(5)  <= reset;
     led(6)  <= '0';
     lock    <= phy_init_done; -- and cgo.clklock;
---    sys_rst <= reset;
+
 --    end generate;
 --    noddr : if (CFG_DDR2SP+CFG_MIG_DDR2) = 0 generate lock <= cgo.clklock; end generate;
  

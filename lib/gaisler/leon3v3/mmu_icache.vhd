@@ -28,6 +28,8 @@ library ieee;
 use ieee.std_logic_1164.all;
 library grlib;
 use grlib.amba.all;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.stdlib.all;
 library gaisler;
 use gaisler.libiu.all;
@@ -200,6 +202,42 @@ architecture rtl of mmu_icache is
      lru   : lru_array;
   end record;
 
+  constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant RRES : icache_control_type := (
+    req           => '0',
+    burst         => '0',
+    holdn         => '1',
+    overrun       => '0',
+    underrun      => '0',
+    istate        => idle,
+    waddress      => (others => '0'),   -- has special handling
+    vaddress      => (others => '0'),   -- has special handling
+    valid         => (others => (others => '0')),
+    hit           => '0',
+    su            => '0',
+    flush         => '0',
+    flush2        => '0',
+    faddr         => (others => '0'),
+    diagrdy       => '0',
+    rndcnt        => (others => '0'),
+    lrr           => '0',
+    setrepl       => (others => '0'),
+    diagset       => (others => '0'),
+    lock          => '0',
+    pflush        => '0',
+    pflushr       => '0',
+    pflushaddr    => (others => '0'),
+    pflushtyp     => '0',
+    cache         => '0',
+    trans_op      => '0'
+    );
+  constant LRES : lru_reg_type := (
+    write => '0',
+    waddr => (others => '0'),
+    set   => (others => '0'),
+    lru   => (others => (others => '0'))
+    );
+    
   signal r, c : icache_control_type;      -- r is registers, c is combinational
   signal rl, cl : lru_reg_type;           -- rl is registers, cl is combinational
 
@@ -619,7 +657,7 @@ begin
     
 -- reset
 
-    if rst = '0' then 
+    if (not RESET_ALL) and (rst = '0') then 
       v.istate := idle; v.req := '0'; v.burst := '0'; v.holdn := '1';
       v.flush := '0'; v.flush2 := '0'; v.overrun := '0'; v.underrun := '0';
       v.rndcnt := (others => '0'); v.lrr := '0'; v.setrepl := (others => '0');
@@ -629,7 +667,7 @@ begin
       v.trans_op := '0'; 
     end if;
 
-    if (not rst or r.flush) = '1' then  
+    if (not RESET_ALL and rst = '0') or (r.flush = '1') then  
       vl.lru := (others => (others => '0'));
     end if;
     
@@ -700,11 +738,27 @@ begin
 
 
   regs1 : process(clk)
-  begin if rising_edge(clk) then r <= c; end if; end process;
+  begin
+    if rising_edge(clk) then
+      r <= c;
+      if RESET_ALL and (rst = '0') then
+        r <= RRES;
+        r.waddress <= ici.fpc(31 downto 2);
+        r.vaddress <= ici.fpc(31 downto 2);
+      end if;
+    end if;
+  end process;
 
   regs2 : if (ISETS > 1) and (irepl = lru) generate
     regs2 : process(clk)
-    begin if rising_edge(clk) then rl <= cl; end if; end process;
+    begin
+      if rising_edge(clk) then
+        rl <= cl;
+        if RESET_ALL and (rst = '0') then
+          rl <= LRES;
+        end if;
+      end if;
+    end process;
   end generate;
 
   nolru : if (ISETS = 1) or (irepl /= lru) generate

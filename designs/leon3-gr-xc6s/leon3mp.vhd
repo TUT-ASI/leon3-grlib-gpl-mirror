@@ -377,6 +377,7 @@ begin
     port map (lclk, lclk, clkm, open, open, sdclkl, open, cgi, cgo, open, clk50, clk100);
 
   rst0 : rstgen         -- reset generator
+   generic map(syncin => 1)
    port map (rst, clkm, lock, rstn, rstraw);
 
  end generate;

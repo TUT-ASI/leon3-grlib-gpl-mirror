@@ -41,7 +41,7 @@ package config is
   constant CFG_NOTAG : integer := 0;
   constant CFG_NWP : integer := (4);
   constant CFG_PWD : integer := 1*2;
-  constant CFG_FPU : integer := (1+0) + 16*0 + 32*0;
+  constant CFG_FPU : integer := 0 + 16*0 + 32*0;
   constant CFG_GRFPUSH : integer := 0;
   constant CFG_ICEN : integer := 1;
   constant CFG_ISETS : integer := 2;
@@ -125,6 +125,7 @@ package config is
   constant CFG_GRETH : integer := 1;
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 32;
+
 -- CAN 2.0 interface
   constant CFG_CAN : integer := 0;
   constant CFG_CAN_NUM : integer := 1;
@@ -133,6 +134,7 @@ package config is
   constant CFG_CANSEPIRQ: integer := 0;
   constant CFG_CAN_SYNCRST : integer := 0;
   constant CFG_CANFT : integer := 0;
+
 -- Spacewire interface
   constant CFG_SPW_EN : integer := 0;
   constant CFG_SPW_NUM : integer := 1;
@@ -156,6 +158,7 @@ package config is
   constant CFG_PCIDID : integer := 16#0054#;
   constant CFG_PCIDEPTH : integer := 8;
   constant CFG_PCI_MTF : integer := 1;
+
 -- GRPCI2 interface
   constant CFG_GRPCI2_MASTER : integer := 0;
   constant CFG_GRPCI2_TARGET : integer := 0;

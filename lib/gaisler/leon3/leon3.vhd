@@ -74,6 +74,8 @@ package leon3 is
 
   constant dbgi_none : l3_debug_in_type := ('0', '0', '0', '0', '0',
       '0', '0', (others => '0'), (others => '0'), '0', '0', '0', '0', '0', '0', (others => '0'));
+  constant l3_dbgi_none : l3_debug_in_type := dbgi_none;
+
   type l3_cstat_type is record
     cmiss   : std_ulogic;                       -- cache miss
     tmiss   : std_ulogic;                       -- TLB miss
@@ -108,6 +110,7 @@ package leon3 is
   
   constant dbgo_none : l3_debug_out_type := (X"00000000", '0', '0', '0', '0',
         '0', '0', '0', '0', '0', '0', "000000", '0', cstat_none, cstat_none, '0', '0');
+  constant l3_dbgo_none : l3_debug_out_type := dbgo_none;
 
   type tracebuf_in_type is record 
     addr             : std_logic_vector(11 downto 0);

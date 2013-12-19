@@ -35,7 +35,7 @@ entity ringosc is
 end ;
 
 architecture rtl of ringosc is
-  component ringosc_dare 
+  component ringosc_rhumc 
    port (
       roen  :  in    Std_ULogic;
       roout :  out   Std_ULogic);
@@ -44,7 +44,7 @@ architecture rtl of ringosc is
 begin
 
   dr : if tech = rhumc generate
-    drx : ringosc_dare port map (roen, roout);
+    drx : ringosc_rhumc port map (roen, roout);
   end generate;
 
 -- pragma translate_off

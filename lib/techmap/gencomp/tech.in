@@ -31,6 +31,8 @@
         Peregrine           	CONFIG_SYN_PEREGRINE \
 	RH-LIB18T  		CONFIG_SYN_RH_LIB18T \
 	RH-UMC     		CONFIG_SYN_RHUMC \
+	SAED32     		CONFIG_SYN_SAED32 \
+	DARE      		CONFIG_SYN_DARE \
 	SMIC130   		CONFIG_SYN_SMIC13 \
         TM65Gplus               CONFIG_SYN_TM65GPLUS \
         TSMC90                  CONFIG_SYN_TSMC90 \
@@ -40,7 +42,6 @@
 	Xilinx-Spartan3		CONFIG_SYN_SPARTAN3 \
 	Xilinx-Spartan3E	CONFIG_SYN_SPARTAN3E \
 	Xilinx-Spartan6		CONFIG_SYN_SPARTAN6 \
-	Xilinx-Virtex		CONFIG_SYN_VIRTEX \
 	Xilinx-VirtexE		CONFIG_SYN_VIRTEXE \
 	Xilinx-Virtex2		CONFIG_SYN_VIRTEX2 \
 	Xilinx-Virtex4		CONFIG_SYN_VIRTEX4 \
@@ -49,15 +50,18 @@
 	Xilinx-Virtex7		CONFIG_SYN_VIRTEX7 \
 	Xilinx-Zynq7000		CONFIG_SYN_ZYNQ7000" Inferred
   if [ "$CONFIG_SYN_INFERRED" = "y" -o "$CONFIG_SYN_CUSTOM1" = "y" \
-       -o "$CONFIG_SYN_ATC18" = "y" -o "$CONFIG_SYN_TSMC90" = "y" \
+       -o "$CONFIG_SYN_ATC18" = "y" -o "$CONFIG_SYN_TSMC90" = "y" -o "$CONFIG_SYN_EASIC45" = "y" \
        -o "$CONFIG_SYN_UMC" = "y" \
-	-o "$CONFIG_SYN_RHUMC" = "y" -o "$CONFIG_SYN_ARTISAN" = "y"]; then
+	-o "$CONFIG_SYN_RHUMC" = "y" -o "$CONFIG_SYN_DARE" = "y" -o "$CONFIG_SYN_SAED32" = "y" -o "$CONFIG_SYN_ARTISAN" = "y"]; then
     choice 'Memory Library                           ' \
 	"Inferred		CONFIG_MEM_INFERRED \
 	UMC18			CONFIG_MEM_UMC \
 	RH-UMC			CONFIG_MEM_RHUMC \
+	SAED32			CONFIG_MEM_SAED32 \
+	DARE			CONFIG_MEM_DARE \
 	Artisan			CONFIG_MEM_ARTISAN \
 	Custom1			CONFIG_MEM_CUSTOM1 \
+	EASIC45			CONFIG_MEM_EASIC45 \
 	Virage			CONFIG_MEM_VIRAGE \
         Virage-TSMC90           CONFIG_MEM_VIRAGE90" Inferred
   fi
