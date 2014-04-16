@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -182,7 +182,10 @@ begin
 
   ddr_dqs_out <= (others => dqsout);
   ddr_dqs_oen <= (others => dqsoen);
-  ddr_dq_oen <= (others => dqoen);
+  ddr_dqs_oen <= (others => dqsoen or (not rst) or (not llock)) when oepol=0 else
+                 (others => (not dqsoen) and rst and llock);
+  ddr_dq_oen <= (others => dqoen or (not rst) or (not llock)) when oepol=0 else
+                (others => (not dqoen) and rst and llock);
   ddr_clk  <= (others => gextclk);
   ddr_clkb <= (others => gextclkn);
   dqsiend <= dqsien after tdqsck;

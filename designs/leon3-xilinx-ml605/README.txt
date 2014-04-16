@@ -59,7 +59,7 @@ controller from Xilinx use the make targets:
 This will ONLY work with ISE-14 installed, and the XILINX variable
 properly set in the shell. To build the design, do
 
-  make planAhead
+  make planahead
 
 and then
 

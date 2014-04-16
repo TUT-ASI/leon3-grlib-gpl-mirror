@@ -34,8 +34,6 @@ use gaisler.sim.all;
 library techmap;
 use techmap.gencomp.all;
 use work.debug.all;
-library hynix;
-use hynix.components.all;
 library grlib;
 use grlib.stdlib.all;
 
@@ -210,19 +208,17 @@ begin
       csn       => spi_sel_n );
 
   -- NOTE: LEON3 expects DDR2 memory chip with eight banks, but simulation
-  -- model has only four banks. Therefore 2nd block of 64 MByte will alias
-  -- to first block.
+  -- model has only one (implbanks) bank. Therefore other banks will alias
+  -- to bank 0..
   ddr2mem0 : for i in 0 to 0 generate
-    u1 : HY5PS121621F
-      generic map (TimingCheckFlag => false, PUSCheckFlag => false,
-                   index => i, bbits => 16, fname => sdramfile, fdelay => 340)
-      port map (DQ => ddr_dq(i*16+15 downto i*16),
-                LDQS  => ddr_dqs(i*2), LDQSB => ddr_dqsn(i*2),
-                UDQS => ddr_dqs(i*2+1), UDQSB => ddr_dqsn(i*2+1),
-                LDM => ddr_dm(i*2), WEB => ddr_we, CASB => ddr_cas,
-                RASB => ddr_ras, CSB => ddr_csb, BA => ddr_ba(1 downto 0),
-                ADDR => ddr_ad(12 downto 0), CKE => ddr_cke,
-                CLK => ddr_clk, CLKB => ddr_clkb, UDM => ddr_dm(i*2+1));
+    u1: ddr2ram
+      generic map (width => 16, abits => 13, babits => 3,
+                   colbits => 10, rowbits => 13, implbanks => 1,
+                   fname => sdramfile, speedbin => 1)
+      port map (ck => ddr_clk, ckn => ddr_clkb, cke => ddr_cke, csn => ddr_csb,
+                odt => ddr_odt, rasn => ddr_ras, casn => ddr_cas, wen => ddr_we,
+                dm => ddr_dm, ba => ddr_ba, a => ddr_ad,
+                dq => ddr_dq, dqs => ddr_dqs, dqsn => ddr_dqsn);
   end generate;
 
   ps2devs: for i in 0 to 1 generate

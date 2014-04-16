@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -675,6 +675,7 @@ package leon3 is
     ahbmi  : in  ahb_mst_in_type;
     ahbsi  : in  ahb_slv_in_type;
     ahbso  : out ahb_slv_out_type;
+    tahbsi : in  ahb_slv_in_type;
     dbgi   : in l3_debug_out_vector(0 to NCPU-1);
     dbgo   : out l3_debug_in_vector(0 to NCPU-1);
     dsui   : in dsu_in_type;
@@ -682,6 +683,32 @@ package leon3 is
     hclken : in std_ulogic
   );
   end component;
+
+  component dsu3_mb
+  generic (
+    hindex  : integer := 0;
+    haddr : integer := 16#900#;
+    hmask : integer := 16#f00#;
+    ncpu    : integer := 1;
+    tbits   : integer := 30; -- timer bits (instruction trace time tag)
+    tech    : integer := DEFMEMTECH; 
+    irq     : integer := 0; 
+    kbytes  : integer := 0;
+    testen  : integer := 0
+  );
+  port (
+    rst    : in  std_ulogic;
+    clk    : in  std_ulogic;
+    ahbmi  : in  ahb_mst_in_type;
+    ahbsi  : in  ahb_slv_in_type;
+    ahbso  : out ahb_slv_out_type;
+    tahbsi : in  ahb_slv_in_type;
+    dbgi   : in l3_debug_out_vector(0 to NCPU-1);
+    dbgo   : out l3_debug_in_vector(0 to NCPU-1);
+    dsui   : in dsu_in_type;
+    dsuo   : out dsu_out_type
+  );
+  end component; 
   
   type irq_in_vector  is array (Natural range <> ) of l3_irq_in_type;
   type irq_out_vector is array (Natural range <> ) of l3_irq_out_type;

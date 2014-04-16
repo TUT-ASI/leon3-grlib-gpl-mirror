@@ -112,25 +112,26 @@ end component;
 
 component altlvds_rx
     generic (
-        number_of_channels          : natural;
-        deserialization_factor      : natural;
-        inclock_boost               : natural:= 0;
-        registered_output           : string := "ON";
-        inclock_period              : natural;
-        cds_mode                    : string := "UNUSED";
-        intended_device_family      : string := "APEX20KE";
-        input_data_rate             : natural:= 0;
-        inclock_data_alignment      : string := "EDGE_ALIGNED";
-        registered_data_align_input : string :="ON";
-        common_rx_tx_pll            : string :="ON";
-        enable_dpa_mode             : string := "OFF";
+        number_of_channels          : natural; -- Required parameter
+        deserialization_factor      : natural; -- Required parameter
+        registered_output           : string  := "ON";
+        inclock_period              : natural := 10000; -- Required parameter
+        inclock_boost               : natural := 0;
+        cds_mode                    : string  := "UNUSED";
+        intended_device_family      : string  := "APEX20KE";
+        input_data_rate             : natural := 0;
+        inclock_data_alignment      : string  := "EDGE_ALIGNED";
+        registered_data_align_input : string  := "ON";
+        common_rx_tx_pll            : string  := "ON";
+        enable_dpa_mode             : string  := "OFF";
         enable_dpa_pll_calibration  : string  := "OFF";
-        enable_dpa_fifo             : string := "ON";
-        use_dpll_rawperror          : string := "OFF";
-        use_coreclock_input         : string := "OFF";
-        dpll_lock_count             : natural:= 0;
-        dpll_lock_window            : natural:= 0;
-        outclock_resource           : string := "AUTO";
+        enable_dpa_calibration      : string  := "ON";
+        enable_dpa_fifo             : string  := "ON";
+        use_dpll_rawperror          : string  := "OFF";
+        use_coreclock_input         : string  := "OFF";
+        dpll_lock_count             : natural := 0;
+        dpll_lock_window            : natural := 0;
+        outclock_resource           : string  := "AUTO";
         data_align_rollover         : natural := 10;
         lose_lock_on_one_change     : string  := "OFF";
         reset_fifo_at_first_lock    : string  := "ON";
@@ -152,61 +153,107 @@ component altlvds_rx
         enable_dpa_initial_phase_selection    : string  := "OFF";
         dpa_initial_phase_value     :natural  := 0;
         pll_self_reset_on_loss_lock : string  := "OFF";
-        lpm_hint                    : string := "UNUSED";
-        lpm_type                    : string := "altlvds_rx";
-        clk_src_is_pll              : string := "off" );
+        lpm_hint                    : string  := "UNUSED";
+        lpm_type                    : string  := "altlvds_rx";
+        -- Specifies whether the source of the input clock is from the PLL
+        clk_src_is_pll              : string  := "off" );
+
+-- PORT DECLARATION
     port (
-        rx_in                 : in std_logic_vector(number_of_channels-1 downto 0);
+--INPUT PORT DECLARATION
+        rx_in                 : in std_logic_vector(number_of_channels-1 downto 0); --Required port
         rx_inclock            : in std_logic := '0';
         rx_syncclock          : in std_logic := '0';
         rx_readclock          : in std_logic := '0';
-        rx_enable             : in std_logic := '1';
+        rx_enable             : in std_logic := '0';
         rx_deskew             : in std_logic := '0';
         rx_pll_enable         : in std_logic := '1';
-        rx_data_align         : in std_logic := '0';
+        rx_data_align         : in std_logic := 'Z';
         rx_data_align_reset   : in std_logic := '0';
-        rx_reset              : in std_logic_vector(number_of_channels-1 downto 0) := (others => '0');
-        rx_dpll_reset         : in std_logic_vector(number_of_channels-1 downto 0) := (others => '0');
+        rx_reset              : in std_logic_vector(number_of_channels-1 downto 0):= (others => '0');
+        rx_dpll_reset         : in std_logic_vector(number_of_channels-1 downto 0):= (others => '0');
         rx_dpll_hold          : in std_logic_vector(number_of_channels-1 downto 0) := (others => '0');
         rx_dpll_enable        : in std_logic_vector(number_of_channels-1 downto 0) := (others => '1');
         rx_fifo_reset         : in std_logic_vector(number_of_channels-1 downto 0) := (others => '0');
-        rx_channel_data_align : in std_logic_vector(number_of_channels-1 downto 0) := (others => '0');
+        rx_channel_data_align : in std_logic_vector(number_of_channels-1 downto 0) := (others => 'Z');
         rx_cda_reset          : in std_logic_vector(number_of_channels-1 downto 0) := (others => '0');
         rx_coreclk            : in std_logic_vector(number_of_channels-1 downto 0) := (others => '0');
         pll_areset            : in std_logic := '0';
         dpa_pll_recal         : in std_logic := '0';
         pll_phasedone         : in std_logic := '1';
         rx_dpa_lock_reset     : in std_logic_vector(number_of_channels-1 downto 0) := (others => '0');
-        rx_out                : out std_logic_vector(deserialization_factor*number_of_channels -1 downto 0);
-        rx_outclock           : out std_logic;
-        rx_locked             : out std_logic;
-        rx_dpa_locked         : out std_logic_vector(number_of_channels-1 downto 0);
-        rx_cda_max            : out std_logic_vector(number_of_channels-1 downto 0);
-        rx_divfwdclk          : out std_logic_vector(number_of_channels-1 downto 0);
+
+
+-- OUTPUT PORT DECLARATION
+        rx_out        : out std_logic_vector(deserialization_factor*number_of_channels -1 downto 0);
+        rx_outclock   : out std_logic;
+        rx_locked     : out std_logic;
+        rx_dpa_locked : out std_logic_vector(number_of_channels-1 downto 0);
+        rx_cda_max    : out std_logic_vector(number_of_channels-1 downto 0);
+        rx_divfwdclk  : out std_logic_vector(number_of_channels-1 downto 0);
         dpa_pll_cal_busy      : out std_logic;
         pll_phasestep         : out std_logic;
         pll_phaseupdown       : out std_logic;
         pll_phasecounterselect: out std_logic_Vector(3 downto 0);
-        pll_scanclk           : out std_logic);
+        pll_scanclk           : out std_logic
+    );
+
 end component;
 
 component altlvds_tx
     generic (
+        -- Specifies the number of LVDS channels (required)
         number_of_channels     : natural;
-        deserialization_factor : natural:= 4;
-        inclock_boost          : natural := 0;
-        outclock_divide_by     : positive:= 1;
-        registered_input       : string := "ON";
-        multi_clock            : string := "OFF";
-        inclock_period         : natural;
-        center_align_msb       : string := "UNUSED";
-        intended_device_family : string := "APEX20KE";
-        output_data_rate       : natural:= 0;
-        outclock_resource      : string := "AUTO";
-        common_rx_tx_pll       : string := "ON";
-        inclock_data_alignment : string := "EDGE_ALIGNED";
-        outclock_alignment     : string := "EDGE_ALIGNED";
-        use_external_pll       : string := "OFF";
+
+        -- Specifies the number of bits per channel (required)
+        deserialization_factor : natural  := 4;
+
+        -- Indicates whether the tx_in[] and tx_outclock ports should be
+        -- registered. Choices for STRATIX are ON, OFF, TX_CLKIN or TX_CORECLK
+        registered_input       : string   := "ON";
+
+        -- "ON" means that sync_inclock is also used
+        -- (not used for Stratix and Stratix GX.)
+        multi_clock            : string   := "OFF";
+
+        -- Specifies the period of the input clock in ps (Required)
+        inclock_period         : natural := 10000;
+
+        -- Specifies the period of the tx_outclock port as
+        -- [INCLOCK_PERIOD * OUTCLOCK_DIVIDE_BY]
+        outclock_divide_by     : positive := 1;
+
+        -- The effective clock period used to sample output data
+        inclock_boost          : natural  := 0;
+
+        -- Aligns the Most Significant Bit(MSB) to the falling edge of the
+        -- clock instead of the rising edge (only for APEX II devices)
+        center_align_msb       : string   := "OFF";
+
+        -- Specifies the device family to be used
+        intended_device_family : string   := "APEX20KE";
+
+        -- Specifies the data rate out of the PLL.
+        -- (required and only for Stratix and Stratix GX devices)
+        output_data_rate       : natural  := 0;
+
+        -- Specifies the alignment of the input data with respect to the
+        -- tx_inclock port. (required and only available for Stratix and
+        -- Stratix GX devices)
+        inclock_data_alignment : string   := "EDGE_ALIGNED";
+
+        -- Specifies the alignment of the output data with respect to the
+        -- tx_outclock port. (required and only available for Stratix and
+        -- Stratix GX devices)
+        outclock_alignment     : string   := "EDGE_ALIGNED";
+
+        -- Specifies whether the compiler uses the same PLL for both the LVDS
+        -- receiver and the LVDS transmitter
+        common_rx_tx_pll       : string   := "ON";
+
+        outclock_resource      : string   := "AUTO";
+
+        use_external_pll       : string  := "OFF";
         implement_in_les       : STRING  := "OFF";
         preemphasis_setting    : natural := 0;
         vod_setting            : natural := 0;
@@ -218,21 +265,55 @@ component altlvds_tx
         outclock_phase_shift   : integer := 0;
         use_no_phase_shift     : string  := "ON";
         pll_self_reset_on_loss_lock : string  := "OFF";
+        lpm_type               : string   := "altlvds_tx";
         lpm_hint               : string  := "UNUSED";
-        lpm_type               : string := "altlvds_tx";
-        clk_src_is_pll         : string := "off" );
+
+        -- Specifies whether the source of the input clock is from the PLL
+        clk_src_is_pll         : string   := "off" );
+
+-- PORT DECLARATION
     port (
-        tx_in           : in std_logic_vector(deserialization_factor*number_of_channels -1 downto 0);
+
+-- INPUT PORT DECLARATION
+        -- Input data (required)
+        tx_in           : in std_logic_vector(deserialization_factor*
+                                            number_of_channels -1 downto 0);
+
+        -- Input clock (required)
         tx_inclock      : in std_logic := '0';
+        
         tx_syncclock    : in std_logic := '0';
+
         tx_enable       : in std_logic := '1';
+
+        -- Optional clock for input registers  (Required if "multi_clock"
+        -- parameters is turned on)
         sync_inclock    : in std_logic := '0';
+
+        -- Enable control for the LVDS PLL
         tx_pll_enable   : in std_logic := '1';
+
+        -- Asynchronously resets all counters to initial values (only for
+        --Stratix and Stratix GX devices)
         pll_areset      : in std_logic := '0';
-        tx_out          : out std_logic_vector(number_of_channels-1 downto 0);
+
+
+-- OUTPUT PORT DECLARATION
+        -- Serialized data signal(required)
+        tx_out          : out std_logic_vector(number_of_channels-1 downto 0)
+                        := (others => '0');
+
+        -- External reference clock
         tx_outclock     : out std_logic;
+
+        -- Output clock used to feed non-peripheral logic.
+        -- Only available for Stratix, and Stratix GX devices only.
         tx_coreclock    : out std_logic;
-        tx_locked       : out std_logic );
+
+        -- Gives the status of the LVDS PLL
+        -- (when the PLL is locked, this signal is VCC. GND otherwise)
+        tx_locked       : out std_logic
+    );
 end component;
 
 component altdpram

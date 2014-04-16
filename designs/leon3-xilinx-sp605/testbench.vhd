@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -29,9 +29,6 @@ use gaisler.sim.all;
 library techmap;
 use techmap.gencomp.all;
 use work.debug.all;
-library hynix;
-use hynix.components.all;
-library micron;
 
 use work.config.all;	-- configuration
 
@@ -371,14 +368,19 @@ end generate;
   end generate;
   address(0) <= '0';
 
-      u1 :  entity micron.ddr3
-        port map ( rst_n => ddr_reset_n, dq => ddr_dq,
-    		tdqs_n => ddr3_tdqs_n,
-                  dqs  => ddr_dqs, dqs_n => ddr_dqsn,
-                  dm_tdqs => ddr_dm, we_n => ddr_we, cas_n => ddr_cas,
-                  ras_n => ddr_ras, cs_n => ddr_csb, ba => ddr_ba,
-                  addr => ddr_ad(12 downto 0), cke => ddr_cke,
-                  ck => ddr_clk, ck_n => ddr_clkb, odt => ddr_odt) ;
+  u1 : ddr3ram
+    generic map (
+      width => 16, abits => 13, fname => sdramfile,
+      speedbin => 3,
+      ldguard => 1
+    )
+    port map (
+      ck => ddr_clk, ckn => ddr_clkb, cke => ddr_cke, csn => ddr_csb, odt => ddr_odt,
+      rasn => ddr_ras, casn => ddr_cas, wen => ddr_we,
+      dm => ddr_dm, ba => ddr_ba, a => ddr_ad, resetn => ddr_reset_n,
+      dq => ddr_dq, dqs => ddr_dqs, dqsn => ddr_dqsn,
+      doload => led(2)
+    );
 
   errorn <= led(1);
   errorn <= 'H';			  -- ERROR pull-up

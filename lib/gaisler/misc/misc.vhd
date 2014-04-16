@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -84,7 +84,10 @@ package misc is
     ntimers  : integer range 1 to 7 := 1; 	-- number of timers
     nbits    : integer := 32;			-- timer bits
     wdog     : integer := 0;
-    ewdogen  : integer := 0
+    ewdogen  : integer := 0;
+    glatch   : integer := 0;
+    gextclk  : integer := 0;
+    gset     : integer := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -199,6 +202,7 @@ package misc is
     tech    : integer := DEFMEMTECH;
     irq     : integer := 0;
     kbytes  : integer := 1;
+    bwidth  : integer := 32;
     ahbfilt : integer := 0);
   port (
     rst    : in  std_ulogic;
@@ -217,6 +221,7 @@ package misc is
     tech    : integer := DEFMEMTECH;
     irq     : integer := 0;
     kbytes  : integer := 1;
+    bwidth  : integer := 32;
     ahbfilt : integer := 0);
   port (
     rst    : in  std_ulogic;
@@ -236,6 +241,7 @@ package misc is
     tech    : integer := DEFMEMTECH;
     irq     : integer := 0;
     kbytes  : integer := 1;
+    bwidth  : integer := 32;
     ahbfilt : integer := 0;
     ntrace  : integer range 1 to 8 := 1);
   port (

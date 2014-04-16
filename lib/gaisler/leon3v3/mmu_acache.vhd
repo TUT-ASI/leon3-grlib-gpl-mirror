@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -237,8 +237,10 @@ begin
         htrans := HTRANS_SEQ; haddr(4 downto 2) := haddr(4 downto 2) +1;
         hburst := HBURST_INCR; 
       end if;
-      if (dreq and r.bg and ahbi.hready and not r.retry) = '1' 
-      then dgrant := (not mcdi.lock or r.hlocken) or r.retry2; v.hcache := dec_hcache; end if;
+      if (dreq and r.bg and ahbi.hready and not r.retry) = '1' then
+        dgrant := (not mcdi.lock or r.hlocken) or (r.retry2 and (not r.bo(1) and r.bo(0)));
+        v.hcache := dec_hcache;
+      end if;
     end if;
 
     if (hclken = '1') or (clk2x = 0) then

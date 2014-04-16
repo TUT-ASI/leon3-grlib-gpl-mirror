@@ -217,14 +217,14 @@ NET "sd(61)" LOC = "C29" | IOSTANDARD=LVTTL;
 NET "sd(62)" LOC = "J22" | IOSTANDARD=LVTTL;
 NET "sd(63)" LOC = "G30" | IOSTANDARD=LVTTL;
 
-NET "sdcke(0)" LOC = "A18"  | IOSTANDARD=LVTTL;
-NET "sdcke(1)" LOC = "B18"  | IOSTANDARD=LVTTL;
+NET "sdcke(0)" LOC = "B18"  | IOSTANDARD=LVTTL;
+NET "sdcke(1)" LOC = "A18"  | IOSTANDARD=LVTTL;
 NET "sdcke(2)" LOC = "D22"  | IOSTANDARD=LVTTL;
-NET "sdcke(3)" LOC = "F29"  | IOSTANDARD=LVTTL;
+NET "sdcke(3)" LOC = "E26"  | IOSTANDARD=LVTTL;
 
 NET "sdcsn(0)" LOC = "D21"  | IOSTANDARD=LVTTL;
 NET "sdcsn(1)" LOC = "A24"  | IOSTANDARD=LVTTL;
-NET "sdcsn(2)" LOC = "E21"  | IOSTANDARD=LVTTL;
+NET "sdcsn(2)" LOC = "D20"  | IOSTANDARD=LVTTL;
 NET "sdcsn(3)" LOC = "E22"  | IOSTANDARD=LVTTL;
 
 NET "sddqm(0)" LOC = "E11" | IOSTANDARD=LVTTL;
@@ -240,9 +240,9 @@ NET "sdcasn" LOC = "G22" | IOSTANDARD=LVTTL;
 NET "sdrasn" LOC = "B25" | IOSTANDARD=LVTTL;
 NET "sdwen"  LOC = "A25" | IOSTANDARD=LVTTL;
 
-NET "sdscl"    LOC = "B36" | IOSTANDARD=LVTTL;
-NET "sdsda(0)" LOC = "B37" | IOSTANDARD=LVTTL;
-NET "sdsda(1)" LOC = "G33" | IOSTANDARD=LVTTL;
+NET "sdscl"    LOC = "C39" | IOSTANDARD=LVTTL;
+NET "sdsda(0)" LOC = "C38" | IOSTANDARD=LVTTL;
+NET "sdsda(1)" LOC = "C37" | IOSTANDARD=LVTTL;
 
 
 NET "dsuact" LOC = "D34" | IOSTANDARD=LVTTL;
@@ -318,10 +318,10 @@ NET "pci_ad(40)" LOC = "AR38" | IOSTANDARD=PCI33_3;
 NET "pci_ad(41)" LOC = "AP36" | IOSTANDARD=PCI33_3;
 NET "pci_ad(42)" LOC = "AR36" | IOSTANDARD=PCI33_3;
 NET "pci_ad(43)" LOC = "AT36" | IOSTANDARD=PCI33_3;
-NET "pci_ad(44)" LOC = "AN33" | IOSTANDARD=PCI33_3;
-NET "pci_ad(45)" LOC = "AR34" | IOSTANDARD=PCI33_3;
+NET "pci_ad(44)" LOC = "AP34" | IOSTANDARD=PCI33_3;
+NET "pci_ad(45)" LOC = "AT35" | IOSTANDARD=PCI33_3;
 NET "pci_ad(46)" LOC = "AU36" | IOSTANDARD=PCI33_3;
-NET "pci_ad(47)" LOC = "AT35" | IOSTANDARD=PCI33_3;
+NET "pci_ad(47)" LOC = "AR34" | IOSTANDARD=PCI33_3;
 NET "pci_ad(48)" LOC = "AT39" | IOSTANDARD=PCI33_3;
 NET "pci_ad(49)" LOC = "AT38" | IOSTANDARD=PCI33_3;
 NET "pci_ad(50)" LOC = "AU38" | IOSTANDARD=PCI33_3;
@@ -332,12 +332,12 @@ NET "pci_ad(54)" LOC = "AU33" | IOSTANDARD=PCI33_3;
 NET "pci_ad(55)" LOC = "AU35" | IOSTANDARD=PCI33_3;
 NET "pci_ad(56)" LOC = "AV37" | IOSTANDARD=PCI33_3;
 NET "pci_ad(57)" LOC = "AW37" | IOSTANDARD=PCI33_3;
-NET "pci_ad(58)" LOC = "AM35" | IOSTANDARD=PCI33_3;
+NET "pci_ad(58)" LOC = "AN34" | IOSTANDARD=PCI33_3;
 NET "pci_ad(59)" LOC = "AW35" | IOSTANDARD=PCI33_3;
 NET "pci_ad(60)" LOC = "AW36" | IOSTANDARD=PCI33_3;
 NET "pci_ad(61)" LOC = "AV35" | IOSTANDARD=PCI33_3;
 NET "pci_ad(62)" LOC = "AT33" | IOSTANDARD=PCI33_3;
-NET "pci_ad(63)" LOC = "AP34" | IOSTANDARD=PCI33_3;
+NET "pci_ad(63)" LOC = "AR33" | IOSTANDARD=PCI33_3;
 NET "pci_cbe(0)" LOC = "AT13" | IOSTANDARD=PCI33_3;
 NET "pci_cbe(1)" LOC = "AU12" | IOSTANDARD=PCI33_3;
 NET "pci_cbe(2)" LOC = "AR13" | IOSTANDARD=PCI33_3;
@@ -367,12 +367,12 @@ NET "pci_arb_gnt(6)" LOC = "AT25" | IOSTANDARD=PCI33_3; #pci_gntn(6)
 NET "pci_arb_gnt(7)" LOC = "AU21" | IOSTANDARD=PCI33_3; #pci_gntn(7)
 
 NET "pci_arb_req(0)" LOC = "AV22" | IOSTANDARD=PCI33_3; #pci_reqn(0)
-NET "pci_arb_req(1)" LOC = "AW24" | IOSTANDARD=PCI33_3; #pci_reqn(1)
+NET "pci_arb_req(1)" LOC = "AW25" | IOSTANDARD=PCI33_3; #pci_reqn(1)
 NET "pci_arb_req(2)" LOC = "AW26" | IOSTANDARD=PCI33_3; #pci_reqn(2)
 NET "pci_arb_req(3)" LOC = "AV24" | IOSTANDARD=PCI33_3; #pci_reqn(3)
 NET "pci_arb_req(4)" LOC = "AV25" | IOSTANDARD=PCI33_3; #pci_reqn(4)
-NET "pci_arb_req(5)" LOC = "AV23" | IOSTANDARD=PCI33_3; #pci_reqn(5)
-NET "pci_arb_req(6)" LOC = "AW25" | IOSTANDARD=PCI33_3; #pci_reqn(6)
+NET "pci_arb_req(5)" LOC = "AW24" | IOSTANDARD=PCI33_3; #pci_reqn(5)
+NET "pci_arb_req(6)" LOC = "AV23" | IOSTANDARD=PCI33_3; #pci_reqn(6)
 NET "pci_arb_req(7)" LOC = "AW22" | IOSTANDARD=PCI33_3; #pci_reqn(7)
 
 NET "pci_idsel"   LOC = "AV9"  | IOSTANDARD=LVTTL;

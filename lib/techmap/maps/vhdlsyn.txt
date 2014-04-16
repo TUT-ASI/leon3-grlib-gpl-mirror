@@ -6,6 +6,7 @@ allpads.vhd
 alltap.vhd
 clkgen.vhd
 clkmux.vhd
+clkinv.vhd
 clkand.vhd
 ddr_ireg.vhd
 ddr_oreg.vhd
@@ -17,6 +18,7 @@ syncram_dp.vhd
 syncramft.vhd
 syncram_2pft.vhd
 syncrambwft.vhd
+syncfifo_2p.vhd
 regfile_3p.vhd
 tap.vhd
 techbuf.vhd
@@ -36,7 +38,6 @@ cpu_disas_net.vhd
 grusbhc_net.vhd
 ringosc.vhd
 ssrctrl_net.vhd
-ftmctrl_net.vhd
 ftsrctrl_net.vhd
 corepcif_net.vhd
 pci_arb_net.vhd
@@ -57,4 +58,5 @@ sdram_phy.vhd
 from.vhd
 syncreg.vhd
 clkinv.vhd
+serdes.vhd
 

@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -32,8 +32,6 @@ library micron;
 use micron.components.all;
 library cypress;
 use cypress.components.all;
-library hynix;
-use hynix.components.all;
 
 use work.debug.all;
 
@@ -293,25 +291,16 @@ begin
 
 
   --DDR2
-  ddr2mem : for i in 0 to 3 generate
-    u1 : HY5PS121621F
-      generic map (TimingCheckFlag => false, PUSCheckFlag => false,
-                   index => 3-i, fname => sdramfile)
-      port map (DQ => ddr_dq2(i*16+15 downto i*16), LDQS  => ddr_dqs(i*2),
-                LDQSB => ddr_dqsn(i*2), UDQS => ddr_dqs(i*2+1),
-                UDQSB => ddr_dqsn(i*2+1), LDM => ddr_dm(i*2),
-                WEB => ddr_web, CASB => ddr_casb, RASB  => ddr_rasb, CSB => ddr_csb(0),
-                BA => ddr_ba, ADDR => ddr_ad(12 downto 0), CKE => ddr_cke(0),
-                CLK => ddr_clk(0), CLKB => ddr_clkb(0), UDM => ddr_dm(i*2+1));
-
---    PORT MAP(
---      ck => ddr_clk(0), ck_n => ddr_clkb(0), cke => ddr_cke(0), cs_n => ddr_csb(0),
---      ras_n => ddr_rasb, cas_n => ddr_casb, we_n => ddr_web, 
---      dm_rdqs => ddr_dm(i*2+1 downto i*2), ba => ddr_ba,
---      addr => ddr_ad(12 downto 0), dq => ddr_dq(i*16+15 downto i*16),
---      dqs => ddr_dqs(i*2+1 downto i*2), dqs_n => ddr_dqsn(i*2+1 downto i*2),
---      rdqs_n => ddr_rdqs(i*2+1 downto i*2), odt => ddr_odt(0));
-  end generate;
+  ddr2mem0: ddr2ram
+    generic map (
+      width => 64, abits => 14, babits => 2,
+      colbits => 10, implbanks => 1, fname => sdramfile
+      )
+    port map (
+      ck => ddr_clk(0), ckn => ddr_clkb(0), cke => ddr_cke(0), csn => ddr_csb(0), odt => ddr_odt(0),
+      rasn => ddr_rasb, casn => ddr_casb, wen => ddr_web, dm => ddr_dm,  ba => ddr_ba, a => ddr_ad,
+      dq => ddr_dq, dqs => ddr_dqs, dqsn => ddr_dqsn
+      );
 
 --  ddr_dq <= buskeep(ddr_dq), (others => 'H') after 250 ns;
   ddr_dqsn <= (others => 'U');

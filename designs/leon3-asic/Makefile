@@ -2,7 +2,7 @@ include .config
 
 GRLIB=../..
 TOP=leon3mp
-GRLIB_SIMULATOR=ModelSim-SE
+#GRLIB_SIMULATOR=ModelSim-SE
 
 # For FPGA Prototyping
 # FPGA and Dev Board used in Design
@@ -41,7 +41,7 @@ DIRSKIP = b1553 pci/pcif leon2 leon2ft leon4 leon4v0 l2cache iommu \
 
 FILESKIP =
 
-VLOGOPT = -suppress 2902
+VLOGOPT =
 
 DCOPT += -x "set argv [lindex [list $(TECHLIBS)] 0]; set top $(TOP)"
 DCSCRIPT=dc.tcl
@@ -116,11 +116,11 @@ gtl-vsim-launch : gtl-vsim
 
 # Compile SAED32 SIM Library
 comp_saed32_sim:
-	-@vlib modelsim
-	-@vlib ./modelsim/saed32
+	-@MTI_DEFAULT_LIB_TYPE=0 vlib modelsim
+	-@MTI_DEFAULT_LIB_TYPE=0 vlib ./modelsim/saed32
 	vmap saed32 ./modelsim/saed32
-	vlog -quiet -suppress 2902 -work saed32 $(SAED32_HOME)/SAED32_EDK/lib/pll/verilog/PLL.v
-	vlog -quiet -suppress 2902 -work saed32 $(SAED32_HOME)/SAED32_EDK/lib/io_std/verilog/saed32nm_io_wb.v
-	vlog -quiet -suppress 2902 -work saed32 $(SAED32_HOME)/SAED32_EDK/lib/stdcell_lvt/verilog/saed32nm_lvt.v
-	vlog -quiet -suppress 2902 -work saed32 $(SAED32_HOME)/SAED32_EDK/lib/sram/verilog/saed32sram.v
+	vlog -quiet -work saed32 $(SAED32_HOME)/SAED32_EDK/lib/pll/verilog/PLL.v
+	vlog -quiet -work saed32 $(SAED32_HOME)/SAED32_EDK/lib/io_std/verilog/saed32nm_io_wb.v
+	vlog -quiet -work saed32 $(SAED32_HOME)/SAED32_EDK/lib/stdcell_lvt/verilog/saed32nm_lvt.v
+	vlog -quiet -work saed32 $(SAED32_HOME)/SAED32_EDK/lib/sram/verilog/saed32sram.v
 

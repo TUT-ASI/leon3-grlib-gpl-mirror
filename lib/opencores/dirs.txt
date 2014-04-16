@@ -1,1 +1,1 @@
-can i2c
+can i2c ge_1000baseX

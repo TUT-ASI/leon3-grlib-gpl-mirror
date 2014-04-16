@@ -1,9 +1,16 @@
+
+
+
+
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
 -- Copyright (C) 2009 Aeroflex Gaisler
 ------------------------------------------------------------------------------
+
+
 library techmap;
 use techmap.gencomp.all;
+
 package config is
 -- Technology and synthesis options
   constant CFG_FABTECH : integer := stratix4;
@@ -23,7 +30,7 @@ package config is
   constant CFG_CLK_NOFB : integer := 0;
 -- LEON3 processor core
   constant CFG_LEON3 : integer := 1;
-  constant CFG_NCPU : integer := (1);
+  constant CFG_NCPU : integer := (4);
   constant CFG_NWIN : integer := (8);
   constant CFG_V8 : integer := 16#32# + 4*0;
   constant CFG_MAC : integer := 0;
@@ -51,7 +58,7 @@ package config is
   constant CFG_DLINE : integer := 4;
   constant CFG_DREPL : integer := 0;
   constant CFG_DLOCK : integer := 0;
-  constant CFG_DSNOOP : integer := 1 + 1 + 4*1;
+  constant CFG_DSNOOP : integer := 1*2 + 4*1;
   constant CFG_DFIXED : integer := 16#0#;
   constant CFG_DLRAMEN : integer := 0;
   constant CFG_DLRAMADDR: integer := 16#8F#;
@@ -74,11 +81,24 @@ package config is
   constant CFG_LEON3_NETLIST: integer := 0;
   constant CFG_DISAS : integer := 0 + 0;
   constant CFG_PCLOW : integer := 2;
+-- L2 Cache
+  constant CFG_L2_EN : integer := 0;
+  constant CFG_L2_SIZE : integer := 32;
+  constant CFG_L2_WAYS : integer := 4;
+  constant CFG_L2_HPROT : integer := 0;
+  constant CFG_L2_PEN : integer := 0;
+  constant CFG_L2_WT : integer := 0;
+  constant CFG_L2_RAN : integer := 0;
+  constant CFG_L2_SHARE : integer := 0;
+  constant CFG_L2_LSZ : integer := 64;
+  constant CFG_L2_MAP : integer := 16#00F0#;
+  constant CFG_L2_MTRR : integer := (8);
+  constant CFG_L2_EDAC : integer := 0;
 -- AMBA settings
   constant CFG_DEFMST : integer := (0);
   constant CFG_RROBIN : integer := 1;
   constant CFG_SPLIT : integer := 0;
-  constant CFG_FPNPEN : integer := 0;
+  constant CFG_FPNPEN : integer := 1;
   constant CFG_AHBIO : integer := 16#FFF#;
   constant CFG_APBADDR : integer := 16#800#;
   constant CFG_AHB_MON : integer := 0;
@@ -118,10 +138,13 @@ package config is
   constant CFG_GRETH : integer := 0;
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 8;
+
+
 -- Gaisler Ethernet core
   constant CFG_GRETH2 : integer := 0;
   constant CFG_GRETH21G : integer := 0;
   constant CFG_ETH2_FIFO : integer := 8;
+
 -- SPI controller
   constant CFG_SPICTRL_ENABLE : integer := 1;
   constant CFG_SPICTRL_NUM : integer := (1);
@@ -135,12 +158,15 @@ package config is
   constant CFG_SPICTRL_MAXWLEN : integer := (0);
   constant CFG_SPICTRL_SYNCRAM : integer := 1;
   constant CFG_SPICTRL_FT : integer := 0;
+
 -- UART 1
   constant CFG_UART1_ENABLE : integer := 1;
   constant CFG_UART1_FIFO : integer := 4;
+
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE : integer := 1;
   constant CFG_IRQ3_NSEC : integer := 0;
+
 -- Modular timer
   constant CFG_GPT_ENABLE : integer := 1;
   constant CFG_GPT_NTIM : integer := (2);
@@ -150,10 +176,12 @@ package config is
   constant CFG_GPT_SEPIRQ : integer := 1;
   constant CFG_GPT_WDOGEN : integer := 0;
   constant CFG_GPT_WDOG : integer := 16#0#;
+
 -- GPIO port
   constant CFG_GRGPIO_ENABLE : integer := 1;
   constant CFG_GRGPIO_IMASK : integer := 16#fe#;
   constant CFG_GRGPIO_WIDTH : integer := (32);
+
 -- GRLIB debugging
-  constant CFG_DUART : integer := 0;
+  constant CFG_DUART : integer := 1;
 end;

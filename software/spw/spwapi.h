@@ -20,6 +20,34 @@ struct dmachanregs
    volatile int unused[3];
 };
 
+struct intdistregs
+{
+  volatile int ctrl;
+  volatile int intrx;
+  volatile int ackrx;
+  volatile int intto;
+  volatile int tomask;
+  volatile int aamask;
+  volatile int scaler;
+  volatile int isrtimer;
+  volatile int iatimer;
+  volatile int ctimer;
+  volatile int isr;
+  volatile int unused;
+};
+
+struct pnpregs
+{
+  volatile int vendid;
+  volatile int linkinfo;
+  volatile int oa1;
+  volatile int oa2;
+  volatile int oa3;
+  volatile int devid;
+  volatile int uvendid;
+  volatile int usn;
+};
+
 struct spwregs 
 {
    volatile int ctrl;
@@ -31,6 +59,9 @@ struct spwregs
    volatile int timer;
    volatile int unused;
    struct dmachanregs dma[4];
+   struct intdistregs intdist;
+   volatile int unused2;
+   struct pnpregs pnp;
 };
 
 struct txdescriptor 
@@ -89,6 +120,13 @@ struct spwvars
    int    destkey;
    int    port;
    struct dmachanvar dma[4];
+   int    intdist;
+   int    pnp;
+   int    ntxdesc;
+   int    nrxdesc;
+   int    inttxen;
+   int    intrxen;
+   int    pnpen;
 };
 
 int spw_init(struct spwvars *spw);

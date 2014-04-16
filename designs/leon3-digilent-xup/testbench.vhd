@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -151,36 +151,43 @@ begin
 	);
 
   ddrmem : for i in 0 to 1 generate
-    u3 : mt46v16m16 
-    generic map (index => 3, fname => sdramfile, bbits => 64)
-    PORT MAP(
-      Dq => ddr_dq(15 downto 0), Dqs => ddr_dqs(1 downto 0), Addr => ddr_ad(12 downto 0),
-      Ba => ddr_ba, Clk => ddr_clk(i),  Clk_n => ddr_clkb(i), Cke => ddr_cke(i),
-      Cs_n => ddr_csb(i), Ras_n => ddr_rasb, Cas_n => ddr_casb, We_n => ddr_web,
-      Dm => ddr_dm(1 downto 0));
+    -- u3 : mt46v16m16 
+    -- generic map (index => 3, fname => sdramfile, bbits => 64)
+    -- PORT MAP(
+    --   Dq => ddr_dq(15 downto 0), Dqs => ddr_dqs(1 downto 0), Addr => ddr_ad(12 downto 0),
+    --   Ba => ddr_ba, Clk => ddr_clk(i),  Clk_n => ddr_clkb(i), Cke => ddr_cke(i),
+    --   Cs_n => ddr_csb(i), Ras_n => ddr_rasb, Cas_n => ddr_casb, We_n => ddr_web,
+    --   Dm => ddr_dm(1 downto 0));
 
-    u2 : mt46v16m16 
-    generic map (index => 2, fname => sdramfile, bbits => 64)
-    PORT MAP(
-      Dq => ddr_dq(31 downto 16), Dqs => ddr_dqs(3 downto 2), Addr => ddr_ad(12 downto 0),
-      Ba => ddr_ba, Clk => ddr_clk(i),  Clk_n => ddr_clkb(i), Cke => ddr_cke(i),
-      Cs_n => ddr_csb(i), Ras_n => ddr_rasb, Cas_n => ddr_casb, We_n => ddr_web,
-      Dm => ddr_dm(3 downto 2));
-    u1 : mt46v16m16 
-    generic map (index => 1, fname => sdramfile, bbits => 64)
-    PORT MAP(
-      Dq => ddr_dq(47 downto 32), Dqs => ddr_dqs(5 downto 4), Addr => ddr_ad(12 downto 0),
-      Ba => ddr_ba, Clk => ddr_clk(i),  Clk_n => ddr_clkb(i), Cke => ddr_cke(i),
-      Cs_n => ddr_csb(i), Ras_n => ddr_rasb, Cas_n => ddr_casb, We_n => ddr_web,
-      Dm => ddr_dm(5 downto 4));
+    -- u2 : mt46v16m16 
+    -- generic map (index => 2, fname => sdramfile, bbits => 64)
+    -- PORT MAP(
+    --   Dq => ddr_dq(31 downto 16), Dqs => ddr_dqs(3 downto 2), Addr => ddr_ad(12 downto 0),
+    --   Ba => ddr_ba, Clk => ddr_clk(i),  Clk_n => ddr_clkb(i), Cke => ddr_cke(i),
+    --   Cs_n => ddr_csb(i), Ras_n => ddr_rasb, Cas_n => ddr_casb, We_n => ddr_web,
+    --   Dm => ddr_dm(3 downto 2));
+    -- u1 : mt46v16m16 
+    -- generic map (index => 1, fname => sdramfile, bbits => 64)
+    -- PORT MAP(
+    --   Dq => ddr_dq(47 downto 32), Dqs => ddr_dqs(5 downto 4), Addr => ddr_ad(12 downto 0),
+    --   Ba => ddr_ba, Clk => ddr_clk(i),  Clk_n => ddr_clkb(i), Cke => ddr_cke(i),
+    --   Cs_n => ddr_csb(i), Ras_n => ddr_rasb, Cas_n => ddr_casb, We_n => ddr_web,
+    --   Dm => ddr_dm(5 downto 4));
 
-    u0 : mt46v16m16 
-    generic map (index => 0, fname => sdramfile, bbits => 64)
-    PORT MAP(
-      Dq => ddr_dq(63 downto 48), Dqs => ddr_dqs(7 downto 6), Addr => ddr_ad(12 downto 0),
-      Ba => ddr_ba, Clk => ddr_clk(i),  Clk_n => ddr_clkb(i), Cke => ddr_cke(i),
-      Cs_n => ddr_csb(i), Ras_n => ddr_rasb, Cas_n => ddr_casb, We_n => ddr_web,
-      Dm => ddr_dm(7 downto 6));
+    -- u0 : mt46v16m16 
+    -- generic map (index => 0, fname => sdramfile, bbits => 64)
+    -- PORT MAP(
+    --   Dq => ddr_dq(63 downto 48), Dqs => ddr_dqs(7 downto 6), Addr => ddr_ad(12 downto 0),
+    --   Ba => ddr_ba, Clk => ddr_clk(i),  Clk_n => ddr_clkb(i), Cke => ddr_cke(i),
+    --   Cs_n => ddr_csb(i), Ras_n => ddr_rasb, Cas_n => ddr_casb, We_n => ddr_web,
+    --   Dm => ddr_dm(7 downto 6));
+    ddr0 : ddrram
+      generic map(width => 64, abits => 14, colbits => 9, rowbits => 14,
+                  implbanks => 1, fname => sdramfile, speedbin => 1, density => 1)
+      port map (ck => ddr_clk(i), cke => ddr_cke(i), csn => ddr_csb(i),
+                rasn => ddr_rasb, casn => ddr_casb, wen => ddr_web,
+                dm => ddr_dm, ba => ddr_ba, a => ddr_ad, dq => ddr_dq,
+                dqs => ddr_dqs);
   end generate;
 
   prom0 : sram16 generic map (index => 4, abits => romdepth, fname => promfile)

@@ -9,6 +9,7 @@ DEVICE=$(PART)-$(PACKAGE)$(SPEED)
 #UCF=$(GRLIB)/boards/$(BOARD)/$(TOP).ucf
 UCF=$(TOP).ucf
 UCF_PLANAHEAD=$(UCF)
+XDC=$(TOP).xdc 
 QSF=$(GRLIB)/boards/$(BOARD)/$(TOP).qsf
 EFFORT=high
 XSTOPT=-uc leon3mp.xcf

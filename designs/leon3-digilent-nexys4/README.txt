@@ -1,40 +1,17 @@
-This leon3 design is tailored to the Digilent Nexys4 board
-
+This LEON design is tailored to the Digilent Nexys4 board
+---------------------------------------------------------
 
 Simulation and synthesis
 ------------------------
 
-The design currently supports synthesis though with xilinx ise and synplify.
-Make scripts do not work for vivado.
+The design currently supports synthesis with Xilinx ISE/Synplify and
+Vivado.
  
-Compile Modelsim simulation: make vsim
-Synthesise with Xilinx ISE:  make ise
-Program the FPGA:            make ise-prog-fpga
-Program the PROM             make ise-prog-prom
-
-Connecting to USB-UART
-----------------------
-The USB/JTAG and USB/UART shares the same port and can cause problems.
-
-If the output from the dmsg includes the output below, it is possible that
-it is caused by a linux driver incompaiblity. 
-
-Dmesg output: ftdi_sio ttyUSB0: FTDI USB Serial Device converter 
-              now disconnected from ttyUSB<#>
-
-Procedure:
- * Power the board with a power supply
- * (Program the board over JTAG)
- * rmmod the ftdi drivers
-     sudo rmmod ftdi_sio
-     sudo rmmod usbserial 
- * Replug the micro-USB cable. The /dev/ttyUSB0  and/or /dev/ttyUSB1 
-   should now exist. (JTAG over USB is temporarily lost)
- * Run GRMON: grmon -uart /dev/ttyUSB1 -u
- * Reconnecting the micro-USB cable migth load back the ftdi_sio and usbserial
-   drivers. Thefore the procedure might have to be repeated.
-
-RECOMENDED SOLUTION use other pins for UART and not over USB/UART.
+Compile with ModelSim:                 make vsim
+Synthesise and p&r with Xilinx ISE:    make ise
+Program the FPGA:                      make ise-prog-fpga
+Program the PROM                       make ise-prog-prom
+Synthesise and p&r with Xilinx Vivado: make vivado
 
 Design specifics
 ----------------
@@ -50,18 +27,18 @@ Design specifics
 
 * LED 3 indicate processor in error mode
 
-* The SRAM is accessed asynchronously and has an accestime of 70ns. It is therefore
-  necesssssary to add extra wait states for the SRAM. This can be done by starting 
-  GRMON with the parameters: -ramrws 3  -ramwws 3
-  One or two waitstates might also work.
+* The SRAM is accessed asynchronously and has an access time of 70ns.
+  It is therefore necessary to add extra wait states for the SRAM. This 
+  can be done by starting  GRMON with the parameters: -ramrws 3  -ramwws 3
 
 * The design has no flash/ROM. An AHBROM is therefore instatiated.
-  Curently there is no SPI or SDcard support.
+  Currently there is no SPI or SD card support.
 
-* The application UART1 is unconnected. To enable it uncomment the in/out
+* The application UART1 is unconnected. To enable it, uncomment the in/out
   pads for the apbuart and comment out the ahbuart pads.
 
-* The JTAG DSU interface is enabled and accesible via the USB/JTAG port and USB/UART.
+* The JTAG DSU interface is enabled and accessible via the USB/JTAG port
+  and USB/UART.
   Start grmon with -digilent to connect with USB/JTAG.
   
 * Output from GRMON is:
@@ -73,12 +50,6 @@ grmon -eth 192.168.0.51 -u
   Copyright (C) 2013 Aeroflex Gaisler - All rights reserved.
   For latest updates, go to http://www.gaisler.com/
   Comments or bug-reports to support@gaisler.com
-  
-Parsing -eth 192.168.0.51
-Parsing -u
-
-Commands missing help:
- datacache
 
  Ethernet startup...
   GRLIB build version: 4137

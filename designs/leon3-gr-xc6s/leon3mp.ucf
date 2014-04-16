@@ -28,7 +28,7 @@ NET "mig_gen.ddrc/MCB_inst/memc?_wrapper_inst/memc?_mcb_raw_wrapper_inst/gen_ter
 
 # --- MIG39 ---
 INST "mig_gen.ddrc/MCB_inst/memc?_wrapper_inst/memc?_mcb_raw_wrapper_inst/gen_term_calib.mcb_soft_calibration_top_inst/mcb_soft_calibration_inst/DONE_SOFTANDHARD_CAL*" TIG;
-
+ 
 ############################################################################
 # Main clocks
 ############################################################################
@@ -44,12 +44,35 @@ TIMESPEC "TS_clk2" = PERIOD "clk2" 5.000 ns HIGH 50.00%;
 # -------------------------------
 # RGMII interface
 
+# Allow non dedicated clock routing (Onlu needed if clock mux is used)
+PIN "rgmii0/useclkmux0.tecclkmux.clkmux1000/tec.xil.buf/buf.O" CLOCK_DEDICATED_ROUTE = FALSE;
+
 # -- GTX clock inout
-NET "clk125" TNM_NET = "clk125";
-TIMESPEC "TS_clk125" = PERIOD "clk125" 8.000 ns HIGH 50.00%;
+# Only used when external GTX clock is used
+#NET "clk125" TNM_NET = "clk125";
+#TIMESPEC "TS_clk125" = PERIOD "clk125" 8.000 ns HIGH 50.00%;
+
+# To be used for internal GTX clock generation when 10/100 mode is used
+PIN "ethpads.gtx_clk0.clk_125_bufg0.O" CLOCK_DEDICATED_ROUTE = FALSE;
+PIN "ethpads.gtx_clk2.clkgen0/xc3s.v/bufg0.O" CLOCK_DEDICATED_ROUTE =FALSE;
+PIN "ethpads.gtx_clk2.clk_125_bufg0.O" CLOCK_DEDICATED_ROUTE = FALSE;
 
 NET "erx_clk" TNM_NET = "erx_clk";
 TIMESPEC "TS_erx_clk" = PERIOD "erx_clk" 8.000 ns HIGH 50.00%;
+
+NET "mig_gen.ddrc/MCB_inst/memc3_infrastructure_inst/clk0" TNM_NET = clkm;
+
+# All mode
+NET "rgmii0/gmiii_gtx_clk" TNM_NET = "clk125_mux";
+TIMESPEC TS_clk125_mux = PERIOD "clk125_mux" 8 ns  HIGH 50.00%;
+TIMESPEC "TS_clkm_gtx_clk" = FROM "clkm" TO "clk125_mux" TIG;
+TIMESPEC "TS_gtx_clk_clkm" = FROM "clk125_mux" TO "clkm" TIG;
+
+# Giga mode only
+NET "clk_125_bufg" TNM_NET = "clk125_bufg";
+TIMESPEC TS_clk125_bufg = PERIOD "clk125_bufg" 8 ns  HIGH 50.00%;
+TIMESPEC "TS_clkm_gtx_clk_2" = FROM "clkm" TO "clk125_bufg" TIG;
+TIMESPEC "TS_gtx_clk_clkm_2" = FROM "clk125_bufg" TO "clkm" TIG;
 
 INST "etx_clk" SLEW = FAST;
 INST "etxd*  " SLEW = FAST;
@@ -62,13 +85,25 @@ INST "erx_dv"  TNM = IN_RGMII;
 # http://www.xilinx.com/support/documentation/sw_manuals/xilinx14_4/ug612.pdf
 
 # Use when IODELAY is inserted
-TIMEGRP "IN_RGMII" OFFSET = IN 1.1 ns VALID 2.2 ns BEFORE "erx_clk" RISING; 
-TIMEGRP "IN_RGMII" OFFSET = IN 1.1 ns VALID 2.2 ns BEFORE "erx_clk" FALLING;
+#TIMEGRP "IN_RGMII" OFFSET = IN 5.1 ns VALID 2.2 ns BEFORE "erx_clk" RISING; 
+#TIMEGRP "IN_RGMII" OFFSET = IN 5.1 ns VALID 2.2 ns BEFORE "erx_clk" FALLING;
 
 # No IODELAY
 # Please, note that these will fail but will be fixed by setup script in GRMON2
 #TIMEGRP "IN_RGMII" OFFSET = IN 1.5 ns VALID 2.25 ns BEFORE "erx_clk" RISING;
 #TIMEGRP "IN_RGMII" OFFSET = IN 1.5 ns VALID 2.25 ns BEFORE "erx_clk" FALLING;
+
+# Use when IODELAY is inserted
+NET "etxd[0]" OFFSET = OUT 2.25 ns AFTER "clk125" REFERENCE_PIN "etx_clk" RISING;
+NET "etxd[0]" OFFSET = OUT 2.25 ns AFTER "clk125" REFERENCE_PIN "etx_clk" FALLING;
+NET "etxd[1]" OFFSET = OUT 2.25 ns AFTER "clk125" REFERENCE_PIN "etx_clk" RISING;
+NET "etxd[1]" OFFSET = OUT 2.25 ns AFTER "clk125" REFERENCE_PIN "etx_clk" FALLING;
+NET "etxd[2]" OFFSET = OUT 2.25 ns AFTER "clk125" REFERENCE_PIN "etx_clk" RISING;
+NET "etxd[2]" OFFSET = OUT 2.25 ns AFTER "clk125" REFERENCE_PIN "etx_clk" FALLING;
+NET "etxd[3]" OFFSET = OUT 2.25 ns AFTER "clk125" REFERENCE_PIN "etx_clk" RISING;
+NET "etxd[4]" OFFSET = OUT 2.25 ns AFTER "clk125" REFERENCE_PIN "etx_clk" FALLING;
+NET "etx_en"  OFFSET = OUT 2.25 ns AFTER "clk125" REFERENCE_PIN "etx_clk" RISING;
+NET "etx_en"  OFFSET = OUT 2.25 ns AFTER "clk125" REFERENCE_PIN "etx_clk" FALLING;
 
 ############################################################################
 # I/O STANDARDS AND LOCATIONS

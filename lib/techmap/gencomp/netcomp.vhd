@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -306,22 +306,36 @@ end component;
 
 component grspwc2_net is
   generic(
-    rmap         : integer range 0 to 2  := 0;
-    rmapcrc      : integer range 0 to 1  := 0;
-    fifosize1    : integer range 4 to 32 := 32;
-    fifosize2    : integer range 16 to 64 := 64;
-    rxunaligned  : integer range 0 to 1 := 0;
-    rmapbufs     : integer range 2 to 8 := 4;
-    scantest     : integer range 0 to 1 := 0;
-    ports        : integer range 1 to 2 := 1;
-    dmachan      : integer range 1 to 4 := 1;
-    tech         : integer;
-    input_type   : integer range 0 to 4 := 0;
-    output_type  : integer range 0 to 2 := 0;
-    rxtx_sameclk : integer range 0 to 1 := 0;
-    nodeaddr     : integer range 0 to 255 := 254;
-    destkey      : integer range 0 to 255 := 0
-  );
+    rmap            : integer range 0 to 2  := 0;
+    rmapcrc         : integer range 0 to 1  := 0;
+    fifosize1       : integer range 4 to 32 := 32;
+    fifosize2       : integer range 16 to 64 := 64;
+    rxunaligned     : integer range 0 to 1 := 0;
+    rmapbufs        : integer range 2 to 8 := 4;
+    scantest        : integer range 0 to 1 := 0;
+    ports           : integer range 1 to 2 := 1;
+    dmachan         : integer range 1 to 4 := 1;
+    tech            : integer;
+    input_type      : integer range 0 to 4 := 0;
+    output_type     : integer range 0 to 2 := 0;
+    rxtx_sameclk    : integer range 0 to 1 := 0;
+    nodeaddr        : integer range 0 to 255 := 254;
+    destkey         : integer range 0 to 255 := 0;
+    interruptdist   : integer range 0 to 32 := 0;
+    intscalerbits   : integer range 0 to 31 := 0;
+    intisrtimerbits : integer range 0 to 31 := 0;
+    intiatimerbits  : integer range 0 to 31 := 0;
+    intctimerbits   : integer range 0 to 31 := 0;
+    tickinasync     : integer range 0 to 1 := 0;
+    pnp             : integer range 0 to 2 := 0;
+    pnpvendid       : integer range 0 to 16#FFFF# := 0;
+    pnpprodid       : integer range 0 to 16#FFFF# := 0;
+    pnpmajorver     : integer range 0 to 16#FF# := 0;
+    pnpminorver     : integer range 0 to 16#FF# := 0;
+    pnppatch        : integer range 0 to 16#FF# := 0;
+    num_txdesc      : integer range 64 to 512 := 64;
+    num_rxdesc      : integer range 128 to 1024 := 128    
+    );
   port(
     rst          : in  std_ulogic;
     clk          : in  std_ulogic;
@@ -377,17 +391,17 @@ component grspwc2_net is
     rmapnodeaddr : in   std_logic_vector(7 downto 0);
     --rx ahb fifo
     rxrenable    : out  std_ulogic;
-    rxraddress   : out  std_logic_vector(4 downto 0);
+    rxraddress   : out  std_logic_vector(5 downto 0);
     rxwrite      : out  std_ulogic;
     rxwdata      : out  std_logic_vector(31 downto 0);
-    rxwaddress   : out  std_logic_vector(4 downto 0);
+    rxwaddress   : out  std_logic_vector(5 downto 0);
     rxrdata      : in   std_logic_vector(31 downto 0);
     --tx ahb fifo
     txrenable    : out  std_ulogic;
-    txraddress   : out  std_logic_vector(4 downto 0);
+    txraddress   : out  std_logic_vector(5 downto 0);
     txwrite      : out  std_ulogic;
     txwdata      : out  std_logic_vector(31 downto 0);
-    txwaddress   : out  std_logic_vector(4 downto 0);
+    txwaddress   : out  std_logic_vector(5 downto 0);
     txrdata      : in   std_logic_vector(31 downto 0);
     --nchar fifo
     ncrenable    : out  std_ulogic;
@@ -409,7 +423,18 @@ component grspwc2_net is
     testen       : in   std_logic;
     rxdav        : out  std_logic;
     rxdataout    : out  std_logic_vector(8 downto 0);
-    loopback     : out  std_logic
+    loopback     : out  std_logic;
+    -- interrupt dist. default values
+    intpreload   : in   std_logic_vector(30 downto 0);
+    inttreload   : in   std_logic_vector(30 downto 0);
+    intiareload  : in   std_logic_vector(30 downto 0);
+    intcreload   : in   std_logic_vector(30 downto 0);
+    irqtxdefault : in   std_logic_vector(4 downto 0);
+    --SpW PnP enable
+    pnpen        : in   std_ulogic;
+    pnpuvendid   : in   std_logic_vector(15 downto 0);
+    pnpuprodid   : in   std_logic_vector(15 downto 0);
+    pnpusn       : in   std_logic_vector(31 downto 0)    
   );
 end component;
 
@@ -689,89 +714,6 @@ end component;
 );
 
   end component;
-
-component ftmctrl_net
-   generic (
-    hindex    : integer := 0;
-    pindex    : integer := 0;
-    romaddr   : integer := 16#000#;
-    rommask   : integer := 16#E00#;
-    ioaddr    : integer := 16#200#;
-    iomask    : integer := 16#E00#;
-    ramaddr   : integer := 16#400#;
-    rammask   : integer := 16#C00#;
-    paddr     : integer := 0;
-    pmask     : integer := 16#fff#;
-    wprot     : integer := 0;
-    invclk    : integer := 0;
-    fast      : integer := 0;
-    romasel   : integer := 28;
-    sdrasel   : integer := 29;
-    srbanks   : integer := 4;
-    ram8      : integer := 0;
-    ram16     : integer := 0;
-    sden      : integer := 0;
-    sepbus    : integer := 0;
-    sdbits    : integer := 32;
-    sdlsb     : integer := 2;          -- set to 12 for the GE-HPE board
-    oepol     : integer := 0;
-    edac      : integer := 0;
-    syncrst   : integer := 0;
-    pageburst : integer := 0;
-    scantest  : integer := 0;
-    writefb   : integer := 0;
-    wsshift   : integer := 0;
-    tech      : integer := 0
-  );
-   port (
-      rst:     in    Std_ULogic;
-      clk:     in    Std_ULogic;
-      ahbsi:   in    ahb_slv_in_type;
-      ahbso:   out   ahb_slv_out_type;
-      apbi:    in    apb_slv_in_type;
-      apbo:    out   apb_slv_out_type;
-      memi_data:        in    Std_Logic_Vector(31 downto 0);
-      memi_brdyn:       in    Std_Logic;
-      memi_bexcn:       in    Std_Logic;
-      memi_writen:      in    Std_Logic;
-      memi_wrn:         in    Std_Logic_Vector(3 downto 0);
-      memi_bwidth:      in    Std_Logic_Vector(1 downto 0);
-      memi_sd:          in    Std_Logic_Vector(63 downto 0);
-      memi_cb:          in    Std_Logic_Vector(15 downto 0);
-      memi_scb:         in    Std_Logic_Vector(15 downto 0);
-      memi_edac:        in    Std_Logic;
-      memo_address:     out   Std_Logic_Vector(31 downto 0);
-      memo_data:        out   Std_Logic_Vector(31 downto 0);
-      memo_sddata:      out   Std_Logic_Vector(63 downto 0);
-      memo_ramsn:       out   Std_Logic_Vector(7 downto 0);
-      memo_ramoen:      out   Std_Logic_Vector(7 downto 0);
-      memo_ramn:        out   Std_ULogic;
-      memo_romn:        out   Std_ULogic;
-      memo_mben:        out   Std_Logic_Vector(3 downto 0);
-      memo_iosn:        out   Std_Logic;
-      memo_romsn:       out   Std_Logic_Vector(7 downto 0);
-      memo_oen:         out   Std_Logic;
-      memo_writen:      out   Std_Logic;
-      memo_wrn:         out   Std_Logic_Vector(3 downto 0);
-      memo_bdrive:      out   Std_Logic_Vector(3 downto 0);
-      memo_vbdrive:     out   Std_Logic_Vector(31 downto 0);
-      memo_svbdrive:    out   Std_Logic_Vector(63 downto 0);
-      memo_read:        out   Std_Logic;
-      memo_sa:          out   Std_Logic_Vector(14 downto 0);
-      memo_cb:          out   Std_Logic_Vector(15 downto 0);
-      memo_scb:         out   Std_Logic_Vector(15 downto 0);
-      memo_vcdrive:     out   Std_Logic_Vector(15 downto 0);
-      memo_svcdrive:    out   Std_Logic_Vector(15 downto 0);
-      memo_ce:          out   Std_ULogic;
-      sdo_sdcke:        out   Std_Logic_Vector( 1 downto 0);
-      sdo_sdcsn:        out   Std_Logic_Vector( 1 downto 0);
-      sdo_sdwen:        out   Std_ULogic;
-      sdo_rasn:         out   Std_ULogic;
-      sdo_casn:         out   Std_ULogic;
-      sdo_dqm:          out   Std_Logic_Vector( 7 downto 0);
-      wpo_wprothit:     in    Std_ULogic);
-
-end component;
 
 component ssrctrl_net
    generic (

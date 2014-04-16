@@ -8,6 +8,10 @@ NET "clk"   LOC = "E3"	| IOSTANDARD = "LVCMOS33";					#Bank = 35, Pin name = IO_
 NET "clk" TNM_NET = sys_clk_pin;
 TIMESPEC TS_sys_clk_pin = PERIOD sys_clk_pin 100 MHz HIGH 50%; 
 
+NET "eth_clk" TNM_NET = eth_clk;
+NET "eth_clk90" TNM_NET = eth_clk;
+TIMESPEC TS_eth_clk = PERIOD eth_clk 50 MHz HIGH 50%;
+
 ## Switches
 NET "sw<0>"			LOC = "U9"	| IOSTANDARD = "LVCMOS33";		#Bank = 34, Pin name = IO_L21P_T3_DQS_34,					Sch name = SW0
 NET "sw<1>"			LOC = "U8"	| IOSTANDARD = "LVCMOS33";		#Bank = 34, Pin name = IO_25_34,							Sch name = SW1

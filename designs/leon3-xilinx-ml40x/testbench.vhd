@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -189,7 +189,7 @@ begin
 
   datazz <= "HHHH";
 
-  u0 : cy7c1354 generic map (fname => sramfile)
+  u0 : cy7c1354 generic map (fname => sramfile, tWEH => 0.0 ns, tAH => 0.0 ns)
    port map(
       Dq(35 downto 32) => datazz, Dq(31 downto 0) => sram_flash_data,
       Addr => sram_flash_addr(17 downto 0), Mode => sram_mode, 
@@ -204,21 +204,29 @@ begin
 
       sram_zz <= '0';
 
-  u1 : mt46v16m16 
-    generic map (index => 1, fname => sdramfile, bbits => 32)
-    PORT MAP(
-      Dq => ddr_dq(15 downto 0), Dqs => ddr_dqs(1 downto 0), Addr => ddr_ad(12 downto 0),
-      Ba => ddr_ba, Clk => ddr_clk,  Clk_n => ddr_clkb, Cke => ddr_cke,
-      Cs_n => ddr_csb, Ras_n => ddr_rasb, Cas_n => ddr_casb, We_n => ddr_web,
-      Dm => ddr_dm(1 downto 0));
+  -- u1 : mt46v16m16 
+  --   generic map (index => 1, fname => sdramfile, bbits => 32)
+  --   PORT MAP(
+  --     Dq => ddr_dq(15 downto 0), Dqs => ddr_dqs(1 downto 0), Addr => ddr_ad(12 downto 0),
+  --     Ba => ddr_ba, Clk => ddr_clk,  Clk_n => ddr_clkb, Cke => ddr_cke,
+  --     Cs_n => ddr_csb, Ras_n => ddr_rasb, Cas_n => ddr_casb, We_n => ddr_web,
+  --     Dm => ddr_dm(1 downto 0));
 
-  u2 : mt46v16m16 
-    generic map (index => 0, fname => sdramfile, bbits => 32)
-    PORT MAP(
-      Dq => ddr_dq(31 downto 16), Dqs => ddr_dqs(3 downto 2), Addr => ddr_ad(12 downto 0),
-      Ba => ddr_ba, Clk => ddr_clk,  Clk_n => ddr_clkb, Cke => ddr_cke,
-      Cs_n => ddr_csb, Ras_n => ddr_rasb, Cas_n => ddr_casb, We_n => ddr_web,
-      Dm => ddr_dm(3 downto 2));
+  -- u2 : mt46v16m16 
+  --   generic map (index => 0, fname => sdramfile, bbits => 32)
+  --   PORT MAP(
+  --     Dq => ddr_dq(31 downto 16), Dqs => ddr_dqs(3 downto 2), Addr => ddr_ad(12 downto 0),
+  --     Ba => ddr_ba, Clk => ddr_clk,  Clk_n => ddr_clkb, Cke => ddr_cke,
+  --     Cs_n => ddr_csb, Ras_n => ddr_rasb, Cas_n => ddr_casb, We_n => ddr_web,
+  --     Dm => ddr_dm(3 downto 2));
+
+  ddr0 : ddrram
+    generic map(width => 32, abits => 13, colbits => 9, rowbits => 13,
+                implbanks => 1, fname => sdramfile, density => 2)
+    port map (ck => ddr_clk, cke => ddr_cke, csn => ddr_csb,
+              rasn => ddr_rasb, casn => ddr_casb, wen => ddr_web,
+              dm => ddr_dm, ba => ddr_ba, a => ddr_ad, dq => ddr_dq,
+              dqs => ddr_dqs);
 
   prom0 : for i in 0 to (romwidth/8)-1 generate
       sr0 : sram generic map (index => i, abits => romdepth, fname => promfile)

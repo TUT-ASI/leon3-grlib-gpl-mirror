@@ -153,15 +153,13 @@ SDCFILE=default.sdc
 BITGEN=$(GRLIB)/boards/$(BOARD)/default.ut
 CLEAN=soft-clean migclean pcieclean
 TECHLIBS = secureip unisim
-VLOGOPT= +define+x1Gb +define+sg187E +define+x16 -O0
+VLOGOPT= -O0
 VCOMOPT= -explicit -O0 
 ifeq ("$(GRLIB_SIMULATOR)","ALDEC")
-VSIMOPT= +access +w -gdisas=1 -gDEBUG=0 -do riviera_preload_ddr3_dimm.do -t ps -novopt +notimingchecks -L secureip_ver -L xilinxcorelib_ver -L unisims_ver glbl $(SIMTOP)
+VSIMOPT= +access +w -t ps -novopt +notimingchecks -L secureip_ver -L xilinxcorelib_ver -L unisims_ver glbl $(SIMTOP)
 else
-VSIMOPT= -gdisas=1 -gDEBUG=0 -do preload_ddr3_dimm.do -t ps -novopt +notimingchecks -L secureip_ver -L xilinxcorelib_ver -L unisims_ver glbl $(SIMTOP)
+VSIMOPT= -t ps -novopt +notimingchecks -L secureip_ver -L xilinxcorelib_ver -L unisims_ver glbl $(SIMTOP)
 endif
-
-EXTRA_SOFT = gen_hex_dim16
 
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp usbhc spw gsi cypress hynix \

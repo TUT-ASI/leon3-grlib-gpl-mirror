@@ -3,7 +3,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -30,8 +30,6 @@ library grlib;
 use grlib.amba.all;
 use grlib.stdlib.all;
 use grlib.devices.all;
-library micron;
-use micron.all;
 library techmap;
 use techmap.gencomp.all;
 use work.debug.all;
@@ -69,11 +67,10 @@ constant SIMULATION          : string := "TRUE";
 
 
 constant promfile      : string := "prom.srec";  -- rom contents
-constant sramfile      : string := "ram.srec";  -- ram contents
-constant sdramfile     : string := "ram.srec"; -- sdram contents
+constant ramfile       : string := "ram.srec";  -- ram contents
 
 signal clk             : std_logic := '0';
-signal Rst             : std_logic := '0';
+signal rst             : std_logic := '0';
 
 signal address         : std_logic_vector(25 downto 0);
 signal data            : std_logic_vector(15 downto 0);
@@ -200,6 +197,8 @@ signal ddo             : grusb_dcl_debug_data;
 signal phy_mdio        : std_logic;
 signal phy_mdc         : std_ulogic;
 
+signal txp_eth, txn_eth : std_logic;
+
 component leon3mp is
   generic (
     fabtech             : integer := CFG_FABTECH;
@@ -275,35 +274,6 @@ component leon3mp is
    );
 end component;
 
-component ddr3_model
-  generic(
-    ADDR_BITS : integer := 14;
-    BA_BITS : integer := 3;
-    DM_BITS : integer := 1;
-    DQ_BITS : integer := 8;
-    DQS_BITS : integer := 1
-  );
-  port(
-    rst_n : in std_logic;
-    ck : in std_logic;
-    ck_n : in std_logic;
-    cke : in std_logic;
-    cs_n : in std_logic;
-    ras_n : in std_logic;
-    cas_n : in std_logic;
-    we_n : in std_logic;
-    dm_tdqs : inout std_logic;
-    ba : in std_logic_vector(2 downto 0);
-    addr : in std_logic_vector(13 downto 0);
-    dq : inout std_logic_vector(7 downto 0);
-    dqs : inout std_logic;
-    dqs_n : inout std_logic;
-    tdqs_n : out std_logic_vector(0 to 0);
-    odt : in std_logic
-  );
-end component;
-
-
 begin
 
   -- clock and reset
@@ -376,10 +346,10 @@ begin
        usb_resetn      => usb_resetn,
        gtrefclk_p      => clkethp,
        gtrefclk_n      => clkethn,
-       txp             => OPEN,
-       txn             => OPEN,
-       rxp             => '1',
-       rxn             => '1',
+       txp             => txp_eth,
+       txn             => txn_eth,
+       rxp             => txp_eth,
+       rxn             => txn_eth,
        emdio           => phy_mdio,
        emdc            => phy_mdc,
        eint            => '0',
@@ -396,7 +366,24 @@ begin
 
    phy_mdio <= 'H';
    p0: phy
-    generic map (address => 7)
+    generic map (
+             address       => 7,
+             extended_regs => 1,
+             aneg          => 1,
+             base100_t4    => 1,
+             base100_x_fd  => 1,
+             base100_x_hd  => 1,
+             fd_10         => 1,
+             hd_10         => 1,
+             base100_t2_fd => 1,
+             base100_t2_hd => 1,
+             base1000_x_fd => 1,
+             base1000_x_hd => 1,
+             base1000_t_fd => 1,
+             base1000_t_hd => 1,
+             rmii          => 0,
+             rgmii         => 1
+    )
     port map(dsurst, phy_mdio, OPEN , OPEN , OPEN ,
              OPEN , OPEN , OPEN , OPEN , "00000000",
              '0', '0', phy_mdc, clkethp); 
@@ -410,39 +397,41 @@ begin
                   writen, oen);
   end generate;
 
-  -- Memory Models instantiations
+  -- Memory model instantiation
   gen_mem_model : if (USE_MIG_INTERFACE_MODEL /= true) generate
    ddr3mem : if (CFG_MIG_SERIES7 = 1) generate
-    gen_mem: for i in 0 to 7 generate
-
-
-      u1: ddr3_model
-        generic map(
-        ADDR_BITS => 14,
-        BA_BITS   => 3,
-        DM_BITS   => 1,
-        DQ_BITS   => 8,
-        DQS_BITS  => 1
-        )
-        port map (
-        rst_n   => ddr3_reset_n,
-        ck      => ddr3_ck_p(0),
-        ck_n    => ddr3_ck_n(0),
-        cke     => ddr3_cke(0),
-        cs_n    => ddr3_cs_n(0),
-        ras_n   => ddr3_ras_n,
-        cas_n   => ddr3_cas_n,
-        we_n    => ddr3_we_n,
-        dm_tdqs => ddr3_dm(i),
-        ba      => ddr3_ba,
-        addr    => ddr3_addr,
-        dq      => ddr3_dq((8*i+7) downto (8*i)),
-        dqs     => ddr3_dqs_p(i),
-        dqs_n   => ddr3_dqs_n(i),
-        tdqs_n  => open,
-        odt     => ddr3_odt(0)
-        );
-    end generate gen_mem;
+     u1 : ddr3ram
+       generic map (
+         width     => 64,
+         abits     => 14,
+         colbits   => 10,
+         rowbits   => 10,
+         implbanks => 1,
+         fname     => ramfile,
+         lddelay   => (0 ns),
+         ldguard   => 1,
+         speedbin  => 9, --DDR3-1600K
+         density   => 3,
+         pagesize  => 1,
+         changeendian => 8)
+       port map (
+          ck     => ddr3_ck_p(0),
+          ckn    => ddr3_ck_n(0),
+          cke    => ddr3_cke(0),
+          csn    => ddr3_cs_n(0),
+          odt    => ddr3_odt(0),
+          rasn   => ddr3_ras_n,
+          casn   => ddr3_cas_n,
+          wen    => ddr3_we_n,
+          dm     => ddr3_dm,
+          ba     => ddr3_ba,
+          a      => ddr3_addr,
+          resetn => ddr3_reset_n,
+          dq     => ddr3_dq,
+          dqs    => ddr3_dqs_p,
+          dqsn   => ddr3_dqs_n,
+          doload => led(3)
+          );
    end generate ddr3mem;
   end generate gen_mem_model;
 
@@ -526,7 +515,9 @@ begin
     dsurst <= '0';
     switch(4) <= '0';
     wait for 2500 ns;
-    wait for 210 us; -- This is for proper DDR3 behaviour durign init phase not needed durin simulation
+    if (USE_MIG_INTERFACE_MODEL /= true) then
+       wait for 210 us; -- This is for proper DDR3 behaviour durign init phase not needed durin simulation
+    end if;
     dsurst <= '1';
     switch(4) <= '1';
     if (USE_MIG_INTERFACE_MODEL /= true) then

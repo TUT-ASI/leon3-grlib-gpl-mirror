@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -418,7 +418,8 @@ component ftsdmctrl
     wprot   : integer := 0;
     sdbits  : integer := 32;
     syncrst : integer := 0;
-    pageburst : integer := 0
+    pageburst : integer := 0;
+    edac    : integer := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -581,4 +582,31 @@ end component;
   );
   end component; 
 
+  component p8ctrl
+  generic (
+    hindex  : integer := 0;
+    romaddr : integer := 0;
+    rommask : integer := 16#ff0#;
+    ramaddr : integer := 0;
+    iomask  : integer := 16#ff0#;
+    ioaddr  : integer := 0;
+    rammask : integer := 16#ff0#;
+    romws   : integer := 15;
+    ramws   : integer := 15;
+    prom8en : integer := 0;
+    rmw     : integer := 0;
+    oepol   : integer := 0;
+    romasel : integer range 0 to 28 := 23
+  );
+  port (
+    rst     : in  std_ulogic;
+    clk     : in  std_ulogic;
+    ahbsi   : in  ahb_slv_in_type;
+    ahbso   : out ahb_slv_out_type;
+    sri     : in  memory_in_type;
+    sro     : out memory_out_type;
+    sdo     : out sdctrl_out_type
+  );
+  end component;
+  
 end;

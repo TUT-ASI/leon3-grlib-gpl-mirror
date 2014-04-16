@@ -30,7 +30,6 @@ EFFORT=high
 ISEMAPOPT=-timing
 XSTOPT=
 SYNPOPT="set_option -maxfan 100; set_option -pipe 1; set_option -retiming 1; set_option -write_apr_constraint 0"
-GRLIB_SIMULATOR=ModelSim-SE
 VHDLOPTSYNFILES= mig37/mig_37/user_design/rtl/iodrp_controller.vhd \
 	mig37/mig_37/user_design/rtl/iodrp_mcb_controller.vhd \
 	mig37/mig_37/user_design/rtl/mcb_raw_wrapper.vhd \
@@ -63,7 +62,7 @@ LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan pci ambatest ddr \
 	leon4 leon4v0 l2cache gr1553b iommu ascs slink pwm \
 	hcan
-#FILEADD = MCB.vhd
+FILEADD = MCB.vhd
 FILESKIP = grcan.vhd ddr2.v mobile_ddr.v
 
 include $(GRLIB)/bin/Makefile

@@ -86,8 +86,8 @@ int spw_test(int addr)
   tx = (char *) malloc(64);
   rmaphdr = (char *) malloc(32);
   rmap = (char *) malloc(64);
-  rxd = (int *) almalloc(1024);
-  txd = (int *) almalloc(1024);
+  rxd = (int *) almalloc(8192);
+  txd = (int *) almalloc(8192);
   size = (int *) malloc(sizeof(int));
   
   /*reset link */

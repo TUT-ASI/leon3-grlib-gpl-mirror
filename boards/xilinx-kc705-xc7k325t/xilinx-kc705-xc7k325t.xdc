@@ -121,12 +121,12 @@ set_false_path -from [get_clocks -include_generated_clocks phy_gtxclk] -through 
 #set_output_delay -clock [get_clocks -include_generated_clocks phy_gtxclk] -min 1.000 [get_ports phy_txctl_txen] -add_delay -clock_fall
 
 #output timing for rgmii - derated slightly due to pessimism in the tools
-create_generated_clock -name rgmii_tx_clk -divide_by 1 -source [get_pins eth0.rgmii0/rgmii_tx_clk/*/*/C] [get_ports phy_gtxclk]
+#create_generated_clock -name rgmii_tx_clk -divide_by 1 -source [get_pins eth0.rgmii0/rgmii_tx_clk/*/*/C] [get_ports phy_gtxclk]
 
-set_output_delay 0.75 -max -clock [get_clocks rgmii_tx_clk] [get_ports {phy_txd[*] phy_txctl_txen}]
-set_output_delay -0.7 -min -clock [get_clocks rgmii_tx_clk] [get_ports {phy_txd[*] phy_txctl_txen}]
-set_output_delay 0.75 -max -clock [get_clocks rgmii_tx_clk] [get_ports {phy_txd[*] phy_txctl_txen}] -clock_fall -add_delay
-set_output_delay -0.7 -min -clock [get_clocks rgmii_tx_clk] [get_ports {phy_txd[*] phy_txctl_txen}] -clock_fall -add_delay
+#set_output_delay 0.75 -max -clock [get_clocks rgmii_tx_clk] [get_ports {phy_txd[*] phy_txctl_txen}]
+#set_output_delay -0.7 -min -clock [get_clocks rgmii_tx_clk] [get_ports {phy_txd[*] phy_txctl_txen}]
+#set_output_delay 0.75 -max -clock [get_clocks rgmii_tx_clk] [get_ports {phy_txd[*] phy_txctl_txen}] -clock_fall -add_delay
+#set_output_delay -0.7 -min -clock [get_clocks rgmii_tx_clk] [get_ports {phy_txd[*] phy_txctl_txen}] -clock_fall -add_delay
 
 
 # Inputs
@@ -170,7 +170,7 @@ set_output_delay -clock [get_clocks -include_generated_clocks clk_pll_i] -max 1.
 set_output_delay -clock [get_clocks -include_generated_clocks clk_pll_i] -min -add_delay -1.000 [get_ports phy_mdc]
 
 # apply the same IDELAY_VALUE to all GMII RX inputs
-set_property IDELAY_VALUE 20 [get_cells {eth0.delay* eth0.rgmii*.delay*}]
+#set_property IDELAY_VALUE 20 [get_cells {eth0.delay* eth0.rgmii*.delay*}]
 
 # Group IODELAY and IDELAYCTRL components to aid placement
 set_property IODELAY_GROUP kc705_ethernet_rgmii_grp1 [get_cells {eth0.delay* eth0.rgmii*.delay*}]

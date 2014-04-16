@@ -3,7 +3,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -176,6 +176,27 @@ component ddr_dummy
    );
 end component ;
 
+-- pragma translate_off
+component ahbram_sim
+  generic (
+    hindex  : integer := 0;
+    haddr   : integer := 0;
+    hmask   : integer := 16#fff#;
+    tech    : integer := DEFMEMTECH; 
+    kbytes  : integer := 1;
+    pipe    : integer := 0;
+    maccsz  : integer := AHBDW;
+    fname   : string  := "ram.dat"
+   );
+  port (
+    rst     : in  std_ulogic;
+    clk     : in  std_ulogic;
+    ahbsi   : in  ahb_slv_in_type;
+    ahbso   : out ahb_slv_out_type
+  );
+end component ;
+-- pragma translate_on
+
 component IBUFDS_GTE2
   port (
      O : out std_ulogic;
@@ -244,7 +265,8 @@ signal ahbmo : ahb_mst_out_vector := (others => ahbm_none);
 signal vahbmo : ahb_mst_out_type;
 
 signal ui_clk : std_ulogic;
-signal clkm, rstn, rstraw, sdclkl : std_ulogic;
+signal clkm : std_ulogic := '0'; 
+signal rstn, rstraw, sdclkl : std_ulogic;
 signal clk_200 : std_ulogic;
 signal clk25, clk40, clk65 : std_ulogic;
 
@@ -527,6 +549,7 @@ begin
 ----------------------------------------------------------------------
 
   mig_gen : if (CFG_MIG_SERIES7 = 1) generate
+    gen_mig : if (USE_MIG_INTERFACE_MODEL /= true) generate
       ddrc : ahb2mig_series7 generic map(
     hindex => 4, haddr => 16#400#, hmask => 16#C00#,
     pindex => 4, paddr => 4,
@@ -566,6 +589,56 @@ begin
      clkgenmigref0 : clkgen
        generic map (clktech, 16, 8, 0,CFG_CLK_NOFB, 0, 0, 0, 100000)
        port map (clkm, clkm, clkref, open, open, open, open, cgi, cgo, open, open, open);
+    end generate gen_mig;
+
+    gen_mig_model : if (USE_MIG_INTERFACE_MODEL = true) generate
+    -- pragma translate_off
+
+    mig_ahbram : ahbram_sim
+     generic map (
+       hindex   => 4,
+       haddr    => 16#400#,
+       hmask    => 16#C00#,
+       tech     => 0,
+       kbytes   => 1000,
+       pipe     => 0,
+       maccsz   => AHBDW,
+       fname    => "ram.srec"
+     )
+     port map(
+       rst     => rstn,
+       clk     => clkm,
+       ahbsi   => ahbsi,
+       ahbso   => ahbso(4)
+     );
+
+     ddr3_dq           <= (others => 'Z');
+     ddr3_dqs_p        <= (others => 'Z');
+     ddr3_dqs_n        <= (others => 'Z');
+     ddr3_addr         <= (others => '0');
+     ddr3_ba           <= (others => '0');
+     ddr3_ras_n        <= '0';
+     ddr3_cas_n        <= '0';
+     ddr3_we_n         <= '0';
+     ddr3_reset_n      <= '1';
+     ddr3_ck_p         <= (others => '0');
+     ddr3_ck_n         <= (others => '0');
+     ddr3_cke          <= (others => '0');
+     ddr3_cs_n         <= (others => '0');
+     ddr3_dm           <= (others => '0');
+     ddr3_odt          <= (others => '0');
+
+    --calib_done        : out   std_logic;
+     calib_done <= '1';
+     
+    --ui_clk            : out   std_logic;
+    clkm <= not clkm after 5.0 ns;
+    
+    --ui_clk_sync_rst   : out   std_logic
+    -- n/a
+    -- pragma translate_on
+
+   end generate gen_mig_model;
 
   end generate;
 
@@ -615,7 +688,7 @@ begin
         hindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG,
         pindex => 14, paddr => 16#C00#, pmask => 16#C00#, pirq => 14, memtech => memtech,
         mdcscaler => CPU_FREQ/1000, rmii => 0, enable_mdio => 1, fifosize => CFG_ETH_FIFO,
-        nsync => 1, edcl => CFG_DSU_ETH, edclbufsz => CFG_ETH_BUF, phyrstadr => 7,
+        nsync => 2, edcl => CFG_DSU_ETH, edclbufsz => CFG_ETH_BUF, phyrstadr => 7,
         macaddrh => CFG_ETH_ENM, macaddrl => CFG_ETH_ENL, enable_mdint => 1,
         ipaddrh => CFG_ETH_IPM, ipaddrl => CFG_ETH_IPL,
         giga => CFG_GRETH1G, ramdebug => 2)
@@ -701,8 +774,10 @@ begin
    end process;
 
     -- RGMII Interface
-    rgmii0 : rgmii generic map (11, 16#010# , 16#ff0#, fabtech, CFG_GRETH1G, 1, 1, 1)
-      port map (rstn, gtx_clk90, ethi, etho, rgmiii, rgmiio, clkm, rstn, apbi, apbo(11));
+    rgmii0 : rgmii generic map (pindex => 11, paddr => 16#010#, pmask => 16#ff0#, tech => fabtech,
+                               gmii => CFG_GRETH1G, debugmem => 1, abits => 8, no_clk_mux => 1,
+                               pirq => 11, use90degtxclk => 1)
+      port map (rstn, ethi, etho, rgmiii, rgmiio, clkm, rstn, apbi, apbo(11));
 
       egtxc_pad : outpad generic map (tech => padtech, level => cmos, voltage => x25v, slew => 1) 
         port map (phy_gtxclk, rgmiio.tx_clk);
@@ -747,7 +822,7 @@ begin
            
       clkgen_gtrefclk : clkgen
         generic map (clktech, 8, 8, 0, 0, 0, 0, 0, 125000)
-        port map (gtx_clk_nobuf, gtx_clk_nobuf, gtx_clk, gtx_clk90, io_ref, open, open, cgi2, cgo2, open, open, open);
+        port map (gtx_clk_nobuf, gtx_clk_nobuf, gtx_clk, rgmiii.tx_clk_90, io_ref, open, open, cgi2, cgo2, open, open, open);
 
     end generate;
 
@@ -761,7 +836,7 @@ begin
 ----------------------------------------------------------------------
 
    --i2cm: if CFG_I2C_ENABLE = 1 generate  -- I2C master
-    i2c0 : i2cmst generic map (pindex => 9, paddr => 9, pmask => 16#FFF#, pirq => 11, filter => 9)
+    i2c0 : i2cmst generic map (pindex => 9, paddr => 9, pmask => 16#FFF#, pirq => 9, filter => 9)
       port map (rstn, clkm, apbi, apbo(9), i2ci, i2co);
 
     i2c_scl_pad : iopad generic map (tech => padtech, level => cmos, voltage => x25v)

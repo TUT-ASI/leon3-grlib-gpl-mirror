@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -266,5 +266,105 @@ begin
       byteena_a => enablex );
 end;
 
+library ieee;
+use ieee.std_logic_1164.all;
+-- pragma translate_off
+library altera_mf;
+use altera_mf.dcfifo;
+-- pragma translate_on
 
+entity altera_fifo_dp is
+  generic ( 
+    tech  : integer := 0;
+    abits : integer := 4;
+    dbits : integer := 32
+  );
+  port (
+    rdclk   : in std_logic;
+    rdreq   : in std_logic;
+    rdfull  : out std_logic;
+    rdempty : out std_logic;
+    rdusedw : out std_logic_vector(abits-1 downto 0);
+    q       : out std_logic_vector(dbits-1 downto 0);
+    wrclk   : in std_logic;
+    wrreq   : in std_logic;
+    wrfull  : out std_logic;
+    wrempty : out std_logic;
+    wrusedw : out std_logic_vector(abits-1 downto 0);
+    data    : in std_logic_vector(dbits-1 downto 0);
+    aclr    : in std_logic := '0');
+end;
+
+architecture behav of altera_fifo_dp is
+
+  component dcfifo
+    generic (
+        lpm_width               : natural;
+        lpm_widthu              : natural;
+        lpm_numwords            : natural;
+        lpm_showahead           : string := "OFF";
+        lpm_hint                : string := "USE_EAB=ON";
+        overflow_checking       : string := "ON";
+        underflow_checking      : string := "ON";
+        delay_rdusedw           : natural := 1;
+        delay_wrusedw           : natural := 1;
+        rdsync_delaypipe        : natural := 0;
+        wrsync_delaypipe        : natural := 0;
+        use_eab                 : string := "ON";
+        add_ram_output_register : string := "OFF";
+        add_width               : natural := 1;
+        clocks_are_synchronized : string := "FALSE";
+        ram_block_type          : string := "AUTO";
+        add_usedw_msb_bit       : string := "OFF";
+        write_aclr_synch        : string := "OFF";
+        lpm_type                : string := "dcfifo";
+        intended_device_family  : string := "NON_STRATIX" );
+    port (
+        data    : in std_logic_vector(lpm_width-1 downto 0);
+        rdclk   : in std_logic;
+        wrclk   : in std_logic;
+        wrreq   : in std_logic;
+        rdreq   : in std_logic;
+        aclr    : in std_logic := '0';
+        rdfull  : out std_logic;
+        wrfull  : out std_logic;
+        wrempty : out std_logic;
+        rdempty : out std_logic;
+        q       : out std_logic_vector(lpm_width-1 downto 0);
+        rdusedw : out std_logic_vector(lpm_widthu-1 downto 0);
+        wrusedw : out std_logic_vector(lpm_widthu-1 downto 0) );
+  end component;
+
+begin
+
+  u0 : dcfifo
+    generic map (
+      intended_device_family  => "STRATIX IV",
+      lpm_numwords            => 2**abits,
+      lpm_showahead           => "OFF",
+      lpm_type                => "dcfifo",
+      lpm_width               => dbits,
+      lpm_widthu              => abits,
+      overflow_checking       => "ON",
+      rdsync_delaypipe        => 4,
+      underflow_checking      => "ON",
+      use_eab                 => "ON",
+      wrsync_delaypipe        => 4
+    )
+    port map (
+      rdclk   => rdclk,
+      rdreq   => rdreq,
+      rdfull  => rdfull,
+      rdempty => rdempty,
+      rdusedw => rdusedw,
+      q       => q,
+      wrclk   => wrclk,
+      wrreq   => wrreq,
+      wrfull  => wrfull,
+      wrempty => wrempty,
+      wrusedw => wrusedw,
+      data    => data,
+      aclr    => aclr
+      );
+end;
 

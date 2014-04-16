@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,17 +28,9 @@ use gaisler.libdcom.all;
 use gaisler.sim.all;
 library techmap;
 use techmap.gencomp.all;
-library micron;
-use micron.components.all;
-library hynix;
-use hynix.components.all;
 use work.debug.all;
 
 use work.config.all;
-
-library hynix;
-use hynix.components.all;
-use hynix.HY5PS121621F_PACK.all;
 
 entity testbench is
   generic (
@@ -64,17 +56,15 @@ architecture behav of testbench is
   signal mcb3_dram_dq     : std_logic_vector(15 downto 0);
   signal mcb3_rzq         : std_logic;
   signal mcb3_zio         : std_logic;
-  signal mcb3_dram_udqs   : std_logic;
-  signal mcb3_dram_udqs_n : std_logic;
-  signal mcb3_dram_dqs    : std_logic;
-  signal mcb3_dram_dqs_n  : std_logic;
+  signal mcb3_dram_dqs    : std_logic_vector(1 downto 0);
+  signal mcb3_dram_dqs_n  : std_logic_vector(1 downto 0);
   signal mcb3_dram_a      : std_logic_vector(12 downto 0);
   signal mcb3_dram_ba     : std_logic_vector(2 downto 0);
   signal mcb3_dram_cke    : std_logic;
   signal mcb3_dram_ras_n  : std_logic;
   signal mcb3_dram_cas_n  : std_logic;
   signal mcb3_dram_we_n   : std_logic;
-  signal mcb3_dram_dm     : std_logic;
+  signal mcb3_dram_dm     : std_logic_vector(1 downto 0);
   signal mcb3_dram_udm    : std_logic;
   signal mcb3_dram_ck     : std_logic;
   signal mcb3_dram_ck_n   : std_logic;
@@ -94,7 +84,7 @@ architecture behav of testbench is
   
 begin
   -- clock and reset
-  clk48      <= not clk48 after 10.05 ns;
+  clk48      <= not clk48 after 10.417 ns;
   reset      <= '1', '0' after 300 ns;
   dsubre     <= '0';
 
@@ -113,18 +103,18 @@ begin
       mcb3_dram_dq     => mcb3_dram_dq,
       mcb3_rzq         => mcb3_rzq,
       mcb3_zio         => mcb3_zio,
-      mcb3_dram_udqs   => mcb3_dram_udqs,
-      mcb3_dram_udqs_n => mcb3_dram_udqs_n,
-      mcb3_dram_dqs    => mcb3_dram_dqs,
-      mcb3_dram_dqs_n  => mcb3_dram_dqs_n,
+      mcb3_dram_udqs   => mcb3_dram_dqs(1),
+      mcb3_dram_udqs_n => mcb3_dram_dqs_n(1),
+      mcb3_dram_dqs    => mcb3_dram_dqs(0),
+      mcb3_dram_dqs_n  => mcb3_dram_dqs_n(0),
       mcb3_dram_a      => mcb3_dram_a,
       mcb3_dram_ba     => mcb3_dram_ba,
       mcb3_dram_cke    => mcb3_dram_cke,
       mcb3_dram_ras_n  => mcb3_dram_ras_n,
       mcb3_dram_cas_n  => mcb3_dram_cas_n,
       mcb3_dram_we_n   => mcb3_dram_we_n,
-      mcb3_dram_dm     => mcb3_dram_dm,
-      mcb3_dram_udm    => mcb3_dram_udm, 
+      mcb3_dram_dm     => mcb3_dram_dm(0),
+      mcb3_dram_udm    => mcb3_dram_dm(1), 
       mcb3_dram_ck     => mcb3_dram_ck,
       mcb3_dram_ck_n   => mcb3_dram_ck_n,
       -- Debug support unit
@@ -145,18 +135,14 @@ begin
 
 
   migddr2mem : if (CFG_MIG_DDR2 = 1) generate 
-    u0 : HY5PS121621F
-      generic map (TimingCheckFlag => false, PUSCheckFlag => false,
-                   index => 0, bbits => 16, fname => sdramfile,
-                   fdelay => 115, part_number => B800)
-      port map (DQ => mcb3_dram_dq,
-                LDQS  => mcb3_dram_dqs, LDQSB => mcb3_dram_dqs_n,
-                UDQS => mcb3_dram_udqs, UDQSB => mcb3_dram_udqs_n,
-                LDM => mcb3_dram_dm, WEB => mcb3_dram_we_n,
-                CASB => mcb3_dram_cas_n, RASB => mcb3_dram_ras_n,
-                CSB => csb, BA => mcb3_dram_ba(1 downto 0), ADDR => mcb3_dram_a,
-                CKE => mcb3_dram_cke, CLK => mcb3_dram_ck,
-                CLKB => mcb3_dram_ck_n, UDM => mcb3_dram_udm);
+    ddr0 : ddr2ram
+      generic map(width => 16, abits => 13, babits => 3, colbits => 10, rowbits => 13,
+                  implbanks => 1, fname => sdramfile, speedbin=>9, density => 2,
+                  lddelay => 115 us)
+      port map (ck => mcb3_dram_ck, ckn => mcb3_dram_ck_n, cke => mcb3_dram_cke, csn => csb,
+                odt => '0', rasn => mcb3_dram_ras_n, casn => mcb3_dram_cas_n, wen => mcb3_dram_we_n,
+                dm => mcb3_dram_dm, ba => mcb3_dram_ba, a => mcb3_dram_a(12 downto 0),
+                dq => mcb3_dram_dq, dqs => mcb3_dram_dqs, dqsn => mcb3_dram_dqs_n);
   end generate;
 
   --spimem0: if CFG_SPIMCTRL = 1 generate

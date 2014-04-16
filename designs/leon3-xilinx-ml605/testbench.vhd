@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,8 +28,6 @@ use gaisler.libdcom.all;
 use gaisler.sim.all;
 library techmap;
 use techmap.gencomp.all;
-library micron;
-use micron.all;
 use work.debug.all;
 
 use work.config.all;
@@ -59,7 +57,7 @@ constant SIM_BYPASS_INIT_CAL : string := "FAST";
 
 
   constant promfile  : string  := "prom.srec";        -- rom contents
-  constant sdramfile : string  := "ram.srec";       -- sdram contents
+  constant ramfile   : string  := "ram.srec";       -- sdram contents
 
   constant lresp    : boolean := false;
   constant ct       : integer := clkperiod/2;
@@ -150,28 +148,6 @@ signal sysace_d        : std_logic_vector(7 downto 0);
 signal clk_33          : std_ulogic := '0';
 
   signal brdyn     : std_ulogic;
-
-component ddr3_model is
-  port (
-     	rst_n	: in    std_logic;
-     	ck	: in    std_logic;
-     	ck_n	: in    std_logic;
-     	cke	: in    std_logic;
-     	cs_n	: in    std_logic;
-     	ras_n	: in    std_logic;
-     	cas_n	: in    std_logic;
-     	we_n	: in    std_logic;
-     	dm_tdqs : inout std_logic_vector(1 downto 0);
-     	ba	: in    std_logic_vector(2 downto 0);
-     	addr	: in    std_logic_vector(12 downto 0);
-     	dq	: inout std_logic_vector(15 downto 0);
-     	dqs	: inout std_logic_vector(1 downto 0);
-     	dqs_n	: inout std_logic_vector(1 downto 0);
-     	tdqs_n  : out   std_logic_vector(1 downto 0);
-     	odt	: in    std_logic
-   );
-end component ddr3_model;
-
 
 ---------------------pcie----------------------------------------------
 signal cor_sys_reset_n : std_logic := '1';
@@ -287,31 +263,40 @@ begin
         led => led
       );
 
-  gen_mem: for i in 0 to 3 generate
-    u1: ddr3_model port map
-      (
-    	rst_n	=> ddr3_reset_n,
-    	ck	=> ddr3_ck_p(0),
-    	ck_n	=> ddr3_ck_n(0),
-    	cke	=> ddr3_cke(0),
-    	cs_n	=> ddr3_cs_n(0),
-    	ras_n	=> ddr3_ras_n,
-    	cas_n	=> ddr3_cas_n,
-    	we_n	=> ddr3_we_n,
-    	dm_tdqs => ddr3_dm((2*(i+1)-1) downto (i*2)),
-    	ba	=> ddr3_ba,
-    	addr	=> ddr3_addr,
-    	dq	=> ddr3_dq((16*i+15) downto (16*i)),
-    	dqs	=> ddr3_dqs_p((2*(i+1)-1) downto (i*2)),
-    	dqs_n	=> ddr3_dqs_n((2*(i+1)-1) downto (i*2)),
-    	tdqs_n  => ddr3_tdqs_n((2*(i+1)-1) downto (i*2)),
-    	odt	=> ddr3_odt(0));
-  end generate gen_mem;
 
---  prom0 : sram
---    generic map (index => 6, abits => 24, fname => promfile)
---    port map (address(23 downto 0), data(31 downto 24), romsn, writen, oen);
-
+  u1 : ddr3ram
+    generic map (
+      width     => 64,
+      abits     => 13,
+      colbits   => 10,
+      rowbits   => 13,
+      implbanks => 1,
+      fname     => ramfile,
+      lddelay   => (0 ns),
+      ldguard   => 1,
+      speedbin  => 9, --DDR3-1600K
+      density   => 3,
+      pagesize  => 1,
+      changeendian => 32)
+    port map (
+      ck     => ddr3_ck_p(0),
+      ckn    => ddr3_ck_n(0),
+      cke    => ddr3_cke(0),
+      csn    => ddr3_cs_n(0),
+      odt    => ddr3_odt(0),
+      rasn   => ddr3_ras_n,
+      casn   => ddr3_cas_n,
+      wen    => ddr3_we_n,
+      dm     => ddr3_dm,
+      ba     => ddr3_ba,
+      a      => ddr3_addr,
+      resetn => ddr3_reset_n,
+      dq     => ddr3_dq,
+      dqs    => ddr3_dqs_p,
+      dqsn   => ddr3_dqs_n,
+      doload => led(3)
+      );
+  
   address(0) <= '0';
   prom0 : for i in 0 to 1 generate
       sr0 : sram generic map (index => i+4, abits => 24, fname => promfile)

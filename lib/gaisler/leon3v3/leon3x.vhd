@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -127,6 +127,14 @@ constant IRFWT     : integer := 1;--regfile_3p_write_through(memtech);
 constant fpuarch   : integer := fpu mod 16;
 constant fpunet    : integer := (fpu mod 32) / 16;
 constant fpushared : boolean := (fpu / 32) /= 0;
+
+constant FTSUP     : integer := 0
+                                ;
+
+-- Create an array length mismatch error if the user tries to enable FT
+-- features in non-FT release.
+constant dummy_ft_consistency_check:
+  std_logic_vector(FTSUP*(iuft+fpft+cmft) downto (iuft+fpft+cmft)) := "0";
 
 signal holdn : std_logic;
 signal rfi   : iregfile_in_type;

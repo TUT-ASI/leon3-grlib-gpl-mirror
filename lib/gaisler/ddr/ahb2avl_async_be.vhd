@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library grlib;
+use grlib.amba.all;
 use grlib.stdlib.all;
 library gaisler;
 use gaisler.ddrpkg.all;
@@ -36,6 +37,7 @@ entity ahb2avl_async_be is
   generic (
     avldbits  : integer := 32;
     avlabits  : integer := 20;
+    ahbbits   : integer := ahbdw;
     burstlen  : integer := 8;
     nosync    : integer := 0
     );
@@ -92,6 +94,7 @@ begin
     variable slvi: ddravl_slv_in_type;
     variable rddone: std_ulogic;
     variable inc_ramaddr: std_ulogic;
+    variable aendaddr: std_logic_vector(9 downto 0);
   begin
     v := r;
 
@@ -104,8 +107,20 @@ begin
     slvi.write_req := r.wr;
     slvi.size := std_logic_vector(to_unsigned(avlbl, slvi.size'length));
 
+    -- fix for accesses wider than 32-b word
+    aendaddr := request.endaddr; --(log2(4*burstlen)-1 downto 2);
+    if request.hsize(1 downto 0)="11" and request.hio='0' then
+      aendaddr(2):='1';
+    end if;
+    if ahbbits > 64 and request.hsize(2)='1' then
+      aendaddr(3 downto 2) := "11";
+      if ahbbits > 128 and request.hsize(0)='1' then
+        aendaddr(4) := '1';
+      end if;
+    end if;
 
     v.req1 := request;
+    v.req1.endaddr := aendaddr;
     v.req2 := r.req1;
     v.start1 := start_tog;
     v.start2 := r.start1;

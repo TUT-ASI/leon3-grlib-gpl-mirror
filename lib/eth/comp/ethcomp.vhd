@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -46,7 +46,8 @@ package ethcomp is
       edclsepahbg    : integer range 0 to 1  := 0;
       ramdebug       : integer range 0 to 2  := 0;
       mdiohold       : integer := 1;
-      maxsize        : integer
+      maxsize        : integer;
+      gmiimode       : integer range 0 to 1  := 0
       );
     port(
       rst            : in  std_ulogic;
@@ -118,10 +119,12 @@ package ethcomp is
       rmii_clk       : in   std_ulogic;
       tx_clk         : in   std_ulogic;
       rx_clk         : in   std_ulogic;
+      tx_dv          : in   std_ulogic;
       rxd            : in   std_logic_vector(3 downto 0);   
       rx_dv          : in   std_ulogic; 
       rx_er          : in   std_ulogic; 
       rx_col         : in   std_ulogic;
+      rx_en          : in   std_ulogic;
       rx_crs         : in   std_ulogic;
       mdio_i         : in   std_ulogic;
       phyrstaddr     : in   std_logic_vector(4 downto 0);
@@ -169,7 +172,9 @@ package ethcomp is
       multicast      : integer range 0 to 1 := 0;
       edclsepahbg    : integer range 0 to 1 := 0;
       ramdebug       : integer range 0 to 2 := 0;
-      mdiohold       : integer := 1);
+      mdiohold       : integer := 1;
+      gmiimode       : integer range 0 to 1 := 0
+    );
     port(
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;
@@ -239,12 +244,14 @@ package ethcomp is
       --ethernet input signals
       gtx_clk        : in   std_ulogic;                     
       tx_clk         : in   std_ulogic;
+      tx_dv          : in   std_ulogic;
       rx_clk         : in   std_ulogic;
       rxd            : in   std_logic_vector(7 downto 0);   
       rx_dv          : in   std_ulogic; 
       rx_er          : in   std_ulogic; 
       rx_col         : in   std_ulogic;
       rx_crs         : in   std_ulogic;
+      rx_en          : in   std_ulogic;
       mdio_i         : in   std_ulogic;
       phyrstaddr     : in   std_logic_vector(4 downto 0);
       mdint          : in   std_ulogic;
@@ -285,11 +292,13 @@ package ethcomp is
       ipaddrl        : integer := 16#0035#;
       phyrstadr      : integer range 0 to 31 := 0;
       rmii           : integer range 0 to 1  := 0;
-      oepol	     : integer range 0 to 1  := 0; 
-      scanen	     : integer range 0 to 1  := 0;
+      oepol	         : integer range 0 to 1  := 0; 
+      scanen	       : integer range 0 to 1  := 0;
       mdint_pol      : integer range 0 to 1  := 0;
       enable_mdint   : integer range 0 to 1  := 0;
-      multicast      : integer range 0 to 1  := 0); 
+      multicast      : integer range 0 to 1  := 0;
+      gmiimode       : integer range 0 to 1  := 0
+      ); 
     port(
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;
@@ -309,24 +318,26 @@ package ethcomp is
       hprot          : out  std_logic_vector(3 downto 0);
       hwdata         : out  std_logic_vector(31 downto 0);
       --apb slv in 
-      psel	     : in   std_ulogic;
-      penable	     : in   std_ulogic;
-      paddr	     : in   std_logic_vector(31 downto 0);
-      pwrite	     : in   std_ulogic;
-      pwdata	     : in   std_logic_vector(31 downto 0);
+      psel	         : in   std_ulogic;
+      penable	       : in   std_ulogic;
+      paddr	         : in   std_logic_vector(31 downto 0);
+      pwrite	       : in   std_ulogic;
+      pwdata	       : in   std_logic_vector(31 downto 0);
       --apb slv out
-      prdata	     : out  std_logic_vector(31 downto 0);
+      prdata	       : out  std_logic_vector(31 downto 0);
       --irq
       irq            : out  std_logic;
       --ethernet input signals
       rmii_clk       : in   std_ulogic;
       tx_clk         : in   std_ulogic;
+      tx_dv          : in   std_ulogic;
       rx_clk         : in   std_ulogic;
       rxd            : in   std_logic_vector(3 downto 0);   
       rx_dv          : in   std_ulogic; 
       rx_er          : in   std_ulogic; 
       rx_col         : in   std_ulogic;
       rx_crs         : in   std_ulogic;
+      rx_en          : in   std_ulogic;
       mdio_i         : in   std_ulogic;
       phyrstaddr     : in   std_logic_vector(4 downto 0);
       mdint          : in   std_ulogic;
@@ -375,7 +386,9 @@ package ethcomp is
       enable_mdint   : integer range 0 to 1 := 0;
       multicast      : integer range 0 to 1 := 0;
       edclsepahbg    : integer range 0 to 1 := 0;
-      ramdebug       : integer range 0 to 2 := 0);
+      ramdebug       : integer range 0 to 2 := 0;
+      gmiimode       : integer range 0 to 1 := 0
+      );
     port(
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;

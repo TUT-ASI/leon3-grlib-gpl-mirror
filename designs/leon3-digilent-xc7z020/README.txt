@@ -2,54 +2,70 @@ This leon3 design is tailored to the Digilent Zedboard board
 
 www.zedboard.org
 
+Overview
+--------
 
-NOTE: This design is experimental and not kept up to date.
+This design implements a typical LEON3 system on a Xilinx Zynq device.
+The DDR3 memory attached to the Cortex-A9 processor system (PS) is
+uased as LEON3 memory, and accessed through a custom AHB/AXI bridge
+(ahb2axi.vhd).
 
-Simulation and synthesis
-------------------------
 
-please note that no system test or simulation enviroment are present at the moment
-but it should be possible to compile and load the design into modelsim
+Simulation
+----------
 
-To build and load the design into the simulator:
+Simulation sjould work with any supported VHDL simultor. 
+To build and load the design with the modelsim simulator, do:
 
   make vsim
   make vsim-launch
 
-Synthesis will ONLY work with PlanAhead 14.2 installed or newer, and 
-the XILINX variable properly set in the shell. To synthesize the design, do
+The PS and external memory is be emulated by a simple model
+(leon3_zedboard_stub_sim.vhd) that provides clocks, reset and
+ 1 Mbyte or memory. No other PS functionality is emulated.
 
-  make planAhead
+The standard testbench will only work when the AHBROM module
+is enabled in xconfig (default on) as it will provide the boot
+strap code and jump to RAM.
 
-and then
+Synthesis
+---------
+
+Synthesis will ONLY work with Vivado 2013.4.  To synthesize the design, do:
+
+  make vivado
+
+or 
+
+  make vivado-launch
+
+  (interactive run).
+
+To program the board, do:
 
   make vivado-zedboard
 
-to program the FPGA.
-
-Simulation options
-------------------
-
-N/A
 
 Design specifics
 ----------------
 
-* Synthesis should be done using PlanAhead 14.2 or newer
+* The top 256 Mnyte of the DDR3 (0x10000000 - 0x20000000) is
+  mapped into AHB address space at 0x40000000 - 0x50000000 using
+  an AHB/AXI bridge and the S_AXI_GP0 interface on the PS.
 
-* The Leon3 processor is not able to read/write from/to external
-  DDR3 interface at the moment. (This will be fixed in future 
-  releases)
+* System reset is mapped on the south button (button[0]).
 
-* System reset is mapped to the CPU RESET button
+* DSU break is mapped to switch[0]
 
-* DSU break is mapped to GPIO east button
+* The LEON3 system is clocked at 83.3333 MHz, using FCLK_CLK0
+  from the PS. Other frequencies can be used by re-configuring the
+  PS in Vivado and re-running synthesis.
 
 * LED 0 indicates processor in debug mode
 
 * LED 1 indicates processor in error mode, execution halted
 
-* LED 2 UART1 RX
+* LED 2 indicates AHB HREADY signal.
 
 * LED 3 UART1 TX
 
@@ -61,7 +77,12 @@ Design specifics
 
 * LED 7 GPIO 14
 
-* Always program the Zedboard via the make target 'program-zedboard'
+
+Board programming
+-----------------
+
+Always program the Zedboard via the make target 'program-zedboard'
+This requires the installation of Xilinx EDK or SDK.
 
 $ make program-zedboard
 xmd
@@ -98,78 +119,104 @@ Connected to "arm" target. id = 64
 Starting GDB server for "arm" target (id = 64) at TCP port no 1234
 Info:  Enabling level shifters and clearing fabric port resets
 
+
+Executing programs with grmon
+-----------------------------
+
 * The JTAG DSU interface is enabled and accesible via the JTAG port.
   Start grmon with -xilusb to connect.
 
+* Start grmon with the -u swith to see UART output. The UART connected
+  to the PS (USB UART) cannot be used.
+
+* Do not use the CPU RESET button to reset the LEON3 system, as this
+  will require to initialiaze the PS using xmd again. Use the south
+  button as reset if neessary.
+
 * Output from GRMON is:
 
- grmon -xilusb
-  
-  GRMON2 LEON debug monitor v2.0.30-194-g937ff0a internal version
-  
-  Copyright (C) 2012 Aeroflex Gaisler - All rights reserved.
-  For latest updates, go to http://www.gaisler.com/
-  Comments or bug-reports to support@gaisler.com
-  
+jiri@antec:~$ grmon -xilusb -u 
 
-Parsing -xilusb
-Xilusb: Cable type/rev : 0x3 
- JTAG chain (2): xc7x020 zynq7000_arm_dap 
+ Xilinx cable: Cable type/rev : 0x3 
+ JTAG chain: xc7x020 zynq7000_arm_dap 
 
-Commands missing help:
- debug
+ GRLIB build version: 4140
 
-  GRLIB build version: 4120
-  Detected frequency:  50 MHz
-  
-  Component                            Vendor
-  LEON3 SPARC V8 Processor             Aeroflex Gaisler
-  JTAG Debug Link                      Aeroflex Gaisler
-  AHB/APB Bridge                       Aeroflex Gaisler
-  LEON3 Debug Support Unit             Aeroflex Gaisler
-  Single-port AHB SRAM module          Aeroflex Gaisler
-  Xilinx MIG DDR3 Controller           Aeroflex Gaisler
-  Single-port AHB SRAM module          Aeroflex Gaisler
-  Generic UART                         Aeroflex Gaisler
-  Multi-processor Interrupt Ctrl.      Aeroflex Gaisler
-  Modular Timer Unit                   Aeroflex Gaisler
-  General Purpose I/O port             Aeroflex Gaisler
-  
-  Use command 'info sys' to print a detailed report of attached cores
+ initialising ...........
+ detected frequency:  84 MHz
 
-grmon2> info sys
-  cpu0      Aeroflex Gaisler  LEON3 SPARC V8 Processor    
-            AHB Master 0
-  ahbjtag0  Aeroflex Gaisler  JTAG Debug Link    
-            AHB Master 1
-  apbmst0   Aeroflex Gaisler  AHB/APB Bridge    
-            AHB: 80000000 - 80100000
-  dsu0      Aeroflex Gaisler  LEON3 Debug Support Unit    
-            AHB: 90000000 - A0000000
-            AHB trace: 64 lines, 32-bit bus
-            CPU0:  win 8, hwbp 2, V8 mul/div, lddel 2
-                   stack pointer 0x200003f0
-                   icache 2 * 4 kB, 16 B/line rnd
-                   dcache 2 * 4 kB, 16 B/line rnd
-  ahbram0   Aeroflex Gaisler  Single-port AHB SRAM module    
-            AHB: 20000000 - 20100000
-            32-bit static ram: 1 kB @ 0x20000000
-  adev5     Aeroflex Gaisler  Xilinx MIG DDR3 Controller    
-            AHB: 00000000 - 08000000
-  ahbram1   Aeroflex Gaisler  Single-port AHB SRAM module    
-            AHB: A0000000 - A0100000
-            32-bit static ram: 1 kB @ 0xa0000000
-  uart0     Aeroflex Gaisler  Generic UART    
-            APB: 80000100 - 80000200
-            IRQ: 2
-            Baudrate 38343
-  irqmp0    Aeroflex Gaisler  Multi-processor Interrupt Ctrl.    
-            APB: 80000200 - 80000300
-  gptimer0  Aeroflex Gaisler  Modular Timer Unit    
-            APB: 80000300 - 80000400
-            IRQ: 8
-            8-bit scalar, 2 * 32-bit timers, divisor 50
-  gpio0     Aeroflex Gaisler  General Purpose I/O port    
-            APB: 80000A00 - 80000B00
-  
-grmon2> 
+ Component                            Vendor
+ LEON3 SPARC V8 Processor             Gaisler Research
+ AHB Debug JTAG TAP                   Gaisler Research
+ AHB ROM                              Gaisler Research
+ AHB/APB Bridge                       Gaisler Research
+ LEON3 Debug Support Unit             Gaisler Research
+ Xilinx MIG DDR2 controller           Gaisler Research
+ Generic APB UART                     Gaisler Research
+ Multi-processor Interrupt Ctrl       Gaisler Research
+ Modular Timer Unit                   Gaisler Research
+ General purpose I/O port             Gaisler Research
+ AHB status register                  Gaisler Research
+
+ Use command 'info sys' to print a detailed report of attached cores
+
+grlib> info sys
+00.01:003   Gaisler Research  LEON3 SPARC V8 Processor (ver 0x3)
+             ahb master 0
+01.01:01c   Gaisler Research  AHB Debug JTAG TAP (ver 0x2)
+             ahb master 1
+00.01:01b   Gaisler Research  AHB ROM (ver 0x0)
+             ahb: 00000000 - 00100000
+01.01:006   Gaisler Research  AHB/APB Bridge (ver 0x0)
+             ahb: 80000000 - 80100000
+02.01:004   Gaisler Research  LEON3 Debug Support Unit (ver 0x1)
+             ahb: 90000000 - a0000000
+             AHB trace 128 lines, 32-bit bus, stack pointer 0x4ffffff0
+             CPU#0 win 8, hwbp 1, itrace 128, V8 mul/div, srmmu, lddel 1
+                   icache 2 * 8 kbyte, 32 byte/line lru
+                   dcache 2 * 4 kbyte, 32 byte/line lru
+03.01:06b   Gaisler Research  Xilinx MIG DDR2 controller (ver 0x0)
+             ahb: 40000000 - 50000000
+             apb: 80000000 - 80000100
+             DDR2: 256 Mbyte
+01.01:00c   Gaisler Research  Generic APB UART (ver 0x1)
+             irq 2
+             apb: 80000100 - 80000200
+             baud rate 38461, DSU mode (FIFO debug)
+02.01:00d   Gaisler Research  Multi-processor Interrupt Ctrl (ver 0x3)
+             apb: 80000200 - 80000300
+03.01:011   Gaisler Research  Modular Timer Unit (ver 0x0)
+             irq 8
+             apb: 80000300 - 80000400
+             8-bit scaler, 2 * 32-bit timers, divisor 84
+08.01:01a   Gaisler Research  General purpose I/O port (ver 0x2)
+             apb: 80000800 - 80000900
+0f.01:052   Gaisler Research  AHB status register (ver 0x0)
+             irq 7
+             apb: 80000f00 - 80001000
+grlib> lo ~/examples/dhry412 
+section: .text at 0x40000000, size 53296 bytes
+section: .data at 0x4000d030, size 2764 bytes
+total size: 56060 bytes (1.1 Mbit/s) 
+read 262 symbols
+entry point: 0x40000000
+grlib> run
+Execution starts, 1000000 runs through Dhrystone
+Total execution time:                          4.7 s
+Microseconds for one run through Dhrystone:    4.7 
+Dhrystones per Second:                      214284.1 
+
+Dhrystones MIPS      :                       122.0 
+
+
+Program exited normally.
+grlib> 
+
+
+Problems
+--------
+
+* The grmon verify command does not work correctly due to some problems
+  with the JTAG debug interface on Zynq. The load command works correctly
+  abd programs can be loaded and executed as normal.
+

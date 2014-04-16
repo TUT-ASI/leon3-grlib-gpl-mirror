@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -17,11 +17,11 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------
--- Package: 	amba
--- File:	amba.vhd
--- Author:	Jiri Gaisler, Gaisler Research
+-- Package:     amba
+-- File:        amba.vhd
+-- Author:      Jiri Gaisler, Gaisler Research
 -- Modified by: Jan Andersson, Aeroflex Gaisler
--- Description:	AMBA 2.0 bus signal definitions + support for plug&play
+-- Description: AMBA 2.0 bus signal definitions + support for plug&play
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -89,65 +89,65 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
 
 -- AHB master inputs
   type ahb_mst_in_type is record
-    hgrant	: std_logic_vector(0 to NAHBMST-1);     -- bus grant
-    hready	: std_ulogic;                         	-- transfer done
-    hresp	: std_logic_vector(1 downto 0); 	-- response type
-    hrdata	: std_logic_vector(AHBDW-1 downto 0); 	-- read data bus
-    hirq  	: std_logic_vector(NAHBIRQ-1 downto 0);	-- interrupt result bus
-    testen	: std_ulogic;                         	-- scan test enable
-    testrst	: std_ulogic;                         	-- scan test reset
-    scanen 	: std_ulogic;                         	-- scan enable
-    testoen 	: std_ulogic;                         	-- test output enable
+    hgrant      : std_logic_vector(0 to NAHBMST-1);     -- bus grant
+    hready      : std_ulogic;                           -- transfer done
+    hresp       : std_logic_vector(1 downto 0);         -- response type
+    hrdata      : std_logic_vector(AHBDW-1 downto 0);   -- read data bus
+    hirq        : std_logic_vector(NAHBIRQ-1 downto 0); -- interrupt result bus
+    testen      : std_ulogic;                           -- scan test enable
+    testrst     : std_ulogic;                           -- scan test reset
+    scanen      : std_ulogic;                           -- scan enable
+    testoen     : std_ulogic;                           -- test output enable
     testin      : std_logic_vector(NTESTINBITS-1 downto 0);         -- test vector for syncrams
   end record;
 
 -- AHB master outputs
   type ahb_mst_out_type is record
-    hbusreq	: std_ulogic;                         	-- bus request
-    hlock	: std_ulogic;                         	-- lock request
-    htrans	: std_logic_vector(1 downto 0); 	-- transfer type
-    haddr	: std_logic_vector(31 downto 0); 	-- address bus (byte)
-    hwrite	: std_ulogic;                         	-- read/write
-    hsize	: std_logic_vector(2 downto 0); 	-- transfer size
-    hburst	: std_logic_vector(2 downto 0); 	-- burst type
-    hprot	: std_logic_vector(3 downto 0); 	-- protection control
-    hwdata	: std_logic_vector(AHBDW-1 downto 0); 	-- write data bus
-    hirq   	: std_logic_vector(NAHBIRQ-1 downto 0);	-- interrupt bus
-    hconfig 	: ahb_config_type;	 		-- memory access reg.
-    hindex  	: integer range 0 to NAHBMST-1;	 	-- diagnostic use only
+    hbusreq     : std_ulogic;                           -- bus request
+    hlock       : std_ulogic;                           -- lock request
+    htrans      : std_logic_vector(1 downto 0);         -- transfer type
+    haddr       : std_logic_vector(31 downto 0);        -- address bus (byte)
+    hwrite      : std_ulogic;                           -- read/write
+    hsize       : std_logic_vector(2 downto 0);         -- transfer size
+    hburst      : std_logic_vector(2 downto 0);         -- burst type
+    hprot       : std_logic_vector(3 downto 0);         -- protection control
+    hwdata      : std_logic_vector(AHBDW-1 downto 0);   -- write data bus
+    hirq        : std_logic_vector(NAHBIRQ-1 downto 0); -- interrupt bus
+    hconfig     : ahb_config_type;                      -- memory access reg.
+    hindex      : integer range 0 to NAHBMST-1;         -- diagnostic use only
   end record;
 
 -- AHB slave inputs
   type ahb_slv_in_type is record
-    hsel	: std_logic_vector(0 to NAHBSLV-1);     -- slave select
-    haddr	: std_logic_vector(31 downto 0); 	-- address bus (byte)
-    hwrite	: std_ulogic;                         	-- read/write
-    htrans	: std_logic_vector(1 downto 0); 	-- transfer type
-    hsize	: std_logic_vector(2 downto 0); 	-- transfer size
-    hburst	: std_logic_vector(2 downto 0); 	-- burst type
-    hwdata	: std_logic_vector(AHBDW-1 downto 0); 	-- write data bus
-    hprot	: std_logic_vector(3 downto 0); 	-- protection control
-    hready	: std_ulogic;                         	-- transfer done
-    hmaster	: std_logic_vector(3 downto 0); 	-- current master
-    hmastlock	: std_ulogic;                         	-- locked access
-    hmbsel 	: std_logic_vector(0 to NAHBAMR-1);	-- memory bank select
-    hirq  	: std_logic_vector(NAHBIRQ-1 downto 0);	-- interrupt result bus
-    testen	: std_ulogic;                         	-- scan test enable
-    testrst	: std_ulogic;                         	-- scan test reset
-    scanen  	: std_ulogic;                         	-- scan enable
-    testoen 	: std_ulogic;                         	-- test output enable 
+    hsel        : std_logic_vector(0 to NAHBSLV-1);     -- slave select
+    haddr       : std_logic_vector(31 downto 0);        -- address bus (byte)
+    hwrite      : std_ulogic;                           -- read/write
+    htrans      : std_logic_vector(1 downto 0);         -- transfer type
+    hsize       : std_logic_vector(2 downto 0);         -- transfer size
+    hburst      : std_logic_vector(2 downto 0);         -- burst type
+    hwdata      : std_logic_vector(AHBDW-1 downto 0);   -- write data bus
+    hprot       : std_logic_vector(3 downto 0);         -- protection control
+    hready      : std_ulogic;                           -- transfer done
+    hmaster     : std_logic_vector(3 downto 0);         -- current master
+    hmastlock   : std_ulogic;                           -- locked access
+    hmbsel      : std_logic_vector(0 to NAHBAMR-1);     -- memory bank select
+    hirq        : std_logic_vector(NAHBIRQ-1 downto 0); -- interrupt result bus
+    testen      : std_ulogic;                           -- scan test enable
+    testrst     : std_ulogic;                           -- scan test reset
+    scanen      : std_ulogic;                           -- scan enable
+    testoen     : std_ulogic;                           -- test output enable 
     testin      : std_logic_vector(NTESTINBITS-1 downto 0);         -- test vector for syncrams
   end record;
 
 -- AHB slave outputs
   type ahb_slv_out_type is record
-    hready	: std_ulogic;                         	-- transfer done
-    hresp	: std_logic_vector(1 downto 0); 	-- response type
-    hrdata	: std_logic_vector(AHBDW-1 downto 0); 	-- read data bus
-    hsplit	: std_logic_vector(NAHBMST-1 downto 0); -- split completion
-    hirq   	: std_logic_vector(NAHBIRQ-1 downto 0); -- interrupt bus
-    hconfig 	: ahb_config_type;	 		-- memory access reg.
-    hindex  	: integer range 0 to NAHBSLV-1;	 	-- diagnostic use only
+    hready      : std_ulogic;                           -- transfer done
+    hresp       : std_logic_vector(1 downto 0);         -- response type
+    hrdata      : std_logic_vector(AHBDW-1 downto 0);   -- read data bus
+    hsplit      : std_logic_vector(NAHBMST-1 downto 0); -- split completion
+    hirq        : std_logic_vector(NAHBIRQ-1 downto 0); -- interrupt bus
+    hconfig     : ahb_config_type;                      -- memory access reg.
+    hindex      : integer range 0 to NAHBSLV-1;         -- diagnostic use only
   end record;
 
 -- array types
@@ -157,6 +157,8 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
   type ahb_slv_in_vector_type is array (natural range <>) of ahb_slv_in_type;
   subtype ahb_mst_out_vector is ahb_mst_out_vector_type(NAHBMST-1 downto 0);
   subtype ahb_slv_out_vector is ahb_slv_out_vector_type(NAHBSLV-1 downto 0);
+  subtype ahb_mst_in_vector is ahb_mst_in_vector_type(NAHBMST-1 downto 0);
+  subtype ahb_slv_in_vector is ahb_slv_in_vector_type(NAHBSLV-1 downto 0);
   type ahb_mst_out_bus_vector is array (0 to NBUS-1) of ahb_mst_out_vector;
   type ahb_slv_out_bus_vector is array (0 to NBUS-1) of ahb_slv_out_vector;
 
@@ -192,25 +194,25 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
 
 -- APB slave inputs
   type apb_slv_in_type is record
-    psel	: std_logic_vector(0 to NAPBSLV-1);     -- slave select
-    penable	: std_ulogic;                         	-- strobe
-    paddr	: std_logic_vector(31 downto 0); 	-- address bus (byte)
-    pwrite	: std_ulogic;                         	-- write
-    pwdata	: std_logic_vector(31 downto 0); 	-- write data bus
-    pirq	: std_logic_vector(NAHBIRQ-1 downto 0); -- interrupt result bus
-    testen	: std_ulogic;                         	-- scan test enable
-    testrst	: std_ulogic;                         	-- scan test reset
-    scanen 	: std_ulogic;                         	-- scan enable
-    testoen	: std_ulogic;                         	-- test output enable
+    psel        : std_logic_vector(0 to NAPBSLV-1);     -- slave select
+    penable     : std_ulogic;                           -- strobe
+    paddr       : std_logic_vector(31 downto 0);        -- address bus (byte)
+    pwrite      : std_ulogic;                           -- write
+    pwdata      : std_logic_vector(31 downto 0);        -- write data bus
+    pirq        : std_logic_vector(NAHBIRQ-1 downto 0); -- interrupt result bus
+    testen      : std_ulogic;                           -- scan test enable
+    testrst     : std_ulogic;                           -- scan test reset
+    scanen      : std_ulogic;                           -- scan enable
+    testoen     : std_ulogic;                           -- test output enable
     testin      : std_logic_vector(NTESTINBITS-1 downto 0);         -- test vector for syncrams
   end record;
 
 -- APB slave outputs
   type apb_slv_out_type is record
-    prdata	: std_logic_vector(31 downto 0); 	-- read data bus
-    pirq 	: std_logic_vector(NAHBIRQ-1 downto 0); -- interrupt bus
-    pconfig 	: apb_config_type;	 		-- memory access reg.
-    pindex      : integer range 0 to NAPBSLV -1;	-- diag use only
+    prdata      : std_logic_vector(31 downto 0);        -- read data bus
+    pirq        : std_logic_vector(NAHBIRQ-1 downto 0); -- interrupt bus
+    pconfig     : apb_config_type;                      -- memory access reg.
+    pindex      : integer range 0 to NAPBSLV -1;        -- diag use only
   end record;
 
 -- array types
@@ -256,16 +258,16 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
 -------------------------------------------------------------------------------
 
   function ahb_device_reg(vendor : amba_vendor_type; device : amba_device_type;
-	cfgver : amba_cfgver_type; version : amba_version_type;
+        cfgver : amba_cfgver_type; version : amba_version_type;
         interrupt : amba_irq_type)
   return std_logic_vector;
 
   function ahb_membar(memaddr : ahb_addr_type; prefetch, cache : std_ulogic;
-	addrmask : ahb_addr_type)
+        addrmask : ahb_addr_type)
   return std_logic_vector;
 
   function ahb_membar_opt(memaddr : ahb_addr_type; prefetch, cache : std_ulogic;
-	addrmask : ahb_addr_type; enable : integer)
+        addrmask : ahb_addr_type; enable : integer)
   return std_logic_vector;
 
   function ahb_iobar(memaddr : ahb_addr_type; addrmask : ahb_addr_type)
@@ -396,9 +398,9 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
 
   component ahbctrl
   generic (
-    defmast : integer := 0;		-- default master
-    split   : integer := 0;		-- split support
-    rrobin  : integer := 0;		-- round-robin arbitration
+    defmast : integer := 0;             -- default master
+    split   : integer := 0;             -- split support
+    rrobin  : integer := 0;             -- round-robin arbitration
     timeout : integer range 0 to 255 := 0;  -- HREADY timeout
     ioaddr  : ahb_addr_type := 16#fff#;  -- I/O area MSB address
     iomask  : ahb_addr_type := 16#fff#;  -- I/O area address mask
@@ -412,7 +414,7 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
     debug   : integer range 0 to 2 := 2;  -- print config to console
     fpnpen  : integer range 0 to 1 := 0;  -- full PnP configuration decoding
     icheck  : integer range 0 to 1 := 1;
-    devid   : integer := 0;		  -- unique device ID
+    devid   : integer := 0;               -- unique device ID
     enbusmon    : integer range 0 to 1 := 0; --enable bus monitor
     assertwarn  : integer range 0 to 1 := 0; --enable assertions for warnings 
     asserterr   : integer range 0 to 1 := 0; --enable assertions for errors
@@ -443,6 +445,57 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
   );
   end component;
 
+component ahbxb is
+        generic(
+    defmast     : integer                     := 0; -- default master
+    timeout     : integer range 0 to 255      := 0; -- HREADY timeout
+    ioaddr      : ahb_addr_type               := 16#fff#; -- I/O area MSB address
+    iomask      : ahb_addr_type               := 16#fff#; -- I/O area address mask
+    cfgaddr     : ahb_addr_type               := 16#ff0#; -- config area MSB address
+    cfgmask     : ahb_addr_type               := 16#ff0#; -- config area address mask
+    nahbm       : integer range 1 to NAHBMST  := NAHBMST; -- number of masters
+    nahbs       : integer range 1 to NAHBSLV  := NAHBSLV; -- number of slaves
+    ioen        : integer range 0 to 15       := 1; -- enable I/O area
+    disirq      : integer range 0 to 1        := 0; -- disable interrupt routing
+    fixbrst     : integer range 0 to 1        := 0; -- support fix-length bursts
+    debug       : integer range 0 to 2        := 2; -- report cores to console
+    fpnpen      : integer range 0 to 1        := 0; -- full PnP configuration decoding
+    icheck      : integer range 0 to 1        := 1;
+    devid       : integer                     := 0; -- unique device ID
+    enbusmon    : integer range 0 to 1        := 0; --enable bus monitor
+    assertwarn  : integer range 0 to 1        := 0; --enable assertions for warnings 
+    asserterr   : integer range 0 to 1        := 0; --enable assertions for errors
+    hmstdisable : integer                     := 0; --disable master checks           
+    hslvdisable : integer                     := 0; --disable slave checks
+    arbdisable  : integer                     := 0; --disable arbiter checks
+    mprio       : integer                     := 0; --master with highest priority
+    mcheck      : integer range 0 to 2        := 1; --check memory map for intersects
+    ccheck      : integer range 0 to 1        := 1; --perform sanity checks on pnp config
+    index       : integer                     := 0; --Index for trace print-out
+    ahbtrace    : integer                     := 0; --AHB trace enable
+    hwdebug     : integer                     := 0; --Hardware debug
+    fourgslv    : integer                     := 0; --1=Single slave with single 4 GB bar
+    l2en        : integer                     := 0; --enable l2 cache multiport decoding
+    l2bhindex   : integer range 0 to NAHBSLV  := 0; --base index for the l2 cache slaves
+    l2num       : integer                     := 4; --ńumber of l2 caches in system
+    l2linesize  : integer                     := 32;--number of bytes in an l2 cache line
+    l2hmbsel    : integer                     := 0  --index of L2 memory back
+        );
+        port(
+                rst     : in  std_ulogic;
+                clk     : in  std_ulogic;
+                msti    : out ahb_mst_in_vector;
+                msto    : in  ahb_mst_out_vector;
+                slvi    : out ahb_slv_in_vector;
+                slvo    : in  ahb_slv_out_vector;
+                testen  : in  std_ulogic := '0';
+                testrst : in  std_ulogic := '1';
+                scanen  : in  std_ulogic := '0';
+                testoen : in  std_ulogic := '1';
+    testsig : in  std_logic_vector(1+GRLIB_CONFIG_ARRAY(grlib_techmap_testin_extra) downto 0) := (others => '0')
+        );
+        end component;
+
   component apbctrl
   generic (
     hindex      : integer := 0;
@@ -470,9 +523,9 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
 
   component ahbctrl_mb
   generic (
-    defmast     : integer := 0;		-- default master
-    split       : integer := 0;		-- split support
-    rrobin      : integer := 0;		-- round-robin arbitration
+    defmast     : integer := 0;         -- default master
+    split       : integer := 0;         -- split support
+    rrobin      : integer := 0;         -- round-robin arbitration
     timeout     : integer range 0 to 255 := 0;  -- HREADY timeout
     ioaddr      : ahb_addr_type := 16#fff#;  -- I/O area MSB address
     iomask      : ahb_addr_type := 16#fff#;  -- I/O area address mask
@@ -487,7 +540,7 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
     fpnpen      : integer range 0 to 1 := 0;   -- full PnP configuration decoding
     busndx      : integer range 0 to 3 := 0;
     icheck      : integer range 0 to 1 := 1;    
-    devid       : integer := 0;		   -- unique device ID
+    devid       : integer := 0;            -- unique device ID
     enbusmon    : integer range 0 to 1 := 0; --enable bus monitor
     assertwarn  : integer range 0 to 1 := 0; --enable assertions for warnings 
     asserterr   : integer range 0 to 1 := 0; --enable assertions for errors
@@ -625,7 +678,7 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
   subtype device_description is string(1 to 31);
   type device_table_type is array (0 to 1023) of device_description;
   type vendor_library_type is record
-    vendorid	 : amba_vendor_type;
+    vendorid     : amba_vendor_type;
     vendordesc   : vendor_description;
     device_table : device_table_type;
   end record;
@@ -638,7 +691,7 @@ end;
 package body amba is
 
   function ahb_device_reg(vendor : amba_vendor_type; device : amba_device_type;
-	cfgver : amba_cfgver_type; version : amba_version_type;
+        cfgver : amba_cfgver_type; version : amba_version_type;
         interrupt : amba_irq_type)
   return std_logic_vector is
   variable cfg : std_logic_vector(31 downto 0);
@@ -656,7 +709,7 @@ package body amba is
   end;
 
   function ahb_membar(memaddr : ahb_addr_type; prefetch, cache : std_ulogic;
-	addrmask : ahb_addr_type)
+        addrmask : ahb_addr_type)
   return std_logic_vector is
   variable cfg : std_logic_vector(31 downto 0);
   begin
@@ -668,7 +721,7 @@ package body amba is
   end;
 
   function ahb_membar_opt(memaddr : ahb_addr_type; prefetch, cache : std_ulogic;
-	addrmask : ahb_addr_type; enable : integer)
+        addrmask : ahb_addr_type; enable : integer)
   return std_logic_vector is
   variable cfg : std_logic_vector(31 downto 0);
   begin
@@ -711,8 +764,8 @@ package body amba is
       for i in 0 to NAHBSLV-1 loop
         for j in NAHBAMR to NAHBCFG-1 loop
           if (ahbso(i).hconfig(j)(16) = '1') and 
-		(ahbso(i).hconfig(j)(15 downto 4) /= "000000000000")
-	  then
+                (ahbso(i).hconfig(j)(15 downto 4) /= "000000000000")
+          then
             if (haddr(31 downto 20) and ahbso(i).hconfig(j)(15 downto 4)) =
               (ahbso(i).hconfig(j)(31 downto 20) and ahbso(i).hconfig(j)(15 downto 4)) then
               hcache := '1';

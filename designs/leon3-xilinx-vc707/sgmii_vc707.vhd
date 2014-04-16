@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -68,22 +68,34 @@
 --
 --------------------------------------------------------------------------------
 
-
-library unisim;
-use unisim.vcomponents.all;
-
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+library gaisler;
+use gaisler.net.all;
+use gaisler.misc.all;
 
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.amba.all;
 use grlib.stdlib.all;
 use grlib.devices.all;
 
-library gaisler;
-use gaisler.misc.all;
-use gaisler.net.all;
+library techmap;
+use techmap.gencomp.all;
+use techmap.allclkgen.all;
 
+library techmap;
+use techmap.gencomp.all;
+use techmap.allclkgen.all;
+
+library eth;
+use eth.grethpkg.all;
+
+library unisim;
+use unisim.vcomponents.all;
 
 --------------------------------------------------------------------------------
 -- The entity declaration for the example design
@@ -94,7 +106,12 @@ entity sgmii_vc707 is
         pindex          : integer := 0;
         paddr           : integer := 0;
         pmask           : integer := 16#fff#;
-        autonegotiation : integer := 1
+        abits           : integer := 8;
+        autonegotiation : integer := 1;
+        pirq            : integer := 0;
+        debugmem        : integer := 0;
+        tech            : integer := 0;
+        simulation      : integer := 0
       );
         port(
       -- Tranceiver Interface
@@ -105,7 +122,6 @@ entity sgmii_vc707 is
       gmiio             : in  eth_out_type;
       -- Asynchronous reset for entire core.
       reset             : in std_logic;
-      button            : in std_logic;
       -- APB Status bus
       apb_clk           : in    std_logic;
       apb_rstn          : in    std_logic;
@@ -170,15 +186,15 @@ architecture top_level of sgmii_vc707 is
       -- Speed Control
       ----------------
       speed_is_10_100      : in std_logic;                     -- Core should operate at either 10Mbps or 100Mbps speeds
-      speed_is_100         : in std_logic;                      -- Core should operate at 100Mbps speed
+      speed_is_100         : in std_logic;                     -- Core should operate at 100Mbps speed
 
       -- General IO's
       ---------------
       status_vector        : out std_logic_vector(15 downto 0); -- Core status.
-      reset                : in std_logic;                     -- Asynchronous reset for entire core.
+      reset                : in std_logic;                      -- Asynchronous reset for entire core.
       signal_detect        : in std_logic;                      -- Input from PMD to indicate presence of optical input.
       gt0_qplloutclk_in    : in std_logic;                      -- Input from PMD to indicate presence of optical input.
-      gt0_qplloutrefclk_in : in std_logic                      -- Input from PMD to indicate presence of optical input.
+      gt0_qplloutrefclk_in : in std_logic                       -- Input from PMD to indicate presence of optical input.
 
       );
 
@@ -277,6 +293,19 @@ component IBUFDS_GTE2
   );
 end component;
 
+----- component BUFHCE -----
+component BUFHCE
+  generic (
+     CE_TYPE : string := "SYNC";
+     INIT_OUT : integer := 0
+  );
+  port (
+     O : out std_ulogic;
+     CE : in std_ulogic;
+     I : in std_ulogic
+  );
+end component;
+
 ----- component BUFGMUX -----
 component BUFGMUX
   generic (
@@ -290,9 +319,78 @@ component BUFGMUX
   );
 end component;
 
+----- component ODDR -----
+component ODDR
+  generic (
+     DDR_CLK_EDGE : string := "OPPOSITE_EDGE";
+     INIT : bit := '0';
+     SRTYPE : string := "SYNC"
+  );
+  port (
+     Q : out std_ulogic;
+     C : in std_ulogic;
+     CE : in std_ulogic;
+     D1 : in std_ulogic;
+     D2 : in std_ulogic;
+     R : in std_ulogic := 'L';
+     S : in std_ulogic := 'L'
+  );
+end component;
+
+constant REVISION : integer := 1;
+
 constant pconfig : apb_config_type := (
-  0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_SGMII, 0, 0, 0),
+  0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_SGMII, 0, REVISION, pirq),
   1 => apb_iobar(paddr, pmask));
+
+  type sgmiiregs is record
+    irq                  :  std_logic_vector(31 downto 0); -- interrupt
+    mask                 :  std_logic_vector(31 downto 0); -- interrupt enable
+    configuration_vector :  std_logic_vector( 4 downto 0);
+    an_adv_config_vector :  std_logic_vector(15 downto 0);
+  end record;
+
+  -- APB and RGMII control register
+  constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+
+  constant RES_configuration_vector : std_logic_vector(4 downto 0) := std_logic_vector(to_unsigned(autonegotiation,1)) & "0000";
+
+  constant RES : sgmiiregs :=
+  ( irq => (others => '0'), mask => (others => '0'),
+    configuration_vector => RES_configuration_vector, an_adv_config_vector => "0001100000000001");
+
+  type rxregs is record
+    gmii_rxd     : std_logic_vector(7 downto 0);
+    gmii_rxd_int : std_logic_vector(7 downto 0);
+    gmii_rx_dv   : std_logic;
+    gmii_rx_er   : std_logic;
+    count        : integer;
+    gmii_dv      : std_logic;
+    keepalive    : integer;
+  end record;
+
+ constant RESRX : rxregs :=
+  ( gmii_rxd => (others => '0'), gmii_rxd_int => (others => '0'),
+    gmii_rx_dv => '0', gmii_rx_er => '0',
+    count => 0, gmii_dv => '0', keepalive => 0
+  );
+
+  type txregs is record
+    gmii_txd       : std_logic_vector(7 downto 0);
+    gmii_txd_int   : std_logic_vector(7 downto 0);
+    gmii_tx_en     : std_logic;
+    gmii_tx_en_int : std_logic;
+    gmii_tx_er     : std_logic;
+    count          : integer;
+    cnt_en         : std_logic;
+    keepalive      : integer;
+  end record;
+
+ constant RESTX : txregs :=
+  ( gmii_txd => (others => '0'), gmii_txd_int => (others => '0'),
+    gmii_tx_en => '0', gmii_tx_en_int => '0', gmii_tx_er => '0',
+    count => 0, cnt_en => '0', keepalive => 0
+  );
 
   ------------------------------------------------------------------------------
   -- internal signals used in this top level example design.
@@ -332,16 +430,17 @@ constant pconfig : apb_config_type := (
   signal gmii_rx_dv            : std_logic;
   signal gmii_rx_er            : std_logic;
   signal gmii_isolate          : std_logic;
-  signal gmii_txd_int          : std_logic_vector(7 downto 0);
-  signal gmii_tx_en_int        : std_logic;
-  signal gmii_tx_er_int        : std_logic;
+
+  -- Internal GMII signals from Xilinx SGMII block
   signal gmii_rxd_int          : std_logic_vector(7 downto 0);
   signal gmii_rx_dv_int        : std_logic;
   signal gmii_rx_er_int        : std_logic;
 
   -- Extra registers to ease IOB placement
-  signal status_vector_int : std_logic_vector(15 downto 0);
-  signal status_vector_apb : std_logic_vector(15 downto 0);
+  signal status_vector_int  : std_logic_vector(15 downto 0);
+  signal status_vector_apb  : std_logic_vector(15 downto 0);
+  signal status_vector_apb1 : std_logic_vector(31 downto 0);
+  signal status_vector_apb2 : std_logic_vector(31 downto 0);
 
   -- These attributes will stop timing errors being reported in back annotated
   -- SDF simulation.
@@ -360,14 +459,38 @@ constant pconfig : apb_config_type := (
   signal an_restart_config    : std_logic;
   signal link_timer_value     : std_logic_vector(8 downto 0);
 
-  signal status_vector        : std_logic_vector(15 downto 0);
   signal synchronization_done : std_logic;
   signal linkup               : std_logic;
   signal signal_detect        : std_logic;
 
+  -- Route gtrefclk through an IBUFG.
+  signal gtrefclk_buf_i              : std_logic;
+
   attribute clock_signal : string;
   attribute clock_signal of sgmii_clk : signal is "yes";
   attribute clock_signal of sgmii_clk_int : signal is "yes";
+
+  signal r, rin : sgmiiregs;
+  signal rrx,rinrx : rxregs;
+  signal rtx, rintx : txregs;
+
+  signal cnt_en               : std_logic;
+
+  signal usr2rstn             : std_logic;
+
+  -- debug signal
+  signal WMemRgmiioData       : std_logic_vector(15 downto 0);
+  signal RMemRgmiioData       : std_logic_vector(15 downto 0);
+  signal RMemRgmiioAddr       : std_logic_vector(9 downto 0);
+  signal WMemRgmiioAddr       : std_logic_vector(9 downto 0);
+  signal WMemRgmiioWrEn       : std_logic;
+  signal WMemRgmiiiData       : std_logic_vector(15 downto 0);
+  signal RMemRgmiiiData       : std_logic_vector(15 downto 0);
+  signal RMemRgmiiiAddr       : std_logic_vector(9 downto 0);
+  signal WMemRgmiiiAddr       : std_logic_vector(9 downto 0);
+  signal WMemRgmiiiWrEn       : std_logic;
+  signal RMemRgmiiiRead       : std_logic;
+  signal RMemRgmiioRead       : std_logic;
 
 begin
 
@@ -376,10 +499,9 @@ begin
    -----------------------------------------------------------------------------
 
   -- Remove AN during simulation i.e. "00000"
-  configuration_vector <= "10000" when (autonegotiation = 1 or button = '1') else "00000";
+  configuration_vector <= "10000" when (autonegotiation = 1) else "00000";
 
-  --an_adv_config_vector <= x"4001";
-  --an_adv_config_vector <= "0000000000100001";
+  -- Configuration for Xilinx SGMII IP. See doc for SGMII IP for more information
   an_adv_config_vector <= "0001100000000001";
   an_restart_config    <= '0';
   link_timer_value     <= "000110010";
@@ -389,30 +511,28 @@ begin
   linkup               <= status_vector_int(0);
   signal_detect        <= '1';
 
-  apbo.pindex  <= pindex;
-  apbo.pconfig <= pconfig;
-  apbo.pirq    <= (others => '0');
-  apbo.prdata(31 downto 16)  <= (others => '0');
-  apbo.prdata(15 downto  0)   <= status_vector_apb;
-
   gmiii.gtx_clk <= userclk2;
   gmiii.tx_clk  <= userclk2;
   gmiii.rx_clk  <= userclk2;
-  gmii_txd      <= gmiio.txd;
-  gmii_tx_en    <= gmiio.tx_en;
-  gmii_tx_er    <= gmiio.tx_er;
+  gmiii.rmii_clk <= userclk2;
   gmiii.rxd     <= gmii_rxd;
   gmiii.rx_dv   <= gmii_rx_dv;
   gmiii.rx_er   <= gmii_rx_er;
+  gmiii.rx_en   <= gmii_rx_dv or sgmii_clk_en;
 
+  --gmiii.tx_dv <= '1';
+  gmiii.tx_dv <= cnt_en when gmiio.tx_en = '1' else '1';
+
+  -- GMII output controlled via generics
   gmiii.edclsepahb <= '0';
   gmiii.edcldisable <= '0';
   gmiii.phyrstaddr <= (others => '0');
   gmiii.edcladdr <= (others => '0');
 
-  gmiii.rmii_clk <= sgmii_clk;
+  -- Not used
   gmiii.rx_col <= '0';
   gmiii.rx_crs <= '0';
+  gmiii.tx_clk_90 <= '0';
 
   sgmiio.mdio_o   <= gmiio.mdio_o;
   sgmiio.mdio_oe  <= gmiio.mdio_oe;
@@ -425,108 +545,129 @@ begin
    -- Transceiver Clock Management
    -----------------------------------------------------------------------------
 
-   -- Clock circuitry for the GT Transceiver uses a differential input clock.
-   -- gtrefclk is routed to the tranceiver.
-   ibufds_gtrefclk : IBUFDS_GTE2
-   port map (
-      I     => sgmiii.clkp,
-      IB    => sgmiii.clkn,
-      CEB   => '0',
-      O     => gtrefclk,
-      ODIV2 => open
-   );
+   sgmii1 : if simulation = 1 generate
 
-  -- The GT transceiver provides a 62.5MHz clock to the FPGA fabrix.  This is
-  -- routed to an MMCM module where it is used to create phase and frequency
-  -- related 62.5MHz and 125MHz clock sources
-  mmcm_adv_inst : MMCME2_ADV
-  generic map
-   (BANDWIDTH            => "OPTIMIZED",
-    --CLKOUT4_CASCADE      => FALSE,
-    COMPENSATION         => "ZHOLD",
---    STARTUP_WAIT         => FALSE,
-    DIVCLK_DIVIDE        => 1,
-    CLKFBOUT_MULT_F      => 16.000,
-    CLKFBOUT_PHASE       => 0.000,
-    --CLKFBOUT_USE_FINE_PS => FALSE,
-    CLKOUT0_DIVIDE_F     => 8.000,
-    CLKOUT0_PHASE        => 0.000,
-    CLKOUT0_DUTY_CYCLE   => 0.5,
-    --CLKOUT0_USE_FINE_PS  => FALSE,
-    CLKOUT1_DIVIDE       => 16,
-    CLKOUT1_PHASE        => 0.000,
-    CLKOUT1_DUTY_CYCLE   => 0.5,
-    --CLKOUT1_USE_FINE_PS  => FALSE,
-    CLKIN1_PERIOD        => 16.0,
-    REF_JITTER1          => 0.010)
-  port map
-    -- Output clocks
-   (CLKFBOUT             => clkfbout,
-    CLKFBOUTB            => open,
-    CLKOUT0              => clkout0,
-    CLKOUT0B             => open,
-    CLKOUT1              => clkout1,
-    CLKOUT1B             => open,
-    CLKOUT2              => open,
-    CLKOUT2B             => open,
-    CLKOUT3              => open,
-    CLKOUT3B             => open,
-    CLKOUT4              => open,
-    CLKOUT5              => open,
-    CLKOUT6              => open,
-    -- Input clock control
-    CLKFBIN              => clkfbout,
-    CLKIN1               => txoutclk,
-    CLKIN2               => '0',
-    -- Tied to always select the primary input clock
-    CLKINSEL             => '1',
-    -- Ports for dynamic reconfiguration
-    DADDR                => (others => '0'),
-    DCLK                 => '0',
-    DEN                  => '0',
-    DI                   => (others => '0'),
-    DO                   => open,
-    DRDY                 => open,
-    DWE                  => '0',
-    -- Ports for dynamic phase shift
-    PSCLK                => '0',
-    PSEN                 => '0',
-    PSINCDEC             => '0',
-    PSDONE               => open,
-    -- Other control and status signals
-    LOCKED               => mmcm_locked,
-    CLKINSTOPPED         => open,
-    CLKFBSTOPPED         => open,
-    PWRDWN               => '0',
-    RST                  => mmcm_reset);
+   end generate;
 
-    mmcm_reset <= reset or (not resetdone);
+   sgmii0 : if simulation = 0 generate
 
-   -- This 62.5MHz clock is placed onto global clock routing and is then used
-   -- for tranceiver TXUSRCLK/RXUSRCLK.
-   bufg_userclk: BUFG
-   port map (
-      I     => clkout1,
-      O     => userclk
-   );
+       -- Clock circuitry for the GT Transceiver uses a differential input clock.
+       -- gtrefclk is routed to the tranceiver.
+       ibufds_gtrefclk : IBUFDS_GTE2
+       port map (
+          I     => sgmiii.clkp,
+          IB    => sgmiii.clkn,
+          CEB   => '0',
+          O     => gtrefclk_buf_i,
+          ODIV2 => open
+       );
 
-   -- This 125MHz clock is placed onto global clock routing and is then used
-   -- to clock all Ethernet core logic.
-   bufg_userclk2: BUFG
-   port map (
-      I     => clkout0,
-      O     => userclk2
-   );
+       bufhce_gtrefclk : BUFHCE
+       port map (
+          I         => gtrefclk_buf_i,
+          CE        => '1',
+          O         => gtrefclk
+       );
+
+      -- The GT transceiver provides a 62.5MHz clock to the FPGA fabrix.  This is
+      -- routed to an MMCM module where it is used to create phase and frequency
+      -- related 62.5MHz and 125MHz clock sources
+      mmcm_adv_inst : MMCME2_ADV
+      generic map
+       (BANDWIDTH            => "OPTIMIZED",
+        --CLKOUT4_CASCADE      => FALSE,
+        COMPENSATION         => "ZHOLD",
+    --    STARTUP_WAIT         => FALSE,
+        DIVCLK_DIVIDE        => 1,
+        CLKFBOUT_MULT_F      => 16.000,
+        CLKFBOUT_PHASE       => 0.000,
+        --CLKFBOUT_USE_FINE_PS => FALSE,
+        CLKOUT0_DIVIDE_F     => 8.000,
+        CLKOUT0_PHASE        => 0.000,
+        CLKOUT0_DUTY_CYCLE   => 0.5,
+        --CLKOUT0_USE_FINE_PS  => FALSE,
+        CLKOUT1_DIVIDE       => 16,
+        CLKOUT1_PHASE        => 0.000,
+        CLKOUT1_DUTY_CYCLE   => 0.5,
+        --CLKOUT1_USE_FINE_PS  => FALSE,
+        CLKIN1_PERIOD        => 16.0,
+        REF_JITTER1          => 0.010)
+      port map
+        -- Output clocks
+       (CLKFBOUT             => clkfbout,
+        CLKFBOUTB            => open,
+        CLKOUT0              => clkout0,
+        CLKOUT0B             => open,
+        CLKOUT1              => clkout1,
+        CLKOUT1B             => open,
+        CLKOUT2              => open,
+        CLKOUT2B             => open,
+        CLKOUT3              => open,
+        CLKOUT3B             => open,
+        CLKOUT4              => open,
+        CLKOUT5              => open,
+        CLKOUT6              => open,
+        -- Input clock control
+        CLKFBIN              => clkfbout,
+        CLKIN1               => txoutclk,
+        CLKIN2               => '0',
+        -- Tied to always select the primary input clock
+        CLKINSEL             => '1',
+        -- Ports for dynamic reconfiguration
+        DADDR                => (others => '0'),
+        DCLK                 => '0',
+        DEN                  => '0',
+        DI                   => (others => '0'),
+        DO                   => open,
+        DRDY                 => open,
+        DWE                  => '0',
+        -- Ports for dynamic phase shift
+        PSCLK                => '0',
+        PSEN                 => '0',
+        PSINCDEC             => '0',
+        PSDONE               => open,
+        -- Other control and status signals
+        LOCKED               => mmcm_locked,
+        CLKINSTOPPED         => open,
+        CLKFBSTOPPED         => open,
+        PWRDWN               => '0',
+        RST                  => mmcm_reset);
+
+        mmcm_reset <= reset or (not resetdone);
+
+       -- This 62.5MHz clock is placed onto global clock routing and is then used
+       -- for tranceiver TXUSRCLK/RXUSRCLK.
+       bufg_userclk: BUFG
+       port map (
+          I     => clkout1,
+          O     => userclk
+       );
+
+       -- This 125MHz clock is placed onto global clock routing and is then used
+       -- to clock all Ethernet core logic.
+       bufg_userclk2: BUFG
+       port map (
+          I     => clkout0,
+          O     => userclk2
+       );
 
 
-   -- This 62.5MHz clock is placed onto global clock routing and is then used
-   -- for tranceiver TXUSRCLK/RXUSRCLK.
-   bufg_rxuserclk: BUFG
-   port map (
-      I     => rxoutclk,
-      O     => rxuserclk
-   );
+       -- This 62.5MHz clock is placed onto global clock routing and is then used
+       -- for tranceiver TXUSRCLK/RXUSRCLK.
+       bufg_rxuserclk: BUFG
+       port map (
+          I     => rxoutclk,
+          O     => rxuserclk
+       );
+   end generate;
 
+   -----------------------------------------------------------------------------
+   -- Sync Reset for user clock
+   -----------------------------------------------------------------------------
+
+   userclk2_rst : rstgen
+    generic map(syncin => 1, syncrst => 1)
+    port map(apb_rstn, userclk2, '1', usr2rstn, open);
 
    -----------------------------------------------------------------------------
    -- Transceiver PMA reset circuitry
@@ -545,6 +686,106 @@ begin
    pma_reset <= pma_reset_pipe(3);
 
   ------------------------------------------------------------------------------
+  -- GMII (Aeroflex Gaisler) to GMII (Xilinx) style
+  ------------------------------------------------------------------------------
+
+   -- 10/100Mbit TX Loic
+   process (usr2rstn,rtx,gmiio)
+   variable v  : txregs;
+   begin
+      v := rtx;
+      v.cnt_en := '0';
+      v.gmii_tx_en_int := gmiio.tx_en;
+
+      if (gmiio.tx_en = '1' and rtx.gmii_tx_en_int = '0') then
+        v.count := 0;
+      elsif (v.count >= 9) and gmiio.speed = '1' then
+        v.count := 0;
+      elsif (v.count >= 99) and gmiio.speed = '0' then
+        v.count := 0;
+      else
+        v.count := rtx.count + 1;
+      end if;
+
+      case v.count is
+      when 0 =>
+         v.gmii_txd_int(3 downto 0) := gmiio.txd(3 downto 0);
+         v.cnt_en := '1';
+
+      when 5 =>
+        if gmiio.speed = '1' then
+          v.gmii_txd_int(7 downto 4) := gmiio.txd(3 downto 0);
+          v.cnt_en := '1';
+        end if;
+
+      when 50=>
+        if gmiio.speed = '0' then
+          v.gmii_txd_int(7 downto 4) := gmiio.txd(3 downto 0);
+          v.cnt_en := '1';
+        end if;
+
+
+      when 9 =>
+        if gmiio.speed = '1' then
+          v.gmii_txd   := v.gmii_txd_int;
+          v.gmii_tx_en := '1';
+          v.gmii_tx_er := gmiio.tx_er;
+          if (gmiio.tx_en = '0' and rtx.keepalive <= 1) then v.gmii_tx_en := '0'; end if;
+          if (rtx.keepalive > 0) then v.keepalive := rtx.keepalive - 1; end if;
+        end if;
+
+      when 99 =>
+        if gmiio.speed = '0' then
+          v.gmii_txd   := v.gmii_txd_int;
+          v.gmii_tx_en := '1';
+          v.gmii_tx_er := gmiio.tx_er;
+          if (gmiio.tx_en = '0' and rtx.keepalive <= 1) then v.gmii_tx_en := '0'; end if;
+          if (rtx.keepalive > 0) then v.keepalive := rtx.keepalive - 1; end if;
+        end if;
+
+      when others =>
+         null;
+
+      end case;
+
+      if (gmiio.tx_en = '0' and rtx.gmii_tx_en_int = '1') then
+         v.keepalive := 2;
+      end if;
+      
+      if (gmiio.tx_en = '0' and rtx.gmii_tx_en_int = '0' and rtx.keepalive = 0) then
+         v := RESTX;
+      end if;
+
+      -- reset operation
+      if (not RESET_ALL) and (usr2rstn = '0') then
+         v := RESTX;
+      end if;
+
+      -- update registers
+      rintx <= v;
+   end process;
+
+   txegs : process(userclk2)
+   begin
+     if rising_edge(userclk2) then
+       rtx <= rintx;
+       if RESET_ALL and usr2rstn = '0' then
+          rtx <= RESTX;
+       end if;
+     end if;
+   end process;
+
+   -- 1000Mbit TX Logic (Bypass)
+   -- n/a
+
+   -- TX Mux Select
+   cnt_en <= '1' when (gmiio.gbit = '1') else rtx.cnt_en;
+
+   gmii_txd   <= gmiio.txd    when (gmiio.gbit = '1') else rtx.gmii_txd;
+   gmii_tx_en <= gmiio.tx_en  when (gmiio.gbit = '1') else rtx.gmii_tx_en;
+   gmii_tx_er <= gmiio.tx_er  when (gmiio.gbit = '1') else rtx.gmii_tx_er;
+
+  ------------------------------------------------------------------------------
   -- Instantiate the Core Block (core wrapper).
   ------------------------------------------------------------------------------
 
@@ -553,7 +794,6 @@ begin
 
   core_wrapper : sgmii
     port map (
-
       gtrefclk               => gtrefclk,
       txp                    => sgmiio.txp,
       txn                    => sgmiio.txn,
@@ -576,9 +816,9 @@ begin
       gmii_txd               => gmii_txd,
       gmii_tx_en             => gmii_tx_en,
       gmii_tx_er             => gmii_tx_er,
-      gmii_rxd               => gmii_rxd,
-      gmii_rx_dv             => gmii_rx_dv,
-      gmii_rx_er             => gmii_rx_er,
+      gmii_rxd               => gmii_rxd_int,
+      gmii_rx_dv             => gmii_rx_dv_int,
+      gmii_rx_er             => gmii_rx_er_int,
       gmii_isolate           => gmii_isolate,
       configuration_vector   => configuration_vector,
       an_interrupt           => an_interrupt,
@@ -591,38 +831,86 @@ begin
       signal_detect          => signal_detect,
       gt0_qplloutclk_in      => '0',
       gt0_qplloutrefclk_in   => '0'
-      );
+     );
 
+  ------------------------------------------------------------------------------
+  -- GMII (Xilinx) to GMII (Aeroflex Gailers) style
+  ------------------------------------------------------------------------------
 
-   -----------------------------------------------------------------------------
-   -- SGMII clock logic
-   -----------------------------------------------------------------------------
-
-   process (userclk2)
+   ---- 10/100Mbit RX Loic
+   process (usr2rstn,rrx,gmii_rx_dv_int,gmii_rxd_int,gmii_rx_er_int,sgmii_clk_en)
+   variable v  : rxregs;
    begin
-      if userclk2'event and userclk2 = '1' then
-         sgmii_clk_int   <= sgmii_clk_r;
+      v := rrx;
+
+      if (gmii_rx_dv_int = '1' and sgmii_clk_en = '1') then
+        v.count := 0;
+        v.gmii_rxd_int := gmii_rxd_int;
+        v.gmii_dv := '1';
+        v.keepalive := 1;
+      elsif (v.count >= 9) and gmiio.speed = '1' then
+        v.count := 0;
+        v.keepalive := rrx.keepalive - 1;
+      elsif (v.count >= 99) and gmiio.speed = '0' then
+        v.count := 0;
+        v.keepalive := rrx.keepalive - 1;
+      else
+        v.count := rrx.count + 1;
       end if;
+
+      case v.count is
+      when 0 =>
+         v.gmii_rxd   := v.gmii_rxd_int(3 downto 0) &  v.gmii_rxd_int(3 downto 0);
+         v.gmii_rx_dv := v.gmii_dv;
+      when 5 =>
+        if gmiio.speed = '1' then
+         v.gmii_rxd   := v.gmii_rxd_int(7 downto 4) &  v.gmii_rxd_int(7 downto 4);
+         v.gmii_rx_dv := v.gmii_dv;
+         v.gmii_dv    := '0';
+        end if;
+      when 50 =>
+        if gmiio.speed = '0' then
+         v.gmii_rxd   := v.gmii_rxd_int(7 downto 4) &  v.gmii_rxd_int(7 downto 4);
+         v.gmii_rx_dv := v.gmii_dv;
+         v.gmii_dv    := '0';
+        end if;
+      when others =>
+         v.gmii_rxd   := v.gmii_rxd;
+         v.gmii_rx_dv := '0';
+      end case;
+
+      v.gmii_rx_er := gmii_rx_er_int;
+      
+      if (rrx.keepalive = 0 and gmii_rx_dv_int = '0') then
+         v := RESRX;
+      end if;
+
+      -- reset operation
+      if (not RESET_ALL) and (usr2rstn = '0') then
+         v := RESRX;
+      end if;
+
+      -- update registers
+      rinrx <= v;
    end process;
 
-   bufgmux_sgmiiclk: BUFGMUX
-   generic map ("ASYNC")
-   port map (
-     O   => sgmii_clk,
-     I0  => userclk2,
-     I1  => sgmii_clk_int,
-     S   => speed_is_10_100
-   );
-
-   -----------------------------------------------------------------------------
-   -- Extra registers to ease IOB placement
-   -----------------------------------------------------------------------------
-   process (userclk2)
+   rx100regs : process(userclk2)
    begin
-      if userclk2'event and userclk2 = '1' then
-         status_vector <= status_vector_int;
-      end if;
+     if rising_edge(userclk2) then
+       rrx <= rinrx;
+       if RESET_ALL and usr2rstn = '0' then
+          rrx <= RESRX;
+       end if;
+     end if;
    end process;
+
+   ---- 1000Mbit RX Logic (Bypass)
+   -- n/a
+
+   ---- RX Mux Select
+   gmii_rxd   <= gmii_rxd_int    when (gmiio.gbit = '1') else rinrx.gmii_rxd;
+   gmii_rx_dv <= gmii_rx_dv_int  when (gmiio.gbit = '1') else rinrx.gmii_rx_dv;
+   gmii_rx_er <= gmii_rx_er_int  when (gmiio.gbit = '1') else rinrx.gmii_rx_er;
 
    -----------------------------------------------------------------------------
    -- Extra registers to ease CDC placement
@@ -633,5 +921,206 @@ begin
          status_vector_apb <= status_vector_int;
       end if;
    end process;
+
+  ---------------------------------------------------------------------------------------
+  -- APB Section
+  ---------------------------------------------------------------------------------------
+
+  apbo.pindex  <= pindex;
+  apbo.pconfig <= pconfig;
+
+  -- Extra registers to ease CDC placement
+  process (apb_clk)
+  begin
+     if apb_clk'event and apb_clk = '1' then
+        status_vector_apb1 <= (others => '0');
+        status_vector_apb2 <= (others => '0');
+        if autonegotiation = 1 then status_vector_apb2(17) <= '1'; else status_vector_apb2(17) <= '0'; end if;
+        if debugmem = 1        then status_vector_apb2(16) <= '1'; else status_vector_apb2(16) <= '0'; end if;
+        -- Register to detect a speed change
+        status_vector_apb1(15 downto 0) <= status_vector_apb;
+        status_vector_apb2 <= status_vector_apb1;
+     end if;
+  end process;
+
+  rgmiiapb : process(apb_rstn, r, apbi, status_vector_apb1, status_vector_apb2, RMemRgmiiiData, RMemRgmiiiRead, RMemRgmiioRead )
+  variable rdata    : std_logic_vector(31 downto 0);
+  variable paddress : std_logic_vector(7 downto 2);
+  variable v        : sgmiiregs;
+  begin
+
+    v := r;
+    paddress := (others => '0');
+    paddress(abits-1 downto 2) := apbi.paddr(abits-1 downto 2);
+    rdata := (others => '0');
+
+    -- read/write registers
+
+    if (apbi.psel(pindex) and apbi.penable and (not apbi.pwrite)) = '1' then
+      case paddress(7 downto 2) is
+      when "000000" =>
+        rdata(31 downto 0) := status_vector_apb2;
+      when "000001" =>
+        rdata(31 downto 0) := r.irq;
+        v.irq := (others => '0');  -- Interrupt is clear on read
+      when "000010" =>
+        rdata(31 downto 0) := r.mask;
+      when "000011" =>
+        rdata(4 downto 0) := r.configuration_vector;
+      when "000100" =>
+        rdata(15 downto 0) := r.an_adv_config_vector;
+      when others =>
+        null;
+      end case;
+    end if;
+
+    if (apbi.psel(pindex) and apbi.penable and apbi.pwrite) = '1' then
+      case paddress(7 downto 2) is
+      when "000000" =>
+       null;
+      when "000001" =>
+         null;
+      when "000010" =>
+         v.mask := apbi.pwdata(31 downto 0);
+      when "000011" =>
+        v.configuration_vector := apbi.pwdata(4 downto 0);
+      when "000100" =>
+        v.an_adv_config_vector := apbi.pwdata(15 downto 0);
+      when others =>
+        null;
+      end case;
+    end if;
+
+    -- Check interrupts
+    for i in 0 to status_vector_apb2'length-1 loop
+     if  ((status_vector_apb1(i) xor status_vector_apb2(i)) and v.mask(i)) = '1' then
+       v.irq(i) :=  '1';
+     end if;
+    end loop;
+
+    -- reset operation
+    if (not RESET_ALL) and (apb_rstn = '0') then
+       v := RES;
+    end if;
+
+    -- update registers
+    rin <= v;
+
+    -- drive outputs
+    if apbi.psel(pindex) = '0' then
+     apbo.prdata  <= (others => '0');
+    elsif RMemRgmiiiRead = '1' then
+     apbo.prdata(31 downto 16)  <= (others => '0');
+     apbo.prdata(15 downto 0)   <= RMemRgmiiiData;
+    elsif RMemRgmiioRead = '1' then
+     apbo.prdata(31 downto 16)  <= (others => '0');
+     apbo.prdata(15 downto 0)   <= RMemRgmiioData;
+    else
+     apbo.prdata  <= rdata;
+    end if;
+
+    apbo.pirq <= (others => '0');
+    apbo.pirq(pirq) <=  orv(v.irq);
+
+  end process;
+
+  regs : process(apb_clk)
+  begin
+    if rising_edge(apb_clk) then
+      r <= rin;
+      if RESET_ALL and apb_rstn = '0' then
+         r <= RES;
+      end if;
+    end if;
+  end process;
+
+  ---------------------------------------------------------------------------------------
+  --  Debug Mem
+  ---------------------------------------------------------------------------------------
+
+  debugmem1 : if (debugmem /= 0) generate
+
+   -- Write GMII IN data
+    process (userclk2)
+    begin  -- process
+      if rising_edge(userclk2) then
+        WMemRgmiioData(15 downto 0) <= '0' & '0' & '0' & '0' & "00" & gmii_tx_er & gmii_tx_en & gmii_txd;
+        if (gmii_tx_en = '1') and ((WMemRgmiioAddr < "0111111110") or (WMemRgmiioAddr = "1111111111")) then
+           WMemRgmiioAddr <= WMemRgmiioAddr + 1;
+           WMemRgmiioWrEn <= '1';
+        else
+           if (gmii_tx_en = '0') then
+              WMemRgmiioAddr <= (others => '1');
+           else
+              WMemRgmiioAddr <= WMemRgmiioAddr;
+           end if;
+           WMemRgmiioWrEn <= '0';
+        end if;
+
+       if usr2rstn = '0' then
+          WMemRgmiioAddr <= (others => '0');
+          WMemRgmiioWrEn <= '0';
+       end if;
+
+      end if;
+    end process;
+
+    -- Read
+    RMemRgmiioRead <= apbi.paddr(10) and apbi.psel(pindex);
+    RMemRgmiioAddr <= "00" & apbi.paddr(10-1 downto 2);
+
+    gmiii0 : syncram_2p generic map (tech, 10, 16, 1, 0, 0) port map(
+      apb_clk, RMemRgmiioRead, RMemRgmiioAddr, RMemRgmiioData,
+      userclk2, WMemRgmiioWrEn, WMemRgmiioAddr(10-1 downto 0), WMemRgmiioData);
+
+    -- Write GMII IN data
+    process (userclk2)
+    begin  -- process
+      if rising_edge(userclk2) then
+
+        if (gmii_rx_dv = '1') then
+          WMemRgmiiiData(15 downto 0) <= '0' & sgmii_clk_en & '0' & '0' & "00" & gmii_rx_er & gmii_rx_dv & gmii_rxd;
+        elsif (gmii_rx_dv_int = '0') then
+          WMemRgmiiiData(15 downto 0) <= (others => '0');
+        else
+          WMemRgmiiiData <= WMemRgmiiiData;
+        end if;
+
+        if (gmii_rx_dv = '1') and ((WMemRgmiiiAddr < "0111111110") or (WMemRgmiiiAddr = "1111111111")) then
+           WMemRgmiiiAddr <= WMemRgmiiiAddr + 1;
+           WMemRgmiiiWrEn <= '1';
+        else
+           if (gmii_rx_dv_int = '0') then
+              WMemRgmiiiAddr <= (others => '1');
+              WMemRgmiiiWrEn <= '0';
+           else
+              WMemRgmiiiAddr <= WMemRgmiiiAddr;
+              WMemRgmiiiWrEn <= '0';
+           end if;
+        end if;
+
+       if usr2rstn = '0' then
+          WMemRgmiiiAddr <= (others => '0');
+          WMemRgmiiiWrEn <= '0';
+       end if;
+
+      end if;
+    end process;
+
+    -- Read
+    RMemRgmiiiRead <= apbi.paddr(11) and apbi.psel(pindex);
+    RMemRgmiiiAddr <= "00" & apbi.paddr(10-1 downto 2);
+
+    rgmiii0 : syncram_2p generic map (tech, 10, 16, 1, 0, 0) port map(
+      apb_clk, RMemRgmiiiRead, RMemRgmiiiAddr, RMemRgmiiiData,
+      userclk2, WMemRgmiiiWrEn, WMemRgmiiiAddr(10-1 downto 0), WMemRgmiiiData);
+
+  end generate;
+
+-- pragma translate_off
+    bootmsg : report_version
+    generic map ("sgmii" & tost(pindex) &
+        ": SGMII rev " & tost(REVISION) & ", irq " & tost(pirq));
+-- pragma translate_on
 
 end top_level;

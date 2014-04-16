@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -1023,7 +1023,7 @@ package body AMBA_TestPackage is
             -- data phase
             if AHBIn.HREADY='1' then
                if W='1' then
-		  alow := A(1 downto 0);
+                  alow := A(1 downto 0);
                   case alow is
                      when "00" =>
                         D  := AHBIn.HWDATA(31 downto 24);

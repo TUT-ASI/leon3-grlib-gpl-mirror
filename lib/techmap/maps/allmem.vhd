@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -447,6 +447,24 @@ component altera_syncram_dp
     enable2  : in std_ulogic;
     write2   : in std_ulogic
    );
+end component;
+
+component altera_fifo_dp is
+  generic (tech  : integer := 0; abits : integer := 4; dbits : integer := 32);
+  port (
+    rdclk   : in std_logic;
+    rdreq   : in std_logic;
+    rdfull  : out std_logic;
+    rdempty : out std_logic;
+    rdusedw : out std_logic_vector(abits-1 downto 0);
+    q       : out std_logic_vector(dbits-1 downto 0);
+    wrclk   : in std_logic;
+    wrreq   : in std_logic;
+    wrfull  : out std_logic;
+    wrempty : out std_logic;
+    wrusedw : out std_logic_vector(abits-1 downto 0);
+    data    : in std_logic_vector(dbits-1 downto 0);
+    aclr    : in std_logic := '0');
 end component;
 
 component generic_syncram

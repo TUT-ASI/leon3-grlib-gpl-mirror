@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -68,7 +68,8 @@ entity grethm is
     multicast      : integer range 0 to 1  := 0;
     ramdebug       : integer range 0 to 2  := 0;
     mdiohold       : integer := 1;
-    maxsize        : integer := 1500
+    maxsize        : integer := 1500;
+    gmiimode       : integer range 0 to 1  := 0
     );
   port(
     rst            : in  std_ulogic;
@@ -119,7 +120,8 @@ begin
         multicast      => multicast,
         ramdebug       => ramdebug,
         mdiohold       => mdiohold,
-        maxsize        => maxsize
+        maxsize        => maxsize,
+        gmiimode       => gmiimode
         )
       port map (
         rst            => rst,
@@ -164,7 +166,9 @@ begin
         enable_mdint   => enable_mdint,
         multicast      => multicast,
         ramdebug       => ramdebug,
-        mdiohold       => mdiohold) 
+        mdiohold       => mdiohold,
+        gmiimode       => gmiimode
+        ) 
       port map (
         rst            => rst,
         clk            => clk,

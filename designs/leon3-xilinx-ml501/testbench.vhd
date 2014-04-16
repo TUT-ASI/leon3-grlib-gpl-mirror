@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -32,8 +32,6 @@ library micron;
 use micron.components.all;
 library cypress;
 use cypress.components.all;
-library hynix;
-use hynix.components.all;
 use work.debug.all;
 use work.ml50x.all;
 
@@ -203,17 +201,25 @@ begin
 --   end generate;
 
   ddr2ranks: for j in 0 to CS_NUM-1 generate
-    ddr2chips: for i in 0 to 3 generate
-    u1 : HY5PS121621F
-      generic map (TimingCheckFlag => true, PUSCheckFlag => false,
-                   index => 3-i, fname => sdramfile, fdelay => 100*CFG_MIG_DDR2)
-      port map (DQ => ddr_dq2(i*16+15 downto i*16), LDQS  => ddr_dqsp(i*2),
-                LDQSB => ddr_dqsn(i*2), UDQS => ddr_dqsp(i*2+1),
-                UDQSB => ddr_dqsn(i*2+1), LDM => ddr_dm(i*2),
-                WEB => ddr_web, CASB => ddr_casb, RASB  => ddr_rasb, CSB => ddr_csb(j),
-                BA => ddr_ba(1 downto 0), ADDR => ddr_ad(12 downto 0), CKE => ddr_cke(j),
-                CLK => ddr_clk(j), CLKB => ddr_clkb(j), UDM => ddr_dm(i*2+1));
-    end generate;
+    -- ddr2chips: for i in 0 to 3 generate
+    -- u1 : HY5PS121621F
+    --   generic map (TimingCheckFlag => true, PUSCheckFlag => false,
+    --                index => 3-i, fname => sdramfile, fdelay => 100*CFG_MIG_DDR2)
+    --   port map (DQ => ddr_dq2(i*16+15 downto i*16), LDQS  => ddr_dqsp(i*2),
+    --             LDQSB => ddr_dqsn(i*2), UDQS => ddr_dqsp(i*2+1),
+    --             UDQSB => ddr_dqsn(i*2+1), LDM => ddr_dm(i*2),
+    --             WEB => ddr_web, CASB => ddr_casb, RASB  => ddr_rasb, CSB => ddr_csb(j),
+    --             BA => ddr_ba(1 downto 0), ADDR => ddr_ad(12 downto 0), CKE => ddr_cke(j),
+    --             CLK => ddr_clk(j), CLKB => ddr_clkb(j), UDM => ddr_dm(i*2+1));
+    -- end generate;
+    ddr0 : ddr2ram
+    generic map(width => 64, abits => 13, babits =>2, colbits => 10, rowbits => 13,
+                implbanks => 1, fname => sdramfile, speedbin=>0, density => 2,
+                lddelay => 100 us * CFG_MIG_DDR2)
+    port map (ck => ddr_clk(j), ckn => ddr_clkb(j), cke => ddr_cke(j), csn => ddr_csb(j),
+              odt => ddr_odt(j), rasn => ddr_rasb, casn => ddr_casb, wen => ddr_web,
+              dm => ddr_dm, ba => ddr_ba(1 downto 0), a => ddr_ad(12 downto 0), dq => ddr_dq2,
+              dqs => ddr_dqsp, dqsn =>ddr_dqsn);   
   end generate;
 
   nodqdel : if (CFG_MIG_DDR2 = 1) generate

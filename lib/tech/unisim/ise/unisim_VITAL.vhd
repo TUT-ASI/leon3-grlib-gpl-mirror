@@ -238,13 +238,13 @@ entity IBUFG is generic (
     IBUF_LOW_PWR : boolean := TRUE;
     IOSTANDARD : string := "LVCMOS25");
   port (O : out std_logic; I : in std_logic); end;
-architecture beh of IBUFG is begin o <= to_X01(i) after 1 ns; end;
+architecture beh of IBUFG is begin o <= to_X01(i) after 0 ns; end;
 
 library ieee; use ieee.std_logic_1164.all;
 entity IBUF is generic (
     CAPACITANCE : string := "DONT_CARE"; IOSTANDARD : string := "LVCMOS25");
   port (O : out std_logic; I : in std_logic); end;
-architecture beh of IBUF is begin o <= to_X01(i) after 1 ns; end;
+architecture beh of IBUF is begin o <= to_X01(i) after 0 ns; end;
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -253,7 +253,7 @@ entity OBUF is generic (
     IOSTANDARD  : string := "LVCMOS25"; SLEW : string := "SLOW");
   port (O : out std_ulogic; I : in std_ulogic); end;
 architecture beh of OBUF is
-begin o <= to_X01(i) after 2 ns when slew = "SLOW" else  to_X01(i) after 1 ns; end;
+begin o <= to_X01(i) after 0 ns when slew = "SLOW" else  to_X01(i) after 0 ns; end;
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -266,10 +266,10 @@ entity IOBUF is  generic (
 end;
 architecture beh of IOBUF is
 begin
-  io <= 'X' after 2 ns when to_X01(t) = 'X' else
-        I after 2 ns  when (to_X01(t) = '0')  else
-       'Z' after 2 ns  when to_X01(t) = '1';
-  o <= to_X01(io) after 1 ns;
+  io <= 'X' after 0 ns when to_X01(t) = 'X' else
+        I after 0 ns  when (to_X01(t) = '0')  else
+       'Z' after 0 ns  when to_X01(t) = '1';
+  o <= to_X01(io) after 0 ns;
 end;
 
 library ieee;
@@ -281,13 +281,13 @@ entity IOBUFDS is  generic (
 end;
 architecture beh of IOBUFDS is
 begin
-  io <= 'X' after 2 ns when to_X01(t) = 'X' else
-        I after 2 ns  when (to_X01(t) = '0')  else
-       'Z' after 2 ns  when to_X01(t) = '1';
-  iob <= 'X' after 2 ns when to_X01(t) = 'X' else
-        not I after 2 ns  when (to_X01(t) = '0')  else
-       'Z' after 2 ns  when to_X01(t) = '1';
-  o <= to_X01(io) after 1 ns;
+  io <= 'X' after 0 ns when to_X01(t) = 'X' else
+        I after 0 ns  when (to_X01(t) = '0')  else
+       'Z' after 0 ns  when to_X01(t) = '1';
+  iob <= 'X' after 0 ns when to_X01(t) = 'X' else
+        not I after 0 ns  when (to_X01(t) = '0')  else
+       'Z' after 0 ns  when to_X01(t) = '1';
+  o <= to_X01(io) after 0 ns;
 end;
 
 library ieee;
@@ -299,9 +299,9 @@ entity OBUFT is  generic (
 end;
 architecture beh of OBUFT is
 begin
-  o <= I after 2 ns when to_X01(t) = '0' else
-       'Z' after 2 ns  when to_X01(t) = '1' else
-	'X' after 2 ns ;
+  o <= I after 0 ns when to_X01(t) = '0' else
+       'Z' after 0 ns  when to_X01(t) = '1' else
+	'X' after 0 ns ;
 end;
 
 library ieee; use ieee.std_logic_1164.all;
@@ -314,8 +314,8 @@ architecture beh of IBUFDS is
 signal old : std_ulogic;
 begin
 
-  old <= '1' after 1 ns when (to_X01(I) = '1') and (to_X01(IB) = '0') else
-       '0' after 1 ns when (to_X01(I) = '0') and (to_X01(IB) = '1') else old;
+  old <= '1' after 0 ns when (to_X01(I) = '1') and (to_X01(IB) = '0') else
+       '0' after 0 ns when (to_X01(I) = '0') and (to_X01(IB) = '1') else old;
   o <= old;
 end;
 
@@ -326,8 +326,8 @@ architecture beh of IBUFDS_LVDS_25 is
 signal old : std_ulogic;
 begin
 
-  old <= '1' after 1 ns when (to_X01(I) = '1') and (to_X01(IB) = '0') else
-       '0' after 1 ns when (to_X01(I) = '0') and (to_X01(IB) = '1') else old;
+  old <= '1' after 0 ns when (to_X01(I) = '1') and (to_X01(IB) = '0') else
+       '0' after 0 ns when (to_X01(I) = '0') and (to_X01(IB) = '1') else old;
   o <= old;
 end;
 
@@ -338,8 +338,8 @@ architecture beh of IBUFDS_LVDS_33 is
 signal old : std_ulogic;
 begin
 
-  old <= '1' after 1 ns when (to_X01(I) = '1') and (to_X01(IB) = '0') else
-       '0' after 1 ns when (to_X01(I) = '0') and (to_X01(IB) = '1') else old;
+  old <= '1' after 0 ns when (to_X01(I) = '1') and (to_X01(IB) = '0') else
+       '0' after 0 ns when (to_X01(I) = '0') and (to_X01(IB) = '1') else old;
   o <= old;
 end;
 
@@ -350,8 +350,8 @@ architecture beh of IBUFGDS_LVDS_15 is
 signal old : std_ulogic;
 begin
 
-  old <= '1' after 1 ns when (to_X01(I) = '1') and (to_X01(IB) = '0') else
-       '0' after 1 ns when (to_X01(I) = '0') and (to_X01(IB) = '1') else old;
+  old <= '1' after 0 ns when (to_X01(I) = '1') and (to_X01(IB) = '0') else
+       '0' after 0 ns when (to_X01(I) = '0') and (to_X01(IB) = '1') else old;
   o <= old;
 end;
 
@@ -362,8 +362,8 @@ architecture beh of IBUFGDS_LVDS_18 is
 signal old : std_ulogic;
 begin
 
-  old <= '1' after 1 ns when (to_X01(I) = '1') and (to_X01(IB) = '0') else
-       '0' after 1 ns when (to_X01(I) = '0') and (to_X01(IB) = '1') else old;
+  old <= '1' after 0 ns when (to_X01(I) = '1') and (to_X01(IB) = '0') else
+       '0' after 0 ns when (to_X01(I) = '0') and (to_X01(IB) = '1') else old;
   o <= old;
 end;
 
@@ -374,8 +374,8 @@ architecture beh of IBUFGDS_LVDS_25 is
 signal old : std_ulogic;
 begin
 
-  old <= '1' after 1 ns when (to_X01(I) = '1') and (to_X01(IB) = '0') else
-       '0' after 1 ns when (to_X01(I) = '0') and (to_X01(IB) = '1') else old;
+  old <= '1' after 0 ns when (to_X01(I) = '1') and (to_X01(IB) = '0') else
+       '0' after 0 ns when (to_X01(I) = '0') and (to_X01(IB) = '1') else old;
   o <= old;
 end;
 
@@ -386,8 +386,8 @@ architecture beh of IBUFGDS_LVDS_33 is
 signal old : std_ulogic;
 begin
 
-  old <= '1' after 1 ns when (to_X01(I) = '1') and (to_X01(IB) = '0') else
-       '0' after 1 ns when (to_X01(I) = '0') and (to_X01(IB) = '1') else old;
+  old <= '1' after 0 ns when (to_X01(I) = '1') and (to_X01(IB) = '0') else
+       '0' after 0 ns when (to_X01(I) = '0') and (to_X01(IB) = '1') else old;
   o <= old;
 end;
 
@@ -402,8 +402,8 @@ architecture beh of IBUFGDS is
 signal old : std_ulogic;
 begin
 
-  old <= '1' after 1 ns when (to_X01(I) = '1') and (to_X01(IB) = '0') else
-       '0' after 1 ns when (to_X01(I) = '0') and (to_X01(IB) = '1') else old;
+  old <= '1' after 0 ns when (to_X01(I) = '1') and (to_X01(IB) = '0') else
+       '0' after 0 ns when (to_X01(I) = '0') and (to_X01(IB) = '1') else old;
   o <= old;
 end;
 
@@ -415,8 +415,8 @@ entity OBUFDS is
   port (O, OB : out std_ulogic; I : in std_ulogic); end;
 architecture beh of OBUFDS is
 begin
-  o <= to_X01(i) after 2 ns when SLEW = "SLOW" else to_X01(i) after 1 ns;
-  ob <= not to_X01(i) after 2 ns when SLEW = "SLOW" else not to_X01(i) after 1 ns;
+  o <= to_X01(i) after 0 ns when SLEW = "SLOW" else to_X01(i) after 0 ns;
+  ob <= not to_X01(i) after 0 ns when SLEW = "SLOW" else not to_X01(i) after 0 ns;
 end;
 
 library ieee; use ieee.std_logic_1164.all;
@@ -424,7 +424,7 @@ entity OBUFDS_LVDS_25 is
   port (O, OB : out std_ulogic; I : in std_ulogic); end;
 architecture beh of OBUFDS_LVDS_25 is
 begin
-  o <= to_X01(i) after 1 ns; ob <= not to_X01(i) after 1 ns;
+  o <= to_X01(i) after 0 ns; ob <= not to_X01(i) after 1 ns;
 end;
 
 library ieee; use ieee.std_logic_1164.all;
@@ -432,7 +432,7 @@ entity OBUFDS_LVDS_33 is
   port (O, OB : out std_ulogic; I : in std_ulogic); end;
 architecture beh of OBUFDS_LVDS_33 is
 begin
-  o <= to_X01(i) after 1 ns; ob <= not to_X01(i) after 1 ns;
+  o <= to_X01(i) after 0 ns; ob <= not to_X01(i) after 1 ns;
 end;
 
 ----- CELL BUFGCE -----
@@ -4802,7 +4802,7 @@ architecture IDELAY_V OF IDELAY is
   end;
 -----------------------------------------------------------
 
-  constant	SYNC_PATH_DELAY	: time := 100 ps;
+  constant	SYNC_PATH_DELAY	: time := 0 ps;
 
   constant	MIN_TAP_COUNT	: integer := 0;
   constant	MAX_TAP_COUNT	: integer := 63;

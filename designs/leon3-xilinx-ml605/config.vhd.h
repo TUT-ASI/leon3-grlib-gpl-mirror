@@ -35,7 +35,7 @@
   constant CFG_DLINE 	: integer := CFG_DLINE_SZ;
   constant CFG_DREPL 	: integer := CFG_DCACHE_ALGORND;
   constant CFG_DLOCK 	: integer := CONFIG_DCACHE_LOCK;
-  constant CFG_DSNOOP	: integer := CONFIG_DCACHE_SNOOP + CONFIG_DCACHE_SNOOP_FAST + 4*CONFIG_DCACHE_SNOOP_SEPTAG;
+  constant CFG_DSNOOP	: integer := CONFIG_DCACHE_SNOOP*2 + 4*CONFIG_DCACHE_SNOOP_SEPTAG;
   constant CFG_DFIXED	: integer := 16#CONFIG_CACHE_FIXED#;
   constant CFG_DLRAMEN	: integer := CONFIG_DCACHE_LRAM;
   constant CFG_DLRAMADDR: integer := 16#CONFIG_DCACHE_LRSTART#;

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -543,7 +543,9 @@ package body libcache is
   begin
     cfg := (others => '0');
     cfg(31 downto 31) := conv_std_logic_vector(lock, 1);
-    cfg(30 downto 28) := conv_std_logic_vector(repl+1, 3);
+    if sets /= 1 then
+      cfg(30 downto 28) := conv_std_logic_vector(repl+1, 3);
+    end if;
     if snoop /= 0 then cfg(27) := '1'; end if;
     cfg(26 downto 24) := conv_std_logic_vector(sets-1, 3);
     cfg(23 downto 20) := conv_std_logic_vector(log2(setsize), 4);

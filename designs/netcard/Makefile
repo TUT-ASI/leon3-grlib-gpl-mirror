@@ -22,7 +22,7 @@ DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan ddr usb leon3ft \
 	usbhc leon3 can i2c satcan ascs spi memctrl hcan slink \
 	leon4 leon4v0 leon3v3 clk2x srmmu irqmp
 
-FILESKIP = i2cmst.vhd
+FILESKIP = i2cmst.vhd sgmii.vhd
 
 include $(GRLIB)/bin/Makefile
 include $(GRLIB)/software/leon3/Makefile

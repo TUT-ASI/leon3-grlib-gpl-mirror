@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -181,6 +181,10 @@ constant has_sram_2pbw : tech_ability_type := (
     easic45 => 1, others => 0);
 
 constant has_srambw : tech_ability_type := (easic45 => 1, others => 0);
+
+constant has_2pfifo : tech_ability_type := (
+  altera    => 1, stratix1  => 1, stratix2 => 1, stratix3 => 1,
+  stratix4  => 1, others    => 0);
 
 -- ram_raw_latency - describes how many edges on the write-port clock that
 -- must pass before data is commited to memory. for example, if the write data
@@ -696,6 +700,28 @@ constant dci      : integer := 5;
       data:       out   std_logic_vector(7 downto 0));
   end component;
 
+  component syncfifo_2p is
+    generic (
+      tech  : integer := 0;
+      abits : integer := 6;
+      dbits : integer := 8
+    );
+    port (
+      rclk    : in std_logic;
+      renable : in std_logic;
+      rfull   : out std_logic;
+      rempty  : out std_logic;
+      rusedw  : out std_logic_vector(abits-1 downto 0);
+      datain  : in std_logic_vector(dbits-1 downto 0);
+      wclk    : in std_logic;
+      write   : in std_logic;
+      wfull   : out std_logic;
+      wempty  : out std_logic;
+      wusedw  : out std_logic_vector(abits-1 downto 0);
+      dataout : out std_logic_vector(dbits-1 downto 0)
+    );
+  end component;
+
 ---------------------------------------------------------------------------
 -- PADS
 ---------------------------------------------------------------------------
@@ -943,7 +969,9 @@ component lvds_combo  is
         odval, osval, en : in std_logic_vector(0 to width-1);
 	idpadp, idpadn, ispadp, ispadn : in std_logic_vector(0 to width-1);
 	idval, isval : out std_logic_vector(0 to width-1);
-	lvdsref : in std_logic := '1'
+        powerdown : in std_logic_vector(0 to width-1) := (others => '0');
+        powerdownrx : in std_logic_vector(0 to width-1) := (others => '0');
+	lvdsref : in std_logic := '1'; lvdsrefo : out std_logic
   );
 end component;
 
@@ -1956,6 +1984,31 @@ component sdram_phy
     -- Optional pad configuration inputs
     cfgi_cmd  : in std_logic_vector(19 downto 0) := "00000000000000000000"; -- CMD pads
     cfgi_dq   : in std_logic_vector(19 downto 0) := "00000000000000000000"  -- DQ pads
+  );
+end component;
+
+-------------------------------------------------------------------------------
+-- GIGABIT ETHERNET SERDES
+-------------------------------------------------------------------------------
+
+component serdes is
+  generic (
+    tech : integer
+  );
+  port (
+    clk_125     : in std_logic;
+    rst_125    : in std_logic;
+    rx_in       : in std_logic;           -- SER IN
+    rx_out      : out std_logic_vector(9 downto 0); -- PAR OUT
+    rx_clk      : out std_logic;
+    rx_rstn     : out std_logic;
+    rx_pll_clk  : out std_logic;
+    rx_pll_rstn : out std_logic;
+    tx_pll_clk  : out std_logic;
+    tx_pll_rstn : out std_logic;
+    tx_in       : in std_logic_vector(9 downto 0) ; -- PAR IN
+    tx_out      : out std_logic;          -- SER OUT
+    bitslip     : in std_logic
   );
 end component;
 

@@ -1,6 +1,7 @@
 -----------------------------------------------------------------------------
 --  LEON3 Demonstration design test bench
 --  Copyright (C) 2012 Fredrik Ringhage, Gaisler Research
+--  Modified by Jiri Gaisler, 2014-04-05
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
@@ -23,19 +24,6 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
-library gaisler;
-use gaisler.libdcom.all;
-use gaisler.sim.all;
-library grlib;
-use grlib.amba.all;
-use grlib.stdlib.all;
-use grlib.devices.all;
-library micron;
-use micron.all;
-library techmap;
-use techmap.gencomp.all;
-use work.debug.all;
-
 use work.config.all;
 
 entity testbench is
@@ -53,15 +41,6 @@ end;
 
 architecture behav of testbench is
 
-constant promfile      : string := "prom.srec";  -- rom contents
-constant sramfile      : string := "ram.srec";  -- ram contents
-constant sdramfile     : string := "ram.srec"; -- sdram contents
-
-signal GND             : std_ulogic := '0';
-signal VCC             : std_ulogic := '1';
-signal NC              : std_ulogic := 'Z';
-signal gclk            : std_logic := '0';
-signal rst             : std_logic := '0';
 signal button          : std_logic_vector(3 downto 0) := (others => '0');
 signal switch          : std_logic_vector(7 downto 0);    -- I/O port
 signal led             : std_logic_vector(7 downto 0);    -- I/O port
@@ -88,8 +67,6 @@ signal processing_system7_0_DDR_DQS_n    : std_logic_vector(3 downto 0);
 signal processing_system7_0_DDR_VRN      : std_logic;
 signal processing_system7_0_DDR_VRP      : std_logic;
 
-
-
 component leon3mp is
   generic (
     fabtech : integer := CFG_FABTECH;
@@ -103,16 +80,16 @@ component leon3mp is
   );
   port (
     processing_system7_0_MIO : inout std_logic_vector(53 downto 0);
-    processing_system7_0_PS_SRSTB : in std_logic;
-    processing_system7_0_PS_CLK : in std_logic;
-    processing_system7_0_PS_PORB : in std_logic;
+    processing_system7_0_PS_SRSTB : inout std_logic;
+    processing_system7_0_PS_CLK : inout std_logic;
+    processing_system7_0_PS_PORB : inout std_logic;
     processing_system7_0_DDR_Clk : inout std_logic;
     processing_system7_0_DDR_Clk_n : inout std_logic;
     processing_system7_0_DDR_CKE : inout std_logic;
     processing_system7_0_DDR_CS_n : inout std_logic;
     processing_system7_0_DDR_RAS_n : inout std_logic;
     processing_system7_0_DDR_CAS_n : inout std_logic;
-    processing_system7_0_DDR_WEB_pin : out std_logic;
+    processing_system7_0_DDR_WEB_pin : inout std_logic;
     processing_system7_0_DDR_BankAddr : inout std_logic_vector(2 downto 0);
     processing_system7_0_DDR_Addr : inout std_logic_vector(14 downto 0);
     processing_system7_0_DDR_ODT : inout std_logic;
@@ -132,8 +109,6 @@ end component;
 begin
 
   -- clock, reset and misc
-  gclk <= not gclk after 5.0 ns;
-  rst <= '1' after 1 us;
   button <= (others => '0');
   switch <= (others => '0');
 
@@ -174,6 +149,15 @@ begin
        switch                                    => switch,
        led                                       => led
       );
+
+   iuerr : process
+   begin
+     wait for 5000 ns;
+     wait on led(1);
+     assert (led(1) = '1') 
+       report "*** IU in error mode, simulation halted ***"
+         severity failure ;
+   end process;
 
 end ;
 

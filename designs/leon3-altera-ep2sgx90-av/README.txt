@@ -3,6 +3,13 @@ This Leon3 design is tailored to the Altera Audio Video Development Kit,
 Stratix II GX Edition.
 ---------------------------------------------------------------------
 
+
+NOTE: This design was contributed to GRLIB. Aeroflex Gaisler does not
+have a board to test the design and it is not kept up to
+date. Currently the design testbench does not allow simulation.
+
+
+
 Development board product page:
 
 http://www.altera.com/products/devkits/altera/kit-dsp-professional.html

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -36,7 +36,10 @@ entity lvds_combo  is
         odval, osval, en : in std_logic_vector(0 to width-1); 
 	idpadp, idpadn, ispadp, ispadn : in std_logic_vector(0 to width-1);
 	idval, isval : out std_logic_vector(0 to width-1);
-	lvdsref : in std_logic := '1'
+        powerdown : in std_logic_vector(0 to width-1) := (others => '0');
+        powerdownrx : in std_logic_vector(0 to width-1) := (others => '0');
+        lvdsref : in std_logic := '1';
+        lvdsrefo : out std_logic 
 );
 end ;
 
@@ -64,7 +67,7 @@ begin
     ut13  : if tech = ut130 generate
       u0: ut130hbd_lvds_combo generic map (voltage, width)
         port map (odpadp, odpadn, ospadp, ospadn, odval, osval, oen, 
-		  idpadp, idpadn, ispadp, ispadn, idval, isval);
+		  idpadp, idpadn, ispadp, ispadn, idval, isval, powerdown, powerdownrx, lvdsrefo);
     end generate;
     um : if tech = umc generate
       u0: umc_lvds_combo generic map (voltage, width)
@@ -74,7 +77,7 @@ begin
     rhu : if tech = rhumc generate
       u0: rhumc_lvds_combo generic map (voltage, width)
         port map (odpadp, odpadn, ospadp, ospadn, odval, osval, oen, 
-		  idpadp, idpadn, ispadp, ispadn, idval, isval, lvdsref);
+		  idpadp, idpadn, ispadp, ispadn, idval, isval, powerdown, powerdownrx, lvdsrefo);
     end generate;
   end generate;
 end;

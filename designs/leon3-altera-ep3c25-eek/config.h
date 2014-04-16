@@ -161,7 +161,6 @@
 #undef  CONFIG_DCACHE_ALGOLRU
 #undef  CONFIG_DCACHE_LOCK
 #define CONFIG_DCACHE_SNOOP 1
-#undef  CONFIG_DCACHE_SNOOP_FAST
 #undef  CONFIG_DCACHE_SNOOP_SEPTAG
 #define CONFIG_CACHE_FIXED 0
 /*
@@ -241,7 +240,6 @@
 #define CONFIG_DSU_ETHMSB 020000
 #define CONFIG_DSU_ETHLSB 000011
 #undef  CONFIG_DSU_ETH_PROG
-#undef  CONFIG_DSU_ETH_DIS
 /*
  * Peripherals             
  */
@@ -267,7 +265,7 @@
 #define CONFIG_DDRSP_INIT 1
 #define CONFIG_DDRSP_FREQ (100)
 #define CONFIG_DDRSP_COL (9)
-#define CONFIG_DDRSP_MBYTE (8)
+#define CONFIG_DDRSP_MBYTE (32)
 #define CONFIG_DDRSP_RSKEW (2500)
 /*
  * SPI memory controller 

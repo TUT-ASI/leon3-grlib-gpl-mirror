@@ -32,13 +32,13 @@ library, do as follows:
 
 This will ONLY work with correct version of ISE installed, and the XILINX variable
 properly set in the shell. For ISE13 it is recommened to use the 'ise' make target
-and for ISE14 to use the 'planAhead' target. To synthesize the design, do
+and for ISE14 to use the 'planahead' target. To synthesize the design, do
 
   make ise (ISE13)
 
 or
 
-  make planAhead (ISE14)
+  make planahead (ISE14)
 
 The FPGA can be programmed via JTAG using:
 

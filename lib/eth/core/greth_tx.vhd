@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -35,7 +35,9 @@ entity greth_tx is
     attempt_limit  : integer := 16;
     backoff_limit  : integer := 10;
     nsync          : integer range 1 to 2 := 2;
-    rmii           : integer range 0 to 1  := 0);
+    rmii           : integer range 0 to 1  := 0;
+    gmiimode       : integer range 0 to 1 := 0
+    );
   port(
     rst            : in  std_ulogic;
     clk            : in  std_ulogic;
@@ -489,18 +491,39 @@ begin
     txo.status               <= r.status;
   end process;
 
-  txregs : process(clk) is
-  begin
-    if rising_edge(clk) then 
-      r <= rin;
-      if rst = '0' then
-        r.icnt <= (others => '0'); r.delay_val <= (others => '0');
-        r.cnt <= (others => '0');
-      else
-        r.icnt <= rin.icnt; r.delay_val <= rin.delay_val;
-        r.cnt <= rin.cnt;
+
+  gmiimode0 : if gmiimode = 0 generate
+    txregs0 : process(clk) is
+    begin
+      if rising_edge(clk) then 
+        r <= rin;
+        if rst = '0' then
+          r.icnt <= (others => '0'); r.delay_val <= (others => '0');
+          r.cnt <= (others => '0');
+        else
+          r.icnt <= rin.icnt; r.delay_val <= rin.delay_val;
+          r.cnt <= rin.cnt;
+        end if;
       end if;
-    end if;
-  end process;
- 
+    end process;
+  end generate;
+
+  gmiimode1 : if gmiimode = 1 generate
+    txregs0 : process(clk) is
+    begin
+      if rising_edge(clk) then 
+        if txi.datavalid = '1' then r <= rin; end if;
+        if rst = '0' then
+          r.icnt <= (others => '0'); r.delay_val <= (others => '0');
+          r.cnt <= (others => '0');
+        else
+          if txi.datavalid = '1' then
+            r.icnt <= rin.icnt; r.delay_val <= rin.delay_val;
+            r.cnt <= rin.cnt;
+          end if;
+        end if;
+      end if;
+    end process;
+  end generate;
+
 end architecture;

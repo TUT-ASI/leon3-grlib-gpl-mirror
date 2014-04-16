@@ -453,19 +453,20 @@ CONFIG_DCACHE_LOCK
 
 Data cache snooping
 CONFIG_DCACHE_SNOOP
-  Say Y here to enable data cache snooping on the AHB bus. Is only
-  useful if you have additional AHB masters such as the DSU or a
-  target PCI interface. Note that the target technology must support
-  dual-port RAMs for this option to be enabled. Dual-port RAMS are
-  currently supported on Virtex/2, Virage and Actel targets.
+  Say Y here to enable data cache snooping on the AHB bus.
 
-Data cache snooping implementation
-CONFIG_DCACHE_SNOOP_FAST
-  The default snooping implementation is 'slow', which works if you
-  don't have AHB slaves in cacheable areas capable of zero-waitstates
-  non-sequential write accesses. Otherwise use 'fast' and suffer a
-  few kgates extra area. This option is currently only needed in
-  multi-master systems with the SSRAM or DDR memory controllers.
+  With snooping, AHB writes by other masters to data that is in the
+  data cache will be automatically detected and the cache line will
+  be marked as invalid. This simplifies software design in systems
+  with DMA units or multiple processors accessing the same memory.
+  It is a requirement (together with separate snoop tags) to run
+  Linux on more than one CPU.
+
+  Depending on the separate snoop tags option, snooping will be
+  implemented using either dual-port (common tags) or two-port
+  RAMs (separate tags). A workaround if dual port RAMs are
+  not available for the target technology is to use separate
+  snoop tags even if it is not needed otherwise.
 
 Separate snoop tags
 CONFIG_DCACHE_SNOOP_SEPTAG
@@ -473,10 +474,12 @@ CONFIG_DCACHE_SNOOP_SEPTAG
   This is necessary when snooping support is wanted in systems
   with MMU, typically for SMP systems. In this case, the snoop
   tags will contain the physical tag address while the normal
-  tags contain the virtual tag address. This option can also be
-  together with the 'fast snooping' option to enable snooping
-  support on technologies without dual-port RAMs. In such case,
-  the snoop tag RAM will be implemented using a two-port RAM.
+  tags contain the virtual tag address.
+
+  When separate snoop tags are enabled, the tag RAMs will be implemented
+  using two-port RAMs instead of dual-port RAMs. A workaround if
+  dual port RAMs are not available for the target technology is
+  therefore to use separate snoop tags even if it is not needed.
 
 Fixed cacheability map
 CONFIG_CACHE_FIXED

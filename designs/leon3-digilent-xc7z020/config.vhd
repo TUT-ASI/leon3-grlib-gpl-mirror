@@ -33,22 +33,22 @@ package config is
   constant CFG_LEON3 : integer := 1;
   constant CFG_NCPU : integer := (1);
   constant CFG_NWIN : integer := (8);
-  constant CFG_V8 : integer := 2 + 4*0;
+  constant CFG_V8 : integer := 16#32# + 4*0;
   constant CFG_MAC : integer := 0;
   constant CFG_BP : integer := 1;
   constant CFG_SVT : integer := 1;
   constant CFG_RSTADDR : integer := 16#00000#;
-  constant CFG_LDDEL : integer := (2);
-  constant CFG_NOTAG : integer := 0;
-  constant CFG_NWP : integer := (2);
+  constant CFG_LDDEL : integer := (1);
+  constant CFG_NOTAG : integer := 1;
+  constant CFG_NWP : integer := (1);
   constant CFG_PWD : integer := 1*2;
   constant CFG_FPU : integer := 0 + 16*0 + 32*0;
   constant CFG_GRFPUSH : integer := 0;
   constant CFG_ICEN : integer := 1;
   constant CFG_ISETS : integer := 2;
-  constant CFG_ISETSZ : integer := 4;
-  constant CFG_ILINE : integer := 4;
-  constant CFG_IREPL : integer := 2;
+  constant CFG_ISETSZ : integer := 8;
+  constant CFG_ILINE : integer := 8;
+  constant CFG_IREPL : integer := 0;
   constant CFG_ILOCK : integer := 0;
   constant CFG_ILRAMEN : integer := 0;
   constant CFG_ILRAMADDR: integer := 16#8E#;
@@ -56,23 +56,23 @@ package config is
   constant CFG_DCEN : integer := 1;
   constant CFG_DSETS : integer := 2;
   constant CFG_DSETSZ : integer := 4;
-  constant CFG_DLINE : integer := 4;
-  constant CFG_DREPL : integer := 2;
+  constant CFG_DLINE : integer := 8;
+  constant CFG_DREPL : integer := 0;
   constant CFG_DLOCK : integer := 0;
   constant CFG_DSNOOP : integer := 1 + 1 + 4*1;
   constant CFG_DFIXED : integer := 16#0#;
   constant CFG_DLRAMEN : integer := 0;
   constant CFG_DLRAMADDR: integer := 16#8F#;
   constant CFG_DLRAMSZ : integer := 1;
-  constant CFG_MMUEN : integer := 0;
-  constant CFG_ITLBNUM : integer := 2;
-  constant CFG_DTLBNUM : integer := 2;
-  constant CFG_TLB_TYPE : integer := 1 + 0*2;
-  constant CFG_TLB_REP : integer := 1;
+  constant CFG_MMUEN : integer := 1;
+  constant CFG_ITLBNUM : integer := 8;
+  constant CFG_DTLBNUM : integer := 8;
+  constant CFG_TLB_TYPE : integer := 0 + 1*2;
+  constant CFG_TLB_REP : integer := 0;
   constant CFG_MMU_PAGE : integer := 0;
   constant CFG_DSU : integer := 1;
-  constant CFG_ITBSZ : integer := 1;
-  constant CFG_ATBSZ : integer := 1;
+  constant CFG_ITBSZ : integer := 2;
+  constant CFG_ATBSZ : integer := 2;
   constant CFG_LEON3FT_EN : integer := 0;
   constant CFG_IUFT_EN : integer := 0;
   constant CFG_FPUFT_EN : integer := 0;
@@ -84,7 +84,7 @@ package config is
   constant CFG_PCLOW : integer := 2;
 -- AMBA settings
   constant CFG_DEFMST : integer := (0);
-  constant CFG_RROBIN : integer := 0;
+  constant CFG_RROBIN : integer := 1;
   constant CFG_SPLIT : integer := 0;
   constant CFG_FPNPEN : integer := 0;
   constant CFG_AHBIO : integer := 16#FFF#;
@@ -103,16 +103,16 @@ package config is
   constant CFG_ETH_ENM : integer := 16#020000#;
   constant CFG_ETH_ENL : integer := 16#000009#;
 -- AHB status register
-  constant CFG_AHBSTAT : integer := 0;
-  constant CFG_AHBSTATN : integer := 1;
+  constant CFG_AHBSTAT : integer := 1;
+  constant CFG_AHBSTATN : integer := (1);
 -- AHB ROM
-  constant CFG_AHBROMEN : integer := 0;
-  constant CFG_AHBROPIP : integer := 0;
+  constant CFG_AHBROMEN : integer := 1;
+  constant CFG_AHBROPIP : integer := 1;
   constant CFG_AHBRODDR : integer := 16#000#;
-  constant CFG_ROMADDR : integer := 16#000#;
-  constant CFG_ROMMASK : integer := 16#E00# + 16#000#;
+  constant CFG_ROMADDR : integer := 16#100#;
+  constant CFG_ROMMASK : integer := 16#E00# + 16#100#;
 -- AHB RAM
-  constant CFG_AHBRAMEN : integer := 1;
+  constant CFG_AHBRAMEN : integer := 0;
   constant CFG_AHBRSZ : integer := 1;
   constant CFG_AHBRADDR : integer := 16#A00#;
   constant CFG_AHBRPIPE : integer := 0;
@@ -128,7 +128,7 @@ package config is
   constant CFG_GPT_SW : integer := (8);
   constant CFG_GPT_TW : integer := (32);
   constant CFG_GPT_IRQ : integer := (8);
-  constant CFG_GPT_SEPIRQ : integer := 0;
+  constant CFG_GPT_SEPIRQ : integer := 1;
   constant CFG_GPT_WDOGEN : integer := 0;
   constant CFG_GPT_WDOG : integer := 16#0#;
 -- GPIO port

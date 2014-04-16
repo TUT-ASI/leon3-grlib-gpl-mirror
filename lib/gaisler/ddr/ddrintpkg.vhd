@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -273,6 +273,7 @@ package ddrintpkg is
     generic (
       avldbits  : integer := 32;
       avlabits  : integer := 20;
+      ahbbits   : integer := ahbdw;
       burstlen  : integer := 8;
       nosync    : integer := 0
       );

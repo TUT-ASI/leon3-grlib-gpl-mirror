@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -128,16 +128,14 @@ begin
   localen <= not en;
 
   f4 : if (strength <= 4)  generate
-      op : B4ISH1025_NS port map (DIN => i,PADIO => localpad, DOUT => o, VSS => OPEN, R_EN => localen, EN => en, VDDIO => OPEN, VDD => OPEN, VSSIO => OPEN, PULL_UP => '0', PULL_DOWN => '0');
+      op : B4ISH1025_NS port map (DIN => i,PADIO => pad, DOUT => o, VSS => OPEN, R_EN => localen, EN => en, VDDIO => OPEN, VDD => OPEN, VSSIO => OPEN, PULL_UP => '0', PULL_DOWN => '0');
   end generate;
   f12 : if (strength > 4)  and (strength <= 12)  generate
-      op : B12ISH1025_NS port map (DIN => i, PADIO => localpad, DOUT => o, VSS => OPEN, R_EN => localen, EN => en, VDDIO => OPEN, VDD => OPEN, VSSIO => OPEN, PULL_UP => '0', PULL_DOWN => '0');
+      op : B12ISH1025_NS port map (DIN => i, PADIO => pad, DOUT => o, VSS => OPEN, R_EN => localen, EN => en, VDDIO => OPEN, VDD => OPEN, VSSIO => OPEN, PULL_UP => '0', PULL_DOWN => '0');
   end generate;
   f16 : if (strength > 12)  generate
-      op : B16ISH1025_NS port map (DIN => i, PADIO => localpad, DOUT => o, VSS => OPEN, R_EN => localen, EN => en, VDDIO => OPEN, VDD => OPEN, VSSIO => OPEN, PULL_UP => '0', PULL_DOWN => '0');
+      op : B16ISH1025_NS port map (DIN => i, PADIO => pad, DOUT => o, VSS => OPEN, R_EN => localen, EN => en, VDDIO => OPEN, VDD => OPEN, VSSIO => OPEN, PULL_UP => '0', PULL_DOWN => '0');
   end generate;
-
-  pad <= localpad;
 
 end;
 
@@ -209,7 +207,6 @@ architecture rtl of saed32_toutpad is
   signal localpad : std_logic;
 
 begin
-
 
   f4 : if (strength <= 4)  generate
       op : B4ISH1025_NS port map (DIN => i,PADIO => localpad, DOUT => OPEN, VSS => OPEN, R_EN => '0', EN => en, VDDIO => OPEN, VDD => OPEN, VSSIO => OPEN, PULL_UP => '0', PULL_DOWN => '0');

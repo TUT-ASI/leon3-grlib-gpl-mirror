@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -29,8 +29,6 @@ use gaisler.libdcom.all;
 use gaisler.sim.all;
 library techmap;
 use techmap.gencomp.all;
-library micron;
-use micron.components.all;
 
 use work.config.all;                    -- configuration
 use work.debug.all; 
@@ -198,13 +196,13 @@ begin
 
   ddr_clk_fb <= ddr_clk;
   
-  u1 : mt46v16m16 
-    generic map (index => -1, fname => sdramfile, fdelay => 300*CFG_MIG_DDR2)
-    port map(
-      Dq => ddr_dq(15 downto 0), Dqs => ddr_dqs(1 downto 0), Addr => ddr_ad,
-      Ba => ddr_ba, Clk => ddr_clk,  Clk_n => ddr_clkb, Cke => ddr_cke,
-      Cs_n => ddr_csb, Ras_n => ddr_rasb, Cas_n => ddr_casb, We_n => ddr_web,
-      Dm => ddr_dm(1 downto 0));
+  ddr0: ddrram
+    generic map (width => 16, abits => 13, colbits => 9, rowbits => 12, implbanks => 1,
+                 fname => sdramfile, lddelay => (300 us)*CFG_MIG_DDR2)
+    port map (
+      ck => ddr_clk, cke => ddr_cke, csn => ddr_csb,
+      rasn => ddr_rasb, casn => ddr_casb, wen => ddr_web,
+      dm => ddr_dm, ba => ddr_ba, a => ddr_ad, dq => ddr_dq, dqs => ddr_dqs);
 
   prom0 : for i in 0 to (romwidth/8)-1 generate
       sr0 : sram generic map (index => i+4, abits => romdepth, fname => promfile)

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,19 @@
 -- Description: This unit implemets a set of general-purpose timers with a 
 --              common prescaler. Then number of timers and the width of
 --              the timers is propgrammable through generics
+--
+-- Revision 1 of this core merges functionality of the GRTIMET unit:
+--
+-- This unit also implements the use of an external clock source for the
+-- timers.
+--
+-- This unit also implements a latching register for each timer, latching the
+-- timer value on the occurence of an interrupt on the apbi.priq input. The
+-- interrupt selection in possible via a mask register. 
+--
+-- This unit also implements loading of all timers on the event of a selected
+-- incoming interrupt.
+--
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -50,7 +63,10 @@ entity gptimer is
     ntimers  : integer range 1 to 7 := 1;       -- number of timers
     nbits    : integer := 32;                   -- timer bits
     wdog     : integer := 0;
-    ewdogen  : integer := 0
+    ewdogen  : integer := 0;
+    glatch   : integer := 0;
+    gextclk  : integer := 0;
+    gset     : integer := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -64,10 +80,10 @@ end;
  
 architecture rtl of gptimer is
 
-constant REVISION : integer := 0;
+constant REVISION : integer := 1;
 
 constant pconfig : apb_config_type := (
-  0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_GPTIMER, 0, REVISION, pirq),
+  0 => ahb_device_reg (VENDOR_GAISLER, GAISLER_GPTIMER, 0, REVISION, pirq),
   1 => apb_iobar(paddr, pmask));
 
 type timer_reg is record
@@ -80,6 +96,7 @@ type timer_reg is record
   chain         :  std_ulogic;  -- chain with previous timer
   value         :  std_logic_vector(nbits-1 downto 0);
   reload        :  std_logic_vector(nbits-1 downto 0);
+  latch         :  std_logic_vector(glatch*(nbits-1) downto 0);
 end record;
 
 type timer_reg_vector is array (Natural range <> ) of timer_reg;
@@ -92,10 +109,24 @@ type registers is record
   tick          :  std_ulogic;
   tsel          :  integer range 0 to ntimers;
   timers        :  timer_reg_vector(1 to ntimers);
-  dishlt        :  std_ulogic;   
-  wdogn         :  std_ulogic;   
-  wdog         :  std_ulogic;   
+  dishlt        :  std_ulogic;
+  wdogn         :  std_ulogic;
+  wdog          :  std_ulogic;
+  wdogdis       :  std_ulogic;
+  wdognmi       :  std_ulogic;
 end record;
+
+type registers2 is record
+  latchsel      :  std_logic_vector(NAHBIRQ-1 downto 0);
+  latchen       :  std_ulogic;
+  latchdel      :  std_ulogic;
+  extclken      :  std_ulogic;
+  extclk        :  std_logic_vector(2 downto 0);
+  seten         :  std_ulogic;
+  setdel        :  std_ulogic;
+end record;
+
+constant NMI : integer := 15;
 
 constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
 function RESVAL_FUNC return registers is
@@ -115,6 +146,7 @@ begin
     vres.timers(i).chain := '0';
     vres.timers(i).value := (others => '0');
     vres.timers(i).reload := (others => '0');
+    vres.timers(i).latch := (others => '0');
   end loop;
   if wdog /= 0 then
     vres.timers(ntimers).enable := '1';  -- May be overriden by ewdogen
@@ -125,15 +157,26 @@ begin
   vres.dishlt := '0';
   vres.wdogn := '1';
   vres.wdog := '0';
+  vres.wdogdis := '0';
+  vres.wdognmi := '0';
   return vres;
 end function RESVAL_FUNC;
 constant RESVAL : registers := RESVAL_FUNC;
+constant RESVAL2 : registers2 := (
+  latchsel => (others => '0'),
+  latchen  => '0', 
+  latchdel => '0',
+  extclken => '0',
+  extclk   => (others => '0'),
+  seten    => '0',
+  setdel   => '0');
 
 signal r, rin : registers;
+signal r2, rin2 : registers2;
 
 begin
 
-  comb : process(rst, r, apbi, gpti)
+  comb : process(rst, r, r2, apbi, gpti)
   variable scaler : std_logic_vector(sbits downto 0);
   variable readdata, timer1 : std_logic_vector(31 downto 0);
   variable res, addin : std_logic_vector(nbits-1 downto 0);
@@ -143,26 +186,37 @@ begin
   variable xirq : std_logic_vector(NAHBIRQ-1 downto 0);
   variable nirq : std_logic_vector(0 to ntimers-1);
   variable tick : std_logic_vector(1 to 7);
+  variable latch : std_ulogic;
+  variable v2 : registers2;
   begin
 
-    v := r; v.tick := '0'; tick := (others => '0');
+    v := r; v2 := r2; v.tick := '0'; tick := (others => '0'); latch := '0';
     vtimers(0) := ('0', '0', '0', '0', '0', '0', '0', 
-                    zero32(nbits-1 downto 0), zero32(nbits-1 downto 0) );
+                   zero32(nbits-1 downto 0), zero32(nbits-1 downto 0),
+                   zero32(glatch*(nbits-1) downto 0));
     vtimers(1 to ntimers) := r.timers; xirq := (others => '0');
     for i in 1 to ntimers loop
       v.timers(i).irq := '0'; v.timers(i).load := '0';
       tick(i) := r.timers(i).irq;
     end loop;
-    v.wdogn := not r.timers(ntimers).irqpen; v.wdog := r.timers(ntimers).irqpen;
+    v.wdog := r.timers(ntimers).irqpen and not r.wdogdis;
+    v.wdogn := not v.wdog;
 
 -- scaler operation
 
     scaler := ('0' & r.scaler) - 1;     -- decrement scaler
 
-    if (not gpti.dhalt or r.dishlt) = '1' then  -- halt timers in debug mode
-      if (scaler(sbits) = '1') then
-        v.scaler := r.reload; v.tick := '1'; -- reload scaler
-      else v.scaler := scaler(sbits-1 downto 0); end if;
+    if gextclk = 1 then -- optional external timer clock
+      v2.extclk := r2.extclk(1 downto 0) & gpti.extclk;
+    end if;
+
+    if ((gextclk=0) or (gextclk=1 and r2.extclken='0') or
+        (gextclk=1 and r2.extclken='1' and r2.extclk(2 downto 1) = "01")) then
+      if (not gpti.dhalt or r.dishlt) = '1' then  -- halt timers in debug mode
+        if (scaler(sbits) = '1') then
+          v.scaler := r.reload; v.tick := '1'; -- reload scaler
+        else v.scaler := scaler(sbits-1 downto 0); end if;
+      end if;
     end if;
 
 -- timer operation
@@ -205,6 +259,29 @@ begin
       end if;
     end loop;
 
+-- timer external set
+    if gset = 1 then
+      if NAHBIRQ <= 32 then
+        for i in NAHBIRQ-1 downto 0 loop
+          latch := latch or (v2.latchsel(i) and apbi.pirq(i));
+        end loop;
+      else
+        for i in 31 downto 0 loop
+          latch := latch or (v2.latchsel(i) and apbi.pirq(i));
+        end loop;
+      end if;
+      if (latch='1' and r2.seten='1' and r.tsel = 0) or
+        (r2.setdel = '1' and r2.seten='1' and r.tsel = 0) then
+        for i in 1 to ntimers loop
+          v.timers(i).value := r.timers(i).reload;
+        end loop;
+        v2.seten := '0';
+        v2.setdel := '0';
+      elsif latch='1' and r2.seten='1' and r.tsel /= 0 then
+        v2.setdel := '1';
+      end if;
+    end if;
+    
     if sepirq /= 0 then 
       for i in 1 to ntimers loop 
         xirq(i-1+pirq) := r.timers(i).irq and r.timers(i).irqen;
@@ -213,6 +290,11 @@ begin
       for i in 1 to ntimers loop
         xirq(pirq) := xirq(pirq) or (r.timers(i).irq and r.timers(i).irqen);
       end loop;
+    end if;
+    if wdog /= 0 then
+      if (r.wdognmi and r.timers(ntimers).irq and r.timers(ntimers).irqen) = '1' then
+        xirq(NMI) := '1';
+      end if;
     end if;
 
 -- read registers
@@ -226,16 +308,39 @@ begin
         readdata(7 downto 3) := conv_std_logic_vector(pirq, 5) ;
         if (sepirq /= 0) then readdata(8) := '1'; end if;
         readdata(9) := r.dishlt;
+        if gextclk = 1 then readdata(10) := r2.extclken; end if;
+        if glatch = 1 then readdata(11) := r2.latchen; end if;
+        if gset = 1 then readdata(12) := r2.seten; end if;
+    when "00011" =>
+      if glatch = 1 then
+        if NAHBIRQ <= 32 then
+          for i in NAHBIRQ-1 downto 0 loop
+            readdata(i) := r2.latchsel(i);
+          end loop;
+        else
+          for i in 31 downto 0 loop
+            readdata(i) := r2.latchsel(i);
+          end loop;
+        end if;
+      end if;
     when others =>
       for i in 1 to ntimers loop
         if conv_integer(apbi.paddr(6 downto 4)) = i then
           case apbi.paddr(3 downto 2) is
           when "00" => readdata(nbits-1 downto 0) := r.timers(i).value;
           when "01" => readdata(nbits-1 downto 0) := r.timers(i).reload;
-          when "10" => readdata(6 downto 0) := 
-                gpti.dhalt & r.timers(i).chain &
-                r.timers(i).irqpen & r.timers(i).irqen & r.timers(i).load &
-                r.timers(i).restart & r.timers(i).enable;
+          when "10" =>
+            if wdog /= 0 and i = ntimers then
+              readdata(8 downto 7) := r.wdogdis & r.wdognmi;
+            end if;
+            readdata(6 downto 0) := 
+              gpti.dhalt & r.timers(i).chain &
+              r.timers(i).irqpen & r.timers(i).irqen & r.timers(i).load &
+              r.timers(i).restart & r.timers(i).enable;
+            when "11" =>
+            if glatch = 1 then
+              readdata(glatch*(nbits-1) downto 0) := r.timers(i).latch;
+            end if;
           when others => 
           end case;
         end if;
@@ -250,13 +355,32 @@ begin
       when "00001" => v.reload := apbi.pwdata(sbits-1 downto 0);
                       v.scaler := apbi.pwdata(sbits-1 downto 0);
       when "00010" => v.dishlt := apbi.pwdata(9);
+                      if gextclk = 1 then v2.extclken := apbi.pwdata(10); end if;
+                      if glatch = 1 then v2.latchen := apbi.pwdata(11); end if;
+                      if gset = 1 then v2.seten := apbi.pwdata(12); end if;
+      when "00011" =>
+        if glatch=1 then
+          if NAHBIRQ <= 32 then
+            for i in NAHBIRQ-1 downto 0 loop
+              v2.latchsel(i) := apbi.pwdata(i);
+            end loop;
+          else
+            for i in 31 downto 0 loop
+              v2.latchsel(i) := apbi.pwdata(i);
+            end loop;
+          end if;
+        end if;
       when others => 
         for i in 1 to ntimers loop
           if conv_integer(apbi.paddr(6 downto 4)) = i then
             case apbi.paddr(3 downto 2) is
               when "00" => v.timers(i).value   := apbi.pwdata(nbits-1 downto 0);
               when "01" => v.timers(i).reload  := apbi.pwdata(nbits-1 downto 0);
-              when "10" => v.timers(i).chain   := apbi.pwdata(5);
+              when "10" => if wdog /= 0 and i = ntimers then
+                             v.wdogdis := apbi.pwdata(8);
+                             v.wdognmi := apbi.pwdata(7);
+                           end if;
+                           v.timers(i).chain   := apbi.pwdata(5);
                            v.timers(i).irqpen  := v.timers(i).irqpen and not apbi.pwdata(4);
                            v.timers(i).irqen   := apbi.pwdata(3);
                            v.timers(i).load    := apbi.pwdata(2);
@@ -269,6 +393,29 @@ begin
       end case;
     end if;
 
+-- timer latches
+    if glatch=1 then
+      latch := '0';
+      if NAHBIRQ <= 32 then
+        for i in NAHBIRQ-1 downto 0 loop
+          latch := latch or (v2.latchsel(i) and apbi.pirq(i));
+        end loop;
+      else
+        for i in 31 downto 0 loop
+          latch := latch or (v2.latchsel(i) and apbi.pirq(i));
+        end loop;
+      end if;
+      if ((latch='1' and r2.latchen='1' and r.tsel = 0) or
+          (r2.latchdel = '1' and r2.latchen='1' and r.tsel = 0)) then
+        for i in 1 to ntimers loop
+          v.timers(i).latch := r.timers(i).value(glatch*(nbits-1) downto 0);
+        end loop;
+        v2.latchen := '0';
+        v2.latchdel := '0';
+      elsif latch='1' and r2.latchen='1' and r.tsel /= 0 then
+        v2.latchdel := '1';
+      end if;
+    end if;
 
 -- reset operation
 
@@ -277,6 +424,7 @@ begin
         v.timers(i).enable := RESVAL.timers(i).enable;
         v.timers(i).irqen := RESVAL.timers(i).irqen;
         v.timers(i).irqpen := RESVAL.timers(i).irqpen;
+        v.timers(i).irq := RESVAL.timers(i).irq;
       end loop;
       v.scaler := RESVAL.scaler; v.reload := RESVAL.reload;
       v.tsel := RESVAL.tsel; v.dishlt := RESVAL.dishlt;
@@ -291,11 +439,29 @@ begin
         v.timers(ntimers).irqpen := RESVAL.timers(ntimers).irqpen;
         v.timers(ntimers).restart := RESVAL.timers(ntimers).restart;
       end if;
+      v.wdogdis := RESVAL.wdogdis; v.wdognmi := RESVAL.wdognmi;
+      if glatch = 1 then
+        for i in 1 to ntimers loop v.timers(i).latch := RESVAL.timers(i).latch; end loop;
+        v2.latchen := RESVAL2.latchen; v2.latchdel := RESVAL2.latchdel;
+        v2.latchsel := RESVAL2.latchsel;
+      end if;
+      if gextclk = 1 then
+        v2.extclken := RESVAL2.extclken;
+        v2.extclk := RESVAL2.extclk;
+      end if;
+      if gset = 1 then v2.seten := RESVAL2.seten; v2.setdel := RESVAL2.setdel; end if;
     end if;
-
+    if wdog = 0 then v.wdogdis := '0'; v.wdognmi := '0'; end if;
+    if glatch = 0 then
+      for i in 1 to ntimers loop v.timers(i).latch := (others => '0'); end loop;
+      v2.latchen := '0'; v2.latchdel := '0'; v2.latchsel := (others => '0');
+    end if;
+    if gextclk = 0 then v2.extclken := '0'; v2.extclk := (others => '0'); end if;
+    if gset = 0 then v2.seten := '0'; v2.setdel := '0'; end if;
+    
     timer1 := (others => '0'); timer1(nbits-1 downto 0) := r.timers(1).value;
 
-    rin <= v;
+    rin <= v; rin2 <= v2;
     apbo.prdata <= readdata;    -- drive apb read bus
     apbo.pirq <= xirq;
     apbo.pindex <= pindex;
@@ -313,9 +479,9 @@ begin
   regs : process(clk)
   begin
     if rising_edge(clk) then
-      r <= rin;
+      r <= rin; r2 <= rin2;
       if RESET_ALL and rst = '0' then
-        r <= RESVAL;
+        r <= RESVAL; r2 <= RESVAL2;
         if wdog /= 0 and ewdogen /= 0 then
           r.timers(ntimers).enable <= gpti.wdogen;
         end if;
@@ -328,7 +494,7 @@ begin
 -- pragma translate_off
     bootmsg : report_version 
     generic map ("gptimer" & tost(pindex) & 
-        ": GR Timer Unit rev " & tost(REVISION) & 
+        ": Timer Unit rev " & tost(REVISION) & 
         ", " & tost(sbits) & "-bit scaler, " & tost(ntimers) & 
         " " & tost(nbits) & "-bit timers" & ", irq " & tost(pirq));
 -- pragma translate_on

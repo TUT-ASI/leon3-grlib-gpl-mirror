@@ -1,10 +1,10 @@
------------------------------------------------------------------------------
+----------------------------------------------------------------------------
 --  LEON3 Demonstration design test bench
 --  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -29,8 +29,6 @@ use gaisler.sim.all;
 library techmap;
 use techmap.gencomp.all;
 use work.debug.all;
-library hynix;
-use hynix.components.all;
 library grlib;
 use grlib.stdlib.all;
 
@@ -75,7 +73,7 @@ signal writen   : std_ulogic;
 signal GND      : std_ulogic := '0';
 signal VCC      : std_ulogic := '1';
 signal NC       : std_ulogic := 'Z';
-signal wdogn    : std_logic;
+signal wdogn,wdogn_local    : std_logic;
     
 signal txd1, rxd1 : std_logic;       
 signal txd2, rxd2 : std_logic;       
@@ -156,6 +154,8 @@ signal led          : std_logic_vector(3 downto 0);    -- I/O port
   signal erx_crs  : std_logic := '1';
   signal etx_er  : std_logic := '0';
 
+
+
 constant lresp : boolean := false;
 
 begin
@@ -163,15 +163,16 @@ begin
 -- clock and reset
 
   clk  <= not clk after ct * 1 ns;
-  clk125  <= not clk125 after 4 ns;
+  clk125  <= not clk125 after 10 ns;
   --erx_clk <= not erx_clk after 4 ns;
   clk2 <= '0'; --not clk2 after 5 ns;
-  rst <= dsurst and wdogn; 
+  rst <= dsurst and wdogn_local; 
   rxd1 <= 'H'; ctsn1 <= '0';
   rxd2 <= 'H'; ctsn2 <= '0';
   ps2clk <= "HH"; ps2data <= "HH";
   pio(4) <= pio(5); pio(1) <= pio(2); pio <= (others => 'H');
   wdogn <= 'H';
+  wdogn_local <= 'H';
   switch(7) <= '1';
   switch(8) <= '0';
   emdio <= 'H';
@@ -203,18 +204,15 @@ begin
 		  writen, oen);
 
   ddr2mem : if (CFG_MIG_DDR2 = 1) generate 
-    ddr2mem0 : for i in 0 to 0 generate
-      u1 : HY5PS121621F
-        generic map (TimingCheckFlag => false, PUSCheckFlag => false,
-                     index => i, bbits => 16, fname => sdramfile, fdelay => 340)
-        port map (DQ => ddr_dq(i*16+15 downto i*16),
-                  LDQS  => ddr_dqs(i*2), LDQSB => ddr_dqsn(i*2),
-                  UDQS => ddr_dqs(i*2+1), UDQSB => ddr_dqsn(i*2+1),
-                  LDM => ddr_dm(i*2), WEB => ddr_we, CASB => ddr_cas,
-                  RASB => ddr_ras, CSB => ddr_csb, BA => ddr_ba(1 downto 0),
-                  ADDR => ddr_ad(12 downto 0), CKE => ddr_cke,
-                  CLK => ddr_clk, CLKB => ddr_clkb, UDM => ddr_dm(i*2+1));
-    end generate;
+    u1: ddr2ram
+      generic map (width => 16, abits => 13, babits => 3,
+                   colbits => 10, rowbits => 13, implbanks => 1,
+                   fname => sdramfile, lddelay => (340 us),
+                   speedbin => 1)
+      port map (ck => ddr_clk, ckn => ddr_clkb, cke => ddr_cke, csn => ddr_csb,
+                odt => ddr_odt, rasn => ddr_ras, casn => ddr_cas, wen => ddr_we,
+                dm => ddr_dm, ba => ddr_ba, a => ddr_ad,
+                dq => ddr_dq, dqs => ddr_dqs, dqsn => ddr_dqsn);
   end generate;
 
   ps2devs: for i in 0 to 1 generate
@@ -227,7 +225,24 @@ begin
   phy0 : if (CFG_GRETH = 1) generate
     emdio <= 'H'; 
     p0: phy
-      generic map(address => 1)
+      generic map(
+             address       => 1,
+             extended_regs => 1,
+             aneg          => 1,
+             base100_t4    => 1,
+             base100_x_fd  => 1,
+             base100_x_hd  => 1,
+             fd_10         => 1,
+             hd_10         => 1,
+             base100_t2_fd => 1,
+             base100_t2_hd => 1,
+             base1000_x_fd => 1,
+             base1000_x_hd => 1,
+             base1000_t_fd => 1,
+             base1000_t_hd => 1,
+             rmii          => 0,
+             rgmii         => 1
+            )
       port map(rst, emdio, open, erx_clk, erxd_d, erx_dv_d,
         erx_er, erx_col, erx_crs, etxd, etx_en, etx_er, emdc, clk125);
   end generate;
@@ -236,6 +251,20 @@ begin
   begin
       erxd   <= erxd_d;
       erx_dv <= erx_dv_d;
+  end process;
+
+ wdognp : process
+  begin
+
+   wdogn_local <= 'H';
+
+   if wdogn = '0' then
+      wdogn_local <= '0';
+      wait for 1 ms;
+   end if;
+
+   wait for 20 ns;
+
   end process;
 
 

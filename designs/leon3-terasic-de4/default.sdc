@@ -55,6 +55,9 @@ create_clock -name CLK_M2 -period "50 MHZ" [get_ports OSC_50_Bank4]
 # False Path
 #
 
+set_false_path -from [get_clocks {clkgen0|\stra3:v|sdclk_pll|\nosd:altpll0|auto_generated|pll1|clk[0]}] -to [get_clocks {\eth1:pll0|altpll_component|auto_generated|pll1|clk[0]}]
+set_false_path -from [get_clocks {\eth1:bridge1|lvds_rx|ALTLVDS_RX_component|auto_generated|rx_0|clk0}] -to [get_clocks {clkgen0|\stra3:v|sdclk_pll|\nosd:altpll0|auto_generated|pll1|clk[0]}]
+
 #
 # Path Delay
 #

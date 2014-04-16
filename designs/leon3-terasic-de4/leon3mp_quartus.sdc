@@ -41,9 +41,8 @@ create_clock -period  10.0 PLL_CLKIN_p
 derive_pll_clocks
 
 set ahbclks [ get_clocks { clkgen0* } ]
+set eth0clks [ get_clocks { \eth0:bridge0|* } ]
+#set eth1clks [ get_clocks { \eth1:bridge1|* } ]
 
-set sgmii_rx_clk [ get_clocks { eth1:bridge0|sgmii2gmii_inst|i_tse_pcs_0|the_altera_tse_pma_lvds_rx|ALTLVDS_RX_component|auto_generated|rx[0]|clk0 } ]
-
-set_false_path -from [get_clocks {\eth1:bridge0|sgmii2gmii_inst|i_tse_pcs_0|the_altera_tse_pma_lvds_rx|ALTLVDS_RX_component|auto_generated|rx[0]|clk0}] -to [get_clocks {clkgen0|\stra3:v|sdclk_pll|\nosd:altpll0|auto_generated|pll1|clk[0]}]
-
-set_false_path -from [get_clocks {\eth1:bridge1|sgmii2gmii_inst|i_tse_pcs_0|the_altera_tse_pma_lvds_rx|ALTLVDS_RX_component|auto_generated|rx[0]|clk0}] -to [get_clocks {clkgen0|\stra3:v|sdclk_pll|\nosd:altpll0|auto_generated|pll1|clk[0]}]
+constrain_cdc $ahbclks 10.0 $eth0clks 8.0
+#constrain_cdc $ahbclks 10.0 $eth1clks 8.0

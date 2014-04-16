@@ -440,19 +440,20 @@ CONFIG_DCACHE_LOCK
 
 Data cache snooping
 CONFIG_DCACHE_SNOOP
-  Say Y here to enable data cache snooping on the AHB bus. Is only
-  useful if you have additional AHB masters such as the DSU or a
-  target PCI interface. Note that the target technology must support
-  dual-port RAMs for this option to be enabled. Dual-port RAMS are
-  currently supported on Virtex/2, Virage and Actel targets.
+  Say Y here to enable data cache snooping on the AHB bus.
 
-Data cache snooping implementation
-CONFIG_DCACHE_SNOOP_FAST
-  The default snooping implementation is 'slow', which works if you
-  don't have AHB slaves in cacheable areas capable of zero-waitstates
-  non-sequential write accesses. Otherwise use 'fast' and suffer a
-  few kgates extra area. This option is currently only needed in
-  multi-master systems with the SSRAM or DDR memory controllers.
+  With snooping, AHB writes by other masters to data that is in the
+  data cache will be automatically detected and the cache line will
+  be marked as invalid. This simplifies software design in systems
+  with DMA units or multiple processors accessing the same memory.
+  It is a requirement (together with separate snoop tags) to run
+  Linux on more than one CPU.
+
+  Depending on the separate snoop tags option, snooping will be
+  implemented using either dual-port (common tags) or two-port
+  RAMs (separate tags). A workaround if dual port RAMs are
+  not available for the target technology is to use separate
+  snoop tags even if it is not needed otherwise.
 
 Separate snoop tags
 CONFIG_DCACHE_SNOOP_SEPTAG
@@ -460,10 +461,12 @@ CONFIG_DCACHE_SNOOP_SEPTAG
   This is necessary when snooping support is wanted in systems
   with MMU, typically for SMP systems. In this case, the snoop
   tags will contain the physical tag address while the normal
-  tags contain the virtual tag address. This option can also be
-  together with the 'fast snooping' option to enable snooping
-  support on technologies without dual-port RAMs. In such case,
-  the snoop tag RAM will be implemented using a two-port RAM.
+  tags contain the virtual tag address.
+
+  When separate snoop tags are enabled, the tag RAMs will be implemented
+  using two-port RAMs instead of dual-port RAMs. A workaround if
+  dual port RAMs are not available for the target technology is
+  therefore to use separate snoop tags even if it is not needed.
 
 Fixed cacheability map
 CONFIG_CACHE_FIXED
@@ -631,6 +634,64 @@ CONFIG_DEBUG_PC32
   be implemented with full 32 bits, making debugging of the VHDL model
   much easier. Turn of this option for synthesis or you will be wasting
   area.
+L2 Associativity
+CONFIG_L2_ASSO1
+  Select how many cache ways the L2 cache should have.
+
+L2 Way size
+CONFIG_L2_SZ1
+  Select the szie of each way in kbytes. The total L2 cache
+  size will be way size * number of ways.
+
+L2 cache line size
+CONFIG_L2_LINE16
+  The L2 cache can have either 16 or 32 bytes per line. It is
+  recommened to use 32 bytes for best performance.
+
+HPROT cachebility decoding
+CONFIG_L2_HPROT
+  Say yes here to enable the AHB HPROT signals to define if an
+  L2 access should be cached. Should be disabled for now until
+  all I/O units in grlib generate these signals correctly.
+
+L2 power-on enable
+CONFIG_L2_PEN
+  Say yes here to enable the L2 cache directly after reset.
+  This will allow to use the cache without first enable it
+  in software. The cache will automatically be flushed before
+  enabled.
+
+Random replacement
+CONFIG_L2_RAN
+  Say Y here to enable random replacement policy rather then
+  the default LRU.
+
+Write-through operation
+CONFIG_L2_WT
+  The L2 cache operates by default in copy-back mode. Say yes
+  here to enable write-through operation at power-on.
+
+Cachebility mapping
+CONFIG_L2_MAP
+  This 16-bit hexadecimal vaule defines which address areas
+  are to be cacheable by the L2 cache. Each bit set indicates
+  a cacheable 256 Mbyte block. The left-most bit (LSB) indicates
+  address 0 - 256M and so on.
+
+RAM sharing
+CONFIG_L2_SHARE
+  Say yes here to implement one shared data RAM for all cache ways.
+  This will reduce the number of RAM blocks for multi-way caches.
+
+MTRR registers
+CONFIG_L2_MTRR
+  Specify the number of MTRR registers. Each MTRR can define one
+  memory area to be uncached, write-through, or copy-back.
+
+EDAC protection
+CONFIG_L2_EDAC
+  Say yes here to enable EDAC protection.
+
 CONFIG_AHB_DEFMST
   Sets the default AHB master (see AMBA 2.0 specification for definition).
   Should not be set to a value larger than the number of AHB masters - 1.

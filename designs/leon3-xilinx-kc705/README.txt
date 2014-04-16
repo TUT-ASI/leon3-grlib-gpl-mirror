@@ -12,6 +12,9 @@ experimental. Currently the design configuration should be left as-is.
 Note: You must have both Vivado 2013.3 and Xilinx ISE 14.7 in your 
 path for the make targets to work.
 
+Note: Issues on the Ethernet interface have been observed when using
+the GRETH 10/100 Mbit MAC with this design.
+
 Simulation and synthesis
 ------------------------
 
@@ -44,8 +47,7 @@ To simulate using Aldec Riviera use the following make targets:
   make soft
   make riviera-launch
 
-Synthesis will ONLY work with Vivado 2013.02 installed or newer, and 
-the XILINX variable properly set in the shell. To synthesize the design, do
+To synthesize the design, do
 
   make vivado
 
@@ -113,12 +115,8 @@ USE_MIG_INTERFACE_MODEL - Use MIG simulation model for faster simulation run tim
 
 disas - Enable processor disassembly to console
 
-DEBUG - Enable extra debug information when using Micron DDR3 models
-
 Design specifics
 ----------------
-
-* Synthesis should be done using Vivado 2013.02 or newer
 
 * The DDR3 controller is implemented with Xilinx MIG Series7 2.0 and 
   runs of the 200 MHz clock. The DDR3 memory runs at 400 MHz

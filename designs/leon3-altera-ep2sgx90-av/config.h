@@ -240,7 +240,6 @@
 #define CONFIG_DSU_ETHMSB 02007A
 #define CONFIG_DSU_ETHLSB CC0001
 #undef  CONFIG_DSU_ETH_PROG
-#undef  CONFIG_DSU_ETH_DIS
 /*
  * Peripherals             
  */

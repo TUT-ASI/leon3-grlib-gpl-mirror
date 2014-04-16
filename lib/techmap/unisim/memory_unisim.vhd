@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -55,6 +55,7 @@ end;
 
 architecture behav of unisim_syncram is
   component RAMB16_S36_S36
+  generic (SIM_COLLISION_CHECK : string := "ALL");
   port (
     DOA : out std_logic_vector (31 downto 0);
     DOB : out std_logic_vector (31 downto 0);
@@ -182,7 +183,9 @@ begin
   a8 : if ((abits > 5 or GRLIB_CONFIG_ARRAY(grlib_techmap_strict_ram) /= 0) and
            (abits <= 8)) generate
     x : for i in 0 to ((dbits-1)/72) generate
-      r0 : RAMB16_S36_S36 port map (
+      r0 : RAMB16_S36_S36
+        generic map (SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
+        port map (
 	do(i*72+36+31 downto i*72+36), do(i*72+31 downto i*72),
 	do(i*72+36+32+3 downto i*72+36+32), do(i*72+32+3 downto i*72+32),
 	xa(8 downto 0), ya(8 downto 0), clk, clk,
@@ -295,6 +298,7 @@ end;
 architecture behav of unisim_syncram_dp is
 
   component RAMB16_S4_S4
+ generic (SIM_COLLISION_CHECK : string := "ALL");
  port (
    DOA : out std_logic_vector (3 downto 0);
    DOB : out std_logic_vector (3 downto 0);
@@ -314,6 +318,7 @@ architecture behav of unisim_syncram_dp is
   end component;
 
   component RAMB16_S1_S1
+ generic (SIM_COLLISION_CHECK : string := "ALL");
  port (
    DOA : out std_logic_vector (0 downto 0);
    DOB : out std_logic_vector (0 downto 0);
@@ -333,6 +338,7 @@ architecture behav of unisim_syncram_dp is
   end component;
 
   component RAMB16_S2_S2
+ generic (SIM_COLLISION_CHECK : string := "ALL");
  port (
    DOA : out std_logic_vector (1 downto 0);
    DOB : out std_logic_vector (1 downto 0);
@@ -352,6 +358,7 @@ architecture behav of unisim_syncram_dp is
   end component;
 
   component RAMB16_S9_S9
+ generic (SIM_COLLISION_CHECK : string := "ALL");
  port (
    DOA : out std_logic_vector (7 downto 0);
    DOB : out std_logic_vector (7 downto 0);
@@ -375,6 +382,7 @@ architecture behav of unisim_syncram_dp is
 end component;
 
   component RAMB16_S18_S18
+  generic (SIM_COLLISION_CHECK : string := "ALL");
   port (
     DOA : out std_logic_vector (15 downto 0);
     DOB : out std_logic_vector (15 downto 0);
@@ -397,6 +405,7 @@ end component;
   end component;
 
   component RAMB16_S36_S36
+  generic (SIM_COLLISION_CHECK : string := "ALL");
   port (
     DOA : out std_logic_vector (31 downto 0);
     DOB : out std_logic_vector (31 downto 0);
@@ -431,7 +440,9 @@ begin
 
   a9 : if abits <= 9 generate
     x : for i in 0 to ((dbits-1)/36) generate
-      r0 : RAMB16_S36_S36 port map (
+      r0 : RAMB16_S36_S36
+        generic map(SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
+        port map (
 	do1(((i+1)*36)-5 downto i*36), do2(((i+1)*36)-5 downto i*36),
 	do1(((i+1)*36)-1 downto i*36+32), do2(((i+1)*36)-1 downto i*36+32),
 	addr1(8 downto 0), addr2(8 downto 0), clk1, clk2,
@@ -446,7 +457,9 @@ begin
 
   a10 : if abits = 10 generate
     x : for i in 0 to ((dbits-1)/18) generate
-      r0 : RAMB16_S18_S18 port map (
+      r0 : RAMB16_S18_S18
+        generic map(SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
+        port map (
 	do1(((i+1)*18)-3 downto i*18), do2(((i+1)*18)-3 downto i*18),
 	do1(((i+1)*18)-1 downto i*18+16), do2(((i+1)*18)-1 downto i*18+16),
 	addr1(9 downto 0), addr2(9 downto 0), clk1, clk2,
@@ -461,7 +474,9 @@ begin
 
   a11 : if abits = 11 generate
     x : for i in 0 to ((dbits-1)/9) generate
-      r0 : RAMB16_S9_S9 port map (
+      r0 : RAMB16_S9_S9
+        generic map(SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
+        port map (
 	do1(((i+1)*9)-2 downto i*9), do2(((i+1)*9)-2 downto i*9),
 	do1(((i+1)*9)-1 downto i*9+8), do2(((i+1)*9)-1 downto i*9+8),
 	addr1(10 downto 0), addr2(10 downto 0), clk1, clk2,
@@ -476,7 +491,9 @@ begin
 
   a12 : if abits = 12 generate
     x : for i in 0 to ((dbits-1)/4) generate
-      r0 : RAMB16_S4_S4 port map (
+      r0 : RAMB16_S4_S4
+        generic map(SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
+        port map (
 	do1(((i+1)*4)-1 downto i*4), do2(((i+1)*4)-1 downto i*4),
 	addr1(11 downto 0), addr2(11 downto 0), clk1, clk2,
 	di1(((i+1)*4)-1 downto i*4), di2(((i+1)*4)-1 downto i*4),
@@ -489,7 +506,9 @@ begin
 
   a13 : if abits = 13 generate
     x : for i in 0 to ((dbits-1)/2) generate
-      r0 : RAMB16_S2_S2 port map (
+      r0 : RAMB16_S2_S2
+        generic map(SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
+        port map (
 	do1(((i+1)*2)-1 downto i*2), do2(((i+1)*2)-1 downto i*2),
 	addr1(12 downto 0), addr2(12 downto 0), clk1, clk2,
 	di1(((i+1)*2)-1 downto i*2), di2(((i+1)*2)-1 downto i*2),
@@ -502,7 +521,9 @@ begin
 
   a14 : if abits = 14 generate
     x : for i in 0 to ((dbits-1)/1) generate
-      r0 : RAMB16_S1_S1 port map (
+      r0 : RAMB16_S1_S1
+        generic map(SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
+        port map (
 	do1(((i+1)*1)-1 downto i*1), do2(((i+1)*1)-1 downto i*1),
 	addr1(13 downto 0), addr2(13 downto 0), clk1, clk2,
 	di1(((i+1)*1)-1 downto i*1), di2(((i+1)*1)-1 downto i*1),
@@ -639,6 +660,7 @@ component unisim_syncram
   );
 end component;
   component RAMB16_S36_S36
+  generic (SIM_COLLISION_CHECK : string := "ALL");
   port (
     DOA : out std_logic_vector (31 downto 0);
     DOB : out std_logic_vector (31 downto 0);
@@ -669,7 +691,9 @@ begin
   ya(abits-1 downto 0) <= address; ya(19 downto abits) <= (others => '1');
 
   a8 : if abits <= 8 generate
-    r0 : RAMB16_S36_S36 port map (
+    r0 : RAMB16_S36_S36
+      generic map(SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
+      port map (
 	dataout(63 downto 32), dataout(31 downto 0), open, open,
 	xa(8 downto 0), ya(8 downto 0), clk, clk,
 	datain(63 downto 32), datain(31 downto 0), gnd, gnd,
@@ -752,6 +776,7 @@ component unisim_syncram
   );
 end component;
   component RAMB16_S9_S9
+ generic (SIM_COLLISION_CHECK : string := "ALL");
  port (
    DOA : out std_logic_vector (7 downto 0);
    DOB : out std_logic_vector (7 downto 0);
@@ -784,7 +809,9 @@ begin
 
   a11 : if abits <= 10 generate
     x0 : for i in 0 to 7 generate
-      r0 : RAMB16_S9_S9 port map (
+      r0 : RAMB16_S9_S9
+        generic map(SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
+        port map (
 	dataout(i*8+7+64 downto i*8+64), dataout(i*8+7 downto i*8), open, open,
 	xa(10 downto 0), ya(10 downto 0), clk, clk,
 	datain(i*8+7+64 downto i*8+64), datain(i*8+7 downto i*8), gnd(0 downto 0), gnd(0 downto 0),

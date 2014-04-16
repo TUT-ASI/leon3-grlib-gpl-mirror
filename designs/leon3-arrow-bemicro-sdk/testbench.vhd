@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
 --  LEON3 BeMicro SDK design testbench
---  Copyright (C) 2011 Aeroflex Gaisler
+--  Copyright (C) 2011 - 2013 Aeroflex Gaisler
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -27,8 +27,6 @@ library gaisler;
 use gaisler.sim.all;
 library techmap;
 use techmap.gencomp.all;
-library micron;
-use micron.components.all;
 
 use work.config.all;	-- configuration
 
@@ -176,14 +174,14 @@ begin
   temp_sc <= 'H'; temp_sio <= 'H';
   
   -- DDR memory
-  ddr0 : mt46v16m16 
-    generic map (index => -1, fname => sdramfile)
-    port map(
-      Dq => ram_d(15 downto 0), Dqs => ram_dqs(1 downto 0), Addr => ram_a(12 downto 0),
-      Ba => ram_ba, Clk => ram_ck_p, Clk_n => ram_ck_n, Cke => ram_cke,
-      Cs_n => ram_cs_n, Ras_n => ram_ras_n, Cas_n => ram_cas_n, We_n => ram_ws_n,
-      Dm => ram_dm(1 downto 0));
-
+  ddr0 : ddrram
+    generic map(width => 16, abits => 14, colbits => 10, rowbits => 13,
+                implbanks => 1, fname => sdramfile, density => 2)
+    port map (ck => ram_ck_p, cke => ram_cke, csn => ram_cs_n,
+              rasn => ram_ras_n, casn => ram_cas_n, wen => ram_ws_n,
+              dm => ram_dm, ba => ram_ba, a => ram_a, dq => ram_d,
+              dqs => ram_dqs);
+  
   -- Ethernet PHY
   mdio <= 'H'; phy_tx_er <= '0'; phy_gtx_clk <= '0';
   txdt(3 downto 0) <= txd; rxd <= rxdt(3 downto 0);

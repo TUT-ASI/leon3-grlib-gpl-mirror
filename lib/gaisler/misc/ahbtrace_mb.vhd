@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -43,6 +43,7 @@ entity ahbtrace_mb is
     tech    : integer := DEFMEMTECH; 
     irq     : integer := 0; 
     kbytes  : integer := 1;
+    bwidth  : integer := 32;
     ahbfilt : integer := 0); 
   port (
     rst    : in  std_ulogic;
@@ -73,6 +74,7 @@ begin
       tech    => tech,
       irq     => irq,
       kbytes  => kbytes,
+      bwidth  => bwidth,
       ahbfilt => ahbfilt,
       ntrace  => 1)
     port map(

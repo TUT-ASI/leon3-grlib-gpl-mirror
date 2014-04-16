@@ -46,7 +46,7 @@
   constant CFG_DLINE 	: integer := CFG_DLINE_SZ;
   constant CFG_DREPL 	: integer := CFG_DCACHE_ALGORND;
   constant CFG_DLOCK 	: integer := CONFIG_DCACHE_LOCK;
-  constant CFG_DSNOOP	: integer := CONFIG_DCACHE_SNOOP + CONFIG_DCACHE_SNOOP_FAST + 4*CONFIG_DCACHE_SNOOP_SEPTAG;
+  constant CFG_DSNOOP	: integer := CONFIG_DCACHE_SNOOP*2 + 4*CONFIG_DCACHE_SNOOP_SEPTAG;
   constant CFG_DFIXED	: integer := 16#CONFIG_CACHE_FIXED#;
   constant CFG_DLRAMEN	: integer := CONFIG_DCACHE_LRAM;
   constant CFG_DLRAMADDR: integer := 16#CONFIG_DCACHE_LRSTART#;
@@ -69,6 +69,20 @@
   constant CFG_LEON3_NETLIST: integer := CONFIG_LEON3_NETLIST;	
   constant CFG_DISAS    : integer := CONFIG_IU_DISAS + CONFIG_IU_DISAS_NET;
   constant CFG_PCLOW    : integer := CFG_DEBUG_PC32;
+
+-- L2 Cache
+  constant CFG_L2_EN    : integer := CONFIG_L2_ENABLE;
+  constant CFG_L2_SIZE	: integer := CFG_L2_SZ;
+  constant CFG_L2_WAYS	: integer := CFG_L2_ASSO;
+  constant CFG_L2_HPROT	: integer := CONFIG_L2_HPROT;
+  constant CFG_L2_PEN  	: integer := CONFIG_L2_PEN;
+  constant CFG_L2_WT   	: integer := CONFIG_L2_WT;
+  constant CFG_L2_RAN  	: integer := CONFIG_L2_RAN;
+  constant CFG_L2_SHARE	: integer := CONFIG_L2_SHARE;
+  constant CFG_L2_LSZ  	: integer := CFG_L2_LINE;
+  constant CFG_L2_MAP  	: integer := 16#CONFIG_L2_MAP#;
+  constant CFG_L2_MTRR 	: integer := CONFIG_L2_MTRR;
+  constant CFG_L2_EDAC	: integer := CONFIG_L2_EDAC;
 
 -- AMBA settings
   constant CFG_DEFMST  	  : integer := CONFIG_AHB_DEFMST;

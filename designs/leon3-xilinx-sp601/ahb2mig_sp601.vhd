@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -52,10 +52,12 @@ entity ahb2mig_sp601 is
     mcb3_dram_cke     : out std_logic;
     mcb3_dram_dm      : out std_logic;
     mcb3_dram_udqs    : inout std_logic;
+    mcb3_dram_udqs_n  : inout std_logic;
     mcb3_rzq          : inout std_logic;
     mcb3_zio          : inout std_logic;
     mcb3_dram_udm     : out std_logic;
     mcb3_dram_dqs     : inout std_logic;
+    mcb3_dram_dqs_n   : inout std_logic;
     mcb3_dram_ck      : out std_logic;
     mcb3_dram_ck_n    : out std_logic;
 
@@ -411,6 +413,7 @@ begin
    mcb3_dram_cke     => mcb3_dram_cke,   
    mcb3_dram_dm      => mcb3_dram_dm,     
    mcb3_dram_udqs    => mcb3_dram_udqs,   
+   mcb3_dram_udqs_n  => mcb3_dram_udqs_n,
    mcb3_rzq          => mcb3_rzq,        
    mcb3_zio          => mcb3_zio,  
    mcb3_dram_udm     => mcb3_dram_udm, 
@@ -421,6 +424,7 @@ begin
    c3_clk0           => open,
    c3_rst0           => open,
    mcb3_dram_dqs     => mcb3_dram_dqs,
+   mcb3_dram_dqs_n   => mcb3_dram_dqs_n,
    mcb3_dram_ck      => mcb3_dram_ck,
    mcb3_dram_ck_n    => mcb3_dram_ck_n,
    c3_p0_cmd_clk     => clk_amba,

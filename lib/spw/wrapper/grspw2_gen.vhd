@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -33,24 +33,38 @@ use spw.spwcomp.all;
 
 entity grspw2_gen is
   generic(
-    rmap         : integer range 0 to 2  := 0;
-    rmapcrc      : integer range 0 to 1  := 0;
-    fifosize1    : integer range 4 to 32 := 32;
-    fifosize2    : integer range 16 to 64 := 64;
-    rxunaligned  : integer range 0 to 1 := 0;
-    rmapbufs     : integer range 2 to 8 := 4;
-    scantest     : integer range 0 to 1 := 0;
-    ports        : integer range 1 to 2 := 1;
-    dmachan      : integer range 1 to 4 := 1;
-    tech         : integer;
-    input_type   : integer range 0 to 3 := 0;
-    output_type  : integer range 0 to 2 := 0;
-    rxtx_sameclk : integer range 0 to 1 := 0;
-    ft           : integer range 0 to 2 := 0;
-    techfifo     : integer range 0 to 1 := 1;
-    memtech      : integer := 0;
-    nodeaddr     : integer range 0 to 255 := 254;
-    destkey      : integer range 0 to 255 := 0
+    rmap            : integer range 0 to 2  := 0;
+    rmapcrc         : integer range 0 to 1  := 0;
+    fifosize1       : integer range 4 to 64 := 32;
+    fifosize2       : integer range 16 to 64 := 64;
+    rxunaligned     : integer range 0 to 1 := 0;
+    rmapbufs        : integer range 2 to 8 := 4;
+    scantest        : integer range 0 to 1 := 0;
+    ports           : integer range 1 to 2 := 1;
+    dmachan         : integer range 1 to 4 := 1;
+    tech            : integer;
+    input_type      : integer range 0 to 3 := 0;
+    output_type     : integer range 0 to 2 := 0;
+    rxtx_sameclk    : integer range 0 to 1 := 0;
+    ft              : integer range 0 to 2 := 0;
+    techfifo        : integer range 0 to 1 := 1;
+    memtech         : integer := 0;
+    nodeaddr        : integer range 0 to 255 := 254;
+    destkey         : integer range 0 to 255 := 0;
+    interruptdist   : integer range 0 to 32 := 0;
+    intscalerbits   : integer range 0 to 31 := 0;
+    intisrtimerbits : integer range 0 to 31 := 0;
+    intiatimerbits  : integer range 0 to 31 := 0;
+    intctimerbits   : integer range 0 to 31 := 0;
+    tickinasync     : integer range 0 to 1 := 0;
+    pnp             : integer range 0 to 2 := 0;
+    pnpvendid       : integer range 0 to 16#FFFF# := 0;
+    pnpprodid       : integer range 0 to 16#FFFF# := 0;
+    pnpmajorver     : integer range 0 to 16#FF# := 0;
+    pnpminorver     : integer range 0 to 16#FF# := 0;
+    pnppatch        : integer range 0 to 16#FF# := 0;
+    num_txdesc      : integer range 64 to 512 := 64;
+    num_rxdesc      : integer range 128 to 1024 := 128    
     );
   port(
     rst          : in  std_ulogic;
@@ -110,7 +124,18 @@ entity grspw2_gen is
     --parallel rx data out
     rxdav        : out  std_ulogic;
     rxdataout    : out  std_logic_vector(8 downto 0);
-    loopback     : out  std_ulogic
+    loopback     : out  std_ulogic;
+    -- interrupt dist. default values
+    intpreload   : in   std_logic_vector(30 downto 0);
+    inttreload   : in   std_logic_vector(30 downto 0);
+    intiareload  : in   std_logic_vector(30 downto 0);
+    intcreload   : in   std_logic_vector(30 downto 0);
+    irqtxdefault : in   std_logic_vector(4 downto 0);
+    --SpW PnP enable
+    pnpen        : in   std_ulogic;
+    pnpuvendid   : in   std_logic_vector(15 downto 0);
+    pnpuprodid   : in   std_logic_vector(15 downto 0);
+    pnpusn       : in   std_logic_vector(31 downto 0)
     );
 end entity;
 
@@ -123,17 +148,17 @@ architecture rtl of grspw2_gen is
 
   --rx ahb fifo
   signal rxrenable    : std_ulogic;
-  signal rxraddress   : std_logic_vector(4 downto 0);
+  signal rxraddress   : std_logic_vector(5 downto 0);
   signal rxwrite      : std_ulogic;
   signal rxwdata      : std_logic_vector(31 downto 0);
-  signal rxwaddress   : std_logic_vector(4 downto 0);
+  signal rxwaddress   : std_logic_vector(5 downto 0);
   signal rxrdata      : std_logic_vector(31 downto 0);
   --tx ahb fifo
   signal txrenable    : std_ulogic;
-  signal txraddress   : std_logic_vector(4 downto 0);
+  signal txraddress   : std_logic_vector(5 downto 0);
   signal txwrite      : std_ulogic;
   signal txwdata      : std_logic_vector(31 downto 0);
-  signal txwaddress   : std_logic_vector(4 downto 0);
+  signal txwaddress   : std_logic_vector(5 downto 0);
   signal txrdata      : std_logic_vector(31 downto 0);
   --nchar fifo
   signal ncrenable    : std_ulogic;
@@ -163,21 +188,35 @@ begin
 
   grspwc0: grspwc2
     generic map(
-      rmap         => rmap,
-      rmapcrc      => rmapcrc,
-      fifosize1    => fifosize1,
-      fifosize2    => fifosize2,
-      rxunaligned  => rxunaligned,
-      rmapbufs     => rmapbufs,
-      scantest     => scantest,
-      ports        => ports,
-      dmachan      => dmachan,
-      tech         => tech,
-      input_type   => input_type,
-      output_type  => output_type,
-      rxtx_sameclk => rxtx_sameclk,
-      nodeaddr     => nodeaddr,
-      destkey      => destkey)
+      rmap            => rmap,
+      rmapcrc         => rmapcrc,
+      fifosize1       => fifosize1,
+      fifosize2       => fifosize2,
+      rxunaligned     => rxunaligned,
+      rmapbufs        => rmapbufs,
+      scantest        => scantest,
+      ports           => ports,
+      dmachan         => dmachan,
+      tech            => tech,
+      input_type      => input_type,
+      output_type     => output_type,
+      rxtx_sameclk    => rxtx_sameclk,
+      nodeaddr        => nodeaddr,
+      destkey         => destkey,
+      interruptdist   => interruptdist,
+      intscalerbits   => intscalerbits,
+      intisrtimerbits => intisrtimerbits,
+      intiatimerbits  => intiatimerbits,
+      intctimerbits   => intctimerbits,
+      tickinasync     => tickinasync,
+      pnp             => pnp,
+      pnpvendid       => pnpvendid,
+      pnpprodid       => pnpprodid,
+      pnpmajorver     => pnpmajorver,
+      pnpminorver     => pnpminorver,
+      pnppatch        => pnppatch,
+      num_txdesc      => num_txdesc,
+      num_rxdesc      => num_rxdesc)    
     port map(
       rst          => rst,
       clk          => clk,
@@ -264,7 +303,19 @@ begin
       --parallel rx data out
       rxdav        => rxdav,
       rxdataout    => rxdataout,
-      loopback     => loopback);
+      loopback     => loopback,
+      -- interrupt dist. default values
+      intpreload   => intpreload,
+      inttreload   => inttreload,
+      intiareload  => intiareload,
+      intcreload   => intcreload,
+      irqtxdefault => irqtxdefault,
+      -- SpW PnP enable
+      pnpen        => pnpen,
+      pnpuvendid   => pnpuvendid,
+      pnpuprodid   => pnpuprodid,
+      pnpusn       => pnpusn
+      );
 
   ------------------------------------------------------------------------------
   -- FIFOS ---------------------------------------------------------------------

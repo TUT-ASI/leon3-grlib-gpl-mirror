@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -69,7 +69,7 @@ begin
     u0 : umc_inpad generic map (level, voltage) port map (pad, o); lock <= '1';
   end generate;
   rhu : if (tech = rhumc) generate
-    u0 : rhumc_inpad generic map (level, voltage) port map (pad, o); lock <= '1';
+    u0 : rhumc_inpad generic map (level, voltage, filter) port map (pad, o); lock <= '1';
   end generate;
   saed : if (tech = saed32) generate
     u0 : saed32_inpad generic map (level, voltage) port map (pad, o); lock <= '1';

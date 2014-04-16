@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -44,7 +44,8 @@ architecture rtl of ddr_ireg is
 begin
 
   inf : if not((is_unisim(tech) = 1) or (tech = axcel) or
-               (tech = axdsp) or (tech = apa3) or (tech = apa3e) or (tech = apa3l)) generate
+               (tech = axdsp) or (tech = apa3) or (tech = apa3e) or 
+               (tech = apa3l) or (tech = rhumc)) generate
     inf0 : gen_iddr_reg port map (Q1, Q2, C1, C2, CE, D, R, S);
   end generate;
 
@@ -66,6 +67,10 @@ begin
 
   xil : if is_unisim(tech) = 1 generate
     xil0 : unisim_iddr_reg generic map (tech, arch) port map (Q1, Q2, C1, C2, CE, D, R, S);
+  end generate;
+
+  rhu : if (tech = rhumc) generate
+    rhu0: rhumc_iddr_reg port map (Q1, Q2, C1, C2, CE, D, R, S);
   end generate;
 
 --pragma translate_off

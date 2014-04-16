@@ -9,7 +9,7 @@ additional information.
 Note: The Vivado flow and parts of this design are still
 experimental. Currently the design configuration should be left as-is.
 
-Note: You must have both Vivado 2013.2 and Xilinx ISE 14.6 in your 
+Note: You must have both Vivado 2013.3 and Xilinx ISE 14.6 in your 
 path for the make targets to work.
 
 Simulation and synthesis
@@ -46,8 +46,7 @@ To simulate using Aldec Riviera use the following make targets:
   make soft
   make riviera-launch
 
-Synthesis will ONLY work with Vivado 2013.03 installed or newer, and 
-the XILINX variable properly set in the shell. To synthesize the design, do
+To synthesize the design, do
 
   make vivado
 

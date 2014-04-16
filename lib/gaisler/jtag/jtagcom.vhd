@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -204,6 +204,8 @@ begin
         else
           if r.upd2 = '0' then v.state := shft; end if;
         end if;
+      when others =>
+        v.state := shft; v.addr := (others => '0'); v.seq := '0';
     end case;
 
     if (rst = '0') or (r.trst(0) = '1') then

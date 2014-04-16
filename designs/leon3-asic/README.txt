@@ -32,9 +32,9 @@ containing SAED32_EDK.
 To simulate using Modelsim/Aldec and run systest.c on the LEON3 ASIC
 design:
 
-  make soft
   make comp_saed32_sim (If SAED32 is used)
   make vsim
+  make soft
   make vsim-launch
 
 Synthesis has been tested using Design Compiler 2013.3-SP1 installed or newer, and 

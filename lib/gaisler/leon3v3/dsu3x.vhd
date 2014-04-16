@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -56,6 +56,7 @@ entity dsu3x is
     ahbmi  : in  ahb_mst_in_type;
     ahbsi  : in  ahb_slv_in_type;
     ahbso  : out ahb_slv_out_type;
+    tahbsi : in  ahb_slv_in_type;
     dbgi   : in l3_debug_out_vector(0 to NCPU-1);
     dbgo   : out l3_debug_in_vector(0 to NCPU-1);
     dsui   : in dsu_in_type;
@@ -229,12 +230,12 @@ architecture rtl of dsu3x is
   signal r, rin : reg_type;
 
   signal rh, rhin : hclk_reg_type;
-  signal ahbsi2 : ahb_slv_in_type;
+  signal ahbsi2, tahbsi2 : ahb_slv_in_type;
   signal hrdata2x : std_logic_vector(31 downto 0);
   
 begin
 
-  comb: process(rst, r, ahbsi, ahbsi2, dbgi, dsui, ahbmi, tr, tbo, hclken, rh, hrdata2x)
+  comb: process(rst, r, ahbsi, ahbsi2, tahbsi2, dbgi, dsui, ahbmi, tr, tbo, hclken, rh, hrdata2x)
                 
     variable v : reg_type;
     variable iuacc : std_ulogic;
@@ -277,7 +278,7 @@ begin
     
 -- check for AHB watchpoints
     bphit1 := '0'; bphit2 := '0';
-    if TRACEN and ((ahbsi2.hready and tr.ahbactive) = '1') then
+    if TRACEN and ((tahbsi2.hready and tr.ahbactive) = '1') then
       if ((((tr.tbreg1.addr xor tr.haddr(31 downto 2)) and tr.tbreg1.mask) = zero32(29 downto 0)) and
          (((tr.tbreg1.read and not tr.hwrite) or (tr.tbreg1.write and tr.hwrite)) = '1')) 
       then bphit1 := '1'; end if;
@@ -339,15 +340,15 @@ begin
 
 -- save AHB transfer parameters
 
-      if (ahbsi2.hready = '1' ) then
-        tv.haddr := ahbsi2.haddr; tv.hwrite := ahbsi2.hwrite; tv.htrans := ahbsi2.htrans;
-        tv.hsize := ahbsi2.hsize; tv.hburst := ahbsi2.hburst;
-        tv.hmaster := ahbsi2.hmaster; tv.hmastlock := ahbsi2.hmastlock;
+      if (tahbsi2.hready = '1' ) then
+        tv.haddr := tahbsi2.haddr; tv.hwrite := tahbsi2.hwrite; tv.htrans := tahbsi2.htrans;
+        tv.hsize := tahbsi2.hsize; tv.hburst := tahbsi2.hburst;
+        tv.hmaster := tahbsi2.hmaster; tv.hmastlock := tahbsi2.hmastlock;
       end if;
-      if tr.hsel = '1' then tv.hwdata := ahbsi2.hwdata(31 downto 0); end if;
-      if ahbsi2.hready = '1' then
-        tv.hsel := ahbsi2.hsel(hindex);
-        tv.ahbactive := ahbsi2.htrans(1);
+      if tr.hsel = '1' then tv.hwdata := tahbsi2.hwdata(31 downto 0); end if;
+      if tahbsi2.hready = '1' then
+        tv.hsel := tahbsi2.hsel(hindex);
+        tv.ahbactive := tahbsi2.htrans(1);
       end if;
     end if;
 
@@ -673,34 +674,86 @@ begin
   end process;   
 
   comb2gen0 : if (clk2x /= 0) generate    
-    ag0 : clkand generic map (tech => 0, ren => 0) port map (ahbsi.hmastlock, hclken, ahbsi2.hmastlock);
-    ag1 : clkand generic map (tech => 0, ren => 0) port map (ahbsi.hwrite, hclken, ahbsi2.hwrite);
-    ag2 : clkand generic map (tech => 0, ren => 0) port map (ahbsi.hready, hclken, ahbsi2.hready);
-    gen3 : for i in ahbsi.haddr'range generate
-      ag3 : clkand generic map (tech => 0, ren => 0) port map (ahbsi.haddr(i), hclken, ahbsi2.haddr(i));
-    end generate;
-    gen4 : for i in ahbsi.htrans'range generate 
-      ag4 : clkand generic map (tech => 0, ren => 0) port map (ahbsi.htrans(i), hclken, ahbsi2.htrans(i));
-    end generate;
---    gen5 : for i in ahbsi.hwdata'range generate
-    gen5 : for i in 0 to 31 generate
-      ag5 : clkand generic map (tech => 0, ren => 0) port map (ahbsi.hwdata(i), hclken, ahbsi2.hwdata(i));
-    end generate;
-    gen6 : for i in ahbsi.hsize'range generate 
-      ag6 : clkand generic map (tech => 0, ren => 0) port map (ahbsi.hsize(i), hclken, ahbsi2.hsize(i));
-    end generate;
-    gen7 : for i in ahbsi.hburst'range generate
-      ag7 : clkand generic map (tech => 0, ren => 0) port map (ahbsi.hburst(i), hclken, ahbsi2.hburst(i));
-    end generate;
-    gen8 : for i in ahbsi.hmaster'range generate
-      ag8 : clkand generic map (tech => 0, ren => 0) port map (ahbsi.hmaster(i), hclken, ahbsi2.hmaster(i));
-    end generate;
-    gen9 : for i in ahbsi.hsel'range generate
-      ag9 : clkand generic map (tech => 0, ren => 0) port map (ahbsi.hsel(i), hclken, ahbsi2.hsel(i));
+    -- register i/f
+    gen0 : for i in ahbsi.hsel'range generate
+      ag0 : clkand generic map (tech => 0, ren => 0) port map (ahbsi.hsel(i), hclken, ahbsi2.hsel(i));
     end generate;
 
-    gen10 : for i in hrdata2x'range generate
-      ag10 : clkand generic map (tech => 0, ren => 0) port map (r.slv.hrdata(i), rh.oen, hrdata2x(i)); 
+    gen1 : for i in ahbsi.haddr'range generate
+      ag1 : clkand generic map (tech => 0, ren => 0) port map (ahbsi.haddr(i), hclken, ahbsi2.haddr(i));
+    end generate;
+
+    ag2 : clkand generic map (tech => 0, ren => 0) port map (ahbsi.hwrite, hclken, ahbsi2.hwrite);
+
+    gen3 : for i in ahbsi.htrans'range generate 
+      ag3 : clkand generic map (tech => 0, ren => 0) port map (ahbsi.htrans(i), hclken, ahbsi2.htrans(i));
+    end generate;
+
+    gen4 : for i in ahbsi.hwdata'range generate
+      ag4 : clkand generic map (tech => 0, ren => 0) port map (ahbsi.hwdata(i), hclken, ahbsi2.hwdata(i));
+    end generate;
+    
+    ag5 : clkand generic map (tech => 0, ren => 0) port map (ahbsi.hready, hclken, ahbsi2.hready);
+
+    -- not used by register i/f:
+    ahbsi2.hsize <= (others => '0');
+    ahbsi2.hburst <= (others => '0');
+    ahbsi2.hprot <= (others => '0');
+    ahbsi2.hmaster <= (others => '0');
+    ahbsi2.hmastlock <= '0';
+    ahbsi2.hmbsel <= (others => '0');
+    ahbsi2.hirq <= (others => '0');
+    ahbsi2.testen <= '0';
+    ahbsi2.testrst <= '0';
+    ahbsi2.scanen <= '0';
+    ahbsi2.testoen <= '0';
+
+    -- trace buffer:
+    gen6 : for i in tahbsi.haddr'range generate
+      ag6 : clkand generic map (tech => 0, ren => 0) port map (tahbsi.haddr(i), hclken, tahbsi2.haddr(i));
+    end generate;
+
+    ag7 : clkand generic map (tech => 0, ren => 0) port map (tahbsi.hwrite, hclken, tahbsi2.hwrite);
+
+    gen8 : for i in tahbsi.htrans'range generate 
+      ag8 : clkand generic map (tech => 0, ren => 0) port map (tahbsi.htrans(i), hclken, tahbsi2.htrans(i));
+    end generate;
+
+    gen9 : for i in tahbsi.hsize'range generate 
+      ag9 : clkand generic map (tech => 0, ren => 0) port map (tahbsi.hsize(i), hclken, tahbsi2.hsize(i));
+    end generate;
+
+    gen10 : for i in tahbsi.hburst'range generate 
+      a10 : clkand generic map (tech => 0, ren => 0) port map (tahbsi.hburst(i), hclken, tahbsi2.hburst(i));
+    end generate;
+
+    gen11 : for i in tahbsi.hwdata'range generate
+      ag11 : clkand generic map (tech => 0, ren => 0) port map (tahbsi.hwdata(i), hclken, tahbsi2.hwdata(i));
+    end generate;
+
+    ag12 : clkand generic map (tech => 0, ren => 0) port map (tahbsi.hready, hclken, tahbsi2.hready);
+
+    gen12 : for i in tahbsi.hmaster'range generate
+      ag12 : clkand generic map (tech => 0, ren => 0) port map (tahbsi.hmaster(i), hclken, tahbsi2.hmaster(i));
+    end generate;
+    
+    ag13 : clkand generic map (tech => 0, ren => 0) port map (tahbsi.hmastlock, hclken, tahbsi2.hmastlock);
+    
+    gen14 : for i in tahbsi.hsel'range generate
+      ag14 : clkand generic map (tech => 0, ren => 0) port map (tahbsi.hsel(i), hclken, tahbsi2.hsel(i));
+    end generate;
+    
+    -- not used by trace buffer:
+    tahbsi2.hprot <= (others => '0');
+    tahbsi2.hmbsel <= (others => '0');
+    tahbsi2.hirq <= (others => '0');
+    tahbsi2.testen <= '0';
+    tahbsi2.testrst <= '0';
+    tahbsi2.scanen <= '0';
+    tahbsi2.testoen <= '0';
+        
+    gen15 : for i in hrdata2x'range generate
+      ag15 : clkand generic map (tech => 0, ren => 0) port map (r.slv.hrdata(i), rh.oen, hrdata2x(i)); 
     end generate;
     
     reg2 : process(hclk)
@@ -711,6 +764,7 @@ begin
 
   comb2gen1 : if (clk2x = 0) generate
     ahbsi2 <= ahbsi; rh.irq <= '0'; rh.oen <= '0'; hrdata2x <= (others => '0');
+    tahbsi2 <= tahbsi;
   end generate;
     
   reg : process(cpuclk)

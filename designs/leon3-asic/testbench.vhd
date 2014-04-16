@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -119,14 +119,14 @@ signal spw_txs : std_logic_vector(0 to CFG_SPW_NUM-1);
 
 signal i2c_scl     : std_ulogic;
 signal i2c_sda     : std_ulogic;
-signal spi_miso    : std_ulogic;
-signal spi_mosi    : std_ulogic;
-signal spi_sck     : std_ulogic;
+signal spi_miso    : std_logic;
+signal spi_mosi    : std_logic;
+signal spi_sck     : std_logic;
 signal spi_slvsel  : std_logic_vector(CFG_SPICTRL_SLVS-1 downto 0);
 
 signal trst,tck,tms,tdi,tdo: std_ulogic;
 
-signal gtx_clk : std_ulogic;
+signal gtx_clk : std_ulogic := '0';
 signal erx_clk : std_ulogic;
 signal erxd    : std_logic_vector(7 downto 0);
 signal erx_dv  : std_ulogic;
@@ -160,6 +160,7 @@ begin
   gnd <= "0000";
   clk <= not clk after ct * 1 ns;
   spw_clk <= not spw_clk after ct * 1 ns;
+  gtx_clk <= not gtx_clk after 8 ns;
   rst <= dsurst;
   bexcn <= '1'; wdogn <= 'H';
   gpio(2 downto 0) <= "HHL"; 
@@ -233,13 +234,49 @@ begin
       rwen(0), ramoen(0));
   end generate;
 
+  phy0 : if (CFG_GRETH = 1) generate
+   emdio <= 'H';
+   emdint <= '0';
+   p0: phy
+    generic map (
+             address       => 7,
+             extended_regs => 1,
+             aneg          => 1,
+             base100_t4    => 1,
+             base100_x_fd  => 1,
+             base100_x_hd  => 1,
+             fd_10         => 1,
+             hd_10         => 1,
+             base100_t2_fd => 1,
+             base100_t2_hd => 1,
+             base1000_x_fd => 0,
+             base1000_x_hd => 0,
+             base1000_t_fd => 0,
+             base1000_t_hd => 0,
+             rmii          => 0,
+             rgmii         => 0
+    )
+    port map(rst, emdio, etx_clk, erx_clk, erxd,
+             erx_dv, erx_er, erx_col, erx_crs, etxd,
+             etx_en, etx_er, emdc, gtx_clk);
+  
+  end generate;
+
+  spimem0: if (CFG_SPICTRL_ENABLE = 1) generate
+    s0 : spi_flash generic map (ftype => 4, debug => 0, fname => promfile,
+                                readcmd => CFG_SPIMCTRL_READCMD,
+                                dummybyte => CFG_SPIMCTRL_DUMMYBYTE,
+                                dualoutput => 0) 
+      port map (spi_sck, spi_mosi, spi_miso, spi_slvsel(0));
+  end generate spimem0;
+
    iuerr : process
    begin
      wait for 2500 ns;
      if to_x01(error) = '1' then wait on error; end if;
---     assert (to_x01(error) = '1') 
---       report "*** IU in error mode, simulation halted ***"
---         severity failure ;
+     assert (to_x01(error) = '1') 
+       report "*** IU in error mode, simulation halted ***"
+         severity failure ;
    end process;
 
   bst0: process

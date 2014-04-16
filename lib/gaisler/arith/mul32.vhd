@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -42,14 +42,17 @@ generic (
     multype : integer range 0 to 3 := 0;
     pipe    : integer range 0 to 1 := 0;
     mac     : integer range 0 to 1 := 0;
-    arch    : integer range 0 to 3 := 0
+    arch    : integer range 0 to 3 := 0;
+    scantest: integer := 0
 );
 port (
     rst     : in  std_ulogic;
     clk     : in  std_ulogic;
     holdn   : in  std_ulogic;
     muli    : in  mul32_in_type;
-    mulo    : out mul32_out_type
+    mulo    : out mul32_out_type;
+    testen  : in  std_ulogic := '0';
+    testrst : in  std_ulogic := '1'
 );
 end;
 
@@ -81,6 +84,7 @@ type mac_regtype is record
 end record;
 
 constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+constant ASYNC_RESET : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 constant MULRES : mul_regtype := (
   acc     => (others => '0'),
   state   => (others => '0'),
@@ -93,6 +97,7 @@ constant MACRES : mac_regtype := (
   msigned => '0',
   xsigned => '0');
 
+signal arst : std_ulogic;
 signal rm, rmin : mul_regtype;
 signal mm, mmin : mac_regtype;
 signal ma, mb : std_logic_vector(32 downto 0);
@@ -102,7 +107,11 @@ signal vcc : std_logic;
 
 begin
 
-  vcc <= '1'; 
+  vcc <= '1';
+
+  arst <= testrst when (ASYNC_RESET and scantest/=0 and testen/='0') else
+          rst when ASYNC_RESET else
+          '1';
 
   mulcomb : process(rst, rm, muli, mreg, prod, mm)
   variable mop1, mop2 : std_logic_vector(32 downto 0);
@@ -300,7 +309,7 @@ begin
 
 -- drive result and condition codes
     if (muli.flush = '1') then v.state := "00"; v.start := '0'; end if;
-    if (not RESET_ALL) and (rst = '0') then
+    if (not ASYNC_RESET) and (not RESET_ALL) and (rst = '0') then
       v.nready := MULRES.nready; v.ready := MULRES.ready;
       v.state := MULRES.state; v.start := MULRES.start;
     end if;
@@ -352,19 +361,35 @@ begin
   xm1616 : if MULTIPLIER = m16x16 generate
     m1616 : techmult generic map (tech, arch, 17, 17, pipe+1, pipe)
       port map (ma(16 downto 0), mb(16 downto 0), clk, holdn, vcc,  prod(33 downto 0));
-    reg : process(clk)
-    begin
-      if rising_edge(clk) then
-        if (holdn = '1') then
-          mm <= mmin;
-          mreg(33 downto 0) <= prod(33 downto 0);
-	end if;
-        if RESET_ALL and (rst = '0') then
+    syncrregs : if not ASYNC_RESET generate
+      reg : process(clk)
+      begin
+        if rising_edge(clk) then
+          if (holdn = '1') then
+            mm <= mmin;
+            mreg(33 downto 0) <= prod(33 downto 0);
+          end if;
+          if RESET_ALL and (rst = '0') then
+            mm <= MACRES;
+            mreg(33 downto 0) <= (others => '0');
+          end if;
+        end if;
+      end process;
+    end generate syncrregs;
+    asyncrregs : if ASYNC_RESET generate
+      reg : process(clk, arst)
+      begin
+        if (arst = '0') then
           mm <= MACRES;
           mreg(33 downto 0) <= (others => '0');
+        elsif rising_edge(clk) then
+          if (holdn = '1') then
+            mm <= mmin;
+            mreg(33 downto 0) <= prod(33 downto 0);
+          end if;
         end if;
-      end if;
-    end process;
+      end process;
+    end generate asyncrregs;
     mreg(49 downto 34) <= (others => '0');
     prod(65 downto 34) <= (others => '0');
   end generate;
@@ -390,21 +415,31 @@ begin
     mreg <= (others => '0');
   end generate;
 
-
-  reg : process(clk)
-  begin
-    if rising_edge(clk) then
-      if (holdn = '1') then rm <= rmin; end if;
-      if (rst = '0') then
-        if RESET_ALL then
-          rm <= MULRES;
-        else
-          rm.nready <= MULRES.nready; rm.ready <= MULRES.ready;
-          rm.state <= MULRES.state; rm.start <= MULRES.start;
+  syncrregs : if not ASYNC_RESET generate
+    reg : process(clk)
+    begin
+      if rising_edge(clk) then
+        if (holdn = '1') then rm <= rmin; end if;
+        if (rst = '0') then
+          if RESET_ALL then
+            rm <= MULRES;
+          else
+            rm.nready <= MULRES.nready; rm.ready <= MULRES.ready;
+            rm.state <= MULRES.state; rm.start <= MULRES.start;
+          end if;
         end if;
       end if;
-    end if;
-  end process;
+    end process;
+  end generate syncrregs;
+  asyncrregs : if ASYNC_RESET generate
+    reg : process(clk, arst)
+    begin
+      if (arst = '0') then
+        rm <= MULRES;
+      elsif rising_edge(clk) then
+        if (holdn = '1') then rm <= rmin; end if;
+      end if;
+    end process;
+  end generate asyncrregs;
 
 end;
-

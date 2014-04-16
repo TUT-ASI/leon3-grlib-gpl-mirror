@@ -130,11 +130,12 @@ NET  "ddr_cke"             LOC = "H7" ;
 NET  "ddr_dm(0)"                 LOC = "K3" ;
 #
 NET  "ddr_dqs(0)"                LOC = "L4" ;
-#NET  "ddr_dqsn(0)"                LOC = "L3" ;
+NET  "ddr_dqsn(0)"                LOC = "L3" ;
 NET  "ddr_odt"                LOC = "K6" ;
 NET  "ddr_ras"              LOC = "L5" ;
 NET  "ddr_dm(1)"                LOC = "K4" ;
 NET  "ddr_dqs(1)"               LOC = "P2" ;
+NET  "ddr_dqsn(1)"               LOC = "P1" ;
 NET  "ddr_we"               LOC = "E3" ;
 
 # The specific pin below for RZQ is required for xc6slx16-csg324 

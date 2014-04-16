@@ -19,33 +19,23 @@ TOP=leon3mp
 SIMTOP=testbench
 
 # Uncomment for Modelsim or change to specify your simulator
-GRLIB_SIMULATOR=ModelSim
+#GRLIB_SIMULATOR=ModelSim
 
 # Options used during compilation
 VCOMOPT=-explicit -O0
-VLOGOPT= +define+x1Gb +define+sg125 +define+x8 -suppress 2902
 
 # GRLIB Options
-VSIMOPT= -gdisas=1
+VSIMOPT= -gdisas=0
 
 # GRETH options
 ifeq ($(CONFIG_GRETH_ENABLE),y)
-VSIMOPT+= -gEXAMPLE_SIMULATION=1 -L secureip_ver -L xilinxcorelib_ver -L unisims_ver 
+VSIMOPT+= -L secureip_ver -L xilinxcorelib_ver -L unisims_ver 
 endif
 
 # - MIG -
-#
-# DEBUG - Print debug information from external DDR3 memory (1/0) 
-#
 ifeq ($(CONFIG_MIG_SERIES7),y)
-ifeq ("$(GRLIB_SIMULATOR)","ALDEC")
-VSIMOPT+= -do "do riviera_preload_ddr3_dimm.do; run -all"
-else
-VSIMOPT+= -do "do preload_ddr3_dimm.do; run -all" 
-endif
-VSIMOPT+= -t fs -novopt -gDEBUG=0
+VSIMOPT+= -t fs -novopt
 VSIMOPT+= -L secureip_ver -L xilinxcorelib_ver -L unisims_ver glbl
-GRLIB_XIL_Vivado_sim_verilog_define=x1Gb sg125 x8
 ifndef CONFIG_MIG_SERIES_7_MODEL
 VSIMOPT+= -gUSE_MIG_INTERFACE_MODEL=false 
 else
@@ -60,6 +50,13 @@ else
 VSIMOPT+=-novopt +notimingchecks
 endif
 
+# Run simulation in batch mode
+VSIMOPT+= -c
+
+# Simulation scripts
+#VSIMOPT+= -do "run 1300us; do wave.do; run 200us"
+VSIMOPT+= -do "run -all"
+
 # Toplevel
 VSIMOPT+= $(SIMTOP)
 
@@ -67,11 +64,10 @@ VSIMOPT+= $(SIMTOP)
 
 ### Testbench, design and libraries to compile and not to compile
 
-VHDLSYNFILES= config.vhd ahbrom.vhd leon3mp.vhd ddr_dummy.vhd
+VHDLSYNFILES= config.vhd ahbram_sim.vhd ahbrom.vhd leon3mp.vhd ddr_dummy.vhd
 VHDLSIMFILES=testbench.vhd
 
-TECHLIBS = secureip unisim 
-EXTRA_SOFT = gen_hex_dim
+TECHLIBS = secureip unisim
 
 LIBSKIP = pci pci/pcif core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp spw gsi cypress hynix \

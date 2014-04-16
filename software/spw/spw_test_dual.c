@@ -14,9 +14,9 @@
 #define SPW2_ADDR    0x80000b00 
 #define SPW1_FREQ    200000       /* Frequency of txclk in khz, set to 0 to use reset value  */
 #define SPW2_FREQ    200000       /* Frequency of txclk in khz, set to 0 to use reset value  */
-#define AHBFREQ      50000        /* Set to zero to leave reset values */
+#define AHBFREQ      60000        /* Set to zero to leave reset values */
 
-#define SPW_CLKDIV   19
+#define SPW_CLKDIV   0
 
 #ifndef SPW_PORT
 #define SPW_PORT 0
@@ -31,19 +31,19 @@
 
 #define PKTTESTMAX  128
 #define DESCPKT     1024
-#define MAXSIZE     16777215     /*must not be set to more than 16777216 (2^24)*/
+#define MAXSIZE     16777215    /*must not be set to more than 16777216 (2^24)*/
 #define RMAPSIZE    1024
 #define RMAPCRCSIZE 1024
 
-#define TEST1       0
-#define TEST2       0
-#define TEST3       0
-#define TEST4       0 
-#define TEST5       0 
-#define TEST6       0
-#define TEST7       0 
-#define TEST8       0
-#define TEST9       0
+#define TEST1       1
+#define TEST2       1
+#define TEST3       1
+#define TEST4       1 
+#define TEST5       1 
+#define TEST6       1
+#define TEST7       1 
+#define TEST8       1
+#define TEST9       1
 #define TEST10      1
 #define TEST11      1
 #define TEST12      1
@@ -1225,8 +1225,9 @@ int main(int argc, char *argv[])
     rx0 = (char *)malloc(RMAPSIZE+4);
     rx1 = (char *)malloc(32+RMAPSIZE);
     rx2 = (char *)malloc(32+RMAPSIZE);
+    rx3 = (char *)malloc(32+RMAPSIZE);
     if( (tx0 == NULL) || (tx1 == NULL) || (rx0 == NULL) ||
-        (rx1 == NULL) || (rx2 == NULL) ) {
+        (rx1 == NULL) || (rx2 == NULL) || (rx3 == NULL) ) {
       printf("Memory initialization error\n");
       exit(1);
     }
@@ -1244,19 +1245,15 @@ int main(int argc, char *argv[])
         for(j = 0; j < i; j++) {
           tx1[j]  = ~tx1[j];
         }
-/*         if (m >= 4) { */
-/*           cmd->incr     = no; */
-/*         } else { */
-          cmd->incr     = yes;
-/*         } */
+        cmd->incr     = yes;
         cmd->type     = writecmd;
         cmd->verify   = no;
         cmd->ack      = yes;
-        cmd->destaddr = 0xFE;
-        cmd->destkey  = 0x00;
-        cmd->srcaddr  = 0x1;
+        cmd->destaddr = spw2->nodeaddr;
+        cmd->destkey  = spw2->destkey;
+        cmd->srcaddr  = spw1->nodeaddr;
         cmd->tid      = i;
-        cmd->addr     = 0xa0000000+i*m*4;
+        cmd->addr     = (int)rx3;
         cmd->len      = i;
         cmd->status   = 0;
         cmd->dstspalen = 0;
@@ -1270,22 +1267,14 @@ int main(int argc, char *argv[])
         reply->type     = writerep;
         reply->verify   = no;
         reply->ack      = yes;
-/*         if (m >= 4) { */
-          /* reply->incr     = no; */
-/*           if ( ((((int)&(rx0[(m%4)])) % 4) != 0) || ((cmd->len % 4) != 0) )  { */
-/*             reply->status   = 10; */
-/*           } else { */
-            reply->status   = 0;
-/*           } */
-/*         } else { */
-          reply->incr     = yes;
-          reply->status   = 0;
-/*         } */
-        reply->destaddr = 0xFE;
-        reply->destkey  = 0x00;
-        reply->srcaddr  = 0x1;
+        reply->status   = 0;
+        reply->incr     = yes;
+        reply->status   = 0;
+        reply->destaddr = spw2->nodeaddr;
+        reply->destkey  = spw2->destkey;
+        reply->srcaddr  = spw1->nodeaddr;
         reply->tid      = i;
-        reply->addr     = 0xa0000000+i*m*4;
+        reply->addr     = (int)rx3;
         reply->len      = i;
         reply->dstspalen = 0;
         reply->dstspa  = (char *)NULL;
@@ -1316,7 +1305,6 @@ int main(int argc, char *argv[])
             exit(0);
           }
           for (k = 0; k < 64; k++) {}
-          /* printf("0x%x\n", spw2->regs->status);*/
           iterations++;
         }
         if (rxs->truncated) {
@@ -1341,46 +1329,19 @@ int main(int argc, char *argv[])
         }
         for(k = 0; k < *replysize; k++) {
           if (loadb((int)&(rx1[k])) != rx2[k]) {
-            printf("Compare error 0: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx1[k])), (unsigned)rx2[k]);
+            printf("Compare error 0: i = %i, m = %i. Data[%i] = %x Expected: %x \n", i, m, k, (unsigned)loadb((int)&(rx1[k])), (unsigned)rx2[k]);
             exit(1);
           }
         }
-        if (reply->status == 0) {
-          /* if (m < 4) { */
-/*             for(k = 0; k < i; k++) { */
-/*               if (loadb((int)&(rx0[k+(m%4)])) != tx1[k]) { */
-/*                 printf("Compare error 1: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx0[k+(m%4)])), (unsigned)tx1[k]); */
-/*                 exit(1); */
-/*               } */
-/*             } */
-/*           } else { */
-/*             if (i != 0) { */
-/*               for(k = 0; k < 4; k++) { */
-/*                 if (loadb((int)&(rx0[k+(m%4)])) != tx1[k + (i - 4)]) { */
-/*                   printf("Compare error 1: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx0[k+(m%4)])), (unsigned)tx1[k+(i-4)]); */
-/*                   exit(1); */
-/*                 } */
-/*               } */
-/*             } */
-/*           } */
-        }
-        /* if ((i % 512) == 0) { */
-/*           printf("Packet  %i, alignment %i\n", i, m); */
-/*         } */
-        
-        /* if (m >= 4) { */
-        /*   cmd->incr     = no; */
-/*         } else { */
-          cmd->incr     = yes;
-/*         } */
+        cmd->incr     = yes;
         cmd->type     = readcmd;
         cmd->verify   = no;
         cmd->ack      = yes;
-        cmd->destaddr = 0xFE;
-        cmd->destkey  = 0x00;
-        cmd->srcaddr  = 0x1;
+        cmd->destaddr = spw2->nodeaddr;
+        cmd->destkey  = spw2->destkey;
+        cmd->srcaddr  = spw1->nodeaddr;
         cmd->tid      = i;
-        cmd->addr     = 0xa0000000+i*m*4;
+        cmd->addr     = (int)rx3;
         cmd->len      = i;
         cmd->status   = 0;
         cmd->dstspalen = 0;
@@ -1394,28 +1355,18 @@ int main(int argc, char *argv[])
         reply->type     = readrep;
         reply->verify   = no;
         reply->ack      = yes;
-        /* if (m >= 4) { */
-/*           reply->incr     = no; */
-          /* if ( ((((int)&(rx0[(m%4)])) % 4) != 0) || ((cmd->len % 4) != 0) )  { */
-          /* if ((cmd->len % 4) != 0) { */
-/*                   reply->status   = 10; */
-/*           } else { */
-/*                   reply->status   = 0; */
-/*           } */
-       /*  } else { */
-          reply->incr     = yes;
-          reply->status   = 0;
-/*         } */
+        reply->incr     = yes;
+        reply->status   = 0;
         if (reply->status == 0) {
           reply->len      = i;
         } else {
           reply->len      = 0;
         }
-        reply->destaddr = 0xFE;
-        reply->destkey  = 0x00;
-        reply->srcaddr  = 0x1;
+        reply->destaddr = spw2->nodeaddr;
+        reply->destkey  = spw2->destkey;
+        reply->srcaddr  = spw1->nodeaddr;
         reply->tid      = i;
-        reply->addr     = 0xa0000000+i*m*4;
+        reply->addr     = (int)rx3;
         reply->dstspalen = 0;
         reply->dstspa  = (char *)NULL;
         reply->srcspalen = 0;
@@ -1445,7 +1396,6 @@ int main(int argc, char *argv[])
             exit(0);
           }
           for (k = 0; k < 64; k++) {}
-          /* printf("0x%x\n", spw2->regs->status);*/
           iterations++;      
         }
         if (rxs->truncated) {
@@ -1476,11 +1426,10 @@ int main(int argc, char *argv[])
             printf("Expected: %i, Got: %i \n", *replysize+2+i, *size);
           }
           for(k = 0; k < i; k++) {
-/*                   printf("c"); */
-/*                   if (loadb((int)&(rx1[*replysize+1+k])) != tx1[k]) { */
-                          printf("Compare error 1: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx1[*replysize+1+k])), (unsigned)tx1[k]);
-/*                           exit(1); */
-/*                   } */
+              if (loadb((int)&(rx1[*replysize+1+k])) != tx1[k]) {
+                  printf("Compare error 1: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx1[*replysize+1+k])), (unsigned)tx1[k]);
+                  exit(1);
+              }
           }
           
         } else {
@@ -1502,19 +1451,15 @@ int main(int argc, char *argv[])
         for(j = 0; j < i; j++) {
           tx1[j]  = ~tx1[j];
         }
-        /* if (m >= 4) { */
-/*           cmd->incr     = no; */
-/*         } else { */
-          cmd->incr     = yes;
-/*         } */
+        cmd->incr     = yes;
         cmd->type     = writecmd;
         cmd->verify   = yes;
         cmd->ack      = yes;
-        cmd->destaddr = 0xFE;
-        cmd->destkey  = 0x00;
-        cmd->srcaddr  = 0x1;
+        cmd->destaddr = spw2->nodeaddr;
+        cmd->destkey  = spw2->destkey;
+        cmd->srcaddr  = spw1->nodeaddr;
         cmd->tid      = i;
-        cmd->addr     = 0xa0000000;
+        cmd->addr     = (int)rx3;
         cmd->len      = i;
         cmd->status   = 0;
         cmd->dstspalen = 0;
@@ -1528,29 +1473,19 @@ int main(int argc, char *argv[])
         reply->type     = writerep;
         reply->verify   = yes;
         reply->ack      = yes;
-/*         if (m >= 4) { */
-/*           reply->incr     = no; */
-                                        
-/*         } else { */
-          reply->incr     = yes;
-/*         } */
-        /* if ( (((((int)&(rx0[(m%4)])) % 2) != 0) && (cmd->len == 2)) || */
-/*              (((((int)&(rx0[(m%4)])) % 4) != 0) && (cmd->len == 4)) || */
-/*              (cmd->len == 3) ) { */
-/*           reply->status   = 10; */
-/*         } else { */
-          reply->status   = 0;
-          if (cmd->len == 3) {
-                  reply->status   = 10;
-          } 
-          if (cmd->len > 4) {
-                  reply->status = 9;
-          }
-        reply->destaddr = 0xFE;
-        reply->destkey  = 0x00;
-        reply->srcaddr  = 0x1;
+        reply->incr     = yes;
+        reply->status   = 0;
+        if (cmd->len == 3) {
+            reply->status   = 10;
+        } 
+        if (cmd->len > 4) {
+            reply->status = 9;
+        }
+        reply->destaddr = spw2->nodeaddr;
+        reply->destkey  = spw2->destkey;
+        reply->srcaddr  = spw1->nodeaddr;
         reply->tid      = i;
-        reply->addr     = 0xa0000000;
+        reply->addr     = (int)rx3;
         reply->len      = i;
         reply->dstspalen = 0;
         reply->dstspa  = (char *)NULL;
@@ -1581,7 +1516,6 @@ int main(int argc, char *argv[])
             exit(0);
           }
           for (k = 0; k < 64; k++) {}
-          /* printf("0x%x\n", spw2->regs->status);*/
           iterations++;
         }
         if (rxs->truncated) {
@@ -1611,18 +1545,6 @@ int main(int argc, char *argv[])
             exit(1);
           }
         }
-        if (reply->status == 0) {
-          /* for(k = 0; k < i; k++) { */
-/*             if (loadb((int)&(rx0[k+(m%4)])) != tx1[k]) { */
-/*               printf("Compare error 1: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx0[k+(m%4)])), (unsigned)tx1[k]); */
-/*               exit(1); */
-/*             } */
-/*           } */
-                                        
-        }
-        /* if (((i % 4) == 0) && ((m % 8) == 0)) { */
-/*           printf("Packet  %i, alignment %i\n", i, m); */
-/*         } */
       }
     }
     printf("\n");
@@ -1634,19 +1556,15 @@ int main(int argc, char *argv[])
         for(j = 0; j < i; j++) {
           tx1[j]  = ~tx1[j];
         }
-/*         if (m >= 4) { */
-/*           cmd->incr     = no; */
-/*         } else { */
-          cmd->incr     = yes;
-/*         } */
+        cmd->incr     = yes;
         cmd->type     = rmwcmd;
         cmd->verify   = yes;
         cmd->ack      = yes;
-        cmd->destaddr = 0xFE;
-        cmd->destkey  = 0x00;
-        cmd->srcaddr  = 0x1;
+        cmd->destaddr = spw2->nodeaddr;
+        cmd->destkey  = spw2->destkey;
+        cmd->srcaddr  = spw1->nodeaddr;
         cmd->tid      = i;
-        cmd->addr     = 0xa0000000;
+        cmd->addr     = (int)rx3;
         cmd->len      = i;
         cmd->status   = 0;
         cmd->dstspalen = 0;
@@ -1660,37 +1578,26 @@ int main(int argc, char *argv[])
         reply->type     = rmwrep;
         reply->verify   = yes;
         reply->ack      = yes;
-        /* if (m >= 4) { */
-/*           reply->incr     = no; */
-                                        
-/*         } else { */
-          reply->incr     = yes;
-/*         } */
-        /* if ( (((((int)&(rx0[(m%4)])) % 2) != 0) && ((cmd->len/2) == 2)) || */
-/*              (((((int)&(rx0[(m%4)])) % 4) != 0) && ((cmd->len/2) == 4)) || */
-/*              ((cmd->len/2) == 3) ) {*/
-          if ((cmd->len/2) == 3) {
-                  reply->status   = 10;
-          } else {
-                  reply->status   = 0;
-          }
+        reply->incr     = yes;
+        if ((cmd->len/2) == 3) {
+            reply->status   = 10;
+        } else {
+            reply->status   = 0;
+        }
         if ( (cmd->len != 0) && (cmd->len != 2) && (cmd->len != 4) &&
              (cmd->len != 6) && (cmd->len != 8)) {
-          reply->status = 11;
+            reply->status = 11;
         }
-        /* if (m >= 4) { */
-/*           reply->status = 2; */
-/*         } */
         if (reply->status == 0) {
           for(k = 0; k < (i/2); k++) {
             rx2[*replysize+1+k] = loadb((int)&(rx0[k+m]));
           }
         }
-        reply->destaddr = 0xFE;
-        reply->destkey  = 0x00;
-        reply->srcaddr  = 0x1;
+        reply->destaddr = spw2->nodeaddr;
+        reply->destkey  = spw2->destkey;
+        reply->srcaddr  = spw1->nodeaddr;
         reply->tid      = i;
-        reply->addr     = 0xa0000000;
+        reply->addr     = (int)rx3;
         if (reply->status == 0) {
           reply->len      = (i/2);
         } else {
@@ -1725,7 +1632,6 @@ int main(int argc, char *argv[])
             exit(0);
           }
           for (k = 0; k < 64; k++) {}
-          /* printf("0x%x\n", spw2->regs->status);*/
           iterations++;
         }
         if (rxs->truncated) {
@@ -1763,24 +1669,6 @@ int main(int argc, char *argv[])
             exit(1);
           }
         }
-        if (reply->status == 0) {
-          /* for(k = *replysize+1; k < *replysize+1+(i/2); k++) { */
-/*             if (loadb((int)&(rx1[k])) != rx2[k]) { */
-/*               printf("Compare error 1: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx1[k])), (unsigned)rx2[k]); */
-/*               exit(1); */
-/*             } */
-/*           } */
-/*           for(k = 0; k < (i/2); k++) { */
-/*             if (loadb((int)&(rx0[k+(m%4)])) != ((tx1[k] & tx1[k+(i/2)]) | (rx2[*replysize+1+k] & ~tx1[k+(i/2)]) )) { */
-/*               printf("Compare error 2: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx0[k+(m%4)])), (unsigned)tx1[k]); */
-/*               exit(1); */
-/*             } */
-/*           } */
-                                        
-        }
-        /* if (((i % 4) == 0) && ((m % 8) == 0)) { */
-/*           printf("Packet  %i, alignment %i\n", i, m); */
-/*         } */
       }
     }
     printf("\n");
@@ -1792,19 +1680,15 @@ int main(int argc, char *argv[])
         for(j = 0; j < i+4; j++) {
           rx0[j]  = ~rx0[j];
         }
-        /* if (m >= 4) { */
-        /*   cmd->incr     = no; */
-/*         } else { */
-          cmd->incr     = yes;
-/*         } */
+        cmd->incr     = yes;
         cmd->type     = readcmd;
         cmd->verify   = no;
         cmd->ack      = yes;
-        cmd->destaddr = 0xFE;
-        cmd->destkey  = 0x00;
-        cmd->srcaddr  = 0x1;
+        cmd->destaddr = spw2->nodeaddr;
+        cmd->destkey  = spw2->destkey;
+        cmd->srcaddr  = spw1->nodeaddr;
         cmd->tid      = i;
-        cmd->addr     = 0xa0000000;
+        cmd->addr     = (int)rx1;
         cmd->len      = i;
         cmd->status   = 0;
         cmd->dstspalen = 0;
@@ -1818,28 +1702,18 @@ int main(int argc, char *argv[])
         reply->type     = readrep;
         reply->verify   = no;
         reply->ack      = yes;
-        /* if (m >= 4) { */
-/*           reply->incr     = no; */
-          /* if ( ((((int)&(rx0[(m%4)])) % 4) != 0) || ((cmd->len % 4) != 0) )  { */
-          /* if ((cmd->len % 4) != 0) { */
-/*                   reply->status   = 10; */
-/*           } else { */
-/*                   reply->status   = 0; */
-/*           } */
-       /*  } else { */
-          reply->incr     = yes;
-          reply->status   = 0;
-/*         } */
+        reply->incr     = yes;
+        reply->status   = 0;
         if (reply->status == 0) {
           reply->len      = i;
         } else {
           reply->len      = 0;
         }
-        reply->destaddr = 0xFE;
-        reply->destkey  = 0x00;
-        reply->srcaddr  = 0x1;
+        reply->destaddr = spw2->nodeaddr;
+        reply->destkey  = spw2->destkey;
+        reply->srcaddr  = spw1->nodeaddr;
         reply->tid      = i;
-        reply->addr     = 0xa0000000;
+        reply->addr     = (int)rx1;
         reply->dstspalen = 0;
         reply->dstspa  = (char *)NULL;
         reply->srcspalen = 0;
@@ -1869,7 +1743,6 @@ int main(int argc, char *argv[])
             exit(0);
           }
           for (k = 0; k < 64; k++) {}
-          /* printf("0x%x\n", spw2->regs->status);*/
           iterations++;      
         }
         if (rxs->truncated) {
@@ -1899,31 +1772,12 @@ int main(int argc, char *argv[])
             printf("Received packet has wrong length\n");
             printf("Expected: %i, Got: %i \n", *replysize+2+i, *size);
           }
-          /* if (cmd->incr == yes) { */
-/*             for(k = 0; k < i; k++) { */
-/*               if (loadb((int)&(rx1[*replysize+1+k])) != rx0[k+(m%4)]) { */
-/*                 printf("Compare error 1: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx1[*replysize+1+k])), (unsigned)rx0[k+(m%4)]); */
-/*                 exit(1); */
-/*               } */
-/*             } */
-/*           } else { */
-/*             for(k = 0; k < i; k++) { */
-/*               if (loadb((int)&(rx1[*replysize+1+k])) != rx0[(k%4)+(m%4)]) { */
-/*                 printf("Compare error 2: %u Data: %x Expected: %x \n", k, (unsigned)loadb((int)&(rx1[*replysize+1+k])), (unsigned)rx0[(k%4)+(m%4)]); */
-/*                 printf("Rx1: %x, Rx0: %x\n", (int)rx1, (int)rx0); */
-/*                 //exit(1); */
-/*               } */
-/*             } */
-/*           } */
         } else {
           if (*size != (*replysize+2)) {
             printf("Received packet has wrong length\n");
             printf("Expected: %i, Got: %i \n", *replysize+2, *size);
           }
         }
-        /* if ((i % 512) == 0) { */
-/*           printf("Packet  %i, alignment %i\n", i, m); */
-/*         } */
       }
     }
     printf("\n");
@@ -1939,7 +1793,6 @@ int main(int argc, char *argv[])
       }
       for (j = tmp; j < i; j++) {
         for (m = 0; m < 3; m++) {
-/*           printf("Packet  %i, type %i, offset: %i\n", i, m, j); */
           for(k = 0; k < i; k++) {
             tx1[k]  = ~tx1[k];
           }
@@ -1961,9 +1814,9 @@ int main(int argc, char *argv[])
           }
           cmd->incr     = yes;
           cmd->ack      = yes;
-          cmd->destaddr = 0x2;
-          cmd->destkey  = 0xBF;
-          cmd->srcaddr  = 0x1;
+          cmd->destaddr = spw2->nodeaddr;
+          cmd->destkey  = spw2->destkey;
+          cmd->srcaddr  = spw1->nodeaddr;
           cmd->tid      = i;
           cmd->addr     = (int)rx0;
           cmd->len      = i;
@@ -2016,9 +1869,9 @@ int main(int argc, char *argv[])
           }
           reply->incr      = yes;
           reply->ack       = yes;
-          reply->destaddr  = 0x2;
-          reply->destkey   = 0xBF;
-          reply->srcaddr   = 0x1;
+          reply->destaddr  = spw2->nodeaddr;
+          reply->destkey   = spw2->destkey;
+          reply->srcaddr   = spw1->nodeaddr;
           reply->tid       = i;
           reply->addr      = (int)rx0;
           reply->dstspalen = 0;
@@ -2055,7 +1908,6 @@ int main(int argc, char *argv[])
               exit(0);
             }
             for (k = 0; k < 64; k++) {}
-            /* printf("0x%x\n", spw2->regs->status);*/
             iterations++;            
           }
           if (rxs->truncated) {
@@ -2188,17 +2040,18 @@ int main(int argc, char *argv[])
         }
         
         if (m < 3) {
-            cmd->destaddr = 0x2;
-            cmd->srcaddr  = 0x1;
+            cmd->destaddr = spw2->nodeaddr;
+            cmd->srcaddr  = spw1->nodeaddr;
+            cmd->destkey  = spw2->destkey;
         }
         else {  
-            cmd->destaddr = 0x1;
-            cmd->srcaddr  = 0x2;
+            cmd->destaddr = spw1->nodeaddr;
+            cmd->srcaddr  = spw2->nodeaddr;
+            cmd->destkey  = spw1->destkey;
         }
 
         cmd->incr     = no;
         cmd->ack      = yes;
-        cmd->destkey  = 0xBF;
         cmd->tid      = i;
         cmd->addr     = (int)(rx0);
         cmd->len      = i;
@@ -2348,8 +2201,8 @@ int main(int argc, char *argv[])
                           cmd->verify   = no;
                           cmd->ack      = yes;
                           cmd->destaddr = destaddr;
-                          cmd->destkey  = 0xBF;
-                          cmd->srcaddr  = 0x1;
+                          cmd->destkey  = spw2->destkey;
+                          cmd->srcaddr  = spw1->nodeaddr;
                           cmd->tid      = (i % 65536);
                           cmd->addr     = (int)&(rx1[0]);
                           cmd->len      = 128;
@@ -2371,8 +2224,8 @@ int main(int argc, char *argv[])
                                   reply->incr     = yes;
                           }
                           reply->destaddr = destaddr;
-                          reply->destkey  = 0xBF;
-                          reply->srcaddr  = 0x1;
+                          reply->destkey  = spw2->destkey;
+                          reply->srcaddr  = spw1->nodeaddr;
                           reply->tid      = (i % 65536);
                           reply->addr     = (int)&(rx1[0]);
                           reply->len      = 0;

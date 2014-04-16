@@ -1,7 +1,7 @@
 mainmenu_option next_comment
   comment 'L2 Cache'
 
-#    bool 'Enable L2 Cache                      ' CONFIG_L2_ENABLE
+     bool 'Enable L2 Cache                      ' CONFIG_L2_ENABLE
 #    if [ "$CONFIG_GPT_ENABLE" = "y" ]; then
       choice 'Associativity (ways)            ' \
 	"1		CONFIG_L2_ASSO1 \

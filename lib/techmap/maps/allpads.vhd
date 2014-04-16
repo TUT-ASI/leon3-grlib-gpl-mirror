@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -652,7 +652,10 @@ component ut130hbd_lvds_combo
   port (odpadp, odpadn, ospadp, ospadn : out std_logic_vector(0 to width-1); 
         odval, osval, en : in std_logic_vector(0 to width-1); 
 	idpadp, idpadn, ispadp, ispadn : in std_logic_vector(0 to width-1);
-	idval, isval : out std_logic_vector(0 to width-1));
+	idval, isval : out std_logic_vector(0 to width-1);
+        powerdown : in std_logic_vector(0 to width-1);
+        powerdownrx : in std_logic_vector(0 to width-1);
+	lvdsref : out std_logic);
 end component;
 
 component ut90nhbd_inpad is
@@ -710,7 +713,9 @@ component rhumc_lvds_combo
         odval, osval, en : in std_logic_vector(0 to width-1); 
 	idpadp, idpadn, ispadp, ispadn : in std_logic_vector(0 to width-1);
 	idval, isval : out std_logic_vector(0 to width-1);
-	lvdsref : in std_logic);
+        powerdown : in std_logic_vector(0 to width-1);
+        powerdownrx : in std_logic_vector(0 to width-1);
+	lvdsref : out std_logic);
 end component;
 
 component umc_lvds_combo 

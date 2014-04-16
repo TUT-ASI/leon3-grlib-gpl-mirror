@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -101,6 +101,7 @@ architecture behav of virtex_syncram is
         en, rst, we : in std_ulogic);
   end component;
   component RAMB4_S16_S16
+  generic (SIM_COLLISION_CHECK : string := "ALL");
   port (
         doa    : out std_logic_vector (15 downto 0);
         dob    : out std_logic_vector (15 downto 0);
@@ -135,7 +136,9 @@ begin
   end generate;
   a7 : if ((abits > 5 or GRLIB_CONFIG_ARRAY(grlib_techmap_strict_ram) /= 0) and
            (abits <= 7) and (dbits <= 32)) generate
-    r0 : RAMB4_S16_S16 port map ( do(31 downto 16), do(15 downto 0),
+    r0 : RAMB4_S16_S16
+      generic map(SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
+      port map ( do(31 downto 16), do(15 downto 0),
 	xa(7 downto 0), ya(7 downto 0), clk, clk, di(31 downto 16),
 	di(15 downto 0), enable, enable, gnd, gnd, write, write);
     do(dbits+32 downto 32) <= (others => '0');
@@ -217,6 +220,7 @@ end;
 
 architecture behav of virtex_syncram_dp is
  component RAMB4_S1_S1
+  generic (SIM_COLLISION_CHECK : string := "ALL");
   port (
         doa    : out std_logic_vector (0 downto 0);
         dob    : out std_logic_vector (0 downto 0);
@@ -235,6 +239,7 @@ architecture behav of virtex_syncram_dp is
        );
   end component;
   component RAMB4_S2_S2
+  generic (SIM_COLLISION_CHECK : string := "ALL");
   port (
         doa    : out std_logic_vector (1 downto 0);
         dob    : out std_logic_vector (1 downto 0);
@@ -253,6 +258,7 @@ architecture behav of virtex_syncram_dp is
        );
   end component;
   component RAMB4_S4_S4
+  generic (SIM_COLLISION_CHECK : string := "ALL");
   port (
         doa    : out std_logic_vector (3 downto 0);
         dob    : out std_logic_vector (3 downto 0);
@@ -271,6 +277,7 @@ architecture behav of virtex_syncram_dp is
        );
   end component;
   component RAMB4_S8_S8
+  generic (SIM_COLLISION_CHECK : string := "ALL");
   port (
         doa    : out std_logic_vector (7 downto 0);
         dob    : out std_logic_vector (7 downto 0);
@@ -289,6 +296,7 @@ architecture behav of virtex_syncram_dp is
        );
   end component;
   component RAMB4_S16_S16
+  generic (SIM_COLLISION_CHECK : string := "ALL");
   port (
         doa    : out std_logic_vector (15 downto 0);
         dob    : out std_logic_vector (15 downto 0);
@@ -320,7 +328,9 @@ begin
 
   a8 : if abits <= 8 generate
     x : for i in 0 to ((dbits-1)/16) generate
-      r0 : RAMB4_S16_S16 port map (
+      r0 : RAMB4_S16_S16
+        generic map (SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
+        port map (
 	do1(((i+1)*16)-1 downto i*16), do2(((i+1)*16)-1 downto i*16),
 	addr1(7 downto 0), addr2(7 downto 0), clk1, clk2,
 	di1(((i+1)*16)-1 downto i*16), di2(((i+1)*16)-1 downto i*16),
@@ -330,7 +340,9 @@ begin
 
   a9 : if abits = 9 generate
     x : for i in 0 to ((dbits-1)/8) generate
-      r0 : RAMB4_S8_S8 port map (
+      r0 : RAMB4_S8_S8
+        generic map (SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
+        port map (
 	do1(((i+1)*8)-1 downto i*8), do2(((i+1)*8)-1 downto i*8),
 	addr1(8 downto 0), addr2(8 downto 0), clk1, clk2,
 	di1(((i+1)*8)-1 downto i*8), di2(((i+1)*8)-1 downto i*8),
@@ -340,7 +352,9 @@ begin
 
   a10: if abits = 10 generate
     x : for i in 0 to ((dbits-1)/4) generate
-      r0 : RAMB4_S4_S4 port map (
+      r0 : RAMB4_S4_S4
+        generic map (SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
+        port map (
 	do1(((i+1)*4)-1 downto i*4), do2(((i+1)*4)-1 downto i*4),
 	addr1(9 downto 0), addr2(9 downto 0), clk1, clk2,
 	di1(((i+1)*4)-1 downto i*4), di2(((i+1)*4)-1 downto i*4),
@@ -350,7 +364,9 @@ begin
 
   a11: if abits = 11 generate
     x : for i in 0 to ((dbits-1)/2) generate
-      r0 : RAMB4_S2_S2 port map (
+      r0 : RAMB4_S2_S2
+        generic map (SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
+        port map (
 	do1(((i+1)*2)-1 downto i*2), do2(((i+1)*2)-1 downto i*2),
 	addr1(10 downto 0), addr2(10 downto 0), clk1, clk2,
 	di1(((i+1)*2)-1 downto i*2), di2(((i+1)*2)-1 downto i*2),
@@ -360,7 +376,9 @@ begin
 
   a12: if abits = 12 generate
     x : for i in 0 to ((dbits-1)/1) generate
-      r0 : RAMB4_S1_S1 port map (
+      r0 : RAMB4_S1_S1
+        generic map (SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
+        port map (
 	do1(((i+1)*1)-1 downto i*1), do2(((i+1)*1)-1 downto i*1),
 	addr1(11 downto 0), addr2(11 downto 0), clk1, clk2,
 	di1(((i+1)*1)-1 downto i*1), di2(((i+1)*1)-1 downto i*1),

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -103,6 +103,7 @@ begin
       sdi.data(127 downto dbits*2) <= (others => '0');
     end generate;
     sdi.cb <= (others => '0'); sdi.regrdata <= (others => '0');
+    sdi.writereq <= '0';
 end;
 
 
@@ -311,7 +312,7 @@ begin
         testen,testrst,scanen,testoen);
 
     sdi.regrdata <= (others => '0');
-
+    sdi.writereq <= '0';
 end;
 
 
@@ -524,7 +525,7 @@ begin
       testen => testen, testrst => testrst, scanen => scanen, testoen => testoen
       );
   sdi.regrdata <= (others => '0');
-  
+  sdi.writereq <= '0';
 end;
 
 
@@ -930,6 +931,7 @@ begin
 
         testen, testrst, scanen, testoen
         );
+  sdi.writereq <= '0';
 end;
 
 library ieee;
@@ -1170,6 +1172,7 @@ begin
         customclk => customclk, customdin => customdin, customdout => customdout,
         testen => testen, testrst => testrst, scanen => scanen, testoen => testoen
         );
+  sdi.writereq <= '0';
 end;
 
 

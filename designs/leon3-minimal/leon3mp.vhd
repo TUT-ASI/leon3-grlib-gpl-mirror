@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -279,7 +279,7 @@ begin
 -- pragma translate_off
   x : report_design
     generic map (
-      msg1 => "LEON3 Demonstration design for Digilent NEXYS 3 board",
+      msg1 => "LEON3 Demonstration design",
       fabtech => tech_table(fabtech), memtech => tech_table(memtech),
       mdel => 1
       );

@@ -10,8 +10,8 @@
 /*   See the file COPYING for the full details of the license. */
 /*****************************************************************************/
 
-#include "spwapi.h"
 #include <stdlib.h>
+#include "spwapi.h"
 
 static char *almalloc(int sz)
 {
@@ -42,7 +42,7 @@ static inline int loadmem(int addr)
 int spw_setparam(int nodeaddr, int clkdiv, int destkey,
                  int timetxen, int timerxen, int spwadr, 
                  int khz, struct spwvars *spw, int port,
-                 int clkdivs) 
+                 int clkdivs)
 {
         if ((nodeaddr < 0) || (nodeaddr > 255)) {
                 return 1;
@@ -74,7 +74,8 @@ int spw_setparam(int nodeaddr, int clkdiv, int destkey,
         return 0;
 }
 
-int spw_setparam_dma(int dmachan, int addr, int mask, int nospill, int rxmaxlen, struct spwvars *spw) 
+int spw_setparam_dma(int dmachan, int addr, int mask, int nospill,
+                     int rxmaxlen, struct spwvars *spw) 
 {
         if ((addr < 0) || (addr > 255)) {
                 return 1;
@@ -112,6 +113,16 @@ int spw_init(struct spwvars *spw)
         spw->rxunaligned = (tmp >> 30) & 1;
         spw->rmapcrc = (tmp >> 29) & 1;
         spw->dmachan = ((tmp >> 27) & 3) + 1;
+        spw->pnp = ((tmp >> 18) & 3);
+        if ((tmp >> 24) & 1) {
+            tmp = loadmem((int)&(spw->regs->intdist.ctrl));
+            spw->intdist = ((tmp >> 13) & 7);        
+        } else {
+            spw->intdist = 0;
+        }
+        tmp = loadmem((int)&(spw->regs->status));
+        spw->ntxdesc = 64 << ((tmp >> 24) & 3);
+        spw->nrxdesc = 128 << ((tmp >> 26) & 3);
         /*reset core */
         spw->regs->ctrl = (1 << 6); 
         tmp = loadmem((int)&(spw->regs->ctrl));
@@ -133,19 +144,19 @@ int spw_init(struct spwvars *spw)
                 spw->regs->destkey = spw->destkey;
         }
         for(i = 0; i < spw->dmachan; i++) {
-                spw->regs->dma[i].ctrl = 0xFFFE01E0; /*clear status, set ctrl for dma chan*/
+                spw->regs->dma[i].ctrl = 0x00CC01E0; /*clear status, set ctrl for dma chan*/
                 if (loadmem((int)&(spw->regs->dma[i].ctrl)) != 0) {
                         return 2;
                 }
                 /* set tx descriptor pointer*/
-                if ((spw->dma[i].txd = (struct txdescriptor *)almalloc(1024)) == NULL) {
+                if ((spw->dma[i].txd = (struct txdescriptor *)almalloc(spw->ntxdesc*16)) == NULL) {
                         return 3;
                 }
                 spw->dma[i].txpnt = 0;
                 spw->dma[i].txchkpnt = 0;
                 spw->regs->dma[i].txdesc = (int) spw->dma[i].txd;
                 /* set rx descriptor pointer*/
-                if (( spw->dma[i].rxd = (struct rxdescriptor *)almalloc(1024)) == NULL) {
+                if (( spw->dma[i].rxd = (struct rxdescriptor *)almalloc(spw->nrxdesc*8)) == NULL) {
                         return 4;
                 }
                 spw->dma[i].rxpnt = 0;
@@ -155,7 +166,7 @@ int spw_init(struct spwvars *spw)
         spw->regs->status = 0xFFF; /*clear status*/
         spw->regs->ctrl = 0x2 | (spw->timetxen << 10) | (spw->timerxen << 11) | (spw->port << 21); /*set ctrl*/
         for(i = 0; i < spw->dmachan; i++) {
-                spw->regs->dma[i].ctrl = loadmem((int)&(spw->regs->dma[i].ctrl)) | (spw->dma[i].nospill << 12);
+            spw->regs->dma[i].ctrl = loadmem((int)&(spw->regs->dma[i].ctrl)) | (spw->dma[i].nospill << 12);
         }
         return 0;
 }
@@ -200,22 +211,22 @@ int set_rxdesc(int dmachan, int pnt, struct spwvars *spw)
 
 void spw_disable(struct spwvars *spw) 
 {
-        spw->regs->ctrl = loadmem((int)&(spw->regs->ctrl)) | 1;
+        spw->regs->ctrl = loadmem((int)&(spw->regs->ctrl)) | 0x1;
 }
 
 void spw_enable(struct spwvars *spw) 
 {
-        spw->regs->ctrl = loadmem((int)&(spw->regs->ctrl)) & 0x220F7E;
+    spw->regs->ctrl = loadmem((int)&(spw->regs->ctrl)) & ~0x1;
 }
 
 void spw_start(struct spwvars *spw) 
 {
-        spw->regs->ctrl = loadmem((int)&(spw->regs->ctrl)) | (1 << 1);
+    spw->regs->ctrl = loadmem((int)&(spw->regs->ctrl)) | 0x2;
 }
 
 void spw_stop(struct spwvars *spw) 
 {
-        spw->regs->ctrl = loadmem((int)&(spw->regs->ctrl)) & 0x220F7D;
+        spw->regs->ctrl = loadmem((int)&(spw->regs->ctrl)) & ~0x2;
 }
 
 int spw_setclockdiv(struct spwvars *spw) 
@@ -283,7 +294,7 @@ int spw_tx(int dmachan, int hcrc, int dcrc, int skipcrcsize, int hsize, char *hb
         spw->dma[dmachan].txd[spw->dma[dmachan].txpnt].haddr = (int)hbuf;
         spw->dma[dmachan].txd[spw->dma[dmachan].txpnt].dlen = dsize;
         spw->dma[dmachan].txd[spw->dma[dmachan].txpnt].daddr = (int)dbuf;
-        if (spw->dma[dmachan].txpnt == 63) {
+        if (spw->dma[dmachan].txpnt == (spw->ntxdesc-1)) {
                 spw->dma[dmachan].txd[spw->dma[dmachan].txpnt].ctrl = 0x3000 | hsize | (hcrc << 16) | (dcrc << 17) | (skipcrcsize << 8);
                 spw->dma[dmachan].txpnt = 0;
         } else {
@@ -291,7 +302,7 @@ int spw_tx(int dmachan, int hcrc, int dcrc, int skipcrcsize, int hsize, char *hb
                 spw->dma[dmachan].txpnt++;
         }
         
-        spw->regs->dma[dmachan].ctrl = loadmem((int)&(spw->regs->dma[dmachan].ctrl)) & 0xFAAA | 1;
+        spw->regs->dma[dmachan].ctrl = loadmem((int)&(spw->regs->dma[dmachan].ctrl)) & 0xF8C6FAAA | 1;
         
         return 0;
 }
@@ -302,14 +313,14 @@ int spw_rx(int dmachan, char *buf, struct spwvars *spw)
                 return 1;
         }
         spw->dma[dmachan].rxd[spw->dma[dmachan].rxpnt].daddr = (int)buf;
-        if (spw->dma[dmachan].rxpnt == 127) {
+        if (spw->dma[dmachan].rxpnt == (spw->nrxdesc-1)) {
                 spw->dma[dmachan].rxd[spw->dma[dmachan].rxpnt].ctrl = 0x6000000;
                 spw->dma[dmachan].rxpnt = 0;
         } else {
                 spw->dma[dmachan].rxd[spw->dma[dmachan].rxpnt].ctrl = 0x2000000;
                 spw->dma[dmachan].rxpnt++;
         }
-        spw->regs->dma[dmachan].ctrl = loadmem((int)&(spw->regs->dma[dmachan].ctrl)) & 0xF955 | 2 | (1 << 11);
+        spw->regs->dma[dmachan].ctrl = loadmem((int)&(spw->regs->dma[dmachan].ctrl)) & 0xF8C8F955 | 2 | (1 << 11);
         return 0;
 }
 
@@ -323,7 +334,7 @@ int spw_checkrx(int dmachan, int *size, struct rxstatus *rxs, struct spwvars *sp
                 rxs->dcrcerr = (tmp >> 30) & 1;
                 rxs->hcrcerr = (tmp >> 29) & 1;
                 rxs->eep = (tmp >> 28) & 1;
-                if (spw->dma[dmachan].rxchkpnt == 127) {
+                if (spw->dma[dmachan].rxchkpnt == (spw->nrxdesc-1)) {
                         spw->dma[dmachan].rxchkpnt = 0;
                 } else {
                         spw->dma[dmachan].rxchkpnt++;
@@ -339,7 +350,7 @@ int spw_checktx(int dmachan, struct spwvars *spw)
         int tmp;
         tmp = loadmem((int)&(spw->dma[dmachan].txd[spw->dma[dmachan].txchkpnt].ctrl));
         if (!((tmp >> 12) & 1)) {
-                if (spw->dma[dmachan].txchkpnt == 63) {
+            if (spw->dma[dmachan].txchkpnt == (spw->ntxdesc-1)) {
                         spw->dma[dmachan].txchkpnt = 0;
                 } else {
                         spw->dma[dmachan].txchkpnt++;
@@ -368,7 +379,7 @@ int send_time_exp(int ctrl, int time, struct spwvars *spw)
         int i;
         int code;
         if ((time < 0) || (time > 63)) {
-                printf("Illegal time-value");
+                printf("Illegal time-value\n");
                 return -1;
         }
         if (time == 0) {
@@ -417,7 +428,17 @@ void spw_rmapen(struct spwvars *spw)
 
 void spw_rmapdis(struct spwvars *spw) 
 {
-  spw->regs->ctrl = loadmem((int)&(spw->regs->ctrl)) & 0x2EFFFF;
+    spw->regs->ctrl = loadmem((int)&(spw->regs->ctrl)) & ~(1 << 16);
+}
+
+void spw_pnpen(struct spwvars *spw) 
+{
+  spw->regs->ctrl = loadmem((int)&(spw->regs->ctrl)) | (1 << 15);
+}
+
+void spw_pnppdis(struct spwvars *spw) 
+{
+    spw->regs->ctrl = loadmem((int)&(spw->regs->ctrl)) & ~(1 << 15);
 }
 
 int spw_setdestkey(struct spwvars *spw) 
@@ -436,7 +457,7 @@ void spw_setsepaddr(int dmachan, struct spwvars *spw)
 
 void spw_disablesepaddr(int dmachan, struct spwvars *spw) 
 {
-        spw->regs->dma[dmachan].ctrl = loadmem((int)&(spw->regs->dma[dmachan].ctrl)) & 0xFFFFDFFF;
+        spw->regs->dma[dmachan].ctrl = loadmem((int)&(spw->regs->dma[dmachan].ctrl)) & ~(1 << 13);
 }
 
 
@@ -448,16 +469,15 @@ void spw_enablerx(int dmachan, struct spwvars *spw)
 
 void spw_disablerx(int dmachan, struct spwvars *spw) 
 {
-        spw->regs->dma[dmachan].ctrl = loadmem((int)&(spw->regs->dma[dmachan].ctrl)) & 0xFFFFFFFD;
+    spw->regs->dma[dmachan].ctrl = loadmem((int)&(spw->regs->dma[dmachan].ctrl)) & ~0x2;
 }
 
 void spw_disable_promiscuous(struct spwvars *spw) 
 {
-        spw->regs->ctrl = loadmem((int)&(spw->regs->ctrl)) & 0xFFFFFFDF;
+    spw->regs->ctrl = loadmem((int)&(spw->regs->ctrl)) & ~(1 << 5);
 }
 
 void spw_enable_promiscuous(struct spwvars *spw) 
 {
         spw->regs->ctrl = loadmem((int)&(spw->regs->ctrl)) | (1 << 5);
 }
-

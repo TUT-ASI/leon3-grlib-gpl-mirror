@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -30,8 +30,6 @@ library techmap;
 use techmap.gencomp.all;
 library cypress;
 use cypress.components.all;
-library hynix;
-use hynix.components.all;
 use work.debug.all;
 
 use work.config.all;	-- configuration
@@ -298,50 +296,74 @@ begin
 	);
 
   
-  ddr2mem0: for i in 0 to (1 + 2*(CFG_DDR2SP_DATAWIDTH/64)) generate
-    u1 : HY5PS121621F
-      generic map (TimingCheckFlag => true, PUSCheckFlag => false,
-                   index => (1 + 2*(CFG_DDR2SP_DATAWIDTH/64))-i, bbits => CFG_DDR2SP_DATAWIDTH,
-                   fname => sdramfile, fdelay => 0)
-      port map (DQ => dimm0_ddr2_dq2(i*16+15+32*(32/CFG_DDR2SP_DATAWIDTH) downto i*16+32*(32/CFG_DDR2SP_DATAWIDTH)),
-                LDQS  => dimm0_ddr2_dqs_p(i*2+4*(32/CFG_DDR2SP_DATAWIDTH)),
-                LDQSB => dimm0_ddr2_dqs_n(i*2+4*(32/CFG_DDR2SP_DATAWIDTH)),
-                UDQS => dimm0_ddr2_dqs_p(i*2+1+4*(32/CFG_DDR2SP_DATAWIDTH)),
-                UDQSB => dimm0_ddr2_dqs_n(i*2+1+4*(32/CFG_DDR2SP_DATAWIDTH)),
-                LDM => dimm0_ddr2_dqm(i*2+4*(32/CFG_DDR2SP_DATAWIDTH)),
-                WEB => dimm0_ddr2_we_b, CASB => dimm0_ddr2_cas_b,
-                RASB => dimm0_ddr2_ras_b, CSB => dimm0_ddr2_s_b(0),
-                BA => dimm0_ddr2_ba(1 downto 0), ADDR => dimm0_ddr2_a(12 downto 0),
-                CKE => dimm0_ddr2_cke(0), CLK => dimm0_ddr2_pll_clkin_p,
-                CLKB => dimm0_ddr2_pll_clkin_n,
-                UDM => dimm0_ddr2_dqm(i*2+1+4*(32/CFG_DDR2SP_DATAWIDTH)));
-  end generate;
+  -- ddr2mem0: for i in 0 to (1 + 2*(CFG_DDR2SP_DATAWIDTH/64)) generate
+  --   u1 : HY5PS121621F
+  --     generic map (TimingCheckFlag => true, PUSCheckFlag => false,
+  --                  index => (1 + 2*(CFG_DDR2SP_DATAWIDTH/64))-i, bbits => CFG_DDR2SP_DATAWIDTH,
+  --                  fname => sdramfile, fdelay => 0)
+  --     port map (DQ => dimm0_ddr2_dq2(i*16+15+32*(32/CFG_DDR2SP_DATAWIDTH) downto i*16+32*(32/CFG_DDR2SP_DATAWIDTH)),
+  --               LDQS  => dimm0_ddr2_dqs_p(i*2+4*(32/CFG_DDR2SP_DATAWIDTH)),
+  --               LDQSB => dimm0_ddr2_dqs_n(i*2+4*(32/CFG_DDR2SP_DATAWIDTH)),
+  --               UDQS => dimm0_ddr2_dqs_p(i*2+1+4*(32/CFG_DDR2SP_DATAWIDTH)),
+  --               UDQSB => dimm0_ddr2_dqs_n(i*2+1+4*(32/CFG_DDR2SP_DATAWIDTH)),
+  --               LDM => dimm0_ddr2_dqm(i*2+4*(32/CFG_DDR2SP_DATAWIDTH)),
+  --               WEB => dimm0_ddr2_we_b, CASB => dimm0_ddr2_cas_b,
+  --               RASB => dimm0_ddr2_ras_b, CSB => dimm0_ddr2_s_b(0),
+  --               BA => dimm0_ddr2_ba(1 downto 0), ADDR => dimm0_ddr2_a(12 downto 0),
+  --               CKE => dimm0_ddr2_cke(0), CLK => dimm0_ddr2_pll_clkin_p,
+  --               CLKB => dimm0_ddr2_pll_clkin_n,
+  --               UDM => dimm0_ddr2_dqm(i*2+1+4*(32/CFG_DDR2SP_DATAWIDTH)));
+  -- end generate;
+  
+  ddr2mem0 : ddr2ram
+  generic map(width => CFG_DDR2SP_DATAWIDTH, abits => 14, babits => 3, colbits => 10, rowbits => 13,
+              implbanks => 1, fname => sdramfile, speedbin=>1, density => 2)
+  port map (ck => dimm0_ddr2_pll_clkin_p, ckn => dimm0_ddr2_pll_clkin_n,
+            cke => dimm0_ddr2_cke(0), csn => dimm0_ddr2_s_b(0),
+            odt => gnd, rasn => dimm0_ddr2_ras_b,
+            casn => dimm0_ddr2_cas_b, wen => dimm0_ddr2_we_b,
+            dm => dimm0_ddr2_dqm(7 downto 8-CFG_DDR2SP_DATAWIDTH/8), ba => dimm0_ddr2_ba,
+            a => dimm0_ddr2_a, dq => dimm0_ddr2_dq2(63 downto 64-CFG_DDR2SP_DATAWIDTH),
+            dqs => dimm0_ddr2_dqs_p(7 downto 8-CFG_DDR2SP_DATAWIDTH/8),
+            dqsn =>dimm0_ddr2_dqs_n(7 downto 8-CFG_DDR2SP_DATAWIDTH/8));
 
-  ddr2mem1: for i in 0 to (1 + 2*(CFG_DDR2SP_DATAWIDTH/64)) generate
-    u1 : HY5PS121621F
-      generic map (TimingCheckFlag => true, PUSCheckFlag => false,
-                   index => (1 + 2*(CFG_DDR2SP_DATAWIDTH/64))-i, bbits => CFG_DDR2SP_DATAWIDTH,
-                   fname => sdramfile, fdelay => 0)
-      port map (DQ => dimm1_ddr2_dq2(i*16+15+32*(32/CFG_DDR2SP_DATAWIDTH) downto i*16+32*(32/CFG_DDR2SP_DATAWIDTH)),
-                LDQS  => dimm1_ddr2_dqs_p(i*2+4*(32/CFG_DDR2SP_DATAWIDTH)),
-                LDQSB => dimm1_ddr2_dqs_n(i*2+4*(32/CFG_DDR2SP_DATAWIDTH)),
-                UDQS => dimm1_ddr2_dqs_p(i*2+1+4*(32/CFG_DDR2SP_DATAWIDTH)),
-                UDQSB => dimm1_ddr2_dqs_n(i*2+1+4*(32/CFG_DDR2SP_DATAWIDTH)),
-                LDM => dimm1_ddr2_dqm(i*2+4*(32/CFG_DDR2SP_DATAWIDTH)),
-                WEB => dimm1_ddr2_we_b, CASB => dimm1_ddr2_cas_b,
-                RASB => dimm1_ddr2_ras_b, CSB => dimm1_ddr2_s_b(0),
-                BA => dimm1_ddr2_ba(1 downto 0), ADDR => dimm1_ddr2_a(12 downto 0),
-                CKE => dimm1_ddr2_cke(0), CLK => dimm1_ddr2_pll_clkin_p,
-                CLKB => dimm1_ddr2_pll_clkin_n,
-                UDM => dimm1_ddr2_dqm(i*2+1+4*(32/CFG_DDR2SP_DATAWIDTH)));
-  end generate;
+  -- ddr2mem1: for i in 0 to (1 + 2*(CFG_DDR2SP_DATAWIDTH/64)) generate
+  --   u1 : HY5PS121621F
+  --     generic map (TimingCheckFlag => true, PUSCheckFlag => false,
+  --                  index => (1 + 2*(CFG_DDR2SP_DATAWIDTH/64))-i, bbits => CFG_DDR2SP_DATAWIDTH,
+  --                  fname => sdramfile, fdelay => 0)
+  --     port map (DQ => dimm1_ddr2_dq2(i*16+15+32*(32/CFG_DDR2SP_DATAWIDTH) downto i*16+32*(32/CFG_DDR2SP_DATAWIDTH)),
+  --               LDQS  => dimm1_ddr2_dqs_p(i*2+4*(32/CFG_DDR2SP_DATAWIDTH)),
+  --               LDQSB => dimm1_ddr2_dqs_n(i*2+4*(32/CFG_DDR2SP_DATAWIDTH)),
+  --               UDQS => dimm1_ddr2_dqs_p(i*2+1+4*(32/CFG_DDR2SP_DATAWIDTH)),
+  --               UDQSB => dimm1_ddr2_dqs_n(i*2+1+4*(32/CFG_DDR2SP_DATAWIDTH)),
+  --               LDM => dimm1_ddr2_dqm(i*2+4*(32/CFG_DDR2SP_DATAWIDTH)),
+  --               WEB => dimm1_ddr2_we_b, CASB => dimm1_ddr2_cas_b,
+  --               RASB => dimm1_ddr2_ras_b, CSB => dimm1_ddr2_s_b(0),
+  --               BA => dimm1_ddr2_ba(1 downto 0), ADDR => dimm1_ddr2_a(12 downto 0),
+  --               CKE => dimm1_ddr2_cke(0), CLK => dimm1_ddr2_pll_clkin_p,
+  --               CLKB => dimm1_ddr2_pll_clkin_n,
+  --               UDM => dimm1_ddr2_dqm(i*2+1+4*(32/CFG_DDR2SP_DATAWIDTH)));
+  -- end generate;
+
+  ddr2mem1 : ddr2ram
+  generic map(width => CFG_DDR2SP_DATAWIDTH, abits => 13, babits =>2, colbits => 10, rowbits => 13,
+              implbanks => 1, fname => sdramfile, speedbin=>1, density => 2)
+  port map (ck => dimm1_ddr2_pll_clkin_p, ckn => dimm1_ddr2_pll_clkin_n,
+            cke => dimm1_ddr2_cke(0), csn => dimm1_ddr2_s_b(0),
+            odt => gnd, rasn => dimm1_ddr2_ras_b,
+            casn => dimm1_ddr2_cas_b, wen => dimm1_ddr2_we_b,
+            dm => dimm1_ddr2_dqm(CFG_DDR2SP_DATAWIDTH/8-1 downto 0), ba => dimm1_ddr2_ba(1 downto 0),
+            a => dimm1_ddr2_a(12 downto 0), dq => dimm1_ddr2_dq2(CFG_DDR2SP_DATAWIDTH-1 downto 0),
+            dqs => dimm1_ddr2_dqs_p(CFG_DDR2SP_DATAWIDTH/8-1 downto 0),
+            dqsn =>dimm1_ddr2_dqs_n(CFG_DDR2SP_DATAWIDTH/8-1 downto 0));   
 
 
   ddr2delay0 : delay_wire 
-    generic map(data_width => dimm0_ddr2_dq'length, delay_atob => 0.0, delay_btoa => 2.5)
+    generic map(data_width => dimm0_ddr2_dq'length, delay_atob => 0.0, delay_btoa => 5.5)
     port map(a => dimm0_ddr2_dq, b => dimm0_ddr2_dq2);
   ddr2delay1 : delay_wire 
-    generic map(data_width => dimm1_ddr2_dq'length, delay_atob => 0.0, delay_btoa => 2.5)
+    generic map(data_width => dimm1_ddr2_dq'length, delay_atob => 0.0, delay_btoa => 5.5)
     port map(a => dimm1_ddr2_dq, b => dimm1_ddr2_dq2);
 
   prom0 : sram16 generic map (index => 4, abits => romdepth, fname => promfile)

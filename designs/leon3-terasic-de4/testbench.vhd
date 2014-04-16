@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@ use ieee.std_logic_1164.all;
 library gaisler;
 use gaisler.libdcom.all;
 use gaisler.sim.all;
+use gaisler.net.all;
 use work.debug.all;
 library techmap;
 use techmap.gencomp.all;
@@ -33,6 +34,7 @@ library micron;
 use micron.components.all;
 library grlib;
 use grlib.stdlib.all;
+use grlib.amba.all;
 
 use work.config.all;    -- configuration
 
@@ -73,14 +75,15 @@ architecture behav of testbench is
   signal SMA_CLKIN_p   : std_logic := '0';
 --signal  SMA_GXBCLK_p  : std_logic;
   signal GCLKIN        : std_logic := '0';
-  signal GCLKOUT_FPGA  : std_logic := '0';
-  signal SMA_CLKOUT_p  : std_logic := '0';
+--  signal GCLKOUT_FPGA  : std_logic := '0';
+--  signal SMA_CLKOUT_p  : std_logic := '0';
+  signal clk_125       : std_logic := '0';
   -- cpu reset
   signal CPU_RESET_n   : std_ulogic := '0';
   -- max i/o
-  signal MAX_CONF_D    : std_logic_vector(3 downto 0);
-  signal MAX_I2C_SCLK  : std_logic;
-  signal MAX_I2C_SDAT  : std_logic;
+--  signal MAX_CONF_D    : std_logic_vector(3 downto 0);
+--  signal MAX_I2C_SCLK  : std_logic;
+--  signal MAX_I2C_SDAT  : std_logic;
   -- LEDs
   signal  LED          : std_logic_vector(7 downto 0);
   -- buttons
@@ -90,9 +93,9 @@ architecture behav of testbench is
   -- slide switches
   signal SLIDE_SW      : std_logic_vector(3 downto 0);
   -- temperature
-  signal TEMP_SMCLK    : std_logic;
-  signal TEMP_SMDAT    : std_logic;
-  signal TEMP_INT_n    : std_logic;
+--  signal TEMP_SMCLK    : std_logic;
+--  signal TEMP_SMDAT    : std_logic;
+--  signal TEMP_INT_n    : std_logic;
   -- current
   signal CSENSE_ADC_FO : std_logic;
   signal CSENSE_SCK    : std_logic;
@@ -105,10 +108,10 @@ architecture behav of testbench is
   signal EEP_SCL       : std_logic;
   signal EEP_SDA       : std_logic;
   -- sdcard
-  signal SD_CLK        : std_logic;
-  signal SD_CMD        : std_logic;
-  signal SD_DAT        : std_logic_vector(3 downto 0);
-  signal SD_WP_n       : std_logic;
+--  signal SD_CLK        : std_logic;
+--  signal SD_CMD        : std_logic;
+--  signal SD_DAT        : std_logic_vector(3 downto 0);
+--  signal SD_WP_n       : std_logic;
   -- Ethernet interfaces
 signal    ETH_INT_n     : std_logic_vector(3 downto 0);
 signal    ETH_MDC       : std_logic_vector(3 downto 0);
@@ -204,7 +207,7 @@ signal    M1_DDR2_oct_rup : std_logic;
 --signal    M2_DDR2_we_n  : std_logic;
   -- GPIO
   signal GPIO0_D       : std_logic_vector(35 downto 0);
-  signal GPIO1_D       : std_logic_vector(35 downto 0); 
+--  signal GPIO1_D       : std_logic_vector(35 downto 0); 
   -- Ext I/O
   signal EXT_IO        :  std_logic;
   -- HSMC A
@@ -213,8 +216,8 @@ signal    M1_DDR2_oct_rup : std_logic;
 --  signal HSMA_CLKIN_p1 : std_logic;
 --  signal HSMA_CLKIN_p2 : std_logic;
 --  signal HSMA_CLKIN0   : std_logic;
---  signal HSMA_CLKOUT_n2 : std_logic;
---  signal HSMA_CLKOUT_p2 : std_logic;
+  signal HSMA_CLKOUT_n2 : std_logic;
+  signal HSMA_CLKOUT_p2 : std_logic;
 --  signal HSMA_D        : std_logic_vector(3 downto 0);
 --  HSMA_GXB_RX_p : std_logic_vector(3 downto 0);
 --  HSMA_GXB_TX_p : std_logic_vector(3 downto 0);
@@ -261,8 +264,60 @@ signal    M1_DDR2_oct_rup : std_logic;
   signal dsuen, dsubren, dsuact : std_ulogic;
   signal dsurst   : std_ulogic;
   
+  signal sgmii_rstn : std_logic;
+
+  signal dummy_ethi : eth_in_type;
+  signal dummy_etho : eth_out_type;
+
+  signal sgmii0_rxd      : std_logic_vector(7 downto 0);
+  signal sgmii0_rx_dv    : std_logic;
+  signal sgmii0_rx_er    : std_logic;
+  signal sgmii0_rx_col   : std_logic;
+  signal sgmii0_rx_crs   : std_logic;
+  signal sgmii0_rx_clk   : std_logic;
+  signal phy0_rxd        : std_logic_vector(7 downto 0);
+  signal phy0_rx_dv      : std_logic;
+  signal phy0_rx_er      : std_logic;
+  signal phy0_rx_col     : std_logic;
+  signal phy0_rx_crs     : std_logic;
+  signal phy0_rx_clk     : std_logic;
+  signal sgmii0_txd      : std_logic_vector(7 downto 0);
+  signal sgmii0_tx_en    : std_logic;
+  signal sgmii0_tx_er    : std_logic;
+  signal sgmii0_gtx_clk  : std_logic;
+  signal phy0_txd        : std_logic_vector(7 downto 0);
+  signal phy0_tx_en      : std_logic;
+  signal phy0_tx_er      : std_logic;
+  signal phy0_gtx_clk    : std_logic;
+
+  signal sgmii1_rxd      : std_logic_vector(7 downto 0);
+  signal sgmii1_rx_dv    : std_logic;
+  signal sgmii1_rx_er    : std_logic;
+  signal sgmii1_rx_col   : std_logic;
+  signal sgmii1_rx_crs   : std_logic;
+  signal sgmii1_rx_clk   : std_logic;
+  signal phy1_rxd        : std_logic_vector(7 downto 0);
+  signal phy1_rx_dv      : std_logic;
+  signal phy1_rx_er      : std_logic;
+  signal phy1_rx_col     : std_logic;
+  signal phy1_rx_crs     : std_logic;
+  signal phy1_rx_clk     : std_logic;
+  signal sgmii1_txd      : std_logic_vector(7 downto 0);
+  signal sgmii1_tx_en    : std_logic;
+  signal sgmii1_tx_er    : std_logic;
+  signal sgmii1_gtx_clk  : std_logic;
+  signal phy1_txd        : std_logic_vector(7 downto 0);
+  signal phy1_tx_en      : std_logic;
+  signal phy1_tx_er      : std_logic;
+  signal phy1_gtx_clk    : std_logic;
+
+  signal rst_125         : std_logic;
+
   constant lresp : boolean := false;
 
+  constant slips : integer := 11;
+
+  signal ETH_RX_p_d : std_logic;
 begin
 
   -- clock and reset
@@ -277,25 +332,26 @@ begin
   PLL_CLKIN_p <= not PLL_CLKIN_p after 5 ns;
   SMA_CLKIN_p <= not SMA_CLKIN_p after 10 ns;
   GCLKIN <= not GCLKIN after 10 ns;
+  clk_125 <= not clk_125 after 4 ns;
 
   CPU_RESET_n <= '0', '1' after 200 ns;
-
+  sgmii_rstn <= '0', '1' after 1000 ns;
   -- various interfaces
-  MAX_CONF_D    <= (others => 'H');
-  MAX_I2C_SDAT  <= 'H';
+--  MAX_CONF_D    <= (others => 'H');
+--  MAX_I2C_SDAT  <= 'H';
   BUTTON <= "HHHH";
   SW <= (others => 'H');
   SLIDE_SW <= (others => 'L');
-  TEMP_SMDAT <= 'H';
-  TEMP_INT_n <= 'H';
+--  TEMP_SMDAT <= 'H';
+--  TEMP_INT_n <= 'H';
   CSENSE_SCK <= 'H';
   CSENSE_SDO <= 'H';
   EEP_SDA    <= 'H';
-  SD_CMD     <= 'H';
-  SD_DAT     <= (others => 'H');
-  SD_WP_n    <= 'H';
+--  SD_CMD     <= 'H';
+--  SD_DAT     <= (others => 'H');
+--  SD_WP_n    <= 'H';
   GPIO0_D    <= (others => 'H');
-  GPIO1_D    <= (others => 'H');
+--  GPIO1_D    <= (others => 'H');
   EXT_IO     <= 'H';
   LED(0)     <= 'H';
 
@@ -312,11 +368,12 @@ begin
       OSC_50_BANK2, OSC_50_BANK3, OSC_50_BANK4, OSC_50_BANK5, OSC_50_BANK6,
       OSC_50_BANK7, PLL_CLKIN_p, SMA_CLKIN_p,
 --    SMA_GXBCLK_p
-      GCLKIN, GCLKOUT_FPGA, SMA_CLKOUT_p,
+      GCLKIN,
+--      GCLKOUT_FPGA, SMA_CLKOUT_p,
       -- cpu reset
       CPU_RESET_n,
       -- max i/o
-      MAX_CONF_D, MAX_I2C_SCLK, MAX_I2C_SDAT,
+--      MAX_CONF_D, MAX_I2C_SCLK, MAX_I2C_SDAT,
       -- LEDs
       LED,
       -- buttons
@@ -326,7 +383,7 @@ begin
       -- slide switches
       SLIDE_SW,
       -- temperature
-      TEMP_SMCLK, TEMP_SMDAT, TEMP_INT_n,
+--      TEMP_SMCLK, TEMP_SMDAT, TEMP_INT_n,
       -- current
       CSENSE_ADC_FO, CSENSE_SCK, CSENSE_SDI, CSENSE_SDO, CSENSE_CS_n,       
       -- fan
@@ -334,7 +391,7 @@ begin
       -- eeprom
       EEP_SCL, EEP_SDA,
       -- sdcard
-      SD_CLK, SD_CMD, SD_DAT, SD_WP_n,
+--      SD_CLK, SD_CMD, SD_DAT, SD_WP_n,
       -- Ethernet interfaces
       ETH_INT_n, ETH_MDC, ETH_MDIO, ETH_RST_n, ETH_RX_p, ETH_TX_p,
       -- PCIe interfaces
@@ -366,12 +423,14 @@ begin
 --    M2_DDR2_cs_n, M2_DDR2_dm, M2_DDR2_dq, M2_DDR2_dqs, M2_DDR2_dqsn, M2_DDR2_odt,
 --    M2_DDR2_ras_n, M2_DDR2_SA, M2_DDR2_SCL, M2_DDR2_SDA M2_DDR2_we_n
       -- GPIO
-      GPIO0_D, GPIO1_D,
+      GPIO0_D,
+--      GPIO1_D,
       -- Ext I/O
 --    EXT_IO,       
       -- HSMC A
 --    HSMA_CLKIN_n1, HSMA_CLKIN_n2, HSMA_CLKIN_p1, HSMA_CLKIN_p2, HSMA_CLKIN0,
---    HSMA_CLKOUT_n2, HSMA_CLKOUT_p2, HSMA_D,
+      HSMA_CLKOUT_n2, HSMA_CLKOUT_p2, 
+--    HSMA_D,
 --    HSMA_GXB_RX_p, HSMA_GXB_TX_p,
 --    HSMA_OUT_n1, HSMA_OUT_p1, HSMA_OUT0,
 --    HSMA_REFCLK_p,
@@ -391,6 +450,133 @@ begin
       UART_CTS, UART_RTS, UART_RXD, UART_TXD
       );
 
+
+  ethsim0 : if CFG_GRETH /= 0 generate
+
+  rst_125 <= not CPU_RESET_n;
+
+  -- delaying rx line
+  ETH_RX_p(0) <= transport ETH_RX_p_d after 0.8 ns * slips;
+  
+  -- connecting PHY through SGMII to MAC
+  p0: phy
+    generic map(
+      address => 0
+    )
+    port map(
+      rstn    => CPU_RESET_n,
+      mdio    => ETH_MDIO(0),
+      tx_clk  => open,
+      rx_clk  => open,
+      rxd     => phy0_rxd,
+      rx_dv   => phy0_rx_dv,
+      rx_er   => phy0_rx_er,
+      rx_col  => phy0_rx_col,
+      rx_crs  => phy0_rx_crs,
+      txd     => phy0_txd,
+      tx_en   => phy0_tx_en,
+      tx_er   => phy0_tx_er,
+      mdc     => ETH_MDC(0),
+      gtx_clk => phy0_gtx_clk
+    );
+
+  phy0_txd     <= sgmii0_rxd;
+  phy0_tx_en   <= sgmii0_rx_dv;
+  phy0_tx_er   <= sgmii0_rx_er;
+  phy0_gtx_clk <= sgmii0_gtx_clk;
+
+  sgmii0_txd   <= phy0_rxd;
+  sgmii0_tx_en <= phy0_rx_dv;
+  sgmii0_tx_er <= phy0_rx_er;
+
+  sgmii0: sgmii
+    generic map (
+      fabtech   => fabtech
+    )
+    port map(
+      clk_125       => clk_125,
+      rst_125       => rst_125,
+
+      ser_rx_p      => ETH_TX_p(0),
+      ser_tx_p      => ETH_RX_p_d,
+
+      txd           => sgmii0_txd,
+      tx_en         => sgmii0_tx_en,
+      tx_er         => sgmii0_tx_er,
+      tx_clk        => sgmii0_gtx_clk,
+
+      rxd           => sgmii0_rxd,
+      rx_dv         => sgmii0_rx_dv,
+      rx_er         => sgmii0_rx_er,
+      rx_col        => sgmii0_rx_col,
+      rx_crs        => sgmii0_rx_crs,
+      rx_clk        => sgmii0_rx_clk,
+
+      mdc           => ETH_MDC(0)
+    );
+
+  end generate;
+
+  ethsim1 : if CFG_GRETH2 /= 0 generate
+
+    -- connecting PHY through SGMII to MAC
+  p1: phy
+    generic map(
+      address => 1
+    )
+    port map(
+      rstn    => CPU_RESET_n,
+      mdio    => ETH_MDIO(1),
+      tx_clk  => open,
+      rx_clk  => open,
+      rxd     => phy1_rxd,
+      rx_dv   => phy1_rx_dv,
+      rx_er   => phy1_rx_er,
+      rx_col  => phy1_rx_col,
+      rx_crs  => phy1_rx_crs,
+      txd     => phy1_txd,
+      tx_en   => phy1_tx_en,
+      tx_er   => phy1_tx_er,
+      mdc     => ETH_MDC(1),
+      gtx_clk => phy1_gtx_clk
+    );
+
+  phy1_txd     <= sgmii1_rxd;
+  phy1_tx_en   <= sgmii1_rx_dv;
+  phy1_tx_er   <= sgmii1_rx_er;
+  phy1_gtx_clk <= sgmii1_gtx_clk;
+
+  sgmii1_txd   <= phy1_rxd;
+  sgmii1_tx_en <= phy1_rx_dv;
+  sgmii1_tx_er <= phy1_rx_er;
+
+  sgmii1: sgmii
+    generic map (
+      fabtech   => fabtech
+    )
+    port map(
+      clk_125       => clk_125,
+      rst_125       => rst_125,
+
+      ser_rx_p      => ETH_TX_p(1),
+      ser_tx_p      => ETH_RX_p(1),
+
+      txd           => sgmii1_txd,
+      tx_en         => sgmii1_tx_en,
+      tx_er         => sgmii1_tx_er,
+      tx_clk        => sgmii1_gtx_clk,
+
+      rxd           => sgmii1_rxd,
+      rx_dv         => sgmii1_rx_dv,
+      rx_er         => sgmii1_rx_er,
+      rx_col        => sgmii1_rx_col,
+      rx_crs        => sgmii1_rx_crs,
+      rx_clk        => sgmii1_rx_clk,
+
+      mdc           => ETH_MDC(1)
+    );
+
+  end generate;
 
   prom0 : sram16 generic map (index => 4, abits => romdepth, fname => promfile)
   port map (FSM_A(romdepth downto 1), FSM_D, FLASH_CE_n, FLASH_CE_n, FLASH_CE_n,

@@ -147,16 +147,41 @@ extern line3();
 #define DTAGMASK (~((1<<DLINESZ)-1))
 #define DIAGADDRMASK ((1<<DTAGLOW)-1)
 
-//static maintest();
-
-cachetest()
+void cachetest(void)
 {
-    int tmp;
+    report_subtest(CACHE_TEST);
 
-    tmp = maintest();
+    maintest();
     wsysreg(0, 0x0081000f);
-    return(tmp);
 }
+
+void cachetest4(void)
+{
+    int i = 0;
+
+    report_subtest(CACHE_TEST);
+
+    if (((rsysreg(8) >> 28) & 3) != 3) { /* ic dynamic replacement */
+       i = 3;
+    }
+
+    if (((rsysreg(12) >> 28) & 3) != 3) { /* dc dynamic replacement */
+       i = 3;
+    }
+
+    /* if dynamic replacement then test repl = 3, 2, 1, 0 */
+    while (i >= 0) {
+       wsysreg(8, (rsysreg(8) & ~(3 << 28)) | (i << 28));
+       wsysreg(12, (rsysreg(12) & ~(3 << 28)) | (i << 28));
+       maintest();
+       i--;
+    }
+
+    wsysreg(8, (rsysreg(8) & ~(3 << 28)) | (1 << 28));
+    wsysreg(12, (rsysreg(12) & ~(3 << 28)) | (1 << 28));
+    wsysreg(0, 0x0081000f);
+}
+
 
 long long int getdw();
 
@@ -205,8 +230,6 @@ maintest()
 	int IVALMSK, tag, data;
 	int ISETS;
  	int (*line[4])() = {line0, line1, line2, line3}; 
-
-	report_subtest(CACHE_TEST);
 
 	cachectrl = rsysreg(0); wsysreg(0, cachectrl & ~0x0f); 
 	do cachectrl = rsysreg(0); while(cachectrl & (CCTRL_IFP | CCTRL_DFP));

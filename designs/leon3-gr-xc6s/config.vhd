@@ -59,7 +59,7 @@ package config is
   constant CFG_DLINE : integer := 4;
   constant CFG_DREPL : integer := 2;
   constant CFG_DLOCK : integer := 0;
-  constant CFG_DSNOOP : integer := 1 + 1 + 4*1;
+  constant CFG_DSNOOP : integer := 1*2 + 4*1;
   constant CFG_DFIXED : integer := 16#0#;
   constant CFG_DLRAMEN : integer := 0;
   constant CFG_DLRAMADDR: integer := 16#8F#;
@@ -156,7 +156,7 @@ package config is
   constant CFG_AHBRPIPE : integer := 0;
 -- Gaisler Ethernet core
   constant CFG_GRETH : integer := 1;
-  constant CFG_GRETH1G : integer := 1;
+  constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 8;
 
   constant CFG_GRETH_FT : integer := 0;
@@ -185,13 +185,13 @@ package config is
 
 -- Modular timer
   constant CFG_GPT_ENABLE : integer := 1;
-  constant CFG_GPT_NTIM : integer := (2);
+  constant CFG_GPT_NTIM : integer := (3);
   constant CFG_GPT_SW : integer := (8);
   constant CFG_GPT_TW : integer := (32);
   constant CFG_GPT_IRQ : integer := (8);
   constant CFG_GPT_SEPIRQ : integer := 1;
-  constant CFG_GPT_WDOGEN : integer := 0;
-  constant CFG_GPT_WDOG : integer := 16#0#;
+  constant CFG_GPT_WDOGEN : integer := 1;
+  constant CFG_GPT_WDOG : integer := 16#FFFF#;
 
 -- GPIO port
   constant CFG_GRGPIO_ENABLE : integer := 1;

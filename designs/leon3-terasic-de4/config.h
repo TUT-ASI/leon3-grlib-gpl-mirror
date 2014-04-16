@@ -87,7 +87,7 @@
  * Processor            
  */
 #define CONFIG_LEON3 1
-#define CONFIG_PROC_NUM (1)
+#define CONFIG_PROC_NUM (4)
 #undef  CONFIG_LEON3_MIN
 #undef  CONFIG_LEON3_GP
 #undef  CONFIG_LEON3_HP
@@ -161,7 +161,6 @@
 #define CONFIG_DCACHE_ALGOLRU 1
 #undef  CONFIG_DCACHE_LOCK
 #define CONFIG_DCACHE_SNOOP 1
-#define CONFIG_DCACHE_SNOOP_FAST 1
 #define CONFIG_DCACHE_SNOOP_SEPTAG 1
 #define CONFIG_CACHE_FIXED 0
 /*
@@ -215,12 +214,40 @@
 #undef  CONFIG_IU_DISAS
 #undef  CONFIG_DEBUG_PC32
 /*
+ * L2 Cache
+ */
+#undef  CONFIG_L2_ENABLE
+#undef  CONFIG_L2_ASSO1
+#undef  CONFIG_L2_ASSO2
+#undef  CONFIG_L2_ASSO3
+#define CONFIG_L2_ASSO4 1
+#undef  CONFIG_L2_SZ1
+#undef  CONFIG_L2_SZ2
+#undef  CONFIG_L2_SZ4
+#undef  CONFIG_L2_SZ8
+#undef  CONFIG_L2_SZ16
+#define CONFIG_L2_SZ32 1
+#undef  CONFIG_L2_SZ64
+#undef  CONFIG_L2_SZ128
+#undef  CONFIG_L2_SZ256
+#undef  CONFIG_L2_SZ512
+#undef  CONFIG_L2_LINE32
+#define CONFIG_L2_LINE64 1
+#undef  CONFIG_L2_HPROT
+#undef  CONFIG_L2_PEN
+#undef  CONFIG_L2_WT
+#undef  CONFIG_L2_RAN
+#undef  CONFIG_L2_SHARE
+#define CONFIG_L2_MAP 00F0
+#define CONFIG_L2_MTRR (8)
+#undef  CONFIG_L2_EDAC
+/*
  * AMBA configuration
  */
 #define CONFIG_AHB_DEFMST (0)
 #define CONFIG_AHB_RROBIN 1
 #undef  CONFIG_AHB_SPLIT
-#undef  CONFIG_AHB_FPNPEN
+#define CONFIG_AHB_FPNPEN 1
 #define CONFIG_AHB_IOADDR FFF
 #define CONFIG_APB_HADDR 800
 #undef  CONFIG_AHB_MON
@@ -299,4 +326,4 @@
 /*
  * VHDL Debugging        
  */
-#undef  CONFIG_DEBUG_UART
+#define CONFIG_DEBUG_UART 1

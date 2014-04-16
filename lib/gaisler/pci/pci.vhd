@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -247,7 +247,8 @@ component pcipads
     drivereset   : integer := 0;
     constidsel   : integer := 0;
     level        : integer := pci33;
-    voltage      : integer := x33v
+    voltage      : integer := x33v;
+    nolock       : integer := 0
   );
   port (
     pci_rst     : inout std_logic;

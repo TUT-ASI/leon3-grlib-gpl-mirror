@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -32,8 +32,6 @@ library micron;
 use micron.components.all;
 library cypress;
 use cypress.components.all;
-library hynix;
-use hynix.components.all;
 
 use work.debug.all;
 
@@ -196,19 +194,14 @@ begin
     generic map(data_width => dbits, delay_atob => 0.0, delay_btoa => 5.5)
     port map(a => ddr_dq(dbits-1 downto 0), b => ddr_dq2(dbits-1 downto 0));
 
-  ddr2mem : for i in 0 to dbits/16-1 generate
-    u1 : HY5PS121621F
-      generic map (TimingCheckFlag => true, PUSCheckFlag => false,
-                   index => (1 + 2*(CFG_DDR2SP_DATAWIDTH/64))-i, 
-	           fname => sdramfile, bbits => CFG_DDR2SP_DATAWIDTH)
-    PORT MAP(
-      clk => ddr_clk(0), clkb => ddr_clkb(0), cke => ddr_cke(0), 
-      csb => ddr_csb(0), rasb => ddr_rasb, casb => ddr_casb, web => ddr_web, 
-      LDM => ddr_dm(i*2), UDM => ddr_dm(i*2+1), ba => ddr_ba(1 downto 0),
-      addr => ddr_ad(12 downto 0), dq => ddr_dq2(i*16+15 downto i*16),
-      LDQS  => ddr_dqsp(i*2), LDQSB => ddr_dqsn(i*2), UDQS => ddr_dqsp(i*2+1),
-      UDQSB => ddr_dqsn(i*2+1));
-  end generate;
+  ddr0 : ddr2ram
+  generic map(width => dbits, abits => 13, babits =>2, colbits => 10, rowbits => 13,
+              implbanks => 1, fname => sdramfile, speedbin=>1, density => 2)
+  port map (ck => ddr_clk(0), ckn => ddr_clkb(0), cke => ddr_cke(0), csn => ddr_csb(0),
+            odt => ddr_odt(0), rasn => ddr_rasb, casn => ddr_casb, wen => ddr_web,
+            dm => ddr_dm(dbits/8-1 downto 0), ba => ddr_ba(1 downto 0),
+            a => ddr_ad(12 downto 0), dq => ddr_dq2(dbits-1 downto 0),
+            dqs => ddr_dqsp(dbits/8-1 downto 0), dqsn =>ddr_dqsn(dbits/8-1 downto 0));    
 
   -- 16 bit prom
   prom0 : sram16 generic map (index => 4, abits => romdepth, fname => promfile)

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@ entity ddr2if is
     hindex: integer;
     haddr: integer := 16#400#;
     hmask: integer := 16#000#;
+    ahbbits: integer := ahbdw;
     burstlen: integer := 8
     );
   port (
@@ -92,7 +93,7 @@ architecture rtl of ddr2if is
       avl_be             : in    std_logic_vector(31 downto 0)  := (others => '0'); --                 .byteenable
       avl_read_req       : in    std_logic                      := '0';             --                 .read
       avl_write_req      : in    std_logic                      := '0';             --                 .write
-      avl_size           : in    std_logic_vector(2 downto 0)   := (others => '0'); --                 .burstcount
+      avl_size           : in    std_logic_vector(3 downto 0)   := (others => '0'); --                 .burstcount
       local_init_done    : out   std_logic;                                         --           status.local_init_done
       local_cal_success  : out   std_logic;                                         --                 .local_cal_success
       local_cal_fail     : out   std_logic;                                         --                 .local_cal_fail
@@ -162,7 +163,7 @@ begin
       avl_be              => be,
       avl_read_req        => avlsi.read_req,
       avl_write_req       => avlsi.write_req,
-      avl_size            => avlsi.size(2 downto 0),
+      avl_size            => avlsi.size,
       local_init_done     => local_init_done,
       local_cal_success   => local_cal_success,
       local_cal_fail      => local_cal_fail,
@@ -179,6 +180,7 @@ begin
       hmask => hmask,
       burstlen => burstlen,
       nosync => 0,
+      ahbbits => ahbbits,
       avldbits => 256,
       avlabits => 25
       )

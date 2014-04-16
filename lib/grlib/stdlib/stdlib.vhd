@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -120,6 +120,8 @@ component report_design
 end component;
 
 -- pragma translate_on
+
+function unary_to_slv(i: std_logic_vector) return std_logic_vector;
 
 end;
 
@@ -617,8 +619,46 @@ procedure print(s : string) is
 begin
   L := new string'(s); writeline(output, L);
 end;
-
 -- pragma translate_on
+
+  function unary_to_slv(i: std_logic_vector) return std_logic_vector is
+    variable o : std_logic_vector(log2(i'length)-1 downto 0);
+  begin
+
+--    -- 16 bits unary to binary conversion
+--    o(0) := i(1) or i(3) or i(5)  or i(7)  or i(9)  or i(11) or i(13) or i(15);
+--    o(1) := i(2) or i(3) or i(6)  or i(7)  or i(10) or i(11) or i(14) or i(15);
+--    o(2) := i(4) or i(5) or i(6)  or i(7)  or i(12) or i(13) or i(14) or i(15);
+--    o(3) := i(8) or i(9) or i(10) or i(11) or i(12) or i(13) or i(14) or i(15);
+--
+--    -- parametrized conversion
+--
+--    o(0) := i(1);
+--
+--    o(0)          := unary_to_slv(i(3 downto 2)) or unary_to_slv(i(1 downto 0));
+--    o(1)          := orv(i(3 downto 2));
+--
+--    o(1 downto 0) := unary_to_slv(i(7 downto 4)) or unary_to_slv(i(3 downto 0));
+--    o(2)          := orv(i(7 downto 4));
+--
+--    o(2 downto 0) := unary_to_slv(i(15 downto 8)) or unary_to_slv(i(7 downto 0));
+--    o(3)          := orv(i(15 downto 8));
+--
+
+    assert i'length = 0 or i'length = 2**log2(i'length)
+      report "unary_to_slv: input vector size must be power of 2"
+      severity failure;
+
+    if i'length > 2 then
+      -- recursion on left and right halves
+      o(log2(i'length)-2 downto 0)  := unary_to_slv(i(i'left downto (i'left-i'length/2+1))) or unary_to_slv(i((i'left-i'length/2) downto i'right));
+      o(log2(i'length)-1)           := orv(i(i'left downto (i'left-i'length/2+1)));
+    else
+      o(0 downto 0) := ( 0 => i(i'left));
+    end if;
+
+    return o;
+  end unary_to_slv;
 end;
 
 

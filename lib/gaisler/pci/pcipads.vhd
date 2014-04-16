@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -44,7 +44,8 @@ entity pcipads is
     drivereset   : integer := 0;        -- Drive PCI rst with outpad
     constidsel   : integer := 0;        -- pci_idsel is tied to local constant
     level        : integer := pci33;    -- input/output level
-    voltage      : integer := x33v      -- input/output voltage
+    voltage      : integer := x33v;     -- input/output voltage
+    nolock       : integer := 0
   );
   port (
     pci_rst     : inout std_logic;
@@ -131,9 +132,16 @@ begin
     pcii.pci66 <= '0';
   end generate;
 
-  pad_pci_lock  : iopad generic map (tech => padtech, level => level,
-                                     voltage => voltage, oepol => oepol)
-	          port map (pci_lock, pcio.lock, pcio.locken, pcii.lock);
+  dolock : if nolock = 0 generate
+    pad_pci_lock  : iopad 
+      generic map (tech => padtech, level => level,
+                   voltage => voltage, oepol => oepol)
+	    port map (pci_lock, pcio.lock, pcio.locken, pcii.lock);
+  end generate;
+  donolock : if nolock = 1 generate
+    pcii.lock <= pci_lock;
+  end generate;
+
   pad_pci_ad    : iopadvv generic map (tech => padtech, level => level,
                                        voltage => voltage, width => 32,
                                        oepol => oepol)

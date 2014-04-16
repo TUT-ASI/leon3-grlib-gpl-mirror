@@ -7,3 +7,4 @@ adq_dqs/bidir_dq_iobuf_inst.vhd
 adq_dqs/output_dqs_iobuf_inst.vhd
 adq_dqs/bidir_dqs_iobuf_inst.vhd
 ddr_phy_stratixiii.vhd
+serdes_stratixiii.vhd

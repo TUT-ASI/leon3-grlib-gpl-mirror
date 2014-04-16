@@ -9,3 +9,4 @@ grspw_codec_clockgate.vhd
 grspw_codec.vhd
 grspwrouter.vhd
 grspw_phy.vhd
+grspw2_sist.vhd

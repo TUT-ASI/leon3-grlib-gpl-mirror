@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -364,12 +364,9 @@ begin
     memo.ramsn <= (others => '1'); memo.romsn <= (others => '1');
   end generate;
 
-
 ----------------------------------------------------------------------
 ---  APB Bridge and various periherals -------------------------------
 ----------------------------------------------------------------------
-
-
 
   apbctrl0 : apbctrl        -- AHB/APB bridge
   generic map (hindex => 1, haddr => CFG_APBADDR)
@@ -387,11 +384,11 @@ begin
 
   ua2 : if CFG_UART2_ENABLE /= 0 generate
     uart2 : apbuart     -- UART 2
-      generic map (pindex => 4, paddr => 4,  pirq => 3, fifosize => CFG_UART2_FIFO)
-      port map (rstapbn, clkapb, apbi, apbo(4), u2i, u2o);
+      generic map (pindex => 9, paddr => 9,  pirq => 9, fifosize => CFG_UART2_FIFO)
+      port map (rstapbn, clkapb, apbi, apbo(9), u2i, u2o);
     u2i.rxd <= rxd2; u2i.ctsn <= '0'; u2i.extclk <= '0'; txd2 <= u2o.txd;
   end generate;
-  noua1 : if CFG_UART2_ENABLE = 0 generate apbo(4) <= apb_none; end generate;
+  noua1 : if CFG_UART2_ENABLE = 0 generate apbo(9) <= apb_none; end generate;
 
   irqctrl : if CFG_IRQ3_ENABLE /= 0 generate
     irqctrl0 : irqmp      -- interrupt controller
@@ -755,6 +752,11 @@ begin
       end generate spw2_codec;
 
     end generate;
+  end generate;
+
+  nospw : if CFG_SPW_EN = 0 generate
+    spw_txd <= (others => '0');
+    spw_txs <= (others => '0');
   end generate;
 
 -----------------------------------------------------------------------

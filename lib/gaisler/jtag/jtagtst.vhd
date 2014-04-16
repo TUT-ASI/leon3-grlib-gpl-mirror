@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -67,8 +67,24 @@ package jtagtst is
                     signal tck, tms, tdi : out std_ulogic;
                     signal tdo           : in std_ulogic;
                     cp                   : in integer);
+
+  procedure jwritem(addr                 : in std_logic_vector;
+                    data                 : in jdata_vector_type;
+                    hsize                : in std_logic_vector(1 downto 0);
+                    signal tck, tms, tdi : out std_ulogic;
+                    signal tdo           : in std_ulogic;
+                    cp                   : in integer);
   
   procedure jreadm(addr                 : in  std_logic_vector;
+                   data                 : out jdata_vector_type;
+                   signal tck, tms, tdi : out std_ulogic;
+                   signal tdo           : in std_ulogic;
+                   cp                   : in integer;
+                   reread               : in boolean := false;
+                   assertions           : in boolean := false);
+
+  procedure jreadm(addr                 : in  std_logic_vector;
+                   hsize                : in std_logic_vector(1 downto 0);
                    data                 : out jdata_vector_type;
                    signal tck, tms, tdi : out std_ulogic;
                    signal tdo           : in std_ulogic;
@@ -90,6 +106,15 @@ package jtagtst is
                    isize                : in integer := 6);
 
   procedure jread(addr                 : in  std_logic_vector;
+                  data                 : out std_logic_vector;
+                  signal tck, tms, tdi : out std_ulogic;
+                  signal tdo           : in std_ulogic;
+                  cp                   : in integer;
+                  reread               : in boolean := false;
+                  assertions           : in boolean := false);
+
+  procedure jread(addr                 : in  std_logic_vector;
+                  hsize                : in  std_logic_vector;
                   data                 : out std_logic_vector;
                   signal tck, tms, tdi : out std_ulogic;
                   signal tdo           : in std_ulogic;
@@ -241,6 +266,41 @@ package body jtagtst is
     end loop;
     data := dr(31 downto 0);
   end;
+
+  procedure jread(addr                 : in  std_logic_vector;
+                  hsize                : in  std_logic_vector;
+                  data                 : out std_logic_vector;
+                  signal tck, tms, tdi : out std_ulogic;
+                  signal tdo           : in std_ulogic;
+                  cp                   : in integer;
+                  reread               : in boolean := false;
+                  assertions           : in boolean := false) is
+    variable tmp : std_logic_vector(32 downto 0);
+    variable tmp2 : std_logic_vector(34 downto 0);
+    variable dr : std_logic_vector(32 downto 0);
+    variable dr2 : std_logic_vector(34 downto 0);
+  begin
+    wait for 10 * cp * 1 ns;
+    shift(false, 6, B"010000", dr, tck, tms, tdi, tdo, cp);  -- inst = addrreg
+    wait for 5 * cp * 1 ns;    
+    tmp2 := '0' & hsize & addr;
+    shift(true, 35, tmp2, dr2, tck, tms, tdi, tdo, cp); -- write add reg
+    wait for 5 * cp * 1 ns;
+    shift(false, 6, B"110000", dr, tck, tms, tdi, tdo, cp);  -- inst = datareg
+    wait for 5 * cp * 1 ns;
+    tmp := (others => '0'); --tmp(32) := '1';
+    shift(true, 33, tmp, dr, tck, tms, tdi, tdo, cp); -- read data reg
+    assert dr(32) = '1' or not assertions
+      report "JTAG READ: data read out before AHB access completed"
+      severity warning;
+    while dr(32) /= '1' and reread loop
+      assert not assertions report "Re-reading JTAG data register" severity note;
+      wait for 5 * cp * 1 ns;
+      tmp := (others => '0');
+      shift(true, 33, tmp, dr, tck, tms, tdi, tdo, cp); -- read data reg
+    end loop;
+    data := dr(31 downto 0);
+  end;
   
   procedure jwritem(addr                 : in std_logic_vector;
                     data                 : in jdata_vector_type;
@@ -254,6 +314,33 @@ package body jtagtst is
     variable hsize : std_logic_vector(1 downto 0);        
   begin
     hsize := "10";    
+    wait for 10 * cp * 1 ns;
+    shift(false, 6, B"010000", dr, tck, tms, tdi, tdo, cp);  -- inst = addrreg
+    wait for 5 * cp * 1 ns;
+    tmp2 := '1' & hsize & addr;    
+    shift(true, 35, tmp2, dr2, tck, tms, tdi, tdo, cp); -- write add reg
+    wait for 5 * cp * 1 ns;
+    shift(false, 6, B"110000", dr, tck, tms, tdi, tdo, cp);  -- inst = datareg
+    wait for 5 * cp * 1 ns;
+    for i in data'left to data'right-1 loop
+      tmp := '1' & data(i);
+      shift(true, 33, tmp, dr, tck, tms, tdi, tdo, cp); -- write data reg
+    end loop;
+    tmp := '0' & data(data'right);
+    shift(true, 33, tmp, dr, tck, tms, tdi, tdo, cp); -- write data reg    
+  end;
+
+  procedure jwritem(addr                 : in std_logic_vector;
+                    data                 : in jdata_vector_type;
+                    hsize                : in std_logic_vector(1 downto 0);
+                    signal tck, tms, tdi : out std_ulogic;
+                    signal tdo           : in std_ulogic;
+                    cp                   : in integer) is
+    variable tmp : std_logic_vector(32 downto 0);
+    variable tmp2 : std_logic_vector(34 downto 0);
+    variable dr : std_logic_vector(32 downto 0);
+    variable dr2 : std_logic_vector(34 downto 0);
+  begin
     wait for 10 * cp * 1 ns;
     shift(false, 6, B"010000", dr, tck, tms, tdi, tdo, cp);  -- inst = addrreg
     wait for 5 * cp * 1 ns;
@@ -318,6 +405,53 @@ package body jtagtst is
     data(data'right) := dr(31 downto 0);
   end;
 
+  procedure jreadm(addr                 : in  std_logic_vector;
+                   hsize                : in  std_logic_vector(1 downto 0);
+                   data                 : out jdata_vector_type;
+                   signal tck, tms, tdi : out std_ulogic;
+                   signal tdo           : in std_ulogic;
+                   cp                   : in integer;
+                   reread               : in boolean := false;
+                   assertions           : in boolean := false) is
+    variable tmp : std_logic_vector(32 downto 0);
+    variable tmp2 : std_logic_vector(34 downto 0);
+    variable dr : std_logic_vector(32 downto 0);
+    variable dr2 : std_logic_vector(34 downto 0);
+  begin
+    wait for 10 * cp * 1 ns;
+    shift(false, 6, B"010000", dr, tck, tms, tdi, tdo, cp);  -- inst = addrreg
+    wait for 5 * cp * 1 ns;    
+    tmp2 := '0' & hsize & addr;    
+    shift(true, 35, tmp2, dr2, tck, tms, tdi, tdo, cp); -- write add reg
+    wait for 5 * cp * 1 ns;
+    shift(false, 6, B"110000", dr, tck, tms, tdi, tdo, cp);  -- inst = datareg
+    wait for 5 * cp * 1 ns;
+    for i in data'left to data'right-1 loop
+      tmp := (others => '0'); tmp(32) := '1';
+      shift(true, 33, tmp, dr, tck, tms, tdi, tdo, cp); -- read data reg
+      assert dr(32) = '1' or not assertions
+        report "JTAG READ: data read out before AHB access completed"
+        severity warning;
+      while dr(32) /= '1' and reread loop
+        assert not assertions report "Re-reading JTAG data register" severity note;
+        tmp := (others => '0'); tmp(32) := '1';
+        shift(true, 33, tmp, dr, tck, tms, tdi, tdo, cp); -- read data reg
+      end loop;
+      data(i) := dr(31 downto 0);
+    end loop;
+    tmp := (others => '0');
+    shift(true, 33, tmp, dr, tck, tms, tdi, tdo, cp); -- read data reg
+    assert dr(32) = '1' or not assertions
+      report "JTAG READ: data read out before AHB access completed"
+      severity warning;
+    while dr(32) /= '1' and reread loop
+      assert not assertions report "Re-reading JTAG data register" severity note;
+      tmp := (others => '0');
+      shift(true, 33, tmp, dr, tck, tms, tdi, tdo, cp); -- read data reg
+    end loop;
+    data(data'right) := dr(31 downto 0);
+  end;
+
 procedure jtagcom(signal tdo : in std_ulogic;
                   signal tck, tms, tdi : out std_ulogic;
                   cp, start, addr  : in integer;
@@ -334,7 +468,8 @@ begin
 
   tck <= '0'; tms <= '0'; tdi <= '0';
 
-  wait for start * 1 us;    
+  wait for start * 1 us;
+  
   print("AHB JTAG TEST");    
   for i in 1 to 5 loop     -- reset
     clkj('1', '0', dc, tck, tms, tdi, tdo, cp);

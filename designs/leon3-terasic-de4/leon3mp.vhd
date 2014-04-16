@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 --  LEON3 Demonstration design
---  Copyright (C) 2013 Aeroflex Gaisler
+--  Copyright (C) 2014 Aeroflex Gaisler
 ------------------------------------------------------------------------------
 
 
@@ -25,6 +25,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 library grlib, techmap;
 use grlib.amba.all;
+use grlib.devices.all;
 use grlib.stdlib.all;
 use techmap.gencomp.all;
 library gaisler;
@@ -37,6 +38,7 @@ use gaisler.can.all;
 use gaisler.net.all;
 use gaisler.jtag.all;
 use gaisler.ddrpkg.all;
+use gaisler.l2cache.all;
 -- pragma translate_off
 use gaisler.sim.all;
 -- pragma translate_on
@@ -67,16 +69,16 @@ entity leon3mp is
     SMA_CLKIN_p   : in std_logic;
 --  SMA_GXBCLK_p  : in std_logic;
     GCLKIN        : in std_logic;
-    GCLKOUT_FPGA  : out std_logic;
-    SMA_CLKOUT_p  : out std_logic;
+--    GCLKOUT_FPGA  : out std_logic;
+--    SMA_CLKOUT_p  : out std_logic;
 
     -- cpu reset
     CPU_RESET_n   : in std_ulogic;
 
     -- max i/o
-    MAX_CONF_D    : inout std_logic_vector(3 downto 0);
-    MAX_I2C_SCLK  : out std_logic;
-    MAX_I2C_SDAT  : inout std_logic;
+--    MAX_CONF_D    : inout std_logic_vector(3 downto 0);
+--    MAX_I2C_SCLK  : out std_logic;
+--    MAX_I2C_SDAT  : inout std_logic;
 
     -- LEDs
     LED           : out std_logic_vector(7 downto 0);
@@ -91,9 +93,9 @@ entity leon3mp is
     SLIDE_SW      : in std_logic_vector(3 downto 0);
 
     -- temperature
-    TEMP_SMCLK    : out std_logic;
-    TEMP_SMDAT    : inout std_logic;
-    TEMP_INT_n    : in std_logic;
+--    TEMP_SMCLK    : out std_logic;
+--    TEMP_SMDAT    : inout std_logic;
+--    TEMP_INT_n    : in std_logic;
 
     -- current
     CSENSE_ADC_FO : out std_logic;
@@ -110,10 +112,10 @@ entity leon3mp is
     EEP_SDA       : inout std_logic;
 
     -- sdcard
-    SD_CLK        : out std_logic;
-    SD_CMD        : inout std_logic;
-    SD_DAT        : inout std_logic_vector(3 downto 0);
-    SD_WP_n       : in std_logic;
+ --   SD_CLK        : out std_logic;
+ --   SD_CMD        : inout std_logic;
+ --   SD_DAT        : inout std_logic_vector(3 downto 0);
+ --   SD_WP_n       : in std_logic;
 
     -- Ethernet interfaces
     ETH_INT_n     : in std_logic_vector(3 downto 0);
@@ -220,7 +222,7 @@ entity leon3mp is
 
     -- GPIO
     GPIO0_D       : inout std_logic_vector(35 downto 0);
-    GPIO1_D       : inout std_logic_vector(35 downto 0);
+--    GPIO1_D       : inout std_logic_vector(35 downto 0);
         
     -- Ext I/O
 --    EXT_IO        : inout std_logic;
@@ -231,8 +233,8 @@ entity leon3mp is
 --    HSMA_CLKIN_p1 : in std_logic;
 --    HSMA_CLKIN_p2 : in std_logic;
 --    HSMA_CLKIN0   : in std_logic;
---    HSMA_CLKOUT_n2 : out std_logic;
---    HSMA_CLKOUT_p2 : out std_logic;
+    HSMA_CLKOUT_n2 : out std_logic;
+    HSMA_CLKOUT_p2 : out std_logic;
 --    HSMA_D        : inout std_logic_vector(3 downto 0);
 --    HSMA_GXB_RX_p : in std_logic_vector(3 downto 0);
 --    HSMA_GXB_TX_p : out std_logic_vector(3 downto 0);
@@ -285,64 +287,11 @@ end;
 
 architecture rtl of leon3mp is
 
-  component sgmii2gmii is
-    port (
-      ref_clk        : in  std_logic                     := '0';             --  pcs_ref_clk_clock_connection.clk
-      clk            : in  std_logic                     := '0';             -- control_port_clock_connection.clk
-      reset          : in  std_logic                     := '0';             --              reset_connection.reset
-      address        : in  std_logic_vector(4 downto 0)  := (others => '0'); --                  control_port.address
-      readdata       : out std_logic_vector(15 downto 0);                    --                              .readdata
-      read           : in  std_logic                     := '0';             --                              .read
-      writedata      : in  std_logic_vector(15 downto 0) := (others => '0'); --                              .writedata
-      write          : in  std_logic                     := '0';             --                              .write
-      waitrequest    : out std_logic;                                        --                              .waitrequest
-      tx_clk         : out std_logic;                                        -- pcs_transmit_clock_connection.clk
-      rx_clk         : out std_logic;                                        --  pcs_receive_clock_connection.clk
-      reset_tx_clk   : in  std_logic                     := '0';             -- pcs_transmit_reset_connection.reset
-      reset_rx_clk   : in  std_logic                     := '0';             --  pcs_receive_reset_connection.reset
-      gmii_rx_dv     : out std_logic;                                        --               gmii_connection.gmii_rx_dv
-      gmii_rx_d      : out std_logic_vector(7 downto 0);                     --                              .gmii_rx_d
-      gmii_rx_err    : out std_logic;                                        --                              .gmii_rx_err
-      gmii_tx_en     : in  std_logic                     := '0';             --                              .gmii_tx_en
-      gmii_tx_d      : in  std_logic_vector(7 downto 0)  := (others => '0'); --                              .gmii_tx_d
-      gmii_tx_err    : in  std_logic                     := '0';             --                              .gmii_tx_err
-      tx_clkena      : out std_logic;                                        --       clock_enable_connection.tx_clkena
-      rx_clkena      : out std_logic;                                        --                              .rx_clkena
-      mii_rx_dv      : out std_logic;                                        --                mii_connection.mii_rx_dv
-      mii_rx_d       : out std_logic_vector(3 downto 0);                     --                              .mii_rx_d
-      mii_rx_err     : out std_logic;                                        --                              .mii_rx_err
-      mii_tx_en      : in  std_logic                     := '0';             --                              .mii_tx_en
-      mii_tx_d       : in  std_logic_vector(3 downto 0)  := (others => '0'); --                              .mii_tx_d
-      mii_tx_err     : in  std_logic                     := '0';             --                              .mii_tx_err
-      mii_col        : out std_logic;                                        --                              .mii_col
-      mii_crs        : out std_logic;                                        --                              .mii_crs
-      set_10         : out std_logic;                                        --       sgmii_status_connection.set_10
-      set_1000       : out std_logic;                                        --                              .set_1000
-      set_100        : out std_logic;                                        --                              .set_100
-      hd_ena         : out std_logic;                                        --                              .hd_ena
-      led_crs        : out std_logic;                                        --         status_led_connection.crs
-      led_link       : out std_logic;                                        --                              .link
-      led_col        : out std_logic;                                        --                              .col
-      led_an         : out std_logic;                                        --                              .an
-      led_char_err   : out std_logic;                                        --                              .char_err
-      led_disp_err   : out std_logic;                                        --                              .disp_err
-      rx_recovclkout : out std_logic;                                        --     serdes_control_connection.export
-      txp            : out std_logic;                                        --             serial_connection.txp
-      rxp            : in  std_logic                     := '0'              --                              .rxp
-    );
-  end component sgmii2gmii;
-
-  component pll_125 is
-    port(
-      inclk0  : in std_logic  := '0';
-      c0      : out std_logic
-    );
-  end component;
-
   constant blength : integer := 12;
   constant fifodepth : integer := 8;
-
-  signal vcc, gnd   : std_logic_vector(4 downto 0);
+  constant burstlen : integer := 16;     -- burst length in 32-bit words
+  
+  signal vcc, gnd   : std_logic_vector(7 downto 0);
 
   signal memi  : memory_in_type;
   signal memo  : memory_out_type;
@@ -358,9 +307,17 @@ architecture rtl of leon3mp is
   signal ahbmi : ahb_mst_in_type;
   signal ahbmo : ahb_mst_out_vector := (others => ahbm_none);
 
+  signal edcl_ahbmi : ahb_mst_in_type;
+  signal edcl_ahbmo : ahb_mst_out_vector_type(1 downto 0);
+
+  signal mem_ahbsi : ahb_slv_in_type;
+  signal mem_ahbso : ahb_slv_out_vector := (others => ahbs_none);
+  signal mem_ahbmi : ahb_mst_in_type;
+  signal mem_ahbmo : ahb_mst_out_vector := (others => ahbm_none);
+  
   signal clkm, rstn, rstraw : std_logic;
-  signal cgi  : clkgen_in_type;
-  signal cgo  : clkgen_out_type;
+  signal cgi, cgi_125  : clkgen_in_type;
+  signal cgo, cgo_125  : clkgen_out_type;
   signal u1i, dui  : uart_in_type;
   signal u1o, duo  : uart_out_type;
 
@@ -392,24 +349,27 @@ architecture rtl of leon3mp is
   signal fpi : grfpu_in_vector_type;
   signal fpo : grfpu_out_vector_type;
 
-  signal gmiii1, gmiii2 : eth_in_type;
-  signal gmiio1, gmiio2 : eth_out_type;
-
-  signal sgmiii1, sgmiii2 :  eth_sgmii_in_type; 
-  signal sgmiio1, sgmiio2 :  eth_sgmii_out_type;
+  signal nolock   : ahb2ahb_ctrl_type;
+  signal noifctrl : ahb2ahb_ifctrl_type;
+  
+  signal gmiii0, gmiii1, gmiii2, gmiii3 : eth_in_type;
+  signal gmiio0, gmiio1, gmiio2, gmiio3 : eth_out_type;
 
   signal eth_tx_pad, eth_rx_pad : std_logic_vector(3 downto 0) ;
 
-  signal reset1_tx_clk, reset1_rx_clk, reset2_tx_clk, reset2_rx_clk, ref_clk, ctrl_rst: std_logic;
+  signal reset1_tx_clk, reset1_rx_clk, reset2_tx_clk, reset2_rx_clk, ref_clk, ctrl_rst, ref_rstn, ref_rst: std_logic;
 
   signal led_crs1, led_link1, led_col1, led_an1, led_char_err1, led_disp_err1 : std_logic;
   signal led_crs2, led_link2, led_col2, led_an2, led_char_err2, led_disp_err2 : std_logic;
+  signal led1_int, led2_int, led3_int, led4_int, led5_int, led6_int, led7_int : std_logic;
 
   constant BOARD_FREQ : integer := 100000;        -- Board frequency in KHz
   constant CPU_FREQ : integer := BOARD_FREQ * CFG_CLKMUL / CFG_CLKDIV;  -- cpu frequency in KHz
   constant IOAEN : integer := 0;
   constant OEPOL : integer := padoen_polarity(padtech);
-
+  constant DEBUG_BUS : integer  := CFG_L2_EN;
+  constant EDCL_SEP_AHB : integer := CFG_L2_EN;
+  
   attribute syn_keep : boolean;
   attribute syn_preserve : boolean;
   attribute keep : boolean;
@@ -421,8 +381,19 @@ architecture rtl of leon3mp is
   signal ddr_clk_fb           : std_ulogic;
   signal clkm125              : std_logic;
   signal clklock, lock, clkml : std_logic;
+
+  signal mdio_o, mdio_i, mdio_oe : std_logic;
+  signal mdio_o_sgmii, mdio_i_sgmii, mdio_oe_sgmii : std_logic;
+  signal gprego : std_logic_vector(15 downto 0);
+
+  signal counter1 : std_logic_vector(26 downto 0);
+  signal counter2 : std_logic_vector(3 downto 0);
+  signal bitslip_int : std_logic;
 begin
 
+  nolock <= ahb2ahb_ctrl_none;
+  noifctrl <= ahb2ahb_ifctrl_none;
+  
 ----------------------------------------------------------------------
 ---  Reset and Clock generation  -------------------------------------
 ----------------------------------------------------------------------
@@ -452,14 +423,15 @@ begin
 ----------------------------------------------------------------------
 
   ahb0 : ahbctrl                -- AHB arbiter/multiplexer
-    generic map (defmast => CFG_DEFMST, split => CFG_SPLIT, 
+    generic map (defmast => CFG_DEFMST, split => CFG_SPLIT, fpnpen => CFG_FPNPEN,
                  rrobin => CFG_RROBIN, ioaddr => CFG_AHBIO, ioen => IOAEN,
-                 nahbm => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH,
+                 nahbm => CFG_NCPU+(CFG_AHB_UART+CFG_AHB_JTAG)*(1-DEBUG_BUS)+
+                 DEBUG_BUS+CFG_GRETH+CFG_GRETH2,
                  nahbs => 8)
     port map (rstn, clkm, ahbmi, ahbmo, ahbsi, ahbso);
 
 ----------------------------------------------------------------------
----  LEON3 processor and DSU -----------------------------------------
+---  LEON3 processor         -----------------------------------------
 ----------------------------------------------------------------------
 
   cpu : for i in 0 to CFG_NCPU-1 generate
@@ -497,37 +469,180 @@ begin
   end generate;
 
   errorn_pad : odpad generic map (tech => padtech) port map (LED(0), dbgo(0).error);
+
+----------------------------------------------------------------------
+---  Debug                   -----------------------------------------
+----------------------------------------------------------------------
+  -- Debug DSU and debug links can be connected to the system on two
+  -- ways:
+  --
+  -- a) Directly to the main AHB bus
+  -- b) Connected via a dedicated debug AHB bus that is connected to
+  --    the main AHB bus via a AHB/AHB bridge.
+
   
-  dsugen : if CFG_DSU = 1 generate
-    dsu0 : dsu3                 -- LEON3 Debug Support Unit
-      generic map (hindex => 2, haddr => 16#900#, hmask => 16#F00#, 
-                   ncpu => CFG_NCPU, tbits => 30, tech => memtech, irq => 0, kbytes => CFG_ATBSZ)
-      port map (rstn, clkm, ahbmi, ahbsi, ahbso(2), dbgo, dbgi, dsui, dsuo);
-    dsui.enable <= '1'; 
-    dsubre_pad : inpad generic map (tech => padtech) port map (BUTTON(0), dsubren);
-    dsui.break <= not dsubren; 
-    dsuact_pad : outpad generic map (tech => padtech) port map (LED(1), dsuo.active);
-  end generate;
-  nodsu : if CFG_DSU = 0 generate 
-    ahbso(2) <= ahbs_none; dsuo.tstop <= '0'; dsuo.active <= '0';
-  end generate;
+  dsui.enable <= '1'; 
+  dsubre_pad : inpad generic map (tech => padtech) port map (BUTTON(0), dsubren);
+  dsui.break <= not dsubren; 
+  dsuact_pad : outpad generic map (tech => padtech) port map (LED(1), dsuo.active);
+
+  dui.rxd <= uart_rxd when slide_sw(0) = '0' else '1';
   
-  dcomgen : if CFG_AHB_UART = 1 generate
-    dcom0: ahbuart		-- Debug UART
-      generic map (hindex => CFG_NCPU, pindex => 7, paddr => 7)
-      port map (rstn, clkm, dui, duo, apbi, apbo(7), ahbmi, ahbmo(CFG_NCPU));
-    dui.rxd <= uart_rxd when slide_sw(0) = '0' else '1';
-  end generate;
+  nodbgbus : if DEBUG_BUS /= 1 generate
+    -- DSU and debug links directly connected to main bus
+
+    edcl_ahbmi <= ahbmi;
+    -- EDCL ahbmo interfaces are not used in this configuration
+    
+    dsugen : if CFG_DSU = 1 generate
+      dsu0 : dsu3                 -- LEON3 Debug Support Unit
+        generic map (hindex => 2, haddr => 16#E00#, hmask => 16#FC0#, 
+                     ncpu => CFG_NCPU, tbits => 30, tech => memtech, irq => 0, kbytes => CFG_ATBSZ)
+        port map (rstn, clkm, ahbmi, ahbsi, ahbso(2), dbgo, dbgi, dsui, dsuo);  
+    end generate;
+    nodsu : if CFG_DSU = 0 generate 
+      ahbso(2) <= ahbs_none; dsuo.tstop <= '0'; dsuo.active <= '0';
+    end generate;
+  
+    dcomgen : if CFG_AHB_UART = 1 generate
+      dcom0: ahbuart		-- Debug UART
+        generic map (hindex => CFG_NCPU, pindex => 7, paddr => 7)
+        port map (rstn, clkm, dui, duo, apbi, apbo(7), ahbmi, ahbmo(CFG_NCPU));
+    end generate;
 --  nouah : if CFG_AHB_UART = 0 generate apbo(7) <= apb_none; end generate;
   
-  ahbjtaggen0 :if CFG_AHB_JTAG = 1 generate
-    ahbjtag0 : ahbjtag generic map(tech => fabtech, hindex => CFG_NCPU+CFG_AHB_UART)
-      port map(rstn, clkm, tck, tms, tdi, tdo, ahbmi, ahbmo(CFG_NCPU+CFG_AHB_UART),
-               open, open, open, open, open, open, open, gnd(0));
+    ahbjtaggen0 :if CFG_AHB_JTAG = 1 generate
+      ahbjtag0 : ahbjtag generic map(tech => fabtech, hindex => CFG_NCPU+CFG_AHB_UART)
+        port map(rstn, clkm, tck, tms, tdi, tdo, ahbmi, ahbmo(CFG_NCPU+CFG_AHB_UART),
+                 open, open, open, open, open, open, open, gnd(0));
+    end generate;
+  end generate;
+  
+  dbgbus : if DEBUG_BUS = 1 generate
+    -- DSU and debug links connected via AHB/AHB bridge to process
+    dbgsubsys : block
+      constant DBG_AHBIO : integer := 16#EFF#;
+      
+      signal dbg_ahbsi   : ahb_slv_in_type;
+      signal dbg_ahbso   : ahb_slv_out_vector := (others => ahbs_none);
+      signal dbg_ahbmi   : ahb_mst_in_type;
+      signal dbg_ahbmo   : ahb_mst_out_vector := (others => ahbm_none);
+    begin
+
+      edcl_ahbmi <= dbg_ahbmi;
+      dbg_ahbmo(CFG_AHB_UART+CFG_AHB_JTAG) <= edcl_ahbmo(0);
+      dbg_ahbmo(CFG_AHB_UART+CFG_AHB_JTAG+1) <= edcl_ahbmo(1);
+      
+      dsugen : if CFG_DSU = 1 generate
+      dsu0 : dsu3_mb                 -- LEON3 Debug Support Unit
+        generic map (hindex => 0, haddr => 16#E00#, hmask => 16#FC0#, 
+                     ncpu => CFG_NCPU, tbits => 30, tech => memtech, irq => 0, kbytes => CFG_ATBSZ)
+        port map (rstn, clkm, ahbmi, dbg_ahbsi, dbg_ahbso(0), ahbsi, dbgo, dbgi, dsui, dsuo);  
+      end generate;
+      nodsu : if CFG_DSU = 0 generate 
+        dbg_ahbso(0) <= ahbs_none; dsuo.tstop <= '0'; dsuo.active <= '0';
+      end generate;
+
+      membustrc : if true generate
+        ahbtrace0: ahbtrace_mb
+          generic map (
+            hindex  => 2,
+            ioaddr  => 16#000#,
+            iomask  => 16#E00#,
+            tech    => memtech,
+            irq     => 0,
+            kbytes  => 8,
+            ahbfilt => 2)
+          port map(
+            rst     => rstn,
+            clk     => clkm,
+            ahbsi   => dbg_ahbsi,
+            ahbso   => dbg_ahbso(2),
+            tahbmi  => mem_ahbmi,
+            tahbsi  => mem_ahbsi);
+      end generate;
+      
+      dcomgen : if CFG_AHB_UART = 1 generate
+        dcom0: ahbuart		-- Debug UART
+          generic map (hindex => 0, pindex => 7, paddr => 7)
+          port map (rstn, clkm, dui, duo, apbi, apbo(7), dbg_ahbmi, dbg_ahbmo(0));
+      end generate;
+--  nouah : if CFG_AHB_UART = 0 generate apbo(7) <= apb_none; end generate;
+
+      ahbjtaggen0 :if CFG_AHB_JTAG = 1 generate
+        ahbjtag0 : ahbjtag generic map(tech => fabtech, hindex => CFG_AHB_UART)
+          port map(rstn, clkm, tck, tms, tdi, tdo, dbg_ahbmi, dbg_ahbmo(CFG_AHB_UART),
+                 open, open, open, open, open, open, open, gnd(0));
+      end generate;
+
+      ahb0 : ahbctrl                -- AHB arbiter/multiplexer
+        generic map (defmast => CFG_DEFMST, split => 0, fpnpen => CFG_FPNPEN,
+                     rrobin => CFG_RROBIN, ioaddr => DBG_AHBIO,
+                     ioen => 1,
+                     nahbm => CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH+CFG_GRETH2,
+                     nahbs => 3)
+        port map (rstn, clkm, dbg_ahbmi, dbg_ahbmo, dbg_ahbsi, dbg_ahbso);
+        
+      -- Bridge connecting debug bus -> processor bus
+      -- Configuration:
+      -- Prefetching with a maximum burst length of 8 words
+      -- No interrupt synchronisation
+      -- Debug cores cannot make locked accesses => lckdac = 0
+      -- Slave maximum access size: 32
+      -- Master maximum access size: 128
+      -- Read and write combining
+      -- No special handling for instruction bursts
+      debug_bridge: ahb2ahb
+        generic map (
+          memtech     => 0,
+          hsindex     => 1,
+          hmindex     => CFG_NCPU+CFG_GRETH+CFG_GRETH2,
+          slv         => 0,
+          dir         => 1,
+          ffact       => 1,
+          pfen        => 1,
+          wburst      => burstlen,
+          iburst      => 8,
+          rburst      => burstlen,
+          irqsync     => 0,
+          bar0        => ahb2ahb_membar(16#000#, '1', '1', 16#800#),
+          bar1        => ahb2ahb_membar(16#800#, '0', '0', 16#C00#),
+          bar2        => ahb2ahb_membar(16#C00#, '0', '0', 16#E00#),
+          bar3        => ahb2ahb_membar(16#F00#, '0', '0', 16#F00#),
+          sbus        => 2,
+          mbus        => 0,
+          ioarea      => 16#FFF#,
+          ibrsten     => 0,
+          lckdac      => 0,
+          slvmaccsz   => 32,
+          mstmaccsz   => 32,
+          rdcomb      => 0,
+          wrcomb      => 0,
+          combmask    => 0,
+          allbrst     => 0,
+          ifctrlen    => 0,
+          fcfs        => 0,
+          fcfsmtech   => 0,
+          scantest    => 0,
+          split       => 0,
+          pipe        => 0)
+        port map (
+          rstn        => rstn,
+          hclkm       => clkm,
+          hclks       => clkm,
+          ahbsi       => dbg_ahbsi,
+          ahbso       => dbg_ahbso(1),
+          ahbmi       => ahbmi,
+          ahbmo       => ahbmo(CFG_NCPU+CFG_GRETH+CFG_GRETH2),
+          ahbso2      => ahbso,
+          lcki        => nolock,
+          lcko        => open,
+          ifctrl      => noifctrl);
+    end block dbgsubsys;
   end generate;
   
 ----------------------------------------------------------------------
----  Memory controllers ----------------------------------------------
+---  Memory subsystem   ----------------------------------------------
 ----------------------------------------------------------------------
   data_pad : iopadvv generic map (tech => padtech, width => 16, oepol => OEPOL)
     port map (FSM_D, memo.data(31 downto 16), memo.vbdrive(31 downto 16), memi.data(31 downto 16));
@@ -569,37 +684,100 @@ begin
     memo <= memory_out_none;
   end generate;
 
-  ddr2if0: entity work.ddr2if
-    generic map(
-      hindex    => 3,
-      haddr     => 16#400#,
-      hmask     => 16#C00#,
-      burstlen  => 32
-    )
-    port map (
-      pll_ref_clk     => OSC_50_BANK4,
-      global_reset_n  => CPU_RESET_n,
-      mem_a           => M1_DDR2_addr(13 downto 0),
-      mem_ba          => M1_DDR2_ba,
-      mem_ck          => M1_DDR2_clk,
-      mem_ck_n        => M1_DDR2_clk_n,
-      mem_cke         => M1_DDR2_cke(0),
-      mem_cs_n        => M1_DDR2_cs_n(0),
-      mem_dm          => M1_DDR2_dm,
-      mem_ras_n       => M1_DDR2_ras_n,
-      mem_cas_n       => M1_DDR2_cas_n,
-      mem_we_n        => M1_DDR2_we_n,
-      mem_dq          => M1_DDR2_dq,
-      mem_dqs         => M1_DDR2_dqs,
-      mem_dqs_n       => M1_DDR2_dqsn,
-      mem_odt         => M1_DDR2_odt(0),
-      ahb_clk         => clkm,
-      ahb_rst         => rstn,
-      ahbsi           => ahbsi,
-      ahbso           => ahbso(3),
-      oct_rdn         => M1_DDR2_oct_rdn,
-      oct_rup         => M1_DDR2_oct_rup
-    );
+  -----------------------------------------------------------------------------
+  -- DDR2 SDRAM memory controller
+  -----------------------------------------------------------------------------
+  l2cdis : if CFG_L2_EN = 0 generate
+    ddr2if0: entity work.ddr2if
+      generic map(
+        hindex    => 3,
+        haddr     => 16#400#,
+        hmask     => 16#C00#,
+        burstlen  => burstlen
+        )
+      port map (
+        pll_ref_clk     => OSC_50_BANK4,
+        global_reset_n  => CPU_RESET_n,
+        mem_a           => M1_DDR2_addr(13 downto 0),
+        mem_ba          => M1_DDR2_ba,
+        mem_ck          => M1_DDR2_clk,
+        mem_ck_n        => M1_DDR2_clk_n,
+        mem_cke         => M1_DDR2_cke(0),
+        mem_cs_n        => M1_DDR2_cs_n(0),
+        mem_dm          => M1_DDR2_dm,
+        mem_ras_n       => M1_DDR2_ras_n,
+        mem_cas_n       => M1_DDR2_cas_n,
+        mem_we_n        => M1_DDR2_we_n,
+        mem_dq          => M1_DDR2_dq,
+        mem_dqs         => M1_DDR2_dqs,
+        mem_dqs_n       => M1_DDR2_dqsn,
+        mem_odt         => M1_DDR2_odt(0),
+        ahb_clk         => clkm,
+        ahb_rst         => rstn,
+        ahbsi           => ahbsi,
+        ahbso           => ahbso(3),
+        oct_rdn         => M1_DDR2_oct_rdn,
+        oct_rup         => M1_DDR2_oct_rup
+        );
+  end generate;
+  -----------------------------------------------------------------------------
+  -- L2 cache covering DDR2 SDRAM memory controller
+  -----------------------------------------------------------------------------
+  l2cen : if CFG_L2_EN /= 0 generate
+    memorysubsys : block
+      constant MEM_AHBIO : integer := 16#FFE#;
+    begin
+      l2c0 : l2c
+        generic map(hslvidx => 3, hmstidx => 0, cen => CFG_L2_PEN, 
+                    haddr => 16#400#, hmask => 16#c00#, ioaddr => 16#FF0#, 
+                    cached => CFG_L2_MAP, repl => CFG_L2_RAN, ways => CFG_L2_WAYS, 
+                    linesize => CFG_L2_LSZ, waysize => CFG_L2_SIZE,
+                    memtech => memtech, bbuswidth => AHBDW,
+                    bioaddr => MEM_AHBIO, biomask => 16#fff#, 
+                    sbus => 0, mbus => 1, arch => CFG_L2_SHARE,
+                    ft => CFG_L2_EDAC)
+        port map(rst => rstn, clk => clkm, ahbsi => ahbsi, ahbso => ahbso(3),
+                 ahbmi => mem_ahbmi, ahbmo => mem_ahbmo(0), ahbsov => mem_ahbso);
+
+      ahb0 : ahbctrl                -- AHB arbiter/multiplexer
+        generic map (defmast => CFG_DEFMST, split => CFG_SPLIT, 
+                     rrobin => CFG_RROBIN, ioaddr => MEM_AHBIO,
+                     ioen => IOAEN, nahbm => 1, nahbs => 1)
+        port map (rstn, clkm, mem_ahbmi, mem_ahbmo, mem_ahbsi, mem_ahbso);
+
+      ddr2if0: entity work.ddr2if
+        generic map(
+          hindex    => 0,
+          haddr     => 16#400#,
+          hmask     => 16#C00#,
+          burstlen  => burstlen
+          )
+        port map (
+          pll_ref_clk     => OSC_50_BANK4,
+          global_reset_n  => CPU_RESET_n,
+          mem_a           => M1_DDR2_addr(13 downto 0),
+          mem_ba          => M1_DDR2_ba,
+          mem_ck          => M1_DDR2_clk,
+          mem_ck_n        => M1_DDR2_clk_n,
+          mem_cke         => M1_DDR2_cke(0),
+          mem_cs_n        => M1_DDR2_cs_n(0),
+          mem_dm          => M1_DDR2_dm,
+          mem_ras_n       => M1_DDR2_ras_n,
+          mem_cas_n       => M1_DDR2_cas_n,
+          mem_we_n        => M1_DDR2_we_n,
+          mem_dq          => M1_DDR2_dq,
+          mem_dqs         => M1_DDR2_dqs,
+          mem_dqs_n       => M1_DDR2_dqsn,
+          mem_odt         => M1_DDR2_odt(0),
+          ahb_clk         => clkm,
+          ahb_rst         => rstn,
+          ahbsi           => mem_ahbsi,
+          ahbso           => mem_ahbso(0),
+          oct_rdn         => M1_DDR2_oct_rdn,
+          oct_rup         => M1_DDR2_oct_rup
+          );
+    end block memorysubsys;
+  end generate;
 
   lock <= '1';
 ----------------------------------------------------------------------
@@ -655,6 +833,9 @@ begin
         port map (GPIO0_D(i), gpioo.dout(i), gpioo.oen(i), gpioi.din(i));
     end generate;
   end generate;
+  unused_pio_pads : for i in (CFG_GRGPIO_WIDTH*CFG_GRGPIO_ENABLE) to 35 generate
+    GPIO0_D(i) <= '0';
+  end generate;
 
   spic: if CFG_SPICTRL_ENABLE = 1 generate  -- SPI controller
     spi1 : spictrl
@@ -685,255 +866,255 @@ begin
   end generate;
   nop2 : if CFG_AHBSTAT = 0 generate apbo(15) <= apb_none; end generate;
 
+  fan_pad : outpad generic map (tech => padtech) port map (FAN_CTRL, vcc(0));
+  
 -----------------------------------------------------------------------
 ---  ETHERNET ---------------------------------------------------------
 -----------------------------------------------------------------------
 
-  eth1 : if CFG_GRETH = 1 generate -- Gaisler ethernet MAC
+  eth0 : if CFG_GRETH = 1 generate -- Gaisler ethernet MAC
 
-    pll0: entity work.pll_125
-      port map (OSC_50_BANK3, ref_clk);
-
-    rst1 : rstgen                 -- reset generator
-      generic map (acthigh => 1)
-      port map (CPU_RESET_n, clkm, '1', ctrl_rst, open);
-
-    rst10 : rstgen                 -- reset generator
-      generic map (acthigh => 1)
-      port map (CPU_RESET_n, gmiii1.tx_clk, '1', reset1_tx_clk, open);
-
-    rst11 : rstgen                 -- reset generator
-      generic map (acthigh => 1)
-      port map (CPU_RESET_n, gmiii1.rx_clk, '1', reset1_rx_clk, open);
-
-    bridge1: sgmii2gmii
-      port map(
-        ref_clk         => ref_clk,                         -- in      pcs_ref_clk_clock_connection.clk
-        clk             => clkm,                            -- in     control_port_clock_connection.clk
-        reset           => ctrl_rst,                        -- in                  reset_connection.reset
-        address         => zero32(4 downto 0),              -- in                      control_port.address
-        readdata        => open,                            -- out                                 .readdata
-        read            => '0',                             -- in                                  .read
-        writedata       => zero32(15 downto 0),             -- in                                  .writedata
-        write           => '0',                             -- in                                  .write
-        waitrequest     => open,                            -- out                                 .waitrequest
-        tx_clk          => gmiii1.tx_clk,                   -- out    pcs_transmit_clock_connection.clk
-        rx_clk          => gmiii1.rx_clk,                   -- out     pcs_receive_clock_connection.clk
-        reset_tx_clk    => reset1_tx_clk,                   -- in     pcs_transmit_reset_connection.reset
-        reset_rx_clk    => reset1_rx_clk,                   -- in      pcs_receive_reset_connection.reset
-        gmii_rx_dv      => gmiii1.rx_dv,                    -- out                  gmii_connection.gmii_rx_dv
-        gmii_rx_d       => gmiii1.rxd,                      -- out                                 .gmii_rx_d
-        gmii_rx_err     => gmiii1.rx_er,                    -- out                                 .gmii_rx_err
-        gmii_tx_en      => gmiio1.tx_en,                    -- in                                  .gmii_tx_en
-        gmii_tx_d       => gmiio1.txd,                      -- in                                  .gmii_tx_d
-        gmii_tx_err     => gmiio1.tx_er,                    -- in                                  .gmii_tx_err
-        tx_clkena       => open,                            -- out          clock_enable_connection.tx_clkena
-        rx_clkena       => open,                            -- out                                 .rx_clkena
-        mii_rx_dv       => open,                            -- out                   mii_connection.mii_rx_dv
-        mii_rx_d        => open,                            -- out                                 .mii_rx_d
-        mii_rx_err      => open,                            -- out                                 .mii_rx_err
-        mii_tx_en       => '0',                             -- in                                  .mii_tx_en
-        mii_tx_d        => zero32(3 downto 0),              -- in                                  .mii_tx_d
-        mii_tx_err      => '0',                             -- in                                  .mii_tx_err
-        mii_col         => open,                            -- out                                 .mii_col
-        mii_crs         => open,                            -- out                                 .mii_crs
-        set_10          => open,                            -- out          sgmii_status_connection.set_10
-        set_1000        => open,                            -- out                                 .set_1000
-        set_100         => open,                            -- out                                 .set_100
-        hd_ena          => open,                            -- out                                 .hd_ena
-        led_crs         => led_crs1,                         -- out            status_led_connection.crs
-        led_link        => led_link1,                        -- out                                 .link
-        led_col         => open,                            -- out                                 .col
-        led_an          => open,                            -- out                                 .an
-        led_char_err    => open,                            -- out                                 .char_err
-        led_disp_err    => open,                            -- out                                 .disp_err
-        rx_recovclkout  => open,                            -- out        serdes_control_connection.export
-        txp             => ETH_TX_p(0),                     -- out                serial_connection.txp
-        rxp             => ETH_RX_p(0)                      -- in                                  .rxp
+    -- 125 MHz Gigabit ethernet clock generator from 50 MHz input
+    sgmii_pll0 : clkgen
+      generic map (
+        tech    => CFG_CLKTECH,
+        clk_mul => 5,
+        clk_div => 2,
+        sdramen => 0,
+        freq    => 50000
+      )
+      port map (
+        clkin     => OSC_50_BANK3,
+        pciclkin  => gnd(0),
+        clk       => ref_clk,
+        clkn      => open,
+        clk2x     => open,
+        sdclk     => open,
+        pciclk    => open,
+        cgi       => cgi_125,
+        cgo       => cgo_125
       );
 
-    led2_pad : outpad generic map (tech => padtech) port map (LED(2), led_crs1);
-    led3_pad : outpad generic map (tech => padtech) port map (LED(3), led_link1);
-    --led4_pad : outpad generic map (tech => padtech) port map (LED(4), led_col);
-    --led5_pad : outpad generic map (tech => padtech) port map (LED(5), led_an);
-    --led6_pad : outpad generic map (tech => padtech) port map (LED(6), led_char_err);
-    --led7_pad : outpad generic map (tech => padtech) port map (LED(7), led_disp_err);
+    -- 125 MHz clock reset synchronizer
+    rst2 : rstgen
+      generic map (acthigh => 0)
+      port map (gmiio0.reset, ref_clk, cgo_125.clklock, ref_rstn, open);
 
-    e1 : grethm
-      generic map(
-        hindex      => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG,
+    -- TODO: reset of LVDS transceiver must be asserted at least 10 ns
+    ref_rst <= not ref_rstn;
+
+    bridge0: sgmii
+      generic map (
+        fabtech   => fabtech
+      )
+      port map(
+        clk_125       => ref_clk,
+        rst_125       => ref_rst,
+
+        ser_rx_p      => ETH_RX_p(0),
+        ser_tx_p      => ETH_TX_p(0),
+
+        txd           => gmiio0.txd,
+        tx_en         => gmiio0.tx_en,
+        tx_er         => gmiio0.tx_er,
+        tx_clk        => gmiii0.gtx_clk,
+
+        rxd           => gmiii0.rxd,
+        rx_dv         => gmiii0.rx_dv,
+        rx_er         => gmiii0.rx_er,
+        rx_col        => gmiii0.rx_col,
+        rx_crs        => gmiii0.rx_crs,
+        rx_clk        => gmiii0.rx_clk,
+
+        -- optional MDIO interface to PCS
+        mdc           => gmiio0.mdc,
+        mdio_o        => mdio_o_sgmii,
+        mdio_oe       => mdio_oe_sgmii,
+        mdio_i        => mdio_i_sgmii
+      );
+
+    e0 : greth_gbit_mb        -- Gaisler (gigabit) Ethernet MAC 0
+      generic map (
+        hindex      => CFG_NCPU+(CFG_AHB_UART+CFG_AHB_JTAG)*(1-DEBUG_BUS),
+        ehindex     => CFG_AHB_UART+CFG_AHB_JTAG,
         pindex      => 11,
         paddr       => 11,
-        pirq        => 6,
-        memtech     => stratix3,
+        pirq        => 6, 
+        memtech     => memtech,
         mdcscaler   => CPU_FREQ/1000,
-        enable_mdio => 1,
-        fifosize    => CFG_ETH_FIFO,
         nsync       => 2,
         edcl        => CFG_DSU_ETH,
         edclbufsz   => CFG_ETH_BUF,
+        burstlength => burstlen,
         macaddrh    => CFG_ETH_ENM,
-        macaddrl    => CFG_ETH_ENL,
+        macaddrl    => CFG_ETH_ENL, 
         phyrstadr   => 0,
         ipaddrh     => CFG_ETH_IPM,
         ipaddrl     => CFG_ETH_IPL,
-        giga        => CFG_GRETH1G
+        edclsepahb  => EDCL_SEP_AHB
+        )
+      port map (
+        rst    => rstn,
+        clk    => clkm,
+        ahbmi  => ahbmi,
+        ahbmo  => ahbmo(CFG_NCPU+(CFG_AHB_UART+CFG_AHB_JTAG)*(1-DEBUG_BUS)),
+        ahbmi2 => edcl_ahbmi,
+        ahbmo2 => edcl_ahbmo(0),
+        apbi   => apbi,
+        apbo   => apbo(11),
+        ethi   => gmiii0,
+        etho   => gmiio0
+        );
+    
+    gmiii0.tx_clk       <= gmiii0.gtx_clk;
+    gmiii0.phyrstaddr   <= "00000";
+    gmiii0.edcladdr     <= ( others => '0' );
+    gmiii0.edclsepahb   <= '1';
+    gmiii0.edcldisable  <= SLIDE_SW(1);
+
+    -- SGMII MDIO DEBUG BYPASS 
+    mdio_oe_sgmii     <= gmiio0.mdio_oe when gprego(0) = '1' else
+                         '1';
+
+    mdio_o_sgmii      <= gmiio0.mdio_o  when gprego(0) = '1' else
+                         '0';
+
+    mdio_oe           <= '1'            when gprego(0) = '1' else
+                         gmiio0.mdio_oe;
+
+    mdio_o            <= '0'            when gprego(0) = '1' else
+                         gmiio0.mdio_o;
+
+    gmiii0.mdio_i     <= mdio_i_sgmii  when gprego(0) = '1' else
+                         mdio_i;
+
+    grgpreg0 : grgpreg
+      generic map (
+        pindex  => 8,
+        paddr   => 4,
+        rstval  => 0
       )
-      port map(
-        rst   => rstn,
-        clk   => clkm,
-        ahbmi => ahbmi,
-        ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG),
-        apbi  => apbi,
-        apbo  => apbo(11),
-        ethi  => gmiii1,
-        etho  => gmiio1
+      port map (
+        rst     => rstn,
+        clk     => clkm,
+        apbi    => apbi,
+        apbo    => apbo(8),
+        gprego  => gprego
       );
+
+      --
+    led2_pad : outpad generic map (tech => padtech) port map (LED(2), vcc(0));
+    led3_pad : outpad generic map (tech => padtech) port map (LED(3), vcc(0));
+    led4_pad : outpad generic map (tech => padtech) port map (LED(4), vcc(0));
+    led5_pad : outpad generic map (tech => padtech) port map (LED(5), vcc(0));
+    led6_pad : outpad generic map (tech => padtech) port map (LED(6), vcc(0));
+    led7_pad : outpad generic map (tech => padtech) port map (LED(7), vcc(0));
+
+    ethrst_pad : outpad generic map (tech => padtech)
+      port map (ETH_RST_n, gmiio0.reset);
 
     -- MDIO interface setup
-    emdio_pad1 : iopad generic map (tech => padtech)
-      port map (ETH_MDIO(0), gmiio1.mdio_o, gmiio1.mdio_oe, gmiii1.mdio_i);
+    emdio0_pad : iopad generic map (tech => padtech)
+      port map (ETH_MDIO(0), mdio_o, mdio_oe, mdio_i);
 
-    emdc_pad1 : outpad generic map (tech => padtech)
-      port map (ETH_MDC(0), gmiio1.mdc);
+    emdc0_pad : outpad generic map (tech => padtech)
+      port map (ETH_MDC(0), gmiio0.mdc);
 
-    eint_pad1 : inpad generic map (tech => padtech)
-      port map (ETH_INT_n(0), gmiii1.mdint);
-
-    erst_pad1 : outpad generic map (tech => padtech)
-      port map (ETH_RST_n, gmiio1.reset);
-
-    gmiii1.edclsepahb <= '0';
-    gmiii1.edcldisable <= '0';
-    gmiii1.phyrstaddr <= (others => '0');
-    gmiii1.edcladdr <= (others => '0');
-
-    gmiii1.gtx_clk <= ref_clk;
-    gmiii1.rmii_clk <= '0';
-    gmiii1.rx_col <= '0';
-    gmiii1.rx_crs <= '0';
+    eint0_pad : inpad generic map (tech => padtech)
+      port map (ETH_INT_n(0), gmiii0.mdint);
 
   end generate;
 
-  noeth1 : if CFG_GRETH = 0 generate
-    gmiio1 <= eth_out_none;
+  noeth0 : if CFG_GRETH = 0 generate
+    gmiio0 <= eth_out_none;
+    edcl_ahbmo(0) <= ahbm_none;
   end generate;
 
-  eth2: if CFG_GRETH2 = 1 generate -- Gaisler ethernet MAC
+  eth1: if CFG_GRETH2 = 1 generate -- Gaisler ethernet MAC
+    
+    -- 125 MHz clock reset synchronizer
 
-    rst20 : rstgen                 -- reset generator
-      generic map (acthigh => 1)
-      port map (CPU_RESET_n, gmiii2.tx_clk, '1', reset2_tx_clk, open);
-
-    rst21 : rstgen                 -- reset generator
-      generic map (acthigh => 1)
-      port map (CPU_RESET_n, gmiii2.rx_clk, '1', reset2_rx_clk, open);
-
-    bridge2: sgmii2gmii
+    bridge1: sgmii
+      generic map (
+        fabtech   => fabtech
+      )
       port map(
-        ref_clk         => ref_clk,                         -- in      pcs_ref_clk_clock_connection.clk
-        clk             => clkm,                            -- in     control_port_clock_connection.clk
-        reset           => ctrl_rst,                        -- in                  reset_connection.reset
-        address         => zero32(4 downto 0),              -- in                      control_port.address
-        readdata        => open,                            -- out                                 .readdata
-        read            => '0',                             -- in                                  .read
-        writedata       => zero32(15 downto 0),             -- in                                  .writedata
-        write           => '0',                             -- in                                  .write
-        waitrequest     => open,                            -- out                                 .waitrequest
-        tx_clk          => gmiii2.tx_clk,                   -- out    pcs_transmit_clock_connection.clk
-        rx_clk          => gmiii2.rx_clk,                   -- out     pcs_receive_clock_connection.clk
-        reset_tx_clk    => reset2_tx_clk,                   -- in     pcs_transmit_reset_connection.reset
-        reset_rx_clk    => reset2_rx_clk,                   -- in      pcs_receive_reset_connection.reset
-        gmii_rx_dv      => gmiii2.rx_dv,                    -- out                  gmii_connection.gmii_rx_dv
-        gmii_rx_d       => gmiii2.rxd,                      -- out                                 .gmii_rx_d
-        gmii_rx_err     => gmiii2.rx_er,                    -- out                                 .gmii_rx_err
-        gmii_tx_en      => gmiio2.tx_en,                    -- in                                  .gmii_tx_en
-        gmii_tx_d       => gmiio2.txd,                      -- in                                  .gmii_tx_d
-        gmii_tx_err     => gmiio2.tx_er,                    -- in                                  .gmii_tx_err
-        tx_clkena       => open,                            -- out          clock_enable_connection.tx_clkena
-        rx_clkena       => open,                            -- out                                 .rx_clkena
-        mii_rx_dv       => open,                            -- out                   mii_connection.mii_rx_dv
-        mii_rx_d        => open,                            -- out                                 .mii_rx_d
-        mii_rx_err      => open,                            -- out                                 .mii_rx_err
-        mii_tx_en       => '0',                             -- in                                  .mii_tx_en
-        mii_tx_d        => zero32(3 downto 0),              -- in                                  .mii_tx_d
-        mii_tx_err      => '0',                             -- in                                  .mii_tx_err
-        mii_col         => open,                            -- out                                 .mii_col
-        mii_crs         => open,                            -- out                                 .mii_crs
-        set_10          => open,                            -- out          sgmii_status_connection.set_10
-        set_1000        => open,                            -- out                                 .set_1000
-        set_100         => open,                            -- out                                 .set_100
-        hd_ena          => open,                            -- out                                 .hd_ena
-        led_crs         => led_crs2,                        -- out            status_led_connection.crs
-        led_link        => led_link2,                       -- out                                 .link
-        led_col         => open,                            -- out                                 .col
-        led_an          => open,                            -- out                                 .an
-        led_char_err    => open,                            -- out                                 .char_err
-        led_disp_err    => open,                            -- out                                 .disp_err
-        rx_recovclkout  => open,                            -- out        serdes_control_connection.export
-        txp             => ETH_TX_p(1),                     -- out                serial_connection.txp
-        rxp             => ETH_RX_p(1)                      -- in                                  .rxp
+        clk_125       => ref_clk,
+        rst_125       => ref_rst,
+
+        ser_rx_p      => ETH_RX_p(1),
+        ser_tx_p      => ETH_TX_p(1),
+
+        txd           => gmiio1.txd,
+        tx_en         => gmiio1.tx_en,
+        tx_er         => gmiio1.tx_er,
+        tx_clk        => gmiii1.gtx_clk,
+
+        rxd           => gmiii1.rxd,
+        rx_dv         => gmiii1.rx_dv,
+        rx_er         => gmiii1.rx_er,
+        rx_col        => gmiii1.rx_col,
+        rx_crs        => gmiii1.rx_crs,
+        rx_clk        => gmiii1.rx_clk,
+
+        -- optional MDIO interface to PCS
+        mdc           => gmiio1.mdc
       );
 
-    led4_pad : outpad generic map (tech => padtech) port map (LED(4), led_crs2);
-    led5_pad : outpad generic map (tech => padtech) port map (LED(5), led_link2);
-
-    e2 : grethm
-      generic map(
-        hindex      => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH,
+    e1 : greth_gbit_mb        -- Gaisler (gigabit) Ethernet MAC 1
+      generic map (
+        hindex      => CFG_NCPU+(CFG_AHB_UART+CFG_AHB_JTAG)*(1-DEBUG_BUS)+CFG_GRETH,
+        ehindex     => CFG_AHB_UART+CFG_AHB_JTAG+1,
         pindex      => 12,
         paddr       => 12,
-        pirq        => 7,
-        memtech     => stratix3,
+        pirq        => 7, 
+        memtech     => memtech,
         mdcscaler   => CPU_FREQ/1000,
-        enable_mdio => 1,
-        fifosize    => CFG_ETH2_FIFO,
         nsync       => 2,
         edcl        => CFG_DSU_ETH,
         edclbufsz   => CFG_ETH_BUF,
+        burstlength => burstlen,
         macaddrh    => CFG_ETH_ENM,
-        macaddrl    => CFG_ETH_ENL,
-        phyrstadr   => 0,
+        macaddrl    => CFG_ETH_ENL, 
+        phyrstadr   => 1,
         ipaddrh     => CFG_ETH_IPM,
         ipaddrl     => CFG_ETH_IPL,
-        giga        => CFG_GRETH21G
-      )
-      port map(
-        rst   => rstn,
-        clk   => clkm,
-        ahbmi => ahbmi,
-        ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH),
-        apbi  => apbi,
-        apbo  => apbo(12),
-        ethi  => gmiii2,
-        etho  => gmiio2
-      );
+        edclsepahb  => EDCL_SEP_AHB
+        )
+      port map (
+        rst    => rstn,
+        clk    => clkm,
+        ahbmi  => ahbmi,
+        ahbmo  => ahbmo(CFG_NCPU+(CFG_AHB_UART+CFG_AHB_JTAG)*(1-DEBUG_BUS)+CFG_GRETH),
+        ahbmi2 => edcl_ahbmi, 
+        ahbmo2 => edcl_ahbmo(1),
+        apbi   => apbi,
+        apbo   => apbo(12),
+        ethi   => gmiii1,
+        etho   => gmiio1
+        );
+    
+    gmiii1.tx_clk       <= gmiii1.gtx_clk;
+    gmiii1.phyrstaddr   <= "00001";
+    gmiii1.edcladdr     <= ( others => '0' );
+    gmiii1.edclsepahb   <= '1';
+    gmiii1.edcldisable  <= SLIDE_SW(1);
 
-      -- MDIO interface setup
-      emdio_pad2 : iopad generic map (tech => padtech)
-        port map (ETH_MDIO(1), gmiio2.mdio_o, gmiio2.mdio_oe, gmiii2.mdio_i);
+    -- MDIO interface setup
+    emdio1_pad : iopad generic map (tech => padtech)
+      port map (ETH_MDIO(1), gmiio1.mdio_o, gmiio1.mdio_oe, gmiii1.mdio_i);
 
-      emdc_pad2 : outpad generic map (tech => padtech)
-        port map (ETH_MDC(1), gmiio2.mdc);
+    emdc1_pad : outpad generic map (tech => padtech)
+      port map (ETH_MDC(1), gmiio1.mdc);
 
-      eint_pad2 : inpad generic map (tech => padtech)
-        port map (ETH_INT_n(1), gmiii2.mdint);
+    eint1_pad : inpad generic map (tech => padtech)
+      port map (ETH_INT_n(1), gmiii1.mdint);
 
-      --gmiio2.reset <= ; -- not connected, using gmiio1.reset
-      gmiii2.edclsepahb <= '0';
-      gmiii2.edcldisable <= '0';
-      gmiii2.phyrstaddr <= "00001";
-      gmiii2.edcladdr <= (others => '0');
-
-      gmiii2.gtx_clk <= ref_clk;
-      gmiii2.rmii_clk <= '0';
-      gmiii2.rx_col <= '0';
-      gmiii2.rx_crs <= '0';
-
-    end generate;
+  end generate;
 
   noeth2 : if CFG_GRETH2 = 0 generate
     gmiio2 <= eth_out_none;
+    edcl_ahbmo(1) <= ahbm_none;
   end generate;
 
 -----------------------------------------------------------------------
@@ -981,7 +1162,7 @@ ahbso(ahbso'high downto 5) <= (others => ahbs_none);
 -- pragma translate_off
   x : report_design
     generic map (
-      msg1 => "LEON3 TerASIC DE4 Demonstration design",
+      msg1 => system_table(ALTERA_DE4),
       fabtech => tech_table(fabtech), memtech => tech_table(memtech),
       mdel => 1
       );

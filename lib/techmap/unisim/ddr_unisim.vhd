@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -89,13 +89,13 @@ architecture rtl of unisim_iddr_reg is
   signal D_delay : std_ulogic;
    
 begin
-     V7 : if (tech = virtex7) or (tech = kintex7) generate
-       U0 : IDDR generic map( DDR_CLK_EDGE => "SAME_EDGE_PIPELINED")
+     V7 : if (tech = virtex7) or (tech = kintex7) or (tech = artix7) generate
+       U0 : IDDR generic map( DDR_CLK_EDGE => "SAME_EDGE")
          Port map( Q1 => Q1, Q2 => Q2, C => C1, CE => CE,
                    D => D, R => R, S => S);
      end generate;
 
-     V4 : if (tech = virtex4) or (tech = virtex5) or (tech = virtex6) generate
+     V4 : if (tech = virtex4) or (tech = virtex5) or (tech = virtex6) or (tech = zynq7000) generate
        U0 : IDDR generic map( DDR_CLK_EDGE => "OPPOSITE_EDGE")
          Port map( Q1 => Q1, Q2 => preQ2, C => C1, CE => CE,
                D => D, R => R,    S => S);
@@ -272,14 +272,14 @@ architecture rtl of unisim_oddr_reg is
   
 begin
 
-  V7 : if (tech = virtex7) or (tech = kintex7) generate
+  V7 : if (tech = virtex7) or (tech = kintex7) or (tech = artix7) generate
      U0 : ODDR generic map( DDR_CLK_EDGE => "SAME_EDGE")
        port map(
          Q => Q, C => C1, CE => CE, D1 => D1,
          D2 => D2, R => R, S => S);
   end generate;
 
-  V4 : if (tech = virtex4) or (tech = virtex5) or (tech = virtex6) generate
+  V4 : if (tech = virtex4) or (tech = virtex5) or (tech = virtex6) or (tech = zynq7000) generate
 
     d2r : if arch = 0 generate
       d2reg : process (C1, D2, R)

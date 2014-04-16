@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -294,8 +294,8 @@ begin
       oepol    => oepol)
     port map(
       pad    => wdogn,
-      en     => gnd,
-      i      => lwdogn);
+      en     => lwdogn,
+      i      => gnd);
       
   testen_pad : inpad
     generic map(
@@ -329,8 +329,8 @@ begin
       oepol    => oepol)
     port map(
       pad    => errorn,
-      en     => gnd,
-      i      => lerrorn);
+      en     => lerrorn,
+      i      => gnd);
 
   ------------------------------------------------------------------------------
   -- JTAG pads
@@ -669,6 +669,13 @@ begin
          lspw_rxs => lspw_rxs,
          lspw_txd => lspw_txd,
          lspw_txs => lspw_txs);
+  end generate;
+
+  nospwpads0 : if CFG_SPW_EN = 0 generate
+    spw_txd  <= (others => '0');
+    spw_txs  <= (others => '0');
+    lspw_rxd <= (others => '0');
+    lspw_rxs <= (others => '0');
   end generate;
 
   ------------------------------------------------------------------------------

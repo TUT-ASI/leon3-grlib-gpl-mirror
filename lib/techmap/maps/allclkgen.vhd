@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -545,13 +545,6 @@ component clkand_dare
   );
 end component;
 
-component clkmux_dare
-  port (
-    i0, i1  :  in  std_ulogic;
-    sel     :  in  std_ulogic;
-    o       :  out std_ulogic);
-end component;
-
 component clkmux_rhumc
   port (
     i0, i1  :  in  std_ulogic;
@@ -594,6 +587,14 @@ end component;
       clkn     : out std_ulogic;
       lock     : out std_ulogic); 
   end component;
+
+component clkmux_dare
+  port(
+    i0     :  in  std_ulogic;
+    i1     :  in  std_ulogic;
+    sel    :  in  std_ulogic;
+    o      :  out std_ulogic);
+end component;
 
 component clkmux_rhlib18t
   port(
@@ -666,6 +667,8 @@ component clkgen_ut130hbd
     clk     : out std_ulogic;			-- main clock
     clkn    : out std_ulogic;			-- inverted main clock
     clk2x   : out std_ulogic;			-- double clock
+    clk4x   : out std_ulogic;			
+    clk8x   : out std_ulogic;			
     sdclk   : out std_ulogic;			-- SDRAM clock
     pciclk  : out std_ulogic;			-- PCI clock
     cgi     : in clkgen_in_type;

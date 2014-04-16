@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -58,7 +58,8 @@ entity greth_gen is
     multicast      : integer range 0 to 1  := 0;
     edclsepahbg    : integer range 0 to 1  := 0;
     ramdebug       : integer range 0 to 2  := 0;
-    maxsize        : integer
+    maxsize        : integer;
+    gmiimode       : integer range 0 to 1  := 0
     ); 
   port(
     rst            : in  std_ulogic;
@@ -94,23 +95,25 @@ entity greth_gen is
     ehprot         : out  std_logic_vector(3 downto 0);
     ehwdata        : out  std_logic_vector(31 downto 0);
     --apb slv in 
-    psel	   : in   std_ulogic;
-    penable	   : in   std_ulogic;
-    paddr	   : in   std_logic_vector(31 downto 0);
-    pwrite	   : in   std_ulogic;
-    pwdata	   : in   std_logic_vector(31 downto 0);
+    psel	         : in   std_ulogic;
+    penable	       : in   std_ulogic;
+    paddr	         : in   std_logic_vector(31 downto 0);
+    pwrite	       : in   std_ulogic;
+    pwdata	       : in   std_logic_vector(31 downto 0);
     --apb slv out
-    prdata	   : out  std_logic_vector(31 downto 0);
+    prdata	       : out  std_logic_vector(31 downto 0);
     --irq
     irq            : out  std_logic;
     --ethernet input signals
     rmii_clk       : in   std_ulogic;
     tx_clk         : in   std_ulogic;
+    tx_dv          : in   std_ulogic;
     rx_clk         : in   std_ulogic;
     rxd            : in   std_logic_vector(3 downto 0);   
     rx_dv          : in   std_ulogic; 
     rx_er          : in   std_ulogic; 
     rx_col         : in   std_ulogic;
+    rx_en          : in   std_ulogic;
     rx_crs         : in   std_ulogic;
     mdio_i         : in   std_ulogic;
     phyrstaddr     : in   std_logic_vector(4 downto 0);
@@ -204,7 +207,9 @@ begin
       multicast      => multicast,
       edclsepahbg    => edclsepahbg,
       ramdebug       => ramdebug,
-      maxsize        => maxsize)
+      maxsize        => maxsize,
+      gmiimode       => gmiimode
+      )
     port map(
       rst            => rst,
       clk            => clk,
@@ -274,11 +279,13 @@ begin
       --ethernet input signals
       rmii_clk       => rmii_clk,
       tx_clk         => tx_clk,
+      tx_dv          => tx_dv,
       rx_clk         => rx_clk,
       rxd            => rxd(3 downto 0),   
       rx_dv          => rx_dv,
       rx_er          => rx_er,
       rx_col         => rx_col,
+      rx_en          => rx_en,
       rx_crs         => rx_crs,
       mdio_i         => mdio_i,
       phyrstaddr     => phyrstaddr,

@@ -2,6 +2,7 @@ tbufmem.vhd
 dsu3x.vhd
 dsu3.vhd
 dsu3_2x.vhd
+dsu3_mb.vhd
 libfpu.vhd
 libiu.vhd
 libcache.vhd

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -65,12 +65,15 @@ type mul32_out_type is record
 end record;
 
 component div32
+generic (scantest  : integer := 0);
 port (
     rst     : in  std_ulogic;
     clk     : in  std_ulogic;
     holdn   : in  std_ulogic;
     divi    : in  div32_in_type;
-    divo    : out div32_out_type
+    divo    : out div32_out_type;
+    testen  : in  std_ulogic := '0';
+    testrst : in  std_ulogic := '1'
 );
 end component;
 
@@ -80,14 +83,17 @@ generic (
     multype : integer := 0;
     pipe    : integer := 0;
     mac     : integer := 0;
-    arch    : integer range 0 to 3 := 0
+    arch    : integer range 0 to 3 := 0;
+    scantest: integer := 0
 );
 port (
     rst     : in  std_ulogic;
     clk     : in  std_ulogic;
     holdn   : in  std_ulogic;
     muli    : in  mul32_in_type;
-    mulo    : out mul32_out_type
+    mulo    : out mul32_out_type;
+    testen  : in  std_ulogic := '0';
+    testrst : in  std_ulogic := '1'
 );
 end component;
 

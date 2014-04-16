@@ -24,14 +24,14 @@ library, do as follows:
 
 This will ONLY work with correct version of ISE installed, and the
 XILINX variable properly set in the shell. For ISE13 it is recommened
-to use the 'ise' make target and for ISE14 to use the 'planAhead'
+to use the 'ise' make target and for ISE14 to use the 'planahead'
 target. To synthesize the design, do
 
   make ise (ISE13)
 
 or
 
-  make planAhead (ISE14)
+  make planahead (ISE14)
 
 and then
 
@@ -98,31 +98,6 @@ Design specifics
   voltage of 1.8V and the design of the USB device core it is
   unlikely that the required timing for the USB interface can be
   reached. The kit is not suitable for use with the USB IP cores.
-
-* The pad skew for the Ethernet interface needs to be adjusted in order 
-  to get the Ethernet and edcl interface to work properly. The PAD
-  skew can be adjusted via register in the Ethernet PHY on the board
-
-  To adjust the Ethernet/RGMII timing on GR-XC6S board via GRMON2:
-
-  wmdio 1 0xB 0x8104
-  wmdio 1 0xC 0xF070
-  wmdio 1 0xB 0x8105
-  wmdio 1 0xC 0x0000
-
-  A script has been added to adjust the timing. To run the script
-  from GRMON type:
-
-  batch SetMaxClockDelay
-
-  Ouput from script should look like:
-
-  Writing dev0: PHY addr: 1  Reg addr: 11  Value: 8104
-  Writing dev0: PHY addr: 1  Reg addr: 12  Value: f070
-  Writing dev0: PHY addr: 1  Reg addr: 11  Value: 8105
-  Writing dev0: PHY addr: 1  Reg addr: 12  Value: 0
-  Writing dev0: PHY addr: 1  Reg addr: 11  Value: 104
-  Reading dev0: PHY addr: 1  Reg addr: 13  Value: f077
  
 * Example output from GRMON is:
 

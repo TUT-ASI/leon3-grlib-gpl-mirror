@@ -7,7 +7,7 @@ srmmu
 leon3 leon3v3
 leon4 leon4v0
 irqmp
-l2cache/v2
+l2cache/v2 l2cache/v2-pkg
 can 
 hcan 
 misc 

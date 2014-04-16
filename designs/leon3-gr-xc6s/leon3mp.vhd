@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -45,7 +45,6 @@ use gaisler.sim.all;
 library unisim;
 use unisim.all;
 -- pragma translate_on
-
 
 library esa;
 use esa.memoryctrl.all;
@@ -92,10 +91,6 @@ entity leon3mp is
     ddr_rzq        : inout std_ulogic;
     ddr_zio        : inout std_ulogic;
 
- --   dsuen        : in std_ulogic;   -- dip swtich 7
---    dsubre       : in std_ulogic; -- switch 9
---    dsuact       : out std_ulogic; -- led (0)
-
     txd1        : out std_ulogic;          -- UART1 tx data
     rxd1        : in  std_ulogic;           -- UART1 rx data
     ctsn1       : in  std_ulogic;           -- UART1 ctsn
@@ -132,8 +127,6 @@ entity leon3mp is
     dvi_iic_scl   : inout std_logic;
     dvi_iic_sda   : inout std_logic;
 
-
-
     tft_lcd_data    : out std_logic_vector(11 downto 0);
     tft_lcd_clk_p   : out std_ulogic;
     tft_lcd_clk_n   : out std_ulogic;
@@ -141,7 +134,6 @@ entity leon3mp is
     tft_lcd_vsync   : out std_ulogic;
     tft_lcd_de      : out std_ulogic;
     tft_lcd_reset_b : out std_ulogic;
-
 
     spw_clk         : in  std_ulogic;
     spw_rxdp        : in  std_logic_vector(0 to CFG_SPW_NUM-1);
@@ -157,14 +149,6 @@ entity leon3mp is
     spi_sel_n : inout std_ulogic;
     spi_clk   : out   std_ulogic;
     spi_mosi  : out   std_ulogic
-
-	-- SD Card interface (SD SPI interface)
---    sdata     : inout std_ulogic_vector(3 downto 0);
---    sd_clk    : out   std_ulogic;
---    spi_cmd   : out   std_ulogic;
-
---    sd_prot   : in std_logic;
---    sd_detect : in std_logic
 
    );
 end;
@@ -210,6 +194,9 @@ attribute syn_netlist_hierarchy of rtl : architecture is false;
 
 constant use_eth_input_delay : integer := 1;
 constant use_eth_output_delay : integer := 1;
+constant use_eth_data_output_delay : integer := 0;
+constant use_eth_input_delay_clk : integer := 0;
+constant use_gtx_clk : integer := 0;
 
 constant blength : integer := 12;
 constant fifodepth : integer := 8;
@@ -252,7 +239,7 @@ signal dbgo : l3_debug_out_vector(0 to CFG_NCPU-1);
 signal dsui : dsu_in_type;
 signal dsuo : dsu_out_type;
 
-signal gmiii, rgmiii, rgmiii_buf : eth_in_type;
+signal gmiii, rgmiii, rgmiii_buf, rgmii_pad : eth_in_type;
 signal gmiio, rgmiio : eth_out_type;
 
 signal gpti : gptimer_in_type;
@@ -336,7 +323,7 @@ constant SPW_LOOP_BACK : integer := 0;
 signal video_clk, clk50, clk100, spw100 : std_logic;  -- signals to vga_clkgen.
 signal clk_sel : std_logic_vector(1 downto 0);
 signal clkvga, clkvga_p, clkvga_n : std_ulogic;
-signal clk_125 : std_ulogic;
+signal clk_125, clk_125_pll, clk_125_bufg : std_ulogic;
 signal nerror : std_ulogic;
 
 attribute keep : boolean;
@@ -831,7 +818,7 @@ begin
       hindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG,
       pindex => 14, paddr => 14, pirq => 6, memtech => memtech,
       mdcscaler => CPU_FREQ/1000, rmii => 0, enable_mdio => 1, fifosize => CFG_ETH_FIFO,
-      nsync => 1, edcl => CFG_DSU_ETH, edclbufsz => CFG_ETH_BUF, phyrstadr => 1,
+      nsync => 2, edcl => CFG_DSU_ETH, edclbufsz => CFG_ETH_BUF, phyrstadr => 1,
       macaddrh => CFG_ETH_ENM, macaddrl => CFG_ETH_ENL, enable_mdint => 1,
       ipaddrh => CFG_ETH_IPM, ipaddrl => CFG_ETH_IPL,
       giga => CFG_GRETH1G)
@@ -849,15 +836,46 @@ begin
 
   noethoutdelay0 : if (use_eth_output_delay = 0) generate
      rgmiio_tx_clk <= rgmiio.tx_clk;
-     rgmiio_tx_en  <= rgmiio.tx_en;
+  end generate;
+
+  noethdataoutdelay0 : if (use_eth_data_output_delay = 0) generate
+      rgmiio_tx_en  <= rgmiio.tx_en;
      rgmiio_txd    <= rgmiio.txd(3 downto 0);
   end generate;
 
   ethindelay0 : if (use_eth_input_delay /= 0) generate
+
+   erx_clk0 : if (use_eth_input_delay_clk /= 0) generate
+    delay_rgmii_rx_clk : IODELAY2 generic map(
+       DELAY_SRC    => "IDATAIN",
+       IDELAY_TYPE  => "FIXED",
+       DATA_RATE    => "DDR",
+       IDELAY_VALUE => 0 -- (See table 39 in Xilinx ds162.pdf)
+    )
+    port map(
+       IDATAIN     => rgmiii_buf.rx_clk,
+       T           => '1',
+       ODATAIN     => '0',
+       CAL         => '0',
+       IOCLK0      => '0',
+       IOCLK1      => '0',
+       CLK         => '0',
+       INC         => '0',
+       CE          => '0',
+       RST         => '0',
+       BUSY        => OPEN,
+       DATAOUT     => rgmiii.rx_clk,
+       DATAOUT2    => OPEN,
+       TOUT        => OPEN,
+       DOUT        => OPEN
+    );
+   end generate;
+
     delay_rgmii_rx_ctl0 : IODELAY2 generic map(
        DELAY_SRC    => "IDATAIN",
        IDELAY_TYPE  => "FIXED",
-       IDELAY_VALUE => 16 -- Delay (256/8)*424ps*30% + n/8*424ps + Ttap(See table 39 in Xilinx ds162.pdf)
+       DATA_RATE    => "DDR",
+       IDELAY_VALUE => 80 -- (See table 39 in Xilinx ds162.pdf)
     )
     port map(
        IDATAIN     => rgmiii_buf.rx_dv,
@@ -881,7 +899,8 @@ begin
      delay_rgmii_rxd0 : IODELAY2 generic map(
        DELAY_SRC    => "IDATAIN",
        IDELAY_TYPE  => "FIXED",
-       IDELAY_VALUE => 16 -- Delay (256/8)*424ps*30% + n/8*424ps + Ttap(See table 39 in Xilinx ds162.pdf)
+       DATA_RATE    => "DDR",
+       IDELAY_VALUE => 80 -- (See table 39 in Xilinx ds162.pdf)
      )
      port map(
        IDATAIN     => rgmiii_buf.rxd(i),
@@ -907,7 +926,8 @@ begin
     delay_rgmii_tx_clk0 : IODELAY2 generic map(
        DELAY_SRC    => "ODATAIN",
        IDELAY_TYPE  => "FIXED",
-       ODELAY_VALUE => 16 -- Delay (256/8)*424ps*30% + n/8*424ps + Ttap(See table 39 in Xilinx ds162.pdf)
+       DATA_RATE    => "DDR",
+       ODELAY_VALUE => 10 -- (See table 39 in Xilinx ds162.pdf)
     )
     port map(
        IDATAIN     => '0',
@@ -926,10 +946,13 @@ begin
        TOUT        => OPEN,
        DOUT        => rgmiio_tx_clk
     );
-    
+  end generate;
+
+  ethoutdatadelay0 : if (use_eth_data_output_delay /= 0) generate    
     delay_rgmii_tx_en0 : IODELAY2 generic map(
        DELAY_SRC    => "ODATAIN",
        IDELAY_TYPE  => "FIXED",
+       DATA_RATE    => "DDR",
        ODELAY_VALUE => 0
     )
     port map(
@@ -954,6 +977,7 @@ begin
      delay_rgmii_txd0 : IODELAY2 generic map(
        DELAY_SRC    => "ODATAIN",
        IDELAY_TYPE  => "FIXED",
+       DATA_RATE    => "DDR",
        ODELAY_VALUE => 0
      )
      port map(
@@ -976,14 +1000,26 @@ begin
     end generate;
   end generate;
 
-  rgmii0 : rgmii generic map (15, 16#010# , 16#ff0#, fabtech, CFG_GRETH1G, 1, 0, 1)
-    port map (rstn, rgmiii.gtx_clk, gmiii, gmiio, rgmiii, rgmiio, clkm, rstn, apbi, apbo(15));
+  rgmii0 : rgmii generic map (pindex => 15, paddr => 16#010#, pmask => 16#ff0#, tech => fabtech,
+                              gmii => CFG_GRETH1G, debugmem => 1, abits => 8, no_clk_mux => 0,
+                              pirq => 15, use90degtxclk  => 0)
+    port map (rstn, gmiii, gmiio, rgmiii, rgmiio, clkm, rstn, apbi, apbo(15));
+
   ethpads : if (CFG_GRETH = 1) generate -- eth pads
 
     etxc_pad : outpad generic map (tech => padtech)
       port map (etx_clk, rgmiio_tx_clk);
-    erxc_pad : clkpad generic map (tech => padtech, arch => 2)
-      port map (erx_clk, rgmiii.rx_clk);
+      
+    erx_clk1 : if (use_eth_input_delay_clk = 0) generate
+      erxc_pad : clkpad generic map (tech => padtech, arch => 2)
+        port map (erx_clk, rgmiii.rx_clk);
+    end generate;
+  
+    erx_clk2 : if (use_eth_input_delay_clk /= 0) generate
+     erxc_pad : inpad generic map (tech => padtech)
+       port map (erx_clk, rgmii_pad.rx_clk);
+     erxc_bufg0 : BUFG port map (O => rgmiii_buf.rx_clk, I => rgmii_pad.rx_clk);
+    end generate;
 
     erxd_pad : inpadv generic map (tech => padtech, width => 4)
       port map (erxd, rgmiii_buf.rxd(3 downto 0));
@@ -1003,12 +1039,34 @@ begin
     emdint_pad : inpad generic map (tech => padtech)
       port map (emdint, rgmiii.mdint);
 
-    -- Incoming 125Mhz ref clock
-    clk125_pad : clkpad generic map (tech => padtech, arch => 2)
-      port map (clk125,  rgmiii.gtx_clk);
+    gtx_clk0 : if (use_gtx_clk = 0) generate
+       -- Use MIG PLL
+       -- Add to UCF (only if there is no BUFG left):
+       --  PIN "ethpads.gtx_clk0.clk_125_bufg0.O" CLOCK_DEDICATED_ROUTE = FALSE;
+       clk_125_bufg0 : BUFG port map (O => clk_125_bufg, I => clk_125);
+       rgmiii.gtx_clk <= clk_125_bufg;
+     end generate;
+
+    gtx_clk1 : if (use_gtx_clk = 1) generate
+     -- Incoming 125Mhz ref clock
+     clk125_pad : clkpad generic map (tech => padtech, arch => 3)
+       port map (clk125,  rgmiii.gtx_clk);
+    end generate;
+
+    gtx_clk2 : if (use_gtx_clk = 2) generate
+       -- Use Separate PLL
+       -- Add to UCF (only if there is no BUFG left):
+       -- PIN "ethpads.gtx_clk2.clkgen0/xc3s.v/bufg0.O" CLOCK_DEDICATED_ROUTE =FALSE;
+       -- PIN "ethpads.gtx_clk2.clk_125_bufg0.O" CLOCK_DEDICATED_ROUTE = FALSE;
+       cgi2.pllctrl <= "00"; cgi2.pllrst <= rstraw;
+       clkgen0 : clkgen        -- clock generator
+         generic map (clktech, 5, 2, CFG_MCTRL_SDEN,CFG_CLK_NOFB, 0, 0, 0, BOARD_FREQ)
+         port map (clkm, clkm, clk_125_pll, open, open, open, open, cgi2, cgo2, open, open, open);
+        clk_125_bufg0 : BUFG port map (O => clk_125_bufg, I => clk_125_pll);
+        rgmiii.gtx_clk <= clk_125_bufg;
+     end generate;
 
   end generate;
-
 
 -----------------------------------------------------------------------
 ---  AHB RAM ----------------------------------------------------------

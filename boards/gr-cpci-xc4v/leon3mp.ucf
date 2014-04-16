@@ -382,12 +382,12 @@ NET "pci_arb_gnt(6)" LOC = "AT25" | IOSTANDARD=PCI33_3; #pci_gntn(6)
 NET "pci_arb_gnt(7)" LOC = "AU21" | IOSTANDARD=PCI33_3; #pci_gntn(7)
 
 NET "pci_arb_req(0)" LOC = "AV22" | IOSTANDARD=PCI33_3; #pci_reqn(0)
-NET "pci_arb_req(1)" LOC = "AW24" | IOSTANDARD=PCI33_3; #pci_reqn(1)
+NET "pci_arb_req(1)" LOC = "AW25" | IOSTANDARD=PCI33_3; #pci_reqn(1)
 NET "pci_arb_req(2)" LOC = "AW26" | IOSTANDARD=PCI33_3; #pci_reqn(2)
 NET "pci_arb_req(3)" LOC = "AV24" | IOSTANDARD=PCI33_3; #pci_reqn(3)
 NET "pci_arb_req(4)" LOC = "AV25" | IOSTANDARD=PCI33_3; #pci_reqn(4)
-NET "pci_arb_req(5)" LOC = "AV23" | IOSTANDARD=PCI33_3; #pci_reqn(5)
-NET "pci_arb_req(6)" LOC = "AW25" | IOSTANDARD=PCI33_3; #pci_reqn(6)
+NET "pci_arb_req(5)" LOC = "AW24" | IOSTANDARD=PCI33_3; #pci_reqn(5)
+NET "pci_arb_req(6)" LOC = "AV23" | IOSTANDARD=PCI33_3; #pci_reqn(6)
 NET "pci_arb_req(7)" LOC = "AW22" | IOSTANDARD=PCI33_3; #pci_reqn(7)
 
 NET "pci_idsel"   LOC = "AV9"  | IOSTANDARD=PCI33_3 | BYPASS;

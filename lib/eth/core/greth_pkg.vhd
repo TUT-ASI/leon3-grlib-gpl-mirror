@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@ package grethpkg is
   --gigabit sync types
   type data_sync_type is array (0 to 3) of std_logic_vector(31 downto 0);
   type ctrl_sync_type is array (0 to 3) of std_logic_vector(1 downto 0);
-  
+
   constant HTRANS_IDLE:   std_logic_vector(1 downto 0) := "00";
   constant HTRANS_NONSEQ: std_logic_vector(1 downto 0) := "10";
   constant HTRANS_SEQ:    std_logic_vector(1 downto 0) := "11";
@@ -34,7 +34,7 @@ package grethpkg is
   constant HBURST_INCR:   std_logic_vector(2 downto 0) := "001";
 
   constant HSIZE_WORD:    std_logic_vector(2 downto 0) := "010";
-  
+
   constant HRESP_OKAY:    std_logic_vector(1 downto 0) := "00";
   constant HRESP_ERROR:   std_logic_vector(1 downto 0) := "01";
   constant HRESP_RETRY:   std_logic_vector(1 downto 0) := "10";
@@ -45,7 +45,7 @@ package grethpkg is
     conv_std_logic_vector(1500, 16);
   constant minpload  : std_logic_vector(10 downto 0) :=
     conv_std_logic_vector(60, 11);
-  
+
   type ahb_fifo_in_type is record
     renable   : std_ulogic;
     raddress  : std_logic_vector(4 downto 0);
@@ -55,7 +55,7 @@ package grethpkg is
   end record;
 
   type ahb_fifo_out_type is record
-    data      : std_logic_vector(31 downto 0);    
+    data      : std_logic_vector(31 downto 0);
   end record;
 
   type nchar_fifo_in_type is record
@@ -124,13 +124,13 @@ package grethpkg is
     grant    : std_ulogic;
     data     : std_logic_vector(31 downto 0);
     ready    : std_ulogic;
-    error    : std_ulogic; 
-    retry    : std_ulogic; 
+    error    : std_ulogic;
+    retry    : std_ulogic;
   end record;
 
   type eth_rx_ahb_in_type is record
     req     : std_ulogic;
-    write   : std_ulogic; 
+    write   : std_ulogic;
     addr    : std_logic_vector(31 downto 0);
     data    : std_logic_vector(31 downto 0);
   end record;
@@ -145,7 +145,7 @@ package grethpkg is
 
   type eth_rx_gbit_ahb_in_type is record
     req     : std_ulogic;
-    write   : std_ulogic; 
+    write   : std_ulogic;
     addr    : std_logic_vector(31 downto 0);
     data    : std_logic_vector(31 downto 0);
     size    : std_logic_vector(1 downto 0);
@@ -156,6 +156,7 @@ package grethpkg is
     start       : std_ulogic;
     read_ack    : std_ulogic;
     data        : std_logic_vector(31 downto 0);
+    datavalid   : std_ulogic;
     valid       : std_ulogic;
     len         : std_logic_vector(10 downto 0);
     rx_col      : std_ulogic;
@@ -163,8 +164,8 @@ package grethpkg is
   end record;
 
   type gbit_tx_host_type is record
-    txd          : std_logic_vector(3 downto 0);   
-    tx_en        : std_ulogic; 
+    txd          : std_logic_vector(3 downto 0);
+    tx_en        : std_ulogic;
     done         : std_ulogic;
     read         : std_ulogic;
     restart      : std_ulogic;
@@ -195,11 +196,12 @@ package grethpkg is
     rx_er        : std_ulogic;
     rx_col       : std_ulogic;
     rx_crs       : std_ulogic;
+    rx_en        : std_ulogic;
   end record;
 
   type gbit_gtx_host_type is record
-    txd          : std_logic_vector(7 downto 0);   
-    tx_en        : std_ulogic; 
+    txd          : std_logic_vector(7 downto 0);
+    tx_en        : std_ulogic;
     tx_er        : std_ulogic;
     done         : std_ulogic;
     restart      : std_ulogic;
@@ -228,6 +230,7 @@ package grethpkg is
     readack     : std_ulogic;
     speed       : std_ulogic;
     data        : std_logic_vector(31 downto 0);
+    datavalid   : std_ulogic;
     valid       : std_ulogic;
     len         : std_logic_vector(10 downto 0);
   end record;
@@ -264,6 +267,7 @@ package grethpkg is
     rx_crs   : std_ulogic;
     rx_er    : std_ulogic;
     enable   : std_ulogic;
+    rx_en    : std_ulogic;
   end record;
 
   component greth_rx is
@@ -271,28 +275,32 @@ package grethpkg is
       nsync          : integer range 1 to 2 := 2;
       rmii           : integer range 0 to 1 := 0;
       multicast      : integer range 0 to 1 := 0;
-      maxsize        : integer);
+      maxsize        : integer;
+      gmiimode       : integer range 0 to 1 := 0
+      );
     port(
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;
       rxi            : in  host_rx_type;
       rxo            : out rx_host_type
-    );           
+    );
   end component;
 
   component greth_tx is
     generic(
-      ifg_gap        : integer := 24; 
+      ifg_gap        : integer := 24;
       attempt_limit  : integer := 16;
       backoff_limit  : integer := 10;
       nsync          : integer range 1 to 2 := 2;
-      rmii           : integer range 0 to 1  := 0);
+      rmii           : integer range 0 to 1  := 0;
+      gmiimode       : integer range 0 to 1 := 0
+      );
     port(
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;
       txi            : in  host_tx_type;
       txo            : out tx_host_type
-    );           
+    );
   end component;
 
   component eth_rstgen is
@@ -308,20 +316,22 @@ package grethpkg is
 
   component greth_gbit_tx is
     generic(
-      ifg_gap        : integer := 24; 
+      ifg_gap        : integer := 24;
       attempt_limit  : integer := 16;
       backoff_limit  : integer := 10;
-      nsync          : integer range 1 to 2 := 2);
+      nsync          : integer range 1 to 2 := 2;
+      gmiimode       : integer range 0 to 1 := 0
+      );
     port(
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;
       txi            : in  gbit_host_tx_type;
-      txo            : out gbit_tx_host_type);           
+      txo            : out gbit_tx_host_type);
   end component;
 
   component greth_gbit_gtx is
     generic(
-      ifg_gap        : integer := 24; 
+      ifg_gap        : integer := 24;
       attempt_limit  : integer := 16;
       backoff_limit  : integer := 10;
       nsync          : integer range 1 to 2 := 2);
@@ -336,12 +346,14 @@ package grethpkg is
   component greth_gbit_rx is
     generic(
       multicast      : integer range 0 to 1 := 0;
-      nsync          : integer range 1 to 2 := 2);
+      nsync          : integer range 1 to 2 := 2;
+      gmiimode       : integer range 0 to 1 := 0
+      );
     port(
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;
       rxi            : in  gbit_host_rx_type;
-      rxo            : out gbit_rx_host_type);           
+      rxo            : out gbit_rx_host_type);
   end component;
 
   component eth_ahb_mst is
@@ -379,7 +391,7 @@ package grethpkg is
     tmsto       : out eth_tx_ahb_out_type
   );
   end component;
- 
+
   function mirror(din : in std_logic_vector) return std_logic_vector;
 
   function crc32_4(d   : in std_logic_vector(3 downto 0);
@@ -396,11 +408,11 @@ package grethpkg is
                     bcnt  : in std_logic_vector(10 downto 0);
                     usesz : in std_ulogic)
                             return std_ulogic;
-  
+
   function getfifosize(edcl, fifosize, ebufsize : in integer) return integer;
 
   function setburstlength(fifosize : in integer) return integer;
-  
+
   function calccrc(d   : in std_logic_vector(3 downto 0);
                    crc : in std_logic_vector(31 downto 0))
                          return std_logic_vector;
@@ -409,11 +421,11 @@ package grethpkg is
   function crcadder(d1   : in std_logic_vector(15 downto 0);
                     d2   : in std_logic_vector(17 downto 0))
                          return std_logic_vector;
-  
+
 end package;
 
 package body grethpkg is
-  
+
   function mirror(din : in std_logic_vector)
                         return std_logic_vector is
     variable do : std_logic_vector(din'range);
@@ -532,7 +544,7 @@ package body grethpkg is
       return fifosize;
     end if;
   end function;
-  
+
   function calccrc(d   : in std_logic_vector(3 downto 0);
                    crc : in std_logic_vector(31 downto 0))
                          return std_logic_vector is
@@ -576,6 +588,50 @@ package body grethpkg is
     return ncrc;
   end function;
 
+
+  function calccrc_8(data : in std_logic_vector( 7 downto 0);
+                     crc  : in std_logic_vector(31 downto 0))
+                           return std_logic_vector is
+    variable ncrc : std_logic_vector(31 downto 0);
+    variable d    : std_logic_vector(7 downto 0);
+  begin
+    d(7) := data(0); d(6) := data(1); d(5) := data(2); d(4) := data(3);
+    d(3) := data(4); d(2) := data(5); d(1) := data(6); d(0) := data(7);
+    ncrc(0) := d(6) xor d(0) xor crc(24) xor crc(30);
+    ncrc(1) := d(7) xor d(6) xor d(1) xor d(0) xor crc(24) xor crc(25) xor crc(30) xor crc(31);
+    ncrc(2) := d(7) xor d(6) xor d(2) xor d(1) xor d(0) xor crc(24) xor crc(25) xor crc(26) xor crc(30) xor crc(31);
+    ncrc(3) := d(7) xor d(3) xor d(2) xor d(1) xor crc(25) xor crc(26) xor crc(27) xor crc(31);
+    ncrc(4) := d(6) xor d(4) xor d(3) xor d(2) xor d(0) xor crc(24) xor crc(26) xor crc(27) xor crc(28) xor crc(30);
+    ncrc(5) := d(7) xor d(6) xor d(5) xor d(4) xor d(3) xor d(1) xor d(0) xor crc(24) xor crc(25) xor crc(27) xor crc(28) xor crc(29) xor crc(30) xor crc(31);
+    ncrc(6) := d(7) xor d(6) xor d(5) xor d(4) xor d(2) xor d(1) xor crc(25) xor crc(26) xor crc(28) xor crc(29) xor crc(30) xor crc(31);
+    ncrc(7) := d(7) xor d(5) xor d(3) xor d(2) xor d(0) xor crc(24) xor crc(26) xor crc(27) xor crc(29) xor crc(31);
+    ncrc(8) := d(4) xor d(3) xor d(1) xor d(0) xor crc(0) xor crc(24) xor crc(25) xor crc(27) xor crc(28);
+    ncrc(9) := d(5) xor d(4) xor d(2) xor d(1) xor crc(1) xor crc(25) xor crc(26) xor crc(28) xor crc(29);
+    ncrc(10) := d(5) xor d(3) xor d(2) xor d(0) xor crc(2) xor crc(24) xor crc(26) xor crc(27) xor crc(29);
+    ncrc(11) := d(4) xor d(3) xor d(1) xor d(0) xor crc(3) xor crc(24) xor crc(25) xor crc(27) xor crc(28);
+    ncrc(12) := d(6) xor d(5) xor d(4) xor d(2) xor d(1) xor d(0) xor crc(4) xor crc(24) xor crc(25) xor crc(26) xor crc(28) xor crc(29) xor crc(30);
+    ncrc(13) := d(7) xor d(6) xor d(5) xor d(3) xor d(2) xor d(1) xor crc(5) xor crc(25) xor crc(26) xor crc(27) xor crc(29) xor crc(30) xor crc(31);
+    ncrc(14) := d(7) xor d(6) xor d(4) xor d(3) xor d(2) xor crc(6) xor crc(26) xor crc(27) xor crc(28) xor crc(30) xor crc(31);
+    ncrc(15) := d(7) xor d(5) xor d(4) xor d(3) xor crc(7) xor crc(27) xor crc(28) xor crc(29) xor crc(31);
+    ncrc(16) := d(5) xor d(4) xor d(0) xor crc(8) xor crc(24) xor crc(28) xor crc(29);
+    ncrc(17) := d(6) xor d(5) xor d(1) xor crc(9) xor crc(25) xor crc(29) xor crc(30);
+    ncrc(18) := d(7) xor d(6) xor d(2) xor crc(10) xor crc(26) xor crc(30) xor crc(31);
+    ncrc(19) := d(7) xor d(3) xor crc(11) xor crc(27) xor crc(31);
+    ncrc(20) := d(4) xor crc(12) xor crc(28);
+    ncrc(21) := d(5) xor crc(13) xor crc(29);
+    ncrc(22) := d(0) xor crc(14) xor crc(24);
+    ncrc(23) := d(6) xor d(1) xor d(0) xor crc(15) xor crc(24) xor crc(25) xor crc(30);
+    ncrc(24) := d(7) xor d(2) xor d(1) xor crc(16) xor crc(25) xor crc(26) xor crc(31);
+    ncrc(25) := d(3) xor d(2) xor crc(17) xor crc(26) xor crc(27);
+    ncrc(26) := d(6) xor d(4) xor d(3) xor d(0) xor crc(18) xor crc(24) xor crc(27) xor crc(28) xor crc(30);
+    ncrc(27) := d(7) xor d(5) xor d(4) xor d(1) xor crc(19) xor crc(25) xor crc(28) xor crc(29) xor crc(31);
+    ncrc(28) := d(6) xor d(5) xor d(2) xor crc(20) xor crc(26) xor crc(29) xor crc(30);
+    ncrc(29) := d(7) xor d(6) xor d(3) xor crc(21) xor crc(27) xor crc(30) xor crc(31);
+    ncrc(30) := d(7) xor d(4) xor crc(22) xor crc(28) xor crc(31);
+    ncrc(31) := d(5) xor crc(23) xor crc(29);
+    return ncrc;
+  end function;
+
   --16-bit one's complement adder
   function crcadder(d1   : in std_logic_vector(15 downto 0);
                     d2   : in std_logic_vector(17 downto 0))
@@ -588,5 +644,5 @@ package body grethpkg is
     sum := vd1 + vd2;
     return sum;
   end function;
-  
+
 end package body;

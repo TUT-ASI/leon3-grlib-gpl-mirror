@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -30,8 +30,6 @@ library techmap;
 use techmap.gencomp.all;
 library micron;
 use micron.components.all;
-library hynix;
-use hynix.components.all;
 use work.debug.all;
 
 use work.config.all;
@@ -62,16 +60,14 @@ architecture behav of testbench is
   signal errorn          : std_logic;
   signal mcb3_dram_dq    : std_logic_vector(15 downto 0);
   signal mcb3_rzq        : std_logic;
-  signal mcb3_dram_udqs  : std_logic;
-  signal mcb3_dram_dqs   : std_logic;
+  signal mcb3_dram_dqs   : std_logic_vector(1 downto 0);
   signal mcb3_dram_a     : std_logic_vector(12 downto 0);
   signal mcb3_dram_ba    : std_logic_vector(1 downto 0);
   signal mcb3_dram_cke   : std_logic;
   signal mcb3_dram_ras_n : std_logic;
   signal mcb3_dram_cas_n : std_logic;
   signal mcb3_dram_we_n  : std_logic;
-  signal mcb3_dram_dm    : std_logic;
-  signal mcb3_dram_udm   : std_logic;
+  signal mcb3_dram_dm    : std_logic_vector(1 downto 0);
   signal mcb3_dram_ck    : std_logic;
   signal mcb3_dram_ck_n  : std_logic;
   signal dsubre          : std_ulogic;       -- Debug Unit break (connect to button)
@@ -89,7 +85,7 @@ architecture behav of testbench is
   
 begin
   -- clock and reset
-  clk48      <= not clk48 after 10.05 ns;
+  clk48      <= not clk48 after 10.417 ns;
   reset      <= '1', '0' after 300 ns;
   dsubre     <= '0';
 
@@ -107,16 +103,16 @@ begin
       -- DDR SDRAM
       mcb3_dram_dq    => mcb3_dram_dq,
       mcb3_rzq        => mcb3_rzq,
-      mcb3_dram_udqs  => mcb3_dram_udqs,
-      mcb3_dram_dqs   => mcb3_dram_dqs,   
+      mcb3_dram_udqs  => mcb3_dram_dqs(1),
+      mcb3_dram_dqs   => mcb3_dram_dqs(0),
       mcb3_dram_a     => mcb3_dram_a,
       mcb3_dram_ba    => mcb3_dram_ba,
       mcb3_dram_cke   => mcb3_dram_cke,
       mcb3_dram_ras_n => mcb3_dram_ras_n,
       mcb3_dram_cas_n => mcb3_dram_cas_n,
       mcb3_dram_we_n  => mcb3_dram_we_n,
-      mcb3_dram_dm    => mcb3_dram_dm,
-      mcb3_dram_udm   => mcb3_dram_udm, 
+      mcb3_dram_dm    => mcb3_dram_dm(0),
+      mcb3_dram_udm   => mcb3_dram_dm(1),
       mcb3_dram_ck    => mcb3_dram_ck,
       mcb3_dram_ck_n  => mcb3_dram_ck_n,
       -- Debug support unit
@@ -137,32 +133,13 @@ begin
 
 
   migddr2mem : if (CFG_MIG_DDR2 = 1) generate 
-    ddr0 : mt46v16m16 
-      generic map (
-        tCK  => 5.000 ns,
-        tCH  => 2.250 ns,      -- 0.45*tCK
-        tCL  => 2.250 ns,       -- 0.45*tCK
-        tDH  => 0.500 ns,
-        tDS  => 0.500 ns,
-        tIH  => 0.900 ns,
-        tIS  => 0.900 ns,
-        tMRD => 10.000 ns,
-        tRAS => 40.000 ns,
-        tRAP => 15.000 ns,
-        tRC  => 55.000 ns,
-        tRFC => 70.000 ns,
-        tRCD => 15.000 ns,
-        tRP  => 15.000 ns,
-        tRRD => 10.000 ns,
-        tWR  => 15.000 ns,
-        index => -1, fname => sdramfile, cols_bits => 10, fdelay => 15,
-        chktiming => false)
-      port map(
-        Dq => mcb3_dram_dq, Dqs(1) => mcb3_dram_udqs, Dqs(0) => mcb3_dram_dqs,
-        Addr => mcb3_dram_a, Ba => mcb3_dram_ba, Clk => mcb3_dram_ck,
-        Clk_n => mcb3_dram_ck_n, Cke => mcb3_dram_cke, Cs_n => csb,
-        Ras_n => mcb3_dram_ras_n, Cas_n => mcb3_dram_cas_n, We_n => mcb3_dram_we_n,
-        Dm(1) => mcb3_dram_udm, Dm(0) => mcb3_dram_dm);
+    ddr0 : ddrram
+      generic map(width => 16, abits => 13, colbits => 10, rowbits => 13,
+                  implbanks => 1, fname => sdramfile, speedbin=>4, lddelay => 15 us)
+      port map (ck => mcb3_dram_ck, cke => mcb3_dram_cke, csn => csb,
+                rasn => mcb3_dram_ras_n, casn => mcb3_dram_cas_n, wen => mcb3_dram_we_n,
+                dm => mcb3_dram_dm, ba => mcb3_dram_ba, a => mcb3_dram_a,
+                dq => mcb3_dram_dq, dqs => mcb3_dram_dqs);
   end generate;
 
   --spimem0: if CFG_SPIMCTRL = 1 generate

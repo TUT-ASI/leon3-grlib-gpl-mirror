@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -57,7 +57,9 @@ entity greth_gbit_gen is
     enable_mdint   : integer range 0 to 1 := 0;
     multicast      : integer range 0 to 1 := 0;
     edclsepahbg    : integer range 0 to 1 := 0;
-    ramdebug       : integer range 0 to 2 := 0);
+    ramdebug       : integer range 0 to 2 := 0;
+    gmiimode       : integer range 0 to 1 := 0
+    );
   port(
     rst            : in  std_ulogic;
     clk            : in  std_ulogic;
@@ -104,12 +106,14 @@ entity greth_gbit_gen is
     --ethernet input signals
     gtx_clk        : in   std_ulogic;                     
     tx_clk         : in   std_ulogic;
+    tx_dv          : in   std_ulogic;
     rx_clk         : in   std_ulogic;
     rxd            : in   std_logic_vector(7 downto 0);   
     rx_dv          : in   std_ulogic; 
     rx_er          : in   std_ulogic; 
     rx_col         : in   std_ulogic;
     rx_crs         : in   std_ulogic;
+    rx_en          : in   std_ulogic;
     mdio_i         : in   std_ulogic;
     phyrstaddr     : in   std_logic_vector(4 downto 0);
     mdint          : in   std_ulogic;
@@ -194,7 +198,9 @@ begin
       enable_mdint   => enable_mdint,
       multicast      => multicast,
       edclsepahbg    => edclsepahbg,
-      ramdebug       => ramdebug)
+      ramdebug       => ramdebug,
+      gmiimode       => gmiimode
+      )
     port map(
       rst            => rst,
       clk            => clk,
@@ -264,12 +270,14 @@ begin
       --ethernet input signals
       gtx_clk        => gtx_clk,  
       tx_clk         => tx_clk,
+      tx_dv          => tx_dv,
       rx_clk         => rx_clk,
       rxd            => rxd,  
       rx_dv          => rx_dv,
       rx_er          => rx_er,
       rx_col         => rx_col,
       rx_crs         => rx_crs,
+      rx_en          => rx_en,
       mdio_i         => mdio_i,
       phyrstaddr     => phyrstaddr,
       mdint          => mdint,

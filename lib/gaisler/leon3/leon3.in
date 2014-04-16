@@ -256,9 +256,6 @@ if [ "$CONFIG_LEON3" = "y" ]; then
         fi
         bool 'AHB snooping       ' CONFIG_DCACHE_SNOOP
         if [ "$CONFIG_DCACHE_SNOOP" = "y" ]; then
-            bool 'Fast snooping       ' CONFIG_DCACHE_SNOOP_FAST
-        fi
-        if [ "$CONFIG_DCACHE_SNOOP" = "y" ]; then
             bool 'Separate snoop tags  ' CONFIG_DCACHE_SNOOP_SEPTAG
         fi
       fi

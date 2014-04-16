@@ -1,11 +1,29 @@
+#include "gptimer.h"
 
 main()
 
 {
+  int addr=0x80000300;
+  struct gptimer *lr = (struct gptimer *) addr;
+
   report_start();
+//gptimer_test(0x80000300, 8);
 
+leon3_test(1, 0x80000200, 0);
 
-  base_test();
+//LEON3_BYPASS_STORE_PA(0x80000338, 0);
+//LEON3_BYPASS_STORE_PA(0x80000334, 0xf);
+//LEON3_BYPASS_STORE_PA(0x80000338, 0x4);
+//LEON3_BYPASS_STORE_PA(0x80000338, 0x9);
+lr->timer[2].control = 0;
+lr->timer[2].reload = 0xf;
+lr->timer[2].control = 0x4;
+lr->timer[2].control = 0x9;
+
+irqtest(0x80000200);
+apbuart_test(0x80000100);
+
+//  base_test();
 //  svgactrl_test(0x80000600, 1, 0, 0x40200000, -1, 0, 0);
 //  greth_test(0x80000e00);
 

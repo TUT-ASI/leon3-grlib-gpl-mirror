@@ -1,5 +1,6 @@
 include .config
 GRLIB=../..
+GRLIB_CONFIG=grlib_config.vhd
 TOP=leon3mp
 BOARD=terasic-de4
 include $(GRLIB)/boards/$(BOARD)/Makefile.inc
@@ -11,7 +12,7 @@ QSF=$(GRLIB)/boards/$(BOARD)/$(TOP).qsf
 EFFORT=high
 XSTOPT=
 ISEMAPOPT=-timing
-VHDLSYNFILES=ddr2if.vhd pll_125.vhd config.vhd leon3mp.vhd
+VHDLSYNFILES=ddr2if.vhd config.vhd leon3mp.vhd
 VHDLSIMFILES=ddr2sim.vhd testbench.vhd
 SIMTOP=testbench
 SDCFILE=default.sdc
@@ -28,10 +29,10 @@ TECHLIBS = altera altera_mf stratixiii
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip hynix cypress ihp fmf spansion gsi
 DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan \
-	slink ascs leon3ft leon4 leon4v0 l2cache \
-	spacewire usb pwm gr1553b iommu pci leon3ft hcan 
+	slink ascs leon3ft leon4 leon4v0 \
+	spacewire usb pwm gr1553b iommu pci hcan 
 
-FILESKIP = grcan.vhd ata_device.v i2c_slave_model.v
+FILESKIP = grcan.vhd
 
 include $(GRLIB)/bin/Makefile
 include $(GRLIB)/software/leon3/Makefile
@@ -45,14 +46,14 @@ qwiz:
 	else \
 		echo "ddr2ctrl core already compiled"; \
 	fi ;
-ifeq ($(CONFIG_GRETH_ENABLE),y)
-	@cp $(GRLIB)/boards/$(BOARD)/sgmii2gmii.vhd .
-	@if [ ! -d ./sgmii2gmii/ ]; then \
-		qmegawiz -silent sgmii2gmii.vhd ; \
-	else \
-		echo "sgmii2gmii core already compiled"; \
-	fi ;
-endif
+#ifeq ($(CONFIG_GRETH_ENABLE),y)
+#	@cp $(GRLIB)/boards/$(BOARD)/sgmii2gmii.vhd .
+#	@if [ ! -d ./sgmii2gmii/ ]; then \
+#		qmegawiz -silent sgmii2gmii.vhd ; \
+#	else \
+#		echo "sgmii2gmii core already compiled"; \
+#	fi ;
+#endif
 
 localclean:
 	@rm -rf sgmii2gmii.vhd sgmii2gmii sgmii2gmii_sim sgmii2gmii_testbench sgmii2gmii.[bcpqs]* sgmii2gmii_sim.f 

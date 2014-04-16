@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -30,14 +30,9 @@ library techmap;
 use techmap.gencomp.all;
 library micron;
 use micron.components.all;
-library hynix;
-use hynix.components.all;
 use work.debug.all;
 
 use work.config.all;
-
-library hynix;
-use hynix.components.all;
 
 entity testbench is
   generic (
@@ -218,18 +213,26 @@ begin
       );
 
   ddr2mem : if (CFG_DDR2SP /= 0) generate 
-    ddr2mem0 : for i in 0 to 1 generate
-      u1 : HY5PS121621F
-        generic map (TimingCheckFlag => true, PUSCheckFlag => false,
-                     index => 1-i, bbits => 32, fname => sdramfile)
-        port map (DQ => ddr_dq2(i*16+15 downto i*16),
-                  LDQS  => ddr_dqs(i*2), LDQSB => ddr_dqsn(i*2),
-                  UDQS => ddr_dqs(i*2+1), UDQSB => ddr_dqsn(i*2+1),
-                  LDM => ddr_dm(i*2), WEB => ddr_we, CASB => ddr_cas,
-                  RASB => ddr_ras, CSB => ddr_csb, BA => ddr_ba,
-                  ADDR => ddr_ad(12 downto 0), CKE => ddr_cke,
-                  CLK => ddr_clk(i), CLKB => ddr_clkb(i), UDM => ddr_dm(i*2+1));
-    end generate;
+    -- ddr2mem0 : for i in 0 to 1 generate
+    --   u1 : HY5PS121621F
+    --     generic map (TimingCheckFlag => true, PUSCheckFlag => false,
+    --                  index => 1-i, bbits => 32, fname => sdramfile)
+    --     port map (DQ => ddr_dq2(i*16+15 downto i*16),
+    --               LDQS  => ddr_dqs(i*2), LDQSB => ddr_dqsn(i*2),
+    --               UDQS => ddr_dqs(i*2+1), UDQSB => ddr_dqsn(i*2+1),
+    --               LDM => ddr_dm(i*2), WEB => ddr_we, CASB => ddr_cas,
+    --               RASB => ddr_ras, CSB => ddr_csb, BA => ddr_ba,
+    --               ADDR => ddr_ad(12 downto 0), CKE => ddr_cke,
+    --               CLK => ddr_clk(i), CLKB => ddr_clkb(i), UDM => ddr_dm(i*2+1));
+    -- end generate;
+
+    ddr0 : ddr2ram
+    generic map(width => 32, abits => 13, babits =>2, colbits => 10, rowbits => 13,
+                implbanks => 1, fname => sdramfile, speedbin=>1, density => 2)
+    port map (ck => ddr_clk(0), ckn => ddr_clkb(0), cke => ddr_cke, csn => ddr_csb,
+              odt => ddr_odt, rasn => ddr_ras, casn => ddr_cas, wen => ddr_we,
+              dm => ddr_dm, ba => ddr_ba(1 downto 0), a => ddr_ad(12 downto 0), dq => ddr_dq2,
+              dqs => ddr_dqs);   
 
     ddr2delay0 : delay_wire 
       generic map(data_width => ddr_dq'length, delay_atob => 0.0, delay_btoa => 1.0)

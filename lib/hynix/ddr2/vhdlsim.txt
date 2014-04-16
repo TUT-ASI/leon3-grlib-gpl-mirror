@@ -1,3 +1,0 @@
-HY5PS121621F_PACK.vhd
-HY5PS121621F.vhd
-components.vhd

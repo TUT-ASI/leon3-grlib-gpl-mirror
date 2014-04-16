@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -49,36 +49,36 @@ architecture rtl of saed32_syncram is
  component SRAM1RW64x32 is
   port (
     A   : in  std_logic_vector( 5  downto 0 );
-    O   : out std_logic_vector( 31  downto 0 );
-    I   : in  std_logic_vector( 31  downto 0 );
+    CE  : in  std_logic;
     WEB  : in  std_logic;
-    CSB  : in  std_logic;
     OEB  : in  std_logic;
-    CE  : in  std_logic
+    CSB  : in  std_logic;    
+    I   : in  std_logic_vector( 31  downto 0 );
+    O   : out std_logic_vector( 31  downto 0 )
   );
  end component;
 
  component SRAM1RW128x48 is
   port (
     A   : in  std_logic_vector( 6  downto 0 );
-    O   : out std_logic_vector( 47  downto 0 );
-    I   : in  std_logic_vector( 47  downto 0 );
+    CE  : in  std_logic;
     WEB  : in  std_logic;
-    CSB  : in  std_logic;
     OEB  : in  std_logic;
-    CE  : in  std_logic
+    CSB  : in  std_logic;    
+    I   : in  std_logic_vector( 47  downto 0 );
+    O   : out std_logic_vector( 47  downto 0 )
   );
  end component;
 
  component SRAM1RW1024x8 is
   port (
     A   : in  std_logic_vector( 9  downto 0 );
-    O   : out std_logic_vector( 7  downto 0 );
-    I   : in  std_logic_vector( 7  downto 0 );
+    CE  : in  std_logic;
     WEB  : in  std_logic;
-    CSB  : in  std_logic;
     OEB  : in  std_logic;
-    CE  : in  std_logic
+    CSB  : in  std_logic;    
+    I   : in  std_logic_vector( 7  downto 0 );
+    O   : out std_logic_vector( 7  downto 0 )
   );
  end component;
 
@@ -92,27 +92,28 @@ begin
 
   csn <= not enable; wen <= not write;
   gnd <= (others => '0'); vcc <= '1';
+
+  a(17 downto abits) <= (others => '0');
+  d(48 downto dbits) <= (others => '0');
+  
   a(abits -1 downto 0) <= address;
   d(dbits -1 downto 0) <= datain(dbits -1 downto 0);
 
-    reg1 : process (clk) begin
-      dataout <= q(dbits -1 downto 0);
-    end process;
-
   a6 : if (abits <= 6) generate
-      id0 : SRAM1RW64x32 port map (a(5 downto 0), q(31 downto 0), d(31 downto 0), wen, csn, '0', '1');
+      id0 : SRAM1RW64x32 port map (A => a(5 downto 0), CE => clk,  WEB => wen,  OEB => gnd(0), CSB => csn, I => d(31 downto 0), O => q(31 downto 0));
   end generate;
 
   a7 : if (abits = 7) generate
-      id0 : SRAM1RW128x48 port map (a(6 downto 0), q(47 downto 0), d(47 downto 0), wen, csn, '0', '1');
+      id0 : SRAM1RW128x48 port map (A => a(6 downto 0), CE => clk,  WEB => wen,  OEB => gnd(0), CSB => csn, I => d(47 downto 0), O => q(47 downto 0));
   end generate;
 
-  a10 : if (abits = 10) generate
+  a10 : if (abits >= 8 and abits <= 10) generate
     x : for i in 0 to ((dbits-1)/8) generate
-      id0 : SRAM1RW1024x8 port map (a(9 downto 0), q(((i+1)*8)-1 downto i*8), d(((i+1)*8)-1 downto i*8), csn, wen, gnd(0), '1');
+      id0 : SRAM1RW1024x8 port map (A => a(9 downto 0), CE => clk,  WEB => wen,  OEB => gnd(0), CSB => csn, I => d(((i+1)*8)-1 downto i*8), O => q(((i+1)*8)-1 downto i*8));
     end generate;
   end generate;
 
+  dataout <= q(dbits -1 downto 0);
 
 -- pragma translate_off
   a_to_high : if (abits > 10) or (dbits > 32) generate

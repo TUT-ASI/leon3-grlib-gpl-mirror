@@ -58,7 +58,7 @@ package config is
   constant CFG_DLINE : integer := 8;
   constant CFG_DREPL : integer := 0;
   constant CFG_DLOCK : integer := 0;
-  constant CFG_DSNOOP : integer := 1 + 0 + 4*0;
+  constant CFG_DSNOOP : integer := 1*2 + 4*0;
   constant CFG_DFIXED : integer := 16#00f3#;
   constant CFG_DLRAMEN : integer := 0;
   constant CFG_DLRAMADDR: integer := 16#8F#;

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -30,6 +30,19 @@ use techmap.gencomp.all;
 
 package allddr is
 
+component rhumc_iddr_reg is
+  port(
+         Q1 : out std_ulogic;
+         Q2 : out std_ulogic;
+         C1 : in std_ulogic;
+         C2 : in std_ulogic;
+         CE : in std_ulogic;
+         D : in std_ulogic;
+         R : in std_ulogic;
+         S : in std_ulogic
+      );
+end component;
+
 component unisim_iddr_reg is
   generic ( tech : integer := virtex4; arch : integer := 0);
   port(
@@ -54,6 +67,18 @@ component gen_iddr_reg
     D  : in std_ulogic;
     R  : in std_ulogic;
     S  : in std_ulogic);
+end component;
+
+component rhumc_oddr_reg
+  port (
+      Q : out std_ulogic;
+      C1 : in std_ulogic;
+      C2 : in std_ulogic;
+      CE : in std_ulogic;
+      D1 : in std_ulogic;
+      D2 : in std_ulogic;
+      R : in std_ulogic;
+      S : in std_ulogic);
 end component;
 
 component ec_oddr_reg

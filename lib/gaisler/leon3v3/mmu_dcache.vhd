@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -731,7 +731,7 @@ begin
             newptag := mmudco.wbtransdata.data(TAG_HIGH downto TAG_LOW);
           end if;
         end if;
-        if (dci.read and hcache) = '1' then v.wb.addr(LINE_HIGH downto 0) := (others => '0'); end if;
+        if (dci.read and hcache and andv(r.cctrl.dcs)) = '1' then v.wb.addr(LINE_HIGH downto 0) := (others => '0'); end if;
       end if;
       if (eholdn and (not r.nomds)) = '1' then -- avoid false path through nullify
         case dci.asi(4 downto 0) is
@@ -829,7 +829,7 @@ begin
           end if;
         when others =>
           if dci.read = '1' then        -- read access
-            v.rburst := hcache; -- and not forcemiss;
+            v.rburst := hcache and (andv(r.cctrl.dcs) or andv(dci.size)); -- and not forcemiss;
             if (dlram = 1) and (lramen = '1') then
               lramrd := '1';
             elsif (ilram = 1) and (ilramen = '1') then
@@ -837,7 +837,8 @@ begin
               else v.dstate := asi_idtag; v.holdn := dci.dsuen; v.ilramen := '1'; end if;              
             elsif dci.dsuen = '0' then
               if not ((hit and valid and not forcemiss) = '1') then     -- read miss
-                v.holdn := '0'; v.dstate := wread; v.ready := '0'; v.cache := hcache;
+                v.holdn := '0'; v.dstate := wread; v.ready := '0';
+                v.cache := hcache and andv(r.cctrl.dcs);
                 if (not M_EN) or ((dci.asi(4 downto 0) = ASI_MMU_BP) or (r.mmctrl1.e = '0')) then
                   -- cache disabled if mmu-enabled but off or BYPASS
                   if ((r.stpend  = '0') or ((mcdo.ready and not r.req) = '1')) then
@@ -1028,9 +1029,9 @@ begin
       for i in 0 to 3 loop wlrr(i) := r.lrr; end loop;
       if (r.stpend = '0') and (r.ready = '0') then
         if (r.rburst) = '1' then
-          if (mcdo.grant = '1') and (r.wb.addr(LINE_HIGH downto LINE_LOW) >= bend(LINE_HIGH downto LINE_LOW)) 
-          and not ((r.wb.addr(LINE_HIGH downto LINE_LOW) = bend(LINE_HIGH downto LINE_LOW)) and (mcdo.ready = '0'))
-          then 
+          if (mcdo.grant = '1') and ((r.cctrl.dcs = "01") or
+            ((r.wb.addr(LINE_HIGH downto LINE_LOW) >= bend(LINE_HIGH downto LINE_LOW)) and not
+              ((r.wb.addr(LINE_HIGH downto LINE_LOW) = bend(LINE_HIGH downto LINE_LOW)) and (mcdo.ready = '0')))) then
             v.burst := '0';
           else v.burst := r.burst; end if;
         end if;
@@ -1042,11 +1043,11 @@ begin
               mds := '0';
             end if;
           end if;
-          dwrite := r.cache and r.cctrl.dcs(1); rdatasel := memory;
+          dwrite := r.cache; rdatasel := memory;
           mexc := mcdo.mexc;
           v.bmexc := r.bmexc or mcdo.mexc or dci.flushl;
           if r.req = '0' then
-            twrite := r.cache and r.cctrl.dcs(1); tagclear := v.bmexc;
+            twrite := r.cache; tagclear := v.bmexc;
             if (((dci.enaddr and not mds) = '1') or (dci.flushl = '1') or ((dci.enaddr and twrite) = '1')) 
                 and ((r.cctrl.dcs(0) = '1') or (dlram = 1))
             then v.dstate := loadpend; v.holdn := '0';

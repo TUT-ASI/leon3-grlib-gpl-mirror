@@ -1,3 +1,77 @@
+----------------------- Release 1.3.7-b4144 ----------------------------
+
+2014-04-16	Change default assignment of GRLIB_SIMULATOR to ModelSim
+
+2014-04-15	DDR3RAM sim model: Improve memory usage
+
+2014-04-11	RGMII: First revision of documentation for the RGMII IP   
+
+2014-04-11	SAED32-TECHMAP: Fixed Bidir mapping and corrected erroneous
+		instantiation of technology memory.
+
+2014-04-11	LEON3-ASIC: Fixed simulation for SAED32 technology library 
+		and modified design to work with base_test and greth_test 
+		in systest
+
+2014-04-10	Xilinx techmap: Assign SIM_COLLISION_CHECK generic in techmap
+		layer instead of patching UNSIM sources.
+
+2014-04-10	Disable install-unisim and install-secureip targets when
+		GRLIB_SIMULATOR is set to Xilinx.
+
+2014-04-10	Updated PlanAhead script generation to allow ISim simulation
+
+2014-04-08	Updated the leon3-digilent-xc7z020 design to working condition
+
+2014-04-04	10/100Mbit mode fix for RGMII and SGMII on Xilinx designs
+		- Fixed 10/100Mbit mode in RGMII for ref designs KC705,
+		  AC701 and GR-XC6
+		- Fixed 10/100Mbit mode in SGMII for ref designs VC707
+
+2013-04-04	PlanAhead flow updated to improve overall timing
+
+2013-04-04	GRETH/GRETH_GBIT updated to support unchanged clock speed for
+		lower bit rates
+
+2013-03-25	Remove lib/openchip
+
+2013-03-25	Add template design for Xilinx AC701 board (leon3-xilinx-ac701)
+
+2013-03-21	Set Unisim pad delays to zero to match ISE simulation model
+		behavior.
+
+2013-03-18	GPTIMER/GRTIMER: Merge GRTIMER functionality into GPTIMER.
+
+2014-03-06	DSU3: Add dsu3_mb to allow AHB trace of second AHB bus
+
+2014-03-05	LEON3v3: Rearranged and updated IP core documentation.
+
+2014-03-05	LEON3v3: Removed fast snooping option from xconfig menus,
+		default to always on.
+
+2014-03-05	LEON3v3: Added safeguard to generate error in simulation if FT
+		features are accidentally enabled on non-FT version of LEON3.
+
+2014-03-01	LEON3v3: Improve performance for d-cache in frozen state by
+		only fetching missing data instead of full d-cache line.
+
+2014-02-17	GPTIMER: Add WDOGDIS and WDOGNMI fields, see GRIP for details.
+
+2014-02-16	systest: Add -qnoambapp option if LDFLAGS variable is
+		undefined. If -qnoambapp leads to errors then these can be
+		fixed by defining LDFLAGS or installing a recent BCC version.
+
+2014-02-09	MUL32/DIV32: Add support for grlib_async_reset_enable.
+
+2014-01-18	Update documentation to warn for use of -use_new_parser yes
+		with Xilinx XST.
+
+2014-01-13	Remove planAhead make target, use only planahead.
+
+2014-01-03	Added generic DDR1, DDR2, DDR3 SDRAM simulation models
+		under lib/gaisler/sim.vhd. Updated most template designs
+		to use new models.
+
 ----------------------- Release 1.3.4-b4140 ----------------------------
 
 2013-12-19	Fixed Xilinx planAhead flow for Spartan6 designs

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -225,7 +225,7 @@ begin
   ut13 : if (tech = ut130) generate
     v : clkgen_ut130hbd
     generic map (clk_mul, clk_div, sdramen, noclkfb, pcien, pcidll, pcisysclk, freq, clk2xen, clksel)
-    port map (clkin, pciclkin, clk, clkn, clk2x, sdclk, pciclk, cgi, cgo, clk1xu, clk2xu);
+    port map (clkin, pciclkin, clk, clkn, clk2x, clk4x, clk8x, sdclk, pciclk, cgi, cgo, clk1xu, clk2xu);
   end generate;
   ut90nhbd : if (tech = ut90) generate
     v : clkgen_ut90nhbd

@@ -23,13 +23,13 @@ library, do as follows:
 
 This will ONLY work with correct version of ISE installed, and the XILINX variable
 properly set in the shell. For ISE13 it is recommened to use the 'ise' make target
-and for ISE14 to use the 'planAhead' target. To synthesize the design, do
+and for ISE14 to use the 'planahead' target. To synthesize the design, do
 
   make ise (ISE13)
 
 or
 
-  make planAhead (ISE14)
+  make planahead (ISE14)
 
 and then
 
@@ -66,8 +66,6 @@ Design specifics
   make distclean vsim
 
   Modelsim v6.6e or newer is required to build the secure IP models.
-  Note that the regular leon3 test bench cannot be run in simulation
-  as the DDR3 model lacks data pre-load.
 
 * The application UART1 is connected to the USB/UART connector
 

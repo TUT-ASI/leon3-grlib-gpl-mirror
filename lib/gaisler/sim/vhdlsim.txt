@@ -4,3 +4,4 @@ delay_wire.vhd spi_flash.vhd pwm_check.vhd
 usbsim.vhd grusbdcsim.vhd grusb_dclsim.vhd
 ramback.vhd zbtssram.vhd slavecheck.vhd
 spwtrace.vhd spwtracev.vhd
+ddrram.vhd ddr2ram.vhd ddr3ram.vhd

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -255,14 +255,21 @@ begin
   hc_sd_dat  <= 'Z'; hc_sd_cmd  <= 'Z';
 --  hc_sd_dat <= hc_sd_cmd;               -- Loopback
   
-  ddr0 : mt46v16m16 
-    generic map (index => -1, fname => sdramfile)
-    port map(
-      Dq => ddr_dq(15 downto 0), Dqs => ddr_dqs(1 downto 0), Addr => ddr_ad,
-      Ba => ddr_ba, Clk => ddr_clk,  Clk_n => ddr_clkb, Cke => ddr_cke,
-      Cs_n => ddr_csb, Ras_n => ddr_rasb, Cas_n => ddr_casb, We_n => ddr_web,
-      Dm => ddr_dm(1 downto 0));
-
+  -- ddr0 : mt46v16m16 
+  --   generic map (index => -1, fname => sdramfile)
+  --   port map(
+  --     Dq => ddr_dq(15 downto 0), Dqs => ddr_dqs(1 downto 0), Addr => ddr_ad,
+  --     Ba => ddr_ba, Clk => ddr_clk,  Clk_n => ddr_clkb, Cke => ddr_cke,
+  --     Cs_n => ddr_csb, Ras_n => ddr_rasb, Cas_n => ddr_casb, We_n => ddr_web,
+  --     Dm => ddr_dm(1 downto 0));
+  ddr0 : ddrram
+    generic map(width => 16, abits => 13, colbits => 9, rowbits => 13,
+                implbanks => 1, fname => sdramfile, density => 1)
+    port map (ck => ddr_clk, cke => ddr_cke, csn => ddr_csb,
+              rasn => ddr_rasb, casn => ddr_casb, wen => ddr_web,
+              dm => ddr_dm, ba => ddr_ba, a => ddr_ad, dq => ddr_dq,
+              dqs => ddr_dqs);
+    
   datazz <= "HHHH";
 
   ssram_adsp_n <= '1'; ssram_adv_n <= '1';

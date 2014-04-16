@@ -33,33 +33,33 @@ package config is
   constant CFG_LEON3 : integer := 1;
   constant CFG_NCPU : integer := (1);
   constant CFG_NWIN : integer := (8);
-  constant CFG_V8 : integer := 1 + 4*0;
+  constant CFG_V8 : integer := 2 + 4*0;
   constant CFG_MAC : integer := 0;
   constant CFG_BP : integer := 1;
-  constant CFG_SVT : integer := 0;
+  constant CFG_SVT : integer := 1;
   constant CFG_RSTADDR : integer := 16#00000#;
   constant CFG_LDDEL : integer := (1);
   constant CFG_NOTAG : integer := 0;
   constant CFG_NWP : integer := (2);
-  constant CFG_PWD : integer := 0*2;
+  constant CFG_PWD : integer := 1*2;
   constant CFG_FPU : integer := 0 + 16*0 + 32*0;
   constant CFG_GRFPUSH : integer := 0;
   constant CFG_ICEN : integer := 1;
-  constant CFG_ISETS : integer := 4;
+  constant CFG_ISETS : integer := 2;
   constant CFG_ISETSZ : integer := 4;
-  constant CFG_ILINE : integer := 8;
-  constant CFG_IREPL : integer := 3;
-  constant CFG_ILOCK : integer := 1;
+  constant CFG_ILINE : integer := 4;
+  constant CFG_IREPL : integer := 2;
+  constant CFG_ILOCK : integer := 0;
   constant CFG_ILRAMEN : integer := 0;
   constant CFG_ILRAMADDR: integer := 16#8E#;
   constant CFG_ILRAMSZ : integer := 1;
   constant CFG_DCEN : integer := 1;
-  constant CFG_DSETS : integer := 4;
+  constant CFG_DSETS : integer := 2;
   constant CFG_DSETSZ : integer := 4;
-  constant CFG_DLINE : integer := 8;
-  constant CFG_DREPL : integer := 3;
-  constant CFG_DLOCK : integer := 1;
-  constant CFG_DSNOOP : integer := 1 + 1 + 4*1;
+  constant CFG_DLINE : integer := 4;
+  constant CFG_DREPL : integer := 2;
+  constant CFG_DLOCK : integer := 0;
+  constant CFG_DSNOOP : integer := 1*2 + 4*1;
   constant CFG_DFIXED : integer := 16#0#;
   constant CFG_DLRAMEN : integer := 0;
   constant CFG_DLRAMADDR: integer := 16#8F#;
@@ -102,12 +102,12 @@ package config is
   constant CFG_GRUSB_DCL_UIFACE : integer := 1;
   constant CFG_GRUSB_DCL_DW : integer := 8;
 -- Ethernet DSU
-  constant CFG_DSU_ETH : integer := 0 + 0 + 0;
-  constant CFG_ETH_BUF : integer := 1;
+  constant CFG_DSU_ETH : integer := 1 + 0 + 0;
+  constant CFG_ETH_BUF : integer := 16;
   constant CFG_ETH_IPM : integer := 16#C0A8#;
   constant CFG_ETH_IPL : integer := 16#0033#;
   constant CFG_ETH_ENM : integer := 16#020000#;
-  constant CFG_ETH_ENL : integer := 16#000009#;
+  constant CFG_ETH_ENL : integer := 16#000000#;
 -- LEON2 memory controller
   constant CFG_MCTRL_LEON2 : integer := 1;
   constant CFG_MCTRL_RAM8BIT : integer := 1;
@@ -144,7 +144,7 @@ package config is
   constant CFG_AHBRADDR : integer := 16#A00#;
   constant CFG_AHBRPIPE : integer := 0;
 -- Gaisler Ethernet core
-  constant CFG_GRETH : integer := 0;
+  constant CFG_GRETH : integer := 1;
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 8;
 

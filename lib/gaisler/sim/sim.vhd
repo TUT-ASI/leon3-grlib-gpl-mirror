@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -84,6 +84,104 @@ package sim is
 
   function buskeep(signal v : in std_logic_vector) return std_logic_vector;
   function buskeep(signal c : in std_logic) return std_logic;
+
+  component ddrram is
+    generic (
+      width: integer := 32;
+      abits: integer range 12 to 14 := 12;
+      colbits: integer range 8 to 13 := 8;
+      rowbits: integer range 1 to 14 := 12;
+      implbanks: integer range 1 to 4 := 1;
+      fname: string;
+      lddelay: time := (0 ns);
+      speedbin: integer range 0 to 5 := 0;     -- 0:DDR200,1:266,2:333,3:400C,4:400B,5:400A
+      density: integer range 0 to 3 := 0;  -- 0:128Mbit 1:256Mbit 2:512Mbit 3:1Gbit / chip
+      igndqs: integer range 0 to 1 := 0
+      );
+    port (
+      ck: in std_ulogic;
+      cke: in std_ulogic;
+      csn: in std_ulogic;
+      rasn: in std_ulogic;
+      casn: in std_ulogic;
+      wen: in std_ulogic;
+      dm: in std_logic_vector(width/8-1 downto 0);
+      ba: in std_logic_vector(1 downto 0);
+      a: in std_logic_vector(abits-1 downto 0);
+      dq: inout std_logic_vector(width-1 downto 0);
+      dqs: inout std_logic_vector(width/8-1 downto 0)
+      );
+  end component;
+
+  component ddr2ram is
+    generic (
+      width: integer := 32;
+      abits: integer range 13 to 16 := 13;
+      babits: integer range 2 to 3 := 3;
+      colbits: integer range 9 to 11 := 9;
+      rowbits: integer range 1 to 16 := 13;
+      implbanks: integer range 1 to 8 := 1;
+      fname: string;
+      lddelay: time := (0 ns);
+      -- Speed bins: 0:DDR2-400C,1:400B,2:533C,3:533B,4:667D,5:667C,6:800E,7:800D,8:800C
+      --   9:800+tRAS=40ns
+      speedbin: integer range 0 to 9 := 0;
+      density: integer range 1 to 5 := 3;  -- 1:256M 2:512M 3:1G 4:2G 5:4G bits/chip
+      pagesize: integer range 1 to 2 := 1  -- 1K/2K page size (controls tRRD)
+      );
+    port (
+      ck: in std_ulogic;
+      ckn: in std_ulogic;
+      cke: in std_ulogic;
+      csn: in std_ulogic;
+      odt: in std_ulogic;
+      rasn: in std_ulogic;
+      casn: in std_ulogic;
+      wen: in std_ulogic;
+      dm: in std_logic_vector(width/8-1 downto 0);
+      ba: in std_logic_vector(babits-1 downto 0);
+      a: in std_logic_vector(abits-1 downto 0);
+      dq: inout std_logic_vector(width-1 downto 0);
+      dqs: inout std_logic_vector(width/8-1 downto 0);
+      dqsn: inout std_logic_vector(width/8-1 downto 0)
+      );
+  end component;
+
+  component ddr3ram is
+    generic (
+      width: integer := 32;
+      abits: integer range 13 to 16 := 13;
+      colbits: integer range 9 to 12 := 10;
+      rowbits: integer range 1 to 16 := 13;
+      implbanks: integer range 1 to 8 := 1;
+      fname: string;
+      lddelay: time := (0 ns);
+      ldguard: integer range 0 to 1 := 0;
+      -- Speed bins: 0-1:800E-D, 2-4:1066G-E 5-8:1333J-F 9-12:1600K-G
+      speedbin: integer range 0 to 12 := 0;
+      density: integer range 2 to 6 := 3;  -- 2:512M 3:1G 4:2G 5:4G 6:8G bits/chip
+      pagesize: integer range 1 to 2 := 1;  -- 1K/2K page size (controls tRRD)
+      changeendian: integer range 0 to 32 := 0
+      );
+    port (
+      ck: in std_ulogic;
+      ckn: in std_ulogic;
+      cke: in std_ulogic;
+      csn: in std_ulogic;
+      odt: in std_ulogic;
+      rasn: in std_ulogic;
+      casn: in std_ulogic;
+      wen: in std_ulogic;
+      dm: in std_logic_vector(width/8-1 downto 0);
+      ba: in std_logic_vector(2 downto 0);
+      a: in std_logic_vector(abits-1 downto 0);
+      resetn: in std_ulogic;
+      dq: inout std_logic_vector(width-1 downto 0);
+      dqs: inout std_logic_vector(width/8-1 downto 0);
+      dqsn: inout std_logic_vector(width/8-1 downto 0);
+      doload: in std_ulogic := '1'
+      );
+  end component;
 
   component phy is
     generic(

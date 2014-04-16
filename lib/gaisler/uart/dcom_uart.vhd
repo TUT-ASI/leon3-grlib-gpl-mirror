@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -238,7 +238,8 @@ begin
       if r.txtick = '1' then
         v.tshift := '1' & r.tshift(10 downto 1); v.txstate := idle;
       end if;
-
+    when others => 
+      v.txstate := idle;
     end case;
 
 -- writing of tx data register must be done after tx fsm to get correct
@@ -292,7 +293,8 @@ begin
         end if;
         v.rxstate := idle;
       end if;
-
+    when others => 
+      v.rxstate := idle;
     end case;
 
 -- reset operation

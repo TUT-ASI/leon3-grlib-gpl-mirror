@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -17,10 +17,10 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------
--- Entity: 	grethc
--- File:	grethc.vhd
--- Author:	Marko Isomaki 
--- Description:	Ethernet Media Access Controller with Ethernet Debug
+-- Entity:  grethc
+-- File:  grethc.vhd
+-- Author:  Marko Isomaki 
+-- Description: Ethernet Media Access Controller with Ethernet Debug
 --              Communication Link
 ------------------------------------------------------------------------------
 library ieee;
@@ -48,15 +48,17 @@ entity grethc is
     ipaddrl        : integer := 16#0035#;
     phyrstadr      : integer range 0 to 32 := 0;
     rmii           : integer range 0 to 1  := 0;
-    oepol	   : integer range 0 to 1  := 0; 
-    scanen	   : integer range 0 to 1  := 0;
+    oepol          : integer range 0 to 1  := 0; 
+    scanen         : integer range 0 to 1  := 0;
     mdint_pol      : integer range 0 to 1  := 0;
     enable_mdint   : integer range 0 to 1  := 0;
     multicast      : integer range 0 to 1  := 0;
     edclsepahbg    : integer range 0 to 1  := 0;
     ramdebug       : integer range 0 to 2  := 0;
     mdiohold       : integer := 1;
-    maxsize        : integer := 1500);
+    maxsize        : integer := 1500;
+    gmiimode       : integer range 0 to 1 := 0
+    );
   port(
     rst            : in  std_ulogic;
     clk            : in  std_ulogic;
@@ -91,13 +93,13 @@ entity grethc is
     ehprot         : out  std_logic_vector(3 downto 0);
     ehwdata        : out  std_logic_vector(31 downto 0);
     --apb slv in 
-    psel	   : in   std_ulogic;
-    penable	   : in   std_ulogic;
-    paddr	   : in   std_logic_vector(31 downto 0);
-    pwrite	   : in   std_ulogic;
-    pwdata	   : in   std_logic_vector(31 downto 0);
+    psel     : in   std_ulogic;
+    penable    : in   std_ulogic;
+    paddr    : in   std_logic_vector(31 downto 0);
+    pwrite     : in   std_ulogic;
+    pwdata     : in   std_logic_vector(31 downto 0);
     --apb slv out
-    prdata	   : out  std_logic_vector(31 downto 0);
+    prdata     : out  std_logic_vector(31 downto 0);
     --irq
     irq            : out  std_logic;
     --rx ahb fifo
@@ -127,10 +129,12 @@ entity grethc is
     rmii_clk       : in   std_ulogic;
     tx_clk         : in   std_ulogic;
     rx_clk         : in   std_ulogic;
-    rxd            : in   std_logic_vector(3 downto 0);   
+    tx_dv          : in   std_ulogic;
+    rxd            : in   std_logic_vector(3 downto 0);
     rx_dv          : in   std_ulogic; 
     rx_er          : in   std_ulogic; 
     rx_col         : in   std_ulogic;
+    rx_en          : in   std_ulogic;
     rx_crs         : in   std_ulogic;
     mdio_i         : in   std_ulogic;
     phyrstaddr     : in   std_logic_vector(4 downto 0);
@@ -241,7 +245,7 @@ architecture rtl of grethc is
                            ta, ta2, ta3, data, dataend);
 
   type ctrl_reg_type is record
-    txen	: std_ulogic;
+    txen  : std_ulogic;
     rxen        : std_ulogic;
     tx_irqen    : std_ulogic;
     rx_irqen    : std_ulogic; 
@@ -2079,7 +2083,7 @@ begin
 -- SIGNAL ASSIGNMENTS ---------------------------------------------------------
 -------------------------------------------------------------------------------
     rin           <= v;
-    prdata        <= vprdata;                          	
+    prdata        <= vprdata;                           
     irq           <= vpirq;
 
     --rx ahb fifo
@@ -2123,6 +2127,7 @@ begin
   rxi.rx_dv       <= rx_dv;
   rxi.rx_crs      <= rx_crs;
   rxi.rx_er       <= rx_er;
+  rxi.rx_en       <= rx_en;
   
   txi.rx_col      <= rx_col;
   txi.rx_crs      <= rx_crs;
@@ -2133,6 +2138,7 @@ begin
   txi.data        <= r.txdata;
   txi.valid       <= r.txvalid;
   txi.len         <= r.txlength;
+  txi.datavalid   <= tx_dv;
   
   mdc             <= r.mdioclk;
   mdio_o          <= r.mdioo;
@@ -2176,7 +2182,7 @@ begin
   ehwdata         <= ahbmo2.hwdata;
   speed           <= r.ctrl.speed;
 
-  reset 	  <= irst;
+  reset     <= irst;
 
   regs : process(clk) is
   begin
@@ -2192,7 +2198,9 @@ begin
         attempt_limit  => attempt_limit,
         backoff_limit  => backoff_limit,
         nsync          => nsync,
-        rmii           => rmii)
+        rmii           => rmii,
+        gmiimode       => gmiimode
+        )
       port map(
         rst            => arst,
         clk            => tx_clk,
@@ -2207,7 +2215,9 @@ begin
         attempt_limit  => attempt_limit,
         backoff_limit  => backoff_limit,
         nsync          => nsync,
-        rmii           => rmii)
+        rmii           => rmii,
+        gmiimode       => gmiimode
+        )
       port map(
         rst            => arst,
         clk            => rmii_clk,
@@ -2224,7 +2234,9 @@ begin
         nsync     => nsync,
         rmii      => rmii,
         multicast => multicast,
-	      maxsize   => maxsize)
+        maxsize   => maxsize,
+        gmiimode  => gmiimode
+        )
       port map(
         rst   => arst,
         clk   => rx_clk,
@@ -2238,7 +2250,8 @@ begin
         nsync     => nsync,
         rmii      => rmii,
         multicast => multicast,
-	      maxsize   => maxsize)
+        maxsize   => maxsize,
+        gmiimode  => gmiimode)
       port map(
         rst   => arst,
         clk   => rmii_clk,

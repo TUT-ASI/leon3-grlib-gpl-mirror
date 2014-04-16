@@ -1,1 +1,1 @@
-ethernet_mac.vhd greth.vhd greth_mb.vhd greth_gbit.vhd greth_gbit_mb.vhd grethm.vhd rgmii.vhd
+ethernet_mac.vhd greth.vhd greth_mb.vhd greth_gbit.vhd greth_gbit_mb.vhd grethm.vhd rgmii.vhd comma_detect.vhd sgmii.vhd elastic_buffer.vhd
