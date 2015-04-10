@@ -59,12 +59,11 @@ comment 'Peripherals             '
 
   mainmenu_option next_comment
   comment 'PCI              '
-    source lib/gaisler/pci/grpci1/pci_target.in
-    source lib/gaisler/pci/grpci1/pci_mtf.in
-    source lib/gaisler/pci/grpci1/pcidma.in
-    source lib/gaisler/pci/grpci1/pci.in
+    mainmenu_option next_comment
+    comment 'GRPCI2         '
+      source lib/gaisler/pci/grpci2/grpci2.in
+    endmenu
     source lib/esa/pci/pci_arb.in
-    source lib/gaisler/pci/pcitrace/pcitrace.in
   endmenu
 
   mainmenu_option next_comment

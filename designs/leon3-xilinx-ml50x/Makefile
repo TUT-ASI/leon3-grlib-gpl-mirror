@@ -5,18 +5,23 @@ BOARD=xilinx-ml50x
 include $(GRLIB)/boards/$(BOARD)/Makefile.inc
 DEVICE=$(PART)-$(PACKAGE)$(SPEED)
 UCF=leon3mp.ucf
+
 ifeq ("$(CONFIG_MIG_DDR2)","y")
 ifeq ("$(CONFIG_BOARD_ML505)","y")
 UCF+=ml505_mig.ucf
+DESIGN=leon3-xilinx-ml505
 endif
 ifeq ("$(CONFIG_BOARD_ML506)","y")
 UCF+=ml506_mig.ucf
+DESIGN=leon3-xilinx-ml506
 endif
 ifeq ("$(CONFIG_BOARD_ML507)","y")
 UCF+=ml507_mig.ucf
+DESIGN=leon3-xilinx-ml507
 endif
 ifeq ("$(CONFIG_BOARD_ML509)","y")
 UCF+=ml509_mig.ucf
+DESIGN=leon3-xilinx-ml509
 endif
 endif
 
@@ -29,6 +34,8 @@ endif
 ifeq ("$(CONFIG_SVGA_ENABLE)","y")
 UCF+=svga.ucf
 endif
+
+UCF_PLANAHEAD=$(UCF)
 
 XSTOPT=-uc leon3mp.xcf
 QSF=$(GRLIB)/boards/$(BOARD)/$(TOP).qsf
@@ -124,7 +131,7 @@ ifeq ("$(CONFIG_BOARD_ML505)","y")
   endif
 endif
 
-VHDLSYNFILES=config.vhd ahb2mig_ml50x.vhd ahbrom.vhd svga2ch7301c.vhd leon3mp.vhd
+VHDLSYNFILES=config.vhd ahb2mig_ml50x.vhd ahbrom.vhd svga2ch7301c.vhd leon3mp.vhd 
 VHDLSIMFILES=testbench.vhd
 SIMTOP=testbench
 SDCFILE=default.sdc
@@ -139,13 +146,15 @@ TECHLIBS = secureip unisim
 
 VSIMOPT= -gdisas=1 -gDEBUG=0 +nowarnTSCALE -L work -L secureip_ver -L xilinxcorelib_ver -L unisims_ver glbl +nowarnTFMPC +nowarnPCDPC -t 1ps testbench
 
+VLOGOPT= +define+MODEL_TECH=1
+
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp usbhc spw fmf gsi spansion
 DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan can leon3ft ambatest \
 	grusbhc usb spacewire hcan leon4 leon4v0 l2cache \
 	slink ascs pwm gr1553b iommu
 
-FILESKIP = grcan.vhd
+FILESKIP = grcan.vhd ahb2mig_series7_ddr2.vhd
 
 include $(GRLIB)/bin/Makefile
 

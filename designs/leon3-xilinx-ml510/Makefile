@@ -20,6 +20,8 @@ CLEAN=soft-clean
 
 include $(GRLIB)/software/leon3/Makefile
 
+VLOGOPT= +define+MODEL_TECH=1
+
 TECHLIBS = unisim
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp usbhc spw micron
@@ -27,7 +29,7 @@ DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan can leon3ft \
 	grusbhc usb spacewire hcan leon4 leon4v0 l2cache \
 	slink ascs pwm gr1553b iommu ambatest atf
 
-FILESKIP = grcan.vhd
+FILESKIP = grcan.vhd ahb2mig_series7_ddr2.vhd
 
 include $(GRLIB)/bin/Makefile
 

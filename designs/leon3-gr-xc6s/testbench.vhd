@@ -5,6 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -253,19 +254,19 @@ begin
       erx_dv <= erx_dv_d;
   end process;
 
- wdognp : process
-  begin
+ --wdognp : process
+ -- begin
 
-   wdogn_local <= 'H';
+ --  wdogn_local <= 'H';
 
-   if wdogn = '0' then
-      wdogn_local <= '0';
-      wait for 1 ms;
-   end if;
+ --  if wdogn = '0' then
+ --     wdogn_local <= '0';
+ --     wait for 1 ms;
+ --  end if;
 
-   wait for 20 ns;
+ --  wait for 20 ns;
 
-  end process;
+ -- end process;
 
 
   data <= buskeep(data) after 5 ns;

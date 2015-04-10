@@ -29,7 +29,7 @@ VCOMOPT=-explicit -O0
 
 # GRETH options
 ifeq ($(CONFIG_GRETH_ENABLE),y)
-VSIMOPT+= -L gig_ethernet_pcs_pma_v14_0 -L secureip_ver -L xilinxcorelib_ver -L unisims_ver 
+VSIMOPT+= -L gig_ethernet_pcs_pma_v14_3 -L secureip_ver -L xilinxcorelib_ver -L unisims_ver 
 endif
 
 # - MIG -
@@ -71,10 +71,11 @@ TECHLIBS = secureip unisim
 LIBSKIP = pci pci/pcif core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp spw gsi cypress hynix \
 	spansion leon4 leon4v0 secureip
+LIBADD = testgrouppolito
 DIRSKIP = b1553 pci pci/pcif leon2 leon2ft crypto satcan pci ambatest \
 	spacewire ascs slink \
 	leon4 leon4v0 l2cache pwm gr1553b iommu ac97 secureip
-FILESKIP = grcan.vhd ddr2.v mobile_ddr.v sgmii.vhd
+FILESKIP = grcan.vhd ddr2.v mobile_ddr.v adapters/sgmii.vhd
 
 include $(GRLIB)/bin/Makefile
 include $(GRLIB)/software/leon3/Makefile

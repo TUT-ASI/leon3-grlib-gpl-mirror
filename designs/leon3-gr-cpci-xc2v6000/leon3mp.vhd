@@ -5,6 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -145,7 +146,7 @@ constant blength : integer := 12;
 constant fifodepth : integer := 8;
 
 constant maxahbmsp : integer := CFG_NCPU+CFG_AHB_UART+
-                                CFG_GRETH+CFG_AHB_JTAG+log2x(CFG_PCI);
+                                CFG_GRETH+CFG_AHB_JTAG;
 constant maxahbm : integer   := (CFG_SPW_NUM*CFG_SPW_EN) + maxahbmsp;
 
 signal vcc, gnd   : std_logic_vector(4 downto 0);
@@ -205,7 +206,7 @@ signal fpo : grfpu_out_vector_type;
 
 constant BOARD_FREQ : integer := 40000;	-- Board frequency in KHz
 constant CPU_FREQ : integer := BOARD_FREQ * CFG_CLKMUL / CFG_CLKDIV;  -- cpu frequency in KHz
-constant IOAEN : integer := CFG_SDCTRL+CFG_CAN+CFG_PCI;
+constant IOAEN : integer := CFG_SDCTRL+CFG_CAN;
 
 begin
 
@@ -222,7 +223,7 @@ begin
 	    port map (pci_clk, pci_lclk); 
   clkgen0 : clkgen  		-- clock generator
     generic map (clktech, CFG_CLKMUL, CFG_CLKDIV, CFG_SDEN, 
-	CFG_CLK_NOFB, CFG_PCI, CFG_PCIDLL, CFG_PCISYSCLK, BOARD_FREQ, CFG_SPW_EN)
+	CFG_CLK_NOFB, 0, 0, 0, BOARD_FREQ, CFG_SPW_EN)
     port map (lclk, pci_lclk, clkm, open, spw_lclk, sdclkl, pciclk, cgi, cgo);
   sdclk_pad : outpad generic map (tech => padtech, slew => 1, strength => 24) 
 	port map (sdclk, sdclkl);
@@ -252,8 +253,9 @@ begin
   	0, CFG_MAC, pclow, CFG_NOTAG, CFG_NWP, CFG_ICEN, CFG_IREPL, CFG_ISETS, CFG_ILINE, 
   	CFG_ISETSZ, CFG_ILOCK, CFG_DCEN, CFG_DREPL, CFG_DSETS, CFG_DLINE, CFG_DSETSZ,
   	CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
-          CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP, 
-          CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1)
+        CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP, 
+        CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1,
+        CFG_DFIXED, CFG_SCAN, CFG_MMU_PAGE, CFG_BP, CFG_NP_ASI, CFG_WRPSR)
       port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso, 
       		irqi(i), irqo(i), dbgi(i), dbgo(i));
     end generate;
@@ -266,8 +268,9 @@ begin
   	0, CFG_MAC, pclow, CFG_NOTAG, CFG_NWP, CFG_ICEN, CFG_IREPL, CFG_ISETS, CFG_ILINE, 
   	CFG_ISETSZ, CFG_ILOCK, CFG_DCEN, CFG_DREPL, CFG_DSETS, CFG_DLINE, CFG_DSETSZ,
   	CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
-          CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP, 
-          CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1)
+        CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP, 
+        CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1,
+        CFG_DFIXED, CFG_SCAN, CFG_MMU_PAGE, CFG_BP, CFG_NP_ASI, CFG_WRPSR)
       port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso, 
       		irqi(i), irqo(i), dbgi(i), dbgo(i), fpi(i), fpo(i));
     end generate;
@@ -486,64 +489,29 @@ begin
 ---  PCI   ------------------------------------------------------------
 -----------------------------------------------------------------------
 
-  pp : if CFG_PCI /= 0 generate
+--  pp : if CFG_PCI /= 0 generate
+--
+--    pcia0 : if CFG_PCI_ARB = 1 generate	-- PCI arbiter
+--      pciarb0 : pciarb generic map (pindex => 10, paddr => 10, 
+--				    apb_en => CFG_PCI_ARBAPB)
+--       port map ( clk => pciclk, rst_n => pcii.rst,
+--         req_n => pci_arb_req_n, frame_n => pcii.frame,
+--         gnt_n => pci_arb_gnt_n, pclk => clkm, 
+--         prst_n => rstn, apbi => apbi, apbo => apbo(10)
+--       );
+--      pgnt_pad : outpadv generic map (tech => padtech, width => 4) 
+--	port map (pci_arb_gnt, pci_arb_gnt_n);
+--      preq_pad : inpadv generic map (tech => padtech, width => 4) 
+--	port map (pci_arb_req, pci_arb_req_n);
+--    end generate;
+--
+--    pcipads0 : pcipads generic map (padtech => padtech)	-- PCI pads
+--    port map ( pci_rst, pci_gnt, pci_idsel, pci_lock, pci_ad, pci_cbe,
+--      pci_frame, pci_irdy, pci_trdy, pci_devsel, pci_stop, pci_perr,
+--      pci_par, pci_req, pci_serr, pci_host, pci_66, pcii, pcio );
+--
+--  end generate;
 
-    pci_gr0 : if CFG_PCI = 1 generate	-- simple target-only
-      pci0 : pci_target generic map (hindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG,
-	device_id => CFG_PCIDID, vendor_id => CFG_PCIVID)
-      port map (rstn, clkm, pciclk, pcii, pcio, ahbmi, ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG));
-    end generate;
-
-    pci_mtf0 : if CFG_PCI = 2 generate	-- master/target with fifo
-      pci0 : pci_mtf generic map (memtech => memtech, hmstndx => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG, 
-	  fifodepth => log2(CFG_PCIDEPTH), device_id => CFG_PCIDID, vendor_id => CFG_PCIVID,
-	  hslvndx => 4, pindex => 4, paddr => 4, haddr => 16#E00#,
-	  ioaddr => 16#400#, nsync => 2, hostrst => 1)
-      port map (rstn, clkm, pciclk, pcii, pcio, apbi, apbo(4),
-	ahbmi, ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG), ahbsi, ahbso(4));
-    end generate;
-
-    pci_mtf1 : if CFG_PCI = 3 generate	-- master/target with fifo and DMA
-      dma : pcidma generic map (memtech => memtech, dmstndx => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+1, 
-	  dapbndx => 5, dapbaddr => 5, blength => blength, mstndx => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG,
-	  fifodepth => log2(fifodepth), device_id => CFG_PCIDID, vendor_id => CFG_PCIVID,
-	  slvndx => 4, apbndx => 4, apbaddr => 4, haddr => 16#E00#, ioaddr => 16#800#, 
-	  nsync => 2, hostrst => 1)
-      	port map (rstn, clkm, pciclk, pcii, pcio, apbo(5),  ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+1), 
- 	  apbi, apbo(4), ahbmi, ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG), ahbsi, ahbso(4));
-    end generate;
-
-    pci_trc0 : if CFG_PCITBUFEN /= 0 generate	-- PCI trace buffer
-      pt0 : pcitrace generic map (depth => (6 + log2(CFG_PCITBUF/256)), 
-	memtech => memtech, pindex  => 8, paddr => 16#100#, pmask => 16#f00#)
-        port map ( rstn, clkm, pciclk, pcii, apbi, apbo(8));
-    end generate;
-
-    pcia0 : if CFG_PCI_ARB = 1 generate	-- PCI arbiter
-      pciarb0 : pciarb generic map (pindex => 10, paddr => 10, 
-				    apb_en => CFG_PCI_ARBAPB)
-       port map ( clk => pciclk, rst_n => pcii.rst,
-         req_n => pci_arb_req_n, frame_n => pcii.frame,
-         gnt_n => pci_arb_gnt_n, pclk => clkm, 
-         prst_n => rstn, apbi => apbi, apbo => apbo(10)
-       );
-      pgnt_pad : outpadv generic map (tech => padtech, width => 4) 
-	port map (pci_arb_gnt, pci_arb_gnt_n);
-      preq_pad : inpadv generic map (tech => padtech, width => 4) 
-	port map (pci_arb_req, pci_arb_req_n);
-    end generate;
-
-    pcipads0 : pcipads generic map (padtech => padtech)	-- PCI pads
-    port map ( pci_rst, pci_gnt, pci_idsel, pci_lock, pci_ad, pci_cbe,
-      pci_frame, pci_irdy, pci_trdy, pci_devsel, pci_stop, pci_perr,
-      pci_par, pci_req, pci_serr, pci_host, pci_66, pcii, pcio );
-
-  end generate;
-
---  nop1 : if CFG_PCI <= 1 generate apbo(4) <= apb_none; end generate;
---  nop2 : if CFG_PCI <= 2 generate apbo(5) <= apb_none; end generate;
---  nop3 : if CFG_PCI <= 1 generate ahbso(4) <= ahbs_none; end generate;
---  notrc : if CFG_PCITBUFEN = 0 generate apbo(8) <= apb_none; end generate;
 --  noarb : if CFG_PCI_ARB = 0 generate apbo(10) <= apb_none; end generate;
 
 
@@ -552,14 +520,14 @@ begin
 -----------------------------------------------------------------------
 
   eth0 : if CFG_GRETH = 1 generate -- Gaisler ethernet MAC
-      e1 : greth generic map(hindex => CFG_NCPU+CFG_AHB_UART+log2x(CFG_PCI)+CFG_AHB_JTAG,
+      e1 : greth generic map(hindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG,
 	pindex => 15, paddr => 15, pirq => 6, memtech => memtech,
         mdcscaler => CPU_FREQ/1000, enable_mdio => 1, fifosize => CFG_ETH_FIFO,
         nsync => 1, edcl => CFG_DSU_ETH, edclbufsz => CFG_ETH_BUF,
         macaddrh => CFG_ETH_ENM, macaddrl => CFG_ETH_ENL, 
 	ipaddrh => CFG_ETH_IPM, ipaddrl => CFG_ETH_IPL)
      port map( rst => rstn, clk => clkm, ahbmi => ahbmi,
-       ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+log2x(CFG_PCI)+CFG_AHB_JTAG), apbi => apbi,
+       ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG), apbi => apbi,
        apbo => apbo(15), ethi => ethi, etho => etho); 
 
       emdio_pad : iopad generic map (tech => padtech) 
@@ -625,9 +593,10 @@ begin
      spw2_input : if CFG_SPW_GRSPW = 2 generate
        spw_phy0 : grspw2_phy
          generic map(
-           scantest   => 0,
-           tech       => fabtech,
-           input_type => CFG_SPW_INPUT)
+           scantest     => 0,
+           tech         => fabtech,
+           input_type   => CFG_SPW_INPUT,
+           rxclkbuftype => 1)
          port map(
            rstn       => rstn,
            rxclki     => spw_rxtxclk,

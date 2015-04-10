@@ -45,3 +45,6 @@ ahbswba.vhd
 ahbswbav.vhd
 ahbmwba.vhd
 irqgen.vhd
+ahbpl.vhd
+ahbpls.vhd
+ahbplm.vhd

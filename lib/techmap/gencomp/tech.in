@@ -14,6 +14,7 @@
 	Actel-Proasic3E   	CONFIG_SYN_PROASIC3E \
 	Actel-Proasic3L   	CONFIG_SYN_PROASIC3L \
 	Actel-IGLOO/p/L	   	CONFIG_SYN_IGLOO \
+	Actel-IGLOO2	   	CONFIG_SYN_IGLOO2 \
 	Actel-Fusion   	   	CONFIG_SYN_FUSION\
 	Aeroflex-UT025CRH	CONFIG_SYN_UT025CRH \
 	Aeroflex-UT130HBD	CONFIG_SYN_UT130HBD \
@@ -22,8 +23,6 @@
 	Atmel-ATC18RHA		CONFIG_SYN_ATC18RHA \
 	IBM-CMOS9SF    		CONFIG_SYN_CMOS9SF \
 	Custom1        		CONFIG_SYN_CUSTOM1 \
-	eASIC90        		CONFIG_SYN_EASIC90 \
-	eASIC45        		CONFIG_SYN_EASIC45 \
         IHP25                   CONFIG_SYN_IHP25 \
         IHP25RH                 CONFIG_SYN_IHP25RH \
         Lattice-EC/ECP/XP   	CONFIG_SYN_LATTICE \
@@ -33,6 +32,7 @@
 	RH-UMC     		CONFIG_SYN_RHUMC \
 	SAED32     		CONFIG_SYN_SAED32 \
 	DARE      		CONFIG_SYN_DARE \
+	RHS65     		CONFIG_SYN_RHS65 \
 	SMIC130   		CONFIG_SYN_SMIC13 \
         TM65Gplus               CONFIG_SYN_TM65GPLUS \
         TSMC90                  CONFIG_SYN_TSMC90 \
@@ -42,7 +42,6 @@
 	Xilinx-Spartan3		CONFIG_SYN_SPARTAN3 \
 	Xilinx-Spartan3E	CONFIG_SYN_SPARTAN3E \
 	Xilinx-Spartan6		CONFIG_SYN_SPARTAN6 \
-	Xilinx-VirtexE		CONFIG_SYN_VIRTEXE \
 	Xilinx-Virtex2		CONFIG_SYN_VIRTEX2 \
 	Xilinx-Virtex4		CONFIG_SYN_VIRTEX4 \
 	Xilinx-Virtex5		CONFIG_SYN_VIRTEX5 \
@@ -50,20 +49,29 @@
 	Xilinx-Virtex7		CONFIG_SYN_VIRTEX7 \
 	Xilinx-Zynq7000		CONFIG_SYN_ZYNQ7000" Inferred
   if [ "$CONFIG_SYN_INFERRED" = "y" -o "$CONFIG_SYN_CUSTOM1" = "y" \
-       -o "$CONFIG_SYN_ATC18" = "y" -o "$CONFIG_SYN_TSMC90" = "y" -o "$CONFIG_SYN_EASIC45" = "y" \
+       -o "$CONFIG_SYN_ATC18" = "y" -o "$CONFIG_SYN_TSMC90" = "y" \
        -o "$CONFIG_SYN_UMC" = "y" \
-	-o "$CONFIG_SYN_RHUMC" = "y" -o "$CONFIG_SYN_DARE" = "y" -o "$CONFIG_SYN_SAED32" = "y" -o "$CONFIG_SYN_ARTISAN" = "y"]; then
+	-o "$CONFIG_SYN_RHUMC" = "y" -o "$CONFIG_SYN_DARE" = "y" -o "$CONFIG_SYN_SAED32" = "y" -o "$CONFIG_SYN_RHS65" = "y" -o "$CONFIG_SYN_ARTISAN" = "y"]; then
     choice 'Memory Library                           ' \
 	"Inferred		CONFIG_MEM_INFERRED \
 	UMC18			CONFIG_MEM_UMC \
 	RH-UMC			CONFIG_MEM_RHUMC \
 	SAED32			CONFIG_MEM_SAED32 \
 	DARE			CONFIG_MEM_DARE \
+	RHS65			CONFIG_MEM_RHS65 \
 	Artisan			CONFIG_MEM_ARTISAN \
 	Custom1			CONFIG_MEM_CUSTOM1 \
-	EASIC45			CONFIG_MEM_EASIC45 \
 	Virage			CONFIG_MEM_VIRAGE \
         Virage-TSMC90           CONFIG_MEM_VIRAGE90" Inferred
+  fi
+  if [ "$CONFIG_SYN_VIRTEX5" = "y" -o  "$CONFIG_SYN_VIRTEX6" = "y" -o  "$CONFIG_SYN_VIRTEX7" = "y"]; then
+	choice 'Transceiver type                           ' \
+	"GTP0		CONFIG_TRANS_GTP0 \
+	GTP1		CONFIG_TRANS_GTP1 \
+	GTX0		CONFIG_TRANS_GTX0 \
+	GTX1		CONFIG_TRANS_GTX1 \
+	GTH0		CONFIG_TRANS_GTH0 \
+	GTH1		CONFIG_TRANS_GTH1" GTP0
   fi
   if [ "$CONFIG_SYN_INFERRED" != "y" ]; then
     bool 'Infer RAM' CONFIG_SYN_INFER_RAM

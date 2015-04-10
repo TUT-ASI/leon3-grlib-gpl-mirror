@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -58,14 +59,16 @@ entity iu3 is
     lddel    : integer range 1 to 2 := 2;
     irfwt    : integer range 0 to 1 := 0;
     disas    : integer range 0 to 2 := 0;
-    tbuf     : integer range 0 to 64 := 0;  -- trace buf size in kB (0 - no trace buffer)
+    tbuf     : integer range 0 to 128 := 0;  -- trace buf size in kB (0 - no trace buffer)
     pwd      : integer range 0 to 2 := 0;   -- power-down
     svt      : integer range 0 to 1 := 0;   -- single-vector trapping
     rstaddr  : integer := 16#00000#;   -- reset vector MSB address
     smp      : integer range 0 to 15 := 0;  -- support SMP systems
     fabtech  : integer range 0 to NTECH := 0;    
     clk2x    : integer := 0;
-    bp       : integer range 0 to 2 := 1
+    bp       : integer range 0 to 2 := 1;
+    npasi    : integer range 0 to 1 := 0;
+    pwrpsr   : integer range 0 to 1  := 0
   );
   port (
     clk   : in  std_ulogic;
@@ -91,6 +94,8 @@ entity iu3 is
     cpi   : out fpc_in_type;
     tbo   : in  tracebuf_out_type;
     tbi   : out tracebuf_in_type;
+    tbo_2p : in  tracebuf_2p_out_type;
+    tbi_2p : out tracebuf_2p_in_type;
     sclk   : in  std_ulogic
     );
 
@@ -100,6 +105,15 @@ end;
 
 architecture rtl of iu3 is
 
+  function get_tbuf(tracebuf_2p: boolean; tbuf: integer) return integer is 
+  begin 
+    if (TRACEBUF_2P) then 
+        return(tbuf-64); 
+    else 
+        return(tbuf); 
+    end if; 
+  end function get_tbuf;
+  
   constant ISETMSB : integer := log2x(isets)-1;
   constant DSETMSB : integer := log2x(dsets)-1;
   constant RFBITS : integer range 6 to 10 := log2(NWIN+1) + 4;
@@ -118,8 +132,9 @@ architecture rtl of iu3 is
   constant IMPL   : integer := 15;
   constant VER    : integer := 3;
   constant DBGUNIT : boolean := (dsu = 1);
-  constant TRACEBUF   : boolean := (tbuf /= 0);
-  constant TBUFBITS : integer := 10 + log2(tbuf) - 4;
+  constant TRACEBUF    : boolean := (tbuf /= 0);
+  constant TRACEBUF_2P : boolean := (tbuf > 64);
+  constant TBUFBITS : integer := 10 + log2(get_tbuf(TRACEBUF_2P, tbuf)) - 4;
   constant PWRD1  : boolean := false; --(pwd = 1) and not (index /= 0);
   constant PWRD2  : boolean := (pwd /= 0); --(pwd = 2) or (index /= 0);
   constant RS1OPT : boolean := (is_fpga(FABTECH) /= 0);
@@ -127,6 +142,7 @@ architecture rtl of iu3 is
 
   constant CASAEN : boolean := (notag = 0) and (lddel = 1);
   signal BPRED : std_logic;
+  signal BLOCKBPMISS: std_logic;
 
   subtype word is std_logic_vector(31 downto 0);
   subtype pctype is std_logic_vector(31 downto PCLOW);
@@ -175,6 +191,7 @@ architecture rtl of iu3 is
     inull : std_ulogic;
     step  : std_ulogic;
     divrdy: std_ulogic;
+    pcheld: std_ulogic;
   end record;
   
   type regacc_reg_type is record
@@ -199,6 +216,7 @@ architecture rtl of iu3 is
     mulstart : std_ulogic;            
     divstart : std_ulogic;
     bp, nobp : std_ulogic;
+    bpimiss : std_ulogic;
   end record;
   
   type execute_reg_type is record
@@ -276,6 +294,11 @@ architecture rtl of iu3 is
     tbufcnt : std_logic_vector(TBUFBITS-1 downto 0);
     asi     : std_logic_vector(7 downto 0);
     crdy    : std_logic_vector(2 downto 1);  -- diag cache access ready
+    tfilt   : std_logic_vector(3 downto 0);  -- trace filter
+    cfc     : std_logic_vector(6 downto 0);  -- control-flow change
+    tlim    : std_logic_vector(2 downto 0);
+    tov     : std_ulogic;
+    tovb    : std_ulogic;
   end record;
   
   type irestart_register is record
@@ -306,6 +329,7 @@ architecture rtl of iu3 is
     svt    : std_ulogic;                                  -- enable traps
     dwt    : std_ulogic;                           -- disable write error trap
     dbp    : std_ulogic;                           -- disable branch prediction
+    dbprepl: std_ulogic;                -- Disable speculative Icache miss/replacement
   end record;
   
   type write_reg_type is record
@@ -346,7 +370,11 @@ architecture rtl of iu3 is
 
   type watchpoint_registers is array (0 to 3) of watchpoint_register;
 
-  function dbgexc(r  : registers; dbgi : l3_debug_in_type; trap : std_ulogic; tt : std_logic_vector(7 downto 0)) return std_ulogic is
+  function dbgexc(
+    r     : registers; dbgi : l3_debug_in_type;
+    trap  : std_ulogic;
+    tt    : std_logic_vector(7 downto 0);
+    dsur  : dsu_registers) return std_ulogic is
     variable dmode : std_ulogic;
   begin
     dmode := '0';
@@ -388,6 +416,7 @@ architecture rtl of iu3 is
                    asi : out std_logic_vector(7 downto 0);
                    pc, npc  : out pctype;
                    tbufcnt : out std_logic_vector(TBUFBITS-1 downto 0);
+                   tfilt : out std_logic_vector(3 downto 0);
                    wr : out std_ulogic;
                    addr : out std_logic_vector(9 downto 0);
                    data : out word;
@@ -397,12 +426,13 @@ architecture rtl of iu3 is
     s := r.w.s; pc := r.f.pc; npc := ir.addr; wr := '0';
     vwpr := wpr; asi := dsur.asi; addr := (others => '0');
     data := dbg.ddata;
-    tbufcnt := dsur.tbufcnt; fpcwr := '0';
+    tbufcnt := dsur.tbufcnt; fpcwr := '0'; tfilt := dsur.tfilt; 
       if (dbg.dsuen and dbg.denable and dbg.dwrite) = '1' then
         case dbg.daddr(23 downto 20) is
           when "0001" =>
-            if (dbg.daddr(16) = '1') and TRACEBUF then -- trace buffer control reg
+            if (dbg.daddr(16) = '1' and dbg.daddr(2) = '0' ) and TRACEBUF then -- trace buffer control reg
               tbufcnt := dbg.ddata(TBUFBITS-1 downto 0);
+              tfilt   := dbg.ddata(31 downto 28);
             end if;
           when "0011" => -- IU reg file
             if dbg.daddr(12) = '0' then
@@ -447,6 +477,7 @@ architecture rtl of iu3 is
                 case dbg.daddr(5 downto 2) is
                 when "0001" =>  -- %ASR17
                   if bp = 2 then s.dbp := dbg.ddata(27); end if;
+                  if bp = 2 then s.dbprepl := dbg.ddata(25); end if;
                   s.dwt := dbg.ddata(14);
                   s.svt := dbg.ddata(13);
                 when "0010" =>  -- %ASR18
@@ -506,6 +537,7 @@ architecture rtl of iu3 is
     asr17(31 downto 28) := conv_std_logic_vector(index, 4);
     if bp = 2 then asr17(27) := r.w.s.dbp; end if;
     if notag = 0 then asr17(26) := '1'; end if; -- CASA and tagged arith
+    if bp = 2 then asr17(25) := r.w.s.dbprepl; end if;
     if (clk2x > 8) then
       asr17(16 downto 15) := conv_std_logic_vector(clk2x-8, 2);
       asr17(17) := '1'; 
@@ -532,8 +564,9 @@ architecture rtl of iu3 is
                      dsur   : in dsu_registers;
                      ir     : in irestart_register;
                      wpr    : in watchpoint_registers;
-                     dco   : in  dcache_out_type;                          
+                     dco    : in  dcache_out_type;                          
                      tbufo  : in tracebuf_out_type;
+                     tbufo_2p : in tracebuf_2p_out_type;
                      data : out word) is
     variable cwp : std_logic_vector(4 downto 0);
     variable rd : std_logic_vector(4 downto 0);
@@ -545,14 +578,30 @@ architecture rtl of iu3 is
         when "001" => -- trace buffer
           if TRACEBUF then
             if dbgi.daddr(16) = '1' then -- trace buffer control reg
-              data(TBUFBITS-1 downto 0) := dsur.tbufcnt;
+              if dbgi.daddr(2) = '0' then
+                data(TBUFBITS-1 downto 0) := dsur.tbufcnt;
+                data(31 downto 28) := dsur.tfilt;
+              else
+                data(23) := dsur.tov;
+                data(26 downto 24) := dsur.tlim;
+                data(27) := dsur.tovb;
+              end if;
             else
-              case dbgi.daddr(3 downto 2) is
-              when "00" => data := tbufo.data(127 downto 96);
-              when "01" => data := tbufo.data(95 downto 64);
-              when "10" => data := tbufo.data(63 downto 32);
-              when others => data := tbufo.data(31 downto 0);
-              end case;
+              if TRACEBUF_2P then
+                case dbgi.daddr(3 downto 2) is
+                when "00" => data := tbufo_2p.data(127 downto 96);
+                when "01" => data := tbufo_2p.data(95 downto 64);
+                when "10" => data := tbufo_2p.data(63 downto 32);
+                when others => data := tbufo_2p.data(31 downto 0);
+                end case;
+              else
+                case dbgi.daddr(3 downto 2) is
+                when "00" => data := tbufo.data(127 downto 96);
+                when "01" => data := tbufo.data(95 downto 64);
+                when "10" => data := tbufo.data(63 downto 32);
+                when others => data := tbufo.data(31 downto 0);
+                end case;
+              end if;
             end if;
           end if;
         when "011" => -- IU reg file
@@ -616,57 +665,127 @@ architecture rtl of iu3 is
       end case;
   end;
   
+  function itfilt (inst : word; filter : std_logic_vector(3 downto 0); trap, cfc : std_logic) return std_ulogic is
+  variable tren : std_ulogic;
+  begin
+    tren := '0';
+    case filter is
+    when "0001" => 	-- Bicc, SETHI
+      if inst(31 downto 30) = "00" then tren := '1'; end if;
+    when "0010" => 	-- Control-flow change
+      if (inst(31 downto 30) = "01") -- Call
+      or ((inst(31 downto 30) = "00") and (inst(23 downto 22) /= "00")) --Bicc
+      or ((inst(31 downto 30) = "10") and (inst(24 downto 19) = JMPL)) --Jmpl
+      or ((inst(31 downto 30) = "10") and (inst(24 downto 19) = RETT)) --Rett
+      or (trap = '1') or (cfc = '1')
+      then tren := '1'; end if;
+    when "0100" => 	-- Call
+      if inst(31 downto 30) = "01" then tren := '1'; end if;
+    when "1000" => 	-- Normal instructions
+      if inst(31 downto 30) = "10" then tren := '1'; end if;
+    when "1100" => 	-- LDST
+      if inst(31 downto 30) = "11" then tren := '1'; end if;
+    when "1101" =>      -- LDST from alternate space
+      if inst(31 downto 30) = "11" and inst(24 downto 23) = "01" then tren := '1'; end if;
+    when "1110" =>      -- LDST from alternate space 0x80 - 0xFF
+      if inst(31 downto 30) = "11" and inst(24 downto 23) = "01" and inst(12) = '1' then tren := '1'; end if;
+    when others => tren := '1';
+    end case;
+    return(tren);
+  end;
 
-  procedure itrace(r    : in registers;
-                   dsur : in dsu_registers;
-                   vdsu : in dsu_registers;
-                   res  : in word;
-                   exc  : in std_ulogic;
-                   dbgi : in l3_debug_in_type;
-                   error : in std_ulogic;
-                   trap  : in std_ulogic;                          
-                   tbufcnt : out std_logic_vector(TBUFBITS-1 downto 0); 
-                   di  : out tracebuf_in_type;
-                   ierr : in std_ulogic;
-                   derr : in std_ulogic
+  procedure itrace(r        : in registers;
+                   dsur     : in dsu_registers;
+                   vdsu     : in dsu_registers;
+                   res      : in word;
+                   exc      : in std_ulogic;
+                   dbgi     : in l3_debug_in_type;
+                   error    : in std_ulogic;
+                   trap     : in std_ulogic;                          
+                   tbufcnt  : out std_logic_vector(TBUFBITS-1 downto 0); 
+                   ov       : out std_ulogic;
+                   di       : out tracebuf_in_type;
+                   di_2p    : out tracebuf_2p_in_type;
+                   ierr     : in std_ulogic;
+                   derr     : in std_ulogic
                    ) is
   variable meminst : std_ulogic;
+  variable tfen    : std_ulogic;
+  variable vdi_2p  : tracebuf_2p_in_type;
+  variable vdi     : tracebuf_in_type;
+  variable indata  : std_logic_vector(255 downto 0);
+  variable write   : std_logic_vector(7 downto 0);
+  variable tov     : std_ulogic;
   begin
-    di.addr := (others => '0'); di.data := (others => '0');
-    di.enable := '0'; di.write := (others => '0');
+    vdi_2p := tracebuf_2p_in_type_none;
+    vdi    := tracebuf_in_type_none;
+    indata := (others => '0');
+    write  := (others => '0');
     tbufcnt := vdsu.tbufcnt;
     meminst := r.x.ctrl.inst(31) and r.x.ctrl.inst(30);
+    tov    := vdsu.tov;
     if TRACEBUF then
-      di.addr(TBUFBITS-1 downto 0) := dsur.tbufcnt;
-      di.data(127) := '0';
-      di.data(126) := not r.x.ctrl.pv;
-      di.data(125 downto 96) := dbgi.timer(29 downto 0);
-      di.data(95 downto 64) := res;
-      di.data(63 downto 34) := r.x.ctrl.pc(31 downto 2);
-      di.data(33) := trap;
-      di.data(32) := error;
-      di.data(31 downto 0) := r.x.ctrl.inst;
+      if dbgi.tenable = '1' then
+        if dsur.tbufcnt(TBUFBITS-1 downto TBUFBITS-3) = dsur.tlim(2 downto 0) then
+          tov := '1';
+        end if;
+      end if;
+      indata(127) := tov;
+      indata(126) := not r.x.ctrl.pv;
+      indata(125 downto 96) := dbgi.timer(29 downto 0);
+      indata(95 downto 64) := res;
+      indata(63 downto 34) := r.x.ctrl.pc(31 downto 2);
+      indata(33) := trap;
+      indata(32) := error;
+      indata(31 downto 0) := r.x.ctrl.inst;
+      vdi.addr(TBUFBITS-1 downto 0) := dsur.tbufcnt;
+      vdi.data := indata;
       if (dbgi.tenable = '0') or (r.x.rstate = dsu2) then
         if ((dbgi.dsuen and dbgi.denable) = '1') and (dbgi.daddr(23 downto 20) & dbgi.daddr(16) = "00010") then
-          di.enable := '1'; 
-          di.addr(TBUFBITS-1 downto 0) := dbgi.daddr(TBUFBITS-1+4 downto 4);
+          vdi.enable := '1'; 
+          vdi.addr(TBUFBITS-1 downto 0) := dbgi.daddr(TBUFBITS-1+4 downto 4);
+          vdi_2p.renable := '1';
+          vdi_2p.raddr(TBUFBITS-1 downto 0) := dbgi.daddr(TBUFBITS-1+4 downto 4);
           if dbgi.dwrite = '1' then            
             case dbgi.daddr(3 downto 2) is
-              when "00" => di.write(3) := '1';
-              when "01" => di.write(2) := '1';
-              when "10" => di.write(1) := '1';
-              when others => di.write(0) := '1';
+              when "00" => write(3) := '1';
+              when "01" => write(2) := '1';
+              when "10" => write(1) := '1';
+              when others => write(0) := '1';
             end case;
-            di.data := dbgi.ddata & dbgi.ddata & dbgi.ddata & dbgi.ddata;
+            indata(127 downto 0) := dbgi.ddata & dbgi.ddata & dbgi.ddata & dbgi.ddata;
+            vdi.write   := write;
+            vdi.data    := indata;
+            vdi_2p.renable  := '0';
+            vdi_2p.write    := write;
+            vdi_2p.waddr(TBUFBITS-1 downto 0) := dbgi.daddr(TBUFBITS-1+4 downto 4);
+            vdi_2p.data     := indata;
           end if;
         end if;
-      elsif (not r.x.ctrl.annul and (r.x.ctrl.pv or meminst) and not r.x.debug) = '1' then
-        di.enable := '1'; di.write := (others => '1');
+      elsif (not r.x.ctrl.annul and (r.x.ctrl.pv or meminst) and not r.x.debug and
+              itfilt(r.x.ctrl.inst, dsur.tfilt, trap, dsur.cfc(4))) = '1' then
+        vdi.enable      := holdn;
+        vdi.write       := (others => '1');
+        vdi_2p.write    := (others => '1');
+        vdi_2p.waddr(TBUFBITS-1 downto 0) := dsur.tbufcnt;
+        vdi_2p.data     := indata;
         tbufcnt := dsur.tbufcnt + 1;
-      end if;      
-      di.diag := dco.testen &  dco.scanen & "00";
-      if dco.scanen = '1' then di.enable := '0'; end if;
+      end if;
+      if TRACEBUF_2P and ((dbgi.dsuen and dbgi.denable) = '1') and (dbgi.daddr(23 downto 20) & dbgi.daddr(16) = "00010") then
+        vdi_2p.renable := '1';
+        vdi_2p.raddr(TBUFBITS-1 downto 0) := dbgi.daddr(TBUFBITS-1+4 downto 4);
+      end if;
+      vdi.diag(3 downto 0) := dco.testen &  dco.scanen & "00";
+      vdi_2p.diag(3 downto 0) := dco.testen &  dco.scanen & "00";
+      if dco.scanen = '1' then
+        vdi.enable      := '0';
+        vdi_2p.renable  := '0';
+        vdi_2p.write    := (others => '0');
+      end if;
     end if;
+    ov    := tov;
+    di    := vdi;
+    di_2p := vdi_2p;
   end;
 
   procedure dbg_cache(holdn    : in std_ulogic;
@@ -771,7 +890,8 @@ architecture rtl of iu3 is
     annul  => '1',
     inull  => '0',
     step   => '0',
-    divrdy => '0'
+    divrdy => '0',
+    pcheld => '0'
     );
   constant regacc_reg_res : regacc_reg_type := (
     ctrl     => pipeline_ctrl_res,
@@ -798,7 +918,8 @@ architecture rtl of iu3 is
     mulstart => '0',
     divstart => '0',
     bp       => '0',
-    nobp     => '0'
+    nobp     => '0',
+    bpimiss  => '0'
     );
   constant execute_reg_res : execute_reg_type := (
     ctrl    =>  pipeline_ctrl_res,
@@ -876,7 +997,12 @@ architecture rtl of iu3 is
     err     => '0',
     tbufcnt => (others => '0'),
     asi     => (others => '0'),
-    crdy    => (others => '0')
+    crdy    => (others => '0'),
+    tfilt => (others => '0'),
+    cfc => (others => '0'),
+    tlim => (others => '0'),
+    tov => '0',
+    tovb => '0'
     );
   constant IRES : irestart_register := (
     addr => (others => '0'), pwd => '0'
@@ -923,6 +1049,7 @@ architecture rtl of iu3 is
     s.svt   := '0';
     s.dwt   := '0';
     s.dbp   := '0';
+    s.dbprepl := '1';
     return s;
   end function special_register_res;
   --constant write_reg_res : write_reg_type := (
@@ -1079,7 +1206,8 @@ architecture rtl of iu3 is
 
 -- detect watchpoint trap
 
-  function wphit(r : registers; wpr : watchpoint_registers; debug : l3_debug_in_type)
+  function wphit(r : registers; wpr : watchpoint_registers; debug : l3_debug_in_type;
+                 dsur : dsu_registers)
     return std_ulogic is
   variable exc : std_ulogic;
   begin
@@ -1094,7 +1222,8 @@ architecture rtl of iu3 is
 
    if DBGUNIT then
      if (debug.dsuen and not r.a.ctrl.annul) = '1' then
-       exc := exc or (r.a.ctrl.pv and ((debug.dbreak and debug.bwatch) or r.a.step));
+       exc := exc or (r.a.ctrl.pv and ((((debug.dbreak and debug.bwatch) or r.a.step)) or
+                                       (debug.bwatch and dsur.tovb and dsur.tov)));
      end if;
    end if;
     return(exc);
@@ -1226,10 +1355,16 @@ begin
       when LD | LDUB | LDSTUB | LDUH | LDSB | LDSH | ST | STB | STH | SWAP =>
         null;
       when LDDA | STDA =>
-        illegal_inst := inst(13) or rd(0); privileged_inst := not r.a.su;
+        illegal_inst := inst(13) or rd(0);
+        if (npasi = 0) or (inst(12) = '0') then
+          privileged_inst := not r.a.su;
+        end if;
       when LDA | LDUBA| LDSTUBA | LDUHA | LDSBA | LDSHA | STA | STBA | STHA |
            SWAPA => 
-        illegal_inst := inst(13); privileged_inst := not r.a.su;
+        illegal_inst := inst(13);
+        if (npasi = 0) or (inst(12) = '0') then
+          privileged_inst := not r.a.su;
+        end if;
       when CASA =>
         if CASAEN then
           illegal_inst := inst(13); 
@@ -1250,7 +1385,7 @@ begin
       end case;
     end case;
 
-    wph := wphit(r, wpr, dbgi);
+    wph := wphit(r, wpr, dbgi, dsur);
     
     trap := '1';
     if r.a.ctrl.trap = '1' then tt := r.a.ctrl.tt;
@@ -1402,7 +1537,7 @@ end;
   procedure lock_gen(r : registers; rs2, rd : std_logic_vector(4 downto 0);
         rfa1, rfa2, rfrd : rfatype; inst : word; fpc_lock, mulinsn, divinsn, de_wcwp : std_ulogic;
         lldcheck1, lldcheck2, lldlock, lldchkra, lldchkex, bp, nobp, de_fins_hold : out std_ulogic;
-        iperr : std_logic) is
+        iperr : std_logic; icbpmiss: std_ulogic) is
   variable op : std_logic_vector(1 downto 0);
   variable op2 : std_logic_vector(2 downto 0);
   variable op3 : std_logic_vector(5 downto 0);
@@ -1421,7 +1556,7 @@ end;
     y_check := '0'; y_hold := '0'; bp := '0'; mul_hold := '0';
     icc_check_bp := '0'; nobp := '0'; fins := '0'; call_hold := '0';
 
-    if (r.d.annul = '0') 
+    if (r.d.annul = '0') and (icbpmiss='0')
     then
       case op is
       when CALL =>
@@ -1532,7 +1667,8 @@ end;
         cnt : out std_logic_vector(1 downto 0); 
         de_pc : out pctype; de_branch, ctrl_annul, de_annul, jmpl_inst, inull, 
         de_pv, ctrl_pv, de_hold_pc, ticc_exception, rett_inst, mulstart,
-        divstart : out std_ulogic; rabpmiss, exbpmiss, iperr : std_logic) is
+        divstart : out std_ulogic; rabpmiss, exbpmiss, iperr : std_logic;
+        icbpmiss, eocl: std_ulogic) is
   variable op : std_logic_vector(1 downto 0);
   variable op2 : std_logic_vector(2 downto 0);
   variable op3 : std_logic_vector(5 downto 0);
@@ -1546,7 +1682,7 @@ end;
     op2 := inst(24 downto 22); cond := inst(28 downto 25); 
     annul := inst(29); de_jmpl := '0'; cnt := "00";
     mulstart := '0'; divstart := '0'; inhibit_current := '0';
-    if (r.d.annul = '0') 
+    if (r.d.annul = '0') and not (icbpmiss = '1' and r.d.pcheld='0')
     then
       case inst(31 downto 30) is
       when CALL =>
@@ -1606,6 +1742,9 @@ end;
           rett_inst := '1'; --su := sregs.ps; 
         when JMPL =>
           de_jmpl := '1';
+          if (BLOCKBPMISS and (eocl or r.f.branch) and r.e.bp)='1' then
+            hold_pc := '1'; annul_current := '1';
+          end if;
         when WRY =>
           if PWRD1 then 
             if inst(29 downto 25) = "10011" then -- %ASR19
@@ -1648,6 +1787,9 @@ end;
     end if;
     hold_pc := (hold_pc or ldlock) and not annul_all;
 
+    if icbpmiss='1' and r.d.annul='0' then
+      annul_current := '1'; annul_next := '1'; pv := '0'; hold_pc := '0';
+    end if;
     if ((exbpmiss and r.a.ctrl.annul and r.d.pv and not hold_pc) = '1') then
         annul_next := '1'; pv := '0';
     end if;
@@ -1663,7 +1805,10 @@ end;
     end if;
     if (exbpmiss and r.e.ctrl.inst(29) and r.a.ctrl.annul and r.d.pv) = '1' then
       annul_next := '1'; pv := '0'; inhibit_current := '1';
-    end if; 
+    end if;
+    if (exbpmiss and r.e.ctrl.inst(29) and BLOCKBPMISS and r.a.bpimiss) = '1' then
+      annul_next := '1'; pv := '0';
+    end if;
     if (rabpmiss and not r.a.ctrl.inst(29) and not r.d.annul and r.d.pv and not hold_pc) = '1' then
         annul_next := '1'; pv := '0';
     end if;
@@ -2221,6 +2366,7 @@ end;
     if su = '1' then dci.asi := "00001011"; else dci.asi := "00001010"; end if;
     if (op3(4) = '1') and ((op3(5) = '0') or not CPEN) then
       dci.asi := r.e.ctrl.inst(12 downto 5);
+      if r.e.ctrl.inst(12 downto 10) /= "000" then dci.enaddr := '0'; end if;
     end if;
 
   end;
@@ -2463,6 +2609,7 @@ end;
             s.asr18 := r.x.result;
           elsif (rd = "10001") then
             if bp = 2 then s.dbp := r.x.result(27); end if;
+            if bp = 2 then s.dbprepl := r.x.result(25); end if;
             s.dwt := r.x.result(14);
             if (svt = 1) then s.svt := r.x.result(13); end if;
           elsif rd(4 downto 3) = "11" then -- %ASR24 - %ASR31
@@ -2498,13 +2645,15 @@ end;
             end case;
           end if;
         when WRPSR =>
-          s.cwp := r.x.result(NWINLOG2-1 downto 0);
-          s.icc := r.x.result(23 downto 20);
-          s.ec  := r.x.result(13);
-          if FPEN then s.ef  := r.x.result(12); end if;
-          s.pil := r.x.result(11 downto 8);
-          s.s   := r.x.result(7);
-          s.ps  := r.x.result(6);
+          if pwrpsr = 0 or rd = "00000" then
+            s.cwp := r.x.result(NWINLOG2-1 downto 0);
+            s.icc := r.x.result(23 downto 20);
+            s.ec  := r.x.result(13);
+            if FPEN then s.ef  := r.x.result(12); end if;
+            s.pil := r.x.result(11 downto 8);
+            s.s   := r.x.result(7);
+            s.ps  := r.x.result(6);
+          end if;
           s.et  := r.x.result(5);
         when WRWIM =>
           s.wim := r.x.result(NWIN-1 downto 0);
@@ -2625,8 +2774,10 @@ end;
 begin
 
   BPRED <= '0' when bp = 0 else '1' when bp = 1 else not r.w.s.dbp;
-  comb : process(ico, dco, rfo, r, wpr, ir, dsur, rstn, holdn, irqi, dbgi, fpo, cpo, tbo,
-                 mulo, divo, dummy, rp, BPRED)
+  BLOCKBPMISS <= '0' when bp = 0 else '1' when bp = 1 else r.w.s.dbprepl;
+
+  comb : process(ico, dco, rfo, r, wpr, ir, dsur, rstn, holdn, irqi, dbgi, fpo, cpo, tbo, tbo_2p,
+                 mulo, divo, dummy, rp, BPRED, BLOCKBPMISS)
 
   variable v    : registers;
   variable vp  : pwd_register_type;
@@ -2693,6 +2844,7 @@ begin
   
   variable diagdata : word;
   variable tbufi : tracebuf_in_type;
+  variable tbufi_2p : tracebuf_2p_in_type;
   variable dbgm : std_ulogic;
   variable fpcdbgwr : std_ulogic;
   variable vfpi : fpc_in_type;
@@ -2704,6 +2856,7 @@ begin
   variable st : std_ulogic;
   variable icnt, fcnt : std_ulogic;
   variable tbufcntx : std_logic_vector(TBUFBITS-1 downto 0);
+  variable tovx : std_ulogic;
   variable bpmiss : std_ulogic;
   
   begin
@@ -2749,7 +2902,7 @@ begin
     
     if DBGUNIT
     then 
-      dbgm := dbgexc(r, dbgi, xc_trap, xc_vectt);
+      dbgm := dbgexc(r, dbgi, xc_trap, xc_vectt, dsur);
       if (dbgi.dsuen and dbgi.dbreak) = '0'then v.x.debug := '0'; end if;
     else dbgm := '0'; v.x.debug := '0'; end if;
     if PWRD2 then pwrd := powerdwn(r, xc_trap, rp); else pwrd := '0'; end if;
@@ -2824,7 +2977,7 @@ begin
           end if;
           if (dbgi.dsuen and dbgi.dbreak) = '1'then v.x.debug := '1'; end if;
           diagwr(r, dsur, ir, dbgi, wpr, v.w.s, vwpr, vdsu.asi, xc_trap_address,
-               vir.addr, vdsu.tbufcnt, xc_wreg, xc_waddr, xc_result, fpcdbgwr);
+               vir.addr, vdsu.tbufcnt, vdsu.tfilt, xc_wreg, xc_waddr, xc_result, fpcdbgwr);
           xc_halt := dbgi.halt;
         end if;
         if r.x.ipend = '1' then vp.pwd := '0'; end if;
@@ -2840,12 +2993,23 @@ begin
     when others =>
     end case;
 
+    if DBGUNIT and TRACEBUF then
+      if (dbgi.dsuen and dbgi.denable and dbgi.dwrite) = '1' then
+        if (dbgi.daddr(23 downto 20) = "0001" and dbgi.daddr(16) = '1' and
+            dbgi.daddr(2) = '1') then
+          vdsu.tov     := dbgi.ddata(23);
+          vdsu.tlim    := dbgi.ddata(26 downto 24);
+          vdsu.tovb    := dbgi.ddata(27);
+        end if;
+      end if;
+    end if;
+
     dci.flushl <= xc_dflushl;
 
     
     irq_intack(r, holdn, v.x.intack);          
-    itrace(r, dsur, vdsu, xc_result, xc_exception, dbgi, rp.error, xc_trap, tbufcntx, tbufi, '0', xc_dcperr);    
-    vdsu.tbufcnt := tbufcntx;
+    itrace(r, dsur, vdsu, xc_result, xc_exception, dbgi, rp.error, xc_trap, tbufcntx, tovx, tbufi, tbufi_2p, '0', xc_dcperr);    
+    vdsu.tbufcnt := tbufcntx; vdsu.tov := tovx;
     
     v.w.except := xc_exception; v.w.result := xc_result;
     if (r.x.rstate = dsu2) then v.w.except := '0'; end if;
@@ -2876,6 +3040,7 @@ begin
         v.w.s.icc := RRES.w.s.icc;
       end if;
       v.w.s.dbp := RRES.w.s.dbp;
+      v.w.s.dbprepl := RRES.w.s.dbprepl;
       v.x.ipmask := RRES.x.ipmask;
       v.w.s.tba := RRES.w.s.tba;
       v.x.annul_all := RRES.x.annul_all;
@@ -2887,6 +3052,7 @@ begin
         if (dbgi.dsuen and dbgi.dbreak) = '1' then
           v.x.rstate := dsu1; v.x.debug := '1';
         end if;
+        vdsu.tfilt := DRES.tfilt; vdsu.tovb := DRES.tovb;
       end if;
       if (index /= 0) and (irqi.run = '0') and (rstn = '0') then 
         v.x.rstate := dsu1; vp.pwd := '1'; 
@@ -3110,12 +3276,13 @@ begin
       de_iperr := '0';
     lock_gen(r, de_rs2, de_rd, v.a.rfa1, v.a.rfa2, v.a.ctrl.rd, de_inst, 
         fpo.ldlock, v.e.mul, ra_div, de_wcwp, v.a.ldcheck1, v.a.ldcheck2, de_ldlock, 
-        v.a.ldchkra, v.a.ldchkex, v.a.bp, v.a.nobp, de_fins_hold, de_iperr);
+        v.a.ldchkra, v.a.ldchkex, v.a.bp, v.a.nobp, de_fins_hold, de_iperr, ico.bpmiss);
     ic_ctrl(r, de_inst, v.x.annul_all, de_ldlock, branch_true(de_icc, de_inst), 
         de_fbranch, de_cbranch, fpo.ccv, cpo.ccv, v.d.cnt, v.d.pc, de_branch,
         v.a.ctrl.annul, v.d.annul, v.a.jmpl, de_inull, v.d.pv, v.a.ctrl.pv,
         de_hold_pc, v.a.ticc, v.a.ctrl.rett, v.a.mulstart, v.a.divstart, 
-        ra_bpmiss, ex_bpmiss, de_iperr);
+        ra_bpmiss, ex_bpmiss, de_iperr, ico.bpmiss, ico.eocl);
+    v.d.pcheld := de_hold_pc;
 
     v.a.bp := v.a.bp and not v.a.ctrl.annul;
     v.a.nobp := v.a.nobp and not v.a.ctrl.annul;
@@ -3176,6 +3343,7 @@ begin
     ici.flush <= me_iflush;
     v.d.divrdy := divo.nready;
     ici.fline <= r.x.ctrl.pc(31 downto 3);
+    ici.nobpmiss <= (r.a.bp or r.e.bp) and BLOCKBPMISS;
     dbgo.bpmiss <= bpmiss and holdn;
     if (xc_rstn = '0') then
       v.d.cnt := (others => '0');
@@ -3195,6 +3363,7 @@ begin
     fe_npc := zero32(31 downto PCLOW);
     fe_npc(31 downto 2) := fe_pc(31 downto 2) + 1;    -- Address incrementer
 
+    v.a.bpimiss := '0';
     if (xc_rstn = '0') then
       if (not RESET_ALL) then 
         v.f.pc := (others => '0'); v.f.branch := '0';
@@ -3218,6 +3387,10 @@ begin
     elsif (ex_jump and not bpmiss) = '1' then
       v.f.pc := ex_jump_address; v.f.branch := '1';
       npc := v.f.pc;
+    elsif (((ico.bpmiss and not r.d.annul) or r.a.bpimiss) and not bpmiss) = '1' then
+      v.f.pc := r.d.pc; v.f.branch := '1';
+      npc := v.f.pc;
+      v.a.bpimiss := ico.bpmiss and not r.d.annul;
     elsif (de_branch and not bpmiss
         ) = '1'
     then
@@ -3248,8 +3421,9 @@ begin
 -----------------------------------------------------------------------
 
     if DBGUNIT then -- DSU diagnostic read    
-      diagread(dbgi, r, dsur, ir, wpr, dco, tbo, diagdata);
+      diagread(dbgi, r, dsur, ir, wpr, dco, tbo, tbo_2p, diagdata);
       diagrdy(dbgi.denable, dsur, r.m.dci, dco.mds, ico, vdsu.crdy);
+      vdsu.cfc := dsur.cfc(5 downto 0) & r.f.branch;
     end if;
     
 -----------------------------------------------------------------------
@@ -3282,28 +3456,31 @@ begin
     if DBGUNIT then
       dbgo.dsu <= '1'; dbgo.dsumode <= r.x.debug; dbgo.crdy <= dsur.crdy(2);
       dbgo.data <= diagdata;
-      if TRACEBUF then tbi <= tbufi; else
-        tbi.addr <= (others => '0'); tbi.data <= (others => '0');
-        tbi.enable <= '0'; tbi.write <= (others => '0'); tbi.diag <= "0000";
+      if TRACEBUF then
+        tbi <= tbufi;
+        if TRACEBUF_2P then tbi_2p <= tbufi_2p; else tbi_2p <= tracebuf_2p_in_type_none; end if;
+      else
+        tbi <= tracebuf_in_type_none;
+        tbi_2p <= tracebuf_2p_in_type_none;
       end if;
     else
       dbgo.dsu <= '0'; dbgo.data <= (others => '0'); dbgo.crdy  <= '0';
       dbgo.dsumode <= '0'; tbi.addr <= (others => '0'); 
       tbi.data <= (others => '0'); tbi.enable <= '0';
-      tbi.write <= (others => '0'); tbi.diag <= "0000";
+      tbi.write <= (others => '0'); tbi.diag <= (others => '0');
     end if;
     dbgo.error <= dummy and not r.x.nerror;
-    dbgo.wbhold <= '0'; --dco.wbhold;
+    dbgo.istat <= ico.cstat;
+    dbgo.dstat <= dco.cstat;
+    dbgo.wbhold <= dco.wbhold;
     dbgo.su <= r.w.s.s;
-    dbgo.istat <= ('0', '0', '0', '0');
-    dbgo.dstat <= ('0', '0', '0', '0');
 
 
     if FPEN then
       if (r.x.rstate = dsu2) then vfpi.flush := '1'; else vfpi.flush := v.x.annul_all and holdn; end if;
       vfpi.exack := xc_fpexack; vfpi.a_rs1 := r.a.rs1; vfpi.d.inst := de_inst;
       vfpi.d.cnt := r.d.cnt;
-      vfpi.d.annul := v.x.annul_all or de_bpannul or r.d.annul or de_fins_hold
+      vfpi.d.annul := v.x.annul_all or de_bpannul or r.d.annul or de_fins_hold or (ico.bpmiss and not r.d.pcheld)
         ;
       vfpi.d.trap := r.d.mexc;
       vfpi.d.pc(1 downto 0) := (others => '0'); vfpi.d.pc(31 downto PCLOW) := r.d.pc(31 downto PCLOW); 
@@ -3420,6 +3597,8 @@ begin
   nodsugen : if not DBGUNIT generate
     dsur.err <= '0'; dsur.tbufcnt <= (others => '0'); dsur.tt <= (others => '0');
     dsur.asi <= (others => '0'); dsur.crdy <= (others => '0');
+    dsur.tfilt <= (others => '0'); dsur.cfc <= (others => '0');
+    dsur.tlim <= (others => '0'); dsur.tov <= '0'; dsur.tovb <= '0';
   end generate;
 
   irreg : if DBGUNIT or PWRD2

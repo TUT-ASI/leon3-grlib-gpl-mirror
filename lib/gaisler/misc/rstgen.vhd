@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -47,6 +48,7 @@ entity rstgen is
 end;
 
 architecture rtl of rstgen is
+
 signal r : std_logic_vector(4 downto 0);
 signal rst, rstoutl, clklockl, arst : std_ulogic;
 
@@ -54,6 +56,23 @@ signal rstsyncin      : std_ulogic;
 signal inrst_syncreg  : std_ulogic;
 signal genrst         : std_ulogic;
 signal genrst_syncreg : std_logic_vector(1 downto 0);
+
+attribute equivalent_register_removal: string;   
+attribute keep:string;
+
+attribute equivalent_register_removal of r              : signal is "no";
+attribute equivalent_register_removal of rstsyncin      : signal is "no";
+attribute equivalent_register_removal of inrst_syncreg  : signal is "no";
+attribute equivalent_register_removal of genrst         : signal is "no";
+attribute equivalent_register_removal of genrst_syncreg : signal is "no";
+attribute equivalent_register_removal of rst, rstoutl, clklockl, arst : signal is "no";
+
+attribute keep of r : signal is "true";
+attribute keep of rstsyncin      : signal is "true";
+attribute keep of inrst_syncreg  : signal is "true";
+attribute keep of genrst         : signal is "true";
+attribute keep of genrst_syncreg : signal is "true";
+attribute keep of rst, rstoutl, clklockl, arst : signal is "true";
 
 begin
 

@@ -5,6 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -114,7 +115,7 @@ begin
   sram0 : for i in 0 to 1 generate
       sr0 : sram16 generic map (index => i*2, abits => 18, fname => sdramfile)
 	port map (address(19 downto 2), data(31-i*16 downto 16-i*16), 
-		mben(i*2), mben(i*2+1), ramsn(i), writen, oen);
+		mben(i*2+1), mben(i*2), ramsn(i), writen, oen);
   end generate;
 
 

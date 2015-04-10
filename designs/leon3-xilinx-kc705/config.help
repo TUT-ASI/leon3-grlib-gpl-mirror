@@ -8,7 +8,7 @@ CONFIG_SYN_INFERRED
   - Inferred: Generic FPGA or ASIC targets if your synthesis tool
     is capable of inferring RAMs and pads automatically.
 
-  - Actel ProAsic/P/3, IGLOO and Axcelerator FPGAs
+  - Actel ProAsic/P/3, IGLOO/2 and Axcelerator FPGAs
   - Aeroflex UT25CRH Rad-Hard 0.25 um CMOS
   - Altera: Most Altera FPGA families
   - Altera-CycloneIII: Altera Cyclone-III/IV FPGA family
@@ -292,10 +292,9 @@ CONFIG_IU_WATCHPOINTS
 
 Floating-point enable
 CONFIG_FPU_ENABLE
-  Say Y here to enable the floating-point interface for the MEIKO
-  or GRFPU. Note that no FPU's are provided with the GPL version
-  of GRLIB. Both the Gaisler GRFPU and the Meiko FPU are commercial
-  cores and must be obtained separately.
+  Say Y here to enable the floating-point interface for the GRFPU-lite
+  or GRFPU. Note that no FPUs are provided with the GPL version
+  of GRLIB. Both FPUs are commercial cores and must be obtained separately.
 
 FPU selection
 CONFIG_FPU_GRFPU
@@ -566,6 +565,13 @@ CONFIG_DSU_ITRACESZ1
   Each line in the buffer needs 16 bytes. A 128-entry buffer will thus
   need 2 kbyte.
 
+Enable two-port instruction trace buffer
+CONFIG_DSU_ITRACE_2P
+  If you say Y here, the instruction trace buffer will be implemented
+  in each processor with a two-port RAM. It will then be possible
+  to read the buffer through its second port, while the processor 
+  instructions are being traced.
+
 Enable AHB tracing
 CONFIG_DSU_ATRACE
   If you say Y here, an AHB trace buffer will be implemented in the
@@ -579,6 +585,19 @@ CONFIG_DSU_ATRACESZ1
   Select the buffer size (in kbytes) for the AHB trace buffer.
   Each line in the buffer needs 16 bytes. A 128-entry buffer will thus
   need 2 kbyte.
+
+AHB trace buffer filters
+CONFIG_DSU_AFILT
+  If you say Y here, the debug support unit will allow filtering of
+  AHB trace buffer inputs. Filters allow to select which masters,
+  slaves and types of accesses that should be saved to the buffer.
+
+AHB statistics outputs
+CONFIG_DSU_ASTAT
+  If you say Y here, the debug support unit will enable its statistics
+  outputs. These outputs can be connected to a L4STAT unit in order to
+  count events on the AHB bus. This option will also enable AHB trace
+  buffer filters.
 
 
 LEON3FT enable
@@ -634,6 +653,73 @@ CONFIG_DEBUG_PC32
   be implemented with full 32 bits, making debugging of the VHDL model
   much easier. Turn of this option for synthesis or you will be wasting
   area.
+
+SPARC V8E non-privileged ASI access
+CONFIG_NP_ASI
+  In SPARC-V8E implementations providing for non-privileged ASI access
+  functions, LOAD and STORE from Alternate space instructions
+  accessing ASI’s 0016 - 7F16 are privileged instructions. LOAD and
+  STORE from Alternate space instructions accessing ASI’s 8016 - FF16
+  are non-privileged instructions. This option enables this non-
+  privileged behavior.
+L2 Associativity
+CONFIG_L2_ASSO1
+  Select how many cache ways the L2 cache should have.
+
+L2 Way size
+CONFIG_L2_SZ1
+  Select the szie of each way in kbytes. The total L2 cache
+  size will be way size * number of ways.
+
+L2 cache line size
+CONFIG_L2_LINE16
+  The L2 cache can have either 16 or 32 bytes per line. It is
+  recommened to use 32 bytes for best performance.
+
+HPROT cachebility decoding
+CONFIG_L2_HPROT
+  Say yes here to enable the AHB HPROT signals to define if an
+  L2 access should be cached. Should be disabled for now until
+  all I/O units in grlib generate these signals correctly.
+
+L2 power-on enable
+CONFIG_L2_PEN
+  Say yes here to enable the L2 cache directly after reset.
+  This will allow to use the cache without first enable it
+  in software. The cache will automatically be flushed before
+  enabled.
+
+Random replacement
+CONFIG_L2_RAN
+  Say Y here to enable random replacement policy rather then
+  the default LRU.
+
+Write-through operation
+CONFIG_L2_WT
+  The L2 cache operates by default in copy-back mode. Say yes
+  here to enable write-through operation at power-on.
+
+Cachebility mapping
+CONFIG_L2_MAP
+  This 16-bit hexadecimal vaule defines which address areas
+  are to be cacheable by the L2 cache. Each bit set indicates
+  a cacheable 256 Mbyte block. The left-most bit (LSB) indicates
+  address 0 - 256M and so on.
+
+RAM sharing
+CONFIG_L2_SHARE
+  Say yes here to implement one shared data RAM for all cache ways.
+  This will reduce the number of RAM blocks for multi-way caches.
+
+MTRR registers
+CONFIG_L2_MTRR
+  Specify the number of MTRR registers. Each MTRR can define one
+  memory area to be uncached, write-through, or copy-back.
+
+EDAC protection
+CONFIG_L2_EDAC
+  Say yes here to enable EDAC protection.
+
 CONFIG_AHB_DEFMST
   Sets the default AHB master (see AMBA 2.0 specification for definition).
   Should not be set to a value larger than the number of AHB masters - 1.
@@ -1022,10 +1108,6 @@ CONFIG_SPIMCTRL
   also has a simple interface that allows sending commands directly
   to the SPI device.
 
-SD card support
-CONFIG_SPIMCTRL_SDCARD
-  Memory device connected to controller is SD card.
-
 Read command
 CONFIG_SPIMCTRL_READCMD
   Read instruction for SPI memory device (hex).
@@ -1059,30 +1141,6 @@ CONFIG_SPIMCTRL_ASCALER
 Power-up cnt
 CONFIG_SPIMCTRL_PWRUPCNT
   Number of system clock cycles to wait before issuing first command.
-Gaisler Research SPI controller
-CONFIG_SPICTRL_ENABLE
-  Say Y here to enable the SPI controller(s)
-
-CONFIG_SPICTRL_NUM
-  Number of SPI controllers to implement in design. Note that most
-  template designs are limited to one SPI controller.
-  Configuration options made here in xconfig will apply to all
-  implemented SPI controllers.
-
-CONFIG_SPICTRL_MAXWLEN
-  0: Core will support lengths up to 32 bits
-  1-2: Illegal values
-  3-15: Maximum word length will be value+1 (4-16)
-
-CONFIG_SPICTRL_SYNCRAM
-  Say Y here to use SYNCRAM_2P components for the core's receive
-  and transmit queues. This is the recommended setting, particularly
-  if the core is implemented with support for automatic mode.
-
-CONFIG_SPICTRL_FT
-  Fault-tolerance for internal buffers. Only applicable if core
-  buffers are implemented with SYNCRAM components.
-
 UART debugging
 CONFIG_DEBUG_UART
   During simulation, the output from the UARTs is printed on the

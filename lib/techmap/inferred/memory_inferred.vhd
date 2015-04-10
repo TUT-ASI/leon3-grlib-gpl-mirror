@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -18,7 +19,7 @@
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------
 -- Entity: 	various
--- File:	mem_gen_gen.vhd
+-- File:	memory_inferred.vhd
 -- Author:	Jiri Gaisler Gaisler Research
 -- Description:	Behavioural memory generators
 ------------------------------------------------------------------------------
@@ -218,7 +219,7 @@ use grlib.stdlib.all;
 
 entity generic_regfile_3p is
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 32;
-           wrfst : integer := 0; numregs : integer := 40);
+           wrfst : integer := 0; numregs : integer := 40; delout: integer := 0);
   port (
     wclk   : in  std_ulogic;
     waddr  : in  std_logic_vector((abits -1) downto 0);
@@ -230,7 +231,11 @@ entity generic_regfile_3p is
     rdata1 : out std_logic_vector((dbits -1) downto 0);
     raddr2 : in  std_logic_vector((abits -1) downto 0);
     re2    : in  std_ulogic;
-    rdata2 : out std_logic_vector((dbits -1) downto 0)
+    rdata2 : out std_logic_vector((dbits -1) downto 0);
+    pre1   : out std_ulogic;
+    pre2   : out std_ulogic;
+    prdata1 : out std_logic_vector((dbits -1) downto 0);
+    prdata2 : out std_logic_vector((dbits -1) downto 0)
   );
 end;
 
@@ -242,6 +247,8 @@ architecture rtl of generic_regfile_3p is
   signal din  : std_logic_vector((dbits -1) downto 0);
   signal wr  : std_ulogic;
 
+  signal re1d,re1dd,re2d,re2dd: std_ulogic;
+  signal rdata1i,rdata2i,rdata1d,rdata2d: std_logic_vector(dbits-1 downto 0);
 begin
 
   main : process(wclk)
@@ -269,10 +276,39 @@ begin
     end if;
   end process;
 
-  rdata1 <= din when (wr = '1') and (wa = ra1) and (wrfst = 1)
+  rdata1i <= din when (wr = '1') and (wa = ra1) and (wrfst = 1)
 	else memarr(conv_integer(ra1));
-  rdata2 <= din when (wr = '1') and (wa = ra2) and (wrfst = 1)
+  rdata2i <= din when (wr = '1') and (wa = ra2) and (wrfst = 1)
 	else memarr(conv_integer(ra2));
+
+  rdata1 <= rdata1i;
+  rdata2 <= rdata2i;
+
+  delgen: if delout /= 0 generate
+    p: process(wclk)
+    begin
+      if rising_edge(wclk) then
+        re1d <= re1;
+        re2d <= re2;
+        re1dd <= re1d;
+        re2dd <= re2d;
+        rdata1d <= rdata1i;
+        rdata2d <= rdata2i;
+      end if;
+    end process;
+  end generate;
+
+  ndelgen: if delout=0 generate
+    re1d <= '0'; re2d <= '0';
+    re1dd <= '0'; re2dd <= '0';
+    rdata1d <= (others => '0');
+    rdata2d <= (others => '0');
+  end generate;
+
+  pre1 <= re1dd;
+  pre2 <= re2dd;
+  prdata1 <= rdata1d;
+  prdata2 <= rdata2d;
 
 end;
 
@@ -284,7 +320,8 @@ use grlib.stdlib.all;
 
 entity generic_regfile_4p is
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 32;
-           wrfst : integer := 0; numregs : integer := 40; g0addr: integer := 0);
+           wrfst : integer := 0; numregs : integer := 40; g0addr: integer := 0;
+           delout : integer := 0);
   port (
     wclk   : in  std_ulogic;
     waddr  : in  std_logic_vector((abits -1) downto 0);
@@ -299,7 +336,13 @@ entity generic_regfile_4p is
     rdata2 : out std_logic_vector((dbits -1) downto 0);
     raddr3 : in  std_logic_vector((abits -1) downto 0);
     re3    : in  std_ulogic;
-    rdata3 : out std_logic_vector((dbits -1) downto 0)
+    rdata3 : out std_logic_vector((dbits -1) downto 0);
+    pre1   : out std_ulogic;
+    pre2   : out std_ulogic;
+    pre3   : out std_ulogic;
+    prdata1 : out std_logic_vector((dbits -1) downto 0);
+    prdata2 : out std_logic_vector((dbits -1) downto 0);
+    prdata3 : out std_logic_vector((dbits -1) downto 0)
   );
 end;
 
@@ -311,6 +354,8 @@ architecture rtl of generic_regfile_4p is
   signal din  : std_logic_vector((dbits -1) downto 0);
   signal wr  : std_ulogic;
 
+  signal re1d,re1dd,re2d,re2dd,re3d,re3dd: std_ulogic;
+  signal rdata1i,rdata2i,rdata3i,rdata1d,rdata2d,rdata3d: std_logic_vector(dbits-1 downto 0);
 begin
 
   main : process(wclk)
@@ -346,12 +391,47 @@ begin
     end if;
   end process;
 
-  rdata1 <= din when (wr = '1') and (wa = ra1) and (wrfst = 1)
+  rdata1i <= din when (wr = '1') and (wa = ra1) and (wrfst = 1)
 	else memarr(conv_integer(ra1));
-  rdata2 <= din when (wr = '1') and (wa = ra2) and (wrfst = 1)
+  rdata2i <= din when (wr = '1') and (wa = ra2) and (wrfst = 1)
 	else memarr(conv_integer(ra2));
-  rdata3 <= din when (wr = '1') and (wa = ra3) and (wrfst = 1)
+  rdata3i <= din when (wr = '1') and (wa = ra3) and (wrfst = 1)
 	else memarr(conv_integer(ra3));
 
-end;
+  rdata1 <= rdata1i;
+  rdata2 <= rdata2i;
+  rdata3 <= rdata3i;
 
+  delgen: if delout /= 0 generate
+    p: process(wclk)
+    begin
+      if rising_edge(wclk) then
+        re1d <= re1;
+        re2d <= re2;
+        re3d <= re3;
+        re1dd <= re1d;
+        re2dd <= re2d;
+        re3dd <= re3d;
+        rdata1d <= rdata1i;
+        rdata2d <= rdata2i;
+        rdata3d <= rdata3i;
+      end if;
+    end process;
+  end generate;
+
+  ndelgen: if delout=0 generate
+    re1d <= '0'; re2d <= '0'; re3d <= '0';
+    re1dd <= '0'; re2dd <= '0'; re3dd <= '0';
+    rdata1d <= (others => '0');
+    rdata2d <= (others => '0');
+    rdata3d <= (others => '0');
+  end generate;
+
+  pre1 <= re1dd;
+  pre2 <= re2dd;
+  pre3 <= re3dd;
+  prdata1 <= rdata1d;
+  prdata2 <= rdata2d;
+  prdata3 <= rdata3d;
+
+end;

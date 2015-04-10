@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -395,6 +396,7 @@ begin
   --comb : process(pciin, do)
   comb : process
   variable v : reg_type;
+  variable vpciin : pci_type;
   
   procedure sync_with_core is
   begin
@@ -419,12 +421,13 @@ begin
       v.sigperr := (others => '0');
     elsif rising_edge(pciin.syst.clk) then
       v := r; v.write := '0';
-      v.pci.ad.par := xorv(r.pci.ad.ad & pciin.ad.cbe);
+      vpciin := pciin;
+      v.pci.ad.par := xorv(r.pci.ad.ad & vpciin.ad.cbe);
       v.pci.ad.par := v.pci.ad.par xor r.parerr; -- Add par error
       v.paren := r.aden; v.erren := not (r.perren(1) or r.perren(0)); --v.erren := r.paren; 
       v.perren(1) := v.perren(0);
-      v.pcirad := pciin.ad.ad; v.pcircbe := pciin.ad.cbe;
-      v.pci.err.perr := not r.perren(0) or not (xorv(r.pcirad & r.pcircbe & pciin.ad.par) or r.sigperr(1));-- or '1';  -- FIXME: ... disable perr
+      v.pcirad := vpciin.ad.ad; v.pcircbe := vpciin.ad.cbe;
+      v.pci.err.perr := not r.perren(0) or not (xorv(r.pcirad & r.pcircbe & vpciin.ad.par) or r.sigperr(1));-- or '1';  -- ... disable perr
       v.sigperr(1) := r.sigperr(0); v.sigperr(2) := r.sigperr(1); v.sigperr(0) := '0';
       case r.state is
       when idle =>
@@ -434,10 +437,10 @@ begin
         v.aden := '1'; v.waitcycles := 1; v.latcnt := latency; v.first := true;
         v.pci.ifc.trdy := '1'; v.pci.ifc.stop := '1'; v.curword := 0;
         v.pci.ifc.devsel := '1'; --v.pci.err.perr := '1';
-        if pciin.ifc.frame = '0' then
-          v.comm := pciin.ad.cbe;
-          if pci_hit(pciin.ad.ad,pciin.ad.cbe,pciin.ifc.idsel(slot),v.config) then
-            pci_core.addr <= zero32(31 downto abits) & pciin.ad.ad(abits-1 downto 0); pci_core.insert <= '0';
+        if vpciin.ifc.frame = '0' then
+          v.comm := vpciin.ad.cbe;
+          if pci_hit(vpciin.ad.ad,vpciin.ad.cbe,vpciin.ifc.idsel(slot),v.config) then
+            pci_core.addr <= zero32(31 downto abits) & vpciin.ad.ad(abits-1 downto 0); pci_core.insert <= '0';
             pci_core.resp.retry <= 0; pci_core.resp.ws <= 0; pci_core.resp.diswithout <= 0; pci_core.resp.diswith <= 0;
             sync_with_core;
             if core_pci.valid = '1' and r.resp.valid = false then 
@@ -458,12 +461,12 @@ begin
             --  v.state := respwait;
             --else
             --  v.retrycnt := x"ff";
-              v.ad := zero32(31 downto abits) & pciin.ad.ad(abits-1 downto 0);
+              v.ad := zero32(31 downto abits) & vpciin.ad.ad(abits-1 downto 0);
               --if r.waitcycles = resptime then
               if r.waitcycles = resptime and v.resp.retry = 0 then
               --if v.resp.ws = 0 and v.resp.retry = 0 then
                 v.pci.ifc.devsel := '0'; v.pcien := '0';
-                if pciin.ad.cbe(0) = '1' then v.state := write; v.pci.ifc.trdy := '0';
+                if vpciin.ad.cbe(0) = '1' then v.state := write; v.pci.ifc.trdy := '0';
             
                 --if v.resp.abort = 1 then v.pci.ifc.trdy := '1'; v.pci.ifc.stop := '0'; v.pci.ifc.devsel := '1'; end if;
                 --if v.resp.abort = 1 then v.pci.ifc.trdy := '1'; end if;
@@ -490,12 +493,12 @@ begin
           end if;
         end if;
       when b_busy =>
-        if (pciin.ifc.frame and pciin.ifc.irdy) = '1' then
+        if (vpciin.ifc.frame and vpciin.ifc.irdy) = '1' then
           v.state := idle;
         end if;
       when retry =>                                                                   -- retry response
         v.resp.ws := 0;
-        if pciin.ifc.frame = '1' then
+        if vpciin.ifc.frame = '1' then
           v.pci.ifc.devsel := '1'; v.pci.ifc.stop := '1'; v.pcien := '1'; 
           v.state := idle;
           if r.resp.retry /= 0 then v.resp.retry := r.resp.retry - 1; end if;
@@ -532,19 +535,19 @@ begin
         --else v.resp.ws := r.resp.ws - 1; end if;
       when tabort => -- Target abort on first data phase
         v.pci.ifc.trdy := '1'; v.pci.ifc.stop := '0';  v.pci.ifc.devsel := '1'; 
-        if pciin.ifc.frame = '1' and pciin.ifc.irdy = '0' and (r.pci.ifc.trdy and r.pci.ifc.stop) = '0' then
+        if vpciin.ifc.frame = '1' and vpciin.ifc.irdy = '0' and (r.pci.ifc.trdy and r.pci.ifc.stop) = '0' then
           v.state := idle;
           v.pci.ifc.trdy := '1'; v.pci.ifc.devsel := '1'; v.pci.ifc.stop := '1';
           v.resp.valid := false;
         end if;
       when write => -- Write access
         v.perren(0) := '1';
-        --if pciin.ifc.irdy = '0' then
-        if pciin.ifc.irdy = '0' and r.pci.ifc.trdy = '0' then
+        --if vpciin.ifc.irdy = '0' then
+        if vpciin.ifc.irdy = '0' and r.pci.ifc.trdy = '0' then
           v.curword := r.curword+1;
-          if r.comm = CONF_WRITE then writeconf(r.ad(7 downto 2),pciin.ad.ad,pciin.ad.cbe,v.config);
-          --else v.di := pciin.ad.ad; v.write := '1'; end if; -- *** sub-word write
-          else v.di := pciin.ad.ad; v.write := '1'; v.cbe := pciin.ad.cbe; end if;
+          if r.comm = CONF_WRITE then writeconf(r.ad(7 downto 2),vpciin.ad.ad,vpciin.ad.cbe,v.config);
+          --else v.di := vpciin.ad.ad; v.write := '1'; end if; -- *** sub-word write
+          else v.di := vpciin.ad.ad; v.write := '1'; v.cbe := vpciin.ad.cbe; end if;
             
           if r.resp.ws = 0 then
             v.firstacc := '0';
@@ -565,17 +568,17 @@ begin
         --  v.pci.ifc.trdy := '1'; v.pci.ifc.stop := '0'; v.pci.ifc.devsel := '1';
         end if;
         if r.write = '1' then v.ad := r.ad + "100"; end if;
-        if pciin.ifc.frame = '1' and pciin.ifc.irdy = '0' and (r.pci.ifc.trdy and r.pci.ifc.stop) = '0' then
+        if vpciin.ifc.frame = '1' and vpciin.ifc.irdy = '0' and (r.pci.ifc.trdy and r.pci.ifc.stop) = '0' then
           v.state := idle;
           v.pci.ifc.trdy := '1'; v.pci.ifc.devsel := '1'; v.pci.ifc.stop := '1';
           v.resp.valid := false;
-        --elsif (r.latcnt > 0 and pciin.ifc.irdy = '0') then v.state := latw; v.pci.ifc.trdy := '1'; v.latcnt := r.latcnt-1;
-        elsif (r.resp.ws > 0 and pciin.ifc.irdy = '0') then v.state := latw; v.pci.ifc.trdy := '1'; v.resp.ws := r.resp.ws-1;
+        --elsif (r.latcnt > 0 and vpciin.ifc.irdy = '0') then v.state := latw; v.pci.ifc.trdy := '1'; v.latcnt := r.latcnt-1;
+        elsif (r.resp.ws > 0 and vpciin.ifc.irdy = '0') then v.state := latw; v.pci.ifc.trdy := '1'; v.resp.ws := r.resp.ws-1;
         end if;
       when read => -- Read access
         v.perren(0) := '0';
         v.pci.ifc.trdy := '0';
-        if (pciin.ifc.irdy = '0' or r.first = true) then
+        if (vpciin.ifc.irdy = '0' or r.first = true) then
           v.ad := r.ad + "100"; v.first := false;
           if r.comm = CONF_READ then readconf(r.ad(7 downto 2),v.pci.ad.ad);
           else v.pci.ad.ad := do; end if;
@@ -597,13 +600,13 @@ begin
           end if;
         end if;
 
-        if (pciin.ifc.trdy or pciin.ifc.irdy) = '0' then v.curword := r.curword+1; end if;
-        if (pciin.ifc.frame and not (pciin.ifc.trdy and pciin.ifc.stop)) = '1' then
+        if (vpciin.ifc.trdy or vpciin.ifc.irdy) = '0' then v.curword := r.curword+1; end if;
+        if (vpciin.ifc.frame and not (vpciin.ifc.trdy and vpciin.ifc.stop)) = '1' then
           v.state := idle; v.aden := '1';
           v.pci.ifc.trdy := '1'; v.pci.ifc.devsel := '1';
           v.resp.valid := false;
-        --elsif (r.latcnt > 0 and (pciin.ifc.trdy or pciin.ifc.irdy) = '0' and pciin.ifc.stop = '1') then
-        elsif (r.resp.ws > 0 and (pciin.ifc.trdy or pciin.ifc.irdy) = '0' and pciin.ifc.stop = '1') then
+        --elsif (r.latcnt > 0 and (vpciin.ifc.trdy or vpciin.ifc.irdy) = '0' and vpciin.ifc.stop = '1') then
+        elsif (r.resp.ws > 0 and (vpciin.ifc.trdy or vpciin.ifc.irdy) = '0' and vpciin.ifc.stop = '1') then
           --v.state := latw; v.latcnt := r.latcnt-1; v.pci.ifc.trdy := '1';
           v.state := latw; v.resp.ws := r.resp.ws-1; v.pci.ifc.trdy := '1';
         end if;
@@ -646,7 +649,7 @@ begin
 
         --else v.latcnt := r.latcnt-1; end if;
         else v.resp.ws := r.resp.ws-1; end if;
-        if (pciin.ifc.frame and not r.pci.ifc.stop) = '1' then  -- done if disconnect ??? 
+        if (vpciin.ifc.frame and not r.pci.ifc.stop) = '1' then  -- done if disconnect ??? 
           v.state := idle; 
           v.pci.ifc.trdy := '1'; v.pci.ifc.devsel := '1';
           v.resp.valid := false;
@@ -655,14 +658,14 @@ begin
         v.perren(0) := '0';
         v.pci.ifc.stop := '0';
         if r.write = '1' then v.ad := r.ad + "100"; end if;
-        if pciin.ifc.irdy = '0' then
+        if vpciin.ifc.irdy = '0' then
           v.pci.ifc.trdy := '1';
           if r.pci.ifc.trdy = '0' then
-            if r.comm = CONF_WRITE then writeconf(r.ad(7 downto 2),pciin.ad.ad,pciin.ad.cbe,v.config);
-            elsif r.comm(0) = '1' then v.di := pciin.ad.ad; v.write := '1'; v.cbe := pciin.ad.cbe; end if;
+            if r.comm = CONF_WRITE then writeconf(r.ad(7 downto 2),vpciin.ad.ad,vpciin.ad.cbe,v.config);
+            elsif r.comm(0) = '1' then v.di := vpciin.ad.ad; v.write := '1'; v.cbe := vpciin.ad.cbe; end if;
           end if;
         end if;
-        if pciin.ifc.frame = '1' then
+        if vpciin.ifc.frame = '1' then
           v.state := idle; 
           v.pci.ifc.trdy := '1'; v.pci.ifc.devsel := '1'; v.pci.ifc.stop := '1';
           v.resp.valid := false;
@@ -672,13 +675,13 @@ begin
 
       -- Disconnect type
       --if ((v.curword+1) >= rbuf) then
-      --  if pciin.ifc.frame = '1' then
+      --  if vpciin.ifc.frame = '1' then
       --    v.pci.ifc.stop := '1';
       --  elsif stopwd then
       --    if r.pci.ifc.stop = '1' then
       --      v.pci.ifc.stop := v.pci.ifc.trdy;
       --    else
-      --      if pciin.ifc.irdy = '0' then v.pci.ifc.trdy := '1'; end if;
+      --      if vpciin.ifc.irdy = '0' then v.pci.ifc.trdy := '1'; end if;
       --      v.pci.ifc.stop := '0';
       --    end if;
       --  else
@@ -697,9 +700,9 @@ begin
 
   end process;
 
-  --clockreg : process(pciin.syst)
+  --clockreg : process(vpciin.syst)
   --begin
-  --  if rising_edge(pciin.syst.clk) then
+  --  if rising_edge(vpciin.syst.clk) then
   --    r <= rin;
   --  end if;
   --end process;

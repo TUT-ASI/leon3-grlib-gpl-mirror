@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -69,7 +70,7 @@ constant pconfig : apb_config_type := (
   1 => apb_iobar(paddr, pmask));
 
 type rxfsmtype is (idle, startbit, data, cparity, stopbit);
-type txfsmtype is (idle, data, cparity, stopbit);
+type txfsmtype is (idle, data, cparity);
 
 type fifo is array (0 to fifosize - 1) of std_logic_vector(7 downto 0);
 
@@ -97,7 +98,7 @@ type uartregs is record
   extclk        :  std_ulogic;  -- rising edge detect register
   rhold         :  fifo;
   rshift        :  std_logic_vector(7 downto 0);
-  tshift        :  std_logic_vector(10 downto 0);
+  tshift        :  std_logic_vector(9 downto 0);
   thold         :  fifo;
   irq           :  std_ulogic;  -- tx/rx interrupt (internal)
   irqpend       :  std_ulogic;  -- pending irq for delayed rx irq
@@ -145,7 +146,7 @@ constant RES : uartregs :=
    txclk => (others => '0'), txtick => '0', rxstate => idle,
    rxclk => (others => '0'), rxdb => (others => '0'), dpar => '0',rxtick => '0',
    tick => '0', scaler => sbitszero, brate => sbitszero, rxf => (others => '0'),
-   txd => '0', rfifoirqen => '0', tfifoirqen => '0', irqcnt => (others => '0'),
+   txd => '1', rfifoirqen => '0', tfifoirqen => '0', irqcnt => (others => '0'),
    rwaddr => addrzero, rraddr => addrzero, traddr => addrzero, twaddr => addrzero,
    rcnt => rcntzero, tcnt => rcntzero);
 
@@ -360,7 +361,7 @@ begin
 -- transmitter operation
 
     case r.txstate is
-    when idle =>        -- idle state
+    when idle =>        -- idle and stopbit state
       if (r.txtick = '1') then v.tsempty := '1'; end if;
       
       if ((not r.debug and r.txen and (not thempty) and r.txtick) and
@@ -368,7 +369,7 @@ begin
           v.txstate := data;
           v.tpar := r.parsel; v.tsempty := '0';
           v.txclk := "00" & r.tick; v.txtick := '0';
-          v.tshift := "10" & r.thold(conv_integer(r.traddr)) & '0';
+          v.tshift := '0' & r.thold(conv_integer(r.traddr)) & '0';
           if fifosize = 1 then
               v.irq := r.irq or r.tirqen; v.tcnt(0) := '0';
           else
@@ -376,28 +377,22 @@ begin
               v.tcnt := r.tcnt - 1;
           end if;
       end if;
-      
     when data =>        -- transmit data frame
       if r.txtick = '1' then
         v.tpar := r.tpar xor r.tshift(1);
-        v.tshift := '1' & r.tshift(10 downto 1);
-        if r.tshift(10 downto 1) = "1111111110" then
+        v.tshift := '1' & r.tshift(9 downto 1);
+        if r.tshift(9 downto 1) = "111111110" then
           if r.paren = '1' then
             v.tshift(0) := r.tpar; v.txstate := cparity;
           else
-            v.tshift(0) := '1'; v.txstate := stopbit;
+            v.tshift(0) := '1'; v.txstate := idle;
           end if;
         end if;
       end if;
     when cparity =>     -- transmit parity bit
       if r.txtick = '1' then
-        v.tshift := '1' & r.tshift(10 downto 1); v.txstate := stopbit;
+        v.tshift := '1' & r.tshift(9 downto 1); v.txstate := idle;
       end if;
-    when stopbit =>     -- transmit stop bit
-      if r.txtick = '1' then
-        v.tshift := '1' & r.tshift(10 downto 1); v.txstate := idle;
-      end if;
-
     end case;
 
 -- writing of tx data register must be done after tx fsm to get correct

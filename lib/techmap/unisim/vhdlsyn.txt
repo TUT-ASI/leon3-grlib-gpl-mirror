@@ -15,3 +15,4 @@ sysmon_unisim.vhd
 mul_unisim.vhd
 spictrl_unisim.vhd
 obt1553_unisim.vhd
+serdes_unisim.vhd

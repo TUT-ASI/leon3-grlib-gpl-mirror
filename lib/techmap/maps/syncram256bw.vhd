@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -121,7 +122,7 @@ begin
   xwrite <= write when testen=0 or testin(TESTIN_WIDTH-2)='0' else (others => '0');
 
   custominx(custominx'high downto custombits) <= (others => '0');
-  custominx(custombits-1 downto 0) <= customin;
+  custominx(custombits-1 downto 0) <= customin(custombits-1 downto 0);
 
   nocust: if has_sram256bw(tech)=0 or syncram_has_customif(tech)=0 generate
     customoutx <= (others => '0');

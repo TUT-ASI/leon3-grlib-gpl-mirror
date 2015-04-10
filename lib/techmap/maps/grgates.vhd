@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -49,8 +50,16 @@ component mux2_ut90nhbd
     o      :  out std_ulogic);
 end component;
 
+component mux2_rhs65
+  port(
+    i0     :  in  std_ulogic;
+    i1     :  in  std_ulogic;
+    sel    :  in  std_ulogic;
+    o      :  out std_ulogic);
+end component;
+
 constant has_mux2 : tech_ability_type :=
-	( rhlib18t => 1, ut130 => 1, ut90 => 1, others => 0);
+	( rhlib18t => 1, ut130 => 1, ut90 => 1, rhs65 => 1, others => 0);
 begin
 
   y0 : if has_mux2(tech) = 1 generate
@@ -64,6 +73,10 @@ begin
 
     ut90n : if tech = ut90 generate
       x0 : mux2_ut90nhbd port map (i0 => ip0, i1 => ip1, sel => sel, o => op);
+    end generate;
+
+    rhs65n: if tech=rhs65 generate
+      x0 : mux2_rhs65 port map (i0 => ip0, i1 => ip1, sel => sel, o => op);
     end generate;
   end generate;
 

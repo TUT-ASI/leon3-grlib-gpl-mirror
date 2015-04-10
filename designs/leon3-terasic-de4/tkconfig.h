@@ -8,6 +8,8 @@
 #define CONFIG_SYN_TECH dare
 #elif defined CONFIG_SYN_SAED32
 #define CONFIG_SYN_TECH saed32
+#elif defined CONFIG_SYN_RHS65
+#define CONFIG_SYN_TECH rhs65
 #elif defined CONFIG_SYN_ATC18
 #define CONFIG_SYN_TECH atc18s
 #elif defined CONFIG_SYN_ATC18RHA
@@ -34,10 +36,6 @@
 #define CONFIG_SYN_TECH cyclone3
 #elif defined CONFIG_SYN_CYCLONEIV
 #define CONFIG_SYN_TECH cyclone3
-#elif defined CONFIG_SYN_EASIC45
-#define CONFIG_SYN_TECH easic45
-#elif defined CONFIG_SYN_EASIC90
-#define CONFIG_SYN_TECH easic90
 #elif defined CONFIG_SYN_IHP25
 #define CONFIG_SYN_TECH ihp25
 #elif defined CONFIG_SYN_IHP25RH
@@ -60,6 +58,8 @@
 #define CONFIG_SYN_TECH apa3l
 #elif defined CONFIG_SYN_IGLOO
 #define CONFIG_SYN_TECH apa3
+#elif defined CONFIG_SYN_IGLOO2
+#define CONFIG_SYN_TECH igloo2
 #elif defined CONFIG_SYN_FUSION
 #define CONFIG_SYN_TECH actfus
 #elif defined CONFIG_SYN_SPARTAN2
@@ -124,6 +124,8 @@
 #define CFG_RAM_TECH dare
 #elif defined CONFIG_MEM_SAED32
 #define CFG_RAM_TECH saed32
+#elif defined CONFIG_MEM_RHS65
+#define CFG_RAM_TECH rhs65
 #elif defined CONFIG_MEM_VIRAGE
 #define CFG_RAM_TECH memvirage
 #elif defined CONFIG_MEM_ARTISAN
@@ -179,6 +181,8 @@
 #define CFG_CLK_TECH rhumc
 #elif defined CONFIG_CLK_SAED32
 #define CFG_CLK_TECH saed32
+#elif defined CONFIG_CLK_RHS65
+#define CFG_CLK_TECH rhs65
 #elif defined CONFIG_CLK_DARE
 #define CFG_CLK_TECH dare
 #elif defined CONFIG_CLK_EASIC45
@@ -314,8 +318,6 @@
 
 #if defined CONFIG_FPU_GRFPU
 #define CONFIG_FPU (1+CONFIG_FPU_GRFPU_MUL)
-#elif defined CONFIG_FPU_MEIKO
-#define CONFIG_FPU 15
 #elif defined CONFIG_FPU_GRFPULITE
 #define CONFIG_FPU (8+CONFIG_FPU_GRFPC)
 #else
@@ -634,6 +636,18 @@
 #define CFG_DSU_ATB 0
 #endif
 
+#ifndef CONFIG_DSU_ITRACE_2P
+#define CONFIG_DSU_ITRACE_2P 0
+#endif
+
+#if defined CONFIG_DSU_ASTAT
+#define CFG_DSU_AHBPF 2
+#elif defined CONFIG_DSU_AFILT
+#define CFG_DSU_AHBPF 1
+#else
+#define CFG_DSU_AHBPF 0
+#endif
+
 #ifndef CONFIG_LEON3FT_EN
 #define CONFIG_LEON3FT_EN 0
 #endif
@@ -686,7 +700,13 @@
 #define CONFIG_IU_DISAS_NET 0
 #endif
 
+#ifndef CONFIG_NP_ASI
+#define CONFIG_NP_ASI 0
+#endif
 
+#ifndef CONFIG_WRPSR
+#define CONFIG_WRPSR 0
+#endif
 #ifndef CONFIG_L2_ENABLE
 #define CONFIG_L2_ENABLE 0
 #endif

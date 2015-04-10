@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -139,24 +140,34 @@ package spacewire is
     --misc
     powerdown    : std_ulogic;
     powerdownrx  : std_ulogic;
+    --memory error, separate signals
+    rxmerror     : std_ulogic;
+    txmerror     : std_ulogic;
   end record;
 
   type grspw_dma_in_type is record
     --rx iface
-    rxiread      : std_ulogic;
+    rxiread          : std_ulogic;
     --tx iface
-    txiwrite     : std_ulogic;
-    txichar      : std_logic_vector(8 downto 0);
-    txififorst   : std_ulogic;
+    txiwrite         : std_ulogic;
+    txichar          : std_logic_vector(8 downto 0);
+    txififorst       : std_ulogic;
     --internal time iface
-    itickin      : std_ulogic;
-    itimein      : std_logic_vector(7 downto 0);
+    itickin          : std_ulogic;
+    itimein          : std_logic_vector(7 downto 0);    
     --time iface
-    tickin       : std_ulogic;
-    timein       : std_logic_vector(7 downto 0);
+    tickin           : std_ulogic;
+    timein           : std_logic_vector(7 downto 0);
     --rmap iface
-    rmapen       : std_ulogic;
-    rmapnodeaddr : std_logic_vector(7 downto 0);
+    rmapen           : std_ulogic;
+    rmapnodeaddr     : std_logic_vector(7 downto 0);
+    --internal interrupt iface
+    intdisc          : std_ulogic;
+    inttimeout       : std_logic_vector(63 downto 0);
+    -- configuration signals
+    tcflagmode       : std_ulogic;
+    en64int          : std_ulogic;
+    inten            : std_ulogic;
   end record;
 
   type grspw_dma_out_type is record
@@ -175,6 +186,9 @@ package spacewire is
     timeout      : std_logic_vector(7 downto 0);
     --memory error
     merror       : std_ulogic;
+    --memory error, separate signals
+    rxmerror     : std_ulogic;
+    txmerror     : std_ulogic;
   end record;
 
   type grspw_fifo_in_type is record
@@ -191,7 +205,6 @@ package spacewire is
     --time iface
     tickin       : std_ulogic;
     timein       : std_logic_vector(7 downto 0);
-    enexttime    : std_ulogic;
     rmapen       : std_ulogic;
     --external interface
     etxwrite     : std_ulogic;
@@ -211,7 +224,6 @@ package spacewire is
     --internal time iface
     itickout     : std_ulogic;
     itimeout     : std_logic_vector(7 downto 0);
-    ienexttime   : std_ulogic;
     --time iface
     tickout      : std_ulogic;
     timeout      : std_logic_vector(7 downto 0);
@@ -223,6 +235,9 @@ package spacewire is
     erxchar      : std_logic_vector(8 downto 0);
     --memory errors
     merror       : std_ulogic;
+    --memory error, separate signals
+    rxmerror     : std_ulogic;
+    txmerror     : std_ulogic;
   end record;
 
   type grspw_router_fifo_char_type is array (0 to 30) of std_logic_vector(8 downto 0);
@@ -262,6 +277,7 @@ package spacewire is
     staticrouteen       : std_ulogic;
     spwclklock          : std_ulogic;
     irqgenreload        : std_logic_vector(31 downto 0);
+    interruptmode       : std_ulogic;
     -- input timing testing
     testd               : std_logic_vector(61 downto 0);
     tests               : std_logic_vector(61 downto 0);
@@ -269,25 +285,26 @@ package spacewire is
   end record;
 
   type grspw_router_out_type is record
-    rxcharav     : std_logic_vector(30 downto 0);
-    rxaempty     : std_logic_vector(30 downto 0);
-    txfull       : std_logic_vector(30 downto 0);
-    txafull      : std_logic_vector(30 downto 0);
-    rxchar       : grspw_router_fifo_char_type;
-    auxtickout   : std_ulogic;
-    auxtimeout   : std_logic_vector(7 downto 0);
-    tickout      : std_logic_vector(30 downto 0);
-    timeout      : grspw_router_time_type;
-    gerror       : std_ulogic;
-    lerror       : std_ulogic;
-    merror       : std_ulogic;
-    linkrun      : std_logic_vector(30 downto 0);
-    porterr      : std_logic_vector(31 downto 0);
-    spwen        : std_logic_vector(30 downto 0);
-    ahbsi        : ahb_slv_in_type;
-    powerdown    : std_logic_vector(30 downto 0);
-    powerdownrx  : std_logic_vector(30 downto 0);
-    gpo          : std_logic_vector(127 downto 0);
+    rxcharav      : std_logic_vector(30 downto 0);
+    rxaempty      : std_logic_vector(30 downto 0);
+    txfull        : std_logic_vector(30 downto 0);
+    txafull       : std_logic_vector(30 downto 0);
+    rxchar        : grspw_router_fifo_char_type;
+    auxtickout    : std_ulogic;
+    auxtimeout    : std_logic_vector(7 downto 0);
+    auxtickindone : std_ulogic;
+    tickout       : std_logic_vector(30 downto 0);
+    timeout       : grspw_router_time_type;
+    gerror        : std_ulogic;
+    lerror        : std_ulogic;
+    merror        : std_ulogic;
+    linkrun       : std_logic_vector(30 downto 0);
+    porterr       : std_logic_vector(31 downto 0);
+    spwen         : std_logic_vector(30 downto 0);
+    ahbsi         : ahb_slv_in_type;
+    powerdown     : std_logic_vector(30 downto 0);
+    powerdownrx   : std_logic_vector(30 downto 0);
+    gpo           : std_logic_vector(127 downto 0);
   end record;
 
   constant grspw_router_in_none : grspw_router_in_type :=
@@ -295,18 +312,60 @@ package spacewire is
      (others => '0'), (others => '0'), (others => (others => '0')), (others => '0'),
      (others => '0'), '0', '0', '0', '0', (others => '0') , (others => '0'), (others => '0'), (others => '0'),
      (others => '0'), '0', '0', (others => '0'), (others => '0'), ahbs_none, '0', '0', '0', '0',
-     (others => '0'), '0', (others => '0'), '0', '1', (others => '0'), (others => '0'), (others => '0'), '0');
+     (others => '0'), '0', (others => '0'), '0', '1', (others => '0'), '0', (others => '0'), (others => '0'), '0');
 
   constant grspw_router_out_none : grspw_router_out_type :=
     ((others => '0'), (others => '0'), (others => '0'), (others => '0'),
-     (others => (others => '0')), '0', (others => '0'), (others => '0'), (others => (others => '0')), '0',
+     (others => (others => '0')), '0', (others => '0'), '0', (others => '0'), (others => (others => '0')), '0',
      '0', '0', (others => '0'), (others => '0'), (others => '0'), ahbs_in_none,
      (others => '0'), (others => '0'), (others => '0'));
 
   type spw_ahb_mst_out_vector is array (natural range <>) of
     ahb_mst_out_type;
+  type spw_ahb_mst_in_vector is array (natural range <>) of
+    ahb_mst_in_type;
   type spw_apb_slv_out_vector is array (natural range <>) of
     apb_slv_out_type;
+
+  type grspw_codec_memtest_type is record
+    rxram: memtest_vector_array(0 to 2);
+    txram: memtest_vector_array(0 to 2);
+  end record;
+
+  type grspw2_memtest_type is record
+    rxram0: memtest_vector_array(0 to 2);
+    rxram1: memtest_vector_array(0 to 2);
+    txram0: memtest_vector_array(0 to 2);
+    rmap: memtest_vector_array(0 to 2);
+  end record;
+
+  type grspw2_fifo_memtest_type is record
+    rxram: memtest_vector_array(0 to 2);
+    txram: memtest_vector_array(0 to 2);
+  end record;
+
+  type grspw_codec_memtest_array is array(natural range <>) of grspw_codec_memtest_type;
+  type grspw2_dma_memtest_array is array(natural range <>) of grspw2_memtest_type;
+  type grspw2_fifo_memtest_array is array(natural range <>) of grspw2_fifo_memtest_type;
+
+  type grspw_router_memtest_type is record
+    codec   : grspw_codec_memtest_array(0 to 30);
+    dma     : grspw2_dma_memtest_array(0 to 30);
+    fifo    : grspw2_fifo_memtest_array(0 to 30);
+    porteq  : memtest_vector_array(0 to 2);
+    rtram   : memtest_vector_array(0 to 2);
+    rmap    : memtest_vector_array(0 to 2);
+  end record;
+
+  constant grspw_codec_memtest_none : grspw_codec_memtest_type :=
+    (others => (others => (others => '0')));
+  constant grspw2_memtest_none : grspw2_memtest_type :=
+    (others => (others => (others => '0')));
+  constant grspw2_fifo_memtest_none : grspw2_fifo_memtest_type :=
+    (others => (others => (others => '0')));
+  constant grspw_router_memtest_none : grspw_router_memtest_type := (
+    (others => grspw_codec_memtest_none), (others => grspw2_memtest_none), (others => grspw2_fifo_memtest_none),
+    (others => (others => '0')), (others => (others => '0')), (others => (others => '0')));
 
   component grspw_phy is
     generic(
@@ -367,7 +426,6 @@ package spacewire is
       rmapcrc         : integer range 0 to 1  := 0;
       fifosize1       : integer range 4 to 64 := 32;
       fifosize2       : integer range 16 to 64 := 64;
-      rxclkbuftype    : integer range 0 to 2 := 0;
       rxunaligned     : integer range 0 to 1 := 0;
       rmapbufs        : integer range 2 to 8 := 4;
       ft              : integer range 0 to 2 := 0;
@@ -409,7 +467,10 @@ package spacewire is
       apbi       : in  apb_slv_in_type;
       apbo       : out apb_slv_out_type;
       swni       : in  grspw_in_type;
-      swno       : out grspw_out_type
+      swno       : out grspw_out_type;
+      mtesti     : in  grspw2_memtest_type := grspw2_memtest_none;
+      mtesto     : out grspw2_memtest_type;
+      mtestclk   : in  std_ulogic := '0'
     );
   end component;
 
@@ -542,7 +603,10 @@ package spacewire is
     testrst      : in  std_ulogic;
     lii          : in  grspw_codec_in_type;
     lio          : out grspw_codec_out_type;
-    testin       : in  std_logic_vector(testin_width-1 downto 0) := testin_none
+    testin       : in  std_logic_vector(testin_width-1 downto 0) := testin_none;
+    mtesti       : in  grspw_codec_memtest_type := grspw_codec_memtest_none;
+    mtesto       : out grspw_codec_memtest_type;
+    mtestclk     : in  std_ulogic := '0'
   );
   end component;
 
@@ -620,7 +684,7 @@ package spacewire is
       pktcntbits      : integer range 0 to 32 := 0;
       prescalermin    : integer := 250;
       spacewired      : integer range 0 to 1 := 0;
-      interruptdist   : integer range 0 to 1 := 0;
+      interruptdist   : integer range 0 to 2 := 0;
       apbctrl         : integer range 0 to 1 := 0;
       rmapmaxsize     : integer range 4 to 512 := 4;
       gpolbits        : integer range 0 to 128 := 0;
@@ -633,7 +697,10 @@ package spacewire is
       spwpnpprodid    : integer range 0 to 16#FFFF# := 0;
       porttimerbits   : integer range 1 to 32 := 10;
       irqtimerbits    : integer range 1 to 32 := 10;
-      auxtimeen       : integer range 0 to 1 := 1
+      auxtimeen       : integer range 0 to 1 := 1;
+      num_txdesc      : integer range 64 to 512 := 64;
+      num_rxdesc      : integer range 128 to 1024 := 128;
+      auxasync        : integer range 0 to 1 := 0
       );
     port(
       rst          : in  std_ulogic;
@@ -650,36 +717,42 @@ package spacewire is
       dconnect     : in  std_logic_vector(spwports*(2+2*dualport)-spwen downto 0);
       do           : out std_logic_vector(spwports*(2+2*dualport)-spwen downto 0);
       so           : out std_logic_vector(spwports*(2+2*dualport)-spwen downto 0);
-      ahbmi        : in  ahb_mst_in_type;
+      ahbmi        : in  spw_ahb_mst_in_vector(0 to ambaports*ambaen-ambaen);
       ahbmo        : out spw_ahb_mst_out_vector(0 to ambaports*ambaen-ambaen);
       apbi         : in  apb_slv_in_type;
       apbo         : out spw_apb_slv_out_vector(0 to ambaports*ambaen-ambaen);
       ahbsi        : in  ahb_slv_in_type;
       ahbso        : out ahb_slv_out_type;
       ri           : in  grspw_router_in_type;
-      ro           : out grspw_router_out_type
+      ro           : out grspw_router_out_type;
+      mtesti       : in  grspw_router_memtest_type := grspw_router_memtest_none;
+      mtesto       : out grspw_router_memtest_type;
+      mtestclk     : in  std_ulogic := '0'
     );
   end component grspwrouter;
 
   component grspw2_dma is
     generic(
-      hindex       : integer range 0 to NAHBMST-1 := 0;
-      pindex       : integer range 0 to NAPBSLV-1:= 0;
-      pirq         : integer range 0 to NAHBIRQ-1 := 0;
-      paddr        : integer range 0 to 16#FFF# := 0;
-      pmask        : integer range 0 to 16#FFF# := 16#FFF#;
-      rmap         : integer range 0 to 2  := 0;
-      rmapcrc      : integer range 0 to 1  := 0;
-      fifosize1    : integer range 4 to 32 := 32;
-      fifosize2    : integer range 16 to 2048 := 64;
-      rxunaligned  : integer range 0 to 1 := 0;
-      rmapbufs     : integer range 2 to 8 := 4;
-      scantest     : integer range 0 to 1 := 0;
-      dmachan      : integer range 1 to 4 := 1;
-      tech         : integer range 0 to NTECH := inferred;
-      techfifo     : integer range 0 to 7 := 1;
-      ft           : integer range 0 to 2 := 0;
-      nodeaddr     : integer range 0 to 255 := 254
+      hindex        : integer range 0 to NAHBMST-1 := 0;
+      pindex        : integer range 0 to NAPBSLV-1:= 0;
+      pirq          : integer range 0 to NAHBIRQ-1 := 0;
+      paddr         : integer range 0 to 16#FFF# := 0;
+      pmask         : integer range 0 to 16#FFF# := 16#FFF#;
+      rmap          : integer range 0 to 2  := 0;
+      rmapcrc       : integer range 0 to 1  := 0;
+      fifosize1     : integer range 4 to 32 := 32;
+      fifosize2     : integer range 16 to 2048 := 64;
+      rxunaligned   : integer range 0 to 1 := 0;
+      rmapbufs      : integer range 2 to 8 := 4;
+      scantest      : integer range 0 to 1 := 0;
+      dmachan       : integer range 1 to 4 := 1;
+      tech          : integer range 0 to NTECH := inferred;
+      techfifo      : integer range 0 to 7 := 1;
+      ft            : integer range 0 to 2 := 0;
+      nodeaddr      : integer range 0 to 255 := 254;
+      num_txdesc    : integer range 64 to 512 := 64;
+      num_rxdesc    : integer range 128 to 1024 := 128;
+      interruptdist : integer range 0 to 2 := 0
     );
     port(
       rst          : in   std_ulogic;
@@ -695,7 +768,10 @@ package spacewire is
       lio          : out  grspw_dma_out_type;
       testrst      : in   std_ulogic := '0';
       testen       : in   std_ulogic := '0';
-      testin       : in   std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
+      testin       : in   std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
+      mtesti       : in   grspw2_memtest_type := grspw2_memtest_none;
+      mtesto       : out  grspw2_memtest_type;
+      mtestclk     : in   std_ulogic := '0'
     );
   end component;
 
@@ -716,7 +792,10 @@ package spacewire is
       lio          : out  grspw_fifo_out_type;
       testrst      : in   std_ulogic := '0';
       testen       : in   std_ulogic := '0';
-      testin       : in   std_logic_vector(testin_width-1 downto 0) := testin_none
+      testin       : in   std_logic_vector(testin_width-1 downto 0) := testin_none;
+      mtesti       : in   grspw2_fifo_memtest_type := grspw2_fifo_memtest_none;
+      mtesto       : out  grspw2_fifo_memtest_type;
+      mtestclk     : in   std_ulogic := '0'
     );
   end component;
 

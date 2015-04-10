@@ -5,10 +5,6 @@ CONFIG_SPIMCTRL
   also has a simple interface that allows sending commands directly
   to the SPI device.
 
-SD card support
-CONFIG_SPIMCTRL_SDCARD
-  Memory device connected to controller is SD card.
-
 Read command
 CONFIG_SPIMCTRL_READCMD
   Read instruction for SPI memory device (hex).

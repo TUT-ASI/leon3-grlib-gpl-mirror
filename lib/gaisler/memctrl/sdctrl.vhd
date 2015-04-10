@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -366,8 +367,10 @@ begin
         v.dqm := (others => '1');
       end if;
     when wr2 =>
-      if (r.cfg.trp = '0') then v.rasn := '0'; v.sdwen := '0'; end if;
-      v.sdstate := wr3;
+      if (r.trfc(2 downto 1) = "00") then
+        if (r.cfg.trp = '0') then v.rasn := '0'; v.sdwen := '0'; end if;
+        v.sdstate := wr3;
+      end if;
     when wr3 =>
       if (r.cfg.trp = '1') then
         v.rasn := '0'; v.sdwen := '0'; v.sdstate := wr4;
@@ -412,7 +415,8 @@ begin
       end if;
     when rd2 =>
       v.casn := '1'; v.sdstate := rd3;
-      if ahbsi.htrans /= "11" then v.rasn := '0'; v.sdwen := '0';
+      if ahbsi.htrans /= "11" then
+        if (r.trfc(2 downto 1) = "00") then v.rasn := '0'; v.sdwen := '0'; end if;
       elsif lineburst then
         if r.haddr(4 downto 2) = "101" then
           v.address(9 downto 5) := r.address(9 downto 5) + 1;

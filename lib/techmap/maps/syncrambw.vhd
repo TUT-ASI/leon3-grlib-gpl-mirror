@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -54,7 +55,7 @@ architecture rtl of syncrambw is
 
   constant nctrl : integer := abits + (TESTIN_WIDTH-2) + 2*dbits/8;
   signal dataoutx, databp, testdata : std_logic_vector((dbits -1) downto 0);
-  constant SCANTESTBP : boolean := (testen = 1) and (tech /= 0) and (tech /= ut90);
+  constant SCANTESTBP : boolean := (testen = 1) and syncram_add_scan_bypass(tech)=1;
 
   signal xenable, xwrite : std_logic_vector(dbits/8-1 downto 0);
   signal custominx,customoutx: std_logic_vector(syncram_customif_maxwidth downto 0);

@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -37,14 +38,16 @@ use techmap.gencomp.all;
 entity dsu3 is
   generic (
     hindex  : integer := 0;
-    haddr : integer := 16#900#;
-    hmask : integer := 16#f00#;
+    haddr   : integer := 16#900#;
+    hmask   : integer := 16#f00#;
     ncpu    : integer := 1;
     tbits   : integer := 30; -- timer bits (instruction trace time tag)
     tech    : integer := DEFMEMTECH; 
     irq     : integer := 0; 
     kbytes  : integer := 0;
-    testen  : integer := 0
+    testen  : integer := 0;
+    bwidth  : integer := 32;
+    ahbpf   : integer := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -67,7 +70,7 @@ begin
 
   gnd <= '0'; vcc <= '1';
   
-  x0 : dsu3x generic map (hindex, haddr, hmask, ncpu, tbits, tech, irq, kbytes, 0, testen)
+  x0 : dsu3x generic map (hindex, haddr, hmask, ncpu, tbits, tech, irq, kbytes, 0, testen, bwidth, ahbpf)
     port map (rst, gnd, clk, ahbmi, ahbsi, ahbso, ahbsi, dbgi, dbgo, dsui, dsuo, vcc);  
   
 end;

@@ -5,6 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -295,7 +296,7 @@ begin
   CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
         CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP,
         CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1,
-        CFG_DFIXED, CFG_SCAN, CFG_MMU_PAGE, CFG_BP)
+        CFG_DFIXED, CFG_SCAN, CFG_MMU_PAGE, CFG_BP, CFG_NP_ASI, CFG_WRPSR)
       port map (clk, rstn, ahbmi, ahbmo(i), ahbsi, ahbso,
         irqi(i), irqo(i), dbgi(i), dbgo(i), clk);
   end generate;
@@ -620,9 +621,10 @@ begin
 
            spw_phy0 : grspw2_phy
              generic map(
-               scantest   => scantest,
-               tech       => fabtech,
-               input_type => CFG_SPW_INPUT)
+               scantest     => scantest,
+               tech         => fabtech,
+               input_type   => CFG_SPW_INPUT,
+               rxclkbuftype => 0)
              port map(
                rstn       => spwrstn(i),
                rxclki     => gspwclk(i),
@@ -721,7 +723,6 @@ begin
           rmapcrc      => CFG_SPW_RMAPCRC, -- : integer range 0 to 1  := 0;
           fifosize1    => CFG_SPW_AHBFIFO, -- : integer range 4 to 32 := 32;
           fifosize2    => CFG_SPW_RXFIFO,  -- : integer range 16 to 64 := 64;
-          rxclkbuftype => 0,               -- : integer range 0 to 2 := 0;
           rxunaligned  => CFG_SPW_RXUNAL,  -- : integer range 0 to 1 := 0;
           rmapbufs     => CFG_SPW_RMAPBUF, -- : integer range 2 to 8 := 4;
           ft           => CFG_SPW_FT,      -- : integer range 0 to 2 := 0;

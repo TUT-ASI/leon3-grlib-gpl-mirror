@@ -1,7 +1,5 @@
 
 
-
-
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
 -- Copyright (C) 2009 Aeroflex Gaisler
@@ -70,8 +68,9 @@ package config is
   constant CFG_TLB_REP : integer := 1;
   constant CFG_MMU_PAGE : integer := 0;
   constant CFG_DSU : integer := 0;
-  constant CFG_ITBSZ : integer := 0;
+  constant CFG_ITBSZ : integer := 0 + 64*0;
   constant CFG_ATBSZ : integer := 0;
+  constant CFG_AHBPF : integer := 0;
   constant CFG_LEON3FT_EN : integer := 0;
   constant CFG_IUFT_EN : integer := 0;
   constant CFG_FPUFT_EN : integer := 0;
@@ -81,6 +80,8 @@ package config is
   constant CFG_LEON3_NETLIST: integer := 0;
   constant CFG_DISAS : integer := 0 + 0;
   constant CFG_PCLOW : integer := 2;
+  constant CFG_NP_ASI : integer := 0;
+  constant CFG_WRPSR : integer := 0;
 -- AMBA settings
   constant CFG_DEFMST : integer := (0);
   constant CFG_RROBIN : integer := 1;
@@ -121,22 +122,12 @@ package config is
   constant CFG_AHBRSZ : integer := 1;
   constant CFG_AHBRADDR : integer := 16#A00#;
   constant CFG_AHBRPIPE : integer := 0;
--- PCI interface
-  constant CFG_PCI : integer := 1;
-  constant CFG_PCIVID : integer := 16#1AC8#;
-  constant CFG_PCIDID : integer := 16#0054#;
-  constant CFG_PCIDEPTH : integer := 8;
-  constant CFG_PCI_MTF : integer := 1;
--- PCI trace buffer
-  constant CFG_PCITBUFEN: integer := 0;
-  constant CFG_PCITBUF : integer := 256;
 -- UART 1
   constant CFG_UART1_ENABLE : integer := 1;
   constant CFG_UART1_FIFO : integer := 8;
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE : integer := 1;
   constant CFG_IRQ3_NSEC : integer := 0;
-
 -- Modular timer
   constant CFG_GPT_ENABLE : integer := 1;
   constant CFG_GPT_NTIM : integer := (2);
@@ -146,7 +137,6 @@ package config is
   constant CFG_GPT_SEPIRQ : integer := 1;
   constant CFG_GPT_WDOGEN : integer := 0;
   constant CFG_GPT_WDOG : integer := 16#0#;
-
 -- GPIO port
   constant CFG_GRGPIO_ENABLE : integer := 0;
   constant CFG_GRGPIO_IMASK : integer := 16#0000#;

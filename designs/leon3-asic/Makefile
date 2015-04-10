@@ -17,10 +17,18 @@ DEVICE=$(PART)$(PACKAGE)-$(SPEED)
 #XDC=$(GRLIB)/boards/$(BOARD)/$(BOARD).xdc
 TCL=./grtechscripts/setup_unisim.tcl ./grtechscripts/timing_unisim.tcl
 
+# Tech used
+TECH = $(shell grep FABTECH config.vhd | grep -o "[^ ]*$$"  | sed -e 's/;//g')
+
 # For SAED32
 ifeq ("$(SAED32_HOME)","")
 SAED32_HOME=/usr/local32/cad/synlibs/synopsys/
 export SAED32_HOME
+endif
+
+# For RHS65
+ifeq ("$(TECH)","rhs65")
+VSIMOPT+= +nospecify +delay_mode_zero
 endif
 
 VHDLSYNFILES=config.vhd \
@@ -31,7 +39,7 @@ SIMTOP=testbench
 
 CLEAN=soft-clean
 
-TECHLIBS = $(shell grep FABTECH config.vhd | grep -o "[^ ]*$$"  | sed -e 's/;//g') inferred grdware dware secureip unisim
+TECHLIBS = $(TECH) inferred grdware dware secureip unisim
 
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	openchip gsi spansion tmtc ihp fmf cypress hynix
@@ -41,15 +49,24 @@ DIRSKIP = b1553 pci/pcif leon2 leon2ft leon4 leon4v0 l2cache iommu \
 
 FILESKIP =
 
-VLOGOPT =
+# Modelsim Sim Options
+#VSIMOPT+= -Gdisas=1
+VSIMOPT+= -c
 
+# Use 32 or 64 bit binary
+LBITS := $(shell getconf LONG_BIT)
+ifeq ($(LBITS),64)
+   DCOPT += -64bit
+else
+   # do 32 bit stuff here
+endif
 DCOPT += -x "set argv [lindex [list $(TECHLIBS)] 0]; set top $(TOP)"
 DCSCRIPT=dc.tcl
 
 FMOPT = -x "set argv [lindex [list $(TECHLIBS)] 0]; set top $(TOP)"
 FMSCRIPT=fm.tcl
 
-VSIMOPT= -t ps -L work -L $(shell grep FABTECH config.vhd | grep -o "[^ ]*$$"  | sed -e 's/;//g') -novopt -i $(SIMTOP)
+VSIMOPT+= -t ps -L work -L $(TECH) -novopt $(SIMTOP)
 VSIMGTLOPT=$(VSIMOPT) -do ./gtl.do  -sdfmax /$(SIMTOP)/$(TOP)=./synopsys/$(TOP)_$(grtechlib).sdf
 
 include $(GRLIB)/bin/Makefile

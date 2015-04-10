@@ -91,10 +91,12 @@ int apbuart_test(int addr)
         
         temp = loadmem((int)&uart->status);
         while( (temp & 1) || !(temp & 4) || !(temp & 2) ) {
-                temp = loadmem((int)&uart->data);
-                temp = loadmem((int)&uart->status);
+           while( (temp & 1) || !(temp & 4) || !(temp & 2) ) {
+              temp = loadmem((int)&uart->data);
+              temp = loadmem((int)&uart->status);
+           }
+           temp = loadmem((int)&uart->status);
         }
-
         temp = 0;
         uart->control = DISABLE;
         uart->status = 0;
@@ -155,7 +157,7 @@ int apbuart_test(int addr)
 
         if(loadmem((int)&uart->status) & 1 != 0) {
                 /*dr bit incorrect*/
-                fail( 7);
+                fail( 15);
         }
 
         uart->control = ENABLE_TX | ENABLE_RX | LOOP_BACK;

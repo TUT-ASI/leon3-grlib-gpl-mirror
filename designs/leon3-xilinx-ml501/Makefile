@@ -2,6 +2,7 @@ include .config
 GRLIB=../..
 TOP=leon3mp
 BOARD=xilinx-ml501-xc5vlx50
+DESIGN=leon3-xilinx-ml501
 include $(GRLIB)/boards/$(BOARD)/Makefile.inc
 DEVICE=$(PART)-$(PACKAGE)$(SPEED)
 #UCF=$(GRLIB)/boards/$(BOARD)/$(TOP).ucf
@@ -18,6 +19,8 @@ endif
 ifeq ("$(CONFIG_SVGA_ENABLE)","y")
 UCF+=svga.ucf
 endif
+
+UCF_PLANAHEAD=$(UCF)
 
 XSTOPT=-uc leon3mp.xcf
 QSF=$(GRLIB)/boards/$(BOARD)/$(TOP).qsf

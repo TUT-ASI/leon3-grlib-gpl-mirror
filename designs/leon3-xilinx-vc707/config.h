@@ -22,6 +22,7 @@
 #undef  CONFIG_SYN_PROASIC3E
 #undef  CONFIG_SYN_PROASIC3L
 #undef  CONFIG_SYN_IGLOO
+#undef  CONFIG_SYN_IGLOO2
 #undef  CONFIG_SYN_FUSION
 #undef  CONFIG_SYN_UT025CRH
 #undef  CONFIG_SYN_UT130HBD
@@ -30,8 +31,6 @@
 #undef  CONFIG_SYN_ATC18RHA
 #undef  CONFIG_SYN_CMOS9SF
 #undef  CONFIG_SYN_CUSTOM1
-#undef  CONFIG_SYN_EASIC90
-#undef  CONFIG_SYN_EASIC45
 #undef  CONFIG_SYN_IHP25
 #undef  CONFIG_SYN_IHP25RH
 #undef  CONFIG_SYN_LATTICE
@@ -41,6 +40,7 @@
 #undef  CONFIG_SYN_RHUMC
 #undef  CONFIG_SYN_SAED32
 #undef  CONFIG_SYN_DARE
+#undef  CONFIG_SYN_RHS65
 #undef  CONFIG_SYN_SMIC13
 #undef  CONFIG_SYN_TM65GPLUS
 #undef  CONFIG_SYN_TSMC90
@@ -50,7 +50,6 @@
 #undef  CONFIG_SYN_SPARTAN3
 #undef  CONFIG_SYN_SPARTAN3E
 #undef  CONFIG_SYN_SPARTAN6
-#undef  CONFIG_SYN_VIRTEXE
 #undef  CONFIG_SYN_VIRTEX2
 #undef  CONFIG_SYN_VIRTEX4
 #undef  CONFIG_SYN_VIRTEX5
@@ -78,6 +77,7 @@
 #undef  CONFIG_CLK_DARE
 #undef  CONFIG_CLK_SAED32
 #undef  CONFIG_CLK_EASIC45
+#undef  CONFIG_CLK_RHS65
 #define CONFIG_CLK_CLKPLLE2 1
 #undef  CONFIG_CLK_CLKDLL
 #undef  CONFIG_CLK_DCM
@@ -113,6 +113,8 @@
 #define CONFIG_IU_WATCHPOINTS (2)
 #define CONFIG_PWD 1
 #define CONFIG_IU_RSTADDR 00000
+#undef  CONFIG_NP_ASI
+#undef  CONFIG_WRPSR
 /*
  * Floating-point unit
  */
@@ -194,19 +196,7 @@
 /*
  * Debug Support Unit        
  */
-#define CONFIG_DSU_ENABLE 1
-#define CONFIG_DSU_ITRACE 1
-#undef  CONFIG_DSU_ITRACESZ1
-#undef  CONFIG_DSU_ITRACESZ2
-#define CONFIG_DSU_ITRACESZ4 1
-#undef  CONFIG_DSU_ITRACESZ8
-#undef  CONFIG_DSU_ITRACESZ16
-#define CONFIG_DSU_ATRACE 1
-#undef  CONFIG_DSU_ATRACESZ1
-#undef  CONFIG_DSU_ATRACESZ2
-#define CONFIG_DSU_ATRACESZ4 1
-#undef  CONFIG_DSU_ATRACESZ8
-#undef  CONFIG_DSU_ATRACESZ16
+#undef  CONFIG_DSU_ENABLE
 /*
  * Fault-tolerance  
  */
@@ -215,7 +205,34 @@
  * VHDL debug settings       
  */
 #undef  CONFIG_IU_DISAS
-#define CONFIG_DEBUG_PC32 1
+#undef  CONFIG_DEBUG_PC32
+/*
+ * L2 Cache
+ */
+#undef  CONFIG_L2_ENABLE
+#define CONFIG_L2_ASSO1 1
+#undef  CONFIG_L2_ASSO2
+#undef  CONFIG_L2_ASSO3
+#undef  CONFIG_L2_ASSO4
+#undef  CONFIG_L2_SZ1
+#undef  CONFIG_L2_SZ2
+#undef  CONFIG_L2_SZ4
+#undef  CONFIG_L2_SZ8
+#undef  CONFIG_L2_SZ16
+#undef  CONFIG_L2_SZ32
+#define CONFIG_L2_SZ64 1
+#undef  CONFIG_L2_SZ128
+#undef  CONFIG_L2_SZ256
+#undef  CONFIG_L2_SZ512
+#define CONFIG_L2_LINE32 1
+#undef  CONFIG_L2_LINE64
+#undef  CONFIG_L2_HPROT
+#undef  CONFIG_L2_PEN
+#undef  CONFIG_L2_WT
+#undef  CONFIG_L2_RAN
+#define CONFIG_L2_MAP 00F0
+#define CONFIG_L2_MTRR (0)
+#undef  CONFIG_L2_EDAC
 /*
  * AMBA configuration
  */
@@ -266,7 +283,7 @@
  * MIG Series 7 memory controller   
  */
 #define CONFIG_MIG_SERIES7 1
-#define CONFIG_MIG_SERIES_7_MODEL 1
+#undef  CONFIG_MIG_SERIES_7_MODEL
 #undef  CONFIG_AHBSTAT_ENABLE
 /*
  * On-chip RAM/ROM                 
@@ -365,6 +382,10 @@
 #undef  CONFIG_SPICTRL_TWEN
 #define CONFIG_SPICTRL_MAXWLEN (0)
 #undef  CONFIG_SPICTRL_SYNCRAM
+/*
+ * Partial Reconfiguration  
+ */
+#undef  CONFIG_PARTIAL
 /*
  * VHDL Debugging        
  */

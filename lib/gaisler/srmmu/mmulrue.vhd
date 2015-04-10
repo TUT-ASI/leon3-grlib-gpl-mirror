@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -54,7 +55,8 @@ architecture rtl of mmulrue is
   end record;
 
   constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
-  
+  constant ASYNC_RESET : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
+
   signal c,r   : lru_rtype;
 begin  
   
@@ -81,7 +83,7 @@ begin
       end if;
     end if;
 
-    if ((not RESET_ALL) and (rst = '0')) or (lruei.flush = '1') then
+    if ((not ASYNC_RESET) and (not RESET_ALL) and (rst = '0')) or (lruei.flush = '1') then
       v.pos := conv_std_logic_vector(position, entries_log);
       v.movetop := '0';
     end if;
@@ -94,16 +96,29 @@ begin
     c <= v;
   end process p0;
 
-  p1: process (clk)
-  begin
-    if rising_edge(clk) then
-      r <= c;
-      if RESET_ALL and (rst = '0') then
+  syncrregs : if not ASYNC_RESET generate
+    p1: process (clk)
+    begin
+      if rising_edge(clk) then
+        r <= c;
+        if RESET_ALL and (rst = '0') then
+          r.pos <= conv_std_logic_vector(position, entries_log);
+          r.movetop <= '0';
+        end if;
+      end if;
+    end process p1;
+  end generate;
+  asyncrregs : if ASYNC_RESET generate
+    p1: process (clk, rst)
+    begin
+      if rst = '0' then
         r.pos <= conv_std_logic_vector(position, entries_log);
         r.movetop <= '0';
+      elsif rising_edge(clk) then
+        r <= c;
       end if;
-    end if;
-  end process p1;
+    end process p1;
+  end generate;
 
 end rtl;
 

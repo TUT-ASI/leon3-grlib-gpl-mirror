@@ -102,7 +102,7 @@ static int gpio_irqhandler(int irq)
  * This test requires that the GPIO lines have external pull-ups
  *
  */
-int gpio_test_irq(int addr, int imask, int pirq, int irqgen)
+int gpio_test_irq_mask(int addr, int imask, int pirq, int irqgen, int iomask)
 {
         int width, k, i, numirq;
 
@@ -120,6 +120,7 @@ int gpio_test_irq(int addr, int imask, int pirq, int irqgen)
         if (irqgen == 0) {
                 /* Fixed mapping IO[i] = interrupt pirq + i */
                 for (i=pirq ? 1 : 0; i <width; i++) {
+                        if ((iomask & (1 << i)) == 0) continue;
                         if ((pirq+i) < 32) {
                                 catch_interrupt(gpio_irqhandler, pirq+i);
                                 /* Enable interrupt on IRQMP */
@@ -146,7 +147,7 @@ int gpio_test_irq(int addr, int imask, int pirq, int irqgen)
         pio[1] = 0; /* Prepare to drive all lines low */
         pio[4] = 0;  /* Interrupt level = low */
         pio[5] = -1; /* Edge */
-        pio[3] = -1; /* Enable all interrupts */
+        pio[3] = (-1) & iomask; /* Enable all interrupts */
 
         /* Iterate once for irqgen = 0, 1 and irqgen times for other values */
         for (k = 0; k < (irqgen ? irqgen : 1); k++) {
@@ -162,6 +163,8 @@ int gpio_test_irq(int addr, int imask, int pirq, int irqgen)
 
                 /* Assert interrupts */
                 for (i = (irqgen != 0 || pirq != 0) ? 0 : 1; i < width; i++) {
+
+                        if ((iomask & (1 << i)) == 0) continue;
 
                         /* Drive line i low */
                         pio[2] = (1 << i);
@@ -179,6 +182,7 @@ int gpio_test_irq(int addr, int imask, int pirq, int irqgen)
                 /* Check interrupts */
                 for (i = (irqgen != 0 || pirq != 0) ? 0 : 1; i < width; i++) {
                         /* Skip lines that cannot generate irqs */
+                        if ((iomask & (1 << i)) == 0) continue;
                         if ((imask & (1 << i)) == 0)
                                 continue;
                         numirq++;
@@ -204,4 +208,9 @@ int gpio_test_irq(int addr, int imask, int pirq, int irqgen)
         irqmp_base->irqclear = -1;  /* clear all pending interrupts */
 
         return 0;
+}
+
+int gpio_test_irq(int addr, int imask, int pirq, int irqgen)
+{
+  return gpio_test_irq_mask(addr,imask,pirq,irqgen,-1);
 }

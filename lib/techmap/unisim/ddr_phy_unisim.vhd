@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -1292,6 +1293,8 @@ use unisim.DCM;
 use unisim.ODDR;
 use unisim.FD;
 use unisim.IDELAY;
+use unisim.IDELAYE2;
+use unisim.PLLE2_ADV;
 use unisim.ISERDES;
 use unisim.BUFIO;
 use unisim.IDELAYCTRL;
@@ -1474,6 +1477,91 @@ architecture rtl of virtex5_ddr2_phy_wo_pads is
       RST : in std_ulogic);
   end component;
 
+  component PLLE2_ADV
+  generic (
+     BANDWIDTH : string := "OPTIMIZED";
+     CLKFBOUT_MULT : integer := 5;
+     CLKFBOUT_PHASE : real := 0.0;
+     CLKIN1_PERIOD : real := 0.0;
+     CLKIN2_PERIOD : real := 0.0;
+     CLKOUT0_DIVIDE : integer := 1;
+     CLKOUT0_DUTY_CYCLE : real := 0.5;
+     CLKOUT0_PHASE : real := 0.0;
+     CLKOUT1_DIVIDE : integer := 1;
+     CLKOUT1_DUTY_CYCLE : real := 0.5;
+     CLKOUT1_PHASE : real := 0.0;
+     CLKOUT2_DIVIDE : integer := 1;
+     CLKOUT2_DUTY_CYCLE : real := 0.5;
+     CLKOUT2_PHASE : real := 0.0;
+     CLKOUT3_DIVIDE : integer := 1;
+     CLKOUT3_DUTY_CYCLE : real := 0.5;
+     CLKOUT3_PHASE : real := 0.0;
+     CLKOUT4_DIVIDE : integer := 1;
+     CLKOUT4_DUTY_CYCLE : real := 0.5;
+     CLKOUT4_PHASE : real := 0.0;
+     CLKOUT5_DIVIDE : integer := 1;
+     CLKOUT5_DUTY_CYCLE : real := 0.5;
+     CLKOUT5_PHASE : real := 0.0;
+     COMPENSATION : string := "ZHOLD";
+     DIVCLK_DIVIDE : integer := 1;
+     REF_JITTER1 : real := 0.0;
+     REF_JITTER2 : real := 0.0;
+     STARTUP_WAIT : string := "FALSE"
+  );
+  port (
+     CLKFBOUT : out std_ulogic := '0';
+     CLKOUT0 : out std_ulogic := '0';
+     CLKOUT1 : out std_ulogic := '0';
+     CLKOUT2 : out std_ulogic := '0';
+     CLKOUT3 : out std_ulogic := '0';
+     CLKOUT4 : out std_ulogic := '0';
+     CLKOUT5 : out std_ulogic := '0';
+     DO : out std_logic_vector (15 downto 0);
+     DRDY : out std_ulogic := '0';
+     LOCKED : out std_ulogic := '0';
+     CLKFBIN : in std_ulogic;
+     CLKIN1 : in std_ulogic;
+     CLKIN2 : in std_ulogic;
+     CLKINSEL : in std_ulogic;
+     DADDR : in std_logic_vector(6 downto 0);
+     DCLK : in std_ulogic;
+     DEN : in std_ulogic;
+     DI : in std_logic_vector(15 downto 0);
+     DWE : in std_ulogic;
+     PWRDWN : in std_ulogic;
+     RST : in std_ulogic
+  );
+  end component;
+
+  component IDELAYE2
+  generic (
+     CINVCTRL_SEL : string := "FALSE";
+     DELAY_SRC : string := "IDATAIN";
+     HIGH_PERFORMANCE_MODE : string := "FALSE";
+     IDELAY_TYPE : string := "FIXED";
+     IDELAY_VALUE : integer := 0;
+     PIPE_SEL : string := "FALSE";
+     REFCLK_FREQUENCY : real := 200.0;
+     SIGNAL_PATTERN : string := "DATA"
+  );
+  port (
+     CNTVALUEOUT : out std_logic_vector(4 downto 0);
+     DATAOUT : out std_ulogic;
+     C : in std_ulogic;
+     CE : in std_ulogic;
+     CINVCTRL : in std_ulogic;
+     CNTVALUEIN : in std_logic_vector(4 downto 0);
+     DATAIN : in std_ulogic;
+     IDATAIN : in std_ulogic;
+     INC : in std_ulogic;
+     LD : in std_ulogic;
+     LDPIPEEN : in std_ulogic;
+     REGRST : in std_ulogic
+  );
+end component;
+
+signal dllfbout, dllfbin, refdllfbout, refdllfbin, ddrdllfbout, ddrdllfbin : std_logic;
+
 signal vcc, gnd, oe, lockl : std_ulogic;
 signal dqsn : std_logic_vector(dbits/8-1 downto 0);
 signal cbdqsn : std_logic_vector(dbits/8-1 downto 0);
@@ -1489,7 +1577,7 @@ signal clk_0r, clk_90r, clk_180r, clk_270r : std_ulogic;
 signal clk90r, clk180r, clk270r : std_ulogic;
 signal locked, vlockl, ddrclkfbl, dllfb : std_ulogic;
 
-signal ddr_dqin, ddr_dqin_nodel : std_logic_vector (dbits-1 downto 0); -- ddr data
+signal ddr_dqin, ddr_dqin_nodel, ddr_dqintemp : std_logic_vector (dbits-1 downto 0); -- ddr data
 signal ddr_dqout     : std_logic_vector (dbits-1 downto 0);      -- ddr data
 signal ddr_dqoen     : std_logic_vector (dbits-1 downto 0);      -- ddr data
 signal ddr_cbdqin, ddr_cbdqin_nodel : std_logic_vector (dbits-1 downto 0); -- ddr checkbits
@@ -1549,6 +1637,8 @@ attribute keep of clk_90ro : signal is true;
 attribute syn_keep of mclkfx : signal is true;
 attribute syn_keep of clk_90ro : signal is true;
 
+signal clk_180temp : std_logic;
+
 begin
 
    -- Generate 200 MHz ref clock if not supplied
@@ -1571,7 +1661,8 @@ begin
           PSEN => gnd, PSINCDEC => gnd, RST => dll0rst(0),
           LOCKED => lock200, CLKFX => clk200fx);
     end generate;
-    LMODE_dll200 : if not ((tech = virtex4 and MHz >= 210) or (tech = virtex5)) generate
+    LMODE_dll200 : if not ((tech = virtex4 and MHz >= 210) or (tech = virtex5) or 
+                     tech = virtex7 or tech = kintex7 or tech = artix7 or tech = zynq7000) generate
       dll200 : DCM
         generic map (
           CLKFX_MULTIPLY => 400/MHz, CLKFX_DIVIDE => 2,
@@ -1581,6 +1672,75 @@ begin
           CLKIN => clk, CLKFB => clk200fb, DSSEN => gnd, PSCLK => gnd,
           PSEN => gnd, PSINCDEC => gnd, RST => dll0rst(0),
           LOCKED => lock200, CLKFX => clk200fx);
+    end generate;
+    V7_refdll : if (tech = virtex7 or tech = kintex7 or tech = artix7 or tech = zynq7000) generate
+    bufg0_fb : BUFG port map (I => refdllfbout, O => refdllfbin);
+        PLLE2_ADV_inst : PLLE2_ADV generic map (
+          BANDWIDTH          => "OPTIMIZED",  -- OPTIMIZED, HIGH, LOW
+          CLKFBOUT_MULT      => 1200/MHz,   -- Multiply value for all CLKOUT, (2-64)
+          CLKFBOUT_PHASE     => 0.0, -- Phase offset in degrees of CLKFB, (-360.000-360.000).
+          -- CLKIN_PERIOD: Input clock period in nS to ps resolution (i.e. 33.333 is 30 MHz).
+          CLKIN1_PERIOD      => 1000.0/real(MHz),
+          CLKIN2_PERIOD      => 0.0,
+          -- CLKOUT0_DIVIDE - CLKOUT5_DIVIDE: Divide amount for CLKOUT (1-128)
+          CLKOUT0_DIVIDE     => 6,
+          CLKOUT1_DIVIDE     => 1,
+          CLKOUT2_DIVIDE     => 1,
+          CLKOUT3_DIVIDE     => 1,
+          CLKOUT4_DIVIDE     => 1,
+          CLKOUT5_DIVIDE     => 1,
+          -- CLKOUT0_DUTY_CYCLE - CLKOUT5_DUTY_CYCLE: Duty cycle for CLKOUT outputs (0.001-0.999).
+          CLKOUT0_DUTY_CYCLE => 0.5,
+          CLKOUT1_DUTY_CYCLE => 0.5,
+          CLKOUT2_DUTY_CYCLE => 0.5,
+          CLKOUT3_DUTY_CYCLE => 0.5,
+          CLKOUT4_DUTY_CYCLE => 0.5,
+          CLKOUT5_DUTY_CYCLE => 0.5,
+          -- CLKOUT0_PHASE - CLKOUT5_PHASE: Phase offset for CLKOUT outputs (-360.000-360.000).
+          CLKOUT0_PHASE      => 0.0,
+          CLKOUT1_PHASE      => 0.0,
+          CLKOUT2_PHASE      => 0.0,
+          CLKOUT3_PHASE      => 0.0,
+          CLKOUT4_PHASE      => 0.0,
+          CLKOUT5_PHASE      => 0.0,
+          COMPENSATION       => "ZHOLD", -- ZHOLD, BUF_IN, EXTERNAL, INTERNAL
+          DIVCLK_DIVIDE      => 1, -- Master division value (1-56)
+          -- REF_JITTER: Reference input jitter in UI (0.000-0.999).
+          REF_JITTER1        => 0.0,
+          REF_JITTER2        => 0.0,
+          STARTUP_WAIT       => "TRUE" -- Delay DONE until PLL Locks, ("TRUE"/"FALSE")
+        )
+        port map (
+          -- Clock Outputs: 1-bit (each) output: User configurable clock outputs
+          CLKOUT0           => clk200fx,
+          CLKOUT1           => open, -- actually is only 20 degrees (see CLKOUT1_PHASE)
+          CLKOUT2           => open,
+          CLKOUT3           => open,
+          CLKOUT4           => open,
+          CLKOUT5           => open,
+          -- DRP Ports: 16-bit (each) output: Dynamic reconfigration ports
+          DO                => open,
+          DRDY              => open,
+          -- Feedback Clocks: 1-bit (each) output: Clock feedback ports
+          CLKFBOUT          => refdllfbout,
+          -- Status Ports: 1-bit (each) output: PLL status ports
+          LOCKED            => lock200,
+          -- Clock Inputs: 1-bit (each) input: Clock inputs
+          CLKIN1            => clk,
+          CLKIN2            => '0',
+          -- Con trol Ports: 1-bit (each) input: PLL control ports
+          CLKINSEL          => '1',
+          PWRDWN            => '0',
+          RST               => dll0rst(0),
+          -- DRP Ports: 7-bit (each) input: Dynamic reconfigration ports
+          DADDR             => "0000000",
+          DCLK              => '0',
+          DEN               => '0',
+          DI                => "0000000000000000",
+          DWE               => '0',
+          -- Feedback Clocks: 1-bit (each) input: Clock feedback ports
+          CLKFBIN           => refdllfbin
+        );
     end generate;
   end generate;
 
@@ -1596,7 +1756,15 @@ begin
   -- Optional DDR clock multiplication
 
   noclkscale : if clk_mul = clk_div generate
-    dll0rst <= dllrst;
+    rstdel : process (clk, rst)
+    begin
+        if rst = '0' then
+          dll0rst <= (others => '1');
+        elsif rising_edge(clk) then
+          dll0rst <= dll0rst(1 to 3) & '0';
+        end if;
+    end process;
+    --dll0rst <= dllrst;
     mlock   <= '1';
     mbufg0 : BUFG port map (I => clk, O => mclk);
   end generate;
@@ -1626,7 +1794,8 @@ begin
           LOCKED => mlock, CLKFX => mclkfx );
     end generate;
     LMODE_dllm : if not ((tech = virtex4 and (((MHz*clk_mul)/clk_div >= 210) or (MHz >= 210))) 
-                      or (tech = virtex5 and (((MHz*clk_mul)/clk_div > 140)  or (MHz > 120)))) generate
+                      or (tech = virtex5 and (((MHz*clk_mul)/clk_div > 140)  or (MHz > 120))) or 
+                     tech = virtex7 or tech = kintex7 or tech = artix7 or tech = zynq7000) generate
       dllm : DCM
         generic map (
           CLKFX_MULTIPLY => clk_mul, CLKFX_DIVIDE => clk_div,
@@ -1636,13 +1805,81 @@ begin
           PSEN => gnd, PSINCDEC => gnd, RST => dll0rst(0), CLK0 => mclk0,
           LOCKED => mlock, CLKFX => mclkfx );
     end generate;
+    V7_ddrdll : if (tech = virtex7 or tech = kintex7 or tech = artix7 or tech = zynq7000) generate
+      bufg1_fb : BUFG port map (I => ddrdllfbout, O => ddrdllfbin);
+          PLLE2_ADV_inst : PLLE2_ADV generic map (
+            BANDWIDTH          => "OPTIMIZED",  -- OPTIMIZED, HIGH, LOW
+            CLKFBOUT_MULT      => clk_mul,   -- Multiply value for all CLKOUT, (2-64)
+            CLKFBOUT_PHASE     => 0.0, -- Phase offset in degrees of CLKFB, (-360.000-360.000).
+            -- CLKIN_PERIOD: Input clock period in nS to ps resolution (i.e. 33.333 is 30 MHz).
+            CLKIN1_PERIOD      => 1000.0/real(MHz),
+            CLKIN2_PERIOD      => 0.0,
+            -- CLKOUT0_DIVIDE - CLKOUT5_DIVIDE: Divide amount for CLKOUT (1-128)
+            CLKOUT0_DIVIDE     => clk_div,
+            CLKOUT1_DIVIDE     => 1,
+            CLKOUT2_DIVIDE     => 1,
+            CLKOUT3_DIVIDE     => 1,
+            CLKOUT4_DIVIDE     => 1,
+            CLKOUT5_DIVIDE     => 1,
+            -- CLKOUT0_DUTY_CYCLE - CLKOUT5_DUTY_CYCLE: Duty cycle for CLKOUT outputs (0.001-0.999).
+            CLKOUT0_DUTY_CYCLE => 0.5,
+            CLKOUT1_DUTY_CYCLE => 0.5,
+            CLKOUT2_DUTY_CYCLE => 0.5,
+            CLKOUT3_DUTY_CYCLE => 0.5,
+            CLKOUT4_DUTY_CYCLE => 0.5,
+            CLKOUT5_DUTY_CYCLE => 0.5,
+            -- CLKOUT0_PHASE - CLKOUT5_PHASE: Phase offset for CLKOUT outputs (-360.000-360.000).
+            CLKOUT0_PHASE      => 0.0,
+            CLKOUT1_PHASE      => 0.0,
+            CLKOUT2_PHASE      => 0.0,
+            CLKOUT3_PHASE      => 0.0,
+            CLKOUT4_PHASE      => 0.0,
+            CLKOUT5_PHASE      => 0.0,
+            COMPENSATION       => "ZHOLD", -- ZHOLD, BUF_IN, EXTERNAL, INTERNAL
+            DIVCLK_DIVIDE      => 1, -- Master division value (1-56)
+            -- REF_JITTER: Reference input jitter in UI (0.000-0.999).
+            REF_JITTER1        => 0.0,
+            REF_JITTER2        => 0.0,
+            STARTUP_WAIT       => "TRUE" -- Delay DONE until PLL Locks, ("TRUE"/"FALSE")
+          )
+          port map (
+            -- Clock Outputs: 1-bit (each) output: User configurable clock outputs
+            CLKOUT0           => mclkfx,
+            CLKOUT1           => open,
+            CLKOUT2           => open,
+            CLKOUT3           => open,
+            CLKOUT4           => open,
+            CLKOUT5           => open,
+            -- DRP Ports: 16-bit (each) output: Dynamic reconfigration ports
+            DO                => open,
+            DRDY              => open,
+            -- Feedback Clocks: 1-bit (each) output: Clock feedback ports
+            CLKFBOUT          => ddrdllfbout,
+            -- Status Ports: 1-bit (each) output: PLL status ports
+            LOCKED            => mlock,
+            -- Clock Inputs: 1-bit (each) input: Clock inputs
+            CLKIN1            => clk,
+            CLKIN2            => '0',
+            -- Con trol Ports: 1-bit (each) input: PLL control ports
+            CLKINSEL          => '1',
+            PWRDWN            => '0',
+            RST               => dll0rst(0),
+            -- DRP Ports: 7-bit (each) input: Dynamic reconfigration ports
+            DADDR             => "0000000",
+            DCLK              => '0',
+            DEN               => '0',
+            DI                => "0000000000000000",
+            DWE               => '0',
+            -- Feedback Clocks: 1-bit (each) input: Clock feedback ports
+            CLKFBIN           => ddrdllfbin
+          );
+    end generate;
   end generate;
     
   -- DDR clock generation
 
 
-  bufg2 : BUFG port map (I => clk_90ro, O => clk90r);
-  clk180r <= not mclk;
+  bufg2 : BUFG port map (I => clk_90ro, O => clk90r);  
   clkout <= mclk;
   dllfb  <= clk90r;
 
@@ -1655,9 +1892,11 @@ begin
           PSEN => gnd, PSINCDEC => gnd, RST => dllrst(0), CLK0 => clk_90ro,
           CLK90 => open, CLK180 => open, CLK270 => open,
           LOCKED => lockl);
+      clk180r <= not mclk;
     end generate;
     LMODE_dll : if not ((tech = virtex4 and ((MHz*clk_mul)/clk_div >= 150))
-                   or (tech = virtex5 and ((MHz*clk_mul)/clk_div >= 120))) generate
+                   or (tech = virtex5 and ((MHz*clk_mul)/clk_div >= 120))
+                   or tech = virtex7 or tech = kintex7 or tech = artix7 or tech = zynq7000) generate
       dll : DCM generic map (CLKFX_MULTIPLY => 2, CLKFX_DIVIDE => 2, 
                              DFS_FREQUENCY_MODE => "LOW", DLL_FREQUENCY_MODE => "LOW", --"HIGH")
                              PHASE_SHIFT => 64, CLKOUT_PHASE_SHIFT => "FIXED")--, CLKIN_PERIOD => real((1000*clk_div)/(MHz*clk_mul)))
@@ -1665,6 +1904,78 @@ begin
           PSEN => gnd, PSINCDEC => gnd, RST => dllrst(0), CLK0 => clk_90ro,
           CLK90 => open, CLK180 => open, CLK270 => open,
           LOCKED => lockl);
+      clk180r <= not mclk;
+    end generate;
+    V7_dll : if (tech = virtex7 or tech = kintex7 or tech = artix7 or tech = zynq7000) generate
+        bufg2 : BUFG port map (I => dllfbout, O => dllfbin);
+        bufg3 : BUFG port map (I => clk_180temp, O => clk180r);
+
+        PLLE2_ADV_inst : PLLE2_ADV generic map (
+          BANDWIDTH          => "OPTIMIZED",  -- OPTIMIZED, HIGH, LOW
+          CLKFBOUT_MULT      => 9,   -- Multiply value for all CLKOUT, (2-64)
+          CLKFBOUT_PHASE     => 0.0, -- Phase offset in degrees of CLKFB, (-360.000-360.000).
+          -- CLKIN_PERIOD: Input clock period in nS to ps resolution (i.e. 33.333 is 30 MHz).
+          CLKIN1_PERIOD      => 1000.0/real(MHz*clk_mul/clk_div),
+          CLKIN2_PERIOD      => 0.0,
+          -- CLKOUT0_DIVIDE - CLKOUT5_DIVIDE: Divide amount for CLKOUT (1-128)
+          CLKOUT0_DIVIDE     => 1,
+          CLKOUT1_DIVIDE     => 9,
+          CLKOUT2_DIVIDE     => 9,
+          CLKOUT3_DIVIDE     => 1,
+          CLKOUT4_DIVIDE     => 1,
+          CLKOUT5_DIVIDE     => 1,
+          -- CLKOUT0_DUTY_CYCLE - CLKOUT5_DUTY_CYCLE: Duty cycle for CLKOUT outputs (0.001-0.999).
+          CLKOUT0_DUTY_CYCLE => 0.5,
+          CLKOUT1_DUTY_CYCLE => 0.5,
+          CLKOUT2_DUTY_CYCLE => 0.5,
+          CLKOUT3_DUTY_CYCLE => 0.5,
+          CLKOUT4_DUTY_CYCLE => 0.5,
+          CLKOUT5_DUTY_CYCLE => 0.5,
+          -- CLKOUT0_PHASE - CLKOUT5_PHASE: Phase offset for CLKOUT outputs (-360.000-360.000).
+          CLKOUT0_PHASE      => 0.0,
+          CLKOUT1_PHASE      => 90.0,
+          CLKOUT2_PHASE      => 180.0,
+          CLKOUT3_PHASE      => 0.0,
+          CLKOUT4_PHASE      => 0.0,
+          CLKOUT5_PHASE      => 0.0,
+          COMPENSATION       => "ZHOLD", -- ZHOLD, BUF_IN, EXTERNAL, INTERNAL
+          DIVCLK_DIVIDE      => 1, -- Master division value (1-56)
+          -- REF_JITTER: Reference input jitter in UI (0.000-0.999).
+          REF_JITTER1        => 0.0,
+          REF_JITTER2        => 0.0,
+          STARTUP_WAIT       => "TRUE" -- Delay DONE until PLL Locks, ("TRUE"/"FALSE")
+        )
+        port map (
+          -- Clock Outputs: 1-bit (each) output: User configurable clock outputs
+          CLKOUT0           => open,
+          CLKOUT1           => clk_90ro,
+          CLKOUT2           => clk_180temp,
+          CLKOUT3           => open,
+          CLKOUT4           => open,
+          CLKOUT5           => open,
+          -- DRP Ports: 16-bit (each) output: Dynamic reconfigration ports
+          DO                => open,
+          DRDY              => open,
+          -- Feedback Clocks: 1-bit (each) output: Clock feedback ports
+          CLKFBOUT          => dllfbout,
+          -- Status Ports: 1-bit (each) output: PLL status ports
+          LOCKED            => lockl,
+          -- Clock Inputs: 1-bit (each) input: Clock inputs
+          CLKIN1            => mclk,
+          CLKIN2            => '0',
+          -- Con trol Ports: 1-bit (each) input: PLL control ports
+          CLKINSEL          => '1',
+          PWRDWN            => '0',
+          RST               => dllrst(0),
+          -- DRP Ports: 7-bit (each) input: Dynamic reconfigration ports
+          DADDR             => "0000000",
+          DCLK              => '0',
+          DEN               => '0',
+          DI                => "0000000000000000",
+          DWE               => '0',
+          -- Feedback Clocks: 1-bit (each) input: Clock feedback ports
+          CLKFBIN           => dllfbin
+        );
     end generate;
 
 
@@ -1782,9 +2093,28 @@ begin
   
   -- Data bus
   ddgen : for i in 0 to dbits-1 generate
-    del_dq0 : IDELAY generic map(IOBDELAY_TYPE => "VARIABLE", IOBDELAY_VALUE => ddelay(i/8))
-      port map(O => ddr_dqin(i), I => ddr_dqin_nodel(i), C => clkoutret, CE => cal_en(i/8),
-               INC => cal_inc(i/8), RST => cal_rst);
+    idelay_v4: if (tech = virtex4 or tech = virtex5 or tech = virtex6) generate
+      del_dq0 : IDELAY generic map(IOBDELAY_TYPE => "VARIABLE", IOBDELAY_VALUE => ddelay(i/8))
+        port map(O => ddr_dqin(i), I => ddr_dqin_nodel(i), C => clkoutret, CE => cal_en(i/8),
+                 INC => cal_inc(i/8), RST => cal_rst);
+    end generate;
+    idelay_v7: if (tech = virtex7 or tech = kintex7 or tech = artix7 or tech = zynq7000) generate
+      del_dq0 : IDELAYE2 generic map(CINVCTRL_SEL => "FALSE", DELAY_SRC => "IDATAIN",
+          HIGH_PERFORMANCE_MODE => "TRUE", IDELAY_TYPE => "VARIABLE", IDELAY_VALUE => ddelay(i/8),
+          PIPE_SEL => "FALSE", REFCLK_FREQUENCY => 200.0, SIGNAL_PATTERN => "DATA")
+        port map(
+          CNTVALUEOUT => open, DATAOUT => ddr_dqintemp(i), C => clkoutret, CE => cal_en(i/8), CINVCTRL => '0',
+          CNTVALUEIN => "00000", DATAIN => '0', IDATAIN => ddr_dqin_nodel(i), INC => cal_inc(i/8), LD => cal_rst,
+          LDPIPEEN => '0', REGRST => '0');
+
+      del_dq1 : IDELAYE2 generic map(CINVCTRL_SEL => "FALSE", DELAY_SRC => "DATAIN",
+          HIGH_PERFORMANCE_MODE => "TRUE", IDELAY_TYPE => "VARIABLE", IDELAY_VALUE => ddelay(i/8),
+          PIPE_SEL => "FALSE", REFCLK_FREQUENCY => 200.0, SIGNAL_PATTERN => "DATA")
+        port map(
+          CNTVALUEOUT => open, DATAOUT => ddr_dqin(i), C => clkoutret, CE => cal_en(i/8), CINVCTRL => '0',
+          CNTVALUEIN => "00000", DATAIN => ddr_dqintemp(i), IDATAIN => '0', INC => cal_inc(i/8), LD => cal_rst,
+          LDPIPEEN => '0', REGRST => '0');
+    end generate;
     
     qi : IDDR generic map (DDR_CLK_EDGE => "OPPOSITE_EDGE")
       port map ( Q1 => dqinl(i),   --(i+dbits), -- 1-bit output for positive edge of clock 

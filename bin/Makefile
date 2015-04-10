@@ -1,5 +1,5 @@
-VER=$(VNAME)1.3.7
-BID=4144
+VER=$(VNAME)1.4.0
+BID=4154
 CC=gcc
 SED=sed
 
@@ -8,7 +8,7 @@ ASICLIBS = ihp25 sgb25vrh ut025crh virage rh_lib18t rh_lib18t_io2 rh_lib13t\
 	tm65gplus st65lp st65gp cmos9sf nextreme2 gf65g saed32
 FPGALIBS = apa proasic3 axcelerator ec fusion unisim secureip unimacro altera altera_mf \
 	 stratixii eclipsee cycloneiii stratixiii synplify simprim stratixiv \
-	proasic3e proasic3l
+	proasic3e proasic3l smartfusion2
 
 ifeq ("$(GRLIB_CONFIG)","")
 GRLIB_CONFIG = dummy
@@ -38,7 +38,7 @@ TECHLIBS=$(FPGALIBS) $(ASICLIBS)
 endif
 XTECHLIBS = $(TECHLIBS:%=tech/% )
 SIMLIBS = hynix micron cypress
-ACTELLIBS = apa apa3 axcelerator proasic3 fusion
+ACTELLIBS = apa apa3 axcelerator proasic3 fusion smartfusion2
 XILINXLIBS = unisim simprim unimacro
 ALTERALIBS = altera_mf stratixii altera cycloneiii stratixiii
 ALTERAFILES = $(ALTERALIBS:%=lib/techmap/%) $(RMCOMLIBS:%=lib/tech/%) netlists/altera
@@ -59,7 +59,7 @@ VHDLP = vhdlp -s -work
 SONATALIBSKIP = pere05
 
 ALIB = alib
-ACOM = acom -quiet $(ACOMOPT) -accept87 -work
+ACOM = acom -quiet $(ACOMOPT) -work
 ALOG = alog -quiet $(ALOGOPT) -work
 AVHDL = avhdl
 
@@ -422,21 +422,24 @@ isp-clean:
 
 #########   Xilinx targets    ############
 ifeq ("$(NETLISTTECH)","")
-# Some .ngo netlists are reused for other FPGA families
+# Some netlists are reused for other FPGA families
+ifeq ("$(TECHNOLOGY)","zynq7000")
+NETLISTTECH = Zynq
+else
 ifeq ("$(TECHNOLOGY)","Virtex7")
-NETLISTTECH = Virtex4
+NETLISTTECH = Virtex7
 else
 ifeq ("$(TECHNOLOGY)","Kintex7")
-NETLISTTECH = Virtex4
+NETLISTTECH = Kintex7
 else
 ifeq ("$(TECHNOLOGY)","Artix7")
-NETLISTTECH = Virtex4
+NETLISTTECH = Artix7
 else
 ifeq ("$(TECHNOLOGY)","Spartan6")
 NETLISTTECH = Spartan3
 else
 ifeq ("$(TECHNOLOGY)","Virtex6")
-NETLISTTECH = Virtex4
+NETLISTTECH = Virtex6
 else
 ifeq ("$(TECHNOLOGY)","Virtex2p")
 NETLISTTECH = Virtex2
@@ -461,7 +464,7 @@ endif
 endif
 endif
 endif
-
+endif
 
 #########   Xilinx ISE targets   ############
 
@@ -503,7 +506,7 @@ endif
 endif
 
 ifeq ("$(GRLIB_SIMULATOR)", "ALDEC")
-VCOM += -incr -nowarn ELAB1_0026 
+VCOM += -incr -nowarn ELAB1_0026 -nowarn COMP96_0259
 VLOG += -incr
 endif
 
@@ -690,7 +693,7 @@ install-unimacro:
         fi
 
 remove-unimacro:
-	@-rm $(GRLIB)/lib/tech/unimacro/ise/*.vhd; echo "" > $(GRLIB)/lib/tech/unimacro/ise/vhdlsyn.txt 
+	@-rm $(GRLIB)/lib/tech/unimacro/ise/*.vhd; echo "" > $(GRLIB)/lib/tech/unimacro/ise/vhdlsyn.txt
 
 install-unisim:
 ifeq ("$(GRLIB_SIMULATOR)","Xilinx")
@@ -855,6 +858,7 @@ ifeq ($(CONFIG_MIG_SERIES7),y)
 	if [ -f ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/mig.v ]; then \
 	vlog -work gaisler \
 	./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/mig.v \
+	./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/mig_mig_sim.v \
 	./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/*/*.v ;\
 	vlog -work work $(XILINX)/verilog/src/glbl.v ;\
 	fi;
@@ -865,26 +869,9 @@ sgmii_series7: ip_series7_generate compile_xilinx_verilog_lib map_xilinx_verilog
 ifneq ("$(GRLIB_SIMULATOR)","Xilinx")
 ifeq ($(CONFIG_GRETH_ENABLE),y)
 	if [ -f./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/synth/sgmii.v ]; then \
-	vlib modelsim/gig_ethernet_pcs_pma_v14_0 ;\
-	vmap -modelsimini ./modelsim.ini gig_ethernet_pcs_pma_v14_0 ./modelsim/gig_ethernet_pcs_pma_v14_0 ;\
-	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/*pack.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/*/*pack.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/synchronise/synchronise.vhd ;\
-	vlog -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/ptp/gig_ethernet_pcs_pma_v14_0_timer_rx_latency_correct.v ;\
-	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/auto_neg/auto_neg.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/sync_block/sync_block.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/management/mdio_interface.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/management/management.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/ptp/rx_elastic_buffer_1588.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/rx/rx.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/tx/tx.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/TBI/rx_elastic_buffer_sgmii.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/TBI/rx_elastic_buffer.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/TBI/tbi.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/TBI/decode_8b10b.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/TBI/encode_8b10b.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/gpcs_pma_gen.vhd ;\
-	vcom -work gig_ethernet_pcs_pma_v14_0 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_0/hdl/gig_ethernet_pcs_pma_v14_0.vhd  ;\
+	vlib modelsim/gig_ethernet_pcs_pma_v14_3 ;\
+	vmap -modelsimini ./modelsim.ini gig_ethernet_pcs_pma_v14_3 ./modelsim/gig_ethernet_pcs_pma_v14_3 ;\
+	vcom -work gig_ethernet_pcs_pma_v14_3 ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_3/hdl/gig_ethernet_pcs_pma_v14_3_rfs.vhd  ;\
 	vlog -work work \
 	./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/synth/*.v \
 	./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/synth/*/*.v ;\
@@ -1019,7 +1006,7 @@ planAhead-clean:
 #########    Xilinx Vivado targets   ############
 
 VIVADOVHDL = read_vhdl -library
-VIVADOVLOG = read_verilog -library work
+VIVADOVLOG = read_verilog -library
 
 VIVADOLIBSKIPX = $(ASICLIBS) $(BRMLIBS) $(ACTELLIBS) $(ALTERALIBS) \
 	$(LATTICELIBS) $(COREPCILIB) $(SIMLIBS)
@@ -1111,6 +1098,9 @@ ifneq ("$(PROTOBOARD)","")
 	@echo "set_property board $(PROTOBOARD) [current_project]"  >> ./vivado/$(TOP)_vivado.tcl
 endif
 ifeq ($(CONFIG_MIG_SERIES7),y)
+ifeq ("$(BOARD)","digilent-nexys4ddr-xc7a100t")
+	@echo "set_property STEPS.WRITE_BITSTREAM.TCL.PRE ../../../../bitstream.tcl [get_runs impl_1]" >> ./vivado/$(TOP)_vivado.tcl
+endif
 	@if test -r $(GRLIB)/boards/$(BOARD)/mig.xci; then \
 		echo "set_property target_language verilog [current_project]" >> ./vivado/$(TOP)_vivado.tcl; \
 		echo "import_ip -files $(GRLIB)/boards/$(BOARD)/mig.xci -name mig" >> ./vivado/$(TOP)_vivado.tcl; \
@@ -1130,7 +1120,7 @@ endif
 	@if test -r $(GRLIB)/netlists/xilinx/$(NETLISTTECH); then \
 		echo "import_files $(GRLIB)/netlists/xilinx/$(NETLISTTECH)" >> ./vivado/$(TOP)_vivado.tcl; \
 	fi;
-	@echo "synth_design -rtl -name rtl_1" > ./vivado/$(TOP)_vivado_run.tcl
+	@echo "synth_design -directive runtimeoptimized -resource_sharing off -keep_equivalent_registers -no_lc -rtl -name rtl_1" > ./vivado/$(TOP)_vivado_run.tcl
 	@echo "set_property flow {$(VIVADO_SYNTH_FLOW)} [get_runs synth_1]" >> ./vivado/$(TOP)_vivado_run.tcl
 	@echo "set_property strategy {$(VIVADO_SYNTH_STRATEGY)} [get_runs synth_1]" >> ./vivado/$(TOP)_vivado_run.tcl
 	@echo "launch_runs synth_1" >> ./vivado/$(TOP)_vivado_run.tcl
@@ -1171,13 +1161,13 @@ vivado-prog-fpga:
 #########   Altera Quartus targets   ############
 
 #ifeq ("$(QUARTUS_ROOTDIR)","")
-QUARTUS_CDB = quartus_cdb
-QUARTUS_MAP = quartus_map
-QUARTUS_FIT = quartus_fit
-QUARTUS_ASM = quartus_asm
-QUARTUS_STA = quartus_sta
-QUARTUS_PGM = quartus_pgm
-QUARTUS_SH = quartus_sh
+QUARTUS_CDB = quartus_cdb $(QUARTUSOPT)
+QUARTUS_MAP = quartus_map $(QUARTUSOPT)
+QUARTUS_FIT = quartus_fit $(QUARTUSOPT)
+QUARTUS_ASM = quartus_asm $(QUARTUSOPT)
+QUARTUS_STA = quartus_sta $(QUARTUSOPT)
+QUARTUS_PGM = quartus_pgm $(QUARTUSOPT)
+QUARTUS_SH = quartus_sh $(QUARTUSOPT)
 #else
 #QUARTUS_MAP = $(QUARTUS_ROOTDIR)/bin/quartus_map
 #QUARTUS_FIT = $(QUARTUS_ROOTDIR)/bin/quartus_fit
@@ -1202,6 +1192,12 @@ quartus-vqm:
 		cp  $(GRLIB)/netlists/altera/cyclone3/*.vqm . ;;\
 	CYCLONEIV-E) \
 		cp  $(GRLIB)/netlists/altera/cyclone3/*.vqm . ;;\
+	CYCLONEV) \
+		cp  $(GRLIB)/netlists/altera/cyclone5/*.vqm . ;;\
+	STRATIXV) \
+		cp  $(GRLIB)/netlists/altera/stratix5/*.vqm . ;;\
+	STRATIXIV) \
+		cp  $(GRLIB)/netlists/altera/stratix4/*.vqm . ;;\
 	STRATIXIII) \
 		cp  $(GRLIB)/netlists/altera/stratix3/*.vqm . ;;\
 	STRATIXII) \
@@ -1273,7 +1269,11 @@ SYNPLIFY = synplify_pro
 synplify synplify-map: $(TOP)_synplify.prj synplify/$(TOP).edf
 
 synplify-launch: $(TOP)_synplify.prj
-	$(SYNPLIFY) $(TOP)_synplify.prj&
+	$(SYNPLIFY) $(TOP)_synplify.prj && \
+	if test -r synplify//$(TOP).edn; then \
+	  echo "GRLIB: Detected synplify/$(TOP).edn, copying to synplify/$(TOP).edf"; \
+	  cp synplify/$(TOP).edn synplify/$(TOP).edf; \
+	fi &
 	-@mkdir synplify>& tmp.err; touch synplify/dummy.mif
 	-@mv synplify/*.mif .
 
@@ -1281,6 +1281,10 @@ synplify/$(TOP).edf: $(VHDLSYNFILES) $(VERILOGSYNFILES)
 	$(SYNPLIFY) -batch $(TOP)_synplify.prj
 	@touch synplify/dummy.mif
 	-@mv synplify/*.mif .
+	@if test -r synplify/$(TOP).edn; then \
+	  echo "GRLIB: Detected synplify/$(TOP).edn, copying to synplify/$(TOP).edf"; \
+	  cp synplify/$(TOP).edn synplify/$(TOP).edf; \
+	fi;
 
 $(TOP)_synplify.prj: compile.synp
 	@echo source compile.synp > $(TOP)_synplify.prj
@@ -1324,7 +1328,7 @@ endif
 
 synplify-clean:
 	-rm -rf synplify *.prd stdout.log *.mif syntmp.* synplify_* \
-	$(TOP).map $(TOP)_summary.xml
+	$(TOP).map $(TOP)_summary.xml synlog.tcl
 
 ########   Precision targets   ########################
 
@@ -1352,7 +1356,7 @@ precision-clean:
 
 #########   Actel Libero targets    ############################
 
-PROASIC3LIBS = proasic3 proasic3e proasic3l fusion
+PROASIC3LIBS = proasic3 proasic3e proasic3l fusion smartfusion2
 XLIBEROLIBSKIP = $(ASICLIBS) $(LATTICELIBS) \
 	$(ALTERALIBS) $(XILINXLIBS) $(PROASIC3LIBS) axcelerator
 LIBEROLIBSKIP = $(XLIBEROLIBSKIP:%=%|) dummy
@@ -1364,8 +1368,19 @@ LIBEROSKIP = dummy
 LIBERO = libero
 
 libero-launch : $(TOP)_libero.prj
+ifeq ("$(TECHNOLOGY)","IGLOO2")
+	@if !(test -d "./$(TOP)_libero"); then \
+	  $(LIBERO) SCRIPT:$(TOP)_libero.tcl; \
+	  cp ram.srec ./$(TOP)_libero/simulation/; \
+	fi;
+	$(LIBERO) ./$(TOP)_libero/$(TOP).prjx
+else
 	cp *.srec simulation
 	$(LIBERO) $(TOP)_libero.prj
+endif
+
+uninstall-smartfusion2 :
+	rm -r $(GRLIB)/lib/tech/smartfusion2/precomp_libraries/
 
 #########   Actel Designer targets    ############################
 
@@ -1380,6 +1395,16 @@ DESIGNER_LAYOUT_OPT="-timing_driven -incremental \"OFF\""
 endif
 endif
 
+ifeq ("$(DESIGNER_TECHNOLOGY)","")
+DESIGNER_TECHNOLOGY=$(TECHNOLOGY)
+endif
+
+ifeq ("$(DESIGNER_PART)","")
+DESIGNER_PART=$(PART)
+endif
+
+
+
 actel: $(TOP)_synplify.prj synplify/$(TOP).edf $(TOP)_designer.tcl
 	-mkdir ./actel
 	$(DESIGNER) script:$(TOP)_designer.tcl
@@ -1391,11 +1416,16 @@ $(TOP).adb:
 	$(DESIGNER) script:$(TOP)_designer_act.tcl
 
 $(TOP)_designer.tcl:
-	@echo "new_design -name \""$(TOP)\"" -family \""$(TECHNOLOGY)\"" " > $(TOP)_designer.tcl
+#ifeq ("$(TECHNOLOGY)","IGLOO2")
+#	@echo "new_design" > $(TOP)_designer.tcl
+#	@echo "set_design -name \""$(TOP)\"" -family \""$(DESIGNER_TECHNOLOGY)\"" -path \".\"" > $(TOP)_designer.tcl
+#else
+	@echo "new_design -name \""$(TOP)\"" -family \""$(DESIGNER_TECHNOLOGY)\"" " > $(TOP)_designer.tcl
+#endif
 ifeq ("$(DESIGNER_RADEXP)","")
-	@echo "set_device -die \""$(PART)\"" -package \""$(DESIGNER_PINS) $(DESIGNER_PACKAGE)\"" -speed \""$(SPEED)\"" -voltage \"1.5\" -iostd \"LVTTL\" -jtag \"yes\" -probe \"yes\" -trst \"yes\" -temprange \""$(DESIGNER_VOLTAGE)\"" -voltrange \""$(DESIGNER_VOLTAGE)\"" " >> $(TOP)_designer.tcl
+	@echo "set_device -die \""$(DESIGNER_PART)\"" -package \""$(DESIGNER_PINS) $(DESIGNER_PACKAGE)\"" -speed \""$(SPEED)\"" -voltage \"$(DESIGNER_VOLTAGE)\" -iostd \"LVTTL\" -jtag \"yes\" -probe \"yes\" -trst \"yes\" -temprange \""$(DESIGNER_TEMPR)\"" -voltrange \""$(DESIGNER_VOLTRANGE)\"" " >> $(TOP)_designer.tcl
 else
-	@echo "set_device -die \""$(PART)\"" -package \""$(DESIGNER_PINS) $(DESIGNER_PACKAGE)\"" -speed \""$(SPEED)\"" -voltage \"1.5\" -iostd \"LVTTL\" -jtag \"yes\" -probe \"yes\" -trst \"yes\" -temprange \""$(DESIGNER_VOLTAGE)\"" -voltrange \""$(DESIGNER_VOLTAGE)\"" -radexp \""$(DESIGNER_RADEXP)\"" " >> $(TOP)_designer.tcl
+	@echo "set_device -die \""$(DESIGNER_PART)\"" -package \""$(DESIGNER_PINS) $(DESIGNER_PACKAGE)\"" -speed \""$(SPEED)\"" -voltage \"$(DESIGNER_VOLTAGE)\" -iostd \"LVTTL\" -jtag \"yes\" -probe \"yes\" -trst \"yes\" -temprange \""$(DESIGNER_TEMPR)\"" -voltrange \""$(DESIGNER_VOLTRANGE)\"" -radexp \""$(DESIGNER_RADEXP)\"" " >> $(TOP)_designer.tcl
 endif
 	@echo "if {[file exist "$(TOP).pdc"]} {" >> $(TOP)_designer.tcl
 	@echo "import_source -format \"edif\" -edif_flavor \"GENERIC\" " -merge_physical \"no\" -merge_timing \"no\"" {"synplify/$(TOP)".edf"} -format \"pdc\" -abort_on_error \"no\" {"$(TOP).pdc"} >> $(TOP)_designer.tcl
@@ -1442,12 +1472,18 @@ endif
 	@echo "report -type \"timer\" -analysis \"min\" -print_summary \"yes\" -use_slack_threshold \"no\" -print_paths \"yes\" -max_paths 100 -max_expanded_paths 5 -include_user_sets \"yes\" -include_pin_to_pin \"yes\" -select_clock_domains \"no\"  {./actel/report_timer_min.txt}" >> $(TOP)_designer.tcl
 	@echo "report -type \"pin\" -listby \"name\" {./actel/report_pin_name.log}" >> $(TOP)_designer.tcl
 	@echo "report -type \"pin\" -listby \"number\" {./actel/report_pin_number.log}" >> $(TOP)_designer.tcl
+#ifneq ("$(TECHNOLOGY)","IGLOO2")
 	@echo "report -type \"datasheet\" {./actel/report_datasheet.txt}" >> $(TOP)_designer.tcl
+#endif
 ifeq ("$(TECHNOLOGY)","Axcelerator")
 	@echo "export -format \"AFM-APS2\" -trstb_pullup \"yes\" -global_set_fuse \"reset\" -axprg_set_algo \"UMA\" {./actel/$(TOP).afm}"  >> $(TOP)_designer.tcl
 	@echo "export -format \"prb\" {./actel/$(TOP).prb}"  >> $(TOP)_designer.tcl
 else
+#ifneq ("$(TECHNOLOGY)","IGLOO2")
 	@echo "export -format \"pdb\" -feature \"prog_fpga\" -io_state \"Tri-State\" {./actel/$(TOP).pdb}"  >> $(TOP)_designer.tcl
+#else
+#	@echo "export -format \"fdb\" {./actel/$(TOP).fdb}"  >> $(TOP)_designer.tcl
+#endif
 endif
 	@echo "export -format log -diagnostic {./actel/report_log.log}" >> $(TOP)_designer.tcl
 	@echo "report -type status {./actel/report_status_post.log}" >> $(TOP)_designer.tcl
@@ -1459,7 +1495,8 @@ actel-clean:
 	smartgen stimulus synthesis viewdraw libero x $(TOP)_libero.prj \
 	libero_sim_files libero_syn_files coreconsole libero_simlist \
 	libero_synlist libero.do component *.pdb *.pdb.depends *.stp \
-	*.sdb *_layout.log *.dtf from.ufc from.mem
+	*.sdb *_layout.log *.dtf from.ufc from.mem  \
+	 $(TOP)_libero.prjx tooldata $(TOP)_libero.tcl $(TOP)_libero/
 
 actel-from libero-from:
 	$(GRLIB)/bin/from.batch from.hex > from.ufc
@@ -1699,18 +1736,19 @@ compile.etools $(TOP).ldf make.riviera :
 	echo KEY LIBERO \"9.1\" > $(TOP)_libero.prj; \
 	echo KEY CAPTURE \"9.1.1.5\" >> $(TOP)_libero.prj; \
 	echo KEY HDLTechnology \"VHDL\" >> $(TOP)_libero.prj; \
-	echo KEY VendorTechnology_Family \"$(TECHNOLOGY)\" >> $(TOP)_libero.prj; \
+	echo KEY VendorTechnology_Family \"$(DESIGNER_TECHNOLOGY)\" >> $(TOP)_libero.prj; \
 	echo KEY VendorTechnology_Die \"$(LIBERO_DIE)\" >> $(TOP)_libero.prj; \
 	echo KEY VendorTechnology_Package \"$(LIBERO_PACKAGE)\" >> $(TOP)_libero.prj; \
+	echo KEY VendorTechnology_Speed \"$(SPEED)\" >> $(TOP)_libero.prj; \
+	echo KEY VendorTechnology_DieVoltage \"$(DESIGNER_VOLTAGE)\" >> $(TOP)_libero.prj; \
+	echo KEY VendorTechnology_TEMPR \"$(DESIGNER_TEMPR)\" >> $(TOP)_libero.prj; \
+	echo KEY VendorTechnology_VOLTR \"$(DESIGNER_VOLTRANGE)\" >> $(TOP)_libero.prj; \
 	echo KEY ProjectLocation \"\.\" >> $(TOP)_libero.prj; \
 	echo KEY SimulationType \"VHDL\" >> $(TOP)_libero.prj; \
 	echo KEY Vendor \"Actel\" >> $(TOP)_libero.prj; \
 	echo KEY ActiveRoot \"$(TOP)\"	 >> $(TOP)_libero.prj; \
-	echo LIST REVISIONS >> $(TOP)_libero.prj; \
-	echo VALUE=\"Impl1\",NUM=1 >> $(TOP)_libero.prj; \
-	echo CURREV=1 >> $(TOP)_libero.prj; \
-	echo ENDLIST >> $(TOP)_libero.prj; \
 	echo LIST FileManager > libero_syn_files ; \
+	echo new_project -location {./$(TOP)_libero} -name {$(TOP)} -project_description {} -block_mode 0 -standalone_peripheral_initialization 1 -hdl {VHDL} -family {$(TECHNOLOGY)} -die {$(PART)} -package {$(DESIGNER_PINS) $(DESIGNER_PACKAGE)} -speed {$(SPEED)} -die_voltage {$(DESIGNER_VOLTAGE)} -adv_options {DSW_VCCA_VOLTAGE_RAMP_RATE:100_MS} -adv_options {IO_DEFT_STD:LVCMOS 2.5V} -adv_options {PART_RANGE:COM} -adv_options {PLL_SUPPLY:PLL_SUPPLY_25} -adv_options {RESTRICTPROBEPINS:1} -adv_options {SYSTEM_CONTROLLER_SUSPEND_MODE:0} -adv_options {TEMPR:$(DESIGNER_TEMPR)} -adv_options {VCCI_1.2_VOLTR:$(DESIGNER_VOLTRANGE)} -adv_options {VCCI_1.5_VOLTR:$(DESIGNER_VOLTRANGE)} -adv_options {VCCI_1.8_VOLTR:$(DESIGNER_VOLTRANGE)} -adv_options {VCCI_2.5_VOLTR:$(DESIGNER_VOLTRANGE)} -adv_options {VCCI_3.3_VOLTR:$(DESIGNER_VOLTRANGE)} -adv_options {VOLTR:$(DESIGNER_VOLTRANGE)} > libero_project.tcl ; \
 	echo LIST ExcludePackageForSynthesis > libero_sim_files; \
 	echo LIST $(TOP) >> libero_sim_files; \
 	echo LIST \"ideSYNTHESIS\" > libero_synlist; \
@@ -1790,7 +1828,7 @@ compile.etools $(TOP).ldf make.riviera :
 	          echo lib_vhdl new $$bn >> $(TOP)_ise.tcl;; \
 	        esac; \
 	        echo -n "  "$$bn":"; \
-	      for l in `cat $$k/dirs.txt` $$tdirs; do \
+	      for l in `cat $$k/dirs.txt | sed -e "s/\r//"` $$tdirs; do \
 	        if test $$l = "leon3"; then if test $(GRLIB_LEON3_VERSION) != "3"; then l="leon3pkgv1v2"; fi; fi; \
 	        case $$l in $(XDIRSKIP) )\
 		  ;; \
@@ -1798,10 +1836,10 @@ compile.etools $(TOP).ldf make.riviera :
 		  if test -r $$k/$$l; then \
 		    echo -n " "$$l; \
 		  fi; \
-	    	  for i in vlogsyn vhdlsyn svlogsyn vhdlmtie vhdlsynpe vhdldce vhdlcdse vhdlxile vhdlprec vlogsim vhdlsim svlogsim ; do \
+	    	  for i in vhdlmtie vhdlsynpe vhdldce vhdlcdse vhdlxile vhdlprec vlogsyn vhdlsyn svlogsyn vlogsim vhdlsim svlogsim ; do \
 		   m=$$k/$$l/$$i; \
 		   if test -r $$m.txt; then \
-		    for q in `cat $$m.txt` $(FILEADD) ; do \
+		    for q in `cat $$m.txt | sed -e "s/\r//"` $(FILEADD) ; do \
 		      f=$$k/$$l/$$q; fx=$$l/$$q; \
 	              if (test $$bn = "grlib") && (test $$l = "stdlib") && (test $$q = "config.vhd"); then \
 			if (test $(GRLIB_CONFIG) != "dummy"); then f=$(GRLIB_CONFIG); grcfg=$$f; fi ;\
@@ -1818,6 +1856,10 @@ compile.etools $(TOP).ldf make.riviera :
                            printf "\t$(VCOM) $(VHDLOPT) -work $$bn $$f\n" >> compile.vsim; \
 		           riv_fs="$$riv_fs $$f"; \
 	    		   echo VALUE \"\<project\>/$$f,hdl\" >> libero_syn_files; \
+	    		   echo "create_links -hdl_source {$$f}  " >> libero_project.tcl; \
+	    		   echo add_file_to_library -library $$bn -file $$f >> libero_project.tcl; \
+	    		   echo "-file {$$f} \\" >> libero_synlist_temp; \
+	    		   echo "-file {$$f} \\" >> libero_simlist_temp; \
 	    		   echo VALUE \"\<project\>/$$f,hdl\" >> libero_sim_files; \
 	    		   echo VALUE \"\<project\>/$$f,hdl\" >> libero_simlist; \
 	  		   echo STATE=\"utd\" >> libero_syn_files; \
@@ -1827,13 +1869,17 @@ compile.etools $(TOP).ldf make.riviera :
 			vhdlsynpe) \
 		           echo $(SYNPVHDL) $(VHDLOPT) $$bn $$f >> compile.synp; \
 		           echo VALUE \"\<project\>/$$f,hdl\" >> libero_syn_files; \
+		           echo "create_links -hdl_source {$$f}  " >> libero_project.tcl; \
+		           echo add_file_to_library -library $$bn -file $$f >> libero_project.tcl; \
+		           echo "-file {$$f} \\" >> libero_synlist_temp; \
 	    		   echo VALUE \"\<project\>/$$f,hdl\" >> libero_synlist; \
 	  		   echo STATE=\"utd\" >> libero_syn_files; \
 	  		   echo TIME=\"1310766027\" >> libero_syn_files; \
 	  		   echo LIBRARY=\"$$bn\" >> libero_syn_files; \
 	  		   echo ENDFILE >> libero_syn_files;; \
 			vhdldce) \
-		           echo $(DCVHDL) $$bn $(VHDLOPT) $$f >> compile.dc;; \
+		           echo $(DCVHDL) $$bn $(VHDLOPT) $$f >> compile.dc; \
+		           echo $(FMVHDL) $$bn $(FMVHDLOPT) $$f >> fmref.tcl;; \
 			vhdlcdse) \
 		           printf "\t$(NCVHDL) $(VHDLOPT) $$bn $$f\n" >> compile.ncsim; \
 		           echo $(RTLCVHDL) $(VHDLOPT) $$bn $$f >> compile.rc;; \
@@ -1906,6 +1952,10 @@ compile.etools $(TOP).ldf make.riviera :
 			    case $$l in $(LIBERODIRSKIP) ) ;; *) \
 			      case $$q in $(LIBEROSKIP) ) ;; *) \
 	    		        echo VALUE \"\<project\>/$$f,hdl\" >> libero_syn_files; \
+	    		        echo "create_links -hdl_source {$$f}  " >> libero_project.tcl; \
+	    		        echo add_file_to_library -library $$bn -file $$f >> libero_project.tcl; \
+	    		        echo "-file {$$f} \\" >> libero_synlist_temp; \
+	    		        echo "-file {$$f} \\" >> libero_simlist_temp; \
 	    		        echo VALUE \"\<project\>/$$f,hdl\" >> libero_synlist; \
 	    		        echo VALUE \"\<project\>/$$f,hdl\" >> libero_simlist; \
 	  		        echo STATE=\"utd\" >> libero_syn_files; \
@@ -1978,14 +2028,16 @@ compile.etools $(TOP).ldf make.riviera :
 		           riv_fs="$$riv_fs $$f"; \
 		           printf "\t$(ALOG) $$bn ../../$$f\n" >> compile.asim; \
 		           printf "\t$(NCVLOG) $$bn -INCDIR $$k/$$l $$f\n" >> compile.ncsim; \
-		           echo $(XSTVLOG) $$bn -ifn $$f >> compile.xst; \
-		           echo verilog $$bn  $$f >> $(TOP)_files.prj; \
 			   case $$bn in $(LIBEROLIBSKIP) )\
 				uu=0;; \
 			   *) \
 			    case $$q in $(LIBEROSKIP) ) ;; *) \
 	    		      echo VALUE \"\<project\>/$$f,hdl\" >> libero_syn_files; \
 	    		      echo VALUE \"\<project\>/$$f,hdl\" >> libero_synlist; \
+	    		      echo "create_links -hdl_source {$$f}  " >> libero_project.tcl; \
+	    		      echo add_file_to_library -library $$bn -file $$f >> libero_project.tcl; \
+	    		      echo "-file {$$f} \\" >> libero_synlist_temp; \
+	    		      echo "-file {$$f} \\" >> libero_simlist_temp; \
 	    		      echo VALUE \"\<project\>/$$f,hdl\" >> libero_simlist; \
 	  		      echo STATE=\"utd\" >> libero_syn_files; \
 	  		      echo TIME=\"1310766027\" >> libero_syn_files; \
@@ -1993,17 +2045,35 @@ compile.etools $(TOP).ldf make.riviera :
 	  		      echo ENDFILE >> libero_syn_files;; \
 			    esac; \
 			   esac; \
+			   case $$bn in $(XSTLIBSKIP) )\
+				uu=0;; \
+			   *) \
+			     case $$l in $(XSTDIRSKIP) )\
+				uu=0;; \
+			     *) \
+			       case $$q in $(XSTSKIP) ) ;; *) \
+		                 echo LIBFILE $$f $$bn verilog >> tmp.npl; \
+		                 echo xfile add \"$$f\" $$bn >> $(TOP)_ise.tcl; \
+		                 echo puts \"$$f\" >> $(TOP)_ise.tcl; \
+				 echo "    "\<file xil_pn:name=\"$$f\" xil_pn:type=\"FILE_VERILOG\"\> >>  $(TOP).xise; \
+				 echo "      "\<association xil_pn:name=\"BehavioralSimulation\"/\>  >>  $(TOP).xise; \
+				 echo "      "\<association xil_pn:name=\"Implementation\"/\>  >>  $(TOP).xise; \
+				 echo "      "\<library xil_pn:name=\"$$bn\"/\>  >>  $(TOP).xise; \
+				 echo "    "\</file\>  >>  $(TOP).xise; \
+		                 echo $(XSTVLOG) $$bn -ifn $$f >> compile.xst; \
+		                 echo verilog $$bn  $$f >> $(TOP)_files.prj; \
+			         xfiles=`expr $$xfiles + 1`;; \
+			       esac; \
+			     esac; \
+			   esac; \
 		           echo $$f >> verilog.txt; \
 		           echo $(DCVLOG) $$bn $$f >> compile.dc; \
 		           echo $(FMVLOG) $$bn $$f >> fmref.tcl; \
 		           echo $$f >> easic.vlog; \
 		           echo $(RTLCVLOG) $$f >> compile.rc; \
-		           echo LIBFILE $$f $$bn verilog >> tmp.npl; \
-		           echo xfile add \"$$f\" >> $(TOP)_ise.tcl; \
-		           echo puts \"$$f\" >> $(TOP)_ise.tcl; \
 		           echo $(SYNPVLOG) $$f >> compile.synp; \
-		           echo $(VIVADOVLOG) $$f >> compile.vivado; \
-		           echo $(VIVADOVLOG) $$f >> compile.planAhead; \
+		           echo $(VIVADOVLOG) $$bn $$f >> compile.vivado; \
+		           echo $(VIVADOVLOG) $$bn $$f >> compile.planAhead; \
 		           printf "set_property file_type Verilog [get_files $$f]\n" >> compile.planAhead; \
 		           echo add_input_file -format VERILOG -work $$bn  $$f >> $(TOP)_precision.tcl; \
 		           echo set_global_assignment -name VERILOG_FILE $$f -library $$bn >> $(TOP)_quartus.qsf;; \
@@ -2015,14 +2085,16 @@ compile.etools $(TOP).ldf make.riviera :
 		           riv_fs="$$riv_fs $$f"; \
 		           printf "\t$(ALOG) $$bn ../../$$f\n" >> compile.asim; \
 		           printf "\t$(NCVLOG) $$bn -INCDIR $$k/$$l $$f\n" >> compile.ncsim; \
-		           echo $(XSTVLOG) $$bn -ifn $$f >> compile.xst; \
-		           echo verilog $$bn  $$f >> $(TOP)_files.prj; \
 			   case $$bn in $(LIBEROLIBSKIP) )\
 				uu=0;; \
 			   *) \
 			    case $$q in $(LIBEROSKIP) ) ;; *) \
 	    		      echo VALUE \"\<project\>/$$f,hdl\" >> libero_syn_files; \
+	    		      echo "create_links -hdl_source {$$f}  " >> libero_project.tcl; \
 	    		      echo VALUE \"\<project\>/$$f,hdl\" >> libero_synlist; \
+	    		      echo add_file_to_library -library $$bn -file $$f >> libero_project.tcl; \
+	    		      echo "-file {$$f} \\" >> libero_synlist_temp; \
+	    		      echo "-file {$$f} \\" >> libero_simlist_temp; \
 	    		      echo VALUE \"\<project\>/$$f,hdl\" >> libero_simlist; \
 	  		      echo STATE=\"utd\" >> libero_syn_files; \
 	  		      echo TIME=\"1310766027\" >> libero_syn_files; \
@@ -2030,17 +2102,35 @@ compile.etools $(TOP).ldf make.riviera :
 	  		      echo ENDFILE >> libero_syn_files;; \
 			    esac; \
 			   esac; \
+			   case $$bn in $(XSTLIBSKIP) )\
+				uu=0;; \
+			   *) \
+			     case $$l in $(XSTDIRSKIP) )\
+				uu=0;; \
+			     *) \
+			       case $$q in $(XSTSKIP) ) ;; *) \
+		                 echo LIBFILE $$f $$bn verilog >> tmp.npl; \
+		                 echo xfile add \"$$f\" $$bn >> $(TOP)_ise.tcl; \
+		                 echo puts \"$$f\" >> $(TOP)_ise.tcl; \
+				 echo "    "\<file xil_pn:name=\"$$f\" xil_pn:type=\"FILE_VERILOG\"\> >>  $(TOP).xise; \
+				 echo "      "\<association xil_pn:name=\"BehavioralSimulation\"/\>  >>  $(TOP).xise; \
+				 echo "      "\<association xil_pn:name=\"Implementation\"/\>  >>  $(TOP).xise; \
+				 echo "      "\<library xil_pn:name=\"$$bn\"/\>  >>  $(TOP).xise; \
+				 echo "    "\</file\>  >>  $(TOP).xise; \
+		                 echo $(XSTVLOG) $$bn -ifn $$f >> compile.xst; \
+		                 echo verilog $$bn  $$f >> $(TOP)_files.prj; \
+			         xfiles=`expr $$xfiles + 1`;; \
+			       esac; \
+			     esac; \
+			   esac; \
 		           echo $$f >> verilog.txt; \
 		           echo $(DCVLOG) $$bn $$f >> compile.dc; \
 		           echo $(FMVLOG) $$bn $$f >> fmref.tcl; \
 		           echo $$f >> easic.vlog; \
 		           echo $(RTLCVLOG) $$f >> compile.rc; \
-		           echo LIBFILE $$f $$bn verilog >> tmp.npl; \
-		           echo xfile add \"$$f\" >> $(TOP)_ise.tcl; \
-		           echo puts \"$$f\" >> $(TOP)_ise.tcl; \
 		           echo $(SYNPVLOG) -vlog_std sysv $$f >> compile.synp; \
-		           echo $(VIVADOVLOG) $$f >> compile.vivado; \
-		           echo $(VIVADOVLOG) $$f >> compile.planAhead; \
+		           echo $(VIVADOVLOG) $$bn -sv $$f >> compile.vivado; \
+		           echo $(VIVADOVLOG) $$bn -sv $$f >> compile.planAhead; \
 		           echo add_input_file -format VERILOG -work $$bn  $$f >> $(TOP)_precision.tcl; \
 		           echo set_global_assignment -name VERILOG_FILE $$f -library $$bn >> $(TOP)_quartus.qsf;; \
 			vhdlsim) \
@@ -2053,7 +2143,10 @@ compile.etools $(TOP).ldf make.riviera :
 			    case $$q in $(LIBEROSKIP) ) ;; *) \
 	    		      echo VALUE \"\<project\>/$$f,hdl\" >> libero_sim_files; \
 	    		      echo VALUE \"\<project\>/$$f,hdl\" >> libero_syn_files; \
+	    		      echo "create_links -hdl_source {$$f}  " >> libero_project.tcl; \
+	    		      echo add_file_to_library -library $$bn -file $$f >> libero_project.tcl; \
 	    		      echo VALUE \"\<project\>/$$f,hdl\" >> libero_simlist; \
+	    		      echo "-file {$$f} \\" >> libero_simlist_temp; \
 	  		      echo STATE=\"utd\" >> libero_syn_files; \
 	  		      echo TIME=\"1310766027\" >> libero_syn_files; \
 	  		      echo LIBRARY=\"$$bn\" >> libero_syn_files; \
@@ -2104,8 +2197,11 @@ compile.etools $(TOP).ldf make.riviera :
 			   *) \
 			    case $$q in $(LIBEROSKIP) ) ;; *) \
 	    		      echo VALUE \"\<project\>/$$f,hdl\" >> libero_syn_files; \
+	    		      echo "create_links -hdl_source {$$f}  " >> libero_project.tcl; \
+	    		      echo add_file_to_library -library $$bn -file $$f >> libero_project.tcl; \
 	    		      echo VALUE \"\<project\>/$$f,hdl\" >> libero_sim_files; \
 	    		      echo VALUE \"\<project\>/$$f,hdl\" >> libero_simlist; \
+	    		      echo "-file {$$f} \\" >> libero_simlist_temp; \
 	  		      echo STATE=\"utd\" >> libero_syn_files; \
 	  		      echo TIME=\"1310766027\" >> libero_syn_files; \
 	  		      echo LIBRARY=\"$$bn\" >> libero_syn_files; \
@@ -2130,8 +2226,11 @@ compile.etools $(TOP).ldf make.riviera :
 			   *) \
 			    case $$q in $(LIBEROSKIP) ) ;; *) \
 	    		      echo VALUE \"\<project\>/$$f,hdl\" >> libero_syn_files; \
+	    		      echo "create_links -hdl_source {$$f}  " >> libero_project.tcl; \
+	    		      echo add_file_to_library -library $$bn -file $$f >> libero_project.tcl; \
 	    		      echo VALUE \"\<project\>/$$f,hdl\" >> libero_sim_files; \
 	    		      echo VALUE \"\<project\>/$$f,hdl\" >> libero_simlist; \
+	    		      echo "-file {$$f} \\" >> libero_simlist_temp; \
 	  		      echo STATE=\"utd\" >> libero_syn_files; \
 	  		      echo TIME=\"1310766027\" >> libero_syn_files; \
 	  		      echo LIBRARY=\"$$bn\" >> libero_syn_files; \
@@ -2235,6 +2334,9 @@ compile.etools $(TOP).ldf make.riviera :
 	  echo add_input_file -format VHDL -work work  $$i >> $(TOP)_precision.tcl; \
 	  echo set_global_assignment -name VHDL_FILE $$i >> $(TOP)_quartus.qsf; \
 	  echo VALUE \"\<project\>/$$i,hdl\" >> libero_synlist; \
+	  echo "-file {$$i} \\" >> libero_synlist_temp; \
+	  echo "create_links -hdl_source {$$i}  " >> libero_project.tcl; \
+	  echo add_file_to_library -library work -file $$i >> libero_project.tcl; \
 	  echo xfile add \"$$i\" -lib_vhdl work >> $(TOP)_ise.tcl; \
 	  echo puts \"$$i\" >> $(TOP)_ise.tcl; \
 	  echo "    "\<file xil_pn:name=\"$$i\" xil_pn:type=\"FILE_VHDL\"\> >>  $(TOP).xise; \
@@ -2391,6 +2493,12 @@ compile.etools $(TOP).ldf make.riviera :
 	  printf "\t$(ACOM) $(VHDLOPT) work ../../$$i\n" >> make.asim; \
 	  printf "\t$(NCVHDL) $(VHDLOPT) work $$i\n" >> make.ncsim; \
 	  echo VALUE \"\<project\>/$$i,hdl\" >> libero_simlist; \
+	  if test $$i = "$(SIMTOP).vhd"; then \
+	  echo "create_links -stimulus {$$i}  " >> libero_project.tcl; \
+	  echo add_file_to_library -library work -file $$i >> libero_project.tcl; \
+	  else \
+	  echo "-file {$$i} \\" >> libero_simlist_temp; \
+	  fi; \
 	 fi; \
 	done; \
 	for i in $(VERILOGOPTSYNFILES) $(VERILOGSYNFILES) $(VHDLOPTSYNFILES) $(VHDLSYNFILES); do \
@@ -2467,6 +2575,7 @@ compile.etools $(TOP).ldf make.riviera :
 	     uu=0;; \
 	   *) \
 	     echo $$i >> $(TOP)_libero.prj; \
+	     echo "add_library -library $$i" >> libero_project.tcl; \
 	   esac; \
 	done; \
 	echo ENDLIST >> $(TOP)_libero.prj; \
@@ -2535,6 +2644,49 @@ compile.etools $(TOP).ldf make.riviera :
 	@echo } >> easic.vlog
 	@cat easic.vhdl easic.vlog > compile.etools
 	@-rm easic.vhdl easic.vlog
+
+########### Write TCL script to build IGLOO2 project on Libero SoC v11.5 ###########
+ifeq ("$(TECHNOLOGY)","IGLOO2")
+	@grep "new_project" libero_project.tcl > leon3mp.tcl
+	@grep "add_library" libero_project.tcl >> leon3mp.tcl
+	@grep "create_links" libero_project.tcl >> leon3mp.tcl
+	@grep "add_file_to_library" libero_project.tcl >> leon3mp.tcl
+	@echo set_root $(TOP) >> leon3mp.tcl
+	@sed '/add_library -library work/d' leon3mp.tcl > $(TOP)_libero.tcl
+	@rm leon3mp.tcl
+	@echo "organize_tool_files -tool {SIM_PRESYNTH} \\" >> $(TOP)_libero.tcl
+	@cat libero_simlist_temp >> $(TOP)_libero.tcl
+	@echo -module {$(TOP)::work} -input_type {source} >> $(TOP)_libero.tcl
+	@echo associate_stimulus -file $(SIMTOP).vhd -mode new -module $(TOP)::work >> $(TOP)_libero.tcl
+	@echo "set_modelsim_options -use_automatic_do_file 1 -sim_runtime {-all} -tb_module_name {$(SIMTOP)} -tb_top_level_name {$(TOP)} \\" >> $(TOP)_libero.tcl
+	@echo "-include_do_file 1 -included_do_file {wave.do} -type {max} \\" >> $(TOP)_libero.tcl
+	@echo "-resolution {1fs} -add_vsim_options {-novopt} -display_dut_wave 0 -log_all_signals 0 -dump_vcd 0 -verilog 2" >> $(TOP)_libero.tcl
+	@cp -r $(LIBERO_DIR)/../lib/modelsim/precompiled/vhdl/smartfusion2/ ../../lib/tech/smartfusion2/precomp_libraries
+	@echo set_actel_lib_options -use_default_sim_path FALSE -sim_path {../../lib/tech/smartfusion2/precomp_libraries} >> $(TOP)_libero.tcl
+	@echo "organize_tool_files -tool {SYNTHESIZE} \\" >> $(TOP)_libero.tcl
+	@cat libero_synlist_temp >> $(TOP)_libero.tcl
+	@echo -module {$(TOP)::work} -input_type {source} >> $(TOP)_libero.tcl
+	@echo "create_links -sdc $(SDC)" >> $(TOP)_libero.tcl
+	@echo "create_links -io_pdc $(PDC)" >> $(TOP)_libero.tcl
+ifeq ($(CONFIG_GRETH_ENABLE),y)
+	@echo "create_links -sdc $(SERDES_SDC)" >> $(TOP)_libero.tcl
+endif
+ifeq ($(CONFIG_DSU_JTAG),y)
+	@echo "create_links -sdc $(JTAG_SDC)" >> $(TOP)_libero.tcl
+endif
+	@echo "organize_tool_files -tool {COMPILE} -file {$(PDC)} -file {$(SDC)} \\" >> $(TOP)_libero.tcl
+ifeq ($(CONFIG_GRETH_ENABLE),y)
+	@echo "-file {$(SERDES_SDC)} \\" >> $(TOP)_libero.tcl
+endif
+ifeq ($(CONFIG_DSU_JTAG),y)
+	@echo "-file {$(JTAG_SDC)} \\" >> $(TOP)_libero.tcl
+endif
+	@echo "-module {$(TOP)::work} -input_type {constraint}" >> $(TOP)_libero.tcl
+	@echo configure_tool -name {COMPILE} -params {BLOCK_MODE:false} -params {BLOCK_PLACEMENT_CONFLICTS:ERROR} -params {BLOCK_ROUTING_CONFLICTS:ERROR} -params {DISPLAY_FANOUT_LIMIT:10} -params {ENABLE_DESIGN_SEPARATION:false} -params {MERGE_SDC:false} -params {PDC_IMPORT_HARDERROR:false} >> $(TOP)_libero.tcl
+	@echo configure_tool -name {PLACEROUTE} -params {EFFORT_LEVEL:true} -params {INCRPLACEANDROUTE:false} -params {PDPR:false} -params {TDPR:true} >> $(TOP)_libero.tcl
+endif
+	@rm libero_project.tcl libero_synlist_temp libero_simlist_temp
+#########################################################################
 
 ########## Import from other libraries ###############
 

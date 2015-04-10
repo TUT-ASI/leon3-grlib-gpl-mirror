@@ -92,8 +92,6 @@
 
 #if defined CONFIG_FPU_GRFPU
 #define CONFIG_FPU (1+CONFIG_FPU_GRFPU_MUL)
-#elif defined CONFIG_FPU_MEIKO
-#define CONFIG_FPU 15
 #elif defined CONFIG_FPU_GRFPULITE
 #define CONFIG_FPU (8+CONFIG_FPU_GRFPC)
 #else
@@ -412,6 +410,18 @@
 #define CFG_DSU_ATB 0
 #endif
 
+#ifndef CONFIG_DSU_ITRACE_2P
+#define CONFIG_DSU_ITRACE_2P 0
+#endif
+
+#if defined CONFIG_DSU_ASTAT
+#define CFG_DSU_AHBPF 2
+#elif defined CONFIG_DSU_AFILT
+#define CFG_DSU_AHBPF 1
+#else
+#define CFG_DSU_AHBPF 0
+#endif
+
 #ifndef CONFIG_LEON3FT_EN
 #define CONFIG_LEON3FT_EN 0
 #endif
@@ -464,4 +474,10 @@
 #define CONFIG_IU_DISAS_NET 0
 #endif
 
+#ifndef CONFIG_NP_ASI
+#define CONFIG_NP_ASI 0
+#endif
 
+#ifndef CONFIG_WRPSR
+#define CONFIG_WRPSR 0
+#endif

@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -69,7 +70,7 @@ package leon3 is
     bwatch  : std_ulogic;       -- break on IU watchpoint
     bsoft   : std_ulogic;       -- break on software breakpoint (TA 1)
     tenable : std_ulogic;
-    timer   :  std_logic_vector(30 downto 0);                                                -- 
+    timer   : std_logic_vector(30 downto 0);                                                -- 
   end record;
 
   constant dbgi_none : l3_debug_in_type := ('0', '0', '0', '0', '0',
@@ -114,25 +115,74 @@ package leon3 is
 
   type tracebuf_in_type is record 
     addr             : std_logic_vector(11 downto 0);
-    data             : std_logic_vector(127 downto 0);
+    data             : std_logic_vector(255 downto 0);
     enable           : std_logic;
-    write            : std_logic_vector(3 downto 0);
-    diag             : std_logic_vector(3 downto 0);
+    write            : std_logic_vector(7 downto 0);
+    diag             : std_logic_vector(TESTIN_WIDTH-1 downto 0);
   end record;
 
   type tracebuf_out_type is record 
-    data             : std_logic_vector(127 downto 0);
+    data             : std_logic_vector(255 downto 0);
   end record;   
 
+  type tracebuf_2p_in_type is record 
+    renable          : std_logic;
+    raddr            : std_logic_vector(11 downto 0);
+    write            : std_logic_vector(7 downto 0);
+    waddr            : std_logic_vector(11 downto 0);
+    data             : std_logic_vector(255 downto 0);
+    diag             : std_logic_vector(TESTIN_WIDTH-1 downto 0);
+  end record;
+  
+  type tracebuf_2p_out_type is record 
+    data             : std_logic_vector(255 downto 0);
+  end record;
+
   component tbufmem 
-  generic ( tech   : integer := 0; tbuf  : integer := 0; testen: integer := 0);
+  generic ( tech   : integer := 0; tbuf  : integer := 0; dwidth : integer := 32; testen: integer := 0);
   port (
     clk : in std_ulogic;
     di  : in tracebuf_in_type;
     do  : out tracebuf_out_type);
   end component;
 
+  component tbufmem_2p is
+    generic (
+      tech        : integer := 0;
+      tbuf        : integer := 0; -- trace buf size in kB (0 - no trace buffer)
+      dwidth      : integer := 64; -- AHB data width
+      testen      : integer := 0
+      );
+    port (
+      clk        : in  std_ulogic;
+      di         : in  tracebuf_2p_in_type;
+      do         : out tracebuf_2p_out_type
+    );
+  end component;
 
+  constant tracebuf_out_type_none : tracebuf_out_type :=
+    (data => (others => '0'));
+  
+  constant tracebuf_in_type_none : tracebuf_in_type := (
+    addr    => (others => '0'),
+    data    => (others => '0'),
+    enable  => '0',
+    write   => (others => '0'),
+    diag    => (others => '0')
+    );
+  
+  constant tracebuf_2p_out_type_none : tracebuf_2p_out_type :=
+    (data => (others => '0'));
+  
+  constant tracebuf_2p_in_type_none : tracebuf_2p_in_type := (
+    renable => '0',
+    raddr   => (others => '0'),
+    write   => (others => '0'),
+    waddr   => (others => '0'),
+    data    => (others => '0'),
+    diag    => (others => '0')
+    );
+  
   component leon3s
   generic (
     hindex    : integer               := 0;
@@ -173,7 +223,7 @@ package leon3 is
     tlb_rep   : integer range 0 to 1 := 0;
     lddel     : integer range 1 to 2 := 2;
     disas     : integer range 0 to 2 := 0;
-    tbuf      : integer range 0 to 64 := 0;
+    tbuf      : integer range 0 to 128 := 0;
     pwd       : integer range 0 to 2 := 2;
     svt       : integer range 0 to 1 := 1;
     rstaddr   : integer := 16#00000#;
@@ -181,7 +231,9 @@ package leon3 is
     cached    : integer               := 0;
     scantest  : integer               := 0;
     mmupgsz   : integer range 0 to 5  := 0;
-    bp        : integer               := 1
+    bp        : integer               := 1;
+    npasi     : integer range 0 to 1  := 0;
+    pwrpsr    : integer range 0 to 1  := 0
   );
   port (
     clk    : in  std_ulogic;
@@ -237,7 +289,7 @@ package leon3 is
     tlb_rep   : integer range 0 to 1 := 0;
     lddel     : integer range 1 to 2 := 2;
     disas     : integer range 0 to 2 := 0;
-    tbuf      : integer range 0 to 64 := 0;
+    tbuf      : integer range 0 to 128 := 0;
     pwd       : integer range 0 to 2 := 2;
     svt       : integer range 0 to 1 := 1;
     rstaddr   : integer := 16#00000#;
@@ -245,7 +297,9 @@ package leon3 is
     cached    : integer               := 0;
     scantest  : integer               := 0;
     mmupgsz   : integer range 0 to 5  := 0;
-    bp        : integer               := 1
+    bp        : integer               := 1;
+    npasi     : integer range 0 to 1  := 0;
+    pwrpsr    : integer range 0 to 1  := 0
   );
   port (
     clk    : in  std_ulogic;
@@ -302,7 +356,7 @@ package leon3 is
     tlb_rep   : integer range 0 to 1 := 0;
     lddel     : integer range 1 to 2 := 2;
     disas     : integer range 0 to 2 := 0;
-    tbuf      : integer range 0 to 64 := 0;
+    tbuf      : integer range 0 to 128 := 0;
     pwd       : integer range 0 to 2 := 2;
     svt       : integer range 0 to 1 := 1;
     rstaddr   : integer := 16#00000#;
@@ -316,7 +370,9 @@ package leon3 is
     netlist   : integer               := 0;     -- use netlist
     scantest  : integer               := 0;      -- enable scan test support
     mmupgsz   : integer range 0 to 5  := 0;
-    bp        : integer               := 1
+    bp        : integer               := 1;
+    npasi     : integer range 0 to 1  := 0;
+    pwrpsr    : integer range 0 to 1  := 0
   );
   port (
     clk    : in  std_ulogic;
@@ -420,7 +476,7 @@ package leon3 is
     tlb_rep   : integer range 0 to 1  := 0;
     lddel     : integer range 1 to 2  := 2;
     disas     : integer range 0 to 2  := 0;
-    tbuf      : integer range 0 to 64 := 0;
+    tbuf      : integer range 0 to 128 := 0;
     pwd       : integer range 0 to 2  := 2;     -- power-down
     svt       : integer range 0 to 1  := 1;     -- single vector trapping
     rstaddr   : integer               := 0;
@@ -428,7 +484,9 @@ package leon3 is
     cached    : integer               := 0;     -- cacheability table
     scantest  : integer               := 0;
     mmupgsz   : integer range 0 to 5  := 0;
-    bp        : integer               := 1
+    bp        : integer               := 1;
+    npasi     : integer range 0 to 1  := 0;
+    pwrpsr    : integer range 0 to 1  := 0
   );
   port (
     clk    : in  std_ulogic;
@@ -486,7 +544,7 @@ package leon3 is
     tlb_rep    : integer range 0 to 1  := 0;
     lddel      : integer range 1 to 2  := 2;
     disas      : integer range 0 to 2  := 0;
-    tbuf       : integer range 0 to 64 := 0;
+    tbuf       : integer range 0 to 128 := 0;
     pwd        : integer range 0 to 2  := 2;     -- power-down
     svt        : integer range 0 to 1  := 1;     -- single vector trapping
     rstaddr    : integer               := 0;
@@ -495,7 +553,9 @@ package leon3 is
     clk2x      : integer               := 1;
     scantest   : integer               := 0;
     mmupgsz    : integer range 0 to 5  := 0;
-    bp         : integer               := 1
+    bp         : integer               := 1;
+    npasi      : integer range 0 to 1  := 0;
+    pwrpsr     : integer range 0 to 1  := 0
   );
   port (
     clk        : in  std_ulogic;
@@ -554,7 +614,7 @@ package leon3 is
     tlb_rep   : integer range 0 to 1  := 0;
     lddel     : integer range 1 to 2  := 2;
     disas     : integer range 0 to 2  := 0;
-    tbuf      : integer range 0 to 64 := 0;
+    tbuf      : integer range 0 to 128 := 0;
     pwd       : integer range 0 to 2  := 2;     -- power-down
     svt       : integer range 0 to 1  := 1;     -- single vector trapping
     rstaddr   : integer               := 0;
@@ -569,7 +629,9 @@ package leon3 is
     netlist   : integer               := 0;
     scantest  : integer               := 0;
     mmupgsz   : integer range 0 to 5  := 0;
-    bp        : integer               := 1
+    bp        : integer               := 1;
+    npasi     : integer range 0 to 1  := 0;
+    pwrpsr    : integer range 0 to 1  := 0
   );
   port (
     clk    : in  std_ulogic;    -- free-running clock
@@ -596,12 +658,21 @@ package leon3 is
     break   : std_ulogic;
   end record;                        
 
+  subtype dsu_astat_type is amba_stat_type;
+  
+  constant dsu_astat_none : dsu_astat_type := amba_stat_none;
+  
   type dsu_out_type is record
     active          : std_ulogic;
     tstop           : std_ulogic;
     pwd             : std_logic_vector(15 downto 0);
+    astat           : dsu_astat_type;
   end record;
 
+  constant dsu_out_none : dsu_out_type :=
+    (active => '0', tstop => '0', pwd => (others => '0'),
+     astat => dsu_astat_none);
+  
   component dsu3 
   generic (
     hindex  : integer := 0;
@@ -612,7 +683,9 @@ package leon3 is
     tech    : integer := DEFMEMTECH; 
     irq     : integer := 0; 
     kbytes  : integer := 0;
-    testen  : integer := 0
+    testen  : integer := 0;
+    bwidth  : integer := 32;
+    ahbpf   : integer := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -637,7 +710,9 @@ package leon3 is
     tech    : integer := DEFMEMTECH; 
     irq     : integer := 0; 
     kbytes  : integer := 0;
-    testen  : integer := 0
+    testen  : integer := 0;
+    bwidth  : integer := 32;
+    ahbpf   : integer := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -658,15 +733,17 @@ package leon3 is
   component dsu3x 
   generic (
     hindex  : integer := 0;
-    haddr : integer := 16#900#;
-    hmask : integer := 16#f00#;
+    haddr   : integer := 16#900#;
+    hmask   : integer := 16#f00#;
     ncpu    : integer := 1;
     tbits   : integer := 30; -- timer bits (instruction trace time tag)
     tech    : integer := DEFMEMTECH; 
     irq     : integer := 0; 
     kbytes  : integer := 0;
     clk2x   : integer range 0 to 1 := 0;
-    testen  : integer := 0
+    testen  : integer := 0;
+    bwidth  : integer := 32;
+    ahbpf   : integer := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -687,14 +764,16 @@ package leon3 is
   component dsu3_mb
   generic (
     hindex  : integer := 0;
-    haddr : integer := 16#900#;
-    hmask : integer := 16#f00#;
+    haddr   : integer := 16#900#;
+    hmask   : integer := 16#f00#;
     ncpu    : integer := 1;
     tbits   : integer := 30; -- timer bits (instruction trace time tag)
     tech    : integer := DEFMEMTECH; 
     irq     : integer := 0; 
     kbytes  : integer := 0;
-    testen  : integer := 0
+    testen  : integer := 0;
+    bwidth  : integer := 32;
+    ahbpf   : integer := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -708,7 +787,60 @@ package leon3 is
     dsui   : in dsu_in_type;
     dsuo   : out dsu_out_type
   );
-  end component; 
+  end component;
+
+  type l3stat_src_array is array (15 downto 0) of std_logic_vector(3 downto 0);
+  
+  type l3stat_in_type is record
+    event   : std_logic_vector(15 downto 0);
+    esource : l3stat_src_array;
+    sel     : std_logic_vector(15 downto 0);
+    req     : std_logic_vector(15 downto 0);
+    latcnt  : std_ulogic;
+    timer   : std_logic_vector(31 downto 0);
+  end record;
+
+  constant l3stat_in_none : l3stat_in_type :=
+    (event => (others => '0'),
+     esource => (others => (others => '0')),
+     sel => (others => '0'),
+     req => (others => '0'),
+     latcnt => '0',
+     timer => (others => '0'));
+  
+  component l3stat
+  generic (
+    pindex      : integer := 0;
+    paddr       : integer := 0;
+    pmask       : integer := 16#fff#;
+    ncnt        : integer := 2;
+    ncpu        : integer := 1;
+    nmax        : integer := 0;
+    lahben      : integer := 0;
+    dsuen       : integer := 0;
+    nextev      : integer range 0 to 16 := 0;
+    apb2en      : integer := 0;
+    pindex2     : integer := 0;
+    paddr2      : integer := 0;
+    pmask2      : integer := 16#fff#;
+    astaten     : integer := 0;
+    selreq      : integer := 0;
+    clatch      : integer := 0
+    );
+  port (
+    rstn   : in  std_ulogic;
+    clk    : in  std_ulogic;
+    apbi   : in  apb_slv_in_type;
+    apbo   : out apb_slv_out_type;
+    ahbsi  : in  ahb_slv_in_type;
+    dbgo   : in  l3_debug_out_vector(0 to NCPU-1);
+    dsuo   : in  dsu_out_type := dsu_out_none;
+    stati  : in  l3stat_in_type := l3stat_in_none;
+    apb2i  : in  apb_slv_in_type := apb_slv_in_none;
+    apb2o  : out apb_slv_out_type;
+    astat  : in  amba_stat_type := amba_stat_none);
+  end component;
+  
   
   type irq_in_vector  is array (Natural range <> ) of l3_irq_in_type;
   type irq_out_vector is array (Natural range <> ) of l3_irq_out_type;
@@ -719,7 +851,8 @@ package leon3 is
     paddr   : integer := 0;
     pmask   : integer := 16#fff#;
     ncpu    : integer := 1;
-    eirq    : integer := 0
+    eirq    : integer := 0;
+    irqmap  : integer := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -738,7 +871,8 @@ package leon3 is
     pmask   : integer := 16#fff#;
     ncpu    : integer := 1;
     eirq    : integer := 0;
-    clkfact : integer := 2
+    clkfact : integer := 2;
+    irqmap  : integer := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -765,7 +899,9 @@ package leon3 is
     nwdog      : integer range 1 to 16 := 1;
     dynrstaddr : integer range 0 to 1 := 0;
     rstaddr    : integer range 0 to 16#fffff# := 0;
-    extrun     : integer range 0 to 1 := 0
+    extrun     : integer range 0 to 1 := 0;
+    irqmap     : integer := 0;
+    exttimer   : integer range 0 to 1 := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -775,7 +911,8 @@ package leon3 is
     irqi   : in  irq_out_vector(0 to ncpu-1);
     irqo   : out irq_in_vector(0 to ncpu-1);
     wdog   : in  std_logic_vector(nwdog-1 downto 0) := (others => '0');
-    cpurun : in  std_logic_vector(ncpu-1 downto 0) := (others => '0')
+    cpurun : in  std_logic_vector(ncpu-1 downto 0) := (others => '0');
+    timer  : in  std_logic_vector(31 downto 0) := (others => '0')
   );
   end component; 
 
@@ -793,7 +930,9 @@ package leon3 is
     dynrstaddr : integer range 0 to 1 := 0;
     rstaddr    : integer range 0 to 16#fffff# := 0;
     extrun     : integer range 0 to 1 := 0;
-    clkfact    : integer := 2
+    clkfact    : integer := 2;
+    irqmap     : integer := 0;
+    exttimer   : integer range 0 to 1 := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -805,7 +944,8 @@ package leon3 is
     irqo   : out irq_in_vector(0 to ncpu-1);
     wdog   : in  std_logic_vector(nwdog-1 downto 0) := (others => '0');
     cpurun : in  std_logic_vector(ncpu-1 downto 0) := (others => '0');
-    hclken : in  std_ulogic
+    hclken : in  std_ulogic;
+    timer  : in  std_logic_vector(31 downto 0) := (others => '0')
   );
   end component;
 
@@ -850,7 +990,7 @@ component leon3ftsh
     tlb_rep   : integer range 0 to 1  := 0;
     lddel     : integer range 1 to 2  := 2;
     disas     : integer range 0 to 2  := 0;
-    tbuf      : integer range 0 to 64 := 0;
+    tbuf      : integer range 0 to 128 := 0;
     pwd       : integer range 0 to 2  := 2;     -- power-down
     svt       : integer range 0 to 1  := 1;     -- single vector trapping
     rstaddr   : integer               := 0;
@@ -864,7 +1004,9 @@ component leon3ftsh
     netlist   : integer               := 0;
     scantest  : integer               := 0;
     mmupgsz   : integer range 0 to 5  := 0;
-    bp        : integer               := 1
+    bp        : integer               := 1;
+    npasi     : integer range 0 to 1  := 0;
+    pwrpsr    : integer range 0 to 1  := 0
   );
   port (
     clk    : in  std_ulogic;    -- free-running clock
@@ -923,7 +1065,7 @@ component leon3x
     tlb_rep   : integer range 0 to 1  := 0;
     lddel     : integer range 1 to 2  := 2;
     disas     : integer range 0 to 2  := 0;
-    tbuf      : integer range 0 to 64 := 0;
+    tbuf      : integer range 0 to 128 := 0;
     pwd       : integer range 0 to 2  := 2;     -- power-down
     svt       : integer range 0 to 1  := 1;     -- single vector trapping
     rstaddr   : integer               := 0;
@@ -938,7 +1080,9 @@ component leon3x
     netlist   : integer               := 0;
     scantest  : integer               := 0;
     mmupgsz   : integer range 0 to 5  := 0;
-    bp        : integer               := 1
+    bp        : integer               := 1;
+    npasi     : integer range 0 to 1  := 0;
+    pwrpsr    : integer range 0 to 1  := 0
   );
   port (
     clk    : in  std_ulogic;    -- free-running clock

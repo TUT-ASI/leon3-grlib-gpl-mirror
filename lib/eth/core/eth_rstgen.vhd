@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -40,6 +41,16 @@ end;
 architecture rtl of eth_rstgen is
 signal r : std_logic_vector(4 downto 0);
 signal rst : std_ulogic;
+
+attribute equivalent_register_removal : string;
+attribute keep                        : string;
+
+attribute equivalent_register_removal of r : signal is "no";
+attribute equivalent_register_removal of rst : signal is "no";
+
+attribute keep of r : signal is "true";
+attribute keep of rst : signal is "true";
+
 begin
 
   rst <= not rstin when acthigh = 1 else rstin;

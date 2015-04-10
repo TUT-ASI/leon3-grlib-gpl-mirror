@@ -25,6 +25,8 @@
 #define CFG_CLK_TECH rhumc
 #elif defined CONFIG_CLK_SAED32
 #define CFG_CLK_TECH saed32
+#elif defined CONFIG_CLK_RHS65
+#define CFG_CLK_TECH rhs65
 #elif defined CONFIG_CLK_DARE
 #define CFG_CLK_TECH dare
 #elif defined CONFIG_CLK_EASIC45

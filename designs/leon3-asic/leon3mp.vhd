@@ -5,6 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -210,15 +211,15 @@ begin
     generic map (
       padtech          => CFG_PADTECH,
       padlevel         => padlevel,
-      padstrength      => 4,
+      padstrength      => 10,
       jtag_padfilter   => pullup,
       testen_padfilter => pulldown,
       resetn_padfilter => schmitt,
       clk_padfilter    => 0,
       spw_padstrength  => 12,
-      jtag_padstrength => 4,
-      uart_padstrength => 4,
-      dsu_padstrength  => 4,
+      jtag_padstrength => 6,
+      uart_padstrength => 6,
+      dsu_padstrength  => 6,
       padvoltage       => padvoltage,
       spw_input_type   => CFG_SPW_INPUT,
       oepol            => padoen_polarity(CFG_PADTECH)

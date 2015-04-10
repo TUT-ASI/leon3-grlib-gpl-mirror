@@ -1,10 +1,10 @@
 -----------------------------------------------------------------------------
 --  LEON3 Demonstration design
---  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -20,7 +20,6 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
-
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -39,6 +38,8 @@ use gaisler.net.all;
 use gaisler.jtag.all;
 use gaisler.spacewire.all;
 
+library testgrouppolito;
+use testgrouppolito.dprc_pkg.all;
 library esa;
 use esa.memoryctrl.all;
 use esa.pcicomp.all;
@@ -223,6 +224,29 @@ constant CFG_SDEN : integer := CFG_MCTRL_SDEN;
 constant CFG_INVCLK : integer := CFG_MCTRL_INVCLK;
 constant OEPOL : integer := padoen_polarity(padtech);
 
+----------------------------------------------------------------------
+---  FIR component declaration  --------------------------------------
+----------------------------------------------------------------------
+component fir_ahb_dma_apb is
+generic (
+	hindex	:	integer := 0;
+	pindex	:	integer := 0;
+	paddr	:	integer := 0;
+	pmask	:	integer := 16#fff#;
+	technology : integer := virtex4);
+port ( 
+	clk		:	in	std_logic; 
+	rstn		:	in	std_logic; 
+	apbi	:	in	apb_slv_in_type; 
+	apbo	:	out	apb_slv_out_type;
+	ahbin	:	in	ahb_mst_in_type;
+	ahbout	:	out	ahb_mst_out_type;
+	rm_reset: 	in	std_logic
+);
+end component;
+
+signal rm_reset : std_logic_vector(31 downto 0);
+
 begin
 
 ----------------------------------------------------------------------
@@ -253,7 +277,7 @@ begin
   ahb0 : ahbctrl 		-- AHB arbiter/multiplexer
   generic map (defmast => CFG_DEFMST, split => CFG_SPLIT, 
 	rrobin => CFG_RROBIN, ioaddr => CFG_AHBIO, ioen => IOAEN,
-	nahbm => CFG_NCPU+CFG_AHB_UART+CFG_GRPCI2_TARGET+CFG_GRPCI2_DMA+log2x(CFG_PCI)+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_NUM, 
+	nahbm => CFG_NCPU+CFG_AHB_UART+CFG_GRPCI2_TARGET+CFG_GRPCI2_DMA+log2x(CFG_PCI)+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_NUM+2*CFG_PRC, -- CFG_PRC if FIR core not included, 
 	nahbs => 8)
   port map (rstn, clkm, ahbmi, ahbmo, ahbsi, ahbso);
 
@@ -270,7 +294,7 @@ begin
 	CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
         CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP, 
         CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1,
-	0, 0, CFG_MMU_PAGE, CFG_BP)
+	0, 0, CFG_MMU_PAGE, CFG_BP, CFG_NP_ASI, CFG_WRPSR)
       port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso, 
     		irqi(i), irqo(i), dbgi(i), dbgo(i));
     end generate;
@@ -285,7 +309,7 @@ begin
 	CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
         CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP, 
         CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1,
-	0, 0, CFG_MMU_PAGE, CFG_BP)
+	0, 0, CFG_MMU_PAGE, CFG_BP, CFG_NP_ASI, CFG_WRPSR)
       port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso, 
     		irqi(i), irqo(i), dbgi(i), dbgo(i), fpi(i), fpo(i));
     end generate;
@@ -483,14 +507,14 @@ begin
 -----------------------------------------------------------------------
   pci : if (CFG_GRPCI2_MASTER+CFG_GRPCI2_TARGET) /= 0 or CFG_PCI /= 0 generate
 
-    grpci2x : if (CFG_GRPCI2_MASTER+CFG_GRPCI2_TARGET) /= 0 and CFG_PCI = 0 generate
+    grpci2x : if (CFG_GRPCI2_MASTER+CFG_GRPCI2_TARGET) /= 0 and (CFG_PCI+CFG_GRPCI2_DMA) = 0 generate
       pci0 : grpci2 
         generic map (
           memtech => memtech,
           oepol => OEPOL,
           hmindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG,
           hdmindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+1,
-          hsindex => 4,
+          hsindex => 4, 
           haddr => 16#C00#,
           hmask => 16#E00#,
           ioaddr => 16#000#,
@@ -533,23 +557,68 @@ begin
           tbpmask => 16#C00#
           )
         port map (
-          rstn,
-          clkm,
-          pciclk,
-          pci_dirq,
-          pcii,
-          pcio,
-          apbi,
-          apbo(4),
-          ahbsi,
-          ahbso(4),
-          ahbmi,
-          ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG),
+          rstn, clkm, pciclk, pci_dirq, pcii, pcio, apbi, apbo(4), ahbsi, ahbso(4), ahbmi,
+          ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG), ahbmi, 
+          open, open, open, open, open);
+
+    end generate;
+
+    grpci2xd : if (CFG_GRPCI2_MASTER+CFG_GRPCI2_TARGET) /= 0 and CFG_PCI = 0 and
+                   CFG_GRPCI2_DMA /= 0 generate
+      
+      pci0 : grpci2 
+        generic map (
+          memtech => memtech,
+          oepol => OEPOL,
+          hmindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG,
+          hdmindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+1,
+          hsindex => 4, 
+          haddr => 16#C00#,
+          hmask => 16#E00#,
+          ioaddr => 16#000#,
+          pindex => 4,
+          paddr => 4,
+          irq => 4,
+          irqmode => 0,
+          master => CFG_GRPCI2_MASTER,
+          target => CFG_GRPCI2_TARGET,
+          dma => CFG_GRPCI2_DMA,
+          tracebuffer => CFG_GRPCI2_TRACE,
+          vendorid => CFG_GRPCI2_VID,
+          deviceid => CFG_GRPCI2_DID,
+          classcode => CFG_GRPCI2_CLASS,
+          revisionid => CFG_GRPCI2_RID,
+          cap_pointer => CFG_GRPCI2_CAP,
+          ext_cap_pointer => CFG_GRPCI2_NCAP,
+          iobase => CFG_AHBIO,
+          extcfg => CFG_GRPCI2_EXTCFG,
+          bar0 => CFG_GRPCI2_BAR0,
+          bar1 => CFG_GRPCI2_BAR1,
+          bar2 => CFG_GRPCI2_BAR2,
+          bar3 => CFG_GRPCI2_BAR3,
+          bar4 => CFG_GRPCI2_BAR4,
+          bar5 => CFG_GRPCI2_BAR5,
+          fifo_depth => CFG_GRPCI2_FDEPTH,
+          fifo_count => CFG_GRPCI2_FCOUNT,
+          conv_endian => CFG_GRPCI2_ENDIAN,
+          deviceirq => CFG_GRPCI2_DEVINT,
+          deviceirqmask => CFG_GRPCI2_DEVINTMSK,
+          hostirq => CFG_GRPCI2_HOSTINT,
+          hostirqmask => CFG_GRPCI2_HOSTINTMSK,
+          nsync => 2,
+          hostrst => 1,
+          bypass => CFG_GRPCI2_BYPASS,
+          debug => 0,
+          tbapben => 0,
+          tbpindex => 5,
+          tbpaddr => 16#400#,
+          tbpmask => 16#C00#
+          )
+        port map (
+          rstn, clkm, pciclk, pci_dirq, pcii, pcio, apbi, apbo(4), ahbsi, ahbso(4), ahbmi,
+          ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG), ahbmi, 
           ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+1),
-          open,
-          open,
-          open,
-          open);
+          open, open, open, open);
 
     end generate;
 
@@ -719,9 +788,10 @@ begin
      spw2_input : if CFG_SPW_GRSPW = 2 generate
        spw_phy0 : grspw2_phy
          generic map(
-           scantest   => 0,
-           tech       => fabtech,
-           input_type => CFG_SPW_INPUT)
+           scantest     => 0,
+           tech         => fabtech,
+           input_type   => CFG_SPW_INPUT,
+           rxclkbuftype => 1)
          port map(
            rstn       => rstn,
            rxclki     => spw_rxtxclk,
@@ -788,6 +858,25 @@ begin
      spw_txs_pad : outpad_ds generic map (padtech, lvds, x25v)
 	 port map (spw_txsp(i), spw_txsn(i), spwo(i).s(0), gnd(0));
    end generate;
+  end generate;
+
+-----------------------------------------------------------------------
+---  DYNAMIC PARTIAL RECONFIGURATION  ---------------------------------
+-----------------------------------------------------------------------
+  prc : if CFG_PRC = 1 generate
+    p1 : dprc generic map(hindex => CFG_NCPU+CFG_AHB_UART+CFG_GRPCI2_TARGET+CFG_GRPCI2_DMA+log2x(CFG_PCI)+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_NUM, pindex => 10+CFG_SPW_NUM, paddr => 10+CFG_SPW_NUM,
+                          technology => CFG_FABTECH, crc_en => CFG_CRC_EN, words_block => CFG_WORDS_BLOCK, fifo_dcm_inst => CFG_DCM_FIFO, fifo_depth => CFG_DPR_FIFO)
+       port map(rstn => rstn, clkm => clkm, clkraw => lclk, clk100 => '0', ahbmi => ahbmi, ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_GRPCI2_TARGET+CFG_GRPCI2_DMA+log2x(CFG_PCI)+CFG_AHB_JTAG+CFG_GRETH
+                +CFG_SPW_NUM), apbi => apbi, apbo => apbo(10+CFG_SPW_NUM), rm_reset => rm_reset);
+
+  --------------------------------------------------------------------
+  --  FIR component instantiation (for dprc demo)  -------------------
+  --------------------------------------------------------------------
+   fir_ex : FIR_AHB_DMA_APB
+	generic map (hindex=>CFG_NCPU+CFG_AHB_UART+CFG_GRPCI2_TARGET+CFG_GRPCI2_DMA+log2x(CFG_PCI)+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_NUM+CFG_PRC, pindex=>10+CFG_SPW_NUM+1, paddr=>10+CFG_SPW_NUM+1, 
+                     pmask=>16#fff#, technology =>CFG_FABTECH)
+	port map (rstn=>rstn, clk=>clkm, apbi=>apbi, apbo=>apbo(10+CFG_SPW_NUM+1), ahbin=>ahbmi, ahbout=>ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_GRPCI2_TARGET+CFG_GRPCI2_DMA+log2x(CFG_PCI)+CFG_AHB_JTAG+CFG_GRETH
+                  +CFG_SPW_NUM+CFG_PRC), rm_reset => rm_reset(0));
   end generate;
 
 -----------------------------------------------------------------------

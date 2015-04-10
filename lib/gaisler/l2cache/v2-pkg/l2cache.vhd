@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -34,6 +35,13 @@ use techmap.gencomp.all;
 library gaisler;
 
 package l2cache is
+
+  type l2c_memtest_type is record
+    tags: memtest_vector_array(0 to 6);
+    data: memtest_vector_array(0 to 4*20-1);
+  end record;
+  constant l2c_memtest_none: l2c_memtest_type :=
+    ((others => (others => '0')),(others => (others => '0')));
 
 component l2c is
   generic (
@@ -75,8 +83,11 @@ component l2c is
     ahbmi : in  ahb_mst_in_type;
     ahbmo : out ahb_mst_out_type;
     ahbsov: in  ahb_slv_out_vector;
-    sto   : out std_logic_vector(2 downto 0);
-    debugo: out std_logic_vector(255*debug downto 0)
+    sto   : out std_logic_vector(10 downto 0);
+    debugo: out std_logic_vector(255*debug downto 0);
+    mtesti: in  l2c_memtest_type := l2c_memtest_none;
+    mtesto: out l2c_memtest_type;
+    mtestclk: in std_ulogic := '0'
   );
 end component;
 

@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -40,6 +41,9 @@ component clkbuf_fusion is generic( buftype :  integer range 0 to 3 := 0);
   port( i :  in  std_ulogic; o :  out std_ulogic);
 end component;
 component clkbuf_apa3 is generic( buftype :  integer range 0 to 3 := 0);
+  port( i :  in  std_ulogic; o :  out std_ulogic);
+end component;
+component clkbuf_igloo2 is generic( buftype :  integer range 0 to 5 := 0);
   port( i :  in  std_ulogic; o :  out std_ulogic);
 end component;
 component clkbuf_apa3e is generic( buftype :  integer range 0 to 3 := 0);
@@ -84,6 +88,9 @@ begin
   end generate;
   pa3e : if (tech = apa3e) generate
     pae30 : clkbuf_apa3e generic map (buftype => buftype) port map(i => i, o => o);
+  end generate;
+  igl2 : if (tech = igloo2) generate
+    igl20 : clkbuf_igloo2 generic map (buftype => buftype) port map(i => i, o => o);
   end generate;
   pa3l : if (tech = apa3l) generate
     pa3l0 : clkbuf_apa3l generic map (buftype => buftype) port map(i => i, o => o);

@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -58,6 +59,7 @@ component unisim_iddr_reg is
 end component;
 
 component gen_iddr_reg
+  generic (scantest: integer; noasync: integer);
   port (
     Q1 : out std_ulogic;
     Q2 : out std_ulogic;
@@ -66,7 +68,9 @@ component gen_iddr_reg
     CE : in std_ulogic;
     D  : in std_ulogic;
     R  : in std_ulogic;
-    S  : in std_ulogic);
+    S  : in std_ulogic;
+    testen: in std_ulogic;
+    testrst: in std_ulogic);
 end component;
 
 component rhumc_oddr_reg
@@ -107,6 +111,7 @@ component unisim_oddr_reg
 end component;
 
 component gen_oddr_reg
+  generic (scantest: integer; noasync: integer);
   port (
       Q : out std_ulogic;
       C1 : in std_ulogic;
@@ -115,7 +120,9 @@ component gen_oddr_reg
       D1 : in std_ulogic;
       D2 : in std_ulogic;
       R : in std_ulogic;
-      S : in std_ulogic);
+      S : in std_ulogic;
+      testen: in std_ulogic;
+      testrst: in std_ulogic);
 end component;
 
 component axcel_oddr_reg is
@@ -223,6 +230,30 @@ component apa3l_oddr_reg is
 end component;
 
 component apa3l_iddr_reg is
+  port(
+    Q1 : out std_ulogic;
+    Q2 : out std_ulogic;
+    C1 : in std_ulogic;
+    C2 : in std_ulogic;
+    CE : in std_ulogic;
+    D  : in std_ulogic;
+    R  : in std_ulogic;
+    S  : in std_ulogic);
+end component;
+
+component igloo2_oddr_reg is
+  port(
+    Q : out std_ulogic;
+    C1 : in std_ulogic;
+    C2 : in std_ulogic;
+    CE : in std_ulogic;
+    D1 : in std_ulogic;
+    D2 : in std_ulogic;
+    R : in std_ulogic;
+    S : in std_ulogic);
+end component;
+
+component igloo2_iddr_reg is
   port(
     Q1 : out std_ulogic;
     Q2 : out std_ulogic;

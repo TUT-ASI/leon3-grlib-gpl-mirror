@@ -1,22 +1,3 @@
-
-------------------------------------------------------------------------------
---  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---
---  This program is free software; you can redistribute it and/or modify
---  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
---
---  This program is distributed in the hope that it will be useful,
---  but WITHOUT ANY WARRANTY; without even the implied warranty of
---  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
---  GNU General Public License for more details.
---
---  You should have received a copy of the GNU General Public License
---  along with this program; if not, write to the Free Software
---  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------
 -- Package: 	vcomponents
 -- File:	vcomponents.vhd
@@ -1907,6 +1888,33 @@ end component;
 		I : in std_ulogic;
 		INC : in std_ulogic;
 		RST : in std_ulogic);
+  end component;
+
+  component IDELAYE2
+    generic (
+      CINVCTRL_SEL : string := "FALSE";
+      DELAY_SRC : string := "IDATAIN";
+      HIGH_PERFORMANCE_MODE : string := "FALSE";
+      IDELAY_TYPE : string := "FIXED";
+      IDELAY_VALUE : integer := 0;
+      PIPE_SEL : string := "FALSE";
+      REFCLK_FREQUENCY : real := 200.0;
+      SIGNAL_PATTERN : string := "DATA"
+    );
+    port (
+      CNTVALUEOUT : out std_logic_vector(4 downto 0);
+      DATAOUT : out std_ulogic;
+      C : in std_ulogic;
+      CE : in std_ulogic;
+      CINVCTRL : in std_ulogic;
+      CNTVALUEIN : in std_logic_vector(4 downto 0);
+      DATAIN : in std_ulogic;
+      IDATAIN : in std_ulogic;
+      INC : in std_ulogic;
+      LD : in std_ulogic;
+      LDPIPEEN : in std_ulogic;
+      REGRST : in std_ulogic
+    );
   end component;
 
   component IDELAYCTRL
@@ -3808,6 +3816,976 @@ component SRLC32E
      CE : in STD_ULOGIC;
      CLK : in STD_ULOGIC;
      D : in STD_ULOGIC
+  );
+end component;
+
+
+--------------------------------------------------------
+---------- Internal Configuration Access Port ----------
+--------------------------------------------------------
+
+----- component ICAPE2 -----
+component ICAPE2
+  generic (
+     DEVICE_ID : bit_vector := X"03651093";
+     ICAP_WIDTH : string := "X32";
+     SIM_CFG_FILE_NAME : string := "NONE"
+  );
+  port (
+     O : out std_logic_vector(31 downto 0);
+     CLK : in std_ulogic;
+     CSIB : in std_ulogic;
+     I : in std_logic_vector(31 downto 0);
+     RDWRB : in std_ulogic
+  );
+end component;
+
+----- component ICAP_VIRTEX4 -----
+component ICAP_VIRTEX4
+  generic (
+     ICAP_WIDTH : string := "X8"
+  );
+  port (
+     BUSY : out std_ulogic;
+     O : out std_logic_vector(31 downto 0);
+     CE : in std_ulogic;
+     CLK : in std_ulogic;
+     I : in std_logic_vector(31 downto 0);
+     WRITE : in std_ulogic
+  );
+end component;
+
+----- component ICAP_VIRTEX5 -----
+component ICAP_VIRTEX5
+  generic (
+     ICAP_WIDTH : string := "X8"
+  );
+  port (
+     BUSY : out std_ulogic;
+     O : out std_logic_vector(31 downto 0);
+     CE : in std_ulogic;
+     CLK : in std_ulogic;
+     I : in std_logic_vector(31 downto 0);
+     WRITE : in std_ulogic
+  );
+end component;
+
+----- component ICAP_VIRTEX6 -----
+component ICAP_VIRTEX6
+  generic (
+     DEVICE_ID : bit_vector := X"04244093";
+     ICAP_WIDTH : string := "X8";
+     SIM_CFG_FILE_NAME : string := "NONE"
+  );
+  port (
+     BUSY : out std_ulogic := '1';
+     O : out std_logic_vector(31 downto 0);
+     CLK : in std_ulogic;
+     CSB : in std_ulogic;
+     I : in std_logic_vector(31 downto 0);
+     RDWRB : in std_ulogic
+  );
+end component;
+
+component SIM_CONFIGE2
+  generic (
+     DEVICE_ID : bit_vector := X"00000000";
+     ICAP_SUPPORT : boolean := false;
+     ICAP_WIDTH : string := "X8"
+  );
+  port (
+     CSOB : out std_ulogic := '1';
+     D : inout std_logic_vector(31 downto 0);
+     DONE : inout std_ulogic := '0';
+     INITB : inout std_ulogic := 'H';
+     CCLK : in std_ulogic := '0';
+     CSB : in std_ulogic := '0';
+     M : in std_logic_vector(2 downto 0) := "000";
+     PROGB : in std_ulogic := '0';
+     RDWRB : in std_ulogic := '0'
+  );
+end component;
+
+component SIM_CONFIG_V6
+  generic (
+     DEVICE_ID : bit_vector := X"00000000";
+     ICAP_SUPPORT : boolean := false;
+     ICAP_WIDTH : string := "X8"
+  );
+  port (
+     BUSY : out std_ulogic := '0';
+     CSOB : out std_ulogic := '1';
+     D : inout std_logic_vector(31 downto 0);
+     DONE : inout std_ulogic := '0';
+     INITB : inout std_ulogic := 'H';
+     CCLK : in std_ulogic := '0';
+     CSB : in std_ulogic := '0';
+     M : in std_logic_vector(2 downto 0) := "000";
+     PROGB : in std_ulogic := '0';
+     RDWRB : in std_ulogic := '0'
+  );
+end component;
+
+component STARTUPE2
+  generic (
+     PROG_USR : string := "FALSE";
+     SIM_CCLK_FREQ : real := 0.0
+  );
+  port (
+     CFGCLK : out std_ulogic;
+     CFGMCLK : out std_ulogic;
+     EOS : out std_ulogic;
+     PREQ : out std_ulogic;
+     CLK : in std_ulogic;
+     GSR : in std_ulogic;
+     GTS : in std_ulogic;
+     KEYCLEARB : in std_ulogic;
+     PACK : in std_ulogic;
+     USRCCLKO : in std_ulogic;
+     USRCCLKTS : in std_ulogic;
+     USRDONEO : in std_ulogic;
+     USRDONETS : in std_ulogic
+  );
+end component;
+
+----- component GTP_DUAL -----
+component GTP_DUAL
+  generic (
+     AC_CAP_DIS_0 : boolean := TRUE;
+     AC_CAP_DIS_1 : boolean := TRUE;
+     ALIGN_COMMA_WORD_0 : integer := 1;
+     ALIGN_COMMA_WORD_1 : integer := 1;
+     CHAN_BOND_1_MAX_SKEW_0 : integer := 7;
+     CHAN_BOND_1_MAX_SKEW_1 : integer := 7;
+     CHAN_BOND_2_MAX_SKEW_0 : integer := 1;
+     CHAN_BOND_2_MAX_SKEW_1 : integer := 1;
+     CHAN_BOND_LEVEL_0 : integer := 0;
+     CHAN_BOND_LEVEL_1 : integer := 0;
+     CHAN_BOND_MODE_0 : string := "OFF";
+     CHAN_BOND_MODE_1 : string := "OFF";
+     CHAN_BOND_SEQ_1_1_0 : bit_vector := "0001001010";
+     CHAN_BOND_SEQ_1_1_1 : bit_vector := "0001001010";
+     CHAN_BOND_SEQ_1_2_0 : bit_vector := "0001001010";
+     CHAN_BOND_SEQ_1_2_1 : bit_vector := "0001001010";
+     CHAN_BOND_SEQ_1_3_0 : bit_vector := "0001001010";
+     CHAN_BOND_SEQ_1_3_1 : bit_vector := "0001001010";
+     CHAN_BOND_SEQ_1_4_0 : bit_vector := "0110111100";
+     CHAN_BOND_SEQ_1_4_1 : bit_vector := "0110111100";
+     CHAN_BOND_SEQ_1_ENABLE_0 : bit_vector := "1111";
+     CHAN_BOND_SEQ_1_ENABLE_1 : bit_vector := "1111";
+     CHAN_BOND_SEQ_2_1_0 : bit_vector := "0110111100";
+     CHAN_BOND_SEQ_2_1_1 : bit_vector := "0110111100";
+     CHAN_BOND_SEQ_2_2_0 : bit_vector := "0100111100";
+     CHAN_BOND_SEQ_2_2_1 : bit_vector := "0100111100";
+     CHAN_BOND_SEQ_2_3_0 : bit_vector := "0100111100";
+     CHAN_BOND_SEQ_2_3_1 : bit_vector := "0100111100";
+     CHAN_BOND_SEQ_2_4_0 : bit_vector := "0100111100";
+     CHAN_BOND_SEQ_2_4_1 : bit_vector := "0100111100";
+     CHAN_BOND_SEQ_2_ENABLE_0 : bit_vector := "1111";
+     CHAN_BOND_SEQ_2_ENABLE_1 : bit_vector := "1111";
+     CHAN_BOND_SEQ_2_USE_0 : boolean := TRUE;
+     CHAN_BOND_SEQ_2_USE_1 : boolean := TRUE;
+     CHAN_BOND_SEQ_LEN_0 : integer := 4;
+     CHAN_BOND_SEQ_LEN_1 : integer := 4;
+     CLK25_DIVIDER : integer := 4;
+     CLKINDC_B : boolean := TRUE;
+     CLK_CORRECT_USE_0 : boolean := TRUE;
+     CLK_CORRECT_USE_1 : boolean := TRUE;
+     CLK_COR_ADJ_LEN_0 : integer := 1;
+     CLK_COR_ADJ_LEN_1 : integer := 1;
+     CLK_COR_DET_LEN_0 : integer := 1;
+     CLK_COR_DET_LEN_1 : integer := 1;
+     CLK_COR_INSERT_IDLE_FLAG_0 : boolean := FALSE;
+     CLK_COR_INSERT_IDLE_FLAG_1 : boolean := FALSE;
+     CLK_COR_KEEP_IDLE_0 : boolean := FALSE;
+     CLK_COR_KEEP_IDLE_1 : boolean := FALSE;
+     CLK_COR_MAX_LAT_0 : integer := 18;
+     CLK_COR_MAX_LAT_1 : integer := 18;
+     CLK_COR_MIN_LAT_0 : integer := 16;
+     CLK_COR_MIN_LAT_1 : integer := 16;
+     CLK_COR_PRECEDENCE_0 : boolean := TRUE;
+     CLK_COR_PRECEDENCE_1 : boolean := TRUE;
+     CLK_COR_REPEAT_WAIT_0 : integer := 5;
+     CLK_COR_REPEAT_WAIT_1 : integer := 5;
+     CLK_COR_SEQ_1_1_0 : bit_vector := "0100011100";
+     CLK_COR_SEQ_1_1_1 : bit_vector := "0100011100";
+     CLK_COR_SEQ_1_2_0 : bit_vector := "0000000000";
+     CLK_COR_SEQ_1_2_1 : bit_vector := "0000000000";
+     CLK_COR_SEQ_1_3_0 : bit_vector := "0000000000";
+     CLK_COR_SEQ_1_3_1 : bit_vector := "0000000000";
+     CLK_COR_SEQ_1_4_0 : bit_vector := "0000000000";
+     CLK_COR_SEQ_1_4_1 : bit_vector := "0000000000";
+     CLK_COR_SEQ_1_ENABLE_0 : bit_vector := "1111";
+     CLK_COR_SEQ_1_ENABLE_1 : bit_vector := "1111";
+     CLK_COR_SEQ_2_1_0 : bit_vector := "0000000000";
+     CLK_COR_SEQ_2_1_1 : bit_vector := "0000000000";
+     CLK_COR_SEQ_2_2_0 : bit_vector := "0000000000";
+     CLK_COR_SEQ_2_2_1 : bit_vector := "0000000000";
+     CLK_COR_SEQ_2_3_0 : bit_vector := "0000000000";
+     CLK_COR_SEQ_2_3_1 : bit_vector := "0000000000";
+     CLK_COR_SEQ_2_4_0 : bit_vector := "0000000000";
+     CLK_COR_SEQ_2_4_1 : bit_vector := "0000000000";
+     CLK_COR_SEQ_2_ENABLE_0 : bit_vector := "1111";
+     CLK_COR_SEQ_2_ENABLE_1 : bit_vector := "1111";
+     CLK_COR_SEQ_2_USE_0 : boolean := FALSE;
+     CLK_COR_SEQ_2_USE_1 : boolean := FALSE;
+     COMMA_10B_ENABLE_0 : bit_vector := "1111111111";
+     COMMA_10B_ENABLE_1 : bit_vector := "1111111111";
+     COMMA_DOUBLE_0 : boolean := FALSE;
+     COMMA_DOUBLE_1 : boolean := FALSE;
+     COM_BURST_VAL_0 : bit_vector := "1111";
+     COM_BURST_VAL_1 : bit_vector := "1111";
+     DEC_MCOMMA_DETECT_0 : boolean := TRUE;
+     DEC_MCOMMA_DETECT_1 : boolean := TRUE;
+     DEC_PCOMMA_DETECT_0 : boolean := TRUE;
+     DEC_PCOMMA_DETECT_1 : boolean := TRUE;
+     DEC_VALID_COMMA_ONLY_0 : boolean := TRUE;
+     DEC_VALID_COMMA_ONLY_1 : boolean := TRUE;
+     MCOMMA_10B_VALUE_0 : bit_vector := "1010000011";
+     MCOMMA_10B_VALUE_1 : bit_vector := "1010000011";
+     MCOMMA_DETECT_0 : boolean := TRUE;
+     MCOMMA_DETECT_1 : boolean := TRUE;
+     OOBDETECT_THRESHOLD_0 : bit_vector := "001";
+     OOBDETECT_THRESHOLD_1 : bit_vector := "001";
+     OOB_CLK_DIVIDER : integer := 4;
+     OVERSAMPLE_MODE : boolean := FALSE;
+     PCI_EXPRESS_MODE_0 : boolean := TRUE;
+     PCI_EXPRESS_MODE_1 : boolean := TRUE;
+     PCOMMA_10B_VALUE_0 : bit_vector := "0101111100";
+     PCOMMA_10B_VALUE_1 : bit_vector := "0101111100";
+     PCOMMA_DETECT_0 : boolean := TRUE;
+     PCOMMA_DETECT_1 : boolean := TRUE;
+     PCS_COM_CFG : bit_vector := X"1680a0e";
+     PLL_DIVSEL_FB : integer := 5;
+     PLL_DIVSEL_REF : integer := 2;
+     PLL_RXDIVSEL_OUT_0 : integer := 1;
+     PLL_RXDIVSEL_OUT_1 : integer := 1;
+     PLL_SATA_0 : boolean := FALSE;
+     PLL_SATA_1 : boolean := FALSE;
+     PLL_TXDIVSEL_COMM_OUT : integer := 1;
+     PLL_TXDIVSEL_OUT_0 : integer := 1;
+     PLL_TXDIVSEL_OUT_1 : integer := 1;
+     PMA_CDR_SCAN_0 : bit_vector := X"6c07640";
+     PMA_CDR_SCAN_1 : bit_vector := X"6c07640";
+     PMA_RX_CFG_0 : bit_vector := X"09f0089";
+     PMA_RX_CFG_1 : bit_vector := X"09f0089";
+     PRBS_ERR_THRESHOLD_0 : bit_vector := X"00000001";
+     PRBS_ERR_THRESHOLD_1 : bit_vector := X"00000001";
+     RCV_TERM_GND_0 : boolean := TRUE;
+     RCV_TERM_GND_1 : boolean := TRUE;
+     RCV_TERM_MID_0 : boolean := FALSE;
+     RCV_TERM_MID_1 : boolean := FALSE;
+     RCV_TERM_VTTRX_0 : boolean := FALSE;
+     RCV_TERM_VTTRX_1 : boolean := FALSE;
+     RX_BUFFER_USE_0 : boolean := TRUE;
+     RX_BUFFER_USE_1 : boolean := TRUE;
+     RX_DECODE_SEQ_MATCH_0 : boolean := TRUE;
+     RX_DECODE_SEQ_MATCH_1 : boolean := TRUE;
+     RX_LOSS_OF_SYNC_FSM_0 : boolean := FALSE;
+     RX_LOSS_OF_SYNC_FSM_1 : boolean := FALSE;
+     RX_LOS_INVALID_INCR_0 : integer := 8;
+     RX_LOS_INVALID_INCR_1 : integer := 8;
+     RX_LOS_THRESHOLD_0 : integer := 128;
+     RX_LOS_THRESHOLD_1 : integer := 128;
+     RX_SLIDE_MODE_0 : string := "PCS";
+     RX_SLIDE_MODE_1 : string := "PCS";
+     RX_STATUS_FMT_0 : string := "PCIE";
+     RX_STATUS_FMT_1 : string := "PCIE";
+     RX_XCLK_SEL_0 : string := "RXREC";
+     RX_XCLK_SEL_1 : string := "RXREC";
+     SATA_BURST_VAL_0 : bit_vector := "100";
+     SATA_BURST_VAL_1 : bit_vector := "100";
+     SATA_IDLE_VAL_0 : bit_vector := "011";
+     SATA_IDLE_VAL_1 : bit_vector := "011";
+     SATA_MAX_BURST_0 : integer := 7;
+     SATA_MAX_BURST_1 : integer := 7;
+     SATA_MAX_INIT_0 : integer := 22;
+     SATA_MAX_INIT_1 : integer := 22;
+     SATA_MAX_WAKE_0 : integer := 7;
+     SATA_MAX_WAKE_1 : integer := 7;
+     SATA_MIN_BURST_0 : integer := 4;
+     SATA_MIN_BURST_1 : integer := 4;
+     SATA_MIN_INIT_0 : integer := 12;
+     SATA_MIN_INIT_1 : integer := 12;
+     SATA_MIN_WAKE_0 : integer := 4;
+     SATA_MIN_WAKE_1 : integer := 4;
+     SIM_GTPRESET_SPEEDUP : integer := 0;
+     SIM_MODE : string := "FAST";
+     SIM_PLL_PERDIV2 : bit_vector := X"190";
+     SIM_RECEIVER_DETECT_PASS0 : boolean := FALSE;
+     SIM_RECEIVER_DETECT_PASS1 : boolean := FALSE;
+     TERMINATION_CTRL : bit_vector := "10100";
+     TERMINATION_IMP_0 : integer := 50;
+     TERMINATION_IMP_1 : integer := 50;
+     TERMINATION_OVRD : boolean := FALSE;
+     TRANS_TIME_FROM_P2_0 : bit_vector := X"003c";
+     TRANS_TIME_FROM_P2_1 : bit_vector := X"003c";
+     TRANS_TIME_NON_P2_0 : bit_vector := X"0019";
+     TRANS_TIME_NON_P2_1 : bit_vector := X"0019";
+     TRANS_TIME_TO_P2_0 : bit_vector := X"0064";
+     TRANS_TIME_TO_P2_1 : bit_vector := X"0064";
+     TXRX_INVERT_0 : bit_vector := "00000";
+     TXRX_INVERT_1 : bit_vector := "00000";
+     TX_BUFFER_USE_0 : boolean := TRUE;
+     TX_BUFFER_USE_1 : boolean := TRUE;
+     TX_DIFF_BOOST_0 : boolean := TRUE;
+     TX_DIFF_BOOST_1 : boolean := TRUE;
+     TX_SYNC_FILTERB : integer := 1;
+     TX_XCLK_SEL_0 : string := "TXUSR";
+     TX_XCLK_SEL_1 : string := "TXUSR"
+  );
+  port (
+     DO : out std_logic_vector(15 downto 0);
+     DRDY : out std_ulogic;
+     PHYSTATUS0 : out std_ulogic;
+     PHYSTATUS1 : out std_ulogic;
+     PLLLKDET : out std_ulogic;
+     REFCLKOUT : out std_ulogic;
+     RESETDONE0 : out std_ulogic;
+     RESETDONE1 : out std_ulogic;
+     RXBUFSTATUS0 : out std_logic_vector(2 downto 0);
+     RXBUFSTATUS1 : out std_logic_vector(2 downto 0);
+     RXBYTEISALIGNED0 : out std_ulogic;
+     RXBYTEISALIGNED1 : out std_ulogic;
+     RXBYTEREALIGN0 : out std_ulogic;
+     RXBYTEREALIGN1 : out std_ulogic;
+     RXCHANBONDSEQ0 : out std_ulogic;
+     RXCHANBONDSEQ1 : out std_ulogic;
+     RXCHANISALIGNED0 : out std_ulogic;
+     RXCHANISALIGNED1 : out std_ulogic;
+     RXCHANREALIGN0 : out std_ulogic;
+     RXCHANREALIGN1 : out std_ulogic;
+     RXCHARISCOMMA0 : out std_logic_vector(1 downto 0);
+     RXCHARISCOMMA1 : out std_logic_vector(1 downto 0);
+     RXCHARISK0 : out std_logic_vector(1 downto 0);
+     RXCHARISK1 : out std_logic_vector(1 downto 0);
+     RXCHBONDO0 : out std_logic_vector(2 downto 0);
+     RXCHBONDO1 : out std_logic_vector(2 downto 0);
+     RXCLKCORCNT0 : out std_logic_vector(2 downto 0);
+     RXCLKCORCNT1 : out std_logic_vector(2 downto 0);
+     RXCOMMADET0 : out std_ulogic;
+     RXCOMMADET1 : out std_ulogic;
+     RXDATA0 : out std_logic_vector(15 downto 0);
+     RXDATA1 : out std_logic_vector(15 downto 0);
+     RXDISPERR0 : out std_logic_vector(1 downto 0);
+     RXDISPERR1 : out std_logic_vector(1 downto 0);
+     RXELECIDLE0 : out std_ulogic;
+     RXELECIDLE1 : out std_ulogic;
+     RXLOSSOFSYNC0 : out std_logic_vector(1 downto 0);
+     RXLOSSOFSYNC1 : out std_logic_vector(1 downto 0);
+     RXNOTINTABLE0 : out std_logic_vector(1 downto 0);
+     RXNOTINTABLE1 : out std_logic_vector(1 downto 0);
+     RXOVERSAMPLEERR0 : out std_ulogic;
+     RXOVERSAMPLEERR1 : out std_ulogic;
+     RXPRBSERR0 : out std_ulogic;
+     RXPRBSERR1 : out std_ulogic;
+     RXRECCLK0 : out std_ulogic;
+     RXRECCLK1 : out std_ulogic;
+     RXRUNDISP0 : out std_logic_vector(1 downto 0);
+     RXRUNDISP1 : out std_logic_vector(1 downto 0);
+     RXSTATUS0 : out std_logic_vector(2 downto 0);
+     RXSTATUS1 : out std_logic_vector(2 downto 0);
+     RXVALID0 : out std_ulogic;
+     RXVALID1 : out std_ulogic;
+     TXBUFSTATUS0 : out std_logic_vector(1 downto 0);
+     TXBUFSTATUS1 : out std_logic_vector(1 downto 0);
+     TXKERR0 : out std_logic_vector(1 downto 0);
+     TXKERR1 : out std_logic_vector(1 downto 0);
+     TXN0 : out std_ulogic;
+     TXN1 : out std_ulogic;
+     TXOUTCLK0 : out std_ulogic;
+     TXOUTCLK1 : out std_ulogic;
+     TXP0 : out std_ulogic;
+     TXP1 : out std_ulogic;
+     TXRUNDISP0 : out std_logic_vector(1 downto 0);
+     TXRUNDISP1 : out std_logic_vector(1 downto 0);
+     CLKIN : in std_ulogic;
+     DADDR : in std_logic_vector(6 downto 0);
+     DCLK : in std_ulogic;
+     DEN : in std_ulogic;
+     DI : in std_logic_vector(15 downto 0);
+     DWE : in std_ulogic;
+     GTPRESET : in std_ulogic;
+     GTPTEST : in std_logic_vector(3 downto 0);
+     INTDATAWIDTH : in std_ulogic;
+     LOOPBACK0 : in std_logic_vector(2 downto 0);
+     LOOPBACK1 : in std_logic_vector(2 downto 0);
+     PLLLKDETEN : in std_ulogic;
+     PLLPOWERDOWN : in std_ulogic;
+     PRBSCNTRESET0 : in std_ulogic;
+     PRBSCNTRESET1 : in std_ulogic;
+     REFCLKPWRDNB : in std_ulogic;
+     RXBUFRESET0 : in std_ulogic;
+     RXBUFRESET1 : in std_ulogic;
+     RXCDRRESET0 : in std_ulogic;
+     RXCDRRESET1 : in std_ulogic;
+     RXCHBONDI0 : in std_logic_vector(2 downto 0);
+     RXCHBONDI1 : in std_logic_vector(2 downto 0);
+     RXCOMMADETUSE0 : in std_ulogic;
+     RXCOMMADETUSE1 : in std_ulogic;
+     RXDATAWIDTH0 : in std_ulogic;
+     RXDATAWIDTH1 : in std_ulogic;
+     RXDEC8B10BUSE0 : in std_ulogic;
+     RXDEC8B10BUSE1 : in std_ulogic;
+     RXELECIDLERESET0 : in std_ulogic;
+     RXELECIDLERESET1 : in std_ulogic;
+     RXENCHANSYNC0 : in std_ulogic;
+     RXENCHANSYNC1 : in std_ulogic;
+     RXENELECIDLERESETB : in std_ulogic;
+     RXENEQB0 : in std_ulogic;
+     RXENEQB1 : in std_ulogic;
+     RXENMCOMMAALIGN0 : in std_ulogic;
+     RXENMCOMMAALIGN1 : in std_ulogic;
+     RXENPCOMMAALIGN0 : in std_ulogic;
+     RXENPCOMMAALIGN1 : in std_ulogic;
+     RXENPRBSTST0 : in std_logic_vector(1 downto 0);
+     RXENPRBSTST1 : in std_logic_vector(1 downto 0);
+     RXENSAMPLEALIGN0 : in std_ulogic;
+     RXENSAMPLEALIGN1 : in std_ulogic;
+     RXEQMIX0 : in std_logic_vector(1 downto 0);
+     RXEQMIX1 : in std_logic_vector(1 downto 0);
+     RXEQPOLE0 : in std_logic_vector(3 downto 0);
+     RXEQPOLE1 : in std_logic_vector(3 downto 0);
+     RXN0 : in std_ulogic;
+     RXN1 : in std_ulogic;
+     RXP0 : in std_ulogic;
+     RXP1 : in std_ulogic;
+     RXPMASETPHASE0 : in std_ulogic;
+     RXPMASETPHASE1 : in std_ulogic;
+     RXPOLARITY0 : in std_ulogic;
+     RXPOLARITY1 : in std_ulogic;
+     RXPOWERDOWN0 : in std_logic_vector(1 downto 0);
+     RXPOWERDOWN1 : in std_logic_vector(1 downto 0);
+     RXRESET0 : in std_ulogic;
+     RXRESET1 : in std_ulogic;
+     RXSLIDE0 : in std_ulogic;
+     RXSLIDE1 : in std_ulogic;
+     RXUSRCLK0 : in std_ulogic;
+     RXUSRCLK1 : in std_ulogic;
+     RXUSRCLK20 : in std_ulogic;
+     RXUSRCLK21 : in std_ulogic;
+     TXBUFDIFFCTRL0 : in std_logic_vector(2 downto 0);
+     TXBUFDIFFCTRL1 : in std_logic_vector(2 downto 0);
+     TXBYPASS8B10B0 : in std_logic_vector(1 downto 0);
+     TXBYPASS8B10B1 : in std_logic_vector(1 downto 0);
+     TXCHARDISPMODE0 : in std_logic_vector(1 downto 0);
+     TXCHARDISPMODE1 : in std_logic_vector(1 downto 0);
+     TXCHARDISPVAL0 : in std_logic_vector(1 downto 0);
+     TXCHARDISPVAL1 : in std_logic_vector(1 downto 0);
+     TXCHARISK0 : in std_logic_vector(1 downto 0);
+     TXCHARISK1 : in std_logic_vector(1 downto 0);
+     TXCOMSTART0 : in std_ulogic;
+     TXCOMSTART1 : in std_ulogic;
+     TXCOMTYPE0 : in std_ulogic;
+     TXCOMTYPE1 : in std_ulogic;
+     TXDATA0 : in std_logic_vector(15 downto 0);
+     TXDATA1 : in std_logic_vector(15 downto 0);
+     TXDATAWIDTH0 : in std_ulogic;
+     TXDATAWIDTH1 : in std_ulogic;
+     TXDETECTRX0 : in std_ulogic;
+     TXDETECTRX1 : in std_ulogic;
+     TXDIFFCTRL0 : in std_logic_vector(2 downto 0);
+     TXDIFFCTRL1 : in std_logic_vector(2 downto 0);
+     TXELECIDLE0 : in std_ulogic;
+     TXELECIDLE1 : in std_ulogic;
+     TXENC8B10BUSE0 : in std_ulogic;
+     TXENC8B10BUSE1 : in std_ulogic;
+     TXENPMAPHASEALIGN : in std_ulogic;
+     TXENPRBSTST0 : in std_logic_vector(1 downto 0);
+     TXENPRBSTST1 : in std_logic_vector(1 downto 0);
+     TXINHIBIT0 : in std_ulogic;
+     TXINHIBIT1 : in std_ulogic;
+     TXPMASETPHASE : in std_ulogic;
+     TXPOLARITY0 : in std_ulogic;
+     TXPOLARITY1 : in std_ulogic;
+     TXPOWERDOWN0 : in std_logic_vector(1 downto 0);
+     TXPOWERDOWN1 : in std_logic_vector(1 downto 0);
+     TXPREEMPHASIS0 : in std_logic_vector(2 downto 0);
+     TXPREEMPHASIS1 : in std_logic_vector(2 downto 0);
+     TXRESET0 : in std_ulogic;
+     TXRESET1 : in std_ulogic;
+     TXUSRCLK0 : in std_ulogic;
+     TXUSRCLK1 : in std_ulogic;
+     TXUSRCLK20 : in std_ulogic;
+     TXUSRCLK21 : in std_ulogic
+  );
+end component;
+
+----- component GTX_DUAL -----
+component GTX_DUAL
+  generic (
+     AC_CAP_DIS_0 : boolean := TRUE;
+     AC_CAP_DIS_1 : boolean := TRUE;
+     ALIGN_COMMA_WORD_0 : integer := 1;
+     ALIGN_COMMA_WORD_1 : integer := 1;
+     CB2_INH_CC_PERIOD_0 : integer := 8;
+     CB2_INH_CC_PERIOD_1 : integer := 8;
+     CDR_PH_ADJ_TIME : bit_vector := "01010";
+     CHAN_BOND_1_MAX_SKEW_0 : integer := 7;
+     CHAN_BOND_1_MAX_SKEW_1 : integer := 7;
+     CHAN_BOND_2_MAX_SKEW_0 : integer := 7;
+     CHAN_BOND_2_MAX_SKEW_1 : integer := 7;
+     CHAN_BOND_KEEP_ALIGN_0 : boolean := FALSE;
+     CHAN_BOND_KEEP_ALIGN_1 : boolean := FALSE;
+     CHAN_BOND_LEVEL_0 : integer := 0;
+     CHAN_BOND_LEVEL_1 : integer := 0;
+     CHAN_BOND_MODE_0 : string := "OFF";
+     CHAN_BOND_MODE_1 : string := "OFF";
+     CHAN_BOND_SEQ_1_1_0 : bit_vector := "0101111100";
+     CHAN_BOND_SEQ_1_1_1 : bit_vector := "0101111100";
+     CHAN_BOND_SEQ_1_2_0 : bit_vector := "0000000000";
+     CHAN_BOND_SEQ_1_2_1 : bit_vector := "0000000000";
+     CHAN_BOND_SEQ_1_3_0 : bit_vector := "0000000000";
+     CHAN_BOND_SEQ_1_3_1 : bit_vector := "0000000000";
+     CHAN_BOND_SEQ_1_4_0 : bit_vector := "0000000000";
+     CHAN_BOND_SEQ_1_4_1 : bit_vector := "0000000000";
+     CHAN_BOND_SEQ_1_ENABLE_0 : bit_vector := "0001";
+     CHAN_BOND_SEQ_1_ENABLE_1 : bit_vector := "0001";
+     CHAN_BOND_SEQ_2_1_0 : bit_vector := "0000000000";
+     CHAN_BOND_SEQ_2_1_1 : bit_vector := "0000000000";
+     CHAN_BOND_SEQ_2_2_0 : bit_vector := "0000000000";
+     CHAN_BOND_SEQ_2_2_1 : bit_vector := "0000000000";
+     CHAN_BOND_SEQ_2_3_0 : bit_vector := "0000000000";
+     CHAN_BOND_SEQ_2_3_1 : bit_vector := "0000000000";
+     CHAN_BOND_SEQ_2_4_0 : bit_vector := "0000000000";
+     CHAN_BOND_SEQ_2_4_1 : bit_vector := "0000000000";
+     CHAN_BOND_SEQ_2_ENABLE_0 : bit_vector := "0000";
+     CHAN_BOND_SEQ_2_ENABLE_1 : bit_vector := "0000";
+     CHAN_BOND_SEQ_2_USE_0 : boolean := FALSE;
+     CHAN_BOND_SEQ_2_USE_1 : boolean := FALSE;
+     CHAN_BOND_SEQ_LEN_0 : integer := 1;
+     CHAN_BOND_SEQ_LEN_1 : integer := 1;
+     CLK25_DIVIDER : integer := 10;
+     CLKINDC_B : boolean := TRUE;
+     CLKRCV_TRST : boolean := TRUE;
+     CLK_CORRECT_USE_0 : boolean := TRUE;
+     CLK_CORRECT_USE_1 : boolean := TRUE;
+     CLK_COR_ADJ_LEN_0 : integer := 1;
+     CLK_COR_ADJ_LEN_1 : integer := 1;
+     CLK_COR_DET_LEN_0 : integer := 1;
+     CLK_COR_DET_LEN_1 : integer := 1;
+     CLK_COR_INSERT_IDLE_FLAG_0 : boolean := FALSE;
+     CLK_COR_INSERT_IDLE_FLAG_1 : boolean := FALSE;
+     CLK_COR_KEEP_IDLE_0 : boolean := FALSE;
+     CLK_COR_KEEP_IDLE_1 : boolean := FALSE;
+     CLK_COR_MAX_LAT_0 : integer := 20;
+     CLK_COR_MAX_LAT_1 : integer := 20;
+     CLK_COR_MIN_LAT_0 : integer := 18;
+     CLK_COR_MIN_LAT_1 : integer := 18;
+     CLK_COR_PRECEDENCE_0 : boolean := TRUE;
+     CLK_COR_PRECEDENCE_1 : boolean := TRUE;
+     CLK_COR_REPEAT_WAIT_0 : integer := 0;
+     CLK_COR_REPEAT_WAIT_1 : integer := 0;
+     CLK_COR_SEQ_1_1_0 : bit_vector := "0100011100";
+     CLK_COR_SEQ_1_1_1 : bit_vector := "0100011100";
+     CLK_COR_SEQ_1_2_0 : bit_vector := "0000000000";
+     CLK_COR_SEQ_1_2_1 : bit_vector := "0000000000";
+     CLK_COR_SEQ_1_3_0 : bit_vector := "0000000000";
+     CLK_COR_SEQ_1_3_1 : bit_vector := "0000000000";
+     CLK_COR_SEQ_1_4_0 : bit_vector := "0000000000";
+     CLK_COR_SEQ_1_4_1 : bit_vector := "0000000000";
+     CLK_COR_SEQ_1_ENABLE_0 : bit_vector := "0001";
+     CLK_COR_SEQ_1_ENABLE_1 : bit_vector := "0001";
+     CLK_COR_SEQ_2_1_0 : bit_vector := "0000000000";
+     CLK_COR_SEQ_2_1_1 : bit_vector := "0000000000";
+     CLK_COR_SEQ_2_2_0 : bit_vector := "0000000000";
+     CLK_COR_SEQ_2_2_1 : bit_vector := "0000000000";
+     CLK_COR_SEQ_2_3_0 : bit_vector := "0000000000";
+     CLK_COR_SEQ_2_3_1 : bit_vector := "0000000000";
+     CLK_COR_SEQ_2_4_0 : bit_vector := "0000000000";
+     CLK_COR_SEQ_2_4_1 : bit_vector := "0000000000";
+     CLK_COR_SEQ_2_ENABLE_0 : bit_vector := "0000";
+     CLK_COR_SEQ_2_ENABLE_1 : bit_vector := "0000";
+     CLK_COR_SEQ_2_USE_0 : boolean := FALSE;
+     CLK_COR_SEQ_2_USE_1 : boolean := FALSE;
+     CM_TRIM_0 : bit_vector := "10";
+     CM_TRIM_1 : bit_vector := "10";
+     COMMA_10B_ENABLE_0 : bit_vector := "0001111111";
+     COMMA_10B_ENABLE_1 : bit_vector := "0001111111";
+     COMMA_DOUBLE_0 : boolean := FALSE;
+     COMMA_DOUBLE_1 : boolean := FALSE;
+     COM_BURST_VAL_0 : bit_vector := "1111";
+     COM_BURST_VAL_1 : bit_vector := "1111";
+     DEC_MCOMMA_DETECT_0 : boolean := TRUE;
+     DEC_MCOMMA_DETECT_1 : boolean := TRUE;
+     DEC_PCOMMA_DETECT_0 : boolean := TRUE;
+     DEC_PCOMMA_DETECT_1 : boolean := TRUE;
+     DEC_VALID_COMMA_ONLY_0 : boolean := TRUE;
+     DEC_VALID_COMMA_ONLY_1 : boolean := TRUE;
+     DFE_CAL_TIME : bit_vector := "00110";
+     DFE_CFG_0 : bit_vector := "1101111011";
+     DFE_CFG_1 : bit_vector := "1101111011";
+     GEARBOX_ENDEC_0 : bit_vector := "000";
+     GEARBOX_ENDEC_1 : bit_vector := "000";
+     MCOMMA_10B_VALUE_0 : bit_vector := "1010000011";
+     MCOMMA_10B_VALUE_1 : bit_vector := "1010000011";
+     MCOMMA_DETECT_0 : boolean := TRUE;
+     MCOMMA_DETECT_1 : boolean := TRUE;
+     OOBDETECT_THRESHOLD_0 : bit_vector := "110";
+     OOBDETECT_THRESHOLD_1 : bit_vector := "110";
+     OOB_CLK_DIVIDER : integer := 6;
+     OVERSAMPLE_MODE : boolean := FALSE;
+     PCI_EXPRESS_MODE_0 : boolean := FALSE;
+     PCI_EXPRESS_MODE_1 : boolean := FALSE;
+     PCOMMA_10B_VALUE_0 : bit_vector := "0101111100";
+     PCOMMA_10B_VALUE_1 : bit_vector := "0101111100";
+     PCOMMA_DETECT_0 : boolean := TRUE;
+     PCOMMA_DETECT_1 : boolean := TRUE;
+     PLL_COM_CFG : bit_vector := X"21680a";
+     PLL_CP_CFG : bit_vector := X"00";
+     PLL_DIVSEL_FB : integer := 2;
+     PLL_DIVSEL_REF : integer := 1;
+     PLL_FB_DCCEN : boolean := FALSE;
+     PLL_LKDET_CFG : bit_vector := "101";
+     PLL_RXDIVSEL_OUT_0 : integer := 1;
+     PLL_RXDIVSEL_OUT_1 : integer := 1;
+     PLL_SATA_0 : boolean := FALSE;
+     PLL_SATA_1 : boolean := FALSE;
+     PLL_TDCC_CFG : bit_vector := "000";
+     PLL_TXDIVSEL_OUT_0 : integer := 1;
+     PLL_TXDIVSEL_OUT_1 : integer := 1;
+     PMA_CDR_SCAN_0 : bit_vector := X"6404035";
+     PMA_CDR_SCAN_1 : bit_vector := X"6404035";
+     PMA_COM_CFG : bit_vector := X"000000000000000000";
+     PMA_RXSYNC_CFG_0 : bit_vector := X"00";
+     PMA_RXSYNC_CFG_1 : bit_vector := X"00";
+     PMA_RX_CFG_0 : bit_vector := X"0f44089";
+     PMA_RX_CFG_1 : bit_vector := X"0f44089";
+     PMA_TX_CFG_0 : bit_vector := X"80082";
+     PMA_TX_CFG_1 : bit_vector := X"80082";
+     PRBS_ERR_THRESHOLD_0 : bit_vector := X"00000001";
+     PRBS_ERR_THRESHOLD_1 : bit_vector := X"00000001";
+     RCV_TERM_GND_0 : boolean := FALSE;
+     RCV_TERM_GND_1 : boolean := FALSE;
+     RCV_TERM_VTTRX_0 : boolean := FALSE;
+     RCV_TERM_VTTRX_1 : boolean := FALSE;
+     RXGEARBOX_USE_0 : boolean := FALSE;
+     RXGEARBOX_USE_1 : boolean := FALSE;
+     RX_BUFFER_USE_0 : boolean := TRUE;
+     RX_BUFFER_USE_1 : boolean := TRUE;
+     RX_DECODE_SEQ_MATCH_0 : boolean := TRUE;
+     RX_DECODE_SEQ_MATCH_1 : boolean := TRUE;
+     RX_EN_IDLE_HOLD_CDR : boolean := FALSE;
+     RX_EN_IDLE_HOLD_DFE_0 : boolean := TRUE;
+     RX_EN_IDLE_HOLD_DFE_1 : boolean := TRUE;
+     RX_EN_IDLE_RESET_BUF_0 : boolean := TRUE;
+     RX_EN_IDLE_RESET_BUF_1 : boolean := TRUE;
+     RX_EN_IDLE_RESET_FR : boolean := TRUE;
+     RX_EN_IDLE_RESET_PH : boolean := TRUE;
+     RX_IDLE_HI_CNT_0 : bit_vector := "1000";
+     RX_IDLE_HI_CNT_1 : bit_vector := "1000";
+     RX_IDLE_LO_CNT_0 : bit_vector := "0000";
+     RX_IDLE_LO_CNT_1 : bit_vector := "0000";
+     RX_LOSS_OF_SYNC_FSM_0 : boolean := FALSE;
+     RX_LOSS_OF_SYNC_FSM_1 : boolean := FALSE;
+     RX_LOS_INVALID_INCR_0 : integer := 1;
+     RX_LOS_INVALID_INCR_1 : integer := 1;
+     RX_LOS_THRESHOLD_0 : integer := 4;
+     RX_LOS_THRESHOLD_1 : integer := 4;
+     RX_SLIDE_MODE_0 : string := "PCS";
+     RX_SLIDE_MODE_1 : string := "PCS";
+     RX_STATUS_FMT_0 : string := "PCIE";
+     RX_STATUS_FMT_1 : string := "PCIE";
+     RX_XCLK_SEL_0 : string := "RXREC";
+     RX_XCLK_SEL_1 : string := "RXREC";
+     SATA_BURST_VAL_0 : bit_vector := "100";
+     SATA_BURST_VAL_1 : bit_vector := "100";
+     SATA_IDLE_VAL_0 : bit_vector := "100";
+     SATA_IDLE_VAL_1 : bit_vector := "100";
+     SATA_MAX_BURST_0 : integer := 7;
+     SATA_MAX_BURST_1 : integer := 7;
+     SATA_MAX_INIT_0 : integer := 22;
+     SATA_MAX_INIT_1 : integer := 22;
+     SATA_MAX_WAKE_0 : integer := 7;
+     SATA_MAX_WAKE_1 : integer := 7;
+     SATA_MIN_BURST_0 : integer := 4;
+     SATA_MIN_BURST_1 : integer := 4;
+     SATA_MIN_INIT_0 : integer := 12;
+     SATA_MIN_INIT_1 : integer := 12;
+     SATA_MIN_WAKE_0 : integer := 4;
+     SATA_MIN_WAKE_1 : integer := 4;
+     SIM_GTXRESET_SPEEDUP : integer := 1;
+     SIM_MODE : string := "FAST";
+     SIM_PLL_PERDIV2 : bit_vector := X"140";
+     SIM_RECEIVER_DETECT_PASS_0 : boolean := TRUE;
+     SIM_RECEIVER_DETECT_PASS_1 : boolean := TRUE;
+     TERMINATION_CTRL : bit_vector := "10100";
+     TERMINATION_IMP_0 : integer := 50;
+     TERMINATION_IMP_1 : integer := 50;
+     TERMINATION_OVRD : boolean := FALSE;
+     TRANS_TIME_FROM_P2_0 : bit_vector := X"03c";
+     TRANS_TIME_FROM_P2_1 : bit_vector := X"03c";
+     TRANS_TIME_NON_P2_0 : bit_vector := X"19";
+     TRANS_TIME_NON_P2_1 : bit_vector := X"19";
+     TRANS_TIME_TO_P2_0 : bit_vector := X"064";
+     TRANS_TIME_TO_P2_1 : bit_vector := X"064";
+     TXGEARBOX_USE_0 : boolean := FALSE;
+     TXGEARBOX_USE_1 : boolean := FALSE;
+     TXRX_INVERT_0 : bit_vector := "011";
+     TXRX_INVERT_1 : bit_vector := "011";
+     TX_BUFFER_USE_0 : boolean := TRUE;
+     TX_BUFFER_USE_1 : boolean := TRUE;
+     TX_DETECT_RX_CFG_0 : bit_vector := X"1832";
+     TX_DETECT_RX_CFG_1 : bit_vector := X"1832";
+     TX_IDLE_DELAY_0 : bit_vector := "010";
+     TX_IDLE_DELAY_1 : bit_vector := "010";
+     TX_XCLK_SEL_0 : string := "TXOUT";
+     TX_XCLK_SEL_1 : string := "TXOUT"
+  );
+  port (
+     DFECLKDLYADJMONITOR0 : out std_logic_vector(5 downto 0);
+     DFECLKDLYADJMONITOR1 : out std_logic_vector(5 downto 0);
+     DFEEYEDACMONITOR0 : out std_logic_vector(4 downto 0);
+     DFEEYEDACMONITOR1 : out std_logic_vector(4 downto 0);
+     DFESENSCAL0 : out std_logic_vector(2 downto 0);
+     DFESENSCAL1 : out std_logic_vector(2 downto 0);
+     DFETAP1MONITOR0 : out std_logic_vector(4 downto 0);
+     DFETAP1MONITOR1 : out std_logic_vector(4 downto 0);
+     DFETAP2MONITOR0 : out std_logic_vector(4 downto 0);
+     DFETAP2MONITOR1 : out std_logic_vector(4 downto 0);
+     DFETAP3MONITOR0 : out std_logic_vector(3 downto 0);
+     DFETAP3MONITOR1 : out std_logic_vector(3 downto 0);
+     DFETAP4MONITOR0 : out std_logic_vector(3 downto 0);
+     DFETAP4MONITOR1 : out std_logic_vector(3 downto 0);
+     DO : out std_logic_vector(15 downto 0);
+     DRDY : out std_ulogic;
+     PHYSTATUS0 : out std_ulogic;
+     PHYSTATUS1 : out std_ulogic;
+     PLLLKDET : out std_ulogic;
+     REFCLKOUT : out std_ulogic;
+     RESETDONE0 : out std_ulogic;
+     RESETDONE1 : out std_ulogic;
+     RXBUFSTATUS0 : out std_logic_vector(2 downto 0);
+     RXBUFSTATUS1 : out std_logic_vector(2 downto 0);
+     RXBYTEISALIGNED0 : out std_ulogic;
+     RXBYTEISALIGNED1 : out std_ulogic;
+     RXBYTEREALIGN0 : out std_ulogic;
+     RXBYTEREALIGN1 : out std_ulogic;
+     RXCHANBONDSEQ0 : out std_ulogic;
+     RXCHANBONDSEQ1 : out std_ulogic;
+     RXCHANISALIGNED0 : out std_ulogic;
+     RXCHANISALIGNED1 : out std_ulogic;
+     RXCHANREALIGN0 : out std_ulogic;
+     RXCHANREALIGN1 : out std_ulogic;
+     RXCHARISCOMMA0 : out std_logic_vector(3 downto 0);
+     RXCHARISCOMMA1 : out std_logic_vector(3 downto 0);
+     RXCHARISK0 : out std_logic_vector(3 downto 0);
+     RXCHARISK1 : out std_logic_vector(3 downto 0);
+     RXCHBONDO0 : out std_logic_vector(3 downto 0);
+     RXCHBONDO1 : out std_logic_vector(3 downto 0);
+     RXCLKCORCNT0 : out std_logic_vector(2 downto 0);
+     RXCLKCORCNT1 : out std_logic_vector(2 downto 0);
+     RXCOMMADET0 : out std_ulogic;
+     RXCOMMADET1 : out std_ulogic;
+     RXDATA0 : out std_logic_vector(31 downto 0);
+     RXDATA1 : out std_logic_vector(31 downto 0);
+     RXDATAVALID0 : out std_ulogic;
+     RXDATAVALID1 : out std_ulogic;
+     RXDISPERR0 : out std_logic_vector(3 downto 0);
+     RXDISPERR1 : out std_logic_vector(3 downto 0);
+     RXELECIDLE0 : out std_ulogic;
+     RXELECIDLE1 : out std_ulogic;
+     RXHEADER0 : out std_logic_vector(2 downto 0);
+     RXHEADER1 : out std_logic_vector(2 downto 0);
+     RXHEADERVALID0 : out std_ulogic;
+     RXHEADERVALID1 : out std_ulogic;
+     RXLOSSOFSYNC0 : out std_logic_vector(1 downto 0);
+     RXLOSSOFSYNC1 : out std_logic_vector(1 downto 0);
+     RXNOTINTABLE0 : out std_logic_vector(3 downto 0);
+     RXNOTINTABLE1 : out std_logic_vector(3 downto 0);
+     RXOVERSAMPLEERR0 : out std_ulogic;
+     RXOVERSAMPLEERR1 : out std_ulogic;
+     RXPRBSERR0 : out std_ulogic;
+     RXPRBSERR1 : out std_ulogic;
+     RXRECCLK0 : out std_ulogic;
+     RXRECCLK1 : out std_ulogic;
+     RXRUNDISP0 : out std_logic_vector(3 downto 0);
+     RXRUNDISP1 : out std_logic_vector(3 downto 0);
+     RXSTARTOFSEQ0 : out std_ulogic;
+     RXSTARTOFSEQ1 : out std_ulogic;
+     RXSTATUS0 : out std_logic_vector(2 downto 0);
+     RXSTATUS1 : out std_logic_vector(2 downto 0);
+     RXVALID0 : out std_ulogic;
+     RXVALID1 : out std_ulogic;
+     TXBUFSTATUS0 : out std_logic_vector(1 downto 0);
+     TXBUFSTATUS1 : out std_logic_vector(1 downto 0);
+     TXGEARBOXREADY0 : out std_ulogic;
+     TXGEARBOXREADY1 : out std_ulogic;
+     TXKERR0 : out std_logic_vector(3 downto 0);
+     TXKERR1 : out std_logic_vector(3 downto 0);
+     TXN0 : out std_ulogic;
+     TXN1 : out std_ulogic;
+     TXOUTCLK0 : out std_ulogic;
+     TXOUTCLK1 : out std_ulogic;
+     TXP0 : out std_ulogic;
+     TXP1 : out std_ulogic;
+     TXRUNDISP0 : out std_logic_vector(3 downto 0);
+     TXRUNDISP1 : out std_logic_vector(3 downto 0);
+     CLKIN : in std_ulogic;
+     DADDR : in std_logic_vector(6 downto 0);
+     DCLK : in std_ulogic;
+     DEN : in std_ulogic;
+     DFECLKDLYADJ0 : in std_logic_vector(5 downto 0);
+     DFECLKDLYADJ1 : in std_logic_vector(5 downto 0);
+     DFETAP10 : in std_logic_vector(4 downto 0);
+     DFETAP11 : in std_logic_vector(4 downto 0);
+     DFETAP20 : in std_logic_vector(4 downto 0);
+     DFETAP21 : in std_logic_vector(4 downto 0);
+     DFETAP30 : in std_logic_vector(3 downto 0);
+     DFETAP31 : in std_logic_vector(3 downto 0);
+     DFETAP40 : in std_logic_vector(3 downto 0);
+     DFETAP41 : in std_logic_vector(3 downto 0);
+     DI : in std_logic_vector(15 downto 0);
+     DWE : in std_ulogic;
+     GTXRESET : in std_ulogic;
+     GTXTEST : in std_logic_vector(13 downto 0);
+     INTDATAWIDTH : in std_ulogic;
+     LOOPBACK0 : in std_logic_vector(2 downto 0);
+     LOOPBACK1 : in std_logic_vector(2 downto 0);
+     PLLLKDETEN : in std_ulogic;
+     PLLPOWERDOWN : in std_ulogic;
+     PRBSCNTRESET0 : in std_ulogic;
+     PRBSCNTRESET1 : in std_ulogic;
+     REFCLKPWRDNB : in std_ulogic;
+     RXBUFRESET0 : in std_ulogic;
+     RXBUFRESET1 : in std_ulogic;
+     RXCDRRESET0 : in std_ulogic;
+     RXCDRRESET1 : in std_ulogic;
+     RXCHBONDI0 : in std_logic_vector(3 downto 0);
+     RXCHBONDI1 : in std_logic_vector(3 downto 0);
+     RXCOMMADETUSE0 : in std_ulogic;
+     RXCOMMADETUSE1 : in std_ulogic;
+     RXDATAWIDTH0 : in std_logic_vector(1 downto 0);
+     RXDATAWIDTH1 : in std_logic_vector(1 downto 0);
+     RXDEC8B10BUSE0 : in std_ulogic;
+     RXDEC8B10BUSE1 : in std_ulogic;
+     RXENCHANSYNC0 : in std_ulogic;
+     RXENCHANSYNC1 : in std_ulogic;
+     RXENEQB0 : in std_ulogic;
+     RXENEQB1 : in std_ulogic;
+     RXENMCOMMAALIGN0 : in std_ulogic;
+     RXENMCOMMAALIGN1 : in std_ulogic;
+     RXENPCOMMAALIGN0 : in std_ulogic;
+     RXENPCOMMAALIGN1 : in std_ulogic;
+     RXENPMAPHASEALIGN0 : in std_ulogic;
+     RXENPMAPHASEALIGN1 : in std_ulogic;
+     RXENPRBSTST0 : in std_logic_vector(1 downto 0);
+     RXENPRBSTST1 : in std_logic_vector(1 downto 0);
+     RXENSAMPLEALIGN0 : in std_ulogic;
+     RXENSAMPLEALIGN1 : in std_ulogic;
+     RXEQMIX0 : in std_logic_vector(1 downto 0);
+     RXEQMIX1 : in std_logic_vector(1 downto 0);
+     RXEQPOLE0 : in std_logic_vector(3 downto 0);
+     RXEQPOLE1 : in std_logic_vector(3 downto 0);
+     RXGEARBOXSLIP0 : in std_ulogic;
+     RXGEARBOXSLIP1 : in std_ulogic;
+     RXN0 : in std_ulogic;
+     RXN1 : in std_ulogic;
+     RXP0 : in std_ulogic;
+     RXP1 : in std_ulogic;
+     RXPMASETPHASE0 : in std_ulogic;
+     RXPMASETPHASE1 : in std_ulogic;
+     RXPOLARITY0 : in std_ulogic;
+     RXPOLARITY1 : in std_ulogic;
+     RXPOWERDOWN0 : in std_logic_vector(1 downto 0);
+     RXPOWERDOWN1 : in std_logic_vector(1 downto 0);
+     RXRESET0 : in std_ulogic;
+     RXRESET1 : in std_ulogic;
+     RXSLIDE0 : in std_ulogic;
+     RXSLIDE1 : in std_ulogic;
+     RXUSRCLK0 : in std_ulogic;
+     RXUSRCLK1 : in std_ulogic;
+     RXUSRCLK20 : in std_ulogic;
+     RXUSRCLK21 : in std_ulogic;
+     TXBUFDIFFCTRL0 : in std_logic_vector(2 downto 0);
+     TXBUFDIFFCTRL1 : in std_logic_vector(2 downto 0);
+     TXBYPASS8B10B0 : in std_logic_vector(3 downto 0);
+     TXBYPASS8B10B1 : in std_logic_vector(3 downto 0);
+     TXCHARDISPMODE0 : in std_logic_vector(3 downto 0);
+     TXCHARDISPMODE1 : in std_logic_vector(3 downto 0);
+     TXCHARDISPVAL0 : in std_logic_vector(3 downto 0);
+     TXCHARDISPVAL1 : in std_logic_vector(3 downto 0);
+     TXCHARISK0 : in std_logic_vector(3 downto 0);
+     TXCHARISK1 : in std_logic_vector(3 downto 0);
+     TXCOMSTART0 : in std_ulogic;
+     TXCOMSTART1 : in std_ulogic;
+     TXCOMTYPE0 : in std_ulogic;
+     TXCOMTYPE1 : in std_ulogic;
+     TXDATA0 : in std_logic_vector(31 downto 0);
+     TXDATA1 : in std_logic_vector(31 downto 0);
+     TXDATAWIDTH0 : in std_logic_vector(1 downto 0);
+     TXDATAWIDTH1 : in std_logic_vector(1 downto 0);
+     TXDETECTRX0 : in std_ulogic;
+     TXDETECTRX1 : in std_ulogic;
+     TXDIFFCTRL0 : in std_logic_vector(2 downto 0);
+     TXDIFFCTRL1 : in std_logic_vector(2 downto 0);
+     TXELECIDLE0 : in std_ulogic;
+     TXELECIDLE1 : in std_ulogic;
+     TXENC8B10BUSE0 : in std_ulogic;
+     TXENC8B10BUSE1 : in std_ulogic;
+     TXENPMAPHASEALIGN0 : in std_ulogic;
+     TXENPMAPHASEALIGN1 : in std_ulogic;
+     TXENPRBSTST0 : in std_logic_vector(1 downto 0);
+     TXENPRBSTST1 : in std_logic_vector(1 downto 0);
+     TXHEADER0 : in std_logic_vector(2 downto 0);
+     TXHEADER1 : in std_logic_vector(2 downto 0);
+     TXINHIBIT0 : in std_ulogic;
+     TXINHIBIT1 : in std_ulogic;
+     TXPMASETPHASE0 : in std_ulogic;
+     TXPMASETPHASE1 : in std_ulogic;
+     TXPOLARITY0 : in std_ulogic;
+     TXPOLARITY1 : in std_ulogic;
+     TXPOWERDOWN0 : in std_logic_vector(1 downto 0);
+     TXPOWERDOWN1 : in std_logic_vector(1 downto 0);
+     TXPREEMPHASIS0 : in std_logic_vector(3 downto 0);
+     TXPREEMPHASIS1 : in std_logic_vector(3 downto 0);
+     TXRESET0 : in std_ulogic;
+     TXRESET1 : in std_ulogic;
+     TXSEQUENCE0 : in std_logic_vector(6 downto 0);
+     TXSEQUENCE1 : in std_logic_vector(6 downto 0);
+     TXSTARTSEQ0 : in std_ulogic;
+     TXSTARTSEQ1 : in std_ulogic;
+     TXUSRCLK0 : in std_ulogic;
+     TXUSRCLK1 : in std_ulogic;
+     TXUSRCLK20 : in std_ulogic;
+     TXUSRCLK21 : in std_ulogic
+  );
+end component;
+
+----- component DCM_BASE -----
+component DCM_BASE
+  generic (
+     CLKDV_DIVIDE : real := 2.0;
+     CLKFX_DIVIDE : integer := 1;
+     CLKFX_MULTIPLY : integer := 4;
+     CLKIN_DIVIDE_BY_2 : boolean := FALSE;
+     CLKIN_PERIOD : real := 10.0;
+     CLKOUT_PHASE_SHIFT : string := "NONE";
+     CLK_FEEDBACK : string := "1X";
+     DCM_AUTOCALIBRATION : boolean := TRUE;
+     DCM_PERFORMANCE_MODE : string := "MAX_SPEED";
+     DESKEW_ADJUST : string := "SYSTEM_SYNCHRONOUS";
+     DFS_FREQUENCY_MODE : string := "LOW";
+     DLL_FREQUENCY_MODE : string := "LOW";
+     DUTY_CYCLE_CORRECTION : boolean := TRUE;
+     FACTORY_JF : bit_vector := X"F0F0";
+     PHASE_SHIFT : integer := 0;
+     STARTUP_WAIT : boolean := false
+  );
+  port (
+     CLK0 : out std_ulogic;
+     CLK180 : out std_ulogic;
+     CLK270 : out std_ulogic;
+     CLK2X : out std_ulogic;
+     CLK2X180 : out std_ulogic;
+     CLK90 : out std_ulogic;
+     CLKDV : out std_ulogic;
+     CLKFX : out std_ulogic;
+     CLKFX180 : out std_ulogic;
+     LOCKED : out std_ulogic;
+     CLKFB : in std_ulogic;
+     CLKIN : in std_ulogic;
+     RST : in std_ulogic
   );
 end component;
 

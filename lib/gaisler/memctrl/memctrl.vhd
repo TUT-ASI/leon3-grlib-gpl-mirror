@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -465,7 +466,8 @@ component ftmctrl
     netlist   : integer := 0;
     tech      : integer := 0;
     rahold    : integer := 0;
-    wsshift   : integer := 0
+    wsshift   : integer := 0;
+    brdynto   : integer := 0
   );
   port (
     rst       : in  std_ulogic;

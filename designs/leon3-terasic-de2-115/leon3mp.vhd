@@ -5,6 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -223,39 +224,78 @@ begin
 ----------------------------------------------------------------------
 
   cpu : for i in 0 to CFG_NCPU-1 generate
-    nosh : if CFG_GRFPUSH = 0 generate    
-      u0 : leon3s 		-- LEON3 processor      
-      generic map (i, fabtech, memtech, CFG_NWIN, CFG_DSU, CFG_FPU*(1-CFG_GRFPUSH), CFG_V8, 
-	0, CFG_MAC, pclow, CFG_NOTAG, CFG_NWP, CFG_ICEN, CFG_IREPL, CFG_ISETS, CFG_ILINE, 
-	CFG_ISETSZ, CFG_ILOCK, CFG_DCEN, CFG_DREPL, CFG_DSETS, CFG_DLINE, CFG_DSETSZ,
-	CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
-        CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP, 
-        CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1,
-	0, 0, CFG_MMU_PAGE)
-      port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso, 
-    		irqi(i), irqo(i), dbgi(i), dbgo(i));
-    end generate;
+    leon3 : leon3x               -- LEON3 processor      
+      generic map (
+        hindex     => i,
+        fabtech    => fabtech,
+        memtech    => memtech,
+        nwindows   => CFG_NWIN,
+        dsu        => CFG_DSU,
+        fpu        => CFG_FPU + 32*CFG_GRFPUSH,
+        v8         => CFG_V8,
+        cp         => 0,
+        mac        => CFG_MAC,
+        pclow      => pclow,
+        notag      => CFG_NOTAG,
+        nwp        => CFG_NWP,
+        icen       => CFG_ICEN,
+        irepl      => CFG_IREPL,
+        isets      => CFG_ISETS,
+        ilinesize  => CFG_ILINE,
+        isetsize   => CFG_ISETSZ,
+        isetlock   => CFG_ILOCK,
+        dcen       => CFG_DCEN,
+        drepl      => CFG_DREPL,
+        dsets      => CFG_DSETS,
+        dlinesize  => CFG_DLINE,
+        dsetsize   => CFG_DSETSZ,
+        dsetlock   => CFG_DLOCK,
+        dsnoop     => CFG_DSNOOP,
+        ilram      => CFG_ILRAMEN,
+        ilramsize  => CFG_ILRAMSZ,
+        ilramstart => CFG_ILRAMADDR,
+        dlram      => CFG_DLRAMEN,
+        dlramsize  => CFG_DLRAMSZ,
+        dlramstart => CFG_DLRAMADDR,
+        mmuen      => CFG_MMUEN,
+        itlbnum    => CFG_ITLBNUM,
+        dtlbnum    => CFG_DTLBNUM,
+        tlb_type   => CFG_TLB_TYPE,
+        tlb_rep    => CFG_TLB_REP,
+        lddel      => CFG_LDDEL,
+        disas      => disas,
+        tbuf       => CFG_ITBSZ,
+        pwd        => CFG_PWD,
+        svt        => CFG_SVT,
+        rstaddr    => CFG_RSTADDR,
+        smp        => CFG_NCPU-1,
+        iuft       => CFG_IUFT_EN,
+        fpft       => CFG_FPUFT_EN,
+        cmft       => CFG_CACHE_FT_EN,
+        iuinj      => CFG_RF_ERRINJ,
+        ceinj      => CFG_CACHE_ERRINJ,
+        cached     => CFG_DFIXED,
+        clk2x      => 0,
+        netlist    => CFG_LEON3_NETLIST,
+        scantest   => CFG_SCAN,
+        mmupgsz    => CFG_MMU_PAGE,
+        bp         => CFG_BP,
+        npasi      => CFG_NP_ASI)
+      port map (
+        clk => clkm, gclk2 => clkm, gfclk2 => clkm, clk2 => clkm, rstn => rstn,
+        ahbi => ahbmi, ahbo => ahbmo(i), ahbsi => ahbsi, ahbso => ahbso, 
+        irqi => irqi(i), irqo => irqo(i), dbgi => dbgi(i), dbgo => dbgo(i),
+        fpui => fpi(i), fpuo => fpo(i), clken => vcc(0));
   end generate;
 
-  sh : if CFG_GRFPUSH = 1 generate
-    cpu : for i in 0 to CFG_NCPU-1 generate
-      u0 : leon3sh 		-- LEON3 processor      
-      generic map (i, fabtech, memtech, CFG_NWIN, CFG_DSU, CFG_FPU, CFG_V8, 
-	0, CFG_MAC, pclow, CFG_NOTAG, CFG_NWP, CFG_ICEN, CFG_IREPL, CFG_ISETS, CFG_ILINE, 
-	CFG_ISETSZ, CFG_ILOCK, CFG_DCEN, CFG_DREPL, CFG_DSETS, CFG_DLINE, CFG_DSETSZ,
-	CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
-        CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP, 
-        CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1,
-	0, 0, CFG_MMU_PAGE)
-      port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso, 
-    		irqi(i), irqo(i), dbgi(i), dbgo(i), fpi(i), fpo(i));
-    end generate;
-
+  sh : if CFG_GRFPUSH /= 0 generate
     grfpush0 : grfpushwx generic map ((CFG_FPU-1), CFG_NCPU, fabtech)
-      port map (clkm, rstn, fpi, fpo);
-    
+    port map (clkm, rstn, fpi, fpo);
   end generate;
-
+  nosh : if CFG_GRFPUSH = 0 generate
+    fpo <= (others => grfpu_out_none);
+  end generate;
+  
   errorn_pad : odpad generic map (tech => padtech) port map (errorn, dbgo(0).error);
   
   dsugen : if CFG_DSU = 1 generate

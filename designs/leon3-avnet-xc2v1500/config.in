@@ -46,15 +46,6 @@ comment 'Peripherals             '
   endmenu
 
   mainmenu_option next_comment
-  comment 'PCI              '
-    source lib/gaisler/pci/grpci1/pci_target.in
-    source lib/gaisler/pci/grpci1/pci_mtf.in
-    source lib/gaisler/pci/grpci1/pcidma.in
-    source lib/gaisler/pci/grpci1/pci.in
-    source lib/gaisler/pci/pcitrace/pcitrace.in
-  endmenu
-
-  mainmenu_option next_comment
   comment 'UART, timer, I/O port and interrupt controller'
     source lib/gaisler/uart/uart1.in
     source lib/gaisler/irqmp/irqmp.in

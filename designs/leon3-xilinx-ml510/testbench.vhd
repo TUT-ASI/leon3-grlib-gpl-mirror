@@ -5,6 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -39,6 +40,7 @@ entity testbench is
     fabtech   : integer := CFG_FABTECH;
     memtech   : integer := CFG_MEMTECH;
     padtech   : integer := CFG_PADTECH;
+    transtech : integer := CFG_TRANSTECH;
     clktech   : integer := CFG_CLKTECH;
     ncpu      : integer := CFG_NCPU;
     disas     : integer := CFG_DISAS;	-- Enable disassembly to console
@@ -59,6 +61,10 @@ constant sdramfile : string := "ram.srec"; -- sdram contents
 signal sys_clk : std_logic := '0';
 signal sys_rst_in : std_logic := '0';			-- Reset
 constant ct : integer := clkperiod/2;
+signal clk_125_p  : std_ulogic := '0';
+signal clk_125_n  : std_ulogic := '1';
+constant slips : integer := 11;
+signal rst_125    : std_ulogic;
 
 signal sysace_fpga_clk  : std_ulogic := '0';
 signal flash_we_b       : std_ulogic;
@@ -114,6 +120,15 @@ signal phy0_rxclk       : std_ulogic;
 signal phy0_reset       : std_ulogic;
 signal phy0_mdio        : std_logic;
 signal phy0_mdc         : std_ulogic;
+signal phy1_reset         : std_logic;
+signal phy1_mdio          : std_logic;
+signal phy1_mdc           : std_logic;
+signal phy1_sgmii_tx_p    : std_logic;
+signal phy1_sgmii_tx_n    : std_logic;
+signal phy1_sgmii_rx_p    : std_logic;
+signal phy1_sgmii_rx_n    : std_logic;
+signal phy1_sgmii_rx_p_d  : std_logic;
+signal phy1_sgmii_rx_n_d  : std_logic;
 signal sysace_mpa       : std_logic_vector(6 downto 0);
 signal sysace_mpce      : std_ulogic;
 signal sysace_mpirq     : std_ulogic;
@@ -203,6 +218,8 @@ begin
   sys_rst_in <= '0', '1' after 200 ns; 
   sysace_fpga_clk <= not sysace_fpga_clk after 15 ns;
   pci_p_clk5 <= pci_p_clk5_r;
+  clk_125_p <= not clk_125_p after 4 ns;
+  clk_125_n <= not clk_125_n after 4 ns;
 
   flash_wait <= 'L';
 
@@ -239,7 +256,7 @@ begin
   test_mon_vp0_p <= 'H'; test_mon_vn0_n <= 'H';
     
   cpu : entity work.leon3mp
-      generic map ( fabtech, memtech, padtech, ncpu, disas, dbguart, pclow )
+      generic map ( fabtech, memtech, padtech, transtech, ncpu, disas, dbguart, pclow )
       port map (sys_rst_in, sys_clk, sysace_fpga_clk,
                 -- Flash
                 flash_we_b, flash_wait, flash_reset_b, flash_oe_b,
@@ -258,10 +275,15 @@ begin
                 dimm0_ddr2_dqm, dimm0_ddr2_dq, dimm0_ddr2_cke,
                 dimm0_ddr2_cas_b, dimm0_ddr2_ba, dimm0_ddr2_a,
 		open, 
-                -- Ethernet PHY
+                -- Ethernet PHY0
                 phy0_txer, phy0_txd, phy0_txctl_txen, phy0_txclk,
                 phy0_rxer, phy0_rxd, phy0_rxctl_rxdv, phy0_rxclk,
                 phy0_reset, phy0_mdio, phy0_mdc,
+                
+                -- Ethernet PHY1
+                clk_125_p, clk_125_n,
+                phy1_reset, phy1_mdio, phy1_mdc, open,
+                phy1_sgmii_tx_p, phy1_sgmii_tx_n, phy1_sgmii_rx_p, phy1_sgmii_rx_n,
                 -- System ACE MPU
                 sysace_mpa, sysace_mpce, sysace_mpirq, sysace_mpoe,
                 sysace_mpwe, sysace_mpd,
@@ -377,6 +399,43 @@ begin
              phy0_rxctl_rxdv, phy0_rxer, open, open, phy0_txdl,
              phy0_txctl_txen, phy0_txer, phy0_mdc, '0');
 
+  rst_125 <= not phy1_reset;
+  phy1_sgmii_rx_p <= transport phy1_sgmii_rx_p_d after 0.8 ns * slips;
+  phy1_sgmii_rx_n <= transport phy1_sgmii_rx_n_d after 0.8 ns * slips;
+
+  sp0: ser_phy
+    generic map(
+      address       => 7,
+      extended_regs => 1,
+      aneg          => 1,
+      fd_10         => 1,
+      hd_10         => 1,
+
+      base100_t4    => 1,
+      base100_x_fd  => 1,
+      base100_x_hd  => 1,
+      base100_t2_fd => 1,
+      base100_t2_hd => 1,
+
+      base1000_x_fd => 1,
+      base1000_x_hd => 1,
+      base1000_t_fd => 1,
+      base1000_t_hd => 1,
+      fabtech   => CFG_FABTECH,
+      memtech   => CFG_MEMTECH,
+      transtech => CFG_TRANSTECH
+    )
+    port map(
+      rstn      => phy1_reset,
+      clk_125   => clk_125_p,
+      rst_125   => rst_125,
+      eth_rx_p  => phy1_sgmii_rx_p_d,
+      eth_rx_n  => phy1_sgmii_rx_n_d,
+      eth_tx_p  => phy1_sgmii_tx_p,
+      eth_tx_n  => phy1_sgmii_tx_n,
+      mdio      => phy1_mdio,
+      mdc       => phy1_mdc
+    );
   i0: i2c_slave_model
       port map (iic_scl_dvi, iic_sda_dvi);
 

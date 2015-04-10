@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -278,10 +279,15 @@ begin
       testoen        => ahbmi.testoen,
       edcladdr       => ethi.edcladdr,
       edclsepahb     => ethi.edclsepahb,
-      edcldisable    => ethi.edcldisable);
+      edcldisable    => ethi.edcldisable,
+      speed          => etho.speed);
 
+  etho.txd(7 downto 4) <= "0000";
   etho.mdio_oe <= ahbmi.testoen when (scanen = 1) and (ahbmi.testen = '1')
 	else lmdio_oe;
+  etho.gbit <= '0';
+  etho.tx_clk <= '0';                   -- driven in rgmii component
+
   irqdrv : process(irq)
   begin
     apbo.pirq       <= (others => '0');

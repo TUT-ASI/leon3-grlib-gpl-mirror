@@ -17,6 +17,8 @@
 #define CFG_CLK_TECH dare
 #elif defined CONFIG_CLK_SAED32
 #define CFG_CLK_TECH saed32
+#elif defined CONFIG_CLK_RHS65
+#define CFG_CLK_TECH rhs65
 #else
 #define CFG_CLK_TECH inferred
 #endif

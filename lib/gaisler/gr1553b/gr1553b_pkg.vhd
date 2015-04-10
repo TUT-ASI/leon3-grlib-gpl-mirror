@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -86,7 +87,7 @@ package gr1553b_pkg is
     ('0','0','0','0','0','0','0','0','1','1');
 
   constant gr1553b_auxin_zero: gr1553b_auxin_type :=
-    (extsync => '0', rtaddr => "00000", rtpar => '0');
+    (extsync => '0', rtaddr => "11111", rtpar => '1');
 
   constant gr1553b_auxout_zero: gr1553b_auxout_type :=
     ('0','0','0','0','0','0','0',x"00");
@@ -114,7 +115,8 @@ package gr1553b_pkg is
       ahbendian: integer range 0 to 1 := 0;
       bm_filters: integer range 0 to 1 := 1;
       codecfreq: integer := 20;
-      sameclk: integer range 0 to 1 := 0
+      sameclk: integer range 0 to 1 := 0;
+      codecver: integer range 0 to 2 := 0
       );
     port(
       clk: in std_logic;

@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -56,6 +57,7 @@ architecture rtl of regfile_3p is
 	(((is_unisim(tech) = 1)) and (abits <= 5));
   signal xwe,xre1,xre2 : std_ulogic;
 
+
   signal custominx,customoutx: std_logic_vector(syncram_customif_maxwidth downto 0);
   
 begin
@@ -64,8 +66,9 @@ begin
   xre2 <= re2 and not testin(TESTIN_WIDTH-2) when testen/=0 else re2;
   
   s0 : if rfinfer generate
-   rhu : generic_regfile_3p generic map (tech, abits, dbits, wrfst, numregs)
-   port map ( wclk, waddr, wdata, we, rclk, raddr1, re1, rdata1, raddr2, re2, rdata2);
+      rhu : generic_regfile_3p generic map (tech, abits, dbits, wrfst, numregs)
+        port map ( wclk, waddr, wdata, we, rclk, raddr1, re1, rdata1, raddr2, re2, rdata2);
+    
   end generate;
 
   s1 : if not rfinfer generate

@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -41,7 +42,8 @@ entity irqmp is
     paddr   : integer := 0;
     pmask   : integer := 16#fff#;
     ncpu    : integer := 1;
-    eirq    : integer := 0
+    eirq    : integer := 0;
+    irqmap  : integer := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -61,10 +63,31 @@ constant pconfig : apb_config_type := (
   0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_IRQMP, 0, REVISION, 0),
   1 => apb_iobar(paddr, pmask));
 
+function IMAP_HIGH return integer is
+begin
+  if irqmap = 0 then
+    return 0;
+  elsif eirq /= 0 or irqmap = 2 then
+    return 31;
+  end if;
+  return 15;
+end function IMAP_HIGH;
+constant IMAP_LOW : integer := 0; -- allow remap of irq line 0
+function IMAP_LEN return integer is
+begin
+  if irqmap = 0 then
+    return 1;
+  elsif eirq /= 0 then
+    return 5;
+  end if;
+  return 4;
+end function IMAP_LEN;
+
 type mask_type is array (0 to ncpu-1) of std_logic_vector(15 downto 1);
 type mask2_type is array (0 to ncpu-1) of std_logic_vector(15 downto 0);
 type irl_type is array (0 to ncpu-1) of std_logic_vector(3 downto 0);
 type irl2_type is array (0 to ncpu-1) of std_logic_vector(4 downto 0);
+type irqmap_type is array (IMAP_LOW to (IMAP_HIGH)) of std_logic_vector(IMAP_LEN-1 downto 0);
 
 type reg_type is record
   imask		: mask_type;
@@ -74,6 +97,7 @@ type reg_type is record
   ibroadcast	: std_logic_vector(15 downto 1);
   irl    	: irl_type;
   cpurst	: std_logic_vector(ncpu-1 downto 0);
+  imap          : irqmap_type;
 end record;
 
 type ereg_type is record
@@ -87,7 +111,7 @@ constant RRES : reg_type := (
   imask => (others => (others => '0')), ilevel => (others => '0'),
   ipend => (others => '0'), iforce => (others => (others => '0')),
   ibroadcast => (others => '0'), irl => (others => (others => '0')),
-  cpurst => (others => '0'));
+  cpurst => (others => '0'), imap => (others => (others => '0')));
 constant ERES : ereg_type := (
   imask => (others => (others => '0')), ipend => (others => '0'),
   irl => (others => (others => '0')));
@@ -113,17 +137,17 @@ signal r2, r2in : ereg_type;
 begin
 
   comb : process(rst, r, r2, apbi, irqi)
-  variable v : reg_type;
-  variable temp : mask_type;
+  variable v      : reg_type;
+  variable temp   : mask_type;
   variable prdata : std_logic_vector(31 downto 0);
   variable tmpirq : std_logic_vector(15 downto 0);
   variable tmpvar : std_logic_vector(15 downto 1);
-  variable cpurun	: std_logic_vector(ncpu-1 downto 0);
-  variable v2 : ereg_type;
-  variable irl2 : std_logic_vector(3 downto 0);
+  variable cpurun : std_logic_vector(ncpu-1 downto 0);
+  variable v2     : ereg_type;
+  variable irl2   : std_logic_vector(3 downto 0);
   variable ipend2 : std_logic_vector(ncpu-1 downto 0);
-  variable temp2 : mask2_type;
-  variable neirq : integer;
+  variable temp2  : mask2_type;
+  variable irq    : std_logic_vector(NAHBIRQ-1 downto 0);
   
   begin
 
@@ -204,7 +228,8 @@ begin
 
 -- register write
 
-    if (apbi.psel(pindex) and apbi.penable and apbi.pwrite) = '1' then
+    if ((apbi.psel(pindex) and apbi.penable and apbi.pwrite) = '1' and
+        (irqmap = 0 or apbi.paddr(9) = '0')) then
       case apbi.paddr(7 downto 6) is
       when "00" =>
         case apbi.paddr(4 downto 2) is
@@ -243,6 +268,35 @@ begin
       end case;
     end if;
 
+-- optionally remap interrupts
+
+    irq := (others => '0');
+    if irqmap /= 0 then
+      if (apbi.psel(pindex) and apbi.penable and andv(apbi.paddr(9 downto 8))) = '1' then
+        prdata := (others => '0');
+        for i in r.imap'range loop
+          if i/4 = conv_integer(apbi.paddr(4 downto 2)) then
+            prdata(IMAP_LEN-1+(24-(i mod 4)*8) downto (24-(i mod 4)*8)) := r.imap(i);
+            if apbi.pwrite = '1' then
+              v.imap(i) := apbi.pwdata(IMAP_LEN-1+(24-(i mod 4)*8) downto (24-(i mod 4)*8));
+            end if;
+          end if;
+        end loop;
+      end if;
+
+      for i in 0 to IMAP_HIGH loop
+        if i > NAHBIRQ-1 then
+          exit;
+        end if;
+        if apbi.pirq(i) = '1' then
+          irq(conv_integer(r.imap(i))) := '1';
+        end if;
+      end loop;
+    else
+      irq := apbi.pirq;
+      v.imap := RRES.IMAP;
+    end if;
+
 -- register new interrupts
 
     for i in 1 to 15 loop
@@ -250,12 +304,12 @@ begin
          exit;
       end if;
       if ncpu = 1 then
-        v.ipend(i) := v.ipend(i) or apbi.pirq(i);
+        v.ipend(i) := v.ipend(i) or irq(i);
       else  
-        v.ipend(i) := v.ipend(i) or (apbi.pirq(i) and not r.ibroadcast(i));
+        v.ipend(i) := v.ipend(i) or (irq(i) and not r.ibroadcast(i));
         for j in 0 to ncpu-1 loop
           tmpvar := v.iforce(j);
-          tmpvar(i) := tmpvar(i) or (apbi.pirq(i) and r.ibroadcast(i));
+          tmpvar(i) := tmpvar(i) or (irq(i) and r.ibroadcast(i));
           v.iforce(j) := tmpvar;
         end loop;
       end if;
@@ -264,7 +318,7 @@ begin
     if eirq /= 0 then
       for i in 16 to 31 loop
         if i > NAHBIRQ-1 then exit; end if;
-        v2.ipend(i-16) := v2.ipend(i-16) or apbi.pirq(i);
+        v2.ipend(i-16) := v2.ipend(i-16) or irq(i);
       end loop;
     end if;
 
@@ -293,6 +347,11 @@ begin
       v.imask := RRES.imask; v.iforce := RRES.iforce; v.ipend := RRES.ipend;
       if ncpu > 1 then
         v.ibroadcast := RRES.ibroadcast;
+      end if;
+      if irqmap /= 0 then
+        for i in r.imap'range loop
+          v.imap(i) := conv_std_logic_vector(i, IMAP_LEN);
+        end loop;
       end if;
       v2.ipend := ERES.ipend; v2.imask := ERES.imask; v2.irl := ERES.irl;
     end if;
@@ -348,5 +407,14 @@ begin
 	", #cpu " & tost(NCPU) & ", eirq " & tost(eirq));
 -- pragma translate_on
 
+-- pragma translate_off
+  cproc : process
+  begin
+    assert (irqmap = 0) or (apb_membar_size(pmask) >= 1024)
+      report "IRQMP: irqmap /= 0 requires pmask to give memory area >= 1024 bytes"
+      severity failure;
+    wait;
+  end process;
+-- pragma translate_on
 
 end;

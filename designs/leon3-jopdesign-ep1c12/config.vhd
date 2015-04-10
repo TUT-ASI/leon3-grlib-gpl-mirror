@@ -1,7 +1,5 @@
 
 
-
-
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
 -- Copyright (C) 2009 Aeroflex Gaisler
@@ -70,8 +68,9 @@ package config is
   constant CFG_TLB_REP : integer := 1;
   constant CFG_MMU_PAGE : integer := 0;
   constant CFG_DSU : integer := 1;
-  constant CFG_ITBSZ : integer := 0;
+  constant CFG_ITBSZ : integer := 0 + 64*0;
   constant CFG_ATBSZ : integer := 0;
+  constant CFG_AHBPF : integer := 0;
   constant CFG_LEON3FT_EN : integer := 0;
   constant CFG_IUFT_EN : integer := 0;
   constant CFG_FPUFT_EN : integer := 0;
@@ -81,6 +80,8 @@ package config is
   constant CFG_LEON3_NETLIST: integer := 0;
   constant CFG_DISAS : integer := 0 + 0;
   constant CFG_PCLOW : integer := 2;
+  constant CFG_NP_ASI : integer := 0;
+  constant CFG_WRPSR : integer := 0;
 -- AMBA settings
   constant CFG_DEFMST : integer := (0);
   constant CFG_RROBIN : integer := 1;
@@ -153,22 +154,6 @@ package config is
   constant CFG_CANLOOP : integer := 0;
   constant CFG_CAN_SYNCRST : integer := 0;
   constant CFG_CANFT : integer := 0;
-
--- PCI interface
-  constant CFG_PCI : integer := 0;
-  constant CFG_PCIVID : integer := 16#0#;
-  constant CFG_PCIDID : integer := 16#0#;
-  constant CFG_PCIDEPTH : integer := 8;
-  constant CFG_PCI_MTF : integer := 1;
-
--- PCI arbiter
-  constant CFG_PCI_ARB : integer := 0;
-  constant CFG_PCI_ARBAPB : integer := 0;
-  constant CFG_PCI_ARB_NGNT : integer := 4;
-
--- PCI trace buffer
-  constant CFG_PCITBUFEN: integer := 0;
-  constant CFG_PCITBUF : integer := 256;
 
 -- Spacewire interface
   constant CFG_SPW_EN : integer := 0;

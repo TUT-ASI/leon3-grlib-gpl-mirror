@@ -8,6 +8,8 @@
 #define CONFIG_SYN_TECH dare
 #elif defined CONFIG_SYN_SAED32
 #define CONFIG_SYN_TECH saed32
+#elif defined CONFIG_SYN_RHS65
+#define CONFIG_SYN_TECH rhs65
 #elif defined CONFIG_SYN_ATC18
 #define CONFIG_SYN_TECH atc18s
 #elif defined CONFIG_SYN_ATC18RHA
@@ -34,10 +36,6 @@
 #define CONFIG_SYN_TECH cyclone3
 #elif defined CONFIG_SYN_CYCLONEIV
 #define CONFIG_SYN_TECH cyclone3
-#elif defined CONFIG_SYN_EASIC45
-#define CONFIG_SYN_TECH easic45
-#elif defined CONFIG_SYN_EASIC90
-#define CONFIG_SYN_TECH easic90
 #elif defined CONFIG_SYN_IHP25
 #define CONFIG_SYN_TECH ihp25
 #elif defined CONFIG_SYN_IHP25RH
@@ -60,6 +58,8 @@
 #define CONFIG_SYN_TECH apa3l
 #elif defined CONFIG_SYN_IGLOO
 #define CONFIG_SYN_TECH apa3
+#elif defined CONFIG_SYN_IGLOO2
+#define CONFIG_SYN_TECH igloo2
 #elif defined CONFIG_SYN_FUSION
 #define CONFIG_SYN_TECH actfus
 #elif defined CONFIG_SYN_SPARTAN2
@@ -124,6 +124,8 @@
 #define CFG_RAM_TECH dare
 #elif defined CONFIG_MEM_SAED32
 #define CFG_RAM_TECH saed32
+#elif defined CONFIG_MEM_RHS65
+#define CFG_RAM_TECH rhs65
 #elif defined CONFIG_MEM_VIRAGE
 #define CFG_RAM_TECH memvirage
 #elif defined CONFIG_MEM_ARTISAN
@@ -136,6 +138,22 @@
 #define CFG_RAM_TECH inferred
 #else
 #define CFG_RAM_TECH CONFIG_SYN_TECH
+#endif
+
+#if defined CONFIG_TRANS_GTP0
+#define CFG_TRANS_TECH GTP0
+#elif defined CONFIG_TRANS_GTP1
+#define CFG_TRANS_TECH GTP1
+#elif defined CONFIG_TRANS_GTX0
+#define CFG_TRANS_TECH GTX0
+#elif defined CONFIG_TRANS_GTX1
+#define CFG_TRANS_TECH GTX1
+#elif defined CONFIG_TRANS_GTH0
+#define CFG_TRANS_TECH GTH0
+#elif defined CONFIG_TRANS_GTH1
+#define CFG_TRANS_TECH GTH1
+#else
+#define CFG_TRANS_TECH GTP0
 #endif
 
 #if defined CONFIG_SYN_INFER_PADS

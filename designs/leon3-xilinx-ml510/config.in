@@ -51,14 +51,16 @@ comment 'Peripherals             '
   mainmenu_option next_comment
   comment 'Ethernet             '
     source lib/gaisler/greth/greth.in
+    source lib/gaisler/greth/greth2.in
   endmenu
 
   mainmenu_option next_comment
-  comment 'UART, timer, I/O port and interrupt controller'
+  comment 'UART, timer, I/O port, IRQ controller, statistics'
     source lib/gaisler/uart/uart1.in
     source lib/gaisler/irqmp/irqmp.in
     source lib/gaisler/misc/gptimer.in
     source lib/gaisler/misc/grgpio.in
+    source lib/gaisler/leon3/l3stat.in
   endmenu
 
   mainmenu_option next_comment
@@ -69,11 +71,11 @@ comment 'Peripherals             '
 
   mainmenu_option next_comment
   comment 'PCI              '
-    source lib/gaisler/pci/grpci1/pci_mtf.in
-    source lib/gaisler/pci/grpci1/pcidma.in
-    source lib/gaisler/pci/grpci1/pci.in
+    mainmenu_option next_comment
+    comment 'GRPCI2         '
+      source lib/gaisler/pci/grpci2/grpci2.in
+    endmenu
     source lib/esa/pci/pci_arb.in
-    source lib/gaisler/pci/pcitrace/pcitrace.in
   endmenu
 
   mainmenu_option next_comment

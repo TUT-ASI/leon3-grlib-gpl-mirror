@@ -239,6 +239,7 @@ package components is
   END component;
 
   component mobile_ddr_fe
+    generic (addr_swap : integer := 0);
     port (
         Dq    : INOUT STD_LOGIC_VECTOR (15 DOWNTO 0) := (OTHERS => 'Z');
         Dqs   : INOUT STD_LOGIC_VECTOR (1 DOWNTO 0) := (OTHERS => 'Z');
@@ -271,7 +272,10 @@ package components is
       autoload: integer := 1;
       rstmode: integer := 0;
       rstdatah: integer := 16#DEAD#;
-      rstdatal: integer := 16#BEEF#
+      rstdatal: integer := 16#BEEF#;
+      addr_swap : integer := 0;
+      offset_addr : std_logic_vector(31 downto 0) := x"00000000";
+      swap_halfw : integer := 0
       );
     port (
         Dq    : INOUT STD_LOGIC_VECTOR (dbits-1 DOWNTO 0) := (OTHERS => 'Z');

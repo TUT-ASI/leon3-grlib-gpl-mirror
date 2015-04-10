@@ -208,9 +208,10 @@ static int irqts_irqhandler(int irq)
         return 0;
 }
 
-int irqtimestamp_test(int addr, int imask, int width, int pirq, int irqgen)
+int irqtimestamp_test_mask(int addr, int imask, int width, int pirq, int irqgen, int iomask)
 {
 
+        char exttimer0 = 0, exttimer1 = 0;
         int k, i, numirq, ntstamp;
         unsigned int tmp[2];
         struct irqmp *lr = irqmp_base;
@@ -240,22 +241,36 @@ int irqtimestamp_test(int addr, int imask, int width, int pirq, int irqgen)
 
         /* Check that interrupt timestamp counter is disabled */
         tmp[0] = tr->cnt;
-        if (tmp[0] != tr->cnt) fail(2);
+        if (tmp[0] != tr->cnt) exttimer0 = 1;
 
         /* Check that interrupt timestamp counter starts */
         tr->ctrl = 1;
         tmp[0] = tr->cnt;
-        if (tmp[0] == tr->cnt) fail(3);
+        if (tmp[0] == tr->cnt) exttimer1 = 1;
 
-        /* Check that interrupt timestamp counter stops */
-        tr->ctrl = 0;
-        tmp[0] = tr->cnt;
-        if (tmp[0] != tr->cnt) fail(4);
+        if (exttimer1) {
+                /* Possibly external timer */
+                if (exttimer0) fail(2); /* timer was changing but then stopped? */
+                /* Enable counter */
+                tmp[1] =  ~(1 << 31);
+                asm volatile("mov %0, %%asr22; nop; nop; nop "
+                             :
+                             : "r"(tmp[1])
+                             );
+                if (tmp[0] == tr->cnt) fail(3);
+        } 
+        if (!exttimer0 && !exttimer1) {
+                /* Check that interrupt timestamp counter stops */
+                tr->ctrl = 0;
+                tmp[0] = tr->cnt;
+                if (tmp[0] != tr->cnt) fail(4);
+        }
 
         /* Set up interrupt handler */
         if (irqgen == 0) {
                 /* Fixed mapping IO[i] = interrupt pirq + i */
                 for (i=1; i <width; i++) {
+                        if ((iomask & (1 << i)) == 0) continue;
                         if ((pirq+i) < 32) {
                                 catch_interrupt(irqts_irqhandler, pirq+i);
                                 /* Enable interrupt on IRQMP */
@@ -294,6 +309,7 @@ int irqtimestamp_test(int addr, int imask, int width, int pirq, int irqgen)
 
                 /* Assert interrupts */
                 for (i = irqgen ? 0 : 1; i < width; i++) {
+                        if ((iomask & (1 << i)) == 0) continue;
 
                         /* Initialize interrupt timestamping */
                         if (irqgen == 0) {
@@ -366,10 +382,21 @@ int irqtimestamp_test(int addr, int imask, int width, int pirq, int irqgen)
         irqmp_base->irqmask = 0x0;  /* mask all interrupts */
         irqmp_base->irqclear = -1;  /* clear all pending interrupts */
 
+        if (exttimer1) {
+                 /* Disable counter*/
+                tmp[0] = (1 << 31);
+                asm volatile("mov %0, %%asr22; nop; nop; nop "
+                             :
+                             : "r"(tmp[0])
+                             );
+        }
+
         return 0;
+}
 
-
-
+int irqtimestamp_test(int addr, int imask, int width, int pirq, int irqgen)
+{
+  return irqtimestamp_test_mask(addr,imask,width,pirq,irqgen,-1);
 }
 
 /*

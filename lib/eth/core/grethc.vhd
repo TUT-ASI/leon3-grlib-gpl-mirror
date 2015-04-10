@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -1433,7 +1434,7 @@ begin
          if mclk = '1' then
            if (rmii = 1) or (edcl /= 0) then
              v.init_busy := '0';
-             if r.duplexstate = done then
+             if (r.duplexstate = done or r.ctrl.edcldis = '1' or r.disableduplex = '1') then
                v.mdio_ctrl.busy := '0';
              end if;
            else
@@ -1840,15 +1841,17 @@ begin
      --edcl, gbit link mode check
      case r.duplexstate is
        when start =>
-         v.mdio_ctrl.regadr := r.regaddr; v.init_busy := '1';
-         v.mdio_ctrl.busy := '1'; v.duplexstate := waitop;
-         if (r.phywr or r.rstphy) = '1' then
-           v.mdio_ctrl.write := '1'; 
-         else
-           v.mdio_ctrl.read := '1';
-         end if;
-         if r.rstphy = '1' then
-           v.mdio_ctrl.data := X"9000";
+         if (r.ctrl.edcldis = '0' and r.disableduplex = '0') then
+           v.mdio_ctrl.regadr := r.regaddr; v.init_busy := '1';
+           v.mdio_ctrl.busy := '1'; v.duplexstate := waitop;
+           if (r.phywr or r.rstphy) = '1' then
+             v.mdio_ctrl.write := '1'; 
+           else
+             v.mdio_ctrl.read := '1';
+           end if;
+           if r.rstphy = '1' then
+             v.mdio_ctrl.data := X"9000";
+           end if;
          end if;
        when waitop =>
          if r.init_busy = '0' then
@@ -1876,6 +1879,9 @@ begin
              if r.rstaneg = '1' then
                v.phywr := '0';
              end if;
+             if r.disableduplex = '1' then
+               v.duplexstate := done; v.mdio_ctrl.busy := '0';
+             end if;
            when "00001" =>
              v.ext := r.mdio_ctrl.data(8); --extended status register
              v.extcap := r.mdio_ctrl.data(1); --extended register capabilities
@@ -1891,7 +1897,8 @@ begin
                v.regaddr := "01001"; 
              elsif r.mdio_ctrl.data(5) = '1' then --auto neg completed
                v.regaddr := "00100";
-             elsif r.disableduplex = '1' then
+             end if;
+             if r.disableduplex = '1' then
                v.duplexstate := done; v.mdio_ctrl.busy := '0';
              end if;
            when "00100" =>
@@ -1923,6 +1930,20 @@ begin
        when done =>
          null;
      end case;
+
+     -- MDIO Disable
+     if r.ctrl.edcldis = '1' or r.disableduplex = '1' then
+        if  v.duplexstate /= start then
+          v.duplexstate := start;
+          v.mdio_ctrl.regadr := (others => '0');
+          v.mdio_ctrl.busy := '0';
+          v.init_busy := '0';
+          v.mdio_ctrl.write := '0';
+          v.mdio_ctrl.read := '0';
+          v.mdio_ctrl.data := X"0000";
+        end if;
+     end if;
+
    end if;
 
    --transmitter retry

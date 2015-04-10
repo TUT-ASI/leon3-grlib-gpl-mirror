@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -296,6 +297,7 @@ begin
   end check_data;
 
   variable v : reg_type;
+  variable vpciin : pci_type;
 
   begin
     if to_x01(pciin.syst.rst) = '0' then
@@ -309,12 +311,13 @@ begin
       v.parerr := '0';
     elsif rising_edge(pciin.syst.clk) then
       v := r;
-      
-      v.grant := to_x01(pciin.ifc.frame) and to_x01(pciin.ifc.irdy) and not r.pci.arb.req(slot) and not to_x01(pciin.arb.gnt(slot));
+      vpciin := pciin;
+
+      v.grant := to_x01(vpciin.ifc.frame) and to_x01(vpciin.ifc.irdy) and not r.pci.arb.req(slot) and not to_x01(vpciin.arb.gnt(slot));
       v.pcien(1) := r.pcien(0); v.pcien(2) := r.pcien(1);
       v.pci.ad.par := xorv(r.pci.ad.ad & r.pci.ad.cbe & r.parerr);
-      v.perr_ad := pciin.ad.ad; v.perr_cbe := pciin.ad.cbe;
-      v.pci.err.perr := (not xorv(r.perr_ad & r.perr_cbe & to_x01(pciin.ad.par))) or not r.read;
+      v.perr_ad := vpciin.ad.ad; v.perr_cbe := vpciin.ad.cbe;
+      v.pci.err.perr := (not xorv(r.perr_ad & r.perr_cbe & to_x01(vpciin.ad.par))) or not r.read;
       v.perren(1) := r.perren(0);
 
       case r.state is
@@ -367,10 +370,10 @@ begin
           else 
             v.pci.ifc.irdy := '0';
             v.pci.ad.ad := r.acc.data;
-            if r.acc.last = true or to_x01(pciin.ifc.stop) = '0' then v.pci.ifc.frame := '1'; v.pci.arb.req(slot) := '1'; end if;
+            if r.acc.last = true or to_x01(vpciin.ifc.stop) = '0' then v.pci.ifc.frame := '1'; v.pci.arb.req(slot) := '1'; end if;
           end if;
 
-          if to_x01(pciin.ifc.devsel) = '1' then
+          if to_x01(vpciin.ifc.devsel) = '1' then
             if r.devsel_timeout < 3 then 
               v.devsel_timeout := r.devsel_timeout + 1; 
             else 
@@ -380,7 +383,7 @@ begin
                 v.pcien(0) := '0';
                 v.state := idle;
                 if r.acc.list_res = true then -- store result
-                  pci_core.acc <= r.acc; -- FIXME: should set Master abort status in this response
+                  pci_core.acc <= r.acc; -- should set Master abort status in this response
                   pci_core.add_res <= true; pci_core.add <= false; pci_core.remove <= false; sync_with_core;
                   wait for 1 ps;
                 end if;
@@ -397,14 +400,14 @@ begin
             end if;
           end if;
 
-          --if to_x01(pciin.ifc.trdy) = '0' and r.pci.ifc.irdy = '0' then
-          if (to_x01(pciin.ifc.trdy) = '0' or (r.acc.cod = 1 and to_x01(pciin.ifc.stop) = '0')) and r.pci.ifc.irdy = '0' then
+          --if to_x01(vpciin.ifc.trdy) = '0' and r.pci.ifc.irdy = '0' then
+          if (to_x01(vpciin.ifc.trdy) = '0' or (r.acc.cod = 1 and to_x01(vpciin.ifc.stop) = '0')) and r.pci.ifc.irdy = '0' then
             if r.read = '1' then v.perren(0) := '1'; end if; -- only drive perr from read
             if r.pci.ifc.frame = '1' then -- done
               v.pcien(0) := '0'; v.pci.ifc.irdy := '1';
               if r.acc.list_res = true then -- store result
                 pci_core.acc <= r.acc;
-                if r.read = '1' then pci_core.acc.data <= pciin.ad.ad; end if;
+                if r.read = '1' then pci_core.acc.data <= vpciin.ad.ad; end if;
                 pci_core.add_res <= true; pci_core.add <= false; pci_core.remove <= false; sync_with_core;
                 wait for 1 ps;
               end if;
@@ -414,7 +417,7 @@ begin
             else
               if r.acc.list_res = true then -- store result
                 pci_core.acc <= r.acc;
-                if r.read = '1' then pci_core.acc.data <= pciin.ad.ad; end if;
+                if r.read = '1' then pci_core.acc.data <= vpciin.ad.ad; end if;
                 pci_core.add_res <= true; pci_core.add <= false; pci_core.remove <= false; sync_with_core;
                 wait for 1 ps;
               end if;
@@ -425,7 +428,7 @@ begin
                 if core_pci.acc.parerr = 1 then v.parerr := '1'; else v.parerr := '0'; end if;
                 if v.acc.ws <= 0 then
                   v.pci.ad.ad := v.acc.data;
-                  if v.acc.last = true or to_x01(pciin.ifc.stop) = '0' then v.pci.ifc.frame := '1'; v.pci.arb.req(slot) := '1'; end if;
+                  if v.acc.last = true or to_x01(vpciin.ifc.stop) = '0' then v.pci.ifc.frame := '1'; v.pci.arb.req(slot) := '1'; end if;
                 else
                   v.pci.ad.ad := (others => '-');
                   if v.pci.ifc.frame = '0' then v.pci.ifc.irdy := '1'; end if; -- If frame => '1', do not add waitstates (irdey => '1')
@@ -438,7 +441,7 @@ begin
               end if;
             end if;
             if r.acc.debug >= 1 then
-              if r.acc.cod = 1 and to_x01(pciin.ifc.stop) = '0' and to_x01(pciin.ifc.trdy) = '1' then
+              if r.acc.cod = 1 and to_x01(vpciin.ifc.stop) = '0' and to_x01(vpciin.ifc.trdy) = '1' then
                 if r.read = '1' then
                   print("PCITBM Read[" & tost(r.acc.addr) & "]: CANCELED ON DISCONNECT");
                 else
@@ -446,25 +449,25 @@ begin
                 end if;
               else
                 if r.read = '1' then
-                  if check_data(pciin.ad.ad, r.pci.ad.ad, r.pci.ad.cbe) = false then
-                    print("ERROR: PCITBM Read[" & tost(r.acc.addr) & "]: " & tost(pciin.ad.ad) & " != " & tost(r.pci.ad.ad));
+                  if check_data(vpciin.ad.ad, r.pci.ad.ad, r.pci.ad.cbe) = false then
+                    print("ERROR: PCITBM Read[" & tost(r.acc.addr) & "]: " & tost(vpciin.ad.ad) & " != " & tost(r.pci.ad.ad));
                   elsif r.acc.debug >= 2 then
-                    print("PCITBM Read[" & tost(r.acc.addr) & "]: " & tost(pciin.ad.ad));
+                    print("PCITBM Read[" & tost(r.acc.addr) & "]: " & tost(vpciin.ad.ad));
                   end if;
                 else
                   if r.acc.debug >= 2 then
-                    print("PCITBM Write[" & tost(r.acc.addr) & "]: " & tost(pciin.ad.ad));
+                    print("PCITBM Write[" & tost(r.acc.addr) & "]: " & tost(vpciin.ad.ad));
                   end if;
                 end if;
               end if;
             end if;
-          elsif to_x01(pciin.ifc.stop) = '0' and r.pci.ifc.frame = '1' then -- Disconnect
+          elsif to_x01(vpciin.ifc.stop) = '0' and r.pci.ifc.frame = '1' then -- Disconnect
             v.pcien(0) := '0';
             v.pci.ifc.irdy := '1';
             v.state := idle;
-            if to_x01(pciin.ifc.devsel) = '1' then
+            if to_x01(vpciin.ifc.devsel) = '1' then
               if r.acc.list_res = true then -- store result
-                pci_core.acc <= r.acc; -- FIXME: should set Master abort status in this response
+                pci_core.acc <= r.acc; -- should set Master abort status in this response
                 pci_core.add_res <= true; pci_core.add <= false; pci_core.remove <= false; sync_with_core;
                 wait for 1 ps;
               end if;

@@ -5,6 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -263,53 +264,6 @@ signal    M1_DDR2_oct_rup : std_logic;
   signal UART_TXD      : std_logic;
   signal dsuen, dsubren, dsuact : std_ulogic;
   signal dsurst   : std_ulogic;
-  
-  signal sgmii_rstn : std_logic;
-
-  signal dummy_ethi : eth_in_type;
-  signal dummy_etho : eth_out_type;
-
-  signal sgmii0_rxd      : std_logic_vector(7 downto 0);
-  signal sgmii0_rx_dv    : std_logic;
-  signal sgmii0_rx_er    : std_logic;
-  signal sgmii0_rx_col   : std_logic;
-  signal sgmii0_rx_crs   : std_logic;
-  signal sgmii0_rx_clk   : std_logic;
-  signal phy0_rxd        : std_logic_vector(7 downto 0);
-  signal phy0_rx_dv      : std_logic;
-  signal phy0_rx_er      : std_logic;
-  signal phy0_rx_col     : std_logic;
-  signal phy0_rx_crs     : std_logic;
-  signal phy0_rx_clk     : std_logic;
-  signal sgmii0_txd      : std_logic_vector(7 downto 0);
-  signal sgmii0_tx_en    : std_logic;
-  signal sgmii0_tx_er    : std_logic;
-  signal sgmii0_gtx_clk  : std_logic;
-  signal phy0_txd        : std_logic_vector(7 downto 0);
-  signal phy0_tx_en      : std_logic;
-  signal phy0_tx_er      : std_logic;
-  signal phy0_gtx_clk    : std_logic;
-
-  signal sgmii1_rxd      : std_logic_vector(7 downto 0);
-  signal sgmii1_rx_dv    : std_logic;
-  signal sgmii1_rx_er    : std_logic;
-  signal sgmii1_rx_col   : std_logic;
-  signal sgmii1_rx_crs   : std_logic;
-  signal sgmii1_rx_clk   : std_logic;
-  signal phy1_rxd        : std_logic_vector(7 downto 0);
-  signal phy1_rx_dv      : std_logic;
-  signal phy1_rx_er      : std_logic;
-  signal phy1_rx_col     : std_logic;
-  signal phy1_rx_crs     : std_logic;
-  signal phy1_rx_clk     : std_logic;
-  signal sgmii1_txd      : std_logic_vector(7 downto 0);
-  signal sgmii1_tx_en    : std_logic;
-  signal sgmii1_tx_er    : std_logic;
-  signal sgmii1_gtx_clk  : std_logic;
-  signal phy1_txd        : std_logic_vector(7 downto 0);
-  signal phy1_tx_en      : std_logic;
-  signal phy1_tx_er      : std_logic;
-  signal phy1_gtx_clk    : std_logic;
 
   signal rst_125         : std_logic;
 
@@ -317,7 +271,8 @@ signal    M1_DDR2_oct_rup : std_logic;
 
   constant slips : integer := 11;
 
-  signal ETH_RX_p_d : std_logic;
+  signal ETH_RX_p_0_d : std_logic;
+  signal ETH_RX_p_1_d : std_logic;
 begin
 
   -- clock and reset
@@ -335,7 +290,6 @@ begin
   clk_125 <= not clk_125 after 4 ns;
 
   CPU_RESET_n <= '0', '1' after 200 ns;
-  sgmii_rstn <= '0', '1' after 1000 ns;
   -- various interfaces
 --  MAX_CONF_D    <= (others => 'H');
 --  MAX_I2C_SDAT  <= 'H';
@@ -456,124 +410,75 @@ begin
   rst_125 <= not CPU_RESET_n;
 
   -- delaying rx line
-  ETH_RX_p(0) <= transport ETH_RX_p_d after 0.8 ns * slips;
+  ETH_RX_p(0) <= transport ETH_RX_p_0_d after 0.8 ns * slips;
   
-  -- connecting PHY through SGMII to MAC
-  p0: phy
+  p0: ser_phy
     generic map(
-      address => 0
+      address       => 0,
+      extended_regs => 1,
+      aneg          => 1,
+      fd_10         => 1,
+      hd_10         => 1,
+
+      base100_t4    => 1,
+      base100_x_fd  => 1,
+      base100_x_hd  => 1,
+      base100_t2_fd => 1,
+      base100_t2_hd => 1,
+
+      base1000_x_fd => CFG_GRETH1G,
+      base1000_x_hd => CFG_GRETH1G,
+      base1000_t_fd => CFG_GRETH1G,
+      base1000_t_hd => CFG_GRETH1G,
+      fabtech   => fabtech,
+      memtech   => memtech
     )
     port map(
-      rstn    => CPU_RESET_n,
-      mdio    => ETH_MDIO(0),
-      tx_clk  => open,
-      rx_clk  => open,
-      rxd     => phy0_rxd,
-      rx_dv   => phy0_rx_dv,
-      rx_er   => phy0_rx_er,
-      rx_col  => phy0_rx_col,
-      rx_crs  => phy0_rx_crs,
-      txd     => phy0_txd,
-      tx_en   => phy0_tx_en,
-      tx_er   => phy0_tx_er,
-      mdc     => ETH_MDC(0),
-      gtx_clk => phy0_gtx_clk
-    );
-
-  phy0_txd     <= sgmii0_rxd;
-  phy0_tx_en   <= sgmii0_rx_dv;
-  phy0_tx_er   <= sgmii0_rx_er;
-  phy0_gtx_clk <= sgmii0_gtx_clk;
-
-  sgmii0_txd   <= phy0_rxd;
-  sgmii0_tx_en <= phy0_rx_dv;
-  sgmii0_tx_er <= phy0_rx_er;
-
-  sgmii0: sgmii
-    generic map (
-      fabtech   => fabtech
-    )
-    port map(
-      clk_125       => clk_125,
-      rst_125       => rst_125,
-
-      ser_rx_p      => ETH_TX_p(0),
-      ser_tx_p      => ETH_RX_p_d,
-
-      txd           => sgmii0_txd,
-      tx_en         => sgmii0_tx_en,
-      tx_er         => sgmii0_tx_er,
-      tx_clk        => sgmii0_gtx_clk,
-
-      rxd           => sgmii0_rxd,
-      rx_dv         => sgmii0_rx_dv,
-      rx_er         => sgmii0_rx_er,
-      rx_col        => sgmii0_rx_col,
-      rx_crs        => sgmii0_rx_crs,
-      rx_clk        => sgmii0_rx_clk,
-
-      mdc           => ETH_MDC(0)
+      rstn      => CPU_RESET_n,
+      clk_125   => clk_125,
+      rst_125   => rst_125,
+      eth_rx_p  => ETH_RX_p_0_d,
+      eth_tx_p  => ETH_TX_p(0),
+      mdio      => ETH_MDIO(0),
+      mdc       => ETH_MDC(0)
     );
 
   end generate;
 
   ethsim1 : if CFG_GRETH2 /= 0 generate
 
-    -- connecting PHY through SGMII to MAC
-  p1: phy
+  -- delaying rx line
+  ETH_RX_p(1) <= transport ETH_RX_p_1_d after 0.8 ns * slips;
+
+  p1: ser_phy
     generic map(
-      address => 1
+      address       => 1,
+      extended_regs => 1,
+      aneg          => 1,
+      fd_10         => 1,
+      hd_10         => 1,
+
+      base100_t4    => 1,
+      base100_x_fd  => 1,
+      base100_x_hd  => 1,
+      base100_t2_fd => 1,
+      base100_t2_hd => 1,
+      
+      base1000_x_fd => CFG_GRETH21G,
+      base1000_x_hd => CFG_GRETH21G,
+      base1000_t_fd => CFG_GRETH21G,
+      base1000_t_hd => CFG_GRETH21G,
+      fabtech   => fabtech,
+      memtech   => memtech
     )
     port map(
-      rstn    => CPU_RESET_n,
-      mdio    => ETH_MDIO(1),
-      tx_clk  => open,
-      rx_clk  => open,
-      rxd     => phy1_rxd,
-      rx_dv   => phy1_rx_dv,
-      rx_er   => phy1_rx_er,
-      rx_col  => phy1_rx_col,
-      rx_crs  => phy1_rx_crs,
-      txd     => phy1_txd,
-      tx_en   => phy1_tx_en,
-      tx_er   => phy1_tx_er,
-      mdc     => ETH_MDC(1),
-      gtx_clk => phy1_gtx_clk
-    );
-
-  phy1_txd     <= sgmii1_rxd;
-  phy1_tx_en   <= sgmii1_rx_dv;
-  phy1_tx_er   <= sgmii1_rx_er;
-  phy1_gtx_clk <= sgmii1_gtx_clk;
-
-  sgmii1_txd   <= phy1_rxd;
-  sgmii1_tx_en <= phy1_rx_dv;
-  sgmii1_tx_er <= phy1_rx_er;
-
-  sgmii1: sgmii
-    generic map (
-      fabtech   => fabtech
-    )
-    port map(
-      clk_125       => clk_125,
-      rst_125       => rst_125,
-
-      ser_rx_p      => ETH_TX_p(1),
-      ser_tx_p      => ETH_RX_p(1),
-
-      txd           => sgmii1_txd,
-      tx_en         => sgmii1_tx_en,
-      tx_er         => sgmii1_tx_er,
-      tx_clk        => sgmii1_gtx_clk,
-
-      rxd           => sgmii1_rxd,
-      rx_dv         => sgmii1_rx_dv,
-      rx_er         => sgmii1_rx_er,
-      rx_col        => sgmii1_rx_col,
-      rx_crs        => sgmii1_rx_crs,
-      rx_clk        => sgmii1_rx_clk,
-
-      mdc           => ETH_MDC(1)
+      rstn      => CPU_RESET_n,
+      clk_125   => clk_125,
+      rst_125   => rst_125,
+      eth_rx_p  => ETH_RX_p_1_d,
+      eth_tx_p  => ETH_TX_p(1),
+      mdio      => ETH_MDIO(1),
+      mdc       => ETH_MDC(1)
     );
 
   end generate;

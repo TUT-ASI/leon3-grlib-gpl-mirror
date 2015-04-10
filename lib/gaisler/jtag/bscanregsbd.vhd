@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -75,7 +76,7 @@ begin
       r: scanregio
         generic map (tech,hzsup)
         port map (pado(x),padoen(x),padi(x),coreo(x),coreoen(x),corei(x),
-                  tck,tckn,ltdi(x),ltdi(x+1),bsshft,bscapt,bsupdi,bsupdo,bsdrive,bshighz);
+                  tck,tckn,ltdi(x),ltdi(x+1),bsshft,bscapt,bscapt,bscapt,bsupdi,bsupdo,bsdrive,bshighz);
     end generate;
     
     ltdi(0) <= tdi;

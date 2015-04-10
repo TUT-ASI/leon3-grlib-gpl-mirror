@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -34,6 +35,8 @@ use grlib.stdio.all;
 use grlib.amba.all;
 use grlib.devices.all;
 library gaisler;
+library techmap;
+use techmap.gencomp.all;
 
 package sim is
 
@@ -121,10 +124,13 @@ package sim is
       colbits: integer range 9 to 11 := 9;
       rowbits: integer range 1 to 16 := 13;
       implbanks: integer range 1 to 8 := 1;
+      swap : integer := 0; -- byte swap during srec load
       fname: string;
       lddelay: time := (0 ns);
+      ldguard: integer range 0 to 1 := 0;  -- 1: wait for doload input before
+                                           -- loading RAM
       -- Speed bins: 0:DDR2-400C,1:400B,2:533C,3:533B,4:667D,5:667C,6:800E,7:800D,8:800C
-      --   9:800+tRAS=40ns
+      -- 9:800+ (MT47H-25E)
       speedbin: integer range 0 to 9 := 0;
       density: integer range 1 to 5 := 3;  -- 1:256M 2:512M 3:1G 4:2G 5:4G bits/chip
       pagesize: integer range 1 to 2 := 1  -- 1K/2K page size (controls tRRD)
@@ -143,8 +149,9 @@ package sim is
       a: in std_logic_vector(abits-1 downto 0);
       dq: inout std_logic_vector(width-1 downto 0);
       dqs: inout std_logic_vector(width/8-1 downto 0);
-      dqsn: inout std_logic_vector(width/8-1 downto 0)
-      );
+      dqsn: inout std_logic_vector(width/8-1 downto 0);
+      doload: in std_ulogic := '1'
+    );
   end component;
 
   component ddr3ram is
@@ -220,6 +227,51 @@ package sim is
       );
   end component;
 
+  component ser_phy is
+    generic(
+      address       : integer range 0 to 31 := 0;
+      extended_regs : integer range 0 to 1  := 1;
+      aneg          : integer range 0 to 1  := 1;
+      base100_t4    : integer range 0 to 1  := 0;
+      base100_x_fd  : integer range 0 to 1  := 1;
+      base100_x_hd  : integer range 0 to 1  := 1;
+      fd_10         : integer range 0 to 1  := 1;
+      hd_10         : integer range 0 to 1  := 1;
+      base100_t2_fd : integer range 0 to 1  := 1;
+      base100_t2_hd : integer range 0 to 1  := 1;
+      base1000_x_fd : integer range 0 to 1  := 0;
+      base1000_x_hd : integer range 0 to 1  := 0;
+      base1000_t_fd : integer range 0 to 1  := 1;
+      base1000_t_hd : integer range 0 to 1  := 1;
+      rmii          : integer range 0 to 1  := 0;
+      rgmii         : integer range 0 to 1  := 0;
+      fabtech       : integer := 0;
+      memtech       : integer := 0;
+      transtech     : integer := 0
+      );
+    port(
+      rstn     : in std_logic;
+
+      clk_125        : in  std_logic;
+      rst_125        : in  std_logic;
+      eth_rx_p       : out std_logic;
+      eth_rx_n       : out std_logic;
+      eth_tx_p       : in std_logic;
+      eth_tx_n       : in std_logic := '0';
+
+      mdio     : inout std_logic;
+      mdc      : in std_logic;
+
+      -- added for igloo2_serdes
+      apbin         : in apb_in_serdes := apb_in_serdes_none;
+      apbout        : out apb_out_serdes;
+      m2gl_padin    : in pad_in_serdes := pad_in_serdes_none;
+      m2gl_padout   : out pad_out_serdes;
+      serdes_clk125 : out std_logic;
+      rx_aligned    : out std_logic
+    );
+  end component;
+
   component phy_sgmii is
     generic (
       INSTANCE_NUMBER          : integer := 0
@@ -287,6 +339,27 @@ package sim is
     ahbsi   : in  ahb_slv_in_type;
     ahbso   : out ahb_slv_out_type
   );
+  end component;
+
+  component sdrtestmod
+    generic (
+      width: integer := 32;               -- 32-bit or 64-bit supported
+      bank: integer range 0 to 3 := 0;
+      row: integer := 0;
+      halt: integer range 0 to 1 := 1;
+      swwidth: integer := 32
+      );
+    port (
+      clk: in std_ulogic;
+      csn: in std_ulogic;
+      rasn: in std_ulogic;
+      casn: in std_ulogic;
+      wen: in std_ulogic;
+      ba: in std_logic_vector(1 downto 0);
+      addr: in std_logic_vector(12 downto 0);
+      dq: inout std_logic_vector(width-1 downto 0);
+      dqm: in std_logic_vector(width/8-1 downto 0)
+      );
   end component;
 
   component i2c_slave_model
@@ -456,7 +529,9 @@ package sim is
       rstmode: integer := 0;
       rstdatah: integer := 16#DEAD#;
       rstdatal: integer := 16#BEEF#;
-      nports: integer := 4
+      nports: integer := 4;
+      offset_addr : std_logic_vector(31 downto 0) := x"00000000";
+      swap_halfw : integer := 0
       );
     port (
       bein:  in ramback_in_array(1 to nports);

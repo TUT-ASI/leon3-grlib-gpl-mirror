@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -80,7 +81,7 @@ architecture rtl of jtagcom2 is
   end record;
 
   type ahbreg_type is record
-    run_sync:  std_logic_vector(1 downto 0);
+    run_sync:  std_logic_vector(2 downto 0);
     qual_dreg: std_ulogic;
     qual_areg: std_ulogic;
     areg: std_logic_vector(34 downto 0);
@@ -102,6 +103,23 @@ architecture rtl of jtagcom2 is
   attribute syn_keep of rdataq : signal is true;
   attribute syn_keep of dregq : signal is true;
   attribute syn_keep of aregq : signal is true;
+
+  ----
+  attribute syn_preserve: boolean;  
+  attribute syn_keep of ar : signal is true;
+  attribute syn_keep of tnr : signal is true;
+  attribute syn_keep of tpr : signal is true;
+  attribute syn_keep of arin : signal is true;
+  attribute syn_keep of tnrin : signal is true;
+  attribute syn_preserve of ar : signal is true;
+  attribute syn_preserve of tnr : signal is true;
+  attribute syn_preserve of tpr : signal is true;
+  attribute syn_preserve of rdataq : signal is true;
+  attribute syn_preserve of dregq : signal is true;
+  attribute syn_preserve of aregq : signal is true;
+
+  ----
+
 
 begin
 
@@ -180,7 +198,9 @@ begin
         if (dsel and (write or (not write and seq))) = '1' then
           tnv.run := '1';
           if (seq and not write) = '1' then
-            tnv.addrlo := tnr.addrlo + 1;
+            if tpr.inshift='1' then
+              tnv.addrlo := tnr.addrlo + 1;
+            end if;
             tpv.holdn := '0';
           end if;
         end if;
@@ -207,7 +227,7 @@ begin
     ---------------------------------------------------------------------------
 
     -- Sync regs and CDC transfer
-    av.run_sync := tnr.run & ar.run_sync(1);
+    av.run_sync := tnr.run & ar.run_sync(2) & ar.run_sync(1);
 
     qual_dreg <= (others => ar.qual_dreg);
     if ar.qual_dreg='1' then av.dreg:=not dregq; end if;
@@ -262,6 +282,7 @@ begin
       av.areg := (others => '0');
       av.dreg := (others => '0');
       av.dmastart := '0';
+      av.run_sync := (others => '0');
     end if;
 
     tprin <= tpv; tnrin <= tnv; arin <= av; dmai <= vdmai; tapi <= vtapi;
@@ -284,6 +305,7 @@ begin
       tpr.prun <= '0';
       tpr.inshift <= '0';
       tpr.holdn <= '1';
+      tpr.datashft(0) <= '0';
     end if;
   end process;
 

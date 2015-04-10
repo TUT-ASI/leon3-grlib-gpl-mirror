@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -74,6 +75,9 @@ begin
     u0 : apa3e_toutpad generic map (level, slew, voltage, strength)
 	 port map (pad, i, oen);
   end generate;
+  igl2 : if (tech = igloo2) generate
+    u0 : igloo2_toutpad port map (pad, i, oen);
+  end generate;
   pa3l : if (tech = apa3l) generate
     u0 : apa3l_toutpad generic map (level, slew, voltage, strength)
 	 port map (pad, i, oen);
@@ -102,7 +106,11 @@ begin
     u0 : saed32_toutpad generic map (level, slew, voltage, strength)
 	 port map (pad, i, oen);
   end generate;
-  dar : if (tech = dare) generate
+  rhs : if (tech = rhs65) generate
+    u0 : rhs65_toutpad generic map (level, slew, voltage, strength)
+	 port map (pad, i, oen, cfgi(0), cfgi(2), cfgi(1));
+  end generate;
+ dar : if (tech = dare) generate
     u0 : dare_toutpad generic map (level, slew, voltage, strength)
 	 port map (pad, i, oen);
   end generate;

@@ -278,13 +278,6 @@ connection. The ethernet debug link is significantly faster.
 ----------------
 
 The design instantiates a SPICTRL core which is connected to the SD card slot.
-The user may deselect the SPI controller (SPICTRL) and enable the SPI memory
-controller instead. SPIMCTRL allows reading SD cards without additonal software
-support. The design will not synthesize if both cores are enabled.
-
-Suitable configuration values for SPIMCTRL are; SD Card = 1, Clock divisor = 2,
-Alt. clock divisor = 7. Note that the SPIMCTRL core will insert a large amount
-of wait states on the system bus if AMBA SPLIT support is not enabled.
 
 7. Ethernet interface
 ---------------------

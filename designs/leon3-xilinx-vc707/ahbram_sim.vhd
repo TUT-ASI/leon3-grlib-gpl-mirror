@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -285,7 +286,7 @@ begin
       if conv_integer(write) > 0 then
         for i in 0 to dw/8-1 loop
          if (write(i) = '1') then
-           ram(to_integer(unsigned(ramaddr)))(i*8+7 downto 0) <= hwdata(i*8+7 downto 0);
+           ram(to_integer(unsigned(ramaddr)))(i*8+7 downto i*8) <= hwdata(i*8+7 downto i*8);
          end if;
         end loop;
       end if;

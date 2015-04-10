@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -66,7 +67,8 @@ entity gptimer is
     ewdogen  : integer := 0;
     glatch   : integer := 0;
     gextclk  : integer := 0;
-    gset     : integer := 0
+    gset     : integer := 0;
+    gelatch  : integer range 0 to 2 := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -117,6 +119,9 @@ type registers is record
 end record;
 
 type registers2 is record
+  setdis        :  std_ulogic;
+  latchdis      :  std_ulogic;
+  elatchen      :  std_ulogic;
   latchsel      :  std_logic_vector(NAHBIRQ-1 downto 0);
   latchen       :  std_ulogic;
   latchdel      :  std_ulogic;
@@ -163,6 +168,9 @@ begin
 end function RESVAL_FUNC;
 constant RESVAL : registers := RESVAL_FUNC;
 constant RESVAL2 : registers2 := (
+  setdis   => '0',
+  latchdis => '0',
+  elatchen => '0',
   latchsel => (others => '0'),
   latchen  => '0', 
   latchdel => '0',
@@ -187,10 +195,13 @@ begin
   variable nirq : std_logic_vector(0 to ntimers-1);
   variable tick : std_logic_vector(1 to 7);
   variable latch : std_ulogic;
+  variable latchval : std_logic_vector(NAHBIRQ-1 downto 0);
+  variable latchd : std_ulogic;
   variable v2 : registers2;
   begin
 
     v := r; v2 := r2; v.tick := '0'; tick := (others => '0'); latch := '0';
+    latchval := apbi.pirq; latchd := '0';
     vtimers(0) := ('0', '0', '0', '0', '0', '0', '0', 
                    zero32(nbits-1 downto 0), zero32(nbits-1 downto 0),
                    zero32(glatch*(nbits-1) downto 0));
@@ -261,22 +272,38 @@ begin
 
 -- timer external set
     if gset = 1 then
+      if gelatch /= 0 and r2.elatchen = '1' then
+        latchval := gpti.latchv;
+      end if;
       if NAHBIRQ <= 32 then
         for i in NAHBIRQ-1 downto 0 loop
-          latch := latch or (v2.latchsel(i) and apbi.pirq(i));
+          latch := latch or (v2.latchsel(i) and latchval(i));
+          if gelatch = 2 then latchd := latchd or (v2.latchsel(i) and gpti.latchd(i)); end if;
         end loop;
       else
         for i in 31 downto 0 loop
-          latch := latch or (v2.latchsel(i) and apbi.pirq(i));
+          latch := latch or (v2.latchsel(i) and latchval(i));
+          if gelatch = 2 then latchd := latchd or (v2.latchsel(i) and gpti.latchd(i)); end if;
         end loop;
+      end if;
+      if gelatch = 2 and (r2.seten = '1' and r2.elatchen = '1') then
+        if latchd = '1' then
+          v2.setdis := '1';
+        end if;
+        if r2.setdis = '1' and r.tsel = 0 then
+          v2.setdis := '0'; v2.seten := '0'; v2.setdel := '0';
+        end if;
       end if;
       if (latch='1' and r2.seten='1' and r.tsel = 0) or
         (r2.setdel = '1' and r2.seten='1' and r.tsel = 0) then
         for i in 1 to ntimers loop
           v.timers(i).value := r.timers(i).reload;
         end loop;
-        v2.seten := '0';
         v2.setdel := '0';
+        if gelatch < 2 or (gelatch = 2 and (r2.elatchen = '0' or v2.setdis = '1')) then
+          v2.seten := '0';
+          if gelatch = 2 then v2.setdis := '0'; end if;
+        end if;
       elsif latch='1' and r2.seten='1' and r.tsel /= 0 then
         v2.setdel := '1';
       end if;
@@ -311,6 +338,7 @@ begin
         if gextclk = 1 then readdata(10) := r2.extclken; end if;
         if glatch = 1 then readdata(11) := r2.latchen; end if;
         if gset = 1 then readdata(12) := r2.seten; end if;
+        if gelatch /= 0 then readdata(13) := r2.elatchen; end if;
     when "00011" =>
       if glatch = 1 then
         if NAHBIRQ <= 32 then
@@ -358,6 +386,7 @@ begin
                       if gextclk = 1 then v2.extclken := apbi.pwdata(10); end if;
                       if glatch = 1 then v2.latchen := apbi.pwdata(11); end if;
                       if gset = 1 then v2.seten := apbi.pwdata(12); end if;
+                      if gelatch /= 0 then v2.elatchen := apbi.pwdata(13); end if;
       when "00011" =>
         if glatch=1 then
           if NAHBIRQ <= 32 then
@@ -395,23 +424,39 @@ begin
 
 -- timer latches
     if glatch=1 then
-      latch := '0';
+      latch := '0'; latchd := '0';
+      if gelatch /= 0 and r2.elatchen = '1' then
+        latchval := gpti.latchv;
+      end if;
       if NAHBIRQ <= 32 then
         for i in NAHBIRQ-1 downto 0 loop
-          latch := latch or (v2.latchsel(i) and apbi.pirq(i));
+          latch := latch or (v2.latchsel(i) and latchval(i));
+          if gelatch = 2 then latchd := latchd or (v2.latchsel(i) and gpti.latchd(i)); end if;
         end loop;
       else
         for i in 31 downto 0 loop
-          latch := latch or (v2.latchsel(i) and apbi.pirq(i));
+          latch := latch or (v2.latchsel(i) and latchval(i));
+          if gelatch = 2 then latchd := latchd or (v2.latchsel(i) and gpti.latchd(i)); end if;
         end loop;
+      end if;
+      if gelatch /= 0 and (r2.latchen = '1' and r2.elatchen = '1') then
+        if latchd = '1' then
+          v2.latchdis := '1';
+        end if;
+        if r2.latchdis = '1' and r.tsel = 0 then
+          v2.latchdis := '0'; v2.latchen := '0'; v2.latchdel := '0';
+        end if;
       end if;
       if ((latch='1' and r2.latchen='1' and r.tsel = 0) or
           (r2.latchdel = '1' and r2.latchen='1' and r.tsel = 0)) then
         for i in 1 to ntimers loop
           v.timers(i).latch := r.timers(i).value(glatch*(nbits-1) downto 0);
         end loop;
-        v2.latchen := '0';
         v2.latchdel := '0';
+        if gelatch < 2 or (gelatch = 2 and (r2.elatchen = '0' or v2.latchdis = '1')) then
+          v2.latchen := '0';
+          if gelatch = 2 then v2.latchdis := '0'; end if;
+        end if;
       elsif latch='1' and r2.latchen='1' and r.tsel /= 0 then
         v2.latchdel := '1';
       end if;
@@ -442,6 +487,8 @@ begin
       v.wdogdis := RESVAL.wdogdis; v.wdognmi := RESVAL.wdognmi;
       if glatch = 1 then
         for i in 1 to ntimers loop v.timers(i).latch := RESVAL.timers(i).latch; end loop;
+        if gelatch /= 0 then v2.elatchen := RESVAL2.elatchen; end if;
+        if gelatch = 2 then v2.setdis := '0'; v2.latchdis := '0'; end if;
         v2.latchen := RESVAL2.latchen; v2.latchdel := RESVAL2.latchdel;
         v2.latchsel := RESVAL2.latchsel;
       end if;
@@ -456,6 +503,8 @@ begin
       for i in 1 to ntimers loop v.timers(i).latch := (others => '0'); end loop;
       v2.latchen := '0'; v2.latchdel := '0'; v2.latchsel := (others => '0');
     end if;
+    if glatch = 0 or gelatch = 0 then v2.elatchen := '0'; end if;
+    if glatch = 0 or gelatch < 2 then v2.latchdis := '0'; v2.setdis := '0'; end if;
     if gextclk = 0 then v2.extclken := '0'; v2.extclk := (others => '0'); end if;
     if gset = 0 then v2.seten := '0'; v2.setdel := '0'; end if;
     

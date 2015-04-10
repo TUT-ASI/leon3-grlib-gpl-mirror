@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -136,8 +137,20 @@ begin
                    clk2, address2, datain2, dataout2, xenable2, xwrite2);
   end generate;
 
+  igl2  : if tech = igloo2 generate
+    x0 : igloo2_syncram_dp generic map (abits, dbits)
+         port map (clk1, address1, datain1, dataout1, xenable1, xwrite1,
+                   clk2, address2, datain2, dataout2, xenable2, xwrite2);
+  end generate;
+
   saed  : if tech = saed32 generate
     x0 : saed32_syncram_dp generic map (abits, dbits)
+         port map (clk1, address1, datain1, dataout1, xenable1, xwrite1,
+                   clk2, address2, datain2, dataout2, xenable2, xwrite2);
+  end generate;
+
+  rhs  : if tech = rhs65 generate
+    x0 : rhs65_syncram_dp generic map (abits, dbits)
          port map (clk1, address1, datain1, dataout1, xenable1, xwrite1,
                    clk2, address2, datain2, dataout2, xenable2, xwrite2);
   end generate;

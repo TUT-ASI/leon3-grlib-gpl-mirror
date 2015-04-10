@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -137,6 +138,7 @@ architecture rtl of mmu_dcache is
      asi                : std_logic_vector(3 downto 0);
      read               : std_ulogic;
      lock               : std_ulogic;
+     lock2              : std_ulogic;
      smask              : std_logic_vector(DSETS-1 downto 0);-- snoop mask
   end record;
 
@@ -191,6 +193,7 @@ architecture rtl of mmu_dcache is
      reqst         : std_logic;
      set           : integer range 0 to DSETS-1;
      noflush       : std_logic;
+     cmiss         : std_ulogic;
   end record;
 
   type snoop_reg_type is record                   -- snoop control registers
@@ -289,6 +292,7 @@ architecture rtl of mmu_dcache is
     asi   => (others => '0'),
     read  => '0',
     lock  => '0',
+    lock2 => '0',
     smask => (others => '0')
     );
   
@@ -346,7 +350,8 @@ architecture rtl of mmu_dcache is
     diag_op    => '0',
     reqst      => '0',
     set        => 0,
-    noflush    => '0'
+    noflush    => '0',
+    cmiss      => '0'
     );
   constant SRES : snoop_reg_type := (
     snoop   => '0',
@@ -364,8 +369,6 @@ architecture rtl of mmu_dcache is
   signal r, c : dcache_control_type;      -- r is registers, c is combinational
   signal rs, cs : snoop_reg_type;         -- rs is registers, cs is combinational
   signal rl, cl : lru_reg_type;           -- rl is registers, cl is combinational
-
-  constant ctbl : std_logic_vector(15 downto 0) :=  conv_std_logic_vector(cached, 16);
 
 begin
 
@@ -423,6 +426,7 @@ begin
 
     variable ctx : ctxdatatype;
     variable flushl : std_ulogic;
+    variable flushlv : std_logic_vector(0 to MAXSETS-1);
  
     variable miscdata  : std_logic_vector(31 downto 0);
     variable pflush : std_logic;
@@ -438,11 +442,13 @@ begin
     variable mmudci_su : std_logic;
     variable mmudci_read : std_logic;
     variable su : std_logic;
-    variable mmuisdis : std_logic;
   
     variable mmudci_transdata_data : std_logic_vector(31 downto 0);
     variable paddress : std_logic_vector(31 downto 0);            -- physical address buffer
     variable pagesize : integer range 0 to 3;
+
+    variable mhold : std_logic; -- MMU hold
+    variable wbhold : std_logic; -- write-buffer hold
 
   begin
 
@@ -452,7 +458,7 @@ begin
     vl.write := '0'; lramen := '0'; lramrd := '0'; lramwr := '0'; 
     lramcs := '0'; laddr := (others => '0'); v.cctrlwr := '0';
     ilramen := '0'; v.flush2 := r.flush;
-    snhit := (others => '0');
+    snhit := (others => '0'); v.cmiss := '0'; mhold := '0'; wbhold := '0';
     pagesize := MMU_getpagesize(mmupgsz,r.mmctrl1);
 
     if ((dci.eenaddr or dci.enaddr) = '1') or (r.dstate /= idle) or 
@@ -463,13 +469,10 @@ begin
     else enable := (others => '0'); end if;
 
     v.mmctrl1wr := '0';
-    tagclear := '0'; mmuisdis := '0';
+    tagclear := '0'; paddress := r.paddress;
     if (not M_EN) or ((r.asi(4 downto 0) = ASI_MMU_BP) or (r.mmctrl1.e = '0')) then
-      mmuisdis := '1';
+      paddress := r.xaddress;
     end if;
-    
-    if (mmuisdis = '1') then paddress := r.xaddress;
-    else paddress := r.paddress; end if;
 
 
     mds := '1'; dwrite := '0'; twrite := '0'; tpwrite := '0'; 
@@ -600,7 +603,7 @@ begin
     if (r.mmctrl1.e = '0') then hcache := ahb_slv_dec_cache(dci.maddress, ahbso, cached);
     else hcache := '1'; end if;
     forcemiss := (not dci.asi(3)) or dci.lock;
-    if (M_EN and (dci.asi(4 downto 0) = ASI_MMU_BP)) or (r.cctrl.dcs(0) = '0') or
+    if (dci.asi(4 downto 0) = ASI_MMU_BP) or (r.cctrl.dcs(0) = '0') or
       ((r.flush or r.flush2) = '1')
     then hcache := '0'; end if;
 
@@ -622,7 +625,7 @@ begin
     end if;
 
     -- force cache miss if mmu-enabled but off or BYPASS, or on flush
-    if ((M_EN) and (dci.asi(4 downto 0) = ASI_MMU_BP)) or (r.cctrl.dcs(0) = '0') or ((r.flush or r.flush2) = '1')
+    if (dci.asi(4 downto 0) = ASI_MMU_BP) or (r.cctrl.dcs(0) = '0') or ((r.flush or r.flush2) = '1')
     then hit := '0'; end if;
     
     if DSETS > 1 then 
@@ -663,6 +666,7 @@ begin
     end if;
     if mcdo.grant = '1' then v.req := r.burst; v.burst := '0'; end if;
     if (mcdo.grant and not r.wb.read and r.req) = '1' then v.wb.lock := '0'; end if;
+    if (mcdo.grant and r.req) = '1' then v.wb.lock2 := r.wb.lock; end if;
     
     if (dlram = 1) then
       if ((r.holdn) = '0') or ((dsu = 1) and (dci.dsuen = '1')) then
@@ -739,7 +743,7 @@ begin
         when ASI_DTAG => rdatasel := dtag;
         when ASI_DDATA => rdatasel := dddata;
         when ASI_DCTX => if M_EN then rdatasel := dctx; end if;
-        when ASI_MMUREGS => if M_EN then rdatasel := misc; end if;
+        when ASI_MMUREGS | ASI_MMUREGS_V8 => if M_EN then rdatasel := misc; end if;
         when ASI_MMUSNOOP_DTAG => rdatasel := mmusnoop_dtag;
         when others =>
         end case;
@@ -748,7 +752,7 @@ begin
         case dci.asi(4 downto 0) is
         when ASI_SYSR =>                -- system registers
           v.cctrlwr := not dci.read and not (dci.dsuen and not dci.eenaddr);
-        when ASI_MMUREGS =>
+        when ASI_MMUREGS | ASI_MMUREGS_V8 =>
           if M_EN then
             if (dsu = 0) or dci.dsuen = '0' then
               -- clean fault valid bit
@@ -812,7 +816,7 @@ begin
               flush := '1'; iflush := '1'; --pflush := '1'; pflushtyp := PFLUSH_CTX;
             end if;
           end if;
-        when ASI_MMUFLUSHPROBE =>
+        when ASI_MMUFLUSHPROBE | ASI_MMUFLUSHPROBE_V8 =>
           if M_EN then
             if dci.read = '0' then      -- flush
               mmudci_flush_op := '1';
@@ -837,7 +841,7 @@ begin
               else v.dstate := asi_idtag; v.holdn := dci.dsuen; v.ilramen := '1'; end if;              
             elsif dci.dsuen = '0' then
               if not ((hit and valid and not forcemiss) = '1') then     -- read miss
-                v.holdn := '0'; v.dstate := wread; v.ready := '0';
+                v.holdn := '0'; v.dstate := wread; v.ready := '0'; v.cmiss := hcache;
                 v.cache := hcache and andv(r.cctrl.dcs);
                 if (not M_EN) or ((dci.asi(4 downto 0) = ASI_MMU_BP) or (r.mmctrl1.e = '0')) then
                   -- cache disabled if mmu-enabled but off or BYPASS
@@ -1012,6 +1016,7 @@ begin
             end if;
           end if;
         end if;
+        mhold := '1';
       end if;
 
     when wread =>               -- read miss, wait for memory data
@@ -1067,6 +1072,7 @@ begin
           v.wb.read := r.read; v.wb.data1 := dci.maddress; v.req := '1'; 
           v.wb.lock := dci.lock; v.wb.asi := r.asi(3 downto 0); v.ready := '0';
         end if;
+        wbhold := '1';
       end if;
     when loadpend =>            -- return from read miss with load pending
       taddr := dci.maddress(OFFSET_HIGH downto LINE_LOW);
@@ -1145,6 +1151,7 @@ begin
           end if;
         end if;
       end if;
+      mhold := '1';
         
     when wwrite =>              -- wait for store buffer to empty (store access)
       edata := dci.edata;  -- needed for STD store hit
@@ -1174,6 +1181,7 @@ begin
       else  -- hold cpu until buffer empty
         v.holdn := '0';
       end if;
+      wbhold := '1';
     when wflush => 
       v.holdn := '0';
       if mmudco.transdata.finish = '1' then        
@@ -1196,23 +1204,23 @@ begin
         v.icenable := not ico.diagrdy;
         rdatasel := icache;
       when ASI_DTAG =>
-        tdiagwrite := not dci.eenaddr and dci.enaddr and dci.write;
+        tdiagwrite := dci.write;
         twrite := not dci.eenaddr and dci.enaddr and dci.write;
         rdatasel := dtag; 
       when ASI_MMUSNOOP_DTAG =>
         if DSNOOPSEP then snoopaddr := taddr(OFFSET_HIGH downto OFFSET_LOW); end if; 
-        tdiagwrite := not dci.eenaddr and dci.enaddr and dci.write;
+        tdiagwrite := dci.write;
         tpwrite := not dci.eenaddr and dci.enaddr and dci.write;
         rdatasel := mmusnoop_dtag; senable := (others => '1');
       when ASI_DDATA =>
         if M_EN then
-        ddiagwrite := not dci.eenaddr and dci.enaddr and dci.write;
+        ddiagwrite := dci.write;
         dwrite := not dci.eenaddr and dci.enaddr and dci.write;
         rdatasel := dddata;
         end if;
        when ASI_UDATA | ASI_SDATA  =>
          lramwr := not dci.eenaddr and dci.enaddr and dci.write;
-      when ASI_MMUREGS =>
+      when ASI_MMUREGS | ASI_MMUREGS_V8 =>
         rdatasel := misc;  
       when others =>
       end case;
@@ -1356,6 +1364,7 @@ begin
         v.burst := ((r.rburst) and not andv(r.wb.addr(LINE_HIGH downto LINE_LOW))) or
                 (not r.rburst and r.wb.size(0) and r.wb.size(1) and not r.wb.addr(2));
       end if;
+      v.wb.lock := r.wb.lock2;
     end if;
 
 -- Generate new valid bits
@@ -1460,10 +1469,11 @@ begin
     end if;
 
     csnoopwe := (others => '0'); flushl := '0';
+    flushlv := (others => r.flush);
     if ((snoopwe and not mcdo.scanen) = '1') then csnoopwe := snhit; end if;
     if DSNOOPSEP then
       csnoopwe := csnoopwe or ctwrite;
-      if orv(snhit) = '1' then flushl := '1'; end if; -- flush tag on snoop hit
+      flushlv := flushlv or snhit; -- flush tag on snoop hit
     end if;
 
     if r.flush2 = '1' then
@@ -1498,7 +1508,7 @@ begin
       v.mmctrl1.bar := (others => '0');
       v.faddr := (others => '0');
       v.reqst := '0';
-      v.cache := '0'; v.wb.lock := '0';
+      v.cache := '0'; v.wb.lock := '0'; v.wb.lock2 := '0';
       v.wb.data1 := (others => '0'); v.wb.data2 := (others => '0');     
       v.noflush := '0'; v.mexc := '0';
     end if;
@@ -1507,7 +1517,6 @@ begin
     if not M_EN then v.mmctrl1 := mmctrl_type1_none; end if; -- kill MMU regs if not enabled
 
 -- Drive signals
-
     c <= v; cs <= vs;   -- register inputs
     cl <= vl;
 
@@ -1530,7 +1539,7 @@ begin
     dcrami.tenable   <= enable;         -- virtual tag ram enable
     dcrami.twrite    <= ctwrite;        -- virtual tag ram write (port 1)
     dcrami.tpwrite   <= ctpwrite;       -- virtual tag ram write (port 2)
-    dcrami.flush    <= r.flush or flushl;
+    dcrami.flush    <= flushlv;
     dcrami.senable <= senable;          -- physical tag ram enable
     dcrami.swrite  <= csnoopwe;         -- physical tag ram write
     dcrami.saddress(19 downto (OFFSET_HIGH - OFFSET_LOW +1)) <= 
@@ -1594,6 +1603,11 @@ begin
     else  dco.idle <= '0'; end if;
     dco.scanen  <= mcdo.scanen;
     dco.testen  <= mcdo.testen;
+    dco.cstat.cmiss  <= r.cmiss;
+    dco.cstat.chold  <= not r.holdn;
+    dco.cstat.tmiss  <= mmudco.tlbmiss;
+    dco.cstat.mhold  <= mhold;
+    dco.wbhold  <= wbhold;
     
     -- MMU
     mmudci.trans_op <= mmudci_trans_op;    

@@ -5,6 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -146,9 +147,9 @@ signal ddr3_odt        : std_logic_vector(0 downto 0);
 
 -- SPI flash
 signal spi_sel_n       : std_logic;
-signal spi_clk         : std_ulogic;
-signal spi_miso        : std_ulogic := '0';
-signal spi_simo        : std_ulogic;
+signal spi_clk         : std_logic;
+signal spi_miso        : std_logic := '0';
+signal spi_mosi        : std_logic;
 
 signal dsurst          : std_ulogic;
 signal errorn          : std_logic;
@@ -187,9 +188,10 @@ component leon3mp is
     reset           : in    std_ulogic;
     clk200p         : in    std_ulogic;       -- 200 MHz clock
     clk200n         : in    std_ulogic;       -- 200 MHz clock
---    spi_sel_n       : inout std_ulogic;
---    spi_clk         : out   std_ulogic;
---    spi_miso        : in    std_ulogic;
+    spi_sel_n       : inout std_ulogic;
+    spi_clk         : out   std_ulogic;
+    spi_miso        : in    std_ulogic;
+    spi_mosi        : out   std_ulogic;
     ddr3_dq         : inout std_logic_vector(63 downto 0);
     ddr3_dqs_p      : inout std_logic_vector(7 downto 0);
     ddr3_dqs_n      : inout std_logic_vector(7 downto 0);
@@ -216,7 +218,7 @@ component leon3mp is
     iic_sda         : inout std_ulogic;
     gtrefclk_p      : in    std_logic;
     gtrefclk_n      : in    std_logic;
-    phy_txclk      : out   std_logic;
+    phy_txclk       : out   std_logic;
     phy_txd         : out   std_logic_vector(3 downto 0);
     phy_txctl_txen  : out   std_ulogic;
     phy_rxd         : in    std_logic_vector(3 downto 0);
@@ -225,7 +227,11 @@ component leon3mp is
     phy_reset       : out   std_ulogic;
     phy_mdio        : inout std_logic;
     phy_mdc         : out   std_ulogic;
-    sfp_clock_mux   : out   std_logic_vector(1 downto 0)
+    sfp_clock_mux   : out   std_logic_vector(1 downto 0);
+    sdcard_spi_miso : in    std_logic;
+    sdcard_spi_mosi : out   std_logic;
+    sdcard_spi_cs_b : out   std_logic;
+    sdcard_spi_clk  : out   std_logic
    );
 end component;
 
@@ -261,9 +267,10 @@ begin
        reset           => rst,
        clk200p         => clk200p,
        clk200n         => clk200n,
---       spi_sel_n       => spi_sel_n,
---       spi_clk         => spi_clk,
---       spi_miso        => spi_miso,
+       spi_sel_n       => spi_sel_n,
+       spi_clk         => spi_clk,
+       spi_miso        => spi_miso,
+       spi_mosi        => spi_mosi,
        ddr3_dq         => ddr3_dq,
        ddr3_dqs_p      => ddr3_dqs_p,
        ddr3_dqs_n      => ddr3_dqs_n,
@@ -293,31 +300,36 @@ begin
        phy_txclk       => phy_gtxclk,
        phy_txd         => phy_txd(3 downto 0),
        phy_txctl_txen  => phy_txctl_txen,
-       phy_rxd         => phy_rxd(3 downto 0),
-       phy_rxctl_rxdv  => phy_rxctl_rxdv,
-       phy_rxclk       => phy_rxclk'delayed(1 ns),
+       phy_rxd         => phy_rxd(3 downto 0)'delayed(0 ns),
+       phy_rxctl_rxdv  => phy_rxctl_rxdv'delayed(0 ns),
+       phy_rxclk       => phy_rxclk'delayed(0 ns),
        phy_reset       => phy_reset,
        phy_mdio        => phy_mdio,
        phy_mdc         => phy_mdc,
-       sfp_clock_mux   => OPEN
+       sfp_clock_mux   => OPEN ,
+       sdcard_spi_miso => '1',
+       sdcard_spi_mosi => OPEN ,
+       sdcard_spi_cs_b => OPEN ,
+       sdcard_spi_clk  => OPEN
       );
 
---  spi_gen_model : if (CFG_SPICTRL_ENABLE = 0 and CFG_SPIMCTRL = 1) generate
---    spi0 : spi_flash
---      generic map (
---        ftype      => 3,
---        debug      => 0,
---        readcmd    => 16#0B#,
---        dummybyte  => 0,
---        dualoutput => 0)
---      port map (
---        sck             => spi_clk,
---        di              => spi_simo,
---        do              => spi_miso,
---        csn             => spi_sel_n,
---        sd_cmd_timeout  => '0',
---        sd_data_timeout => '0');
---  end generate;
+  -- SPI memory model
+  spi_gen_model : if (CFG_SPIMCTRL = 1) generate
+    spi0 : spi_flash
+      generic map (
+        ftype      => 3,
+        debug      => 0,
+        readcmd    => 16#0B#,
+        dummybyte  => 0,
+        dualoutput => 0)
+      port map (
+        sck             => spi_clk,
+        di              => spi_mosi,
+        do              => spi_miso,
+        csn             => spi_sel_n,
+        sd_cmd_timeout  => '0',
+        sd_data_timeout => '0');
+  end generate;
 
   -- Memory Models instantiations
   gen_mem_model : if (USE_MIG_INTERFACE_MODEL /= true) generate
@@ -398,7 +410,9 @@ begin
    iuerr : process
    begin
      wait for 210 us; -- This is for proper DDR3 behaviour durign init phase not needed durin simulation
-     wait on led(3);  -- DDR3 Memory Init ready
+     if (USE_MIG_INTERFACE_MODEL /= true) then
+       wait on led(3);  -- DDR3 Memory Init ready
+     end if;
      wait for 5000 ns;
      wait for 100 us;
      if to_x01(errorn) = '1' then wait on errorn; end if;

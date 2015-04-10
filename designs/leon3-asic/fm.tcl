@@ -17,13 +17,23 @@ if {$argc == 0} then {
   echo "Tech Library ${argv} has been selected by GRLIB"
   set err_tech_setup [catch {exec test -f ./grtechscripts/setup_${argv}.tcl}]
   if {${err_tech_setup} == "1"} {
-   echo "ERROR: No Tech Library Setup file for ${argv} has been found"
-   exit
+   set err_tech_setup [catch {exec test -f ./techscripts/setup_${argv}.tcl}]
+   if {${err_tech_setup} == "1"} {
+     echo "ERROR: No Tech Library Setup file for ${argv} has been found"
+     exit
+   } else {
+    set gr_tech_lib techscripts
+   }
+  } else {
+   set gr_tech_lib grtechscripts
   }
   set err_tech_timing [catch {exec test -f ./grtechscripts/timing_${argv}.tcl}]
   if {${err_tech_timing} == "1"} {
-   echo "ERROR: No Tech Library Timing file for ${argv} has been found"
-   exit
+   set err_tech_timing [catch {exec test -f ./techscripts/timing_${argv}.tcl}]
+   if {${err_tech_timing} == "1"} {
+     echo "ERROR: No Tech Library Timing file for ${argv} has been found"
+     exit
+   }
   }
 }
 
@@ -89,7 +99,7 @@ set hdlin_unresolved_modules black_box
 #
 
 # Read Tech Lib Files
-source ./grtechscripts/setup_${grtechlib}.tcl
+source ./${gr_tech_lib}/setup_${grtechlib}.tcl
 
 ########################################################################
 ########################################################################

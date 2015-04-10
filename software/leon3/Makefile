@@ -1,6 +1,7 @@
 VPATH=$(GRLIB)/software/leon3
-XCC=sparc-elf-gcc -I$(GRLIB)/software/leon3 $(BOPT)
-XAS=sparc-elf-gcc -c -I. -I$(GRLIB)/software/leon3 $(BOPT)
+XINC=-I$(GRLIB)/software/leon3 -I$(GRLIB)/software/l2c
+XCC=sparc-elf-gcc $(XINC) $(BOPT)
+XAS=sparc-elf-gcc -c -I. $(XINC) $(BOPT)
 XAR=sparc-elf-ar
 XCFLAGS=-O2 -g -msoft-float
 ifeq ("$(LDFLAGS)","")
@@ -17,9 +18,9 @@ PROGS = report_device apbuart divtest multest regtest \
 	i2cslv i2c l2c \
 	grusbdc rt_1553 brm_1553 pcif grtc grtm satcan memscrub_test \
 	ftahbram ftlib ftsrctrl ftmctrl bch l2timers l2irqctrl leon2_test \
-	grpwm grhcan brm grusbhc leon4_test base_test4 griommu l4stat ftddr2spa \
+	grpwm grhcan brm grusbhc leon4_test base_test4 griommu l34stat ftddr2spa \
 	router greth_throughput grpci2 gr1553b_test spwrouter \
-	cgtest privtest privtest_asm mmudmap
+	cgtest privtest privtest_asm mmudmap leon4_tsc dpr_test mem_test grspwtdp
 
 FPROGS=$(shell for i in $(PROGS); do \
 			if [ -r $(GRLIB)/software/leon3/$$i.c -o -r $(GRLIB)/software/leon3/$$i.S ]; then \
@@ -28,8 +29,12 @@ FPROGS=$(shell for i in $(PROGS); do \
 		done; \
 		if [ -r $(GRLIB)/software/greth/greth_api.c ]; then \
 			echo greth_api; \
+		fi; \
+		if [ -r $(GRLIB)/software/l2c/l2capi.c ]; then \
+			echo l2capi; \
 		fi)
 FPROGS+=$(EXTRA_PROGS)
+VPATH+=$(GRLIB)/software/l2c
 
 OFILES = $(FPROGS:%=%.o)
 
@@ -42,6 +47,12 @@ OFILES = $(FPROGS:%=%.o)
 fpu.o: fpu.c
 	$(XCC) -ffast-math -O3 -c  $<
 
+l2c.o: l2c.c
+	$(XCC) -O2 -g -Wall -c -mcpu=v8  $<
+
+l2capi.o: l2capi.c
+	$(XCC) -O2 -g -c -mcpu=v8  $<
+
 multest.o: multest.c
 	$(XCC) -O2 -c -mcpu=v8  $<
 
@@ -53,6 +64,15 @@ greth_api.o : $(GRLIB)/software/greth/greth_api.c
 
 cgtest.o : cgtest.c
 	$(XCC) -c  $<
+
+gptimer.o : gptimer.c gptimer.h gpio.h
+	$(XCC) -c -g -O2 $<
+
+grspwtdp.o : grspwtdp.c grspwtdp.h grspwtdp-regs.h
+	$(XCC) -c -g -Wall -O2 $<
+
+dpr_test.o: dpr_test.c
+	$(XCC) -O0 -g -msoft-float -c  $<
 
 #mptest.o: mptest.c
 #	$(XCC) -msoft-float -O -c  $<
@@ -70,7 +90,7 @@ prom.exe: prom.o
 	$(XCC) -nostdlib -Tlinkprom -N -L./ -nostartfiles -o prom.exe $<
 
 prom.srec: prom.exe
-	sparc-elf-objcopy -O srec prom.exe prom.srec
+	sparc-elf-objcopy -O srec $(EXTRA_PROM) prom.exe prom.srec
 
 systest.exe: systest.c lib3tests.a
 	$(XCC) $(XCFLAGS) systest.c $(XLDFLAGS) -o systest.exe

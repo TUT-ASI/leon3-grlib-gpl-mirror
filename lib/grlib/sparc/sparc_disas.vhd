@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -262,9 +263,10 @@ begin
 end;
 
 function branchop(insn : pc_op_type) return string is
-  variable simm : std_logic_vector(31 downto 0);
+  variable slice : std_logic_vector(28 downto 25);
 begin
-  case insn.op(28 downto 25) is
+  slice := insn.op(28 downto 25);
+  case slice is
   when "0000" => return("n");
   when "0001" => return("e");
   when "0010" => return("le");
@@ -286,9 +288,10 @@ begin
 end;
 
 function fbranchop(insn : pc_op_type) return string is
-  variable simm : std_logic_vector(31 downto 0);
+  variable slice : std_logic_vector(28 downto 25);
 begin
-  case insn.op(28 downto 25) is
+  slice := insn.op(28 downto 25);
+  case slice is
   when "0000" => return("n");
   when "0001" => return("ne");
   when "0010" => return("lg");

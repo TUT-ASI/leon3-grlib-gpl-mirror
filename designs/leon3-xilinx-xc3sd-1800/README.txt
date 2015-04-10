@@ -3,9 +3,6 @@ Spartan-3A DSP 1800A Edition
 
 http://www.xilinx.com/s3adspstarter
 
-Synplify version 2010.03 or ISE-11i04 XST is preferred for synthesis, 
-since earlier versions have shown tendencies to create incorrect results.
-Do not set the UART FIFO to 1, this might break synplify though ...
 
 Design specifics:
 

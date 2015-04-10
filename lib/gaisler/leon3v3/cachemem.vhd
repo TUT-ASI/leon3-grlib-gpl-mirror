@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -234,7 +235,7 @@ begin
         vdtdatain(i)(DTLRR_BIT_POS) := crami.dcramin.tag(i)(CTAG_LRRPOS);
       end if;
       vdtdatain(i)(DTAG_BITS-1 downto 0) := crami.dcramin.tag(i)(TAG_HIGH downto DTAG_LOW) & crami.dcramin.tag(i)(dlinesize-1 downto 0);
-      if (crami.dcramin.flush = '1') then
+      if (crami.dcramin.flush(i) = '1') then
         vdtdatain(i) := (others => '0');
         vdtdatain(i)(DTAG_BITS-1 downto DTAG_BITS-8) :=  X"FF";
         vdtdatain(i)(DTAG_BITS-9 downto DTAG_BITS-10) :=  conv_std_logic_vector(i,2);
@@ -256,7 +257,7 @@ begin
     for i in 0 to DSETS-1 loop
       vdtdatain3(i) := (others => '0');
       vdtdatain3(i)(DTAG_BITS-1 downto DTAG_BITS-DPTAG_BITS) := crami.dcramin.ptag(i)(TAG_HIGH downto DTAG_LOW);
-      if DSNOOPSEP and (crami.dcramin.flush = '1') then
+      if DSNOOPSEP and (crami.dcramin.flush(i) = '1') then
         vdtdatain3(i) := (others => '0');
         vdtdatain3(i)(DTAG_BITS-1 downto DTAG_BITS-8) :=  X"F3";
         vdtdatain3(i)(DTAG_BITS-9 downto DTAG_BITS-10) :=  conv_std_logic_vector(i,2);

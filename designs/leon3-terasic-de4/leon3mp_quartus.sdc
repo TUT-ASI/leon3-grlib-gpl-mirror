@@ -41,8 +41,8 @@ create_clock -period  10.0 PLL_CLKIN_p
 derive_pll_clocks
 
 set ahbclks [ get_clocks { clkgen0* } ]
-set eth0clks [ get_clocks { \eth0:bridge0|* } ]
-#set eth1clks [ get_clocks { \eth1:bridge1|* } ]
+set eth0clks [ get_clocks { \eth0:e0|pcs0|* } ]
+set eth1clks [ get_clocks { \eth1:e1|pcs0|* } ]
 
 constrain_cdc $ahbclks 10.0 $eth0clks 8.0
-#constrain_cdc $ahbclks 10.0 $eth1clks 8.0
+constrain_cdc $ahbclks 10.0 $eth1clks 8.0

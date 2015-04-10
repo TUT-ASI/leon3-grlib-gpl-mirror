@@ -8,6 +8,8 @@
 #define CONFIG_SYN_TECH dare
 #elif defined CONFIG_SYN_SAED32
 #define CONFIG_SYN_TECH saed32
+#elif defined CONFIG_SYN_RHS65
+#define CONFIG_SYN_TECH rhs65
 #elif defined CONFIG_SYN_ATC18
 #define CONFIG_SYN_TECH atc18s
 #elif defined CONFIG_SYN_ATC18RHA
@@ -34,10 +36,6 @@
 #define CONFIG_SYN_TECH cyclone3
 #elif defined CONFIG_SYN_CYCLONEIV
 #define CONFIG_SYN_TECH cyclone3
-#elif defined CONFIG_SYN_EASIC45
-#define CONFIG_SYN_TECH easic45
-#elif defined CONFIG_SYN_EASIC90
-#define CONFIG_SYN_TECH easic90
 #elif defined CONFIG_SYN_IHP25
 #define CONFIG_SYN_TECH ihp25
 #elif defined CONFIG_SYN_IHP25RH
@@ -60,6 +58,8 @@
 #define CONFIG_SYN_TECH apa3l
 #elif defined CONFIG_SYN_IGLOO
 #define CONFIG_SYN_TECH apa3
+#elif defined CONFIG_SYN_IGLOO2
+#define CONFIG_SYN_TECH igloo2
 #elif defined CONFIG_SYN_FUSION
 #define CONFIG_SYN_TECH actfus
 #elif defined CONFIG_SYN_SPARTAN2
@@ -124,6 +124,8 @@
 #define CFG_RAM_TECH dare
 #elif defined CONFIG_MEM_SAED32
 #define CFG_RAM_TECH saed32
+#elif defined CONFIG_MEM_RHS65
+#define CFG_RAM_TECH rhs65
 #elif defined CONFIG_MEM_VIRAGE
 #define CFG_RAM_TECH memvirage
 #elif defined CONFIG_MEM_ARTISAN
@@ -179,6 +181,8 @@
 #define CFG_CLK_TECH rhumc
 #elif defined CONFIG_CLK_SAED32
 #define CFG_CLK_TECH saed32
+#elif defined CONFIG_CLK_RHS65
+#define CFG_CLK_TECH rhs65
 #elif defined CONFIG_CLK_DARE
 #define CFG_CLK_TECH dare
 #elif defined CONFIG_CLK_EASIC45
@@ -314,8 +318,6 @@
 
 #if defined CONFIG_FPU_GRFPU
 #define CONFIG_FPU (1+CONFIG_FPU_GRFPU_MUL)
-#elif defined CONFIG_FPU_MEIKO
-#define CONFIG_FPU 15
 #elif defined CONFIG_FPU_GRFPULITE
 #define CONFIG_FPU (8+CONFIG_FPU_GRFPC)
 #else
@@ -634,6 +636,18 @@
 #define CFG_DSU_ATB 0
 #endif
 
+#ifndef CONFIG_DSU_ITRACE_2P
+#define CONFIG_DSU_ITRACE_2P 0
+#endif
+
+#if defined CONFIG_DSU_ASTAT
+#define CFG_DSU_AHBPF 2
+#elif defined CONFIG_DSU_AFILT
+#define CFG_DSU_AHBPF 1
+#else
+#define CFG_DSU_AHBPF 0
+#endif
+
 #ifndef CONFIG_LEON3FT_EN
 #define CONFIG_LEON3FT_EN 0
 #endif
@@ -686,7 +700,13 @@
 #define CONFIG_IU_DISAS_NET 0
 #endif
 
+#ifndef CONFIG_NP_ASI
+#define CONFIG_NP_ASI 0
+#endif
 
+#ifndef CONFIG_WRPSR
+#define CONFIG_WRPSR 0
+#endif
 #ifndef CONFIG_AHB_SPLIT
 #define CONFIG_AHB_SPLIT 0
 #endif
@@ -933,79 +953,146 @@
 #ifndef CONFIG_CAN_FT
 #define CONFIG_CAN_FT 0
 #endif
-#if defined CONFIG_PCI_SIMPLE_TARGET
-#define CFG_PCITYPE 1
-#elif defined CONFIG_PCI_MASTER_TARGET_DMA
-#define CFG_PCITYPE 3
-#elif defined CONFIG_PCI_MASTER_TARGET
-#define CFG_PCITYPE 2
+#if defined CONFIG_GRPCI2_MASTER
+#define CFG_GRPCI2_MASTEREN 1
 #else
-#define CFG_PCITYPE 0
+#define CFG_GRPCI2_MASTEREN 0
 #endif
 
-#ifndef CONFIG_PCI_VENDORID
-#define CONFIG_PCI_VENDORID 0
-#endif
-
-#ifndef CONFIG_PCI_DEVICEID
-#define CONFIG_PCI_DEVICEID 0
-#endif
-
-#ifndef CONFIG_PCI_REVID
-#define CONFIG_PCI_REVID 0
-#endif
-
-#if defined CONFIG_PCI_FIFO0
-#define CFG_PCIFIFO 8
-#define CFG_PCI_ENFIFO 0
-#elif defined CONFIG_PCI_FIFO16
-#define CFG_PCIFIFO 16
-#elif defined CONFIG_PCI_FIFO32
-#define CFG_PCIFIFO 32
-#elif defined CONFIG_PCI_FIFO64
-#define CFG_PCIFIFO 64
-#elif defined CONFIG_PCI_FIFO128
-#define CFG_PCIFIFO 128
-#elif defined CONFIG_PCI_FIFO256
-#define CFG_PCIFIFO 256
+#if defined CONFIG_GRPCI2_TARGET
+#define CFG_GRPCI2_TARGETEN 1
 #else
-#define CFG_PCIFIFO 8
+#define CFG_GRPCI2_TARGETEN 0
 #endif
 
-#ifndef CFG_PCI_ENFIFO
-#define CFG_PCI_ENFIFO 1
-#endif
-
-
-#ifndef CONFIG_PCI_ARBITER_APB
-#define CONFIG_PCI_ARBITER_APB 0
-#endif
-
-#ifndef CONFIG_PCI_ARBITER
-#define CONFIG_PCI_ARBITER 0
-#endif
-
-#ifndef CONFIG_PCI_ARBITER_NREQ
-#define CONFIG_PCI_ARBITER_NREQ 4
-#endif
-
-#ifndef CONFIG_PCI_TRACE
-#define CONFIG_PCI_TRACE 0
-#endif
-
-#if defined CONFIG_PCI_TRACE512
-#define CFG_PCI_TRACEBUF 512
-#elif defined CONFIG_PCI_TRACE1024
-#define CFG_PCI_TRACEBUF 1024
-#elif defined CONFIG_PCI_TRACE2048
-#define CFG_PCI_TRACEBUF 2048
-#elif defined CONFIG_PCI_TRACE4096
-#define CFG_PCI_TRACEBUF 4096
+#if defined CONFIG_GRPCI2_DMA
+#define CFG_GRPCI2_DMAEN 1
 #else
-#define CFG_PCI_TRACEBUF 256
+#define CFG_GRPCI2_DMAEN 0
 #endif
 
+#ifndef CONFIG_GRPCI2_VENDORID
+#define CONFIG_GRPCI2_VENDORID 0
+#endif
 
+#ifndef CONFIG_GRPCI2_DEVICEID
+#define CONFIG_GRPCI2_DEVICEID 0
+#endif
+
+#ifndef CONFIG_GRPCI2_CLASS
+#define CONFIG_GRPCI2_CLASS 0
+#endif
+
+#ifndef CONFIG_GRPCI2_REVID
+#define CONFIG_GRPCI2_REVID 0
+#endif
+
+#ifndef CONFIG_GRPCI2_CAPPOINT
+#define CONFIG_GRPCI2_CAPPOINT 40
+#endif
+
+#ifndef CONFIG_GRPCI2_NEXTCAPPOINT
+#define CONFIG_GRPCI2_NEXTCAPPOINT 0
+#endif
+
+#ifndef CONFIG_GRPCI2_BAR0
+#define CONFIG_GRPCI2_BAR0 0
+#endif
+#ifndef CONFIG_GRPCI2_BAR1
+#define CONFIG_GRPCI2_BAR1 0
+#endif
+#ifndef CONFIG_GRPCI2_BAR2
+#define CONFIG_GRPCI2_BAR2 0
+#endif
+#ifndef CONFIG_GRPCI2_BAR3
+#define CONFIG_GRPCI2_BAR3 0
+#endif
+#ifndef CONFIG_GRPCI2_BAR4
+#define CONFIG_GRPCI2_BAR4 0
+#endif
+#ifndef CONFIG_GRPCI2_BAR5
+#define CONFIG_GRPCI2_BAR5 0
+#endif
+
+#if defined CONFIG_GRPCI2_FIFO8
+#define CFG_GRPCI2_FIFO 3
+#elif defined CONFIG_GRPCI2_FIFO16
+#define CFG_GRPCI2_FIFO 4
+#elif defined CONFIG_GRPCI2_FIFO32
+#define CFG_GRPCI2_FIFO 5
+#elif defined CONFIG_GRPCI2_FIFO64
+#define CFG_GRPCI2_FIFO 6
+#elif defined CONFIG_GRPCI2_FIFO128
+#define CFG_GRPCI2_FIFO 7
+#else
+#define CFG_GRPCI2_FIFO 3
+#endif
+
+#if defined CONFIG_GRPCI2_FIFOCNT1
+#define CFG_GRPCI2_FIFOCNT 1
+#elif defined CONFIG_GRPCI2_FIFOCNT2
+#define CFG_GRPCI2_FIFOCNT 2
+#elif defined CONFIG_GRPCI2_FIFOCNT3
+#define CFG_GRPCI2_FIFOCNT 3
+#elif defined CONFIG_GRPCI2_FIFOCNT4
+#define CFG_GRPCI2_FIFOCNT 4
+#else
+#define CFG_GRPCI2_FIFOCNT 2
+#endif
+
+#if defined CONFIG_GRPCI2_ENDIAN
+#define CFG_GRPCI2_LENDIAN 1
+#else
+#define CFG_GRPCI2_LENDIAN 0
+#endif
+
+#if defined CONFIG_GRPCI2_DINT
+#define CFG_GRPCI2_DINT 1
+#else
+#define CFG_GRPCI2_DINT 0
+#endif
+#ifndef CONFIG_GRPCI2_DINTMASK
+#define CONFIG_GRPCI2_DINTMASK 0
+#endif
+
+#if defined CONFIG_GRPCI2_HINT
+#define CFG_GRPCI2_HINT 1
+#else
+#define CFG_GRPCI2_HINT 0
+#endif
+#ifndef CONFIG_GRPCI2_HINTMASK
+#define CONFIG_GRPCI2_HINTMASK 0
+#endif
+
+#if defined CONFIG_GRPCI2_TRACE0
+#define CFG_GRPCI2_TRACEDEPTH 0
+#elif defined CONFIG_GRPCI2_TRACE256
+#define CFG_GRPCI2_TRACEDEPTH 256
+#elif defined CONFIG_GRPCI2_TRACE512
+#define CFG_GRPCI2_TRACEDEPTH 512
+#elif defined CONFIG_GRPCI2_TRACE1024
+#define CFG_GRPCI2_TRACEDEPTH 1024
+#elif defined CONFIG_GRPCI2_TRACE2048
+#define CFG_GRPCI2_TRACEDEPTH 2014
+#elif defined CONFIG_GRPCI2_TRACE4096
+#define CFG_GRPCI2_TRACEDEPTH 4096
+#else
+#define CFG_GRPCI2_TRACEDEPTH 0
+#endif
+
+#ifndef CONFIG_GRPCI2_TRACEAPB
+#define CONFIG_GRPCI2_TRACEAPB 0
+#endif
+
+#if defined CONFIG_GRPCI2_BYPASS
+#define CFG_GRPCI2_INBYPASS 1
+#else
+#define CFG_GRPCI2_INBYPASS 0
+#endif
+
+#ifndef CONFIG_GRPCI2_EXTCFG
+#define CONFIG_GRPCI2_EXTCFG 0
+#endif
 #ifndef CONFIG_UART1_ENABLE
 #define CONFIG_UART1_ENABLE 0
 #endif

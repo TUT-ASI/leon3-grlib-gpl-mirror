@@ -1,7 +1,5 @@
 
 
-
-
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
 -- Copyright (C) 2009 Aeroflex Gaisler
@@ -30,7 +28,7 @@ package config is
   constant CFG_CLK_NOFB : integer := 0;
 -- LEON3 processor core
   constant CFG_LEON3 : integer := 1;
-  constant CFG_NCPU : integer := (4);
+  constant CFG_NCPU : integer := (1);
   constant CFG_NWIN : integer := (8);
   constant CFG_V8 : integer := 16#32# + 4*0;
   constant CFG_MAC : integer := 0;
@@ -70,8 +68,9 @@ package config is
   constant CFG_TLB_REP : integer := 0;
   constant CFG_MMU_PAGE : integer := 0;
   constant CFG_DSU : integer := 1;
-  constant CFG_ITBSZ : integer := 2;
+  constant CFG_ITBSZ : integer := 2 + 64*0;
   constant CFG_ATBSZ : integer := 2;
+  constant CFG_AHBPF : integer := 0;
   constant CFG_LEON3FT_EN : integer := 0;
   constant CFG_IUFT_EN : integer := 0;
   constant CFG_FPUFT_EN : integer := 0;
@@ -81,6 +80,8 @@ package config is
   constant CFG_LEON3_NETLIST: integer := 0;
   constant CFG_DISAS : integer := 0 + 0;
   constant CFG_PCLOW : integer := 2;
+  constant CFG_NP_ASI : integer := 0;
+  constant CFG_WRPSR : integer := 0;
 -- L2 Cache
   constant CFG_L2_EN : integer := 0;
   constant CFG_L2_SIZE : integer := 32;
@@ -110,8 +111,8 @@ package config is
 -- JTAG based DSU interface
   constant CFG_AHB_JTAG : integer := 1;
 -- Ethernet DSU
-  constant CFG_DSU_ETH : integer := 0 + 0 + 0;
-  constant CFG_ETH_BUF : integer := 1;
+  constant CFG_DSU_ETH : integer := 1 + 1 + 1;
+  constant CFG_ETH_BUF : integer := 2;
   constant CFG_ETH_IPM : integer := 16#C0A8#;
   constant CFG_ETH_IPL : integer := 16#0033#;
   constant CFG_ETH_ENM : integer := 16#020000#;
@@ -135,13 +136,13 @@ package config is
   constant CFG_AHBRADDR : integer := 16#A00#;
   constant CFG_AHBRPIPE : integer := 0;
 -- Gaisler Ethernet core
-  constant CFG_GRETH : integer := 0;
+  constant CFG_GRETH : integer := 1;
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 8;
 
 
 -- Gaisler Ethernet core
-  constant CFG_GRETH2 : integer := 0;
+  constant CFG_GRETH2 : integer := 1;
   constant CFG_GRETH21G : integer := 0;
   constant CFG_ETH2_FIFO : integer := 8;
 
@@ -183,5 +184,5 @@ package config is
   constant CFG_GRGPIO_WIDTH : integer := (32);
 
 -- GRLIB debugging
-  constant CFG_DUART : integer := 1;
+  constant CFG_DUART : integer := 0;
 end;

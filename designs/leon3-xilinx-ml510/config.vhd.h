@@ -2,6 +2,7 @@
   constant CFG_FABTECH 	: integer := CONFIG_SYN_TECH;
   constant CFG_MEMTECH  : integer := CFG_RAM_TECH;
   constant CFG_PADTECH 	: integer := CFG_PAD_TECH;
+  constant CFG_TRANSTECH	: integer := CFG_TRANS_TECH;
   constant CFG_NOASYNC 	: integer := CONFIG_SYN_NO_ASYNC;
   constant CFG_SCAN 	: integer := CONFIG_SYN_SCAN;
 
@@ -46,7 +47,7 @@
   constant CFG_DLINE 	: integer := CFG_DLINE_SZ;
   constant CFG_DREPL 	: integer := CFG_DCACHE_ALGORND;
   constant CFG_DLOCK 	: integer := CONFIG_DCACHE_LOCK;
-  constant CFG_DSNOOP	: integer := CONFIG_DCACHE_SNOOP + CONFIG_DCACHE_SNOOP_FAST + 4*CONFIG_DCACHE_SNOOP_SEPTAG;
+  constant CFG_DSNOOP	: integer := CONFIG_DCACHE_SNOOP*2 + 4*CONFIG_DCACHE_SNOOP_SEPTAG;
   constant CFG_DFIXED	: integer := 16#CONFIG_CACHE_FIXED#;
   constant CFG_DLRAMEN	: integer := CONFIG_DCACHE_LRAM;
   constant CFG_DLRAMADDR: integer := 16#CONFIG_DCACHE_LRSTART#;
@@ -58,8 +59,9 @@
   constant CFG_TLB_REP  : integer := CONFIG_TLB_REP;
   constant CFG_MMU_PAGE : integer := CONFIG_MMU_PAGE;
   constant CFG_DSU   	: integer := CONFIG_DSU_ENABLE;
-  constant CFG_ITBSZ 	: integer := CFG_DSU_ITB;
+  constant CFG_ITBSZ 	: integer := CFG_DSU_ITB + 64*CONFIG_DSU_ITRACE_2P;
   constant CFG_ATBSZ 	: integer := CFG_DSU_ATB;
+  constant CFG_AHBPF    : integer := CFG_DSU_AHBPF;
   constant CFG_LEON3FT_EN   : integer := CONFIG_LEON3FT_EN;
   constant CFG_IUFT_EN      : integer := CONFIG_IUFT_EN;
   constant CFG_FPUFT_EN     : integer := CONFIG_FPUFT;
@@ -69,6 +71,8 @@
   constant CFG_LEON3_NETLIST: integer := CONFIG_LEON3_NETLIST;	
   constant CFG_DISAS    : integer := CONFIG_IU_DISAS + CONFIG_IU_DISAS_NET;
   constant CFG_PCLOW    : integer := CFG_DEBUG_PC32;
+  constant CFG_NP_ASI   : integer := CONFIG_NP_ASI;
+  constant CFG_WRPSR   : integer := CONFIG_WRPSR;
 
 -- AMBA settings
   constant CFG_DEFMST  	  : integer := CONFIG_AHB_DEFMST;
@@ -151,6 +155,11 @@
   constant CFG_GRETH_FT     : integer := CONFIG_GRETH_FT;
   constant CFG_GRETH_EDCLFT : integer := CONFIG_GRETH_EDCLFT;
 #endif
+-- Gaisler Ethernet core
+  constant CFG_GRETH2 	 : integer := CONFIG_GRETH2_ENABLE;
+  constant CFG_GRETH21G	 : integer := CONFIG_GRETH2_GIGA;
+  constant CFG_ETH2_FIFO : integer := CFG_GRETH2_FIFO;
+
 -- UART 1
   constant CFG_UART1_ENABLE : integer := CONFIG_UART1_ENABLE;
   constant CFG_UART1_FIFO   : integer := CFG_UA1_FIFO;
@@ -174,6 +183,11 @@
   constant CFG_GRGPIO_IMASK  : integer := 16#CONFIG_GRGPIO_IMASK#;
   constant CFG_GRGPIO_WIDTH  : integer := CONFIG_GRGPIO_WIDTH;
 
+-- LEON3 Statistics Module
+  constant CFG_L3S_ENABLE   : integer := CONFIG_L3S_ENABLE;
+  constant CFG_L3S_CNT      : integer := CONFIG_L3S_CNT;
+  constant CFG_L3S_NMAX     : integer := CONFIG_L3S_NMAX;
+
 -- I2C master
   constant CFG_I2C_ENABLE : integer := CONFIG_I2C_ENABLE;
 
@@ -191,21 +205,37 @@
   constant CFG_SPICTRL_SYNCRAM : integer := CONFIG_SPICTRL_SYNCRAM;
   constant CFG_SPICTRL_FT      : integer := CONFIG_SPICTRL_FT;
 
--- PCI interface
-  constant CFG_PCI     	: integer := CFG_PCITYPE;
-  constant CFG_PCIVID   : integer := 16#CONFIG_PCI_VENDORID#;
-  constant CFG_PCIDID   : integer := 16#CONFIG_PCI_DEVICEID#;
-  constant CFG_PCIDEPTH : integer := CFG_PCIFIFO;
-  constant CFG_PCI_MTF  : integer := CFG_PCI_ENFIFO;
-
+-- GRPCI2 interface
+  constant CFG_GRPCI2_MASTER    : integer := CFG_GRPCI2_MASTEREN;
+  constant CFG_GRPCI2_TARGET    : integer := CFG_GRPCI2_TARGETEN;
+  constant CFG_GRPCI2_DMA       : integer := CFG_GRPCI2_DMAEN;
+  constant CFG_GRPCI2_VID       : integer := 16#CONFIG_GRPCI2_VENDORID#;
+  constant CFG_GRPCI2_DID       : integer := 16#CONFIG_GRPCI2_DEVICEID#;
+  constant CFG_GRPCI2_CLASS     : integer := 16#CONFIG_GRPCI2_CLASS#;
+  constant CFG_GRPCI2_RID       : integer := 16#CONFIG_GRPCI2_REVID#;
+  constant CFG_GRPCI2_CAP       : integer := 16#CONFIG_GRPCI2_CAPPOINT#;
+  constant CFG_GRPCI2_NCAP      : integer := 16#CONFIG_GRPCI2_NEXTCAPPOINT#;
+  constant CFG_GRPCI2_BAR0      : integer := CONFIG_GRPCI2_BAR0;
+  constant CFG_GRPCI2_BAR1      : integer := CONFIG_GRPCI2_BAR1;
+  constant CFG_GRPCI2_BAR2      : integer := CONFIG_GRPCI2_BAR2;
+  constant CFG_GRPCI2_BAR3      : integer := CONFIG_GRPCI2_BAR3;
+  constant CFG_GRPCI2_BAR4      : integer := CONFIG_GRPCI2_BAR4;
+  constant CFG_GRPCI2_BAR5      : integer := CONFIG_GRPCI2_BAR5;
+  constant CFG_GRPCI2_FDEPTH    : integer := CFG_GRPCI2_FIFO;
+  constant CFG_GRPCI2_FCOUNT    : integer := CFG_GRPCI2_FIFOCNT;
+  constant CFG_GRPCI2_ENDIAN    : integer := CFG_GRPCI2_LENDIAN;
+  constant CFG_GRPCI2_DEVINT    : integer := CFG_GRPCI2_DINT;
+  constant CFG_GRPCI2_DEVINTMSK : integer := 16#CONFIG_GRPCI2_DINTMASK#;
+  constant CFG_GRPCI2_HOSTINT   : integer := CFG_GRPCI2_HINT;
+  constant CFG_GRPCI2_HOSTINTMSK: integer := 16#CONFIG_GRPCI2_HINTMASK#;
+  constant CFG_GRPCI2_TRACE     : integer := CFG_GRPCI2_TRACEDEPTH;
+  constant CFG_GRPCI2_TRACEAPB  : integer := CONFIG_GRPCI2_TRACEAPB;
+  constant CFG_GRPCI2_BYPASS    : integer := CFG_GRPCI2_INBYPASS;
+  constant CFG_GRPCI2_EXTCFG    : integer := CONFIG_GRPCI2_EXTCFG;
 -- PCI arbiter
   constant CFG_PCI_ARB  : integer := CONFIG_PCI_ARBITER;
   constant CFG_PCI_ARBAPB : integer := CONFIG_PCI_ARBITER_APB;
   constant CFG_PCI_ARB_NGNT : integer := CONFIG_PCI_ARBITER_NREQ;
-
--- PCI trace buffer
-  constant CFG_PCITBUFEN: integer := CONFIG_PCI_TRACE;
-  constant CFG_PCITBUF  : integer := CFG_PCI_TRACEBUF;
 
 -- SVGA controller
   constant CFG_SVGA_ENABLE : integer := CONFIG_SVGA_ENABLE;

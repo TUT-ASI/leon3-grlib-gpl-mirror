@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -45,7 +46,14 @@ package config_types is
   -- Use asynchronous reset, with this option enabled all registers will be
   -- reset using asynchronous reset (within IP cores that support this).
   constant grlib_async_reset_enable      : integer := 5;
+  -- Disable automatic ECC config in syncram_(2p)ft
+  constant grlib_syncramft_autosel_disable : integer := 6;
+  -- Enable (sim only) self-checking modules in syncram/_2p/_dp
+  constant grlib_syncram_selftest_enable : integer := 7;
+  -- Disable testoen control even if scantest enabled (for using external boundary
+  -- scan or other test logic)
+  constant grlib_external_testoen        : integer := 8;
 
-  type grlib_config_array_type is array (0 to 6) of integer;
-  
+  type grlib_config_array_type is array (0 to 9) of integer;
+
 end;

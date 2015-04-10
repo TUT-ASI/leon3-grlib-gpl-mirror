@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -63,6 +64,14 @@ package ahb2mig_series7_pkg is
     datawidth : integer)
     return integer;
 
+ function nbrmigcmds16 (
+    hwrite    : std_logic;
+    hsize     : std_logic_vector;
+    htrans    : std_logic_vector;
+    step      : unsigned;
+    datawidth : integer)
+    return integer;
+
  function reversebyte (
     data : std_logic_vector)
     return std_logic_vector;
@@ -77,7 +86,24 @@ package ahb2mig_series7_pkg is
     )
     return unsigned;
 
+  -- Added in order to make it working for 16-bit memory (only with 32-bit bus)
+  function ahbselectdatanoreplicastep16 (
+    haddr : std_logic_vector(7 downto 2);
+    hsize : std_logic_vector(2 downto 0)
+    )
+    return unsigned;
+
   function ahbselectdatanoreplicaoutput (
+    haddr : std_logic_vector(7 downto 0);
+    counter : unsigned(31 downto 0);
+    hsize : std_logic_vector(2 downto 0);
+    rdbuffer : unsigned;
+    wr_count : unsigned;
+    replica : boolean)
+    return std_logic_vector;
+
+  -- Added in order to make it working for 16-bit memory (only with 32-bit bus)
+  function ahbselectdatanoreplicaoutput16 (
     haddr : std_logic_vector(7 downto 0);
     counter : unsigned(31 downto 0);
     hsize : std_logic_vector(2 downto 0);
@@ -167,11 +193,37 @@ package body ahb2mig_series7_pkg is
 
 
     else
-       ret := to_integer(shift_right(step,4)) + 1;
+      ret := to_integer(shift_right(step,4)) + 1;
     end if;
 
     return ret;
   end function nbrmigcmds;
+
+  function nbrmigcmds16(
+  hwrite    : std_logic;
+  hsize     : std_logic_vector;
+  htrans    : std_logic_vector;
+  step      : unsigned;
+  datawidth : integer)
+  return integer is
+  variable ret : integer;
+  begin
+    if (hwrite = '0') then
+      if (hsize = HSIZE_WORD) then
+        ret := 2;
+      else
+        ret := 1;
+      end if;
+
+      if (htrans /= HTRANS_SEQ) then
+        ret := 1;
+      end if;
+    else
+       ret := to_integer(shift_right(step,2)) + 1;
+    end if;
+
+    return ret;
+  end function nbrmigcmds16;
 
   -- Reverses byte order.
   function reversebyte(
@@ -347,6 +399,18 @@ package body ahb2mig_series7_pkg is
     return ret;
   end ahbselectdatanoreplicastep;
 
+  function ahbselectdatanoreplicastep16 (
+    haddr : std_logic_vector(7 downto 2);
+    hsize : std_logic_vector(2 downto 0))
+    return unsigned is
+    variable ret   : unsigned(31 downto 0);
+  begin  -- ahbselectdatanoreplicastep
+
+    ret := resize(unsigned(haddr(3 downto 2)),ret'length);
+
+    return ret;
+  end ahbselectdatanoreplicastep16;
+
   function ahbselectdatanoreplicamask (
     haddr : std_logic_vector(6 downto 0);
     hsize : std_logic_vector(2 downto 0))
@@ -476,49 +540,94 @@ package body ahb2mig_series7_pkg is
     variable offset : unsigned(31 downto 0);
     variable steps : unsigned(31 downto 0);
     variable stepsint : natural;
+    variable hstart_offset : unsigned(31 downto 0);
+    
+    variable byteOffset   : unsigned(31 downto 0);
+    variable rdbufferByte : unsigned(AHBDW-1 downto 0);
+    variable hdataByte    : std_logic_vector(AHBDW-1 downto 0);
+    
   begin  -- ahbselectdatanoreplicaoutput
 
     ret := (others => '0');
+
+    --hstart_offset := (others => '0');
+    --synopsys synthesis_off
+    --Print("INFO: HADDR " & tost(haddr));
+    --Print("INFO: hsize " & tost(hsize));
+    --synopsys synthesis_on
+  
+    --byteOffset := shift_left( resize(unsigned(haddr(5 downto 0)),byteOffset'length) ,3);
+    --rdbufferByte := resize(shift_right(rdbuffer,to_integer(byteOffset)),rdbufferByte'length);
+    --hdataByte := std_logic_vector(rdbufferByte(AHBDW-1 downto 0));
+    
+    --Print("INFO: **> byteOffset " & tost(to_integer(byteOffset)));
+    --Print("INFO: **> hdataByte " & tost(hdataByte));
 
     case hsize is
        when HSIZE_4WORD =>
             offset := resize((unsigned(haddr(5 downto 4))&"0000000"),offset'length);
             steps := resize(unsigned(wr_count(wr_count'length-1 downto 0)&"0000000"),steps'length) + offset;
+            hstart_offset := (others => '0');
        when HSIZE_DWORD =>
          if AHBDW = 128 then
             offset := resize((unsigned(haddr(5 downto 4))&"0000000"),offset'length);
-            steps := resize(unsigned(wr_count(wr_count'length-1 downto 1)&"0000000"),steps'length) + offset;
+            steps := resize(unsigned(wr_count(wr_count'length-1 downto 0)&"000000"),steps'length) + offset;
+            hstart_offset := shift_left( resize(unsigned(haddr(3 downto 3)),hstart_offset'length) ,5);
          elsif AHBDW = 64 then
             offset := resize((unsigned(haddr(5 downto 3))&"000000"),offset'length);
             steps := resize(unsigned(wr_count(wr_count'length-1 downto 0)&"000000"),steps'length) + offset;
+            hstart_offset := (others => '0');
          end if;
        when others =>
          if AHBDW = 128 then
             offset := resize((unsigned(haddr(5 downto 4))&"0000000"),offset'length);
-            steps := resize(unsigned(wr_count(wr_count'length-1 downto 2)&"0000000"),steps'length) + offset;
+            steps := resize(unsigned(wr_count(wr_count'length-1 downto 0)&"00000"),steps'length) + offset;
+            hstart_offset := shift_left( resize(unsigned(haddr(3 downto 2)),hstart_offset'length) ,5);
          elsif AHBDW = 64 then
             offset := resize((unsigned(haddr(5 downto 3))&"000000"),offset'length);
-            steps := resize(unsigned(wr_count(wr_count'length-1 downto 1)&"000000"),steps'length) + offset;
+            steps := resize(unsigned(wr_count(wr_count'length-1 downto 0)&"00000"),steps'length) + offset;
+            hstart_offset := shift_left( resize(unsigned(haddr(2 downto 2)),hstart_offset'length) ,5);
          elsif AHBDW = 32 then
             offset := resize((unsigned(haddr(5 downto 2))&"00000"),offset'length);
             steps := resize(unsigned(wr_count(wr_count'length-1 downto 0)&"00000"),steps'length) + offset;
+            hstart_offset := (others => '0');
          end if;
     end case;
 
-    stepsint := to_integer(steps);
+    --synopsys synthesis_off
+    --Print("INFO: wr_count " & tost(to_integer(wr_count)));
+    --Print("INFO: offset " & tost(to_integer(offset)));
+    --Print("INFO: steps " & tost(to_integer(steps)));
+    --Print("INFO: hstart_offset " & tost(to_integer(hstart_offset)));
+    --synopsys synthesis_on
+    stepsint := to_integer(steps) + to_integer(hstart_offset);
+
+    --synopsys synthesis_off
+    --Print("INFO: ------> stepsint" & tost(stepsint));
+    --synopsys synthesis_on
 
     rdbuffer_int := resize(shift_right(rdbuffer,stepsint),rdbuffer_int'length);
     hdata := std_logic_vector(rdbuffer_int(AHBDW-1 downto 0));
 
+    --synopsys synthesis_off
+    --Print("INFO: rdbuffer_int " & tost( std_logic_vector(rdbuffer(511 downto 0))));
+    --Print("INFO: rdbuffer_int " & tost( std_logic_vector(rdbuffer(1023 downto 512))));
+    --Print("INFO: hdata " & tost(hdata));
+    --synopsys synthesis_on
+ 
     ret(AHBDW-1 downto 0) := reversebyte(hdata);
+
+    --synopsys synthesis_off
+    --Print("INFO: ret " & tost(ret));
+    --synopsys synthesis_on
 
     case hsize is
         when HSIZE_4WORD =>
-          offset := resize(unsigned(haddr) + unsigned(counter&"0000"),offset'length);
+          offset := resize(unsigned(haddr) + unsigned(counter&"0000" - hstart_offset),offset'length);
         when HSIZE_DWORD =>
-          offset := resize(unsigned(haddr) + unsigned(counter&"000"),offset'length);
+          offset := resize(unsigned(haddr) + unsigned(counter&"000" - hstart_offset),offset'length);
         when others =>
-          offset := resize(unsigned(haddr) + unsigned(counter&"00"),offset'length);
+          offset := resize(unsigned(haddr) + unsigned(counter&"00" - hstart_offset),offset'length);
     end case;
 
     if (replica = true) then
@@ -543,6 +652,12 @@ package body ahb2mig_series7_pkg is
          elsif AHBDW = 64 then
            if offset(2) = '0' then retrep := ahbdrivedata(ret(AHBDW-1 downto AHBDW/2));
            else retrep := ahbdrivedata(ret(AHBDW/2-1 downto 0)); end if;
+           
+           if (wr_count > 0) then 
+             retrep := ahbdrivedata(ret(AHBDW-1 downto AHBDW/2));
+           end if;
+           
+           retrep := ahbdrivedata(ret(AHBDW-1 downto AHBDW/2));
          else
             retrep := ahbdrivedata(ret(AHBDW-1 downto 0));
          end if;
@@ -559,11 +674,11 @@ package body ahb2mig_series7_pkg is
              when others =>  retrep := ahbdrivedata(ret(1*(AHBDW/8)-1 downto 0*(AHBDW/8)));
            end case;
          elsif AHBDW = 64 then
-           case offset(2 downto 1) is
-             when "00" =>   retrep := ahbdrivedata(ret(4*(AHBDW/4)-1 downto 3*(AHBDW/4)));
-             when "01" =>   retrep := ahbdrivedata(ret(3*(AHBDW/4)-1 downto 2*(AHBDW/4)));
-             when "10" =>   retrep := ahbdrivedata(ret(2*(AHBDW/4)-1 downto 1*(AHBDW/4)));
-             when others => retrep := ahbdrivedata(ret(1*(AHBDW/4)-1 downto 0*(AHBDW/4)));
+           case offset(1) is
+             when '0' =>   retrep := ahbdrivedata(ret(4*(AHBDW/4)-1 downto 3*(AHBDW/4)));
+             when others =>   retrep := ahbdrivedata(ret(3*(AHBDW/4)-1 downto 2*(AHBDW/4)));
+--             when "10" =>   retrep := ahbdrivedata(ret(2*(AHBDW/4)-1 downto 1*(AHBDW/4)));
+--             when others => retrep := ahbdrivedata(ret(1*(AHBDW/4)-1 downto 0*(AHBDW/4)));
            end case;
          else
            if offset(1) = '0' then retrep := ahbdrivedata(ret(AHBDW-1 downto AHBDW/2));
@@ -572,34 +687,22 @@ package body ahb2mig_series7_pkg is
        -- HSIZE_BYTE
        when others =>
          if AHBDW = 128 then
-           case offset(3 downto 0) is
-             when "0000" =>   retrep := ahbdrivedata(ret(16*(AHBDW/16)-1 downto 15*(AHBDW/16)));
-             when "0001" =>   retrep := ahbdrivedata(ret(15*(AHBDW/16)-1 downto 14*(AHBDW/16)));
-             when "0010" =>   retrep := ahbdrivedata(ret(14*(AHBDW/16)-1 downto 13*(AHBDW/16)));
-             when "0011" =>   retrep := ahbdrivedata(ret(13*(AHBDW/16)-1 downto 12*(AHBDW/16)));
-             when "0100" =>   retrep := ahbdrivedata(ret(12*(AHBDW/16)-1 downto 11*(AHBDW/16)));
-             when "0101" =>   retrep := ahbdrivedata(ret(11*(AHBDW/16)-1 downto 10*(AHBDW/16)));
-             when "0110" =>   retrep := ahbdrivedata(ret(10*(AHBDW/16)-1 downto  9*(AHBDW/16)));
-             when "0111" =>   retrep := ahbdrivedata(ret( 9*(AHBDW/16)-1 downto  8*(AHBDW/16)));
-             when "1000" =>   retrep := ahbdrivedata(ret( 8*(AHBDW/16)-1 downto  7*(AHBDW/16)));
-             when "1001" =>   retrep := ahbdrivedata(ret( 7*(AHBDW/16)-1 downto  6*(AHBDW/16)));
-             when "1010" =>   retrep := ahbdrivedata(ret( 6*(AHBDW/16)-1 downto  5*(AHBDW/16)));
-             when "1011" =>   retrep := ahbdrivedata(ret( 5*(AHBDW/16)-1 downto  4*(AHBDW/16)));
-             when "1100" =>   retrep := ahbdrivedata(ret( 4*(AHBDW/16)-1 downto  3*(AHBDW/16)));
-             when "1101" =>   retrep := ahbdrivedata(ret( 3*(AHBDW/16)-1 downto  2*(AHBDW/16)));
-             when "1110" =>   retrep := ahbdrivedata(ret( 2*(AHBDW/16)-1 downto  1*(AHBDW/16)));
-             when others =>   retrep := ahbdrivedata(ret( 1*(AHBDW/16)-1 downto  0*(AHBDW/16)));
+           case offset(2 downto 0) is
+             when "000" =>   retrep := ahbdrivedata(ret(16*(AHBDW/16)-1 downto 15*(AHBDW/16)));
+             when "001" =>   retrep := ahbdrivedata(ret(15*(AHBDW/16)-1 downto 14*(AHBDW/16)));
+             when "010" =>   retrep := ahbdrivedata(ret(14*(AHBDW/16)-1 downto 13*(AHBDW/16)));
+             when "011" =>   retrep := ahbdrivedata(ret(13*(AHBDW/16)-1 downto 12*(AHBDW/16)));
+             when "100" =>   retrep := ahbdrivedata(ret(12*(AHBDW/16)-1 downto 11*(AHBDW/16)));
+             when "101" =>   retrep := ahbdrivedata(ret(11*(AHBDW/16)-1 downto 10*(AHBDW/16)));
+             when "110" =>   retrep := ahbdrivedata(ret(10*(AHBDW/16)-1 downto  9*(AHBDW/16)));
+             when others  =>   retrep := ahbdrivedata(ret( 9*(AHBDW/16)-1 downto  8*(AHBDW/16)));
            end case;
          elsif AHBDW = 64 then
-           case offset(2 downto 0) is
-             when "000" =>   retrep := ahbdrivedata(ret(8*(AHBDW/8)-1 downto 7*(AHBDW/8)));
-             when "001" =>   retrep := ahbdrivedata(ret(7*(AHBDW/8)-1 downto 6*(AHBDW/8)));
-             when "010" =>   retrep := ahbdrivedata(ret(6*(AHBDW/8)-1 downto 5*(AHBDW/8)));
-             when "011" =>   retrep := ahbdrivedata(ret(5*(AHBDW/8)-1 downto 4*(AHBDW/8)));
-             when "100" =>   retrep := ahbdrivedata(ret(4*(AHBDW/8)-1 downto 3*(AHBDW/8)));
-             when "101" =>   retrep := ahbdrivedata(ret(3*(AHBDW/8)-1 downto 2*(AHBDW/8)));
-             when "110" =>   retrep := ahbdrivedata(ret(2*(AHBDW/8)-1 downto 1*(AHBDW/8)));
-             when others =>  retrep := ahbdrivedata(ret(1*(AHBDW/8)-1 downto 0*(AHBDW/8)));
+           case offset(1 downto 0) is
+             when "00" =>   retrep := ahbdrivedata(ret(8*(AHBDW/8)-1 downto 7*(AHBDW/8)));
+             when "01" =>   retrep := ahbdrivedata(ret(7*(AHBDW/8)-1 downto 6*(AHBDW/8)));
+             when "10" =>   retrep := ahbdrivedata(ret(6*(AHBDW/8)-1 downto 5*(AHBDW/8)));
+             when others =>   retrep := ahbdrivedata(ret(5*(AHBDW/8)-1 downto 4*(AHBDW/8)));
            end case;
          else
            case offset(1 downto 0) is
@@ -611,6 +714,10 @@ package body ahb2mig_series7_pkg is
          end if;
        end case;
 
+       --synopsys synthesis_off
+       -- Print("INFO: retrep " & tost(retrep));
+       --synopsys synthesis_on
+
        --ret := ahbdrivedatamig(retrep);
        ret :=retrep;
     end if;
@@ -618,6 +725,48 @@ package body ahb2mig_series7_pkg is
 
     return ret;
   end ahbselectdatanoreplicaoutput;
+
+  function ahbselectdatanoreplicaoutput16 (
+    haddr : std_logic_vector(7 downto 0);
+    counter : unsigned(31 downto 0);
+    hsize : std_logic_vector(2 downto 0);
+    rdbuffer : unsigned;
+    wr_count : unsigned;
+    replica : boolean)
+    return std_logic_vector is
+    variable ret   : std_logic_vector(AHBDW-1 downto 0);
+    variable retrep   : std_logic_vector(AHBDW-1 downto 0);
+    variable rdbuffer_int : unsigned(AHBDW-1 downto 0);
+    variable hdata : std_logic_vector(AHBDW-1 downto 0);
+    variable offset : unsigned(31 downto 0);
+    variable steps : unsigned(31 downto 0);
+    variable stepsint : natural;
+
+    variable hstart_offset : unsigned(31 downto 0);
+    
+    variable byteOffset   : unsigned(31 downto 0);
+    variable rdbufferByte : unsigned(AHBDW-1 downto 0);
+    variable hdataByte    : std_logic_vector(AHBDW-1 downto 0);
+    
+  begin  -- ahbselectdatanoreplicaoutput16
+
+    ret := (others => '0');
+
+    offset := resize((unsigned(haddr(3 downto 2))&"00000"),offset'length);
+    steps := resize(unsigned(wr_count(wr_count'length-1 downto 0)&"00000"),steps'length) + offset;
+    hstart_offset := (others => '0');
+
+    stepsint := to_integer(steps) + to_integer(hstart_offset);
+
+    rdbuffer_int := resize(shift_right(rdbuffer,stepsint),rdbuffer_int'length);
+    hdata := std_logic_vector(rdbuffer_int(AHBDW-1 downto 0));
+
+    ret(AHBDW-1 downto 0) := reversebyte(hdata);
+
+    offset := resize(unsigned(haddr) + unsigned(counter&"00" - hstart_offset),offset'length);
+
+    return ret;
+  end ahbselectdatanoreplicaoutput16;
 
   -- purpose: extends 'hdata' to suite AHB data width. If the input vector's
   -- length exceeds AHBDW the low part is returned.

@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -351,13 +352,15 @@ architecture rtl of leon3mp is
 
   signal nolock   : ahb2ahb_ctrl_type;
   signal noifctrl : ahb2ahb_ifctrl_type;
-  
-  signal gmiii0, gmiii1, gmiii2, gmiii3 : eth_in_type;
-  signal gmiio0, gmiio1, gmiio2, gmiio3 : eth_out_type;
 
-  signal eth_tx_pad, eth_rx_pad : std_logic_vector(3 downto 0) ;
+  signal e0_reset, e1_reset     : std_logic;
+  signal e0_mdio_o, e1_mdio_o   : std_logic;
+  signal e0_mdio_oe, e1_mdio_oe : std_logic;
+  signal e0_mdio_i, e1_mdio_i   : std_logic;
+  signal e0_mdc, e1_mdc         : std_logic;
+  signal e0_mdint, e1_mdint     : std_logic;
 
-  signal reset1_tx_clk, reset1_rx_clk, reset2_tx_clk, reset2_rx_clk, ref_clk, ctrl_rst, ref_rstn, ref_rst: std_logic;
+  signal ref_clk, ref_rstn, ref_rst: std_logic;
 
   signal led_crs1, led_link1, led_col1, led_an1, led_char_err1, led_disp_err1 : std_logic;
   signal led_crs2, led_link2, led_col2, led_an2, led_char_err2, led_disp_err2 : std_logic;
@@ -382,13 +385,14 @@ architecture rtl of leon3mp is
   signal clkm125              : std_logic;
   signal clklock, lock, clkml : std_logic;
 
-  signal mdio_o, mdio_i, mdio_oe : std_logic;
-  signal mdio_o_sgmii, mdio_i_sgmii, mdio_oe_sgmii : std_logic;
   signal gprego : std_logic_vector(15 downto 0);
+
+  signal slide_switch: std_logic_vector(3 downto 0);
 
   signal counter1 : std_logic_vector(26 downto 0);
   signal counter2 : std_logic_vector(3 downto 0);
   signal bitslip_int : std_logic;
+  signal tx_rstn0, tx_rstn1, rx_rstn0, rx_rstn1 : std_logic;
 begin
 
   nolock <= ahb2ahb_ctrl_none;
@@ -443,7 +447,7 @@ begin
                      CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
                      CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP, 
                      CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1,
-                     0, 0, CFG_MMU_PAGE)
+                     0, 0, CFG_MMU_PAGE, CFG_BP, CFG_NP_ASI, CFG_WRPSR)
         port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso, 
                   irqi(i), irqo(i), dbgi(i), dbgo(i));
     end generate;
@@ -458,7 +462,7 @@ begin
                      CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
                      CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP, 
                      CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1,
-                     0, 0, CFG_MMU_PAGE)
+                     0, 0, CFG_MMU_PAGE, CFG_BP, CFG_NP_ASI, CFG_WRPSR)
         port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso, 
                   irqi(i), irqo(i), dbgi(i), dbgo(i), fpi(i), fpo(i));
     end generate;
@@ -898,50 +902,21 @@ begin
     -- 125 MHz clock reset synchronizer
     rst2 : rstgen
       generic map (acthigh => 0)
-      port map (gmiio0.reset, ref_clk, cgo_125.clklock, ref_rstn, open);
+      port map (e0_reset, ref_clk, cgo_125.clklock, ref_rstn, open);
 
-    -- TODO: reset of LVDS transceiver must be asserted at least 10 ns
     ref_rst <= not ref_rstn;
 
-    bridge0: sgmii
-      generic map (
-        fabtech   => fabtech
-      )
-      port map(
-        clk_125       => ref_clk,
-        rst_125       => ref_rst,
-
-        ser_rx_p      => ETH_RX_p(0),
-        ser_tx_p      => ETH_TX_p(0),
-
-        txd           => gmiio0.txd,
-        tx_en         => gmiio0.tx_en,
-        tx_er         => gmiio0.tx_er,
-        tx_clk        => gmiii0.gtx_clk,
-
-        rxd           => gmiii0.rxd,
-        rx_dv         => gmiii0.rx_dv,
-        rx_er         => gmiii0.rx_er,
-        rx_col        => gmiii0.rx_col,
-        rx_crs        => gmiii0.rx_crs,
-        rx_clk        => gmiii0.rx_clk,
-
-        -- optional MDIO interface to PCS
-        mdc           => gmiio0.mdc,
-        mdio_o        => mdio_o_sgmii,
-        mdio_oe       => mdio_oe_sgmii,
-        mdio_i        => mdio_i_sgmii
-      );
-
-    e0 : greth_gbit_mb        -- Gaisler (gigabit) Ethernet MAC 0
+    e0 : greths_mb        -- Gaisler Ethernet MAC 0
       generic map (
         hindex      => CFG_NCPU+(CFG_AHB_UART+CFG_AHB_JTAG)*(1-DEBUG_BUS),
         ehindex     => CFG_AHB_UART+CFG_AHB_JTAG,
         pindex      => 11,
         paddr       => 11,
-        pirq        => 6, 
+        pirq        => 6,
+        fabtech     => fabtech,
         memtech     => memtech,
         mdcscaler   => CPU_FREQ/1000,
+        enable_mdio => 1,
         nsync       => 2,
         edcl        => CFG_DSU_ETH,
         edclbufsz   => CFG_ETH_BUF,
@@ -951,42 +926,50 @@ begin
         phyrstadr   => 0,
         ipaddrh     => CFG_ETH_IPM,
         ipaddrl     => CFG_ETH_IPL,
-        edclsepahb  => EDCL_SEP_AHB
+        edclsepahbg => EDCL_SEP_AHB,
+        giga        => CFG_GRETH1G,
+        sim         => 1
         )
       port map (
-        rst    => rstn,
-        clk    => clkm,
-        ahbmi  => ahbmi,
-        ahbmo  => ahbmo(CFG_NCPU+(CFG_AHB_UART+CFG_AHB_JTAG)*(1-DEBUG_BUS)),
-        ahbmi2 => edcl_ahbmi,
-        ahbmo2 => edcl_ahbmo(0),
-        apbi   => apbi,
-        apbo   => apbo(11),
-        ethi   => gmiii0,
-        etho   => gmiio0
+        rst             => rstn,
+        clk             => clkm,
+        ahbmi           => ahbmi,
+        ahbmo           => ahbmo(CFG_NCPU+(CFG_AHB_UART+CFG_AHB_JTAG)*(1-DEBUG_BUS)),
+        ahbmi2          => edcl_ahbmi,
+        ahbmo2          => edcl_ahbmo(0),
+        apbi            => apbi,
+        apbo            => apbo(11),
+        -- High-speed Serial Interface
+        clk_125         => ref_clk,
+        rst_125         => ref_rst,
+        eth_rx_p        => ETH_RX_p(0),
+        eth_tx_p        => ETH_TX_p(0),
+        -- MDIO interface
+        reset           => e0_reset,
+        mdio_o          => e0_mdio_o,
+        mdio_oe         => e0_mdio_oe,
+        mdio_i          => e0_mdio_i,
+        mdc             => e0_mdc,
+        mdint           => e0_mdint,
+        -- Control signals
+        phyrstaddr      => "00000",
+        edcladdr        => "0001",
+        edclsepahb      => '1',
+        edcldisable     => slide_switch(1),
+        debug_pcs_mdio  => gprego(0)
         );
-    
-    gmiii0.tx_clk       <= gmiii0.gtx_clk;
-    gmiii0.phyrstaddr   <= "00000";
-    gmiii0.edcladdr     <= ( others => '0' );
-    gmiii0.edclsepahb   <= '1';
-    gmiii0.edcldisable  <= SLIDE_SW(1);
 
-    -- SGMII MDIO DEBUG BYPASS 
-    mdio_oe_sgmii     <= gmiio0.mdio_oe when gprego(0) = '1' else
-                         '1';
+    ethrst_pad : outpad generic map (tech => padtech)
+      port map (ETH_RST_n, e0_reset);
 
-    mdio_o_sgmii      <= gmiio0.mdio_o  when gprego(0) = '1' else
-                         '0';
+    emdio0_pad : iopad generic map (tech => padtech)
+      port map (ETH_MDIO(0), e0_mdio_o, e0_mdio_oe, e0_mdio_i);
 
-    mdio_oe           <= '1'            when gprego(0) = '1' else
-                         gmiio0.mdio_oe;
+    emdc0_pad : outpad generic map (tech => padtech)
+      port map (ETH_MDC(0), e0_mdc);
 
-    mdio_o            <= '0'            when gprego(0) = '1' else
-                         gmiio0.mdio_o;
-
-    gmiii0.mdio_i     <= mdio_i_sgmii  when gprego(0) = '1' else
-                         mdio_i;
+    eint0_pad : inpad generic map (tech => padtech)
+      port map (ETH_INT_n(0), e0_mdint);
 
     grgpreg0 : grgpreg
       generic map (
@@ -1002,7 +985,7 @@ begin
         gprego  => gprego
       );
 
-      --
+    -- LEDs
     led2_pad : outpad generic map (tech => padtech) port map (LED(2), vcc(0));
     led3_pad : outpad generic map (tech => padtech) port map (LED(3), vcc(0));
     led4_pad : outpad generic map (tech => padtech) port map (LED(4), vcc(0));
@@ -1010,66 +993,25 @@ begin
     led6_pad : outpad generic map (tech => padtech) port map (LED(6), vcc(0));
     led7_pad : outpad generic map (tech => padtech) port map (LED(7), vcc(0));
 
-    ethrst_pad : outpad generic map (tech => padtech)
-      port map (ETH_RST_n, gmiio0.reset);
-
-    -- MDIO interface setup
-    emdio0_pad : iopad generic map (tech => padtech)
-      port map (ETH_MDIO(0), mdio_o, mdio_oe, mdio_i);
-
-    emdc0_pad : outpad generic map (tech => padtech)
-      port map (ETH_MDC(0), gmiio0.mdc);
-
-    eint0_pad : inpad generic map (tech => padtech)
-      port map (ETH_INT_n(0), gmiii0.mdint);
-
   end generate;
 
   noeth0 : if CFG_GRETH = 0 generate
-    gmiio0 <= eth_out_none;
     edcl_ahbmo(0) <= ahbm_none;
   end generate;
 
   eth1: if CFG_GRETH2 = 1 generate -- Gaisler ethernet MAC
     
-    -- 125 MHz clock reset synchronizer
-
-    bridge1: sgmii
-      generic map (
-        fabtech   => fabtech
-      )
-      port map(
-        clk_125       => ref_clk,
-        rst_125       => ref_rst,
-
-        ser_rx_p      => ETH_RX_p(1),
-        ser_tx_p      => ETH_TX_p(1),
-
-        txd           => gmiio1.txd,
-        tx_en         => gmiio1.tx_en,
-        tx_er         => gmiio1.tx_er,
-        tx_clk        => gmiii1.gtx_clk,
-
-        rxd           => gmiii1.rxd,
-        rx_dv         => gmiii1.rx_dv,
-        rx_er         => gmiii1.rx_er,
-        rx_col        => gmiii1.rx_col,
-        rx_crs        => gmiii1.rx_crs,
-        rx_clk        => gmiii1.rx_clk,
-
-        -- optional MDIO interface to PCS
-        mdc           => gmiio1.mdc
-      );
-
-    e1 : greth_gbit_mb        -- Gaisler (gigabit) Ethernet MAC 1
+    e1 : greths_mb        -- Gaisler Ethernet MAC 1
       generic map (
         hindex      => CFG_NCPU+(CFG_AHB_UART+CFG_AHB_JTAG)*(1-DEBUG_BUS)+CFG_GRETH,
         ehindex     => CFG_AHB_UART+CFG_AHB_JTAG+1,
         pindex      => 12,
         paddr       => 12,
-        pirq        => 7, 
+        pirq        => 7,
+        fabtech     => fabtech,
         memtech     => memtech,
         mdcscaler   => CPU_FREQ/1000,
+        enable_mdio => 1,
         nsync       => 2,
         edcl        => CFG_DSU_ETH,
         edclbufsz   => CFG_ETH_BUF,
@@ -1079,57 +1021,69 @@ begin
         phyrstadr   => 1,
         ipaddrh     => CFG_ETH_IPM,
         ipaddrl     => CFG_ETH_IPL,
-        edclsepahb  => EDCL_SEP_AHB
+        edclsepahbg => EDCL_SEP_AHB,
+        giga        => CFG_GRETH21G,
+        sim         => 1
         )
       port map (
-        rst    => rstn,
-        clk    => clkm,
-        ahbmi  => ahbmi,
-        ahbmo  => ahbmo(CFG_NCPU+(CFG_AHB_UART+CFG_AHB_JTAG)*(1-DEBUG_BUS)+CFG_GRETH),
-        ahbmi2 => edcl_ahbmi, 
-        ahbmo2 => edcl_ahbmo(1),
-        apbi   => apbi,
-        apbo   => apbo(12),
-        ethi   => gmiii1,
-        etho   => gmiio1
+        rst             => rstn,
+        clk             => clkm,
+        ahbmi           => ahbmi,
+        ahbmo           => ahbmo(CFG_NCPU+(CFG_AHB_UART+CFG_AHB_JTAG)*(1-DEBUG_BUS)+CFG_GRETH),
+        ahbmi2          => edcl_ahbmi, 
+        ahbmo2          => edcl_ahbmo(1),
+        apbi            => apbi,
+        apbo            => apbo(12),
+        -- High-speed Serial Interface
+        clk_125         => ref_clk,
+        rst_125         => ref_rst,
+        eth_rx_p        => ETH_RX_p(1),
+        eth_tx_p        => ETH_TX_p(1),
+        -- MDIO interface
+        reset           => e1_reset,
+        mdio_o          => e1_mdio_o,
+        mdio_oe         => e1_mdio_oe,
+        mdio_i          => e1_mdio_i,
+        mdc             => e1_mdc,
+        mdint           => e1_mdint,
+        -- Control signals
+        phyrstaddr      => "00001",
+        edcladdr        => "0010",
+        edclsepahb      => '1',
+        edcldisable     => slide_switch(1)
         );
-    
-    gmiii1.tx_clk       <= gmiii1.gtx_clk;
-    gmiii1.phyrstaddr   <= "00001";
-    gmiii1.edcladdr     <= ( others => '0' );
-    gmiii1.edclsepahb   <= '1';
-    gmiii1.edcldisable  <= SLIDE_SW(1);
 
     -- MDIO interface setup
     emdio1_pad : iopad generic map (tech => padtech)
-      port map (ETH_MDIO(1), gmiio1.mdio_o, gmiio1.mdio_oe, gmiii1.mdio_i);
+      port map (ETH_MDIO(1), e1_mdio_o, e1_mdio_oe, e1_mdio_i);
 
     emdc1_pad : outpad generic map (tech => padtech)
-      port map (ETH_MDC(1), gmiio1.mdc);
+      port map (ETH_MDC(1), e1_mdc);
 
     eint1_pad : inpad generic map (tech => padtech)
-      port map (ETH_INT_n(1), gmiii1.mdint);
+      port map (ETH_INT_n(1), e1_mdint);
 
   end generate;
 
   noeth2 : if CFG_GRETH2 = 0 generate
-    gmiio2 <= eth_out_none;
     edcl_ahbmo(1) <= ahbm_none;
   end generate;
+
+  edcl_pad : inpad
+    generic map (tech => padtech)
+    port map (SLIDE_SW(1), slide_switch(1));
 
 -----------------------------------------------------------------------
 ---  AHB RAM ----------------------------------------------------------
 -----------------------------------------------------------------------
 
---  ocram : if CFG_AHBRAMEN = 1 generate 
---    ahbram0 : ftahbram generic map (hindex => 7, haddr => CFG_AHBRADDR, 
---      tech => CFG_MEMTECH, kbytes => CFG_AHBRSZ, pindex => 6,
---      paddr => 6, edacen => CFG_AHBRAEDAC, autoscrub => CFG_AHBRASCRU,
---      errcnten => CFG_AHBRAECNT, cntbits => CFG_AHBRAEBIT)
---    port map ( rstn, clkm, ahbsi, ahbso(7), apbi, apbo(6), open);
---  end generate;
---
---  nram : if CFG_AHBRAMEN = 0 generate ahbso(7) <= ahbs_none; end generate;
+  ocram : if CFG_AHBRAMEN = 1 generate 
+    ahbram0 : ahbram generic map (hindex => 5, haddr => CFG_AHBRADDR, 
+      tech => CFG_MEMTECH, kbytes => CFG_AHBRSZ)
+    port map ( rstn, clkm, ahbsi, ahbso(5));
+  end generate;
+
+  nram : if CFG_AHBRAMEN = 0 generate ahbso(5) <= ahbs_none; end generate;
 
 -----------------------------------------------------------------------
 ---  Drive unused bus elements  ---------------------------------------
@@ -1142,7 +1096,7 @@ end generate;
 -- apbo(6) <= apb_none;
 
 --ahbmo(ahbmo'high downto nahbm) <= (others => ahbm_none);
-ahbso(ahbso'high downto 5) <= (others => ahbs_none);
+ahbso(ahbso'high downto 6) <= (others => ahbs_none);
 --apbo(napbs to apbo'high) <= (others => apb_none);
 
 -----------------------------------------------------------------------

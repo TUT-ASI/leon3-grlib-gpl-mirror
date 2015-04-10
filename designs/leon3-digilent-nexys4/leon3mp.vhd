@@ -5,6 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -43,6 +44,7 @@ use gaisler.sim.all;
 library unisim;
 use unisim.BUFG;
 use unisim.PLLE2_ADV;
+use unisim.STARTUPE2;
 --pragma translate_on
 library esa;
 use esa.memoryctrl.all;
@@ -73,9 +75,8 @@ entity leon3mp is
     RamUB           : out   std_ulogic;
     --RamWait         : in   std_ulogic;
 
-    --QspiCSn         : out   std_ulogic;
-    --QspiSCK         : out   std_ulogic;
-    --QspiDB          : inout std_logic_vector(3 downto 0);
+    QspiCSn         : out   std_ulogic;
+    QspiDB          : inout std_logic_vector(3 downto 0);
 
     address         : out   std_logic_vector(22 downto 0);
 
@@ -116,7 +117,7 @@ entity leon3mp is
 
     PhyTxd          : out   std_logic_vector(1 downto 0);
     PhyTxEn         : out   std_ulogic;
-    
+
     PhyRxd          : in    std_logic_vector(1 downto 0);
     PhyRxEr         : in    std_ulogic;
 
@@ -194,7 +195,29 @@ architecture rtl of leon3mp is
      RST : in std_ulogic
   );
   end component;
-  
+
+ component STARTUPE2
+ generic (
+    PROG_USR : string := "FALSE";
+    SIM_CCLK_FREQ : real := 0.0
+  );
+  port (
+    CFGCLK               : out std_ulogic;
+    CFGMCLK              : out std_ulogic;
+    EOS                  : out std_ulogic;
+    PREQ                 : out std_ulogic;
+    CLK                  : in std_ulogic;
+    GSR                  : in std_ulogic;
+    GTS                  : in std_ulogic;
+    KEYCLEARB            : in std_ulogic;
+    PACK                 : in std_ulogic;
+    USRCCLKO             : in std_ulogic;
+    USRCCLKTS            : in std_ulogic;
+    USRDONEO             : in std_ulogic;
+    USRDONETS            : in std_ulogic
+  );
+  end component;
+
   component BUFG port (O : out std_logic; I : in std_logic); end component;
 
   signal CLKFBOUT      : std_logic;
@@ -259,7 +282,7 @@ architecture rtl of leon3mp is
   -- RS232 APB Uart
   signal rxd1 : std_logic;
   signal txd1 : std_logic;
-  
+
   attribute keep                     : boolean;
   attribute syn_keep                 : boolean;
   attribute syn_preserve             : boolean;
@@ -282,9 +305,9 @@ begin
 
   vcc <= '1';
   gnd <= '0';
-  
+
   led(15 downto 4) <= (others =>'0'); -- unused leds off
-  
+
   btnCpuReset<= not btnCpuResetn;
   cgi.pllctrl <= "00";
   cgi.pllrst <= rstraw;
@@ -297,15 +320,15 @@ begin
   clkgen0 : clkgen
     generic map (fabtech, CFG_CLKMUL, CFG_CLKDIV, 0, 0, 0, 0, 0, BOARD_FREQ, 0)
     port map (clk, gnd, clkm, open, open, open, open, cgi, cgo, open, open, open);
-  
----------------------------------------------------------------------- 
+
+----------------------------------------------------------------------
 ---  AHB CONTROLLER --------------------------------------------------
 ----------------------------------------------------------------------
 
   ahb0 : ahbctrl
     generic map (defmast => CFG_DEFMST, split => CFG_SPLIT,
-                 rrobin  => CFG_RROBIN, ioaddr => CFG_AHBIO, ioen => 1, 
-                 nahbm => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH, 
+                 rrobin  => CFG_RROBIN, ioaddr => CFG_AHBIO, ioen => 1,
+                 nahbm => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH,
                  nahbs => 8)
     port map (rstn, clkm, ahbmi, ahbmo, ahbsi, ahbso);
 
@@ -323,27 +346,27 @@ begin
                      CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
                      CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP,
                      CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR,
-                     CFG_NCPU-1)
+                     CFG_NCPU-1, CFG_DFIXED, CFG_SCAN, CFG_MMU_PAGE, CFG_BP, CFG_NP_ASI, CFG_WRPSR)
         port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso, irqi(i), irqo(i), dbgi(i), dbgo(i));
     end generate;
 
     led(3)  <= not dbgo(0).error;
     led(2)  <= not dsuo.active;
 
-    -- LEON3 Debug Support Unit    
+    -- LEON3 Debug Support Unit
     dsugen : if CFG_DSU = 1 generate
       dsu0 : dsu3
-        generic map (hindex => 2, haddr => 16#900#, hmask => 16#F00#,
+        generic map (hindex => 2, haddr => 16#900#, hmask => 16#F00#, ahbpf => CFG_AHBPF,
                      ncpu   => CFG_NCPU, tbits => 30, tech => memtech, irq => 0, kbytes => CFG_ATBSZ)
         port map (rstn, clkm, ahbmi, ahbsi, ahbso(2), dbgo, dbgi, dsui, dsuo);
 
       --dsubre_pad : inpad generic map (tech  => padtech) port map (dsubre, dsui.break);
 
       dsui.enable <= '1';
-      
+
     end generate;
   end generate;
-  nodsu : if CFG_DSU = 0 generate 
+  nodsu : if CFG_DSU = 0 generate
     ahbso(2) <= ahbs_none; dsuo.tstop <= '0'; dsuo.active <= '0';
   end generate;
 
@@ -381,13 +404,13 @@ begin
   memi.wrn    <= "1111";
   memi.bwidth <= "01";
 
-  mg0 : if (CFG_MCTRL_LEON2 = 0) generate 
+  mg0 : if (CFG_MCTRL_LEON2 = 0) generate
     apbo(0) <= apb_none;
     ahbso(5) <= ahbs_none;
     memo.bdrive(0) <= '1';
   end generate;
 
-  mgpads : if (CFG_MCTRL_LEON2 /= 0) generate 
+  mgpads : if (CFG_MCTRL_LEON2 /= 0) generate
     addr_pad : outpadv generic map (tech => padtech, width => 23)
       port map (address, memo.address(23 downto 1));
     oen_pad : outpad generic map (tech => padtech)
@@ -408,14 +431,49 @@ begin
   bdr2 : iopadv generic map (tech => padtech, width => 8)
     port map (data(15 downto 8), memo.data(31 downto 24),
               memo.bdrive(0), memi.data(31 downto 24));
-  RamCRE <= '0';  
-  RamClk <= '0';  
+  RamCRE <= '0';
+  RamClk <= '0';
   RamAdv <= '0';
+
+----------------------------------------------------------------------
+---  SPI Memory controller -------------------------------------------
+----------------------------------------------------------------------
+  -- OPTIONALY set the offset generic (only affect reads).
+  -- The first 4MB are used for loading the FPGA.
+  -- For dual ouptut: readcmd => 16#3B#, dualoutput => 1
+  spimctrl1 : spimctrl
+  generic map (hindex => 7, hirq => 7, faddr => 16#b00#, fmask => 16#ff0#,
+    ioaddr => 16#700#, iomask => 16#fff#, spliten => CFG_SPLIT,
+    sdcard => 0, readcmd => 16#0B#, dummybyte => 1, dualoutput => 0,
+    scaler => 1, altscaler => 2)
+  port map (rstn, clkm, ahbsi, ahbso(7), spmi, spmo);
+
+  --QspiDB(3) <= '1'; QspiDB(2) <= '1';
+  spi_QspiDB_2_pad : outpad generic map (tech => padtech)
+    port map (QspiDB(2), '1');
+  spi_QspiDB_3_pad : outpad generic map (tech => padtech)
+    port map (QspiDB(3), '1');
+
+--  spi_bdr : iopad generic map (tech => padtech)
+--    port map (QspiDB(0), spmo.mosi, spmo.mosioen, spmi.mosi);
+  spi_mosi_pad : outpad generic map (tech => padtech)
+    port map (QspiDB(0), spmo.mosi);
+  spi_miso_pad : inpad generic map (tech => padtech)
+    port map (QspiDB(1), spmi.miso);
+  spi_slvsel0_pad : outpad generic map (tech => padtech)
+    port map (QspiCSn, spmo.csn);
+
+  -- MACRO for assigning the SPI output clock
+  spicclk: STARTUPE2
+  port map (--CFGCLK => open, CFGMCLK => open, EOS => open, PREQ => open,
+    CLK => '0', GSR => '0', GTS => '0', KEYCLEARB => '0', PACK => '0',
+    USRCCLKO =>  spmo.sck, USRCCLKTS => '0', USRDONEO => '1', USRDONETS => '0' );
+
 ----------------------------------------------------------------------
 ---  DDR2 memory controller ------------------------------------------
 ----------------------------------------------------------------------
   noddr : if (CFG_DDR2SP+CFG_MIG_DDR2) = 0 generate lock <= '1'; end generate;
- 
+
 ----------------------------------------------------------------------
 ---  APB Bridge and various periherals -------------------------------
 ----------------------------------------------------------------------
@@ -480,21 +538,21 @@ begin
                   pindex => 15, paddr => 15, pirq => 12, memtech => memtech,
                   mdcscaler => CPU_FREQ/1000, enable_mdio => 1, fifosize => CFG_ETH_FIFO,
                   nsync => 1, edcl => CFG_DSU_ETH, edclbufsz => CFG_ETH_BUF,
-                  macaddrh => CFG_ETH_ENM, macaddrl => CFG_ETH_ENL, phyrstadr => 7, 
+                  macaddrh => CFG_ETH_ENM, macaddrl => CFG_ETH_ENL, phyrstadr => 7,
                   ipaddrh => CFG_ETH_IPM, ipaddrl => CFG_ETH_IPL, giga => CFG_GRETH1G, rmii => 1)
       port map(rst => rstn, clk => clkm, ahbmi => ahbmi,
-               ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG), 
-               apbi => apbi, apbo => apbo(15), ethi => ethi, etho => etho); 
+               ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG),
+               apbi => apbi, apbo => apbo(15), ethi => ethi, etho => etho);
       PhyRstn<=rstn;
   end generate;
   etxc_pad : outpad generic map (tech => padtech)
       port map (PhyClk50Mhz, eth_clk);
-  ethpads : if (CFG_GRETH = 1) generate 
+  ethpads : if (CFG_GRETH = 1) generate
     emdio_pad : iopad generic map (tech => padtech)
       port map (PhyMdio, etho.mdio_o, etho.mdio_oe, ethi.mdio_i);
 	ethi.rmii_clk<=eth_clk90;
     erxd_pad : inpadv generic map (tech => padtech, width => 2) --8
-      port map (PhyRxd, ethi.rxd(1 downto 0)); 
+      port map (PhyRxd, ethi.rxd(1 downto 0));
     erxer_pad : inpad generic map (tech => padtech)
       port map (PhyRxEr, ethi.rx_er);
     erxcr_pad : inpad generic map (tech => padtech)
@@ -556,7 +614,7 @@ begin
 -- pragma translate_off
   x : report_design
     generic map (
-      msg1 => "LEON3 Demonstration design for Digilent NEXYS 3 board",
+      msg1 => "LEON3 Demonstration design for Digilent NEXYS 4 board",
       fabtech => tech_table(fabtech), memtech => tech_table(memtech),
       mdel => 1
       );
@@ -568,10 +626,10 @@ begin
 
   -- 50 MHz clock for output
   bufgclk0  : BUFG port map (I => eth_clk_nobuf, O => eth_clk);
-  
+
   -- 50 MHz with +90 deg phase for Rx GRETH
   bufgclk45 : BUFG port map (I => eth_clk90_nobuf, O => eth_clk90);
-  
+
   CLKFBIN <= CLKFBOUT;
   eth_pll_rst <= not cgi.pllrst;
 
@@ -580,7 +638,7 @@ begin
     CLKFBOUT_MULT      => 8,   -- Multiply value for all CLKOUT, (2-64)
     CLKFBOUT_PHASE     => 0.0, -- Phase offset in degrees of CLKFB, (-360.000-360.000).
     -- CLKIN_PERIOD: Input clock period in nS to ps resolution (i.e. 33.333 is 30 MHz).
-    CLKIN1_PERIOD      => 1000000.0/real(100000.0), 
+    CLKIN1_PERIOD      => 1000000.0/real(100000.0),
     CLKIN2_PERIOD      => 0.0,
     -- CLKOUT0_DIVIDE - CLKOUT5_DIVIDE: Divide amount for CLKOUT (1-128)
     CLKOUT0_DIVIDE     => 16,
@@ -631,12 +689,12 @@ begin
     -- Con trol Ports: 1-bit (each) input: PLL control ports
     CLKINSEL          => '1',
     PWRDWN            => '0',
-    RST               => eth_pll_rst, 
+    RST               => eth_pll_rst,
     -- DRP Ports: 7-bit (each) input: Dynamic reconfigration ports
-    DADDR             => "0000000", 
+    DADDR             => "0000000",
     DCLK              => '0',
     DEN               => '0',
-    DI                => "0000000000000000", 
+    DI                => "0000000000000000",
     DWE               => '0',
     -- Feedback Clocks: 1-bit (each) input: Clock feedback ports
     CLKFBIN           => CLKFBIN

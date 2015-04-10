@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -185,7 +186,7 @@ constant P32K_VA_OFFPAG_D : integer := 0;
 --     2.1 PAGE TABE ENTRY (PTE) [sparc V8: p.247,Appx.H,Figure H-8]
 --                                                                                       
 --     +-----------------------------+---+---+---+-----------+---+
---     |Physical Page Number (PPN)   | C | M | R |     ACC   | ET¦   
+--     |Physical Page Number (PPN)   | C | M | R |     ACC   | ET|
 --     +-----------------------------+---+---+---+-----------+---+
 --      31                          8  7   6   5  4         2 1 0
 --                                                                     
@@ -390,7 +391,7 @@ constant FS_FT_NONE : std_logic_vector(2 downto 0) := "000";
 constant FS_FT_INV : std_logic_vector(2 downto 0)  := "001";
 constant FS_FT_PRO : std_logic_vector(2 downto 0)  := "010";
 constant FS_FT_PRI : std_logic_vector(2 downto 0)  := "011";
-constant FS_FT_TRANS : std_logic_vector(2 downto 0):= "110";
+constant FS_FT_TRANS : std_logic_vector(2 downto 0):= "100";
 constant FS_FT_BUS : std_logic_vector(2 downto 0)  := "101";
 constant FS_FT_INT : std_logic_vector(2 downto 0)  := "110";
 constant FS_FT_RVD : std_logic_vector(2 downto 0)  := "111";

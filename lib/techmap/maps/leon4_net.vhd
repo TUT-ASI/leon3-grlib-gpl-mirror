@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -92,6 +93,7 @@ entity leon4_net is
       irqi_rstvec:      in    std_logic_vector(31 downto 12);
       irqi_iact:        in    std_ulogic;
       irqi_index:       in    std_logic_vector(3 downto 0);
+      irqi_hrdrst:      in    std_ulogic;
 
       irqo_intack:      out   std_ulogic;
       irqo_irl:         out   std_logic_vector(3 downto 0);
@@ -114,7 +116,7 @@ entity leon4_net is
       dbgi_bwatch:      in    std_ulogic;                               -- break on IU watchpoint
       dbgi_bsoft:       in    std_ulogic;                               -- break on software breakpoint (TA 1)
       dbgi_tenable:     in    std_ulogic;
-      dbgi_timer:       in    std_logic_vector(30 downto 0);
+      dbgi_timer:       in    std_logic_vector(63 downto 0);
 
       dbgo_data:        out   std_logic_vector(31 downto 0);
       dbgo_crdy:        out   std_ulogic;
@@ -138,7 +140,8 @@ entity leon4_net is
       dbgo_dstat_chold:  out   std_ulogic;
       dbgo_dstat_mhold:  out   std_ulogic;
       dbgo_wbhold  : 	out   std_ulogic;			-- write buffer hold
-      dbgo_su      : 	out   std_ulogic);
+      dbgo_su      : 	out   std_ulogic;
+      dbgo_ducnt   :    out   std_ulogic);
 end ;
 
 architecture rtl of leon4_net is
@@ -407,7 +410,7 @@ begin
          dbgi_bwatch       => dbgi_bwatch,
          dbgi_bsoft        => dbgi_bsoft,
          dbgi_tenable      => dbgi_tenable,
-         dbgi_timer        => dbgi_timer,
+         dbgi_timer        => dbgi_timer(30 downto 0),
          dbgo_data         => dbgo_data,
          dbgo_crdy         => dbgo_crdy,
          dbgo_dsu          => dbgo_dsu,
@@ -433,6 +436,7 @@ begin
          dbgo_wbhold         => dbgo_wbhold,
          dbgo_su         => dbgo_su,
          disasen           => disasen);
+      dbgo_ducnt <= '1';
   end generate;
 
       ahbi_hgrant(0)       <= ahbix.hgrant(hindex);
@@ -475,7 +479,7 @@ begin
 
 -- pragma translate_off
    assert NAHBSLV=16
-      report "LEON3FT netlist: Only NAHBSLV=16 supported by wrapper"
+      report "LEON4FT netlist: Only NAHBSLV=16 supported by wrapper"
       severity Failure;
 -- pragma translate_on
 

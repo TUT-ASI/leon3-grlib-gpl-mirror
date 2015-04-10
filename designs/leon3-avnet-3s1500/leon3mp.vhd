@@ -5,6 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -136,7 +137,7 @@ architecture rtl of leon3mp is
 
 constant blength : integer := 12;
 constant fifodepth : integer := 8;
-constant mahbmax : integer := CFG_NCPU+CFG_AHB_UART+CFG_PCI+
+constant mahbmax : integer := CFG_NCPU+CFG_AHB_UART+CFG_GRPCI2_TARGET+CFG_GRPCI2_DMA+
 	CFG_SVGA_ENABLE + CFG_GRETH+CFG_AHB_JTAG;
 
 signal vcc, gnd   : std_logic_vector(23 downto 0);
@@ -186,6 +187,7 @@ signal tck, tms, tdi, tdo : std_logic;
 
 signal pllref, errorn, pci_rst   : std_logic;
 signal pci_arb_req_n, pci_arb_gnt_n   : std_logic_vector(0 to 3);
+signal pci_dirq : std_logic_vector(3 downto 0);
 
 signal dac_clk, clk25, clk_66mhzl, pci_lclk   : std_logic;
 signal can_ltx, can_lrx  : std_logic;
@@ -199,7 +201,7 @@ attribute keep of clk : signal is true;
 
 signal switchesl  : std_logic_vector(5 downto 0);
 constant padlevel : integer := 0;
-constant IOAEN : integer := CFG_CAN;
+constant IOAEN : integer := CFG_CAN+CFG_GRPCI2_MASTER;
 constant BOARD_FREQ : integer := 66667;   -- input frequency in KHz
 constant CPU_FREQ : integer := (BOARD_FREQ * CFG_CLKMUL) / CFG_CLKDIV;
 
@@ -214,7 +216,7 @@ begin
 
   clkgen0 : clkgen  		-- clock generator
     generic map (clktech, CFG_CLKMUL, CFG_CLKDIV, CFG_MCTRL_SDEN, 
-	CFG_CLK_NOFB, CFG_PCI, CFG_PCIDLL, CFG_PCISYSCLK, 66000)
+	CFG_CLK_NOFB, CFG_GRPCI2_MASTER+CFG_GRPCI2_TARGET, CFG_PCIDLL, CFG_PCISYSCLK, 66000)
     port map (clk_66mhzl, pci_lclk, clk, open, open, sdclkl, pciclk, cgi, cgo);
   sdclk_pad : outpad generic map (tech => padtech, slew => 1, strength => 8) 
 	port map (sdclk, sdclkl);
@@ -253,7 +255,7 @@ begin
 	CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
         CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP, 
         CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1, 0, 0,
-	CFG_MMU_PAGE, CFG_BP)
+	CFG_MMU_PAGE, CFG_BP, CFG_NP_ASI, CFG_WRPSR)
     port map (clk, rstn, ahbmi, ahbmo(i), ahbsi, ahbso,
     		irqi(i), irqo(i), dbgi(i), dbgo(i));
 
@@ -391,6 +393,8 @@ begin
     end generate;
     apbo(2) <= apb_none;
   end generate;
+  pci_dirq(3 downto 1) <= (others => '0');
+  pci_dirq(0) <= orv(irqi(0).irl);
 
   gpt : if CFG_GPT_ENABLE /= 0 generate
     timer0 : gptimer 			-- timer unit
@@ -462,37 +466,101 @@ begin
 ---  PCI   ------------------------------------------------------------
 -----------------------------------------------------------------------
 
-  pp : if CFG_PCI /= 0 generate
+  pp : if (CFG_GRPCI2_MASTER+CFG_GRPCI2_TARGET) /= 0 generate
 
-    pci_gr0 : if CFG_PCI = 1 generate	-- simple target-only
-      pci0 : pci_target generic map (hindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SVGA_ENABLE,
-	device_id => CFG_PCIDID, vendor_id => CFG_PCIVID)
-      port map (rstn, clk, pciclk, pcii, pcio, ahbmi, ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SVGA_ENABLE));
+    grpci2xt : if (CFG_GRPCI2_TARGET) /= 0 and (CFG_GRPCI2_MASTER+CFG_GRPCI2_DMA) = 0 generate
+      pci0 : grpci2 
+        generic map (
+          memtech => memtech,
+          hmindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SVGA_ENABLE,
+          hdmindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SVGA_ENABLE+1,
+          hsindex => 4,     haddr => 16#C00#, hmask => 16#E00#, ioaddr => 16#400#, 
+          pindex => 9,      paddr => 9,       irq => 4,         irqmode => 0,      
+          master => CFG_GRPCI2_MASTER,        target => CFG_GRPCI2_TARGET,
+          dma => CFG_GRPCI2_DMA,              tracebuffer => CFG_GRPCI2_TRACE,
+          vendorid => CFG_GRPCI2_VID,         deviceid => CFG_GRPCI2_DID,
+          classcode => CFG_GRPCI2_CLASS,      revisionid => CFG_GRPCI2_RID,
+          cap_pointer => CFG_GRPCI2_CAP,      ext_cap_pointer => CFG_GRPCI2_NCAP,
+          iobase => CFG_AHBIO,                extcfg => CFG_GRPCI2_EXTCFG,
+          bar0 => CFG_GRPCI2_BAR0,            bar1 => CFG_GRPCI2_BAR1,
+          bar2 => CFG_GRPCI2_BAR2,            bar3 => CFG_GRPCI2_BAR3,
+          bar4 => CFG_GRPCI2_BAR4,            bar5 => CFG_GRPCI2_BAR5,
+          fifo_depth => CFG_GRPCI2_FDEPTH,    fifo_count => CFG_GRPCI2_FCOUNT,
+          conv_endian => CFG_GRPCI2_ENDIAN,   deviceirq => CFG_GRPCI2_DEVINT,
+          deviceirqmask => CFG_GRPCI2_DEVINTMSK, hostirq => CFG_GRPCI2_HOSTINT,
+          hostirqmask => CFG_GRPCI2_HOSTINTMSK, 
+          nsync => 2,       hostrst => 1,     bypass => CFG_GRPCI2_BYPASS,
+          debug => 0, tbapben => 0, tbpindex => 5, tbpaddr => 16#400#, tbpmask => 16#C00#
+          )
+        port map (
+          rstn, clk, pciclk, pci_dirq, pcii, pcio, apbi, apbo(9), ahbsi, open, ahbmi,
+          ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SVGA_ENABLE), ahbmi, 
+          open, open, open, open, open);
+
     end generate;
 
-    pci_mtf0 : if CFG_PCI = 2 generate	-- master/target with fifo
-      pci0 : pci_mtf generic map (memtech => memtech, hmstndx => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SVGA_ENABLE, 
-	  fifodepth => log2(CFG_PCIDEPTH), device_id => CFG_PCIDID, vendor_id => CFG_PCIVID,
-	  hslvndx => 4, pindex => 9, paddr => 9, haddr => 16#E00#,
-	  ioaddr => 16#400#, nsync => 2)
-      port map (rstn, clk, pciclk, pcii, pcio, apbi, apbo(9),
-	ahbmi, ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SVGA_ENABLE), ahbsi, ahbso(4));
+    grpci2xmt : if (CFG_GRPCI2_MASTER+CFG_GRPCI2_TARGET) > 1 and (CFG_GRPCI2_DMA) = 0 generate
+      pci0 : grpci2 
+        generic map (
+          memtech => memtech,
+          hmindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SVGA_ENABLE,
+          hdmindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SVGA_ENABLE+1,
+          hsindex => 4,     haddr => 16#C00#, hmask => 16#E00#, ioaddr => 16#400#, 
+          pindex => 9,      paddr => 9,       irq => 4,         irqmode => 0,      
+          master => CFG_GRPCI2_MASTER,        target => CFG_GRPCI2_TARGET,
+          dma => CFG_GRPCI2_DMA,              tracebuffer => CFG_GRPCI2_TRACE,
+          vendorid => CFG_GRPCI2_VID,         deviceid => CFG_GRPCI2_DID,
+          classcode => CFG_GRPCI2_CLASS,      revisionid => CFG_GRPCI2_RID,
+          cap_pointer => CFG_GRPCI2_CAP,      ext_cap_pointer => CFG_GRPCI2_NCAP,
+          iobase => CFG_AHBIO,                extcfg => CFG_GRPCI2_EXTCFG,
+          bar0 => CFG_GRPCI2_BAR0,            bar1 => CFG_GRPCI2_BAR1,
+          bar2 => CFG_GRPCI2_BAR2,            bar3 => CFG_GRPCI2_BAR3,
+          bar4 => CFG_GRPCI2_BAR4,            bar5 => CFG_GRPCI2_BAR5,
+          fifo_depth => CFG_GRPCI2_FDEPTH,    fifo_count => CFG_GRPCI2_FCOUNT,
+          conv_endian => CFG_GRPCI2_ENDIAN,   deviceirq => CFG_GRPCI2_DEVINT,
+          deviceirqmask => CFG_GRPCI2_DEVINTMSK, hostirq => CFG_GRPCI2_HOSTINT,
+          hostirqmask => CFG_GRPCI2_HOSTINTMSK, 
+          nsync => 2,       hostrst => 1,     bypass => CFG_GRPCI2_BYPASS,
+          debug => 0, tbapben => 0, tbpindex => 5, tbpaddr => 16#400#, tbpmask => 16#C00#
+          )
+        port map (
+          rstn, clk, pciclk, pci_dirq, pcii, pcio, apbi, apbo(9), ahbsi, ahbso(4), ahbmi,
+          ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SVGA_ENABLE), ahbmi, 
+          open, open, open, open, open);
+
     end generate;
 
-    pci_mtf1 : if CFG_PCI = 3 generate	-- master/target with fifo and DMA
-      dma : pcidma generic map (memtech => memtech, dmstndx => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+1+CFG_SVGA_ENABLE, 
-	  dapbndx => 5, dapbaddr => 5, blength => blength, mstndx => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SVGA_ENABLE,
-	  fifodepth => log2(fifodepth), device_id => CFG_PCIDID, vendor_id => CFG_PCIVID,
-	  slvndx => 4, apbndx => 9, apbaddr => 9, haddr => 16#E00#, ioaddr => 16#800#, 
-	  nsync => 1)
-      	port map (rstn, clk, pciclk, pcii, pcio, apbo(9),  ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+1+CFG_SVGA_ENABLE), 
- 	  apbi, apbo(4), ahbmi, ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SVGA_ENABLE), ahbsi, ahbso(4));
-    end generate;
+    grpci2xd : if (CFG_GRPCI2_MASTER+CFG_GRPCI2_TARGET) /= 0 and CFG_GRPCI2_DMA /= 0 generate
+      
+      pci0 : grpci2 
+        generic map (
+          memtech => memtech,
+          hmindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SVGA_ENABLE,
+          hdmindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SVGA_ENABLE+1,
+          hsindex => 4,     haddr => 16#C00#, hmask => 16#E00#, ioaddr => 16#400#, 
+          pindex => 9,      paddr => 9,       irq => 4,         irqmode => 0,      
+          master => CFG_GRPCI2_MASTER,        target => CFG_GRPCI2_TARGET,
+          dma => CFG_GRPCI2_DMA,              tracebuffer => CFG_GRPCI2_TRACE,
+          vendorid => CFG_GRPCI2_VID,         deviceid => CFG_GRPCI2_DID,
+          classcode => CFG_GRPCI2_CLASS,      revisionid => CFG_GRPCI2_RID,
+          cap_pointer => CFG_GRPCI2_CAP,      ext_cap_pointer => CFG_GRPCI2_NCAP,
+          iobase => CFG_AHBIO,                extcfg => CFG_GRPCI2_EXTCFG,
+          bar0 => CFG_GRPCI2_BAR0,            bar1 => CFG_GRPCI2_BAR1,
+          bar2 => CFG_GRPCI2_BAR2,            bar3 => CFG_GRPCI2_BAR3,
+          bar4 => CFG_GRPCI2_BAR4,            bar5 => CFG_GRPCI2_BAR5,
+          fifo_depth => CFG_GRPCI2_FDEPTH,    fifo_count => CFG_GRPCI2_FCOUNT,
+          conv_endian => CFG_GRPCI2_ENDIAN,   deviceirq => CFG_GRPCI2_DEVINT,
+          deviceirqmask => CFG_GRPCI2_DEVINTMSK, hostirq => CFG_GRPCI2_HOSTINT,
+          hostirqmask => CFG_GRPCI2_HOSTINTMSK, 
+          nsync => 2,       hostrst => 1,     bypass => CFG_GRPCI2_BYPASS,
+          debug => 0, tbapben => 0, tbpindex => 5, tbpaddr => 16#400#, tbpmask => 16#C00#
+          )
+        port map (
+          rstn, clk, pciclk, pci_dirq, pcii, pcio, apbi, apbo(9), ahbsi, ahbso(4), ahbmi,
+          ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SVGA_ENABLE), ahbmi, 
+          ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SVGA_ENABLE+1),
+          open, open, open, open);
 
-    pci_trc0 : if CFG_PCITBUFEN /= 0 generate	-- PCI trace buffer
-      pt0 : pcitrace generic map (depth => (6 + log2(CFG_PCITBUF/256)), 
-	memtech => memtech, pindex  => 8, paddr => 16#100#, pmask => 16#f00#)
-        port map ( rstn, clk, pciclk, pcii, apbi, apbo(8));
     end generate;
 
   end generate;
@@ -508,14 +576,14 @@ begin
 -----------------------------------------------------------------------
 
   eth0 : if CFG_GRETH = 1 generate -- Gaisler ethernet MAC
-      e1 : greth generic map(hindex => CFG_NCPU+CFG_AHB_UART+CFG_PCI+CFG_AHB_JTAG+CFG_SVGA_ENABLE,
+      e1 : greth generic map(hindex => CFG_NCPU+CFG_AHB_UART+CFG_GRPCI2_TARGET+CFG_GRPCI2_DMA+CFG_AHB_JTAG+CFG_SVGA_ENABLE,
 	pindex => 11, paddr => 11, pirq => 12, memtech => memtech,
         mdcscaler => CPU_FREQ/1000, enable_mdio => 1, fifosize => CFG_ETH_FIFO,
         nsync => 1, edcl => CFG_DSU_ETH, edclbufsz => CFG_ETH_BUF,
         macaddrh => CFG_ETH_ENM, macaddrl => CFG_ETH_ENL, 
 	ipaddrh => CFG_ETH_IPM, ipaddrl => CFG_ETH_IPL)
      port map( rst => rstn, clk => clk, ahbmi => ahbmi,
-       ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_PCI+CFG_AHB_JTAG+CFG_SVGA_ENABLE), apbi => apbi,
+       ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_GRPCI2_TARGET+CFG_GRPCI2_DMA+CFG_AHB_JTAG+CFG_SVGA_ENABLE), apbi => apbi,
        apbo => apbo(11), ethi => ethi, etho => etho); 
   end generate;
 
@@ -599,12 +667,12 @@ begin
 ---  Drive unused bus elements  ---------------------------------------
 -----------------------------------------------------------------------
 
-  nam1 : for i in (CFG_NCPU+CFG_AHB_UART+CFG_PCI+ CFG_AHB_JTAG+CFG_GRETH+CFG_SVGA_ENABLE) to NAHBMST-1 generate
+  nam1 : for i in (CFG_NCPU+CFG_AHB_UART+CFG_GRPCI2_TARGET+CFG_GRPCI2_DMA+CFG_AHB_JTAG+CFG_GRETH+CFG_SVGA_ENABLE) to NAHBMST-1 generate
     ahbmo(i) <= ahbm_none;
   end generate;
-  nam2 : if CFG_PCI > 1 generate
-    ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_PCI+CFG_AHB_JTAG-1+CFG_SVGA_ENABLE) <= ahbm_none;
-  end generate;
+--  nam2 : if CFG_PCI > 1 generate
+--    ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_PCI+CFG_AHB_JTAG-1+CFG_SVGA_ENABLE) <= ahbm_none;
+--  end generate;
   nap0 : for i in 12 to NAPBSLV-1 generate apbo(i) <= apb_none; end generate;
 --  nah0 : for i in 8 to NAHBSLV-1 generate ahbso(i) <= ahbs_none; end generate;
 

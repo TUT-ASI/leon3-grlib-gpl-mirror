@@ -1,0 +1,3 @@
+      bool 'HPS2FPGA bridge                    ' CONFIG_HPS2FPGA
+      bool 'FPGA2HPS bridge	                   ' CONFIG_FPGA2HPS
+      bool 'HPS reset resets LEON3             ' CONFIG_HPS_RESET

@@ -1,4 +1,5 @@
 tbufmem.vhd
+tbufmem_2p.vhd
 dsu3x.vhd
 dsu3.vhd
 dsu3_2x.vhd
@@ -20,6 +21,8 @@ grlfpwx.vhd
 mfpwx.vhd
 iu3.vhd
 proc3.vhd
+grfpwxsh.vhd
+leon3x.vhd
 leon3cg.vhd
 leon3s.vhd
 leon3s2x.vhd
@@ -27,6 +30,4 @@ leon3sh.vhd
 leon3ft.vhd
 leon3ftsh.vhd
 leon3ft2x.vhd
-leon3x.vhd
-grfpwxsh.vhd
-
+l3stat.vhd

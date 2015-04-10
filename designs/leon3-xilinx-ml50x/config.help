@@ -8,7 +8,7 @@ CONFIG_SYN_INFERRED
   - Inferred: Generic FPGA or ASIC targets if your synthesis tool
     is capable of inferring RAMs and pads automatically.
 
-  - Actel ProAsic/P/3, IGLOO and Axcelerator FPGAs
+  - Actel ProAsic/P/3, IGLOO/2 and Axcelerator FPGAs
   - Aeroflex UT25CRH Rad-Hard 0.25 um CMOS
   - Altera: Most Altera FPGA families
   - Altera-CycloneIII: Altera Cyclone-III/IV FPGA family
@@ -35,6 +35,10 @@ CONFIG_SYN_INFERRED
 Ram library
 CONFIG_MEM_VIRAGE
   Select RAM generators for ASIC targets.
+
+Transceiver type
+CONFIG_TRANS_GTP0
+  Select the transceiver type used in your FPGA
 
 Infer ram
 CONFIG_SYN_INFER_RAM
@@ -292,10 +296,9 @@ CONFIG_IU_WATCHPOINTS
 
 Floating-point enable
 CONFIG_FPU_ENABLE
-  Say Y here to enable the floating-point interface for the MEIKO
-  or GRFPU. Note that no FPU's are provided with the GPL version
-  of GRLIB. Both the Gaisler GRFPU and the Meiko FPU are commercial
-  cores and must be obtained separately.
+  Say Y here to enable the floating-point interface for the GRFPU-lite
+  or GRFPU. Note that no FPUs are provided with the GPL version
+  of GRLIB. Both FPUs are commercial cores and must be obtained separately.
 
 FPU selection
 CONFIG_FPU_GRFPU
@@ -566,6 +569,13 @@ CONFIG_DSU_ITRACESZ1
   Each line in the buffer needs 16 bytes. A 128-entry buffer will thus
   need 2 kbyte.
 
+Enable two-port instruction trace buffer
+CONFIG_DSU_ITRACE_2P
+  If you say Y here, the instruction trace buffer will be implemented
+  in each processor with a two-port RAM. It will then be possible
+  to read the buffer through its second port, while the processor 
+  instructions are being traced.
+
 Enable AHB tracing
 CONFIG_DSU_ATRACE
   If you say Y here, an AHB trace buffer will be implemented in the
@@ -579,6 +589,19 @@ CONFIG_DSU_ATRACESZ1
   Select the buffer size (in kbytes) for the AHB trace buffer.
   Each line in the buffer needs 16 bytes. A 128-entry buffer will thus
   need 2 kbyte.
+
+AHB trace buffer filters
+CONFIG_DSU_AFILT
+  If you say Y here, the debug support unit will allow filtering of
+  AHB trace buffer inputs. Filters allow to select which masters,
+  slaves and types of accesses that should be saved to the buffer.
+
+AHB statistics outputs
+CONFIG_DSU_ASTAT
+  If you say Y here, the debug support unit will enable its statistics
+  outputs. These outputs can be connected to a L4STAT unit in order to
+  count events on the AHB bus. This option will also enable AHB trace
+  buffer filters.
 
 
 LEON3FT enable
@@ -634,6 +657,15 @@ CONFIG_DEBUG_PC32
   be implemented with full 32 bits, making debugging of the VHDL model
   much easier. Turn of this option for synthesis or you will be wasting
   area.
+
+SPARC V8E non-privileged ASI access
+CONFIG_NP_ASI
+  In SPARC-V8E implementations providing for non-privileged ASI access
+  functions, LOAD and STORE from Alternate space instructions
+  accessing ASI’s 0016 - 7F16 are privileged instructions. LOAD and
+  STORE from Alternate space instructions accessing ASI’s 8016 - FF16
+  are non-privileged instructions. This option enables this non-
+  privileged behavior.
 CONFIG_AHB_DEFMST
   Sets the default AHB master (see AMBA 2.0 specification for definition).
   Should not be set to a value larger than the number of AHB masters - 1.

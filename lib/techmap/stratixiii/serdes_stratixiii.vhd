@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -50,18 +51,6 @@ entity serdes_stratixiii is
 end entity;
 
 architecture rtl of serdes_stratixiii is
-	component altera_tse_lvds_reset_sequencer is
-		port (
-			clk                     : in  std_logic;
-			reset                   : in  std_logic;
-			rx_locked               : in  std_logic;
-			rx_channel_data_align   : out std_logic;
-			pll_areset              : out std_logic; -- can be ignored
-			rx_reset                : out std_logic;
-			rx_cda_reset            : out std_logic;
-			rx_reset_sequence_done  : out std_logic
-		);
-	end component;
 
 	signal rx_clk_int, rx_pll_clk_int, tx_pll_clk_int, rst_int, pll_areset_int, rx_locked_int, rx_rstn_int_0, tx_locked_int : std_logic;
 	signal rx_cda_reset_int, bitslip_int, rx_in_int, rx_rst_int, rx_divfwdclk_int, tx_out_int : std_logic_vector(0 downto 0) ;

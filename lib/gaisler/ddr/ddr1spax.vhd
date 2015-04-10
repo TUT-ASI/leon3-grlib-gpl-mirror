@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -189,19 +190,19 @@ begin
   wbuf: ddr2buf
     generic map (tech => memtech, wabits => wbuf_wabits, wdbits => wbuf_wdbits,
                  rabits => wbuf_rabits_r, rdbits => wbuf_rdbits,
-                 sepclk => 1, wrfst => ramwt)
+                 sepclk => 1, wrfst => ramwt, testen => scantest)
     port map ( rclk => clk_ddr, renable => vcc, raddress => wbraddr(wbuf_rabits_r-1 downto 0),
                dataout => wbrdata, wclk => clk_ahb, write => wbwrite,
-               writebig => wbwritebig, waddress => wbwaddr, datain => wbwdata);
+               writebig => wbwritebig, waddress => wbwaddr, datain => wbwdata, testin => ahbsi.testin);
   
   rbuf: ddr2buf
     generic map (tech => memtech, wabits => rbuf_wabits, wdbits => rbuf_wdbits,
                  rabits => rbuf_rabits, rdbits => rbuf_rdbits,
-                 sepclk => 1, wrfst => ramwt)
+                 sepclk => 1, wrfst => ramwt, testen => scantest)
     port map ( rclk => clk_ahb, renable => vcc, raddress => rbraddr,
                dataout => rbrdata,
                wclk => clk_ddr, write => rbwrite,
-               writebig => '0', waddress => rbwaddr, datain => rbwdata);
+               writebig => '0', waddress => rbwaddr, datain => rbwdata, testin => ahbsi.testin);
   
 -- pragma translate_off
    bootmsg : report_version

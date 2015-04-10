@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,7 +29,7 @@ library techmap;
 use techmap.gencomp.all;
 use techmap.allddr.all;
 
-entity ddr_oreg is generic (tech : integer; arch : integer := 0);
+entity ddr_oreg is generic (tech : integer; arch : integer := 0; scantest: integer := 0);
   port
     ( Q : out std_ulogic;
       C1 : in std_ulogic;
@@ -37,7 +38,9 @@ entity ddr_oreg is generic (tech : integer; arch : integer := 0);
       D1 : in std_ulogic;
       D2 : in std_ulogic;
       R : in std_ulogic;
-      S : in std_ulogic);
+      S : in std_ulogic;
+      testen: in std_ulogic;
+      testrst: in std_ulogic);
 end;
 
 architecture rtl of ddr_oreg is
@@ -45,8 +48,8 @@ begin
 
   inf : if not ((tech = lattice) or (is_unisim(tech) = 1) or
                 (tech = axcel) or (tech = axdsp) or (tech = apa3) or
-		(tech = apa3e) or (tech = apa3l)) generate
-    inf0 : gen_oddr_reg port map (Q, C1, C2, CE, D1, D2, R, S);
+		(tech = apa3e) or (tech = apa3l) or (tech = igloo2)) generate
+    inf0 : gen_oddr_reg generic map (scantest,0) port map (Q, C1, C2, CE, D1, D2, R, S, testen, testrst);
   end generate;
 
   ax : if (tech = axcel) or (tech = axdsp) generate
@@ -67,6 +70,10 @@ begin
 
   lat : if tech = lattice generate
     lat0 : ec_oddr_reg port map (Q, C1, C2, CE, D1, D2, R, S);
+  end generate;
+
+  igl2 : if tech = igloo2 generate
+    igl20 : igloo2_oddr_reg port map (Q, C1, C2, CE, D1, D2, R, S);
   end generate;
 
   xil : if is_unisim(tech) = 1 generate

@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -57,6 +58,9 @@ begin
   pa3e : if (tech = apa3e) generate
     x0 : apa3e_inpad generic map (level, voltage, filter) port map (pad, o);
   end generate;
+  igl2 : if (tech = igloo2) generate
+    x0 : igloo2_inpad port map (pad, o);
+  end generate;
   pa3l : if (tech = apa3l) generate
     x0 : apa3l_inpad generic map (level, voltage, filter) port map (pad, o);
   end generate;
@@ -77,6 +81,9 @@ begin
   end generate;
   saed : if (tech = saed32) generate
     x0 : saed32_inpad generic map (level, voltage, filter) port map (pad, o);
+  end generate;
+  rhs : if (tech = rhs65) generate
+    x0 : rhs65_inpad generic map (level, voltage, filter) port map (pad, o);
   end generate;
   dar : if (tech = dare) generate
     x0 : dare_inpad generic map (level, voltage, filter) port map (pad, o);

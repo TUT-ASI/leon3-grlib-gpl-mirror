@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -131,6 +132,9 @@ begin
         print ("");
       when "000110" =>
         grlib.testlib.print("Checkpoint " & tost(conv_integer(hwdata(15 downto 0))));
+      when "000111" =>
+        vendorid := 0; deviceid := 0;
+        print ("Basic memory test");
       when others =>
       end case;
     end if;

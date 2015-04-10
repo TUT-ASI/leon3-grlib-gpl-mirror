@@ -5,6 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -266,9 +267,6 @@ architecture rtl of leon3mp is
   signal spio : spi_out_type;
   signal slvsel : std_logic_vector(CFG_SPICTRL_SLVS-1 downto 0);
 
-  signal spmi : spimctrl_in_type;
-  signal spmo : spimctrl_out_type;
-
   signal ethi : eth_in_type;
   signal etho : eth_out_type;
   
@@ -366,7 +364,8 @@ begin
                    CFG_ISETSZ, CFG_ILOCK, CFG_DCEN, CFG_DREPL, CFG_DSETS, CFG_DLINE, CFG_DSETSZ,
                    CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
                    CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP,
-                   CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, NCPU-1)
+                   CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, NCPU-1,
+                   CFG_DFIXED, CFG_SCAN, CFG_MMU_PAGE, CFG_BP, CFG_NP_ASI, CFG_WRPSR)
         port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso,
                 irqi(i), irqo(i), dbgi(i), dbgo(i));
     end generate;
@@ -480,35 +479,6 @@ begin
 
   ddrsp1 : if (CFG_DDRSP = 0) generate 
     ddr_cke <= '0'; ddr_csb <= '1'; lock <= '1';
-  end generate;
-
-  spimc: if CFG_SPIMCTRL = 1 generate -- SPI Memory Controller
-    spimctrl0 : spimctrl
-      generic map (hindex => 4,
-                   hirq => 7,
-                   faddr => 16#b00#,
-                   fmask  => 16#f00#,
-                   ioaddr => 16#002#,
-                   iomask => 16#fff#,
-                   spliten => CFG_SPLIT,
-                   oepol   => 0,
-                   sdcard => CFG_SPIMCTRL_SDCARD,
-                   readcmd => CFG_SPIMCTRL_READCMD,
-                   dummybyte => CFG_SPIMCTRL_DUMMYBYTE,
-                   dualoutput => CFG_SPIMCTRL_DUALOUTPUT,
-                   scaler => CFG_SPIMCTRL_SCALER,
-                   altscaler => CFG_SPIMCTRL_ASCALER,
-                   pwrupcnt => CFG_SPIMCTRL_PWRUPCNT)
-      port map (rstn, clkm, ahbsi, ahbso(4), spmi, spmo);
-
-    miso_pad : inpad generic map (tech => padtech)
-      port map (hc_sd_dat, spmi.miso);
-    mosi_pad : outpad generic map (tech => padtech)
-      port map (hc_sd_cmd, spmo.mosi);
-    sck_pad  : outpad generic map (tech => padtech)
-      port map (hc_sd_clk, spmo.sck);
-    slvsel0_pad : iopad generic map (tech => padtech)
-      port map (hc_sd_dat3, spmo.csn, spmo.cdcsnoen, spmi.cd);  
   end generate;
   
 ----------------------------------------------------------------------

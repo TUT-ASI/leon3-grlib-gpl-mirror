@@ -5,6 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -163,11 +164,11 @@ begin
   gtx_clk <= not gtx_clk after 8 ns;
   rst <= dsurst;
   bexcn <= '1'; wdogn <= 'H';
-  gpio(2 downto 0) <= "HHL"; 
---  gpio(CFG_GRGPIO_WIDTH-1 downto 3) <= (others => 'H');
-  gpio(15 downto 11) <= "HLLHH"; --19
-  gpio(10 downto 8) <= "HLL"; --4
-  gpio(7 downto 0) <= (others => 'L');
+--  gpio(2 downto 0) <= "HHL"; 
+  gpio(CFG_GRGPIO_WIDTH-1 downto 0) <= (others => 'Z');
+--  gpio(15 downto 11) <= "HLLHH"; --19
+--  gpio(10 downto 8) <= "HLL"; --4
+--  gpio(7 downto 0) <= (others => 'L');
   cb(15 downto 8) <= "HHHHHHHH";
   spw_rxd <= spw_txd; spw_rxs <= spw_txs;
   roen <= '0';
@@ -227,7 +228,7 @@ begin
   port map (address(romdepth+1 downto 2), data(31-i*8 downto 24-i*8), romsn(0),
       rwen(i), oen);
   end generate;
-
+ 
   sram0 : for i in 0 to (sramwidth/8)-1 generate
       sr0 : sram generic map (index => i, abits => sramdepth, fname => sramfile)
   port map (address(sramdepth+1 downto 2), data(31-i*8 downto 24-i*8), ramsn(0),

@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -21,6 +22,22 @@
 -- File:          syncfifo_2p.vhd
 -- Author:        Andrea Gianarro - Aeroflex Gaisler AB
 -- Description:   Syncronous 2-port fifo with tech selection
+-----------------------------------------------------------------------------
+-- Revisions:  
+-- 2014/12/16 Pascal Trotta: support for generic fifo
+--  Notes: Generic fifo has the following features & limitations:
+--         -almost full is driven only in write clock domain;
+--         -almost empty is driven only in read clock domain;
+--         -full and empty are driven in both clock domains;
+--         -usedw is re-computed in each clock domain;
+--         -in "first word fall through" mode empty should be observed as data 
+--          valid signal. If renable is asserted while empty='0', and at the 
+--          next read clock rising edge empty='1', then new read data is not
+--          valid because fifo is empty. This does not apply in standard fifo
+--          mode, i.e., when empty is asserted, the last read data is valid;
+--         -supports only sepclk=1, i.e., asynchronous read/write clocks.
+--         -it works also if rclk = wclk, but synchronization stages and gray
+--          encoder/decoder are always instantiated, even if not necessary.
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -35,45 +52,55 @@ use grlib.stdlib.all;
 
 entity syncfifo_2p is
   generic (
-    tech  : integer := 0;
-    abits : integer := 6;
-    dbits : integer := 8
+    tech  : integer := 0;   -- target technology
+    abits : integer := 10;  -- fifo address bits (actual fifo depth = 2**abits)
+    dbits : integer := 32;  -- fifo data width
+    sepclk : integer := 1;  -- 1 = asynchrounous read/write clocks, 0 = synchronous read/write clocks
+    pfull : integer := 100; -- almost full threshold (max 2**abits - 3)
+    pempty : integer := 10; -- almost empty threshold (min 2)
+    fwft : integer := 0     -- 1 = first word fall trough mode, 0 = standard mode
 	);
   port (
-    rclk    : in std_logic;
-    renable : in std_logic;
-    rfull   : out std_logic;
-    rempty  : out std_logic;
-    rusedw  : out std_logic_vector(abits-1 downto 0);
-    dataout : out std_logic_vector(dbits-1 downto 0);
-    wclk    : in std_logic;
-    write   : in std_logic;
-    wfull   : out std_logic;
-    wempty  : out std_logic;
-    wusedw  : out std_logic_vector(abits-1 downto 0);
-    datain  : in std_logic_vector(dbits-1 downto 0)
-  );
+    rclk    : in std_logic;  -- read clock
+    rrstn   : in std_logic;  -- read clock domain synchronous reset
+    wrstn   : in std_logic;  -- write clock domain synchronous reset
+    renable : in std_logic;  -- read enable
+    rfull   : out std_logic; -- fifo full (synchronized in read clock domain)
+    rempty  : out std_logic; -- fifo empty
+    aempty  : out std_logic; -- fifo almost empty (depending on pempty threshold)
+    rusedw  : out std_logic_vector(abits-1 downto 0);  -- fifo used words (synchronized in read clock domain)
+    dataout : out std_logic_vector(dbits-1 downto 0);  -- fifo data output
+    wclk    : in std_logic;  -- write clock
+    write   : in std_logic;  -- write enable
+    wfull   : out std_logic; -- fifo full
+    afull   : out std_logic; -- fifo almost full (depending on pfull threshold)
+    wempty  : out std_logic; -- fifo empty (synchronized in write clock domain)
+    wusedw  : out std_logic_vector(abits-1 downto 0); -- fifo used words (synchronized in write clock domain)
+    datain  : in std_logic_vector(dbits-1 downto 0)); -- fifo data input
 end;
 
 architecture rtl of syncfifo_2p is
+
 begin
 
-  -- TO BE IMPLEMENTED
---  inf : if tech = inferred generate
---    x0 : generic_syncfifo_2p generic map (abits, dbits)
---         port map (rclk, renable, rfull, rempty, rusedw, dataout, wclk,
---           write, wfull, wempty, wusedw, datain);
---  end generate;
-
+-- Altera fifo
   alt : if (tech = altera) or (tech = stratix1) or (tech = stratix2) or
-	(tech = stratix3) or (tech = stratix4) generate
+    (tech = stratix3) or (tech = stratix4) generate
     x0 : altera_fifo_dp generic map (tech, abits, dbits)
       port map (rclk, renable, rfull, rempty, rusedw, dataout, wclk,
         write, wfull, wempty, wusedw, datain);
   end generate;
 
+-- generic FIFO implemented using syncram_2p component
+  inf : if (tech /= altera) and (tech /= stratix1) and (tech /= stratix2) and 
+    (tech /= stratix3) and (tech /= stratix4) generate
+    x0: generic_fifo generic map (tech, abits, dbits, sepclk, pfull, pempty, fwft)
+      port map (rclk, rrstn, wrstn, renable, rfull, rempty, aempty, rusedw, dataout,
+        wclk, write, wfull, afull, wempty, wusedw, datain);
+  end generate;
+
 -- pragma translate_off
-  nofifo : if has_2pfifo(tech) = 0 generate
+  nofifo : if (has_2pfifo(tech) = 0) and (has_2pram(tech) = 0) generate
     x : process
     begin
       assert false report "syncfifo_2p: technology " & tech_table(tech) &

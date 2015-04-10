@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -334,12 +335,15 @@ package grethpkg is
       ifg_gap        : integer := 24;
       attempt_limit  : integer := 16;
       backoff_limit  : integer := 10;
-      nsync          : integer range 1 to 2 := 2);
+      nsync          : integer range 1 to 2 := 2;
+      iotest         : integer := 0);
     port(
       rst            : in   std_ulogic;
       clk            : in   std_ulogic;
       gtxi           : in   gbit_host_gtx_type;
-      gtxo           : out  gbit_gtx_host_type
+      gtxo           : out  gbit_gtx_host_type;
+      iotmact        : in   std_ulogic;
+      iotdata        : in   std_logic_vector(9 downto 0)
     );
   end component;
 
@@ -353,7 +357,8 @@ package grethpkg is
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;
       rxi            : in  gbit_host_rx_type;
-      rxo            : out gbit_rx_host_type);
+      rxo            : out gbit_rx_host_type;
+      iotdata        : out std_logic_vector(9 downto 0));
   end component;
 
   component eth_ahb_mst is

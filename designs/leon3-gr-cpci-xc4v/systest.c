@@ -1,10 +1,18 @@
+#include <stdio.h>
 
-main()
+main(){
 
-{
-	report_start();
 
-	base_test();
+  report_start();
 
-	report_end();
+  //dpr_test(0x80000b00);
+
+  base_test();
+
+  report_end();
+
 }
+
+
+
+

@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -19,7 +20,7 @@
 -----------------------------------------------------------------------------
 -- Entity:      devices
 -- File:        devices.vhd
--- Author:      Aeroflex Gaisler AB
+-- Author:      Cobham Gaisler AB
 -- Description: Vendor and devices IDs for AMBA plug&play
 ------------------------------------------------------------------------------
 
@@ -60,11 +61,12 @@ package devices is
   constant VENDOR_ACTEL      : amba_vendor_type := 16#AC#;
   constant VENDOR_APPLECORE  : amba_vendor_type := 16#AE#;
   constant VENDOR_C3E        : amba_vendor_type := 16#C3#;
+  constant VENDOR_CBKPAN     : amba_vendor_type := 16#C8#;
   constant VENDOR_CAL        : amba_vendor_type := 16#CA#;
   constant VENDOR_CETON      : amba_vendor_type := 16#CB#;
   constant VENDOR_EMBEDDIT   : amba_vendor_type := 16#EA#;
 
--- Aeroflex Gaisler device ids
+-- Cobham Gaisler device ids
 
   constant GAISLER_LEON2DSU  : amba_device_type := 16#002#;
   constant GAISLER_LEON3     : amba_device_type := 16#003#;
@@ -215,6 +217,15 @@ package devices is
   constant GAISLER_GRDMAC    : amba_device_type := 16#095#;
   constant GAISLER_AHB2AVLA  : amba_device_type := 16#096#;
   constant GAISLER_SPWTDP    : amba_device_type := 16#097#;
+  constant GAISLER_L3STAT    : amba_device_type := 16#098#;
+  constant GAISLER_GR740THS  : amba_device_type := 16#099#;
+  constant GAISLER_GRRM      : amba_device_type := 16#09A#;
+  constant GAISLER_CMAP      : amba_device_type := 16#09B#;
+  constant GAISLER_CPGEN     : amba_device_type := 16#09C#;
+  constant GAISLER_AMBAPROT  : amba_device_type := 16#09D#;
+  constant GAISLER_IGLOO2_BRIDGE : amba_device_type := 16#09E#;
+  constant GAISLER_AHB2AXI   : amba_device_type := 16#09F#;
+  constant GAISLER_AXI2AHB   : amba_device_type := 16#0A0#;
 
 -- Sun Microsystems
 
@@ -224,6 +235,12 @@ package devices is
 -- Caltech
 
   constant CAL_DDRCTRL        : amba_device_type := 16#188#;
+
+-- CBK PAN
+  constant CBKPAN_FTNANDCTRL    : amba_device_type := 16#001#;
+  constant CBKPAN_FTEEPROMCTRL  : amba_device_type := 16#002#;
+  constant CBKPAN_FTSDCTRL16    : amba_device_type := 16#003#;
+  constant CBKPAN_STIXCTRL      : amba_device_type := 16#300#;
 
 -- European Space Agency device ids
 
@@ -279,6 +296,10 @@ package devices is
   constant GLEICHMANN_SPIOC    : amba_device_type := 16#008#;
   constant GLEICHMANN_AC97     : amba_device_type := 16#009#;
 
+-- MENTA device ids
+
+  constant MENTA_EFPGA_IP       : amba_device_type := 16#002#;
+  
 -- DTU device ids
 
   constant DTU_IV              : amba_device_type := 16#001#;
@@ -309,6 +330,7 @@ package devices is
   constant ORBITA_USBHOST      : amba_device_type := 16#258#;
   constant ORBITA_USBDEV       : amba_device_type := 16#2BC#;
 
+  
 -- Actel device ids
 
   constant ACTEL_COREMP7       : amba_device_type := 16#001#;
@@ -331,15 +353,7 @@ package devices is
 -- grlib system device ids
 
   subtype system_device_type  is integer range 0 to 16#ffff#;
-
-  constant LEON3_NEXTREME1      : system_device_type := 16#0101#;
-  constant LEON4_NEXTREME1      : system_device_type := 16#0102#;
   constant LEON3_ACT_FUSION     : system_device_type := 16#0105#;
-  constant LEON3_RTAX_CID6RSNETH: system_device_type := 16#0196#;
-  constant LEON3_RTAX_KARI      : system_device_type := 16#0197#;
-  constant LEON3_RTAX_IAA       : system_device_type := 16#0198#;
-  constant LEON3_RTAX_TECNOBIT  : system_device_type := 16#0199#;
-  constant LEON3_RTAX_TDP8      : system_device_type := 16#0200#;
   constant LEON3_RTAX_CID1      : system_device_type := 16#0201#;
   constant LEON3_RTAX_CID2      : system_device_type := 16#0202#;
   constant LEON3_RTAX_CID3      : system_device_type := 16#0203#;
@@ -348,10 +362,7 @@ package devices is
   constant LEON3_RTAX_CID6      : system_device_type := 16#0206#;
   constant LEON3_RTAX_CID7      : system_device_type := 16#0207#;
   constant LEON3_RTAX_CID8      : system_device_type := 16#0208#;
-  constant LEON3_IHP25RH1       : system_device_type := 16#0251#;
   constant LEON3_PROXIMA        : system_device_type := 16#0252#;
-  constant NGMP_PROTOTYPE       : system_device_type := 16#0281#;
-  constant NGMP_PROTOTYPE2      : system_device_type := 16#0282#;
   constant ALTERA_DE2           : system_device_type := 16#0302#;
   constant ALTERA_DE4           : system_device_type := 16#0303#;
   constant XILINX_ML401         : system_device_type := 16#0401#;
@@ -362,23 +373,13 @@ package devices is
   constant XILINX_ML507         : system_device_type := 16#0507#;
   constant XILINX_ML509         : system_device_type := 16#0509#;
   constant XILINX_ML510         : system_device_type := 16#0510#;
+  constant MICROSEMI_M2GL_EVAL  : system_device_type := 16#0560#;
   constant XILINX_SP601         : system_device_type := 16#0601#;
   constant XILINX_ML605         : system_device_type := 16#0605#;
-  constant ORBITA_1             : system_device_type := 16#0631#;
-  constant ORBITA_OBTMP         : system_device_type := 16#0632#;
-  constant AEROFLEX_UT699       : system_device_type := 16#0699#;
-  constant AEROFLEX_UT700       : system_device_type := 16#0700#;
-  constant GAISLER_GR701        : system_device_type := 16#0701#;
-  constant GAISLER_GR702        : system_device_type := 16#0702#;
-  constant GAISLER_GR703        : system_device_type := 16#0703#;
-  constant GAISLER_DARE1        : system_device_type := 16#0704#;
-  constant GAISLER_GR712RC      : system_device_type := 16#0712#;
-  constant GAISLER_SPWRTRASIC   : system_device_type := 16#0718#;
-  constant AEROFLEX_UT840       : system_device_type := 16#0840#;
 
 -- pragma translate_off
 
-  constant GAISLER_DESC : vendor_description :=  "Aeroflex Gaisler        ";
+  constant GAISLER_DESC : vendor_description :=  "Cobham Gaisler          ";
 
   constant gaisler_device_table : device_table_type := (
    GAISLER_LEON2DSU  => "LEON2 Debug Support Unit       ",
@@ -530,6 +531,15 @@ package devices is
    GAISLER_GRDMAC    => "DMA Controller with APB bridge ",
    GAISLER_AHB2AVLA  => "Avalon-MM memory controller    ",
    GAISLER_SPWTDP    => "CCSDS TDP / SpaceWire I/F      ",
+   GAISLER_L3STAT    => "LEON3 Statistics Unit          ",
+   GAISLER_GR740THS  => "Temperature sensor             ",
+   GAISLER_GRRM      => "Reconfiguration Module         ",
+   GAISLER_CMAP      => "CCSDS Memory Access Protocol   ",
+   GAISLER_CPGEN     => "Discrete Command Pulse Gen     ",
+   GAISLER_AMBAPROT  => "AMBA Protection Unit           ",
+   GAISLER_IGLOO2_BRIDGE => "Microsemi IGLOO2 HPMS Wrapper  ",
+   GAISLER_AHB2AXI   => "AMBA AHB/AXI Bridge            ",
+   GAISLER_AXI2AHB   => "AMBA AXI/AHB Bridge            ",
    others            => "Unknown Device                 ");
 
    constant gaisler_lib : vendor_library_type := (
@@ -631,6 +641,7 @@ package devices is
   constant MENTA_DESC : vendor_description :=  "Menta                   ";
 
   constant menta_device_table : device_table_type := (
+   MENTA_EFPGA_IP      => "eFPGA Core IP                  ",
    others              => "Unknown Device                 ");
 
    constant menta_lib : vendor_library_type := (
@@ -663,6 +674,21 @@ package devices is
      device_table      => opencores_device_table
    );
 
+  constant CBKPAN_DESC : vendor_description := "CBK PAN                 ";
+  
+  constant cbkpan_device_table : device_table_type := (
+    CBKPAN_FTNANDCTRL       => "NAND FLASH controller w/DMA    ",
+    CBKPAN_FTEEPROMCTRL     => "Fault Toler. EEPROM Controller ",
+    CBKPAN_FTSDCTRL16       => "Fault Toler. 16-bit SDRAM Ctrl.",
+    CBKPAN_STIXCTRL         => "SolO/STIX IDPU dedicated ctrl. ",
+    others                  => "Unknown Device                 ");
+   
+  constant cbkpan_lib : vendor_library_type := (
+    vendorid       => VENDOR_CBKPAN,
+    vendordesc     => CBKPAN_DESC,
+    device_table   => cbkpan_device_table
+   );
+  
   constant CETON_DESC : vendor_description :=  "Ceton Corporation       ";
 
   constant ceton_device_table : device_table_type := (
@@ -767,6 +793,7 @@ package devices is
      device_table      => dtu_device_table
    );
 
+  
   constant orbita_device_table : device_table_type := (
    ORBITA_1553B       => "MIL-STD-1553B Controller       ",
    ORBITA_429         => "429 Interface                  ",
@@ -885,8 +912,6 @@ package devices is
   type system_table_type is array (0 to 4095) of device_description;
 
   constant system_table : system_table_type := (
-   LEON3_NEXTREME1    => "LEON3 eASIC Nextreme controller",
-   LEON4_NEXTREME1    => "LEON4 eASIC Nextreme SoC       ",
    LEON3_ACT_FUSION   => "LEON3 Actel Fusion Dev. board  ",
    LEON3_RTAX_CID2    => "LEON3FT RTAX Configuration 2   ",
    LEON3_RTAX_CID5    => "LEON3FT RTAX Configuration 5   ",
@@ -903,16 +928,9 @@ package devices is
    XILINX_ML507       => "Xilinx ML507 Development board ",
    XILINX_ML509       => "Xilinx ML509 Development board ",
    XILINX_ML510       => "Xilinx ML510 Development board ",
+   MICROSEMI_M2GL_EVAL=> "Microsemi IGLOO2 Evaluation kit", 
    XILINX_SP601       => "Xilinx SP601 Development board ",
    XILINX_ML605       => "Xilinx ML605 Development board ",
-   AEROFLEX_UT699     => "Aeroflex UT699 Rad-Hard CPU    ",
-   AEROFLEX_UT700     => "Aeroflex UT700 Rad-Hard CPU    ",
-   GAISLER_DARE1      => "Gaisler DARE1 Rad-Hard CPU     ",
-   GAISLER_GR712RC    => "Gaisler GR712RC Rad-Hard CPU   ",
-   NGMP_PROTOTYPE     => "NGMP Prototype System-on-Chip  ",
-   NGMP_PROTOTYPE2    => "NGMP Prototype System-on-Chip  ",
-   ORBITA_OBTMP       => "Orbita LEON4 prototype system  ",
-   GAISLER_SPWRTRASIC => "Gaisler SpaceWire Router ASIC  ",
    others             => "Unknown system                 ");
 
 -- pragma translate_on

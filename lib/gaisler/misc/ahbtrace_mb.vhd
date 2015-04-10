@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -37,21 +38,30 @@ use gaisler.misc.all;
 
 entity ahbtrace_mb is
   generic (
-    hindex  : integer := 0;
-    ioaddr  : integer := 16#000#;
-    iomask  : integer := 16#E00#;
-    tech    : integer := DEFMEMTECH; 
-    irq     : integer := 0; 
-    kbytes  : integer := 1;
-    bwidth  : integer := 32;
-    ahbfilt : integer := 0); 
+    hindex   : integer := 0;
+    ioaddr   : integer := 16#000#;
+    iomask   : integer := 16#E00#;
+    tech     : integer := DEFMEMTECH; 
+    irq      : integer := 0; 
+    kbytes   : integer := 1;
+    bwidth   : integer := 32;
+    ahbfilt  : integer := 0;
+    scantest : integer range 0 to 1 := 0;
+    exttimer : integer range 0 to 1 := 0;
+    exten    : integer range 0 to 1 := 0);
   port (
-    rst    : in  std_ulogic;
-    clk    : in  std_ulogic;
-    ahbsi  : in  ahb_slv_in_type;       -- Register interface
-    ahbso  : out ahb_slv_out_type;
-    tahbmi : in  ahb_mst_in_type;       -- Trace
-    tahbsi : in  ahb_slv_in_type
+    rst      : in  std_ulogic;
+    clk      : in  std_ulogic;
+    ahbsi    : in  ahb_slv_in_type;       -- Register interface
+    ahbso    : out ahb_slv_out_type;
+    tahbmi   : in  ahb_mst_in_type;       -- Trace
+    tahbsi   : in  ahb_slv_in_type;
+    mtesti   : in  ahbtrace_memtest_type;
+    mtesto   : out ahbtrace_memtest_type;
+    mtestclk : in  std_ulogic;
+    timer    : in  std_logic_vector(30 downto 0) := (others => '0');
+    astat    : out amba_stat_type;
+    resen    : in  std_ulogic := '0'
   );
 end; 
 
@@ -68,23 +78,31 @@ begin
   
   ahbt0 : ahbtrace_mmb
     generic map (
-      hindex  => hindex,
-      ioaddr  => ioaddr,
-      iomask  => iomask,
-      tech    => tech,
-      irq     => irq,
-      kbytes  => kbytes,
-      bwidth  => bwidth,
-      ahbfilt => ahbfilt,
-      ntrace  => 1)
+      hindex   => hindex,
+      ioaddr   => ioaddr,
+      iomask   => iomask,
+      tech     => tech,
+      irq      => irq,
+      kbytes   => kbytes,
+      bwidth   => bwidth,
+      ahbfilt  => ahbfilt,
+      ntrace   => 1,
+      scantest => scantest,
+      exttimer => exttimer,
+      exten    => exten)
     port map(
-      rst     => rst,
-      clk     => clk,
-      ahbsi   => ahbsi,
-      ahbso   => ahbso,
-      tahbmiv => tahbmiv,
-      tahbsiv => tahbsiv);
+      rst      => rst,
+      clk      => clk,
+      ahbsi    => ahbsi,
+      ahbso    => ahbso,
+      tahbmiv  => tahbmiv,
+      tahbsiv  => tahbsiv,
+      mtesti   => mtesti,
+      mtesto   => mtesto,
+      mtestclk => mtestclk,
+      timer    => timer,
+      astat    => astat,
+      resen    => resen);
   
 end;
-
 

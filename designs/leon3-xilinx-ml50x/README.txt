@@ -37,7 +37,7 @@ Design specifics:
   make mig
   make install-unisim
 
-  It is essential to use ISE 13.4. MIG generation is not supported
+  It is essential to use ISE 14.7. MIG generation is not supported
   for any other ISE version in this design.
 
 * The SSRAM can be interfaced with the LEON2 Memory controller. 
@@ -69,19 +69,29 @@ Design specifics:
   coregen, and the Xilinx unisim_ver libraries must be installed if you wish
   to simulate the design.
 
+* It's possible to use the Ethernet core in SGMII mode. The jumpers on the
+  board must be configured properly and the CFG_GRETH_SGMII_MODE constant in
+  the grlib_config.vhd file must be set to 1. Finally the PHY constraints in 
+  the leon3mp.ucf file must be commented and uncommented accordingly.
+
   This simulation requires that the GRLIB_SIMULATOR variable is
   correctly set. Please refer to the documentation in doc/grlib.pdf for
   additional information.
 
-  Enable PCI EXPRESS in xconfig menu
-  make pcie
-  make install-unisim
-  make compile_xilinx_verilog_lib
-  make vsim
-  make map_xilinx_verilog_lib
+  To simulate the design with ModelSim (or Aldec Riviera):
+    make install-unisim
+    make vsim (make riviera)
+    make compile-unisim
+    make vsim (skip this step if you are using Aldec Riviera)
+    make vsim-launch (make riviera-launch)
 
-  To simulate use the make target:
-  make vsim-launch
+  Enable PCI EXPRESS in xconfig menu
+    make pcie
+    make install-unisim
+    make compile_xilinx_verilog_lib
+    make vsim
+    make map_xilinx_verilog_lib
+
 
 * Sample output from GRMON is:
 

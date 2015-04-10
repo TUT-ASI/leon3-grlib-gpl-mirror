@@ -5,6 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -322,7 +323,9 @@ begin
           cached     => CFG_DFIXED,
           scantest   => CFG_SCAN,
           mmupgsz    => CFG_MMU_PAGE,
-          bp         => CFG_BP)
+          bp         => CFG_BP,
+          npasi      => CFG_NP_ASI,
+          pwrpsr     => CFG_WRPSR)
         port map (
           clk   => clkm,
           rstn  => rstn,
@@ -706,58 +709,6 @@ begin
     spio2.sckoen  <= '1';
     slvsel2(0) <= '0';
   end generate;
-
-  -- SPI Memory Controller
-  -- Example on how to connect SPI memory controller to SD card. If you want to
-  -- use this then you need to disable the second SPICTRL core's connections to
-  -- the same top-level signals above.
-  --spimc: if false generate
-  --  spimctrl0 : spimctrl
-  --    generic map (
-  --      hindex     => 4,
-  --      hirq       => 9,
-  --      faddr      => 16#b00#,
-  --      fmask      => 16#f00#,
-  --      ioaddr     => 16#002#,
-  --      iomask     => 16#fff#,
-  --      spliten    => CFG_SPLIT,
-  --      oepol      => 0,
-  --      sdcard     => CFG_SPIMCTRL_SDCARD,
-  --      readcmd    => CFG_SPIMCTRL_READCMD,
-  --      dummybyte  => CFG_SPIMCTRL_DUMMYBYTE,
-  --      dualoutput => CFG_SPIMCTRL_DUALOUTPUT,
-  --      scaler     => CFG_SPIMCTRL_SCALER,
-  --      altscaler  => CFG_SPIMCTRL_ASCALER,
-  --      pwrupcnt   => CFG_SPIMCTRL_PWRUPCNT)
-  --    port map (
-  --      rstn  => rstn,
-  --      clk   => clkm,
-  --      ahbsi => ahbsi,
-  --      ahbso => ahbso(4),
-  --      spii  => spmi,
-  --      spio  => spmo);
-
-  --  miso_pad : inpad generic map (tech => padtech)
-  --    port map (sd_dat0, spmi.miso);
-  --  mosi_pad : outpad generic map (tech => padtech)
-  --    port map (sd_cmd, spmo.mosi);
-  --  sck_pad  : outpad generic map (tech => padtech)
-  --    port map (sd_clk, spmo.sck);
-  --  slvsel0_pad : iopad generic map (tech => padtech)
-  --    port map (sd_dat3, spmo.csn, spmo.cdcsnoen, spmi.cd);
-  --end generate;
-
-  --nospimc : if false generate
-  --  spmo.mosi        <= '0';
-  --  spmo.mosioen     <= '1';
-  --  spmo.sck         <= '0';
-  --  spmo.csn         <= '1';
-  --  spmo.cdcsnoen    <= '1';
-  --  spmo.errorn      <= '0';
-  --  spmo.ready       <= '0';
-  --  spmo.initialized <= '0';
-  --end generate;
-
   
   -- sd_dat1 and sd_dat2 are unused
   unuseddat1_pad : iopad generic map (tech => padtech)

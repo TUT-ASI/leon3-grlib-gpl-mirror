@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -72,6 +73,9 @@ begin
     saed : if tech = saed32 generate
       x0 : clkmux_saed32 port map (i0 => i0, i1 => i1, sel => seli, o => o);
     end generate;
+    rhs : if tech = rhs65 generate
+      x0 : clkmux_rhs65 port map (i0 => i0, i1 => i1, sel => seli, o => o);
+    end generate;
     dar : if tech = dare generate
       x0 : clkmux_dare port map (i0 => i0, i1 => i1, sel => seli, o => o);
     end generate;
@@ -80,7 +84,7 @@ begin
     end generate;
    
     noxil : if not((is_unisim(tech) = 1) or (tech = rhlib18t) or (tech = ut130) or
-                   (tech = easic45) or (tech = ut90) or (tech = saed32) or (tech = dare) or (tech = rhumc)) generate
+                   (tech = easic45) or (tech = ut90) or (tech = saed32) or (tech = rhs65) or (tech = dare) or (tech = rhumc)) generate
       o <= i0 when seli = '0' else i1;
     end generate;
 

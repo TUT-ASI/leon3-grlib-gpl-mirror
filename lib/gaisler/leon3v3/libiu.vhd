@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -83,6 +84,7 @@ package libiu is
      su               : std_ulogic;                        -- super-user
      flush            : std_ulogic;                        -- flush icache
      fline            : std_logic_vector(31 downto 3);     -- flush line offset
+     nobpmiss         : std_ulogic;     -- Predicted instruction, block hold
   end record;
 
   type icache_out_type is record
@@ -97,6 +99,8 @@ package libiu is
      cfg              : std_logic_vector(31 downto 0);
      idle             : std_ulogic;                        -- idle mode
      cstat            : l3_cstat_type;
+     bpmiss           : std_ulogic;
+     eocl             : std_ulogic;
   end record;
 
   type icdiag_in_type is record
@@ -147,6 +151,8 @@ package libiu is
      scanen           : std_ulogic;
      testen           : std_ulogic;
      hit              : std_ulogic;
+     cstat            : l3_cstat_type;
+     wbhold           : std_ulogic;
   end record;
 
   component iu3
@@ -165,14 +171,16 @@ package libiu is
       lddel   :     integer range 1 to 2     := 2;
       irfwt   :     integer range 0 to 1     := 0;
       disas   :     integer range 0 to 2     := 0;
-      tbuf    :     integer range 0 to 64    := 0;  -- trace buf size in kB (0 - no trace buffer)
+      tbuf    :     integer range 0 to 128    := 0;  -- trace buf size in kB (0 - no trace buffer)
       pwd     :     integer range 0 to 2     := 0;  -- power-down    
       svt     :     integer range 0 to 1     := 0;  -- single-vector trapping
       rstaddr :     integer                  := 0;
       smp     :     integer range 0 to 15    := 0;  -- support SMP systems
       fabtech :     integer range 0 to NTECH := 0;
       clk2x   :     integer                  := 0;
-      bp      :     integer                  := 1
+      bp      :     integer                  := 1;
+      npasi   :     integer range 0 to 1     := 0;
+      pwrpsr  :     integer range 0 to 1     := 0
       );
     port (
       clk     : in  std_ulogic;
@@ -198,6 +206,8 @@ package libiu is
       cpi     : out fpc_in_type;
       tbo     : in  tracebuf_out_type;
       tbi     : out tracebuf_in_type;
+      tbo_2p  : in  tracebuf_2p_out_type;
+      tbi_2p  : out tracebuf_2p_in_type;
       sclk    : in  std_ulogic
       );
   end component;

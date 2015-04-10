@@ -58,8 +58,9 @@
   constant CFG_TLB_REP  : integer := CONFIG_TLB_REP;
   constant CFG_MMU_PAGE : integer := CONFIG_MMU_PAGE;
   constant CFG_DSU   	: integer := CONFIG_DSU_ENABLE;
-  constant CFG_ITBSZ 	: integer := CFG_DSU_ITB;
+  constant CFG_ITBSZ 	: integer := CFG_DSU_ITB + 64*CONFIG_DSU_ITRACE_2P;
   constant CFG_ATBSZ 	: integer := CFG_DSU_ATB;
+  constant CFG_AHBPF    : integer := CFG_DSU_AHBPF;
   constant CFG_LEON3FT_EN   : integer := CONFIG_LEON3FT_EN;
   constant CFG_IUFT_EN      : integer := CONFIG_IUFT_EN;
   constant CFG_FPUFT_EN     : integer := CONFIG_FPUFT;
@@ -69,6 +70,8 @@
   constant CFG_LEON3_NETLIST: integer := CONFIG_LEON3_NETLIST;	
   constant CFG_DISAS    : integer := CONFIG_IU_DISAS + CONFIG_IU_DISAS_NET;
   constant CFG_PCLOW    : integer := CFG_DEBUG_PC32;
+  constant CFG_NP_ASI   : integer := CONFIG_NP_ASI;
+  constant CFG_WRPSR   : integer := CONFIG_WRPSR;
 
 -- AMBA settings
   constant CFG_DEFMST  	  : integer := CONFIG_AHB_DEFMST;
@@ -116,17 +119,6 @@
   constant CFG_AHBRSZ	: integer := CFG_AHBRAMSZ;
   constant CFG_AHBRADDR	: integer := 16#CONFIG_AHBRAM_START#;
   constant CFG_AHBRPIPE : integer := CONFIG_AHBRAM_PIPE;
--- PCI interface
-  constant CFG_PCI     	: integer := CFG_PCITYPE;
-  constant CFG_PCIVID   : integer := 16#CONFIG_PCI_VENDORID#;
-  constant CFG_PCIDID   : integer := 16#CONFIG_PCI_DEVICEID#;
-  constant CFG_PCIDEPTH : integer := CFG_PCIFIFO;
-  constant CFG_PCI_MTF  : integer := CFG_PCI_ENFIFO;
-
--- PCI trace buffer
-  constant CFG_PCITBUFEN: integer := CONFIG_PCI_TRACE;
-  constant CFG_PCITBUF  : integer := CFG_PCI_TRACEBUF;
-
 -- UART 1
   constant CFG_UART1_ENABLE : integer := CONFIG_UART1_ENABLE;
   constant CFG_UART1_FIFO   : integer := CFG_UA1_FIFO;

@@ -1,4 +1,5 @@
 allclkgen.vhd
+techbuf.vhd
 allddr.vhd
 allmem.vhd
 allmul.vhd
@@ -8,6 +9,7 @@ clkgen.vhd
 clkmux.vhd
 clkinv.vhd
 clkand.vhd
+grgates.vhd
 ddr_ireg.vhd
 ddr_oreg.vhd
 ddrphy.vhd
@@ -21,17 +23,16 @@ syncrambwft.vhd
 syncfifo_2p.vhd
 regfile_3p.vhd
 tap.vhd
-techbuf.vhd
 nandtree.vhd
 clkpad.vhd clkpad_ds.vhd inpad.vhd inpad_ds.vhd iodpad.vhd iopad.vhd iopad_ds.vhd
-lvds_combo.vhd odpad.vhd outpad.vhd outpad_ds.vhd toutpad.vhd toutpad_ds skew_outpad.vhd
+lvds_combo.vhd odpad.vhd outpad.vhd outpad_ds.vhd toutpad.vhd toutpad_ds.vhd skew_outpad.vhd
 grspwc_net.vhd
 grspwc2_net.vhd
 grlfpw_net.vhd
 grlfpw4_net.vhd
 grfpw_net.vhd
 grfpw4_net.vhd
-leon3ft_net.vhd
+leon3_net.vhd
 leon4_net.vhd
 mul_61x61.vhd
 cpu_disas_net.vhd
@@ -43,7 +44,6 @@ corepcif_net.vhd
 pci_arb_net.vhd
 grpci2_phy_net.vhd
 system_monitor.vhd
-grgates.vhd
 inpad_ddr.vhd outpad_ddr.vhd iopad_ddr.vhd
 syncram128bw.vhd syncram256bw.vhd
 syncram128.vhd syncramww.vhd
@@ -57,6 +57,6 @@ obt1553_net.vhd
 sdram_phy.vhd
 from.vhd
 syncreg.vhd
-clkinv.vhd
 serdes.vhd
-
+iopad_tm.vhd
+toutpad_tm.vhd

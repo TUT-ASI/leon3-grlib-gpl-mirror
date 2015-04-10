@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -133,7 +134,7 @@ architecture rtl of ddr2spax_ahb is
 
 begin
 
-  ahbcomb : process(ahbsi,rst,ar,response,rbrdata)
+  ahbcomb : process(ahbsi,rst,ar,response,rbrdata,hwidth,beid)
     variable av: ahb_reg_type;
     variable va2d: ddr_request_type;
     variable so: ahb_slv_out_type;

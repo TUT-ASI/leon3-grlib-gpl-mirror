@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -149,6 +150,46 @@ end component;
 
 component apa3e_toutpad_ds
   generic (level : integer := lvds);
+  port (padp, padn : out std_ulogic; i, en : in std_ulogic);
+end component;
+
+component igloo2_clkpad
+  port (pad : in std_ulogic; o : out std_ulogic);
+end component;
+
+component igloo2_clkpad_ds
+  port (padp, padn : in std_ulogic; o : out std_ulogic);
+end component;
+
+component igloo2_inpad
+  port (pad : in std_ulogic; o : out std_ulogic);
+end component;
+
+component igloo2_inpad_ds
+  port (padp, padn : in std_ulogic; o : out std_ulogic);
+end component;
+
+component igloo2_iopad
+  port (pad : inout std_ulogic; i, en : in std_ulogic; o : out std_ulogic);
+end component;
+
+component igloo2_iopad_ds
+  port (padp, padn : inout std_ulogic; i, en : in std_ulogic; o : out std_ulogic);
+end component;
+
+component igloo2_outpad
+  port (pad : out std_ulogic; i : in std_ulogic);
+end component;
+
+component igloo2_outpad_ds
+  port (padp, padn : out std_ulogic; i : in std_ulogic);
+end component;
+
+component igloo2_toutpad
+  port (pad : out std_ulogic; i, en : in std_ulogic);
+end component;
+
+component igloo2_toutpad_ds
   port (padp, padn : out std_ulogic; i, en : in std_ulogic);
 end component;
 
@@ -477,6 +518,30 @@ component dare_toutpad
   port (pad : out std_logic; i, en : in std_logic);
 end component;
 
+component rhs65_inpad 
+  generic (level : integer := 0; voltage : integer := 0; filter : integer := 0);
+  port (pad : in std_logic; o : out std_logic);
+end component; 
+
+component rhs65_iopad 
+  generic (level : integer := 0; slew : integer := 0;
+	   voltage : integer := 0; strength : integer := 0);
+  port (pad : inout std_logic; i, en : in std_logic; o : out std_logic;
+        test, ti, ten: in std_ulogic);
+end component;
+
+component rhs65_outpad 
+  generic (level : integer := 0; slew : integer := 0;
+	   voltage : integer := 0; strength : integer := 0);
+  port (pad : out std_logic; i : in std_logic);
+end component;
+
+component rhs65_toutpad 
+  generic (level : integer := 0; slew : integer := 0;
+	   voltage : integer := 0; strength : integer := 0);
+  port (pad : out std_logic; i, en : in std_logic;
+        test, ti, ten: in std_ulogic);
+end component;
 
 component umc_inpad 
   generic (level : integer := 0; voltage : integer := 0; filter : integer := 0);

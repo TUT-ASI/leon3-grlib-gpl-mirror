@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -37,19 +38,11 @@ constant JTAG_MANF_ID_GR   : integer range 0 to 2047 := 804;
 
 -- JTAG part numbers
 -- Do NOT select an existing part number for your custom design!
-constant JTAG_NEXTREME     : integer range 0 to 65535 := 16#102#;
-constant JTAG_IHP25RH1     : integer range 0 to 65535 := 16#251#;
-constant JTAG_NGMP_PROTO   : integer range 0 to 65535 := 16#281#;
-constant JTAG_NGMP_PROTO2  : integer range 0 to 65535 := 16#282#;
+--
+-- For your design, please select a JTAG ID that starts with 16#a--#
+-- and notify Aeroflex Gaisler (in case do not change the manufacturer
+-- ID to your own ID).
 constant JTAG_EXAMPLE_PART : integer range 0 to 65535 := 16#300#;
-constant JTAG_ORBITA1      : integer range 0 to 65535 := 16#631#;
-constant JTAG_ORBITA_OBTMP : integer range 0 to 65535 := 16#632#;
-constant JTAG_UT699RH      : integer range 0 to 65535 := 16#699#;
-constant JTAG_UT700RH      : integer range 0 to 65535 := 16#700#;
-constant JTAG_GR702        : integer range 0 to 65535 := 16#702#;
-constant JTAG_GR712        : integer range 0 to 65535 := 16#712#;
-constant JTAG_SPWRTRASIC   : integer range 0 to 65535 := 16#718#;
-constant JTAG_UT840        : integer range 0 to 65535 := 16#840#;
 
 component ahbjtag 
   generic (
@@ -121,7 +114,8 @@ component bscanctrl
     itinst: integer := 7;                --intest
     hzinst: integer := 8;               -- highz
     clinst: integer := 10;              -- clamp
-    mbist : integer := 11;              -- clamp
+    mbist : integer := 11;              -- mbist
+    testx1: integer := 12;              -- generic test command
     scantest : integer := 0
     );
   port (
@@ -145,8 +139,11 @@ component bscanctrl
     bsdrive     : out std_ulogic;
     bshighz     : out std_ulogic;
     bsmbist     : out std_ulogic;
+    bstestx1    : out std_ulogic;
     testen      : in std_ulogic;
-    testrst     : in std_ulogic
+    testrst     : in std_ulogic;
+    bypass_tdo  : out std_ulogic;
+    mbist_tdo   : in std_ulogic := '0'
     );
 end component;
 

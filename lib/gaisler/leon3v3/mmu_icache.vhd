@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -31,6 +32,8 @@ use grlib.amba.all;
 use grlib.config_types.all;
 use grlib.config.all;
 use grlib.stdlib.all;
+library techmap;
+use techmap.gencomp.all;
 library gaisler;
 use gaisler.libiu.all;
 use gaisler.libcache.all;
@@ -40,6 +43,7 @@ use gaisler.leon3.all;
 
 entity mmu_icache is
   generic (
+    memtech   : integer               := 0;
     icen      : integer range 0 to 1  := 0;
     irepl     : integer range 0 to 3  := 0;
     isets     : integer range 1 to 4  := 1;
@@ -72,6 +76,7 @@ end;
 
 architecture rtl of mmu_icache is
 
+  constant MUXDATA      : boolean := (is_fpga(memtech) = 1);
   constant M_EN         : boolean := (mmuen = 1);
   constant ILINE_BITS   : integer := log2(ilinesize);
   constant IOFFSET_BITS : integer := 8 +log2(isetsize) - ILINE_BITS;
@@ -193,6 +198,9 @@ architecture rtl of mmu_icache is
      pflushtyp     : std_logic;
      cache         : std_logic;
      trans_op      : std_logic;
+     cmiss         : std_ulogic;
+     bpmiss        : std_ulogic;
+     eocl          : std_ulogic;
   end record;
 
   type lru_reg_type is record
@@ -229,7 +237,10 @@ architecture rtl of mmu_icache is
     pflushaddr    => (others => '0'),
     pflushtyp     => '0',
     cache         => '0',
-    trans_op      => '0'
+    trans_op      => '0',
+    cmiss         => '0',
+    bpmiss        => '0',
+    eocl          => '0'
     );
   constant LRES : lru_reg_type := (
     write => '0',
@@ -261,7 +272,7 @@ begin
     variable lastline, nlastline, nnlastline : std_ulogic;
     variable enable : std_ulogic;
     variable error : std_ulogic;
-    variable whit, hit, valid : std_ulogic;
+    variable whit, hit, valid, nvalid : std_ulogic;
     variable cacheon  : std_ulogic;
     variable v : icache_control_type;
     variable branch  : std_ulogic;
@@ -270,7 +281,7 @@ begin
     variable memaddr : std_logic_vector(31 downto 2);
     variable set     : integer range 0 to MAXSETS-1;
     variable setrepl : std_logic_vector(log2x(ISETS)-1 downto 0); -- set to replace
-    variable ctwrite, cdwrite, validv : std_logic_vector(0 to MAXSETS-1);
+    variable ctwrite, cdwrite, validv, nvalidv : std_logic_vector(0 to MAXSETS-1);
     variable wlrr : std_ulogic;
     variable vl : lru_reg_type;
     variable vdiagset, rdiagset : integer range 0 to ISETS-1;
@@ -281,13 +292,15 @@ begin
     variable pftag : std_logic_vector(31 downto 2);
     variable mmuici_trans_op : std_logic;
     variable mmuici_su : std_logic;
+    variable mhold : std_ulogic;
+    variable shtag : std_logic_vector(ilinesize-1 downto 0);
   begin
 
 -- init local variables
 
     v := r; vl := rl; vl.write := '0'; vl.set := r.setrepl;
     vl.waddr := r.waddress(OFFSET_HIGH downto OFFSET_LOW);
-
+    v.cmiss := '0'; mhold := '0';
     mds := '1'; dwrite := '0'; twrite := '0'; diagen := '0'; error := '0';
     write := mcio.ready; v.diagrdy := '0'; v.holdn := '1'; 
 
@@ -346,6 +359,12 @@ begin
                           icramo.tag(i)(ilinesize -1 downto 0));
       end loop;
     end if;
+    for i in ISETS-1 downto 0 loop
+      shtag := (others => '0');
+      shtag(ilinesize-2 downto 0) := icramo.tag(i)(ilinesize-1 downto 1);
+      nvalidv(i) := genmux(ici.fpc(LINE_HIGH downto LINE_LOW), shtag);
+    end loop;
+      
 
     if (lramacc = '1') and (ISETS > 1) then set := 1; end if;
     
@@ -361,6 +380,7 @@ begin
     else nnlastline := '0'; end if;
 
     valid := validv(set);
+    nvalid := nvalidv(set);
     xaddr_inc := r.waddress(LINE_HIGH downto LINE_LOW) + 1;
 
     if mcio.ready = '1' then 
@@ -393,9 +413,11 @@ begin
       else taddr := ici.rpc(TAG_HIGH downto LINE_LOW); end if;
       v.burst := dco.icdiag.cctrl.burst and not lastline;
       if (eholdn and not (ici.inull or lramacc)) = '1' then
-        if not (cacheon and hit and valid) = '1' then  
+        v.bpmiss := not (cacheon and hit and valid) and ici.nobpmiss;
+        v.eocl := not nvalid;
+        if not (cacheon and hit and valid) = '1' and ici.nobpmiss='0' then  
           v.istate := streaming;  
-          v.holdn := '0'; v.overrun := '1';
+          v.holdn := '0'; v.overrun := '1'; v.cmiss := '1';
           
           if M_EN and (mmudci.mmctrl1.e = '1') then 
             v.istate := trans; 
@@ -467,9 +489,9 @@ begin
       if M_EN then
         v.holdn := '0';
         if (mmuico.transdata.finish = '1') then
-          if (mmuico.transdata.accexc) = '1' and ((mmudci.mmctrl1.nf) /= '1' or (r.su) = '1') then 
+          if mmuico.transdata.accexc = '1' then
             -- if su then always do mexc
-            error := '1'; mds := '0';
+            error := r.su or not mmudci.mmctrl1.nf; mds := '0';
             v.holdn := '0'; v.istate := stop; v.burst := '0';
           else
             v.cache := mmuico.transdata.cache;
@@ -477,6 +499,7 @@ begin
             v.istate := streaming; v.req := '1'; 
           end if;
        end if;
+       mhold := '1';
      end if;
    when streaming =>            -- streaming: update cache and send data to IU
       rdatasel := memory;
@@ -612,6 +635,10 @@ begin
     when others => 
     end case;
 
+    if MUXDATA then
+      rdata(0) := rdata(set); set := 0;
+    end if;
+
 -- cache flush
 
     if ((ici.flush or
@@ -664,7 +691,8 @@ begin
       v.diagset := (others => '0'); v.lock := '0';
       v.waddress := ici.fpc(31 downto 2);
       v.vaddress := ici.fpc(31 downto 2);
-      v.trans_op := '0'; 
+      v.trans_op := '0';
+      v.bpmiss := '0';
     end if;
 
     if (not RESET_ALL and rst = '0') or (r.flush = '1') then  
@@ -729,7 +757,12 @@ begin
     ico.diagrdy   <= r.diagrdy;
     ico.set       <= conv_std_logic_vector(set, 2);
     ico.cfg       <= icfg;
-    ico.cstat     <= cstat_none;     
+    ico.bpmiss    <= r.bpmiss;
+    ico.eocl      <= r.eocl;
+    ico.cstat.chold <= not r.holdn;
+    ico.cstat.mhold <= mhold;
+    ico.cstat.tmiss <= mmuico.tlbmiss;
+    ico.cstat.cmiss <= r.cmiss;
     if r.istate = idle then ico.idle <= '1'; else  ico.idle <= '0'; end if;
     
   end process;

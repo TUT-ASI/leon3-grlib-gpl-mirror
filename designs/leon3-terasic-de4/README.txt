@@ -12,18 +12,17 @@ The design contains:
     connected to the serial port according to the position of slide
     switch 0
   * Memory controller to access the on-board flash via GRMON
-  * Two GRETH Gigabit Ethernet cores with EDCL, connected to the PHY 
-    through Altera's SGMII to GMII bridge IP.
-  * Currently, only gigabit operation is supported for the Ethernet
-    core and the 10/100 Mbit GRETH cannot be used.
+  * Two GRETH Ethernet cores with EDCL, connected to the PHY 
+    through an SGMII to GMII bridge IP.
 
 Important notes
 ---------------
 * The SSRAM on the board is not currently supported.
 * The flash memory is also used by the board's firmware and to store
   the FPGA designs.
-* The Ethernet gigabit cores are disabled by default and are not 
-  available in the GPL release of GRLIB.
+* The Ethernet cores default to 10/100 Mbps cores. Ethernet gigabit 
+  cores can be enabled in the design. This requires a GRLIB release
+  that includes the GRETH_GBIT core.
 * The Level-2 cache can be enabled in the design. This requires a
   GRLIB release that includes the Level-2 cache.
 
@@ -72,9 +71,7 @@ Simulation and synthesis
 ------------------------
 * To simulate the design with ModelSim or Riviera first set the
   GRLIB_SIMULATOR environment variable accordingly (see GRLIB 
-  documentation). The simulation uses a simplified DDR2 controller.
-  Please note that Ethernet doesn't work during simulation and must be
-  disabled:
+  documentation). The simulation uses a simplified DDR2 controller:
 
     make vsim [or make riviera]
 
@@ -83,13 +80,7 @@ Simulation and synthesis
 
     make qwiz
     make quartus
-  
-  If Ethernet is enabled and you don't have an Altera's Triple Speed
-  Ethernet IP Core license, a time-limited file will be generated.
-  Before programming the board you need to move the file:
 
-    mv leon3mp_quartus_time_limited.sof leon3mp_quartus.sof
-  
   then program the board with:
 
     make quartus-prog-fpga

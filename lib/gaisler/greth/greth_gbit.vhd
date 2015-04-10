@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -267,7 +268,13 @@ begin
       --cfg
       edcladdr       => ethi.edcladdr,
       edclsepahb     => ethi.edclsepahb,
-      edcldisable    => ethi.edcldisable);
+      edcldisable    => ethi.edcldisable,
+      mdiochain_first => '1',
+      mdiochain_ticki => '0',
+      mdiochain_datai => '0',
+      mdiochain_locki => '0',
+      mdiochain_o     => '0',
+      mdiochain_oe    => '0');
 
   etho.tx_clk <= '0';                   -- driven in rgmii component
 

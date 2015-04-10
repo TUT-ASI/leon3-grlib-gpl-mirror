@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -41,8 +42,11 @@ entity ddr2ram is
     colbits: integer range 9 to 11 := 9;
     rowbits: integer range 1 to 16 := 13;
     implbanks: integer range 1 to 8 := 1;
+    swap : integer := 0; -- byte swap during srec load
     fname: string;
     lddelay: time := (0 ns);
+    ldguard: integer range 0 to 1 := 0;  -- 1: wait for doload input before
+                                         -- loading RAM
     -- Speed bins: 0:DDR2-400C,1:400B,2:533C,3:533B,4:667D,5:667C,6:800E,7:800D,8:800C
     -- 9:800+ (MT47H-25E)
     speedbin: integer range 0 to 9 := 0;
@@ -63,7 +67,8 @@ entity ddr2ram is
     a: in std_logic_vector(abits-1 downto 0);
     dq: inout std_logic_vector(width-1 downto 0);
     dqs: inout std_logic_vector(width/8-1 downto 0);
-    dqsn: inout std_logic_vector(width/8-1 downto 0)
+    dqsn: inout std_logic_vector(width/8-1 downto 0);
+    doload: in std_ulogic := '1'
     );
 end;
 
@@ -210,6 +215,7 @@ begin
       variable recaddr : std_logic_vector(31 downto 0);
       variable reclen  : std_logic_vector(7 downto 0);
       variable recdata : std_logic_vector(0 to 16*8-1);
+      variable recdatatemp : std_logic_vector(0 to 7);
       variable col, coloffs, len: integer;
     begin
       L1:= new string'("");
@@ -233,6 +239,13 @@ begin
                 when others => next;
               end case;
               hread(L1, recdata(0 to len*8-1));
+              if swap=1 then  -- byte swap during srec load
+                for i in 0 to 7 loop
+                  recdatatemp := recdata(i*16 to i*16+7);
+                  recdata(i*16 to i*16+7) := recdata(i*16+8 to i*16+15);
+                  recdata(i*16+8 to i*16+15) := recdatatemp;
+                end loop;
+              end if;
               col := to_integer(unsigned(recaddr(log2(width/8)+rowbits+colbits+1 downto log2(width/8))));
               coloffs := 8*to_integer(unsigned(recaddr(log2(width/8)-1 downto 0)));
               while len > width/8 loop
@@ -467,7 +480,7 @@ begin
       end loop;
 
       -- Read/write management
-      if not loaded and lddelay < now then
+      if not loaded and lddelay < now and (ldguard=0 or doload='1') then
         load_srec;
         loaded := true;
       end if;
@@ -535,7 +548,8 @@ begin
       wait until rising_edge(ck);
     else
       wait until falling_edge(ck);
-      assert to_X01(dqs)=(dqs'range => '0');
+      assert (to_X01(dqs)=(dqs'range => '0')) or ((to_X01(dqs)=(dqs'range => '1')) and (to_X01(dm)=(dm'range => '1') or dm=(dm'range => 'Z')));
+
       while write_en loop
         prevdqs := to_X01(dqs);
         wait until to_X01(dqs) /= prevdqs or not write_en or rising_edge(ck);

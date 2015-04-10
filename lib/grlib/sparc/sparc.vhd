@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -158,31 +159,45 @@ subtype fpop_type is std_logic_vector(8 downto 0);
 
 constant FITOS    : fpop_type := "011000100";
 constant FITOD    : fpop_type := "011001000";
+constant FITOQ    : fpop_type := "011001100";
 constant FSTOI    : fpop_type := "011010001";
 constant FDTOI    : fpop_type := "011010010";
+constant FQTOI    : fpop_type := "011010011";
 constant FSTOD    : fpop_type := "011001001";
+constant FSTOQ    : fpop_type := "011001101";
 constant FDTOS    : fpop_type := "011000110";
+constant FDTOQ    : fpop_type := "011001110";
+constant FQTOS    : fpop_type := "011000111";
+constant FQTOD    : fpop_type := "011001011";
 constant FMOVS    : fpop_type := "000000001";
 constant FNEGS    : fpop_type := "000000101";
 constant FABSS    : fpop_type := "000001001";
 constant FSQRTS   : fpop_type := "000101001";
 constant FSQRTD   : fpop_type := "000101010";
+constant FSQRTQ   : fpop_type := "000101011";
 constant FADDS    : fpop_type := "001000001";
 constant FADDD    : fpop_type := "001000010";
+constant FADDQ    : fpop_type := "001000011";
 constant FSUBS    : fpop_type := "001000101";
 constant FSUBD    : fpop_type := "001000110";
+constant FSUBQ    : fpop_type := "001000111";
 constant FMULS    : fpop_type := "001001001";
 constant FMULD    : fpop_type := "001001010";
+constant FMULQ    : fpop_type := "001001011";
 constant FSMULD   : fpop_type := "001101001";
+constant FDMULQ   : fpop_type := "001101110";
 constant FDIVS    : fpop_type := "001001101";
 constant FDIVD    : fpop_type := "001001110";
+constant FDIVQ    : fpop_type := "001001111";
 
 -- fpop2 decoding
 
 constant FCMPS    : fpop_type := "001010001";
 constant FCMPD    : fpop_type := "001010010";
+constant FCMPQ    : fpop_type := "001010011";
 constant FCMPES   : fpop_type := "001010101";
 constant FCMPED   : fpop_type := "001010110";
+constant FCMPEQ   : fpop_type := "001010111";
 
 -- trap type decoding
 
@@ -210,11 +225,8 @@ constant TT_CPEXC  : trap_type := "101000";
 constant TT_DIV    : trap_type := "101010";
 constant TT_DSEX   : trap_type := "101011";
 constant TT_TICC   : trap_type := "111111";
-constant TT_ICERR  : trap_type := "110000";	-- icache correctable error
-constant TT_DCERR  : trap_type := "110100";	-- dcache correctable error
-constant TT_RCERR  : trap_type := "111000";	-- RF correctable error
 
--- Alternate address space identifiers (only 5 lsb bist are used)
+-- Alternate address space identifiers
 
 subtype asi_type is std_logic_vector(4 downto 0);
 
@@ -235,20 +247,25 @@ constant ASI_FLUSH_CTX      : std_logic_vector(4 downto 0) := "10011";  -- 0x13 
 
 constant ASI_DCTX           : std_logic_vector(4 downto 0) := "10100";  -- 0x14 dcache ctx
 constant ASI_ICTX           : std_logic_vector(4 downto 0) := "10101";  -- 0x15 icache ctx
-
+-- ASIs traditionally used by LEON for SRMMU
 constant ASI_MMUFLUSHPROBE  : std_logic_vector(4 downto 0) := "11000";  -- 0x18 i/dtlb flush/(probe)
 constant ASI_MMUREGS        : std_logic_vector(4 downto 0) := "11001";  -- 0x19 mmu regs access
 constant ASI_MMU_BP         : std_logic_vector(4 downto 0) := "11100";  -- 0x1c mmu Bypass 
 constant ASI_MMU_DIAG       : std_logic_vector(4 downto 0) := "11101";  -- 0x1d mmu diagnostic 
---constant ASI_MMU_DSU        : std_logic_vector(4 downto 0) := "11111";  -- 0x1f mmu diagnostic 
-
 constant ASI_MMUSNOOP_DTAG  : std_logic_vector(4 downto 0) := "11110";  -- 0x1e mmusnoop physical dtag 
+--constant ASI_MMU_DSU        : std_logic_vector(4 downto 0) := "11111";  -- 0x1f mmu diagnostic 
+-- ASIs recommended in V8 specification, appendix I
+constant ASI_MMUFLUSHPROBE_V8 : std_logic_vector(4 downto 0) := "00011";  -- 0x03 i/dtlb flush/(probe)
+constant ASI_MMUREGS_V8       : std_logic_vector(4 downto 0) := "00100";  -- 0x04 mmu regs access
+--constant ASI_MMU_BP_V8        : std_logic_vector(4 downto 0) := "11100";  -- 0x1c mmu Bypass
+--constant ASI_MMU_DIAG_V8      : std_logic_vector(4 downto 0) := "11101";  -- 0x1d mmu diagnostic
 
 -- ftt decoding
 
 subtype ftt_type is std_logic_vector(2 downto 0);
 
 constant FPIEEE_ERR  : ftt_type := "001";
+constant FPUNIMP_ERR : ftt_type := "011";
 constant FPSEQ_ERR   : ftt_type := "100";
 constant FPHW_ERR    : ftt_type := "101";
 

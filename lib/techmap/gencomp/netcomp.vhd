@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -57,7 +58,7 @@ component grusbhc_net is
     urst_time   : integer                  := 250;
     oepol       : integer range 0 to 1     := 0;
     scantest    : integer range 0 to 1     := 0;
-    memtech     : integer range 0 to NTECH := DEFMEMTECH;
+    isfpga      : integer range 0 to 1     := 1;
     memsel      : integer                  := 0;
     syncprst    : integer range 0 to 1     := 0;
     sysfreq     : integer                  := 65000;
@@ -600,119 +601,132 @@ end component;
     );
   end component;
 
-  component leon3ft_net
+  component leon3_net
   generic (
-    hindex    : integer               := 0;
-    fabtech   : integer range 0 to NTECH  := DEFFABTECH;
-    memtech   : integer range 0 to NTECH  := DEFMEMTECH;
-    nwindows  : integer range 2 to 32 := 8;
-    dsu       : integer range 0 to 1  := 0;
-    fpu       : integer range 0 to 31 := 0;
-    v8        : integer range 0 to 63 := 0;
-    cp        : integer range 0 to 1  := 0;
-    mac       : integer range 0 to 1  := 0;
-    pclow     : integer range 0 to 2  := 2;
-    notag     : integer range 0 to 1  := 0;
-    nwp       : integer range 0 to 4  := 0;
-    icen      : integer range 0 to 1  := 0;
-    irepl     : integer range 0 to 2  := 2;
-    isets     : integer range 1 to 4  := 1;
-    ilinesize : integer range 4 to 8  := 4;
-    isetsize  : integer range 1 to 256 := 1;
-    isetlock  : integer range 0 to 1  := 0;
-    dcen      : integer range 0 to 1  := 0;
-    drepl     : integer range 0 to 2  := 2;
-    dsets     : integer range 1 to 4  := 1;
-    dlinesize : integer range 4 to 8  := 4;
-    dsetsize  : integer range 1 to 256 := 1;
-    dsetlock  : integer range 0 to 1  := 0;
-    dsnoop    : integer range 0 to 6  := 0;
-    ilram      : integer range 0 to 1 := 0;
-    ilramsize  : integer range 1 to 512 := 1;
-    ilramstart : integer range 0 to 255 := 16#8e#;
-    dlram      : integer range 0 to 1 := 0;
-    dlramsize  : integer range 1 to 512 := 1;
-    dlramstart : integer range 0 to 255 := 16#8f#;
-    mmuen     : integer range 0 to 1  := 0;
-    itlbnum   : integer range 2 to 64 := 8;
-    dtlbnum   : integer range 2 to 64 := 8;
-    tlb_type  : integer range 0 to 3  := 1;
-    tlb_rep   : integer range 0 to 1  := 0;
-    lddel     : integer range 1 to 2  := 2;
-    disas     : integer range 0 to 2  := 0;
-    tbuf      : integer range 0 to 64 := 0;
-    pwd       : integer range 0 to 2  := 2;     -- power-down
-    svt       : integer range 0 to 1  := 1;     -- single vector trapping
-    rstaddr   : integer               := 0;
-    smp       : integer range 0 to 15 := 0;    -- support SMP systems
-    iuft      : integer range 0 to 4  := 0;
-    fpft      : integer range 0 to 4  := 0;
-    cmft      : integer range 0 to 1  := 0;
-    cached    : integer               := 0;
-    scantest  : integer               := 0;
-    mmupgsz   : integer range 0 to 5  := 0
-
+    hindex     :     integer                  := 0;
+    fabtech    :     integer range 0 to NTECH := DEFFABTECH;
+    memtech    :     integer range 0 to NTECH := DEFMEMTECH;
+    nwindows   :     integer range 2 to 32    := 8;
+    dsu        :     integer range 0 to 1     := 0;
+    fpu        :     integer range 0 to 63    := 0;
+    v8         :     integer range 0 to 63    := 0;
+    cp         :     integer range 0 to 1     := 0;
+    mac        :     integer range 0 to 1     := 0;
+    pclow      :     integer range 0 to 2     := 2;
+    notag      :     integer range 0 to 1     := 0;
+    nwp        :     integer range 0 to 4     := 0;
+    icen       :     integer range 0 to 1     := 0;
+    irepl      :     integer range 0 to 3     := 2;
+    isets      :     integer range 1 to 4     := 1;
+    ilinesize  :     integer range 4 to 8     := 4;
+    isetsize   :     integer range 1 to 256   := 1;
+    isetlock   :     integer range 0 to 1     := 0;
+    dcen       :     integer range 0 to 1     := 0;
+    drepl      :     integer range 0 to 3     := 2;
+    dsets      :     integer range 1 to 4     := 1;
+    dlinesize  :     integer range 4 to 8     := 4;
+    dsetsize   :     integer range 1 to 256   := 1;
+    dsetlock   :     integer range 0 to 1     := 0;
+    dsnoop     :     integer range 0 to 6     := 0;
+    ilram      :     integer range 0 to 1     := 0;
+    ilramsize  :     integer range 1 to 512   := 1;
+    ilramstart :     integer range 0 to 255   := 16#8e#;
+    dlram      :     integer range 0 to 1     := 0;
+    dlramsize  :     integer range 1 to 512   := 1;
+    dlramstart :     integer range 0 to 255   := 16#8f#;
+    mmuen      :     integer range 0 to 1     := 0;
+    itlbnum    :     integer range 2 to 64    := 8;
+    dtlbnum    :     integer range 2 to 64    := 8;
+    tlb_type   :     integer range 0 to 3     := 1;
+    tlb_rep    :     integer range 0 to 1     := 0;
+    lddel      :     integer range 1 to 2     := 2;
+    disas      :     integer range 0 to 2     := 0;
+    tbuf       :     integer range 0 to 128   := 0;
+    pwd        :     integer range 0 to 2     := 2;
+    svt        :     integer range 0 to 1     := 1;
+    rstaddr    :     integer                  := 0;
+    smp        :     integer range 0 to 15    := 0;
+    iuft       :     integer range 0 to 4     := 0;
+    fpft       :     integer range 0 to 4     := 0;
+    cmft       :     integer range 0 to 1     := 0;
+    cached     :     integer                  := 0;
+    clk2x      :     integer                  := 1;
+    scantest   :     integer                  := 0;
+    mmupgsz    :     integer range 0 to 5     := 0;
+    bp         :     integer                  := 1;
+    npasi      :     integer range 0 to 1     := 0;
+    pwrpsr     :     integer range 0 to 1     := 0
   );
+  port (
+     clk               : in  std_ulogic;                     -- free-running clock
+     gclk2             : in  std_ulogic;                     -- gated 2x clock
+     gfclk2            : in  std_ulogic;                     -- gated 2x FPU clock
+     clk2              : in  std_ulogic;                     -- free-running 2x clock
+     rstn              : in  std_ulogic;
+     ahbi              : in  ahb_mst_in_type;
+     ahbo              : out ahb_mst_out_type;
+     ahbsi             : in  ahb_slv_in_type;
+--   ahbso      : in  ahb_slv_out_vector;
+     irqi_irl          : in  std_logic_vector(3 downto 0);
+     irqi_rst          : in  std_ulogic;
+     irqi_run          : in  std_ulogic;
+     irqi_rstvec       : in  std_logic_vector(31 downto 12);
+     irqi_iact         : in  std_ulogic;
+     irqi_index        : in  std_logic_vector(3 downto 0);
+     irqi_hrdrst       : in  std_ulogic;
 
-   port (
-      clk     : in  std_ulogic;
-      gclk    : in  std_ulogic;
-      rstn    : in  std_ulogic;
-      ahbix   : in  ahb_mst_in_type;
-      ahbox   : out ahb_mst_out_type;
-      ahbsix  : in  ahb_slv_in_type;
-      ahbso   : in  ahb_slv_out_vector;
-      irqi_irl:         in    std_logic_vector(3 downto 0);
-      irqi_rst:         in    std_ulogic;
-      irqi_run:         in    std_ulogic;
+     irqo_intack       : out std_ulogic;
+     irqo_irl          : out std_logic_vector(3 downto 0);
+     irqo_pwd          : out std_ulogic;
+     irqo_fpen         : out std_ulogic;
+     irqo_idle         : out std_ulogic;
 
-      irqo_intack:      out   std_ulogic;
-      irqo_irl:         out   std_logic_vector(3 downto 0);
-      irqo_pwd:         out   std_ulogic;
-      irqo_fpen:        out   std_ulogic;
-
-      dbgi_dsuen:       in    std_ulogic;                               -- DSU enable
-      dbgi_denable:     in    std_ulogic;                               -- diagnostic register access enable
-      dbgi_dbreak:      in    std_ulogic;                               -- debug break-in
-      dbgi_step:        in    std_ulogic;                               -- single step
-      dbgi_halt:        in    std_ulogic;                               -- halt processor
-      dbgi_reset:       in    std_ulogic;                               -- reset processor
-      dbgi_dwrite:      in    std_ulogic;                               -- read/write
-      dbgi_daddr:       in    std_logic_vector(23 downto 2);            -- diagnostic address
-      dbgi_ddata:       in    std_logic_vector(31 downto 0);            -- diagnostic data
-      dbgi_btrapa:      in    std_ulogic;                               -- break on IU trap
-      dbgi_btrape:      in    std_ulogic;                               -- break on IU trap
-      dbgi_berror:      in    std_ulogic;                               -- break on IU error mode
-      dbgi_bwatch:      in    std_ulogic;                               -- break on IU watchpoint
-      dbgi_bsoft:       in    std_ulogic;                               -- break on software breakpoint (TA 1)
-      dbgi_tenable:     in    std_ulogic;
-      dbgi_timer:       in    std_logic_vector(30 downto 0);
-
-      dbgo_data:        out   std_logic_vector(31 downto 0);
-      dbgo_crdy:        out   std_ulogic;
-      dbgo_dsu:         out   std_ulogic;
-      dbgo_dsumode:     out   std_ulogic;
-      dbgo_error:       out   std_ulogic;
-      dbgo_halt:        out   std_ulogic;
-      dbgo_pwd:         out   std_ulogic;
-      dbgo_idle:        out   std_ulogic;
-      dbgo_ipend:       out   std_ulogic;
-      dbgo_icnt:        out   std_ulogic;
-      dbgo_fcnt    : 	out   std_ulogic;
-      dbgo_optype  : 	out   std_logic_vector(5 downto 0);	-- instruction type
-      dbgo_bpmiss  : 	out   std_ulogic;			-- branch predict miss
-      dbgo_istat_cmiss:  out   std_ulogic;
-      dbgo_istat_tmiss:  out   std_ulogic;
-      dbgo_istat_chold:  out   std_ulogic;
-      dbgo_istat_mhold:  out   std_ulogic;
-      dbgo_dstat_cmiss:  out   std_ulogic;
-      dbgo_dstat_tmiss:  out   std_ulogic;
-      dbgo_dstat_chold:  out   std_ulogic;
-      dbgo_dstat_mhold:  out   std_ulogic;
-      dbgo_wbhold  : 	out   std_ulogic;			-- write buffer hold
-      dbgo_su      : 	out   std_ulogic
-);
-
+     dbgi_dsuen        : in  std_ulogic;                               -- DSU enable
+     dbgi_denable      : in  std_ulogic;                               -- diagnostic register access enablee
+     dbgi_dbreak       : in  std_ulogic;                               -- debug break-in
+     dbgi_step         : in  std_ulogic;                               -- single step
+     dbgi_halt         : in  std_ulogic;                               -- halt processor
+     dbgi_reset        : in  std_ulogic;                               -- reset processor
+     dbgi_dwrite       : in  std_ulogic;                               -- read/write
+     dbgi_daddr        : in  std_logic_vector(23 downto 2);            -- diagnostic address
+     dbgi_ddata        : in  std_logic_vector(31 downto 0);            -- diagnostic data
+     dbgi_btrapa       : in  std_ulogic;                               -- break on IU trap
+     dbgi_btrape       : in  std_ulogic;                               -- break on IU trap
+     dbgi_berror       : in  std_ulogic;                               -- break on IU error mode
+     dbgi_bwatch       : in  std_ulogic;                               -- break on IU watchpoint
+     dbgi_bsoft        : in  std_ulogic;                               -- break on software breakpoint (TA 1)
+     dbgi_tenable      : in  std_ulogic;
+     dbgi_timer        : in  std_logic_vector(30 downto 0);
+    
+     dbgo_data         : out std_logic_vector(31 downto 0);
+     dbgo_crdy         : out std_ulogic;
+     dbgo_dsu          : out std_ulogic;
+     dbgo_dsumode      : out std_ulogic;
+     dbgo_error        : out std_ulogic;
+     dbgo_halt         : out std_ulogic;
+     dbgo_pwd          : out std_ulogic;
+     dbgo_idle         : out std_ulogic;
+     dbgo_ipend        : out std_ulogic;
+     dbgo_icnt         : out std_ulogic;
+     dbgo_fcnt         : out std_ulogic;
+     dbgo_optype       : out std_logic_vector(5 downto 0);     -- instruction type
+     dbgo_bpmiss       : out std_ulogic;                       -- branch predict miss
+     dbgo_istat_cmiss  : out std_ulogic;
+     dbgo_istat_tmiss  : out std_ulogic;
+     dbgo_istat_chold  : out std_ulogic;
+     dbgo_istat_mhold  : out std_ulogic;
+     dbgo_dstat_cmiss  : out std_ulogic;
+     dbgo_dstat_tmiss  : out std_ulogic;
+     dbgo_dstat_chold  : out std_ulogic;
+     dbgo_dstat_mhold  : out std_ulogic;
+     dbgo_wbhold       : out std_ulogic;                       -- write buffer hold
+     dbgo_su           : out std_ulogic;
+     
+    -- fpui       : out grfpu_in_type;
+    -- fpuo       : in  grfpu_out_type;
+     
+     clken             : in std_ulogic
+    );
   end component;
 
 component ssrctrl_net
@@ -970,6 +984,7 @@ end component;
   port (
     rst    : in  std_ulogic;			-- Reset
     clk    : in  std_ulogic;
+    fpuclk : in  std_ulogic;
     holdn  : in  std_ulogic;			-- pipeline hold
     cpi_flush  	: in std_ulogic;			  -- pipeline flush
     cpi_exack    	: in std_ulogic;			  -- FP exception acknowledge
@@ -1157,6 +1172,7 @@ end component;
       irqi_rstvec:      in    std_logic_vector(31 downto 12);
       irqi_iact:        in    std_ulogic;
       irqi_index:       in    std_logic_vector(3 downto 0);
+      irqi_hrdrst:      in    std_ulogic;
 
       irqo_intack:      out   std_ulogic;
       irqo_irl:         out   std_logic_vector(3 downto 0);
@@ -1179,7 +1195,7 @@ end component;
       dbgi_bwatch:      in    std_ulogic;                               -- break on IU watchpoint
       dbgi_bsoft:       in    std_ulogic;                               -- break on software breakpoint (TA 1)
       dbgi_tenable:     in    std_ulogic;
-      dbgi_timer:       in    std_logic_vector(30 downto 0);
+      dbgi_timer:       in    std_logic_vector(63 downto 0);
 
       dbgo_data:        out   std_logic_vector(31 downto 0);
       dbgo_crdy:        out   std_ulogic;
@@ -1203,7 +1219,8 @@ end component;
       dbgo_dstat_chold:  out   std_ulogic;
       dbgo_dstat_mhold:  out   std_ulogic;
       dbgo_wbhold  : 	out   std_ulogic;			-- write buffer hold
-      dbgo_su      : 	out   std_ulogic);
+      dbgo_su      : 	out   std_ulogic;
+      dbgo_ducnt   :    out   std_ulogic);
   end component;
 
   component grpci2_phy_net is

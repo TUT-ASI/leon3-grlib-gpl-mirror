@@ -1,3 +1,179 @@
+----------------------- Release 1.4.0-b4154 ----------------------------
+
+2015-04-10	Xilinx ML510 design: add support for second Ethernet core 
+		through SGMII connection to the PHY
+
+2015-04-10	Xilinx ML50x design: add support for alternative SGMII
+		connection to the PHY
+
+2015-04-10	Added Xilinx GTP and GTX transceiver technology mappings to the
+		SERDES component, enabling SGMII on Xilinx
+
+2015-04-10	Add L3STAT IP core (performance counters)
+
+2015-04-10	Add GRPCI2, remove GRPCI1.
+
+2015-04-08	ML501/ML50x: Updated to ISE 14.7
+
+2015-04-05	Remove designs/netcard
+
+2015-03-27	Xilinx VC707/AC701/KC705 designs: Updated to Vivado 2014.4.1
+
+2015-03-23	Added template design for Nexys4-DDR (leon3-digilent-nexys4ddr)
+
+2015-03-20	Added template design for TerASIC SoCKit (leon3-terasic-sockit)
+
+2015-03-11	GRFPU/GRFPU-lite netlists: Add netlists for Xilinx Virtex6,
+		Xilinx 7-series and Altera Cyclone V, Startix IV, Stratix V.
+
+2015-02-26	SPIMCTRL: Disable (previously experimental) support for
+		SD cards. SPIMCTRL now only support SPI Flash devices.
+
+2015-02-19	DSU3/AHBTRACE: Remove HIRQ(15:1) from trace buffer.
+
+2015-02-18	LEON3: Optimize timing to avoid slow path through nullify
+		in mmu_dcache.
+
+2015-02-18	LEON3: Optimize timing for multi-way i-cache in FPGA
+
+2015-02-18	LEON3: Alias ASI 0x18 with 0x3, alias ASI 0x19 with 0x4
+
+2015-02-09	LEON3: Add support for iTB overflow detection. 
+
+2015-02-09	LEON3/DSU3: Support filtering on LDST from alternate space
+		0x80 - 0xFF
+
+2015-02-07	Added synchronous I/O test module (SYNCIOTEST)
+
+2015-02-07	LEON3: Add optional support to block i-cache fetch for misses
+		caused by branch prediction,
+
+2015-02-07	LEON3: Support SPARC V8E partial WRPSR
+
+2015-02-07	GRGPIO: Add logical-and, -or, and -xor for DOUT, DIR, IMASK,
+		and INPEN registers. Increase core version to 3.
+
+2015-02-07	GRGPIO: Add additional bypass mode, configurable reset values,
+		optional interrupt flag register, optional input enable 
+		register and optional pulse functionality
+
+2015-02-07	SRMMU: SRMMU used fault type invalid address for translation
+		errors and internal error for AMBA ERROR responses.
+		Corrected to use FSR.FT=Translation error for AMBA ERROR
+		reponses and other errors defined as translation errors in
+		the V8 manual. MMU can no longer report FT=internal error.
+    
+2015-02-07	SRMMU: FSR and FAR could only be overwritten by FT=internal
+		error when FSR.FT=invalid address error. Changed so that all
+		errors except translation errors may be overwritten.
+
+2015-02-07	LEON3: HLOCK could get lost after SPLIT/RETRY response
+
+2015-02-07	syncram256bw: Compile fix for Cadence
+
+2015-02-07	GPTIMER: Add support for external latch and clear vectors
+
+2015-02-07	report_device: Support using custom routine for writing to
+		testmod
+
+2015-02-07	AHBJTAG: For ASIC, use both AHB and JTAG resets to reset jtagcom
+
+2015-02-07	AHBTRACE: add support for enable reset value from external
+		signal
+
+2015-01-13	SRMMU: Add support for grlib_async_reset_enable
+
+2014-10-30	LEON3: Allow use of ASI 0x1C also without MMU implemented.
+
+2014-10-28	Include simple byte, hword, word and dword test as part of
+		systest function base_test().
+
+2014-10-23	Xilinx VC707/AC701/KC705 designs: Updated to Vivado 2014.3
+
+2014-10-17	Add support for Xilinx dynamic partial reconfiguration. See
+		doc/dprc/.
+
+2014-09-15	LEON3: Small logic optimization of D-cache snooping logic
+
+2014-09-12	AHBTRACE: Add AMBA performance counter outputs
+
+2014-09-10	Xilinx VC707/AC701/KC705 designs: Updated to Vivado 2014.2 
+
+2014-09-08	LEON3: ASI 8 (user mode instruction fetch) access resulted in
+		bus access also after MMU exceptions when MMU No Fault bit was
+		set (NF=1). Changed behaviour so that bus access is prevented
+		also when SU=0,NF=1.
+
+2014-09-08	KC705: Support for Quad SPI flash added
+
+2014-08-25	SDCTRL,SDCTRL64: Add missing checks that could cause minimum
+		tRAS timings below what had been configured. Only impacts
+		90 MHz or higher frequency SDRAM operation.
+
+2014-08-12	IRQMP: Add support for interrupt remapping
+
+2014-08-05	DSU3: Do not increment trace buffer time tag when DSU is
+		disabled (dsui.enable LOW) unless timer is forced via reg i/f.
+
+2014-08-03	APBUART/DCOM_UART: Only transmit one stop bit
+
+2014-08-03	Added template design for Xilinx ZC702 Evaluation Kit
+
+2013-07-29	TECHMAP/syncram: Include test-mode bypass functionality
+		only for technologies where it's explicitly enabled (via
+		array in gencomp.vhd)
+
+2014-07-15	Moved declaration of memtest_vector to techmap.
+		Implemented memory test signal propagation for AHBTRACE.
+		Existing designs are unaffected by this change.
+
+2014-07-15	AHBTRACE: Support external time tag signal
+
+2014-07-08	LEON3/DSU3: include support for two-port instruction buffer
+
+2014-07-01	DSU3: Allow filtering instruction trace buffer for LDA/STA
+
+2014-07-01	DSU3: Include support for instruction trace buffer filtering
+
+2014-06-29	LEON3: Add npasi VHDL generic that enables SPARC V8E
+		nonprivileged ASI access.
+
+2014-06-17	GRGPRBANK: Support optional external reset and read vectors.
+
+2014-05-19	syncram: Add self-checking feature to debug memory mapping
+		(enabled via grlib.config option)
+
+2014-05-10	LEON3/LEON4: Disable ASI wrapping. ASI(7:5) must now be
+		zero to access existing ASIs.
+
+2014-05-08	Added SGMII to GMII Ethernet bridge (lib/gaisler/greth/sgmii.vhd)
+		for use with GRETH_GBIT. Technology map currently supports
+		Altera. SGMII support is also available for Xilinx through
+		Xilinx's SGMII PHY Interface, see template designs for 7-series.
+
+2014-05-05	DSU3: Add support for AHB trace buffer filtering, trace
+		force, force timer enable and wide AHB buses.
+
+2014-05-02	Vivado flow updated to ver 2014.1
+
+2014-04-30	GRETH_GBIT: Added SYNCREG for controlling transmit switch to 
+		improve timing after place and route
+
+2014-04-30	GRETH: EDCL MDIO statemachine will now be disabled by control
+		register bits edcldisable and disable duplex detection bits.
+
+2014-04-30	GRETH: Corrected clock domain for TX reset
+
+2014-04-30	RSTGEN: Added constraints to reset block to prevent synthesis 
+		to merge signals
+
+2014-04-30	KC705: Updated simulation enviroment for Ethernet
+
+2014-04-30	RGMII: Make better use of GRLIB SYNREG for CDC and added 
+		reset to output register
+
+2014-04-30	XILINX-SERIES7: Fixed byte write in fast simulation mode
+
 ----------------------- Release 1.3.7-b4144 ----------------------------
 
 2014-04-16	Change default assignment of GRLIB_SIMULATOR to ModelSim

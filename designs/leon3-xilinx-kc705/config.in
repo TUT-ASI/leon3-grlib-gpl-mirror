@@ -24,6 +24,7 @@ mainmenu_option next_comment
 endmenu
 
 source lib/gaisler/leon3/leon3.in
+source lib/gaisler/l2cache/l2c.in
 source lib/grlib/amba/amba.in
 
 mainmenu_option next_comment
@@ -72,7 +73,6 @@ comment 'Peripherals             '
   mainmenu_option next_comment
   comment 'SPI'
     source lib/gaisler/spi/spimctrl.in
-    source lib/gaisler/spi/spictrl.in
   endmenu
 
 endmenu

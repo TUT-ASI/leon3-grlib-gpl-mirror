@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -497,7 +498,7 @@ begin
     begin
       if rising_edge(clk) then 
         r <= rin;
-        if rst = '0' then
+        if txrst = '0' then
           r.icnt <= (others => '0'); r.delay_val <= (others => '0');
           r.cnt <= (others => '0');
         else
@@ -512,8 +513,8 @@ begin
     txregs0 : process(clk) is
     begin
       if rising_edge(clk) then 
-        if txi.datavalid = '1' then r <= rin; end if;
-        if rst = '0' then
+        if (txi.datavalid = '1' or txrst = '0')  then r <= rin; end if;
+        if txrst = '0' then
           r.icnt <= (others => '0'); r.delay_val <= (others => '0');
           r.cnt <= (others => '0');
         else

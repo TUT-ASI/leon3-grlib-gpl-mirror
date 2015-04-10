@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -59,7 +60,9 @@ begin
     --  q <= c(stages-1);
     --end block syncreg;
     syncreg : block
-      signal c : std_logic_vector(stages downto 0);
+      signal c            : std_logic_vector(stages downto 0);
+      attribute keep      : boolean;
+      attribute keep of c : signal is true;
     begin
       c(0) <= d;
       syncregs : for i in 1 to stages generate

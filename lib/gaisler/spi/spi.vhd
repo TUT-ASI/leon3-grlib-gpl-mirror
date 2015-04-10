@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -216,13 +217,13 @@ package spi is
     sck         : std_ulogic;
     csn         : std_ulogic;
     cdcsnoen    : std_ulogic;
-    errorn      : std_ulogic;
+--    errorn      : std_ulogic;
     ready       : std_ulogic;
     initialized : std_ulogic;
   end record;
 
   constant spimctrl_out_none : spimctrl_out_type :=
-    ('0', '1', '0', '1', '1', '1', '0', '0');
+    ('0', '1', '0', '1', '1', '0', '0');
 
   component spimctrl
     generic (

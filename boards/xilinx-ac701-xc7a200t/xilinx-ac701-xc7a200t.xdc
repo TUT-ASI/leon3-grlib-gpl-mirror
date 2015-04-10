@@ -10,38 +10,44 @@ set_false_path -from [get_ports {button[*]}]
 set_false_path -from [get_ports reset]
 set_false_path -from [get_ports switch*]
 
-# --- SPI
-#set_input_delay  -clock [get_generated_clocks clk_pll_i] -max 3.000 [get_ports spi_sel_n]
-#set_output_delay -clock [get_generated_clocks clk_pll_i] -max 1.000 [get_ports spi_clk]
-#set_output_delay -clock [get_generated_clocks clk_pll_i] -max 1.000 [get_ports spi_clk]
-#set_input_delay  -clock [get_generated_clocks clk_pll_i] -max 3.000 [get_ports spi_miso ]
+# --- SPI FLASH
+set_input_delay   -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 3.000 [get_ports spi_sel_n]
+#set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 1.000 [get_ports spi_clk  ]
+set_input_delay   -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 3.000 [get_ports spi_miso ]
+set_output_delay  -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 1.000 [get_ports spi_mosi ]
+
+# --- SDCARD FLASH
+set_input_delay  -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 3.000 [get_ports sdcard_spi_cs_b ]
+set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 1.000 [get_ports sdcard_spi_clk  ]
+set_input_delay  -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 2.000 [get_ports sdcard_spi_miso ]
+set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 1.000 [get_ports sdcard_spi_mosi ]
 
 # --- UART
 # Inputs
-set_input_delay -clock [get_generated_clocks clk_pll_i] -max 3.000 [get_ports dsurx]
-set_input_delay -clock [get_generated_clocks clk_pll_i] -min -add_delay 1.000 [get_ports dsurx]
-set_input_delay -clock [get_generated_clocks clk_pll_i] -max 3.000 [get_ports dsuctsn]
-set_input_delay -clock [get_generated_clocks clk_pll_i] -min -add_delay 1.000 [get_ports dsuctsn]
+set_input_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 3.000 [get_ports dsurx]
+set_input_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay 1.000 [get_ports dsurx]
+set_input_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 3.000 [get_ports dsuctsn]
+set_input_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay 1.000 [get_ports dsuctsn]
 
 # Outputs
-set_output_delay -clock [get_generated_clocks clk_pll_i] -max 1.000 [get_ports dsutx]
-set_output_delay -clock [get_generated_clocks clk_pll_i] -min -add_delay -1.000 [get_ports dsutx]
-set_output_delay -clock [get_generated_clocks clk_pll_i] -max 1.000 [get_ports dsurtsn]
-set_output_delay -clock [get_generated_clocks clk_pll_i] -min -add_delay -1.000 [get_ports dsurtsn]
+set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 1.000 [get_ports dsutx]
+set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay -1.000 [get_ports dsutx]
+set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 1.000 [get_ports dsurtsn]
+set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay -1.000 [get_ports dsurtsn]
 
 # --- JTAG
 # N/A
 
 # --- I2C
 # BiDir
-set_input_delay  -clock [get_generated_clocks clk_pll_i] -max 3.000             [get_ports iic_scl*]
-set_input_delay  -clock [get_generated_clocks clk_pll_i] -min -add_delay 1.000  [get_ports iic_scl*]
-set_output_delay -clock [get_generated_clocks clk_pll_i] -max -add_delay 1.000  [get_ports iic_scl*]
-set_output_delay -clock [get_generated_clocks clk_pll_i] -min -add_delay -1.000 [get_ports iic_scl*]
-set_input_delay  -clock [get_generated_clocks clk_pll_i] -max 3.000             [get_ports iic_sda*]
-set_input_delay  -clock [get_generated_clocks clk_pll_i] -min -add_delay 1.000  [get_ports iic_sda*]
-set_output_delay -clock [get_generated_clocks clk_pll_i] -max -add_delay 1.000  [get_ports iic_sda*]
-set_output_delay -clock [get_generated_clocks clk_pll_i] -min -add_delay -1.000 [get_ports iic_sda*]
+set_input_delay  -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 3.000             [get_ports iic_scl*]
+set_input_delay  -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay 1.000  [get_ports iic_scl*]
+set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max -add_delay 1.000  [get_ports iic_scl*]
+set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay -1.000 [get_ports iic_scl*]
+set_input_delay  -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 3.000             [get_ports iic_sda*]
+set_input_delay  -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay 1.000  [get_ports iic_sda*]
+set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max -add_delay 1.000  [get_ports iic_sda*]
+set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay -1.000 [get_ports iic_sda*]
 
 #-----------------------------------------------------------
 #              Ethernet / GMII                            -
@@ -106,13 +112,13 @@ set_max_delay -datapath_only -from [all_registers -clock [get_clocks -include_ge
 set_max_delay -datapath_only -from [all_registers -clock [get_clocks phy_rxclk]                           ] -to [all_registers -clock [get_clocks -include_generated_clocks clk200]    ] 8.000
 set_max_delay -datapath_only -from [all_registers -clock [get_clocks -include_generated_clocks phy_txclk]]  -to [all_registers -clock [get_clocks -include_generated_clocks clk200]    ] 8.000
 
-set_false_path -from [get_clocks {CLKOUT0_1}] -to [get_clocks {CLKOUT1_1}]
-set_false_path -from [get_clocks {CLKOUT0_1}] -to [get_clocks {CLKOUT1_1}]
+#set_false_path -from [get_clocks {CLKOUT0_1}] -to [get_clocks {CLKOUT1_1}]
+#set_false_path -from [get_clocks {CLKOUT0_1}] -to [get_clocks {CLKOUT1_1}]
 
 # Output MUX 
 # Data and Control
-set_false_path -from [get_clocks -include_generated_clocks clk200] -through [get_ports phy_tx*] -to [get_clocks -include_generated_clocks phy_txclk]
-set_false_path -from [get_clocks -include_generated_clocks phy_txclk] -through [get_ports phy_tx*] -to [get_clocks -include_generated_clocks clk200]
+## set_false_path -from [get_clocks -include_generated_clocks clk200] -through [get_ports phy_tx*] -to [get_clocks -include_generated_clocks phy_txclk]
+## set_false_path -from [get_clocks -include_generated_clocks phy_txclk] -through [get_ports phy_tx*] -to [get_clocks -include_generated_clocks clk200]
 
 # Outputs
 #set_output_delay -clock [get_clocks -include_generated_clocks phy_txclk] -max 2.000 [get_ports phy_txd[*]]
@@ -126,7 +132,7 @@ set_false_path -from [get_clocks -include_generated_clocks phy_txclk] -through [
 #set_output_delay -clock [get_clocks -include_generated_clocks phy_txclk] -min 1.000 [get_ports phy_txctl_txen] -add_delay -clock_fall
 
 #output timing for rgmii - derated slightly due to pessimism in the tools
-create_generated_clock -name rgmii_tx_clk -divide_by 1 -source [get_pins eth0.rgmii0/rgmii_tx_clk/*/*/C] [get_ports phy_txclk]
+create_generated_clock -name rgmii_tx_clk -divide_by 1 -source [get_pins eth0.rgmii0/*rgmii_tx_clk/*/*/C] [get_ports phy_txclk]
 
 set_output_delay 0.75 -max -clock [get_clocks rgmii_tx_clk] [get_ports {phy_txd[*] phy_txctl_txen}]
 set_output_delay -0.7 -min -clock [get_clocks rgmii_tx_clk] [get_ports {phy_txd[*] phy_txctl_txen}]
@@ -136,25 +142,25 @@ set_output_delay -0.7 -min -clock [get_clocks rgmii_tx_clk] [get_ports {phy_txd[
 
 # Inputs
 set_input_delay -clock [get_clocks phy_rxclk] -max 1.000 [get_ports {phy_rxd[*] phy_rxctl_rxdv}]
-set_input_delay -clock [get_clocks phy_rxclk] -min 0.000 [get_ports {phy_rxd[*] phy_rxctl_rxdv}]
+set_input_delay -clock [get_clocks phy_rxclk] -min 0.100 [get_ports {phy_rxd[*] phy_rxctl_rxdv}]
 set_input_delay -clock [get_clocks phy_rxclk] -max 1.000 [get_ports {phy_rxd[*] phy_rxctl_rxdv}] -add_delay -clock_fall
-set_input_delay -clock [get_clocks phy_rxclk] -min 0.000 [get_ports {phy_rxd[*] phy_rxctl_rxdv}] -add_delay -clock_fall
+set_input_delay -clock [get_clocks phy_rxclk] -min 0.100 [get_ports {phy_rxd[*] phy_rxctl_rxdv}] -add_delay -clock_fall
 
 # False paths
 set_false_path -to [get_ports phy_reset]
 
 # MDIO BiDir
-set_input_delay -clock  [get_generated_clocks clk_pll_i] -max 8.000 [get_ports phy_mdio]
-set_input_delay -clock  [get_generated_clocks clk_pll_i] -min -add_delay 1.000 [get_ports phy_mdio]
-set_output_delay -clock [get_generated_clocks clk_pll_i] -max -add_delay 1.000 [get_ports phy_mdio]
-set_output_delay -clock [get_generated_clocks clk_pll_i] -min -add_delay -1.000 [get_ports phy_mdio]
+set_input_delay -clock  [get_clocks -include_generated_clocks CLKFBOUT] -max 5.000 [get_ports phy_mdio]
+set_input_delay -clock  [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay 1.000 [get_ports phy_mdio]
+set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max -add_delay 1.000 [get_ports phy_mdio]
+set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay -1.000 [get_ports phy_mdio]
 
 # MDIO - Outputs
-set_output_delay -clock [get_generated_clocks clk_pll_i] -max 1.000 [get_ports phy_mdc]
-set_output_delay -clock [get_generated_clocks clk_pll_i] -min -add_delay -1.000 [get_ports phy_mdc]
+set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 1.000 [get_ports phy_mdc]
+set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay -1.000 [get_ports phy_mdc]
 
 # apply the same IDELAY_VALUE to all GMII RX inputs
-set_property IDELAY_VALUE 20 [get_cells {eth0.delay* eth0.rgmii*.delay*}]
+#set_property IDELAY_VALUE 20 [get_cells {eth0.delay* eth0.rgmii*.delay*}]
 
 # Group IODELAY and IDELAYCTRL components to aid placement
 set_property IODELAY_GROUP kc705_ethernet_rgmii_grp1 [get_cells {eth0.delay* eth0.rgmii*.delay*}]
@@ -180,11 +186,21 @@ set_property VCCAUX_IO DONTCARE     [get_ports clk200n]
 set_property PACKAGE_PIN U4      [get_ports reset]
 set_property IOSTANDARD LVCMOS15 [get_ports reset]
 
-# --- SPI
-#set_property PACKAGE_PIN P18 [get_ports spi_sel_n]
+# --- SPI FLASH
+set_property PACKAGE_PIN P18 [get_ports spi_sel_n]
 #set_property PACKAGE_PIN H13 [get_ports spi_clk]
-#set_property PACKAGE_PIN R14 [get_ports spi_miso]
-#set_property IOSTANDARD LVCMOS33 [get_ports spi_*]
+set_property PACKAGE_PIN R15 [get_ports spi_miso]
+set_property PACKAGE_PIN R14 [get_ports spi_mosi]
+
+set_property IOSTANDARD LVCMOS33 [get_ports spi_*]
+
+# --- SPI SDCARD
+set_property PACKAGE_PIN P21 [get_ports sdcard_spi_cs_b]
+set_property PACKAGE_PIN N24 [get_ports sdcard_spi_clk]
+set_property PACKAGE_PIN P19 [get_ports sdcard_spi_miso]
+set_property PACKAGE_PIN N23 [get_ports sdcard_spi_mosi]
+
+set_property IOSTANDARD LVCMOS33 [get_ports sdcard_spi_*]
 
 # UART - Checked
 set_property PACKAGE_PIN T19 [get_ports dsutx]

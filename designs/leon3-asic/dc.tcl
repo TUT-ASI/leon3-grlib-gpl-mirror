@@ -15,7 +15,11 @@ if {$argc == 0} then {
    if {${err_tech_setup} == "1"} {
      echo "ERROR: No Tech Library Setup file for ${argv} has been found"
      exit
+   } else {
+    set gr_tech_lib techscripts
    }
+  } else {
+   set gr_tech_lib grtechscripts
   }
   set err_tech_timing [catch {exec test -f ./grtechscripts/timing_${argv}.tcl}]
   if {${err_tech_timing} == "1"} {
@@ -116,7 +120,7 @@ set report_verbose 0
 set_svf synopsys/$report_run.svf
 
 # Read Tech Lib Files
-source ./techscripts/setup_${grtechlib}.tcl
+source ./${gr_tech_lib}/setup_${grtechlib}.tcl
 
 # Create Tech work library (if needed)
 catch {sh mkdir synopsys}
@@ -212,7 +216,7 @@ link
 if {$skip_opt == 0} then {
 
  ### Apply tech lib constraints
- source ./techscripts/timing_${grtechlib}.tcl
+ source ./${gr_tech_lib}/timing_${grtechlib}.tcl
 
  ### Apply design timing constraints
  source ./timing.tcl
@@ -340,5 +344,5 @@ source ./report.tcl
 # End of run
 #################################################################################
 
-#quit
+quit
 

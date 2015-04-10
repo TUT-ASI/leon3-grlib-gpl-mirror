@@ -25,7 +25,7 @@ SIMTOP=testbench
 VCOMOPT=-explicit -O0
 
 # GRLIB Options
-VSIMOPT= -gdisas=1
+#VSIMOPT= -gdisas=1
 
 # GRETH options
 ifeq ($(CONFIG_GRETH_ENABLE),y)
@@ -51,10 +51,10 @@ VSIMOPT+=-novopt +notimingchecks
 endif
 
 # Run simulation in batch mode
-VSIMOPT+= -c
+#VSIMOPT+= -c
 
 # Simulation scripts
-VSIMOPT+= -do "run -all"
+#VSIMOPT+= -do "run -all"
 
 # Toplevel
 VSIMOPT+= $(SIMTOP)
@@ -63,7 +63,7 @@ VSIMOPT+= $(SIMTOP)
 
 ### Testbench, design and libraries to compile and not to compile
 
-VHDLSYNFILES= config.vhd ahbrom.vhd leon3mp.vhd ddr_dummy.vhd
+VHDLSYNFILES= config.vhd ahbram_sim.vhd ahbrom.vhd leon3mp.vhd ddr_dummy.vhd
 VHDLSIMFILES=testbench.vhd
 
 TECHLIBS = secureip unisim
@@ -98,7 +98,8 @@ help-local: help
 	@echo "  1. Setup search paths for Xilinx, GCC and Modelsim "
 	@echo "  2. make vsim"
 	@echo "  3. make mig_series7"
-	@echo "  4. make vsim-launch"
+	@echo "  4. make soft"
+	@echo "  5. make vsim-launch"
 	@echo
 	@echo " Please note that this quick start guide will compile and simulate"
 	@echo " a preconfigured version of the leon3 processor system."

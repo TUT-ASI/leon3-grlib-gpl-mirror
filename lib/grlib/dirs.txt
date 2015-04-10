@@ -5,3 +5,4 @@ sparc
 modgen
 amba
 atf
+dftlib

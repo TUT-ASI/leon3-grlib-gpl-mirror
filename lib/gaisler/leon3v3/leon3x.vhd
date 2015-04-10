@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -79,7 +80,7 @@ entity leon3x is
     tlb_rep    :     integer range 0 to 1     := 0;
     lddel      :     integer range 1 to 2     := 2;
     disas      :     integer range 0 to 2     := 0;
-    tbuf       :     integer range 0 to 64    := 0;
+    tbuf       :     integer range 0 to 128   := 0;
     pwd        :     integer range 0 to 2     := 2;
     svt        :     integer range 0 to 1     := 1;
     rstaddr    :     integer                  := 0;
@@ -94,7 +95,9 @@ entity leon3x is
     netlist    :     integer                  := 0;
     scantest   :     integer                  := 0;
     mmupgsz    :     integer range 0 to 5     := 0;
-    bp         :     integer                  := 1
+    bp         :     integer                  := 1;
+    npasi      :     integer range 0 to 1     := 0;
+    pwrpsr     :     integer range 0 to 1     := 0
     );
   port (
     clk        : in  std_ulogic;                     -- free-running clock
@@ -143,6 +146,8 @@ signal crami : cram_in_type;
 signal cramo : cram_out_type;
 signal tbi   : tracebuf_in_type;
 signal tbo   : tracebuf_out_type;
+signal tbi_2p : tracebuf_2p_in_type;
+signal tbo_2p : tracebuf_2p_out_type;
 signal rst   : std_ulogic;
 signal fpi   : fpc_in_type;
 signal fpo   : fpc_out_type;
@@ -157,101 +162,234 @@ begin
 
    gnd <= '0'; vcc <= '1';
 
--- leon3 processor core (iu, caches & mul/div)
-
-  p0 : proc3
-  generic map (
-    hindex, fabtech, memtech, nwindows, dsu, fpuarch, v8, cp, mac, pclow,
-    notag, nwp, icen, irepl, isets, ilinesize, isetsize, isetlock, dcen,
-    drepl, dsets, dlinesize, dsetsize, dsetlock, dsnoop, ilram, ilramsize,
-    ilramstart, dlram, dlramsize, dlramstart, mmuen, itlbnum, dtlbnum,
-    tlb_type, tlb_rep, lddel, disas, tbuf, pwd, svt, rstaddr, smp,
-    cached, clk2x, scantest, mmupgsz, bp)
-  port map (gclk2, rst, holdn, ahbi, ahbo, ahbsi, ahbso, rfi, rfo, crami, cramo, 
-    tbi, tbo, fpi, fpo, cpi, cpo, irqi, irqo, dbgi, dbgo, clk, clk2, clken);
+   vhdl : if netlist = 0 generate
+     -- leon3 processor core (iu, caches & mul/div)
+     p0 : proc3
+       generic map (
+         hindex, fabtech, memtech, nwindows, dsu, fpuarch, v8, cp, mac, pclow,
+         notag, nwp, icen, irepl, isets, ilinesize, isetsize, isetlock, dcen,
+         drepl, dsets, dlinesize, dsetsize, dsetlock, dsnoop, ilram, ilramsize,
+         ilramstart, dlram, dlramsize, dlramstart, mmuen, itlbnum, dtlbnum,
+         tlb_type, tlb_rep, lddel, disas, tbuf, pwd, svt, rstaddr, smp,
+         cached, clk2x, scantest, mmupgsz, bp, npasi, pwrpsr)
+       port map (gclk2, rst, holdn, ahbi, ahbo, ahbsi, ahbso, rfi, rfo, crami, cramo, 
+                 tbi, tbo, tbi_2p, tbo_2p, fpi, fpo, cpi, cpo, irqi, irqo, dbgi, dbgo, clk, clk2, clken);
   
--- IU register file
-  
-  rf0 : regfile_3p_l3 generic map (memtech, IRFBITS, 32, IRFWT, IREGNUM,
-                                   scantest)
-  port map (gclk2, rfi.waddr(IRFBITS-1 downto 0), rfi.wdata, rfi.wren,
-                gclk2, rfi.raddr1(IRFBITS-1 downto 0), rfi.ren1, rfo.data1,
-                rfi.raddr2(IRFBITS-1 downto 0), rfi.ren2, rfo.data2,
-                rfi.diag
-                );
+     -- IU register file
+     rf0 : regfile_3p_l3 generic map (memtech, IRFBITS, 32, IRFWT, IREGNUM,
+                                      scantest)
+       port map (gclk2, rfi.waddr(IRFBITS-1 downto 0), rfi.wdata, rfi.wren,
+                 gclk2, rfi.raddr1(IRFBITS-1 downto 0), rfi.ren1, rfo.data1,
+                 rfi.raddr2(IRFBITS-1 downto 0), rfi.ren2, rfo.data2,
+                 rfi.diag
+                 );
 
--- cache memory
+     -- cache memory
+     cmem0 : cachemem
+       generic map (memtech, icen, irepl, isets, ilinesize, isetsize, isetlock, dcen,
+                    drepl, dsets,  dlinesize, dsetsize, dsetlock, dsnoop, ilram,
+                    ilramsize, dlram, dlramsize, mmuen, scantest
+                    )
+       port map (gclk2, crami, cramo, clk2);
 
-  cmem0 : cachemem
-  generic map (memtech, icen, irepl, isets, ilinesize, isetsize, isetlock, dcen,
-               drepl, dsets,  dlinesize, dsetsize, dsetlock, dsnoop, ilram,
-               ilramsize, dlram, dlramsize, mmuen, scantest
-               ) 
-  port map (gclk2, crami, cramo, clk2);
+     -- instruction trace buffer memory
+     tbmem_gen : if (tbuf /= 0) generate
+       tbmem_1p : if (tbuf <= 64) generate
+         tbmem0 : tbufmem
+           generic map (tech => memtech, tbuf => tbuf, dwidth => 32, testen => scantest)
+           port map (gclk2, tbi, tbo);
+         tbo_2p <= tracebuf_2p_out_type_none;
+       end generate;
+       tbmem_2p: if (tbuf > 64) generate
+         tbmem0 : tbufmem_2p
+           generic map (tech => memtech, tbuf => (tbuf-64), dwidth => 32, testen => scantest)
+           port map (gclk2, tbi_2p, tbo_2p);
+         tbo <= tracebuf_out_type_none;
+       end generate;
+     end generate;
+     notbmem_gen : if (tbuf = 0) generate
+       tbo <= tracebuf_out_type_none;
+       tbo_2p <= tracebuf_2p_out_type_none;
+     end generate;
 
--- instruction trace buffer memory
+     -- FPU
+     fpu0 : if (fpu = 0) generate fpo <= fpc_out_none; end generate;
 
-  tbmem_gen : if (tbuf /= 0) generate
-    tbmem0 : tbufmem generic map (memtech, tbuf, scantest)
-      port map (gclk2, tbi, tbo);
-  end generate;
-    
--- FPU
-
-  fpu0 : if (fpu = 0) generate fpo <= fpc_out_none; end generate;
-
-  fpshare : if fpushared generate
-    grfpw0gen : if (fpuarch > 0) and (fpuarch < 8) generate
-      fpu0: grfpwxsh
-        generic map (memtech, pclow, dsu, disas, hindex
+     fpshare : if fpushared generate
+       grfpw0gen : if (fpuarch > 0) and (fpuarch < 8) generate
+         fpu0: grfpwxsh
+           generic map (memtech, pclow, dsu, disas, hindex
                      )
-        port map (rst, gclk2, holdn, fpi, fpo, fpui, fpuo);
-    end generate;
-    nogrfpw0gen : if not ((fpuarch > 0) and (fpuarch < 8)) generate
-      fpui <= grfpu_in_none;
-    end generate;
-  end generate;
+           port map (rst, gclk2, holdn, fpi, fpo, fpui, fpuo);
+       end generate;
+       nogrfpw0gen : if not ((fpuarch > 0) and (fpuarch < 8)) generate
+         fpui <= grfpu_in_none;
+       end generate;
+     end generate;
 
-  nofpshare : if not fpushared generate
-    grfpw1gen : if (fpuarch > 0) and (fpuarch < 8) generate
-      fpu0: grfpwx
-        generic map (fabtech, memtech, (fpuarch-1), pclow, dsu, disas,
-                     fpunet, hindex)
-        port map (rst, gfclk2, holdn, fpi, fpo);
-    end generate;  
+     nofpshare : if not fpushared generate
+       grfpw1gen : if (fpuarch > 0) and (fpuarch < 8) generate
+         fpu0: grfpwx
+           generic map (fabtech, memtech, (fpuarch-1), pclow, dsu, disas,
+                        fpunet, hindex)
+           port map (rst, gfclk2, holdn, fpi, fpo);
+       end generate;  
 
-    mfpw1gen : if (fpuarch = 15) generate
-      fpu0 : mfpwx
-        generic map (memtech, pclow, dsu, disas
-                     )
-        port map (rst, gfclk2, holdn, fpi, fpo);
-    end generate;    
+       mfpw1gen : if (fpuarch = 15) generate
+         fpu0 : mfpwx
+           generic map (memtech, pclow, dsu, disas
+                        )
+           port map (rst, gfclk2, holdn, fpi, fpo);
+       end generate;    
 
-    grlfpc1gen : if (fpuarch >=8) and (fpuarch < 15) generate
-      fpu0 : grlfpwx
-        generic map (memtech, pclow, dsu, disas,
-                     (fpuarch-8), fpunet, hindex)
-        port map (rst, gfclk2, holdn, fpi, fpo);
-    end generate;    
-    fpui <= grfpu_in_none;
-  end generate;    
+       grlfpc1gen : if (fpuarch >=8) and (fpuarch < 15) generate
+         fpu0 : grlfpwx
+           generic map (memtech, pclow, dsu, disas,
+                        (fpuarch-8), fpunet, hindex)
+           port map (rst, gfclk2, holdn, fpi, fpo);
+       end generate;    
+       fpui <= grfpu_in_none;
+     end generate;    
   
--- CP
+     -- CP
+     cpo <= fpc_out_none;
 
-  cpo <= fpc_out_none;
+     -- 1-clock reset delay
+     rstreg : process(gclk2)
+     begin if rising_edge(gclk2) then rst <= rstn; end if; end process;
 
--- 1-clock reset delay
+   end generate vhdl;
 
-  rstreg : process(gclk2)
-  begin if rising_edge(gclk2) then rst <= rstn; end if; end process;
-  
+   ntl : if netlist /= 0 generate
+     l3net : leon3_net
+       generic map (
+         hindex     => hindex,
+         fabtech    => fabtech,
+         memtech    => memtech,
+         nwindows   => nwindows,
+         dsu        => dsu,
+         fpu        => fpu,
+         v8         => v8,
+         cp         => cp,
+         mac        => mac,
+         pclow      => pclow,
+         notag      => notag,
+         nwp        => nwp,
+         icen       => icen,
+         irepl      => irepl,
+         isets      => isets,
+         ilinesize  => ilinesize,
+         isetsize   => isetsize,
+         isetlock   => isetlock,
+         dcen       => dcen,
+         drepl      => drepl,
+         dsets      => dsets,
+         dlinesize  => dlinesize,
+         dsetsize   => dsetsize,
+         dsetlock   => dsetlock,
+         dsnoop     => dsnoop,
+         ilram      => ilram,
+         ilramsize  => ilramsize,
+         ilramstart => ilramstart,
+         dlram      => dlram,
+         dlramsize  => dlramsize,
+         dlramstart => dlramstart,
+         mmuen      => mmuen,
+         itlbnum    => itlbnum,
+         dtlbnum    => dtlbnum,
+         tlb_type   => tlb_type,
+         tlb_rep    => tlb_rep,
+         lddel      => lddel,
+         disas      => disas,
+         tbuf       => tbuf,
+         pwd        => pwd,
+         svt        => svt,
+         rstaddr    => rstaddr,
+         smp        => smp,
+         iuft       => iuft,
+         fpft       => fpft,
+         cmft       => cmft,
+         cached     => cached,
+         clk2x      => clk2x,
+         scantest   => scantest,
+         mmupgsz    => mmupgsz,
+         bp         => bp,
+         npasi      => npasi,
+         pwrpsr     => pwrpsr)
+       port map (
+         clk               => clk,
+         gclk2             => gclk2,
+         gfclk2            => gfclk2,
+         clk2              => clk2,
+         rstn              => rstn,
+         ahbi              => ahbi,
+         ahbo              => ahbo,
+         ahbsi             => ahbsi,
+         --ahbso      => ahbso,
+         irqi_irl          => irqi.irl,
+         irqi_rst          => irqi.rst,
+         irqi_run          => irqi.run,
+         irqi_rstvec       => irqi.rstvec,
+         irqi_iact         => irqi.iact,
+         irqi_index        => irqi.index,
+         irqi_hrdrst       => irqi.hrdrst,
+         irqo_intack       => irqo.intack,
+         irqo_irl          => irqo.irl,
+         irqo_pwd          => irqo.pwd,
+         irqo_fpen         => irqo.fpen,
+         irqo_idle         => irqo.idle,
+         dbgi_dsuen        => dbgi.dsuen,
+         dbgi_denable      => dbgi.denable,
+         dbgi_dbreak       => dbgi.dbreak,
+         dbgi_step         => dbgi.step,
+         dbgi_halt         => dbgi.halt,
+         dbgi_reset        => dbgi.reset, 
+         dbgi_dwrite       => dbgi.dwrite, 
+         dbgi_daddr        => dbgi.daddr,
+         dbgi_ddata        => dbgi.ddata,
+         dbgi_btrapa       => dbgi.btrapa,
+         dbgi_btrape       => dbgi.btrape,
+         dbgi_berror       => dbgi.berror,
+         dbgi_bwatch       => dbgi.bwatch,
+         dbgi_bsoft        => dbgi.bsoft,
+         dbgi_tenable      => dbgi.tenable,
+         dbgi_timer        => dbgi.timer,
+         dbgo_data         => dbgo.data,
+         dbgo_crdy         => dbgo.crdy,
+         dbgo_dsu          => dbgo.dsu,
+         dbgo_dsumode      => dbgo.dsumode,
+         dbgo_error        => dbgo.error,
+         dbgo_halt         => dbgo.halt,
+         dbgo_pwd          => dbgo.pwd,
+         dbgo_idle         => dbgo.idle, 
+         dbgo_ipend        => dbgo.ipend,
+         dbgo_icnt         => dbgo.icnt,
+         dbgo_fcnt         => dbgo.fcnt,
+         dbgo_optype       => dbgo.optype,
+         dbgo_bpmiss       => dbgo.bpmiss,
+         dbgo_istat_cmiss  => dbgo.istat.cmiss,
+         dbgo_istat_tmiss  => dbgo.istat.tmiss,
+         dbgo_istat_chold  => dbgo.istat.chold,
+         dbgo_istat_mhold  => dbgo.istat.mhold,
+         dbgo_dstat_cmiss  => dbgo.dstat.cmiss,
+         dbgo_dstat_tmiss  => dbgo.dstat.tmiss,
+         dbgo_dstat_chold  => dbgo.dstat.chold,
+         dbgo_dstat_mhold  => dbgo.dstat.mhold,
+         dbgo_wbhold       => dbgo.wbhold,
+         dbgo_su           => dbgo.su,
+         --fpui       => fpui,
+         --fpuo       => fpuo,
+         clken      => clken);
+   end generate ntl;
+   
 -- pragma translate_off
-    bootmsg : report_version 
-    generic map (
-      "leon3_" & tost(hindex) & ": LEON3 SPARC V8 processor rev " & tost(LEON3_VERSION)
-      , "leon3_" & tost(hindex) & ": icache " & tost(isets*icen) & "*" & tost(isetsize*icen) &
-        " kbyte, dcache "  & tost(dsets*dcen) & "*" & tost(dsetsize*dcen) & " kbyte"
-    );
+   bootmsg : report_version 
+     generic map (
+       "leon3_" & tost(hindex) & ": LEON3 SPARC V8 processor rev " & tost(LEON3_VERSION)
+       & ": iuft: " & tost(iuft) & ", fpft: " & tost(fpft) & ", cacheft: " & tost(cmft)
+       , "leon3_" & tost(hindex) & ": icache " & tost(isets*icen) & "*" & tost(isetsize*icen) &
+       " kbyte, dcache "  & tost(dsets*dcen) & "*" & tost(dsetsize*dcen) & " kbyte"
+       );
 -- pragma translate_on
 
 end;

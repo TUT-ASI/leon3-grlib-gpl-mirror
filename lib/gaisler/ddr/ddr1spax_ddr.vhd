@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -183,7 +184,7 @@ begin
   
   arst <= testrst when (scantest/=0 and ddr_syncrst=0) and testen='1' else ddr_rst;
   
-  ddrcomb: process(ddr_rst,sdi,request,frequest,start_tog,dr,wbrdata,testen,testoen)
+  ddrcomb: process(ddr_rst,sdi,request,frequest,start_tog,dr,wbrdata,testen,testoen,reqsel)
 
     variable dv: ddr_reg_type;
     variable o: ddrctrl_out_type;

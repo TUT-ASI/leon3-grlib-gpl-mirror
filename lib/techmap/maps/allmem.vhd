@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -203,6 +204,32 @@ package allmem is
     write : in std_ulogic);
   end component;
 
+  component rhs65_syncram_2p
+  generic ( abits : integer := 8; dbits : integer := 32; sepclk : integer := 0);
+  port (
+    rclk  : in std_ulogic;
+    rena  : in std_ulogic;
+    raddr : in std_logic_vector (abits -1 downto 0);
+    dout  : out std_logic_vector (dbits -1 downto 0);
+    wclk  : in std_ulogic;
+    waddr : in std_logic_vector (abits -1 downto 0);
+    din   : in std_logic_vector (dbits -1 downto 0);
+    write : in std_ulogic;
+    scanen   : in std_ulogic;
+    bypass   : in std_ulogic;
+    mbtdi    : in std_ulogic;
+    mbtdo    : out std_ulogic;
+    mbshft   : in std_ulogic;
+    mbcapt   : in std_ulogic;
+    mbupd    : in std_ulogic;
+    mbclk    : in std_ulogic;
+    mbrstn   : in std_ulogic;
+    mbcgate  : in std_ulogic;
+    mbpres   : out std_ulogic;
+    mbmuxo   : out std_logic_vector(5 downto 0)
+   );
+  end component;
+
   component dare_syncram_2p
   generic ( abits : integer := 8; dbits : integer := 32; sepclk : integer := 0);
   port (
@@ -345,6 +372,49 @@ package allmem is
       clk:     in    std_ulogic;
       addr:    in    std_logic_vector(6 downto 0);
       data:    out   std_logic_vector(7 downto 0));
+  end component;
+  
+-- IGLOO2
+  component igloo2_syncram
+  generic ( abits : integer := 10; dbits : integer := 8 );
+  port (
+    clk      : in std_ulogic;
+    address  : in std_logic_vector((abits -1) downto 0);
+    datain   : in std_logic_vector((dbits -1) downto 0);
+    dataout  : out std_logic_vector((dbits -1) downto 0);
+    enable   : in std_ulogic;
+    write    : in std_ulogic);
+  end component;
+
+  component igloo2_syncram_dp is
+  generic ( abits : integer := 6; dbits : integer := 8 );
+  port (
+    clk1     : in std_ulogic;
+    address1 : in std_logic_vector((abits -1) downto 0);
+    datain1  : in std_logic_vector((dbits -1) downto 0);
+    dataout1 : out std_logic_vector((dbits -1) downto 0);
+    enable1  : in std_ulogic;
+    write1   : in std_ulogic;
+    clk2     : in std_ulogic;
+    address2 : in std_logic_vector((abits -1) downto 0);
+    datain2  : in std_logic_vector((dbits -1) downto 0);
+    dataout2 : out std_logic_vector((dbits -1) downto 0);
+    enable2  : in std_ulogic;
+    write2   : in std_ulogic
+   );
+  end component;
+
+  component igloo2_syncram_2p
+  generic ( abits : integer := 8; dbits : integer := 32; sepclk : integer := 0);
+  port (
+    rclk     : in std_ulogic;
+    renable  : in std_ulogic;
+    raddress : in std_logic_vector((abits-1) downto 0);
+    dataout  : out std_logic_vector((dbits-1) downto 0);
+    wclk     : in std_ulogic;
+    waddress : in std_logic_vector((abits-1) downto 0);
+    datain   : in std_logic_vector((dbits-1) downto 0);
+    write    : in std_ulogic);
   end component;
 
 -- Fusion family
@@ -519,7 +589,8 @@ end component;
 
   component generic_regfile_3p
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 32;
-           wrfst : integer := 0; numregs : integer := 40);
+           wrfst : integer := 0; numregs : integer := 40;
+           delout: integer := 0);
   port (
     wclk   : in  std_ulogic;
     waddr  : in  std_logic_vector((abits -1) downto 0);
@@ -531,9 +602,35 @@ end component;
     rdata1 : out std_logic_vector((dbits -1) downto 0);
     raddr2 : in  std_logic_vector((abits -1) downto 0);
     re2    : in  std_ulogic;
-    rdata2 : out std_logic_vector((dbits -1) downto 0)
+    rdata2 : out std_logic_vector((dbits -1) downto 0);
+    pre1   : out std_ulogic;
+    pre2   : out std_ulogic;
+    prdata1 : out std_logic_vector((dbits -1) downto 0);
+    prdata2 : out std_logic_vector((dbits -1) downto 0)
   );
   end component;
+
+  component generic_fifo 
+  generic (tech  : integer := 0; abits : integer := 10; dbits : integer := 32;
+    sepclk : integer := 1; pfull : integer := 100; pempty : integer := 10; fwft : integer := 0);
+  port (
+    rclk    : in std_logic;
+    rrstn   : in std_logic;
+    wrstn   : in std_logic;
+    renable : in std_logic;
+    rfull   : out std_logic;
+    rempty  : out std_logic;
+    aempty  : out std_logic;
+    rusedw  : out std_logic_vector(abits-1 downto 0);
+    dataout : out std_logic_vector(dbits-1 downto 0);
+    wclk    : in std_logic;
+    write   : in std_logic;
+    wfull   : out std_logic;
+    afull   : out std_logic;
+    wempty  : out std_logic;
+    wusedw  : out std_logic_vector(abits-1 downto 0);
+    datain  : in std_logic_vector(dbits-1 downto 0));
+end component;
 
   component ihp25_syncram
     generic ( abits : integer := 10; dbits : integer := 8 );
@@ -638,6 +735,48 @@ end component;
   end component;
 
   component saed32_syncram_dp is
+  generic ( abits : integer := 6; dbits : integer := 8 );
+  port (
+    clk1     : in std_ulogic;
+    address1 : in std_logic_vector((abits -1) downto 0);
+    datain1  : in std_logic_vector((dbits -1) downto 0);
+    dataout1 : out std_logic_vector((dbits -1) downto 0);
+    enable1  : in std_ulogic;
+    write1   : in std_ulogic;
+    clk2     : in std_ulogic;
+    address2 : in std_logic_vector((abits -1) downto 0);
+    datain2  : in std_logic_vector((dbits -1) downto 0);
+    dataout2 : out std_logic_vector((dbits -1) downto 0);
+    enable2  : in std_ulogic;
+    write2   : in std_ulogic
+   );
+  end component;
+
+  component rhs65_syncram
+  generic ( abits : integer := 10; dbits : integer := 8 );
+  port (
+    clk      : in std_ulogic;
+    address  : in std_logic_vector(abits -1 downto 0);
+    datain   : in std_logic_vector(dbits -1 downto 0);
+    dataout  : out std_logic_vector(dbits -1 downto 0);
+    enable   : in std_ulogic;
+    write    : in std_ulogic;
+    scanen   : in std_ulogic;
+    bypass   : in std_ulogic;
+    mbtdi    : in std_ulogic;
+    mbtdo    : out std_ulogic;
+    mbshft   : in std_ulogic;
+    mbcapt   : in std_ulogic;
+    mbupd    : in std_ulogic;
+    mbclk    : in std_ulogic;
+    mbrstn   : in std_ulogic;
+    mbcgate  : in std_ulogic;
+    mbpres   : out std_ulogic;
+    mbmuxo   : out std_logic_vector(5 downto 0)
+    );
+  end component;
+
+  component rhs65_syncram_dp is
   generic ( abits : integer := 6; dbits : integer := 8 );
   port (
     clk1     : in std_ulogic;
@@ -1169,7 +1308,8 @@ end component;
 
   component generic_regfile_4p
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 32;
-           wrfst : integer := 0; numregs : integer := 40; g0addr: integer := 0);
+           wrfst : integer := 0; numregs : integer := 40; g0addr: integer := 0;
+           delout: integer := 0);
   port (
     wclk   : in  std_ulogic;
     waddr  : in  std_logic_vector((abits -1) downto 0);
@@ -1184,7 +1324,13 @@ end component;
     rdata2 : out std_logic_vector((dbits -1) downto 0);
     raddr3 : in  std_logic_vector((abits -1) downto 0);
     re3    : in  std_ulogic;
-    rdata3 : out std_logic_vector((dbits -1) downto 0)
+    rdata3 : out std_logic_vector((dbits -1) downto 0);
+    pre1   : out std_ulogic;
+    pre2   : out std_ulogic;
+    pre3   : out std_ulogic;
+    prdata1 : out std_logic_vector((dbits -1) downto 0);
+    prdata2 : out std_logic_vector((dbits -1) downto 0);
+    prdata3 : out std_logic_vector((dbits -1) downto 0)
   );
   end component;
 

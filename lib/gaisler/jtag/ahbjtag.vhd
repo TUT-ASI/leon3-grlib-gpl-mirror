@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -99,6 +100,7 @@ signal ltapo : tap_out_type;
 signal lltck, lltckn, ltck, ltckn: std_ulogic;
 signal lupd: std_ulogic;
 signal ctrst: std_ulogic;
+signal crr, combrst: std_ulogic;
 
 begin
 
@@ -118,7 +120,7 @@ begin
   ltapo.tck <= ltck;
   tapo_tckn <= ltckn;
 
-  gtckbuf : if     (USEOLDCOM=0 and is_fpga(tech)/=0) generate
+  gtckbuf : if (USEOLDCOM=0 and is_fpga(tech)/=0) generate
     tckbuf: techbuf
       generic map (buftype => 2, tech => tech)
       port map (lltck, ltck);
@@ -154,10 +156,27 @@ begin
   
   -- Async reset for tck-domain FFs in jtagcom. 
   -- In FPGA configs use AMBA reset as real TRST may not be available.
-  -- For ASIC:s we want to use the real TRST to simplify constraining.
+  -- For ASIC:s we combine AMBA and JTAG TRST using synchr flip-flop
   ctrst <= ahbi.testrst when scantest/=0 and ahbi.testen='1' else
            rst when is_fpga(tech)/=0 else
-           trst;
+           combrst;
+
+  combrstgen: if is_fpga(tech)=0 generate
+    crr <= ahbi.testrst when scantest/=0 and ahbi.testen='1' else
+           (trst and rst);
+    crproc: process(ltck, crr)
+    begin
+      if rising_edge(ltck) then
+        combrst <= '1';
+      end if;
+      if crr='0' then
+        combrst <= '0';
+      end if;
+    end process;
+  end generate;
+  combrstngen: if is_fpga(tech)/=0 generate
+    crr <= '0'; combrst <= '0';
+  end generate;
 
 -- pragma translate_off
     bootmsg : report_version 

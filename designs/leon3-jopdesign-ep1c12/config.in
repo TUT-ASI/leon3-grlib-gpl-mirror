@@ -58,16 +58,6 @@ comment 'Peripherals             '
   endmenu
 
   mainmenu_option next_comment
-  comment 'PCI              '
-    source lib/gaisler/pci/grpci1/pci_target.in
-    source lib/gaisler/pci/grpci1/pci_mtf.in
-    source lib/gaisler/pci/grpci1/pcidma.in
-    source lib/gaisler/pci/grpci1/pci.in
-    source lib/esa/pci/pci_arb.in
-    source lib/gaisler/pci/pcitrace/pcitrace.in
-  endmenu
-
-  mainmenu_option next_comment
   comment 'Spacewire '
     source lib/gaisler/spacewire/spacewire.in
   endmenu

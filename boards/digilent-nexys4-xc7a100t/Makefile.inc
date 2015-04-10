@@ -6,7 +6,7 @@ TECHNOLOGY=Artix7
 ISETECH="Artix7"
 PART=XC7A100T
 PACKAGE=csg324
-SPEED=-2
+SPEED=-1
 SYNFREQ=100
 PROMGENPAR= -c FF -s 8192 -u 0 $(TOP).bit -p mcs -spi -w -o digilent-nexys4-xc7a100t
 

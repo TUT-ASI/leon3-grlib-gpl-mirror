@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -446,6 +447,16 @@ end component;
    );
 end component;
 
+type grpci2_memtest_type is record
+  tfifo: memtest_vector_array(0 to 5);
+  mfifo: memtest_vector_array(0 to 5);
+  dfifo: memtest_vector_array(0 to 5);
+  tbuf: memtest_vector_array(0 to 1);
+end record;
+constant grpci2_memtest_none : grpci2_memtest_type := (
+  (others => (others => '0')), (others => (others => '0')),
+  (others => (others => '0')), (others => (others => '0'))  );
+
 component grpci2
   generic (
     memtech     : integer := DEFMEMTECH;
@@ -529,7 +540,8 @@ component grpci2
     mf1_cap_pointer     : integer := 16#40#;
     mf1_ext_cap_pointer : integer := 16#00#;
     mf1_extcfg          : integer := 16#0000000#;
-    mf1_masters         : integer := 16#0000#);
+    mf1_masters         : integer := 16#0000#;
+    iotest              : integer := 0);
    port(
       rst       : in std_logic;
       clk       : in std_logic;
@@ -543,11 +555,15 @@ component grpci2
       ahbso     : out ahb_slv_out_type;
       ahbmi     : in  ahb_mst_in_type;
       ahbmo     : out ahb_mst_out_type;
+      ahbdmi    : in  ahb_mst_in_type;
       ahbdmo    : out ahb_mst_out_type;
       ptarst    : out std_logic;
       tbapbi    : in apb_slv_in_type := apb_slv_in_none;
       tbapbo    : out apb_slv_out_type;
-      debugo    : out std_logic_vector(debug*255 downto 0)
+      debugo    : out std_logic_vector(debug*255 downto 0);
+      mtesti    : in grpci2_memtest_type := grpci2_memtest_none;
+      mtesto    : out grpci2_memtest_type;
+      mtestclk  : in std_ulogic := '0'
 );
 end component;
 

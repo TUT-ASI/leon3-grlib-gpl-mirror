@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -35,6 +36,7 @@ type uart_in_type is record
   ctsn   	: std_ulogic;
   extclk	: std_ulogic;
 end record;
+type uart_in_vector_type is array (natural range <>) of uart_in_type;
 
 type uart_out_type is record
   rtsn   	: std_ulogic;
@@ -44,6 +46,7 @@ type uart_out_type is record
   flow   	: std_ulogic;
   rxen     	: std_ulogic;
 end record;
+type uart_out_vector_type is array (natural range <>) of uart_out_type;
 
 component apbuart
   generic (

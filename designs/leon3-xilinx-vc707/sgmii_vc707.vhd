@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -409,7 +410,6 @@ constant pconfig : apb_config_type := (
   signal userclk               : std_logic;
   signal userclk2              : std_logic;
   signal rxuserclk               : std_logic;
-  signal rxuserclk2              : std_logic;
 
   -- PMA reset generation signals for tranceiver
   signal pma_reset_pipe        : std_logic_vector(3 downto 0);
@@ -419,8 +419,6 @@ constant pconfig : apb_config_type := (
   signal sgmii_clk_r           : std_logic;
   signal sgmii_clk_f           : std_logic;
   signal sgmii_clk_en          : std_logic;
-  signal sgmii_clk             : std_logic;
-  signal sgmii_clk_int         : std_logic;
 
   -- GMII signals
   signal gmii_txd              : std_logic_vector(7 downto 0);
@@ -465,10 +463,6 @@ constant pconfig : apb_config_type := (
 
   -- Route gtrefclk through an IBUFG.
   signal gtrefclk_buf_i              : std_logic;
-
-  attribute clock_signal : string;
-  attribute clock_signal of sgmii_clk : signal is "yes";
-  attribute clock_signal of sgmii_clk_int : signal is "yes";
 
   signal r, rin : sgmiiregs;
   signal rrx,rinrx : rxregs;
@@ -633,7 +627,8 @@ begin
         PWRDWN               => '0',
         RST                  => mmcm_reset);
 
-        mmcm_reset <= reset or (not resetdone);
+        --mmcm_reset <= reset or (not resetdone);
+        mmcm_reset <= reset;
 
        -- This 62.5MHz clock is placed onto global clock routing and is then used
        -- for tranceiver TXUSRCLK/RXUSRCLK.
@@ -935,8 +930,6 @@ begin
      if apb_clk'event and apb_clk = '1' then
         status_vector_apb1 <= (others => '0');
         status_vector_apb2 <= (others => '0');
-        if autonegotiation = 1 then status_vector_apb2(17) <= '1'; else status_vector_apb2(17) <= '0'; end if;
-        if debugmem = 1        then status_vector_apb2(16) <= '1'; else status_vector_apb2(16) <= '0'; end if;
         -- Register to detect a speed change
         status_vector_apb1(15 downto 0) <= status_vector_apb;
         status_vector_apb2 <= status_vector_apb1;
@@ -969,6 +962,9 @@ begin
         rdata(4 downto 0) := r.configuration_vector;
       when "000100" =>
         rdata(15 downto 0) := r.an_adv_config_vector;
+      when "000101" =>
+        if (autonegotiation /= 0) then rdata(0) := '1'; else rdata(0) := '0'; end if;
+        if (debugmem /= 0)        then rdata(1) := '1'; else rdata(1) := '0'; end if;
       when others =>
         null;
       end case;
@@ -986,6 +982,8 @@ begin
         v.configuration_vector := apbi.pwdata(4 downto 0);
       when "000100" =>
         v.an_adv_config_vector := apbi.pwdata(15 downto 0);
+      when "000101" =>
+         null;
       when others =>
         null;
       end case;
@@ -1044,7 +1042,7 @@ begin
     process (userclk2)
     begin  -- process
       if rising_edge(userclk2) then
-        WMemRgmiioData(15 downto 0) <= '0' & '0' & '0' & '0' & "00" & gmii_tx_er & gmii_tx_en & gmii_txd;
+        WMemRgmiioData(15 downto 0) <= '0' & '0' & '0' & sgmii_clk_en & '0' & '0' & gmii_tx_er & gmii_tx_en & gmii_txd;
         if (gmii_tx_en = '1') and ((WMemRgmiioAddr < "0111111110") or (WMemRgmiioAddr = "1111111111")) then
            WMemRgmiioAddr <= WMemRgmiioAddr + 1;
            WMemRgmiioWrEn <= '1';
@@ -1079,7 +1077,7 @@ begin
       if rising_edge(userclk2) then
 
         if (gmii_rx_dv = '1') then
-          WMemRgmiiiData(15 downto 0) <= '0' & sgmii_clk_en & '0' & '0' & "00" & gmii_rx_er & gmii_rx_dv & gmii_rxd;
+          WMemRgmiiiData(15 downto 0) <= '0' & '0' & '0' &sgmii_clk_en & "00" & gmii_rx_er & gmii_rx_dv & gmii_rxd;
         elsif (gmii_rx_dv_int = '0') then
           WMemRgmiiiData(15 downto 0) <= (others => '0');
         else

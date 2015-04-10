@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -46,7 +47,7 @@ architecture rtl of eth_edcl_ahb_mst is
     bg     : std_ulogic; --bus granted
     ba     : std_ulogic; --bus active
     bb     : std_ulogic; --1kB burst boundary detected
-    retry  : std_ulogic; 
+    retry  : std_ulogic;
   end record;
 
   signal r, rin : reg_type;
@@ -108,7 +109,7 @@ begin
     if (r.ba = '1') and 
        ((ahbmi.hresp = HRESP_RETRY) or (ahbmi.hresp = HRESP_SPLIT))
     then v.retry := not ahbmi.hready; else v.retry := '0'; end if;
-      
+
     if r.retry = '1' then htrans := HTRANS_IDLE; end if;
     
     if ahbmi.hready = '1' then

@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -37,7 +38,7 @@ package gencomp is
 
 -- technologies and libraries
 
-constant NTECH : integer := 54;
+constant NTECH : integer := 56;
 type tech_ability_type is array (0 to NTECH) of integer;
 
 constant inferred    : integer := 0;
@@ -95,6 +96,9 @@ constant zynq7000    : integer := 51;
 constant rhlib13t    : integer := 52;
 constant saed32      : integer := 53;
 constant dare        : integer := 54;
+constant igloo2      : integer := 55;
+constant smartfusion2: integer := 55;
+constant rhs65       : integer := 56;
 
 constant DEFMEMTECH  : integer := inferred;
 constant DEFPADTECH  : integer := inferred;
@@ -108,7 +112,7 @@ constant is_fpga : tech_ability_type :=
 	 stratix3 => 1, cyclone3 => 1, axdsp => 1,
 	 spartan6 => 1, virtex6 => 1, actfus => 1,
 	 stratix4 => 1, apa3e => 1, apa3l => 1, virtex7 => 1, kintex7 => 1,
-	 artix7 => 1, zynq7000 => 1,
+	 artix7 => 1, zynq7000 => 1, igloo2 => 1, 
 	 others => 0);
 
 constant infer_mul : tech_ability_type := is_fpga;
@@ -121,16 +125,20 @@ constant regfile_3p_write_through : tech_ability_type :=
 
 constant regfile_3p_infer : tech_ability_type :=
 	(inferred => 1, rhumc => 1, ihp25 => 1, rhlib18t => 0, ut90 => 1,
-	 peregrine => 1, ihp25rh => 1, umc => 1, custom1 => 0, others => 0);
+	 peregrine => 1, ihp25rh => 1, umc => 1, custom1 => 0, rhs65 => 1, others => 0);
 
 constant syncram_2p_dest_rw_collision : tech_ability_type :=
-        (memartisan => 1, smic013 => 1, easic45 => 1, ut130 => 1, others => 0);
+        (memartisan => 1, smic013 => 1, easic45 => 1, ut130 => 1, rhs65 => 0, igloo2 => 1, others => 0);
 
 constant syncram_dp_dest_rw_collision : tech_ability_type :=
-        (memartisan => 1, smic013 => 1, easic45 => 1, others => 0);
+        (memartisan => 1, smic013 => 1, easic45 => 1, igloo2 => 1, others => 0);
 
-constant syncram_has_customif : tech_ability_type := (others => 0);
+constant syncram_has_customif : tech_ability_type := (rhs65 => 1, others => 0);
 constant syncram_customif_maxwidth: integer := 64;  -- Expand as needed
+
+-- Set to 1 to add input-to-output bypass logic during scan mode in the syncram
+-- wrappers.
+constant syncram_add_scan_bypass : tech_ability_type := (others => 0);
 
 constant has_sram : tech_ability_type :=
 	(atc18s => 0, others => 1);
@@ -146,7 +154,8 @@ constant has_dpram : tech_ability_type :=
 	 cyclone3 => 1, memvirage90 => 1, atc18rha => 1, smic013 => 1,
 	 tm65gplus => 1, axdsp => 0, spartan6 => 1, virtex6 => 1,
 	 actfus => 1, stratix4 => 1, easic45 => 1, apa3e => 1,
-	 apa3l => 1, ut90 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1, dare => 1, others => 0);
+	 apa3l => 1, ut90 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1, 
+         dare => 1, igloo2 => 1, others => 0);
 
 constant has_sram64 : tech_ability_type :=
 	(inferred => 0, virtex2 => 1, spartan3 => 1, virtex4 => 1,
@@ -169,7 +178,7 @@ constant has_sram156bw : tech_ability_type := (
 	virtex2 => 0, virtex4 => 0, virtex5 => 0, spartan3 => 0,
 	spartan3e => 0, spartan6 => 0, virtex6 => 0, virtex7 => 0, kintex7 => 0,
 	altera => 0, cyclone3 => 0, stratix2 => 0, stratix3 => 0, stratix4 => 0,
-	tm65gplus => 0, custom1 => 1, ut90 => 1, others => 0);
+	tm65gplus => 0, custom1 => 1, ut90 => 1, rhs65 => 1, others => 0);
 
 constant has_sram256bw : tech_ability_type := (
 	virtex2 => 1, virtex4 => 1, virtex5 => 1, spartan3 => 1,
@@ -199,49 +208,51 @@ constant has_2pfifo : tech_ability_type := (
 constant ram_raw_latency : tech_ability_type := (easic45 => 1, others => 0);
 
 constant padoen_polarity : tech_ability_type :=
-        (axcel => 1, proasic => 1, umc => 1, rhumc => 1, saed32 => 1,  dare => 1, apa3 => 1,
+        (axcel => 1, proasic => 1, umc => 1, rhumc => 1, saed32 => 1, rhs65 => 0, dare => 1, apa3 => 1,
          ihp25 => 1, ut25 => 1, peregrine => 1, easic90 => 1, axdsp => 1,
 	 actfus => 1, apa3e => 1, apa3l => 1, ut130 => 1, easic45 => 1,
-         ut90 => 1, others => 0);
+         ut90 => 1, igloo2 => 1, others => 0);
 
 constant has_pads : tech_ability_type :=
 	(inferred => 0, virtex => 1, virtex2 => 1, memvirage => 0,
 	 axcel => 1, proasic => 1, atc18s => 1, altera => 0,
-	 umc => 1, rhumc => 1, saed32 => 1, dare => 1, apa3 => 1, spartan3 => 1,
+	 umc => 1, rhumc => 1, saed32 => 1, dare => 1, rhs65 => 1, apa3 => 1, spartan3 => 1,
          ihp25 => 1, rhlib18t => 1, virtex4 => 1, lattice => 0,
 	 ut25 => 1, spartan3e => 1, peregrine => 1, virtex5 => 1, axdsp => 1,
 	 easic90 => 1, atc18rha => 1, spartan6 => 1, virtex6 => 1,
          actfus => 1, apa3e => 1, apa3l => 1, ut130 => 1, easic45 => 1,
          ut90 => 1, virtex7 => 1, kintex7 => 1,
-         artix7 => 1, zynq7000 => 1, others => 0);
+         artix7 => 1, zynq7000 => 1, igloo2 => 1, others => 0);
 
 constant has_ds_pads : tech_ability_type :=
 	(inferred => 0, virtex => 1, virtex2 => 1, memvirage => 0,
 	 axcel => 1, proasic => 0, atc18s => 0, altera => 0,
-	 umc => 0, rhumc => 0, saed32 => 0, dare => 0, apa3 => 1, spartan3 => 1,
+	 umc => 0, rhumc => 0, saed32 => 0, dare => 0, rhs65 => 0, apa3 => 1, spartan3 => 1,
          ihp25 => 0, rhlib18t => 1, virtex4 => 1, lattice => 0,
 	 ut25 => 1, spartan3e => 1, virtex5 => 1, axdsp => 1,
 	 spartan6 => 1, virtex6 => 1, actfus => 1,
 	 apa3e => 1, apa3l => 1, ut130 => 0, easic45 => 1, virtex7 => 1, kintex7 => 1,
-         artix7 => 1, zynq7000 => 1, others => 0);
+         artix7 => 1, zynq7000 => 1, igloo2 => 1, others => 0);
 
 constant has_ds_combo : tech_ability_type :=
 	( rhumc => 1, ut25 => 1, ut130 => 1, others => 0);
+
+constant has_tm_pads : tech_ability_type := (rhs65 => 1, others => 0);
 
 constant has_clkand : tech_ability_type :=
 	( virtex => 1, virtex2 => 1, spartan3 => 1, spartan3e => 1, virtex4 => 1,
 	  virtex5 => 1, ut25 => 1, rhlib18t => 1,
           spartan6 => 1, virtex6 => 1, ut130 => 1, easic45 => 1,
-          ut90 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1, saed32 => 1, dare => 1, others => 0);
+          ut90 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1, saed32 => 1, dare => 1, rhs65 => 1, others => 0);
 
 constant has_clkmux : tech_ability_type :=
 	( virtex => 1, virtex2 => 1, spartan3 => 1, spartan3e => 1,
 	  virtex4 => 1, virtex5 => 1,  rhlib18t => 1,
           spartan6 => 1, virtex6 => 1, ut130 => 1, easic45 => 1,
-          ut90 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1, saed32 => 1, dare => 1, rhumc => 1, others => 0);
+          ut90 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1, saed32 => 1, dare => 1, rhumc => 1, rhs65 => 1, others => 0);
 
 constant has_clkinv : tech_ability_type :=
-	( saed32 => 1, dare => 1, others => 0);
+	( saed32 => 1, dare => 1, rhs65 => 1, others => 0);
 
 constant has_techbuf : tech_ability_type :=
         ( virtex => 1, virtex2 => 1, virtex4 => 1, virtex5 => 1,
@@ -249,7 +260,7 @@ constant has_techbuf : tech_ability_type :=
 	  apa3 => 1, easic90 => 1, axdsp => 1, actfus => 1,
 	  apa3e => 1, apa3l => 1, ut130 => 1, easic45 => 1,
           ut90 => 1, spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
-          artix7 => 1, zynq7000 => 1, others => 0);
+          artix7 => 1, zynq7000 => 1, igloo2 => 1, others => 0);
 
 constant has_tapsel : tech_ability_type :=
         ( virtex => 1, virtex2 => 1, virtex4 => 1, virtex5 => 1,
@@ -262,7 +273,7 @@ constant tap_tck_gated : tech_ability_type :=
     spartan6 => 0, others => 0);
 
 constant need_extra_sync_reset : tech_ability_type :=
-	(axcel => 1, atc18s => 1, ut25 => 1, rhumc => 1, saed32 => 1, dare => 1, tsmc90 => 1,
+	(axcel => 1, atc18s => 1, ut25 => 1, rhumc => 1, saed32 => 1, dare => 1, rhs65 => 1, tsmc90 => 1,
 	 rhlib18t => 1, atc18rha => 1, easic90 => 1, tm65gplus => 1,
          axdsp => 1, cmos9sf => 1, apa3 => 1, apa3e => 1, apa3l => 1,
 	 ut130 => 1, easic45 => 1, ut90 => 1, others => 0);
@@ -280,14 +291,14 @@ constant has_tap : tech_ability_type :=
 	 stratix3 => 1, cyclone3 => 1, axdsp => 0,
 	 spartan6 => 1, virtex6 => 1, actfus => 1,
 	 stratix4 => 1, easic45 => 0, apa3e => 1, apa3l => 1, virtex7 => 1, kintex7 => 1,
-	 artix7 => 1, zynq7000 => 1,
+	 artix7 => 1, zynq7000 => 1, igloo2 => 1,
 	 others => 0);
 
 constant has_clkgen : tech_ability_type :=
 	(inferred => 0, virtex => 1, virtex2 => 1, axcel => 1,
 	 proasic => 1, altera => 1, apa3 => 1, spartan3 => 1,
          virtex4 => 1, lattice => 0, spartan3e => 1, virtex5 => 1,
-	 stratix1 => 1, stratix2 => 1, eclipse => 0, rhumc => 1, saed32 => 1, dare => 1,
+	 stratix1 => 1, stratix2 => 1, eclipse => 0, rhumc => 1, saed32 => 1, dare => 1, rhs65 => 1,
 	 stratix3 => 1, cyclone3 => 1, axdsp => 1,
 	 spartan6 => 1, virtex6 => 1, actfus => 1, easic90 => 1,
 	 stratix4 => 1, easic45 => 1, apa3e => 1, apa3l => 1,
@@ -296,7 +307,8 @@ constant has_clkgen : tech_ability_type :=
 constant has_ddr2phy: tech_ability_type :=
   (inferred => 0, stratix2 => 1, stratix3 => 1, spartan3 => 1,
 	easic90 => 1, spartan6 => 1, easic45 => 1,
-	virtex4 => 1, virtex5 => 1, virtex6 => 1, others => 0);
+	virtex4 => 1, virtex5 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
+	 artix7 => 1, zynq7000 => 1, others => 0);
 
 constant ddr2phy_builtin_pads: tech_ability_type := (
    -- Wrapped DDR2 IP cores with builtin pads
@@ -318,6 +330,7 @@ constant ddr2phy_has_custom: tech_ability_type :=
 
 constant ddr2phy_refclk_type: tech_ability_type :=
   (virtex4 => 1, virtex5 => 1, virtex6 => 1,  -- 1: 200 MHz reference
+  virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1,
    easic45 => 2,                              -- 2: 270 degree shifted clock
    others => 0);                              -- 0: None
 
@@ -352,6 +365,12 @@ constant ddrphy_ptctrl: tech_ability_type := (
 constant has_syncreg: tech_ability_type := (
    inferred => 0, others => 0);
 
+constant has_transceivers : tech_ability_type := (
+    stratix3 => 1, stratix4 => 1,
+    virtex5 => 1, virtex6 => 1,
+    igloo2 => 1,
+    others => 0
+  );
 -- pragma translate_off
 
   subtype tech_description is string(1 to 10);
@@ -386,7 +405,8 @@ constant has_syncreg: tech_ability_type := (
   virtex7   => "virtex7   ", kintex7   => "kintex7   ",
   artix7    => "artix7    ", zynq7000  => "zynq7000  ",
   rhlib13t  => "rhlib13t  ", saed32    => "saed32    ",
-  dare      => "dare      ");
+  dare      => "dare      ", igloo2    => "igloo2    ",
+  rhs65     => "rhs65     ");
 
 -- pragma translate_on
 
@@ -424,6 +444,21 @@ constant opendrain: integer := 3;
 constant schmitt  : integer := 4;
 constant dci      : integer := 5;
 
+-- transceivers types
+-- Xilinx transceiver type and channel number
+constant GTP0     : integer := 0;
+constant GTP1     : integer := 1;
+constant GTP2     : integer := 2;
+constant GTP3     : integer := 3;
+constant GTX0     : integer := 16;
+constant GTX1     : integer := 17;
+constant GTX2     : integer := 18;
+constant GTX3     : integer := 19;
+constant GTH0     : integer := 32;
+constant GTH1     : integer := 33;
+constant GTH2     : integer := 34;
+constant GTH3     : integer := 35;
+
 ---------------------------------------------------------------------------
 -- MEMORY
 ---------------------------------------------------------------------------
@@ -431,6 +466,11 @@ constant dci      : integer := 5;
   -- testin vector is testen & scanen & (tech-dependent...)
   constant TESTIN_WIDTH : integer := 4 + GRLIB_CONFIG_ARRAY(grlib_techmap_testin_extra);
   constant testin_none : std_logic_vector(TESTIN_WIDTH-1 downto 0) := (others => '0');
+
+  -- Used for mbist support via customin/out on cores that support it
+  constant memtest_vlen: integer := 16;
+  subtype memtest_vector is std_logic_vector(memtest_vlen-1 downto 0);
+  type memtest_vector_array is array(natural range <>) of memtest_vector;
 
 -- synchronous single-port ram
   component syncram
@@ -704,22 +744,29 @@ constant dci      : integer := 5;
     generic (
       tech  : integer := 0;
       abits : integer := 6;
-      dbits : integer := 8
+      dbits : integer := 8;
+      sepclk : integer := 1;  -- 1 = asynchronous, 0 = synchronous
+      pfull : integer := 100; -- almost full threshold
+      pempty : integer := 10; -- almost empty threshold
+      fwft : integer := 0     -- 0 = standard fifo mode, 1 = first word-fall through mode
     );
     port (
       rclk    : in std_logic;
+      rrstn   : in std_logic;  -- synchronous reset (read domain)
+      wrstn   : in std_logic;  -- synchronous reest (write domain)
       renable : in std_logic;
       rfull   : out std_logic;
       rempty  : out std_logic;
+      aempty  : out std_logic;
       rusedw  : out std_logic_vector(abits-1 downto 0);
-      datain  : in std_logic_vector(dbits-1 downto 0);
+      dataout : out std_logic_vector(dbits-1 downto 0);
       wclk    : in std_logic;
       write   : in std_logic;
       wfull   : out std_logic;
+      afull   : out std_logic;
       wempty  : out std_logic;
       wusedw  : out std_logic_vector(abits-1 downto 0);
-      dataout : out std_logic_vector(dbits-1 downto 0)
-    );
+      datain  : in std_logic_vector(dbits-1 downto 0));
   end component;
 
 ---------------------------------------------------------------------------
@@ -974,6 +1021,56 @@ component lvds_combo  is
 	lvdsref : in std_logic := '1'; lvdsrefo : out std_logic
   );
 end component;
+
+component iopad_tm
+  generic (tech : integer := 0; level : integer := 0; slew : integer := 0;
+	   voltage : integer := x33v; strength : integer := 12;
+	   oepol : integer := 0; filter : integer := 0);
+  port (pad : inout std_ulogic; i, en : in std_ulogic; o : out std_ulogic;
+        test: in std_ulogic; ti, ten: in std_ulogic;
+        cfgi: in std_logic_vector(19 downto 0) := "00000000000000000000");
+end component;
+
+component iopad_tmvv is
+  generic (tech : integer := 0; level : integer := 0; slew : integer := 0;
+	voltage : integer := x33v; strength : integer := 12; width : integer := 1;
+	oepol : integer := 0; filter : integer := 0);
+  port (
+    pad : inout std_logic_vector(width-1 downto 0);
+    i   : in  std_logic_vector(width-1 downto 0);
+    en  : in  std_logic_vector(width-1 downto 0);
+    o   : out std_logic_vector(width-1 downto 0);
+    test: in  std_ulogic;
+    ti  : in  std_logic_vector(width-1 downto 0);
+    ten : in  std_logic_vector(width-1 downto 0);
+    cfgi: in std_logic_vector(19 downto 0) := "00000000000000000000"
+  );
+end component;
+
+component toutpad_tm
+  generic (tech : integer := 0; level : integer := 0; slew : integer := 0;
+	   voltage : integer := x33v; strength : integer := 12;
+	   oepol : integer := 0);
+  port (pad : out std_ulogic; i, en : in std_ulogic;
+        test: in std_ulogic; ti, ten: in std_ulogic;
+        cfgi: in std_logic_vector(19 downto 0) := "00000000000000000000");
+end component;
+
+component toutpad_tmvv is
+  generic (tech : integer := 0; level : integer := 0; slew : integer := 0;
+	voltage : integer := x33v; strength : integer := 12; width : integer := 1;
+	oepol : integer := 0);
+  port (
+    pad : out std_logic_vector(width-1 downto 0);
+    i   : in  std_logic_vector(width-1 downto 0);
+    en  : in  std_logic_vector(width-1 downto 0);
+    test: in  std_ulogic;
+    ti  : in  std_logic_vector(width-1 downto 0);
+    ten : in  std_logic_vector(width-1 downto 0);
+    cfgi: in std_logic_vector(19 downto 0) := "00000000000000000000");
+end component;
+
+
 
 -------------------------------------------------------------------------------
 -- DDR PADS (bundles PAD and DDR register(s))
@@ -1235,7 +1332,8 @@ component scanregto -- 2 scan registers: tdo<---output<--outputen<--tdi
   generic (
     tech : integer := 0;
     hzsup: integer range 0 to 1 := 1;
-    oepol: integer range 0 to 1 := 1
+    oepol: integer range 0 to 1 := 1;
+    scantest: integer range 0 to 1 := 0
     );
   port (
     pado    : out std_ulogic;
@@ -1248,10 +1346,13 @@ component scanregto -- 2 scan registers: tdo<---output<--outputen<--tdi
     tdi     : in std_ulogic;
     tdo     : out std_ulogic;
     bsshft  : in std_ulogic;
-    bscapt  : in std_ulogic;    -- capture signal to scan reg on next tck edge
+    bscapto  : in std_ulogic;    -- capture signal to scan reg on next tck edge
+    bscaptoe : in std_ulogic;    -- capture signal to scan reg on next tck edge
     bsupdo  : in std_ulogic;    -- update data reg from scan reg on next tck edge
     bsdrive : in std_ulogic;     -- drive data reg to pad
-    bshighz : in std_ulogic     -- tri-state output
+    bshighz : in std_ulogic;     -- tri-state output
+    testen  : in std_ulogic := '0';
+    testoen : in std_ulogic := '0'
     );
 end component;
 
@@ -1260,7 +1361,8 @@ component scanregio -- 3 scan registers: tdo<--input<--output<--outputen<--tdi
     tech : integer := 0;
     hzsup: integer range 0 to 1 := 1;
     oepol: integer range 0 to 1 := 1;
-    intesten: integer range 0 to 1 := 1
+    intesten: integer range 0 to 1 := 1;
+    scantest: integer range 0 to 1 := 0
     );
   port (
     pado    : out std_ulogic;
@@ -1274,12 +1376,16 @@ component scanregio -- 3 scan registers: tdo<--input<--output<--outputen<--tdi
     tdi     : in std_ulogic;
     tdo     : out std_ulogic;
     bsshft  : in std_ulogic;
-    bscapt  : in std_ulogic;    -- capture signals to scan regs on next tck edge
+    bscapti : in std_ulogic;    -- capture signals to scan regs on next tck edge
+    bscapto : in std_ulogic;    -- capture signals to scan regs on next tck edge
+    bscaptoe: in std_ulogic;    -- capture signals to scan regs on next tck edge
     bsupdi  : in std_ulogic;    -- update indata reg from scan reg on next tck edge
     bsupdo  : in std_ulogic;    -- update outdata reg from scan reg on next tck edge
     bsdrive : in std_ulogic;    -- drive outdata regs to pad,
                                 -- drive datareg(coreoen=0) or coreo(coreoen=1) to corei
-    bshighz : in std_ulogic     -- tri-state output
+    bshighz : in std_ulogic;     -- tri-state output
+    testen  : in std_ulogic := '0';
+    testoen : in std_ulogic := '0'
     );
 end component;
 
@@ -1288,7 +1394,7 @@ end component;
 ---------------------------------------------------------------------------
 
 component ddr_ireg is
-generic ( tech : integer; arch : integer := 0);
+generic ( tech : integer; arch : integer := 0; scantest: integer := 0);
 port ( Q1 : out std_ulogic;
          Q2 : out std_ulogic;
          C1 : in std_ulogic;
@@ -1296,10 +1402,12 @@ port ( Q1 : out std_ulogic;
          CE : in std_ulogic;
          D : in std_ulogic;
          R : in std_ulogic;
-         S : in std_ulogic);
+         S : in std_ulogic;
+         testen : in std_ulogic := '0';
+         testrst : in std_ulogic := '1');
 end component;
 
-component ddr_oreg is generic (tech : integer; arch : integer := 0);
+component ddr_oreg is generic (tech : integer; arch : integer := 0; scantest: integer := 0);
   port
     ( Q : out std_ulogic;
       C1 : in std_ulogic;
@@ -1308,7 +1416,9 @@ component ddr_oreg is generic (tech : integer; arch : integer := 0);
       D1 : in std_ulogic;
       D2 : in std_ulogic;
       R : in std_ulogic;
-      S : in std_ulogic);
+      S : in std_ulogic;
+      testen : in std_ulogic := '0';
+      testrst: in std_ulogic := '1');
 end component;
 
 component ddrphy
@@ -1991,14 +2101,83 @@ end component;
 -- GIGABIT ETHERNET SERDES
 -------------------------------------------------------------------------------
 
+  -- Types for IGLOO2 serdes
+  type apb_in_serdes is record
+    paddr : std_logic_vector(13 downto 2);
+    pclk : std_logic;
+    penable : std_logic;
+    prstn : std_logic;
+    psel : std_logic;
+    pwdata : std_logic_vector(31 downto 0);
+    pwrite : std_logic;
+  end record;
+
+  constant apb_in_serdes_none : apb_in_serdes := ((others=>'0'), '0', '0', '0', '0', (others =>'0'), '0');
+
+  type apb_out_serdes is record
+    prdata : std_logic_vector(31 downto 0);
+    pready : std_logic;
+    pslverr : std_logic;
+  end record;
+
+  constant apb_out_serdes_none : apb_out_serdes := ((others=>'0'), '0', '0');
+
+  type pad_in_serdes is record
+    refclkp : std_logic;
+    refclkn : std_logic;
+    rx0p : std_logic;
+    rx0n : std_logic;
+    rx1p : std_logic;
+    rx1n : std_logic;
+    rx2p : std_logic;
+    rx2n : std_logic;
+    rx3p : std_logic;
+    rx3n : std_logic;
+  end record;
+
+  constant pad_in_serdes_none : pad_in_serdes := ('0', '0', '0', '0', '0', '0', '0', '0', '0', '0');
+
+  type pad_out_serdes is record
+    tx0p : std_logic;
+    tx0n : std_logic;
+    tx1p : std_logic;
+    tx1n : std_logic;
+    tx2p : std_logic;
+    tx2n : std_logic;
+    tx3p : std_logic;
+    tx3n : std_logic;
+  end record;
+
+  constant pad_out_serdes_none : pad_out_serdes := ('0', '0', '0', '0', '0', '0', '0', '0');
+
+  type sigin_serdes_type is record
+    rstn : std_logic;
+    tx_data : std_logic_vector(9 downto 0);
+  end record;
+
+  type sigout_serdes_type is record
+    ready : std_logic;
+    rx_clk : std_logic;
+    rx_data : std_logic_vector(9 downto 0);
+    rx_idle : std_logic;
+    rx_rstn : std_logic;
+    rx_val : std_logic;
+    tx_clk : std_logic;
+    tx_clk_lock : std_logic;
+    tx_rstn : std_logic;
+    refclk : std_logic;
+  end record;
+
 component serdes is
   generic (
-    tech : integer
+    fabtech   : integer;
+    transtech : integer
   );
   port (
     clk_125     : in std_logic;
     rst_125    : in std_logic;
-    rx_in       : in std_logic;           -- SER IN
+    rx_in_p     : in std_logic;           -- SER IN
+    rx_in_n     : in std_logic;           -- SER IN
     rx_out      : out std_logic_vector(9 downto 0); -- PAR OUT
     rx_clk      : out std_logic;
     rx_rstn     : out std_logic;
@@ -2007,9 +2186,16 @@ component serdes is
     tx_pll_clk  : out std_logic;
     tx_pll_rstn : out std_logic;
     tx_in       : in std_logic_vector(9 downto 0) ; -- PAR IN
-    tx_out      : out std_logic;          -- SER OUT
-    bitslip     : in std_logic
-  );
+    tx_out_p    : out std_logic;          -- SER OUT
+    tx_out_n    : out std_logic;          -- SER OUT
+    bitslip     : in std_logic;
+    -- added for igloo2_serdes
+    apbin       : in apb_in_serdes;
+    apbout      : out apb_out_serdes;
+    m2gl_padin  : in pad_in_serdes;
+    m2gl_padout : out pad_out_serdes;
+    serdes_clk125 : out std_logic;
+    serdes_ready: out std_logic);
 end component;
 
 end;

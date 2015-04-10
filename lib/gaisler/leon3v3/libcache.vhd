@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -229,7 +230,7 @@ package libcache is
      twrite        : std_logic_vector(0 to 3);
      tpwrite       : std_logic_vector(0 to 3);
      tenable       : std_logic_vector(0 to 3);
-     flush         : std_ulogic;
+     flush         : std_logic_vector(0 to 3);
      data          : cdatatype;
      denable       : std_logic_vector(0 to 3);
      dwrite        : std_logic_vector(0 to 3);
@@ -372,6 +373,7 @@ package libcache is
 
   component mmu_icache
     generic (
+      memtech   :     integer                := 0;
       icen      :     integer range 0 to 1   := 0;
       irepl     :     integer range 0 to 3   := 0;
       isets     :     integer range 1 to 4   := 1;

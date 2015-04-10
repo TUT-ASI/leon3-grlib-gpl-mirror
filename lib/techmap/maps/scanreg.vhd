@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -135,7 +136,8 @@ entity scanregto is
   generic (
     tech : integer := 0;
     hzsup: integer range 0 to 1 := 1;
-    oepol: integer range 0 to 1 := 1
+    oepol: integer range 0 to 1 := 1;
+    scantest: integer range 0 to 1 := 0
     );
   port (
     pado    : out std_ulogic;
@@ -148,32 +150,42 @@ entity scanregto is
     tdi     : in std_ulogic;
     tdo     : out std_ulogic;
     bsshft  : in std_ulogic;
-    bscapt  : in std_ulogic;
+    bscapto : in std_ulogic;
+    bscaptoe: in std_ulogic;
     bsupdo  : in std_ulogic;
     bsdrive : in std_ulogic;
-    bshighz : in std_ulogic
+    bshighz : in std_ulogic;
+    testen  : in std_ulogic;
+    testoen : in std_ulogic
     );
 end;
 
 architecture tmap of scanregto is
-signal tdo1, padoenx : std_ulogic;
+signal tdo1, padoenx,padoenxx : std_ulogic;
 begin
 
     x1: scanrego generic map (tech)
-	port map (pado, coreo, samp, tck, tckn, tdo1, tdo, bsshft, bscapt, bsupdo, bsdrive);
+	port map (pado, coreo, samp, tck, tckn, tdo1, tdo, bsshft, bscapto, bsupdo, bsdrive);
     x2: scanrego generic map (tech)
-	port map (padoenx, coreoen, coreoen, tck, tckn, tdi, tdo1, bsshft, bscapt, bsupdo, bsdrive);
+	port map (padoenx, coreoen, coreoen, tck, tckn, tdi, tdo1, bsshft, bscaptoe, bsupdo, bsdrive);
 
     hz : if hzsup = 1 generate
       x3 : if oepol = 0 generate
-        x33 : gror2 generic map (tech) port map (padoenx, bshighz, padoen);
+        x33 : gror2 generic map (tech) port map (padoenx, bshighz, padoenxx);
       end generate;
       x4 : if oepol = 1 generate
-        x33 : grand12 generic map (tech) port map (padoenx, bshighz, padoen);
+        x33 : grand12 generic map (tech) port map (padoenx, bshighz, padoenxx);
       end generate;
     end generate;
     nohz : if hzsup = 0 generate
-      padoen <= padoenx;
+      padoenxx <= padoenx;
+    end generate;
+
+    oem: if scantest /= 0 generate
+      x4: grmux2 generic map (tech) port map (padoenxx, testoen, testen, padoen);
+    end generate;
+    nooem: if scantest = 0 generate
+      padoen <= padoenxx;
     end generate;
 
 end;
@@ -190,7 +202,8 @@ entity scanregio is
     tech : integer := 0;
     hzsup: integer range 0 to 1 := 1;
     oepol: integer range 0 to 1 := 1;
-    intesten: integer range 0 to 1 := 1
+    intesten: integer range 0 to 1 := 1;
+    scantest: integer range 0 to 1 := 0
     );
   port (
     pado    : out std_ulogic;
@@ -204,11 +217,15 @@ entity scanregio is
     tdi     : in std_ulogic;
     tdo     : out std_ulogic;
     bsshft  : in std_ulogic;
-    bscapt  : in std_ulogic;
+    bscapti : in std_ulogic;
+    bscapto : in std_ulogic;
+    bscaptoe: in std_ulogic;
     bsupdi  : in std_ulogic;
     bsupdo  : in std_ulogic;
     bsdrive : in std_ulogic;
-    bshighz : in std_ulogic
+    bshighz : in std_ulogic;
+    testen  : in std_ulogic;
+    testoen : in std_ulogic
     );
 end;
 
@@ -220,14 +237,14 @@ begin
     x: scanregio_inf
       generic map (hzsup,intesten)
       port map (pado,padoen,padi,coreo,coreoen,corei,tck,tckn,tdi,tdo,
-                bsshft,bscapt,bsupdi,bsupdo,bsdrive,bshighz);
+                bsshft,bscapti,bsupdi,bsupdo,bsdrive,bshighz);
   end generate;
   map0: if tech /= 0 generate
     x0: scanregi generic map (tech,intesten)
-	port map (padi, corei, tck, tckn, tdo1, tdo, bsshft, bscapt, bsupdi, bsdrive, bshighz);
-    x1: scanregto generic map (tech, hzsup, oepol)
+	port map (padi, corei, tck, tckn, tdo1, tdo, bsshft, bscapti, bsupdi, bsdrive, bshighz);
+    x1: scanregto generic map (tech, hzsup, oepol, scantest)
 	port map (pado, padoen, coreo, coreo, coreoen, 
-		 tck, tckn, tdi, tdo1, bsshft, bscapt, bsupdo, bsdrive, bshighz);
+		 tck, tckn, tdi, tdo1, bsshft, bscapto, bscaptoe, bsupdo, bsdrive, bshighz, testen, testoen);
   end generate;
   
 end;

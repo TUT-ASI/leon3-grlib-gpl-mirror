@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -34,33 +35,44 @@ use grlib.devices.all;
 library techmap;
 use techmap.gencomp.all;
 library gaisler;
+use gaisler.misc.ahbtrace_memtest_type;
 
 entity ahbtrace_mmb is
   generic (
-    hindex  : integer := 0;
-    ioaddr  : integer := 16#000#;
-    iomask  : integer := 16#E00#;
-    tech    : integer := DEFMEMTECH; 
-    irq     : integer := 0; 
-    kbytes  : integer := 1;
-    bwidth  : integer := 32;
-    ahbfilt : integer := 0;
-    ntrace  : integer range 1 to 8 := 1); 
+    hindex   : integer := 0;
+    ioaddr   : integer := 16#000#;
+    iomask   : integer := 16#E00#;
+    tech     : integer := DEFMEMTECH; 
+    irq      : integer := 0; 
+    kbytes   : integer := 1;
+    bwidth   : integer := 32;
+    ahbfilt  : integer := 0;
+    ntrace   : integer range 1 to 8 := 1;
+    scantest : integer range 0 to 1 := 0; 
+    exttimer : integer range 0 to 1 := 0;
+    exten    : integer range 0 to 1 := 0);
   port (
     rst     : in  std_ulogic;
     clk     : in  std_ulogic;
     ahbsi   : in  ahb_slv_in_type;       -- Register interface
     ahbso   : out ahb_slv_out_type;
     tahbmiv : in  ahb_mst_in_vector_type(0 to ntrace-1);       -- Trace
-    tahbsiv : in  ahb_slv_in_vector_type(0 to ntrace-1)
+    tahbsiv : in  ahb_slv_in_vector_type(0 to ntrace-1);
+    mtesti  : in  ahbtrace_memtest_type;
+    mtesto  : out ahbtrace_memtest_type;
+    mtestclk: in  std_ulogic;
+    timer   : in  std_logic_vector(30 downto 0);
+    astat   : out amba_stat_type;
+    resen   : in  std_ulogic := '0'
   );
 end; 
 
 architecture rtl of ahbtrace_mmb is
 
 constant TBUFABITS : integer := log2(kbytes) + 6;
-constant TIMEBITS  : integer := 32;
+constant TIMEBITS  : integer := 32 - exttimer;
 constant FILTEN    : boolean := ahbfilt /= 0;
+constant PERFEN    : boolean := (ahbfilt > 1);
 
 constant hconfig : ahb_config_type := (
   0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_AHBTRACE, 0, 0, irq),
@@ -94,7 +106,7 @@ type regtype is record
   thmaster      : std_logic_vector(3 downto 0);
   thmastlock    : std_logic;
   ahbactive     : std_logic;
-  timer         : std_logic_vector(TIMEBITS-1 downto 0);
+  timer         : std_logic_vector((TIMEBITS-1)*(1-exttimer) downto 0);
   aindex        : std_logic_vector(TBUFABITS - 1 downto 0); -- buffer index
 
   hready        : std_logic;
@@ -116,8 +128,17 @@ type regtype is record
   tbreg2        : trace_break_reg;
 end record;
 
+type pregtype is record
+  stat    : amba_stat_type;
+  split   : std_ulogic;
+  splmst  : std_logic_vector(3 downto 0);
+  hready  : std_ulogic;
+  hresp   : std_logic_vector(1 downto 0);
+end record;
+
 type fregtype is record
   shsel         : std_logic_vector(0 to NAHBSLV-1);
+  pf            : std_ulogic;         -- Filter perf outputs
   af            : std_ulogic;         -- Address filtering
   fr            : std_ulogic;         -- Filter reads
   fw            : std_ulogic;         -- Filter writes
@@ -167,6 +188,20 @@ begin
   return hit;
 end function ahb_filt_hit;
 
+function getnrams return integer is
+  variable v: integer;
+begin
+  v := 2;
+  if bwidth > 32 then v:=v+1; end if;
+  if bwidth > 64 then v:=v+1; end if;
+  return v;
+end getnrams;
+constant nrams: integer := getnrams;
+subtype mtest64_vector is std_logic_vector(2*memtest_vlen-1 downto 0);
+type mtest64_type is array(0 to 2) of mtest64_vector;
+signal mtesti64, mtesto64: mtest64_type;
+
+
 signal tbi   : tracebuf_in_type;
 signal tbo   : tracebuf_out_type;
 
@@ -175,10 +210,11 @@ signal enable : std_logic_vector(1 downto 0);
 signal r, rin : regtype;
 signal rf, rfin : fregtype;
 signal rb, rbin : bregtype;
+signal pr, prin : pregtype;
 
 begin
 
-  ctrl : process(rst, ahbsi, tahbmiv, tahbsiv, r, rf, rb, tbo)
+  ctrl : process(rst, ahbsi, tahbmiv, tahbsiv, r, rf, rb, tbo, pr, timer, resen)
   variable v : regtype;
   variable vabufi : tracebuf_in_type;
   variable regsd : std_logic_vector(31 downto 0);   -- data from registers
@@ -193,6 +229,8 @@ begin
   variable vb : bregtype;
   variable regaddr : std_logic_vector(4 downto 2);
   variable tbaddr  : std_logic_vector(3 downto 2);
+  variable timeval : std_logic_vector(31 downto 0);
+  variable pv : pregtype;
   begin
 
     v := r; regsd := (others => '0'); vabufi.enable := '0'; 
@@ -201,7 +239,7 @@ begin
     v.hready := r.hready2; v.hready2 := r.hready3; v.hready3 := '0'; 
     hwdata := ahbreadword(ahbsi.hwdata, r.haddr(4 downto 2));
     hirq := (others => '0'); hirq(irq) := r.bhit;
-    vf := rf; vb := rb;
+    vf := rf; vb := rb; pv := pr;
     if ntrace = 1 then
       tahbmi := tahbmiv(0); tahbsi := tahbsiv(0);
     else
@@ -209,9 +247,14 @@ begin
       tahbsi := tahbsiv(conv_integer(rb.bsel));
     end if;
     regaddr := r.haddr(4 downto 2); --tbaddr := r.haddr(3 downto 2);
+    timeval := (others => '0');
+    timeval((TIMEBITS-1)*(1-exttimer) downto 0) := r.timer;
+    if exttimer /= 0 then
+      timeval(TIMEBITS-1 downto 0) := timer(TIMEBITS-1 downto 0);
+    end if;
     
 -- trace buffer index and delay counters
-    if r.enable = '1' then v.timer := r.timer + 1; end if;
+    if exttimer = 0 and r.enable = '1' then v.timer := r.timer + 1; end if;
     aindex := r.aindex + 1;
 
 -- check for AHB watchpoints
@@ -235,9 +278,9 @@ begin
       rdata(AHBDW-1 downto 0) := tahbmi.hrdata;
       if r.enable = '1' then
         vabufi.addr(TBUFABITS-1 downto 0) := r.aindex;
-        vabufi.data(127 downto 96) := r.timer; 
+        vabufi.data(127 downto 96) := timeval;
         vabufi.data(95) := bphit;
-        vabufi.data(94 downto 80) := tahbmi.hirq(15 downto 1);
+        vabufi.data(94 downto 80) := (others => '0'); --tahbmi.hirq(15 downto 1);
         vabufi.data(79) := r.thwrite;
         vabufi.data(78 downto 77) := r.thtrans;
         vabufi.data(76 downto 74) := r.thsize;
@@ -283,6 +326,72 @@ begin
       v.delaycnt := r.delaycnt - 1;
     end if;
 
+-- AHB statistics
+      
+    if PERFEN then
+      pv.hready := tahbsi.hready;
+      pv.hresp := tahbmi.hresp;
+      pv.stat := amba_stat_none;
+      if pr.hready = '1' then
+        case r.thtrans is
+          when HTRANS_IDLE => pv.stat.idle := '1';
+          when HTRANS_BUSY => pv.stat.busy := '1';
+          when HTRANS_NONSEQ => pv.stat.nseq := '1';
+          when others => pv.stat.seq := '1';
+        end case;
+        if r.ahbactive = '1' then
+          pv.stat.read := not r.thwrite;
+          pv.stat.write := r.thwrite;
+          case r.thsize is
+            when HSIZE_BYTE => pv.stat.hsize(0) := '1';
+            when HSIZE_HWORD => pv.stat.hsize(1) := '1';
+            when HSIZE_WORD => pv.stat.hsize(2) := '1';
+            when HSIZE_DWORD => pv.stat.hsize(3) := '1';
+            when HSIZE_4WORD => pv.stat.hsize(4) := '1';
+            when others => pv.stat.hsize(5) := '1';
+          end case;
+        end if;
+        pv.stat.hmaster := r.thmaster;
+      end if;
+      if pr.hresp = HRESP_OKAY then
+        pv.stat.ws := not pr.hready;
+      end if;
+      -- It may also be interesting to count the maximum grant latency. That
+      -- is; the delay between asserting hbusreq and receiving hgrant. This
+      -- would require that all bus request signals were present in this
+      -- entity. This has been left as a possible future extension.
+
+      if pr.hready = '1' then
+        if pr.hresp = HRESP_SPLIT then
+          pv.stat.split := '1';
+          pv.split := '1';
+          if pr.split = '0' then
+            pv.splmst := r.thmaster;
+          end if;
+        end if;
+        if pr.hresp = HRESP_RETRY then
+          pv.stat.retry := '1';
+        end if;
+      end if;
+
+      pv.stat.locked := r.thmastlock;
+        
+      if rf.pf = '1' and ahb_filt_hit(r, rf, tahbmi.hresp) then
+        pv.stat := amba_stat_none;
+        pv.split := pr.split; pv.splmst := pr.splmst;
+      end if;
+
+      -- Count cycles where master is in SPLIT
+      if pr.split = '1' then
+        for i in tahbmi.hgrant'range loop
+          if i = conv_integer(pr.splmst) and tahbmi.hgrant(i) = '1' then
+            pv.split := '0';
+          end if;
+        end loop;
+        pv.stat.spdel := pv.split;
+      end if;
+    end if;
+
 -- save AHB transfer parameters
 
     if (tahbsi.hready = '1' ) then
@@ -315,6 +424,7 @@ begin
           end if;
           regsd(7 downto 6) := conv_std_logic_vector(log2(bwidth/32), 2);
           if FILTEN then
+            regsd(8) := rf.pf;
             regsd(5) := rf.rf;
             regsd(4) := rf.af;
             regsd(3) := rf.fr;
@@ -327,6 +437,7 @@ begin
               vb.bsel := ahbsi.hwdata(log2(ntrace)+12 downto 12);
             end if;
             if FILTEN then
+              vf.pf := ahbsi.hwdata(8);
               vf.rf := ahbsi.hwdata(5);
               vf.af := ahbsi.hwdata(4);
               vf.fr := ahbsi.hwdata(3);
@@ -341,9 +452,9 @@ begin
               v.aindex := ahbsi.hwdata((TBUFABITS- 1) downto 0); 
             end if;
         when "010" =>
-          regsd((TIMEBITS - 1) downto 0) := r.timer; 
-          if r.hwrite = '1' then
-            v.timer := ahbsi.hwdata((TIMEBITS- 1) downto 0); 
+          regsd := timeval;
+          if exttimer = 0 and r.hwrite = '1' then
+            v.timer := ahbsi.hwdata((TIMEBITS- 1)*(1-exttimer) downto 0); 
           end if;
         when "011" =>
           if FILTEN then
@@ -461,7 +572,10 @@ begin
     then v.hready := '1'; end if;
 
     if rst = '0' then
-      v.ahbactive := '0'; v.enable := '0'; v.timer := (others => '0');
+      v.ahbactive := '0';
+      if exten /= 0 then v.enable := resen;
+      else v.enable := '0'; end if;
+      v.timer := (others => '0');
       v.hsel := '0'; v.dcnten := '0'; v.bhit := '0';
       v.regacc := '0'; v.hready := '1';
       v.tbreg1.read := '0'; v.tbreg1.write := '0';
@@ -469,11 +583,16 @@ begin
       if FILTEN then
         vf.smask := (others => '0'); vf.mmask := (others => '0');
       end if;
+      if PERFEN then
+        pv.split := '0'; pv.splmst := (others => '0');
+      end if;
       if ntrace /= 1 then vb.bsel := (others => '0'); end if;
     end if;
 
+    if PERFEN then astat <= pr.stat; else astat <= amba_stat_none; end if;
+
     tbi <= vabufi;
-    rin <= v; rfin <= vf; rbin <= vb;
+    rin <= v; rfin <= vf; rbin <= vb; prin <= pv;
 
     ahbso.hconfig <= hconfig;
     ahbso.hirq    <= hirq;
@@ -495,12 +614,28 @@ begin
   end generate;
   nofregs : if not FILTEN generate
     rf.shsel     <= (others => '0');
+    rf.pf        <= '0';
     rf.af        <= '0';
     rf.fr        <= '0';
     rf.fw        <= '0';
     rf.smask     <= (others => '0');
     rf.mmask     <= (others => '0');
     rf.rf        <= '0';
+  end generate;
+  perf : if PERFEN generate
+    preg : process(clk)
+    begin
+      if rising_edge(clk) then
+        pr <= prin;
+      end if;
+    end process;
+  end generate;
+  noperf : if not PERFEN generate
+    pr.stat   <= amba_stat_none;
+    pr.split  <= '0';
+    pr.splmst <= (others => '0');
+    pr.hready <= '0';
+    pr.hresp  <= (others => '0');
   end generate;
   bregs : if ntrace /= 1 generate
     regs : process(clk)
@@ -512,21 +647,45 @@ begin
   
   enable <= tbi.enable & tbi.enable;
   mem32 : for i in 0 to 1 generate
-    ram0 : syncram64 generic map (tech => tech, abits => TBUFABITS)
+    ram0 : syncram64 generic map (tech => tech, abits => TBUFABITS, testen => scantest, custombits => memtest_vlen)
       port map (clk, tbi.addr(TBUFABITS-1 downto 0), tbi.data(((i*64)+63) downto (i*64)),
-                 tbo.data(((i*64)+63) downto (i*64)), enable, tbi.write(i*2+1 downto i*2));
+                 tbo.data(((i*64)+63) downto (i*64)), enable, tbi.write(i*2+1 downto i*2),
+                ahbsi.testin, mtestclk, mtesti64(i), mtesto64(i));
   end generate;
 
   mem64 : if bwidth > 32 generate -- extra data buffer for 64-bit bus
-    ram0 : syncram generic map (tech => tech, abits => TBUFABITS, dbits => 32)
+    ram0 : syncram generic map (tech => tech, abits => TBUFABITS, dbits => 32, testen => scantest, custombits => memtest_vlen)
       port map ( clk, tbi.addr(TBUFABITS-1 downto 0), tbi.data((128+31) downto 128),
-          tbo.data((128+31) downto 128), tbi.enable, tbi.write(7));
+          tbo.data((128+31) downto 128), tbi.enable, tbi.write(7),
+          ahbsi.testin, mtestclk, mtesti(2), mtesto(2));
   end generate;
   mem128 : if bwidth > 64 generate -- extra data buffer for 128-bit bus
-    ram0 : syncram64 generic map (tech => tech, abits => TBUFABITS)
+    ram0 : syncram64 generic map (tech => tech, abits => TBUFABITS, testen => scantest, custombits => memtest_vlen)
       port map ( clk, tbi.addr(TBUFABITS-1 downto 0), tbi.data((128+95) downto (128+32)),
-          tbo.data((128+95) downto (128+32)), enable, tbi.write(6 downto 5));
+          tbo.data((128+95) downto (128+32)), enable, tbi.write(6 downto 5),
+          ahbsi.testin, mtestclk, mtesti64(2), mtesto64(2));
+    mtesto(3) <= mtesto64(2)(memtest_vlen-1 downto 0);
   end generate;
+
+  nomem64 : if bwidth < 64 generate -- no extra data buffer for 64-bit bus
+    tbo.data((128+31) downto 128) <= (others => '0');
+    mtesto(5) <= (others => '0');
+  end generate;
+  nomem128 : if bwidth < 128 generate -- no extra data buffer for 128-bit bus
+    tbo.data((128+95) downto (128+32)) <= (others => '0');
+    mtesto64(2) <= (others => '0');
+    mtesto(6) <= (others => '0');
+  end generate;
+  tbo.data(255 downto 224) <= (others => '0');
+
+  mtesti64(0) <= mtesti(nrams) & mtesti(0);
+  mtesti64(1) <= mtesti(nrams+1) & mtesti(1);
+  mtesti64(2) <= mtesti(nrams+2) & mtesti(3);
+  mtesto(0) <= mtesto64(0)(memtest_vlen-1 downto 0);
+  mtesto(1) <= mtesto64(1)(memtest_vlen-1 downto 0);
+  mtesto(nrams) <= mtesto64(0)(2*memtest_vlen-1 downto memtest_vlen);
+  mtesto(nrams+1) <= mtesto64(1)(2*memtest_vlen-1 downto memtest_vlen);
+  mtesto(nrams+2) <= mtesto64(2)(2*memtest_vlen-1 downto memtest_vlen);
 
 -- pragma translate_off
     bootmsg : report_version 

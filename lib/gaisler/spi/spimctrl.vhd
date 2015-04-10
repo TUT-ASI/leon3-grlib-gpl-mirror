@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -31,6 +32,8 @@
 -- is directly mapped and the I/O area where core registers are mapped.
 --
 -- Revision 1 added support for burst reads when sdcard = 0
+--
+-- Post revision 1: Remove support for SD card by commenting out code
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -52,7 +55,7 @@ entity spimctrl is
     iomask      : integer := 16#fff#;      -- I/O mask
     spliten     : integer := 0;            -- AMBA SPLIT support
     oepol       : integer := 0;            -- Output enable polarity
-    sdcard      : integer range 0 to 1   := 0; -- Core is connected to SD card
+    sdcard      : integer range 0 to 0   := 0;  -- Unused
     readcmd     : integer range 0 to 255 := 16#0B#;  -- Mem. dev. READ command
     dummybyte   : integer range 0 to 1   := 1;  -- Dummy byte after cmd
     dualoutput  : integer range 0 to 1   := 0;  -- Enable dual output
@@ -92,25 +95,25 @@ architecture rtl of spimctrl is
   -- SD card constants
   -----------------------------------------------------------------------------
 
-  constant SD_BLEN : integer := 4;
+--   constant SD_BLEN : integer := 4;
   
-  constant SD_CRC_BYTE : std_logic_vector(7 downto 0) := X"95";
+--   constant SD_CRC_BYTE : std_logic_vector(7 downto 0) := X"95";
   
-  constant SD_BLOCKLEN : std_logic_vector(31 downto 0) :=
-    conv_std_logic_vector(SD_BLEN, 32);
+--   constant SD_BLOCKLEN : std_logic_vector(31 downto 0) :=
+--     conv_std_logic_vector(SD_BLEN, 32);
   
-  -- Commands
-  constant SD_CMD0   : std_logic_vector(5 downto 0) := "000000";
-  constant SD_CMD16  : std_logic_vector(5 downto 0) := "010000";
-  constant SD_CMD17  : std_logic_vector(5 downto 0) := "010001";
-  constant SD_CMD55  : std_logic_vector(5 downto 0) := "110111";
-  constant SD_ACMD41 : std_logic_vector(5 downto 0) := "101001";
+--   -- Commands
+--   constant SD_CMD0   : std_logic_vector(5 downto 0) := "000000";
+--   constant SD_CMD16  : std_logic_vector(5 downto 0) := "010000";
+--   constant SD_CMD17  : std_logic_vector(5 downto 0) := "010001";
+--   constant SD_CMD55  : std_logic_vector(5 downto 0) := "110111";
+--   constant SD_ACMD41 : std_logic_vector(5 downto 0) := "101001";
 
-  -- Command timeout
-  constant SD_CMD_TIMEOUT : integer := 100;
+--   -- Command timeout
+--   constant SD_CMD_TIMEOUT : integer := 100;
 
-  -- Data token timeout
-  constant SD_DATATOK_TIMEOUT : integer := 312500;
+--   -- Data token timeout
+--   constant SD_DATATOK_TIMEOUT : integer := 312500;
   
   -----------------------------------------------------------------------------
   -- SPI device constants
@@ -240,19 +243,19 @@ architecture rtl of spimctrl is
        stat : spim_stat_reg_type;       -- Status register
   end record;
 
-  type sdcard_type is record            -- Present when SD card
-      state   : sdstate_type;           -- SD state
-      tcnt    : std_logic_vector(2 downto 0);  -- Transmit count
-      rcnt    : std_logic_vector(3 downto 0);  -- Receive count
-      cmd     : std_logic_vector(5 downto 0);  -- SD command
-      rstate  : sdstate_type;           -- Return state
-      htb     : std_ulogic; -- Handle trailing byte
-      vresp   : std_ulogic; -- Valid response
-      cd      : std_ulogic; -- Synchronized card detect
-      timeout : std_ulogic; -- Timeout status bit 
-      dtocnt  : std_logic_vector(18 downto 0); -- Data token timeout counter
-      ctocnt  : std_logic_vector(6 downto 0);  -- CMD resp. timeout counter
-  end record;
+--   type sdcard_type is record            -- Present when SD card
+--       state   : sdstate_type;           -- SD state
+--       tcnt    : std_logic_vector(2 downto 0);  -- Transmit count
+--       rcnt    : std_logic_vector(3 downto 0);  -- Receive count
+--       cmd     : std_logic_vector(5 downto 0);  -- SD command
+--       rstate  : sdstate_type;           -- Return state
+--       htb     : std_ulogic; -- Handle trailing byte
+--       vresp   : std_ulogic; -- Valid response
+--       cd      : std_ulogic; -- Synchronized card detect
+--       timeout : std_ulogic; -- Timeout status bit 
+--       dtocnt  : std_logic_vector(18 downto 0); -- Data token timeout counter
+--       ctocnt  : std_logic_vector(6 downto 0);  -- CMD resp. timeout counter
+--   end record;
 
   type spiflash_type is record          -- Present when !SD card
        state  : spistate_type;           -- Mem. device comm. state
@@ -282,7 +285,7 @@ architecture rtl of spimctrl is
        -- SPI flash device
        spi            : spiflash_type;  -- Used when !SD card
        -- SD
-       sd             : sdcard_type;    -- Used when SD card
+ --      sd             : sdcard_type;    -- Used when SD card
        -- AHB
        irq            : std_ulogic;     -- Interrupt request
        hsize          : std_logic_vector(2 downto 0);
@@ -324,17 +327,20 @@ begin  -- rtl
     variable disable_flash    : boolean;
     variable read_flash       : boolean;
     variable hrdata           : std_logic_vector(MAXDW-1 downto 0);
+    variable hwdatax          : std_logic_vector(31 downto 0);
     variable hwdata           : std_logic_vector(7 downto 0);
   begin  -- process comb
     v := r; v.spii := r.spii(0) & spii; v.sample := r.sample(0) & '0';
     change := '0'; v.irq := '0'; v.hresp := HRESP_OKAY; v.hready := '1';
     regaddr := r.haddr(7 downto 2); hsplit := (others => '0');
-    hwdata := ahbreadword(ahbsi.hwdata, r.haddr(4 downto 2))(7 downto 0);
+    hwdatax := ahbreadword(ahbsi.hwdata, r.haddr(4 downto 2));
+    hwdata := hwdatax(7 downto 0);
     ahbirq := (others => '0'); ahbirq(hirq) := r.irq;
-    if sdcard = 1 then v.sd.cd := r.spii(0).cd; else v.sd.cd := '0'; end if;
+ --   if sdcard = 1 then v.sd.cd := r.spii(0).cd; else v.sd.cd := '0'; end if;
     read_flash := false;
     enable_altscaler := (not r.spio.initialized or r.reg.ctrl.eas) = '1';
-    disable_flash := (r.spio.errorn = '0' or r.reg.ctrl.usrc = '1' or
+--    disable_flash := (r.spio.errorn = '0' or r.reg.ctrl.usrc = '1' or
+    disable_flash := (r.reg.ctrl.usrc = '1' or
                       r.spio.initialized = '0' or r.spimstate = USER_SPI);
     if dualoutput = 1 and sdcard = 0 then
       lastbit := andv(r.bcnt(1 downto 0)) and
@@ -405,20 +411,20 @@ begin  -- rtl
       v.hsel := '0';
       case regaddr is
         when CONF_REG_OFF =>
-          if sdcard = 1 then
-            v.rrdata := (others => '0');
-          else
+--          if sdcard = 1 then
+--            v.rrdata := (others => '0');
+--          else
             v.rrdata := cslv(readcmd, 8);
-          end if;
+--          end if;
         when CTRL_REG_OFF =>
           v.rrdata(3) := r.spio.csn;
           v.rrdata(2) := r.reg.ctrl.eas;
           v.rrdata(1) := r.reg.ctrl.ien;
           v.rrdata(0) := r.reg.ctrl.usrc;
         when STAT_REG_OFF =>
-          v.rrdata(5) := r.sd.cd;
-          v.rrdata(4) := r.sd.timeout;
-          v.rrdata(3) := not r.spio.errorn;
+ --         v.rrdata(5) := r.sd.cd;
+ --         v.rrdata(4) := r.sd.timeout;
+ --         v.rrdata(3) := not r.spio.errorn;
           v.rrdata(2) := r.spio.initialized;
           v.rrdata(1) := r.reg.stat.busy;
           v.rrdata(0) := r.reg.stat.done;
@@ -441,7 +447,7 @@ begin  -- rtl
           v.reg.ctrl.ien  := hwdata(1);
           v.reg.ctrl.usrc := hwdata(0);
         when STAT_REG_OFF =>
-          v.spio.errorn := r.spio.errorn or hwdata(3);
+--          v.spio.errorn := r.spio.errorn or hwdata(3);
           v.reg.stat.done := r.reg.stat.done and not hwdata(0);
         when RX_REG_OFF => null;
         when TX_REG_OFF =>
@@ -484,10 +490,10 @@ begin  -- rtl
             end if;
             v.hready := '1';
             v.hsel := '0';
-            if r.spio.errorn = '0' then
-              v.hready := '0';
-              v.hresp := HRESP_ERROR;
-            end if;
+--             if r.spio.errorn = '0' then
+--               v.hready := '0';
+--               v.hresp := HRESP_ERROR;
+--             end if;
           elsif spliten /= 0 and v.ahbcancel = '1' then
             v.spimstate := IDLE;
             v.ahbcancel := '0';
@@ -535,186 +541,186 @@ begin  -- rtl
     -- * Issue CMD55  APP_CMD
     -- * Issue ACMD41 SEND_OP_COND
     -- * Issue CMD16  SET_BLOCKLEN
-    if sdcard = 1 then
-     case r.sd.state is  
-        when SD_PWRUP0 =>
-          v.go := '1';
-          v.sd.vresp := '1';
-          v.sd.state := SD_GET_RESP;
-          v.sd.rstate := SD_PWRUP1;
-          v.sd.rcnt := cslv(2, r.sd.rcnt'length);
+--     if sdcard = 1 then
+--      case r.sd.state is  
+--         when SD_PWRUP0 =>
+--           v.go := '1';
+--           v.sd.vresp := '1';
+--           v.sd.state := SD_GET_RESP;
+--           v.sd.rstate := SD_PWRUP1;
+--           v.sd.rcnt := cslv(2, r.sd.rcnt'length);
           
-        when SD_PWRUP1 =>
-          v.sd.state := SD_SEND_CMD;
-          v.sd.rstate := SD_INIT_IDLE;
-          v.sd.cmd := SD_CMD0;
-          v.sd.rcnt := (others => '0');
-          v.ar := (others => '0');
+--         when SD_PWRUP1 =>
+--           v.sd.state := SD_SEND_CMD;
+--           v.sd.rstate := SD_INIT_IDLE;
+--           v.sd.cmd := SD_CMD0;
+--           v.sd.rcnt := (others => '0');
+--           v.ar := (others => '0');
           
-        when SD_INIT_IDLE => 
-          v.sd.state := SD_SEND_CMD;
-          v.sd.rcnt := (others => '0');
-          if r.ar(0) = '0' and r.sd.cmd /= SD_CMD0 then
-            v.sd.cmd := SD_CMD16;
-            v.ar := SD_BLOCKLEN;
-            v.sd.rstate := SD_CHECK_CMD16;
-          else
-            v.sd.cmd := SD_CMD55;
-            v.ar := (others => '0');
-            v.sd.rstate := SD_ISS_ACMD41;
-          end if;
+--         when SD_INIT_IDLE => 
+--           v.sd.state := SD_SEND_CMD;
+--           v.sd.rcnt := (others => '0');
+--           if r.ar(0) = '0' and r.sd.cmd /= SD_CMD0 then
+--             v.sd.cmd := SD_CMD16;
+--             v.ar := SD_BLOCKLEN;
+--             v.sd.rstate := SD_CHECK_CMD16;
+--           else
+--             v.sd.cmd := SD_CMD55;
+--             v.ar := (others => '0');
+--             v.sd.rstate := SD_ISS_ACMD41;
+--           end if;
           
-        when SD_ISS_ACMD41 =>
-          v.sd.state := SD_SEND_CMD;
-          v.sd.cmd := SD_ACMD41;
-          v.sd.rcnt := (others => '0');
-          v.ar := (others => '0');
-          v.sd.rstate := SD_INIT_IDLE;
+--         when SD_ISS_ACMD41 =>
+--           v.sd.state := SD_SEND_CMD;
+--           v.sd.cmd := SD_ACMD41;
+--           v.sd.rcnt := (others => '0');
+--           v.ar := (others => '0');
+--           v.sd.rstate := SD_INIT_IDLE;
           
-        when SD_CHECK_CMD16 => 
-          if r.ar(7 downto 0) /= zero32(7 downto 0) then
-            v.spio.errorn := '0';
-          else
-            v.spio.errorn := '1';
-            v.spio.initialized := '1';
-            v.sd.timeout := '0';
-          end if;
-          v.sd.state := SD_READY;
+--         when SD_CHECK_CMD16 => 
+--           if r.ar(7 downto 0) /= zero32(7 downto 0) then
+--             v.spio.errorn := '0';
+--           else
+--             v.spio.errorn := '1';
+--             v.spio.initialized := '1';
+--             v.sd.timeout := '0';
+--           end if;
+--           v.sd.state := SD_READY;
 
-        when SD_READY => 
-          v.spio.ready := '1';
-          v.sd.cmd := SD_CMD17;
-          v.sd.rstate := SD_CHECK_CMD17;
-          if read_flash then
-            v.sd.state := SD_SEND_CMD;
-            v.spio.ready := '0';
-            v.ar := (others => '0');
-            v.ar(r.haddr'left downto 2) := r.haddr(r.haddr'left downto 2);
-          end if;
+--         when SD_READY => 
+--           v.spio.ready := '1';
+--           v.sd.cmd := SD_CMD17;
+--           v.sd.rstate := SD_CHECK_CMD17;
+--           if read_flash then
+--             v.sd.state := SD_SEND_CMD;
+--             v.spio.ready := '0';
+--             v.ar := (others => '0');
+--             v.ar(r.haddr'left downto 2) := r.haddr(r.haddr'left downto 2);
+--           end if;
           
-        when SD_CHECK_CMD17 =>
-          if r.ar(7 downto 0) /= X"00" then
-            v.sd.state := SD_READY;
-            v.spio.errorn := '0';
-          else
-            v.sd.rstate := SD_CHECK_TOKEN;
-            v.spio.csn := '0';
-            v.go := '1';
-            change := '1';
-          end if;
-          v.sd.dtocnt := cslv(SD_DATATOK_TIMEOUT, r.sd.dtocnt'length);
-          v.sd.state := SD_GET_RESP;
-          v.sd.vresp := '1';
-          v.hold := '0';
+--         when SD_CHECK_CMD17 =>
+--           if r.ar(7 downto 0) /= X"00" then
+--             v.sd.state := SD_READY;
+--             v.spio.errorn := '0';
+--           else
+--             v.sd.rstate := SD_CHECK_TOKEN;
+--             v.spio.csn := '0';
+--             v.go := '1';
+--             change := '1';
+--           end if;
+--           v.sd.dtocnt := cslv(SD_DATATOK_TIMEOUT, r.sd.dtocnt'length);
+--           v.sd.state := SD_GET_RESP;
+--           v.sd.vresp := '1';
+--           v.hold := '0';
           
-        when SD_CHECK_TOKEN =>
-          if (r.ar(7 downto 5) = "111" and
-              r.sd.dtocnt /= zero32(r.sd.dtocnt'range)) then
-            v.sd.dtocnt := r.sd.dtocnt - 1;
-            v.sd.state := SD_GET_RESP;
-            if r.ar(0) = '0' then
-              v.sd.rstate := SD_HANDLE_DATA;
-              v.sd.rcnt := cslv(SD_BLEN-1, r.sd.rcnt'length);
-            end if;
-            v.spio.csn := '0';
-            v.go := '1';
-            change := '1';
-          else
-            v.spio.errorn := '0';
-            v.sd.state := SD_READY;
-          end if;
-          v.sd.timeout := not orv(r.sd.dtocnt);
-          v.sd.ctocnt := cslv(SD_CMD_TIMEOUT, r.sd.ctocnt'length);
-          v.hold := '0';
+--         when SD_CHECK_TOKEN =>
+--           if (r.ar(7 downto 5) = "111" and
+--               r.sd.dtocnt /= zero32(r.sd.dtocnt'range)) then
+--             v.sd.dtocnt := r.sd.dtocnt - 1;
+--             v.sd.state := SD_GET_RESP;
+--             if r.ar(0) = '0' then
+--               v.sd.rstate := SD_HANDLE_DATA;
+--               v.sd.rcnt := cslv(SD_BLEN-1, r.sd.rcnt'length);
+--             end if;
+--             v.spio.csn := '0';
+--             v.go := '1';
+--             change := '1';
+--           else
+--             v.spio.errorn := '0';
+--             v.sd.state := SD_READY;
+--           end if;
+--           v.sd.timeout := not orv(r.sd.dtocnt);
+--           v.sd.ctocnt := cslv(SD_CMD_TIMEOUT, r.sd.ctocnt'length);
+--           v.hold := '0';
           
-        when SD_HANDLE_DATA =>
-          v.frdata := r.ar;
-          -- Receive and discard CRC
-          v.sd.state := SD_GET_RESP;
-          v.sd.rstate := SD_READY;
-          v.sd.htb := '1';
-          v.spio.csn := '0';
-          v.go := '1';
-          change := '1';
-          v.sd.vresp := '1';
-          v.spio.errorn := '1';
+--         when SD_HANDLE_DATA =>
+--           v.frdata := r.ar;
+--           -- Receive and discard CRC
+--           v.sd.state := SD_GET_RESP;
+--           v.sd.rstate := SD_READY;
+--           v.sd.htb := '1';
+--           v.spio.csn := '0';
+--           v.go := '1';
+--           change := '1';
+--           v.sd.vresp := '1';
+--           v.spio.errorn := '1';
         
-        when SD_SEND_CMD =>
-          v.sd.htb := '1';
-          v.sd.vresp := '0';
-          v.spio.csn := '0';
-          v.sd.ctocnt := cslv(SD_CMD_TIMEOUT, r.sd.ctocnt'length);
-          if (v.bd or not r.go) = '1'then
-            v.hold := '0';
-            case r.sd.tcnt is
-              when "000" => v.sreg := "01" & r.sd.cmd;
-                            v.hold := '1'; change := '1';
-              when "001" => v.sreg := r.ar(31 downto 24);
-              when "010" => v.sreg := r.ar(30 downto 23);
-              when "011" => v.sreg := r.ar(30 downto 23);
-              when "100" => v.sreg := r.ar(30 downto 23);
-              when "101" => v.sreg := SD_CRC_BYTE;
-              when others => v.sd.state := SD_GET_RESP;
-            end case;
-            v.go := '1';
-            v.sd.tcnt := r.sd.tcnt + 1;
-          end if;
+--         when SD_SEND_CMD =>
+--           v.sd.htb := '1';
+--           v.sd.vresp := '0';
+--           v.spio.csn := '0';
+--           v.sd.ctocnt := cslv(SD_CMD_TIMEOUT, r.sd.ctocnt'length);
+--           if (v.bd or not r.go) = '1'then
+--             v.hold := '0';
+--             case r.sd.tcnt is
+--               when "000" => v.sreg := "01" & r.sd.cmd;
+--                             v.hold := '1'; change := '1';
+--               when "001" => v.sreg := r.ar(31 downto 24);
+--               when "010" => v.sreg := r.ar(30 downto 23);
+--               when "011" => v.sreg := r.ar(30 downto 23);
+--               when "100" => v.sreg := r.ar(30 downto 23);
+--               when "101" => v.sreg := SD_CRC_BYTE;
+--               when others => v.sd.state := SD_GET_RESP;
+--             end case;
+--             v.go := '1';
+--             v.sd.tcnt := r.sd.tcnt + 1;
+--           end if;
 
-        when SD_GET_RESP =>
-          if v.bd = '1' then
-            if r.sd.vresp = '1' or r.sd.ctocnt = zero32(r.sd.ctocnt'range) then
-              if r.sd.rcnt = zero32(r.sd.rcnt'range) then
-                if r.sd.htb = '0' then
-                  v.spio.csn := '1';
-                end if;
-                v.sd.htb := '0';
-                v.hold := '1';
-              else
-                v.sd.rcnt := r.sd.rcnt - 1;
-              end if;
-            else
-              v.sd.ctocnt := r.sd.ctocnt - 1;
-            end if;
-          end if;
-          if lastbit = '1' then
-            v.sd.vresp := r.sd.vresp or not r.ar(6);
-            if r.sd.rcnt = zero32(r.sd.rcnt'range) then
-              v.stop := r.sd.vresp and r.go and not r.sd.htb;
-            end if;
-          end if;
-          if r.sd.ctocnt = zero32(r.sd.ctocnt'range) then
-            v.stop := r.go;
-          end if;
-          if (r.go or r.spio.sck) = '0' then
-            v.sd.state := r.sd.rstate;
-            if r.sd.ctocnt = zero32(r.sd.ctocnt'range) then
-              if r.spio.initialized = '1' then
-                v.sd.state := SD_READY;
-              else
-                -- Try to initialize again
-                v.sd.state := SD_CHECK_PRES;
-              end if;
-              v.spio.errorn := '0';
-              v.sd.timeout := '1';
-            end if;
-            v.spio.csn := '1';
-          end if;
-          v.sd.tcnt := (others => '0');
+--         when SD_GET_RESP =>
+--           if v.bd = '1' then
+--             if r.sd.vresp = '1' or r.sd.ctocnt = zero32(r.sd.ctocnt'range) then
+--               if r.sd.rcnt = zero32(r.sd.rcnt'range) then
+--                 if r.sd.htb = '0' then
+--                   v.spio.csn := '1';
+--                 end if;
+--                 v.sd.htb := '0';
+--                 v.hold := '1';
+--               else
+--                 v.sd.rcnt := r.sd.rcnt - 1;
+--               end if;
+--             else
+--               v.sd.ctocnt := r.sd.ctocnt - 1;
+--             end if;
+--           end if;
+--           if lastbit = '1' then
+--             v.sd.vresp := r.sd.vresp or not r.ar(6);
+--             if r.sd.rcnt = zero32(r.sd.rcnt'range) then
+--               v.stop := r.sd.vresp and r.go and not r.sd.htb;
+--             end if;
+--           end if;
+--           if r.sd.ctocnt = zero32(r.sd.ctocnt'range) then
+--             v.stop := r.go;
+--           end if;
+--           if (r.go or r.spio.sck) = '0' then
+--             v.sd.state := r.sd.rstate;
+--             if r.sd.ctocnt = zero32(r.sd.ctocnt'range) then
+--               if r.spio.initialized = '1' then
+--                 v.sd.state := SD_READY;
+--               else
+--                 -- Try to initialize again
+--                 v.sd.state := SD_CHECK_PRES;
+--               end if;
+--               v.spio.errorn := '0';
+--               v.sd.timeout := '1';
+--             end if;
+--             v.spio.csn := '1';
+--           end if;
+--           v.sd.tcnt := (others => '0');
           
-        when others => -- SD_CHECK_PRES
-          if r.sd.cd = '1' then
-            v.go := '1';
-            v.spio.csn := '0';
-            v.sd.state := SD_GET_RESP;
-            v.spio.cdcsnoen := OUTPUT;
-          end if;
-          v.sd.htb := '0';
-          v.sd.vresp := '1';
-          v.sd.rstate := SD_PWRUP0;
-          v.sd.rcnt := cslv(10, r.sd.rcnt'length);
-          v.sd.ctocnt := cslv(SD_CMD_TIMEOUT, r.sd.ctocnt'length);
-      end case; 
-    end if;
+--         when others => -- SD_CHECK_PRES
+--           if r.sd.cd = '1' then
+--             v.go := '1';
+--             v.spio.csn := '0';
+--             v.sd.state := SD_GET_RESP;
+--             v.spio.cdcsnoen := OUTPUT;
+--           end if;
+--           v.sd.htb := '0';
+--           v.sd.vresp := '1';
+--           v.sd.rstate := SD_PWRUP0;
+--           v.sd.rcnt := cslv(10, r.sd.rcnt'length);
+--           v.sd.ctocnt := cslv(SD_CMD_TIMEOUT, r.sd.ctocnt'length);
+--       end case; 
+--     end if;
     
     ---------------------------------------------------------------------------
     -- SPI Flash (non SD) specific code
@@ -939,15 +945,15 @@ begin  -- rtl
     -- System and core reset
     ---------------------------------------------------------------------------
     if (not rstn or r.rst) = '1' then
-      if sdcard = 1 then
-        v.sd.state := SD_CHECK_PRES;
-        v.spio.cdcsnoen := INPUT;
-        v.sd.timeout := '0';
-      else
+--       if sdcard = 1 then
+--         v.sd.state := SD_CHECK_PRES;
+--         v.spio.cdcsnoen := INPUT;
+--         v.sd.timeout := '0';
+--       else
         v.spi.state := SPI_PWRUP;
         v.frdata := cslv(pwrupcnt, r.frdata'length);
         v.spio.cdcsnoen := OUTPUT;
-      end if;
+--      end if;
       v.spimstate        := IDLE;
       v.rst              := '0';
       --
@@ -972,7 +978,7 @@ begin  -- rtl
       v.spio.mosi        := '1';
       v.spio.mosioen     := OUTPUT;
       v.spio.csn         := '1';
-      v.spio.errorn      := '1';
+--       v.spio.errorn      := '1';
       v.spio.initialized := '0';
       v.spio.ready       := '0';      
     end if;
@@ -980,25 +986,25 @@ begin  -- rtl
     ---------------------------------------------------------------------------
     -- Drive unused signals
     ---------------------------------------------------------------------------
-    if sdcard = 1 then
-      v.spi.state  := SPI_PWRUP;
-      v.spi.cnt    := (others => '0');
-      v.spi.hsize  := (others => '0');
-      v.spi.hburst := (others => '0');
-      v.hburst     := (others => '0');
-      v.seq        := '0';
-    else
-      v.sd.state   := SD_CHECK_PRES;
-      v.sd.tcnt    := (others => '0');
-      v.sd.rcnt    := (others => '0');
-      v.sd.cmd     := (others => '0');
-      v.sd.rstate  := SD_CHECK_PRES;
-      v.sd.htb     := '0';
-      v.sd.vresp   := '0';
-      v.sd.timeout := '0';
-      v.sd.dtocnt  := (others => '0');
-      v.sd.ctocnt  := (others => '0');
-    end if;
+--     if sdcard = 1 then
+--       v.spi.state  := SPI_PWRUP;
+--       v.spi.cnt    := (others => '0');
+--       v.spi.hsize  := (others => '0');
+--       v.spi.hburst := (others => '0');
+--       v.hburst     := (others => '0');
+--       v.seq        := '0';
+--     else
+--       v.sd.state   := SD_CHECK_PRES;
+--       v.sd.tcnt    := (others => '0');
+--       v.sd.rcnt    := (others => '0');
+--       v.sd.cmd     := (others => '0');
+--       v.sd.rstate  := SD_CHECK_PRES;
+--       v.sd.htb     := '0';
+--       v.sd.vresp   := '0';
+--       v.sd.timeout := '0';
+--       v.sd.dtocnt  := (others => '0');
+--       v.sd.ctocnt  := (others => '0');
+--     end if;
     if spliten = 0 then
       v.insplit   := '0';
       v.unsplit   := '0';

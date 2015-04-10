@@ -144,7 +144,7 @@ int greth_init(struct greth_info *greth) {
     greth->rxchkpnt = 0;
     
     /* Reset PHY */
-    if (greth->edcl == 0) {
+    if (greth->edcl == 0 || greth->edclen == 0) {
             write_mii(greth->phyaddr, 0, 0x8000, greth->regs);
             while ( (tmp=read_mii(greth->phyaddr,0, greth->regs)) & 0x8000);
             i = 0;
@@ -174,7 +174,7 @@ int greth_init(struct greth_info *greth) {
                write_mii(greth->phyaddr, 0x9, 0x0000 , greth->regs);
             }
  
-            save((int)&greth->regs->control, (duplex << 4) | (speed << 7) | (gbit << 8));
+            save((int)&greth->regs->control, ((greth->edclen^1) << 14) | (duplex << 4) | (speed << 7) | (gbit << 8));
     } else {
             /* wait for edcl phy initialisation to finish */
             i = 0;

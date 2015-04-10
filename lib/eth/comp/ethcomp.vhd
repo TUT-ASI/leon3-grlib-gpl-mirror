@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -173,7 +174,9 @@ package ethcomp is
       edclsepahbg    : integer range 0 to 1 := 0;
       ramdebug       : integer range 0 to 2 := 0;
       mdiohold       : integer := 1;
-      gmiimode       : integer range 0 to 1 := 0
+      gmiimode       : integer range 0 to 1 := 0;
+      mdiochain      : integer range 0 to 1 := 0;
+      iotest         : integer range 0 to 1 := 0
     );
     port(
       rst            : in  std_ulogic;
@@ -271,7 +274,18 @@ package ethcomp is
       edclsepahb     : in   std_ulogic;
       edcldisable    : in   std_ulogic;
       gbit           : out  std_ulogic;
-      speed          : out  std_ulogic);
+      speed          : out  std_ulogic;
+      -- mdio sharing
+      mdiochain_first : in  std_ulogic := '0';   -- First in chain (ignore ticki/sampi)
+      mdiochain_ticki : in  std_ulogic := '0';   -- From above in chain
+      mdiochain_datai : in  std_ulogic := '0';
+      mdiochain_locko : out std_ulogic;   -- To above in chain
+      mdiochain_ticko : out std_ulogic;   -- To below in chain
+      mdiochain_i     : out std_ulogic;   -- To below in chain
+      mdiochain_locki : in  std_ulogic := '0';   -- From below in chain
+      mdiochain_o     : in  std_ulogic := '0';
+      mdiochain_oe    : in  std_ulogic := '0'
+      );
   end component;
 
   component greth_gen is

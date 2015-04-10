@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -65,7 +66,7 @@ constant pconfig : apb_config_type := (
   1 => apb_iobar(paddr, pmask));
 
 type rxfsmtype is (idle, startbit, data, stopbit);
-type txfsmtype is (idle, data, stopbit);
+type txfsmtype is (idle, data);
 
 type uartregs is record
   rxen          :  std_ulogic;  -- receiver enabled
@@ -78,7 +79,7 @@ type uartregs is record
   frame         :  std_ulogic;  -- framing error
   rhold         :  std_logic_vector(7 downto 0);
   rshift        :  std_logic_vector(7 downto 0);
-  tshift        :  std_logic_vector(10 downto 0);
+  tshift        :  std_logic_vector(9 downto 0);
   thold         :  std_logic_vector(7 downto 0);
   txstate       :  txfsmtype;
   txclk         :  std_logic_vector(2 downto 0);  -- tx clock divider
@@ -220,26 +221,20 @@ begin
 -- transmitter operation
 
     case r.txstate is
-    when idle =>        -- idle state
+    when idle =>        -- idle and stop bit state
       if (r.txtick = '1') then v.tsempty := '1'; end if;
       if (r.rxen and (not r.thempty) and r.txtick) = '1' then 
-        v.tshift := "10" & r.thold & '0'; v.txstate := data; 
+        v.tshift := '0' & r.thold & '0'; v.txstate := data; 
         v.thempty := '1';
         v.tsempty := '0'; v.txclk := "00" & r.tick; v.txtick := '0';
       end if;
-    when data =>        -- transmitt data frame
+    when data =>        -- transmit data frame
       if r.txtick = '1' then
-        v.tshift := '1' & r.tshift(10 downto 1);
-        if r.tshift(10 downto 1) = "1111111110" then
-        v.tshift(0) := '1'; v.txstate := stopbit;
+        v.tshift := '1' & r.tshift(9 downto 1);
+        if r.tshift(9 downto 1) = "111111110" then
+        v.tshift(0) := '1'; v.txstate := idle;
         end if;
       end if;
-    when stopbit =>     -- transmitt stop bit
-      if r.txtick = '1' then
-        v.tshift := '1' & r.tshift(10 downto 1); v.txstate := idle;
-      end if;
-    when others => 
-      v.txstate := idle;
     end case;
 
 -- writing of tx data register must be done after tx fsm to get correct

@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -80,7 +81,7 @@ entity proc3 is
     tlb_rep    : integer range 0 to 1     := 0;
     lddel      : integer range 1 to 2     := 2;
     disas      : integer range 0 to 2     := 0;
-    tbuf       : integer range 0 to 64    := 0;
+    tbuf       : integer range 0 to 128    := 0;
     pwd        : integer range 0 to 2     := 0;
     svt        : integer range 0 to 1     := 0;
     rstaddr    : integer                  := 0;
@@ -89,7 +90,9 @@ entity proc3 is
     clk2x      : integer                  := 0;
     scantest   : integer                  := 0;
     mmupgsz    : integer range 0 to 5     := 0;
-    bp         : integer                  := 1
+    bp         : integer                  := 1;
+    npasi      : integer range 0 to 1     := 0;
+    pwrpsr     : integer range 0 to 1     := 0
   );
   port (
     clk        : in  std_ulogic;
@@ -105,6 +108,8 @@ entity proc3 is
     cramo      : in  cram_out_type;
     tbi        : out tracebuf_in_type;
     tbo        : in  tracebuf_out_type;
+    tbi_2p     : out tracebuf_2p_in_type;
+    tbo_2p     : in  tracebuf_2p_out_type;
     fpi        : out fpc_in_type;
     fpo        : in  fpc_out_type;
     cpi        : out fpc_in_type;
@@ -145,9 +150,9 @@ begin
   iu : iu3
     generic map (nwindows, isets, dsets, fpu, v8, cp, mac, dsu, nwp, pclow,
                  notag, hindex, lddel, IRFWT, disas, tbuf, pwd, svt, rstaddr, smp, fabtech,
-                 clk2x, bp)
+                 clk2x, bp, npasi, pwrpsr)
     port map (clk, rstn, holdnx, ici, ico, dci, dco, rfi, rfo, irqi, irqo,
-              dbgi, dbgo, muli, mulo, divi, divo, fpo, fpi, cpo, cpi, tbo, tbi, sclk);
+              dbgi, dbgo, muli, mulo, divi, divo, fpo, fpi, cpo, cpi, tbo, tbi, tbo_2p, tbi_2p, sclk);
 
 -- multiply and divide units
 

@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -58,6 +59,9 @@ begin
   pa3 : if (tech = apa3) generate
     u0 : apa3_inpad_ds generic map (level) port map (padp, padn, o);
   end generate;
+  igl2 : if (tech = igloo2) generate
+    u0 : igloo2_inpad_ds port map (padp, padn, o);
+  end generate;
   pa3e : if (tech = apa3e) generate
     u0 : apa3e_inpad_ds generic map (level) port map (padp, padn, o);
   end generate;
@@ -82,7 +86,7 @@ use techmap.gencomp.all;
 
 entity inpad_dsv is
   generic (tech : integer := 0; level : integer := lvds;
-	   voltage : integer := x33v; width : integer := 1);
+	   voltage : integer := x33v; width : integer := 1; term : integer := 0);
   port (
     padp : in  std_logic_vector(width-1 downto 0);
     padn : in  std_logic_vector(width-1 downto 0);
@@ -91,6 +95,6 @@ end;
 architecture rtl of inpad_dsv is
 begin
   v : for i in width-1 downto 0 generate
-    u0 : inpad_ds generic map (tech, level, voltage) port map (padp(i), padn(i), o(i));
+    u0 : inpad_ds generic map (tech, level, voltage, term) port map (padp(i), padn(i), o(i));
   end generate;
 end;

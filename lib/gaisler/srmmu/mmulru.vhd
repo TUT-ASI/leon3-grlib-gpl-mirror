@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -68,6 +69,7 @@ architecture rtl of mmulru is
   end record;
 
   constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant ASYNC_RESET : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
   
   signal c,r   : lru_rtype;
   signal lruei : mmulruei_a (entries-1 downto 0);
@@ -120,7 +122,7 @@ begin
       reinit := '1';
     end if;
 
-    if (not RESET_ALL and (rst = '0')) or (reinit = '1') then
+    if ((not ASYNC_RESET) and (not RESET_ALL) and (rst = '0')) or (reinit = '1') then
       v.bar := lrui.mmctrl1.bar;
       v.clear := (others => '0');
       case lrui.mmctrl1.bar is
@@ -142,27 +144,41 @@ begin
     c <= v;
     
   end process p0;
-  
-  p1: process (clk)
-  begin
-    if rising_edge(clk) then
-      r <= c;
-      if RESET_ALL and (rst = '0') then
-        r.bar   <= lrui.mmctrl1.bar;
-        r.clear <= (others => '0');
-        case lrui.mmctrl1.bar is
-          when "01"  => 
-            r.clear(1 downto 0)  <= "11";  -- reverse order
-          when "10"  => 
-            r.clear(2 downto 0)  <= "111";  -- reverse order
-          when "11"  => 
-            r.clear(4 downto 0)  <= "11111"; -- reverse order
-          when others => 
-            r.clear(0)  <= '1'; 
-        end case;
+
+  syncrregs : if not ASYNC_RESET generate
+    p1: process (clk)
+    begin
+      if rising_edge(clk) then
+        r <= c;
+        if RESET_ALL and (rst = '0') then
+          r.bar   <= lrui.mmctrl1.bar;
+          r.clear <= (others => '0');
+          case lrui.mmctrl1.bar is
+            when "01"  => 
+              r.clear(1 downto 0)  <= "11";  -- reverse order
+            when "10"  => 
+              r.clear(2 downto 0)  <= "111";  -- reverse order
+            when "11"  => 
+              r.clear(4 downto 0)  <= "11111"; -- reverse order
+            when others => 
+              r.clear(0)  <= '1'; 
+          end case;
+        end if;
       end if;
-    end if;
-  end process p1;
+    end process p1;
+  end generate;
+  asyncrregs : if ASYNC_RESET generate
+    p1: process (clk, rst)
+    begin
+      if rst = '0' then
+        r.bar   <= mmctrl_type1_none.bar;
+        r.clear <= (others => '0');
+        r.clear(0) <= '1';
+      elsif rising_edge(clk) then
+        r <= c;
+      end if;
+    end process p1;
+  end generate;
 
   --# lru entries
   lrue0: for i in entries-1 downto 0 generate

@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -638,11 +639,13 @@ begin
   -- External DDR clock
   ddrclocks : for i in 0 to nclk-1 generate
     -- DDR_CLK/B
-    xc456v : if (tech = virtex4) or (tech = virtex5) or (tech = virtex6) or (tech = spartan6) generate
+    xc456v : if (tech = virtex4) or (tech = virtex5) or (tech = virtex6) or (tech = spartan6) 
+               or (tech = virtex7) or (tech = kintex7) or (tech = artix7) or (tech = zynq7000) generate
       ddrclk_pad : outpad_ds generic map (tech => tech, slew => 1, level => sstl18_i) 
         port map (ddr_clk(i), ddr_clkb(i), lddr_clk(i), vcc);
     end generate;
-    noxc456v : if not ((tech = virtex4) or (tech = virtex5) or (tech = virtex6) or (tech = spartan6)) generate
+    noxc456v : if not ((tech = virtex4) or (tech = virtex5) or (tech = virtex6) or (tech = spartan6)
+                 or (tech = virtex7) or (tech = kintex7) or (tech = artix7) or (tech = zynq7000)) generate
     -- DDR_CLK
       ddrclk_pad : outpad generic map (tech => tech, slew => 1, level => sstl18_i) 
         port map (ddr_clk(i), lddr_clk(i));
@@ -1134,7 +1137,8 @@ begin
     customdout <= (others => '0');
   end generate;
   
-  xc4v : if (tech = virtex4) or (tech = virtex5) or (tech = virtex6) generate
+  xc4v : if (tech = virtex4) or (tech = virtex5) or (tech = virtex6) 
+           or (tech = artix7) or (tech = kintex7) or (tech = virtex7) or (tech=zynq7000) generate
 
     ddr_phy0 : virtex5_ddr2_phy_wo_pads
      generic map (MHz => MHz, rstdelay => rstdelay,

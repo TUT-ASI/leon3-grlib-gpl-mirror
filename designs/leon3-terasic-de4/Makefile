@@ -46,16 +46,7 @@ qwiz:
 	else \
 		echo "ddr2ctrl core already compiled"; \
 	fi ;
-#ifeq ($(CONFIG_GRETH_ENABLE),y)
-#	@cp $(GRLIB)/boards/$(BOARD)/sgmii2gmii.vhd .
-#	@if [ ! -d ./sgmii2gmii/ ]; then \
-#		qmegawiz -silent sgmii2gmii.vhd ; \
-#	else \
-#		echo "sgmii2gmii core already compiled"; \
-#	fi ;
-#endif
 
 localclean:
-	@rm -rf sgmii2gmii.vhd sgmii2gmii sgmii2gmii_sim sgmii2gmii_testbench sgmii2gmii.[bcpqs]* sgmii2gmii_sim.f 
 	@rm -rf ddr2ctrl.vhd ddr2ctrl ddr2ctrl_sim ddr2ctrl_example_design ddr2ctrl.[bcpqs]* ddr2ctrl_sim.f
 

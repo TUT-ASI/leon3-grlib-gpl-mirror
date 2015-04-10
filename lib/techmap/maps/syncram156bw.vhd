@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -29,6 +30,7 @@ library ieee;
 library techmap;
 use ieee.std_logic_1164.all;
 use techmap.gencomp.all;
+use techmap.allmem.all;
 library grlib;
 use grlib.config.all;
 use grlib.config_types.all;
@@ -100,13 +102,39 @@ architecture rtl of syncram156bw is
     tdbn    : in  std_ulogic);
   end component;
 
+  component rhs65_syncram156bw
+  generic (abits : integer := 14);
+  port (
+    clk     : in  std_ulogic;
+    address : in  std_logic_vector (abits -1 downto 0);
+    datain  : in  std_logic_vector (155 downto 0);
+    dataout : out std_logic_vector (155 downto 0);
+    enable  : in  std_logic_vector (15 downto 0);
+    write   : in  std_logic_vector (15 downto 0);
+    scanen   : in std_ulogic;
+    bypass   : in std_ulogic;
+    mbtdi    : in std_ulogic;
+    mbtdo    : out std_ulogic;
+    mbshft   : in std_ulogic;
+    mbcapt   : in std_ulogic;
+    mbupd    : in std_ulogic;
+    mbclk    : in std_ulogic;
+    mbrstn   : in std_ulogic;
+    mbcgate  : in std_ulogic;
+    mbpres   : out std_ulogic;
+    mbmuxo   : out std_logic_vector(5 downto 0)
+    );
+  end component;
+
   signal xenable, xwrite : std_logic_vector(15 downto 0);
   signal custominx,customoutx: std_logic_vector(syncram_customif_maxwidth downto 0);
+  signal dataoutx: std_logic_vector(155 downto 0);
 
 begin
 
   xenable <= enable when testen=0 or testin(TESTIN_WIDTH-2)='0' else (others => '0');
   xwrite <= write when testen=0 or testin(TESTIN_WIDTH-2)='0' else (others => '0');
+  dataout <= dataoutx;
 
   custominx(custominx'high downto custombits) <= (others => '0');
   custominx(custombits-1 downto 0) <= customin(custombits-1 downto 0);
@@ -127,11 +155,22 @@ begin
 --    end generate;
     cust1u : if tech = custom1 generate
       x0 : cust1_syncram156bw generic map (abits, testen)
-         port map (clk, address, datain, dataout, xenable, xwrite, testin);
+         port map (clk, address, datain, dataoutx, xenable, xwrite, testin);
     end generate;
     ut90u : if tech = ut90 generate
       x0 : ut90nhbd_syncram156bw generic map (abits)
-         port map (clk, address, datain, dataout, xenable, xwrite, testin(TESTIN_WIDTH-3));
+         port map (clk, address, datain, dataoutx, xenable, xwrite, testin(TESTIN_WIDTH-3));
+    end generate;
+    rhs65u : if tech = rhs65 generate
+      x0 : rhs65_syncram156bw generic map (abits)
+        port map (clk, address, datain, dataoutx, enable, write,
+                  testin(TESTIN_WIDTH-8), testin(TESTIN_WIDTH-3),
+                  custominx(0),customoutx(0),
+                  testin(TESTIN_WIDTH-4), testin(TESTIN_WIDTH-5), testin(TESTIN_WIDTH-6),
+                  customclk,
+                  testin(TESTIN_WIDTH-7),'0',
+                  customoutx(1), customoutx(7 downto 2));
+      customoutx(customoutx'high downto 8) <= (others => '0');
     end generate;
     customout(20*custombits-1 downto custombits) <= (others => '0');
     customout(custombits-1 downto 0) <= customoutx(custombits-1 downto 0);
@@ -146,20 +185,53 @@ begin
         wait;
       end process;
     end generate;
+    chk : if GRLIB_CONFIG_ARRAY(grlib_syncram_selftest_enable) /= 0 generate
+      chkblk: block
+        signal refdo: std_logic_vector(155 downto 0);
+        signal pren: std_ulogic;
+        signal prmask: std_logic_vector(15 downto 0);
+        signal paddr: std_logic_vector(abits-1 downto 0);
+      begin
+        rx : for i in 0 to 15 generate
+          x0 : generic_syncram generic map (abits, 8)
+            port map (clk, address, datain(i*8+7 downto i*8),
+                      refdo(i*8+7 downto i*8), write(i));
+          c0 : if i mod 4 = 0 generate
+            x0 : generic_syncram generic map (abits, 7)
+              port map (clk, address, datain(i/4*7+128+6 downto i/4*7+128),
+                        refdo(i/4*7+128+6 downto i/4*7+128), write(i));
+          end generate;                 -- c0
+        end generate;                   -- rx
+        p: process(clk)
+        begin
+          if rising_edge(clk) then
+            for x in 15 downto 0 loop
+              assert pren/='1' or prmask(x)/='1' or
+                (refdo(8*x+7 downto 8*x)=dataoutx(8*x+7 downto 8*x) and
+                 refdo(128+(x/4)*7+6 downto 128+(x/4)*7)=dataoutx(128+(x/4)*7+6 downto 128+(x/4)*7)) or
+                is_x(refdo) or is_x(paddr);
+            end loop;
+            pren <= not orv(write);
+            prmask <= enable;
+            paddr <= address;
+          end if;
+        end process;
+      end block;                        -- chkblk
+    end generate;                       -- chk
 -- pragma translate_on
   end generate;
 
   nos156 : if has_sram156bw(tech) = 0 generate
     rx : for i in 0 to 15 generate
       x0 : syncram generic map (tech, abits, 8, testen, custombits)
-        port map (clk, address, datain(i*8+7 downto i*8), 
-          dataout(i*8+7 downto i*8), enable(i), write(i), testin,
+        port map (clk, address, datain(i*8+7 downto i*8),
+          dataoutx(i*8+7 downto i*8), enable(i), write(i), testin,
                   customclk, customin((i+1)*custombits-1 downto i*custombits),
                   customout((i+1)*custombits-1 downto i*custombits));
-      c0 : if i mod 4 = 0 generate 
+      c0 : if i mod 4 = 0 generate
         x0 : syncram generic map (tech, abits, 7, testen, custombits)
-          port map (clk, address, datain(i/4*7+128+6 downto i/4*7+128), 
-            dataout(i/4*7+128+6 downto i/4*7+128), enable(i), write(i), testin,
+          port map (clk, address, datain(i/4*7+128+6 downto i/4*7+128),
+            dataoutx(i/4*7+128+6 downto i/4*7+128), enable(i), write(i), testin,
                     customclk, customin((i/4+17)*custombits-1 downto (i/4+16)*custombits),
                     customout((i/4+17)*custombits-1 downto (i/4+16)*custombits));
         end generate;

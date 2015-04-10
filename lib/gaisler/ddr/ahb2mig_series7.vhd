@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -90,7 +91,6 @@ architecture rtl of ahb2mig_series7 is
 
 type bstate_type is (idle, start, read_cmd, read_data, read_wait, read_output, write_cmd, write_burst);
 
-constant AHBDW       : integer := CFG_AHBDW;
 constant maxburst    : integer := 8;
 constant maxmigcmds  : integer := nbrmaxmigcmds(AHBDW);
 constant wrsteps     : integer := log2(32);
@@ -160,10 +160,6 @@ signal debug : std_logic := '0';
 signal size_to_watch : std_logic_vector(2 downto 0) := HSIZE_4WORD;
 
  component mig is
-   generic(
-     SIM_BYPASS_INIT_CAL : string := "OFF";
-     SIMULATION          : string := "FALSE"
-   );
    port (
     ddr3_dq              : inout std_logic_vector(63 downto 0);
     ddr3_addr            : out   std_logic_vector(13 downto 0);
@@ -673,9 +669,6 @@ begin
 
  gen_mig : if (USE_MIG_INTERFACE_MODEL /= true) generate
   MCB_inst : mig
-  generic map(
-    SIM_BYPASS_INIT_CAL => SIM_BYPASS_INIT_CAL,
-    SIMULATION          => SIMULATION)
   port map (
    ddr3_dq              => ddr3_dq,
    ddr3_dqs_p           => ddr3_dqs_p,

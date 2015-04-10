@@ -1,7 +1,6 @@
 
 This leon3 design is tailored to the Avnet Virtex4 LX25 Evaluation board:
 
-http://www.em.avnet.com/evk/home/0,1719,RID%253D0%2526CID%253D16863%2526CCD%253DUSA%2526SID%253D4746%2526DID%253DDF2%2526SRT%253D1%2526LID%253D0%2526PRT%253D0%2526PVW%253D%2526BID%253DDF2%2526CTP%253DEVK,00.html
 
 Design specifics:
 

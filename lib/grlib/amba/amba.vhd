@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -162,6 +163,26 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
   type ahb_mst_out_bus_vector is array (0 to NBUS-1) of ahb_mst_out_vector;
   type ahb_slv_out_bus_vector is array (0 to NBUS-1) of ahb_slv_out_vector;
 
+-------------------------------------------------------------------------------
+-- Misc. types shared between AMBA IP cores
+-------------------------------------------------------------------------------
+
+  type amba_stat_type is record
+    idle   : std_ulogic;                    -- HTRANS_IDLE
+    busy   : std_ulogic;                    -- HTRANS_BUSY
+    nseq   : std_ulogic;                    -- HTRANS_NONSEQ
+    seq    : std_ulogic;                    -- HTRANS_SEQ 
+    read   : std_ulogic;                    -- Read access
+    write  : std_ulogic;                    -- Write access
+    hsize  : std_logic_vector(5 downto 0);  -- 8WORD downto BYTE
+    ws     : std_ulogic;                    -- Wait state
+--    req    : std_ulogic;                    -- Req without gnt
+    retry  : std_ulogic;                    -- RETRY response
+    split  : std_ulogic;                    -- SPLIT response
+    spdel  : std_ulogic;                    -- Wait after SPLIT
+    locked : std_ulogic;                    -- Locked access
+    hmaster: std_logic_vector(3 downto 0);  -- master
+  end record;
 
 -- constants
   constant HTRANS_IDLE:   std_logic_vector(1 downto 0) := "00";
@@ -252,6 +273,9 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
   constant apb_slv_in_none : apb_slv_in_type := ((others => '0'), '0', (others => '0'),
                                                  '0', (others => '0'), (others => '0'),
                                                  '0', '0', '0', '0', ztestin);
+  constant amba_stat_none : amba_stat_type :=
+    ('0', '0', '0', '0', '0', '0', (others => '0'),
+     '0', '0', '0', '0', '0', (others => '0'));
 
 -------------------------------------------------------------------------------
 -- Subprograms
@@ -287,6 +311,8 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
   function ahb_membar_size (addrmask : ahb_addr_type) return integer;
 
   function ahb_iobar_size (addrmask : ahb_addr_type) return integer;
+
+  function apb_membar_size (addrmask : ahb_addr_type) return integer;
 
   function ahbdrivedata (hdata : std_logic_vector) return std_logic_vector;
 
@@ -477,7 +503,7 @@ component ahbxb is
     fourgslv    : integer                     := 0; --1=Single slave with single 4 GB bar
     l2en        : integer                     := 0; --enable l2 cache multiport decoding
     l2bhindex   : integer range 0 to NAHBSLV  := 0; --base index for the l2 cache slaves
-    l2num       : integer                     := 4; --ńumber of l2 caches in system
+    l2num       : integer                     := 4; --number of l2 caches in system
     l2linesize  : integer                     := 32;--number of bytes in an l2 cache line
     l2hmbsel    : integer                     := 0  --index of L2 memory back
         );
@@ -812,6 +838,11 @@ package body amba is
     return (4096 - addrmask) * 256;
   end;
 
+  function apb_membar_size (addrmask : ahb_addr_type) return integer is
+  begin
+    return ahb_iobar_size(addrmask);
+  end;
+  
   -- purpose: Duplicates 'hdata' to suite AHB data width. If the input vector's
   -- length exceeds AHBDW the low part is returned. 
   function ahbdrivedata (

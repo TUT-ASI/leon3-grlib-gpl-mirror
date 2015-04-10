@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -62,7 +63,7 @@ entity grethm is
     oepol          : integer range 0 to 1  := 0;
     scanen         : integer range 0 to 1  := 0;
     ft             : integer range 0 to 2  := 0;
-    edclft         : integer range 0 to 1  := 1;
+    edclft         : integer range 0 to 2  := 0;
     mdint_pol      : integer range 0 to 1  := 0;
     enable_mdint   : integer range 0 to 1  := 0;
     multicast      : integer range 0 to 1  := 0;

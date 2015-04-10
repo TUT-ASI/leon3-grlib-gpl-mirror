@@ -1,7 +1,5 @@
 
 
-
-
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
 -- Copyright (C) 2009 Aeroflex Gaisler
@@ -70,8 +68,9 @@ package config is
   constant CFG_TLB_REP : integer := 1;
   constant CFG_MMU_PAGE : integer := 0;
   constant CFG_DSU : integer := 0;
-  constant CFG_ITBSZ : integer := 0;
+  constant CFG_ITBSZ : integer := 0 + 64*0;
   constant CFG_ATBSZ : integer := 0;
+  constant CFG_AHBPF : integer := 0;
   constant CFG_LEON3FT_EN : integer := 0;
   constant CFG_IUFT_EN : integer := 0;
   constant CFG_FPUFT_EN : integer := 0;
@@ -81,6 +80,8 @@ package config is
   constant CFG_LEON3_NETLIST: integer := 0;
   constant CFG_DISAS : integer := 0 + 0;
   constant CFG_PCLOW : integer := 2;
+  constant CFG_NP_ASI : integer := 0;
+  constant CFG_WRPSR : integer := 0;
 -- AMBA settings
   constant CFG_DEFMST : integer := (0);
   constant CFG_RROBIN : integer := 1;
@@ -154,21 +155,37 @@ package config is
   constant CFG_CAN_SYNCRST : integer := 0;
   constant CFG_CANFT : integer := 0;
 
--- PCI interface
-  constant CFG_PCI : integer := 0;
-  constant CFG_PCIVID : integer := 16#0#;
-  constant CFG_PCIDID : integer := 16#0#;
-  constant CFG_PCIDEPTH : integer := 8;
-  constant CFG_PCI_MTF : integer := 1;
-
+-- GRPCI2 interface
+  constant CFG_GRPCI2_MASTER : integer := 0;
+  constant CFG_GRPCI2_TARGET : integer := 0;
+  constant CFG_GRPCI2_DMA : integer := 0;
+  constant CFG_GRPCI2_VID : integer := 16#0#;
+  constant CFG_GRPCI2_DID : integer := 16#0#;
+  constant CFG_GRPCI2_CLASS : integer := 16#0#;
+  constant CFG_GRPCI2_RID : integer := 16#0#;
+  constant CFG_GRPCI2_CAP : integer := 16#40#;
+  constant CFG_GRPCI2_NCAP : integer := 16#0#;
+  constant CFG_GRPCI2_BAR0 : integer := 0;
+  constant CFG_GRPCI2_BAR1 : integer := 0;
+  constant CFG_GRPCI2_BAR2 : integer := 0;
+  constant CFG_GRPCI2_BAR3 : integer := 0;
+  constant CFG_GRPCI2_BAR4 : integer := 0;
+  constant CFG_GRPCI2_BAR5 : integer := 0;
+  constant CFG_GRPCI2_FDEPTH : integer := 3;
+  constant CFG_GRPCI2_FCOUNT : integer := 2;
+  constant CFG_GRPCI2_ENDIAN : integer := 0;
+  constant CFG_GRPCI2_DEVINT : integer := 0;
+  constant CFG_GRPCI2_DEVINTMSK : integer := 16#0#;
+  constant CFG_GRPCI2_HOSTINT : integer := 0;
+  constant CFG_GRPCI2_HOSTINTMSK: integer := 16#0#;
+  constant CFG_GRPCI2_TRACE : integer := 0;
+  constant CFG_GRPCI2_TRACEAPB : integer := 0;
+  constant CFG_GRPCI2_BYPASS : integer := 0;
+  constant CFG_GRPCI2_EXTCFG : integer := (0);
 -- PCI arbiter
   constant CFG_PCI_ARB : integer := 0;
   constant CFG_PCI_ARBAPB : integer := 0;
   constant CFG_PCI_ARB_NGNT : integer := 4;
-
--- PCI trace buffer
-  constant CFG_PCITBUFEN: integer := 0;
-  constant CFG_PCITBUF : integer := 256;
 
 -- Spacewire interface
   constant CFG_SPW_EN : integer := 0;

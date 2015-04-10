@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -58,10 +59,10 @@ constant nctrl : integer := abits*2 + (TESTIN_WIDTH-2) + 2;
 
 signal gnd : std_ulogic;
 signal vgnd : std_logic_vector(dbits-1 downto 0);
-signal dataoutx  : std_logic_vector((dbits -1) downto 0);
+signal dataoutx, dataoutxx  : std_logic_vector((dbits -1) downto 0);
 signal databp, testdata : std_logic_vector((dbits -1) downto 0);
 signal renable2 : std_ulogic;
-constant SCANTESTBP : boolean := (testen = 1) and (tech /= 0) and (tech /= ut90);
+constant SCANTESTBP : boolean := (testen = 1) and syncram_add_scan_bypass(tech)=1;
 constant iwrfst : integer := (1-syncram_2p_write_through(tech)) * wrfst;
 signal xrenable,xwrite : std_ulogic;
 
@@ -73,6 +74,7 @@ begin
 
   xrenable <= renable and not testin(TESTIN_WIDTH-2) when testen/=0 else renable;
   xwrite <= write and not testin(TESTIN_WIDTH-2) when testen/=0 else write;
+  dataout <= dataoutxx;
 
   no_wrfst : if iwrfst = 0 generate
     scanbp : if SCANTESTBP generate
@@ -92,10 +94,10 @@ begin
       end process;
       dmuxout : for i in 0 to dbits-1 generate
         x0 : grmux2 generic map (tech)
-        port map (dataoutx(i), databp(i), testin(TESTIN_WIDTH-1), dataout(i));
+        port map (dataoutx(i), databp(i), testin(TESTIN_WIDTH-1), dataoutxx(i));
       end generate;
     end generate;
-    noscanbp : if not SCANTESTBP generate dataout <= dataoutx; end generate;
+    noscanbp : if not SCANTESTBP generate dataoutxx <= dataoutx; end generate;
     -- Write contention check (if applicable)
     renable2 <= '0' when ((sepclk = 0 and syncram_2p_dest_rw_collision(tech) = 1) and
                           (renable and write) = '1' and raddress = waddress) else xrenable;
@@ -117,8 +119,8 @@ begin
         comb : process(r, dataoutx, testin) begin
           if (SCANTESTBP and (testin(TESTIN_WIDTH-1) = '1')) or
             (((r.write and r.renable) = '1') and (r.raddr = r.waddr)) then
-            dataout <= r.datain;
-          else dataout <= dataoutx; end if;
+            dataoutxx <= r.datain;
+          else dataoutxx <= dataoutx; end if;
         end process;
         reg : process(wclk) begin
           if rising_edge(wclk) then
@@ -145,8 +147,8 @@ begin
             col <= '1'; renable2 <= '0';
           end if;
           if (SCANTESTBP and (testin(TESTIN_WIDTH-1) = '1')) or mux = '1' then
-            dataout <= rdatain;
-          else dataout <= dataoutx; end if;
+            dataoutxx <= rdatain;
+          else dataoutxx <= dataoutx; end if;
         end process;
         reg : process(wclk) begin
           if rising_edge(wclk) then
@@ -230,13 +232,31 @@ begin
 		   wclk, waddress, datain, xwrite);
   end generate;
 
+  igl2 : if tech = igloo2 generate
+    x0 : igloo2_syncram_2p generic map (abits, dbits, sepclk)
+         port map (rclk, renable2, raddress, dataoutx,
+		   wclk, waddress, datain, xwrite);
+  end generate;
+
   saed : if tech = saed32 generate
 --    x0 : saed32_syncram_2p generic map (abits, dbits, sepclk)
 --         port map (rclk, renable2, raddress, dataoutx,
 --		   wclk, waddress, datain, xwrite);
        x0 : generic_syncram_2p generic map (abits, dbits, sepclk)
          port map (rclk, wclk, raddress, waddress, datain, write, dataoutx);
+  end generate;
 
+  rhs : if tech = rhs65 generate
+    x0 : rhs65_syncram_2p generic map (abits, dbits, sepclk)
+         port map (rclk, renable, raddress, dataoutx,
+		   wclk, waddress, datain, write,
+                   testin(TESTIN_WIDTH-8),testin(TESTIN_WIDTH-3),
+                   custominx(0),customoutx(0),
+                   testin(TESTIN_WIDTH-4),testin(TESTIN_WIDTH-5),testin(TESTIN_WIDTH-6),
+                   customclk,
+                   testin(TESTIN_WIDTH-7),'0',customoutx(1),
+                   customoutx(7 downto 2));
+    customoutx(customoutx'high downto 8) <= (others => '0');
   end generate;
 
   dar : if tech = dare generate
@@ -386,6 +406,33 @@ begin
       severity failure;
     wait;
   end process;
+  chk : if GRLIB_CONFIG_ARRAY(grlib_syncram_selftest_enable) /= 0 generate
+    chkblk: block
+      signal refdo,pwdata: std_logic_vector(dbits-1 downto 0);
+      signal pren,bpen: std_ulogic;
+      signal praddr,pwaddr: std_logic_vector(abits-1 downto 0);
+    begin
+      refram : generic_syncram_2p generic map (abits, dbits, 1)
+        port map (rclk, wclk, raddress, waddress, datain, write, refdo);
+      p: process(rclk)
+      begin
+        if rising_edge(rclk) then
+          assert pren/='1' or (bpen='0' and refdo=dataoutxx) or
+            (bpen='1' and pwdata=dataoutxx) or is_x(refdo) or is_x(praddr)
+            report "Read mismatch addr=" & tost(praddr) & " impl=" & tost(dataoutxx) & " ref=" & tost(refdo)
+            severity error;
+          pren <= renable;
+          praddr <= raddress;
+          pwdata <= datain;
+          if wrfst/=0 and renable='1' and write='1' and raddress=waddress then
+            bpen <= '1';
+          else
+            bpen <= '0';
+          end if;
+        end if;
+      end process;
+    end block;
+  end generate;
 -- pragma translate_on
 
 end;

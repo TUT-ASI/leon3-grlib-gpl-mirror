@@ -32,7 +32,7 @@ SET verilogsim = false
 SET vhdlsim = true
 # END Project Options
 # BEGIN Select
-SELECT MIG family Xilinx,_Inc. 3.6.1
+SELECT MIG xilinx.com:ip:mig:3.61
 # END Select
 # BEGIN Parameters
 CSET component_name=mig_36_1

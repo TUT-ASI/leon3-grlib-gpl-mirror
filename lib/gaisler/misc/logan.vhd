@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -315,7 +316,7 @@ begin
     end if;
 
     if rstn = '0' then
-      v.armed := '0'; v.trigged := '0'; v.finished := '0'; v.trig_demet := '0'; v.fin_demet := '0';
+      v.armed := '0'; v.trigged := '0'; v.finished := '0'; v.trig_demet := '0'; v.fin_demet := '0'; 
       v.counter := (others => '0');
       v.divcount := X"0001";
       v.qualifier := (others => '0');
@@ -338,7 +339,7 @@ begin
     
     v.sample := '0';
     if tr.armed = '0' then 
-      v.trigged := '0'; v.counter := (others => '0'); v.curr_tl := 0;
+      v.trigged := '0'; v.counter := (others => '0'); v.curr_tl := 0; v.match_count := (others => '0');
     end if;
 
     -- Synch arm signal

@@ -13,6 +13,20 @@ NOTE2: The ML510 has a bug that prevents the use of 64 bit unbuffered DDR2.
 NOTE3: To intialize the correct DDR2 delay values, issue the GRMON command:
        ddr2delay scan (see GRMON example below)
 
+NOTE4: Synplify versions H/I/J (tested with J-2015.03) do not correctly
+       synthesize this design. The tool adds a LUT1 between the CLK2X
+       output and a BUFG in the Virtex5 CLKGEN. XST can successfully
+       synthesize the design. Synplify F versions can also be used.
+
+To simulate the design with ModelSim (or Aldec Riviera):
+
+  make install-unisim
+  make vsim (make riviera)
+  make compile-unisim
+  make vsim (skip this step if you are using Aldec Riviera)
+  make vsim-launch (make riviera-launch)
+
+
 Design specifics:
 
 * System reset is mapped to the CPU RESET button
@@ -56,6 +70,12 @@ Design specifics:
 * The GRETH core is enabled and runs without problems at 100 Mbit.
   The Ethernet debug link is enabled, default IP is 192.168.0.52.
 
+* The second GRETH core is enabled and uses the high-speed serial SGMII bridge 
+  to connect to the PHY. Due to mapping constraints of the FPGA, other cores 
+  using a high number of global clock buffers can't be enabled contextually to 
+  the second GRETH core (e.g. the SVGA core and relative constraints). The 
+  Ethernet debug link is enabled on this core too, default IP is 192.168.0.52.
+
 * DDR2 is supported and runs OK at 200 MHz. The default setting is
   to run the DDR controller on 2x the system clock. This leads to
   lower latencies since synchronization registers are not needed. 
@@ -93,15 +113,15 @@ Design specifics:
   to the main bus can be deactivated via xconfig. The I2C master connected
   to the video IIC bus is instantiated when a VGA core is included.
 
-* The SVGACTRL core is enabled and is connected to the DVI 
+* The SVGACTRL core can be enabled and is connected to the DVI 
   transmitter. When one, or both, of the VGA cores is enabled an extra 
   I2C master is automatically instantiated. This I2C master is utilized
   to initialize the DVI transmitter. A special GRMON command exists to
   initialize the Chrontel CH7301C. See below for an example.
   Adjustment of the delay before latching input data may be needed. This
   can be done using the 'i2c 1 dvi delay [dec|inc]' command. 
-  NOTE: If the the VGA cores are disabled the constraints on the VGA 
-  clocks must be removed from the leon3mp.ucf file.
+  NOTE: If the the VGA cores are enabled the constraints on the VGA 
+  clocks must be uncommented from the leon3mp.ucf file.
 
 * SPICTRL is attached to the SPI Flash memory device. To communicate with 
   the memory device, the core needs to be initialized to generate a SPI 

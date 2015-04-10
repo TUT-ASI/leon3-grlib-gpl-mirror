@@ -16,7 +16,7 @@ main()
   
   base_test();
       
-  //greth_test(0x800c0000);
+  greth_test(0x800c0000);
 
   /* Read RGMII status and buffers */
   rgmiistatus = *rgmiistatusp;

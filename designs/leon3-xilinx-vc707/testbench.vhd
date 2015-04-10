@@ -4,6 +4,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -19,7 +20,6 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 ------------------------------------------------------------------------------
-
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -495,9 +495,13 @@ begin
    iuerr : process
    begin
      wait for 210 us; -- This is for proper DDR3 behaviour durign init phase not needed durin simulation
-     wait on led(3);  -- DDR3 Memory Init ready
+     if (USE_MIG_INTERFACE_MODEL /= true) then
+       wait on led(3);  -- DDR3 Memory Init ready
+     end if;
      wait for 5000 ns;
-     if to_x01(errorn) = '1' then wait on errorn; end if;
+     if to_x01(errorn) = '1' then 
+       wait on errorn;
+     end if;
      assert (to_x01(errorn) = '1')
        report "*** IU in error mode, simulation halted ***"
           severity failure ; -- this should be a failure

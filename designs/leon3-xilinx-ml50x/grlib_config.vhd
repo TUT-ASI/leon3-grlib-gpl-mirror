@@ -2,6 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -64,5 +65,10 @@ constant GRLIB_CONFIG_ARRAY : grlib_config_array_type := (
   grlib_debug_mask => 0,
   grlib_techmap_strict_ram => 0,
   others => 0);
+
+-- CFG_GRETH_SGMII_MODE: set to 0 to connect to the Ethernet PHY via GMII signals.
+-- Set to 1 to connect to the Ethernet PHY in SGMII mode through high-speed serial
+-- signals.
+constant CFG_GRETH_SGMII_MODE : integer := 0;
 
 end;

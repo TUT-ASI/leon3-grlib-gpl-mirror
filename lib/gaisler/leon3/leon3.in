@@ -36,6 +36,8 @@ if [ "$CONFIG_LEON3" = "y" ]; then
     define_hex  CONFIG_CACHE_FIXED 0
     define_bool CONFIG_MMU_ENABLE n
     define_bool CONFIG_DSU_ENABLE n
+    define_bool CONFIG_NP_ASI n
+    define_bool CONFIG_PWRPSR n
   fi
   if [ "$CONFIG_LEON3_GP" = "y" ]; then
     define_int  CONFIG_IU_NWINDOWS 8
@@ -79,6 +81,8 @@ if [ "$CONFIG_LEON3" = "y" ]; then
     define_bool CONFIG_DSU_ITRACE y
     define_bool CONFIG_DSU_ITRACESZ4 y
     define_bool CONFIG_DSU_ATRACESZ4 y
+    define_bool CONFIG_NP_ASI y
+    define_bool CONFIG_PWRPSR y
   fi
   if [ "$CONFIG_LEON3_HP" = "y" ]; then
     define_int  CONFIG_IU_NWINDOWS 8
@@ -124,6 +128,8 @@ if [ "$CONFIG_LEON3" = "y" ]; then
     define_bool CONFIG_DSU_ITRACE y
     define_bool CONFIG_DSU_ITRACESZ4 y
     define_bool CONFIG_DSU_ATRACESZ4 y
+    define_bool CONFIG_NP_ASI y
+    define_bool CONFIG_PWRPSR y
   fi
   if [ "$CONFIG_LEON3_CUSTOM" = "y" ]; then
     mainmenu_option next_comment
@@ -151,6 +157,8 @@ if [ "$CONFIG_LEON3" = "y" ]; then
       int 'Hardware watchpoints' CONFIG_IU_WATCHPOINTS 0
       bool 'Enable power-down mode ' CONFIG_PWD
       hex ' Reset start address (addr[31:12]) ' CONFIG_IU_RSTADDR 00000
+      bool 'SPARC V8E non-privileged ASI access' CONFIG_NP_ASI
+      bool 'SPARC V8E partial Write %psr (WRPSR)' CONFIG_WRPSR
     endmenu
     mainmenu_option next_comment
     comment 'Floating-point unit'
@@ -158,8 +166,7 @@ if [ "$CONFIG_LEON3" = "y" ]; then
       if [ "$CONFIG_FPU_ENABLE" = "y" ]; then
         choice 'FPU core' \
 	  "GRFPU		CONFIG_FPU_GRFPU \
-	   GRFPU-LITE	CONFIG_FPU_GRFPULITE \
-	  Meiko		CONFIG_FPU_MEIKO" GRFPU
+	   GRFPU-LITE	CONFIG_FPU_GRFPULITE" GRFPU
         if [ "$CONFIG_FPU_GRFPU" = "y" ]; then
   	  choice 'GRFPU multiplier' \
    	   "Inferred              CONFIG_FPU_GRFPU_INFMUL \
@@ -328,6 +335,7 @@ if [ "$CONFIG_LEON3" = "y" ]; then
 	  4		CONFIG_DSU_ITRACESZ4 \
 	  8		CONFIG_DSU_ITRACESZ8 \
 	  16		CONFIG_DSU_ITRACESZ16" 1
+        bool 'Enable two-port instruction trace buffer' CONFIG_DSU_ITRACE_2P
         fi
         bool 'AHB trace buffer' CONFIG_DSU_ATRACE
         if [ "$CONFIG_DSU_ATRACE" = "y" ]; then
@@ -337,6 +345,8 @@ if [ "$CONFIG_LEON3" = "y" ]; then
 	  4		CONFIG_DSU_ATRACESZ4 \
 	  8		CONFIG_DSU_ATRACESZ8 \
 	  16		CONFIG_DSU_ATRACESZ16" 1
+        bool 'Enable AHB trace buffer filters ' CONFIG_DSU_AFILT
+        bool 'Enable statistics outputs       ' CONFIG_DSU_ASTAT
         fi
       fi
     endmenu

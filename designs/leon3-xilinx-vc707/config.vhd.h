@@ -58,8 +58,9 @@
   constant CFG_TLB_REP  : integer := CONFIG_TLB_REP;
   constant CFG_MMU_PAGE : integer := CONFIG_MMU_PAGE;
   constant CFG_DSU   	: integer := CONFIG_DSU_ENABLE;
-  constant CFG_ITBSZ 	: integer := CFG_DSU_ITB;
+  constant CFG_ITBSZ 	: integer := CFG_DSU_ITB + 64*CONFIG_DSU_ITRACE_2P;
   constant CFG_ATBSZ 	: integer := CFG_DSU_ATB;
+  constant CFG_AHBPF    : integer := CFG_DSU_AHBPF;
   constant CFG_LEON3FT_EN   : integer := CONFIG_LEON3FT_EN;
   constant CFG_IUFT_EN      : integer := CONFIG_IUFT_EN;
   constant CFG_FPUFT_EN     : integer := CONFIG_FPUFT;
@@ -69,6 +70,22 @@
   constant CFG_LEON3_NETLIST: integer := CONFIG_LEON3_NETLIST;	
   constant CFG_DISAS    : integer := CONFIG_IU_DISAS + CONFIG_IU_DISAS_NET;
   constant CFG_PCLOW    : integer := CFG_DEBUG_PC32;
+  constant CFG_NP_ASI   : integer := CONFIG_NP_ASI;
+  constant CFG_WRPSR   : integer := CONFIG_WRPSR;
+
+-- L2 Cache
+  constant CFG_L2_EN    : integer := CONFIG_L2_ENABLE;
+  constant CFG_L2_SIZE	: integer := CFG_L2_SZ;
+  constant CFG_L2_WAYS	: integer := CFG_L2_ASSO;
+  constant CFG_L2_HPROT	: integer := CONFIG_L2_HPROT;
+  constant CFG_L2_PEN  	: integer := CONFIG_L2_PEN;
+  constant CFG_L2_WT   	: integer := CONFIG_L2_WT;
+  constant CFG_L2_RAN  	: integer := CONFIG_L2_RAN;
+  constant CFG_L2_SHARE	: integer := CONFIG_L2_SHARE;
+  constant CFG_L2_LSZ  	: integer := CFG_L2_LINE;
+  constant CFG_L2_MAP  	: integer := 16#CONFIG_L2_MAP#;
+  constant CFG_L2_MTRR 	: integer := CONFIG_L2_MTRR;
+  constant CFG_L2_EDAC	: integer := CONFIG_L2_EDAC;
 
 -- AMBA settings
   constant CFG_DEFMST  	  : integer := CONFIG_AHB_DEFMST;
@@ -265,7 +282,7 @@
 
 -- SPI memory controller
   constant CFG_SPIMCTRL            : integer := CONFIG_SPIMCTRL;
-  constant CFG_SPIMCTRL_SDCARD     : integer := CONFIG_SPIMCTRL_SDCARD;
+  constant CFG_SPIMCTRL_SDCARD     : integer := 0;
   constant CFG_SPIMCTRL_READCMD    : integer := 16#CONFIG_SPIMCTRL_READCMD#;
   constant CFG_SPIMCTRL_DUMMYBYTE  : integer := CONFIG_SPIMCTRL_DUMMYBYTE;
   constant CFG_SPIMCTRL_DUALOUTPUT : integer := CONFIG_SPIMCTRL_DUALOUTPUT;
@@ -287,6 +304,13 @@
   constant CFG_SPICTRL_MAXWLEN : integer := CONFIG_SPICTRL_MAXWLEN;
   constant CFG_SPICTRL_SYNCRAM : integer := CONFIG_SPICTRL_SYNCRAM;
   constant CFG_SPICTRL_FT      : integer := CONFIG_SPICTRL_FT;
+
+-- Dynamic Partial Reconfiguration
+  constant CFG_PRC : integer := CONFIG_PARTIAL;
+  constant CFG_CRC_EN : integer := CONFIG_CRC;
+  constant CFG_WORDS_BLOCK : integer := CONFIG_BLOCK;
+  constant CFG_DCM_FIFO : integer := CONFIG_DCM_FIFO;
+  constant CFG_DPR_FIFO : integer := CFG_DPRFIFO;
 
 -- GRLIB debugging
   constant CFG_DUART    : integer := CONFIG_DEBUG_UART;

@@ -47,6 +47,14 @@ TIMESPEC "TS_clk2" = PERIOD "clk2" 5.000 ns HIGH 50.00%;
 # Allow non dedicated clock routing (Onlu needed if clock mux is used)
 PIN "rgmii0/useclkmux0.tecclkmux.clkmux1000/tec.xil.buf/buf.O" CLOCK_DEDICATED_ROUTE = FALSE;
 
+# Ethernet PHY LOC to ease placement
+INST "rgmiirgmii0/no_clk_mux0.rgmii_tx_clk/xil.xil0/s6.c_dm" LOC = OLOGIC_X17Y67;
+INST "rgmii0/rgmii_tx_ctl/xil.xil0/s6.c_dm" LOC = OLOGIC_X17Y30;
+INST "rgmii0/rgmii_txd[0].ddr_oreg0/xil.xil0/s6.c_dm" LOC  = OLOGIC_X17Y29;
+INST "rgmii0/rgmii_txd[1].ddr_oreg0/xil.xil0/s6.c_dm" LOC  = OLOGIC_X17Y57;
+INST "rgmii0/rgmii_txd[2].ddr_oreg0/xil.xil0/s6.c_dm" LOC  = OLOGIC_X17Y66;
+INST "rgmii0/rgmii_txd[3].ddr_oreg0/xil.xil0/s6.c_dm" LOC  = OLOGIC_X17Y79;
+
 # -- GTX clock inout
 # Only used when external GTX clock is used
 #NET "clk125" TNM_NET = "clk125";
