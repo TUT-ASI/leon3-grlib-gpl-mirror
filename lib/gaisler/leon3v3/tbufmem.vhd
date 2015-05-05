@@ -43,7 +43,9 @@ entity tbufmem is
   port (
     clk : in std_ulogic;
     di  : in tracebuf_in_type;
-    do  : out tracebuf_out_type);
+    do  : out tracebuf_out_type;
+    testin : in std_logic_vector(TESTIN_WIDTH-1 downto 0)
+    );
 
 
 end;
@@ -53,33 +55,27 @@ architecture rtl of tbufmem is
 constant ADDRBITS : integer := 10 + log2(tbuf) - 4;
 signal enable : std_logic_vector(1 downto 0);
 
-function getnrams return integer is
-  variable v: integer;
-begin
-  v := 2;
-  if dwidth > 32 then v:=v+1; end if;
-  if dwidth > 64 then v:=v+1; end if;
-  return v;
-end getnrams;
-constant nrams: integer := getnrams;
-  
+
 begin
 
   enable <= di.enable & di.enable;
   mem32 : for i in 0 to 1 generate  -- basic 128 buffer
-    ram0 : syncram64 generic map (tech => tech, abits => addrbits, testen => testen)
+    ram0 : syncram64 generic map (tech => tech, abits => addrbits, testen => testen, custombits => memtest_vlen)
       port map ( clk, di.addr(addrbits-1 downto 0), di.data(((i*64)+63) downto (i*64)),
-          do.data(((i*64)+63) downto (i*64)), enable ,di.write(i*2+1 downto i*2), di.diag);
+          do.data(((i*64)+63) downto (i*64)), enable ,di.write(i*2+1 downto i*2), testin
+                 );
   end generate;
   mem64 : if dwidth > 32 generate -- extra data buffer for 64-bit bus
-    ram0 : syncram generic map (tech => tech, abits => addrbits, dbits => 32, testen => testen)
+    ram0 : syncram generic map (tech => tech, abits => addrbits, dbits => 32, testen => testen, custombits => memtest_vlen)
       port map ( clk, di.addr(addrbits-1 downto 0), di.data((128+31) downto 128),
-          do.data((128+31) downto 128), di.enable, di.write(7), di.diag);
+          do.data((128+31) downto 128), di.enable, di.write(7), testin
+                 );
   end generate;
   mem128 : if dwidth > 64 generate -- extra data buffer for 128-bit bus
-    ram0 : syncram64 generic map (tech => tech, abits => addrbits, testen => testen)
+    ram0 : syncram64 generic map (tech => tech, abits => addrbits, testen => testen, custombits => memtest_vlen)
       port map ( clk, di.addr(addrbits-1 downto 0), di.data((128+95) downto (128+32)),
-          do.data((128+95) downto (128+32)), enable ,di.write(6 downto 5), di.diag);
+          do.data((128+95) downto (128+32)), enable ,di.write(6 downto 5), testin
+                 );
   end generate;
 
   nomem64 : if dwidth < 64 generate -- no extra data buffer for 64-bit bus

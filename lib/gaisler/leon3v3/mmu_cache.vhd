@@ -144,9 +144,9 @@ begin
   -- MMU
   mmugen : if mmuen = 1 generate
     m0 : mmu
-      generic map (memtech, itlbnum, dtlbnum, tlb_type, tlb_rep, mmupgsz, 1)
-      port map (rst, clk, mmudci, mmudco, mmuici, mmuico, mcmmo, mcmmi,
-                gndv(0), gndv(1 downto 0), open);
+      generic map (memtech, itlbnum, dtlbnum, tlb_type, tlb_rep, mmupgsz, memtest_vlen)
+      port map (rst, clk, mmudci, mmudco, mmuici, mmuico, mcmmo, mcmmi, ahbi.testin
+                );
   end generate;
   nommu : if mmuen = 0 generate
     mcmmi <= mci_zero; mmudco <= mmudco_zero; mmuico <= mmuico_zero;

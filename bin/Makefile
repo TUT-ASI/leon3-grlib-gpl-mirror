@@ -1,12 +1,12 @@
-VER=$(VNAME)1.4.0
-BID=4154
+VER=$(VNAME)1.4.1
+BID=4156
 CC=gcc
 SED=sed
 
 ASICLIBS = ihp25 sgb25vrh ut025crh virage rh_lib18t rh_lib18t_io2 rh_lib13t\
 	atc18 artisan umc18 virage90 tsmc90 dare nextreme atc18rha_cell smic13 \
 	tm65gplus st65lp st65gp cmos9sf nextreme2 gf65g saed32
-FPGALIBS = apa proasic3 axcelerator ec fusion unisim secureip unimacro altera altera_mf \
+FPGALIBS = apa proasic3 axcelerator ec fusion unisim virtex virtex5 secureip unimacro altera altera_mf \
 	 stratixii eclipsee cycloneiii stratixiii synplify simprim stratixiv \
 	proasic3e proasic3l smartfusion2
 
@@ -33,16 +33,38 @@ DIRADD += leon3v1 leon3ftv1 grfpcv1 grlfpcv1 grfpcft grlfpcft
 endif
 endif
 
+# Target technology libraries and techmap
 ifeq ("$(TECHLIBS)","")
 TECHLIBS=$(FPGALIBS) $(ASICLIBS)
 endif
+# The unisim techmap in GRLIB has been divided into several parts since
+# new releases of the Xilinx libs lack support for the older technologies.
+# The hack below expands techlibs for technologies that previously only
+# required unisim but now also require the techmap/virtex directory
+ifneq (,$(findstring unisim,$(TECHLIBS)))
+# Virtex2, Virtex4, Spartan3, Spartan3e and Spartan6 currently depend
+# on techmap/virtex
+ifneq (,$(filter Virtex2 Virtex4 Spartan3 Spartan-3A-DSP Spartan3E Spartan6,$(TECHNOLOGY)))
+ifeq (,$(findstring virtex,$(TECHLIBS)))
+TECHLIBS+=virtex
+endif
+endif
+endif
+
+# Option to avoid scan of tech/, useful when tech libraries are compiled
+# with separate tool:
+ifeq ("$(SKIP_SIM_TECHLIBS)","")
 XTECHLIBS = $(TECHLIBS:%=tech/% )
+endif
 SIMLIBS = hynix micron cypress
-ACTELLIBS = apa apa3 axcelerator proasic3 fusion smartfusion2
-XILINXLIBS = unisim simprim unimacro
+ACTELLIBS = apa apa3 axcelerator proasic3 proasic3e proasic3l fusion smartfusion2
+XILINXLIBS = unisim simprim unimacro virtex virtex5
 ALTERALIBS = altera_mf stratixii altera cycloneiii stratixiii
 ALTERAFILES = $(ALTERALIBS:%=lib/techmap/%) $(RMCOMLIBS:%=lib/tech/%) netlists/altera
 LATTICELIBS = ec
+
+
+
 BRMLIBS = core1553bbc core1553brm core1553brt gr1553
 COREPCILIB = corePCIF
 CONTRIBLIBS = openchip gleichmann contrib sun
@@ -55,19 +77,21 @@ RMFTLIBSX = $(RMFTLIBS:%=lib/techmap/%) $(RMFTLIBS:%=lib/tech/%)
 RMCOMLIBSX = $(RMCOMLIBS:%=lib/techmap/%) $(RMCOMLIBS:%=lib/tech/%)
 RMFPGALIBSX = $(ASICLIBS:%=lib/techmap/%) $(ASICLIBS:%=lib/tech/%)
 
-VHDLP = vhdlp -s -work
-SONATALIBSKIP = pere05
-
 ALIB = alib
 ACOM = acom -quiet $(ACOMOPT) -work
 ALOG = alog -quiet $(ALOGOPT) -work
 AVHDL = avhdl
 
 VLIB = vlib
+ifeq ("$(GRLIB_SIMULATOR)", "ALDEC")
+VCOM = vcom -incr -nowarn ELAB1_0026 -nowarn COMP96_0259 -quiet $(VCOMOPT) -93
+VLOG = vlog -incr -v2k5 -quiet $(VLOGOPT)
+SVLOG = vlog -incr -quiet $(VLOGOPT)
+else
 VCOM = vcom -quiet $(VCOMOPT) -93
 VLOG = vlog -quiet $(VLOGOPT)
-VSIM = vsim $(VSIMOPT)
-
+SVLOG = $(VLOG)
+endif
 
 OS = `uname`
 
@@ -91,6 +115,8 @@ XDIRSKIP= $(YDIRSKIP:%=%|) $(LIBSKIP:%=%|) dummy
 endif
 
 XFILESKIP = $(FILESKIP:%=%|) $(LIBSKIP:%=*_%.vhd|) dummy
+# Note that XFILESKIP is updated in Xilinx targets below
+
 
 # GRLIB_NHCPU defines # of CPUs available on host for synthesis, value
 # may be used in script generation
@@ -109,7 +135,6 @@ help:
 	@echo " make riviera-launch       : start riviera"
 	@echo " make vsim-launch          : start modelsim"
 	@echo " make ncsim-launch         : compile design using ncsim"
-	@echo " make sonata-launch        : compile design using sonata"
 	@echo " make actel-launch         : start Actel Designer for current project"
 	@echo " make ise-launch           : start ISE project navigator for XST project"
 	@echo " make ise-launch-synp      : start ISE project navigator for synplify project"
@@ -126,7 +151,6 @@ help:
 	@echo " make avhdl           : compile design using active-hdl gui mode"
 	@echo " make vsimsa          : compile design using active-hdl batch mode"
 	@echo " make riviera         : compile design using riviera"
-	@echo " make sonata          : compile design using sonata"
 	@echo " make vsim            : compile design using modelsim"
 	@echo " make ncsim           : compile design using ncsim"
 	@echo " make ghdl            : compile design using GHDL"
@@ -177,22 +201,6 @@ ahbrom.vhd:
 	sparc-elf-objcopy -O binary $(FILE) ahbrom.bin
 	./ahbrom ahbrom.bin ahbrom.vhd
 
-#########    Symphony-EDA Sonata targets   ############
-
-make.son: compile.son
-sonata sonata/compiled : make.son
-	@make -f make.son sonata-compile
-	@touch sonata/compiled
-
-sonata-run : sonata/compiled
-	vhdle -ini sonata.sws -work sonata -breakon FAILURE -r 1ps testbench
-
-sonata-launch : sonata/compiled
-	sonata sonata.sws
-
-sonata-clean:
-	-rm -rf *\.sym sonata.sws sonata symphony.ini symphony.sws tmp.son
-
 #########    Active-HDL batch mode targets   ############
 
 vsimsa: compile.vsim
@@ -239,9 +247,9 @@ avhdl-launch:
 avhdl-clean:
 	-rm -rf work avhdl.tcl vsimsa.cfg wave.asdb
 
-#########    Riviera targets   ############
+#########    Riviera targets    ############
 
-riviera: GRLIB_SIMULATOR = ALDEC
+ifeq ("$(GRLIB_SIMULATOR)", "ALDEC")
 riviera: make.riviera
 	@MTI_DEFAULT_LIB_TYPE=0 vsimsa -quiet -do "do libs.do; quit"
 	make -f make.riviera
@@ -260,8 +268,44 @@ else
 	@vsim $(VSIMOPT)
 endif
 
+else
+### Riviera targets using WS
+
+riviera_ws: riviera_ws_create.do
+	vsimsa -quiet -do "do riviera_ws_create.do; quit"
+
+riviera: riviera_ws
+	vsimsa -quiet -do "workspace.open riviera_ws/riviera_ws.rwsp; workspace.compile; quit"
+
+ifeq ("$(ASIMOPT)","")
+ASIMOPT = $(VSIMOPT)
+endif
+
+# Allow to override
+ifeq ("$(RIVIERA_DO)","")
+RIVIERA_DO = workspace.open riviera_ws/riviera_ws.rwsp; simulation.initialize $(SIMTOP)
+endif
+
+riviera-run: riviera_ws
+	cp *.srec riviera_ws/
+ifeq ("$(VSIMOPT)","")
+	vsimsa -c -do "$(RIVIERA_DO); do $(realpath $(GRLIB))/bin/runvsim.do"
+else
+	vsimsa -c $(ASIMOPT) -do "$(RIVIERA_DO); $(ASIMDO)" 
+endif
+
+riviera-launch: riviera_ws
+	cp *.srec riviera_ws/
+ifeq ("$(VSIMOPT)","")
+	riviera -do "$(RIVIERA_DO); do $(realpath $(GRLIB))/bin/runvsim.do"
+else
+	riviera $(ASIMOPT) -do "$(RIVIERA_DO); $(ASIMDO)"
+endif
+
+endif ### end of Riviera targets using WS
+
 riviera-clean:
-	-rm -rf riviera vsimsa.cfg wave.asdb riviera.do library.cfg .riviera_project rlibs.do compile.riviera make.riviera dataset.asdb
+	-rm -rf riviera_ws riviera_ws_*.do vsimsa.cfg wave.asdb library.cfg .riviera_project rlibs.do compile.riviera make.riviera dataset.asdb
 
 #########    Alint targets   ############
 
@@ -505,11 +549,6 @@ GRLIB_XIL_PN_Simulator=ISim \(VHDL/Verilog\)
 endif
 endif
 
-ifeq ("$(GRLIB_SIMULATOR)", "ALDEC")
-VCOM += -incr -nowarn ELAB1_0026 -nowarn COMP96_0259
-VLOG += -incr
-endif
-
 ## End of Xilinx ISE project properties
 
 NUCF = $(UCF:%=-uc % )
@@ -576,7 +615,6 @@ $(TOP).xst: compile.xst
 	done
 	@$(GRLIB)/bin/xstrun $(TOP) $(TOP).vhd  $(DEVICE) >> $(TOP).xst
 	@echo -ofn $(TOP) $(XSTOPT) -define {XSTDUMMY $(SYNPVLOGDEFS)} -sd $(GRLIB)/netlists/xilinx/$(NETLISTTECH) >> $(TOP).xst
-	@echo  $(TOP).xst
 
 ise-xstmod :
 	$(GRLIB)/bin/xstmod $(CORE) $(CORE).vhd $(DEVICE) vhdl  > tmp.xst
@@ -676,14 +714,33 @@ ise-clean xst-clean:
 
 UNISIM = $(XILINX)/vhdl/src/unisims
 UNISIMFILES = unisim_VPKG.vhd unisim_VCOMP.vhd unisim_VITAL.vhd \
-	unisim_virtex5_SMODEL.vhd secureip/MCB.vhd secureip/GTXE1.vhd \
-	secureip/GTP_DUAL.vhd secureip/GTPA1_DUAL.vhd secureip/GT11.vhd \
-	secureip/GT11CLK.vhd secureip/GT11CLK_MGT.vhd secureip/GT11_CUSTOM.vhd \
-	secureip/GT11_DUAL.vhd secureip/GTX_DUAL.vhd secureip/GTHE1_QUAD.vhd \
-	secureip/PCIE_2_0.vhd secureip/PCIE_A1.vhd
+	unisim_virtex5_SMODEL.vhd
+UNISIMSECIPFILES = MCB.vhd GTXE1.vhd \
+	GTP_DUAL.vhd GTPA1_DUAL.vhd GT11.vhd \
+	GT11CLK.vhd GT11CLK_MGT.vhd GT11_CUSTOM.vhd \
+	GT11_DUAL.vhd GTX_DUAL.vhd GTHE1_QUAD.vhd \
+	PCIE_2_0.vhd PCIE_A1.vhd
+UNISIMSECIPFILESSKIP = $(UNISIMSECIPFILES:%=|%)
+
+# Workaround for secureip files being part of unisim and secureip techlib
+# being unavailable
+ifneq (,$(findstring unisim,$(TECHLIBS)))
+ifeq (,$(filter secureip secureip_ver,$(TECHLIBS)))
+# Skip unisim secureip files if secureip is missing from techlibs.
+# Bad things will happen if there are file name collisions with
+# other libraries..
+XFILESKIP+= $(UNISIMSECIPFILESSKIP)
+endif
+endif
+
 GRUNISIM = $(GRLIB)/lib/tech/unisim/ise
 SIMPRIM = $(XILINX)/vhdl/src/simprims
 UNIMACRO = $(XILINX)/vhdl/src/unimacro
+UNISIMS_VER = $(XILINX)/verilog/src/unisims
+GRUNISIMS_VER = $(GRLIB)/lib/tech/unisims_ver/ise
+XILINXCORELIB_VER =  $(XILINX)/verilog/src/
+GRXILINXCORELIB_VER = $(GRLIB)/lib/tech/xilinxcorelib_ver/ise
+
 
 install-unimacro:
 	@echo UNIMACRO source path: $(UNIMACRO); \
@@ -693,7 +750,7 @@ install-unimacro:
         fi
 
 remove-unimacro:
-	@-rm $(GRLIB)/lib/tech/unimacro/ise/*.vhd; echo "" > $(GRLIB)/lib/tech/unimacro/ise/vhdlsyn.txt
+	@-rm $(GRLIB)/lib/tech/unimacro/ise/*.vhd; echo "" > $(GRLIB)/lib/tech/unimacro/ise/vhdlsyn.xt
 
 install-unisim:
 ifeq ("$(GRLIB_SIMULATOR)","Xilinx")
@@ -718,6 +775,37 @@ else
 	done
 endif
 
+install-xilinxcorelib_ver:
+ifeq ("$(GRLIB_SIMULATOR)","Xilinx")
+	@echo "GRLIB_SIMULATOR is Xilinx. Library installation not required, aborted."
+else
+	@if [ -d $(GRXILINXCORELIB_VER) ]; then \
+	echo "xilinxcorelib_ver library already installed"; else \
+	echo installing xilinxcorelib_ver in $(GRXILINXCORELIB_VER) ; \
+	mkdir -p $(GRXILINXCORELIB_VER) ; \
+	for i in $(XILINXCORELIB_VER)/*.v; do \
+	  cp $$i $(GRXILINXCORELIB_VER) ; \
+	  echo `basename $$i`  >>  $(GRXILINXCORELIB_VER)/vlogsim.txt ; \
+	done; fi
+endif
+
+install-unisim_ver: install-xilinxcorelib_ver
+ifeq ("$(GRLIB_SIMULATOR)","Xilinx")
+	@echo "GRLIB_SIMULATOR is Xilinx. Unisim installation not required, aborted."
+else
+	@if [ -d $(GRUNISIMS_VER) ]; then \
+	  echo "unisims_ver library already installed"; else \
+	  echo installing unisims_ver in $(GRUNISIMS_VER) ; \
+	  mkdir -p $(GRUNISIMS_VER) ; \
+	  for i in $(UNISIMS_VER)/*.v; do \
+	    cat $$i  >> $(GRUNISIMS_VER)/unisims_ver.v ; \
+#	    cp $$i $(GRUNISIMS_VER) ; \
+#	    echo `basename $$i`  >>  $(GRUNISIMS_VER)/vlogsim.txt ; \
+	  done ; \
+	  echo unisims_ver.v > $(GRUNISIMS_VER)/vlogsim.txt ; \
+	fi
+endif
+
 # Undocumented target, functionality was previously part of install-unisim target.
 patch-unisim:
 	if (test -r $(GRUNISIM)/unisim_VITAL.vhd); then \
@@ -728,39 +816,86 @@ patch-unisim:
 	  echo  patching unisim_VITAL.vhd ;\
 	fi
 
+ifeq ("$(GRLIB_SIMULATOR)","ALDEC")
+XILINX_SECUREIP_PATH = aldec
+else
+ifeq ("$(GRLIB_SIMULATOR)","ALDEC_RWS")
+XILINX_SECUREIP_PATH = aldec
+else
+XILINX_SECUREIP_PATH = mti
+endif
+endif
+
 install-secureip: install-unisim
 ifeq ("$(GRLIB_SIMULATOR)","Xilinx")
 	@echo "GRLIB_SIMULATOR is Xilinx. SecureIP installation not required, aborted."
 else
-ifeq ("$(GRLIB_SIMULATOR)","ALDEC")
-	@if (test -r $(XILINX)/secureip/aldec/mcb_aldec); then \
+	@echo UNISIM source path: $(UNISIM); \
+	for i in $(UNISIMSECIPFILES); do \
+	  cp  $(UNISIM)/secureip/$$i  $(GRUNISIM);\
+	  echo  installing $$i ;\
+	done
+	@if (test -r $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/mcb_$(XILINX_SECUREIP_PATH)); then \
 	  echo  installing $(XILINX)/secureip ;\
-	  cp  $(XILINX)/secureip/aldec/mcb_aldec/*.vp  $(GRLIB)/lib/tech/secureip/ise;\
-	fi
-else
-	@if (test -r $(XILINX)/secureip/mti/mcb_mti); then \
-	  echo  installing $(XILINX)/secureip ;\
-	  cp  $(XILINX)/secureip/mti/mcb_mti/*.vp  $(GRLIB)/lib/tech/secureip/ise;\
+	  cp  $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/mcb_$(XILINX_SECUREIP_PATH)/*.vp  $(GRLIB)/lib/tech/secureip/ise;\
 	fi ; \
-	if (test -r $(XILINX)/secureip/mti/pcie_2_0_mti); then \
-	  cp  $(XILINX)/secureip/mti/pcie_2_0_mti/*.vp  $(GRLIB)/lib/tech/secureip/ise; \
+	if (test -r $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/pcie_2_0_$(XILINX_SECUREIP_PATH)); then \
+	  cp  $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/pcie_2_0_$(XILINX_SECUREIP_PATH)/*.vp  $(GRLIB)/lib/tech/secureip/ise; \
 	fi ; \
-	if (test -r $(XILINX)/secureip/mti/gtxe1_mti); then \
-	  cp  $(XILINX)/secureip/mti/gtxe1_mti/*.vp  $(GRLIB)/lib/tech/secureip/ise; \
+	if (test -r $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/gtxe1_$(XILINX_SECUREIP_PATH)); then \
+	  cp  $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/gtxe1_$(XILINX_SECUREIP_PATH)/*.vp  $(GRLIB)/lib/tech/secureip/ise; \
 	fi ; \
-	if (test -r $(XILINX)/secureip/mti/gtpa1_dual_mti); then \
-	  cp  $(XILINX)/secureip/mti/gtpa1_dual_mti/*.vp  $(GRLIB)/lib/tech/secureip/ise; \
+	if (test -r $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/gtpa1_dual_$(XILINX_SECUREIP_PATH)); then \
+	  cp  $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/gtpa1_dual_$(XILINX_SECUREIP_PATH)/*.vp  $(GRLIB)/lib/tech/secureip/ise; \
 	fi ; \
-	if (test -r $(XILINX)/secureip/mti/pcie_a1_mti); then \
-	  cp  $(XILINX)/secureip/mti/pcie_a1_mti/*.vp  $(GRLIB)/lib/tech/secureip/ise; \
+	if (test -r $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/gtp_dual_fast_$(XILINX_SECUREIP_PATH)); then \
+	  cp  $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/gtp_dual_fast_$(XILINX_SECUREIP_PATH)/*.vp  $(GRLIB)/lib/tech/secureip/ise; \
+	fi ; \
+	if (test -r $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/gtx_dual_fast_$(XILINX_SECUREIP_PATH)); then \
+	  cp  $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/gtx_dual_fast_$(XILINX_SECUREIP_PATH)/*.vp  $(GRLIB)/lib/tech/secureip/ise; \
+	fi ; \
+	if (test -r $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/pcie_a1_$(XILINX_SECUREIP_PATH)); then \
+	  cp  $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/pcie_a1_$(XILINX_SECUREIP_PATH)/*.vp  $(GRLIB)/lib/tech/secureip/ise; \
 	fi
 endif
+
+install-secureip_ver: install-unisim_ver
+ifeq ("$(GRLIB_SIMULATOR)","Xilinx")
+	@echo "GRLIB_SIMULATOR is Xilinx. SecureIP installation not required, aborted."
+else
+	@echo UNISIM source path: $(UNISIM); \
+	for i in $(UNISIMSECIPFILES); do \
+	  cp  $(UNISIM)/secureip/$$i  $(GRUNISIM);\
+	  echo  installing $$i ;\
+	done
+	@if (test -r $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/mcb_$(XILINX_SECUREIP_PATH)); then \
+	  echo  installing $(XILINX)/secureip ;\
+	  cp  $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/mcb_$(XILINX_SECUREIP_PATH)/*.vp  $(GRLIB)/lib/tech/secureip_ver/ise;\
+	fi ; \
+	if (test -r $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/pcie_2_0_$(XILINX_SECUREIP_PATH)); then \
+	  cp  $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/pcie_2_0_$(XILINX_SECUREIP_PATH)/*.vp  $(GRLIB)/lib/tech/secureip_ver/ise; \
+	fi ; \
+	if (test -r $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/gtxe1_$(XILINX_SECUREIP_PATH)); then \
+	  cp  $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/gtxe1_$(XILINX_SECUREIP_PATH)/*.vp  $(GRLIB)/lib/tech/secureip_ver/ise; \
+	fi ; \
+	if (test -r $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/gtpa1_dual_$(XILINX_SECUREIP_PATH)); then \
+	  cp  $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/gtpa1_dual_$(XILINX_SECUREIP_PATH)/*.vp  $(GRLIB)/lib/tech/secureip_ver/ise; \
+	fi ; \
+	if (test -r $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/gtp_dual_fast_$(XILINX_SECUREIP_PATH)); then \
+	  cp  $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/gtp_dual_fast_$(XILINX_SECUREIP_PATH)/*.vp  $(GRLIB)/lib/tech/secureip_ver/ise; \
+	fi ; \
+	if (test -r $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/gtx_dual_fast_$(XILINX_SECUREIP_PATH)); then \
+	  cp  $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/gtx_dual_fast_$(XILINX_SECUREIP_PATH)/*.vp  $(GRLIB)/lib/tech/secureip_ver/ise; \
+	fi ; \
+	if (test -r $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/pcie_a1_$(XILINX_SECUREIP_PATH)); then \
+	  cp  $(XILINX)/secureip/$(XILINX_SECUREIP_PATH)/pcie_a1_$(XILINX_SECUREIP_PATH)/*.vp  $(GRLIB)/lib/tech/secureip_ver/ise; \
+	fi
 endif
 
 remove-secureip uninstall-secureip remove-unisim uninstall-unisim:
-	@-rm $(GRLIB)/lib/tech/secureip/ise/*.vp
-	@-rm $(GRLIB)/lib/tech/unisim/ise/*.vhd; \
-	cp $(GRLIB)/lib/tech/unisim/gr/*.vhd $(GRLIB)/lib/tech/unisim/ise/
+	@-rm $(GRLIB)/lib/tech/secureip/ise/*.vp $(GRLIB)/lib/tech/secureip_ver/ise/*.vp 
+	@-rm -r $(GRLIB)/lib/tech/unisims_ver/ise $(GRLIB)/lib/tech/xilinxcorelib_ver/ise
+	@-rm $(GRLIB)/lib/tech/unisim/ise/*.vhd
 
 # Simulator compxlib
 ifeq ("$(GRLIB_XIL_compxlib_Simulator)","")
@@ -778,12 +913,39 @@ endif
 ifeq ("$(GRLIB_SIMULATOR)","ALDEC")
 GRLIB_XIL_compxlib_Simulator=riviera
 endif
+ifeq ("$(GRLIB_SIMULATOR)","ALDEC_RWS")
+GRLIB_XIL_compxlib_Simulator=riviera
+endif
+endif
+
+# Simulator vivado 
+ifeq ("$(GRLIB_XIL_simlib_Simulator)","")
+# Set default to ModelSim for GRLIB_XIL_simlib_Simulator
+export GRLIB_XIL_simlib_Simulator=modelsim
+ifeq ("$(GRLIB_SIMULATOR)","ModelSim")
+export GRLIB_XIL_simlib_Simulator=modelsim
+endif
+ifeq ("$(GRLIB_SIMULATOR)","ModelSim-PE")
+export GRLIB_XIL_simlib_Simulator=modelsim
+endif
+ifeq ("$(GRLIB_SIMULATOR)","ModelSim-SE")
+export GRLIB_XIL_simlib_Simulator=modelsim
+endif
+ifeq ("$(GRLIB_SIMULATOR)","ALDEC")
+export GRLIB_XIL_simlib_Simulator=riviera
+endif
+ifeq ("$(GRLIB_SIMULATOR)","ALDEC_RWS")
+export GRLIB_XIL_simlib_Simulator=riviera
+endif
 endif
 
 ifeq ("$(COMPXLIBTECH)","")
 COMPXLIBTECH=$(ISETECH)
 endif
 
+
+# install-simprim, compile-simprim/xilinxcorelib/unisim/xilinx-simlibs are tailored for ModelSim/Questa
+# (target dir is ./modelsim)
 install-simprim:
 	@echo "install-simprim is not supported. compile-simprim can be used to compile simprim for ModelSim"
 
@@ -799,75 +961,98 @@ compile-unisim:
 compile-xilinx-simlibs:
 	compxlib -s $(GRLIB_XIL_compxlib_Simulator) -l vhdl -arch $(COMPXLIBTECH) -lib unisim -lib simprim -lib xilinxcorelib -w -dir ./modelsim
 
-compile_xilinx_verilog_lib:
+# Needs to depend on modelsim.ini so that the file is not overwritten by subsequent commands
+# Selects family all since GRLIB techmap layer has Virtex-5-specific primitives (for example)
+compile_xilinx_7series_lib: modelsim.ini
 ifneq ("$(GRLIB_SIMULATOR)","Xilinx")
-#	-@mkdir -p ./modelsim
-	-@vlib modelsim
+	-@mkdir -p ./xilinx_lib
 	@if [ -d ./xilinx_lib/unisims_ver ]; then \
 	echo "Xilinx library already compiled"; else \
-	compxlib -s $(GRLIB_XIL_compxlib_Simulator) -l verilog -arch $(COMPXLIBTECH) -lib xilinxcorelib -dir ./xilinx_lib ; \
-	MTI_DEFAULT_LIB_TYPE=0 vsim -c -quiet -do "do libs.do; quit" ; \
+	echo "System is using $(GRLIB_XIL_simlib_Simulator) for simulation"; \
+	echo "compile_simlib -directory ./xilinx_lib/ -family all -language all -library all -simulator $(GRLIB_XIL_simlib_Simulator)" > ./xilinx_lib/$(TOP)_simlib.tcl ; \
+	vivado -mode batch -source ./xilinx_lib/$(TOP)_simlib.tcl ; \
 	fi;
 endif
 
-compile_xilinx_vhdl_lib: scripts
+map_xilinx_7series_lib: compile_xilinx_7series_lib
 ifneq ("$(GRLIB_SIMULATOR)","Xilinx")
-#	-@mkdir -p ./modelsim
-	-@vlib modelsim
-	@if [ -d ./modelsim/xilinxcorelib ]; then \
-	echo "Xilinx library already compiled"; else \
-	compxlib -s $(GRLIB_XIL_compxlib_Simulator) -l vhdl -arch $(COMPXLIBTECH) -lib xilinxcorelib -dir ./modelsim ; \
-	MTI_DEFAULT_LIB_TYPE=0 vsim -c -quiet -do "do libs.do; quit" ; \
-	fi;
-endif
-
-map_xilinx_verilog_lib: compile_xilinx_verilog_lib
-ifneq ("$(GRLIB_SIMULATOR)","Xilinx")
+ifneq ("$(GRLIB_SIMULATOR)","ALDEC_RWS")
 	@if [ -d ./xilinx_lib/unisims_ver ]; then \
 	vmap secureip_ver ./xilinx_lib/secureip ; \
+	vmap secureip ./xilinx_lib/secureip ; \
+	vmap axi_bfm ./xilinx_lib/secureip ; \
 	vmap unisims_ver ./xilinx_lib/unisims_ver ; \
-	vmap xilinxcorelib_ver ./xilinx_lib/xilinxcorelib_ver ; else \
-	echo "Xilinx Verilog Library not found. Please make sure you have installed the correct version of the Xilinx Library" ; exit 1 ; \
+	vmap unisim ./xilinx_lib/unisim ; \
+	vmap unimacro_ver ./xilinx_lib/unimacro_ver ; \
+	vmap unimacro ./xilinx_lib/unimacro ; \
+	vmap simprim_ver ./xilinx_lib/simprims_ver ; \
+	vmap simprim ./xilinx_lib/simprims ; \
+	vmap unifast_ver ./xilinx_lib/unifast_ver ; \
+	vmap unifast ./xilinx_lib/unifast_ver ; else \
+	echo "Xilinx Library not found. Please make sure you have installed the correct version of the Xilinx Library" ; exit 1 ; \
 	fi;
+else
+	vsimsa -c -do $(GRLIB)/bin/aldec/riviera_ws_map_xilinx_libs.do
+endif
+else
+	echo "GRLIB_SIMULATOR is Xilinx, skipping map of libraries"; exit 1
 endif
 
-map_xilinx_vhdl_lib: compile_xilinx_vhdl_lib
-ifneq ("$(GRLIB_SIMULATOR)","Xilinx")
-	@if [ -d ./modelsim/unisim ]; then \
-	vmap secureip ./modelsim/secureip ; \
-	vmap unisim ./modelsim/unisim ; \
-	vmap xilinxcorelib ./modelsim/xilinxcorelib ; else \
-	echo "Xilinx VHDL Library not found. Please make sure you have installed the correct version of the Xilinx Library" ; exit 1 ; \
-	fi;
-endif
+clean-xilinx-lib:
+	-rm -rf xilinx_lib compxlib.* .cxl.*.version
 
-clean_xilinx_verilog_lib:
-	-rm -rf xilinx_lib compxlib.* .cxl.mti_se.version
-
-ip_series7_generate: vivado/$(TOP)_vivado.tcl $(VHDLSYNFILES) $(VERILOGSYNFILES)
-ifeq ($(CONFIG_MIG_SERIES7),y)
+ip_7series_generate: vivado/$(TOP)_vivado.tcl $(VHDLSYNFILES) $(VERILOGSYNFILES)
+ifeq ($(CONFIG_MIG_7SERIES),y)
 	@if [ -d ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip ]; then \
 	echo "Xilinx IPs already generated!"; else \
 	vivado -mode batch -source ./vivado/$(TOP)_vivado.tcl ; \
 	fi;
 endif
 
-mig_series7: ip_series7_generate compile_xilinx_verilog_lib map_xilinx_verilog_lib
+mig_7series: ip_7series_generate compile_xilinx_7series_lib map_xilinx_7series_lib
 ifneq ("$(GRLIB_SIMULATOR)","Xilinx")
-ifeq ($(CONFIG_MIG_SERIES7),y)
+ifeq ($(CONFIG_MIG_7SERIES),y)
+ifneq ("$(GRLIB_SIMULATOR)","ALDEC_RWS")
 	if [ -f ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/mig.v ]; then \
 	vlog -work gaisler \
 	./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/mig.v \
 	./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/mig_mig_sim.v \
-	./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/*/*.v ;\
-	vlog -work work $(XILINX)/verilog/src/glbl.v ;\
+	./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/clocking/*.v \
+	./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/controller/*.v \
+	./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/ecc/*.v \
+	./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/ip_top/*.v \
+	./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/phy/*.v \
+	./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/ui/*.v ;\
+	vlog -work work $(XILINX_VIVADO)/data/verilog/src/glbl.v ;\
 	fi;
+else
+# The design.file.property command below is a hack so that the Verilog MIG IP, in (VHDL)
+# library gaisler, will find components from unisim. Otherwise errors will be given during
+# riviera elaboration. No documentation has been found about this. The command is intended
+# to have the same effects as adding libs using:
+# <right click> -> properties -> Enries -> Libraries
+	@echo "workspace.open riviera_ws/riviera_ws.rwsp; workspace.design.setactive gaisler"  > riviera_ws_add_mig_7series.do
+	@for f in ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/mig.v \
+		./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/mig_mig_sim.v \
+		./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/clocking/*.v \
+		./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/controller/*.v \
+		./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/ecc/*.v \
+		./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/ip_top/*.v \
+		./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/phy/*.v \
+		./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig/user_design/rtl/ui/*.v ; do \
+		echo "design.file.add .$$f" >> riviera_ws_add_mig_7series.do ; \
+		echo "design.file.property " `basename $$f` "compilation/verilog/verilog-libraries \"secureip_ver;secureip;axi_bfm;unisims_ver;unisim;unimacro_ver;unimacro;simprim_ver;simprim;unifast_ver;unifast\"" >> riviera_ws_add_mig_7series.do; \
+	done;
+	@echo "workspace.design.setactive work; design.file.add $(XILINX_VIVADO)/data/verilog/src/glbl.v ; quit"  >> riviera_ws_add_mig_7series.do
+	@vsimsa -quiet -do riviera_ws_add_mig_7series.do
+endif
 endif
 endif
 
-sgmii_series7: ip_series7_generate compile_xilinx_verilog_lib map_xilinx_verilog_lib
+sgmii_7series: ip_7series_generate compile_xilinx_7series_lib map_xilinx_7series_lib
 ifneq ("$(GRLIB_SIMULATOR)","Xilinx")
 ifeq ($(CONFIG_GRETH_ENABLE),y)
+ifneq ("$(GRLIB_SIMULATOR)","ALDEC_RWS")
 	if [ -f./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/synth/sgmii.v ]; then \
 	vlib modelsim/gig_ethernet_pcs_pma_v14_3 ;\
 	vmap -modelsimini ./modelsim.ini gig_ethernet_pcs_pma_v14_3 ./modelsim/gig_ethernet_pcs_pma_v14_3 ;\
@@ -876,10 +1061,36 @@ ifeq ($(CONFIG_GRETH_ENABLE),y)
 	./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/synth/*.v \
 	./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/synth/*/*.v ;\
 	fi;
+else
+	@echo "workspace.open riviera_ws/riviera_ws.rwsp"  > riviera_ws_add_sgmii_7series.do
+	@echo "workspace.design.create gig_ethernet_pcs_pma_v14_3 ."  >> riviera_ws_add_sgmii_7series.do
+	@echo "workspace.design.setactive gig_ethernet_pcs_pma_v14_3"  >> riviera_ws_add_sgmii_7series.do
+	@echo "amap secureip_ver ../xilinx_lib/secureip"  >> riviera_ws_add_sgmii_7series.do
+	@echo "amap secureip ../xilinx_lib/secureip"  >> riviera_ws_add_sgmii_7series.do
+	@echo "amap axi_bfm ../xilinx_lib/secureip"  >> riviera_ws_add_sgmii_7series.do
+	@echo "amap unisims_ver ../xilinx_lib/unisims_ver"  >> riviera_ws_add_sgmii_7series.do
+	@echo "amap unisim ../xilinx_lib/unisim"  >> riviera_ws_add_sgmii_7series.do
+	@echo "amap unimacro_ver ../xilinx_lib/unimacro_ver"  >> riviera_ws_add_sgmii_7series.do
+	@echo "amap unimacro ../xilinx_lib/unimacro"  >> riviera_ws_add_sgmii_7series.do
+	@echo "amap simprim_ver ../xilinx_lib/simprims_ver"  >> riviera_ws_add_sgmii_7series.do
+	@echo "amap simprim ../xilinx_lib/simprims"  >> riviera_ws_add_sgmii_7series.do
+	@echo "amap unifast_ver ../xilinx_lib/unifast_ver"  >> riviera_ws_add_sgmii_7series.do
+	@echo "amap unifast ../xilinx_lib/unifast_ver"  >> riviera_ws_add_sgmii_7series.do
+	@echo "design.file.add ../vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_3/hdl/gig_ethernet_pcs_pma_v14_3_rfs.vhd"  >> riviera_ws_add_sgmii_7series.do
+	@echo "workspace.design.setactive work"  >> riviera_ws_add_sgmii_7series.do
+
+	@for f in ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/synth/*.v \
+		./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/synth/*/*.v ; do \
+		echo "design.file.add .$$f" >> riviera_ws_add_mig_7series.do ; \
+		echo "design.file.property " `basename $$f` "compilation/verilog/verilog-libraries \"secureip_ver;secureip;axi_bfm;unisims_ver;unisim;unimacro_ver;unimacro;simprim_ver;simprim;unifast_ver;unifast\"" >> riviera_ws_add_mig_7series.do; \
+	done;
+	@echo "quit"  >> riviera_ws_add_sgmii_7series.do
+	@vsimsa -quiet -do riviera_ws_add_sgmii_7series.do
+endif
 endif
 endif
 
-.PHONY: compile_xilinx_verilog_lib compile_xilinx_vhdl_lib map_xilinx_verilog_lib map_xilinx_vhdl_lib clean_xilinx_verilog_lib mig_series7_generate mig_series7 install-simprim compile-simprim compile-xilinxcorelib compile-unisim compile-xilinx-simlibs
+.PHONY: compile_xilinx_7series_lib map_xilinx_7series_lib mig_7series_generate mig_7series install-simprim compile-simprim compile-xilinxcorelib compile-unisim compile-xilinx-simlibs
 
 #########    Xilinx PlanAhead targets   ############
 
@@ -1097,7 +1308,7 @@ endif
 ifneq ("$(PROTOBOARD)","")
 	@echo "set_property board $(PROTOBOARD) [current_project]"  >> ./vivado/$(TOP)_vivado.tcl
 endif
-ifeq ($(CONFIG_MIG_SERIES7),y)
+ifeq ($(CONFIG_MIG_7SERIES),y)
 ifeq ("$(BOARD)","digilent-nexys4ddr-xc7a100t")
 	@echo "set_property STEPS.WRITE_BITSTREAM.TCL.PRE ../../../../bitstream.tcl [get_runs impl_1]" >> ./vivado/$(TOP)_vivado.tcl
 endif
@@ -1107,7 +1318,7 @@ endif
 		echo "#upgrade_ip [get_ips mig]" >> ./vivado/$(TOP)_vivado.tcl; \
 		echo "generate_target  all [get_files ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig/mig.xci] -force " >> ./vivado/$(TOP)_vivado.tcl; \
 	else \
-		echo "WARNING: No MIG Series7 IP was found"; \
+		echo "WARNING: No MIG 7series IP was found"; \
 	fi;
 endif
 ifeq ($(CONFIG_GRETH_ENABLE),y)
@@ -1150,13 +1361,51 @@ vivado: vivado/$(TOP)_vivado.tcl $(VHDLSYNFILES) $(VERILOGSYNFILES)
 	fi;
 
 vivado-clean:
-	-rm -rf ./vivado *vivado.log vivado*.jou vivado*.backup.log vivado*.str .Xil
+	-rm -rf ./vivado *vivado.log vivado*.jou vivado*.backup.log vivado*.str .Xil .cxl.*.version compile_simlib.log compile_simlib.log.bak
 
 vivado-prog-fpga:
 	@echo "fpga -f ./vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).bit" > ./xmd.ini
 	@echo "exit" >> ./xmd.ini
 	xmd
 
+
+#########   Altera targets   ############
+
+install-altera:
+ifeq ("$(QUARTUS_ROOTDIR)","")
+	@echo "QUARTUS_ROOTDIR is not set. Altera library installation failed"
+else
+	@if test -r $(QUARTUS_ROOTDIR)/eda/sim_lib/altera_primitives.vhd; then \
+	  echo installing tech/altera ;\
+	  cp $(QUARTUS_ROOTDIR)/eda/sim_lib/altera_primitives*.vhd  $(GRLIB)/lib/tech/altera/simprims ;\
+	else echo skipping tech/altera; fi ; \
+	if test -r $(QUARTUS_ROOTDIR)/eda/sim_lib/altera_mf_components.vhd; then \
+	  echo installing tech/altera_mf ;\
+	  cp $(QUARTUS_ROOTDIR)/eda/sim_lib/altera_mf*.vhd  $(GRLIB)/lib/tech/altera_mf/simprims ;\
+	  cat $(GRLIB)/bin/altera/altera_mf.vhd >> $(GRLIB)/lib/tech/altera_mf/simprims/altera_mf.vhd ;\
+	else echo skipping tech/altera_mf; fi ; \
+	if test -r $(QUARTUS_ROOTDIR)/eda/sim_lib/cycloneiii_atoms.vhd; then \
+	  echo installing tech/cycloneiii ;\
+	  cp $(QUARTUS_ROOTDIR)/eda/sim_lib/cycloneiii_*.vhd  $(GRLIB)/lib/tech/cycloneiii/simprims ;\
+	else echo skipping tech/cycloneiii - not supported by Quartus II version; fi ; \
+	if test -r $(QUARTUS_ROOTDIR)/eda/sim_lib/stratixii_atoms.vhd; then \
+	  echo installing tech/stratixii ;\
+	  cp $(QUARTUS_ROOTDIR)/eda/sim_lib/stratixii_*.vhd  $(GRLIB)/lib/tech/stratixii/simprims ;\
+	else echo skipping tech/stratixii - not supported by Quartus II version; fi ; \
+	if test -r $(QUARTUS_ROOTDIR)/eda/sim_lib/stratixiii_atoms.vhd; then \
+	  echo installing tech/stratixii ;\
+	  cp $(QUARTUS_ROOTDIR)/eda/sim_lib/stratixiii_*.vhd  $(GRLIB)/lib/tech/stratixiii/simprims ;\
+	else echo skipping tech/stratixiii - not supported by Quartus II version; fi ; \
+	echo Altera library installation completed.
+endif
+
+remove-altera:
+	-@rm $(GRLIB)/lib/tech/altera/simprims/altera_primitives*.vhd \
+	$(GRLIB)/lib/tech/altera_mf/simprims/altera_mf*.vhd \
+	$(GRLIB)/lib/tech/cycloneiii/simprims/cycloneiii_*.vhd \
+	$(GRLIB)/lib/tech/stratixii/simprims/stratixii_*.vhd \
+	$(GRLIB)/lib/tech/stratixiii/simprims/stratixiii_*.vhd
+	@echo Altera libraries removed from GRLIB
 
 #########   Altera Quartus targets   ############
 
@@ -1324,7 +1573,6 @@ ifneq ("$(SYNPVLOGSTD)","")
 endif
 	@echo $(SYNPOPT) >> $(TOP)_synplify.prj
 	@echo impl -active \"synplify\" >> $(TOP)_synplify.prj
-	@echo  $(TOP)_synplify.prj
 
 synplify-clean:
 	-rm -rf synplify *.prd stdout.log *.mif syntmp.* synplify_* \
@@ -1354,11 +1602,39 @@ precision/$(TOP).edf: $(TOP)_precision.tcl  $(VHDLSYNFILES) $(VERILOGSYNFILES)
 precision-clean:
 	-rm -rf *.psp stdout.log prec.log  $(TOP)_prec* precision* $(TOP)_temp*
 
-#########   Actel Libero targets    ############################
+######### Microsemi targets ###############
 
-PROASIC3LIBS = proasic3 proasic3e proasic3l fusion smartfusion2
+# For future: Consider patching imported models to turn messages off.
+# Otherwise new warnings will appear for netlist simulations.
+install-microsemi:
+ifeq ("$(LIBERO_ROOTDIR)","")
+	@echo "LIBERO_ROOTDIR is not set. Microsemi library installation failed"
+else
+	@if test -r $(LIBERO_ROOTDIR)/Libero/lib/vtl/95; then \
+	  for i in fusion proasic3 proasic3e proasic3l axcelerator; do \
+	    if test -r $(LIBERO_ROOTDIR)/Libero/lib/vtl/95/$$i.vhd; then \
+	      echo installing $$i ;\
+	      cp $(LIBERO_ROOTDIR)/Libero/lib/vtl/95/$$i.vhd $(GRLIB)/lib/tech/$$i/components/ ; \
+	      patch -d $(GRLIB)/lib/tech/$$i/components/ < $(GRLIB)/bin/microsemi/$$i.patch ; \
+	      if [ "axcelerator" = $$i ]; then \
+	        cat $(GRLIB)/bin/microsemi/$$i.vhd >> $(GRLIB)/lib/tech/$$i/components/$$i.vhd ; \
+	     fi ; \
+	    else echo skipping $$i; fi ;\
+	  done; \
+	else echo $(LIBERO_ROOTDIR)/Libero/lib/vtl/95 not found; fi; \
+	echo Microsemi library installation completed;
+endif
+
+remove-microsemi:
+	-@for i in fusion proasic3e proasic3l axcelerator; do \
+	  rm $(GRLIB)/lib/tech/$$i/components/$$i.vhd ;  \
+	done
+
+#########   Microsemi/Actel Libero targets    ############################
+
+PROASIC3LIBS = proasic3 proasic3e proasic3l
 XLIBEROLIBSKIP = $(ASICLIBS) $(LATTICELIBS) \
-	$(ALTERALIBS) $(XILINXLIBS) $(PROASIC3LIBS) axcelerator
+	$(ALTERALIBS) $(XILINXLIBS) $(PROASIC3LIBS) fusion smartfusion2 axcelerator
 LIBEROLIBSKIP = $(XLIBEROLIBSKIP:%=%|) dummy
 LIBERODIRSKIPX = $(ASICLIBS) $(XILINXLIBS) $(ALTERALIBS) $(LATTICELIBS)
 LIBERODIRSKIP = $(LIBERODIRSKIPX:%=%|) dummy
@@ -1382,7 +1658,7 @@ endif
 uninstall-smartfusion2 :
 	rm -r $(GRLIB)/lib/tech/smartfusion2/precomp_libraries/
 
-#########   Actel Designer targets    ############################
+#########   Microsemi/Actel Designer targets    ############################
 
 DESIGNER = designer
 
@@ -1560,7 +1836,6 @@ $(TOP)_dc.tcl: compile.dc
 	 fi; \
 	done
 	@echo elaborate $(TOP) >> $(TOP)_dc.tcl
-	@echo  $(TOP)_dc.tcl
 
 dc-clean:
 	-rm -rf synopsys view_command.log command.log dumpdata.txt filenames.log \
@@ -1590,49 +1865,17 @@ $(TOP).rc: compile.rc
 	done
 #	@for i in $(VERILOGOPTSYNFILES) $(VERILOGSYNFILES); do echo "read_hdl " $$i >> $(TOP).rc; done
 	@echo elaborate $(TOP) >> $(TOP).rc
-	@echo  $(TOP).rc
 
 rc-clean:
 	-rm -rf rtlc rc.log rc.cmd
 
-######## easic targets   ####################
-#
-# etools-n2x-init creates a project file
-# etools-n2x-launch starts design navigator and loads the current project
-#
-
-ifeq ("$(ETOOLS_N2X_HOME)","")
-ETOOLS_N2X_HOME = dummy
-endif
-
-etools-n2x-init: $(TOP).eprj
-
-$(TOP).eprj: scripts $(TOP)_etools_create.tcl
-	$(ETOOLS_N2X_HOME)/bin/designNavigator -no_ui -script $(TOP)_etools_create.tcl
-
-etools-n2x-launch: #$(TOP).eprj
-	$(ETOOLS_N2X_HOME)/bin/designNavigator -project $(TOP).eprj
-
-etools-n2x-launch-no_ui: #$(TOP).eprj
-	$(ETOOLS_N2X_HOME)/bin/designNavigator -no_ui -project $(TOP).eprj
-
-$(TOP)_etools_create.tcl: compile.etools
-	@if test -r $(GRLIB)/bin/etools_create_project; then \
-	  cat $(GRLIB)/bin/etools_create_project | sed -e s/TOP/$(TOP)/ \
-		-e s/DEVICE/$(DEVICE)/ -e s/PACKAGE/$(PACKAGE)/ \
-		 -e s/PNC/$(PNC)/ -e s!SDCFILE!$(SDCFILE)! \
-		 -e s/NUM_CPU/$(GRLIB_NHCPU)/ >> $(TOP)_etools_create.tcl; \
-	else \
-	  echo "eTools project creation not supported" > $(TOP)_etools_create.tcl ; \
-	fi;
-
-etools-n2x-clean:
-	-rm -rf history.tcl $(TOP).tasks log project.tcl
-
-
 #########    Generic simulation target ###############
 
-SIM=$(VSIM)
+ifeq ("$(GRLIB_SIMULATOR)", "ALDEC")
+SIM=riviera
+else
+SIM=vsim
+endif
 
 sim:
 	make $(SIM)
@@ -1646,15 +1889,14 @@ sim-launch:
 
 ########## Generation of compile scripts ###############
 
-scripts: compile.dc compile.synp compile.vivado compile.planAhead compile.son compile.vsim compile.asim compile.xst compile.ncsim compile.rc \
+scripts: compile.dc compile.synp compile.vivado compile.planAhead compile.vsim compile.asim compile.xst compile.ncsim compile.rc \
 	$(TOP)_synplify.prj $(TOP)_dc.tcl $(TOP).rc $(TOP).xst $(TOP).npl $(TOP)_ise.tcl $(TOP)_quartus.qsf \
-	$(TOP)_designer.tcl $(TOP)_libero.prj compile.etools $(TOP)_etools_create.tcl $(TOP).ldf make.riviera
+	$(TOP)_designer.tcl $(TOP)_libero.prj $(TOP).ldf make.riviera riviera_ws_create.do modelsim.ini
 
-verilog.txt $(TOP)_libero.prj compile.dc compile.synp compile.vivado compile.planAhead compile.son compile.vsim compile.asim compile.xst \
+verilog.txt $(TOP)_libero.prj compile.dc compile.synp compile.vivado compile.planAhead compile.vsim compile.asim compile.xst \
 compile.ncsim compile.rc compile.ghdl $(TOP).npl $(TOP)_ise.tcl $(TOP)_quartus.qsf $(TOP)_precision.tcl $(TOP).xise \
-compile.etools $(TOP).ldf make.riviera :
+$(TOP).ldf make.riviera riviera_ws_create.do modelsim.ini:
 	@touch libs.txt; rm libs.txt;
-	@touch tmp.son; rm tmp.son;
 	@cp $(GRLIB)/bin/cds.lib cds.lib; touch hdl.var;
 	@for i in vsim synp xst dc ncsim ghdl rc son; do \
 	    touch compile.$$i; rm compile.$$i ; \
@@ -1664,8 +1906,6 @@ compile.etools $(TOP).ldf make.riviera :
 	@echo "# Formality script to read reference design" > fmref.tcl
 	@echo "# Vivado compile script to read reference design" > compile.vivado
 	@echo "# planAhead compile script to read reference design" > compile.planAhead
-	@echo set vhdlList     { > easic.vhdl
-	@echo set verilogList  { > easic.vlog
 	@echo vlib modelsim > libs.do
 	@echo ""  > alibs.do
 	@printf "\tmkdir gnu\n" > compile.ghdl
@@ -1757,7 +1997,6 @@ compile.etools $(TOP).ldf make.riviera :
 	echo LIST \"ideSIMULATION\" >> libero_simlist; \
 	echo USE_LIST=TRUE >> libero_simlist; \
 	echo FILELIST >> libero_simlist; \
-	cat $(GRLIB)/bin/sonata1.sws > sonata.sws; \
 	echo "open_project ./$(TOP).psp"> $(TOP)_precrun.tcl; \
 	echo compile >> $(TOP)_precrun.tcl; echo synthesize >> $(TOP)_precrun.tcl; \
 	echo save_impl >> $(TOP)_precrun.tcl; \
@@ -1769,13 +2008,14 @@ compile.etools $(TOP).ldf make.riviera :
 	@if (test -r $(EXTRALIBS)/libs.txt); then extralib=$(EXTRALIBS)/libs.txt; else \
 	extralib=$(GRLIB)/bin/libs.txt; fi; \
 	ppath="gnu"; nfiles=0; xfiles=8;\
-	easic_lib=""; \
-	easic_lib_prev="previous"; \
 	echo "all: " > make.riviera; \
+	echo "workspace.create riviera_ws ." > riviera_ws_create.do; \
+	riv_path=""; \
 	for j in grlib $(XTECHLIBS) `cat $(GRLIB)/lib/libs.txt  $(GRLIB)/lib/*/libs.txt $$extralib` $(LIBADD) work ; do \
 	  bn=`basename $$j` ; \
           ppath="$$ppath -Pgnu/$$bn"; \
 	  k=$(GRLIB)/lib/$$j; \
+	  k_real=$(realpath $(GRLIB))/lib/$$j; \
 	  if test -r $$k; then xxx=0; else k=$(EXTRALIBS)/$$j; fi;\
 	  if (test $$bn = "techmap"); then tdirs="$(TECHLIBS) maps"; \
 	  else tdirs="$(DIRADD)"; fi; \
@@ -1795,32 +2035,11 @@ compile.etools $(TOP).ldf make.riviera :
 		else \
 	          echo #define_design_lib $$bn -path $(SNPS_HOME)/packages/dware/lib/DWARE "" >> compile.dc; \
 		fi ; \
-	        case $$bn in \
-		work) \
-	          echo " "sonata "=" sonata/sonata.sym >> sonata.sws; \
-		  set bn = "sonata"; \
-	    	  echo "[library]" >> tmp.son; \
-	    	  echo name = sonata >> tmp.son; \
-	    	  echo toplevel = $(SIMTOP) >> tmp.son; \
-	    	  echo "  [options]" >>  tmp.son; \
-	    	  echo "   [booloption]" >>  tmp.son; \
-	    	  echo "    name   = -autoorder" >>  tmp.son; \
-	    	  echo "    value  = 0" >>  tmp.son; \
-	    	  echo "    invert = 0" >>  tmp.son; \
-	    	  echo "   []" >>  tmp.son; \
-	    	  echo "  []" >>  tmp.son;; \
-	        *) \
-	          echo " "$$bn "=" sonata/$$bn.sym >> sonata.sws; \
-	    	  echo "[library]" >> tmp.son; \
-	    	  echo name = $$bn >> tmp.son; \
-	    	  echo "  [options]" >>  tmp.son; \
-	    	  echo "   [booloption]" >>  tmp.son; \
-	    	  echo "    name   = -autoorder" >>  tmp.son; \
-	    	  echo "    value  = 0" >>  tmp.son; \
-	    	  echo "    invert = 0" >>  tmp.son; \
-	    	  echo "   []" >>  tmp.son; \
-	    	  echo "  []" >>  tmp.son;; \
-	        esac; \
+		echo workspace.design.create $$bn . "" >> riviera_ws_create.do ; \
+		echo workspace.design.setactive $$bn "" >> riviera_ws_create.do ; \
+		for riv_bn_map in $$riv_bn; do echo workspace.dependencies.add $$bn $$riv_bn_map "" >> riviera_ws_create.do ; done ; \
+		riv_bn="$$riv_bn $$bn"; \
+		for riv_bn_map in $$riv_bn; do echo amap $$riv_bn_map $$riv_bn_map/$$riv_bn_map/$$riv_bn_map.lib "" >> riviera_ws_create.do ; done ; \
 		case $$bn in $(XSTLIBSKIP) )\
 		  uu=0;; \
 		*) \
@@ -1841,8 +2060,9 @@ compile.etools $(TOP).ldf make.riviera :
 		   if test -r $$m.txt; then \
 		    for q in `cat $$m.txt | sed -e "s/\r//"` $(FILEADD) ; do \
 		      f=$$k/$$l/$$q; fx=$$l/$$q; \
+		      f_real=$$k_real/$$l/$$q; fx=$$l/$$q; \
 	              if (test $$bn = "grlib") && (test $$l = "stdlib") && (test $$q = "config.vhd"); then \
-			if (test $(GRLIB_CONFIG) != "dummy"); then f=$(GRLIB_CONFIG); grcfg=$$f; fi ;\
+			if (test $(GRLIB_CONFIG) != "dummy"); then f=$(GRLIB_CONFIG); f_real=$(realpath $(GRLIB_CONFIG)); grcfg=$$f; fi ;\
 		      fi; \
 	              case $$q in $(XFILESKIP) )\
 		        ;; \
@@ -1855,6 +2075,7 @@ compile.etools $(TOP).ldf make.riviera :
 			   nfiles=`expr $$nfiles + 1`; \
                            printf "\t$(VCOM) $(VHDLOPT) -work $$bn $$f\n" >> compile.vsim; \
 		           riv_fs="$$riv_fs $$f"; \
+		           echo design.file.add $$riv_path$$f_real >> riviera_ws_create.do ; \
 	    		   echo VALUE \"\<project\>/$$f,hdl\" >> libero_syn_files; \
 	    		   echo "create_links -hdl_source {$$f}  " >> libero_project.tcl; \
 	    		   echo add_file_to_library -library $$bn -file $$f >> libero_project.tcl; \
@@ -1906,7 +2127,8 @@ compile.etools $(TOP).ldf make.riviera :
 			   nfiles=`expr $$nfiles + 1`; \
                            printf "\t$(VCOM) $(VHDLOPT) -work $$bn $$f\n" >> compile.vsim; \
                            riv_fs="$$riv_fs $$f"; \
-                           printf "\t$(ACOM) $(VHDLOPT) $$bn ../../$$f\n" >> compile.asim; \
+                           echo design.file.add $$riv_path$$f_real >> riviera_ws_create.do ; \
+                           printf "\t$(ACOM) $(VHDLOPT) $$bn $$f\n" >> compile.asim; \
                            printf "\t$(NCVHDL) $(VHDLOPT) $$bn $$f\n" >> compile.ncsim; \
 		           printf "\t$(GHDL) $(VHDLOPT) --workdir=gnu/$$bn --work=$$bn -P$$ppath $$f\n" >> compile.ghdl; \
 			   case $$bn in $(XDCLIBSKIP) ) ;; *) \
@@ -1914,14 +2136,6 @@ compile.etools $(TOP).ldf make.riviera :
 			      case $$q in $(DCSKIP) ) ;; *) \
 		                echo $(DCVHDL) $$bn $(VHDLOPT) $$f >> compile.dc; \
 		                echo $(FMVHDL) $$bn $(FMVHDLOPT) $$f >> fmref.tcl; \
-				if [ $$easic_lib_prev != $$bn ]; then \
-				  if [ $$easic_lib_prev != "previous" ]; then \
-				    echo "{$$easic_lib_prev $$easic_lib}" >> easic.vhdl; \
-				  fi; \
-				  easic_lib=""; \
-				  easic_lib_prev=$$bn; \
-				fi; \
-				easic_lib="$$easic_lib $$f"; \
 		                echo $(RTLCVHDL) $(VHDLOPT) $$bn $$f >> compile.rc; \
 			      esac; \
 			    esac; \
@@ -1938,14 +2152,6 @@ compile.etools $(TOP).ldf make.riviera :
 			      esac; \
 			    esac; \
 			   esac; \
-	                   if (test $$bn = "work"); then \
-		             printf "\t$(VHDLP) $(VHDLOPT) sonata $$f\n" >> compile.son; \
-	  		   else \
-		             printf "\t$(VHDLP) $(VHDLOPT) $$bn $$f\n" >> compile.son; \
-			   fi; \
-			   echo " [file]" >> tmp.son; \
-			   echo "  name" = $$f >> tmp.son; \
-			   echo " []" >> tmp.son; \
 			   case $$bn in $(LIBEROLIBSKIP) )\
 				uu=0;; \
 			   *) \
@@ -2026,7 +2232,8 @@ compile.etools $(TOP).ldf make.riviera :
 			   nfiles=`expr $$nfiles + 1`; \
 		           printf "\t$(VLOG) -work $$bn +incdir+$$k/$$l $$f\n" >> compile.vsim; \
 		           riv_fs="$$riv_fs $$f"; \
-		           printf "\t$(ALOG) $$bn ../../$$f\n" >> compile.asim; \
+                           echo design.file.add $$riv_path$$f_real >> riviera_ws_create.do ; \
+		           printf "\t$(ALOG) $$bn $$f\n" >> compile.asim; \
 		           printf "\t$(NCVLOG) $$bn -INCDIR $$k/$$l $$f\n" >> compile.ncsim; \
 			   case $$bn in $(LIBEROLIBSKIP) )\
 				uu=0;; \
@@ -2069,7 +2276,6 @@ compile.etools $(TOP).ldf make.riviera :
 		           echo $$f >> verilog.txt; \
 		           echo $(DCVLOG) $$bn $$f >> compile.dc; \
 		           echo $(FMVLOG) $$bn $$f >> fmref.tcl; \
-		           echo $$f >> easic.vlog; \
 		           echo $(RTLCVLOG) $$f >> compile.rc; \
 		           echo $(SYNPVLOG) $$f >> compile.synp; \
 		           echo $(VIVADOVLOG) $$bn $$f >> compile.vivado; \
@@ -2081,9 +2287,10 @@ compile.etools $(TOP).ldf make.riviera :
 		           echo Project_File_$$nfiles = $$f >> tmp.mpf; \
 		           echo Project_File_P_$$nfiles = vlog_protect 0 file_type Verilog group_id 0 vlog_1995compat 0 vlog_nodebug 0 folder {Top Level} vlog_noload 0 last_compile 0 vlog_disableopt 0 vlog_hazard 0 vlog_showsource 0 ood 1 compile_to $$bn vlog_upper 0 vlog_options {} compile_order $$nfiles dont_compile 0 >> tmp.mpf; \
 			   nfiles=`expr $$nfiles + 1`; \
-		           printf "\t$(VLOG) -sv -work $$bn +incdir+$$k/$$l $$f\n" >> compile.vsim; \
+		           printf "\t$(SVLOG) -sv -work $$bn +incdir+$$k/$$l $$f\n" >> compile.vsim; \
 		           riv_fs="$$riv_fs $$f"; \
-		           printf "\t$(ALOG) $$bn ../../$$f\n" >> compile.asim; \
+                           echo design.file.add $$riv_path$$f_real >> riviera_ws_create.do ; \
+		           printf "\t$(ALOG) $$bn $$f\n" >> compile.asim; \
 		           printf "\t$(NCVLOG) $$bn -INCDIR $$k/$$l $$f\n" >> compile.ncsim; \
 			   case $$bn in $(LIBEROLIBSKIP) )\
 				uu=0;; \
@@ -2126,7 +2333,6 @@ compile.etools $(TOP).ldf make.riviera :
 		           echo $$f >> verilog.txt; \
 		           echo $(DCVLOG) $$bn $$f >> compile.dc; \
 		           echo $(FMVLOG) $$bn $$f >> fmref.tcl; \
-		           echo $$f >> easic.vlog; \
 		           echo $(RTLCVLOG) $$f >> compile.rc; \
 		           echo $(SYNPVLOG) -vlog_std sysv $$f >> compile.synp; \
 		           echo $(VIVADOVLOG) $$bn -sv $$f >> compile.vivado; \
@@ -2134,9 +2340,6 @@ compile.etools $(TOP).ldf make.riviera :
 		           echo add_input_file -format VERILOG -work $$bn  $$f >> $(TOP)_precision.tcl; \
 		           echo set_global_assignment -name VERILOG_FILE $$f -library $$bn >> $(TOP)_quartus.qsf;; \
 			vhdlsim) \
-			   echo " [file]" >> tmp.son; \
-			   echo "  name" = $$f >> tmp.son; \
-			   echo " []" >> tmp.son; \
 			   case $$bn in $(LIBEROLIBSKIP) )\
 				uu=0;; \
 			   *) \
@@ -2158,6 +2361,7 @@ compile.etools $(TOP).ldf make.riviera :
 			   nfiles=`expr $$nfiles + 1`; \
 		           printf "\t$(VCOM) $(VHDLOPT) -work $$bn $$f\n" >> compile.vsim; \
 		           riv_fs="$$riv_fs $$f"; \
+                           echo design.file.add $$riv_path$$f_real >> riviera_ws_create.do ; \
 			   case $$bn in $(VIVADOLIBSKIP) )\
 				uu=0;; \
 			   *) \
@@ -2173,12 +2377,7 @@ compile.etools $(TOP).ldf make.riviera :
 			       esac; \
 			     esac; \
 			   esac; \
-	                   if (test $$bn = "work"); then \
-		             printf "\t$(VHDLP) $(VHDLOPT) sonata $$f\n" >> compile.son; \
-	  		   else \
-		             printf "\t$(VHDLP) $(VHDLOPT) $$bn $$f\n" >> compile.son; \
-			   fi; \
-		           printf "\t$(ACOM) $(VHDLOPT) $$bn ../../$$f\n" >> compile.asim; \
+		           printf "\t$(ACOM) $(VHDLOPT) $$bn $$f\n" >> compile.asim; \
 		           printf "\t$(NCVHDL) $(VHDLOPT) $$bn $$f\n" >> compile.ncsim; \
 	  		   echo "    "\<file xil_pn:name=\"$$f\" xil_pn:type=\"FILE_VHDL\"\> >>  $(TOP).xise; \
 	  		   echo "      "\<association xil_pn:name=\"BehavioralSimulation\"/\>  >>  $(TOP).xise; \
@@ -2210,12 +2409,13 @@ compile.etools $(TOP).ldf make.riviera :
 			   esac; \
 		           printf "\t$(VLOG) -work $$bn $$f\n" >> compile.vsim; \
 		           riv_fs="$$riv_fs $$f"; \
+                           echo design.file.add $$riv_path$$f_real >> riviera_ws_create.do ; \
 		           printf "add_files -fileset $(VIVADO_SIMSET) -norecurse $$f\n" >> compile.vivado; \
 		           printf "set_property library $$bn [get_files $$f]\n" >> compile.vivado; \
 		           printf "add_files -fileset $(PLANAHEAD_SIMSET) -norecurse $$f\n" >> compile.planAhead; \
 		           printf "set_property library $$bn [get_files $$f]\n" >> compile.planAhead; \
 		           printf "set_property file_type Verilog [get_files $$f]\n" >> compile.planAhead; \
-		           printf "\t$(ALOG) $$bn ../../$$f\n" >> compile.asim; \
+		           printf "\t$(ALOG) $$bn $$f\n" >> compile.asim; \
 		           printf "\t$(NCVLOG) $$bn $$f\n" >> compile.ncsim;; \
 		        svlogsim) \
 		           echo Project_File_$$nfiles = $$f >> tmp.mpf; \
@@ -2239,11 +2439,12 @@ compile.etools $(TOP).ldf make.riviera :
 			   esac; \
 		           printf "\t$(VLOG) -sv -work $$bn $$f\n" >> compile.vsim; \
 		           riv_fs="$$riv_fs $$f"; \
+                           echo design.file.add $$riv_path$$f_real >> riviera_ws_create.do ; \
 		           printf "add_files -fileset $(VIVADO_SIMSET) -norecurse $$f\n" >> compile.vivado; \
 		           printf "set_property library $$bn [get_files $$f]\n" >> compile.vivado; \
 		           printf "add_files -fileset $(PLANAHEAD_SIMSET) -norecurse $$f\n" >> compile.planAhead; \
 		           printf "set_property library $$bn [get_files $$f]\n" >> compile.planAhead; \
-		           printf "\t$(ALOG) $$bn ../../$$f\n" >> compile.asim; \
+		           printf "\t$(ALOG) $$bn $$f\n" >> compile.asim; \
 		           printf "\t$(NCVLOG) $$bn $$f\n" >> compile.ncsim;; \
 			esac ; \
 		       fi ;; \
@@ -2260,7 +2461,7 @@ compile.etools $(TOP).ldf make.riviera :
 			printf "\t$(VLOG) -work $$bn $$riv_fs\n" >> make.riviera; \
 		      fi; \
 		      if [ "$$i" = 'svlogsim' -o "$$i" = 'svlogsyn' ]; then \
-			printf "\t$(VLOG) -work $$bn $$riv_fs\n" >> make.riviera; \
+			printf "\t$(SVLOG) -work $$bn $$riv_fs\n" >> make.riviera; \
 		      fi; \
 		      unset riv_fs; \
 		    fi; \
@@ -2268,34 +2469,17 @@ compile.etools $(TOP).ldf make.riviera :
 	    	  done;; \
 	         esac; \
 	        done ; \
-	        if (test $$bn = "work"); then \
-	           for i in $(VHDLOPTSYNFILES) $(VHDLSYNFILES) $(VHDLSIMFILES); do \
-	 	    if test -r $$i; then \
-		     echo " [file]" >> tmp.son; \
-		     echo "  name" = $$i >> tmp.son; \
-		     echo " []" >> tmp.son; \
-		    fi; \
-	           done; \
-                fi ; \
-	        echo "[]" >> tmp.son; \
                 echo ""; \
             fi ; \
 	  esac; \
 	done ; \
 	if (test $(GRLIB_CONFIG) != "dummy"); then echo GRLIB_CONFIG = $$grcfg; fi ;\
-	echo "{$$easic_lib_prev $$easic_lib}" >> easic.vhdl; \
-	easic_lib=""; \
 	for i in $(VHDLOPTSYNFILES) $(VHDLSYNFILES); do \
 	 if test -r $$i; then \
-	  easic_lib="$$easic_lib $$i"; \
 	  echo "        "\<Source name=\"$$i\" type=\"VHDL\" type_short=\"VHDL\"\> >> $(TOP).ldf; \
 	  echo "            "\<Options\/\> >> $(TOP).ldf; \
 	  echo "        "\<\/Source\> >> $(TOP).ldf; \
 	 fi; \
-	done; \
-	echo "{work $$easic_lib}" >> easic.vhdl; \
-	for i in $(VERILOGOPTSYNFILES) $(VERILOGSYNFILES); do \
-	  echo $$i >> easic.vlog; \
 	done; \
 	echo "        "\<Source name=\"$(UCF)\" type=\"Logic Preference\" type_short=\"LPF\"\> >> $(TOP).ldf; \
 	echo "            "\<Options\/\> >> $(TOP).ldf; \
@@ -2453,19 +2637,13 @@ compile.etools $(TOP).ldf make.riviera :
 	echo "[STRATEGY-LIST]" >> $(TOP).npl; echo "[STRATEGY-LIST]" >> $(TOP)_synplify.npl; \
 	echo "Normal=True" >> $(TOP).npl; echo "Normal=True" >> $(TOP)_synplify.npl; \
 	echo "DEVSYNTHESISTOOL XST (VHDL/Verilog)" >>  $(TOP).npl; \
-	for i in $(VHDLOPTSYNFILES) $(VHDLSYNFILES) $(VHDLSIMFILES); do \
-	 if test -r $$i; then \
-	   printf "\t$(VHDLP) $(VHDLOPT) sonata $$i\n" >> compile.son; \
-	 fi; \
-	done; rm tmp.npl; \
-	for i in $(SONATALIBSKIP); do grep -v $$i compile.son > xx; mv xx compile.son; done;\
+	rm tmp.npl; \
         cat tmp.mpf >> $(SIMTOP).mpf; rm tmp.mpf; \
 	cat $(GRLIB)/bin/mt1.mpf >> $(SIMTOP).mpf; \
 	if test -r "$(QSF)"; then cat $(QSF) >> $(TOP)_quartus.qsf; fi; \
 	if test -r "$(QSF_APPEND)"; then cat $(QSF_APPEND) >> $(TOP)_quartus.qsf; fi; \
 	echo ncsim: > make.ncsim; cat compile.ncsim >> make.ncsim; \
 	echo vsim: > make.vsim; cat compile.vsim >> make.vsim; \
-	echo sonata-compile: > make.son; cat compile.son >> make.son; \
 	cat compile.asim >> make.asim; \
 	printf "# Work-around for stupid secureip bug ...\n" >>  make.vsim; \
 	printf "\t@if test -r $(GRLIB)/lib/tech/secureip/ise/mcb_001.vp && test -r modelsim/secureip; then vlog -quiet -novopt -work secureip $(GRLIB)/lib/tech/secureip/ise/mcb_*.vp; fi\n" >> make.vsim; \
@@ -2474,7 +2652,13 @@ compile.etools $(TOP).ldf make.riviera :
 	 if test -r $$i; then \
 	  printf "\t$(VLOG) -work work $$i\n" >> make.vsim; \
 	  printf "\t$(VLOG) -work work $$i\n" >> make.riviera; \
-	  printf "\t$(ALOG) work ../../$$i\n" >> make.asim; \
+	  if test -r /$$i; then \
+	    printf "design.file.add $$i\n" >> riviera_ws_create.do ; \
+	    printf "\t$(ALOG) work $$i\n" >> make.asim; \
+	  else \
+	    printf "design.file.add ../$$i\n" >> riviera_ws_create.do ; \
+	    printf "\t$(ALOG) work ../../$$i\n" >> make.asim; \
+	  fi; \
 	  printf "\t$(NCVLOG) work $$i\n" >> make.ncsim; \
 	 fi; \
 	done; \
@@ -2482,7 +2666,13 @@ compile.etools $(TOP).ldf make.riviera :
 	 if test -r $$i; then \
 	  printf "\t$(VLOG) -work work $$i\n" >> make.vsim; \
 	  printf "\t$(VLOG) -work work $$i\n" >> make.riviera; \
-	  printf "\t$(ALOG) work ../../$$i\n" >> make.asim; \
+	  if test -r /$$i; then \
+	    printf "design.file.add $$i\n" >> riviera_ws_create.do ; \
+	    printf "\t$(ALOG) work $$i\n" >> make.asim; \
+	  else \
+	    printf "design.file.add ../$$i\n" >> riviera_ws_create.do ; \
+	    printf "\t$(ALOG) work ../../$$i\n" >> make.asim; \
+	  fi; \
 	  printf "\t$(NCVLOG) work $$i\n" >> make.ncsim; \
 	 fi; \
 	done; \
@@ -2490,7 +2680,13 @@ compile.etools $(TOP).ldf make.riviera :
 	 if test -r $$i; then \
 	  printf "\t$(VCOM) $(VHDLOPT) -work work $$i\n" >> make.vsim; \
 	  printf "\t$(VCOM) $(VHDLOPT) -work work $$i\n" >> make.riviera; \
-	  printf "\t$(ACOM) $(VHDLOPT) work ../../$$i\n" >> make.asim; \
+	  if test -r /$$i; then \
+	    printf "design.file.add $$i\n" >> riviera_ws_create.do ; \
+	    printf "\t$(ALOG) work $$i\n" >> make.asim; \
+	  else \
+	    printf "design.file.add ../$$i\n" >> riviera_ws_create.do ; \
+	    printf "\t$(ALOG) work ../../$$i\n" >> make.asim; \
+	  fi; \
 	  printf "\t$(NCVHDL) $(VHDLOPT) work $$i\n" >> make.ncsim; \
 	  echo VALUE \"\<project\>/$$i,hdl\" >> libero_simlist; \
 	  if test $$i = "$(SIMTOP).vhd"; then \
@@ -2524,7 +2720,13 @@ compile.etools $(TOP).ldf make.riviera :
 	 if test -r $$i; then \
 	  printf "\t$(VLOG) -work work $$i\n" >> make.vsim; \
 	  printf "\t$(VLOG) -work work $$i\n" >> make.riviera; \
-	  printf "\t$(ALOG) work ../../$$i\n" >> make.asim; \
+	  if test -r /$$i; then \
+	    printf "design.file.add $$i\n" >> riviera_ws_create.do ; \
+	    printf "\t$(ALOG) work $$i\n" >> make.asim; \
+	  else \
+	    printf "design.file.add ../$$i\n" >> riviera_ws_create.do ; \
+	    printf "\t$(ALOG) work ../../$$i\n" >> make.asim; \
+	  fi; \
 	  printf "\t$(NCVLOG) work $$i\n" >> make.ncsim; \
 	 fi; \
 	done; \
@@ -2557,7 +2759,11 @@ compile.etools $(TOP).ldf make.riviera :
 	echo "" > make.asim-addfile; \
 	for i in $(VHDLOPTSYNFILES) $(VHDLSYNFILES) $(VHDLSIMFILES); do \
 	 if test -r $$i; then \
-	  echo addfile -vhdl ../../$$i >> make.asim-addfile; \
+	  if test -r /$$i; then \
+	    echo addfile -vhdl ../../$$i >> make.asim-addfile; \
+	  else \
+	    echo addfile -vhdl ../../$$i >> make.asim-addfile; \
+	  fi; \
 	 fi; \
 	done; \
 	if test -r "$(SIMTOP)".vhd; then \
@@ -2568,7 +2774,6 @@ compile.etools $(TOP).ldf make.riviera :
 	    printf "\tncelab -timescale 10ps/10ps $(SIMTOP)\n" >> make.ncsim ; \
 	  fi; \
 	fi; \
-	echo $(SIMTOP).mpf; \
 	echo LIST LIBRARIES >> $(TOP)_libero.prj; \
 	for i in `cat libs.txt`; do \
 	   case $$i in $(LIBEROLIBSKIP) )\
@@ -2579,12 +2784,6 @@ compile.etools $(TOP).ldf make.riviera :
 	   esac; \
 	done; \
 	echo ENDLIST >> $(TOP)_libero.prj; \
-	cat $(GRLIB)/bin/sonata2.sws >> sonata.sws; \
-	cp sonata.sws symphony.ini; \
-	cat tmp.son >> sonata.sws; \
-	echo "[properties]" >> sonata.sws; \
-	echo " work = sonata" >> sonata.sws; \
-	echo "[]" >> sonata.sws; \
 	echo ENDFILELIST >> libero_simlist; \
 	echo ENDLIST >> libero_simlist; \
 	echo ENDFILELIST >> libero_synlist; \
@@ -2632,18 +2831,6 @@ compile.etools $(TOP).ldf make.riviera :
 	cat libero_simlist >> $(TOP)_libero.prj; \
 	echo ENDLIST >> $(TOP)_libero.prj; \
 	echo ENDLIST >> $(TOP)_libero.prj;
-#	for i in $(TOOLSKIP); do \
-	  case $$i in \
-	  libero ) rm -rf simulation $(TOP)_libero.prj;; \
-	  quartus ) rm  $(TOP).q?f;; \
-	  ghdl ) rm  compile.ghdl tmpmake.ghdl ;; \
-	  sonata ) rm -rf sonata.sws compile.son make.son ;; \
-	  esac; \
-	#done
-	@echo } >> easic.vhdl
-	@echo } >> easic.vlog
-	@cat easic.vhdl easic.vlog > compile.etools
-	@-rm easic.vhdl easic.vlog
 
 ########### Write TCL script to build IGLOO2 project on Libero SoC v11.5 ###########
 ifeq ("$(TECHNOLOGY)","IGLOO2")
@@ -2688,39 +2875,12 @@ endif
 	@rm libero_project.tcl libero_synlist_temp libero_simlist_temp
 #########################################################################
 
-########## Import from other libraries ###############
-
-## Import eASIC RTL and IP libraries from eTools
-# tested with eTools 9. eTools 8.2.0 has ip_lib under data instead of
-# data_common, earlier versions may not have "data" directory in path
-import-easic-n2x:
-	@if test -r $(ETOOLS_N2X_HOME); then \
-		echo "Importing eASIC RTL libraries to tech"; \
-		cp -r $(ETOOLS_N2X_HOME)/data/design_libs/nextreme-2/logical/sim/verilog $(GRLIB)/lib/tech/nextreme2/sim/; \
-		cp -r $(ETOOLS_N2X_HOME)/data/design_libs/nextreme-2/logical/msim/verilog $(GRLIB)/lib/tech/nextreme2/msim/; \
-		echo "Importing DC simulation library to tech"; \
-		cp $(ETOOLS_N2X_HOME)/data/design_libs/nextreme-2/dc/sim/verilog/* $(GRLIB)/lib/tech/nextreme2/dc/; \
-		echo "Importing eASIC IP Library to techmap"; \
-		cp -r $(ETOOLS_N2X_HOME)/data_common/ip_lib $(GRLIB)/lib/techmap/nextreme2/; \
-		echo "Patching DDR2 PHY IP with local modifications"; \
-		patch $(GRLIB)/lib/techmap/nextreme2/ip_lib/dfi/ddr2/src/rtl/verilog/eip_n2x_dfi_ddr2_phy_rden1.v $(GRLIB)/lib/techmap/nextreme2/dfiphy.patch; \
-		echo "Importing eASIC RTL library wrappers to techmap"; \
-		cp -r $(ETOOLS_N2X_HOME)/data/design_libs/nextreme-2/logical/msim/verilog/*wrapper.v  $(GRLIB)/lib/techmap/nextreme2/; \
-	else \
-		echo "ETOOLS_N2X_HOME environment variable is not correctly set!"; \
-	fi
-
-remove-easic-n2x:
-	@echo "Removing imported eASIC libraries"; \
-	rm -rf  "$(GRLIB)"/lib/tech/nextreme2/sim/verilog "$(GRLIB)"/lib/tech/nextreme2/msim/verilog \
-	"$(GRLIB)"/lib/tech/nextreme2/dc/*.v "$(GRLIB)"/lib/techmap/nextreme2/ip_lib \
-	"$(GRLIB)"/lib/techmap/nextreme2/n2x_*_wrapper.v;
 
 ######## Common cleaning   ####################
 
-clean: $(CLEAN) vsim-clean ise-clean ncsim-clean ghdl-clean synplify-clean quartus-clean sonata-clean \
-	actel-clean dc-clean rc-clean isp-clean precision-clean vsimsa-clean avhdl-clean riviera-clean \
-	etools-n2x-clean vivado-clean planAhead-clean
+clean: $(CLEAN) vsim-clean ise-clean ncsim-clean ghdl-clean synplify-clean quartus-clean \
+	actel-clean dc-clean rc-clean isp-clean precision-clean vsimsa-clean avhdl-clean \
+	vivado-clean planAhead-clean riviera-clean
 	-rm -rf verilog.txt tkparse.exe main.tk ahbrom outdata ahbrom.bin
 
 scripts-clean:
@@ -2730,17 +2890,11 @@ scripts-clean:
 	$(TOP)_synplify.prj $(SIMTOP).mpf tmpmake.ghdl \
 	$(TOP)_designer.tcl $(TOP)_designer_act.tcl \
 	modelsim.ini modelsim.ini.bak \
-	alibs.do avhdl.tcl riviera.do \
-	$(TOP)_etools_create.tcl $(TOP).eprj $(EXTRACLEAN)
+	alibs.do avhdl.tcl riviera_ws_create.do $(EXTRACLEAN)
 
-distclean: $(CLEAN) clean scripts-clean clean_xilinx_verilog_lib
+distclean: $(CLEAN) clean scripts-clean clean-xilinx-lib
 
-libclean:
-	-@rm work.v; \
-	for j in `cat libs.txt` work ; do \
-	  rm $$j.vhd; \
-	done;
-	make distclean
+libclean: remove-altera remove-unisim remove-microsemi
 
 none-clean:
 
@@ -2820,7 +2974,7 @@ oldconfig: lconfig.tk $(GRLIB)/bin/Makefile.config
 	   echo config.vhd recreated from .config; \
 	fi
 
-.PHONY: sonata xst precision synplify scripts bitfiles planAhead planAhead-launch vivado vivado-launch
+.PHONY: xst precision synplify scripts bitfiles planAhead planAhead-launch vivado vivado-launch
 
 
 

@@ -458,11 +458,11 @@ library ieee;
 use ieee.std_logic_1164.all;
 -- pragma translate_off
 library unisim;
-use unisim.BUFG;
-use unisim.DCM;
-use unisim.FDDRRSE;
-use unisim.IFDDRRSE;
-use unisim.FD;
+--use unisim.BUFG;
+--use unisim.DCM;
+--use unisim.FDDRRSE;
+--use unisim.IFDDRRSE;
+--use unisim.FD;
 -- pragma translate_on
 
 library grlib;

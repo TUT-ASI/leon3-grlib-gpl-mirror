@@ -20,12 +20,9 @@ NOTE4: Synplify versions H/I/J (tested with J-2015.03) do not correctly
 
 To simulate the design with ModelSim (or Aldec Riviera):
 
-  make install-unisim
-  make vsim (make riviera)
-  make compile-unisim
-  make vsim (skip this step if you are using Aldec Riviera)
-  make vsim-launch (make riviera-launch)
-
+  make install-secureip
+  make sim
+  make sim-launch
 
 Design specifics:
 

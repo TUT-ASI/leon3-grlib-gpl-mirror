@@ -59,10 +59,9 @@ package libmmu is
       mcmmo  : in  memory_mm_out_type;
       mcmmi  : out memory_mm_in_type;
 
-      ramcclk : in  std_ulogic := '0';
-      ramcin  : in  std_logic_vector(2*ramcbits-1 downto 0) := (others => '0');
-      ramcout : out std_logic_vector(2*ramcbits-1 downto 0)
-    );
+      testin : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
+
+      );
   end component;
 
   

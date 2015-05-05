@@ -230,7 +230,7 @@ architecture rtl of leon3mp is
 
   component BUFG port (O : out std_logic; I : in std_logic); end component;
 
-  component ahb2mig_series7_ddr2_dq16_ad13_ba3
+  component ahb2mig_7series_ddr2_dq16_ad13_ba3
   generic(
     hindex     : integer := 0;
     haddr      : integer := 0;
@@ -423,7 +423,7 @@ begin
 
   rst0 : rstgen generic map (acthigh => 1)
     port map (btnCpuReset, clkm, lock, rstn, rstraw);
-  lock <= calib_done when CFG_MIG_SERIES7 = 1 else cgo.clklock and lock0;
+  lock <= calib_done when CFG_MIG_7SERIES = 1 else cgo.clklock and lock0;
   led(4) <= lock;
   led(5) <= lock0;
 
@@ -432,7 +432,7 @@ begin
   port map (btnCpuReset, clkm, lock, migrstn, open);
 
   -- clock generator
-  clkgen_gen: if (CFG_MIG_SERIES7 = 0) generate
+  clkgen_gen: if (CFG_MIG_7SERIES = 0) generate
     clkgen0 : clkgen
       generic map (fabtech, CFG_CLKMUL, CFG_CLKDIV, 0, 0, 0, 0, 0, BOARD_FREQ, 0)
       port map (sys_clk_i, gnd, clkm, open, clkm2x, open, open, cgi, cgo, open, open, open);
@@ -508,7 +508,7 @@ begin
 ----------------------------------------------------------------------
 ---  DDR2 Memory controller ------------------------------------------
 ----------------------------------------------------------------------
-  ddr2gen: if (CFG_DDR2SP = 1) and (CFG_MIG_SERIES7 = 0) generate
+  ddr2gen: if (CFG_DDR2SP = 1) and (CFG_MIG_7SERIES = 0) generate
     ddrc : ddr2spa generic map (fabtech => fabtech, memtech => memtech, 
              hindex => 5, haddr => 16#400#, hmask => 16#F80#, ioaddr => 1, rstdel => 200, -- iomask generic default value
              MHz => CPU_FREQ/1000, TRFC => CFG_DDR2SP_TRFC, clkmul => 12,
@@ -536,11 +536,11 @@ begin
     ddr2_odt  <= ddr0_odt(0 downto 0);
   end generate;
   
-  noddr2 : if (CFG_DDR2SP = 0) and (CFG_MIG_SERIES7 = 0) generate lock0 <= '1'; end generate;
+  noddr2 : if (CFG_DDR2SP = 0) and (CFG_MIG_7SERIES = 0) generate lock0 <= '1'; end generate;
 
-  mig_gen : if (CFG_DDR2SP = 0) and (CFG_MIG_SERIES7 = 1) generate
+  mig_gen : if (CFG_DDR2SP = 0) and (CFG_MIG_7SERIES = 1) generate
     gen_mig : if (USE_MIG_INTERFACE_MODEL /= true) generate
-      ddrc : ahb2mig_series7_ddr2_dq16_ad13_ba3 generic map(
+      ddrc : ahb2mig_7series_ddr2_dq16_ad13_ba3 generic map(
           hindex => 5, haddr => 16#400#, hmask => 16#F80#, pindex => 5, paddr => 5,
           SIM_BYPASS_INIT_CAL => SIM_BYPASS_INIT_CAL, SIMULATION => SIMULATION, USE_MIG_INTERFACE_MODEL => USE_MIG_INTERFACE_MODEL)
         port map(

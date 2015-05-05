@@ -209,7 +209,7 @@ package devices is
   constant GAISLER_GRPWTX    : amba_device_type := 16#08D#;
   constant GAISLER_GRPWRX    : amba_device_type := 16#08E#;
   constant GAISLER_GPREGBANK : amba_device_type := 16#08F#;
-  constant GAISLER_MIG_SERIES7   : amba_device_type := 16#090#;
+  constant GAISLER_MIG_7SERIES   : amba_device_type := 16#090#;
   constant GAISLER_GRSPW2_SIST   : amba_device_type := 16#091#;
   constant GAISLER_SGMII     : amba_device_type := 16#092#;
   constant GAISLER_RGMII     : amba_device_type := 16#093#;
@@ -523,7 +523,7 @@ package devices is
    GAISLER_DDRSDMUX  => "Muxed FT DDR/SDRAM controller  ",
    GAISLER_AHBFROM   => "Flash ROM Memory               ",
    GAISLER_PCIEXP    => "Xilinx PCI EXPRESS Wrapper     ",
-   GAISLER_MIG_SERIES7 => "Xilinx MIG DDR3 Controller     ",
+   GAISLER_MIG_7SERIES => "Xilinx MIG DDR3 Controller     ",
    GAISLER_GRSPW2_SIST => "GRSPW Router SIST              ",
    GAISLER_SGMII     => "XILINX SGMII Interface         ",
    GAISLER_RGMII     => "Gaisler RGMII Interface        ",

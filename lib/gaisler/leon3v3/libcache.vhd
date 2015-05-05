@@ -240,9 +240,6 @@ package libcache is
      faddress      : std_logic_vector(19 downto 0);
      ldramin       : ldram_in_type;
      ctx           : ctxdatatype;
-     tdiag         : std_logic_vector(3 downto 0);
-     ddiag         : std_logic_vector(3 downto 0);
-     sdiag         : std_logic_vector(3 downto 0);
   end record;
 
   type dcram_out_type is record
@@ -277,7 +274,6 @@ package libcache is
      retry            : std_ulogic;                            -- 
      mexc             : std_ulogic;                            -- memory exception
      cache            : std_ulogic;                -- cacheable data
-     scanen           : std_ulogic;
   end record;
 
   type memory_dc_in_type is record
@@ -302,8 +298,6 @@ package libcache is
      cache            : std_ulogic;                -- cacheable data
      ba               : std_ulogic;                -- bus active (used for snooping)
      bg               : std_ulogic;                -- bus grant  (used for snooping)
-     scanen           : std_ulogic;
-     testen           : std_ulogic;
   end record;
 
   constant dir          : integer                := 3;
@@ -342,7 +336,8 @@ package libcache is
         clk   : in  std_ulogic;
         crami : in  cram_in_type;
         cramo : out cram_out_type;
-        sclk  : in  std_ulogic
+        sclk  : in  std_ulogic;
+        testin: in  std_logic_vector(TESTIN_WIDTH-1 downto 0)
   );
   end component;
 

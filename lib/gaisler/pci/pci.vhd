@@ -447,15 +447,6 @@ end component;
    );
 end component;
 
-type grpci2_memtest_type is record
-  tfifo: memtest_vector_array(0 to 5);
-  mfifo: memtest_vector_array(0 to 5);
-  dfifo: memtest_vector_array(0 to 5);
-  tbuf: memtest_vector_array(0 to 1);
-end record;
-constant grpci2_memtest_none : grpci2_memtest_type := (
-  (others => (others => '0')), (others => (others => '0')),
-  (others => (others => '0')), (others => (others => '0'))  );
 
 component grpci2
   generic (
@@ -560,10 +551,7 @@ component grpci2
       ptarst    : out std_logic;
       tbapbi    : in apb_slv_in_type := apb_slv_in_none;
       tbapbo    : out apb_slv_out_type;
-      debugo    : out std_logic_vector(debug*255 downto 0);
-      mtesti    : in grpci2_memtest_type := grpci2_memtest_none;
-      mtesto    : out grpci2_memtest_type;
-      mtestclk  : in std_ulogic := '0'
+      debugo    : out std_logic_vector(debug*255 downto 0)
 );
 end component;
 

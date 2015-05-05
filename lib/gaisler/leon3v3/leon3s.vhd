@@ -184,6 +184,7 @@ begin
       dbgo       => dbgo,
       fpui       => open,
       fpuo       => fpuo,
-      clken      => vcc);
+      clken      => vcc
+      );
 
 end;

@@ -7,6 +7,9 @@ Simulation and synthesis
 The design currently supports synthesis with Xilinx Vivado (tested
 with Vivado 2014.4.1).
 
+The XILINX_VIVADO variable must be exported for the mig_7series target
+to work correctly: export XILINX_VIVADO
+
 The on-board DDR2 memory can be interfaced through the Gaisler DDR2SPA
 memory controller or the Xilinx MIG memory interface.
 
@@ -28,10 +31,10 @@ memory controller from Xilinx use the make targets:
 To simulate using Modelsim/Aldec and run systest.c on the Leon design using 
 the memory controller from Xilinx use the make targets:
 
-  make vsim (only required if Modelsim/Aldec is used as simulator)
-  make mig_series7 (only required if Xilinx MIG is enabled via xconfig)
+  make sim (only required if Modelsim/Aldec is used as simulator)
+  make mig_7series (only required if Xilinx MIG is enabled via xconfig)
   make soft
-  make vsim-launch
+  make sim-launch
 
 To simulate using Aldec Riviera use the following make targets:
 
@@ -48,7 +51,7 @@ Finally, to program the FPGA:
   
   make vivado-prog-fpga
 
-When the DDR2SPA controller is enabled, the same flow can be followed, but there is no need to issue "make mig_series7".
+When the DDR2SPA controller is enabled, the same flow can be followed, but there is no need to issue "make mig_7series".
 
 
 Design specifics

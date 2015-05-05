@@ -130,32 +130,17 @@ package libleon3 is
       dsu     :     integer range 0 to 1 := 0;
       disas   :     integer range 0 to 2 := 0;
       netlist :     integer              := 0;
-      index   :     integer              := 0);
+      index   :     integer              := 0;
+      scantest:     integer              := 0);
     port (
       rst     : in  std_ulogic;         -- Reset
       clk     : in  std_ulogic;
       holdn   : in  std_ulogic;         -- pipeline hold
       cpi     : in  fpc_in_type;
-      cpo     : out fpc_out_type
+      cpo     : out fpc_out_type;
+      testin  : in  std_logic_vector(TESTIN_WIDTH-1 downto 0)
       );
   end component;
-
-  component mfpwx
-    generic (
-      tech  :     integer              := 0;
-      pclow :     integer range 0 to 2 := 2;
-      dsu   :     integer range 0 to 1 := 0;
-      disas :     integer range 0 to 2 := 0;
-      rfft  :     integer range 0 to 2 := 0);  -- 0 - no protection, 1 - parity                               
-    port (
-      rst   : in  std_ulogic;           -- Reset
-      clk   : in  std_ulogic;
-      holdn : in  std_ulogic;           -- pipeline hold
-      cpi   : in  fpc_in_type;
-      cpo   : out fpc_out_type
-      );
-  end component;
-
 
   component grlfpwx
     generic (
@@ -165,14 +150,16 @@ package libleon3 is
       disas   :     integer range 0 to 2 := 0;
       pipe    :     integer              := 0;
       netlist :     integer              := 0;
-      index   :     integer              := 0
+      index   :     integer              := 0;
+      scantest:     integer              := 0
       );
     port (
       rst   : in  std_ulogic;           -- Reset
       clk   : in  std_ulogic;
       holdn : in  std_ulogic;           -- pipeline hold
       cpi   : in  fpc_in_type;
-      cpo   : out fpc_out_type
+      cpo   : out fpc_out_type;
+      testin: in  std_logic_vector(TESTIN_WIDTH-1 downto 0)
       );
   end component;
 
@@ -197,7 +184,8 @@ package libleon3 is
       raddr2  : in  std_logic_vector((abits -1) downto 0);
       re2     : in  std_ulogic;
       rdata2  : out std_logic_vector((dbits -1) downto 0);
-      testin  : in  std_logic_vector(3 downto 0) := "0000");
+      testin  : in  std_logic_vector(TESTIN_WIDTH-1 downto 0)
+      );
   end component;
 
 end;

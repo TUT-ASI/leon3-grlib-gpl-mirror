@@ -1,8 +1,6 @@
-memory_virtex.vhd
 memory_unisim.vhd
 buffer_unisim.vhd
 pads_unisim.vhd
-clkgen_virtex.vhd
 clkgen_unisim.vhd
 tap_unisim.vhd
 ddr_unisim.vhd
@@ -15,4 +13,3 @@ sysmon_unisim.vhd
 mul_unisim.vhd
 spictrl_unisim.vhd
 obt1553_unisim.vhd
-serdes_unisim.vhd

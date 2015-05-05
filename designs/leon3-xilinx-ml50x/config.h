@@ -337,7 +337,7 @@
 #define CONFIG_GRGPIO_WIDTH (32)
 #define CONFIG_GRGPIO_IMASK 0FFFE
 #define CONFIG_I2C_ENABLE 1
-#define CONFIG_GRSYSMON 1
+#undef  CONFIG_GRSYSMON
 /*
  * Keybord and VGA interface
  */

@@ -1,3 +1,43 @@
+----------------------- Release 1.4.1-b4156 ----------------------------
+
+2015-05-05	scripts: Skip secureip files in UNISIM when secureip is missing
+		from TECHLIBS
+
+2015-05-05	leon3-terasic-sockit: Simulation support updates
+
+2015-05-05	SPICTRL: Descriptions for bit 15 in event and mask registers
+		were missing.
+
+2015-05-04	leon3-xilinx-ml50x: Fix UCF file in default configuration
+
+2015-04-24	Add GRLIB_SUMULTOR=ALDEC_RWS option, see Riviera section in
+		GRLIB user's manual (doc/grlib.pdf)
+
+2015-04-24	Remove GRLIB cache of vendor simulation libraries. Simulation
+		libraries now need to be imported for each installation. See
+		the installation section in doc/grlib.pdf for instructions.
+
+2015-04-23	Xilinx ML605/ML50x/ML510 designs: Update simulation flow
+
+2015-04-23	Unisim: Add make install- targets for Xilinx verilog libs
+
+2015-04-22	Remove script support and targets for Symphony-EDA Sonata
+
+2015-04-22	Fix naming used for Xilinx 7-series (series7 to 7series)
+
+2015-04-22	Xilinx VC707: Added missing pin property for SGMII interface
+
+2015-04-22	Update simulation flow for Xilinx AC701, KC705 and VC707 designs
+
+2015-04-20	Break out Virtex techmap from techmap/unisim
+
+2015-04-20	Added techmap/virtex5 for Virtex5 SERDES
+
+2015-04-20	Added SKIP_SIM_TECHLIBS setting to avoid build of libraries
+		in tech/ to avoid collisions when using prebuilt libraries.
+
+2015-04-19	Updated Aldec Riviera-PRO project generation
+
 ----------------------- Release 1.4.0-b4154 ----------------------------
 
 2015-04-10	Xilinx ML510 design: add support for second Ethernet core 

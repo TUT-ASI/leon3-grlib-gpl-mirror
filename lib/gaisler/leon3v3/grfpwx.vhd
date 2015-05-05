@@ -42,13 +42,15 @@ entity grfpwx is
            dsu      : integer range 0 to 1 := 0;
            disas    : integer range 0 to 2 := 0;
            netlist  : integer := 0;
-           index    : integer := 0);
+           index    : integer := 0;
+           scantest : integer := 0);
   port (
     rst    : in  std_ulogic;                    -- Reset
     clk    : in  std_ulogic;
     holdn  : in  std_ulogic;                    -- pipeline hold
     cpi    : in  fpc_in_type;
-    cpo    : out fpc_out_type
+    cpo    : out fpc_out_type;
+    testin : in  std_logic_vector(TESTIN_WIDTH-1 downto 0)
     );
 
 
@@ -142,16 +144,21 @@ begin
     );
   end generate;
 
-     rf1 : regfile_3p_l3 generic map (memtech, 4, 32, 1, 16
+     rf1 : regfile_3p_l3 generic map (memtech, 4, 32, 1, 16,
+                                      scantest
                                       )
        port map (clk, rfi1.wraddr, rfi1.wrdata, rfi1.wren, clk, rfi1.rd1addr,
-                 rfi1.ren1, rfo1.data1, rfi1.rd2addr, rfi1.ren2, rfo1.data2
+                 rfi1.ren1, rfo1.data1, rfi1.rd2addr, rfi1.ren2, rfo1.data2,
+                 testin
         );
 
-     rf2 : regfile_3p_l3 generic map (memtech, 4, 32, 1, 16
+     rf2 : regfile_3p_l3 generic map (memtech, 4, 32, 1, 16,
+                                      scantest
                                       )
        port map (clk, rfi2.wraddr, rfi2.wrdata, rfi2.wren, clk, rfi2.rd1addr,
-                 rfi2.ren1, rfo2.data1, rfi2.rd2addr, rfi2.ren2, rfo2.data2
+                 rfi2.ren1, rfo2.data1, rfi2.rd2addr, rfi2.ren2, rfo2.data2,
+                testin
         );
+
 
 end;

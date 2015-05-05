@@ -33,7 +33,7 @@ To simulate using Modelsim/Aldec and run systest.c on the LEON3 ASIC
 design:
 
   make comp_saed32_sim (If SAED32 is used)
-  make vsim
+  make sim
   make soft
   make vsim-launch
 

@@ -92,12 +92,6 @@ package net is
     mdio_oe        : std_ulogic;
   end record;
 
-  type greth_memtest_type is record
-    buf : memtest_vector_array(0 to 5);
-    edcl: memtest_vector_array(0 to 5);
-  end record;
-  constant greth_memtest_none: greth_memtest_type :=
-    (others => (others => (others => '0')));
 
   type greth_mdiochain_down_type is record
     first  : std_ulogic;
@@ -282,13 +276,10 @@ package net is
       apbo           : out apb_slv_out_type;
       ethi           : in  eth_in_type;
       etho           : out eth_out_type;
-      mtesti         : in  greth_memtest_type := greth_memtest_none;
-      mtesto         : out greth_memtest_type;
-      mtestclk       : in  std_ulogic := '0';
-      mdchain_ui     : in  greth_mdiochain_down_type;
+      mdchain_ui     : in  greth_mdiochain_down_type := greth_mdiochain_down_first;
       mdchain_uo     : out greth_mdiochain_up_type;
       mdchain_di     : out greth_mdiochain_down_type;
-      mdchain_do     : in  greth_mdiochain_up_type
+      mdchain_do     : in  greth_mdiochain_up_type := greth_mdiochain_up_last
     );
   end component;
 

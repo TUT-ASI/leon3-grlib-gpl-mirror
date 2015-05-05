@@ -47,7 +47,8 @@ entity regfile_3p_l3 is
     raddr2 : in  std_logic_vector((abits -1) downto 0);
     re2    : in  std_ulogic;
     rdata2 : out std_logic_vector((dbits -1) downto 0);
-    testin : in  std_logic_vector(3 downto 0) := "0000");
+    testin : in  std_logic_vector(TESTIN_WIDTH-1 downto 0)
+    );
 
 
 end;
@@ -63,6 +64,7 @@ signal vcc, gnd : std_ulogic;
 signal vgnd : std_logic_vector(dbits-1 downto 0);
 signal write2, renable2 : std_ulogic;
 
+
 begin
 
   vcc <= '1'; gnd <= '0'; vgnd <= (others => '0');
@@ -72,13 +74,20 @@ begin
         ;
   
   s0 : if rfinfer generate
-      inf : regfile_3p generic map (0, abits, dbits, wrfst, numregs)
-      port map ( wclk, waddr, wdata, we, rclk, raddr1, re1, rdata1, raddr2, re2, rdata2);
+      inf : regfile_3p generic map (0, abits, dbits, wrfst, numregs, testen, memtest_vlen)
+      port map ( wclk, waddr, wdata, we, rclk, raddr1, re1, rdata1, raddr2, re2, rdata2,
+                 testin
+                 );
   end generate;
 
   s1 : if not rfinfer generate
-      rhu : regfile_3p generic map (tech, abits, dbits, wrfst, numregs, testen)
-      port map ( wclk, waddr, wdata, we, rclk, raddr1, re1, rdata1, raddr2, re2, rdata2);
+      rhu : regfile_3p generic map (tech, abits, dbits, wrfst, numregs, testen, memtest_vlen)
+      port map ( wclk, waddr, wdata, we, rclk, raddr1, re1, rdata1, raddr2, re2, rdata2,
+                 testin
+                 );
   end generate;
+
+
+
 end;
 

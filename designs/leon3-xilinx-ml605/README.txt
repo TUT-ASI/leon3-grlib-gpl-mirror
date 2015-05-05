@@ -43,18 +43,16 @@ simulation and synthesis can be done.
 To generate the MIG and PCI Express and to install the Xilinx unisim
 simulation library, do as follows:
 
+  make install-secureip_ver
   make mig39
   make pcie (do if PCI Express is enabled)
-  make install-secureip (do if PCI Express is enabled)
-  make compile_xilinx_verilog_lib
-  make vsim
-  make map_xilinx_verilog_lib
+  make sim
 
 To simulate and run systest.c on the Leon design using the memory 
 controller from Xilinx use the make targets:
 
   make soft
-  make vsim-launch
+  make sim-launch
   
 This will ONLY work with ISE-14 installed, and the XILINX variable
 properly set in the shell. To build the design, do
@@ -144,27 +142,6 @@ Design specifics
 
 * 16-bit flash prom can be read at address 0. It can be programmed
   with GRMON version 1.1.16 or later.
-
-* When using ISE-13 the system can be simulated if the secure IP models are installed:
-
-  make install-secureip
-
-  Then rebuild the scripts and simulation model:
-
-  make distclean vsim
-
-  Modelsim v6.5e or newer is required to build the secure IP models.
-
-* When using ISE-14 the system can be simulated if xilinx core libs are installed:
-
-  make compile_xilinx_verilog_lib
-  make map_xilinx_verilog_lib
-
-  Then rebuild the scripts and simulation model:
-
-  make distclean vsim-launch
-
-  Modelsim v10.1a has been used to run systest.c.
 
 * The application UART1 is connected to the USB/RS232 connector
 

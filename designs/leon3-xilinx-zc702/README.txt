@@ -21,8 +21,8 @@ Simulation
 Simulation should work with any supported VHDL simultor. 
 To build and load the design with the modelsim simulator, do:
 
-  make vsim
-  make vsim-launch
+  make sim
+  make sim-launch
 
 The PS and external memory is be emulated by a simple model
 (leon3_zedboard_stub_sim.vhd) that provides clocks, reset and

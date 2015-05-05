@@ -1,4 +1,3 @@
-
 ### GRLIB general setup and extra target to clean software
 include .config
 GRLIB=../..
@@ -20,6 +19,7 @@ SIMTOP=testbench
 
 # Uncomment for Modelsim or change to specify your simulator
 #GRLIB_SIMULATOR=ModelSim
+#GRLIB_SIMULATOR=ALDEC
 
 # Options used during compilation
 VCOMOPT=-explicit -O0
@@ -29,17 +29,19 @@ VCOMOPT=-explicit -O0
 
 # GRETH options
 ifeq ($(CONFIG_GRETH_ENABLE),y)
-VSIMOPT+= -L gig_ethernet_pcs_pma_v14_3 -L secureip_ver -L xilinxcorelib_ver -L unisims_ver 
+VSIMOPT+= -L gig_ethernet_pcs_pma_v14_3 -L secureip -L unisims_ver 
 endif
 
 # - MIG -
-ifeq ($(CONFIG_MIG_SERIES7),y)
+ifeq ($(CONFIG_MIG_7SERIES),y)
 VSIMOPT+= -t fs -novopt
-VSIMOPT+= -L secureip_ver -L xilinxcorelib_ver -L unisims_ver glbl
-ifndef CONFIG_MIG_SERIES_7_MODEL
+VSIMOPT+= -L secureip -L unisims_ver glbl
+ifndef CONFIG_MIG_7SERIES_MODEL
 VSIMOPT+= -gUSE_MIG_INTERFACE_MODEL=false -gSIM_BYPASS_INIT_CAL=FAST -gSIMULATION=TRUE
+ASIMOPT+= -gUSE_MIG_INTERFACE_MODEL=false -gSIM_BYPASS_INIT_CAL=FAST -gSIMULATION=TRUE
 else
 VSIMOPT+= -gUSE_MIG_INTERFACE_MODEL=true -t ps
+ASIMOPT+= -gUSE_MIG_INTERFACE_MODEL=true -t ps
 endif
 endif
 
@@ -47,14 +49,19 @@ endif
 ifeq ("$(GRLIB_SIMULATOR)","ALDEC")
 VSIMOPT+= +access +w -voptargs="+acc" +notimingchecks
 else
-VSIMOPT+= -novopt +notimingchecks
+VSIMOPT+=-novopt +notimingchecks
 endif
 
 # Run simulation in batch mode
 #VSIMOPT+= -c
 
+# Remove collision check in UNSIM library
+VSIMOPT+= -GSIM_COLLISION_CHECK="GENERATE_X_ONLY"
+ASIMOPT+= -GSIM_COLLISION_CHECK="GENERATE_X_ONLY"
+
 # Simulation scripts
 VSIMOPT+= -do "run -all"
+ASIMDO = run -all
 
 # Toplevel
 VSIMOPT+= $(SIMTOP)
@@ -66,7 +73,8 @@ VSIMOPT+= $(SIMTOP)
 VHDLSYNFILES= config.vhd ahbram_sim.vhd ahbrom.vhd leon3mp.vhd ddr_dummy.vhd sgmii_vc707.vhd
 VHDLSIMFILES=testbench.vhd
 
-TECHLIBS = secureip unisim
+TECHLIBS = unisim
+SKIP_SIM_TECHLIBS = 1
 
 LIBSKIP = pci pci/pcif core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp spw gsi cypress hynix \
@@ -74,38 +82,10 @@ LIBSKIP = pci pci/pcif core1553bbc core1553brm core1553brt gr1553 corePCIF \
 LIBADD = testgrouppolito
 DIRSKIP = b1553 pci pci/pcif leon2 leon2ft crypto satcan pci ambatest \
 	spacewire ascs slink \
-	leon4 leon4v0 l2cache pwm gr1553b iommu ac97 secureip
+	pwm gr1553b iommu ac97 secureip
 FILESKIP = grcan.vhd ddr2.v mobile_ddr.v adapters/sgmii.vhd
 
 include $(GRLIB)/bin/Makefile
 include $(GRLIB)/software/leon3/Makefile
 
 ##################  project specific targets ##########################
-
-all: help-local
-
-help-local: help
-	@echo
-	@echo " design specific targets:"
-	@echo " (Only needed to generate and compile IPs for Xilinx Series7)"
-	@echo
-	@echo " make compile_xilinx_verilog_lib   : compile xilinx verilog library"
-	@echo " make clean_xilinx_verilog_lib     : remove xilinx verilog library"
-	@echo " make mig_series7                  : create xilinx memory controller using coregen."
-	@echo " make sgmii_series7                : create SGMII interface using coregen."
-	@echo
-	@echo " ================================================================"
-	@echo "         Quick start guide for simulation of systest.c"
-	@echo
-	@echo "  1. Setup search paths for Xilinx, GCC and Modelsim "
-	@echo "  2. make vsim"
-	@echo "  3. make mig_series7"
-	@echo "  4. make sgmii_series7"
-	@echo "  5. make soft"
-	@echo "  6. make vsim-launch"
-	@echo
-	@echo " Please note that this quick start guide will compile and simulate"
-	@echo " a preconfigured version of the leon3 processor system."
-	@echo " For customizing the leon3 susbsystem run make 'xconfig'"
-	@echo " ================================================================"
-	@echo

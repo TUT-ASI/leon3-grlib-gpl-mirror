@@ -173,7 +173,8 @@ begin
          tlb_type, tlb_rep, lddel, disas, tbuf, pwd, svt, rstaddr, smp,
          cached, clk2x, scantest, mmupgsz, bp, npasi, pwrpsr)
        port map (gclk2, rst, holdn, ahbi, ahbo, ahbsi, ahbso, rfi, rfo, crami, cramo, 
-                 tbi, tbo, tbi_2p, tbo_2p, fpi, fpo, cpi, cpo, irqi, irqo, dbgi, dbgo, clk, clk2, clken);
+                 tbi, tbo, tbi_2p, tbo_2p, fpi, fpo, cpi, cpo, irqi, irqo, dbgi, dbgo, clk, clk2, clken
+                 );
   
      -- IU register file
      rf0 : regfile_3p_l3 generic map (memtech, IRFBITS, 32, IRFWT, IREGNUM,
@@ -181,7 +182,7 @@ begin
        port map (gclk2, rfi.waddr(IRFBITS-1 downto 0), rfi.wdata, rfi.wren,
                  gclk2, rfi.raddr1(IRFBITS-1 downto 0), rfi.ren1, rfo.data1,
                  rfi.raddr2(IRFBITS-1 downto 0), rfi.ren2, rfo.data2,
-                 rfi.diag
+                 ahbi.testin
                  );
 
      -- cache memory
@@ -190,20 +191,23 @@ begin
                     drepl, dsets,  dlinesize, dsetsize, dsetlock, dsnoop, ilram,
                     ilramsize, dlram, dlramsize, mmuen, scantest
                     )
-       port map (gclk2, crami, cramo, clk2);
+       port map (gclk2, crami, cramo, clk2, ahbi.testin
+                 );
 
      -- instruction trace buffer memory
      tbmem_gen : if (tbuf /= 0) generate
        tbmem_1p : if (tbuf <= 64) generate
          tbmem0 : tbufmem
            generic map (tech => memtech, tbuf => tbuf, dwidth => 32, testen => scantest)
-           port map (gclk2, tbi, tbo);
+           port map (gclk2, tbi, tbo, ahbi.testin
+                     );
          tbo_2p <= tracebuf_2p_out_type_none;
        end generate;
        tbmem_2p: if (tbuf > 64) generate
          tbmem0 : tbufmem_2p
            generic map (tech => memtech, tbuf => (tbuf-64), dwidth => 32, testen => scantest)
-           port map (gclk2, tbi_2p, tbo_2p);
+           port map (gclk2, tbi_2p, tbo_2p, ahbi.testin
+                     );
          tbo <= tracebuf_out_type_none;
        end generate;
      end generate;
@@ -213,14 +217,18 @@ begin
      end generate;
 
      -- FPU
-     fpu0 : if (fpu = 0) generate fpo <= fpc_out_none; end generate;
+     fpu0 : if (fpu = 0) generate
+       fpo <= fpc_out_none;
+     end generate;
 
      fpshare : if fpushared generate
        grfpw0gen : if (fpuarch > 0) and (fpuarch < 8) generate
          fpu0: grfpwxsh
-           generic map (memtech, pclow, dsu, disas, hindex
+           generic map (memtech, pclow, dsu, disas, hindex,
+                        scantest
                      )
-           port map (rst, gclk2, holdn, fpi, fpo, fpui, fpuo);
+           port map (rst, gclk2, holdn, fpi, fpo, fpui, fpuo, ahbi.testin
+                     );
        end generate;
        nogrfpw0gen : if not ((fpuarch > 0) and (fpuarch < 8)) generate
          fpui <= grfpu_in_none;
@@ -231,22 +239,17 @@ begin
        grfpw1gen : if (fpuarch > 0) and (fpuarch < 8) generate
          fpu0: grfpwx
            generic map (fabtech, memtech, (fpuarch-1), pclow, dsu, disas,
-                        fpunet, hindex)
-           port map (rst, gfclk2, holdn, fpi, fpo);
+                        fpunet, hindex, scantest)
+           port map (rst, gfclk2, holdn, fpi, fpo, ahbi.testin
+                     );
        end generate;  
-
-       mfpw1gen : if (fpuarch = 15) generate
-         fpu0 : mfpwx
-           generic map (memtech, pclow, dsu, disas
-                        )
-           port map (rst, gfclk2, holdn, fpi, fpo);
-       end generate;    
 
        grlfpc1gen : if (fpuarch >=8) and (fpuarch < 15) generate
          fpu0 : grlfpwx
            generic map (memtech, pclow, dsu, disas,
-                        (fpuarch-8), fpunet, hindex)
-           port map (rst, gfclk2, holdn, fpi, fpo);
+                        (fpuarch-8), fpunet, hindex, scantest)
+           port map (rst, gfclk2, holdn, fpi, fpo, ahbi.testin
+                     );
        end generate;    
        fpui <= grfpu_in_none;
      end generate;    

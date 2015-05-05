@@ -87,9 +87,6 @@ entity greth_gbit_mb is
     apbo           : out apb_slv_out_type;
     ethi           : in  eth_in_type;
     etho           : out eth_out_type;
-    mtesti         : in  greth_memtest_type := greth_memtest_none;
-    mtesto         : out greth_memtest_type;
-    mtestclk       : in  std_ulogic;
     mdchain_ui     : in  greth_mdiochain_down_type;  -- Set to greth_mdiochain_down_first
     mdchain_uo     : out greth_mdiochain_up_type;    -- Leave open
     mdchain_di     : out greth_mdiochain_down_type;  -- Leave open
@@ -157,7 +154,6 @@ architecture rtl of greth_gbit_mb is
 
   signal mdio_o,mdio_oe : std_ulogic;
 
-  signal mti_rx,mto_rx,mti_tx,mto_tx,mti_edcl0,mto_edcl0,mti_edcl1,mto_edcl1: std_logic_vector(3*memtest_vlen-1 downto 0);
   
 begin
   gtxc0: greth_gbitc
@@ -337,38 +333,32 @@ begin
     tx_fifo0 : syncram_2p generic map(tech => memtech, abits => fabits,
       dbits => 32, sepclk => 0, testen => scanen, custombits => memtest_vlen)
       port map(clk, txrenable, txraddress(fabits-1 downto 0), txrdata, clk,
-      txwrite, txwaddress(fabits-1 downto 0), txwdata, ahbmi.testin, mtestclk, mtesti.buf(0), mtesto.buf(0));
-  
+      txwrite, txwaddress(fabits-1 downto 0), txwdata, ahbmi.testin
+               );
+
     rx_fifo0 : syncram_2p generic map(tech => memtech, abits => fabits,
       dbits => 32, sepclk => 0, testen => scanen, custombits => memtest_vlen)
       port map(clk, rxrenable, rxraddress(fabits-1 downto 0), rxrdata, clk,
-      rxwrite, rxwaddress(fabits-1 downto 0), rxwdata, ahbmi.testin, mtestclk, mtesti.buf(1), mtesto.buf(1));
+      rxwrite, rxwaddress(fabits-1 downto 0), rxwdata, ahbmi.testin
+               );
 
-    mto_tx <= (others => '0');
-    mto_rx <= (others => '0');
   end generate;
 
   ft1 : if ft /= 0 generate
     tx_fifo0 : syncram_2pft generic map(tech => memtech, abits => fabits,
       dbits => 32, sepclk => 0, ft => ft, testen => scanen, custombits => memtest_vlen)
       port map(clk, txrenable, txraddress(fabits-1 downto 0), txrdata, clk,
-      txwrite, txwaddress(fabits-1 downto 0), txwdata, open, ahbmi.testin, mtestclk, mti_tx, mto_tx);
+      txwrite, txwaddress(fabits-1 downto 0), txwdata, open, ahbmi.testin
+               );
 
     rx_fifo0 : syncram_2pft generic map(tech => memtech, abits => fabits,
       dbits => 32, sepclk => 0, ft => ft, testen => scanen, custombits => memtest_vlen)
       port map(clk, rxrenable, rxraddress(fabits-1 downto 0), rxrdata, clk,
-      rxwrite, rxwaddress(fabits-1 downto 0), rxwdata, open, ahbmi.testin, mtestclk, mti_rx, mto_rx);
+      rxwrite, rxwaddress(fabits-1 downto 0), rxwdata, open, ahbmi.testin
+               );
 
-    mtesto.buf(0) <= mto_tx(1*memtest_vlen-1 downto 0*memtest_vlen);
-    mtesto.buf(1) <= mto_tx(2*memtest_vlen-1 downto 1*memtest_vlen);
   end generate;
 
-  mtesto.buf(2) <= mto_tx(3*memtest_vlen-1 downto 2*memtest_vlen);
-  mtesto.buf(3) <= mto_rx(1*memtest_vlen-1 downto 0*memtest_vlen);
-  mtesto.buf(4) <= mto_rx(2*memtest_vlen-1 downto 1*memtest_vlen);
-  mtesto.buf(5) <= mto_rx(3*memtest_vlen-1 downto 2*memtest_vlen);
-  mti_tx <= mtesti.buf(2) & mtesti.buf(1) & mtesti.buf(0);
-  mti_rx <= mtesti.buf(5) & mtesti.buf(4) & mtesti.buf(3);
 
 -------------------------------------------------------------------------------
 -- EDCL buffer ram ------------------------------------------------------------
@@ -376,40 +366,23 @@ begin
   edclramnft : if (edcl /= 0) and (edclft = 0) generate
     r0 : syncram_2p generic map (memtech, eabits, 16, 0, 0, scanen, 0, memtest_vlen) port map (
       clk, erenable, eraddress(eabits-1 downto 0), erdata(31 downto 16), clk,
-      ewritem, ewaddressm(eabits-1 downto 0), ewdata(31 downto 16), ahbmi.testin,
-      mtestclk, mtesti.edcl(0), mtesto.edcl(0));
+      ewritem, ewaddressm(eabits-1 downto 0), ewdata(31 downto 16), ahbmi.testin
+      );
     r1 : syncram_2p generic map (memtech, eabits, 16, 0, 0, scanen, 0, memtest_vlen) port map (
       clk, erenable, eraddress(eabits-1 downto 0), erdata(15 downto 0), clk,
-      ewritel, ewaddressl(eabits-1 downto 0), ewdata(15 downto 0), ahbmi.testin,
-      mtestclk, mtesti.edcl(1), mtesto.edcl(1));
-    mto_edcl0 <= (others => '0');
-    mto_edcl1 <= (others => '0');
+      ewritel, ewaddressl(eabits-1 downto 0), ewdata(15 downto 0), ahbmi.testin
+      );
   end generate;
 
   edclramft1 : if (edcl /= 0) and (edclft /= 0) generate
     r0 : syncram_2pft generic map (memtech, eabits, 16, 0, 0, edclft, scanen, 0, memtest_vlen) port map (
       clk, erenable, eraddress(eabits-1 downto 0), erdata(31 downto 16), clk,
-      ewritem, ewaddressm(eabits-1 downto 0), ewdata(31 downto 16), open, ahbmi.testin,
-      mtestclk, mti_edcl0, mto_edcl0);
+      ewritem, ewaddressm(eabits-1 downto 0), ewdata(31 downto 16), open, ahbmi.testin
+      );
     r1 : syncram_2pft generic map (memtech, eabits, 16, 0, 0, edclft, scanen, 0, memtest_vlen) port map (
       clk, erenable, eraddress(eabits-1 downto 0), erdata(15 downto 0), clk,
-      ewritel, ewaddressl(eabits-1 downto 0), ewdata(15 downto 0), open, ahbmi.testin,
-      mtestclk, mti_edcl1, mto_edcl1);
-    mtesto.edcl(0) <= mto_edcl0(1*memtest_vlen-1 downto 0*memtest_vlen);
-    mtesto.edcl(1) <= mto_edcl0(2*memtest_vlen-1 downto 1*memtest_vlen);
-  end generate;
-  mtesto.edcl(2) <= mto_edcl0(3*memtest_vlen-1 downto 2*memtest_vlen);
-  mtesto.edcl(3) <= mto_edcl1(1*memtest_vlen-1 downto 0*memtest_vlen);
-  mtesto.edcl(4) <= mto_edcl1(2*memtest_vlen-1 downto 1*memtest_vlen);
-  mtesto.edcl(5) <= mto_edcl1(3*memtest_vlen-1 downto 2*memtest_vlen);
-  mti_edcl0 <= mtesti.edcl(2) & mtesti.edcl(1) & mtesti.edcl(0);
-  mti_edcl1 <= mtesti.edcl(5) & mtesti.edcl(4) & mtesti.edcl(3);
-
-  noedclram: if (edcl = 0) generate
-    mto_edcl0 <= (others => '0');
-    mto_edcl1 <= (others => '0');
-    mtesto.edcl(0) <= (others => '0');
-    mtesto.edcl(1) <= (others => '0');
+      ewritel, ewaddressl(eabits-1 downto 0), ewdata(15 downto 0), open, ahbmi.testin
+      );
   end generate;
 
 -- pragma translate_off

@@ -140,6 +140,22 @@
 #define CFG_RAM_TECH CONFIG_SYN_TECH
 #endif
 
+#if defined CONFIG_TRANS_GTP0
+#define CFG_TRANS_TECH GTP0
+#elif defined CONFIG_TRANS_GTP1
+#define CFG_TRANS_TECH GTP1
+#elif defined CONFIG_TRANS_GTX0
+#define CFG_TRANS_TECH GTX0
+#elif defined CONFIG_TRANS_GTX1
+#define CFG_TRANS_TECH GTX1
+#elif defined CONFIG_TRANS_GTH0
+#define CFG_TRANS_TECH GTH0
+#elif defined CONFIG_TRANS_GTH1
+#define CFG_TRANS_TECH GTH1
+#else
+#define CFG_TRANS_TECH GTP0
+#endif
+
 #if defined CONFIG_SYN_INFER_PADS
 #define CFG_PAD_TECH inferred
 #else
@@ -917,39 +933,11 @@
 #endif
 
 
-#ifndef CONFIG_MIG_DDR3
-#define CONFIG_MIG_DDR3 0
+#ifndef CONFIG_MIG_7SERIES
+#define CONFIG_MIG_7SERIES 0
 #endif
-
-#ifndef CONFIG_MIG_DDR2
-#define CONFIG_MIG_DDR2 0
-#endif
-
-#ifndef CONFIG_MIG_RANKS
-#define CONFIG_MIG_RANKS 1
-#endif
-
-#ifndef CONFIG_MIG_COLBITS
-#define CONFIG_MIG_COLBITS 10
-#endif
-
-#ifndef CONFIG_MIG_ROWBITS
-#define CONFIG_MIG_ROWBITS 13
-#endif
-
-#ifndef CONFIG_MIG_BANKBITS
-#define CONFIG_MIG_BANKBITS 2
-#endif
-
-#ifndef CONFIG_MIG_HMASK
-#define CONFIG_MIG_HMASK F00
-#endif
-
-#ifndef CONFIG_MIG_SERIES7
-#define CONFIG_MIG_SERIES7 0
-#endif
-#ifndef CONFIG_MIG_SERIES7_MODEL
-#define CONFIG_MIG_SERIES7_MODEL 0
+#ifndef CONFIG_MIG_7SERIES_MODEL
+#define CONFIG_MIG_7SERIES_MODEL 0
 #endif
 #ifndef CONFIG_AHBSTAT_ENABLE
 #define CONFIG_AHBSTAT_ENABLE  0

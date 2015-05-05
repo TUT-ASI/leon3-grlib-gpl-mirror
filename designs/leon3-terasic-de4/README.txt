@@ -73,7 +73,7 @@ Simulation and synthesis
   GRLIB_SIMULATOR environment variable accordingly (see GRLIB 
   documentation). The simulation uses a simplified DDR2 controller:
 
-    make vsim [or make riviera]
+    make sim
 
 * Synthesis will work with Quartus 13.1 or newer. To synthesize the 
   design run:

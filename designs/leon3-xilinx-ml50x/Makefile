@@ -142,9 +142,11 @@ GRLIB_CONFIG=grlib_config.vhd
 
 include $(GRLIB)/software/leon3/Makefile
 
-TECHLIBS = secureip unisim 
+TECHLIBS = xilinxcorelib_ver secureip_ver unisims_ver secureip unisim virtex5
 
 VSIMOPT= -gdisas=1 -gDEBUG=0 +nowarnTSCALE -L work -L secureip_ver -L xilinxcorelib_ver -L unisims_ver glbl +nowarnTFMPC +nowarnPCDPC -t 1ps testbench
+
+ASIMOPT=  -gdisas=1 -gDEBUG=0 +nowarnTSCALE +nowarnTFMPC +nowarnPCDPC
 
 VLOGOPT= +define+MODEL_TECH=1
 

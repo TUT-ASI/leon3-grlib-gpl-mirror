@@ -705,7 +705,7 @@ begin
     cl <= vl;  -- lru register inputs
 
 -- tag ram inputs
-    enable := enable and not dco.icdiag.scanen;
+    enable := enable;
     for i in 0 to ISETS-1 loop
       tag(i) := (others => '0');
       tag(i)(ilinesize-1 downto 0) := vmask(i);
@@ -727,7 +727,7 @@ begin
     icrami.dwrite   <= cdwrite;
 
     -- local ram inputs
-    icrami.ldramin.enable <= (dco.icdiag.ilramen or lramcs or lramacc) and not dco.icdiag.scanen; 
+    icrami.ldramin.enable <= (dco.icdiag.ilramen or lramcs or lramacc);
     icrami.ldramin.read  <= dco.icdiag.ilramen or lramacc;
     icrami.ldramin.write <= ilramwr;
     

@@ -18,10 +18,10 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------
--- Package:     ah2mig_series7_pkg
--- File:        ah2mig_series7_pkg.vhd
+-- Package:     ah2mig_7series_pkg
+-- File:        ah2mig_7series_pkg.vhd
 -- Author:      Fredrik Ringhage - Aeroflex Gaisler
--- Description:	Components, types and functions for AHB2MIG Series 7 controller
+-- Description:	Components, types and functions for AHB2MIG 7-Series controller
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -38,7 +38,7 @@ use grlib.config.all;
 library gaisler;
 use gaisler.all;
 
-package ahb2mig_series7_pkg is
+package ahb2mig_7series_pkg is
 
 -------------------------------------------------------------------------------
 -- AHB2MIG configuration
@@ -129,7 +129,7 @@ package ahb2mig_series7_pkg is
 
 end;
 
-package body ahb2mig_series7_pkg is
+package body ahb2mig_7series_pkg is
 
   -- Number of Max MIG commands
   function nbrmaxmigcmds(

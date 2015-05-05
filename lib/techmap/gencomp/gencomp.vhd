@@ -483,10 +483,8 @@ constant GTH3     : integer := 35;
     dataout  : out std_logic_vector((dbits -1) downto 0);
     enable   : in std_ulogic;
     write    : in std_ulogic;
-    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
-    customclk: in std_ulogic := '0';
-    customin : in std_logic_vector(custombits-1 downto 0) := (others => '0');
-    customout:out std_logic_vector(custombits-1 downto 0));
+    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
+    );
   end component;
 
 -- synchronous two-port ram (1 read, 1 write port)
@@ -503,10 +501,8 @@ constant GTH3     : integer := 35;
     write    : in std_ulogic;
     waddress : in std_logic_vector((abits -1) downto 0);
     datain   : in std_logic_vector((dbits -1) downto 0);
-    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
-    customclk: in std_ulogic := '0';
-    customin : in std_logic_vector(custombits-1 downto 0) := (others => '0');
-    customout:out std_logic_vector(custombits-1 downto 0));
+    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
+    );
   end component;
 
 -- synchronous dual-port ram (2 read/write ports)
@@ -526,10 +522,8 @@ constant GTH3     : integer := 35;
     dataout2 : out std_logic_vector((dbits -1) downto 0);
     enable2  : in std_ulogic;
     write2   : in std_ulogic;
-    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
-    customclk: in std_ulogic := '0';
-    customin : in std_logic_vector(custombits-1 downto 0) := (others => '0');
-    customout:out std_logic_vector(custombits-1 downto 0));
+    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
+    );
   end component;
 
 -- synchronous 3-port regfile (2 read, 1 write port)
@@ -549,10 +543,8 @@ constant GTH3     : integer := 35;
     raddr2 : in  std_logic_vector((abits -1) downto 0);
     re2    : in  std_ulogic;
     rdata2 : out std_logic_vector((dbits -1) downto 0);
-    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
-    customclk: in std_ulogic := '0';
-    customin : in std_logic_vector(2*custombits-1 downto 0) := (others => '0');
-    customout:out std_logic_vector(2*custombits-1 downto 0));
+    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
+    );
   end component;
 
 -- 64-bit synchronous single-port ram with 32-bit write strobe
@@ -566,10 +558,8 @@ constant GTH3     : integer := 35;
     dataout : out std_logic_vector (63+8*paren downto 0);
     enable  : in  std_logic_vector (1 downto 0);
     write   : in  std_logic_vector (1 downto 0);
-    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
-    customclk: in std_ulogic := '0';
-    customin : in std_logic_vector(2*custombits-1 downto 0) := (others => '0');
-    customout:out std_logic_vector(2*custombits-1 downto 0));
+    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
+    );
   end component;
 
 -- 128-bit synchronous single-port ram with 32-bit write strobe
@@ -583,10 +573,8 @@ constant GTH3     : integer := 35;
     dataout : out std_logic_vector (127+16*paren downto 0);
     enable  : in  std_logic_vector (3 downto 0);
     write   : in  std_logic_vector (3 downto 0);
-    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
-    customclk: in std_ulogic := '0';
-    customin : in std_logic_vector(4*custombits-1 downto 0) := (others => '0');
-    customout:out std_logic_vector(4*custombits-1 downto 0));
+    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
+    );
   end component;
 
   component syncramft
@@ -601,10 +589,8 @@ constant GTH3     : integer := 35;
     enable   : in std_ulogic;
     error    : out std_logic_vector(((dbits + 7) / 8)-1 downto 0);
     testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
-    errinj   : in std_logic_vector(((dbits + 7)/8)*2-1 downto 0) := (others => '0');
-    customclk: in std_ulogic := '0';
-    customin : in std_logic_vector(3*custombits-1 downto 0) := (others => '0');
-    customout:out std_logic_vector(3*custombits-1 downto 0));
+    errinj   : in std_logic_vector(((dbits + 7)/8)*2-1 downto 0) := (others => '0')
+    );
   end component;
 
   component syncram_2pft
@@ -621,10 +607,8 @@ constant GTH3     : integer := 35;
     waddress : in std_logic_vector((abits -1) downto 0);
     datain   : in std_logic_vector((dbits -1) downto 0);
     error    : out std_logic_vector(((dbits + 7) / 8)-1 downto 0);
-    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
-    customclk: in std_ulogic := '0';
-    customin : in std_logic_vector(3*custombits-1 downto 0) := (others => '0');
-    customout:out std_logic_vector(3*custombits-1 downto 0));
+    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
+    );
   end component;
 
   component syncram128bw
@@ -636,10 +620,8 @@ constant GTH3     : integer := 35;
     dataout : out std_logic_vector (127 downto 0);
     enable  : in  std_logic_vector (15 downto 0);
     write   : in  std_logic_vector (15 downto 0);
-    testin  : in  std_logic_vector (TESTIN_WIDTH-1 downto 0) := testin_none;
-    customclk: in std_ulogic := '0';
-    customin : in std_logic_vector(16*custombits-1 downto 0) := (others => '0');
-    customout:out std_logic_vector(16*custombits-1 downto 0));
+    testin  : in  std_logic_vector (TESTIN_WIDTH-1 downto 0) := testin_none
+    );
   end component;
 
   component syncram156bw
@@ -651,10 +633,8 @@ constant GTH3     : integer := 35;
     dataout : out std_logic_vector (155 downto 0);
     enable  : in  std_logic_vector (15 downto 0);
     write   : in  std_logic_vector (15 downto 0);
-    testin  : in  std_logic_vector (TESTIN_WIDTH-1 downto 0) := testin_none;
-    customclk: in std_ulogic := '0';
-    customin : in std_logic_vector(20*custombits-1 downto 0) := (others => '0');
-    customout:out std_logic_vector(20*custombits-1 downto 0));
+    testin  : in  std_logic_vector (TESTIN_WIDTH-1 downto 0) := testin_none
+    );
   end component;
 
   component syncram256bw is
@@ -666,10 +646,8 @@ constant GTH3     : integer := 35;
     dataout : out std_logic_vector (255 downto 0);
     enable  : in  std_logic_vector (31 downto 0);
     write   : in  std_logic_vector (31 downto 0);
-    testin  : in  std_logic_vector (TESTIN_WIDTH-1 downto 0) := testin_none;
-    customclk: in std_ulogic := '0';
-    customin : in std_logic_vector(32*custombits-1 downto 0) := (others => '0');
-    customout:out std_logic_vector(32*custombits-1 downto 0));
+    testin  : in  std_logic_vector (TESTIN_WIDTH-1 downto 0) := testin_none
+    );
   end component;
 
   component syncrambw
@@ -682,10 +660,8 @@ constant GTH3     : integer := 35;
     dataout : out std_logic_vector (dbits-1 downto 0);
     enable  : in  std_logic_vector (dbits/8-1 downto 0);
     write   : in  std_logic_vector (dbits/8-1 downto 0);
-    testin  : in  std_logic_vector (TESTIN_WIDTH-1 downto 0) := testin_none;
-    customclk: in std_ulogic := '0';
-    customin : in std_logic_vector((dbits/8)*custombits-1 downto 0) := (others => '0');
-    customout:out std_logic_vector((dbits/8)*custombits-1 downto 0));
+    testin  : in  std_logic_vector (TESTIN_WIDTH-1 downto 0) := testin_none
+    );
   end component;
 
   component syncram_2pbw
@@ -701,10 +677,8 @@ constant GTH3     : integer := 35;
     write    : in std_logic_vector((dbits/8-1) downto 0);
     waddress : in std_logic_vector((abits-1) downto 0);
     datain   : in std_logic_vector((dbits-1) downto 0);
-    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
-    customclk: in std_ulogic := '0';
-    customin : in std_logic_vector((dbits/8)*custombits-1 downto 0) := (others => '0');
-    customout:out std_logic_vector((dbits/8)*custombits-1 downto 0));
+    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
+    );
   end component;
 
   component syncrambwft is
@@ -719,10 +693,8 @@ constant GTH3     : integer := 35;
     write     : in  std_logic_vector (dbits/8-1 downto 0);
     error     : out std_logic_vector (dbits/8-1 downto 0);
     testin    : in  std_logic_vector (TESTIN_WIDTH-1 downto 0) := testin_none;
-    errinj    : in  std_logic_vector((dbits/8)*2-1 downto 0) := (others => '0');
-    customclk : in  std_ulogic := '0';
-    customin  : in  std_logic_vector(3*(dbits/8)*custombits-1 downto 0) := (others => '0');
-    customout : out std_logic_vector(3*(dbits/8)*custombits-1 downto 0));
+    errinj    : in  std_logic_vector((dbits/8)*2-1 downto 0) := (others => '0')
+    );
   end component;
 
   component from is

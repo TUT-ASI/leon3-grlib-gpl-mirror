@@ -44,7 +44,9 @@ entity tbufmem_2p is
   port (
     clk : in std_ulogic;
     di  : in tracebuf_2p_in_type;
-    do  : out tracebuf_2p_out_type);
+    do  : out tracebuf_2p_out_type;
+    testin: in std_logic_vector(TESTIN_WIDTH-1 downto 0)
+  );
 
 
 end;
@@ -52,17 +54,7 @@ end;
 architecture rtl of tbufmem_2p is
 
 constant ADDRBITS : integer := 10 + log2(tbuf) - 4;
-signal enable : std_logic_vector(1 downto 0);
 
-function getnrams return integer is
-  variable v: integer;
-begin
-  v := 2;
-  if dwidth > 32 then v:=v+1; end if;
-  if dwidth > 64 then v:=v+1; end if;
-  return v;
-end getnrams;
-constant nrams: integer := getnrams;
   
 begin
 
@@ -73,7 +65,8 @@ begin
         abits           => addrbits,
         dbits           => 32,
         wrfst           => 1,
-        testen          => testen
+        testen          => testen,
+        custombits      => memtest_vlen
       )
       port map (
         rclk            => clk,
@@ -84,8 +77,8 @@ begin
         write           => di.write(i),
         waddress        => di.waddr(addrbits-1 downto 0),
         datain          => di.data(((i*32)+31) downto (i*32)),
-        testin          => di.diag
-      );
+        testin          => testin
+        );
   end generate;
   mem64 : if dwidth > 32 generate -- extra data buffer for 64-bit bus
     ram0 : syncram_2p
@@ -94,7 +87,8 @@ begin
         abits           => addrbits,
         dbits           => 32,
         wrfst           => 1,
-        testen          => testen
+        testen          => testen,
+        custombits      => memtest_vlen
       )
       port map (
         rclk            => clk, 
@@ -105,8 +99,8 @@ begin
         write           => di.write(7), 
         waddress        => di.waddr(addrbits-1 downto 0), 
         datain          => di.data((128+31) downto 128),
-        testin          => di.diag
-      );
+        testin          => testin
+        );
   end generate;
   mem128 : if dwidth > 64 generate -- extra data buffer for 128-bit bus
     memwd: for i in 0 to 1 generate
@@ -116,7 +110,8 @@ begin
           abits           => addrbits,
           dbits           => 32,
           wrfst           => 1,
-          testen          => testen
+          testen          => testen,
+          custombits      => memtest_vlen
         )
         port map (
           rclk            => clk,
@@ -127,8 +122,8 @@ begin
           write           => di.write(5+i),
           waddress        => di.waddr(addrbits-1 downto 0),
           datain          => di.data((128+63+i*32) downto (128+32+i*32)),
-          testin          => di.diag
-        );
+          testin          => testin
+          );
     end generate;
   end generate;
 

@@ -37,7 +37,7 @@ Design specifics:
 
    make xconfig   (select MIG, deselect DDR2SPA)
    make distclean install-secureip mig
-   make vsim
+   make sim
    
    The MIG memory parameters can be changed in of ahb2mig_ml50x.vhd,
    without having to regenerate the MIG itself. The default settings

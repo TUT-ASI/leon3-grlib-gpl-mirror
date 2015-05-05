@@ -46,11 +46,10 @@ entity testbench is
     pclow     : integer := CFG_PCLOW;
 
     clkperiod : integer := 20;		-- system clock period
-    romwidth  : integer := 8;		-- rom data width (8/32)
-    romdepth  : integer := 23;		-- rom address depth
-    sramwidth  : integer := 32;		-- ram data width (8/16/32)
-    sramdepth  : integer := 20;		-- ram address depth
-    srambanks  : integer := 1		-- number of ram banks
+    romdepth  : integer := 25;          -- rom address depth
+    sramwidth  : integer := 32;         -- ram data width (8/16/32)
+    sramdepth  : integer := 20;         -- ram address depth
+    srambanks  : integer := 2           -- number of ram banks
   );
 end; 
 
@@ -211,14 +210,14 @@ component leon3mp is
 --      USB_WR_n		:	in	std_logic; --input              USB_WR_n,
 --
 --      --VGA--
---      VGA_B			:	out	std_logic_vector(7 downto 0); --output      [7:0]  VGA_B,
+--      VGA_B			    :	out	std_logic_vector(7 downto 0); --output      [7:0]  VGA_B,
 --      VGA_BLANK_n		:	out	std_logic; --output             VGA_BLANK_n,
---      VGA_CLK			:	out	std_logic; --output             VGA_CLK,
---      VGA_G			:	out	std_logic_vector(7 downto 0); --output      [7:0]  VGA_G,
-      VGA_HS			:	in	std_logic; --output             VGA_HS,
---      VGA_R			:	out	std_logic; --output      [7:0]  VGA_R,
+--      VGA_CLK			  :	out	std_logic; --output             VGA_CLK,
+--      VGA_G			    :	out	std_logic_vector(7 downto 0); --output      [7:0]  VGA_G,
+--      VGA_HS			  :	out	std_logic; --output             VGA_HS,
+--      VGA_R			    :	out	std_logic_vector(7 downto 0); --output      [7:0]  VGA_R,
 --      VGA_SYNC_n		:	out	std_logic; --output             VGA_SYNC_n,
-      VGA_VS			:	out	std_logic; --output             VGA_VS
+--      VGA_VS			  :	out	std_logic; --output             VGA_VS
 		
 		--OSC (CLOCKS)--
       OSC_50_B3B		:	in	std_logic; --input              OSC_50_B3B,
@@ -271,8 +270,8 @@ signal NC       : std_ulogic := 'Z';
 signal clk2     : std_ulogic := '1';
     
 signal plllock    : std_ulogic;       
-signal txd1, rxd1 : std_ulogic;       
-
+signal txd1, rxd1 : std_ulogic;
+  
 
 constant lresp : boolean := false;
 
@@ -361,9 +360,6 @@ begin
       HPS_USB_DIR         => '0',
       HPS_USB_NXT         => '0',
       HPS_USB_STP         => open,
-
-      VGA_HS => '1',
-      VGA_VS => open,
 
       OSC_50_B3B => clk50,
       OSC_50_B4A => clk50,

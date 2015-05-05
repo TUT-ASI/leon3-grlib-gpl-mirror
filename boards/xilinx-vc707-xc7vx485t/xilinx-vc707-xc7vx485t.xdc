@@ -221,6 +221,7 @@ set_multicycle_path -hold -from [get_ports usb_dir] -to [get_ports {usb_d[*]}] 3
 #-----------------------------------------------------------
 set_property PACKAGE_PIN AH8 [get_ports gtrefclk_p]
 set_property PACKAGE_PIN AH7 [get_ports gtrefclk_n]
+set_property PACKAGE_PIN AN2 [get_ports txp]
 set_property PACKAGE_PIN AN1 [get_ports txn]
 set_property PACKAGE_PIN AM7 [get_ports rxn]
 set_property PACKAGE_PIN AM8 [get_ports rxp]

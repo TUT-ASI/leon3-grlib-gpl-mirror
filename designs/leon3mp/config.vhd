@@ -14,6 +14,7 @@ package config is
   constant CFG_FABTECH : integer := inferred;
   constant CFG_MEMTECH : integer := inferred;
   constant CFG_PADTECH : integer := inferred;
+  constant CFG_TRANSTECH : integer := GTP0;
   constant CFG_NOASYNC : integer := 0;
   constant CFG_SCAN : integer := 0;
 -- Clock generator

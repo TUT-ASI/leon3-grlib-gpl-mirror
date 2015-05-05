@@ -34,8 +34,6 @@ use grlib.stdlib.all;
 use grlib.devices.all;
 library techmap;
 use techmap.gencomp.all;
-library gaisler;
-use gaisler.misc.ahbtrace_memtest_type;
 
 entity ahbtrace_mmb is
   generic (
@@ -58,9 +56,6 @@ entity ahbtrace_mmb is
     ahbso   : out ahb_slv_out_type;
     tahbmiv : in  ahb_mst_in_vector_type(0 to ntrace-1);       -- Trace
     tahbsiv : in  ahb_slv_in_vector_type(0 to ntrace-1);
-    mtesti  : in  ahbtrace_memtest_type;
-    mtesto  : out ahbtrace_memtest_type;
-    mtestclk: in  std_ulogic;
     timer   : in  std_logic_vector(30 downto 0);
     astat   : out amba_stat_type;
     resen   : in  std_ulogic := '0'
@@ -650,42 +645,33 @@ begin
     ram0 : syncram64 generic map (tech => tech, abits => TBUFABITS, testen => scantest, custombits => memtest_vlen)
       port map (clk, tbi.addr(TBUFABITS-1 downto 0), tbi.data(((i*64)+63) downto (i*64)),
                  tbo.data(((i*64)+63) downto (i*64)), enable, tbi.write(i*2+1 downto i*2),
-                ahbsi.testin, mtestclk, mtesti64(i), mtesto64(i));
+                ahbsi.testin
+                );
   end generate;
 
   mem64 : if bwidth > 32 generate -- extra data buffer for 64-bit bus
     ram0 : syncram generic map (tech => tech, abits => TBUFABITS, dbits => 32, testen => scantest, custombits => memtest_vlen)
       port map ( clk, tbi.addr(TBUFABITS-1 downto 0), tbi.data((128+31) downto 128),
           tbo.data((128+31) downto 128), tbi.enable, tbi.write(7),
-          ahbsi.testin, mtestclk, mtesti(2), mtesto(2));
+          ahbsi.testin
+                 );
   end generate;
   mem128 : if bwidth > 64 generate -- extra data buffer for 128-bit bus
     ram0 : syncram64 generic map (tech => tech, abits => TBUFABITS, testen => scantest, custombits => memtest_vlen)
       port map ( clk, tbi.addr(TBUFABITS-1 downto 0), tbi.data((128+95) downto (128+32)),
           tbo.data((128+95) downto (128+32)), enable, tbi.write(6 downto 5),
-          ahbsi.testin, mtestclk, mtesti64(2), mtesto64(2));
-    mtesto(3) <= mtesto64(2)(memtest_vlen-1 downto 0);
+          ahbsi.testin
+                 );
   end generate;
 
   nomem64 : if bwidth < 64 generate -- no extra data buffer for 64-bit bus
     tbo.data((128+31) downto 128) <= (others => '0');
-    mtesto(5) <= (others => '0');
   end generate;
   nomem128 : if bwidth < 128 generate -- no extra data buffer for 128-bit bus
     tbo.data((128+95) downto (128+32)) <= (others => '0');
-    mtesto64(2) <= (others => '0');
-    mtesto(6) <= (others => '0');
   end generate;
   tbo.data(255 downto 224) <= (others => '0');
 
-  mtesti64(0) <= mtesti(nrams) & mtesti(0);
-  mtesti64(1) <= mtesti(nrams+1) & mtesti(1);
-  mtesti64(2) <= mtesti(nrams+2) & mtesti(3);
-  mtesto(0) <= mtesto64(0)(memtest_vlen-1 downto 0);
-  mtesto(1) <= mtesto64(1)(memtest_vlen-1 downto 0);
-  mtesto(nrams) <= mtesto64(0)(2*memtest_vlen-1 downto memtest_vlen);
-  mtesto(nrams+1) <= mtesto64(1)(2*memtest_vlen-1 downto memtest_vlen);
-  mtesto(nrams+2) <= mtesto64(2)(2*memtest_vlen-1 downto memtest_vlen);
 
 -- pragma translate_off
     bootmsg : report_version 

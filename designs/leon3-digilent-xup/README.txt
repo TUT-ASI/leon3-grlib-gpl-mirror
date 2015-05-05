@@ -43,7 +43,7 @@ This leon3 design is tailored to the Digilent Virtex2-Pro XUP board
 	make soft
 	rm ahbrom.vhd
 	make ahbrom.vhd
-	make vsim
+	make sim
 
   See further down in this file for instructions on how to include
   an application for running on real hardware.

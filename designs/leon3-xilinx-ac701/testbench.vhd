@@ -333,7 +333,7 @@ begin
 
   -- Memory Models instantiations
   gen_mem_model : if (USE_MIG_INTERFACE_MODEL /= true) generate
-   ddr3mem : if (CFG_MIG_SERIES7 = 1) generate
+   ddr3mem : if (CFG_MIG_7SERIES = 1) generate
      u1 : ddr3ram
        generic map (
          width     => 64,

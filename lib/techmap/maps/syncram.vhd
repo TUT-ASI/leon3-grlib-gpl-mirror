@@ -43,10 +43,8 @@ entity syncram is
     dataout  : out std_logic_vector((dbits -1) downto 0);
     enable   : in std_ulogic;
     write    : in std_ulogic;
-    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
-    customclk: in std_ulogic := '0';
-    customin : in std_logic_vector(custombits-1 downto 0) := (others => '0');
-    customout:out std_logic_vector(custombits-1 downto 0));
+    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
+    );
 end;
 
 architecture rtl of syncram is
@@ -57,6 +55,7 @@ architecture rtl of syncram is
   signal xenable, xwrite: std_ulogic;
 
   signal custominx,customoutx: std_logic_vector(syncram_customif_maxwidth downto 0);
+  signal customclkx: std_ulogic;
 
 begin
 
@@ -89,15 +88,14 @@ begin
     end generate;
   end generate;
 
-  custominx(custominx'high downto custombits) <= (others => '0');
-  custominx(custombits-1 downto 0) <= customin;
-  customout <= customoutx(custombits-1 downto 0);
+    custominx <= (others => '0');
+    customclkx <= '0';
 
   nocust: if syncram_has_customif(tech)=0 generate
     customoutx <= (others => '0');
   end generate;
 
-  noscanbp : if not SCANTESTBP generate dataout <= dataoutx; end generate;
+    noscanbp : if not SCANTESTBP generate dataout <= dataoutx; end generate;
 
   inf : if tech = inferred generate
     x0 : generic_syncram generic map (abits, dbits)
@@ -161,7 +159,7 @@ begin
                    testin(TESTIN_WIDTH-8),testin(TESTIN_WIDTH-3),
                    custominx(0),customoutx(0),
                    testin(TESTIN_WIDTH-4),testin(TESTIN_WIDTH-5),testin(TESTIN_WIDTH-6),
-                   customclk,testin(TESTIN_WIDTH-7),'0',
+                   customclkx,testin(TESTIN_WIDTH-7),'0',
                    customoutx(1), customoutx(7 downto 2));
     customoutx(customoutx'high downto 8) <= (others => '0');
   end generate;

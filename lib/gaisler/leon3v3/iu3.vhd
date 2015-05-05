@@ -775,13 +775,6 @@ architecture rtl of iu3 is
         vdi_2p.renable := '1';
         vdi_2p.raddr(TBUFBITS-1 downto 0) := dbgi.daddr(TBUFBITS-1+4 downto 4);
       end if;
-      vdi.diag(3 downto 0) := dco.testen &  dco.scanen & "00";
-      vdi_2p.diag(3 downto 0) := dco.testen &  dco.scanen & "00";
-      if dco.scanen = '1' then
-        vdi.enable      := '0';
-        vdi_2p.renable  := '0';
-        vdi_2p.write    := (others => '0');
-      end if;
     end if;
     ov    := tov;
     di    := vdi;
@@ -3015,7 +3008,6 @@ begin
     if (r.x.rstate = dsu2) then v.w.except := '0'; end if;
     v.w.wa := xc_waddr(RFBITS-1 downto 0); v.w.wreg := xc_wreg and holdn;
 
-    rfi.diag <= dco.testen & dco.scanen & "00";
     rfi.wdata <= xc_result; rfi.waddr <= xc_waddr;
 
     irqo.intack <= r.x.intack and holdn;
@@ -3334,10 +3326,10 @@ begin
       v.d.step := dbgi.step and not r.d.annul;      
     end if;
 
-    rfi.wren <= (xc_wreg and holdn) and not dco.scanen;
+    rfi.wren <= (xc_wreg and holdn);
     rfi.raddr1 <= de_raddr1; rfi.raddr2 <= de_raddr2;
-    rfi.ren1 <= de_ren1 and not dco.scanen;
-    rfi.ren2 <= de_ren2 and not dco.scanen;
+    rfi.ren1 <= de_ren1;
+    rfi.ren2 <= de_ren2;
     ici.inull <= de_inull
     ;
     ici.flush <= me_iflush;
@@ -3467,7 +3459,7 @@ begin
       dbgo.dsu <= '0'; dbgo.data <= (others => '0'); dbgo.crdy  <= '0';
       dbgo.dsumode <= '0'; tbi.addr <= (others => '0'); 
       tbi.data <= (others => '0'); tbi.enable <= '0';
-      tbi.write <= (others => '0'); tbi.diag <= (others => '0');
+      tbi.write <= (others => '0');
     end if;
     dbgo.error <= dummy and not r.x.nerror;
     dbgo.istat <= ico.cstat;

@@ -113,12 +113,12 @@ package leon3 is
         '0', '0', '0', '0', '0', '0', "000000", '0', cstat_none, cstat_none, '0', '0');
   constant l3_dbgo_none : l3_debug_out_type := dbgo_none;
 
+
   type tracebuf_in_type is record 
     addr             : std_logic_vector(11 downto 0);
     data             : std_logic_vector(255 downto 0);
     enable           : std_logic;
     write            : std_logic_vector(7 downto 0);
-    diag             : std_logic_vector(TESTIN_WIDTH-1 downto 0);
   end record;
 
   type tracebuf_out_type is record 
@@ -131,7 +131,6 @@ package leon3 is
     write            : std_logic_vector(7 downto 0);
     waddr            : std_logic_vector(11 downto 0);
     data             : std_logic_vector(255 downto 0);
-    diag             : std_logic_vector(TESTIN_WIDTH-1 downto 0);
   end record;
   
   type tracebuf_2p_out_type is record 
@@ -143,7 +142,9 @@ package leon3 is
   port (
     clk : in std_ulogic;
     di  : in tracebuf_in_type;
-    do  : out tracebuf_out_type);
+    do  : out tracebuf_out_type;
+    testin: in std_logic_vector(TESTIN_WIDTH-1 downto 0)
+    );
   end component;
 
   component tbufmem_2p is
@@ -156,7 +157,8 @@ package leon3 is
     port (
       clk        : in  std_ulogic;
       di         : in  tracebuf_2p_in_type;
-      do         : out tracebuf_2p_out_type
+      do         : out tracebuf_2p_out_type;
+      testin     : in  std_logic_vector(TESTIN_WIDTH-1 downto 0)
     );
   end component;
 
@@ -167,8 +169,7 @@ package leon3 is
     addr    => (others => '0'),
     data    => (others => '0'),
     enable  => '0',
-    write   => (others => '0'),
-    diag    => (others => '0')
+    write   => (others => '0')
     );
   
   constant tracebuf_2p_out_type_none : tracebuf_2p_out_type :=
@@ -179,8 +180,7 @@ package leon3 is
     raddr   => (others => '0'),
     write   => (others => '0'),
     waddr   => (others => '0'),
-    data    => (others => '0'),
-    diag    => (others => '0')
+    data    => (others => '0')
     );
   
   component leon3s

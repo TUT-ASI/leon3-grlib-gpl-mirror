@@ -73,6 +73,7 @@ begin
   gnd <= '0'; vcc <= '1';
   
   x0 : dsu3x generic map (hindex, haddr, hmask, ncpu, tbits, tech, irq, kbytes, 0, testen, bwidth, ahbpf)
-    port map (rst, gnd, clk, ahbmi, ahbsi, ahbso, tahbsi, dbgi, dbgo, dsui, dsuo, vcc);  
+    port map (rst, gnd, clk, ahbmi, ahbsi, ahbso, tahbsi, dbgi, dbgo, dsui, dsuo, vcc
+              );  
   
 end;

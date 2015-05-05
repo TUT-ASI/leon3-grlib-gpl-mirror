@@ -106,7 +106,8 @@ package libfpu is
     pclow    : integer range 0 to 2 := 2;
     dsu      : integer range 0 to 1 := 0;           
     disas    : integer range 0 to 2 := 0;
-    id       : integer range 0 to 7 := 0
+    id       : integer range 0 to 7 := 0;
+    scantest : integer              := 0
     );
   port (
     rst    : in  std_ulogic;                    -- Reset
@@ -115,7 +116,8 @@ package libfpu is
     cpi    : in  fpc_in_type;
     cpo    : out fpc_out_type;
     fpui   : out grfpu_in_type;
-    fpuo   : in  grfpu_out_type
+    fpuo   : in  grfpu_out_type;
+    testin : in  std_logic_vector(TESTIN_WIDTH-1 downto 0)
     );
   end component;
 

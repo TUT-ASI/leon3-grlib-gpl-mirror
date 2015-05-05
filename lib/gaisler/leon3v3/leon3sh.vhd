@@ -183,6 +183,7 @@ begin
       dbgo       => dbgo,
       fpui       => fpui,
       fpuo       => fpuo,
-      clken      => vcc);
+      clken      => vcc
+      );
 
 end;

@@ -17,8 +17,11 @@ additional information.
 Note #3: The Vivado flow and parts of this design are still
 experimental. Currently the design configuration should be left as-is.
 
-Note #4: You must have both Vivado 2014.4.1 and Xilinx ISE 14.7 in your
-path for the make targets to work.
+Note #4: You must have Vivado 2014.4.1 in your path for the make targets to work.
+
+The XILINX_VIVADO variable must be exported for the mig_7series target
+to work correctly: export XILINX_VIVADO
+
 
 Simulation and synthesis
 ------------------------
@@ -36,21 +39,21 @@ controller from Xilinx use the make targets:
 
   make vivado-launch
 
-NOTE: SIMULATION PER THE INSTRUCTIONS BELOW IS CURRENTLY UNSUPPORTED DUE
-TO INCOMPATIBILITES BETWEEN THE MIG AND GENERATED LIBRARIES.
-
 To simulate using Modelsim and run systest.c on the Leon design using 
 the memory controller from Xilinx use the make targets:
 
-  make vsim (only required if Modelsim/Aldec is used as simulator)
-  make mig_series7
-  make vsim-launch
+  make map_xilinx_7series_lib sim
+  make mig_7series
+  make sim-launch
 
-To simulate using Aldec Riviera use the following make targets:
+To simulate using the Aldec Riviera WS flow use the following make targets:
 
-  make riviera
-  make mig_series7
-  make riviera-launch
+  make riviera_ws               # creates riviera workspace
+  make map_xilinx_7series_lib   # compiles and maps xilinx sim libs
+  make mig_7series              # generates MIG IP and adds to riviera project
+  make sgmii_7series            # same for SGMII adapter
+  make riviera                  # compile full project
+  make riviera-launch           # launch simulation
 
 To synthesize the design, do
 
@@ -204,7 +207,7 @@ sending the reset command, the reset command has to be sent again
 Design specifics
 ----------------
 
-* The DDR3 controller is implemented with Xilinx MIG Series7 2.0 and 
+* The DDR3 controller is implemented with Xilinx MIG 7-Series 2.0 and 
   runs of the 200 MHz clock. The DDR3 memory runs at 400 MHz
   (DDR3-800). grmon-2.0.30-74 or later is needed to detect the
    DDR3 memory.
@@ -228,26 +231,6 @@ Design specifics
 
 * SPI flash prom can be read at address 0. It can be programmed
   with GRMON version 2.0.56 or later.
-
-* The system can be simulated with xilinxs memory interface in normal or fast mode.
-  For normal mode i.e. with the MIG IP and Memory models from MICRON all simulaion libraries
-  needs to be installed and compiled with the following command: Please, note the MIG Series7 
-  only have to be generated if it is going to be used in the system.
-
-  make vsim
-  make mig_series7
-
-  Then rebuild the software and launch the simulator simulation:
-
-  make soft
-  make vsim-launch
-
-  Modelsim v10.1 or newer is required and simulate Xilinx memory
-  controller for Series 7.
-
-  The normal leon3 test bench can be executed as the DDR3 model
-  is pre-loading with the systest. A model of the DDR3 interface
-  exist and can be used for faster simulations and software debug
 
 * The application UART1 is connected to the USB/RS232 connector
 

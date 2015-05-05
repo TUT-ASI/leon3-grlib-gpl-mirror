@@ -117,7 +117,7 @@ end;
 
 architecture rtl of leon3mp is
 
-component ahb2mig_series7
+component ahb2mig_7series
   generic(
     hindex     : integer := 0;
     haddr      : integer := 0;
@@ -389,7 +389,7 @@ begin
   vcc <= '1'; gnd <= '0';
   cgi.pllctrl <= "00"; cgi.pllrst <= rstraw;
 
-   clk_gen0 : if (CFG_MIG_SERIES7 = 0) generate
+   clk_gen0 : if (CFG_MIG_7SERIES = 0) generate
      clk_pad_ds : clkpad_ds generic map (tech => padtech, level => sstl, voltage => x15v) port map (clk200p, clk200n, lclk);
      clkgen0 : clkgen        -- clock generator
        generic map (clktech, CFG_CLKMUL, CFG_CLKDIV, CFG_MCTRL_SDEN,CFG_CLK_NOFB, 0, 0, 0, BOARD_FREQ)
@@ -400,7 +400,7 @@ begin
   rst0 : rstgen         -- reset generator
   generic map (acthigh => 1, syncin => 1)
   port map (rst, clkm, lock, rstn, rstraw);
-  lock <= calib_done when CFG_MIG_SERIES7 = 1 else cgo.clklock;
+  lock <= calib_done when CFG_MIG_7SERIES = 1 else cgo.clklock;
 
   rst1 : rstgen         -- reset generator
   generic map (acthigh => 1)
@@ -612,9 +612,9 @@ begin
   ---  DDR3 memory controller ------------------------------------------
   ----------------------------------------------------------------------
   l2cdis : if CFG_L2_EN = 0 generate
-    mig_gen : if (CFG_MIG_SERIES7 = 1) generate
+    mig_gen : if (CFG_MIG_7SERIES = 1) generate
       gen_mig : if (USE_MIG_INTERFACE_MODEL /= true) generate
-        ddrc : ahb2mig_series7 generic map(
+        ddrc : ahb2mig_7series generic map(
       hindex => 4, haddr => 16#400#, hmask => 16#C00#,
       pindex => 4, paddr => 4,
       SIM_BYPASS_INIT_CAL => SIM_BYPASS_INIT_CAL,
@@ -704,7 +704,7 @@ begin
   
      end generate gen_mig_model;    end generate;
 
-     no_mig_gen : if (CFG_MIG_SERIES7 = 0) generate  
+     no_mig_gen : if (CFG_MIG_7SERIES = 0) generate  
      
        ahbram0 : ahbram 
           generic map (hindex => 4, haddr => 16#400#, tech => CFG_MEMTECH, kbytes => 128)
@@ -758,9 +758,9 @@ begin
           port map (rstn, clkm, mem_ahbmi, mem_ahbmo, mem_ahbsi, mem_ahbso);
       
 
-        --mig_gen : if (CFG_MIG_SERIES7 = 1) generate
+        --mig_gen : if (CFG_MIG_7SERIES = 1) generate
         --  gen_mig : if (USE_MIG_INTERFACE_MODEL /= true) generate
-            ddrc : ahb2mig_series7 
+            ddrc : ahb2mig_7series 
             generic map(hindex => 0, haddr => 16#400#, hmask => 16#C00#,
                         pindex => 4, paddr => 4,
                         SIM_BYPASS_INIT_CAL => SIM_BYPASS_INIT_CAL,

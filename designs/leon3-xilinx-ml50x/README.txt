@@ -40,6 +40,9 @@ Design specifics:
   It is essential to use ISE 14.7. MIG generation is not supported
   for any other ISE version in this design.
 
+  See also instructions below for commands required to simulate
+  if the SGMII adapter is enabled.
+
 * The SSRAM can be interfaced with the LEON2 Memory controller. 
   Start GRMON with -ramrws 1 when the LEON2 controller is used.
 
@@ -69,6 +72,11 @@ Design specifics:
   coregen, and the Xilinx unisim_ver libraries must be installed if you wish
   to simulate the design.
 
+  Enable PCI EXPRESS in xconfig menu
+    make pcie
+    make install-secureip_ver
+    make sim
+
 * It's possible to use the Ethernet core in SGMII mode. The jumpers on the
   board must be configured properly and the CFG_GRETH_SGMII_MODE constant in
   the grlib_config.vhd file must be set to 1. Finally the PHY constraints in 
@@ -79,19 +87,9 @@ Design specifics:
   additional information.
 
   To simulate the design with ModelSim (or Aldec Riviera):
-    make install-unisim
-    make vsim (make riviera)
-    make compile-unisim
-    make vsim (skip this step if you are using Aldec Riviera)
-    make vsim-launch (make riviera-launch)
-
-  Enable PCI EXPRESS in xconfig menu
-    make pcie
-    make install-unisim
-    make compile_xilinx_verilog_lib
-    make vsim
-    make map_xilinx_verilog_lib
-
+    make install-secureip_ver
+    make sim
+    make sim-launch
 
 * Sample output from GRMON is:
 

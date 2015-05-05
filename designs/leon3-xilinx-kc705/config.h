@@ -291,14 +291,10 @@
 #undef  CONFIG_MCTRL_5CS
 #undef  CONFIG_MCTRL_SDRAM
 /*
- * MIG memory controller   
+ * MIG 7-Series memory controller   
  */
-#undef  CONFIG_MIG_DDR2
-/*
- * MIG Series 7 memory controller   
- */
-#define CONFIG_MIG_SERIES7 1
-#undef  CONFIG_MIG_SERIES_7_MODEL
+#define CONFIG_MIG_7SERIES 1
+#undef  CONFIG_MIG_7SERIES_MODEL
 #undef  CONFIG_AHBSTAT_ENABLE
 /*
  * On-chip RAM/ROM                 

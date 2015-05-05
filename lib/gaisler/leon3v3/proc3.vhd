@@ -177,6 +177,7 @@ begin
       itlbnum, dtlbnum, tlb_type, tlb_rep, cached,
       clk2x, scantest, mmupgsz, smp, mmuen)
     port map (rstn, clk, ici, ico, dci, dco, ahbi, ahbo, ahbsi, ahbso,
-              crami, cramo, pholdn, hclk, sclk, hclken);
+              crami, cramo, pholdn, hclk, sclk, hclken
+              );
 
 end;

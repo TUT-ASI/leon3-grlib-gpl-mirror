@@ -36,12 +36,6 @@ library gaisler;
 
 package l2cache is
 
-  type l2c_memtest_type is record
-    tags: memtest_vector_array(0 to 6);
-    data: memtest_vector_array(0 to 4*20-1);
-  end record;
-  constant l2c_memtest_none: l2c_memtest_type :=
-    ((others => (others => '0')),(others => (others => '0')));
 
 component l2c is
   generic (
@@ -84,11 +78,8 @@ component l2c is
     ahbmo : out ahb_mst_out_type;
     ahbsov: in  ahb_slv_out_vector;
     sto   : out std_logic_vector(10 downto 0);
-    debugo: out std_logic_vector(255*debug downto 0);
-    mtesti: in  l2c_memtest_type := l2c_memtest_none;
-    mtesto: out l2c_memtest_type;
-    mtestclk: in std_ulogic := '0'
-  );
+    debugo: out std_logic_vector(255*debug downto 0)
+    );
 end component;
 
 end;

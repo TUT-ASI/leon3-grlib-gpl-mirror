@@ -1,7 +1,7 @@
 GRLIB=../..
 TOP=leon3mp
 BOARD=terasic-sockit
-ALTCABLE=USB-BlasterII
+ALTCABLE="CV SoCKit"
 include $(GRLIB)/boards/$(BOARD)/Makefile.inc
 DEVICE=$(PART)-$(PACKAGE)$(SPEED)
 QSF=$(GRLIB)/boards/$(BOARD)/$(TOP).qsf
@@ -9,7 +9,7 @@ EFFORT=high
 XSTOPT=
 SYNPOPT="set_option -pipe 0; set_option -retiming 0; set_option -write_apr_constraint 0"
 VHDLSYNFILES=config.vhd ahbrom.vhd ahb2axi.vhd axi2ahb.vhd ddr3if.vhd leon3mp.vhd
-VHDLSIMFILES=testbench.vhd 
+VHDLSIMFILES=testbench.vhd ddr3sim.vhd
 SIMTOP=testbench
 SDCFILE=$(GRLIB)/boards/$(BOARD)/default.sdc
 BITGEN=$(GRLIB)/boards/$(BOARD)/default.ut
@@ -23,7 +23,7 @@ TECHLIBS = altera altera_mf
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp hynix cypress
 DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan pci leon3ft ambatest can \
-	usbhc usb spacewire spi grusbhc \
+	usbhc usb spacewire grusbhc \
 	slink ascs hcan leon4 leon4v0
 FILESKIP = grcan.vhd
 

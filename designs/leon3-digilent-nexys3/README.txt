@@ -4,7 +4,7 @@ This leon3 design is tailored to the Digilent Nexys3 board
 Simulation and synthesis
 ------------------------
 
-Compile Modelsim simulation: make vsim
+Compile Modelsim simulation: make sim
 
 Synthesise with Xilinx ISE:  make ise
 

@@ -45,6 +45,7 @@ entity mmu is
     tlb_type  : integer range 0 to 3 := 1;
     tlb_rep   : integer range 0 to 1 := 0;
     mmupgsz   : integer range 0 to 5  := 0;
+    scantest  : integer := 0;
     ramcbits  : integer := 1
     );
   port (
@@ -60,9 +61,7 @@ entity mmu is
     mcmmo  : in  memory_mm_out_type;
     mcmmi  : out memory_mm_in_type;
 
-    ramcclk : in  std_ulogic := '0';
-    ramcin  : in  std_logic_vector(2*ramcbits-1 downto 0) := (others => '0');
-    ramcout : out std_logic_vector(2*ramcbits-1 downto 0)
+    testin  : in  std_logic_vector(TESTIN_WIDTH-1 downto 0)
     );
 end mmu;
 
@@ -135,6 +134,7 @@ constant M_ENT_CLOG     : integer := M_ENT_ILOG;     -- i/dcache tlb entries: ad
       tlb_type  : integer range 0 to 3 := 1;
       tlb_rep   : integer range 0 to 1 := 0;
       mmupgsz   : integer range 0 to 5  := 0;
+      scantest  : integer := 0;
       ramcbits  : integer := 1
       );
     port (
@@ -144,9 +144,7 @@ constant M_ENT_CLOG     : integer := M_ENT_ILOG;     -- i/dcache tlb entries: ad
       tlbo  : out mmutlb_out_type;
       two  : in mmutw_out_type;
       twi  : out mmutw_in_type;
-      ramcclk: in std_ulogic;
-      ramcin : in std_logic_vector(ramcbits-1 downto 0);
-      ramcout: out std_logic_vector(ramcbits-1 downto 0)
+      testin : in std_logic_vector(TESTIN_WIDTH-1 downto 0)
       );
   end component;
   signal tlbi_a0 : mmutlb_in_type;
@@ -619,8 +617,6 @@ begin
       tlbi_a0.mmctrl1   <= mmudci.mmctrl1;
       tlbi_a0.wb_op     <= '0';
     end if;
-    tlbi_a0.testin <= mmudci.testin;
-    tlbi_a1.testin <= mmudci.testin;
 
     mmudco.transdata <= mmudco_transdata;
     mmuico.transdata <= mmuico_transdata;
@@ -642,24 +638,23 @@ begin
   tlbcomb0: if M_TLB_TYPE = 1 generate
     -- i/d tlb
     ctlb0 : mmutlb
-      generic map ( tech, M_ENT_C, 0, tlb_rep, mmupgsz, ramcbits )
-      port map (rst, clk, tlbi_a0, tlbo_a0, two_a(0), twi_a(0),
-                ramcclk, ramcin(ramcbits-1 downto 0), ramcout(ramcbits-1 downto 0));
+      generic map ( tech, M_ENT_C, 0, tlb_rep, mmupgsz, scantest, ramcbits )
+      port map (rst, clk, tlbi_a0, tlbo_a0, two_a(0), twi_a(0), testin
+                );
       mmudco.tlbmiss   <= twi_a(0).tlbmiss;
-      ramcout(2*ramcbits-1 downto ramcbits) <= (others => '0');
   end generate tlbcomb0;
 
   tlbsplit0: if M_TLB_TYPE = 0 generate
     -- i tlb
     itlb0 : mmutlb
-      generic map ( tech, M_ENT_I, 0, tlb_rep, mmupgsz, ramcbits )
-      port map (rst, clk, tlbi_a0, tlbo_a0, two_a(0), twi_a(0),
-                ramcclk, ramcin(ramcbits-1 downto 0), ramcout(ramcbits-1 downto 0));
+      generic map ( tech, M_ENT_I, 0, tlb_rep, mmupgsz, scantest, ramcbits )
+      port map (rst, clk, tlbi_a0, tlbo_a0, two_a(0), twi_a(0), testin
+                );
     -- d tlb
     dtlb0 : mmutlb
-      generic map ( tech, M_ENT_D, tlb_type, tlb_rep, mmupgsz, ramcbits )
-      port map (rst, clk, tlbi_a1, tlbo_a1, two_a(1), twi_a(1),
-                ramcclk, ramcin(2*ramcbits-1 downto ramcbits), ramcout(2*ramcbits-1 downto ramcbits));
+      generic map ( tech, M_ENT_D, tlb_type, tlb_rep, mmupgsz, scantest, ramcbits )
+      port map (rst, clk, tlbi_a1, tlbo_a1, two_a(1), twi_a(1), testin
+                );
       mmudco.tlbmiss   <= twi_a(1).tlbmiss;
   end generate tlbsplit0;
 

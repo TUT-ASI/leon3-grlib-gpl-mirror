@@ -2,6 +2,7 @@
   constant CFG_FABTECH 	: integer := CONFIG_SYN_TECH;
   constant CFG_MEMTECH  : integer := CFG_RAM_TECH;
   constant CFG_PADTECH 	: integer := CFG_PAD_TECH;
+  constant CFG_TRANSTECH	: integer := CFG_TRANS_TECH;
   constant CFG_NOASYNC 	: integer := CONFIG_SYN_NO_ASYNC;
   constant CFG_SCAN 	: integer := CONFIG_SYN_SCAN;
 
@@ -124,18 +125,9 @@
   constant CFG_MCTRL_SD64     : integer := CONFIG_MCTRL_SDRAM_BUS64;
   constant CFG_MCTRL_PAGE     : integer := CONFIG_MCTRL_PAGE + CONFIG_MCTRL_PROGPAGE;
 
--- Xilinx MIG
-  constant CFG_MIG_DDR2    : integer := CONFIG_MIG_DDR2;
-  constant CFG_MIG_RANKS   : integer := CONFIG_MIG_RANKS;
-  constant CFG_MIG_COLBITS : integer := CONFIG_MIG_COLBITS;
-  constant CFG_MIG_ROWBITS : integer := CONFIG_MIG_ROWBITS;
-  constant CFG_MIG_BANKBITS: integer := CONFIG_MIG_BANKBITS;
-  constant CFG_MIG_HMASK   : integer := 16#CONFIG_MIG_HMASK#;
-
-
--- Xilinx MIG Series 7
-  constant CFG_MIG_SERIES7    : integer := CONFIG_MIG_SERIES7;
-  constant CFG_MIG_SERIES7_MODEL    : integer := CONFIG_MIG_SERIES7_MODEL;
+-- Xilinx MIG 7-Series
+  constant CFG_MIG_7SERIES    : integer := CONFIG_MIG_7SERIES;
+  constant CFG_MIG_7SERIES_MODEL    : integer := CONFIG_MIG_7SERIES_MODEL;
 
 -- AHB status register
   constant CFG_AHBSTAT 	: integer := CONFIG_AHBSTAT_ENABLE;

@@ -43,10 +43,8 @@ entity syncram256bw is
     dataout : out std_logic_vector (255 downto 0);
     enable  : in  std_logic_vector (31 downto 0);
     write   : in  std_logic_vector (31 downto 0);
-    testin  : in  std_logic_vector (TESTIN_WIDTH-1 downto 0) := testin_none;
-    customclk: in std_ulogic := '0';
-    customin : in std_logic_vector(32*custombits-1 downto 0);
-    customout:out std_logic_vector(32*custombits-1 downto 0));
+    testin  : in  std_logic_vector (TESTIN_WIDTH-1 downto 0) := testin_none
+    );
 end;
 
 architecture rtl of syncram256bw is
@@ -121,8 +119,7 @@ begin
   xenable <= enable when testen=0 or testin(TESTIN_WIDTH-2)='0' else (others => '0');
   xwrite <= write when testen=0 or testin(TESTIN_WIDTH-2)='0' else (others => '0');
 
-  custominx(custominx'high downto custombits) <= (others => '0');
-  custominx(custombits-1 downto 0) <= customin(custombits-1 downto 0);
+    custominx <= (others => '0');
 
   nocust: if has_sram256bw(tech)=0 or syncram_has_customif(tech)=0 generate
     customoutx <= (others => '0');
@@ -153,8 +150,7 @@ begin
          port map (clk, address, datain, dataout, xenable, xwrite, testin);
     end generate;
 
-    customout(custombits-1 downto 0) <= customoutx(custombits-1 downto 0);
-    
+
 -- pragma translate_off
     dmsg : if GRLIB_CONFIG_ARRAY(grlib_debug_level) >= 2 generate
       x : process
@@ -173,9 +169,8 @@ begin
     rx : for i in 0 to 31 generate
       x0 : syncram generic map (tech, abits, 8, testen, custombits)
          port map (clk, address, datain(i*8+7 downto i*8), 
-	    dataout(i*8+7 downto i*8), enable(i), write(i), testin,
-                   customclk, customin((i+1)*custombits-1 downto i*custombits),
-                   customout((i+1)*custombits-1 downto i*custombits));
+	    dataout(i*8+7 downto i*8), enable(i), write(i), testin
+                   );
     end generate;
   end generate;
 

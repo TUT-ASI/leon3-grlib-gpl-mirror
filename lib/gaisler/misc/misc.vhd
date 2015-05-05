@@ -197,8 +197,6 @@ package misc is
   );						-- big-endian write: bwrite(0) => data(31:24)
   end component;
 
-  subtype ahbtrace_memtest_type is memtest_vector_array(0 to 6);
-  constant ahbtrace_memtest_none : ahbtrace_memtest_type := (others => (others => '0'));
 
   component ahbtrace is
   generic (
@@ -219,9 +217,6 @@ package misc is
     ahbmi    : in  ahb_mst_in_type;
     ahbsi    : in  ahb_slv_in_type;
     ahbso    : out ahb_slv_out_type;
-    mtesti   : in  ahbtrace_memtest_type := ahbtrace_memtest_none;
-    mtesto   : out ahbtrace_memtest_type;
-    mtestclk : in  std_ulogic := '0';
     timer    : in  std_logic_vector(30 downto 0) := (others => '0');
     astat    : out amba_stat_type;
     resen    : in  std_ulogic := '0'
@@ -248,9 +243,6 @@ package misc is
     ahbso    : out ahb_slv_out_type;
     tahbmi   : in  ahb_mst_in_type;       -- Trace
     tahbsi   : in  ahb_slv_in_type;
-    mtesti   : in  ahbtrace_memtest_type := ahbtrace_memtest_none;
-    mtesto   : out ahbtrace_memtest_type;
-    mtestclk : in  std_ulogic := '0';
     timer    : in  std_logic_vector(30 downto 0) := (others => '0');
     astat    : out amba_stat_type;
     resen    : in  std_ulogic := '0'
@@ -278,9 +270,6 @@ package misc is
     ahbso    : out ahb_slv_out_type;
     tahbmiv  : in  ahb_mst_in_vector_type(0 to ntrace-1);       -- Trace
     tahbsiv  : in  ahb_slv_in_vector_type(0 to ntrace-1);
-    mtesti   : in  ahbtrace_memtest_type := ahbtrace_memtest_none;
-    mtesto   : out ahbtrace_memtest_type;
-    mtestclk : in  std_ulogic := '0';
     timer    : in  std_logic_vector(30 downto 0) := (others => '0');
     astat    : out amba_stat_type;
     resen    : in  std_ulogic := '0'
@@ -1093,6 +1082,47 @@ package misc is
   end component;
 
   component grclkgate2x
+    generic (
+      tech     : integer := 0;
+      pindex   : integer := 0;
+      paddr    : integer := 0;
+      pmask    : integer := 16#fff#;
+      ncpu     : integer := 1;
+      nclks    : integer := 8;
+      emask    : integer := 0;
+      extemask : integer := 0;
+      scantest : integer := 0;
+      edges    : integer := 0;
+      noinv    : integer := 0; -- Do not use inverted clock on gate enable
+      fpush    : integer range 0 to 2 := 0;
+      clk2xen  : integer := 0;  -- Enable double clocking
+      ungateen : integer := 0;
+      fpuclken : integer := 0;
+      nahbclk  : integer := 1;
+      nahbclk2x: integer := 1;
+      balance  : integer range 0 to 1 := 1
+      );
+    port (
+      rst      : in  std_ulogic;
+      clkin    : in  std_ulogic;
+      clkin2x  : in std_ulogic;
+      pwd      : in  std_logic_vector(ncpu-1 downto 0);
+      fpen     : in  std_logic_vector(ncpu-1 downto 0);
+      apbi     : in  apb_slv_in_type;
+      apbo     : out apb_slv_out_type;
+      gclk     : out std_logic_vector(nclks-1 downto 0);
+      reset    : out std_logic_vector(nclks-1 downto 0);
+      clkahb   : out std_logic_vector(nahbclk-1 downto 0);
+      clkahb2x : out std_logic_vector(nahbclk2x-1 downto 0);
+      clkcpu   : out std_logic_vector(ncpu-1 downto 0);
+      enable   : out std_logic_vector(nclks-1 downto 0);
+      clkfpu   : out std_logic_vector((fpush/2+fpuclken)*(ncpu/(2-fpuclken)-1) downto 0);
+      epwen    : in  std_logic_vector(nclks-1 downto 0);
+      ungate   : in  std_ulogic
+      );
+  end component;
+
+  component grclkgatex
     generic (
       tech     : integer := 0;
       pindex   : integer := 0;

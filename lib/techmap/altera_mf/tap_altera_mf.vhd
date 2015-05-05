@@ -58,8 +58,8 @@ architecture rtl of altera_tap is
  		--lpm_type	:	string := "sld_virtual_jtag";
  		sld_auto_instance_index	:	string := "NO";
  		sld_instance_index	:	natural := 0;
- 		sld_ir_width	:	natural := 1;
- 		sld_sim_action	:	string := "UNUSED"
+ 		sld_ir_width	:	natural := 1
+ 		--sld_sim_action	:	string := "UNUSED"
  		--sld_sim_n_scan	:	natural := 0;
  		--sld_sim_total_length	:	natural := 0
                 );

@@ -15,6 +15,7 @@ package config is
   constant CFG_FABTECH : integer := virtex7;
   constant CFG_MEMTECH : integer := virtex7;
   constant CFG_PADTECH : integer := virtex7;
+  constant CFG_TRANSTECH : integer := GTP0;
   constant CFG_NOASYNC : integer := 0;
   constant CFG_SCAN : integer := 0;
 -- Clock generator
@@ -132,27 +133,18 @@ package config is
   constant CFG_MCTRL_INVCLK : integer := 0;
   constant CFG_MCTRL_SD64 : integer := 0;
   constant CFG_MCTRL_PAGE : integer := 0 + 0;
--- Xilinx MIG
-  constant CFG_MIG_DDR2 : integer := 0;
-  constant CFG_MIG_RANKS : integer := 1;
-  constant CFG_MIG_COLBITS : integer := 10;
-  constant CFG_MIG_ROWBITS : integer := 13;
-  constant CFG_MIG_BANKBITS: integer := 2;
-  constant CFG_MIG_HMASK : integer := 16#F00#;
--- Xilinx MIG Series 7
-  constant CFG_MIG_SERIES7 : integer := 1;
-  constant CFG_MIG_SERIES7_MODEL : integer := 0;
+-- Xilinx MIG 7-Series
+  constant CFG_MIG_7SERIES : integer := 1;
+  constant CFG_MIG_7SERIES_MODEL : integer := 0;
 -- AHB status register
   constant CFG_AHBSTAT : integer := 0;
   constant CFG_AHBSTATN : integer := 1;
-
 -- AHB ROM
   constant CFG_AHBROMEN : integer := 0;
   constant CFG_AHBROPIP : integer := 0;
   constant CFG_AHBRODDR : integer := 16#000#;
   constant CFG_ROMADDR : integer := 16#000#;
   constant CFG_ROMMASK : integer := 16#E00# + 16#000#;
-
 -- AHB RAM
   constant CFG_AHBRAMEN : integer := 1;
   constant CFG_AHBRSZ : integer := 4;

@@ -38,6 +38,7 @@ use gaisler.leon3.all;
 use gaisler.uart.all;
 use gaisler.misc.all;
 use gaisler.jtag.all;
+use gaisler.spi.all;
 use gaisler.i2c.all;
 use gaisler.net.all;
 --pragma translate_off
@@ -144,12 +145,12 @@ entity leon3mp is
 --      AUD_ADCDAT			:	in		std_logic; --input              AUD_ADCDAT,
 --      AUD_ADCLRCK			:	inout	std_logic; --inout              AUD_ADCLRCK,
 --      AUD_BCLK				:	inout	std_logic; --inout              AUD_BCLK,
---      AUD_DACDAT			:	out	std_logic; --output             AUD_DACDAT,
+--      AUD_DACDAT			:	out	  std_logic; --output             AUD_DACDAT,
 --      AUD_DACLRCK			:	inout	std_logic; --inout              AUD_DACLRCK,
---      AUD_I2C_SCLK		:	out	std_logic; --output             AUD_I2C_SCLK,
+--      AUD_I2C_SCLK		:	out	  std_logic; --output             AUD_I2C_SCLK,
 --      AUD_I2C_SDAT		:	inout	std_logic; --inout              AUD_I2C_SDAT,
---      AUD_MUTE				:	out	std_logic; --output             AUD_MUTE,
---      AUD_XCK				:	out	std_logic; --output             AUD_XCK,
+--      AUD_MUTE				:	out	  std_logic; --output             AUD_MUTE,
+--      AUD_XCK				  :	out	  std_logic; --output             AUD_XCK,
 --
 --      --HSMC--
 --      HSMC_CLKIN_n		:	in		std_logic_vector(2 downto 1); --input       [2:1]  HSMC_CLKIN_n,
@@ -180,10 +181,10 @@ entity leon3mp is
 --      SI5338_SCL			:	in		std_logic; --inout              SI5338_SCL,
 --      SI5338_SDA			:	in		std_logic; --inout              SI5338_SDA,
 --
---      --TEMP--
+      --TEMP--
 --      TEMP_CS_n			:	out	std_logic; --output             TEMP_CS_n,
---      TEMP_DIN				:	out	std_logic; --output             TEMP_DIN,
---      TEMP_DOUT			:	in		std_logic; --input              TEMP_DOUT,
+--      TEMP_DIN			:	out	std_logic; --output             TEMP_DIN,
+--      TEMP_DOUT			:	in	std_logic; --input              TEMP_DOUT,
 --      TEMP_SCLK			:	out	std_logic; --output             TEMP_SCLK,
 --
 --      --USB--
@@ -200,13 +201,13 @@ entity leon3mp is
 --
 --      --VGA--
 --      VGA_B					:	out	std_logic_vector(7 downto 0); --output      [7:0]  VGA_B,
---      VGA_BLANK_n			:	out	std_logic; --output             VGA_BLANK_n,
+--      VGA_BLANK_n		:	out	std_logic; --output             VGA_BLANK_n,
 --      VGA_CLK				:	out	std_logic; --output             VGA_CLK,
 --      VGA_G					:	out	std_logic_vector(7 downto 0); --output      [7:0]  VGA_G,
-      VGA_HS				:	in	std_logic; --output             VGA_HS,
---      VGA_R					:	out	std_logic; --output      [7:0]  VGA_R,
---      VGA_SYNC_n			:	out	std_logic; --output             VGA_SYNC_n,
-      VGA_VS				:	out	std_logic; --output             VGA_VS
+--      VGA_HS				:	out	std_logic; --output             VGA_HS,
+--      VGA_R					:	out	std_logic_vector(7 downto 0); --output      [7:0]  VGA_R,
+--      VGA_SYNC_n		:	out	std_logic; --output             VGA_SYNC_n,
+--      VGA_VS				:	out	std_logic; --output             VGA_VS
 		
 		--OSC (CLOCKS)--
       OSC_50_B3B			:	in		std_logic;
@@ -240,24 +241,24 @@ architecture rtl of leon3mp is
 											 
   -- Bus indexes
   constant hmi_cpu     : integer := 0;
-  constant hmi_ahbuart : integer := hmi_cpu  + CFG_NCPU;
+  constant hmi_ahbuart : integer := hmi_cpu     + CFG_NCPU;
   constant hmi_ahbjtag : integer := hmi_ahbuart + CFG_AHB_UART;
   constant hmi_axi2ahb : integer := hmi_ahbjtag + CFG_AHB_JTAG;
   constant nahbm       : integer := hmi_axi2ahb + CFG_HPS2FPGA;
   
-  constant hsi_ahbrom      : integer := 0;
-  constant hsi_apbctrl      : integer := hsi_ahbrom     + CFG_AHBROMEN;
+  constant hsi_ahbrom       : integer := 0;
+  constant hsi_apbctrl      : integer := hsi_ahbrom      + CFG_AHBROMEN;
   constant hsi_dsu          : integer := hsi_apbctrl     + 1;
   constant hsi_ddr3         : integer := hsi_dsu         + CFG_DSU;
   constant hsi_ahb2axi      : integer := hsi_ddr3        + 1;
-  constant hsi_ahbrep       : integer := hsi_ahb2axi 	+ CFG_FPGA2HPS;
+  constant hsi_ahbrep       : integer := hsi_ahb2axi 	   + CFG_FPGA2HPS;
   constant nahbs            : integer := hsi_ahbrep      + USE_AHBREP;
 
-  constant pi_irqmp   : integer := 0;
-  constant pi_apbuart : integer := pi_irqmp   + CFG_IRQ3_ENABLE;
-  constant pi_gpt     : integer := pi_apbuart + CFG_UART1_ENABLE;
+  constant pi_apbuart : integer := 0;
+  constant pi_irqmp   : integer := pi_apbuart + CFG_UART1_ENABLE;
+  constant pi_gpt     : integer := pi_irqmp   + CFG_IRQ3_ENABLE;
   constant pi_ahbuart : integer := pi_gpt     + CFG_GPT_ENABLE;
-  constant napbs		  : integer := pi_ahbuart + CFG_AHB_UART;
+  constant napbs      : integer := pi_ahbuart + CFG_AHB_UART;
 
   signal clklock: std_ulogic;
   signal clkm: std_ulogic;
@@ -286,8 +287,8 @@ architecture rtl of leon3mp is
   signal del_ce: std_logic;
   signal del_bwe, del_bwa, del_bwb: std_logic_vector(1 downto 0);
 
-  signal dui: uart_in_type;
-  signal duo: uart_out_type;
+  signal dui, ui: uart_in_type;
+  signal duo, uo: uart_out_type;
   
   signal vcc, gnd: std_ulogic;
   
@@ -571,8 +572,8 @@ begin
 
   clklock <= cgo.clklock;
   clkgen0 : clkgen                      -- clock generator using toplevel generic 'freq'
-    generic map (tech    => altera, clk_mul => CFG_CLKMUL,
-                 clk_div => CFG_CLKDIV, sdramen => 0,
+    generic map (tech    => altera, clk_mul => 7,
+                 clk_div => 5, sdramen => 0,
                  noclkfb => 0, freq => 50000)
     port map (clkin => OSC_50_B3B, pciclkin => gnd, clk => clkm, clkn => open,
               clk2x => open, sdclk => open, pciclk => open,
@@ -603,7 +604,7 @@ begin
   apbo(napbs to apbo'high) <= (others => apb_none);
   
   -----------------------------------------------------------------------------
-  -- LEON3 Processor(s), DSU, timer and IRQ controller
+  -- LEON3 Processor(s), DSU
   -----------------------------------------------------------------------------
 
   errorn_pad : outpad generic map (tech => padtech) port map (LED(3), dbgo(0).error);
@@ -619,8 +620,7 @@ begin
                    CFG_ISETSZ, CFG_ILOCK, CFG_DCEN, CFG_DREPL, CFG_DSETS, CFG_DLINE, CFG_DSETSZ,
                    CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
                    CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP,
-                   CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1,
-                   CFG_DFIXED, CFG_SCAN, CFG_MMU_PAGE, CFG_BP, CFG_NP_ASI, CFG_WRPSR)
+                   CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1)
         port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso,
                 irqi(i), irqo(i), dbgi(i), dbgo(i));
     end generate;
@@ -638,6 +638,17 @@ begin
   end generate;
   nodsu : if CFG_DSU = 0 or CFG_LEON3 = 0 generate
     dsuo.tstop <= '0'; dsuo.active <= '0'; dsuo.pwd <= (others => '0');
+  end generate;
+
+  -----------------------------------------------------------------------------
+  -- APB Slaves
+  -----------------------------------------------------------------------------
+
+  ua0 : if CFG_UART1_ENABLE /= 0 generate
+  uart1 : apbuart
+      generic map (pindex   => pi_apbuart, paddr => 1, pirq => 2, console => dbguart,
+                   fifosize => CFG_UART1_FIFO)
+      port map (rstn, clkm, apbi, apbo(pi_apbuart), ui, uo);
   end generate;
 
   irqctrl : if CFG_IRQ3_ENABLE /= 0 generate
@@ -682,12 +693,10 @@ begin
   end generate;
 
   ahbjtaggen0 :if CFG_AHB_JTAG = 1 generate
-    ahbjtag0 : ahbjtag generic map(tech => fabtech, hindex => hmi_ahbjtag, nsync => 1, versel => 0)
+    ahbjtag0 : ahbjtag generic map(tech => fabtech, hindex => hmi_ahbjtag, nsync => 2, versel => 0)
       port map(rstn, clkm, gnd, gnd, gnd, open, ahbmi, ahbmo(hmi_ahbjtag),
                open, open, open, open, open, open, open, gnd);
   end generate;
-
-  -- EDCL included in Ethernet below
 
   -----------------------------------------------------------------------------
   -- Memory controllers
@@ -728,13 +737,14 @@ begin
       ahbso => ahbso(hsi_ddr3)
       );
 
+
   -----------------------------------------------------------------------------
   -- Hard Processor System
   -----------------------------------------------------------------------------
 
--- FPGA2HPS Bridge
-fpga2hps: if CFG_FPGA2HPS = 1 generate
-ahb2axi0 : entity work.ahb2axi
+  -- FPGA2HPS Bridge
+  fpga2hps: if CFG_FPGA2HPS = 1 generate
+  ahb2axi0 : entity work.ahb2axi
     generic map(
      hindex => hsi_ahb2axi, haddr => 16#CF0#, hmask => 16#FF0#,
      idsize => idsize, lensize => lensize, addrsize => periph_addrsize)
@@ -785,13 +795,13 @@ ahb2axi0 : entity work.ahb2axi
     f2h.araddr(31 downto periph_addrsize)  <= (others => '1');
     f2h.awaddr(31 downto periph_addrsize)  <= (others => '1');
 
-end generate;
+  end generate;
    
 
 
---HPS2FPGA bridge
-hps2fpga: if CFG_HPS2FPGA = 1 generate  
-  axi2ahb : entity work.axi2ahb
+  --HPS2FPGA bridge
+  hps2fpga: if CFG_HPS2FPGA = 1 generate  
+    axi2ahb : entity work.axi2ahb
       generic map(
       hindex      => hmi_axi2ahb,
       idsize      => 12,
@@ -842,13 +852,13 @@ hps2fpga: if CFG_HPS2FPGA = 1 generate
       s_axi_wready    => h2f.wready,
       s_axi_wstrb     => h2f.wstrb(3 downto 0),
       s_axi_wvalid    => h2f.wvalid
-  );
+    );
 
-  h2f.araddr(31 downto 30) <= "01";
-  h2f.awaddr(31 downto 30) <= "01";
-end generate;
+    h2f.araddr(31 downto 30) <= "10";
+    h2f.awaddr(31 downto 30) <= "10";
+  end generate;
 
-hps_inst : component hps
+  hps_inst : component hps
         port map (
             clk_clk                            => clkm,       
             hps_hps_io_emac1_inst_TX_CLK       => HPS_ENET_GTX_CLK,       
@@ -1046,12 +1056,11 @@ hps_inst : component hps
 -----------------------------------------------------------------------------
 -- Other
 -----------------------------------------------------------------------------
-  
 
 -- pragma translate_off
   rep: if USE_AHBREP/=0 generate
     ahbrep0: ahbrep
-      generic map (hindex => hsi_ahbrep, haddr => 16#000#)
+      generic map (hindex => hsi_ahbrep, haddr => 16#200#)
       port map (rstn,clkm,ahbsi,ahbso(hsi_ahbrep));
   end generate;
 

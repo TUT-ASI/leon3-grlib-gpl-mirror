@@ -883,8 +883,6 @@ begin
         pv.split := '0'; pv.splmst := (others => '0');
       end if;
     end if;
-    vabufi.enable := vabufi.enable and not ahbsi.scanen;
-    vabufi.diag := ahbsi.testen & "000";
     rin <= v; trin <= tv; tbi <= vabufi; tfrin <= tfv; prin <= pv;
 
     for i in 0 to NCPU-1 loop
@@ -1076,7 +1074,8 @@ begin
     
     mem0 : tbufmem
       generic map (tech => tech, tbuf => kbytes, dwidth => bwidth, testen => testen)
-      port map (cpuclk, tbi, tbo);
+      port map (cpuclk, tbi, tbo, ahbsi.testin
+                );
     
 -- pragma translate_off
     bootmsg : report_version 

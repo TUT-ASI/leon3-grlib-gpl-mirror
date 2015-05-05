@@ -14,6 +14,7 @@ package config is
   constant CFG_FABTECH : integer := saed32;
   constant CFG_MEMTECH : integer := saed32;
   constant CFG_PADTECH : integer := saed32;
+  constant CFG_TRANSTECH : integer := GTP0;
   constant CFG_NOASYNC : integer := 1;
   constant CFG_SCAN : integer := 1;
 -- JTAG boundary-scan chain

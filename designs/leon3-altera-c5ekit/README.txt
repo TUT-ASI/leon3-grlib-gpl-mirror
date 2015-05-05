@@ -107,9 +107,9 @@ Interrupts:
 Simulation
 ----------
 
-The standard GRLIB flow with "make vsim" can be used to simulate the
+The standard GRLIB flow with "make sim" can be used to simulate the
 design. The megafunctions are replaced with simple simulation models
-that only simulate the minimum necesary to make the simulation work.
+that only simulate the minimum necessary to make the simulation work.
 
 
 Programming

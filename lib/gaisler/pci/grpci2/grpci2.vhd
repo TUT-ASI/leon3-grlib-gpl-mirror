@@ -146,10 +146,7 @@ entity grpci2 is
       ptarst    : out std_logic;
       tbapbi    : in apb_slv_in_type := apb_slv_in_none;
       tbapbo    : out apb_slv_out_type;
-      debugo    : out std_logic_vector(debug*255 downto 0);
-      mtesti    : in grpci2_memtest_type;
-      mtesto    : out grpci2_memtest_type;
-      mtestclk  : in std_ulogic
+      debugo    : out std_logic_vector(debug*255 downto 0)
 );
 end;
 
@@ -771,9 +768,6 @@ signal ahbmo_con : ahb_mst_out_type; -- Connect AHB-master to ahbmo
 signal lpcim_rst, lpcit_rst, lpci_rst: std_ulogic;
 signal lahbm_rst, lahbs_rst, lahb_rst: std_ulogic;
 
-signal mti_tatp,mto_tatp,mti_tpta,mto_tpta: std_logic_vector(3*memtest_vlen-1 downto 0);
-signal mti_matp,mto_matp,mti_mpta,mto_mpta: std_logic_vector(3*memtest_vlen-1 downto 0);
-signal mti_ddtp,mto_ddtp,mti_dptd,mto_dptd: std_logic_vector(3*memtest_vlen-1 downto 0);
 
 signal iotmdin: std_logic_vector(45 downto 0);
 signal iotmdout: std_logic_vector(44 downto 0);
@@ -1351,6 +1345,7 @@ begin
     elsif pr.m.state = pm_s_tar or pr.m.state = pm_idle or pr.m.state = pm_dr_bus then
       pv.m.abort := (others => '0');
     end if;
+    if pr.m.abort(0) = '1' then pv.m.abort(0) := '0'; end if;
 
     -- Access acknowledge and arbitration [AHB/DMA]
     for i in 0 to 1*dma loop
@@ -1393,7 +1388,7 @@ begin
       end if;
       
       if pr.m.acc(i).pending = '1' and pr.m.acc(i).active(1) = '0' and pr.m.acc(i).done(0) = '1' and pr.m.acc(i).cmd(0) = '1' then -- Status pending
-        if pr.m.acc(i).done(2 downto 1) = "10" and pr.m.done_trans = '0' then
+        if pr.m.acc(i).done(2 downto 1) = "10" then
           if (i = acc_sel_ahb and ms_fifo_pending(pr.m.acc(i).fifo_index) = '1') or (i = acc_sel_dma and md_fifo_pending(pr.m.acc(i).fifo_index) = '1') then
             if pr.m.acc(i).fifo_index /= FIFO_COUNT-1 then pv.m.acc(i).fifo_index := pr.m.acc(i).fifo_index + 1;
             else pv.m.acc(i).fifo_index := 0; end if;
@@ -5571,40 +5566,34 @@ target_fifo0 : if target /= 0 generate
                                           testen => scantest, custombits => memtest_vlen)
                   port map (pciclk, scan_prin_t_atp_ctrl_en, prin.t.atp.ctrl.addr, tm_fifoo_atp.data, 
                             clk, scan_ar_m_acc_fifo_wen, ar.m.acc.fifo_addr, ar.m.acc.fifo_wdata,
-                            tm_fifoo_atp.err, testin, mtestclk, mti_tatp, mto_tatp);
+                            tm_fifoo_atp.err, testin
+                            );
     -- PCI target to AHB master FIFO                                                                                                 
     pta_fifo0 : syncram_2pft generic map (tech => memtech, abits => FIFO_DEPTH+log2(FIFO_COUNT), 
                                           dbits => 32, sepclk => 1, wrfst => 0, ft => ft,
                                           testen => scantest, custombits => memtest_vlen)
                   port map (clk, scan_arin_m_acc_fifo_ren, arin.m.acc.fifo_addr, tm_fifoo_pta.data, 
                             pciclk, scan_pr_t_pta_ctrl_en, pr.t.pta.ctrl.addr, pr.t.pta.ctrl.data,
-                            tm_fifoo_pta.err, testin, mtestclk, mti_tpta, mto_tpta);
-    mtesto.tfifo(0) <= mto_tatp(1*memtest_vlen-1 downto 0*memtest_vlen);
-    mtesto.tfifo(1) <= mto_tatp(2*memtest_vlen-1 downto 1*memtest_vlen);
+                            tm_fifoo_pta.err, testin
+                            );
     -- AHB master to PCI target FIFO
   end generate;
-  mtesto.tfifo(2) <= mto_tatp(3*memtest_vlen-1 downto 2*memtest_vlen);
-  mtesto.tfifo(3) <= mto_tpta(1*memtest_vlen-1 downto 0*memtest_vlen);
-  mtesto.tfifo(4) <= mto_tpta(2*memtest_vlen-1 downto 1*memtest_vlen);
-  mtesto.tfifo(5) <= mto_tpta(3*memtest_vlen-1 downto 2*memtest_vlen);
-  mti_tatp <= mtesti.tfifo(2) & mtesti.tfifo(1) & mtesti.tfifo(0);
-  mti_tpta <= mtesti.tfifo(5) & mtesti.tfifo(4) & mtesti.tfifo(3);
   noft0 : if ft = 0 generate
     atp_fifo0 : syncram_2p generic map (tech => memtech, abits => FIFO_DEPTH+log2(FIFO_COUNT), 
                                         dbits => 32, sepclk => 1, wrfst => 0, testen => scantest,
                                         custombits => memtest_vlen)
                   port map (pciclk, scan_prin_t_atp_ctrl_en, prin.t.atp.ctrl.addr, tm_fifoo_atp.data, 
                             clk, scan_ar_m_acc_fifo_wen, ar.m.acc.fifo_addr, ar.m.acc.fifo_wdata,
-                            testin, mtestclk, mtesti.tfifo(0), mtesto.tfifo(0));
+                            testin
+                            );
     -- PCI target to AHB master FIFO                                                                                                 
     pta_fifo0 : syncram_2p generic map (tech => memtech, abits => FIFO_DEPTH+log2(FIFO_COUNT), 
                                         dbits => 32, sepclk => 1, wrfst => 0, testen => scantest,
                                         custombits => memtest_vlen) 
                   port map (clk, scan_arin_m_acc_fifo_ren, arin.m.acc.fifo_addr, tm_fifoo_pta.data, 
                             pciclk, scan_pr_t_pta_ctrl_en, pr.t.pta.ctrl.addr, pr.t.pta.ctrl.data, 
-                            testin, mtestclk, mtesti.tfifo(1), mtesto.tfifo(1));
-    mto_tatp <= (others => '0');
-    mto_tpta <= (others => '0');
+                            testin
+                            );
   end generate;
 end generate;
 
@@ -5621,23 +5610,17 @@ master_fifo0 : if master /= 0 generate
                                           testen => scantest, custombits => memtest_vlen)
                   port map (pciclk, scan_prin_m_acc_acc_sel_ahb_fifo_ren, prin.m.fifo_addr, ms_fifoo_atp.data, 
                             clk, scan_ar_s_atp_ctrl_en, ar.s.atp.ctrl.addr, ar.s.atp.ctrl.data,
-                            ms_fifoo_atp.err, testin, mtestclk, mti_matp, mto_matp);
+                            ms_fifoo_atp.err
+                            );
     -- PCI master to AHB slave FIFO                                                                                                 
     pta_fifo1 : syncram_2pft generic map (tech => memtech, abits => FIFO_DEPTH+log2(FIFO_COUNT), 
                                           dbits => 32, sepclk => 1, wrfst => 0, ft => ft,
                                           testen => scantest, custombits => memtest_vlen)
                   port map (clk, scan_arin_s_pta_ctrl_en, arin.s.pta.ctrl.addr, ms_fifoo_pta.data, 
                             pciclk, scan_pr_m_acc_acc_sel_ahb_fifo_wen, pr.m.fifo_addr, pr.m.fifo_wdata,
-                            ms_fifoo_pta.err, testin, mtestclk, mti_mpta, mto_mpta);
-    mtesto.mfifo(0) <= mto_matp(1*memtest_vlen-1 downto 0*memtest_vlen);
-    mtesto.mfifo(1) <= mto_matp(2*memtest_vlen-1 downto 1*memtest_vlen);
+                            ms_fifoo_pta.err
+                            );
   end generate;
-  mtesto.mfifo(2) <= mto_matp(3*memtest_vlen-1 downto 2*memtest_vlen);
-  mtesto.mfifo(3) <= mto_mpta(1*memtest_vlen-1 downto 0*memtest_vlen);
-  mtesto.mfifo(4) <= mto_mpta(2*memtest_vlen-1 downto 1*memtest_vlen);
-  mtesto.mfifo(5) <= mto_mpta(3*memtest_vlen-1 downto 2*memtest_vlen);
-  mti_matp <= mtesti.mfifo(2) & mtesti.mfifo(1) & mtesti.mfifo(0);
-  mti_mpta <= mtesti.mfifo(5) & mtesti.mfifo(4) & mtesti.mfifo(3);
   noft0 : if ft = 0 generate
     -- AHB slave to PCI master FIFO
     atp_fifo1 : syncram_2p generic map (tech => memtech, abits => FIFO_DEPTH+log2(FIFO_COUNT), 
@@ -5645,16 +5628,16 @@ master_fifo0 : if master /= 0 generate
                                         testen => scantest, custombits => memtest_vlen)
                   port map (pciclk, scan_prin_m_acc_acc_sel_ahb_fifo_ren, prin.m.fifo_addr, ms_fifoo_atp.data, 
                             clk, scan_ar_s_atp_ctrl_en, ar.s.atp.ctrl.addr, ar.s.atp.ctrl.data,
-                            testin, mtestclk, mtesti.mfifo(0), mtesto.mfifo(0));
+                            testin
+                            );
     -- PCI master to AHB slave FIFO                                                                                                 
     pta_fifo1 : syncram_2p generic map (tech => memtech, abits => FIFO_DEPTH+log2(FIFO_COUNT), 
                                         dbits => 32, sepclk => 1, wrfst => 0,
                                         testen => scantest, custombits => memtest_vlen)
                   port map (clk, scan_arin_s_pta_ctrl_en, arin.s.pta.ctrl.addr, ms_fifoo_pta.data, 
                             pciclk, scan_pr_m_acc_acc_sel_ahb_fifo_wen, pr.m.fifo_addr, pr.m.fifo_wdata,
-                            testin, mtestclk, mtesti.mfifo(1), mtesto.mfifo(1));
-    mto_matp <= (others => '0');
-    mto_mpta <= (others => '0');
+                            testin
+                            );
   end generate;
 end generate;
 
@@ -5671,23 +5654,17 @@ dma_fifo0 : if dma /= 0 generate
                                           testen => scantest, custombits => memtest_vlen)
                   port map (pciclk, scan_prin_m_acc_acc_sel_dma_fifo_ren, prin.m.fifo_addr, md_fifoo_dtp.data, 
                             clk, scan_ar_dma_dtp_ctrl_en, ar.dma.dtp.ctrl.addr, ar.dma.dtp.ctrl.data,
-                            md_fifoo_dtp.err, testin, mtestclk, mti_ddtp, mto_ddtp);
+                            md_fifoo_dtp.err, testin
+                           );
     -- PCI master to DMA                                                                                                           
     ptd_fifo2 : syncram_2pft generic map (tech => memtech, abits => FIFO_DEPTH+log2(FIFO_COUNT), 
                                           dbits => 32, sepclk => 1, wrfst => 0, ft => ft,
                                           testen => scantest, custombits => memtest_vlen)
                   port map (clk, scan_arin_dma_ptd_ctrl_en, arin.dma.ptd.ctrl.addr, md_fifoo_ptd.data, 
                             pciclk, scan_pr_m_acc_acc_sel_dma_fifo_wen, pr.m.fifo_addr, pr.m.fifo_wdata,
-                            md_fifoo_dtp.err, testin, mtestclk, mti_dptd, mto_dptd);
-    mtesto.dfifo(0) <= mto_ddtp(1*memtest_vlen-1 downto 0*memtest_vlen);
-    mtesto.dfifo(1) <= mto_ddtp(2*memtest_vlen-1 downto 1*memtest_vlen);
+                            md_fifoo_dtp.err, testin
+                            );
   end generate;
-  mtesto.dfifo(2) <= mto_ddtp(3*memtest_vlen-1 downto 2*memtest_vlen);
-  mtesto.dfifo(3) <= mto_dptd(1*memtest_vlen-1 downto 0*memtest_vlen);
-  mtesto.dfifo(4) <= mto_dptd(2*memtest_vlen-1 downto 1*memtest_vlen);
-  mtesto.dfifo(5) <= mto_dptd(3*memtest_vlen-1 downto 2*memtest_vlen);
-  mti_ddtp <= mtesti.dfifo(2) & mtesti.dfifo(1) & mtesti.dfifo(0);
-  mti_dptd <= mtesti.dfifo(5) & mtesti.dfifo(4) & mtesti.dfifo(3);
   noft0 : if ft = 0 generate
     -- DMA to PCI master FIFO
     dtp_fifo2 : syncram_2p generic map (tech => memtech, abits => FIFO_DEPTH+log2(FIFO_COUNT), 
@@ -5695,16 +5672,16 @@ dma_fifo0 : if dma /= 0 generate
                                         testen => scantest, custombits => memtest_vlen)
                   port map (pciclk, scan_prin_m_acc_acc_sel_dma_fifo_ren, prin.m.fifo_addr, md_fifoo_dtp.data, 
                             clk, scan_ar_dma_dtp_ctrl_en, ar.dma.dtp.ctrl.addr, ar.dma.dtp.ctrl.data,
-                            testin, mtestclk, mtesti.dfifo(0), mtesto.dfifo(0));
+                            testin
+                            );
     -- PCI master to DMA                                                                                                           
     ptd_fifo2 : syncram_2p generic map (tech => memtech, abits => FIFO_DEPTH+log2(FIFO_COUNT), 
                                         dbits => 32, sepclk => 1, wrfst => 0,
                                         testen => scantest, custombits => memtest_vlen)
                   port map (clk, scan_arin_dma_ptd_ctrl_en, arin.dma.ptd.ctrl.addr, md_fifoo_ptd.data, 
                             pciclk, scan_pr_m_acc_acc_sel_dma_fifo_wen, pr.m.fifo_addr, pr.m.fifo_wdata,
-                            testin, mtestclk, mtesti.dfifo(1), mtesto.dfifo(1));
-    mto_ddtp <= (others => '0');
-    mto_dptd <= (others => '0');
+                            testin
+                            );
   end generate;
   
 end generate;
@@ -5718,13 +5695,15 @@ trace_fifo0 : if tracebuffer /= 0 generate
                                      testen => scantest, custombits => memtest_vlen) 
                port map (clk, scan_tb_ren, tb_addr(PT_DEPTH+1 downto 2), pt_fifoo_ad.data, 
                          pciclk, scan_pr_ptta_trans_enable, pr.pt.addr, pi.ad,
-                         testin, mtestclk, mtesti.tbuf(0), mtesto.tbuf(0));
+                         testin
+                         );
   pt_fifoo_ad.err <= (others => '0');
   pt_fifo1 : syncram_2p generic map (tech => tbmemtech, abits => PT_DEPTH, dbits => 17, sepclk => 1, wrfst => 0, 
                                      testen => scantest, custombits => memtest_vlen) 
                port map (clk, scan_tb_ren, tb_addr(PT_DEPTH+1 downto 2), pt_fifoo_sig.data(16 downto 0), 
                          pciclk, scan_pr_ptta_trans_enable, pr.pt.addr, pcisig,
-                         testin, mtestclk, mtesti.tbuf(1), mtesto.tbuf(1));
+                         testin
+                         );
   pt_fifoo_sig.err <= (others => '0');
 end generate;
 

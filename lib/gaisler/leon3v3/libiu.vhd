@@ -51,7 +51,6 @@ package libiu is
      ren1          : std_ulogic;                    -- read 1 enable
      ren2          : std_ulogic;                    -- read 2 enable
      wren          : std_ulogic;                    -- write enable
-     diag          : std_logic_vector(3 downto 0); -- write data
   end record;
 
   type iregfile_out_type is record
@@ -115,7 +114,6 @@ package libiu is
      pflush           : std_ulogic;
      pflushaddr       : std_logic_vector(VA_I_U downto VA_I_D); 
      pflushtyp        : std_ulogic;
-     scanen           : std_ulogic;
   end record;
 
   type dcache_in_type is record
@@ -148,8 +146,6 @@ package libiu is
      icdiag           : icdiag_in_type;
      cache            : std_ulogic;
      idle             : std_ulogic;                        -- idle mode
-     scanen           : std_ulogic;
-     testen           : std_ulogic;
      hit              : std_ulogic;
      cstat            : l3_cstat_type;
      wbhold           : std_ulogic;

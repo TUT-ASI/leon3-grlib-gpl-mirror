@@ -327,45 +327,6 @@ package spacewire is
   type spw_apb_slv_out_vector is array (natural range <>) of
     apb_slv_out_type;
 
-  type grspw_codec_memtest_type is record
-    rxram: memtest_vector_array(0 to 2);
-    txram: memtest_vector_array(0 to 2);
-  end record;
-
-  type grspw2_memtest_type is record
-    rxram0: memtest_vector_array(0 to 2);
-    rxram1: memtest_vector_array(0 to 2);
-    txram0: memtest_vector_array(0 to 2);
-    rmap: memtest_vector_array(0 to 2);
-  end record;
-
-  type grspw2_fifo_memtest_type is record
-    rxram: memtest_vector_array(0 to 2);
-    txram: memtest_vector_array(0 to 2);
-  end record;
-
-  type grspw_codec_memtest_array is array(natural range <>) of grspw_codec_memtest_type;
-  type grspw2_dma_memtest_array is array(natural range <>) of grspw2_memtest_type;
-  type grspw2_fifo_memtest_array is array(natural range <>) of grspw2_fifo_memtest_type;
-
-  type grspw_router_memtest_type is record
-    codec   : grspw_codec_memtest_array(0 to 30);
-    dma     : grspw2_dma_memtest_array(0 to 30);
-    fifo    : grspw2_fifo_memtest_array(0 to 30);
-    porteq  : memtest_vector_array(0 to 2);
-    rtram   : memtest_vector_array(0 to 2);
-    rmap    : memtest_vector_array(0 to 2);
-  end record;
-
-  constant grspw_codec_memtest_none : grspw_codec_memtest_type :=
-    (others => (others => (others => '0')));
-  constant grspw2_memtest_none : grspw2_memtest_type :=
-    (others => (others => (others => '0')));
-  constant grspw2_fifo_memtest_none : grspw2_fifo_memtest_type :=
-    (others => (others => (others => '0')));
-  constant grspw_router_memtest_none : grspw_router_memtest_type := (
-    (others => grspw_codec_memtest_none), (others => grspw2_memtest_none), (others => grspw2_fifo_memtest_none),
-    (others => (others => '0')), (others => (others => '0')), (others => (others => '0')));
 
   component grspw_phy is
     generic(
@@ -467,11 +428,8 @@ package spacewire is
       apbi       : in  apb_slv_in_type;
       apbo       : out apb_slv_out_type;
       swni       : in  grspw_in_type;
-      swno       : out grspw_out_type;
-      mtesti     : in  grspw2_memtest_type := grspw2_memtest_none;
-      mtesto     : out grspw2_memtest_type;
-      mtestclk   : in  std_ulogic := '0'
-    );
+      swno       : out grspw_out_type
+      );
   end component;
 
   component grspw is
@@ -603,10 +561,7 @@ package spacewire is
     testrst      : in  std_ulogic;
     lii          : in  grspw_codec_in_type;
     lio          : out grspw_codec_out_type;
-    testin       : in  std_logic_vector(testin_width-1 downto 0) := testin_none;
-    mtesti       : in  grspw_codec_memtest_type := grspw_codec_memtest_none;
-    mtesto       : out grspw_codec_memtest_type;
-    mtestclk     : in  std_ulogic := '0'
+    testin       : in  std_logic_vector(testin_width-1 downto 0) := testin_none
   );
   end component;
 
@@ -724,11 +679,8 @@ package spacewire is
       ahbsi        : in  ahb_slv_in_type;
       ahbso        : out ahb_slv_out_type;
       ri           : in  grspw_router_in_type;
-      ro           : out grspw_router_out_type;
-      mtesti       : in  grspw_router_memtest_type := grspw_router_memtest_none;
-      mtesto       : out grspw_router_memtest_type;
-      mtestclk     : in  std_ulogic := '0'
-    );
+      ro           : out grspw_router_out_type
+      );
   end component grspwrouter;
 
   component grspw2_dma is
@@ -768,10 +720,7 @@ package spacewire is
       lio          : out  grspw_dma_out_type;
       testrst      : in   std_ulogic := '0';
       testen       : in   std_ulogic := '0';
-      testin       : in   std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
-      mtesti       : in   grspw2_memtest_type := grspw2_memtest_none;
-      mtesto       : out  grspw2_memtest_type;
-      mtestclk     : in   std_ulogic := '0'
+      testin       : in   std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
     );
   end component;
 
@@ -792,10 +741,7 @@ package spacewire is
       lio          : out  grspw_fifo_out_type;
       testrst      : in   std_ulogic := '0';
       testen       : in   std_ulogic := '0';
-      testin       : in   std_logic_vector(testin_width-1 downto 0) := testin_none;
-      mtesti       : in   grspw2_fifo_memtest_type := grspw2_fifo_memtest_none;
-      mtesto       : out  grspw2_fifo_memtest_type;
-      mtestclk     : in   std_ulogic := '0'
+      testin       : in   std_logic_vector(testin_width-1 downto 0) := testin_none
     );
   end component;
 

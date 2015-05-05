@@ -152,7 +152,7 @@ SIMTOP=testbench
 SDCFILE=default.sdc
 BITGEN=$(GRLIB)/boards/$(BOARD)/default.ut
 CLEAN=soft-clean migclean pcieclean
-TECHLIBS = secureip unisim
+TECHLIBS = xilinxcorelib_ver secureip_ver unisims_ver secureip unisim
 VLOGOPT= -O0
 VCOMOPT= -explicit -O0 
 ifeq ("$(GRLIB_SIMULATOR)","ALDEC")

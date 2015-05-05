@@ -43,7 +43,7 @@ To simulate and run systest.c on the Leon design using the memory
 controller from Xilinx use the make targets:
 
   make soft
-  make vsim-launch
+  make sim-launch
 
 Design specifics
 ----------------

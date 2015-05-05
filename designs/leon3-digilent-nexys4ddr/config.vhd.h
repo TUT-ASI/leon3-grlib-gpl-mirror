@@ -2,6 +2,7 @@
   constant CFG_FABTECH 	: integer := CONFIG_SYN_TECH;
   constant CFG_MEMTECH  : integer := CFG_RAM_TECH;
   constant CFG_PADTECH 	: integer := CFG_PAD_TECH;
+  constant CFG_TRANSTECH	: integer := CFG_TRANS_TECH;
   constant CFG_NOASYNC 	: integer := CONFIG_SYN_NO_ASYNC;
   constant CFG_SCAN 	: integer := CONFIG_SYN_SCAN;
 
@@ -119,9 +120,9 @@
   constant CFG_DDR2SP_DELAY7 	   : integer := CONFIG_DDR2SP_DELAY7;
   constant CFG_DDR2SP_NOSYNC       : integer := CONFIG_DDR2SP_NOSYNC;
 
--- Xilinx MIG Series 7
-  constant CFG_MIG_SERIES7    : integer := CONFIG_MIG_SERIES7;
-  constant CFG_MIG_SERIES7_MODEL    : integer := CONFIG_MIG_SERIES7_MODEL;
+-- Xilinx MIG 7-Series
+  constant CFG_MIG_7SERIES    : integer := CONFIG_MIG_7SERIES;
+  constant CFG_MIG_7SERIES_MODEL    : integer := CONFIG_MIG_7SERIES_MODEL;
 
 -- AHB ROM
   constant CFG_AHBROMEN	: integer := CONFIG_AHBROM_ENABLE;

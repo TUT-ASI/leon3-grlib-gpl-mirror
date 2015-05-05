@@ -16,10 +16,15 @@ NET "phy_tx_clk" MAXSKEW= 1.0 ns;
 NET "phy_rx_clk" MAXSKEW= 1.0 ns;
 
 /////////////////////////////////////////////////////
-// PHY in GMII mode
+// PHY in SGMII mode
 /////////////////////////////////////////////////////
 #NET "sgmii_refclk" PERIOD = 8.000 ;
-
+#NET  sgmii_rx_n           LOC="P1";    # Bank 112, MGTRXN0_112, GTP_DUAL_X0Y3
+#NET  sgmii_rx_p           LOC="N1";    # Bank 112, MGTRXP0_112, GTP_DUAL_X0Y3
+#NET  sgmii_tx_n           LOC="N2";    # Bank 112, MGTTXN0_112, GTP_DUAL_X0Y3
+#NET  sgmii_tx_p           LOC="M2";    # Bank 112, MGTTXP0_112, GTP_DUAL_X0Y3
+#NET  sgmiiclk_qo_n        LOC="P3";    # Bank 112, MGTREFCLKN_112, GTP_DUAL_X0Y3
+#NET  sgmiiclk_qo_p        LOC="P4";    # Bank 112, MGTREFCLKP_112, GTP_DUAL_X0Y3
 /////////////////////////////////////////////////////
 
 NET clk_100  TNM_NET =  "MAIN_CLK";
@@ -481,12 +486,6 @@ NET  phy_tx_er            LOC="AJ9" | IOSTANDARD = LVDCI_33 ;   # Bank 22, Vcco=
 #NET  SFP_TX_DISABLE_FPGA  LOC="K24";   # Bank 19, Vcco=1.8V, DCI using 49.9 ohm resistors      
 #NET  SFP_TX_N             LOC="G2";    # Bank 116, MGTTXN0_116, GTP_DUAL_X0Y4
 #NET  SFP_TX_P             LOC="F2";    # Bank 116, MGTTXP0_116, GTP_DUAL_X0Y4
-NET  sgmii_rx_n           LOC="P1";    # Bank 112, MGTRXN0_112, GTP_DUAL_X0Y3
-NET  sgmii_rx_p           LOC="N1";    # Bank 112, MGTRXP0_112, GTP_DUAL_X0Y3
-NET  sgmii_tx_n           LOC="N2";    # Bank 112, MGTTXN0_112, GTP_DUAL_X0Y3
-NET  sgmii_tx_p           LOC="M2";    # Bank 112, MGTTXP0_112, GTP_DUAL_X0Y3
-NET  sgmiiclk_qo_n        LOC="P3";    # Bank 112, MGTREFCLKN_112, GTP_DUAL_X0Y3
-NET  sgmiiclk_qo_p        LOC="P4";    # Bank 112, MGTREFCLKP_112, GTP_DUAL_X0Y3
 #NET  SMA_DIFF_CLK_IN_N    LOC="H15";   # Bank 3, Vcco=2.5V, No DCI      
 #NET  SMA_DIFF_CLK_IN_P    LOC="H14";   # Bank 3, Vcco=2.5V, No DCI      
 #NET  SMA_RX_N             LOC="J1";    # Bank 116, MGTRXN1_116, GTP_DUAL_X0Y4

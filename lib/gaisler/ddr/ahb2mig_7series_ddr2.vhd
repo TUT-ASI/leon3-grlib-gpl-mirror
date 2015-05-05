@@ -18,12 +18,15 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -------------------------------------------------------------------------------
--- Entity:      ahb2mig
--- File:        ahb2mig.vhd
--- Author:      Fredrik Ringhage - Aeroflex Gaisler AB
+-- Entity:      ahb2mig_7series_ddr2_dq16_ad13_ba3
+-- File:        ahb2mig_7series_ddr2.vhd
+-- Author:      Pascal Trotta
 --
---  This is a AHB-2.0 interface for the Xilinx Virtex-7 MIG.
---
+--  This is a AHB-2.0 interface for the Xilinx Virtex-7 MIG. (adapted from 
+--  ahb2mig_7series to work with 16-bit ddr2 memories)
+--  Notes: - works only with 32-bit bus
+--         - does not replicate output data
+--         - does not support MIG interface model
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -31,7 +34,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library gaisler;
 use gaisler.all;
-use gaisler.ahb2mig_series7_pkg.all;
+use gaisler.ahb2mig_7series_pkg.all;
 library grlib;
 use grlib.amba.all;
 use grlib.stdlib.all;
@@ -41,7 +44,7 @@ use grlib.config.all;
 library std;
 use std.textio.all;
 
-entity ahb2mig_series7 is
+entity ahb2mig_7series_ddr2_dq16_ad13_ba3 is
   generic(
     hindex                  : integer := 0;
     haddr                   : integer := 0;
@@ -56,21 +59,21 @@ entity ahb2mig_series7 is
     USE_MIG_INTERFACE_MODEL : boolean := false
   );
   port(
-    ddr3_dq           : inout std_logic_vector(63 downto 0);
-    ddr3_dqs_p        : inout std_logic_vector(7 downto 0);
-    ddr3_dqs_n        : inout std_logic_vector(7 downto 0);
-    ddr3_addr         : out   std_logic_vector(13 downto 0);
-    ddr3_ba           : out   std_logic_vector(2 downto 0);
-    ddr3_ras_n        : out   std_logic;
-    ddr3_cas_n        : out   std_logic;
-    ddr3_we_n         : out   std_logic;
-    ddr3_reset_n      : out   std_logic;
-    ddr3_ck_p         : out   std_logic_vector(0 downto 0);
-    ddr3_ck_n         : out   std_logic_vector(0 downto 0);
-    ddr3_cke          : out   std_logic_vector(0 downto 0);
-    ddr3_cs_n         : out   std_logic_vector(0 downto 0);
-    ddr3_dm           : out   std_logic_vector(7 downto 0);
-    ddr3_odt          : out   std_logic_vector(0 downto 0);
+    ddr2_dq           : inout std_logic_vector(15 downto 0);
+    ddr2_dqs_p        : inout std_logic_vector(1 downto 0);
+    ddr2_dqs_n        : inout std_logic_vector(1 downto 0);
+    ddr2_addr         : out   std_logic_vector(12 downto 0);
+    ddr2_ba           : out   std_logic_vector(2 downto 0);
+    ddr2_ras_n        : out   std_logic;
+    ddr2_cas_n        : out   std_logic;
+    ddr2_we_n         : out   std_logic;
+    ddr2_reset_n      : out   std_logic;
+    ddr2_ck_p         : out   std_logic_vector(0 downto 0);
+    ddr2_ck_n         : out   std_logic_vector(0 downto 0);
+    ddr2_cke          : out   std_logic_vector(0 downto 0);
+    ddr2_cs_n         : out   std_logic_vector(0 downto 0);
+    ddr2_dm           : out   std_logic_vector(1 downto 0);
+    ddr2_odt          : out   std_logic_vector(0 downto 0);
     ahbso             : out   ahb_slv_out_type;
     ahbsi             : in    ahb_slv_in_type;
     apbi              : in    apb_slv_in_type;
@@ -79,30 +82,29 @@ entity ahb2mig_series7 is
     rst_n_syn         : in    std_logic;
     rst_n_async       : in    std_logic;
     clk_amba          : in    std_logic;
-    sys_clk_p         : in    std_logic;
-    sys_clk_n         : in    std_logic;
+    sys_clk_i         : in    std_logic;
     clk_ref_i         : in    std_logic;
     ui_clk            : out   std_logic;
     ui_clk_sync_rst   : out   std_logic
    );
 end ;
  
-architecture rtl of ahb2mig_series7 is
+architecture rtl of ahb2mig_7series_ddr2_dq16_ad13_ba3 is
 
 type bstate_type is (idle, start, read_cmd, read_data, read_wait, read_output, write_cmd, write_burst);
 
 constant maxburst    : integer := 8;
-constant maxmigcmds  : integer := nbrmaxmigcmds(AHBDW);
+constant maxmigcmds  : integer := 3;
 constant wrsteps     : integer := log2(32);
 constant wrmask      : integer := log2(32/8);
 
 constant hconfig : ahb_config_type := (
-   0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_MIG_SERIES7, 0, 0, 0),
+   0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_MIGDDR2, 0, 0, 0),
    4 => ahb_membar(haddr, '1', '1', hmask),
    others => zero32);
 
 constant pconfig : apb_config_type := (
-  0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_MIG_SERIES7, 0, 0, 0),
+  0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_MIGDDR2, 0, 0, 0),
   1 => apb_iobar(paddr, pmask));
 
 type reg_type is record
@@ -116,8 +118,8 @@ type reg_type is record
   rd_count        : unsigned(31 downto 0);
   hready          : std_logic;
   hwrite          : std_logic;
-  hwdata_burst    : std_logic_vector(512*maxmigcmds-1 downto 0);
-  mask_burst      : std_logic_vector(64*maxmigcmds-1 downto 0);
+  hwdata_burst    : std_logic_vector(128*maxmigcmds-1 downto 0);
+  mask_burst      : std_logic_vector(16*maxmigcmds-1 downto 0);
   htrans          : std_logic_vector(1 downto 0);
   hburst          : std_logic_vector(2 downto 0);
   hsize           : std_logic_vector(2 downto 0);
@@ -126,26 +128,27 @@ type reg_type is record
   haddr_start     : std_logic_vector(31 downto 0);
   haddr_offset    : std_logic_vector(31 downto 0);
   hmaster         : std_logic_vector(3 downto 0);
-  int_buffer      : unsigned(512*maxmigcmds-1 downto 0);
-  rd_buffer       : unsigned(512*maxmigcmds-1 downto 0);
-  wdf_data_buffer : std_logic_vector(511 downto 0);
-  wdf_mask_buffer : std_logic_vector(63 downto 0);
+  int_buffer      : unsigned(128*maxmigcmds-1 downto 0);
+  rd_buffer       : unsigned(128*maxmigcmds-1 downto 0);
+  wdf_data_buffer : std_logic_vector(127 downto 0);
+  wdf_mask_buffer : std_logic_vector(15 downto 0);
   migcommands     : integer;
   nxt            : std_logic;
+  maxrburst       : integer;
 end record;
 
 type mig_in_type is record
-  app_addr        : std_logic_vector(27 downto 0);
+  app_addr        : std_logic_vector(26 downto 0);
   app_cmd         : std_logic_vector(2 downto 0);
   app_en          : std_logic;
-  app_wdf_data    : std_logic_vector(511 downto 0);
+  app_wdf_data    : std_logic_vector(127 downto 0);
   app_wdf_end     : std_logic;
-  app_wdf_mask    : std_logic_vector(63 downto 0);
+  app_wdf_mask    : std_logic_vector(15 downto 0);
   app_wdf_wren    : std_logic;
 end record;
 
 type mig_out_type is record
-  app_rd_data       : std_logic_vector(511 downto 0);
+  app_rd_data       : std_logic_vector(127 downto 0);
   app_rd_data_end   : std_logic;
   app_rd_data_valid : std_logic;
   app_rdy           : std_logic;
@@ -156,37 +159,32 @@ signal rin, r, rnxt, rnxtin      : reg_type;
 signal migin            : mig_in_type;
 signal migout,migoutraw : mig_out_type;
 
-signal debug : std_logic := '0';
-signal size_to_watch : std_logic_vector(2 downto 0) := HSIZE_4WORD;
-
  component mig is
    port (
-    ddr3_dq              : inout std_logic_vector(63 downto 0);
-    ddr3_addr            : out   std_logic_vector(13 downto 0);
-    ddr3_ba              : out   std_logic_vector(2 downto 0);
-    ddr3_ras_n           : out   std_logic;
-    ddr3_cas_n           : out   std_logic;
-    ddr3_we_n            : out   std_logic;
-    ddr3_reset_n         : out   std_logic;
-    ddr3_dqs_n           : inout std_logic_vector(7 downto 0);
-    ddr3_dqs_p           : inout std_logic_vector(7 downto 0);
-    ddr3_ck_p            : out   std_logic_vector(0 downto 0);
-    ddr3_ck_n            : out   std_logic_vector(0 downto 0);
-    ddr3_cke             : out   std_logic_vector(0 downto 0);
-    ddr3_cs_n            : out   std_logic_vector(0 downto 0);
-    ddr3_dm              : out   std_logic_vector(7 downto 0);
-    ddr3_odt             : out   std_logic_vector(0 downto 0);
-    sys_clk_p            : in    std_logic;
-    sys_clk_n            : in    std_logic;
+    ddr2_dq              : inout std_logic_vector(15 downto 0);
+    ddr2_addr            : out   std_logic_vector(12 downto 0);
+    ddr2_ba              : out   std_logic_vector(2 downto 0);
+    ddr2_ras_n           : out   std_logic;
+    ddr2_cas_n           : out   std_logic;
+    ddr2_we_n            : out   std_logic;
+    ddr2_dqs_n           : inout std_logic_vector(1 downto 0);
+    ddr2_dqs_p           : inout std_logic_vector(1 downto 0);
+    ddr2_ck_p            : out   std_logic_vector(0 downto 0);
+    ddr2_ck_n            : out   std_logic_vector(0 downto 0);
+    ddr2_cke             : out   std_logic_vector(0 downto 0);
+    ddr2_cs_n            : out   std_logic_vector(0 downto 0);
+    ddr2_dm              : out   std_logic_vector(1 downto 0);
+    ddr2_odt             : out   std_logic_vector(0 downto 0);
+    sys_clk_i            : in    std_logic;
     clk_ref_i            : in    std_logic;
-    app_addr             : in    std_logic_vector(27 downto 0);
+    app_addr             : in    std_logic_vector(26 downto 0);
     app_cmd              : in    std_logic_vector(2 downto 0);
     app_en               : in    std_logic;
-    app_wdf_data         : in    std_logic_vector(511 downto 0);
+    app_wdf_data         : in    std_logic_vector(127 downto 0);
     app_wdf_end          : in    std_logic;
-    app_wdf_mask         : in    std_logic_vector(63 downto 0);
+    app_wdf_mask         : in    std_logic_vector(15 downto 0);
     app_wdf_wren         : in    std_logic;
-    app_rd_data          : out   std_logic_vector(511 downto 0);
+    app_rd_data          : out   std_logic_vector(127 downto 0);
     app_rd_data_end      : out   std_logic;
     app_rd_data_valid    : out   std_logic;
     app_rdy              : out   std_logic;
@@ -203,27 +201,6 @@ signal size_to_watch : std_logic_vector(2 downto 0) := HSIZE_4WORD;
     sys_rst              : in    std_logic
     );
  end component mig;
-
- component mig_interface_model is
-   port (
-    app_addr             : in    std_logic_vector(27 downto 0);
-    app_cmd              : in    std_logic_vector(2 downto 0);
-    app_en               : in    std_logic;
-    app_wdf_data         : in    std_logic_vector(511 downto 0);
-    app_wdf_end          : in    std_logic;
-    app_wdf_mask         : in    std_logic_vector(63 downto 0);
-    app_wdf_wren         : in    std_logic;
-    app_rd_data          : out   std_logic_vector(511 downto 0);
-    app_rd_data_end      : out   std_logic;
-    app_rd_data_valid    : out   std_logic;
-    app_rdy              : out   std_logic;
-    app_wdf_rdy          : out   std_logic;
-    ui_clk               : out   std_logic;
-    ui_clk_sync_rst      : out   std_logic;
-    init_calib_complete  : out   std_logic;
-    sys_rst              : in    std_logic
-    );
- end component mig_interface_model;
 
 begin
 
@@ -243,21 +220,21 @@ begin
   variable step_offset            : unsigned(steps_write'length-1 downto 0);
   variable haddr_offset           : unsigned(steps_write'length-1 downto 0);
 
-  begin
+  begin   
 
     -- Make all register visible for the statemachine
     v := r; vnxt := rnxt;
 
     -- workout the start address in AHB2MIG buffer based upon
-    startaddress := resize(unsigned(unsigned(ahbsi.haddr(ahbsi.haddr'left-3 downto 8)) & "00000"),startaddress'length);
+    startaddress := resize(unsigned(unsigned(ahbsi.haddr(ahbsi.haddr'left-5 downto 4)) & "000"),startaddress'length);
 
-    -- Adjust offset in memory buffer
-    startaddress := resize(startaddress + unsigned(unsigned(ahbsi.haddr(7 downto 6))&"000"),startaddress'length);
+    -- Adjust offset in memory buffer    
     start_address := std_logic_vector(startaddress);
 
     -- Workout local offset to be able to adust for warp-around
-    haddr_offset := unsigned(r.haddr_start) - unsigned(unsigned(r.haddr_offset(r.haddr_offset'length-1 downto 6))&"000000");
-    step_offset := resize(unsigned(haddr_offset(7 downto 6)&"0000"),step_offset'length);
+    haddr_offset := unsigned(r.haddr_start) - unsigned(unsigned(r.haddr_offset(r.haddr_offset'length-1 downto 4))&"0000");
+    
+    step_offset := resize(unsigned(haddr_offset(5 downto 4)&"00"),step_offset'length);
 
     -- Fetch AMBA Commands
     if (( ahbsi.hsel(hindex) and ahbsi.htrans(1) and ahbsi.hready and not ahbsi.htrans(0)) = '1'
@@ -345,7 +322,7 @@ begin
       end if;
 
     when start =>
-      v.migcommands := nbrmigcmds(r.hwrite,r.hsize,ahbsi.htrans,step_offset,AHBDW);
+      v.migcommands := nbrmigcmds16(r.hwrite,r.hsize,ahbsi.htrans,step_offset,AHBDW);
 
       -- Check if a write command shall be issued to the DDR3 memory
       if r.hwrite = '1' then
@@ -355,7 +332,7 @@ begin
 
          if ((ahbsi.htrans /= HTRANS_SEQ) or ((ahbsi.htrans = HTRANS_SEQ) and (r.rd_count > 0) and (r.rd_count <= maxburst))) then
              -- work out how many steps we need to shift the input
-             steps_write := ahbselectdatanoreplicastep(r.haddr_start(7 downto 2),r.hsize(2 downto 0)) + step_offset;
+             steps_write := ahbselectdatanoreplicastep16(r.haddr_start(7 downto 2),r.hsize(2 downto 0)) + step_offset;
              shift_steps_write := to_integer(shift_left(steps_write,wrsteps));
              shift_steps_write_mask := to_integer(shift_left(steps_write,wrmask));
 
@@ -399,6 +376,7 @@ begin
       end if;
 
     when write_cmd =>
+
       -- Check if burst has ended due to max size burst
       if (ahbsi.htrans /= HTRANS_SEQ) then
          v.htrans := (others => '0');
@@ -455,15 +433,9 @@ begin
            --v.int_buffer := r.int_buffer or shift_left( resize(unsigned(migout.app_rd_data),r.int_buffer'length),
            --                                           to_integer(shift_left(r.rd_count,9)));
            if (r.rd_count = 0) then
-              v.int_buffer(511 downto 0) := unsigned(migout.app_rd_data);
+              v.int_buffer(127 downto 0) := unsigned(migout.app_rd_data);
            elsif (r.rd_count = 1) then
-              v.int_buffer(1023 downto 512) := unsigned(migout.app_rd_data);
-           elsif (AHBDW > 64) then
-              if (r.rd_count = 2) then
-                 v.int_buffer(1535 downto 1024) := unsigned(migout.app_rd_data);
-              else
-                 v.int_buffer(2047 downto 1536) := unsigned(migout.app_rd_data);
-              end if;
+              v.int_buffer(255 downto 128) := unsigned(migout.app_rd_data);
            end if;
       end if;
 
@@ -479,14 +451,22 @@ begin
       v.hready := '1';
 
       -- uses the "wr_count" signal to keep track of number of bytes output'd to AHB
-      -- Select correct 32bit/64bit/128bit to output
-      v.hrdata := ahbselectdatanoreplicaoutput(r.haddr_start(7 downto 0),r.wr_count,r.hsize,r.rd_buffer,r.wr_count,true);
+      -- Select correct 32bit output
+      v.hrdata := ahbselectdatanoreplicaoutput16(r.haddr_start(7 downto 0),r.wr_count,r.hsize,r.rd_buffer,r.wr_count,false);
 
       -- Count number of bytes send
       v.wr_count := r.wr_count + 1;
 
+      -- Set maximum read burst depending on the starting address offset
+      case r.haddr_start(3 downto 2) is
+        when "01" => v.maxrburst := 7;
+        when "10" => v.maxrburst := 6;
+        when "11" => v.maxrburst := 5;
+        when others => v.maxrburst := 8;
+      end case;
+
       -- Check if this was the last transaction
-      if (r.wr_count >= maxburst-1) then
+      if (r.wr_count >= v.maxrburst-1) then
          v.bstate := read_wait;
       end if;
 
@@ -506,7 +486,7 @@ begin
       end if;
 
     when read_wait =>
-      if ((r.wr_count >= maxburst) and (ahbsi.htrans = HTRANS_SEQ)) then
+      if ((r.wr_count >= v.maxrburst) and (ahbsi.htrans = HTRANS_SEQ)) then
          v.hready       := '0';
          v.bstate       := start;
          v.haddr_start  := ahbsi.haddr;
@@ -533,8 +513,7 @@ begin
     end if;
 
     if rst_n_syn = '0' then
-      v.bstate := idle; v.hready := '1'; v.cmd_en := '0'; v.wr_en := '0'; v.wr_end := '0'; 
-      --v.wdf_mask_buffer := (others => '0');  v.wdf_data_buffer := (others => '0'); v.haddr := (others => '0');
+      v.bstate := idle; v.hready := '1'; v.cmd_en := '0'; v.wr_en := '0'; v.wr_end := '0'; v.maxrburst := maxburst;
     end if;
 
     rin <= v;
@@ -543,10 +522,10 @@ begin
   end process;
 
   ahbso.hready  <= r.hready;
-  ahbso.hresp   <= "00"; --r.hresp;
+  ahbso.hresp   <= "00";
   ahbso.hrdata  <= ahbdrivedata(r.hrdata);
 
-  migin.app_addr <= r.haddr(27 downto 2) & "00";
+  migin.app_addr <= r.haddr(26 downto 2) & "00";
   migin.app_cmd  <= r.cmd;
   migin.app_en   <= r.cmd_en;
 
@@ -613,24 +592,19 @@ begin
           if (r.wr_count < 1 ) then
              r.wr_en    <= '1';
              r.wr_end   <= '1';
-             r.wdf_mask_buffer <= not r.mask_burst(63 downto 0);
-             r.wdf_data_buffer <= r.hwdata_burst(511 downto 0);
+             r.wdf_mask_buffer <= not r.mask_burst(15 downto 0);
+             r.wdf_data_buffer <= r.hwdata_burst(127 downto 0);
           end if;
           if (migoutraw.app_wdf_rdy = '1') and (r.wr_en = '1' ) then
                 if (r.wr_count = 0) then
-                   r.wdf_mask_buffer <= not r.mask_burst(127 downto 64);
-                   r.wdf_data_buffer <= r.hwdata_burst(1023 downto 512);
-                elsif (AHBDW > 64) then
-                   if (r.wr_count = 1) then
-                      r.wdf_mask_buffer <= not r.mask_burst(191 downto 128);
-                      r.wdf_data_buffer <= r.hwdata_burst(1535 downto 1024);
-                   else
-                      r.wdf_mask_buffer <= not r.mask_burst(255 downto 192);
-                      r.wdf_data_buffer <= r.hwdata_burst(2047 downto 1536);
-                   end if;
+                   r.wdf_mask_buffer <= not r.mask_burst(31 downto 16);
+                   r.wdf_data_buffer <= r.hwdata_burst(255 downto 128);
+                elsif (r.wr_count = 1) then --to support 3 migcmds
+                   r.wdf_mask_buffer <= not r.mask_burst(47 downto 32);
+                   r.wdf_data_buffer <= r.hwdata_burst(383 downto 256);
                 else
-                   r.wdf_mask_buffer <= not r.mask_burst(127 downto 64);
-                   r.wdf_data_buffer <= r.hwdata_burst(1023 downto 512);
+                   r.wdf_mask_buffer <= not r.mask_burst(31 downto 16);
+                   r.wdf_data_buffer <= r.hwdata_burst(255 downto 128);
                 end if;
 
                 r.wr_count <= r.wr_count + 1;
@@ -667,26 +641,23 @@ begin
     end if;
   end process;
 
- gen_mig : if (USE_MIG_INTERFACE_MODEL /= true) generate
   MCB_inst : mig
   port map (
-   ddr3_dq              => ddr3_dq,
-   ddr3_dqs_p           => ddr3_dqs_p,
-   ddr3_dqs_n           => ddr3_dqs_n,
-   ddr3_addr            => ddr3_addr,
-   ddr3_ba              => ddr3_ba,
-   ddr3_ras_n           => ddr3_ras_n,
-   ddr3_cas_n           => ddr3_cas_n,
-   ddr3_we_n            => ddr3_we_n,
-   ddr3_reset_n         => ddr3_reset_n,
-   ddr3_ck_p            => ddr3_ck_p,
-   ddr3_ck_n            => ddr3_ck_n,
-   ddr3_cke             => ddr3_cke,
-   ddr3_cs_n            => ddr3_cs_n,
-   ddr3_dm              => ddr3_dm,
-   ddr3_odt             => ddr3_odt,
-   sys_clk_p            => sys_clk_p,
-   sys_clk_n            => sys_clk_n,
+   ddr2_dq              => ddr2_dq,
+   ddr2_dqs_p           => ddr2_dqs_p,
+   ddr2_dqs_n           => ddr2_dqs_n,
+   ddr2_addr            => ddr2_addr,
+   ddr2_ba              => ddr2_ba,
+   ddr2_ras_n           => ddr2_ras_n,
+   ddr2_cas_n           => ddr2_cas_n,
+   ddr2_we_n            => ddr2_we_n,
+   ddr2_ck_p            => ddr2_ck_p,
+   ddr2_ck_n            => ddr2_ck_n,
+   ddr2_cke             => ddr2_cke,
+   ddr2_cs_n            => ddr2_cs_n,
+   ddr2_dm              => ddr2_dm,
+   ddr2_odt             => ddr2_odt,
+   sys_clk_i            => sys_clk_i,
    clk_ref_i            => clk_ref_i,
    app_addr             => migin.app_addr,
    app_cmd              => migin.app_cmd,
@@ -711,46 +682,5 @@ begin
    init_calib_complete  => calib_done,
    sys_rst              => rst_n_async
    );
- end generate gen_mig;
-
- gen_mig_model : if (USE_MIG_INTERFACE_MODEL = true) generate
-  MCB_model_inst : mig_interface_model
-  port map (
-   -- user interface signals
-   app_addr             => migin.app_addr,
-   app_cmd              => migin.app_cmd,
-   app_en               => migin.app_en,
-   app_rdy              => migoutraw.app_rdy,
-   app_wdf_data         => migin.app_wdf_data,
-   app_wdf_end          => migin.app_wdf_end,
-   app_wdf_mask         => migin.app_wdf_mask,
-   app_wdf_wren         => migin.app_wdf_wren,
-   app_wdf_rdy          => migoutraw.app_wdf_rdy,
-   app_rd_data          => migoutraw.app_rd_data,
-   app_rd_data_end      => migoutraw.app_rd_data_end,
-   app_rd_data_valid    => migoutraw.app_rd_data_valid,
-   ui_clk               => ui_clk,
-   ui_clk_sync_rst      => ui_clk_sync_rst,
-   init_calib_complete  => calib_done,
-   sys_rst              => rst_n_async
-   );
-
-   ddr3_dq           <= (others => 'Z');
-   ddr3_dqs_p        <= (others => 'Z');
-   ddr3_dqs_n        <= (others => 'Z');
-   ddr3_addr         <= (others => '0');
-   ddr3_ba           <= (others => '0');
-   ddr3_ras_n        <= '0';
-   ddr3_cas_n        <= '0';
-   ddr3_we_n         <= '0';
-   ddr3_reset_n      <= '1';
-   ddr3_ck_p         <= (others => '0');
-   ddr3_ck_n         <= (others => '0');
-   ddr3_cke          <= (others => '0');
-   ddr3_cs_n         <= (others => '0');
-   ddr3_dm           <= (others => '0');
-   ddr3_odt          <= (others => '0');
-
- end generate gen_mig_model;
 
 end;

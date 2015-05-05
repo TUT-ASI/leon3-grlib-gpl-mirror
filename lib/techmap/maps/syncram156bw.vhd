@@ -45,10 +45,8 @@ entity syncram156bw is
     dataout : out std_logic_vector (155 downto 0);
     enable  : in  std_logic_vector (15 downto 0);
     write   : in  std_logic_vector (15 downto 0);
-    testin  : in  std_logic_vector (TESTIN_WIDTH-1 downto 0) := testin_none;
-    customclk: in std_ulogic := '0';
-    customin : in std_logic_vector(20*custombits-1 downto 0) := (others => '0');
-    customout:out std_logic_vector(20*custombits-1 downto 0));
+    testin  : in  std_logic_vector (TESTIN_WIDTH-1 downto 0) := testin_none
+    );
 end;
 
 architecture rtl of syncram156bw is
@@ -128,6 +126,7 @@ architecture rtl of syncram156bw is
 
   signal xenable, xwrite : std_logic_vector(15 downto 0);
   signal custominx,customoutx: std_logic_vector(syncram_customif_maxwidth downto 0);
+  signal customclkx: std_ulogic;
   signal dataoutx: std_logic_vector(155 downto 0);
 
 begin
@@ -136,8 +135,8 @@ begin
   xwrite <= write when testen=0 or testin(TESTIN_WIDTH-2)='0' else (others => '0');
   dataout <= dataoutx;
 
-  custominx(custominx'high downto custombits) <= (others => '0');
-  custominx(custombits-1 downto 0) <= customin(custombits-1 downto 0);
+    custominx <= (others => '0');
+    customclkx <= '0';
 
   nocust: if syncram_has_customif(tech)=0 or has_sram156bw(tech)=0 generate
     customoutx <= (others => '0');
@@ -167,13 +166,11 @@ begin
                   testin(TESTIN_WIDTH-8), testin(TESTIN_WIDTH-3),
                   custominx(0),customoutx(0),
                   testin(TESTIN_WIDTH-4), testin(TESTIN_WIDTH-5), testin(TESTIN_WIDTH-6),
-                  customclk,
+                  customclkx,
                   testin(TESTIN_WIDTH-7),'0',
                   customoutx(1), customoutx(7 downto 2));
       customoutx(customoutx'high downto 8) <= (others => '0');
     end generate;
-    customout(20*custombits-1 downto custombits) <= (others => '0');
-    customout(custombits-1 downto 0) <= customoutx(custombits-1 downto 0);
 
 -- pragma translate_off
     dmsg : if GRLIB_CONFIG_ARRAY(grlib_debug_level) >= 2 generate
@@ -225,15 +222,13 @@ begin
     rx : for i in 0 to 15 generate
       x0 : syncram generic map (tech, abits, 8, testen, custombits)
         port map (clk, address, datain(i*8+7 downto i*8),
-          dataoutx(i*8+7 downto i*8), enable(i), write(i), testin,
-                  customclk, customin((i+1)*custombits-1 downto i*custombits),
-                  customout((i+1)*custombits-1 downto i*custombits));
+          dataoutx(i*8+7 downto i*8), enable(i), write(i), testin
+                  );
       c0 : if i mod 4 = 0 generate
         x0 : syncram generic map (tech, abits, 7, testen, custombits)
           port map (clk, address, datain(i/4*7+128+6 downto i/4*7+128),
-            dataoutx(i/4*7+128+6 downto i/4*7+128), enable(i), write(i), testin,
-                    customclk, customin((i/4+17)*custombits-1 downto (i/4+16)*custombits),
-                    customout((i/4+17)*custombits-1 downto (i/4+16)*custombits));
+            dataoutx(i/4*7+128+6 downto i/4*7+128), enable(i), write(i), testin
+                    );
         end generate;
     end generate;
   end generate;

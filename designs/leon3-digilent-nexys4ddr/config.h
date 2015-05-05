@@ -254,10 +254,10 @@
 #define CONFIG_DDR2SP_DELAY6 (0)
 #define CONFIG_DDR2SP_DELAY7 (0)
 /*
- * MIG Series 7 memory controller   
+ * MIG 7-Series memory controller   
  */
-#undef  CONFIG_MIG_SERIES7
-#undef  CONFIG_MIG_SERIES_7_MODEL
+#undef  CONFIG_MIG_7SERIES
+#undef  CONFIG_MIG_7SERIES_MODEL
 /*
  * On-chip RAM/ROM                 
  */

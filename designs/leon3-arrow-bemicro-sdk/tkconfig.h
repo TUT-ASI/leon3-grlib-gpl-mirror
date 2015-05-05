@@ -140,6 +140,22 @@
 #define CFG_RAM_TECH CONFIG_SYN_TECH
 #endif
 
+#if defined CONFIG_TRANS_GTP0
+#define CFG_TRANS_TECH GTP0
+#elif defined CONFIG_TRANS_GTP1
+#define CFG_TRANS_TECH GTP1
+#elif defined CONFIG_TRANS_GTX0
+#define CFG_TRANS_TECH GTX0
+#elif defined CONFIG_TRANS_GTX1
+#define CFG_TRANS_TECH GTX1
+#elif defined CONFIG_TRANS_GTH0
+#define CFG_TRANS_TECH GTH0
+#elif defined CONFIG_TRANS_GTH1
+#define CFG_TRANS_TECH GTH1
+#else
+#define CFG_TRANS_TECH GTP0
+#endif
+
 #if defined CONFIG_SYN_INFER_PADS
 #define CFG_PAD_TECH inferred
 #else

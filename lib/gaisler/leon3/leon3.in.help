@@ -145,9 +145,8 @@ CONFIG_FPU_ENABLE
 
 FPU selection
 CONFIG_FPU_GRFPU
-  Select between Gaisler Research's GRFPU and GRFPU-lite FPUs or the Sun
-  Meiko FPU core. All cores  are fully IEEE-754 compatible and support
-  all SPARC FPU instructions.
+  Select between Gaisler Research's GRFPU and GRFPU-lite FPUs. All cores
+  are fully IEEE-754 compatible and support all SPARC FPU instructions.
 
 GRFPU Multiplier
 CONFIG_FPU_GRFPU_INFMUL

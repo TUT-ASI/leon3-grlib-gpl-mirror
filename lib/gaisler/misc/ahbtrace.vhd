@@ -54,9 +54,6 @@ entity ahbtrace is
     ahbmi    : in  ahb_mst_in_type;
     ahbsi    : in  ahb_slv_in_type;
     ahbso    : out ahb_slv_out_type;
-    mtesti   : in  ahbtrace_memtest_type;
-    mtesto   : out ahbtrace_memtest_type;
-    mtestclk : in  std_ulogic;
     timer    : in  std_logic_vector(30 downto 0) := (others => '0');
     astat    : out amba_stat_type;
     resen    : in  std_ulogic := '0'
@@ -87,9 +84,6 @@ begin
       ahbso    => ahbso,
       tahbmi   => ahbmi,
       tahbsi   => ahbsi,
-      mtesti   => mtesti,
-      mtesto   => mtesto,
-      mtestclk => mtestclk,
       timer    => timer,
       astat    => astat,
       resen    => resen);

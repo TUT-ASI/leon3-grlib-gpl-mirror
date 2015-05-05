@@ -63,7 +63,7 @@ Design specifics
 
   Then rebuild the scripts and simulation model:
 
-  make distclean vsim
+  make distclean sim
 
   Modelsim v6.6e or newer is required to build the secure IP models.
 

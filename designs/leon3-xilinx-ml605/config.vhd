@@ -16,6 +16,7 @@ package config is
   constant CFG_FABTECH : integer := virtex6;
   constant CFG_MEMTECH : integer := virtex6;
   constant CFG_PADTECH : integer := virtex6;
+  constant CFG_TRANSTECH : integer := GTP0;
   constant CFG_NOASYNC : integer := 0;
   constant CFG_SCAN : integer := 0;
 -- LEON3 processor core

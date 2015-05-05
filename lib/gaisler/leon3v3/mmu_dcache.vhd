@@ -507,7 +507,7 @@ begin
     mmudci_su := '0'; mmudci_read := '0'; su := '0';
     
     rdatasel := ddata;  -- read data from cache as default
-    senable := (others => '0'); scanen := (others => mcdo.scanen);
+    senable := (others => '0'); scanen := (others => '0');  -- scanen no longer handled here
     
     set := 0; snoopset := 0;  csnoopwe := (others => '0');
     ctwrite := (others => '0'); ctpwrite := (others => '0'); cdwrite := (others => '0');
@@ -1470,7 +1470,7 @@ begin
 
     csnoopwe := (others => '0'); flushl := '0';
     flushlv := (others => r.flush);
-    if ((snoopwe and not mcdo.scanen) = '1') then csnoopwe := snhit; end if;
+    if (snoopwe = '1') then csnoopwe := snhit; end if;
     if DSNOOPSEP then
       csnoopwe := csnoopwe or ctwrite;
       flushlv := flushlv or snhit; -- flush tag on snoop hit
@@ -1523,7 +1523,6 @@ begin
     
     -- tag ram inputs
     senable := senable and not scanen; enable := enable and not scanen;
-    if mcdo.scanen = '1' then ctpwrite := (others => '0'); end if;
 
     for i in 0 to DSETS-1 loop
       tag(i)(dlinesize-1 downto 0) := vmask(i);
@@ -1556,13 +1555,10 @@ begin
     dcrami.data <= ddatainv;
     dcrami.dwrite    <= cdwrite;
     dcrami.ldramin.address(23 downto 2) <= laddr(23 downto 2);
-    dcrami.ldramin.enable <= (lramcs or lramwr) and not mcdo.scanen;
+    dcrami.ldramin.enable <= (lramcs or lramwr);
     dcrami.ldramin.read   <= rlramrd;
     dcrami.ldramin.write  <= lramwr;
 
-    dcrami.tdiag <= mcdo.testen & mcdo.scanen & r.tadj;
-    dcrami.sdiag <= mcdo.testen & mcdo.scanen & r.sadj;
-    dcrami.ddiag <= mcdo.testen & mcdo.scanen & r.dadj;
 
     -- memory controller inputs
     mcdi.address  <= r.wb.addr;
@@ -1587,7 +1583,6 @@ begin
     dco.icdiag.enable <= r.icenable;
     dco.icdiag.ilramen <= r.ilramen;    
     dco.icdiag.cctrl <= r.cctrl;
-    dco.icdiag.scanen  <= mcdo.scanen;
     
  
     -- IU data cache inputs
@@ -1601,8 +1596,6 @@ begin
     dco.hit <= r.hit;
     if r.dstate = idle then dco.idle <= not r.stpend;
     else  dco.idle <= '0'; end if;
-    dco.scanen  <= mcdo.scanen;
-    dco.testen  <= mcdo.testen;
     dco.cstat.cmiss  <= r.cmiss;
     dco.cstat.chold  <= not r.holdn;
     dco.cstat.tmiss  <= mmudco.tlbmiss;
@@ -1622,8 +1615,7 @@ begin
     mmudci.diag_op <= mmudci_diag_op;
     mmudci.fsread <= mmudci_fsread;
     mmudci.mmctrl1 <= r.mmctrl1;
-    mmudci.testin <= ahbsi.testin;
-                       
+
   end process;
 
 -- Local registers

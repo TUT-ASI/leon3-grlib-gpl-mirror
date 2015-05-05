@@ -206,10 +206,8 @@ begin
 				vx.wready := '0';
 				if s_axi_wvalid = '1' then
 					vx.wready := '1';
-				--	if conv_integer(x.awlen) = x.wfifo_w_ptr or s_axi_wlast = '1' then
 					if s_axi_wlast = '1' then
 						vx.axi_w_state := w_ahb;
-				--	elsif conv_integer(x.awlen) /= x.wfifo_w_ptr then
 					else
 						vx.wfifo_w_ptr := x.wfifo_w_ptr + 1;
 					end if;
@@ -418,25 +416,35 @@ begin
 		end case;
 
 		-- WDATA muxing
-		if s_axi_wvalid = '1' then
+		if (s_axi_wvalid and h.ahb_w_done) = '1' then
 			case s_axi_wstrb is
 
 				when "0001" =>
-					vx.wfifo(x.wfifo_w_ptr) := s_axi_wdata(7 downto 0) & s_axi_wdata(7 downto 0)
-												& s_axi_wdata(7 downto 0) & s_axi_wdata(7 downto 0);
+					vx.wfifo(x.wfifo_w_ptr) := s_axi_wdata(7 downto 0)
+											& s_axi_wdata(7 downto 0)
+											& s_axi_wdata(7 downto 0)
+											& s_axi_wdata(7 downto 0);
 				when "0010" =>
-					vx.wfifo(x.wfifo_w_ptr) := s_axi_wdata(15 downto 8) & s_axi_wdata(15 downto 8)
-												& s_axi_wdata(15 downto 8) & s_axi_wdata(15 downto 8);
+					vx.wfifo(x.wfifo_w_ptr) := s_axi_wdata(15 downto 8)
+											& s_axi_wdata(15 downto 8)
+											& s_axi_wdata(15 downto 8)
+											& s_axi_wdata(15 downto 8);
 				when "0100" =>
-					vx.wfifo(x.wfifo_w_ptr) := s_axi_wdata(23 downto 16) & s_axi_wdata(23 downto 16)
-												& s_axi_wdata(23 downto 16) & s_axi_wdata(23 downto 16);
+					vx.wfifo(x.wfifo_w_ptr) := s_axi_wdata(23 downto 16)
+											& s_axi_wdata(23 downto 16)
+											& s_axi_wdata(23 downto 16)
+											& s_axi_wdata(23 downto 16);
 				when "1000" =>
-					vx.wfifo(x.wfifo_w_ptr) := s_axi_wdata(31 downto 24) & s_axi_wdata(31 downto 24)
-												& s_axi_wdata(31 downto 24) & s_axi_wdata(31 downto 24);
+					vx.wfifo(x.wfifo_w_ptr) := s_axi_wdata(31 downto 24)
+											& s_axi_wdata(31 downto 24)
+											& s_axi_wdata(31 downto 24)
+											& s_axi_wdata(31 downto 24);
 				when "0011" =>
-					vx.wfifo(x.wfifo_w_ptr) := s_axi_wdata(15 downto 0) & s_axi_wdata(15 downto 0);
+					vx.wfifo(x.wfifo_w_ptr) := s_axi_wdata(15 downto 0)
+											& s_axi_wdata(15 downto 0);
 				when "1100" =>
-					vx.wfifo(x.wfifo_w_ptr) := s_axi_wdata(31 downto 16) & s_axi_wdata(31 downto 16);
+					vx.wfifo(x.wfifo_w_ptr) := s_axi_wdata(31 downto 16)
+											& s_axi_wdata(31 downto 16);
 				when "1111" =>
 					vx.wfifo(x.wfifo_w_ptr) := s_axi_wdata;
 				when others =>

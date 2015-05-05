@@ -46,10 +46,8 @@ entity regfile_3p is
     raddr2 : in  std_logic_vector((abits -1) downto 0);
     re2    : in  std_ulogic;
     rdata2 : out std_logic_vector((dbits -1) downto 0);
-    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
-    customclk: in std_ulogic := '0';
-    customin : in std_logic_vector(2*custombits-1 downto 0) := (others => '0');
-    customout:out std_logic_vector(2*custombits-1 downto 0));
+    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
+    );
 end;
 
 architecture rtl of regfile_3p is
@@ -78,23 +76,17 @@ begin
     end generate;
     dp : if tech /= peregrine generate
       x0 : syncram_2p generic map (tech, abits, dbits, 0, wrfst, testen, 0, custombits)
-        port map (rclk, re1, raddr1, rdata1, wclk, we, waddr, wdata, testin,
-                  customclk, customin(custombits-1 downto 0), customout(custombits-1 downto 0));
+        port map (rclk, re1, raddr1, rdata1, wclk, we, waddr, wdata, testin
+                  );
       x1 : syncram_2p generic map (tech, abits, dbits, 0, wrfst, testen, 0, custombits)
-        port map (rclk, re2, raddr2, rdata2, wclk, we, waddr, wdata, testin,
-                  customclk, customin(2*custombits-1 downto custombits), customout(2*custombits-1 downto custombits));
+        port map (rclk, re2, raddr2, rdata2, wclk, we, waddr, wdata, testin
+                  );
     end generate;
   end generate;
 
-  custominx(custominx'high downto custombits) <= (others => '0');
-  custominx(custombits-1 downto 0) <= customin(custombits-1 downto 0);
+    custominx <= (others => '0');
   nocust: if syncram_has_customif(tech)=0 or rfinfer generate
     customoutx <= (others => '0');
   end generate;
-  custout: if rfinfer or not (tech/=peregrine) generate
-    customout(2*custombits-1 downto custombits) <= (others => '0');
-    customout(custombits-1 downto 0) <= customoutx(custombits-1 downto 0);
-  end generate;
-      
 end;
 

@@ -502,7 +502,7 @@ begin
       port map (
         trst,jtck,jtckn,jtdi,jninst,jiupd,jrst,jcapt,jshft,jupd,jtdo,
         chain_tdi, chain_tdo, bsshft, bscapt, bsupdi, bsupdo, bsdrive, bshighz,
-        gnd(0), testen, testrst);
+        gnd(0), gnd(0), testen, testrst, open, gnd(0));
 
     chain_tck <= jtck;
     chain_tckn <= jtckn;

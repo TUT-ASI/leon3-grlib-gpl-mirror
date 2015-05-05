@@ -174,7 +174,7 @@ begin
 
   ddr2mem0 : ddr2ram
     generic map(width => CFG_DDR2SP_DATAWIDTH, abits => 13, babits => 3, colbits => 10, rowbits => 13,
-                implbanks => 8, fname => sdramfile, speedbin=>1, density => 3, lddelay => (0 ns), swap => CFG_MIG_SERIES7, ldguard => 1)
+                implbanks => 8, fname => sdramfile, speedbin=>1, density => 3, lddelay => (0 ns), swap => CFG_MIG_7SERIES, ldguard => 1)
     port map (ck => ddr2_ck_p(0), ckn => ddr2_ck_n(0), cke => ddr2_cke(0), csn => ddr2_cs_n(0),
               odt => ddr2_odt(0), rasn => ddr2_ras_n, casn => ddr2_cas_n, wen => ddr2_we_n,
               dm => ddr2_dm, ba => ddr2_ba, a => ddr2_addr, dq => ddr2_dq(15 downto 0),

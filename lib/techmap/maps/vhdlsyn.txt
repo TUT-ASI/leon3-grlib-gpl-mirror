@@ -12,6 +12,8 @@ clkand.vhd
 grgates.vhd
 ddr_ireg.vhd
 ddr_oreg.vhd
+clkpad.vhd clkpad_ds.vhd inpad.vhd inpad_ds.vhd iodpad.vhd iopad.vhd iopad_ds.vhd
+lvds_combo.vhd odpad.vhd outpad.vhd outpad_ds.vhd toutpad.vhd toutpad_ds.vhd skew_outpad.vhd
 ddrphy.vhd
 syncram.vhd
 syncram64.vhd
@@ -24,8 +26,6 @@ syncfifo_2p.vhd
 regfile_3p.vhd
 tap.vhd
 nandtree.vhd
-clkpad.vhd clkpad_ds.vhd inpad.vhd inpad_ds.vhd iodpad.vhd iopad.vhd iopad_ds.vhd
-lvds_combo.vhd odpad.vhd outpad.vhd outpad_ds.vhd toutpad.vhd toutpad_ds.vhd skew_outpad.vhd
 grspwc_net.vhd
 grspwc2_net.vhd
 grlfpw_net.vhd
