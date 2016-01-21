@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -386,17 +386,6 @@ begin
       generic map (pindex => pi_irqmp, paddr => 2, ncpu => CFG_NCPU)
       port map (rstn, clkm, apbi, apbo(pi_irqmp), irqo, irqi);
   end generate;
-  irq3 : if CFG_IRQ3_ENABLE = 0 generate
-    x : for i in 0 to CFG_NCPU-1 generate
-      irqi(i).irl <= "0000";
-      irqi(i).rst <= '1';
-      irqi(i).run <= '1';
-      irqi(i).rstvec <= (others => '0');
-      irqi(i).iact <= '0';
-      irqi(i).index <= (others => '0');
-      irqi(i).hrdrst <= '1';
-    end generate;
-  end generate;
 
   gpt : if CFG_GPT_ENABLE /= 0 generate
     timer0 : gptimer                    -- timer unit
@@ -404,7 +393,7 @@ begin
                    sepirq => CFG_GPT_SEPIRQ, sbits => CFG_GPT_SW, ntimers => CFG_GPT_NTIM,
                    nbits  => CFG_GPT_TW)
       port map (rstn, clkm, apbi, apbo(pi_gpt), gpti, open);
-    gpti.dhalt <= dsuo.tstop; gpti.extclk <= '0'; gpti.wdogen <= '0';
+    gpti <= gpti_dhalt_drive(dsuo.tstop);
   end generate;
 
   -----------------------------------------------------------------------------
@@ -737,3 +726,4 @@ begin
 -- pragma translate_on
 
 end;
+

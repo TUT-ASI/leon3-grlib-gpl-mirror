@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -203,7 +203,6 @@ attribute syn_preserve of clkml : signal is true;
 attribute syn_keep of ddrlock : signal is true;
 attribute syn_preserve of ddrlock : signal is true;
 
-signal stati : ahbstat_in_type;
 signal dac_clk,video_clk, clkvga : std_logic; -- Signals to vgaclock.
 signal clk_sel : std_logic_vector(1 downto 0);
 signal clkval : std_logic_vector(1 downto 0);
@@ -355,7 +354,7 @@ begin
 	sepirq => CFG_GPT_SEPIRQ, sbits => CFG_GPT_SW, ntimers => CFG_GPT_NTIM, 
 	nbits => CFG_GPT_TW)
     port map (rstn, clkm, apbi, apbo(3), gpti, open);
-    gpti.dhalt <= dsuo.tstop; gpti.extclk <= '0';
+    gpti <= gpti_dhalt_drive(dsuo.tstop);
   end generate;
 
   nogpt : if CFG_GPT_ENABLE = 0 generate apbo(3) <= apb_none; end generate;
@@ -426,24 +425,6 @@ begin
     video_out_b_pad : outpadv generic map (width => 8, tech => padtech)
         port map (vid_b, vgao.video_out_b);
   end generate;
-
---  gpio0 : if CFG_GRGPIO_ENABLE /= 0 generate     -- GR GPIO unit
---    grgpio0: grgpio
---      generic map( pindex => 11, paddr => 11, imask => CFG_GRGPIO_IMASK, 
---	nbits => CFG_GRGPIO_WIDTH)
---      port map( rstn, clkm, apbi, apbo(11), gpioi, gpioo);
---
---      pio_pads : for i in 0 to CFG_GRGPIO_WIDTH-1 generate
---        pio_pad : iopad generic map (tech => padtech)
---            port map (gpio(i), gpioo.dout(i), gpioo.oen(i), gpioi.din(i));
---      end generate;
---   end generate;
-
---  ahbs : if CFG_AHBSTAT = 1 generate	-- AHB status register
---    ahbstat0 : ahbstat generic map (pindex => 15, paddr => 15, pirq => 7,
---	nftslv => CFG_AHBSTATN)
---      port map (rstn, clkm, ahbmi, ahbsi, stati, apbi, apbo(15));
---  end generate;
 
 -----------------------------------------------------------------------
 ---  ETHERNET ---------------------------------------------------------
@@ -583,3 +564,4 @@ begin
   );
 -- pragma translate_on
 end;
+

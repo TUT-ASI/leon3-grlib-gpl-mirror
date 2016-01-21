@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -1122,4 +1122,62 @@ component generic_lpddr2phy_wo_pads is
     testoen     : in  std_ulogic);
 end component;
 
+component uniphy_ddr2_phy is
+  generic (
+    MHz        : integer := 100;
+    rstdelay   : integer := 200;
+    dbits      : integer := 16;
+    clk_mul    : integer := 2;
+    clk_div    : integer := 2;
+    eightbanks : integer  range 0 to 1 := 0;
+    abits      : integer := 14;
+    nclk       : integer := 3;
+    ncs        : integer := 2);
+  port (
+    rst        : in  std_ulogic;
+    clk        : in  std_logic;        -- input clock
+                                       -- for operating without PLL
+    clkout     : out std_ulogic;       -- system clock
+    clkoutret  : in  std_ulogic;       -- system clock return
+    lock       : out std_ulogic;       -- DCM locked
+
+    ddr_clk    : out std_logic_vector(nclk-1 downto 0);
+    ddr_clkb   : out std_logic_vector(nclk-1 downto 0);
+    ddr_cke    : out std_logic_vector(ncs-1 downto 0);
+    ddr_csb    : out std_logic_vector(ncs-1 downto 0);
+    ddr_web    : out std_ulogic;                               -- ddr write enable
+    ddr_rasb   : out std_ulogic;                               -- ddr ras
+    ddr_casb   : out std_ulogic;                               -- ddr cas
+    ddr_dm     : out std_logic_vector (dbits/8-1 downto 0);    -- ddr dm
+    ddr_dqs    : inout std_logic_vector (dbits/8-1 downto 0);  -- ddr dqs
+    ddr_dqsn   : inout std_logic_vector (dbits/8-1 downto 0);  -- ddr dqsn
+    ddr_ad     : out std_logic_vector (abits-1 downto 0);           -- ddr address
+    ddr_ba     : out std_logic_vector (1+eightbanks downto 0); -- ddr bank address
+    ddr_dq     : inout  std_logic_vector (dbits-1 downto 0);   -- ddr data
+    ddr_odt    : out std_logic_vector(ncs-1 downto 0);
+
+    addr       : in  std_logic_vector (abits-1 downto 0);           -- ddr address
+    ba         : in  std_logic_vector ( 2 downto 0);           -- ddr bank address
+    dqin       : out std_logic_vector (dbits*2-1 downto 0);    -- ddr input data
+    dqout      : in  std_logic_vector (dbits*2-1 downto 0);    -- ddr input data
+    dm         : in  std_logic_vector (dbits/4-1 downto 0);    -- data mask
+    oen        : in  std_ulogic;
+    rasn       : in  std_ulogic;
+    casn       : in  std_ulogic;
+    wen        : in  std_ulogic;
+    csn        : in  std_logic_vector(ncs-1 downto 0);
+    cke        : in  std_logic_vector(ncs-1 downto 0);
+    odt        : in  std_logic_vector(ncs-1 downto 0);
+    read_pend  : in  std_logic_vector(7 downto 0);
+    regwdata   : in  std_logic_vector(63 downto 0);
+    regwrite   : in  std_logic_vector(1 downto 0);
+    regrdata   : out std_logic_vector(63 downto 0);
+    dqin_valid : out std_ulogic;
+    oct_rdn        : in  std_logic := '0';
+    oct_rup        : in  std_logic := '0'
+  );
+
+end component;
+
 end;
+

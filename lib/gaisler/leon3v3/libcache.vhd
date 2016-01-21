@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -189,10 +189,11 @@ package libcache is
       );
 
   type ildram_in_type is record
-     enable        : std_ulogic;                       
-     read          : std_ulogic;                         
-     write         : std_ulogic;                       
-  end record;                         
+     enable        : std_ulogic;
+     read          : std_ulogic;
+     write         : std_ulogic;
+     address       : std_logic_vector(19 downto 0);
+  end record;
 
   subtype ctxword is std_logic_vector(M_CTX_SZ-1 downto 0);
   type ctxdatatype is array (0 to 3) of ctxword;
@@ -240,6 +241,9 @@ package libcache is
      faddress      : std_logic_vector(19 downto 0);
      ldramin       : ldram_in_type;
      ctx           : ctxdatatype;
+     snhit         : std_logic_vector(0 to 3);
+     snhitaddr     : std_logic_vector(19 downto 0);
+     flushall      : std_ulogic;
   end record;
 
   type dcram_out_type is record
@@ -324,10 +328,10 @@ package libcache is
       dlinesize : integer range 4 to 8     := 4;
       dsetsize  : integer range 1 to 256   := 1;
       dsetlock  : integer range 0 to 1     := 0;
-      dsnoop    : integer range 0 to 6     := 0;
-      ilram     : integer range 0 to 1     := 0;
+      dsnoop    : integer range 0 to 7     := 0;
+      ilram     : integer range 0 to 2     := 0;
       ilramsize : integer range 1 to 512   := 1;
-      dlram     : integer range 0 to 1     := 0;
+      dlram     : integer range 0 to 2     := 0;
       dlramsize : integer range 1 to 512   := 1;
       mmuen     : integer range 0 to 1     := 0;
       testen    : integer range 0 to 3     := 0
@@ -339,6 +343,24 @@ package libcache is
         sclk  : in  std_ulogic;
         testin: in  std_logic_vector(TESTIN_WIDTH-1 downto 0)
   );
+  end component;
+
+  component cmvalidbits is
+    generic (
+      abits : integer;
+      nways : integer range 1 to 4
+      );
+    port (
+      clk     : in std_ulogic;
+      caddr   : in std_logic_vector(abits-1 downto 0);
+      cenable : in std_logic_vector(0 to nways-1);
+      cwrite  : in std_logic_vector(0 to nways-1);
+      cwdata  : in std_logic_vector(0 to nways-1);
+      crdata  : out std_logic_vector(0 to nways-1);
+      saddr   : in std_logic_vector(abits-1 downto 0);
+      sclear  : in std_logic_vector(0 to nways-1);
+      flush   : in std_ulogic
+      );
   end component;
 
   -- mmu versions
@@ -368,14 +390,14 @@ package libcache is
 
   component mmu_icache
     generic (
-      memtech   :     integer                := 0;
+      fabtech   :     integer                := 0;
       icen      :     integer range 0 to 1   := 0;
       irepl     :     integer range 0 to 3   := 0;
       isets     :     integer range 1 to 4   := 1;
       ilinesize :     integer range 4 to 8   := 4;
       isetsize  :     integer range 1 to 256 := 1;
       isetlock  :     integer range 0 to 1   := 0;
-      lram      :     integer range 0 to 1   := 0;
+      lram      :     integer range 0 to 2   := 0;
       lramsize  :     integer range 1 to 512 := 1;
       lramstart :     integer range 0 to 255 := 16#8e#;
       mmuen     :     integer                := 0
@@ -407,11 +429,11 @@ package libcache is
       dlinesize  :     integer range 4 to 8     := 4;
       dsetsize   :     integer range 1 to 256   := 1;
       dsetlock   :     integer range 0 to 1     := 0;
-      dsnoop     :     integer range 0 to 6     := 0;
-      dlram      :     integer range 0 to 1     := 0;
+      dsnoop     :     integer range 0 to 7     := 0;
+      dlram      :     integer range 0 to 2     := 0;
       dlramsize  :     integer range 1 to 512   := 1;
       dlramstart :     integer range 0 to 255   := 16#8f#;
-      ilram      :     integer range 0 to 1     := 0;
+      ilram      :     integer range 0 to 2     := 0;
       ilramstart :     integer range 0 to 255   := 16#8e#;
       itlbnum    :     integer range 2 to 64    := 8;
       dtlbnum    :     integer range 2 to 64    := 8;
@@ -420,7 +442,8 @@ package libcache is
       cached     :     integer                  := 0;
       mmupgsz    :     integer range 0 to 5     := 0;
       smp        :     integer                  := 0;
-      mmuen      :     integer                  := 0
+      mmuen      :     integer                  := 0;
+      icen       :     integer range 0 to 1     := 0
       );
     port (
       rst        : in  std_logic;
@@ -444,7 +467,8 @@ package libcache is
   component mmu_cache
     generic (
       hindex     :     integer                  := 0;
-      memtech    :     integer range 0 to NTECH := 0;
+      fabtech    :     integer                  := 0;
+      memtech    :     integer                  := 0;
       dsu        :     integer range 0 to 1     := 0;
       icen       :     integer range 0 to 1     := 0;
       irepl      :     integer range 0 to 3     := 0;
@@ -458,11 +482,11 @@ package libcache is
       dlinesize  :     integer range 4 to 8     := 4;
       dsetsize   :     integer range 1 to 256   := 1;
       dsetlock   :     integer range 0 to 1     := 0;
-      dsnoop     :     integer range 0 to 6     := 0;
-      ilram      :     integer range 0 to 1     := 0;
+      dsnoop     :     integer range 0 to 7     := 0;
+      ilram      :     integer range 0 to 2     := 0;
       ilramsize  :     integer range 1 to 512   := 1;
       ilramstart :     integer range 0 to 255   := 16#8e#;
-      dlram      :     integer range 0 to 1     := 0;
+      dlram      :     integer range 0 to 2     := 0;
       dlramsize  :     integer range 1 to 512   := 1;
       dlramstart :     integer range 0 to 255   := 16#8f#;
       itlbnum    :     integer range 2 to 64    := 8;
@@ -554,3 +578,4 @@ package body libcache is
     return(cfg);
   end;
 end;
+

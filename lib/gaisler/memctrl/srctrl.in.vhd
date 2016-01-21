@@ -9,3 +9,4 @@
   constant CFG_SRCTRL_SRBANKS   : integer := CFG_SR_CTRL_SRBANKS;
   constant CFG_SRCTRL_BANKSZ    : integer := CFG_SR_CTRL_BANKSZ;
   constant CFG_SRCTRL_ROMASEL   : integer := CONFIG_SRCTRL_ROMASEL;
+

@@ -1,6 +1,9 @@
 include .config
 GRLIB=../..
 TOP=leon3mp
+ifeq ("$(CONFIG_LEON4)","y")
+GRLIB_CONFIG=grlib_config_leon4.vhd
+endif
 DESIGN=leon3-xilinx-ml605
 BOARD=xilinx-ml605-xc6vlx240t
 include $(GRLIB)/boards/$(BOARD)/Makefile.inc
@@ -147,10 +150,10 @@ $(GRLIB)/lib/tech/unisim/ise/GTXE1.vhd $(GRLIB)/lib/tech/unisim/ise/GTX_DUAL.vhd
 $(GRLIB)/lib/tech/unisim/ise/PCIE_2_0.vhd $(GRLIB)/lib/tech/unisim/ise/PCIE_A1.vhd
 endif
 endif
-
 SIMTOP=testbench
 SDCFILE=default.sdc
 BITGEN=$(GRLIB)/boards/$(BOARD)/default.ut
+PLANAHEAD_BITGEN=-g DebugBitstream:No -g Binary:no -b -g CRC:Enable -g CclkPin:PullUp -g M0Pin:PullUp -g M1Pin:PullUp -g M2Pin:PullUp -g ProgPin:PullUp -g DonePin:PullUp -g TckPin:PullUp -g TdiPin:PullUp -g TdoPin:PullUp -g TmsPin:PullUp -g UnusedPin:PullDown -g UserID:0xFFFFFFFF -g StartUpClk:CCLK -g DONE_cycle:4 -g GTS_cycle:5 -g GWE_cycle:6 -g LCK_cycle:NoWait -g Security:None -g Persist:No -g ReadBack -g DonePipe:No -g DriveDone:Yes
 CLEAN=soft-clean migclean pcieclean
 TECHLIBS = xilinxcorelib_ver secureip_ver unisims_ver secureip unisim
 VLOGOPT= -O0
@@ -166,9 +169,11 @@ LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	spansion
 DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan ambatest can \
 	usb grusbhc spacewire ascs slink spi hcan \
-	leon4 leon4v0 l2cache pwm gr1553b iommu ac97
+	leon4v0 l2cache pwm gr1553b iommu ac97
+ifeq ("$(CONFIG_LEON4)","")
+DIRSKIP+=leon4v0
+endif
 FILESKIP = grcan.vhd ddr2.v mobile_ddr.v
-GRLIB_CONFIG = grlib_config.vhd
 
 include $(GRLIB)/bin/Makefile
 include $(GRLIB)/software/leon3/Makefile

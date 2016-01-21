@@ -3,6 +3,10 @@ include .config
 GRLIB=../..
 CLEAN=soft-clean
 
+ifeq ("$(CONFIG_LEON4)","y")
+GRLIB_CONFIG=grlib_config_leon4.vhd
+endif
+
 ### Xilinx Vivado device and board setup
 BOARD=xilinx-vc707-xc7vx485t
 DESIGN=leon3-xilinx-vc707
@@ -20,6 +24,7 @@ SIMTOP=testbench
 # Uncomment for Modelsim or change to specify your simulator
 #GRLIB_SIMULATOR=ModelSim
 #GRLIB_SIMULATOR=ALDEC
+#GRLIB_SIMULATOR=Xilinx
 
 # Options used during compilation
 VCOMOPT=-explicit -O0
@@ -29,7 +34,7 @@ VCOMOPT=-explicit -O0
 
 # GRETH options
 ifeq ($(CONFIG_GRETH_ENABLE),y)
-VSIMOPT+= -L gig_ethernet_pcs_pma_v14_3 -L secureip -L unisims_ver 
+VSIMOPT+= -L gig_ethernet_pcs_pma -L secureip -L unisims_ver 
 endif
 
 # - MIG -
@@ -70,7 +75,7 @@ VSIMOPT+= $(SIMTOP)
 
 ### Testbench, design and libraries to compile and not to compile
 
-VHDLSYNFILES= config.vhd ahbram_sim.vhd ahbrom.vhd leon3mp.vhd ddr_dummy.vhd sgmii_vc707.vhd
+VHDLSYNFILES= config.vhd ahbrom.vhd leon3mp.vhd ddr_dummy.vhd sgmii_vc707.vhd
 VHDLSIMFILES=testbench.vhd
 
 TECHLIBS = unisim
@@ -78,11 +83,14 @@ SKIP_SIM_TECHLIBS = 1
 
 LIBSKIP = pci pci/pcif core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp spw gsi cypress hynix \
-	spansion leon4 leon4v0 secureip
+	spansion secureip
 LIBADD = testgrouppolito
 DIRSKIP = b1553 pci pci/pcif leon2 leon2ft crypto satcan pci ambatest \
 	spacewire ascs slink \
 	pwm gr1553b iommu ac97 secureip
+ifeq ("$(CONFIG_LEON4)","")
+DIRSKIP+=leon4v0
+endif
 FILESKIP = grcan.vhd ddr2.v mobile_ddr.v adapters/sgmii.vhd
 
 include $(GRLIB)/bin/Makefile

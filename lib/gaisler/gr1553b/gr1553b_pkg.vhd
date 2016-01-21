@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -178,7 +178,11 @@ package gr1553b_pkg is
       bc_rtbusmask: integer range 0 to 1 := 1;
       extra_regkeys: integer range 0 to 1 := 0;
       syncrst: integer range 0 to 2 := 1;
-      ahbendian: integer range 0 to 1 := 0
+      ahbendian: integer range 0 to 1 := 0;
+      bm_filters: integer range 0 to 1 := 1;
+      codecfreq: integer := 20;
+      sameclk: integer range 0 to 1 := 0;
+      codecver: integer range 0 to 2 := 0
       );  
     port (
       clk: in std_logic;
@@ -241,7 +245,12 @@ package gr1553b_pkg is
       bc_timer: integer range 0 to 2 := 1;
       bc_rtbusmask: integer range 0 to 1 := 1;
       extra_regkeys: integer range 0 to 1 := 0;
-      syncrst: integer range 0 to 2 := 1
+      syncrst: integer range 0 to 2 := 1;
+      ahbendian: integer := 0;
+      bm_filters: integer range 0 to 1 := 1;
+      codecfreq: integer := 20;
+      sameclk: integer range 0 to 1 := 0;
+      codecver: integer range 0 to 2 := 0
       );
     port(
       clk: in std_logic;
@@ -465,3 +474,4 @@ package body gr1553b_pkg is
   end;
   
 end package body;
+

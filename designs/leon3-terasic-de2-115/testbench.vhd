@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -126,6 +126,21 @@ signal can_txd	: std_logic_vector(0 to CFG_CAN_NUM-1);
 signal can_rxd	: std_logic_vector(0 to CFG_CAN_NUM-1);
 signal can_stb	: std_logic_vector(0 to CFG_CAN_NUM-1);
 
+signal clk_1553   : std_logic;
+signal busainen   : std_logic;
+signal busainp    : std_logic;
+signal busainn    : std_logic;
+signal busaoutin  : std_logic;
+signal busaoutp   : std_logic;
+signal busaoutn   : std_logic;
+signal busbinen   : std_logic;
+signal busbinp    : std_logic;
+signal busbinn    : std_logic;
+signal busboutin  : std_logic;
+signal busboutp   : std_logic;
+signal busboutn   : std_logic;
+
+
 begin
 
 -- clock and reset
@@ -150,7 +165,9 @@ begin
 	oen, writen, open, open, romsn, gpio,
         emdio, eth_macclk, etx_clk, erx_clk, erxd(3 downto 0), erx_dv, erx_er,
         erx_col, erx_crs, emdintn, ereset, etxd(3 downto 0), etx_en, etx_er, emdc, 
-	can_txd, can_rxd, can_stb
+	can_txd, can_rxd, can_stb,
+        clk_1553, busainen, busainp, busainn, busaoutin, busaoutp, busaoutn,
+        busbinen, busbinp, busbinn, busboutin, busboutp, busboutn
 	);
 
   sd1 : if ((CFG_MCTRL_SDEN = 1) and (CFG_MCTRL_SEPBUS = 1)) generate

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -76,14 +76,14 @@ begin
   s0 : if rfinfer generate
       inf : regfile_3p generic map (0, abits, dbits, wrfst, numregs, testen, memtest_vlen)
       port map ( wclk, waddr, wdata, we, rclk, raddr1, re1, rdata1, raddr2, re2, rdata2,
-                 testin
+                 open, open, testin
                  );
   end generate;
 
   s1 : if not rfinfer generate
       rhu : regfile_3p generic map (tech, abits, dbits, wrfst, numregs, testen, memtest_vlen)
       port map ( wclk, waddr, wdata, we, rclk, raddr1, re1, rdata1, raddr2, re2, rdata2,
-                 testin
+                 open, open, testin
                  );
   end generate;
 

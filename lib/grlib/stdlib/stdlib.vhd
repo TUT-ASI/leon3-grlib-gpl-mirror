@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -37,9 +37,7 @@ package stdlib is
 
 constant LIBVHDL_VERSION : integer := grlib_version;
 constant LIBVHDL_BUILD : integer := grlib_build;
--- pragma translate_off
-constant LIBVHDL_DATE : string := grlib_date;
--- pragma translate_on
+
 constant zero32 : std_logic_vector(31 downto 0) := (others => '0');
 constant zero64 : std_logic_vector(63 downto 0) := (others => '0');
 constant zero128 : std_logic_vector(127 downto 0) := (others => '0');
@@ -123,6 +121,8 @@ end component;
 -- pragma translate_on
 
 function unary_to_slv(i: std_logic_vector) return std_logic_vector;
+function gray_encoder(idata : in std_logic_vector) return std_logic_vector;
+function gray_decoder(idata : in std_logic_vector) return std_logic_vector;
 
 end;
 
@@ -660,6 +660,27 @@ end;
 
     return o;
   end unary_to_slv;
+
+  function gray_encoder(idata : in std_logic_vector) return std_logic_vector is
+    variable vdata : std_logic_vector(idata'left downto idata'right);
+  begin
+    for i in idata'right to (idata'left)-1 loop
+      vdata(i) := idata(i) xor idata(i+1);
+    end loop;
+    vdata(vdata'left) := idata(idata'left);
+    return vdata;
+  end gray_encoder;
+
+  function gray_decoder(idata : in std_logic_vector) return std_logic_vector is
+    variable vdata : std_logic_vector(idata'left downto idata'right);
+  begin
+    vdata(vdata'left) := idata(idata'left);
+    for i in (idata'left)-1 downto idata'right loop
+      vdata(i) := idata(i) xor vdata(i+1);
+    end loop;
+    return vdata;    
+  end gray_decoder;
+
 end;
 
 

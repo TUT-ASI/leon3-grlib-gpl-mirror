@@ -4,7 +4,7 @@ PART=XC7VX485T
 PACKAGE=ffg1761
 PROTOBOARD=xilinx.com:virtex7:vc707:a
 SPEED=2
-PROMGENPAR=-x xcf08p -u 0 $(TOP).bit -p mcs -w -o $(BOARD)
+PROMGENPAR=-u 0 $(TOP).bit -p mcs -data_width 16 -w -o $(BOARD)
 
 # Set Vivado Synthesis Flow and Strategy used for build
 # Choose 'XST 14' or 'Vivado Synthesis 2012'

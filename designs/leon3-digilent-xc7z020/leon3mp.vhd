@@ -1,11 +1,9 @@
 -----------------------------------------------------------------------------
---  LEON3 Zedboard Demonstration design
---  Copyright (C) 2012 Fredrik Ringhage, Aeroflex Gaisler
---  Modifed by Jiri Gaisler to provide working AXI interface, 2014-04-05 
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -20,7 +18,11 @@
 --  You should have received a copy of the GNU General Public License
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+--  LEON3 Zedboard Demonstration design
+--  Copyright (C) 2012 Fredrik Ringhage, Aeroflex Gaisler
+--  Modifed by Jiri Gaisler to provide working AXI interface, 2014-04-05 
 ------------------------------------------------------------------------------
+
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -283,7 +285,7 @@ begin
          ncpu => CFG_NCPU, tbits => 30, tech => memtech, irq => 0, kbytes => CFG_ATBSZ)
       port map (rstn, clkm, ahbmi, ahbsi, ahbso(2), dbgo, dbgi, dsui, dsuo);
       dsui.enable <= '1';
-      dsui.break <= gpioi.din(0);
+      dsui.break <= gpioi.val(0);
   end generate;
   dsuact_pad : outpad generic map (tech => padtech, level => cmos, voltage => x33v) port map (led(0), dsuo.active);
 
@@ -441,7 +443,7 @@ begin
    sepirq => CFG_GPT_SEPIRQ, sbits => CFG_GPT_SW, ntimers => CFG_GPT_NTIM,
    nbits => CFG_GPT_TW, wdog => 0)
     port map (rstn, clkm, apbi, apbo(3), gpti, gpto);
-    gpti.dhalt <= dsuo.tstop; gpti.extclk <= '0';
+    gpti <= gpti_dhalt_drive(dsuo.tstop);
   end generate;
 
   nogpt : if CFG_GPT_ENABLE = 0 generate apbo(3) <= apb_none; end generate;
@@ -451,7 +453,9 @@ begin
     generic map(pindex => 8, paddr => 8, imask => CFG_GRGPIO_IMASK, nbits => CFG_GRGPIO_WIDTH)
     port map(rst => rstn, clk => clkm, apbi => apbi, apbo => apbo(8),
     gpioi => gpioi, gpioo => gpioo);
-    pio_pads : for i in 0 to 7 generate
+    pio_pad_0 : inpad generic map (tech => padtech)
+      port map (switch(0), gpioi.din(0))  -- Do not let SW modify BREAK input
+    pio_pads : for i in 1 to 7 generate
         pio_pad : iopad generic map (tech => padtech, level => cmos, voltage => x18v)
             port map (switch(i), gpioo.dout(i), gpioo.oen(i), gpioi.din(i));
     end generate;
@@ -484,6 +488,7 @@ begin
      port map (led(3), rsti);
      
   ahbs : if CFG_AHBSTAT = 1 generate   -- AHB status register
+    stati <= ahbstat_in_none;
     ahbstat0 : ahbstat generic map (pindex => 15, paddr => 15, pirq => 7,
    nftslv => CFG_AHBSTATN)
       port map (rstn, clkm, ahbmi, ahbsi, stati, apbi, apbo(15));

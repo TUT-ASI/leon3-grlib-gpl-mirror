@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -68,7 +68,8 @@ entity gptimer is
     glatch   : integer := 0;
     gextclk  : integer := 0;
     gset     : integer := 0;
-    gelatch  : integer range 0 to 2 := 0
+    gelatch  : integer range 0 to 2 := 0;
+    wdogwin  : integer := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -116,6 +117,8 @@ type registers is record
   wdog          :  std_ulogic;
   wdogdis       :  std_ulogic;
   wdognmi       :  std_ulogic;
+  wdogwc        :  std_logic_vector(15 downto 0);
+  wdogwcr       :  std_logic_vector(15 downto 0);
 end record;
 
 type registers2 is record
@@ -164,6 +167,8 @@ begin
   vres.wdog := '0';
   vres.wdogdis := '0';
   vres.wdognmi := '0';
+  vres.wdogwc := (others => '0');
+  vres.wdogwcr := (others => '0');
   return vres;
 end function RESVAL_FUNC;
 constant RESVAL : registers := RESVAL_FUNC;
@@ -198,6 +203,8 @@ begin
   variable latchval : std_logic_vector(NAHBIRQ-1 downto 0);
   variable latchd : std_ulogic;
   variable v2 : registers2;
+  variable wdogwc : std_logic_vector(r.wdogwc'left+1 downto 0);
+  variable timeren : std_logic;
   begin
 
     v := r; v2 := r2; v.tick := '0'; tick := (others => '0'); latch := '0';
@@ -212,8 +219,21 @@ begin
     end loop;
     v.wdog := r.timers(ntimers).irqpen and not r.wdogdis;
     v.wdogn := not v.wdog;
-
+    
+-- wdog timer window counter
+    
+    if wdogwin /= 0 and wdog /= 0 then
+      wdogwc := ('0' & r.wdogwc) - 1;     -- decrement scaler
+      if wdogwc(wdogwc'left) = '0' then
+        v.wdogwc := wdogwc(v.wdogwc'range);
+      end if;
+    else
+      wdogwc := (others => '0');
+    end if;
 -- scaler operation
+    
+    timeren := '0'; -- set if any of the timers are enabled
+    for i in 1 to ntimers loop timeren := timeren or r.timers(i).enable; end loop;
 
     scaler := ('0' & r.scaler) - 1;     -- decrement scaler
 
@@ -223,7 +243,8 @@ begin
 
     if ((gextclk=0) or (gextclk=1 and r2.extclken='0') or
         (gextclk=1 and r2.extclken='1' and r2.extclk(2 downto 1) = "01")) then
-      if (not gpti.dhalt or r.dishlt) = '1' then  -- halt timers in debug mode
+      if (not gpti.dhalt or r.dishlt) = '1'   -- halt timers in debug mode. 
+         and timeren = '1' then               -- scaler is halted when all timers are disabled
         if (scaler(sbits) = '1') then
           v.scaler := r.reload; v.tick := '1'; -- reload scaler
         else v.scaler := scaler(sbits-1 downto 0); end if;
@@ -267,6 +288,13 @@ begin
       end if;
       if r.timers(i).load = '1' then 
         v.timers(i).value := r.timers(i).reload;
+        if (i = ntimers) and wdogwin /= 0 and wdog /= 0 then
+          v.wdogwc := r.wdogwcr;
+          if wdogwc(wdogwc'left) = '0' then
+            v.timers(i).irq := '1';
+            v.timers(i).irqpen := '1';
+          end if;
+        end if;
       end if;
     end loop;
 
@@ -359,6 +387,9 @@ begin
           when "01" => readdata(nbits-1 downto 0) := r.timers(i).reload;
           when "10" =>
             if wdog /= 0 and i = ntimers then
+              if wdogwin /= 0 then
+                readdata(31 downto 16) := r.wdogwcr;
+              end if;
               readdata(8 downto 7) := r.wdogdis & r.wdognmi;
             end if;
             readdata(6 downto 0) := 
@@ -387,6 +418,9 @@ begin
                       if glatch = 1 then v2.latchen := apbi.pwdata(11); end if;
                       if gset = 1 then v2.seten := apbi.pwdata(12); end if;
                       if gelatch /= 0 then v2.elatchen := apbi.pwdata(13); end if;
+                      for i in 1 to ntimers loop
+                        v.timers(i).enable := r.timers(i).enable or apbi.pwdata(15+i);
+                      end loop;
       when "00011" =>
         if glatch=1 then
           if NAHBIRQ <= 32 then
@@ -406,6 +440,9 @@ begin
               when "00" => v.timers(i).value   := apbi.pwdata(nbits-1 downto 0);
               when "01" => v.timers(i).reload  := apbi.pwdata(nbits-1 downto 0);
               when "10" => if wdog /= 0 and i = ntimers then
+                             if wdogwin /= 0 then
+                               v.wdogwcr := apbi.pwdata(31 downto 16);
+                             end if;
                              v.wdogdis := apbi.pwdata(8);
                              v.wdognmi := apbi.pwdata(7);
                            end if;
@@ -485,6 +522,7 @@ begin
         v.timers(ntimers).restart := RESVAL.timers(ntimers).restart;
       end if;
       v.wdogdis := RESVAL.wdogdis; v.wdognmi := RESVAL.wdognmi;
+      v.wdogwcr := RESVAL.wdogwcr;
       if glatch = 1 then
         for i in 1 to ntimers loop v.timers(i).latch := RESVAL.timers(i).latch; end loop;
         if gelatch /= 0 then v2.elatchen := RESVAL2.elatchen; end if;
@@ -499,6 +537,7 @@ begin
       if gset = 1 then v2.seten := RESVAL2.seten; v2.setdel := RESVAL2.setdel; end if;
     end if;
     if wdog = 0 then v.wdogdis := '0'; v.wdognmi := '0'; end if;
+    if wdogwin = 0 then v.wdogwc := (others => '0'); v.wdogwcr := (others => '0'); end if;
     if glatch = 0 then
       for i in 1 to ntimers loop v.timers(i).latch := (others => '0'); end loop;
       v2.latchen := '0'; v2.latchdel := '0'; v2.latchsel := (others => '0');
@@ -549,3 +588,4 @@ begin
 -- pragma translate_on
 
 end;
+

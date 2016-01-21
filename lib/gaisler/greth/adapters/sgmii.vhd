@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -93,6 +93,7 @@ architecture rtl of sgmii is
   signal debug_int : std_logic_vector(31 downto 0) ;
 
   signal ready_sig : std_logic;
+  signal mdc_rst, mdc_rstn : std_logic;
 
 begin
 
@@ -157,21 +158,52 @@ begin
         rd_rst  => rx_pll_rst_int,
         rd_data => rx_out_pll_int
       );
-    rx_aligned <= '0'; --not used
+
+    pcs0 : ge_1000baseX
+      generic map (
+        PHY_ADDR => phy_addr,
+        BASEX_AN_MODE => mode
+      )
+      port map(
+        rx_ck           => rx_pll_clk_int,
+        tx_ck           => tx_pll_clk_int,
+        rx_reset        => rx_pll_rst_int,
+        tx_reset        => tx_pll_rst_int,
+        startup_enable  => startup_enable_int,
+        tbi_rxd         => rx_out_pll_int,  -- abcdefghij
+        tbi_txd         => tx_in_int,       -- abcdefghij
+        gmii_rxd        => rxd,
+        gmii_rx_dv      => rx_dv,
+        gmii_rx_er      => rx_er,
+        gmii_col        => rx_col,
+        gmii_cs         => rx_crs,
+        gmii_txd        => txd,
+        gmii_tx_en      => tx_en,
+        gmii_tx_er      => tx_er,
+        repeater_mode   => '0',
+        mdc_reset       => rst_125,
+        mdio_i          => mdio_int,
+        mdio_o          => mdio_i,
+        mdc             => mdc,
+        debug           => debug_int
+        );
+    
   end generate;
 
-  igl2 : if (fabtech = igloo2) generate
+  igl2 : if (fabtech = igloo2) or (fabtech = rtg4) generate
     -- comma detector and word aligner
     wa0: word_aligner
     port map (
       clk => rx_clk_int,
       rstn => rx_rstn_int,
-      rx_in => rx_out_int,--rx_out_igl2,
-      val_in => rx_rstn_int,
-      rx_out => rx_out_pll_int,
-      val_out => open,
-      aligned => rx_aligned);
-  end generate;
+      rx_in => rx_out_int,
+      rx_out => rx_out_pll_int);
+
+  rst0 : rstgen     -- reset synchronizer for MDC clock domain in ge_1000baseX
+    generic map (syncrst => 1, acthigh => 1)
+    port map (rx_pll_rst_int, mdc, '1', mdc_rstn, open);
+
+  mdc_rst <= not(mdc_rstn);
 
   pcs0 : ge_1000baseX
     generic map (
@@ -195,12 +227,14 @@ begin
       gmii_tx_en      => tx_en,
       gmii_tx_er      => tx_er,
       repeater_mode   => '0',
-      mdc_reset       => rst_125,
+      mdc_reset       => mdc_rst,
       mdio_i          => mdio_int,
       mdio_o          => mdio_i,
       mdc             => mdc,
       debug           => debug_int
       );
+
+  end generate;
 
   mdio_int <= mdio_o when mdio_oe = '0' else
           '0'; 
@@ -211,5 +245,6 @@ begin
   rx_rstn     <= rx_pll_rstn_int;
   tx_clk      <= tx_pll_clk_int; --clk_125;
   tx_rstn     <= tx_pll_rstn_int;
+  rx_aligned  <= ready_sig;
 
 end architecture ; -- rtl

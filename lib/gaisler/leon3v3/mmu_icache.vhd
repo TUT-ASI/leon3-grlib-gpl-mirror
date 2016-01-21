@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -43,14 +43,14 @@ use gaisler.leon3.all;
 
 entity mmu_icache is
   generic (
-    memtech   : integer               := 0;
+    fabtech   : integer               := 0;
     icen      : integer range 0 to 1  := 0;
     irepl     : integer range 0 to 3  := 0;
     isets     : integer range 1 to 4  := 1;
     ilinesize : integer range 4 to 8  := 4;
     isetsize  : integer range 1 to 256 := 1;
     isetlock  : integer range 0 to 1  := 0;
-    lram      : integer range 0 to 1 := 0;
+    lram      : integer range 0 to 2 := 0;
     lramsize  : integer range 1 to 512 := 1;
     lramstart : integer range 0 to 255 := 16#8e#;
     mmuen     : integer range 0 to 1 := 0);    
@@ -76,7 +76,7 @@ end;
 
 architecture rtl of mmu_icache is
 
-  constant MUXDATA      : boolean := (is_fpga(memtech) = 1);
+  constant MUXDATA      : boolean := (is_fpga(fabtech) = 1);
   constant M_EN         : boolean := (mmuen = 1);
   constant ILINE_BITS   : integer := log2(ilinesize);
   constant IOFFSET_BITS : integer := 8 +log2(isetsize) - ILINE_BITS;
@@ -252,9 +252,11 @@ architecture rtl of mmu_icache is
   signal r, c : icache_control_type;      -- r is registers, c is combinational
   signal rl, cl : lru_reg_type;           -- rl is registers, cl is combinational
 
+  constant LRAM_EN : integer := conv_integer(conv_std_logic(lram /= 0));
+
   constant icfg : std_logic_vector(31 downto 0) := 
         cache_cfg(irepl, isets, ilinesize, isetsize, isetlock, 0,
-                  lram, lramsize, lramstart, mmuen);
+                  LRAM_EN, lramsize, lramstart, mmuen);
 
 begin
 
@@ -289,6 +291,7 @@ begin
     variable wlock : std_ulogic;
     variable tag : cdatatype;
     variable lramacc, ilramwr, lramcs  : std_ulogic;
+    variable iladdr : std_logic_vector(TAG_HIGH  downto LINE_LOW);
     variable pftag : std_logic_vector(31 downto 2);
     variable mmuici_trans_op : std_logic;
     variable mmuici_su : std_logic;
@@ -318,7 +321,7 @@ begin
     
     set := 0; ctwrite := (others => '0'); cdwrite := (others => '0');
     vdiagset := 0; rdiagset := 0; lock := (others => '0'); ilramwr := '0';
-    lramacc := '0'; lramcs := '0'; 
+    lramacc := '0'; lramcs := '0'; iladdr := (others => '0');
     vdiagset := 0; rdiagset := 0; lock := (others => '0');
     pftag := (others => '0'); validv := (others => '0');
 
@@ -339,7 +342,7 @@ begin
     end if;
     
     --local ram access
-    if (lram = 1) and (ici.fpc(31 downto 24) = LRAM_START) then lramacc := '1'; end if;
+    if (lram /= 0) and (ici.fpc(31 downto 24) = LRAM_START) then lramacc := '1'; end if;
     
 -- generate cache hit and valid bits    
     hit := '0';
@@ -412,6 +415,7 @@ begin
         taddr := ici.fpc(TAG_HIGH downto LINE_LOW);
       else taddr := ici.rpc(TAG_HIGH downto LINE_LOW); end if;
       v.burst := dco.icdiag.cctrl.burst and not lastline;
+      if (eholdn and lramacc)='1' then v.bpmiss:='0'; v.eocl:='0'; end if;
       if (eholdn and not (ici.inull or lramacc)) = '1' then
         v.bpmiss := not (cacheon and hit and valid) and ici.nobpmiss;
         v.eocl := not nvalid;
@@ -536,7 +540,7 @@ begin
 
     if mcio.retry = '1' then v.req := '1'; end if;
 
-    if lram = 1 then
+    if lram /= 0 then
       if LRAMCS_EN then
         if taddr(31 downto 24) = LRAM_START then lramcs := '1'; else lramcs := '0'; end if;
       else
@@ -585,7 +589,7 @@ begin
 
     if diagen = '1' then
      if (ISETS /= 1) then
-       if (dco.icdiag.ilramen = '1') and (lram = 1) then
+       if (dco.icdiag.ilramen = '1') and (lram /= 0) then
          v.diagset := conv_std_logic_vector(1, SETBITS);
        else
          v.diagset := dco.icdiag.addr(SETBITS -1 + TAG_LOW downto TAG_LOW);
@@ -610,7 +614,7 @@ begin
       wtag(TAG_HIGH downto TAG_LOW) := dci.maddress(TAG_HIGH downto TAG_LOW);
       wlrr := dci.maddress(CTAG_LRRPOS);
       wlock := dci.maddress(CTAG_LOCKPOS);
-      if (dco.icdiag.ilramen = '1') and (lram = 1) then
+      if (dco.icdiag.ilramen = '1') and (lram /= 0) then
         ilramwr := not dco.icdiag.read;
       elsif dco.icdiag.tag = '1' then
         twrite := not dco.icdiag.read; dwrite := '0';
@@ -651,6 +655,7 @@ begin
       v.pflushtyp := dco.icdiag.pflushtyp;
     end if;
 
+    if lram /= 0 then iladdr := taddr; end if;
     if (r.flush2 = '1') and (icen /= 0) then
       twrite := '1'; ctwrite := (others => '1'); vmask := (others => (others => '0'));
       v.faddr := r.faddr + 1;
@@ -727,6 +732,7 @@ begin
     icrami.dwrite   <= cdwrite;
 
     -- local ram inputs
+    icrami.ldramin.address <= iladdr(19+LINE_LOW downto LINE_LOW);
     icrami.ldramin.enable <= (dco.icdiag.ilramen or lramcs or lramacc);
     icrami.ldramin.read  <= dco.icdiag.ilramen or lramacc;
     icrami.ldramin.write <= ilramwr;

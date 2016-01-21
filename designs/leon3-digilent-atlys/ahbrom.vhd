@@ -208,7 +208,7 @@ begin
     when 16#0007E# => romdata <= X"90122360";
     when 16#0007F# => romdata <= X"40000027";
     when 16#00080# => romdata <= X"01000000";
-    when 16#00081# => romdata <= X"03380800";
+    when 16#00081# => romdata <= X"03380000";
     when 16#00082# => romdata <= X"81C04000";
     when 16#00083# => romdata <= X"01000000";
     when 16#00084# => romdata <= X"11000000";

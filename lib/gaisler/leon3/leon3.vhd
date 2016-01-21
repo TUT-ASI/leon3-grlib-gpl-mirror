@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -38,12 +38,13 @@ package leon3 is
 
   type l3_irq_in_type is record
     irl         : std_logic_vector(3 downto 0);
-    rst         : std_ulogic;
-    run         : std_ulogic;
+    resume      : std_ulogic;
+    rstrun      : std_ulogic;
     rstvec      : std_logic_vector(31 downto 12);
-    iact        : std_ulogic;
     index       : std_logic_vector(3 downto 0);
-    hrdrst      : std_ulogic;
+    pwdsetaddr  : std_ulogic;
+    pwdnewaddr  : std_logic_vector(31 downto 2);
+    forceerr    : std_ulogic;
   end record;
 
   type l3_irq_out_type is record
@@ -51,7 +52,7 @@ package leon3 is
     irl         : std_logic_vector(3 downto 0);
     pwd         : std_ulogic;
     fpen        : std_ulogic;
-    idle        : std_ulogic;
+    err         : std_ulogic;
   end record;
 
   type l3_debug_in_type is record
@@ -187,7 +188,7 @@ package leon3 is
   generic (
     hindex    : integer               := 0;
     fabtech   : integer range 0 to NTECH  := DEFFABTECH;
-    memtech   : integer range 0 to NTECH  := DEFMEMTECH;
+    memtech   : integer                   := DEFMEMTECH;
     nwindows  : integer range 2 to 32 := 8;
     dsu       : integer range 0 to 1  := 0;
     fpu       : integer range 0 to 31 := 0;
@@ -209,7 +210,7 @@ package leon3 is
     dlinesize : integer range 4 to 8  := 4;
     dsetsize  : integer range 1 to 256 := 1;
     dsetlock  : integer range 0 to 1  := 0;
-    dsnoop    : integer range 0 to 6  := 0;
+    dsnoop    : integer range 0 to 7  := 0;
     ilram     : integer range 0 to 1 := 0;
     ilramsize : integer range 1 to 512 := 1;
     ilramstart: integer range 0 to 255 := 16#8e#;
@@ -233,7 +234,9 @@ package leon3 is
     mmupgsz   : integer range 0 to 5  := 0;
     bp        : integer               := 1;
     npasi     : integer range 0 to 1  := 0;
-    pwrpsr    : integer range 0 to 1  := 0
+    pwrpsr    : integer range 0 to 1  := 0;
+    rex       : integer range 0 to 1  := 0;
+    altwin    : integer range 0 to 1  := 0
   );
   port (
     clk    : in  std_ulogic;
@@ -253,7 +256,7 @@ package leon3 is
   generic (
     hindex    : integer               := 0;
     fabtech   : integer range 0 to NTECH  := DEFFABTECH;
-    memtech   : integer range 0 to NTECH  := DEFMEMTECH;
+    memtech   : integer                   := DEFMEMTECH;
     nwindows  : integer range 2 to 32 := 8;
     dsu       : integer range 0 to 1  := 0;
     fpu       : integer range 0 to 31 := 0;
@@ -275,7 +278,7 @@ package leon3 is
     dlinesize : integer range 4 to 8  := 4;
     dsetsize  : integer range 1 to 256 := 1;
     dsetlock  : integer range 0 to 1  := 0;
-    dsnoop    : integer range 0 to 6  := 0;
+    dsnoop    : integer range 0 to 7  := 0;
     ilram     : integer range 0 to 1 := 0;
     ilramsize : integer range 1 to 512 := 1;
     ilramstart: integer range 0 to 255 := 16#8e#;
@@ -299,7 +302,9 @@ package leon3 is
     mmupgsz   : integer range 0 to 5  := 0;
     bp        : integer               := 1;
     npasi     : integer range 0 to 1  := 0;
-    pwrpsr    : integer range 0 to 1  := 0
+    pwrpsr    : integer range 0 to 1  := 0;
+    rex       : integer range 0 to 1  := 0;
+    altwin    : integer range 0 to 1  := 0
   );
   port (
     clk    : in  std_ulogic;
@@ -320,7 +325,7 @@ package leon3 is
   generic (
     hindex    : integer               := 0;
     fabtech   : integer range 0 to NTECH  := DEFFABTECH;
-    memtech   : integer range 0 to NTECH  := DEFMEMTECH;
+    memtech   : integer                   := DEFMEMTECH;
     nwindows  : integer range 2 to 32 := 8;
     dsu       : integer range 0 to 1  := 0;
     fpu       : integer range 0 to 31 := 0;
@@ -342,11 +347,11 @@ package leon3 is
     dlinesize : integer range 4 to 8  := 4;
     dsetsize  : integer range 1 to 256 := 1;
     dsetlock  : integer range 0 to 1  := 0;
-    dsnoop    : integer range 0 to 6  := 0;
-    ilram     : integer range 0 to 1 := 0;
+    dsnoop    : integer range 0 to 7  := 0;
+    ilram     : integer range 0 to 2 := 0;
     ilramsize : integer range 1 to 512 := 1;
     ilramstart: integer range 0 to 255 := 16#8e#;
-    dlram     : integer range 0 to 1 := 0;
+    dlram     : integer range 0 to 2 := 0;
     dlramsize : integer range 1 to 512 := 1;
     dlramstart: integer range 0 to 255 := 16#8f#;
     mmuen     : integer range 0 to 1  := 0;
@@ -361,8 +366,8 @@ package leon3 is
     svt       : integer range 0 to 1 := 1;
     rstaddr   : integer := 16#00000#;
     smp       : integer range 0 to 15 := 0;    -- support SMP systems
-    iuft      : integer range 0 to 4  := 0;
-    fpft      : integer range 0 to 4  := 0;
+    iuft      : integer range 0 to 6  := 0;
+    fpft      : integer range 0 to 6  := 0;
     cmft      : integer range 0 to 1  := 0;
     iuinj     : integer               := 0;    
     ceinj     : integer range 0 to 3  := 0;   
@@ -372,7 +377,9 @@ package leon3 is
     mmupgsz   : integer range 0 to 5  := 0;
     bp        : integer               := 1;
     npasi     : integer range 0 to 1  := 0;
-    pwrpsr    : integer range 0 to 1  := 0
+    pwrpsr    : integer range 0 to 1  := 0;
+    rex       : integer range 0 to 1  := 0;
+    altwin    : integer range 0 to 1  := 0
   );
   port (
     clk    : in  std_ulogic;
@@ -440,7 +447,7 @@ package leon3 is
   generic (
     hindex    : integer               := 0;
     fabtech   : integer range 0 to NTECH  := DEFFABTECH;
-    memtech   : integer range 0 to NTECH  := DEFMEMTECH;
+    memtech   : integer                   := DEFMEMTECH;
     nwindows  : integer range 2 to 32 := 8;
     dsu       : integer range 0 to 1  := 0;
     fpu       : integer range 0 to 63 := 0;
@@ -462,7 +469,7 @@ package leon3 is
     dlinesize : integer range 4 to 8  := 4;
     dsetsize  : integer range 1 to 256 := 1;
     dsetlock  : integer range 0 to 1  := 0;
-    dsnoop    : integer range 0 to 6  := 0;
+    dsnoop    : integer range 0 to 7  := 0;
     ilram      : integer range 0 to 1 := 0;
     ilramsize  : integer range 1 to 512 := 1;
     ilramstart : integer range 0 to 255 := 16#8e#;
@@ -486,7 +493,9 @@ package leon3 is
     mmupgsz   : integer range 0 to 5  := 0;
     bp        : integer               := 1;
     npasi     : integer range 0 to 1  := 0;
-    pwrpsr    : integer range 0 to 1  := 0
+    pwrpsr    : integer range 0 to 1  := 0;
+    rex       : integer range 0 to 1  := 0;
+    altwin    : integer range 0 to 1  := 0
   );
   port (
     clk    : in  std_ulogic;
@@ -508,7 +517,7 @@ package leon3 is
   generic (
     hindex     : integer               := 0;
     fabtech    : integer range 0 to NTECH  := DEFFABTECH;
-    memtech    : integer range 0 to NTECH  := DEFMEMTECH;
+    memtech    : integer                   := DEFMEMTECH;
     nwindows   : integer range 2 to 32 := 8;
     dsu        : integer range 0 to 1  := 0;
     fpu        : integer range 0 to 31 := 0;
@@ -530,7 +539,7 @@ package leon3 is
     dlinesize  : integer range 4 to 8  := 4;
     dsetsize   : integer range 1 to 256 := 1;
     dsetlock   : integer range 0 to 1  := 0;
-    dsnoop     : integer range 0 to 6  := 0;
+    dsnoop     : integer range 0 to 7  := 0;
     ilram      : integer range 0 to 1 := 0;
     ilramsize  : integer range 1 to 512 := 1;
     ilramstart : integer range 0 to 255 := 16#8e#;
@@ -555,7 +564,9 @@ package leon3 is
     mmupgsz    : integer range 0 to 5  := 0;
     bp         : integer               := 1;
     npasi      : integer range 0 to 1  := 0;
-    pwrpsr     : integer range 0 to 1  := 0
+    pwrpsr     : integer range 0 to 1  := 0;
+    rex        : integer range 0 to 1  := 0;
+    altwin     : integer range 0 to 1  := 0
   );
   port (
     clk        : in  std_ulogic;
@@ -578,7 +589,7 @@ package leon3 is
   generic (
     hindex    : integer               := 0;
     fabtech   : integer range 0 to NTECH  := DEFFABTECH;
-    memtech   : integer range 0 to NTECH  := DEFMEMTECH;
+    memtech   : integer                   := DEFMEMTECH;
     nwindows  : integer range 2 to 32 := 8;
     dsu       : integer range 0 to 1  := 0;
     fpu       : integer range 0 to 63 := 0;
@@ -600,11 +611,11 @@ package leon3 is
     dlinesize : integer range 4 to 8  := 4;
     dsetsize  : integer range 1 to 256 := 1;
     dsetlock  : integer range 0 to 1  := 0;
-    dsnoop    : integer range 0 to 6  := 0;
-    ilram      : integer range 0 to 1 := 0;
+    dsnoop    : integer range 0 to 7  := 0;
+    ilram      : integer range 0 to 2 := 0;
     ilramsize  : integer range 1 to 512 := 1;
     ilramstart : integer range 0 to 255 := 16#8e#;
-    dlram      : integer range 0 to 1 := 0;
+    dlram      : integer range 0 to 2 := 0;
     dlramsize  : integer range 1 to 512 := 1;
     dlramstart : integer range 0 to 255 := 16#8f#;
     mmuen     : integer range 0 to 1  := 0;
@@ -619,8 +630,8 @@ package leon3 is
     svt       : integer range 0 to 1  := 1;     -- single vector trapping
     rstaddr   : integer               := 0;
     smp       : integer range 0 to 15 := 0;    -- support SMP systems
-    iuft      : integer range 0 to 4  := 0;
-    fpft      : integer range 0 to 4  := 0;
+    iuft      : integer range 0 to 6  := 0;
+    fpft      : integer range 0 to 6  := 0;
     cmft      : integer range 0 to 1  := 0;
     iuinj     : integer               := 0;
     ceinj     : integer range 0 to 3  := 0;
@@ -631,7 +642,9 @@ package leon3 is
     mmupgsz   : integer range 0 to 5  := 0;
     bp        : integer               := 1;
     npasi     : integer range 0 to 1  := 0;
-    pwrpsr    : integer range 0 to 1  := 0
+    pwrpsr    : integer range 0 to 1  := 0;
+    rex       : integer range 0 to 1  := 0;
+    altwin    : integer range 0 to 1  := 0
   );
   port (
     clk    : in  std_ulogic;    -- free-running clock
@@ -813,7 +826,7 @@ package leon3 is
     pindex      : integer := 0;
     paddr       : integer := 0;
     pmask       : integer := 16#fff#;
-    ncnt        : integer := 2;
+    ncnt        : integer range 1 to 64 := 2;
     ncpu        : integer := 1;
     nmax        : integer := 0;
     lahben      : integer := 0;
@@ -825,7 +838,8 @@ package leon3 is
     pmask2      : integer := 16#fff#;
     astaten     : integer := 0;
     selreq      : integer := 0;
-    clatch      : integer := 0
+    clatch      : integer := 0;
+    forcer0     : integer range 0 to 1 := 0
     );
   port (
     rstn   : in  std_ulogic;
@@ -852,7 +866,8 @@ package leon3 is
     pmask   : integer := 16#fff#;
     ncpu    : integer := 1;
     eirq    : integer := 0;
-    irqmap  : integer := 0
+    irqmap  : integer := 0;
+    bootreg : integer := 1
   );
   port (
     rst    : in  std_ulogic;
@@ -897,11 +912,12 @@ package leon3 is
     tstamp     : integer range 0 to 16 := 0;
     wdogen     : integer range 0 to 1 := 0;
     nwdog      : integer range 1 to 16 := 1;
-    dynrstaddr : integer range 0 to 1 := 0;
+    dynrstaddr : integer range 0 to 0 := 0;
     rstaddr    : integer range 0 to 16#fffff# := 0;
     extrun     : integer range 0 to 1 := 0;
     irqmap     : integer := 0;
-    exttimer   : integer range 0 to 1 := 0
+    exttimer   : integer range 0 to 1 := 0;
+    bootreg    : integer range 0 to 1 := 1
   );
   port (
     rst    : in  std_ulogic;
@@ -912,7 +928,8 @@ package leon3 is
     irqo   : out irq_in_vector(0 to ncpu-1);
     wdog   : in  std_logic_vector(nwdog-1 downto 0) := (others => '0');
     cpurun : in  std_logic_vector(ncpu-1 downto 0) := (others => '0');
-    timer  : in  std_logic_vector(31 downto 0) := (others => '0')
+    timer  : in  std_logic_vector(31 downto 0) := (others => '0');
+    rstmap : in  std_logic_vector((64*5)-1 downto 0) := (others => '0')
   );
   end component; 
 
@@ -927,12 +944,13 @@ package leon3 is
     tstamp     : integer range 0 to 16 := 0;
     wdogen     : integer range 0 to 1 := 0;
     nwdog      : integer range 1 to 16 := 1;
-    dynrstaddr : integer range 0 to 1 := 0;
+    dynrstaddr : integer range 0 to 0 := 0;
     rstaddr    : integer range 0 to 16#fffff# := 0;
     extrun     : integer range 0 to 1 := 0;
     clkfact    : integer := 2;
     irqmap     : integer := 0;
-    exttimer   : integer range 0 to 1 := 0
+    exttimer   : integer range 0 to 1 := 0;
+    bootreg    : integer range 0 to 1 := 1
   );
   port (
     rst    : in  std_ulogic;
@@ -945,7 +963,8 @@ package leon3 is
     wdog   : in  std_logic_vector(nwdog-1 downto 0) := (others => '0');
     cpurun : in  std_logic_vector(ncpu-1 downto 0) := (others => '0');
     hclken : in  std_ulogic;
-    timer  : in  std_logic_vector(31 downto 0) := (others => '0')
+    timer  : in  std_logic_vector(31 downto 0) := (others => '0');
+    rstmap : in  std_logic_vector((64*5)-1 downto 0) := (others => '0')
   );
   end component;
 
@@ -954,7 +973,7 @@ component leon3ftsh
   generic (
     hindex    : integer               := 0;
     fabtech   : integer range 0 to NTECH  := DEFFABTECH;
-    memtech   : integer range 0 to NTECH  := DEFMEMTECH;
+    memtech   : integer                   := DEFMEMTECH;
     nwindows  : integer range 2 to 32 := 8;
     dsu       : integer range 0 to 1  := 0;
     fpu       : integer range 0 to 63 := 0;
@@ -976,11 +995,11 @@ component leon3ftsh
     dlinesize : integer range 4 to 8  := 4;
     dsetsize  : integer range 1 to 256 := 1;
     dsetlock  : integer range 0 to 1  := 0;
-    dsnoop    : integer range 0 to 6  := 0;
-    ilram      : integer range 0 to 1 := 0;
+    dsnoop    : integer range 0 to 7  := 0;
+    ilram      : integer range 0 to 2 := 0;
     ilramsize  : integer range 1 to 512 := 1;
     ilramstart : integer range 0 to 255 := 16#8e#;
-    dlram      : integer range 0 to 1 := 0;
+    dlram      : integer range 0 to 2 := 0;
     dlramsize  : integer range 1 to 512 := 1;
     dlramstart : integer range 0 to 255 := 16#8f#;
     mmuen     : integer range 0 to 1  := 0;
@@ -995,8 +1014,8 @@ component leon3ftsh
     svt       : integer range 0 to 1  := 1;     -- single vector trapping
     rstaddr   : integer               := 0;
     smp       : integer range 0 to 15 := 0;    -- support SMP systems
-    iuft      : integer range 0 to 4  := 0;
-    fpft      : integer range 0 to 4  := 0;
+    iuft      : integer range 0 to 6  := 0;
+    fpft      : integer range 0 to 6  := 0;
     cmft      : integer range 0 to 1  := 0;
     iuinj     : integer               := 0;
     ceinj     : integer range 0 to 3  := 0;
@@ -1006,7 +1025,8 @@ component leon3ftsh
     mmupgsz   : integer range 0 to 5  := 0;
     bp        : integer               := 1;
     npasi     : integer range 0 to 1  := 0;
-    pwrpsr    : integer range 0 to 1  := 0
+    pwrpsr    : integer range 0 to 1  := 0;
+    altwin    : integer range 0 to 1  := 0
   );
   port (
     clk    : in  std_ulogic;    -- free-running clock
@@ -1029,7 +1049,7 @@ component leon3x
   generic (
     hindex    : integer               := 0;
     fabtech   : integer range 0 to NTECH  := DEFFABTECH;
-    memtech   : integer range 0 to NTECH  := DEFMEMTECH;
+    memtech   : integer                   := DEFMEMTECH;
     nwindows  : integer range 2 to 32 := 8;
     dsu       : integer range 0 to 1  := 0;
     fpu       : integer range 0 to 63 := 0;
@@ -1051,11 +1071,11 @@ component leon3x
     dlinesize : integer range 4 to 8  := 4;
     dsetsize  : integer range 1 to 256 := 1;
     dsetlock  : integer range 0 to 1  := 0;
-    dsnoop    : integer range 0 to 6  := 0;
-    ilram      : integer range 0 to 1 := 0;
+    dsnoop    : integer range 0 to 7  := 0;
+    ilram      : integer range 0 to 2 := 0;
     ilramsize  : integer range 1 to 512 := 1;
     ilramstart : integer range 0 to 255 := 16#8e#;
-    dlram      : integer range 0 to 1 := 0;
+    dlram      : integer range 0 to 2 := 0;
     dlramsize  : integer range 1 to 512 := 1;
     dlramstart : integer range 0 to 255 := 16#8f#;
     mmuen     : integer range 0 to 1  := 0;
@@ -1070,8 +1090,8 @@ component leon3x
     svt       : integer range 0 to 1  := 1;     -- single vector trapping
     rstaddr   : integer               := 0;
     smp       : integer range 0 to 15 := 0;    -- support SMP systems
-    iuft      : integer range 0 to 4  := 0;
-    fpft      : integer range 0 to 4  := 0;
+    iuft      : integer range 0 to 6  := 0;
+    fpft      : integer range 0 to 6  := 0;
     cmft      : integer range 0 to 1  := 0;
     iuinj     : integer               := 0;
     ceinj     : integer range 0 to 3  := 0;
@@ -1082,7 +1102,9 @@ component leon3x
     mmupgsz   : integer range 0 to 5  := 0;
     bp        : integer               := 1;
     npasi     : integer range 0 to 1  := 0;
-    pwrpsr    : integer range 0 to 1  := 0
+    pwrpsr    : integer range 0 to 1  := 0;
+    rex       : integer               := 0;
+    altwin    : integer range 0 to 1  := 0
   );
   port (
     clk    : in  std_ulogic;    -- free-running clock
@@ -1124,3 +1146,4 @@ end component;
   end component;
 
 end;
+

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -765,7 +765,10 @@ entity ddr2phy_wrap_cbd is
     testen      : in std_ulogic;
     testrst     : in std_ulogic;
     scanen      : in std_ulogic;
-    testoen     : in std_ulogic);
+    testoen     : in std_ulogic;
+    oct_rdn     : in  std_logic := '0';
+    oct_rup     : in  std_logic := '0'
+    );
 end;
 
 architecture rtl of ddr2phy_wrap_cbd is
@@ -930,7 +933,8 @@ begin
         
         ddr_web2, ddr_rasb2, ddr_casb2, ddr_ad2, ddr_ba2,
 
-        testen, testrst, scanen, testoen
+        testen, testrst, scanen, testoen,
+        oct_rdn, oct_rup
         );
   sdi.writereq <= '0';
 end;

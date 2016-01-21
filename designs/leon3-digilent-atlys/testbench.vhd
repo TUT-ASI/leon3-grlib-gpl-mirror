@@ -8,7 +8,8 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -78,6 +79,7 @@ architecture behav of testbench is
   signal ddr_ad     : std_logic_vector(12 downto 0);    -- address
   signal ddr_ba     : std_logic_vector(2 downto 0);     -- bank address
   signal ddr_dq     : std_logic_vector(15 downto 0);    -- data
+  signal ddr_dq2    : std_logic_vector(15 downto 0);    -- data
   signal ddr_odt    : std_logic;
   signal ddr_rzq    : std_logic;
   signal ddr_zio    : std_logic;
@@ -155,6 +157,7 @@ begin
       ddr_dqs   => ddr_dqs,
       ddr_dqsn  => ddr_dqsn,
       ddr_ad    => ddr_ad,
+      ddr_ba    => ddr_ba,
       ddr_dq    => ddr_dq,
       ddr_rzq   => ddr_rzq,
       ddr_zio   => ddr_zio,
@@ -194,32 +197,31 @@ begin
 
   prom0 : spi_flash
     generic map (
-      ftype     => 4,
-      debug     => 0,
-      fname     => promfile,
-      readcmd   => CFG_SPIMCTRL_READCMD,
-      dummybyte => CFG_SPIMCTRL_DUMMYBYTE,
+      ftype      => 4,
+      debug      => 0,
+      fname      => promfile,
+      readcmd    => CFG_SPIMCTRL_READCMD,
+      dummybyte  => CFG_SPIMCTRL_DUMMYBYTE,
       dualoutput => CFG_SPIMCTRL_DUALOUTPUT,
-      memoffset => 16#200000# )
+      memoffset  => CFG_SPIMCTRL_OFFSET)
     port map (
       sck       => spi_clk,
       di        => spi_mosi,
       do        => spi_miso,
       csn       => spi_sel_n );
 
-  -- NOTE: LEON3 expects DDR2 memory chip with eight banks, but simulation
-  -- model has only one (implbanks) bank. Therefore other banks will alias
-  -- to bank 0..
-  ddr2mem0 : for i in 0 to 0 generate
-    u1: ddr2ram
-      generic map (width => 16, abits => 13, babits => 3,
-                   colbits => 10, rowbits => 13, implbanks => 1,
-                   fname => sdramfile, speedbin => 1)
-      port map (ck => ddr_clk, ckn => ddr_clkb, cke => ddr_cke, csn => ddr_csb,
-                odt => ddr_odt, rasn => ddr_ras, casn => ddr_cas, wen => ddr_we,
-                dm => ddr_dm, ba => ddr_ba, a => ddr_ad,
-                dq => ddr_dq, dqs => ddr_dqs, dqsn => ddr_dqsn);
-  end generate;
+  u1: ddr2ram
+    generic map (width => 16, abits => 13, babits => 3,
+                 colbits => 10, rowbits => 13, implbanks => 8,
+                 fname => sdramfile, speedbin => 1)
+    port map (ck => ddr_clk, ckn => ddr_clkb, cke => ddr_cke, csn => ddr_csb,
+              odt => ddr_odt, rasn => ddr_ras, casn => ddr_cas, wen => ddr_we,
+              dm => ddr_dm, ba => ddr_ba, a => ddr_ad,
+              dq => ddr_dq2, dqs => ddr_dqs, dqsn => ddr_dqsn);
+
+  ddr2delay0 : delay_wire 
+    generic map(data_width => ddr_dq'length, delay_atob => 0.0, delay_btoa => 13.5)
+    port map(a => ddr_dq, b => ddr_dq2);
 
   ps2devs: for i in 0 to 1 generate
     ps2_device(ps2clk(i), ps2data(i));
@@ -262,3 +264,4 @@ begin
   --end process;
 
 end;
+

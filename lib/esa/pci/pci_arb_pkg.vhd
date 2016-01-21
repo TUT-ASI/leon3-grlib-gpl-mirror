@@ -30,3 +30,4 @@ package pci_arb_pkg is
          PRDATA:     Std_Logic_Vector(PDMAX-1 downto 0); -- read data bus
       end record;
 end pci_arb_pkg;
+

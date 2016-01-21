@@ -29,8 +29,9 @@ endmenu
 
 mainmenu_option next_comment
   comment 'Clock generation'
-#  source lib/techmap/clocks/clkgen.in
-    choice 'System clock frequency                         ' \
+  comment 'Clock generator used when MIG is disabled            '
+  source lib/techmap/clocks/clkgen.in
+    choice 'System clock frequency (with MIG enabled)           ' \
 	"60MHz		CONFIG_FREQ60 \
 	 75MHz     	CONFIG_FREQ75  \
 	 80MHz     	CONFIG_FREQ80  \
@@ -54,10 +55,7 @@ comment 'Peripherals             '
   mainmenu_option next_comment
   comment 'Memory controllers             '
     source lib/esa/memoryctrl/mctrl.in
-    mainmenu_option next_comment
-    comment 'Xilinx MIG DDR2 controller   '
-	bool 'Enable Xilinx MIG DDR2/3 controller' CONFIG_MIG_DDR2
-    endmenu
+    source lib/gaisler/ddr/mig.in
   endmenu
 
   mainmenu_option next_comment
@@ -72,7 +70,7 @@ comment 'Peripherals             '
   endmenu
 
   mainmenu_option next_comment
-  comment 'UARTs, timers and irq control         '
+  comment 'UARTs, timers, irq control and perf. counters '
     source lib/gaisler/uart/uart1.in
     source lib/gaisler/irqmp/irqmp.in
     source lib/gaisler/misc/gptimer.in

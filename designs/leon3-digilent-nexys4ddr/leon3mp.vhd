@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -229,68 +229,6 @@ architecture rtl of leon3mp is
   end component;
 
   component BUFG port (O : out std_logic; I : in std_logic); end component;
-
-  component ahb2mig_7series_ddr2_dq16_ad13_ba3
-  generic(
-    hindex     : integer := 0;
-    haddr      : integer := 0;
-    hmask      : integer := 16#f00#;
-    pindex     : integer := 0;
-    paddr      : integer := 0;
-    pmask      : integer := 16#fff#;
-    SIM_BYPASS_INIT_CAL : string := "OFF";
-    SIMULATION : string  := "FALSE";
-    USE_MIG_INTERFACE_MODEL : boolean := false);
-  port(
-    ddr2_dq           : inout std_logic_vector(15 downto 0);
-    ddr2_dqs_p        : inout std_logic_vector(1 downto 0);
-    ddr2_dqs_n        : inout std_logic_vector(1 downto 0);
-    ddr2_addr         : out   std_logic_vector(12 downto 0);
-    ddr2_ba           : out   std_logic_vector(2 downto 0);
-    ddr2_ras_n        : out   std_logic;
-    ddr2_cas_n        : out   std_logic;
-    ddr2_we_n         : out   std_logic;
-    ddr2_reset_n      : out   std_logic;
-    ddr2_ck_p         : out   std_logic_vector(0 downto 0);
-    ddr2_ck_n         : out   std_logic_vector(0 downto 0);
-    ddr2_cke          : out   std_logic_vector(0 downto 0);
-    ddr2_cs_n         : out   std_logic_vector(0 downto 0);
-    ddr2_dm           : out   std_logic_vector(1 downto 0);
-    ddr2_odt          : out   std_logic_vector(0 downto 0);
-    ahbso             : out   ahb_slv_out_type;
-    ahbsi             : in    ahb_slv_in_type;
-    apbi              : in    apb_slv_in_type;
-    apbo              : out   apb_slv_out_type;
-    calib_done        : out   std_logic;
-    rst_n_syn         : in    std_logic;
-    rst_n_async       : in    std_logic;
-    clk_amba          : in    std_logic;
-    sys_clk_i         : in    std_logic;
-    clk_ref_i         : in    std_logic;
-    ui_clk            : out   std_logic;
-    ui_clk_sync_rst   : out   std_logic);
-  end component ;
-
-  -- pragma translate_off
-  component ahbram_sim
-  generic (
-    hindex  : integer := 0;
-    haddr   : integer := 0;
-    hmask   : integer := 16#fff#;
-    tech    : integer := DEFMEMTECH; 
-    kbytes  : integer := 1;
-    pipe    : integer := 0;
-    maccsz  : integer := AHBDW;
-    fname   : string  := "ram.dat"
-   );
-  port (
-    rst     : in  std_ulogic;
-    clk     : in  std_ulogic;
-    ahbsi   : in  ahb_slv_in_type;
-    ahbso   : out ahb_slv_out_type
-  );
-  end component ;
-  -- pragma translate_on
 
   signal CLKFBOUT      : std_logic;
   signal CLKFBIN       : std_logic;
@@ -696,8 +634,7 @@ spi_gen: if CFG_SPIMCTRL = 1 generate
                    sepirq => CFG_GPT_SEPIRQ, sbits => CFG_GPT_SW,
                    ntimers => CFG_GPT_NTIM, nbits  => CFG_GPT_TW)
       port map (rstn, clkm, apbi, apbo(3), gpti, open);
-    gpti.dhalt  <= dsuo.tstop;
-    gpti.extclk <= '0';
+    gpti <= gpti_dhalt_drive(dsuo.tstop);
   end generate;
   notim : if CFG_GPT_ENABLE = 0 generate apbo(3) <= apb_none; end generate;
 
@@ -783,7 +720,7 @@ spi_gen: if CFG_SPIMCTRL = 1 generate
 ---  DYNAMIC PARTIAL RECONFIGURATION  ---------------------------------
 -----------------------------------------------------------------------
   prc : if CFG_PRC = 1 generate
-    p1 : dprc generic map(hindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH, pindex => 14, paddr => 14, clk_sel => 1,
+    p1 : dprc generic map(hindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH, pindex => 14, paddr => 14, clk_sel => 1, edac_en => CFG_EDAC_EN, pirq => 14,
                           technology => CFG_FABTECH, crc_en => CFG_CRC_EN, words_block => CFG_WORDS_BLOCK, fifo_dcm_inst => CFG_DCM_FIFO, fifo_depth => CFG_DPR_FIFO)
        port map(rstn => rstn, clkm => clkm, clkraw => '0', clk100 => sys_clk_i, ahbmi => ahbmi, ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH), 
                 apbi => apbi, apbo => apbo(14), rm_reset => rm_reset);

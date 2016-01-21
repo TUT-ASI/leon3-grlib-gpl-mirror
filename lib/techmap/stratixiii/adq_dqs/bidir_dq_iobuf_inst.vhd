@@ -212,3 +212,4 @@ END RTL;
 -- Retrieval info: GEN_FILE: TYPE_NORMAL bidir_dq_iobuf_inst.bsf FALSE FALSE
 -- Retrieval info: GEN_FILE: TYPE_NORMAL bidir_dq_iobuf_inst_inst.vhd FALSE FALSE
 -- Retrieval info: LIB_FILE: stratixiii
+

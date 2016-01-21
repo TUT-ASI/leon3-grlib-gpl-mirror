@@ -55,12 +55,12 @@ set script_dir [file dirname [info script]]
 if {$make_assignments} {
     
     if [string match "quartus_map" $module] {
-	if { [file exists "$script_dir/ddr2ctrl/ddr2ctrl_p0_pin_assignments.tcl" ] } {
+	if { [file exists "$script_dir/uniphy/uniphy_p0_pin_assignments.tcl" ] } {
 	    #source "leon3mp_ddr2.tcl"
-	    post_message "Running pin assignement $script_dir/ddr2ctrl/ddr2ctrl_p0_pin_assignments.tcl"
-	    source "$script_dir/ddr2ctrl/ddr2ctrl_p0_pin_assignments.tcl"
+	    post_message "Running pin assignement $script_dir/uniphy/uniphy_p0_pin_assignments.tcl"
+	    source "$script_dir/uniphy/uniphy_p0_pin_assignments.tcl"
 	} else {
-	    post_message "Didnt find pin assignement $script_dir/ddr2ctrl/ddr2ctrl_p0_pin_assignments.tcl"
+	    post_message "Didnt find pin assignement $script_dir/uniphy/uniphy_p0_pin_assignments.tcl"
 	}
     }
     if {$need_to_close_project} {

@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -211,7 +211,6 @@ signal memo  : memory_out_type;
 signal wpo   : wprot_out_type;
 signal sdi   : sdctrl_in_type;
 signal sdo   : sdram_out_type;
-signal leds  : std_logic_vector(3 downto 0);    -- I/O port
 
 signal apbi, apbi2  : apb_slv_in_type;
 signal apbo, apbo2  : apb_slv_out_vector := (others => apb_none);
@@ -672,14 +671,16 @@ begin
    sepirq => CFG_GPT_SEPIRQ, sbits => CFG_GPT_SW, ntimers => CFG_GPT_NTIM,
    nbits => CFG_GPT_TW, wdog => CFG_GPT_WDOGEN*CFG_GPT_WDOG)
     port map (rstn, clkm, apbi, apbo(3), gpti, gpto);
-    gpti.dhalt <= dsuo.tstop; gpti.extclk <= '0';
+    gpti <= gpti_dhalt_drive(dsuo.tstop);
   end generate;
   wden : if CFG_GPT_WDOGEN /= 0 generate
     wdogl <= gpto.wdogn or not rstn;
-    wdogn_pad : odpad generic map (tech => padtech) port map (wdogn, wdogl);
+    --wdogn_pad : odpad generic map (tech => padtech) port map (wdogn, wdogl);
+    wdogn_pad : outpad generic map (tech => padtech) port map (wdogn, wdogl);
   end generate;
   wddis : if CFG_GPT_WDOGEN = 0 generate
-    wdogn_pad : odpad generic map (tech => padtech) port map (wdogn, vcc);
+    --wdogn_pad : odpad generic map (tech => padtech) port map (wdogn, vcc);
+    wdogn_pad : outpad generic map (tech => padtech) port map (wdogn, vcc);
   end generate;
 
   nogpt : if CFG_GPT_ENABLE = 0 generate apbo(3) <= apb_none; end generate;
@@ -807,6 +808,7 @@ begin
   end generate;
 
   ahbs : if CFG_AHBSTAT = 1 generate   -- AHB status register
+    stati <= ahbstat_in_none;
     ahbstat0 : ahbstat generic map (pindex => 13, paddr => 13, pirq => 1,
    nftslv => CFG_AHBSTATN)
       port map (rstn, clkm, ahbmi, ahbsi, stati, apbi, apbo(13));

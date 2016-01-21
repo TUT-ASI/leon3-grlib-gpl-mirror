@@ -39,11 +39,11 @@ int main(){
   *address_pointer=(unsigned int)&bitstream1;
   *reset_pointer=1;
   *control_pointer=sizeof(bitstream1)/sizeof(unsigned int);
-  while((*status_pointer!=0xF) && (*status_pointer!=0x8) && (*status_pointer!=0x1)){}
+  while( (((*status_pointer)&0x0F)!=15) && (((*status_pointer)&0x0F)!=1) && (((*status_pointer)&0x0F)!=8) && (((*status_pointer)&0x0F)!=4) && (((*status_pointer)&0x0F)!=2)){}
   printf("Partial Reconfiguration ended...Status:%d\n",*status_pointer);
   
   // If reconfiguration ended successfully, trigger FIR module and diplay results
-  if (*status_pointer==15){
+  if (((*status_pointer)&0x0F)==15){
     printf("Slow FIR filter results...\n");
    *control_pointer1=1; 
    while(*control_pointer1 != 2){} 
@@ -54,11 +54,11 @@ int main(){
   // Set DPRC registers, trigger second reconfiguration, and wait until it completes
   *address_pointer=(unsigned int)&bitstream0; 
   *control_pointer=sizeof(bitstream0)/sizeof(unsigned int); 
-  while((*status_pointer!=0xF) && (*status_pointer!=0x8) && (*status_pointer!=0x1)){} 
+  while( (((*status_pointer)&0x0F)!=15) && (((*status_pointer)&0x0F)!=1) && (((*status_pointer)&0x0F)!=8) && (((*status_pointer)&0x0F)!=4) && (((*status_pointer)&0x0F)!=2)){}
   printf("Partial Reconfiguration ended...Status:%d\n",*status_pointer);
 
   // If reconfiguration ended successfully, trigger FIR module and diplay results
-  if (*status_pointer==15){
+  if (((*status_pointer)&0x0F)==15){
     printf("Fast FIR filter results...\n");
     *control_pointer1=1;
     while(*control_pointer1 != 2){}

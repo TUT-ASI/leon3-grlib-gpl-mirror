@@ -106,6 +106,8 @@ set_propagated_clock [get_clocks phy_rxclk]
 create_clock -period 8.000 -name phy_txclk [get_pins eth0.ibufds_gtrefclk/O]
 set_propagated_clock [get_clocks phy_txclk]
 
+set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets -of [get_pins eth0.ibufds_gtrefclk/O]]
+
 # CDC
 set_max_delay -datapath_only -from [all_registers -clock [get_clocks -include_generated_clocks clk200]    ] -to [all_registers -clock [get_clocks phy_rxclk]                           ] 8.000
 set_max_delay -datapath_only -from [all_registers -clock [get_clocks -include_generated_clocks clk200]    ] -to [all_registers -clock [get_clocks -include_generated_clocks phy_txclk] ] 8.000

@@ -9,3 +9,9 @@
 #define RAMSTART  0x40000000
 #define RAMSIZE   0x00100000
 
+#define DDR2CTRLIO  0xfff00100
+#define DDR2CFG1    0x86218491
+//#define DDR2CFG3    0x02d10000
+#define DDR2CFG3    0x12d00000
+#define DDR2CFG4    0x00000100
+#define DDR2CFG5    0x10530104

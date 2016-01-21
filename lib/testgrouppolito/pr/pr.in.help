@@ -4,7 +4,11 @@ CONFIG_PARTIAL
 	
 Bitstream Verification
 CONFIG_CRC
-	Say Y to enable bitstream verification (CRC) (i.e., DPRC works in dependable mode).
+	Say Y to enable bitstream verification (CRC) (i.e., DPRC works in D2PRC-CRC mode).
+
+Bitstream Error Detection and Correction
+CONFIG_EDAC
+	Say Y to enable bitstream EDAC (i.e., DPRC works in D2PRC-SECDED mode).
 
 CRC Block Size
 CONFIG_BLOCK

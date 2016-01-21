@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -60,7 +60,7 @@ begin
   pa3e : if (tech = apa3e) generate
     x0 : apa3e_outpad generic map (level, slew, voltage, strength) port map (pad, i);
   end generate;
-  igl2 : if (tech = igloo2) generate
+  igl2 : if (tech = igloo2) or (tech = rtg4) generate
     x0 : igloo2_outpad port map (pad, i);
   end generate;
   pa3l : if (tech = apa3l) generate
@@ -146,3 +146,4 @@ begin
 	 port map (pad(j), i(j), cfgi);
   end generate;
 end;
+

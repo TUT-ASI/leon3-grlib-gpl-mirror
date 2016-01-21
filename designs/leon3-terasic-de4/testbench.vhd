@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -488,6 +488,39 @@ begin
                 FLASH_WE_n, FLASH_OE_n);
   FLASH_RYBY_n  <= 'H';
 
+  ddr2mem0 : ddr2ram
+    generic map(
+      width     => 64,
+      abits     => 14,
+      babits    => 3,
+      colbits   => 10,
+      rowbits   => 11,
+      implbanks => 8,
+      fname     => sdramfile,
+      speedbin  => 1,
+      density   => 3,
+      lddelay   => (0 ns),
+      swap      => 0,
+      ldguard   => 1
+      )
+    port map (
+      a       => M1_DDR2_addr(13 downto 0), -- ddr2_addr,
+      ba      => M1_DDR2_ba, -- ddr2_ba,
+      ck      => M1_DDR2_clk(0), -- ddr2_ck_p(0),
+      ckn     => M1_DDR2_clk_n(0), -- ddr2_ck_n(0),
+      cke     => M1_DDR2_cke(0), -- ddr2_cke(0),
+      csn     => M1_DDR2_cs_n(0), -- ddr2_cs_n(0),
+      dm      => M1_DDR2_dm, -- ddr2_dm,
+      rasn    => M1_DDR2_ras_n, -- ddr2_ras_n,
+      casn    => M1_DDR2_cas_n, -- ddr2_cas_n,
+      wen     => M1_DDR2_we_n, -- ddr2_we_n,
+      dq      => M1_DDR2_dq, -- ddr2_dq(15 downto 0),
+      dqs     => M1_DDR2_dqs, -- ddr2_dqs_p,
+      dqsn    => M1_DDR2_dqsn, -- ddr2_dqs_n,
+      odt     => M1_DDR2_odt(0), -- ddr2_odt(0),
+      doload  => LED(2)
+    );
+
   test0 :  grtestmod
     generic map ( width => 16 )
     port map ( CPU_RESET_n, OSC_50_BANK3, LED(0), FSM_A(20 downto 1), FSM_D,
@@ -587,3 +620,4 @@ begin
     wait;
   end process;
 end ;
+

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -51,11 +51,11 @@ entity mmu_dcache is
     dlinesize  :     integer range 4 to 8     := 4;
     dsetsize   :     integer range 1 to 256   := 1;
     dsetlock   :     integer range 0 to 1     := 0;
-    dsnoop     :     integer range 0 to 6     := 0;
-    dlram      :     integer range 0 to 1     := 0;
+    dsnoop     :     integer range 0 to 7     := 0;
+    dlram      :     integer range 0 to 2     := 0;
     dlramsize  :     integer range 1 to 512   := 1;
     dlramstart :     integer range 0 to 255   := 16#8f#;
-    ilram      :     integer range 0 to 1     := 0;
+    ilram      :     integer range 0 to 2     := 0;
     ilramstart :     integer range 0 to 255   := 16#8e#;
     itlbnum    :     integer range 2 to 64    := 8;
     dtlbnum    :     integer range 2 to 64    := 8;
@@ -64,7 +64,8 @@ entity mmu_dcache is
     cached     :     integer                  := 0;
     mmupgsz    :     integer range 0 to 5     := 0;
     smp        :     integer                  := 0;
-    mmuen      :     integer                  := 0);
+    mmuen      :     integer                  := 0;
+    icen       :     integer range 0 to 1     := 0);
   port (
     rst        : in  std_ulogic;
     clk        : in  std_ulogic;
@@ -125,6 +126,7 @@ architecture rtl of mmu_dcache is
     conv_std_logic_vector(ilramstart, 8);
   constant DIR_BITS        : integer := log2x(DSETS);
   constant bend            : std_logic_vector(4 downto 2) := "101";
+  constant DLRAM_EN        : integer := conv_integer(conv_std_logic(dlram /= 0));
 
   type rdatatype is (dtag, ddata, dddata, dctx, icache, memory,
                      sysr , misc, mmusnoop_dtag);  -- sources during cache read
@@ -157,6 +159,7 @@ architecture rtl of mmu_dcache is
      hit, valid    : std_ulogic;
      flush         : std_ulogic;                           -- flush in progress
      flush2        : std_ulogic;                           -- flush in progress
+     fflush        : std_ulogic;                           -- first flush
      mexc          : std_ulogic;                           -- latched mexc
      bmexc         : std_ulogic;                           -- latched mexc from burst read
      wb            : write_buffer_type;                    -- write buffer
@@ -315,6 +318,7 @@ architecture rtl of mmu_dcache is
     valid      => '0',
     flush      => '0',
     flush2     => '1',
+    fflush     => '1',
     mexc       => '0',
     bmexc      => '0',
     wb         => write_buffer_none,
@@ -484,7 +488,7 @@ begin
     flushaddr := r.xaddress(OFFSET_HIGH downto OFFSET_LOW);
     hcache := '0'; 
     validv := (others => '0'); hitv := (others => '0'); cache := '0';
-    if (dlram = 1) then rlramrd := r.lramrd; else rlramrd := '0'; end if;
+    if (dlram /= 0) then rlramrd := r.lramrd; else rlramrd := '0'; end if;
 
     miscdata := (others => '0'); pflush := '0';
     pflushaddr := dci.maddress(VA_I_U downto VA_I_D); pflushtyp := PFLUSH_PAGE;
@@ -532,7 +536,6 @@ begin
     end if;
     
 -- AHB snoop handling
-
     if (DSNOOP2 /= 0) then
 
       -- snoop on NONSEQ or SEQ and first word in cache line
@@ -558,15 +561,21 @@ begin
             ((dcramov.stag(i)(TAG_HIGH downto TAG_LOW) = rs.addr(TAG_HIGH downto TAG_LOW)) 
              )
           then
-            if DSNOOPSEP then flushaddr := rs.addr(OFFSET_HIGH downto OFFSET_LOW);
-            else snoopaddr := rs.addr(OFFSET_HIGH downto OFFSET_LOW); end if;
+            if DSNOOP2 /= 3 then
+              if DSNOOPSEP then flushaddr := rs.addr(OFFSET_HIGH downto OFFSET_LOW);
+              else snoopaddr := rs.addr(OFFSET_HIGH downto OFFSET_LOW); end if;
+            end if;
             snoopwe := '1'; snoopset := i; snhit(i) := '1';
           end if;
         end if;
       end loop;
     end if;
-    vs.snhit := snhit;  -- not needed, debug only
-
+    vs.snhit := snhit;
+    if DSNOOP2=3 then
+      snhit := (others => '0');
+      snoopwe := '0';
+    end if;
+    
 -- generate access parameters during pipeline stall
 
     if ((r.holdn) = '0') or ((dsu = 1) and (dci.dsuen = '1')) then
@@ -668,7 +677,7 @@ begin
     if (mcdo.grant and not r.wb.read and r.req) = '1' then v.wb.lock := '0'; end if;
     if (mcdo.grant and r.req) = '1' then v.wb.lock2 := r.wb.lock; end if;
     
-    if (dlram = 1) then
+    if (dlram /= 0) then
       if ((r.holdn) = '0') or ((dsu = 1) and (dci.dsuen = '1')) then
         laddr := r.xaddress;
       elsif ((dci.enaddr and not dci.read) = '1') or (eholdn = '0') then
@@ -680,7 +689,7 @@ begin
       then lramcs := '1'; end if;      
     end if;
     
-    if (ilram = 1) then 
+    if (ilram /= 0) then 
       if  (dci.enaddr = '1') and (dci.maddress(31 downto 24) = ILRAM_START)  then ilramen := '1'; end if;
     end if;
 
@@ -771,7 +780,7 @@ begin
           if (ico.flush = '1') or (dci.asi(4) = '1') then mexc := '1';
           else v.dstate := asi_idtag; v.holdn := dci.dsuen; end if;
         when ASI_UINST | ASI_SINST =>
-          if (ilram = 1) then v.dstate := asi_idtag; v.ilramen := '1'; end if;
+          if (ilram /= 0) then v.dstate := asi_idtag; v.ilramen := '1'; end if;
         when ASI_DFLUSH =>              -- flush data cache
           if dci.read = '0' then flush := '1'; end if;
         when ASI_DDATA =>               -- Read/write Dcache data
@@ -833,10 +842,10 @@ begin
           end if;
         when others =>
           if dci.read = '1' then        -- read access
-            v.rburst := hcache and (andv(r.cctrl.dcs) or andv(dci.size)); -- and not forcemiss;
-            if (dlram = 1) and (lramen = '1') then
+            v.rburst := hcache and andv(r.cctrl.dcs); -- and not forcemiss;
+            if (dlram /= 0) and (lramen = '1') then
               lramrd := '1';
-            elsif (ilram = 1) and (ilramen = '1') then
+            elsif (ilram /= 0) and (ilramen = '1') then
               if (ico.flush = '1') or (dci.size /= "10") then mexc := '1';
               else v.dstate := asi_idtag; v.holdn := dci.dsuen; v.ilramen := '1'; end if;              
             elsif dci.dsuen = '0' then
@@ -846,13 +855,15 @@ begin
                 if (not M_EN) or ((dci.asi(4 downto 0) = ASI_MMU_BP) or (r.mmctrl1.e = '0')) then
                   -- cache disabled if mmu-enabled but off or BYPASS
                   if ((r.stpend  = '0') or ((mcdo.ready and not r.req) = '1')) then
-                    v.req := '1'; v.burst := v.rburst;
+                    v.req := '1'; v.burst := v.rburst or (andv(dci.size) and not dci.maddress(2));
                   end if;
                 else
                   -- ## mmu case >
                   if (r.stpend  = '0') or ((mcdo.ready and not r.req)= '1') then
                     v.wbinit := '1';     -- wb init in idle
-                    v.burst := v.rburst;
+                    -- defer or:in in rburst to after mmu lookup since it
+                    -- might get cleared
+                    v.burst := (andv(dci.size) and not dci.maddress(2));
                   else
                     v.wbinit := '0';
                   end if;
@@ -871,12 +882,12 @@ begin
               end if;
             end if;
           else                  -- write access
-            if (dlram = 1) and (lramen = '1') then
+            if (dlram /= 0) and (lramen = '1') then
               lramwr := '1';
               if (dci.size = "11") then -- double store
                 v.dstate := dblwrite; v.xaddress(2) := '1';
               end if; 
-            elsif (ilram = 1) and (ilramen = '1') then
+            elsif (ilram /= 0) and (ilramen = '1') then
               if (ico.flush = '1') or (dci.size /= "10") then mexc := '1';
               else v.dstate := asi_idtag; v.holdn := dci.dsuen; v.ilramen := '1'; end if;
             elsif dci.dsuen = '0' then
@@ -1009,7 +1020,7 @@ begin
             if r.wbinit = '1' then
               v.wb.addr := v.paddress; --mmudco.transdata.data;
               v.req := '1';
-              v.burst := v.rburst;
+              v.burst := r.burst or v.rburst;
               if v.rburst = '1' then
                 v.wb.addr(LINE_HIGH downto 0) := (others => '0');
               end if;
@@ -1041,7 +1052,7 @@ begin
           else v.burst := r.burst; end if;
         end if;
         if mcdo.ready = '1' then
-          if (r.cache or r.hit) = '0' then
+          if r.rburst = '0' then
             mds := r.holdn or r.nomds; v.xaddress(2) := '1'; v.holdn := '1';
           else
             if r.wb.addr(LINE_HIGH downto LINE_LOW) = r.xaddress(LINE_HIGH downto LINE_LOW) then 
@@ -1053,19 +1064,24 @@ begin
           v.bmexc := r.bmexc or mcdo.mexc or dci.flushl;
           if r.req = '0' then
             twrite := r.cache; tagclear := v.bmexc;
-            if (((dci.enaddr and not mds) = '1') or (dci.flushl = '1') or ((dci.enaddr and twrite) = '1')) 
-                and ((r.cctrl.dcs(0) = '1') or (dlram = 1))
+            if (((dci.enaddr and not r.holdn) = '1') or (dci.flushl = '1') or ((dci.eenaddr and r.holdn and eholdn) = '1'))
+                and ((r.cctrl.dcs(0) = '1') or (dlram /= 0))
             then v.dstate := loadpend; v.holdn := '0';
             else v.dstate := idle; v.holdn := '1'; end if;
-          else v.nomds := not r.cache; end if;
-          tpwrite := twrite;
+          else v.nomds := not r.rburst; end if;
+          if DSNOOP2/=3 then
+            tpwrite := twrite;
+          end if;
+          if DSNOOP2=3 and r.req='1' and r.cache='1' then
+            tpwrite := '1';
+          end if;
         end if;
         v.mexc := mcdo.mexc and not r.rburst; v.wb.data2 := mcdo.data;
       else
         if (r.ready or (mcdo.ready and not r.req)) = '1' then   -- wait for store queue
           v.wb.addr := paddress;
-          v.wb.size := r.size; 
-          v.burst := r.rburst;
+          v.wb.size := r.size;
+          v.burst := r.rburst or (r.size(1) and r.size(0) and not r.xaddress(2));
           if r.rburst = '1' then
             v.wb.addr(LINE_HIGH downto 0) := (others => '0');
           end if;
@@ -1076,7 +1092,7 @@ begin
       end if;
     when loadpend =>            -- return from read miss with load pending
       taddr := dci.maddress(OFFSET_HIGH downto LINE_LOW);
-      if (dlram = 1) then
+      if (dlram /= 0) then
         laddr := dci.maddress;
         if laddr(31 downto 24) = LOCAL_RAM_START then lramcs := '1'; end if;
       end if;
@@ -1088,7 +1104,7 @@ begin
     when dblwrite =>            -- second part of double store cycle
       edata := dci.edata;  -- needed for STD store hit
       taddr := r.xaddress(OFFSET_HIGH downto LINE_LOW); 
-      if (dlram = 1) and (rlramrd = '1') then
+      if (dlram /= 0) and (rlramrd = '1') then
         laddr := r.xaddress; lramwr := '1';
       else
         if r.hit = '1' then dwrite := r.valid; end if;
@@ -1192,7 +1208,7 @@ begin
 
       v.req := v.req or v.reqst; v.stpend := v.stpend or v.reqst; v.reqst := '0';
 
-    if (dlram = 1) then v.lramrd := lramcs; end if; -- read local ram data 
+    if (dlram /= 0) then v.lramrd := lramcs; end if; -- read local ram data 
     
 -- select data to return on read access
 -- align if byte/half word read from cache or memory.
@@ -1313,7 +1329,7 @@ begin
         rdatav(0) := ico.cfg;
       when others =>
         rdatav(0) := cache_cfg(drepl, dsets, dlinesize, dsetsize, dsetlock, 
-                dsnoop, dlram, dlramsize, dlramstart, mmuen);
+                dsnoop, DLRAM_EN, dlramsize, dlramstart, mmuen);
       end case;
     end case;
 
@@ -1431,9 +1447,16 @@ begin
       if DSNOOPSEP then flushaddr := r.faddr; end if;
       taddr(OFFSET_HIGH downto OFFSET_LOW) := r.faddr;
       wlrr := (others => '0');
-      if ((r.faddr(DOFFSET_BITS -1) and not v.faddr(DOFFSET_BITS -1)) or r.flushl2) = '1' then
+      if ((r.faddr(DOFFSET_BITS -1) and not v.faddr(DOFFSET_BITS -1)) or r.flushl2) = '1' and (DSNOOP2/=3 or r.fflush='1')
+      then
         v.flush := '0';
+        v.fflush := '0';
       end if;
+    end if;
+
+    if DSNOOP2=3 and DCEN/=0 and r.fflush='0' and r.flush='1' and r.flush2='1' and dci.flush='0' and dci.flushl='0' then
+      v.flush:='0';
+      v.flush2:='0';
     end if;
 
 -- update cache with memory data during read miss
@@ -1481,14 +1504,21 @@ begin
     end if;
 
     
-    
+
+    if dci.mmucacheclr='1' then
+      v.cctrl.dcs := "00";
+      v.cctrl.ics := "00";
+      v.cctrl.burst := '0';
+      v.mmctrl1.e := '0';
+    end if;
+
 -- reset
 
     if (not RESET_ALL) and (rst = '0') then 
       v.dstate := idle; v.stpend  := '0'; v.req := '0'; v.burst := '0';
       v.read := '0'; v.flush := '0'; v.nomds := '0'; v.holdn := '1';
       v.rndcnt := (others => '0'); v.setrepl := (others => '0');
-      v.dsuset := (others => '0'); v.flush2 := '1';
+      v.dsuset := (others => '0'); v.flush2 := '1'; v.fflush:='1';
       v.lrr := '0'; v.lock := '0'; v.ilramen := '0';
       v.cctrl.dcs := "00"; v.cctrl.ics := "00";
       v.cctrl.burst := '0'; v.cctrl.dsnoop := '0';
@@ -1515,6 +1545,10 @@ begin
 
     if dsnoop = 0 then v.cctrl.dsnoop := '0'; end if;
     if not M_EN then v.mmctrl1 := mmctrl_type1_none; end if; -- kill MMU regs if not enabled
+
+    -- Force cache control reg to off state if disabled
+    if dcen=0 then v.cctrl.dcs := "00"; end if;
+    if icen=0 then v.cctrl.ics := "00"; end if;
 
 -- Drive signals
     c <= v; cs <= vs;   -- register inputs
@@ -1547,6 +1581,11 @@ begin
     dcrami.faddress(19 downto (OFFSET_HIGH - OFFSET_LOW +1)) <= 
         zero32(19 downto (OFFSET_HIGH - OFFSET_LOW +1));
     dcrami.faddress(OFFSET_HIGH - OFFSET_LOW downto 0) <= flushaddr;
+    dcrami.snhit <= rs.snhit;
+    dcrami.snhitaddr(19 downto (OFFSET_HIGH - OFFSET_LOW +1)) <=
+      zero32(19 downto (OFFSET_HIGH - OFFSET_LOW +1));
+    dcrami.snhitaddr(OFFSET_HIGH - OFFSET_LOW downto 0) <= rs.addr(OFFSET_HIGH downto OFFSET_LOW);
+    dcrami.flushall <= r.flush2;
     
     -- data ram inputs
     dcrami.denable   <= enable;

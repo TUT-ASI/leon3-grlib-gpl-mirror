@@ -39,6 +39,91 @@ string dec2bin(int value){
     return result;
 }
 
+bool c2b(char c){
+  if (c=='1') return true;
+  else return false;
+}
+
+string encode_word(string data_in){ // returns a 39-bit encoded word starting from 32-bit information
+  bool coded[39];
+  char c_coded[40];
+
+  reverse(data_in.begin(), data_in.end());
+
+  // P1
+  coded[1] = c2b(data_in.at(0)) ^ c2b(data_in.at(1)) ^ c2b(data_in.at(3)) ^ c2b(data_in.at(4)) ^ c2b(data_in.at(6)) ^ c2b(data_in.at(8)) ^
+             c2b(data_in.at(10)) ^ c2b(data_in.at(11)) ^ c2b(data_in.at(13)) ^ c2b(data_in.at(15)) ^ c2b(data_in.at(17)) ^ c2b(data_in.at(19)) ^
+             c2b(data_in.at(21)) ^ c2b(data_in.at(23)) ^ c2b(data_in.at(25)) ^ c2b(data_in.at(26)) ^ c2b(data_in.at(28)) ^ c2b(data_in.at(30));
+  // P2
+  coded[2] = c2b(data_in.at(0)) ^ c2b(data_in.at(2)) ^ c2b(data_in.at(3)) ^ c2b(data_in.at(5)) ^ c2b(data_in.at(6)) ^ c2b(data_in.at(9)) ^
+               c2b(data_in.at(10)) ^ c2b(data_in.at(12)) ^ c2b(data_in.at(13)) ^ c2b(data_in.at(16)) ^ c2b(data_in.at(17)) ^ c2b(data_in.at(20)) ^
+               c2b(data_in.at(21)) ^ c2b(data_in.at(24)) ^ c2b(data_in.at(25)) ^ c2b(data_in.at(27)) ^ c2b(data_in.at(28)) ^ c2b(data_in.at(31));
+  coded[3] = c2b(data_in.at(0));
+  // P3
+  coded[4] = c2b(data_in.at(1)) ^ c2b(data_in.at(2)) ^ c2b(data_in.at(3)) ^ c2b(data_in.at(7)) ^ c2b(data_in.at(8)) ^ c2b(data_in.at(9)) ^
+               c2b(data_in.at(10)) ^ c2b(data_in.at(14)) ^ c2b(data_in.at(15)) ^ c2b(data_in.at(16)) ^ c2b(data_in.at(17)) ^ c2b(data_in.at(22)) ^
+               c2b(data_in.at(23)) ^ c2b(data_in.at(24)) ^ c2b(data_in.at(25)) ^ c2b(data_in.at(29)) ^ c2b(data_in.at(30)) ^ c2b(data_in.at(31));
+  coded[5] = c2b(data_in.at(1));
+  coded[6] = c2b(data_in.at(2));
+  coded[7] = c2b(data_in.at(3));
+  // P4
+  coded[8] = c2b(data_in.at(4)) ^ c2b(data_in.at(5)) ^ c2b(data_in.at(6)) ^ c2b(data_in.at(7)) ^ c2b(data_in.at(8)) ^ c2b(data_in.at(9)) ^
+               c2b(data_in.at(10)) ^ c2b(data_in.at(18)) ^ c2b(data_in.at(19)) ^ c2b(data_in.at(20)) ^ c2b(data_in.at(21)) ^ c2b(data_in.at(22)) ^
+               c2b(data_in.at(23)) ^ c2b(data_in.at(24)) ^ c2b(data_in.at(25));
+  coded[9] = c2b(data_in.at(4));
+  coded[10] = c2b(data_in.at(5));
+  coded[11] = c2b(data_in.at(6));
+  coded[12] = c2b(data_in.at(7));
+  coded[13] = c2b(data_in.at(8));
+  coded[14] = c2b(data_in.at(9));
+  coded[15] = c2b(data_in.at(10));
+  // P5
+  coded[16] = c2b(data_in.at(11)) ^ c2b(data_in.at(12)) ^ c2b(data_in.at(13)) ^ c2b(data_in.at(14)) ^ c2b(data_in.at(15)) ^ c2b(data_in.at(16)) ^
+                c2b(data_in.at(17)) ^ c2b(data_in.at(18)) ^ c2b(data_in.at(19)) ^ c2b(data_in.at(20)) ^ c2b(data_in.at(21)) ^ c2b(data_in.at(22)) ^
+                c2b(data_in.at(23)) ^ c2b(data_in.at(24)) ^ c2b(data_in.at(25));
+  coded[17] = c2b(data_in.at(11));
+  coded[18] = c2b(data_in.at(12));
+  coded[19] = c2b(data_in.at(13));
+  coded[20] = c2b(data_in.at(14));
+  coded[21] = c2b(data_in.at(15));
+  coded[22] = c2b(data_in.at(16));
+  coded[23] = c2b(data_in.at(17));
+  coded[24] = c2b(data_in.at(18));
+  coded[25] = c2b(data_in.at(19));
+  coded[26] = c2b(data_in.at(20));
+  coded[27] = c2b(data_in.at(21));
+  coded[28] = c2b(data_in.at(22));
+  coded[29] = c2b(data_in.at(23));
+  coded[30] = c2b(data_in.at(24));
+  coded[31] = c2b(data_in.at(25));
+  // P6
+  coded[32] = c2b(data_in.at(26)) ^ c2b(data_in.at(27)) ^ c2b(data_in.at(28)) ^ c2b(data_in.at(29)) ^ c2b(data_in.at(30)) ^ c2b(data_in.at(31));
+  coded[33] = c2b(data_in.at(26));
+  coded[34] = c2b(data_in.at(27));
+  coded[35] = c2b(data_in.at(28));
+  coded[36] = c2b(data_in.at(29));
+  coded[37] = c2b(data_in.at(30));
+  coded[38] = c2b(data_in.at(31));
+
+  // P0
+  coded[0] = false;
+
+  for (int i=1; i<39; i++)
+    coded[0]= coded[0] ^ coded[i];
+
+  for (int i=0; i<39; i++){
+		if (coded[i]) c_coded[i]='1';
+		else c_coded[i]='0';
+	}
+
+  c_coded[39]='\0';
+  string str_coded(c_coded);
+  reverse(str_coded.begin(), str_coded.end());
+
+  return str_coded;
+
+}
+
 class crc32{
 public:
     void crc32_init();
@@ -110,9 +195,11 @@ int crc32::crc32_koopmanII(string value){
 
 int main(int argc, char *argv[])
 {
-    unsigned int i, j, crc_block, crc_value, crc_count, line_count, line_value;
+    unsigned int i, j, crc_value, line_count, line_value;
+    int crc_block, crc_count;
     bool flag;
-    string value, line;
+    string value, line, secded_word;
+    char secded_words[32];
     ifstream inFile;
     ofstream outFile;
     crc32 crc;
@@ -124,14 +211,19 @@ int main(int argc, char *argv[])
     }
 
     value=argv[argc-2];
-    for(i=0;i<value.size();i++)
+
+    if (!isdigit(value[0]) && (value[0]!='-')){
+        cout << "ERROR: Wrong input parameters" << endl;
+        exit(1);
+    }
+    for(i=1;i<value.size();i++)
         if (!isdigit(value[i])){
             cout << "ERROR: Wrong input parameters" << endl;
             exit(1);
         }
 
     crc_block=atoi(argv[argc-2]);
-    if ((crc_block<0) || (crc_block==1) || (crc_block>496)){
+    if ((crc_block==1) || (crc_block>496)){
         cout << "ERROR: Wrong input parameters" << endl;
         exit(1);
     }
@@ -178,7 +270,8 @@ int main(int argc, char *argv[])
             if (inFile.eof()) break;
             line_count++;
         }
-        outFile << "0x" << hex << setw(8) << setfill('0') << uppercase << line_count+1;
+        if (crc_block>=0)
+          outFile << "0x" << hex << setw(8) << setfill('0') << uppercase << line_count+1;
         cout << line_count+1 << " words" << endl;
         inFile.close();
 
@@ -198,17 +291,161 @@ int main(int argc, char *argv[])
             else flag=false;
             }
 
-        // Print first line
-        outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << line_value;
-
         if (crc_block==0){
             // Print bitstream without CRC signatures
+            // Print first line
+            outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << line_value;
             for (j=1; j<line_count; j++){ //First word already written
                 getline(inFile,line);
                 line_value=bin2dec(line);
                 outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << line_value;
             }
+        }else if (crc_block<0){ // EDAC
+            secded_words[0]='0';
+            secded_words[8]='0';
+            secded_words[16]='0';
+            secded_words[24]='0';
+
+            // Compute and print first packet (i.e., 4 encoded words (including line_count))            
+            secded_word=encode_word(dec2bin(line_count+1+ceil((line_count+1)/4.0f)+4-((line_count+1)%4)));
+            for (int ii=0;ii<7;ii++){
+                secded_words[25+ii]=secded_word.at(ii);
+            }
+            outFile << "0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_word.substr(7,38));
+
+            secded_word=encode_word(line);
+            for (int ii=0;ii<7;ii++){
+                secded_words[17+ii]=secded_word.at(ii);
+            }
+            outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_word.substr(7,38));
+
+            getline(inFile,line);
+            secded_word=encode_word(line);
+            for (int ii=0;ii<7;ii++){
+                secded_words[9+ii]=secded_word.at(ii);
+            }
+            outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_word.substr(7,38));
+
+            getline(inFile,line);
+            secded_word=encode_word(line);
+            for (int ii=0;ii<7;ii++){
+                secded_words[1+ii]=secded_word.at(ii);
+            }
+            outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_word.substr(7,38));
+
+            outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_words); // End of the first packet
+
+            for (j=1; j<(line_count+1)/4; j++){ //First three bitstream words already read
+              getline(inFile,line);
+              secded_word=encode_word(line);
+              for (int ii=0;ii<7;ii++){
+                secded_words[25+ii]=secded_word.at(ii);
+              }
+              outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_word.substr(7,38));
+
+              getline(inFile,line);
+              secded_word=encode_word(line);
+              for (int ii=0;ii<7;ii++){
+                secded_words[17+ii]=secded_word.at(ii);
+              }
+              outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_word.substr(7,38));
+
+              getline(inFile,line);
+              secded_word=encode_word(line);
+              for (int ii=0;ii<7;ii++){
+                secded_words[9+ii]=secded_word.at(ii);
+              }
+              outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_word.substr(7,38));
+
+              getline(inFile,line);
+              secded_word=encode_word(line);
+              for (int ii=0;ii<7;ii++){
+                secded_words[1+ii]=secded_word.at(ii);
+              }
+              outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_word.substr(7,38));
+
+              outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_words);
+
+            }
+
+            if (((line_count+1)%4) !=0){
+                switch ((line_count+1)%4){
+                  case 1:
+                    getline(inFile,line);
+                    secded_word=encode_word(line);
+                    for (int ii=0;ii<7;ii++){
+                      secded_words[25+ii]=secded_word.at(ii);
+                      secded_words[1+ii]=secded_word.at(ii);
+                      secded_words[9+ii]=secded_word.at(ii);
+                      secded_words[17+ii]=secded_word.at(ii);
+                    }
+                    //for (int ii=0;ii<24;ii++){
+                    //  secded_words[ii]='0';
+                    //}
+                    outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_word.substr(7,38));
+                    outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_word.substr(7,38));
+                    outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_word.substr(7,38));
+                    outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_word.substr(7,38));
+                    outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_words);
+                    break;
+
+                  case 2:
+                    getline(inFile,line);
+                    secded_word=encode_word(line);
+                    for (int ii=0;ii<7;ii++){
+                      secded_words[25+ii]=secded_word.at(ii);
+                    }
+                    outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_word.substr(7,38));
+
+                    getline(inFile,line);
+                    secded_word=encode_word(line);
+                    for (int ii=0;ii<7;ii++){
+                      secded_words[17+ii]=secded_word.at(ii);
+                      secded_words[1+ii]=secded_word.at(ii);
+                      secded_words[9+ii]=secded_word.at(ii);
+                    }
+                    //for (int ii=0;ii<16;ii++){
+                    //  secded_words[ii]='0';
+                    //}
+                    outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_word.substr(7,38));
+                    outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_word.substr(7,38));
+                    outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_word.substr(7,38));
+                    outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_words);
+                    break;
+
+                  case 3:
+                    getline(inFile,line);
+                    secded_word=encode_word(line);
+                    for (int ii=0;ii<7;ii++){
+                      secded_words[25+ii]=secded_word.at(ii);
+                    }
+                    outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_word.substr(7,38));
+
+                    getline(inFile,line);
+                    secded_word=encode_word(line);
+                    for (int ii=0;ii<7;ii++){
+                      secded_words[17+ii]=secded_word.at(ii);
+                    }
+                    outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_word.substr(7,38));
+
+                    getline(inFile,line);
+                    secded_word=encode_word(line);
+                    for (int ii=0;ii<7;ii++){
+                      secded_words[9+ii]=secded_word.at(ii);
+                      secded_words[1+ii]=secded_word.at(ii);
+                    }
+                    //for (int ii=0;ii<8;ii++){
+                    //  secded_words[ii]='0';
+                    //}
+                    outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_word.substr(7,38));
+                    outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_word.substr(7,38));
+                    outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << bin2dec(secded_words);
+                    break;
+                }
+            }
         }else{ // Print bitstream with CRC signatures
+        	// Print first line
+            outFile << ",0x" << hex << setw(8) << setfill('0') << uppercase << line_value;
             crc_count=0;
             crc.crc32_init();
             crc_value=crc.crc32_koopmanII(dec2bin(line_count+1));
@@ -241,6 +478,6 @@ int main(int argc, char *argv[])
     outFile.close();
 
     cout << "File " << argv[argc-1] << " generated" << endl;
-    return 0; 
+    return 0;
 
 }

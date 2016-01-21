@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -27,13 +27,12 @@ use ieee.std_logic_1164.all;
 library gaisler;
 use gaisler.libdcom.all;
 use gaisler.sim.all;
+use gaisler.gr1553b_pkg.all;
 use work.debug.all;
 library techmap;
 use techmap.gencomp.all;
 library micron;
 use micron.components.all;
-library grlib;
-use grlib.stdlib.all;
 
 use work.config.all;	-- configuration
 
@@ -51,28 +50,29 @@ entity testbench is
     romwidth  : integer := 32;		-- rom data width (8/32)
     romdepth  : integer := 16;		-- rom address depth
     sramwidth  : integer := 32;		-- ram data width (8/16/32)
-    sramdepth  : integer := 20;		-- ram address depth
-    srambanks  : integer := 2		-- number of ram banks
+    sramdepth  : integer := 21;		-- ram address depth
+    srambanks  : integer := 2;		-- number of ram banks
+    rsedac     : integer := CFG_MCTRLFT_EDAC/3		-- use RS encoding
   );
   port (
-    pci_rst     : inout std_logic;	-- PCI bus
-    pci_clk 	: in std_logic;
-    pci_gnt     : in std_logic;
-    pci_idsel   : in std_logic;  
-    pci_lock    : inout std_logic;
+    pci_rst     : inout std_ulogic;	-- PCI bus
+    pci_clk 	: in std_ulogic;
+    pci_gnt     : in std_ulogic;
+    pci_idsel   : in std_ulogic;  
+    pci_lock    : inout std_ulogic;
     pci_ad 	: inout std_logic_vector(31 downto 0);
     pci_cbe 	: inout std_logic_vector(3 downto 0);
-    pci_frame   : inout std_logic;
-    pci_irdy 	: inout std_logic;
-    pci_trdy 	: inout std_logic;
-    pci_devsel  : inout std_logic;
-    pci_stop 	: inout std_logic;
-    pci_perr 	: inout std_logic;
-    pci_par 	: inout std_logic;    
-    pci_req 	: inout std_logic;
-    pci_serr    : inout std_logic;
-    pci_host   	: in std_logic := '1';
-    pci_66	: in std_logic := '0'
+    pci_frame   : inout std_ulogic;
+    pci_irdy 	: inout std_ulogic;
+    pci_trdy 	: inout std_ulogic;
+    pci_devsel  : inout std_ulogic;
+    pci_stop 	: inout std_ulogic;
+    pci_perr 	: inout std_ulogic;
+    pci_par 	: inout std_ulogic;    
+    pci_req 	: inout std_ulogic;
+    pci_serr    : inout std_ulogic;
+    pci_host   	: in std_ulogic := '1';
+    pci_66	: in std_ulogic := '0'
   );
 end; 
 
@@ -94,47 +94,46 @@ signal ramoen   : std_logic_vector(4 downto 0);
 signal rwen     : std_logic_vector(3 downto 0);
 signal rwenx    : std_logic_vector(3 downto 0);
 signal romsn    : std_logic_vector(1 downto 0);
-signal iosn     : std_logic;
-signal oen      : std_logic;
-signal read     : std_logic;
-signal writen   : std_logic;
-signal brdyn    : std_logic;
-signal bexcn    : std_logic;
+signal iosn     : std_ulogic;
+signal oen      : std_ulogic;
+signal read     : std_ulogic;
+signal writen   : std_ulogic;
+signal brdyn    : std_ulogic;
+signal bexcn    : std_ulogic;
 signal wdogn    : std_logic;
-signal dsuen, dsutx, dsurx, dsubre, dsuact : std_logic;
-signal dsurst   : std_logic;
-signal test     : std_logic;
+signal dsuen, dsutx, dsurx, dsubre, dsuact : std_ulogic;
+signal dsurst   : std_ulogic;
+signal test     : std_ulogic;
 signal error    : std_logic;
 signal gpio	: std_logic_vector(CFG_GRGPIO_WIDTH-1 downto 0);
-signal GND      : std_logic := '0';
-signal VCC      : std_logic := '1';
-signal NC       : std_logic := 'Z';
-signal clk2     : std_logic := '1';
+signal GND      : std_ulogic := '0';
+signal VCC      : std_ulogic := '1';
+signal NC       : std_ulogic := 'Z';
+signal clk2     : std_ulogic := '1';
     
 signal sdcke    : std_logic_vector ( 1 downto 0);  -- clk en
 signal sdcsn    : std_logic_vector ( 1 downto 0);  -- chip sel
-signal sdwen    : std_logic;                       -- write en
-signal sdrasn   : std_logic;                       -- row addr stb
-signal sdcasn   : std_logic;                       -- col addr stb
+signal sdwen    : std_ulogic;                       -- write en
+signal sdrasn   : std_ulogic;                       -- row addr stb
+signal sdcasn   : std_ulogic;                       -- col addr stb
 signal sddqm    : std_logic_vector ( 7 downto 0);  -- data i/o mask
-signal sdclk    : std_logic;       
-signal plllock    : std_logic;       
-signal txd1, rxd1 : std_logic;       
-signal txd2, rxd2 : std_logic;       
+signal sdclk    : std_ulogic;       
+signal plllock    : std_ulogic;       
+signal txd1, rxd1 : std_ulogic;       
+signal txd2, rxd2 : std_ulogic;       
 
 signal etx_clk, erx_clk, erx_dv, erx_er, erx_col : std_logic := '0';
 signal eth_gtxclk, erx_crs, etx_en, etx_er : std_logic :='0';
 signal eth_macclk  : std_logic := '0';
 signal erxd, etxd  : std_logic_vector(7 downto 0) := (others => '0');  
 signal emdc, emdio : std_logic; --dummy signal for the mdc,mdio in the phy which is not used
-signal emdintn     : std_logic;
 
 signal emddis 	: std_logic;    
 signal epwrdwn 	: std_logic;
 signal ereset 	: std_logic;
 signal esleep 	: std_logic;
 signal epause 	: std_logic;
-
+signal emdintn 	: std_logic;
 
 
 
@@ -148,9 +147,9 @@ signal pci_arb_req, pci_arb_gnt : std_logic_vector(0 to 3);
 signal can_txd	: std_logic_vector(0 to CFG_CAN_NUM-1);
 signal can_rxd	: std_logic_vector(0 to CFG_CAN_NUM-1);
 
-signal can_stb	: std_logic;
+signal can_stb	: std_ulogic;
 
-signal spw_clk	: std_logic := '0';
+signal spw_clk	: std_ulogic := '0';
 signal spw_rxdp : std_logic_vector(0 to CFG_SPW_NUM-1) := (others => '0');
 signal spw_rxdn : std_logic_vector(0 to CFG_SPW_NUM-1) := (others => '0');
 signal spw_rxsp : std_logic_vector(0 to CFG_SPW_NUM-1) := (others => '0');
@@ -160,22 +159,35 @@ signal spw_txdn : std_logic_vector(0 to CFG_SPW_NUM-1);
 signal spw_txsp : std_logic_vector(0 to CFG_SPW_NUM-1);
 signal spw_txsn : std_logic_vector(0 to CFG_SPW_NUM-1);
 
-signal usb_clkout  : std_logic := '0';
+signal usb_clkout  : std_ulogic := '0';
 signal usb_d       : std_logic_vector(7 downto 0);
 signal usb_resetn  : std_ulogic;
 signal usb_nxt     : std_ulogic;
 signal usb_stp     : std_ulogic;
 signal usb_dir     : std_ulogic;
+signal usb_id      : std_ulogic;
+signal usb_fault   : std_ulogic;
+signal usb_enablen : std_ulogic;
+signal usb_csn     : std_ulogic;
+signal usb_faultn  : std_ulogic;
+signal usb_clock   : std_ulogic;
+signal usb_vbus    : std_ulogic;
+signal cb     : std_logic_vector(7 downto 0);
 
--- GRUSB_DCL test signals
-signal ddelay : std_ulogic := '0';
-signal dstart : std_ulogic := '0';
-signal drw    : std_ulogic;
-signal daddr  : std_logic_vector(31 downto 0);
-signal dlen   : std_logic_vector(14 downto 0);
-signal ddi    : grusb_dcl_debug_data;
-signal ddone  : std_ulogic;
-signal ddo    : grusb_dcl_debug_data;
+signal busainen    :  std_logic_vector(0 to 0); 
+signal busainp     :  std_logic_vector(0 to 0);
+signal busainn     :  std_logic_vector(0 to 0);
+signal busaoutin   :  std_logic_vector(0 to 0); 
+signal busaoutp    :  std_logic_vector(0 to 0); 
+signal busaoutn    :  std_logic_vector(0 to 0); 
+signal busbinen    :  std_logic_vector(0 to 0); 
+signal busbinp     :  std_logic_vector(0 to 0);
+signal busbinn     :  std_logic_vector(0 to 0);
+signal busboutin   :  std_logic_vector(0 to 0); 
+signal busboutp    :  std_logic_vector(0 to 0); 
+signal busboutn    :  std_logic_vector(0 to 0);
+
+signal milbusA,milbusB: wire1553;
 
 begin
 
@@ -191,6 +203,7 @@ begin
   pci_arb_req <= "HHHH";
   eth_macclk <= not eth_macclk after 4 ns;
   
+  emdintn <= 'H';
 
   -- spacewire loop-back
   spw_rxdp <= spw_txdp; spw_rxdn <= spw_txdn;
@@ -198,103 +211,115 @@ begin
 
   d3 : entity work.leon3mp
         generic map ( fabtech, memtech, padtech, clktech, disas, dbguart, pclow )
-        port map (rst, clk, sdclk, error, wdogn, address(27 downto 0), data, 
+        port map (rst, clk, sdclk, error, wdogn, address(27 downto 0), data, cb, 
 	sa, sd, sdclk, sdcke, sdcsn, sdwen, 
 	sdrasn, sdcasn, sddqm, dsutx, dsurx, dsuen, dsubre, dsuact, txd1, rxd1,
 	txd2, rxd2,
 	ramsn, ramoen, rwen, oen, writen, read, iosn, romsn, brdyn, bexcn, gpio,
         emdio, eth_macclk, etx_clk, erx_clk, erxd, erx_dv, erx_er,
-        erx_col, erx_crs, emdintn, etxd, etx_en, etx_er, emdc, 
+        erx_col, erx_crs, emdintn, etxd, etx_en, etx_er, emdc,
     	pci_rst, pci_clk, pci_gnt, pci_idsel, pci_lock, pci_ad, pci_cbe,
     	pci_frame, pci_irdy, pci_trdy, pci_devsel, pci_stop, pci_perr, pci_par,
     	pci_req, pci_serr, pci_host, pci_66, pci_arb_req, pci_arb_gnt, 
 	can_txd, can_rxd,
 	spw_clk, spw_rxdp, spw_rxdn, spw_rxsp, spw_rxsn, spw_txdp, 
 	spw_txdn, spw_txsp, spw_txsn,
-        usb_clkout, usb_d, usb_nxt, usb_stp, usb_dir, usb_resetn
+        usb_clkout, usb_d, usb_nxt, usb_stp, usb_dir,
+--        usb_id, usb_fault, usb_enablen, usb_csn, usb_faultn, usb_clock, usb_vbus,
+        usb_resetn,
+                  busainen,busainp,busainn,busaoutin,busaoutp,busaoutn,
+                  busbinen,busbinp,busbinn,busboutin,busboutp,busboutn
+                  
 	);
 
--- optional sdram
-
-  sd0 : if (CFG_MCTRL_SDEN = 1) and (CFG_MCTRL_SEPBUS = 0) generate
-    u0: mt48lc16m16a2 generic map (index => 0, fname => sdramfile)
-	PORT MAP(
-            Dq => data(31 downto 16), Addr => address(14 downto 2),
-            Ba => address(16 downto 15), Clk => sdclk, Cke => sdcke(0),
-            Cs_n => sdcsn(0), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
-            Dqm => sddqm(3 downto 2));
-    u1: mt48lc16m16a2 generic map (index => 16, fname => sdramfile)
-	PORT MAP(
-            Dq => data(15 downto 0), Addr => address(14 downto 2),
-            Ba => address(16 downto 15), Clk => sdclk, Cke => sdcke(0),
-            Cs_n => sdcsn(0), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
-            Dqm => sddqm(1 downto 0));
-    u2: mt48lc16m16a2 generic map (index => 0, fname => sdramfile)
-	PORT MAP(
-            Dq => data(31 downto 16), Addr => address(14 downto 2),
-            Ba => address(16 downto 15), Clk => sdclk, Cke => sdcke(0),
-            Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
-            Dqm => sddqm(3 downto 2));
-    u3: mt48lc16m16a2 generic map (index => 16, fname => sdramfile)
-	PORT MAP(
-            Dq => data(15 downto 0), Addr => address(14 downto 2),
-            Ba => address(16 downto 15), Clk => sdclk, Cke => sdcke(0),
-            Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
-            Dqm => sddqm(1 downto 0));
-  end generate;
-
-  sd1 : if ((CFG_MCTRL_SDEN = 1) and (CFG_MCTRL_SEPBUS = 1)) generate
-    u0: mt48lc16m16a2 generic map (index => 0, fname => sdramfile)
-	PORT MAP(
+      cbbits : if CFG_MCTRLFT_EDAC /= 0 generate
+        u0: mt48lc16m16a2 generic map (index => 0, fname => sdramfile)
+          PORT MAP(
             Dq => sd(31 downto 16), Addr => sa(12 downto 0),
             Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(0),
             Cs_n => sdcsn(0), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
             Dqm => sddqm(3 downto 2));
-    u1: mt48lc16m16a2 generic map (index => 16, fname => sdramfile)
-	PORT MAP(
+        u1: mt48lc16m16a2 generic map (index => 16, fname => sdramfile)
+          PORT MAP(
             Dq => sd(15 downto 0), Addr => sa(12 downto 0),
             Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(0),
             Cs_n => sdcsn(0), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
             Dqm => sddqm(1 downto 0));
-    u2: mt48lc16m16a2 generic map (index => 0, fname => sdramfile)
-	PORT MAP(
+        u2: mt48lc16m16a2 generic map (index => 0, fname => sdramfile)
+          PORT MAP(
             Dq => sd(31 downto 16), Addr => sa(12 downto 0),
             Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(1),
             Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
             Dqm => sddqm(3 downto 2));
-    u3: mt48lc16m16a2 generic map (index => 16, fname => sdramfile)
-	PORT MAP(
+        u3: mt48lc16m16a2 generic map (index => 16, fname => sdramfile)
+          PORT MAP(
             Dq => sd(15 downto 0), Addr => sa(12 downto 0),
             Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(1),
             Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
             Dqm => sddqm(1 downto 0));
-   sd64 : if (CFG_MCTRL_SD64 = 1) generate
-      u4: mt48lc16m16a2 generic map (index => 0, fname => sdramfile)
-	PORT MAP(
-            Dq => sd(63 downto 48), Addr => sa(12 downto 0),
-            Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(0),
-            Cs_n => sdcsn(0), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
-            Dqm => sddqm(7 downto 6));
-      u5: mt48lc16m16a2 generic map (index => 16, fname => sdramfile)
+        cb0: ftmt48lc16m16a2 generic map (index => 8+rsedac*7, fname => sdramfile)
 	PORT MAP(
             Dq => sd(47 downto 32), Addr => sa(12 downto 0),
             Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(0),
             Cs_n => sdcsn(0), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
             Dqm => sddqm(5 downto 4));
-      u6: mt48lc16m16a2 generic map (index => 0, fname => sdramfile)
+        cb1: ftmt48lc16m16a2 generic map (index => 8+rsedac*7, fname => sdramfile)
+	PORT MAP(
+            Dq => sd(47 downto 32), Addr => sa(12 downto 0),
+            Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(1),
+            Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
+            Dqm => sddqm(5 downto 4));
+      end generate;
+      nocbbits : if CFG_MCTRLFT_EDAC = 0 generate
+        u0: mt48lc16m16a2 generic map (index => 64, fname => sdramfile)
+          PORT MAP(
+            Dq => sd(31 downto 16), Addr => sa(12 downto 0),
+            Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(0),
+            Cs_n => sdcsn(0), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
+            Dqm => sddqm(3 downto 2));
+        u1: mt48lc16m16a2 generic map (index => 80, fname => sdramfile)
+          PORT MAP(
+            Dq => sd(15 downto 0), Addr => sa(12 downto 0),
+            Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(0),
+            Cs_n => sdcsn(0), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
+            Dqm => sddqm(1 downto 0));
+        u2: mt48lc16m16a2 generic map (index => 64, fname => sdramfile)
+          PORT MAP(
+            Dq => sd(31 downto 16), Addr => sa(12 downto 0),
+            Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(1),
+            Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
+            Dqm => sddqm(3 downto 2));
+        u3: mt48lc16m16a2 generic map (index => 80, fname => sdramfile)
+          PORT MAP(
+            Dq => sd(15 downto 0), Addr => sa(12 downto 0),
+            Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(1),
+            Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
+            Dqm => sddqm(1 downto 0));
+        u5: mt48lc16m16a2 generic map (index => 48, fname => sdramfile)
+          PORT MAP(
+            Dq => sd(47 downto 32), Addr => sa(12 downto 0),
+            Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(0),
+            Cs_n => sdcsn(0), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
+            Dqm => sddqm(5 downto 4));
+        u7: mt48lc16m16a2 generic map (index => 48, fname => sdramfile)
+          PORT MAP(
+            Dq => sd(47 downto 32), Addr => sa(12 downto 0),
+            Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(1),
+            Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
+            Dqm => sddqm(5 downto 4));
+      end generate;
+      u4: mt48lc16m16a2 generic map (index => 32, fname => sdramfile)
+	PORT MAP(
+            Dq => sd(63 downto 48), Addr => sa(12 downto 0),
+            Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(0),
+            Cs_n => sdcsn(0), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
+            Dqm => sddqm(7 downto 6));
+      u6: mt48lc16m16a2 generic map (index => 32, fname => sdramfile)
 	PORT MAP(
             Dq => sd(63 downto 48), Addr => sa(12 downto 0),
             Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(0),
             Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
             Dqm => sddqm(7 downto 6));
-      u7: mt48lc16m16a2 generic map (index => 16, fname => sdramfile)
-	PORT MAP(
-            Dq => sd(47 downto 32), Addr => sa(12 downto 0),
-            Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(0),
-            Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
-            Dqm => sddqm(5 downto 4));
-    end generate;
-  end generate;
 
   prom0 : for i in 0 to (romwidth/8)-1 generate
       sr0 : sram generic map (index => i, abits => romdepth, fname => promfile)
@@ -307,6 +332,10 @@ begin
 	port map (address(sramdepth+1 downto 2), data(31-i*8 downto 24-i*8), ramsn(0),
 		  rwen(0), ramoen(0));
   end generate;
+
+  sramcb0 : sramft generic map (index => 7, abits => sramdepth, fname => sramfile)
+	port map (address(sramdepth+1 downto 2), cb(7 downto 0), ramsn(0), rwen(0), ramoen(0));
+
 
  
   phy0 : if (CFG_GRETH = 1) generate
@@ -321,52 +350,18 @@ begin
     u0: ulpi
       port map (usb_clkout, usb_d, usb_nxt, usb_stp, usb_dir, usb_resetn);
   end generate usbtr;
-
-  usbdevsim: if (CFG_GRUSBDC = 1) generate
-    u0: grusbdcsim
-      generic map (functm => 0, keepclk => 1)
-      port map (usb_resetn, usb_clkout, usb_d, usb_nxt, usb_stp, usb_dir);
-  end generate usbdevsim;
-
-  usb_dclsim: if (CFG_GRUSB_DCL = 1) generate
-    u0: grusb_dclsim
-      generic map (functm => 0, keepclk => 1)
-      port map (usb_resetn, usb_clkout, usb_d, usb_nxt, usb_stp, usb_dir,
-                ddelay, dstart, drw, daddr, dlen, ddi, ddone, ddo);
-    
-    usb_dcl_proc : process
-    begin
-      wait for 10 ns;
-      Print("GRUSB_DCL test started");
-
-      wait until rising_edge(ddone);
-
-      -- Write 128 bytes to memory
-      daddr <= X"40000000";
-      dlen  <= conv_std_logic_vector(32,15);
-      for i in 0 to 127 loop
-        ddi(i) <= conv_std_logic_vector(i+8,8);
-      end loop;  -- i
-      grusb_dcl_write(usb_clkout, drw, dstart, ddone);
-      
-      -- Read back written data
-      grusb_dcl_read(usb_clkout, drw, dstart, ddone);
-      
-      -- Compare data
-      for i in 0 to 127 loop
-        if ddo(i) /= ddi(i) then
-          Print("ERROR: Data mismatch using GRUSB_DCL");
-        end if;
-      end loop;
-
-      Print("GRUSB_DCL test finished");
-      
-      wait;
-    end process;    
-  end generate usb_dclsim;
   
   error <= 'H';			  -- ERROR pull-up
 
+  miltr: if (CFG_GR1553B_ENABLE = 1) generate
+    x: simtrans1553
+      port map (milbusA,milbusB,
+                busainen(0), busaoutin(0),
+                busaoutp(0), busaoutn(0), busainp(0), busainn(0),
+                busbinen(0), busboutin(0),
+                busboutp(0), busboutn(0), busbinp(0), busbinn(0));
+  end generate;
+  
    iuerr : process
    begin
      wait for 2500 ns;
@@ -386,7 +381,7 @@ begin
   sd <= buskeep(sd) after 5 ns;
 
   dsucom : process
-    procedure dsucfg(signal dsurx : in std_logic; signal dsutx : out std_logic) is
+    procedure dsucfg(signal dsurx : in std_ulogic; signal dsutx : out std_ulogic) is
     variable w32 : std_logic_vector(31 downto 0);
     variable c8  : std_logic_vector(7 downto 0);
     constant txp : time := 160 * 1 ns;

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -18,10 +18,10 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------
--- Entity: 	various
--- File:	mem_xilinx_gen.vhd
--- Author:	Jiri Gaisler - Gaisler Research
--- Description:	Memory generators for Xilinx rams
+-- Entity:      various
+-- File:        memory_unisim.vhd
+-- Author:      Jiri Gaisler - Gaisler Research
+-- Description: Memory generators for Xilinx RAMs
 ------------------------------------------------------------------------------
 
 -- parametrisable sync ram generator using UNISIM RAMB16 block rams
@@ -187,60 +187,60 @@ begin
       r0 : RAMB16_S36_S36
         generic map (SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
         port map (
-	do(i*72+36+31 downto i*72+36), do(i*72+31 downto i*72),
-	do(i*72+36+32+3 downto i*72+36+32), do(i*72+32+3 downto i*72+32),
-	xa(8 downto 0), ya(8 downto 0), clk, clk,
-	di(i*72+36+31 downto i*72+36), di(i*72+31 downto i*72),
-	di(i*72+36+32+3 downto i*72+36+32), di(i*72+32+3 downto i*72+32),
-	enable, enable, gnd, gnd, write, write);
+          do(i*72+36+31 downto i*72+36), do(i*72+31 downto i*72),
+          do(i*72+36+32+3 downto i*72+36+32), do(i*72+32+3 downto i*72+32),
+          xa(8 downto 0), ya(8 downto 0), clk, clk,
+          di(i*72+36+31 downto i*72+36), di(i*72+31 downto i*72),
+          di(i*72+36+32+3 downto i*72+36+32), di(i*72+32+3 downto i*72+32),
+          enable, enable, gnd, gnd, write, write);
     end generate;
     do(dbits+72 downto 72*(((dbits-1)/72)+1)) <= (others => '0');
   end generate;
   a9 : if (abits = 9) generate
     x : for i in 0 to ((dbits-1)/36) generate
       r : RAMB16_S36 port map ( do(((i+1)*36)-5 downto i*36),
-	do(((i+1)*36)-1 downto i*36+32), xa(8 downto 0), clk,
-	di(((i+1)*36)-5 downto i*36), di(((i+1)*36)-1 downto i*36+32),
-	enable, gnd, write);
+        do(((i+1)*36)-1 downto i*36+32), xa(8 downto 0), clk,
+        di(((i+1)*36)-5 downto i*36), di(((i+1)*36)-1 downto i*36+32),
+        enable, gnd, write);
     end generate;
     do(dbits+72 downto 36*(((dbits-1)/36)+1)) <= (others => '0');
   end generate;
   a10 : if (abits = 10) generate
     x : for i in 0 to ((dbits-1)/18) generate
       r : RAMB16_S18 port map ( do(((i+1)*18)-3 downto i*18),
-	do(((i+1)*18)-1 downto i*18+16), xa(9 downto 0), clk,
-	di(((i+1)*18)-3 downto i*18), di(((i+1)*18)-1 downto i*18+16),
-	enable, gnd, write);
+        do(((i+1)*18)-1 downto i*18+16), xa(9 downto 0), clk,
+        di(((i+1)*18)-3 downto i*18), di(((i+1)*18)-1 downto i*18+16),
+        enable, gnd, write);
     end generate;
     do(dbits+72 downto 18*(((dbits-1)/18)+1)) <= (others => '0');
   end generate;
   a11 : if abits = 11 generate
     x : for i in 0 to ((dbits-1)/9) generate
       r : RAMB16_S9 port map ( do(((i+1)*9)-2 downto i*9),
-	do(((i+1)*9)-1 downto i*9+8), xa(10 downto 0), clk,
-	di(((i+1)*9)-2 downto i*9), di(((i+1)*9)-1 downto i*9+8),
-	enable, gnd, write);
+        do(((i+1)*9)-1 downto i*9+8), xa(10 downto 0), clk,
+        di(((i+1)*9)-2 downto i*9), di(((i+1)*9)-1 downto i*9+8),
+        enable, gnd, write);
     end generate;
     do(dbits+72 downto 9*(((dbits-1)/9)+1)) <= (others => '0');
   end generate;
   a12 : if abits = 12 generate
     x : for i in 0 to ((dbits-1)/4) generate
       r : RAMB16_S4 port map ( do(((i+1)*4)-1 downto i*4), xa(11 downto 0),
-	clk, di(((i+1)*4)-1 downto i*4), enable, gnd, write);
+        clk, di(((i+1)*4)-1 downto i*4), enable, gnd, write);
     end generate;
     do(dbits+72 downto 4*(((dbits-1)/4)+1)) <= (others => '0');
   end generate;
   a13 : if abits = 13 generate
     x : for i in 0 to ((dbits-1)/2) generate
       r : RAMB16_S2 port map ( do(((i+1)*2)-1 downto i*2), xa(12 downto 0),
-	clk, di(((i+1)*2)-1 downto i*2), enable, gnd, write);
+        clk, di(((i+1)*2)-1 downto i*2), enable, gnd, write);
     end generate;
     do(dbits+72 downto 2*(((dbits-1)/2)+1)) <= (others => '0');
   end generate;
   a14 : if abits = 14 generate
     x : for i in 0 to (dbits-1) generate
       r : RAMB16_S1 port map ( do((i+1)-1 downto i), xa(13 downto 0),
-	clk, di((i+1)-1 downto i), enable, gnd, write);
+        clk, di((i+1)-1 downto i), enable, gnd, write);
     end generate;
     do(dbits+72 downto dbits) <= (others => '0');
   end generate;
@@ -267,6 +267,8 @@ end;
 
 LIBRARY ieee;
 use ieee.std_logic_1164.all;
+library grlib;
+use grlib.stdlib.conv_integer;
 --pragma translate_off
 library unisim;
 use unisim.RAMB16_S36_S36;
@@ -431,6 +433,15 @@ end component;
 signal gnd, vcc : std_ulogic;
 signal do1, do2, di1, di2 : std_logic_vector(dbits+36 downto 0);
 signal addr1, addr2 : std_logic_vector(19 downto 0);
+
+subtype qword is std_logic_vector(dbits+36 downto 0);
+type qqtype is array (0 to 3) of qword;
+signal qq1 : qqtype;
+signal qq2 : qqtype;
+signal enable1_t, write1_t : std_logic_vector(3 downto 0);
+signal enable2_t, write2_t : std_logic_vector(3 downto 0);
+signal ra1, ra2 : std_logic_vector(15 downto 14);
+
 begin
   gnd <= '0'; vcc <= '1';
   dataout1 <= do1(dbits-1 downto 0); dataout2 <= do2(dbits-1 downto 0);
@@ -444,13 +455,13 @@ begin
       r0 : RAMB16_S36_S36
         generic map(SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
         port map (
-	do1(((i+1)*36)-5 downto i*36), do2(((i+1)*36)-5 downto i*36),
-	do1(((i+1)*36)-1 downto i*36+32), do2(((i+1)*36)-1 downto i*36+32),
-	addr1(8 downto 0), addr2(8 downto 0), clk1, clk2,
-	di1(((i+1)*36)-5 downto i*36), di2(((i+1)*36)-5 downto i*36),
-	di1(((i+1)*36)-1 downto i*36+32), di2(((i+1)*36)-1 downto i*36+32),
-	enable1, enable2, gnd, gnd, write1, write2);
---	vcc, vcc, gnd, gnd, write1, write2);
+          do1(((i+1)*36)-5 downto i*36), do2(((i+1)*36)-5 downto i*36),
+          do1(((i+1)*36)-1 downto i*36+32), do2(((i+1)*36)-1 downto i*36+32),
+          addr1(8 downto 0), addr2(8 downto 0), clk1, clk2,
+          di1(((i+1)*36)-5 downto i*36), di2(((i+1)*36)-5 downto i*36),
+          di1(((i+1)*36)-1 downto i*36+32), di2(((i+1)*36)-1 downto i*36+32),
+          enable1, enable2, gnd, gnd, write1, write2);
+--          vcc, vcc, gnd, gnd, write1, write2);
     end generate;
     do1(dbits+36 downto 36*(((dbits-1)/36)+1)) <= (others => '0');
     do2(dbits+36 downto 36*(((dbits-1)/36)+1)) <= (others => '0');
@@ -461,13 +472,13 @@ begin
       r0 : RAMB16_S18_S18
         generic map(SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
         port map (
-	do1(((i+1)*18)-3 downto i*18), do2(((i+1)*18)-3 downto i*18),
-	do1(((i+1)*18)-1 downto i*18+16), do2(((i+1)*18)-1 downto i*18+16),
-	addr1(9 downto 0), addr2(9 downto 0), clk1, clk2,
-	di1(((i+1)*18)-3 downto i*18), di2(((i+1)*18)-3 downto i*18),
-	di1(((i+1)*18)-1 downto i*18+16), di2(((i+1)*18)-1 downto i*18+16),
---	vcc, vcc, gnd, gnd, write1, write2);
-	enable1, enable2, gnd, gnd, write1, write2);
+          do1(((i+1)*18)-3 downto i*18), do2(((i+1)*18)-3 downto i*18),
+          do1(((i+1)*18)-1 downto i*18+16), do2(((i+1)*18)-1 downto i*18+16),
+          addr1(9 downto 0), addr2(9 downto 0), clk1, clk2,
+          di1(((i+1)*18)-3 downto i*18), di2(((i+1)*18)-3 downto i*18),
+          di1(((i+1)*18)-1 downto i*18+16), di2(((i+1)*18)-1 downto i*18+16),
+--          vcc, vcc, gnd, gnd, write1, write2);
+          enable1, enable2, gnd, gnd, write1, write2);
     end generate;
     do1(dbits+36 downto 18*(((dbits-1)/18)+1)) <= (others => '0');
     do2(dbits+36 downto 18*(((dbits-1)/18)+1)) <= (others => '0');
@@ -478,13 +489,13 @@ begin
       r0 : RAMB16_S9_S9
         generic map(SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
         port map (
-	do1(((i+1)*9)-2 downto i*9), do2(((i+1)*9)-2 downto i*9),
-	do1(((i+1)*9)-1 downto i*9+8), do2(((i+1)*9)-1 downto i*9+8),
-	addr1(10 downto 0), addr2(10 downto 0), clk1, clk2,
-	di1(((i+1)*9)-2 downto i*9), di2(((i+1)*9)-2 downto i*9),
-	di1(((i+1)*9)-1 downto i*9+8), di2(((i+1)*9)-1 downto i*9+8),
---	vcc, vcc, gnd, gnd, write1, write2);
-	enable1, enable2, gnd, gnd, write1, write2);
+          do1(((i+1)*9)-2 downto i*9), do2(((i+1)*9)-2 downto i*9),
+          do1(((i+1)*9)-1 downto i*9+8), do2(((i+1)*9)-1 downto i*9+8),
+          addr1(10 downto 0), addr2(10 downto 0), clk1, clk2,
+          di1(((i+1)*9)-2 downto i*9), di2(((i+1)*9)-2 downto i*9),
+          di1(((i+1)*9)-1 downto i*9+8), di2(((i+1)*9)-1 downto i*9+8),
+--          vcc, vcc, gnd, gnd, write1, write2);
+          enable1, enable2, gnd, gnd, write1, write2);
     end generate;
     do1(dbits+36 downto 9*(((dbits-1)/9)+1)) <= (others => '0');
     do2(dbits+36 downto 9*(((dbits-1)/9)+1)) <= (others => '0');
@@ -495,11 +506,11 @@ begin
       r0 : RAMB16_S4_S4
         generic map(SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
         port map (
-	do1(((i+1)*4)-1 downto i*4), do2(((i+1)*4)-1 downto i*4),
-	addr1(11 downto 0), addr2(11 downto 0), clk1, clk2,
-	di1(((i+1)*4)-1 downto i*4), di2(((i+1)*4)-1 downto i*4),
---	vcc, vcc, gnd, gnd, write1, write2);
-	enable1, enable2, gnd, gnd, write1, write2);
+          do1(((i+1)*4)-1 downto i*4), do2(((i+1)*4)-1 downto i*4),
+          addr1(11 downto 0), addr2(11 downto 0), clk1, clk2,
+          di1(((i+1)*4)-1 downto i*4), di2(((i+1)*4)-1 downto i*4),
+--          vcc, vcc, gnd, gnd, write1, write2);
+          enable1, enable2, gnd, gnd, write1, write2);
     end generate;
     do1(dbits+36 downto 4*(((dbits-1)/4)+1)) <= (others => '0');
     do2(dbits+36 downto 4*(((dbits-1)/4)+1)) <= (others => '0');
@@ -510,11 +521,11 @@ begin
       r0 : RAMB16_S2_S2
         generic map(SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
         port map (
-	do1(((i+1)*2)-1 downto i*2), do2(((i+1)*2)-1 downto i*2),
-	addr1(12 downto 0), addr2(12 downto 0), clk1, clk2,
-	di1(((i+1)*2)-1 downto i*2), di2(((i+1)*2)-1 downto i*2),
---	vcc, vcc, gnd, gnd, write1, write2);
-	enable1, enable2, gnd, gnd, write1, write2);
+          do1(((i+1)*2)-1 downto i*2), do2(((i+1)*2)-1 downto i*2),
+          addr1(12 downto 0), addr2(12 downto 0), clk1, clk2,
+          di1(((i+1)*2)-1 downto i*2), di2(((i+1)*2)-1 downto i*2),
+--          vcc, vcc, gnd, gnd, write1, write2);
+          enable1, enable2, gnd, gnd, write1, write2);
     end generate;
     do1(dbits+36 downto 2*(((dbits-1)/2)+1)) <= (others => '0');
     do2(dbits+36 downto 2*(((dbits-1)/2)+1)) <= (others => '0');
@@ -525,22 +536,56 @@ begin
       r0 : RAMB16_S1_S1
         generic map(SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
         port map (
-	do1(((i+1)*1)-1 downto i*1), do2(((i+1)*1)-1 downto i*1),
-	addr1(13 downto 0), addr2(13 downto 0), clk1, clk2,
-	di1(((i+1)*1)-1 downto i*1), di2(((i+1)*1)-1 downto i*1),
---	vcc, vcc, gnd, gnd, write1, write2);
-	enable1, enable2, gnd, gnd, write1, write2);
+          do1(((i+1)*1)-1 downto i*1), do2(((i+1)*1)-1 downto i*1),
+          addr1(13 downto 0), addr2(13 downto 0), clk1, clk2,
+          di1(((i+1)*1)-1 downto i*1), di2(((i+1)*1)-1 downto i*1),
+--          vcc, vcc, gnd, gnd, write1, write2);
+          enable1, enable2, gnd, gnd, write1, write2);
     end generate;
+    do1(dbits+36 downto dbits) <= (others => '0');
+    do2(dbits+36 downto dbits) <= (others => '0');
+  end generate;
+  
+  a15a16 : if abits >= 15 and abits <= 16 generate
+    y : for j in 0 to (2**(abits-14))-1 generate
+      enable1_t(j) <= '1' when ((enable1 = '1') and (conv_integer(addr1(15 downto 14)) = j)) else '0';
+      write1_t(j)  <= '1' when ((write1 = '1') and (conv_integer(addr1(15 downto 14)) = j)) else '0';
+      enable2_t(j) <= '1' when ((enable2 = '1') and (conv_integer(addr2(15 downto 14)) = j)) else '0';
+      write2_t(j)  <= '1' when ((write2 = '1') and (conv_integer(addr2(15 downto 14)) = j)) else '0';
+      x : for i in 0 to ((dbits-1)/1) generate
+        r0 : RAMB16_S1_S1
+          generic map(SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
+          port map (
+            qq1(j)(((i+1)*1)-1 downto i*1), qq2(j)(((i+1)*1)-1 downto i*1),
+            addr1(13 downto 0), addr2(13 downto 0), clk1, clk2,
+            di1(((i+1)*1)-1 downto i*1), di2(((i+1)*1)-1 downto i*1),
+            enable1_t(j), enable2_t(j), gnd, gnd, write1_t(j), write2_t(j));
+      end generate;
+    end generate;
+    do1(dbits-1 downto 0) <= qq1(conv_integer(ra1(15 downto 14)))(dbits-1 downto 0);
+    do2(dbits-1 downto 0) <= qq2(conv_integer(ra2(15 downto 14)))(dbits-1 downto 0);
+    regs1 : process(clk1)
+    begin
+      if rising_edge(clk1) then
+        ra1(15 downto 14) <= addr1(15 downto 14);
+      end if;
+    end process;
+    regs2 : process(clk2)
+    begin
+      if rising_edge(clk2) then
+        ra2(15 downto 14) <= addr2(15 downto 14);
+      end if;
+    end process;
     do1(dbits+36 downto dbits) <= (others => '0');
     do2(dbits+36 downto dbits) <= (others => '0');
   end generate;
 
 -- pragma translate_off
-  a_to_high : if abits > 14 generate
+  a_to_high : if abits > 16 generate
     x : process
     begin
       assert false
-      report  "Address depth larger than 14 not supported for unisim_syncram_dp"
+      report  "Address depth larger than 16 not supported for unisim_syncram_dp"
       severity failure;
       wait;
     end process;
@@ -828,5 +873,465 @@ begin
   end generate;
 end;
 
+-------------------------
+-- unisim_syncram with byte enable
 
+library ieee;
+use ieee.std_logic_1164.all;
+library grlib;
+use grlib.stdlib.orv;
+use grlib.config_types.all;
+use grlib.config.all;
+--pragma translate_off
+library unisim;
+use unisim.RAMB36;
+use unisim.RAMB18;
+use unisim.RAMB18SDP;
+--pragma translate_on
 
+entity unisim_syncram_be is
+  generic ( abits : integer := 9; dbits : integer := 32; tech : integer := 0);
+  port (
+    clk     : in std_ulogic;
+    address : in std_logic_vector (abits -1 downto 0);
+    datain  : in std_logic_vector (dbits -1 downto 0);
+    dataout : out std_logic_vector (dbits -1 downto 0);
+    enable  : in std_logic_vector (dbits/8-1 downto 0);
+    write   : in std_logic_vector(dbits/8-1 downto 0)
+  );
+end;
+
+architecture behav of unisim_syncram_be is
+
+  -- Virtex5 primitives --
+  component RAMB36
+  generic (
+     READ_WIDTH_A : integer := 0;
+     READ_WIDTH_B : integer := 0;
+     SIM_COLLISION_CHECK : string := "ALL";
+     WRITE_WIDTH_A : integer := 0;
+     WRITE_WIDTH_B : integer := 0
+  );
+  port (
+     CASCADEOUTLATA : out std_ulogic;
+     CASCADEOUTLATB : out std_ulogic;
+     CASCADEOUTREGA : out std_ulogic;
+     CASCADEOUTREGB : out std_ulogic;
+     DOA : out std_logic_vector(31 downto 0);
+     DOB : out std_logic_vector(31 downto 0);
+     DOPA : out std_logic_vector(3 downto 0);
+     DOPB : out std_logic_vector(3 downto 0);
+     ADDRA : in std_logic_vector(15 downto 0);
+     ADDRB : in std_logic_vector(15 downto 0);
+     CASCADEINLATA : in std_ulogic;
+     CASCADEINLATB : in std_ulogic;
+     CASCADEINREGA : in std_ulogic;
+     CASCADEINREGB : in std_ulogic;
+     CLKA : in std_ulogic;
+     CLKB : in std_ulogic;
+     DIA : in std_logic_vector(31 downto 0);
+     DIB : in std_logic_vector(31 downto 0);
+     DIPA : in std_logic_vector(3 downto 0);
+     DIPB : in std_logic_vector(3 downto 0);
+     ENA : in std_ulogic;
+     ENB : in std_ulogic;
+     REGCEA : in std_ulogic;
+     REGCEB : in std_ulogic;
+     SSRA : in std_ulogic;
+     SSRB : in std_ulogic;
+     WEA : in std_logic_vector(3 downto 0);
+     WEB : in std_logic_vector(3 downto 0)
+  );
+  end component;
+
+  component RAMB18
+  generic (
+     READ_WIDTH_A : integer := 0;
+     READ_WIDTH_B : integer := 0;
+     SIM_COLLISION_CHECK : string := "ALL";
+     WRITE_WIDTH_A : integer := 0;
+     WRITE_WIDTH_B : integer := 0
+  );
+  port (
+     DOA : out std_logic_vector(15 downto 0);
+     DOB : out std_logic_vector(15 downto 0);
+     DOPA : out std_logic_vector(1 downto 0);
+     DOPB : out std_logic_vector(1 downto 0);
+     ADDRA : in std_logic_vector(13 downto 0);
+     ADDRB : in std_logic_vector(13 downto 0);
+     CLKA : in std_ulogic;
+     CLKB : in std_ulogic;
+     DIA : in std_logic_vector(15 downto 0);
+     DIB : in std_logic_vector(15 downto 0);
+     DIPA : in std_logic_vector(1 downto 0);
+     DIPB : in std_logic_vector(1 downto 0);
+     ENA : in std_ulogic;
+     ENB : in std_ulogic;
+     REGCEA : in std_ulogic;
+     REGCEB : in std_ulogic;
+     SSRA : in std_ulogic;
+     SSRB : in std_ulogic;
+     WEA : in std_logic_vector(1 downto 0);
+     WEB : in std_logic_vector(1 downto 0)
+  );
+  end component;
+
+  component RAMB18SDP
+  generic (
+     DO_REG : integer := 0;
+     SIM_COLLISION_CHECK : string := "ALL";
+     SIM_MODE : string := "SAFE");
+  port (
+     DO : out std_logic_vector(31 downto 0);
+     DOP : out std_logic_vector(3 downto 0);
+     DI : in std_logic_vector(31 downto 0);
+     DIP : in std_logic_vector(3 downto 0);
+     RDADDR : in std_logic_vector(8 downto 0);
+     RDCLK : in std_ulogic;
+     RDEN : in std_ulogic;
+     REGCE : in std_ulogic;
+     SSR : in std_ulogic;
+     WE : in std_logic_vector(3 downto 0);
+     WRADDR : in std_logic_vector(8 downto 0);
+     WRCLK : in std_ulogic;
+     WREN : in std_ulogic
+  );
+  end component;
+  -----------------------
+
+  component generic_syncram
+  generic ( abits : integer := 10; dbits : integer := 8 );
+  port (
+    clk      : in std_ulogic;
+    address  : in std_logic_vector((abits -1) downto 0);
+    datain   : in std_logic_vector((dbits -1) downto 0);
+    dataout  : out std_logic_vector((dbits -1) downto 0);
+    write    : in std_ulogic);
+  end component;
+
+signal gnd, xenable : std_ulogic;
+signal do, di : std_logic_vector(dbits+32 downto 0);
+signal xa : std_logic_vector(19 downto 0);
+
+type xd_type is array (0 to 255) of std_logic_vector(15 downto 0);
+signal xdi, xdo : xd_type;
+type xd36_type is array (0 to 255) of std_logic_vector(31 downto 0);
+signal xdi36, xdo36 : xd36_type;
+signal xwen : std_logic;
+type xwen_type is array (0 to 255) of std_logic_vector(1 downto 0);
+signal xwen18 : xwen_type;
+type xwen36_type is array (0 to 255) of std_logic_vector(3 downto 0);
+signal xwen36 : xwen36_type;
+
+begin
+  gnd <= '0';
+  dataout <= do(dbits-1 downto 0);
+  di(dbits-1 downto 0) <= datain;
+  di(dbits+32 downto dbits) <= (others => '0');
+
+  a0 : if (abits <= 5) and (GRLIB_CONFIG_ARRAY(grlib_techmap_strict_ram) = 0) generate
+    x : for i in 0 to ((dbits-1)/8) generate
+      r : generic_syncram generic map (abits, 8)
+        port map (clk, address, di(i*8+8-1 downto i*8), do(i*8+8-1 downto i*8), write(i));
+    end generate;
+    do(dbits+32 downto 8*(((dbits-1)/8)+1)) <= (others => '0');
+  end generate;
+
+  a8 : if ((abits > 5 or GRLIB_CONFIG_ARRAY(grlib_techmap_strict_ram) /= 0) and
+           (abits <= 9)) generate
+    
+    xa(19 downto abits) <= (others => '0'); 
+    xa(abits-1 downto 0) <= address;
+    xenable <= orv(enable);
+    xwen <= orv(write);
+
+    x : for i in 0 to ((dbits-1)/32) generate
+      r0 : RAMB18SDP
+        generic map (SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
+        port map (
+          DO  => do(i*32+32-1 downto i*32),
+          DOP => open,
+          DI => di(i*32+32-1 downto i*32),
+          DIP => x"F",
+          RDADDR  => xa(8 downto 0),
+          WRADDR  => xa(8 downto 0),
+          RDCLK => clk,
+          WRCLK => clk,
+          RDEN => xenable,
+          REGCE => gnd,
+          SSR => gnd,
+          WE => write(i*4+4-1 downto i*4),
+          WREN => xwen);
+    end generate;
+    do(dbits+32 downto 32*(((dbits-1)/32)+1)) <= (others => '0');
+  end generate;
+
+  a10 : if (abits = 10) generate
+
+    xa(19 downto 14) <= (others => '0'); 
+    xa(3 downto 0) <= (others => '0'); 
+    xa(13 downto 4) <= address;
+    xenable <= orv(enable);
+
+    x : for i in 0 to ((dbits-1)/16) generate
+      r : RAMB18 generic map (READ_WIDTH_A => 18, READ_WIDTH_B => 18,
+                      SIM_COLLISION_CHECK => "GENERATE_X_ONLY",
+                      WRITE_WIDTH_A => 18, WRITE_WIDTH_B => 18)
+          port map(
+            DOA => open, 
+            DOB => do(i*16+16-1 downto i*16),
+            DOPA => open, 
+            DOPB => open, 
+            ADDRA => xa(13 downto 0),
+            ADDRB => xa(13 downto 0),
+            CLKA => clk,
+            CLKB => clk,
+            DIA => di(i*16+16-1 downto i*16),
+            DIB => x"FFFF",
+            DIPA => "11",
+            DIPB => "11",
+            ENA => xenable,
+            ENB => xenable,
+            REGCEA => '0',
+            REGCEB => '0',
+            SSRA => '0',
+            SSRB => '0',
+            WEA => write(i*2+2-1 downto i*2),
+            WEB => "00");
+    end generate;
+    do(dbits+32 downto 16*(((dbits-1)/16)+1)) <= (others => '0');
+  end generate;
+
+  a11 : if abits = 11 generate
+
+    xa(19 downto 14) <= (others => '0'); 
+    xa(2 downto 0) <= (others => '0'); 
+    xa(13 downto 3) <= address;
+    xenable <= orv(enable);
+
+    x : for i in 0 to ((dbits-1)/8) generate
+
+      xwen18(i) <= '0'&write(i);
+      xdi(i) <= x"00"&di(i*8+8-1 downto i*8);
+      do(i*8+8-1 downto i*8) <= xdo(i)(7 downto 0);
+
+      r : RAMB18 generic map (READ_WIDTH_A => 9, READ_WIDTH_B => 9,
+                    SIM_COLLISION_CHECK => "GENERATE_X_ONLY",
+                    WRITE_WIDTH_A => 9, WRITE_WIDTH_B => 9)
+        port map(
+          DOA => open, 
+          DOB => xdo(i),
+          DOPA => open, 
+          DOPB => open, 
+          ADDRA => xa(13 downto 0),
+          ADDRB => xa(13 downto 0),
+          CLKA => clk,
+          CLKB => clk,
+          DIA => xdi(i),
+          DIB => x"FFFF",
+          DIPA => "11",
+          DIPB => "11",
+          ENA => xenable,
+          ENB => xenable,
+          REGCEA => '0',
+          REGCEB => '0',
+          SSRA => '0',
+          SSRB => '0',
+          WEA => xwen18(i),
+          WEB => "00");
+    end generate;
+    do(dbits+32 downto 8*(((dbits-1)/8)+1)) <= (others => '0');
+  end generate;
+
+  a12 : if abits = 12 generate
+
+    xa(19 downto 14) <= (others => '0'); 
+    xa(1 downto 0) <= (others => '0'); 
+    xa(13 downto 2) <= address;
+    xenable <= orv(enable);
+
+    x : for i in 0 to ((dbits-1)/4) generate
+
+      xwen18(i) <= '0'&write(i/2);
+      xdi(i) <= x"000"&di(i*4+4-1 downto i*4);
+      do(i*4+4-1 downto i*4) <= xdo(i)(3 downto 0);
+
+      r : RAMB18 generic map (READ_WIDTH_A => 4, READ_WIDTH_B => 4,
+                    SIM_COLLISION_CHECK => "GENERATE_X_ONLY",
+                    WRITE_WIDTH_A => 4, WRITE_WIDTH_B => 4)
+        port map(
+          DOA => open, 
+          DOB => xdo(i),
+          DOPA => open, 
+          DOPB => open, 
+          ADDRA => xa(13 downto 0),
+          ADDRB => xa(13 downto 0),
+          CLKA => clk,
+          CLKB => clk,
+          DIA => xdi(i),
+          DIB => x"FFFF",
+          DIPA => "11",
+          DIPB => "11",
+          ENA => xenable,
+          ENB => xenable,
+          REGCEA => '0',
+          REGCEB => '0',
+          SSRA => '0',
+          SSRB => '0',
+          WEA => xwen18(i),
+          WEB => "00");
+    end generate;
+    do(dbits+32 downto 4*(((dbits-1)/4)+1)) <= (others => '0');
+  end generate;
+
+  a13 : if abits = 13 generate
+
+    xa(19 downto 14) <= (others => '0'); 
+    xa(0) <= '0'; 
+    xa(13 downto 1) <= address;
+    xenable <= orv(enable);
+
+    x : for i in 0 to ((dbits-1)/2) generate
+
+      xwen18(i) <= '0'&write(i/4);
+      xdi(i)(15 downto 2) <= (others=>'0');
+      xdi(i)(1 downto 0) <= di(i*2+2-1 downto i*2);
+      do(i*2+2-1 downto i*2) <= xdo(i)(1 downto 0);
+
+      r : RAMB18 generic map (READ_WIDTH_A => 2, READ_WIDTH_B => 2,
+                    SIM_COLLISION_CHECK => "GENERATE_X_ONLY",
+                    WRITE_WIDTH_A => 2, WRITE_WIDTH_B => 2)
+        port map(
+          DOA => open, 
+          DOB => xdo(i),
+          DOPA => open, 
+          DOPB => open, 
+          ADDRA => xa(13 downto 0),
+          ADDRB => xa(13 downto 0),
+          CLKA => clk,
+          CLKB => clk,
+          DIA => xdi(i),
+          DIB => x"FFFF",
+          DIPA => "11",
+          DIPB => "11",
+          ENA => xenable,
+          ENB => xenable,
+          REGCEA => '0',
+          REGCEB => '0',
+          SSRA => '0',
+          SSRB => '0',
+          WEA => xwen18(i),
+          WEB => "00");
+    end generate;
+    do(dbits+32 downto 2*(((dbits-1)/2)+1)) <= (others => '0');
+  end generate;
+
+  a14 : if abits = 14 generate
+
+    xa(19 downto 14) <= (others => '0'); 
+    xa(13 downto 0) <= address;
+    xenable <= orv(enable);
+
+    x : for i in 0 to (dbits-1) generate
+
+      xwen18(i) <= '0'&write(i/8);
+      xdi(i)(15 downto 1) <= (others=>'0');
+      xdi(i)(0) <= di(i);
+      do(i) <= xdo(i)(0);
+
+      r : RAMB18 generic map (READ_WIDTH_A => 1, READ_WIDTH_B => 1,
+                    SIM_COLLISION_CHECK => "GENERATE_X_ONLY",
+                    WRITE_WIDTH_A => 1, WRITE_WIDTH_B => 1)
+        port map(
+          DOA => open, 
+          DOB => xdo(i),
+          DOPA => open, 
+          DOPB => open, 
+          ADDRA => xa(13 downto 0),
+          ADDRB => xa(13 downto 0),
+          CLKA => clk,
+          CLKB => clk,
+          DIA => xdi(i),
+          DIB => x"FFFF",
+          DIPA => "11",
+          DIPB => "11",
+          ENA => xenable,
+          ENB => xenable,
+          REGCEA => '0',
+          REGCEB => '0',
+          SSRA => '0',
+          SSRB => '0',
+          WEA => xwen18(i),
+          WEB => "00");
+    end generate;
+    do(dbits+32 downto dbits) <= (others => '0');
+  end generate;
+
+  a15 : if abits = 15 generate
+
+    xa(19 downto 15) <= (others => '0'); 
+    xa(14 downto 0) <= address;
+    xenable <= orv(enable);
+
+    x : for i in 0 to (dbits-1) generate
+
+      xwen36(i) <= "000"&write(i/8);
+      xdi36(i)(31 downto 1) <= (others=>'0');
+      xdi36(i)(0) <= di(i);
+      do(i) <= xdo36(i)(0);
+
+      r : RAMB36 generic map(READ_WIDTH_A => 1, READ_WIDTH_B => 1,
+                    SIM_COLLISION_CHECK => "GENERATE_X_ONLY",
+                    WRITE_WIDTH_A => 1, WRITE_WIDTH_B => 1)
+        port map(
+          CASCADEOUTLATA => open,
+          CASCADEOUTLATB => open,
+          CASCADEOUTREGA => open,
+          CASCADEOUTREGB => open,
+          CASCADEINLATA => '0', 
+          CASCADEINLATB => '0', 
+          CASCADEINREGA => '0', 
+          CASCADEINREGB => '0', 
+          DOA => open, 
+          DOB => xdo36(i),
+          DOPA => open, 
+          DOPB => open, 
+          ADDRA => xa(15 downto 0),
+          ADDRB => xa(15 downto 0),
+          CLKA => clk,
+          CLKB => clk,
+          DIA => xdi36(i),
+          DIB => x"FFFFFFFF",
+          DIPA => "1111",
+          DIPB => "1111",
+          ENA => xenable,
+          ENB => xenable,
+          REGCEA => '0',
+          REGCEB => '0',
+          SSRA => '0',
+          SSRB => '0',
+          WEA => xwen36(i),
+          WEB => "0000");
+    end generate;
+    do(dbits+32 downto dbits) <= (others => '0');
+  end generate;
+
+  a16 : if (abits > 15) generate
+    x : for i in 0 to ((dbits-1)/8) generate
+      r : generic_syncram generic map (abits, 8)
+        port map (clk, address, di(i*8+8-1 downto i*8), do(i*8+8-1 downto i*8), write(i));
+    end generate;
+    do(dbits+32 downto 8*(((dbits-1)/8)+1)) <= (others => '0');
+  end generate;
+
+  --pragma translate_off
+   gen_sram : if abits > 15 generate
+     x : process
+     begin
+       report  "Address depth larger than 15 not supported for unisim_syncram_be. It will be implemented using inferred syncram.";
+       wait;
+     end process;
+   end generate;
+  --pragma translate_on
+
+end;

@@ -23,7 +23,7 @@ mainmenu_option next_comment
   source lib/techmap/clocks/clkgen.in
 endmenu
 
-source lib/gaisler/leon3/leon3.in
+source lib/gaisler/subsys/leon_dsu_stat_base.in
 source lib/gaisler/l2cache/l2c.in
 source lib/grlib/amba/amba.in
 

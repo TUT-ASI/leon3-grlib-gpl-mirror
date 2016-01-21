@@ -28,7 +28,7 @@
   constant CFG_DLINE 	: integer := CFG_DLINE_SZ;
   constant CFG_DREPL 	: integer := CFG_DCACHE_ALGORND;
   constant CFG_DLOCK 	: integer := CONFIG_DCACHE_LOCK;
-  constant CFG_DSNOOP	: integer := CONFIG_DCACHE_SNOOP*2 + 4*CONFIG_DCACHE_SNOOP_SEPTAG;
+  constant CFG_DSNOOP	: integer := CONFIG_DCACHE_SNOOP_SP + CONFIG_DCACHE_SNOOP*2 + 4*CONFIG_DCACHE_SNOOP_SEPTAG;
   constant CFG_DFIXED	: integer := 16#CONFIG_CACHE_FIXED#;
   constant CFG_DLRAMEN	: integer := CONFIG_DCACHE_LRAM;
   constant CFG_DLRAMADDR: integer := 16#CONFIG_DCACHE_LRSTART#;
@@ -52,6 +52,12 @@
   constant CFG_LEON3_NETLIST: integer := CONFIG_LEON3_NETLIST;	
   constant CFG_DISAS    : integer := CONFIG_IU_DISAS + CONFIG_IU_DISAS_NET;
   constant CFG_PCLOW    : integer := CFG_DEBUG_PC32;
+  constant CFG_STAT_ENABLE   : integer := CONFIG_STAT_ENABLE;
+  constant CFG_STAT_CNT      : integer := CONFIG_STAT_CNT;
+  constant CFG_STAT_NMAX     : integer := CONFIG_STAT_NMAX;
+  constant CFG_STAT_DSUEN    : integer := CONFIG_STAT_DSUEN;
   constant CFG_NP_ASI   : integer := CONFIG_NP_ASI;
-  constant CFG_WRPSR   : integer := CONFIG_WRPSR;
+  constant CFG_WRPSR    : integer := CONFIG_WRPSR;
+  constant CFG_ALTWIN   : integer := CONFIG_ALTWIN;
+  constant CFG_REX      : integer := CONFIG_REX;
 

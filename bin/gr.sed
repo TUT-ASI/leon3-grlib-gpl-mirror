@@ -1,6 +1,6 @@
 s/--GAISLER_LICENSE/------------------------------------------------------------------------------\
 --  This file is a part of the GRLIB VHDL IP LIBRARY\
---  Copyright (C) 2015, Cobham Gaisler AB - all rights reserved.\
+--  Copyright (C) 2016, Cobham Gaisler AB - all rights reserved.\
 --\
 -- ANY USE OR REDISTRIBUTION IN PART OR IN WHOLE MUST BE HANDLED IN \
 -- ACCORDANCE WITH THE GAISLER LICENSE AGREEMENT AND MUST BE APPROVED \

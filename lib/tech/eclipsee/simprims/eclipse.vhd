@@ -131,3 +131,4 @@ begin
   x : entity work.eclipse_sim_ram generic map (10, 2)
       port map (wa, ra, wd, we, re, wclk, rclk, asyncrd, rd);
 end arch;
+

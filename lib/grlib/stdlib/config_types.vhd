@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -53,7 +53,10 @@ package config_types is
   -- Disable testoen control even if scantest enabled (for using external boundary
   -- scan or other test logic)
   constant grlib_external_testoen        : integer := 8;
+  -- Increase maximum number of interrupts (32 + x*32)
+  constant grlib_amba_inc_nirq           : integer := 9; 
 
-  type grlib_config_array_type is array (0 to 9) of integer;
+  type grlib_config_array_type is array (0 to 10) of integer;
 
 end;
+

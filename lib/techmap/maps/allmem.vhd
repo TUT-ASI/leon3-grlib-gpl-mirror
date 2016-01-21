@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -415,6 +415,78 @@ package allmem is
     waddress : in std_logic_vector((abits-1) downto 0);
     datain   : in std_logic_vector((dbits-1) downto 0);
     write    : in std_ulogic);
+  end component;
+
+  component igloo2_syncram_be
+  generic (abits : integer := 6; dbits : integer := 8);
+  port (
+    clk      : in std_ulogic;
+    address  : in std_logic_vector((abits -1) downto 0);
+    datain   : in std_logic_vector((dbits -1) downto 0);
+    dataout  : out std_logic_vector((dbits -1) downto 0);
+    enable   : in std_logic_vector (dbits/8-1 downto 0);
+    write    : in std_logic_vector (dbits/8-1 downto 0));
+  end component;
+  
+-- RTG4
+  component rtg4_syncram
+  generic ( abits : integer := 10; dbits : integer := 8; ecc : integer := 0);
+  port (
+    clk      : in std_ulogic;
+    address  : in std_logic_vector((abits -1) downto 0);
+    datain   : in std_logic_vector((dbits -1) downto 0);
+    dataout  : out std_logic_vector((dbits -1) downto 0);
+    enable   : in std_ulogic;
+    write    : in std_ulogic;
+    error    : out std_logic_vector(1 downto 0);
+    errinj   : in  std_ulogic);
+  end component;
+
+  component rtg4_syncram_dp is
+  generic ( abits : integer := 6; dbits : integer := 8; ecc : integer := 0);
+  port (
+    clk1     : in std_ulogic;
+    address1 : in std_logic_vector((abits -1) downto 0);
+    datain1  : in std_logic_vector((dbits -1) downto 0);
+    dataout1 : out std_logic_vector((dbits -1) downto 0);
+    enable1  : in std_ulogic;
+    write1   : in std_ulogic;
+    error1   : out std_logic_vector(1 downto 0);
+    clk2     : in std_ulogic;
+    address2 : in std_logic_vector((abits -1) downto 0);
+    datain2  : in std_logic_vector((dbits -1) downto 0);
+    dataout2 : out std_logic_vector((dbits -1) downto 0);
+    enable2  : in std_ulogic;
+    write2   : in std_ulogic;
+    error2   : out std_logic_vector(1 downto 0);
+    errinj   : in std_ulogic);
+  end component;
+
+  component rtg4_syncram_2p
+  generic ( abits : integer := 8; dbits : integer := 32; sepclk : integer := 0;
+            ecc : integer := 0);
+  port (
+    rclk     : in std_ulogic;
+    renable  : in std_ulogic;
+    raddress : in std_logic_vector((abits-1) downto 0);
+    dataout  : out std_logic_vector((dbits-1) downto 0);
+    rerror   : out std_logic_vector(1 downto 0);
+    wclk     : in std_ulogic;
+    write    : in std_ulogic;
+    waddress : in std_logic_vector((abits-1) downto 0);
+    datain   : in std_logic_vector((dbits-1) downto 0);
+    errinj   : in std_ulogic);
+  end component;
+
+  component rtg4_syncram_be
+  generic (abits : integer := 6; dbits : integer := 8);
+  port (
+    clk      : in std_ulogic;
+    address  : in std_logic_vector((abits -1) downto 0);
+    datain   : in std_logic_vector((dbits -1) downto 0);
+    dataout  : out std_logic_vector((dbits -1) downto 0);
+    enable   : in std_logic_vector (dbits/8-1 downto 0);
+    write    : in std_logic_vector (dbits/8-1 downto 0));
   end component;
 
 -- Fusion family
@@ -905,6 +977,20 @@ end component;
    );
   end component;
 
+  component unisim_syncram_ecc
+  generic ( abits : integer := 9; dbits : integer := 32);
+  port (
+    clk     : in std_ulogic;
+    address : in std_logic_vector(abits-1 downto 0);
+    datain  : in std_logic_vector(dbits-1 downto 0);
+    dataout : out std_logic_vector(dbits-1 downto 0);
+    enable  : in std_ulogic;
+    write   : in std_ulogic;
+    error   : out std_logic_vector(1 downto 0);
+    errinj  : in  std_logic_vector(1 downto 0)
+  );
+  end component;
+  
   component unisim_syncram_dp
   generic ( abits : integer := 10; dbits : integer := 8 );
   port (
@@ -932,6 +1018,18 @@ end component;
     dataout : out std_logic_vector (63 downto 0);
     enable  : in  std_logic_vector (1 downto 0);
     write   : in  std_logic_vector (1 downto 0)
+  );
+  end component;
+
+  component unisim_syncram_be
+  generic ( abits : integer := 9; dbits : integer := 32; tech : integer := 0);
+  port (
+    clk     : in std_ulogic;
+    address : in std_logic_vector (abits -1 downto 0);
+    datain  : in std_logic_vector (dbits -1 downto 0);
+    dataout : out std_logic_vector (dbits -1 downto 0);
+    enable  : in std_logic_vector (dbits/8-1 downto 0);
+    write   : in std_logic_vector(dbits/8-1 downto 0)
   );
   end component;
 
@@ -1543,3 +1641,4 @@ end component;
   end component;
 
 end;
+

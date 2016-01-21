@@ -15,3 +15,4 @@
   constant CFG_SPW_INPUT   : integer := CONFIG_SPW_INPUT;
   constant CFG_SPW_OUTPUT  : integer := CONFIG_SPW_OUTPUT;
   constant CFG_SPW_RTSAME  : integer := CONFIG_SPW_RTSAME;
+

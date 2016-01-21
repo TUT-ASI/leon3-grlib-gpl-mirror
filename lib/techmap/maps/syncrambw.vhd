@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -94,8 +94,23 @@ begin
     
     n2x : if tech = easic45 generate 
       x0 : n2x_syncram_be generic map (abits, dbits)
-         port map (clk, address, datain, dataout, xenable, xwrite);
+         port map (clk, address, datain, dataoutx, xenable, xwrite);
     end generate;
+
+    uni : if is_unisim(tech) = 1 generate 
+      x0 : unisim_syncram_be generic map (abits, dbits, tech)
+         port map (clk, address, datain, dataoutx, xenable, xwrite);
+    end generate;
+
+    rt4 : if tech = rtg4 generate 
+      x0 : rtg4_syncram_be generic map (abits, dbits)
+         port map (clk, address, datain, dataoutx, xenable, xwrite);
+    end generate;
+
+    igl2 : if (tech = igloo2) or (tech = smartfusion2) generate 
+      x0 : igloo2_syncram_be generic map (abits, dbits)
+         port map (clk, address, datain, dataoutx, xenable, xwrite);
+     end generate;
 
     
 -- pragma translate_off

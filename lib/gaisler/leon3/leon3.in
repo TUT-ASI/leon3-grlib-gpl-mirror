@@ -38,6 +38,8 @@ if [ "$CONFIG_LEON3" = "y" ]; then
     define_bool CONFIG_DSU_ENABLE n
     define_bool CONFIG_NP_ASI n
     define_bool CONFIG_PWRPSR n
+    define_bool CONFIG_ALTWIN n
+    define_bool CONFIG_REX n
   fi
   if [ "$CONFIG_LEON3_GP" = "y" ]; then
     define_int  CONFIG_IU_NWINDOWS 8
@@ -66,8 +68,8 @@ if [ "$CONFIG_LEON3" = "y" ]; then
     define_bool CONFIG_DCACHE_ALGORND y
     define_bool CONFIG_DCACHE_LOCK n
     define_bool CONFIG_DCACHE_SNOOP y
-    define_bool CONFIG_DCACHE_SNOOP_FAST y
     define_bool CONFIG_DCACHE_SNOOP_SEPTAG y
+    define_bool CONFIG_DCACHE_SNOOP_SP n
     define_hex  CONFIG_CACHE_FIXED 0
     define_bool CONFIG_DCACHE_LRAM n
     define_bool CONFIG_MMU_ENABLE y
@@ -83,6 +85,8 @@ if [ "$CONFIG_LEON3" = "y" ]; then
     define_bool CONFIG_DSU_ATRACESZ4 y
     define_bool CONFIG_NP_ASI y
     define_bool CONFIG_PWRPSR y
+    define_bool CONFIG_ALTWIN n
+    define_bool CONFIG_REX n
   fi
   if [ "$CONFIG_LEON3_HP" = "y" ]; then
     define_int  CONFIG_IU_NWINDOWS 8
@@ -113,8 +117,8 @@ if [ "$CONFIG_LEON3" = "y" ]; then
     define_bool CONFIG_DCACHE_ALGOLRU y
     define_bool CONFIG_DCACHE_LOCK n
     define_bool CONFIG_DCACHE_SNOOP y
-    define_bool CONFIG_DCACHE_SNOOP_FAST y
     define_bool CONFIG_DCACHE_SNOOP_SEPTAG y
+    define_bool CONFIG_DCACHE_SNOOP_SP n
     define_hex  CONFIG_CACHE_FIXED 0
     define_bool CONFIG_DCACHE_LRAM n
     define_bool CONFIG_MMU_ENABLE y
@@ -130,6 +134,8 @@ if [ "$CONFIG_LEON3" = "y" ]; then
     define_bool CONFIG_DSU_ATRACESZ4 y
     define_bool CONFIG_NP_ASI y
     define_bool CONFIG_PWRPSR y
+    define_bool CONFIG_ALTWIN n
+    define_bool CONFIG_REX n
   fi
   if [ "$CONFIG_LEON3_CUSTOM" = "y" ]; then
     mainmenu_option next_comment
@@ -159,6 +165,8 @@ if [ "$CONFIG_LEON3" = "y" ]; then
       hex ' Reset start address (addr[31:12]) ' CONFIG_IU_RSTADDR 00000
       bool 'SPARC V8E non-privileged ASI access' CONFIG_NP_ASI
       bool 'SPARC V8E partial Write %psr (WRPSR)' CONFIG_WRPSR
+      bool 'SPARC V8E AWP and regfile partitioning ' CONFIG_ALTWIN
+      bool 'Enable LEON-REX extension' CONFIG_REX
     endmenu
     mainmenu_option next_comment
     comment 'Floating-point unit'
@@ -264,6 +272,9 @@ if [ "$CONFIG_LEON3" = "y" ]; then
         bool 'AHB snooping       ' CONFIG_DCACHE_SNOOP
         if [ "$CONFIG_DCACHE_SNOOP" = "y" ]; then
             bool 'Separate snoop tags  ' CONFIG_DCACHE_SNOOP_SEPTAG
+            if [ "$CONFIG_DCACHE_SNOOP_SEPTAG" = "y" ]; then
+              bool 'Use SP RAM for seperate tags  ' CONFIG_DCACHE_SNOOP_SP
+            fi
         fi
       fi
       if [ "$CONFIG_ICACHE_ENABLE" = "y" -o "$CONFIG_DCACHE_ENABLE" = "y" ]; then
@@ -349,6 +360,11 @@ if [ "$CONFIG_LEON3" = "y" ]; then
         bool 'Enable statistics outputs       ' CONFIG_DSU_ASTAT
         fi
       fi
+    bool 'Enable LEON3 Statistics Module       ' CONFIG_STAT_ENABLE
+    if [ "$CONFIG_STAT_ENABLE" = "y" ]; then
+      int 'Number of counters (1 - 64)           ' CONFIG_STAT_CNT 4
+      int 'Number of accumulative counters       ' CONFIG_STAT_NMAX 0
+    fi
     endmenu
   fi
   mainmenu_option next_comment

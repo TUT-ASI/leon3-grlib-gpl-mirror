@@ -9,3 +9,4 @@
   constant CFG_SPI2AHB_FILTER  : integer := CONFIG_SPI2AHB_FILTER;
   constant CFG_SPI2AHB_CPOL    : integer := CONFIG_SPI2AHB_CPOL;
   constant CFG_SPI2AHB_CPHA    : integer := CONFIG_SPI2AHB_CPHA;
+

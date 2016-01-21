@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -50,10 +50,10 @@ entity cachemem is
     dlinesize : integer range 4 to 8 := 4;
     dsetsize  : integer range 1 to 256 := 1;
     dsetlock  : integer range 0 to 1 := 0;
-    dsnoop    : integer range 0 to 6 := 0;
-    ilram      : integer range 0 to 1 := 0;
+    dsnoop    : integer range 0 to 7 := 0;
+    ilram      : integer range 0 to 2 := 0;
     ilramsize  : integer range 1 to 512 := 1;        
-    dlram      : integer range 0 to 1 := 0;
+    dlram      : integer range 0 to 2 := 0;
     dlramsize  : integer range 1 to 512 := 1;
     mmuen     : integer range 0 to 1 := 0;
     testen    : integer range 0 to 3 := 0
@@ -72,6 +72,7 @@ end;
 architecture rtl of cachemem is
   constant DSNOOPSEP    : boolean := (dsnoop > 3);
   constant DSNOOPFAST   : boolean := (dsnoop = 2) or (dsnoop = 6);
+  constant DSNOOPHB     : boolean := (dsnoop = 7);
   
   constant ILINE_BITS   : integer := log2(ilinesize);
   constant IOFFSET_BITS : integer := 8 +log2(isetsize) - ILINE_BITS;
@@ -197,6 +198,9 @@ architecture rtl of cachemem is
   signal dtwrite3  : std_logic_vector(0 to MAXSETS-1);
   signal ddwrite   : std_logic_vector(0 to MAXSETS-1);
 
+  signal vbcrd     : std_logic_vector(0 to DSETS-1);
+  signal vbcwd     : std_logic_vector(0 to DSETS-1);
+
   signal vcc, gnd  : std_ulogic;
   
   
@@ -205,7 +209,7 @@ begin
   vcc <= '1'; gnd <= '0'; 
   itaddr <= crami.icramin.address(IOFFSET_BITS + ILINE_BITS -1 downto ILINE_BITS);
   idaddr <= crami.icramin.address(IOFFSET_BITS + ILINE_BITS -1 downto 0);
-  ildaddr <= crami.icramin.address(ILRAM_BITS-3 downto 0);
+  ildaddr <= crami.icramin.ldramin.address(ILRAM_BITS-3 downto 0);
   
   itinsel : process(clk, crami, dtdataout2, dtdataout3
                     )
@@ -294,7 +298,7 @@ begin
     
     itdatain <= vitdatain; iddatain <= viddatain;
     dtdatain <= vdtdatain; dtdatain2 <= vdtdatain2; dddatain <= vdddatain;
-    dtdatain3 <= vdtdatain3;
+    dtdatain3 <= vdtdatain3; dtdatainu <= vdtdatainu;
     
     
   end process;
@@ -339,7 +343,7 @@ begin
     end generate;
   end generate;
 
-  ild0 : if ilram = 1 generate
+  ild0 : if ilram /= 0 generate
     ildata0 : syncram
      generic map (tech, ILRAM_BITS-2, 32, testen, memtest_vlen)
       port map (clk, ildaddr, iddatain, ildataout, 
@@ -362,7 +366,7 @@ begin
       dt1 : if not DSNOOPSEP generate
         dt0 : for i in 0 to DSETS-1 generate
           dtags0 : syncram_dp
-          generic map (tech, DOFFSET_BITS, DTWIDTH, testen, memtest_vlen) port map (
+          generic map (tech, DOFFSET_BITS, DTWIDTH, testen, memtest_vlen, 0, 1) port map (
            clk, dtaddr, dtdatain(i)(DTWIDTH-1 downto 0), 
                 dtdataout(i)(DTWIDTH-1 downto 0), dtenable(i), dtwrite(i),
            sclk, dtaddr2, dtdatain2(i)(DTWIDTH-1 downto 0), 
@@ -373,17 +377,17 @@ begin
       
       -- virtual address snoop case
       mdt1 : if DSNOOPSEP generate
-       slow : if not DSNOOPFAST generate
+       slow : if not DSNOOPFAST and not DSNOOPHB generate
         mdt0 : for i in 0 to DSETS-1 generate
           dtags0 : syncram_dp
-          generic map (tech, DOFFSET_BITS, DTWIDTH-dlinesize+1, testen, memtest_vlen) port map (
+          generic map (tech, DOFFSET_BITS, DTWIDTH-dlinesize+1, testen, memtest_vlen, 0, 1) port map (
             clk, dtaddr, dtdatain(i)(DTWIDTH-1 downto dlinesize-1), 
                  dtdataout(i)(DTWIDTH-1 downto dlinesize-1), dtenable(i), dtwrite(i),
             sclk, dtaddr2, dtdatain2(i)(DTWIDTH-1 downto dlinesize-1), 
                  dtdataout2(i)(DTWIDTH-1 downto dlinesize-1), dtenable2(i), dtwrite2(i), testin
             );
           dtags1 : syncram_dp
-          generic map (tech, DOFFSET_BITS, DPTAG_RAM_BITS, testen, memtest_vlen) port map (
+          generic map (tech, DOFFSET_BITS, DPTAG_RAM_BITS, testen, memtest_vlen, 0, 1) port map (
             clk, dtaddr, dtdatain3(i)(DTAG_RAM_BITS-1 downto DTAG_BITS-DPTAG_BITS), 
                  open, dtwrite3(i), dtwrite3(i),
             sclk, dtaddr2, dtdatainu(i)(DTAG_RAM_BITS-1 downto DTAG_BITS-DPTAG_BITS), 
@@ -407,8 +411,41 @@ begin
             );
         end generate;
        end generate;
+
+
+       hb : if DSNOOPHB generate
+        mdt0 : for i in 0 to DSETS-1 generate
+          dtags0 : syncram
+          generic map (tech, DOFFSET_BITS, DTWIDTH-dlinesize, testen, memtest_vlen) port map (
+            clk, dtaddr, dtdatain(i)(DTWIDTH-1 downto dlinesize),
+                 dtdataout(i)(DTWIDTH-1 downto dlinesize), dtenable(i), dtwrite(i), testin
+            );
+          dtags1 : syncram
+          generic map (tech, DOFFSET_BITS, DPTAG_RAM_BITS, testen, memtest_vlen) port map (
+            sclk, dtaddr2, dtdatain3(i)(DTAG_RAM_BITS-1 downto DTAG_BITS-DPTAG_BITS),
+            dtdataout3(i)(DTAG_RAM_BITS-1 downto DTAG_BITS-DPTAG_BITS), dtenable(i), dtwrite3(i),
+            testin
+            );
+          vbcwd(i) <= dtdatain(i)(dlinesize-1);
+          dtdataout(i)(dlinesize-1) <= vbcrd(i);
+        end generate;
+        -- Valid bits in DFFs
+        vb0: cmvalidbits
+          generic map (abits => DOFFSET_BITS, nways => dsets)
+          port map (
+            clk => sclk,
+            caddr => dtaddr,
+            cenable => dtenable(0 to dsets-1),
+            cwrite => dtwrite(0 to dsets-1),
+            cwdata => vbcwd,
+            crdata => vbcrd,
+            saddr => crami.dcramin.snhitaddr(DOFFSET_BITS-1 downto 0),
+            sclear => crami.dcramin.snhit(0 to dsets-1),
+            flush => crami.dcramin.flushall
+            );
+       end generate;
       end generate;
-      
+
     end generate;
     nodtags1 : if DSNOOP = 0 generate
       dt0 : for i in 0 to DSETS-1 generate
@@ -426,6 +463,11 @@ begin
     
   end generate;
 
+  nohb : if dcen = 0 or not DSNOOPHB generate
+    vbcwd <= (others => '0');
+    vbcrd <= (others => '0');
+  end generate;
+
   dmd : if dcen = 0 generate
     dnd0 : for i in 0 to DSETS-1 generate
       dtdataout(i) <= (others => '0');
@@ -434,15 +476,15 @@ begin
     end generate;
   end generate;
 
-  ldxs0 : if not ((dlram = 1) and (DSETS > 1)) generate
+  ldxs0 : if not ((dlram /= 0) and (DSETS > 1)) generate
     lddatain <= dddatain(0)(31 downto 0);    
   end generate;
   
-  ldxs1 : if (dlram = 1) and (DSETS > 1) generate
+  ldxs1 : if (dlram /= 0) and (DSETS > 1) generate
     lddatain <= dddatain(1)(31 downto 0);    
   end generate;
 
-  ld0 : if dlram = 1 generate
+  ld0 : if dlram /= 0 generate
     ldata0 : syncram
      generic map (tech, DLRAM_BITS-2, 32, testen, memtest_vlen)
       port map (clk, ldaddr, lddatain, ldataout, crami.dcramin.ldramin.enable,
@@ -462,7 +504,7 @@ begin
     noictx : if mmuen = 0 generate
       cramo.icramo.ctx(i) <= (others => '0');
     end generate;
-    cramo.icramo.data(i) <= ildataout when (ilram = 1) and ((ISETS = 1) or (i = 1)) and (crami.icramin.ldramin.read = '1') else iddataout(i)(31 downto 0);
+    cramo.icramo.data(i) <= ildataout when (ilram /= 0) and ((ISETS = 1) or (i = 1)) and (crami.icramin.ldramin.read = '1') else iddataout(i)(31 downto 0);
     itv : if ilinesize = 4 generate
       cramo.icramo.tag(i)(7 downto 4) <= (others => '0');
     end generate;
@@ -500,7 +542,7 @@ begin
       cramo.dcramo.stag(i)(DTAG_LOW-1 downto 0) <= (others =>'0');
     end generate;
     
-    cramo.dcramo.data(i) <= ldataout when (dlram = 1) and ((DSETS = 1) or (i = 1)) and (crami.dcramin.ldramin.read = '1')
+    cramo.dcramo.data(i) <= ldataout when (dlram /= 0) and ((DSETS = 1) or (i = 1)) and (crami.dcramin.ldramin.read = '1')
     else dddataout(i)(31 downto 0);
     dtv : if dlinesize = 4 generate
       cramo.dcramo.tag(i)(7 downto 4) <= (others => '0');

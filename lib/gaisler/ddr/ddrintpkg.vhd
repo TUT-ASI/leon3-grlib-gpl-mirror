@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -191,7 +191,10 @@ package ddrintpkg is
       hasdqvalid : integer := 0;
       rstdel     : integer := 200;
       phyptctrl  : integer := 0;
-      scantest   : integer := 0
+      scantest   : integer := 0;
+      dis_caslat : integer := 0;
+      dis_init   : integer := 0;
+      cke_rst    : integer := 0
    );
    port (
       ddr_rst  : in  std_ulogic;
@@ -495,3 +498,4 @@ package body ddrintpkg is
   end masksub32;
 
 end;
+

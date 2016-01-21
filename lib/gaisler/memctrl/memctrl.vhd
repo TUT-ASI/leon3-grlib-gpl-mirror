@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -136,7 +136,7 @@ type sdctrl_out_type is record
 end record;
 
 constant sdctrl_out_none : sdctrl_out_type :=
-  ((others => '0'), (others => '0'), (others => '0'), '0', '0', '0', (others => '0'),
+  ((others => '0'), (others => '1'), (others => '1'), '0', '0', '0', (others => '0'),
    '0', '0', '0', (others => '0'), (others => '0'), (others => '0'),
    (others => '0'), '0', (others => '0'), (others => '0'), '0',
    (others => '0'), (others => '0'), (others => '0'), '0',
@@ -152,6 +152,13 @@ type sdram_out_type is record
   casn      : std_ulogic;                       -- col addr stb
   dqm       : std_logic_vector ( 7 downto 0);  -- data i/o mask
 end record;
+constant sdram_out_none : sdram_out_type := (
+  sdcke => (others => '0'),
+  sdcsn => (others => '0'),
+  sdwen => '0',
+  rasn  => '0',
+  casn  => '0',
+  dqm   => (others => '0'));
 
 type zbtssram_out_type is record
   cen       : std_ulogic;
@@ -612,3 +619,4 @@ end component;
   end component;
   
 end;
+

@@ -25,8 +25,10 @@ LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp hynix cypress
 DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan pci leon3ft ambatest can \
 	usbhc usb spacewire spi grusbhc \
-	slink ascs hcan leon4 leon4v0
+	slink ascs hcan leon4v0
 FILESKIP = grcan.vhd clkgen_altera_mf.vhd
+
+CLEAN=localclean
 
 include $(GRLIB)/software/leon3/Makefile
 include $(GRLIB)/bin/Makefile

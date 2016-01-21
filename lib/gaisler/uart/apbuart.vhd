@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -70,7 +70,7 @@ constant pconfig : apb_config_type := (
   1 => apb_iobar(paddr, pmask));
 
 type rxfsmtype is (idle, startbit, data, cparity, stopbit);
-type txfsmtype is (idle, data, cparity);
+type txfsmtype is (idle, data, cparity, stopbit);
 
 type fifo is array (0 to fifosize - 1) of std_logic_vector(7 downto 0);
 
@@ -86,6 +86,7 @@ type uartregs is record
   debug         :  std_ulogic;  -- debug mode enable
   rsempty       :  std_ulogic;  -- receiver shift register empty (internal)
   tsempty       :  std_ulogic;  -- transmitter shift register empty
+  stop          :  std_ulogic;  -- 0: one stop bit, 1: two stop bits 
   tsemptyirqen  :  std_ulogic;  -- generate irq when tx shift register is empty
   break         :  std_ulogic;  -- break detected
   breakirqen    :  std_ulogic;  -- generate irq when break has been received
@@ -138,7 +139,7 @@ constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) 
 constant RES : uartregs :=
   (rxen => '0', txen => '0', rirqen => '0', tirqen => '0', parsel => '0',
    paren => '0', flow => '0', loopb => '0', debug => '0', rsempty => '1',
-   tsempty => '1', tsemptyirqen => '0', break => '0', breakirqen => '0',
+   tsempty => '1', stop => '0', tsemptyirqen => '0', break => '0', breakirqen => '0',
    ovf => '0', parerr => '0', frame => '0', ctsn => (others => '0'),
    rtsn => '1', extclken => '0', extclk => '0', rhold => fifozero,
    rshift => (others => '0'), tshift => (others => '1'), thold => fifozero,
@@ -240,6 +241,7 @@ begin
       if fifosize > 1 then
         rdata(31) := '1';
       end if;
+      rdata(15) := r.stop;
       rdata(14) := r.tsemptyirqen;
       rdata(13) := r.delayirqen;
       rdata(12) := r.breakirqen;
@@ -277,6 +279,7 @@ begin
         v.ovf        := apbi.pwdata(4);
         v.break      := apbi.pwdata(3);
       when "000010" =>
+        v.stop       := apbi.pwdata(15);
         v.tsemptyirqen := apbi.pwdata(14);
         v.delayirqen := apbi.pwdata(13);
         v.breakirqen := apbi.pwdata(12);
@@ -391,7 +394,16 @@ begin
       end if;
     when cparity =>     -- transmit parity bit
       if r.txtick = '1' then
-        v.tshift := '1' & r.tshift(9 downto 1); v.txstate := idle;
+        v.tshift := '1' & r.tshift(9 downto 1);
+        if r.stop = '1' then
+          v.txstate := stopbit;
+        else
+          v.txstate := idle;
+        end if;
+      end if;
+    when stopbit =>
+      if r.txtick = '1' then
+        v.txstate := idle;
       end if;
     end case;
 
@@ -515,7 +527,7 @@ begin
     if (not RESET_ALL) and (rst = '0') then
       v.frame := RES.frame; v.rsempty := RES.rsempty;
       v.parerr := RES.parerr; v.ovf := RES.ovf; v.break := RES.break;
-      v.tsempty := RES.tsempty; v.txen := RES.txen; v.rxen := RES.rxen;
+      v.tsempty := RES.tsempty; v.stop := RES.stop; v.txen := RES.txen; v.rxen := RES.rxen;
       v.txstate := RES.txstate; v.rxstate := RES.rxstate; v.tshift(0) := RES.tshift(0);
       v.extclken := RES.extclken; v.rtsn := RES.rtsn; v.flow := RES.flow;
       v.txclk := RES.txclk; v.rxclk := RES.rxclk;
@@ -564,3 +576,4 @@ begin
 -- pragma translate_on
 
 end;
+

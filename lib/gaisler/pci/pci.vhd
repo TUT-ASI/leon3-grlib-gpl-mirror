@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -57,6 +57,25 @@ type pci_in_type is record
   int           : std_logic_vector(3 downto 0);         -- D downto A
 end record;
 
+constant pci_in_none : pci_in_type := (
+  rst         => '0',
+  gnt         => '0',
+  idsel       => '0',
+  ad          => (others => '0'),
+  cbe         => (others => '0'),
+  frame       => '0',
+  irdy        => '0',
+  trdy        => '0',
+  devsel      => '0',
+  stop        => '0',
+  lock        => '0',
+  perr        => '0',
+  serr        => '0',
+  par         => '0',
+  host        => '0',
+  pci66       => '0',
+  pme_status  => '0',
+  int         => (others => '0'));
 
 type pci_out_type is record
   aden		: std_ulogic;
@@ -560,3 +579,4 @@ end component;
   constant PCI_VENDOR_AEROFLEX : integer := 16#1AD0#;
 
 end;
+

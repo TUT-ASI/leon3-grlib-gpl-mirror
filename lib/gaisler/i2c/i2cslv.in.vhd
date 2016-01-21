@@ -4,3 +4,4 @@
   constant CFG_I2CSLV_TENBIT   : integer := CONFIG_I2CSLV_TENBIT;
   constant CFG_I2CSLV_I2CADDR  : integer := CONFIG_I2CSLV_I2CADDR;
   
+

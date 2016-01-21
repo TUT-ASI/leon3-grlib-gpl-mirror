@@ -74,3 +74,4 @@ begin  -- structural
   virtual_state_udr <= '0'; 
   
 end structural;
+

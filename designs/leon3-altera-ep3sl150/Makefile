@@ -19,7 +19,7 @@ TECHLIBS = altera altera_mf stratixiii
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF fmf gsi \
 	tmtc openchip ihp stratixii usbhc spw spansion
 DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan pci leon3ft can \
-	grusbhc spacewire usb hcan leon4 leon4v0
+	grusbhc spacewire usb hcan leon4v0
 FILESKIP = grcan.vhd
 
 include $(GRLIB)/software/leon3/Makefile

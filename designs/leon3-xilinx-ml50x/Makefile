@@ -1,6 +1,9 @@
 include .config
 GRLIB=../..
 TOP=leon3mp
+ifeq ("$(CONFIG_LEON4)","y")
+GRLIB_CONFIG=grlib_config_leon4.vhd
+endif
 BOARD=xilinx-ml50x
 include $(GRLIB)/boards/$(BOARD)/Makefile.inc
 DEVICE=$(PART)-$(PACKAGE)$(SPEED)
@@ -9,19 +12,19 @@ UCF=leon3mp.ucf
 ifeq ("$(CONFIG_MIG_DDR2)","y")
 ifeq ("$(CONFIG_BOARD_ML505)","y")
 UCF+=ml505_mig.ucf
-DESIGN=leon3-xilinx-ml505
+DESIGN=leon-xilinx-ml505
 endif
 ifeq ("$(CONFIG_BOARD_ML506)","y")
 UCF+=ml506_mig.ucf
-DESIGN=leon3-xilinx-ml506
+DESIGN=leon-xilinx-ml506
 endif
 ifeq ("$(CONFIG_BOARD_ML507)","y")
 UCF+=ml507_mig.ucf
-DESIGN=leon3-xilinx-ml507
+DESIGN=leon-xilinx-ml507
 endif
 ifeq ("$(CONFIG_BOARD_ML509)","y")
 UCF+=ml509_mig.ucf
-DESIGN=leon3-xilinx-ml509
+DESIGN=leon-xilinx-ml509
 endif
 endif
 
@@ -138,23 +141,25 @@ SDCFILE=default.sdc
 BITGEN=$(GRLIB)/boards/$(BOARD)/default.ut
 CLEAN=soft-clean migclean pcieclean
 
-GRLIB_CONFIG=grlib_config.vhd
 
 include $(GRLIB)/software/leon3/Makefile
 
 TECHLIBS = xilinxcorelib_ver secureip_ver unisims_ver secureip unisim virtex5
 
-VSIMOPT= -gdisas=1 -gDEBUG=0 +nowarnTSCALE -L work -L secureip_ver -L xilinxcorelib_ver -L unisims_ver glbl +nowarnTFMPC +nowarnPCDPC -t 1ps testbench
+VSIMOPT= -gDEBUG=0 +nowarnTSCALE -L work -L secureip_ver -L xilinxcorelib_ver -L unisims_ver glbl +nowarnTFMPC +nowarnPCDPC -t 1ps testbench
 
-ASIMOPT=  -gdisas=1 -gDEBUG=0 +nowarnTSCALE +nowarnTFMPC +nowarnPCDPC
+ASIMOPT= -gDEBUG=0 +nowarnTSCALE +nowarnTFMPC +nowarnPCDPC
 
 VLOGOPT= +define+MODEL_TECH=1
 
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp usbhc spw fmf gsi spansion
 DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan can leon3ft ambatest \
-	grusbhc usb spacewire hcan leon4 leon4v0 l2cache \
+	grusbhc usb spacewire hcan leon4v0 l2cache \
 	slink ascs pwm gr1553b iommu
+ifeq ("$(CONFIG_LEON4)","")
+DIRSKIP+=leon4v0
+endif
 
 FILESKIP = grcan.vhd ahb2mig_series7_ddr2.vhd
 

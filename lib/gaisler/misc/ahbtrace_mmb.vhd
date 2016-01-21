@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -215,7 +215,7 @@ begin
   variable regsd : std_logic_vector(31 downto 0);   -- data from registers
   variable aindex : std_logic_vector(TBUFABITS - 1 downto 0); -- buffer index
   variable bphit : std_logic;
-  variable wdata, rdata : std_logic_vector(127 downto 0);
+  variable wdata, rdata : std_logic_vector(255 downto 0);
   variable hwdata : std_logic_vector(31 downto 0);
   variable hirq : std_logic_vector(NAHBIRQ-1 downto 0); 
   variable tahbmi : ahb_mst_in_type;
@@ -247,6 +247,7 @@ begin
     if exttimer /= 0 then
       timeval(TIMEBITS-1 downto 0) := timer(TIMEBITS-1 downto 0);
     end if;
+    wdata := (others => '0'); rdata := (others => '0');
     
 -- trace buffer index and delay counters
     if exttimer = 0 and r.enable = '1' then v.timer := r.timer + 1; end if;

@@ -3,6 +3,10 @@ include .config
 GRLIB=../..
 CLEAN=soft-clean
 
+ifeq ("$(CONFIG_LEON4)","y")
+GRLIB_CONFIG=grlib_config_leon4.vhd
+endif
+
 ### Xilinx Vivado device and board setup
 BOARD=xilinx-kc705-xc7k325t
 DESIGN=leon3-xilinx-kc705
@@ -25,7 +29,7 @@ SIMTOP=testbench
 VCOMOPT=-explicit -O0
 
 # GRLIB Options
-VSIMOPT= -gdisas=0
+VSIMOPT=
 
 # GRETH options
 ifeq ($(CONFIG_GRETH_ENABLE),y)
@@ -70,7 +74,7 @@ VSIMOPT+= $(SIMTOP)
 
 ### Testbench, design and libraries to compile and not to compile
 
-VHDLSYNFILES= config.vhd ahbram_sim.vhd ahbrom.vhd leon3mp.vhd ddr_dummy.vhd
+VHDLSYNFILES= config.vhd ahbrom.vhd leon3mp.vhd ddr_dummy.vhd
 VHDLSIMFILES=testbench.vhd
 
 TECHLIBS = unisim
@@ -78,10 +82,13 @@ SKIP_SIM_TECHLIBS = 1
 
 LIBSKIP = pci pci/pcif core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp spw gsi cypress hynix \
-	spansion leon4 leon4v0 secureip
+	spansion secureip
 DIRSKIP = b1553 pci pci/pcif leon2 leon2ft crypto satcan pci ambatest \
 	spacewire ascs slink \
 	pwm gr1553b iommu ac97 secureip
+ifeq ("$(CONFIG_LEON4)","")
+DIRSKIP+=leon4v0
+endif
 FILESKIP = grcan.vhd ddr2.v mobile_ddr.v adapters/sgmii.vhd
 
 include $(GRLIB)/bin/Makefile

@@ -173,7 +173,7 @@ begin
 
     case present_state is
       when IDLE_AHB =>
-        if (apbregi.control/=X"00000000") then
+        if (apbregi.control(19 downto 0)/=X"00000") then
           next_state <= START_AHB;
           apbcontrol.timer_clear <= '1';  -- clear timer register
           apbcontrol.status_clr <= '1';   -- clear status register

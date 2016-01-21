@@ -6,6 +6,10 @@
 #define CONFIG_CRC 0
 #endif
 
+#ifndef CONFIG_EDAC
+#define CONFIG_EDAC 0
+#endif
+
 #ifndef CONFIG_BLOCK
 #define CONFIG_BLOCK 100
 #endif

@@ -78,9 +78,9 @@ Design specifics:
     make sim
 
 * It's possible to use the Ethernet core in SGMII mode. The jumpers on the
-  board must be configured properly and the CFG_GRETH_SGMII_MODE constant in
-  the grlib_config.vhd file must be set to 1. Finally the PHY constraints in 
-  the leon3mp.ucf file must be commented and uncommented accordingly.
+  board must be configured properly and the SGMII MODE must be selected in
+  xconfig. Finally the PHY constraints in  the leon3mp.ucf file must be
+  commented and uncommented accordingly.
 
   This simulation requires that the GRLIB_SIMULATOR variable is
   correctly set. Please refer to the documentation in doc/grlib.pdf for

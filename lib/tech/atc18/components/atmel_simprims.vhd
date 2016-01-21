@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -249,3 +249,4 @@ entity pp33t01z is port (i, oen : in  std_logic; pad : out  std_logic); end;
 architecture rtl of pp33t01z is
 begin pad <= to_x01(i) after 2 ns when oen = '0' else 'Z' after 2 ns; end; 
 -- pragma translate_on
+

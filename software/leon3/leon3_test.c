@@ -20,4 +20,6 @@ leon3_test(int domp, volatile int *irqmp, int mtest)
 	grfpu_test();
 	cachetest();
 	mmu_test();
+	rextest();
+        awptest();
 }

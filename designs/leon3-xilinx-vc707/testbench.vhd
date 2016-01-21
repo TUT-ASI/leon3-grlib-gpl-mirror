@@ -1,10 +1,10 @@
 -----------------------------------------------------------------------------
---  LEON3 Demonstration design test bench
+--  LEON Demonstration design test bench
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -45,7 +45,6 @@ entity testbench is
     disas     : integer := CFG_DISAS;      -- Enable disassembly to console
     dbguart   : integer := CFG_DUART;      -- Print UART on console
     pclow     : integer := CFG_PCLOW;
-    testahb   : boolean := true;
     USE_MIG_INTERFACE_MODEL : boolean := false
 
   );
@@ -199,81 +198,6 @@ signal phy_mdc         : std_ulogic;
 
 signal txp_eth, txn_eth : std_logic;
 
-component leon3mp is
-  generic (
-    fabtech             : integer := CFG_FABTECH;
-    memtech             : integer := CFG_MEMTECH;
-    padtech             : integer := CFG_PADTECH;
-    clktech             : integer := CFG_CLKTECH;
-    disas               : integer := CFG_DISAS;   -- Enable disassembly to console
-    dbguart             : integer := CFG_DUART;   -- Print UART on console
-    pclow               : integer := CFG_PCLOW;
-    testahb             : boolean := false;
-    SIM_BYPASS_INIT_CAL : string := "OFF";
-    SIMULATION          : string := "FALSE";
-    USE_MIG_INTERFACE_MODEL : boolean := false;
-    autonegotiation     : integer := 1
-  );
-  port (
-    reset           : in    std_ulogic;
-    clk200p         : in    std_ulogic;       -- 200 MHz clock
-    clk200n         : in    std_ulogic;       -- 200 MHz clock
-    address         : out   std_logic_vector(25 downto 0);
-    data            : inout std_logic_vector(15 downto 0);
-    oen             : out   std_ulogic;
-    writen          : out   std_ulogic;
-    romsn           : out   std_logic;
-    adv             : out   std_logic;
-    ddr3_dq         : inout std_logic_vector(63 downto 0);
-    ddr3_dqs_p      : inout std_logic_vector(7 downto 0);
-    ddr3_dqs_n      : inout std_logic_vector(7 downto 0);
-    ddr3_addr       : out   std_logic_vector(13 downto 0);
-    ddr3_ba         : out   std_logic_vector(2 downto 0);
-    ddr3_ras_n      : out   std_logic;
-    ddr3_cas_n      : out   std_logic;
-    ddr3_we_n       : out   std_logic;
-    ddr3_reset_n    : out   std_logic;
-    ddr3_ck_p       : out   std_logic_vector(0 downto 0);
-    ddr3_ck_n       : out   std_logic_vector(0 downto 0);
-    ddr3_cke        : out   std_logic_vector(0 downto 0);
-    ddr3_cs_n       : out   std_logic_vector(0 downto 0);
-    ddr3_dm         : out   std_logic_vector(7 downto 0);
-    ddr3_odt        : out   std_logic_vector(0 downto 0);
-    dsurx           : in    std_ulogic;
-    dsutx           : out   std_ulogic;
-    dsuctsn         : in    std_ulogic;
-    dsurtsn         : out   std_ulogic;
-    button          : in    std_logic_vector(3 downto 0);
-    switch          : inout std_logic_vector(4 downto 0);
-    led             : out   std_logic_vector(6 downto 0);
-    iic_scl         : inout std_ulogic;
-    iic_sda         : inout std_ulogic;
-    usb_refclk_opt  : in    std_logic;
-    usb_clkout      : in    std_logic;
-    usb_d           : inout std_logic_vector(7 downto 0);
-    usb_nxt         : in    std_logic;
-    usb_stp         : out   std_logic;
-    usb_dir         : in    std_logic;
-    usb_resetn      : out   std_ulogic;
-    gtrefclk_p      : in    std_logic;
-    gtrefclk_n      : in    std_logic;
-    txp             : out   std_logic;
-    txn             : out   std_logic;
-    rxp             : in    std_logic;
-    rxn             : in    std_logic;
-    emdio           : inout std_logic;
-    emdc            : out   std_ulogic;
-    eint            : in    std_ulogic;
-    erst            : out   std_ulogic;
-    can_txd         : out   std_logic_vector(0 to CFG_CAN_NUM-1);
-    can_rxd         : in    std_logic_vector(0 to CFG_CAN_NUM-1);
-    spi_data_out    : in    std_logic;
-    spi_data_in     : out   std_ulogic;
-    spi_data_cs_b   : out   std_ulogic;
-    spi_clk         : out   std_ulogic
-   );
-end component;
-
 begin
 
   -- clock and reset
@@ -288,7 +212,7 @@ begin
   button <= "0000";
   switch(3 downto 0) <= "0000";
 
-  cpu : leon3mp
+  cpu : entity work.leon3mp
       generic map (
        fabtech              => fabtech,
        memtech              => memtech,
@@ -297,7 +221,6 @@ begin
        disas                => disas,
        dbguart              => dbguart,
        pclow                => pclow,
-       testahb              => testahb,
        SIM_BYPASS_INIT_CAL  => SIM_BYPASS_INIT_CAL,
        SIMULATION           => SIMULATION,
        USE_MIG_INTERFACE_MODEL => USE_MIG_INTERFACE_MODEL,

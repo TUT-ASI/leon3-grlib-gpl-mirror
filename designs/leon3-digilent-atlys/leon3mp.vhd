@@ -7,7 +7,8 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2013, Aeroflex Gaisler
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -224,6 +225,8 @@ architecture rtl of leon3mp is
 
   signal stati : ahbstat_in_type;
 
+  signal leon_rstn : std_ulogic;
+  
   signal fpi : grfpu_in_vector_type;
   signal fpo : grfpu_out_vector_type;
 
@@ -288,6 +291,8 @@ begin
     end if;
   end process;
 
+  leon_rstn <= rstn and spmo.initialized;
+
 ----------------------------------------------------------------------
 ---  AHB CONTROLLER --------------------------------------------------
 ----------------------------------------------------------------------
@@ -315,7 +320,7 @@ begin
 	  CFG_IUFT_EN, CFG_FPUFT_EN, CFG_CACHE_FT_EN, CFG_RF_ERRINJ, 
 	  CFG_CACHE_ERRINJ, CFG_DFIXED, CFG_LEON3_NETLIST, CFG_SCAN, CFG_MMU_PAGE,
           CFG_BP, CFG_NP_ASI, CFG_WRPSR)
-        port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso, 
+        port map (clkm, leon_rstn, ahbmi, ahbmo(i), ahbsi, ahbso, 
     		irqi(i), irqo(i), dbgi(i), dbgo(i), clkm);
       end generate;
 
@@ -328,7 +333,7 @@ begin
           CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP,
           CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1,
 	  CFG_DFIXED, CFG_SCAN, CFG_MMU_PAGE, CFG_BP, CFG_NP_ASI, CFG_WRPSR)
-        port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso,
+        port map (clkm, leon_rstn, ahbmi, ahbmo(i), ahbsi, ahbso,
     		irqi(i), irqo(i), dbgi(i), dbgo(i));
       end generate;
     end generate;
@@ -347,7 +352,7 @@ begin
 	  CFG_IUFT_EN, CFG_FPUFT_EN, CFG_CACHE_FT_EN, CFG_RF_ERRINJ, 
 	  CFG_CACHE_ERRINJ, CFG_DFIXED, CFG_LEON3_NETLIST, CFG_SCAN, CFG_MMU_PAGE,
           CFG_BP, CFG_NP_ASI, CFG_WRPSR)
-        port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso, 
+        port map (clkm, leon_rstn, ahbmi, ahbmo(i), ahbsi, ahbso, 
     		irqi(i), irqo(i), dbgi(i), dbgo(i), clkm,  fpi(i), fpo(i));
 
       end generate;
@@ -360,7 +365,7 @@ begin
           CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP,
           CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1,
 	  CFG_DFIXED, CFG_SCAN, CFG_MMU_PAGE, CFG_BP, CFG_NP_ASI, CFG_WRPSR)
-        port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso,
+        port map (clkm, leon_rstn, ahbmi, ahbmo(i), ahbsi, ahbso,
     		irqi(i), irqo(i), dbgi(i), dbgo(i), fpi(i), fpo(i));
       end generate;
     end generate;
@@ -526,9 +531,12 @@ begin
 ----------------------------------------------------------------------
 
   -- Numonyx N25Q12 16 MByte SPI flash memory
+  -- SPI memory controller is mapped at address 0 if AHBROM is disabled.
+  -- If AHBROM is enabled then the SPI Flash area is mapped at 0xe0000000
   spimc: if CFG_SPIMCTRL = 1 generate
     spimctrl0 : spimctrl        -- SPI Memory Controller
-      generic map (hindex => 3, hirq => 11, faddr => 16#e00#, fmask => 16#ff0#,
+      generic map (hindex => 3, hirq => 11, faddr => 16#e00#*CFG_AHBROMEN,
+                   fmask => 16#ff0#,
                    ioaddr => 16#002#, iomask => 16#fff#,
                    spliten => CFG_SPLIT, oepol  => 0,
                    sdcard => CFG_SPIMCTRL_SDCARD,
@@ -537,7 +545,8 @@ begin
                    dualoutput => CFG_SPIMCTRL_DUALOUTPUT,
                    scaler => CFG_SPIMCTRL_SCALER,
                    altscaler => CFG_SPIMCTRL_ASCALER,
-                   pwrupcnt => CFG_SPIMCTRL_PWRUPCNT)
+                   pwrupcnt => CFG_SPIMCTRL_PWRUPCNT,
+                   offset => CFG_SPIMCTRL_OFFSET)
       port map (rstn, clkm, ahbsi, ahbso(3), spmi, spmo); 
 
     miso_pad : inpad generic map (tech => padtech)
@@ -547,7 +556,10 @@ begin
     sck_pad  : outpad generic map (tech => padtech)
       port map (spi_clk, spmo.sck);
     spisel_pad : odpad generic map (tech => padtech)
-      port map (spi_sel_n, spmo.csn);  
+      port map (spi_sel_n, spmo.csn);
+  end generate;
+  nospimc : if CFG_SPIMCTRL = 0 generate
+    spmo.initialized <= '1';
   end generate;
 
 ----------------------------------------------------------------------
@@ -592,7 +604,7 @@ begin
    sepirq => CFG_GPT_SEPIRQ, sbits => CFG_GPT_SW, ntimers => CFG_GPT_NTIM, 
    nbits => CFG_GPT_TW, wdog => CFG_GPT_WDOGEN*CFG_GPT_WDOG)
     port map (rstn, clkm, apbi, apbo(3), gpti, gpto);
-    gpti.dhalt <= dsuo.tstop; gpti.extclk <= '0';
+    gpti <= gpti_dhalt_drive(dsuo.tstop);
   end generate;
 
   nogpt : if CFG_GPT_ENABLE = 0 generate apbo(3) <= apb_none; end generate;
@@ -650,6 +662,7 @@ begin
   end generate;	
 
   ahbs : if CFG_AHBSTAT = 1 generate   -- AHB status register
+    stati <= ahbstat_in_none;
     ahbstat0 : ahbstat generic map (pindex => 15, paddr => 15, pirq => 7,
    nftslv => CFG_AHBSTATN)
       port map (rstn, clkm, ahbmi, ahbsi, stati, apbi, apbo(15));

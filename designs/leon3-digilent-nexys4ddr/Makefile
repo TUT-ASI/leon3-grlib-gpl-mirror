@@ -17,7 +17,7 @@ SYNPOPT="set_option -pipe 1; set_option -retiming 1; set_option -write_apr_const
 
 VHDLSYNFILES=config.vhd ahbrom.vhd leon3mp.vhd
  
-VHDLSIMFILES=ahbram_sim.vhd testbench.vhd
+VHDLSIMFILES=testbench.vhd
 
 SIMTOP=testbench
 #SDCFILE=$(GRLIB)/boards/$(BOARD)/default.sdc
@@ -32,7 +32,7 @@ LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 LIBADD = testgrouppolito
 DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan pci leon3ft ambatest can \
 	usb grusbhc spacewire ascs slink hcan \
-	leon4 leon4v0 l2cache pwm gr1553b iommu
+	leon4v0 l2cache pwm gr1553b iommu
 FILESKIP = grcan.vhd
 
 # Options used during compilation
@@ -40,6 +40,7 @@ VCOMOPT=-explicit -O0
 
 # - MIG -
 ifeq ($(CONFIG_MIG_SERIES7),y)
+SKIP_SIM_TECHLIBS = 1
 VSIMOPT+= -t fs -novopt
 VSIMOPT+= -L secureip_ver -L xilinxcorelib_ver -L unisims_ver glbl
 ifndef CONFIG_MIG_SERIES_7_MODEL
@@ -75,7 +76,12 @@ VHDLSIMFILES+=./dprc_fir_demo/fir_v1.vhd
 endif
 
 CONFIG_PARTIAL ?= 0
-CONFIG_BLOCK ?= 0
+
+ifeq ("$(CONFIG_EDAC)","y")
+	CONFIG_BLOCK ?= -1
+else
+	CONFIG_BLOCK ?= 0
+endif
 
 dprc-demo: dprc-demo-clean
 ifeq ("$(CONFIG_PARTIAL)","0")
@@ -95,7 +101,9 @@ else
 endif
 
 dprc-demo-soft:
-	@rm -r dpr_demo/
+	@if test -r "dpr_demo/"; then \
+      rm -r dpr_demo/; \
+	fi;
 	@echo "Compiling dprc_sw utility"
 	g++ -Wall -fexceptions -O2 -c ../../software/dprc/main.cpp -o ../../software/dprc/main.o
 	g++  -o ../../software/dprc/dprc_sw ../../software/dprc/main.o

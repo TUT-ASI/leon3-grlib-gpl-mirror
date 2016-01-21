@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -5735,3 +5735,4 @@ end generate;
                 ", " & tost(2**FIFO_DEPTH) & "-word FIFOs" & ", PCI trace: " & tost(((2**PT_DEPTH)*conv_integer(conv_std_logic(tracebuffer/=0)))));
 --pragma translate_on
 end;
+

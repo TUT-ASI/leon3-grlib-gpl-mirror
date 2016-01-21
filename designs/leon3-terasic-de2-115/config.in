@@ -52,6 +52,11 @@ comment 'Peripherals             '
   endmenu
 
   mainmenu_option next_comment
+  comment '1553           '
+    source lib/gaisler/gr1553b/gr1553b.in
+  endmenu
+
+  mainmenu_option next_comment
   comment 'CAN                     '
     source lib/gaisler/can/can_mc.in
   endmenu

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -60,6 +60,8 @@ package misc is
     latchd   : std_logic_vector(NAHBIRQ-1 downto 0);
   end record;
 
+  function gpti_dhalt_drive (dhalt : std_ulogic) return gptimer_in_type;
+  
   type gptimer_in_vector is array (natural range <>) of gptimer_in_type;
 
   type gptimer_out_type is record
@@ -71,7 +73,7 @@ package misc is
 
   type gptimer_out_vector is array (natural range <>) of gptimer_out_type;
 
-  constant gptimer_in_none : gptimer_in_type := ('0', '0', '0', (others => '0'), (others => '0'));
+  constant gptimer_in_none : gptimer_in_type := ('0', '0', '0', zxirq(NAHBIRQ-1 downto 0), zxirq(NAHBIRQ-1 downto 0));
 
   constant gptimer_out_none : gptimer_out_type :=
     ((others => '0'), (others => '0'), '1', '0');
@@ -91,7 +93,8 @@ package misc is
     glatch   : integer := 0;
     gextclk  : integer := 0;
     gset     : integer := 0;
-    gelatch  : integer range 0 to 2 := 0
+    gelatch  : integer range 0 to 2 := 0;
+    wdogwin  : integer := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -126,7 +129,7 @@ package misc is
     ce : std_ulogic;
   end record;
 
-  component ftahbram is
+  component ftahbram
     generic (
       hindex    : integer := 0;
       haddr     : integer := 0;
@@ -136,11 +139,39 @@ package misc is
       pindex    : integer := 0;
       paddr     : integer := 0;
       pmask     : integer := 16#fff#;
-      edacen    : integer := 1;
-      autoscrub : integer := 0;
-      errcnten  : integer := 0;
+      edacen    : integer range 0 to 3 := 1;  --enable EDAC
+      autoscrub : integer range 0 to 1 := 0;  --enable auto-scrubbing    
+      errcnten  : integer range 0 to 1 := 0;  --enable error counter in stat.reg
+      cntbits   : integer range 1 to 8 := 1; --errcnt size in bits
+      ahbpipe   : integer range 0 to 1 := 0;
+      testen    : integer := 0);
+    port (
+      rst     : in  std_ulogic;
+      clk     : in  std_ulogic;
+      ahbsi   : in  ahb_slv_in_type;
+      ahbso   : out ahb_slv_out_type;
+      apbi    : in  apb_slv_in_type;
+      apbo    : out apb_slv_out_type;
+      aramo   : out ahbram_out_type
+    );
+  end component;
+
+  component ftahbram1 is
+    generic (
+      hindex    : integer := 0;
+      haddr     : integer := 0;
+      hmask     : integer := 16#fff#;
+      tech      : integer := DEFMEMTECH;
+      kbytes    : integer := 1;
+      pindex    : integer := 0;
+      paddr     : integer := 0;
+      pmask     : integer := 16#fff#;
+      edacen    : integer range 0 to 3 := 1;
+      autoscrub : integer range 0 to 1 := 0;
+      errcnten  : integer range 0 to 1 := 0;
       cntbits   : integer range 1 to 8 := 1;
-      ahbpipe   : integer := 0);
+      ahbpipe   : integer range 0 to 1 := 0;
+      testen    : integer := 0);
     port (
       rst     : in  std_ulogic;
       clk     : in  std_ulogic;
@@ -162,7 +193,8 @@ package misc is
       pindex    : integer := 0;
       paddr     : integer := 0;
       pmask     : integer := 16#fff#;
-      testen    : integer := 0);
+      testen    : integer := 0;
+      edacen    : integer range 1 to 3 := 1);
     port (
       rst     : in  std_ulogic;
       clk     : in  std_ulogic;
@@ -407,7 +439,7 @@ package misc is
     wburst      : integer range 2 to 32 := 8;
     iburst      : integer range 4 to 8 :=  8;
     rburst      : integer range 2 to 32 := 8;
-    irqsync     : integer range 0 to 2 := 0;
+    irqsync     : integer range 0 to 3 := 0;
     bar0        : integer range 0 to 1073741823 := 0;
     bar1        : integer range 0 to 1073741823 := 0;
     bar2        : integer range 0 to 1073741823 := 0;
@@ -502,6 +534,9 @@ package misc is
   type ahbstat_in_type is record
     cerror : std_logic_vector(0 to NAHBSLV-1);
   end record;
+
+  constant ahbstat_in_none : ahbstat_in_type :=
+    (cerror => zero32(NAHBSLV-1 downto 0));
 
   component ahbstat is
     generic(
@@ -1457,6 +1492,14 @@ end;
 
 package body misc is
 
+  function gpti_dhalt_drive (dhalt : std_ulogic) return gptimer_in_type is
+    variable gpti : gptimer_in_type;
+  begin
+    gpti := (dhalt, '0', '0', zxirq, zxirq);
+    return gpti;
+  end;
+
+  
   function ahb2ahb_membar(memaddr : ahb_addr_type; prefetch, cache : std_ulogic;
                           addrmask : ahb_addr_type)
   return integer is
@@ -1503,3 +1546,4 @@ package body misc is
 
 
 end;
+

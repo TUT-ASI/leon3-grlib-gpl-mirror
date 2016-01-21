@@ -15,6 +15,8 @@
 	Actel-Proasic3L   	CONFIG_SYN_PROASIC3L \
 	Actel-IGLOO/p/L	   	CONFIG_SYN_IGLOO \
 	Actel-IGLOO2	   	CONFIG_SYN_IGLOO2 \
+	Actel-SmartFusion2 	CONFIG_SYN_SF2 \
+	Actel-RTG4 	        CONFIG_SYN_RTG4 \
 	Actel-Fusion   	   	CONFIG_SYN_FUSION\
 	Aeroflex-UT025CRH	CONFIG_SYN_UT025CRH \
 	Aeroflex-UT130HBD	CONFIG_SYN_UT130HBD \
@@ -27,7 +29,6 @@
         IHP25RH                 CONFIG_SYN_IHP25RH \
         Lattice-EC/ECP/XP   	CONFIG_SYN_LATTICE \
         Quicklogic-Eclipse  	CONFIG_SYN_ECLIPSE \
-        Peregrine           	CONFIG_SYN_PEREGRINE \
 	RH-LIB18T  		CONFIG_SYN_RH_LIB18T \
 	RH-UMC     		CONFIG_SYN_RHUMC \
 	SAED32     		CONFIG_SYN_SAED32 \

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -143,13 +143,14 @@ architecture top_level of sgmii_vc707 is
       ------------------------
 
       gtrefclk             : in std_logic;                     -- Very high quality 125MHz clock for GT transceiver
+      gtrefclk_bufg        : in std_logic;    
       txp                  : out std_logic;                    -- Differential +ve of serial transmission from PMA to PMD.
       txn                  : out std_logic;                    -- Differential -ve of serial transmission from PMA to PMD.
       rxp                  : in std_logic;                     -- Differential +ve for serial reception from PMD to PMA.
       rxn                  : in std_logic;                     -- Differential -ve for serial reception from PMD to PMA.
-
       resetdone            : out std_logic;                    -- The GT transceiver has completed its reset cycle
       cplllock             : out std_logic;
+      mmcm_reset           : out std_logic;   
       txoutclk             : out std_logic;                    -- txoutclk from GT transceiver (62.5MHz)
       rxoutclk             : out std_logic;                    -- txoutclk from GT transceiver (62.5MHz)
       userclk              : in std_logic;                     -- 62.5MHz clock.
@@ -159,14 +160,11 @@ architecture top_level of sgmii_vc707 is
       independent_clock_bufg : in std_logic;
       pma_reset            : in std_logic;                     -- transceiver PMA reset signal
       mmcm_locked          : in std_logic;                     -- Locked signal from MMCM
-
-
       -- GMII Interface
       -----------------
       sgmii_clk_r          : out std_logic;                    -- Clock for client MAC (125Mhz, 12.5MHz or 1.25MHz).
       sgmii_clk_f          : out std_logic;                    -- Clock for client MAC (125Mhz, 12.5MHz or 1.25MHz).
       sgmii_clk_en         : out std_logic;                    -- Clock enable for client MAC
-
       gmii_txd             : in std_logic_vector(7 downto 0);  -- Transmit data from client MAC.
       gmii_tx_en           : in std_logic;                     -- Transmit control signal from client MAC.
       gmii_tx_er           : in std_logic;                     -- Transmit control signal from client MAC.
@@ -746,7 +744,7 @@ begin
       if (gmiio.tx_en = '0' and rtx.gmii_tx_en_int = '1') then
          v.keepalive := 2;
       end if;
-      
+
       if (gmiio.tx_en = '0' and rtx.gmii_tx_en_int = '0' and rtx.keepalive = 0) then
          v := RESTX;
       end if;
@@ -790,12 +788,14 @@ begin
   core_wrapper : sgmii
     port map (
       gtrefclk               => gtrefclk,
+      gtrefclk_bufg          => gtrefclk,     
       txp                    => sgmiio.txp,
       txn                    => sgmiio.txn,
       rxp                    => sgmiii.rxp,
       rxn                    => sgmiii.rxn,
       resetdone              => resetdone,
       cplllock               => OPEN ,
+      mmcm_reset             => OPEN ,        
       txoutclk               => txoutclk,
       rxoutclk               => rxoutclk ,
       userclk                => userclk,
@@ -875,7 +875,7 @@ begin
       end case;
 
       v.gmii_rx_er := gmii_rx_er_int;
-      
+
       if (rrx.keepalive = 0 and gmii_rx_dv_int = '0') then
          v := RESRX;
       end if;
@@ -1122,3 +1122,4 @@ begin
 -- pragma translate_on
 
 end top_level;
+

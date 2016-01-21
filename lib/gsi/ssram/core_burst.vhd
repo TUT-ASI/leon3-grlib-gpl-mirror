@@ -522,3 +522,4 @@ DQf   <=  GUARDED TERNARY(Qswitch, Qfi, HighZ);
 DQg   <=  GUARDED TERNARY(Qswitch, Qgi, HighZ);
 DQh   <=  GUARDED TERNARY(Qswitch, Qhi, HighZ);
 END GSI_BURST_CORE;
+

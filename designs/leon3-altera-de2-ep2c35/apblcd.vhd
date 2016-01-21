@@ -175,3 +175,4 @@ begin
     generic map ("apblcd" & tost(pindex) & ": APB LCD module rev " & tost(REVISION));
   -- pragma translate_on
 end;
+

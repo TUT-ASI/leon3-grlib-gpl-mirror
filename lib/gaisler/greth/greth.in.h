@@ -27,3 +27,7 @@
 #ifndef CONFIG_GRETH_EDCLFT
 #define CONFIG_GRETH_EDCLFT 0
 #endif
+
+#ifndef CONFIG_GRETH_SGMII_MODE
+#define CONFIG_GRETH_SGMII_MODE 0
+#endif

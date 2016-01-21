@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ package gencomp is
 
 -- technologies and libraries
 
-constant NTECH : integer := 56;
+constant NTECH : integer := 57;
 type tech_ability_type is array (0 to NTECH) of integer;
 
 constant inferred    : integer := 0;
@@ -99,6 +99,7 @@ constant dare        : integer := 54;
 constant igloo2      : integer := 55;
 constant smartfusion2: integer := 55;
 constant rhs65       : integer := 56;
+constant rtg4        : integer := 57;
 
 constant DEFMEMTECH  : integer := inferred;
 constant DEFPADTECH  : integer := inferred;
@@ -112,10 +113,25 @@ constant is_fpga : tech_ability_type :=
 	 stratix3 => 1, cyclone3 => 1, axdsp => 1,
 	 spartan6 => 1, virtex6 => 1, actfus => 1,
 	 stratix4 => 1, apa3e => 1, apa3l => 1, virtex7 => 1, kintex7 => 1,
-	 artix7 => 1, zynq7000 => 1, igloo2 => 1, 
+	 artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1,
 	 others => 0);
 
 constant infer_mul : tech_ability_type := is_fpga;
+
+-- The write_through and dest_rw_collision tables should be set up
+-- depending on how the raw memory cells behave on simultaneous read
+-- and write to the same address:
+--  write_through rw_collision  | read-result     write-result
+--       0             0        | undefined       success
+--       1             0        | new write-data  success
+--       0             1        | undefined       wrong data written
+--
+-- If the write-through behavior is required by the IP, then set wrfst
+-- on the syncram_2p instantiation and the syncram wrapper will add logic to
+-- implement this if needed. The wrapper will also avoid simulatneous
+-- read/write if rw_collision is set but this can only be done when the
+-- read/write ports are known to be in the same clock domain (sepclk=0),
+-- otherwise this requirement has to be managed at higher level.
 
 constant syncram_2p_write_through : tech_ability_type :=
 	(rhumc => 1, eclipse => 1, others => 0);
@@ -128,10 +144,28 @@ constant regfile_3p_infer : tech_ability_type :=
 	 peregrine => 1, ihp25rh => 1, umc => 1, custom1 => 0, rhs65 => 1, others => 0);
 
 constant syncram_2p_dest_rw_collision : tech_ability_type :=
-        (memartisan => 1, smic013 => 1, easic45 => 1, ut130 => 1, rhs65 => 0, igloo2 => 1, others => 0);
+        (memartisan => 1, smic013 => 1, easic45 => 1, ut130 => 1, rhs65 => 0,
+         igloo2 => 1, rtg4 => 1, others => 0);
 
 constant syncram_dp_dest_rw_collision : tech_ability_type :=
-        (memartisan => 1, smic013 => 1, easic45 => 1, igloo2 => 1, others => 0);
+        (memartisan => 1, smic013 => 1, easic45 => 1, others => 0);
+
+-- The readhold table should be set to 1 if the techology mapping's
+-- memory blocks keep the read-data bus stable at it's current value
+-- when enable/renable is clocked in low any number of cycles after
+-- a read.
+
+constant syncram_readhold : tech_ability_type :=
+        (rhs65 => 1, others => 0);
+
+constant syncram_2p_readhold : tech_ability_type :=
+        (rhs65 => 1, others => 0);
+
+constant syncram_dp_readhold : tech_ability_type :=
+        (others => 0);
+
+constant regfile_3p_readhold : tech_ability_type :=
+        (others => 0);
 
 constant syncram_has_customif : tech_ability_type := (rhs65 => 1, others => 0);
 constant syncram_customif_maxwidth: integer := 64;  -- Expand as needed
@@ -155,7 +189,7 @@ constant has_dpram : tech_ability_type :=
 	 tm65gplus => 1, axdsp => 0, spartan6 => 1, virtex6 => 1,
 	 actfus => 1, stratix4 => 1, easic45 => 1, apa3e => 1,
 	 apa3l => 1, ut90 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1, 
-         dare => 1, igloo2 => 1, others => 0);
+         dare => 1, igloo2 => 1, rtg4 => 1, others => 0);
 
 constant has_sram64 : tech_ability_type :=
 	(inferred => 0, virtex2 => 1, spartan3 => 1, virtex4 => 1,
@@ -189,7 +223,10 @@ constant has_sram256bw : tech_ability_type := (
 constant has_sram_2pbw : tech_ability_type := (
     easic45 => 1, others => 0);
 
-constant has_srambw : tech_ability_type := (easic45 => 1, others => 0);
+constant has_srambw : tech_ability_type := (easic45 => 1, virtex => 0, virtex2 => 0,
+	      virtex4 => 0, virtex5 => 1, spartan3 => 0, spartan3e => 0, spartan6 => 0,
+	      virtex6 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1, rtg4 => 1,
+	      igloo2 => 1, others => 0);
 
 constant has_2pfifo : tech_ability_type := (
   altera    => 1, stratix1  => 1, stratix2 => 1, stratix3 => 1,
@@ -207,11 +244,18 @@ constant has_2pfifo : tech_ability_type := (
 -- this value is important for cores that use DP or 2P memories in CDC.
 constant ram_raw_latency : tech_ability_type := (easic45 => 1, others => 0);
 
+-- Support for target (memory) technology FT features
+-- has_sram_ecc(tech) = 1 -> target tech has SECDED capabilities for SRAM
+constant has_sram_ecc :  tech_ability_type :=
+  (rtg4 => 1, virtex5 => 1, virtex6 => 1,
+   artix7 => 1, kintex7 => 1, virtex7 => 1,
+   others => 0);
+
 constant padoen_polarity : tech_ability_type :=
         (axcel => 1, proasic => 1, umc => 1, rhumc => 1, saed32 => 1, rhs65 => 0, dare => 1, apa3 => 1,
          ihp25 => 1, ut25 => 1, peregrine => 1, easic90 => 1, axdsp => 1,
 	 actfus => 1, apa3e => 1, apa3l => 1, ut130 => 1, easic45 => 1,
-         ut90 => 1, igloo2 => 1, others => 0);
+         ut90 => 1, igloo2 => 1, rtg4 => 1, others => 0);
 
 constant has_pads : tech_ability_type :=
 	(inferred => 0, virtex => 1, virtex2 => 1, memvirage => 0,
@@ -222,7 +266,7 @@ constant has_pads : tech_ability_type :=
 	 easic90 => 1, atc18rha => 1, spartan6 => 1, virtex6 => 1,
          actfus => 1, apa3e => 1, apa3l => 1, ut130 => 1, easic45 => 1,
          ut90 => 1, virtex7 => 1, kintex7 => 1,
-         artix7 => 1, zynq7000 => 1, igloo2 => 1, others => 0);
+         artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1, others => 0);
 
 constant has_ds_pads : tech_ability_type :=
 	(inferred => 0, virtex => 1, virtex2 => 1, memvirage => 0,
@@ -232,7 +276,7 @@ constant has_ds_pads : tech_ability_type :=
 	 ut25 => 1, spartan3e => 1, virtex5 => 1, axdsp => 1,
 	 spartan6 => 1, virtex6 => 1, actfus => 1,
 	 apa3e => 1, apa3l => 1, ut130 => 0, easic45 => 1, virtex7 => 1, kintex7 => 1,
-         artix7 => 1, zynq7000 => 1, igloo2 => 1, others => 0);
+         artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1, others => 0);
 
 constant has_ds_combo : tech_ability_type :=
 	( rhumc => 1, ut25 => 1, ut130 => 1, others => 0);
@@ -260,7 +304,7 @@ constant has_techbuf : tech_ability_type :=
 	  apa3 => 1, easic90 => 1, axdsp => 1, actfus => 1,
 	  apa3e => 1, apa3l => 1, ut130 => 1, easic45 => 1,
           ut90 => 1, spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
-          artix7 => 1, zynq7000 => 1, igloo2 => 1, others => 0);
+          artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1, others => 0);
 
 constant has_tapsel : tech_ability_type :=
         ( virtex => 1, virtex2 => 1, virtex4 => 1, virtex5 => 1,
@@ -291,7 +335,7 @@ constant has_tap : tech_ability_type :=
 	 stratix3 => 1, cyclone3 => 1, axdsp => 0,
 	 spartan6 => 1, virtex6 => 1, actfus => 1,
 	 stratix4 => 1, easic45 => 0, apa3e => 1, apa3l => 1, virtex7 => 1, kintex7 => 1,
-	 artix7 => 1, zynq7000 => 1, igloo2 => 1,
+	 artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1,
 	 others => 0);
 
 constant has_clkgen : tech_ability_type :=
@@ -305,7 +349,7 @@ constant has_clkgen : tech_ability_type :=
 	 rhlib18t => 1, ut130 => 1, ut90 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1, others => 0);
 
 constant has_ddr2phy: tech_ability_type :=
-  (inferred => 0, stratix2 => 1, stratix3 => 1, spartan3 => 1,
+  (inferred => 0, stratix2 => 1, stratix3 => 1, stratix4 => 1, spartan3 => 1,
 	easic90 => 1, spartan6 => 1, easic45 => 1,
 	virtex4 => 1, virtex5 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
 	 artix7 => 1, zynq7000 => 1, others => 0);
@@ -314,7 +358,7 @@ constant ddr2phy_builtin_pads: tech_ability_type := (
    -- Wrapped DDR2 IP cores with builtin pads
    easic45 => 1,
    -- Below techs have builtin pads for legacy reasons, can be converted if needed
-   easic90 => 1, spartan3 => 1, stratix3 => 1, stratix2 => 1,
+   easic90 => 1, spartan3 => 1, stratix4 => 1, stratix3 => 1, stratix2 => 1,
    others => 0);
 
 constant ddr2phy_has_fbclk: tech_ability_type :=
@@ -324,7 +368,14 @@ constant ddrphy_has_fbclk: tech_ability_type :=
   (others => 0);
 
 constant ddr2phy_has_reg: tech_ability_type :=
-  (easic45 => 1, others => 0);
+  (easic45 => 1, stratix4 => 1, others => 0);
+
+constant ddr2phy_dis_caslat: tech_ability_type :=
+  (stratix4 => 1, others => 0);
+
+constant ddr2phy_dis_init: tech_ability_type :=
+  (stratix4 => 1, others => 0);
+
 constant ddr2phy_has_custom: tech_ability_type :=
   (easic45 => 1, others => 0);
 
@@ -335,7 +386,8 @@ constant ddr2phy_refclk_type: tech_ability_type :=
    others => 0);                              -- 0: None
 
 constant ddr2phy_has_datavalid: tech_ability_type :=
-  (easic45 => 1,
+  ( stratix4 => 1,
+  	easic45 => 1,
    others => 0);
 
 constant ddrphy_has_datavalid: tech_ability_type :=
@@ -368,7 +420,7 @@ constant has_syncreg: tech_ability_type := (
 constant has_transceivers : tech_ability_type := (
     stratix3 => 1, stratix4 => 1,
     virtex5 => 1, virtex6 => 1,
-    igloo2 => 1,
+    igloo2 => 1, rtg4 => 1,
     others => 0
   );
 -- pragma translate_off
@@ -406,7 +458,7 @@ constant has_transceivers : tech_ability_type := (
   artix7    => "artix7    ", zynq7000  => "zynq7000  ",
   rhlib13t  => "rhlib13t  ", saed32    => "saed32    ",
   dare      => "dare      ", igloo2    => "igloo2    ",
-  rhs65     => "rhs65     ");
+  rhs65     => "rhs65     ", rtg4      => "rtg4      ");
 
 -- pragma translate_on
 
@@ -458,6 +510,9 @@ constant GTH0     : integer := 32;
 constant GTH1     : integer := 33;
 constant GTH2     : integer := 34;
 constant GTH3     : integer := 35;
+-- Microsemi transceiver type
+constant m075     : integer := 14; -- values represent the length of the paddr field of serdes APB interface
+constant m010     : integer := 13;
 
 ---------------------------------------------------------------------------
 -- MEMORY
@@ -508,7 +563,8 @@ constant GTH3     : integer := 35;
 -- synchronous dual-port ram (2 read/write ports)
   component syncram_dp
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
-	testen : integer := 0; custombits : integer := 1);
+	testen : integer := 0; custombits : integer := 1; sepclk: integer := 1;
+           wrfst : integer := 0);
   port (
     clk1     : in std_ulogic;
     address1 : in std_logic_vector((abits -1) downto 0);
@@ -543,6 +599,8 @@ constant GTH3     : integer := 35;
     raddr2 : in  std_logic_vector((abits -1) downto 0);
     re2    : in  std_ulogic;
     rdata2 : out std_logic_vector((dbits -1) downto 0);
+    ce1    : out std_ulogic;
+    ce2    : out std_ulogic;
     testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
     );
   end component;
@@ -579,7 +637,7 @@ constant GTH3     : integer := 35;
 
   component syncramft
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
-	ft : integer range 0 to 3 := 0; testen : integer := 0; custombits : integer := 1 );
+	ft : integer range 0 to 5 := 0; testen : integer := 0; custombits : integer := 1 );
   port (
     clk      : in std_ulogic;
     address  : in std_logic_vector((abits -1) downto 0);
@@ -587,7 +645,7 @@ constant GTH3     : integer := 35;
     dataout  : out std_logic_vector((dbits -1) downto 0);
     write    : in std_ulogic;
     enable   : in std_ulogic;
-    error    : out std_logic_vector(((dbits + 7) / 8)-1 downto 0);
+    error    : out std_logic_vector((((dbits+7)/8)-1)*(1-ft/4)+ft/4 downto 0);
     testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
     errinj   : in std_logic_vector(((dbits + 7)/8)*2-1 downto 0) := (others => '0')
     );
@@ -606,8 +664,9 @@ constant GTH3     : integer := 35;
     write    : in std_ulogic;
     waddress : in std_logic_vector((abits -1) downto 0);
     datain   : in std_logic_vector((dbits -1) downto 0);
-    error    : out std_logic_vector(((dbits + 7) / 8)-1 downto 0);
-    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
+    error    : out std_logic_vector((((dbits+7)/8)-1)*(1-ft/4)+ft/4 downto 0);
+    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
+    errinj   : in std_logic_vector((((dbits + 7)/8)*2-1)*(1-ft/4)+(6*(ft/4)) downto 0) := (others => '0')
     );
   end component;
 
@@ -1580,7 +1639,9 @@ component ddr2phy
     testen      : in  std_ulogic;
     testrst     : in  std_ulogic;
     scanen      : in  std_ulogic;
-    testoen     : in  std_ulogic);
+    testoen     : in  std_ulogic;
+    oct_rdn        : in  std_logic := '0';
+    oct_rup        : in  std_logic := '0');
 end component;
 
 component ddr2phy_wo_pads
@@ -2075,7 +2136,7 @@ end component;
 
   -- Types for IGLOO2 serdes
   type apb_in_serdes is record
-    paddr : std_logic_vector(13 downto 2);
+    paddr : std_logic_vector(14 downto 2);
     pclk : std_logic;
     penable : std_logic;
     prstn : std_logic;

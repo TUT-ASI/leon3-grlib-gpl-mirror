@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ package config is
 -- The value here sets the width of the AMBA AHB data vectors for all
 -- cores in the library.
 --
-constant CFG_AHBDW     : integer := 32;
+constant CFG_AHBDW     : integer := 64;
 
 
 -- CFG_AHB_ACDM - Enable AMBA Compliant Data Muxing in cores
@@ -73,3 +73,4 @@ constant GRLIB_CONFIG_ARRAY : grlib_config_array_type := (
   others => 0);
 
 end;
+

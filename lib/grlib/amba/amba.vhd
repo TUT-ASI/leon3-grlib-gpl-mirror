@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -68,7 +68,7 @@ constant CORE_ACDM : integer := CFG_AHB_ACDM;
 constant NAHBMST   : integer := 16;  -- maximum AHB masters
 constant NAHBSLV   : integer := 16;  -- maximum AHB slaves
 constant NAPBSLV   : integer := 16; -- maximum APB slaves
-constant NAHBIRQ   : integer := 32; -- maximum interrupts
+constant NAHBIRQ   : integer := 32 + 32*GRLIB_CONFIG_ARRAY(grlib_amba_inc_nirq); -- maximum interrupts
 constant NAHBAMR   : integer := 4;  -- maximum address mapping registers
 constant NAHBIR    : integer := 4;  -- maximum AHB identification registers
 constant NAHBCFG   : integer := NAHBIR + NAHBAMR;  -- words in AHB config block
@@ -228,6 +228,20 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
     testin      : std_logic_vector(NTESTINBITS-1 downto 0);         -- test vector for syncrams
   end record;
 
+  type apb3_slv_in_type is record
+    psel        : std_logic_vector(0 to NAPBSLV-1);     -- slave select
+    penable     : std_ulogic;                           -- strobe
+    paddr       : std_logic_vector(31 downto 0);        -- address bus (byte)
+    pwrite      : std_ulogic;                           -- write
+    pwdata      : std_logic_vector(31 downto 0);        -- write data bus
+    pirq        : std_logic_vector(NAHBIRQ-1 downto 0); -- interrupt result bus
+    testen      : std_ulogic;                           -- scan test enable
+    testrst     : std_ulogic;                           -- scan test reset
+    scanen      : std_ulogic;                           -- scan enable
+    testoen     : std_ulogic;                           -- test output enable
+    testin      : std_logic_vector(NTESTINBITS-1 downto 0);         -- test vector for syncrams
+  end record;
+
 -- APB slave outputs
   type apb_slv_out_type is record
     prdata      : std_logic_vector(31 downto 0);        -- read data bus
@@ -236,8 +250,20 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
     pindex      : integer range 0 to NAPBSLV -1;        -- diag use only
   end record;
 
+  type apb3_slv_out_type is record
+    prdata      : std_logic_vector(31 downto 0);        -- read data bus
+    pready      : std_logic;                            -- ready
+    pslverr     : std_logic;                            -- transfer failure
+    pirq        : std_logic_vector(NAHBIRQ-1 downto 0); -- interrupt bus
+    pconfig     : apb_config_type;                      -- memory access reg.
+    pindex      : integer range 0 to NAPBSLV -1;        -- diag use only
+  end record;
+
 -- array types
+  type apb_slv_in_vector_type is array (natural range <>) of apb_slv_in_type;
+  type apb_slv_in_vector is array (0 to NAPBSLV-1) of apb_slv_in_type;
   type apb_slv_out_vector is array (0 to NAPBSLV-1) of apb_slv_out_type;
+  type apb3_slv_out_vector is array (0 to NAPBSLV-1) of apb3_slv_out_type;
 
 -- support for plug&play configuration
 
@@ -257,6 +283,8 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
 
   constant apb_none : apb_slv_out_type :=
     (zx, zxirq(NAHBIRQ-1 downto 0), (others => zx), 0);
+  constant apb3_none : apb3_slv_out_type :=
+    (zx, '1', '0', zxirq(NAHBIRQ-1 downto 0), (others => zx), 0);
   constant ahbm_none : ahb_mst_out_type := ( '0', '0', "00", zx,
    '0', "000", "000", "0000", zahbdw, zxirq(NAHBIRQ-1 downto 0), (others => zx), 0);
   constant ahbm_in_none : ahb_mst_in_type := ((others => '0'), '0', (others => '0'),
@@ -271,7 +299,7 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
   constant ahbsv_none : ahb_slv_out_vector := (others => ahbs_none);
 
   constant apb_slv_in_none : apb_slv_in_type := ((others => '0'), '0', (others => '0'),
-                                                 '0', (others => '0'), (others => '0'),
+                                                 '0', (others => '0'), zxirq(NAHBIRQ-1 downto 0),
                                                  '0', '0', '0', '0', ztestin);
   constant amba_stat_none : amba_stat_type :=
     ('0', '0', '0', '0', '0', '0', (others => '0'),
@@ -522,6 +550,33 @@ component ahbxb is
         );
         end component;
 
+  component ambaprot
+  generic (
+    pindex    : integer := 0;
+    paddr     : integer := 0;
+    pmask     : integer := 16#fff#;
+    maskwidth : integer := 16;
+    segments  : integer := 8;
+    mstrules  : integer := 0;
+    sgm       : integer := 0 -- Enable hardcoded SGM function. Requires Master Rules.
+  );
+  port (
+    rst       : in  std_ulogic;
+    clk       : in  std_ulogic;
+    ahbsi     : in  ahb_slv_in_type;
+    apbi      : in  apb_slv_in_type;
+    apbo      : out apb_slv_out_type;
+    wpo       : out std_ulogic;
+    pmwprt1   : in  std_ulogic; -- PM Write Protect SGM Area 1 on AMBAPROT Segment 0
+    pmwprt2   : in  std_ulogic; -- PM Write Protect SGM Area 2 on AMBAPROT Segment 1
+    pmwprt3   : in  std_ulogic; -- PM Write Protect SGM Area 1 on AMBAPROT Segment 0
+    pmwprt4   : in  std_ulogic; -- PM Write Protect SGM Area 2 on AMBAPROT Segment 1
+    gndwprt1  : in  std_ulogic; -- Ground Write Protect SGM Area 1
+    gndwprt2  : in  std_ulogic;  -- Ground Write Protect SGM Area 2
+    isredundant : in  std_ulogic -- Set if redundant unit
+  );
+  end component;
+
   component apbctrl
   generic (
     hindex      : integer := 0;
@@ -544,6 +599,124 @@ component ahbxb is
     ahbo    : out ahb_slv_out_type;
     apbi    : out apb_slv_in_type;
     apbo    : in  apb_slv_out_vector
+  );
+  end component;
+
+  component apbctrlx
+  generic (
+    hindex0     : integer := 0;
+    haddr0      : integer := 0;
+    hmask0      : integer := 16#fff#;
+    hindex1     : integer := 0;
+    haddr1      : integer := 0;
+    hmask1      : integer := 16#fff#;
+    nslaves     : integer range 1 to NAPBSLV := NAPBSLV;
+    nports      : integer range 1 to 2 := 2;
+    wprot       : integer range 0 to 1 := 0;
+    debug       : integer range 0 to 2 := 2;   -- print config to console
+    icheck      : integer range 0 to 1 := 1;
+    enbusmon    : integer range 0 to 1 := 0;
+    asserterr   : integer range 0 to 1 := 0;
+    assertwarn  : integer range 0 to 1 := 0;
+    pslvdisable : integer := 0;
+    mcheck      : integer range 0 to 1 := 1;
+    ccheck      : integer range 0 to 1 := 1
+  );
+  port (
+    rst     : in  std_ulogic;
+    clk     : in  std_ulogic;
+    ahbi    : in  ahb_slv_in_vector_type(0 to nports-1);
+    ahbo    : out ahb_slv_out_vector_type(0 to nports-1);
+    apbi    : out apb_slv_in_vector;
+    apbo    : in  apb_slv_out_vector;
+    wp      : in  std_logic_vector(0 to nports-1) := (others => '0');
+    wpv     : in  std_logic_vector((256*nports)-1 downto 0) := (others => '0')
+  );
+  end component;
+
+  component apbctrldp
+  generic (
+    hindex0     : integer := 0;
+    haddr0      : integer := 0;
+    hmask0      : integer := 16#fff#;
+    hindex1     : integer := 0;
+    haddr1      : integer := 0;
+    hmask1      : integer := 16#fff#;
+    nslaves     : integer range 1 to NAPBSLV := NAPBSLV;
+    wprot       : integer range 0 to 1 := 0;
+    debug       : integer range 0 to 2 := 2;   -- print config to console
+    icheck      : integer range 0 to 1 := 1;
+    enbusmon    : integer range 0 to 1 := 0;
+    asserterr   : integer range 0 to 1 := 0;
+    assertwarn  : integer range 0 to 1 := 0;
+    pslvdisable : integer := 0;
+    mcheck      : integer range 0 to 1 := 1;
+    ccheck      : integer range 0 to 1 := 1
+  );
+  port (
+    rst     : in  std_ulogic;
+    clk     : in  std_ulogic;
+    ahb0i   : in  ahb_slv_in_type;
+    ahb0o   : out ahb_slv_out_type;
+    ahb1i   : in  ahb_slv_in_type;
+    ahb1o   : out ahb_slv_out_type;
+    apbi    : out apb_slv_in_vector;
+    apbo    : in  apb_slv_out_vector;
+    wp      : in  std_logic_vector(0 to 1) := (others => '0');
+    wpv     : in  std_logic_vector((256*2)-1 downto 0) := (others => '0')
+  );
+  end component;
+
+  component apbctrlsp
+  generic (
+    hindex      : integer := 0;
+    haddr       : integer := 0;
+    hmask       : integer := 16#fff#;
+    nslaves     : integer range 1 to NAPBSLV := NAPBSLV;
+    debug       : integer range 0 to 2 := 2;   -- print config to console
+    wprot       : integer range 0 to 1 := 0;
+    icheck      : integer range 0 to 1 := 1;
+    enbusmon    : integer range 0 to 1 := 0;
+    asserterr   : integer range 0 to 1 := 0;
+    assertwarn  : integer range 0 to 1 := 0;
+    pslvdisable : integer := 0;
+    mcheck      : integer range 0 to 1 := 1;
+    ccheck      : integer range 0 to 1 := 1
+  );
+  port (
+    rst     : in  std_ulogic;
+    clk     : in  std_ulogic;
+    ahbi    : in  ahb_slv_in_type;
+    ahbo    : out ahb_slv_out_type;
+    apbi    : out apb_slv_in_type;
+    apbo    : in  apb_slv_out_vector;
+    wp      : in  std_logic := '0';
+    wpv     : in  std_logic_vector((256*1)-1 downto 0) := (others => '0')
+  );
+  end component;
+
+  component apb3ctrl
+  generic (
+    hindex      : integer := 0;
+    haddr       : integer := 0;
+    hmask       : integer := 16#fff#;
+    nslaves     : integer range 1 to NAPBSLV := NAPBSLV;
+    debug       : integer range 0 to 2 := 2;
+    icheck      : integer range 0 to 1 := 1;
+    enbusmon    : integer range 0 to 1 := 0;
+    asserterr   : integer range 0 to 1 := 0;
+    assertwarn  : integer range 0 to 1 := 0;
+    pslvdisable : integer := 0;
+    mcheck      : integer range 0 to 1 := 1;
+    ccheck      : integer range 0 to 1 := 1
+    );
+  port (
+    rst      : in  std_ulogic;
+    clk      : in  std_ulogic;
+    ahbi     : in  ahb_slv_in_type;
+    ahbo     : out ahb_slv_out_type;
+    apb3i    : out apb3_slv_in_type;
+    apb3o    : in  apb3_slv_out_vector
   );
   end component;
 
@@ -672,6 +845,21 @@ component ahbxb is
     clk         : in std_ulogic;
     apbi        : in apb_slv_in_type;
     apbo        : in apb_slv_out_vector;
+    err         : out std_ulogic);
+  end component;
+
+  component apb3mon is
+  generic(
+    asserterr   : integer range 0 to 1 := 1;
+    assertwarn  : integer range 0 to 1 := 1;
+    pslvdisable : integer := 0;
+    napb        : integer range 0 to NAPBSLV := NAPBSLV
+  );
+  port(
+    rst         : in std_ulogic;
+    clk         : in std_ulogic;
+    apb3i       : in apb3_slv_in_type;
+    apb3o       : in apb3_slv_out_vector;
     err         : out std_ulogic);
   end component;
   

@@ -1,10 +1,22 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2014, Aeroflex Gaisler AB - all rights reserved.
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
--- ANY USE OR REDISTRIBUTION IN PART OR IN WHOLE MUST BE HANDLED IN 
--- ACCORDANCE WITH THE GAISLER LICENSE AGREEMENT AND MUST BE APPROVED 
--- IN ADVANCE IN WRITING. 
+--  This program is free software; you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation; either version 2 of the License, or
+--  (at your option) any later version.
+--
+--  This program is distributed in the hope that it will be useful,
+--  but WITHOUT ANY WARRANTY; without even the implied warranty of
+--  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------
 -- Entity: 	l3stat
 -- File:	l3stat.vhd
@@ -27,7 +39,7 @@ entity l3stat is
     pindex      : integer := 0;
     paddr       : integer := 0;
     pmask       : integer := 16#fff#;
-    ncnt        : integer := 4;
+    ncnt        : integer range 1 to 64 := 4;
     ncpu        : integer := 1;
     nmax        : integer := 0;
     lahben      : integer := 0;
@@ -39,7 +51,8 @@ entity l3stat is
     pmask2      : integer := 16#fff#;
     astaten     : integer := 0;
     selreq      : integer := 0;
-    clatch      : integer := 0
+    clatch      : integer := 0;
+    forcer0     : integer range 0 to 1 := 0
     );
   port (
     rstn   : in  std_ulogic;
@@ -60,7 +73,7 @@ end;
 
 architecture rtl of l3stat is
 
-constant REVISION : integer := 0;
+constant REVISION : integer := 1 - forcer0;
 constant pconfig  : apb_config_type := (
 	0 => ahb_device_reg (VENDOR_GAISLER, GAISLER_L3STAT, 0, REVISION, 0),
 	1 => apb_iobar(paddr, pmask));
@@ -68,7 +81,7 @@ constant pconfig2  : apb_config_type := (
 	0 => ahb_device_reg (VENDOR_GAISLER, GAISLER_L3STAT, 0, REVISION, 0),
 	1 => apb_iobar(paddr2, pmask2));
 
-constant MAX_CNT : natural := 32; -- Maximum number of counters
+constant MAX_CNT : natural := 64 - 32*forcer0; -- Maximum number of counters
 constant MADDR   : natural := log2(MAX_CNT) + 2;
 
 function op_len return integer is
@@ -125,6 +138,7 @@ variable istat, dstat : l3_cstat_type;
 variable cpu : natural range 0 to 15;
 variable inst : std_logic_vector(5 downto 0);
 variable su : std_logic;
+variable op : std_logic_vector(5 downto 0);
 begin
   cpu := conv_integer(cnt.cpu); wbhold := dbgox(cpu).wbhold;
   istat := dbgox(cpu).istat; dstat := dbgox(cpu).dstat;
@@ -133,9 +147,10 @@ begin
   dsumode := dbgox(cpu).dsumode;
   su := dbgox(cpu).su;
   inc := '0';
+  op := cnt.op(5 downto 0);
   if selreq = 0 or cnt.op(cnt.op'left) = '0' then
-  if (nextev = 0 and dsuen = 0) or cnt.op(6) = '0' then
-    case cnt.op(5 downto 0) is
+  if (nextev = 0 and dsuen = 0 and astaten = 0) or cnt.op(6) = '0' then
+    case op is
       when "000000" => inc := istat.cmiss; 		-- icache miss
       when "000001" => inc := istat.tmiss; 		-- icache tlb miss
       when "000010" => inc := istat.chold; 		-- icache total hold
@@ -179,7 +194,7 @@ begin
       when others      => null; 
     end case;
   elsif dsuen /= 0 and cnt.op(6 downto 5) = "10" then
-    case cnt.op(4 downto 0) is
+    case op(4 downto 0) is
       when "00000" => inc := dastat.idle;
       when "00001" => inc := dastat.busy;
       when "00010" => inc := dastat.nseq;
@@ -203,7 +218,7 @@ begin
       inc := '0';
     end if;
   elsif astaten /= 0 and cnt.op(6 downto 4) = "111" then  -- 0x70 - 0x7F
-    case cnt.op(3 downto 0) is
+    case op(3 downto 0) is
       when "0000" => inc := astat.idle;
       when "0001" => inc := astat.busy;
       when "0010" => inc := astat.nseq;
@@ -264,6 +279,11 @@ begin
   return 0;
 end function;
 
+function latch_cnt_addr (paddr : std_logic_vector(31 downto 0)) return boolean is
+begin
+  return LATCH_CNT and paddr(MADDR+1) = '1';
+end function;
+
 signal rc, rcin : cnt_type_vector(0 to ncnt-1);
 signal mrc, mrcin : mcnt_type_vector(0 to nmax_right);
 signal r, rin : reg_type;
@@ -271,7 +291,7 @@ signal r, rin : reg_type;
 begin
 
 
-  comb : process(r, rc, mrc, rstn, apbi, dbgo, astat)
+  comb : process(r, rc, mrc, rstn, apbi, dbgo, stati, astat)
     variable rdata : std_logic_vector(31 downto 0);
     variable rdata2 : std_logic_vector(31 downto 0);
     variable rv : cnt_type_vector(0 to MAX_CNT-1);
@@ -317,15 +337,17 @@ begin
           end if;
         end if;
       end if;
-      if LATCH_CNT and r.latcnt = '1' and nmax /= 0 and i < nmax and mrc(i).cd = '0' then
-        mrv(i).max := rv(i).cnt;
-        if rc(i).clr = '1' then rv(i).cnt := (others => '0'); end if;
+      if LATCH_CNT and r.latcnt = '1' and nmax /= 0 and i < nmax then
+        if mrc(i).cd = '0' then
+          mrv(i).max := rv(i).cnt;
+          if rc(i).clr = '1' then rv(i).cnt := (others => '0'); end if;
+        end if;
       end if;
     end loop;
 
     if apb2en /= 0 then                 -- 2nd APB interface
       addr2 := conv_integer(apb2i.paddr(MADDR-1 downto 2));
-      if (apb2i.psel(pindex2) and apb2i.penable) = '1' and (not LATCH_CNT or apb2i.paddr(8) = '0') then
+      if (apb2i.psel(pindex2) and apb2i.penable) = '1' and (not latch_cnt_addr(apb2i.paddr)) then
         if apb2i.pwrite = '0' then
           if apb2i.paddr(MADDR) = '0' then
             rdata2 := lrc(addr2).cnt;
@@ -339,8 +361,12 @@ begin
               if nmax /= 0 and nmax > addr2 then mrv(addr2).max := zero32; end if;
             end if;
           else
-            rdata2(31 downto 28) := conv_std_logic_vector(ncpu-1, 4);
-            rdata2(27 downto 23) := conv_std_logic_vector(ncnt-1, 5);
+            if REVISION = 0 then
+              rdata2(31 downto 28) := conv_std_logic_vector(ncpu-1, 4);
+              rdata2(27 downto 23) := conv_std_logic_vector(ncnt-1, 5);
+            else
+              rdata2(31 downto 23) := conv_std_logic_vector(ncnt-1, 9);
+            end if;
             rdata2(22) := conv_std_logic(nmax > addr2);
             rdata2(21) := conv_std_logic(lahben /= 0);
             rdata2(20) := conv_std_logic(dsuen /= 0);
@@ -374,7 +400,7 @@ begin
           end if;
         end if;
       end if;
-      if LATCH_CNT and apb2i.paddr(8) = '1' and (apb2i.psel(pindex2) and apb2i.penable) = '1' then
+      if latch_cnt_addr(apb2i.paddr) and (apb2i.psel(pindex2) and apb2i.penable) = '1' then
         if apb2i.paddr(7) = '0' then
           rdata2 := lmrc(addr2).max;
         else
@@ -386,7 +412,7 @@ begin
       addr2 := 0;
     end if;
     
-    if (apbi.psel(pindex) and apbi.penable) = '1' and (not LATCH_CNT or apbi.paddr(8) = '0') then
+    if (apbi.psel(pindex) and apbi.penable) = '1' and (not latch_cnt_addr(apbi.paddr)) then
       if apbi.pwrite = '0' then
         if apbi.paddr(MADDR) = '0' then
           if nmax = 0 or lmrc(addr).cd = '0' then
@@ -399,8 +425,12 @@ begin
             if nmax /= 0 and nmax > addr then mrv(addr).max := zero32; end if;
           end if;
 	else
-          rdata(31 downto 28) := conv_std_logic_vector(ncpu-1, 4);
-          rdata(27 downto 23) := conv_std_logic_vector(ncnt-1, 5);
+          if REVISION = 0 then
+            rdata(31 downto 28) := conv_std_logic_vector(ncpu-1, 4);
+            rdata(27 downto 23) := conv_std_logic_vector(ncnt-1, 5);
+          else
+            rdata(31 downto 23) := conv_std_logic_vector(ncnt-1, 9);
+          end if;
           rdata(22) := conv_std_logic(nmax > addr);
           rdata(21) := conv_std_logic(lahben /= 0);
           rdata(20) := conv_std_logic(dsuen /= 0);
@@ -433,8 +463,8 @@ begin
           rv(addr).cpu := apbi.pwdata(3 downto 0);
         end if;
       end if;
-      if LATCH_CNT and apbi.paddr(8) = '1' and (apbi.psel(pindex) and apbi.penable) = '1' then
-        if apbi.paddr(7) = '0' then
+      if latch_cnt_addr(apbi.paddr) and (apbi.psel(pindex) and apbi.penable) = '1' then
+        if apbi.paddr(MADDR) = '0' then
           rdata:= lmrc(addr).max;
         else
           rdata := r.timer;
@@ -520,7 +550,12 @@ begin
       report "LSTAT: clatch /= 0 requires pmask /= 16#fff# and nmax /= 0"
       severity failure;
     wait;
+    assert (REVISION = 1 and pmask <= 16#ffc#) or (REVISION = 0)
+      report "LSTAT: REVISION 1 of core requires pmask = 16#ffc# or larger area"
+      severity failure;
+    wait;
   end process;
 -- pragma translate_on
 
 end;
+

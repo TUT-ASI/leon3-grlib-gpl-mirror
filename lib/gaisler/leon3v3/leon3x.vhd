@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@ entity leon3x is
   generic (
     hindex     :     integer                  := 0;
     fabtech    :     integer range 0 to NTECH := DEFFABTECH;
-    memtech    :     integer range 0 to NTECH := DEFMEMTECH;
+    memtech    :     integer                  := DEFMEMTECH;
     nwindows   :     integer range 2 to 32    := 8;
     dsu        :     integer range 0 to 1     := 0;
     fpu        :     integer range 0 to 63    := 0;
@@ -66,11 +66,11 @@ entity leon3x is
     dlinesize  :     integer range 4 to 8     := 4;
     dsetsize   :     integer range 1 to 256   := 1;
     dsetlock   :     integer range 0 to 1     := 0;
-    dsnoop     :     integer range 0 to 6     := 0;
-    ilram      :     integer range 0 to 1     := 0;
+    dsnoop     :     integer range 0 to 7     := 0;
+    ilram      :     integer range 0 to 2     := 0;
     ilramsize  :     integer range 1 to 512   := 1;
     ilramstart :     integer range 0 to 255   := 16#8e#;
-    dlram      :     integer range 0 to 1     := 0;
+    dlram      :     integer range 0 to 2     := 0;
     dlramsize  :     integer range 1 to 512   := 1;
     dlramstart :     integer range 0 to 255   := 16#8f#;
     mmuen      :     integer range 0 to 1     := 0;
@@ -85,8 +85,8 @@ entity leon3x is
     svt        :     integer range 0 to 1     := 1;
     rstaddr    :     integer                  := 0;
     smp        :     integer range 0 to 15    := 0;
-    iuft       :     integer range 0 to 4     := 0;
-    fpft       :     integer range 0 to 4     := 0;
+    iuft       :     integer range 0 to 6     := 0;
+    fpft       :     integer range 0 to 6     := 0;
     cmft       :     integer range 0 to 1     := 0;
     iuinj      :     integer                  := 0;
     ceinj      :     integer range 0 to 3     := 0;
@@ -97,7 +97,9 @@ entity leon3x is
     mmupgsz    :     integer range 0 to 5     := 0;
     bp         :     integer                  := 1;
     npasi      :     integer range 0 to 1     := 0;
-    pwrpsr     :     integer range 0 to 1     := 0
+    pwrpsr     :     integer range 0 to 1     := 0;
+    rex        :     integer                  := 0;
+    altwin     :     integer range 0 to 1     := 0
     );
   port (
     clk        : in  std_ulogic;                     -- free-running clock
@@ -130,6 +132,11 @@ constant IRFWT     : integer := 1;--regfile_3p_write_through(memtech);
 constant fpuarch   : integer := fpu mod 16;
 constant fpunet    : integer := (fpu mod 32) / 16;
 constant fpushared : boolean := (fpu / 32) /= 0;
+
+constant MEMTECH_MOD : integer := memtech mod 65536;
+constant MEMTECH_VEC : std_logic_vector(31 downto 0) := conv_std_logic_vector(memtech, 32);
+constant IURF_INFER : integer := conv_integer(MEMTECH_VEC(17));
+constant FPRF_INFER : integer := conv_integer(MEMTECH_VEC(18));
 
 constant FTSUP     : integer := 0
                                 ;
@@ -171,13 +178,13 @@ begin
          drepl, dsets, dlinesize, dsetsize, dsetlock, dsnoop, ilram, ilramsize,
          ilramstart, dlram, dlramsize, dlramstart, mmuen, itlbnum, dtlbnum,
          tlb_type, tlb_rep, lddel, disas, tbuf, pwd, svt, rstaddr, smp,
-         cached, clk2x, scantest, mmupgsz, bp, npasi, pwrpsr)
+         cached, clk2x, scantest, mmupgsz, bp, npasi, pwrpsr, rex, altwin)
        port map (gclk2, rst, holdn, ahbi, ahbo, ahbsi, ahbso, rfi, rfo, crami, cramo, 
                  tbi, tbo, tbi_2p, tbo_2p, fpi, fpo, cpi, cpo, irqi, irqo, dbgi, dbgo, clk, clk2, clken
                  );
   
      -- IU register file
-     rf0 : regfile_3p_l3 generic map (memtech, IRFBITS, 32, IRFWT, IREGNUM,
+     rf0 : regfile_3p_l3 generic map (MEMTECH_MOD*(1-IURF_INFER), IRFBITS, 32, IRFWT, IREGNUM,
                                       scantest)
        port map (gclk2, rfi.waddr(IRFBITS-1 downto 0), rfi.wdata, rfi.wren,
                  gclk2, rfi.raddr1(IRFBITS-1 downto 0), rfi.ren1, rfo.data1,
@@ -187,7 +194,7 @@ begin
 
      -- cache memory
      cmem0 : cachemem
-       generic map (memtech, icen, irepl, isets, ilinesize, isetsize, isetlock, dcen,
+       generic map (MEMTECH_MOD, icen, irepl, isets, ilinesize, isetsize, isetlock, dcen,
                     drepl, dsets,  dlinesize, dsetsize, dsetlock, dsnoop, ilram,
                     ilramsize, dlram, dlramsize, mmuen, scantest
                     )
@@ -198,14 +205,14 @@ begin
      tbmem_gen : if (tbuf /= 0) generate
        tbmem_1p : if (tbuf <= 64) generate
          tbmem0 : tbufmem
-           generic map (tech => memtech, tbuf => tbuf, dwidth => 32, testen => scantest)
+           generic map (tech => MEMTECH_MOD, tbuf => tbuf, dwidth => 32, testen => scantest)
            port map (gclk2, tbi, tbo, ahbi.testin
                      );
          tbo_2p <= tracebuf_2p_out_type_none;
        end generate;
        tbmem_2p: if (tbuf > 64) generate
          tbmem0 : tbufmem_2p
-           generic map (tech => memtech, tbuf => (tbuf-64), dwidth => 32, testen => scantest)
+           generic map (tech => MEMTECH_MOD, tbuf => (tbuf-64), dwidth => 32, testen => scantest)
            port map (gclk2, tbi_2p, tbo_2p, ahbi.testin
                      );
          tbo <= tracebuf_out_type_none;
@@ -224,7 +231,7 @@ begin
      fpshare : if fpushared generate
        grfpw0gen : if (fpuarch > 0) and (fpuarch < 8) generate
          fpu0: grfpwxsh
-           generic map (memtech, pclow, dsu, disas, hindex,
+           generic map (MEMTECH_MOD*(1-FPRF_INFER), pclow, dsu, disas, hindex,
                         scantest
                      )
            port map (rst, gclk2, holdn, fpi, fpo, fpui, fpuo, ahbi.testin
@@ -238,7 +245,7 @@ begin
      nofpshare : if not fpushared generate
        grfpw1gen : if (fpuarch > 0) and (fpuarch < 8) generate
          fpu0: grfpwx
-           generic map (fabtech, memtech, (fpuarch-1), pclow, dsu, disas,
+           generic map (fabtech, MEMTECH_MOD*(1-FPRF_INFER), (fpuarch-1), pclow, dsu, disas,
                         fpunet, hindex, scantest)
            port map (rst, gfclk2, holdn, fpi, fpo, ahbi.testin
                      );
@@ -246,7 +253,7 @@ begin
 
        grlfpc1gen : if (fpuarch >=8) and (fpuarch < 15) generate
          fpu0 : grlfpwx
-           generic map (memtech, pclow, dsu, disas,
+           generic map (MEMTECH_MOD*(1-FPRF_INFER), pclow, dsu, disas,
                         (fpuarch-8), fpunet, hindex, scantest)
            port map (rst, gfclk2, holdn, fpi, fpo, ahbi.testin
                      );
@@ -268,7 +275,7 @@ begin
        generic map (
          hindex     => hindex,
          fabtech    => fabtech,
-         memtech    => memtech,
+         memtech    => MEMTECH_MOD,
          nwindows   => nwindows,
          dsu        => dsu,
          fpu        => fpu,
@@ -330,17 +337,18 @@ begin
          ahbsi             => ahbsi,
          --ahbso      => ahbso,
          irqi_irl          => irqi.irl,
-         irqi_rst          => irqi.rst,
-         irqi_run          => irqi.run,
+         irqi_resume       => irqi.resume,
+         irqi_rstrun       => irqi.rstrun,
          irqi_rstvec       => irqi.rstvec,
-         irqi_iact         => irqi.iact,
          irqi_index        => irqi.index,
-         irqi_hrdrst       => irqi.hrdrst,
+         irqi_pwdsetaddr   => irqi.pwdsetaddr,
+         irqi_pwdnewaddr   => irqi.pwdnewaddr,
+         irqi_forceerr     => irqi.forceerr,
          irqo_intack       => irqo.intack,
          irqo_irl          => irqo.irl,
          irqo_pwd          => irqo.pwd,
          irqo_fpen         => irqo.fpen,
-         irqo_idle         => irqo.idle,
+         irqo_err          => irqo.err,
          dbgi_dsuen        => dbgi.dsuen,
          dbgi_denable      => dbgi.denable,
          dbgi_dbreak       => dbgi.dbreak,
@@ -396,3 +404,4 @@ begin
 -- pragma translate_on
 
 end;
+

@@ -4,7 +4,6 @@
 
 -----------------------------------------------------------------------------
 --  LEON3 Demonstration design test bench configuration
---  Copyright (C) 2009 Aeroflex Gaisler
 ------------------------------------------------------------------------------
 
 
@@ -15,9 +14,7 @@ package config is
 
 #include "config.vhd.h"
 
-
--- Xilinx MIG DDR2 controller
-  constant CFG_MIG_DDR2 : integer := CONFIG_MIG_DDR2;
+-- Xilinx MIG controller ML605 specific option
   constant CFG_MIG_CLK4 : integer := CFG_SYS_FREQ_DIV;
 
 end;

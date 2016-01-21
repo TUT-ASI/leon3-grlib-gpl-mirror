@@ -1,5 +1,5 @@
 
-This LEON3 design is tailored to the Xilinx Virtex5 ML510 board
+This LEON design is tailored to the Xilinx Virtex5 ML510 board
 ---------------------------------------------------------------------
 
 NOTE1: With revision 1 of the DDR2SPA controller, the controller can 
@@ -42,7 +42,8 @@ Design specifics:
   GRMON and Xilinx parallel and USB cables
 
 * The GRGPIO port is mapped in the following way:
-  gpio[3:0] : SW5[4:1] / Green LEDs
+  gpio[0]   : SW5[1] (Input only)
+  gpio[3:1] : SW5[4:2] / Green LEDs
   gpio[4]   : DVI GPIO
   gpio[5]   : sbr_intr_r        (input only)
   gpio[6]   : sbr_nmi_r         (input only)
@@ -61,7 +62,7 @@ Design specifics:
   values for 0x90000000.
 
 * The APB bridge start address is 0xc0000000. This address is
-  normally 0x80000000 in Leon3/GRLIB designs. Some software may
+  normally 0x80000000 in Leon/GRLIB designs. Some software may
   default to, or use hard coded values for, 0x80000000.
 
 * The GRETH core is enabled and runs without problems at 100 Mbit.
@@ -102,7 +103,7 @@ Design specifics:
 
 * The FLASH memory can be programmed using GRMON
 
-* The LEON3 processor can run up to 80 - 90 MHz on the board
+* The LEON processor can run up to 80 - 90 MHz on the board
   in the typical configuration.
 
 * The design has two I2C masters. One is connected to the main IIC bus
@@ -118,7 +119,7 @@ Design specifics:
   Adjustment of the delay before latching input data may be needed. This
   can be done using the 'i2c 1 dvi delay [dec|inc]' command. 
   NOTE: If the the VGA cores are enabled the constraints on the VGA 
-  clocks must be uncommented from the leon3mp.ucf file.
+  clocks must be uncommented from the leonmp.ucf file.
 
 * SPICTRL is attached to the SPI Flash memory device. To communicate with 
   the memory device, the core needs to be initialized to generate a SPI 

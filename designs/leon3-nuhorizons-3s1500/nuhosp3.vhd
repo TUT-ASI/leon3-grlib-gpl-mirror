@@ -172,3 +172,4 @@ begin
     fabtech => tech_table(fabtech), memtech => tech_table(memtech));
 -- pragma translate_on
 end;
+

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -56,7 +56,8 @@ entity rgmii is
     abits          : integer := 8;
     no_clk_mux     : integer := 0;
     pirq           : integer := 0;
-    use90degtxclk  : integer := 0
+    use90degtxclk  : integer := 0;
+    mode100        : integer := 0
     );
   port (
     rstn     : in  std_ulogic;
@@ -109,7 +110,7 @@ architecture rtl of rgmii is
   signal rx_dv, rx_dv_pre, rx_dv_int, rx_dv0 , rx_ctl, rx_ctl_pre, rx_ctl_int, rx_ctl0, rx_error : std_logic;
   signal rx_dv_int0, rx_dv_int1, rx_dv_int2 : std_logic;
   signal rx_ctl_int0, rx_ctl_int1, rx_ctl_int2 : std_logic;
-  signal clk25i, clk25ni, clk2_5i, clk2_5ni : std_ulogic;
+  signal clk50i, clk50d, clk25i, clk25ni, clk2_5i, clk2_5ni : std_ulogic;
   signal txp, txn, txp_sync, txn_sync, tx_clk_ddr, tx_clk, tx_clki, ntx_clk : std_ulogic;
   signal cnt2_5, cnt25 : unsigned(5 downto 0);
   signal rsttxclkn,rsttxclk,rsttxclk90n,rsttxclk90 : std_logic;
@@ -201,6 +202,14 @@ architecture rtl of rgmii is
   signal RMemRgmiiiRead       : std_logic;
   signal RMemRgmiioRead       : std_logic;
 
+signal clk25i_del          : std_logic;
+signal clk2_5i_del          : std_logic;
+signal clk10_100_del          : std_logic;
+signal tx_clki_del          : std_logic;
+signal tx_clk_del          : std_logic;
+signal ntx_clk_del          : std_logic;
+
+
 begin  -- rtl
 
   vcc <= '1'; gnd <= '0';
@@ -220,6 +229,49 @@ begin  -- rtl
   ---------------------------------------------------------------------------------------
 
    useclkmux0 : if no_clk_mux = 0 generate
+
+
+    usemode100 : if mode100 = 1 generate
+
+      process (apb_clk)
+      begin  -- process
+        if rising_edge(apb_clk) then
+          clk50i <= not clk50i;
+          if apb_rstn = '0' then clk50i <= '0'; end if;
+        end if;
+      end process;
+
+      process (apb_clk)
+      begin  -- process
+        if rising_edge(apb_clk) then
+          clk50d <= clk50i;
+
+          if (clk50d = '1' and clk50i = '0') then
+            clk25i_del <= not clk25i_del;
+          end if;
+          
+          if (clk50d = '0' and clk50i = '1') then
+            clk25i <= not clk25i;
+          
+            if cnt2_5 = "001001" then 
+              cnt2_5 <= "000000"; clk2_5i_del <= not clk2_5i_del;
+            else 
+              cnt2_5 <= cnt2_5 + 1; 
+            end if;
+
+            if cnt2_5 = "000111" then 
+                clk2_5i <= not clk2_5i;
+            end if;    
+
+          end if;
+          
+          if apb_rstn = '0' then clk50d <= '0'; clk25i <= '0'; clk2_5i <= '0'; cnt2_5 <= "000000"; clk25i_del <= '0'; clk2_5i_del <= '0'; end if;
+        end if;
+      end process;
+
+    end generate;
+
+    usemodeAPB : if mode100 = 0 generate
       process (apb_clk)
       begin  -- process
         if rising_edge(apb_clk) then
@@ -229,7 +281,8 @@ begin  -- rtl
           if apb_rstn = '0' then clk25i <= '0'; clk2_5i <= '0'; cnt2_5 <= "000000"; end if;
         end if;
       end process;
-
+    end generate;
+    
       notecclkmux : if (has_clkmux(tech) = 0) generate
          tx_clki <= rgmiii.gtx_clk when ((gmii = 1) and (gmiio.gbit = '1')) else
          clk25i when gmiio.speed = '1' else clk2_5i;
@@ -239,10 +292,20 @@ begin  -- rtl
         -- Select 2.5 or 25 Mhz clockL
         clkmux10_100 : clkmux generic map (tech => tech) port map (clk2_5i,clk25i,gmiio.speed,clk10_100);
         clkmux1000   : clkmux generic map (tech => tech) port map (clk10_100,rgmiii.gtx_clk,gmiio.gbit,tx_clki);
+
+        clkmux10_100d : clkmux generic map (tech => tech) port map (clk2_5i_del,clk25i_del,gmiio.speed,clk10_100_del);
+        clkmux1000d   : clkmux generic map (tech => tech) port map (clk10_100_del,rgmiii.gtx_clk,gmiio.gbit,tx_clki_del);
+
+
       end generate;
 
       clkbuf0: techbuf generic map (buftype => 2, tech => tech)
                        port map (i => tx_clki, o => tx_clk);
+                       
+      clkbuf01: techbuf generic map (buftype => 2, tech => tech)
+                       port map (i => tx_clki_del, o => tx_clk_del);
+                       
+                       
    end generate;
 
    noclkmux0 : if no_clk_mux = 1 generate
@@ -335,6 +398,7 @@ begin  -- rtl
    end generate;
 
   ntx_clk <= not tx_clk;
+  ntx_clk_del <= not tx_clk_del;
   gmiii.gtx_clk <= tx_clk;
   gmiii.tx_clk <= tx_clk;
 
@@ -416,9 +480,19 @@ begin  -- rtl
    end generate;
 
    no_clk_mux0 : if no_clk_mux = 0 generate
-     rgmii_tx_clk : ddr_oreg generic map (tech, arch => 1)
-           port map (q => tx_clk_ddr, c1 => tx_clk, c2 => ntx_clk, ce => vcc,
+
+     use90degtxclk00 : if mode100 = 1 generate
+       rgmii_tx_clk : ddr_oreg generic map (tech, arch => 1)
+            port map (q => tx_clk_ddr, c1 => tx_clk_del, c2 => ntx_clk_del, ce => vcc,
                      d1 => '1', d2 => '0', r => rsttxclk, s => gnd);
+     end generate;
+
+
+     use90degtxclk01 : if mode100 = 0 generate
+       rgmii_tx_clk : ddr_oreg generic map (tech, arch => 1)
+            port map (q => tx_clk_ddr, c1 => tx_clk, c2 => ntx_clk, ce => vcc,
+                     d1 => '1', d2 => '0', r => rsttxclk, s => gnd);
+     end generate;
    end generate;
 
   rgmiio.tx_er  <= '0';
@@ -856,3 +930,4 @@ begin  -- rtl
 -- pragma translate_on
 
 end rtl;
+

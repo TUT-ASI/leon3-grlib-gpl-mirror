@@ -152,3 +152,4 @@ begin
     begin if rising_edge(clk) then r <= rin; end if; end process;
 
 end;
+

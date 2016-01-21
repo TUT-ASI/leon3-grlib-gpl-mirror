@@ -226,7 +226,7 @@ setdelay_end:
 
 jump_main:
     /* Jump to real bootstrap code. */
-    set  0xe0200000, %g1
+    set  0xe0000000, %g1
     jmp  %g1
     nop
 

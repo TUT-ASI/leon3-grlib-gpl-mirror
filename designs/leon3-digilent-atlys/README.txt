@@ -16,9 +16,6 @@ To synthesize the design, run
   $ make xconfig
   $ make ise (or make ise-synp to use Synplify for synthesis)
 
-The testbench is not in a usable state. Getting the simulation through
-initialization of SPI flash and DDR2 memory is not so easy.
-
 The FPGA can be programmed directly using "make ise-prog-fpga".
 
 Design specifics
@@ -37,14 +34,14 @@ Design specifics
   Ethernet debug link is enabled and has IP 192.168.0.51.
 
   1 Gbit operation is currently not implemented.
-  The board could support it in principle, but GRETH_GBIT is not available
-  under GPL license so it could not be tested.
 
 * DDR2 memory runs at 150 MHz, phase-locked to the AHB clock.
   The read delay in the DDR2SPA controller MUST be tuned by software
   at boot time before the DDR2 memory can be used.
 
-* SPI flash memory is mapped at 0xe0000000.
+* SPI flash memory is mapped at 0x00000000 if the AHBROM core is
+  disabled (default configuration) or 0xe0000000 if the AHBROM
+  core is enabled.
   This memory is used for the FPGA configuration bitstream and
   also as LEON3 ROM area.
 
@@ -64,6 +61,9 @@ Design specifics
 
 * PS/2 keyboard emulation works.
   PS/2 mouse emulation seems to have some problems.
+
+* The LEON processor will be kept in reset until the SPIMCTRL is
+  initialized (spmo.initialized is asserted).
 
 * Audio is not supported (yet).
 
@@ -102,7 +102,7 @@ to capture read data from the memory chip. These delays MUST be tuned
 by software at boot time before the DDR2 memory is usable.
 
 Optimum delay tuning may vary from board to board. The following
-configuration gives good results on my test board:
+configuration gives good results on one test board:
 
   Write DDR2CFG3 <- 0x82c50000      (reset IODELAY2)
   Repeat 72 times:
@@ -123,41 +123,72 @@ SPI flash memory
 
 The Atlys board contains a Numonyx N25Q128 16 MByte SPI flash memory.
 This memory is used to store the FPGA bitstream, and may also
-be used as a ROM device for the LEON3.
+be used as a ROM device for the LEON3. In order to use the SPI memory
+device with the LEON system, JP11 on the board must be closed. This
+means that the FPGA will not load its configuration from the SPI
+memory. It appears that the FPGA leaves the Flash in QSPI mode and
+this mode is not supported by the SPIMCTRL memory controller. A fix
+for this is under development.
 
 The SPIMCTRL component from GRLIB is used to access SPI flash memory.
-The ROM area is mapped at address 0xe0000000.
-The first 2 MByte of this area are reserved for the FPGA bitstream,
+The ROM area is mapped at address 0xe0000000.  The first 2 MByte of
+this area are reserved for the FPGA bitstream. Currently the design
+cannot use the SPI memory if the FPGA has been configured for SPI so
+this offset is ignored.The SPIMCTRL memory controller can
+automatically adjusts for this and 0x200000 can be added to the
+address when accessing the memory-mapped Flash area.
 
 The SPI memory may be used to store a boot image. In this case there are
 a few board-specific issues that need attention:
- * The SPI flash memory is mapped at 0xe0000000 instead of at address 0.
- * The first 2 MByte of the flash memory are needed for FPGA configuration.
- * SPIMCTRL needs some time after reset before the ROM area can be accessed.
+
  * The DDR2SPA controller must be tuned for correct read timing before
    the DDR2 memory can be used.
 
-These issues are solved by a board-specific early boot routine, implemented
-in ahbrom.S. This code is embedded in an AHBROM block and synthesized into
-the FPGA firmware. The AHBROM block is mapped at address 0x00000000 and
-performs the following functions:
- * waits until SPIMCTRL is initialized;
- * tunes DDR2 read timing;
- * jumps to MKPROM2 boot loader at address 0xe0200000.
+ * Note that if the AHBROM core is enabled in the design (it is disabled in
+   the default configuration) then the SPI flash memory is mapped at
+   0xe0000000 instead of at address 0.
 
-MKPROM2 may be used to generate a ROM image for the SPI memory.
-A command-line option is needed to tell MKPROM2 to generate an image
-at address 0xe0200000 instead of the default address 0.
-For example, a PROM image may be generated and loaded into the SPI memory
+
+MKPROM2 may be used to generate a ROM image for the SPI memory.  For
+example, a PROM image may be generated and loaded into the SPI memory
 as follows:
 
-  $ mkprom2 -msoft-float -baud 38400 -leon3 -freq 50 -rstaddr 0xe0200000 \
+  $ sparc-elf-gcc -c bdinit.S
+  $ mkprom2 -msoft-float -baud 38400 -leon3 -freq 50 -rstaddr 0x00000000 \
             -nosram -ddrram 128 -ddrbanks 1 -ddrfreq 150 -ddrcol 1024 \
-            program.exe -o program.prom
+            -bdinit program.exe -o program.prom
+  
+  An example how to load an image to SPI flash using GRMON2 is shown
+  in the first GRMON example session further down in this readme file.
+  The commands that need to be used are:
+  
+  spim flash detect
+  spim flash erase
+  spim flash load <file>
 
-  $ sparc-elf-objcopy -O binary program.prom program.bin
-  $ xc3sprog -I program.bin:w:0x200000:bin
+Note that if the AHBROM core is enabled and the SPIMCTRL memory area is
+moved to 0xe0000000 then the -rstaddr argument above needs to be changed
+to -rstaddr 0xe0000000.
 
+AHBROM contents
+---------------
+
+The AHBROM core can be optionally enabled in the design. If this core
+is enabled then it will provide a ROM at address 0. Enabling AHBROM
+will also move the SPIMCTRL memory area from address 0 to address
+0xe0000000.
+
+Wen the AHBROM is enabled, the code in ahbrom.S is embedded in an
+AHBROM block and synthesized into the FPGA firmware. The AHBROM block
+is mapped at address 0x00000000 and performs the following functions:
+
+ * waits until SPIMCTRL is initialized;
+ * tunes DDR2 read timing;
+ * jumps to MKPROM2 boot loader at address 0xe0000000.
+
+If the AHBROM core is enabled then the default test bench will fail
+due to the testbench being adapted for SPIMCTRL at address 0 and no
+change in DDR2 SDRAM read timing.
 
 GRMON output
 ------------
@@ -170,177 +201,151 @@ when GRMON cannot immediately get control of the CPU as the CPU has an
 access ongoing toward the SPI memory interface. To avoid this, enable
 the DSU and set DSU break.
 
-$ grmon -eth -u
 
- GRMON LEON debug monitor v1.1.56 evaluation version
+-bash-4.1$ grmon2cli -xilusb -u -nb
 
- Copyright (C) 2004-2011 Aeroflex Gaisler - all rights reserved.
- For latest updates, go to http://www.gaisler.com/
- Comments or bug-reports to support@gaisler.com
+  GRMON2 LEON debug monitor v2.0.70 32-bit internal version
+  
+  Copyright (C) 2016 Cobham Gaisler - All rights reserved.
+  For latest updates, go to http://www.gaisler.com/
+  Comments or bug-reports to support@gaisler.com
+  
 
- This evaluation version will expire on 21/9/2013
+Xilusb: Cable type/rev : 0x3 
+ JTAG chain (1): xc6slx45 
 
- ethernet startup.
- GRLIB build version: 4123
+  GRLIB build version: 4163
+  Detected frequency:  50 MHz
+  
+  Component                            Vendor
+  LEON3 SPARC V8 Processor             Cobham Gaisler
+  JTAG Debug Link                      Cobham Gaisler
+  GR Ethernet MAC                      Cobham Gaisler
+  AHB/APB Bridge                       Cobham Gaisler
+  LEON3 Debug Support Unit             Cobham Gaisler
+  SPI Memory Controller                Cobham Gaisler
+  Single-port DDR2 controller          Cobham Gaisler
+  Single-port AHB SRAM module          Cobham Gaisler
+  Generic UART                         Cobham Gaisler
+  Multi-processor Interrupt Ctrl.      Cobham Gaisler
+  Modular Timer Unit                   Cobham Gaisler
+  PS2 interface                        Cobham Gaisler
+  PS2 interface                        Cobham Gaisler
+  VGA controller                       Cobham Gaisler
+  General Purpose I/O port             Cobham Gaisler
+  AHB Status Register                  Cobham Gaisler
+  
+  Use command 'info sys' to print a detailed report of attached cores
 
- initialising .................
- detected frequency:  50 MHz
-
- Component                            Vendor
- LEON3 SPARC V8 Processor             Gaisler Research
- AHB Debug JTAG TAP                   Gaisler Research
- GR Ethernet MAC                      Gaisler Research
- AHB/APB Bridge                       Gaisler Research
- LEON3 Debug Support Unit             Gaisler Research
- SPI Memory Controller                Gaisler Research
- DDR2 Controller                      Gaisler Research
- AHB ROM                              Gaisler Research
- AHB static ram                       Gaisler Research
- Generic APB UART                     Gaisler Research
- Multi-processor Interrupt Ctrl       Gaisler Research
- Modular Timer Unit                   Gaisler Research
- PS/2 interface                       Gaisler Research
- PS/2 interface                       Gaisler Research
- Text-based VGA controller            Gaisler Research
- General purpose I/O port             Gaisler Research
- AHB status register                  Gaisler Research
-
- Use command 'info sys' to print a detailed report of attached cores
-
-grlib> load bin/ddrtune.exe
-section: .text at 0xa0000000, size 896 bytes
-total size: 896 bytes (12.3 Mbit/s)  
-read 22 symbols
-entry point: 0xa0000000
-grlib> run
-
-DDRTUNE:
-...
-0000000000000000
-0000000000000000
-0000000000000111
-1111111111111111
-1111111111111111
-1111111111111111
-1111111111111000
-0000000000000000
-0000000000000000
-0000000000000001
-0
-delay = 0x4d, OK.
-
-Program exited normally.
-
-grlib> exit
-
-$ grmon -eth -u
-
- GRMON LEON debug monitor v1.1.56 evaluation version
-
- Copyright (C) 2004-2011 Aeroflex Gaisler - all rights reserved.
- For latest updates, go to http://www.gaisler.com/
- Comments or bug-reports to support@gaisler.com
-
- This evaluation version will expire on 21/9/2013
-
- ethernet startup.
- GRLIB build version: 4123
-
- initialising .................
- detected frequency:  50 MHz
-
- Component                            Vendor
- LEON3 SPARC V8 Processor             Gaisler Research
- AHB Debug JTAG TAP                   Gaisler Research
- GR Ethernet MAC                      Gaisler Research
- AHB/APB Bridge                       Gaisler Research
- LEON3 Debug Support Unit             Gaisler Research
- SPI Memory Controller                Gaisler Research
- DDR2 Controller                      Gaisler Research
- AHB ROM                              Gaisler Research
- AHB static ram                       Gaisler Research
- Generic APB UART                     Gaisler Research
- Multi-processor Interrupt Ctrl       Gaisler Research
- Modular Timer Unit                   Gaisler Research
- PS/2 interface                       Gaisler Research
- PS/2 interface                       Gaisler Research
- Text-based VGA controller            Gaisler Research
- General purpose I/O port             Gaisler Research
- AHB status register                  Gaisler Research
-
- Use command 'info sys' to print a detailed report of attached cores
-
-grlib> info sys
-00.01:003   Gaisler Research  LEON3 SPARC V8 Processor (ver 0x0)
-             ahb master 0
-01.01:01c   Gaisler Research  AHB Debug JTAG TAP (ver 0x1)
-             ahb master 1
-02.01:01d   Gaisler Research  GR Ethernet MAC (ver 0x0)
-             ahb master 2, irq 12
-             apb: 80000e00 - 80000f00
-             Device index: dev0
-             edcl ip 192.168.0.51, buffer 2 kbyte
-01.01:006   Gaisler Research  AHB/APB Bridge (ver 0x0)
-             ahb: 80000000 - 80100000
-02.01:004   Gaisler Research  LEON3 Debug Support Unit (ver 0x1)
-             ahb: 90000000 - a0000000
-             AHB trace 256 lines, 32-bit bus, stack pointer 0x47fffff0
-             CPU#0 win 8, hwbp 2, itrace 256, V8 mul/div, srmmu, lddel 1
-                   icache 2 * 8 kbyte, 32 byte/line lru
-                   dcache 2 * 4 kbyte, 16 byte/line lru
-03.01:045   Gaisler Research  SPI Memory Controller (ver 0x1)
-             irq 11
-             ahb: fff00200 - fff00300
-             ahb: e0000000 - e1000000
-         SPI memory device read command: 0x03
-04.01:02e   Gaisler Research  DDR2 Controller (ver 0x1)
-             ahb: 40000000 - 48000000
-             ahb: fff00100 - fff00200
-             16-bit DDR2 : 1 * 128 Mbyte @ 0x40000000, 8 internal banks
-                          150 MHz, col 10, ref 7.8 us, trfc 133 ns
-06.01:01b   Gaisler Research  AHB ROM (ver 0x0)
-             ahb: 00000000 - 00100000
-07.01:00e   Gaisler Research  AHB static ram (ver 0xe)
-             ahb: a0000000 - a0100000
-             16 kbyte AHB ram @ 0xa0000000
-01.01:00c   Gaisler Research  Generic APB UART (ver 0x1)
-             irq 2
-             apb: 80000100 - 80000200
-             baud rate 38343, DSU mode (FIFO debug)
-02.01:00d   Gaisler Research  Multi-processor Interrupt Ctrl (ver 0x3)
-             apb: 80000200 - 80000300
-03.01:011   Gaisler Research  Modular Timer Unit (ver 0x0)
-             irq 8
-             apb: 80000300 - 80000400
-             8-bit scaler, 2 * 32-bit timers, divisor 50
-04.01:060   Gaisler Research  PS/2 interface (ver 0x2)
-             irq 4
-             apb: 80000400 - 80000500
-05.01:060   Gaisler Research  PS/2 interface (ver 0x2)
-             irq 5
-             apb: 80000500 - 80000600
-06.01:061   Gaisler Research  Text-based VGA controller (ver 0x0)
-             apb: 80000600 - 80000700
-0a.01:01a   Gaisler Research  General purpose I/O port (ver 0x2)
-             apb: 80000a00 - 80000b00
-0f.01:052   Gaisler Research  AHB status register (ver 0x0)
-             irq 7
-             apb: 80000f00 - 80001000
-
-grlib> load ../../../examples/soft/v8/dhry.exe
-section: .text at 0x40000000, size 54128 bytes
-section: .data at 0x4000d370, size 2772 bytes
-total size: 56900 bytes (16.6 Mbit/s)
-read 265 symbols
-entry point: 0x40000000
-grlib> run
-Execution starts, 400000 runs through Dhrystone
-Microseconds for one run through Dhrystone:    8.3 
-Dhrystones per Second:                      120845.9 
-
-Dhrystones MIPS      :                        68.8 
+grmon2> info sys spim0
+  spim0     Cobham Gaisler  SPI Memory Controller    
+            AHB: FFF00200 - FFF00300
+            AHB: 00000000 - 01000000
+            IRQ: 11
+            SPI memory device read command: 0x03
+  
+grmon2> spim flash detect
+  Got manufacturer ID 0x20 and device ID 0xba18
+  Detected device: ST/Numonyx N25Q128
+  
+grmon2> spim flash erase
+  Erase successful!
+  
+grmon2> spim flash load hello.srec 
+  .srec 00000000 hello.srec          82.2kB /  82.2kB   [===============>] 100%
+  Total size: 29.86kB (20.16kbit/s)
+  Entry point 0x0
+  Image /home/jan/GRLIB/master/designs/leon3-digilent-atlys/hello.srec loaded
+  
+grmon2> verify hello.srec
+  .srec 00000000 hello.srec          82.2kB /  82.2kB   [===============>] 100%
+  Total size: 29.86kB (64.00kbit/s)
+  Entry point 0x0
+  Image of /home/jan/GRLIB/master/designs/leon3-digilent-atlys/hello.srec verified without errors
+  
+grmon2> 
 
 
-Program exited normally.
-grlib> 
+
+
+
+
+
+
+Connecting via Ethernet and tuning the DDR2 read delay:
+
+
+
+
+bash-4.1$ grmon2cli -eth 192.168.0.51 
+
+  GRMON2 LEON debug monitor v2.0.70 32-bit internal version
+  
+  Copyright (C) 2016 Cobham Gaisler - All rights reserved.
+  For latest updates, go to http://www.gaisler.com/
+  Comments or bug-reports to support@gaisler.com
+  
+ Ethernet startup...
+  GRLIB build version: 4163
+  Detected frequency:  50 MHz
+  
+  Component                            Vendor
+  LEON3 SPARC V8 Processor             Cobham Gaisler
+  JTAG Debug Link                      Cobham Gaisler
+  GR Ethernet MAC                      Cobham Gaisler
+  AHB/APB Bridge                       Cobham Gaisler
+  LEON3 Debug Support Unit             Cobham Gaisler
+  SPI Memory Controller                Cobham Gaisler
+  Single-port DDR2 controller          Cobham Gaisler
+  Single-port AHB SRAM module          Cobham Gaisler
+  Generic UART                         Cobham Gaisler
+  Multi-processor Interrupt Ctrl.      Cobham Gaisler
+  Modular Timer Unit                   Cobham Gaisler
+  PS2 interface                        Cobham Gaisler
+  PS2 interface                        Cobham Gaisler
+  VGA controller                       Cobham Gaisler
+  General Purpose I/O port             Cobham Gaisler
+  AHB Status Register                  Cobham Gaisler
+  
+  Use command 'info sys' to print a detailed report of attached cores
+
+grmon2> info sys ddr2spa0
+
+   ddr2spa0  Cobham Gaisler  Single-port DDR2 controller    
+            AHB: 40000000 - 48000000
+            AHB: FFF00100 - FFF00200
+            No SDRAM found
+  
+grmon2> 
+grmon2> load bin/ddrtune.exe 
+  A0000000 .text                      896B              [===============>] 100%
+  Total size: 896B (0.00bit/s)
+  Entry point 0xa0000000
+  Image /home/jan/GRLIB/master/designs/leon3-digilent-atlys/bin/ddrtune.exe loaded
+  
+grmon2> run
+  Program exited normally.
+  
+grmon2> ^DExiting GRMON
+bash-4.1$ grmon2cli -eth 192.168.0.51 
+
+< output removed >
+
+  GRMON2 LEON debug monitor v2.0.70 32-bit internal version
+  
+  Copyright (C) 2016 Cobham Gaisler - All rights reserved.
+  For latest updates, go to http://www.gaisler.com/
+  Comments or bug-reports to support@gaisler.com
+
+grmon2> info sys ddr2spa0
+  ddr2spa0  Cobham Gaisler  Single-port DDR2 controller    
+            AHB: 40000000 - 48000000
+            AHB: FFF00100 - FFF00200
+            16-bit DDR2 : 1 * 128 MB @ 0x40000000, 8 internal banks
+            150 MHz, col 10, ref 7.8 us, trfc 133 ns
+  
+grmon2> 
+
+
+
 

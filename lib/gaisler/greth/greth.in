@@ -15,4 +15,7 @@
           bool 'Enable fault tolerance for EDCL buffer ' CONFIG_GRETH_EDCLFT
         fi
       fi
+      if [ "$CONFIG_GRETH_SGMII_PRESENT" = "y" ]; then
+        bool 'Enable SGMII' CONFIG_GRETH_SGMII_MODE
+      fi
     fi

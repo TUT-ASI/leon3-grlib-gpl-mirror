@@ -49,7 +49,10 @@ b2:
 !	nop; nop; nop
 	mov %asr16, %g3
 	srl %g3, 14, %g6
-	andcc %g6, 7, %g6
+	andcc %g6, 3, %g6
+        srl %g3, 16, %l7
+        and %l7, 4, %l7
+        or %l7, %g6, %g6 ! g6 now asr16(18,15:14)==iuft
 	subcc %g6, 0, %g0
 	be 1f			! no FT
 	nop
@@ -152,8 +155,8 @@ ft1:
 
 ft3:
 	subcc %g6, 3, %g0
-	bne 1f			! only test if IUFT = 3
-	mov %g0, %l3
+	bne ft5		! only test if IUFT = 3
+10:     mov %g0, %l3
 	set 0xe, %l1		! test mode enable, xor lsb of check bits
 	mov %l1, %asr16		! regfile EDAC test mode enable
 	mov %g0, %l3
@@ -256,6 +259,56 @@ ft3:
 	nop
 	ba 1f
 	nop
+
+ft5:
+	set 0x40000000, %l2
+	ldd [%l2], %l2		! pre-load dcache
+	set 0x40000000, %l2
+	set 0x40000104, %l4
+	mov %l2, %l3
+	mov %l2, %l5
+	mov %l4, %l6
+	mov 0x46, %asr16	! single bit error in byte 0
+        or %l2, %g0, %l2
+        or %l5, %g0, %l5
+        or %l4, %g0, %l4
+!	mov %g0, %l2
+!	mov %g0, %l5
+!	mov 0x100, %l4
+	nop;
+	mov %g0, %asr16		! test mode off
+	nop; nop;
+	std %l4, [%l2+0x30]
+
+	subcc %l2, %l3, %g1	! %l3 should be 0 (corrected)
+	bne err1
+	subcc %l4, %l6, %g1	! %l6 should be 0 (corrected)
+	bne err1
+	nop
+	nop; nop		! wait until error counters are updated
+	mov %asr16, %g3
+	srl %g3, 11, %g6
+	andcc %g6, 0x7, %g6
+	subcc %g6, 5, %g6
+	bne err1		! error counter should be 5
+	mov %g0, %asr16		! test mode off
+	nop; nop; nop
+	ldd [%l2+0x30], %l4     ! increments errcount w 2
+	subcc %l4, %l6, %g1	! no error (reg fw)
+	bne err1
+	subcc %l2, %l5, %g1	! incr errcount
+	mov %g0, %l2		! clear remaining error
+	bne err1
+	nop; nop		! wait until error counters are updated
+	mov %asr16, %g3
+	srl %g3, 11, %g6
+	andcc %g6, 0x7, %g6
+	subcc %g6, 3, %g6
+	bne err1		! error counter should be 3
+	nop
+	ba 1f
+	nop
+
 
 	! flush all register windows (maximum 32)
 1:

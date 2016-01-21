@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 library grlib;
 use grlib.amba.all;
+use grlib.stdlib.all;
 library techmap;
 use techmap.gencomp.all;
 library gaisler;
@@ -41,7 +42,8 @@ use gaisler.libmmu.all;
 entity mmu_cache is
   generic (
     hindex     :     integer                  := 0;
-    memtech    :     integer range 0 to NTECH := 0;
+    fabtech    :     integer                  := 0;
+    memtech    :     integer                  := 0;
     dsu        :     integer range 0 to 1     := 0;
     icen       :     integer range 0 to 1     := 0;
     irepl      :     integer range 0 to 3     := 0;
@@ -55,11 +57,11 @@ entity mmu_cache is
     dlinesize  :     integer range 4 to 8     := 4;
     dsetsize   :     integer range 1 to 256   := 1;
     dsetlock   :     integer range 0 to 1     := 0;
-    dsnoop     :     integer range 0 to 6     := 0;
-    ilram      :     integer range 0 to 1     := 0;
+    dsnoop     :     integer range 0 to 7     := 0;
+    ilram      :     integer range 0 to 2     := 0;
     ilramsize  :     integer range 1 to 512   := 1;
     ilramstart :     integer range 0 to 255   := 16#8e#;
-    dlram      :     integer range 0 to 1     := 0;
+    dlram      :     integer range 0 to 2     := 0;
     dlramsize  :     integer range 1 to 512   := 1;
     dlramstart :     integer range 0 to 255   := 16#8f#;
     itlbnum    :     integer range 2 to 64    := 8;
@@ -96,6 +98,10 @@ end;
 
 architecture rtl of mmu_cache is
 
+  constant MEMTECH_MOD : integer := memtech mod 65536;
+  constant MEMTECH_VEC : std_logic_vector(31 downto 0) := conv_std_logic_vector(memtech, 32);
+  constant TLB_INFER  : integer := conv_integer(MEMTECH_VEC(16));
+
   signal icol : icache_out_type;
   signal dcol : dcache_out_type;
   signal mcii : memory_ic_in_type;
@@ -122,7 +128,7 @@ begin
   gndv <= (others => '0');
 
   icache0 : mmu_icache 
-    generic map (memtech, icen, irepl, isets, ilinesize, isetsize, isetlock, ilram,
+    generic map (fabtech, icen, irepl, isets, ilinesize, isetsize, isetlock, ilram,
                  ilramsize, ilramstart,
                  mmuen)
     port map (rst, clk, ici, icol, dci, dcol, mcii, mcio, 
@@ -131,7 +137,7 @@ begin
     generic map (dsu, dcen, drepl, dsets, dlinesize, dsetsize,  dsetlock, dsnoop,
                  dlram, dlramsize, dlramstart, ilram, ilramstart,
                  itlbnum, dtlbnum, tlb_type,
-                 memtech, cached, mmupgsz, smp, mmuen)
+                 MEMTECH_MOD, cached, mmupgsz, smp, mmuen, icen)
     port map (rst, clk, dci, dcol, icol, mcdi, mcdo, ahbsi2,
               crami.dcramin, cramo.dcramo, fpuholdn, mmudci, mmudco, sclk, ahbso);
 
@@ -144,7 +150,7 @@ begin
   -- MMU
   mmugen : if mmuen = 1 generate
     m0 : mmu
-      generic map (memtech, itlbnum, dtlbnum, tlb_type, tlb_rep, mmupgsz, memtest_vlen)
+      generic map (MEMTECH_MOD*(1-TLB_INFER), itlbnum, dtlbnum, tlb_type, tlb_rep, mmupgsz, memtest_vlen)
       port map (rst, clk, mmudci, mmudco, mmuici, mmuico, mcmmo, mcmmi, ahbi.testin
                 );
   end generate;
@@ -169,3 +175,4 @@ begin
   end generate;
   
 end;
+

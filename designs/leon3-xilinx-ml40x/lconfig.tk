@@ -737,6 +737,8 @@ proc menu1 {w title} {
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-Proasic3L" -variable tmpvar_0 -value "Actel-Proasic3L" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-IGLOO/p/L" -variable tmpvar_0 -value "Actel-IGLOO/p/L" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-IGLOO2" -variable tmpvar_0 -value "Actel-IGLOO2" -command "update_active"
+	$w.config.f.x0.x.menu add radiobutton -label "Actel-SmartFusion2" -variable tmpvar_0 -value "Actel-SmartFusion2" -command "update_active"
+	$w.config.f.x0.x.menu add radiobutton -label "Actel-RTG4" -variable tmpvar_0 -value "Actel-RTG4" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-Fusion" -variable tmpvar_0 -value "Actel-Fusion" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Aeroflex-UT025CRH" -variable tmpvar_0 -value "Aeroflex-UT025CRH" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Aeroflex-UT130HBD" -variable tmpvar_0 -value "Aeroflex-UT130HBD" -command "update_active"
@@ -749,7 +751,6 @@ proc menu1 {w title} {
 	$w.config.f.x0.x.menu add radiobutton -label "IHP25RH" -variable tmpvar_0 -value "IHP25RH" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Lattice-EC/ECP/XP" -variable tmpvar_0 -value "Lattice-EC/ECP/XP" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Quicklogic-Eclipse" -variable tmpvar_0 -value "Quicklogic-Eclipse" -command "update_active"
-	$w.config.f.x0.x.menu add radiobutton -label "Peregrine" -variable tmpvar_0 -value "Peregrine" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "RH-LIB18T" -variable tmpvar_0 -value "RH-LIB18T" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "RH-UMC" -variable tmpvar_0 -value "RH-UMC" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "SAED32" -variable tmpvar_0 -value "SAED32" -command "update_active"
@@ -770,7 +771,7 @@ proc menu1 {w title} {
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Virtex6" -variable tmpvar_0 -value "Xilinx-Virtex6" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Virtex7" -variable tmpvar_0 -value "Xilinx-Virtex7" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Zynq7000" -variable tmpvar_0 -value "Xilinx-Zynq7000" -command "update_active"
-	menusplit $w $w.config.f.x0.x.menu 49
+	menusplit $w $w.config.f.x0.x.menu 50
 	global tmpvar_1
 	minimenu $w.config.f 1 1 "Memory Library                           " tmpvar_1 CONFIG_MEM_INFERRED
 	menu $w.config.f.x1.x.menu -tearoffcommand "menutitle \"Memory Library                           \""
@@ -895,6 +896,10 @@ proc update_define_menu1 {} {
 	if {$tmpvar_0 == "Actel-IGLOO/p/L"} then {set CONFIG_SYN_IGLOO 1} else {set CONFIG_SYN_IGLOO 0}
 	global CONFIG_SYN_IGLOO2
 	if {$tmpvar_0 == "Actel-IGLOO2"} then {set CONFIG_SYN_IGLOO2 1} else {set CONFIG_SYN_IGLOO2 0}
+	global CONFIG_SYN_SF2
+	if {$tmpvar_0 == "Actel-SmartFusion2"} then {set CONFIG_SYN_SF2 1} else {set CONFIG_SYN_SF2 0}
+	global CONFIG_SYN_RTG4
+	if {$tmpvar_0 == "Actel-RTG4"} then {set CONFIG_SYN_RTG4 1} else {set CONFIG_SYN_RTG4 0}
 	global CONFIG_SYN_FUSION
 	if {$tmpvar_0 == "Actel-Fusion"} then {set CONFIG_SYN_FUSION 1} else {set CONFIG_SYN_FUSION 0}
 	global CONFIG_SYN_UT025CRH
@@ -919,8 +924,6 @@ proc update_define_menu1 {} {
 	if {$tmpvar_0 == "Lattice-EC/ECP/XP"} then {set CONFIG_SYN_LATTICE 1} else {set CONFIG_SYN_LATTICE 0}
 	global CONFIG_SYN_ECLIPSE
 	if {$tmpvar_0 == "Quicklogic-Eclipse"} then {set CONFIG_SYN_ECLIPSE 1} else {set CONFIG_SYN_ECLIPSE 0}
-	global CONFIG_SYN_PEREGRINE
-	if {$tmpvar_0 == "Peregrine"} then {set CONFIG_SYN_PEREGRINE 1} else {set CONFIG_SYN_PEREGRINE 0}
 	global CONFIG_SYN_RH_LIB18T
 	if {$tmpvar_0 == "RH-LIB18T"} then {set CONFIG_SYN_RH_LIB18T 1} else {set CONFIG_SYN_RH_LIB18T 0}
 	global CONFIG_SYN_RHUMC
@@ -1474,6 +1477,8 @@ proc update_define_menu4 {} {
 	global CONFIG_DSU_ENABLE
 	global CONFIG_NP_ASI
 	global CONFIG_PWRPSR
+	global CONFIG_ALTWIN
+	global CONFIG_REX
 	global CONFIG_IU_MUL_LATENCY_5
 	global CONFIG_IU_MUL_MAC
 	global CONFIG_ICACHE_ASSO2
@@ -1481,8 +1486,8 @@ proc update_define_menu4 {} {
 	global CONFIG_ICACHE_LRAM
 	global CONFIG_DCACHE_ASSO2
 	global CONFIG_DCACHE_SZ4
-	global CONFIG_DCACHE_SNOOP_FAST
 	global CONFIG_DCACHE_SNOOP_SEPTAG
+	global CONFIG_DCACHE_SNOOP_SP
 	global CONFIG_DCACHE_LRAM
 	global CONFIG_MMU_SPLIT
 	global CONFIG_MMU_REPARRAY
@@ -1563,6 +1568,10 @@ set CONFIG_DSU_ENABLE $CONSTANT_N }
 set CONFIG_NP_ASI $CONSTANT_N }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_MIN == 1)} then {	global CONSTANT_N
 set CONFIG_PWRPSR $CONSTANT_N }
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_MIN == 1)} then {	global CONSTANT_N
+set CONFIG_ALTWIN $CONSTANT_N }
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_MIN == 1)} then {	global CONSTANT_N
+set CONFIG_REX $CONSTANT_N }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {set CONFIG_IU_NWINDOWS 8 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {	global CONSTANT_Y
 set CONFIG_IU_V8MULDIV $CONSTANT_Y }
@@ -1612,9 +1621,9 @@ set CONFIG_DCACHE_LOCK $CONSTANT_N }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {	global CONSTANT_Y
 set CONFIG_DCACHE_SNOOP $CONSTANT_Y }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {	global CONSTANT_Y
-set CONFIG_DCACHE_SNOOP_FAST $CONSTANT_Y }
-	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {	global CONSTANT_Y
 set CONFIG_DCACHE_SNOOP_SEPTAG $CONSTANT_Y }
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {	global CONSTANT_N
+set CONFIG_DCACHE_SNOOP_SP $CONSTANT_N }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {set CONFIG_CACHE_FIXED 0 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {	global CONSTANT_N
 set CONFIG_DCACHE_LRAM $CONSTANT_N }
@@ -1644,6 +1653,10 @@ set CONFIG_DSU_ATRACESZ4 $CONSTANT_Y }
 set CONFIG_NP_ASI $CONSTANT_Y }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {	global CONSTANT_Y
 set CONFIG_PWRPSR $CONSTANT_Y }
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {	global CONSTANT_N
+set CONFIG_ALTWIN $CONSTANT_N }
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {	global CONSTANT_N
+set CONFIG_REX $CONSTANT_N }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {set CONFIG_IU_NWINDOWS 8 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {	global CONSTANT_Y
 set CONFIG_IU_V8MULDIV $CONSTANT_Y }
@@ -1697,9 +1710,9 @@ set CONFIG_DCACHE_LOCK $CONSTANT_N }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {	global CONSTANT_Y
 set CONFIG_DCACHE_SNOOP $CONSTANT_Y }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {	global CONSTANT_Y
-set CONFIG_DCACHE_SNOOP_FAST $CONSTANT_Y }
-	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {	global CONSTANT_Y
 set CONFIG_DCACHE_SNOOP_SEPTAG $CONSTANT_Y }
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {	global CONSTANT_N
+set CONFIG_DCACHE_SNOOP_SP $CONSTANT_N }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {set CONFIG_CACHE_FIXED 0 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {	global CONSTANT_N
 set CONFIG_DCACHE_LRAM $CONSTANT_N }
@@ -1729,6 +1742,10 @@ set CONFIG_DSU_ATRACESZ4 $CONSTANT_Y }
 set CONFIG_NP_ASI $CONSTANT_Y }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {	global CONSTANT_Y
 set CONFIG_PWRPSR $CONSTANT_Y }
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {	global CONSTANT_N
+set CONFIG_ALTWIN $CONSTANT_N }
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {	global CONSTANT_N
+set CONFIG_REX $CONSTANT_N }
 }
 
 
@@ -1810,6 +1827,8 @@ proc menu5 {w title} {
 	hex $w.config.f 5 11 " Reset start address (addr\[31:12\]) " CONFIG_IU_RSTADDR
 	bool $w.config.f 5 12 "SPARC V8E non-privileged ASI access" CONFIG_NP_ASI
 	bool $w.config.f 5 13 "SPARC V8E partial Write %psr (WRPSR)" CONFIG_WRPSR
+	bool $w.config.f 5 14 "SPARC V8E AWP and regfile partitioning " CONFIG_ALTWIN
+	bool $w.config.f 5 15 "Enable LEON-REX extension" CONFIG_REX
 
 
 
@@ -1885,6 +1904,12 @@ proc update_menu5 {} {
 	global CONFIG_WRPSR
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1)} then {
 	configure_entry .menu5.config.f.x13 normal {n l y}} else {configure_entry .menu5.config.f.x13 disabled {y n l}}
+	global CONFIG_ALTWIN
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1)} then {
+	configure_entry .menu5.config.f.x14 normal {n l y}} else {configure_entry .menu5.config.f.x14 disabled {y n l}}
+	global CONFIG_REX
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1)} then {
+	configure_entry .menu5.config.f.x15 normal {n l y}} else {configure_entry .menu5.config.f.x15 disabled {y n l}}
 }
 
 
@@ -1941,6 +1966,12 @@ proc update_define_menu5 {} {
 	global CONFIG_WRPSR
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1)} then {
 	set CONFIG_WRPSR [expr $CONFIG_WRPSR&15]} else {set CONFIG_WRPSR [expr $CONFIG_WRPSR|16]}
+	global CONFIG_ALTWIN
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1)} then {
+	set CONFIG_ALTWIN [expr $CONFIG_ALTWIN&15]} else {set CONFIG_ALTWIN [expr $CONFIG_ALTWIN|16]}
+	global CONFIG_REX
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1)} then {
+	set CONFIG_REX [expr $CONFIG_REX&15]} else {set CONFIG_REX [expr $CONFIG_REX|16]}
 }
 
 
@@ -2241,22 +2272,23 @@ proc menu7 {w title} {
 	bool $w.config.f 7 14 "Cache locking      " CONFIG_DCACHE_LOCK
 	bool $w.config.f 7 15 "AHB snooping       " CONFIG_DCACHE_SNOOP
 	bool $w.config.f 7 16 "Separate snoop tags  " CONFIG_DCACHE_SNOOP_SEPTAG
-	hex $w.config.f 7 17 "Fixed cacheability map  " CONFIG_CACHE_FIXED
-	bool $w.config.f 7 18 "Enable local data RAM            " CONFIG_DCACHE_LRAM
+	bool $w.config.f 7 17 "Use SP RAM for seperate tags  " CONFIG_DCACHE_SNOOP_SP
+	hex $w.config.f 7 18 "Fixed cacheability map  " CONFIG_CACHE_FIXED
+	bool $w.config.f 7 19 "Enable local data RAM            " CONFIG_DCACHE_LRAM
 	global tmpvar_20
-	minimenu $w.config.f 7 19 "Local data RAM size (kbytes)" tmpvar_20 CONFIG_DCACHE_LRAM_SZ1
-	menu $w.config.f.x19.x.menu -tearoffcommand "menutitle \"Local data RAM size (kbytes)\""
-	$w.config.f.x19.x.menu add radiobutton -label "1" -variable tmpvar_20 -value "1" -command "update_active"
-	$w.config.f.x19.x.menu add radiobutton -label "2" -variable tmpvar_20 -value "2" -command "update_active"
-	$w.config.f.x19.x.menu add radiobutton -label "4" -variable tmpvar_20 -value "4" -command "update_active"
-	$w.config.f.x19.x.menu add radiobutton -label "8" -variable tmpvar_20 -value "8" -command "update_active"
-	$w.config.f.x19.x.menu add radiobutton -label "16" -variable tmpvar_20 -value "16" -command "update_active"
-	$w.config.f.x19.x.menu add radiobutton -label "32" -variable tmpvar_20 -value "32" -command "update_active"
-	$w.config.f.x19.x.menu add radiobutton -label "64" -variable tmpvar_20 -value "64" -command "update_active"
-	$w.config.f.x19.x.menu add radiobutton -label "128" -variable tmpvar_20 -value "128" -command "update_active"
-	$w.config.f.x19.x.menu add radiobutton -label "256" -variable tmpvar_20 -value "256" -command "update_active"
-	menusplit $w $w.config.f.x19.x.menu 9
-	hex $w.config.f 7 20 " Local data RAM start address (8 MSB) " CONFIG_DCACHE_LRSTART
+	minimenu $w.config.f 7 20 "Local data RAM size (kbytes)" tmpvar_20 CONFIG_DCACHE_LRAM_SZ1
+	menu $w.config.f.x20.x.menu -tearoffcommand "menutitle \"Local data RAM size (kbytes)\""
+	$w.config.f.x20.x.menu add radiobutton -label "1" -variable tmpvar_20 -value "1" -command "update_active"
+	$w.config.f.x20.x.menu add radiobutton -label "2" -variable tmpvar_20 -value "2" -command "update_active"
+	$w.config.f.x20.x.menu add radiobutton -label "4" -variable tmpvar_20 -value "4" -command "update_active"
+	$w.config.f.x20.x.menu add radiobutton -label "8" -variable tmpvar_20 -value "8" -command "update_active"
+	$w.config.f.x20.x.menu add radiobutton -label "16" -variable tmpvar_20 -value "16" -command "update_active"
+	$w.config.f.x20.x.menu add radiobutton -label "32" -variable tmpvar_20 -value "32" -command "update_active"
+	$w.config.f.x20.x.menu add radiobutton -label "64" -variable tmpvar_20 -value "64" -command "update_active"
+	$w.config.f.x20.x.menu add radiobutton -label "128" -variable tmpvar_20 -value "128" -command "update_active"
+	$w.config.f.x20.x.menu add radiobutton -label "256" -variable tmpvar_20 -value "256" -command "update_active"
+	menusplit $w $w.config.f.x20.x.menu 9
+	hex $w.config.f 7 21 " Local data RAM start address (8 MSB) " CONFIG_DCACHE_LRSTART
 
 
 
@@ -2331,14 +2363,17 @@ proc update_menu7 {} {
 	global CONFIG_DCACHE_SNOOP_SEPTAG
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_DCACHE_ENABLE == 1) && ($CONFIG_DCACHE_SNOOP == 1)} then {
 	configure_entry .menu7.config.f.x16 normal {n l y}} else {configure_entry .menu7.config.f.x16 disabled {y n l}}
+	global CONFIG_DCACHE_SNOOP_SP
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_DCACHE_ENABLE == 1) && ($CONFIG_DCACHE_SNOOP == 1) && ($CONFIG_DCACHE_SNOOP_SEPTAG == 1)} then {
+	configure_entry .menu7.config.f.x17 normal {n l y}} else {configure_entry .menu7.config.f.x17 disabled {y n l}}
 	global CONFIG_CACHE_FIXED
-	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_ICACHE_ENABLE == 1 || $CONFIG_DCACHE_ENABLE == 1)} then {.menu7.config.f.x17.x configure -state normal -foreground [ cget .ref -foreground ]; .menu7.config.f.x17.l configure -state normal; } else {.menu7.config.f.x17.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu7.config.f.x17.l configure -state disabled}
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_ICACHE_ENABLE == 1 || $CONFIG_DCACHE_ENABLE == 1)} then {.menu7.config.f.x18.x configure -state normal -foreground [ cget .ref -foreground ]; .menu7.config.f.x18.l configure -state normal; } else {.menu7.config.f.x18.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu7.config.f.x18.l configure -state disabled}
 	global CONFIG_DCACHE_LRAM
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_MMU_ENABLE != 1)} then {
-	configure_entry .menu7.config.f.x18 normal {n l y}} else {configure_entry .menu7.config.f.x18 disabled {y n l}}
-	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_DCACHE_LRAM == 1)} then {configure_entry .menu7.config.f.x19 normal {x l}} else {configure_entry .menu7.config.f.x19 disabled {x l}}
+	configure_entry .menu7.config.f.x19 normal {n l y}} else {configure_entry .menu7.config.f.x19 disabled {y n l}}
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_DCACHE_LRAM == 1)} then {configure_entry .menu7.config.f.x20 normal {x l}} else {configure_entry .menu7.config.f.x20 disabled {x l}}
 	global CONFIG_DCACHE_LRSTART
-	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_DCACHE_LRAM == 1)} then {.menu7.config.f.x20.x configure -state normal -foreground [ cget .ref -foreground ]; .menu7.config.f.x20.l configure -state normal; } else {.menu7.config.f.x20.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu7.config.f.x20.l configure -state disabled}
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_DCACHE_LRAM == 1)} then {.menu7.config.f.x21.x configure -state normal -foreground [ cget .ref -foreground ]; .menu7.config.f.x21.l configure -state normal; } else {.menu7.config.f.x21.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu7.config.f.x21.l configure -state disabled}
 }
 
 
@@ -2474,6 +2509,9 @@ proc update_define_menu7 {} {
 	global CONFIG_DCACHE_SNOOP_SEPTAG
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_DCACHE_ENABLE == 1) && ($CONFIG_DCACHE_SNOOP == 1)} then {
 	set CONFIG_DCACHE_SNOOP_SEPTAG [expr $CONFIG_DCACHE_SNOOP_SEPTAG&15]} else {set CONFIG_DCACHE_SNOOP_SEPTAG [expr $CONFIG_DCACHE_SNOOP_SEPTAG|16]}
+	global CONFIG_DCACHE_SNOOP_SP
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_DCACHE_ENABLE == 1) && ($CONFIG_DCACHE_SNOOP == 1) && ($CONFIG_DCACHE_SNOOP_SEPTAG == 1)} then {
+	set CONFIG_DCACHE_SNOOP_SP [expr $CONFIG_DCACHE_SNOOP_SP&15]} else {set CONFIG_DCACHE_SNOOP_SP [expr $CONFIG_DCACHE_SNOOP_SP|16]}
 	global CONFIG_CACHE_FIXED
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_ICACHE_ENABLE == 1 || $CONFIG_DCACHE_ENABLE == 1)} then {validate_hex CONFIG_CACHE_FIXED "$CONFIG_CACHE_FIXED" 0}
 	global CONFIG_DCACHE_LRAM
@@ -2787,6 +2825,9 @@ proc menu9 {w title} {
 	menusplit $w $w.config.f.x5.x.menu 5
 	bool $w.config.f 9 6 "Enable AHB trace buffer filters " CONFIG_DSU_AFILT
 	bool $w.config.f 9 7 "Enable statistics outputs       " CONFIG_DSU_ASTAT
+	bool $w.config.f 9 8 "Enable LEON3 Statistics Module       " CONFIG_STAT_ENABLE
+	int $w.config.f 9 9 "Number of counters (1 - 64)           " CONFIG_STAT_CNT
+	int $w.config.f 9 10 "Number of accumulative counters       " CONFIG_STAT_NMAX
 
 
 
@@ -2846,6 +2887,13 @@ proc update_menu9 {} {
 	global CONFIG_DSU_ASTAT
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_DSU_ENABLE == 1) && ($CONFIG_DSU_ATRACE == 1)} then {
 	configure_entry .menu9.config.f.x7 normal {n l y}} else {configure_entry .menu9.config.f.x7 disabled {y n l}}
+	global CONFIG_STAT_ENABLE
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1)} then {
+	configure_entry .menu9.config.f.x8 normal {n l y}} else {configure_entry .menu9.config.f.x8 disabled {y n l}}
+	global CONFIG_STAT_CNT
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_STAT_ENABLE == 1)} then {.menu9.config.f.x9.x configure -state normal -foreground [ cget .ref -foreground ]; .menu9.config.f.x9.l configure -state normal; } else {.menu9.config.f.x9.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu9.config.f.x9.l configure -state disabled}
+	global CONFIG_STAT_NMAX
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_STAT_ENABLE == 1)} then {.menu9.config.f.x10.x configure -state normal -foreground [ cget .ref -foreground ]; .menu9.config.f.x10.l configure -state normal; } else {.menu9.config.f.x10.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu9.config.f.x10.l configure -state disabled}
 }
 
 
@@ -2894,6 +2942,13 @@ proc update_define_menu9 {} {
 	global CONFIG_DSU_ASTAT
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_DSU_ENABLE == 1) && ($CONFIG_DSU_ATRACE == 1)} then {
 	set CONFIG_DSU_ASTAT [expr $CONFIG_DSU_ASTAT&15]} else {set CONFIG_DSU_ASTAT [expr $CONFIG_DSU_ASTAT|16]}
+	global CONFIG_STAT_ENABLE
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1)} then {
+	set CONFIG_STAT_ENABLE [expr $CONFIG_STAT_ENABLE&15]} else {set CONFIG_STAT_ENABLE [expr $CONFIG_STAT_ENABLE|16]}
+	global CONFIG_STAT_CNT
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_STAT_ENABLE == 1)} then {validate_int CONFIG_STAT_CNT "$CONFIG_STAT_CNT" 4}
+	global CONFIG_STAT_NMAX
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_STAT_ENABLE == 1)} then {validate_int CONFIG_STAT_NMAX "$CONFIG_STAT_NMAX" 0}
 }
 
 
@@ -4834,6 +4889,8 @@ set CONFIG_SYN_PROASIC3E 0
 set CONFIG_SYN_PROASIC3L 0
 set CONFIG_SYN_IGLOO 0
 set CONFIG_SYN_IGLOO2 0
+set CONFIG_SYN_SF2 0
+set CONFIG_SYN_RTG4 0
 set CONFIG_SYN_FUSION 0
 set CONFIG_SYN_UT025CRH 0
 set CONFIG_SYN_UT130HBD 0
@@ -4846,7 +4903,6 @@ set CONFIG_SYN_IHP25 0
 set CONFIG_SYN_IHP25RH 0
 set CONFIG_SYN_LATTICE 0
 set CONFIG_SYN_ECLIPSE 0
-set CONFIG_SYN_PEREGRINE 0
 set CONFIG_SYN_RH_LIB18T 0
 set CONFIG_SYN_RHUMC 0
 set CONFIG_SYN_SAED32 0
@@ -4947,6 +5003,8 @@ set CONFIG_PWD 0
 set CONFIG_IU_RSTADDR 00000
 set CONFIG_NP_ASI 0
 set CONFIG_WRPSR 0
+set CONFIG_ALTWIN 0
+set CONFIG_REX 0
 set CONFIG_FPU_ENABLE 0
 set tmpvar_8 "(not set)"
 set CONFIG_FPU_GRFPU 0
@@ -5024,6 +5082,7 @@ set CONFIG_DCACHE_ALGOLRU 0
 set CONFIG_DCACHE_LOCK 0
 set CONFIG_DCACHE_SNOOP 0
 set CONFIG_DCACHE_SNOOP_SEPTAG 0
+set CONFIG_DCACHE_SNOOP_SP 0
 set CONFIG_CACHE_FIXED 0
 set CONFIG_DCACHE_LRAM 0
 set tmpvar_20 "(not set)"
@@ -5083,6 +5142,9 @@ set CONFIG_DSU_ATRACESZ8 0
 set CONFIG_DSU_ATRACESZ16 0
 set CONFIG_DSU_AFILT 0
 set CONFIG_DSU_ASTAT 0
+set CONFIG_STAT_ENABLE 0
+set CONFIG_STAT_CNT 4
+set CONFIG_STAT_NMAX 0
 set CONFIG_IU_DISAS 0
 set CONFIG_IU_DISAS_NET 0
 set CONFIG_DEBUG_PC32 0
@@ -5190,7 +5252,6 @@ set CONFIG_DEBUG_UART 0
 set CONFIG_SYN_ARTISAN 4
 set CONFIG_PCI_ENABLE 4
 set CONFIG_PWRPSR 4
-set CONFIG_DCACHE_SNOOP_FAST 4
 set CONFIG_HAS_SHARED_GRFPU 4
 set CONFIG_FPU_GRFPU_SH 4
 set CONFIG_LEON3FT_PRESENT 4
@@ -5209,6 +5270,8 @@ set CONFIG_CACHE_FT_EN 4
 set CONFIG_CACHE_ERRINJ 4
 set CONFIG_GRETH_FT 4
 set CONFIG_GRETH_EDCLFT 4
+set CONFIG_GRETH_SGMII_PRESENT 4
+set CONFIG_GRETH_SGMII_MODE 4
 set CONFIG_MODULES 4
 proc writeconfig {file1 file2} {
 	set cfg [open $file1 w]
@@ -5241,6 +5304,8 @@ proc writeconfig {file1 file2} {
 	if { $tmpvar_0 == "Actel-Proasic3L" } then { write_tristate $cfg $autocfg CONFIG_SYN_PROASIC3L 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_PROASIC3L 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Actel-IGLOO/p/L" } then { write_tristate $cfg $autocfg CONFIG_SYN_IGLOO 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_IGLOO 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Actel-IGLOO2" } then { write_tristate $cfg $autocfg CONFIG_SYN_IGLOO2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_IGLOO2 0 [list $notmod] 2 }
+	if { $tmpvar_0 == "Actel-SmartFusion2" } then { write_tristate $cfg $autocfg CONFIG_SYN_SF2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_SF2 0 [list $notmod] 2 }
+	if { $tmpvar_0 == "Actel-RTG4" } then { write_tristate $cfg $autocfg CONFIG_SYN_RTG4 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_RTG4 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Actel-Fusion" } then { write_tristate $cfg $autocfg CONFIG_SYN_FUSION 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_FUSION 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Aeroflex-UT025CRH" } then { write_tristate $cfg $autocfg CONFIG_SYN_UT025CRH 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_UT025CRH 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Aeroflex-UT130HBD" } then { write_tristate $cfg $autocfg CONFIG_SYN_UT130HBD 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_UT130HBD 0 [list $notmod] 2 }
@@ -5253,7 +5318,6 @@ proc writeconfig {file1 file2} {
 	if { $tmpvar_0 == "IHP25RH" } then { write_tristate $cfg $autocfg CONFIG_SYN_IHP25RH 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_IHP25RH 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Lattice-EC/ECP/XP" } then { write_tristate $cfg $autocfg CONFIG_SYN_LATTICE 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_LATTICE 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Quicklogic-Eclipse" } then { write_tristate $cfg $autocfg CONFIG_SYN_ECLIPSE 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_ECLIPSE 0 [list $notmod] 2 }
-	if { $tmpvar_0 == "Peregrine" } then { write_tristate $cfg $autocfg CONFIG_SYN_PEREGRINE 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_PEREGRINE 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "RH-LIB18T" } then { write_tristate $cfg $autocfg CONFIG_SYN_RH_LIB18T 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_RH_LIB18T 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "RH-UMC" } then { write_tristate $cfg $autocfg CONFIG_SYN_RHUMC 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_RHUMC 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "SAED32" } then { write_tristate $cfg $autocfg CONFIG_SYN_SAED32 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_SAED32 0 [list $notmod] 2 }
@@ -5438,6 +5502,10 @@ proc writeconfig {file1 file2} {
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_MIN == 1)} then {write_tristate $cfg $autocfg CONFIG_NP_ASI $CONSTANT_N [list $notmod] 2 }
 	global CONFIG_PWRPSR
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_MIN == 1)} then {write_tristate $cfg $autocfg CONFIG_PWRPSR $CONSTANT_N [list $notmod] 2 }
+	global CONFIG_ALTWIN
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_MIN == 1)} then {write_tristate $cfg $autocfg CONFIG_ALTWIN $CONSTANT_N [list $notmod] 2 }
+	global CONFIG_REX
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_MIN == 1)} then {write_tristate $cfg $autocfg CONFIG_REX $CONSTANT_N [list $notmod] 2 }
 	global CONFIG_LEON3_GP
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {write_int $cfg $autocfg CONFIG_IU_NWINDOWS 8 $notmod }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {write_tristate $cfg $autocfg CONFIG_IU_V8MULDIV $CONSTANT_Y [list $notmod] 2 }
@@ -5472,10 +5540,10 @@ proc writeconfig {file1 file2} {
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {write_tristate $cfg $autocfg CONFIG_DCACHE_ALGORND $CONSTANT_Y [list $notmod] 2 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {write_tristate $cfg $autocfg CONFIG_DCACHE_LOCK $CONSTANT_N [list $notmod] 2 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {write_tristate $cfg $autocfg CONFIG_DCACHE_SNOOP $CONSTANT_Y [list $notmod] 2 }
-	global CONFIG_DCACHE_SNOOP_FAST
-	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {write_tristate $cfg $autocfg CONFIG_DCACHE_SNOOP_FAST $CONSTANT_Y [list $notmod] 2 }
 	global CONFIG_DCACHE_SNOOP_SEPTAG
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {write_tristate $cfg $autocfg CONFIG_DCACHE_SNOOP_SEPTAG $CONSTANT_Y [list $notmod] 2 }
+	global CONFIG_DCACHE_SNOOP_SP
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {write_tristate $cfg $autocfg CONFIG_DCACHE_SNOOP_SP $CONSTANT_N [list $notmod] 2 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {write_hex $cfg $autocfg CONFIG_CACHE_FIXED 0 $notmod }
 	global CONFIG_DCACHE_LRAM
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {write_tristate $cfg $autocfg CONFIG_DCACHE_LRAM $CONSTANT_N [list $notmod] 2 }
@@ -5501,6 +5569,8 @@ proc writeconfig {file1 file2} {
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {write_tristate $cfg $autocfg CONFIG_DSU_ATRACESZ4 $CONSTANT_Y [list $notmod] 2 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {write_tristate $cfg $autocfg CONFIG_NP_ASI $CONSTANT_Y [list $notmod] 2 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {write_tristate $cfg $autocfg CONFIG_PWRPSR $CONSTANT_Y [list $notmod] 2 }
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {write_tristate $cfg $autocfg CONFIG_ALTWIN $CONSTANT_N [list $notmod] 2 }
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {write_tristate $cfg $autocfg CONFIG_REX $CONSTANT_N [list $notmod] 2 }
 	global CONFIG_LEON3_HP
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {write_int $cfg $autocfg CONFIG_IU_NWINDOWS 8 $notmod }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {write_tristate $cfg $autocfg CONFIG_IU_V8MULDIV $CONSTANT_Y [list $notmod] 2 }
@@ -5535,8 +5605,8 @@ proc writeconfig {file1 file2} {
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {write_tristate $cfg $autocfg CONFIG_DCACHE_ALGOLRU $CONSTANT_Y [list $notmod] 2 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {write_tristate $cfg $autocfg CONFIG_DCACHE_LOCK $CONSTANT_N [list $notmod] 2 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {write_tristate $cfg $autocfg CONFIG_DCACHE_SNOOP $CONSTANT_Y [list $notmod] 2 }
-	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {write_tristate $cfg $autocfg CONFIG_DCACHE_SNOOP_FAST $CONSTANT_Y [list $notmod] 2 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {write_tristate $cfg $autocfg CONFIG_DCACHE_SNOOP_SEPTAG $CONSTANT_Y [list $notmod] 2 }
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {write_tristate $cfg $autocfg CONFIG_DCACHE_SNOOP_SP $CONSTANT_N [list $notmod] 2 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {write_hex $cfg $autocfg CONFIG_CACHE_FIXED 0 $notmod }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {write_tristate $cfg $autocfg CONFIG_DCACHE_LRAM $CONSTANT_N [list $notmod] 2 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {write_tristate $cfg $autocfg CONFIG_MMU_ENABLE $CONSTANT_Y [list $notmod] 2 }
@@ -5554,6 +5624,8 @@ proc writeconfig {file1 file2} {
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {write_tristate $cfg $autocfg CONFIG_DSU_ATRACESZ4 $CONSTANT_Y [list $notmod] 2 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {write_tristate $cfg $autocfg CONFIG_NP_ASI $CONSTANT_Y [list $notmod] 2 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {write_tristate $cfg $autocfg CONFIG_PWRPSR $CONSTANT_Y [list $notmod] 2 }
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {write_tristate $cfg $autocfg CONFIG_ALTWIN $CONSTANT_N [list $notmod] 2 }
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {write_tristate $cfg $autocfg CONFIG_REX $CONSTANT_N [list $notmod] 2 }
 	global CONFIG_LEON3_CUSTOM
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1)} then {write_comment $cfg $autocfg "Integer unit                                           "}
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1)} then {write_int $cfg $autocfg CONFIG_IU_NWINDOWS $CONFIG_IU_NWINDOWS $notmod }
@@ -5581,6 +5653,8 @@ proc writeconfig {file1 file2} {
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1)} then {write_tristate $cfg $autocfg CONFIG_NP_ASI $CONFIG_NP_ASI [list $notmod] 2 }
 	global CONFIG_WRPSR
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1)} then {write_tristate $cfg $autocfg CONFIG_WRPSR $CONFIG_WRPSR [list $notmod] 2 }
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1)} then {write_tristate $cfg $autocfg CONFIG_ALTWIN $CONFIG_ALTWIN [list $notmod] 2 }
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1)} then {write_tristate $cfg $autocfg CONFIG_REX $CONFIG_REX [list $notmod] 2 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1)} then {write_comment $cfg $autocfg "Floating-point unit"}
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1)} then {write_tristate $cfg $autocfg CONFIG_FPU_ENABLE $CONFIG_FPU_ENABLE [list $notmod] 2 }
 	global tmpvar_8
@@ -5674,6 +5748,7 @@ proc writeconfig {file1 file2} {
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_DCACHE_ENABLE == 1) && ($CONFIG_DCACHE_ASSO1 != 1)} then {write_tristate $cfg $autocfg CONFIG_DCACHE_LOCK $CONFIG_DCACHE_LOCK [list $notmod] 2 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_DCACHE_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_DCACHE_SNOOP $CONFIG_DCACHE_SNOOP [list $notmod] 2 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_DCACHE_ENABLE == 1) && ($CONFIG_DCACHE_SNOOP == 1)} then {write_tristate $cfg $autocfg CONFIG_DCACHE_SNOOP_SEPTAG $CONFIG_DCACHE_SNOOP_SEPTAG [list $notmod] 2 }
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_DCACHE_ENABLE == 1) && ($CONFIG_DCACHE_SNOOP == 1) && ($CONFIG_DCACHE_SNOOP_SEPTAG == 1)} then {write_tristate $cfg $autocfg CONFIG_DCACHE_SNOOP_SP $CONFIG_DCACHE_SNOOP_SP [list $notmod] 2 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_ICACHE_ENABLE == 1 || $CONFIG_DCACHE_ENABLE == 1)} then {write_hex $cfg $autocfg CONFIG_CACHE_FIXED $CONFIG_CACHE_FIXED $notmod }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_MMU_ENABLE != 1)} then {write_tristate $cfg $autocfg CONFIG_DCACHE_LRAM $CONFIG_DCACHE_LRAM [list $notmod] 2 }
 	global tmpvar_20
@@ -5748,6 +5823,12 @@ proc writeconfig {file1 file2} {
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_DSU_ENABLE == 1) && ($CONFIG_DSU_ATRACE == 1)} then {write_tristate $cfg $autocfg CONFIG_DSU_AFILT $CONFIG_DSU_AFILT [list $notmod] 2 }
 	global CONFIG_DSU_ASTAT
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_DSU_ENABLE == 1) && ($CONFIG_DSU_ATRACE == 1)} then {write_tristate $cfg $autocfg CONFIG_DSU_ASTAT $CONFIG_DSU_ASTAT [list $notmod] 2 }
+	global CONFIG_STAT_ENABLE
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1)} then {write_tristate $cfg $autocfg CONFIG_STAT_ENABLE $CONFIG_STAT_ENABLE [list $notmod] 2 }
+	global CONFIG_STAT_CNT
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_STAT_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_STAT_CNT $CONFIG_STAT_CNT $notmod }
+	global CONFIG_STAT_NMAX
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_STAT_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_STAT_NMAX $CONFIG_STAT_NMAX $notmod }
 	if {($CONFIG_LEON3 == 1)} then {write_comment $cfg $autocfg "Fault-tolerance  "}
 	if {($CONFIG_LEON3 == 1)} then {write_comment $cfg $autocfg "VHDL debug settings       "}
 	global CONFIG_IU_DISAS
@@ -5969,6 +6050,8 @@ proc clear_choices { } {
 	global CONFIG_SYN_PROASIC3L; set CONFIG_SYN_PROASIC3L 0
 	global CONFIG_SYN_IGLOO; set CONFIG_SYN_IGLOO 0
 	global CONFIG_SYN_IGLOO2; set CONFIG_SYN_IGLOO2 0
+	global CONFIG_SYN_SF2; set CONFIG_SYN_SF2 0
+	global CONFIG_SYN_RTG4; set CONFIG_SYN_RTG4 0
 	global CONFIG_SYN_FUSION; set CONFIG_SYN_FUSION 0
 	global CONFIG_SYN_UT025CRH; set CONFIG_SYN_UT025CRH 0
 	global CONFIG_SYN_UT130HBD; set CONFIG_SYN_UT130HBD 0
@@ -5981,7 +6064,6 @@ proc clear_choices { } {
 	global CONFIG_SYN_IHP25RH; set CONFIG_SYN_IHP25RH 0
 	global CONFIG_SYN_LATTICE; set CONFIG_SYN_LATTICE 0
 	global CONFIG_SYN_ECLIPSE; set CONFIG_SYN_ECLIPSE 0
-	global CONFIG_SYN_PEREGRINE; set CONFIG_SYN_PEREGRINE 0
 	global CONFIG_SYN_RH_LIB18T; set CONFIG_SYN_RH_LIB18T 0
 	global CONFIG_SYN_RHUMC; set CONFIG_SYN_RHUMC 0
 	global CONFIG_SYN_SAED32; set CONFIG_SYN_SAED32 0
@@ -6212,6 +6294,10 @@ proc update_choices { } {
 	if { $CONFIG_SYN_IGLOO == 1 } then { set tmpvar_0 "Actel-IGLOO/p/L" }
 	global CONFIG_SYN_IGLOO2
 	if { $CONFIG_SYN_IGLOO2 == 1 } then { set tmpvar_0 "Actel-IGLOO2" }
+	global CONFIG_SYN_SF2
+	if { $CONFIG_SYN_SF2 == 1 } then { set tmpvar_0 "Actel-SmartFusion2" }
+	global CONFIG_SYN_RTG4
+	if { $CONFIG_SYN_RTG4 == 1 } then { set tmpvar_0 "Actel-RTG4" }
 	global CONFIG_SYN_FUSION
 	if { $CONFIG_SYN_FUSION == 1 } then { set tmpvar_0 "Actel-Fusion" }
 	global CONFIG_SYN_UT025CRH
@@ -6236,8 +6322,6 @@ proc update_choices { } {
 	if { $CONFIG_SYN_LATTICE == 1 } then { set tmpvar_0 "Lattice-EC/ECP/XP" }
 	global CONFIG_SYN_ECLIPSE
 	if { $CONFIG_SYN_ECLIPSE == 1 } then { set tmpvar_0 "Quicklogic-Eclipse" }
-	global CONFIG_SYN_PEREGRINE
-	if { $CONFIG_SYN_PEREGRINE == 1 } then { set tmpvar_0 "Peregrine" }
 	global CONFIG_SYN_RH_LIB18T
 	if { $CONFIG_SYN_RH_LIB18T == 1 } then { set tmpvar_0 "RH-LIB18T" }
 	global CONFIG_SYN_RHUMC

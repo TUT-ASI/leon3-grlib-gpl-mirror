@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -84,7 +84,10 @@ entity ddr2spa is
     bigmem         :       integer range 0 to 1 := 0;
     raspipe        :       integer range 0 to 1 := 0;
     nclk           :       integer range 1 to 3 := 3;
-    scantest       :       integer := 0
+    scantest       :       integer := 0;
+    ncs            :       integer := 2;
+    cke_rst        :       integer := 0;
+    pipe_ctrl      :       integer := 0
     );
   port (
     rst_ddr        : in    std_ulogic;
@@ -113,7 +116,9 @@ entity ddr2spa is
     ddr_ba         : out   std_logic_vector(1+eightbanks downto 0); -- ddr bank address
     ddr_dq         : inout std_logic_vector((ddrbits+ftbits)-1 downto 0);    -- ddr data
     ddr_odt        : out   std_logic_vector(1 downto 0);
-    ce             : out   std_logic   -- Corrected error (for FT)
+    ce             : out   std_logic;   -- Corrected error (for FT)
+    oct_rdn        : in    std_logic := '0';
+    oct_rup        : in    std_logic := '0'
     );
 end;
 
@@ -146,7 +151,7 @@ begin
 
   lock <= ilock;
   
-  ddr_rst <= (ddr_rst_gen(3) and ddr_rst_gen(2) and ddr_rst_gen(1) and rst_ahb); -- Reset signal in DDR clock domain
+  ddr_rst <= (ddr_rst_gen(3) and ddr_rst_gen(2) and ddr_rst_gen(1)); -- Reset signal in DDR clock domain
 
   ddrrstproc: process(clkddri, ilock)
   begin
@@ -175,26 +180,34 @@ begin
         eightbanks => eightbanks, dqsse => dqsse,
         chkbits => ftbits*ft, padbits => ftbits*(1-ft),
         ctrl2en => 0, resync => 0, custombits => 8,
-        nclk => nclk, scantest => scantest )
+        nclk => nclk, scantest => scantest, ncs => ncs )
       port map (
         rst_ddr, clk_ddr, clkref200, clkddro, clkddri, clkddri, ilock,
         ddr_clk, ddr_clkb, ddr_clk_fb_out, ddr_clk_fb,
-        ddr_cke, ddr_csb, ddr_web, ddr_rasb, ddr_casb,
+        ddr_cke(ncs-1 downto 0), ddr_csb(ncs-1 downto 0), ddr_web, ddr_rasb, ddr_casb,
         ddr_dm, ddr_dqs, ddr_dqsn,
-        ddr_ad, ddr_ba, ddr_dq, ddr_odt,
+        ddr_ad, ddr_ba, ddr_dq, ddr_odt(ncs-1 downto 0),
         open, open, open, open, open,
         sdi, sdo, clkddri, "00000000", open,
-        ahbsi.testen, ahbsi.scanen, ahbsi.testrst, ahbsi.testoen);
+        ahbsi.testen, ahbsi.scanen, ahbsi.testrst, ahbsi.testoen,
+        oct_rdn, oct_rup);
+    ncs1: if ncs = 1 generate
+        ddr_cke(1) <= '0';
+        ddr_csb(1) <= '0';
+        ddr_odt(1) <= '0';
+    end generate;
   end generate;
-    
+
     ddrc : ddr2spax generic map (memtech => memtech, phytech => fabtech, hindex => hindex, 
       haddr => haddr, hmask => hmask, ioaddr => ioaddr, iomask => iomask, ddrbits => ddrbits,
       pwron => pwron, MHz => DDR_FREQ, TRFC => TRFC, col => col, Mbyte => Mbyte,
       readdly => readdly, odten => odten, octen => octen, dqsgating => dqsgating,
       nosync => nosync, eightbanks => eightbanks, dqsse => dqsse, burstlen => burstlen, ahbbits => ahbbits,
-      ft => ft, ddr_syncrst => ddr_syncrst, bigmem => bigmem, raspipe => raspipe, hwidthen => 0, rstdel => rstdel)
+      ft => ft, ddr_syncrst => ddr_syncrst, bigmem => bigmem, raspipe => raspipe, hwidthen => 0, rstdel => rstdel,
+      cke_rst => cke_rst, pipe_ctrl => pipe_ctrl)
     port map (ddr_rst, rst_ahb, clkddri, clk_ahb, ahbsi, ahbso, sdi, sdo, '0');
 
   ce <= sdo.ce;
   
 end;
+

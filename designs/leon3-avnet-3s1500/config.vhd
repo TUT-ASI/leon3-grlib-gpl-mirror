@@ -61,7 +61,7 @@ package config is
   constant CFG_DLINE : integer := 4;
   constant CFG_DREPL : integer := 0;
   constant CFG_DLOCK : integer := 0;
-  constant CFG_DSNOOP : integer := 1*2 + 4*0;
+  constant CFG_DSNOOP : integer := 0 + 1*2 + 4*0;
   constant CFG_DFIXED : integer := 16#0#;
   constant CFG_DLRAMEN : integer := 0;
   constant CFG_DLRAMADDR: integer := 16#8F#;
@@ -85,8 +85,14 @@ package config is
   constant CFG_LEON3_NETLIST: integer := 0;
   constant CFG_DISAS : integer := 0 + 0;
   constant CFG_PCLOW : integer := 2;
+  constant CFG_STAT_ENABLE : integer := 0;
+  constant CFG_STAT_CNT : integer := 1;
+  constant CFG_STAT_NMAX : integer := 0;
+  constant CFG_STAT_DSUEN : integer := 0;
   constant CFG_NP_ASI : integer := 0;
   constant CFG_WRPSR : integer := 0;
+  constant CFG_ALTWIN : integer := 0;
+  constant CFG_REX : integer := 0;
 -- AMBA settings
   constant CFG_DEFMST : integer := (0);
   constant CFG_RROBIN : integer := 1;
@@ -134,6 +140,7 @@ package config is
   constant CFG_GRETH : integer := 1;
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 32;
+
 -- CAN 2.0 interface
   constant CFG_CAN : integer := 1;
   constant CFG_CANIO : integer := 16#C00#;
@@ -141,6 +148,7 @@ package config is
   constant CFG_CANLOOP : integer := 0;
   constant CFG_CAN_SYNCRST : integer := 0;
   constant CFG_CANFT : integer := 0;
+
 -- GRPCI2 interface
   constant CFG_GRPCI2_MASTER : integer := 1;
   constant CFG_GRPCI2_TARGET : integer := 1;
@@ -168,12 +176,15 @@ package config is
   constant CFG_GRPCI2_TRACEAPB : integer := 0;
   constant CFG_GRPCI2_BYPASS : integer := 0;
   constant CFG_GRPCI2_EXTCFG : integer := (0);
+
 -- UART 1
   constant CFG_UART1_ENABLE : integer := 1;
   constant CFG_UART1_FIFO : integer := 8;
+
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE : integer := 1;
   constant CFG_IRQ3_NSEC : integer := 0;
+
 -- Modular timer
   constant CFG_GPT_ENABLE : integer := 1;
   constant CFG_GPT_NTIM : integer := (2);

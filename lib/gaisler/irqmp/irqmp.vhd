@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 library grlib;
 use grlib.config_types.all;
 use grlib.config.all;
@@ -43,7 +44,8 @@ entity irqmp is
     pmask   : integer := 16#fff#;
     ncpu    : integer := 1;
     eirq    : integer := 0;
-    irqmap  : integer := 0
+    irqmap  : integer := 0;
+    bootreg : integer := 1
   );
   port (
     rst    : in  std_ulogic;
@@ -57,7 +59,7 @@ end;
 
 architecture rtl of irqmp is
 
-constant REVISION : integer := 3;
+constant REVISION : integer := 4;
 
 constant pconfig : apb_config_type := (
   0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_IRQMP, 0, REVISION, 0),
@@ -98,6 +100,11 @@ type reg_type is record
   irl    	: irl_type;
   cpurst	: std_logic_vector(ncpu-1 downto 0);
   imap          : irqmap_type;
+  setaddr       : std_logic_vector(ncpu-1 downto 0);
+  newaddr       : std_logic_vector(31 downto 2);
+  setaddrboot   : std_ulogic;
+  forceerr      : std_logic_vector(ncpu-1 downto 0);
+  clkcount      : std_logic_vector(2 downto 0);
 end record;
 
 type ereg_type is record
@@ -111,7 +118,9 @@ constant RRES : reg_type := (
   imask => (others => (others => '0')), ilevel => (others => '0'),
   ipend => (others => '0'), iforce => (others => (others => '0')),
   ibroadcast => (others => '0'), irl => (others => (others => '0')),
-  cpurst => (others => '0'), imap => (others => (others => '0')));
+  cpurst => (others => '0'), imap => (others => (others => '0')),
+  setaddr => (others => '0'), newaddr => (others => '0'), setaddrboot => '0',
+  forceerr => (others => '0'), clkcount => "000");
 constant ERES : ereg_type := (
   imask => (others => (others => '0')), ipend => (others => '0'),
   irl => (others => (others => '0')));
@@ -148,6 +157,9 @@ begin
   variable ipend2 : std_logic_vector(ncpu-1 downto 0);
   variable temp2  : mask2_type;
   variable irq    : std_logic_vector(NAHBIRQ-1 downto 0);
+  variable vcpu   : std_logic_vector(3 downto 0);
+  variable bootreg_sel : std_ulogic;
+  variable paddr  : std_logic_vector(19 downto 2);
   
   begin
 
@@ -155,7 +167,10 @@ begin
     cpurun := (others => '0'); cpurun(0) := '1';
     tmpvar := (others => '0'); ipend2 := (others => '0');
     v2 := r2;
-    
+
+    paddr := apbi.paddr(19 downto 2);
+    paddr(19 downto 8) := paddr(19 downto 8) and not std_logic_vector(to_unsigned(pmask,12));
+
 -- prioritize interrupts
 
     if eirq /= 0 then
@@ -174,6 +189,12 @@ begin
         v.irl(i) := prioritize((temp(i) and not r.ilevel) & '0');
       end if;
     end loop;
+
+    if bootreg /= 0 then
+      if r.clkcount/="000" then
+        v.clkcount := std_logic_vector(unsigned(r.clkcount)-1);
+      end if;
+    end if;
 
 -- register read
 
@@ -200,6 +221,11 @@ begin
             when others =>  
           end case;
         end if;
+        if bootreg /= 0 then
+          prdata(26) := '1';
+        end if;
+      when "110" =>
+        for i in 0 to ncpu-1 loop prdata(i):=irqi(i).err; end loop;
       when others =>
       end case;
     when "01" =>
@@ -228,8 +254,8 @@ begin
 
 -- register write
 
-    if ((apbi.psel(pindex) and apbi.penable and apbi.pwrite) = '1' and
-        (irqmap = 0 or apbi.paddr(9) = '0')) then
+    if (apbi.psel(pindex) and apbi.penable and apbi.pwrite) = '1' and
+      ((irqmap = 0 and bootreg=0) or paddr(9 downto 8) = "00") then
       case apbi.paddr(7 downto 6) is
       when "00" =>
         case apbi.paddr(4 downto 2) is
@@ -241,6 +267,11 @@ begin
           if eirq /= 0 then v2.ipend := r2.ipend and not apbi.pwdata(31 downto 16); end if;
         when "100" =>
           for i in 0 to ncpu -1 loop v.cpurst(i) := apbi.pwdata(i); end loop;
+        when "110" =>
+          if bootreg /= 0 then
+            v.forceerr := v.forceerr or apbi.pwdata(ncpu-1 downto 0);
+            v.clkcount := "111";
+          end if;
         when others =>
           if ncpu > 1 then
             case apbi.paddr(4 downto 2) is
@@ -268,11 +299,54 @@ begin
       end case;
     end if;
 
+-- implement processor reboot / monitor regs
+    vcpu := apbi.paddr(5 downto 2);
+    bootreg_sel := '0';
+
+    if bootreg /= 0 then
+      if r.clkcount="000" then
+        if orv(r.setaddr)='1' then
+          if r.newaddr(2)='0' then
+            v.newaddr(2):='1';
+          else
+            if r.setaddrboot='1' then
+              v.cpurst := v.cpurst or r.setaddr;
+            end if;
+            v.setaddr := (others => '0');
+          end if;
+        end if;
+        for i in 0 to ncpu-1 loop
+          v.forceerr(i) := v.forceerr(i) and not irqi(i).err;
+        end loop;
+      end if;
+      -- Alias bootregs into 256B space if ncpu <= 8
+      if paddr(9 downto 6)="1000" then bootreg_sel:='1'; end if;
+      if ncpu <= 8 and paddr(9 downto 6)="0001" and apbi.paddr(5)='1' then
+        bootreg_sel := '1';
+      end if;
+      if ncpu <= 8 then vcpu(3):='0'; end if;
+      if (apbi.psel(pindex) and apbi.penable)='1' and bootreg_sel='1' then
+        -- Reg read
+        prdata := (others => '0');
+        -- Reg write
+        if apbi.pwrite='1' then
+          for i in 0 to ncpu-1 loop
+            if i = conv_integer( vcpu) then
+              v.setaddr(i) := '1';
+              v.setaddrboot := apbi.pwdata(0);
+            end if;
+          end loop;
+          v.newaddr := apbi.pwdata(31 downto 3) & "0";
+          v.clkcount := "111";
+        end if;                         -- pwrite
+      end if;                           -- psel/paddr
+    end if;                             -- bootreg/=0
+
 -- optionally remap interrupts
 
     irq := (others => '0');
     if irqmap /= 0 then
-      if (apbi.psel(pindex) and apbi.penable and andv(apbi.paddr(9 downto 8))) = '1' then
+      if (apbi.psel(pindex) and apbi.penable)='1' and apbi.paddr(9 downto 8) = "11" then
         prdata := (others => '0');
         for i in r.imap'range loop
           if i/4 = conv_integer(apbi.paddr(4 downto 2)) then
@@ -353,17 +427,25 @@ begin
           v.imap(i) := conv_std_logic_vector(i, IMAP_LEN);
         end loop;
       end if;
+      v.forceerr := RRES.forceerr;
+      v.setaddr := RRES.setaddr;
       v2.ipend := ERES.ipend; v2.imask := ERES.imask; v2.irl := ERES.irl;
+    end if;
+    if bootreg=0 then
+      v.forceerr := RRES.forceerr;
+      v.setaddr := RRES.setaddr;
+      v.newaddr := RRES.newaddr;
     end if;
 
     apbo.prdata <= prdata;
     for i in 0 to ncpu-1 loop
-      irqo(i).irl <= r.irl(i); irqo(i).rst <= r.cpurst(i);
-      irqo(i).run <= cpurun(i);
+      irqo(i).irl <= r.irl(i); irqo(i).resume <= r.cpurst(i);
+      irqo(i).forceerr <= r.forceerr(i);
+      irqo(i).pwdsetaddr <= r.setaddr(i);
+      irqo(i).pwdnewaddr <= r.newaddr;
+      irqo(i).rstrun <= cpurun(i);
       irqo(i).rstvec <= (others => '0');  -- Alternate reset vector
-      irqo(i).iact <= '0';
       irqo(i).index <= conv_std_logic_vector(i, 4);
-      irqo(i).hrdrst <= '0';
     end loop;
 
     rin <= v; r2in <= v2;
@@ -418,3 +500,4 @@ begin
 -- pragma translate_on
 
 end;
+

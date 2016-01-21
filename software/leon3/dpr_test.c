@@ -14,12 +14,12 @@ unsigned int *reset_pointer=(unsigned int*)(control_reg+0x00000010);
 *reset_pointer=1;
 *control_pointer=sizeof(bitstream0)/sizeof(int);
 
-while( (*status_pointer!=15) && (*status_pointer!=1) && (*status_pointer!=8) && (*status_pointer!=4)){}
+while( (((*status_pointer)&0x0F)!=15) && (((*status_pointer)&0x0F)!=1) && (((*status_pointer)&0x0F)!=8) && (((*status_pointer)&0x0F)!=4) && (((*status_pointer)&0x0F)!=2)){}
 
 //Second reconfiguration
 *address_pointer=(unsigned int)&bitstream1;
 *control_pointer=sizeof(bitstream1)/sizeof(int);
 
-while( (*status_pointer!=15) && (*status_pointer!=1) && (*status_pointer!=8) && (*status_pointer!=4)){}
+while( (((*status_pointer)&0x0F)!=15) && (((*status_pointer)&0x0F)!=1) && (((*status_pointer)&0x0F)!=8) && (((*status_pointer)&0x0F)!=4) && (((*status_pointer)&0x0F)!=2)){}
 
 }

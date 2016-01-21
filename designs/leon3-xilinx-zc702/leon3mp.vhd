@@ -48,8 +48,7 @@ entity leon3mp is
     clktech : integer := CFG_CLKTECH;
     disas   : integer := CFG_DISAS;   -- Enable disassembly to console
     dbguart : integer := CFG_DUART;   -- Print UART on console
-    pclow   : integer := CFG_PCLOW;
-    testahb : boolean := false
+    pclow   : integer := CFG_PCLOW
   );
   port (
     processing_system7_0_MIO          : inout std_logic_vector(53 downto 0);
@@ -441,7 +440,7 @@ begin
    sepirq => CFG_GPT_SEPIRQ, sbits => CFG_GPT_SW, ntimers => CFG_GPT_NTIM,
    nbits => CFG_GPT_TW, wdog => 0)
     port map (rstn, clkm, apbi, apbo(3), gpti, gpto);
-    gpti.dhalt <= dsuo.tstop; gpti.extclk <= '0';
+    gpti <= gpti_dhalt_drive(dsuo.tstop);
   end generate;
 
   nogpt : if CFG_GPT_ENABLE = 0 generate apbo(3) <= apb_none; end generate;
@@ -483,6 +482,7 @@ begin
      port map (led(3), rsti);
      
   ahbs : if CFG_AHBSTAT = 1 generate   -- AHB status register
+    stati <= ahbstat_in_none;
     ahbstat0 : ahbstat generic map (pindex => 15, paddr => 15, pirq => 7,
    nftslv => CFG_AHBSTATN)
       port map (rstn, clkm, ahbmi, ahbsi, stati, apbi, apbo(15));
@@ -513,10 +513,8 @@ begin
 -----------------------------------------------------------------------
 
   -- pragma translate_off
-  test0_gen : if (testahb = true) generate
-     test0 : ahbrep generic map (hindex => 6, haddr => 16#200#)
-      port map (rstn, clkm, ahbsi, ahbso(6));
-  end generate;
+  test0 : ahbrep generic map (hindex => 6, haddr => 16#200#)
+    port map (rstn, clkm, ahbsi, ahbso(6));
   -- pragma translate_on
 
  -----------------------------------------------------------------------

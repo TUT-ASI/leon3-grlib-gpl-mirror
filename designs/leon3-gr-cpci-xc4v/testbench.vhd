@@ -1,11 +1,11 @@
 ------------------------------------------------------------------------------
---  LEON3 Demonstration design test bench
---  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+--  LEON Demonstration design test bench
+--  Copyright (C) 2004 - 2015 Cobham Gaisler AB
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -82,11 +82,12 @@ constant sramfile  : string := "ram.srec";  -- ram contents
 constant sdramfile : string := "ram.srec"; -- sdram contents
 
 signal clk : std_logic := '0';
-signal Rst    : std_logic := '0';			-- Reset
+signal rst    : std_logic := '0';			-- Reset
 constant ct : integer := clkperiod/2;
 
 signal address  : std_logic_vector(27 downto 0);
 signal data     : std_logic_vector(31 downto 0);
+signal cb, scb  : std_logic_vector(15 downto 0);
 
 signal ramsn    : std_logic_vector(4 downto 0);
 signal ramoen   : std_logic_vector(4 downto 0);
@@ -118,14 +119,16 @@ signal sdcasn   : std_logic;                       -- col addr stb
 signal sddqm    : std_logic_vector ( 7 downto 0);  -- data i/o mask
 signal sdclk    : std_logic;       
 signal plllock    : std_logic;       
-signal txd1, rxd1 : std_logic;       
-signal txd2, rxd2 : std_logic;       
+
+signal txd1, rxd1, cts1, rts1 : std_ulogic;       
+signal txd2, rxd2, cts2, rts2 : std_ulogic;
 
 signal etx_clk, erx_clk, erx_dv, erx_er, erx_col, erx_crs, etx_en, etx_er : std_logic:='0';
 signal erxd, etxd: std_logic_vector(3 downto 0):=(others=>'0');
 signal erxdt, etxdt: std_logic_vector(7 downto 0):=(others=>'0');  
 signal emdc, emdio: std_logic;
 signal gtx_clk : std_logic := '0';
+signal emdintn     : std_logic;
 
 signal emddis 	: std_logic;    
 signal epwrdwn 	: std_logic;
@@ -178,12 +181,14 @@ begin
   d3 : entity work.leon3mp
         generic map ( fabtech, memtech, padtech, clktech, disas, dbguart, pclow )
         port map (rst, clk, sdclk, error, wdogn, address(27 downto 0), data, 
-	sa, sd, sdclk, sdcke, sdcsn, sdwen, 
-	sdrasn, sdcasn, sddqm, dsutx, dsurx, dsuen, dsubre, dsuact, txd1, rxd1,
-	txd2, rxd2,
+	cb(7 downto 0), sa, sd,
+--        scb(7 downto 0),
+        sdclk, sdcke, sdcsn, sdwen, 
+	sdrasn, sdcasn, sddqm, dsutx, dsurx, dsuen, dsubre, dsuact,
+        txd1, rxd1, rts1, cts1, txd2, rxd2, rts2, cts2,
 	ramsn, ramoen, rwen, oen, writen, read, iosn, romsn, brdyn, bexcn, gpio,
         emdio, etx_clk, erx_clk, erxd, erx_dv, erx_er, erx_col, erx_crs,
-        etxd, etx_en, etx_er, emdc, 
+        etxd, etx_en, etx_er, emdc, emdintn,
     	pci_rst, pci_clk, pci_gnt, pci_idsel, pci_lock, pci_ad, pci_cbe,
     	pci_frame, pci_irdy, pci_trdy, pci_devsel, pci_stop, pci_perr, pci_par,
     	pci_req, pci_serr, pci_host, pci_int, pci_66, pci_arb_req, pci_arb_gnt, 
@@ -194,7 +199,7 @@ begin
 
 -- optional sdram
 
-  sd0 : if (CFG_MCTRL_SDEN = 1) and (CFG_MCTRL_SEPBUS = 0) generate
+  sd0 : if ((CFG_MCTRL_SDEN = 1) and (CFG_MCTRL_SEPBUS = 0)) or ((CFG_MCTRLFT_SDEN = 1) and (CFG_MCTRLFT_SEPBUS = 0)) generate
     u0: mt48lc16m16a2 generic map (index => 0, fname => sdramfile)
 	PORT MAP(
             Dq => data(31 downto 16), Addr => address(14 downto 2),
@@ -207,6 +212,12 @@ begin
             Ba => address(16 downto 15), Clk => sdclk, Cke => sdcke(0),
             Cs_n => sdcsn(0), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
             Dqm => sddqm(1 downto 0));
+    cb0: ftmt48lc16m16a2 generic map (index => 8, fname => sdramfile)
+	PORT MAP(
+            Dq => cb(15 downto 0), Addr => address(14 downto 2),
+            Ba => address(16 downto 15), Clk => sdclk, Cke => sdcke(0),
+            Cs_n => sdcsn(0), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
+            Dqm => sddqm(1 downto 0));
     u2: mt48lc16m16a2 generic map (index => 0, fname => sdramfile)
 	PORT MAP(
             Dq => data(31 downto 16), Addr => address(14 downto 2),
@@ -216,12 +227,18 @@ begin
     u3: mt48lc16m16a2 generic map (index => 16, fname => sdramfile)
 	PORT MAP(
             Dq => data(15 downto 0), Addr => address(14 downto 2),
+            Ba => address(16 downto 15), Clk => sdclk, Cke => sdcke(0),
+            Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
+            Dqm => sddqm(1 downto 0));
+    cb1: ftmt48lc16m16a2 generic map (index => 8, fname => sdramfile)
+	PORT MAP(
+            Dq => cb(15 downto 0), Addr => address(14 downto 2),
             Ba => address(16 downto 15), Clk => sdclk, Cke => sdcke(0),
             Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
             Dqm => sddqm(1 downto 0));
   end generate;
 
-  sd1 : if ((CFG_MCTRL_SDEN = 1) and (CFG_MCTRL_SEPBUS = 1)) generate
+  sd1 : if ((CFG_MCTRL_SDEN = 1) and (CFG_MCTRL_SEPBUS = 1)) or  ((CFG_MCTRLFT_SDEN = 1) and (CFG_MCTRLFT_SEPBUS = 1)) generate
     u0: mt48lc16m16a2 generic map (index => 0, fname => sdramfile)
 	PORT MAP(
             Dq => sd(31 downto 16), Addr => sa(12 downto 0),
@@ -231,6 +248,12 @@ begin
     u1: mt48lc16m16a2 generic map (index => 16, fname => sdramfile)
 	PORT MAP(
             Dq => sd(15 downto 0), Addr => sa(12 downto 0),
+            Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(0),
+            Cs_n => sdcsn(0), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
+            Dqm => sddqm(1 downto 0));
+     cb0: ftmt48lc16m16a2 generic map (index => 8, fname => sdramfile)
+	PORT MAP(
+            Dq => sd(47 downto 32), Addr => sa(12 downto 0),
             Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(0),
             Cs_n => sdcsn(0), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
             Dqm => sddqm(1 downto 0));
@@ -246,6 +269,12 @@ begin
             Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(1),
             Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
             Dqm => sddqm(1 downto 0));
+    cb1: ftmt48lc16m16a2 generic map (index => 8, fname => sdramfile)
+	PORT MAP(
+            Dq => sd(47 downto 32), Addr => sa(12 downto 0),
+            Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(1),
+            Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
+            Dqm => sddqm(3 downto 2));
    sd64 : if (CFG_MCTRL_SD64 = 1) generate
       u4: mt48lc16m16a2 generic map (index => 0, fname => sdramfile)
 	PORT MAP(
@@ -285,6 +314,9 @@ begin
 	port map (address(sramdepth+1 downto 2), data(31-i*8 downto 24-i*8), ramsn(0),
 		  rwen(0), ramoen(0));
   end generate;
+
+  sramcb0 : sramft generic map (index => 7, abits => sramdepth, fname => sramfile)
+	port map (address(sramdepth+1 downto 2), cb(7 downto 0), ramsn(0), rwen(0), ramoen(0));
 
   phy0 : if (CFG_GRETH = 1) generate
     emdio <= 'H';

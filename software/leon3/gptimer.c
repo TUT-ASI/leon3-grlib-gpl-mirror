@@ -237,6 +237,11 @@ static void gptimer_test001(struct gptimer *lr, int irq)
 
 	ntimers = lr->configreg & 0x7;
 	lr->scalerload = -1;
+	
+	/* enable first timer to make sure the scaler is ticking */
+	lr->timer[0].counter = -1;
+	lr->timer[0].control = 0x1;
+
 	if (lr->scalercnt == lr->scalercnt) fail(1);
 
 /* timer 1 test */

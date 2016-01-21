@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -137,7 +137,9 @@ package ddrpkg is
       raspipe    : integer range 0 to 1 := 0;
       hwidthen   : integer range 0 to 1 := 0;
       rstdel     : integer := 200;
-      scantest   : integer := 0
+      scantest   : integer := 0;
+      cke_rst    : integer := 0;
+      pipe_ctrl  : integer := 0
       );
     port (
       ddr_rst : in  std_ulogic;
@@ -202,7 +204,10 @@ package ddrpkg is
       bigmem      : integer range 0 to 1 := 0;
       raspipe     : integer range 0 to 1 := 0;
       nclk        : integer range 1 to 3 := 3;
-      scantest    : integer := 0
+      scantest    : integer := 0;
+      ncs         : integer := 2;
+      cke_rst     : integer := 0;
+      pipe_ctrl   : integer := 0
       );
     port (
       rst_ddr        : in  std_ulogic;
@@ -231,7 +236,9 @@ package ddrpkg is
       ddr_ba         : out std_logic_vector (1+eightbanks downto 0);           -- ddr bank address
       ddr_dq         : inout  std_logic_vector (ddrbits+ftbits-1 downto 0);    -- ddr data
       ddr_odt        : out std_logic_vector(1 downto 0);
-      ce             : out std_logic
+      ce             : out std_logic;
+      oct_rdn        : in  std_logic := '0';
+      oct_rup        : in  std_logic := '0'
       );
   end component;
 
@@ -315,7 +322,10 @@ package ddrpkg is
       testen         : in    std_ulogic;
       testrst        : in    std_ulogic;
       scanen         : in    std_ulogic;
-      testoen        : in    std_ulogic);
+      testoen        : in    std_ulogic;
+      oct_rdn        : in  std_logic := '0';
+      oct_rup        : in  std_logic := '0'
+      );
   end component;
 
   -- DDR2 PHY with just data or checkbits+data on same bus, not including pads
@@ -819,5 +829,94 @@ package ddrpkg is
       avlso    : in  ddravl_slv_out_type
       );
   end component;
+
+  -----------------------------------------------------------------------------
+  -- MIG wrappers / bridges
+  -----------------------------------------------------------------------------
+
+  component ahb2mig_7series_ddr2_dq16_ad13_ba3
+  generic(
+    hindex     : integer := 0;
+    haddr      : integer := 0;
+    hmask      : integer := 16#f00#;
+    pindex     : integer := 0;
+    paddr      : integer := 0;
+    pmask      : integer := 16#fff#;
+    SIM_BYPASS_INIT_CAL : string := "OFF";
+    SIMULATION : string  := "FALSE";
+    USE_MIG_INTERFACE_MODEL : boolean := false);
+  port(
+    ddr2_dq           : inout std_logic_vector(15 downto 0);
+    ddr2_dqs_p        : inout std_logic_vector(1 downto 0);
+    ddr2_dqs_n        : inout std_logic_vector(1 downto 0);
+    ddr2_addr         : out   std_logic_vector(12 downto 0);
+    ddr2_ba           : out   std_logic_vector(2 downto 0);
+    ddr2_ras_n        : out   std_logic;
+    ddr2_cas_n        : out   std_logic;
+    ddr2_we_n         : out   std_logic;
+    ddr2_reset_n      : out   std_logic;
+    ddr2_ck_p         : out   std_logic_vector(0 downto 0);
+    ddr2_ck_n         : out   std_logic_vector(0 downto 0);
+    ddr2_cke          : out   std_logic_vector(0 downto 0);
+    ddr2_cs_n         : out   std_logic_vector(0 downto 0);
+    ddr2_dm           : out   std_logic_vector(1 downto 0);
+    ddr2_odt          : out   std_logic_vector(0 downto 0);
+    ahbso             : out   ahb_slv_out_type;
+    ahbsi             : in    ahb_slv_in_type;
+    apbi              : in    apb_slv_in_type;
+    apbo              : out   apb_slv_out_type;
+    calib_done        : out   std_logic;
+    rst_n_syn         : in    std_logic;
+    rst_n_async       : in    std_logic;
+    clk_amba          : in    std_logic;
+    sys_clk_i         : in    std_logic;
+    clk_ref_i         : in    std_logic;
+    ui_clk            : out   std_logic;
+    ui_clk_sync_rst   : out   std_logic);
+  end component ;
+
+  component ahb2mig_7series_ddr3_dq16_ad15_ba3
+  generic(
+    hindex                  : integer := 0;
+    haddr                   : integer := 0;
+    hmask                   : integer := 16#f00#;
+    pindex                  : integer := 0;
+    paddr                   : integer := 0;
+    pmask                   : integer := 16#fff#;
+    maxwriteburst           : integer := 8;
+    maxreadburst            : integer := 8;
+    SIM_BYPASS_INIT_CAL     : string  := "OFF";
+    SIMULATION              : string  := "FALSE";
+    USE_MIG_INTERFACE_MODEL : boolean := false
+  );
+  port(
+    ddr3_dq           : inout std_logic_vector(15 downto 0);
+    ddr3_dqs_p        : inout std_logic_vector(1 downto 0);
+    ddr3_dqs_n        : inout std_logic_vector(1 downto 0);
+    ddr3_addr         : out   std_logic_vector(14 downto 0);
+    ddr3_ba           : out   std_logic_vector(2 downto 0);
+    ddr3_ras_n        : out   std_logic;
+    ddr3_cas_n        : out   std_logic;
+    ddr3_we_n         : out   std_logic;
+    ddr3_reset_n      : out   std_logic;
+    ddr3_ck_p         : out   std_logic_vector(0 downto 0);
+    ddr3_ck_n         : out   std_logic_vector(0 downto 0);
+    ddr3_cke          : out   std_logic_vector(0 downto 0);
+    ddr3_dm           : out   std_logic_vector(1 downto 0);
+    ddr3_odt          : out   std_logic_vector(0 downto 0);
+    ahbso             : out   ahb_slv_out_type;
+    ahbsi             : in    ahb_slv_in_type;
+    apbi              : in    apb_slv_in_type;
+    apbo              : out   apb_slv_out_type;
+    calib_done        : out   std_logic;
+    rst_n_syn         : in    std_logic;
+    rst_n_async       : in    std_logic;
+    clk_amba          : in    std_logic;
+    sys_clk_i         : in    std_logic;
+--    clk_ref_i         : in    std_logic;
+    ui_clk            : out   std_logic;
+    ui_clk_sync_rst   : out   std_logic
+   );
+  end component ;
 
 end package;

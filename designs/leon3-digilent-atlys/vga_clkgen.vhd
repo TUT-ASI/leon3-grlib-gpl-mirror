@@ -84,3 +84,4 @@ begin
     port map ( I0 => s_clk125, I1 => s_clk200, S => sel(0), O => fastclk );
 
 end architecture;
+

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ package libleon3 is
     generic (
       hindex     :     integer                  := 0;
       fabtech    :     integer range 0 to NTECH := 0;
-      memtech    :     integer range 0 to NTECH := 0;
+      memtech    :     integer                  := 0;
       nwindows   :     integer range 2 to 32    := 8;
       dsu        :     integer range 0 to 1     := 0;
       fpu        :     integer range 0 to 15    := 0;
@@ -65,11 +65,11 @@ package libleon3 is
       dlinesize  :     integer range 4 to 8     := 4;
       dsetsize   :     integer range 1 to 256   := 1;
       dsetlock   :     integer range 0 to 1     := 0;
-      dsnoop     :     integer range 0 to 6     := 0;
-      ilram      :     integer range 0 to 1     := 0;
+      dsnoop     :     integer range 0 to 7     := 0;
+      ilram      :     integer range 0 to 2     := 0;
       ilramsize  :     integer range 1 to 512   := 1;
       ilramstart :     integer range 0 to 255   := 16#8e#;
-      dlram      :     integer range 0 to 1     := 0;
+      dlram      :     integer range 0 to 2     := 0;
       dlramsize  :     integer range 1 to 512   := 1;
       dlramstart :     integer range 0 to 255   := 16#8f#;
       mmuen      :     integer range 0 to 1     := 0;
@@ -90,7 +90,9 @@ package libleon3 is
       mmupgsz    :     integer range 0 to 5     := 0;
       bp         :     integer                  := 1;
       npasi      :     integer range 0 to 1     := 0;
-      pwrpsr     :     integer range 0 to 1     := 0
+      pwrpsr     :     integer range 0 to 1     := 0;
+      rex        :     integer                  := 0;
+      altwin     :     integer range 0 to 1     := 0
       );
     port (
       clk        : in  std_ulogic;
@@ -189,3 +191,4 @@ package libleon3 is
   end component;
 
 end;
+

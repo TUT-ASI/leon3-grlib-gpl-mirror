@@ -1,3 +1,141 @@
+----------------------- Release 1.5.0-b4164 ----------------------------
+
+2016-01-21	leon3-digilent-atlys: Update design, allow systest simulation
+
+2016-01-21	leon3-gr-xc6s: Update UCF used with ISE13
+
+2016-01-15	Add support for GRLIB_SIMULATOR=Questa
+
+2016-01-09	L3STAT: stati signal missing from sensitivity list could give
+		simulation mismatch.
+
+2016-01-08	Change script generation for Xilinx Vivado so that recent
+		versions of Vivado use and generate a simulation file list
+		with files in the correct order. Vivado 2014.1 reorders files
+		incorrectly while later versions incorrectly re-orders files
+		if source_mgmt_mode is set to prevent reordering(!). Current
+		script leaves source_mgmt_mode at default (All) and produces
+		correct file order with 2015.4. Vivado 2015.4 SIGSEVs during
+		elaboration when using XSim. Latest working version for
+		simulation with XSim (Vivado's built-in simulator) is 2013.4.
+
+2016-01-07	Fix xconfig and xgrlib issues after sourcing Vivado settings
+		file by unsetting LD_LIBRARY_PATH.
+
+2016-01-07	Convert Basys3, Nexys4DDR, Nexys4, Nexys Video, AC701, KC705,
+		and VC707 designs to Xilinx Vivado 2015.4.
+
+2016-01-04	Added template design for Digilent Basys3
+		(leon3-digilent-basys3)
+
+2016-01-04	Added template design for Digilent Nexys Video
+		(leon3-digilent-nexys-video)
+
+2016-01-04	LEON3: Make ics/dcs cache control register fields read-only in
+		disabled state when respective cache not implemented.
+
+2015-12-18	LEON3: Perform 2-beat read burst for LDD when cache is
+		disabled/bypassed.
+
+2015-12-18	L3STAT: AHB statistics was not available when core was
+		implemented with dsuen = 0 and nextev = 0.
+
+2015-12-17	LEON3: Add dsnoop=7 option to implement DCache snooping with
+		valid bits moved to registers and using only single-port RAMs
+		for the tags.
+
+2015-12-16	GPTIMER: Changed to only decrement the prescaler when at least
+		one timer is enabled.
+
+2015-12-03	LEON3: Add support for alternative window pointer extension
+		from SPARC V8E.
+
+2015-12-01	LEON3/IRQMP: Add support for booting up from arbitrary (8b
+		aligned) address, for monitoring error mode state of CPUs
+		and to force specified CPU into error mode via the IRQ
+		controller. Enabled via bootreg generic on IRQ controller.
+
+2015-11-30	AHBFILE: add designs/leon3-ahbfile. AHBFILE is a simulation-
+		only debug communication link that connects using a file.
+		Same protocol as AHBUART.
+
+2015-11-27	GPTIMER: Added support for Windowed Watchdog (WWD)
+
+2015-11-25	Added support for dual port APB-controller.
+
+2015-11-16	Upgrade Xilinx AC701, KC705 and VC707 template design to
+		support Vivado 2015.3.
+
+2015-11-16	LEON3: Snooping implementations that used syncram_dp blocks
+		(dsnoop=1,2,5 but not dsnoop=6) since LEON3v3 required the
+		syncram_dp to provide write-through behavior, which was not
+		guaranteed. This could result in snooping miss in a corner case.
+		Modify the syncram_dp entity in the techmap layer to emulate
+		this functionality when needed in syncram_dp, in the same way
+		as for syncram_2p.
+
+2015-11-16	LEON3: Fix undriven signal used only in dsnoop=5 configuration.
+
+2015-11-08	planAhead: Allow to set planAhead Bitgen options via
+		PLANAHEAD_BITGEN variable. Added via set_property 
+		{steps.bitgen.args.More Options} { PLANAHEAD_BITGEN }.
+
+2015-11-08	L3STAT: Workaround for Design Compiler elaboration error when
+		nmax /= 0 and ncnt > nmax.
+
+2015-11-07	scripts: Display GRLIB env variables at script generation
+
+2015-11-02	LEON3: Support CASA also for LDDEL=2
+
+2015-10-27	LEON3: Add support for LEON REX (reduced instruction set)
+
+2015-10-07	Add support for 64 interrupt sources.
+		Can be enabled via global grlib.config package.
+
+2015-10-07	LEON3: Fix asr17 value for DPBM field when branch
+		prediction is set to always enabled (bp=1)
+
+2015-10-07	Enable make ise-prog-prom target for AC701, KC705 and VC707
+		template designs.
+
+2015-10-05	LEON3: Fix for branch prediction i-cache fetch avoidance
+		feature when used in combination with local instruction RAM.
+
+2015-10-05	LEON3: Instruction cache flush while executing from local
+		instruction RAM (ILRAM) lead to wrong address being propagated
+		to RAM.
+
+2015-09-23	Removed template designs for obsolete Cyclone(I) boards
+
+2015-09-23	Removed template designs for obsolete Virtex2 boards
+
+2015-09-21	Improved GHDL simulation script
+
+2015-09-18	GRDMAC: Implement timeout timer for condition descriptors.
+		Add debug interface for internal buffer. Implement conditional
+		trigger on input signal.
+
+2015-09-14	L3STAT: Update to revision 1, change to register layout and
+		support for up to 64 counters.
+
+2015-08-27	Improved SYNCRAMBW techmap for UNISIM, IGLOO2 and RTG4
+
+2015-08-18	DPRC: Add operating mode with EDAC. Add interrupt support.
+
+2015-08-17	Include DMA controller (GRDMAC) in all releases
+
+2015-08-12	Extend IP core documentation with register reset values and
+		access attribues.
+
+2015-05-11	leon3-digilent-nexys4ddr: Update to support Vivado 2015.2
+
+2015-06-22	APBUART: Add control register bit 15 that selects one or two
+		stop bits.
+
+2015-06-21	Add script support for Mentor Graphics FormalPro (Linux only)
+
+2015-05-11	leon3-digilent-nexys4ddr: Update to support Vivado 2015.1
+
 ----------------------- Release 1.4.1-b4156 ----------------------------
 
 2015-05-05	scripts: Skip secureip files in UNISIM when secureip is missing

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -38,11 +38,12 @@ use std.textio.all;
 package sparc_disas is
   function tostf(v:std_logic_vector) return string;
   procedure print_insn(ndx: integer; pc, op, res : std_logic_vector(31 downto 0); 
-	valid, trap, wr, rest : boolean);
+	valid, trap, wr : boolean;
+        rex: boolean := false);
   procedure print_fpinsn(ndx: integer; pc, op : std_logic_vector(31 downto 0);
                        res : std_logic_vector(63 downto 0);
                        dpres, valid, trap, wr : boolean);
-  function ins2st(pc, op : std_logic_vector(31 downto 0)) return string;
+  function ins2st(pc, op : std_logic_vector(31 downto 0); rex: boolean := false) return string;
 end;
 
 package body sparc_disas is
@@ -360,7 +361,8 @@ begin
   return(ireg2st(rd) & ", [" & regimm(insn,dec,true) & "]" & " " & tost(insn.op(12 downto 5)));
 end;
 
-function ins2st(pc, op : std_logic_vector(31 downto 0)) return string is
+function ins2st(pc, op : std_logic_vector(31 downto 0); rex: boolean := false) return string is
+
   constant STMAX  : natural := 9;
   constant bl2	  : string(1 to 2) := (others => ' ');
   constant bb 	  : string(1 to 4) := (others => ' ');
@@ -375,6 +377,7 @@ function ins2st(pc, op : std_logic_vector(31 downto 0)) return string is
   variable i      : std_ulogic;
   variable simm : std_logic_vector(12 downto 0);
   variable insn	: pc_op_type;
+  variable bbr    : string(1 to 4);
 
 begin
 
@@ -391,18 +394,19 @@ begin
     simm  := op(12 downto 0);
     insn.op := op;
     insn.pc := pc;
+    if rex then bbr:=" R  "; else bbr:=bb; end if;
 
     case op1 is
     when CALL => 
       addr := pc + (op(29 downto 0) & "00");
-      return(tostf(pc) & bb & "call" & bl2 & tost(addr));
+      return(tostf(pc) & bbr & "call" & bl2 & tost(addr));
     when FMT2 =>
       case op2 is
       when SETHI =>
 	if rd = "00000" then
-          return(tostf(pc) & bb & "nop");
+          return(tostf(pc) & bbr & "nop");
 	else
-          return(tostf(pc) & bb & "sethi" & bl2 & "%hi(" &
+          return(tostf(pc) & bbr & "sethi" & bl2 & "%hi(" &
 		tost(op(21 downto 0) & "0000000000") & "), " & ireg2st(rd));
 	end if;
       when BICC | FBFCC => 
@@ -417,291 +421,299 @@ begin
         addr := addr + pc;
 	if op2 = BICC then
           if op(29) = '1' then
-            return(tostf(pc) & bb & 'b' & branchop(insn) & ",a" & bl2 & 
+            return(tostf(pc) & bbr & 'b' & branchop(insn) & ",a" & bl2 & 
 		tost(addr));
           else
-            return(tostf(pc) & bb & 'b' & branchop(insn) & bl2 & 
+            return(tostf(pc) & bbr & 'b' & branchop(insn) & bl2 & 
 		tost(addr));
 	  end if;
 	else
           if op(29) = '1' then
-            return(tostf(pc) & bb & "fb" & fbranchop(insn) & ",a" & bl2 & 
+            return(tostf(pc) & bbr & "fb" & fbranchop(insn) & ",a" & bl2 & 
 		tost(addr));
           else
-            return(tostf(pc) & bb & "fb" & fbranchop(insn) & bl2 & 
+            return(tostf(pc) & bbr & "fb" & fbranchop(insn) & bl2 & 
 		tost(addr));
 	  end if;
 	end if;
 --      when CBCCC => cptrap := '1';
-      when others => return(tostf(pc) & bb & "unimp");
+      when others => return(tostf(pc) & bbr & "unimp");
       end case;
     when FMT3 =>
       case op3 is
-      when IAND => return(tostf(pc) & bb & "and" & bl2 & regres(insn,hex));
-      when IADD => return(tostf(pc) & bb & "add" & bl2 & regres(insn,dec));
+      when IAND => return(tostf(pc) & bbr & "and" & bl2 & regres(insn,hex));
+      when IADD =>
+        if (i='0' and simm(12)='1') then
+          insn.op(13):='1';
+          return (tostf(pc) & bbr & "addrex" & bl2 & regres(insn,dec));
+        end if;
+        return(tostf(pc) & bbr & "add" & bl2 & regres(insn,dec));
       when IOR  => 
 	if ((i = '0') and (rs1 = "00000") and (rs2 = "00000")) then
-	  return(tostf(pc) & bb & "clr" & bl2 & ireg2st(rd));
+	  return(tostf(pc) & bbr & "clr" & bl2 & ireg2st(rd));
 	elsif ((i = '1') and (simm = "0000000000000")) or (rs1 = "00000") then
-	  return(tostf(pc) & bb & "mov" & bl2 & regres(insn,hex));
+	  return(tostf(pc) & bbr & "mov" & bl2 & regres(insn,hex));
 	else
-	  return(tostf(pc) & bb & "or " & bl2 & regres(insn,hex));
+	  return(tostf(pc) & bbr & "or " & bl2 & regres(insn,hex));
 	end if;
-      when IXOR => return(tostf(pc) & bb & "xor" & bl2 & regres(insn,hex));
-      when ISUB => return(tostf(pc) & bb & "sub" & bl2 & regres(insn,dec));
-      when ANDN => return(tostf(pc) & bb & "andn" & bl2 & regres(insn,hex));
-      when ORN  => return(tostf(pc) & bb & "orn" & bl2 & regres(insn,hex));
+      when IXOR => return(tostf(pc) & bbr & "xor" & bl2 & regres(insn,hex));
+      when ISUB => return(tostf(pc) & bbr & "sub" & bl2 & regres(insn,dec));
+      when ANDN => return(tostf(pc) & bbr & "andn" & bl2 & regres(insn,hex));
+      when ORN  => return(tostf(pc) & bbr & "orn" & bl2 & regres(insn,hex));
       when IXNOR =>
 	if ((i = '0') and ((rs1 = rd) or (rs2 = "00000"))) then
-	  return(tostf(pc) & bb & "not" & bl2 & ireg2st(rd));
+	  return(tostf(pc) & bbr & "not" & bl2 & ireg2st(rd));
 	else
-	  return(tostf(pc) & bb & "xnor" & bl2 & ireg2st(rd));
+	  return(tostf(pc) & bbr & "xnor" & bl2 & ireg2st(rd));
 	end if;
-      when ADDX => return(tostf(pc) & bb & "addx" & bl2 & regres(insn,dec));
-      when SUBX => return(tostf(pc) & bb & "subx" & bl2 & regres(insn,dec));
-      when ADDCC => return(tostf(pc) & bb & "addcc" & bl2 & regres(insn,dec));
-      when ANDCC => return(tostf(pc) & bb & "andcc" & bl2 & regres(insn,hex));
-      when ORCC => return(tostf(pc) & bb & "orcc" & bl2 & regres(insn,hex));
-      when XORCC => return(tostf(pc) & bb & "xorcc" & bl2 & regres(insn,hex));
-      when SUBCC => return(tostf(pc) & bb & "subcc" & bl2 & regres(insn,dec));
-      when ANDNCC => return(tostf(pc) & bb & "andncc" & bl2 & regres(insn,hex));
-      when ORNCC => return(tostf(pc) & bb & "orncc" & bl2 & regres(insn,hex));
-      when XNORCC => return(tostf(pc) & bb & "xnorcc" & bl2 & regres(insn,hex));
-      when ADDXCC => return(tostf(pc) & bb & "addxcc" & bl2 & regres(insn,hex));
-      when UMAC   => return(tostf(pc) & bb & "umac" & bl2 & regres(insn,dec));
-      when SMAC   => return(tostf(pc) & bb & "smac" & bl2 & regres(insn,dec));
-      when UMUL   => return(tostf(pc) & bb & "umul" & bl2 & regres(insn,dec));
-      when SMUL   => return(tostf(pc) & bb & "smul" & bl2 & regres(insn,dec));
-      when UMULCC => return(tostf(pc) & bb & "umulcc" & bl2 & regres(insn,dec));
-      when SMULCC => return(tostf(pc) & bb & "smulcc" & bl2 & regres(insn,dec));
-      when SUBXCC => return(tostf(pc) & bb & "subxcc" & bl2 & regres(insn,dec));
-      when UDIV   => return(tostf(pc) & bb & "udiv" & bl2 & regres(insn,dec));
-      when SDIV   => return(tostf(pc) & bb & "sdiv" & bl2 & regres(insn,dec));
-      when UDIVCC => return(tostf(pc) & bb & "udivcc" & bl2 & regres(insn,dec));
-      when SDIVCC => return(tostf(pc) & bb & "sdivcc" & bl2 & regres(insn,dec));
-      when TADDCC => return(tostf(pc) & bb & "taddcc" & bl2 & regres(insn,dec));
-      when TSUBCC => return(tostf(pc) & bb & "tsubcc" & bl2 & regres(insn,dec));
-      when TADDCCTV => return(tostf(pc) & bb & "taddcctv" & bl2 & regres(insn,dec));
-      when TSUBCCTV => return(tostf(pc) & bb & "tsubcctv" & bl2 & regres(insn,dec));
-      when MULSCC => return(tostf(pc) & bb & "mulscc" & bl2 & regres(insn,dec));
-      when ISLL => return(tostf(pc) & bb & "sll" & bl2 & regres(insn,dec));
-      when ISRL => return(tostf(pc) & bb & "srl" & bl2 & regres(insn,dec));
-      when ISRA => return(tostf(pc) & bb & "sra" & bl2 & regres(insn,dec));
+      when ADDX => return(tostf(pc) & bbr & "addx" & bl2 & regres(insn,dec));
+      when SUBX => return(tostf(pc) & bbr & "subx" & bl2 & regres(insn,dec));
+      when ADDCC => return(tostf(pc) & bbr & "addcc" & bl2 & regres(insn,dec));
+      when ANDCC => return(tostf(pc) & bbr & "andcc" & bl2 & regres(insn,hex));
+      when ORCC => return(tostf(pc) & bbr & "orcc" & bl2 & regres(insn,hex));
+      when XORCC => return(tostf(pc) & bbr & "xorcc" & bl2 & regres(insn,hex));
+      when SUBCC => return(tostf(pc) & bbr & "subcc" & bl2 & regres(insn,dec));
+      when ANDNCC => return(tostf(pc) & bbr & "andncc" & bl2 & regres(insn,hex));
+      when ORNCC => return(tostf(pc) & bbr & "orncc" & bl2 & regres(insn,hex));
+      when XNORCC => return(tostf(pc) & bbr & "xnorcc" & bl2 & regres(insn,hex));
+      when ADDXCC => return(tostf(pc) & bbr & "addxcc" & bl2 & regres(insn,hex));
+      when UMAC   => return(tostf(pc) & bbr & "umac" & bl2 & regres(insn,dec));
+      when SMAC   => return(tostf(pc) & bbr & "smac" & bl2 & regres(insn,dec));
+      when UMUL   => return(tostf(pc) & bbr & "umul" & bl2 & regres(insn,dec));
+      when SMUL   => return(tostf(pc) & bbr & "smul" & bl2 & regres(insn,dec));
+      when UMULCC => return(tostf(pc) & bbr & "umulcc" & bl2 & regres(insn,dec));
+      when SMULCC => return(tostf(pc) & bbr & "smulcc" & bl2 & regres(insn,dec));
+      when SUBXCC => return(tostf(pc) & bbr & "subxcc" & bl2 & regres(insn,dec));
+      when UDIV   => return(tostf(pc) & bbr & "udiv" & bl2 & regres(insn,dec));
+      when SDIV   => return(tostf(pc) & bbr & "sdiv" & bl2 & regres(insn,dec));
+      when UDIVCC => return(tostf(pc) & bbr & "udivcc" & bl2 & regres(insn,dec));
+      when SDIVCC => return(tostf(pc) & bbr & "sdivcc" & bl2 & regres(insn,dec));
+      when TADDCC => return(tostf(pc) & bbr & "taddcc" & bl2 & regres(insn,dec));
+      when TSUBCC => return(tostf(pc) & bbr & "tsubcc" & bl2 & regres(insn,dec));
+      when TADDCCTV => return(tostf(pc) & bbr & "taddcctv" & bl2 & regres(insn,dec));
+      when TSUBCCTV => return(tostf(pc) & bbr & "tsubcctv" & bl2 & regres(insn,dec));
+      when MULSCC => return(tostf(pc) & bbr & "mulscc" & bl2 & regres(insn,dec));
+      when ISLL => return(tostf(pc) & bbr & "sll" & bl2 & regres(insn,dec));
+      when ISRL => return(tostf(pc) & bbr & "srl" & bl2 & regres(insn,dec));
+      when ISRA => return(tostf(pc) & bbr & "sra" & bl2 & regres(insn,dec));
       when RDY  => 
         if rs1 /= "00000" then
-	  return(tostf(pc) & bb & "mov" & bl2 & "%asr" &
+	  return(tostf(pc) & bbr & "mov" & bl2 & "%asr" &
 	         tostd(rs1) & ", " & ireg2st(rd));
 	else
-	  return(tostf(pc) & bb & "mov" & bl2 & "%y, " & ireg2st(rd));
+	  return(tostf(pc) & bbr & "mov" & bl2 & "%y, " & ireg2st(rd));
         end if;
-      when RDPSR  => return(tostf(pc) & bb & "mov" & bl2 & "%psr, " & ireg2st(rd));
-      when RDWIM  => return(tostf(pc) & bb & "mov" & bl2 & "%wim, " & ireg2st(rd));
-      when RDTBR  => return(tostf(pc) & bb & "mov" & bl2 & "%tbr, " & ireg2st(rd));
+      when RDPSR  => return(tostf(pc) & bbr & "mov" & bl2 & "%psr, " & ireg2st(rd));
+      when RDWIM  => return(tostf(pc) & bbr & "mov" & bl2 & "%wim, " & ireg2st(rd));
+      when RDTBR  => return(tostf(pc) & bbr & "mov" & bl2 & "%tbr, " & ireg2st(rd));
       when WRY  =>
 	if (rs1 = "00000") or (rs2 = "00000") then
           if rd /= "00000" then
-	    return(tostf(pc) & bb & "mov" & bl2
+	    return(tostf(pc) & bbr & "mov" & bl2
 	         & regimm(insn,hex,false) & ", %asr" & tostd(rd));
 	  else
-	    return(tostf(pc) & bb & "mov" & bl2 & regimm(insn,hex,false) & ", %y");
+	    return(tostf(pc) & bbr & "mov" & bl2 & regimm(insn,hex,false) & ", %y");
 	  end if;
 	else
           if rd /= "00000" then
-	    return(tostf(pc) & bb & "wr " & bl2 & "%asr" 
+	    return(tostf(pc) & bbr & "wr " & bl2 & "%asr" 
 	         & regimm(insn,hex,false) & ", %asr" & tostd(rd));
 	  else
-	    return(tostf(pc) & bb & "wr " & bl2 & regimm(insn,hex,false) & ", %y");
+	    return(tostf(pc) & bbr & "wr " & bl2 & regimm(insn,hex,false) & ", %y");
 	  end if;
 	end if;
       when WRPSR  =>
 	if (rs1 = "00000") or (rs2 = "00000") then
-	  return(tostf(pc) & bb & "mov" & bl2 & regimm(insn,hex,false) & ", %psr");
+	  return(tostf(pc) & bbr & "mov" & bl2 & regimm(insn,hex,false) & ", %psr");
 	else
-	  return(tostf(pc) & bb & "wr " & bl2 & regimm(insn,hex,false) & ", %psr");
+	  return(tostf(pc) & bbr & "wr " & bl2 & regimm(insn,hex,false) & ", %psr");
 	end if;
       when WRWIM  =>
 	if (rs1 = "00000") or (rs2 = "00000") then
-	  return(tostf(pc) & bb & "mov" & bl2 & regimm(insn,hex,false) & ", %wim");
+	  return(tostf(pc) & bbr & "mov" & bl2 & regimm(insn,hex,false) & ", %wim");
 	else
-	  return(tostf(pc) & bb & "wr " & bl2 & regimm(insn,hex,false) & ", %wim");
+	  return(tostf(pc) & bbr & "wr " & bl2 & regimm(insn,hex,false) & ", %wim");
 	end if;
       when WRTBR  =>
 	if (rs1 = "00000") or (rs2 = "00000") then
-	  return(tostf(pc) & bb & "mov" & bl2 & regimm(insn,hex,false) & ", %tbr");
+	  return(tostf(pc) & bbr & "mov" & bl2 & regimm(insn,hex,false) & ", %tbr");
 	else
-	  return(tostf(pc) & bb & "wr " & bl2 & regimm(insn,hex,false) & ", %tbr");
+	  return(tostf(pc) & bbr & "wr " & bl2 & regimm(insn,hex,false) & ", %tbr");
 	end if;
       when JMPL => 
 	if (rd = "00000") then
 	  if (i = '1') and (simm = "0000000001000") then
-	    if (rs1 = "11111") then return(tostf(pc) & bb & "ret");
-	    elsif (rs1 = "01111") then return(tostf(pc) & bb & "retl");
-	    else return(tostf(pc) & bb & "jmp" & bl2 & regimm(insn,dec,true));
+	    if (rs1 = "11111") then return(tostf(pc) & bbr & "ret");
+	    elsif (rs1 = "01111") then return(tostf(pc) & bbr & "retl");
+	    else return(tostf(pc) & bbr & "jmp" & bl2 & regimm(insn,dec,true));
 	    end if;
-	  else return(tostf(pc) & bb & "jmp" & bl2 & regimm(insn,dec,true));
+	  else return(tostf(pc) & bbr & "jmp" & bl2 & regimm(insn,dec,true));
 	  end if;
-	else return(tostf(pc) & bb & "jmpl" & bl2 & regres(insn,dec));
+	else return(tostf(pc) & bbr & "jmpl" & bl2 & regres(insn,dec));
 	end if;
       when TICC => 
-        return(tostf(pc) & bb & 't' & branchop(insn) & bl2 & regimm(insn,hex,false));
+        return(tostf(pc) & bbr & 't' & branchop(insn) & bl2 & regimm(insn,hex,false));
       when FLUSH => 
-        return(tostf(pc) & bb & "flush" & bl2 & regimm(insn,hex,false));
+        return(tostf(pc) & bbr & "flush" & bl2 & regimm(insn,hex,false));
       when RETT => 
-        return(tostf(pc) & bb & "rett" & bl2 & regimm(insn,dec,true));
+        return(tostf(pc) & bbr & "rett" & bl2 & regimm(insn,dec,true));
       when RESTORE => 
 	if (rd = "00000") then
-	  return(tostf(pc) & bb & "restore");
+	  return(tostf(pc) & bbr & "restore");
 	else
-	  return(tostf(pc) & bb & "restore" & bl2 & regres(insn,hex));
+	  return(tostf(pc) & bbr & "restore" & bl2 & regres(insn,hex));
 	end if;
-      when SAVE => 
-	if (rd = "00000") then return(tostf(pc) & bb & "save");
-	else return(tostf(pc) & bb & "save" & bl2 & regres(insn,dec)); end if;
+      when SAVE =>
+        if (i='0' and simm(12)='1') then
+          insn.op(13):='1';
+          return (tostf(pc) & bbr & "saverex" & bl2 & regres(insn,dec));
+	elsif (rd = "00000") then return(tostf(pc) & bbr & "save");
+	else return(tostf(pc) & bbr & "save" & bl2 & regres(insn,dec)); end if;
       when FPOP1 => 
         case opf is
-	when FITOS => return(tostf(pc) & bb & "fitos" & bl2 & freg2(insn));
-	when FITOD => return(tostf(pc) & bb & "fitod" & bl2 & freg2(insn));
-	when FSTOI => return(tostf(pc) & bb & "fstoi" & bl2 & freg2(insn));                      
-	when FDTOI => return(tostf(pc) & bb & "fdtoi" & bl2 & freg2(insn));                      
-	when FSTOD => return(tostf(pc) & bb & "fstod" & bl2 & freg2(insn));
-	when FDTOS => return(tostf(pc) & bb & "fdtos" & bl2 & freg2(insn));
-	when FMOVS => return(tostf(pc) & bb & "fmovs" & bl2 & freg2(insn));
-	when FNEGS => return(tostf(pc) & bb & "fnegs" & bl2 & freg2(insn));
-	when FABSS => return(tostf(pc) & bb & "fabss" & bl2 & freg2(insn));
-	when FSQRTS => return(tostf(pc) & bb & "fsqrts" & bl2 & freg2(insn));
-	when FSQRTD => return(tostf(pc) & bb & "fsqrtd" & bl2 & freg2(insn));
-	when FADDS => return(tostf(pc) & bb & "fadds" & bl2 & freg3(insn));
-	when FADDD => return(tostf(pc) & bb & "faddd" & bl2 & freg3(insn));
-	when FSUBS => return(tostf(pc) & bb & "fsubs" & bl2 & freg3(insn));
-	when FSUBD => return(tostf(pc) & bb & "fsubd" & bl2 & freg3(insn));
-	when FMULS => return(tostf(pc) & bb & "fmuls" & bl2 & freg3(insn));
-	when FMULD => return(tostf(pc) & bb & "fmuld" & bl2 & freg3(insn));
-	when FSMULD => return(tostf(pc) & bb & "fsmuld" & bl2 & freg3(insn));
-	when FDIVS => return(tostf(pc) & bb & "fdivs" & bl2 & freg3(insn));
-	when FDIVD => return(tostf(pc) & bb & "fdivd" & bl2 & freg3(insn));
-        when others => return(tostf(pc) & bb & "unknown FOP1: " & tost(op));
+	when FITOS => return(tostf(pc) & bbr & "fitos" & bl2 & freg2(insn));
+	when FITOD => return(tostf(pc) & bbr & "fitod" & bl2 & freg2(insn));
+	when FSTOI => return(tostf(pc) & bbr & "fstoi" & bl2 & freg2(insn));                      
+	when FDTOI => return(tostf(pc) & bbr & "fdtoi" & bl2 & freg2(insn));                      
+	when FSTOD => return(tostf(pc) & bbr & "fstod" & bl2 & freg2(insn));
+	when FDTOS => return(tostf(pc) & bbr & "fdtos" & bl2 & freg2(insn));
+	when FMOVS => return(tostf(pc) & bbr & "fmovs" & bl2 & freg2(insn));
+	when FNEGS => return(tostf(pc) & bbr & "fnegs" & bl2 & freg2(insn));
+	when FABSS => return(tostf(pc) & bbr & "fabss" & bl2 & freg2(insn));
+	when FSQRTS => return(tostf(pc) & bbr & "fsqrts" & bl2 & freg2(insn));
+	when FSQRTD => return(tostf(pc) & bbr & "fsqrtd" & bl2 & freg2(insn));
+	when FADDS => return(tostf(pc) & bbr & "fadds" & bl2 & freg3(insn));
+	when FADDD => return(tostf(pc) & bbr & "faddd" & bl2 & freg3(insn));
+	when FSUBS => return(tostf(pc) & bbr & "fsubs" & bl2 & freg3(insn));
+	when FSUBD => return(tostf(pc) & bbr & "fsubd" & bl2 & freg3(insn));
+	when FMULS => return(tostf(pc) & bbr & "fmuls" & bl2 & freg3(insn));
+	when FMULD => return(tostf(pc) & bbr & "fmuld" & bl2 & freg3(insn));
+	when FSMULD => return(tostf(pc) & bbr & "fsmuld" & bl2 & freg3(insn));
+	when FDIVS => return(tostf(pc) & bbr & "fdivs" & bl2 & freg3(insn));
+	when FDIVD => return(tostf(pc) & bbr & "fdivd" & bl2 & freg3(insn));
+        when others => return(tostf(pc) & bbr & "unknown FOP1: " & tost(op));
 	end case;
       when FPOP2 => 
         case opf is
-	when FCMPS => return(tostf(pc) & bb & "fcmps" & bl2 & fregc(insn));
-	when FCMPD => return(tostf(pc) & bb & "fcmpd" & bl2 & fregc(insn));
-	when FCMPES => return(tostf(pc) & bb & "fcmpes" & bl2 & fregc(insn));
-	when FCMPED => return(tostf(pc) & bb & "fcmped" & bl2 & fregc(insn));
-        when others => return(tostf(pc) & bb & "unknown FOP2: " & tost(insn.op));
+	when FCMPS => return(tostf(pc) & bbr & "fcmps" & bl2 & fregc(insn));
+	when FCMPD => return(tostf(pc) & bbr & "fcmpd" & bl2 & fregc(insn));
+	when FCMPES => return(tostf(pc) & bbr & "fcmpes" & bl2 & fregc(insn));
+	when FCMPED => return(tostf(pc) & bbr & "fcmped" & bl2 & fregc(insn));
+        when others => return(tostf(pc) & bbr & "unknown FOP2: " & tost(insn.op));
 	end case;
       when CPOP1 => 
-	return(tostf(pc) & bb & "cpop1" & bl2 & tost("000"&opf) & ", " &creg3(insn));
+	return(tostf(pc) & bbr & "cpop1" & bl2 & tost("000"&opf) & ", " &creg3(insn));
       when CPOP2 => 
-	return(tostf(pc) & bb & "cpop2" & bl2 & tost("000"&opf) & ", " &creg3(insn));
-      when others => return(tostf(pc) & bb & "unknown opcode: " & tost(insn.op));
+	return(tostf(pc) & bbr & "cpop2" & bl2 & tost("000"&opf) & ", " &creg3(insn));
+      when others => return(tostf(pc) & bbr & "unknown opcode: " & tost(insn.op));
       end case;
     when LDST =>
       case op3 is
       when STC => 
-	return(tostf(pc) & bb & "st" & bl2 & stparcp(insn, rd, dec));
+	return(tostf(pc) & bbr & "st" & bl2 & stparcp(insn, rd, dec));
       when STF => 
-	return(tostf(pc) & bb & "st" & bl2 & stparf(insn, rd, dec));
+	return(tostf(pc) & bbr & "st" & bl2 & stparf(insn, rd, dec));
       when ST => 
 	if rd = "00000" then
-	  return(tostf(pc) & bb & "clr" & bl2 & stparc(insn, rd, dec));
+	  return(tostf(pc) & bbr & "clr" & bl2 & stparc(insn, rd, dec));
 	else
-	  return(tostf(pc) & bb & "st" & bl2 & stpar(insn, rd, dec));
+	  return(tostf(pc) & bbr & "st" & bl2 & stpar(insn, rd, dec));
 	end if;
       when STB => 
 	if rd = "00000" then
-	  return(tostf(pc) & bb & "clrb" & bl2 & stparc(insn, rd, dec));
+	  return(tostf(pc) & bbr & "clrb" & bl2 & stparc(insn, rd, dec));
 	else
-	  return(tostf(pc) & bb & "stb" & bl2 & stpar(insn, rd, dec));
+	  return(tostf(pc) & bbr & "stb" & bl2 & stpar(insn, rd, dec));
 	end if;
       when STH => 
 	if rd = "00000" then
-	  return(tostf(pc) & bb & "clrh" & bl2 & stparc(insn, rd, dec));
+	  return(tostf(pc) & bbr & "clrh" & bl2 & stparc(insn, rd, dec));
 	else
-	  return(tostf(pc) & bb & "sth" & bl2 & stpar(insn, rd, dec));
+	  return(tostf(pc) & bbr & "sth" & bl2 & stpar(insn, rd, dec));
 	end if;
       when STDC => 
-	return(tostf(pc) & bb & "std" & bl2 & stparcp(insn, rd, dec));
+	return(tostf(pc) & bbr & "std" & bl2 & stparcp(insn, rd, dec));
       when STDF => 
-	return(tostf(pc) & bb & "std" & bl2 & stparf(insn, rd, dec));
+	return(tostf(pc) & bbr & "std" & bl2 & stparf(insn, rd, dec));
       when STCSR => 
-	return(tostf(pc) & bb & "st" & bl2 & "%csr, [" & regimm(insn,dec,true) & "]");
+	return(tostf(pc) & bbr & "st" & bl2 & "%csr, [" & regimm(insn,dec,true) & "]");
       when STFSR => 
-	return(tostf(pc) & bb & "st" & bl2 & "%fsr, [" & regimm(insn,dec,true) & "]");
+	return(tostf(pc) & bbr & "st" & bl2 & "%fsr, [" & regimm(insn,dec,true) & "]");
       when STDCQ => 
-	return(tostf(pc) & bb & "std" & bl2 & "%cq, [" & regimm(insn,dec,true) & "]");
+	return(tostf(pc) & bbr & "std" & bl2 & "%cq, [" & regimm(insn,dec,true) & "]");
       when STDFQ => 
-	return(tostf(pc) & bb & "std" & bl2 & "%fq, [" & regimm(insn,dec,true) & "]");
+	return(tostf(pc) & bbr & "std" & bl2 & "%fq, [" & regimm(insn,dec,true) & "]");
       when ISTD => 
-	return(tostf(pc) & bb & "std" & bl2 & stpar(insn, rd, dec));
+	return(tostf(pc) & bbr & "std" & bl2 & stpar(insn, rd, dec));
       when STA => 
-	return(tostf(pc) & bb & "sta" & bl2 & stpara(insn, rd, dec));
+	return(tostf(pc) & bbr & "sta" & bl2 & stpara(insn, rd, dec));
       when STBA => 
-	return(tostf(pc) & bb & "stba" & bl2 & stpara(insn, rd, dec));
+	return(tostf(pc) & bbr & "stba" & bl2 & stpara(insn, rd, dec));
       when STHA => 
-	return(tostf(pc) & bb & "stha" & bl2 & stpara(insn, rd, dec));
+	return(tostf(pc) & bbr & "stha" & bl2 & stpara(insn, rd, dec));
       when STDA => 
-	return(tostf(pc) & bb & "stda" & bl2 & stpara(insn, rd, dec));
+	return(tostf(pc) & bbr & "stda" & bl2 & stpara(insn, rd, dec));
       when LDC => 
-	return(tostf(pc) & bb & "ld" & bl2 & ldparcp(insn, rd, dec));
+	return(tostf(pc) & bbr & "ld" & bl2 & ldparcp(insn, rd, dec));
       when LDF => 
-	return(tostf(pc) & bb & "ld" & bl2 & ldparf(insn, rd, dec));
+	return(tostf(pc) & bbr & "ld" & bl2 & ldparf(insn, rd, dec));
       when LDCSR => 
-	return(tostf(pc) & bb & "ld" & bl2 & "[" & regimm(insn,dec,true) & "]" & ", %csr");
+	return(tostf(pc) & bbr & "ld" & bl2 & "[" & regimm(insn,dec,true) & "]" & ", %csr");
       when LDFSR => 
-	return(tostf(pc) & bb & "ld" & bl2 & "[" & regimm(insn,dec,true) & "]" & ", %fsr");
+	return(tostf(pc) & bbr & "ld" & bl2 & "[" & regimm(insn,dec,true) & "]" & ", %fsr");
       when LD => 
-	return(tostf(pc) & bb & "ld" & bl2 & ldpar(insn, rd, dec));
+	return(tostf(pc) & bbr & "ld" & bl2 & ldpar(insn, rd, dec));
       when LDUB => 
-	return(tostf(pc) & bb & "ldub" & bl2 & ldpar(insn, rd, dec));
+	return(tostf(pc) & bbr & "ldub" & bl2 & ldpar(insn, rd, dec));
       when LDUH => 
-	return(tostf(pc) & bb & "lduh" & bl2 & ldpar(insn, rd, dec));
+	return(tostf(pc) & bbr & "lduh" & bl2 & ldpar(insn, rd, dec));
       when LDDC => 
-	return(tostf(pc) & bb & "ldd" & bl2 & ldparcp(insn, rd, dec));
+	return(tostf(pc) & bbr & "ldd" & bl2 & ldparcp(insn, rd, dec));
       when LDDF => 
-	return(tostf(pc) & bb & "ldd" & bl2 & ldparf(insn, rd, dec));
+	return(tostf(pc) & bbr & "ldd" & bl2 & ldparf(insn, rd, dec));
       when LDD => 
-	return(tostf(pc) & bb & "ldd" & bl2 & ldpar(insn, rd, dec));
+	return(tostf(pc) & bbr & "ldd" & bl2 & ldpar(insn, rd, dec));
       when LDSB => 
-	return(tostf(pc) & bb & "ldsb" & bl2 & ldpar(insn, rd, dec));
+	return(tostf(pc) & bbr & "ldsb" & bl2 & ldpar(insn, rd, dec));
       when LDSH => 
-	return(tostf(pc) & bb & "ldsh" & bl2 & ldpar(insn, rd, dec));
+	return(tostf(pc) & bbr & "ldsh" & bl2 & ldpar(insn, rd, dec));
       when LDSTUB => 
-	return(tostf(pc) & bb & "ldstub" & bl2 & ldpar(insn, rd, dec));
+	return(tostf(pc) & bbr & "ldstub" & bl2 & ldpar(insn, rd, dec));
       when SWAP   => 
-	return(tostf(pc) & bb & "swap" & bl2 & ldpar(insn, rd, dec));
+	return(tostf(pc) & bbr & "swap" & bl2 & ldpar(insn, rd, dec));
       when LDA => 
-	return(tostf(pc) & bb & "lda" & bl2 & ldpara(insn, rd, dec));
+	return(tostf(pc) & bbr & "lda" & bl2 & ldpara(insn, rd, dec));
       when LDUBA => 
-	return(tostf(pc) & bb & "lduba" & bl2 & ldpara(insn, rd, dec));
+	return(tostf(pc) & bbr & "lduba" & bl2 & ldpara(insn, rd, dec));
       when LDUHA => 
-	return(tostf(pc) & bb & "lduha" & bl2 & ldpara(insn, rd, dec));
+	return(tostf(pc) & bbr & "lduha" & bl2 & ldpara(insn, rd, dec));
       when LDDA => 
-	return(tostf(pc) & bb & "ldda" & bl2 & ldpara(insn, rd, dec));
+	return(tostf(pc) & bbr & "ldda" & bl2 & ldpara(insn, rd, dec));
       when LDSBA => 
-	return(tostf(pc) & bb & "ldsba" & bl2 & ldpara(insn, rd, dec));
+	return(tostf(pc) & bbr & "ldsba" & bl2 & ldpara(insn, rd, dec));
       when LDSHA => 
-	return(tostf(pc) & bb & "ldsha" & bl2 & ldpara(insn, rd, dec));
+	return(tostf(pc) & bbr & "ldsha" & bl2 & ldpara(insn, rd, dec));
       when LDSTUBA => 
-	return(tostf(pc) & bb & "ldstuba" & bl2 & ldpara(insn, rd, dec));
+	return(tostf(pc) & bbr & "ldstuba" & bl2 & ldpara(insn, rd, dec));
       when SWAPA   => 
-	return(tostf(pc) & bb & "swapa" & bl2 & ldpara(insn, rd, dec));
+	return(tostf(pc) & bbr & "swapa" & bl2 & ldpara(insn, rd, dec));
       when CASA    => 
-	return(tostf(pc) & bb & "casa" & bl2 & ldpara_cas(insn, rs1, rs2, rd, dec));
+	return(tostf(pc) & bbr & "casa" & bl2 & ldpara_cas(insn, rs1, rs2, rd, dec));
 
-      when others => return(tostf(pc) & bb & "unknown opcode: " & tost(op));
+      when others => return(tostf(pc) & bbr & "unknown opcode: " & tost(op));
       end case;
-    when others => return(tostf(pc) & bb & "unknown opcode: " & tost(op));
+    when others => return(tostf(pc) & bbr & "unknown opcode: " & tost(op));
     end case;
 end;
 
 procedure print_insn(ndx: integer; pc, op, res : std_logic_vector(31 downto 0);
-	 valid, trap, wr, rest : boolean) is
+	 valid, trap, wr : boolean;
+         rex: boolean := false) is
 begin
   if valid then
-    if rest then grlib.testlib.print ("cpu" & tost(ndx) &": " & ins2st(pc, op) & "  (restart)");
-    elsif trap then grlib.testlib.print ("cpu" & tost(ndx) &": " & ins2st(pc, op) & "  (trapped)");
-    elsif wr then grlib.testlib.print ("cpu" & tost(ndx) & ": " & ins2st(pc, op) & "  [" & tost(res) & "]");
-    else grlib.testlib.print ("cpu" & tost(ndx) & ": " & ins2st(pc, op)); end if;
+    if trap then grlib.testlib.print ("cpu" & tost(ndx) &": " & ins2st(pc, op, rex) & "  (trapped)");
+    elsif wr then grlib.testlib.print ("cpu" & tost(ndx) & ": " & ins2st(pc, op, rex) & "  [" & tost(res) & "]");
+    else grlib.testlib.print ("cpu" & tost(ndx) & ": " & ins2st(pc, op, rex)); end if;
   end if;
 end;
 
@@ -722,3 +734,4 @@ end;
 
 end;
 -- pragma translate_on
+

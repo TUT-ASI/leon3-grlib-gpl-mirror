@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -838,7 +838,10 @@ entity ddr2phy is
     testen      : in  std_ulogic;
     testrst     : in  std_ulogic;
     scanen      : in  std_ulogic;
-    testoen     : in  std_ulogic);
+    testoen     : in  std_ulogic;
+    oct_rdn        : in  std_logic := '0';
+    oct_rup        : in  std_logic := '0'
+  );
 end;
 
 architecture rtl of ddr2phy is
@@ -905,6 +908,30 @@ begin
 	rasn, casn, wen, csn, cke, cal_en, cal_inc, cal_pll, cal_rst, odt, oct);
     dqin_valid <= '1';
     
+  end generate;
+
+  uniphy : if (tech = stratix4) generate
+    ddr_phy0 :  uniphy_ddr2_phy
+      generic map (
+        MHz => MHz, rstdelay => rstdelay,
+        dbits => dbits, clk_mul => clk_mul, clk_div => clk_div,
+        eightbanks => eightbanks, abits => abits,
+        nclk => nclk, ncs => ncs)
+      port map (
+        rst => rst, clk => clk,
+        clkout => clkout, clkoutret => clkoutret, lock => lock,
+        ddr_clk => ddr_clk, ddr_clkb => ddr_clkb, ddr_cke => ddr_cke,
+        ddr_csb => ddr_csb, ddr_web => ddr_web, ddr_rasb => ddr_rasb, ddr_casb => ddr_casb,
+        ddr_dm => ddr_dm, ddr_dqs => ddr_dqs, ddr_dqsn => ddr_dqsn, ddr_ad => ddr_ad, ddr_ba => ddr_ba,
+        ddr_dq => ddr_dq, ddr_odt => ddr_odt,
+        addr => addr, ba => ba, dqin => dqin, dqout => dqout, dm => dm,
+        oen => oen,
+        rasn => rasn, casn => casn, wen => wen, csn => csn, cke => cke,
+        odt => odt, read_pend => read_pend, dqin_valid => dqin_valid,
+        regwdata => regwdata, regwrite => regwrite, regrdata => regrdata,
+        oct_rdn => oct_rdn, oct_rup => oct_rup);
+    ddr_clk_fb_out <= '0';
+    customdout <= (others => '0');
   end generate;
 
   sp3a : if (tech = spartan3) generate
@@ -1334,3 +1361,4 @@ begin
   end generate;
 
 end;
+

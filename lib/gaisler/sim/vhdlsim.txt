@@ -6,3 +6,4 @@ ramback.vhd zbtssram.vhd slavecheck.vhd
 spwtrace.vhd spwtracev.vhd
 ddrram.vhd ddr2ram.vhd ddr3ram.vhd
 sdrtestmod.vhd
+ahbram_sim.vhd

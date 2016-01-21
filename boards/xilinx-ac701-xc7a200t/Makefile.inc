@@ -1,10 +1,10 @@
 # FPGA and Dev Board used in Design
-TECHNOLOGY=kintex7
+TECHNOLOGY=Artix7
 PART=xc7a200t
 PACKAGE=fbg676
 PROTOBOARD=xilinx.com:ac701:part0:1.0
 SPEED=2
-PROMGENPAR=-x xcf08p -u 0 $(TOP).bit -p mcs -w -o $(BOARD)
+PROMGENPAR=-u 0 $(TOP).bit -p mcs -spi -w -o $(BOARD)
 
 # For 'Vivado Synthesis' flow set:
 VIVADO_SYNTH_STRATEGY="Vivado Synthesis Defaults"

@@ -44,7 +44,7 @@ TECHLIBS = $(TECH) inferred grdware dware secureip unisim
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	openchip gsi spansion tmtc ihp fmf cypress hynix
 
-DIRSKIP = b1553 pci/pcif leon2 leon2ft leon4 leon4v0 l2cache iommu \
+DIRSKIP = b1553 pci/pcif leon2 leon2ft leon4v0 l2cache iommu \
 	usb ddr crypto satcan slink ascs pwm gr1553b
 
 FILESKIP =

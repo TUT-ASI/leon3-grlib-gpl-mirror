@@ -37,3 +37,4 @@
   constant CFG_GRUSBDC_O13    : integer := CONFIG_GRUSBDC_O13;
   constant CFG_GRUSBDC_O14    : integer := CONFIG_GRUSBDC_O14;
   constant CFG_GRUSBDC_O15    : integer := CONFIG_GRUSBDC_O15;
+

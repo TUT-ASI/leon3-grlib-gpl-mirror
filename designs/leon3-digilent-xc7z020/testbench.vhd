@@ -34,8 +34,7 @@ entity testbench is
     clktech   : integer := CFG_CLKTECH;
     disas     : integer := CFG_DISAS;      -- Enable disassembly to console
     dbguart   : integer := CFG_DUART;      -- Print UART on console
-    pclow     : integer := CFG_PCLOW;
-    testahb   : boolean := true
+    pclow     : integer := CFG_PCLOW
   );
 end;
 
@@ -75,8 +74,7 @@ component leon3mp is
     clktech : integer := CFG_CLKTECH;
     disas   : integer := CFG_DISAS;   -- Enable disassembly to console
     dbguart : integer := CFG_DUART;   -- Print UART on console
-    pclow   : integer := CFG_PCLOW;
-    testahb : boolean := false
+    pclow   : integer := CFG_PCLOW
   );
   port (
     processing_system7_0_MIO : inout std_logic_vector(53 downto 0);
@@ -120,8 +118,7 @@ begin
        clktech => clktech,
        disas   => disas,
        dbguart => dbguart,
-       pclow   => pclow,
-       testahb => testahb
+       pclow   => pclow
    )
       port map (
        processing_system7_0_MIO                  => processing_system7_0_MIO,

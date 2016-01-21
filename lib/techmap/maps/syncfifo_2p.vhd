@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -20,24 +20,23 @@
 -----------------------------------------------------------------------------
 -- Entity:        syncfifo_2p
 -- File:          syncfifo_2p.vhd
--- Author:        Andrea Gianarro - Aeroflex Gaisler AB
+-- Authors:       Pascal Trotta
+--                Andrea Gianarro - Cobham Gaisler AB
 -- Description:   Syncronous 2-port fifo with tech selection
 -----------------------------------------------------------------------------
--- Revisions:  
--- 2014/12/16 Pascal Trotta: support for generic fifo
 --  Notes: Generic fifo has the following features & limitations:
 --         -almost full is driven only in write clock domain;
 --         -almost empty is driven only in read clock domain;
 --         -full and empty are driven in both clock domains;
 --         -usedw is re-computed in each clock domain;
---         -in "first word fall through" mode empty should be observed as data 
---          valid signal. If renable is asserted while empty='0', and at the 
---          next read clock rising edge empty='1', then new read data is not
---          valid because fifo is empty. This does not apply in standard fifo
+--         -in "first word fall through" mode rempty should be observed as data 
+--          valid signal, as the first word written into the FIFO immediately
+--          appears on the output. If renable is asserted while empty='0', and 
+--          at the next read clock rising edge empty='1', then new read data is
+--          not valid because fifo is empty. This does not apply in standard fifo
 --          mode, i.e., when empty is asserted, the last read data is valid;
---         -supports only sepclk=1, i.e., asynchronous read/write clocks.
---         -it works also if rclk = wclk, but synchronization stages and gray
---          encoder/decoder are always instantiated, even if not necessary.
+--         -it works also if rclk = wclk. With sepclk=0 synchronization stages
+--          and gray encoder/decoder are not instantiated, since not necessary.
 ------------------------------------------------------------------------------
 
 library ieee;

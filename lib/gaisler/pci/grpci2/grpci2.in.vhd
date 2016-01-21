@@ -25,3 +25,4 @@
   constant CFG_GRPCI2_TRACEAPB  : integer := CONFIG_GRPCI2_TRACEAPB;
   constant CFG_GRPCI2_BYPASS    : integer := CFG_GRPCI2_INBYPASS;
   constant CFG_GRPCI2_EXTCFG    : integer := CONFIG_GRPCI2_EXTCFG;
+

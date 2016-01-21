@@ -72,6 +72,6 @@ void chkp(int n)
 
 void report_mem_test(void)
 {
-	grtestmod[7*REPORTDEV_OFFSET] = 1;
+	grtestmod_write(7,1);
 }
 

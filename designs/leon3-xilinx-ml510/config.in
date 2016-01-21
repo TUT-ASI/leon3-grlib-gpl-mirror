@@ -15,6 +15,9 @@ mainmenu_name "LEON3MP Design Configuration"
 mainmenu_option next_comment
   comment 'Synthesis      '
   source lib/techmap/gencomp/tech.in
+  choice 'Target selection                                      ' \
+	"Virtex5-QV	CONFIG_DEVICE_XQR5V \
+        Virtex5-Commercial		CONFIG_DEVICE_COMMERCIAL" CONFIG_DEVICE_XQR5V
 endmenu
 
 mainmenu_option next_comment
@@ -22,7 +25,8 @@ mainmenu_option next_comment
   source lib/techmap/clocks/clkgen.in
 endmenu
 
-source lib/gaisler/leon3/leon3.in
+source lib/gaisler/subsys/leon_dsu_stat_base.in
+source lib/gaisler/l2cache/l2c.in
 source lib/grlib/amba/amba.in
 
 mainmenu_option next_comment
@@ -38,6 +42,7 @@ comment 'Peripherals             '
   mainmenu_option next_comment
   comment 'Memory controller             '
     source lib/esa/memoryctrl/mctrl.in
+    source lib/gaisler/memctrl/ftmctrl.in
     source lib/gaisler/ddr/ddr2sp.in
     source lib/gaisler/misc/ahbstat.in
   endmenu
@@ -60,7 +65,6 @@ comment 'Peripherals             '
     source lib/gaisler/irqmp/irqmp.in
     source lib/gaisler/misc/gptimer.in
     source lib/gaisler/misc/grgpio.in
-    source lib/gaisler/leon3/l3stat.in
   endmenu
 
   mainmenu_option next_comment

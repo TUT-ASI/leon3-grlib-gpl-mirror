@@ -1,6 +1,6 @@
 GRLIB=../..
 TOP=leon3mp
-BOARD=gr-pci-xc2v
+BOARD=gr-cpci-xc4v
 include $(GRLIB)/boards/$(BOARD)/Makefile.inc
 DEVICE=$(PART)-$(PACKAGE)$(SPEED)
 UCF=$(GRLIB)/boards/$(BOARD)/$(TOP).ucf

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -81,6 +81,20 @@ architecture rtl of serdes is
   end component;
 
   component igloo2_serdes is
+    generic(
+      transtech : integer := m010);
+    port(
+      apb_in : in apb_in_serdes;
+      apb_out : out apb_out_serdes;
+      insig : in sigin_serdes_type;
+      outsig : out sigout_serdes_type;
+      padin : in pad_in_serdes;
+      padout : out pad_out_serdes);
+  end component;
+
+  component rtg4_serdes is
+    generic(
+      transtech : integer := m010);
     port(
       apb_in : in apb_in_serdes;
       apb_out : out apb_out_serdes;
@@ -113,8 +127,11 @@ architecture rtl of serdes is
     );
   end component;
 
-  signal rst_125n, rx_clk_serdes, rx_rstn_serdes, rx_val_serdes, tx_rstn_serdes, tx_clk_lock_serdes, rx_idle : std_logic;
+  signal rst_125n, rx_clk_serdes, rx_rstn_serdes, rx_val_serdes, tx_rstn_serdes, tx_clk_lock_serdes, tx_pll_clk_sig, rx_idle, ready_sig : std_logic;
   signal tx_out_p_int : std_logic;
+
+  signal r0, r1 : std_logic_vector(4 downto 0);
+
 begin
 
   str : if (fabtech = stratix3) or (fabtech = stratix4) generate
@@ -122,6 +139,7 @@ begin
       port map (clk_125, rst_125, rx_in_p, rx_out, rx_clk, rx_rstn, rx_pll_clk, rx_pll_rstn, tx_pll_clk, tx_pll_rstn, tx_in, tx_out_p_int, bitslip);
     apbout <= apb_out_serdes_none; m2gl_padout <= pad_out_serdes_none; serdes_clk125 <= '0'; serdes_ready <= '1'; -- not used
     tx_out_n <= not tx_out_p_int; -- not used
+    tx_out_p <= tx_out_p_int;
   end generate;
 
   xilinx : if (fabtech = virtex5) or (fabtech = virtex6) generate
@@ -134,15 +152,34 @@ begin
   igl2 : if (fabtech = igloo2) generate
 
     rst_125n <= not(rst_125); -- used as SERDES macro reset
+    
     rx_clk <= rx_clk_serdes;
     rx_pll_clk <= rx_clk_serdes;
-    rx_rstn <= rx_rstn_serdes and rx_val_serdes;
-    rx_pll_rstn <= rx_rstn_serdes and rx_val_serdes;
-    tx_pll_rstn <= tx_rstn_serdes and tx_clk_lock_serdes;
+
+    -- reset synchronizers
+    rxrst0 : process (rx_clk_serdes, rx_rstn_serdes) begin
+    if rising_edge(rx_clk_serdes) then 
+      r0 <= r0(3 downto 0) & rx_val_serdes; 
+      rx_rstn <= r0(4) and r0(3) and r0(2);
+      rx_pll_rstn <= r0(4) and r0(3) and r0(2);
+    end if;
+    if (rx_rstn_serdes = '0') then r0 <= "00000"; rx_rstn <= '0'; rx_pll_rstn <= '0'; end if;
+    end process;
+
+    txrst : process (tx_pll_clk_sig, tx_rstn_serdes) begin
+    if rising_edge(tx_pll_clk_sig) then 
+      r1 <= r1(3 downto 0) & tx_clk_lock_serdes; 
+      tx_pll_rstn <= r1(4) and r1(3) and r1(2);
+    end if;
+    if (tx_rstn_serdes = '0') then r1 <= "00000"; tx_pll_rstn <= '0'; end if;
+    end process;
+
     tx_out_p <= '0'; -- not used
     tx_out_n <= '0'; -- not used
+    tx_pll_clk <= tx_pll_clk_sig;
     
     igl20 : igloo2_serdes
+      generic map (transtech)
       port map (
         apb_in => apbin,
         apb_out => apbout,
@@ -150,17 +187,70 @@ begin
         padout => m2gl_padout,
         insig.rstn => rst_125n,
         insig.tx_data => tx_in,
-        outsig.ready => serdes_ready,
+        outsig.ready => ready_sig,  -- not used
+        outsig.rx_clk => rx_clk_serdes,
+        outsig.rx_data => rx_out,
+        outsig.rx_idle => rx_idle,  -- not used
+        outsig.rx_rstn => rx_rstn_serdes,
+        outsig.rx_val => rx_val_serdes,
+        outsig.tx_clk => tx_pll_clk_sig,
+        outsig.tx_clk_lock => tx_clk_lock_serdes,
+        outsig.tx_rstn => tx_rstn_serdes,
+        outsig.refclk => serdes_clk125);
+
+     serdes_ready <= rx_val_serdes;
+  end generate;
+
+  rt4 : if (fabtech = rtg4) generate
+
+    rst_125n <= not(rst_125); -- used as SERDES macro reset
+    
+    rx_clk <= rx_clk_serdes;
+    rx_pll_clk <= rx_clk_serdes;
+
+    -- reset synchronizers
+    rxrst0 : process (rx_clk_serdes) begin
+      if rising_edge(rx_clk_serdes) then 
+        r0 <= r0(3 downto 0) & not(rx_idle); 
+        rx_rstn <= r0(4) and r0(3) and r0(2);
+        rx_pll_rstn <= r0(4) and r0(3) and r0(2);
+        if (rx_rstn_serdes = '0') then r0 <= "00000"; rx_rstn <= '0'; rx_pll_rstn <= '0'; end if;
+      end if;
+    end process;
+
+    txrst : process (tx_pll_clk_sig) begin
+      if rising_edge(tx_pll_clk_sig) then 
+        r1 <= r1(3 downto 0) & tx_clk_lock_serdes; 
+        tx_pll_rstn <= r1(4) and r1(3) and r1(2);
+        if (tx_rstn_serdes = '0') then r1 <= "00000"; tx_pll_rstn <= '0'; end if;
+      end if;
+    end process;
+
+    tx_out_p <= '0'; -- not used
+    tx_out_n <= '0'; -- not used
+    tx_pll_clk <= tx_pll_clk_sig;
+    
+    rt40 : rtg4_serdes
+      generic map (transtech)
+      port map (
+        apb_in => apbin,
+        apb_out => apbout,
+        padin => m2gl_padin,
+        padout => m2gl_padout,
+        insig.rstn => rst_125n,
+        insig.tx_data => tx_in,
+        outsig.ready => ready_sig,  -- not used
         outsig.rx_clk => rx_clk_serdes,
         outsig.rx_data => rx_out,
         outsig.rx_idle => rx_idle,
         outsig.rx_rstn => rx_rstn_serdes,
         outsig.rx_val => rx_val_serdes,
-        outsig.tx_clk => tx_pll_clk,
+        outsig.tx_clk => tx_pll_clk_sig,
         outsig.tx_clk_lock => tx_clk_lock_serdes,
         outsig.tx_rstn => tx_rstn_serdes,
         outsig.refclk => serdes_clk125);
 
+     serdes_ready <= rx_val_serdes;
   end generate;
 
 -- pragma translate_off
@@ -184,3 +274,4 @@ begin
 -- pragma translate_on
   
 end;
+

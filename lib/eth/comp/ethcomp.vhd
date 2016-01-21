@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -449,12 +449,14 @@ package ethcomp is
       --ethernet input signals
       gtx_clk        : in   std_ulogic;                     
       tx_clk         : in   std_ulogic;
+      tx_dv          : in   std_ulogic;
       rx_clk         : in   std_ulogic;
       rxd            : in   std_logic_vector(7 downto 0);   
       rx_dv          : in   std_ulogic; 
       rx_er          : in   std_ulogic; 
       rx_col         : in   std_ulogic;
       rx_crs         : in   std_ulogic;
+      rx_en          : in   std_ulogic;
       mdio_i         : in   std_ulogic;
       phyrstaddr     : in   std_logic_vector(4 downto 0);
       mdint          : in   std_ulogic;
@@ -479,3 +481,4 @@ package ethcomp is
   end component;
   
 end package;
+

@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -252,8 +252,7 @@ begin
     generic map (pindex => 3, paddr => 3, pirq => 8,
                  sepirq => 1, ntimers => 2)
     port map (rstn, clkm, apbi, apbo(3), gpti, open);
-  gpti.dhalt  <= dsuo.tstop;
-  gpti.extclk <= '0';
+  gpti <= gpti_dhalt_drive(dsuo.tstop);
 
   uart1 : apbuart      -- UART 1
     generic map (pindex   => 1, paddr => 1, pirq => 2, console => 1)
@@ -287,3 +286,4 @@ begin
 -- pragma translate_on
 
 end rtl;
+

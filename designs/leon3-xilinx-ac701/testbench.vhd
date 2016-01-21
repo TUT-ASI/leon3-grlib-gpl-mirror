@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -47,7 +47,6 @@ entity testbench is
     disas     : integer := CFG_DISAS;      -- Enable disassembly to console
     dbguart   : integer := CFG_DUART;      -- Print UART on console
     pclow     : integer := CFG_PCLOW;
-    testahb   : boolean := true;
     USE_MIG_INTERFACE_MODEL : boolean := false
 
   );
@@ -179,7 +178,6 @@ component leon3mp is
     disas               : integer := CFG_DISAS;   -- Enable disassembly to console
     dbguart             : integer := CFG_DUART;   -- Print UART on console
     pclow               : integer := CFG_PCLOW;
-    testahb             : boolean := false;
     SIM_BYPASS_INIT_CAL : string := "OFF";
     SIMULATION          : string := "FALSE";
     USE_MIG_INTERFACE_MODEL : boolean := false
@@ -258,7 +256,6 @@ begin
        disas                => disas,
        dbguart              => dbguart,
        pclow                => pclow,
-       testahb              => testahb,
        SIM_BYPASS_INIT_CAL  => SIM_BYPASS_INIT_CAL,
        SIMULATION           => SIMULATION,
        USE_MIG_INTERFACE_MODEL => USE_MIG_INTERFACE_MODEL

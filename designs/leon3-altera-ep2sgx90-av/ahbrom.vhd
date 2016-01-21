@@ -123,3 +123,4 @@ begin
   ": 32-bit AHB ROM Module,  " & tost(bytes/4) & " words, " & tost(abits-2) & " address bits" );
   -- pragma translate_on
   end;
+

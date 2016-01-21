@@ -60,6 +60,10 @@
 #define CONFIG_SYN_TECH apa3
 #elif defined CONFIG_SYN_IGLOO2
 #define CONFIG_SYN_TECH igloo2
+#elif defined CONFIG_SYN_SF2
+#define CONFIG_SYN_TECH smartfusion2
+#elif defined CONFIG_SYN_RTG4
+#define CONFIG_SYN_TECH rtg4
 #elif defined CONFIG_SYN_FUSION
 #define CONFIG_SYN_TECH actfus
 #elif defined CONFIG_SYN_SPARTAN2
@@ -240,8 +244,10 @@
 #ifndef CONFIG_CLK_NOFB
 #define CONFIG_CLK_NOFB 0
 #endif
-#ifndef CONFIG_LEON3
-#define CONFIG_LEON3 0
+#ifdef CONFIG_LEON4
+#define CONFIG_LEON 4
+#else
+#define CONFIG_LEON 3
 #endif
 
 #ifndef CONFIG_PROC_NUM
@@ -294,14 +300,6 @@
 #define CONFIG_IU_MUL_MAC 0
 #endif
 
-#ifndef CONFIG_IU_BP
-#define CONFIG_IU_BP 0
-#endif
-
-#ifndef CONFIG_NOTAG
-#define CONFIG_NOTAG 0
-#endif
-
 #ifndef CONFIG_IU_SVT
 #define CONFIG_IU_SVT 0
 #endif
@@ -318,7 +316,7 @@
 #define CONFIG_FPU_GRFPU_MUL 0
 #elif defined CONFIG_FPU_GRFPU_DWMUL
 #define CONFIG_FPU_GRFPU_MUL 1
-#elif defined CONFIG_FPU_GRFPU_MODGEN
+#elif defined CONFIG_FPU_GRFPU_MODGEN 
 #define CONFIG_FPU_GRFPU_MUL 2
 #elif defined CONFIG_FPU_GRFPU_TECHSPEC
 #define CONFIG_FPU_GRFPU_MUL 3
@@ -388,12 +386,8 @@
 #define CFG_ILINE_SZ 8
 #endif
 
-#if defined CONFIG_ICACHE_ALGODIR
-#define CFG_ICACHE_ALGORND 3
-#elif defined CONFIG_ICACHE_ALGORND
+#if defined CONFIG_ICACHE_ALGORND
 #define CFG_ICACHE_ALGORND 2
-#elif defined CONFIG_ICACHE_ALGOLRR
-#define CFG_ICACHE_ALGORND 1
 #else
 #define CFG_ICACHE_ALGORND 0
 #endif
@@ -469,18 +463,14 @@
 #define CFG_DCACHE_SZ 1
 #endif
 
-#ifdef CONFIG_DCACHE_LZ16
-#define CFG_DLINE_SZ 4
-#else
+#ifdef CONFIG_DCACHE_LZ32
 #define CFG_DLINE_SZ 8
+#else
+#define CFG_DLINE_SZ 4
 #endif
 
-#if defined CONFIG_DCACHE_ALGODIR
-#define CFG_DCACHE_ALGORND 3
-#elif defined CONFIG_DCACHE_ALGORND
+#if defined CONFIG_DCACHE_ALGORND
 #define CFG_DCACHE_ALGORND 2
-#elif defined CONFIG_DCACHE_ALGOLRR
-#define CFG_DCACHE_ALGORND 1
 #else
 #define CFG_DCACHE_ALGORND 0
 #endif
@@ -497,16 +487,30 @@
 #define CONFIG_DCACHE_SNOOP_SEPTAG 0
 #endif
 
+#ifndef CONFIG_DCACHE_SNOOP_SP
+#define CONFIG_DCACHE_SNOOP_SP 0
+#endif
+
+#ifndef CONFIG_BWMASK
+#define CONFIG_BWMASK 0
+#endif
+
 #ifndef CONFIG_CACHE_FIXED
 #define CONFIG_CACHE_FIXED 0
 #endif
 
-#ifndef CONFIG_DCACHE_LRAM
-#define CONFIG_DCACHE_LRAM 0
+#if defined CONFIG_CACHE_64BIT
+#define OFG_CBUSW 64
+#else
+#define OFG_CBUSW 128
 #endif
 
 #ifndef CONFIG_DCACHE_LRSTART
 #define CONFIG_DCACHE_LRSTART 8F
+#endif
+
+#ifndef CONFIG_DCACHE_LRAM
+#define CONFIG_DCACHE_LRAM 0
 #endif
 
 #if defined CONFIG_DCACHE_LRAM_SZ2
@@ -529,19 +533,6 @@
 #define CFG_DLRAM_SIZE 1
 #endif
 
-#if defined CONFIG_MMU_PAGE_4K
-#define CONFIG_MMU_PAGE 0
-#elif defined CONFIG_MMU_PAGE_8K
-#define CONFIG_MMU_PAGE 1
-#elif defined CONFIG_MMU_PAGE_16K
-#define CONFIG_MMU_PAGE 2
-#elif defined CONFIG_MMU_PAGE_32K
-#define CONFIG_MMU_PAGE 3
-#elif defined CONFIG_MMU_PAGE_PROG
-#define CONFIG_MMU_PAGE 4
-#else
-#define CONFIG_MMU_PAGE 0
-#endif
 
 #ifdef CONFIG_MMU_ENABLE
 #define CONFIG_MMUEN 1
@@ -560,16 +551,16 @@
 #define CONFIG_TLB_REP 1
 #endif
 
-#ifdef CONFIG_MMU_I2
+#ifdef CONFIG_MMU_I2 
 #define CONFIG_ITLBNUM 2
 #endif
-#ifdef CONFIG_MMU_I4
+#ifdef CONFIG_MMU_I4 
 #define CONFIG_ITLBNUM 4
 #endif
-#ifdef CONFIG_MMU_I8
+#ifdef CONFIG_MMU_I8 
 #define CONFIG_ITLBNUM 8
 #endif
-#ifdef CONFIG_MMU_I16
+#ifdef CONFIG_MMU_I16 
 #define CONFIG_ITLBNUM 16
 #endif
 #ifdef CONFIG_MMU_I32
@@ -579,32 +570,32 @@
 #define CONFIG_ITLBNUM 64
 #endif
 
-
 #define CONFIG_DTLBNUM 2
-#ifdef CONFIG_MMU_D2
-#undef CONFIG_DTLBNUM
+#ifdef CONFIG_MMU_D2 
+#undef CONFIG_DTLBNUM 
 #define CONFIG_DTLBNUM 2
 #endif
-#ifdef CONFIG_MMU_D4
-#undef CONFIG_DTLBNUM
+#ifdef CONFIG_MMU_D4 
+#undef CONFIG_DTLBNUM 
 #define CONFIG_DTLBNUM 4
 #endif
-#ifdef CONFIG_MMU_D8
-#undef CONFIG_DTLBNUM
+#ifdef CONFIG_MMU_D8 
+#undef CONFIG_DTLBNUM 
 #define CONFIG_DTLBNUM 8
 #endif
-#ifdef CONFIG_MMU_D16
-#undef CONFIG_DTLBNUM
+#ifdef CONFIG_MMU_D16 
+#undef CONFIG_DTLBNUM 
 #define CONFIG_DTLBNUM 16
 #endif
 #ifdef CONFIG_MMU_D32
-#undef CONFIG_DTLBNUM
+#undef CONFIG_DTLBNUM 
 #define CONFIG_DTLBNUM 32
 #endif
 #ifdef CONFIG_MMU_D64
-#undef CONFIG_DTLBNUM
+#undef CONFIG_DTLBNUM 
 #define CONFIG_DTLBNUM 64
 #endif
+
 #ifdef CONFIG_MMU_FASTWB
 #define CFG_MMU_FASTWB 1
 #else
@@ -664,8 +655,16 @@
 #define CFG_DSU_AHBPF 0
 #endif
 
-#ifndef CONFIG_LEON3FT_EN
-#define CONFIG_LEON3FT_EN 0
+#if defined CONFIG_DSU_AHBWP2
+#define CFG_DSU_AHBWP 2
+#elif defined CONFIG_DSU_AHBWP1
+#define CFG_DSU_AHBWP 1
+#else
+#define CFG_DSU_AHBWP 0
+#endif
+
+#ifndef CONFIG_LEONFT_EN
+#define CONFIG_LEONFT_EN 0
 #endif
 
 #if defined CONFIG_IUFT_PAR
@@ -683,14 +682,14 @@
 #define CONFIG_RF_ERRINJ 0
 #endif
 
-#if defined CONFIG_FPUFT_PAR
-#define CONFIG_FPUFT 1
-#elif defined CONFIG_FPUFT_DMR
-#define CONFIG_FPUFT 2
-#elif defined CONFIG_FPUFT_TMR
-#define CONFIG_FPUFT 4
-#else
+#ifndef CONFIG_FPUFT_EN
 #define CONFIG_FPUFT 0
+#else
+#ifdef CONFIG_FPU_GRFPU
+#define CONFIG_FPUFT 2
+#else
+#define CONFIG_FPUFT 1
+#endif
 #endif
 
 #ifndef CONFIG_CACHE_FT_EN
@@ -700,12 +699,12 @@
 #define CONFIG_CACHE_ERRINJ 0
 #endif
 
-#ifndef CONFIG_LEON3_NETLIST
-#define CONFIG_LEON3_NETLIST 0
+#ifndef CONFIG_LEON_NETLIST
+#define CONFIG_LEON_NETLIST 0
 #endif
 
 #ifdef CONFIG_DEBUG_PC32
-#define CFG_DEBUG_PC32 0
+#define CFG_DEBUG_PC32 0 
 #else
 #define CFG_DEBUG_PC32 2
 #endif
@@ -716,12 +715,115 @@
 #define CONFIG_IU_DISAS_NET 0
 #endif
 
-#ifndef CONFIG_NP_ASI
-#define CONFIG_NP_ASI 0
+#ifndef CONFIG_STAT_ENABLE
+#define CONFIG_STAT_ENABLE 0
+#endif
+
+#ifndef CONFIG_STAT_CNT
+#define CONFIG_STAT_CNT 1
+#endif
+
+#ifndef CONFIG_STAT_NMAX
+#define CONFIG_STAT_NMAX 0
+#endif
+
+#if defined CONFIG_DSU_ASTAT
+#define CONFIG_STAT_DSUEN 1
+#else
+#define CONFIG_STAT_DSUEN 0
 #endif
 
 #ifndef CONFIG_WRPSR
 #define CONFIG_WRPSR 0
+#endif
+
+#ifndef CONFIG_NP_ASI
+#define CONFIG_NP_ASI 0
+#endif
+
+#ifndef CONFIG_ALTWIN
+#define CONFIG_ALTWIN 0
+#endif
+
+#ifndef CONFIG_REX
+#define CONFIG_REX 0
+#endif
+
+#ifndef CONFIG_L2_ENABLE
+#define CONFIG_L2_ENABLE 0
+#endif
+
+#if defined CONFIG_L2_ASSO1
+#define CFG_L2_ASSO 1
+#elif defined CONFIG_L2_ASSO2
+#define CFG_L2_ASSO 2
+#elif defined CONFIG_L2_ASSO3
+#define CFG_L2_ASSO 3
+#elif defined CONFIG_L2_ASSO4
+#define CFG_L2_ASSO 4
+#else
+#define CFG_L2_ASSO 1
+#endif
+
+#if defined CONFIG_L2_SZ1
+#define CFG_L2_SZ 1
+#elif defined CONFIG_L2_SZ2
+#define CFG_L2_SZ 2
+#elif defined CONFIG_L2_SZ4
+#define CFG_L2_SZ 4
+#elif defined CONFIG_L2_SZ8
+#define CFG_L2_SZ 8
+#elif defined CONFIG_L2_SZ16
+#define CFG_L2_SZ 16
+#elif defined CONFIG_L2_SZ32
+#define CFG_L2_SZ 32
+#elif defined CONFIG_L2_SZ64
+#define CFG_L2_SZ 64
+#elif defined CONFIG_L2_SZ128
+#define CFG_L2_SZ 128
+#elif defined CONFIG_L2_SZ256
+#define CFG_L2_SZ 256
+#elif defined CONFIG_L2_SZ512
+#define CFG_L2_SZ 512
+#else
+#define CFG_L2_SZ 1
+#endif
+
+#if defined CONFIG_L2_LINE64
+#define CFG_L2_LINE 64
+#else
+#define CFG_L2_LINE 32
+#endif
+
+#ifndef CONFIG_L2_HPROT
+#define CONFIG_L2_HPROT 0
+#endif
+
+#ifndef CONFIG_L2_PEN
+#define CONFIG_L2_PEN 0
+#endif
+
+#ifndef CONFIG_L2_WT
+#define CONFIG_L2_WT 0
+#endif
+
+#ifndef CONFIG_L2_RAN
+#define CONFIG_L2_RAN 0
+#endif
+#ifndef CONFIG_L2_MAP
+#define CONFIG_L2_MAP 00F0
+#endif
+
+#ifndef CONFIG_L2_SHARE
+#define CONFIG_L2_SHARE 0
+#endif
+
+#ifndef CONFIG_L2_MTRR
+#define CONFIG_L2_MTRR 0
+#endif
+
+#ifndef CONFIG_L2_EDAC
+#define CONFIG_L2_EDAC 0
 #endif
 #ifndef CONFIG_AHB_SPLIT
 #define CONFIG_AHB_SPLIT 0
@@ -1071,6 +1173,10 @@
 
 #ifndef CONFIG_GRETH_EDCLFT
 #define CONFIG_GRETH_EDCLFT 0
+#endif
+
+#ifndef CONFIG_GRETH_SGMII_MODE
+#define CONFIG_GRETH_SGMII_MODE 0
 #endif
 #ifndef CONFIG_UART1_ENABLE
 #define CONFIG_UART1_ENABLE 0

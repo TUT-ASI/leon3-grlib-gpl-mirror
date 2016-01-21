@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -54,10 +54,14 @@ architecture rtl of syncram is
   constant SCANTESTBP : boolean := (testen = 1) and syncram_add_scan_bypass(tech)=1;
   signal xenable, xwrite: std_ulogic;
 
+  signal gnd : std_ulogic;
+  
   signal custominx,customoutx: std_logic_vector(syncram_customif_maxwidth downto 0);
   signal customclkx: std_ulogic;
 
 begin
+
+  gnd <= '0';
 
   xenable <= enable and not testin(TESTIN_WIDTH-2) when testen/=0 else enable;
   xwrite <= write and not testin(TESTIN_WIDTH-2) when testen/=0 else write;
@@ -136,6 +140,12 @@ begin
   igl2 : if tech = igloo2 generate
     x0 : igloo2_syncram generic map (abits, dbits)
          port map (clk, address, datain, dataoutx, xenable, xwrite);
+  end generate;
+
+  rt4 : if tech = rtg4 generate
+    x0 : rtg4_syncram generic map (abits, dbits)
+         port map (clk, address, datain, dataoutx, xenable, xwrite,
+                   open, gnd);
   end generate;
 
   umc18  : if tech = umc generate

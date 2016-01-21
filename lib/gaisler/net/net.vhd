@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -57,6 +57,7 @@ package net is
   constant eth_in_none : eth_in_type :=
     ('0', '0', '0', '0', '0', '0', (others => '0'), '0', '0', '0', '0', '0',
      '0', '0', (others => '0'), (others => '0'), '0', '0');
+  type eth_in_vector is array (natural range <>) of eth_in_type;
   
   type eth_out_type is record
     reset          : std_ulogic;
@@ -73,6 +74,7 @@ package net is
 
   constant eth_out_none : eth_out_type :=
     ('0', (others => '0'), '0', '0', '0', '0', '0', '1', '0', '0');
+  type eth_out_vector is array (natural range <>) of eth_out_type;
 
   type eth_sgmii_in_type is record
     clkp           : std_ulogic;
@@ -606,7 +608,8 @@ package net is
     abits          : integer := 8;
     no_clk_mux     : integer := 0;
     pirq           : integer := 0;
-    use90degtxclk  : integer := 0
+    use90degtxclk  : integer := 0;
+    mode100        : integer := 0
     );
   port (
     rstn     : in  std_ulogic;
@@ -689,10 +692,8 @@ package net is
       clk   : in std_logic;                      -- rx clock
       rstn  : in std_logic;                      -- asynchronous reset
       rx_in : in std_logic_vector(9 downto 0);   -- Data in
-      val_in : in std_logic;                     -- Data in valid
-      rx_out : out std_logic_vector(9 downto 0); -- Data out
-      val_out : out std_logic;                   -- Data out valid
-      aligned : out std_logic);                  -- Data aligned
+      rx_out : out std_logic_vector(9 downto 0)  -- Data out
+      );
   end component;
 
   component elastic_buffer is
@@ -723,3 +724,4 @@ package net is
     ) ;
   end component ;
 end;
+

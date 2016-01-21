@@ -16,6 +16,7 @@
 #define MMU_TEST     14
 #define CASA_TEST    15
 #define PRIV_TEST    16
+#define REX_TEST     17
 
 #define APBUART_TEST 7 
 #define FTSRCTRL     8 

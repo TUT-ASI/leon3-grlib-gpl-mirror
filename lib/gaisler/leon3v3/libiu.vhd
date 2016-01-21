@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -134,6 +134,7 @@ package libiu is
      msu              : std_ulogic;                   -- memory stage supervisor
      esu              : std_ulogic;                   -- execution stage supervisor
      intack           : std_ulogic;
+     mmucacheclr      : std_ulogic;
   end record;
 
   type dcache_out_type is record
@@ -176,7 +177,9 @@ package libiu is
       clk2x   :     integer                  := 0;
       bp      :     integer                  := 1;
       npasi   :     integer range 0 to 1     := 0;
-      pwrpsr  :     integer range 0 to 1     := 0
+      pwrpsr  :     integer range 0 to 1     := 0;
+      rex     :     integer                  := 0;
+      altwin  :     integer range 0 to 1     := 0
       );
     port (
       clk     : in  std_ulogic;
@@ -209,3 +212,4 @@ package libiu is
   end component;
 
 end;
+

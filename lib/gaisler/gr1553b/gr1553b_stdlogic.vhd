@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -41,7 +41,11 @@ entity gr1553b_stdlogic is
     bc_rtbusmask: integer range 0 to 1 := 1;
     extra_regkeys: integer range 0 to 1 := 0;
     syncrst: integer range 0 to 2 := 1;
-    ahbendian: integer := 0
+    ahbendian: integer := 0;
+    bm_filters: integer range 0 to 1 := 1;
+    codecfreq: integer := 20;
+    sameclk: integer range 0 to 1 := 0;
+    codecver: integer range 0 to 2 := 0
     );
   
   port (
@@ -129,7 +133,11 @@ begin
       bc_rtbusmask => bc_rtbusmask,
       syncrst => syncrst,
       extra_regkeys => extra_regkeys,
-      ahbendian => ahbendian
+      ahbendian => ahbendian,
+      bm_filters => bm_filters,
+      codecfreq => codecfreq,
+      sameclk => sameclk,
+      codecver => codecver
       )
     port map (
       clk => clk,
@@ -202,3 +210,4 @@ begin
   busBoutn <= gr1553b_txout.busB_txN;
   
 end;
+

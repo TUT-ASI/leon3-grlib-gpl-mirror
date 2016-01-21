@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -46,6 +46,8 @@ entity regfile_3p is
     raddr2 : in  std_logic_vector((abits -1) downto 0);
     re2    : in  std_ulogic;
     rdata2 : out std_logic_vector((dbits -1) downto 0);
+    ce1    : out std_ulogic;
+    ce2    : out std_ulogic;
     testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
     );
 end;
@@ -66,6 +68,8 @@ begin
   s0 : if rfinfer generate
       rhu : generic_regfile_3p generic map (tech, abits, dbits, wrfst, numregs)
         port map ( wclk, waddr, wdata, we, rclk, raddr1, re1, rdata1, raddr2, re2, rdata2);
+      ce1 <= '0';
+      ce2 <= '0';
     
   end generate;
 

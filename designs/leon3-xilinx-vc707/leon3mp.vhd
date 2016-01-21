@@ -4,7 +4,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 library grlib, techmap;
 use grlib.amba.all;
+use grlib.devices.all;
 use grlib.stdlib.all;
 use techmap.gencomp.all;
 use techmap.allclkgen.all;
@@ -40,6 +41,7 @@ use gaisler.jtag.all;
 use gaisler.grusb.all;
 use gaisler.can.all;
 use gaisler.l2cache.all;
+use gaisler.subsys.all;
 -- pragma translate_off
 use gaisler.sim.all;
 library unisim;
@@ -63,7 +65,6 @@ entity leon3mp is
     disas               : integer := CFG_DISAS;   -- Enable disassembly to console
     dbguart             : integer := CFG_DUART;   -- Print UART on console
     pclow               : integer := CFG_PCLOW;
-    testahb             : boolean := false;
     SIM_BYPASS_INIT_CAL : string := "OFF";
     SIMULATION          : string := "FALSE";
     USE_MIG_INTERFACE_MODEL : boolean := false;
@@ -220,28 +221,6 @@ component ddr_dummy
    ); 
 end component ;
 
--- pragma translate_off
-component ahbram_sim
-  generic (
-    hindex  : integer := 0;
-    haddr   : integer := 0;
-    hmask   : integer := 16#fff#;
-    tech    : integer := DEFMEMTECH; 
-    kbytes  : integer := 1;
-    pipe    : integer := 0;
-    maccsz  : integer := AHBDW;
-    fname   : string  := "ram.dat"
-   );
-  port (
-    rst     : in  std_ulogic;
-    clk     : in  std_ulogic;
-    ahbsi   : in  ahb_slv_in_type;
-    ahbso   : out ahb_slv_out_type
-  );
-end component ;
--- pragma translate_on
-
-
 --constant maxahbm : integer := CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH+CFG_GRUSBHC+CFG_GRUSBDC+CFG_GRUSB_DCL;
 constant maxahbm : integer := 16;
 --constant maxahbs : integer := 1+CFG_DSU+CFG_MCTRL_LEON2+CFG_AHBROMEN+CFG_AHBRAMEN+2+CFG_GRUSBDC;
@@ -261,13 +240,10 @@ signal apbo  : apb_slv_out_vector := (others => apb_none);
 signal ahbsi : ahb_slv_in_type;
 signal ahbso : ahb_slv_out_vector := (others => ahbs_none);
 signal ahbmi : ahb_mst_in_type;
-signal vahbmi : ahb_mst_in_type;
 signal ahbmo : ahb_mst_out_vector := (others => ahbm_none);
-signal vahbmo : ahb_mst_out_type;    
-signal mem_ahbsi : ahb_slv_in_type;                            
-signal mem_ahbso : ahb_slv_out_vector := (others => ahbs_none);
-signal mem_ahbmi : ahb_mst_in_type;                            
-signal mem_ahbmo : ahb_mst_out_vector := (others => ahbm_none);
+signal mig_ahbsi : ahb_slv_in_type;                            
+signal mig_ahbso : ahb_slv_out_type;
+
 
 signal ui_clk : std_ulogic;
 signal clkm : std_ulogic := '0';
@@ -283,11 +259,10 @@ signal u1o, u2o, duo : uart_out_type;
 signal irqi : irq_in_vector(0 to CFG_NCPU-1);
 signal irqo : irq_out_vector(0 to CFG_NCPU-1);
 
-signal dbgi : l3_debug_in_vector(0 to CFG_NCPU-1);
-signal dbgo : l3_debug_out_vector(0 to CFG_NCPU-1);
+signal sysi : leon_dsu_stat_base_in_type;
+signal syso : leon_dsu_stat_base_out_type;
 
-signal dsui : dsu_in_type;
-signal dsuo : dsu_out_type;
+signal perf : l3stat_in_type;
 
 signal gmiii : eth_in_type;
 signal gmiio : eth_out_type;
@@ -391,97 +366,53 @@ begin
   ahb0 : ahbctrl       -- AHB arbiter/multiplexer
   generic map (defmast => CFG_DEFMST, split => CFG_SPLIT,
    rrobin => CFG_RROBIN, ioaddr => CFG_AHBIO, fpnpen => CFG_FPNPEN,
-     nahbm => maxahbm, nahbs => maxahbs)
+     nahbm => maxahbm, nahbs => maxahbs, devid => XILINX_VC707)
   port map (rstn, clkm, ahbmi, ahbmo, ahbsi, ahbso);
 
 ----------------------------------------------------------------------
----  LEON3 processor and DSU -----------------------------------------
+---  LEON processor and DSU -----------------------------------------
 ----------------------------------------------------------------------
 
-  nosh : if CFG_GRFPUSH = 0 generate
-    cpu : for i in 0 to CFG_NCPU-1 generate
-      l3ft : if CFG_LEON3FT_EN /= 0 generate
-        leon3ft0 : leon3ft    -- LEON3 processor
-        generic map (i, fabtech, memtech, CFG_NWIN, CFG_DSU, CFG_FPU, CFG_V8,
-      0, CFG_MAC, pclow, CFG_NOTAG, CFG_NWP, CFG_ICEN, CFG_IREPL, CFG_ISETS, CFG_ILINE,
-    CFG_ISETSZ, CFG_ILOCK, CFG_DCEN, CFG_DREPL, CFG_DSETS, CFG_DLINE, CFG_DSETSZ,
-    CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
-    CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP,
-    CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1,
-    CFG_IUFT_EN, CFG_FPUFT_EN, CFG_CACHE_FT_EN, CFG_RF_ERRINJ,
-    CFG_CACHE_ERRINJ, CFG_DFIXED, CFG_LEON3_NETLIST, CFG_SCAN, CFG_MMU_PAGE,
-    CFG_BP, CFG_NP_ASI, CFG_WRPSR)
-        port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso,
-        irqi(i), irqo(i), dbgi(i), dbgo(i), clkm);
-      end generate;
+  leon : leon_dsu_stat_base
+    generic map (
+      leon => CFG_LEON, ncpu => CFG_NCPU, fabtech => fabtech, memtech => memtech,
+      nwindows => CFG_NWIN, dsu => CFG_DSU, fpu => CFG_FPU, v8 => CFG_V8, cp => 0,
+      mac => CFG_MAC, pclow => pclow, notag => 0, nwp => CFG_NWP, icen => CFG_ICEN,
+      irepl => CFG_IREPL, isets => CFG_ISETS, ilinesize => CFG_ILINE,
+      isetsize => CFG_ISETSZ, isetlock => CFG_ILOCK, dcen => CFG_DCEN,
+      drepl => CFG_DREPL, dsets => CFG_DSETS, dlinesize => CFG_DLINE,
+      dsetsize => CFG_DSETSZ, dsetlock => CFG_DLOCK, dsnoop => CFG_DSNOOP,
+      ilram => CFG_ILRAMEN, ilramsize => CFG_ILRAMSZ, ilramstart => CFG_ILRAMADDR,
+      dlram => CFG_DLRAMEN, dlramsize => CFG_DLRAMSZ, dlramstart => CFG_DLRAMADDR,
+      mmuen => CFG_MMUEN, itlbnum => CFG_ITLBNUM, dtlbnum => CFG_DTLBNUM,
+      tlb_type => CFG_TLB_TYPE, tlb_rep => CFG_TLB_REP, lddel => CFG_LDDEL,
+      disas => disas, tbuf => CFG_ITBSZ, pwd => CFG_PWD, svt => CFG_SVT,
+      rstaddr => CFG_RSTADDR, smp => CFG_NCPU-1, cached => CFG_DFIXED,
+      wbmask => CFG_BWMASK, busw => CFG_CACHEBW, netlist => CFG_LEON_NETLIST,
+      ft => CFG_LEONFT_EN, npasi => CFG_NP_ASI, pwrpsr => CFG_WRPSR,
+      rex => CFG_REX, altwin => CFG_ALTWIN, grfpush => CFG_GRFPUSH,
+      dsu_hindex => 2, dsu_haddr => 16#D00#, dsu_hmask => 16#F00#, atbsz => CFG_ATBSZ,
+      stat => CFG_STAT_ENABLE, stat_pindex => 8, stat_paddr => 16#100#,
+      stat_pmask => 16#ffc#, stat_ncnt => CFG_STAT_CNT, stat_nmax => CFG_STAT_NMAX)
+    port map (
+      rstn => rstn, ahbclk => clkm, cpuclk => clkm, hclken => vcc(0),
+      leon_ahbmi => ahbmi, leon_ahbmo => ahbmo(CFG_NCPU-1 downto 0),
+      leon_ahbsi => ahbsi, leon_ahbso => ahbso,
+      irqi => irqi, irqo => irqo,
+      stat_apbi => apbi, stat_apbo => apbo(8), stat_ahbsi => ahbsi,
+      stati => perf,
+      dsu_ahbsi => ahbsi, dsu_ahbso => ahbso(2),
+      dsu_tahbmi => ahbmi, dsu_tahbsi => ahbsi,
+      sysi => sysi, syso => syso);
 
-      l3s : if CFG_LEON3FT_EN = 0 generate
-        u0 : leon3s     -- LEON3 processor
-        generic map (i, fabtech, memtech, CFG_NWIN, CFG_DSU, CFG_FPU, CFG_V8,
-    0, CFG_MAC, pclow, CFG_NOTAG, CFG_NWP, CFG_ICEN, CFG_IREPL, CFG_ISETS, CFG_ILINE,
-    CFG_ISETSZ, CFG_ILOCK, CFG_DCEN, CFG_DREPL, CFG_DSETS, CFG_DLINE, CFG_DSETSZ,
-    CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
-    CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP,
-    CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1,
-    CFG_DFIXED, CFG_SCAN, CFG_MMU_PAGE, CFG_BP,  CFG_NP_ASI, CFG_WRPSR)
-        port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso,
-        irqi(i), irqo(i), dbgi(i), dbgo(i));
-      end generate;
-    end generate;
-  end generate;
-
-  sh : if CFG_GRFPUSH = 1 generate
-    cpu : for i in 0 to CFG_NCPU-1 generate
-      l3ft : if CFG_LEON3FT_EN /= 0 generate
-        leon3ft0 : leon3ftsh    -- LEON3 processor
-        generic map (i, fabtech, memtech, CFG_NWIN, CFG_DSU, CFG_FPU, CFG_V8,
-      0, CFG_MAC, pclow, CFG_NOTAG, CFG_NWP, CFG_ICEN, CFG_IREPL, CFG_ISETS, CFG_ILINE,
-    CFG_ISETSZ, CFG_ILOCK, CFG_DCEN, CFG_DREPL, CFG_DSETS, CFG_DLINE, CFG_DSETSZ,
-    CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
-    CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP,
-    CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1,
-    CFG_IUFT_EN, CFG_FPUFT_EN, CFG_CACHE_FT_EN, CFG_RF_ERRINJ,
-    CFG_CACHE_ERRINJ, CFG_DFIXED, CFG_LEON3_NETLIST, CFG_SCAN, CFG_MMU_PAGE, CFG_BP,
-    CFG_NP_ASI, CFG_WRPSR)
-        port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso,
-        irqi(i), irqo(i), dbgi(i), dbgo(i), clkm,  fpi(i), fpo(i));
-
-      end generate;
-      l3s : if CFG_LEON3FT_EN = 0 generate
-        u0 : leon3sh    -- LEON3 processor
-        generic map (i, fabtech, memtech, CFG_NWIN, CFG_DSU, CFG_FPU, CFG_V8,
-    0, CFG_MAC, pclow, CFG_NOTAG, CFG_NWP, CFG_ICEN, CFG_IREPL, CFG_ISETS, CFG_ILINE,
-    CFG_ISETSZ, CFG_ILOCK, CFG_DCEN, CFG_DREPL, CFG_DSETS, CFG_DLINE, CFG_DSETSZ,
-    CFG_DLOCK, CFG_DSNOOP, CFG_ILRAMEN, CFG_ILRAMSZ, CFG_ILRAMADDR, CFG_DLRAMEN,
-    CFG_DLRAMSZ, CFG_DLRAMADDR, CFG_MMUEN, CFG_ITLBNUM, CFG_DTLBNUM, CFG_TLB_TYPE, CFG_TLB_REP,
-    CFG_LDDEL, disas, CFG_ITBSZ, CFG_PWD, CFG_SVT, CFG_RSTADDR, CFG_NCPU-1,
-    CFG_DFIXED, CFG_SCAN, CFG_MMU_PAGE, CFG_BP, CFG_NP_ASI, CFG_WRPSR)
-        port map (clkm, rstn, ahbmi, ahbmo(i), ahbsi, ahbso,
-        irqi(i), irqo(i), dbgi(i), dbgo(i), fpi(i), fpo(i));
-      end generate;
-    end generate;
-
-    grfpush0 : grfpushwx generic map ((CFG_FPU-1), CFG_NCPU, fabtech)
-    port map (clkm, rstn, fpi, fpo);
-
-  end generate;
-
-  led1_pad : outpad generic map (tech => padtech, level => cmos, voltage => x18v) port map (led(1), dbgo(0).error);
-
-  dsugen : if CFG_DSU = 1 generate
-      dsu0 : dsu3         -- LEON3 Debug Support Unit
-      generic map (hindex => 2, haddr => 16#900#, hmask => 16#F00#,
-         ncpu => CFG_NCPU, tbits => 30, tech => memtech, irq => 0, kbytes => CFG_ATBSZ)
-      port map (rstn, clkm, ahbmi, ahbsi, ahbso(2), dbgo, dbgi, dsui, dsuo);
-      dsui.enable <= '1';
-      dsui_break_pad   : inpad  generic map (level => cmos, voltage => x18v, tech => padtech) port map (button(3), dsui.break);
-      dsuact_pad : outpad generic map (tech => padtech, level => cmos, voltage => x18v) port map (led(0), ndsuact);
-      ndsuact <= not dsuo.active;
-  end generate;
-
-  nodsu : if CFG_DSU = 0 generate
-    dsuo.tstop <= '0'; dsuo.active <= '0'; ahbso(2) <= ahbs_none;
-  end generate;
+  led1_pad : outpad generic map (tech => padtech, level => cmos, voltage => x18v)
+    port map (led(1), syso.proc_error);
+  sysi.dsu_enable <= '1';
+  dsui_break_pad   : inpad  generic map (level => cmos, voltage => x18v, tech => padtech)
+    port map (button(3), sysi.dsu_break);
+  dsuact_pad : outpad generic map (tech => padtech, level => cmos, voltage => x18v)
+    port map (led(0), ndsuact);
+  ndsuact <= not syso.dsu_active;
 
   -- Debug UART
   dcomgen : if CFG_AHB_UART = 1 generate
@@ -521,7 +452,7 @@ begin
                open, open, open, open, open, open, open, gnd(0));
   end generate;
 
-  nojtag : if CFG_AHB_JTAG = 0 generate apbo(CFG_NCPU+1) <= apb_none; end generate;
+  nojtag : if CFG_AHB_JTAG = 0 generate ahbmo(CFG_NCPU+1) <= ahbm_none; end generate;
 
 ----------------------------------------------------------------------
 ---  Memory controller  ----------------------------------------------
@@ -557,59 +488,113 @@ begin
      port map (romsn, vcc(0)); --ahbso(0) <= ahbso_none;
   end generate;
 
+  -----------------------------------------------------------------------------
+  -- L2 cache, optionally covering DDR3 SDRAM memory controller
+  -----------------------------------------------------------------------------
+  l2cen : if CFG_L2_EN /= 0 generate
+    l2cblock : block
+      signal mem_ahbsi : ahb_slv_in_type;
+      signal mem_ahbso : ahb_slv_out_vector := (others => ahbs_none);
+      signal mem_ahbmi : ahb_mst_in_type;
+      signal mem_ahbmo : ahb_mst_out_vector := (others => ahbm_none);
+      signal l2c_stato : std_logic_vector(10 downto 0);
+    begin
+      l2c0 : l2c generic map (
+        hslvidx => 4, hmstidx => 0, cen => CFG_L2_PEN, 
+        haddr => 16#400#, hmask => 16#c00#, ioaddr => 16#FF0#, 
+        cached => CFG_L2_MAP, repl => CFG_L2_RAN, ways => CFG_L2_WAYS, 
+        linesize => CFG_L2_LSZ, waysize => CFG_L2_SIZE,
+        memtech => memtech, bbuswidth => AHBDW,
+        bioaddr => 16#FFE#, biomask => 16#fff#, 
+        sbus => 0, mbus => 1, arch => CFG_L2_SHARE,
+        ft => CFG_L2_EDAC)
+        port map(rst => rstn, clk => clkm, ahbsi => ahbsi, ahbso => ahbso(4),
+                 ahbmi => mem_ahbmi, ahbmo => mem_ahbmo(0), ahbsov => mem_ahbso,
+                 sto => l2c_stato);
+
+      memahb0 : ahbctrl                -- AHB arbiter/multiplexer
+        generic map (defmast => CFG_DEFMST, split => CFG_SPLIT, 
+                     rrobin => CFG_RROBIN, ioaddr => 16#FFE#,
+                     ioen => 1, nahbm => 1, nahbs => 1)
+        port map (rstn, clkm, mem_ahbmi, mem_ahbmo, mem_ahbsi, mem_ahbso);
+
+      mem_ahbso(0) <= mig_ahbso;
+      mig_ahbsi <= mem_ahbsi;
+
+      perf.event(15 downto 7) <= (others => '0');
+      perf.esource(15 downto 7) <= (others => (others => '0'));
+      perf.event(6)  <= l2c_stato(10);  -- Data uncorrectable error
+      perf.event(5)  <= l2c_stato(9);   -- Data correctable error
+      perf.event(4)  <= l2c_stato(8);   -- Tag uncorrectable error
+      perf.event(3)  <= l2c_stato(7);   -- Tag correctable error
+      perf.event(2)  <= l2c_stato(2);   -- Bus access
+      perf.event(1)  <= l2c_stato(1);   -- Miss
+      perf.event(0)  <= l2c_stato(0);   -- Hit
+      perf.esource(6 downto 3) <= (others => (others => '0'));
+      perf.esource(2 downto 0) <= (others => l2c_stato(6 downto 3));
+      perf.req <= (others => '0');
+      perf.sel <= (others => '0');
+      perf.latcnt <= '0';
+      --perf.timer  <= dbgi(0).timer(31 downto 0);
+    end block l2cblock;
+  end generate l2cen;
+  nol2c : if CFG_L2_EN = 0 generate
+    ahbso(4) <= mig_ahbso;
+    mig_ahbsi <= ahbsi;
+    perf <= l3stat_in_none;
+  end generate;
+  
   ----------------------------------------------------------------------
   ---  DDR3 memory controller ------------------------------------------
   ----------------------------------------------------------------------
-  l2cdis : if CFG_L2_EN = 0 generate
-    mig_gen : if (CFG_MIG_7SERIES = 1) generate
-      gen_mig : if (USE_MIG_INTERFACE_MODEL /= true) generate
-        ddrc : ahb2mig_7series generic map(
-      hindex => 4, haddr => 16#400#, hmask => 16#F00#,
-      pindex => 4, paddr => 4,
-      SIM_BYPASS_INIT_CAL => SIM_BYPASS_INIT_CAL,
-      SIMULATION => SIMULATION, USE_MIG_INTERFACE_MODEL => USE_MIG_INTERFACE_MODEL)
-        port map(
-        ddr3_dq         => ddr3_dq,
-        ddr3_dqs_p      => ddr3_dqs_p,
-        ddr3_dqs_n      => ddr3_dqs_n,
-        ddr3_addr       => ddr3_addr,
-        ddr3_ba         => ddr3_ba,
-        ddr3_ras_n      => ddr3_ras_n,
-        ddr3_cas_n      => ddr3_cas_n,
-        ddr3_we_n       => ddr3_we_n,
-        ddr3_reset_n    => ddr3_reset_n,
-        ddr3_ck_p       => ddr3_ck_p,
-        ddr3_ck_n       => ddr3_ck_n,
-        ddr3_cke        => ddr3_cke,
-        ddr3_cs_n       => ddr3_cs_n,
-        ddr3_dm         => ddr3_dm,
-        ddr3_odt        => ddr3_odt,
-        ahbsi           => ahbsi,
-        ahbso           => ahbso(4),
-        apbi            => apbi,
-        apbo            => apbo(4),
-        calib_done      => calib_done,
-        rst_n_syn       => migrstn,
-        rst_n_async     => rstraw,
-        clk_amba        => clkm,
-        sys_clk_p       => clk200p,
-        sys_clk_n       => clk200n,
-        clk_ref_i       => clkref,
-        ui_clk          => clkm,
-        ui_clk_sync_rst => open
-       );
+  mig_gen : if (CFG_MIG_7SERIES = 1) generate
+    gen_mig : if (USE_MIG_INTERFACE_MODEL /= true) generate
+      ddrc : ahb2mig_7series generic map (
+        hindex => 4*(1-CFG_L2_EN), haddr => 16#400#, hmask => 16#F00#,
+        pindex => 4, paddr => 4,
+        SIM_BYPASS_INIT_CAL => SIM_BYPASS_INIT_CAL,
+        SIMULATION => SIMULATION, USE_MIG_INTERFACE_MODEL => USE_MIG_INTERFACE_MODEL)
+        port map (
+          ddr3_dq         => ddr3_dq,
+          ddr3_dqs_p      => ddr3_dqs_p,
+          ddr3_dqs_n      => ddr3_dqs_n,
+          ddr3_addr       => ddr3_addr,
+          ddr3_ba         => ddr3_ba,
+          ddr3_ras_n      => ddr3_ras_n,
+          ddr3_cas_n      => ddr3_cas_n,
+          ddr3_we_n       => ddr3_we_n,
+          ddr3_reset_n    => ddr3_reset_n,
+          ddr3_ck_p       => ddr3_ck_p,
+          ddr3_ck_n       => ddr3_ck_n,
+          ddr3_cke        => ddr3_cke,
+          ddr3_cs_n       => ddr3_cs_n,
+          ddr3_dm         => ddr3_dm,
+          ddr3_odt        => ddr3_odt,
+          ahbsi           => mig_ahbsi,
+          ahbso           => mig_ahbso,
+          apbi            => apbi,
+          apbo            => apbo(4),
+          calib_done      => calib_done,
+          rst_n_syn       => migrstn,
+          rst_n_async     => rstraw,
+          clk_amba        => clkm,
+          sys_clk_p       => clk200p,
+          sys_clk_n       => clk200n,
+          clk_ref_i       => clkref,
+          ui_clk          => clkm,
+          ui_clk_sync_rst => open
+          );
   
-       clkgenmigref0 : clkgen
-         generic map (clktech, 16, 8, 0,CFG_CLK_NOFB, 0, 0, 0, 100000)
-         port map (clkm, clkm, clkref, open, open, open, open, cgi, cgo, open, open, open);
-      end generate gen_mig;
-  
-      gen_mig_model : if (USE_MIG_INTERFACE_MODEL = true) generate
+      clkgenmigref0 : clkgen
+        generic map (clktech, 16, 8, 0,CFG_CLK_NOFB, 0, 0, 0, 100000)
+        port map (clkm, clkm, clkref, open, open, open, open, cgi, cgo, open, open, open);
+    end generate gen_mig;
+
+    gen_mig_model : if (USE_MIG_INTERFACE_MODEL = true) generate
       -- pragma translate_off
-  
       mig_ahbram : ahbram_sim
        generic map (
-         hindex   => 4,
+         hindex   => 4*(1-CFG_L2_EN),
          haddr    => 16#400#,
          hmask    => 16#C00#,
          tech     => 0,
@@ -621,124 +606,63 @@ begin
        port map(
          rst     => rstn,
          clk     => clkm,
-         ahbsi   => ahbsi,
-         ahbso   => ahbso(4)
+         ahbsi   => mig_ahbsi,
+         ahbso   => mig_ahbso
        );
+      ddr3_dq           <= (others => 'Z');
+      ddr3_dqs_p        <= (others => 'Z');
+      ddr3_dqs_n        <= (others => 'Z');
+      ddr3_addr         <= (others => '0');
+      ddr3_ba           <= (others => '0');
+      ddr3_ras_n        <= '0';
+      ddr3_cas_n        <= '0';
+      ddr3_we_n         <= '0';
+      ddr3_reset_n      <= '1';
+      ddr3_ck_p         <= (others => '0');
+      ddr3_ck_n         <= (others => '0');
+      ddr3_cke          <= (others => '0');
+      ddr3_cs_n         <= (others => '0');
+      ddr3_dm           <= (others => '0');
+      ddr3_odt          <= (others => '0');
   
-       ddr3_dq           <= (others => 'Z');
-       ddr3_dqs_p        <= (others => 'Z');
-       ddr3_dqs_n        <= (others => 'Z');
-       ddr3_addr         <= (others => '0');
-       ddr3_ba           <= (others => '0');
-       ddr3_ras_n        <= '0';
-       ddr3_cas_n        <= '0';
-       ddr3_we_n         <= '0';
-       ddr3_reset_n      <= '1';
-       ddr3_ck_p         <= (others => '0');
-       ddr3_ck_n         <= (others => '0');
-       ddr3_cke          <= (others => '0');
-       ddr3_cs_n         <= (others => '0');
-       ddr3_dm           <= (others => '0');
-       ddr3_odt          <= (others => '0');
-  
-      --calib_done        : out   std_logic;
-       calib_done <= '1';
+      calib_done <= '1';
        
-      --ui_clk            : out   std_logic;
       clkm <= not clkm after 5.0 ns;
-      
-      --ui_clk_sync_rst   : out   std_logic
-      -- n/a
       -- pragma translate_on
-  
-     end generate gen_mig_model;    end generate;
-
-     no_mig_gen : if (CFG_MIG_7SERIES = 0) generate  
-     
-       ahbram0 : ahbram 
-          generic map (hindex => 4, haddr => 16#400#, tech => CFG_MEMTECH, kbytes => 128)
-          port map ( rstn, clkm, ahbsi, ahbso(4));
+    end generate gen_mig_model;
+  end generate;
+    
+  no_mig_gen : if (CFG_MIG_7SERIES = 0) generate  
+    ahbram0 : ahbram 
+      generic map (hindex => 4*(1-CFG_L2_EN), haddr => 16#400#, tech => CFG_MEMTECH, kbytes => 128)
+      port map ( rstn, clkm, mig_ahbsi, mig_ahbso);
    
-       ddrdummy0 : ddr_dummy
-         port map (
-          ddr_dq      => ddr3_dq,
-          ddr_dqs     => ddr3_dqs_p,
-          ddr_dqs_n   => ddr3_dqs_n,
-          ddr_addr    => ddr3_addr,
-          ddr_ba      => ddr3_ba,
-          ddr_ras_n   => ddr3_ras_n,
-          ddr_cas_n   => ddr3_cas_n,
-          ddr_we_n    => ddr3_we_n,
-          ddr_reset_n => ddr3_reset_n,
-          ddr_ck_p    => ddr3_ck_p,
-          ddr_ck_n    => ddr3_ck_n,
-          ddr_cke     => ddr3_cke,
-          ddr_cs_n    => ddr3_cs_n,
-          ddr_dm      => ddr3_dm,
-          ddr_odt     => ddr3_odt
-        ); 
+    ddrdummy0 : ddr_dummy
+      port map (
+        ddr_dq      => ddr3_dq,
+        ddr_dqs     => ddr3_dqs_p,
+        ddr_dqs_n   => ddr3_dqs_n,
+        ddr_addr    => ddr3_addr,
+        ddr_ba      => ddr3_ba,
+        ddr_ras_n   => ddr3_ras_n,
+        ddr_cas_n   => ddr3_cas_n,
+        ddr_we_n    => ddr3_we_n,
+        ddr_reset_n => ddr3_reset_n,
+        ddr_ck_p    => ddr3_ck_p,
+        ddr_ck_n    => ddr3_ck_n,
+        ddr_cke     => ddr3_cke,
+        ddr_cs_n    => ddr3_cs_n,
+        ddr_dm      => ddr3_dm,
+        ddr_odt     => ddr3_odt
+        );
+    calib_done <= '1';
        
-        calib_done <= '1';
-       
-     end generate no_mig_gen;
-
-  end generate l2cdis;
-
-  -----------------------------------------------------------------------------
-  -- L2 cache covering DDR3 SDRAM memory controller
-  -----------------------------------------------------------------------------
-  l2cen : if CFG_L2_EN /= 0 generate  
-      l2c0 : l2c
-        generic map(hslvidx => 4, hmstidx => 0, cen => CFG_L2_PEN, 
-                    haddr => 16#400#, hmask => 16#F00#, ioaddr => 16#FF0#, 
-                    cached => CFG_L2_MAP, repl => CFG_L2_RAN, ways => CFG_L2_WAYS, 
-                    linesize => CFG_L2_LSZ, waysize => CFG_L2_SIZE,
-                    memtech => memtech, bbuswidth => AHBDW,
-                    bioaddr => 16#FFE#, biomask => 16#fff#, 
-                    sbus => 0, mbus => 1, arch => CFG_L2_SHARE,
-                    ft => CFG_L2_EDAC)
-        port map(rst => rstn, clk => clkm, ahbsi => ahbsi, ahbso => ahbso(4),
-                 ahbmi => mem_ahbmi, ahbmo => mem_ahbmo(0), ahbsov => mem_ahbso);
-
-        memahb0 : ahbctrl                -- AHB arbiter/multiplexer
-          generic map (defmast => CFG_DEFMST, split => CFG_SPLIT, 
-                       rrobin => CFG_RROBIN, ioaddr => 16#FFE#,
-                       ioen => 1, nahbm => 1, nahbs => 1)
-          port map (rstn, clkm, mem_ahbmi, mem_ahbmo, mem_ahbsi, mem_ahbso);
-      
-
-        --mig_gen : if (CFG_MIG_7SERIES = 1) generate
-        --  gen_mig : if (USE_MIG_INTERFACE_MODEL /= true) generate
-            ddrc : ahb2mig_7series 
-            generic map(hindex => 0, haddr => 16#400#, hmask => 16#F00#,
-                        pindex => 4, paddr => 4,
-                        SIM_BYPASS_INIT_CAL => SIM_BYPASS_INIT_CAL,
-                        SIMULATION => SIMULATION, USE_MIG_INTERFACE_MODEL => USE_MIG_INTERFACE_MODEL)
-            port map(ddr3_dq => ddr3_dq, ddr3_dqs_p => ddr3_dqs_p, ddr3_dqs_n => ddr3_dqs_n,
-                     ddr3_addr => ddr3_addr, ddr3_ba => ddr3_ba, ddr3_ras_n => ddr3_ras_n,
-                     ddr3_cas_n => ddr3_cas_n, ddr3_we_n => ddr3_we_n, ddr3_reset_n => ddr3_reset_n,
-                     ddr3_ck_p => ddr3_ck_p, ddr3_ck_n => ddr3_ck_n, ddr3_cke => ddr3_cke,
-                     ddr3_cs_n => ddr3_cs_n, ddr3_dm => ddr3_dm, ddr3_odt => ddr3_odt,
-                     ahbsi => mem_ahbsi, ahbso => mem_ahbso(0), apbi => apbi, apbo => apbo(4),
-                     calib_done => calib_done, rst_n_syn => migrstn, rst_n_async => rstraw,
-                     clk_amba => clkm, sys_clk_p => clk200p, sys_clk_n => clk200n, clk_ref_i => clkref,
-                     ui_clk => clkm, ui_clk_sync_rst => open);
-      
-           clkgenmigref0 : clkgen
-             generic map (clktech, 16, 8, 0,CFG_CLK_NOFB, 0, 0, 0, 100000)
-             port map (clkm, clkm, clkref, open, open, open, open, cgi, cgo, open, open, open);
-        --  end generate gen_mig;
-        --end generate mig_gen;
-          
-  end generate l2cen;
-
+  end generate no_mig_gen;
   
   led2_pad : outpad generic map (tech => padtech, level => cmos, voltage => x18v)
      port map (led(2), calib_done);
   led3_pad : outpad generic map (tech => padtech, level => cmos, voltage => x18v)
      port map (led(3), lock);
-  led4_pad : outpad generic map (tech => padtech, level => cmos, voltage => x18v)
-      port map (led(4), ahbso(4).hready);
 
 -----------------------------------------------------------------------
 ---  ETHERNET ---------------------------------------------------------
@@ -985,7 +909,7 @@ begin
    sepirq => CFG_GPT_SEPIRQ, sbits => CFG_GPT_SW, ntimers => CFG_GPT_NTIM, 
    nbits => CFG_GPT_TW, wdog => CFG_GPT_WDOGEN*CFG_GPT_WDOG)
     port map (rstn, clkm, apbi, apbo(3), gpti, gpto);
-    gpti.dhalt <= dsuo.tstop; gpti.extclk <= '0';
+    gpti <= gpti_dhalt_drive(syso.dsu_tstop);
   end generate;
 
   nogpt : if CFG_GPT_ENABLE = 0 generate apbo(3) <= apb_none; end generate;
@@ -1048,6 +972,7 @@ begin
   end generate;
 
   ahbs : if CFG_AHBSTAT = 1 generate   -- AHB status register
+    stati <= ahbstat_in_none;
     ahbstat0 : ahbstat generic map (pindex => 15, paddr => 15, pirq => 7,
    nftslv => CFG_AHBSTATN)
       port map (rstn, clkm, ahbmi, ahbsi, stati, apbi, apbo(15));
@@ -1077,8 +1002,8 @@ begin
 ---  DYNAMIC PARTIAL RECONFIGURATION  ---------------------------------
 -----------------------------------------------------------------------
   prc : if CFG_PRC = 1 generate
-    p1 : dprc generic map(hindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH, pindex => 5, paddr => 5, cfg_clkmul => 4, cfg_clkdiv => 8, raw_freq => BOARD_FREQ, clk_sel => 0,
-                          technology => CFG_FABTECH, crc_en => CFG_CRC_EN, words_block => CFG_WORDS_BLOCK, fifo_dcm_inst => CFG_DCM_FIFO, fifo_depth => CFG_DPR_FIFO)
+    p1 : dprc generic map(hindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH, pindex => 5, paddr => 5, cfg_clkmul => 4, cfg_clkdiv => 8, raw_freq => BOARD_FREQ, clk_sel => 0, edac_en => CFG_EDAC_EN,
+                          pirq => 6, technology => CFG_FABTECH, crc_en => CFG_CRC_EN, words_block => CFG_WORDS_BLOCK, fifo_dcm_inst => CFG_DCM_FIFO, fifo_depth => CFG_DPR_FIFO)
        port map( rstn => rstn, clkm => clkm, clkraw => clkm, clk100 => '0', ahbmi => ahbmi, ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH), apbi => apbi, apbo => apbo(5), rm_reset => open);
   end generate;
 	 
@@ -1087,17 +1012,9 @@ begin
 -----------------------------------------------------------------------
 
   -- pragma translate_off
-  test0_gen : if (testahb = true) generate
-     test0 : ahbrep generic map (hindex => 3, haddr => 16#200#)
-      port map (rstn, clkm, ahbsi, ahbso(3));
-  end generate;
+  test0 : ahbrep generic map (hindex => 3, haddr => 16#200#)
+    port map (rstn, clkm, ahbsi, ahbso(3));
   -- pragma translate_on
-
-  test1_gen : if (testahb = false) generate
-    ahbram0 : ahbram generic map (hindex => 3, haddr => 16#200#,
-   tech => CFG_MEMTECH, kbytes => CFG_AHBRSZ)
-    port map ( rstn, clkm, ahbsi, ahbso(3));
-  end generate;
 
  -----------------------------------------------------------------------
  ---  Drive unused bus elements  ---------------------------------------

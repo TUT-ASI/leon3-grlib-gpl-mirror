@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -329,6 +329,7 @@ begin
     variable atact : std_ulogic;        -- ahb trace active
     variable tfv : tfregtype;
     variable pv : pregtype;
+    variable slvhaddr : std_logic_vector(2 downto 0);
 
   begin
     
@@ -736,7 +737,8 @@ begin
               if hclken = '1' then v.slv.hready := '1'; else v.slv.hready2 := '1'; end if;
             end if;
             vabufi.enable := not atact;
-            case r.slv.haddr(4 downto 2) is --case tr.haddr(4 downto 2) is
+            slvhaddr := r.slv.haddr(4 downto 2);
+            case slvhaddr is
             when "000" =>
 	      hrdata := tbo.data(127 downto 96);
 	      if (r.slv.hwrite and hclken) = '1' then 
@@ -1114,3 +1116,4 @@ begin
   end generate;
   
 end;
+

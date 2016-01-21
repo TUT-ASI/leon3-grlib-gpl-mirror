@@ -1,11 +1,11 @@
 -----------------------------------------------------------------------------
---  LEON3 Demonstration design test bench
---  Copyright (C) 2004 Jiri Gaisler, Gaisler Research
+--  LEON Demonstration design test bench
+--  Copyright (C) 2004 - 2015 Cobham Gaisler AB
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -256,7 +256,7 @@ begin
         port map (sram_flash_addr(romdepth-1 downto 0), sram_flash_data(15 downto 0),
                   gnd, gnd, flash_cen, sram_flash_we_n, flash_oen);
 
-  gmii_phy: if CFG_GRETH_SGMII_MODE = 0 generate
+  gmii_phy: if CFG_GRETH_SGMII = 0 generate
 
     phy_mii_data <= 'H';
     p0: phy
@@ -267,7 +267,7 @@ begin
 
   end generate;
 
-  sgmii_phy: if CFG_GRETH_SGMII_MODE /= 0 generate
+  sgmii_phy: if CFG_GRETH_SGMII /= 0 generate
     -- delaying rx line
     sgmii_rx_p <= transport sgmii_rx_p_d after 0.8 ns * slips;
     sgmii_rx_n <= transport sgmii_rx_n_d after 0.8 ns * slips;

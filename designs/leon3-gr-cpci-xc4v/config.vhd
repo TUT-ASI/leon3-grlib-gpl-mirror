@@ -27,17 +27,15 @@ package config is
   constant CFG_PCIDLL : integer := 0;
   constant CFG_PCISYSCLK: integer := 0;
   constant CFG_CLK_NOFB : integer := 0;
--- LEON3 processor core
-  constant CFG_LEON3 : integer := 1;
+-- LEON processor core
+  constant CFG_LEON : integer := 3;
   constant CFG_NCPU : integer := (1);
   constant CFG_NWIN : integer := (8);
   constant CFG_V8 : integer := 2 + 4*0;
   constant CFG_MAC : integer := 0;
-  constant CFG_BP : integer := 1;
   constant CFG_SVT : integer := 1;
   constant CFG_RSTADDR : integer := 16#00000#;
   constant CFG_LDDEL : integer := (1);
-  constant CFG_NOTAG : integer := 0;
   constant CFG_NWP : integer := (4);
   constant CFG_PWD : integer := 1*2;
   constant CFG_FPU : integer := 0 + 16*0 + 32*0;
@@ -46,7 +44,7 @@ package config is
   constant CFG_ISETS : integer := 2;
   constant CFG_ISETSZ : integer := 16;
   constant CFG_ILINE : integer := 8;
-  constant CFG_IREPL : integer := 1;
+  constant CFG_IREPL : integer := 2;
   constant CFG_ILOCK : integer := 0;
   constant CFG_ILRAMEN : integer := 0;
   constant CFG_ILRAMADDR: integer := 16#8E#;
@@ -55,10 +53,12 @@ package config is
   constant CFG_DSETS : integer := 2;
   constant CFG_DSETSZ : integer := 4;
   constant CFG_DLINE : integer := 8;
-  constant CFG_DREPL : integer := 1;
+  constant CFG_DREPL : integer := 2;
   constant CFG_DLOCK : integer := 0;
   constant CFG_DSNOOP : integer := 1*2 + 4*0;
   constant CFG_DFIXED : integer := 16#0#;
+  constant CFG_BWMASK : integer := 16#0#;
+  constant CFG_CACHEBW : integer := 128;
   constant CFG_DLRAMEN : integer := 0;
   constant CFG_DLRAMADDR: integer := 16#8F#;
   constant CFG_DLRAMSZ : integer := 1;
@@ -67,22 +67,23 @@ package config is
   constant CFG_DTLBNUM : integer := 8;
   constant CFG_TLB_TYPE : integer := 0 + 1*2;
   constant CFG_TLB_REP : integer := 0;
-  constant CFG_MMU_PAGE : integer := 0;
   constant CFG_DSU : integer := 1;
   constant CFG_ITBSZ : integer := 2 + 64*0;
   constant CFG_ATBSZ : integer := 2;
   constant CFG_AHBPF : integer := 0;
-  constant CFG_LEON3FT_EN : integer := 0;
-  constant CFG_IUFT_EN : integer := 0;
-  constant CFG_FPUFT_EN : integer := 0;
-  constant CFG_RF_ERRINJ : integer := 0;
-  constant CFG_CACHE_FT_EN : integer := 0;
-  constant CFG_CACHE_ERRINJ : integer := 0;
-  constant CFG_LEON3_NETLIST: integer := 0;
+  constant CFG_AHBWP : integer := 2;
+  constant CFG_LEONFT_EN : integer := 0 + 0*8;
+  constant CFG_LEON_NETLIST : integer := 0;
   constant CFG_DISAS : integer := 0 + 0;
   constant CFG_PCLOW : integer := 0;
+  constant CFG_STAT_ENABLE : integer := 0;
+  constant CFG_STAT_CNT : integer := 1;
+  constant CFG_STAT_NMAX : integer := 0;
+  constant CFG_STAT_DSUEN : integer := 0;
   constant CFG_NP_ASI : integer := 0;
   constant CFG_WRPSR : integer := 0;
+  constant CFG_ALTWIN : integer := 0;
+  constant CFG_REX : integer := 0;
 -- AMBA settings
   constant CFG_DEFMST : integer := (0);
   constant CFG_RROBIN : integer := 1;
@@ -115,12 +116,31 @@ package config is
   constant CFG_MCTRL_INVCLK : integer := 0;
   constant CFG_MCTRL_SD64 : integer := 1;
   constant CFG_MCTRL_PAGE : integer := 0 + 0;
+-- FTMCTRL memory controller
+  constant CFG_MCTRLFT : integer := 0;
+  constant CFG_MCTRLFT_RAM8BIT : integer := 0;
+  constant CFG_MCTRLFT_RAM16BIT : integer := 0;
+  constant CFG_MCTRLFT_5CS : integer := 0;
+  constant CFG_MCTRLFT_SDEN : integer := 0;
+  constant CFG_MCTRLFT_SEPBUS : integer := 0;
+  constant CFG_MCTRLFT_INVCLK : integer := 0;
+  constant CFG_MCTRLFT_SD64 : integer := 0;
+  constant CFG_MCTRLFT_EDAC : integer := 0 + 0 + 0;
+  constant CFG_MCTRLFT_PAGE : integer := 0 + 0;
+  constant CFG_MCTRLFT_ROMASEL : integer := 0;
+  constant CFG_MCTRLFT_WFB : integer := 0;
+  constant CFG_MCTRLFT_NET : integer := 0;
+-- SDRAM controller
+  constant CFG_SDCTRL : integer := 0;
+  constant CFG_SDCTRL_INVCLK : integer := 0;
+  constant CFG_SDCTRL_SD64 : integer := 0;
+  constant CFG_SDCTRL_PAGE : integer := 0 + 0;
 -- AHB status register
   constant CFG_AHBSTAT : integer := 1;
   constant CFG_AHBSTATN : integer := (1);
 -- AHB RAM
   constant CFG_AHBRAMEN : integer := 0;
-  constant CFG_AHBRSZ : integer := 1;
+  constant CFG_AHBRSZ : integer := 4;
   constant CFG_AHBRADDR : integer := 16#A00#;
   constant CFG_AHBRPIPE : integer := 0;
 -- Gaisler Ethernet core
@@ -128,19 +148,25 @@ package config is
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 32;
 
+
+
+
+  constant CFG_GRETH_FT : integer := 0;
+  constant CFG_GRETH_EDCLFT : integer := 0;
+
 -- CAN 2.0 interface
   constant CFG_CAN : integer := 0;
-  constant CFG_CAN_NUM : integer := 1;
-  constant CFG_CANIO : integer := 16#0#;
-  constant CFG_CANIRQ : integer := 0;
+  constant CFG_CAN_NUM : integer := (1);
+  constant CFG_CANIO : integer := 16#C00#;
+  constant CFG_CANIRQ : integer := (13);
   constant CFG_CANSEPIRQ: integer := 0;
   constant CFG_CAN_SYNCRST : integer := 0;
   constant CFG_CANFT : integer := 0;
 
 -- Spacewire interface
   constant CFG_SPW_EN : integer := 0;
-  constant CFG_SPW_NUM : integer := 1;
-  constant CFG_SPW_AHBFIFO : integer := 4;
+  constant CFG_SPW_NUM : integer := (1);
+  constant CFG_SPW_AHBFIFO : integer := 16;
   constant CFG_SPW_RXFIFO : integer := 16;
   constant CFG_SPW_RMAP : integer := 0;
   constant CFG_SPW_RMAPBUF : integer := 4;
@@ -149,15 +175,16 @@ package config is
   constant CFG_SPW_FT : integer := 0;
   constant CFG_SPW_GRSPW : integer := 2;
   constant CFG_SPW_RXUNAL : integer := 0;
-  constant CFG_SPW_DMACHAN : integer := 1;
-  constant CFG_SPW_PORTS : integer := 1;
-  constant CFG_SPW_INPUT : integer := 2;
+  constant CFG_SPW_DMACHAN : integer := (1);
+  constant CFG_SPW_PORTS : integer := (1);
+  constant CFG_SPW_INPUT : integer := 3;
   constant CFG_SPW_OUTPUT : integer := 0;
   constant CFG_SPW_RTSAME : integer := 0;
+
 -- PCI interface
   constant CFG_PCI : integer := 0;
-  constant CFG_PCIVID : integer := 16#0#;
-  constant CFG_PCIDID : integer := 16#0#;
+  constant CFG_PCIVID : integer := 16#1AC8#;
+  constant CFG_PCIDID : integer := 16#0054#;
   constant CFG_PCIDEPTH : integer := 8;
   constant CFG_PCI_MTF : integer := 1;
 
@@ -188,6 +215,7 @@ package config is
   constant CFG_GRPCI2_TRACEAPB : integer := 0;
   constant CFG_GRPCI2_BYPASS : integer := 0;
   constant CFG_GRPCI2_EXTCFG : integer := (0);
+
 -- PCI arbiter
   constant CFG_PCI_ARB : integer := 1;
   constant CFG_PCI_ARBAPB : integer := 1;
@@ -227,6 +255,7 @@ package config is
 -- Dynamic Partial Reconfiguration
   constant CFG_PRC : integer := 0;
   constant CFG_CRC_EN : integer := 0;
+  constant CFG_EDAC_EN : integer := 0;
   constant CFG_WORDS_BLOCK : integer := 100;
   constant CFG_DCM_FIFO : integer := 0;
   constant CFG_DPR_FIFO : integer := 9;

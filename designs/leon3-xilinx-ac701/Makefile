@@ -70,7 +70,7 @@ VSIMOPT+= $(SIMTOP)
 
 ### Testbench, design and libraries to compile and not to compile
 
-VHDLSYNFILES= config.vhd ahbram_sim.vhd ahbrom.vhd leon3mp.vhd ddr_dummy.vhd
+VHDLSYNFILES= config.vhd ahbrom.vhd leon3mp.vhd ddr_dummy.vhd
 VHDLSIMFILES=testbench.vhd
 
 TECHLIBS = unisim
@@ -78,7 +78,7 @@ SKIP_SIM_TECHLIBS = 1
 
 LIBSKIP = pci pci/pcif core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp spw gsi cypress hynix \
-	spansion leon4 leon4v0 secureip
+	spansion leon4v0 secureip
 DIRSKIP = b1553 pci pci/pcif leon2 leon2ft crypto satcan pci ambatest \
 	spacewire ascs slink \
 	pwm gr1553b iommu ac97 secureip

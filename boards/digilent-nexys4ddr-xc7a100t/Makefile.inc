@@ -1,7 +1,3 @@
-# Since synplify seems to cause a synthsis error involving
-# the DSP macro blocks the Spartan 3A technology 
-# without DSP is used for synthesis
-#
 TECHNOLOGY=Artix7
 ISETECH="Artix7"
 PART=XC7A100T

@@ -96,7 +96,7 @@ pcie/s6_pcie_v1_4/simulation/dsport/pcie_bram_v6.vhd pcie/s6_pcie_v1_4/simulatio
 pcie/s6_pcie_v1_4/simulation/dsport/pcie_bram_top_v6.vhd
 endif
 endif
-	
+
 SIMTOP=testbench
 #SDCFILE=$(GRLIB)/boards/$(BOARD)/default.sdc
 SDCFILE=default.sdc
@@ -104,13 +104,13 @@ BITGEN=$(GRLIB)/boards/$(BOARD)/default.ut
 CLEAN=soft-clean migclean pcieclean 
 VCOMOPT=-explicit
 TECHLIBS = secureip unisim
- 
+
 VSIMOPT= -t ps $(SIMTOP)
 
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip cypress ihp gsi fmf spansion 
 DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan ambatest \
-	leon4 leon4v0 l2cache gr1553b iommu ascs slink pwm \
+	leon4v0 l2cache gr1553b iommu ascs slink pwm \
 	hcan usb grfpc4 grlfpc4
 FILEADD = MCB.vhd
 FILESKIP = grcan.vhd ddr2.v mobile_ddr.v

@@ -47,6 +47,8 @@ use unisim.vcomponents.all;
 --pragma translate_off
 use std.textio.all;
 use ieee.std_logic_textio.all;
+use grlib.stdlib.report_version;
+use grlib.stdlib.tost;
 --pragma translate_on
 
 entity dprc is
@@ -62,8 +64,10 @@ entity dprc is
     pindex        : integer := 13;                      -- AMBA APB slave index
     paddr         : integer := 13;                      -- Address for APB I/O BAR
     pmask         : integer := 16#fff#;                 -- Mask for APB I/O BAR
+    pirq          : integer := 0;                       -- Interrupt index
     technology    : integer := virtex4;                 -- FPGA target technology
-    crc_en        : integer := 0;                       -- Bitstream verification enable (d2prc mode)
+    crc_en        : integer := 0;                       -- Enable bitstream verification (d2prc-crc mode)
+    edac_en       : integer := 1;                       -- Enable bitstream EDAC (d2prc-edac mode)
     words_block   : integer := 10;                      -- Number of 32-bit words in a CRC-block
     fifo_dcm_inst : integer := 0;                       -- Instantiate clock generator and fifo (async/sync mode)
     fifo_depth    : integer := 9);                      -- Number of addressing bits for the FIFO (true FIFO depth = 2**fifo_depth)
@@ -92,10 +96,10 @@ architecture dprc_rtl of dprc is
   signal sysrstn : std_ulogic;
   signal rego, reg_apbout : dprc_apbregout_type;
   signal regi, reg_apbin : dprc_apbregin_type;
-  signal regcontrol : dprc_apbcontrol_type;
+  signal regcontrol, rregcontrol : dprc_apbcontrol_type;
   signal wen_del : std_ulogic;
 
-  constant pconfig : apb_config_type := (0 => ahb_device_reg (vendorid, deviceid, 0, version, 0), 1 => apb_iobar(paddr, pmask));
+  constant pconfig : apb_config_type := (0 => ahb_device_reg (vendorid, deviceid, 0, version, pirq), 1 => apb_iobar(paddr, pmask));
    
   --pragma translate_off
   file icap_file: TEXT open write_mode is "icap_data";
@@ -109,14 +113,14 @@ begin
     port map(HCLK => clkm, HRESETn => sysrstn, DMAIn => dma_in, DMAOut => dma_out, AHBIn => ahbmi, AHBOut => ahbmo);
 
   -- apb interface
-  apbo.pirq <= (others => '0');       --no interrupt
   apbo.pindex <= pindex;
   apbo.pconfig <= pconfig;
 
-  comb : process(reg_apbout, reg_apbin, apbi, regcontrol)
+  comb : process(reg_apbout, reg_apbin, apbi, regcontrol, rregcontrol)
            variable readdata : std_logic_vector(31 downto 0);
            variable regvi : dprc_apbregin_type;
            variable regvo : dprc_apbregout_type;
+           variable irq   : std_logic_vector(NAHBIRQ-1 downto 0);
          begin
            -- assign register outputs to variables
            regvi := reg_apbin;
@@ -161,7 +165,7 @@ begin
 
            -- clear control registers
            if regcontrol.control_clr='1' then
-             regvi.control := (others=>'0');
+             regvi.control(19 downto 0) := (others=>'0');
            end if;
 
            -- update status
@@ -170,6 +174,13 @@ begin
            elsif regcontrol.status_en='1' then
                regvo.status := regcontrol.status_value;
            end if;
+
+           -- generate interrupt pulse after status register has been updated (if interrupts are enabled through control register bit 20)
+           irq := (others=>'0');
+           if (regcontrol.status_en='0') and (rregcontrol.status_en='1') and (reg_apbin.control(31)='1') then
+             irq(pirq) := '1'; 
+           end if;
+           apbo.pirq <= irq;       -- drive interrupt on the bus
         
            -- assign variables to register inputs
            regi <= regvi;
@@ -189,9 +200,11 @@ begin
              reg_apbout.status(31 downto 4) <= (others => '0');
              reg_apbout.status(3 downto 0) <= (others => '1');
              reg_apbout.timer <= (others => '0');
+             rregcontrol.status_en <= '0';
            elsif rising_edge(clkm) then
              reg_apbin <= regi;
              reg_apbout <= rego;
+             rregcontrol.status_en <= regcontrol.status_en;
            end if;
          end process;
 
@@ -214,26 +227,60 @@ begin
 
 
   -- operating mode selection
-  d2prc_gen: if crc_en=1 generate
+  d2prc_crc_gen: if crc_en=1 generate
     d2prc_inst : d2prc
       generic map (technology => technology, crc_block => words_block, fifo_depth => fifo_depth)     
       port map (rstn => sysrstn, clkm => clkm, clk100 => clk_icap, dmai => dma_in, dmao => dma_out, icapi => icap_in, icapo => ricap_out, apbregi => reg_apbin, apbcontrol => regcontrol, rm_reset => rm_reset);
+    -- Boot message
+    -- pragma translate_off
+    bootmsg : report_version
+    generic map (
+      "dprc: ahb master " & tost(hindex) & ", apb slave " & tost(pindex) & ", Dynamic Partial Reconfiguration Controller, rev " &
+      tost(version) & ", irq " & tost(pirq) & ", mode D2PRC-CRC, fifo " & tost(2**fifo_depth) );
+    -- pragma translate_on
+  end generate;
+
+  d2prc_edac_gen: if edac_en=1 generate
+    d2prc_inst : d2prc_edac
+      generic map (technology => technology, fifo_depth => fifo_depth)     
+      port map (rstn => sysrstn, clkm => clkm, clk100 => clk_icap, dmai => dma_in, dmao => dma_out, icapi => icap_in, icapo => ricap_out, apbregi => reg_apbin, apbcontrol => regcontrol, rm_reset => rm_reset);
+    -- Boot message
+    -- pragma translate_off
+    bootmsg : report_version
+    generic map (
+      "dprc: ahb master " & tost(hindex) & ", apb slave " & tost(pindex) & ", Dynamic Partial Reconfiguration Controller, rev " &
+      tost(version) & ", irq " & tost(pirq) & ", mode D2PRC-SECDED, fifo " & tost(2**fifo_depth) );
+    -- pragma translate_on
   end generate;
 	
-  asyncsync_gen: if crc_en=0 generate
+  asyncsync_gen: if (crc_en=0) and (edac_en=0) generate
     async_gen: if fifo_dcm_inst=1 generate
       async_dprc_inst : async_dprc
       generic map(technology => technology, fifo_depth => fifo_depth)     
       port map(rstn => sysrstn, clkm => clkm, clk100 => clk_icap, dmai => dma_in, dmao => dma_out, icapi => icap_in, icapo => ricap_out, apbregi => reg_apbin, apbcontrol => regcontrol, rm_reset => rm_reset);
+      -- Boot message
+      -- pragma translate_off
+      bootmsg : report_version
+      generic map (
+        "dprc: ahb master " & tost(hindex) & ", apb slave " & tost(pindex) & ", Dynamic Partial Reconfiguration Controller, rev " &
+        tost(version) & ", irq " & tost(pirq) & ", mode DPRC-ASYNC, fifo " & tost(2**fifo_depth) );
+      -- pragma translate_on
     end generate;
     sync_gen: if fifo_dcm_inst=0 generate
       sync_dprc_inst: sync_dprc
         port map(rstn => sysrstn, clkm => clkm, dmai => dma_in, dmao => dma_out, icapi => icap_in, icapo => ricap_out, apbregi => reg_apbin, apbcontrol => regcontrol, rm_reset => rm_reset);
+      -- Boot message
+      -- pragma translate_off
+      bootmsg : report_version
+      generic map (
+        "dprc: ahb master " & tost(hindex) & ", apb slave " & tost(pindex) & ", Dynamic Partial Reconfiguration Controller, rev " &
+        tost(version) & ", irq " & tost(pirq) & ", mode DPRC-SYNC" );
+      -- pragma translate_on
     end generate;
   end generate;
 
   -- clock generation (if necessary)
-  clock_gen: if (crc_en=1 or fifo_dcm_inst=1) generate
+  clock_gen: if (crc_en=1 or fifo_dcm_inst=1 or edac_en=1) generate
     ext_clk_gen: if clk_sel=1 generate
       clk_icap <= clk100;  -- 100 MHz external clock
       sysrstn <= rstn;
@@ -246,7 +293,7 @@ begin
       sysrstn <= cgo.clklock;
     end generate;
   end generate;
-  noclock_gen: if (crc_en=0 and fifo_dcm_inst=0) generate
+  noclock_gen: if (crc_en=0 and fifo_dcm_inst=0 and edac_en=0) generate
       clk_icap <= clkm;  -- system clock
       sysrstn <= rstn;
   end generate;
@@ -282,7 +329,7 @@ begin
   end generate;
 
   --pragma translate_off
-  -- write ICAP inputs to a file for verification purposes
+  -- write ICAP data input to a file for verification purposes
   wfile: process
     variable l : line;
     begin

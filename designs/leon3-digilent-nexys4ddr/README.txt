@@ -5,7 +5,7 @@ Simulation and synthesis
 ------------------------
 
 The design currently supports synthesis with Xilinx Vivado (tested
-with Vivado 2014.4.1).
+with Vivado 2015.4).
 
 The XILINX_VIVADO variable must be exported for the mig_7series target
 to work correctly: export XILINX_VIVADO
@@ -17,10 +17,8 @@ If enabled by the user, the design uses the Xilinx MIG memory
 interface with an AHB-2.0 interface (experimental).  The MIG source
 code cannot be distributed due to the prohibitive Xilinx license, so
 the MIG must be re-generated with coregen before simulation and
-synthesis can be done.
-
-Xilinx MIG interface will automatically be generated when Vivado is
-launched.
+synthesis can be done. Xilinx MIG interface will automatically be
+generated when Vivado is launched.
 
 To simulate using XSIM and run systest.c on the Leon design using the
 memory controller from Xilinx use the make targets:
@@ -28,9 +26,17 @@ memory controller from Xilinx use the make targets:
   make soft
   make vivado-launch
 
+To simulate using ModelSim/Aldec and run systest.c on the Leon design using
+the DDR2SPA memory controller:
+
+  make soft
+  make vsim - or - riviera
+  make sim-launch - or riviera-launch
+
 To simulate using Modelsim/Aldec and run systest.c on the Leon design using 
 the memory controller from Xilinx use the make targets:
 
+  make map_xilinx_7series_lib
   make sim (only required if Modelsim/Aldec is used as simulator)
   make mig_7series (only required if Xilinx MIG is enabled via xconfig)
   make soft
@@ -38,6 +44,7 @@ the memory controller from Xilinx use the make targets:
 
 To simulate using Aldec Riviera use the following make targets:
 
+  make map_xilinx_7series_lib
   make riviera
   make mig_series7 (only required if Xilinx MIG is enabled via xconfig)
   make soft

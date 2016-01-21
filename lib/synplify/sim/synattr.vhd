@@ -410,3 +410,4 @@ attribute syn_verification_options : string; -- {objtype module} {default black_
 
 
 end attributes;
+

@@ -23,6 +23,8 @@
 #undef  CONFIG_SYN_PROASIC3L
 #undef  CONFIG_SYN_IGLOO
 #undef  CONFIG_SYN_IGLOO2
+#undef  CONFIG_SYN_SF2
+#undef  CONFIG_SYN_RTG4
 #undef  CONFIG_SYN_FUSION
 #undef  CONFIG_SYN_UT025CRH
 #undef  CONFIG_SYN_UT130HBD
@@ -35,7 +37,6 @@
 #undef  CONFIG_SYN_IHP25RH
 #undef  CONFIG_SYN_LATTICE
 #undef  CONFIG_SYN_ECLIPSE
-#undef  CONFIG_SYN_PEREGRINE
 #undef  CONFIG_SYN_RH_LIB18T
 #undef  CONFIG_SYN_RHUMC
 #undef  CONFIG_SYN_SAED32
@@ -69,6 +70,32 @@
 /*
  * Clock generation
  */
+/*
+ * Clock generator used when MIG is disabled            
+ */
+#undef  CONFIG_CLK_INFERRED
+#undef  CONFIG_CLK_HCLKBUF
+#undef  CONFIG_CLK_UT130HBD
+#undef  CONFIG_CLK_ALTDLL
+#undef  CONFIG_CLK_LATDLL
+#undef  CONFIG_CLK_PRO3PLL
+#undef  CONFIG_CLK_PRO3EPLL
+#undef  CONFIG_CLK_PRO3LPLL
+#undef  CONFIG_CLK_FUSPLL
+#undef  CONFIG_CLK_LIB18T
+#undef  CONFIG_CLK_RHUMC
+#undef  CONFIG_CLK_DARE
+#undef  CONFIG_CLK_SAED32
+#undef  CONFIG_CLK_EASIC45
+#undef  CONFIG_CLK_RHS65
+#undef  CONFIG_CLK_CLKPLLE2
+#undef  CONFIG_CLK_CLKDLL
+#define CONFIG_CLK_DCM 1
+#define CONFIG_CLK_MUL (2)
+#define CONFIG_CLK_DIV (2)
+#undef  CONFIG_PCI_CLKDLL
+#undef  CONFIG_CLK_NOFB
+#undef  CONFIG_PCI_SYSCLK
 #undef  CONFIG_FREQ60
 #define CONFIG_FREQ75 1
 #undef  CONFIG_FREQ80
@@ -104,6 +131,8 @@
 #define CONFIG_IU_RSTADDR 00000
 #undef  CONFIG_NP_ASI
 #undef  CONFIG_WRPSR
+#undef  CONFIG_ALTWIN
+#undef  CONFIG_REX
 /*
  * Floating-point unit
  */
@@ -113,13 +142,13 @@
  */
 #define CONFIG_ICACHE_ENABLE 1
 #undef  CONFIG_ICACHE_ASSO1
-#define CONFIG_ICACHE_ASSO2 1
+#undef  CONFIG_ICACHE_ASSO2
 #undef  CONFIG_ICACHE_ASSO3
-#undef  CONFIG_ICACHE_ASSO4
+#define CONFIG_ICACHE_ASSO4 1
 #undef  CONFIG_ICACHE_SZ1
 #undef  CONFIG_ICACHE_SZ2
-#undef  CONFIG_ICACHE_SZ4
-#define CONFIG_ICACHE_SZ8 1
+#define CONFIG_ICACHE_SZ4 1
+#undef  CONFIG_ICACHE_SZ8
 #undef  CONFIG_ICACHE_SZ16
 #undef  CONFIG_ICACHE_SZ32
 #undef  CONFIG_ICACHE_SZ64
@@ -134,9 +163,9 @@
 #undef  CONFIG_ICACHE_LOCK
 #define CONFIG_DCACHE_ENABLE 1
 #undef  CONFIG_DCACHE_ASSO1
-#define CONFIG_DCACHE_ASSO2 1
+#undef  CONFIG_DCACHE_ASSO2
 #undef  CONFIG_DCACHE_ASSO3
-#undef  CONFIG_DCACHE_ASSO4
+#define CONFIG_DCACHE_ASSO4 1
 #undef  CONFIG_DCACHE_SZ1
 #undef  CONFIG_DCACHE_SZ2
 #define CONFIG_DCACHE_SZ4 1
@@ -155,6 +184,7 @@
 #undef  CONFIG_DCACHE_LOCK
 #define CONFIG_DCACHE_SNOOP 1
 #define CONFIG_DCACHE_SNOOP_SEPTAG 1
+#undef  CONFIG_DCACHE_SNOOP_SP
 #define CONFIG_CACHE_FIXED 0
 /*
  * MMU
@@ -194,6 +224,7 @@
 #undef  CONFIG_DSU_ATRACESZ16
 #undef  CONFIG_DSU_AFILT
 #undef  CONFIG_DSU_ASTAT
+#undef  CONFIG_STAT_ENABLE
 /*
  * Fault-tolerance  
  */
@@ -245,9 +276,14 @@
 #undef  CONFIG_MCTRL_5CS
 #undef  CONFIG_MCTRL_SDRAM
 /*
- * Xilinx MIG DDR2 controller   
+ * MIG memory controller   
  */
 #define CONFIG_MIG_DDR2 1
+#define CONFIG_MIG_RANKS (1)
+#define CONFIG_MIG_COLBITS (10)
+#define CONFIG_MIG_ROWBITS (13)
+#define CONFIG_MIG_BANKBITS (2)
+#define CONFIG_MIG_HMASK F00
 /*
  * On-chip RAM/ROM                 
  */
@@ -265,7 +301,7 @@
 #undef  CONFIG_GRETH_FIFO64
 #undef  CONFIG_GRETH_FT
 /*
- * UARTs, timers and irq control         
+ * UARTs, timers, irq control and perf. counters 
  */
 #define CONFIG_UART1_ENABLE 1
 #undef  CONFIG_UA1_FIFO1

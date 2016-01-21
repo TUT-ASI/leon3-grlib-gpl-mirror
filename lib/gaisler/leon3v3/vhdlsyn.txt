@@ -30,3 +30,5 @@ leon3ft.vhd
 leon3ftsh.vhd
 leon3ft2x.vhd
 l3stat.vhd
+cmvalidbits.vhd
+

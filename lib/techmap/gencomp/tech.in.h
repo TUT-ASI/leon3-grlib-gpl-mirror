@@ -60,6 +60,10 @@
 #define CONFIG_SYN_TECH apa3
 #elif defined CONFIG_SYN_IGLOO2
 #define CONFIG_SYN_TECH igloo2
+#elif defined CONFIG_SYN_SF2
+#define CONFIG_SYN_TECH smartfusion2
+#elif defined CONFIG_SYN_RTG4
+#define CONFIG_SYN_TECH rtg4
 #elif defined CONFIG_SYN_FUSION
 #define CONFIG_SYN_TECH actfus
 #elif defined CONFIG_SYN_SPARTAN2

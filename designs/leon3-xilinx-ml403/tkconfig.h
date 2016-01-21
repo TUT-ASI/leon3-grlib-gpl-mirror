@@ -60,6 +60,10 @@
 #define CONFIG_SYN_TECH apa3
 #elif defined CONFIG_SYN_IGLOO2
 #define CONFIG_SYN_TECH igloo2
+#elif defined CONFIG_SYN_SF2
+#define CONFIG_SYN_TECH smartfusion2
+#elif defined CONFIG_SYN_RTG4
+#define CONFIG_SYN_TECH rtg4
 #elif defined CONFIG_SYN_FUSION
 #define CONFIG_SYN_TECH actfus
 #elif defined CONFIG_SYN_SPARTAN2
@@ -497,6 +501,11 @@
 #define CONFIG_DCACHE_SNOOP_SEPTAG 0
 #endif
 
+#ifndef CONFIG_DCACHE_SNOOP_SP
+#define CONFIG_DCACHE_SNOOP_SP 0
+#endif
+
+
 #ifndef CONFIG_CACHE_FIXED
 #define CONFIG_CACHE_FIXED 0
 #endif
@@ -716,12 +725,38 @@
 #define CONFIG_IU_DISAS_NET 0
 #endif
 
+#ifndef CONFIG_STAT_ENABLE
+#define CONFIG_STAT_ENABLE 0
+#endif
+
+#ifndef CONFIG_STAT_CNT
+#define CONFIG_STAT_CNT 1
+#endif
+
+#ifndef CONFIG_STAT_NMAX
+#define CONFIG_STAT_NMAX 0
+#endif
+
+#if defined CONFIG_DSU_ASTAT
+#define CONFIG_STAT_DSUEN 1
+#else
+#define CONFIG_STAT_DSUEN 0
+#endif
+
 #ifndef CONFIG_NP_ASI
 #define CONFIG_NP_ASI 0
 #endif
 
 #ifndef CONFIG_WRPSR
 #define CONFIG_WRPSR 0
+#endif
+
+#ifndef CONFIG_ALTWIN
+#define CONFIG_ALTWIN 0
+#endif
+
+#ifndef CONFIG_REX
+#define CONFIG_REX 0
 #endif
 #ifndef CONFIG_AHB_SPLIT
 #define CONFIG_AHB_SPLIT 0
@@ -983,6 +1018,10 @@
 
 #ifndef CONFIG_GRETH_EDCLFT
 #define CONFIG_GRETH_EDCLFT 0
+#endif
+
+#ifndef CONFIG_GRETH_SGMII_MODE
+#define CONFIG_GRETH_SGMII_MODE 0
 #endif
 #ifndef CONFIG_UART1_ENABLE
 #define CONFIG_UART1_ENABLE 0

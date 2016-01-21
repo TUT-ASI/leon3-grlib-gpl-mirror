@@ -25,6 +25,9 @@ Important notes
   that includes the GRETH_GBIT core.
 * The Level-2 cache can be enabled in the design. This requires a
   GRLIB release that includes the Level-2 cache.
+* DDR2 RAM must have a CAS Latency (CL) of at least 5.
+* Due to shortcomings of the Quartus software, version 15.0.0 of the
+  Altera Quartus suite should be used to synthesize the DDR controller
 
 Design details
 --------------
@@ -69,16 +72,36 @@ Slide switches:
 
 Simulation and synthesis
 ------------------------
+
+* Note: Simulation for this design is currently broken due to
+  simulation library collisions.
+
 * To simulate the design with ModelSim or Riviera first set the
   GRLIB_SIMULATOR environment variable accordingly (see GRLIB 
-  documentation). The simulation uses a simplified DDR2 controller:
+  documentation).
 
+* If you have enabled the DDR controller for this design you need
+  to generate the Uniphy IP core (for simulation and synthesis):
+  
+    make qwiz
+
+* If you are using the DDR controller, you need to run the following
+  commands to simulate:
+
+    make qwiz-sim
     make sim
+    make sim-launch
+
+* If you are not using the DDR controller, just use the normal
+  simulation flow for Altera:
+
+    make install-altera
+    make sim
+    make sim-launch
 
 * Synthesis will work with Quartus 13.1 or newer. To synthesize the 
   design run:
 
-    make qwiz
     make quartus
 
   then program the board with:

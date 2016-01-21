@@ -156,10 +156,14 @@ module ge_1000baseX_an  #(
    //  Link timer
    //////////////////////////////////////////////////////////////////////////////
 
-`ifdef MODEL_TECH
+`ifdef MODEL_TECH // if Modelsim
 `define LINK_TIMER_DONE 2000
 `else
-`define LINK_TIMER_DONE 200000
+  `ifdef _VCP // if Aldec Riviera
+  `define LINK_TIMER_DONE 2000
+  `else
+  `define LINK_TIMER_DONE 200000
+  `endif
 `endif
 
    reg [17:0] link_timer_cnt;

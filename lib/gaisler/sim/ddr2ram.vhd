@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -215,7 +215,7 @@ begin
       variable recaddr : std_logic_vector(31 downto 0);
       variable reclen  : std_logic_vector(7 downto 0);
       variable recdata : std_logic_vector(0 to 16*8-1);
-      variable recdatatemp : std_logic_vector(0 to 7);
+      variable recdatatemp : std_logic_vector(0 to 63);
       variable col, coloffs, len: integer;
     begin
       L1:= new string'("");
@@ -241,10 +241,15 @@ begin
               hread(L1, recdata(0 to len*8-1));
               if swap=1 then  -- byte swap during srec load
                 for i in 0 to 7 loop
-                  recdatatemp := recdata(i*16 to i*16+7);
+                  recdatatemp(0 to 7) := recdata(i*16 to i*16+7);
                   recdata(i*16 to i*16+7) := recdata(i*16+8 to i*16+15);
-                  recdata(i*16+8 to i*16+15) := recdatatemp;
+                  recdata(i*16+8 to i*16+15) := recdatatemp(0 to 7);
                 end loop;
+              elsif swap = 2 then
+                recaddr(4)          := not recaddr(4);
+                recdatatemp         := recdata(0 to 63);
+                recdata(0 to 63)    := recdata(64 to 127);
+                recdata(64 to 127)  := recdatatemp;
               end if;
               col := to_integer(unsigned(recaddr(log2(width/8)+rowbits+colbits+1 downto log2(width/8))));
               coloffs := 8*to_integer(unsigned(recaddr(log2(width/8)-1 downto 0)));
@@ -575,3 +580,4 @@ begin
 end;
 
 -- pragma translate_on
+

@@ -8,7 +8,7 @@ CONFIG_SYN_INFERRED
   - Inferred: Generic FPGA or ASIC targets if your synthesis tool
     is capable of inferring RAMs and pads automatically.
 
-  - Actel ProAsic/P/3, IGLOO/2 and Axcelerator FPGAs
+  - Actel ProAsic/P/3, IGLOO/2, RTG4 and Axcelerator FPGAs
   - Aeroflex UT25CRH Rad-Hard 0.25 um CMOS
   - Altera: Most Altera FPGA families
   - Altera-CycloneIII: Altera Cyclone-III/IV FPGA family
@@ -158,12 +158,10 @@ CONFIG_CLK_NOFB
 
 Number of processors
 CONFIG_PROC_NUM
-  The number of processor cores. The LEON3MP design can accomodate
-  up to 4 LEON3 processor cores. Use 1 unless you know what you are
-  doing ...
+  The number of processor cores.
 
 Force values from example configuration
-CONFIG_LEON3_MIN
+CONFIG_LEON_MIN
   If you select any other value than Custom-configuration then the
   configuration choices will be forced to settings corresponding to
   the selected example configuration. The example configurations are
@@ -190,10 +188,13 @@ CONFIG_LEON3_MIN
   technology specific multiplier and where the DW multiplier is generally
   a good choice for ASIC.
 
+  Note that selecting an example configuration will not affect the settings
+  for AMBA AHB bus width, cacheability and debug support unit.
+
 Number of SPARC register windows
 CONFIG_IU_NWINDOWS
   The SPARC architecture (and LEON) allows 2 - 32 register windows.
-  However, any number except 8 will require that you modify and
+  However, any number except 8 will require that you modify and 
   recompile your run-time system or kernel. Unless you know what
   you are doing, use 8.
 
@@ -217,9 +218,9 @@ CONFIG_IU_V8MULDIV
 Multiplier latency
 CONFIG_IU_MUL_LATENCY_2
   Implementation options for the integer multiplier.
-
+  
   Type        Implementation              issue-rate/latency
-  2-clocks    32x32 pipelined multiplier     1/2
+  2-clocks    32x32 pipelined multiplier     1/2 
   4-clocks    16x16 standard multiplier      4/4
   5-clocks    16x16 pipelined multiplier     4/5
 
@@ -241,17 +242,10 @@ CONFIG_IU_MUL_INFERRED
   * Using technology specific netlists (TechSpec)
   * Using Synopsys Designware (DW02_mult and DW_mult_pipe)
 
-Branch prediction
-CONFIG_IU_BP
-  Enabling branch prediction will improve performance with
-  up to 20%, depending on application. The timing and area
-  overhead are minor, so it is recommended to always enable
-  this option.
-
 Single vector trapping
 CONFIG_IU_SVT
   Single-vector trapping is a SPARC V8e option to reduce code-size
-  in small applications. If enabled, the processor will jump to
+  in small applications. If enabled, the processor will jump to 
   the address of trap 0 (tt = 0x00) for all traps. No trap table
   is then needed. The trap type is present in %psr.tt and must
   be decoded by the O/S. Saves 4 Kbyte of code, but increases
@@ -275,69 +269,59 @@ CONFIG_IU_RSTADDR
   With this option, any 4-kbyte aligned reset start address can be
   choosen. Keep at 0 unless you really know what you are doing.
 
-No tagged arithmetic
-CONFIG_NOTAG
-  Say Y here to disable tagged arithmetic and the CASA instructions.
-  This will save some area in minimal systems that do not need
-  these features.
-
 Power-down
 CONFIG_PWD
   Say Y here to enable the power-down feature of the processor.
   Might reduce the maximum frequency slightly on FPGA targets.
-  For details on the power-down operation, see the LEON3 manual.
+  For details on the power-down operation, see the LEON manual.
 
 Hardware watchpoints
 CONFIG_IU_WATCHPOINTS
-  The processor can have up to 4 hardware watchpoints, allowing to
+  The processor can have up to 4 hardware watchpoints, allowing to 
   create both data and instruction breakpoints at any memory location,
   also in PROM. Each watchpoint will use approximately 500 gates.
   Use 0 to disable the watchpoint function.
 
 Floating-point enable
 CONFIG_FPU_ENABLE
-  Say Y here to enable the floating-point interface for the GRFPU-lite
-  or GRFPU. Note that no FPUs are provided with the GPL version
-  of GRLIB. Both FPUs are commercial cores and must be obtained separately.
+  Say Y here to enable the floating-point interface for GRFPU-lite
+  or GRFPU. Note that no FPU's are provided with the GPL version
+  of GRLIB. The FPUs are commercial cores and must be obtained separately. 
 
 FPU selection
 CONFIG_FPU_GRFPU
-  Select between Gaisler Research's GRFPU and GRFPU-lite FPUs. All cores
-  are fully IEEE-754 compatible and support all SPARC FPU instructions.
+  Select between Gaisler Research's GRFPU and GRFPU-lite FPUs.
 
 GRFPU Multiplier
 CONFIG_FPU_GRFPU_INFMUL
-  On FPGA targets choose inferred multiplier. For ASIC implementations
-  choose between Synopsys Design Ware (DW) multiplier or Module
-  Generator (ModGen) multiplier. The DW multiplier gives better results
-  (smaller area and better timing) but requires a DW license.
-  The ModGen multiplier is part of GRLIB and does not require a license.
-  The Technology Specific multiplier option selects a pre-designed
-  multiplier using technology specific macrocells when available, else
-  an inferred multiplier is used.
+  On FPGA targets choose inferred multiplier. For ASIC implementations 
+  choose between Synopsys Design Ware (DW) multiplier or Module 
+  Generator (ModGen) multiplier. The DW multiplier gives better results 
+  (smaller area and better timing) but requires a DW license. 
+  The ModGen multiplier is part of GRLIB and does not require a license. 
 
 Shared GRFPU
 CONFIG_FPU_GRFPU_SH
-  If enabled multiple CPU cores will share one GRFPU.
+  If enabled multiple CPU cores will share one GRFPU.	
 
 GRFPC Configuration
 CONFIG_FPU_GRFPC0
-  Configures the GRFPU-LITE controller.
+  Configures the GRFPU-LITE controller. 
 
-  In simple configuration controller executes FP instructions
-  in parallel with  integer instructions. FP operands are fetched
-  in the register file stage and the result is written in the write
+  In simple configuration controller executes FP instructions 
+  in parallel with  integer instructions. FP operands are fetched 
+  in the register file stage and the result is written in the write 
   stage. This option uses least area resources.
 
-  Data forwarding configuration gives ~ 10 % higher FP performance than
+  Data forwarding configuration gives ~ 10 % higher FP performance than 
   the simple configuration by adding data forwarding between the pipeline
-  stages.
+  stages. 
 
   Non-blocking controller allows FP load and store instructions to
-  execute in parallel with FP instructions. The performance increase is
-  ~ 20 % for FP applications. This option uses most logic resources and
-  is suitable for ASIC implementations.
-
+  execute in parallel with FP instructions. The performance increase is 
+  ~ 20 % for FP applications. This option uses most logic resources and 
+  is suitable for ASIC implementations. 
+  
 Floating-point netlist
 CONFIG_FPU_NETLIST
   Say Y here to use a VHDL netlist of the GRFPU-Lite. This is
@@ -359,21 +343,21 @@ CONFIG_DCACHE_ENABLE
 
 Instruction cache associativity
 CONFIG_ICACHE_ASSO1
-  The instruction cache can be implemented as a multi-way cache with
-  1 - 4 ways. Higher associativity usually increases the cache hit
+  The instruction cache can be implemented as a multi-set cache with
+  1 - 4 sets. Higher associativity usually increases the cache hit
   rate and thereby the performance. The downside is higher power
   consumption and increased gate-count for tag comparators.
 
-  Note that a 1-way cache is effectively a direct-mapped cache.
+  Note that a 1-set cache is effectively a direct-mapped cache.
 
-Instruction cache way size
+Instruction cache set size
 CONFIG_ICACHE_SZ1
-  The size of each way in the instuction cache (kbytes). Valid values
+  The size of each set in the instuction cache (kbytes). Valid values
   are 1 - 64 in binary steps. Note that the full range is only supported
   by the generic and virtex2 targets. Most target packages are limited
-  to 2 - 16 kbyte. Large way size gives higher performance but might
+  to 2 - 16 kbyte. Large set size gives higher performance but might
   affect the maximum frequency (on ASIC targets). The total instruction
-  cache size is the number of way multiplied with the way size.
+  cache size is the number of set multiplied with the set size.
 
 Instruction cache line size
 CONFIG_ICACHE_LZ16
@@ -384,18 +368,24 @@ CONFIG_ICACHE_LZ16
 
 Instruction cache replacement algorithm
 CONFIG_ICACHE_ALGORND
-  Cache replacement algorithm for caches with 2 - 4 ways. The 'random'
-  algorithm selects the way to evict randomly. The least-recently-replaced
-  (LRR) algorithm evicts the way least recently replaced. The least-
-  recently-used (LRU) algorithm evicts the way least recently accessed.
+  Cache replacement algorithm for caches with 2 - 4 sets. The 'Random'
+  algorithm selects the set to evict randomly. For LEON4, "Dynamic" option
+  makes the replacement policy soft configurable between direct-mapped,
+  least-recently-replaced/incremental (LRR), least-recently-used (LRU)
+  and random. The replacement policy is then chosen at run-time via the
+  cache configuration register(s). The reset value in case 'Dynamic' is
+  selected here is LRU. For LEON3, LRU/Dynamic is hard LRU
+
+  The direct-mapped option selects the way based on the address.
+  The LRR algorithm evicts the way least recently replaced.
+  The LRU algorithm evicts the way least recently accessed.
+
   The random algorithm uses a simple 1- or 2-bit counter to select
-  the eviction way and has low area overhead. The LRR scheme uses one
-  extra bit in the tag ram and has therefore also low area overhead.
-  However, the LRR scheme can only be used with 2-way caches. The LRU
-  scheme has typically the best performance but also highest area overhead.
-  A 2-way LRU uses 1 flip-flop per line, a 3-way LRU uses 3 flip-flops
-  per line, and a 4-way LRU uses 5 flip-flops per line to store the access
-  history.
+  the eviction set and has low area overhead. The soft configurable
+  option with LRU scheme selected has typically the best performance
+  but also the highest area overhead. A 2-set LRU uses 1 flip-flop per
+  line, a 3-set LRU uses 3 flip-flops per line, and a 4-set LRU uses 5
+  flip-flops per line to store the access history.
 
 Instruction cache locking
 CONFIG_ICACHE_LOCK
@@ -406,22 +396,22 @@ CONFIG_ICACHE_LOCK
 
 Data cache associativity
 CONFIG_DCACHE_ASSO1
-  The data cache can be implemented as a multi-way cache with
-  1 - 4 ways. Higher associativity usually increases the cache hit
+  The data cache can be implemented as a multi-set cache with
+  1 - 4 sets. Higher associativity usually increases the cache hit
   rate and thereby the performance. The downside is higher power
   consumption and increased gate-count for tag comparators.
 
-  Note that a 1-way cache is effectively a direct-mapped cache.
+  Note that a 1-set cache is effectively a direct-mapped cache.
 
-Data cache way size
+Data cache set size
 CONFIG_DCACHE_SZ1
-  The size of each way in the data cache (kbytes). Valid values are
+  The size of each set in the data cache (kbytes). Valid values are
   1 - 64 in binary steps. Note that the full range is only supported
   by the generic and virtex2 targets. Most target packages are limited
   to 2 - 16 kbyte. A large cache gives higher performance but the
   data cache is timing critical an a too large setting might affect
   the maximum frequency (on ASIC targets). The total data cache size
-  is the number of way multiplied with the way size.
+  is the number of set multiplied with the set size.
 
 Data cache line size
 CONFIG_DCACHE_LZ16
@@ -469,6 +459,11 @@ CONFIG_DCACHE_SNOOP_SEPTAG
   using two-port RAMs instead of dual-port RAMs. A workaround if
   dual port RAMs are not available for the target technology is
   therefore to use separate snoop tags even if it is not needed.
+
+Single-port RAM for separate tags
+CONFIG_DCACHE_SNOOP_SP
+  Use single-port RAM to implement separate physical tags. This leads
+  to the cache tag valid bits being implemented in flip-flops.
 
 Fixed cacheability map
 CONFIG_CACHE_FIXED
@@ -525,24 +520,12 @@ Split tlb, dcache
 CONFIG_MMU_D2
   Select the number of entries for the dcache TLB.
 
-Fast writebuffer
+Fast writebuffer 
 CONFIG_MMU_FASTWB
   Only selectable if split tlb is enabled. In case fast writebuffer is
-  enabled the tlb hit will be made concurrent to the cache hit. This
+  enabled the tlb hit will be made concurrent to the cache hit. This 
   leads to higher store performance, but increased power and area.
-
-MMU pagesize
-CONFIG_MMU_PAGE_4K
-  The deafult SPARC V8 SRMMU page size is 4 Kbyte. This limits the
-  cache way size to 4 Kbyte, and total data cache size to 16 Kbyte,
-  when the MMU is used. To increase the maximum data cache size,
-  the MMU pages size can be increased to up 32 Kbyte. This will
-  give a maximum data cache size of 128 Kbyte.
-
-  Note that an MMU page size different than 4 Kbyte will require
-  a special linux tool-chain if glibc is used. If you don't know
-  what you are doing, stay with 4 Kbyte ...
-
+  
 DSU enable
 CONFIG_DSU_ENABLE
   The debug support unit (DSU) allows non-intrusive debugging and tracing
@@ -558,13 +541,13 @@ Enable instruction tracing
 CONFIG_DSU_ITRACE
   If you say Y here, an instruction trace buffer will be implemented
   in each processor. The trace buffer will trace executed instructions
-  and their results, and place them in a circular buffer. The buffer
-  can be read out by any AHB master, and in particular by the debug
+  and their results, and place them in a circular buffer. The buffer 
+  can be read out by any AHB master, and in particular by the debug 
   communication link.
 
 Size of trace buffer
 CONFIG_DSU_ITRACESZ1
-  Select the buffer size (in kbytes) for the instruction trace buffer.
+  Select the buffer size (in kbytes) for the instruction trace buffer. 
   Each line in the buffer needs 16 bytes. A 128-entry buffer will thus
   need 2 kbyte.
 
@@ -579,15 +562,24 @@ Enable AHB tracing
 CONFIG_DSU_ATRACE
   If you say Y here, an AHB trace buffer will be implemented in the
   debug support unit processor. The AHB buffer will trace all transfers
-  on the AHB bus and save them in a circular buffer. The trace buffer
-  can be read out by any AHB master, and in particular by the debug
+  on the AHB bus and save them in a circular buffer. The trace buffer 
+  can be read out by any AHB master, and in particular by the debug 
   communication link.
 
 Size of trace buffer
 CONFIG_DSU_ATRACESZ1
-  Select the buffer size (in kbytes) for the AHB trace buffer.
+  Select the buffer size (in kbytes) for the AHB trace buffer. 
   Each line in the buffer needs 16 bytes. A 128-entry buffer will thus
   need 2 kbyte.
+
+AHB data breakpoints
+CONFIG_DSU_AHBWP2
+ Selects if AHB data breakpoints should be enabled. Pipelined option
+ is best for timing but has an overhead in area. Selecting just
+ Enabled prevents inclusion of pipeline registers but may cause long
+ timing paths between the AMBA AHB data vectors and the DSU.
+ The recommended setting is pipelined unless system frequency and
+ available area is low.
 
 AHB trace buffer filters
 CONFIG_DSU_AFILT
@@ -602,41 +594,41 @@ CONFIG_DSU_ASTAT
   count events on the AHB bus. This option will also enable AHB trace
   buffer filters.
 
+LEON-FT enable
+CONFIG_LEONFT_EN
+  Say Y here to use the fault-tolerant LEON-FT core instead of the
+  standard non-FT LEON.
 
-LEON3FT enable
-CONFIG_LEON3FT_EN
-  Say Y here to use the fault-tolerant LEON3FT core instead of the
-  standard non-FT LEON3.
-
-IU Register file protection
+IU Register file protection 
 CONFIG_IUFT_NONE
-  Select the FT implementation in the LEON3FT integer unit
+  Select the FT implementation in the LEONFT integer unit 
   register file. The options include parity, parity with
   sparing, 7-bit BCH and TMR.
 
-FPU Register file protection
-CONFIG_FPUFT_NONE
+FPU Register file protection 
+CONFIG_FPUFT_EN
   Say Y to enable SEU protection of the FPU register file.
-  The GRFPU-Lite will be protected with parity, PDMR and TMR.
-  The GRFPU can use PDMR or TMR only.
+  The GRFPU will be protected using 8-bit parity without restart, while
+  the GRFPU-Lite will be protected with 4-bit parity with restart. If 
+  disabled the FPU register file will be implemented using flip-flops.
 
 Cache memory error injection
 CONFIG_RF_ERRINJ
   Say Y here to enable error injection in to the IU/FPU regfiles.
   Affects only simulation.
 
-Cache memory protection
+Cache memory protection 
 CONFIG_CACHE_FT_EN
-  Enable SEU error-correction in the cache memories.
+  Enable SEU error-correction in the cache memories. 
 
 Cache memory error injection
 CONFIG_CACHE_ERRINJ
   Say Y here to enable error injection in to the cache memories.
   Affects only simulation.
 
-Leon3ft netlist
-CONFIG_LEON3_NETLIST
-  Say Y here to use a VHDL netlist of the LEON3FT. This is
+LEON netlist
+CONFIG_LEON_NETLIST
+  Say Y here to use a VHDL netlist of the LEON. This is
   only available in certain versions of grlib.
 
 IU assembly printing
@@ -657,6 +649,23 @@ CONFIG_DEBUG_PC32
   much easier. Turn of this option for synthesis or you will be wasting
   area.
 
+LEON Statistical Module
+CONFIG_STAT_ENABLE
+  Say Y here to enable the LEON Statistical Unit. The unit consists
+  of a number of timers that can count various processor and MMU/FPU
+  events to allow analysis of processor behavior and performance. 
+
+Number of L4S counters
+CONFIG_STAT_CNT 
+  Set the number of 32-bit counters in the unit (1 - 32).
+
+Number of L4S accumulative counters
+CONFIG_STAT_NMAX
+  If this value is higher than 0, the core will include functionality 
+  for tracking the longest consecutive time that an event is active or 
+  inactive. The functionality will be available for the nmax first 
+  counters. This value must not exceed the number of available counters.
+
 SPARC V8E non-privileged ASI access
 CONFIG_NP_ASI
   In SPARC-V8E implementations providing for non-privileged ASI access
@@ -665,6 +674,64 @@ CONFIG_NP_ASI
   STORE from Alternate space instructions accessing ASI’s 8016 - FF16
   are non-privileged instructions. This option enables this non-
   privileged behavior.
+L2 Associativity
+CONFIG_L2_ASSO1
+  Select how many cache ways the L2 cache should have.
+
+L2 Way size
+CONFIG_L2_SZ1
+  Select the szie of each way in kbytes. The total L2 cache
+  size will be way size * number of ways.
+
+L2 cache line size
+CONFIG_L2_LINE16
+  The L2 cache can have either 16 or 32 bytes per line. It is
+  recommened to use 32 bytes for best performance.
+
+HPROT cachebility decoding
+CONFIG_L2_HPROT
+  Say yes here to enable the AHB HPROT signals to define if an
+  L2 access should be cached. Should be disabled for now until
+  all I/O units in grlib generate these signals correctly.
+
+L2 power-on enable
+CONFIG_L2_PEN
+  Say yes here to enable the L2 cache directly after reset.
+  This will allow to use the cache without first enable it
+  in software. The cache will automatically be flushed before
+  enabled.
+
+Random replacement
+CONFIG_L2_RAN
+  Say Y here to enable random replacement policy rather then
+  the default LRU.
+
+Write-through operation
+CONFIG_L2_WT
+  The L2 cache operates by default in copy-back mode. Say yes
+  here to enable write-through operation at power-on.
+
+Cachebility mapping
+CONFIG_L2_MAP
+  This 16-bit hexadecimal vaule defines which address areas
+  are to be cacheable by the L2 cache. Each bit set indicates
+  a cacheable 256 Mbyte block. The left-most bit (LSB) indicates
+  address 0 - 256M and so on.
+
+RAM sharing
+CONFIG_L2_SHARE
+  Say yes here to implement one shared data RAM for all cache ways.
+  This will reduce the number of RAM blocks for multi-way caches.
+
+MTRR registers
+CONFIG_L2_MTRR
+  Specify the number of MTRR registers. Each MTRR can define one
+  memory area to be uncached, write-through, or copy-back.
+
+EDAC protection
+CONFIG_L2_EDAC
+  Say yes here to enable EDAC protection.
+
 CONFIG_AHB_DEFMST
   Sets the default AHB master (see AMBA 2.0 specification for definition).
   Should not be set to a value larger than the number of AHB masters - 1.
@@ -846,6 +913,302 @@ CONFIG_MCTRL_PROGPAGE
   Say Y here to enable programmable SDRAM page burst operation. This
   will allow to dynamically enable/disable page burst by setting
   bit 17 in MCFG2.
+
+Leon2 memory controller
+CONFIG_MCTRLFT
+  Say Y here to enable a memory controller with EDAC. The controller
+  can access PROM, I/O, SRAM and SDRAM. The bus width for PROM
+  and SRAM is programmable to 8-, 16- or 32-bits.
+
+8-bit memory support
+CONFIG_MCTRLFT_8BIT
+  If you say Y here, the PROM/SRAM memory controller will support
+  8-bit mode, i.e. operate from 8-bit devices as if they were 32-bit.
+  Say N to save a few hundred gates.
+
+16-bit memory support
+CONFIG_MCTRLFT_16BIT
+  If you say Y here, the PROM/SRAM memory controller will support
+  16-bit mode, i.e. operate from 16-bit devices as if they were 32-bit.
+  Say N to save a few hundred gates.
+
+Write strobe feedback
+CONFIG_MCTRLFT_WFB
+  If you say Y here, the PROM/SRAM write strobe (WRITEN) will
+  be used to enable the data bus drivers during write cycles. This
+  will guarantee that the data is still valid on the rising edge of
+  the write strobe. If you say N, the write strobes and the data bus
+  drivers will be clocked on the rising edge, potentially creating
+  a hold time problem in external memory or I/O. However, in all
+  practical cases, there is enough capacitance in the data bus lines
+  to keep the value stable for a few (many?) nano-seconds after the
+  buffers have been disabled, making it safe to say N and remove a
+  combinational path in the netlist that might be difficult to
+  analyze.
+
+Write strobe feedback
+CONFIG_MCTRLFT_5CS
+  If you say Y here, the 5th (RAMSN[4]) SRAM chip select signal will
+  be enabled. If you don't intend to use it, say N and save some gates.
+
+SDRAM controller enable
+CONFIG_MCTRLFT_SDRAM
+  Say Y here to enabled the PC100/PC133 SDRAM controller. If you don't
+  intend to use SDRAM, say N and save about 1 kgates.
+
+SDRAM controller inverted clock
+CONFIG_MCTRLFT_SDRAM_INVCLK
+  If you say Y here, the SDRAM clock will be inverted in respect to the
+  system clock and the SDRAM signals. This will limit the SDRAM frequency
+  to 50/66 MHz, but has the benefit that you will not need a PLL to
+  generate the SDRAM clock. On FPGA targets, say Y. On ASIC targets,
+  say N and tell your foundry to balance the SDRAM clock output.
+
+SDRAM separate address buses
+CONFIG_MCTRLFT_SDRAM_SEPBUS
+  Say Y here if your SDRAM is connected through separate address
+  and data buses (SA & SD). This is the case on the GR-CPCI-XC2V6000
+  board, but not on the GR-PCI-XC2V3000 or Avnet XCV1500E boards.
+
+Edac enable
+CONFIG_MCTRLFT_EDAC
+  Say Y here to enable the EDAC.
+
+Edac pipeline
+CONFIG_MCTRLFT_EDACPIPE
+  Say Y here to enable EDAC pipelining. This will improve the timing
+  on the HREADY output, but incur one extra clock latency on the
+  first read data in a burst (or single access).
+
+Edac pipeline
+CONFIG_MCTRLFT_RSEDAC
+  Say Y here to enable Reed-Solomon EDAC for SDRAM. This EDAC is
+  able to correct two independent 4-bit errors in a 32-bit word.
+
+Page burst enable
+CONFIG_MCTRLFT_PAGE
+  Say Y here to enable SDRAM page burst operation. This will implement
+  read operations using page bursts rather than 8-word bursts and save
+  about 500 gates (100 LUTs). Note that not all SDRAM supports page
+  burst, so use this option with care.
+
+Programmable page burst enable
+CONFIG_MCTRLFT_PROGPAGE
+  Say Y here to enable programmable SDRAM page burst operation. This
+  will allow to dynamically enable/disable page burst by setting
+  bit 17 in MCFG2.
+
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL0
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL1
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL2
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL3
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL4
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL5
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL6
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL7
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL8
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL9
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL10
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL11
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL12
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL13
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL14
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL15
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL16
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL17
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL18
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL19
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL20
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL21
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL22
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL23
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL24
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL25
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL26
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL27
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+PROM bank and size configuration
+CONFIG_MCTRLFT_ROMASEL28
+  Select number of PROM banks and their sizes. Two or four banks can be selected.
+  For two banks, a fixed bank size can be selected, ranging from 64 kByte to 256 MByte.
+  For four banks, a fixed bank size can be selected, ranging from 16 kByte to 128 MByte,
+  or the size can be programmable.
+
+Use netlist
+CONFIG_MCTRLFT_NETLIST
+  Use a technology-specific pre-compiled netlist of FTMCTRL
+
+64-bit data bus
+CONFIG_MCTRLFT_SDRAM_BUS64
+  Say Y here to enable 64-bit SDRAM data bus.
 
 SDRAM controller enable
 CONFIG_DDR2SP
@@ -1113,22 +1476,6 @@ CONFIG_GRGPIO_IMASK
   The I/O port interrupt mask defines which bits in the I/O port
   should be able to create an interrupt. 
 
-LEON3 Statistical Module
-CONFIG_L3S_ENABLE
-  Say Y here to enable the LEON3 Statistical Unit. The unit consists
-  of a number of timers that can count various processor and MMU/FPU
-  events to allow analysis of processor behavior and performance.        
-
-Number of L3S counters
-CONFIG_L3S_CNT 
-  Set the number of 32-bit counters in the unit (1 - 32).
-
-Number of L3S accumulative counters
-CONFIG_L3S_NMAX
-  If this value is higher than 0, the core will include functionality 
-  for tracking the longest consecutive time that an event is active or 
-  inactive. The functionality will be available for the nmax first 
-  counters. This value must not exceed the number of available counters.
 OpenCores I2C Master 
 CONFIG_I2C_ENABLE
   Say Y here to enable the OpenCores I2C master.

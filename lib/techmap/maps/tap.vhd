@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -213,7 +213,7 @@ begin
      tapo_tck <= ltck; tapo_tckn <= not ltck;
    end generate;
 
-   igl2 : if (tech = igloo2) generate
+   igl2 : if (tech = igloo2) or (tech = rtg4) generate
      u0 : igloo2_tap port map (tck, tms, tdi, trst, tdo,
        tapi_tdo1, ltck, tapo_tdi, tapo_rst, tapo_capt, 
        tapo_shft, tapo_upd, tapo_inst);
@@ -256,3 +256,4 @@ begin
    end generate;
    
 end;  
+

@@ -56,11 +56,11 @@ BITGEN=$(GRLIB)/boards/$(BOARD)/default.ut
 CLEAN=soft-clean migclean
 VCOMOPT=-explicit
 TECHLIBS = unisim secureip
-VSIMOPT= -gdisas=0 -i -t ps -novopt +notimingchecks $(SIMTOP)
+VSIMOPT= -i -t ps -novopt +notimingchecks $(SIMTOP)
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip cypress ihp gsi fmf spansion micron
 DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan pci ambatest ddr \
-	leon4 leon4v0 l2cache gr1553b iommu ascs slink pwm \
+	leon4v0 l2cache gr1553b iommu ascs slink pwm \
 	hcan
 FILEADD = MCB.vhd
 FILESKIP = grcan.vhd ddr2.v mobile_ddr.v

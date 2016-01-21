@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -413,19 +413,7 @@ begin
 
   end process;
 
-  sdo.sdcsn <= "11"; sdo.sdcke <= "11"; sdo.sdwen <= '1'; sdo.rasn  <= '1';
-  sdo.casn  <= '1'; sdo.dqm   <= (others => '1'); sdo.address  <= (others => '0');
-  sdo.data  <= (others => '0'); sdo.conf <= (others => '0'); sdo.odt  <= (others => '0');
-  sdo.cal_pll  <= (others => '0'); sdo.cal_inc  <= (others => '0');
-  sdo.cal_en <= (others => '0'); sdo.sdck <= (others => '0');
-  sdo.ba <= (others => '0'); sdo.cb <= (others => '0');
-  sdo.vbdrive <= (others => '0'); sdo.qdrive <= '0'; sdo.bdrive <= '0';
-  sdo.oct  <= '0'; 
-  sdo.ce <= '0'; sdo.moben <= '0'; sdo.cal_rst <= '0';
-  sdo.xsdcsn <= (others => '0'); sdo.vcbdrive <= (others => '0');
-  sdo.cbdqm <= (others => '0'); sdo.cbcal_en <= (others => '0');
-  sdo.cbcal_inc <= (others => '0'); sdo.read_pend <= (others => '0');
-  sdo.regwdata <= (others => '0'); sdo.regwrite <= (others => '0');
+  sdo <= sdctrl_out_none;
   sro.mben  <= r.mben;
   sro.sdram_en    <= '0';
   sro.rs_edac_en  <= '0';

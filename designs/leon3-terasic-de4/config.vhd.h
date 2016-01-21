@@ -47,7 +47,7 @@
   constant CFG_DLINE 	: integer := CFG_DLINE_SZ;
   constant CFG_DREPL 	: integer := CFG_DCACHE_ALGORND;
   constant CFG_DLOCK 	: integer := CONFIG_DCACHE_LOCK;
-  constant CFG_DSNOOP	: integer := CONFIG_DCACHE_SNOOP*2 + 4*CONFIG_DCACHE_SNOOP_SEPTAG;
+  constant CFG_DSNOOP	: integer := CONFIG_DCACHE_SNOOP_SP + CONFIG_DCACHE_SNOOP*2 + 4*CONFIG_DCACHE_SNOOP_SEPTAG;
   constant CFG_DFIXED	: integer := 16#CONFIG_CACHE_FIXED#;
   constant CFG_DLRAMEN	: integer := CONFIG_DCACHE_LRAM;
   constant CFG_DLRAMADDR: integer := 16#CONFIG_DCACHE_LRSTART#;
@@ -71,8 +71,14 @@
   constant CFG_LEON3_NETLIST: integer := CONFIG_LEON3_NETLIST;	
   constant CFG_DISAS    : integer := CONFIG_IU_DISAS + CONFIG_IU_DISAS_NET;
   constant CFG_PCLOW    : integer := CFG_DEBUG_PC32;
+  constant CFG_STAT_ENABLE   : integer := CONFIG_STAT_ENABLE;
+  constant CFG_STAT_CNT      : integer := CONFIG_STAT_CNT;
+  constant CFG_STAT_NMAX     : integer := CONFIG_STAT_NMAX;
+  constant CFG_STAT_DSUEN    : integer := CONFIG_STAT_DSUEN;
   constant CFG_NP_ASI   : integer := CONFIG_NP_ASI;
-  constant CFG_WRPSR   : integer := CONFIG_WRPSR;
+  constant CFG_WRPSR    : integer := CONFIG_WRPSR;
+  constant CFG_ALTWIN   : integer := CONFIG_ALTWIN;
+  constant CFG_REX      : integer := CONFIG_REX;
 
 -- L2 Cache
   constant CFG_L2_EN    : integer := CONFIG_L2_ENABLE;
@@ -125,6 +131,26 @@
   constant CFG_MCTRL_SD64     : integer := CONFIG_MCTRL_SDRAM_BUS64;
   constant CFG_MCTRL_PAGE     : integer := CONFIG_MCTRL_PAGE + CONFIG_MCTRL_PROGPAGE;
 
+-- DDR controller
+  constant CFG_DDR2SP  		   : integer := CONFIG_DDR2SP;
+  constant CFG_DDR2SP_INIT  	   : integer := CONFIG_DDR2SP_INIT;
+  constant CFG_DDR2SP_FREQ   	   : integer := CONFIG_DDR2SP_FREQ;
+  constant CFG_DDR2SP_TRFC   	   : integer := CONFIG_DDR2SP_TRFC;
+  constant CFG_DDR2SP_DATAWIDTH    : integer := CONFIG_DDR2SP_DATAWIDTH;
+  constant CFG_DDR2SP_FTEN         : integer := CONFIG_DDR2SP_FTEN;
+  constant CFG_DDR2SP_FTWIDTH      : integer := CONFIG_DDR2SP_FTWIDTH;
+  constant CFG_DDR2SP_COL    	   : integer := CONFIG_DDR2SP_COL;
+  constant CFG_DDR2SP_SIZE  	   : integer := CONFIG_DDR2SP_MBYTE;
+  constant CFG_DDR2SP_DELAY0 	   : integer := CONFIG_DDR2SP_DELAY0;
+  constant CFG_DDR2SP_DELAY1 	   : integer := CONFIG_DDR2SP_DELAY1;
+  constant CFG_DDR2SP_DELAY2 	   : integer := CONFIG_DDR2SP_DELAY2;
+  constant CFG_DDR2SP_DELAY3 	   : integer := CONFIG_DDR2SP_DELAY3;
+  constant CFG_DDR2SP_DELAY4 	   : integer := CONFIG_DDR2SP_DELAY4;
+  constant CFG_DDR2SP_DELAY5 	   : integer := CONFIG_DDR2SP_DELAY5;
+  constant CFG_DDR2SP_DELAY6 	   : integer := CONFIG_DDR2SP_DELAY6;
+  constant CFG_DDR2SP_DELAY7 	   : integer := CONFIG_DDR2SP_DELAY7;
+  constant CFG_DDR2SP_NOSYNC       : integer := CONFIG_DDR2SP_NOSYNC;
+
 -- AHB status register
   constant CFG_AHBSTAT 	: integer := CONFIG_AHBSTAT_ENABLE;
   constant CFG_AHBSTATN	: integer := CONFIG_AHBSTAT_NFTSLV;
@@ -134,10 +160,14 @@
   constant CFG_AHBRSZ	: integer := CFG_AHBRAMSZ;
   constant CFG_AHBRADDR	: integer := 16#CONFIG_AHBRAM_START#;
   constant CFG_AHBRPIPE : integer := CONFIG_AHBRAM_PIPE;
+
 -- Gaisler Ethernet core
   constant CFG_GRETH   	    : integer := CONFIG_GRETH_ENABLE;
   constant CFG_GRETH1G	    : integer := CONFIG_GRETH_GIGA;
   constant CFG_ETH_FIFO     : integer := CFG_GRETH_FIFO;
+#ifdef CONFIG_GRETH_SGMII_PRESENT
+  constant CFG_GRETH_SGMII  : integer := CONFIG_GRETH_SGMII_MODE;
+#endif
 #ifdef CONFIG_LEON3FT_PRESENT
   constant CFG_GRETH_FT     : integer := CONFIG_GRETH_FT;
   constant CFG_GRETH_EDCLFT : integer := CONFIG_GRETH_EDCLFT;

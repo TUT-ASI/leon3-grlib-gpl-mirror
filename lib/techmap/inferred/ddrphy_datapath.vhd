@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -111,12 +111,12 @@ begin
       generic map (tech => regtech)
       port map (d1 => ddrclk_en(x), d2 => gnd, ce => vcc, 
                 c1 => clk90, c2 => clk270, r => gnd, s => gnd,
-                q => ddr_clk(x));
+                q => ddr_clk(x), testen => gnd, testrst => gnd);
     clkbreg: ddr_oreg 
       generic map (tech => regtech)
       port map (d1 => gnd, d2 => ddrclk_en(x), ce => vcc, 
                 c1 => clk90, c2 => clk270, r => gnd, s => gnd,
-                q => ddr_clkb(x));
+                q => ddr_clkb(x), testen => gnd, testrst => gnd);
   end generate;
   
   -----------------------------------------------------------------------------
@@ -158,7 +158,7 @@ begin
       generic map (tech => regtech)
       port map (d1 => dqout(x+dbits), d2 => dqout(x), ce => vcc, 
                 c1 => clk0, c2 => clk180, r => gnd, s => gnd,
-                q => ddr_dq_out(x));
+                q => ddr_dq_out(x), testen => gnd, testrst => gnd);
     dqoenreg: grdff
       generic map (tech => regtech)
       port map (clk => clk0, d => oen, q => ddr_dq_oen(x));
@@ -180,7 +180,7 @@ begin
       generic map (tech => regtech)
       port map (d1 => dqs_en_inv180, d2 => gnd, ce => vcc,
                 c1 => clk90, c2 => clk270, r => gnd, s => gnd,
-                q => ddr_dqs_out(x));
+                q => ddr_dqs_out(x), testen => gnd, testrst => gnd);
     
     dqsoenreg: grdff generic map (tech => regtech)
       port map (clk => clk0, d => dqs_oen, q => ddr_dqs_oen(x));
@@ -191,7 +191,7 @@ begin
       generic map (tech => regtech)
       port map (d1 => dm(x+dbits/8), d2 => dm(x), ce => vcc,
                 c1 => clk0, c2 => clk180, r => gnd, s => gnd,
-                q => ddr_dm(x));
+                q => ddr_dm(x), testen => gnd, testrst => gnd);
   end generate;
   
   -----------------------------------------------------------------------------
@@ -205,7 +205,7 @@ begin
     dqcaptreg: ddr_ireg generic map (tech => regtech)
       port map (d => ddr_dq_in(x),
                 c1 => ddr_dqs_in90n(x/8), c2 => ddr_dqs_in90(x/8), ce => vcc, r => gnd, s => gnd,
-                q1 => dqcaptf(x), q2 => dqcaptr(x));
+                q1 => dqcaptf(x), q2 => dqcaptr(x), testen => gnd, testrst => gnd);
     
     -- optional extra resync stage
     ifresync: if resync=1 generate
@@ -236,3 +236,4 @@ begin
 
   
 end;
+

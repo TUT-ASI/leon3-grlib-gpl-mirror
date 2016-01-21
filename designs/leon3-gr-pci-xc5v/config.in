@@ -1,5 +1,5 @@
 #
-# LEON3 configuration written in linux configuration language
+# LEON4 configuration written in linux configuration language
 #
 # Written by Jiri Gaisler, Gaisler Research
 #
@@ -10,7 +10,7 @@
 #define_bool CONFIG_MCTRL_RMW y
 define_bool CONFIG_HAS_SHARED_GRFPU y
 
-mainmenu_name "LEON3MP Design Configuration"
+mainmenu_name "LEON4MP Design Configuration"
 
 mainmenu_option next_comment
   comment 'Synthesis      '
@@ -26,7 +26,8 @@ mainmenu_option next_comment
   source lib/techmap/clocks/clkgen.in
 endmenu
 
-source lib/gaisler/leon3/leon3.in
+source lib/gaisler/subsys/leon_dsu_stat_base.in
+source lib/gaisler/l2cache/l2c.in
 source lib/grlib/amba/amba.in
 
 mainmenu_option next_comment
@@ -39,7 +40,10 @@ endmenu
 
 mainmenu_option next_comment
   comment 'Memory controllers             '
+    source lib/gaisler/memctrl/srctrl.in
+    source lib/gaisler/memctrl/sdctrl.in
     source lib/esa/memoryctrl/mctrl.in
+    source lib/gaisler/memctrl/ftmctrl.in
     source lib/gaisler/misc/ahbstat.in
 endmenu
 
@@ -92,6 +96,11 @@ comment 'Peripherals             '
     source lib/gaisler/irqmp/irqmp.in
     source lib/gaisler/misc/gptimer.in
     source lib/gaisler/misc/grgpio.in
+  endmenu
+
+  mainmenu_option next_comment
+  comment 'MIL-STD-1553B'
+    source lib/gaisler/gr1553b/gr1553b.in
   endmenu
 
 endmenu

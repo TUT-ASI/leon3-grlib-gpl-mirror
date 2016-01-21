@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ entity leon3sh is
   generic (
     hindex     :     integer                  := 0;
     fabtech    :     integer range 0 to NTECH := DEFFABTECH;
-    memtech    :     integer range 0 to NTECH := DEFMEMTECH;
+    memtech    :     integer                  := DEFMEMTECH;
     nwindows   :     integer range 2 to 32    := 8;
     dsu        :     integer range 0 to 1     := 0;
     fpu        :     integer range 0 to 63    := 0;
@@ -83,7 +83,9 @@ entity leon3sh is
     mmupgsz    :     integer range 0 to 5     := 0;
     bp         :     integer                  := 1;
     npasi      :     integer range 0 to 1     := 0;
-    pwrpsr     :     integer range 0 to 1     := 0
+    pwrpsr     :     integer range 0 to 1     := 0;
+    rex        :     integer range 0 to 1     := 0;
+    altwin     :     integer range 0 to 1     := 0
     );
   port (
     clk        : in  std_ulogic;
@@ -166,7 +168,9 @@ begin
       mmupgsz    => mmupgsz,
       bp         => bp,
       npasi      => npasi,
-      pwrpsr     => pwrpsr)
+      pwrpsr     => pwrpsr,
+      rex        => rex,
+      altwin     => altwin)
     port map (
       clk        => gnd,
       gclk2      => clk,
@@ -187,3 +191,4 @@ begin
       );
 
 end;
+

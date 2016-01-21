@@ -32,6 +32,7 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 library grlib;
 use grlib.amba.all;
 use grlib.devices.all;
@@ -87,8 +88,9 @@ package dprc_pkg is
   procedure crc(signal idata : in std_logic_vector(31 downto 0); signal q : in std_logic_vector(31 downto 0); variable d : out std_logic_vector(31 downto 0));
   procedure gray_encoder(variable idata : in std_logic_vector; variable odata : out std_logic_vector);
   procedure gray_decoder(signal idata : in std_logic_vector; constant size : integer; variable odata : out std_logic_vector);
-
-
+  procedure parity_gen(variable encoded : in std_logic_vector(38 downto 0); variable parity : out std_logic_vector(6 downto 0));
+  procedure syndrome_gen_check(signal idata : in std_logic_vector(38 downto 0); signal genparity : in std_logic_vector(6 downto 0); variable odata : out std_logic_vector(31 downto 0); variable sts : out std_logic_vector(1 downto 0));
+  
   -------------------------------------------------------------------------------
   -- Components
   -------------------------------------------------------------------------------
@@ -106,8 +108,10 @@ package dprc_pkg is
       pindex        : integer := 13;                      -- AMBA APB slave index
       paddr         : integer := 13;                      -- Address for APB I/O BAR
       pmask         : integer := 16#fff#;                 -- Mask for APB I/O BAR
+      pirq          : integer := 0;                       -- Interrupt index
       technology    : integer := virtex4;                 -- FPGA target technology
-      crc_en        : integer := 0;                       -- Bitstream verification enable (d2prc mode)
+      crc_en        : integer := 0;                       -- Enable bitstream verification (d2prc-crc mode)
+      edac_en       : integer := 0;                       -- Enable bitstream EDAC (d2prc-edac mode)
       words_block   : integer := 10;                      -- Number of 32-bit words in a CRC-block
       fifo_dcm_inst : integer := 1;                       -- Instantiate clock generator and fifo (async/sync mode)
       fifo_depth    : integer := 9);                      -- Number of addressing bits for the FIFO (true FIFO depth = 2**fifo_depth)
@@ -121,6 +125,23 @@ package dprc_pkg is
       apbi          : in  apb_slv_in_type;                -- APB slave input
       apbo          : out apb_slv_out_type;               -- APB slave output
       rm_reset      : out std_logic_vector(31 downto 0)); -- Reconfigurable modules reset (1 bit for each different reconfigurable partition)
+  end component;
+
+  component d2prc_edac is
+    generic (
+      technology : integer := virtex4;                   -- Target technology
+      fifo_depth : integer := 9);                        -- true FIFO depth = 2**fifo_depth                   
+    port (
+      rstn         : in  std_ulogic;                     -- Asynchronous Reset input (active low)
+      clkm         : in  std_ulogic;                     -- Clock input
+      clk100       : in  std_ulogic;                     -- 100 MHz Clock input
+      dmai         : out DMA_In_Type;                    -- dma signals input
+      dmao         : in DMA_Out_Type;                    -- dma signals output
+      icapi        : out icap_in_type;                   -- icap input signals
+      icapo        : in icap_out_type;                   -- icap output signals
+      apbregi      : in dprc_apbregin_type;              -- values from apb registers (control, address, rm_reset)
+      apbcontrol   : out dprc_apbcontrol_type;           -- control signals for apb register
+      rm_reset     : out std_logic_vector(31 downto 0)); -- Reconfigurable modules reset (1 bit for each different reconfigurable partition);
   end component;
 
   component d2prc is
@@ -283,5 +304,85 @@ package body dprc_pkg is
     end loop;
     odata := vdata;    
   end gray_decoder;
+
+  -- Parity calculation
+  -- Inputs: encoded=39-bit received data.
+  -- Output: parity=7 SECDED checkbits.
+  procedure parity_gen(variable encoded : in std_logic_vector(38 downto 0); variable parity : out std_logic_vector(6 downto 0)) is
+    variable idata : std_logic_vector(31 downto 0);
+    variable int_parity : std_logic_vector(6 downto 0);
+  begin
+
+    idata := encoded(38) & encoded(37) & encoded(36) & encoded(35) & encoded(34) & encoded(33) & encoded(31) & encoded(30) & 
+              encoded(29) & encoded(28) & encoded(27) & encoded(26) & encoded(25) & encoded(24) & encoded(23) & encoded(22) &
+              encoded(21) & encoded(20) & encoded(19) & encoded(18) & encoded(17) & encoded(15) & encoded(14) & encoded(13) & 
+              encoded(12) & encoded(11) & encoded(10) & encoded(9) & encoded(7) & encoded(6) & encoded(5) & encoded(3);
+
+    int_parity(1) :=  idata(0) xor idata(1) xor idata(3) xor idata(4) xor idata(6) xor idata(8) xor idata(10) xor 
+                  idata(11) xor idata(13) xor idata(15) xor idata(17) xor idata(19) xor idata(21) xor idata(23) xor 
+                  idata(25) xor idata(26) xor idata(28) xor idata(30);
+
+    int_parity(2) :=  idata(0) xor idata(2) xor idata(3) xor idata(5) xor idata(6) xor idata(9) xor idata(10) xor idata(12) xor
+                  idata(13) xor idata(16) xor idata(17) xor idata(20) xor idata(21) xor idata(24) xor idata(25) xor 
+                  idata(27) xor idata(28) xor idata(31);
+
+    int_parity(3) :=  idata(1) xor idata(2) xor idata(3) xor idata(7) xor idata(8) xor idata(9) xor idata(10) xor idata(14) xor
+                  idata(15) xor idata(16) xor idata(17) xor idata(22) xor idata(23) xor idata(24) xor idata(25) xor 
+                  idata(29) xor idata(30) xor idata(31);
+
+    int_parity(4) :=  idata(4) xor idata(5) xor idata(6) xor idata(7) xor idata(8) xor idata(9) xor idata(10) xor idata(18) xor
+                  idata(19) xor idata(20) xor idata(21) xor idata(22) xor idata(23) xor idata(24) xor idata(25);
+
+    int_parity(5) :=  idata(11) xor idata(12) xor idata(13) xor idata(14) xor idata(15) xor idata(16) xor idata(17) xor 
+                  idata(18) xor idata(19) xor idata(20) xor idata(21) xor idata(22) xor idata(23) xor idata(24) xor idata(25);
+
+    int_parity(6) :=  idata(26) xor idata(27) xor idata(28) xor idata(29) xor idata(30) xor idata(31);
+  
+    int_parity(0) :=  idata(0) xor idata(1) xor idata(2) xor idata(3) xor idata(4) xor idata(5) xor idata(6) xor idata(7) xor
+                  idata(8) xor idata(9) xor idata(10) xor idata(11) xor idata(12) xor idata(13) xor idata(14) xor idata(15) xor 
+                  idata(16) xor idata(17) xor idata(18) xor idata(19) xor idata(20) xor idata(21) xor idata(22) xor 
+                  idata(23) xor idata(24) xor idata(25) xor idata(26) xor idata(27) xor idata(28) xor idata(29) xor 
+                  idata(30) xor idata(31) xor int_parity(1) xor int_parity(2) xor int_parity(3) xor int_parity(4) xor 
+                  int_parity(5) xor int_parity(6);
+
+    parity := int_parity;
+  
+  end parity_gen;
+
+  -- Syndrome generation, error detection and correction
+  -- Inputs: idata=encoded 39-bit data, genparity=7 checkbits generated by parity_gen procedure.
+  -- Outputs: odata=decoded 32-bit data, sts=number of detected errors.
+  procedure syndrome_gen_check(signal idata : in std_logic_vector(38 downto 0); signal genparity : in std_logic_vector(6 downto 0); variable odata : out std_logic_vector(31 downto 0); variable sts : out std_logic_vector(1 downto 0)) is
+    variable encoded : std_logic_vector(38 downto 0);
+    variable rx_parity : std_logic_vector(6 downto 0); 
+    variable syndrome : std_logic_vector(5 downto 0);
+    variable err_pos : integer;
+    variable overall : std_logic;
+  begin
+  
+    encoded := idata;
+    rx_parity := encoded(32)&encoded(16)&encoded(8)&encoded(4)&encoded(2)&encoded(1)&encoded(0);
+
+    overall := rx_parity(0) xor rx_parity(1) xor rx_parity(2) xor rx_parity(3) xor rx_parity(4) xor rx_parity(5) xor rx_parity(6) xor
+               genparity(0) xor genparity(1) xor genparity(2) xor genparity(3) xor genparity(4) xor genparity(5) xor genparity(6);
+
+    syndrome := rx_parity(6 downto 1) xor genparity(6 downto 1);
+    
+    err_pos := to_integer(unsigned(syndrome));
+    if (overall = '1') and (err_pos<39) then
+      encoded(err_pos) := not encoded(err_pos);
+      sts := "01";
+    elsif (syndrome/= "000000") or (err_pos>38) then     
+      sts := "10";
+    else
+      sts := "00";
+    end if;
+    
+    odata :=  encoded(38) & encoded(37) & encoded(36) & encoded(35) & encoded(34) & encoded(33) & encoded(31) & encoded(30) & 
+              encoded(29) & encoded(28) & encoded(27) & encoded(26) & encoded(25) & encoded(24) & encoded(23) & encoded(22) &
+              encoded(21) & encoded(20) & encoded(19) & encoded(18) & encoded(17) & encoded(15) & encoded(14) & encoded(13) & 
+              encoded(12) & encoded(11) & encoded(10) & encoded(9) & encoded(7) & encoded(6) & encoded(5) & encoded(3);
+
+  end syndrome_gen_check;
 
 end package body;

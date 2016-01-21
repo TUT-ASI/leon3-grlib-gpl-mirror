@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -594,48 +594,48 @@ package body grethpkg is
   end function;
 
 
-  function calccrc_8(data : in std_logic_vector( 7 downto 0);
-                     crc  : in std_logic_vector(31 downto 0))
-                           return std_logic_vector is
-    variable ncrc : std_logic_vector(31 downto 0);
-    variable d    : std_logic_vector(7 downto 0);
-  begin
-    d(7) := data(0); d(6) := data(1); d(5) := data(2); d(4) := data(3);
-    d(3) := data(4); d(2) := data(5); d(1) := data(6); d(0) := data(7);
-    ncrc(0) := d(6) xor d(0) xor crc(24) xor crc(30);
-    ncrc(1) := d(7) xor d(6) xor d(1) xor d(0) xor crc(24) xor crc(25) xor crc(30) xor crc(31);
-    ncrc(2) := d(7) xor d(6) xor d(2) xor d(1) xor d(0) xor crc(24) xor crc(25) xor crc(26) xor crc(30) xor crc(31);
-    ncrc(3) := d(7) xor d(3) xor d(2) xor d(1) xor crc(25) xor crc(26) xor crc(27) xor crc(31);
-    ncrc(4) := d(6) xor d(4) xor d(3) xor d(2) xor d(0) xor crc(24) xor crc(26) xor crc(27) xor crc(28) xor crc(30);
-    ncrc(5) := d(7) xor d(6) xor d(5) xor d(4) xor d(3) xor d(1) xor d(0) xor crc(24) xor crc(25) xor crc(27) xor crc(28) xor crc(29) xor crc(30) xor crc(31);
-    ncrc(6) := d(7) xor d(6) xor d(5) xor d(4) xor d(2) xor d(1) xor crc(25) xor crc(26) xor crc(28) xor crc(29) xor crc(30) xor crc(31);
-    ncrc(7) := d(7) xor d(5) xor d(3) xor d(2) xor d(0) xor crc(24) xor crc(26) xor crc(27) xor crc(29) xor crc(31);
-    ncrc(8) := d(4) xor d(3) xor d(1) xor d(0) xor crc(0) xor crc(24) xor crc(25) xor crc(27) xor crc(28);
-    ncrc(9) := d(5) xor d(4) xor d(2) xor d(1) xor crc(1) xor crc(25) xor crc(26) xor crc(28) xor crc(29);
-    ncrc(10) := d(5) xor d(3) xor d(2) xor d(0) xor crc(2) xor crc(24) xor crc(26) xor crc(27) xor crc(29);
-    ncrc(11) := d(4) xor d(3) xor d(1) xor d(0) xor crc(3) xor crc(24) xor crc(25) xor crc(27) xor crc(28);
-    ncrc(12) := d(6) xor d(5) xor d(4) xor d(2) xor d(1) xor d(0) xor crc(4) xor crc(24) xor crc(25) xor crc(26) xor crc(28) xor crc(29) xor crc(30);
-    ncrc(13) := d(7) xor d(6) xor d(5) xor d(3) xor d(2) xor d(1) xor crc(5) xor crc(25) xor crc(26) xor crc(27) xor crc(29) xor crc(30) xor crc(31);
-    ncrc(14) := d(7) xor d(6) xor d(4) xor d(3) xor d(2) xor crc(6) xor crc(26) xor crc(27) xor crc(28) xor crc(30) xor crc(31);
-    ncrc(15) := d(7) xor d(5) xor d(4) xor d(3) xor crc(7) xor crc(27) xor crc(28) xor crc(29) xor crc(31);
-    ncrc(16) := d(5) xor d(4) xor d(0) xor crc(8) xor crc(24) xor crc(28) xor crc(29);
-    ncrc(17) := d(6) xor d(5) xor d(1) xor crc(9) xor crc(25) xor crc(29) xor crc(30);
-    ncrc(18) := d(7) xor d(6) xor d(2) xor crc(10) xor crc(26) xor crc(30) xor crc(31);
-    ncrc(19) := d(7) xor d(3) xor crc(11) xor crc(27) xor crc(31);
-    ncrc(20) := d(4) xor crc(12) xor crc(28);
-    ncrc(21) := d(5) xor crc(13) xor crc(29);
-    ncrc(22) := d(0) xor crc(14) xor crc(24);
-    ncrc(23) := d(6) xor d(1) xor d(0) xor crc(15) xor crc(24) xor crc(25) xor crc(30);
-    ncrc(24) := d(7) xor d(2) xor d(1) xor crc(16) xor crc(25) xor crc(26) xor crc(31);
-    ncrc(25) := d(3) xor d(2) xor crc(17) xor crc(26) xor crc(27);
-    ncrc(26) := d(6) xor d(4) xor d(3) xor d(0) xor crc(18) xor crc(24) xor crc(27) xor crc(28) xor crc(30);
-    ncrc(27) := d(7) xor d(5) xor d(4) xor d(1) xor crc(19) xor crc(25) xor crc(28) xor crc(29) xor crc(31);
-    ncrc(28) := d(6) xor d(5) xor d(2) xor crc(20) xor crc(26) xor crc(29) xor crc(30);
-    ncrc(29) := d(7) xor d(6) xor d(3) xor crc(21) xor crc(27) xor crc(30) xor crc(31);
-    ncrc(30) := d(7) xor d(4) xor crc(22) xor crc(28) xor crc(31);
-    ncrc(31) := d(5) xor crc(23) xor crc(29);
-    return ncrc;
-  end function;
+  --function calccrc_8(data : in std_logic_vector( 7 downto 0);
+  --                   crc  : in std_logic_vector(31 downto 0))
+  --                         return std_logic_vector is
+  --  variable ncrc : std_logic_vector(31 downto 0);
+  --  variable d    : std_logic_vector(7 downto 0);
+  --begin
+  --  d(7) := data(0); d(6) := data(1); d(5) := data(2); d(4) := data(3);
+  --  d(3) := data(4); d(2) := data(5); d(1) := data(6); d(0) := data(7);
+  --  ncrc(0) := d(6) xor d(0) xor crc(24) xor crc(30);
+  --  ncrc(1) := d(7) xor d(6) xor d(1) xor d(0) xor crc(24) xor crc(25) xor crc(30) xor crc(31);
+  --  ncrc(2) := d(7) xor d(6) xor d(2) xor d(1) xor d(0) xor crc(24) xor crc(25) xor crc(26) xor crc(30) xor crc(31);
+  --  ncrc(3) := d(7) xor d(3) xor d(2) xor d(1) xor crc(25) xor crc(26) xor crc(27) xor crc(31);
+  --  ncrc(4) := d(6) xor d(4) xor d(3) xor d(2) xor d(0) xor crc(24) xor crc(26) xor crc(27) xor crc(28) xor crc(30);
+  --  ncrc(5) := d(7) xor d(6) xor d(5) xor d(4) xor d(3) xor d(1) xor d(0) xor crc(24) xor crc(25) xor crc(27) xor crc(28) xor crc(29) xor crc(30) xor crc(31);
+  --  ncrc(6) := d(7) xor d(6) xor d(5) xor d(4) xor d(2) xor d(1) xor crc(25) xor crc(26) xor crc(28) xor crc(29) xor crc(30) xor crc(31);
+  --  ncrc(7) := d(7) xor d(5) xor d(3) xor d(2) xor d(0) xor crc(24) xor crc(26) xor crc(27) xor crc(29) xor crc(31);
+  --  ncrc(8) := d(4) xor d(3) xor d(1) xor d(0) xor crc(0) xor crc(24) xor crc(25) xor crc(27) xor crc(28);
+  --  ncrc(9) := d(5) xor d(4) xor d(2) xor d(1) xor crc(1) xor crc(25) xor crc(26) xor crc(28) xor crc(29);
+  --  ncrc(10) := d(5) xor d(3) xor d(2) xor d(0) xor crc(2) xor crc(24) xor crc(26) xor crc(27) xor crc(29);
+  --  ncrc(11) := d(4) xor d(3) xor d(1) xor d(0) xor crc(3) xor crc(24) xor crc(25) xor crc(27) xor crc(28);
+  --  ncrc(12) := d(6) xor d(5) xor d(4) xor d(2) xor d(1) xor d(0) xor crc(4) xor crc(24) xor crc(25) xor crc(26) xor crc(28) xor crc(29) xor crc(30);
+  --  ncrc(13) := d(7) xor d(6) xor d(5) xor d(3) xor d(2) xor d(1) xor crc(5) xor crc(25) xor crc(26) xor crc(27) xor crc(29) xor crc(30) xor crc(31);
+  --  ncrc(14) := d(7) xor d(6) xor d(4) xor d(3) xor d(2) xor crc(6) xor crc(26) xor crc(27) xor crc(28) xor crc(30) xor crc(31);
+  --  ncrc(15) := d(7) xor d(5) xor d(4) xor d(3) xor crc(7) xor crc(27) xor crc(28) xor crc(29) xor crc(31);
+  --  ncrc(16) := d(5) xor d(4) xor d(0) xor crc(8) xor crc(24) xor crc(28) xor crc(29);
+  --  ncrc(17) := d(6) xor d(5) xor d(1) xor crc(9) xor crc(25) xor crc(29) xor crc(30);
+  --  ncrc(18) := d(7) xor d(6) xor d(2) xor crc(10) xor crc(26) xor crc(30) xor crc(31);
+  --  ncrc(19) := d(7) xor d(3) xor crc(11) xor crc(27) xor crc(31);
+  --  ncrc(20) := d(4) xor crc(12) xor crc(28);
+  --  ncrc(21) := d(5) xor crc(13) xor crc(29);
+  --  ncrc(22) := d(0) xor crc(14) xor crc(24);
+  --  ncrc(23) := d(6) xor d(1) xor d(0) xor crc(15) xor crc(24) xor crc(25) xor crc(30);
+  --  ncrc(24) := d(7) xor d(2) xor d(1) xor crc(16) xor crc(25) xor crc(26) xor crc(31);
+  --  ncrc(25) := d(3) xor d(2) xor crc(17) xor crc(26) xor crc(27);
+  --  ncrc(26) := d(6) xor d(4) xor d(3) xor d(0) xor crc(18) xor crc(24) xor crc(27) xor crc(28) xor crc(30);
+  --  ncrc(27) := d(7) xor d(5) xor d(4) xor d(1) xor crc(19) xor crc(25) xor crc(28) xor crc(29) xor crc(31);
+  --  ncrc(28) := d(6) xor d(5) xor d(2) xor crc(20) xor crc(26) xor crc(29) xor crc(30);
+  --  ncrc(29) := d(7) xor d(6) xor d(3) xor crc(21) xor crc(27) xor crc(30) xor crc(31);
+  --  ncrc(30) := d(7) xor d(4) xor crc(22) xor crc(28) xor crc(31);
+  --  ncrc(31) := d(5) xor crc(23) xor crc(29);
+  --  return ncrc;
+  --end function;
 
   --16-bit one's complement adder
   function crcadder(d1   : in std_logic_vector(15 downto 0);
@@ -651,3 +651,4 @@ package body grethpkg is
   end function;
 
 end package body;
+

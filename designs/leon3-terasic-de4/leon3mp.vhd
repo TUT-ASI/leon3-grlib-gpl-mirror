@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,6 +28,8 @@ library grlib, techmap;
 use grlib.amba.all;
 use grlib.devices.all;
 use grlib.stdlib.all;
+
+
 use techmap.gencomp.all;
 library gaisler;
 use gaisler.memctrl.all;
@@ -40,6 +42,7 @@ use gaisler.net.all;
 use gaisler.jtag.all;
 use gaisler.ddrpkg.all;
 use gaisler.l2cache.all;
+
 -- pragma translate_off
 use gaisler.sim.all;
 -- pragma translate_on
@@ -368,7 +371,7 @@ architecture rtl of leon3mp is
 
   constant BOARD_FREQ : integer := 100000;        -- Board frequency in KHz
   constant CPU_FREQ : integer := BOARD_FREQ * CFG_CLKMUL / CFG_CLKDIV;  -- cpu frequency in KHz
-  constant IOAEN : integer := 0;
+  constant IOAEN : integer := 1;
   constant OEPOL : integer := padoen_polarity(padtech);
   constant DEBUG_BUS : integer  := CFG_L2_EN;
   constant EDCL_SEP_AHB : integer := CFG_L2_EN;
@@ -393,6 +396,9 @@ architecture rtl of leon3mp is
   signal counter2 : std_logic_vector(3 downto 0);
   signal bitslip_int : std_logic;
   signal tx_rstn0, tx_rstn1, rx_rstn0, rx_rstn1 : std_logic;
+
+  signal clkddr_l : std_logic;
+
 begin
 
   nolock <= ahb2ahb_ctrl_none;
@@ -421,6 +427,8 @@ begin
 
   rst0 : rstgen                 -- reset generator
     port map (CPU_RESET_n, clkm, clklock, rstn, rstraw);
+  
+  led2_pad : outpad generic map (tech => padtech) port map (LED(2), lock);
 
 ----------------------------------------------------------------------
 ---  AHB CONTROLLER --------------------------------------------------
@@ -692,37 +700,74 @@ begin
   -- DDR2 SDRAM memory controller
   -----------------------------------------------------------------------------
   l2cdis : if CFG_L2_EN = 0 generate
-    ddr2if0: entity work.ddr2if
-      generic map(
-        hindex    => 3,
-        haddr     => 16#400#,
-        hmask     => 16#C00#,
-        burstlen  => burstlen
+    ddr2cen: if CFG_DDR2SP /= 0 generate
+      ddr2c : ddr2spa
+        generic map (
+          fabtech         => stratix4,                  cbdelayb0       => 0,
+          memtech         => memtech,                   cbdelayb1       => 0,
+          rskew           => 0,                         cbdelayb2       => 0,
+          hindex          => 3,                         cbdelayb3       => 0,
+          haddr           => 16#400#,                   numidelctrl     => 0,
+          hmask           => 16#C00#,                   norefclk        => 0,
+          ioaddr          => 1,                         odten           => 3,
+          iomask          => 16#fff#,                   octen           => 1,
+          MHz             => CFG_DDR2SP_FREQ,           dqsgating       => 0,
+          TRFC            => CFG_DDR2SP_TRFC,           nosync          => CFG_DDR2SP_NOSYNC,
+          clkmul          => 16,                        eightbanks      => 1,
+          clkdiv          => 3,                         dqsse           => 0,
+          col             => 10,                        burstlen        => burstlen,
+          Mbyte           => 1024,                      ahbbits         => ahbdw,
+          rstdel          => 0,                         ft              => CFG_DDR2SP_FTEN,
+          pwron           => CFG_DDR2SP_INIT,           ftbits          => CFG_DDR2SP_FTWIDTH,
+          oepol           => 0,                         bigmem          => 0,
+          ddrbits         => CFG_DDR2SP_DATAWIDTH,      raspipe         => 0,
+          ahbfreq         => CPU_FREQ/1000,             nclk            => 2,
+          readdly         => 0,                         scantest        => 0,
+          ddelayb0        => CFG_DDR2SP_DELAY0,         ncs             => 1,
+          ddelayb1        => CFG_DDR2SP_DELAY1,         cke_rst         => 1,
+          ddelayb2        => CFG_DDR2SP_DELAY2,         pipe_ctrl       => 1,
+          ddelayb3        => CFG_DDR2SP_DELAY3,
+          ddelayb4        => CFG_DDR2SP_DELAY4,
+          ddelayb5        => CFG_DDR2SP_DELAY5,
+          ddelayb6        => CFG_DDR2SP_DELAY6,
+          ddelayb7        => CFG_DDR2SP_DELAY7
         )
-      port map (
-        pll_ref_clk     => OSC_50_BANK4,
-        global_reset_n  => CPU_RESET_n,
-        mem_a           => M1_DDR2_addr(13 downto 0),
-        mem_ba          => M1_DDR2_ba,
-        mem_ck          => M1_DDR2_clk,
-        mem_ck_n        => M1_DDR2_clk_n,
-        mem_cke         => M1_DDR2_cke(0),
-        mem_cs_n        => M1_DDR2_cs_n(0),
-        mem_dm          => M1_DDR2_dm,
-        mem_ras_n       => M1_DDR2_ras_n,
-        mem_cas_n       => M1_DDR2_cas_n,
-        mem_we_n        => M1_DDR2_we_n,
-        mem_dq          => M1_DDR2_dq,
-        mem_dqs         => M1_DDR2_dqs,
-        mem_dqs_n       => M1_DDR2_dqsn,
-        mem_odt         => M1_DDR2_odt(0),
-        ahb_clk         => clkm,
-        ahb_rst         => rstn,
-        ahbsi           => ahbsi,
-        ahbso           => ahbso(3),
-        oct_rdn         => M1_DDR2_oct_rdn,
-        oct_rup         => M1_DDR2_oct_rup
+        port map (
+          rst_ddr         => CPU_RESET_n,
+          rst_ahb         => rstn,
+          clk_ddr         => OSC_50_BANK4,
+          clk_ahb         => clkm,
+          clkref200       => clkm,
+          lock            => lock,
+          clkddro         => clkddr_l,
+          clkddri         => clkddr_l,
+          ahbsi           => ahbsi,
+          ahbso           => ahbso(3),
+          ddr_ad          => M1_DDR2_addr(13 downto 0),
+          ddr_ba          => M1_DDR2_ba,
+          ddr_clk         => M1_DDR2_clk,
+          ddr_clkb        => M1_DDR2_clk_n,
+          ddr_cke         => M1_DDR2_cke,
+          ddr_csb         => M1_DDR2_cs_n,
+          ddr_dm          => M1_DDR2_dm,
+          ddr_rasb        => M1_DDR2_ras_n,
+          ddr_casb        => M1_DDR2_cas_n,
+          ddr_web         => M1_DDR2_we_n,
+          ddr_dq          => M1_DDR2_dq,
+          ddr_dqs         => M1_DDR2_dqs,
+          ddr_dqsn        => M1_DDR2_dqsn,
+          ddr_odt         => M1_DDR2_odt,
+          ddr_clk_fb_out  => open,
+          ddr_clk_fb      => '0',
+          ce              => open,
+          oct_rdn         => M1_DDR2_oct_rdn,
+          oct_rup         => M1_DDR2_oct_rup
         );
+    end generate;
+    ddr2cdis: if CFG_DDR2SP = 0 generate
+      ahbso(3) <= ahbs_none;
+      lock <= '1';
+    end generate;
   end generate;
   -----------------------------------------------------------------------------
   -- L2 cache covering DDR2 SDRAM memory controller
@@ -748,42 +793,78 @@ begin
                      rrobin => CFG_RROBIN, ioaddr => MEM_AHBIO,
                      ioen => IOAEN, nahbm => 1, nahbs => 1)
         port map (rstn, clkm, mem_ahbmi, mem_ahbmo, mem_ahbsi, mem_ahbso);
-
-      ddr2if0: entity work.ddr2if
-        generic map(
-          hindex    => 0,
-          haddr     => 16#400#,
-          hmask     => 16#C00#,
-          burstlen  => burstlen
+    
+      ddr2cen: if CFG_DDR2SP /= 0 generate
+        ddr2c : ddr2spa
+          generic map (
+            fabtech         => stratix4,                  cbdelayb0       => 0,
+            memtech         => memtech,                   cbdelayb1       => 0,
+            rskew           => 0,                         cbdelayb2       => 0,
+            hindex          => 3,                         cbdelayb3       => 0,
+            haddr           => 16#400#,                   numidelctrl     => 0,
+            hmask           => 16#C00#,                   norefclk        => 0,
+            ioaddr          => 1,                         odten           => 3,
+            iomask          => 16#fff#,                   octen           => 1,
+            MHz             => CFG_DDR2SP_FREQ,           dqsgating       => 0,
+            TRFC            => CFG_DDR2SP_TRFC,           nosync          => CFG_DDR2SP_NOSYNC,
+            clkmul          => 16,                        eightbanks      => 1,
+            clkdiv          => 3,                         dqsse           => 0,
+            col             => 10,                        burstlen        => burstlen,
+            Mbyte           => 1024,                      ahbbits         => ahbdw,
+            rstdel          => 0,                         ft              => CFG_DDR2SP_FTEN,
+            pwron           => CFG_DDR2SP_INIT,           ftbits          => CFG_DDR2SP_FTWIDTH,
+            oepol           => 0,                         bigmem          => 0,
+            ddrbits         => CFG_DDR2SP_DATAWIDTH,      raspipe         => 0,
+            ahbfreq         => CPU_FREQ/1000,             nclk            => 2,
+            readdly         => 0,                         scantest        => 0,
+            ddelayb0        => CFG_DDR2SP_DELAY0,         ncs             => 1,
+            ddelayb1        => CFG_DDR2SP_DELAY1,         cke_rst         => 1,
+            ddelayb2        => CFG_DDR2SP_DELAY2,         pipe_ctrl       => 1,
+            ddelayb3        => CFG_DDR2SP_DELAY3,
+            ddelayb4        => CFG_DDR2SP_DELAY4,
+            ddelayb5        => CFG_DDR2SP_DELAY5,
+            ddelayb6        => CFG_DDR2SP_DELAY6,
+            ddelayb7        => CFG_DDR2SP_DELAY7
           )
-        port map (
-          pll_ref_clk     => OSC_50_BANK4,
-          global_reset_n  => CPU_RESET_n,
-          mem_a           => M1_DDR2_addr(13 downto 0),
-          mem_ba          => M1_DDR2_ba,
-          mem_ck          => M1_DDR2_clk,
-          mem_ck_n        => M1_DDR2_clk_n,
-          mem_cke         => M1_DDR2_cke(0),
-          mem_cs_n        => M1_DDR2_cs_n(0),
-          mem_dm          => M1_DDR2_dm,
-          mem_ras_n       => M1_DDR2_ras_n,
-          mem_cas_n       => M1_DDR2_cas_n,
-          mem_we_n        => M1_DDR2_we_n,
-          mem_dq          => M1_DDR2_dq,
-          mem_dqs         => M1_DDR2_dqs,
-          mem_dqs_n       => M1_DDR2_dqsn,
-          mem_odt         => M1_DDR2_odt(0),
-          ahb_clk         => clkm,
-          ahb_rst         => rstn,
-          ahbsi           => mem_ahbsi,
-          ahbso           => mem_ahbso(0),
-          oct_rdn         => M1_DDR2_oct_rdn,
-          oct_rup         => M1_DDR2_oct_rup
+          port map (
+            rst_ddr         => CPU_RESET_n,
+            rst_ahb         => rstn,
+            clk_ddr         => OSC_50_BANK4,
+            clk_ahb         => clkm,
+            clkref200       => clkm,
+            lock            => lock,
+            clkddro         => clkddr_l,
+            clkddri         => clkddr_l,
+            ahbsi           => mem_ahbsi,
+            ahbso           => mem_ahbso(0),
+            ddr_ad          => M1_DDR2_addr(13 downto 0),
+            ddr_ba          => M1_DDR2_ba,
+            ddr_clk         => M1_DDR2_clk,
+            ddr_clkb        => M1_DDR2_clk_n,
+            ddr_cke         => M1_DDR2_cke,
+            ddr_csb         => M1_DDR2_cs_n,
+            ddr_dm          => M1_DDR2_dm,
+            ddr_rasb        => M1_DDR2_ras_n,
+            ddr_casb        => M1_DDR2_cas_n,
+            ddr_web         => M1_DDR2_we_n,
+            ddr_dq          => M1_DDR2_dq,
+            ddr_dqs         => M1_DDR2_dqs,
+            ddr_dqsn        => M1_DDR2_dqsn,
+            ddr_odt         => M1_DDR2_odt,
+            ddr_clk_fb_out  => open,
+            ddr_clk_fb      => '0',
+            ce              => open,
+            oct_rdn         => M1_DDR2_oct_rdn,
+            oct_rup         => M1_DDR2_oct_rup
           );
+      end generate;
+      ddr2cdis: if CFG_DDR2SP = 0 generate
+        mem_ahbso(0) <= ahbs_none;
+        lock <= '1';
+      end generate;
     end block memorysubsys;
   end generate;
 
-  lock <= '1';
 ----------------------------------------------------------------------
 ---  APB Bridge and various periherals -------------------------------
 ----------------------------------------------------------------------
@@ -822,7 +903,7 @@ begin
                    sepirq => CFG_GPT_SEPIRQ, sbits => CFG_GPT_SW, ntimers => CFG_GPT_NTIM, 
                    nbits => CFG_GPT_TW)
       port map (rstn, clkm, apbi, apbo(3), gpti, open);
-    gpti.dhalt <= dsuo.tstop; gpti.extclk <= '0';
+    gpti <= gpti_dhalt_drive(dsuo.tstop);
   end generate;
   notim : if CFG_GPT_ENABLE = 0 generate apbo(3) <= apb_none; end generate;
 
@@ -986,7 +1067,6 @@ begin
       );
 
     -- LEDs
-    led2_pad : outpad generic map (tech => padtech) port map (LED(2), vcc(0));
     led3_pad : outpad generic map (tech => padtech) port map (LED(3), vcc(0));
     led4_pad : outpad generic map (tech => padtech) port map (LED(4), vcc(0));
     led5_pad : outpad generic map (tech => padtech) port map (LED(5), vcc(0));
@@ -1122,3 +1202,4 @@ ahbso(ahbso'high downto 6) <= (others => ahbs_none);
       );
 -- pragma translate_on
 end;
+

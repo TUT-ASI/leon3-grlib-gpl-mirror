@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -19,9 +19,10 @@
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------
 -- Entity: 	various
--- File:	fifo_inferred.vhd
--- Author:	Cobham Gaisler AB
--- Description:	Behavioural memory generators
+-- File:    fifo_inferred.vhd
+-- Authors: Pascal Trotta
+--          Andrea Gianarro - Cobham Gaisler AB
+-- Description:	Behavioural fifo generators
 ------------------------------------------------------------------------------
 
 
@@ -67,197 +68,190 @@ end;
 
 architecture rtl_fifo of generic_fifo is
 
-  procedure gray_encoder(variable idata : in std_logic_vector; variable odata : out std_logic_vector) is
-  begin
-    for i in 0 to (idata'left)-1 loop
-      odata(i) := idata(i) xor idata(i+1);
-    end loop;
-    odata(odata'left) := idata(idata'left);
-  end gray_encoder;
-
-  procedure gray_decoder(signal idata : in std_logic_vector; constant size : integer; variable odata : out std_logic_vector) is
-    variable vdata : std_logic_vector(size downto 0);
-  begin
-    vdata(vdata'left) := idata(idata'left);
-    for i in (idata'left)-1 downto 0 loop
-      vdata(i) := idata(i) xor vdata(i+1);
-    end loop;
-    odata := vdata;    
-  end gray_decoder;
-
-  type wfifo_type is record
+  type wr_fifo_type is record
     waddr : std_logic_vector(abits downto 0);
     waddr_gray : std_logic_vector(abits downto 0);
     full : std_logic;
   end record;
 
-  type rfifo_type is record
+  type rd_fifo_type is record
     raddr : std_logic_vector(abits downto 0);
     raddr_gray : std_logic_vector(abits downto 0);
     empty : std_logic;
   end record;
 
-  signal wregs, wregsin : wfifo_type;
-  signal rregs, rregsin : rfifo_type;
-  signal raddr_sync_encoded, waddr_sync_encoded : std_logic_vector(abits downto 0);
-  signal empty_sync, full_sync : std_logic;
+  signal wr_r, wr_rin : wr_fifo_type;
+  signal rd_r, rd_rin : rd_fifo_type;
+  signal wr_raddr_gray, rd_waddr_gray : std_logic_vector(abits downto 0);
 
 begin
     
   ---------------------
   -- write clock domain
   ---------------------
-  wdomain_comb: process(wregs, write, raddr_sync_encoded, wrstn)
-    variable vwregs : wfifo_type;
-    variable vwusedw : std_logic_vector(abits-1 downto 0);
-    variable raddr_sync_decoded : std_logic_vector(abits downto 0);
+  wr_comb: process(wr_r, write, wr_raddr_gray, wrstn, rd_r.raddr)
+    variable wr_v : wr_fifo_type;
+    variable v_wusedw : std_logic_vector(abits downto 0);
+    variable v_raddr : std_logic_vector(abits downto 0);
   begin
 
     -- initialize fifo signals on write side
-    vwregs := wregs;
-    vwregs.full := '0';
+    wr_v := wr_r;
+    wr_v.full := '0';
     afull <= '0';
 
-    -- fifo full generation and compute wusedw
-    gray_decoder(raddr_sync_encoded,abits,raddr_sync_decoded); -- decode read address coming from read clock domain
-    if (vwregs.waddr(abits)=raddr_sync_decoded(abits)) then  
-      vwusedw := vwregs.waddr(abits-1 downto 0)-raddr_sync_decoded(abits-1 downto 0);
-      if (vwusedw > (2**abits-2)) then
-        vwregs.full := '1';
-      end if;
+    if sepclk = 1 then
+      v_raddr := gray_decoder(wr_raddr_gray);
     else
-      vwusedw := raddr_sync_decoded(abits-1 downto 0)-vwregs.waddr(abits-1 downto 0);
-      if (vwusedw < 2) then
-        vwregs.full := '1';
-      end if;
-      vwusedw := 2**abits - vwusedw;
+      v_raddr := rd_r.raddr;
     end if;
+
+    -- fifo full generation and compute wusedw
+    -- decode read address coming from read clock domain
+    v_wusedw := wr_r.waddr - v_raddr;
+    wr_v.full := v_wusedw(abits);
 
     -- write fifo
     if write = '1' then
-      vwregs.waddr := vwregs.waddr + 1;
+      wr_v.waddr := wr_r.waddr + 1;
     end if;
-    gray_encoder(vwregs.waddr,vwregs.waddr_gray);
 
-    -- assign wusedw and almost full fifo output
-    wusedw <= vwusedw;
-    if vwusedw>pfull then
-      afull <= '1';
+    if sepclk = 1 then
+      wr_v.waddr_gray := gray_encoder(wr_v.waddr);
     end if;
 
     -- synchronous reset
     if wrstn = '0' then
-      vwregs.waddr := (others =>'0');
-      vwregs.waddr_gray := (others =>'0');
-      vwregs.full := '0';
+      wr_v.waddr := (others =>'0');
+      wr_v.waddr_gray := (others =>'0');
+      wr_v.full := '0';
     end if;
 
+    -- assign wusedw and almost full fifo output
+    if v_wusedw > pfull then
+      afull <= '1';
+    end if;
+
+    -- signal assignment
+    wfull <= wr_v.full;
+    wusedw <= v_wusedw(abits-1 downto 0);
     -- update fifo signals
-    wregsin <= vwregs;
+    wr_rin <= wr_v;
 
   end process;
 
-  wdomain_regs: process(wclk)
+  wr_sync: process(wclk)
   begin
     if rising_edge(wclk) then
-        wregs <= wregsin;
+        wr_r <= wr_rin;
     end if;
   end process;
 
-  ------------
-  -- sync regs
-  ------------
-  -- transfer write address (encoded) in read clock domain
-  -- transfer read address (encoded) in write clock domain
-  -- transfer empty in write clock domain
-  -- transfer full in read block domain
-  -- Note: input d is already registered in the source clock domain
-  syn_gen0: for i in 0 to abits generate  -- fifo addresses
-    syncreg_inst0: syncreg generic map (tech => tech, stages => 2)
-      port map(clk => rclk, d => wregs.waddr_gray(i), q => waddr_sync_encoded(i));
 
-    syncreg_inst1: syncreg generic map (tech => tech, stages => 2)
-      port map(clk => wclk, d => rregs.raddr_gray(i), q => raddr_sync_encoded(i));
+  sync_reg: if sepclk = 1 generate
+    -----------------------------------
+    -- sync regs for dual clock FIFO --
+    -----------------------------------
+    -- transfer write address (encoded) in read clock domain
+    -- transfer read address (encoded) in write clock domain
+    -- transfer empty in write clock domain
+    -- transfer full in read block domain
+    -- Note: input d is already registered in the source clock domain
+    syn_gen0: for i in 0 to abits generate  -- fifo addresses
+      syncreg_inst0: syncreg generic map (tech => tech, stages => 2)
+        port map(clk => rclk, d => wr_r.waddr_gray(i), q => rd_waddr_gray(i));
+
+      syncreg_inst1: syncreg generic map (tech => tech, stages => 2)
+        port map(clk => wclk, d => rd_r.raddr_gray(i), q => wr_raddr_gray(i));
+    end generate;
+
+    syncreg_inst2: syncreg generic map (tech => tech, stages => 2)
+      port map(clk => wclk, d => rd_r.empty, q => wempty);
+    syncreg_inst3: syncreg generic map (tech => tech, stages => 2)
+      port map(clk => rclk, d => wr_r.full, q => rfull);
   end generate;
-
-  syncreg_inst2: syncreg generic map (tech => tech, stages => 2)
-    port map(clk => wclk, d => rregs.empty, q => empty_sync);
-  syncreg_inst3: syncreg generic map (tech => tech, stages => 2)
-    port map(clk => rclk, d => wregs.full, q => full_sync);
   
-  -- Assign synchronized empty/full to fifo outputs
-  wempty <= empty_sync;
-  rfull <= full_sync;
-  wfull <= wregsin.full;
-  rempty <= rregsin.empty;
+  no_sync_reg: if sepclk = 0 generate
+    ---------------------------------------
+    -- single clock FIFO logic (no sync) --
+    ---------------------------------------
+    wempty <= rd_r.empty;
+    rfull <= wr_r.full;
+  end generate;
 
   --------------------
   -- read clock domain
   --------------------
-  rdomain_comb: process(rregs, renable, waddr_sync_encoded, rrstn)
-    variable vrregs : rfifo_type;
-    variable vrusedw : std_logic_vector(abits-1 downto 0);
-    variable waddr_sync_decoded : std_logic_vector(abits downto 0);
+  rd_comb: process(rd_r, renable, rd_waddr_gray, rrstn, wr_r.waddr)
+    variable rd_v : rd_fifo_type;
+    variable v_rusedw : std_logic_vector(abits downto 0);
+    variable v_waddr : std_logic_vector(abits downto 0);
   begin
   
     -- initialize fifo signals on read side
-    vrregs := rregs;
-    vrregs.empty := '0';
+    rd_v := rd_r;
+    rd_v.empty := '0';
     aempty <= '0';
 
-    -- fifo empty generation
-    gray_encoder(vrregs.raddr,vrregs.raddr_gray);
-    if (vrregs.raddr_gray=waddr_sync_encoded) then  
-      vrregs.empty := '1';
-    end if;
-
-    -- compute and assign rusedw fifo output
-    gray_decoder(waddr_sync_encoded,abits,waddr_sync_decoded);
-    if (vrregs.raddr(abits)=waddr_sync_decoded(abits)) then  
-      vrusedw := waddr_sync_decoded(abits-1 downto 0)-vrregs.raddr(abits-1 downto 0);
+    if sepclk = 1 then
+      v_waddr := gray_decoder(rd_waddr_gray);
     else
-      vrusedw := (2**abits) - (vrregs.raddr(abits-1 downto 0)-waddr_sync_decoded(abits-1 downto 0));
+      v_waddr := wr_r.waddr;
     end if;
-    rusedw <= vrusedw;
 
-    -- assign almost empty
-    if vrusedw<pempty then
-      aempty <= '1';
+    -- fifo empty generation and compute rusedw fifo output
+    -- decode write address coming from write clock domain
+    v_rusedw := v_waddr - rd_r.raddr;
+    if conv_integer(v_rusedw) = 0 then  
+      rd_v.empty := '1';
     end if;
 
     -- read fifo
     if renable = '1' then
-      vrregs.raddr := vrregs.raddr + 1;
+      rd_v.raddr := rd_r.raddr + 1;
+    end if;
+
+    if sepclk = 1 then
+      rd_v.raddr_gray := gray_encoder(rd_v.raddr);
     end if;
 
     -- synchronous reset
     if rrstn = '0' then
-      vrregs.raddr := (others =>'0');
-      vrregs.raddr_gray := (others =>'0');
-      vrregs.empty := '1';
+      rd_v.raddr := (others =>'0');
+      rd_v.raddr_gray := (others =>'0');
+      rd_v.empty := '1';
     end if;
 
+    -- assign almost empty
+    if v_rusedw < pempty then
+      aempty <= '1';
+    end if;
+
+    -- signal assignment
+    rempty <= rd_v.empty;
+    rusedw <= v_rusedw(abits-1 downto 0);
     -- update fifo signals
-    rregsin <= vrregs;
+    rd_rin <= rd_v;
 
   end process;
 
-  rdomain_regs: process(rclk)
+  rd_sync: process(rclk)
   begin
     if rising_edge(rclk) then
-      rregs <= rregsin;
+      rd_r <= rd_rin;
     end if;
   end process;
 
   -- memory instantiation
   nofwft_gen: if fwft = 0 generate
     ram0 : syncram_2p generic map ( tech => tech, abits => abits, dbits => dbits, sepclk => sepclk)
-      port map (rclk, renable, rregsin.raddr(abits-1 downto 0), dataout, wclk, write, wregsin.waddr(abits-1 downto 0), datain);
+      port map (rclk, renable, rd_rin.raddr(abits-1 downto 0), dataout, wclk, write, wr_rin.waddr(abits-1 downto 0), datain);
   end generate;
 
   fwft_gen: if fwft = 1 generate
     ram0 : syncram_2p generic map ( tech => tech, abits => abits, dbits => dbits, sepclk => sepclk)
-      port map (rclk, '1', rregsin.raddr(abits-1 downto 0), dataout, wclk, write, wregs.waddr(abits-1 downto 0), datain);
+      port map (rclk, '1', rd_rin.raddr(abits-1 downto 0), dataout, wclk, write, wr_r.waddr(abits-1 downto 0), datain);
   end generate;
 
 end;
+

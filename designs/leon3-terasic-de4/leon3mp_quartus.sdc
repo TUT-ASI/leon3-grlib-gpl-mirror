@@ -41,8 +41,11 @@ create_clock -period  10.0 PLL_CLKIN_p
 derive_pll_clocks
 
 set ahbclks [ get_clocks { clkgen0* } ]
-set eth0clks [ get_clocks { \eth0:e0|pcs0|* } ]
-set eth1clks [ get_clocks { \eth1:e1|pcs0|* } ]
+set eth0clks [ get_clocks { \eth0:e0|sgmii0|pma0|* } ]
+set eth1clks [ get_clocks { \eth1:e1|sgmii0|pma0|* } ]
+set aficlk [ get_clocks { \l2cdis:ddr2cen:ddr2c|*|pll_afi_clk } ]
+
+set_clock_groups -exclusive -group $ahbclks -group $aficlk
 
 constrain_cdc $ahbclks 10.0 $eth0clks 8.0
 constrain_cdc $ahbclks 10.0 $eth1clks 8.0

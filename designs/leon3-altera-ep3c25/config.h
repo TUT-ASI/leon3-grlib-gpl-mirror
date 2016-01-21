@@ -21,6 +21,8 @@
 #undef  CONFIG_SYN_PROASIC3L
 #undef  CONFIG_SYN_IGLOO
 #undef  CONFIG_SYN_IGLOO2
+#undef  CONFIG_SYN_SF2
+#undef  CONFIG_SYN_RTG4
 #undef  CONFIG_SYN_FUSION
 #undef  CONFIG_SYN_UT025CRH
 #undef  CONFIG_SYN_UT130HBD
@@ -33,7 +35,6 @@
 #undef  CONFIG_SYN_IHP25RH
 #undef  CONFIG_SYN_LATTICE
 #undef  CONFIG_SYN_ECLIPSE
-#undef  CONFIG_SYN_PEREGRINE
 #undef  CONFIG_SYN_RH_LIB18T
 #undef  CONFIG_SYN_RHUMC
 #undef  CONFIG_SYN_SAED32
@@ -112,6 +113,8 @@
 #define CONFIG_IU_RSTADDR 00000
 #undef  CONFIG_NP_ASI
 #undef  CONFIG_WRPSR
+#undef  CONFIG_ALTWIN
+#undef  CONFIG_REX
 /*
  * Floating-point unit
  */
@@ -202,6 +205,7 @@
 #undef  CONFIG_DSU_ATRACESZ16
 #undef  CONFIG_DSU_AFILT
 #undef  CONFIG_DSU_ASTAT
+#undef  CONFIG_STAT_ENABLE
 /*
  * Fault-tolerance  
  */

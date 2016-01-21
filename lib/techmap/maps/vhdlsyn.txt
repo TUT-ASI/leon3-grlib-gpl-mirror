@@ -60,3 +60,5 @@ syncreg.vhd
 serdes.vhd
 iopad_tm.vhd
 toutpad_tm.vhd
+gr1553b_net.vhd
+memrwcol.vhd

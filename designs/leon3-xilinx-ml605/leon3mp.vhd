@@ -1,11 +1,11 @@
 ------------------------------------------------------------------------------
 --  LEON3 Demonstration design
---  Copyright (C) 2006 Jiri Gaisler, Gaisler Research
+--  Copyright (C) 2006 - 2015 Cobham Gaisler
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -195,7 +195,9 @@ architecture rtl of leon3mp is
   signal gpti : gptimer_in_type;
 
   signal lclk, clk_ddr, lclk200      : std_ulogic;
-  signal clkm, rstn, clkml  : std_ulogic;
+  signal clkm, rstn : std_ulogic;
+  signal cgi : clkgen_in_type;
+  signal cgo : clkgen_out_type;
   signal tck, tms, tdi, tdo : std_ulogic;
   signal rstraw             : std_logic;
   signal lock               : std_logic;
@@ -243,6 +245,7 @@ architecture rtl of leon3mp is
   attribute keep of clkm             : signal is true;
   attribute keep of clk_ddr             : signal is true;
 
+  constant BOARD_FREQ : integer := 100000; -- Board frequency in KHz
   constant VCO_FREQ  : integer := 1200000;                               -- MMCM VCO frequency in KHz
   constant CPU_FREQ   : integer := VCO_FREQ / CFG_MIG_CLK4;  -- cpu frequency in KHz
   constant I2C_FILTER : integer := (CPU_FREQ*5+50000)/100000+1;
@@ -259,10 +262,24 @@ begin
   erstn <= rstn;
 
   -- Glitch free reset that can be used for the Eth Phy and flash memory
-
   rst0 : rstgen generic map (acthigh => 1)
     port map (reset, clkm, lock, rstn, rstraw);
 
+  clkgennomig : if CFG_MIG_DDR2 = 0 generate
+    cgi.pllctrl <= "00"; cgi.pllrst <= rstraw;
+    
+    clkpad : inpad_ds
+      generic map (tech => CFG_PADTECH, level => lvds, voltage => x25v)
+      port map(clk_ref_p, clk_ref_n, lclk200);
+    
+    clkgen0 : clkgen              -- clock generator
+      generic map (CFG_CLKTECH, CFG_CLKMUL, CFG_CLKDIV, 0, 
+                   0, 0, CFG_PCIDLL, CFG_PCISYSCLK, BOARD_FREQ)
+    port map (lclk200, gnd, clkm, open, open, open, open, cgi, cgo);
+    -- FIXME:
+    clk100 <= '0';
+  end generate;
+  
 ----------------------------------------------------------------------
 ---  AHB CONTROLLER --------------------------------------------------
 ----------------------------------------------------------------------
@@ -271,7 +288,7 @@ begin
     generic map (defmast => CFG_DEFMST, split => CFG_SPLIT,
                  rrobin  => CFG_RROBIN, ioaddr => CFG_AHBIO, ioen => 1,
                  nahbm => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH+CFG_SVGA_ENABLE+CFG_PCIEXP,
-                 nahbs => 9)
+                 nahbs => 9, devid => XILINX_ML605)
     port map (rstn, clkm, ahbmi, ahbmo, ahbsi, ahbso);
 
 ----------------------------------------------------------------------
@@ -429,7 +446,7 @@ begin
 ---  DDR3 memory controller ------------------------------------------
 ----------------------------------------------------------------------
 
---  mig_gen : if (CFG_MIG_DDR2 = 1) generate
+  mig_gen : if CFG_MIG_DDR2 = 1 generate
 
     ahb2mig0 : ahb2mig_ml605
       generic map ( hindex => 0, haddr => 16#400#, hmask => 16#E00#,
@@ -478,14 +495,20 @@ begin
       sys_rst_14        =>   rstraw
     );
 
-    led(3)  <= phy_init_done;
-    led(4)  <= rstn;
-    led(5)  <= reset;
-    led(6)  <= '0';
-    lock    <= phy_init_done; -- and cgo.clklock;
+    lock    <= phy_init_done;
 
---    end generate;
---    noddr : if (CFG_DDR2SP+CFG_MIG_DDR2) = 0 generate lock <= cgo.clklock; end generate;
+  end generate;
+
+  led(3)  <= lock;
+  led(4)  <= rstn;
+  led(5)  <= reset;
+  led(6)  <= '0';
+  
+  noddr : if CFG_MIG_DDR2 = 0 generate
+    ahbso(0) <= ahbs_none;
+    lock <= cgo.clklock;
+    clk_ddr <= '0';
+  end generate;
  
 ----------------------------------------------------------------------
 ---  System ACE I/F Controller ---------------------------------------
@@ -645,8 +668,7 @@ end generate;
                    sepirq => CFG_GPT_SEPIRQ, sbits => CFG_GPT_SW,
                    ntimers => CFG_GPT_NTIM, nbits  => CFG_GPT_TW)
       port map (rstn, clkm, apbi, apbo(3), gpti, open);
-    gpti.dhalt  <= dsuo.tstop;
-    gpti.extclk <= '0';
+    gpti <= gpti_dhalt_drive(dsuo.tstop);
   end generate;
   notim : if CFG_GPT_ENABLE = 0 generate apbo(3) <= apb_none; end generate;
 
@@ -683,6 +705,18 @@ end generate;
     i2c_sda_pad : iopad generic map (level => cmos, voltage => x25v, tech => padtech)
       port map (iic_sda_main, i2co.sda, i2co.sdaoen, i2ci.sda);
   end generate i2cm;
+
+  l4sgen : if CFG_STAT_ENABLE /= 0 generate
+    l4s : l3stat
+      generic map (pindex => 7, paddr => 16#100#, pmask => 16#ffc#,
+                   ncnt => CFG_STAT_CNT, ncpu => CFG_NCPU,
+                   nmax => CFG_STAT_NMAX, lahben => 1, dsuen => CFG_DSU)
+      port map (rstn => rstn, clk => clkm, apbi => apbi, apbo => apbo(7),
+                ahbsi => ahbsi, dbgo => dbgo);
+  end generate;
+  nol4s : if CFG_STAT_ENABLE = 0 generate
+    apbo(7) <= apb_none;
+  end generate;
 
 -----------------------------------------------------------------------
 ---  VGA + IIC --------------------------------------------------------
@@ -853,3 +887,4 @@ end generate;
 -- pragma translate_on
 
 end rtl;
+

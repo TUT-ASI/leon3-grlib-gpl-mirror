@@ -8,7 +8,7 @@ CONFIG_SYN_INFERRED
   - Inferred: Generic FPGA or ASIC targets if your synthesis tool
     is capable of inferring RAMs and pads automatically.
 
-  - Actel ProAsic/P/3, IGLOO/2 and Axcelerator FPGAs
+  - Actel ProAsic/P/3, IGLOO/2, RTG4 and Axcelerator FPGAs
   - Aeroflex UT25CRH Rad-Hard 0.25 um CMOS
   - Altera: Most Altera FPGA families
   - Altera-CycloneIII: Altera Cyclone-III/IV FPGA family

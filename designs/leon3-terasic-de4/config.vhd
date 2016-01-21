@@ -57,7 +57,7 @@ package config is
   constant CFG_DLINE : integer := 4;
   constant CFG_DREPL : integer := 0;
   constant CFG_DLOCK : integer := 0;
-  constant CFG_DSNOOP : integer := 1*2 + 4*1;
+  constant CFG_DSNOOP : integer := 0 + 1*2 + 4*1;
   constant CFG_DFIXED : integer := 16#0#;
   constant CFG_DLRAMEN : integer := 0;
   constant CFG_DLRAMADDR: integer := 16#8F#;
@@ -81,8 +81,14 @@ package config is
   constant CFG_LEON3_NETLIST: integer := 0;
   constant CFG_DISAS : integer := 0 + 0;
   constant CFG_PCLOW : integer := 2;
+  constant CFG_STAT_ENABLE : integer := 0;
+  constant CFG_STAT_CNT : integer := 1;
+  constant CFG_STAT_NMAX : integer := 0;
+  constant CFG_STAT_DSUEN : integer := 0;
   constant CFG_NP_ASI : integer := 0;
   constant CFG_WRPSR : integer := 0;
+  constant CFG_ALTWIN : integer := 0;
+  constant CFG_REX : integer := 0;
 -- L2 Cache
   constant CFG_L2_EN : integer := 0;
   constant CFG_L2_SIZE : integer := 32;
@@ -128,6 +134,25 @@ package config is
   constant CFG_MCTRL_INVCLK : integer := 0;
   constant CFG_MCTRL_SD64 : integer := 0;
   constant CFG_MCTRL_PAGE : integer := 0 + 0;
+-- DDR controller
+  constant CFG_DDR2SP : integer := 1;
+  constant CFG_DDR2SP_INIT : integer := 0;
+  constant CFG_DDR2SP_FREQ : integer := (50);
+  constant CFG_DDR2SP_TRFC : integer := (128);
+  constant CFG_DDR2SP_DATAWIDTH : integer := (64);
+  constant CFG_DDR2SP_FTEN : integer := 0;
+  constant CFG_DDR2SP_FTWIDTH : integer := 0;
+  constant CFG_DDR2SP_COL : integer := 9;
+  constant CFG_DDR2SP_SIZE : integer := 8;
+  constant CFG_DDR2SP_DELAY0 : integer := (0);
+  constant CFG_DDR2SP_DELAY1 : integer := (0);
+  constant CFG_DDR2SP_DELAY2 : integer := (0);
+  constant CFG_DDR2SP_DELAY3 : integer := (0);
+  constant CFG_DDR2SP_DELAY4 : integer := (0);
+  constant CFG_DDR2SP_DELAY5 : integer := (0);
+  constant CFG_DDR2SP_DELAY6 : integer := (0);
+  constant CFG_DDR2SP_DELAY7 : integer := (0);
+  constant CFG_DDR2SP_NOSYNC : integer := 0;
 -- AHB status register
   constant CFG_AHBSTAT : integer := 1;
   constant CFG_AHBSTATN : integer := (1);
@@ -140,6 +165,11 @@ package config is
   constant CFG_GRETH : integer := 1;
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 8;
+
+
+
+
+
 
 
 -- Gaisler Ethernet core

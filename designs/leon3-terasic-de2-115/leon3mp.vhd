@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -38,6 +38,7 @@ use gaisler.spi.all;
 use gaisler.can.all;
 use gaisler.net.all;
 use gaisler.jtag.all;
+use gaisler.gr1553b_pkg.all;
 -- pragma translate_off
 use gaisler.sim.all;
 -- pragma translate_on
@@ -107,6 +108,21 @@ entity leon3mp is
     can_txd	: out std_logic_vector(0 to CFG_CAN_NUM-1);
     can_rxd	: in  std_logic_vector(0 to CFG_CAN_NUM-1);
     can_stb	: out std_logic_vector(0 to CFG_CAN_NUM-1);
+
+    clk_1553   : in  std_logic;
+    busainen   : out std_logic;
+    busainp    : in  std_logic;
+    busainn    : in  std_logic;
+    busaoutin  : out std_logic;
+    busaoutp   : out std_logic;
+    busaoutn   : out std_logic;
+    busbinen   : out std_logic;
+    busbinp    : in  std_logic;
+    busbinn    : in  std_logic;
+    busboutin  : out std_logic;
+    busboutp   : out std_logic;
+    busboutn   : out std_logic;
+    
     sw      	: in std_logic_vector(0 to 2) := "000"
 
     );
@@ -169,6 +185,13 @@ signal can_lrx, can_ltx   : std_logic_vector(0 to 7);
 signal dsubren : std_logic;
 signal pci_arb_req_n, pci_arb_gnt_n   : std_logic_vector(0 to 3);
 
+signal clk1553 : Std_Logic;
+type milout_array is array (0 to 0) of gr1553b_txout_type;
+type milin_array is array (0 to 0) of gr1553b_rxin_type;
+signal rst1553: std_ulogic;
+signal milout: milout_array;
+signal milin: milin_array;
+
 signal tck, tms, tdi, tdo : std_logic;
 
 signal fpi : grfpu_in_vector_type;
@@ -215,7 +238,8 @@ begin
   ahb0 : ahbctrl 		-- AHB arbiter/multiplexer
   generic map (defmast => CFG_DEFMST, split => CFG_SPLIT, 
 	rrobin => CFG_RROBIN, ioaddr => CFG_AHBIO, ioen => IOAEN,
-	nahbm => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SPI2AHB+CFG_GRETH,
+	nahbm => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SPI2AHB+CFG_GRETH+
+               CFG_GR1553B_ENABLE,
 	nahbs => 8)
   port map (rstn, clkm, ahbmi, ahbmo, ahbsi, ahbso);
 
@@ -435,7 +459,7 @@ begin
 	sepirq => CFG_GPT_SEPIRQ, sbits => CFG_GPT_SW, ntimers => CFG_GPT_NTIM, 
 	nbits => CFG_GPT_TW)
     port map (rstn, clkm, apbi, apbo(3), gpti, open);
-    gpti.dhalt <= dsuo.tstop; gpti.extclk <= '0';
+    gpti <= gpti_dhalt_drive(dsuo.tstop);
   end generate;
 --  notim : if CFG_GPT_ENABLE = 0 generate apbo(3) <= apb_none; end generate;
 
@@ -606,6 +630,51 @@ begin
    ncan : if CFG_CAN = 0 generate ahbso(6) <= ahbs_none; end generate;
 
 -----------------------------------------------------------------------
+--- MIL-STD-1553B
+-----------------------------------------------------------------------
+
+  mil: if CFG_GR1553B_ENABLE /= 0 generate
+
+    --milclk_pad : clkpad generic map (tech => padtech) port map (clk_1553, clk1553);
+    milclk_pad : techbuf generic map(tech => padtech, buftype => 2)
+      port map(i => clk_1553, o => clk1553);
+
+    milrst: rstgen
+      port map (resetn, clk1553, vcc(0), rst1553, open);
+
+    gr1553b0: gr1553b_nlw
+      generic map (
+        tech => 0,                      -- inferred = rtl
+        hindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SPI2AHB+CFG_GRETH,
+        pindex => 13, paddr => 13, pirq => 13,
+        bc_enable => CFG_GR1553B_BCEN, rt_enable => CFG_GR1553B_RTEN,
+        bm_enable => CFG_GR1553B_BMEN,
+        bc_rtbusmask => 1)
+      port map (
+        clk => clkm, rst => rstn,
+        ahbmi => ahbmi, ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SPI2AHB+CFG_GRETH),
+        apbsi => apbi, apbso => apbo(13),
+        auxin => gr1553b_auxin_zero, auxout => open,
+        codec_clk => clk1553, codec_rst => rst1553,
+        txout => milout(0), txout_fb => milout(0), rxin => milin(0)
+        );
+    
+  end generate;
+
+  nmil: if CFG_GR1553B_ENABLE = 0 generate
+    clk1553 <= '0'; rst1553 <= '0';
+    milout(0) <= (others => '0');
+  end generate;
+  
+  milpads: gr1553b_pads
+    generic map (padtech => padtech, outen_pol => 1)
+    port map (milout(0), milin(0),
+              busainen, busainp, busainn, busaoutin, busaoutp, busaoutn,
+              busbinen, busbinp, busbinn, busboutin, busboutp, busboutn);
+
+
+  
+-----------------------------------------------------------------------
 ---  AHB RAM ----------------------------------------------------------
 -----------------------------------------------------------------------
 
@@ -655,3 +724,4 @@ begin
   );
 -- pragma translate_on
 end;
+

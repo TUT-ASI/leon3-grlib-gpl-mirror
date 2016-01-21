@@ -8,36 +8,45 @@ UCF=$(GRLIB)/boards/$(BOARD)/$(TOP).ucf
 ifeq ("$(CONFIG_SPW_ENABLE)","y")
 UCF+=$(GRLIB)/boards/$(BOARD)/$(TOP)_spw.ucf
 endif
-ifeq ("$(CONFIG_PARTIAL)","y")
-UCF+=$(GRLIB)/lib/testgrouppolito/icapv4v5.ucf
-endif
 QSF=$(GRLIB)/boards/$(BOARD)/$(TOP).qsf
 EFFORT=high
 XSTOPT=
 ISEMAPOPT=-timing
-VHDLSYNFILES=config.vhd leon3mp.vhd ./dprc_fir_demo/fir_ahb_dma_apb.vhd
-VHDLSIMFILES=testbench.vhd ./dprc_fir_demo/fir_v1.vhd
+VHDLSYNFILES=config.vhd leon3mp.vhd
+VHDLSIMFILES=testbench.vhd
 SIMTOP=testbench
 SDCFILE=default.sdc
 #SDCFILE=$(GRLIB)/boards/$(BOARD)/default.sdc
 BITGEN=$(GRLIB)/boards/$(BOARD)/default.ut
 CLEAN=soft-clean
-SYNPOPT="set_option -pipe 0; set_option -retiming 0; set_option -write_apr_constraint 0"
+SYNPOPT="set_option -pipe 1; set_option -retiming 1; set_option -write_apr_constraint 0"
 
 TECHLIBS = unisim secureip
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 \
 	tmtc openchip hynix cypress ihp usbhc fmf spansion gsi
 LIBADD = testgrouppolito
-DIRSKIP = b1553 leon2 leon2ft leon3ft crypto satcan ddr usb grusbhc \
-	leon4 leon4v0 l2cache iommu pci/pcif slink ascs
+DIRSKIP = b1553 leon2 leon2ft crypto satcan ddr usb grusbhc \
+	leon4v0 l2cache iommu pci/pcif slink ascs
 
 include $(GRLIB)/bin/Makefile
 include $(GRLIB)/software/leon3/Makefile
 
 ##################  project specific targets ##########################
 
+# Additional files used for DPR demo
+ifeq ($(CONFIG_PARTIAL),y)
+VHDLSYNFILES+=./dprc_fir_demo/fir_ahb_dma_apb.vhd
+VHDLSIMFILES+=./dprc_fir_demo/fir_v1.vhd
+UCF+=$(GRLIB)/lib/testgrouppolito/pr/icapv4v5.ucf
+endif
+
+
 CONFIG_PARTIAL ?= 0
-CONFIG_BLOCK ?= 0
+ifeq ("$(CONFIG_EDAC)","y")
+	CONFIG_BLOCK ?= -1
+else
+	CONFIG_BLOCK ?= 0
+endif
 
 dprc-demo: dprc-demo-clean
 ifeq ("$(CONFIG_PARTIAL)","0")

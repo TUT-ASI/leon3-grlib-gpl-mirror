@@ -60,6 +60,10 @@
 #define CONFIG_SYN_TECH apa3
 #elif defined CONFIG_SYN_IGLOO2
 #define CONFIG_SYN_TECH igloo2
+#elif defined CONFIG_SYN_SF2
+#define CONFIG_SYN_TECH smartfusion2
+#elif defined CONFIG_SYN_RTG4
+#define CONFIG_SYN_TECH rtg4
 #elif defined CONFIG_SYN_FUSION
 #define CONFIG_SYN_TECH actfus
 #elif defined CONFIG_SYN_SPARTAN2
@@ -170,6 +174,76 @@
 #define CONFIG_SYN_SCAN 0
 #endif
 
+
+#if defined CONFIG_CLK_ALTDLL
+#define CFG_CLK_TECH CONFIG_SYN_TECH
+#elif defined CONFIG_CLK_HCLKBUF
+#define CFG_CLK_TECH axcel
+#elif defined CONFIG_CLK_LATDLL
+#define CFG_CLK_TECH lattice
+#elif defined CONFIG_CLK_PRO3PLL
+#define CFG_CLK_TECH apa3
+#elif defined CONFIG_CLK_PRO3EPLL
+#define CFG_CLK_TECH apa3e
+#elif defined CONFIG_CLK_PRO3LPLL
+#define CFG_CLK_TECH apa3l
+#elif defined CONFIG_CLK_FUSPLL
+#define CFG_CLK_TECH actfus
+#elif defined CONFIG_CLK_CLKDLL
+#define CFG_CLK_TECH virtex
+#elif defined CONFIG_CLK_CLKPLLE2
+#define CFG_CLK_TECH CONFIG_SYN_TECH
+#elif defined CONFIG_CLK_DCM
+#define CFG_CLK_TECH CONFIG_SYN_TECH
+#elif defined CONFIG_CLK_LIB18T
+#define CFG_CLK_TECH rhlib18t
+#elif defined CONFIG_CLK_RHUMC
+#define CFG_CLK_TECH rhumc
+#elif defined CONFIG_CLK_SAED32
+#define CFG_CLK_TECH saed32
+#elif defined CONFIG_CLK_RHS65
+#define CFG_CLK_TECH rhs65
+#elif defined CONFIG_CLK_DARE
+#define CFG_CLK_TECH dare
+#elif defined CONFIG_CLK_EASIC45
+#define CFG_CLK_TECH easic45
+#elif defined CONFIG_CLK_UT130HBD
+#define CFG_CLK_TECH ut130
+#else
+#define CFG_CLK_TECH inferred
+#endif
+
+#ifndef CONFIG_CLK_MUL
+#define CONFIG_CLK_MUL 2
+#endif
+
+#ifndef CONFIG_CLK_DIV
+#define CONFIG_CLK_DIV 2
+#endif
+
+#ifndef CONFIG_OCLK_DIV
+#define CONFIG_OCLK_DIV 1
+#endif
+
+#ifndef CONFIG_OCLKB_DIV
+#define CONFIG_OCLKB_DIV 0
+#endif
+
+#ifndef CONFIG_OCLKC_DIV
+#define CONFIG_OCLKC_DIV 0
+#endif
+
+#ifndef CONFIG_PCI_CLKDLL
+#define CONFIG_PCI_CLKDLL 0
+#endif
+
+#ifndef CONFIG_PCI_SYSCLK
+#define CONFIG_PCI_SYSCLK 0
+#endif
+
+#ifndef CONFIG_CLK_NOFB
+#define CONFIG_CLK_NOFB 0
+#endif
 #ifndef CONFIG_LEON3
 #define CONFIG_LEON3 0
 #endif
@@ -427,6 +501,11 @@
 #define CONFIG_DCACHE_SNOOP_SEPTAG 0
 #endif
 
+#ifndef CONFIG_DCACHE_SNOOP_SP
+#define CONFIG_DCACHE_SNOOP_SP 0
+#endif
+
+
 #ifndef CONFIG_CACHE_FIXED
 #define CONFIG_CACHE_FIXED 0
 #endif
@@ -646,12 +725,38 @@
 #define CONFIG_IU_DISAS_NET 0
 #endif
 
+#ifndef CONFIG_STAT_ENABLE
+#define CONFIG_STAT_ENABLE 0
+#endif
+
+#ifndef CONFIG_STAT_CNT
+#define CONFIG_STAT_CNT 1
+#endif
+
+#ifndef CONFIG_STAT_NMAX
+#define CONFIG_STAT_NMAX 0
+#endif
+
+#if defined CONFIG_DSU_ASTAT
+#define CONFIG_STAT_DSUEN 1
+#else
+#define CONFIG_STAT_DSUEN 0
+#endif
+
 #ifndef CONFIG_NP_ASI
 #define CONFIG_NP_ASI 0
 #endif
 
 #ifndef CONFIG_WRPSR
 #define CONFIG_WRPSR 0
+#endif
+
+#ifndef CONFIG_ALTWIN
+#define CONFIG_ALTWIN 0
+#endif
+
+#ifndef CONFIG_REX
+#define CONFIG_REX 0
 #endif
 #ifndef CONFIG_AHB_SPLIT
 #define CONFIG_AHB_SPLIT 0
@@ -786,6 +891,34 @@
 #define CONFIG_MCTRL_PROGPAGE 0
 #endif
 
+
+#ifndef CONFIG_MIG_DDR3
+#define CONFIG_MIG_DDR3 0
+#endif
+
+#ifndef CONFIG_MIG_DDR2
+#define CONFIG_MIG_DDR2 0
+#endif
+
+#ifndef CONFIG_MIG_RANKS
+#define CONFIG_MIG_RANKS 1
+#endif
+
+#ifndef CONFIG_MIG_COLBITS
+#define CONFIG_MIG_COLBITS 10
+#endif
+
+#ifndef CONFIG_MIG_ROWBITS
+#define CONFIG_MIG_ROWBITS 13
+#endif
+
+#ifndef CONFIG_MIG_BANKBITS
+#define CONFIG_MIG_BANKBITS 2
+#endif
+
+#ifndef CONFIG_MIG_HMASK
+#define CONFIG_MIG_HMASK F00
+#endif
 #ifndef CONFIG_AHBROM_ENABLE
 #define CONFIG_AHBROM_ENABLE 0
 #endif
@@ -874,6 +1007,10 @@
 
 #ifndef CONFIG_GRETH_EDCLFT
 #define CONFIG_GRETH_EDCLFT 0
+#endif
+
+#ifndef CONFIG_GRETH_SGMII_MODE
+#define CONFIG_GRETH_SGMII_MODE 0
 #endif
 #ifndef CONFIG_UART1_ENABLE
 #define CONFIG_UART1_ENABLE 0

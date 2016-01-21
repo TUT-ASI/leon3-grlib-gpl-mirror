@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -2008,6 +2008,8 @@ begin
       end if;
       if (rmii = 1) then
         v.ctrl.speed := '1';
+      else
+        v.ctrl.speed := '1';
       end if;
       v.ctrl.tx_irqen := '0';
       v.ctrl.rx_irqen := '0';
@@ -2292,3 +2294,4 @@ begin
   end generate;
   
 end architecture;
+

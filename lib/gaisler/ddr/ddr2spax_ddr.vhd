@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -63,7 +63,10 @@ entity ddr2spax_ddr is
       hasdqvalid : integer := 0;
       rstdel     : integer := 200;
       phyptctrl  : integer := 0;
-      scantest   : integer := 0
+      scantest   : integer := 0;
+      dis_caslat : integer := 0;
+      dis_init   : integer := 0;
+      cke_rst    : integer := 0
    );
    port (
       ddr_rst  : in  std_ulogic;
@@ -94,7 +97,7 @@ architecture rtl of ddr2spax_ddr is
   constant CMD_REF  : std_logic_vector(2 downto 0) := "100";
   constant CMD_LMR  : std_logic_vector(2 downto 0) := "110";
   constant CMD_EMR  : std_logic_vector(2 downto 0) := "111";
-
+  
   function tosl(x: integer) return std_logic is
   begin
     if x /= 0 then return '1'; else return '0'; end if;
@@ -743,7 +746,9 @@ begin
         dv.sdo_odt := dr.hwrite;
         dv.sdo_oct := not dr.hwrite;
         dv.pastlast := '0';
-        if dr.ctr(2 downto 0)=caslat_reg then
+        if  (dis_caslat = 0 and dr.ctr(2 downto 0)=caslat_reg) or
+            (dis_caslat /= 0 and dr.hwrite='0' and dr.ctr(2 downto 0)="000" ) or
+            (dis_caslat /= 0 and dr.hwrite='1' and dr.ctr(2 downto 0)=std_logic_vector(unsigned(sdi.regrdata(2 downto 0)) -1)) then
           if dr.hwrite='1' then
             dv.s := dsdata;
           else
@@ -1012,7 +1017,11 @@ begin
     
     -- CAS and precharge handling
     -- FSM above sets up casctr and pchpend
-    dv.twr_plus_cl := std_logic_vector(("0" & unsigned(dr.cfg.twr)) + ("0000" & unsigned(dr.cfg.caslat)));
+    if dis_caslat /= 0 then
+      dv.twr_plus_cl := std_logic_vector(("0" & unsigned(dr.cfg.twr)) + ("000" & unsigned(sdi.regrdata(2 downto 0))) - 1); --  should be -2 instead of -1 but AFI might delay write data for an additional clock cycle, requiring an additional twr clock cycle
+    else
+      dv.twr_plus_cl := std_logic_vector(("0" & unsigned(dr.cfg.twr)) + ("0000" & unsigned(dr.cfg.caslat)));
+    end if;
 
     if dr.prectr /= zerov(dr.prectr'length) then
       dv.prectr := std_logic_vector(unsigned(dr.prectr)-1);
@@ -1027,12 +1036,16 @@ begin
         -- dv.sdo_casn := '0';
         dv.sdo_wen := not dr.hwrite;
         if dr.hwrite='0' then
-          case dr.cfg.caslat is
-            when "00"   => dv.read_pend(4 downto 3) := "11";
-            when "01"   => dv.read_pend(5 downto 4) := "11";
-            when "10"   => dv.read_pend(6 downto 5) := "11";
-            when others => dv.read_pend(7 downto 6) := "11";
-          end case;
+          if dis_caslat /= 0 then
+            dv.read_pend(4 downto 3) := "11";
+          else
+            case dr.cfg.caslat is
+              when "00"   => dv.read_pend(4 downto 3) := "11";
+              when "01"   => dv.read_pend(5 downto 4) := "11";
+              when "10"   => dv.read_pend(6 downto 5) := "11";
+              when others => dv.read_pend(7 downto 6) := "11";
+            end case;
+          end if;
         end if;
       elsif dr.hwidth='1' then
 
@@ -1096,8 +1109,9 @@ begin
           dv.cfg.dllrst := '1';
           dv.cfg.ocd := '0';
           dv.cmds := dcinit1;
+        elsif dis_init /= 0 then
+          dv.cmds := dcon;
         end if;
-          
       when dcinit1 =>
         -- Wait >=400 ns
         if dr.refctr=std_logic_vector(to_unsigned((MHz*4+9)/10, dr.refctr'length)) then
@@ -1178,6 +1192,9 @@ begin
         
     end case;
 
+    if dis_init /= 0 then
+      dv.cfg.renable := '0';
+    end if;
     -- Calculate next address    
     dv.ramaddr(0) := dv.ctr(0) xor dv.col(1);
     if rbuf_wabits > 1 then
@@ -1250,17 +1267,17 @@ begin
       dv.cfg.refon    :=  '0';
       dv.cfg.trfc     := conv_std_logic_vector(TRFC*MHz/1000-2, 8);
       dv.cfg.refresh  := conv_std_logic_vector(7800*MHz/1000, 12);
-      dv.cfg.twr      := conv_std_logic_vector((15)*MHz/1000+3, 5);
+      dv.cfg.twr      := conv_std_logic_vector((15 * MHz + 999) / 1000 + 3, 5);
       dv.sdo_dqm      := (others => '1');
       dv.cfg.dllrst   := '0';
-      dv.cfg.cke      := '0';
+      dv.cfg.cke      := std_logic(to_unsigned(cke_rst, 1)(0));
       dv.cfg.ocd      := '0';
       dv.cfg.readdly  := conv_std_logic_vector(readdly, 4);
       dv.cfg.eightbanks := conv_std_logic_vector(eightbanks, 1)(0);
       dv.cfg.odten := std_logic_vector(to_unsigned(odten,2));
       dv.cfg.dqsctrl := (others => '0');      
       dv.cfg.strength := '0';
-      if pwron = 1 then dv.cfg.renable :=  '1'; else dv.cfg.renable:='0'; end if;
+      if pwron = 1 and dis_init = 0 then dv.cfg.renable :=  '1'; else dv.cfg.renable:='0'; end if;
       -- Default to min 15 ns tRCD, 15 ns tRP, min(7.5 ns,2*tCK) tRTP      
       -- Use CL=3 for DDR2-400/533, 4 for DDR2-667, 5 for DDR2-800
       dv.cfg.trcd := "000";
@@ -1292,7 +1309,6 @@ begin
       dv.cfg.tras := std_logic_vector(to_unsigned((45*MHz+999)/1000 - 2, 5));
       dv.read_pend := (others => '0');
       if ddr_syncrst /= 0 then 
-        dv.cfg.cke := '0';
         dv.sdo_bdrive := not oepols;
         dv.sdo_qdrive := not oepols;
         dv.sdo_odt := '0';
@@ -1371,7 +1387,7 @@ begin
       dr <= ndr;
     end if;
     if ddr_syncrst=0 and arst='0' then
-      dr.cfg.cke <= '0';
+      dr.cfg.cke <= std_logic(to_unsigned(cke_rst, 1)(0));
       dr.sdo_bdrive <= not oepols;
       dr.sdo_qdrive <= not oepols;
       dr.sdo_odt <= '0';
@@ -1379,3 +1395,4 @@ begin
   end process;
     
 end;
+

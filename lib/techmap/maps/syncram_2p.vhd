@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -58,7 +58,8 @@ constant nctrl : integer := abits*2 + (TESTIN_WIDTH-2) + 2;
 signal gnd : std_ulogic;
 signal vgnd : std_logic_vector(dbits-1 downto 0);
 signal dataoutx, dataoutxx  : std_logic_vector((dbits -1) downto 0);
-signal databp, testdata : std_logic_vector((dbits -1) downto 0);
+signal tmode: std_ulogic;
+signal testdata : std_logic_vector((dbits -1) downto 0);
 signal renable2 : std_ulogic;
 constant SCANTESTBP : boolean := (testen = 1) and syncram_add_scan_bypass(tech)=1;
 constant iwrfst : integer := (1-syncram_2p_write_through(tech)) * wrfst;
@@ -66,6 +67,38 @@ signal xrenable,xwrite : std_ulogic;
 
 signal custominx,customoutx: std_logic_vector(syncram_customif_maxwidth downto 0);
 signal customclkx: std_ulogic;
+
+component memrwcol is
+  generic (
+    techwrfst : integer;
+    techrwcol : integer;
+    techrdhold : integer;
+    abits: integer;
+    dbits: integer;
+    sepclk: integer;
+    wrfst: integer
+    );
+  port (
+    clk1     : in  std_ulogic;
+    clk2     : in  std_ulogic;
+    uenable1 : in  std_ulogic;
+    uwrite1  : in  std_ulogic;
+    uaddress1: in  std_logic_vector((abits-1) downto 0);
+    udatain1 : in  std_logic_vector((dbits-1) downto 0);
+    udataout1: out std_logic_vector((dbits-1) downto 0);
+    uenable2 : in  std_ulogic;
+    uwrite2  : in  std_ulogic;
+    uaddress2: in  std_logic_vector((abits-1) downto 0);
+    udatain2 : in  std_logic_vector((dbits-1) downto 0);
+    udataout2: out std_logic_vector((dbits-1) downto 0);
+    menable1 : out std_ulogic;
+    menable2 : out std_ulogic;
+    mdataout1: in  std_logic_vector((dbits-1) downto 0);
+    mdataout2: in  std_logic_vector((dbits-1) downto 0);
+    testmode : in  std_ulogic;
+    testdata : in  std_logic_vector((dbits-1) downto 0)
+    );
+end component;
 
 begin
 
@@ -75,88 +108,53 @@ begin
   xwrite <= write and not testin(TESTIN_WIDTH-2) when testen/=0 else write;
   dataout <= dataoutxx;
 
-  no_wrfst : if iwrfst = 0 generate
-    scanbp : if SCANTESTBP generate
-      comb : process (waddress, raddress, datain, renable, write, testin)
+  rwcol0: memrwcol
+    generic map (
+      techwrfst  => syncram_2p_write_through(tech),
+      techrwcol  => syncram_2p_dest_rw_collision(tech),
+      techrdhold => syncram_2p_readhold(tech),
+      abits      => abits,
+      dbits      => dbits,
+      sepclk     => sepclk,
+      wrfst      => wrfst)
+    port map (
+      clk1      => rclk,
+      clk2      => wclk,
+      uenable1  => xrenable,
+      uwrite1   => '0',
+      uaddress1 => raddress,
+      udatain1  => vgnd,
+      udataout1 => dataoutxx,
+      uenable2  => '1',
+      uwrite2   => write,
+      uaddress2 => waddress,
+      udatain2  => datain,
+      udataout2 => open,
+      menable1  => renable2,
+      menable2  => open,
+      mdataout1 => dataoutx,
+      mdataout2 => vgnd,
+      testmode  => tmode,
+      testdata  => testdata
+      );
+
+  tmode <= testin(TESTIN_WIDTH-1) when SCANTESTBP else '0';
+  scanbp : if SCANTESTBP generate
+    comb : process (waddress, raddress, datain, renable, write, testin)
       variable tmp : std_logic_vector((dbits -1) downto 0);
       variable ctrlsigs : std_logic_vector((nctrl -1) downto 0);
-      begin
-        ctrlsigs := testin(TESTIN_WIDTH-3 downto 0) & write & renable & raddress & waddress;
-        tmp := datain;
-        for i in 0 to nctrl-1 loop
-	  tmp(i mod dbits) := tmp(i mod dbits) xor ctrlsigs(i);
-        end loop;
-        testdata <= tmp;
-      end process;
-      reg : process(wclk) begin
-        if rising_edge(wclk) then databp <= testdata; end if;
-      end process;
-      dmuxout : for i in 0 to dbits-1 generate
-        x0 : grmux2 generic map (tech)
-        port map (dataoutx(i), databp(i), testin(TESTIN_WIDTH-1), dataoutxx(i));
-      end generate;
-    end generate;
-    noscanbp : if not SCANTESTBP generate dataoutxx <= dataoutx; end generate;
-    -- Write contention check (if applicable)
-    renable2 <= '0' when ((sepclk = 0 and syncram_2p_dest_rw_collision(tech) = 1) and
-                          (renable and write) = '1' and raddress = waddress) else xrenable;
+    begin
+      ctrlsigs := testin(TESTIN_WIDTH-3 downto 0) & write & renable & raddress & waddress;
+      tmp := datain;
+      for i in 0 to nctrl-1 loop
+        tmp(i mod dbits) := tmp(i mod dbits) xor ctrlsigs(i);
+      end loop;
+      testdata <= tmp;
+    end process;
   end generate;
-
-  wrfst_gen : if iwrfst = 1 generate
-    -- No risk for read/write contention. Register addresses and mux on comparator
-    no_contention_check : if syncram_2p_dest_rw_collision(tech) = 0 generate
-      wfrstblocknoc : block
-        type wrfst_type is record
-          raddr   : std_logic_vector((abits-1) downto 0);
-          waddr   : std_logic_vector((abits-1) downto 0);
-          datain  : std_logic_vector((dbits-1) downto 0);
-          write   : std_logic;
-          renable : std_logic;
-        end record;
-        signal r : wrfst_type;
-      begin
-        comb : process(r, dataoutx, testin) begin
-          if (SCANTESTBP and (testin(TESTIN_WIDTH-1) = '1')) or
-            (((r.write and r.renable) = '1') and (r.raddr = r.waddr)) then
-            dataoutxx <= r.datain;
-          else dataoutxx <= dataoutx; end if;
-        end process;
-        reg : process(wclk) begin
-          if rising_edge(wclk) then
-            r.raddr <= raddress; r.waddr <= waddress;
-            r.datain <= datain; r.write <= write;
-            r.renable <= renable;
-          end if;
-        end process;
-      end block wfrstblocknoc;
-      renable2 <= xrenable;
-    end generate;
-    -- Risk of read/write contention. Use same comparator to gate read enable
-    -- and mux data.
-    contention_safe : if syncram_2p_dest_rw_collision(tech) /= 0 generate
-      wfrstblockc : block
-        signal col, mux : std_ulogic;
-        signal rdatain : std_logic_vector((dbits-1) downto 0);
-      begin
-        comb : process(mux, xrenable, renable, write, raddress, waddress, rdatain,
-                       dataoutx, testin)
-        begin
-          col <= '0'; renable2 <= xrenable;
-          if (write and renable) = '1' and raddress = waddress then
-            col <= '1'; renable2 <= '0';
-          end if;
-          if (SCANTESTBP and (testin(TESTIN_WIDTH-1) = '1')) or mux = '1' then
-            dataoutxx <= rdatain;
-          else dataoutxx <= dataoutx; end if;
-        end process;
-        reg : process(wclk) begin
-          if rising_edge(wclk) then
-            rdatain <= datain; mux <= col;
-          end if;
-        end process;
-      end block wfrstblockc;
-    end generate;
-  end generate wrfst_gen;
+  noscanbp : if not SCANTESTBP generate
+    testdata <= (others => '0');
+  end generate;
 
     custominx <= (others => '0');
     customclkx <= '0';
@@ -235,6 +233,12 @@ begin
     x0 : igloo2_syncram_2p generic map (abits, dbits, sepclk)
          port map (rclk, renable2, raddress, dataoutx,
 		   wclk, waddress, datain, xwrite);
+  end generate;
+
+  rt4 : if tech = rtg4 generate
+    x0 : rtg4_syncram_2p generic map (abits, dbits, sepclk)
+         port map (rclk, renable2, raddress, dataoutx, open,
+                   wclk, xwrite, waddress, datain, gnd);
   end generate;
 
   saed : if tech = saed32 generate

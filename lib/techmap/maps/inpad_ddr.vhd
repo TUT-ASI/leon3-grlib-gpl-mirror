@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -54,13 +54,17 @@ end;
 architecture rtl of inpad_ddr is
 
   signal d : std_ulogic;
+  signal gnd : std_ulogic;
   
 begin
+
+  gnd <= '0';
+  
   def: if (tech /= easic90) and (tech /= easic45) generate
     p : inpad generic map (tech, level, voltage, filter, strength)
       port map (pad, d);  
     ddrreg : ddr_ireg generic map (tech)
-      port map (o1, o2, c1, c2, ce, d, r, s);
+      port map (o1, o2, c1, c2, ce, d, r, s, gnd, gnd);
   end generate def;
 
   nex  : if (tech = easic90) generate
@@ -116,3 +120,4 @@ begin
     end generate;
   end generate;
 end;
+

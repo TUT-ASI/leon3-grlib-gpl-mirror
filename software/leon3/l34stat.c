@@ -1,7 +1,7 @@
 /*
  * GRLIB system test software for L3STAT/L4STAT core
  *
- * Copyright (c) 2010 Aeroflex Gaisler
+ * Copyright (c) 2010 - 2015 Cobham Gaisler AB
  *
  */
 
@@ -9,13 +9,18 @@
 
 /* Register offsets */
 #define L4STAT_VAL_REG  0x00
-#define L4STAT_CTRL_REG 0x80
+#define L4STAT_CTRL_REG_REV0 0x80
+#define L4STAT_CTRL_REG_REV1 0x100
 
 /* Counter control register fields */
-#define L4STAT_CTRL_NCPU     28
-#define L4STAT_CTRL_NCPU_MSK 0xf
-#define L4STAT_CTRL_NCNT     23
-#define L4STAT_CTRL_NCNT_MSK 0x1f
+#define L4STAT_CTRL_NCPU_REV0     28
+#define L4STAT_CTRL_NCPU_MSK_REV0 0xf
+#define L4STAT_CTRL_NCNT_REV0     23
+#define L4STAT_CTRL_NCNT_MSK_REV0 0x1f
+#define L4STAT_CTRL_NCPU_REV1     29
+#define L4STAT_CTRL_NCPU_MSK_REV1 0x7
+#define L4STAT_CTRL_NCNT_REV1     23
+#define L4STAT_CTRL_NCNT_MSK_REV1 0x3f
 #define L4STAT_CTRL_MC       (1 << 22)
 #define L4STAT_CTRL_IA       (1 << 21)
 #define L4STAT_CTRL_DS       (1 << 20)
@@ -40,7 +45,7 @@ void l34stat_test(unsigned int addr, unsigned char l3)
         unsigned int i, tmp;
 
         val = (unsigned int*)(addr + L4STAT_VAL_REG);
-        ctrl = (unsigned int*)(addr + L4STAT_CTRL_REG);
+        ctrl = (unsigned int*)(addr + L4STAT_CTRL_REG_REV1);
 
         if (l3) {
                 report_device(0x01098000);
@@ -49,7 +54,7 @@ void l34stat_test(unsigned int addr, unsigned char l3)
         }
 
         *ctrl = 0; /* Initialize before reading # counters */
-        ncnt = ((*ctrl >>  L4STAT_CTRL_NCNT) & L4STAT_CTRL_NCPU_MSK) + 1;
+        ncnt = ((*ctrl >>  L4STAT_CTRL_NCNT_REV1) & L4STAT_CTRL_NCNT_MSK_REV1) + 1;
         
         /* Loop through all counters */
         for (i = 0; i < ncnt; i++) {
@@ -115,11 +120,11 @@ void l3stat_test(unsigned int addr)
 void lstat_init(unsigned int addr)
 {
    volatile unsigned int *cnt = (unsigned int*)(addr);
-   volatile unsigned int *ctrl = (unsigned int*)(addr + L4STAT_CTRL_REG);
+   volatile unsigned int *ctrl = (unsigned int*)(addr + L4STAT_CTRL_REG_REV1);
    unsigned int ncnt, i;
 
    *ctrl = 0; /* Initialize before reading # counters */
-   ncnt = ((*ctrl >>  L4STAT_CTRL_NCNT) & L4STAT_CTRL_NCPU_MSK) + 1;
+   ncnt = ((*ctrl >>  L4STAT_CTRL_NCNT_REV1) & L4STAT_CTRL_NCNT_MSK_REV1) + 1;
 
    for (i = 0; i < ncnt; i++) {
       cnt[i] = 0;
@@ -129,7 +134,7 @@ void lstat_init(unsigned int addr)
 
 void lstat_set(unsigned int addr, int cnt, int cpuahbm, int event)
 {
-   volatile unsigned int *ctrl = (unsigned int*)(addr + L4STAT_CTRL_REG);
+   volatile unsigned int *ctrl = (unsigned int*)(addr + L4STAT_CTRL_REG_REV1);
 
    ctrl[cnt] = L4STAT_CTRL_EN | (event << L4STAT_CTRL_ID) | cpuahbm;
 }

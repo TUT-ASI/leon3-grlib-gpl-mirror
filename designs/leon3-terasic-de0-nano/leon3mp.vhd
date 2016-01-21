@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -330,10 +330,11 @@ begin
   
   ua1 : if CFG_UART1_ENABLE /= 0 generate
     uart1 : apbuart			-- UART 1
-      generic map (pindex => 1, paddr => 1,  pirq => 2, console => dbguart, flow => 0,
+      generic map (pindex => 1, paddr => 1,  pirq => 2, console => dbguart,
                    fifosize => CFG_UART1_FIFO)
       port map (rstn, clkm, apbi, apbo(1), u1i, u1o);
     u1i.extclk <= '0';
+    u1i.ctsn <= '0';
     u1i.rxd <= '1';
   end generate;
   noua0 : if CFG_UART1_ENABLE = 0 generate apbo(1) <= apb_none; end generate;
@@ -356,7 +357,7 @@ begin
                    sepirq => CFG_GPT_SEPIRQ, sbits => CFG_GPT_SW,
                    ntimers => CFG_GPT_NTIM, nbits => CFG_GPT_TW)
       port map (rstn, clkm, apbi, apbo(3), gpti, open);
-    gpti.dhalt <= dsuo.tstop; gpti.extclk <= '0';
+    gpti <= gpti_dhalt_drive(dsuo.tstop);
   end generate;
   notim : if CFG_GPT_ENABLE = 0 generate apbo(3) <= apb_none; end generate;
   
@@ -455,6 +456,7 @@ begin
 --  gpio2i.din(31) <= gpio2o.dout(31);
   
   ahbs : if CFG_AHBSTAT = 1 generate	-- AHB status register
+    stati <= ahbstat_in_none;
     ahbstat0 : ahbstat generic map (pindex => 15, paddr => 15, pirq => 1, nftslv => CFG_AHBSTATN)
       port map (rstn, clkm, ahbmi, ahbsi, stati, apbi, apbo(15));
   end generate;
@@ -493,3 +495,4 @@ begin
   );
 -- pragma translate_on
 end;
+

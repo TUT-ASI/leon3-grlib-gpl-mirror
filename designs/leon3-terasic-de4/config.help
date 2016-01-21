@@ -8,7 +8,7 @@ CONFIG_SYN_INFERRED
   - Inferred: Generic FPGA or ASIC targets if your synthesis tool
     is capable of inferring RAMs and pads automatically.
 
-  - Actel ProAsic/P/3, IGLOO/2 and Axcelerator FPGAs
+  - Actel ProAsic/P/3, IGLOO/2, RTG4 and Axcelerator FPGAs
   - Aeroflex UT25CRH Rad-Hard 0.25 um CMOS
   - Altera: Most Altera FPGA families
   - Altera-CycloneIII: Altera Cyclone-III/IV FPGA family
@@ -267,8 +267,6 @@ CONFIG_IU_LDELAY
   on targets with slow (data) cache memories. A 2-cycle delay can
   improve timing but will reduce performance with about 5%.
 
-  Note that the load delay must be 1 to support the CASA instruction.
-
 Reset address
 CONFIG_IU_RSTADDR
   By default, a SPARC processor starts execution at address 0.
@@ -470,6 +468,14 @@ CONFIG_DCACHE_SNOOP_SEPTAG
   dual port RAMs are not available for the target technology is
   therefore to use separate snoop tags even if it is not needed.
 
+  Note that it is also possible to implement the tags using single port
+  RAMs with valid bits in flip-flops.
+
+Single-port RAM for separate tags
+CONFIG_DCACHE_SNOOP_SP
+  Use single-port RAM to implement separate physical tags. This leads
+  to the cache tag valid bits being implemented in flip-flops.
+
 Fixed cacheability map
 CONFIG_CACHE_FIXED
   If this variable is 0, the cacheable memory regions are defined
@@ -656,6 +662,23 @@ CONFIG_DEBUG_PC32
   be implemented with full 32 bits, making debugging of the VHDL model
   much easier. Turn of this option for synthesis or you will be wasting
   area.
+
+LEON3 Statistical Module
+CONFIG_STAT_ENABLE
+  Say Y here to enable the LEON3 Statistical Unit. The unit consists
+  of a number of timers that can count various processor and MMU/FPU
+  events to allow analysis of processor behavior and performance. 
+
+Number of L3S counters
+CONFIG_STAT_CNT 
+  Set the number of 32-bit counters in the unit (1 - 32).
+
+Number of L3S accumulative counters
+CONFIG_STAT_NMAX
+  If this value is higher than 0, the core will include functionality 
+  for tracking the longest consecutive time that an event is active or 
+  inactive. The functionality will be available for the nmax first 
+  counters. This value must not exceed the number of available counters
 
 SPARC V8E non-privileged ASI access
 CONFIG_NP_ASI
@@ -905,6 +928,74 @@ CONFIG_MCTRL_PROGPAGE
   will allow to dynamically enable/disable page burst by setting
   bit 17 in MCFG2.
 
+SDRAM controller enable
+CONFIG_DDR2SP
+  Say Y here to enabled a 16-bit DDR266 SDRAM controller. 
+
+Power-on init
+CONFIG_DDR2SP_INIT
+  Say Y here to enable the automatic DDR initialization sequence.
+  If disabled, the sequencemust be performed in software before
+  the DDR can be used. If unsure, say Y.
+
+Synchronization
+CONFIG_DDR2SP_NOSYNC
+  Say Y here if the DDR clock and system clock are aligned so
+  that the DDR clock always has a rising edge at the same instant
+  as the system clock has a risning edge. If this value is set to
+  Y, synchronization registers in the controller will not be 
+  instantiated. This leads to lower latency in the controller but
+  leads to the requirement above on the input clocks. This option 
+  is not valid in all template designs. If unsure, say no. 
+
+Memory frequency
+CONFIG_DDR2SP_FREQ
+  Enter the frequency of the DDR clock (in MHz). The value is
+  typically between 130 - 200, depending on system configuration.
+  Some template designs (such as the leon3-avnet-eval-lx25)
+  calculate this value automatically and this value is not used.
+
+Refresh to Activate
+CONFIG_DDR2SP_TRFC
+  Enter the Refresh to Activate timing (tRFC) in ns. The value is
+  typically between 75 - 130, depending on memory chip implementation.
+
+DDR2 Data width
+CONFIG_DDR2SP_DATAWIDTH
+  Select the width of the DDR2 data bus. 64-bit or 32-bit or
+  16-bit can be selected. Only used in some template designs.
+
+Column bits
+CONFIG_DDR2SP_COL
+  Select the number of colomn address bits of the DDR memory.
+  Typical values are 8 - 11. Only needed when automatic DDR
+  initialisation is choosen. The column size can always be
+  programmed by software as well.
+
+Chip select size
+CONFIG_DDR2SP_MBYTE
+  Select the memory size (Mbytes) that each chip select should decode.
+  Only needed when automatic DDR initialisation is choosen. The chip
+  select size can always be programmed by software as well.
+
+Read data delay
+CONFIG_DDR2SP_DELAY0 CONFIG_DDR2SP_DELAY1 CONFIG_DDR2SP_DELAY2 CONFIG_DDR2SP_DELAY3 CONFIG_DDR2SP_DELAY4 CONFIG_DDR2SP_DELAY5 CONFIG_DDR2SP_DELAY6 CONFIG_DDR2SP_DELAY7 CONFIG_DDR2SP_CBDELAY0 CONFIG_DDR2SP_CBDELAY1 CONFIG_DDR2SP_CBDELAY2 CONFIG_DDR2SP_CBDELAY3
+  On Xilinx targets (virtex4 and virtex5), input delays are added to 
+  all data bits to align read data to the internal DDR clock signal.
+  The delay can be set to a value of 0 to 63 tap-delays. Each tap- 
+  delay equals to ~78ps delay, with an reference clock at 200 MHz. 
+  This delay value is only a reset valus, it can be changed dynamically 
+  via a configuration register.
+
+Fault-Tolenant version
+CONFIG_DDR2SP_FTEN
+  Say Y here to enable the fault-tolerant version of the DDR2 controller. 
+  In this version, the data bus is enlarged by 25% or 50% and the added 
+  bits are used to store checkbits. The checkbits are generated and 
+  checked using a Reed-Solomon codec.
+
+  This option is only available in the FT version of GRLIB and supported 
+  only in some template designs.
 AHB status register
 CONFIG_AHBSTAT_ENABLE
   Say Y here to enable the AHB status register (AHBSTAT IP).

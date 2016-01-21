@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015, Cobham Gaisler
+--  Copyright (C) 2015 - 2016, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -65,6 +65,7 @@ package devices is
   constant VENDOR_CAL        : amba_vendor_type := 16#CA#;
   constant VENDOR_CETON      : amba_vendor_type := 16#CB#;
   constant VENDOR_EMBEDDIT   : amba_vendor_type := 16#EA#;
+  constant VENDOR_NASA_GSFC  : amba_vendor_type := 16#FC#;
 
 -- Cobham Gaisler device ids
 
@@ -226,6 +227,10 @@ package devices is
   constant GAISLER_IGLOO2_BRIDGE : amba_device_type := 16#09E#;
   constant GAISLER_AHB2AXI   : amba_device_type := 16#09F#;
   constant GAISLER_AXI2AHB   : amba_device_type := 16#0A0#;
+  constant GAISLER_FDIR_RSTCTRL : amba_device_type := 16#0A1#;
+  constant GAISLER_APB3MST   : amba_device_type := 16#0A2#;
+  constant GAISLER_LRAM      : amba_device_type := 16#0A3#;
+  constant GAISLER_BOOTSEQ   : amba_device_type := 16#0A4#;
 
 -- Sun Microsystems
 
@@ -376,7 +381,10 @@ package devices is
   constant MICROSEMI_M2GL_EVAL  : system_device_type := 16#0560#;
   constant XILINX_SP601         : system_device_type := 16#0601#;
   constant XILINX_ML605         : system_device_type := 16#0605#;
-
+  constant XILINX_AC701         : system_device_type := 16#A701#;
+  constant XILINX_KC705         : system_device_type := 16#A705#;
+  constant XILINX_VC707         : system_device_type := 16#A707#;
+  constant ESA_SSDP             : system_device_type := 16#ADA2#;
 -- pragma translate_off
 
   constant GAISLER_DESC : vendor_description :=  "Cobham Gaisler          ";
@@ -528,7 +536,7 @@ package devices is
    GAISLER_SGMII     => "XILINX SGMII Interface         ",
    GAISLER_RGMII     => "Gaisler RGMII Interface        ",
    GAISLER_IRQGEN    => "Interrupt generator            ",
-   GAISLER_GRDMAC    => "DMA Controller with APB bridge ",
+   GAISLER_GRDMAC    => "GRDMAC DMA Controller          ",
    GAISLER_AHB2AVLA  => "Avalon-MM memory controller    ",
    GAISLER_SPWTDP    => "CCSDS TDP / SpaceWire I/F      ",
    GAISLER_L3STAT    => "LEON3 Statistics Unit          ",
@@ -537,9 +545,13 @@ package devices is
    GAISLER_CMAP      => "CCSDS Memory Access Protocol   ",
    GAISLER_CPGEN     => "Discrete Command Pulse Gen     ",
    GAISLER_AMBAPROT  => "AMBA Protection Unit           ",
-   GAISLER_IGLOO2_BRIDGE => "Microsemi IGLOO2 HPMS Wrapper  ",
+   GAISLER_IGLOO2_BRIDGE => "Microsemi SF2/IGLOO2 MSS/HPMS  ",
    GAISLER_AHB2AXI   => "AMBA AHB/AXI Bridge            ",
    GAISLER_AXI2AHB   => "AMBA AXI/AHB Bridge            ",
+   GAISLER_FDIR_RSTCTRL => "FDIR Reset Controller          ",
+   GAISLER_APB3MST   => "AHB/APB3 Bridge                ",
+   GAISLER_LRAM      => "Dual-port AHB(/CPU) On-Chip RAM",
+   GAISLER_BOOTSEQ   => "Custom AHB sequencer           ",
    others            => "Unknown Device                 ");
 
    constant gaisler_lib : vendor_library_type := (
@@ -845,6 +857,17 @@ package devices is
      device_table      => nasa_device_table
    );
 
+  constant NASA_GSFC_DESC : vendor_description :=   "NASA GSFC               ";
+
+  constant nasa_gsfc_device_table : device_table_type := (
+   others             => "Unknown Device                 ");
+
+  constant nasa_gsfc_lib : vendor_library_type := (
+     vendorid          => VENDOR_NASA_GSFC,
+     vendordesc        => NASA_GSFC_DESC,
+     device_table      => nasa_gsfc_device_table
+   );
+  
   constant S3_DESC : vendor_description :=   "S3 Group                ";
 
   constant s3_device_table : device_table_type := (
@@ -906,10 +929,11 @@ package devices is
     VENDOR_CETON       => ceton_lib,
     VENDOR_ACTEL       => actel_lib,
     VENDOR_NASA        => nasa_lib,
+    VENDOR_NASA_GSFC   => nasa_gsfc_lib,
     VENDOR_S3          => s3_lib,
     others             => unknown_lib);
 
-  type system_table_type is array (0 to 4095) of device_description;
+  type system_table_type is array (0 to 65535) of device_description;
 
   constant system_table : system_table_type := (
    LEON3_ACT_FUSION   => "LEON3 Actel Fusion Dev. board  ",
@@ -928,6 +952,9 @@ package devices is
    XILINX_ML507       => "Xilinx ML507 Development board ",
    XILINX_ML509       => "Xilinx ML509 Development board ",
    XILINX_ML510       => "Xilinx ML510 Development board ",
+   XILINX_AC701       => "Xilinx AC701 Development board ",
+   XILINX_KC705       => "Xilinx KC705 Development board ",
+   XILINX_VC707       => "Xilinx VC707 Development board ",
    MICROSEMI_M2GL_EVAL=> "Microsemi IGLOO2 Evaluation kit", 
    XILINX_SP601       => "Xilinx SP601 Development board ",
    XILINX_ML605       => "Xilinx ML605 Development board ",

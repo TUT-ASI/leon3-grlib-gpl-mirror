@@ -8,8 +8,9 @@ ahbtrace_mb.vhd
 ahbtrace.vhd
 ahbmst.vhd
 grgpio.vhd
-ftahbram.vhd
+ftahbram1.vhd
 ftahbram2.vhd
+ftahbram.vhd
 ahbstat.vhd
 logan.vhd
 apbps2.vhd
