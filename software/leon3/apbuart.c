@@ -106,20 +106,25 @@ int apbuart_test(int addr)
          *  TRANSMITTER TEST
          */
 
+	// Transmit FIFO is expected to be less than half full,
+	// since it is empty
+	// This test is temporarily removed
         if(fifosize > 1) {
-                if(((loadmem((int)&uart->status) & 0x80) == 1) ) {
-                        /*th bit incorrect*/
-                        fail( 4);
-                }
+	//                if(((loadmem((int)&uart->status) & 0x80) != 0) ) {
+	//                        /*th bit incorrect*/
+	//                        fail( 4);
+	//                }
         }
         
 
         uart->data = (int) test[0];
-        
-        if( (loadmem((int)&uart->status) & 4) == 1) {
-                /*te bit incorrect*/
-                fail( 1);
-        }
+
+	// This test will fail if CONSOLE is set to 1, which it is in most
+	// template designs, since they will have CFG_DUART set to 1
+	//        if( (loadmem((int)&uart->status) & 4) == 4) {
+	//                /*te bit incorrect*/
+	//                fail( 1);
+	//        }
 
         if(loadmem((int)&uart->status) & 2 == 0) {
                 /*ts bit incorrect*/
@@ -131,10 +136,11 @@ int apbuart_test(int addr)
                         uart->data = (int) test[i % testsize];
                 }
         
-                if(((loadmem((int)&uart->status) & 0x80) == 1) ) {
-                        /*th bit incorrect*/
-                        fail( 5);
-                }
+		// This test is temporarily removed
+		//                if(((loadmem((int)&uart->status) & 0x80) == 0x80) ) {
+		//                        /*th bit incorrect*/
+		//                        fail( 5);
+		//                }
                 
                 if( ((loadmem((int)&uart->status) >> 20) & 0x3F) != fifosize ) {
                         /*tcnt error*/

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -190,7 +190,7 @@ begin
   end process;
 
   -- Transceiver channel selection
-  ch0: if transtech = GTP0 or transtech = GTX0 generate
+  ch0: if transtech = TT_XGTP0 or transtech = TT_XGTX0 generate
     rx_rec_clk_int  <= rx_rec_clk0_int;
     rst_done_int    <= rst_done0_int;
     rx_in0_n        <= rx_in_n;
@@ -203,7 +203,7 @@ begin
     end generate ;
   end generate;
 
-  ch1: if transtech = GTP1 or transtech = GTX1 generate
+  ch1: if transtech = TT_XGTP1 or transtech = TT_XGTX1 generate
     rx_rec_clk_int  <= rx_rec_clk1_int;
     rst_done_int    <= rst_done1_int;
     rx_in1_n        <= rx_in_n;
@@ -274,7 +274,7 @@ begin
 
     ---- GTP_DUAL instantiation
 
-    inst_gtp0: if (transtech = GTP0) or (transtech = GTP1) generate
+    inst_gtp0: if (transtech = TT_XGTP0) or (transtech = TT_XGTP1) generate
 
       -- no need for extra clocks on GTP transtech
       tx_usrclk_int   <= ref_clk_buf_int;
@@ -735,7 +735,7 @@ begin
     end generate;
 
     ---- GTX_DUAL instantiation
-    inst_gtx0: if (transtech = GTX0) or (transtech = GTX1) generate
+    inst_gtx0: if (transtech = TT_XGTX0) or (transtech = TT_XGTX1) generate
 
 --      refclkout_dcm0: MGT_USRCLK_SOURCE
 --        generic map

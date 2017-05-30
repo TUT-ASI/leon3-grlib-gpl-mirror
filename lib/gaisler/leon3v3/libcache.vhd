@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -202,10 +202,10 @@ package libcache is
      address       : std_logic_vector(19 downto 0);
      tag           : cdatatype;
      twrite        : std_logic_vector(0 to 3);
-     tenable       : std_ulogic;
+     tenable       : std_logic_vector(0 to 3);
      flush         : std_ulogic;
      data          : std_logic_vector(31 downto 0);
-     denable       : std_ulogic;
+     denable       : std_logic_vector(0 to 3);
      dwrite        : std_logic_vector(0 to 3);
      ldramin       : ildram_in_type;
      ctx           : std_logic_vector(M_CTX_SZ-1 downto 0);
@@ -400,7 +400,8 @@ package libcache is
       lram      :     integer range 0 to 2   := 0;
       lramsize  :     integer range 1 to 512 := 1;
       lramstart :     integer range 0 to 255 := 16#8e#;
-      mmuen     :     integer                := 0
+      mmuen     :     integer                := 0;
+      memtech   :     integer                := 0
       );
     port (
       rst       : in  std_logic;
@@ -443,7 +444,8 @@ package libcache is
       mmupgsz    :     integer range 0 to 5     := 0;
       smp        :     integer                  := 0;
       mmuen      :     integer                  := 0;
-      icen       :     integer range 0 to 1     := 0
+      icen       :     integer range 0 to 1     := 0;
+      irqlat     :     integer range 0 to 1     := 0
       );
     port (
       rst        : in  std_logic;
@@ -498,7 +500,8 @@ package libcache is
       scantest   :     integer                  := 0;
       mmupgsz    :     integer range 0 to 5     := 0;
       smp        :     integer                  := 0;
-      mmuen      :     integer range 0 to 1     := 0
+      mmuen      :     integer range 0 to 1     := 0;
+      irqlat     :     integer range 0 to 1     := 0
       );
     port (
       rst        : in  std_ulogic;

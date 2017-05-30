@@ -11,4 +11,5 @@
   constant CFG_L2_MAP  	: integer := 16#CONFIG_L2_MAP#;
   constant CFG_L2_MTRR 	: integer := CONFIG_L2_MTRR;
   constant CFG_L2_EDAC	: integer := CONFIG_L2_EDAC;
+  constant CFG_L2_AXI	  : integer := CONFIG_L2_AXI;
 

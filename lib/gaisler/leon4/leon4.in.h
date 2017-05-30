@@ -281,6 +281,20 @@
 #define CFG_DLRAM_SIZE 1
 #endif
 
+#if defined CONFIG_MMU_PAGE_4K
+#define CONFIG_MMU_PAGE 0
+#elif defined CONFIG_MMU_PAGE_8K
+#define CONFIG_MMU_PAGE 1
+#elif defined CONFIG_MMU_PAGE_16K
+#define CONFIG_MMU_PAGE 2
+#elif defined CONFIG_MMU_PAGE_32K
+#define CONFIG_MMU_PAGE 3
+#elif defined CONFIG_MMU_PAGE_PROG
+#define CONFIG_MMU_PAGE 4
+#else
+#define CONFIG_MMU_PAGE 0
+#endif
+
 
 #ifdef CONFIG_MMU_ENABLE
 #define CONFIG_MMUEN 1
@@ -440,11 +454,14 @@
 #endif
 #endif
 
-#ifndef CONFIG_CACHE_FT_EN
+#if defined CONFIG_CACHE_FT_NONE
 #define CONFIG_CACHE_FT_EN 0
-#endif
-#ifndef CONFIG_CACHE_ERRINJ
-#define CONFIG_CACHE_ERRINJ 0
+#elif defined CONFIG_CACHE_FT_BCH
+#define CONFIG_CACHE_FT_EN 16*4 + 1
+#elif defined CONFIG_CACHE_FT_TECH
+#define CONFIG_CACHE_FT_EN 16*5 + 1
+#else
+#define CONFIG_CACHE_FT_EN 0
 #endif
 
 #ifndef CONFIG_LEON4_NETLIST
@@ -488,3 +505,8 @@
 #ifndef CONFIG_NP_ASI
 #define CONFIG_NP_ASI 0
 #endif
+
+#ifndef CONFIG_REX
+#define CONFIG_REX 0
+#endif
+

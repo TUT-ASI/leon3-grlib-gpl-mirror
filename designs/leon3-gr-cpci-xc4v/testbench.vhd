@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -212,12 +212,21 @@ begin
             Ba => address(16 downto 15), Clk => sdclk, Cke => sdcke(0),
             Cs_n => sdcsn(0), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
             Dqm => sddqm(1 downto 0));
-    cb0: ftmt48lc16m16a2 generic map (index => 8, fname => sdramfile)
+    ftsdcb : if CFG_MCTRLFT_SDEN = 1 generate
+      cb0: ftmt48lc16m16a2 generic map (index => 8, fname => sdramfile)
 	PORT MAP(
             Dq => cb(15 downto 0), Addr => address(14 downto 2),
             Ba => address(16 downto 15), Clk => sdclk, Cke => sdcke(0),
             Cs_n => sdcsn(0), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
             Dqm => sddqm(1 downto 0));
+      cb1: ftmt48lc16m16a2 generic map (index => 8, fname => sdramfile)
+	PORT MAP(
+            Dq => cb(15 downto 0), Addr => address(14 downto 2),
+            Ba => address(16 downto 15), Clk => sdclk, Cke => sdcke(0),
+            Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
+            Dqm => sddqm(1 downto 0));
+    end generate;
+      
     u2: mt48lc16m16a2 generic map (index => 0, fname => sdramfile)
 	PORT MAP(
             Dq => data(31 downto 16), Addr => address(14 downto 2),
@@ -227,12 +236,6 @@ begin
     u3: mt48lc16m16a2 generic map (index => 16, fname => sdramfile)
 	PORT MAP(
             Dq => data(15 downto 0), Addr => address(14 downto 2),
-            Ba => address(16 downto 15), Clk => sdclk, Cke => sdcke(0),
-            Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
-            Dqm => sddqm(1 downto 0));
-    cb1: ftmt48lc16m16a2 generic map (index => 8, fname => sdramfile)
-	PORT MAP(
-            Dq => cb(15 downto 0), Addr => address(14 downto 2),
             Ba => address(16 downto 15), Clk => sdclk, Cke => sdcke(0),
             Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
             Dqm => sddqm(1 downto 0));
@@ -251,12 +254,20 @@ begin
             Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(0),
             Cs_n => sdcsn(0), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
             Dqm => sddqm(1 downto 0));
-     cb0: ftmt48lc16m16a2 generic map (index => 8, fname => sdramfile)
+    ftsdcb : if CFG_MCTRLFT_SDEN = 1 generate
+      cb0: ftmt48lc16m16a2 generic map (index => 8, fname => sdramfile)
 	PORT MAP(
             Dq => sd(47 downto 32), Addr => sa(12 downto 0),
             Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(0),
             Cs_n => sdcsn(0), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
             Dqm => sddqm(1 downto 0));
+      cb1: ftmt48lc16m16a2 generic map (index => 8, fname => sdramfile)
+	PORT MAP(
+            Dq => sd(47 downto 32), Addr => sa(12 downto 0),
+            Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(1),
+            Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
+            Dqm => sddqm(3 downto 2));
+    end generate;
     u2: mt48lc16m16a2 generic map (index => 0, fname => sdramfile)
 	PORT MAP(
             Dq => sd(31 downto 16), Addr => sa(12 downto 0),
@@ -269,12 +280,6 @@ begin
             Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(1),
             Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
             Dqm => sddqm(1 downto 0));
-    cb1: ftmt48lc16m16a2 generic map (index => 8, fname => sdramfile)
-	PORT MAP(
-            Dq => sd(47 downto 32), Addr => sa(12 downto 0),
-            Ba => sa(14 downto 13), Clk => sdclk, Cke => sdcke(1),
-            Cs_n => sdcsn(1), Ras_n => sdrasn, Cas_n => sdcasn, We_n => sdwen,
-            Dqm => sddqm(3 downto 2));
    sd64 : if (CFG_MCTRL_SD64 = 1) generate
       u4: mt48lc16m16a2 generic map (index => 0, fname => sdramfile)
 	PORT MAP(
@@ -315,8 +320,10 @@ begin
 		  rwen(0), ramoen(0));
   end generate;
 
-  sramcb0 : sramft generic map (index => 7, abits => sramdepth, fname => sramfile)
-	port map (address(sramdepth+1 downto 2), cb(7 downto 0), ramsn(0), rwen(0), ramoen(0));
+  ftsramcb : if CFG_MCTRLFT = 1 generate
+    sramcb0 : sramft generic map (index => 7, abits => sramdepth, fname => sramfile)
+      port map (address(sramdepth+1 downto 2), cb(7 downto 0), ramsn(0), rwen(0), ramoen(0));
+  end generate;
 
   phy0 : if (CFG_GRETH = 1) generate
     emdio <= 'H';

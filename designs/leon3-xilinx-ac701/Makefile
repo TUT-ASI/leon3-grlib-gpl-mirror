@@ -60,7 +60,7 @@ VSIMOPT+= -GSIM_COLLISION_CHECK="GENERATE_X_ONLY"
 ASIMOPT+= -GSIM_COLLISION_CHECK="GENERATE_X_ONLY"
 
 # Simulation scripts
-VSIMOPT+= -do "run -all"
+VSIMOPT+= -do $(GRLIB)/bin/runvsim.do
 ASIMDO = run -all
 
 # Toplevel

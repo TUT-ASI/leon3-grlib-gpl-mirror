@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -131,7 +131,7 @@ component leon3mp is
     ssram_advn: out std_ulogic;
 
     -- EEPROM
-    eeprom_scl    : out std_ulogic;
+    eeprom_scl    : inout std_ulogic;
     eeprom_sda    : inout std_ulogic;
 
     -- UART

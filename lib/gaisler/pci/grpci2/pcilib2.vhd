@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -194,6 +194,34 @@ type pci_reg_out_type is record
   vinten  : std_logic_vector(3 downto 0);  -- PCI interrupt [enable]
   serr    : std_logic;                  -- SERR value, constant 0 - included for iotest
 end record;
+constant pci_reg_out_none : pci_reg_out_type := (
+  ad       => (others => '1'),
+  aden     => (others => '1'),
+  cbe      => (others => '1'),
+  cbeen    => (others => '1'),
+  frame    => '1',
+  frameen  => '1',
+  irdy     => '1',
+  irdyen   => '1',
+  trdy     => '1',
+  trdyen   => '1',
+  stop     => '1',
+  stopen   => '1',
+  devsel   => '1',
+  devselen => '1',
+  par      => '1',
+  paren    => '1',
+  perr     => '1',
+  perren   => '1',
+  lock     => '1',
+  locken   => '1',
+  req      => '1',
+  reqen    => '1',
+  serren   => '1',
+  inten    => '1',
+  vinten   => (others => '1'),
+  serr     => '0');
+
 type grpci2_phy_in_type is record
   pcirstout           : std_logic;
   pciasyncrst         : std_logic;
@@ -295,25 +323,6 @@ component grpci2_phy_wrapper is
   );
 end component;
 
-component grpci2_ahbmst is
-  generic (
-    hindex  : integer := 0;
-    hirq    : integer := 0;
-    venid   : integer := VENDOR_GAISLER;
-    devid   : integer := 0;
-    version : integer := 0;
-    chprot  : integer := 3;
-    incaddr : integer := 0); 
-   port (
-      rst  : in  std_ulogic;
-      clk  : in  std_ulogic;
-      dmai : in ahb_dma_in_type;
-      dmao : out ahb_dma_out_type;
-      ahbi : in  ahb_mst_in_type;
-      ahbo : out ahb_mst_out_type 
-      );
-end component;      
-
 type dma_ahb_in_type is record
   req     : std_ulogic;
   write   : std_ulogic; 
@@ -339,7 +348,8 @@ component grpci2_ahb_mst is
     hindex      : integer := 0;
     venid   : integer := VENDOR_GAISLER;
     devid   : integer := 0;
-    version : integer := 0
+    version : integer := 0;
+    scantest : integer := 0
   );
   port(
     rst         : in  std_ulogic;

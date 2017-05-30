@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -150,6 +150,7 @@ package libiu is
      hit              : std_ulogic;
      cstat            : l3_cstat_type;
      wbhold           : std_ulogic;
+     irqlatctrl       : std_logic_vector(11 downto 0);
   end record;
 
   component iu3
@@ -179,7 +180,9 @@ package libiu is
       npasi   :     integer range 0 to 1     := 0;
       pwrpsr  :     integer range 0 to 1     := 0;
       rex     :     integer                  := 0;
-      altwin  :     integer range 0 to 1     := 0
+      altwin  :     integer range 0 to 1     := 0;
+      rfmemtech:    integer range 0 to NTECH := 0;
+      irqlat   :    integer range 0 to 1     := 0
       );
     port (
       clk     : in  std_ulogic;

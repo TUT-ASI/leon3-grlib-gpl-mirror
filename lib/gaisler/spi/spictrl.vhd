@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -72,7 +72,8 @@ entity spictrl is
     automask1 : integer                   := 0;  -- Mask 1 for automated transfers
     automask2 : integer                   := 0;  -- Mask 2 for automated transfers
     automask3 : integer                   := 0;  -- Mask 3 for automated transfers
-    ignore    : integer range 0 to 1      := 0   -- Ignore samples
+    ignore    : integer range 0 to 1      := 0;  -- Ignore samples
+    prot      : integer range 0 to 2      := 0   -- 0: Legacy, 1: dual, 2: quad
     );
   port (
     rstn   : in std_ulogic;
@@ -94,7 +95,7 @@ architecture rtl of spictrl is
   -----------------------------------------------------------------------------
   -- Constants
   -----------------------------------------------------------------------------
-  constant SPICTRL_REV : integer := 5;
+  constant SPICTRL_REV : integer := 6;
 
   constant PCONFIG : apb_config_type := (
   0 => ahb_device_reg(VENDOR_GAISLER, GAISLER_SPICTRL, 0, SPICTRL_REV, pirq),
@@ -125,7 +126,8 @@ architecture rtl of spictrl is
       automask1 : integer                  := 0;
       automask2 : integer                  := 0;
       automask3 : integer                  := 0;
-      ignore    : integer range 0 to 1     := 0);
+      ignore    : integer range 0 to 1     := 0;
+      prot      : integer range 0 to 2     := 0);
     port (
       rstn          : in std_ulogic;
       clk           : in std_ulogic;
@@ -149,6 +151,8 @@ architecture rtl of spictrl is
       spii_astart   : in  std_ulogic;
       spii_cstart   : in  std_ulogic;
       spii_ignore   : in  std_ulogic;
+      spii_io2      : in  std_ulogic;
+      spii_io3      : in  std_ulogic;
       spio_miso     : out std_ulogic;
       spio_misooen  : out std_ulogic;
       spio_mosi     : out std_ulogic;
@@ -158,6 +162,10 @@ architecture rtl of spictrl is
       spio_enable   : out std_ulogic;
       spio_astart   : out std_ulogic;
       spio_aready   : out std_ulogic;
+      spio_io2      : out std_ulogic;
+      spio_io2oen   : out std_ulogic;
+      spio_io3      : out std_ulogic;
+      spio_io3oen   : out std_ulogic;
       slvsel        : out std_logic_vector((slvselsz-1) downto 0));
   end component;
 
@@ -191,7 +199,8 @@ begin
         automask1 => automask1,
         automask2 => automask2,
         automask3 => automask3,
-        ignore    => ignore)
+        ignore    => ignore,
+        prot      => prot)
       port map (
         rstn         => rstn,
         clk          => clk,
@@ -215,6 +224,8 @@ begin
         spii_astart  => spii.astart,
         spii_cstart  => spii.cstart,
         spii_ignore  => spii.ignore,
+        spii_io2     => spii.io2,
+        spii_io3     => spii.io3,
         spio_miso    => spio.miso,
         spio_misooen => spio.misooen,
         spio_mosi    => spio.mosi,
@@ -224,6 +235,10 @@ begin
         spio_enable  => spio.enable,
         spio_astart  => spio.astart,
         spio_aready  => spio.aready,
+        spio_io2     => spio.io2,
+        spio_io2oen  => spio.io2oen,
+        spio_io3     => spio.io3,
+        spio_io3oen  => spio.io3oen,
         slvsel       => slvsel);
   end generate ctrl_rtl;
 
@@ -278,8 +293,6 @@ begin
         spio_aready  => spio.aready,
         slvsel       => slvsel);
   end generate ctrl_netlist;
-
-  spio.ssn <= (others => '0');
 
   irqgen : process(apbo_pirq)
     variable irq : std_logic_vector(NAHBIRQ-1 downto 0);

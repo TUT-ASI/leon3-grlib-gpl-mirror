@@ -30,6 +30,8 @@
 #define CONFIG_SYN_TECH stratix3
 #elif defined CONFIG_SYN_STRATIXIV
 #define CONFIG_SYN_TECH stratix4
+#elif defined CONFIG_SYN_STRATIXV
+#define CONFIG_SYN_TECH stratix5
 #elif defined CONFIG_SYN_CYCLONEII
 #define CONFIG_SYN_TECH stratix2
 #elif defined CONFIG_SYN_CYCLONEIII
@@ -145,19 +147,19 @@
 #endif
 
 #if defined CONFIG_TRANS_GTP0
-#define CFG_TRANS_TECH GTP0
+#define CFG_TRANS_TECH TT_XGTP0
 #elif defined CONFIG_TRANS_GTP1
-#define CFG_TRANS_TECH GTP1
+#define CFG_TRANS_TECH TT_XGTP1
 #elif defined CONFIG_TRANS_GTX0
-#define CFG_TRANS_TECH GTX0
+#define CFG_TRANS_TECH TT_XGTX0
 #elif defined CONFIG_TRANS_GTX1
-#define CFG_TRANS_TECH GTX1
+#define CFG_TRANS_TECH TT_XGTX1
 #elif defined CONFIG_TRANS_GTH0
-#define CFG_TRANS_TECH GTH0
+#define CFG_TRANS_TECH TT_XGTH0
 #elif defined CONFIG_TRANS_GTH1
-#define CFG_TRANS_TECH GTH1
+#define CFG_TRANS_TECH TT_XGTH1
 #else
-#define CFG_TRANS_TECH GTP0
+#define CFG_TRANS_TECH TT_XGTP0
 #endif
 
 #if defined CONFIG_SYN_INFER_PADS
@@ -533,6 +535,19 @@
 #define CFG_DLRAM_SIZE 1
 #endif
 
+#if defined CONFIG_MMU_PAGE_4K
+#define CONFIG_MMU_PAGE 0
+#elif defined CONFIG_MMU_PAGE_8K
+#define CONFIG_MMU_PAGE 1
+#elif defined CONFIG_MMU_PAGE_16K
+#define CONFIG_MMU_PAGE 2
+#elif defined CONFIG_MMU_PAGE_32K
+#define CONFIG_MMU_PAGE 3
+#elif defined CONFIG_MMU_PAGE_PROG
+#define CONFIG_MMU_PAGE 4
+#else
+#define CONFIG_MMU_PAGE 0
+#endif
 
 #ifdef CONFIG_MMU_ENABLE
 #define CONFIG_MMUEN 1
@@ -675,6 +690,10 @@
 #define CONFIG_IUFT_EN 3
 #elif defined CONFIG_IUFT_TMR
 #define CONFIG_IUFT_EN 4
+#elif defined CONFIG_IUFT_BCHOTF
+#define CONFIG_IUFT_EN 5
+#elif defined CONFIG_IUFT_TECHSPEC
+#define CONFIG_IUFT_EN 6
 #else
 #define CONFIG_IUFT_EN 0
 #endif
@@ -692,9 +711,16 @@
 #endif
 #endif
 
-#ifndef CONFIG_CACHE_FT_EN
+#if defined CONFIG_CACHE_FT_NONE
+#define CONFIG_CACHE_FT_EN 0
+#elif defined CONFIG_CACHE_FT_BCH
+#define CONFIG_CACHE_FT_EN 16*4 + 2
+#elif defined CONFIG_CACHE_FT_TECH
+#define CONFIG_CACHE_FT_EN 16*5 + 2
+#else
 #define CONFIG_CACHE_FT_EN 0
 #endif
+
 #ifndef CONFIG_CACHE_ERRINJ
 #define CONFIG_CACHE_ERRINJ 0
 #endif
@@ -824,6 +850,10 @@
 
 #ifndef CONFIG_L2_EDAC
 #define CONFIG_L2_EDAC 0
+#endif
+
+#ifndef CONFIG_L2_AXI
+#define CONFIG_L2_AXI 0
 #endif
 #ifndef CONFIG_AHB_SPLIT
 #define CONFIG_AHB_SPLIT 0
@@ -1241,6 +1271,13 @@
 #define CONFIG_SPICTRL_FT 2
 #else
 #define CONFIG_SPICTRL_FT 0
+#endif
+#if defined(CONFIG_SPICTRL_PROT1)
+#define CONFIG_SPICTRL_PROT 1
+#elif defined(CONFIG_SPICTRL_PROT2)
+#define CONFIG_SPICTRL_PROT 2
+#else
+#define CONFIG_SPICTRL_PROT 0
 #endif
 
 #ifndef CONFIG_DEBUG_UART

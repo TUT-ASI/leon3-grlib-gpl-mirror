@@ -38,3 +38,10 @@
 #else
 #define CONFIG_SPICTRL_FT 0
 #endif
+#if defined(CONFIG_SPICTRL_PROT1)
+#define CONFIG_SPICTRL_PROT 1
+#elif defined(CONFIG_SPICTRL_PROT2)
+#define CONFIG_SPICTRL_PROT 2
+#else
+#define CONFIG_SPICTRL_PROT 0
+#endif

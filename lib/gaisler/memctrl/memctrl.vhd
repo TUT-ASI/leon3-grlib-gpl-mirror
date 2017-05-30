@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -388,9 +388,9 @@ type sdram_mctrl_out_type is record
   hready        : std_ulogic;
   hsel          : std_ulogic;
   bsel          : std_ulogic;
-  hresp     	: std_logic_vector (1 downto 0);
+  hresp         : std_logic_vector (1 downto 0);
   vhready       : std_ulogic;
-  prdata    	: std_logic_vector (31 downto 0);
+  prdata        : std_logic_vector (31 downto 0);
 end record;
 
 type wprot_out_type is record

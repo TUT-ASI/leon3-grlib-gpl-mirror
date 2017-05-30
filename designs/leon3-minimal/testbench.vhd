@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -116,12 +116,13 @@ begin
     port map (address(23 downto 0), data(23 downto 16), RamCE, writen, oen);
 
     
-  led(3) <= 'L';            -- ERROR pull-down
-  error <= not led(3);      
+  led(3) <= 'H';            -- ERROR pull-up
+  error <= led(3);      
 
   iuerr : process
   begin
     wait for 5 us;
+    if to_x01(error) = '1' then wait on error; end if;
     assert (to_X01(error) = '1')
       report "*** IU in error mode, simulation halted ***"
       severity failure;

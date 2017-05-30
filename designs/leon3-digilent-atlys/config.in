@@ -88,7 +88,7 @@ comment 'Peripherals             '
   mainmenu_option next_comment
   comment 'SPI'
     source lib/gaisler/spi/spimctrl.in
-#    source lib/gaisler/spi/spictrl.in
+    source lib/gaisler/spi/spictrl.in
   endmenu
 
 endmenu

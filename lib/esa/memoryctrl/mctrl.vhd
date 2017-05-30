@@ -19,11 +19,15 @@
 -- File:	mctrl.vhd
 -- Author:	Jiri Gaisler - ESA/ESTEC
 -- Description:	External memory controller.
+--
+-- Minor updates (drive signals, vectorize outputs, resets) by Cobham Gaisler
 ------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.amba.all;
 use grlib.devices.all;
 use grlib.stdlib.all;
@@ -182,6 +186,69 @@ type reg_type is record
   sd    	   : std_logic_vector(63 downto 0);
   mben	   	   : std_logic_vector(3 downto 0);
 end record;
+
+constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+constant MCFG1RES : mcfg1type := (
+  romrws           => (others => '1'),
+  romwws           => (others => '1'),
+  romwidth         => (others => '0'),  -- Set from memi.bwidth
+  romwrite         => '0',
+  ioen             => '0',
+  iows             => (others => '0'),
+  bexcen           => '0',
+  brdyen           => '0',
+  iowidth          => (others => '0'));
+constant MCFG2RES : mcfg2type := (
+  ramrws           => (others => '0'),
+  ramwws           => (others => '0'),
+  ramwidth         => (others => '0'),
+  rambanksz        => (others => '0'),
+  rmw              => '0',
+  brdyen           => '0',
+  srdis            => '0',
+  sdren            => '0');
+constant RES : reg_type := (
+  address          => (others => '0'),
+  data             => (others => '0'),
+  writedata        => (others => '0'),
+  writedata8       => (others => '0'),
+  sdwritedata      => (others => '0'),
+  readdata         => (others => '0'),
+  brdyn            => '0',              -- sync register
+  ready            => '1',
+  ready8           => '0',
+  bdrive           => (others => '1'),
+  nbdrive          => (others => '0'),
+  ws               => (others => '0'),
+  romsn		   => (others => '1'),
+  ramsn		   => (others => '1'),
+  ramoen	   => (others => '1'),
+  size		   => (others => '0'),
+  busw		   => (others => '0'),
+  oen              => '1',
+  iosn		   => (others => '1'),
+  read             => '1',
+  wrn              => (others => '1'),
+  writen           => '1',
+  bstate           => idle,
+  area  	   => (others => '0'),
+  mcfg1		   => MCFG1RES,
+  mcfg2		   => MCFG2RES,
+  bexcn            => '1',		-- latched external bexcn
+  echeck           => '0',
+  brmw             => '0',
+  haddr            => (others => '0'),
+  hsel             => '0',
+  srhsel           => '0',
+  sdhsel           => '0',
+  hwrite           => '0',
+  hburst           => (others => '0'),
+  htrans           => (others => '0'),
+  hresp 	   => (others => '0'),
+  sa    	   => (others => '0'),
+  sd    	   => (others => '0'),
+  mben	   	   => (others => '0'));
+
 
 signal r, ri : reg_type;
 signal sdmo : sdram_mctrl_out_type;
@@ -866,31 +933,34 @@ begin
         
 -- reset
 
-    if rst = '0' then
-
-      v.bstate 	 	 := idle; 
-      v.read 		 := '1'; 
-      v.wrn              := "1111";
-      v.writen		 := '1'; 
-      v.mcfg1.romwrite   := '0';
-      v.mcfg1.ioen       := '0';
-      v.mcfg1.brdyen     := '0';
-      v.mcfg1.bexcen     := '0';
-      v.hsel		 := '0';
-      v.srhsel		 := '0';
-      v.ready		 := '1';
-      v.mcfg1.iows       := "0000";
-      v.mcfg2.ramrws     := "00";
-      v.mcfg2.ramwws     := "00";
-      v.mcfg1.romrws     := "1111";
-      v.mcfg1.romwws     := "1111";
+    if (not RESET_ALL) and (rst = '0') then
+      -- Traditional reset implementation, subset of registers reset. If the
+      -- VHDL generic syncrst is set to 1 below then synchronous reset is also
+      -- implemented for output registers and the outputs of the registers are
+      -- then gated with the reset signal further down at "scan support".
+      v.bstate 	 	 := RES.bstate;
+      v.read 		 := RES.read;
+      v.wrn              := RES.wrn;
+      v.writen		 := RES.writen;
+      v.mcfg1.romwrite   := RES.mcfg1.romwrite;
+      v.mcfg1.ioen       := RES.mcfg1.ioen;
+      v.mcfg1.brdyen     := RES.mcfg1.brdyen;
+      v.mcfg1.bexcen     := RES.mcfg1.bexcen;
+      v.hsel		 := RES.hsel;
+      v.srhsel		 := RES.srhsel;
+      v.ready		 := RES.ready;
+      v.mcfg1.iows       := RES.mcfg1.iows;
+      v.mcfg2.ramrws     := RES.mcfg2.ramrws;
+      v.mcfg2.ramwws     := RES.mcfg2.ramwws;
+      v.mcfg1.romrws     := RES.mcfg1.romrws;
+      v.mcfg1.romwws     := RES.mcfg1.romwws;
       v.mcfg1.romwidth   := memi.bwidth;
-      v.mcfg2.srdis      := '0';
-      v.mcfg2.sdren      := '0';
+      v.mcfg2.srdis      := RES.mcfg2.srdis;
+      v.mcfg2.sdren      := RES.mcfg2.sdren;
       if syncrst = 1 then
-        v.ramsn := (others => '1'); v.romsn := (others => '1');
-        v.oen := '1'; v.iosn := "11"; v.ramoen := (others => '1');
-        v.bdrive := (others => '1'); v.nbdrive := (others => '0');
+        v.ramsn := RES.ramsn; v.romsn := RES.romsn;
+        v.oen := RES.oen; v.iosn := RES.iosn; v.ramoen := RES.ramoen;
+        v.bdrive := RES.bdrive; v.nbdrive := RES.nbdrive;
         if oepol = 0 then vbdrive := (others => '1'); vsbdrive := (others => '1');
         else vbdrive := (others => '0'); vsbdrive := (others => '0'); end if; 
       end if;
@@ -1001,7 +1071,60 @@ begin
   begin
     if rising_edge(clk) then
       r <= ri; rbdrive <= ribdrive; rsbdrive <= risbdrive;
-      if rst = '0' then r.ws <= (others => '0'); end if; 
+      if rst = '0' then
+        r.ws <= RES.ws;
+        if RESET_ALL then
+          r.address <= RES.address;
+          r.data    <= RES.data;
+          r.writedata <= RES.writedata;
+          r.writedata8 <= RES.writedata8;
+          r.sdwritedata <= RES.sdwritedata;
+          r.readdata <= RES.readdata;
+          --r.brdyn -- sync register
+          r.ready <= RES.ready;
+          r.ready8 <= RES.ready8;
+          -- r.bdrive <= RES.bdrive; -- see below
+          -- r.nbdrive <= RES.nbdrive; -- see below
+          -- r.ws -- reset above 
+          -- r.romsn <= RES.romsn; -- see below
+          -- r.ramsn <= RES.ramsn; -- see below
+          -- r.ramoen <= RES.ramoen; -- see below
+          r.size <= RES.size;
+          r.busw <= RES.busw;
+          -- r.oen <= RES.oen; -- see below
+          -- r.iosn <= RES.iosn; -- see below
+          r.read <= RES.read;
+          r.wrn <= RES.wrn;
+          r.writen <= RES.writen;
+          r.bstate <= RES.bstate;
+          r.area <= RES.area;
+          r.mcfg1 <= RES.mcfg1;
+          -- Override for PROM buswidth reset value
+          r.mcfg1.romwidth <= memi.bwidth;
+          r.mcfg2 <= RES.mcfg2;
+          -- r.bexcn -- latched external bexcn
+          r.echeck <= RES.echeck;
+          r.brmw <= RES.brmw;
+          r.haddr <= RES.haddr;
+          r.hsel <= RES.hsel;
+          r.srhsel <= RES.srhsel;
+          r.sdhsel <= RES.sdhsel;
+          r.hwrite <= RES.hwrite;
+          r.hburst <= RES.hburst;
+          r.htrans <= RES.htrans;
+          r.hresp <= RES.hresp;
+          r.sa <= RES.sa;
+          r.sd <= RES.sd;
+          r.mben <= RES.mben;
+          if syncrst = 1 then
+            r.ramsn <= RES.ramsn; r.romsn <= RES.romsn;
+            r.oen <= RES.oen; r.iosn <= RES.iosn; r.ramoen <= RES.ramoen;
+            r.bdrive <= RES.bdrive; r.nbdrive <= RES.nbdrive;
+            if oepol = 0 then rbdrive <= (others => '1'); rsbdrive <= (others => '1');
+            else rbdrive <= (others => '0'); rsbdrive <= (others => '0'); end if; 
+          end if;
+        end if;
+      end if;
     end if;
     if (syncrst = 0) and (arst = '0') then
       r.ramsn <= (others => '1'); r.romsn <= (others => '1');

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -69,7 +69,9 @@ entity ahbctrl is
     index       : integer := 0;  --Index for trace print-out
     ahbtrace    : integer := 0;  --AHB trace enable
     hwdebug     : integer := 0;  --Hardware debug
-    fourgslv    : integer := 0   --1=Single slave with single 4 GB bar
+    fourgslv    : integer := 0;  --1=Single slave with single 4 GB bar
+    shadow      : integer range 0 to 1 := 0;  -- Allow memory area shadowing
+    unmapslv    : integer := 0    -- to redirect unmapped areas to slave, set to 256+bar*32+slv
   );
   port (
     rst     : in  std_ulogic;
@@ -114,6 +116,7 @@ type reg_type is record
 end record;
 
 constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+constant ASYNC_RESET : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 constant RES_r : reg_type := (
   hmaster => 0, hmasterd => 0, hslave => 0, hmasterlock => '0',
   hmasterlockd => '0', hready => '1', defslv => '0',
@@ -353,12 +356,18 @@ constant RES_split : std_logic_vector(0 to nahbmx-1) := (others => '0');
   signal r, rin : reg_type;
   signal rsplit, rsplitin : std_logic_vector(0 to nahbmx-1);
 
+  signal arst : std_ulogic;
+
 -- pragma translate_off
   signal lmsti : ahb_mst_in_type;
   signal lslvi : ahb_slv_in_type;
 -- pragma translate_on
 
 begin
+
+  arst <= testrst when (ASYNC_RESET and testen /= '0') else
+          rst when ASYNC_RESET else
+          '1';
 
   comb : process(rst, msto, slvo, r, rsplit, testen, testrst, scanen, testoen, testsig)
   variable v : reg_type;
@@ -435,7 +444,7 @@ begin
     hsel := (others => '0'); hmbsel := (others => '0');
 
     if fourgslv = 0 then
-      for i in 0 to nahbs-1 loop
+      slvloop : for i in 0 to nahbs-1 loop
         for j in NAHBIR to NAHBCFG-1 loop
           area := slvo(i).hconfig(j)(1 downto 0);
           case area is
@@ -443,14 +452,18 @@ begin
               if ((ioen = 0) or ((IOAREA and IOMSK) /= (haddr(31 downto 20) and IOMSK))) and
                 ((slvo(i).hconfig(j)(31 downto 20) and slvo(i).hconfig(j)(15 downto 4)) =
                  (haddr(31 downto 20) and slvo(i).hconfig(j)(15 downto 4))) and
-                (slvo(i).hconfig(j)(15 downto 4) /= "000000000000")
-              then hsel(i) := '1'; hmbsel(j-NAHBIR) := '1'; end if;
+                (slvo(i).hconfig(j)(15 downto 4) /= "000000000000") then
+                hsel(i) := '1'; hmbsel(j-NAHBIR) := '1';
+                if shadow /= 0 then exit slvloop; end if;
+              end if;
             when "11" =>
               if ((ioen /= 0) and ((IOAREA and IOMSK) = (haddr(31 downto 20) and IOMSK))) and
                 ((slvo(i).hconfig(j)(31 downto 20) and slvo(i).hconfig(j)(15 downto 4)) =
                  (haddr(19 downto  8) and slvo(i).hconfig(j)(15 downto 4))) and
-                (slvo(i).hconfig(j)(15 downto 4) /= "000000000000")
-              then hsel(i) := '1'; hmbsel(j-NAHBIR) := '1'; end if;
+                (slvo(i).hconfig(j)(15 downto 4) /= "000000000000") then
+                hsel(i) := '1'; hmbsel(j-NAHBIR) := '1';
+                if shadow /= 0 then exit slvloop; end if;
+              end if;
             when others =>
           end case;
         end loop;
@@ -459,6 +472,11 @@ begin
       -- There is only one slave on the bus. The slave has only one bar, which
       -- maps 4 GB address space.
       hsel(0) := '1'; hmbsel(0) := '1';
+    end if;
+
+    if unmapslv/=0 and hsel=(hsel'range => '0') then
+      hsel(unmapslv mod 32) := '1';
+      hmbsel((unmapslv/32) mod 4) := '1';
     end if;
 
     if r.defmst = '1' then hsel := (others => '0'); end if;
@@ -523,7 +541,8 @@ begin
       -- device ID, library build and potentially debug information
       if r.haddr(10 downto 4) = "1111111" then
         if hwdebug = 0 or r.haddr(3 downto 2) = "00" then
-          v.hrdatas(15 downto 0) := conv_std_logic_vector(LIBVHDL_BUILD, 16);
+          v.hrdatas(15 downto 14) := conv_std_logic_vector(LIBVHDL_CFGVER, 2);
+          v.hrdatas(13 downto 0) := conv_std_logic_vector(LIBVHDL_BUILD, 14);
           v.hrdatas(31 downto 16) := conv_std_logic_vector(devid, 16);
         elsif r.haddr(3 downto 2) = "01" then
           for i in 0 to nahbmx-1 loop v.hrdatas(i) := msto(i).hbusreq; end loop;
@@ -652,7 +671,7 @@ begin
     vslvi.testin  := testen & (scanen and testen) & testsig;
 
     -- reset operation
-    if (not RESET_ALL) and (rst = '0') then
+    if (not ASYNC_RESET) and (not RESET_ALL) and (rst = '0') then
       v.hmaster := RES_r.hmaster; v.hmasterlock := RES_r.hmasterlock;
       vsplit := (others => '0');
       v.htrans := RES_r.htrans;  v.defslv := RES_r.defslv;
@@ -692,28 +711,51 @@ begin
 
   end process;
 
-
-  reg0 : process(clk)
-  begin
-    if rising_edge(clk) then
-      r <= rin;
-      if RESET_ALL and rst = '0' then
-        r <= RES_r;
-      end if;
-    end if;
-    if (split = 0) then r.defmst <= '0'; end if;
-  end process;
-
-  splitreg : if SPLIT /= 0 generate
-    reg1 : process(clk)
+  syncrregs : if not ASYNC_RESET generate
+    reg0 : process(clk)
     begin
       if rising_edge(clk) then
-        rsplit <= rsplitin;
+        r <= rin;
         if RESET_ALL and rst = '0' then
-          rsplit <= RES_split;
+          r <= RES_r;
         end if;
       end if;
+      if (split = 0) then r.defmst <= '0'; end if;
     end process;
+
+    splitreg : if SPLIT /= 0 generate
+      reg1 : process(clk)
+      begin
+        if rising_edge(clk) then
+          rsplit <= rsplitin;
+          if RESET_ALL and rst = '0' then
+            rsplit <= RES_split;
+          end if;
+        end if;
+      end process;
+    end generate;
+  end generate;
+  asyncrregs : if ASYNC_RESET generate
+    reg0 : process(clk, arst)
+    begin
+      if arst = '0' then
+        r <= RES_r;
+      elsif rising_edge(clk) then
+        r <= rin;
+      end if;
+      if (split = 0) then r.defmst <= '0'; end if;
+    end process;
+
+    splitreg : if SPLIT /= 0 generate
+      reg1 : process(clk, arst)
+      begin
+        if arst = '0' then
+          rsplit <= RES_split;
+        elsif rising_edge(clk) then
+          rsplit <= rsplitin;
+        end if;
+      end process;
+    end generate;
   end generate;
 
   nosplitreg : if SPLIT = 0 generate
@@ -725,7 +767,7 @@ begin
     log : process (clk)
     variable hwrite : std_logic;
     variable hsize : std_logic_vector(2 downto 0);
-    variable htrans : std_logic_vector(1 downto 0);
+    variable htrans : std_logic_vector(1 downto 0) := "00";
     variable hmaster : std_logic_vector(3 downto 0);
     variable haddr : std_logic_vector(31 downto 0);
     variable hwdata, hrdata : std_logic_vector(127 downto 0);
@@ -733,20 +775,23 @@ begin
     variable t : integer;
     begin
       if rising_edge(clk) then
-        if htrans(1)='1' and lmsti.hready='0' and (lmsti.hresp="01") then
-          if hwrite = '1' then
-            grlib.testlib.print("mst" & tost(hmaster) & ": " & tost(haddr) & "    write " & tost(mbit/8) & " bytes  [" & tost(lslvi.hwdata(mbit-1+bitoffs downto bitoffs)) & "] - ERROR!");
-          else
-            grlib.testlib.print("mst" & tost(hmaster) & ": " & tost(haddr) & "    read  " & tost(mbit/8) & " bytes  [" & tost(lmsti.hrdata(mbit-1+bitoffs downto bitoffs)) & "] - ERROR!");
-          end if;
-        end if;
-        if ((htrans(1) and lmsti.hready) = '1') and (lmsti.hresp = "00") then
+        if htrans(1)='1' then
           mbit :=  2**conv_integer(hsize)*8;
           bitoffs := 0;
           if mbit < ahbdw then
             bitoffs := mbit * conv_integer(haddr(log2(ahbdw/8)-1 downto conv_integer(hsize)));
             bitoffs := lslvi.hwdata'length-mbit-bitoffs;
           end if;
+		end if;
+        if htrans(1)='1' and lmsti.hready='0' and (lmsti.hresp="01") then
+          if hwrite = '1' then
+            -- grlib.testlib.print("mbit" & tost(mbit) & " bitoffs " & tost(bitoffs));
+            grlib.testlib.print("mst" & tost(hmaster) & ": " & tost(haddr) & "    write " & tost(mbit/8) & " bytes  [" & tost(lslvi.hwdata(mbit-1+bitoffs downto bitoffs)) & "] - ERROR!");
+          else
+            grlib.testlib.print("mst" & tost(hmaster) & ": " & tost(haddr) & "    read  " & tost(mbit/8) & " bytes  [" & tost(lmsti.hrdata(mbit-1+bitoffs downto bitoffs)) & "] - ERROR!");
+          end if;
+        end if;
+        if ((htrans(1) and lmsti.hready) = '1') and (lmsti.hresp = "00") then
           t := (now/1 ns);
           if hwrite = '1' then
             grlib.testlib.print("mst" & tost(hmaster) & ": " & tost(haddr) & "    write " & tost(mbit/8) & " bytes  [" & tost(lslvi.hwdata(mbit-1+bitoffs downto bitoffs)) & "]");
@@ -826,6 +871,10 @@ begin
         print("ahbctrl: Configuration area at " & tost(iostart & cfgstart) & "00, 4 kbyte");
       else
         print("ahbctrl: Configuration area disabled");
+      end if;
+      if unmapslv /= 0 then
+        print("ahbctrl: Unmapped area redirected to slave " &
+              tost(unmapslv mod 32) & " bar " & tost((unmapslv/32) mod 4));
       end if;
     end if;
     for i in 0 to nahbm-1 loop
@@ -967,10 +1016,17 @@ begin
                   assert ((memmap(i)(k).start >= memmap(j)(l).stop) or
                           (memmap(i)(k).stop <= memmap(j)(l).start) or
                           (mcheck /= 2 and (memmap(i)(k).io xor memmap(j)(l).io) = '1') or
-                          (i = j and k = l))
+                          (i = j and k = l) or (shadow /= 0))
                     report "AHB slave " & tost(i) & " bank " & tost(k) &
                     " intersects with AHB slave " & tost(j) & " bank " & tost(l)
                     severity failure;
+                  assert ((memmap(i)(k).start >= memmap(j)(l).stop) or
+                          (memmap(i)(k).stop <= memmap(j)(l).start) or
+                          (mcheck /= 2 and (memmap(i)(k).io xor memmap(j)(l).io) = '1') or
+                          (i = j and k = l) or (shadow = 0))
+                    report "AHB slave " & tost(i) & " bank " & tost(k) &
+                    " intersects with AHB slave " & tost(j) & " bank " & tost(l)
+                    severity note;
                 end loop;
               end if;
             end loop;

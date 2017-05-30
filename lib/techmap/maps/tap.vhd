@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -169,7 +169,8 @@ begin
    end generate;
 
   alt : if (tech = altera) or (tech = stratix1) or (tech = stratix2) or
-	(tech = stratix3) or (tech = stratix4) or (tech = cyclone3) generate
+	(tech = stratix3) or (tech = stratix4) or (tech = cyclone3) or
+        (tech = stratix5) generate
      u0 : altera_tap port map (tapi_tdo1, tapi_tdo1, ltck, tapo_tdi, tapo_inst, tapo_rst,
                                 tapo_capt, tapo_shft, tapo_upd, tapo_xsel1, tapo_xsel2);
      tdoen <= '0'; tdo <= '0';

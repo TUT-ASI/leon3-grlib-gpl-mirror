@@ -15,7 +15,7 @@ package config is
   constant CFG_FABTECH : integer := artix7;
   constant CFG_MEMTECH : integer := artix7;
   constant CFG_PADTECH : integer := artix7;
-  constant CFG_TRANSTECH : integer := GTP0;
+  constant CFG_TRANSTECH : integer := TT_XGTP0;
   constant CFG_NOASYNC : integer := 0;
   constant CFG_SCAN : integer := 0;
 -- Clock generator
@@ -58,8 +58,8 @@ package config is
   constant CFG_DLOCK : integer := 0;
   constant CFG_DSNOOP : integer := 1*2 + 4*1;
   constant CFG_DFIXED : integer := 16#0#;
-  constant CFG_BWMASK : integer := 16#0#;
-  constant CFG_CACHEBW : integer := 128;
+  constant CFG_BWMASK : integer := 16#0000#;
+  constant CFG_CACHEBW : integer := 64;
   constant CFG_DLRAMEN : integer := 0;
   constant CFG_DLRAMADDR: integer := 16#8F#;
   constant CFG_DLRAMSZ : integer := 1;
@@ -68,12 +68,13 @@ package config is
   constant CFG_DTLBNUM : integer := 8;
   constant CFG_TLB_TYPE : integer := 0 + 1*2;
   constant CFG_TLB_REP : integer := 0;
+  constant CFG_MMU_PAGE : integer := 0;
   constant CFG_DSU : integer := 1;
   constant CFG_ITBSZ : integer := 4 + 64*1;
   constant CFG_ATBSZ : integer := 4;
   constant CFG_AHBPF : integer := 2;
   constant CFG_AHBWP : integer := 2;
-  constant CFG_LEONFT_EN : integer := 0 + 0*8;
+  constant CFG_LEONFT_EN : integer := 0 + (0)*8;
   constant CFG_LEON_NETLIST : integer := 0;
   constant CFG_DISAS : integer := 0 + 0;
   constant CFG_PCLOW : integer := 2;
@@ -98,6 +99,7 @@ package config is
   constant CFG_L2_MAP : integer := 16#00F0#;
   constant CFG_L2_MTRR : integer := (0);
   constant CFG_L2_EDAC : integer := 0;
+  constant CFG_L2_AXI : integer := 0;
 -- AMBA settings
   constant CFG_DEFMST : integer := (0);
   constant CFG_RROBIN : integer := 1;
@@ -213,6 +215,7 @@ package config is
   constant CFG_SPICTRL_MAXWLEN : integer := (0);
   constant CFG_SPICTRL_SYNCRAM : integer := 0;
   constant CFG_SPICTRL_FT : integer := 0;
+  constant CFG_SPICTRL_PROT : integer := 0;
 
 -- GRLIB debugging
   constant CFG_DUART : integer := 0;

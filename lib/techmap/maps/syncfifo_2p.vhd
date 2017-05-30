@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -84,7 +84,7 @@ begin
 
 -- Altera fifo
   alt : if (tech = altera) or (tech = stratix1) or (tech = stratix2) or
-    (tech = stratix3) or (tech = stratix4) generate
+    (tech = stratix3) or (tech = stratix4) or (tech = stratix5) generate
     x0 : altera_fifo_dp generic map (tech, abits, dbits)
       port map (rclk, renable, rfull, rempty, rusedw, dataout, wclk,
         write, wfull, wempty, wusedw, datain);
@@ -92,7 +92,7 @@ begin
 
 -- generic FIFO implemented using syncram_2p component
   inf : if (tech /= altera) and (tech /= stratix1) and (tech /= stratix2) and 
-    (tech /= stratix3) and (tech /= stratix4) generate
+    (tech /= stratix3) and (tech /= stratix4) and (tech /= stratix5) generate
     x0: generic_fifo generic map (tech, abits, dbits, sepclk, pfull, pempty, fwft)
       port map (rclk, rrstn, wrstn, renable, rfull, rempty, aempty, rusedw, dataout,
         wclk, write, wfull, afull, wempty, wusedw, datain);

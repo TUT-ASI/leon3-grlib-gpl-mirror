@@ -3,7 +3,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -285,7 +285,7 @@ begin
          ncpu => CFG_NCPU, tbits => 30, tech => memtech, irq => 0, kbytes => CFG_ATBSZ)
       port map (rstn, clkm, ahbmi, ahbsi, ahbso(2), dbgo, dbgi, dsui, dsuo);
       dsui.enable <= '1';
-      dsui.break <= gpioi.val(0);
+      dsui.break <= gpioo.val(0);
   end generate;
   dsuact_pad : outpad generic map (tech => padtech, level => cmos, voltage => x33v) port map (led(0), dsuo.active);
 
@@ -454,7 +454,7 @@ begin
     port map(rst => rstn, clk => clkm, apbi => apbi, apbo => apbo(8),
     gpioi => gpioi, gpioo => gpioo);
     pio_pad_0 : inpad generic map (tech => padtech)
-      port map (switch(0), gpioi.din(0))  -- Do not let SW modify BREAK input
+      port map (switch(0), gpioi.din(0));  -- Do not let SW modify BREAK input
     pio_pads : for i in 1 to 7 generate
         pio_pad : iopad generic map (tech => padtech, level => cmos, voltage => x18v)
             port map (switch(i), gpioo.dout(i), gpioo.oen(i), gpioi.din(i));

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -65,7 +65,8 @@ entity spictrlx is
     automask1 : integer                  := 0;  -- Mask 1 for automated transfers
     automask2 : integer                  := 0;  -- Mask 2 for automated transfers
     automask3 : integer                  := 0;  -- Mask 3 for automated transfers
-    ignore    : integer range 0 to 1     := 0   -- Ignore samples
+    ignore    : integer range 0 to 1     := 0;  -- Ignore samples;
+    prot  : integer range 0 to 2     := 0   -- 0: Legacy, 1: dual, 2: quad
     );
   port (
     rstn          : in std_ulogic;
@@ -92,6 +93,8 @@ entity spictrlx is
     spii_astart   : in  std_ulogic;
     spii_cstart   : in  std_ulogic;
     spii_ignore   : in  std_ulogic;
+    spii_io2      : in  std_ulogic;
+    spii_io3      : in  std_ulogic;
     spio_miso     : out std_ulogic;
     spio_misooen  : out std_ulogic;
     spio_mosi     : out std_ulogic;
@@ -101,6 +104,10 @@ entity spictrlx is
     spio_enable   : out std_ulogic;
     spio_astart   : out std_ulogic;
     spio_aready   : out std_ulogic;
+    spio_io2      : out std_ulogic;
+    spio_io2oen   : out std_ulogic;
+    spio_io3      : out std_ulogic;
+    spio_io3oen   : out std_ulogic;  
     slvsel        : out std_logic_vector((slvselsz-1) downto 0)
     );
   attribute sync_set_reset of rstn : signal is "true";
@@ -133,8 +140,9 @@ architecture rtl of spictrlx is
   constant APBBITS : integer := 6+3*AM_EN;
   constant APBH    : integer := 2+APBBITS-1;
 
-  constant CAP_ADDR    : std_logic_vector(APBH downto 2) := conv_std_logic_vector(0, APBBITS);
-
+  constant CAP0_ADDR    : std_logic_vector(APBH downto 2) := conv_std_logic_vector(0, APBBITS);
+  constant CAP1_ADDR    : std_logic_vector(APBH downto 2) := conv_std_logic_vector(1, APBBITS);
+  
   constant MODE_ADDR   : std_logic_vector(APBH downto 2) := conv_std_logic_vector(8, APBBITS);
   constant EVENT_ADDR  : std_logic_vector(APBH downto 2) := conv_std_logic_vector(9, APBBITS);
   constant MASK_ADDR   : std_logic_vector(APBH downto 2) := conv_std_logic_vector(10, APBBITS);
@@ -155,21 +163,34 @@ architecture rtl of spictrlx is
   constant AMTX_ADDR   : std_logic_vector(10 downto 2) := "010000000";  -- 0x200
   constant AMRX_ADDR   : std_logic_vector(10 downto 2) := "100000000";  -- 0x40
 
-  constant SPICTRLCAPREG : std_logic_vector(31 downto 0) :=
+  constant SPICTRLCAPREG0 : std_logic_vector(31 downto 0) :=
     conv_std_logic_vector(SLVSEL_SZ, 8) & conv_std_logic_vector(MAX_WLEN, 4) &
     conv_std_logic_vector(TW_EN, 1) & conv_std_logic_vector(AM_EN, 1) &
     conv_std_logic_vector(ASEL_EN, 1) & conv_std_logic_vector(SLVSEL_EN, 1) &
     conv_std_logic_vector(FIFO_DEPTH, 8) & conv_std_logic(syncram = 1) &
     conv_std_logic_vector(ft, 2) & conv_std_logic_vector(rev, 5);
 
+  constant SPICTRLCAPREG1 : std_logic_vector(31 downto 0) :=
+    conv_std_logic_vector(prot, 32);
+
   -- Returns an integer containing the maximum characted length - 1 as
   -- restricted by the maxwlen VHDL generic.
   function wlen return integer is
-  begin  -- maxwlen
+  begin
     if MAX_WLEN = 0 then return 31; end if;
     return MAX_WLEN;
   end wlen;
 
+  -- Returns needed number of bits for spi protocol tracking
+  function spip_bits return integer is
+  begin
+    return 0;                           -- future extension
+    --if prot = 2 then return 3;
+    --elsif prot = 1 then return 2;
+    --end if;
+    --return 1;
+  end spip_bits;
+    
   constant PROG_AM_MASK : boolean :=
     AM_EN = 1 and automask0 = 0 and (automask1 = 0 or FIFO_DEPTH <= 32) and
     (automask2 = 0 or FIFO_DEPTH <= 64) and (automask3 = 0 or FIFO_DEPTH <= 96);
@@ -252,7 +273,13 @@ architecture rtl of spictrlx is
     at  : std_ulogic;  -- Automated transfer
   end record;
 
+  type spi_cmd_rec is record            -- SPI command register
+    lst   : std_ulogic;
+    sprot : std_logic_vector(2 downto 0);
+  end record;
+  
   type spi_fifo is array (0 to (1-syncram)*(FIFO_DEPTH-1)) of std_logic_vector(wlen downto 0);
+  type spi_txfifo is array (0 to (1-syncram)*(FIFO_DEPTH-1)) of std_logic_vector(spip_bits+wlen downto 0);
 
   type spi_amcfg_rec is record          -- AM config register
     seq    : std_ulogic;  -- Data must always be read out of receive queue
@@ -298,6 +325,8 @@ architecture rtl of spictrlx is
     mosi    : std_ulogic;
     sck     : std_ulogic;
     spisel  : std_ulogic;
+    io2     : std_ulogic;
+    io3     : std_ulogic;
   end record;
 
   type spi_in_array is array (1 downto 0) of spi_in_local_type;
@@ -313,12 +342,19 @@ architecture rtl of spictrlx is
     enable   : std_ulogic;
     astart   : std_ulogic;
     aready   : std_ulogic;
+    io2      : std_ulogic;
+    io2oen   : std_ulogic;
+    io3      : std_ulogic;
+    io3oen   : std_ulogic;
   end record;
 
   -- Yet another subset of out type to make it easier for certain tools to
   -- place registers near pads.
   type spi_out_local_lb_type is record
     mosi     : std_ulogic;
+    miso     : std_ulogic;
+    io2      : std_ulogic;
+    io3      : std_ulogic;
     sck      : std_ulogic;
   end record;
 
@@ -327,7 +363,7 @@ architecture rtl of spictrlx is
     mode     : spi_mode_rec;  -- Mode register
     event    : spi_em_rec;    -- Event register
     mask     : spi_em_rec;    -- Mask register
-    lst      : std_ulogic;    -- Only field on command register
+    cmd      : spi_cmd_rec;   -- Command register 
     td       : std_logic_vector(31 downto 0);  -- Transmit register
     rd       : std_logic_vector(31 downto 0);  -- Receive register
     slvsel   : std_logic_vector((SLVSEL_SZ-1) downto 0);  -- Slave select register
@@ -337,10 +373,12 @@ architecture rtl of spictrlx is
     ov       : std_ulogic;    -- Receive overflow condition
     td_occ   : std_ulogic;    -- Transmit register occupied
     rd_free  : std_ulogic;    -- Receive register free (empty)
-    txfifo   : spi_fifo;      -- Transmit data FIFO
+    txfifo   : spi_txfifo;      -- Transmit data FIFO
     rxfifo   : spi_fifo;      -- Receive data FIFO
     rxd      : std_logic_vector(wlen downto 0);  -- Receive shift register
     txd      : std_logic_vector(wlen downto 0);  -- Transmit shift register
+--    txdprot  : std_logic_vector(2 downto 0);  -- Current tx mode
+--    rxdprot  : std_logic_vector(1 downto 0);  -- Current rx mode
     txdupd   : std_ulogic;    -- Update txd
     txdbyp   : std_ulogic;    -- txd update bypass
     toggle   : std_ulogic;    -- SCK has toggled
@@ -486,6 +524,7 @@ architecture rtl of spictrlx is
   end slv_start;
 
   constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant ASYNC_RESET : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
   function spictrl_resval return spi_reg_type is
     variable v : spi_reg_type;
   begin
@@ -493,7 +532,7 @@ architecture rtl of spictrlx is
                       '0','0','0','0',"00000","00", '0', '0', '0', '0');
     v.event       := ('0', '0', '0', '0', '0', '0', '0', '0');
     v.mask        := ('0', '0', '0', '0', '0', '0', '0', '0');
-    v.lst         := '0';
+    v.cmd         := ('0', (others => '0'));
     v.td          := (others => '0');
     v.rd          := (others => '0');
     v.slvsel      := (others => '1');
@@ -508,6 +547,8 @@ architecture rtl of spictrlx is
     end loop;
     v.rxd         := (others => '0');
     v.txd         := (others => '0'); v.txd(0) := '1';
+--    v.txdprot     := (others => '0');
+--    v.rxdprot     := (others => '0');
     v.txdupd      := '0';
     v.txdbyp      := '0';
     v.toggle      := '0';
@@ -560,7 +601,9 @@ architecture rtl of spictrlx is
       v.spii(i).miso   := '1';
       v.spii(i).mosi   := '1';
       v.spii(i).sck    := '0';
-      v.spii(i).spisel := '1'; 
+      v.spii(i).spisel := '1';
+      v.spii(i).io2    := '1';
+      v.spii(i).io3    := '1';
     end loop;
     v.spio.miso     := '1';
     v.spio.misooen  := INPUT;
@@ -571,7 +614,14 @@ architecture rtl of spictrlx is
     v.spio.enable   := '0';
     v.spio.astart   := '0';
     v.spio.aready   := '0';
+    v.spio.io2      := '0';
+    v.spio.io2oen   := INPUT;
+    v.spio.io3      := '0';
+    v.spio.io3oen   := INPUT;
     v.spiolb.mosi := '1';
+    v.spiolb.miso := '1';
+    v.spiolb.io2  := '1';
+    v.spiolb.io3  := '1';
     v.spiolb.sck  := '1';
     v.astart   := '0';
     v.cstart   := '0';
@@ -589,9 +639,11 @@ architecture rtl of spictrlx is
   signal r, rin : spi_reg_type;
 
   type fifo_data_vector_array is array (automode downto 0) of std_logic_vector(wlen downto 0);
+  type fifo_txdata_vector_array is array (automode downto 0) of std_logic_vector(spip_bits+wlen downto 0);
   type fifo_addr_vector_array is array (automode downto 0) of std_logic_vector(fdepth-1 downto 0);
 
-  signal rx_di, rx_do, tx_di, tx_do : fifo_data_vector_array;
+  signal rx_di, rx_do : fifo_data_vector_array;
+  signal tx_di, tx_do : fifo_txdata_vector_array;
   signal rx_ra, rx_wa, tx_ra, tx_wa : fifo_addr_vector_array;
   signal rx_read, tx_read, rx_write, tx_write : std_logic_vector(automode downto 0);
 
@@ -605,12 +657,13 @@ begin
   comb: process (r, rstn, apbi_psel, apbi_penable, apbi_paddr, apbi_pwrite,
                  apbi_pwdata, apbi_testen, apbi_testrst, apbi_scanen,
                  apbi_testoen, spii_miso, spii_mosi, spii_sck, spii_spisel,
-                 spii_astart, rx_do, tx_do, spii_cstart, spii_ignore)
+                 spii_astart, rx_do, tx_do, spii_cstart, spii_ignore,
+                 spii_io2, spii_io3)
     variable v        : spi_reg_type;
     variable apbaddr  : std_logic_vector(APBH downto 2);
     variable apbout   : std_logic_vector(31 downto 0);
     variable len      : std_logic_vector(4 downto 0);
-    variable indata   : std_ulogic;
+    variable indata   : std_logic_vector(3 downto 0);
     variable change   : std_ulogic;
     variable update   : std_ulogic;
     variable sample   : std_ulogic;
@@ -638,21 +691,32 @@ begin
     --
     variable rntxd    : std_logic_vector(0 to 31);
     variable ntxd     : std_logic_vector(wlen downto 0);
-
-    variable amask : std_logic_vector(FIFO_DEPTH-1 downto 0);
-    variable aloop : integer;
+    variable ctxfifo  : std_logic_vector(spip_bits+wlen downto 0);
+    --
+    variable amask    : std_logic_vector(FIFO_DEPTH-1 downto 0);
+    variable aloop    : integer;
+    --
+    variable txdprot  : std_logic_vector(1 downto 0);
+    variable txdio    : std_ulogic;
+    variable rxdprot  : std_logic_vector(1 downto 0);
   begin  -- process comb
     v := r;  v.irq := '0';
     apbaddr := apbi_paddr(APBH downto 2); apbout := (others => '0');
     len := spilen(r.mode.len); v.toggle := '0'; v.txdupd := '0';
     v.syncsamp := r.syncsamp(0) & '0'; update := '0'; v.rxdone := '0';
-    indata := '0'; sample := '0'; change := '0'; reload := '0';
+    indata := (others => '0'); sample := '0'; change := '0'; reload := '0';
     v.spio.astart := '0'; cgasel := '0'; v.ov2 := r.ov; txshift := '0';
     fsck := '0'; fsck_chg := '0'; v.txdbyp := '0';
     spisel := r.spii(1).spisel or r.mode.igsel;
     ntxd := r.td(wlen downto 0); rntxd := reverse(r.td);
     if r.mode.rev = '1' then ntxd := rntxd(31-wlen to 31); end if;
+    ctxfifo := (others => '0');
+    --rxdprot := r.rxdprot;
+    --txdprot := r.txdprot(1 downto 0); txdio := r.txdprot(2);
+    rxdprot := r.cmd.sprot(1 downto 0);
+    txdprot := r.cmd.sprot(1 downto 0); txdio := r.cmd.sprot(2);
 
+    
     v.spio.aready := '0';
 
     if AM_EN = 1 then
@@ -690,8 +754,10 @@ begin
     end if;
 
     if (apbi_psel and apbi_penable and (not apbi_pwrite)) = '1' then
-      if apbaddr = CAP_ADDR then
-        apbout := SPICTRLCAPREG;
+      if apbaddr = CAP0_ADDR then
+        apbout := SPICTRLCAPREG0;
+      elsif apbaddr = CAP1_ADDR then
+        apbout := SPICTRLCAPREG1;
       elsif apbaddr = MODE_ADDR then
         apbout := r.mode.amen & r.mode.loopb & r.mode.cpol & r.mode.cpha &
                   r.mode.div16 & r.mode.rev & r.mode.ms & r.mode.en &
@@ -707,6 +773,11 @@ begin
         apbout := r.mask.tip & zero32(30 downto 16) & r.mask.at &
                   r.mask.lt & zero32(13) & r.mask.ov & r.mask.un &
                   r.mask.mme & r.mask.ne & r.mask.nf & zero32(7 downto 0);
+      elsif apbaddr = COM_ADDR then
+        -- LST always reads as zero
+        if prot /= 0 then
+          apbout(2 downto 0) := r.cmd.sprot;
+        end if;
       elsif apbaddr = RD_ADDR then
         apbout := condhwordswap(r.rd, len);
         if AM_EN = 0 or r.mode.amen = '0' then
@@ -763,8 +834,11 @@ begin
         v.mask.mme := apbi_pwdata(10);
         v.mask.ne  := apbi_pwdata(9);
         v.mask.nf  := apbi_pwdata(8);
-      elsif apbaddr =  COM_ADDR then
-        v.lst := apbi_pwdata(22);
+      elsif apbaddr = COM_ADDR then
+        if apbi_pwdata(22) = '1' then v.cmd.lst := '1'; end if;
+        if prot /= 0 and apbi_pwdata(3) = '1' then
+          v.cmd.sprot := apbi_pwdata(2 downto 0);
+        end if;
       elsif apbaddr = TD_ADDR then
         -- The write is lost if the transmit register is written when
         -- the not full bit is zero.
@@ -894,7 +968,8 @@ begin
               apbout(wlen downto 0) :=
                 r.am.txfifo(conv_integer(apbaddr(FIFO_BITS+1 downto 2)));
             else
-              apbout(wlen downto 0) := tx_do(automode);
+              ctxfifo := tx_do(automode);
+              apbout(wlen downto 0) := ctxfifo(wlen downto 0);
             end if;
             if apbi_pwrite = '1' then
               v.am.txwrite := '1';
@@ -1171,6 +1246,29 @@ begin
           if OD_EN = 0 or r.mode.od = '0' then
             v.spio.mosioen := OUTPUT;
           end if;
+          -- FIXME: is the below dangerous and should be changed instead when a
+          -- transfer starts?
+          if prot = 0 or orv(txdprot) = '0' then
+            -- Standard mode
+            if prot = 2 then
+              v.spio.io2oen := INPUT;
+              v.spio.io3oen := INPUT;
+            end if;
+          elsif prot = 1 or txdprot(0) = '1' then
+            -- Dual mode          
+            v.spio.mosioen := txdio xor OUTPUT;
+            v.spio.misooen := txdio xor OUTPUT;
+            if prot = 2 then
+              v.spio.io2oen := INPUT;
+              v.spio.io3oen := INPUT;
+            end if;
+          else
+            -- Quad mode
+            v.spio.mosioen := txdio xor OUTPUT;
+            v.spio.misooen := txdio xor OUTPUT;
+            v.spio.io2oen := txdio xor OUTPUT;
+            v.spio.io3oen := txdio xor OUTPUT;
+          end if;
         else
           v.spio.mosioen := INPUT;
         end if;
@@ -1179,11 +1277,33 @@ begin
       else
         if (spisel or r.mode.tw) = '0' then
           v.spio.misooen := OUTPUT;
+          if prot = 0 or orv(txdprot) = '0' then
+            -- Standard mode
+            if prot = 2 then
+              v.spio.io2oen := INPUT;
+              v.spio.io3oen := INPUT;
+            end if;
+          elsif prot = 1 or txdprot(0) = '1' then
+            -- Dual mode          
+            v.spio.mosioen := txdio xor OUTPUT;
+            v.spio.misooen := txdio xor OUTPUT;
+            if prot = 2 then
+              v.spio.io2oen := INPUT;
+              v.spio.io3oen := INPUT;
+            end if;
+          else
+            -- Quad mode
+            v.spio.mosioen := txdio xor OUTPUT;
+            v.spio.misooen := txdio xor OUTPUT;
+            v.spio.io2oen := txdio xor OUTPUT;
+            v.spio.io3oen := txdio xor OUTPUT;
+          end if;
         else
           v.spio.misooen := INPUT;
         end if;
         if (not spisel and r.mode.tw and r.mode.tto) = '0' then
           v.spio.mosioen := INPUT;
+          -- FIXME: Need to set correct direction here?
         else
           v.spio.mosioen := OUTPUT;
         end if;
@@ -1194,7 +1314,7 @@ begin
             (AM_EN = 1 and r.mode.amen = '1' and r.am.active = '1')) and
            r.mode.ms = '1' and r.tfreecnt /= FIFO_DEPTH and r.txdupd = '0' and (AM_EN = 0 or r.txdupd2 = '0')) or
           slv_start(spisel, r.mode.cpol, fsck, fsck_chg)) then
-        -- Slave underrun detection
+        -- Underrun detection
         if r.tfreecnt = FIFO_DEPTH then
           v.uf := '1';
           if (r.mask.un and not v.event.un) = '1' then
@@ -1203,6 +1323,7 @@ begin
           v.event.un := '1';
         end if;
         v.running := '1';
+--        v.rxdprot := r.txdprot(1 downto 0);
         if r.mode.ms = '1' then
           if TW_EN = 0 or r.mode.tw = '0' then
             v.spio.mosioen := OUTPUT;
@@ -1214,6 +1335,27 @@ begin
           -- time for first MOSI value in master mode.
           reload := not r.mode.cpha;
         end if;
+        if (prot = 0 or orv(txdprot) = '0') and (TW_EN = 0 or r.mode.tw = '0') then
+          -- Standard mode
+          if prot = 2 then
+            v.spio.io2oen := INPUT;
+            v.spio.io3oen := INPUT;
+          end if;
+        elsif prot = 1 or txdprot(0) = '1' then
+          -- Dual mode          
+          v.spio.mosioen := txdio xor OUTPUT;
+          v.spio.misooen := txdio xor OUTPUT;
+          if prot = 2 then
+            v.spio.io2oen := INPUT;
+            v.spio.io3oen := INPUT;
+          end if;
+        else
+          -- Quad mode
+          v.spio.mosioen := txdio xor OUTPUT;
+          v.spio.misooen := txdio xor OUTPUT;
+          v.spio.io2oen := txdio xor OUTPUT;
+          v.spio.io3oen := txdio xor OUTPUT;
+        end if;
       end if;
       v.cgcnt := (others => '0');
       v.rbitcnt := (others => '0'); v.tbitcnt := (others => '0');
@@ -1221,7 +1363,14 @@ begin
         update := not (r.mode.cpha or (fsck xor r.mode.cpol));
         if r.mode.cpha = '0' then
           -- Prepare first bit
-          v.tbitcnt := (others => '0'); v.tbitcnt(0) := '1';
+          v.tbitcnt := (others => '0');
+          if prot = 0 or orv(txdprot) = '0' then
+            v.tbitcnt(0) := '1';
+          elsif prot = 1 or txdprot(0) = '1' then
+            v.tbitcnt(1) := '1';
+          else
+            v.tbitcnt(2) := '1';
+          end if;
           if v.running = '1' and (TW_EN = 0 or r.mode.tw = '0' or r.twdir = OUTPUT) then
             txshift := '1';
           end if;
@@ -1337,11 +1486,28 @@ begin
 
       -- Select input data
       if r.mode.loopb = '1' then
-        indata := r.spiolb.mosi;
+        indata(0) := r.spiolb.mosi;
+        if prot /= 0 then
+          indata(1) := r.spiolb.miso;
+        end if;
+        if prot = 2 then
+          indata(2) := r.spiolb.io2;
+          indata(3) := r.spiolb.io3;
+        end if;
       elsif TW_EN = 1 and r.mode.tw = '1' then
-        indata := r.spii(1).mosi;
+        indata(0) := r.spii(1).mosi;
       else
-        indata := r.spii(1).miso;
+        indata(0) := r.spii(1).miso;
+        if prot /= 0 then
+          if orv(rxdprot) = '1' then
+            indata(0) := r.spii(1).mosi;
+          end if;
+          indata(1) := r.spii(1).miso;
+        end if;
+        if prot = 2 then
+          indata(2) := r.spii(1).io2;
+          indata(3) := r.spii(1).io3;
+        end if;
       end if;
     end if;
 
@@ -1354,7 +1520,14 @@ begin
           sample := r.samp; v.samp := not r.samp;
           change := r.chng; v.chng := not r.chng;
         end if;
-        indata := r.spii(1).mosi;
+        indata(0) := r.spii(1).mosi;
+        if prot /= 0 then
+          indata(1) := r.spii(1).miso;
+        end if;
+        if prot = 2 then
+          indata(2) := r.spii(1).io2;
+          indata(3) := r.spii(1).io3;
+        end if;
       end if;
     end if;
 
@@ -1381,7 +1554,7 @@ begin
         sample := not r.mode.ms or r.mode.loopb;
         v.syncsamp(0) := not sample;
       end if;
-      if r.rbitcnt = len(log2(wlen+1)-1 downto 0) then
+      if r.rbitcnt >= len(log2(wlen+1)-1 downto 0) then
         v.rbitcnt := (others => '0');
         if TW_EN = 1 then
           v.twdir := r.twdir xor not r.mode.loopb;
@@ -1416,15 +1589,29 @@ begin
           v.uf := '0';
         end if;
       else
-        v.rbitcnt := r.rbitcnt + 1;
+        if prot = 0 or orv(rxdprot) = '0' then   
+          v.rbitcnt := r.rbitcnt + 1;
+        elsif prot = 1 or rxdprot(0) = '1' then
+          v.rbitcnt := r.rbitcnt + 2;
+        else
+          v.rbitcnt := r.rbitcnt + 4;
+        end if;
       end if;
     end if;
 
     -- Sample data line and put into shift register.
     if (r.syncsamp(1) or sample) = '1' then
-      v.rxd := r.rxd(wlen-1 downto 0) & indata;
+      if prot = 0 or orv(rxdprot) = '0' then      
+        v.rxd := r.rxd(wlen-1 downto 0) & indata(0);
+      elsif prot = 1 or rxdprot(0) = '1' then
+        v.rxd := r.rxd(wlen-2 downto 0) & indata(0) & indata(1);
+      else
+        v.rxd := r.rxd(wlen-4 downto 0) & indata(0) & indata(1) &
+                 indata(2) & indata(3);
+      end if;      
       if ((r.syncsamp(1) and r.incrdli) or (sample and v.incrdli)) = '1' then
         v.rxdone := '1'; v.rxdone2 := '1'; v.incrdli := '0';
+--        v.rxdprot := r.txdprot(1 downto 0);
       end if;
     end if;
 
@@ -1491,7 +1678,7 @@ begin
       if TW_EN = 1 and r.mode.tw = '1' then
         v.spio.mosioen := r.twdir;
       end if;
-      if r.tbitcnt = len(log2(wlen+1)-1 downto 0) then
+      if r.tbitcnt >= len(log2(wlen+1)-1 downto 0) then
         if (TW_EN = 0 or r.mode.tw = '0' or r.mode.loopb = '1' or
             (TW_EN = 1 and r.mode.tw = '1' and
              (((r.mode.ms xor r.mode.tto) = '1' and r.twdir = INPUT) or
@@ -1514,7 +1701,13 @@ begin
         end if;
         v.tbitcnt := (others => '0');
       else
-        v.tbitcnt := r.tbitcnt + 1;
+        if prot = 0 or orv(txdprot) = '0' then
+          v.tbitcnt := r.tbitcnt + 1;
+        elsif prot = 1 or txdprot(0) = '1' then
+          v.tbitcnt := r.tbitcnt + 2;
+        else
+          v.tbitcnt := r.tbitcnt + 4;
+        end if;  
       end if;
       if v.uf = '0' and (TW_EN = 0 or r.mode.tw = '0' or r.mode.loopb = '1' or r.twdir = OUTPUT) then
         txshift := v.running;
@@ -1522,7 +1715,13 @@ begin
     end if;
 
     if txshift = '1' then
-      v.txd := '1' & r.txd(wlen downto 1);
+      if prot = 0 or orv(txdprot) = '0' then
+        v.txd := '1' & r.txd(wlen downto 1);
+      elsif prot = 1 or txdprot(0) = '1' then
+        v.txd := "11" & r.txd(wlen downto 2);
+      else
+        v.txd := "1111" & r.txd(wlen downto 4);  -- FIXME: can break with wlen
+      end if;
     end if;
 
     if AM_EN = 1 then
@@ -1538,16 +1737,32 @@ begin
           if AM_EN = 1 and r.mode.amen = '1' then
             v.txd := r.am.txfifo(conv_integer(r.tdfi));
           else
-            v.txd := r.txfifo(conv_integer(r.tdfi));
+            ctxfifo := r.txfifo(conv_integer(r.tdfi));
+            v.txd := ctxfifo(wlen downto 0);
+--            if prot /= 0 then
+--              v.txdprot := (others => '0');
+--              v.txdprot(2) := ctxfifo(ctxfifo'left);
+--              v.txdprot(prot/2 downto 0) := ctxfifo(ctxfifo'left-1 downto ctxfifo'left-prot/2-1);
+--            end if;
           end if;
         else
           -- The first FIFO is always used when using syncrams, even in AM mode
-          v.txd := tx_do(0);
+          ctxfifo := tx_do(0);
+          v.txd := ctxfifo(wlen downto 0);
+--          if prot /= 0 then
+--            v.txdprot := (others => '0');
+--            v.txdprot(2) := ctxfifo(ctxfifo'left);
+--            v.txdprot(prot/2 downto 0) := ctxfifo(ctxfifo'left-1 downto ctxfifo'left-prot/2-1);
+--          end if;
         end if;
       end if;
       -- Data written to TD, bypass
       if v.txdbyp = '1' then
        v.txd := ntxd;
+--       if prot /= 0 then
+--         v.txdprot := r.cmd.sprot;
+--         if prot = 1 then v.txdprot(1) := '0'; end if;
+--       end if;
       end if;
       if r.tfreecnt /= FIFO_DEPTH then
         if AM_EN = 0 or r.mode.amen = '0' then
@@ -1573,26 +1788,77 @@ begin
         -- Bus idle value
         v.txd(0) := '1';
       end if;
+--      if r.running = '0' then v.rxdprot := v.txdprot(1 downto 0); end if;
     end if;
 
     -- Transmit bit
     if (change or update) = '1' then
       if v.uf = '0' then
-        v.spio.miso := r.txd(0);
-        v.spio.mosi := r.txd(0);
+        if prot = 0 or orv(txdprot) = '0' then
+          -- Legacy mode
+          v.spio.miso := r.txd(0);
+          v.spio.mosi := r.txd(0);
+          if prot = 2 then
+            v.spio.io2 := '1';
+            v.spio.io3 := '1';
+          end if;
+        elsif prot = 1 or txdprot(0) = '1' then
+          -- Dual mode
+          v.spio.mosi := r.txd(0);
+          v.spio.miso := r.txd(1);
+          if prot = 2 then
+            v.spio.io2 := '1';
+            v.spio.io3 := '1';
+          end if;
+        else
+          -- Quad mode
+          v.spio.mosi := r.txd(0);
+          v.spio.miso := r.txd(1);
+          v.spio.io2 := r.txd(2);
+          v.spio.io3 := r.txd(3);
+        end if;
+        
         if OD_EN = 1 and r.mode.od = '1' then
-          if (r.mode.ms or r.mode.tw) = '1' then
-            v.spio.mosioen := r.txd(0) xor OUTPUT;
-          else
-            v.spio.misooen := r.txd(0) xor OUTPUT;
+          if prot = 0 or orv(txdprot) = '0' or (orv(txdprot) and not txdio) = '1' then
+            -- Only adapt for OD mode if we are in standard mode or if we are
+            -- in dual or quad mode and direction is output
+            if prot = 0 or orv(txdprot) = '0' then
+              if (r.mode.ms or r.mode.tw) = '1' then
+                v.spio.mosioen := r.txd(0) xor OUTPUT;
+              else
+                v.spio.misooen := r.txd(0) xor OUTPUT;
+              end if;
+            elsif prot = 1 or txdprot(0) = '1' then
+              -- Dual mode
+              v.spio.mosioen := r.txd(0) xor OUTPUT;
+              v.spio.misooen := r.txd(1) xor OUTPUT;
+              if prot = 2 then
+                v.spio.io2oen := INPUT;
+                v.spio.io3oen := INPUT;
+              end if;
+            else
+              -- Quad mode
+              v.spio.mosioen := r.txd(0) xor OUTPUT;
+              v.spio.misooen := r.txd(1) xor OUTPUT;
+              v.spio.io2oen := r.txd(2) xor OUTPUT;
+              v.spio.io3oen := r.txd(3) xor OUTPUT ;
+            end if;  
           end if;
         end if;
       else
         v.spio.miso := '1';
         v.spio.mosi := '1';
+        if prot = 2 then
+          v.spio.io2 := '1';
+          v.spio.io3 := '1';
+        end if;
         if OD_EN = 1 and r.mode.od = '1' then
           v.spio.misooen := INPUT;
           v.spio.mosioen := INPUT;
+          if prot = 2 then
+            v.spio.io2oen := INPUT;
+            v.spio.io3oen := INPUT;
+          end if;
         end if;
       end if;
     end if;
@@ -1609,8 +1875,8 @@ begin
     end if;
 
     -- LST detection and interrupt generation
-    if v.running = '0' and v.tfreecnt = FIFO_DEPTH and r.lst = '1' then
-      v.event.lt := '1'; v.lst := '0';
+    if v.running = '0' and v.tfreecnt = FIFO_DEPTH and r.cmd.lst = '1' then
+      v.event.lt := '1'; v.cmd.lst := '0';
       if (r.mask.lt and not r.event.lt) = '1' then v.irq := '1'; end if;
     end if;
 
@@ -1642,6 +1908,10 @@ begin
     if (r.mode.loopb = '1' or
         (r.mode.tw = '1' and TW_EN = 1 and r.twdir = INPUT)) then
       v.spio.mosioen := INPUT; v.spio.misooen := INPUT;
+      if prot = 2 then
+        v.spio.io2oen := INPUT;
+        v.spio.io3oen := INPUT;
+      end if;
     end if;
     if r.mode.loopb = '1' then v.spio.sckoen  := INPUT; end if;
 
@@ -1649,17 +1919,21 @@ begin
     if OD_EN = 1 and (r.mode.od and not r.mode.loopb) = '1' then
       v.spio.miso := v.spio.miso and not r.mode.od;
       v.spio.mosi := v.spio.mosi and not r.mode.od;
+      if prot = 2 then
+        v.spio.io2 := v.spio.io2 and not r.mode.od;
+        v.spio.io3 := v.spio.io3 and not r.mode.od;
+      end if;
     end if;
 
     -- Core is disabled
-    if ((not RESET_ALL) and rstn = '0') or (r.mode.en = '0') then
+    if ((not ASYNC_RESET) and (not RESET_ALL) and rstn = '0') or (r.mode.en = '0') then
       v.tfreecnt := FIFO_DEPTH;
       v.rfreecnt := FIFO_DEPTH;
       v.tdfi := RES.tdfi; v.rdfi := RES.rdfi;
       v.tdli := RES.tdli; v.rdli := RES.rdli;
       v.rd_free := RES.rd_free;
       v.td_occ := RES.td_occ;
-      v.lst := RES.lst;
+      v.cmd := RES.cmd;
       v.uf := RES.uf;
       v.ov := RES.ov;
       v.running := RES.running;
@@ -1670,10 +1944,18 @@ begin
       end if;
       v.spio.miso := RES.spio.miso;
       v.spio.mosi := RES.spio.mosi;
+      if prot = 2 then
+        v.spio.io2 := RES.spio.io2;
+        v.spio.io3 := RES.spio.io3;
+      end if;
       if syncrst = 1 or (r.mode.en = '0') then
         v.spio.misooen := RES.spio.misooen;
         v.spio.mosioen := RES.spio.mosioen;
         v.spio.sckoen  := RES.spio.sckoen;
+        if prot = 2 then
+          v.spio.io2oen := RES.spio.io2oen;
+          v.spio.io3oen := RES.spio.io3oen;
+        end if;
       end if;
       if AM_EN = 1 then
         v.event.at := RES.event.at;
@@ -1695,7 +1977,7 @@ begin
     end if;
 
     -- Chip reset
-    if (not RESET_ALL) and (rstn = '0') then
+    if (not ASYNC_RESET) and (not RESET_ALL) and (rstn = '0') then
       v.mode := RES.mode;
       v.event.tip := RES.event.tip;
       v.event.lt := RES.event.lt;
@@ -1719,13 +2001,15 @@ begin
         v.am.rxsel := RES.am.rxsel;
         v.cgcntblock := RES.cgcntblock;
       end if;
-      v.lst := RES.lst;
+      v.cmd := RES.cmd;
       if syncrst = 1 then
         v.slvsel := RES.slvsel;
       end if;
       v.cgcnt := RES.cgcnt;
       v.rbitcnt := RES.rbitcnt; v.tbitcnt := RES.tbitcnt;
       v.txd := RES.txd;
+--      v.txdprot := RES.txdprot;
+--      v.rxdprot := RES.rxdprot;
     end if;
 
     -- Drive unused bit if open drain mode is not supported
@@ -1777,6 +2061,15 @@ begin
       v.cgasel := '0';
     end if;
 
+--    if prot = 0 then
+--      v.txdprot := (others => '0'); v.rxdprot := (others => '0');
+--    end if;
+    
+    if prot /= 2 then
+      v.spio.io2 := '0'; v.spio.io2oen := INPUT;
+      v.spio.io3 := '0'; v.spio.io3oen := INPUT;
+    end if;
+    
     -- Drive unused bits if three-wire mode is not enabled
     if TW_EN = 0 then
       v.mode.tw := '0';
@@ -1795,7 +2088,11 @@ begin
     v.spio.enable := r.mode.en;
 
     -- Synchronize inputs coming from off-chip
-    v.spii(0) := (spii_miso, spii_mosi, spii_sck, spii_spisel);
+    v.spii(0) := (spii_miso, spii_mosi, spii_sck, spii_spisel,
+                  spii_io2, spii_io3);
+    if prot /= 2 then
+      v.spii(0).io2 := '0'; v.spii(0).io3 := '0';
+    end if;
     v.spii(1) := r.spii(0);
 
     -- Outputs to RAMs
@@ -1812,7 +2109,11 @@ begin
       -- TX RAM(s) write
       -- TX RAM(s) are either written from TX register or AM TX area
       for i in 0 to automode loop
-        tx_di(i) <= ntxd;
+        ctxfifo(ctxfifo'left) := r.cmd.sprot(2);
+        ctxfifo(ctxfifo'left-1 downto ctxfifo'left-prot/2-1) :=
+          r.cmd.sprot(prot/2 downto 0);
+        ctxfifo(wlen downto 0) := ntxd;
+        tx_di(i) <= ctxfifo;
       end loop;
       for i in 0 to automode loop
         tx_wa(i) <= r.tdli;
@@ -1888,7 +2189,17 @@ begin
 
     v.spiolb.mosi := v.spio.mosi;
     v.spiolb.sck := v.spio.sck;
-
+    if prot /= 0 then
+      v.spiolb.miso := v.spio.miso;
+    else
+      v.spiolb.miso := '0';
+    end if;
+    if prot = 2 then
+      v.spiolb.io2 := v.spio.io2; v.spiolb.io3 := v.spio.io3;
+    else
+      v.spiolb.io2 := '0'; v.spiolb.io3 := '0';
+    end if;
+    
     -- Update registers
     rin <= v;
 
@@ -1907,11 +2218,19 @@ begin
     spio_enable  <= r.spio.enable;
     spio_astart  <= r.spio.astart;
     spio_aready  <= r.spio.aready;
+    spio_io2     <= r.spio.io2;
+    spio_io2oen  <= r.spio.io2oen;
+    spio_io3     <= r.spio.io3;
+    spio_io3oen  <= r.spio.io3oen;
 
     if scantest = 1 and apbi_testen = '1' then
       spio_misooen <= apbi_testoen;
       spio_mosioen <= apbi_testoen;
       spio_sckoen  <= apbi_testoen;
+      if prot = 2 then
+        spio_io2oen <= apbi_testoen;
+        spio_io3oen <= apbi_testoen;
+      end if;
     end if;
 
   end process comb;
@@ -1941,7 +2260,7 @@ begin
           generic map (
             tech   => memtech,
             abits  => fdepth,
-            dbits  => wlen+1,
+            dbits  => wlen+1+spip_bits,
             sepclk => 0,
             wrfst  => 1)
           port map (
@@ -1979,7 +2298,7 @@ begin
           generic map (
             tech   => memtech,
             abits  => fdepth,
-            dbits  => wlen+1,
+            dbits  => wlen+1+spip_bits,
             sepclk => 0,
             wrfst  => 1,
             ft     => ft)
@@ -2003,29 +2322,152 @@ begin
   end generate;
 
   -- Registers
-  reg: process (clk, arstn)
-  begin  -- process reg
-    if rising_edge(clk) then
-      r <= rin;
-      if rstn = '0' then
-        r.spio.sck <= RES.spio.sck;
-        r.rbitcnt <= RES.rbitcnt; r.tbitcnt <= RES.tbitcnt;
-        if RESET_ALL then
-          r <= RES;
-          -- Do not use synchronous reset for sync. registers
-          r.spii <= rin.spii;
+  syncrregs : if not ASYNC_RESET generate
+    reg: process (clk, arstn)
+    begin  -- process reg
+      if rising_edge(clk) then
+        r <= rin;
+        if rstn = '0' then
+          r.spio.sck <= RES.spio.sck;
+          r.rbitcnt <= RES.rbitcnt; r.tbitcnt <= RES.tbitcnt;
+          if RESET_ALL then
+            r <= RES;
+            -- Do not use synchronous reset for sync. registers
+            r.spii <= rin.spii;
+          end if;
         end if;
       end if;
-    end if;
-    if syncrst = 0 and arstn = '0' then
-      r.spio.misooen  <= RES.spio.misooen;
-      r.spio.mosioen  <= RES.spio.mosioen;
-      r.spio.sckoen   <= RES.spio.sckoen;
-      if SLVSEL_EN /= 0 then
-        r.slvsel <= RES.slvsel;
+      if syncrst = 0 and arstn = '0' then
+        r.spio.misooen  <= RES.spio.misooen;
+        r.spio.mosioen  <= RES.spio.mosioen;
+        r.spio.sckoen   <= RES.spio.sckoen;
+        if prot = 2 then
+          r.spio.io2oen  <= RES.spio.io2oen;
+          r.spio.io3oen  <= RES.spio.io3oen;
+        end if;
+        if SLVSEL_EN /= 0 then
+          r.slvsel <= RES.slvsel;
+        end if;
       end if;
-    end if;
-  end process reg;
-
+    end process reg;
+  end generate;
+  asyncrregs : if ASYNC_RESET generate
+    reg: process (clk, arstn)
+    begin  -- process reg
+      if arstn = '0' then
+        -- r <= RES;
+        -- Do not use asynchronous reset for sync. registers
+        r.mode     <= RES.mode;
+        r.event    <= RES.event;
+        r.mask     <= RES.mask;
+        r.cmd      <= RES.cmd;
+        r.td       <= RES.td;
+        r.rd       <= RES.rd;
+        r.slvsel   <= RES.slvsel;
+        r.aslvsel  <= RES.aslvsel;
+        r.uf       <= RES.uf;
+        r.ov       <= RES.ov;
+        r.td_occ   <= RES.td_occ;
+        r.rd_free  <= RES.rd_free;
+        r.txfifo   <= RES.txfifo;
+        r.rxfifo   <= RES.rxfifo;
+        r.rxd      <= RES.rxd;
+        r.txd      <= RES.txd;
+        r.txdupd   <= RES.txdupd;
+        r.txdbyp   <= RES.txdbyp;
+        r.toggle   <= RES.toggle;
+        r.samp     <= RES.samp;
+        r.chng     <= RES.chng;
+        r.psck     <= RES.psck;
+        r.twdir    <= RES.twdir;
+        r.syncsamp <= RES.syncsamp;
+        r.incrdli  <= RES.incrdli;
+        r.rxdone   <= RES.rxdone;
+        r.rxdone2  <= RES.rxdone2;
+        r.running  <= RES.running;
+        r.ov2      <= RES.ov2;
+        r.tfreecnt <= RES.tfreecnt;
+        r.rfreecnt <= RES.rfreecnt;
+        r.tdfi     <= RES.tdfi;
+        r.rdfi     <= RES.rdfi;
+        r.tdli     <= RES.tdli;
+        r.rdli     <= RES.rdli;
+        r.rbitcnt  <= RES.rbitcnt;
+        r.tbitcnt  <= RES.tbitcnt;
+        r.divcnt   <= RES.divcnt;
+        r.cgcnt    <= RES.cgcnt;
+        r.cgcntblock <= RES.cgcntblock;
+        r.aselcnt  <= RES.aselcnt;
+        r.cgasel   <= RES.cgasel;
+        r.irq      <= RES.irq;
+        r.am       <= RES.am;
+        r.spio     <= RES.spio;
+        r.spiolb   <= RES.spiolb;
+        r.astart   <= RES.astart;
+        r.cstart   <= RES.cstart;
+        r.txdupd2  <= RES.txdupd2;
+        r.twdir2   <= RES.twdir2;
+      elsif rising_edge(clk) then
+        --r <= rin;
+        r.mode     <= rin.mode;
+        r.event    <= rin.event;
+        r.mask     <= rin.mask;
+        r.cmd      <= rin.cmd;
+        r.td       <= rin.td;
+        r.rd       <= rin.rd;
+        r.slvsel   <= rin.slvsel;
+        r.aslvsel  <= rin.aslvsel;
+        r.uf       <= rin.uf;
+        r.ov       <= rin.ov;
+        r.td_occ   <= rin.td_occ;
+        r.rd_free  <= rin.rd_free;
+        r.txfifo   <= rin.txfifo;
+        r.rxfifo   <= rin.rxfifo;
+        r.rxd      <= rin.rxd;
+        r.txd      <= rin.txd;
+        r.txdupd   <= rin.txdupd;
+        r.txdbyp   <= rin.txdbyp;
+        r.toggle   <= rin.toggle;
+        r.samp     <= rin.samp;
+        r.chng     <= rin.chng;
+        r.psck     <= rin.psck;
+        r.twdir    <= rin.twdir;
+        r.syncsamp <= rin.syncsamp;
+        r.incrdli  <= rin.incrdli;
+        r.rxdone   <= rin.rxdone;
+        r.rxdone2  <= rin.rxdone2;
+        r.running  <= rin.running;
+        r.ov2      <= rin.ov2;
+        r.tfreecnt <= rin.tfreecnt;
+        r.rfreecnt <= rin.rfreecnt;
+        r.tdfi     <= rin.tdfi;
+        r.rdfi     <= rin.rdfi;
+        r.tdli     <= rin.tdli;
+        r.rdli     <= rin.rdli;
+        r.rbitcnt  <= rin.rbitcnt;
+        r.tbitcnt  <= rin.tbitcnt;
+        r.divcnt   <= rin.divcnt;
+        r.cgcnt    <= rin.cgcnt;
+        r.cgcntblock <= rin.cgcntblock;
+        r.aselcnt  <= rin.aselcnt;
+        r.cgasel   <= rin.cgasel;
+        r.irq      <= rin.irq;
+        r.am       <= rin.am;
+        r.spio     <= rin.spio;
+        r.spiolb   <= rin.spiolb;
+        r.astart   <= rin.astart;
+        r.cstart   <= rin.cstart;
+        r.txdupd2  <= rin.txdupd2;
+        r.twdir2   <= rin.twdir2;
+      end if;
+    end process reg;
+    reg2: process (clk, arstn)
+    begin  -- process reg
+      if rising_edge(clk) then
+        r.spii <= rin.spii;
+      end if;
+    end process reg2;  
+  end generate;
+  
 end architecture rtl;
 

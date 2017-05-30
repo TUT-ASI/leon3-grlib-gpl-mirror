@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -45,6 +45,7 @@ package leon3 is
     pwdsetaddr  : std_ulogic;
     pwdnewaddr  : std_logic_vector(31 downto 2);
     forceerr    : std_ulogic;
+    svtclrtt    : std_ulogic;
   end record;
 
   type l3_irq_out_type is record
@@ -71,7 +72,7 @@ package leon3 is
     bwatch  : std_ulogic;       -- break on IU watchpoint
     bsoft   : std_ulogic;       -- break on software breakpoint (TA 1)
     tenable : std_ulogic;
-    timer   : std_logic_vector(30 downto 0);                                                -- 
+    timer   : std_logic_vector(63 downto 0);                                                -- 
   end record;
 
   constant dbgi_none : l3_debug_in_type := ('0', '0', '0', '0', '0',
@@ -105,13 +106,15 @@ package leon3 is
     dstat   : l3_cstat_type;
     wbhold  : std_ulogic;                       -- write buffer hold
     su      : std_ulogic;                       -- supervisor state
+    ducnt   : std_ulogic;                       -- disable timer
   end record;
 
   type l3_debug_in_vector is array (natural range <>) of l3_debug_in_type;
   type l3_debug_out_vector is array (natural range <>) of l3_debug_out_type;
   
   constant dbgo_none : l3_debug_out_type := (X"00000000", '0', '0', '0', '0',
-        '0', '0', '0', '0', '0', '0', "000000", '0', cstat_none, cstat_none, '0', '0');
+        '0', '0', '0', '0', '0', '0', "000000", '0', cstat_none, cstat_none,
+        '0', '0','0');
   constant l3_dbgo_none : l3_debug_out_type := dbgo_none;
 
 
@@ -368,7 +371,7 @@ package leon3 is
     smp       : integer range 0 to 15 := 0;    -- support SMP systems
     iuft      : integer range 0 to 6  := 0;
     fpft      : integer range 0 to 6  := 0;
-    cmft      : integer range 0 to 1  := 0;
+    cmft      : integer range 0 to 255:= 0;
     iuinj     : integer               := 0;    
     ceinj     : integer range 0 to 3  := 0;   
     cached    : integer               := 0;     -- cacheability table
@@ -632,7 +635,7 @@ package leon3 is
     smp       : integer range 0 to 15 := 0;    -- support SMP systems
     iuft      : integer range 0 to 6  := 0;
     fpft      : integer range 0 to 6  := 0;
-    cmft      : integer range 0 to 1  := 0;
+    cmft      : integer range 0 to 255:= 0;
     iuinj     : integer               := 0;
     ceinj     : integer range 0 to 3  := 0;
     cached    : integer               := 0;
@@ -762,6 +765,7 @@ package leon3 is
     rst    : in  std_ulogic;
     hclk   : in  std_ulogic;
     cpuclk : in std_ulogic;
+    fcpuclk: in std_ulogic;
     ahbmi  : in  ahb_mst_in_type;
     ahbsi  : in  ahb_slv_in_type;
     ahbso  : out ahb_slv_out_type;
@@ -1016,7 +1020,7 @@ component leon3ftsh
     smp       : integer range 0 to 15 := 0;    -- support SMP systems
     iuft      : integer range 0 to 6  := 0;
     fpft      : integer range 0 to 6  := 0;
-    cmft      : integer range 0 to 1  := 0;
+    cmft      : integer range 0 to 255:= 0;
     iuinj     : integer               := 0;
     ceinj     : integer range 0 to 3  := 0;
     cached    : integer               := 0;
@@ -1092,7 +1096,7 @@ component leon3x
     smp       : integer range 0 to 15 := 0;    -- support SMP systems
     iuft      : integer range 0 to 6  := 0;
     fpft      : integer range 0 to 6  := 0;
-    cmft      : integer range 0 to 1  := 0;
+    cmft      : integer range 0 to 255:= 0;
     iuinj     : integer               := 0;
     ceinj     : integer range 0 to 3  := 0;
     cached    : integer               := 0;

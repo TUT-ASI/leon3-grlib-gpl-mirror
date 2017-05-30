@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -268,6 +268,7 @@ component pcipads
     constidsel   : integer := 0;
     level        : integer := pci33;
     voltage      : integer := x33v;
+    singleint    : integer := 0;
     nolock       : integer := 0
   );
   port (
@@ -290,7 +291,7 @@ component pcipads
     pci_66	: in std_ulogic;
     pcii   	: out pci_in_type;
     pcio   	: in  pci_out_type;
-    pci_int     : inout std_logic_vector(3 downto 0)
+    pci_int     : inout std_logic_vector(3*(1-singleint) downto 0)
   );
 end component;
 

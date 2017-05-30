@@ -50,6 +50,20 @@ ASIMOPT+= -gUSE_MIG_INTERFACE_MODEL=true -t ps
 endif
 endif
 
+#Use MIG with AXI interface when L2 cache is enabled
+ifeq ("$(CONFIG_L2_ENABLE)","y")
+VIVADO_MIG_AXI=1
+endif
+
+ifeq ("$(CONFIG_CACHE_64BIT)","y")
+AXI_64=1
+endif
+ifeq ("$(CONFIG_CACHE_128BIT)","y")
+AXI_128=1
+GRLIB_VIVADO_SOURCE_MGMT_MODE=DisplayOnly
+endif
+
+
 # Simulator switches
 ifeq ("$(GRLIB_SIMULATOR)","ALDEC")
 VSIMOPT+= +access +w -voptargs="+acc" +notimingchecks
@@ -65,7 +79,7 @@ VSIMOPT+= -GSIM_COLLISION_CHECK="GENERATE_X_ONLY"
 ASIMOPT+= -GSIM_COLLISION_CHECK="GENERATE_X_ONLY"
 
 # Simulation scripts
-VSIMOPT+= -do "run -all"
+VSIMOPT+= -do $(GRLIB)/bin/runvsim.do
 ASIMDO = run -all
 
 # Toplevel
@@ -75,7 +89,7 @@ VSIMOPT+= $(SIMTOP)
 
 ### Testbench, design and libraries to compile and not to compile
 
-VHDLSYNFILES= config.vhd ahbrom.vhd leon3mp.vhd ddr_dummy.vhd sgmii_vc707.vhd
+VHDLSYNFILES= config.vhd ahbrom.vhd axi_mig_7series.vhd leon3mp.vhd ddr_dummy.vhd sgmii_vc707.vhd
 VHDLSIMFILES=testbench.vhd
 
 TECHLIBS = unisim

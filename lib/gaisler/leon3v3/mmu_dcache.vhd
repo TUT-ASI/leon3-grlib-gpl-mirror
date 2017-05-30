@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -65,7 +65,8 @@ entity mmu_dcache is
     mmupgsz    :     integer range 0 to 5     := 0;
     smp        :     integer                  := 0;
     mmuen      :     integer                  := 0;
-    icen       :     integer range 0 to 1     := 0);
+    icen       :     integer range 0 to 1     := 0;
+    irqlat     :     integer range 0 to 1     := 0);
   port (
     rst        : in  std_ulogic;
     clk        : in  std_ulogic;
@@ -127,6 +128,9 @@ architecture rtl of mmu_dcache is
   constant DIR_BITS        : integer := log2x(DSETS);
   constant bend            : std_logic_vector(4 downto 2) := "101";
   constant DLRAM_EN        : integer := conv_integer(conv_std_logic(dlram /= 0));
+  constant DCREADHOLD      : boolean := syncram_readhold(memtech)=1 and
+                                        (dsnoop/=6 or syncram_2p_readhold(memtech)=1) and
+                                        ((dsnoop=0 or dsnoop>5) or syncram_dp_readhold(memtech)=1);
 
   type rdatatype is (dtag, ddata, dddata, dctx, icache, memory,
                      sysr , misc, mmusnoop_dtag);  -- sources during cache read
@@ -197,6 +201,7 @@ architecture rtl of mmu_dcache is
      set           : integer range 0 to DSETS-1;
      noflush       : std_logic;
      cmiss         : std_ulogic;
+     irqlatctrl    : std_logic_vector(11 downto 0);
   end record;
 
   type snoop_reg_type is record                   -- snoop control registers
@@ -355,7 +360,8 @@ architecture rtl of mmu_dcache is
     reqst      => '0',
     set        => 0,
     noflush    => '0',
-    cmiss      => '0'
+    cmiss      => '0',
+    irqlatctrl => (others => '0')
     );
   constant SRES : snoop_reg_type := (
     snoop   => '0',
@@ -465,13 +471,16 @@ begin
     snhit := (others => '0'); v.cmiss := '0'; mhold := '0'; wbhold := '0';
     pagesize := MMU_getpagesize(mmupgsz,r.mmctrl1);
 
-    if ((dci.eenaddr or dci.enaddr) = '1') or (r.dstate /= idle) or 
-       ((dsu = 1) and (dci.dsuen = '1')) or (r.flush = '1') or
-        (is_fpga(memtech) = 1)
+    if (dci.eenaddr='1') or ((not DCREADHOLD) and (dci.enaddr = '1' or r.dstate /= idle)) or
+       ((DCREADHOLD) and r.dstate = loadpend) or
+       ((dsu = 1) and (dci.dsuen = '1')) or (r.flush = '1')
+--        or (is_fpga(memtech) = 1)
     then
       enable := (others => '1');
     else enable := (others => '0'); end if;
-
+    if (DCREADHOLD and (ico.hold and fpuholdn and r.holdn)='0' and r.flush2='0' and r.flush='0') and r.dstate /= loadpend then
+      enable := (others => '0');
+    end if;
     v.mmctrl1wr := '0';
     tagclear := '0'; paddress := r.paddress;
     if (not M_EN) or ((r.asi(4 downto 0) = ASI_MMU_BP) or (r.mmctrl1.e = '0')) then
@@ -718,6 +727,9 @@ begin
         v.sadj  := dci.maddress(3 downto 2);              
         v.dadj  := dci.maddress(1 downto 0);              
       end if;
+      if (irqlat /= 0) and (r.xaddress(7 downto 2) = "000001") and (dci.read = '0') then
+        v.irqlatctrl := dci.maddress(11 downto 0);
+      end if;
     end if;
 
 
@@ -736,7 +748,7 @@ begin
         if ((M_EN) and (dci.asi(4 downto 0) /= ASI_MMU_BP) and (r.mmctrl1.e = '1') and 
            ((M_TLB_FASTWRITE /= 0) or ((dci.enaddr and eholdn and dci.lock and not dci.read) = '1')))
         then
-          if (dci.enaddr and eholdn and dci.lock and not dci.read) = '1' then -- skip address translation on store in LDST
+          if ((dci.enaddr and eholdn and dci.lock and not dci.read) = '1') or (r.mmctrl1.tlbdis = '1') then -- skip address translation on store in LDST
             v.wb.addr := r.wb.addr(31 downto 8) & dci.maddress(7 downto 0);
             newptag := r.wb.addr(TAG_HIGH downto TAG_LOW);
           else 
@@ -1258,7 +1270,7 @@ begin
           miscdata(20 downto 18) := (others => '0');
         end if;
         miscdata(MMCTRL_TLBDIS) := r.mmctrl1.tlbdis;
-        miscdata(MMCTRL_PGSZ_U downto MMCTRL_PGSZ_D) := conv_std_logic_vector(pagesize,2); -- r.mmctrl1.pagesize;
+        miscdata(MMCTRL_PGSZ_U downto MMCTRL_PGSZ_D) := conv_std_logic_vector(pagesize,2);
         --custom 
       when CNR_CTXP =>
         miscdata(MMCTXP_U downto MMCTXP_D) := r.mmctrl1.ctxp; 
@@ -1325,6 +1337,9 @@ begin
             r.cctrl.dfrz & r.cctrl.ifrz & r.cctrl.dcs & r.cctrl.ics;
       when "01" =>
         rdatav(0)(7 downto 0) := "00" & r.tadj & r.sadj & r.dadj;
+        if irqlat /= 0 then
+          rdatav(0)(11 downto 0) := r.irqlatctrl;
+        end if;
       when "10" =>
         rdatav(0) := ico.cfg;
       when others =>
@@ -1419,7 +1434,9 @@ begin
           v.mmctrl1.nf     := dci.maddress(MMCTRL_NF);
           v.mmctrl1.pso    := dci.maddress(MMCTRL_PSO);
           v.mmctrl1.tlbdis := dci.maddress(MMCTRL_TLBDIS);
-          v.mmctrl1.pagesize := dci.maddress(MMCTRL_PGSZ_U downto MMCTRL_PGSZ_D);
+          if mmupgsz = 4 then
+            v.mmctrl1.pagesize := dci.maddress(MMCTRL_PGSZ_U downto MMCTRL_PGSZ_D);
+          end if;
           --custom 
           -- Note: before tlb disable tlb flush is required !!!  
         when CNR_CTXP =>
@@ -1456,7 +1473,6 @@ begin
 
     if DSNOOP2=3 and DCEN/=0 and r.fflush='0' and r.flush='1' and r.flush2='1' and dci.flush='0' and dci.flushl='0' then
       v.flush:='0';
-      v.flush2:='0';
     end if;
 
 -- update cache with memory data during read miss
@@ -1490,6 +1506,8 @@ begin
         ctpwrite := (others => '1');
       end if;
     end if;
+
+    if DSNOOP /= 6 and DCREADHOLD then enable := enable or ctwrite; end if;
 
     csnoopwe := (others => '0'); flushl := '0';
     flushlv := (others => r.flush);
@@ -1533,7 +1551,9 @@ begin
         v.diag_op := '0';
         v.pflush := '0';
         v.pflushr := '0';
-        v.mmctrl1.pagesize := (others => '0');
+        if mmupgsz = 4 then
+          v.mmctrl1.pagesize := (others => '0');
+        end if;
       --end if;
       v.mmctrl1.bar := (others => '0');
       v.faddr := (others => '0');
@@ -1541,9 +1561,11 @@ begin
       v.cache := '0'; v.wb.lock := '0'; v.wb.lock2 := '0';
       v.wb.data1 := (others => '0'); v.wb.data2 := (others => '0');     
       v.noflush := '0'; v.mexc := '0';
+      v.irqlatctrl := (others => '0');
     end if;
 
     if dsnoop = 0 then v.cctrl.dsnoop := '0'; end if;
+    if mmupgsz /= 4 then v.mmctrl1.pagesize := (others => '0'); end if;
     if not M_EN then v.mmctrl1 := mmctrl_type1_none; end if; -- kill MMU regs if not enabled
 
     -- Force cache control reg to off state if disabled
@@ -1588,7 +1610,7 @@ begin
     dcrami.flushall <= r.flush2;
     
     -- data ram inputs
-    dcrami.denable   <= enable;
+    dcrami.denable   <= (enable or cdwrite);
     dcrami.address(19 downto (OFFSET_HIGH - LINE_LOW + 1)) <= zero32(19 downto (OFFSET_HIGH - LINE_LOW + 1));
     dcrami.address(OFFSET_HIGH - LINE_LOW downto 0) <= taddr;
     dcrami.data <= ddatainv;
@@ -1640,6 +1662,7 @@ begin
     dco.cstat.tmiss  <= mmudco.tlbmiss;
     dco.cstat.mhold  <= mhold;
     dco.wbhold  <= wbhold;
+    dco.irqlatctrl <= r.irqlatctrl;
     
     -- MMU
     mmudci.trans_op <= mmudci_trans_op;    
@@ -1654,6 +1677,7 @@ begin
     mmudci.diag_op <= mmudci_diag_op;
     mmudci.fsread <= mmudci_fsread;
     mmudci.mmctrl1 <= r.mmctrl1;
+    mmudci.mmctrl1.pagesize <= conv_std_logic_vector(pagesize, 2);
 
   end process;
 

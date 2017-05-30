@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -40,11 +40,14 @@ package spi is
     astart  : std_ulogic;
     cstart  : std_ulogic;
     ignore  : std_ulogic;
+    io2     : std_ulogic;
+    io3     : std_ulogic;
   end record;
 
   type spi_in_vector is array (natural range <>) of spi_in_type;
 
-  constant spi_in_none : spi_in_type := ('0', '0', '0', '0', '0', '0', '0');
+  constant spi_in_none : spi_in_type := ('0', '0', '0', '0', '0', '0', '0',
+                                         '0', '0');
 
   type spi_out_type is record
     miso     : std_ulogic;
@@ -53,16 +56,20 @@ package spi is
     mosioen  : std_ulogic;
     sck      : std_ulogic;
     sckoen   : std_ulogic;
-    ssn      : std_logic_vector(7 downto 0);  -- used by GE/OC SPI core
     enable   : std_ulogic;
     astart   : std_ulogic;
     aready   : std_ulogic;
+    io2      : std_ulogic;
+    io2oen   : std_ulogic;
+    io3      : std_ulogic;
+    io3oen   : std_ulogic;
   end record;
 
   type spi_out_vector is array (natural range <>) of spi_out_type;
 
   constant spi_out_none : spi_out_type := ('0', '0', '0', '0', '0', '0',
-                                           (others => '0'), '0', '0', '0');
+                                           '0', '0', '0', '0', '0', '0',
+                                           '0');
 
   -- SPI master/slave controller
   component spictrl
@@ -91,7 +98,8 @@ package spi is
       automask1 : integer                    := 0;
       automask2 : integer                    := 0;
       automask3 : integer                    := 0;
-      ignore    : integer range 0 to 1       := 0
+      ignore    : integer range 0 to 1       := 0;
+      prot      : integer range 0 to 2       := 0
       );
     port (
       rstn   : in std_ulogic;

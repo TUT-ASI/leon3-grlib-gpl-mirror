@@ -15,12 +15,18 @@ package config is
 
 -- Board selection
 
-  constant CFG_BOARD_SELECTION : system_device_type := XILINX_ML505;
+
+
+
+
+
+
+  constant CFG_BOARD_SELECTION : system_device_type := XILINX_ML507;
 -- Technology and synthesis options
   constant CFG_FABTECH : integer := virtex5;
   constant CFG_MEMTECH : integer := virtex5;
   constant CFG_PADTECH : integer := virtex5;
-  constant CFG_TRANSTECH : integer := GTP0;
+  constant CFG_TRANSTECH : integer := TT_XGTP0;
   constant CFG_NOASYNC : integer := 0;
   constant CFG_SCAN : integer := 0;
 -- Clock generator
@@ -44,7 +50,7 @@ package config is
   constant CFG_LDDEL : integer := (1);
   constant CFG_NWP : integer := (2);
   constant CFG_PWD : integer := 1*2;
-  constant CFG_FPU : integer := 0 + 16*0 + 32*0;
+  constant CFG_FPU : integer := (1+0) + 16*0 + 32*0;
   constant CFG_GRFPUSH : integer := 0;
   constant CFG_ICEN : integer := 1;
   constant CFG_ISETS : integer := 4;
@@ -63,8 +69,8 @@ package config is
   constant CFG_DLOCK : integer := 0;
   constant CFG_DSNOOP : integer := 1*2 + 4*1;
   constant CFG_DFIXED : integer := 16#0#;
-  constant CFG_BWMASK : integer := 16#0#;
-  constant CFG_CACHEBW : integer := 128;
+  constant CFG_BWMASK : integer := 16#00F0#;
+  constant CFG_CACHEBW : integer := 64;
   constant CFG_DLRAMEN : integer := 0;
   constant CFG_DLRAMADDR: integer := 16#8F#;
   constant CFG_DLRAMSZ : integer := 1;
@@ -73,6 +79,7 @@ package config is
   constant CFG_DTLBNUM : integer := 8;
   constant CFG_TLB_TYPE : integer := 0 + 1*2;
   constant CFG_TLB_REP : integer := 1;
+  constant CFG_MMU_PAGE : integer := 0;
   constant CFG_DSU : integer := 1;
   constant CFG_ITBSZ : integer := 2 + 64*0;
   constant CFG_ATBSZ : integer := 2;
@@ -89,7 +96,7 @@ package config is
   constant CFG_NP_ASI : integer := 1;
   constant CFG_WRPSR : integer := 1;
   constant CFG_ALTWIN : integer := 0;
-  constant CFG_REX : integer := 0;
+  constant CFG_REX : integer := 1;
 -- L2 Cache
   constant CFG_L2_EN : integer := 0;
   constant CFG_L2_SIZE : integer := 64;
@@ -103,6 +110,7 @@ package config is
   constant CFG_L2_MAP : integer := 16#00F0#;
   constant CFG_L2_MTRR : integer := (0);
   constant CFG_L2_EDAC : integer := 0;
+  constant CFG_L2_AXI : integer := 0;
 -- AMBA settings
   constant CFG_DEFMST : integer := (0);
   constant CFG_RROBIN : integer := 1;
@@ -180,17 +188,12 @@ package config is
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 32;
   constant CFG_GRETH_SGMII : integer := 0;
-
-
-
 -- UART 1
   constant CFG_UART1_ENABLE : integer := 1;
   constant CFG_UART1_FIFO : integer := 4;
-
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE : integer := 1;
   constant CFG_IRQ3_NSEC : integer := 0;
-
 -- Modular timer
   constant CFG_GPT_ENABLE : integer := 1;
   constant CFG_GPT_NTIM : integer := (2);
@@ -200,7 +203,6 @@ package config is
   constant CFG_GPT_SEPIRQ : integer := 1;
   constant CFG_GPT_WDOGEN : integer := 0;
   constant CFG_GPT_WDOG : integer := 16#0#;
-
 -- GPIO port
   constant CFG_GRGPIO_ENABLE : integer := 1;
   constant CFG_GRGPIO_IMASK : integer := 16#0FFFE#;

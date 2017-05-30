@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -49,7 +49,8 @@ entity ddr3ram is
     speedbin: integer range 0 to 12 := 0;
     density: integer range 2 to 6 := 3;  -- 2:512M 3:1G 4:2G 5:4G 6:8G bits/chip
     pagesize: integer range 1 to 2 := 1;  -- 1K/2K page size (controls tRRD)
-    changeendian: integer range 0 to 32 := 0
+    changeendian: integer range 0 to 32 := 0;
+    initbyte: integer := 0
     );
   port (
     ck: in std_ulogic;
@@ -250,6 +251,7 @@ begin
     subtype coldata is std_logic_vector(width-1 downto 0);
     subtype idata is integer range 0 to (2**20)-1;  -- 16 data bits + 2x2 X/U state
     type idata_arr is array(natural range <>) of idata;
+    constant idataval_default : integer := pick(16#50000#,0,initbyte>0) + 16#101#*(initbyte mod 256);
     variable memdata0: idata_arr(0 to b0size-1);
     variable memdata1: idata_arr(0 to b1size-1);
     variable memdata2: idata_arr(0 to b2size-1);
@@ -436,6 +438,7 @@ begin
     variable mrstime: time;
     variable loaded: boolean := false;
     variable cold: coldata;
+    variable first: boolean := true;
 
     procedure checktime(got, exp: time; gt: boolean; req: string) is
     begin
@@ -444,6 +447,33 @@ begin
         severity warning;
     end checktime;
   begin
+    if first then
+        for i in memdata0'range loop
+            memdata0(i) := idataval_default;
+        end loop;
+        for i in memdata1'range loop
+            memdata1(i) := idataval_default;
+        end loop;
+        for i in memdata2'range loop
+            memdata2(i) := idataval_default;
+        end loop;
+        for i in memdata3'range loop
+            memdata3(i) := idataval_default;
+        end loop;
+        for i in memdata4'range loop
+            memdata4(i) := idataval_default;
+        end loop;
+        for i in memdata5'range loop
+            memdata5(i) := idataval_default;
+        end loop;
+        for i in memdata6'range loop
+            memdata6(i) := idataval_default;
+        end loop;
+        for i in memdata7'range loop
+            memdata7(i) := idataval_default;
+        end loop;
+        first :=  false;
+    end if;
     if rising_edge(ck) and resetn='1' then
       -- Update pipe regs
       prev_re := re;

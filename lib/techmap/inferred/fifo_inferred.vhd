@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -83,6 +83,7 @@ architecture rtl_fifo of generic_fifo is
   signal wr_r, wr_rin : wr_fifo_type;
   signal rd_r, rd_rin : rd_fifo_type;
   signal wr_raddr_gray, rd_waddr_gray : std_logic_vector(abits downto 0);
+  signal sepfwft_rden: std_ulogic;
 
 begin
     
@@ -128,8 +129,10 @@ begin
     end if;
 
     -- assign wusedw and almost full fifo output
-    if v_wusedw > pfull then
-      afull <= '1';
+    if notx(v_wusedw) then
+      if v_wusedw > pfull then
+        afull <= '1';
+      end if;
     end if;
 
     -- signal assignment
@@ -211,6 +214,13 @@ begin
       rd_v.raddr := rd_r.raddr + 1;
     end if;
 
+    if (fwft/=0 and sepclk/=0) then
+      rd_v.empty := '0';
+      if v_waddr=rd_v.raddr then
+        rd_v.empty := '1';
+      end if;
+    end if;
+
     if sepclk = 1 then
       rd_v.raddr_gray := gray_encoder(rd_v.raddr);
     end if;
@@ -223,8 +233,10 @@ begin
     end if;
 
     -- assign almost empty
-    if v_rusedw < pempty then
-      aempty <= '1';
+    if notx(v_rusedw) then
+      if v_rusedw < pempty then
+        aempty <= '1';
+      end if;
     end if;
 
     -- signal assignment
@@ -233,6 +245,14 @@ begin
     -- update fifo signals
     rd_rin <= rd_v;
 
+    -- special case for fwft with separate clocks
+    sepfwft_rden <= not rd_v.empty;
+    if syncram_2p_readhold(tech) /= 0 and rd_r.empty='0' and renable='0' then
+      sepfwft_rden <= '0';
+    end if;
+    if (fwft/=0 and sepclk/=0) then
+      rempty <= rd_r.empty;
+    end if;
   end process;
 
   rd_sync: process(rclk)
@@ -245,12 +265,17 @@ begin
   -- memory instantiation
   nofwft_gen: if fwft = 0 generate
     ram0 : syncram_2p generic map ( tech => tech, abits => abits, dbits => dbits, sepclk => sepclk)
-      port map (rclk, renable, rd_rin.raddr(abits-1 downto 0), dataout, wclk, write, wr_rin.waddr(abits-1 downto 0), datain);
+      port map (rclk, renable, rd_r.raddr(abits-1 downto 0), dataout, wclk, write, wr_r.waddr(abits-1 downto 0), datain);
   end generate;
 
-  fwft_gen: if fwft = 1 generate
-    ram0 : syncram_2p generic map ( tech => tech, abits => abits, dbits => dbits, sepclk => sepclk)
+  fwft_gen: if fwft = 1 and sepclk = 0 generate
+    ram0 : syncram_2p generic map ( tech => tech, abits => abits, dbits => dbits, sepclk => sepclk, wrfst => 1)
       port map (rclk, '1', rd_rin.raddr(abits-1 downto 0), dataout, wclk, write, wr_r.waddr(abits-1 downto 0), datain);
+  end generate;
+
+  fwftsep_gen: if fwft = 1 and sepclk /= 0 generate
+    ram0 : syncram_2p generic map ( tech => tech, abits => abits, dbits => dbits, sepclk => sepclk)
+      port map (rclk, sepfwft_rden, rd_rin.raddr(abits-1 downto 0), dataout, wclk, write, wr_r.waddr(abits-1 downto 0), datain);
   end generate;
 
 end;

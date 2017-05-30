@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -26,6 +26,8 @@
 library ieee;
 use ieee.std_logic_1164.all;
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.stdlib.all;
 library eth;
 use eth.grethpkg.all;
@@ -49,6 +51,11 @@ architecture rtl of eth_edcl_ahb_mst is
     bb     : std_ulogic; --1kB burst boundary detected
     retry  : std_ulogic;
   end record;
+
+  constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant ASYNC_RESET : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
+
+  constant RES : reg_type := (bg => '0', ba => '0', bb => '0', retry => '0');
 
   signal r, rin : reg_type;
 begin
@@ -121,7 +128,7 @@ begin
       end if;
     end if;
 
-    if rst = '0' then
+    if (ASYNC_RESET nor RESET_ALL) and (rst = '0') then
       v.bg := '0'; v.ba := '0'; v.bb := '0';
     end if;
     
@@ -139,10 +146,27 @@ begin
     ahbmo.hwdata   <= hwdata;
   end process;
 
-  regs : process(clk)
-  begin
-    if rising_edge(clk) then r <= rin; end if;
-  end process; 
+  syncrregs : if not ASYNC_RESET generate
+    regs : process(clk)
+    begin
+      if rising_edge(clk) then
+        r <= rin;
+        if RESET_ALL and rst = '0' then
+          r <= RES;
+        end if;
+      end if;
+    end process;
+  end generate;
+  asyncrregs : if ASYNC_RESET generate
+    regs : process(clk, rst)
+    begin
+      if rst = '0' then
+        r <= RES;
+      elsif rising_edge(clk) then
+        r <= rin;
+      end if;
+    end process;
+  end generate;
  
   ahbmo.hlock	 <= '0';
   ahbmo.hburst   <= HBURST_INCR;

@@ -18,7 +18,7 @@ package config is
   constant CFG_FABTECH : integer := spartan3;
   constant CFG_MEMTECH : integer := spartan3;
   constant CFG_PADTECH : integer := spartan3;
-  constant CFG_TRANSTECH : integer := GTP0;
+  constant CFG_TRANSTECH : integer := TT_XGTP0;
   constant CFG_NOASYNC : integer := 0;
   constant CFG_SCAN : integer := 0;
 -- Clock generator
@@ -41,7 +41,7 @@ package config is
   constant CFG_SVT : integer := 1;
   constant CFG_RSTADDR : integer := 16#00000#;
   constant CFG_LDDEL : integer := (1);
-  constant CFG_NOTAG : integer := 1;
+  constant CFG_NOTAG : integer := 0;
   constant CFG_NWP : integer := (2);
   constant CFG_PWD : integer := 1*2;
   constant CFG_FPU : integer := 0 + 16*0 + 32*0;

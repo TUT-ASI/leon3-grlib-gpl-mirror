@@ -15,7 +15,7 @@ package config is
   constant CFG_FABTECH : integer := virtex7;
   constant CFG_MEMTECH : integer := virtex7;
   constant CFG_PADTECH : integer := virtex7;
-  constant CFG_TRANSTECH : integer := GTP0;
+  constant CFG_TRANSTECH : integer := TT_XGTP0;
   constant CFG_NOASYNC : integer := 0;
   constant CFG_SCAN : integer := 0;
 -- Clock generator
@@ -39,7 +39,7 @@ package config is
   constant CFG_LDDEL : integer := (1);
   constant CFG_NWP : integer := (2);
   constant CFG_PWD : integer := 1*2;
-  constant CFG_FPU : integer := 0 + 16*0 + 32*0;
+  constant CFG_FPU : integer := (1+0) + 16*0 + 32*0;
   constant CFG_GRFPUSH : integer := 0;
   constant CFG_ICEN : integer := 1;
   constant CFG_ISETS : integer := 4;
@@ -58,8 +58,8 @@ package config is
   constant CFG_DLOCK : integer := 0;
   constant CFG_DSNOOP : integer := 1*2 + 4*1;
   constant CFG_DFIXED : integer := 16#0#;
-  constant CFG_BWMASK : integer := 16#0#;
-  constant CFG_CACHEBW : integer := 128;
+  constant CFG_BWMASK : integer := 16#00F0#;
+  constant CFG_CACHEBW : integer := 64;
   constant CFG_DLRAMEN : integer := 0;
   constant CFG_DLRAMADDR: integer := 16#8F#;
   constant CFG_DLRAMSZ : integer := 1;
@@ -68,12 +68,13 @@ package config is
   constant CFG_DTLBNUM : integer := 8;
   constant CFG_TLB_TYPE : integer := 0 + 1*2;
   constant CFG_TLB_REP : integer := 0;
+  constant CFG_MMU_PAGE : integer := 0;
   constant CFG_DSU : integer := 1;
   constant CFG_ITBSZ : integer := 4 + 64*1;
   constant CFG_ATBSZ : integer := 4;
   constant CFG_AHBPF : integer := 2;
   constant CFG_AHBWP : integer := 2;
-  constant CFG_LEONFT_EN : integer := 0 + 0*8;
+  constant CFG_LEONFT_EN : integer := 0 + (0)*8;
   constant CFG_LEON_NETLIST : integer := 0;
   constant CFG_DISAS : integer := 0 + 0;
   constant CFG_PCLOW : integer := 2;
@@ -87,8 +88,8 @@ package config is
   constant CFG_REX : integer := 0;
 -- L2 Cache
   constant CFG_L2_EN : integer := 0;
-  constant CFG_L2_SIZE : integer := 64;
-  constant CFG_L2_WAYS : integer := 1;
+  constant CFG_L2_SIZE : integer := 128;
+  constant CFG_L2_WAYS : integer := 4;
   constant CFG_L2_HPROT : integer := 0;
   constant CFG_L2_PEN : integer := 0;
   constant CFG_L2_WT : integer := 0;
@@ -98,6 +99,7 @@ package config is
   constant CFG_L2_MAP : integer := 16#00F0#;
   constant CFG_L2_MTRR : integer := (0);
   constant CFG_L2_EDAC : integer := 0;
+  constant CFG_L2_AXI : integer := 1;
 -- AMBA settings
   constant CFG_DEFMST : integer := (0);
   constant CFG_RROBIN : integer := 1;
@@ -303,6 +305,7 @@ package config is
   constant CFG_SPICTRL_MAXWLEN : integer := (0);
   constant CFG_SPICTRL_SYNCRAM : integer := 0;
   constant CFG_SPICTRL_FT : integer := 0;
+  constant CFG_SPICTRL_PROT : integer := 0;
 
 -- Dynamic Partial Reconfiguration
   constant CFG_PRC : integer := 0;

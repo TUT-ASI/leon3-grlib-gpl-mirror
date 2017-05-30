@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -107,6 +107,7 @@ entity leon_dsu_stat_base is
     rex         : integer range 0 to 1  := 0;
     altwin      : integer range 0 to 1  := 0;
     ahbpipe     : integer := 0;
+    mmupgsz     : integer range 0 to 4  := 0;
     --
     grfpush     : integer range 0 to 1 := 0;
     -- DSU
@@ -230,7 +231,7 @@ begin
             clk2x      => clk2x,
             netlist    => netlist,
             scantest   => 0,
-            mmupgsz    => 0,            -- 4 KiB
+            mmupgsz    => mmupgsz,
             bp         => 2,            -- programmable
             npasi      => npasi,
             pwrpsr     => pwrpsr,
@@ -277,6 +278,7 @@ begin
             rst      => rstn,
             hclk     => ahbclk,
             cpuclk   => cpuclk,
+            fcpuclk  => cpuclk,
             ahbmi    => dsu_tahbmi,
             ahbsi    => dsu_ahbsi,
             ahbso    => dsu_ahbso,
@@ -391,7 +393,9 @@ begin
             netlist    => netlist,
             ft         => ft,
             npasi      => npasi,
-            pwrpsr     => pwrpsr)
+            pwrpsr     => pwrpsr,
+            rex        => rex,
+            mmupgsz    => mmupgsz)
           port map (
             ahbclk     => ahbclk,
             cpuclk     => cpuclk,
@@ -496,6 +500,12 @@ begin
 ---  Optional shared FPU     -----------------------------------------
 ----------------------------------------------------------------------
 
+  fpidriveunused : for i in grfpu_in_vector_type'range generate
+    fpidrive : if i >= ncpu generate
+      fpi(i) <= grfpu_in_none;
+    end generate;
+  end generate;
+  
   shfpu : if grfpush = 1 generate    
     grfpush0 : grfpushwx generic map ((fpu-1), ncpu, fabtech)
       port map (cpuclk, rstn, fpi, fpo);

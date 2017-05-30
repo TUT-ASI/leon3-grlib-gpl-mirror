@@ -91,7 +91,7 @@
 #endif
 
 #if defined CONFIG_FPU_GRFPU
-#define CONFIG_FPU (1+CONFIG_FPU_GRFPU_MUL)
+#define CONFIG_FPU (1+CONFIG_FPU_GRFPU_MUL + 3)
 #elif defined CONFIG_FPU_GRFPULITE
 #define CONFIG_FPU (8+CONFIG_FPU_GRFPC)
 #else
@@ -439,6 +439,10 @@
 #define CONFIG_IUFT_EN 3
 #elif defined CONFIG_IUFT_TMR
 #define CONFIG_IUFT_EN 4
+#elif defined CONFIG_IUFT_BCHOTF
+#define CONFIG_IUFT_EN 5
+#elif defined CONFIG_IUFT_TECHSPEC
+#define CONFIG_IUFT_EN 6
 #else
 #define CONFIG_IUFT_EN 0
 #endif
@@ -456,9 +460,17 @@
 #define CONFIG_FPUFT 0
 #endif
 
-#ifndef CONFIG_CACHE_FT_EN
+
+#if defined CONFIG_CACHE_FT_NONE
+#define CONFIG_CACHE_FT_EN 0
+#elif defined CONFIG_CACHE_FT_BCH
+#define CONFIG_CACHE_FT_EN 16*4 + 2
+#elif defined CONFIG_CACHE_FT_TECH
+#define CONFIG_CACHE_FT_EN 16*5 + 2
+#else
 #define CONFIG_CACHE_FT_EN 0
 #endif
+
 #ifndef CONFIG_CACHE_ERRINJ
 #define CONFIG_CACHE_ERRINJ 0
 #endif

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -95,6 +95,10 @@ package ethernet_mac is
     data    : std_logic_vector(31 downto 0);
   end record;
 
+  constant eth_tx_ahb_in_none : eth_tx_ahb_in_type := (
+    req => '0', write => '0', addr => (others => '0'),
+    data => (others => '0'));
+
   type eth_tx_ahb_out_type is record
     grant    : std_ulogic;
     data     : std_logic_vector(31 downto 0);
@@ -126,6 +130,10 @@ package ethernet_mac is
     size    : std_logic_vector(1 downto 0);
   end record;
 
+  constant eth_rx_gbit_ahb_in_none : eth_rx_gbit_ahb_in_type := (
+    req  => '0', write => '0', addr => (others => '0'),
+    data => (others => '0'), size => (others => '0'));
+  
   component eth_ahb_mst is
     generic(
       hindex      : integer := 0;

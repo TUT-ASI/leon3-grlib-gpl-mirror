@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -127,13 +127,20 @@ constant RES : reg_type := (
 	p => (others => RES_PORT));
 
 constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+constant ASYNC_RESET : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 
 signal r, rin : reg_type;
+signal arst : std_ulogic;
 --pragma translate_off
 signal lapbi  : apb_slv_in_type;
 --pragma translate_on
 
 begin
+
+  arst <= ahbi(0).testrst when (ASYNC_RESET and ahbi(0).testen /= '0') else
+          rst when ASYNC_RESET else
+          '1';
+  
   comb : process(ahbi, apbo, wp, wpv, r, rst)
   variable v : reg_type;
   variable psel   : pvector_type(0 to nports-1);   
@@ -265,7 +272,7 @@ begin
     end loop;
 
     -- Reset
-    if (not RESET_ALL) and (rst = '0') then
+    if (not ASYNC_RESET) and (not RESET_ALL) and (rst = '0') then
       for j in 0 to nports-1 loop
         v.p(j).penable  := RES.p(j).penable;
 			  v.p(j).hready   := RES.p(j).hready;
@@ -339,16 +346,28 @@ begin
 
   end process;
 
-  reg : process(clk)
-  begin
-    if rising_edge(clk) then
-      r <= rin;
-      if RESET_ALL and rst = '0' then
-        r <= RES;
+  syncrregs : if not ASYNC_RESET generate
+    reg : process(clk)
+    begin
+      if rising_edge(clk) then
+        r <= rin;
+        if RESET_ALL and rst = '0' then
+          r <= RES;
+        end if;
       end if;
-    end if;
-  end process;
-
+    end process;
+  end generate;
+  asyncrregs : if ASYNC_RESET generate
+    reg : process(clk, arst)
+    begin
+      if arst = '0' then
+        r <= RES;        
+      elsif rising_edge(clk) then
+        r <= rin;
+      end if;
+    end process;
+  end generate;
+    
 -- pragma translate_off
 
   mon0 : if enbusmon /= 0 generate

@@ -563,7 +563,7 @@ NET "dsurx"  LOC =  "V9" | IOSTANDARD=LVTTL;
 NET "oen"  LOC =  "Y11" | IOSTANDARD=LVTTL;
 NET "brdyn"  LOC =  "AG10" | IOSTANDARD=LVTTL;
 NET "emdio"  LOC =  "F4" | IOSTANDARD=LVTTL | PULLUP;
-NET "emdintn"  LOC =  "G5" ;#| IOSTANDARD=LVTTL;
+NET "emdintn"  LOC =  "G5" | IOSTANDARD=LVTTL;
 NET "usb_dir"  LOC =  "L8" | IOSTANDARD=LVCMOS33;
 NET "eth_macclk"  LOC =  "AG21" | IOSTANDARD=LVTTL;
 NET "usb_id"  LOC =  "M7" ;#| IOSTANDARD=LVCMOS33;

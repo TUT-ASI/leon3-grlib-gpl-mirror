@@ -14,8 +14,6 @@ if [ "$CONFIG_LEON4" = "y" ]; then
     define_bool CONFIG_IU_V8MULDIV n
     define_bool CONFIG_IU_BP n
     define_bool CONFIG_IU_SVT y
-    define_bool CONFIG_NOTAG n
-    define_int  CONFIG_IU_LDELAY 1
     define_int  CONFIG_IU_WATCHPOINTS 0
     define_bool CONFIG_PWD n
     define_hex  CONFIG_IU_RSTADDR 00000
@@ -37,6 +35,7 @@ if [ "$CONFIG_LEON4" = "y" ]; then
     define_bool CONFIG_DSU_ENABLE n
     define_bool CONFIG_NP_ASI n
     define_bool CONFIG_PWRPSR n
+    define_bool CONFIG_REX n
   fi
   if [ "$CONFIG_LEON4_GP" = "y" ]; then
     define_int  CONFIG_IU_NWINDOWS 8
@@ -45,8 +44,6 @@ if [ "$CONFIG_LEON4" = "y" ]; then
     define_bool CONFIG_IU_MUL_MAC n
     define_bool CONFIG_IU_BP y
     define_bool CONFIG_IU_SVT y
-    define_bool CONFIG_NOTAG n
-    define_int  CONFIG_IU_LDELAY 1
     define_int  CONFIG_IU_WATCHPOINTS 2
     define_bool CONFIG_PWD y
     define_hex  CONFIG_IU_RSTADDR 00000
@@ -81,6 +78,7 @@ if [ "$CONFIG_LEON4" = "y" ]; then
     define_bool CONFIG_DSU_ATRACESZ4 y
     define_bool CONFIG_NP_ASI y
     define_bool CONFIG_PWRPSR y
+    define_bool CONFIG_REX n
   fi
   if [ "$CONFIG_LEON4_HP" = "y" ]; then
     define_int  CONFIG_IU_NWINDOWS 8
@@ -89,8 +87,6 @@ if [ "$CONFIG_LEON4" = "y" ]; then
     define_bool CONFIG_IU_MUL_MAC n
     define_bool CONFIG_IU_BP y
     define_bool CONFIG_IU_SVT y
-    define_bool CONFIG_NOTAG n
-    define_int  CONFIG_IU_LDELAY 1
     define_int  CONFIG_IU_WATCHPOINTS 4
     define_bool CONFIG_PWD y
     define_hex  CONFIG_IU_RSTADDR 00000
@@ -127,6 +123,7 @@ if [ "$CONFIG_LEON4" = "y" ]; then
     define_bool CONFIG_DSU_ATRACESZ4 y
     define_bool CONFIG_NP_ASI y
     define_bool CONFIG_PWRPSR y
+    define_bool CONFIG_REX n
   fi
 
   if [ "$CONFIG_LEON4_CUSTOM" = "y" ]; then
@@ -149,12 +146,12 @@ if [ "$CONFIG_LEON4" = "y" ]; then
 	  Designware		CONFIG_IU_MUL_DW" Inferred
       fi
       bool 'Single-vector trapping' CONFIG_IU_SVT
-      int 'Load delay' CONFIG_IU_LDELAY 1
       int 'Hardware watchpoints' CONFIG_IU_WATCHPOINTS 0
       bool 'Enable power-down mode ' CONFIG_PWD
       hex ' Reset start address (addr[31:12]) ' CONFIG_IU_RSTADDR 00000
       bool 'SPARC V8E non-privileged ASI access' CONFIG_NP_ASI
       bool 'SPARC V8E partial Write %psr (WRPSR)' CONFIG_WRPSR
+      bool 'Enable LEON-REX extension' CONFIG_REX
     endmenu
     mainmenu_option next_comment
     comment 'Floating-point unit'
@@ -259,7 +256,7 @@ if [ "$CONFIG_LEON4" = "y" ]; then
         fi
         bool 'AHB snooping       ' CONFIG_DCACHE_SNOOP
         if [ "$CONFIG_DCACHE_SNOOP" = "y" ]; then
-            bool 'Separate snoop tags  ' CONFIG_DCACHE_SNOOP_SEPTAG
+            bool 'Separate physical/snoop tags  ' CONFIG_DCACHE_SNOOP_SEPTAG
         fi
       fi
     fi
@@ -314,6 +311,12 @@ if [ "$CONFIG_LEON4" = "y" ]; then
 	  64		CONFIG_MMU_D64" 8
 	  bool 'Fast writebuffer       ' CONFIG_MMU_FASTWB
       fi
+      choice 'MMU page size' \
+	  "4K		CONFIG_MMU_PAGE_4K \
+	  8K		CONFIG_MMU_PAGE_8K \
+	  16K		CONFIG_MMU_PAGE_16K \
+	  32K		CONFIG_MMU_PAGE_32K \
+	  Programmable	CONFIG_MMU_PAGE_PROG" 4K
     fi
     endmenu
   fi
@@ -349,7 +352,7 @@ if [ "$CONFIG_LEON4" = "y" ]; then
     fi
     bool 'Enable LEON4 Statistics Module       ' CONFIG_STAT_ENABLE
     if [ "$CONFIG_STAT_ENABLE" = "y" ]; then
-      int 'Number of counters (1 - 32)           ' CONFIG_STAT_CNT 4
+      int 'Number of counters (1 - 64)           ' CONFIG_STAT_CNT 4
       int 'Number of accumulative counters       ' CONFIG_STAT_NMAX 0
     fi
   endmenu
@@ -360,7 +363,11 @@ if [ "$CONFIG_LEON4" = "y" ]; then
 	"None		CONFIG_IUFT_NONE \
 	TMR		CONFIG_IUFT_TMR" None
 #      bool 'Register file error injection' CONFIG_RF_ERRINJ
-      bool 'Cache memory protection        ' CONFIG_CACHE_FT_EN
+      choice 'Cache memory protection     ' \
+	  "None		CONFIG_CACHE_FT_NONE \
+	   Parity		CONFIG_CACHE_FT_EN \
+ 	   SECDEC-BCH 		CONFIG_CACHE_FT_BCH \
+	   TechSpec		CONFIG_CACHE_FT_TECH" None
 #      int 'Cache memory error injection' CONFIG_CACHE_ERRINJ 0
       bool 'Use LEON4 netlist         ' CONFIG_LEON4_NETLIST
   endmenu

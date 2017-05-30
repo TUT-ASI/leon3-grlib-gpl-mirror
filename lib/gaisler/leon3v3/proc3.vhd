@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -94,7 +94,9 @@ entity proc3 is
     npasi      : integer range 0 to 1     := 0;
     pwrpsr     : integer range 0 to 1     := 0;
     rex        : integer                  := 0;
-    altwin     : integer range 0 to 1     := 0
+    altwin     : integer range 0 to 1     := 0;
+    rfmemtech  : integer range 0 to NTECH := 0;
+    irqlat     : integer range 0 to 1     := 0
   );
   port (
     clk        : in  std_ulogic;
@@ -152,7 +154,7 @@ begin
   iu : iu3
     generic map (nwindows, isets, dsets, fpu, v8, cp, mac, dsu, nwp, pclow*(1-rex),
                  notag, hindex, lddel, IRFWT, disas, tbuf, pwd, svt, rstaddr, smp, fabtech,
-                 clk2x, bp, npasi, pwrpsr, rex, altwin)
+                 clk2x, bp, npasi, pwrpsr, rex, altwin, rfmemtech, irqlat)
     port map (clk, rstn, holdnx, ici, ico, dci, dco, rfi, rfo, irqi, irqo,
               dbgi, dbgo, muli, mulo, divi, divo, fpo, fpi, cpo, cpi, tbo, tbi, tbo_2p, tbi_2p, sclk);
 
@@ -177,7 +179,7 @@ begin
       isetlock, dcen, drepl, dsets, dlinesize, dsetsize, dsetlock,
       dsnoop, ilram, ilramsize, ilramstart, dlram, dlramsize, dlramstart,
       itlbnum, dtlbnum, tlb_type, tlb_rep, cached,
-      clk2x, scantest, mmupgsz, smp, mmuen)
+      clk2x, scantest, mmupgsz, smp, mmuen, irqlat)
     port map (rstn, clk, ici, ico, dci, dco, ahbi, ahbo, ahbsi, ahbso,
               crami, cramo, pholdn, hclk, sclk, hclken
               );

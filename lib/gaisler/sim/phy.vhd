@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -49,7 +49,9 @@ entity phy is
     base1000_t_fd : integer range 0 to 1  := 1;
     base1000_t_hd : integer range 0 to 1  := 1;
     rmii          : integer range 0 to 1  := 0;
-    rgmii         : integer range 0 to 1  := 0
+    rgmii         : integer range 0 to 1  := 0;
+    extrxclken    : integer range 0 to 1  := 0; -- align rx_clk with extrxclk (gmii only)
+    gmii100       : integer range 0 to 1  := 0  -- force 10/100 to (x10/x100 repeating) gmii
     );
   port(
     rstn     : in std_logic;
@@ -65,7 +67,8 @@ entity phy is
     tx_en    : in std_logic; 
     tx_er    : in std_logic; 
     mdc      : in std_logic;
-    gtx_clk  : in std_logic  
+    gtx_clk  : in std_logic;
+    extrxclk : in std_logic
   );
 end;
 
@@ -180,32 +183,46 @@ architecture behavioral of phy is
   signal clkslow  : std_ulogic := '0';
   signal rcnt     : integer;
   signal anegact  : std_ulogic;
+
+  constant qlength: integer := 4;
+  signal txdataq: std_logic_vector(0 to qlength*10-1);
+  signal txqpos,rxqpos: integer range 0 to qlength-1 := 0;
+
+  type phy_interface_mode_type is (mode_mii,mode_gmii,mode_rmii,mode_rgmii);
+  signal ifmode: phy_interface_mode_type;
+
+  signal lb_rxd: std_logic_vector(7 downto 0);
+  signal lb_rxdv,lb_rxer: std_ulogic;
+
+  signal erxclkdel : std_ulogic;
 begin
-  --mdio signal pull-up
-  int_clk <= not int_clk after 10 ns when rmii = 1 else
-             not int_clk after 4 ns when r.ctrl.speedsel = "01" else
-             not int_clk after 20 ns when r.ctrl.speedsel = "10" else
-             not int_clk after 200 ns when r.ctrl.speedsel = "00";
-  
+
+  -- Selects which interface standard should be implemented by the PHY
+  -- Note we assume selection between GMII and MII depending on speed setting
+  --   in MDIO reg
+  ifmode <= mode_rgmii when rgmii=1 else
+            mode_rmii when rmii=1 else
+            mode_gmii when (r.ctrl.speedsel = "01" or gmii100=1) else
+            mode_mii;
+
+  erxclkdel <= transport extrxclk after (8 ns - 2.5 ns);
+
+  int_clk <= erxclkdel when extrxclken=1 and ifmode=mode_gmii else
+             not int_clk after 10 ns  when ifmode=mode_rmii else
+             not int_clk after 4 ns   when ifmode=mode_rgmii and r.ctrl.speedsel = "01" else
+             not int_clk after 20 ns  when ifmode=mode_rgmii and r.ctrl.speedsel = "10" else
+             not int_clk after 200 ns when ifmode=mode_rgmii and r.ctrl.speedsel = "00" else
+             not int_clk after 4 ns   when ifmode=mode_gmii else
+             not int_clk after 20 ns  when ifmode=mode_mii   and r.ctrl.speedsel = "10" else
+             not int_clk after 200 ns when ifmode=mode_mii   and r.ctrl.speedsel = "00";
+
   clkslow <= not clkslow after 20 ns when r.ctrl.speedsel = "10" else
              not clkslow after 200 ns;
-  
---   rstdelay : process
---   begin
---     loop
---       rstd <= '0';
---       while r.ctrl.reset /= '1' loop
---         wait on r.ctrl.reset;
---       end loop;
---       rstd <= '1';
---       while rstn = '0' loop
---         wait on rstn;
---       end loop;
---       wait on rstn for 3 us;
---       rstd <= '0';
---       wait on rstn until r.ctrl.reset = '0' for 5 us; 
---     end loop;
---   end process;
+
+  rx_clk <= int_clk after 2.5 ns when ifmode=mode_gmii else
+            int_clk after 10 ns when ifmode=mode_mii else
+            int_clk;
+  tx_clk <= clkslow when ifmode/=mode_gmii else '0';
 
   anegproc : process is
   begin
@@ -627,53 +644,92 @@ begin
     end if;
   end process;
 
-
-  loopback_sel : process(r.ctrl.loopback, int_clk, gtx_clk, r.ctrl.speedsel, txd, tx_en) is
+  loopback_sel : process(r, gtx_clk, txd, tx_en, tx_er, lb_rxd, lb_rxer, lb_rxdv) is
   begin
+    rx_col <= '0'; rx_crs <= '1';
+    rxd <= (others => '0'); rx_dv <= '0'; rx_er <= '0';
     if r.ctrl.loopback = '1' then
-      if rmii = 0 then
-        rx_col <= '0'; rx_crs <= tx_en; rx_dv <= tx_en; rx_er <= tx_er;
-        rxd <= txd;
-        if r.ctrl.speedsel /= "01" then
-          rx_clk <= int_clk; tx_clk <= int_clk;
-        else
-          rx_clk <= gtx_clk; tx_clk <= clkslow;
-        end if;
-      else
-        rx_dv <= '1'; rx_er <= '1'; --unused should not affect anything
-        rx_col <= '0'; rx_crs <= tx_en;
-        if tx_en = '0' then
-          rxd(1 downto 0) <= "00";
-        else
-          rxd(1 downto 0) <= txd(1 downto 0);
-        end if;
-        if rgmii = 1 then
-           if (gtx_clk = '1' and tx_en = '0') then
-              rxd(3 downto 0) <= r.ctrl.duplexmode & r.ctrl.speedsel & r.status.linkstat;
-           end if;
-        end if;  
-        rx_clk <= '0'; tx_clk <= '0';
-        
-      end if;
-    else
-      rx_col <= '0'; rx_crs <= '0'; rx_dv <= '0'; rx_er <= '0';
-      rxd <= (others => '0');      
-      if rgmii = 1 then
-         if (gtx_clk = '1') then
+      case ifmode is
+        when mode_mii | mode_gmii =>
+          -- Use TX ring buffer
+          rxd <= lb_rxd;
+          rx_dv <= lb_rxdv;
+          rx_er <= lb_rxer;
+        when mode_rmii =>
+          rx_dv <= '1'; rx_er <= '1'; --unused should not affect anything
+          rx_col <= '0'; rx_crs <= tx_en;
+          if tx_en = '1' then
+            rxd(1 downto 0) <= txd(1 downto 0);
+          end if;
+        when mode_rgmii =>
+          if (gtx_clk = '1' and tx_en = '0') then
             rxd(3 downto 0) <= r.ctrl.duplexmode & r.ctrl.speedsel & r.status.linkstat;
-         end if;
-      end if;  
-      if rmii = 0 then
-        if r.ctrl.speedsel /= "01" then
-          rx_clk <= int_clk; tx_clk <= int_clk after 3 ns;
-        else
-          rx_clk <= gtx_clk; tx_clk <= clkslow;
-        end if;
-      else
-        rx_clk <= int_clk; tx_clk <= int_clk after 3 ns;
-      end if;  
+          end if;
+      end case;
     end if;
   end process;
+
+
+  txsamp: process(txd,tx_en,tx_er,gtx_clk,int_clk,clkslow)
+
+    variable lasttxtr, lastclk: time;
+    variable lastclk_valid: boolean := false;
+    constant tSU_GMII : time := 2.5 ns;
+    constant tH_GMII  : time := 0.5 ns;
+    constant tCTOmax_MII : time := 25.0 ns;
+
+    procedure sample_data(tSU: time) is
+    begin
+      txdataq(txqpos*10 to txqpos*10+9) <= (txd & tx_en & tx_er);
+      txqpos <= (txqpos+1) mod qlength;
+      assert (now-lasttxtr) >= tSU
+        report "Setup violation on txd/tx_en/tx_er" severity warning;
+      lastclk := now;
+      lastclk_valid := true;
+    end procedure;
+
+    procedure holdcheck(tH: time) is
+    begin
+      assert (not lastclk_valid) or (lastclk >= lasttxtr) or (lasttxtr-lastclk >= tH)
+        report "Hold violation on txd/tx_en/tx_er" severity warning;
+    end procedure;
+
+  begin
+    if txd'event or tx_en'event or tx_er'event then lasttxtr:=now; end if;
+    case ifmode is
+      when mode_gmii =>
+        if r.ctrl.speedsel="01" or gmii100=1 then
+          if rising_edge(gtx_clk) then sample_data(2.5 ns); end if;
+          holdcheck(0.5 ns);
+        else
+          if rising_edge(clkslow) then sample_data(15.0 ns); end if;
+        end if;
+      when mode_mii =>
+        if rising_edge(int_clk) then sample_data(15.0 ns); end if;
+      when others =>
+    end case;
+  end process;
+
+  rxloopback: process(int_clk)
+    variable twin: time;
+  begin
+    if rising_edge(int_clk) then
+      if r.ctrl.loopback='0' then
+        rxqpos <= (txqpos + (qlength/2)) mod qlength;
+      else
+        rxqpos <= (rxqpos+1) mod qlength;
+      end if;
+      case ifmode is
+        when mode_mii => twin := 20.0 ns;
+        when mode_gmii => twin := 3.0 ns;
+        when others => twin := 1.0 ns;
+      end case;
+      lb_rxd <= txdataq(rxqpos*10 to rxqpos*10+7), (others => '0') after twin;
+      lb_rxdv <= txdataq(rxqpos*10+8), '0' after twin;
+      lb_rxer <= txdataq(rxqpos*10+9), '0' after twin;
+    end if;
+  end process;
+
 end;
 -- pragma translate_on
 

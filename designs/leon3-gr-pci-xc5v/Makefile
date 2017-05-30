@@ -29,7 +29,7 @@ LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip hynix cypress ihp fmf spansion gsi
 DIRSKIP = b1553 pci/pcif leon2 leon2ft leon3v1 leon3ftv2 leon3ftv1 \
 	 crypto satcan ddr slink ascs hcan \
-	i2c spi grfpc grlfpc grfpcft grlfpcft pwm iommu
+	i2c spi pwm iommu
 ifeq ("$(CONFIG_LEON4)","")
 DIRSKIP+=leon4v0
 endif

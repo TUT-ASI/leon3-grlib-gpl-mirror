@@ -104,6 +104,7 @@ int irqtest(int addr)
                 asm("nop;");
                 larr[1] = larr[0];
                 if (larr[0] != 6) fail(10);
+                while (lr->irqforce) {};  /* wait until all iterrupts are taken */
                 lr->irqforce = 0x00002;	/* force interrupt */
                 asm("nop;");
                 larr[1] = 0;

@@ -130,6 +130,9 @@ memory. It appears that the FPGA leaves the Flash in QSPI mode and
 this mode is not supported by the SPIMCTRL memory controller. A fix
 for this is under development.
 
+Note: If the SPIMCTRL is disabled (via xconfig or by directly editing
+config.vhd then the SPICTRL core can be included in the design).
+
 The SPIMCTRL component from GRLIB is used to access SPI flash memory.
 The ROM area is mapped at address 0xe0000000.  The first 2 MByte of
 this area are reserved for the FPGA bitstream. Currently the design

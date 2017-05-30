@@ -4,7 +4,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -201,6 +201,48 @@ component ahb2mig_7series
    );
 end component ;
 
+component ahb2axi_mig_7series 
+  generic(
+    hindex                  : integer := 0;
+    haddr                   : integer := 0;
+    hmask                   : integer := 16#f00#;
+    pindex                  : integer := 0;
+    paddr                   : integer := 0;
+    pmask                   : integer := 16#fff#
+  );
+  port(
+    ddr3_dq           : inout std_logic_vector(63 downto 0);
+    ddr3_dqs_p        : inout std_logic_vector(7 downto 0);
+    ddr3_dqs_n        : inout std_logic_vector(7 downto 0);
+    ddr3_addr         : out   std_logic_vector(13 downto 0);
+    ddr3_ba           : out   std_logic_vector(2 downto 0);
+    ddr3_ras_n        : out   std_logic;
+    ddr3_cas_n        : out   std_logic;
+    ddr3_we_n         : out   std_logic;
+    ddr3_reset_n      : out   std_logic;
+    ddr3_ck_p         : out   std_logic_vector(0 downto 0);
+    ddr3_ck_n         : out   std_logic_vector(0 downto 0);
+    ddr3_cke          : out   std_logic_vector(0 downto 0);
+    ddr3_cs_n         : out   std_logic_vector(0 downto 0);
+    ddr3_dm           : out   std_logic_vector(7 downto 0);
+    ddr3_odt          : out   std_logic_vector(0 downto 0);
+    ahbso             : out   ahb_slv_out_type;
+    ahbsi             : in    ahb_slv_in_type;
+    apbi              : in    apb_slv_in_type;
+    apbo              : out   apb_slv_out_type;
+    calib_done        : out   std_logic;
+    rst_n_syn         : in    std_logic;
+    rst_n_async       : in    std_logic;
+    clk_amba          : in    std_logic;
+    sys_clk_p         : in    std_logic;
+    sys_clk_n         : in    std_logic;
+    clk_ref_i         : in    std_logic;
+    ui_clk            : out   std_logic;
+    ui_clk_sync_rst   : out   std_logic
+   );
+end component;
+
+
 component ddr_dummy 
   port (
     ddr_dq           : inout std_logic_vector(63 downto 0);
@@ -243,6 +285,9 @@ signal ahbmi : ahb_mst_in_type;
 signal ahbmo : ahb_mst_out_vector := (others => ahbm_none);
 signal mig_ahbsi : ahb_slv_in_type;                            
 signal mig_ahbso : ahb_slv_out_type;
+  
+signal aximi : axi_somi_type;
+signal aximo : axi_mosi_type;
 
 
 signal ui_clk : std_ulogic;
@@ -390,7 +435,8 @@ begin
       rstaddr => CFG_RSTADDR, smp => CFG_NCPU-1, cached => CFG_DFIXED,
       wbmask => CFG_BWMASK, busw => CFG_CACHEBW, netlist => CFG_LEON_NETLIST,
       ft => CFG_LEONFT_EN, npasi => CFG_NP_ASI, pwrpsr => CFG_WRPSR,
-      rex => CFG_REX, altwin => CFG_ALTWIN, grfpush => CFG_GRFPUSH,
+      rex => CFG_REX, altwin => CFG_ALTWIN, mmupgsz => CFG_MMU_PAGE,
+      grfpush => CFG_GRFPUSH,
       dsu_hindex => 2, dsu_haddr => 16#D00#, dsu_hmask => 16#F00#, atbsz => CFG_ATBSZ,
       stat => CFG_STAT_ENABLE, stat_pindex => 8, stat_paddr => 16#100#,
       stat_pmask => 16#ffc#, stat_ncnt => CFG_STAT_CNT, stat_nmax => CFG_STAT_NMAX)
@@ -499,27 +545,42 @@ begin
       signal mem_ahbmo : ahb_mst_out_vector := (others => ahbm_none);
       signal l2c_stato : std_logic_vector(10 downto 0);
     begin
-      l2c0 : l2c generic map (
-        hslvidx => 4, hmstidx => 0, cen => CFG_L2_PEN, 
-        haddr => 16#400#, hmask => 16#c00#, ioaddr => 16#FF0#, 
-        cached => CFG_L2_MAP, repl => CFG_L2_RAN, ways => CFG_L2_WAYS, 
-        linesize => CFG_L2_LSZ, waysize => CFG_L2_SIZE,
-        memtech => memtech, bbuswidth => AHBDW,
-        bioaddr => 16#FFE#, biomask => 16#fff#, 
-        sbus => 0, mbus => 1, arch => CFG_L2_SHARE,
-        ft => CFG_L2_EDAC)
-        port map(rst => rstn, clk => clkm, ahbsi => ahbsi, ahbso => ahbso(4),
-                 ahbmi => mem_ahbmi, ahbmo => mem_ahbmo(0), ahbsov => mem_ahbso,
-                 sto => l2c_stato);
+      nol2caxi : if CFG_L2_AXI = 0 generate
+        l2c0 : l2c generic map (
+          hslvidx => 4, hmstidx => 0, cen => CFG_L2_PEN, 
+          haddr => 16#400#, hmask => 16#c00#, ioaddr => 16#FF0#, 
+          cached => CFG_L2_MAP, repl => CFG_L2_RAN, ways => CFG_L2_WAYS, 
+          linesize => CFG_L2_LSZ, waysize => CFG_L2_SIZE,
+          memtech => memtech, bbuswidth => AHBDW,
+          bioaddr => 16#FFE#, biomask => 16#fff#, 
+          sbus => 0, mbus => 1, arch => CFG_L2_SHARE,
+          ft => CFG_L2_EDAC)
+          port map(rst => rstn, clk => clkm, ahbsi => ahbsi, ahbso => ahbso(4),
+                   ahbmi => mem_ahbmi, ahbmo => mem_ahbmo(0), ahbsov => mem_ahbso,
+                   sto => l2c_stato);
 
-      memahb0 : ahbctrl                -- AHB arbiter/multiplexer
-        generic map (defmast => CFG_DEFMST, split => CFG_SPLIT, 
-                     rrobin => CFG_RROBIN, ioaddr => 16#FFE#,
-                     ioen => 1, nahbm => 1, nahbs => 1)
-        port map (rstn, clkm, mem_ahbmi, mem_ahbmo, mem_ahbsi, mem_ahbso);
+        memahb0 : ahbctrl                -- AHB arbiter/multiplexer
+          generic map (defmast => CFG_DEFMST, split => CFG_SPLIT, 
+                       rrobin => CFG_RROBIN, ioaddr => 16#FFE#,
+                       ioen => 1, nahbm => 1, nahbs => 1)
+          port map (rstn, clkm, mem_ahbmi, mem_ahbmo, mem_ahbsi, mem_ahbso);
 
-      mem_ahbso(0) <= mig_ahbso;
-      mig_ahbsi <= mem_ahbsi;
+        mem_ahbso(0) <= mig_ahbso;
+        mig_ahbsi <= mem_ahbsi;
+      end generate;
+
+      l2caxi : if CFG_L2_AXI /= 0 generate
+        l2c0 : l2c_axi_be generic map (
+          hslvidx => 4, axiid => 0, cen => CFG_L2_PEN, 
+          haddr => 16#400#, hmask => 16#c00#, ioaddr => 16#FF0#, 
+          cached => CFG_L2_MAP, repl => CFG_L2_RAN, ways => CFG_L2_WAYS, 
+          linesize => CFG_L2_LSZ, waysize => CFG_L2_SIZE,
+          memtech => memtech, sbus => 0, mbus => 0, arch => CFG_L2_SHARE,
+          ft => CFG_L2_EDAC, stat => 2)
+          port map(rst => rstn, clk => clkm, ahbsi => ahbsi, ahbso => ahbso(4),
+                   aximi => aximi, aximo => aximo,
+                   sto => l2c_stato);
+      end generate;
 
       perf.event(15 downto 7) <= (others => '0');
       perf.esource(15 downto 7) <= (others => (others => '0'));
@@ -549,66 +610,141 @@ begin
   ----------------------------------------------------------------------
   mig_gen : if (CFG_MIG_7SERIES = 1) generate
     gen_mig : if (USE_MIG_INTERFACE_MODEL /= true) generate
-      ddrc : ahb2mig_7series generic map (
-        hindex => 4*(1-CFG_L2_EN), haddr => 16#400#, hmask => 16#F00#,
-        pindex => 4, paddr => 4,
-        SIM_BYPASS_INIT_CAL => SIM_BYPASS_INIT_CAL,
-        SIMULATION => SIMULATION, USE_MIG_INTERFACE_MODEL => USE_MIG_INTERFACE_MODEL)
-        port map (
-          ddr3_dq         => ddr3_dq,
-          ddr3_dqs_p      => ddr3_dqs_p,
-          ddr3_dqs_n      => ddr3_dqs_n,
-          ddr3_addr       => ddr3_addr,
-          ddr3_ba         => ddr3_ba,
-          ddr3_ras_n      => ddr3_ras_n,
-          ddr3_cas_n      => ddr3_cas_n,
-          ddr3_we_n       => ddr3_we_n,
-          ddr3_reset_n    => ddr3_reset_n,
-          ddr3_ck_p       => ddr3_ck_p,
-          ddr3_ck_n       => ddr3_ck_n,
-          ddr3_cke        => ddr3_cke,
-          ddr3_cs_n       => ddr3_cs_n,
-          ddr3_dm         => ddr3_dm,
-          ddr3_odt        => ddr3_odt,
-          ahbsi           => mig_ahbsi,
-          ahbso           => mig_ahbso,
-          apbi            => apbi,
-          apbo            => apbo(4),
-          calib_done      => calib_done,
-          rst_n_syn       => migrstn,
-          rst_n_async     => rstraw,
-          clk_amba        => clkm,
-          sys_clk_p       => clk200p,
-          sys_clk_n       => clk200n,
-          clk_ref_i       => clkref,
-          ui_clk          => clkm,
-          ui_clk_sync_rst => open
-          );
-  
+      gen_ahb2mig : if (CFG_L2_EN = 0) generate
+        ddrc : ahb2mig_7series generic map (
+          hindex => 4*(1-CFG_L2_EN), haddr => 16#400#, hmask => 16#F00#,
+          pindex => 4, paddr => 4,
+          SIM_BYPASS_INIT_CAL => SIM_BYPASS_INIT_CAL,
+          SIMULATION => SIMULATION, USE_MIG_INTERFACE_MODEL => USE_MIG_INTERFACE_MODEL)
+          port map (
+            ddr3_dq         => ddr3_dq,
+            ddr3_dqs_p      => ddr3_dqs_p,
+            ddr3_dqs_n      => ddr3_dqs_n,
+            ddr3_addr       => ddr3_addr,
+            ddr3_ba         => ddr3_ba,
+            ddr3_ras_n      => ddr3_ras_n,
+            ddr3_cas_n      => ddr3_cas_n,
+            ddr3_we_n       => ddr3_we_n,
+            ddr3_reset_n    => ddr3_reset_n,
+            ddr3_ck_p       => ddr3_ck_p,
+            ddr3_ck_n       => ddr3_ck_n,
+            ddr3_cke        => ddr3_cke,
+            ddr3_cs_n       => ddr3_cs_n,
+            ddr3_dm         => ddr3_dm,
+            ddr3_odt        => ddr3_odt,
+            ahbsi           => mig_ahbsi,
+            ahbso           => mig_ahbso,
+            apbi            => apbi,
+            apbo            => apbo(4),
+            calib_done      => calib_done,
+            rst_n_syn       => migrstn,
+            rst_n_async     => rstraw,
+            clk_amba        => clkm,
+            sys_clk_p       => clk200p,
+            sys_clk_n       => clk200n,
+            clk_ref_i       => clkref,
+            ui_clk          => clkm,
+            ui_clk_sync_rst => open
+            );
+      end generate gen_ahb2mig;
+
+
+      gen_ahb2axi_mig: if ( CFG_L2_EN /= 0 and CFG_L2_AXI = 0 ) generate
+        ddrc: ahb2axi_mig_7series generic map (
+          hindex => 4*(1-CFG_L2_EN), haddr => 16#400#, hmask => 16#F00#,
+          pindex => 4, paddr => 4)
+          port map (
+            ddr3_dq         => ddr3_dq,
+            ddr3_dqs_p      => ddr3_dqs_p,
+            ddr3_dqs_n      => ddr3_dqs_n,
+            ddr3_addr       => ddr3_addr,
+            ddr3_ba         => ddr3_ba,
+            ddr3_ras_n      => ddr3_ras_n,
+            ddr3_cas_n      => ddr3_cas_n,
+            ddr3_we_n       => ddr3_we_n,
+            ddr3_reset_n    => ddr3_reset_n,
+            ddr3_ck_p       => ddr3_ck_p,
+            ddr3_ck_n       => ddr3_ck_n,
+            ddr3_cke        => ddr3_cke,
+            ddr3_cs_n       => ddr3_cs_n,
+            ddr3_dm         => ddr3_dm,
+            ddr3_odt        => ddr3_odt,
+            ahbsi           => mig_ahbsi,
+            ahbso           => mig_ahbso,
+            apbi            => apbi,
+            apbo            => apbo(4),
+            calib_done      => calib_done,
+            rst_n_syn       => migrstn,
+            rst_n_async     => rstraw,
+            clk_amba        => clkm,
+            sys_clk_p       => clk200p,
+            sys_clk_n       => clk200n,
+            clk_ref_i       => clkref,
+            ui_clk          => clkm,
+            ui_clk_sync_rst => open
+            );
+      end generate gen_ahb2axi_mig;
+      
+      gen_axi_mig: if ( CFG_L2_EN /= 0 and CFG_L2_AXI /= 0 ) generate
+        ddrc: entity work.axi_mig_7series generic map (
+          hindex => 9, haddr => 16#400#, hmask => 16#F00#,
+          pindex => 4, paddr => 4)
+          port map (
+            ddr3_dq         => ddr3_dq,
+            ddr3_dqs_p      => ddr3_dqs_p,
+            ddr3_dqs_n      => ddr3_dqs_n,
+            ddr3_addr       => ddr3_addr,
+            ddr3_ba         => ddr3_ba,
+            ddr3_ras_n      => ddr3_ras_n,
+            ddr3_cas_n      => ddr3_cas_n,
+            ddr3_we_n       => ddr3_we_n,
+            ddr3_reset_n    => ddr3_reset_n,
+            ddr3_ck_p       => ddr3_ck_p,
+            ddr3_ck_n       => ddr3_ck_n,
+            ddr3_cke        => ddr3_cke,
+            ddr3_cs_n       => ddr3_cs_n,
+            ddr3_dm         => ddr3_dm,
+            ddr3_odt        => ddr3_odt,
+            aximi           => aximi,
+            aximo           => aximo,
+            calib_done      => calib_done,
+            rst_n_syn       => migrstn,
+            rst_n_async     => rstraw,
+            clk_amba        => clkm,
+            sys_clk_p       => clk200p,
+            sys_clk_n       => clk200n,
+            clk_ref_i       => clkref,
+            ui_clk          => clkm,
+            ui_clk_sync_rst => open
+            );
+        
+      end generate gen_axi_mig;
+
       clkgenmigref0 : clkgen
         generic map (clktech, 16, 8, 0,CFG_CLK_NOFB, 0, 0, 0, 100000)
         port map (clkm, clkm, clkref, open, open, open, open, cgi, cgo, open, open, open);
     end generate gen_mig;
-
+    
+    
     gen_mig_model : if (USE_MIG_INTERFACE_MODEL = true) generate
       -- pragma translate_off
       mig_ahbram : ahbram_sim
-       generic map (
-         hindex   => 4*(1-CFG_L2_EN),
-         haddr    => 16#400#,
-         hmask    => 16#C00#,
-         tech     => 0,
-         kbytes   => 1000,
-         pipe     => 0,
-         maccsz   => AHBDW,
-         fname    => "ram.srec"
-       )
-       port map(
-         rst     => rstn,
-         clk     => clkm,
-         ahbsi   => mig_ahbsi,
-         ahbso   => mig_ahbso
-       );
+        generic map (
+          hindex   => 4*(1-CFG_L2_EN),
+          haddr    => 16#400#,
+          hmask    => 16#C00#,
+          tech     => 0,
+          kbytes   => 1000,
+          pipe     => 0,
+          maccsz   => AHBDW,
+          fname    => "ram.srec"
+          )
+        port map(
+          rst     => rstn,
+          clk     => clkm,
+          ahbsi   => mig_ahbsi,
+          ahbso   => mig_ahbso
+          );
       ddr3_dq           <= (others => 'Z');
       ddr3_dqs_p        <= (others => 'Z');
       ddr3_dqs_n        <= (others => 'Z');
@@ -624,9 +760,9 @@ begin
       ddr3_cs_n         <= (others => '0');
       ddr3_dm           <= (others => '0');
       ddr3_odt          <= (others => '0');
-  
+      
       calib_done <= '1';
-       
+      
       clkm <= not clkm after 5.0 ns;
       -- pragma translate_on
     end generate gen_mig_model;

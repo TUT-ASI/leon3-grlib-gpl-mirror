@@ -50,3 +50,10 @@ irqgen.vhd
 ahbpl.vhd
 ahbpls.vhd
 ahbplm.vhd
+sf2apbslv_wrapper.vhd
+sf2mddr_wrapper.vhd
+sf2ficmst_wrapper.vhd
+sf2ficslv_wrapper.vhd
+apb3cdc.vhd
+ahbsmux.vhd
+ahbmmux.vhd

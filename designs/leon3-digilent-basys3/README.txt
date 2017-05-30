@@ -7,6 +7,8 @@ Simulation and synthesis
 The design currently supports synthesis with Xilinx Vivado (tested
 with Vivado 2015.2, 2015.3 and 2015.4).
 
+Currently the design won't simulate correctly with the provided ram.srec, since this is too large for the RAM and will result in a trap.
+
 To simulate using XSIM and run systest.c on the LEON design use the make targets:
 
   make soft

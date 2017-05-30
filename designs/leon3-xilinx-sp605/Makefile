@@ -105,7 +105,7 @@ CLEAN=soft-clean migclean pcieclean
 VCOMOPT=-explicit
 TECHLIBS = secureip unisim
 
-VSIMOPT= -t ps $(SIMTOP)
+VSIMOPT= -t ps -do $(GRLIB)/bin/runvsim.do $(SIMTOP)
 
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip cypress ihp gsi fmf spansion 

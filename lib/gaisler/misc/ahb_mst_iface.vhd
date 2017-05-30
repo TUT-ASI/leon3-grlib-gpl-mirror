@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -21,11 +21,15 @@
 -- Entity:	ahb_mst_iface
 -- File:        ahb_mst_iface.vhd
 -- Author:      Marko Isomaki - Aeroflex Gaisler
+-- Modified     Alen Bardizbanyan - Cobham Gaisler AB
+--              ACDM support
 -- Description: General AHB master interface for DMA
 -------------------------------------------------------------------------------
 library ieee;
 use ieee.std_logic_1164.all;
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.stdlib.all;
 use grlib.amba.all;
 library gaisler;
@@ -36,7 +40,8 @@ entity ahb_mst_iface is
     hindex      : integer;
     vendor      : integer;
     device      : integer;
-    revision    : integer);
+    revision    : integer;
+    scantest    : integer := 0);
   port(
     rst         : in  std_ulogic;
     clk         : in  std_ulogic;
@@ -57,11 +62,23 @@ architecture rtl of ahb_mst_iface is
     ba     : std_ulogic; --bus active
     bb     : std_ulogic; --1kB burst boundary detected
     retry  : std_ulogic;
-    error  : std_ulogic; 
+    error  : std_ulogic;
+    addr   : std_logic_vector(2 downto 0);
   end record;
 
+  constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant ASYNC_RESET : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
+  constant RRES : reg_type := (bg => '0', ba => '0', bb => '0', retry => '0', error => '0', addr => "000");
+  
   signal r, rin : reg_type;
+  signal arst : std_ulogic;
+  
 begin
+
+  arst <= ahbmi.testrst when (ASYNC_RESET and scantest/=0 and ahbmi.testen/='0') else
+          rst when ASYNC_RESET else
+          '1';
+
   comb : process(rst, r, msti, ahbmi) is
   variable v       : reg_type;
   variable htrans  : std_logic_vector(1 downto 0);
@@ -95,6 +112,7 @@ begin
     
     --1 kB burst boundary
     if ahbmi.hready = '1' then
+      v.addr := haddr(4 downto 2);
       if haddr(9 downto 2) = "11111111" then
         v.bb := '1';
       else
@@ -136,12 +154,12 @@ begin
       end if;
     end if;
 
-    if rst = '0' then
+    if (not ASYNC_RESET) and (not RESET_ALL) and (rst = '0') then
       v.bg := '0'; v.ba := '0'; v.bb := '0';
     end if;
     
     rin <= v;
-    msto.data      <= ahbreadword(ahbmi.hrdata);
+    msto.data      <= ahbreadword(ahbmi.hrdata,r.addr);
     msto.error     <= verror;
     msto.retry     <= vretry;
     msto.ready     <= vready;
@@ -154,10 +172,25 @@ begin
     ahbmo.hwdata   <= ahbdrivedata(hwdata);
   end process;
 
-  regs : process(clk)
-  begin
-    if rising_edge(clk) then r <= rin; end if;
-  end process; 
+  syncrregs : if not ASYNC_RESET generate
+    regs : process(clk)
+    begin
+      if rising_edge(clk) then
+        r <= rin;
+        if RESET_ALL and rst = '0' then r <= RRES; end if;
+      end if;
+    end process;
+  end generate;
+  asyncrregs : if ASYNC_RESET generate
+    regs : process(clk, arst)
+    begin
+      if arst = '0' then
+        r <= RRES;
+      elsif rising_edge(clk) then
+        r <= rin;
+      end if;
+    end process;
+  end generate;
  
   ahbmo.hlock	 <= '0';
   ahbmo.hburst   <= HBURST_INCR;

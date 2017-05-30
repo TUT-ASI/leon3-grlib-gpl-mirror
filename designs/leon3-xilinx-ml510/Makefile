@@ -3,7 +3,7 @@ GRLIB=../..
 
 
 TOP=leon3mp
-ifeq ("$(CONFIG_LEON3)","4")
+ifeq ("$(CONFIG_LEON4)","y")
 GRLIB_CONFIG=grlib_config_leon4.vhd
 endif
 
@@ -45,7 +45,7 @@ CLEAN=soft-clean
 
 include $(GRLIB)/software/leon3/Makefile
 
-VSIMOPT= -gDEBUG=0 +nowarnTSCALE +nowarnTFMPC +nowarnPCDPC -t 1ps testbench
+VSIMOPT= -gDEBUG=0 +nowarnTSCALE +nowarnTFMPC +nowarnPCDPC -t 1ps -do $(GRLIB)/bin/runvsim.do $(SIMTOP)
 
 VLOGOPT= +define+MODEL_TECH=1
 
@@ -53,7 +53,7 @@ TECHLIBS = xilinxcorelib_ver secureip_ver unisims_ver secureip unisim virtex5
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp usbhc spw micron
 DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan can \
-	grusbhc usb spacewire hcan leon4v0 l2cache \
+	grusbhc usb spacewire hcan \
 	slink ascs pwm gr1553b iommu ambatest atf
 ifeq ("$(CONFIG_LEON4)","")
 DIRSKIP+=leon4v0

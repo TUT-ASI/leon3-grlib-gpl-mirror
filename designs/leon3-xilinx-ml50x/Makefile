@@ -146,7 +146,7 @@ include $(GRLIB)/software/leon3/Makefile
 
 TECHLIBS = xilinxcorelib_ver secureip_ver unisims_ver secureip unisim virtex5
 
-VSIMOPT= -gDEBUG=0 +nowarnTSCALE -L work -L secureip_ver -L xilinxcorelib_ver -L unisims_ver glbl +nowarnTFMPC +nowarnPCDPC -t 1ps testbench
+VSIMOPT= -gDEBUG=0 +nowarnTSCALE -L work -L secureip_ver -L xilinxcorelib_ver -L unisims_ver glbl +nowarnTFMPC +nowarnPCDPC -t 1ps -do $(GRLIB)/bin/runvsim.do $(SIMTOP)
 
 ASIMOPT= -gDEBUG=0 +nowarnTSCALE +nowarnTFMPC +nowarnPCDPC
 
@@ -155,7 +155,7 @@ VLOGOPT= +define+MODEL_TECH=1
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp usbhc spw fmf gsi spansion
 DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan can leon3ft ambatest \
-	grusbhc usb spacewire hcan leon4v0 l2cache \
+	grusbhc usb spacewire hcan l2cache \
 	slink ascs pwm gr1553b iommu
 ifeq ("$(CONFIG_LEON4)","")
 DIRSKIP+=leon4v0

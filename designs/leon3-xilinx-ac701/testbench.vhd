@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -187,7 +187,6 @@ component leon3mp is
     clk200p         : in    std_ulogic;       -- 200 MHz clock
     clk200n         : in    std_ulogic;       -- 200 MHz clock
     spi_sel_n       : inout std_ulogic;
-    spi_clk         : out   std_ulogic;
     spi_miso        : in    std_ulogic;
     spi_mosi        : out   std_ulogic;
     ddr3_dq         : inout std_logic_vector(63 downto 0);
@@ -265,7 +264,6 @@ begin
        clk200p         => clk200p,
        clk200n         => clk200n,
        spi_sel_n       => spi_sel_n,
-       spi_clk         => spi_clk,
        spi_miso        => spi_miso,
        spi_mosi        => spi_mosi,
        ddr3_dq         => ddr3_dq,

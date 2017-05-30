@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -130,7 +130,7 @@ begin
       serdes_ready => ready_sig
     );
 
-  str0: if (fabtech = stratix3) or (fabtech = stratix4) or (is_unisim(fabtech) = 1) generate
+  str0: if (fabtech = stratix3) or (fabtech = stratix4) or (fabtech = stratix5) or (is_unisim(fabtech) = 1) generate
     -- COMMA DETECTOR WITH BITSLIP LOGIC
     cd0: comma_detect
       generic map (

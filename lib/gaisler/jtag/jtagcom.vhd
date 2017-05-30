@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -31,11 +31,12 @@ use ieee.std_logic_1164.all;
 library grlib;
 use grlib.amba.all;
 use grlib.stdlib.all;
+use grlib.config_types.all;
+use grlib.config.all;
 library techmap;
 use techmap.gencomp.all;
 library gaisler;
 use gaisler.libjtagcom.all;
-use gaisler.misc.all;
 
 entity jtagcom is
   generic (
@@ -91,6 +92,11 @@ architecture rtl of jtagcom is
   end record;
 
   signal nexttdo: std_ulogic;
+
+  constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant RES: reg_type := ((others => '0'),(others => '0'),shft,(others => '0'),
+                             '0','0',(others => '0'),(others => '0'),(others => '0'),'0',
+                             (others => '0'),'0',(others => '0'),(others => '0'),'0','0');
 
   signal r, rin : reg_type;
   signal tr: tckreg_type;
@@ -209,7 +215,7 @@ begin
         v.state := shft; v.addr := (others => '0'); v.seq := '0';
     end case;
 
-    if (rst = '0') or (r.trst(0) = '1') then
+    if ((rst = '0') and not RESET_ALL) or (r.trst(0) = '1') then
       v.state := shft; v.addr := (others => '0'); v.seq := '0';
     end if;
 
@@ -223,6 +229,17 @@ begin
   reg : process (clk)
   begin
     if rising_edge(clk) then r <= rin; end if;
+    if (rst = '0') and RESET_ALL then
+      r <= RES;
+      -- Sync registers not reset
+      r.tcktog <= rin.tcktog;
+      r.trst <= rin.trst;
+      r.tdi <= rin.tdi;
+      r.shift <= rin.shift;
+      r.upd <= rin.upd;
+      r.asel <= rin.asel;
+      r.dsel <= rin.dsel;
+    end if;
   end process;
   
   tckreg: process (tck,trst)

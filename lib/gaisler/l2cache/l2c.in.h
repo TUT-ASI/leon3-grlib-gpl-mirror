@@ -74,3 +74,7 @@
 #ifndef CONFIG_L2_EDAC
 #define CONFIG_L2_EDAC 0
 #endif
+
+#ifndef CONFIG_L2_AXI
+#define CONFIG_L2_AXI 0
+#endif

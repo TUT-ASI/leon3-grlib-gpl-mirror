@@ -15,10 +15,9 @@ CONFIG_SYN_INFERRED
   - Altera-Stratix: Altera Stratix FPGA family
   - Altera-StratixII: Altera Stratix/Cyclone-II FPGA families
   - Altera-StratixIII: Altera Stratix-III FPGA family
-  - Altera-StratixIV: Altera Stratix-III FPGA family
+  - Altera-StratixIV: Altera Stratix-IV FPGA family
+  - Altera-StratixV: Altera Stratix-V FPGA family
   - ATC18: Atmel-Nantes 0.18 um rad-hard CMOS
-  - IHP25: IHP 0.25 um CMOS
-  - IHP25RH: IHP Rad-Hard 0.25 um CMOS
   - Lattice : EC/ECP/XP FPGAs
   - Quicklogic : Eclipse/E/II FPGAs
   - UMC-0.18 : UMC 0.18 um CMOS with Virtual Silicon libraries
@@ -31,6 +30,9 @@ CONFIG_SYN_INFERRED
   distribution. A technology may be present in this list while the
   tech support files are missing from the GRLIB distribution.
   Actel support is only available in commercial and FT distributions.
+
+  Additional target technologies are available that are not selectable
+  via the xconfig tool.
 
 Ram library
 CONFIG_MEM_VIRAGE
@@ -273,12 +275,6 @@ CONFIG_IU_RSTADDR
   With this option, any 4-kbyte aligned reset start address can be
   choosen. Keep at 0 unless you really know what you are doing.
 
-No tagged arithmetic
-CONFIG_NOTAG
-  Say Y here to disable tagged arithmetic and the CASA instructions.
-  This will save some area in minimal systems that do not need
-  these features.
-
 Power-down
 CONFIG_PWD
   Say Y here to enable the power-down feature of the processor.
@@ -411,6 +407,9 @@ CONFIG_DCACHE_ASSO1
 
   Note that a 1-way cache is effectively a direct-mapped cache.
 
+  If the MMU is enabled then bus snooping is required to avoid
+  aliasing effects in multi-way caches.
+
 Data cache way size
 CONFIG_DCACHE_SZ1
   The size of each way in the data cache (kbytes). Valid values are
@@ -419,7 +418,11 @@ CONFIG_DCACHE_SZ1
   to 2 - 16 kbyte. A large cache gives higher performance but the
   data cache is timing critical an a too large setting might affect
   the maximum frequency (on ASIC targets). The total data cache size
-  is the number of way multiplied with the way size.
+  is the number of ways multiplied with the way size.
+
+  Note that when the MMU is enabled, bus snooping should also be
+  enabled and the data cache way size should not exceed the MMU
+  page size.
 
 Data cache line size
 CONFIG_DCACHE_LZ16
@@ -446,8 +449,8 @@ CONFIG_DCACHE_SNOOP
   data cache will be automatically detected and the cache line will
   be marked as invalid. This simplifies software design in systems
   with DMA units or multiple processors accessing the same memory.
-  It is a requirement (together with separate snoop tags) to run
-  Linux on more than one CPU.
+  It is a requirement (together with separate physical/snoop tags)
+  to run Linux on more than one CPU.
 
   Depending on the separate snoop tags option, snooping will be
   implemented using either dual-port (common tags) or two-port
@@ -547,7 +550,7 @@ CONFIG_MMU_PAGE_4K
 
   Note that an MMU page size different than 4 Kbyte will require
   a special linux tool-chain if glibc is used. If you don't know
-  what you are doing, stay with 4 Kbyte ...
+  what you are doing, stay with 4 Kbyte.
 
 DSU enable
 CONFIG_DSU_ENABLE
@@ -618,7 +621,8 @@ IU Register file protection
 CONFIG_IUFT_NONE
   Select the FT implementation in the LEON3FT integer unit
   register file. The options include parity, parity with
-  sparing, 7-bit BCH and TMR.
+  sparing, 7-bit BCH, 7-bit BCH with on-the-fly (OTF)
+  correction, technology-specific and TMR.
 
 FPU Register file protection
 CONFIG_FPUFT_NONE
@@ -632,8 +636,18 @@ CONFIG_RF_ERRINJ
   Affects only simulation.
 
 Cache memory protection
-CONFIG_CACHE_FT_EN
+CONFIG_CACHE_FT_NONE
   Enable SEU error-correction in the cache memories.
+
+  None - No protection
+  Parity     - Technology agnostic parity protection
+  SECDEC-BCH - SECDED for cache, slow and large area overhead
+  TechSpec   - Use target technology protection
+
+  The recommended setting is Parity. Target technologies
+  with built in protection on SRAMs can have area savings
+  with TechSpec. Currently this option should only be used
+  for Microsemi RTG4.
 
 Cache memory error injection
 CONFIG_CACHE_ERRINJ
@@ -1174,6 +1188,30 @@ CONFIG_SPIMCTRL_ASCALER
 Power-up cnt
 CONFIG_SPIMCTRL_PWRUPCNT
   Number of system clock cycles to wait before issuing first command.
+Gaisler Research SPI controller
+CONFIG_SPICTRL_ENABLE
+  Say Y here to enable the SPI controller(s)
+
+CONFIG_SPICTRL_NUM
+  Number of SPI controllers to implement in design. Note that most
+  template designs are limited to one SPI controller.
+  Configuration options made here in xconfig will apply to all
+  implemented SPI controllers.
+
+CONFIG_SPICTRL_MAXWLEN
+  0: Core will support lengths up to 32 bits
+  1-2: Illegal values
+  3-15: Maximum word length will be value+1 (4-16)
+
+CONFIG_SPICTRL_SYNCRAM
+  Say Y here to use SYNCRAM_2P components for the core's receive
+  and transmit queues. This is the recommended setting, particularly
+  if the core is implemented with support for automatic mode.
+
+CONFIG_SPICTRL_FT
+  Fault-tolerance for internal buffers. Only applicable if core
+  buffers are implemented with SYNCRAM components.
+
 UART debugging
 CONFIG_DEBUG_UART
   During simulation, the output from the UARTs is printed on the

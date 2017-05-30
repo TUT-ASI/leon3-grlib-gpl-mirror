@@ -27,7 +27,8 @@ package pcicomp is
       pclk    : in std_ulogic;
       prst_n  : in std_ulogic;
       apbi    : in apb_slv_in_type;
-      apbo    : out apb_slv_out_type
+      apbo    : out apb_slv_out_type;
+      gnt_n_unreg   : out std_logic_vector(0 to nb_agents-1)
     );
   end component;
 end package;

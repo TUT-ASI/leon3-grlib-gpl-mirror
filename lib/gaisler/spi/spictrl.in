@@ -9,7 +9,7 @@
      bool 'Enable automatic slave select'   CONFIG_SPICTRL_ASEL
      bool 'Support automated transfers  '   CONFIG_SPICTRL_AM
      bool 'Support open drain mode      '   CONFIG_SPICTRL_ODMODE
-     bool 'Support three-wire mode      '   CONFIG_SPICTRL_TWEN
+     bool 'Support three-wire protocol  '   CONFIG_SPICTRL_TWEN
      int  'Maximum supported word length (see help!) ' CONFIG_SPICTRL_MAXWLEN 0
      bool 'Use SYNCRAM for rx and tx queues '  CONFIG_SPICTRL_SYNCRAM
      if [ "$CONFIG_SPICTRL_SYNCRAM" = "y" ]; then
@@ -18,6 +18,10 @@
 	 Parity-DMR	CONFIG_SPICTRL_DMRFT \
 	 TMR		CONFIG_SPICTRL_TMRFT" None
      fi
+     choice 'SPI protocols' \
+	"Standard	CONFIG_SPICTRL_PROT0 \
+	 Dual	        CONFIG_SPICTRL_PROT1 \
+	 Quad		CONFIG_SPICTRL_PROT2" Standard
     fi
   endmenu
 

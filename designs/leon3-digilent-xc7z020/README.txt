@@ -14,9 +14,10 @@ uased as LEON3 memory, and accessed through a custom AHB/AXI bridge
 Simulation
 ----------
 
-Simulation sjould work with any supported VHDL simultor. 
+Simulation should work with any supported VHDL simultor.
 To build and load the design with the modelsim simulator, do:
 
+  make install-secureip_ver
   make sim
   make sim-launch
 

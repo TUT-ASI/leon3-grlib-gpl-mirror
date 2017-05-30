@@ -8,7 +8,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -130,9 +130,11 @@ entity leon3mp is
     -- SPI flash
     spi_sel_n   : inout std_ulogic;
     spi_clk     : out   std_ulogic;
-    spi_miso    : in    std_ulogic;
-    spi_mosi    : inout std_ulogic;
-
+    spi_dq1     : inout std_logic;     -- MISO
+    spi_dq0     : inout std_logic;      -- MOSI
+    spi_dq2     : inout std_logic;
+    spi_dq3     : inout std_logic;
+    
     -- HDMI port
     tmdstx_clk_p : out std_logic;
     tmdstx_clk_n : out std_logic;
@@ -205,7 +207,11 @@ architecture rtl of leon3mp is
 
   signal spmi : spimctrl_in_type;
   signal spmo : spimctrl_out_type;
-
+  
+  signal spii : spi_in_type;
+  signal spio : spi_out_type;
+  signal slvsel : std_logic_vector(CFG_SPICTRL_SLVS-1 downto 0);
+  
   signal kbdi : ps2_in_type;
   signal kbdo : ps2_out_type;
   signal moui : ps2_in_type;
@@ -550,9 +556,9 @@ begin
       port map (rstn, clkm, ahbsi, ahbso(3), spmi, spmo); 
 
     miso_pad : inpad generic map (tech => padtech)
-      port map (spi_miso, spmi.miso);
+      port map (spi_dq1, spmi.miso);
     mosi_pad : iopad generic map (tech => padtech)
-      port map (spi_mosi, spmo.mosi, spmo.mosioen , spmi.mosi);
+      port map (spi_dq0, spmo.mosi, spmo.mosioen , spmi.mosi);
     sck_pad  : outpad generic map (tech => padtech)
       port map (spi_clk, spmo.sck);
     spisel_pad : odpad generic map (tech => padtech)
@@ -661,6 +667,33 @@ begin
     gpioi.din(23 downto 21) <= (others => '0');
   end generate;	
 
+  spic: if CFG_SPICTRL_ENABLE = 1 and CFG_SPIMCTRL = 0 generate  -- SPI controller
+    spi1 : spictrl
+      generic map (pindex => 11, paddr  => 11, pmask  => 16#fff#, pirq => 12,
+                   fdepth => CFG_SPICTRL_FIFO, slvselen => CFG_SPICTRL_SLVREG,
+                   slvselsz => CFG_SPICTRL_SLVS, odmode => 0, netlist => 0,
+                   syncram => CFG_SPICTRL_SYNCRAM, ft => CFG_SPICTRL_FT,
+                   prot => CFG_SPICTRL_PROT)
+      port map (rstn, clkm, apbi, apbo(11), spii, spio, slvsel);
+    spii.spisel <= '1';                 -- Master only
+    miso_pad : iopad generic map (tech => padtech)
+      port map (spi_dq1, spio.miso, spio.misooen, spii.miso);
+    mosi_pad : iopad generic map (tech => padtech)
+      port map (spi_dq0, spio.mosi, spio.mosioen, spii.mosi);
+    io2_pad : iopad generic map (tech => padtech)
+      port map (spi_dq2, spio.io2, spio.io2oen, spii.io2);
+    io3_pad : iopad generic map (tech => padtech)
+      port map (spi_dq3, spio.io3, spio.io3oen, spii.io3);
+    sck_pad  : outpad generic map (tech => padtech)
+      port map (spi_clk, spio.sck);
+    slvsel_pad : outpad generic map (tech => padtech)
+      port map (spi_sel_n, slvsel(0));
+  end generate spic;
+
+  nospic: if CFG_SPICTRL_ENABLE = 0 or CFG_SPIMCTRL = 1 generate
+    apbo(11) <= apb_none;
+  end generate;
+  
   ahbs : if CFG_AHBSTAT = 1 generate   -- AHB status register
     stati <= ahbstat_in_none;
     ahbstat0 : ahbstat generic map (pindex => 15, paddr => 15, pirq => 7,

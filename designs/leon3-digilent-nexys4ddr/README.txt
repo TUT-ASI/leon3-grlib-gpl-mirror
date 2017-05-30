@@ -5,7 +5,9 @@ Simulation and synthesis
 ------------------------
 
 The design currently supports synthesis with Xilinx Vivado (tested
-with Vivado 2015.4).
+with Vivado 2017.1).
+
+The design currently supports simulation with modelsim 10.5a and riviera 2017.2
 
 The XILINX_VIVADO variable must be exported for the mig_7series target
 to work correctly: export XILINX_VIVADO
@@ -46,7 +48,7 @@ To simulate using Aldec Riviera use the following make targets:
 
   make map_xilinx_7series_lib
   make riviera
-  make mig_series7 (only required if Xilinx MIG is enabled via xconfig)
+  make mig_7series (only required if Xilinx MIG is enabled via xconfig)
   make soft
   make riviera-launch
 

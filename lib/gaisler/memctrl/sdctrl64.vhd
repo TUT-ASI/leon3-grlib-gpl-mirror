@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -66,7 +66,7 @@ architecture rtl of sdctrl64 is
 constant WPROTEN   : boolean := wprot = 1;
 constant SDINVCLK  : boolean := invclk = 1;
 
-constant REVISION  : integer := 0;
+constant REVISION  : integer := 1;
 
 constant PM_PD    : std_logic_vector(2 downto 0) := "001";
 constant PM_SR    : std_logic_vector(2 downto 0) := "010";
@@ -252,7 +252,7 @@ begin
           when others => dqm := "11111100";
         end case;
       when "10" =>
-	if r.hwrite = '0' then  dqm := "00000000";
+        if r.hwrite = '0' then  dqm := "00000000";
         elsif r.haddr(2) = '0' then dqm := "00001111";
         else dqm := "11110000"; end if;
       when others => dqm := "00000000";
@@ -297,13 +297,13 @@ begin
 
 -- generate bank address
 
-    ba := genmux(r.cfg.bsize, haddr(29 downto 21)) &
-          genmux(r.cfg.bsize, haddr(28 downto 20));
+    ba := genmux(r.cfg.bsize, haddr(29 downto 22)) &
+          genmux(r.cfg.bsize, haddr(28 downto 21));
 
 -- generate chip select
 
-    adec0 := genmux(r.cfg.bsize, haddr(29 downto 22));
-    adec1 := genmux(r.cfg.bsize, haddr(30 downto 23));
+    adec0 := genmux(r.cfg.bsize, haddr(30 downto 23));
+    adec1 := genmux(r.cfg.bsize, haddr(31 downto 24));
     
     rams := (adec1 and adec0) & (adec1 and not adec0) & (not adec1 and adec0) & (not adec1 and not adec0);
 
@@ -356,7 +356,7 @@ begin
 
       if r.hwrite = '1' then
 
-	v.sdstate := wr1; v.sdwen := '0'; v.bdrive := '0';
+        v.sdstate := wr1; v.sdwen := '0'; v.bdrive := '0';
         if ahbsi.htrans = "11" or (r.hready = '0') then v.hready := '1'; end if;
         if WPROTEN and (r.wprothit = '1') then
           v.hresp := HRESP_ERROR; v.hready := '1';
@@ -397,8 +397,8 @@ begin
     when rd1 =>
       v.casn := '1'; v.sdstate := rd7;
       if (ahbsi.htrans = "11") then
-	if r.size = "11" then v.address(9 downto 1) := r.address(9 downto 1) + 2;
-	else v.address(9 downto 1) := r.address(9 downto 1) + 1; end if;
+        if r.size = "11" then v.address(9 downto 1) := r.address(9 downto 1) + 2;
+        else v.address(9 downto 1) := r.address(9 downto 1) + 1; end if;
         v.casn := '0';
       end if;
     when rd7 =>
@@ -406,8 +406,8 @@ begin
       if r.cfg.casdel = '1' then
         v.sdstate := rd2;
         if (ahbsi.htrans = "11") then
-	  if r.size = "11" then v.address(9 downto 1) := r.address(9 downto 1) + 2;
-	  else v.address(9 downto 1) := r.address(9 downto 1) + 1; end if;
+          if r.size = "11" then v.address(9 downto 1) := r.address(9 downto 1) + 2;
+          else v.address(9 downto 1) := r.address(9 downto 1) + 1; end if;
           v.casn := '0';
         end if;
       else
@@ -415,8 +415,8 @@ begin
         if ahbsi.htrans /= "11" then
           if (r.trfc(3 downto 1) = "000") then v.rasn := '0'; v.sdwen := '0'; end if;
         else
-	  if r.size = "11" then v.address(9 downto 1) := r.address(9 downto 1) + 2;
-	  else v.address(9 downto 1) := r.address(9 downto 1) + 1; end if;
+          if r.size = "11" then v.address(9 downto 1) := r.address(9 downto 1) + 2;
+          else v.address(9 downto 1) := r.address(9 downto 1) + 1; end if;
           v.casn := '0';
         end if;
       end if;
@@ -425,8 +425,8 @@ begin
       if ahbsi.htrans /= "11" then
         if (r.trfc(3 downto 1) = "000") then v.rasn := '0'; v.sdwen := '0'; end if;
       else
-	if r.size = "11" then v.address(9 downto 1) := r.address(9 downto 1) + 2;
-	else v.address(9 downto 1) := r.address(9 downto 1) + 1; end if;
+        if r.size = "11" then v.address(9 downto 1) := r.address(9 downto 1) + 2;
+        else v.address(9 downto 1) := r.address(9 downto 1) + 1; end if;
         v.casn := '0';
       end if;
       if v.sdwen = '0' then v.dqm := (others => '1'); end if;
@@ -435,9 +435,9 @@ begin
       if r.sdwen = '0' then
         v.rasn := '1'; v.sdwen := '1'; v.sdcsn := "1111"; v.dqm := (others => '1');
       else
-	if (ahbsi.htrans = "11") then
-	  if r.size = "11" then v.address(9 downto 1) := r.address(9 downto 1) + 2;
-	  else v.address(9 downto 1) := r.address(9 downto 1) + 1; end if;
+        if (ahbsi.htrans = "11") then
+          if r.size = "11" then v.address(9 downto 1) := r.address(9 downto 1) + 2;
+          else v.address(9 downto 1) := r.address(9 downto 1) + 1; end if;
           v.casn := '0';
         end if;
       end if;
@@ -455,8 +455,8 @@ begin
           else v.sdstate := sidle; v.idlecnt := (others => '1'); end if;
         end if;
       else
-	if r.size = "11" then v.address(9 downto 1) := r.address(9 downto 1) + 2;
-	else v.address(9 downto 1) := r.address(9 downto 1) + 1; end if;
+        if r.size = "11" then v.address(9 downto 1) := r.address(9 downto 1) + 2;
+        else v.address(9 downto 1) := r.address(9 downto 1) + 1; end if;
         v.casn := '0';
       end if;
     when rd5 =>
@@ -682,7 +682,7 @@ begin
       -- WORD is present on 31:0 of AMBA HRDATA.
       if andv(r.size) /= '1' and r.haddr(2) = '0' then
         dout(31 downto 0) := r.hrdata(63 downto 32);        
-	if r.hready = '1' then v.hrdata := r.hrdata; end if;
+        if r.hready = '1' then v.hrdata := r.hrdata; end if;
       end if;
     end if;
 

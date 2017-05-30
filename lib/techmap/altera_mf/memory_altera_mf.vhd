@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -53,35 +53,130 @@ end;
 
 architecture behav of altera_syncram_dp is
 
+--  component altsyncram
+--  generic (
+--    width_a	: natural;
+--    width_b	: natural := 1;
+--    widthad_a	: natural;
+--    widthad_b	: natural := 1);
+--  port(
+--    address_a	: in std_logic_vector(widthad_a-1 downto 0);
+--    address_b	: in std_logic_vector(widthad_b-1 downto 0);
+--    clock0	: in std_logic;
+--    clock1	: in std_logic;
+--    data_a	: in std_logic_vector(width_a-1 downto 0);
+--    data_b	: in std_logic_vector(width_b-1 downto 0);
+--    q_a		: out std_logic_vector(width_a-1 downto 0);
+--    q_b		: out std_logic_vector(width_b-1 downto 0);
+--    rden_b	: in std_logic;
+--    wren_a	: in std_logic;
+--    wren_b	: in std_logic
+--    );
+--  end component;
+
   component altsyncram
-  generic (
-    width_a	: natural;
-    width_b	: natural := 1;
-    widthad_a	: natural;
-    widthad_b	: natural := 1);
-  port(
-    address_a	: in std_logic_vector(widthad_a-1 downto 0);
-    address_b	: in std_logic_vector(widthad_b-1 downto 0);
-    clock0	: in std_logic;
-    clock1	: in std_logic;
-    data_a	: in std_logic_vector(width_a-1 downto 0);
-    data_b	: in std_logic_vector(width_b-1 downto 0);
-    q_a		: out std_logic_vector(width_a-1 downto 0);
-    q_b		: out std_logic_vector(width_b-1 downto 0);
-    rden_b	: in std_logic;
-    wren_a	: in std_logic;
-    wren_b	: in std_logic
-    );
-end component;
+    generic (
+      address_aclr_a  :       string := "UNUSED";
+      address_aclr_b  :       string := "NONE";
+      address_reg_b   :       string := "CLOCK1";
+      byte_size       :       natural := 8;
+      byteena_aclr_a  :       string := "UNUSED";
+      byteena_aclr_b  :       string := "NONE";
+      byteena_reg_b   :       string := "CLOCK1";
+      clock_enable_core_a     :       string := "USE_INPUT_CLKEN";
+      clock_enable_core_b     :       string := "USE_INPUT_CLKEN";
+      clock_enable_input_a    :       string := "NORMAL";
+      clock_enable_input_b    :       string := "NORMAL";
+      clock_enable_output_a   :       string := "NORMAL";
+      clock_enable_output_b   :       string := "NORMAL";
+      intended_device_family  :       string := "unused";
+      enable_ecc      :       string := "FALSE";
+      implement_in_les        :       string := "OFF";
+      indata_aclr_a   :       string := "UNUSED";
+      indata_aclr_b   :       string := "NONE";
+      indata_reg_b    :       string := "CLOCK1";
+      init_file       :       string := "UNUSED";
+      init_file_layout        :       string := "PORT_A";
+      maximum_depth   :       natural := 0;
+      numwords_a      :       natural := 0;
+      numwords_b      :       natural := 0;
+      operation_mode  :       string := "BIDIR_DUAL_PORT";
+      outdata_aclr_a  :       string := "NONE";
+      outdata_aclr_b  :       string := "NONE";
+      outdata_reg_a   :       string := "UNREGISTERED";
+      outdata_reg_b   :       string := "UNREGISTERED";
+      power_up_uninitialized  :       string := "FALSE";
+      ram_block_type  :       string := "AUTO";
+      rdcontrol_aclr_b        :       string := "NONE";
+      rdcontrol_reg_b :       string := "CLOCK1";
+      read_during_write_mode_mixed_ports      :       string := "DONT_CARE";
+      read_during_write_mode_port_a   :       string := "NEW_DATA_NO_NBE_READ";
+      read_during_write_mode_port_b   :       string := "NEW_DATA_NO_NBE_READ";
+      width_a :       natural;
+      width_b :       natural := 1;
+      width_byteena_a :       natural := 1;
+      width_byteena_b :       natural := 1;
+      widthad_a       :       natural;
+      widthad_b       :       natural := 1;
+      wrcontrol_aclr_a        :       string := "UNUSED";
+      wrcontrol_aclr_b        :       string := "NONE";
+      wrcontrol_wraddress_reg_b    :       string := "CLOCK1";
+      lpm_hint        :       string := "UNUSED";
+      lpm_type        :       string := "altsyncram"
+      );
+    port(
+      aclr0   :       in std_logic := '0';
+      aclr1   :       in std_logic := '0';
+      address_a       :       in std_logic_vector(widthad_a-1 downto 0);
+      address_b       :       in std_logic_vector(widthad_b-1 downto 0) := (others => '1');
+      addressstall_a  :       in std_logic := '0';
+      addressstall_b  :       in std_logic := '0';
+      byteena_a       :       in std_logic_vector(width_byteena_a-1 downto 0) := (others => '1');
+      byteena_b       :       in std_logic_vector(width_byteena_b-1 downto 0) := (others => '1');
+      clock0  :       in std_logic := '1';
+      clock1  :       in std_logic := '1';
+      clocken0        :       in std_logic := '1';
+      clocken1        :       in std_logic := '1';
+      clocken2        :       in std_logic := '1';
+      clocken3        :       in std_logic := '1';
+      data_a  :       in std_logic_vector(width_a-1 downto 0) := (others => '1');
+      data_b  :       in std_logic_vector(width_b-1 downto 0) := (others => '1');
+      eccstatus       :       out std_logic_vector(2 downto 0);
+      q_a     :       out std_logic_vector(width_a-1 downto 0);
+      q_b     :       out std_logic_vector(width_b-1 downto 0);
+      rden_a  :       in std_logic := '1';
+      rden_b  :       in std_logic := '1';
+      wren_a  :       in std_logic := '0';
+      wren_b  :       in std_logic := '0'
+      );
+  end component;
+
+  signal address_a: std_logic_vector(abits-1 downto 0);
+  signal address_b: std_logic_vector(abits-1 downto 0);
 
 begin
+
+  -- Quartus 16.0 altsyncram simulation libraries have some address checking logic
+  -- that converts the addresses to integers even when not reading/writing.
+  -- To avoid many warnings from the IEEE libraries, we manipulate the address
+  -- in simulation to avoid X-address in.
+  address_a <= address1
+--pragma translate_off
+               when (not is_x(address1) or write1='1') else (others => '1')
+--pragma translate_on
+               ;
+  address_b <= address2
+--pragma translate_off
+               when (not is_x(address2) or write2='1') else (others => '1')
+--pragma translate_on
+               ;
 
   u0 : altsyncram 
     generic map (
       WIDTH_A => dbits, WIDTHAD_A => abits,
       WIDTH_B => dbits, WIDTHAD_B => abits)
     port map ( 
-      address_a => address1, address_b => address2, clock0 => clk1, 
+      address_a => address_a, address_b => address_b, clock0 => clk1,
       clock1 => clk2, data_a => datain1, data_b => datain2, 
       q_a => dataout1, q_b => dataout2, rden_b => enable2,
       wren_a => write1, wren_b => write2);

@@ -107,7 +107,8 @@ ddramtest1:
 	retl
 	mov	0, %o0
 
-6: 	mov	1, %o0
+6: 	retl
+        mov	1, %o0
 
 	.global ddramtest2
 ddramtest2:
@@ -132,7 +133,8 @@ ddramtest2:
 	retl
 	mov	0, %o0
 
-6: 	mov	1, %o0
+6:      retl
+        mov	1, %o0
 
 	.global idramtest
 idramtest:
@@ -150,7 +152,8 @@ idramtest:
 	retl
 	mov	0, %o0
 
-6: 	mov	1, %o0
+6:      retl
+        mov	1, %o0
 
 
 	.global itramtest
@@ -170,7 +173,8 @@ itramtest:
 	retl
 	mov	0, %o0
 
-6: 	mov	1, %o0
+6: 	retl
+        mov	1, %o0
 
 	.global dtramtest
 dtramtest:
@@ -190,7 +194,8 @@ dtramtest:
 	retl
 	mov	0, %o0
 
-6: 	mov	1, %o0
+6: 	retl
+        mov	1, %o0
 
 
 	.data

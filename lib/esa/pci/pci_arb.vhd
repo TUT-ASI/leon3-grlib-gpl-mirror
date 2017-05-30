@@ -192,7 +192,8 @@ entity pci_arb is
          pclk    : in  clk_type;                            -- APB clock
          prst_n  : in  std_logic;                           -- APB reset
          pbi     : in  EAPB_Slv_In_Type;                     -- APB inputs
-         pbo     : out EAPB_Slv_Out_Type                     -- APB outputs
+         pbo     : out EAPB_Slv_Out_Type;                    -- APB outputs
+         gnt_n_unreg   : out std_logic_vector(0 to NB_AGENTS-1)  -- bus grant
          );
 
 end pci_arb;
@@ -343,6 +344,14 @@ begin  -- rtl
             gnt_n(i) <= '1';
          end if;
       end loop grant;
+
+      grant_unreg : for i in 0 to NB_AGENTS-1 loop
+         if i = conv_integer(cowni) and turni = '0' then
+            gnt_n_unreg(i) <= '0';
+         else
+            gnt_n_unreg(i) <= '1';
+         end if;
+      end loop grant_unreg;
 
       -- synchronous reset
       if rst_n = '0' then

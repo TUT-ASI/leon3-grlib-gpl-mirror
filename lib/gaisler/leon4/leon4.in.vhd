@@ -38,12 +38,13 @@
   constant CFG_DTLBNUM  : integer := CONFIG_DTLBNUM;
   constant CFG_TLB_TYPE : integer := CONFIG_TLB_TYPE + CFG_MMU_FASTWB*2;
   constant CFG_TLB_REP  : integer := CONFIG_TLB_REP;
+  constant CFG_MMU_PAGE : integer := CONFIG_MMU_PAGE;
   constant CFG_DSU   	: integer := CONFIG_DSU_ENABLE;
   constant CFG_ITBSZ 	: integer := CFG_DSU_ITB + 64*CONFIG_DSU_ITRACE_2P;
   constant CFG_ATBSZ 	: integer := CFG_DSU_ATB;
   constant CFG_AHBPF    : integer := CFG_DSU_AHBPF;
   constant CFG_AHBWP    : integer := CFG_DSU_AHBWP;
-  constant CFG_LEON4FT_EN   : integer := CONFIG_IUFT_EN + CONFIG_CACHE_FT_EN*8;
+  constant CFG_LEON4FT_EN   : integer := CONFIG_IUFT_EN + (CONFIG_CACHE_FT_EN)*8;
   constant CFG_IUFT_EN      : integer := CONFIG_IUFT_EN;
   constant CFG_FPUFT_EN     : integer := CONFIG_FPUFT;
   constant CFG_RF_ERRINJ    : integer := CONFIG_RF_ERRINJ;	
@@ -58,4 +59,5 @@
   constant CFG_STAT_DSUEN    : integer := CONFIG_STAT_DSUEN;
   constant CFG_NP_ASI   : integer := CONFIG_NP_ASI;
   constant CFG_WRPSR   : integer := CONFIG_WRPSR;
+  constant CFG_REX      : integer := CONFIG_REX;
 

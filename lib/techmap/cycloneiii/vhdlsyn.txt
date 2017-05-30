@@ -7,3 +7,4 @@ ddr_phy_cycloneiii.vhd
 cycloneiii_clkgen.vhd
 leon3ft_cycloneiv.vhd
 grspwc2_cycloneiv.vhd
+grspw_codec_cycloneiv.vhd

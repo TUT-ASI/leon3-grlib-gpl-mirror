@@ -15,7 +15,7 @@ package config is
   constant CFG_FABTECH : integer := spartan6;
   constant CFG_MEMTECH : integer := spartan6;
   constant CFG_PADTECH : integer := spartan6;
-  constant CFG_TRANSTECH : integer := GTP0;
+  constant CFG_TRANSTECH : integer := TT_XGTP0;
   constant CFG_NOASYNC : integer := 0;
   constant CFG_SCAN : integer := 0;
 -- Clock generator
@@ -203,6 +203,21 @@ package config is
   constant CFG_SPIMCTRL_ASCALER : integer := (8);
   constant CFG_SPIMCTRL_PWRUPCNT : integer := (30000);
   constant CFG_SPIMCTRL_OFFSET : integer := 16#0#;
+
+-- SPI controller
+  constant CFG_SPICTRL_ENABLE : integer := 0;
+  constant CFG_SPICTRL_NUM : integer := 1;
+  constant CFG_SPICTRL_SLVS : integer := 1;
+  constant CFG_SPICTRL_FIFO : integer := 1;
+  constant CFG_SPICTRL_SLVREG : integer := 0;
+  constant CFG_SPICTRL_ODMODE : integer := 0;
+  constant CFG_SPICTRL_AM : integer := 0;
+  constant CFG_SPICTRL_ASEL : integer := 0;
+  constant CFG_SPICTRL_TWEN : integer := 0;
+  constant CFG_SPICTRL_MAXWLEN : integer := 0;
+  constant CFG_SPICTRL_SYNCRAM : integer := 0;
+  constant CFG_SPICTRL_FT : integer := 0;
+  constant CFG_SPICTRL_PROT : integer := 0;
 
 -- GRLIB debugging
   constant CFG_DUART : integer := 0;

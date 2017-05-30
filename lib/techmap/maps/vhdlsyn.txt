@@ -28,6 +28,7 @@ tap.vhd
 nandtree.vhd
 grspwc_net.vhd
 grspwc2_net.vhd
+grspw_codec_net.vhd
 grlfpw_net.vhd
 grlfpw4_net.vhd
 grfpw_net.vhd
@@ -62,3 +63,4 @@ iopad_tm.vhd
 toutpad_tm.vhd
 gr1553b_net.vhd
 memrwcol.vhd
+cdcbus.vhd

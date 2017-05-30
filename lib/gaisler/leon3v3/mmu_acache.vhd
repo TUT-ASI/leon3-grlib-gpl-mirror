@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -103,9 +103,12 @@ architecture rtl of mmu_acache is
   constant R2RES : reg2_type := (
     reqmsk => (others => '0'), hclken2 => '0'
     );
-  
-  constant L3DI :integer := GAISLER_LEON3 
-                            ;
+
+  function L3DI return integer is
+  begin
+    return GAISLER_LEON3;
+  end function L3DI;
+
   constant hconfig : ahb_config_type := (
     0 => ahb_device_reg ( VENDOR_GAISLER, L3DI, 0, LEON3_VERSION, 0),
     others => zero32);
@@ -311,7 +314,6 @@ begin
 
     v.nbo := nbo; v.nba := orv(htrans) and not v.ba;
 
-    -- parity generation
     if (clk2x /= 0) then
       v2.hclken2 := hclken;
       if hclken = '1' then

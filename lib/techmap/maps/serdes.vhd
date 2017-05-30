@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -82,7 +82,7 @@ architecture rtl of serdes is
 
   component igloo2_serdes is
     generic(
-      transtech : integer := m010);
+      transtech : integer := TT_M010);
     port(
       apb_in : in apb_in_serdes;
       apb_out : out apb_out_serdes;
@@ -94,7 +94,7 @@ architecture rtl of serdes is
 
   component rtg4_serdes is
     generic(
-      transtech : integer := m010);
+      transtech : integer := TT_M010);
     port(
       apb_in : in apb_in_serdes;
       apb_out : out apb_out_serdes;
@@ -134,7 +134,7 @@ architecture rtl of serdes is
 
 begin
 
-  str : if (fabtech = stratix3) or (fabtech = stratix4) generate
+  str : if (fabtech = stratix3) or (fabtech = stratix4) or (fabtech = stratix5) generate
     str0 : serdes_stratixiii
       port map (clk_125, rst_125, rx_in_p, rx_out, rx_clk, rx_rstn, rx_pll_clk, rx_pll_rstn, tx_pll_clk, tx_pll_rstn, tx_in, tx_out_p_int, bitslip);
     apbout <= apb_out_serdes_none; m2gl_padout <= pad_out_serdes_none; serdes_clk125 <= '0'; serdes_ready <= '1'; -- not used
@@ -274,4 +274,3 @@ begin
 -- pragma translate_on
   
 end;
-

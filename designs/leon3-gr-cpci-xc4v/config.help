@@ -15,10 +15,9 @@ CONFIG_SYN_INFERRED
   - Altera-Stratix: Altera Stratix FPGA family
   - Altera-StratixII: Altera Stratix/Cyclone-II FPGA families
   - Altera-StratixIII: Altera Stratix-III FPGA family
-  - Altera-StratixIV: Altera Stratix-III FPGA family
+  - Altera-StratixIV: Altera Stratix-IV FPGA family
+  - Altera-StratixV: Altera Stratix-V FPGA family
   - ATC18: Atmel-Nantes 0.18 um rad-hard CMOS
-  - IHP25: IHP 0.25 um CMOS
-  - IHP25RH: IHP Rad-Hard 0.25 um CMOS
   - Lattice : EC/ECP/XP FPGAs
   - Quicklogic : Eclipse/E/II FPGAs
   - UMC-0.18 : UMC 0.18 um CMOS with Virtual Silicon libraries
@@ -31,6 +30,9 @@ CONFIG_SYN_INFERRED
   distribution. A technology may be present in this list while the
   tech support files are missing from the GRLIB distribution.
   Actel support is only available in commercial and FT distributions.
+
+  Additional target technologies are available that are not selectable
+  via the xconfig tool.
 
 Ram library
 CONFIG_MEM_VIRAGE
@@ -261,7 +263,7 @@ CONFIG_IU_LDELAY
   on targets with slow (data) cache memories. A 2-cycle delay can
   improve timing but will reduce performance with about 5%.
 
-  Note that the load delay must be 1 to support the CASA instruction.
+  Note that LEON4 always makes use of load delay 1.
 
 Reset address
 CONFIG_IU_RSTADDR
@@ -343,21 +345,21 @@ CONFIG_DCACHE_ENABLE
 
 Instruction cache associativity
 CONFIG_ICACHE_ASSO1
-  The instruction cache can be implemented as a multi-set cache with
+  The instruction cache can be implemented as a multi-way cache with
   1 - 4 sets. Higher associativity usually increases the cache hit
   rate and thereby the performance. The downside is higher power
   consumption and increased gate-count for tag comparators.
 
-  Note that a 1-set cache is effectively a direct-mapped cache.
+  Note that a 1-way cache is effectively a direct-mapped cache.
 
 Instruction cache set size
 CONFIG_ICACHE_SZ1
-  The size of each set in the instuction cache (kbytes). Valid values
+  The size of each way in the instuction cache (kbytes). Valid values
   are 1 - 64 in binary steps. Note that the full range is only supported
   by the generic and virtex2 targets. Most target packages are limited
-  to 2 - 16 kbyte. Large set size gives higher performance but might
+  to 2 - 16 kbyte. A large cache gives higher performance but might
   affect the maximum frequency (on ASIC targets). The total instruction
-  cache size is the number of set multiplied with the set size.
+  cache size is the number of ways multiplied with the way size.
 
 Instruction cache line size
 CONFIG_ICACHE_LZ16
@@ -369,7 +371,7 @@ CONFIG_ICACHE_LZ16
 Instruction cache replacement algorithm
 CONFIG_ICACHE_ALGORND
   Cache replacement algorithm for caches with 2 - 4 sets. The 'Random'
-  algorithm selects the set to evict randomly. For LEON4, "Dynamic" option
+  algorithm selects the way to evict randomly. For LEON4, "Dynamic" option
   makes the replacement policy soft configurable between direct-mapped,
   least-recently-replaced/incremental (LRR), least-recently-used (LRU)
   and random. The replacement policy is then chosen at run-time via the
@@ -381,10 +383,10 @@ CONFIG_ICACHE_ALGORND
   The LRU algorithm evicts the way least recently accessed.
 
   The random algorithm uses a simple 1- or 2-bit counter to select
-  the eviction set and has low area overhead. The soft configurable
+  the eviction way and has low area overhead. The soft configurable
   option with LRU scheme selected has typically the best performance
-  but also the highest area overhead. A 2-set LRU uses 1 flip-flop per
-  line, a 3-set LRU uses 3 flip-flops per line, and a 4-set LRU uses 5
+  but also the highest area overhead. A 2-way LRU uses 1 flip-flop per
+  line, a 3-way LRU uses 3 flip-flops per line, and a 4-way LRU uses 5
   flip-flops per line to store the access history.
 
 Instruction cache locking
@@ -396,22 +398,29 @@ CONFIG_ICACHE_LOCK
 
 Data cache associativity
 CONFIG_DCACHE_ASSO1
-  The data cache can be implemented as a multi-set cache with
+  The data cache can be implemented as a multi-way cache with
   1 - 4 sets. Higher associativity usually increases the cache hit
   rate and thereby the performance. The downside is higher power
   consumption and increased gate-count for tag comparators.
 
-  Note that a 1-set cache is effectively a direct-mapped cache.
+  Note that a 1-way cache is effectively a direct-mapped cache.
 
-Data cache set size
+  If the MMU is enabled then bus snooping is required to avoid
+  aliasing effects in multi-way caches.
+
+Data cache way size
 CONFIG_DCACHE_SZ1
-  The size of each set in the data cache (kbytes). Valid values are
+  The size of each way in the data cache (kbytes). Valid values are
   1 - 64 in binary steps. Note that the full range is only supported
   by the generic and virtex2 targets. Most target packages are limited
   to 2 - 16 kbyte. A large cache gives higher performance but the
   data cache is timing critical an a too large setting might affect
   the maximum frequency (on ASIC targets). The total data cache size
-  is the number of set multiplied with the set size.
+  is the number of ways multiplied with the way size.
+
+  Note that when the MMU is enabled, bus snooping should also be
+  enabled and the data cache way size should not exceed the MMU
+  page size.
 
 Data cache line size
 CONFIG_DCACHE_LZ16
@@ -525,7 +534,19 @@ CONFIG_MMU_FASTWB
   Only selectable if split tlb is enabled. In case fast writebuffer is
   enabled the tlb hit will be made concurrent to the cache hit. This 
   leads to higher store performance, but increased power and area.
-  
+
+MMU pagesize
+CONFIG_MMU_PAGE_4K
+  The deafult SPARC V8 SRMMU page size is 4 Kbyte. This limits the
+  cache way size to 4 Kbyte, and total data cache size to 16 Kbyte,
+  when the MMU is used. To increase the maximum data cache size,
+  the MMU pages size can be increased to up 32 Kbyte. This will
+  give a maximum data cache size of 128 Kbyte.
+
+  Note that an MMU page size different than 4 Kbyte will require
+  a special linux tool-chain if glibc is used. If you don't know
+  what you are doing, stay with 4 Kbyte.
+
 DSU enable
 CONFIG_DSU_ENABLE
   The debug support unit (DSU) allows non-intrusive debugging and tracing
@@ -602,8 +623,13 @@ CONFIG_LEONFT_EN
 IU Register file protection 
 CONFIG_IUFT_NONE
   Select the FT implementation in the LEONFT integer unit 
-  register file. The options include parity, parity with
-  sparing, 7-bit BCH and TMR.
+  register file.
+
+  For LEON3FT the options are: none. parity, parity with sparing,
+  7-bit BCH, 7-bit BCH with on-the-fly (OTF) correction,
+  technology-specific protection and TMR.
+
+  For LEON4FT the options are none and TMR.
 
 FPU Register file protection 
 CONFIG_FPUFT_EN
@@ -618,8 +644,18 @@ CONFIG_RF_ERRINJ
   Affects only simulation.
 
 Cache memory protection 
-CONFIG_CACHE_FT_EN
-  Enable SEU error-correction in the cache memories. 
+CONFIG_CACHE_FT_NONE
+  Enable SEU error-correction in the cache memories.
+
+  None - No protection
+  Parity     - Technology agnostic parity protection
+  SECDEC-BCH - SECDED for cache, slow and large area overhead
+  TechSpec   - Use target technology protection
+
+  The recommended setting is Parity. Target technologies
+  with built in protection on SRAMs can have area savings
+  with TechSpec. Currently this option should only be used
+  for Microsemi RTG4.
 
 Cache memory error injection
 CONFIG_CACHE_ERRINJ

@@ -167,6 +167,7 @@
   constant CFG_SPICTRL_MAXWLEN : integer := CONFIG_SPICTRL_MAXWLEN;
   constant CFG_SPICTRL_SYNCRAM : integer := CONFIG_SPICTRL_SYNCRAM;
   constant CFG_SPICTRL_FT      : integer := CONFIG_SPICTRL_FT;
+  constant CFG_SPICTRL_PROT    : integer := CONFIG_SPICTRL_PROT;
 
 -- SPI to AHB bridge
   constant CFG_SPI2AHB         : integer := CONFIG_SPI2AHB;

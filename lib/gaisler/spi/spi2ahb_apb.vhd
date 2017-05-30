@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -88,7 +88,7 @@ architecture rtl of spi2ahb_apb is
   
   -- AMBA PnP
   constant PCONFIG : apb_config_type := (
-    0 => ahb_device_reg(VENDOR_GAISLER, GAISLER_SPI2AHB, 0, 0, 0),
+    0 => ahb_device_reg(VENDOR_GAISLER, GAISLER_SPI2AHB, 0, 0, pirq),
     1 => apb_iobar(paddr, pmask));
 
   type apb_reg_type is record

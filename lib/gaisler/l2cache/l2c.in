@@ -33,6 +33,7 @@ mainmenu_option next_comment
       hex  'Cacheability map                     ' CONFIG_L2_MAP 00F0
       int  'Number of MTRR registers             ' CONFIG_L2_MTRR 0
       bool 'Enable EDAC                          ' CONFIG_L2_EDAC 
+      bool 'AXI backend interface                ' CONFIG_L2_AXI 
 
 #      fi
 #    fi

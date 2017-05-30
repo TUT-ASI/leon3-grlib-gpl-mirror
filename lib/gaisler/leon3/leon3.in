@@ -14,7 +14,6 @@ if [ "$CONFIG_LEON3" = "y" ]; then
     define_bool CONFIG_IU_V8MULDIV n
     define_bool CONFIG_IU_BP n
     define_bool CONFIG_IU_SVT y
-    define_bool CONFIG_NOTAG n
     define_int  CONFIG_IU_LDELAY 1
     define_int  CONFIG_IU_WATCHPOINTS 0
     define_bool CONFIG_PWD n
@@ -48,7 +47,6 @@ if [ "$CONFIG_LEON3" = "y" ]; then
     define_bool CONFIG_IU_MUL_MAC n
     define_bool CONFIG_IU_BP y
     define_bool CONFIG_IU_SVT y
-    define_bool CONFIG_NOTAG n
     define_int  CONFIG_IU_LDELAY 1
     define_int  CONFIG_IU_WATCHPOINTS 2
     define_bool CONFIG_PWD y
@@ -95,7 +93,6 @@ if [ "$CONFIG_LEON3" = "y" ]; then
     define_bool CONFIG_IU_MUL_MAC n
     define_bool CONFIG_IU_BP y
     define_bool CONFIG_IU_SVT y
-    define_bool CONFIG_NOTAG n
     define_int  CONFIG_IU_LDELAY 1
     define_int  CONFIG_IU_WATCHPOINTS 4
     define_bool CONFIG_PWD y
@@ -158,7 +155,6 @@ if [ "$CONFIG_LEON3" = "y" ]; then
       fi
       bool 'Branch prediction     ' CONFIG_IU_BP
       bool 'Single-vector trapping' CONFIG_IU_SVT
-      bool 'Disable tagged ADD/SUB and CASA' CONFIG_NOTAG
       int 'Load delay' CONFIG_IU_LDELAY 1
       int 'Hardware watchpoints' CONFIG_IU_WATCHPOINTS 0
       bool 'Enable power-down mode ' CONFIG_PWD
@@ -271,9 +267,9 @@ if [ "$CONFIG_LEON3" = "y" ]; then
         fi
         bool 'AHB snooping       ' CONFIG_DCACHE_SNOOP
         if [ "$CONFIG_DCACHE_SNOOP" = "y" ]; then
-            bool 'Separate snoop tags  ' CONFIG_DCACHE_SNOOP_SEPTAG
+            bool 'Separate physical/snoop tags  ' CONFIG_DCACHE_SNOOP_SEPTAG
             if [ "$CONFIG_DCACHE_SNOOP_SEPTAG" = "y" ]; then
-              bool 'Use SP RAM for seperate tags  ' CONFIG_DCACHE_SNOOP_SP
+              bool 'Use SP RAM for separate tags  ' CONFIG_DCACHE_SNOOP_SP
             fi
         fi
       fi
@@ -377,6 +373,8 @@ if [ "$CONFIG_LEON3" = "y" ]; then
 	Parity		CONFIG_IUFT_PAR \
 	PDMR 		CONFIG_IUFT_DMR \
 	BCH  		CONFIG_IUFT_BCH \
+	BCH-OTF		CONFIG_IUFT_BCHOTF \
+	TechSpec	CONFIG_IUFT_TECHSPEC \
 	TMR		CONFIG_IUFT_TMR" None
       if [ "$CONFIG_FPU_ENABLE" = "y" ]; then
         choice 'FPU Register file protection     ' \
@@ -386,7 +384,11 @@ if [ "$CONFIG_LEON3" = "y" ]; then
 	   TMR		CONFIG_FPUFT_TMR" None
       fi
       bool 'Register file error injection' CONFIG_RF_ERRINJ
-      bool 'Cache memory protection        ' CONFIG_CACHE_FT_EN
+      choice 'Cache memory protection     ' \
+	  "None		CONFIG_CACHE_FT_NONE \
+	   Parity		CONFIG_CACHE_FT_EN \
+ 	   SECDEC-BCH 		CONFIG_CACHE_FT_BCH \
+	   TechSpec		CONFIG_CACHE_FT_TECH" None
       int 'Cache memory error injection' CONFIG_CACHE_ERRINJ 0
 #      bool 'Use LEON3FT netlist         ' CONFIG_LEON3_NETLIST
     fi

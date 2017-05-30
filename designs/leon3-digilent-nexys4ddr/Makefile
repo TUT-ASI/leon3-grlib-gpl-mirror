@@ -39,7 +39,7 @@ FILESKIP = grcan.vhd
 VCOMOPT=-explicit -O0
 
 # - MIG -
-ifeq ($(CONFIG_MIG_SERIES7),y)
+ifeq ($(CONFIG_MIG_7SERIES),y)
 SKIP_SIM_TECHLIBS = 1
 VSIMOPT+= -t fs -novopt
 VSIMOPT+= -L secureip_ver -L xilinxcorelib_ver -L unisims_ver glbl
@@ -58,7 +58,7 @@ VSIMOPT+= -novopt +notimingchecks
 endif
 
 # Simulation scripts
-VSIMOPT+= -do wave.do
+VSIMOPT+= -do wave.do -do $(GRLIB)/bin/runvsim.do
 
 # Toplevel
 VSIMOPT+= $(SIMTOP)

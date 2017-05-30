@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -56,7 +56,10 @@ package libfpu is
     trap  : std_ulogic;
     annul : std_ulogic;
     pv    : std_ulogic;
-  end record;  
+  end record;
+
+  constant fpc_pipeline_control_none : fpc_pipeline_control_type :=
+    (X"00000000", X"00000000", "00", '0', '0', '0');
 
   type fpc_debug_in_type is record
     enable : std_ulogic;
@@ -65,6 +68,9 @@ package libfpu is
     addr   : std_logic_vector(4 downto 0);
     data   : std_logic_vector(31 downto 0);
   end record;
+
+  constant fpc_debug_in_none : fpc_debug_in_type :=
+    ('0', '0', '0', "00000", X"00000000");
 
   type fpc_debug_out_type is record
     data   : std_logic_vector(31 downto 0);
@@ -86,6 +92,13 @@ package libfpu is
     lddata        : std_logic_vector(31 downto 0);     -- load data
     dbg           : fpc_debug_in_type;               -- debug signals
   end record;
+
+  constant fpc_in_none : fpc_in_type := (
+    '0', '0', "00000", fpc_pipeline_control_none,
+    fpc_pipeline_control_none, fpc_pipeline_control_none,
+    fpc_pipeline_control_none, fpc_pipeline_control_none,
+    X"00000000", fpc_debug_in_none
+    );
 
   type fpc_out_type is record
     data          : std_logic_vector(31 downto 0); -- store data

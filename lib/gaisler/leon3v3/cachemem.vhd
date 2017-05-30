@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -164,8 +164,8 @@ architecture rtl of cachemem is
   signal iddataout : iddataout_type;
   signal ildataout : std_logic_vector(31 downto 0);
 
-  signal itenable  : std_ulogic;
-  signal idenable  : std_ulogic;
+  signal itenable  : std_logic_vector(0 to MAXSETS-1);
+  signal idenable  : std_logic_vector(0 to MAXSETS-1);
   signal itwrite   : std_logic_vector(0 to MAXSETS-1);
   signal idwrite   : std_logic_vector(0 to MAXSETS-1);
 
@@ -201,11 +201,12 @@ architecture rtl of cachemem is
   signal vbcrd     : std_logic_vector(0 to DSETS-1);
   signal vbcwd     : std_logic_vector(0 to DSETS-1);
 
+  
   signal vcc, gnd  : std_ulogic;
   
   
 begin
-
+  
   vcc <= '1'; gnd <= '0'; 
   itaddr <= crami.icramin.address(IOFFSET_BITS + ILINE_BITS -1 downto ILINE_BITS);
   idaddr <= crami.icramin.address(IOFFSET_BITS + ILINE_BITS -1 downto 0);
@@ -327,10 +328,10 @@ begin
   ime : if icen = 1 generate
     im0 : for i in 0 to ISETS-1 generate
       itags0 : syncram generic map (tech, IOFFSET_BITS, ITWIDTH, testen, memtest_vlen)
-      port map ( clk, itaddr, itdatain(i)(ITWIDTH-1 downto 0), itdataout(i)(ITWIDTH-1 downto 0), itenable, itwrite(i), testin
+      port map ( clk, itaddr, itdatain(i)(ITWIDTH-1 downto 0), itdataout(i)(ITWIDTH-1 downto 0), itenable(i), itwrite(i), testin
                  );
       idata0 : syncram generic map (tech, IOFFSET_BITS+ILINE_BITS, IDWIDTH, testen, memtest_vlen)
-      port map (clk, idaddr, iddatain, iddataout(i), idenable, idwrite(i), testin
+      port map (clk, idaddr, iddatain, iddataout(i), idenable(i), idwrite(i), testin
                 );
       itdataout(i)(ITWIDTH) <= '0';
     end generate;
@@ -460,7 +461,6 @@ begin
                   );
       dtdataout(i)(DTWIDTH) <= '0';
     end generate;
-    
   end generate;
 
   nohb : if dcen = 0 or not DSNOOPHB generate

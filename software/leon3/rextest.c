@@ -1,3 +1,4 @@
+#include <string.h>
 #include "testmod.h"
 
 void rexfunc_none(void);
@@ -60,6 +61,7 @@ int rexfunc_getpc(void);
 int rexfunc_pushpop(void);
 void rexfunc_ta0(void);
 void rexfunc_ta1(void);
+int rexfunc_ptrcall(void);
 
 static char __attribute__ ((aligned (8))) arr[128];
 
@@ -95,7 +97,7 @@ void rextest(void)
 {
   int i,j;
   long long l;
-  int a[3];
+  int a[4],b[4];
   if (chkrex() == 0) return;
   report_subtest(REX_TEST);
   setrex(0);
@@ -177,6 +179,8 @@ void rextest(void)
   /* r_IOP */
   if (rexfunc_iop_addr(13,24) != 37) fail(65);
   if (rexfunc_iop_addi(13) != -51) fail(66);
+  asm volatile ("mov %g0, %y; nop; nop; nop");
+  if (rexfunc_iop_sdivr(50,-5) != -10) fail(67);
   arr[43] = 0x26;
   if (rexfunc_ldop_ldubr(43,&arr) != 0x26) fail(67);
   /* r_FLOP */
@@ -186,6 +190,19 @@ void rextest(void)
     a[2] = ~0;
     rexfunc_flop(a);
     if (a[2] != 0xBE000000) fail(68);
+    a[0] = 0x40000000;
+    a[1] = 0;
+    a[2] = 0x40000000;
+    a[3] = 0;
+    if (rexfunc_flop_fcmpd(a) != 1) fail(69);
+    a[2] = 0xC0000000;
+    if (rexfunc_flop_fcmpd(a) != 0) fail(70);
+    memset(b,0,sizeof(b));
+    rexfunc_ldstfinc(a,b);
+    if (memcmp(a,b,sizeof(b)) != 0) fail(71);
+    memset(b,0,sizeof(b));
+    rexfunc_ldstdfinc(a,b);
+    if (memcmp(a,b,sizeof(b)) != 0) fail(72);
   }
   /* Misc */
   if (rexfunc_getpc() != ((int)(&rexfunc_getpc))+4) fail(69);
@@ -196,6 +213,7 @@ void rextest(void)
   if (rexfunc_neg(472) != -472) fail(74);
   if (rexfunc_not(23) != ~23) fail(75);
   if (rexfunc_leave() != 54) fail(76);
+  if (rexfunc_ptrcall() != 0) fail(77);
   /* rexfunc_ta0(); */
   /* rexfunc_ta1(); */
 }

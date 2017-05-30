@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -114,11 +114,16 @@ begin
    generic map (clk_mul, clk_div, sdramen, noclkfb, pcien, pcidll, pcisysclk, freq, clk2xen)
    port map (clkin, pciclkin, clk, clkn, clk2x, sdclk, pciclk, cgi, cgo);
   end generate;
-  stra3 : if (tech = stratix3) or (tech = stratix4) generate
+  stra3 : if (tech = stratix3) or (tech = stratix4) or (tech = stratix5) generate
    v : clkgen_stratixiii
    generic map (clk_mul, clk_div, sdramen, noclkfb, pcien, pcidll, pcisysclk, freq, clk2xen)
    port map (clkin, pciclkin, clk, clkn, clk2x, sdclk, pciclk, cgi, cgo);
   end generate;
+  --stra5 : if (tech = stratix5) generate
+  -- v : clkgen_stratixv
+  -- generic map (clk_mul, clk_div, sdramen, noclkfb, pcien, pcidll, pcisysclk, freq, clk2xen)
+  -- port map (clkin, pciclkin, clk, clkn, clk2x, sdclk, pciclk, cgi, cgo);
+  --end generate;
   act : if (tech = axdsp) or (tech = proasic) generate
     intclk <= pciclkin when (PCISYSCLK = 1 and PCIEN /= 0) else clkin;
     sdclk <= '0'; pciclk <= pciclkin; clk <= intclk; clkn <= '0';

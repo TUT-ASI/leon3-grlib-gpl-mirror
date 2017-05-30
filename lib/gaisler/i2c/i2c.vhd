@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -36,7 +36,8 @@ package i2c is
       scl : std_ulogic;
       sda : std_ulogic;
   end record;
-
+  type i2c_in_vector_type is array (natural range <>) of i2c_in_type;
+  
   type i2c_out_type is record
       scl    : std_ulogic;
       scloen : std_ulogic;
@@ -44,6 +45,7 @@ package i2c is
       sdaoen : std_ulogic;
       enable : std_ulogic;
   end record;
+  type i2c_out_vector_type is array (natural range <>) of i2c_out_type;
 
   -- AMBA wrapper for OC I2C-master
   component i2cmst

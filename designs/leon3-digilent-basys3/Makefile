@@ -32,7 +32,7 @@ VSIMOPT+= -novopt +notimingchecks
 endif
 
 # Simulation scripts
-VSIMOPT+= -do wave.do
+VSIMOPT+= -do wave.do -do $(GRLIB)/bin/runvsim.do
 
 # Toplevel
 VSIMOPT+= $(SIMTOP)

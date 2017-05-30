@@ -14,7 +14,7 @@ additional information.
 Note #3: The Vivado flow and parts of this design are still
 experimental. Currently the design configuration should be left as-is.
 
-Note #4: You must have Vivado 2015.4 in your path for the make targets to work.
+Note #4: You must have Vivado 2017.1 in your path for the make targets to work.
 
 The XILINX_VIVADO variable must be exported for the mig_7series target
 to work correctly: export XILINX_VIVADO

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -52,7 +52,8 @@ package spwcomp is
       pnpminorver     : integer range 0 to 16#FF# := 0;
       pnppatch        : integer range 0 to 16#FF# := 0;
       num_txdesc      : integer range 64 to 512 := 64;
-      num_rxdesc      : integer range 128 to 1024 := 128
+      num_rxdesc      : integer range 128 to 1024 := 128;
+      ccsdscrc        : integer range 0 to 1 := 0
       );
     port(
       rst          : in  std_ulogic;
@@ -146,7 +147,7 @@ package spwcomp is
       inttreload   : in   std_logic_vector(30 downto 0);
       intiareload  : in   std_logic_vector(30 downto 0);
       intcreload   : in   std_logic_vector(30 downto 0);      
-      irqtxdefault : in   std_logic_vector(4 downto 0);
+      irqtxdefault : in   std_logic_vector(5 downto 0);
       -- SpW PnP enable
       pnpen        : in   std_ulogic;
       pnpuvendid   : in   std_logic_vector(15 downto 0);
@@ -624,7 +625,8 @@ package spwcomp is
       pnpminorver     : integer range 0 to 16#FF# := 0;
       pnppatch        : integer range 0 to 16#FF# := 0;
       num_txdesc      : integer range 64 to 512 := 64;
-      num_rxdesc      : integer range 128 to 1024 := 128      
+      num_rxdesc      : integer range 128 to 1024 := 128;
+      ccsdscrc        : integer range 0 to 1 := 0
       );
     port(
       rst          : in  std_ulogic;
@@ -690,7 +692,7 @@ package spwcomp is
       inttreload   : in   std_logic_vector(30 downto 0);
       intiareload  : in   std_logic_vector(30 downto 0);
       intcreload   : in   std_logic_vector(30 downto 0);      
-      irqtxdefault : in   std_logic_vector(4 downto 0);
+      irqtxdefault : in   std_logic_vector(5 downto 0);
       -- SpW PnP enable
       pnpen        : in   std_ulogic;
       pnpuvendid   : in   std_logic_vector(15 downto 0);

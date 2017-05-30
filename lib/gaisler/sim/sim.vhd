@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -168,7 +168,8 @@ package sim is
       speedbin: integer range 0 to 12 := 0;
       density: integer range 2 to 6 := 3;  -- 2:512M 3:1G 4:2G 5:4G 6:8G bits/chip
       pagesize: integer range 1 to 2 := 1;  -- 1K/2K page size (controls tRRD)
-      changeendian: integer range 0 to 32 := 0
+      changeendian: integer range 0 to 32 := 0;
+      initbyte: integer := 0
       );
     port (
       ck: in std_ulogic;
@@ -207,7 +208,9 @@ package sim is
       base1000_t_fd : integer range 0 to 1  := 1;
       base1000_t_hd : integer range 0 to 1  := 1;
       rmii          : integer range 0 to 1  := 0;
-      rgmii         : integer range 0 to 1  := 0
+      rgmii         : integer range 0 to 1  := 0;
+      extrxclken    : integer range 0 to 1  := 0;
+      gmii100       : integer range 0 to 1  := 0
       );
     port(
       rstn     : in std_logic;
@@ -223,7 +226,8 @@ package sim is
       tx_en    : in std_logic; 
       tx_er    : in std_logic; 
       mdc      : in std_logic;
-      gtx_clk  : in std_logic
+      gtx_clk  : in std_logic;
+      extrxclk : in std_logic := '0'
       );
   end component;
 
@@ -531,7 +535,8 @@ package sim is
       rstdatal: integer := 16#BEEF#;
       nports: integer := 4;
       offset_addr : std_logic_vector(31 downto 0) := x"00000000";
-      swap_halfw : integer := 0
+      swap_halfw : integer := 0;
+      endian : integer := 0
       );
     port (
       bein:  in ramback_in_array(1 to nports);
@@ -638,6 +643,33 @@ package sim is
   );
   end component ;
 
+  component aximem is
+    generic (
+      fname: string;
+      axibits: integer := AXIDW;
+      rstmode: integer range 0 to 1
+      );
+    port (
+      clk  : in std_ulogic;
+      rst  : in std_ulogic;
+      axisi: in axi_mosi_type;
+      axiso: out axi_somi_type
+      );
+  end component;
+
+  component axirep is
+    generic (
+      baseaddr: integer := 16#20000#;
+      axibits: integer := AXIDW;
+      halt: integer := 1
+      );
+    port (
+      clk  : in std_ulogic;
+      rst  : in std_ulogic;
+      axisi: in axi_mosi_type;
+      axiso: in axi_somi_type
+      );
+  end component;
   
 end;
 

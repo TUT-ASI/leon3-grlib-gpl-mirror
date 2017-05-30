@@ -9,7 +9,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -114,9 +114,11 @@ architecture behav of testbench is
    -- SPI flash
   signal spi_sel_n  : std_logic;
   signal spi_clk    : std_ulogic;
-  signal spi_mosi   : std_logic;
-  signal spi_miso   : std_logic;
-
+  signal spi_dq0   : std_logic;
+  signal spi_dq1   : std_logic;
+  signal spi_dq2   : std_logic;
+  signal spi_dq3   : std_logic;
+  
   signal errorn     : std_logic;
 
 begin
@@ -188,8 +190,10 @@ begin
       mou_data  => ps2data(1),
       spi_sel_n => spi_sel_n,
       spi_clk   => spi_clk,
-      spi_miso  => spi_miso,
-      spi_mosi  => spi_mosi,
+      spi_dq1   => spi_dq1,
+      spi_dq0   => spi_dq0,
+      spi_dq2   => spi_dq2,
+      spi_dq3   => spi_dq3,
       tmdstx_clk_p => open,
       tmdstx_clk_n => open,
       tmdstx_dat_p => open,
@@ -206,8 +210,8 @@ begin
       memoffset  => CFG_SPIMCTRL_OFFSET)
     port map (
       sck       => spi_clk,
-      di        => spi_mosi,
-      do        => spi_miso,
+      di        => spi_dq0,
+      do        => spi_dq1,
       csn       => spi_sel_n );
 
   u1: ddr2ram

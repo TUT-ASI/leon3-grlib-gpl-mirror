@@ -287,6 +287,19 @@
 #define CFG_DLRAM_SIZE 1
 #endif
 
+#if defined CONFIG_MMU_PAGE_4K
+#define CONFIG_MMU_PAGE 0
+#elif defined CONFIG_MMU_PAGE_8K
+#define CONFIG_MMU_PAGE 1
+#elif defined CONFIG_MMU_PAGE_16K
+#define CONFIG_MMU_PAGE 2
+#elif defined CONFIG_MMU_PAGE_32K
+#define CONFIG_MMU_PAGE 3
+#elif defined CONFIG_MMU_PAGE_PROG
+#define CONFIG_MMU_PAGE 4
+#else
+#define CONFIG_MMU_PAGE 0
+#endif
 
 #ifdef CONFIG_MMU_ENABLE
 #define CONFIG_MMUEN 1
@@ -429,6 +442,10 @@
 #define CONFIG_IUFT_EN 3
 #elif defined CONFIG_IUFT_TMR
 #define CONFIG_IUFT_EN 4
+#elif defined CONFIG_IUFT_BCHOTF
+#define CONFIG_IUFT_EN 5
+#elif defined CONFIG_IUFT_TECHSPEC
+#define CONFIG_IUFT_EN 6
 #else
 #define CONFIG_IUFT_EN 0
 #endif
@@ -446,9 +463,16 @@
 #endif
 #endif
 
-#ifndef CONFIG_CACHE_FT_EN
+#if defined CONFIG_CACHE_FT_NONE
+#define CONFIG_CACHE_FT_EN 0
+#elif defined CONFIG_CACHE_FT_BCH
+#define CONFIG_CACHE_FT_EN 16*4 + 2
+#elif defined CONFIG_CACHE_FT_TECH
+#define CONFIG_CACHE_FT_EN 16*5 + 2
+#else
 #define CONFIG_CACHE_FT_EN 0
 #endif
+
 #ifndef CONFIG_CACHE_ERRINJ
 #define CONFIG_CACHE_ERRINJ 0
 #endif

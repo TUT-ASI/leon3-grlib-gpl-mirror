@@ -23,10 +23,11 @@
         .global rexfunc_st, rexfunc_sti0, rexfunc_stinc
         .global rexfunc_stb, rexfunc_sth, rexfunc_std
         .global rexfunc_stbinc, rexfunc_sthinc, rexfunc_stdinc
-        .global rexfunc_iop_addr, rexfunc_iop_addi
-        .global rexfunc_flop, rexfunc_ldop_ldubr, rexfunc_getpc, rexfunc_set32pc
+        .global rexfunc_iop_addr, rexfunc_iop_addi, rexfunc_iop_sdivr
+        .global rexfunc_flop, rexfunc_flop_fcmpd, rexfunc_ldop_ldubr, rexfunc_getpc, rexfunc_set32pc
         .global rexfunc_ld32, rexfunc_ld32pc, rexfunc_pushpop
         .global rexfunc_neg, rexfunc_not, rexfunc_leave, rexfunc_ta0, rexfunc_ta1
+        .global rexfunc_ptrcall, rexfunc_ldstfinc, rexfunc_ldstdfinc
 
         /* REX function that returns immediately */
 20:
@@ -472,6 +473,12 @@ rexfunc_iop_addi:
         R_RETL
         REX_FUNCEND
 
+rexfunc_iop_sdivr:
+        REX_FUNCSTART_LEAF
+        RX_SDIVR(R4o0,0,R5o1,R4o0,0)
+        R_RETL
+        REX_FUNCEND
+
 rexfunc_flop:
         REX_FUNCSTART_LEAF
         R_LDFINC(R4o0,R4f0)
@@ -479,6 +486,17 @@ rexfunc_flop:
         RX_FMULS(R4f0,0,R5f1,R4f0,0)
         R_STFINC(R4f0,R4o0)
         R_RETL
+        REX_FUNCEND
+
+rexfunc_flop_fcmpd:
+        REX_FUNCSTART_LEAF
+        R_LDDFINC(R4o0,R4f0)
+        R_LDDFINC(R4o0,R4f2)
+        RX_FCMPD(R4f0,0,R5f2)
+        R_SET5(0,R4o0)
+        R_FBNE(1f)
+        R_SET5(1,R4o0)
+1:      R_RETL
         REX_FUNCEND
 
 rexfunc_ldop_ldubr:
@@ -557,8 +575,52 @@ rexfunc_ta0:
         REX_FUNCSTART_LEAF
         R_TA0
         R_RETL
+        REX_FUNCEND
 
 rexfunc_ta1:
         REX_FUNCSTART_LEAF
         R_TA1
         R_RETL
+        REX_FUNCEND
+
+ptrcall_sub:
+        retl
+        mov %i1, %i0
+
+rexfunc_ptrcall:
+        set ptrcall_sub, %o2
+        REX_FUNCSTART(-128)
+        R_CMPR(R4l4,R4l4)
+        R_SET5(3,R4i1)
+        R_BE(1f)
+        R_SET5(1,R4i0)
+        R_RETREST
+        R_NOP
+        R_ALIGN4
+1:      RX_CALLR(R4i2,0)
+        R_SET5(2,R4i1)
+        R_ADDCCI(-3,R4i0)
+        R_RETREST
+        REX_FUNCEND
+
+rexfunc_ldstfinc:
+        REX_FUNCSTART_LEAF
+        R_LDFINC(R4o0,R4f0)
+        R_LDFINC(R4o0,R4f1)
+        R_LDFINC(R4o0,R4f2)
+        R_LDFINC(R4o0,R4f3)
+        R_STFINC(R4f0,R4o1)
+        R_STFINC(R4f1,R4o1)
+        R_STFINC(R4f2,R4o1)
+        R_STFINC(R4f3,R4o1)
+        R_RETL
+        REX_FUNCEND
+
+rexfunc_ldstdfinc:
+        REX_FUNCSTART_LEAF
+        R_LDDFINC(R4o0,R4f0)
+        R_LDDFINC(R4o0,R4f2)
+        R_STDFINC(R4f0,R4o1)
+        R_STDFINC(R4f2,R4o1)
+        R_RETL
+        REX_FUNCEND

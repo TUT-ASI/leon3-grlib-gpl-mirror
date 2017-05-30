@@ -282,7 +282,7 @@ maintest()
 	  if (tmp == 0) fail(1);
 
 	/* iparity checks */
-	if ((cachectrl >> CPP_CONF_BIT) & CPP_CONF_MASK) {
+        if (((cachectrl >> CPP_CONF_BIT) & CPP_CONF_MASK) == CPP_CONF_PARITY) {
 	  cachectrl = rsysreg(0); wsysreg(0, cachectrl & ~0x3fc0);
 	  line2();
 	  wsysreg(0, (cachectrl | CPTB_MASK) & ~3);
@@ -290,6 +290,10 @@ maintest()
 	    setidata((int) line2, i, 0);
 	  }
 	  wsysreg(0, (cachectrl | CPTB_MASK));
+	  /* Add nop to ensure time between enabling icache and calling line2
+	     to get the parity error. The short time made some template designs
+	     fail. */
+	  asm("nop;");
 	  line2();
 	  cachectrl = rsysreg(0);
 	  if (((cachectrl >> IDE_BIT) & 3) != 1) fail(2);
@@ -345,7 +349,7 @@ maintest()
 	if (tmp != 1) fail(10);
 	
 	/* dcache parity */ 							 
-	if ((cachectrl >> CPP_CONF_BIT) & CPP_CONF_MASK) {
+	if (((cachectrl >> CPP_CONF_BIT) & CPP_CONF_MASK) == CPP_CONF_PARITY) {
 	  cachectrl = rsysreg(0); wsysreg(0, cachectrl & ~CE_CLEAR);
 	  setddata(&mrx[0],0,0);
 	  cachectrl = rsysreg(0); wsysreg(0, cachectrl | CPTB_MASK);

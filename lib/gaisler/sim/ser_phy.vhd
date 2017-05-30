@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -108,7 +108,9 @@ begin
       base1000_t_fd => base1000_t_fd,
       base1000_t_hd => base1000_t_hd,
       rmii          => 0,
-      rgmii         => 0
+      rgmii         => 0,
+      extrxclken    => 1,
+      gmii100       => 1
     )
     port map(
       rstn    => rstn,
@@ -124,7 +126,8 @@ begin
       tx_en   => phy_ethi.rx_dv,
       tx_er   => phy_ethi.rx_er,
       mdc     => mdc,
-      gtx_clk => phy_ethi.gtx_clk
+      gtx_clk => phy_ethi.gtx_clk,
+      extrxclk => phy_ethi.rx_clk
     );
 
   -- GMII to MII adapter fixed to Gigabit mode (disabled)

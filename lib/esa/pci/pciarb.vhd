@@ -42,7 +42,8 @@ entity pciarb is
     pclk    : in std_ulogic;
     prst_n  : in std_ulogic;
     apbi    : in apb_slv_in_type;
-    apbo    : out apb_slv_out_type
+    apbo    : out apb_slv_out_type;
+    gnt_n_unreg   : out std_logic_vector(0 to nb_agents-1)
   );
 end entity;
 
@@ -63,7 +64,8 @@ component pci_arb is
     pclk    : in  clk_type;                            -- APB clock
     prst_n  : in  std_logic;                           -- APB reset
     pbi     : in  EAPB_Slv_In_Type;                     -- APB inputs
-    pbo     : out EAPB_Slv_Out_Type                     -- APB outputs
+    pbo     : out EAPB_Slv_Out_Type;                    -- APB outputs
+    gnt_n_unreg : out std_logic_vector(0 to NB_AGENTS-1)
   );
 end component;
 
@@ -126,7 +128,8 @@ begin
       NB_AGENTS => nb_agents, ARB_SIZE => log2(nb_agents), APB_EN => apb_en)
     port map(
       clk => clk, rst_n => rst_n, req_n => req_n_int, frame_n => frame_n_int,
-      gnt_n => gnt_n, pclk => pclk, prst_n => prst_n, pbi => pbi, pbo => pbo);
+      gnt_n => gnt_n, pclk => pclk, prst_n => prst_n, pbi => pbi, pbo => pbo,
+      gnt_n_unreg => gnt_n_unreg);
   end generate;
   net0 : if netlist /= 0 generate
     arb : pci_arb_net
@@ -150,6 +153,9 @@ begin
     apbo.pconfig <= pconfig;
     apbo.pirq <= (others => '0');
   end generate apb_en1;
+  apb_en0: if apb_en = 0 generate
+    apbo <= apb_none;
+  end generate;
 
   pbi.psel <= apbi.psel(pindex);
   pbi.penable <= apbi.penable;

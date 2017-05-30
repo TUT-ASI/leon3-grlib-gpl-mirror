@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -317,6 +317,9 @@ begin
     r1 : syncram_2p generic map (memtech, eabits, 16, 0, 0, scanen) port map (
       clk, erenable, eraddress(eabits-1 downto 0), erdata(15 downto 0), clk,
       ewritel, ewaddressl(eabits-1 downto 0), ewdata(15 downto 0), ahbmi.testin);
+  end generate;
+  noedclram : if edcl = 0 generate
+    erdata <= (others => '0');
   end generate;
 -- pragma translate_off
   bootmsg : report_version 

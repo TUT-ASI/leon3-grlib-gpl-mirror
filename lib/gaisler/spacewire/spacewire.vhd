@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@ package spacewire is
     inttreload   : std_logic_vector(30 downto 0);
     intiareload  : std_logic_vector(30 downto 0);
     intcreload   : std_logic_vector(30 downto 0);
-    irqtxdefault : std_logic_vector(4 downto 0);
+    irqtxdefault : std_logic_vector(5 downto 0);
     pnpen        : std_ulogic;
     pnpuvendid   : std_logic_vector(15 downto 0);
     pnpuprodid   : std_logic_vector(15 downto 0);
@@ -414,7 +414,8 @@ package spacewire is
       pnpminorver     : integer range 0 to 16#FF# := 0;
       pnppatch        : integer range 0 to 16#FF# := 0;
       num_txdesc      : integer range 64 to 512 := 64;
-      num_rxdesc      : integer range 128 to 1024 := 128
+      num_rxdesc      : integer range 128 to 1024 := 128;
+      ccsdscrc        : integer range 0 to 1 := 0
       );
     port(
       rst        : in  std_ulogic;
@@ -519,7 +520,8 @@ package spacewire is
       pnpminorver     : integer range 0 to 16#FF# := 0;  -- spw2
       pnppatch        : integer range 0 to 16#FF# := 0;  -- spw2
       num_txdesc      : integer range 64 to 512 := 64;  -- spw2
-      num_rxdesc      : integer range 128 to 1024 := 128  -- spw2
+      num_rxdesc      : integer range 128 to 1024 := 128;  -- spw2
+      ccsdscrc        : integer range 0 to 1 := 0 -- spw2
     );
     port(
       rst        : in  std_ulogic;
@@ -655,7 +657,8 @@ package spacewire is
       auxtimeen       : integer range 0 to 1 := 1;
       num_txdesc      : integer range 64 to 512 := 64;
       num_rxdesc      : integer range 128 to 1024 := 128;
-      auxasync        : integer range 0 to 1 := 0
+      auxasync        : integer range 0 to 1 := 0;
+      hirq            : integer range 0 to NAHBIRQ-1 := 0
       );
     port(
       rst          : in  std_ulogic;

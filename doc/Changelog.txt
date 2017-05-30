@@ -1,3 +1,157 @@
+----------------------- Release 2017.2-b4193 ---------------------------
+
+2017-05-30	Enabled GRFPU as default in leon3-xilinx-kc705,
+		leon3-xilinx-ml605 and leon3-xilinx-vc707 template designs.
+
+2017-05-29	Added variable GRLIB_VIVADO_SOURCE_MGMT_MODE to allow definition
+		of the source_mgmt_mode variable in Vivado. If not set, the
+		default setting of Vivado is used.
+
+2017-05-26	Updated Xilinx designs for Vivado 2017.1
+
+2017-05-12	AHBSTAT: Extend to optionally support filtering and logging of 
+		multiple errors.
+
+2017-05-12	GRPCI2: Update to DMA descriptor handling.
+		Added data descriptors was not always detected by the running
+		DMA. The channel descriptor is now updated to point to the next
+		data descriptor when disabled via the APB interface.
+
+2017-05-08	LEON3/4: Bugfix for incorrect store address when MMU is enabled 
+		and TLB is disabled. Only affected designs using separate TLB 
+		with fast write option (TLB_TYPE= 2). The default value after 
+		reset for TLB is enabled and existing designs that keep the TLB 
+		enabled are not affected. This issue is present all LEON designs 
+		with TLB_TYPE = 2 since GRLIB build 2627.
+		 
+2017-05-05	LEON3/LEON4: Avoid breaking into debug mode on RETT
+		instructions because this causes incorrect behavior when
+		resuming.
+
+2017-05-03	scripts: Added file scriptgen_variable_values.tcl to pass
+		environment variables to GRLIB scripts.
+
+2017-04-19	IRQMP system test: Fix race condition in irqtest()
+
+2017-04-10	GRLIB revision numbering changed from x.y.z to yyyy.q.
+
+2017-04-10	SDCTRL64: Change decoding of chip select and bank address
+		to align with MCTRL and SDCTRL in 64-bit mode.
+
+2017-03-20	Update Ethernet Phy simulation model to simulate/check
+		interface setup/hold/clock-to-out timing.
+
+2017-03-16	Add template design for Terasic Altera DSP Development Kit,
+		Stratix V Edition (leon3-terasic-s5gs-dsp)
+
+2017-02-07	leon3-xilinx-zc702: AHB2AXI bridge in the Zynq template design
+		has been replaced with AHB2AXI3B bridge. 
+
+2017-02-07	Added template design for Digilent Anvyl board
+		(leon3-digilent-anvyl) contributed by Dag Stroman.
+
+2017-02-02	APB3CTRL: Respond with AMBA ERROR on unmapped APB area
+
+2017-01-26	Updated Xilinx designs for Vivado 2016.4
+
+2017-01-20	scripts: Corrections made to allow Quartus to run in GUI
+		mode and to allow separate generation of Microsemi scripts
+
+2016-12-30	GRCLKGATE: Move delay balancing to techmap layer. Clean up
+		scan test support.
+
+2016-12-30	APB3CTRL: Add generic to hide plug'n'play area.
+
+2016-12-02	GUIDE: Add information about MMU aliasing to data cache
+		snooping section.
+
+2016-11-21	LEON3: notag VHDL generic can no longer be used to disable
+		tagged arithmetic and CASA.
+
+2016-11-21	Add system test documentation to GRLIB user's manual
+
+2016-11-10	AHBJTAG: Restructure code to avoid issues with Vivado.
+
+2016-11-09	Add 64-bit and 128-bit wide versions of ahbrom.
+
+2016-11-04	Allow configuring MMU page size for leon_dsu_stat_base
+		subsystem.
+
+2016-11-02	GRPCI2: Add support for grlib_async_reset_enable and
+		grlib_sync_reset_enable_all from GRLIB config package.
+
+2016-10-27	AHBJTAG: Add support for grlib_sync_reset_enable_all
+		AHBROM: Add support for grlib_sync_reset_enable_all
+
+2016-10-21	AHBCTRL: Add fall-through BAR option to redirect
+		unmapped areas to specific slave.
+
+2016-09-22	Remove leon3-terasic-sockit from release
+
+2016-09-16	leon3-minimal: Updated leon3mp.vhd and testbench.vhd to
+		allow simulations to terminate.
+
+2016-09-10	LEON3: Support option for more aggressive RAM power saving
+
+		This feature requires specific memory block behavior
+		("read-hold"), and is enabled based on the
+		techmap.syncram_readhold vector, currently disabled for all
+		technologies.
+
+2016-09-10	LEON3: Instruction cache MMU and power-down improvement
+		- Use MMU cacheability setting to enable/disable caching
+		  per page when MMU is enabled. Icache used cached generic or
+		  assumed always on previously when MMU enabled.
+		- Support disabling the Icache memories when Icache is disabled.
+		  (non-trivial due to a corner case the cycle after enabling)
+
+2016-08-30	LEON3: Bugfix for DPBM functionality. Affects LEON3
+		implementations with branch prediction enabled from release
+		1.4.0 to 1.5.3 (problem introduced in GRLIB 2015-02-07),
+		build b4154-b4173.
+
+2016-08-18	AHBCTRL: Allow overlapping areas when generic shadow /= 0
+
+2015-08-11	AHBROM: pipe=1 implementation is modified in order not to
+		deassert HREADY when HSEL is low.
+
+2015-08-10	scripts: Replace parts of script generation infrastructure
+		with Tcl based solution.
+
+2016-07-08	Updated Xilinx designs for Vivado 2016.2
+
+2016-07-03	APBCTRL: Add support for grlib_async_reset_enable.
+
+2016-07-03	AHBCTRL: Add support for grlib_async_reset_enable.
+
+2016-07-03	SPICTRL: Increase to revision 6. Add support for dual and
+		quad SPI protocols. Rename 3-wire mode to 3-wire protocol.
+		Add support for grlib_async_reset_enable.
+
+2016-07-02	SPI: Remove ssn member from gaisler.spi.spi_out_type.
+
+2016-06-13	MCTRL/SDMCTRL: Add support for grlib_sync_reset_enable_all.
+
+2016-05-17	Updated Xilinx designs for Vivado 2016.1
+
+2016-04-05	RGMII Adapter: Fixed RX Valid delay bug in RGMII adapter.
+		Internal RX Valid signal was always set to '0' when delayed
+		more than 2 clock cycles
+
+2016-03-31	Techmap: Prefix constants used to select transceiver type with
+		TT_X for Xilinx and TT_M for Microsemi (GTX0 is not TT_XGTX0).
+
+2016-03-31	Add AHB2AXI - AHB to AXI bridge IP core.
+
+2016-03-24	LEON3/DSU3: Extend number of available bits in DSU time tag
+		counter and make counter available via %ASR22 - %ASR23.
+
+2016-02-28	GRGPIO: IFLAG register was automatically cleared when the
+		interrupt condition was removed. IFLAG was only set for one
+		cycle when a interrupt was edge triggered.
+
+2016-01-27	SPI2AHB: pirq was missing from APB PnP information
+
 ----------------------- Release 1.5.0-b4164 ----------------------------
 
 2016-01-21	leon3-digilent-atlys: Update design, allow systest simulation

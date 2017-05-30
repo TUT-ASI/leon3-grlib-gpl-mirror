@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -90,6 +90,9 @@ architecture rtl of mmutlb is
       touch       : std_logic;
       sync_isw    : std_logic;
       tlbmiss     : std_logic;
+
+      tlbdis_twaddr : std_logic_vector(29 downto 0); 
+      tlbdis_data   : std_logic_vector(31 downto 0);
   end record;
   
   constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
@@ -112,7 +115,9 @@ architecture rtl of mmutlb is
     tpos           => (others => '0'),
     touch          => '0',
     sync_isw       => '0',
-    tlbmiss        => '0');
+    tlbmiss        => '0',
+    tlbdis_twaddr  => (others=>'0'),
+    tlbdis_data    => (others=>'0'));
 
   signal c,r   : tlb_rtype;
 
@@ -354,7 +359,14 @@ begin
     lrui_touch := '0'; lrui_touchmin := '0'; lrui_pos := (others => '0');
     dr1write := '0';
     fault_pro := '0'; fault_pri := '0'; fault_mexc := '0'; fault_trans := '0'; fault_inv := '0'; fault_access := '0';
-    twi_walk_op_ur := '0'; twi_areq_ur := '0'; twi_aaddr := dr1_dataout&"00";
+    twi_walk_op_ur := '0'; twi_areq_ur := '0';
+
+    if tlbi.mmctrl1.tlbdis = '1' then
+      twi_aaddr := r.tlbdis_twaddr&"00";
+    else
+      twi_aaddr := dr1_dataout&"00";
+    end if;
+    
     finish := '0';
     store := '0'; savewalk := '0'; tlbo_s1finished := '0';
     selstate := '0'; 
@@ -422,7 +434,9 @@ begin
 	      v.s2_entry := reppos;
               v.s2_tlbstate := walk; v.tlbmiss := '1';
               if tlb_rep = 0 then
-                lrui_touchmin := '1';             -- lru element consumed
+                if tlbi.mmctrl1.tlbdis = '0' then
+                  lrui_touchmin := '1';             -- lru element consumed
+                end if;
               end if;
             end if;
           end if;
@@ -445,6 +459,10 @@ begin
           v.walk_fault.fault_trans := two.fault_trans;
           v.walk_fault.fault_inv := two.fault_inv;
           v.walk_use := '1';
+
+          v.tlbdis_data := two.data;
+          v.tlbdis_data(PTE_M) := (not r.s2_read) or two.data(PTE_M);
+          v.tlbdis_data(PTE_R) := '1';
           
           if ( twNEEDSYNC = '0' or two_error = '1') then
             v.s2_tlbstate := pack;
@@ -538,7 +556,7 @@ begin
 
       TLB_CheckFault( wb_ACC, tlbi.transdata.isid, tlbi.transdata.su, tlbi.transdata.read, wb_fault_pro, wb_fault_pri );
 
-      wb_transdata.accexc :=  wb_fault_pro or wb_fault_pri or wb_WBNEEDSYNC or (not cam_hit_all);
+      wb_transdata.accexc :=  wb_fault_pro or wb_fault_pri or wb_WBNEEDSYNC or (not cam_hit_all) or tlbi.mmctrl1.tlbdis;
       
     end if;
     
@@ -592,9 +610,16 @@ begin
     
     transdata.finish := finish;
     transdata.accexc := '0';
-    
-    
+
+    if dr1write = '1' then
+      v.tlbdis_twaddr := two.addr(31 downto 2);
+    end if;
+        
     twi_adata := PTE;
+
+    if tlbi.mmctrl1.tlbdis = '1' then
+      twi_adata := r.tlbdis_data;
+    end if;
     
     --# drive signals
     tlbo.wbtransdata  <= wb_transdata;
@@ -623,7 +648,7 @@ begin
     dr1_addr          <= r.s2_entry;
     dr1_datain        <= two.addr(31 downto 2);
     dr1_enable        <= '1';
-    dr1_write         <= dr1write;
+    dr1_write         <= dr1write and not(tlbi.mmctrl1.tlbdis);
     
     for i in entries-1 downto 0 loop
       tlbcami(i).mmctrl    <= tlbi.mmctrl1;
@@ -633,7 +658,7 @@ begin
       tlbcami(i).flush_op  <= r.s2_flush;
       tlbcami(i).mmuen     <= tlbi.mmctrl1.e;
       tlbcami(i).tagwrite  <= tlbcam_tagwrite;
-      tlbcami(i).write_op  <= tlbcam_write_op(i);
+      tlbcami(i).write_op  <= tlbcam_write_op(i) and (not(tlbi.mmctrl1.tlbdis) or r.s2_flush);
       tlbcami(i).mset  <= '0';
     end loop;  -- i
 

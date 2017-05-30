@@ -15,7 +15,7 @@ package config is
   constant CFG_FABTECH : integer := artix7;
   constant CFG_MEMTECH : integer := artix7;
   constant CFG_PADTECH : integer := artix7;
-  constant CFG_TRANSTECH : integer := GTP0;
+  constant CFG_TRANSTECH : integer := TT_XGTP0;
   constant CFG_NOASYNC : integer := 0;
   constant CFG_SCAN : integer := 0;
 -- Clock generator
@@ -38,7 +38,7 @@ package config is
   constant CFG_SVT : integer := 1;
   constant CFG_RSTADDR : integer := 16#00000#;
   constant CFG_LDDEL : integer := (1);
-  constant CFG_NOTAG : integer := 1;
+  constant CFG_NOTAG : integer := 0;
   constant CFG_NWP : integer := (0);
   constant CFG_PWD : integer := 0*2;
   constant CFG_FPU : integer := 0 + 16*0 + 32*0;
@@ -217,6 +217,7 @@ package config is
   constant CFG_SPICTRL_MAXWLEN : integer := 0;
   constant CFG_SPICTRL_SYNCRAM : integer := 0;
   constant CFG_SPICTRL_FT : integer := 0;
+  constant CFG_SPICTRL_PROT : integer := 0;
 
 -- GRLIB debugging
   constant CFG_DUART : integer := 1;

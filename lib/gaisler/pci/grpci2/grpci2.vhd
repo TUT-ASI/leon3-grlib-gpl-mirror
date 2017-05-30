@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -29,6 +29,8 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.amba.all;
 use grlib.stdlib.all;
 use grlib.devices.all;
@@ -390,7 +392,7 @@ type pci_master_type is record
 end record;
 constant pci_master_none : pci_master_type := (
   pm_idle, pmf_idle, pci_core_fifo_vector_none, (others => '0'), (others => '0'), '0', 
-  (others => '0'), '0', (others => '0'), (others => '0'), (others => '0'), (others => '0'), '0', 
+  (others => '0'), '1', (others => '0'), (others => '0'), (others => '0'), (others => '0'), '0', 
   '0', '0', (others => '0'), '0', (others => '0'), (others => '0'), '0', (others => '0'), '0', 
   (others => '0'), '0', (others => '0'), (others => '0'), '0', '0', '0', pci_master_acc_multi_none,
   0, 0, '0', zero32((FIFO_DEPTH+log2(FIFO_COUNT))-1 downto 0), (others => '0'), '0'); 
@@ -422,7 +424,7 @@ type apb_to_pci_trace_trans_type is record
   sig     : std_logic_vector(16 downto 0);
   sigmask : std_logic_vector(16 downto 0);
 end record;
-constant apb_to_pci_trace_trans_none : apb_to_pci_trace_trans_type := ('0', '0', (others => '0'), zero32(PT_DEPTH-1 downto 0), 
+constant apb_to_pci_trace_trans_none : apb_to_pci_trace_trans_type := ('0', '1', (others => '0'), zero32(PT_DEPTH-1 downto 0), 
   (others => '0'), (others => '0'), (others => '0'), (others => '0'), (others => '0'));
 type pci_trace_type is record
   addr      : std_logic_vector(PT_DEPTH-1 downto 0);
@@ -432,6 +434,8 @@ end record;
 constant pci_trace_none : pci_trace_type := (zero32(PT_DEPTH-1 downto 0), zero32(PT_DEPTH-1 downto 0), (others => '0'));
 
 type pci_msd_acc_cancel_acc_multi_type is array (0 to 1) of std_logic_vector(2 downto 0);
+constant pci_msd_acc_cancel_acc_multi_none : pci_msd_acc_cancel_acc_multi_type :=
+  (others => (others => '0'));
 
 type pci_to_ahb_trans_type is record
   -- PCI target <=> AHB master
@@ -456,6 +460,23 @@ type pci_to_ahb_trans_type is record
   pa_discardtout: std_logic;
   rst_ack       : std_logic_vector(2 downto 0);
 end record;
+constant pci_to_ahb_trans_none : pci_to_ahb_trans_type := (
+  tm_acc              => pci_g_acc_trans_none,
+  tm_acc_cancel       => '0',
+  tm_acc_done_ack     => '0',
+  tm_fifo             => pci_g_fifo_trans_vector_none,
+  tm_fifo_ack         => pci_g_fifo_ack_trans_vector_none,
+  msd_acc_ack         => (others => '0'),
+  msd_acc_cancel_ack  => pci_msd_acc_cancel_acc_multi_none,
+  msd_acc_done        => pci_g_acc_status_trans_multi_none,
+  msd_fifo            => pci_g_fifo_trans_vector_multi_none,
+  msd_fifo_ack        => pci_g_fifo_ack_trans_vector_multi_none,
+  ca_host             => '0',
+  ca_pcimsten         => (others => '0'),
+  ca_twist            => conv_std_logic_vector(conv_endian, 1)(0),
+  pa_serr             => '1',
+  pa_discardtout      => '0',
+  rst_ack             => (others => '0'));
 
 type ahb_to_pci_trans_type is record
   -- PCI target <=> AHB master
@@ -476,11 +497,29 @@ type ahb_to_pci_trans_type is record
   rst               : std_logic_vector(2 downto 0);
   mstswdis          : std_logic;
 end record;
+constant ahb_to_pci_trans_none : ahb_to_pci_trans_type := (
+  tm_acc_ack         => '0',
+  tm_acc_cancel_ack  => (others => '0'),
+  tm_acc_done        => pci_g_acc_status_trans_none,
+  tm_fifo            => pci_g_fifo_trans_vector_none,
+  tm_fifo_ack        => pci_g_fifo_ack_trans_vector_none,
+  msd_acc            => pci_g_acc_trans_multi_none,
+  msd_acc_cancel     => (others => '0'),
+  msd_acc_done_ack   => (others => '0'),
+  msd_fifo           => pci_g_fifo_trans_vector_multi_none,
+  msd_fifo_ack       => pci_g_fifo_ack_trans_vector_multi_none,
+  pa_serr_rst        => '0',
+  pa_discardtout_rst => '0',
+  rst                => (others => '0'),
+  mstswdis           => '0');
+
 
 type pci_sync_type is array (1 to 2) of ahb_to_pci_trans_type;
 type ahb_sync_type is array (1 to 2) of pci_to_ahb_trans_type;
+constant ahb_sync_none : ahb_sync_type := (others => pci_to_ahb_trans_none);
 type pci_trace_sync_type is array (1 to 2) of apb_to_pci_trace_trans_type;
 type apb_sync_type is array (1 to 2) of pci_trace_to_apb_trans_type;
+constant apb_sync_none : apb_sync_type := (others => pci_trace_to_apb_trans_none);
 type ahb_to_pci_map_type is array (0 to 15) of std_logic_vector(31 downto 0);
 constant ahb_to_pci_map_none : ahb_to_pci_map_type := (others => (others => '0'));
 
@@ -519,6 +558,7 @@ type pci_reg_type is record
   pci66     : std_logic_vector(1 downto 0);
   debug     : std_logic_vector(31 downto 0);
 end record;
+
 
 subtype AHB_FIFO_BITS is natural range FIFO_DEPTH + 1 downto 2;
 type amba_master_state_type is (am_idle, am_read, am_write, am_error);
@@ -597,7 +637,7 @@ constant amba_slave_none : amba_slave_type := (
   (others => '0'), (others => '0'), (others => '0'), (others => '0'), '0', '0', '0', '0', '0',
   (others => '0'), '0', (others => '0'), '0', '0', ahb_to_pci_map_none, (others => '0'),
   (others => '0'), (others => '0'), (others => '0'), '0', '0', pci_g_acc_trans_vector_none,
-  (others => '0'), (others => '0'), (others => '0'), '0', '0', '0'); 
+  (others => '1'), (others => '0'), (others => '0'), '0', '0', '0'); 
 
 type irq_reg_type is record
   device_mask  : std_logic_vector(3 downto 0);
@@ -621,7 +661,7 @@ constant irq_reg_none : irq_reg_type := (
   (others => '0'), '0', (others => '0'), (others => '0'), (others => '0'),
   '0', '0', (others => '0'), '0', '0', '0', (others => '0'), '0', '0', '0', '0'); 
 
-type dma_state_type is (dma_idle, dma_read_desc, dma_next_channel, dma_write_status, dma_read, dma_write, dma_error);
+type dma_state_type is (dma_idle, dma_read_desc, dma_next_channel, dma_disable, dma_write_status, dma_read, dma_write, dma_error);
 type dma_desc_type is record
   en      : std_logic;
   irqen   : std_logic;
@@ -666,6 +706,8 @@ type dma_reg_type is record
   first     : std_logic_vector(2 downto 0);
   retry     : std_logic;
   retry_len : std_logic_vector(15 downto 0);
+  retry_addr: std_logic_vector(31 downto 0);
+  retry_noreq: std_logic;
   addr      : std_logic_vector(31 downto 0);
   irq       : std_logic;
   irqen     : std_logic;
@@ -674,13 +716,14 @@ type dma_reg_type is record
   errstatus : std_logic_vector(4 downto 0);   -- DMA error status
   irqch     : std_logic_vector(7 downto 0);   -- DMA Channel irq status
   running   : std_logic;                      -- DMA is running
+  reen      : std_logic;
 end record;
 constant dma_reg_none : dma_reg_type := (
   dma_idle, dma_ahb_in_none, dma_desc_none, pci_fifo_none, pci_fifo_none,
   (others => '0'), '0', (others => '0'), (others => '0'), (others => '0'),
   (others => '0'), (others => '0'), '0', '0', (others => '0'), zero32(AHB_FIFO_BITS),
-  (others => '0'), '0', (others => '0'), (others => '0'), '0', '0', (others => '0'),
-  (others => '0'), (others => '0'), (others => '0'), '0'); 
+  (others => '0'), '0', (others => '0'), (others => '0'), '0', (others => '0'), '0', '0',
+  (others => '0'), (others => '0'), (others => '0'), (others => '0'), '0', '0'); 
 
 type amba_reg_type is record
   m         : amba_master_type;
@@ -698,7 +741,7 @@ type amba_reg_type is record
   debuga    : std_logic_vector(31 downto 0);
 end record;
 
-constant REVISION : amba_version_type := 1;
+constant REVISION : amba_version_type := 2;
 constant pconfig : apb_config_type := (
     0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_GRPCI2, 0, REVISION, irq),
     1 => apb_iobar(paddr, pmask));
@@ -716,7 +759,35 @@ constant hconfig : ahb_config_type := (
 
 constant oeon : std_logic := conv_std_logic_vector(oepol,1)(0);
 constant oeoff : std_logic := not conv_std_logic_vector(oepol,1)(0);
-constant ones32 : std_logic_vector(31 downto 0) := (others => '1');
+
+constant PRRES : pci_reg_type := (
+  conf       =>  (others => pci_config_space_none),
+  po         =>  pci_reg_out_none,
+  m          =>  pci_master_none,
+  t          =>  pci_target_none,
+  pta_trans  =>  pci_to_ahb_trans_none,
+  sync       => (others =>  ahb_to_pci_trans_none),
+  pt         =>  pci_trace_none,
+  ptta_trans => pci_trace_to_apb_trans_none,
+  pt_sync    => (others => apb_to_pci_trace_trans_none),
+  pciinten   => (others => oeoff),
+  pci66      => (others => '0'),         -- sync register
+  debug      => (others => '0'));
+
+constant ARRES : amba_reg_type := (
+  m           => amba_master_none,
+  atp_trans   => ahb_to_pci_trans_none,
+  sync        => ahb_sync_none,
+  s           => amba_slave_none,
+  irq         => irq_reg_none,
+  dma         => dma_reg_none,
+  atpt_trans  => apb_to_pci_trace_trans_none,
+  apb_sync    => apb_sync_none,
+  apb_pt_stat => (others => '0'),
+  apb_pr_conf_0_pta_map => pci_bars_none,
+  debug       => (others => '0'),
+  debug_pr    => (others => '0'),
+  debuga      => (others => '0'));
 
 signal pr, prin   : pci_reg_type;
 signal pi, piin   : pci_in_type;  -- Registered PCI signals.
@@ -1026,6 +1097,9 @@ begin
   end if;
   return res;
 end function;
+
+constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+constant ASYNC_RESET : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 
 begin
 
@@ -1687,7 +1761,7 @@ begin
             pv.m.acc(pr.m.acc_sel).length := pr.m.acc(pr.m.acc_sel).length - 1;
           end if;
 
-          if pr.m.addr(AHB_FIFO_BITS) = ones32(FIFO_DEPTH-1 downto 0) or pr.m.burst = '0' or (acc.mode(1) = '1' and acc.length = x"0000") then
+          if pr.m.addr(AHB_FIFO_BITS) = one32(FIFO_DEPTH-1 downto 0) or pr.m.burst = '0' or (acc.mode(1) = '1' and acc.length = x"0000") then
             
             if pr.m.acc_cnt /= MST_ACC_CNT then pv.m.acc_cnt := pr.m.acc_cnt + 1; end if; -- Switch DMA/AHB-slave after MST_ACC_CNT FIFOs
             pv.m.fifo_switch := '1';
@@ -1716,7 +1790,7 @@ begin
           pv.m.fifo_addr := conv_std_logic_vector(acc.fifo_index, log2(FIFO_COUNT)) & pr.m.addr(AHB_FIFO_BITS);
           pv.pta_trans.msd_fifo(pr.m.acc_sel)(acc.fifo_index).stop := pv.m.fifo_addr(FIFO_DEPTH-1 downto 0);
         
-          if ((fifo_empty(fifo_nindex) = '0' or acc_switch = '1') and pr.m.fifo_addr(FIFO_DEPTH-1 downto 0) = conv_std_logic_vector((conv_integer(ones32(FIFO_DEPTH-1 downto 0)) - 3), FIFO_DEPTH)) -- terminate access when 3 words left to store in FIFO or 3 word left i transfer
+          if ((fifo_empty(fifo_nindex) = '0' or acc_switch = '1') and pr.m.fifo_addr(FIFO_DEPTH-1 downto 0) = conv_std_logic_vector((conv_integer(one32(FIFO_DEPTH-1 downto 0)) - 3), FIFO_DEPTH)) -- terminate access when 3 words left to store in FIFO or 3 word left i transfer
              or (acc.mode(1) = '1' and acc.length = x"0002") then
             pv.m.term(0) := '1';
             pv.m.afull := '1';      -- almost full 
@@ -2453,7 +2527,7 @@ begin
           pv.t.hold_reset := '0';
         end if;
 
-        if (pr.t.addr(AHB_FIFO_BITS) = ones32(FIFO_DEPTH-1 downto 0) and pr.t.first(0) = '1' and 
+        if (pr.t.addr(AHB_FIFO_BITS) = one32(FIFO_DEPTH-1 downto 0) and pr.t.first(0) = '1' and 
            (tm_fifo_empty(t_index) = '0' or pr.t.blen = x"0000")) or 
            ((pi.trdy or pi.irdy) = '0' and pr.t.blen = x"0001") or
            pr.t.cur_acc(0).burst = '0' then 
@@ -2469,7 +2543,7 @@ begin
           pv.t.pta.ctrl.en := '1';
           pv.t.pta.ctrl.addr := conv_std_logic_vector(pr.t.pta.index, log2(FIFO_COUNT)) & pr.t.addr(AHB_FIFO_BITS);
           
-          if pi.cbe /= ones32(3 downto 0) or pr.t.first(0) = '1' then
+          if pi.cbe /= one32(3 downto 0) or pr.t.first(0) = '1' then
             pv.t.first(0) := '0';
             pv.pta_trans.tm_fifo(pr.t.pta.index).stop := pr.t.addr(AHB_FIFO_BITS);
             pv.pta_trans.tm_fifo(pr.t.pta.index).last_cbe := pi.cbe;
@@ -2484,9 +2558,9 @@ begin
             pv.t.blen := pr.t.blen - 1;
           end if;
           
-          if pr.t.addr(AHB_FIFO_BITS) /= ones32(FIFO_DEPTH-1 downto 0) and pi.frame = '0' and pr.t.diswithout = '0' and pi.stop = '1' then
+          if pr.t.addr(AHB_FIFO_BITS) /= one32(FIFO_DEPTH-1 downto 0) and pi.frame = '0' and pr.t.diswithout = '0' and pi.stop = '1' then
             
-            if pr.t.addr(AHB_FIFO_BITS) = conv_std_logic_vector((conv_integer(ones32(FIFO_DEPTH-1 downto 0)) - 1), FIFO_DEPTH) then
+            if pr.t.addr(AHB_FIFO_BITS) = conv_std_logic_vector((conv_integer(one32(FIFO_DEPTH-1 downto 0)) - 1), FIFO_DEPTH) then
               if tm_fifo_empty(t_index) = '0' then
                 pv.t.hold_write := '1';
                 t_ready := '0';
@@ -3066,7 +3140,7 @@ begin
         pv.conf(j).bar(i) := (others => '0');
         pv.conf(j).pta_map(i) := default_bar_map(j)(i);
         pv.conf(j).bar_mask(i) := (others => '0');
-        pv.conf(j).bar_mask(i)(31 downto bar_size(j)(i)) := ones32(31 downto bar_size(j)(i));
+        pv.conf(j).bar_mask(i)(31 downto bar_size(j)(i)) := one32(31 downto bar_size(j)(i));
         pv.conf(j).bar_mask(i)(3) := bar_prefetch(j)(i);
         pv.conf(j).bar_mask(i)(0) := bar_io(j)(i);
         if bar_size(j)(i) <= 1 then pv.conf(j).bar_mask(i) := (others => '0'); end if;
@@ -3394,7 +3468,7 @@ begin
             av.m.blen := ar.m.blen - 1;
           end if;
 
-          if ar.m.dmai0.addr(AHB_FIFO_BITS) = ones32(AHB_FIFO_BITS) or ar.m.done(2) = '1' or ar.m.acc.burst = '0' then
+          if ar.m.dmai0.addr(AHB_FIFO_BITS) = one32(AHB_FIFO_BITS) or ar.m.done(2) = '1' or ar.m.acc.burst = '0' then
             if tm_fifo_empty(tm_nindex) = '0' then
               av.m.dmai0.req := '0';
               av.m.hold(0) := '1';
@@ -3430,7 +3504,7 @@ begin
         if dmao0.ready = '1' then 
           if dmao0.grant = '0' then av.m.active := '0'; end if;
 
-          if ar.m.faddr(AHB_FIFO_BITS) /= ones32(AHB_FIFO_BITS) and ar.m.done(1) = '0' then
+          if ar.m.faddr(AHB_FIFO_BITS) /= one32(AHB_FIFO_BITS) and ar.m.done(1) = '0' then
             av.m.faddr(AHB_FIFO_BITS) := ar.m.faddr(AHB_FIFO_BITS) + 1;
           else                                                        -- Last word in fifo
             av.m.faddr(AHB_FIFO_BITS) := (others => '0');
@@ -3486,7 +3560,7 @@ begin
         end if;
          
         -- to deassert req on last address phase 
-        if av.m.dmai0.addr(AHB_FIFO_BITS) = ones32(AHB_FIFO_BITS) then av.m.dmai0.noreq := '1'; end if;
+        if av.m.dmai0.addr(AHB_FIFO_BITS) = one32(AHB_FIFO_BITS) then av.m.dmai0.noreq := '1'; end if;
 
         if ar.m.done(2) = '1' and ar.m.active = '0' and dmao0.grant = '0' then
           av.m.dmai0.req := '0';
@@ -3529,7 +3603,7 @@ begin
           
           -- Last access is non-word or first/last is no-data
           if tm_fifo(ar.m.acc.fifo_index).start = tm_fifo(ar.m.acc.fifo_index).stop then
-            if ar.m.acc.cbe = ones32(3 downto 0) then
+            if ar.m.acc.cbe = one32(3 downto 0) then
               av.m.done(0) := '1';
               av.m.first(0) := '0';
               av.m.dmai0.req := '0';
@@ -3540,7 +3614,7 @@ begin
               av.m.dmai0.addr(1 downto 0) := set_addr_from_cbe(tm_fifo(ar.m.acc.fifo_index).last_cbe, ar.m.acc.endianess);
               av.m.dmai0.burst := '0';
             end if;
-          elsif ar.m.acc.cbe = ones32(3 downto 0) then
+          elsif ar.m.acc.cbe = one32(3 downto 0) then
             av.m.dmai0.addr := ar.m.dmai0.addr + 4;
             av.m.acc.fifo_addr := conv_std_logic_vector(ar.m.acc.fifo_index, log2(FIFO_COUNT)) & (tm_fifo(ar.m.acc.fifo_index).start + 1); -- Set fifo start address
             av.m.faddr := (tm_fifo(ar.m.acc.fifo_index).start + 1); -- Set fifo start address
@@ -3580,7 +3654,7 @@ begin
               if tm_fifo(ar.m.acc.fifo_index).lastf = '1' then av.m.last(0) := '1'; end if;
             end if;
             if tm_fifo_pending(tm_nindex) = '1' then
-              if tm_fifo(tm_nindex).start = tm_fifo(tm_nindex).stop and tm_fifo(tm_nindex).last_cbe = ones32(3 downto 0) then
+              if tm_fifo(tm_nindex).start = tm_fifo(tm_nindex).stop and tm_fifo(tm_nindex).last_cbe = one32(3 downto 0) then
                 av.m.dmai0.req := '0';
                 av.m.hold(0) := '1';
               end if;
@@ -4101,7 +4175,7 @@ begin
         end if;
         if ar.s.hready = '1' then
           if ar.s.htrans(1) = '1' then
-            if ar.s.haddr(AHB_FIFO_BITS) = ones32(AHB_FIFO_BITS) or ahbsi.htrans(0) = '0' then
+            if ar.s.haddr(AHB_FIFO_BITS) = one32(AHB_FIFO_BITS) or ahbsi.htrans(0) = '0' then
               av.s.firstf := '0';
               av.s.atp.index := ms_index; -- Go to next fifo
               av.atp_trans.msd_fifo(0)(ar.s.atp.index).pending(0) := not ar.atp_trans.msd_fifo(0)(ar.s.atp.index).pending(0);
@@ -4134,7 +4208,7 @@ begin
                 av.s.state := as_idle;
               end if;
             end if;
-            if ahbsi.hwrite = '1' and ar.s.haddr(AHB_FIFO_BITS) = ones32(AHB_FIFO_BITS) and ms_fifo_empty(ms_index) = '0' then -- no empty fifo => retry
+            if ahbsi.hwrite = '1' and ar.s.haddr(AHB_FIFO_BITS) = one32(AHB_FIFO_BITS) and ms_fifo_empty(ms_index) = '0' then -- no empty fifo => retry
               av.s.hready := '0';
               av.s.hresp := HRESP_RETRY;
               av.s.retry := '1';
@@ -4178,6 +4252,7 @@ begin
   -- DMA defaults
   -- --------------------------------------------------------------------------------
   av.dma.irq := '0';
+  av.dma.reen := '0';
   -- FIFO enable(read)/write
   av.dma.ptd.ctrl.en := '0';
   av.dma.dtp.ctrl.en := '0';
@@ -4224,7 +4299,7 @@ begin
         av.dma.desc.chcnt := ar.dma.numch;
         if ar.dma.errstatus /= "00000" then
           av.dma.en := '0';
-        elsif ar.dma.en = '1' then
+        elsif ar.dma.en = '1' or ar.dma.reen = '1' then
           av.dma.state := dma_read_desc;
           av.dma.rcnt := (others => '0');
           av.dma.dmai1.req := '1';
@@ -4236,10 +4311,11 @@ begin
         av.dma.dma_hold := (others => '0');
         av.dma.done := (others => '0');
         av.dma.first(0) := '1';
-        av.dma.retry := '0';
+        --av.dma.retry := '0';
 
-        if ar.dma.rcnt = "11" and ar.dma.desc.desctype /= "01" 
-           and (ar.dma.desc.emptych = '0' or ar.dma.desc.chcnt = "000") then av.dma.dmai1.req := '0';
+        if ar.dma.rcnt = "11" and ar.dma.retry = '0' and 
+           ((ar.dma.desc.desctype /= "01" and (ar.dma.desc.emptych = '0' or ar.dma.desc.chcnt = "000")) or
+            (ar.dma.desc.desctype = "01" and ar.dma.desc.en = '0')) then av.dma.dmai1.req := '0';
         else av.dma.dmai1.req := '1'; end if;
         av.dma.dmai1.burst := '1';
         if dmao1.grant = '1' then
@@ -4247,6 +4323,9 @@ begin
           if ar.dma.dmai1.addr(3 downto 2) = "11" then
             if ar.dma.desc.desctype = "01" then
               av.dma.dmai1.addr := dmao1.data;
+              if ar.dma.desc.en = '0' then
+                av.dma.dmai1.req := '0';
+              end if;
             elsif ar.dma.desc.emptych = '1' then
               av.dma.desc.addr := ar.dma.desc.nextch;
               av.dma.dmai1.addr := ar.dma.desc.nextch;
@@ -4257,8 +4336,27 @@ begin
               av.dma.dmai1.req := '0';
             end if;
           end if;
+
+          -- Retry save & restore
+          av.dma.retry := '0';
+          -- Save len for retry
+          av.dma.retry_addr := ar.dma.dmai1.addr;
+          av.dma.retry_noreq := ar.dma.dmai1.noreq;
+          -- Restore len for retry
+          if ar.dma.retry = '1' then
+            av.dma.dmai1.addr := ar.dma.retry_addr;
+            av.dma.dmai1.noreq := ar.dma.retry_noreq;
+          end if;
         elsif dmao1.retry = '1' then
-          av.dma.dmai1.addr := ar.dma.dmai1.addr - 4; 
+          av.dma.dmai1.req := '1';
+          -- Retry save & restore
+          av.dma.retry := '1';
+          -- Save len for retry
+          av.dma.retry_addr := ar.dma.dmai1.addr;
+          av.dma.retry_noreq := ar.dma.dmai1.noreq;
+          -- Restore len for retry
+          av.dma.dmai1.addr := ar.dma.retry_addr;
+          av.dma.dmai1.noreq := ar.dma.retry_noreq;
         end if;
 
         if av.dma.dmai1.addr(3 downto 2) = "11" then av.dma.dmai1.noreq := '1'; end if;
@@ -4360,15 +4458,22 @@ begin
                     av.atp_trans.msd_acc(1).endianess := av.dma.desc.tw;
                 end if;
               else  
-                if ar.dma.desc.emptych = '0' then
+                if ar.dma.desc.emptych = '0' or
+                   (ar.dma.desc.desctype = "01" and ar.dma.desc.en = '0' and ar.dma.desc.chcnt /= "000") then
                   av.dma.state := dma_next_channel;
-                  av.dma.dmai1.req := '1';
-                  av.dma.dmai1.write := '1';
+                  if ar.dma.desc.desctype = "01" then -- channel desc
+                    av.dma.dmai1.req := '0';
+                    av.dma.dmai1.write := '0';
+                    av.dma.desc.chcnt := ar.dma.desc.chcnt - 1;
+                  else
+                    av.dma.dmai1.req := '1';
+                    av.dma.dmai1.write := '1';
+                  end if;
                   av.dma.dmai1.burst := '0';
                   av.dma.dmai1.addr := ar.dma.desc.ch + 8;
                   av.dma.dmai1.data := ar.dma.desc.nextdesc;
                 else
-                  if ar.dma.desc.chcnt = "000" then
+                  if ar.dma.desc.chcnt = "000" and ar.dma.reen = '0' then
                     av.dma.en := '0';
                     av.dma.state := dma_idle;
                   else
@@ -4394,13 +4499,29 @@ begin
           av.dma.dmai1.req := '1';
         end if;
 
-        if dmao1.ready = '1' then
+        if dmao1.ready = '1' or ar.dma.desc.desctype = "01" then
             av.dma.state := dma_read_desc;
             av.dma.dmai1.req := '1';
             av.dma.dmai1.write := '0';
             av.dma.dmai1.burst := '1';
             av.dma.desc.addr := ar.dma.desc.nextch;
             av.dma.dmai1.addr := ar.dma.desc.nextch;
+        elsif dmao1.error = '1' then
+          av.dma.en := '0';
+          av.dma.state := dma_idle;
+          av.dma.dmai1.req := '0';
+          av.dma.irq := '1'; av.dma.irqstatus(0) := '1';
+        end if;
+
+      when dma_disable =>
+        if dmao1.grant = '1' then
+          av.dma.dmai1.req := '0';
+        elsif dmao1.retry = '1' then
+          av.dma.dmai1.req := '1';
+        end if;
+
+        if dmao1.ready = '1' then
+            av.dma.state := dma_idle;
         elsif dmao1.error = '1' then
           av.dma.en := '0';
           av.dma.state := dma_idle;
@@ -4432,8 +4553,14 @@ begin
               av.dma.irqch(conv_integer(ar.dma.desc.chid)) := '1';
             end if;
             if ar.dma.en = '0' then -- DMA disabled
-              av.dma.state := dma_idle;
+              av.dma.state := dma_disable;
               av.dma.desc.addr := ar.dma.desc.nextdesc;
+              
+              av.dma.dmai1.addr := ar.dma.desc.ch + 8;
+              av.dma.dmai1.req := '1';
+              av.dma.dmai1.write := '1';
+              av.dma.dmai1.burst := '0';
+              av.dma.dmai1.data := ar.dma.desc.nextdesc;
             else
               if ar.dma.desc.cnt = x"0001" then -- Next Channel
                 av.dma.state := dma_next_channel;
@@ -4476,7 +4603,7 @@ begin
             av.dma.len := ar.dma.len + 1;
           end if;
 
-          if ar.dma.dmai1.addr(AHB_FIFO_BITS) = ones32(AHB_FIFO_BITS) or ar.dma.len = ar.dma.desc.len then
+          if ar.dma.dmai1.addr(AHB_FIFO_BITS) = one32(AHB_FIFO_BITS) or ar.dma.len = ar.dma.desc.len then
             if md_fifo_empty(md_index) = '0' then
               av.dma.dmai1.req := '0';
               av.dma.dma_hold(0) := '1';
@@ -4514,7 +4641,7 @@ begin
             av.dma.errlen := ar.dma.errlen + 1;
           end if;
           if dmao1.grant = '0' then av.dma.active := '0'; end if;
-          if ar.dma.faddr(AHB_FIFO_BITS) /= ones32(AHB_FIFO_BITS) and ar.dma.done(1) = '0' then   -- Store data in fifo
+          if ar.dma.faddr(AHB_FIFO_BITS) /= one32(AHB_FIFO_BITS) and ar.dma.done(1) = '0' then   -- Store data in fifo
             av.dma.faddr(AHB_FIFO_BITS) := ar.dma.faddr(AHB_FIFO_BITS) + 1;
           else                                                        -- Last word in fifo
             av.dma.faddr(AHB_FIFO_BITS) := (others => '0');
@@ -4569,7 +4696,7 @@ begin
         end if;
          
        
-        if av.dma.dmai1.addr(AHB_FIFO_BITS) = ones32(AHB_FIFO_BITS) or av.dma.len = ar.dma.desc.len then av.dma.dmai1.noreq := '1'; end if; -- to deassert req on last address phase
+        if av.dma.dmai1.addr(AHB_FIFO_BITS) = one32(AHB_FIFO_BITS) or av.dma.len = ar.dma.desc.len then av.dma.dmai1.noreq := '1'; end if; -- to deassert req on last address phase
         
         if ar.dma.done(0) = '1' then
           av.dma.dmai1.req := '0';
@@ -4765,6 +4892,10 @@ begin
         end if;
       when others =>
     end case;
+
+    if ar.dma.reen = '1' then
+      av.dma.desc.chcnt := ar.dma.numch;
+    end if;
   end if; -- DMA enabled
   
   -- --------------------------------------------------------------------------------
@@ -4939,6 +5070,7 @@ begin
               av.dma.irqen := apbi.pwdata(1);
             end if;
             av.dma.en := (ar.dma.en and not apbi.pwdata(2)) or apbi.pwdata(0); -- bit[2] = disable/stop bit[0] = enable/start
+            av.dma.reen := apbi.pwdata(0) and not apbi.pwdata(2);
           end if;
           prdata(31) := '1'; 
           prdata(30 downto 0) := (others => '0'); 
@@ -5331,6 +5463,7 @@ begin
     when dma_read =>          av.debug(6 downto 4) := "100";
     when dma_write =>         av.debug(6 downto 4) := "101";
     when dma_error =>         av.debug(6 downto 4) := "110";
+    when dma_disable =>       av.debug(6 downto 4) := "111";
   end case;
 
   case ar.m.state is 
@@ -5417,6 +5550,7 @@ begin
   if lahbs_rst = '0' then
     av.dma.state := dma_idle;
     av.dma.en := '0';
+    av.dma.reen := '0';
     av.dma.irq := '0';
     av.dma.irqen := '0';
     av.dma.irqstatus := (others => '0');
@@ -5509,36 +5643,145 @@ begin
 end process;
 
 
+psyncrregs : if not ASYNC_RESET generate
+  preg : process(pciclk, phyo)
+  begin
+    if rising_edge(pciclk) then
+      pr <= prin;
+      if RESET_ALL and lpci_rst = '0' then
+        pr <= PRRES;
+        -- Configuration space
+        for j in 0 to multifunc loop
+          for i in 0 to 5 loop
+            pr.conf(j).pta_map(i) <= default_bar_map(j)(i);
+            pr.conf(j).bar_mask(i)(31 downto bar_size(j)(i)) <= one32(31 downto bar_size(j)(i));
+            pr.conf(j).bar_mask(i)(3) <= bar_prefetch(j)(i);
+            pr.conf(j).bar_mask(i)(0) <= bar_io(j)(i);
+            if bar_size(j)(i) <= 1 then pr.conf(j).bar_mask(i) <= (others => '0'); end if;
+          end loop;
+          pr.conf(j).cfg_map <= conv_std_logic_vector(extcfg_vector(j),28) & "0000";
+        end loop;
+        pr.t.blenmask(blenmask_size(barminsize) downto 0) <= (others => '1');
+        pr.pta_trans.ca_twist <= conv_std_logic_vector(conv_endian, 1)(0);
+      end if;
+      -- Do not reset synchronization registers
+      pr.sync <= prin.sync;
+      pr.pta_trans.rst_ack <= prin.pta_trans.rst_ack;
+      pr.pt_sync <= prin.pt_sync;
+    end if;
+    -- PHY => 
+    pr.po <= phyo.pr_po;
+    pr.m.state <= phyo.pr_m_state;
+    pr.m.last <= phyo.pr_m_last;
+    pr.m.hold <= phyo.pr_m_hold;
+    pr.m.term <= phyo.pr_m_term;
+    pr.t.hold <= phyo.pr_t_hold;
+    pr.t.stop <= phyo.pr_t_stop;
+    pr.t.abort <= phyo.pr_t_abort;
+    pr.t.diswithout <= phyo.pr_t_diswithout;
+    pr.t.addr_perr <= phyo.pr_t_addr_perr;
+    -- PHY <=
+  end process;
+end generate;
+pasyncrregs : if ASYNC_RESET generate
+  preg : process(pciclk, phyo, pciasyncrst)
+  begin
+    if pciasyncrst = '0' then
+      pr <= PRRES;
+      -- Configuration space
+      for j in 0 to multifunc loop
+        for i in 0 to 5 loop
+          pr.conf(j).pta_map(i) <= default_bar_map(j)(i);
+          pr.conf(j).bar_mask(i)(31 downto bar_size(j)(i)) <= one32(31 downto bar_size(j)(i));
+          pr.conf(j).bar_mask(i)(3) <= bar_prefetch(j)(i);
+          pr.conf(j).bar_mask(i)(0) <= bar_io(j)(i);
+          if bar_size(j)(i) <= 1 then pr.conf(j).bar_mask(i) <= (others => '0'); end if;
+        end loop;
+        pr.conf(j).cfg_map <= conv_std_logic_vector(extcfg_vector(j),28) & "0000";
+      end loop;
+      pr.t.blenmask(blenmask_size(barminsize) downto 0) <= (others => '1');
+      pr.pta_trans.ca_twist <= conv_std_logic_vector(conv_endian, 1)(0);
+    elsif rising_edge(pciclk) then
+      pr <= prin;
+    end if;
+    -- PHY => 
+    pr.po <= phyo.pr_po;
+    pr.m.state <= phyo.pr_m_state;
+    pr.m.last <= phyo.pr_m_last;
+    pr.m.hold <= phyo.pr_m_hold;
+    pr.m.term <= phyo.pr_m_term;
+    pr.t.hold <= phyo.pr_t_hold;
+    pr.t.stop <= phyo.pr_t_stop;
+    pr.t.abort <= phyo.pr_t_abort;
+    pr.t.diswithout <= phyo.pr_t_diswithout;
+    pr.t.addr_perr <= phyo.pr_t_addr_perr;
+    -- PHY <=
+  end process;
+end generate;
 
-preg : process(pciclk, phyo)
-begin
-  if rising_edge(pciclk) then
-    pr <= prin;
-  end if;
-  -- PHY => 
-  pr.po <= phyo.pr_po;
-  pr.m.state <= phyo.pr_m_state;
-  pr.m.last <= phyo.pr_m_last;
-  pr.m.hold <= phyo.pr_m_hold;
-  pr.m.term <= phyo.pr_m_term;
-  pr.t.hold <= phyo.pr_t_hold;
-  pr.t.stop <= phyo.pr_t_stop;
-  pr.t.abort <= phyo.pr_t_abort;
-  pr.t.diswithout <= phyo.pr_t_diswithout;
-  pr.t.addr_perr <= phyo.pr_t_addr_perr;
-  -- PHY <=
-end process;
+  
 
-
-areg : process(clk)
-begin
-  if rising_edge(clk) then ar <= arin; end if;
-end process;
+asyncrregs : if not ASYNC_RESET generate
+  areg : process(clk)
+  begin
+    if rising_edge(clk) then
+      ar <= arin;
+      if RESET_ALL and lahb_rst = '0' then
+        ar <= ARRES;
+        for i in 0 to 15 loop
+          if multifunc /= 0 then
+            for j in 0 to multifunc loop
+              if masters_vector(j)(i) = '1' then
+                ar.s.atp_map(i)(2 downto 0) <= conv_std_logic_vector(j, 3);
+              end if;
+            end loop;
+          end if;
+        end loop;
+        if deviceirq = 1 then
+          ar.irq.device_mask <= conv_std_logic_vector(deviceirqmask, 4);
+        end if;
+        if hostirq = 1 then
+          ar.irq.host_mask <= conv_std_logic_vector(hostirqmask, 4);
+        end if;
+      end if;
+      -- do not reset synchronization registers
+      ar.sync <= arin.sync;
+      ar.apb_sync <= arin.apb_sync;
+    end if;
+  end process;
+end generate;
+aasyncrregs : if ASYNC_RESET generate
+  areg : process(clk, lahb_rst)
+  begin
+    if lahb_rst = '0' then
+      ar <= ARRES;
+      for i in 0 to 15 loop
+        if multifunc /= 0 then
+          for j in 0 to multifunc loop
+            if masters_vector(j)(i) = '1' then
+              ar.s.atp_map(i)(2 downto 0) <= conv_std_logic_vector(j, 3);
+            end if;
+          end loop;
+        end if;
+      end loop;
+      if deviceirq = 1 then
+        ar.irq.device_mask <= conv_std_logic_vector(deviceirqmask, 4);
+      end if;
+      if hostirq = 1 then
+        ar.irq.host_mask <= conv_std_logic_vector(hostirqmask, 4);
+      end if;
+    elsif rising_edge(clk) then
+      ar <= arin;
+    end if;
+  end process;
+end generate;
 
 -- AHB master
 target_ahbm0 : if target /= 0 generate
-  ahbm0 : grpci2_ahb_mst  generic map (hindex => hmindex, devid => GAISLER_GRPCI2, version => REVISION)
-            port map (rst, clk, ahbmi, ahbmo_con, ar.m.dmai0, dmao0, disabled_dmai, open);
+  ahbm0 : grpci2_ahb_mst
+    generic map (hindex => hmindex, devid => GAISLER_GRPCI2, version => REVISION,
+                 scantest => scantest)
+    port map (rst, clk, ahbmi, ahbmo_con, ar.m.dmai0, dmao0, disabled_dmai, open);
   ahbmo <= ahbmo_con;
 end generate;
 no_target_ahbm0 : if target = 0 generate
@@ -5546,8 +5789,10 @@ no_target_ahbm0 : if target = 0 generate
 end generate;
 
 dma_ahbm0 : if dma /= 0 generate
-  ahbm1 : grpci2_ahb_mst  generic map (hindex => hdmindex, devid => GAISLER_GRPCI2_DMA, version => REVISION)
-            port map (rst, clk, ahbdmi, ahbdmo, ar.dma.dmai1, dmao1, disabled_dmai, open);
+  ahbm1 : grpci2_ahb_mst
+    generic map (hindex => hdmindex, devid => GAISLER_GRPCI2_DMA, version => REVISION,
+                 scantest => scantest)
+    port map (rst, clk, ahbdmi, ahbdmo, ar.dma.dmai1, dmao1, disabled_dmai, open);
 end generate;
 no_dma_ahbm0 : if dma = 0 generate
   ahbdmo <= ahbm_none;
@@ -5610,7 +5855,7 @@ master_fifo0 : if master /= 0 generate
                                           testen => scantest, custombits => memtest_vlen)
                   port map (pciclk, scan_prin_m_acc_acc_sel_ahb_fifo_ren, prin.m.fifo_addr, ms_fifoo_atp.data, 
                             clk, scan_ar_s_atp_ctrl_en, ar.s.atp.ctrl.addr, ar.s.atp.ctrl.data,
-                            ms_fifoo_atp.err
+                            ms_fifoo_atp.err, testin
                             );
     -- PCI master to AHB slave FIFO                                                                                                 
     pta_fifo1 : syncram_2pft generic map (tech => memtech, abits => FIFO_DEPTH+log2(FIFO_COUNT), 
@@ -5618,7 +5863,7 @@ master_fifo0 : if master /= 0 generate
                                           testen => scantest, custombits => memtest_vlen)
                   port map (clk, scan_arin_s_pta_ctrl_en, arin.s.pta.ctrl.addr, ms_fifoo_pta.data, 
                             pciclk, scan_pr_m_acc_acc_sel_ahb_fifo_wen, pr.m.fifo_addr, pr.m.fifo_wdata,
-                            ms_fifoo_pta.err
+                            ms_fifoo_pta.err, testin
                             );
   end generate;
   noft0 : if ft = 0 generate

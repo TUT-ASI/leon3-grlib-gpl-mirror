@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -56,6 +56,7 @@ entity dsu3x is
     rst    : in  std_ulogic;
     hclk   : in  std_ulogic;
     cpuclk : in std_ulogic;
+    fcpuclk: in std_ulogic;
     ahbmi  : in  ahb_mst_in_type;
     ahbsi  : in  ahb_slv_in_type;
     ahbso  : out ahb_slv_out_type;
@@ -130,6 +131,11 @@ architecture rtl of dsu3x is
     tstop : std_ulogic;
   end record;
 
+  type reg2_type is record
+    dsuen : std_logic_vector(2 downto 0);
+    timer : std_logic_vector(tbits-1 downto 0);
+  end record;
+
   constant RRES : reg_type := (
     slv    => slv_reg_none,
     en     => (others => '0'),
@@ -153,6 +159,9 @@ architecture rtl of dsu3x is
     pwd    => (others => '0'),
     tstop  => '0'
     );
+
+  constant RRES2 : reg2_type := (timer => (others => '0'),
+                                 dsuen => (others => '0'));
   
   type trace_break_reg is record
     addr          : std_logic_vector(31 downto 2);
@@ -191,6 +200,7 @@ architecture rtl of dsu3x is
     tforce        : std_logic;  -- Force AHB trace
     timeren       : std_logic;  -- Keep timer enabled 
     sample        : std_logic;  -- Force sample
+    edbgmtf       : std_logic;  -- Enable debug mode timer freeze 
   end record;
 
   constant TRES : tregtype := (
@@ -215,7 +225,8 @@ architecture rtl of dsu3x is
     break         => '0',
     tforce        => '0',
     timeren       => '0',
-    sample        => '0'
+    sample        => '0',
+    edbgmtf       => '0'
     );
 
   type tfregtype is record
@@ -291,7 +302,11 @@ architecture rtl of dsu3x is
     return hit;
   end function ahb_filt_hit;
 
-  
+  function tbits_dsuif return integer is
+  begin
+    if tbits > 32 then return 32; end if;
+    return tbits;
+  end function tbits_dsuif;
   
   signal tbi   : tracebuf_in_type;
   signal tbo   : tracebuf_out_type;
@@ -300,14 +315,17 @@ architecture rtl of dsu3x is
   signal tfr, tfrin : tfregtype;
   signal tr, trin : tregtype;
   signal r, rin : reg_type;
+  signal r2, r2in : reg2_type;
 
   signal rh, rhin : hclk_reg_type;
   signal ahbsi2, tahbsi2 : ahb_slv_in_type;
   signal hrdata2x : std_logic_vector(31 downto 0);
+
+  signal ltstop : std_ulogic;
   
 begin
 
-  comb: process(rst, r, ahbsi, ahbsi2, tahbsi2, dbgi, dsui, ahbmi, tr, tbo, hclken, rh, hrdata2x, tfr, pr)
+  comb: process(rst, r, r2, ahbsi, ahbsi2, tahbsi2, dbgi, dsui, ahbmi, tr, tbo, hclken, rh, hrdata2x, tfr, pr)
                 
     variable v : reg_type;
     variable iuacc : std_ulogic;
@@ -379,7 +397,7 @@ begin
       if atact = '1' then
         vabufi.addr(TBUFABITS-1 downto 0) := tr.aindex;
         vabufi.data(127) := orv(bphit);
-        vabufi.data(96+tbits-1 downto 96) := r.timer; 
+        vabufi.data(96+tbits_dsuif-1 downto 96) := r2.timer(tbits_dsuif-1 downto 0);
         vabufi.data(94 downto 80) := (others => '0'); --ahbmi.hirq(15 downto 1);
         vabufi.data(79) := tr.hwrite;
         vabufi.data(78 downto 77) := tr.htrans;
@@ -610,12 +628,13 @@ begin
               hrdata(10) := dbgi(index).halt;
               hrdata(11) := dbgi(index).pwd;
             when "00010" =>  -- timer
-              if r.slv.hwrite = '1' then
-                if hclken = '1' then
-                  v.timer := hwdata(tbits-1 downto 0);
-                else v.timer := r.timer; end if;
-              end if;
-              hrdata(tbits-1 downto 0) := r.timer;
+              --if r.slv.hwrite = '1' then
+              --  if hclken = '1' then
+              --    v.timer := hwdata(tbits-1 downto 0);
+              --  else v.timer := r.timer; end if;
+              --end if;
+              -- Writes are handled in comb2 process.
+              hrdata(tbits_dsuif-1 downto 0) := r2.timer(tbits_dsuif-1 downto 0);
             when "01000" =>
               if r.slv.hwrite = '1' then
                 if hclken = '1' then
@@ -635,11 +654,13 @@ begin
             when "10000" =>
               if TRACEN then
                 hrdata((TBUFABITS + 15) downto 16) := tr.delaycnt;
+                hrdata(8) := tr.edbgmtf;
                 hrdata(6 downto 5) := tr.timeren & tr.tforce;
 	        hrdata(4 downto 0) := conv_std_logic_vector(log2(bwidth/32), 2) & tr.break & tr.dcnten & tr.enable;
                 if r.slv.hwrite = '1' then
                   if hclken = '1' then
                     tv.delaycnt := hwdata((TBUFABITS+ 15) downto 16);
+                    tv.edbgmtf := hwdata(8);
                     tv.sample := hwdata(7);
                     tv.timeren := hwdata(6);
                     tv.tforce := hwdata(5);
@@ -648,6 +669,7 @@ begin
                     tv.enable := hwdata(0);
                   else 
                     tv.delaycnt := tr.delaycnt;
+                    tv.edbgmtf := tr.edbgmtf;
                     tv.sample := tr.sample; tv.timeren := tr.timeren;
                     tv.tforce := tr.tforce; tv.break := tr.break;
                     tv.dcnten := tr.dcnten; tv.enable := tr.enable;
@@ -871,7 +893,7 @@ begin
         v.bs(i) := '0'; v.te(i) := '0';
       end loop;
       tv.ahbactive := '0'; tv.enable := '0'; tv.tforce := '0'; tv.timeren := '0';
-      tv.dcnten := '0';
+      tv.dcnten := '0'; tv.edbgmtf := '0';
       tv.tbreg1.read := '0'; tv.tbreg1.write := '0';
       tv.tbreg2.read := '0'; tv.tbreg2.write := '0';
       v.slv.hready := '1'; v.halt := (others => '0');
@@ -907,8 +929,8 @@ begin
       dbgo(i).dwrite <= r.slv.hwrite;
       dbgo(i).halt <= r.halt(i);
       dbgo(i).reset <= r.reset(i);
-      dbgo(i).timer(tbits-1 downto 0) <= r.timer; 
-      dbgo(i).timer(30 downto tbits) <= (others => '0');      
+      dbgo(i).timer(tbits-1 downto 0) <= r2.timer;
+      dbgo(i).timer(63 downto tbits) <= (others => '0');
     end loop;
     
     ahbso.hconfig <= hconfig;
@@ -927,11 +949,50 @@ begin
     dsuo.tstop <= tstop;
     dsuo.pwd   <= cpwd;
     if PERFEN then dsuo.astat <= pr.stat; else dsuo.astat <= dsu_astat_none; end if;
-    
+
+    ltstop <= tstop;
+
     rhin <= vh;
     
   end process;   
 
+  comb2: process(r, tr, r2, dbgi, dsui, ahbsi2, hclken, ltstop)              
+    variable v2 : reg2_type;
+    variable hwdata : std_logic_vector(31 downto 0);
+    variable cputimeren : std_ulogic;
+  begin
+    v2 := r2;
+    cputimeren := '0'; v2.dsuen := r2.dsuen(1 downto 0) & dsui.enable;
+    hwdata := ahbreadword(ahbsi2.hwdata, r.slv.haddr(4 downto 2));
+    
+    for i in 0 to NCPU-1 loop
+      if dbgi(i).ducnt = '0' then cputimeren := '1'; end if;
+    end loop;
+    -- The default setting is for the DSU time tag counter to keep running when
+    -- the processor enters debug mode. This can be overriden by the enable
+    -- debug mode timer freeze bit:
+    if (r2.dsuen(2) and ltstop and tr.edbgmtf) = '1' then cputimeren := '0'; end if;
+    -- Increment timer if we are in normal execution, or if timer increment is
+    -- forced, or when at least one of the processor has the timer enabled (and
+    -- increment in debug mode is not overridden as described above).
+    if ((r2.dsuen(2) and not ltstop) or tr.timeren or cputimeren) = '1' then
+      v2.timer := r2.timer + 1;
+    end if;
+
+    -- Timer can only be written via DSU i/f when DSU is enabled.
+    -- This is done to prevent bad things when dsu enable signal is
+    -- used to gate off DSU clock.
+    if r2.dsuen(2) = '1' and r.slv.hsel = '1' and  r.slv.haddr(AREA_H-1 downto AREA_L) = "000" and
+       r.slv.haddr(8 downto 2) = "0000010" and  r.slv.hwrite = '1' then
+      if hclken = '1' then
+        v2.timer(tbits_dsuif-1 downto 0) := hwdata(tbits_dsuif-1 downto 0);
+      else v2.timer := r2.timer; end if;
+    end if;
+
+    r2in <= v2;
+  end process;
+
+  
   comb2gen0 : if (clk2x /= 0) generate    
     -- register i/f
     gen0 : for i in ahbsi.hsel'range generate
@@ -1044,6 +1105,16 @@ begin
     end if;
   end process;
 
+  reg2 : process(fcpuclk)
+  begin
+    if rising_edge(fcpuclk) then
+      r2 <= r2in;
+      if RESET_ALL and (rst = '0') then
+        r2 <= RRES2;
+        r2.dsuen <= r2in.dsuen;
+      end if;
+    end if;
+  end process;
     
   tb0 : if TRACEN generate
     treg : process(cpuclk)

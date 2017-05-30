@@ -4,7 +4,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -69,7 +69,7 @@ entity leon3mp is
     clk200p         : in    std_ulogic;  -- 200 MHz clock
     clk200n         : in    std_ulogic;  -- 200 MHz clock
     spi_sel_n       : inout std_ulogic;
-    spi_clk         : out   std_ulogic;
+--    spi_clk         : out   std_ulogic;
     spi_miso        : in    std_ulogic;
     spi_mosi        : out   std_ulogic;
     ddr3_dq         : inout std_logic_vector(63 downto 0);
@@ -402,7 +402,8 @@ begin
       rstaddr => CFG_RSTADDR, smp => CFG_NCPU-1, cached => CFG_DFIXED,
       wbmask => CFG_BWMASK, busw => CFG_CACHEBW, netlist => CFG_LEON_NETLIST,
       ft => CFG_LEONFT_EN, npasi => CFG_NP_ASI, pwrpsr => CFG_WRPSR,
-      rex => CFG_REX, altwin => CFG_ALTWIN, grfpush => CFG_GRFPUSH,
+      rex => CFG_REX, altwin => CFG_ALTWIN, mmupgsz => CFG_MMU_PAGE,
+      grfpush => CFG_GRFPUSH,
       dsu_hindex => 2, dsu_haddr => 16#900#, dsu_hmask => 16#F00#, atbsz => CFG_ATBSZ,
       stat => CFG_STAT_ENABLE, stat_pindex => 13, stat_paddr => 16#100#,
       stat_pmask => 16#ffc#, stat_ncnt => CFG_STAT_CNT, stat_nmax => CFG_STAT_NMAX)

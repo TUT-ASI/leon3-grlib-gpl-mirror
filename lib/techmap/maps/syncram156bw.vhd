@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -124,6 +124,26 @@ architecture rtl of syncram156bw is
     );
   end component;
 
+  component rhs65_syncram156bw_bist is
+    generic (
+      abits: integer
+      );
+    port (
+      clk     : in  std_ulogic;
+      address : in  std_logic_vector (abits -1 downto 0);
+      datain  : in  std_logic_vector (155 downto 0);
+      dataout : out std_logic_vector (155 downto 0);
+      enable  : in  std_logic_vector (15 downto 0);
+      write   : in  std_logic_vector (15 downto 0);
+      scanen   : in std_ulogic;
+      bypass   : in std_ulogic;
+      mbctrl   : in std_logic_vector(47 downto 0);
+      mbstat   : out std_logic_vector(47 downto 0);
+      mbrstn   : in std_ulogic;
+      mbcgate  : in std_ulogic
+      );
+  end component;
+
   signal xenable, xwrite : std_logic_vector(15 downto 0);
   signal custominx,customoutx: std_logic_vector(syncram_customif_maxwidth downto 0);
   signal customclkx: std_ulogic;
@@ -170,6 +190,14 @@ begin
                   testin(TESTIN_WIDTH-7),'0',
                   customoutx(1), customoutx(7 downto 2));
       customoutx(customoutx'high downto 8) <= (others => '0');
+    end generate;
+    rhs65ub : if tech = memrhs65b generate
+      x0 : rhs65_syncram156bw_bist generic map (abits)
+        port map (clk, address, datain, dataoutx, enable, write,
+                  testin(TESTIN_WIDTH-3), testin(TESTIN_WIDTH-4),
+                  custominx(47 downto 0),customoutx(47 downto 0),
+                  testin(TESTIN_WIDTH-5), '0');
+      customoutx(customoutx'high downto 48) <= (others => '0');
     end generate;
 
 -- pragma translate_off

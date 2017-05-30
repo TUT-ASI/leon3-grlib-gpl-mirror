@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -26,6 +26,8 @@
 library ieee;
 use ieee.std_logic_1164.all;
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.stdlib.all;
 use grlib.amba.all;
 use grlib.devices.all;
@@ -34,10 +36,11 @@ use work.pcilib2.all;
 
 entity grpci2_ahb_mst is
   generic(
-    hindex      : integer := 0;
-    venid   : integer := VENDOR_GAISLER;
-    devid   : integer := 0;
-    version : integer := 0
+    hindex   : integer := 0;
+    venid    : integer := VENDOR_GAISLER;
+    devid    : integer := 0;
+    version  : integer := 0;
+    scantest : integer := 0
   );
   port(
     rst         : in  std_ulogic;
@@ -59,13 +62,29 @@ architecture rtl of grpci2_ahb_mst is
     bb     : std_ulogic; --1kB burst boundary detected
     retry  : std_ulogic; 
   end record;
+
+  constant RRES : reg_type :=
+    (bg => '0', bo => '0', ba => '0', bb => '0', retry => '0');
   
   constant hconfig : ahb_config_type := (
     0 => ahb_device_reg ( venid, devid, 0, version, 0),
     others => zero32);
 
+  constant RESET_ALL : boolean :=
+    GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant ASYNC_RESET : boolean :=
+    GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
+  
   signal r, rin : reg_type;
+  signal arst : std_ulogic;
+  
 begin
+
+  arst <= ahbmi.testrst when (ASYNC_RESET and scantest/=0 and
+                              ahbmi.testen/='0') else
+          rst when ASYNC_RESET else
+          '1';
+
   comb : process(rst, r, dmai1, dmai0, ahbmi) is
   variable v       : reg_type;
   variable htrans  : std_logic_vector(1 downto 0);
@@ -182,8 +201,8 @@ begin
       end if;
     end if;
 
-    if rst = '0' then
-      v.bg := '0'; v.ba := '0'; v.bo := '0'; v.bb := '0';
+    if (not ASYNC_RESET) and (not RESET_ALL) and (rst = '0') then
+      v.bg := RRES.bg; v.ba := RRES.ba; v.bo := RRES.bo; v.bb := RRES.bb;
     end if;
     
     rin <= v;
@@ -209,10 +228,27 @@ begin
     ahbmo.hindex  <= hindex;
   end process;
 
-  regs : process(clk)
-  begin
-    if rising_edge(clk) then r <= rin; end if;
-  end process; 
+  syncrregs : if not ASYNC_RESET generate
+    regs : process(clk)
+    begin
+      if rising_edge(clk) then
+        r <= rin;
+        if RESET_ALL and (rst = '0') then
+          r <= RRES;
+        end if;
+      end if;
+    end process; 
+  end generate;
+  asyncrregs : if ASYNC_RESET generate
+    regs : process(clk, arst)
+    begin
+      if arst = '0' then
+        r <= RRES;
+      elsif rising_edge(clk) then
+        r <= rin;
+      end if;
+    end process;
+  end generate;
  
   ahbmo.hlock	 <= '0';
   ahbmo.hprot	 <= "0011";

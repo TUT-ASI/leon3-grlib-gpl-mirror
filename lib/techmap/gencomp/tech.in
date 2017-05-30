@@ -1,11 +1,5 @@
   choice 'Target technology                           ' \
 	"Inferred		CONFIG_SYN_INFERRED \
-	Altera-Stratix        	CONFIG_SYN_STRATIX \
-	Altera-StratixII      	CONFIG_SYN_STRATIXII \
-	Altera-StratixIII      	CONFIG_SYN_STRATIXIII \
-	Altera-StratixIV      	CONFIG_SYN_STRATIXIV \
-	Altera-CycloneIII      	CONFIG_SYN_CYCLONEIII \
-	Altera-Others         	CONFIG_SYN_ALTERA \
 	Actel-Axcelerator	CONFIG_SYN_AXCEL \
 	Actel-Axcelerator-DSP	CONFIG_SYN_AXDSP \
 	Actel-Proasic		CONFIG_SYN_PROASIC \
@@ -21,19 +15,24 @@
 	Aeroflex-UT025CRH	CONFIG_SYN_UT025CRH \
 	Aeroflex-UT130HBD	CONFIG_SYN_UT130HBD \
 	Aeroflex-UT90NHBD	CONFIG_SYN_UT90NHBD \
+	Altera-CycloneIII      	CONFIG_SYN_CYCLONEIII \
+	Altera-Stratix        	CONFIG_SYN_STRATIX \
+	Altera-StratixII      	CONFIG_SYN_STRATIXII \
+	Altera-StratixIII      	CONFIG_SYN_STRATIXIII \
+	Altera-StratixIV      	CONFIG_SYN_STRATIXIV \
+	Altera-StratixV      	CONFIG_SYN_STRATIXV \
+	Altera-Others         	CONFIG_SYN_ALTERA \
 	Atmel-ATC18		CONFIG_SYN_ATC18 \
 	Atmel-ATC18RHA		CONFIG_SYN_ATC18RHA \
-	IBM-CMOS9SF    		CONFIG_SYN_CMOS9SF \
 	Custom1        		CONFIG_SYN_CUSTOM1 \
-        IHP25                   CONFIG_SYN_IHP25 \
-        IHP25RH                 CONFIG_SYN_IHP25RH \
+	DARE      		CONFIG_SYN_DARE \
+	IBM-CMOS9SF    		CONFIG_SYN_CMOS9SF \
         Lattice-EC/ECP/XP   	CONFIG_SYN_LATTICE \
         Quicklogic-Eclipse  	CONFIG_SYN_ECLIPSE \
 	RH-LIB18T  		CONFIG_SYN_RH_LIB18T \
 	RH-UMC     		CONFIG_SYN_RHUMC \
-	SAED32     		CONFIG_SYN_SAED32 \
-	DARE      		CONFIG_SYN_DARE \
 	RHS65     		CONFIG_SYN_RHS65 \
+	SAED32     		CONFIG_SYN_SAED32 \
 	SMIC130   		CONFIG_SYN_SMIC13 \
         TM65Gplus               CONFIG_SYN_TM65GPLUS \
         TSMC90                  CONFIG_SYN_TSMC90 \

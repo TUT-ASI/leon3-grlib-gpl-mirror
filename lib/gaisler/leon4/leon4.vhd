@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -150,7 +150,9 @@ package leon4 is
     netlist   : integer               := 0;
     ft        : integer               := 0;
     npasi     : integer range 0 to 1  := 0;
-    pwrpsr    : integer range 0 to 1  := 0
+    pwrpsr    : integer range 0 to 1  := 0;
+    rex       : integer               := 0;
+    mmupgsz   : integer range 0 to 4  := 0
   );
   port (
     clk    : in  std_ulogic;
@@ -220,7 +222,9 @@ package leon4 is
     ft        : integer               := 0;    -- FT option
     npasi     : integer range 0 to 1  := 0;
     pwrpsr    : integer range 0 to 1  := 0;
-    ahbpipe   : integer := 0
+    ahbpipe   : integer := 0;
+    rex       : integer               := 0;
+    mmupgsz   : integer range 0 to 4  := 0
   );
   port (
     ahbclk : in  std_ulogic;    -- bus clock
@@ -294,7 +298,9 @@ package leon4 is
     netlist   : integer               := 0;
     ft        : integer               := 0;
     npasi     : integer range 0 to 1  := 0;
-    pwrpsr    : integer range 0 to 1  := 0
+    pwrpsr    : integer range 0 to 1  := 0;
+    rex       : integer               := 0;
+    mmupgsz   : integer range 0 to 4  := 0
   );
   port (
     clk    : in  std_ulogic;
@@ -364,7 +370,9 @@ package leon4 is
     netlist   : integer               := 0;
     ft        : integer               := 0;
     npasi     : integer range 0 to 1  := 0;
-    pwrpsr    : integer range 0 to 1  := 0
+    pwrpsr    : integer range 0 to 1  := 0;
+    rex       : integer               := 0;
+    mmupgsz   : integer range 0 to 4  := 0
   );
   port (
     clk    : in  std_ulogic;
@@ -434,7 +442,9 @@ package leon4 is
     netlist   : integer               := 0;
     ft        : integer               := 0;
     npasi     : integer range 0 to 1  := 0;
-    pwrpsr    : integer range 0 to 1  := 0
+    pwrpsr    : integer range 0 to 1  := 0;
+    rex       : integer               := 0;
+    mmupgsz   : integer range 0 to 4  := 0
   );
   port (
     clk    : in  std_ulogic;
@@ -505,7 +515,9 @@ package leon4 is
     netlist   : integer               := 0;    -- Netlist option
     ft        : integer               := 0;    -- FT option
     npasi     : integer range 0 to 1  := 0;
-    pwrpsr    : integer range 0 to 1  := 0
+    pwrpsr    : integer range 0 to 1  := 0;
+    rex       : integer               := 0;
+    mmupgsz   : integer range 0 to 4  := 0
   );
   port (
     clk    : in  std_ulogic;

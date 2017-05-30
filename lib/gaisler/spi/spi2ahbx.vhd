@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -487,9 +487,9 @@ begin
     spio.mosioen  <= HIZ;
     spio.sck      <= '0';
     spio.sckoen   <= HIZ;
-    spio.ssn      <= (others => '0');
     spio.enable   <= spi2ahbi.en;
     spio.astart   <= '0';
+    spio.aready   <= '0';
   end process comb;
 
   reg: process (clk)

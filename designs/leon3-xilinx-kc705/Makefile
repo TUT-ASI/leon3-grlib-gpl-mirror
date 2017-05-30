@@ -64,7 +64,7 @@ VSIMOPT+= -GSIM_COLLISION_CHECK="GENERATE_X_ONLY"
 ASIMOPT+= -GSIM_COLLISION_CHECK="GENERATE_X_ONLY"
 
 # Simulation scripts
-VSIMOPT+= -do "run -all"
+VSIMOPT+= -do $(GRLIB)/bin/runvsim.do
 ASIMDO = run -all
 
 # Toplevel
@@ -80,10 +80,10 @@ VHDLSIMFILES=testbench.vhd
 TECHLIBS = unisim
 SKIP_SIM_TECHLIBS = 1
 
-LIBSKIP = pci pci/pcif core1553bbc core1553brm core1553brt gr1553 corePCIF \
+LIBSKIP = pci pci/pcif core1553bbc core1553brm srio core1553brt idt gr1553 corePCIF \
 	tmtc openchip ihp spw gsi cypress hynix \
 	spansion secureip
-DIRSKIP = b1553 pci pci/pcif leon2 leon2ft crypto satcan pci ambatest \
+DIRSKIP = b1553 pci pci/pcif leon2 leon2ft srio idt crypto satcan pci ambatest \
 	spacewire ascs slink \
 	pwm gr1553b iommu ac97 secureip
 ifeq ("$(CONFIG_LEON4)","")

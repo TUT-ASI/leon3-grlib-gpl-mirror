@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -173,6 +173,7 @@ begin
     generic map (hindex => 2, ncpu => 1, tech => memtech, irq => 0, kbytes => 2)
     port map (rstn, clkm, ahbmi, ahbsi, ahbso(2), dbgo, dbgi, dsui, dsuo);
   dsui.enable <= '1';
+  led(3) <= dbgo(0).error;
   
   -- Debug UART
   dcom0 : ahbuart 

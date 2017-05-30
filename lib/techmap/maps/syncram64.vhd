@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -98,8 +98,7 @@ architecture rtl of syncram64 is
   );
   end component;
 
-signal dinp, doutp : std_logic_vector(71 downto 0);
-signal xenable : std_logic_vector(1 downto 0);
+  signal xenable : std_logic_vector(1 downto 0);
 
   signal custominx,customoutx: std_logic_vector(syncram_customif_maxwidth downto 0);
   
@@ -162,6 +161,9 @@ nopar : if paren = 0 generate
 end generate;
 
 par : if paren = 1 generate
+  parblck : block
+    signal dinp, doutp : std_logic_vector(71 downto 0);
+  begin
     dinp <= datain(63+8*paren downto 60+8*paren) &  datain(63 downto 32) &
             datain(63+4*paren downto 60+4*paren) &  datain(31 downto 0);
     dataout <= doutp(71 downto 68) & doutp(35 downto 32) &
@@ -174,6 +176,7 @@ par : if paren = 1 generate
          port map (clk, address, dinp(35 downto 0), doutp(35 downto 0), 
 	           enable(0), write(0), testin
                    );
+  end block parblck;
 end generate;
 
 end;

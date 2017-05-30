@@ -56,3 +56,6 @@ EDAC protection
 CONFIG_L2_EDAC
   Say yes here to enable EDAC protection.
 
+AXI backend interface
+CONFIG_L2_AXI
+  Say yes here to enable AXI backend interface

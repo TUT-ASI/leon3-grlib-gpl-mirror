@@ -57,6 +57,7 @@
   constant CFG_DTLBNUM  : integer := CONFIG_DTLBNUM;
   constant CFG_TLB_TYPE : integer := CONFIG_TLB_TYPE + CFG_MMU_FASTWB*2;
   constant CFG_TLB_REP  : integer := CONFIG_TLB_REP;
+  constant CFG_MMU_PAGE : integer := CONFIG_MMU_PAGE;
   constant CFG_DSU   	: integer := CONFIG_DSU_ENABLE;
   constant CFG_ITBSZ 	: integer := CFG_DSU_ITB + 64*CONFIG_DSU_ITRACE_2P;
   constant CFG_ATBSZ 	: integer := CFG_DSU_ATB;
@@ -88,6 +89,7 @@
   constant CFG_L2_MAP  	: integer := 16#CONFIG_L2_MAP#;
   constant CFG_L2_MTRR 	: integer := CONFIG_L2_MTRR;
   constant CFG_L2_EDAC	: integer := CONFIG_L2_EDAC;
+  constant CFG_L2_AXI	  : integer := CONFIG_L2_AXI;
 
 -- AMBA settings
   constant CFG_DEFMST  	  : integer := CONFIG_AHB_DEFMST;

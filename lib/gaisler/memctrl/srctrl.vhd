@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -18,11 +18,11 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------
--- Entity: 	srctrl
--- File:	srctrl.vhd
--- Author:	Jiri Gaisler - Gaisler Research
+-- Entity:      srctrl
+-- File:        srctrl.vhd
+-- Author:      Jiri Gaisler - Gaisler Research
 -- Modified:    Marko Isomaki - Gaisler Research
--- Description:	32-bit SRAM memory controller with read-modify-write
+-- Description: 32-bit SRAM memory controller with read-modify-write
 --              Supports also 64-bit AHB read/write accesses
 ------------------------------------------------------------------------------
 
@@ -47,7 +47,7 @@ entity srctrl is
     ramws   : integer := 0;
     romws   : integer := 2;
     iows    : integer := 2;
-    rmw     : integer := 0;		-- read-modify-write enable
+    rmw     : integer := 0;             -- read-modify-write enable
     prom8en : integer := 0;
     oepol   : integer := 0;
     srbanks : integer range 1 to 5  := 1;
@@ -102,30 +102,30 @@ end;
 type reg_type is record
   hready        : std_ulogic;
   hsel          : std_ulogic;
-  hmbsel	: std_logic_vector(0 to 2);
+  hmbsel        : std_logic_vector(0 to 2);
   bdrive        : std_ulogic;
   nbdrive       : std_ulogic;
-  srstate	: srcycletype;
+  srstate       : srcycletype;
   haddr         : std_logic_vector(31 downto 0);
   hrdata        : std_logic_vector(63 downto 0);
   hwdata        : std_logic_vector(63 downto 0);
   hwrite        : std_ulogic;
   htrans        : std_logic_vector(1 downto 0);
   hburst        : std_logic_vector(2 downto 0);
-  hresp 	: std_logic_vector(1 downto 0);
-  size		: std_logic_vector(1 downto 0);
-  read  	: std_ulogic;
-  oen   	: std_ulogic;
+  hresp         : std_logic_vector(1 downto 0);
+  size          : std_logic_vector(1 downto 0);
+  read          : std_ulogic;
+  oen           : std_ulogic;
   ramsn         : std_ulogic;
   romsn         : std_ulogic;
-  vramsn 	: std_logic_vector(4 downto 0);
-  ramoen	: std_logic_vector(4 downto 0);
-  vromsn 	: std_logic_vector(1 downto 0);
-  writen	: std_ulogic;
-  wen   	: std_logic_vector(3 downto 0);
-  mben		: std_logic_vector(3 downto 0);
-  ws    	: std_logic_vector(3 downto 0);
-  iosn   	: std_ulogic;
+  vramsn        : std_logic_vector(4 downto 0);
+  ramoen        : std_logic_vector(4 downto 0);
+  vromsn        : std_logic_vector(1 downto 0);
+  writen        : std_ulogic;
+  wen           : std_logic_vector(3 downto 0);
+  mben          : std_logic_vector(3 downto 0);
+  ws            : std_logic_vector(3 downto 0);
+  iosn          : std_ulogic;
 -- 8-bit prom access
   pr8state      : prom8cycletype;
   data8         : std_logic_vector(23 downto 0);
@@ -143,7 +143,7 @@ attribute syn_preserve of rbdrive : signal is true;
 begin
 
   ctrl : process(rst, ahbsi, r, sri, rbdrive)
-  variable v       : reg_type;		-- local variables for registers
+  variable v       : reg_type;          -- local variables for registers
   variable dqm     : std_logic_vector(3 downto 0);
   variable adec    : std_logic_vector(1 downto 0);
   variable rams    : std_logic_vector(4 downto 0);
@@ -181,10 +181,10 @@ begin
       if (ahbsi.hsel(hindex) and ahbsi.htrans(1)) = '1' then
         v.size := ahbsi.hsize(1 downto 0); v.hwrite := ahbsi.hwrite;
         v.htrans := ahbsi.htrans; v.hburst := ahbsi.hburst;
-	v.hsel := '1'; v.hmbsel := ahbsi.hmbsel(0 to 2);
+        v.hsel := '1'; v.hmbsel := ahbsi.hmbsel(0 to 2);
         v.haddr := ahbsi.haddr; v.hready := '0';
       else
-	v.hsel := '0';
+        v.hsel := '0';
       end if;
     end if;
 
@@ -230,23 +230,23 @@ begin
     case r.srstate is
     when idle =>
       if (v.hsel = '1') and not
-	(((v.ramsn or r.romsn) = '0') or ((v.romsn or r.ramsn) = '0')) and not
-	((v.hmbsel(0) and not hwrite and prom8sel) = '1' and prom8en = 1)
+        (((v.ramsn or r.romsn) = '0') or ((v.romsn or r.ramsn) = '0')) and not
+        ((v.hmbsel(0) and not hwrite and prom8sel) = '1' and prom8en = 1)
       then
         v.hready := '0';
-	v.ramsn := not v.hmbsel(1); v.romsn := not v.hmbsel(0);
-	v.iosn := not v.hmbsel(2);
-	v.read := not hwrite;
-	if hwrite = '1' then
-	  if (rmw = 1) and (hsize(1) = '0') and (v.hmbsel(1) = '1') then
-	    v.srstate := rmw1; v.read := '1';
-	  else v.srstate := write1; end if;
-	elsif ahbsi.htrans = "10" then v.srstate := read1;
-	else v.srstate := read2; end if;
-	v.oen := not v.read;
+        v.ramsn := not v.hmbsel(1); v.romsn := not v.hmbsel(0);
+        v.iosn := not v.hmbsel(2);
+        v.read := not hwrite;
+        if hwrite = '1' then
+          if (rmw = 1) and (hsize(1) = '0') and (v.hmbsel(1) = '1') then
+            v.srstate := rmw1; v.read := '1';
+          else v.srstate := write1; end if;
+        elsif ahbsi.htrans = "10" then v.srstate := read1;
+        else v.srstate := read2; end if;
+        v.oen := not v.read;
       else
-	v.ramsn := '1'; v.romsn := '1'; v.bdrive := '1'; v.oen := '1';
-	 v.iosn := '1';
+        v.ramsn := '1'; v.romsn := '1'; v.bdrive := '1'; v.oen := '1';
+         v.iosn := '1';
       end if;
       if v.romsn = '0' then v.ws := vromws;
       elsif v.iosn = '0' then v.ws := viows;
@@ -257,12 +257,12 @@ begin
     when read2 =>
       v.ws := r.ws -1; v.oen := '0';
       if r.ws = "0000" then
-	if (r.size /= "11") or (r.haddr(2) = '1') or (AHBDW = 32) then 
-	  v.srstate := idle; v.hready := '1'; v.haddr := ahbsi.haddr;
-	  v.ramsn := not (ahbsi.hmbsel(1) and ahbsi.htrans(1));
-	  v.romsn := not (ahbsi.hmbsel(0) and ahbsi.htrans(1));
-	  v.oen := not (ahbsi.hsel(hindex) and ahbsi.htrans(1) and not ahbsi.hwrite);
-	else
+        if (r.size /= "11") or (r.haddr(2) = '1') or (AHBDW = 32) then 
+          v.srstate := idle; v.hready := '1'; v.haddr := ahbsi.haddr;
+          v.ramsn := not (ahbsi.hmbsel(1) and ahbsi.htrans(1));
+          v.romsn := not (ahbsi.hmbsel(0) and ahbsi.htrans(1));
+          v.oen := not (ahbsi.hsel(hindex) and ahbsi.htrans(1) and not ahbsi.hwrite);
+        else
           v.srstate := read1; v.haddr(2) := '1';
           if v.romsn = '0' then v.ws := vromws;
           elsif v.iosn = '0' then v.ws := viows;
@@ -280,16 +280,16 @@ begin
       end if;
     when write2 =>
       if r.ws = "0000" then
-	if (r.size /= "11") or (r.haddr(2) = '1') or (AHBDW = 32) then 
+        if (r.size /= "11") or (r.haddr(2) = '1') or (AHBDW = 32) then 
           v.srstate := idle; v.bdrive := '1'; v.hready := '1';
-	else
+        else
           v.srstate := write3; 
-	end if;
-	v.wen := "1111"; v.writen := '1';
+        end if;
+        v.wen := "1111"; v.writen := '1';
       end if;
       v.ws := r.ws -1;
     when write3 =>
-	v.haddr(2) := '1'; v.hwdata(63 downto 32) := r.hwdata(31 downto 0);
+        v.haddr(2) := '1'; v.hwdata(63 downto 32) := r.hwdata(31 downto 0);
         v.srstate := write1; 
     when rmw1 =>
       if (rmw = 1) then v.oen := '0';
@@ -320,39 +320,39 @@ begin
       bdrive := '1'; oen := '1'; writen := '1'; romsn := '1';
 
       if r.ready8 = '1' then
-	v.data8 := r.data8(15 downto 0) & r.hrdata(31 downto 24);
-	case r.size is
-	when "00" => hrdata(31 downto 0) :=  r.hrdata(31 downto 24) &
-	  r.hrdata(31 downto 24) &  r.hrdata(31 downto 24) &  r.hrdata(31 downto 24);
-	when "01" => hrdata(31 downto 0) := r.data8(7 downto 0) &  r.hrdata(31 downto 24) &
-		r.data8(7 downto 0) & r.hrdata(31 downto 24);
-	when others => hrdata(31 downto 0) := r.data8 & r.hrdata(31 downto 24);
-	end case;
+        v.data8 := r.data8(15 downto 0) & r.hrdata(31 downto 24);
+        case r.size is
+        when "00" => hrdata(31 downto 0) :=  r.hrdata(31 downto 24) &
+          r.hrdata(31 downto 24) &  r.hrdata(31 downto 24) &  r.hrdata(31 downto 24);
+        when "01" => hrdata(31 downto 0) := r.data8(7 downto 0) &  r.hrdata(31 downto 24) &
+                r.data8(7 downto 0) & r.hrdata(31 downto 24);
+        when others => hrdata(31 downto 0) := r.data8 & r.hrdata(31 downto 24);
+        end case;
       end if;
 
       case r.pr8state is
-	when idle =>
-	  if ( (v.hsel and v.hmbsel(0) and not hwrite and prom8sel) = '1')
+        when idle =>
+          if ( (v.hsel and v.hmbsel(0) and not hwrite and prom8sel) = '1')
           then
-	    romsn := '0'; v.pr8state := read1; oen := '0';
-	  end if;
-     	when read1 =>
-	  oen := '0'; romsn := '0'; v.pr8state := read2; ws := vromws;
-	when read2 =>
-	  oen := '0'; ws := r.ws - 1; romsn := '0';
-	  if r.ws = "0000" then
-	    v.haddr(1 downto 0) := r.haddr(1 downto 0) + 1;
-	    if (r.size = "00") or ((r.size = "01") and  (r.haddr(0) = '1'))
-	      or r.haddr(1 downto 0) = "11"
-	    then
-	      hready := '1'; v.pr8state := idle; oen := '1';
-	    else
-	      v.pr8state := read1;
-	    end if;
-	    v.ready8 := '1';
-	  end if;
-	when others =>
-	  v.pr8state := idle;
+            romsn := '0'; v.pr8state := read1; oen := '0';
+          end if;
+        when read1 =>
+          oen := '0'; romsn := '0'; v.pr8state := read2; ws := vromws;
+        when read2 =>
+          oen := '0'; ws := r.ws - 1; romsn := '0';
+          if r.ws = "0000" then
+            v.haddr(1 downto 0) := r.haddr(1 downto 0) + 1;
+            if (r.size = "00") or ((r.size = "01") and  (r.haddr(0) = '1'))
+              or r.haddr(1 downto 0) = "11"
+            then
+              hready := '1'; v.pr8state := idle; oen := '1';
+            else
+              v.pr8state := read1;
+            end if;
+            v.ready8 := '1';
+          end if;
+        when others =>
+          v.pr8state := idle;
       end case;
 
       v.romsn := v.romsn and romsn; v.bdrive := v.bdrive and bdrive;
@@ -380,7 +380,7 @@ begin
 -- reset
 
     if rst = '0' then
-      v.srstate	:= idle; v.hsel := '0'; v.writen := '1';
+      v.srstate := idle; v.hsel := '0'; v.writen := '1';
       v.wen := (others => '1'); v.hready := '1'; v.read := '1';
       v.ws := (others => '0');
       if prom8en = 1 then v.pr8state := idle; end if;
@@ -445,7 +445,7 @@ begin
 -- pragma translate_off
   bootmsg : report_version
   generic map ("srctrl" & tost(hindex) &
-	": 32-bit PROM/SRAM controller rev " & tost(VERSION));
+        ": 32-bit PROM/SRAM controller rev " & tost(VERSION));
 -- pragma translate_on
 
 end;

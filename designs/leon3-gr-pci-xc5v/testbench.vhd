@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -333,10 +333,8 @@ begin
 		  rwen(0), ramoen(0));
   end generate;
 
-  sramcb0 : sramft generic map (index => 7, abits => sramdepth, fname => sramfile)
-	port map (address(sramdepth+1 downto 2), cb(7 downto 0), ramsn(0), rwen(0), ramoen(0));
-
-
+  --sramcb0 : sramft generic map (index => 7, abits => sramdepth, fname => sramfile)
+  --      port map (address(sramdepth+1 downto 2), cb(7 downto 0), ramsn(0), rwen(0), ramoen(0));
  
   phy0 : if (CFG_GRETH = 1) generate
     emdio <= 'H'; 

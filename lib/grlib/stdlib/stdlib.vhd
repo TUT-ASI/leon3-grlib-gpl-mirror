@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -37,6 +37,7 @@ package stdlib is
 
 constant LIBVHDL_VERSION : integer := grlib_version;
 constant LIBVHDL_BUILD : integer := grlib_build;
+constant LIBVHDL_CFGVER : integer := 0;
 
 constant zero32 : std_logic_vector(31 downto 0) := (others => '0');
 constant zero64 : std_logic_vector(63 downto 0) := (others => '0');

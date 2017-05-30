@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -53,7 +53,8 @@ entity mmu_icache is
     lram      : integer range 0 to 2 := 0;
     lramsize  : integer range 1 to 512 := 1;
     lramstart : integer range 0 to 255 := 16#8e#;
-    mmuen     : integer range 0 to 1 := 0);    
+    mmuen     : integer range 0 to 1 := 0;
+    memtech   : integer              := 0);
   port (
     rst : in  std_ulogic;
     clk : in  std_ulogic;
@@ -94,7 +95,8 @@ architecture rtl of mmu_icache is
   constant ILRUBITS   : integer                      := lru_table(ISETS);
   constant LRAM_START : std_logic_vector(7 downto 0) := conv_std_logic_vector(lramstart, 8);
   constant LRAM_BITS  : integer                      := log2(lramsize) + 10;
-  constant LRAMCS_EN  : boolean                      := false;
+  constant LRAMCS_EN  : boolean                      := false or (lram > 1);
+  constant ICREADHOLD : boolean                      := (syncram_readhold(memtech) /= 0);
   subtype lru_type is std_logic_vector(ILRUBITS-1 downto 0);
   type lru_array is array (0 to 2**IOFFSET_BITS-1) of lru_type;  -- lru registers
   type rdatatype is (itag, idata, memory);  -- sources during cache read
@@ -201,6 +203,8 @@ architecture rtl of mmu_icache is
      cmiss         : std_ulogic;
      bpmiss        : std_ulogic;
      eocl          : std_ulogic;
+     pon           : std_ulogic;
+     ctx           : std_logic_vector(7 downto 0);
   end record;
 
   type lru_reg_type is record
@@ -240,7 +244,9 @@ architecture rtl of mmu_icache is
     trans_op      => '0',
     cmiss         => '0',
     bpmiss        => '0',
-    eocl          => '0'
+    eocl          => '0',
+    pon           => '0',
+    ctx           => (others => '0')
     );
   constant LRES : lru_reg_type := (
     write => '0',
@@ -273,6 +279,8 @@ begin
     variable xaddr_inc : std_logic_vector((ILINE_BITS -1) downto 0);
     variable lastline, nlastline, nnlastline : std_ulogic;
     variable enable : std_ulogic;
+    variable tenable, denable : std_logic_vector(0 to MAXSETS-1);
+    variable setmask : std_logic_vector(0 to MAXSETS-1);
     variable error : std_ulogic;
     variable whit, hit, valid, nvalid : std_ulogic;
     variable cacheon  : std_ulogic;
@@ -297,6 +305,7 @@ begin
     variable mmuici_su : std_logic;
     variable mhold : std_ulogic;
     variable shtag : std_logic_vector(ilinesize-1 downto 0);
+    variable keepctx : std_logic;
   begin
 
 -- init local variables
@@ -307,12 +316,34 @@ begin
     mds := '1'; dwrite := '0'; twrite := '0'; diagen := '0'; error := '0';
     write := mcio.ready; v.diagrdy := '0'; v.holdn := '1'; 
 
+    eholdn := dco.hold and fpuholdn;
     if icen /= 0 then
       cacheon := dco.icdiag.cctrl.ics(0) and not (r.flush 
       );
     else cacheon := '0'; end if;
-    enable := '1'; branch := '0';
-    eholdn := dco.hold and fpuholdn;
+    enable := dco.icdiag.cctrl.ics(0);
+    v.pon := cacheon;
+    cacheon := cacheon and r.pon;
+    if ICREADHOLD then
+      enable := enable and (eholdn or not r.holdn);
+    end if;
+    enable := enable or r.flush2;
+    if r.istate /= idle and r.istate /= stop and r.flush2='0' then enable:='0'; end if;
+    setmask := (others => '0');
+    setmask(conv_integer(r.setrepl)) := '1';
+    tenable := (others => enable); denable := (others => enable);
+    keepctx := '0';
+    if ICREADHOLD and r.flush2='0' and r.hit='1' and r.istate /= stop then
+      if ici.rbranch='0' and ici.fpc(LINE_HIGH downto LINE_LOW) /= lline then
+        tenable := (others => '0');
+        if ici.fbranch='0' and ici.fpc(LINE_HIGH downto LINE_LOW) /= fline then
+          denable := denable and setmask;
+          keepctx := '1';
+        end if;
+      end if;
+    end if;
+
+    branch := '0';
 
     rdatasel := idata;  -- read data from cache as default
     ddatain := mcio.data;       -- load full word from memory
@@ -349,14 +380,14 @@ begin
     if irepl = dir then
       set := conv_integer(ici.fpc(OFFSET_HIGH + SETBITS downto OFFSET_HIGH+1));
       if (icramo.tag(set)(TAG_HIGH downto TAG_LOW) = ici.fpc(TAG_HIGH downto TAG_LOW))
-          and ((icramo.ctx(set) = mmudci.mmctrl1.ctx) or (mmudci.mmctrl1.e = '0') or not M_EN)
+          and ((icramo.ctx(set) = r.ctx) or (mmudci.mmctrl1.e = '0') or not M_EN)
       then hit := not r.flush; end if;
       validv(set) := genmux(ici.fpc(LINE_HIGH downto LINE_LOW), 
                           icramo.tag(set)(ilinesize -1 downto 0));
     else
       for i in ISETS-1 downto 0 loop
         if (icramo.tag(i)(TAG_HIGH downto TAG_LOW) = ici.fpc(TAG_HIGH downto TAG_LOW))
-          and ((icramo.ctx(i) = mmudci.mmctrl1.ctx) or (mmudci.mmctrl1.e = '0') or not M_EN)
+          and ((icramo.ctx(i) = r.ctx) or (mmudci.mmctrl1.e = '0') or not M_EN)
         then hit := not r.flush; set := i; end if;
         validv(i) := genmux(ici.fpc(LINE_HIGH downto LINE_LOW),
                           icramo.tag(i)(ilinesize -1 downto 0));
@@ -409,6 +440,9 @@ begin
       --v.hit := '0';
       v.hit := hit;
       v.su := ici.su;
+      if keepctx='0' then
+        v.ctx := mmudci.mmctrl1.ctx;
+      end if;
       
 --      if (ici.inull or eholdn)  = '0' then 
       if eholdn  = '0' then 
@@ -417,9 +451,9 @@ begin
       v.burst := dco.icdiag.cctrl.burst and not lastline;
       if (eholdn and lramacc)='1' then v.bpmiss:='0'; v.eocl:='0'; end if;
       if (eholdn and not (ici.inull or lramacc)) = '1' then
-        v.bpmiss := not (cacheon and hit and valid) and ici.nobpmiss;
+        v.bpmiss := not (hit and valid) and ici.nobpmiss and cacheon;
         v.eocl := not nvalid;
-        if not (cacheon and hit and valid) = '1' and ici.nobpmiss='0' then  
+        if (not (hit and valid) = '1' and ici.nobpmiss='0') or cacheon='0' then
           v.istate := streaming;  
           v.holdn := '0'; v.overrun := '1'; v.cmiss := '1';
           
@@ -427,11 +461,11 @@ begin
             v.istate := trans; 
             mmuici_trans_op := '1';
             v.trans_op := not mmuico.grant;
-            v.cache := '0';
+            v.cache := cacheon;
             --v.req := '0';
           else                          
             v.req := '1'; 
-            v.cache := '1';
+            v.cache := cacheon;
           end if;
         else
           if (ISETS > 1) and (irepl = lru) then vl.write := '1'; end if;
@@ -498,7 +532,7 @@ begin
             error := r.su or not mmudci.mmctrl1.nf; mds := '0';
             v.holdn := '0'; v.istate := stop; v.burst := '0';
           else
-            v.cache := mmuico.transdata.cache;
+            v.cache := r.cache and mmuico.transdata.cache;
             v.waddress := mmuico.transdata.data(31 downto 2);
             v.istate := streaming; v.req := '1'; 
           end if;
@@ -533,6 +567,7 @@ begin
         v.istate := stop; v.holdn := '0';
       end if;
     when stop =>                -- return to main
+      v.ctx := mmudci.mmctrl1.ctx;
       taddr := ici.fpc(TAG_HIGH downto LINE_LOW);
       v.istate := idle; v.flush := r.flush2;
     when others => v.istate := idle;
@@ -553,7 +588,7 @@ begin
 
     vmaskraw := decode(r.waddress(LINE_HIGH downto LINE_LOW));
     twrite := write;
-    if cacheon = '0' then
+    if cacheon = '0' or r.cache='0' then
       twrite := '0'; vmask := (others => (others => '0'));
     elsif (dco.icdiag.cctrl.ics = "01") then
       twrite := twrite and r.hit;
@@ -566,7 +601,7 @@ begin
         else vmask(i) := vmaskraw; end if;
       end loop;
     end if; 
-    if (mcio.mexc or not mcio.cache) = '1' then 
+    if mcio.mexc='1' or (mcio.cache='0' and (mmudci.mmctrl1.e='0' or not M_EN)) then
       twrite := '0'; dwrite := '0';
     else dwrite := twrite; end if;
     if twrite = '1' then
@@ -584,7 +619,9 @@ begin
     if ISETS > 1 then setrepl := r.setrepl; else setrepl := (others => '0'); end if;
     if twrite = '1' then ctwrite(conv_integer(setrepl)) := '1'; end if;
     if dwrite = '1' then cdwrite(conv_integer(setrepl)) := '1'; end if;
-    
+    tenable := tenable or ctwrite;
+    denable := denable or cdwrite;
+
 -- diagnostic cache access
 
     if diagen = '1' then
@@ -610,21 +647,32 @@ begin
     
     diagdata := icramo.data(rdiagset);
     if diagen = '1' then -- diagnostic or local ram access
-      taddr(TAG_HIGH downto LINE_LOW) := dco.icdiag.addr(TAG_HIGH downto LINE_LOW);
-      wtag(TAG_HIGH downto TAG_LOW) := dci.maddress(TAG_HIGH downto TAG_LOW);
-      wlrr := dci.maddress(CTAG_LRRPOS);
-      wlock := dci.maddress(CTAG_LOCKPOS);
+      tenable := (others => '1');
+      denable := (others => '1');
+      if r.diagrdy='0' or (not ICREADHOLD) then
+        taddr(TAG_HIGH downto LINE_LOW) := dco.icdiag.addr(TAG_HIGH downto LINE_LOW);
+        wtag(TAG_HIGH downto TAG_LOW) := dci.maddress(TAG_HIGH downto TAG_LOW);
+        wlrr := dci.maddress(CTAG_LRRPOS);
+        wlock := dci.maddress(CTAG_LOCKPOS);
+        if (dco.icdiag.ilramen = '1') and (lram /= 0) then
+          ilramwr := not dco.icdiag.read;
+        elsif dco.icdiag.tag = '1' then
+          twrite := not dco.icdiag.read; dwrite := '0';
+          ctwrite := (others => '0'); cdwrite := (others => '0');
+          ctwrite(vdiagset) := not dco.icdiag.read;
+        else
+          dwrite := not dco.icdiag.read; twrite := '0';
+          cdwrite := (others => '0'); cdwrite(vdiagset) := not dco.icdiag.read;
+          ctwrite := (others => '0');
+        end if;
+        vmask := (others => dci.maddress(ilinesize -1 downto 0));
+      end if;
+      -- Do diagdata output muxing also when diagrdy=1
       if (dco.icdiag.ilramen = '1') and (lram /= 0) then
-        ilramwr := not dco.icdiag.read;
+        null;
       elsif dco.icdiag.tag = '1' then
-        twrite := not dco.icdiag.read; dwrite := '0';
-        ctwrite := (others => '0'); cdwrite := (others => '0');
-        ctwrite(vdiagset) := not dco.icdiag.read;
         diagdata := icramo.tag(rdiagset);
       else
-        dwrite := not dco.icdiag.read; twrite := '0';
-        cdwrite := (others => '0'); cdwrite(vdiagset) := not dco.icdiag.read;
-        ctwrite := (others => '0');
       end if;
       vmask := (others => dci.maddress(ilinesize -1 downto 0));
       v.diagrdy := '1';
@@ -720,13 +768,13 @@ begin
     end loop;
 
     icrami.tag <= tag;
-    icrami.tenable   <= enable;
+    icrami.tenable   <= tenable;
     icrami.twrite    <= ctwrite;
     icrami.flush    <= r.flush2;
-    icrami.ctx      <= mmudci.mmctrl1.ctx;
+    icrami.ctx      <= r.ctx;
  
     -- data ram inputs
-    icrami.denable  <= enable;
+    icrami.denable  <= denable;
     icrami.address  <= taddr(19+LINE_LOW downto LINE_LOW);
     icrami.data     <= ddatain;
     icrami.dwrite   <= cdwrite;

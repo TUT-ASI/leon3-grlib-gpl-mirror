@@ -15,10 +15,9 @@ CONFIG_SYN_INFERRED
   - Altera-Stratix: Altera Stratix FPGA family
   - Altera-StratixII: Altera Stratix/Cyclone-II FPGA families
   - Altera-StratixIII: Altera Stratix-III FPGA family
-  - Altera-StratixIV: Altera Stratix-III FPGA family
+  - Altera-StratixIV: Altera Stratix-IV FPGA family
+  - Altera-StratixV: Altera Stratix-V FPGA family
   - ATC18: Atmel-Nantes 0.18 um rad-hard CMOS
-  - IHP25: IHP 0.25 um CMOS
-  - IHP25RH: IHP Rad-Hard 0.25 um CMOS
   - Lattice : EC/ECP/XP FPGAs
   - Quicklogic : Eclipse/E/II FPGAs
   - UMC-0.18 : UMC 0.18 um CMOS with Virtual Silicon libraries
@@ -31,6 +30,9 @@ CONFIG_SYN_INFERRED
   distribution. A technology may be present in this list while the
   tech support files are missing from the GRLIB distribution.
   Actel support is only available in commercial and FT distributions.
+
+  Additional target technologies are available that are not selectable
+  via the xconfig tool.
 
 Ram library
 CONFIG_MEM_VIRAGE
@@ -261,7 +263,7 @@ CONFIG_IU_LDELAY
   on targets with slow (data) cache memories. A 2-cycle delay can
   improve timing but will reduce performance with about 5%.
 
-  Note that the load delay must be 1 to support the CASA instruction.
+  Note that LEON4 always makes use of load delay 1.
 
 Reset address
 CONFIG_IU_RSTADDR
@@ -525,7 +527,19 @@ CONFIG_MMU_FASTWB
   Only selectable if split tlb is enabled. In case fast writebuffer is
   enabled the tlb hit will be made concurrent to the cache hit. This 
   leads to higher store performance, but increased power and area.
-  
+
+MMU pagesize
+CONFIG_MMU_PAGE_4K
+  The deafult SPARC V8 SRMMU page size is 4 Kbyte. This limits the
+  cache way size to 4 Kbyte, and total data cache size to 16 Kbyte,
+  when the MMU is used. To increase the maximum data cache size,
+  the MMU pages size can be increased to up 32 Kbyte. This will
+  give a maximum data cache size of 128 Kbyte.
+
+  Note that an MMU page size different than 4 Kbyte will require
+  a special linux tool-chain if glibc is used. If you don't know
+  what you are doing, stay with 4 Kbyte.
+
 DSU enable
 CONFIG_DSU_ENABLE
   The debug support unit (DSU) allows non-intrusive debugging and tracing
@@ -732,6 +746,9 @@ EDAC protection
 CONFIG_L2_EDAC
   Say yes here to enable EDAC protection.
 
+AXI backend interface
+CONFIG_L2_AXI
+  Say yes here to enable AXI backend interface
 CONFIG_AHB_DEFMST
   Sets the default AHB master (see AMBA 2.0 specification for definition).
   Should not be set to a value larger than the number of AHB masters - 1.

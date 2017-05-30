@@ -30,6 +30,8 @@
 #define CONFIG_SYN_TECH stratix3
 #elif defined CONFIG_SYN_STRATIXIV
 #define CONFIG_SYN_TECH stratix4
+#elif defined CONFIG_SYN_STRATIXV
+#define CONFIG_SYN_TECH stratix5
 #elif defined CONFIG_SYN_CYCLONEII
 #define CONFIG_SYN_TECH stratix2
 #elif defined CONFIG_SYN_CYCLONEIII
@@ -145,19 +147,19 @@
 #endif
 
 #if defined CONFIG_TRANS_GTP0
-#define CFG_TRANS_TECH GTP0
+#define CFG_TRANS_TECH TT_XGTP0
 #elif defined CONFIG_TRANS_GTP1
-#define CFG_TRANS_TECH GTP1
+#define CFG_TRANS_TECH TT_XGTP1
 #elif defined CONFIG_TRANS_GTX0
-#define CFG_TRANS_TECH GTX0
+#define CFG_TRANS_TECH TT_XGTX0
 #elif defined CONFIG_TRANS_GTX1
-#define CFG_TRANS_TECH GTX1
+#define CFG_TRANS_TECH TT_XGTX1
 #elif defined CONFIG_TRANS_GTH0
-#define CFG_TRANS_TECH GTH0
+#define CFG_TRANS_TECH TT_XGTH0
 #elif defined CONFIG_TRANS_GTH1
-#define CFG_TRANS_TECH GTH1
+#define CFG_TRANS_TECH TT_XGTH1
 #else
-#define CFG_TRANS_TECH GTP0
+#define CFG_TRANS_TECH TT_XGTP0
 #endif
 
 #if defined CONFIG_SYN_INFER_PADS
@@ -337,7 +339,7 @@
 #endif
 
 #if defined CONFIG_FPU_GRFPU
-#define CONFIG_FPU (1+CONFIG_FPU_GRFPU_MUL)
+#define CONFIG_FPU (1+CONFIG_FPU_GRFPU_MUL + 3)
 #elif defined CONFIG_FPU_GRFPULITE
 #define CONFIG_FPU (8+CONFIG_FPU_GRFPC)
 #else
@@ -685,6 +687,10 @@
 #define CONFIG_IUFT_EN 3
 #elif defined CONFIG_IUFT_TMR
 #define CONFIG_IUFT_EN 4
+#elif defined CONFIG_IUFT_BCHOTF
+#define CONFIG_IUFT_EN 5
+#elif defined CONFIG_IUFT_TECHSPEC
+#define CONFIG_IUFT_EN 6
 #else
 #define CONFIG_IUFT_EN 0
 #endif
@@ -702,9 +708,17 @@
 #define CONFIG_FPUFT 0
 #endif
 
-#ifndef CONFIG_CACHE_FT_EN
+
+#if defined CONFIG_CACHE_FT_NONE
+#define CONFIG_CACHE_FT_EN 0
+#elif defined CONFIG_CACHE_FT_BCH
+#define CONFIG_CACHE_FT_EN 16*4 + 2
+#elif defined CONFIG_CACHE_FT_TECH
+#define CONFIG_CACHE_FT_EN 16*5 + 2
+#else
 #define CONFIG_CACHE_FT_EN 0
 #endif
+
 #ifndef CONFIG_CACHE_ERRINJ
 #define CONFIG_CACHE_ERRINJ 0
 #endif
@@ -1215,6 +1229,53 @@
 
 #ifndef CONFIG_SPIMCTRL_OFFSET
 #define CONFIG_SPIMCTRL_OFFSET 0
+#endif
+#ifndef CONFIG_SPICTRL_ENABLE
+#define CONFIG_SPICTRL_ENABLE 0
+#endif
+#ifndef CONFIG_SPICTRL_NUM
+#define CONFIG_SPICTRL_NUM 1
+#endif
+#ifndef CONFIG_SPICTRL_SLVS
+#define CONFIG_SPICTRL_SLVS 1
+#endif
+#ifndef CONFIG_SPICTRL_FIFO
+#define CONFIG_SPICTRL_FIFO 1
+#endif
+#ifndef CONFIG_SPICTRL_SLVREG
+#define CONFIG_SPICTRL_SLVREG 0
+#endif
+#ifndef CONFIG_SPICTRL_ODMODE
+#define CONFIG_SPICTRL_ODMODE 0
+#endif
+#ifndef CONFIG_SPICTRL_AM
+#define CONFIG_SPICTRL_AM 0
+#endif
+#ifndef CONFIG_SPICTRL_ASEL
+#define CONFIG_SPICTRL_ASEL 0
+#endif
+#ifndef CONFIG_SPICTRL_TWEN
+#define CONFIG_SPICTRL_TWEN 0
+#endif
+#ifndef CONFIG_SPICTRL_MAXWLEN
+#define CONFIG_SPICTRL_MAXWLEN 0
+#endif
+#ifndef CONFIG_SPICTRL_SYNCRAM
+#define CONFIG_SPICTRL_SYNCRAM 0
+#endif
+#if defined(CONFIG_SPICTRL_DMRFT)
+#define CONFIG_SPICTRL_FT 1
+#elif defined(CONFIG_SPICTRL_TMRFT)
+#define CONFIG_SPICTRL_FT 2
+#else
+#define CONFIG_SPICTRL_FT 0
+#endif
+#if defined(CONFIG_SPICTRL_PROT1)
+#define CONFIG_SPICTRL_PROT 1
+#elif defined(CONFIG_SPICTRL_PROT2)
+#define CONFIG_SPICTRL_PROT 2
+#else
+#define CONFIG_SPICTRL_PROT 0
 #endif
 
 #ifndef CONFIG_DEBUG_UART

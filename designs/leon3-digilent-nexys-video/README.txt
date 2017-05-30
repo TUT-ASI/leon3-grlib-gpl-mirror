@@ -5,7 +5,7 @@ Simulation and synthesis
 ------------------------
 
 The design currently supports synthesis with Xilinx Vivado (tested
-with Vivado 2015.4).
+with Vivado 2017.1).
 
 The XILINX_VIVADO variable must be exported for the mig_7series target
 to work correctly: export XILINX_VIVADO

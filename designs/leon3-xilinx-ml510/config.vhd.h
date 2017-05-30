@@ -57,12 +57,13 @@
   constant CFG_DTLBNUM  : integer := CONFIG_DTLBNUM;
   constant CFG_TLB_TYPE : integer := CONFIG_TLB_TYPE + CFG_MMU_FASTWB*2;
   constant CFG_TLB_REP  : integer := CONFIG_TLB_REP;
+  constant CFG_MMU_PAGE : integer := CONFIG_MMU_PAGE;
   constant CFG_DSU   	: integer := CONFIG_DSU_ENABLE;
   constant CFG_ITBSZ 	: integer := CFG_DSU_ITB + 64*CONFIG_DSU_ITRACE_2P;
   constant CFG_ATBSZ 	: integer := CFG_DSU_ATB;
   constant CFG_AHBPF    : integer := CFG_DSU_AHBPF;
   constant CFG_AHBWP    : integer := CFG_DSU_AHBWP;
-  constant CFG_LEONFT_EN   : integer := CONFIG_IUFT_EN + CONFIG_CACHE_FT_EN*8;
+  constant CFG_LEONFT_EN   : integer := CONFIG_IUFT_EN + (CONFIG_CACHE_FT_EN)*8;
   constant CFG_LEON_NETLIST : integer := CONFIG_LEON_NETLIST;	
   constant CFG_DISAS    : integer := CONFIG_IU_DISAS + CONFIG_IU_DISAS_NET;
   constant CFG_PCLOW    : integer := CFG_DEBUG_PC32;
@@ -88,6 +89,7 @@
   constant CFG_L2_MAP  	: integer := 16#CONFIG_L2_MAP#;
   constant CFG_L2_MTRR 	: integer := CONFIG_L2_MTRR;
   constant CFG_L2_EDAC	: integer := CONFIG_L2_EDAC;
+  constant CFG_L2_AXI	  : integer := CONFIG_L2_AXI;
 
 -- AMBA settings
   constant CFG_DEFMST  	  : integer := CONFIG_AHB_DEFMST;
@@ -233,6 +235,7 @@
   constant CFG_SPICTRL_MAXWLEN : integer := CONFIG_SPICTRL_MAXWLEN;
   constant CFG_SPICTRL_SYNCRAM : integer := CONFIG_SPICTRL_SYNCRAM;
   constant CFG_SPICTRL_FT      : integer := CONFIG_SPICTRL_FT;
+  constant CFG_SPICTRL_PROT    : integer := CONFIG_SPICTRL_PROT;
 
 -- GRPCI2 interface
   constant CFG_GRPCI2_MASTER    : integer := CFG_GRPCI2_MASTEREN;

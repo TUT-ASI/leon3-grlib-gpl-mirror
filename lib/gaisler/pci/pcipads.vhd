@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -46,7 +46,8 @@ entity pcipads is
     constidsel   : integer := 0;        -- pci_idsel is tied to local constant
     level        : integer := pci33;    -- input/output level
     voltage      : integer := x33v;     -- input/output voltage
-    nolock       : integer := 0
+    nolock       : integer := 0;
+    singleint    : integer := 0
   );
   port (
     pci_rst     : inout std_logic;
@@ -68,7 +69,7 @@ entity pcipads is
     pci_66	: in std_ulogic;
     pcii   	: out pci_in_type;
     pcio   	: in  pci_out_type;
-    pci_int     : inout std_logic_vector(3 downto 0) --:= conv_std_logic_vector(16#F#, 4) -- Disable int by default
+    pci_int     : inout std_logic_vector(3*(1-singleint) downto 0) --:= conv_std_logic_vector(16#F#, 4) -- Disable int by default
     --pci_int     : inout std_logic_vector(3 downto 0) := 
     --                 conv_std_logic_vector(16#F# - (16#F# * oepol), 4) -- Disable int by default
   );
@@ -173,7 +174,14 @@ begin
 	          port map (pci_serr, pcio.serr, pcio.serren, pcii.serr);
 
   -- PCI interrupt pads
-  -- int = 0 => no interrupt
+
+  
+  -- int = 0 and singleint = 0=> no interrupt
+  -- int = 0 and singleint = 1=> PCI_INT[A] inout on pci_int(0), other pins not
+  -- existing
+
+
+  -- the cases below are all withsingle int = 0:
   -- int = 1 => PCI_INT[A] = out, PCI_INT[B,C,D] = Not connected
   -- int = 2 => PCI_INT[B] = out, PCI_INT[A,C,D] = Not connected
   -- int = 3 => PCI_INT[C] = out, PCI_INT[A,B,D] = Not connected
@@ -194,10 +202,14 @@ begin
   -- int = 110 => PCI_INT[A]       = inout, PCI_INT[B,C,D]  = in
   -- int = 111 => PCI_INT[A,B]     = inout, PCI_INT[C,D]    = in
   -- int = 112 => PCI_INT[A,B,C]   = inout, PCI_INT[D]      = in
-  -- int = 113 => PCI_INT[A,B,C,D] = inout 
+  -- int = 113 => PCI_INT[A,B,C,D] = inout
+  --
+  --
+  
+ 
 
-  interrupt : if int /= 0 generate
-    x : for i in 0 to 3 generate 
+  interrupt : if int /= 0 and singleint = 0  generate
+    x : for i in 0 to (3*(1-singleint)) generate 
       xo : if i = int - 1 and int < 10 generate
         pad_pci_int : odpad generic map (tech => padtech, level => level,
                                          voltage => voltage, oepol => oepol)
@@ -238,9 +250,27 @@ begin
 
     end generate;
   end generate;
-  nointerrupt : if int = 0 generate
-    pcii.int <= (others => '0');
+  
+  nointerrupt : if int = 0 and singleint = 0 generate
+     pcii.int <= (others => '0');
   end generate;
+
+  singleinterrupt : if int = 0 and singleint = 1 generate
+
+    pad_pci_int : iodpad
+      generic map (
+	tech => padtech,
+	level => level,
+        voltage => voltage,
+	oepol => oepol)
+      port map (
+	pci_int(0),
+	pcio.vinten(0),
+	pcii.int(0));
+ 
+     pcii.int(3 downto 1)  <= (others => '0');
+  end generate;
+  
   pcii.pme_status <= '0';
 
 end;

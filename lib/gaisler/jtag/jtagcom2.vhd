@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -31,11 +31,12 @@ use ieee.std_logic_1164.all;
 library grlib;
 use grlib.amba.all;
 use grlib.stdlib.all;
+use grlib.config_types.all;
+use grlib.config.all;
 library techmap;
 use techmap.gencomp.all;
 library gaisler;
 use gaisler.libjtagcom.all;
-use gaisler.misc.all;
 
 entity jtagcom2 is
   generic (
@@ -63,19 +64,26 @@ architecture rtl of jtagcom2 is
   constant ADDBITS : integer := 10;
   constant NOCMP : boolean := (isel /= 0);
 
-  type tckpreg_type is record
-    addr       : std_logic_vector(34 downto 0);
-    datashft   : std_logic_vector(32 downto 0);
+  type tckpreg1_type is record          -- always reset
+    datashft0  : std_ulogic;
     done_sync  : std_ulogic;
     prun       : std_ulogic;
     inshift    : std_ulogic;
     holdn      : std_ulogic;
   end record;
 
-  type tcknreg_type is record
+  type tckpreg2_type is record          -- reset only if reset_all
+    addr       : std_logic_vector(34 downto 0);
+    datashft   : std_logic_vector(32 downto 1);
+  end record;
+
+  type tcknreg1_type is record          -- always reset
     run: std_ulogic;
     done_sync1: std_ulogic;
     qual_rdata: std_ulogic;
+  end record;
+
+  type tcknreg2_type is record          -- reset only if reset_all
     addrlo    : std_logic_vector(ADDBITS-1 downto 2);
     data       : std_logic_vector(32 downto 0);
   end record;
@@ -91,9 +99,18 @@ architecture rtl of jtagcom2 is
     wdone: std_ulogic;
   end record;
 
+  constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) /= 0;
+  constant ARES: ahbreg_type := ((others => '0'),'0','0',(others => '0'),(others => '0'),'0','0','0');
+  constant TP1RES: tckpreg1_type := ('0','0','0','0','1');
+  constant TP2RES: tckpreg2_type := ((others => '0'),(others => '0'));
+  constant TN1RES: tcknreg1_type := ('0','0','0');
+  constant TN2RES: tcknreg2_type := ((others => '0'),(others => '0'));
+
   signal ar, arin : ahbreg_type;
-  signal tpr, tprin: tckpreg_type;
-  signal tnr, tnrin: tcknreg_type;
+  signal tpr1, tpr1in: tckpreg1_type;
+  signal tpr2, tpr2in: tckpreg2_type;
+  signal tnr1, tnr1in: tcknreg1_type;
+  signal tnr2, tnr2in: tcknreg2_type;
 
   signal qual_rdata, rdataq: std_logic_vector(31 downto 0);
   signal qual_dreg,  dregq: std_logic_vector(31 downto 0);
@@ -107,13 +124,18 @@ architecture rtl of jtagcom2 is
   ----
   attribute syn_preserve: boolean;  
   attribute syn_keep of ar : signal is true;
-  attribute syn_keep of tnr : signal is true;
-  attribute syn_keep of tpr : signal is true;
+  attribute syn_keep of tnr1 : signal is true;
+  attribute syn_keep of tnr2 : signal is true;
+  attribute syn_keep of tpr1 : signal is true;
+  attribute syn_keep of tpr2 : signal is true;
   attribute syn_keep of arin : signal is true;
-  attribute syn_keep of tnrin : signal is true;
+  attribute syn_keep of tnr1in : signal is true;
+  attribute syn_keep of tnr2in : signal is true;
   attribute syn_preserve of ar : signal is true;
-  attribute syn_preserve of tnr : signal is true;
-  attribute syn_preserve of tpr : signal is true;
+  attribute syn_preserve of tnr1 : signal is true;
+  attribute syn_preserve of tnr2 : signal is true;
+  attribute syn_preserve of tpr1 : signal is true;
+  attribute syn_preserve of tpr2 : signal is true;
   attribute syn_preserve of rdataq : signal is true;
   attribute syn_preserve of dregq : signal is true;
   attribute syn_preserve of aregq : signal is true;
@@ -127,28 +149,30 @@ begin
     rdq: grnand2 generic map (tech => gatetech) port map (ar.dreg(x), qual_rdata(x), rdataq(x));
   end generate;
   dqgen: for x in 31 downto 0 generate
-    dq: grnand2 generic map (tech => gatetech) port map (tnr.data(x), qual_dreg(x), dregq(x));
+    dq: grnand2 generic map (tech => gatetech) port map (tnr2.data(x), qual_dreg(x), dregq(x));
   end generate;
 
-  aregqin <= tpr.addr(34 downto ADDBITS) &
-             tnr.addrlo(ADDBITS-1 downto 2) &
-             tpr.addr(1 downto 0);
+  aregqin <= tpr2.addr(34 downto ADDBITS) &
+             tnr2.addrlo(ADDBITS-1 downto 2) &
+             tpr2.addr(1 downto 0);
 
   aqgen: for x in 34 downto 0 generate
     aq: grnand2 generic map (tech => gatetech) port map (aregqin(x), qual_areg(x), aregq(x));
   end generate;
 
-  comb : process (rst, ar, tapo, dmao, tpr, tnr, aregq, dregq, rdataq)
+  comb : process (rst, ar, tapo, dmao, tpr1, tpr2, tnr1, tnr2, aregq, dregq, rdataq)
     variable av : ahbreg_type;
-    variable tpv : tckpreg_type;
-    variable tnv : tcknreg_type;
+    variable tpv1 : tckpreg1_type;
+    variable tpv2 : tckpreg2_type;
+    variable tnv1 : tcknreg1_type;
+    variable tnv2 : tcknreg2_type;
     variable vdmai : ahb_dma_in_type;
     variable asel, dsel : std_ulogic;
     variable vtapi : tap_in_type;
     variable write, seq : std_ulogic;
   begin
 
-    av := ar; tpv := tpr; tnv := tnr;
+    av := ar; tpv1 := tpr1; tpv2 := tpr2; tnv1 := tnr1; tnv2 := tnr2;
 
     ---------------------------------------------------------------------------
     -- TCK side logic
@@ -161,65 +185,71 @@ begin
       if tapo.inst = conv_std_logic_vector(dinst, 8) then dsel := '1'; else dsel := '0'; end if;
     end if;
     vtapi.en := asel or dsel;
-    vtapi.tdo:=tpr.addr(0);
+    vtapi.tdo:=tpr2.addr(0);
     if dsel='1' then
-      vtapi.tdo:=tpr.datashft(0) and tpr.holdn;
+      vtapi.tdo:=tpr1.datashft0 and tpr1.holdn;
     end if;
-    write := tpr.addr(34); seq := tpr.datashft(32);
+    write := tpr2.addr(34); seq := tpr2.datashft(32);
 
     -- Sync regs using alternating phases
-    tnv.done_sync1 := ar.done;
-    tpv.done_sync  := tnr.done_sync1;
+    tnv1.done_sync1 := ar.done;
+    tpv1.done_sync  := tnr1.done_sync1;
 
     -- Data CDC
-    qual_rdata <= (others => tnr.qual_rdata);
-    if tnr.qual_rdata='1' then tpv.datashft(32 downto 0) := '1' & (not rdataq); end if;
-
-    if tapo.capt='1' then tpv.addr(ADDBITS-1 downto 2) := tnr.addrlo; end if;
-
-    -- Track whether we're in the middle of shifting
-    if tapo.shift='1' then tpv.inshift:='1'; end if;
-    if tapo.upd='1' then tpv.inshift:='0'; end if;
-
-    if tapo.shift='1' then
-      if asel = '1' and tpr.prun='0'  then tpv.addr(34 downto 0) := tapo.tdi & tpr.addr(34 downto 1); end if;
-      if dsel = '1' and tpr.holdn='1' then tpv.datashft(32 downto 0) := tapo.tdi & tpr.datashft(32 downto 1); end if;
+    qual_rdata <= (others => tnr1.qual_rdata);
+    if tnr1.qual_rdata='1' then
+      tpv2.datashft(32 downto 1) := '1' & (not rdataq(31 downto 1));
+      tpv1.datashft0 := not rdataq(0);
     end if;
 
-    if tnr.run='0' then tpv.holdn:='1'; end if;
-    tpv.prun := tnr.run;
+    if tapo.capt='1' then tpv2.addr(ADDBITS-1 downto 2) := tnr2.addrlo; end if;
 
-    if tpr.prun='0' then
-      tnv.qual_rdata := '0';
+    -- Track whether we're in the middle of shifting
+    if tapo.shift='1' then tpv1.inshift:='1'; end if;
+    if tapo.upd='1' then tpv1.inshift:='0'; end if;
+
+    if tapo.shift='1' then
+      if asel = '1' and tpr1.prun='0'  then tpv2.addr(34 downto 0) := tapo.tdi & tpr2.addr(34 downto 1); end if;
+      if dsel = '1' and tpr1.holdn='1' then
+        tpv2.datashft(32 downto 1) := tapo.tdi & tpr2.datashft(32 downto 2);
+        tpv1.datashft0 := tpr2.datashft(1);
+      end if;
+    end if;
+
+    if tnr1.run='0' then tpv1.holdn:='1'; end if;
+    tpv1.prun := tnr1.run;
+
+    if tpr1.prun='0' then
+      tnv1.qual_rdata := '0';
       if tapo.shift='0' and tapo.upd = '1' then
-        if asel='1' then tnv.addrlo := tpr.addr(ADDBITS-1 downto 2); end if;
-        if dsel='1' then tnv.data := tpr.datashft; end if;
-        if (asel and not write) = '1' then tpv.holdn := '0'; tnv.run := '1'; end if;
+        if asel='1' then tnv2.addrlo := tpr2.addr(ADDBITS-1 downto 2); end if;
+        if dsel='1' then tnv2.data := tpr2.datashft & tpr1.datashft0; end if;
+        if (asel and not write) = '1' then tpv1.holdn := '0'; tnv1.run := '1'; end if;
         if (dsel and (write or (not write and seq))) = '1' then
-          tnv.run := '1';
+          tnv1.run := '1';
           if (seq and not write) = '1' then
-            if tpr.inshift='1' then
-              tnv.addrlo := tnr.addrlo + 1;
+            if tpr1.inshift='1' then
+              tnv2.addrlo := tnr2.addrlo + 1;
             end if;
-            tpv.holdn := '0';
+            tpv1.holdn := '0';
           end if;
         end if;
       end if;
     else
-      if tpr.done_sync='1' and (tpv.inshift='0' or write='1') then
-        tnv.run := '0';
+      if tpr1.done_sync='1' and (tpv1.inshift='0' or write='1') then
+        tnv1.run := '0';
         if write='0' then
-          tnv.qual_rdata := '1';
+          tnv1.qual_rdata := '1';
         end if;
-        if (write and tnr.data(32)) = '1' then
-          tnv.addrlo := tnr.addrlo + 1;
+        if (write and tnr2.data(32)) = '1' then
+          tnv2.addrlo := tnr2.addrlo + 1;
         end if;
       end if;
     end if;
 
     if tapo.reset='1' then
-      tpv.inshift := '0';
-      tnv.run := '0';
+      tpv1.inshift := '0';
+      tnv1.run := '0';
     end if;
 
     ---------------------------------------------------------------------------
@@ -227,7 +257,7 @@ begin
     ---------------------------------------------------------------------------
 
     -- Sync regs and CDC transfer
-    av.run_sync := tnr.run & ar.run_sync(2) & ar.run_sync(1);
+    av.run_sync := tnr1.run & ar.run_sync(2) & ar.run_sync(1);
 
     qual_dreg <= (others => ar.qual_dreg);
     if ar.qual_dreg='1' then av.dreg:=not dregq; end if;
@@ -275,49 +305,68 @@ begin
     end if;
 
 
-    if (rst = '0') then
-      av.qual_dreg := '0';
-      av.qual_areg := '0';
-      av.done := '0';
-      av.areg := (others => '0');
-      av.dreg := (others => '0');
-      av.dmastart := '0';
-      av.run_sync := (others => '0');
+    if (rst = '0') and not RESET_ALL then
+      av.qual_dreg := ARES.qual_dreg;
+      av.qual_areg := ARES.qual_areg;
+      av.done := ARES.done;
+      av.areg := ARES.areg;
+      av.dreg := ARES.dreg;
+      av.dmastart := ARES.dmastart;
+      av.run_sync := ARES.run_sync;
     end if;
 
-    tprin <= tpv; tnrin <= tnv; arin <= av; dmai <= vdmai; tapi <= vtapi;
+    tpr1in <= tpv1; tpr2in <= tpv2; tnr1in <= tnv1; tnr2in <= tnv2; arin <= av; dmai <= vdmai; tapi <= vtapi;
   end process;
 
 
 
   ahbreg : process(clk)
   begin
-    if rising_edge(clk) then ar <= arin; end if;
+    if rising_edge(clk) then
+      ar <= arin;
+      if (rst = '0') and RESET_ALL then
+        ar <= ARES;
+      end if;
+    end if;
   end process;
 
-  tckpreg: process(tckp,trst)
+  tckp1reg: process(tckp,trst)
   begin
     if rising_edge(tckp) then
-      tpr <= tprin;
+      tpr1 <= tpr1in;
     end if;
     if trst='0' then
-      tpr.done_sync <= '0';
-      tpr.prun <= '0';
-      tpr.inshift <= '0';
-      tpr.holdn <= '1';
-      tpr.datashft(0) <= '0';
+      tpr1 <= TP1RES;
     end if;
   end process;
 
-  tcknreg: process(tckn,trst)
+  tckp2reg: process(tckp,trst)
+  begin
+    if rising_edge(tckp) then
+      tpr2 <= tpr2in;
+    end if;
+    if RESET_ALL and trst='0' then
+      tpr2 <= TP2RES;
+    end if;
+  end process;
+
+  tckn1reg: process(tckn,trst)
   begin
     if rising_edge(tckn) then
-      tnr <= tnrin;
+      tnr1 <= tnr1in;
     end if;
     if trst='0' then
-      tnr.run <= '0';
-      tnr.done_sync1 <= '0';
-      tnr.qual_rdata <= '0';
+      tnr1 <= TN1RES;
+    end if;
+  end process;
+
+  tckn2reg: process(tckn,trst)
+  begin
+    if rising_edge(tckn) then
+      tnr2 <= tnr2in;
+    end if;
+    if RESET_ALL and trst='0' then
+      tnr2 <= TN2RES;
     end if;
   end process;
 

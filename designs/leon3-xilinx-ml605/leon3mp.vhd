@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -156,6 +156,51 @@ entity leon3mp is
 end;
 
 architecture rtl of leon3mp is
+
+component mig_37
+   --generic (
+   --SIM_BYPASS_INIT_CAL  : string;
+   --CLKOUT_DIVIDE4       : integer
+   --);
+  port (
+      clk_ref_p         : in std_logic;
+      clk_ref_n         : in std_logic;
+      ddr3_dq           : inout std_logic_vector(DQ_WIDTH-1 downto 0);
+      ddr3_addr         : out   std_logic_vector(ROW_WIDTH-1 downto 0);
+      ddr3_ba           : out   std_logic_vector(BANK_WIDTH-1 downto 0);
+      ddr3_ras_n        : out   std_logic;
+      ddr3_cas_n        : out   std_logic;
+      ddr3_we_n         : out   std_logic;
+      ddr3_reset_n      : out   std_logic;
+      ddr3_cs_n         : out   std_logic_vector((CS_WIDTH*nCS_PER_RANK)-1 downto 0);
+      ddr3_odt          : out   std_logic_vector((CS_WIDTH*nCS_PER_RANK)-1 downto 0);
+      ddr3_cke          : out   std_logic_vector(CKE_WIDTH-1 downto 0);
+      ddr3_dm           : out   std_logic_vector(DM_WIDTH-1 downto 0);
+      ddr3_dqs_p        : inout std_logic_vector(DQS_WIDTH-1 downto 0);
+      ddr3_dqs_n        : inout std_logic_vector(DQS_WIDTH-1 downto 0);
+      ddr3_ck_p         : out   std_logic_vector(CK_WIDTH-1 downto 0);
+      ddr3_ck_n         : out   std_logic_vector(CK_WIDTH-1 downto 0);
+      app_wdf_wren      : in std_logic;
+      app_wdf_data      : in std_logic_vector(4*64-1 downto 0);
+      app_wdf_mask      : in std_logic_vector((4*64/8)-1 downto 0);
+      app_wdf_end       : in std_logic;
+      app_addr          : in std_logic_vector(27-1 downto 0);
+      app_cmd           : in std_logic_vector(2 downto 0);
+      app_en            : in std_logic;
+      app_rdy           : out std_logic;
+      app_wdf_rdy       : out std_logic;
+      app_rd_data       : out std_logic_vector(4*64-1 downto 0);
+      app_rd_data_valid : out std_logic;
+      tb_rst            : out std_logic;
+      tb_clk            : out std_logic;
+      clk_ahb           : out std_logic;
+      clk100            : out std_logic;
+      phy_init_done     : out std_logic;
+      sys_rst_13        : in std_logic;
+      sys_rst_14        : in std_logic
+   );
+end component ;
+
 
   signal vcc : std_logic;
   signal gnd : std_logic;
@@ -455,8 +500,8 @@ begin
     rst => rstn, clk_ahb => clkm, clk_ddr => clk_ddr,
     ahbsi => ahbsi, ahbso => ahbso(0), migi => migi, migo => migo);
 
-    ddr3ctrl : entity work.mig_37
-     generic map (SIM_BYPASS_INIT_CAL => SIM_BYPASS_INIT_CAL,CLKOUT_DIVIDE4 => work.config.CFG_MIG_CLK4)
+    ddr3ctrl : mig_37
+     --generic map (SIM_BYPASS_INIT_CAL => SIM_BYPASS_INIT_CAL, CLKOUT_DIVIDE4 => work.config.CFG_MIG_CLK4)
      port map(
       clk_ref_p         =>   clk_ref_p,
       clk_ref_n         =>   clk_ref_n,
@@ -502,12 +547,13 @@ begin
   led(3)  <= lock;
   led(4)  <= rstn;
   led(5)  <= reset;
-  led(6)  <= '0';
+  led(6)  <= phy_init_done;
   
   noddr : if CFG_MIG_DDR2 = 0 generate
     ahbso(0) <= ahbs_none;
     lock <= cgo.clklock;
     clk_ddr <= '0';
+    phy_init_done <= '0';
   end generate;
  
 ----------------------------------------------------------------------

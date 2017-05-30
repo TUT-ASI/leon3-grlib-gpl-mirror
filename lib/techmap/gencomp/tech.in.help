@@ -15,10 +15,9 @@ CONFIG_SYN_INFERRED
   - Altera-Stratix: Altera Stratix FPGA family
   - Altera-StratixII: Altera Stratix/Cyclone-II FPGA families
   - Altera-StratixIII: Altera Stratix-III FPGA family
-  - Altera-StratixIV: Altera Stratix-III FPGA family
+  - Altera-StratixIV: Altera Stratix-IV FPGA family
+  - Altera-StratixV: Altera Stratix-V FPGA family
   - ATC18: Atmel-Nantes 0.18 um rad-hard CMOS
-  - IHP25: IHP 0.25 um CMOS
-  - IHP25RH: IHP Rad-Hard 0.25 um CMOS
   - Lattice : EC/ECP/XP FPGAs
   - Quicklogic : Eclipse/E/II FPGAs
   - UMC-0.18 : UMC 0.18 um CMOS with Virtual Silicon libraries
@@ -31,6 +30,9 @@ CONFIG_SYN_INFERRED
   distribution. A technology may be present in this list while the
   tech support files are missing from the GRLIB distribution.
   Actel support is only available in commercial and FT distributions.
+
+  Additional target technologies are available that are not selectable
+  via the xconfig tool.
 
 Ram library
 CONFIG_MEM_VIRAGE

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -230,6 +230,26 @@ package allmem is
    );
   end component;
 
+  component rhs65_syncram_2p_bist is
+    generic ( abits : integer := 8; dbits : integer := 32; sepclk : integer := 0);
+    port (
+      rclk  : in std_ulogic;
+      rena  : in std_ulogic;
+      raddr : in std_logic_vector (abits -1 downto 0);
+      dout  : out std_logic_vector (dbits -1 downto 0);
+      wclk  : in std_ulogic;
+      waddr : in std_logic_vector (abits -1 downto 0);
+      din   : in std_logic_vector (dbits -1 downto 0);
+      write : in std_ulogic;
+      scanen   : in std_ulogic;
+      bypass   : in std_ulogic;
+      mbctrl   : in std_logic_vector(47 downto 0);
+      mbstat   : out std_logic_vector(47 downto 0);
+      mbrstn   : in std_ulogic;
+      mbcgate  : in std_ulogic
+      );
+  end component;
+
   component dare_syncram_2p
   generic ( abits : integer := 8; dbits : integer := 32; sepclk : integer := 0);
   port (
@@ -430,7 +450,7 @@ package allmem is
   
 -- RTG4
   component rtg4_syncram
-  generic ( abits : integer := 10; dbits : integer := 8; ecc : integer := 0);
+  generic ( abits : integer := 10; dbits : integer := 8; ecc : integer range 0 to 1 := 0);
   port (
     clk      : in std_ulogic;
     address  : in std_logic_vector((abits -1) downto 0);
@@ -443,7 +463,7 @@ package allmem is
   end component;
 
   component rtg4_syncram_dp is
-  generic ( abits : integer := 6; dbits : integer := 8; ecc : integer := 0);
+  generic ( abits : integer := 6; dbits : integer := 8; ecc : integer range 0 to 1 := 0);
   port (
     clk1     : in std_ulogic;
     address1 : in std_logic_vector((abits -1) downto 0);
@@ -464,7 +484,7 @@ package allmem is
 
   component rtg4_syncram_2p
   generic ( abits : integer := 8; dbits : integer := 32; sepclk : integer := 0;
-            ecc : integer := 0);
+            ecc : integer range 0 to 1 := 0);
   port (
     rclk     : in std_ulogic;
     renable  : in std_ulogic;
@@ -848,6 +868,24 @@ end component;
     );
   end component;
 
+  component rhs65_syncram_bist is
+    generic ( abits : integer := 10; dbits : integer := 8);
+    port (
+      clk      : in std_ulogic;
+      address  : in std_logic_vector(abits -1 downto 0);
+      datain   : in std_logic_vector(dbits -1 downto 0);
+      dataout  : out std_logic_vector(dbits -1 downto 0);
+      enable   : in std_ulogic;
+      write    : in std_ulogic;
+      scanen   : in std_ulogic;
+      bypass   : in std_ulogic;
+      mbctrl   : in std_logic_vector(47 downto 0);
+      mbstat   : out std_logic_vector(47 downto 0);
+      mbrstn   : in std_ulogic;
+      mbcgate  : in std_ulogic
+      );
+  end component;
+
   component rhs65_syncram_dp is
   generic ( abits : integer := 6; dbits : integer := 8 );
   port (
@@ -864,6 +902,24 @@ end component;
     enable2  : in std_ulogic;
     write2   : in std_ulogic
    );
+  end component;
+
+  component rhs65_syncram_dp_bist is
+    generic ( abits : integer := 6; dbits : integer := 8 );
+    port (
+      clk1     : in std_ulogic;
+      address1 : in std_logic_vector((abits -1) downto 0);
+      datain1  : in std_logic_vector((dbits -1) downto 0);
+      dataout1 : out std_logic_vector((dbits -1) downto 0);
+      enable1  : in std_ulogic;
+      write1   : in std_ulogic;
+      clk2     : in std_ulogic;
+      address2 : in std_logic_vector((abits -1) downto 0);
+      datain2  : in std_logic_vector((dbits -1) downto 0);
+      dataout2 : out std_logic_vector((dbits -1) downto 0);
+      enable2  : in std_ulogic;
+      write2   : in std_ulogic
+      );
   end component;
 
   component dare_syncram

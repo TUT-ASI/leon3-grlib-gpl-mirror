@@ -198,8 +198,11 @@ NET "mou_data"   LOC = "N18" | IOSTANDARD = LVCMOS33 | PULLUP ;
 
 NET "spi_clk"    LOC = "R15" | IOSTANDARD = LVCMOS33 ;
 NET "spi_sel_n"  LOC = "V3"  | IOSTANDARD = LVCMOS33 ;
-NET "spi_mosi"   LOC = "T13" | IOSTANDARD = LVCMOS33 ;
-NET "spi_miso"   LOC = "R13" | IOSTANDARD = LVCMOS33 ;
+NET "spi_dq0"   LOC = "T13" | IOSTANDARD = LVCMOS33 ;
+NET "spi_dq1"   LOC = "R13" | IOSTANDARD = LVCMOS33 ;
+NET "spi_dq2"   LOC = "T14" | IOSTANDARD = LVCMOS33 ;
+NET "spi_dq3"   LOC = "V14" | IOSTANDARD = LVCMOS33 ;
+
 
 # ==== HDMI ====
 

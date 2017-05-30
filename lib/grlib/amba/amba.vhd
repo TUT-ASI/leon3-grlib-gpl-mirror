@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -46,11 +46,12 @@ package amba is
 --
 -- Valid values are 32, 64, 128 and 256
 --
--- The value here sets the width of the AMBA AHB data vectors for all
+-- The value here sets the width of the AMBA AHB and AXI data vectors for all
 -- cores in the library.
 --
-constant AHBDW     : integer := CFG_AHBDW;
-
+constant AHBDW        : integer := CFG_AHBDW;
+constant AXIDW        : integer := CFG_AHBDW;
+constant AXI_ID_WIDTH : integer := 4;
 -- CORE_ACDM - Enable AMBA Compliant Data Muxing in cores
 --
 -- Valid values are 0 and 1
@@ -163,10 +164,6 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
   type ahb_mst_out_bus_vector is array (0 to NBUS-1) of ahb_mst_out_vector;
   type ahb_slv_out_bus_vector is array (0 to NBUS-1) of ahb_slv_out_vector;
 
--------------------------------------------------------------------------------
--- Misc. types shared between AMBA IP cores
--------------------------------------------------------------------------------
-
   type amba_stat_type is record
     idle   : std_ulogic;                    -- HTRANS_IDLE
     busy   : std_ulogic;                    -- HTRANS_BUSY
@@ -263,7 +260,232 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
   type apb_slv_in_vector_type is array (natural range <>) of apb_slv_in_type;
   type apb_slv_in_vector is array (0 to NAPBSLV-1) of apb_slv_in_type;
   type apb_slv_out_vector is array (0 to NAPBSLV-1) of apb_slv_out_type;
+  type apb_slv_out_bus_vector is array (natural range <>) of apb_slv_out_vector;
   type apb3_slv_out_vector is array (0 to NAPBSLV-1) of apb3_slv_out_type;
+
+-- AXI Write Address channel signals
+  type axi_aw_mosi_type is record -- Master Output Slave Input
+    id     : std_logic_vector (AXI_ID_WIDTH-1 downto 0);  -- awid
+    addr   : std_logic_vector (31 downto 0);              -- awaddr
+    len    : std_logic_vector (3 downto 0);               -- awlen
+    size   : std_logic_vector (2 downto 0);               -- awsize
+    burst  : std_logic_vector (1 downto 0);               -- awburst
+    lock   : std_logic_vector (1 downto 0);               -- awlock
+    cache  : std_logic_vector (3 downto 0);               -- awcache
+    prot   : std_logic_vector (2 downto 0);               -- awprot
+    valid  : std_logic;                                   -- awvalid
+--  awqos    : std_logic_vector (3 downto 0);
+  end record;
+  type axi_aw_somi_type is record -- Slave Output Master Input
+    ready  : std_logic;                                 -- awready
+  end record;
+
+-- AXI Write Data channel signals
+  type axi_w_mosi_type is record -- Master Output Slave Input
+    id      : std_logic_vector (AXI_ID_WIDTH-1 downto 0);  -- wid
+    data    : std_logic_vector (AXIDW-1 downto 0);         -- wdata
+    strb    : std_logic_vector (AXIDW/8-1 downto 0);       -- wstrb
+    last    : std_logic;                                   -- wlast
+    valid   : std_logic;                                   -- wvalid
+  end record;
+  type axi_w_somi_type is record -- Slave Output Master Input
+    ready   : std_logic;                                -- wready
+  end record;
+
+-- AXI Write Response channel signals
+  type axi_b_mosi_type is record -- Master Output Slave Input
+    ready   : std_logic;                                -- bready
+  end record;
+  type axi_b_somi_type is record -- Slave Output Master Input
+    id      : std_logic_vector (AXI_ID_WIDTH-1 downto 0); -- bid
+    resp    : std_logic_vector (1 downto 0);              -- bresp
+    valid   : std_logic;                                  -- bvalid
+  end record;
+
+-- AXI Read Address channel signals
+  type axi_ar_mosi_type is record -- Master Output Slave Input
+    id     : std_logic_vector (AXI_ID_WIDTH-1 downto 0);  -- arid
+    addr   : std_logic_vector (31 downto 0);            -- araddr
+    len    : std_logic_vector (3 downto 0);             -- arlen
+    size   : std_logic_vector (2 downto 0);             -- arsize
+    burst  : std_logic_vector (1 downto 0);             -- arburst
+    lock   : std_logic_vector (1 downto 0);             -- arlock
+    cache  : std_logic_vector (3 downto 0);             -- arcache
+    prot   : std_logic_vector (2 downto 0);             -- arprot
+    valid  : std_logic;                                 -- arvalid
+--  arqos    : std_logic_vector (3 downto 0);
+  end record;
+  type axi_ar_somi_type is record -- Slave Output Master Input
+    ready  : std_logic;                                 -- arready
+  end record;
+
+-- AXI Read Data channel signals
+  type axi_r_mosi_type is record -- Master Output Slave Input
+    ready   : std_logic;                                -- rready
+  end record;
+  type axi_r_somi_type is record -- Slave Output Master Input
+    id      : std_logic_vector (AXI_ID_WIDTH-1 downto 0); -- rid
+    data    : std_logic_vector (AXIDW-1 downto 0);        -- rdata
+    resp    : std_logic_vector (1 downto 0);              -- rresp
+    last    : std_logic;                                  -- rlast
+    valid   : std_logic;                                  -- rvalid
+  end record;
+
+-- AXI interfaces
+  type axi_mosi_type is record -- Master Output Slave Input
+    aw  : axi_aw_mosi_type;
+    w   : axi_w_mosi_type;
+    b   : axi_b_mosi_type;
+    ar  : axi_ar_mosi_type;
+    r   : axi_r_mosi_type;
+  end record;
+  type axi_somi_type is record -- Slave Output Master Input
+    aw  : axi_aw_somi_type;
+    w   : axi_w_somi_type;
+    b   : axi_b_somi_type;
+    ar  : axi_ar_somi_type;
+    r   : axi_r_somi_type;
+  end record;
+
+-- AXI Write Address channel signals (Combined AXI3/4)
+  type axix_aw_mosi_type is record -- Master Output Slave Input
+    id     : std_logic_vector (AXI_ID_WIDTH-1 downto 0);  -- awid
+    addr   : std_logic_vector (31 downto 0);              -- awaddr
+    len    : std_logic_vector (7 downto 0);               -- awlen
+    size   : std_logic_vector (2 downto 0);               -- awsize
+    burst  : std_logic_vector (1 downto 0);               -- awburst
+    lock   : std_logic_vector (1 downto 0);               -- awlock
+    cache  : std_logic_vector (3 downto 0);               -- awcache
+    prot   : std_logic_vector (2 downto 0);               -- awprot
+    valid  : std_logic;                                   -- awvalid
+    qos    : std_logic_vector (3 downto 0);  
+  end record;
+
+-- AXI Write Address channel signals (Dedicated AXI3)
+  type axi3_aw_mosi_type is record -- Master Output Slave Input
+    id     : std_logic_vector (AXI_ID_WIDTH-1 downto 0);  -- awid
+    addr   : std_logic_vector (31 downto 0);              -- awaddr
+    len    : std_logic_vector (3 downto 0);               -- awlen
+    size   : std_logic_vector (2 downto 0);               -- awsize
+    burst  : std_logic_vector (1 downto 0);               -- awburst
+    lock   : std_logic_vector (1 downto 0);               -- awlock
+    cache  : std_logic_vector (3 downto 0);               -- awcache
+    prot   : std_logic_vector (2 downto 0);               -- awprot
+    valid  : std_logic;                                   -- awvalid
+  end record;
+
+-- AXI Write Address channel signals (Dedicated AXI4)
+  type axi4_aw_mosi_type is record -- Master Output Slave Input
+    id     : std_logic_vector (AXI_ID_WIDTH-1 downto 0); -- awid
+    addr   : std_logic_vector (31 downto 0);             -- awaddr
+    len    : std_logic_vector (7 downto 0);              -- awlen
+    size   : std_logic_vector (2 downto 0);              -- awsize
+    burst  : std_logic_vector (1 downto 0);              -- awburst
+    lock   : std_logic;                                  -- awlock
+    cache  : std_logic_vector (3 downto 0);              -- awcache
+    prot   : std_logic_vector (2 downto 0);              -- awprot
+    valid  : std_logic;                                  -- awvalid
+    qos    : std_logic_vector (3 downto 0);              -- awqos
+  end record;
+
+-- AXI Write Data channel signals (Dedicated AXI4)
+  type axi4_w_mosi_type is record -- Master Output Slave Input
+    data    : std_logic_vector (AXIDW-1 downto 0);      -- wdata
+    strb    : std_logic_vector (AXIDW/8-1 downto 0);    -- wstrb
+    last    : std_logic;                                -- wlast
+    valid   : std_logic;                                -- wvalid
+  end record;
+
+-- AXI Read Address channel signals  (Combined AXI3/4)
+  type axix_ar_mosi_type is record -- Master Output Slave Input
+    id     : std_logic_vector (AXI_ID_WIDTH-1 downto 0); -- arid
+    addr   : std_logic_vector (31 downto 0);             -- araddr
+    len    : std_logic_vector (7 downto 0);              -- arlen
+    size   : std_logic_vector (2 downto 0);              -- arsize
+    burst  : std_logic_vector (1 downto 0);              -- arburst
+    lock   : std_logic_vector (1 downto 0);              -- arlock
+    cache  : std_logic_vector (3 downto 0);              -- arcache
+    prot   : std_logic_vector (2 downto 0);              -- arprot
+    valid  : std_logic;                                  -- arvalid
+    qos    : std_logic_vector (3 downto 0);              -- arqos 
+  end record;
+
+-- AXI Read Address channel signals  (Dedicated AXI3)
+  type axi3_ar_mosi_type is record -- Master Output Slave Input
+    id     : std_logic_vector (AXI_ID_WIDTH-1 downto 0);  -- arid
+    addr   : std_logic_vector (31 downto 0);              -- araddr
+    len    : std_logic_vector (3 downto 0);               -- arlen
+    size   : std_logic_vector (2 downto 0);               -- arsize
+    burst  : std_logic_vector (1 downto 0);               -- arburst
+    lock   : std_logic_vector (1 downto 0);               -- arlock
+    cache  : std_logic_vector (3 downto 0);               -- arcache
+    prot   : std_logic_vector (2 downto 0);               -- arprot
+    valid  : std_logic;                                   -- arvalid
+  end record;
+
+-- AXI Read Address channel signals  (Dedicated AXI4)
+  type axi4_ar_mosi_type is record -- Master Output Slave Input
+    id     : std_logic_vector (AXI_ID_WIDTH-1 downto 0); -- arid
+    addr   : std_logic_vector (31 downto 0);             -- araddr
+    len    : std_logic_vector (7 downto 0);              -- arlen
+    size   : std_logic_vector (2 downto 0);              -- arsize
+    burst  : std_logic_vector (1 downto 0);              -- arburst
+    lock   : std_logic;                                  -- arlock
+    cache  : std_logic_vector (3 downto 0);              -- arcache
+    prot   : std_logic_vector (2 downto 0);              -- arprot
+    valid  : std_logic;                                  -- arvalid
+    qos    : std_logic_vector (3 downto 0);              -- arqos 
+  end record;
+
+
+-- AXI interfaces (Combined AXI3/4)
+  type axix_mosi_type is record -- Master Output Slave Input
+    aw  : axix_aw_mosi_type;
+    w   : axi_w_mosi_type;
+    b   : axi_b_mosi_type;
+    ar  : axix_ar_mosi_type;
+    r   : axi_r_mosi_type;
+  end record;
+
+-- AXI interfaces (Dedicated AXI3)
+  type axi3_mosi_type is record -- Master Output Slave Input
+    aw  : axi3_aw_mosi_type;
+    w   : axi_w_mosi_type;
+    b   : axi_b_mosi_type;
+    ar  : axi3_ar_mosi_type;
+    r   : axi_r_mosi_type;
+  end record;
+
+
+-- AXI interfaces (Dedicated AXI4)
+  type axi4_mosi_type is record -- Master Output Slave Input
+    aw  : axi4_aw_mosi_type;
+    w   : axi4_w_mosi_type;
+    b   : axi_b_mosi_type;
+    ar  : axi4_ar_mosi_type;
+    r   : axi_r_mosi_type;
+  end record;
+
+
+
+-- AXI constants
+  constant XBURST_FIXED:          std_logic_vector(1 downto 0) := "00";
+  constant XBURST_INCR:           std_logic_vector(1 downto 0) := "01";
+  constant XBURST_WRAP:           std_logic_vector(1 downto 0) := "10";
+
+  constant XCACHE_BUFFERABLE:     std_logic_vector(3 downto 0) := "0001";
+  constant XCACHE_CACHEABLE:      std_logic_vector(3 downto 0) := "0010";
+  constant XCACHE_READ_ALLOC:     std_logic_vector(3 downto 0) := "0100";
+  constant XCACHE_WRITE_ALLOC:    std_logic_vector(3 downto 0) := "1000";
+
+  constant XPROT_PRIV:            std_logic_vector(2 downto 0) := "001";
+  constant XPROT_NONSEC:          std_logic_vector(2 downto 0) := "010";
+  constant XPROT_INSTR:           std_logic_vector(2 downto 0) := "100";
+
+  constant XRESP_OKAY:            std_logic_vector(1 downto 0) := "00";
+  constant XRESP_EXOKAY:          std_logic_vector(1 downto 0) := "01";
+  constant XRESP_SLVERR:          std_logic_vector(1 downto 0) := "10";
+  constant XRESP_DECERR:          std_logic_vector(1 downto 0) := "11";
 
 -- support for plug&play configuration
 
@@ -305,6 +527,9 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
     ('0', '0', '0', '0', '0', '0', (others => '0'),
      '0', '0', '0', '0', '0', (others => '0'));
 
+
+
+
 -------------------------------------------------------------------------------
 -- Subprograms
 -------------------------------------------------------------------------------
@@ -330,6 +555,12 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
 
   function ahb_slv_dec_cache(haddr : std_logic_vector(31 downto 0);
                              ahbso : ahb_slv_out_vector; cached : integer)
+  return std_ulogic;
+
+  function dec_cache_fixed( haddr : std_logic_vector(31 downto 0); cached : integer)
+  return std_ulogic;
+
+  function dec_wbmask_fixed( haddr : std_logic_vector(31 downto 2); wbmask : integer)
   return std_ulogic;
 
   function ahb_slv_dec_pfetch(haddr : std_logic_vector(31 downto 0);
@@ -446,6 +677,10 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
     signal ao  : out apb_slv_out_type;
     signal en  : in  std_ulogic);
 
+  function apb32i(i: apb3_slv_in_type) return apb_slv_in_type;
+  function apb23o(o: apb_slv_out_type) return apb3_slv_out_type;
+  function apb23ov(o: apb_slv_out_vector) return apb3_slv_out_vector;
+
 -------------------------------------------------------------------------------
 -- Components
 -------------------------------------------------------------------------------
@@ -482,7 +717,9 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
     index       : integer := 0;  --index for trace print-out
     ahbtrace    : integer := 0;  --AHB trace enable
     hwdebug     : integer := 0;
-    fourgslv    : integer := 0
+    fourgslv    : integer := 0;
+    shadow      : integer range 0 to 1 := 0;  -- Allow overlapping memory areas
+    unmapslv    : integer := 0
   );
   port (
     rst     : in  std_ulogic;
@@ -708,7 +945,8 @@ component ahbxb is
     assertwarn  : integer range 0 to 1 := 0;
     pslvdisable : integer := 0;
     mcheck      : integer range 0 to 1 := 1;
-    ccheck      : integer range 0 to 1 := 1
+    ccheck      : integer range 0 to 1 := 1;
+    hidepnp     : integer range 0 to 1 := 0
     );
   port (
     rst      : in  std_ulogic;
@@ -909,14 +1147,16 @@ package body amba is
         interrupt : amba_irq_type)
   return std_logic_vector is
   variable cfg : std_logic_vector(31 downto 0);
+  variable int : std_logic_vector(6 downto 0);
   begin
+    int := std_logic_vector(to_unsigned(interrupt, 7));
     case cfgver is
     when 0 =>
       cfg(31 downto 24) := std_logic_vector(to_unsigned(vendor, 8));
       cfg(23 downto 12) := std_logic_vector(to_unsigned(device, 12));
-      cfg(11 downto 10) := std_logic_vector(to_unsigned(cfgver, 2));
+      cfg(11 downto 10) := int(6 downto 5);
       cfg( 9 downto  5) := std_logic_vector(to_unsigned(version, 5));
-      cfg( 4 downto  0) := std_logic_vector(to_unsigned(interrupt, 5));
+      cfg( 4 downto  0) := int(4 downto 0);
     when others => cfg := (others => '0');
     end case;
     return(cfg);
@@ -992,6 +1232,21 @@ package body amba is
       hcache := ctbl(conv_integer(haddr(31 downto 28)));
     end if;
     return(hcache);
+  end;
+
+  function dec_cache_fixed( haddr : std_logic_vector(31 downto 0); cached : integer) return std_ulogic is
+    variable ctbl : std_logic_vector(15 downto 0);
+  begin
+    ctbl := conv_std_logic_vector(cached, 16);
+    if (cached /= 0) then return ctbl(conv_integer(haddr(31 downto 28)));
+    else return('1'); end if;
+  end;
+
+  function dec_wbmask_fixed( haddr : std_logic_vector(31 downto 2); wbmask : integer) return std_ulogic is
+    variable wtbl : std_logic_vector(15 downto 0);
+  begin
+    wtbl := conv_std_logic_vector(wbmask, 16);
+    return wtbl(conv_integer(haddr(31 downto 28)));
   end;
 
   function ahb_slv_dec_pfetch(haddr : std_logic_vector(31 downto 0);
@@ -1424,6 +1679,33 @@ package body amba is
     ao.pconfig <= ai.pconfig;
     ao.pindex  <= ai.pindex;
   end apbsomux;
-  
+
+  function apb32i(i: apb3_slv_in_type) return apb_slv_in_type is
+    variable r: apb_slv_in_type;
+  begin
+    r := (psel => i.psel, penable => i.penable, paddr => i.paddr,
+          pwrite => i.pwrite, pwdata => i.pwdata, pirq => i.pirq,
+          testen => i.testen, testrst => i.testrst, scanen => i.scanen,
+          testoen => i.testoen, testin => i.testin);
+    return r;
+  end apb32i;
+
+  function apb23o(o: apb_slv_out_type) return apb3_slv_out_type is
+    variable r: apb3_slv_out_type;
+  begin
+    r := (prdata => o.prdata, pready => '1', pslverr => '0', pirq => o.pirq,
+          pconfig => o.pconfig, pindex => o.pindex);
+    return r;
+  end apb23o;
+
+  function apb23ov(o: apb_slv_out_vector) return apb3_slv_out_vector is
+    variable r: apb3_slv_out_vector;
+  begin
+    for i in r'range loop
+      r(i) := apb23o(o(i));
+    end loop;
+    return r;
+  end apb23ov;
+
 end;
 

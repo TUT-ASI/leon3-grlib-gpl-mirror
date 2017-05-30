@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -262,6 +262,16 @@ begin
     customoutx(customoutx'high downto 8) <= (others => '0');
   end generate;
 
+  rhsb : if tech = memrhs65b generate
+    x0 : rhs65_syncram_2p_bist generic map (abits, dbits, sepclk)
+         port map (rclk, renable, raddress, dataoutx,
+		   wclk, waddress, datain, write,
+                   testin(TESTIN_WIDTH-3),testin(TESTIN_WIDTH-4),
+                   custominx(47 downto 0),customoutx(47 downto 0),
+                   testin(TESTIN_WIDTH-5),'0');
+    customoutx(customoutx'high downto 48) <= (others => '0');
+  end generate;
+
   dar : if tech = dare generate
     x0 : dare_syncram_2p generic map (abits, dbits, sepclk)
          port map (rclk, renable2, raddress, dataoutx,
@@ -287,7 +297,8 @@ begin
 
 -- NOTE: port 1 on altsyncram must be a read port due to Cyclone II M4K write issue
   alt : if (tech = altera) or (tech = stratix1) or (tech = stratix2) or
-	(tech = stratix3) or (tech = stratix4) or (tech = cyclone3) generate
+	(tech = stratix3) or (tech = stratix4) or (tech = cyclone3) or
+        (tech = stratix5) generate
     x0 : altera_syncram_dp generic map (abits, dbits)
          port map (rclk, raddress, vgnd, dataoutx, renable2, gnd,
                    wclk, waddress, datain, open, xwrite, xwrite);

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -32,7 +32,6 @@ package config_types is
   -- Configuration constants part of GRLIB configuration array
   -----------------------------------------------------------------------------
 
-  
   -- debug level and debug mask controls debug output from tech map
   constant grlib_debug_level             : integer := 0; 
   constant grlib_debug_mask              : integer := 1; 
@@ -55,8 +54,16 @@ package config_types is
   constant grlib_external_testoen        : integer := 8;
   -- Increase maximum number of interrupts (32 + x*32)
   constant grlib_amba_inc_nirq           : integer := 9; 
+  -- Enable little endian
+  constant grlib_little_endian           : integer := 10;
+  -- Always merge TMRd data onto same RAM block in syncram_2pft
+  constant grlib_syncram2pft_mergetmr    : integer := 11;
+  -- Enable / disable RTG4 SET mitigation
+  constant grlib_rtg4_set_mitigation     : integer := 12;
+  -- Force disable of RTG4 RAM ECC (DANGER! DO NOT SET!)
+  constant grlib_rtg4_disable_ram_ecc    : integer := 13;
 
-  type grlib_config_array_type is array (0 to 10) of integer;
+  type grlib_config_array_type is array (0 to 14) of integer;
 
 end;
 

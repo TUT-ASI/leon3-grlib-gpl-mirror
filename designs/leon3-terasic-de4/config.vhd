@@ -14,7 +14,7 @@ package config is
   constant CFG_FABTECH : integer := stratix4;
   constant CFG_MEMTECH : integer := stratix4;
   constant CFG_PADTECH : integer := stratix4;
-  constant CFG_TRANSTECH : integer := GTP0;
+  constant CFG_TRANSTECH : integer := TT_XGTP0;
   constant CFG_NOASYNC : integer := 0;
   constant CFG_SCAN : integer := 0;
 -- Clock generator
@@ -102,6 +102,7 @@ package config is
   constant CFG_L2_MAP : integer := 16#00F0#;
   constant CFG_L2_MTRR : integer := (8);
   constant CFG_L2_EDAC : integer := 0;
+  constant CFG_L2_AXI : integer := 0;
 -- AMBA settings
   constant CFG_DEFMST : integer := (0);
   constant CFG_RROBIN : integer := 1;
@@ -190,6 +191,7 @@ package config is
   constant CFG_SPICTRL_MAXWLEN : integer := (0);
   constant CFG_SPICTRL_SYNCRAM : integer := 1;
   constant CFG_SPICTRL_FT : integer := 0;
+  constant CFG_SPICTRL_PROT : integer := 0;
 
 -- UART 1
   constant CFG_UART1_ENABLE : integer := 1;

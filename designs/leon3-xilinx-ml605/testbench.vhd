@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -327,10 +327,12 @@ begin
   begin
      wait for 210 us; -- This is for proper DDR3 behaviour durign init phase not needed durin simulation
      wait on led(3);  -- DDR3 Memory Init ready
+     loop
      wait for 5000 ns;
     assert (to_X01(error) = '1')
       report "*** IU in error mode, simulation halted ***"
       severity failure;
+     end loop;
   end process;
 
   data <= buskeep(data) after 5 ns;

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -18,15 +18,17 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------
--- Entity: 	sdmctrl
--- File:	sdmctrl.vhd
--- Author:	Jiri Gaisler - Gaisler Research
--- Description:	SDRAM memory controller to fit with LEON2 memory controller.
+-- Entity:      sdmctrl
+-- File:        sdmctrl.vhd
+-- Author:      Jiri Gaisler - Gaisler Research
+-- Description: SDRAM memory controller to fit with LEON2 memory controller.
 ------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.amba.all;
 use grlib.stdlib.all;
 library gaisler;
@@ -65,7 +67,7 @@ constant PM_DPD   : std_logic_vector(2 downto 0) := "101";
 
 type mcycletype is (midle, active, leadout);
 type sdcycletype is (act1, act2, act3, rd1, rd2, rd3, rd4, rd5, rd6, rd7, rd8,
-		     wr1, wr2, wr3, wr4, wr5, sidle, sref, pd, dpd);
+                     wr1, wr2, wr3, wr4, wr5, sidle, sref, pd, dpd);
 type icycletype is (iidle, pre, ref, lmode, emode, finish);
 
 -- sdram configuration register
@@ -102,36 +104,95 @@ type reg_type is record
   startsd       : std_ulogic;
   aload         : std_ulogic;
 
-  mstate	: mcycletype;
-  sdstate	: sdcycletype;
-  cmstate	: mcycletype;
-  istate	: icycletype;
+  mstate        : mcycletype;
+  sdstate       : sdcycletype;
+  cmstate       : mcycletype;
+  istate        : icycletype;
   icnt          : std_logic_vector(2 downto 0);
 
   cfg           : sdram_cfg_type;
   trfc          : std_logic_vector(3 downto 0);
   refresh       : std_logic_vector(14 downto 0);
-  sdcsn  	: std_logic_vector(1  downto 0);
-  sdwen  	: std_ulogic;
-  rasn 		: std_ulogic;
-  casn 		: std_ulogic;
-  dqm  		: std_logic_vector(7 downto 0);
-  bsel 		: std_ulogic;
+  sdcsn         : std_logic_vector(1  downto 0);
+  sdwen         : std_ulogic;
+  rasn          : std_ulogic;
+  casn          : std_ulogic;
+  dqm           : std_logic_vector(7 downto 0);
+  bsel          : std_ulogic;
   haddr         : std_logic_vector(31 downto 10);
   -- only needed to keep address lines from switch too much
-  address  	: std_logic_vector(16 downto 2);  -- memory address
+  address       : std_logic_vector(16 downto 2);  -- memory address
   
   idlecnt       : std_logic_vector(3 downto 0); -- Counter, 16 idle clock sycles before entering Power-Saving mode
   sref_tmpcom   : std_logic_vector(2 downto 0); -- Save SD command when exit sref
 end record;
 
+constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+subtype moben_type is std_logic_vector(1 downto 0);
+function MOBILEENRESVAL return moben_type is
+  begin
+    if mobile >= 2 then return "11";
+    elsif mobile = 1 then return "10";
+    end if;
+    return "00";
+end MOBILEENRESVAL;
+function CKERESVAL return std_ulogic is
+begin
+  if mobile >= 2 then return '0'; end if;
+  return '1';
+end CKERESVAL;
+constant CFGRES : sdram_cfg_type := (
+  command       => (others => '0'),
+  csize         => "10",
+  bsize         => "000",
+  casdel        => '1',
+  trfc          => "111",
+  trp           => '1',
+  refresh       => (others => '0'),
+  renable       => '0',
+  pageburst     => '0',
+  mobileen      => MOBILEENRESVAL,
+  ds            => (others => '0'),
+  tcsr          => (others => '0'),
+  pasr          => (others => '0'),
+  pmode         => (others => '0'),
+  txsr          => (others => '1'),
+  cke           => CKERESVAL);
+constant RES : reg_type := (
+  hready        => '1',
+  hsel          => '0',
+  bdrive        => '0',                 -- has async reset
+  burst         => '0',
+  busy          => '0',
+  bdelay        => '0',
+  wprothit      => '0',
+  startsd       => '0',
+  aload         => '0',
+  mstate        => midle,
+  sdstate       => sidle,
+  cmstate       => midle,
+  istate        => iidle,
+  icnt          => (others => '0'),
+  cfg           => CFGRES,
+  trfc          => (others => '0'),
+  refresh       => (others => '0'),
+  sdcsn         => (others => '1'),    -- has async reset
+  sdwen         => '1',
+  rasn          => '1',
+  casn          => '1',
+  dqm           => (others => '1'),
+  bsel          => '0',
+  haddr         => (others => '0'),
+  address       => (others => '0'),
+  idlecnt       => (others => '1'),
+  sref_tmpcom   => (others => '0'));
 
 signal r, ri : reg_type;
 
 begin
 
   ctrl : process(rst, apbi, sdi, wpo, r)
-  variable v : reg_type;		-- local variables for registers
+  variable v : reg_type;                -- local variables for registers
   variable startsd : std_ulogic;
   variable dataout : std_logic_vector(31 downto 0); -- data from memory
   variable haddr   : std_logic_vector(31 downto 0);
@@ -191,11 +252,11 @@ begin
     case r.mstate is
     when midle =>
       if (v.hsel and sdi.nhtrans(1)) = '1' then
-	if (r.sdstate = sidle) and (r.cfg.command = "000") and 
-	   (r.cmstate = midle) and (sdi.idle = '1')
+        if (r.sdstate = sidle) and (r.cfg.command = "000") and 
+           (r.cmstate = midle) and (sdi.idle = '1')
         then 
-	  if fast = 1 then v.startsd := '1'; else startsd := '1'; end if;
-	  v.mstate := active;
+          if fast = 1 then v.startsd := '1'; else startsd := '1'; end if;
+          v.mstate := active;
         elsif ((r.sdstate = sref) or (r.sdstate = pd) or (r.sdstate = dpd))
            and (r.cfg.command = "000") and (r.cmstate = midle) --and (v.hio = '0')
         then
@@ -250,8 +311,8 @@ begin
       v.bdelay := '0';
       if (startsd = '1') and (r.cfg.command = "000") and (r.cmstate = midle) then
         v.address(16 downto 2) := ba & raddr;
-	v.sdcsn := not rams(1 downto 0); v.rasn := '0'; v.sdstate := act1; 
-	v.startsd := '0';
+        v.sdcsn := not rams(1 downto 0); v.rasn := '0'; v.sdstate := act1; 
+        v.startsd := '0';
       elsif (r.idlecnt = "0000") and (r.cfg.command = "000") 
             and (r.cmstate = midle) and (r.cfg.mobileen(1) = '1') then
         case r.cfg.pmode is
@@ -267,21 +328,21 @@ begin
         end case;
       end if;
     when act1 =>
-	v.rasn := '1'; v.trfc := (r.cfg.trp and r.cfg.mobileen(1)) & r.cfg.trfc; v.haddr := sdi.rhaddr(31 downto 10);
-	if r.cfg.casdel = '1' then v.sdstate := act2; else
-	  v.sdstate := act3;
+        v.rasn := '1'; v.trfc := (r.cfg.trp and r.cfg.mobileen(1)) & r.cfg.trfc; v.haddr := sdi.rhaddr(31 downto 10);
+        if r.cfg.casdel = '1' then v.sdstate := act2; else
+          v.sdstate := act3;
           v.hready := sdi.hwrite and sdi.htrans(0) and sdi.htrans(1);
-	end if;
+        end if;
         if WPROTEN then 
-	  v.wprothit := wpo.wprothit;
-	  if wpo.wprothit = '1' then hresp := HRESP_ERROR; end if;
-	end if;
+          v.wprothit := wpo.wprothit;
+          if wpo.wprothit = '1' then hresp := HRESP_ERROR; end if;
+        end if;
     when act2 =>
-	v.sdstate := act3;
+        v.sdstate := act3;
         v.hready := sdi.hwrite and sdi.htrans(0) and sdi.htrans(1);
         if WPROTEN and (r.wprothit = '1') then 
-	  hresp := HRESP_ERROR; v.hready := '0'; 
-	end if;
+          hresp := HRESP_ERROR; v.hready := '0'; 
+        end if;
     when act3 =>
       v.casn := '0';
       v.address(14 downto 2) := sdi.rhaddr(13 downto 12) & '0' & sdi.rhaddr(11 downto 2);
@@ -289,38 +350,38 @@ begin
 
       if sdi.hwrite = '1' then
 
-	v.sdstate := wr1; v.sdwen := '0'; v.bdrive := '1';
+        v.sdstate := wr1; v.sdwen := '0'; v.bdrive := '1';
         if sdi.htrans = "11" or (r.hready = '0') then v.hready := '1'; end if;
         if WPROTEN and (r.wprothit = '1') then
-	  hresp := HRESP_ERROR; v.hready := '1'; 
-	  v.sdstate := wr1; v.sdwen := '1'; v.bdrive := '0'; v.casn := '1';
-	end if;
+          hresp := HRESP_ERROR; v.hready := '1'; 
+          v.sdstate := wr1; v.sdwen := '1'; v.bdrive := '0'; v.casn := '1';
+        end if;
       else v.sdstate := rd1; end if;
     when wr1 =>
       v.address(14 downto 2) := sdi.rhaddr(13 downto 12) & '0' & sdi.rhaddr(11 downto 2);
       if (((r.burst and r.hready) = '1') and (sdi.rhtrans = "11"))
       and not (WPROTEN and (r.wprothit = '1'))
       then 
-	v.hready := sdi.htrans(0) and sdi.htrans(1) and r.hready;
-	if ((sdi.rhaddr(5 downto 2) = "1111") and (r.cfg.command = "100")) then -- exit on refresh
-	  v.hready := '0';
-	end if;
+        v.hready := sdi.htrans(0) and sdi.htrans(1) and r.hready;
+        if ((sdi.rhaddr(5 downto 2) = "1111") and (r.cfg.command = "100")) then -- exit on refresh
+          v.hready := '0';
+        end if;
       else
         v.sdstate := wr2; v.bdrive := '0'; v.casn := '1'; v.sdwen := '1';
-	v.dqm := (others => '1');
+        v.dqm := (others => '1');
       end if;
     when wr2 =>
       if (sdi.rhtrans = "10") and (sdi.rhaddr(31 downto 10) = r.haddr) and (r.hsel = '1') then
-	if sdi.hwrite = '1' then v.hready := '1'; end if; v.sdstate := act3;
+        if sdi.hwrite = '1' then v.hready := '1'; end if; v.sdstate := act3;
       elsif (r.trfc(2 downto 1) = "00") then
         if (r.cfg.trp = '0') then v.rasn := '0'; v.sdwen := '0'; end if;
         v.sdstate := wr3;
       end if;
     when wr3 =>
       if (sdi.rhtrans = "10") and (sdi.rhaddr(31 downto 10) = r.haddr) and (r.sdwen = '1') and (r.hsel = '1') then
-	if sdi.hwrite = '1' then v.hready := '1'; end if; v.sdstate := act3;
+        if sdi.hwrite = '1' then v.hready := '1'; end if; v.sdstate := act3;
       elsif (r.cfg.trp = '1') then 
-	v.rasn := '0'; v.sdwen := '0'; v.sdstate := wr4;
+        v.rasn := '0'; v.sdwen := '0'; v.sdstate := wr4;
       else 
         v.sdcsn := "11"; v.rasn := '1'; v.sdwen := '1';
         if r.trfc = "0000" then v.sdstate := sidle; end if;
@@ -329,37 +390,37 @@ begin
       v.sdcsn := "11"; v.rasn := '1'; v.sdwen := '1'; 
       if (r.cfg.trp = '1') then v.sdstate := wr5;
       else 
-	if r.trfc = "0000" then v.sdstate := sidle; end if;
+        if r.trfc = "0000" then v.sdstate := sidle; end if;
       end if;
     when wr5 =>
       if r.trfc = "0000" then v.sdstate := sidle; v.idlecnt := (others => '1'); end if;
     when rd1 =>
       v.casn := '1'; v.sdstate := rd7;
       if lineburst and (sdi.htrans = "11") then
-	if sdi.rhaddr(4 downto 2) = "111" then
-	  v.address(9 downto 5) := r.address(9 downto 5) + 1;
-	  v.address(4 downto 2) := "000"; v.casn := '0';
-	end if;
+        if sdi.rhaddr(4 downto 2) = "111" then
+          v.address(9 downto 5) := r.address(9 downto 5) + 1;
+          v.address(4 downto 2) := "000"; v.casn := '0';
+        end if;
       end if;
     when rd7 =>
       v.casn := '1';
       if r.cfg.casdel = '1' then 
-	v.sdstate := rd2;
+        v.sdstate := rd2;
         if lineburst and (sdi.htrans = "11") then 
-	  if sdi.rhaddr(4 downto 2) = "110" then
-	    v.address(9 downto 5) := r.address(9 downto 5) + 1;
-	    v.address(4 downto 2) := "000"; v.casn := '0';
-	  end if;
+          if sdi.rhaddr(4 downto 2) = "110" then
+            v.address(9 downto 5) := r.address(9 downto 5) + 1;
+            v.address(4 downto 2) := "000"; v.casn := '0';
+          end if;
         end if;
       else
         v.sdstate := rd3;
         if sdi.htrans /= "11" then 
           if (r.trfc(2 downto 1) = "00") then v.rasn := '0'; v.sdwen := '0'; end if;
-	elsif lineburst then
-	  if sdi.rhaddr(4 downto 2) = "110" then
-	    v.address(9 downto 5) := r.address(9 downto 5) + 1;
-	    v.address(4 downto 2) := "000"; v.casn := '0';
-	  end if;
+        elsif lineburst then
+          if sdi.rhaddr(4 downto 2) = "110" then
+            v.address(9 downto 5) := r.address(9 downto 5) + 1;
+            v.address(4 downto 2) := "000"; v.casn := '0';
+          end if;
         end if;
       end if;
     when rd2 =>
@@ -367,40 +428,40 @@ begin
       if sdi.htrans /= "11" then -- v.rasn := '0'; v.sdwen := '0';
           if (r.trfc(2 downto 1) = "00") then v.rasn := '0'; v.sdwen := '0'; end if;
       elsif lineburst then
-	if sdi.rhaddr(4 downto 2) = "101" then
-	  v.address(9 downto 5) := r.address(9 downto 5) + 1;
-	  v.address(4 downto 2) := "000"; v.casn := '0';
-	end if;
+        if sdi.rhaddr(4 downto 2) = "101" then
+          v.address(9 downto 5) := r.address(9 downto 5) + 1;
+          v.address(4 downto 2) := "000"; v.casn := '0';
+        end if;
       end if;
       if v.sdwen = '0' then v.dqm := (others => '1'); end if;
     when rd3 =>
       v.sdstate := rd4; v.hready := '1'; v.casn := '1';
       if r.sdwen = '0' then
-	v.rasn := '1'; v.sdwen := '1'; v.sdcsn := "11"; v.dqm := (others => '1');
+        v.rasn := '1'; v.sdwen := '1'; v.sdcsn := "11"; v.dqm := (others => '1');
       elsif lineburst and (sdi.htrans = "11") and (r.casn = '1') then 
-	if sdi.rhaddr(4 downto 2) = ("10" & not r.cfg.casdel) then
-	  v.address(9 downto 5) := r.address(9 downto 5) + 1;
-	  v.address(4 downto 2) := "000"; v.casn := '0';
-	end if;
+        if sdi.rhaddr(4 downto 2) = ("10" & not r.cfg.casdel) then
+          v.address(9 downto 5) := r.address(9 downto 5) + 1;
+          v.address(4 downto 2) := "000"; v.casn := '0';
+        end if;
       end if;
 
     when rd4 =>
       v.hready := '1'; v.casn := '1';
       if (sdi.htrans /= "11") or (r.sdcsn = "11") or
-	 ((sdi.rhaddr(5 downto 2) = "1111") and (r.cfg.command = "100")) -- exit on refresh
+         ((sdi.rhaddr(5 downto 2) = "1111") and (r.cfg.command = "100")) -- exit on refresh
       then
         v.hready := '0'; v.dqm := (others => '1');
         if (r.sdcsn /= "11") then
-	  v.rasn := '0'; v.sdwen := '0'; v.sdstate := rd5;
-	else
+          v.rasn := '0'; v.sdwen := '0'; v.sdstate := rd5;
+        else
           if r.cfg.trp = '1' then v.sdstate := rd6; 
-	  else v.sdstate := sidle; v.idlecnt := (others => '1'); end if;
+          else v.sdstate := sidle; v.idlecnt := (others => '1'); end if;
         end if;
       elsif lineburst then
-	if (sdi.rhaddr(4 downto 2) = lline) and (r.casn = '1') then
-	  v.address(9 downto 5) := r.address(9 downto 5) + 1;
-	  v.address(4 downto 2) := "000"; v.casn := '0';
-	end if;
+        if (sdi.rhaddr(4 downto 2) = lline) and (r.casn = '1') then
+          v.address(9 downto 5) := r.address(9 downto 5) + 1;
+          v.address(4 downto 2) := "000"; v.casn := '0';
+        end if;
       end if;
     when rd5 =>
       if r.cfg.trp = '1' then v.sdstate := rd6; else v.sdstate := sidle; v.idlecnt := (others => '1'); end if;
@@ -463,24 +524,24 @@ begin
         case r.cfg.command is
         when "010" => -- precharge
           if (sdi.idle = '1') then
-	    v.busy := '1';
-	    v.sdcsn := (others => '0'); v.rasn := '0'; v.sdwen := '0';
-	    v.address(12) := '1'; v.cmstate := active;
-	  end if;
+            v.busy := '1';
+            v.sdcsn := (others => '0'); v.rasn := '0'; v.sdwen := '0';
+            v.address(12) := '1'; v.cmstate := active;
+          end if;
         when "100" => -- auto-refresh
-	  v.sdcsn := (others => '0'); v.rasn := '0'; v.casn := '0';
+          v.sdcsn := (others => '0'); v.rasn := '0'; v.casn := '0';
           v.cmstate := active;
         when "110" =>
           if (sdi.idle = '1') then
-	    v.busy := '1';
-	    v.sdcsn := (others => '0'); v.rasn := '0'; v.casn := '0'; 
-	    v.sdwen := '0'; v.cmstate := active;
-	    if lineburst then
-	      v.address(16 downto 2) := "0000010001" & r.cfg.casdel & "0011";
-	    else
-	      v.address(16 downto 2) := "0000010001" & r.cfg.casdel & "0111";
-	    end if;
-	  end if;
+            v.busy := '1';
+            v.sdcsn := (others => '0'); v.rasn := '0'; v.casn := '0'; 
+            v.sdwen := '0'; v.cmstate := active;
+            if lineburst then
+              v.address(16 downto 2) := "0000010001" & r.cfg.casdel & "0011";
+            else
+              v.address(16 downto 2) := "0000010001" & r.cfg.casdel & "0111";
+            end if;
+          end if;
         when "111" => -- Load Ext-Mode Reg
           if (sdi.idle = '1') then
             v.busy := '1';
@@ -517,7 +578,7 @@ begin
     when ref =>
       if r.cfg.command = "000" then
         v.cfg.command := "100"; v.icnt := r.icnt - 1;
-	if r.icnt = "000" then v.istate := lmode; v.cfg.command := "110"; end if; 
+        if r.icnt = "000" then v.istate := lmode; v.cfg.command := "110"; end if; 
       end if;
     when lmode =>
       if r.cfg.command = "000" then
@@ -546,7 +607,7 @@ begin
     case r.mstate is
     when active =>
       if v.hready = '1' then
-	v.mstate := midle;
+        v.mstate := midle;
       end if;
     when others => null;
     end case;
@@ -554,12 +615,12 @@ begin
 -- sdram refresh counter
 
       if (r.cfg.renable = '1') and (r.istate = finish) and r.sdstate /= sref then 
-	v.refresh := r.refresh - 1;
+        v.refresh := r.refresh - 1;
         if (v.refresh(14) and not r.refresh(14))  = '1' then 
-	  v.refresh := r.cfg.refresh;
-	  v.cfg.command := "100";
+          v.refresh := r.cfg.refresh;
+          v.cfg.command := "100";
           arefresh := '1';
-	end if;
+        end if;
       end if;
 
 -- APB register access
@@ -568,7 +629,7 @@ begin
     if (apbi.psel(pindex) and apbi.penable and apbi.pwrite) = '1' then
       case apbi.paddr(3 downto 2) is
       when "01" =>
-	if pageburst = 2 then v.cfg.pageburst :=  apbi.pwdata(17); end if;
+        if pageburst = 2 then v.cfg.pageburst :=  apbi.pwdata(17); end if;
         if sdi.enable = '1' then
           v.cfg.command(2 downto 1)     :=  apbi.pwdata(20 downto 19); 
         end if;
@@ -620,7 +681,7 @@ begin
     case apbi.paddr(3 downto 2) is
     when "01" => 
       regsd(31 downto 19) := r.cfg.renable & r.cfg.trp & r.cfg.trfc &
-	 r.cfg.casdel & r.cfg.bsize & r.cfg.csize & r.cfg.command(2 downto 1); 
+         r.cfg.casdel & r.cfg.bsize & r.cfg.csize & r.cfg.command(2 downto 1); 
       if not lineburst then regsd(17) := '1'; end if;
       regsd(16) := r.cfg.mobileen(1);
     when "11" => 
@@ -652,40 +713,37 @@ begin
 
 -- reset
 
-    if rst = '0' then
-      v.sdstate	      := sidle; 
-      v.mstate	      := midle; 
-      v.istate	      := iidle; 
-      v.cmstate	      := midle; 
-      v.hsel	      := '0';
-      v.cfg.command   := "000";
-      v.cfg.csize     := "10";
-      v.cfg.bsize     := "000";
-      v.cfg.casdel    :=  '1';
-      v.cfg.trfc      := "111";
-      v.cfg.renable   :=  '0';
-      v.cfg.trp       :=  '1';
-      v.dqm	      := (others => '1');
-      v.sdwen	      := '1';
-      v.rasn	      := '1';
-      v.casn	      := '1';
-      v.hready	      := '1';
-      v.startsd       := '0';
+    if (not RESET_ALL) and (rst = '0') then
+      v.sdstate       := RES.sdstate;
+      v.mstate        := RES.mstate;
+      v.istate        := RES.istate; 
+      v.cmstate       := RES.cmstate; 
+      v.hsel          := RES.hsel;
+      v.cfg.command   := RES.cfg.command;
+      v.cfg.csize     := RES.cfg.csize;
+      v.cfg.bsize     := RES.cfg.bsize;
+      v.cfg.casdel    := RES.cfg.casdel;
+      v.cfg.trfc      := RES.cfg.trfc;
+      v.cfg.renable   := RES.cfg.renable;
+      v.cfg.trp       := RES.cfg.trp;
+      v.dqm           := RES.dqm;
+      v.sdwen         := RES.sdwen;
+      v.rasn          := RES.rasn;
+      v.casn          := RES.casn;
+      v.hready        := RES.hready;
+      v.startsd       := RES.startsd;
       if (pageburst = 2) then
-        v.cfg.pageburst   :=  '0';
+        v.cfg.pageburst   :=  RES.cfg.pageburst;
       end if;
-      if mobile >= 2 then v.cfg.mobileen := "11";
-      elsif mobile = 1 then v.cfg.mobileen := "10";
-      else v.cfg.mobileen := "00"; end if;
-      v.cfg.txsr      := (others => '1');
-      v.cfg.pmode     := (others => '0');
-      v.cfg.ds        := (others => '0');
-      v.cfg.tcsr      := (others => '0');
-      v.cfg.pasr      := (others => '0');
-      if mobile >= 2 then v.cfg.cke := '0';
-      else v.cfg.cke       := '1'; end if;
-      v.sref_tmpcom   := "000";
-      v.idlecnt := (others => '1');
+      v.cfg.mobileen  := RES.cfg.mobileen;
+      v.cfg.txsr      := RES.cfg.txsr;
+      v.cfg.pmode     := RES.cfg.pmode;
+      v.cfg.ds        := RES.cfg.ds;
+      v.cfg.tcsr      := RES.cfg.tcsr;
+      v.cfg.pasr      := RES.cfg.pasr;
+      v.cfg.cke       := RES.cfg.cke;
+      v.sref_tmpcom   := RES.sref_tmpcom;
+      v.idlecnt       := RES.idlecnt;
     end if;
 
     ri <= v; 
@@ -719,6 +777,32 @@ begin
         r <= ri;
         if rst = '0' then
           r.icnt <= (others => '0');
+          if RESET_ALL then
+            r.hready      <= RES.hready;
+            r.hsel        <= RES.hsel;
+            r.burst       <= RES.burst;
+            r.busy        <= RES.busy;
+            r.bdelay      <= RES.bdelay;
+            r.wprothit    <= RES.wprothit;
+            r.startsd     <= RES.startsd;
+            r.aload       <= RES.aload;
+            r.mstate      <= RES.mstate;
+            r.sdstate     <= RES.sdstate;
+            r.cmstate     <= RES.cmstate;
+            r.istate      <= RES.istate;
+            r.cfg         <= RES.cfg;
+            r.trfc        <= RES.trfc;
+            r.refresh     <= RES.refresh;
+            r.sdwen       <= RES.sdwen;
+            r.rasn        <= RES.rasn;
+            r.casn        <= RES.casn;
+            r.dqm         <= RES.dqm;
+            r.bsel        <= RES.bsel;
+            r.haddr       <= RES.haddr;
+            r.address     <= RES.address;
+            r.idlecnt     <= RES.idlecnt;
+            r.sref_tmpcom <= RES.sref_tmpcom;
+          end if;
         end if; 
       end if;
 

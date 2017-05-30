@@ -23,6 +23,7 @@ b1553
 greth
 spacewire 
 usb 
+axi
 ddr 
 crypto 
 satcan 
@@ -40,4 +41,4 @@ clk2x
 grdmac
 grrm
 subsys
-axi
+

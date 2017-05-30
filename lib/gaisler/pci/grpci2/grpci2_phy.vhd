@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -30,6 +30,8 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.amba.all;
 use grlib.stdlib.all;
 use grlib.devices.all;
@@ -77,6 +79,14 @@ type phy_m_reg_type is record
   hold  : std_logic_vector(1 downto 0);
   term  : std_logic_vector(1 downto 0);
 end record;
+constant phy_m_reg_none : phy_m_reg_type := (
+  state => pm_idle,
+  cfi   => 0,
+  pi_irdy_or_trdy => '1',
+  last  => (others => '0'),
+  hold  => (others => '0'),
+  term  => (others => '0'));
+
 type phy_t_reg_type is record
   cfi : integer range 0 to 2; 
   pi_irdy_or_trdy : std_logic;
@@ -86,11 +96,30 @@ type phy_t_reg_type is record
   diswithout : std_logic;
   addr_perr : std_logic;
 end record;
+constant phy_t_reg_none : phy_t_reg_type := (
+  cfi   => 0,
+  pi_irdy_or_trdy => '0',
+  hold  => (others => '0'),
+  stop  => '0',
+  abort => '0',
+  diswithout => '0',
+  addr_perr  => '0');
+
 type phy_reg_type is record
   po  : pci_reg_out_type;
   m   : phy_m_reg_type;
   t   : phy_t_reg_type;
 end record;
+
+
+constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+constant ASYNC_RESET : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
+
+constant PRRES : phy_reg_type := (
+  po => pci_reg_out_none,
+  m => phy_m_reg_none,
+  t => phy_t_reg_none);
+
 signal pr, prin : phy_reg_type;
 signal pi, piin, piin_buf   : pci_in_type;  -- Registered PCI signals.
 signal po, poin, po_keep  : pci_reg_out_type;     -- PCI output signals (to drive pads)
@@ -394,25 +423,26 @@ begin
     -- soft reset
     if (pcisynrst and not phyi.pcisoftrst(2) and not phyi.pcisoftrst(1)) = '0' then -- Master reset
       -- Master
-      pv.m.state := pm_idle;
-      pv.m.cfi := 0;
-      pv.m.hold := (others => '0');
-      pv.m.term := (others => '0');
+      pv.m.state := PRRES.m.state;
+      pv.m.cfi := PRRES.m.cfi;
+      pv.m.hold := PRRES.m.hold;
+      pv.m.term := PRRES.m.term;
     end if;
     
     if (pcisynrst and not phyi.pcisoftrst(2) and not phyi.pcisoftrst(0)) = '0' then -- Target reset
       -- Target
-      pv.t.cfi := 0;
-      pv.t.hold := (others => '0');
-      pv.t.stop := '0';
-      pv.t.addr_perr := '0';
+      pv.t.cfi := PRRES.t.cfi;
+      pv.t.hold := PRRES.t.hold;
+      pv.t.stop := PRRES.t.stop;
+      pv.t.addr_perr := PRRES.t.addr_perr;
     end if;
     
     if (pcisynrst and not phyi.pcisoftrst(2)) = '0' then -- Hard reset
       -- PCI signals
-      pv.po.frame := '1'; pv.po.irdy := '1'; pv.po.req := '1';
-      pv.po.trdy := '1'; pv.po.stop := '1';
-      pv.po.perr := '1'; pv.po.devsel := '1'; 
+      pv.po.frame := PRRES.po.frame; pv.po.irdy := PRRES.po.irdy;
+      pv.po.req := PRRES.po.req;
+      pv.po.trdy := PRRES.po.trdy; pv.po.stop := PRRES.po.stop;
+      pv.po.perr := PRRES.po.perr; pv.po.devsel := PRRES.po.devsel; 
     end if;
 
     ---------------------------------------------------------------------------------
@@ -509,12 +539,33 @@ begin
   
 
                                              
-  xarst <= phyi.testrst when scantest/=0 and phyi.testen='1' else pcirst(0);
+  xarst <= phyi.pciasyncrst;
 
+  syncregs : if not ASYNC_RESET generate
+    phyreg : process(pciclk)
+    begin
+      if rising_edge(pciclk) then
+        pr <= prin;
+        if RESET_ALL and pcisynrst = '0' then
+          pr <= PRRES;
+        end if;
+      end if;
+    end process;
+  end generate;
+  asyncregs : if ASYNC_RESET generate
+    areg : process(pciclk, xarst)
+    begin
+      if xarst = '0' then
+        pr <= PRRES;
+      elsif rising_edge(pciclk) then
+        pr <= prin;
+      end if;
+    end process;
+  end generate;
+  
   phyreg : process(pciclk, phyi.pciasyncrst, pcirst, xarst)
   begin
     if rising_edge(pciclk) then
-      pr <= prin;
       pi <= piin;
       po <= po_keep;
       if iotmact /= '0' then

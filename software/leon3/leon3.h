@@ -14,6 +14,8 @@
 #define RFE_CONF_MASK	3
 #define CPP_CONF_BIT	19
 #define CPP_CONF_MASK	3
+#define CPP_CONF_PARITY 1
+#define CPP_CONF_FTRAM  2
 #define FPU_CONF_BIT	4
 #define FPU_CONF_MASK	3
 #define CPTE_MASK	(3 << 17)

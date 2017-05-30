@@ -3,6 +3,7 @@
 -------------------------------------------------------------------------------
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.numeric_std.all;
 
 library UNISIM;
 use UNISIM.VCOMPONENTS.ALL;
@@ -134,6 +135,8 @@ begin
 
   variable memstate : memstatetype;
   variable addr     : integer;
+  variable addr_lsb : std_logic_vector(1 downto 0);
+  variable size : std_logic_vector(2 downto 0);
 --  variable len    : integer;
 --  variable mem      : memtype;
   variable rcnt     : integer;
@@ -193,7 +196,7 @@ begin
           memstate := write1; S_AXI_GP0_awready <= '1';
         end if;
       when read1 =>
-        addr:= conv_integer(S_AXI_GP0_araddr(19 downto 0));
+        addr:= conv_integer(S_AXI_GP0_araddr(19 downto 2)&"00");
         len := conv_integer(S_AXI_GP0_arlen);
         S_AXI_GP0_arready <= '0'; memstate := read2; rcnt := 23;
       when read2 =>
@@ -215,7 +218,9 @@ begin
           end loop;
         end if;
       when write1 =>
-        addr:= conv_integer(S_AXI_GP0_awaddr(19 downto 0));
+        addr:= conv_integer(S_AXI_GP0_awaddr(19 downto 2)&"00");
+        addr_lsb := S_AXI_GP0_awaddr(1 downto 0);
+        size := S_AXI_GP0_awsize;
         len := conv_integer(S_AXI_GP0_awlen);
         S_AXI_GP0_awready <= '0'; memstate := write2; rcnt := 0;
       when write2 =>
@@ -229,12 +234,29 @@ begin
             for i in 0 to 3 loop
               if S_AXI_GP0_wstrb(i) = '1' then
                 MEMA(addr+3-i) := S_AXI_GP0_wdata(i*8+7 downto i*8);
+                if (size = "000") then
+                  if i /= to_integer(unsigned(addr_lsb)) then
+                    assert false report "Write address and strobe do not match!" severity warning;
+                  end if;
+                end if;
+                if (size = "001") then
+                  if i = 0 or i = 1 then
+                    if addr_lsb /= "00" then
+                      assert false report "Write address and strobe do not match!" severity warning;
+                    end if;
+                  end if;
+                  if i = 2 or i = 3 then
+                    if addr_lsb /= "10" then
+                      assert false report "Write address and strobe do not match!" severity warning;
+                    end if;
+                  end if;             
+                end if;
               end if;
             end loop;
             if (len = 0) or (S_AXI_GP0_wlast = '1') then
               memstate := idle; S_AXI_GP0_wready <= '0'; S_AXI_GP0_bvalid <= '1';
             else
-              addr := addr + 1; len := len - 1;
+              addr := addr + 4; len := len - 1;
             end if;
           end if;
       when others =>

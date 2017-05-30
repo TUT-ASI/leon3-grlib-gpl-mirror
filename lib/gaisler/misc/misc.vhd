@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 -----------------------------------------------------------------------------
 -- Package: 	misc
 -- File:	misc.vhd
--- Author:	Jiri Gaisler - Gaisler Research
+-- Author:	Cobham Gaisler AB
 -- Description:	Misc models
 ------------------------------------------------------------------------------
 
@@ -128,6 +128,8 @@ package misc is
   type ahbram_out_type is record
     ce : std_ulogic;
   end record;
+
+  constant ahbram_out_none : ahbram_out_type := (ce => '0');
 
   component ftahbram
     generic (
@@ -472,7 +474,8 @@ package misc is
     ahbso2      : in  ahb_slv_out_vector;
     lcki        : in  ahb2ahb_ctrl_type;
     lcko        : out ahb2ahb_ctrl_type;
-    ifctrl      : in  ahb2ahb_ifctrl_type := ahb2ahb_ifctrl_none
+    ifctrl      : in  ahb2ahb_ifctrl_type := ahb2ahb_ifctrl_none;
+    idle        : out std_ulogic
     );
   end component;
 
@@ -544,7 +547,8 @@ package misc is
       paddr  : integer := 0;
       pmask  : integer := 16#FFF#;
       pirq   : integer := 0;
-      nftslv : integer range 1 to NAHBSLV - 1 := 3);
+      nftslv : integer range 1 to NAHBSLV - 1 := 3;
+      ver    : integer range 0 to 1 := 0);
     port(
       rst   : in std_ulogic;
       clk   : in std_ulogic;
@@ -1056,6 +1060,10 @@ package misc is
     data    : std_logic_vector(31 downto 0);
     size    : std_logic_vector(1 downto 0);
   end record;
+  
+  constant ahb_mst_iface_in_none : ahb_mst_iface_in_type := (
+    req => '0', write => '0', addr => (others => '0'),
+    data => (others => '0'), size => (others => '0'));
 
   type ahb_mst_iface_out_type is record
     grant   : std_ulogic;
@@ -1070,7 +1078,8 @@ package misc is
       hindex      : integer;
       vendor      : integer;
       device      : integer;
-      revision    : integer);
+      revision    : integer;
+      scantest    : integer := 0);
     port(
       rst         : in  std_ulogic;
       clk         : in  std_ulogic;
@@ -1176,7 +1185,7 @@ package misc is
       fpuclken : integer := 0;
       nahbclk  : integer := 1;
       nahbclk2x: integer := 1;
-      balance  : integer range 0 to 1 := 1
+      balance  : integer range 1 to 1 := 1
       );
     port (
       rst      : in  std_ulogic;
@@ -1188,13 +1197,15 @@ package misc is
       apbo     : out apb_slv_out_type;
       gclk     : out std_logic_vector(nclks-1 downto 0);
       reset    : out std_logic_vector(nclks-1 downto 0);
-      clkahb   : out std_logic_vector(nahbclk-1 downto 0);
-      clkahb2x : out std_logic_vector(nahbclk2x-1 downto 0);
+      clkahb   : out std_ulogic;
+      clkahb2x : out std_ulogic;
       clkcpu   : out std_logic_vector(ncpu-1 downto 0);
       enable   : out std_logic_vector(nclks-1 downto 0);
       clkfpu   : out std_logic_vector((fpush/2+fpuclken)*(ncpu/(2-fpuclken)-1) downto 0);
       epwen    : in  std_logic_vector(nclks-1 downto 0);
-      ungate   : in  std_ulogic
+      ungate   : in  std_ulogic;
+      clkahbv   : out std_logic_vector(nahbclk-1 downto 0);
+      clkahb2xv : out std_logic_vector(nahbclk2x-1 downto 0)
       );
   end component;
 
@@ -1480,7 +1491,205 @@ package misc is
       apbo   : out apb_slv_out_type
       );
   end component;
-  
+
+  -----------------------------------------------------------------------------
+  -- Signals and components package for adapters/wrappers for
+  -- SmartFusion2/IGLOO2 hard subsystems
+  -----------------------------------------------------------------------------
+  type sf2_slv_in_type is record
+    haddr     : std_logic_vector(31 downto 0);
+    htrans    : std_logic_vector(1 downto 0);
+    hwrite    : std_ulogic;
+    hsel      : std_ulogic;
+    hsize     : std_logic_vector(1 downto 0);
+    hburst    : std_logic_vector(2 downto 0);
+    hwdata    : std_logic_vector(31 downto 0);
+    hmastlock : std_ulogic;
+    hready    : std_ulogic;
+  end record;
+
+  constant sf2_slv_in_none : sf2_slv_in_type := (
+    zero32, "00", '0', '0', "00", "000", zero32, '0', '1');
+
+  type sf2_slv_out_type is record
+    hrdata    : std_logic_vector(31 downto 0);
+    hreadyout : std_ulogic;
+    hresp     : std_logic;
+  end record;
+
+  constant sf2_slv_out_none : sf2_slv_out_type := (zero32, '1', '0');
+
+  type sf2_apb3_in_type is record
+    paddr : std_logic_vector(31 downto 0);
+    penable : std_ulogic;
+    psel : std_ulogic;
+    pwdata : std_logic_vector(15 downto 0);
+    pwrite : std_ulogic;
+  end record;
+
+  constant sf2_apb3_in_none : sf2_apb3_in_type :=
+    (zero32, '0', '0', zero32(15 downto 0), '0');
+
+  type sf2_apb3_out_type is record
+    prdata : std_logic_vector(15 downto 0);
+    pready : std_ulogic;
+    pslverr : std_ulogic;
+  end record;
+
+  constant sf2_apb3_out_none : sf2_apb3_out_type :=
+    (zero32(15 downto 0), '1', '0');
+
+  type sf2_mst_out_type is record
+    haddr     : std_logic_vector(31 downto 0);
+    htrans    : std_logic_vector(1 downto 0);
+    hwrite    : std_ulogic;
+    hsize     : std_logic_vector(1 downto 0);
+    hwdata    : std_logic_vector(31 downto 0);  
+  end record;
+
+  type sf2_mst_in_type is record
+    hrdata : std_logic_vector(31 downto 0);
+    hready : std_ulogic;
+    hresp  : std_logic;
+  end record;
+
+  component sf2mddr_wrapper
+    generic (
+      hindex    : integer := 0;
+      haddr     : integer := 16#400#; -- mapped at 0x40000000
+      hmask     : integer := 16#FC0#; -- 64 MB
+      pindex    : integer := 13; 
+      paddr     : integer := 13; -- mapped at 0x8000d000
+      pmask     : integer := 16#FF8#; -- 2 KB
+      delay     : integer := 4;
+      vendorid  : integer := VENDOR_ACTEL; 
+      deviceid  : integer := ACTEL_MDDR;
+      pnpuser0  : integer := 0);
+    port (
+      rstn      : in  std_ulogic;
+      clk       : in  std_ulogic;
+      ahbsi     : in  ahb_slv_in_type;
+      ahbso     : out ahb_slv_out_type;
+      sf2si     : out sf2_slv_in_type;
+      sf2so     : in sf2_slv_out_type;
+      apb3i      : in  apb3_slv_in_type;
+      apb3o      : out apb3_slv_out_type;
+      sf2apbin  : out sf2_apb3_in_type;
+      sf2apbout : in sf2_apb3_out_type);
+  end component;
+
+  component sf2ficslv_wrapper is
+    generic (
+      hindex     : integer := 0;
+      haddr1     : integer := 16#500#; -- eSRAM mapped at 0x50000000
+      hmask1     : integer := 16#FFF#; -- 1 MB (actually 64 or 80 KB depending on SECDED ON/OFF)
+      haddr2     : integer := 16#000#; -- eNVM mapped at 0x00000000
+      hmask2     : integer := 16#FFF#; -- 1 MB (actually 512 KB)
+      haddr3     : integer := 16#600#; -- eNVM configuration registers mapped at 0xFFF80000
+      hmask3     : integer := 16#FFF#; -- 1 MB (actually 512 KB)
+      haddr4     : integer := 16#000#; -- Subsystem peripherals mapped at 0xFFF00000
+      hmask4     : integer := 16#800#; -- 512 KB
+      vendorid  : integer := VENDOR_ACTEL; 
+      deviceid  : integer := ACTEL_FICSLV);
+    port (
+      rstn      : in  std_ulogic;
+      clk       : in  std_ulogic;
+      ahbsi     : in  ahb_slv_in_type;
+      ahbso     : out ahb_slv_out_type;
+      sf2si     : out sf2_slv_in_type;
+      sf2so     : in  sf2_slv_out_type);
+  end component;
+
+  component sf2ficmst_wrapper is
+    generic (
+      hindex    : integer := 0;
+      pindex    : integer := 14; 
+      paddr     : integer := 14; -- mapped at 0x8000e000
+      pmask     : integer := 16#FFF#; -- 256 B
+      vendorid  : integer := VENDOR_ACTEL; 
+      deviceid  : integer := ACTEL_FICMST);
+    port (
+      rstn      : in  std_ulogic;
+      clk       : in  std_ulogic;
+      ahbmi     : in  ahb_mst_in_type;
+      ahbmo     : out ahb_mst_out_type;
+      sf2mi     : out sf2_mst_in_type;
+      sf2mo     : in  sf2_mst_out_type;
+      apbi      : in  apb_slv_in_type;
+      apbo      : out apb_slv_out_type;
+      dma_ready : out std_logic_vector(1 downto 0));
+  end component;
+
+  component sf2apb3slv_wrapper
+    generic(
+      pindex    : integer := 13;
+      paddr     : integer := 13;
+      pmask     : integer := 16#FF8#;
+      vendorid  : integer := VENDOR_ACTEL; 
+      deviceid  : integer := ACTEL_APB3SLV);
+    port(
+      rstn      : in  std_ulogic;
+      clk       : in  std_ulogic;
+      apb3i      : in  apb3_slv_in_type;
+      apb3o      : out apb3_slv_out_type;
+      sf2apbin : out apb_in_serdes;
+      sf2apbout : in apb_out_serdes);
+  end component;
+
+  component apb3cdc is
+    generic (
+      tech: integer;
+      nsync: integer := 2;
+      skew: integer := 1;
+      pindex: integer := 0
+      );
+    port (
+      cclk     : in std_ulogic;
+      crst     : in std_ulogic;
+      csclkact : in std_ulogic;
+      capb3i   : in apb3_slv_in_type;
+      capb3o   : out apb3_slv_out_type;
+      cpend    : out std_ulogic;
+      sclk     : in std_ulogic;
+      srst     : in std_ulogic;
+      scclkact : in std_ulogic;
+      sapb3i   : out apb3_slv_in_type;
+      sapb3o   : in apb3_slv_out_type
+      );
+  end component;
+
+  component ahbsmux is
+    generic (
+      sindex  : integer := 0 
+    );
+    port (
+      clk     : in  std_ulogic;
+      rstn    : in  std_ulogic;
+      slvsi   : out ahb_slv_in_type;
+      slvso   : in  ahb_slv_out_type;
+      ahbs0i  : in  ahb_slv_in_type;
+      ahbs0o  : out ahb_slv_out_type;
+      ahbs1i  : in  ahb_slv_in_type;
+      ahbs1o  : out ahb_slv_out_type;
+      force   : in  std_logic;
+      locken  : in  std_logic
+    );
+  end component;
+
+  component ahbmmux is
+    port (
+      clk   : in  std_ulogic;
+      rstn  : in  std_ulogic;
+      mstmi : out ahb_mst_in_type;
+      mstmo : in  ahb_mst_out_type;
+      ahbm0i: in  ahb_mst_in_type;
+      ahbm0o: out ahb_mst_out_type;
+      ahbm1i: in  ahb_mst_in_type;
+      ahbm1o: out ahb_mst_out_type;
+      force : in  std_logic
+    );
+  end component;
+
   -----------------------------------------------------------------------------
   -- Function declarations
   -----------------------------------------------------------------------------

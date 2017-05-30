@@ -6,6 +6,8 @@ Note: This design requires that the GRLIB_SIMULATOR variable is
 correctly set. Please refer to the documentation in doc/grlib.pdf for
 additional information.
 
+Note: Default flow for this design is for Xilinx ISE 14.7 
+
 Simulation and synthesis for ISE-13
 -----------------------------------
 
@@ -20,16 +22,35 @@ simulation library, do as follows:
   make mig
   make pcie (do if PCI Express is enabled)
   make install-secureip
+  
+Modify leon3mp.vhd by uncomment the following lines in the leon3 design
+  143
+  144
+  145
+  146
+  486
 
 This will ONLY work with ISE-13 installed, and the XILINX variable
 properly set in the shell. To synthesize the design, do
 
   make ise
 
-and then
+and then to program FPGA direct
 
+  Set Board Switch S1 and S2:
+   S1 to 1000   (Pos 4 -> Pos 1)
+   S2 to 010111 (Pos 6 -> Pos 1)
+  
   make ise-prog-fpga
 
+ or to program PROM
+ 
+  Set Board Switch S1 and S2:
+   S1 to 0000   (x = Don't Care, Pos 4 -> Pos 1)
+   S2 to 001010 (Pos 6 -> Pos 1)
+  
+   make ise-prog-prom
+  
 to program the FPGA.
 
 Simulation and synthesis for ISE-14
@@ -40,10 +61,9 @@ with an AHB-2.0 interface. The source code cannot be distributed due to the
 prohibitive Xilinx license, so they must be re-generated with coregen before
 simulation and synthesis can be done.
 
-To generate the MIG and PCI Express and to install the Xilinx unisim
+To generate the MIG and PCI Express and to install the Xilinx unisim verilog 
 simulation library, do as follows:
 
-  make install-secureip_ver
   make mig39
   make pcie (do if PCI Express is enabled)
   make sim
@@ -59,10 +79,22 @@ properly set in the shell. To build the design, do
 
   make planahead
 
-and then
+and then to program FPGA direct
 
+  Set Board Switch S1 and S2:
+   S1 to 1000   (Pos 4 -> Pos 1)
+   S2 to 010111 (Pos 6 -> Pos 1)
+  
   make ise-prog-fpga
 
+ or to program PROM
+ 
+  Set Board Switch S1 and S2:
+   S1 to 0000   (x = Don't Care, Pos 4 -> Pos 1)
+   S2 to 001010 (Pos 6 -> Pos 1)
+  
+   make ise-prog-prom
+  
 to program the FPGA.
 
 Using the Xilinx ML605 rev E with 1 GiB of DDR3 SDRAM
@@ -114,6 +146,9 @@ Design specifics
 ----------------
 
 * Synthesis should be done using ISE-13 or ISE-14
+
+* This design has GRFPU enabled by default. If your release doesn't contain
+  GRFPU, it has to be disabled in order to build the design.
 
 * The DDR3 controller is implemented with Xilinx MIG-3.7 and 
   runs of the 200 MHz clock. The DDR3 memory runs at 400 MHz

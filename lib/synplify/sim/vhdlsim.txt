@@ -1,2 +1,0 @@
-synplify.vhd
-synattr.vhd

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -102,6 +102,9 @@ package grethpkg is
     hwdata	: std_logic_vector(31 downto 0); 	-- write data bus
   end record;
 
+  constant ahbc_mst_out_none : ahbc_mst_out_type :=
+    ('0', '0', "00", zero32, '0', "000", "000", "0000", zero32);
+  
   type apbc_slv_in_type is record
     psel	: std_ulogic;                           -- slave select
     penable	: std_ulogic;                         	-- strobe
@@ -121,6 +124,10 @@ package grethpkg is
     data    : std_logic_vector(31 downto 0);
   end record;
 
+  constant eth_tx_ahb_in_none : eth_tx_ahb_in_type := (
+    req => '0', write => '0', addr => (others => '0'),
+    data => (others => '0'));
+  
   type eth_tx_ahb_out_type is record
     grant    : std_ulogic;
     data     : std_logic_vector(31 downto 0);
@@ -129,6 +136,10 @@ package grethpkg is
     retry    : std_ulogic;
   end record;
 
+  constant eth_tx_ahb_out_none : eth_tx_ahb_out_type := (
+    grant => '0', data => zero32,
+    ready => '1', error => '0', retry => '0');
+  
   type eth_rx_ahb_in_type is record
     req     : std_ulogic;
     write   : std_ulogic;
@@ -151,6 +162,10 @@ package grethpkg is
     data    : std_logic_vector(31 downto 0);
     size    : std_logic_vector(1 downto 0);
   end record;
+
+  constant eth_rx_gbit_ahb_in_none : eth_rx_gbit_ahb_in_type := (
+    req => '0', write => '0', addr => (others => '0'),
+    data => (others => '0'), size => (others => '0'));
 
   type gbit_host_tx_type is record
     full_duplex : std_ulogic;
@@ -321,13 +336,15 @@ package grethpkg is
       attempt_limit  : integer := 16;
       backoff_limit  : integer := 10;
       nsync          : integer range 1 to 2 := 2;
-      gmiimode       : integer range 0 to 1 := 0
-      );
+      gmiimode       : integer range 0 to 1 := 0;
+      scanen         : integer := 0);
     port(
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;
       txi            : in  gbit_host_tx_type;
-      txo            : out gbit_tx_host_type);
+      txo            : out gbit_tx_host_type;
+      testrst        : in  std_ulogic;
+      testen         : in  std_ulogic);
   end component;
 
   component greth_gbit_gtx is
@@ -336,29 +353,33 @@ package grethpkg is
       attempt_limit  : integer := 16;
       backoff_limit  : integer := 10;
       nsync          : integer range 1 to 2 := 2;
-      iotest         : integer := 0);
+      iotest         : integer := 0;
+      scanen         : integer := 0);
     port(
       rst            : in   std_ulogic;
       clk            : in   std_ulogic;
       gtxi           : in   gbit_host_gtx_type;
       gtxo           : out  gbit_gtx_host_type;
       iotmact        : in   std_ulogic;
-      iotdata        : in   std_logic_vector(9 downto 0)
-    );
+      iotdata        : in   std_logic_vector(9 downto 0);
+      testrst        : in  std_ulogic;
+      testen         : in  std_ulogic);
   end component;
 
   component greth_gbit_rx is
     generic(
       multicast      : integer range 0 to 1 := 0;
       nsync          : integer range 1 to 2 := 2;
-      gmiimode       : integer range 0 to 1 := 0
-      );
+      gmiimode       : integer range 0 to 1 := 0;
+      scanen         : integer := 0);
     port(
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;
       rxi            : in  gbit_host_rx_type;
       rxo            : out gbit_rx_host_type;
-      iotdata        : out std_logic_vector(9 downto 0));
+      iotdata        : out std_logic_vector(9 downto 0);
+      testrst        : in  std_ulogic;
+      testen         : in  std_ulogic);
   end component;
 
   component eth_ahb_mst is

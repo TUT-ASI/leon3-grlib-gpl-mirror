@@ -5,7 +5,7 @@ TOP=leon3mp
 BOARD=xilinx-zc702-xc7z020
 DESIGN=leon3-zc702
 include $(GRLIB)/boards/$(BOARD)/Makefile.inc
-PROTOBOARD=xilinx.com:zynq:zc702:1.0
+#PROTOBOARD=xilinx.com:zc702:part0:1.2
 
 DEVICE=$(PART)$(PACKAGE)-$(SPEED)
 UCF_PLANAHEAD=$(GRLIB)/boards/$(BOARD)/xilinx-zx702.ucf
@@ -13,7 +13,7 @@ XDC=leon3mp.xdc
 TCL=stub.tcl
 
 VHDLSYNFILES= \
-	config.vhd ahbrom.vhd ahb2axi.vhd leon3mp.vhd
+	config.vhd ahbrom.vhd leon3mp.vhd
 
 VHDLSIMFILES= \
 	leon3_zc702_stub_sim.vhd testbench.vhd
@@ -28,7 +28,7 @@ TECHLIBS = secureip unisim
 
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp usbhc gsi cypress hynix \
-	spansion leon4v0 secureip spw
+	spansion leon4v0 spw
 DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan pci ambatest can \
 	usb grusbhc ascs slink spi hcan spacewire \
 	leon4v0 l2cache pwm gr1553b iommu ac97 secureip

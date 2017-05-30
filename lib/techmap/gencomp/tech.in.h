@@ -30,6 +30,8 @@
 #define CONFIG_SYN_TECH stratix3
 #elif defined CONFIG_SYN_STRATIXIV
 #define CONFIG_SYN_TECH stratix4
+#elif defined CONFIG_SYN_STRATIXV
+#define CONFIG_SYN_TECH stratix5
 #elif defined CONFIG_SYN_CYCLONEII
 #define CONFIG_SYN_TECH stratix2
 #elif defined CONFIG_SYN_CYCLONEIII
@@ -145,19 +147,19 @@
 #endif
 
 #if defined CONFIG_TRANS_GTP0
-#define CFG_TRANS_TECH GTP0
+#define CFG_TRANS_TECH TT_XGTP0
 #elif defined CONFIG_TRANS_GTP1
-#define CFG_TRANS_TECH GTP1
+#define CFG_TRANS_TECH TT_XGTP1
 #elif defined CONFIG_TRANS_GTX0
-#define CFG_TRANS_TECH GTX0
+#define CFG_TRANS_TECH TT_XGTX0
 #elif defined CONFIG_TRANS_GTX1
-#define CFG_TRANS_TECH GTX1
+#define CFG_TRANS_TECH TT_XGTX1
 #elif defined CONFIG_TRANS_GTH0
-#define CFG_TRANS_TECH GTH0
+#define CFG_TRANS_TECH TT_XGTH0
 #elif defined CONFIG_TRANS_GTH1
-#define CFG_TRANS_TECH GTH1
+#define CFG_TRANS_TECH TT_XGTH1
 #else
-#define CFG_TRANS_TECH GTP0
+#define CFG_TRANS_TECH TT_XGTP0
 #endif
 
 #if defined CONFIG_SYN_INFER_PADS

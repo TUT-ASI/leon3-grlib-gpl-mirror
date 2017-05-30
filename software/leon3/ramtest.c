@@ -25,11 +25,11 @@ cramtest()
 	isets = ((icconf >> 24) & 3) + 1;
 	ilinesz = 1 << (((icconf >> 16) & 7) + 2);
 	ibytes = (1 << (((icconf >> 20) & 15) + 10)) * isets;
-	itmask = (ilinesz - 1) | (0x80000000 - ibytes);
+	itmask = 1 | (0x80000000 - ibytes);
 	dsets = ((dcconf >> 24) & 3) + 1;
 	dlinesz = 1 << (((dcconf >> 16) & 7) + 2);
 	dbytes = (1 << (((dcconf >> 20) & 15) + 10)) * dsets;
-	dtmask = (dlinesz - 1) | (0x80000000 - dbytes);
+	dtmask = 1 | (0x80000000 - dbytes);
 
 	do cachectrl = rsysreg(0); while(cachectrl & (CCTRL_IFP | CCTRL_DFP));
 

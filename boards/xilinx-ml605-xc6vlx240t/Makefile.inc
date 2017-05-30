@@ -8,7 +8,7 @@ PART=XC6VLX240T
 PACKAGE=ff1156
 SPEED=-1
 SYNFREQ=220
-PROMGENPAR=-x xcf08p -u 0 $(TOP).bit -p mcs -w -o xilinx-ml605-xc6vlx240t
+PROMGENPAR=-w -p mcs -o xilinx-ml605-xc6vlx240t -s 32768 -data_width 16 -u 0x800000 ./$(TOP).bit
 
 MANUFACTURER=Xilinx
 MGCPART=XC6VLX16$(PACKAGE)

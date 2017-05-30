@@ -73,8 +73,8 @@ Slide switches:
 Simulation and synthesis
 ------------------------
 
-* Note: Simulation for this design is currently broken due to
-  simulation library collisions.
+The design currently supports simulation with modelsim 10.5a and riviera 2017.2
+The design currently supports synthesis with quartus 16.0
 
 * To simulate the design with ModelSim or Riviera first set the
   GRLIB_SIMULATOR environment variable accordingly (see GRLIB 

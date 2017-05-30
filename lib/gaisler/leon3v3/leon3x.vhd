@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -52,7 +52,7 @@ entity leon3x is
     cp         :     integer range 0 to 1     := 0;
     mac        :     integer range 0 to 1     := 0;
     pclow      :     integer range 0 to 2     := 2;
-    notag      :     integer range 0 to 1     := 0;
+    notag      :     integer range 0 to 1     := 0;  -- unused
     nwp        :     integer range 0 to 4     := 0;
     icen       :     integer range 0 to 1     := 0;
     irepl      :     integer range 0 to 3     := 2;
@@ -87,7 +87,7 @@ entity leon3x is
     smp        :     integer range 0 to 15    := 0;
     iuft       :     integer range 0 to 6     := 0;
     fpft       :     integer range 0 to 6     := 0;
-    cmft       :     integer range 0 to 1     := 0;
+    cmft       :     integer range 0 to 255     := 0;
     iuinj      :     integer                  := 0;
     ceinj      :     integer range 0 to 3     := 0;
     cached     :     integer                  := 0;
@@ -174,11 +174,11 @@ begin
      p0 : proc3
        generic map (
          hindex, fabtech, memtech, nwindows, dsu, fpuarch, v8, cp, mac, pclow,
-         notag, nwp, icen, irepl, isets, ilinesize, isetsize, isetlock, dcen,
+         0, nwp, icen, irepl, isets, ilinesize, isetsize, isetlock, dcen,
          drepl, dsets, dlinesize, dsetsize, dsetlock, dsnoop, ilram, ilramsize,
          ilramstart, dlram, dlramsize, dlramstart, mmuen, itlbnum, dtlbnum,
          tlb_type, tlb_rep, lddel, disas, tbuf, pwd, svt, rstaddr, smp,
-         cached, clk2x, scantest, mmupgsz, bp, npasi, pwrpsr, rex, altwin)
+         cached, clk2x, scantest, mmupgsz, bp, npasi, pwrpsr, rex, altwin, MEMTECH_MOD*(1-IURF_INFER), 0)
        port map (gclk2, rst, holdn, ahbi, ahbo, ahbsi, ahbso, rfi, rfo, crami, cramo, 
                  tbi, tbo, tbi_2p, tbo_2p, fpi, fpo, cpi, cpo, irqi, irqo, dbgi, dbgo, clk, clk2, clken
                  );
@@ -388,6 +388,7 @@ begin
          dbgo_dstat_mhold  => dbgo.dstat.mhold,
          dbgo_wbhold       => dbgo.wbhold,
          dbgo_su           => dbgo.su,
+         dbgo_ducnt        => dbgo.ducnt,
          --fpui       => fpui,
          --fpuo       => fpuo,
          clken      => clken);

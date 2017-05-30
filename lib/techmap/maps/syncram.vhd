@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -49,8 +49,7 @@ end;
 
 architecture rtl of syncram is
   constant nctrl : integer := abits + (TESTIN_WIDTH-2) + 2;
-  signal rena, wena : std_logic;
-  signal dataoutx, databp, testdata : std_logic_vector((dbits -1) downto 0);
+  signal dataoutx : std_logic_vector((dbits -1) downto 0);
   constant SCANTESTBP : boolean := (testen = 1) and syncram_add_scan_bypass(tech)=1;
   signal xenable, xwrite: std_ulogic;
 
@@ -68,28 +67,32 @@ begin
 
   -- RAM bypass for scan
   scanbp : if SCANTESTBP generate
-    comb : process (address, datain, enable, write, testin)
-    variable tmp : std_logic_vector((dbits -1) downto 0);
-    variable ctrlsigs : std_logic_vector((nctrl -1) downto 0);
+    scanbpblck : block
+      signal databp, testdata : std_logic_vector((dbits -1) downto 0);
     begin
-      ctrlsigs := testin(TESTIN_WIDTH-3 downto 0) & write & enable & address;
-      tmp := datain;
-      for i in 0 to nctrl-1 loop
-	tmp(i mod dbits) := tmp(i mod dbits) xor ctrlsigs(i);
-      end loop;
-      testdata <= tmp;
-    end process;
+      comb : process (address, datain, enable, write, testin)
+        variable tmp : std_logic_vector((dbits -1) downto 0);
+        variable ctrlsigs : std_logic_vector((nctrl -1) downto 0);
+      begin
+        ctrlsigs := testin(TESTIN_WIDTH-3 downto 0) & write & enable & address;
+        tmp := datain;
+        for i in 0 to nctrl-1 loop
+          tmp(i mod dbits) := tmp(i mod dbits) xor ctrlsigs(i);
+        end loop;
+        testdata <= tmp;
+      end process;
 
-    reg : process (clk)
-    begin
-      if rising_edge(clk) then
-	databp <= testdata;
-      end if;
-    end process;
-    dmuxout : for i in 0 to dbits-1 generate
-      x0: grmux2 generic map (tech)
-      port map (dataoutx(i), databp(i), testin(TESTIN_WIDTH-1), dataout(i));
-    end generate;
+      reg : process (clk)
+      begin
+        if rising_edge(clk) then
+          databp <= testdata;
+        end if;
+      end process;
+      dmuxout : for i in 0 to dbits-1 generate
+        x0: grmux2 generic map (tech)
+          port map (dataoutx(i), databp(i), testin(TESTIN_WIDTH-1), dataout(i));
+      end generate;
+    end block scanbpblck;
   end generate;
 
     custominx <= (others => '0');
@@ -99,7 +102,7 @@ begin
     customoutx <= (others => '0');
   end generate;
 
-    noscanbp : if not SCANTESTBP generate dataout <= dataoutx; end generate;
+  noscanbp : if not SCANTESTBP generate dataout <= dataoutx; end generate;
 
   inf : if tech = inferred generate
     x0 : generic_syncram generic map (abits, dbits)
@@ -174,6 +177,15 @@ begin
     customoutx(customoutx'high downto 8) <= (others => '0');
   end generate;
 
+  rhsb : if tech = memrhs65b generate
+    x0 : rhs65_syncram_bist generic map (abits, dbits)
+         port map (clk, address, datain, dataoutx, enable, write,
+                   testin(TESTIN_WIDTH-3),testin(TESTIN_WIDTH-4),
+                   custominx(47 downto 0),customoutx(47 downto 0),
+                   testin(TESTIN_WIDTH-5),'0');
+    customoutx(customoutx'high downto 48) <= (others => '0');
+  end generate;
+
   dar  : if tech = dare generate
     x0 : dare_syncram generic map (abits, dbits)
          port map (clk, address, datain, dataoutx, xenable, xwrite);
@@ -210,7 +222,8 @@ begin
   end generate;
 
   alt : if (tech = altera) or (tech = stratix1) or (tech = stratix2) or
-	(tech = stratix3) or (tech = stratix4) or (tech = cyclone3) generate
+	(tech = stratix3) or (tech = stratix4) or (tech = cyclone3) or
+        (tech = stratix5) generate
     x0 : altera_syncram generic map(abits, dbits)
          port map(clk, address, datain, dataoutx, xenable, xwrite);
   end generate;
@@ -256,11 +269,15 @@ begin
   end generate;
 
   ecl : if tech = eclipse generate
-    rena <= xenable and not write;
-    wena <= xenable and write;
-    x0 : eclipse_syncram_2p generic map(abits, dbits)
-         port map(clk, rena, address, dataoutx, clk, address,
-	          datain, wena);
+    eclblk : block
+      signal rena, wena : std_logic;
+    begin
+      rena <= xenable and not write;
+      wena <= xenable and write;
+      x0 : eclipse_syncram_2p generic map(abits, dbits)
+        port map(clk, rena, address, dataoutx, clk, address,
+                 datain, wena);
+    end block eclblk;
   end generate;
 
   virage90 : if tech = memvirage90 generate

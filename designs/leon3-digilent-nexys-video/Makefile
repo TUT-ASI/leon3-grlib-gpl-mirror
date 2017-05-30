@@ -46,7 +46,7 @@ VSIMOPT+= -L secureip -L unisims_ver -L unisim
 endif
 
 # - MIG -
-ifeq ($(CONFIG_MIG_SERIES7),y)
+ifeq ($(CONFIG_MIG_7SERIES),y)
 VSIMOPT+= -t fs -novopt
 VSIMOPT+= -L secureip_ver -L xilinxcorelib_ver -L unisims_ver glbl
 ifndef CONFIG_MIG_SERIES_7_MODEL
@@ -64,7 +64,7 @@ VSIMOPT+= -novopt +notimingchecks
 endif
 
 # Simulation scripts
-VSIMOPT+= -do wave.do
+VSIMOPT+= -do "wave.do; $(GRLIB)/bin/runvsim.do"
 
 # Toplevel
 VSIMOPT+= $(SIMTOP)

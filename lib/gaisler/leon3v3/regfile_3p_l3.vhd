@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -56,22 +56,11 @@ end;
 architecture rtl of regfile_3p_l3 is
   
 constant rfinfer : boolean := (regfile_3p_infer(tech) = 1);
-signal wd1, wd2  : std_logic_vector((dbits -1 + 8) downto 0);
-signal e1, e2 : std_logic_vector((dbits-1) downto 0);
-signal we1, we2 : std_ulogic;
-
 signal vcc, gnd : std_ulogic;
-signal vgnd : std_logic_vector(dbits-1 downto 0);
-signal write2, renable2 : std_ulogic;
-
 
 begin
 
-  vcc <= '1'; gnd <= '0'; vgnd <= (others => '0');
-  we1 <= we 
-        ;
-  we2 <= we
-        ;
+  vcc <= '1'; gnd <= '0';
   
   s0 : if rfinfer generate
       inf : regfile_3p generic map (0, abits, dbits, wrfst, numregs, testen, memtest_vlen)

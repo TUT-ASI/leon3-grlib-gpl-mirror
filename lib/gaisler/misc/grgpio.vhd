@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2016, Cobham Gaisler
+--  Copyright (C) 2015 - 2017, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -344,7 +344,7 @@ begin
       end loop;
 
       if iflagreg /= 0 then
-        v.iflag := tmp2(nbits-1 downto 0) and PIMASK(nbits-1 downto 0);
+        v.iflag := v.iflag or (tmp2(nbits-1 downto 0) and PIMASK(nbits-1 downto 0));
       end if;
 
     end if;

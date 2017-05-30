@@ -93,6 +93,7 @@
   constant CFG_L2_MAP  	: integer := 16#CONFIG_L2_MAP#;
   constant CFG_L2_MTRR 	: integer := CONFIG_L2_MTRR;
   constant CFG_L2_EDAC	: integer := CONFIG_L2_EDAC;
+  constant CFG_L2_AXI	  : integer := CONFIG_L2_AXI;
 
 -- AMBA settings
   constant CFG_DEFMST  	  : integer := CONFIG_AHB_DEFMST;
@@ -190,6 +191,7 @@
   constant CFG_SPICTRL_MAXWLEN : integer := CONFIG_SPICTRL_MAXWLEN;
   constant CFG_SPICTRL_SYNCRAM : integer := CONFIG_SPICTRL_SYNCRAM;
   constant CFG_SPICTRL_FT      : integer := CONFIG_SPICTRL_FT;
+  constant CFG_SPICTRL_PROT    : integer := CONFIG_SPICTRL_PROT;
 
 -- UART 1
   constant CFG_UART1_ENABLE : integer := CONFIG_UART1_ENABLE;

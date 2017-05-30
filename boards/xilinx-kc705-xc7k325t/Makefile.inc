@@ -2,7 +2,7 @@
 TECHNOLOGY=Kintex7
 PART=XC7K325T
 PACKAGE=ffg900
-PROTOBOARD=xilinx.com:kintex7:kc705:1.0
+PROTOBOARD=xilinx.com:kc705:part0:1.0
 SPEED=2
 PROMGENPAR=-u 0 $(TOP).bit -p mcs -data_width 16 -w -o $(BOARD)
 
