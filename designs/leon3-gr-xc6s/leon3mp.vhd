@@ -1169,12 +1169,16 @@ begin
               do         => spwi(i).d(j*2+1 downto j*2),
               dov        => spwi(i).dv(j*2+1 downto j*2),
               dconnect   => spwi(i).dconnect(j*2+1 downto j*2),
+              dconnect2  => spwi(i).dconnect2(j*2+1 downto j*2),
+              dconnect3  => spwi(i).dconnect3(j*2+1 downto j*2),
               rxclko     => spw_rxclk(i*CFG_SPW_PORTS+j));
         end generate;
         oneport : if CFG_SPW_PORTS = 1 generate
           spwi(i).d(3 downto 2) <= "00";  -- For second port
 	  spwi(i).dv(3 downto 2) <= "00";  -- For second port
-	  spwi(i).dconnect(3 downto 2) <= "00";  -- For second port
+	  spwi(i).dconnect(3 downto 2)  <= "00";  -- For second port
+	  spwi(i).dconnect2(3 downto 2) <= "00";  -- For second port
+	  spwi(i).dconnect3(3 downto 2) <= "00";  -- For second port
         end generate;
         spwi(i).nd <= (others => '0');  -- Only used in GRSPW
       end generate;
@@ -1199,9 +1203,11 @@ begin
           spwi(i).d(1) <= '0';      -- For second port
           spwi(i).d(3 downto 2) <= "00";  -- For GRSPW2 second port
 	  spwi(i).nd(9 downto 5) <= "00000";  -- For second port
-	  spwi(i).dconnect(3 downto 2) <= "00";  -- For second port
+	  spwi(i).dconnect(3 downto 2)  <= "00";  -- For second port
         end generate;
         spwi(i).dv <= (others => '0');  -- Only used in GRSPW2
+        spwi(i).dconnect2 <= (others => '0');  -- Only used in GRSPW2
+        spwi(i).dconnect3 <= (others => '0');  -- Only used in GRSPW2
       end generate spw1_input;
 
       sw0 : grspwm generic map(tech => memtech,
@@ -1214,9 +1220,9 @@ begin
         rmapbufs => CFG_SPW_RMAPBUF, ft => CFG_SPW_FT, ports => CFG_SPW_PORTS,
         spwcore => CFG_SPW_GRSPW, netlist => CFG_SPW_NETLIST,
         rxtx_sameclk => CFG_SPW_RTSAME, input_type => CFG_SPW_INPUT,
-        output_type => CFG_SPW_OUTPUT)
-      port map(rstn, clkm, spw_rxclk(i*CFG_SPW_PORTS), spw_rxclk(i*CFG_SPW_PORTS+1),
-               spw_rxtxclk, spw_rxtxclk, ahbmi,
+        output_type => CFG_SPW_OUTPUT, internalrstgen => 1)
+      port map(rstn, clkm, gnd, gnd, spw_rxclk(i*CFG_SPW_PORTS), gnd, spw_rxclk(i*CFG_SPW_PORTS+1),
+               gnd, spw_rxtxclk, spw_rxtxclk, ahbmi,
                ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_GRETH+CFG_AHB_JTAG+i),
                apbi2, apbo2(10+i), spwi(i), spwo(i));
       spwi(i).tickin <= '0'; spwi(i).rmapen <= '1';

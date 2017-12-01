@@ -160,7 +160,7 @@ begin
     case r.s1state is
       when s1idle =>
         if s1acc = '1' then
-          if s0acc = '1' or slvso.hready = '0' or (r.s0state = s0active and s0lock = '1') then
+          if s0acc = '1' or (r.s0state = s0active and (s0lock = '1' or slvso.hready = '0')) then
             v.s1state := s1busy;
           else
             v.s1state := s1active;
@@ -201,7 +201,7 @@ begin
     if (force = '0' and ((r.s0state = s0busy and s1acc = '0' and not (r.s1state = s1active and s1lock = '1')) or 
                          (r.s1state = s1busy and s0acc = '0' and not (r.s0state = s0active and s0lock = '1')))) then
       slvsi_mux <= busy_ahbsi;
-    elsif (force = '0' and ((s1acc = '1' or (r.s1state = s1active and s1lock = '1')) and    -- S1 pending or active (locked)
+    elsif (force = '0' and ((s1acc = '1' or (r.s1state = s1active and (s1lock = '1' or slvso.hready = '0'))) and    -- S1 pending or active (locked)
                            ((s0acc = '0' and not (r.s0state = s0active and s0lock = '1'))   -- AND S0 not pendign or active
                             or r.s1state = s1active))) then                                 --     OR S1 already active
       slvsi_mux <= ahbs1i;

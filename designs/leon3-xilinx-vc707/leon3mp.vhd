@@ -292,7 +292,7 @@ signal aximo : axi_mosi_type;
 
 signal ui_clk : std_ulogic;
 signal clkm : std_ulogic := '0';
-signal rstn, rstraw, sdclkl : std_ulogic;
+signal rstn, urstn, rstraw, sdclkl : std_ulogic;
 signal clk_200 : std_ulogic;
 signal clk25, clk40, clk65 : std_ulogic;
 
@@ -395,6 +395,7 @@ begin
    end generate;
 
   reset_pad : inpad generic map (tech => padtech, level => cmos, voltage => x18v) port map (reset, rst);
+
   rst0 : rstgen         -- reset generator
   generic map (acthigh => 1, syncin => 0)
   port map (rst, clkm, lock, rstn, rstraw);
@@ -403,6 +404,10 @@ begin
   rst1 : rstgen         -- reset generator
   generic map (acthigh => 1)
   port map (rst, clkm, lock, migrstn, open);
+
+  rst2 : rstgen         -- reset generator (USB)
+  generic map (acthigh => 1)
+  port map (rst, uclk, vcc(0), urstn, open);
 
 ----------------------------------------------------------------------
 ---  AHB CONTROLLER --------------------------------------------------
@@ -943,7 +948,7 @@ begin
         be_desc => CFG_GRUSBHC_BEDESC, uhcblo => CFG_GRUSBHC_BLO,
         bwrd => CFG_GRUSBHC_BWRD, vbusconf => CFG_GRUSBHC_VBUSCONF)
       port map (
-        clkm,uclk,rstn,apbi,apbo(13),ahbmi,ahbsi,
+        clkm,uclk,rstn,urstn,apbi,apbo(13),ahbmi,ahbsi,
         ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH),
         ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH+1
               downto
@@ -981,6 +986,7 @@ begin
         memtech => memtech, keepclk => 1)
       port map(
         uclk  => uclk,
+        urst  => urstn,
         usbi  => usbi(0),
         usbo  => usbo(0),
         hclk  => clkm,
@@ -1001,7 +1007,7 @@ begin
         hindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH,
         memtech => memtech, keepclk => 1, uiface => 1)
       port map (
-        uclk, usbi(0), usbo(0), clkm, rstn, ahbmi,
+        uclk, urstn, usbi(0), usbo(0), clkm, rstn, ahbmi,
         ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH));
   end generate usb_dcl0;
 

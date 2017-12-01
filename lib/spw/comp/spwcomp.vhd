@@ -34,7 +34,7 @@ package spwcomp is
       ports           : integer range 1 to 2 := 1;
       dmachan         : integer range 1 to 4 := 1;
       tech            : integer;
-      input_type      : integer range 0 to 4 := 0;
+      input_type      : integer range 0 to 6 := 0;
       output_type     : integer range 0 to 2 := 0;
       rxtx_sameclk    : integer range 0 to 1 := 0;
       nodeaddr        : integer range 0 to 255 := 254;
@@ -53,13 +53,18 @@ package spwcomp is
       pnppatch        : integer range 0 to 16#FF# := 0;
       num_txdesc      : integer range 64 to 512 := 64;
       num_rxdesc      : integer range 128 to 1024 := 128;
-      ccsdscrc        : integer range 0 to 1 := 0
+      ccsdscrc        : integer range 0 to 1 := 0;
+      rstsrctmr       : integer range 0 to 1 := 0
       );
     port(
       rst          : in  std_ulogic;
       clk          : in  std_ulogic;
+      rxasyncrst   : in  std_ulogic;
+      rxsyncrst0   : in  std_ulogic;
       rxclk0       : in  std_ulogic;
+      rxsyncrst1   : in  std_ulogic;
       rxclk1       : in  std_ulogic;
+      txsyncrst    : in  std_ulogic;
       txclk        : in  std_ulogic;
       txclkn       : in  std_ulogic;
       --ahb mst in
@@ -89,6 +94,8 @@ package spwcomp is
       d            : in   std_logic_vector(3 downto 0);
       dv           : in   std_logic_vector(3 downto 0);
       dconnect     : in   std_logic_vector(3 downto 0);
+      dconnect2    : in   std_logic_vector(3 downto 0);
+      dconnect3    : in   std_logic_vector(3 downto 0);
       --spw out
       do           : out  std_logic_vector(3 downto 0);
       so           : out  std_logic_vector(3 downto 0);
@@ -152,7 +159,10 @@ package spwcomp is
       pnpen        : in   std_ulogic;
       pnpuvendid   : in   std_logic_vector(15 downto 0);
       pnpuprodid   : in   std_logic_vector(15 downto 0);
-      pnpusn       : in   std_logic_vector(31 downto 0)
+      pnpusn       : in   std_logic_vector(31 downto 0);
+      -- Reset interconnection
+      ctrlregrst   : out  std_ulogic;
+      rxrst        : out  std_ulogic
     );
   end component;
 
@@ -505,19 +515,24 @@ package spwcomp is
   component grspw_codec_core is
   generic(
     ports        : integer range 1 to 2 := 1;
-    input_type   : integer range 0 to 4 := 0;
+    input_type   : integer range 0 to 6 := 0;
     output_type  : integer range 0 to 2 := 0;
     rxtx_sameclk : integer range 0 to 1 := 0;
     fifosize     : integer range 16 to 2048 := 64;
     tech         : integer;
     scantest     : integer range 0 to 1 := 0;
-    inputtest    : integer range 0 to 1 := 0
+    inputtest    : integer range 0 to 1 := 0;
+    rstsrctmr    : integer range 0 to 1 := 0
     );
   port(
     rst          : in  std_ulogic;
     clk          : in  std_ulogic;
+    rxasyncrst   : in  std_ulogic;
+    rxsyncrst0   : in  std_ulogic;
     rxclk0       : in  std_ulogic;
+    rxsyncrst1   : in  std_ulogic;
     rxclk1       : in  std_ulogic;
+    txsyncrst    : in  std_ulogic;
     txclk        : in  std_ulogic;
     txclkn       : in  std_ulogic;
     testen       : in  std_ulogic;
@@ -526,6 +541,8 @@ package spwcomp is
     d            : in  std_logic_vector(3 downto 0);
     dv           : in  std_logic_vector(3 downto 0);
     dconnect     : in  std_logic_vector(3 downto 0);
+    dconnect2    : in  std_logic_vector(3 downto 0);
+    dconnect3    : in  std_logic_vector(3 downto 0);
     --spw out
     do           : out std_logic_vector(3 downto 0);
     so           : out std_logic_vector(3 downto 0);
@@ -588,7 +605,9 @@ package spwcomp is
     -- input timing testing
     testdi       : in  std_logic_vector(1 downto 0) := "00";
     testsi       : in  std_logic_vector(1 downto 0) := "00";
-    testinput    : in  std_ulogic := '0'
+    testinput    : in  std_ulogic := '0';
+    -- Reset interconnection
+    rxrst        : out  std_ulogic
   );
   end component;
 
@@ -604,7 +623,7 @@ package spwcomp is
       ports           : integer range 1 to 2 := 1;
       dmachan         : integer range 1 to 4 := 1;
       tech            : integer;
-      input_type      : integer range 0 to 4 := 0;
+      input_type      : integer range 0 to 6 := 0;
       output_type     : integer range 0 to 2 := 0;
       rxtx_sameclk    : integer range 0 to 1 := 0;
       ft              : integer range 0 to 2 := 0;
@@ -626,13 +645,18 @@ package spwcomp is
       pnppatch        : integer range 0 to 16#FF# := 0;
       num_txdesc      : integer range 64 to 512 := 64;
       num_rxdesc      : integer range 128 to 1024 := 128;
-      ccsdscrc        : integer range 0 to 1 := 0
+      ccsdscrc        : integer range 0 to 1 := 0;
+      rstsrctmr       : integer range 0 to 1 := 0
       );
     port(
       rst          : in  std_ulogic;
       clk          : in  std_ulogic;
+      rxasyncrst   : in  std_ulogic;
+      rxsyncrst0   : in  std_ulogic;
       rxclk0       : in  std_ulogic;
+      rxsyncrst1   : in  std_ulogic;
       rxclk1       : in  std_ulogic;
+      txsyncrst    : in  std_ulogic;
       txclk        : in  std_ulogic;
       txclkn       : in  std_ulogic;
       --ahb mst in
@@ -662,6 +686,8 @@ package spwcomp is
       d            : in   std_logic_vector(3 downto 0);
       dv           : in   std_logic_vector(3 downto 0);
       dconnect     : in   std_logic_vector(3 downto 0);
+      dconnect2    : in   std_logic_vector(3 downto 0);
+      dconnect3    : in   std_logic_vector(3 downto 0);
       --spw out
       do           : out  std_logic_vector(3 downto 0);
       so           : out  std_logic_vector(3 downto 0);
@@ -697,7 +723,10 @@ package spwcomp is
       pnpen        : in   std_ulogic;
       pnpuvendid   : in   std_logic_vector(15 downto 0);
       pnpuprodid   : in   std_logic_vector(15 downto 0);
-      pnpusn       : in   std_logic_vector(31 downto 0)
+      pnpusn       : in   std_logic_vector(31 downto 0);
+      -- Reset interconnection
+      ctrlregrst   : out  std_ulogic;
+      rxrst        : out  std_ulogic
     );
   end component;
 
@@ -705,20 +734,25 @@ package spwcomp is
   component grspw_codec_gen is
     generic(
       ports        : integer range 1 to 2 := 1;
-      input_type   : integer range 0 to 4 := 0;
+      input_type   : integer range 0 to 6 := 0;
       output_type  : integer range 0 to 2 := 0;
       rxtx_sameclk : integer range 0 to 1 := 0;
       fifosize     : integer range 16 to 2048 := 64;
       tech         : integer;
       scantest     : integer range 0 to 1 := 0;
       techfifo     : integer range 0 to 1 := 0;
-      ft           : integer range 0 to 2 := 0
+      ft           : integer range 0 to 2 := 0;
+      rstsrctmr    : integer range 0 to 1 := 0
       );
     port(
       rst          : in  std_ulogic;
       clk          : in  std_ulogic;
+      rxasyncrst   : in  std_ulogic;
+      rxsyncrst0   : in  std_ulogic;
       rxclk0       : in  std_ulogic;
+      rxsyncrst1   : in  std_ulogic;
       rxclk1       : in  std_ulogic;
+      txsyncrst    : in  std_ulogic;
       txclk        : in  std_ulogic;
       txclkn       : in  std_ulogic;
       testen       : in  std_ulogic;
@@ -727,6 +761,8 @@ package spwcomp is
       d            : in  std_logic_vector(3 downto 0);
       dv           : in  std_logic_vector(3 downto 0);
       dconnect     : in  std_logic_vector(3 downto 0);
+      dconnect2    : in  std_logic_vector(3 downto 0);
+      dconnect3    : in  std_logic_vector(3 downto 0);
       --spw out
       do           : out std_logic_vector(3 downto 0);
       so           : out std_logic_vector(3 downto 0);
@@ -765,11 +801,11 @@ package spwcomp is
       tickout      : out std_ulogic;
       timeout      : out std_logic_vector(7 downto 0);
       --misc
-      merror       : out std_ulogic
+      merror       : out std_ulogic;
+      -- Reset interconnection
+      rxrst        : out std_ulogic
     );
   end component;
-
-
 
 end package;
 

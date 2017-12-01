@@ -188,48 +188,65 @@ package gr1553b_pkg is
       clk: in std_logic;
       rst: in std_logic;
       codec_clk: in std_logic;
-      codec_rst: in std_logic;      
-      -- AHB interface      
+      codec_rst: in std_logic;
+  
+      -- AHB interface
+      
       mi_hgrant	: in std_logic;                         -- bus grant
       mi_hready	: in std_ulogic;                        -- transfer done
       mi_hresp	: in std_logic_vector(1 downto 0); 	-- response type
       mi_hrdata	: in std_logic_vector(31 downto 0); 	-- read data bus      
-      mo_hbusreq: out std_ulogic;                       -- bus request
+      mo_hbusreq : out std_ulogic;                      -- bus request
       mo_htrans	: out std_logic_vector(1 downto 0); 	-- transfer type
       mo_haddr	: out std_logic_vector(31 downto 0); 	-- address bus (byte)
       mo_hwrite	: out std_ulogic;                       -- read/write
       mo_hsize	: out std_logic_vector(2 downto 0); 	-- transfer size
       mo_hburst	: out std_logic_vector(2 downto 0); 	-- burst type
       mo_hwdata	: out std_logic_vector(31 downto 0); 	-- write data bus
-      -- APB interface    
+  
+      -- APB interface
+      
       si_psel	: in std_logic;                         -- slave select
-      si_penable: in std_ulogic;                        -- strobe
+      si_penable : in std_ulogic;                       -- strobe
       si_paddr	: in std_logic_vector(7 downto 0); 	-- address bus (byte addr)
       si_pwrite	: in std_ulogic;                        -- write
       si_pwdata	: in std_logic_vector(31 downto 0); 	-- write data bus
       so_prdata	: out std_logic_vector(31 downto 0); 	-- read data bus
       so_pirq 	: out std_logic;                        -- interrupt bus    
+  
       -- Aux signals
-      bcsync    : in std_logic;
-      rtsync    : out std_logic;
-      busreset  : out std_logic;
-      rtaddr    : in std_logic_vector(4 downto 0);
-      rtaddrp   : in std_logic;
+      bcsync     : in std_logic;                        -- external sync input for BC
+      rtaddr     : in std_logic_vector(4 downto 0);     -- reset value for RT address
+      rtaddrp    : in std_logic;                        -- RT address odd parity
+  
+      rtsync     : out std_logic;
+      busreset   : out std_logic;
+      validcmda  : out std_logic;
+      validcmdb  : out std_logic;
+      timedouta  : out std_logic;
+      timedoutb  : out std_logic;
+      badreg     : out std_logic;
+      irqvec     : out std_logic_vector(7 downto 0);
+  
       -- 1553 transceiver interface
-      busainen   : out std_logic;
-      busainp    : in  std_logic;
-      busainn    : in  std_logic;
-      busaouten  : out std_logic;  
-      busaoutp   : out std_logic;
-      busaoutn   : out std_logic;
-      busbinen   : out std_logic;
-      busbinp    : in  std_logic;
-      busbinn    : in  std_logic;
-      busbouten  : out std_logic;
-      busboutp   : out std_logic;
-      busboutn   : out std_logic
-    );  
+      busainen   : out std_logic;                     -- bus A receiver enable
+      busainp    : in  std_logic;                     -- bus A receiver, positive input
+      busainn    : in  std_logic;                     -- bus A receiver, negative input
+      busaouten  : out std_logic;                     -- bus A transmitter enable
+      busaoutp   : out std_logic;                     -- bus A transmitter, positive output
+      busaoutn   : out std_logic;                     -- bus A transmitter, negative output
+      busa_txin  : out std_logic;                     -- bus A transmitter enable (inverted)
+  
+      busbinen   : out std_logic;                     -- bus B receiver enable
+      busbinp    : in  std_logic;                     -- bus B receiver, positive input
+      busbinn    : in  std_logic;                     -- bus B receiver, negative input
+      busbouten  : out std_logic;                     -- bus B transmitter enable
+      busboutp   : out std_logic;                     -- bus B transmitter, positive output
+      busboutn   : out std_logic;                     -- bus B transmitter, negative output
+      busb_txin  : out std_logic                      -- bus B transmitter enable (inverted)
+      );  
   end component;
+  
   
   component gr1553b_nlw is
     generic(

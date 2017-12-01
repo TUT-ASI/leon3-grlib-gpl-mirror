@@ -259,6 +259,14 @@ begin
       end if;
     end if;
         
+    mcmmi.next_address  <= v.wb.addr;
+    mcmmi.next_data     <= v.wb.data;
+    mcmmi.next_burst    <= '0';
+    mcmmi.next_size     <= "10";
+    mcmmi.next_read     <= v.wb.read;
+    mcmmi.next_lock     <= '0';
+    mcmmi.next_req      <= v.req;
+
     -- # reset
     if (not ASYNC_RESET) and (not RESET_ALL) and ( rst = '0' ) then
       v.state := RRES.state;

@@ -240,6 +240,9 @@ package devices is
   constant GAISLER_GRSRIO        : amba_device_type := 16#0A8#;
   constant GAISLER_AHBLM2AHB     : amba_device_type := 16#0A9#;
   constant GAISLER_AHBS2NOC      : amba_device_type := 16#0AA#;
+  constant GAISLER_TCAU          : amba_device_type := 16#0AB#;
+  constant GAISLER_GRTMDYNVCID   : amba_device_type := 16#0AC#;
+  constant GAISLER_RNOCIRQPROP   : amba_device_type := 16#0AD#;
 
 -- Sun Microsystems
 
@@ -377,6 +380,7 @@ package devices is
 
   constant CONTRIB_CORE1 : amba_device_type := 16#001#;
   constant CONTRIB_CORE2 : amba_device_type := 16#002#;
+  constant CONTRIB_CORE3 : amba_device_type := 16#003#;
 
 -- grlib system device ids
 
@@ -583,6 +587,9 @@ package devices is
     GAISLER_GRSRIO        => "Serial RapidIO Logical Layer   ",
     GAISLER_AHBLM2AHB     => "AHB-Lite master to AHB master  ",
     GAISLER_AHBS2NOC      => "AHB slave to NoC               ",
+    GAISLER_TCAU          => "Authentication Unit            ",
+    GAISLER_GRTMDYNVCID   => "CCSDS Telemetry Dynamic VCID   ",
+    GAISLER_RNOCIRQPROP   => "RNoC Interrupt propagator      ",
     others                => "Unknown Device                 ");
 
   constant gaisler_lib : vendor_library_type := (
@@ -673,6 +680,7 @@ package devices is
   constant contrib_device_table : device_table_type := (
     CONTRIB_CORE1 => "Contributed core 1             ",
     CONTRIB_CORE2 => "Contributed core 2             ",
+    CONTRIB_CORE3 => "Contributed core 2             ",
     others        => "Unknown Device                 ");
 
   constant contrib_lib : vendor_library_type := (

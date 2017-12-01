@@ -1,3 +1,5 @@
+#include "report.h"
+
 #ifndef GRLIB_REPORTDEV_CUSTOM
 
 #ifndef GRLIB_REPORTDEV_WIDTH
@@ -29,19 +31,19 @@ static void grtestmod_write(r,v)
 
 #endif /* ifndef GRLIB_REPORTDEV_CUSTOM */
 
-report_start()
+int report_start(void)
 {
 	if (!get_pid()) grtestmod_write(4,1);
 	return(0);
 }
 
-report_end()
+int report_end(void)
 {
 	grtestmod_write(5,1);
 	return(0);
 }
 
-report_device(int dev)
+int report_device(unsigned int dev)
 {
 
 #if GRLIB_REPORTDEV_WIDTH < 32
@@ -53,13 +55,13 @@ report_device(int dev)
 	return(0);
 }
 
-report_subtest(int dev)
+int report_subtest(int subtest)
 {
-	grtestmod_write(2,dev);
+	grtestmod_write(2, subtest);
 	return(0);
 }
 
-fail(int dev)
+int fail(int dev)
 {
 	grtestmod_write(1,dev);
 	return(0);

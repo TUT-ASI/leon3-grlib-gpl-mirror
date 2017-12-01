@@ -41,7 +41,7 @@ entity gr1553b_stdlogic is
     bc_rtbusmask: integer range 0 to 1 := 1;
     extra_regkeys: integer range 0 to 1 := 0;
     syncrst: integer range 0 to 2 := 1;
-    ahbendian: integer := 0;
+    ahbendian: integer range 0 to 1 := 0;
     bm_filters: integer range 0 to 1 := 1;
     codecfreq: integer := 20;
     sameclk: integer range 0 to 1 := 0;
@@ -59,8 +59,7 @@ entity gr1553b_stdlogic is
     mi_hgrant	: in std_logic;                         -- bus grant
     mi_hready	: in std_ulogic;                        -- transfer done
     mi_hresp	: in std_logic_vector(1 downto 0); 	-- response type
-    mi_hrdata	: in std_logic_vector(31 downto 0); 	-- read data bus
-    
+    mi_hrdata	: in std_logic_vector(31 downto 0); 	-- read data bus    
     mo_hbusreq	: out std_ulogic;                       -- bus request
     mo_htrans	: out std_logic_vector(1 downto 0); 	-- transfer type
     mo_haddr	: out std_logic_vector(31 downto 0); 	-- address bus (byte)
@@ -71,7 +70,7 @@ entity gr1553b_stdlogic is
 
     -- APB interface
     
-    si_psel	: in std_logic;     -- slave select
+    si_psel	: in std_logic;                         -- slave select
     si_penable	: in std_ulogic;                        -- strobe
     si_paddr	: in std_logic_vector(7 downto 0); 	-- address bus (byte addr)
     si_pwrite	: in std_ulogic;                        -- write
@@ -80,26 +79,35 @@ entity gr1553b_stdlogic is
     so_pirq 	: out std_logic;                        -- interrupt bus    
 
     -- Aux signals
-    bcsync     : in std_logic;
+    bcsync     : in std_logic;                          -- external sync input for BC
+    rtaddr     : in std_logic_vector(4 downto 0);       -- reset value for RT address
+    rtaddrp    : in std_logic;                          -- RT address odd parity
+
     rtsync     : out std_logic;
     busreset   : out std_logic;
-
-    rtaddr     : in std_logic_vector(4 downto 0);
-    rtaddrp    : in std_logic;
+    validcmda  : out std_logic;
+    validcmdb  : out std_logic;
+    timedouta  : out std_logic;
+    timedoutb  : out std_logic;
+    badreg     : out std_logic;
+    irqvec     : out std_logic_vector(7 downto 0);
 
     -- 1553 transceiver interface
-    busainen   : out std_logic;
-    busainp    : in  std_logic;
-    busainn    : in  std_logic;
-    busaouten  : out std_logic;  
-    busaoutp   : out std_logic;
-    busaoutn   : out std_logic;
-    busbinen   : out std_logic;
-    busbinp    : in  std_logic;
-    busbinn    : in  std_logic;
-    busbouten  : out std_logic;
-    busboutp   : out std_logic;
-    busboutn   : out std_logic
+    busainen   : out std_logic;                     -- bus A receiver enable
+    busainp    : in  std_logic;                     -- bus A receiver, positive input
+    busainn    : in  std_logic;                     -- bus A receiver, negative input
+    busaouten  : out std_logic;                     -- bus A transmitter enable
+    busaoutp   : out std_logic;                     -- bus A transmitter, positive output
+    busaoutn   : out std_logic;                     -- bus A transmitter, negative output
+    busa_txin  : out std_logic;                     -- bus A transmitter enable (inverted)
+
+    busbinen   : out std_logic;                     -- bus B receiver enable
+    busbinp    : in  std_logic;                     -- bus B receiver, positive input
+    busbinn    : in  std_logic;                     -- bus B receiver, negative input
+    busbouten  : out std_logic;                     -- bus B transmitter enable
+    busboutp   : out std_logic;                     -- bus B transmitter, positive output
+    busboutn   : out std_logic;                     -- bus B transmitter, negative output
+    busb_txin  : out std_logic                      -- bus B transmitter enable (inverted)
     );
   
 end;
@@ -165,6 +173,7 @@ begin
   mi.testrst <= '0';
   mi.scanen <= '0';
   mi.testoen <= '0';
+  mi.testin <= (others => '0');
   
   mo_hbusreq <= mo.hbusreq;
   mo_htrans <= mo.htrans;
@@ -185,6 +194,7 @@ begin
   si.testrst <= '0';
   si.scanen <= '0';
   si.testoen <= '0';
+  si.testin <= (others => '0');
 
   so_prdata <= so.prdata;
   so_pirq <= so.pirq(0);
@@ -194,20 +204,28 @@ begin
   auxin.rtpar <= rtaddrp;
   rtsync <= auxout.rtsync;
   busreset <= auxout.busreset;
-    
+  validcmda <= auxout.validcmda;
+  validcmdb <= auxout.validcmdb;
+  timedouta <= auxout.timedouta;
+  timedoutb <= auxout.timedoutb;
+  badreg <= auxout.badreg;
+  irqvec <= auxout.irqvec;
+
   busainen <= gr1553b_txout.busA_rxen;
   gr1553b_rxin.busA_rxP <= busainp;
   gr1553b_rxin.busA_rxN <= busainn;
   busaouten <= gr1553b_txout.busA_txen;
   busaoutp <= gr1553b_txout.busA_txP;
   busaoutn <= gr1553b_txout.busA_txN;
-    
+  busa_txin <= gr1553b_txout.busA_txin;
+
   busBinen <= gr1553b_txout.busB_rxen;
   gr1553b_rxin.busB_rxP <= busBinp;
   gr1553b_rxin.busB_rxN <= busBinn;
   busBouten <= gr1553b_txout.busB_txen;
   busBoutp <= gr1553b_txout.busB_txP;
   busBoutn <= gr1553b_txout.busB_txN;
-  
+  busb_txin <= gr1553b_txout.busB_txin;
+
 end;
 

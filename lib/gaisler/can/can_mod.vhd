@@ -32,6 +32,8 @@ library opencores;
 use opencores.cancomp.all;
 library grlib;
 use grlib.stdlib.all;
+library gaisler;
+use gaisler.can.all;
 
 entity can_mod is
    generic (memtech : integer := DEFMEMTECH; syncrst : integer := 0;
@@ -160,31 +162,41 @@ begin
   end generate;
 
   noft : if (ft = 0) or (memtech = 0) generate
-    fifo : syncram_2p generic map(memtech,6,8,0)
+    fifo : syncram_2p generic map(tech => memtech, abits => 6, dbits => 8,
+                                  sepclk => 0, custombits => memtest_vlen)
     port map(rclk => clk, renable => rden_64x8, wclk => clk,
 	raddress => rdaddress_64x8, waddress => lwraddress_64x8,
 	datain => ldata_64x8, write => lwren_64x8, dataout => q_dp_64x8,
-	testin => testin);
+	testin => testin
+             );
 
-    info_fifo : syncram_2p generic map(memtech,6,5,0)
+    info_fifo : syncram_2p generic map(tech => memtech, abits => 6, dbits => 5,
+                                       sepclk => 0, custombits => memtest_vlen)
     port map(rclk => clk, wclk => clk, raddress => rdaddress_64x4x1,
 	waddress => lwraddress_64x4x1, datain => ldata_64x4,
      	write => lwren_64x4x1, dataout => lq_dp_64x4, renable =>vcc,
-	testin => testin);
+	testin => testin
+             );
   end generate;
 
   ften : if not((ft = 0) or (memtech = 0)) generate
-    fifo : syncram_2pft generic map(memtech,6,8,0,0,2)
+    fifo : syncram_2pft generic map(tech => memtech, abits => 6, dbits => 8,
+                                    sepclk => 0, wrfst => 0, ft => 2,
+                                    custombits => memtest_vlen)
     port map(rclk => clk, renable => rden_64x8, wclk => clk,
 	raddress => rdaddress_64x8, waddress => lwraddress_64x8,
 	datain => ldata_64x8, write => lwren_64x8, dataout => q_dp_64x8,
-	testin => testin);
+	testin => testin
+             );
 
-    info_fifo : syncram_2pft generic map(memtech,6,5,0,0,2)
+    info_fifo : syncram_2pft generic map(tech => memtech, abits => 6, dbits => 5,
+                                         sepclk => 0, wrfst => 0, ft => 2,
+                                         custombits => memtest_vlen)
     port map(rclk => clk, wclk => clk, raddress => rdaddress_64x4x1,
 	waddress => lwraddress_64x4x1, datain => ldata_64x4,
      	write => lwren_64x4x1, dataout => lq_dp_64x4, renable =>vcc,
-	testin => testin);
+	testin => testin
+             );
   end generate;
 
   q_dp_64x4 <= lq_dp_64x4(3 downto 0);

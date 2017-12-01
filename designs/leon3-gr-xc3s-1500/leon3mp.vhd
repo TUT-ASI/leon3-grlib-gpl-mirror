@@ -230,9 +230,10 @@ signal spw_clkln  : std_ulogic;
 
 signal stati : ahbstat_in_type;
 
-signal uclk : std_ulogic;
-signal usbi : grusb_in_type;
-signal usbo : grusb_out_type;
+signal uclk  : std_ulogic;
+signal urstn : std_ulogic;
+signal usbi  : grusb_in_type;
+signal usbo  : grusb_out_type;
 
 constant SPW_LOOP_BACK : integer := 0;
 
@@ -269,9 +270,13 @@ begin
   sdclk_pad : outpad generic map (tech => padtech, slew => 1, strength => 24) 
 	port map (sdclk, sdclkl);
 
-  resetn_pad : inpad generic map (tech => padtech) port map (resetn, rst); 
+  resetn_pad : inpad generic map (tech => padtech) port map (resetn, rst);
+  
   rst0 : rstgen			-- reset generator
   port map (rst, clkm, cgo.clklock, rstn, rstraw);
+
+  rst1 : rstgen			-- reset generator (USB)
+  port map (rst, uclk, vcc(0), urstn, open);
 
 ----------------------------------------------------------------------
 ---  AHB CONTROLLER --------------------------------------------------
@@ -677,12 +682,16 @@ begin
               do         => spwi(i).d(j*2+1 downto j*2),
               dov        => spwi(i).dv(j*2+1 downto j*2),
               dconnect   => spwi(i).dconnect(j*2+1 downto j*2),
+              dconnect2  => spwi(i).dconnect2(j*2+1 downto j*2),
+              dconnect3  => spwi(i).dconnect3(j*2+1 downto j*2),
               rxclko     => spw_rxclk(i*CFG_SPW_PORTS+j));
         end generate spw_inputloop;
         oneport : if CFG_SPW_PORTS = 1 generate
           spwi(i).d(3 downto 2) <= "00";  -- For second port
 	  spwi(i).dv(3 downto 2) <= "00";  -- For second port
-	  spwi(i).dconnect(3 downto 2) <= "00";  -- For second port
+	  spwi(i).dconnect(3 downto 2)  <= "00";  -- For second port
+	  spwi(i).dconnect2(3 downto 2) <= "00";  -- For second port
+	  spwi(i).dconnect3(3 downto 2) <= "00";  -- For second port
         end generate;
         spwi(i).nd <= (others => '0');  -- Only used in GRSPW
       end generate spw2_input;
@@ -711,6 +720,8 @@ begin
 	  spwi(i).dconnect(3 downto 2) <= "00";  -- For second port
         end generate;
         spwi(i).dv <= (others => '0');  -- Only used in GRSPW2
+        spwi(i).dconnect2 <= (others => '0');  -- Only used in GRSPW2
+        spwi(i).dconnect3 <= (others => '0');  -- Only used in GRSPW2
       end generate spw1_input;
 
       spwi(i).s(1 downto 0) <= "00";  -- Only used in PHY
@@ -725,9 +736,9 @@ begin
         rmapbufs => CFG_SPW_RMAPBUF, ft => CFG_SPW_FT, ports => CFG_SPW_PORTS,
         spwcore => CFG_SPW_GRSPW, netlist => CFG_SPW_NETLIST,
         rxtx_sameclk => CFG_SPW_RTSAME, input_type => CFG_SPW_INPUT,
-        output_type => CFG_SPW_OUTPUT)
-      port map(rstn, clkm, spw_rxclk(i*CFG_SPW_PORTS), spw_rxclk(i*CFG_SPW_PORTS+1),
-               spw_rxtxclk, spw_rxtxclk, ahbmi,
+        output_type => CFG_SPW_OUTPUT, internalrstgen => 1)
+      port map(rstn, clkm, gnd(0), gnd(0), spw_rxclk(i*CFG_SPW_PORTS), gnd(0),
+               spw_rxclk(i*CFG_SPW_PORTS+1), gnd(0), spw_rxtxclk, spw_rxtxclk, ahbmi,
                ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_GRETH+CFG_AHB_JTAG+CFG_SVGA_ENABLE+i), 
                apbi, apbo(10+i), spwi(i), spwo(i));
 
@@ -840,6 +851,7 @@ begin
         memtech => memtech)
       port map(
         uclk  => uclk,
+        urst  => urstn,
         usbi  => usbi,
         usbo  => usbo,
         hclk  => clkm,
@@ -862,7 +874,7 @@ begin
         CFG_SVGA_ENABLE+CFG_SPW_NUM*CFG_SPW_EN,
         memtech => memtech, uiface => 0, dwidth => CFG_GRUSB_DCL_DW)
       port map (
-        uclk, usbi, usbo, clkm, rstn, ahbmi,
+        uclk, urstn, usbi, usbo, clkm, rstn, ahbmi,
         ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_GRETH+CFG_AHB_JTAG+CFG_SVGA_ENABLE+
               CFG_SPW_NUM*CFG_SPW_EN));
   end generate usb_dcl0;

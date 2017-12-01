@@ -153,7 +153,8 @@ begin
 
   cmod : can_mod generic map (memtech, syncrst, ft)
     port map (reset, clk, r.hsel, r.hwrite2, r.haddr(7 downto 0), r.hwdata, 
-	data_out(0), irqo(0), can_rxi, can_txo, ahbsi.testen);
+	data_out(0), irqo(0), can_rxi, can_txo, ahbsi.testen
+              );
     
     ahbso.hconfig <= hconfig;
     ahbso.hindex  <= slvndx; 

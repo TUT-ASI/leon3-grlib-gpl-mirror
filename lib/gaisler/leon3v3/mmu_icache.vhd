@@ -735,6 +735,12 @@ begin
     end if;
 
     
+    mcii.next_address(31 downto 2)  <= v.waddress(31 downto 2);
+    mcii.next_address(1 downto 0)  <= "00";
+    mcii.next_su       <= v.su;
+    mcii.next_burst    <= v.burst and v.req;
+    mcii.next_req      <= v.req;
+
 -- reset
 
     if (not RESET_ALL) and (rst = '0') then 
@@ -758,7 +764,6 @@ begin
     cl <= vl;  -- lru register inputs
 
 -- tag ram inputs
-    enable := enable;
     for i in 0 to ISETS-1 loop
       tag(i) := (others => '0');
       tag(i)(ilinesize-1 downto 0) := vmask(i);

@@ -33,7 +33,9 @@
 	"SDR       CONFIG_SPW_RX_SDR	 \
 	 DDR       CONFIG_SPW_RX_DDR   \
 	 PAD       CONFIG_SPW_RX_PAD   \
-         Xor       CONFIG_SPW_RX_XOR \
+         XOR       CONFIG_SPW_RX_XOR \
+         XOR-ER1   CONFIG_SPW_RX_XORER1 \
+         XOR-ER2   CONFIG_SPW_RX_XORER2 \
          Aeroflex  CONFIG_SPW_RX_AFLEX " DDR
       choice 'Select transmitter clock type ' \
 	"SDR       CONFIG_SPW_TX_SDR	 \

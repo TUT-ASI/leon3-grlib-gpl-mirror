@@ -84,6 +84,10 @@
 #define CONFIG_SPW_INPUT 4
 #elif defined CONFIG_SPW_RX_XOR
 #define CONFIG_SPW_INPUT 0
+#elif defined CONFIG_SPW_RX_XORER1
+#define CONFIG_SPW_INPUT 5
+#elif defined CONFIG_SPW_RX_XORER2
+#define CONFIG_SPW_INPUT 6
 #elif defined CONFIG_SPW_RX_AFLEX
 #define CONFIG_SPW_INPUT 1
 #else

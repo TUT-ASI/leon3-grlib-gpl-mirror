@@ -94,6 +94,11 @@ begin
     generic map (clk_mul, clk_div, freq)
     port map (clkin, clk, clkn, clk2x ,cgi, cgo);
   end generate;
+  xcku : if (tech =kintexu) generate
+    v : clkgen_kintexu
+    generic map (clk_mul, clk_div, sdramen,noclkfb,freq)
+    port map (clkin, clk, clkn, clk2x, sdclk ,cgi, cgo);
+  end generate;
   xc3s : if (tech = spartan3) or (tech = spartan3e) or (tech = spartan6) generate
     v : clkgen_spartan3
     generic map (clk_mul, clk_div, sdramen, noclkfb, pcien, pcidll, pcisysclk, freq, clk2xen, clksel)

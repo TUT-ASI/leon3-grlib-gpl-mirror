@@ -779,6 +779,7 @@ begin
       if rst = '0' then r.icnt <= (others => '0'); end if;
     end if;
     if (rst = '0') then
+      r.cfg.cke <= '0';
       r.sdcsn  <= (others => '1'); r.bdrive <= '1'; r.nbdrive <= '0';
       if oepol = 0 then rbdrive <= (others => '1');
       else rbdrive <= (others => '0'); end if;

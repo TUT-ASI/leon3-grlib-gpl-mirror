@@ -143,7 +143,7 @@ type fregtype is record
 end record;
 
 type bregtype is record
-  bsel          : std_logic_vector(log2(ntrace) downto 0);
+  bsel          : std_logic_vector(log2x(ntrace)-1 downto 0);
 end record;
 
 function ahb_filt_hit (
@@ -416,7 +416,7 @@ begin
           regsd((TBUFABITS + 15) downto 16) := r.delaycnt;
           if ntrace /= 1 then
             regsd(15) := '1';
-            regsd(log2(ntrace)+12 downto 12) := vb.bsel;
+            regsd(log2x(ntrace)+11 downto 12) := rb.bsel;
           end if;
           regsd(7 downto 6) := conv_std_logic_vector(log2(bwidth/32), 2);
           if FILTEN then
@@ -430,7 +430,7 @@ begin
           if r.hwrite = '1' then
             v.delaycnt := ahbsi.hwdata((TBUFABITS+ 15) downto 16); 
             if ntrace /= 1 then
-              vb.bsel := ahbsi.hwdata(log2(ntrace)+12 downto 12);
+              vb.bsel := ahbsi.hwdata(log2x(ntrace)+11 downto 12);
             end if;
             if FILTEN then
               vf.pf := ahbsi.hwdata(8);

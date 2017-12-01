@@ -101,6 +101,15 @@ port(
   PRODUCT : out std_logic_vector(121 downto 0));
 end component;
 
+component kintexu_mul_61x61
+port(
+  A : in std_logic_vector(60 downto 0);
+  B : in std_logic_vector(60 downto 0);
+  EN :  in std_logic;
+  CLK :  in std_logic;
+  PRODUCT : out std_logic_vector(121 downto 0));
+end component;
+
 begin
 
   gen0 : if multech = 0 generate

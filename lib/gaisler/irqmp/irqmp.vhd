@@ -45,7 +45,8 @@ entity irqmp is
     ncpu    : integer := 1;
     eirq    : integer := 0;
     irqmap  : integer := 0;
-    bootreg : integer := 1
+    bootreg : integer := 1;
+    extrun  : integer range 0 to 1 := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -53,7 +54,8 @@ entity irqmp is
     apbi   : in  apb_slv_in_type;
     apbo   : out apb_slv_out_type;
     irqi   : in  irq_out_vector(0 to ncpu-1);
-    irqo   : out irq_in_vector(0 to ncpu-1)
+    irqo   : out irq_in_vector(0 to ncpu-1);
+    cpurun : in  std_logic_vector(ncpu-1 downto 0) := (others => '0')
   );
 end;
 
@@ -145,13 +147,13 @@ signal r2, r2in : ereg_type;
 
 begin
 
-  comb : process(rst, r, r2, apbi, irqi)
+  comb : process(rst, r, r2, apbi, irqi, cpurun)
   variable v      : reg_type;
   variable temp   : mask_type;
   variable prdata : std_logic_vector(31 downto 0);
   variable tmpirq : std_logic_vector(15 downto 0);
   variable tmpvar : std_logic_vector(15 downto 1);
-  variable cpurun : std_logic_vector(ncpu-1 downto 0);
+  variable cpurunx : std_logic_vector(ncpu-1 downto 0);
   variable v2     : ereg_type;
   variable irl2   : std_logic_vector(3 downto 0);
   variable ipend2 : std_logic_vector(ncpu-1 downto 0);
@@ -164,7 +166,8 @@ begin
   begin
 
     v := r; v.cpurst := (others => '0');
-    cpurun := (others => '0'); cpurun(0) := '1';
+    if extrun = 0 then cpurunx := (others => '0'); cpurunx(0) := '1';
+    else cpurunx := cpurun; end if;
     tmpvar := (others => '0'); ipend2 := (others => '0');
     v2 := r2;
 
@@ -443,7 +446,7 @@ begin
       irqo(i).forceerr <= r.forceerr(i);
       irqo(i).pwdsetaddr <= r.setaddr(i);
       irqo(i).pwdnewaddr <= r.newaddr;
-      irqo(i).rstrun <= cpurun(i);
+      irqo(i).rstrun <= cpurunx(i);
       irqo(i).rstvec <= (others => '0');  -- Alternate reset vector
       irqo(i).index <= conv_std_logic_vector(i, 4);
       irqo(i).svtclrtt <= r.setaddr(i);

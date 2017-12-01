@@ -55,13 +55,10 @@ package netcomp is
       utm_type    : integer range 0 to 2   := 2;
       vbusconf    : integer                := 3;
       ramtest     : integer range 0 to 1   := 0;
-      urst_time   : integer                := 250;
       oepol       : integer range 0 to 1   := 0;
       scantest    : integer range 0 to 1   := 0;
       isfpga      : integer range 0 to 1   := 1;
       memsel      : integer                := 0;
-      syncprst    : integer range 0 to 1   := 0;
-      sysfreq     : integer                := 65000;
       pcidev      : integer range 0 to 1   := 0;
       debug       : integer                := 0;
       debug_abits : integer                := 12);
@@ -69,6 +66,7 @@ package netcomp is
       clk               : in  std_ulogic;
       uclk              : in  std_ulogic;
       rst               : in  std_ulogic;
+      urst              : in  std_ulogic;
       -- EHC apb_slv_in_type unwrapped
       ehc_apbsi_psel    : in  std_ulogic;
       ehc_apbsi_penable : in  std_ulogic;
@@ -335,12 +333,16 @@ package netcomp is
       pnpminorver     : integer range 0 to 16#FF#   := 0;
       pnppatch        : integer range 0 to 16#FF#   := 0;
       num_txdesc      : integer range 64 to 512     := 64;
-      num_rxdesc      : integer range 128 to 1024   := 128
+      num_rxdesc      : integer range 128 to 1024   := 128;
+      rstsrctmr       : integer range 0 to 1        := 0
       );
     port(
       rst          : in  std_ulogic;
       clk          : in  std_ulogic;
+      rxasyncrst   : in  std_ulogic;
+      rxsyncrst    : in  std_logic_vector(1 downto 0);
       rxclk        : in  std_logic_vector(1 downto 0);
+      txsyncrst    : in  std_ulogic;
       txclk        : in  std_ulogic;
       txclkn       : in  std_ulogic;
       --ahb mst in
@@ -370,6 +372,8 @@ package netcomp is
       d            : in  std_logic_vector(3 downto 0);
       dv           : in  std_logic_vector(3 downto 0);
       dconnect     : in  std_logic_vector(3 downto 0);
+      dconnect2    : in  std_logic_vector(3 downto 0);
+      dconnect3    : in  std_logic_vector(3 downto 0);
       --spw out
       do           : out std_logic_vector(3 downto 0);
       so           : out std_logic_vector(3 downto 0);
@@ -435,7 +439,10 @@ package netcomp is
       pnpen        : in  std_ulogic;
       pnpuvendid   : in  std_logic_vector(15 downto 0);
       pnpuprodid   : in  std_logic_vector(15 downto 0);
-      pnpusn       : in  std_logic_vector(31 downto 0)
+      pnpusn       : in  std_logic_vector(31 downto 0);
+      -- Reset interconnection
+      ctrlregrst   : out  std_ulogic;
+      rxrst        : out  std_ulogic
       );
   end component;
 
@@ -449,12 +456,17 @@ package netcomp is
       tech         : integer;
       scantest     : integer range 0 to 1;
       techfifo     : integer range 0 to 1;
-      ft           : integer range 0 to 2);
+      ft           : integer range 0 to 2;
+      rstsrctmr    : integer range 0 to 1);
     port (
       rst           : in  std_ulogic;
       clk           : in  std_ulogic;
+      rxasyncrst    : in  std_ulogic;
+      rxsyncrst0    : in  std_ulogic;
       rxclk0        : in  std_ulogic;
+      rxsyncrst1    : in  std_ulogic;
       rxclk1        : in  std_ulogic;
+      txsyncrst     : in  std_ulogic;
       txclk         : in  std_ulogic;
       txclkn        : in  std_ulogic;
       testen        : in  std_ulogic;
@@ -462,6 +474,8 @@ package netcomp is
       d             : in  std_logic_vector(3 downto 0);
       dv            : in  std_logic_vector(3 downto 0);
       dconnect      : in  std_logic_vector(3 downto 0);
+      dconnect2     : in  std_logic_vector(3 downto 0);
+      dconnect3     : in  std_logic_vector(3 downto 0);
       do            : out std_logic_vector(3 downto 0);
       so            : out std_logic_vector(3 downto 0);
       linkdisabled  : in  std_ulogic;
@@ -494,7 +508,8 @@ package netcomp is
       tickin_done   : out std_ulogic;
       tickout       : out std_ulogic;
       timeout       : out std_logic_vector(7 downto 0);
-      merror        : out std_ulogic);
+      merror        : out std_ulogic;
+      rxrst         : out std_ulogic);
   end component grspw_codec_net;
 
   component grlfpw_net

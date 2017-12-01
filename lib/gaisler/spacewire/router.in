@@ -3,7 +3,9 @@
         choice 'Select SpaceWire link receiver input type ' \
 	"SDR       CONFIG_SPWRTR_RX_SDR	 \
 	 DDR       CONFIG_SPWRTR_RX_DDR   \
-         Xor       CONFIG_SPWRTR_RX_XOR \
+         XOR       CONFIG_SPWRTR_RX_XOR \
+         XOR-ER1   CONFIG_SPWRTR_RX_XORER1 \
+         XOR-ER2   CONFIG_SPWRTR_RX_XORER2 \
          Aeroflex  CONFIG_SPWRTR_RX_AFLEX " DDR
         choice 'Select SpaceWire link transmitter output type ' \
         "SDR       CONFIG_SPW_TX_SDR	 \

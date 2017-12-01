@@ -65,7 +65,7 @@ component l2c is
     mtrr        : integer := 0;
     edacen      : integer range 0 to 1 := 0;
     rmw         : integer range 0 to 1 := 0;
-    ft          : integer range 0 to 1 := 0;
+    ft          : integer range 0 to 2 := 0;
     fttiming    : integer range 0 to 1 := 0;
     wbmask      : integer range 0 to 16#FFFF# := 16#FFFF#;
     debug       : integer range 0 to 1 := 0);
@@ -107,7 +107,7 @@ component l2c_axi_be is
     mtrr        : integer := 0;
     edacen      : integer range 0 to 1 := 0;
     rmw         : integer range 0 to 1 := 0;
-    ft          : integer range 0 to 1 := 0;
+    ft          : integer range 0 to 2 := 0;
     fttiming    : integer range 0 to 1 := 0;
     debug       : integer range 0 to 1 := 0);
   port (

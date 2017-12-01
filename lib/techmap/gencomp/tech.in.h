@@ -92,6 +92,8 @@
 #define CONFIG_SYN_TECH virtex7
 #elif defined CONFIG_SYN_KINTEX7
 #define CONFIG_SYN_TECH kintex7
+#elif defined CONFIG_SYN_KINTEXU
+#define CONFIG_SYN_TECH kintexu
 #elif defined CONFIG_SYN_ARTIX7
 #define CONFIG_SYN_TECH artix7
 #elif defined CONFIG_SYN_ZYNQ7000

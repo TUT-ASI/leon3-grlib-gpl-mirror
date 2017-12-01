@@ -4292,6 +4292,7 @@ begin
       when dma_idle =>
         av.dma.err := (others => '0');
         av.dma.running := '0';
+        av.dma.retry := '0';
         av.dma.dmai1.req := '0';
         av.dma.dmai1.write := '0';
         av.dma.dmai1.burst := '1';
@@ -4311,7 +4312,6 @@ begin
         av.dma.dma_hold := (others => '0');
         av.dma.done := (others => '0');
         av.dma.first(0) := '1';
-        --av.dma.retry := '0';
 
         if ar.dma.rcnt = "11" and ar.dma.retry = '0' and 
            ((ar.dma.desc.desctype /= "01" and (ar.dma.desc.emptych = '0' or ar.dma.desc.chcnt = "000")) or
@@ -5551,6 +5551,7 @@ begin
     av.dma.state := dma_idle;
     av.dma.en := '0';
     av.dma.reen := '0';
+    av.dma.retry := '0';
     av.dma.irq := '0';
     av.dma.irqen := '0';
     av.dma.irqstatus := (others => '0');

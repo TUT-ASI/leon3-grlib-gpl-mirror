@@ -84,7 +84,7 @@ proc librarieslist {} {
 #Also echoes to the user the settings and each library/directory scanned.
 proc generatefilelists {filetree fileinfo} {
 	global GRLIB EXTRALIBS DIRADD TECHLIBS XLIBSKIP GRLIB_LEON3_VERSION XDIRSKIP\
-	FILEADD XFILESKIP GRLIB_CONFIG VHDLSYNFILES VHDLOPTSYNFILES VHDLSIMFILES\
+	FILEADD XFILESKIP GRLIB_CONFIG VHDLSYNFILES VHDLIPFILES VHDLOPTSYNFILES VHDLSIMFILES\
 	VERILOGSYNFILES VERILOGOPTSYNFILES VERILOGSIMFILES GRLIB_SIMULATOR TOP SIMTOP
 	upvar $filetree ft
 	upvar $fileinfo fi
@@ -177,6 +177,14 @@ proc generatefilelists {filetree fileinfo} {
 	    if {[file exists $f] } {
 			lappend flist $f
 			set conffiledict [dict create bn "work" l "local" i "vhdlsim" q $f]
+			dict set fi $f $conffiledict
+		}
+	}
+
+	foreach f $VHDLIPFILES  {
+	    if {[file exists $f] } {
+			lappend flist $f
+			set conffiledict [dict create bn "work" l "local" i "vhdlip" q $f]
 			dict set fi $f $conffiledict
 		}
 	}

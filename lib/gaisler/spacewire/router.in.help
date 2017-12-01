@@ -9,6 +9,8 @@ CONFIG_SPWRTR_INPUT
   SDR = Single Data Rate sampling.
   DDR = Double Data Rate sampling.
   XOR = Xor gate generated clock from data and strobe.
+  XOR-ER1 = External clock recovery, SDR registers
+  XOR-ER2 = External clock recovery, DDR register 
   AFLEX = Interface to external Aeroflex UT200SpWPHY01 component.
 
 Transmitter output architecture

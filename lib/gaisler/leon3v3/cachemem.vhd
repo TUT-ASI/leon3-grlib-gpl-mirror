@@ -193,6 +193,7 @@ architecture rtl of cachemem is
   signal dtenable  : std_logic_vector(0 to MAXSETS-1);
   signal dtenable2 : std_logic_vector(0 to MAXSETS-1);
   signal ddenable  : std_logic_vector(0 to MAXSETS-1);
+  signal ddenablev : cbwmasktype;
   signal dtwrite   : std_logic_vector(0 to MAXSETS-1);
   signal dtwrite2  : std_logic_vector(0 to MAXSETS-1);
   signal dtwrite3  : std_logic_vector(0 to MAXSETS-1);
@@ -455,10 +456,21 @@ begin
     end generate;
 
     dd0 : for i in 0 to DSETS-1 generate
+      ddsram : if (has_srambw(tech) >= (DOFFSET_BITS+DLINE_BITS)
+        ) generate
       ddata0 : syncram
        generic map (tech, DOFFSET_BITS+DLINE_BITS, DDWIDTH, testen, memtest_vlen)
         port map (clk, ddaddr, dddatain(i), dddataout(i), ddenable(i), ddwrite(i), testin
                   );
+      end generate;                     -- ddsram
+      ddenablev(i) <= (others => ddenable(i));
+      bwddsram: if has_srambw(tech) < (DOFFSET_BITS+DLINE_BITS)
+      generate
+        ddata0: syncrambw
+          generic map (tech, DOFFSET_BITS+DLINE_BITS, DDWIDTH, testen, memtest_vlen)
+          port map (clk, ddaddr, crami.dcramin.bwdata(i), dddataout(i),
+                    ddenablev(i),crami.dcramin.bwmask(i), testin);
+      end generate;
       dtdataout(i)(DTWIDTH) <= '0';
     end generate;
   end generate;
@@ -473,6 +485,7 @@ begin
       dtdataout(i) <= (others => '0');
       dtdataout2(i) <= (others => '0');
       dddataout(i) <= (others => '0');
+      ddenablev(i) <= (others => '0');
     end generate;
   end generate;
 

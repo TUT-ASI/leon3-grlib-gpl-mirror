@@ -150,9 +150,11 @@ end procedure;
 procedure writeconf(ad : in std_logic_vector(5 downto 0);
                     data : in std_logic_vector(31 downto 0);
                     cbe  : in std_logic_vector(3 downto 0);
+                    rconfig: in config_header_type;
                     vconfig : out config_header_type) is
   variable new_data : std_logic_vector(31 downto 0);
 begin
+  vconfig := rconfig;
   readconf(ad,new_data);
   if cbe(3) = '0' then new_data(31 downto 24) := data(31 downto 24); end if;
   if cbe(2) = '0' then new_data(23 downto 16) := data(23 downto 16); end if;
@@ -545,7 +547,7 @@ begin
         --if vpciin.ifc.irdy = '0' then
         if vpciin.ifc.irdy = '0' and r.pci.ifc.trdy = '0' then
           v.curword := r.curword+1;
-          if r.comm = CONF_WRITE then writeconf(r.ad(7 downto 2),vpciin.ad.ad,vpciin.ad.cbe,v.config);
+          if r.comm = CONF_WRITE then writeconf(r.ad(7 downto 2),vpciin.ad.ad,vpciin.ad.cbe,r.config,v.config);
           --else v.di := vpciin.ad.ad; v.write := '1'; end if; -- *** sub-word write
           else v.di := vpciin.ad.ad; v.write := '1'; v.cbe := vpciin.ad.cbe; end if;
             
@@ -661,7 +663,7 @@ begin
         if vpciin.ifc.irdy = '0' then
           v.pci.ifc.trdy := '1';
           if r.pci.ifc.trdy = '0' then
-            if r.comm = CONF_WRITE then writeconf(r.ad(7 downto 2),vpciin.ad.ad,vpciin.ad.cbe,v.config);
+            if r.comm = CONF_WRITE then writeconf(r.ad(7 downto 2),vpciin.ad.ad,vpciin.ad.cbe,r.config,v.config);
             elsif r.comm(0) = '1' then v.di := vpciin.ad.ad; v.write := '1'; v.cbe := vpciin.ad.cbe; end if;
           end if;
         end if;

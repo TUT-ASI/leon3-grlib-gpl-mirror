@@ -18,7 +18,7 @@ leon3_test(int domp, volatile int *irqmp, int mtest)
 	if ((*mpfunc[get_pid()])) mpfunc[get_pid()](get_pid());
 	if (domp) mptest_end(irqmp);	
 	grfpu_test();
-	/*cachetest();*/
+        cachetest();
 	mmu_test();
 	rextest();
         awptest();

@@ -249,9 +249,10 @@ signal pci_dirq : std_logic_vector(3 downto 0);
 
 signal tck, tms, tdi, tdo : std_logic;
 
-signal usbi : grusb_in_vector(0 downto 0);
-signal usbo : grusb_out_vector(0 downto 0);
-signal uclk : std_ulogic := '0';
+signal usbi  : grusb_in_vector(0 downto 0);
+signal usbo  : grusb_out_vector(0 downto 0);
+signal uclk  : std_ulogic := '0';
+signal urstn : std_ulogic := '0';
 
 type milout_array is array (0 to 0) of gr1553b_txout_type;
 type milin_array is array (0 to 0) of gr1553b_rxin_type;
@@ -296,6 +297,10 @@ begin
   
   rst0 : rstgen                 -- reset generator
     port map (lresetn, clkm, clklock, rstn, rstraw);
+
+  rst1 : rstgen                 -- reset generator (USB)
+    port map (lresetn, uclk, clklock, urstn, open);
+  
   clklock <= cgo.clklock and elock and ulock;
 
 ----------------------------------------------------------------------
@@ -970,6 +975,8 @@ begin
            do         => spwi(i).d(1 downto 0),
            dov        => spwi(i).dv(1 downto 0),
            dconnect   => spwi(i).dconnect(1 downto 0),
+           dconnect2  => spwi(i).dconnect2(1 downto 0),
+           dconnect3  => spwi(i).dconnect3(1 downto 0),
            rxclko     => spw_rxclk(i));
        spwi(i).nd <= (others => '0');  -- Only used in GRSPW
        spwi(i).dv(3 downto 2) <= "00";  -- For second port
@@ -992,11 +999,15 @@ begin
            dconnect   => spwi(i).dconnect(1 downto 0));
        spwi(i).d(1) <= '0';           -- For second ports
        spwi(i).dv <= (others => '0');  -- Only used in GRSPW2
+       spwi(i).dconnect2(1 downto 0) <= (others => '0');  -- Only used in GRSPW2
+       spwi(i).dconnect3(1 downto 0) <= (others => '0');  -- Only used in GRSPW2
        spwi(i).nd(9 downto 5) <= "00000";  -- For second port
      end generate spw1_input;
 
      spwi(i).d(3 downto 2) <= "00";   -- For GRSPW2 second port
-     spwi(i).dconnect(3 downto 2) <= "00";  -- For second port     
+     spwi(i).dconnect(3 downto 2)  <= "00";  -- For second port
+     spwi(i).dconnect2(3 downto 2) <= "00";  -- For second port
+     spwi(i).dconnect3(3 downto 2) <= "00";  -- For second port
      spwi(i).s(1 downto 0) <= "00";  -- Only used in PHY
      
    sw0 : grspwm generic map(tech => memtech,
@@ -1010,9 +1021,9 @@ begin
      dmachan => CFG_SPW_DMACHAN,
      netlist => CFG_SPW_NETLIST, spwcore => CFG_SPW_GRSPW,
      input_type => CFG_SPW_INPUT, output_type => CFG_SPW_OUTPUT,
-     rxtx_sameclk => CFG_SPW_RTSAME)
-     port map(rstn, clkm, spw_rxclk(i), spw_rxclk(i), spw_rxtxclk, spw_rxtxclk,
-              ahbmi,
+     rxtx_sameclk => CFG_SPW_RTSAME, internalrstgen => 1)
+     port map(rstn, clkm, gnd(0), gnd(0), spw_rxclk(i), gnd(0), spw_rxclk(i),
+              gnd(0), spw_rxtxclk, spw_rxtxclk, ahbmi,
               ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_GRPCI2_TARGET+CFG_GRPCI2_DMA+CFG_AHB_JTAG+CFG_GRETH+i),
               apbi, apbo(10+i), spwi(i), spwo(i));
      spwi(i).tickin <= '0'; spwi(i).rmapen <= '0';
@@ -1088,7 +1099,7 @@ begin
         be_desc => CFG_GRUSBHC_BEDESC, uhcblo => CFG_GRUSBHC_BLO,
         bwrd => CFG_GRUSBHC_BWRD, vbusconf => CFG_GRUSBHC_VBUSCONF)
       port map (
-        clkm,uclk,rstn,apbi,apbo(13),ahbmi,ahbsi,
+        clkm,uclk,rstn,urstn,apbi,apbo(13),ahbmi,ahbsi,
         ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_GRPCI2_TARGET+CFG_GRPCI2_DMA+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM),
         ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_GRPCI2_TARGET+CFG_GRPCI2_DMA+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM+1
               downto
@@ -1126,6 +1137,7 @@ begin
         memtech => memtech, keepclk => 1)
       port map(
         uclk  => uclk,
+        urst  => urstn,
         usbi  => usbi(0),
         usbo  => usbo(0),
         hclk  => clkm,
@@ -1146,7 +1158,7 @@ begin
         hindex => CFG_NCPU+CFG_AHB_UART+CFG_GRPCI2_TARGET+CFG_GRPCI2_DMA+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM,
         memtech => memtech, keepclk => 1, uiface => 1)
       port map (
-        uclk, usbi(0), usbo(0), clkm, rstn, ahbmi,
+        uclk, urstn, usbi(0), usbo(0), clkm, rstn, ahbmi,
         ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_GRPCI2_TARGET+CFG_GRPCI2_DMA+CFG_AHB_JTAG+CFG_GRETH+CFG_SPW_EN*CFG_SPW_NUM));
   end generate usb_dcl0;
 

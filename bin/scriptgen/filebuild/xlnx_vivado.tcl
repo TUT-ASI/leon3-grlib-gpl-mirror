@@ -106,7 +106,7 @@ proc eof_xlnx_vivado {} {
 	global VIVADO_SIMSET GRLIB_XIL_Vivado_sim_verilog_define XDC TCL VIVADO_UCF \
 	GRLIB_XIL_Vivado_Simulator TOP PROTOBOARD CONFIG_MIG_7SERIES BOARD VIVADO_MIG_AXI \
 	AXI_64 AXI_128 DESIGN CONFIG_GRETH_ENABLE NETLISTTECH GRLIB \
-	VIVADO_SYNTH_FLOW VIVADO_SYNTH_STRATEGY VIVADO_IMPL_STRATEGY
+	VIVADO_SYNTH_FLOW VIVADO_SYNTH_STRATEGY VIVADO_IMPL_STRATEGY VIVADO_INCL_DIRS
 	upvar vivado_contents vc
 
 	append vc "\nadd_files -fileset $VIVADO_SIMSET prom.srec ram.srec"
@@ -182,7 +182,12 @@ proc eof_xlnx_vivado {} {
 	puts $vivfile $vc
 	close $vivfile
 
-	set vc "synth_design -directive runtimeoptimized -resource_sharing off -keep_equivalent_registers -no_lc -rtl -name rtl_1"
+	if {![string equal $VIVADO_INCL_DIRS ""]} {
+		set vc "synth_design -include_dirs {$VIVADO_INCL_DIRS} -directive runtimeoptimized -resource_sharing off -keep_equivalent_registers -no_lc -rtl -name rtl_1"
+	} else {
+		set vc "synth_design -directive runtimeoptimized -resource_sharing off -keep_equivalent_registers -no_lc -rtl -name rtl_1"
+	}
+
 	append vc "\nset_property flow {$VIVADO_SYNTH_FLOW} \[get_runs synth_1\]"
 	append vc "\nset_property strategy {$VIVADO_SYNTH_STRATEGY} \[get_runs synth_1\]"
 	append vc "\nlaunch_runs synth_1"

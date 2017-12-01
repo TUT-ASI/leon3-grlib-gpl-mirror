@@ -84,8 +84,10 @@ architecture rtl of gr1553b_nlw is
   signal si_paddr: std_logic_vector(7 downto 0);
   signal bcsync,rtsync,busreset,rtaddrp: std_logic;
   signal rtaddr: std_logic_vector(4 downto 0);
-  signal busainen,busainp,busainn,busaouten,busaoutp,busaoutn: std_logic;
-  signal busbinen,busbinp,busbinn,busbouten,busboutp,busboutn: std_logic;  
+  signal validcmda,validcmdb,timedouta,timedoutb,badreg: std_logic;
+  signal irqvec: std_logic_vector(7 downto 0);
+  signal busainen,busainp,busainn,busaouten,busaoutp,busaoutn,busa_txin: std_logic;
+  signal busbinen,busbinp,busbinn,busbouten,busboutp,busboutn,busb_txin: std_logic;  
   
 begin
 
@@ -98,9 +100,10 @@ begin
                 mo_hbusreq,mo_htrans,mo_haddr,mo_hwrite,mo_hsize,mo_hburst,mo_hwdata,
                 si_psel,si_penable,si_paddr,si_pwrite,si_pwdata,
                 so_prdata,so_pirq,
-                bcsync,rtsync,busreset,rtaddr,rtaddrp,
-                busainen,busainp,busainn,busaouten,busaoutp,busaoutn,
-                busbinen,busbinp,busbinn,busbouten,busboutp,busboutn);
+                bcsync,rtaddr,rtaddrp,rtsync,busreset,validcmda,validcmdb,
+                timedouta,timedoutb,badreg,irqvec,
+                busainen,busainp,busainn,busaouten,busaoutp,busaoutn,busa_txin,
+                busbinen,busbinp,busbinn,busbouten,busboutp,busboutn,busb_txin);
   end generate;
   gennetl : if tech /= 0 generate
     x: gr1553b_net
@@ -145,10 +148,17 @@ begin
     apbso.pirq <= irqv;
   end process p;
   bcsync <= auxin.extsync;
-  auxout.rtsync <= rtsync;
-  auxout.busreset <= busreset;
   rtaddr <= auxin.rtaddr;
   rtaddrp <= auxin.rtpar;  
+  auxout.rtsync <= rtsync;
+  auxout.busreset <= busreset;
+  auxout.validcmda <= validcmda;
+  auxout.validcmdb <= validcmdb;
+  auxout.timedouta <= timedouta;
+  auxout.timedoutb <= timedoutb;
+  auxout.badreg <= badreg;
+  auxout.irqvec <= irqvec;
+
   txout.busA_txP <= busaoutp;
   txout.busA_txN <= busaoutn;
   txout.busA_txen <= busaouten;

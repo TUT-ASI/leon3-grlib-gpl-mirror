@@ -162,10 +162,19 @@ type memory_mm_in_type is record
   read             : std_logic;
   req              : std_logic;
   lock             : std_logic;
+  -- next cycle value (for retiming)
+  next_address     : std_logic_vector(31 downto 0);
+  next_data        : std_logic_vector(31 downto 0);
+  next_size        : std_logic_vector(1 downto 0);
+  next_burst       : std_logic;
+  next_read        : std_logic;
+  next_req         : std_logic;
+  next_lock        : std_logic;
 end record;
 
-constant mci_zero : memory_mm_in_type := (X"00000000", X"00000000",
-	"00", '0', '0', '0', '0');
+constant mci_zero : memory_mm_in_type := (
+  X"00000000", X"00000000", "00", '0', '0', '0', '0',
+  X"00000000", X"00000000", "00", '0', '0', '0', '0');
 
 type memory_mm_out_type is record
   data             : std_logic_vector(31 downto 0); -- memory data

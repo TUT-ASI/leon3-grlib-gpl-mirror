@@ -13,7 +13,7 @@ XDC=leon3mp.xdc
 TCL=stub.tcl
 
 VHDLSYNFILES= \
-	config.vhd ahbrom.vhd ahb2axi.vhd leon3mp.vhd
+	config.vhd ahbrom.vhd leon3mp.vhd
 
 VHDLSIMFILES= \
 	leon3_zedboard_stub_sim.vhd testbench.vhd

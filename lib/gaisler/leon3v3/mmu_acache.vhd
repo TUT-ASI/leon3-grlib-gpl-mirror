@@ -67,6 +67,8 @@ end;
 
 architecture rtl of mmu_acache is
 
+  constant REGAHBOUT: boolean := (clk2x /= 0);
+
   type reg_type is record -- cache control register type
      bg     :  std_logic;                     -- bus grant
      bo      : std_logic_vector(1 downto 0);  -- bus owner
@@ -86,6 +88,18 @@ architecture rtl of mmu_acache is
      hclken2 : std_ulogic;
   end record;
 
+  type regout_type is record
+    haddr: std_logic_vector(31 downto 0);
+    htrans: std_logic_vector(1 downto 0);
+    hwrite: std_ulogic;
+    hlock: std_ulogic;
+    hsize: std_logic_vector(2 downto 0);
+    hburst: std_logic_vector(2 downto 0);
+    hwdata: std_logic_vector(31 downto 0);
+    hbusreq: std_ulogic;
+    hprot: std_logic_vector(3 downto 0);
+  end record;
+
   constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
   constant RRES : reg_type := (
     bg      => '0',
@@ -102,6 +116,17 @@ architecture rtl of mmu_acache is
     );
   constant R2RES : reg2_type := (
     reqmsk => (others => '0'), hclken2 => '0'
+    );
+  constant RORES : regout_type := (
+    haddr => (others => '0'),
+    htrans => (others => '0'),
+    hwrite => '0',
+    hlock => '0',
+    hsize => "000",
+    hburst => "000",
+    hwdata => x"00000000",
+    hbusreq => '0',
+    hprot => "1100"
     );
 
   function L3DI return integer is
@@ -124,12 +149,14 @@ architecture rtl of mmu_acache is
 
   signal r, rin : reg_type;
   signal r2, r2in : reg2_type;
+  signal ro, roin : regout_type;
 
 begin
 
-  comb : process(ahbi, r, rst, mcii, mcdi, mcmmi, ahbso, hclken, r2)
-    variable v : reg_type;
-    variable v2 : reg2_type;  
+  comb : process(ahbi, r, rst, mcii, mcdi, mcmmi, ahbso, hclken, r2, ro)
+    variable v, delr : reg_type;
+    variable v2, delr2 : reg2_type;
+    variable vo : regout_type;
     variable haddr   : std_logic_vector(31 downto 0);   -- address bus
     variable htrans  : std_logic_vector(1 downto 0);    -- transfer type 
     variable hwrite  : std_logic;                       -- read/write
@@ -138,6 +165,7 @@ begin
     variable hburst  : std_logic_vector(2 downto 0);    -- burst type
     variable hwdata  : std_logic_vector(31 downto 0);   -- write data
     variable hbusreq : std_logic;   -- bus request
+    variable hlock_masked : std_logic;
     variable iready, dready, mmready : std_logic;   
     variable igrant, dgrant, mmgrant : std_logic;   
     variable iretry, dretry, mmretry : std_logic;   
@@ -148,7 +176,8 @@ begin
     variable su, nb, bo_icache : std_ulogic;
     variable scanen : std_ulogic;
     variable vreqmsk: std_ulogic;
-    variable burst : std_ulogic;   
+    variable burst : std_ulogic;
+    variable tmp1,tmp2: std_ulogic;
   begin
 
     -- initialisation
@@ -160,6 +189,7 @@ begin
     imexc := '0'; dmexc := '0'; mmmexc := '0'; hlock := '0';
     iretry := '0'; dretry := '0'; mmretry := '0';
     ihcache := '0'; dhcache := '0'; mmhcache := '0'; su := '0';
+    hlock_masked := '0';
     if (r.bo = "00") then bo_icache := '1'; else bo_icache := '0'; end if;
     
     haddr := (others => '0');
@@ -310,6 +340,8 @@ begin
       end if;
     end if;
 
+    hlock_masked := hlock or mcdi.lock_hold;
+
     if hburst = HBURST_SINGLE then nb := '1'; else nb := '0'; end if;
 
     v.nbo := nbo; v.nba := orv(htrans) and not v.ba;
@@ -322,6 +354,7 @@ begin
       end if;      
     end if;
                                                 
+    delr := v;
     
     -- reset operation
 
@@ -339,7 +372,7 @@ begin
 --    ahbo.hbusreq <= hbusreq and not r.lb and not((not burst) and r.bg);
     ahbo.hbusreq <= hbusreq and (not r.lb or orv(nbo)) and (burst or not r.bg);
     ahbo.hwdata  <= ahbdrivedata(hwdata);
-    ahbo.hlock   <= hlock;
+    ahbo.hlock   <= hlock_masked;
     ahbo.hwrite  <= hwrite;
     ahbo.hsize   <= hsize;
     ahbo.hburst  <= hburst;
@@ -369,6 +402,136 @@ begin
     mcmmo.cache   <= mmhcache;
 
     rin <= v; r2in <= v2;
+
+    --------------------------------------------------------------------------
+    -- "retiming" of AHB outputs to make them registered
+    -- delr assigned to v before reset logic
+    delr2 := v2;
+    vo := RORES;
+    if REGAHBOUT then
+
+      ahbo.haddr <= ro.haddr;
+      ahbo.htrans <= ro.htrans;
+      ahbo.hbusreq <= ro.hbusreq;
+      ahbo.hwdata <= ahbdrivedata(ro.hwdata);
+      ahbo.hlock <= ro.hlock;
+      ahbo.hwrite <= ro.hwrite;
+      ahbo.hsize <= ro.hsize;
+      ahbo.hburst <= ro.hburst;
+      ahbo.hprot <= ro.hprot;
+
+      -- initialisation
+      htrans := HTRANS_IDLE;
+      hlock := '0';
+      su := '0';
+
+      haddr := (others => '0');
+      hwrite := '0';
+      hsize := (others => '0');
+      hlock := '0';
+      hburst := (others => '0');
+
+      -- generate AHB signals
+
+      dreq := mcdi.next_req;
+      hwdata := mcdi.next_data;
+      hbusreq := '0';
+
+      if (mcii.next_req = '1') and ((clk2x = 0) or (delr2.reqmsk(2) = '1')) and (delr.hlocken = '0') and
+        not (( ((delr.ba and dreq) = '1') and (delr.bo = "01")) or
+             ( ((delr.ba and mcmmi.next_req) = '1') and (delr.bo = "10"))) then
+        nbo := "00";
+        hbusreq := '1'; burst := mcii.next_burst;
+        htrans := HTRANS_NONSEQ;
+      elsif (dreq = '1') and ((clk2x = 0) or (delr2.reqmsk(1) = '1')) and
+        not (( ((delr.ba and mcii.next_req) = '1') and (delr.bo = "00")) or
+             ( ((delr.ba and mcmmi.next_req) = '1') and (delr.bo = "10"))) then
+        nbo := "01";
+        hbusreq := '1'; burst := mcdi.next_burst;
+        if (not mcdi.next_lock or delr.hlocken) = '1' then htrans := HTRANS_NONSEQ; end if;
+      elsif (mcmmi.next_req = '1') and ((clk2x = 0) or (delr2.reqmsk(0) = '1')) and (delr.hlocken = '0') and
+        not (( ((delr.ba and mcii.next_req) = '1') and (delr.bo = "00")) or
+             ( ((delr.ba and dreq) = '1') and (delr.bo = "01"))) then
+        nbo := "10";
+        hbusreq := '1'; burst := '0';
+        htrans := HTRANS_NONSEQ;
+      else
+        nbo := "11"; burst := '0';
+      end if;
+
+      -- dont change bus master if we have started driving htrans
+      if delr.nba = '1' then
+        nbo := delr.nbo; hbusreq := '1'; htrans := HTRANS_NONSEQ;
+      end if;
+
+      -- dont change bus master on retry
+      if (delr.retry2 and not delr.ba) = '1' then
+        nbo := delr.bo; hbusreq := '1'; htrans := HTRANS_NONSEQ;
+      end if;
+
+      if nbo = "10" then
+        haddr := mcmmi.next_address; hwrite := not mcmmi.next_read; hsize := '0' & mcmmi.next_size;
+        hlock := mcmmi.next_lock;
+        htrans := HTRANS_NONSEQ; hburst := HBURST_SINGLE;
+      elsif nbo = "00" then
+        haddr := mcii.next_address; hwrite := '0'; hsize := HSIZE_WORD; hlock := '0';
+        su := mcii.next_su;
+        if ((mcii.next_req and delr.ba) = '1')  and (delr.bo = "00") and ((not delr.retry) = '1') then
+          htrans := HTRANS_SEQ; haddr(4 downto 2) := haddr(4 downto 2) +1;
+        end if;
+        if mcii.next_burst = '1' then hburst := HBURST_INCR;
+        else hburst := HBURST_SINGLE; end if;
+      elsif nbo = "01" then
+        haddr := mcdi.next_address; hwrite := not mcdi.next_read; hsize := '0' & mcdi.next_size;
+        hlock := mcdi.next_lock;
+        if mcdi.next_asi /= "1010" then su := '1'; else su := '0'; end if;  --ASI_UDATA
+        if mcdi.next_burst = '1' then hburst := HBURST_INCR;
+        else hburst := HBURST_SINGLE; end if;
+        if ((dreq and delr.ba) = '1') and (delr.bo = "01") and ((not delr.retry) = '1') then
+          htrans := HTRANS_SEQ; haddr(4 downto 2) := haddr(4 downto 2) +1;
+          hburst := HBURST_INCR;
+        end if;
+      end if;
+
+      if delr.retry = '1' then htrans := HTRANS_IDLE; end if;
+
+      if delr.bo = "10" then
+        hwdata := mcmmi.next_data;
+      elsif delr.bo = "00" then
+        null;
+      elsif delr.bo = "01" then
+        hlock := mcdi.next_lock or ((delr.retry or (delr.retry2 and not delr.ba)) and delr.hlocken);
+      end if;
+
+      if nbo = "01" and ((hsize = "011") or ((mcdi.next_read and mcdi.next_cache) = '1')) then
+        hsize := "010";
+      end if;
+
+      if (delr.bo = "01") and (hlock = '1') then nbo := "01"; end if;
+
+      hlock_masked := hlock or mcdi.next_lock_hold;
+
+      vo.haddr := haddr;
+      vo.htrans := htrans;
+
+      -- Workaround for simulator bug (Riviera 2017.2), split below expression into temporaries
+      -- and then logically AND together.
+      -- vo.hbusreq := hbusreq and (not delr.lb or orv(nbo)) and (burst and not delr.bg);
+      tmp1 := (not delr.lb or orv(nbo));
+      tmp2 := (burst or not delr.bg);
+      vo.hbusreq := hbusreq and tmp1 and tmp2;
+
+      vo.hwdata := hwdata;
+      vo.hlock := hlock_masked;
+      vo.hwrite := hwrite;
+      vo.hsize := hsize;
+      vo.hburst := hburst;
+      if nbo="00" then vo.hprot := "11" & su & '0';
+      else vo.hprot := "11" & su & '1'; end if;
+
+    end if;
+
+    roin <= vo;
 
   end process;
 
@@ -400,18 +563,18 @@ begin
     r2.reqmsk <= "000";
   end generate;    
 
+  regogen : if REGAHBOUT generate
+    rego : process(clk)
+    begin
+      if rising_edge(clk) then
+        ro <= roin;
+        if RESET_ALL and (rst = '0') then ro <= RORES; end if;
+      end if;
+    end process;
+  end generate;
+
+  noregogen : if not REGAHBOUT generate
+    ro <= RORES;
+  end generate;
+
 end;
-
-
-
-
-
-
-
-
-
-
-
-
-
-

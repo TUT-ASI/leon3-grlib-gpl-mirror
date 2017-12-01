@@ -3,6 +3,7 @@
 
         .global awptest
 
+SPARC_TBR_TBA_MASK = 0xfffff000
 awptest:
         /* Allocate our frame */
         save %sp, -96, %sp
@@ -118,7 +119,9 @@ awptest:
          mov 8, %o0
         /* Test trap */
         /* Install handler for software trap 11 */
-        set _trap_table, %l6
+        rd %tbr, %l6
+        /* Second operand within 12-bit limit so no sign extension */
+        andn %l6, ~SPARC_TBR_TBA_MASK, %l6
         add %l6, 0x8B0, %l6
         set awptest_swtrap, %l5
         sub %l5, %l6, %l5

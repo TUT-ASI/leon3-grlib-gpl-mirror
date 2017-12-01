@@ -732,6 +732,8 @@ begin
            do         => spwi(i).d(1 downto 0),
            dov        => spwi(i).dv(1 downto 0),
            dconnect   => spwi(i).dconnect(1 downto 0),
+           dconnect2  => spwi(i).dconnect2(1 downto 0),
+           dconnect3  => spwi(i).dconnect3(1 downto 0),
            rxclko     => spw_rxclk(i));
        spwi(i).nd <= (others => '0');  -- Only used in GRSPW
        spwi(i).dv(3 downto 2) <= "00";  -- For second port
@@ -754,11 +756,15 @@ begin
            dconnect   => spwi(i).dconnect(1 downto 0));
        spwi(i).d(1) <= '0';             -- For second port
        spwi(i).dv <= (others => '0');  -- Only used in GRSPW2
+       spwi(i).dconnect2(1 downto 0) <= (others => '0');  -- Only used in GRSPW2
+       spwi(i).dconnect3(1 downto 0) <= (others => '0');  -- Only used in GRSPW2
        spwi(i).nd(9 downto 5) <= "00000";  -- For second port
      end generate spw1_input;
 
      spwi(i).d(3 downto 2) <= "00";   -- For second port
-     spwi(i).dconnect(3 downto 2) <= "00";  -- For GRSPW2 second port     
+     spwi(i).dconnect(3 downto 2)  <= "00";  -- For GRSPW2 second port
+     spwi(i).dconnect2(3 downto 2) <= "00";  -- For GRSPW2 second port
+     spwi(i).dconnect3(3 downto 2) <= "00";  -- For GRSPW2 second port
      spwi(i).s(1 downto 0) <= "00";  -- Only used in PHY
      
    sw0 : grspwm generic map(tech => memtech,
@@ -768,11 +774,12 @@ begin
      dmachan => CFG_SPW_DMACHAN,
      fifosize1 => CFG_SPW_AHBFIFO, fifosize2 => CFG_SPW_RXFIFO,
      rxclkbuftype => 1, spwcore => CFG_SPW_GRSPW,
-     input_type => CFG_SPW_INPUT,
-     output_type => CFG_SPW_OUTPUT, rxtx_sameclk => CFG_SPW_RTSAME)
-     port map(resetn, clkm, spw_rxclk(i), spw_rxclk(i), spw_rxtxclk, spw_rxtxclk,
-        ahbmi, ahbmo(maxahbmsp+i), 
-	apbi, apbo(12+i), spwi(i), spwo(i));
+     input_type => CFG_SPW_INPUT, output_type => CFG_SPW_OUTPUT,
+     rxtx_sameclk => CFG_SPW_RTSAME, internalrstgen => 1)
+     port map(resetn, clkm, gnd(0), gnd(0), spw_rxclk(i), gnd(0),
+              spw_rxclk(i), gnd(0), spw_rxtxclk, spw_rxtxclk,
+              ahbmi, ahbmo(maxahbmsp+i), 
+	      apbi, apbo(12+i), spwi(i), spwo(i));
      spwi(i).tickin <= '0'; spwi(i).rmapen <= '1';
      spwi(i).clkdiv10 <= conv_std_logic_vector(sysfreq/10000-1, 8);
      spwi(i).dcrstval <= (others => '0');

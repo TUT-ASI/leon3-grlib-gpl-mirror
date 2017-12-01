@@ -140,7 +140,8 @@ begin
         apbi           => apbi,
         apbo           => apbo,
         ethi           => ethi,
-        etho           => etho);
+        etho           => etho
+        );
   end generate;
 
   m1000 : if giga = 1 generate

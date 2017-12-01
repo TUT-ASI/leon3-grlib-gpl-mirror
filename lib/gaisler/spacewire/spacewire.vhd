@@ -31,6 +31,8 @@ package spacewire is
     dv           : std_logic_vector(3 downto 0);
     s            : std_logic_vector(1 downto 0);
     dconnect     : std_logic_vector(3 downto 0);
+    dconnect2    : std_logic_vector(3 downto 0);
+    dconnect3    : std_logic_vector(3 downto 0);
     tickin       : std_ulogic;
     tickinraw    : std_ulogic;
     timein       : std_logic_vector(7 downto 0);
@@ -64,11 +66,13 @@ package spacewire is
     rxdav       : std_ulogic;
     loopback    : std_ulogic;
     rxrst       : std_ulogic;
+    ctrlregrst  : std_ulogic;
   end record;
 
   constant grspw_in_none : grspw_in_type :=
     ((others => '0'), (others => '0'), (others => '0'),
-     (others => '0'), '0', '0', (others => '0'), (others => '0'), '0',
+     (others => '0'), (others => '0'), (others => '0'), '0', '0',
+     (others => '0'), (others => '0'), '0',
      (others => '0'), (others => '0'), (others => '0'), (others => '0'),
      (others => '0'), (others => '0'), (others => '0'), (others => '0'),
      (others => '0'), '0', (others => '0'), (others => '0'),
@@ -76,13 +80,15 @@ package spacewire is
 
   constant grspw_out_none : grspw_out_type :=
     ((others => '0'), (others => '0'), '0', '0', '0', (others => '0'),
-     '0', '0', (others => '0'), '0', '0', '0');
+     '0', '0', (others => '0'), '0', '0', '0', '0');
 
   type grspw_codec_in_type is record
     --spw
     d            : std_logic_vector(3 downto 0);
     dv           : std_logic_vector(3 downto 0);
     dconnect     : std_logic_vector(3 downto 0);
+    dconnect2    : std_logic_vector(3 downto 0);
+    dconnect3    : std_logic_vector(3 downto 0);
     --link fsm
     linkdisabled : std_ulogic;
     linkstart    : std_ulogic;
@@ -143,6 +149,8 @@ package spacewire is
     --memory error, separate signals
     rxmerror     : std_ulogic;
     txmerror     : std_ulogic;
+    --reset interconnection
+    rxrst        : std_ulogic;
   end record;
 
   type grspw_dma_in_type is record
@@ -354,24 +362,27 @@ package spacewire is
       input_type    : integer;
       input_level   : integer := 0;
       input_voltage : integer := x33v;
-      rxclkbuftype  : integer range 0 to 2 := 0
+      rxclkbuftype  : integer range 0 to 2 := 0;
+      rstsrctmr     : integer range 0 to 1 := 0
       );
     port(
-      rstn     : in std_ulogic;
-      rxclki   : in std_ulogic;
-      rxclkin  : in std_ulogic;
-      nrxclki  : in std_ulogic;
-      di       : in std_ulogic;
-      si       : in std_ulogic;  --used as df when input_type=3
-      do       : out std_logic_vector(1 downto 0);
-      dov      : out std_logic_vector(1 downto 0);
-      dconnect : out std_logic_vector(1 downto 0);
-      rxclko   : out std_ulogic;
-      testrst  : in  std_ulogic := '0';
-      testen   : in  std_ulogic := '0';
+      rstn      : in std_ulogic;
+      rxclki    : in std_ulogic;
+      rxclkin   : in std_ulogic;
+      nrxclki   : in std_ulogic;
+      di        : in std_ulogic;
+      si        : in std_ulogic;  --used as df when input_type=3
+      do        : out std_logic_vector(1 downto 0);
+      dov       : out std_logic_vector(1 downto 0);
+      dconnect  : out std_logic_vector(1 downto 0);
+      dconnect2 : out std_logic_vector(1 downto 0); -- Triplication for rad-protection
+      dconnect3 : out std_logic_vector(1 downto 0); -- Triplication for rad-protection
+      rxclko    : out std_ulogic;
+      testrst   : in  std_ulogic := '0';
+      testen    : in  std_ulogic := '0';
       -- input timing testing
-      testdo   : out std_logic_vector(1 downto 0);
-      testso   : out std_logic_vector(1 downto 0)
+      testdo    : out std_logic_vector(1 downto 0);
+      testso    : out std_logic_vector(1 downto 0)
       );
   end component;
 
@@ -395,7 +406,7 @@ package spacewire is
       ports           : integer range 1 to 2 := 1;
       dmachan         : integer range 1 to 4 := 1;
       memtech         : integer range 0 to NTECH := DEFMEMTECH;
-      input_type      : integer range 0 to 4 := 0;
+      input_type      : integer range 0 to 6 := 0;
       output_type     : integer range 0 to 2 := 0;
       rxtx_sameclk    : integer range 0 to 1 := 0;
       netlist         : integer range 0 to 1 := 0;
@@ -415,21 +426,26 @@ package spacewire is
       pnppatch        : integer range 0 to 16#FF# := 0;
       num_txdesc      : integer range 64 to 512 := 64;
       num_rxdesc      : integer range 128 to 1024 := 128;
-      ccsdscrc        : integer range 0 to 1 := 0
+      ccsdscrc        : integer range 0 to 1 := 0;
+      rstsrctmr       : integer range 0 to 1 := 0
       );
     port(
-      rst        : in  std_ulogic;
-      clk        : in  std_ulogic;
-      rxclk0     : in  std_ulogic;
-      rxclk1     : in  std_ulogic;
-      txclk      : in  std_ulogic;
-      txclkn     : in  std_ulogic;
-      ahbmi      : in  ahb_mst_in_type;
-      ahbmo      : out ahb_mst_out_type;
-      apbi       : in  apb_slv_in_type;
-      apbo       : out apb_slv_out_type;
-      swni       : in  grspw_in_type;
-      swno       : out grspw_out_type
+      rst         : in  std_ulogic;
+      clk         : in  std_ulogic;
+      rxasyncrst  : in  std_ulogic;
+      rxsyncrst0  : in  std_ulogic;
+      rxclk0      : in  std_ulogic;
+      rxsyncrst1  : in  std_ulogic;
+      rxclk1      : in  std_ulogic;
+      txsyncrst   : in  std_ulogic;
+      txclk       : in  std_ulogic;
+      txclkn      : in  std_ulogic;
+      ahbmi       : in  ahb_mst_in_type;
+      ahbmo       : out ahb_mst_out_type;
+      apbi        : in  apb_slv_in_type;
+      apbo        : out apb_slv_out_type;
+      swni        : in  grspw_in_type;
+      swno        : out grspw_out_type
       );
   end component;
 
@@ -502,7 +518,7 @@ package spacewire is
       dmachan         : integer range 1 to 4 := 1;                 -- spw2
       memtech         : integer range 0 to NTECH := DEFMEMTECH;
       spwcore         : integer range 1 to 2 := 2;
-      input_type      : integer range 0 to 4 := 0;
+      input_type      : integer range 0 to 6 := 0;
       output_type     : integer range 0 to 2 := 0;
       rxtx_sameclk    : integer range 0 to 1 := 0;
       nodeaddr        : integer range 0 to 255 := 254;
@@ -521,28 +537,34 @@ package spacewire is
       pnppatch        : integer range 0 to 16#FF# := 0;  -- spw2
       num_txdesc      : integer range 64 to 512 := 64;  -- spw2
       num_rxdesc      : integer range 128 to 1024 := 128;  -- spw2
-      ccsdscrc        : integer range 0 to 1 := 0 -- spw2
+      ccsdscrc        : integer range 0 to 1 := 0; -- spw2
+      internalrstgen  : integer range 0 to 1 := 1; -- enable the internal reset generators
+      rstsrctmr       : integer range 0 to 1 := 0  -- enable the triple modular redundancy
     );
     port(
-      rst        : in  std_ulogic;
-      clk        : in  std_ulogic;
-      rxclk0     : in  std_ulogic;
-      rxclk1     : in  std_ulogic;
-      txclk      : in  std_ulogic;
-      txclkn     : in  std_ulogic;
-      ahbmi      : in  ahb_mst_in_type;
-      ahbmo      : out ahb_mst_out_type;
-      apbi       : in  apb_slv_in_type;
-      apbo       : out apb_slv_out_type;
-      swni       : in  grspw_in_type;
-      swno       : out grspw_out_type
+      rst         : in  std_ulogic;
+      clk         : in  std_ulogic;
+      rxasyncrst  : in  std_ulogic;
+      rxsyncrst0  : in  std_ulogic;
+      rxclk0      : in  std_ulogic;
+      rxsyncrst1  : in  std_ulogic;
+      rxclk1      : in  std_ulogic;
+      txsyncrst   : in  std_ulogic;
+      txclk       : in  std_ulogic;
+      txclkn      : in  std_ulogic;
+      ahbmi       : in  ahb_mst_in_type;
+      ahbmo       : out ahb_mst_out_type;
+      apbi        : in  apb_slv_in_type;
+      apbo        : out apb_slv_out_type;
+      swni        : in  grspw_in_type;
+      swno        : out grspw_out_type
     );
   end component;
 
   component grspw_codec is
   generic(
     ports        : integer range 1 to 2 := 1;
-    input_type   : integer range 0 to 4 := 0;
+    input_type   : integer range 0 to 6 := 0;
     output_type  : integer range 0 to 2 := 0;
     rxtx_sameclk : integer range 0 to 1 := 0;
     fifosize     : integer range 16 to 2048 := 64;
@@ -550,13 +572,18 @@ package spacewire is
     scantest     : integer range 0 to 1 := 0;
     techfifo     : integer range 0 to 1 := 0;
     ft           : integer range 0 to 2 := 0;
-    inputtest    : integer range 0 to 1 := 0
+    inputtest    : integer range 0 to 1 := 0;
+    rstsrctmr    : integer range 0 to 1 := 0
     );
   port(
     rst          : in  std_ulogic;
     clk          : in  std_ulogic;
+    rxasyncrst   : in  std_ulogic;
+    rxsyncrst0   : in  std_ulogic;
     rxclk0       : in  std_ulogic;
+    rxsyncrst1   : in  std_ulogic;
     rxclk1       : in  std_ulogic;
+    txsyncrst    : in  std_ulogic;
     txclk        : in  std_ulogic;
     txclkn       : in  std_ulogic;
     testen       : in  std_ulogic;
@@ -601,7 +628,7 @@ package spacewire is
 
   component grspwrouter is
     generic(
-      input_type      : integer range 0 to 4 := 0;
+      input_type      : integer range 0 to 6 := 0;
       output_type     : integer range 0 to 2 := 0;
       rxtx_sameclk    : integer range 0 to 1 := 0;
       fifosize        : integer range 16 to 2048 := 64;
@@ -658,7 +685,8 @@ package spacewire is
       num_txdesc      : integer range 64 to 512 := 64;
       num_rxdesc      : integer range 128 to 1024 := 128;
       auxasync        : integer range 0 to 1 := 0;
-      hirq            : integer range 0 to NAHBIRQ-1 := 0
+      hirq            : integer range 0 to NAHBIRQ-1 := 0;
+      rstsrctmr       : integer range 0 to 1 := 0
       );
     port(
       rst          : in  std_ulogic;

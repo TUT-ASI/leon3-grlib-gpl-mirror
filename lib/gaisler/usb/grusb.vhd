@@ -124,12 +124,9 @@ package grusb is
       vbusconf    : integer                      := 3;
       netlist     : integer range 0 to 1         := 0;
       ramtest     : integer range 0 to 1         := 0;
-      urst_time   : integer                      := 0;
       oepol       : integer range 0 to 1         := 0;
       scantest    : integer range 0 to 1         := 0;
       memsel      : integer                      := 0;
-      syncprst    : integer range 0 to 1         := 0;
-      sysfreq     : integer                      := 65000;
       pcidev      : integer range 0 to 1         := 0;
       debug       : integer                      := 0;
       debugsize   : integer                      := 8192);
@@ -137,6 +134,7 @@ package grusb is
       clk       : in  std_ulogic;
       uclk      : in  std_ulogic;
       rst       : in  std_ulogic;
+      urst      : in  std_ulogic;      
       apbi      : in  apb_slv_in_type;
       ehc_apbo  : out apb_slv_out_type;
       ahbmi     : in  ahb_mst_in_type;
@@ -195,9 +193,6 @@ package grusb is
       o14        : integer range 8 to 3072      := 1024;
       o15        : integer range 8 to 3072      := 1024;
       oepol      : integer range 0 to 1         := 0;
-      syncprst   : integer range 0 to 1         := 0;
-      prsttime   : integer range 0 to 512       := 0;
-      sysfreq    : integer                      := 50000;
       keepclk    : integer range 0 to 1         := 0;
       sepirq     : integer range 0 to 1         := 0;
       irqi       : integer range 0 to NAHBIRQ-1 := 1;
@@ -207,6 +202,7 @@ package grusb is
       nsync      : integer range 1 to 2         := 1);
     port (
       uclk  : in  std_ulogic;
+      urst  : in  std_ulogic;
       usbi  : in  grusb_in_type;
       usbo  : out grusb_out_type;
       hclk  : in  std_ulogic;
@@ -225,9 +221,6 @@ package grusb is
       uiface     : integer range 0 to 1   := 0;
       dwidth     : integer range 8 to 16  := 8;
       oepol      : integer range 0 to 1   := 0;
-      syncprst   : integer range 0 to 1   := 0;
-      prsttime   : integer range 0 to 512 := 0;
-      sysfreq    : integer                := 50000;
       keepclk    : integer range 0 to 1   := 0;
       functesten : integer range 0 to 1   := 0;
       burstlength: integer range 1 to 512 := 8;
@@ -236,6 +229,7 @@ package grusb is
       );
     port (
       uclk : in  std_ulogic;
+      urst : in  std_ulogic;
       usbi : in  grusb_in_type;
       usbo : out grusb_out_type;
       hclk : in  std_ulogic;
@@ -243,7 +237,7 @@ package grusb is
       ahbi : in  ahb_mst_in_type;
       ahbo : out ahb_mst_out_type
       );
-  end component grusb_dcl;
+  end component;
 
   component grusbhc_gen is
     generic (
@@ -266,12 +260,9 @@ package grusb is
       vbusconf    : integer                      := 3;
       netlist     : integer range 0 to 1         := 0;
       ramtest     : integer range 0 to 1         := 0;
-      urst_time   : integer                      := 0;
       oepol       : integer range 0 to 1         := 0;
       scantest    : integer range 0 to 1         := 0;
       memsel      : integer                      := 0;
-      syncprst    : integer range 0 to 1         := 0;
-      sysfreq     : integer                      := 65000;
       pcidev      : integer range 0 to 1         := 0;
       debug       : integer                      := 0;
       debugsize   : integer                      := 8192);
@@ -279,6 +270,7 @@ package grusb is
       clk               : in  std_ulogic;
       uclk              : in  std_ulogic;
       rst               : in  std_ulogic;
+      urst              : in  std_ulogic;      
       -- EHC APB slave input signals
       ehc_apbsi_psel    : in  std_ulogic;
       ehc_apbsi_penable : in  std_ulogic;
@@ -413,17 +405,15 @@ package grusb is
       o14        : integer range 8 to 3072      := 1024;
       o15        : integer range 8 to 3072      := 1024;
       oepol      : integer range 0 to 1         := 0;
-      syncprst   : integer range 0 to 1         := 0;
-      prsttime   : integer range 0 to 512       := 0;
-      sysfreq    : integer                      := 50000;
       keepclk    : integer range 0 to 1         := 0;
       sepirq     : integer range 0 to 1         := 0;
       functesten : integer range 0 to 1         := 0;
       scantest   : integer range 0 to 1         := 0;
       nsync      : integer range 1 to 2         := 1);
     port (
-      -- usb clock
+      -- usb clock/rst
       uclk              : in  std_ulogic;
+      urst              : in  std_ulogic;
       --usb in signals
       datain            : in  std_logic_vector(15 downto 0);
       rxactive          : in  std_ulogic;

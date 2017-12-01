@@ -243,6 +243,68 @@ library altera_mf;
 use altera_mf.altsyncram;
 -- pragma translate_on
 
+entity altera_syncram_be is
+  generic ( abits : integer := 9; dbits : integer := 8 );
+  port (
+    clk     : in std_ulogic;
+    address : in std_logic_vector (abits -1 downto 0);
+    datain  : in std_logic_vector (dbits-1 downto 0);
+    dataout : out std_logic_vector (dbits-1 downto 0);
+    enable  : in  std_logic_vector (dbits/8-1 downto 0);
+    write   : in  std_logic_vector (dbits/8-1 downto 0)
+  );
+end;
+
+architecture behav of altera_syncram_be is
+  component altsyncram
+  generic (
+    width_a	: natural;
+    width_b	: natural := 1;
+    widthad_a	: natural;
+    widthad_b	: natural := 1;
+    byte_size   : integer := 0;
+    width_byteena_a : integer := 1
+  );
+  port(
+    address_a	: in std_logic_vector(widthad_a-1 downto 0);
+    clock0	: in std_logic;
+    clock1	: in std_logic;
+    data_a	: in std_logic_vector(width_a-1 downto 0);
+    q_a		: out std_logic_vector(width_a-1 downto 0);
+    wren_a	: in std_logic;
+    byteena_a   : in std_logic_vector( (width_byteena_a - 1) downto 0) := (others => '1')
+    );
+end component;
+
+signal write1 : std_logic;
+signal enablex : std_logic_vector (dbits/8-1 downto 0);
+
+begin
+  
+ write1 <= orv(write and enable);
+ enablex <= write when write1 = '1' else enable;
+
+  u0 : altsyncram 
+    generic map (
+      WIDTH_A => dbits, WIDTHAD_A => abits,
+      WIDTH_B => dbits, WIDTHAD_B => abits, byte_size => 8,
+      width_byteena_a => dbits/8 )
+    port map ( 
+      address_a => address, clock0 => clk, clock1 => clk, 
+      data_a => datain, q_a => dataout, wren_a => write1,
+      byteena_a => enablex );
+end;
+
+library ieee;
+use ieee.std_logic_1164.all;
+library techmap;
+library grlib;
+use grlib.stdlib.all;
+-- pragma translate_off
+library altera_mf;
+use altera_mf.altsyncram;
+-- pragma translate_on
+
 entity altera_syncram128bw is
   generic ( abits : integer := 9);
   port (
@@ -368,23 +430,31 @@ use ieee.std_logic_1164.all;
 library altera_mf;
 use altera_mf.dcfifo;
 -- pragma translate_on
+library grlib;
+use grlib.stdlib.log2;
 
 entity altera_fifo_dp is
-  generic ( 
+  generic (
     tech  : integer := 0;
     abits : integer := 4;
-    dbits : integer := 32
+    dbits : integer := 32;
+    sepclk : integer := 1;
+    afullgw : integer := 0;
+    aemptygr : integer := 0;
+    fwft: integer := 0
   );
   port (
     rdclk   : in std_logic;
     rdreq   : in std_logic;
     rdfull  : out std_logic;
     rdempty : out std_logic;
+    aempty  : out std_logic;
     rdusedw : out std_logic_vector(abits-1 downto 0);
     q       : out std_logic_vector(dbits-1 downto 0);
     wrclk   : in std_logic;
     wrreq   : in std_logic;
     wrfull  : out std_logic;
+    afull   : out std_logic;
     wrempty : out std_logic;
     wrusedw : out std_logic_vector(abits-1 downto 0);
     data    : in std_logic_vector(dbits-1 downto 0);
@@ -414,7 +484,7 @@ architecture behav of altera_fifo_dp is
         add_usedw_msb_bit       : string := "OFF";
         write_aclr_synch        : string := "OFF";
         lpm_type                : string := "dcfifo";
-        intended_device_family  : string := "NON_STRATIX" );
+        intended_device_family  : string := "NON_STRATIX");
     port (
         data    : in std_logic_vector(lpm_width-1 downto 0);
         rdclk   : in std_logic;
@@ -431,36 +501,105 @@ architecture behav of altera_fifo_dp is
         wrusedw : out std_logic_vector(lpm_widthu-1 downto 0) );
   end component;
 
+  signal wrfull_i, rdempty_i: std_ulogic;
+  signal wrusedw_i, rdusedw_i: std_logic_vector(abits-1 downto 0);
+
 begin
 
-  u0 : dcfifo
-    generic map (
-      intended_device_family  => "STRATIX IV",
-      lpm_numwords            => 2**abits,
-      lpm_showahead           => "OFF",
-      lpm_type                => "dcfifo",
-      lpm_width               => dbits,
-      lpm_widthu              => abits,
-      overflow_checking       => "ON",
-      rdsync_delaypipe        => 4,
-      underflow_checking      => "ON",
-      use_eab                 => "ON",
-      wrsync_delaypipe        => 4
-    )
-    port map (
-      rdclk   => rdclk,
-      rdreq   => rdreq,
-      rdfull  => rdfull,
-      rdempty => rdempty,
-      rdusedw => rdusedw,
-      q       => q,
-      wrclk   => wrclk,
-      wrreq   => wrreq,
-      wrfull  => wrfull,
-      wrempty => wrempty,
-      wrusedw => wrusedw,
-      data    => data,
-      aclr    => aclr
-      );
+  s1f0: if fwft=0 generate
+    u0 : dcfifo
+      generic map (
+        intended_device_family  => "STRATIX IV",
+        lpm_numwords            => 2**abits,
+        lpm_showahead           => "OFF",
+        lpm_type                => "dcfifo",
+        lpm_width               => dbits,
+        lpm_widthu              => abits,
+        overflow_checking       => "ON",
+        rdsync_delaypipe        => 4,
+        underflow_checking      => "ON",
+        use_eab                 => "ON",
+        wrsync_delaypipe        => 4
+        )
+      port map (
+        rdclk   => rdclk,
+        rdreq   => rdreq,
+        rdfull  => rdfull,
+        rdempty => rdempty_i,
+        rdusedw => rdusedw_i,
+        q       => q,
+        wrclk   => wrclk,
+        wrreq   => wrreq,
+        wrfull  => wrfull_i,
+        wrempty => wrempty,
+        wrusedw => wrusedw_i,
+        data    => data,
+        aclr    => aclr
+        );
+  end generate;
+
+  s1f1: if fwft/=0 generate
+    u0 : dcfifo
+      generic map (
+        intended_device_family  => "STRATIX IV",
+        lpm_numwords            => 2**abits,
+        lpm_showahead           => "ON",
+        lpm_type                => "dcfifo",
+        lpm_width               => dbits,
+        lpm_widthu              => abits,
+        overflow_checking       => "ON",
+        rdsync_delaypipe        => 4,
+        underflow_checking      => "ON",
+        use_eab                 => "ON",
+        wrsync_delaypipe        => 4
+        )
+      port map (
+        rdclk   => rdclk,
+        rdreq   => rdreq,
+        rdfull  => rdfull,
+        rdempty => rdempty_i,
+        rdusedw => rdusedw_i,
+        q       => q,
+        wrclk   => wrclk,
+        wrreq   => wrreq,
+        wrfull  => wrfull_i,
+        wrempty => wrempty,
+        wrusedw => wrusedw_i,
+        data    => data,
+        aclr    => aclr
+        );
+  end generate;
+
+  wrfull <= wrfull_i;
+  wrusedw <= wrusedw_i;
+  rdempty <= rdempty_i;
+  rdusedw <= rdusedw_i;
+
+  afullgen: process(wrfull_i,wrusedw_i)
+    constant lowbit : integer := log2(afullgw+2);
+    variable wruwi_part, wruwi_ones: std_logic_vector(abits-1 downto lowbit);
+  begin
+    wruwi_part := wrusedw_i(abits-1 downto lowbit);
+    wruwi_ones := (others => '1');
+    if wrfull_i='1' or wruwi_part=wruwi_ones then
+      afull <= '1';
+    else
+      afull <= '0';
+    end if;
+  end process;
+
+  aemptygen: process(rdempty_i,rdusedw_i)
+    constant lowbit : integer := log2(aemptygr+2);
+    variable rduwi_part, rduwi_zeros : std_logic_vector(abits-1 downto lowbit);
+  begin
+    rduwi_part := rdusedw_i(abits-1 downto lowbit);
+    rduwi_zeros := (others => '0');
+    if rdempty_i='1' or rduwi_part=rduwi_zeros then
+      aempty <= '1';
+    else
+      aempty <= '0';
+    end if;
+  end process;
+
 end;
 

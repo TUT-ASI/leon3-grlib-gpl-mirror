@@ -42,13 +42,18 @@ entity grspw_codec_gen is
     tech         : integer;
     scantest     : integer range 0 to 1 := 0;
     techfifo     : integer range 0 to 1 := 0;
-    ft           : integer range 0 to 2 := 0
+    ft           : integer range 0 to 2 := 0;
+    rstsrctmr    : integer range 0 to 1 := 0
     );
   port(
     rst          : in  std_ulogic;
     clk          : in  std_ulogic;
+    rxasyncrst   : in  std_ulogic;
+    rxsyncrst0   : in  std_ulogic;
     rxclk0       : in  std_ulogic;
+    rxsyncrst1   : in  std_ulogic;
     rxclk1       : in  std_ulogic;
+    txsyncrst    : in  std_ulogic;
     txclk        : in  std_ulogic;
     txclkn       : in  std_ulogic;
     testen       : in  std_ulogic;
@@ -57,6 +62,8 @@ entity grspw_codec_gen is
     d            : in  std_logic_vector(3 downto 0);
     dv           : in  std_logic_vector(3 downto 0);
     dconnect     : in  std_logic_vector(3 downto 0);
+    dconnect2    : in  std_logic_vector(3 downto 0);
+    dconnect3    : in  std_logic_vector(3 downto 0);
     --spw out
     do           : out std_logic_vector(3 downto 0);
     so           : out std_logic_vector(3 downto 0);
@@ -95,7 +102,9 @@ entity grspw_codec_gen is
     tickout      : out std_ulogic;
     timeout      : out std_logic_vector(7 downto 0);
     --misc
-    merror       : out std_ulogic
+    merror       : out std_ulogic;
+    -- Reset interconnection
+    rxrst        : out std_ulogic
   );
 end entity;
 
@@ -133,13 +142,18 @@ begin
       rxtx_sameclk  => rxtx_sameclk,
       fifosize      => fifosize,
       tech          => tech, 
-      scantest      => scantest
+      scantest      => scantest,
+      rstsrctmr     => rstsrctmr
       )
     port map(
       rst           => rst,
       clk           => clk,
+      rxasyncrst    => rxasyncrst,
+      rxsyncrst0    => rxsyncrst0,
       rxclk0        => rxclk0,
+      rxsyncrst1    => rxsyncrst1,
       rxclk1        => rxclk1,
+      txsyncrst     => txsyncrst,
       txclk         => txclk,
       txclkn        => txclkn,
       testen        => testen,
@@ -148,6 +162,8 @@ begin
       d             => d,
       dv            => dv,
       dconnect      => dconnect,
+      dconnect2     => dconnect2,
+      dconnect3     => dconnect3,
       --spw out
       do            => do,
       so            => so,
@@ -200,7 +216,9 @@ begin
       timein        => timein,
       tickin_done   => tickin_done,
       tickout       => tickout,
-      timeout       => timeout
+      timeout       => timeout,
+      -- Reset interconnection
+      rxrst         => rxrst
     );
 
   ft0 : if ft = 0 generate

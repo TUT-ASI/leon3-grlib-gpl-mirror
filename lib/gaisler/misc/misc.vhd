@@ -148,13 +148,13 @@ package misc is
       ahbpipe   : integer range 0 to 1 := 0;
       testen    : integer := 0);
     port (
-      rst     : in  std_ulogic;
-      clk     : in  std_ulogic;
-      ahbsi   : in  ahb_slv_in_type;
-      ahbso   : out ahb_slv_out_type;
-      apbi    : in  apb_slv_in_type;
-      apbo    : out apb_slv_out_type;
-      aramo   : out ahbram_out_type
+      rst      : in  std_ulogic;
+      clk      : in  std_ulogic;
+      ahbsi    : in  ahb_slv_in_type;
+      ahbso    : out ahb_slv_out_type;
+      apbi     : in  apb_slv_in_type;
+      apbo     : out apb_slv_out_type;
+      aramo    : out ahbram_out_type
     );
   end component;
 
@@ -175,13 +175,13 @@ package misc is
       ahbpipe   : integer range 0 to 1 := 0;
       testen    : integer := 0);
     port (
-      rst     : in  std_ulogic;
-      clk     : in  std_ulogic;
-      ahbsi   : in  ahb_slv_in_type;
-      ahbso   : out ahb_slv_out_type;
-      apbi    : in  apb_slv_in_type;
-      apbo    : out apb_slv_out_type;
-      aramo   : out ahbram_out_type
+      rst      : in  std_ulogic;
+      clk      : in  std_ulogic;
+      ahbsi    : in  ahb_slv_in_type;
+      ahbso    : out ahb_slv_out_type;
+      apbi     : in  apb_slv_in_type;
+      apbo     : out apb_slv_out_type;
+      aramo    : out ahbram_out_type
     );
   end component;
 
@@ -198,13 +198,13 @@ package misc is
       testen    : integer := 0;
       edacen    : integer range 1 to 3 := 1);
     port (
-      rst     : in  std_ulogic;
-      clk     : in  std_ulogic;
-      ahbsi   : in  ahb_slv_in_type;
-      ahbso   : out ahb_slv_out_type;
-      apbi    : in  apb_slv_in_type;
-      apbo    : out apb_slv_out_type;
-      aramo   : out ahbram_out_type
+      rst      : in  std_ulogic;
+      clk      : in  std_ulogic;
+      ahbsi    : in  ahb_slv_in_type;
+      ahbso    : out ahb_slv_out_type;
+      apbi     : in  apb_slv_in_type;
+      apbo     : out apb_slv_out_type;
+      aramo    : out ahbram_out_type
     );
   end component;
 

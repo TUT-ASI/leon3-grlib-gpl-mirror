@@ -871,6 +871,28 @@ package leon3 is
     ncpu    : integer := 1;
     eirq    : integer := 0;
     irqmap  : integer := 0;
+    bootreg : integer := 1;
+    extrun  : integer range 0 to 1 := 0
+  );
+  port (
+    rst    : in  std_ulogic;
+    clk    : in  std_ulogic;
+    apbi   : in  apb_slv_in_type;
+    apbo   : out apb_slv_out_type;
+    irqi   : in  irq_out_vector(0 to ncpu-1);
+    irqo   : out irq_in_vector(0 to ncpu-1);
+    cpurun : in  std_logic_vector(ncpu-1 downto 0) := (others => '0')
+  );
+  end component; 
+
+  component irqmp_bmode
+  generic (
+    pindex  : integer := 0;
+    paddr   : integer := 0;
+    pmask   : integer := 16#fff#;
+    ncpu    : integer := 1;
+    eirq    : integer := 0;
+    irqmap  : integer := 0;
     bootreg : integer := 1
   );
   port (
@@ -881,8 +903,8 @@ package leon3 is
     irqi   : in  irq_out_vector(0 to ncpu-1);
     irqo   : out irq_in_vector(0 to ncpu-1)
   );
-  end component; 
-
+  end component;
+  
   component irqmp2x
   generic (
     pindex  : integer := 0;
@@ -891,7 +913,9 @@ package leon3 is
     ncpu    : integer := 1;
     eirq    : integer := 0;
     clkfact : integer := 2;
-    irqmap  : integer := 0
+    irqmap  : integer := 0;
+    bootreg : integer := 1;
+    extrun  : integer range 0 to 1 := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -901,7 +925,8 @@ package leon3 is
     apbo   : out apb_slv_out_type;
     irqi   : in  irq_out_vector(0 to ncpu-1);
     irqo   : out irq_in_vector(0 to ncpu-1);
-    hclken : in std_ulogic    
+    hclken : in std_ulogic;
+    cpurun : in  std_logic_vector(ncpu-1 downto 0) := (others => '0')
   );
   end component;
 

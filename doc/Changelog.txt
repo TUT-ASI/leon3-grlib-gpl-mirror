@@ -1,3 +1,65 @@
+----------------------- Release 2017.3-b4208 ---------------------------
+
+2017-12-01	AHBTRACE: Bus select available (BA) was shadowed by BSEL
+		field for ntrace > 4.
+
+2017-11-28	Added IRQAMP and GRVERSION.
+
+2017-11-16	Added template design for GR-CPCI-XC7K board (leon3-cpci-xc7k).
+
+2017-11-07	Added template design for GR-XCKU board (leon3-gr-xcku).
+
+2017-11-01	IRQMP: Add extrun support (see doc of extrun VHDL generic)
+
+2017-10-19	Scripts: Added support for running Microsemi Libero in
+		batch mode.
+
+2017-09-26	GRDMAC: Descriptor write-back did not work with AHB
+		wait-states.The core did not drive the correct write data
+		(on descriptor write) during bus wait-states (HREADY=0).
+
+2017-09-22	Template designs using USB IP Cores (GRUSBHC, GRUSBDC and
+		GRUSB_DCL) updated to support the new generic/port declaration
+		list as a consequence of an update in the internal reset
+		strategy.
+
+2017-08-28	LEON3: Bugfix for a potential processor hang problem when 
+		MMU is enabled and a load operation is followed by an atomic 
+		instruction (SWAP, LDSTUB, CASA). In order for the problem 
+		to trigger the following conditions must be met:
+		1. MMU is enabled.
+		1. MMU is enabled.
+		2. A load instruction is followed by an atomic instruction
+		immediately in the instruction flow without any additional
+		instructions inbetween.
+		3. The load instruction must cause a data cache miss and
+		atomic instruction must cause a DTLB miss.
+		4. When the load instruction causes a data cache miss, the
+		store buffer must be full.
+		If all the previously defined conditions are met, the processor
+		will hang and the bus will remain locked. This issue is
+		present in all LEON3 designs since GRLIB build b4108.
+
+2017-08-17	LEON3: Support using memories with byte mask for DCache data,
+		if supported by technology.
+
+2017-08-15	LEON3: Bugfix for very rare case of dropping AHB lock. If MMU
+		is enabled and two instructions after an atomic instruction
+		causes an ITLB miss, the lock on the bus will be dropped before
+		the store operation for the atomic instruction completes.
+
+2017-08-14	LEON3: In double clocking configurations (clk2x /= 0), ensure
+		AHB outputs come directly from registers to avoid risk of
+		propagating glitches on the AHB outputs at fast clock edges.
+
+2017-08-14	leon3-terasic-sockit, leon3-xilinx-xc7z020 : AHB2AXI bridge 
+		in these template designs has been replaced with 
+		AHB2AXI3B bridge. 
+
+2017-08-09	scripts: Added support for dict implementation in tcl version
+		8.4 which should resolve issues with scripts terminating
+		abnormally 
+
 ----------------------- Release 2017.2-b4193 ---------------------------
 
 2017-05-30	Enabled GRFPU as default in leon3-xilinx-kc705,

@@ -48,7 +48,8 @@ package can is
       irq     : out std_logic;
       rxi     : in  std_logic;
       txo     : out std_logic;
-      testen  : in  std_logic);
+      testen  : in  std_logic
+      );
   end component;
 
   component can_oc

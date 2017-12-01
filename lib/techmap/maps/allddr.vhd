@@ -58,6 +58,18 @@ component unisim_iddr_reg is
       );
 end component;
 
+component unisim_iddre1_reg is
+  generic ( tech : integer := kintexu; arch : integer := 0);
+  port(
+         Q1 : out std_ulogic;
+         Q2 : out std_ulogic;
+         C : in std_ulogic;
+         CB : in std_ulogic;
+         D : in std_ulogic;
+         R : in std_ulogic       
+      );
+end component;
+
 component gen_iddr_reg
   generic (scantest: integer; noasync: integer);
   port (

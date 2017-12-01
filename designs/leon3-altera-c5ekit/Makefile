@@ -15,7 +15,6 @@ SIMTOP=testbench
 SDCFILE=$(GRLIB)/boards/$(BOARD)/default.sdc
 BITGEN=$(GRLIB)/boards/$(BOARD)/default.ut
 CLEAN=soft-clean
-LDFLAGS=-qnoambapp
 
 QSF_APPEND=qsf_append.txt
 QSF_NEXT=quartus_hook.tcl
@@ -28,7 +27,7 @@ DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan pci leon3ft ambatest can \
 	slink ascs hcan leon4v0
 FILESKIP = grcan.vhd clkgen_altera_mf.vhd
 
-CLEAN=localclean
+CLEAN+=localclean
 
 include $(GRLIB)/software/leon3/Makefile
 include $(GRLIB)/bin/Makefile

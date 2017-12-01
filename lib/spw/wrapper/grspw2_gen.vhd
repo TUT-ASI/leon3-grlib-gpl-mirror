@@ -66,13 +66,18 @@ entity grspw2_gen is
     pnppatch        : integer range 0 to 16#FF# := 0;
     num_txdesc      : integer range 64 to 512 := 64;
     num_rxdesc      : integer range 128 to 1024 := 128;
-    ccsdscrc        : integer range 0 to 1 := 0
+    ccsdscrc        : integer range 0 to 1 := 0;
+    rstsrctmr       : integer range 0 to 1 := 0
     );
   port(
     rst          : in  std_ulogic;
     clk          : in  std_ulogic;
+    rxasyncrst   : in  std_ulogic;
+    rxsyncrst0   : in  std_ulogic;
     rxclk0       : in  std_ulogic;
+    rxsyncrst1   : in  std_ulogic;
     rxclk1       : in  std_ulogic;
+    txsyncrst    : in  std_ulogic;
     txclk        : in  std_ulogic;
     txclkn       : in  std_ulogic;
     --ahb mst in
@@ -102,6 +107,8 @@ entity grspw2_gen is
     d            : in   std_logic_vector(3 downto 0);
     dv           : in   std_logic_vector(3 downto 0);
     dconnect     : in   std_logic_vector(3 downto 0);
+    dconnect2    : in   std_logic_vector(3 downto 0);
+    dconnect3    : in   std_logic_vector(3 downto 0);
     --spw out
     do           : out  std_logic_vector(3 downto 0);
     so           : out  std_logic_vector(3 downto 0);
@@ -137,7 +144,10 @@ entity grspw2_gen is
     pnpen        : in   std_ulogic;
     pnpuvendid   : in   std_logic_vector(15 downto 0);
     pnpuprodid   : in   std_logic_vector(15 downto 0);
-    pnpusn       : in   std_logic_vector(31 downto 0)
+    pnpusn       : in   std_logic_vector(31 downto 0);
+    -- Reset interconnection
+    ctrlregrst   : out  std_ulogic;
+    rxrst        : out  std_ulogic
     );
 end entity;
 
@@ -219,12 +229,17 @@ begin
       pnppatch        => pnppatch,
       num_txdesc      => num_txdesc,
       num_rxdesc      => num_rxdesc,
-      ccsdscrc        => ccsdscrc)    
+      ccsdscrc        => ccsdscrc,
+      rstsrctmr       => rstsrctmr)    
     port map(
       rst          => rst,
       clk          => clk,
+      rxasyncrst   => rxasyncrst,
+      rxsyncrst0   => rxsyncrst0,
       rxclk0       => rxclk0,
+      rxsyncrst1   => rxsyncrst1,
       rxclk1       => rxclk1,
+      txsyncrst    => txsyncrst,
       txclk        => txclk,
       txclkn       => txclkn,
       --ahb mst in
@@ -254,6 +269,8 @@ begin
       d            => d,
       dv           => dv,
       dconnect     => dconnect,
+      dconnect2    => dconnect2,
+      dconnect3    => dconnect3,
       --spw out
       do           => do,
       so           => so,
@@ -317,7 +334,10 @@ begin
       pnpen        => pnpen,
       pnpuvendid   => pnpuvendid,
       pnpuprodid   => pnpuprodid,
-      pnpusn       => pnpusn
+      pnpusn       => pnpusn,
+      -- Reset interconnection
+      ctrlregrst   => ctrlregrst,
+      rxrst        => rxrst
       );
 
   ------------------------------------------------------------------------------

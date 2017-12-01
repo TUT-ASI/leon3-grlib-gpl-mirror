@@ -1,0 +1,12 @@
+Version and Revision Register
+CONFIG_GRVERSION_ENABLE
+  Say Y here to enable Version and Revision Register.
+
+Version number
+CONFIG_GRVERSION_VERSION
+ Version number, 16-bit.
+
+Revision number
+CONFIG_GRVERSION_REVISION
+  Revision number, 16-bit.
+

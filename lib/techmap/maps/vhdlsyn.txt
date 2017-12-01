@@ -1,5 +1,6 @@
 allclkgen.vhd
 techbuf.vhd
+techbuf_triplicated.vhd
 allddr.vhd
 allmem.vhd
 allmul.vhd

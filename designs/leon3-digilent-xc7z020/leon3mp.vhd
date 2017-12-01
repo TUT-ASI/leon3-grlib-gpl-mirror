@@ -30,12 +30,14 @@ library grlib, techmap;
 use grlib.amba.all;
 use grlib.stdlib.all;
 use grlib.config.all;
+use grlib.devices.all;
 use techmap.gencomp.all;
 library gaisler;
 use gaisler.leon3.all;
 use gaisler.uart.all;
 use gaisler.misc.all;
 use gaisler.jtag.all;
+use gaisler.axi.all;
 -- pragma translate_off
 use gaisler.sim.all;
 -- pragma translate_on
@@ -236,6 +238,15 @@ signal S_AXI_GP0_wstrb : STD_LOGIC_VECTOR ( 3 downto 0 );
 signal S_AXI_GP0_wvalid : STD_LOGIC;
 signal S_AXI_GP0_wid : STD_LOGIC_VECTOR ( 5 downto 0 );  --
 
+signal aximi : axi_somi_type;
+signal aximo : axi3_mosi_type;
+
+
+constant pconfig : apb_config_type := (
+  0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_MIGDDR2, 0, 0, 0),
+  1 => apb_iobar(0, 16#fff#));
+
+
 begin
 
 ----------------------------------------------------------------------
@@ -364,56 +375,72 @@ begin
           S_AXI_GP0_wvalid => S_AXI_GP0_wvalid
        );
 
-    
-    ahb2axi0 : entity work.ahb2axi
+  ahb2axi3: ahb2axi3b
     generic map(
-     hindex => 3, haddr => 16#400#, hmask => 16#F00#,
-     pindex => 0, paddr => 0, cidsz => CIDSZ, clensz => CLENSZ)
-    port map(
-      rstn  => rstn,
+      hindex => 3,
+      wbuffer_num => 8,
+      rprefetch_num => 8,
+      endianness_mode => 1,
+      vendor  => VENDOR_GAISLER,
+      device  => GAISLER_MIGDDR2,
+      bar0    => ahb2ahb_membar(16#400#, '1', '1', 16#F00#)
+      )
+    port map (
       clk   => clkm,
+      rstn  => rstn,
       ahbsi => ahbsi,
       ahbso => ahbso(3),
-      apbi  => apbi,
-      apbo  => apbo(0),
-      M_AXI_araddr => S_AXI_GP0_araddr,
-      M_AXI_arburst(1 downto 0) => S_AXI_GP0_arburst(1 downto 0),
-      M_AXI_arcache(3 downto 0) => S_AXI_GP0_arcache(3 downto 0),
-      M_AXI_arid => S_AXI_GP0_arid,
-      M_AXI_arlen => S_AXI_GP0_arlen,
-      M_AXI_arlock => S_AXI_GP0_arlock,
-      M_AXI_arprot(2 downto 0) => S_AXI_GP0_arprot(2 downto 0),
-      M_AXI_arqos => S_AXI_GP0_arqos,
-      M_AXI_arready => S_AXI_GP0_arready,
-      M_AXI_arsize(2 downto 0) => S_AXI_GP0_arsize(2 downto 0),
-      M_AXI_arvalid => S_AXI_GP0_arvalid,
-      M_AXI_awaddr => S_AXI_GP0_awaddr,
-      M_AXI_awburst(1 downto 0) => S_AXI_GP0_awburst(1 downto 0),
-      M_AXI_awcache(3 downto 0) => S_AXI_GP0_awcache(3 downto 0),
-      M_AXI_awid => S_AXI_GP0_awid,
-      M_AXI_awlen => S_AXI_GP0_awlen,
-      M_AXI_awlock => S_AXI_GP0_awlock,
-      M_AXI_awprot(2 downto 0) => S_AXI_GP0_awprot(2 downto 0),
-      M_AXI_awqos => S_AXI_GP0_awqos,
-      M_AXI_awready => S_AXI_GP0_awready,
-      M_AXI_awsize(2 downto 0) => S_AXI_GP0_awsize(2 downto 0),
-      M_AXI_awvalid => S_AXI_GP0_awvalid,
-      M_AXI_bid => S_AXI_GP0_bid,
-      M_AXI_bready => S_AXI_GP0_bready,
-      M_AXI_bresp(1 downto 0) => S_AXI_GP0_bresp(1 downto 0),
-      M_AXI_bvalid => S_AXI_GP0_bvalid,
-      M_AXI_rdata(31 downto 0) => S_AXI_GP0_rdata(31 downto 0),
-      M_AXI_rid => S_AXI_GP0_rid,
-      M_AXI_rlast => S_AXI_GP0_rlast,
-      M_AXI_rready => S_AXI_GP0_rready,
-      M_AXI_rresp(1 downto 0) => S_AXI_GP0_rresp(1 downto 0),
-      M_AXI_rvalid => S_AXI_GP0_rvalid,
-      M_AXI_wdata(31 downto 0) => S_AXI_GP0_wdata(31 downto 0),
-      M_AXI_wlast => S_AXI_GP0_wlast,
-      M_AXI_wready => S_AXI_GP0_wready,
-      M_AXI_wstrb(3 downto 0) => S_AXI_GP0_wstrb(3 downto 0),
-      M_AXI_wvalid => S_AXI_GP0_wvalid
-    );
+      aximi => aximi,
+      aximo => aximo);
+
+  S_AXI_GP0_araddr <= "0001"&aximo.ar.addr(27 downto 0);
+  S_AXI_GP0_arburst <= aximo.ar.burst;
+  S_AXI_GP0_arcache <= aximo.ar.cache;
+  S_AXI_GP0_arid <= "00" & aximo.ar.id;
+  S_AXI_GP0_arlen <= aximo.ar.len;
+  S_AXI_GP0_arlock <= aximo.ar.lock;
+  S_AXI_GP0_arprot <= aximo.ar.prot;
+  S_AXI_GP0_arqos <= (others=>'0');
+  S_AXI_GP0_arsize <= aximo.ar.size;
+  S_AXI_GP0_arvalid <= aximo.ar.valid;
+  aximi.ar.ready <= S_AXI_GP0_arready;
+
+  S_AXI_GP0_awaddr <= "0001"&aximo.aw.addr(27 downto 0);
+  S_AXI_GP0_awburst <= aximo.aw.burst;
+  S_AXI_GP0_awcache <= aximo.aw.cache;
+  S_AXI_GP0_awid <= "00" & aximo.aw.id;
+  S_AXI_GP0_awlen <= aximo.aw.len;
+  S_AXI_GP0_awlock <= aximo.aw.lock;
+  S_AXI_GP0_awprot <= aximo.aw.prot;
+  S_AXI_GP0_awqos <= (others => '0');
+  S_AXI_GP0_awsize <= aximo.aw.size;
+  S_AXI_GP0_awvalid <= aximo.aw.valid;
+  aximi.aw.ready <=  S_AXI_GP0_awready;
+
+  aximi.b.id <= S_AXI_GP0_bid(3 downto 0);                   
+  S_AXI_GP0_bready <= aximo.b.ready;
+  aximi.b.resp <=  S_AXI_GP0_bresp;
+  aximi.b.valid <=  S_AXI_GP0_bvalid;
+  
+  aximi.r.data <= S_AXI_GP0_rdata;
+  aximi.r.id <= S_AXI_GP0_rid(3 downto 0);
+  aximi.r.last <= S_AXI_GP0_rlast;
+  S_AXI_GP0_rready <= aximo.r.ready;
+  aximi.r.resp <= S_AXI_GP0_rresp;
+  aximi.r.valid <= S_AXI_GP0_rvalid;
+
+  S_AXI_GP0_wdata <= aximo.w.data;
+  S_AXI_GP0_wlast <= aximo.w.last;
+  aximi.w.ready <= S_AXI_GP0_wready;
+  S_AXI_GP0_wstrb <= aximo.w.strb;
+  S_AXI_GP0_wvalid <= aximo.w.valid;
+  S_AXI_GP0_wid <= "00" & aximo.w.id;
+
+
+  apbo(0).pindex <= 0;
+  apbo(0).pconfig <= pconfig;
+  apbo(0).pirq <= (others => '0');
+  apbo(0).prdata <= (others=>'0');
 
 ----------------------------------------------------------------------
 ---  APB Bridge and various periherals -------------------------------

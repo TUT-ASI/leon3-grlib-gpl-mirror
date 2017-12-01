@@ -898,6 +898,8 @@ begin
            do         => spwi(i).d(1 downto 0),
            dov        => spwi(i).dv(1 downto 0),
            dconnect   => spwi(i).dconnect(1 downto 0),
+           dconnect2  => spwi(i).dconnect2(1 downto 0),
+           dconnect3  => spwi(i).dconnect3(1 downto 0),
            rxclko     => spw_rxclk(i));
        spwi(i).nd <= (others => '0');  -- Only used in GRSPW
        spwi(i).dv(3 downto 2) <= "00";  -- For second port
@@ -920,11 +922,15 @@ begin
            dconnect   => spwi(i).dconnect(1 downto 0));
        spwi(i).d(1) <= '0';
        spwi(i).dv <= (others => '0');  -- Only used in GRSPW2
+       spwi(i).dconnect2(1 downto 0) <= (others => '0');  -- Only used in GRSPW2
+       spwi(i).dconnect3(1 downto 0) <= (others => '0');  -- Only used in GRSPW2
        spwi(i).nd(9 downto 5) <= "00000";  -- For second port
      end generate spw1_input;
 
      spwi(i).d(3 downto 2) <= "00";   -- For second port
-     spwi(i).dconnect(3 downto 2) <= "00";  -- For second port     
+     spwi(i).dconnect(3 downto 2)  <= "00";  -- For second port
+     spwi(i).dconnect2(3 downto 2) <= "00";  -- For second port
+     spwi(i).dconnect3(3 downto 2) <= "00";  -- For second port
      spwi(i).s(1 downto 0) <= "00";  -- Only used in PHY
      
    sw0 : grspwm generic map(tech => fabtech,
@@ -936,9 +942,10 @@ begin
      rmapbufs => CFG_SPW_RMAPBUF,ft => CFG_SPW_FT, ports => 1,
      dmachan => CFG_SPW_DMACHAN, netlist => CFG_SPW_NETLIST, spwcore => CFG_SPW_GRSPW,
      input_type => CFG_SPW_INPUT, output_type => CFG_SPW_OUTPUT,
-     rxtx_sameclk => CFG_SPW_RTSAME, rxunaligned => CFG_SPW_RXUNAL)
-     port map(rstn, clkm, spw_rxclk(i), spw_rxclk(i), spw_rxtxclk, spw_rxtxclk,
-              ahbmi,
+     rxtx_sameclk => CFG_SPW_RTSAME, rxunaligned => CFG_SPW_RXUNAL,
+     internalrstgen => 1)
+     port map(rstn, clkm, gnd(0), gnd(0), spw_rxclk(i), gnd(0),
+              spw_rxclk(i), gnd(0), spw_rxtxclk, spw_rxtxclk, ahbmi,
               ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_GRPCI2_TARGET+CFG_GRPCI2_DMA+log2x(CFG_PCI)+CFG_AHB_JTAG+CFG_GRETH+i),
               apbi, apbo(10+i), spwi(i), spwo(i));
      spwi(i).tickin <= '0'; spwi(i).rmapen <= '0';

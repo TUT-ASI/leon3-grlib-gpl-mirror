@@ -43,9 +43,11 @@ entity generic_fifo is
     abits : integer := 10;  -- fifo address bits (actual fifo depth = 2**abits)
     dbits : integer := 32;  -- fifo data width
     sepclk : integer := 1;  -- 1 = asynchrounous read/write clocks, 0 = synchronous read/write clocks
-    pfull : integer := 100; -- almost full threshold (max 2**abits - 3)
-    pempty : integer := 10; -- almost empty threshold (min 2)
-    fwft : integer := 0     -- 1 = first word fall trough mode, 0 = standard mode
+    afullwl : integer := 0; -- almost full min writes left until full (0 makes equal to full)
+    aemptyrl : integer := 0; -- almost empty min reads left until empty (0 makes equal to empty)
+    fwft : integer := 0;     -- 1 = first word fall trough mode, 0 = standard mode
+    ft: integer := 0;
+    custombits : integer := 1
   );
   port (
     rclk    : in std_logic;  -- read clock
@@ -63,7 +65,11 @@ entity generic_fifo is
     afull   : out std_logic; -- fifo almost full (depending on pfull threshold)
     wempty  : out std_logic; -- fifo empty (synchronized in write clock domain)
     wusedw  : out std_logic_vector(abits-1 downto 0); -- fifo used words (synchronized in write clock domain)
-    datain  : in std_logic_vector(dbits-1 downto 0)); -- fifo data input
+    datain  : in std_logic_vector(dbits-1 downto 0); -- fifo data input
+    testin  : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
+    error    : out std_logic_vector((((dbits+7)/8)-1)*(1-ft/4)+ft/4 downto 0); -- FT only
+    errinj   : in std_logic_vector((((dbits + 7)/8)*2-1)*(1-ft/4)+(6*(ft/4)) downto 0) := (others => '0') -- FT only
+    );
 end;
 
 architecture rtl_fifo of generic_fifo is
@@ -130,7 +136,7 @@ begin
 
     -- assign wusedw and almost full fifo output
     if notx(v_wusedw) then
-      if v_wusedw > pfull then
+      if v_wusedw > (2**abits-1-afullwl) then
         afull <= '1';
       end if;
     end if;
@@ -234,7 +240,7 @@ begin
 
     -- assign almost empty
     if notx(v_rusedw) then
-      if v_rusedw < pempty then
+      if v_rusedw < (aemptyrl+1) then
         aempty <= '1';
       end if;
     end if;
@@ -263,20 +269,33 @@ begin
   end process;
 
   -- memory instantiation
-  nofwft_gen: if fwft = 0 generate
-    ram0 : syncram_2p generic map ( tech => tech, abits => abits, dbits => dbits, sepclk => sepclk)
-      port map (rclk, renable, rd_r.raddr(abits-1 downto 0), dataout, wclk, write, wr_r.waddr(abits-1 downto 0), datain);
+  nofwft_gen: if fwft = 0 and ft = 0 generate
+    ram0 : syncram_2p generic map ( tech => tech, abits => abits, dbits => dbits, sepclk => sepclk, custombits => custombits)
+      port map (rclk => rclk, renable => renable, raddress => rd_r.raddr(abits-1 downto 0), dataout => dataout,
+                wclk => wclk, write => write, waddress => wr_r.waddr(abits-1 downto 0), datain => datain,
+                testin => testin
+                );
+    error <= (others => '0');
   end generate;
 
-  fwft_gen: if fwft = 1 and sepclk = 0 generate
-    ram0 : syncram_2p generic map ( tech => tech, abits => abits, dbits => dbits, sepclk => sepclk, wrfst => 1)
-      port map (rclk, '1', rd_rin.raddr(abits-1 downto 0), dataout, wclk, write, wr_r.waddr(abits-1 downto 0), datain);
+  fwft_gen: if fwft = 1 and sepclk = 0 and ft = 0 generate
+    ram0 : syncram_2p generic map ( tech => tech, abits => abits, dbits => dbits, sepclk => sepclk, wrfst => 1, custombits => custombits)
+      port map (rclk => rclk, renable => '1', raddress => rd_rin.raddr(abits-1 downto 0), dataout => dataout,
+                wclk => wclk, write => write, waddress => wr_r.waddr(abits-1 downto 0), datain => datain,
+                testin => testin
+                );
+    error <= (others => '0');
   end generate;
 
-  fwftsep_gen: if fwft = 1 and sepclk /= 0 generate
-    ram0 : syncram_2p generic map ( tech => tech, abits => abits, dbits => dbits, sepclk => sepclk)
-      port map (rclk, sepfwft_rden, rd_rin.raddr(abits-1 downto 0), dataout, wclk, write, wr_r.waddr(abits-1 downto 0), datain);
+  fwftsep_gen: if fwft = 1 and sepclk /= 0 and ft = 0 generate
+    ram0 : syncram_2p generic map ( tech => tech, abits => abits, dbits => dbits, sepclk => sepclk, custombits => custombits)
+      port map (rclk => rclk, renable => sepfwft_rden, raddress => rd_rin.raddr(abits-1 downto 0), dataout => dataout,
+                wclk => wclk, write => write, waddress => wr_r.waddr(abits-1 downto 0), datain => datain,
+                testin => testin
+                );
+    error <= (others => '0');
   end generate;
+
 
 end;
 

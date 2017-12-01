@@ -250,7 +250,8 @@ component ftsdctrl is
     errcnt  : integer := 0;
     cntbits : integer range 1 to 8 := 1;
     oepol   : integer := 0;
-    pageburst : integer := 0
+    pageburst : integer := 0;
+    mobile  : integer := 0
   );
   port (
     rst     : in  std_ulogic;

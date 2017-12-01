@@ -346,10 +346,10 @@ begin
   end generate;
 
   edclramft1 : if (edcl /= 0) and (edclft /= 0) generate
-    r0 : syncram_2p generic map (memtech, eabits, 16, 0, 0, ft) port map(
+    r0 : syncram_2pft generic map (memtech, eabits, 16, 0, 0, ft) port map(
       clk, erenable, eraddress(eabits-1 downto 0), erdata(31 downto 16), clk,
       ewritem, ewaddressm(eabits-1 downto 0), ewdata(31 downto 16)); 
-    r1 : syncram_2p generic map (memtech, eabits, 16, 0, 0, ft) port map(
+    r1 : syncram_2pft generic map (memtech, eabits, 16, 0, 0, ft) port map(
       clk, erenable, eraddress(eabits-1 downto 0), erdata(15 downto 0), clk,
       ewritel, ewaddressl(eabits-1 downto 0), ewdata(15 downto 0)); 
   end generate;

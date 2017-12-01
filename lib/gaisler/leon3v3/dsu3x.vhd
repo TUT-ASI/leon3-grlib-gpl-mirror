@@ -89,7 +89,7 @@ architecture rtl of dsu3x is
   
   type slv_reg_type is record
     hsel     : std_ulogic;
-    haddr    : std_logic_vector(PROC_H downto 0);
+    haddr    : std_logic_vector(PROC_H downto 2);
     hwrite   : std_ulogic;
     hwdata   : std_logic_vector(31 downto 0);
     hrdata   : std_logic_vector(31 downto 0);    
@@ -574,7 +574,7 @@ begin
     if (ahbsi2.hready and ahbsi2.hsel(hindex)) = '1' then
       if (ahbsi2.htrans(1) = '1') then
         v.slv.hsel := '1';      
-        v.slv.haddr := ahbsi2.haddr(PROC_H downto 0);
+        v.slv.haddr := ahbsi2.haddr(PROC_H downto 2);
         v.slv.hwrite := ahbsi2.hwrite;
         v.cnt := "111";
       end if;

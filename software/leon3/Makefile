@@ -9,7 +9,7 @@ LDFLAGS=-qnoambapp
 endif
 XLDFLAGS=-L./ lib3tests.a $(LDFLAGS)
 
-PROGS = report_device apbuart divtest multest regtest \
+PROGS = apbuart divtest multest regtest \
 	cache gpio ramfill ramtest irqmp leon3_test gptimer \
 	mulasm cacheasm spwtest mptest fpu grfpu_ops \
 	base_test grfpu_test can_oc mmu mmu_asm pcitest greth atactrl \
@@ -93,8 +93,8 @@ prom.exe: prom.o
 prom.srec: prom.exe
 	sparc-elf-objcopy -O srec $(EXTRA_PROM) prom.exe prom.srec
 
-systest.exe: systest.c lib3tests.a
-	$(XCC) $(XCFLAGS) systest.c $(XLDFLAGS) -o systest.exe
+systest.exe: systest.o report_device.o lib3tests.a
+	$(XCC) $(XCFLAGS) systest.o report_device.o $(XLDFLAGS) -o systest.exe
 
 ram.srec: systest.exe
 	sparc-elf-objcopy -O srec --gap-fill 0 systest.exe ram.srec
@@ -105,5 +105,5 @@ soft-clean:
 mmusoft:
 	make -f Makefile.img mmusoft
 
-standalone.exe: systest.c standalone.c lib3tests.a
-	$(XCC) $(XCFLAGS) systest.c $(VPATH)/standalone.c $(XLDFLAGS) -o standalone.exe
+standalone.exe: systest.o report_stdio.o lib3tests.a
+	$(XCC) $(XCFLAGS) systest.o report_stdio.o $(XLDFLAGS) -o standalone.exe

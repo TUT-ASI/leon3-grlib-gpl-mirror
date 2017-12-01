@@ -1,5 +1,5 @@
-VER=$(VNAME)2017.2
-BID=4194
+VER=$(VNAME)2017.3
+BID=4208
 CC=gcc
 SED=sed
 
@@ -100,6 +100,10 @@ ifeq ("$(SIMTOP)","")
 SIMTOP=$(TOP)
 endif
 
+ifeq ("$(SIMINST)","")
+SIMINST=$(TOP)
+endif
+
 ifeq ("$(LIBSKIP)","")
 XLIBSKIP="x"
 else
@@ -172,6 +176,7 @@ help:
 	@echo "   make ise-prec        : synthesize with precision, place&route with Xilinx ISE"
 	@echo "   make ise-synp        : synthesize with synplify, place&route with Xilinx ISE"
 	@echo "   make isp-synp        : synthesize with synplify, place&route with ISPLever"
+	@echo "   make libero          : syntiesize, place&route and generate bit file with Microsemi Libero"
 	@echo "   make planahead       : synthesize and place&route with Xilinx PlanAhead"
 	@echo "   make precision       : synthesize design using precision"
 	@echo "   make quartus         : synthesize and place&route using Quartus"
@@ -208,20 +213,23 @@ ahbrom: $(GRLIB)/bin/ahbrom.c
 	  $(CC) $(GRLIB)/bin/ahbrom.c -o ahbrom; \
 	fi;
 
+ahbrom.bin:
+	sparc-elf-objcopy -O binary $(FILE) $@
+
 ahbrom.vhd:
 	make ahbrom
-	sparc-elf-objcopy -O binary $(FILE) ahbrom.bin
-	./ahbrom ahbrom.bin ahbrom.vhd
+	make ahbrom.bin
+	./ahbrom ahbrom.bin $@
 
 ahbrom64.vhd:
 	make ahbrom
-	sparc-elf-objcopy -O binary $(FILE) ahbrom.bin
-	./ahbrom ahbrom.bin ahbrom64.vhd 64
+	make ahbrom.bin
+	./ahbrom ahbrom.bin $@ 64
 
 ahbrom128.vhd:
 	make ahbrom
-	sparc-elf-objcopy -O binary $(FILE) ahbrom.bin
-	./ahbrom ahbrom.bin ahbrom128.vhd 128
+	make ahbrom.bin
+	./ahbrom ahbrom.bin $@ 128
 
 #########    Active-HDL batch mode targets   ############
 
@@ -249,7 +257,7 @@ vsimsa-clean:
 
 #########    Active-HDL gui mode targets   ############
 
-avhdl: compile.asim
+avhdl avhdl.tcl: compile.asim
 	@echo "createdesign work ." > avhdl.tcl
 	@echo "opendesign -a work.adf" >> avhdl.tcl
 	@cat alibs.do >> avhdl.tcl
@@ -263,7 +271,7 @@ avhdl: compile.asim
 
 avhdl-run: avhdl-launch
 
-avhdl-launch:
+avhdl-launch: avhdl.tcl
 	@avhdl -do avhdl.tcl
 
 avhdl-clean:
@@ -565,6 +573,9 @@ else
 ifeq ("$(TECHNOLOGY)","Spartan-3A-DSP")
 NETLISTTECH = Spartan3
 else
+ifeq ("$(TECHNOLOGY)","KintexU")
+NETLISTTECH = kintexu
+else
 NETLISTTECH = $(TECHNOLOGY)
 endif
 endif
@@ -577,7 +588,7 @@ endif
 endif
 endif
 endif
-
+endif
 #########   Xilinx ISE targets   ############
 
 XSTVHDL = elaborate -ifmt vhdl -work_lib
@@ -772,7 +783,7 @@ ise-clean xst-clean:
 	ngd2vhdl.log _xmsgs tmp.txt $(TOP)*.unroutes $(TOP)*_usage.xml *.cfi \
 	$(TOP)*.ise* $(TOP)*.npl* xlnx_auto_0* *.xrpt *.ptwx $(TOP)*_xdb \
 	$(TOP)*_summary.html $(TOP)*.restore $(TOP).ntrc_log $(TOP)*.twx \
-	$(TOP)*_map.map $(TOP)*.ngr $(TOP)*.xise $(TOP)*.gise \
+	$(TOP)*_map.map $(TOP)*.ngr $(TOP)*.xise $(TOP)*.gise $(TOP)*.psr \
 	device_usage_statistics.html* __*.lock \
 	*.xwbt *webtalk* par_usage_statistics.html fuse.log fuse.xmsgs \
 	fuseRelaunch.cmd iseconfig isim isim.cmd isim.log testbench_beh.prj \
@@ -1529,8 +1540,8 @@ remove-dare:
 
 ######### Microsemi targets ###############
 PROASIC3LIBS = proasic3 proasic3e proasic3l
-XLIBEROLIBSKIP = $(ASICLIBS) $(LATTICELIBS) \
-	$(ALTERALIBS) $(XILINXLIBS) $(PROASIC3LIBS) fusion smartfusion2 axcelerator rtg4
+XLIBEROLIBSKIP = $(ASICLIBS) $(LATTICELIBS) $(GLS_LIBS) \
+	$(ALTERALIBS) $(XILINXLIBS) $(PROASIC3LIBS) fusion smartfusion2 axcelerator rtg4 
 LIBEROLIBSKIP = $(XLIBEROLIBSKIP:%=%|) dummy
 LIBERODIRSKIPX = $(ASICLIBS) $(XILINXLIBS) $(ALTERALIBS) $(LATTICELIBS)
 LIBERODIRSKIP = $(LIBERODIRSKIPX:%=%|) dummy
@@ -1538,6 +1549,14 @@ LIBEROSKIP = dummy
 
 ifeq ("$(TECHNOLOGY)","RTG4")
 LIBEROPRECOMPLIBDIR=rtg4
+else ifeq ("$(TECHNOLOGY)","ProASIC3L")
+LIBEROPRECOMPLIBDIR=proasic3l
+else ifeq ("$(TECHNOLOGY)","ProASIC3")
+LIBEROPRECOMPLIBDIR=proasic3
+else ifeq ("$(TECHNOLOGY)","ProASIC3E")
+LIBEROPRECOMPLIBDIR=proasic3e
+else ifeq ("$(TECHNOLOGY)","IGLOO2")
+LIBEROPRECOMPLIBDIR=smartfusion2
 else
 LIBEROPRECOMPLIBDIR=smartfusion2
 endif
@@ -1561,6 +1580,13 @@ ifeq ("$(DESIGNER_PART)","")
 DESIGNER_PART=$(PART)
 endif
 
+ifeq ("$(DESIGNER_RESTRICTPROBEPINS)","")
+DESIGNER_RESTRICTPROBEPINS=1
+endif
+
+ifeq ("$(DESIGNER_RTG4_SET_MITIGATION)","")
+DESIGNER_RTG4_SET_MITIGATION=0
+endif
 
 
 ifneq ("$(GRLIB)","")
@@ -1574,7 +1600,8 @@ actel-clean:
 	libero_sim_files libero_syn_files coreconsole \
 	libero.do component *.pdb *.pdb.depends *.stp \
 	*.sdb *_layout.log *.dtf from.ufc from.mem  \
-	 $(TOP)_libero.prjx tooldata $(TOP)_libero.tcl $(TOP)_libero/
+	 $(TOP)_libero.prjx tooldata $(TOP)_libero.tcl $(TOP)_libero/ \
+	$(TOP)_libero_genbit.tcl $(TOP)_libero_progfpga.tcl
 
 remove-microsemi: remove-microsemi-precomp
 	-@for i in fusion proasic3 proasic3e proasic3l axcelerator smartfusion2 rtg4; do \
@@ -1693,6 +1720,17 @@ sim-run:
 sim-launch:
 	make $(SIM)-launch
 
+
+########## Gate lavel simulation targets ###############
+GLS_LIBS = $(GLS_NETLIST) $(GLS_POSTSIM)
+
+gls-setup-lib:
+	vlib modelsim/$(GLS_NETLIST); vmap $(GLS_NETLIST) modelsim/$(GLS_NETLIST)
+	vlib modelsim/$(GLS_POSTSIM); vmap $(GLS_POSTSIM) modelsim/$(GLS_POSTSIM)
+
+gls-setup-dir:
+	@mkdir -p $(EXTRALIBS)/$(GLS_NETLIST); touch $(EXTRALIBS)/$(GLS_NETLIST)/dirs.txt;
+	@mkdir -p $(EXTRALIBS)/$(GLS_POSTSIM); touch $(EXTRALIBS)/$(GLS_POSTSIM)/dirs.txt;
 
 ########## Generation of compile scripts ###############
 prereqtools:= $(shell (export GRLIB=$(GRLIB) TOP=$(TOP) && tclsh $(GRLIB)/bin/scriptgen/dependencies.tcl))

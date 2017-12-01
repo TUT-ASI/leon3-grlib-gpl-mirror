@@ -63,7 +63,7 @@ begin
   xenable <= enable when testen=0 or testin(TESTIN_WIDTH-2)='0' else (others => '0');
   xwrite <= write when testen=0 or testin(TESTIN_WIDTH-2)='0' else (others => '0');
 
-  sbw : if has_srambw(tech) = 1 generate
+  sbw : if has_srambw(tech) >= abits generate
     -- RAM bypass for scan
     scanbp : if SCANTESTBP generate
       comb : process (address, datain, enable, write, testin)
@@ -110,7 +110,13 @@ begin
     igl2 : if (tech = igloo2) or (tech = smartfusion2) generate 
       x0 : igloo2_syncram_be generic map (abits, dbits)
          port map (clk, address, datain, dataoutx, xenable, xwrite);
-     end generate;
+    end generate;
+
+    alt : if tech=stratix5 generate
+      x0: altera_syncram_be generic map (abits => abits, dbits => dbits)
+        port map (clk => clk, address => address, datain => datain,
+                  dataout => dataoutx, enable => xenable, write => xwrite);
+    end generate;
 
     
 -- pragma translate_off
@@ -126,7 +132,7 @@ begin
 -- pragma translate_on
   end generate;
 
-  nosbw : if has_srambw(tech) = 0 generate
+  nosbw : if has_srambw(tech) < abits generate
     rx : for i in 0 to dbits/8-1 generate
       x0 : syncram generic map (tech, abits, 8, testen, custombits)
          port map (clk, address, datain(i*8+7 downto i*8), 
@@ -138,7 +144,7 @@ begin
 
     custominx <= (others => '0');
 
-  nocust: if has_srambw(tech)=0 or syncram_has_customif(tech)=0 generate
+  nocust: if has_srambw(tech) < abits or syncram_has_customif(tech)=0 generate
     customoutx <= (others => '0');
   end generate;
   

@@ -2,27 +2,12 @@ include .config
 
 GRLIB=../..
 TOP=leon3mp
-#GRLIB_SIMULATOR=ModelSim-SE
-
-# For FPGA Prototyping
-# FPGA and Dev Board used in Design
-TECHNOLOGY=Virtex7
-PART=XC7VX485T
-PACKAGE=ffg1761
-PROTOBOARD=xilinx.com:virtex7:vc707:a
-SPEED=2
-PROMGENPAR=-x xcf08p -u 0 $(TOP).bit -p mcs -w -o $(BOARD)
-BOARD=xilinx-vc707-xc7vx485t
-DEVICE=$(PART)$(PACKAGE)-$(SPEED)
-#XDC=$(GRLIB)/boards/$(BOARD)/$(BOARD).xdc
-TCL=./grtechscripts/setup_unisim.tcl ./grtechscripts/timing_unisim.tcl
-
 # Tech used
 TECH = $(shell grep FABTECH config.vhd | grep -o "[^ ]*$$"  | sed -e 's/;//g')
 
 # For SAED32
 ifeq ("$(SAED32_HOME)","")
-SAED32_HOME=/usr/local32/cad/synlibs/synopsys/
+SAED32_HOME=/gsl/cad/synlibs/synopsys/
 export SAED32_HOME
 endif
 
@@ -39,7 +24,7 @@ SIMTOP=testbench
 
 CLEAN=soft-clean
 
-TECHLIBS = $(TECH) inferred grdware dware secureip unisim
+TECHLIBS = $(TECH)
 
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	openchip gsi spansion tmtc ihp fmf cypress hynix

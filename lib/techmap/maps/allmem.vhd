@@ -611,18 +611,33 @@ component altera_syncram_dp
    );
 end component;
 
+component altera_syncram_be
+  generic ( abits : integer := 10; dbits : integer := 8 );
+  port (
+    clk      : in std_ulogic;
+    address  : in std_logic_vector((abits -1) downto 0);
+    datain   : in std_logic_vector((dbits -1) downto 0);
+    dataout  : out std_logic_vector((dbits -1) downto 0);
+    enable   : in std_logic_vector((dbits/8)-1 downto 0);
+    write    : in std_logic_vector((dbits/8)-1 downto 0)
+   );
+end component;
+
 component altera_fifo_dp is
-  generic (tech  : integer := 0; abits : integer := 4; dbits : integer := 32);
+  generic (tech  : integer := 0; abits : integer := 4; dbits : integer := 32;
+           sepclk : integer := 1; afullgw : integer := 0; aemptygr : integer := 0; fwft : integer := 0);
   port (
     rdclk   : in std_logic;
     rdreq   : in std_logic;
     rdfull  : out std_logic;
     rdempty : out std_logic;
+    aempty  : out std_logic;
     rdusedw : out std_logic_vector(abits-1 downto 0);
     q       : out std_logic_vector(dbits-1 downto 0);
     wrclk   : in std_logic;
     wrreq   : in std_logic;
     wrfull  : out std_logic;
+    afull   : out std_logic;
     wrempty : out std_logic;
     wrusedw : out std_logic_vector(abits-1 downto 0);
     data    : in std_logic_vector(dbits-1 downto 0);
@@ -701,28 +716,6 @@ end component;
     prdata2 : out std_logic_vector((dbits -1) downto 0)
   );
   end component;
-
-  component generic_fifo 
-  generic (tech  : integer := 0; abits : integer := 10; dbits : integer := 32;
-    sepclk : integer := 1; pfull : integer := 100; pempty : integer := 10; fwft : integer := 0);
-  port (
-    rclk    : in std_logic;
-    rrstn   : in std_logic;
-    wrstn   : in std_logic;
-    renable : in std_logic;
-    rfull   : out std_logic;
-    rempty  : out std_logic;
-    aempty  : out std_logic;
-    rusedw  : out std_logic_vector(abits-1 downto 0);
-    dataout : out std_logic_vector(dbits-1 downto 0);
-    wclk    : in std_logic;
-    write   : in std_logic;
-    wfull   : out std_logic;
-    afull   : out std_logic;
-    wempty  : out std_logic;
-    wusedw  : out std_logic_vector(abits-1 downto 0);
-    datain  : in std_logic_vector(dbits-1 downto 0));
-end component;
 
   component ihp25_syncram
     generic ( abits : integer := 10; dbits : integer := 8 );

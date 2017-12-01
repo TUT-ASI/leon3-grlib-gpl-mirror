@@ -2,3 +2,4 @@ irqmp.vhd
 irqmp2x.vhd
 irqamp.vhd
 irqamp2x.vhd
+irqmp_bmode.vhd

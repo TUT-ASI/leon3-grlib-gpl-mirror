@@ -42,6 +42,9 @@ package libiu is
   subtype cword is std_logic_vector(IDBITS-1 downto 0);
   type cdatatype is array (0 to 3) of cword;
 
+  subtype cbwmaskword is std_logic_vector(3 downto 0);
+  type cbwmasktype is array (0 to 3) of cbwmaskword;
+
 
   type iregfile_in_type is record
      raddr1        : std_logic_vector(9 downto 0); -- read address 1

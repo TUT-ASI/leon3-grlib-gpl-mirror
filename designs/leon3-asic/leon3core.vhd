@@ -224,27 +224,35 @@ signal stmp : std_logic_vector(0 to CFG_SPW_NUM-1);
 signal stati : ahbstat_in_type;
 
 -- SPW Clock Gating signals
-signal enphy     : std_logic_vector(CFG_SPW_NUM-1 downto 0);
-signal spwrstn   : std_logic_vector(CFG_SPW_NUM-1 downto 0);
-signal gspwclk   : std_logic_vector(CFG_SPW_NUM-1 downto 0);
-signal rxclko    : std_logic_vector(CFG_SPW_NUM-1 downto 0);
-signal lspwclkn  : std_logic_vector(CFG_SPW_NUM-1 downto 0);
-signal spwclkn   : std_logic_vector(CFG_SPW_NUM-1 downto 0);
-signal rxclkphyo : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+signal enphy      : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+signal spwrstn    : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+signal gspwclk    : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+signal rxclko     : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+signal lspwclkn   : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+signal spwclkn    : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+signal rxclkphyo  : std_logic_vector(CFG_SPW_NUM-1 downto 0);
 
-signal disclk    : std_logic_vector(CFG_SPW_NUM-1 downto 0);
-signal disrxclk0 : std_logic_vector(CFG_SPW_NUM-1 downto 0);
-signal disrxclk1 : std_logic_vector(CFG_SPW_NUM-1 downto 0);
-signal distxclk  : std_logic_vector(CFG_SPW_NUM-1 downto 0);
-signal distxclkn : std_logic_vector(CFG_SPW_NUM-1 downto 0);
-signal gclk      : std_logic_vector(CFG_SPW_NUM-1 downto 0);
-signal grxclk0   : std_logic_vector(CFG_SPW_NUM-1 downto 0);
-signal grxclk1   : std_logic_vector(CFG_SPW_NUM-1 downto 0);
-signal gtxclk    : std_logic_vector(CFG_SPW_NUM-1 downto 0);
-signal gtxclkn   : std_logic_vector(CFG_SPW_NUM-1 downto 0);
-signal grst      : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+signal disclk     : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+signal disrxclk0  : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+signal disrxclk1  : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+signal distxclk   : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+signal distxclkn  : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+signal gclk       : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+signal grxclk0    : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+signal grxclk1    : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+signal gtxclk     : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+signal gtxclkn    : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+signal grst       : std_logic_vector(CFG_SPW_NUM-1 downto 0);
 
-signal crst      : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+-- SPW Reset signals
+signal tmp_reset  : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+signal mrst       : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+signal txsyncrst  : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+signal rxasyncrst : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+signal rxsyncrst0 : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+signal rxsyncrst1 : std_logic_vector(CFG_SPW_NUM-1 downto 0);
+
+signal crst       : std_logic_vector(CFG_SPW_NUM-1 downto 0);
 
 constant IOAEN : integer := 0;
 constant CFG_SDEN : integer := CFG_MCTRL_LEON2;
@@ -635,6 +643,8 @@ begin
                do         => spwi(i).d(1 downto 0),
                dov        => spwi(i).dv(1 downto 0),
                dconnect   => spwi(i).dconnect(1 downto 0),
+               dconnect2  => spwi(i).dconnect2(1 downto 0),
+               dconnect3  => spwi(i).dconnect3(1 downto 0),
                rxclko     => rxclkphyo(i),
                testrst    => testrst,
                testen     => testen);
@@ -711,6 +721,33 @@ begin
           gtxclkn       => gtxclkn(i)
         );
 
+       -- Internal reset generators (AMBA, TX, RX0 and RX1 clock domains)
+       
+       -- The AMBA and TX resets take into account the bit 6 of the Control
+       -- Register (software reset)
+       tmp_reset(i) <= grst(i) and not spwo(i).ctrlregrst;
+       
+       -- CLK domain (synchronous reset)
+       master_rst : rstgen
+       generic map (syncrst => CFG_NOASYNC, scanen => scantest, syncin => 1)
+       port map (tmp_reset(i), gclk(i), clklock, mrst(i), open, testrst);
+
+       -- TX domain (synchronous reset)
+       txrst : rstgen
+       generic map (syncrst => CFG_NOASYNC, scanen => scantest, syncin => 1)
+       port map (tmp_reset(i), gtxclk(i), clklock, txsyncrst(i), open, testrst);
+
+       -- RX domain (asynchronous reset)
+       rxasyncrst(i) <= spwo(i).rxrst;
+
+       -- RX domain (synchronous reset)
+       rxrst0 : rstgen
+       generic map (syncrst => CFG_NOASYNC, scanen => scantest, syncin => 1)
+       port map (spwo(i).rxrst, grxclk0(i), clklock, rxsyncrst0(i), open, testrst);
+       rxrst1 : rstgen
+       generic map (syncrst => CFG_NOASYNC, scanen => scantest, syncin => 1)
+       port map (spwo(i).rxrst, grxclk1(i), clklock, rxsyncrst1(i), open, testrst);
+
        grspw0 :  grspw2
         generic map(
           tech         => fabtech,         -- : integer range 0 to NTECH     := inferred;
@@ -737,10 +774,14 @@ begin
           netlist      => CFG_SPW_NETLIST -- : integer range 0 to 1 := 0;
         )
         port map (
-          rst        => grst(i),
+          rst        => mrst(i),
           clk        => gclk(i),
+          rxasyncrst => rxasyncrst(i),
+          rxsyncrst0 => rxsyncrst0(i),
           rxclk0     => grxclk0(i),
+          rxsyncrst1 => rxsyncrst1(i),
           rxclk1     => grxclk1(i),
+          txsyncrst  => txsyncrst(i),
           txclk      => gtxclk(i),
           txclkn     => gtxclkn(i),
           ahbmi      => ahbmi,

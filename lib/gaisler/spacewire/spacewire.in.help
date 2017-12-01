@@ -80,7 +80,10 @@ CONFIG_SPW_RX_SDR
   Selects the input clocking scheme for the GRSPW2. SDR means that the
   core samples data and strobe using single data rate registers at the
   receiver clock frequency. DDR is the same except DDR registers are used.
-  Xor selects the traditional self clocking scheme using a xor gate. 
+  XOR selects the traditional self clocking scheme using a xor gate. 
+  XOR-ER selects self clocking with external clock recovery (can be used
+  on Microsemi RTG4 technology) where XOR-ER1 makes use of the same design
+  of single data registers as XOR. XOR-ER2 makes use of a DDR register.
   Aeroflex sets the receiver in a mode compatible with the Aeroflex
   SpaceWire transceiver.
 

@@ -753,6 +753,11 @@ begin
           vdmai.idle   := '1';
         end if;
         
+        -- status
+        desc_wdata(0)   := rdesc.complete;
+        desc_wdata(1)   := rdesc.status;
+        desc_wdata(2)   := rdesc.ahb_err;
+        
         vdmai.write := r.desc_direction;
         vdmai.start   := '1';
         vdmai.burst   := '1';
@@ -763,9 +768,6 @@ begin
             read_data := ahbreadword(vdmao.rdata, rdescp(4 downto 2));
             if r.desc_direction = '1' then -- writing back descriptor
               -- status
-              desc_wdata(0)   := rdesc.complete;
-              desc_wdata(1)   := rdesc.status;
-              desc_wdata(2)   := rdesc.ahb_err;
             else
               case rdescp(3 downto 2) is
                 when "00" => -- next desc

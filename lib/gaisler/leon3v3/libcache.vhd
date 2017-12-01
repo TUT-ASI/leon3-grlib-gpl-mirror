@@ -244,6 +244,8 @@ package libcache is
      snhit         : std_logic_vector(0 to 3);
      snhitaddr     : std_logic_vector(19 downto 0);
      flushall      : std_ulogic;
+     bwdata        : cdatatype;
+     bwmask        : cbwmasktype;
   end record;
 
   type dcram_out_type is record
@@ -269,6 +271,11 @@ package libcache is
      req              : std_ulogic;                        -- memory cycle request
      su               : std_ulogic;                        -- supervisor address space
      flush            : std_ulogic;                        -- flush in progress
+     -- next cycle value (for re-timing)
+     next_address     : std_logic_vector(31 downto 0);
+     next_burst       : std_ulogic;
+     next_req         : std_ulogic;
+     next_su          : std_ulogic;
   end record;
 
   type memory_ic_out_type is record
@@ -290,6 +297,18 @@ package libcache is
      req              : std_ulogic;
      lock             : std_ulogic;
      cache            : std_ulogic;
+     lock_hold        : std_ulogic;
+     -- next cycle value (for re-timing)
+     next_address     : std_logic_vector(31 downto 0);
+     next_data        : std_logic_vector(31 downto 0);
+     next_asi         : std_logic_vector(3 downto 0);
+     next_size        : std_logic_vector(1 downto 0);
+     next_burst       : std_ulogic;
+     next_read        : std_ulogic;
+     next_req         : std_ulogic;
+     next_lock        : std_ulogic;
+     next_cache       : std_ulogic;
+     next_lock_hold   : std_ulogic;
   end record;
 
   type memory_dc_out_type is record

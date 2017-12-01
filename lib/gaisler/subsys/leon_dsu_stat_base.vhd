@@ -221,7 +221,7 @@ begin
             pwd        => pwd,
             svt        => svt,
             rstaddr    => rstaddr,
-            smp        => ncpu-1,
+            smp        => smp,
             iuft       => ft mod 4,
             fpft       => ft mod 4,
             cmft       => ft/8,

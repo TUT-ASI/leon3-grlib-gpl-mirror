@@ -202,6 +202,7 @@ architecture rtl of mmu_dcache is
      noflush       : std_logic;
      cmiss         : std_ulogic;
      irqlatctrl    : std_logic_vector(11 downto 0);
+     lock_hold     : std_ulogic;
   end record;
 
   type snoop_reg_type is record                   -- snoop control registers
@@ -361,7 +362,8 @@ architecture rtl of mmu_dcache is
     set        => 0,
     noflush    => '0',
     cmiss      => '0',
-    irqlatctrl => (others => '0')
+    irqlatctrl => (others => '0'),
+    lock_hold  => '0'
     );
   constant SRES : snoop_reg_type := (
     snoop   => '0',
@@ -379,10 +381,11 @@ architecture rtl of mmu_dcache is
   signal r, c : dcache_control_type;      -- r is registers, c is combinational
   signal rs, cs : snoop_reg_type;         -- rs is registers, cs is combinational
   signal rl, cl : lru_reg_type;           -- rl is registers, cl is combinational
+  signal lock_hold : std_ulogic;
 
 begin
 
-  dctrl : process(rst, r, rs, rl, dci, mcdo, ico, dcramo, ahbsi, fpuholdn, mmudco, ahbso)
+  dctrl : process(rst, r, rs, rl, dci, mcdo, ico, dcramo, ahbsi, fpuholdn, mmudco, ahbso, lock_hold)
     variable dcramov : dcram_out_type;
     variable rdatasel : rdatatype;
     variable maddress : std_logic_vector(31 downto 0);
@@ -395,9 +398,10 @@ begin
     variable newtag : std_logic_vector(TAG_HIGH  downto TAG_LOW); -- new tag
     variable newptag : std_logic_vector(TAG_HIGH  downto TAG_LOW); -- new tag
     variable align_data : std_logic_vector(31 downto 0); -- aligned data
-    variable ddatainv, rdatav, align_datav : cdatatype;
+    variable ddatainv, rdatav, align_datav, bwddatainv : cdatatype;
+    variable bwmaskinv : cbwmasktype;
     variable rdata : std_logic_vector(31 downto 0);
-  
+
     variable vmask : valid_type; --std_logic_vector((dlinesize -1) downto 0);
     variable enable, senable, scanen : std_logic_vector(0 to 3);
     variable mds : std_ulogic;
@@ -1098,7 +1102,7 @@ begin
             v.wb.addr(LINE_HIGH downto 0) := (others => '0');
           end if;
           v.wb.read := r.read; v.wb.data1 := dci.maddress; v.req := '1'; 
-          v.wb.lock := dci.lock; v.wb.asi := r.asi(3 downto 0); v.ready := '0';
+          v.wb.lock := r.dlock; v.wb.asi := r.asi(3 downto 0); v.ready := '0';
         end if;
         wbhold := '1';
       end if;
@@ -1187,8 +1191,8 @@ begin
       if (
         (dci.lock = '1')) and (dci.nullify = '1') then
         v.dstate := idle; v.wb.lock := '0';
-      elsif ((v.ready or (mcdo.ready and not r.req)) = '1') or (
-        (dci.lock = '1')) then  -- store queue emptied
+      elsif ((v.ready or (mcdo.ready and not r.req)) = '1')
+      then  -- store queue emptied
 
         if (r.hit = '1') and (r.size = "11") then  -- write hit
           taddr := r.xaddress(OFFSET_HIGH downto LINE_LOW); dwrite := r.valid; 
@@ -1357,25 +1361,32 @@ begin
           case maddrlow is
           when "00" =>
             ddatainv(i) := edata(7 downto 0) & dcramov.data(i)(23 downto 0);
+            bwmaskinv(i) := "1000";
           when "01" =>
             ddatainv(i) := dcramov.data(i)(31 downto 24) & edata(7 downto 0) & 
                      dcramov.data(i)(15 downto 0);
+            bwmaskinv(i) := "0100";
           when "10" =>
             ddatainv(i) := dcramov.data(i)(31 downto 16) & edata(7 downto 0) & 
                      dcramov.data(i)(7 downto 0);
+            bwmaskinv(i) := "0010";
           when others =>
             ddatainv(i) := dcramov.data(i)(31 downto 8) & edata(7 downto 0);
+            bwmaskinv(i) := "0001";
           end case;
         when "01" =>
           if maddress(1) = '0' then
             ddatainv(i) := edata(15 downto 0) & dcramov.data(i)(15 downto 0);
+            bwmaskinv(i) := "1100";
           else
             ddatainv(i) := dcramov.data(i)(31 downto 16) & edata(15 downto 0);
+            bwmaskinv(i) := "0011";
           end if;
         when others => 
           ddatainv(i) := edata;
+          bwmaskinv(i) := "1111";
         end case;
-
+        bwddatainv(i) := edata;
       end loop;
 
     
@@ -1479,7 +1490,9 @@ begin
 
     if read = '1' then
       for i in 0 to DSETS-1 loop
-        ddatainv(i) := mcdo.data; 
+        ddatainv(i) := mcdo.data;
+        bwddatainv(i) := mcdo.data;
+        bwmaskinv(i) := "1111";
       end loop;
     end if;
 
@@ -1499,7 +1512,12 @@ begin
       if ddiagwrite = '1' then cdwrite(ddset) := '1';
       else cdwrite(conv_integer(setrepl)) := '1'; end if;
     end if;
-      
+    for i in 0 to DSETS-1 loop
+      if cdwrite(i) = '0' then
+        bwmaskinv(i) := (others => '0');
+      end if;
+    end loop;
+
     if (r.flush and twrite) = '1' then   -- flush 
       ctwrite := (others => '1'); wlrr := (others => '0'); wlock := (others => '0');
       if DSNOOPSEP then
@@ -1521,6 +1539,14 @@ begin
       vl.lru := (others => (others => '0'));
     end if;
 
+    if r.req = '1' and r.wb.lock = '1' and mcdo.grant = '1' and M_EN and (r.mmctrl1.e = '1') then
+      v.lock_hold := '1';
+    end if;
+
+    if (r.req = '1' and r.wb.read = '0' and mcdo.grant = '1') or dci.nullify = '1' or (dci.lock = '0' and r.wb.lock = '0') then
+      v.lock_hold := '0';
+    end if;
+
     
 
     if dci.mmucacheclr='1' then
@@ -1529,6 +1555,17 @@ begin
       v.cctrl.burst := '0';
       v.mmctrl1.e := '0';
     end if;
+
+    mcdi.next_address  <= v.wb.addr;
+    mcdi.next_data     <= v.wb.data1;
+    mcdi.next_burst    <= v.burst;
+    mcdi.next_size     <= v.wb.size;
+    mcdi.next_read     <= v.wb.read;
+    mcdi.next_asi      <= v.wb.asi;
+    mcdi.next_lock     <= v.wb.lock;
+    mcdi.next_req      <= v.req;
+    mcdi.next_cache    <= v.cache;
+    mcdi.next_lock_hold <= v.lock_hold;
 
 -- reset
 
@@ -1559,6 +1596,7 @@ begin
       v.faddr := (others => '0');
       v.reqst := '0';
       v.cache := '0'; v.wb.lock := '0'; v.wb.lock2 := '0';
+      v.lock_hold := '0';
       v.wb.data1 := (others => '0'); v.wb.data2 := (others => '0');     
       v.noflush := '0'; v.mexc := '0';
       v.irqlatctrl := (others => '0');
@@ -1571,7 +1609,7 @@ begin
     -- Force cache control reg to off state if disabled
     if dcen=0 then v.cctrl.dcs := "00"; end if;
     if icen=0 then v.cctrl.ics := "00"; end if;
-
+    
 -- Drive signals
     c <= v; cs <= vs;   -- register inputs
     cl <= vl;
@@ -1619,18 +1657,21 @@ begin
     dcrami.ldramin.enable <= (lramcs or lramwr);
     dcrami.ldramin.read   <= rlramrd;
     dcrami.ldramin.write  <= lramwr;
+    dcrami.bwdata <= bwddatainv;
+    dcrami.bwmask <= bwmaskinv;
 
 
     -- memory controller inputs
-    mcdi.address  <= r.wb.addr;
-    mcdi.data     <= r.wb.data1;
-    mcdi.burst    <= r.burst;
-    mcdi.size     <= r.wb.size;
-    mcdi.read     <= r.wb.read;
-    mcdi.asi      <= r.wb.asi;
-    mcdi.lock     <= r.wb.lock;
-    mcdi.req      <= r.req;
-    mcdi.cache    <= r.cache;
+    mcdi.address   <= r.wb.addr;
+    mcdi.data      <= r.wb.data1;
+    mcdi.burst     <= r.burst;
+    mcdi.size      <= r.wb.size;
+    mcdi.read      <= r.wb.read;
+    mcdi.asi       <= r.wb.asi;
+    mcdi.lock      <= r.wb.lock;
+    mcdi.req       <= r.req;
+    mcdi.cache     <= r.cache;
+    mcdi.lock_hold <= lock_hold;
 
     -- diagnostic instruction cache access
     dco.icdiag.flush  <= iflush;
@@ -1680,6 +1721,14 @@ begin
     mmudci.mmctrl1.pagesize <= conv_std_logic_vector(pagesize, 2);
 
   end process;
+
+  lhold: if M_EN generate
+    lock_hold <= r.lock_hold;
+  end generate;
+
+  lholdnommu: if not(M_EN) generate
+    lock_hold <= '0';
+  end generate; 
 
 -- Local registers
 

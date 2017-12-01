@@ -59,12 +59,17 @@ proc append_file_altera_quartus {f finfo } {
 			return
 		}
 		"vlogsyn" {
+			global TOP
+			upvar TOP_quartus_qsf_contents tqsc
 			set l [dict get $finfo l]
 			if {[string equal $l "local"] && [string equal $bn "work"] } {
+				append tqsc "set_global_assignment -name VERILOG_FILE $f\n"
 			} else {
-				global TOP
-				upvar TOP_quartus_qsf_contents tqsc
-				append tqsc "set_global_assignment -name VERILOG_FILE $f -library $bn\n"
+				global QUARTUSLIBSKIP QDIRSKIP QUARTUSSKIP
+				set q [dict get $finfo q]
+				if {[lsearchmatch $QUARTUSLIBSKIP $bn] < 0 && [lsearchmatch $QDIRSKIP $l] < 0 && [lsearchmatch $QUARTUSSKIP $q] < 0 } {
+					append tqsc "set_global_assignment -name VERILOG_FILE $f -library $bn\n"
+				}
 			}
 			return
 		}

@@ -256,7 +256,7 @@ begin
       txd            => etho.txd,
       tx_en          => etho.tx_en,
       tx_er          => etho.tx_er,
-      mdc            => etho.mdc,   
+      mdc            => etho.mdc,
       mdio_o         => etho.mdio_o,
       mdio_oe        => etho.mdio_oe,
       --scantest     
@@ -298,29 +298,37 @@ begin
 -------------------------------------------------------------------------------
   nft : if ft = 0 generate
     tx_fifo0 : syncram_2p generic map(tech => memtech, abits => fabits,
-      dbits => 32, sepclk => 0, testen => scanen)
+      dbits => 32, sepclk => 0, testen => scanen, custombits => memtest_vlen)
       port map(clk, txrenable, txraddress(fabits-1 downto 0), txrdata, clk,
-      txwrite, txwaddress(fabits-1 downto 0), txwdata, ahbmi.testin);
+      txwrite, txwaddress(fabits-1 downto 0), txwdata, ahbmi.testin
+               );
   
     rx_fifo0 : syncram_2p generic map(tech => memtech, abits => fabits,
-      dbits => 32, sepclk => 0, testen => scanen)
+      dbits => 32, sepclk => 0, testen => scanen, custombits => memtest_vlen)
       port map(clk, rxrenable, rxraddress(fabits-1 downto 0), rxrdata, clk,
-      rxwrite, rxwaddress(fabits-1 downto 0), rxwdata, ahbmi.testin);
+      rxwrite, rxwaddress(fabits-1 downto 0), rxwdata, ahbmi.testin
+               );
+
   end generate;
+
 -------------------------------------------------------------------------------
 -- EDCL buffer ram ------------------------------------------------------------
 -------------------------------------------------------------------------------
   edclramnft : if (edcl /= 0) and (edclft = 0) generate
-    r0 : syncram_2p generic map (memtech, eabits, 16, 0, 0, scanen) port map (
+    r0 : syncram_2p generic map (memtech, eabits, 16, 0, 0, scanen, 0, memtest_vlen) port map (
       clk, erenable, eraddress(eabits-1 downto 0), erdata(31 downto 16), clk,
-      ewritem, ewaddressm(eabits-1 downto 0), ewdata(31 downto 16), ahbmi.testin);
-    r1 : syncram_2p generic map (memtech, eabits, 16, 0, 0, scanen) port map (
+      ewritem, ewaddressm(eabits-1 downto 0), ewdata(31 downto 16), ahbmi.testin
+      );
+    r1 : syncram_2p generic map (memtech, eabits, 16, 0, 0, scanen, 0, memtest_vlen) port map (
       clk, erenable, eraddress(eabits-1 downto 0), erdata(15 downto 0), clk,
-      ewritel, ewaddressl(eabits-1 downto 0), ewdata(15 downto 0), ahbmi.testin);
+      ewritel, ewaddressl(eabits-1 downto 0), ewdata(15 downto 0), ahbmi.testin
+      );
   end generate;
+
   noedclram : if edcl = 0 generate
     erdata <= (others => '0');
   end generate;
+
 -- pragma translate_off
   bootmsg : report_version 
   generic map (

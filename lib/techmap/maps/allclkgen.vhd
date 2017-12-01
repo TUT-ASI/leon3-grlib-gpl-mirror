@@ -121,6 +121,24 @@ component clkgen_virtex7
     clkio   : out std_ulogic;     -- IO ref clock
     cgi     : in clkgen_in_type;
     cgo     : out clkgen_out_type);
+end component;
+
+component clkgen_kintexu
+  generic (
+    clk_mul  : integer := 1; 
+    clk_div  : integer := 1;
+    sdramen  : integer := 0;
+    noclkfb  : integer := 1; 
+    freq     : integer := 25000);
+  port (
+    clkin   : in  std_logic;
+    clk     : out std_logic;      -- main clock
+    clk90   : out std_ulogic;     -- main clock 90deg
+    clkio   : out std_ulogic;     -- IO ref clock
+    sdclk   : out std_ulogic;  
+    cgi     : in clkgen_in_type;
+    cgo     : out clkgen_out_type
+    );
 end component; 
 
 component clkgen_axcelerator 

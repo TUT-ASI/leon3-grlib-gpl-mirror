@@ -657,6 +657,86 @@ package sim is
       );
   end component;
 
+
+  type aximem_error_type is record
+    id : integer;
+    dstype : std_logic;
+    addr : std_logic_vector(31 downto 0);
+    mask : std_logic_vector(31 downto 0);
+    valid : std_logic;
+    enabled : std_logic;
+    entry_strobe : std_logic;
+  end record;
+  
+  type aximem_rac_type is record
+    wait_for_valid : std_logic;
+    entry_strobe : std_logic;
+  end record;
+
+  type aximem_wac_type is record
+    wait_for_valid : std_logic;
+    entry_strobe : std_logic;
+  end record;
+
+  type aximem_wdc_type is record
+    wait_for_valid : std_logic;
+    entry_strobe : std_logic;
+  end record;
+
+   type aximem_conf_type is record
+    err : aximem_error_type;
+    wac : aximem_wac_type;
+    wdc : aximem_wdc_type;
+    rac : aximem_rac_type;
+  end record;
+  
+  constant aximem_error_type_def : aximem_error_type := (
+    id => 0,
+    dstype => '0',
+    addr => (others=>'0'),
+    mask => (others=>'0'),
+    valid => '0',
+    enabled => '0',
+    entry_strobe => '0');
+
+  constant aximem_rac_type_def : aximem_rac_type := (
+    wait_for_valid => '0',
+    entry_strobe => '0'
+    );
+
+  constant aximem_wac_type_def : aximem_wac_type := (
+    wait_for_valid => '0',
+    entry_strobe => '0'
+    );
+  
+  constant aximem_wdc_type_def : aximem_wdc_type := (
+    wait_for_valid => '0',
+    entry_strobe => '0'
+    );
+  
+
+  constant aximem_conf_type_def : aximem_conf_type := (
+    err => aximem_error_type_def,
+    wac => aximem_wac_type_def,
+    wdc => aximem_wdc_type_def,
+    rac => aximem_rac_type_def
+    );
+    
+  component axixmem is
+    generic (
+      fname: string;
+      axibits: integer := AXIDW;
+      rstmode: integer range 0 to 1
+      );
+    port (
+      clk  : in std_ulogic;
+      rst  : in std_ulogic;
+      axisi: in axix_mosi_type;
+      axiso: out axi_somi_type;
+      conf_in : in aximem_conf_type := aximem_conf_type_def
+      );
+  end component;
+
   component axirep is
     generic (
       baseaddr: integer := 16#20000#;

@@ -1,0 +1,8 @@
+  mainmenu_option next_comment
+  comment 'Version and Revision Register'
+    bool 'Enable Version and Revision Register ' CONFIG_GRVERSION_ENABLE
+    if [ "$CONFIG_GRVERSION_ENABLE" = "y" ]; then
+      hex 'Version  '   CONFIG_GRVERSION_VERSION 0000
+      hex 'Revision '   CONFIG_GRVERSION_REVISION 0000
+    fi
+  endmenu

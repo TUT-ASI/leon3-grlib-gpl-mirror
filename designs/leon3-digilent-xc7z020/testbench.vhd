@@ -74,7 +74,8 @@ component leon3mp is
     clktech : integer := CFG_CLKTECH;
     disas   : integer := CFG_DISAS;   -- Enable disassembly to console
     dbguart : integer := CFG_DUART;   -- Print UART on console
-    pclow   : integer := CFG_PCLOW
+    pclow   : integer := CFG_PCLOW;
+    testahb : boolean := false
   );
   port (
     processing_system7_0_MIO : inout std_logic_vector(53 downto 0);
@@ -118,7 +119,8 @@ begin
        clktech => clktech,
        disas   => disas,
        dbguart => dbguart,
-       pclow   => pclow
+       pclow   => pclow,
+       testahb => true
    )
       port map (
        processing_system7_0_MIO                  => processing_system7_0_MIO,
