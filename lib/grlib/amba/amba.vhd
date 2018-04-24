@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -1127,7 +1127,7 @@ component ahbxb is
   end component;
   
   subtype vendor_description is string(1 to 24);
-  subtype device_description is string(1 to 31);
+  subtype device_description is string(1 to 32);
   type device_table_type is array (0 to 1023) of device_description;
   type vendor_library_type is record
     vendorid     : amba_vendor_type;

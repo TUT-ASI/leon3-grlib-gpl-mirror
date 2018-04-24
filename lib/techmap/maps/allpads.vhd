@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -154,6 +154,7 @@ component apa3e_toutpad_ds
 end component;
 
 component igloo2_clkpad
+  generic (arch : integer := 0);
   port (pad : in std_ulogic; o : out std_ulogic);
 end component;
 
@@ -190,6 +191,38 @@ component igloo2_toutpad
 end component;
 
 component igloo2_toutpad_ds
+  port (padp, padn : out std_ulogic; i, en : in std_ulogic);
+end component;
+
+component polarfire_inpad
+  port (pad : in std_ulogic; o : out std_ulogic);
+end component;
+
+component polarfire_inpad_ds
+  port (padp, padn : in std_ulogic; o : out std_ulogic);
+end component;
+
+component polarfire_iopad
+  port (pad : inout std_ulogic; i, en : in std_ulogic; o : out std_ulogic);
+end component;
+
+component polarfire_iopad_ds
+  port (padp, padn : inout std_ulogic; i, en : in std_ulogic; o : out std_ulogic);
+end component;
+
+component polarfire_outpad
+  port (pad : out std_ulogic; i : in std_ulogic);
+end component;
+
+component polarfire_outpad_ds
+  port (padp, padn : out std_ulogic; i : in std_ulogic);
+end component;
+
+component polarfire_toutpad
+  port (pad : out std_ulogic; i, en : in std_ulogic);
+end component;
+
+component polarfire_toutpad_ds
   port (padp, padn : out std_ulogic; i, en : in std_ulogic);
 end component;
 

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -21,8 +21,8 @@
 -- Entity: 	syncram128bw
 -- File:    syncram128bw.vhd
 -- Author:	Nils-Johan Wessman - Aeroflex Gaisler AB
--- Description:	128-bit data + 28-bit edac syncronous 1-port ram with 16-bit write strobes
---		and tech selection
+-- Description:	128-bit data + 28-bit edac syncronous 1-port ram with
+--              16-bit write strobes and tech selection
 --    
 ------------------------------------------------------------------------------
 
@@ -37,7 +37,8 @@ use grlib.config_types.all;
 use grlib.stdlib.all;
 
 entity syncram156bw is
-  generic (tech : integer := 0; abits : integer := 6; testen : integer := 0; custombits: integer := 1);
+  generic (tech : integer := 0; abits : integer := 6; testen : integer := 0;
+           custombits: integer := 1; pipeline : integer range 0 to 15 := 0);
   port (
     clk     : in  std_ulogic;
     address : in  std_logic_vector (abits -1 downto 0);
@@ -153,7 +154,6 @@ begin
 
   xenable <= enable when testen=0 or testin(TESTIN_WIDTH-2)='0' else (others => '0');
   xwrite <= write when testen=0 or testin(TESTIN_WIDTH-2)='0' else (others => '0');
-  dataout <= dataoutx;
 
     custominx <= (others => '0');
     customclkx <= '0';
@@ -199,7 +199,17 @@ begin
                   testin(TESTIN_WIDTH-5), '0');
       customoutx(customoutx'high downto 48) <= (others => '0');
     end generate;
-
+    nogenreg : if pipeline = 0 generate
+      dataout <= dataoutx;
+    end generate;
+    genreg : if pipeline /= 0 generate
+      dreg : process(clk)
+      begin
+        if rising_edge(clk) then
+          dataout <= dataoutx;
+        end if;
+      end process;
+    end generate;
 -- pragma translate_off
     dmsg : if GRLIB_CONFIG_ARRAY(grlib_debug_level) >= 2 generate
       x : process
@@ -248,17 +258,18 @@ begin
 
   nos156 : if has_sram156bw(tech) = 0 generate
     rx : for i in 0 to 15 generate
-      x0 : syncram generic map (tech, abits, 8, testen, custombits)
+      x0 : syncram generic map (tech, abits, 8, testen, custombits, pipeline)
         port map (clk, address, datain(i*8+7 downto i*8),
           dataoutx(i*8+7 downto i*8), enable(i), write(i), testin
                   );
       c0 : if i mod 4 = 0 generate
-        x0 : syncram generic map (tech, abits, 7, testen, custombits)
+        x0 : syncram generic map (tech, abits, 7, testen, custombits, pipeline)
           port map (clk, address, datain(i/4*7+128+6 downto i/4*7+128),
             dataoutx(i/4*7+128+6 downto i/4*7+128), enable(i), write(i), testin
                     );
         end generate;
     end generate;
+    dataout <= dataoutx;
   end generate;
 
 end;

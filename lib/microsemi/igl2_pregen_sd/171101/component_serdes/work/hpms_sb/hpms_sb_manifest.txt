@@ -1,0 +1,21 @@
+Microsemi Corporation - Microsemi Libero Software Release v11.8 (Version 11.8.0.26)
+
+Date      :  Wed Nov  1 13:13:15 2017
+Project   :  /home/anneli/GRLIB_GIT_REP/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero
+Component :  hpms_sb
+Family    :  IGLOO2
+
+
+HDL source files for all Synthesis and Simulation tools:
+    /home/anneli/GRLIB_GIT_REP/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/Actel/DirectCore/CoreResetP/7.1.100/rtl/vhdl/core/coreresetp.vhd
+    /home/anneli/GRLIB_GIT_REP/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/Actel/DirectCore/CoreResetP/7.1.100/rtl/vhdl/core/coreresetp_pcie_hotreset.vhd
+    /home/anneli/GRLIB_GIT_REP/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/work/hpms_sb/CCC_0/hpms_sb_CCC_0_FCCC.vhd
+    /home/anneli/GRLIB_GIT_REP/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/work/hpms_sb/FABOSC_0/hpms_sb_FABOSC_0_OSC.vhd
+    /home/anneli/GRLIB_GIT_REP/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/work/hpms_sb/hpms_sb.vhd
+
+HDL source files for Synopsys SynplifyPro Synthesis tool:
+    /home/anneli/GRLIB_GIT_REP/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/Actel/SgCore/OSC/2.0.101/osc_comps.vhd
+
+HDL source files for Mentor Precision Synthesis tool:
+    /home/anneli/GRLIB_GIT_REP/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/Actel/SgCore/OSC/2.0.101/osc_comps_pre.vhd
+

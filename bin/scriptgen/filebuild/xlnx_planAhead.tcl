@@ -1,6 +1,6 @@
 set planAhead_contents ""
 proc create_xlnx_planAhead {} {
-	global TOP DESIGN DEVICE PLANAHEAD_SIMSET GRLIB_XIL_PlanAhead_Simulator SIMTOP PROTOBOARD
+	global TOP DESIGN DEVICE PLANAHEAD_SIMSET GRLIB_XIL_PlanAhead_Simulator SIMTOP PROTOBOARD GRLIB_XILINX_SOURCE_MGMT_MODE
 	upvar planAhead_contents pc
 
 	file mkdir "planahead"
@@ -21,7 +21,10 @@ proc create_xlnx_planAhead {} {
 		append pc "\nset_property board $PROTOBOARD \[current_project\]"
 	}
 	append pc "\n# Use manual compile order"
-	append pc "\n#set_property source_mgmt_mode DisplayOnly \[current_project\]"
+        if {![string equal $GRLIB_XILINX_SOURCE_MGMT_MODE ""]} {
+	        append pc "\nset_property source_mgmt_mode $GRLIB_XILINX_SOURCE_MGMT_MODE \[current_project\]"
+	}
+#	append pc "\nset_property source_mgmt_mode DisplayOnly \[current_project\]"
 	append pc "\n# Disable option: Include all design sources for simulation"
 	append pc "\n#set_property SOURCE_SET \{\} \[get_filesets $PLANAHEAD_SIMSET\]"
 	append pc "\n# Add files for simulation and synthesis"

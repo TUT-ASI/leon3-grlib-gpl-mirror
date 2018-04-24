@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -146,7 +146,8 @@ package misc is
       errcnten  : integer range 0 to 1 := 0;  --enable error counter in stat.reg
       cntbits   : integer range 1 to 8 := 1; --errcnt size in bits
       ahbpipe   : integer range 0 to 1 := 0;
-      testen    : integer := 0);
+      testen    : integer := 0;
+      maccsz    : integer := AHBDW);
     port (
       rst      : in  std_ulogic;
       clk      : in  std_ulogic;
@@ -173,7 +174,8 @@ package misc is
       errcnten  : integer range 0 to 1 := 0;
       cntbits   : integer range 1 to 8 := 1;
       ahbpipe   : integer range 0 to 1 := 0;
-      testen    : integer := 0);
+      testen    : integer := 0;
+      maccsz    : integer := AHBDW);
     port (
       rst      : in  std_ulogic;
       clk      : in  std_ulogic;
@@ -196,7 +198,8 @@ package misc is
       paddr     : integer := 0;
       pmask     : integer := 16#fff#;
       testen    : integer := 0;
-      edacen    : integer range 1 to 3 := 1);
+      edacen    : integer range 1 to 3 := 1;
+      maccsz    : integer := AHBDW);
     port (
       rst      : in  std_ulogic;
       clk      : in  std_ulogic;
@@ -1492,6 +1495,7 @@ package misc is
       );
   end component;
 
+
   -----------------------------------------------------------------------------
   -- Signals and components package for adapters/wrappers for
   -- SmartFusion2/IGLOO2 hard subsystems
@@ -1671,7 +1675,7 @@ package misc is
       ahbs0o  : out ahb_slv_out_type;
       ahbs1i  : in  ahb_slv_in_type;
       ahbs1o  : out ahb_slv_out_type;
-      force   : in  std_logic;
+      fsel    : in  std_logic;
       locken  : in  std_logic
     );
   end component;
@@ -1686,8 +1690,37 @@ package misc is
       ahbm0o: out ahb_mst_out_type;
       ahbm1i: in  ahb_mst_in_type;
       ahbm1o: out ahb_mst_out_type;
-      force : in  std_logic
+      fsel  : in  std_logic
     );
+  end component;
+
+  -----------------------------------------------------------------------------
+  -- Signals and components package for adapters/wrappers for
+  -- PolarFire hard subsystems
+  -----------------------------------------------------------------------------
+  component pfmddr_wrapper
+    generic (
+      hindex    : integer := 0;
+      haddr     : integer := 16#400#; -- mapped at 0x40000000
+      hmask     : integer := 16#FC0#; -- 64 MB
+      pindex    : integer := 13; 
+      paddr     : integer := 13; -- mapped at 0x8000d000
+      pmask     : integer := 16#FF8#; -- 2 KB
+      delay     : integer := 4;
+      vendorid  : integer := VENDOR_ACTEL; 
+      deviceid  : integer := ACTEL_MDDR;
+      pnpuser0  : integer := 0);
+    port (
+      rstn      : in  std_ulogic;
+      clk       : in  std_ulogic;
+      ahbsi     : in  ahb_slv_in_type;
+      ahbso     : out ahb_slv_out_type;
+      pfsi      : out axix_mosi_type;
+      pfso      : in  axi_somi_type;
+      apb3i     : in  apb3_slv_in_type;
+      apb3o     : out apb3_slv_out_type;
+      pfapbin   : out sf2_apb3_in_type;
+      pfapbout  : in  sf2_apb3_out_type);
   end component;
 
   -----------------------------------------------------------------------------

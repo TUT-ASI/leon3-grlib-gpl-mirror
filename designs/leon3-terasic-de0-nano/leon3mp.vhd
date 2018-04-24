@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -117,8 +117,8 @@ architecture rtl of leon3mp is
   signal ahbmi : ahb_mst_in_type;
   signal ahbmo : ahb_mst_out_vector := (others => ahbm_none);
 
-  signal u1i, dui : uart_in_type;
-  signal u1o, duo : uart_out_type;
+  signal u1i  : uart_in_type;
+  signal u1o  : uart_out_type;
 
   signal irqi : irq_in_vector(0 to CFG_NCPU-1);
   signal irqo : irq_out_vector(0 to CFG_NCPU-1);
@@ -467,7 +467,7 @@ begin
 -----------------------------------------------------------------------
 
   ocram : if CFG_AHBRAMEN = 1 generate 
-    ahbram0 : ahbram generic map (hindex => 7, haddr => CFG_AHBRADDR, 
+    ahbram0 : ahbram generic map (hindex => 4, haddr => CFG_AHBRADDR,
 	tech => CFG_MEMTECH, kbytes => CFG_AHBRSZ)
     port map (rstn, clkm, ahbsi, ahbso(4));
   end generate;

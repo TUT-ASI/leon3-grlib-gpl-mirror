@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -216,6 +216,15 @@ begin
 
    igl2 : if (tech = igloo2) or (tech = rtg4) generate
      u0 : igloo2_tap port map (tck, tms, tdi, trst, tdo,
+       tapi_tdo1, ltck, tapo_tdi, tapo_rst, tapo_capt, 
+       tapo_shft, tapo_upd, tapo_inst);
+     tdoen <= '0'; tapo_xsel1 <= '0';  tapo_xsel2 <= '0';
+     tapo_ninst <= (others => '0'); tapo_iupd <= '0';
+     tapo_tck <= ltck; tapo_tckn <= not ltck;
+   end generate;
+
+   pf : if (tech = polarfire) generate
+     u0 : polarfire_tap port map (tck, tms, tdi, trst, tdo,
        tapi_tdo1, ltck, tapo_tdi, tapo_rst, tapo_capt, 
        tapo_shft, tapo_upd, tapo_inst);
      tdoen <= '0'; tapo_xsel1 <= '0';  tapo_xsel2 <= '0';

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ use grlib.stdlib.all;
 
 entity syncrambw is
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
-    testen : integer := 0; custombits: integer := 1);
+    testen : integer := 0; custombits: integer := 1; pipeline : integer range 0 to 15 := 0);
   port (
     clk     : in  std_ulogic;
     address : in  std_logic_vector (abits-1 downto 0);
@@ -52,7 +52,7 @@ end;
 architecture rtl of syncrambw is
 
   constant nctrl : integer := abits + (TESTIN_WIDTH-2) + 2*dbits/8;
-  signal dataoutx, databp, testdata : std_logic_vector((dbits -1) downto 0);
+  signal dataoutx, dataoutxx, databp, testdata : std_logic_vector((dbits -1) downto 0);
   constant SCANTESTBP : boolean := (testen = 1) and syncram_add_scan_bypass(tech)=1;
 
   signal xenable, xwrite : std_logic_vector(dbits/8-1 downto 0);
@@ -86,11 +86,24 @@ begin
       end process;
       dmuxout : for i in 0 to dbits-1 generate
         x0: grmux2 generic map (tech)
-          port map (dataoutx(i), databp(i), testin(TESTIN_WIDTH-1), dataout(i));
+          port map (dataoutx(i), databp(i), testin(TESTIN_WIDTH-1), dataoutxx(i));
       end generate;
     end generate;
 
-    noscanbp : if not SCANTESTBP generate dataout <= dataoutx; end generate;
+    noscanbp : if not SCANTESTBP generate dataoutxx <= dataoutx; end generate;
+
+    gendoutreg : if pipeline /= 0 and has_sram_pipe(tech) = 0 generate
+      doutreg : process(clk)
+      begin
+        if rising_edge(clk) then
+          dataout <= dataoutxx;
+        end if;
+      end process;
+    end generate;
+
+    nogendoutreg : if pipeline = 0 or has_sram_pipe(tech) = 1 generate
+      dataout <= dataoutxx;
+    end generate;
     
     n2x : if tech = easic45 generate 
       x0 : n2x_syncram_be generic map (abits, dbits)
@@ -104,6 +117,11 @@ begin
 
     rt4 : if tech = rtg4 generate 
       x0 : rtg4_syncram_be generic map (abits, dbits)
+         port map (clk, address, datain, dataoutx, xenable, xwrite);
+    end generate;
+
+    pf : if tech = polarfire generate 
+      x0 : polarfire_syncram_be generic map (abits, dbits)
          port map (clk, address, datain, dataoutx, xenable, xwrite);
     end generate;
 
@@ -134,7 +152,7 @@ begin
 
   nosbw : if has_srambw(tech) < abits generate
     rx : for i in 0 to dbits/8-1 generate
-      x0 : syncram generic map (tech, abits, 8, testen, custombits)
+      x0 : syncram generic map (tech, abits, 8, testen, custombits, pipeline)
          port map (clk, address, datain(i*8+7 downto i*8), 
 	    dataoutx(i*8+7 downto i*8), enable(i), write(i), testin
                    );

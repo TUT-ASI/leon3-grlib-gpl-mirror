@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -76,9 +76,10 @@ type mmuidc_data_out_type is record
   data             : std_logic_vector(31 downto 0);
   cache            : std_logic;
   accexc           : std_logic;
+  subit            : std_logic;
 end record;
 
-constant mmuidco_zero : mmuidc_data_out_type := ('0', zero32, '0', '0');
+constant mmuidco_zero : mmuidc_data_out_type := ('0', zero32, '0', '0', '0');
 
 type mmudc_in_type is record
   trans_op         : std_logic; 
@@ -260,6 +261,26 @@ type mmutlb_out_type is record
 end record; 
 type mmutlbo_a is array (natural range <>) of mmutlb_out_type;
 
+function mmu_subit_set(acc : std_logic_vector(2 downto 0)) return std_logic;
+
 end;
 
+package body mmuiface is
+
+  function mmu_subit_set(acc : std_logic_vector(2 downto 0))
+    return std_logic is
+    variable ret : std_logic;
+  begin
+
+    ret := '0';
+
+    if ( acc = "110" or acc = "111" ) then
+      ret := '1';
+    end if;
+
+    return ret;
+
+  end ;
+
+end mmuiface;
 

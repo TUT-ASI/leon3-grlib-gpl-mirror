@@ -98,6 +98,7 @@
  * Integer unit                                           
  */
 #define CONFIG_IU_NWINDOWS (8)
+#undef  CONFIG_IU_RFINF
 #define CONFIG_IU_V8MULDIV 1
 #undef  CONFIG_IU_MUL_LATENCY_2
 #undef  CONFIG_IU_MUL_LATENCY_4
@@ -172,6 +173,7 @@
  * MMU
  */
 #define CONFIG_MMU_ENABLE 1
+#undef  CONFIG_MMU_SV
 #undef  CONFIG_MMU_COMBINED
 #define CONFIG_MMU_SPLIT 1
 #define CONFIG_MMU_REPARRAY 1
@@ -194,6 +196,7 @@
 #undef  CONFIG_MMU_PAGE_16K
 #undef  CONFIG_MMU_PAGE_32K
 #undef  CONFIG_MMU_PAGE_PROG
+#undef  CONFIG_MMU_INF
 /*
  * Debug Support Unit        
  */

@@ -35,6 +35,7 @@ VCOMOPT=-explicit -O0
 # GRETH options
 ifeq ($(CONFIG_GRETH_ENABLE),y)
 VSIMOPT+= -L gig_ethernet_pcs_pma -L secureip -L unisims_ver 
+GRLIB_COMPILE_VIVADO_IP=y
 endif
 
 # - MIG -
@@ -60,7 +61,7 @@ AXI_64=1
 endif
 ifeq ("$(CONFIG_CACHE_128BIT)","y")
 AXI_128=1
-GRLIB_VIVADO_SOURCE_MGMT_MODE=DisplayOnly
+GRLIB_XILINX_SOURCE_MGMT_MODE=DisplayOnly
 endif
 
 

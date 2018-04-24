@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -59,6 +59,8 @@ package devices is
   constant VENDOR_NASA       : amba_vendor_type := 16#22#;
   constant VENDOR_NIIET      : amba_vendor_type := 16#23#;
   constant VENDOR_S3         : amba_vendor_type := 16#31#;
+  constant VENDOR_TAS        : amba_vendor_type := 16#A5#;
+  constant VENDOR_RECORE     : amba_vendor_type := 16#A6#;
   constant VENDOR_ACTEL      : amba_vendor_type := 16#AC#;
   constant VENDOR_APPLECORE  : amba_vendor_type := 16#AE#;
   constant VENDOR_C3E        : amba_vendor_type := 16#C3#;
@@ -243,6 +245,11 @@ package devices is
   constant GAISLER_TCAU          : amba_device_type := 16#0AB#;
   constant GAISLER_GRTMDYNVCID   : amba_device_type := 16#0AC#;
   constant GAISLER_RNOCIRQPROP   : amba_device_type := 16#0AD#;
+  constant GAISLER_FTADDR        : amba_device_type := 16#0AE#;
+  constant GAISLER_ATG           : amba_device_type := 16#0B0#;
+  constant GAISLER_DFITRACE      : amba_device_type := 16#0B1#;
+  constant GAISLER_SELFTEST      : amba_device_type := 16#0B2#;
+  constant GAISLER_DFIERRINJ     : amba_device_type := 16#0B3#;
 
 -- Sun Microsystems
 
@@ -324,7 +331,7 @@ package devices is
   constant DTU_FTMCTRL   : amba_device_type := 16#054#;
 
 -- BSC device ids
-
+ 
   constant BSC_CORE1 : amba_device_type := 16#001#;
   constant BSC_CORE2 : amba_device_type := 16#002#;
 
@@ -360,6 +367,7 @@ package devices is
   constant ACTEL_FICSLV        : amba_device_type := 16#008#;
   constant ACTEL_FICMST        : amba_device_type := 16#009#;
   constant ACTEL_RTG4SERDES    : amba_device_type := 16#00a#;
+  constant ACTEL_PFFDDR3       : amba_device_type := 16#00b#;
   
 -- NASA device ids
 
@@ -370,6 +378,17 @@ package devices is
   constant APPLECORE_UTLEON3    : amba_device_type := 16#001#;
   constant APPLECORE_UTLEON3DSU : amba_device_type := 16#002#;
   constant APPLECORE_APBPERFCNT : amba_device_type := 16#003#;
+
+-- Thales Alenia Space device IDs
+  constant TAS_HOUSE_KEEPING_ADC : amba_device_type := 16#001#;
+
+-- Recore Systems device IDs
+  constant RECORE_PROC_SUB_BRDG  : amba_device_type := 16#001#;
+  constant RECORE_PROC_SUB_DBG   : amba_device_type := 16#002#;
+  constant RECORE_XENTIUM_CORE   : amba_device_type := 16#003#;
+  constant RECORE_XENTIUM_DEBUG  : amba_device_type := 16#004#;
+  constant RECORE_XENTIUM_ICACHE : amba_device_type := 16#005#;
+  constant RECORE_XENTIUM_DEVICE : amba_device_type := 16#006#;
 
 -- SSTL device IDs
   constant SSTL_HDLC            : amba_device_type := 16#001#;
@@ -396,6 +415,8 @@ package devices is
   constant LEON3_RTAX_CID8       : system_device_type := 16#0208#;
   constant LEON3_PROXIMA         : system_device_type := 16#0252#;
   constant LEON_RTG4_DEVKIT      : system_device_type := 16#0264#;
+  constant LEON_POLARFIRE_EVALKIT: system_device_type := 16#0265#;
+  constant GAISLER_DDRTV         : system_device_type := 16#0290#;
   constant ALTERA_DE2            : system_device_type := 16#0302#;
   constant ALTERA_DE4            : system_device_type := 16#0303#;
   constant ALTERA_S5GSDSP        : system_device_type := 16#0304#;
@@ -419,178 +440,183 @@ package devices is
   constant GAISLER_DESC : vendor_description := "Cobham Gaisler          ";
 
   constant gaisler_device_table : device_table_type := (
-    GAISLER_LEON2DSU      => "LEON2 Debug Support Unit       ",
-    GAISLER_LEON3         => "LEON3 SPARC V8 Processor       ",
-    GAISLER_LEON3DSU      => "LEON3 Debug Support Unit       ",
-    GAISLER_ETHAHB        => "OC ethernet AHB interface      ",
-    GAISLER_AHBRAM        => "Single-port AHB SRAM module    ",
-    GAISLER_AHBDPRAM      => "Dual-port AHB SRAM module      ",
-    GAISLER_APBMST        => "AHB/APB Bridge                 ",
-    GAISLER_AHBUART       => "AHB Debug UART                 ",
-    GAISLER_SRCTRL        => "Simple SRAM Controller         ",
-    GAISLER_SDCTRL        => "PC133 SDRAM Controller         ",
-    GAISLER_SSRCTRL       => "Synchronous SRAM Controller    ",
-    GAISLER_APBUART       => "Generic UART                   ",
-    GAISLER_IRQMP         => "Multi-processor Interrupt Ctrl.",
-    GAISLER_GPTIMER       => "Modular Timer Unit             ",
-    GAISLER_PCITRG        => "Simple 32-bit PCI Target       ",
-    GAISLER_PCISBRG       => "Simple 32-bit PCI Bridge       ",
-    GAISLER_PCIFBRG       => "Fast 32-bit PCI Bridge         ",
-    GAISLER_PCITRACE      => "32-bit PCI Trace Buffer        ",
-    GAISLER_DMACTRL       => "PCI/AHB DMA controller         ",
-    GAISLER_AHBTRACE      => "AMBA Trace Buffer              ",
-    GAISLER_DSUCTRL       => "DSU/ETH controller             ",
-    GAISLER_GRTM          => "CCSDS Telemetry Encoder        ",
-    GAISLER_GRTC          => "CCSDS Telecommand Decoder      ",
-    GAISLER_GRPW          => "PacketWire to AMBA AHB I/F     ",
-    GAISLER_GRCTM         => "CCSDS Time Manager             ",
-    GAISLER_GRHCAN        => "ESA HurriCANe CAN with DMA     ",
-    GAISLER_GRFIFO        => "FIFO Controller                ",
-    GAISLER_GRADCDAC      => "ADC / DAC Interface            ",
-    GAISLER_GRPULSE       => "General Purpose I/O with Pulses",
-    GAISLER_GRTIMER       => "Timer Unit with Latches        ",
-    GAISLER_AHB2PP        => "AMBA AHB to Packet Parallel I/F",
-    GAISLER_GRVERSION     => "Version and Revision Register  ",
-    GAISLER_APB2PW        => "PacketWire Transmit Interface  ",
-    GAISLER_PW2APB        => "PacketWire Receive Interface   ",
-    GAISLER_GRCAN         => "CAN Controller with DMA        ",
-    GAISLER_AHBMST_EM     => "AMBA Master Emulator           ",
-    GAISLER_AHBSLV_EM     => "AMBA Slave Emulator            ",
-    GAISLER_CANAHB        => "OC CAN AHB interface           ",
-    GAISLER_GPIO          => "General Purpose I/O port       ",
-    GAISLER_AHBROM        => "Generic AHB ROM                ",
-    GAISLER_AHB2AHB       => "AHB-to-AHB Bridge              ",
-    GAISLER_AHBDMA        => "Simple AHB DMA controller      ",
-    GAISLER_NUHOSP3       => "Nuhorizons Spartan3 IO I/F     ",
-    GAISLER_CLKGATE       => "Clock gating unit              ",
-    GAISLER_FTAHBRAM      => "Generic FT AHB SRAM module     ",
-    GAISLER_FTSRCTRL      => "Simple FT SRAM Controller      ",
-    GAISLER_LEON3FT       => "LEON3FT SPARC V8 Processor     ",
-    GAISLER_FTMCTRL       => "Memory controller with EDAC    ",
-    GAISLER_FTSDCTRL      => "FT PC133 SDRAM Controller      ",
-    GAISLER_FTSRCTRL8     => "FT 8-bit SRAM/16-bit IO Ctrl   ",
-    GAISLER_FTSDCTRL64    => "64-bit FT SDRAM Controller     ",
-    GAISLER_AHBSTAT       => "AHB Status Register            ",
-    GAISLER_AHBJTAG       => "JTAG Debug Link                ",
-    GAISLER_ETHMAC        => "GR Ethernet MAC                ",
-    GAISLER_SWNODE        => "SpaceWire Node Interface       ",
-    GAISLER_SPW           => "SpaceWire Serial Link          ",
-    GAISLER_VGACTRL       => "VGA controller                 ",
-    GAISLER_APBPS2        => "PS2 interface                  ",
-    GAISLER_LOGAN         => "On chip Logic Analyzer         ",
-    GAISLER_SVGACTRL      => "SVGA frame buffer              ",
-    GAISLER_T1AHB         => "Niagara T1 PCX/AHB bridge      ",
-    GAISLER_B1553BC       => "AMBA Wrapper for Core1553BBC   ",
-    GAISLER_B1553RT       => "AMBA Wrapper for Core1553BRT   ",
-    GAISLER_B1553BRM      => "AMBA Wrapper for Core1553BRM   ",
-    GAISLER_SATCAN        => "SatCAN controller              ",
-    GAISLER_CANMUX        => "CAN Bus multiplexer            ",
-    GAISLER_GRTMRX        => "CCSDS Telemetry Receiver       ",
-    GAISLER_GRTCTX        => "CCSDS Telecommand Transmitter  ",
-    GAISLER_GRTMDESC      => "CCSDS Telemetry Descriptor     ",
-    GAISLER_GRTMVC        => "CCSDS Telemetry VC Generator   ",
-    GAISLER_GRTMPAHB      => "CCSDS Telemetry VC AHB Input   ",
-    GAISLER_GEFFE         => "Geffe Generator                ",
-    GAISLER_SPWCUC        => "CCSDS CUC / SpaceWire I/F      ",
-    GAISLER_GPREG         => "General Purpose Register       ",
-    GAISLER_AES           => "Advanced Encryption Standard   ",
-    GAISLER_AESDMA        => "AES 256 DMA                    ",
-    GAISLER_GRPCI2        => "GRPCI2 PCI/AHB bridge          ",
-    GAISLER_GRPCI2_DMA    => "GRPCI2 DMA interface           ",
-    GAISLER_GRPCI2_TB     => "GRPCI2 Trace buffer            ",
-    GAISLER_MMA           => "Memory Mapped AMBA             ",
-    GAISLER_ECC           => "Elliptic Curve Cryptography    ",
-    GAISLER_PCIF          => "AMBA Wrapper for CorePCIF      ",
-    GAISLER_USBDC         => "GR USB 2.0 Device Controller   ",
-    GAISLER_USB_DCL       => "USB Debug Communication Link   ",
-    GAISLER_DDRMP         => "Multi-port DDR controller      ",
-    GAISLER_ATACTRL       => "ATA controller                 ",
-    GAISLER_DDRSP         => "Single-port DDR266 controller  ",
-    GAISLER_EHCI          => "USB Enhanced Host Controller   ",
-    GAISLER_UHCI          => "USB Universal Host Controller  ",
-    GAISLER_I2CMST        => "AMBA Wrapper for OC I2C-master ",
-    GAISLER_I2CSLV        => "I2C Slave                      ",
-    GAISLER_U16550        => "Simple 16550 UART              ",
-    GAISLER_SPICTRL       => "SPI Controller                 ",
-    GAISLER_DDR2SP        => "Single-port DDR2 controller    ",
-    GAISLER_GRTESTMOD     => "Test report module             ",
-    GAISLER_CLKMOD        => "CPU Clock Switching Ctrl module",
-    GAISLER_SLINK         => "SLINK Master                   ",
-    GAISLER_HAPSTRAK      => "HAPS HapsTrak I/O Port         ",
-    GAISLER_TEST_1X2      => "HAPS TEST_1x2 interface        ",
-    GAISLER_WILD2AHB      => "WildCard CardBus interface     ",
-    GAISLER_BIO1          => "Basic I/O board BIO1           ",
-    GAISLER_ASCS          => "ASCS Master                    ",
-    GAISLER_SPW2          => "GRSPW2 SpaceWire Serial Link   ",
-    GAISLER_IPMVBCTRL     => "IPM-bus/MVBC memory controller ",
-    GAISLER_SPIMCTRL      => "SPI Memory Controller          ",
-    GAISLER_L4STAT        => "LEON4 Statistics Unit          ",
-    GAISLER_LEON4         => "LEON4 SPARC V8 Processor       ",
-    GAISLER_LEON4DSU      => "LEON4 Debug Support Unit       ",
-    GAISLER_PWM           => "PWM generator                  ",
-    GAISLER_L2CACHE       => "L2-Cache Controller            ",
-    GAISLER_SDCTRL64      => "64-bit PC133 SDRAM Controller  ",
-    GAISLER_MP7WRAP       => "CoreMP7 wrapper                ",
-    GAISLER_GRSYSMON      => "AMBA wrapper for System Monitor",
-    GAISLER_GRACECTRL     => "System ACE I/F Controller      ",
-    GAISLER_ATAHBSLV      => "AMBA Test Framework AHB Slave  ",
-    GAISLER_ATAHBMST      => "AMBA Test Framework AHB Master ",
-    GAISLER_ATAPBSLV      => "AMBA Test Framework APB Slave  ",
-    GAISLER_MIGDDR2       => "Xilinx MIG DDR2 Controller     ",
-    GAISLER_LCDCTRL       => "LCD Controller                 ",
-    GAISLER_SWITCHOVER    => "Switchover Logic               ",
-    GAISLER_FIFOUART      => "UART with large FIFO           ",
-    GAISLER_MUXCTRL       => "Analogue multiplexer control   ",
-    GAISLER_GR1553B       => "MIL-STD-1553B Interface        ",
-    GAISLER_1553TST       => "MIL-STD-1553B Test Device      ",
-    GAISLER_MEMSCRUB      => "AHB Memory Scrubber            ",
-    GAISLER_GRIOMMU       => "IO Memory Management Unit      ",
-    GAISLER_SPW2_DMA      => "GRSPW Router DMA interface     ",
-    GAISLER_SPWROUTER     => "GRSPW Router                   ",
-    GAISLER_EDCLMST       => "EDCL master interface          ",
-    GAISLER_GRPWTX        => "PacketWire Transmitter with DMA",
-    GAISLER_GRPWRX        => "PacketWire Receiver with DMA   ",
-    GAISLER_GRIOMMU2      => "IOMMU secondary master i/f     ",
-    GAISLER_I2C2AHB       => "I2C to AHB Bridge              ",
-    GAISLER_NANDFCTRL     => "NAND Flash Controller          ",
-    GAISLER_N2PLLCTRL     => "N2X PLL Dynamic Config. i/f    ",
-    GAISLER_N2DLLCTRL     => "N2X DLL Dynamic Config. i/f    ",
-    GAISLER_GPREGBANK     => "General Purpose Register Bank  ",
-    GAISLER_SPI2AHB       => "SPI to AHB Bridge              ",
-    GAISLER_DDRSDMUX      => "Muxed FT DDR/SDRAM controller  ",
-    GAISLER_AHBFROM       => "Flash ROM Memory               ",
-    GAISLER_PCIEXP        => "Xilinx PCI EXPRESS Wrapper     ",
-    GAISLER_MIG_7SERIES   => "Xilinx MIG DDR3 Controller     ",
-    GAISLER_GRSPW2_SIST   => "GRSPW Router SIST              ",
-    GAISLER_SGMII         => "XILINX SGMII Interface         ",
-    GAISLER_RGMII         => "Gaisler RGMII Interface        ",
-    GAISLER_IRQGEN        => "Interrupt generator            ",
-    GAISLER_GRDMAC        => "GRDMAC DMA Controller          ",
-    GAISLER_AHB2AVLA      => "Avalon-MM memory controller    ",
-    GAISLER_SPWTDP        => "CCSDS TDP / SpaceWire I/F      ",
-    GAISLER_L3STAT        => "LEON3 Statistics Unit          ",
-    GAISLER_GR740THS      => "Temperature sensor             ",
-    GAISLER_GRRM          => "Reconfiguration Module         ",
-    GAISLER_CMAP          => "CCSDS Memory Access Protocol   ",
-    GAISLER_CPGEN         => "Discrete Command Pulse Gen     ",
-    GAISLER_AMBAPROT      => "AMBA Protection Unit           ",
-    GAISLER_IGLOO2_BRIDGE => "Microsemi SF2/IGLOO2 MSS/HPMS  ",
-    GAISLER_AHB2AXI       => "AMBA AHB/AXI Bridge            ",
-    GAISLER_AXI2AHB       => "AMBA AXI/AHB Bridge            ",
-    GAISLER_FDIR_RSTCTRL  => "FDIR Reset Controller          ",
-    GAISLER_APB3MST       => "AHB/APB3 Bridge                ",
-    GAISLER_LRAM          => "Dual-port AHB(/CPU) On-Chip RAM",
-    GAISLER_BOOTSEQ       => "Custom AHB sequencer           ",
-    GAISLER_TCCOP         => "CCSDS Telecommand Decoder (COP)",
-    GAISLER_SPIMASTER     => "Simple SPI Master              ",
-    GAISLER_SPISLAVE      => "Dual-port SPI Slave            ",
-    GAISLER_GRSRIO        => "Serial RapidIO Logical Layer   ",
-    GAISLER_AHBLM2AHB     => "AHB-Lite master to AHB master  ",
-    GAISLER_AHBS2NOC      => "AHB slave to NoC               ",
-    GAISLER_TCAU          => "Authentication Unit            ",
-    GAISLER_GRTMDYNVCID   => "CCSDS Telemetry Dynamic VCID   ",
-    GAISLER_RNOCIRQPROP   => "RNoC Interrupt propagator      ",
-    others                => "Unknown Device                 ");
+    GAISLER_LEON2DSU      => "LEON2 Debug Support Unit        ",
+    GAISLER_LEON3         => "LEON3 SPARC V8 Processor        ",
+    GAISLER_LEON3DSU      => "LEON3 Debug Support Unit        ",
+    GAISLER_ETHAHB        => "OC ethernet AHB interface       ",
+    GAISLER_AHBRAM        => "Single-port AHB SRAM module     ",
+    GAISLER_AHBDPRAM      => "Dual-port AHB SRAM module       ",
+    GAISLER_APBMST        => "AHB/APB Bridge                  ",
+    GAISLER_AHBUART       => "AHB Debug UART                  ",
+    GAISLER_SRCTRL        => "Simple SRAM Controller          ",
+    GAISLER_SDCTRL        => "PC133 SDRAM Controller          ",
+    GAISLER_SSRCTRL       => "Synchronous SRAM Controller     ",
+    GAISLER_APBUART       => "Generic UART                    ",
+    GAISLER_IRQMP         => "Multi-processor Interrupt Ctrl. ",
+    GAISLER_GPTIMER       => "Modular Timer Unit              ",
+    GAISLER_PCITRG        => "Simple 32-bit PCI Target        ",
+    GAISLER_PCISBRG       => "Simple 32-bit PCI Bridge        ",
+    GAISLER_PCIFBRG       => "Fast 32-bit PCI Bridge          ",
+    GAISLER_PCITRACE      => "32-bit PCI Trace Buffer         ",
+    GAISLER_DMACTRL       => "PCI/AHB DMA controller          ",
+    GAISLER_AHBTRACE      => "AMBA Trace Buffer               ",
+    GAISLER_DSUCTRL       => "DSU/ETH controller              ",
+    GAISLER_GRTM          => "CCSDS Telemetry Encoder         ",
+    GAISLER_GRTC          => "CCSDS Telecommand Decoder       ",
+    GAISLER_GRPW          => "PacketWire to AMBA AHB I/F      ",
+    GAISLER_GRCTM         => "CCSDS Time Manager              ",
+    GAISLER_GRHCAN        => "ESA HurriCANe CAN with DMA      ",
+    GAISLER_GRFIFO        => "FIFO Controller                 ",
+    GAISLER_GRADCDAC      => "ADC / DAC Interface             ",
+    GAISLER_GRPULSE       => "General Purpose I/O with Pulses ",
+    GAISLER_GRTIMER       => "Timer Unit with Latches         ",
+    GAISLER_AHB2PP        => "AMBA AHB to Packet Parallel I/F ",
+    GAISLER_GRVERSION     => "Version and Revision Register   ",
+    GAISLER_APB2PW        => "PacketWire Transmit Interface   ",
+    GAISLER_PW2APB        => "PacketWire Receive Interface    ",
+    GAISLER_GRCAN         => "CAN Controller with DMA         ",
+    GAISLER_AHBMST_EM     => "AMBA Master Emulator            ",
+    GAISLER_AHBSLV_EM     => "AMBA Slave Emulator             ",
+    GAISLER_CANAHB        => "OC CAN AHB interface            ",
+    GAISLER_GPIO          => "General Purpose I/O port        ",
+    GAISLER_AHBROM        => "Generic AHB ROM                 ",
+    GAISLER_AHB2AHB       => "AHB-to-AHB Bridge               ",
+    GAISLER_AHBDMA        => "Simple AHB DMA controller       ",
+    GAISLER_NUHOSP3       => "Nuhorizons Spartan3 IO I/F      ",
+    GAISLER_CLKGATE       => "Clock gating unit               ",
+    GAISLER_FTAHBRAM      => "Generic FT AHB SRAM module      ",
+    GAISLER_FTSRCTRL      => "Simple FT SRAM Controller       ",
+    GAISLER_LEON3FT       => "LEON3FT SPARC V8 Processor      ",
+    GAISLER_FTMCTRL       => "Memory controller with EDAC     ",
+    GAISLER_FTSDCTRL      => "FT PC133 SDRAM Controller       ",
+    GAISLER_FTSRCTRL8     => "FT 8-bit SRAM/16-bit IO Ctrl    ",
+    GAISLER_FTSDCTRL64    => "64-bit FT SDRAM Controller      ",
+    GAISLER_AHBSTAT       => "AHB Status Register             ",
+    GAISLER_AHBJTAG       => "JTAG Debug Link                 ",
+    GAISLER_ETHMAC        => "GR Ethernet MAC                 ",
+    GAISLER_SWNODE        => "SpaceWire Node Interface        ",
+    GAISLER_SPW           => "SpaceWire Serial Link           ",
+    GAISLER_VGACTRL       => "VGA controller                  ",
+    GAISLER_APBPS2        => "PS2 interface                   ",
+    GAISLER_LOGAN         => "On chip Logic Analyzer          ",
+    GAISLER_SVGACTRL      => "SVGA frame buffer               ",
+    GAISLER_T1AHB         => "Niagara T1 PCX/AHB bridge       ",
+    GAISLER_B1553BC       => "AMBA Wrapper for Core1553BBC    ",
+    GAISLER_B1553RT       => "AMBA Wrapper for Core1553BRT    ",
+    GAISLER_B1553BRM      => "AMBA Wrapper for Core1553BRM    ",
+    GAISLER_SATCAN        => "SatCAN controller               ",
+    GAISLER_CANMUX        => "CAN Bus multiplexer             ",
+    GAISLER_GRTMRX        => "CCSDS Telemetry Receiver        ",
+    GAISLER_GRTCTX        => "CCSDS Telecommand Transmitter   ",
+    GAISLER_GRTMDESC      => "CCSDS Telemetry Descriptor      ",
+    GAISLER_GRTMVC        => "CCSDS Telemetry VC Generator    ",
+    GAISLER_GRTMPAHB      => "CCSDS Telemetry VC AHB Input    ",
+    GAISLER_GEFFE         => "Geffe Generator                 ",
+    GAISLER_SPWCUC        => "CCSDS CUC / SpaceWire I/F       ",
+    GAISLER_GPREG         => "General Purpose Register        ",
+    GAISLER_AES           => "Advanced Encryption Standard    ",
+    GAISLER_AESDMA        => "AES 256 DMA                     ",
+    GAISLER_GRPCI2        => "GRPCI2 PCI/AHB bridge           ",
+    GAISLER_GRPCI2_DMA    => "GRPCI2 DMA interface            ",
+    GAISLER_GRPCI2_TB     => "GRPCI2 Trace buffer             ",
+    GAISLER_MMA           => "Memory Mapped AMBA              ",
+    GAISLER_ECC           => "Elliptic Curve Cryptography     ",
+    GAISLER_PCIF          => "AMBA Wrapper for CorePCIF       ",
+    GAISLER_USBDC         => "GR USB 2.0 Device Controller    ",
+    GAISLER_USB_DCL       => "USB Debug Communication Link    ",
+    GAISLER_DDRMP         => "Multi-port DDR controller       ",
+    GAISLER_ATACTRL       => "ATA controller                  ",
+    GAISLER_DDRSP         => "Single-port DDR266 controller   ",
+    GAISLER_EHCI          => "USB Enhanced Host Controller    ",
+    GAISLER_UHCI          => "USB Universal Host Controller   ",
+    GAISLER_I2CMST        => "AMBA Wrapper for OC I2C-master  ",
+    GAISLER_I2CSLV        => "I2C Slave                       ",
+    GAISLER_U16550        => "Simple 16550 UART               ",
+    GAISLER_SPICTRL       => "SPI Controller                  ",
+    GAISLER_DDR2SP        => "Single-port DDR2 controller     ",
+    GAISLER_GRTESTMOD     => "Test report module              ",
+    GAISLER_CLKMOD        => "CPU Clock Switching Ctrl module ",
+    GAISLER_SLINK         => "SLINK Master                    ",
+    GAISLER_HAPSTRAK      => "HAPS HapsTrak I/O Port          ",
+    GAISLER_TEST_1X2      => "HAPS TEST_1x2 interface         ",
+    GAISLER_WILD2AHB      => "WildCard CardBus interface      ",
+    GAISLER_BIO1          => "Basic I/O board BIO1            ",
+    GAISLER_ASCS          => "ASCS Master                     ",
+    GAISLER_SPW2          => "GRSPW2 SpaceWire Serial Link    ",
+    GAISLER_IPMVBCTRL     => "IPM-bus/MVBC memory controller  ",
+    GAISLER_SPIMCTRL      => "SPI Memory Controller           ",
+    GAISLER_L4STAT        => "LEON4 Statistics Unit           ",
+    GAISLER_LEON4         => "LEON4 SPARC V8 Processor        ",
+    GAISLER_LEON4DSU      => "LEON4 Debug Support Unit        ",
+    GAISLER_PWM           => "PWM generator                   ",
+    GAISLER_L2CACHE       => "L2-Cache Controller             ",
+    GAISLER_SDCTRL64      => "64-bit PC133 SDRAM Controller   ",
+    GAISLER_MP7WRAP       => "CoreMP7 wrapper                 ",
+    GAISLER_GRSYSMON      => "AMBA wrapper for System Monitor ",
+    GAISLER_GRACECTRL     => "System ACE I/F Controller       ",
+    GAISLER_ATAHBSLV      => "AMBA Test Framework AHB Slave   ",
+    GAISLER_ATAHBMST      => "AMBA Test Framework AHB Master  ",
+    GAISLER_ATAPBSLV      => "AMBA Test Framework APB Slave   ",
+    GAISLER_MIGDDR2       => "Xilinx MIG DDR2 Controller      ",
+    GAISLER_LCDCTRL       => "LCD Controller                  ",
+    GAISLER_SWITCHOVER    => "Switchover Logic                ",
+    GAISLER_FIFOUART      => "UART with large FIFO            ",
+    GAISLER_MUXCTRL       => "Analogue multiplexer control    ",
+    GAISLER_GR1553B       => "MIL-STD-1553B Interface         ",
+    GAISLER_1553TST       => "MIL-STD-1553B Test Device       ",
+    GAISLER_MEMSCRUB      => "AHB Memory Scrubber             ",
+    GAISLER_GRIOMMU       => "IO Memory Management Unit       ",
+    GAISLER_SPW2_DMA      => "GRSPW Router DMA interface      ",
+    GAISLER_SPWROUTER     => "GRSPW Router                    ",
+    GAISLER_EDCLMST       => "EDCL master interface           ",
+    GAISLER_GRPWTX        => "PacketWire Transmitter with DMA ",
+    GAISLER_GRPWRX        => "PacketWire Receiver with DMA    ",
+    GAISLER_GRIOMMU2      => "IOMMU secondary master i/f      ",
+    GAISLER_I2C2AHB       => "I2C to AHB Bridge               ",
+    GAISLER_NANDFCTRL     => "NAND Flash Controller           ",
+    GAISLER_N2PLLCTRL     => "N2X PLL Dynamic Config. i/f     ",
+    GAISLER_N2DLLCTRL     => "N2X DLL Dynamic Config. i/f     ",
+    GAISLER_GPREGBANK     => "General Purpose Register Bank   ",
+    GAISLER_SPI2AHB       => "SPI to AHB Bridge               ",
+    GAISLER_DDRSDMUX      => "Muxed FT DDR/SDRAM controller   ",
+    GAISLER_AHBFROM       => "Flash ROM Memory                ",
+    GAISLER_PCIEXP        => "Xilinx PCI EXPRESS Wrapper      ",
+    GAISLER_MIG_7SERIES   => "Xilinx MIG DDR3 Controller      ",
+    GAISLER_GRSPW2_SIST   => "GRSPW Router SIST               ",
+    GAISLER_SGMII         => "XILINX SGMII Interface          ",
+    GAISLER_RGMII         => "Gaisler RGMII Interface         ",
+    GAISLER_IRQGEN        => "Interrupt generator             ",
+    GAISLER_GRDMAC        => "GRDMAC DMA Controller           ",
+    GAISLER_AHB2AVLA      => "Avalon-MM memory controller     ",
+    GAISLER_SPWTDP        => "CCSDS TDP / SpaceWire I/F       ",
+    GAISLER_L3STAT        => "LEON3 Statistics Unit           ",
+    GAISLER_GR740THS      => "Temperature sensor              ",
+    GAISLER_GRRM          => "Reconfiguration Module          ",
+    GAISLER_CMAP          => "CCSDS Memory Access Protocol    ",
+    GAISLER_CPGEN         => "Discrete Command Pulse Gen      ",
+    GAISLER_AMBAPROT      => "AMBA Protection Unit            ",
+    GAISLER_IGLOO2_BRIDGE => "Microsemi SF2/IGLOO2 MSS/HPMS   ",
+    GAISLER_AHB2AXI       => "AMBA AHB/AXI Bridge             ",
+    GAISLER_AXI2AHB       => "AMBA AXI/AHB Bridge             ",
+    GAISLER_FDIR_RSTCTRL  => "FDIR Reset Controller           ",
+    GAISLER_APB3MST       => "AHB/APB3 Bridge                 ",
+    GAISLER_LRAM          => "Dual-port AHB(/CPU) On-Chip RAM ",
+    GAISLER_BOOTSEQ       => "Custom AHB sequencer            ",
+    GAISLER_TCCOP         => "CCSDS Telecommand Decoder (COP) ",
+    GAISLER_SPIMASTER     => "Simple SPI Master               ",
+    GAISLER_SPISLAVE      => "Dual-port SPI Slave             ",
+    GAISLER_GRSRIO        => "Serial RapidIO Logical Layer    ",
+    GAISLER_AHBLM2AHB     => "AHB-Lite master to AHB master   ",
+    GAISLER_AHBS2NOC      => "AHB slave to NoC                ",
+    GAISLER_TCAU          => "Authentication Unit             ",
+    GAISLER_GRTMDYNVCID   => "CCSDS Telemetry Dynamic VCID    ",
+    GAISLER_RNOCIRQPROP   => "RNoC Interrupt propagator       ",
+    GAISLER_FTADDR        => "DDR2/DDR3 controller with EDAC  ",
+    GAISLER_ATG           => "AMBA2 Test Pattern Generator    ",
+    GAISLER_DFITRACE      => "DFI2.1 Trace Buffer             ",
+    GAISLER_SELFTEST      => "TV selftest module              ",
+    GAISLER_DFIERRINJ     => "DFI error injection module      ",
+    others                => "Unknown Device                  ");
 
   constant gaisler_lib : vendor_library_type := (
     vendorid     => VENDOR_GAISLER,
@@ -601,27 +627,27 @@ package devices is
   constant ESA_DESC : vendor_description := "European Space Agency   ";
 
   constant esa_device_table : device_table_type := (
-    ESA_LEON2     => "LEON2 SPARC V8 Processor       ",
-    ESA_LEON2APB  => "LEON2 Peripheral Bus           ",
-    ESA_IRQ       => "LEON2 Interrupt Controller     ",
-    ESA_TIMER     => "LEON2 Timer                    ",
-    ESA_UART      => "LEON2 UART                     ",
-    ESA_CFG       => "LEON2 Configuration Register   ",
-    ESA_IO        => "LEON2 Input/Output             ",
-    ESA_MCTRL     => "LEON2 Memory Controller        ",
-    ESA_PCIARB    => "PCI Arbiter                    ",
-    ESA_HURRICANE => "HurriCANe/HurryAMBA CAN Ctrl   ",
-    ESA_SPW_RMAP  => "UoD/Saab SpaceWire/RMAP link   ",
-    ESA_AHBUART   => "LEON2 AHB Debug UART           ",
-    ESA_SPWA      => "ESA/ASTRIUM SpaceWire link     ",
-    ESA_BOSCHCAN  => "SSC/BOSCH CAN Ctrl             ",
-    ESA_IRQ2      => "LEON2 Secondary Irq Controller ",
-    ESA_AHBSTAT   => "LEON2 AHB Status Register      ",
-    ESA_WPROT     => "LEON2 Write Protection         ",
-    ESA_WPROT2    => "LEON2 Extended Write Protection",
-    ESA_PDEC3AMBA => "ESA CCSDS PDEC3AMBA TC Decoder ",
-    ESA_PTME3AMBA => "ESA CCSDS PTME3AMBA TM Encoder ",
-    others        => "Unknown Device                 ");
+    ESA_LEON2     => "LEON2 SPARC V8 Processor        ",
+    ESA_LEON2APB  => "LEON2 Peripheral Bus            ",
+    ESA_IRQ       => "LEON2 Interrupt Controller      ",
+    ESA_TIMER     => "LEON2 Timer                     ",
+    ESA_UART      => "LEON2 UART                      ",
+    ESA_CFG       => "LEON2 Configuration Register    ",
+    ESA_IO        => "LEON2 Input/Output              ",
+    ESA_MCTRL     => "LEON2 Memory Controller         ",
+    ESA_PCIARB    => "PCI Arbiter                     ",
+    ESA_HURRICANE => "HurriCANe/HurryAMBA CAN Ctrl    ",
+    ESA_SPW_RMAP  => "UoD/Saab SpaceWire/RMAP link    ",
+    ESA_AHBUART   => "LEON2 AHB Debug UART            ",
+    ESA_SPWA      => "ESA/ASTRIUM SpaceWire link      ",
+    ESA_BOSCHCAN  => "SSC/BOSCH CAN Ctrl              ",
+    ESA_IRQ2      => "LEON2 Secondary Irq Controller  ",
+    ESA_AHBSTAT   => "LEON2 AHB Status Register       ",
+    ESA_WPROT     => "LEON2 Write Protection          ",
+    ESA_WPROT2    => "LEON2 Extended Write Protection ",
+    ESA_PDEC3AMBA => "ESA CCSDS PDEC3AMBA TC Decoder  ",
+    ESA_PTME3AMBA => "ESA CCSDS PTME3AMBA TM Encoder  ",
+    others        => "Unknown Device                  ");
 
   constant esa_lib : vendor_library_type := (
     vendorid     => VENDOR_ESA,
@@ -632,22 +658,22 @@ package devices is
   constant OPENCHIP_DESC : vendor_description := "OpenChip                ";
 
   constant openchip_device_table : device_table_type := (
-    OPENCHIP_APBGPIO    => "APB General Purpose IO         ",
-    OPENCHIP_APBI2C     => "APB I2C Interface              ",
-    OPENCHIP_APBSPI     => "APB SPI Interface              ",
-    OPENCHIP_APBCHARLCD => "APB Character LCD              ",
-    OPENCHIP_APBPWM     => "APB PWM                        ",
-    OPENCHIP_APBPS2     => "APB PS/2 Interface             ",
-    OPENCHIP_APBMMCSD   => "APB MMC/SD Card Interface      ",
-    OPENCHIP_APBNAND    => "APB NAND(SmartMedia) Interface ",
-    OPENCHIP_APBLPC     => "APB LPC Interface              ",
-    OPENCHIP_APBCF      => "APB CompactFlash (IDE)         ",
-    OPENCHIP_APBSYSACE  => "APB SystemACE Interface        ",
-    OPENCHIP_APB1WIRE   => "APB 1-Wire Interface           ",
-    OPENCHIP_APBJTAG    => "APB JTAG TAP Master            ",
-    OPENCHIP_APBSUI     => "APB Simple User Interface      ",
+    OPENCHIP_APBGPIO    => "APB General Purpose IO          ",
+    OPENCHIP_APBI2C     => "APB I2C Interface               ",
+    OPENCHIP_APBSPI     => "APB SPI Interface               ",
+    OPENCHIP_APBCHARLCD => "APB Character LCD               ",
+    OPENCHIP_APBPWM     => "APB PWM                         ",
+    OPENCHIP_APBPS2     => "APB PS/2 Interface              ",
+    OPENCHIP_APBMMCSD   => "APB MMC/SD Card Interface       ",
+    OPENCHIP_APBNAND    => "APB NAND(SmartMedia) Interface  ",
+    OPENCHIP_APBLPC     => "APB LPC Interface               ",
+    OPENCHIP_APBCF      => "APB CompactFlash (IDE)          ",
+    OPENCHIP_APBSYSACE  => "APB SystemACE Interface         ",
+    OPENCHIP_APB1WIRE   => "APB 1-Wire Interface            ",
+    OPENCHIP_APBJTAG    => "APB JTAG TAP Master             ",
+    OPENCHIP_APBSUI     => "APB Simple User Interface       ",
 
-    others => "Unknown Device                 ");
+    others => "Unknown Device                  ");
 
   constant openchip_lib : vendor_library_type := (
     vendorid     => VENDOR_OPENCHIP,
@@ -658,16 +684,16 @@ package devices is
   constant GLEICHMANN_DESC : vendor_description := "Gleichmann Electronics  ";
 
   constant gleichmann_device_table : device_table_type := (
-    GLEICHMANN_CUSTOM   => "Custom device                  ",
-    GLEICHMANN_GEOLCD01 => "GEOLCD01 graphics system       ",
-    GLEICHMANN_DAC      => "Sigma delta DAC                ",
-    GLEICHMANN_HPI      => "AHB-to-HPI bridge              ",
-    GLEICHMANN_SPI      => "SPI master                     ",
-    GLEICHMANN_HIFC     => "Human interface controller     ",
-    GLEICHMANN_ADCDAC   => "Sigma delta ADC/DAC            ",
-    GLEICHMANN_SPIOC    => "SPI master for SDCard IF       ",
-    GLEICHMANN_AC97     => "AC97 Controller                ",
-    others              => "Unknown Device                 ");
+    GLEICHMANN_CUSTOM   => "Custom device                   ",
+    GLEICHMANN_GEOLCD01 => "GEOLCD01 graphics system        ",
+    GLEICHMANN_DAC      => "Sigma delta DAC                 ",
+    GLEICHMANN_HPI      => "AHB-to-HPI bridge               ",
+    GLEICHMANN_SPI      => "SPI master                      ",
+    GLEICHMANN_HIFC     => "Human interface controller      ",
+    GLEICHMANN_ADCDAC   => "Sigma delta ADC/DAC             ",
+    GLEICHMANN_SPIOC    => "SPI master for SDCard IF        ",
+    GLEICHMANN_AC97     => "AC97 Controller                 ",
+    others              => "Unknown Device                  ");
 
   constant gleichmann_lib : vendor_library_type := (
     vendorid     => VENDOR_GLEICHMANN,
@@ -678,10 +704,10 @@ package devices is
   constant CONTRIB_DESC : vendor_description := "Various contributions   ";
 
   constant contrib_device_table : device_table_type := (
-    CONTRIB_CORE1 => "Contributed core 1             ",
-    CONTRIB_CORE2 => "Contributed core 2             ",
-    CONTRIB_CORE3 => "Contributed core 2             ",
-    others        => "Unknown Device                 ");
+    CONTRIB_CORE1 => "Contributed core 1              ",
+    CONTRIB_CORE2 => "Contributed core 2              ",
+    CONTRIB_CORE3 => "Contributed core 2              ",
+    others        => "Unknown Device                  ");
 
   constant contrib_lib : vendor_library_type := (
     vendorid     => VENDOR_CONTRIB,
@@ -692,8 +718,8 @@ package devices is
   constant MENTA_DESC : vendor_description := "Menta                   ";
 
   constant menta_device_table : device_table_type := (
-    MENTA_EFPGA_IP => "eFPGA Core IP                  ",
-    others         => "Unknown Device                 ");
+    MENTA_EFPGA_IP => "eFPGA Core IP                   ",
+    others         => "Unknown Device                  ");
 
   constant menta_lib : vendor_library_type := (
     vendorid     => VENDOR_MENTA,
@@ -704,9 +730,9 @@ package devices is
   constant SUN_DESC : vendor_description := "Sun Microsystems        ";
 
   constant sun_device_table : device_table_type := (
-    SUN_T1 => "Niagara T1 SPARC V9 Processor  ",
-    SUN_S1 => "Niagara S1 SPARC V9 Processor  ",
-    others => "Unknown Device                 ");
+    SUN_T1 => "Niagara T1 SPARC V9 Processor   ",
+    SUN_S1 => "Niagara S1 SPARC V9 Processor   ",
+    others => "Unknown Device                  ");
 
   constant sun_lib : vendor_library_type := (
     vendorid     => VENDOR_SUN,
@@ -717,7 +743,7 @@ package devices is
   constant OPENCORES_DESC : vendor_description := "OpenCores               ";
 
   constant opencores_device_table : device_table_type := (
-    others => "Unknown Device                 ");
+    others => "Unknown Device                  ");
 
   constant opencores_lib : vendor_library_type := (
     vendorid     => VENDOR_OPENCORES,
@@ -728,11 +754,11 @@ package devices is
   constant CBKPAN_DESC : vendor_description := "CBK PAN                 ";
 
   constant cbkpan_device_table : device_table_type := (
-    CBKPAN_FTNANDCTRL   => "NAND FLASH controller w/DMA    ",
-    CBKPAN_FTEEPROMCTRL => "Fault Toler. EEPROM Controller ",
-    CBKPAN_FTSDCTRL16   => "Fault Toler. 16-bit SDRAM Ctrl.",
-    CBKPAN_STIXCTRL     => "SolO/STIX IDPU dedicated ctrl. ",
-    others              => "Unknown Device                 ");
+    CBKPAN_FTNANDCTRL   => "NAND FLASH controller w/DMA     ",
+    CBKPAN_FTEEPROMCTRL => "Fault Toler. EEPROM Controller  ",
+    CBKPAN_FTSDCTRL16   => "Fault Toler. 16-bit SDRAM Ctrl. ",
+    CBKPAN_STIXCTRL     => "SolO/STIX IDPU dedicated ctrl.  ",
+    others              => "Unknown Device                  ");
 
   constant cbkpan_lib : vendor_library_type := (
     vendorid     => VENDOR_CBKPAN,
@@ -743,7 +769,7 @@ package devices is
   constant CETON_DESC : vendor_description := "Ceton Corporation       ";
 
   constant ceton_device_table : device_table_type := (
-    others => "Unknown Device                 ");
+    others => "Unknown Device                  ");
 
   constant ceton_lib : vendor_library_type := (
     vendorid     => VENDOR_CETON,
@@ -754,10 +780,10 @@ package devices is
   constant SSTL_DESC : vendor_description :=  "SSTL                    ";
 
   constant sstl_device_table : device_table_type := (
-   SSTL_HDLC         => "HDLC Controller                ",
-   SSTL_iniCAN       => "iniCAN Controller              ",
-   SSTL_zero_mem     => "DDR3 Zero initialiser          ",
-   others            => "Unknown Device                 ");
+   SSTL_HDLC         => "HDLC Controller                 ",
+   SSTL_iniCAN       => "iniCAN Controller               ",
+   SSTL_zero_mem     => "DDR3 Zero initialiser           ",
+   others            => "Unknown Device                  ");
 
    constant sstl_lib : vendor_library_type := (
      vendorid        => VENDOR_SSTL,
@@ -768,7 +794,7 @@ package devices is
   constant SYNOPSYS_DESC : vendor_description := "Synopsys Inc.           ";
 
   constant synopsys_device_table : device_table_type := (
-    others => "Unknown Device                 ");
+    others => "Unknown Device                  ");
 
   constant synopsys_lib : vendor_library_type := (
     vendorid     => VENDOR_SYNOPSYS,
@@ -779,7 +805,7 @@ package devices is
   constant EMBEDDIT_DESC : vendor_description := "Embedd.it               ";
 
   constant embeddit_device_table : device_table_type := (
-    others => "Unknown Device                 ");
+    others => "Unknown Device                  ");
 
   constant embeddit_lib : vendor_library_type := (
     vendorid     => VENDOR_EMBEDDIT,
@@ -788,7 +814,7 @@ package devices is
     );
 
   constant dlr_device_table : device_table_type := (
-    others => "Unknown Device                 ");
+    others => "Unknown Device                  ");
 
   constant DLR_DESC : vendor_description := "German Aerospace Center ";
 
@@ -799,7 +825,7 @@ package devices is
     );
 
   constant eonic_device_table : device_table_type := (
-    others => "Unknown Device                 ");
+    others => "Unknown Device                  ");
 
   constant EONIC_DESC : vendor_description := "Eonic BV                ";
 
@@ -810,7 +836,7 @@ package devices is
     );
 
   constant telecompt_device_table : device_table_type := (
-    others => "Unknown Device                 ");
+    others => "Unknown Device                  ");
 
   constant TELECOMPT_DESC : vendor_description := "Telecom ParisTech       ";
 
@@ -821,7 +847,7 @@ package devices is
     );
 
   constant radionor_device_table : device_table_type := (
-    others => "Unknown Device                 ");
+    others => "Unknown Device                  ");
 
   constant RADIONOR_DESC : vendor_description := "Radionor Communications ";
 
@@ -832,9 +858,9 @@ package devices is
     );
 
   constant bsc_device_table : device_table_type := (
-    BSC_CORE1 => "Core 1                         ",
-    BSC_CORE2 => "Core 2                         ",
-    others    => "Unknown Device                 ");
+    BSC_CORE1 => "Core 1                          ",
+    BSC_CORE2 => "Core 2                          ",
+    others    => "Unknown Device                  ");
 
   constant BSC_DESC : vendor_description := "BSC                     ";
 
@@ -845,10 +871,10 @@ package devices is
     );
 
   constant dtu_device_table : device_table_type := (
-    DTU_IV        => "Instrument Virtualizer         ",
-    DTU_RBMMTRANS => "RB/MM Transfer                 ",
-    DTU_FTMCTRL   => "Memory controller with 8CS     ",
-    others        => "Unknown Device                 ");
+    DTU_IV        => "Instrument Virtualizer          ",
+    DTU_RBMMTRANS => "RB/MM Transfer                  ",
+    DTU_FTMCTRL   => "Memory controller with 8CS      ",
+    others        => "Unknown Device                  ");
 
   constant DTU_DESC : vendor_description := "DTU Space               ";
 
@@ -860,23 +886,23 @@ package devices is
 
 
   constant orbita_device_table : device_table_type := (
-    ORBITA_1553B     => "MIL-STD-1553B Controller       ",
-    ORBITA_429       => "429 Interface                  ",
-    ORBITA_SPI       => "SPI Interface                  ",
-    ORBITA_I2C       => "I2C Interface                  ",
-    ORBITA_SMARTCARD => "Smart Card Reader              ",
-    ORBITA_SDCARD    => "SD Card Reader                 ",
-    ORBITA_UART16550 => "16550 UART                     ",
-    ORBITA_CRYPTO    => "Crypto Engine                  ",
-    ORBITA_SYSIF     => "System Interface               ",
-    ORBITA_PIO       => "Programmable IO module         ",
-    ORBITA_RTC       => "Real-Time Clock                ",
-    ORBITA_COLORLCD  => "Color LCD Controller           ",
-    ORBITA_PCI       => "PCI Module                     ",
-    ORBITA_DSP       => "DPS Co-Processor               ",
-    ORBITA_USBHOST   => "USB Host                       ",
-    ORBITA_USBDEV    => "USB Device                     ",
-    others           => "Unknown Device                 ");
+    ORBITA_1553B     => "MIL-STD-1553B Controller        ",
+    ORBITA_429       => "429 Interface                   ",
+    ORBITA_SPI       => "SPI Interface                   ",
+    ORBITA_I2C       => "I2C Interface                   ",
+    ORBITA_SMARTCARD => "Smart Card Reader               ",
+    ORBITA_SDCARD    => "SD Card Reader                  ",
+    ORBITA_UART16550 => "16550 UART                      ",
+    ORBITA_CRYPTO    => "Crypto Engine                   ",
+    ORBITA_SYSIF     => "System Interface                ",
+    ORBITA_PIO       => "Programmable IO module          ",
+    ORBITA_RTC       => "Real-Time Clock                 ",
+    ORBITA_COLORLCD  => "Color LCD Controller            ",
+    ORBITA_PCI       => "PCI Module                      ",
+    ORBITA_DSP       => "DPS Co-Processor                ",
+    ORBITA_USBHOST   => "USB Host                        ",
+    ORBITA_USBDEV    => "USB Device                      ",
+    others           => "Unknown Device                  ");
 
   constant ORBITA_DESC : vendor_description := "Orbita                  ";
 
@@ -889,17 +915,18 @@ package devices is
   constant ACTEL_DESC : vendor_description := "Microsemi Corporation   ";
 
   constant actel_device_table : device_table_type := (
-    ACTEL_COREMP7       => "CoreMP7 Processor              ",
-    ACTEL_RTG4FDDRCE    => "RTG4 FDDR East Controller      ",
-    ACTEL_RTG4FDDRCW    => "RTG4 FDDR West Controller      ",
-    ACTEL_IGLOO2_BRIDGE => "Microsemi SF2/IGLOO2 MSS/HPMS  ",
-    ACTEL_MDDR          => "MDDR Bridge                    ",
-    ACTEL_APB3SLV       => "Generic APB3 Slave Interface   ",
-    ACTEL_SERDES        => "SERDES Interface               ",
-    ACTEL_FICSLV        => "FIC Slave Wrapper              ",
-    ACTEL_FICMST        => "FIC Master Wrapper             ",
-    ACTEL_RTG4SERDES    => "RTG4 SERDES Interface          ",
-    others              => "Unknown Device                 ");
+    ACTEL_COREMP7       => "CoreMP7 Processor               ",
+    ACTEL_RTG4FDDRCE    => "RTG4 FDDR East Controller       ",
+    ACTEL_RTG4FDDRCW    => "RTG4 FDDR West Controller       ",
+    ACTEL_IGLOO2_BRIDGE => "Microsemi SF2/IGLOO2 MSS/HPMS   ",
+    ACTEL_MDDR          => "MDDR Bridge                     ",
+    ACTEL_APB3SLV       => "Generic APB3 Slave Interface    ",
+    ACTEL_SERDES        => "SERDES Interface                ",
+    ACTEL_FICSLV        => "FIC Slave Wrapper               ",
+    ACTEL_FICMST        => "FIC Master Wrapper              ",
+    ACTEL_RTG4SERDES    => "RTG4 SERDES Interface           ",
+    ACTEL_PFFDDR3       => "PolarFire FDDR3 Controller      ",
+    others              => "Unknown Device                  ");
 
   constant actel_lib : vendor_library_type := (
     vendorid     => VENDOR_ACTEL,
@@ -910,8 +937,8 @@ package devices is
   constant NASA_DESC : vendor_description := "NASA                    ";
 
   constant nasa_device_table : device_table_type := (
-    NASA_EP32 => "EP32 Forth processor           ",
-    others    => "Unknown Device                 ");
+    NASA_EP32 => "EP32 Forth processor            ",
+    others    => "Unknown Device                  ");
 
   constant nasa_lib : vendor_library_type := (
     vendorid     => VENDOR_NASA,
@@ -922,7 +949,7 @@ package devices is
   constant NIIET_DESC : vendor_description := "NIIET                   ";
 
   constant niiet_device_table : device_table_type := (
-    others => "Unknown Device                 ");
+    others => "Unknown Device                  ");
 
   constant niiet_lib : vendor_library_type := (
     vendorid     => VENDOR_NIIET,
@@ -933,7 +960,7 @@ package devices is
   constant NASA_GSFC_DESC : vendor_description := "NASA GSFC               ";
 
   constant nasa_gsfc_device_table : device_table_type := (
-    others => "Unknown Device                 ");
+    others => "Unknown Device                  ");
 
   constant nasa_gsfc_lib : vendor_library_type := (
     vendorid     => VENDOR_NASA_GSFC,
@@ -944,7 +971,7 @@ package devices is
   constant AZST_DESC : vendor_description := "AZST                    ";
 
   constant azst_device_table : device_table_type := (
-    others => "Unknown Device                 ");
+    others => "Unknown Device                  ");
 
   constant azst_lib : vendor_library_type := (
     vendorid     => VENDOR_AZST,
@@ -955,7 +982,7 @@ package devices is
   constant S3_DESC : vendor_description := "S3 Group                ";
 
   constant s3_device_table : device_table_type := (
-    others => "Unknown Device                 ");
+    others => "Unknown Device                  ");
 
   constant s3_lib : vendor_library_type := (
     vendorid     => VENDOR_S3,
@@ -965,18 +992,47 @@ package devices is
 
   constant APPLECORE_DESC : vendor_description := "AppleCore               ";
   constant applecore_device_table : device_table_type := (
-    APPLECORE_UTLEON3    => "AppleCore uT-LEON3 Processor   ",
-    APPLECORE_UTLEON3DSU => "AppleCore uT-LEON3 DSU         ",
-    others               => "Unknown Device                 ");
+    APPLECORE_UTLEON3    => "AppleCore uT-LEON3 Processor    ",
+    APPLECORE_UTLEON3DSU => "AppleCore uT-LEON3 DSU          ",
+    others               => "Unknown Device                  ");
   constant applecore_lib : vendor_library_type := (
     vendorid     => VENDOR_APPLECORE,
     vendordesc   => APPLECORE_DESC,
     device_table => applecore_device_table
     );
 
+  constant TAS_DESC : vendor_description := "Thales Alenia Space     ";
+
+  constant tas_device_table : device_table_type := (
+    TAS_HOUSE_KEEPING_ADC => "House-Keeping ADC               ",
+    others                => "Unknown Device                  ");
+
+  constant tas_lib : vendor_library_type := (
+    vendorid     => VENDOR_TAS,
+    vendordesc   => TAS_DESC,
+    device_table => tas_device_table
+    );
+
+  constant RECORE_DESC : vendor_description := "Recore Systems          ";
+
+  constant recore_device_table : device_table_type := (
+    RECORE_PROC_SUB_BRDG  => "Processing Subsystem Bridge     ",
+    RECORE_PROC_SUB_DBG   => "Processing Subsystem Debug      ",
+    RECORE_XENTIUM_CORE   => "Xentium DSP IP core             ",
+    RECORE_XENTIUM_DEBUG  => "Xentium DSP Debug Support Unit  ",
+    RECORE_XENTIUM_ICACHE => "Xentium iCache AHB master i/f   ",
+    RECORE_XENTIUM_DEVICE => "Xentium devices                 ",
+    others                => "Unknown Device                  ");
+
+  constant recore_lib : vendor_library_type := (
+    vendorid     => VENDOR_RECORE,
+    vendordesc   => RECORE_DESC,
+    device_table => recore_device_table
+    );
+
   constant C3E_DESC : vendor_description := "TU Braunschweig C3E     ";
   constant c3e_device_table : device_table_type := (
-    others => "Unknown Device                 ");
+    others => "Unknown Device                  ");
   constant c3e_lib : vendor_library_type := (
     vendorid     => VENDOR_C3E,
     vendordesc   => C3E_DESC,
@@ -986,7 +1042,7 @@ package devices is
   constant UNKNOWN_DESC : vendor_description := "Unknown vendor          ";
 
   constant unknown_device_table : device_table_type := (
-    others => "Unknown Device                 ");
+    others => "Unknown Device                  ");
 
   constant unknown_lib : vendor_library_type := (
     vendorid     => 0,
@@ -1022,31 +1078,32 @@ package devices is
   type system_table_type is array (0 to 65535) of device_description;
 
   constant system_table : system_table_type := (
-    LEON3_ACT_FUSION    => "LEON3 Actel Fusion Dev. board  ",
-    LEON3_RTAX_CID2     => "LEON3FT RTAX Configuration 2   ",
-    LEON3_RTAX_CID5     => "LEON3FT RTAX Configuration 5   ",
-    LEON3_RTAX_CID6     => "LEON3FT RTAX Configuration 6   ",
-    LEON3_RTAX_CID7     => "LEON3FT RTAX Configuration 7   ",
-    LEON3_RTAX_CID8     => "LEON3FT RTAX Configuration 8   ",
-    LEON3_PROXIMA       => "LEON3 PROXIMA FPGA design      ",
-    LEON_RTG4_DEVKIT    => "LEON on RTG4/ES Development kit",
-    ALTERA_DE2          => "Altera DE2 Development board   ",
-    ALTERA_DE4          => "TerASIC DE4 Development board  ",
-    ALTERA_S5GSDSP      => "TerASIC S5GS DSP Dev Kit       ",
-    XILINX_ML401        => "Xilinx ML401 Development board ",
-    XILINX_ML501        => "Xilinx ML501 Development board ",
-    XILINX_ML505        => "Xilinx ML505 Development board ",
-    XILINX_ML506        => "Xilinx ML506 Development board ",
-    XILINX_ML507        => "Xilinx ML507 Development board ",
-    XILINX_ML509        => "Xilinx ML509 Development board ",
-    XILINX_ML510        => "Xilinx ML510 Development board ",
-    XILINX_AC701        => "Xilinx AC701 Development board ",
-    XILINX_KC705        => "Xilinx KC705 Development board ",
-    XILINX_VC707        => "Xilinx VC707 Development board ",
-    MICROSEMI_M2GL_EVAL => "Microsemi IGLOO2 Evaluation kit",
-    XILINX_SP601        => "Xilinx SP601 Development board ",
-    XILINX_ML605        => "Xilinx ML605 Development board ",
-    others              => "Unknown system                 ");
+    LEON3_ACT_FUSION       => "LEON3 Actel Fusion Dev. board   ",
+    LEON3_RTAX_CID2        => "LEON3FT RTAX Configuration 2    ",
+    LEON3_RTAX_CID5        => "LEON3FT RTAX Configuration 5    ",
+    LEON3_RTAX_CID6        => "LEON3FT RTAX Configuration 6    ",
+    LEON3_RTAX_CID7        => "LEON3FT RTAX Configuration 7    ",
+    LEON3_RTAX_CID8        => "LEON3FT RTAX Configuration 8    ",
+    LEON3_PROXIMA          => "LEON3 PROXIMA FPGA design       ",
+    LEON_RTG4_DEVKIT       => "LEON on RTG4/ES Development kit ",
+    LEON_POLARFIRE_EVALKIT => "LEON on PolarFire Evaluation kit",
+    ALTERA_DE2             => "Altera DE2 Development board    ",
+    ALTERA_DE4             => "TerASIC DE4 Development board   ",
+    ALTERA_S5GSDSP         => "TerASIC S5GS DSP Dev Kit        ",
+    XILINX_ML401           => "Xilinx ML401 Development board  ",
+    XILINX_ML501           => "Xilinx ML501 Development board  ",
+    XILINX_ML505           => "Xilinx ML505 Development board  ",
+    XILINX_ML506           => "Xilinx ML506 Development board  ",
+    XILINX_ML507           => "Xilinx ML507 Development board  ",
+    XILINX_ML509           => "Xilinx ML509 Development board  ",
+    XILINX_ML510           => "Xilinx ML510 Development board  ",
+    XILINX_AC701           => "Xilinx AC701 Development board  ",
+    XILINX_KC705           => "Xilinx KC705 Development board  ",
+    XILINX_VC707           => "Xilinx VC707 Development board  ",
+    MICROSEMI_M2GL_EVAL    => "Microsemi IGLOO2 Evaluation kit ",
+    XILINX_SP601           => "Xilinx SP601 Development board  ",
+    XILINX_ML605           => "Xilinx ML605 Development board  ",
+    others                 => "Unknown system                  ");
 
 -- pragma translate_on
 

@@ -92,6 +92,8 @@
 #define CONFIG_SYN_TECH virtex7
 #elif defined CONFIG_SYN_KINTEX7
 #define CONFIG_SYN_TECH kintex7
+#elif defined CONFIG_SYN_KINTEXU
+#define CONFIG_SYN_TECH kintexu
 #elif defined CONFIG_SYN_ARTIX7
 #define CONFIG_SYN_TECH artix7
 #elif defined CONFIG_SYN_ZYNQ7000
@@ -555,7 +557,11 @@
 #endif
 
 #ifdef CONFIG_MMU_ENABLE
+#ifdef CONFIG_MMU_SV
+#define CONFIG_MMUEN 2
+#else
 #define CONFIG_MMUEN 1
+#endif
 
 #ifdef CONFIG_MMU_SPLIT
 #define CONFIG_TLB_TYPE 0
@@ -712,10 +718,12 @@
 #if defined CONFIG_CACHE_FT_NONE
 #define CONFIG_CACHE_FT_EN 0
 #elif defined CONFIG_CACHE_FT_BCH
-#define CONFIG_CACHE_FT_EN 16*4 + 2
+#define CONFIG_CACHE_FT_EN 16*4 + 1
 #elif defined CONFIG_CACHE_FT_TECH
-#define CONFIG_CACHE_FT_EN 16*5 + 2
-#else
+#define CONFIG_CACHE_FT_EN 16*5 + 1
+#endif
+
+#ifndef CONFIG_CACHE_FT_EN
 #define CONFIG_CACHE_FT_EN 0
 #endif
 
@@ -772,6 +780,20 @@
 #ifndef CONFIG_REX
 #define CONFIG_REX 0
 #endif
+
+#ifndef CONFIG_IU_RFINF
+#define CONFIG_IU_RFINF 0
+#endif
+
+#ifndef CONFIG_FPU_RFINF
+#define CONFIG_FPU_RFINF 0
+#endif
+
+#ifndef CONFIG_MMU_INF
+#define CONFIG_MMU_INF 0
+#endif
+
+
 #ifndef CONFIG_AHB_SPLIT
 #define CONFIG_AHB_SPLIT 0
 #endif
@@ -1368,6 +1390,10 @@
 #define CONFIG_SPW_INPUT 4
 #elif defined CONFIG_SPW_RX_XOR
 #define CONFIG_SPW_INPUT 0
+#elif defined CONFIG_SPW_RX_XORER1
+#define CONFIG_SPW_INPUT 5
+#elif defined CONFIG_SPW_RX_XORER2
+#define CONFIG_SPW_INPUT 6
 #elif defined CONFIG_SPW_RX_AFLEX
 #define CONFIG_SPW_INPUT 1
 #else

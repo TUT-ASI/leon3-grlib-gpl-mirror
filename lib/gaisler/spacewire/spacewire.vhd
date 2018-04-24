@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -313,6 +313,9 @@ package spacewire is
     powerdown     : std_logic_vector(30 downto 0);
     powerdownrx   : std_logic_vector(30 downto 0);
     gpo           : std_logic_vector(127 downto 0);
+    reset         : std_ulogic;
+    rxrst         : std_logic_vector(30 downto 0);
+    clockgate     : std_logic_vector(30 downto 0);
   end record;
 
   constant grspw_router_in_none : grspw_router_in_type :=
@@ -326,7 +329,7 @@ package spacewire is
     ((others => '0'), (others => '0'), (others => '0'), (others => '0'),
      (others => (others => '0')), '0', (others => '0'), '0', (others => '0'), (others => (others => '0')), '0',
      '0', '0', (others => '0'), (others => '0'), (others => '0'), ahbs_in_none,
-     (others => '0'), (others => '0'), (others => '0'));
+     (others => '0'), (others => '0'), (others => '0'), '0', (others => '0'), (others => '0'));
 
   type spw_ahb_mst_out_vector is array (natural range <>) of
     ahb_mst_out_type;
@@ -675,7 +678,6 @@ package spacewire is
       gpopbits        : integer range 0 to 128 := 0;
       gpibits         : integer range 0 to 128 := 0;
       customport      : integer range 0 to 1 := 0;
-      codecclkgate    : integer range 0 to 1 := 0;
       inputtest       : integer range 0 to 1 := 0;
       spwpnpvendid    : integer range 0 to 16#FFFF# := 0;
       spwpnpprodid    : integer range 0 to 16#FFFF# := 0;
@@ -691,9 +693,16 @@ package spacewire is
     port(
       rst          : in  std_ulogic;
       clk          : in  std_ulogic;
-      rxclk        : in  std_logic_vector(spwports*(1+dualport)-spwen downto 0);
-      txclk        : in  std_ulogic;
-      txclkn       : in  std_ulogic;
+      rst_codec    : in  std_logic_vector(spwports-spwen downto 0);
+      clk_codec    : in  std_logic_vector(spwports-spwen downto 0);
+      rxasyncrst   : in  std_logic_vector(spwports-spwen downto 0);
+      rxsyncrst0   : in  std_logic_vector(spwports-spwen downto 0);
+      rxclk0       : in  std_logic_vector(spwports-spwen downto 0);
+      rxsyncrst1   : in  std_logic_vector(spwports-spwen downto 0);
+      rxclk1       : in  std_logic_vector(spwports-spwen downto 0);
+      txsyncrst    : in  std_logic_vector(spwports-spwen downto 0);
+      txclk        : in  std_logic_vector(spwports-spwen downto 0);
+      txclkn       : in  std_logic_vector(spwports-spwen downto 0);
       testen       : in  std_ulogic;
       testrst      : in  std_ulogic;
       scanen       : in  std_ulogic;
@@ -701,6 +710,8 @@ package spacewire is
       di           : in  std_logic_vector(spwports*(2+2*dualport)-spwen downto 0);
       dvi          : in  std_logic_vector(spwports*(2+2*dualport)-spwen downto 0);
       dconnect     : in  std_logic_vector(spwports*(2+2*dualport)-spwen downto 0);
+      dconnect2    : in  std_logic_vector(spwports*(2+2*dualport)-spwen downto 0);
+      dconnect3    : in  std_logic_vector(spwports*(2+2*dualport)-spwen downto 0);      
       do           : out std_logic_vector(spwports*(2+2*dualport)-spwen downto 0);
       so           : out std_logic_vector(spwports*(2+2*dualport)-spwen downto 0);
       ahbmi        : in  spw_ahb_mst_in_vector(0 to ambaports*ambaen-ambaen);
@@ -714,6 +725,102 @@ package spacewire is
       );
   end component grspwrouter;
 
+  component grspwrouterm is
+    generic(
+      input_type     : integer range 0 to 6 := 0;
+      output_type    : integer range 0 to 2 := 0;
+      rxtx_sameclk   : integer range 0 to 1 := 0;
+      fifosize       : integer range 16 to 2048 := 64;
+      tech           : integer;
+      scantest       : integer range 0 to 1 := 0;
+      techfifo       : integer range 0 to 255 := 0;
+      ft             : integer range 0 to 2 := 0;
+      spwen          : integer range 0 to 1 := 1;
+      ambaen         : integer range 0 to 1 := 0;
+      fifoen         : integer range 0 to 1 := 0;
+      spwports       : integer range 0 to 31 := 2;
+      ambaports      : integer range 0 to 16 := 0;
+      fifoports      : integer range 0 to 31 := 0;
+      arbitration    : integer range 0 to 1 := 0;
+      rmap           : integer range 0 to 16#FFFF# := 0;
+      rmapcrc        : integer range 0 to 16#FFFF# := 0;
+      fifosize2      : integer range 4 to 32 := 32;
+      almostsize     : integer range 1 to 32 := 8;
+      rxunaligned    : integer range 0 to 16#FFFF# := 0;
+      rmapbufs       : integer range 2 to 8 := 4;
+      dmachan        : integer range 1 to 4 := 1;
+      hindex         : integer range 0 to NAHBMST-1 := 0;
+      pindex         : integer range 0 to NAPBSLV-1 := 0;
+      paddr          : integer range 0 to 16#FFF#   := 0;
+      pmask          : integer range 0 to 16#FFF#   := 16#FFF#;
+      pirq           : integer range 0 to NAHBIRQ-1 := 0;
+      cfghindex      : integer range 0 to NAHBSLV-1 := 0;
+      cfghaddr       : integer range 0 to 16#FFF#   := 0;
+      cfghmask       : integer range 0 to 16#FFF#   := 16#FF0#;
+      ahbslven       : integer range 0 to 1 := 0;
+      timerbits      : integer range 0 to 32 := 0;
+      pnp            : integer range 0 to 2 := 0;
+      autoscrub      : integer range 0 to 1 := 0;
+      sim            : integer range 0 to 1 := 0;
+      dualport       : integer range 0 to 1 := 0;
+      charcntbits    : integer range 0 to 31 := 0;
+      pktcntbits     : integer range 0 to 31 := 0;
+      prescalermin   : integer := 250;
+      spacewired     : integer range 0 to 1 := 0;
+      interruptdist  : integer range 0 to 2 := 0;
+      apbctrl        : integer range 0 to 1 := 0;
+      rmapmaxsize    : integer range 4 to 512 := 4;
+      gpolbits       : integer range 0 to 128 := 0;
+      gpopbits       : integer range 0 to 128 := 0;
+      gpibits        : integer range 0 to 128 := 0;
+      customport     : integer range 0 to 1 := 0;
+      codecclkgate   : integer range 0 to 1 := 0;
+      inputtest      : integer range 0 to 1 := 0;
+      spwpnpvendid   : integer range 0 to 16#FFFF# := 0;
+      spwpnpprodid   : integer range 0 to 16#FFFF# := 0;
+      porttimerbits  : integer range 1 to 32 := 10;
+      irqtimerbits   : integer range 1 to 32 := 10;
+      auxtimeen      : integer range 0 to 1 := 1;
+      num_txdesc     : integer range 64 to 512 := 64;
+      num_rxdesc     : integer range 128 to 1024 := 128;
+      auxasync       : integer range 0 to 1 := 0;
+      hirq           : integer range 0 to NAHBIRQ-1 := 0;
+      internalrstgen : integer range 0 to 1 := 1;
+      rstsrctmr      : integer range 0 to 1 := 0
+      );
+    port(
+      rst          : in  std_ulogic;
+      clk          : in  std_ulogic;
+      rst_codec    : in  std_logic_vector(spwports-spwen downto 0);
+      clk_codec    : in  std_logic_vector(spwports-spwen downto 0);
+      rxasyncrst   : in  std_logic_vector(spwports-spwen downto 0);
+      rxsyncrst    : in  std_logic_vector(spwports*(1+dualport)-spwen downto 0);
+      rxclk        : in  std_logic_vector(spwports*(1+dualport)-spwen downto 0);
+      txsyncrst    : in  std_logic_vector(spwports-spwen downto 0);
+      txclk        : in  std_logic_vector(spwports-spwen downto 0);
+      txclkn       : in  std_logic_vector(spwports-spwen downto 0);
+      testen       : in  std_ulogic;
+      testrst      : in  std_ulogic;
+      scanen       : in  std_ulogic;
+      testoen      : in  std_ulogic;
+      di           : in  std_logic_vector(spwports*(2+2*dualport)-spwen downto 0);
+      dvi          : in  std_logic_vector(spwports*(2+2*dualport)-spwen downto 0);
+      dconnect     : in  std_logic_vector(spwports*(2+2*dualport)-spwen downto 0);
+      dconnect2    : in  std_logic_vector(spwports*(2+2*dualport)-spwen downto 0);
+      dconnect3    : in  std_logic_vector(spwports*(2+2*dualport)-spwen downto 0);      
+      do           : out std_logic_vector(spwports*(2+2*dualport)-spwen downto 0);
+      so           : out std_logic_vector(spwports*(2+2*dualport)-spwen downto 0);
+      ahbmi        : in  spw_ahb_mst_in_vector(0 to ambaports*ambaen-ambaen);
+      ahbmo        : out spw_ahb_mst_out_vector(0 to ambaports*ambaen-ambaen);
+      apbi         : in  apb_slv_in_type;
+      apbo         : out spw_apb_slv_out_vector(0 to ambaports*ambaen-ambaen);
+      ahbsi        : in  ahb_slv_in_type;
+      ahbso        : out ahb_slv_out_type;
+      ri           : in  grspw_router_in_type;
+      ro           : out grspw_router_out_type
+      );
+  end component grspwrouterm;
+  
   component grspw2_dma is
     generic(
       hindex        : integer range 0 to NAHBMST-1 := 0;

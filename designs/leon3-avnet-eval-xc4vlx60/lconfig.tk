@@ -759,6 +759,7 @@ proc menu1 {w title} {
 	$w.config.f.x0.x.menu add radiobutton -label "UMC180" -variable tmpvar_0 -value "UMC180" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Artix7" -variable tmpvar_0 -value "Xilinx-Artix7" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Kintex7" -variable tmpvar_0 -value "Xilinx-Kintex7" -command "update_active"
+	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-KintexUltra" -variable tmpvar_0 -value "Xilinx-KintexUltra" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Spartan3" -variable tmpvar_0 -value "Xilinx-Spartan3" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Spartan3E" -variable tmpvar_0 -value "Xilinx-Spartan3E" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Spartan6" -variable tmpvar_0 -value "Xilinx-Spartan6" -command "update_active"
@@ -768,7 +769,7 @@ proc menu1 {w title} {
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Virtex6" -variable tmpvar_0 -value "Xilinx-Virtex6" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Virtex7" -variable tmpvar_0 -value "Xilinx-Virtex7" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Zynq7000" -variable tmpvar_0 -value "Xilinx-Zynq7000" -command "update_active"
-	menusplit $w $w.config.f.x0.x.menu 49
+	menusplit $w $w.config.f.x0.x.menu 50
 	global tmpvar_1
 	minimenu $w.config.f 1 1 "Memory Library                           " tmpvar_1 CONFIG_MEM_INFERRED
 	menu $w.config.f.x1.x.menu -tearoffcommand "menutitle \"Memory Library                           \""
@@ -941,6 +942,8 @@ proc update_define_menu1 {} {
 	if {$tmpvar_0 == "Xilinx-Artix7"} then {set CONFIG_SYN_ARTIX7 1} else {set CONFIG_SYN_ARTIX7 0}
 	global CONFIG_SYN_KINTEX7
 	if {$tmpvar_0 == "Xilinx-Kintex7"} then {set CONFIG_SYN_KINTEX7 1} else {set CONFIG_SYN_KINTEX7 0}
+	global CONFIG_SYN_KINTEXU
+	if {$tmpvar_0 == "Xilinx-KintexUltra"} then {set CONFIG_SYN_KINTEXU 1} else {set CONFIG_SYN_KINTEXU 0}
 	global CONFIG_SYN_SPARTAN3
 	if {$tmpvar_0 == "Xilinx-Spartan3"} then {set CONFIG_SYN_SPARTAN3 1} else {set CONFIG_SYN_SPARTAN3 0}
 	global CONFIG_SYN_SPARTAN3E
@@ -1361,6 +1364,7 @@ proc update_define_menu3 {} {
 	global CONFIG_DCACHE_SNOOP
 	global CONFIG_CACHE_FIXED
 	global CONFIG_MMU_ENABLE
+	global CONFIG_MMU_SV
 	global CONFIG_DSU_ENABLE
 	global CONFIG_NP_ASI
 	global CONFIG_PWRPSR
@@ -1448,6 +1452,8 @@ set CONFIG_DCACHE_SNOOP $CONSTANT_N }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_MIN == 1)} then {	global CONSTANT_N
 set CONFIG_MMU_ENABLE $CONSTANT_N }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_MIN == 1)} then {	global CONSTANT_N
+set CONFIG_MMU_SV $CONSTANT_N }
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_MIN == 1)} then {	global CONSTANT_N
 set CONFIG_DSU_ENABLE $CONSTANT_N }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_MIN == 1)} then {	global CONSTANT_N
 set CONFIG_NP_ASI $CONSTANT_N }
@@ -1512,6 +1518,8 @@ set CONFIG_DCACHE_SNOOP_SP $CONSTANT_N }
 set CONFIG_DCACHE_LRAM $CONSTANT_N }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {	global CONSTANT_Y
 set CONFIG_MMU_ENABLE $CONSTANT_Y }
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {	global CONSTANT_Y
+set CONFIG_MMU_SV $CONSTANT_Y }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {	global CONSTANT_Y
 set CONFIG_MMU_SPLIT $CONSTANT_Y }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {	global CONSTANT_Y
@@ -1599,6 +1607,8 @@ set CONFIG_DCACHE_SNOOP_SP $CONSTANT_N }
 set CONFIG_DCACHE_LRAM $CONSTANT_N }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {	global CONSTANT_Y
 set CONFIG_MMU_ENABLE $CONSTANT_Y }
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {	global CONSTANT_Y
+set CONFIG_MMU_SV $CONSTANT_Y }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {	global CONSTANT_Y
 set CONFIG_MMU_SPLIT $CONSTANT_Y }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {	global CONSTANT_Y
@@ -2476,48 +2486,49 @@ proc menu7 {w title} {
 
 
 	bool $w.config.f 7 0 "Enable MMU       " CONFIG_MMU_ENABLE
+	bool $w.config.f 7 1 "Include supervisor bit in tag" CONFIG_MMU_SV
 	global tmpvar_20
-	minimenu $w.config.f 7 1 "MMU type              " tmpvar_20 CONFIG_MMU_COMBINED
-	menu $w.config.f.x1.x.menu -tearoffcommand "menutitle \"MMU type              \""
-	$w.config.f.x1.x.menu add radiobutton -label "combined" -variable tmpvar_20 -value "combined" -command "update_active"
-	$w.config.f.x1.x.menu add radiobutton -label "split" -variable tmpvar_20 -value "split" -command "update_active"
-	menusplit $w $w.config.f.x1.x.menu 2
-	global tmpvar_21
-	minimenu $w.config.f 7 2 "TLB replacement sheme              " tmpvar_21 CONFIG_MMU_REPARRAY
-	menu $w.config.f.x2.x.menu -tearoffcommand "menutitle \"TLB replacement sheme              \""
-	$w.config.f.x2.x.menu add radiobutton -label "LRU" -variable tmpvar_21 -value "LRU" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "Increment" -variable tmpvar_21 -value "Increment" -command "update_active"
+	minimenu $w.config.f 7 2 "MMU type              " tmpvar_20 CONFIG_MMU_COMBINED
+	menu $w.config.f.x2.x.menu -tearoffcommand "menutitle \"MMU type              \""
+	$w.config.f.x2.x.menu add radiobutton -label "combined" -variable tmpvar_20 -value "combined" -command "update_active"
+	$w.config.f.x2.x.menu add radiobutton -label "split" -variable tmpvar_20 -value "split" -command "update_active"
 	menusplit $w $w.config.f.x2.x.menu 2
+	global tmpvar_21
+	minimenu $w.config.f 7 3 "TLB replacement sheme              " tmpvar_21 CONFIG_MMU_REPARRAY
+	menu $w.config.f.x3.x.menu -tearoffcommand "menutitle \"TLB replacement sheme              \""
+	$w.config.f.x3.x.menu add radiobutton -label "LRU" -variable tmpvar_21 -value "LRU" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "Increment" -variable tmpvar_21 -value "Increment" -command "update_active"
+	menusplit $w $w.config.f.x3.x.menu 2
 	global tmpvar_22
-	minimenu $w.config.f 7 3 "Instruction (or combined) TLB entries" tmpvar_22 CONFIG_MMU_I2
-	menu $w.config.f.x3.x.menu -tearoffcommand "menutitle \"Instruction (or combined) TLB entries\""
-	$w.config.f.x3.x.menu add radiobutton -label "2" -variable tmpvar_22 -value "2" -command "update_active"
-	$w.config.f.x3.x.menu add radiobutton -label "4" -variable tmpvar_22 -value "4" -command "update_active"
-	$w.config.f.x3.x.menu add radiobutton -label "8" -variable tmpvar_22 -value "8" -command "update_active"
-	$w.config.f.x3.x.menu add radiobutton -label "16" -variable tmpvar_22 -value "16" -command "update_active"
-	$w.config.f.x3.x.menu add radiobutton -label "32" -variable tmpvar_22 -value "32" -command "update_active"
-	$w.config.f.x3.x.menu add radiobutton -label "64" -variable tmpvar_22 -value "64" -command "update_active"
-	menusplit $w $w.config.f.x3.x.menu 6
-	global tmpvar_23
-	minimenu $w.config.f 7 4 "Data TLB entries" tmpvar_23 CONFIG_MMU_D2
-	menu $w.config.f.x4.x.menu -tearoffcommand "menutitle \"Data TLB entries\""
-	$w.config.f.x4.x.menu add radiobutton -label "2" -variable tmpvar_23 -value "2" -command "update_active"
-	$w.config.f.x4.x.menu add radiobutton -label "4" -variable tmpvar_23 -value "4" -command "update_active"
-	$w.config.f.x4.x.menu add radiobutton -label "8" -variable tmpvar_23 -value "8" -command "update_active"
-	$w.config.f.x4.x.menu add radiobutton -label "16" -variable tmpvar_23 -value "16" -command "update_active"
-	$w.config.f.x4.x.menu add radiobutton -label "32" -variable tmpvar_23 -value "32" -command "update_active"
-	$w.config.f.x4.x.menu add radiobutton -label "64" -variable tmpvar_23 -value "64" -command "update_active"
+	minimenu $w.config.f 7 4 "Instruction (or combined) TLB entries" tmpvar_22 CONFIG_MMU_I2
+	menu $w.config.f.x4.x.menu -tearoffcommand "menutitle \"Instruction (or combined) TLB entries\""
+	$w.config.f.x4.x.menu add radiobutton -label "2" -variable tmpvar_22 -value "2" -command "update_active"
+	$w.config.f.x4.x.menu add radiobutton -label "4" -variable tmpvar_22 -value "4" -command "update_active"
+	$w.config.f.x4.x.menu add radiobutton -label "8" -variable tmpvar_22 -value "8" -command "update_active"
+	$w.config.f.x4.x.menu add radiobutton -label "16" -variable tmpvar_22 -value "16" -command "update_active"
+	$w.config.f.x4.x.menu add radiobutton -label "32" -variable tmpvar_22 -value "32" -command "update_active"
+	$w.config.f.x4.x.menu add radiobutton -label "64" -variable tmpvar_22 -value "64" -command "update_active"
 	menusplit $w $w.config.f.x4.x.menu 6
-	bool $w.config.f 7 5 "Fast writebuffer       " CONFIG_MMU_FASTWB
+	global tmpvar_23
+	minimenu $w.config.f 7 5 "Data TLB entries" tmpvar_23 CONFIG_MMU_D2
+	menu $w.config.f.x5.x.menu -tearoffcommand "menutitle \"Data TLB entries\""
+	$w.config.f.x5.x.menu add radiobutton -label "2" -variable tmpvar_23 -value "2" -command "update_active"
+	$w.config.f.x5.x.menu add radiobutton -label "4" -variable tmpvar_23 -value "4" -command "update_active"
+	$w.config.f.x5.x.menu add radiobutton -label "8" -variable tmpvar_23 -value "8" -command "update_active"
+	$w.config.f.x5.x.menu add radiobutton -label "16" -variable tmpvar_23 -value "16" -command "update_active"
+	$w.config.f.x5.x.menu add radiobutton -label "32" -variable tmpvar_23 -value "32" -command "update_active"
+	$w.config.f.x5.x.menu add radiobutton -label "64" -variable tmpvar_23 -value "64" -command "update_active"
+	menusplit $w $w.config.f.x5.x.menu 6
+	bool $w.config.f 7 6 "Fast writebuffer       " CONFIG_MMU_FASTWB
 	global tmpvar_24
-	minimenu $w.config.f 7 6 "MMU page size" tmpvar_24 CONFIG_MMU_PAGE_4K
-	menu $w.config.f.x6.x.menu -tearoffcommand "menutitle \"MMU page size\""
-	$w.config.f.x6.x.menu add radiobutton -label "4K" -variable tmpvar_24 -value "4K" -command "update_active"
-	$w.config.f.x6.x.menu add radiobutton -label "8K" -variable tmpvar_24 -value "8K" -command "update_active"
-	$w.config.f.x6.x.menu add radiobutton -label "16K" -variable tmpvar_24 -value "16K" -command "update_active"
-	$w.config.f.x6.x.menu add radiobutton -label "32K" -variable tmpvar_24 -value "32K" -command "update_active"
-	$w.config.f.x6.x.menu add radiobutton -label "Programmable" -variable tmpvar_24 -value "Programmable" -command "update_active"
-	menusplit $w $w.config.f.x6.x.menu 5
+	minimenu $w.config.f 7 7 "MMU page size" tmpvar_24 CONFIG_MMU_PAGE_4K
+	menu $w.config.f.x7.x.menu -tearoffcommand "menutitle \"MMU page size\""
+	$w.config.f.x7.x.menu add radiobutton -label "4K" -variable tmpvar_24 -value "4K" -command "update_active"
+	$w.config.f.x7.x.menu add radiobutton -label "8K" -variable tmpvar_24 -value "8K" -command "update_active"
+	$w.config.f.x7.x.menu add radiobutton -label "16K" -variable tmpvar_24 -value "16K" -command "update_active"
+	$w.config.f.x7.x.menu add radiobutton -label "32K" -variable tmpvar_24 -value "32K" -command "update_active"
+	$w.config.f.x7.x.menu add radiobutton -label "Programmable" -variable tmpvar_24 -value "Programmable" -command "update_active"
+	menusplit $w $w.config.f.x7.x.menu 5
 
 
 
@@ -2560,15 +2571,18 @@ proc update_menu7 {} {
 	global CONFIG_MMU_ENABLE
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1)} then {
 	configure_entry .menu7.config.f.x0 normal {n l y}} else {configure_entry .menu7.config.f.x0 disabled {y n l}}
-	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_MMU_ENABLE == 1)} then {configure_entry .menu7.config.f.x1 normal {x l}} else {configure_entry .menu7.config.f.x1 disabled {x l}}
+	global CONFIG_MMU_SV
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_MMU_ENABLE == 1)} then {
+	configure_entry .menu7.config.f.x1 normal {n l y}} else {configure_entry .menu7.config.f.x1 disabled {y n l}}
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_MMU_ENABLE == 1)} then {configure_entry .menu7.config.f.x2 normal {x l}} else {configure_entry .menu7.config.f.x2 disabled {x l}}
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_MMU_ENABLE == 1)} then {configure_entry .menu7.config.f.x3 normal {x l}} else {configure_entry .menu7.config.f.x3 disabled {x l}}
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_MMU_ENABLE == 1)} then {configure_entry .menu7.config.f.x4 normal {x l}} else {configure_entry .menu7.config.f.x4 disabled {x l}}
 	global CONFIG_MMU_SPLIT
-	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_MMU_ENABLE == 1) && ($CONFIG_MMU_SPLIT == 1)} then {configure_entry .menu7.config.f.x4 normal {x l}} else {configure_entry .menu7.config.f.x4 disabled {x l}}
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_MMU_ENABLE == 1) && ($CONFIG_MMU_SPLIT == 1)} then {configure_entry .menu7.config.f.x5 normal {x l}} else {configure_entry .menu7.config.f.x5 disabled {x l}}
 	global CONFIG_MMU_FASTWB
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_MMU_ENABLE == 1) && ($CONFIG_MMU_SPLIT == 1)} then {
-	configure_entry .menu7.config.f.x5 normal {n l y}} else {configure_entry .menu7.config.f.x5 disabled {y n l}}
-	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_MMU_ENABLE == 1)} then {configure_entry .menu7.config.f.x6 normal {x l}} else {configure_entry .menu7.config.f.x6 disabled {x l}}
+	configure_entry .menu7.config.f.x6 normal {n l y}} else {configure_entry .menu7.config.f.x6 disabled {y n l}}
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_MMU_ENABLE == 1)} then {configure_entry .menu7.config.f.x7 normal {x l}} else {configure_entry .menu7.config.f.x7 disabled {x l}}
 }
 
 
@@ -2580,6 +2594,9 @@ proc update_define_menu7 {} {
 	global CONFIG_MMU_ENABLE
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1)} then {
 	set CONFIG_MMU_ENABLE [expr $CONFIG_MMU_ENABLE&15]} else {set CONFIG_MMU_ENABLE [expr $CONFIG_MMU_ENABLE|16]}
+	global CONFIG_MMU_SV
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_MMU_ENABLE == 1)} then {
+	set CONFIG_MMU_SV [expr $CONFIG_MMU_SV&15]} else {set CONFIG_MMU_SV [expr $CONFIG_MMU_SV|16]}
 	global tmpvar_20
 	global CONFIG_MMU_COMBINED
 	if {$tmpvar_20 == "combined"} then {set CONFIG_MMU_COMBINED 1} else {set CONFIG_MMU_COMBINED 0}
@@ -4597,6 +4614,7 @@ set CONFIG_SYN_TSMC90 0
 set CONFIG_SYN_UMC 0
 set CONFIG_SYN_ARTIX7 0
 set CONFIG_SYN_KINTEX7 0
+set CONFIG_SYN_KINTEXU 0
 set CONFIG_SYN_SPARTAN3 0
 set CONFIG_SYN_SPARTAN3E 0
 set CONFIG_SYN_SPARTAN6 0
@@ -4777,6 +4795,7 @@ set CONFIG_DCACHE_LRAM_SZ128 0
 set CONFIG_DCACHE_LRAM_SZ256 0
 set CONFIG_DCACHE_LRSTART 8f
 set CONFIG_MMU_ENABLE 0
+set CONFIG_MMU_SV 0
 set tmpvar_20 "(not set)"
 set CONFIG_MMU_COMBINED 0
 set CONFIG_MMU_SPLIT 0
@@ -4930,6 +4949,10 @@ set CONFIG_HAS_SHARED_GRFPU 4
 set CONFIG_SYN_ARTISAN 4
 set CONFIG_PCI_ENABLE 4
 set CONFIG_PWRPSR 4
+set CONFIG_LEON_MEMTECH 4
+set CONFIG_IU_RFINF 4
+set CONFIG_FPU_RFINF 4
+set CONFIG_MMU_INF 4
 set CONFIG_LEON3FT_PRESENT 4
 set CONFIG_LEON3FT_EN 4
 set CONFIG_IUFT_NONE 4
@@ -5012,6 +5035,7 @@ proc writeconfig {file1 file2} {
 	if { $tmpvar_0 == "UMC180" } then { write_tristate $cfg $autocfg CONFIG_SYN_UMC 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_UMC 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Xilinx-Artix7" } then { write_tristate $cfg $autocfg CONFIG_SYN_ARTIX7 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_ARTIX7 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Xilinx-Kintex7" } then { write_tristate $cfg $autocfg CONFIG_SYN_KINTEX7 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_KINTEX7 0 [list $notmod] 2 }
+	if { $tmpvar_0 == "Xilinx-KintexUltra" } then { write_tristate $cfg $autocfg CONFIG_SYN_KINTEXU 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_KINTEXU 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Xilinx-Spartan3" } then { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN3 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN3 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Xilinx-Spartan3E" } then { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN3E 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN3E 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Xilinx-Spartan6" } then { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN6 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_SPARTAN6 0 [list $notmod] 2 }
@@ -5171,6 +5195,8 @@ proc writeconfig {file1 file2} {
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_MIN == 1)} then {write_hex $cfg $autocfg CONFIG_CACHE_FIXED 0 $notmod }
 	global CONFIG_MMU_ENABLE
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_MIN == 1)} then {write_tristate $cfg $autocfg CONFIG_MMU_ENABLE $CONSTANT_N [list $notmod] 2 }
+	global CONFIG_MMU_SV
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_MIN == 1)} then {write_tristate $cfg $autocfg CONFIG_MMU_SV $CONSTANT_N [list $notmod] 2 }
 	global CONFIG_DSU_ENABLE
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_MIN == 1)} then {write_tristate $cfg $autocfg CONFIG_DSU_ENABLE $CONSTANT_N [list $notmod] 2 }
 	global CONFIG_NP_ASI
@@ -5222,6 +5248,7 @@ proc writeconfig {file1 file2} {
 	global CONFIG_DCACHE_LRAM
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {write_tristate $cfg $autocfg CONFIG_DCACHE_LRAM $CONSTANT_N [list $notmod] 2 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {write_tristate $cfg $autocfg CONFIG_MMU_ENABLE $CONSTANT_Y [list $notmod] 2 }
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {write_tristate $cfg $autocfg CONFIG_MMU_SV $CONSTANT_Y [list $notmod] 2 }
 	global CONFIG_MMU_SPLIT
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_GP == 1)} then {write_tristate $cfg $autocfg CONFIG_MMU_SPLIT $CONSTANT_Y [list $notmod] 2 }
 	global CONFIG_MMU_REPARRAY
@@ -5283,6 +5310,7 @@ proc writeconfig {file1 file2} {
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {write_hex $cfg $autocfg CONFIG_CACHE_FIXED 0 $notmod }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {write_tristate $cfg $autocfg CONFIG_DCACHE_LRAM $CONSTANT_N [list $notmod] 2 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {write_tristate $cfg $autocfg CONFIG_MMU_ENABLE $CONSTANT_Y [list $notmod] 2 }
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {write_tristate $cfg $autocfg CONFIG_MMU_SV $CONSTANT_Y [list $notmod] 2 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {write_tristate $cfg $autocfg CONFIG_MMU_SPLIT $CONSTANT_Y [list $notmod] 2 }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_HP == 1)} then {write_tristate $cfg $autocfg CONFIG_MMU_REPARRAY $CONSTANT_Y [list $notmod] 2 }
 	global CONFIG_MMU_I16
@@ -5440,6 +5468,7 @@ proc writeconfig {file1 file2} {
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_DCACHE_LRAM == 1)} then {write_hex $cfg $autocfg CONFIG_DCACHE_LRSTART $CONFIG_DCACHE_LRSTART $notmod }
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1)} then {write_comment $cfg $autocfg "MMU"}
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1)} then {write_tristate $cfg $autocfg CONFIG_MMU_ENABLE $CONFIG_MMU_ENABLE [list $notmod] 2 }
+	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_MMU_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_MMU_SV $CONFIG_MMU_SV [list $notmod] 2 }
 	global tmpvar_20
 	if {($CONFIG_LEON3 == 1) && ($CONFIG_LEON3_CUSTOM == 1) && ($CONFIG_MMU_ENABLE == 1)} then {
 	if { $tmpvar_20 == "combined" } then { write_tristate $cfg $autocfg CONFIG_MMU_COMBINED 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_MMU_COMBINED 0 [list $notmod] 2 }
@@ -5740,6 +5769,7 @@ proc clear_choices { } {
 	global CONFIG_SYN_UMC; set CONFIG_SYN_UMC 0
 	global CONFIG_SYN_ARTIX7; set CONFIG_SYN_ARTIX7 0
 	global CONFIG_SYN_KINTEX7; set CONFIG_SYN_KINTEX7 0
+	global CONFIG_SYN_KINTEXU; set CONFIG_SYN_KINTEXU 0
 	global CONFIG_SYN_SPARTAN3; set CONFIG_SYN_SPARTAN3 0
 	global CONFIG_SYN_SPARTAN3E; set CONFIG_SYN_SPARTAN3E 0
 	global CONFIG_SYN_SPARTAN6; set CONFIG_SYN_SPARTAN6 0
@@ -6005,6 +6035,8 @@ proc update_choices { } {
 	if { $CONFIG_SYN_ARTIX7 == 1 } then { set tmpvar_0 "Xilinx-Artix7" }
 	global CONFIG_SYN_KINTEX7
 	if { $CONFIG_SYN_KINTEX7 == 1 } then { set tmpvar_0 "Xilinx-Kintex7" }
+	global CONFIG_SYN_KINTEXU
+	if { $CONFIG_SYN_KINTEXU == 1 } then { set tmpvar_0 "Xilinx-KintexUltra" }
 	global CONFIG_SYN_SPARTAN3
 	if { $CONFIG_SYN_SPARTAN3 == 1 } then { set tmpvar_0 "Xilinx-Spartan3" }
 	global CONFIG_SYN_SPARTAN3E

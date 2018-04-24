@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -66,7 +66,7 @@ entity leon3cg is
     dlram      :     integer range 0 to 1     := 0;
     dlramsize  :     integer range 1 to 512   := 1;
     dlramstart :     integer range 0 to 255   := 16#8f#;
-    mmuen      :     integer range 0 to 1     := 0;
+    mmuen      :     integer range 0 to 2     := 0;
     itlbnum    :     integer range 2 to 64    := 8;
     dtlbnum    :     integer range 2 to 64    := 8;
     tlb_type   :     integer range 0 to 3     := 1;

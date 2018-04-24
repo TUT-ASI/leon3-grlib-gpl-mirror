@@ -11,4 +11,5 @@ ahbxb.vhd
 dma2ahb_pkg.vhd 
 dma2ahb.vhd
 ahbmst.vhd
+ahblitm2ahbm.vhd
 ambaprot.vhd

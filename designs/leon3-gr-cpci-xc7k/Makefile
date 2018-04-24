@@ -96,18 +96,3 @@ include $(GRLIB)/software/leon3/Makefile
 
 ##################  project specific targets ##########################
 
-
-copy_mig:
-	if !(test -d "./vivado"); then\
-	  mkdir vivado;\
-	fi; \
-	cp ../../boards/gr-cpci-xc7k-xc7k325t/mig_a.prj ./vivado/mig_a.prj;\
-
-sim_cpci_xc7k: copy_mig 
-	make sim
-
-vivado_cpci_xc7k: copy_mig 
-	make vivado
-
-vivado-launch_cpci_xc7k: copy_mig 
-	make vivado-launch

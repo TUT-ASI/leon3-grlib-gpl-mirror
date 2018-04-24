@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -79,6 +79,9 @@ begin
   nosyncinrst : if syncin = 0 generate
     rst <= not rstin when acthigh = 1 else rstin;
     clklockl <= clklock;
+    rstsyncin <= '0';
+    inrst_syncreg <= '0';
+    genrst <= '0'; genrst_syncreg <= (others => '0');
   end generate;
 
   syncinrst : if syncin = 1 generate

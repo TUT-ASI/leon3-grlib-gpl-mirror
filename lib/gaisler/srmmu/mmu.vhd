@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -229,6 +229,7 @@ begin
     wbtransdata.data   := (others => '0');
     wbtransdata.cache  := '0';
     wbtransdata.accexc := '0';
+    wbtransdata.subit  := '0';
     if (M_TLB_TYPE = 0) and (M_TLB_FASTWRITE /= 0) then
       wbtransdata := tlbo_a1.wbtransdata;
     end if;
@@ -242,6 +243,7 @@ begin
     cmbtlbout.transdata.data := (others => '0');
     cmbtlbout.transdata.cache := '0';
     cmbtlbout.transdata.accexc := '0';
+    cmbtlbout.transdata.subit  := '0';
     
     cmbtlbout.fault.fault_pro := '0';
     cmbtlbout.fault.fault_pri := '0';
@@ -262,11 +264,13 @@ begin
     mmuico_transdata.data := (others => '0');
     mmuico_transdata.cache := '0';
     mmuico_transdata.accexc := '0';
+    mmuico_transdata.subit := '0';
 
     mmudco_transdata.finish := '0';
     mmudco_transdata.data := (others => '0');
     mmudco_transdata.cache := '0';
     mmudco_transdata.accexc := '0';
+    mmudco_transdata.subit := '0';
     
     mmuico_grant := '0';
     mmudco_grant := '0';

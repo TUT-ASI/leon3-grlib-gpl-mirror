@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -201,6 +201,7 @@ package libcache is
   type icram_in_type is record
      address       : std_logic_vector(19 downto 0);
      tag           : cdatatype;
+     subit         : std_logic;
      twrite        : std_logic_vector(0 to 3);
      tenable       : std_logic_vector(0 to 3);
      flush         : std_ulogic;
@@ -215,6 +216,7 @@ package libcache is
      tag           : cdatatype;
      data          : cdatatype;
      ctx           : ctxdatatype;
+     subit         : std_logic_vector(0 to 3);
   end record;
 
   type ldram_in_type is record
@@ -228,6 +230,7 @@ package libcache is
      address       : std_logic_vector(19 downto 0);
      tag           : cdatatype; --std_logic_vector(31  downto 0);
      ptag          : cdatatype; --std_logic_vector(31  downto 0);
+     subit         : std_logic;
      twrite        : std_logic_vector(0 to 3);
      tpwrite       : std_logic_vector(0 to 3);
      tenable       : std_logic_vector(0 to 3);
@@ -253,6 +256,7 @@ package libcache is
      data          : cdatatype;
      stag          : cdatatype;
      ctx           : ctxdatatype;
+     subit         : std_logic_vector(0 to 3);
   end record;
 
   type cram_in_type is record
@@ -352,7 +356,7 @@ package libcache is
       ilramsize : integer range 1 to 512   := 1;
       dlram     : integer range 0 to 2     := 0;
       dlramsize : integer range 1 to 512   := 1;
-      mmuen     : integer range 0 to 1     := 0;
+      mmuen     : integer range 0 to 2     := 0;
       testen    : integer range 0 to 3     := 0
       );
     port (
@@ -419,7 +423,7 @@ package libcache is
       lram      :     integer range 0 to 2   := 0;
       lramsize  :     integer range 1 to 512 := 1;
       lramstart :     integer range 0 to 255 := 16#8e#;
-      mmuen     :     integer                := 0;
+      mmuen     :     integer range 0 to 2   := 0;
       memtech   :     integer                := 0
       );
     port (
@@ -462,7 +466,7 @@ package libcache is
       cached     :     integer                  := 0;
       mmupgsz    :     integer range 0 to 5     := 0;
       smp        :     integer                  := 0;
-      mmuen      :     integer                  := 0;
+      mmuen      :     integer range 0 to 2     := 0;
       icen       :     integer range 0 to 1     := 0;
       irqlat     :     integer range 0 to 1     := 0
       );
@@ -519,7 +523,7 @@ package libcache is
       scantest   :     integer                  := 0;
       mmupgsz    :     integer range 0 to 5     := 0;
       smp        :     integer                  := 0;
-      mmuen      :     integer range 0 to 1     := 0;
+      mmuen      :     integer range 0 to 2     := 0;
       irqlat     :     integer range 0 to 1     := 0
       );
     port (
@@ -573,14 +577,16 @@ package libcache is
   end component;
   
   function cache_cfg(repl, sets, linesize, setsize, lock, snoop,
-    lram, lramsize, lramstart, mmuen : integer) return std_logic_vector;
-
+    lram, lramsize, lramstart, mmuen, subiten : integer) return std_logic_vector;
+  function mmuen_set(mmuen : integer) return integer;
+  function subit_set(mmuen : integer) return integer;
+  
 end;
 
 package body libcache is
 
   function cache_cfg(repl, sets, linesize, setsize, lock, snoop,
-                     lram, lramsize, lramstart, mmuen : integer)
+                     lram, lramsize, lramstart, mmuen, subiten : integer)
     return std_logic_vector is 
     variable cfg : std_logic_vector(31 downto 0);
   begin
@@ -597,7 +603,40 @@ package body libcache is
     cfg(15 downto 12) := conv_std_logic_vector(log2(lramsize), 4);
     cfg(11 downto  4) := conv_std_logic_vector(lramstart, 8);
     cfg(3  downto  3) := conv_std_logic_vector(mmuen, 1);
+    cfg(2  downto  2) := conv_std_logic_vector(subiten, 1);
     return(cfg);
   end;
+
+  function mmuen_set(mmuen : integer)
+    return integer is
+    variable ret : integer;
+  begin
+
+    ret := 0;
+
+    if mmuen > 0 then
+      ret := 1;
+    end if;
+
+    return ret;
+
+  end ;
+
+  function subit_set(mmuen : integer)
+    return integer is
+    variable ret : integer;
+  begin
+
+    ret := 0;
+
+    if mmuen = 2 then
+      ret := 1;
+    end if;
+
+    return ret;
+
+  end ;
+
+  
 end;
 

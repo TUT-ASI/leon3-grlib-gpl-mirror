@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -76,7 +76,7 @@ type phy_m_reg_type is record
   cfi : integer range 0 to 2; 
   pi_irdy_or_trdy : std_logic;
   last  : std_logic_vector(1 downto 0);
-  hold  : std_logic_vector(1 downto 0);
+  hold  : std_logic_vector(0 downto 0);
   term  : std_logic_vector(1 downto 0);
 end record;
 constant phy_m_reg_none : phy_m_reg_type := (
@@ -227,24 +227,34 @@ begin
           or (phyi.pv_m_cfifo(0).valid = '1' and phyi.pr_m_done_fifo = '1' and not (phyi.pv_m_cfifo(1).valid = '0' and phyi.pv_m_cfifo(2).valid = '1')) then
         pv.m.hold(0) := '0';
       end if;
+        
+      if pr.m.state = pm_addr or pr.m.state = pm_m_data then
+        -- This is the last data phase
+        if phyi.pr_m_cfifo(pv.m.cfi).last = '1' then
+          -- transfer complete in two data phases (delayed by pi. register)
+          pv.m.last(0) := '1';
+          -- single access (only one data phase to complete, delayed by pi. register)
+          if phyi.pr_m_first(0) = '1' then 
+            pv.m.last(1) := '1';
+          end if;
+        end if;
+
+        -- Transfer not done but no avalible fifo => deassert IRDY#
+        if phyi.pr_m_cfifo(pv.m.cfi).hold = '1' then 
+          pv.m.hold(0) := '1'; 
+        end if;
+      end if;
 
       if ((pi.trdy or pi.irdy) = '0' and (pr.m.state = pm_m_data or pr.m.state = pm_turn_ar or pr.m.state = pm_s_tar)) 
          or (phyi.pr_m_abort(0)) = '1' then
-        if phyi.pr_m_cfifo(pv.m.cfi).last = '1' and pr.m.last(0) = '0' then pv.m.last(0) := '1'; end if; -- This is the last data phase
         pv.m.last(1) := pr.m.last(0);
-        if phyi.pr_m_done_fifo = '1' and phyi.pr_m_cfifo(pv.m.cfi).valid = '0' then pv.m.last(1) := '1'; end if; -- This is the last data phase
-        pv.m.hold(1) := pr.m.hold(0);
       end if;
-
-      if (pr.m.state = pm_m_data or pr.m.state = pm_addr) and phyi.pr_m_cfifo(pv.m.cfi).hold = '1' then pv.m.hold(0) := '1'; end if;  -- Transfer not done but no avalible fifo => deassert IRDY#
 
       if (pr.m.state = pm_s_tar or pr.m.state = pm_turn_ar) then 
         pv.m.last := (others => '0');
         pv.m.hold(0) := '0'; 
       end if;
 
-      if phyi.pr_m_cfifo(0).last = '1' and phyi.pr_m_first(0) = '1' and pr.m.state = pm_addr and (phyi.pr_m_cbe_cmd = MEM_WRITE or phyi.pr_m_cbe_cmd = CONF_WRITE or phyi.pr_m_cbe_cmd = IO_WRITE) then pv.m.last := "11"; end if; -- Single data phase
-      if phyi.pr_m_first(1) = '1' and pr.m.state = pm_m_data and  phyi.pr_m_cfifo(pv.m.cfi).last = '1' then pv.m.last(0) := '1'; end if;  -- This is the last data phase
     end if;
     if phyi.pr_m_fstate = pmf_idle then 
       pv.m.last := (others => '0');
@@ -454,7 +464,7 @@ begin
     phyo.pciv <= pci;
     phyo.pr_m_state <= pr.m.state;
     phyo.pr_m_last <= pr.m.last;
-    phyo.pr_m_hold <= pr.m.hold;
+    phyo.pr_m_hold <= '0' & pr.m.hold;
     phyo.pr_m_term <= pr.m.term;
     phyo.pr_t_hold <= pr.t.hold;
     phyo.pr_t_stop <= pr.t.stop;

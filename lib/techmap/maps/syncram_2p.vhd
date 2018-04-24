@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -37,7 +37,8 @@ use grlib.stdlib.all;
 entity syncram_2p is
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
 	sepclk : integer := 0; wrfst : integer := 0; testen : integer := 0;
-	words : integer := 0; custombits : integer := 1);
+	words : integer := 0; custombits : integer := 1;
+        pipeline : integer range 0 to 15 := 0);
   port (
     rclk     : in std_ulogic;
     renable  : in std_ulogic;
@@ -106,7 +107,17 @@ begin
 
   xrenable <= renable and not testin(TESTIN_WIDTH-2) when testen/=0 else renable;
   xwrite <= write and not testin(TESTIN_WIDTH-2) when testen/=0 else write;
-  dataout <= dataoutxx;
+  gendoutreg : if pipeline /= 0 and has_sram_pipe(tech) = 0 generate
+    doutreg : process(rclk)
+    begin
+      if rising_edge(rclk) then
+        dataout <= dataoutxx;
+      end if;
+    end process;
+  end generate;
+  nogendoutreg : if pipeline = 0 or has_sram_pipe(tech) = 1 generate
+    dataout <= dataoutxx;
+  end generate;
 
   rwcol0: memrwcol
     generic map (
@@ -239,6 +250,12 @@ begin
     x0 : rtg4_syncram_2p generic map (abits, dbits, sepclk)
          port map (rclk, renable2, raddress, dataoutx, open,
                    wclk, xwrite, waddress, datain, gnd);
+  end generate;
+
+  pf : if tech = polarfire generate
+    x0 : polarfire_syncram_2p generic map (abits, dbits, sepclk)
+         port map (rclk, renable2, raddress, dataoutx, open,
+                   wclk, xwrite, waddress, datain);
   end generate;
 
   saed : if tech = saed32 generate

@@ -11,6 +11,7 @@ l2cache/pkg l2cache/v3
 lram
 can 
 hcan 
+axi
 misc 
 ambatest 
 net 
@@ -23,7 +24,6 @@ b1553
 greth
 spacewire 
 usb 
-axi
 ddr 
 crypto 
 satcan 

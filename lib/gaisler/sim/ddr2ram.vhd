@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -534,7 +534,7 @@ begin
     dqs <= (others => 'Z');
     dqsn <= (others => 'Z');
     wait until read_en or write_en;
-    assert not (read_en and write_en);
+    assert not (read_en and write_en) report "r/w overlap";
     if read_en then
       dqs <= (others => '0');
       dqsn <= (others => '1');
@@ -553,7 +553,10 @@ begin
       wait until rising_edge(ck);
     else
       wait until falling_edge(ck);
-      assert (to_X01(dqs)=(dqs'range => '0')) or ((to_X01(dqs)=(dqs'range => '1')) and (to_X01(dm)=(dm'range => '1') or dm=(dm'range => 'Z')));
+      while to_X01(dqs) /= (dqs'range => '0') loop
+        wait until to_X01(dqs)=(dqs'range => '0') or ck/='0';
+      end loop;
+      assert ck='0' report "start of write preamble not detected";
 
       while write_en loop
         prevdqs := to_X01(dqs);

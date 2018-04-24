@@ -8,5 +8,6 @@ grspw2_fifo.vhd
 grspw_codec_clockgate.vhd
 grspw_codec.vhd
 grspwrouter.vhd
+grspwrouterm.vhd
 grspw_phy.vhd
 grspw2_sist.vhd

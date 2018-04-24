@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -81,6 +81,9 @@ begin
   end generate;
   igl2 : if (tech = igloo2) or (tech = rtg4) generate
     x0 : igloo2_iopad port map (pad, i, oen, o);
+  end generate;
+  pf : if (tech = polarfire) generate
+    x0 : polarfire_iopad port map (pad, i, oen, o);
   end generate;
   pa3l : if (tech = apa3l) generate
     x0 : apa3l_iopad generic map (level, slew, voltage, strength, filter)

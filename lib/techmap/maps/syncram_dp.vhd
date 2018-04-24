@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ use grlib.stdlib.all;
 entity syncram_dp is
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
 	testen : integer := 0; custombits : integer := 1; sepclk: integer := 1;
-        wrfst: integer := 0);
+        wrfst: integer := 0; pipeline : integer range 0 to 15 := 0);
   port (
     clk1     : in std_ulogic;
     address1 : in std_logic_vector((abits -1) downto 0);
@@ -99,8 +99,27 @@ begin
   xenable2 <= enable2 and not testin(TESTIN_WIDTH-2) when testen/=0 else enable2;
   xwrite1 <= write1 and not testin(TESTIN_WIDTH-2) when testen/=0 else write1;
   xwrite2 <= write2 and not testin(TESTIN_WIDTH-2) when testen/=0 else write2;
-  dataout1 <= dataout1xx;
-  dataout2 <= dataout2xx;
+
+  gendoutreg : if pipeline /= 0 and has_sram_pipe(tech) = 0 generate
+    doutreg1 : process(clk1)
+    begin
+      if rising_edge(clk1) then
+        dataout1 <= dataout1xx;
+      end if;
+    end process;
+    doutreg2 : process(clk2)
+    begin
+      if rising_edge(clk2) then
+        dataout2 <= dataout2xx;
+      end if;
+    end process;
+  end generate;
+
+  nogendoutreg : if pipeline = 0 or has_sram_pipe(tech) = 1 generate
+    dataout1 <= dataout1xx;
+    dataout2 <= dataout2xx;
+  end generate;
+  
   vgnd <= (others => '0');
 
   rwcol0: memrwcol
@@ -211,10 +230,16 @@ begin
   end generate;
 
   rt4  : if tech = rtg4 generate
-    x0 : rtg4_syncram_dp generic map (abits, dbits)
+    x0 : rtg4_syncram_dp generic map (abits, dbits, 0, pipeline, 0)
          port map (clk1, address1, datain1, dataout1x, xxenable1, xwrite1, open,
                    clk2, address2, datain2, dataout2x, xxenable2, xwrite2, open,
                    vgnd(0));
+  end generate;
+
+  pf  : if tech = polarfire generate
+    x0 : polarfire_syncram_dp generic map (abits, dbits)
+         port map (clk1, address1, datain1, dataout1x, xxenable1, xwrite1, open,
+                   clk2, address2, datain2, dataout2x, xxenable2, xwrite2);
   end generate;
 
   saed  : if tech = saed32 generate

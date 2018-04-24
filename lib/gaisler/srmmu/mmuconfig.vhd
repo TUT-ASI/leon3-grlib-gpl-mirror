@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -353,6 +353,8 @@ constant MMCTRL_IMPL_D : integer := 28;
 constant MMCTRL_TLBDIS : integer := 15;
 constant MMCTRL_TLBSEP : integer := 14;
 
+constant MMCTRL_SUBIT : integer := 13;  --SU bit used during diagnostic tag write
+
 constant MMCTXP_U : integer := 31;
 constant MMCTXP_D : integer := 2;
 
@@ -412,9 +414,10 @@ type mmctrl_type1 is record
   ctxp    : std_logic_vector(MMCTRL_CTXP_SZ-1 downto 0);  -- context table pointer
   tlbdis  : std_logic;                            -- tlb disabled
   bar     : std_logic_vector(1 downto 0);         -- preplace barrier
+  subit   : std_logic;                  --SU-bit used during diagnostic tagwrite
 end record;
 
-constant mmctrl_type1_none : mmctrl_type1 := ('0', '0', '0', (others => '0'), (others => '0'), (others => '0'), '0', (others => '0'));
+constant mmctrl_type1_none : mmctrl_type1 := ('0', '0', '0', (others => '0'), (others => '0'), (others => '0'), '0', (others => '0'),'0');
 
 --# fault status reg
 type mmctrl_fs_type is record

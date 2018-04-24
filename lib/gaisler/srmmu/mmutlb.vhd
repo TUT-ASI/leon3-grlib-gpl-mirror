@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -453,6 +453,7 @@ begin
 
           TLB_MergeData( mmupgsz, tlbi.mmctrl1, two.lvl , two.data, r.s2_data, v.walk_transdata.data );
           v.walk_transdata.cache := two.data(PTE_C);
+          v.walk_transdata.subit := mmu_subit_set(two.data(PTE_ACC_U downto PTE_ACC_D));
           v.walk_fault.fault_lvl := two.fault_lvl;
           v.walk_fault.fault_access := '0';
           v.walk_fault.fault_mexc := two.fault_mexc;
@@ -523,6 +524,7 @@ begin
     CAC := tlbcamo(i_entry).pteout(PTE_C);
     
     transdata.cache := CAC;
+    transdata.subit := mmu_subit_set(ACC);
 
     TLB_CheckFault( ACC, r.s2_isid, r.s2_su, r.s2_read, fault_pro, fault_pri );
       
@@ -551,6 +553,7 @@ begin
       wb_WBNEEDSYNC := tlbcamo(wb_i_entry).WBNEEDSYNC;
         
       wb_transdata.cache := wb_CAC;
+      wb_transdata.subit := mmu_subit_set(wb_ACC);
 
       TLB_MergeData( mmupgsz, tlbi.mmctrl1, wb_LVL, wb_PTE, tlbi.transdata.data, wb_transdata.data );
 

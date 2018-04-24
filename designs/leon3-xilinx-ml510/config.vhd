@@ -71,20 +71,18 @@ package config is
   constant CFG_DSU : integer := 1;
   constant CFG_ITBSZ : integer := 2 + 64*1;
   constant CFG_ATBSZ : integer := 2;
-  constant CFG_AHBPF : integer := 2;
-  constant CFG_AHBWP : integer := 1;
-  constant CFG_LEONFT_EN : integer := 0 + (0)*8;
+  constant CFG_LEONFT_EN : integer := 0 + (0)*8 + 0*2048;
   constant CFG_LEON_NETLIST : integer := 0;
   constant CFG_DISAS : integer := 0 + 0;
   constant CFG_PCLOW : integer := 2;
   constant CFG_STAT_ENABLE : integer := 1;
   constant CFG_STAT_CNT : integer := (4);
   constant CFG_STAT_NMAX : integer := (0);
-  constant CFG_STAT_DSUEN : integer := 1;
   constant CFG_NP_ASI : integer := 1;
   constant CFG_WRPSR : integer := 1;
   constant CFG_ALTWIN : integer := 0;
   constant CFG_REX : integer := 0;
+  constant CFG_LEON_MEMTECH : integer := (0*2**17 + 0*2**18 + 0*2**16);
 -- L2 Cache
   constant CFG_L2_EN : integer := 0;
   constant CFG_L2_SIZE : integer := 64;
@@ -179,6 +177,16 @@ package config is
   constant CFG_AHBRSZ : integer := 4;
   constant CFG_AHBRADDR : integer := 16#A00#;
   constant CFG_AHBRPIPE : integer := 0;
+
+-- FT AHB RAM
+  constant CFG_FTAHBRAM_EN : integer := 0;
+  constant CFG_FTAHBRAM_SZ : integer := 64;
+  constant CFG_FTAHBRAM_ADDR : integer := 16#e00#;
+  constant CFG_FTAHBRAM_PIPE : integer := 0;
+  constant CFG_FTAHBRAM_EDAC : integer := 1;
+  constant CFG_FTAHBRAM_SCRU : integer := 0;
+  constant CFG_FTAHBRAM_ECNT : integer := 0;
+  constant CFG_FTAHBRAM_EBIT : integer := (2);
 
 -- Gaisler Ethernet core
   constant CFG_GRETH : integer := 1;

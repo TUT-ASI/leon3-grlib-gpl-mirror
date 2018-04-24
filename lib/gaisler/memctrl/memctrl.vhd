@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -252,32 +252,6 @@ component ftsdctrl is
     oepol   : integer := 0;
     pageburst : integer := 0;
     mobile  : integer := 0
-  );
-  port (
-    rst     : in  std_ulogic;
-    clk     : in  std_ulogic;
-    ahbsi   : in  ahb_slv_in_type;
-    ahbso   : out ahb_slv_out_type;
-    sdi     : in  sdctrl_in_type;
-    sdo     : out sdctrl_out_type
-  );
-end component;
-
-component ftsdctrl64
-  generic (
-    hindex  : integer := 0;
-    haddr   : integer := 0;
-    hmask   : integer := 16#f00#;
-    ioaddr  : integer := 16#000#;
-    iomask  : integer := 16#fff#;
-    wprot   : integer := 0;
-    invclk  : integer := 0;
-    fast    : integer := 0;
-    pwron   : integer := 0;
-    oepol   : integer := 0;
-    pageburst : integer := 0;
-    mobile  : integer := 0;
-    edac    : integer := 0
   );
   port (
     rst     : in  std_ulogic;

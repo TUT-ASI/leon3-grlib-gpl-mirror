@@ -35,6 +35,3 @@ CONFIG_SPIMCTRL_ASCALER
   divisor used is two to the power of the specified value. This
   value must be at least 1.
 
-Power-up cnt
-CONFIG_SPIMCTRL_PWRUPCNT
-  Number of system clock cycles to wait before issuing first command.

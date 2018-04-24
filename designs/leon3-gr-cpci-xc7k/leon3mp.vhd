@@ -4,7 +4,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -2249,6 +2249,7 @@ begin
 -----------------------------------------------------------------------
 ---  GR1553  ----------------------------------------------------------
 -----------------------------------------------------------------------
+  mil: if CFG_GR1553B_ENABLE /= 0 generate
     -- Reset generation for 1553 codec
     rgc: rstgen
       port map (rstn, gr1553_clk, '1', gr1553_codec_rst, open);
@@ -2285,7 +2286,13 @@ begin
         txout       => gr1553_txout,
         txout_fb    => gr1553_txout,
         rxin        => gr1553_rxin);
+  end generate;
 
+  nmil: if CFG_GR1553B_ENABLE = 0 generate
+    gr1553_codec_rst <= '0';
+    gr1553_txout <= (others => '0');
+  end generate;
+  
     busa_inen_pad : outpad generic map (tech => padtech) 
       port map (m1553rxena, gr1553_txout.busA_rxen);
     busa_inp_pad  : inpad generic map (tech => padtech) 

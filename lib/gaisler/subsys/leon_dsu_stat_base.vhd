@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -32,7 +32,12 @@
 --  Memory BIST signals are not propagated to the top-level
 --
 --  Scan test is disabled
+--
+-- FT option should be propagated as:
 -- 
+-- CONFIG_IUFT_EN + (CONFIG_CACHE_FT_EN)*8 + CONFIG_FPUFT*2048;
+--
+-- The CONFIG_FPUFT option is not propagated to LEON4
 ------------------------------------------------------------------------------
 
 
@@ -56,6 +61,7 @@ entity leon_dsu_stat_base is
     -- LEON configuration
     fabtech     : integer range 0 to NTECH  := DEFFABTECH;
     memtech     : integer range 0 to NTECH  := DEFMEMTECH;
+    memtechmod  : integer               := 0;
     nwindows    : integer range 2 to 32 := 8;
     dsu         : integer range 0 to 1  := 0;
     fpu         : integer range 0 to 63 := 0;
@@ -84,7 +90,7 @@ entity leon_dsu_stat_base is
     dlram       : integer range 0 to 1 := 0;
     dlramsize   : integer range 1 to 512 := 1;
     dlramstart  : integer range 0 to 255 := 16#8f#;
-    mmuen       : integer range 0 to 1  := 0;
+    mmuen       : integer range 0 to 2  := 0;
     itlbnum     : integer range 2 to 64 := 8;
     dtlbnum     : integer range 2 to 64 := 8;
     tlb_type    : integer range 0 to 3  := 1;
@@ -181,7 +187,7 @@ begin
           generic map (
             hindex     => i,
             fabtech    => fabtech,
-            memtech    => memtech,
+            memtech    => memtech + memtechmod,
             nwindows   => nwindows,
             dsu        => dsu,
             fpu        => fpu + 32*grfpush,
@@ -222,9 +228,9 @@ begin
             svt        => svt,
             rstaddr    => rstaddr,
             smp        => smp,
-            iuft       => ft mod 4,
-            fpft       => ft mod 4,
-            cmft       => ft/8,
+            iuft       => ft mod 8,
+            fpft       => ft/2048,
+            cmft       => (ft mod 2048)/8,
             iuinj      => 0, --iuinj,
             ceinj      => 0, --ceinj,
             cached     => cached,
@@ -270,10 +276,10 @@ begin
             tech     => memtech,
             irq      => 0,
             kbytes   => atbsz,
-            clk2x    => 0,
+            clk2x    => clk2x,
             testen   => 0,
             bwidth   => AHBDW,
-            ahbpf    => 0)
+            ahbpf    => 1+stat)
           port map (
             rst      => rstn,
             hclk     => ahbclk,
@@ -344,7 +350,7 @@ begin
           generic map (
             hindex     => i,
             fabtech    => fabtech,
-            memtech    => memtech,
+            memtech    => memtech + memtechmod,
             nwindows   => nwindows,
             dsu        => dsu,
             fpu        => fpu + 32*grfpush,
@@ -386,12 +392,12 @@ begin
             rstaddr    => rstaddr,
             smp        => smp,
             cached     => cached, 
-            clk2x      => 0,
+            clk2x      => clk2x,
             scantest   => 0,
             wbmask     => wbmask,
             busw       => busw,
             netlist    => netlist,
-            ft         => ft,
+            ft         => ft mod 2048,  -- Remove FPU RF FT
             npasi      => npasi,
             pwrpsr     => pwrpsr,
             rex        => rex,
@@ -429,10 +435,10 @@ begin
             tech     => memtech, 
             irq      => 0,
             kbytes   => atbsz,
-            clk2x    => 0,              -- fixme
+            clk2x    => clk2x,
             bwidth   => AHBDW,
-            ahbpf    => 0,              -- fixme
-            ahbwp    => 0,              -- fixme
+            ahbpf    => 1+stat,
+            ahbwp    => 2,
             scantest => 0,
             pipedbg  => 0,
             pipeahbt => 0)
@@ -500,22 +506,22 @@ begin
 ---  Optional shared FPU     -----------------------------------------
 ----------------------------------------------------------------------
 
-  fpidriveunused : for i in grfpu_in_vector_type'range generate
-    fpidrive : if i >= ncpu generate
-      fpi(i) <= grfpu_in_none;
+  optfpush : block
+  begin
+    fpidriveunused : for i in grfpu_in_vector_type'range generate
+      fpidrive : if i >= ncpu generate
+        fpi(i) <= grfpu_in_none;
+      end generate;
     end generate;
-  end generate;
   
-  shfpu : if grfpush = 1 generate    
-    grfpush0 : grfpushwx generic map ((fpu-1), ncpu, fabtech)
-      port map (cpuclk, rstn, fpi, fpo);
-  end generate;
-  noshfpu : if grfpush = 0 generate
-    fpo <= (others => grfpu_out_none);
-  end generate;
-
-
-
+    shfpu : if grfpush = 1 generate    
+      grfpush0 : grfpushwx generic map ((fpu-1), ncpu, fabtech)
+        port map (cpuclk, rstn, fpi, fpo);
+    end generate;
+    noshfpu : if grfpush = 0 generate
+      fpo <= (others => grfpu_out_none);
+    end generate;
+  end block optfpush;
 
  end;
 

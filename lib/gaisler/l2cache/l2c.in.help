@@ -53,8 +53,10 @@ CONFIG_L2_MTRR
   memory area to be uncached, write-through, or copy-back.
 
 EDAC protection
-CONFIG_L2_EDAC
-  Say yes here to enable EDAC protection.
+CONFIG_L2_EDAC_NONE
+  Say Yes here to enable EDAC protection.
+  Select TechSpec to enable technology specific EDAC, not
+  supported for all target technologies.
 
 AXI backend interface
 CONFIG_L2_AXI

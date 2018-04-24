@@ -9,7 +9,7 @@ additional information.
 Note: The Vivado flow and parts of this design are still
 experimental. Currently the design configuration should be left as-is.
 
-Note: You must have Vivado 2017.1 in your path for the make targets to work.
+Note: You must have Vivado 2017.3 in your path for the make targets to work.
 
 The XILINX_VIVADO variable must be exported for the mig_7series target
 to work correctly: export XILINX_VIVADO
@@ -17,7 +17,7 @@ to work correctly: export XILINX_VIVADO
 Design specifics
 ----------------
 
-* Synthesis should be done using Vivado 2017.1 or newer. For newer versions
+* Synthesis should be done using Vivado 2017.3 or newer. For newer versions
   the MIG project may need to be updated.
 
 * This design has GRFPU enabled by default. If your release doesn't contain

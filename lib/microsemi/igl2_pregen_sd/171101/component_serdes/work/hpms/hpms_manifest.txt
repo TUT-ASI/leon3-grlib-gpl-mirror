@@ -1,0 +1,11 @@
+Microsemi Corporation - Microsemi Libero Software Release v11.8 (Version 11.8.0.26)
+
+Date      :  Wed Nov  1 13:13:56 2017
+Project   :  /home/anneli/GRLIB_GIT_REP/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero
+Component :  hpms
+Family    :  IGLOO2
+
+
+HDL source files for all Synthesis and Simulation tools:
+    /home/anneli/GRLIB_GIT_REP/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/work/hpms/hpms.vhd
+

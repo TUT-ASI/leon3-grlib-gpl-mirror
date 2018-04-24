@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -264,6 +264,38 @@ begin
 
   y1: if has_nand2(tech)=0 generate
     q <= not (i0 and i1);
+  end generate;
+
+end;
+
+library ieee;
+use ieee.std_logic_1164.all;
+library techmap;
+use techmap.gencomp.all;
+
+entity grand2 is
+  generic (
+    tech: integer := 0;
+    imp: integer := 0
+    );
+  port (
+    i0: in  std_ulogic;
+    i1: in  std_ulogic;
+    q : out std_ulogic
+    );
+end;
+
+architecture rtl of grand2 is
+
+  constant has_and2: tech_ability_type := (others => 0);
+
+begin
+
+  y0: if has_and2(tech)=1 generate
+  end generate;
+
+  y1: if has_and2(tech)=0 generate
+    q <= (i0 and i1);
   end generate;
 
 end;

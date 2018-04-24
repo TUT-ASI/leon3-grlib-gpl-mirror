@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -64,7 +64,7 @@ entity mmu_dcache is
     cached     :     integer                  := 0;
     mmupgsz    :     integer range 0 to 5     := 0;
     smp        :     integer                  := 0;
-    mmuen      :     integer                  := 0;
+    mmuen      :     integer range 0 to 2     := 0;
     icen       :     integer range 0 to 1     := 0;
     irqlat     :     integer range 0 to 1     := 0);
   port (
@@ -89,8 +89,11 @@ entity mmu_dcache is
 end; 
 
 architecture rtl of mmu_dcache is
+
+  constant mmuens  : integer := mmuen_set(mmuen);
+  constant subiten : integer := subit_set(mmuen);
   
-  constant M_EN : boolean := (mmuen = 1);
+  constant M_EN : boolean := (mmuens = 1);
 
   constant DSNOOP2   : integer := dsnoop mod 4;
   constant DSNOOPSEP : boolean := (dsnoop > 3);
@@ -203,6 +206,7 @@ architecture rtl of mmu_dcache is
      cmiss         : std_ulogic;
      irqlatctrl    : std_logic_vector(11 downto 0);
      lock_hold     : std_ulogic;
+     subit_mmu     : std_logic;
   end record;
 
   type snoop_reg_type is record                   -- snoop control registers
@@ -291,6 +295,19 @@ architecture rtl of mmu_dcache is
     return(new_lru);
   end;
 
+-- Workaround for synplify bug:
+  function conv_integer_x(iv : std_logic_vector) return integer is
+    variable resi : integer range 0 to DSETS-1;
+  begin
+    resi := 0;
+    for i in 0 to DSETS-1 loop
+      if conv_integer(iv) = i then
+        resi := i;
+      end if;
+    end loop;
+    return resi;
+  end;
+
   subtype word is std_logic_vector(31 downto 0);
 
   constant write_buffer_none : write_buffer_type := (
@@ -363,7 +380,8 @@ architecture rtl of mmu_dcache is
     noflush    => '0',
     cmiss      => '0',
     irqlatctrl => (others => '0'),
-    lock_hold  => '0'
+    lock_hold  => '0',
+    subit_mmu  => '0'
     );
   constant SRES : snoop_reg_type := (
     snoop   => '0',
@@ -464,6 +482,8 @@ begin
     variable mhold : std_logic; -- MMU hold
     variable wbhold : std_logic; -- write-buffer hold
 
+    variable subit_mmu_masked : std_logic;
+
   begin
 
 -- init local variables
@@ -474,6 +494,13 @@ begin
     ilramen := '0'; v.flush2 := r.flush;
     snhit := (others => '0'); v.cmiss := '0'; mhold := '0'; wbhold := '0';
     pagesize := MMU_getpagesize(mmupgsz,r.mmctrl1);
+    subit_mmu_masked := r.subit_mmu;
+    if (subiten = 0) then
+      v.subit_mmu := '0';
+    end if;
+    if (subiten /= 0 and r.mmctrl1.e = '0') then
+      v.subit_mmu := r.mmctrl1.subit;
+    end if;
 
     if (dci.eenaddr='1') or ((not DCREADHOLD) and (dci.enaddr = '1' or r.dstate /= idle)) or
        ((DCREADHOLD) and r.dstate = loadpend) or
@@ -604,10 +631,16 @@ begin
       maddress := r.xaddress(31 downto 0);
       read := r.read; size := r.size; edata := dci.maddress;
       mmudci_su := r.su; mmudci_read := r.read and not r.dlock;
+      if (subiten /= 0) and (r.asi(4 downto 0) = ASI_UINST or r.asi(4 downto 0) = ASI_UDATA) then
+        mmudci_su := '0';
+      end if;
     else
       maddress := dci.maddress(31 downto 0);
       read := dci.read; size := dci.size; edata := dci.edata;
       mmudci_su := dci.msu; mmudci_read := dci.read and not dci.lock;
+      if (subiten /= 0) and (dci.asi(4 downto 0) = ASI_UINST or dci.asi(4 downto 0) = ASI_UDATA) then
+        mmudci_su := '0';
+      end if;
     end if;
 
     newtag := dci.maddress(TAG_HIGH downto TAG_LOW);
@@ -633,6 +666,7 @@ begin
     for i in DSETS-1 downto 0 loop
       if (dcramov.tag(i)(TAG_HIGH downto TAG_LOW) = dci.maddress(TAG_HIGH downto TAG_LOW))
         and ((dcramov.ctx(i) = r.mmctrl1.ctx) or (r.mmctrl1.e = '0'))
+        and ((subiten = 0) or (r.mmctrl1.e = '0') or (mmudci_su = '1') or (dcramov.subit(i) = '0'))  
       then hitv(i) := '1'; end if;
       validv(i) := hcache and hitv(i) and (not r.flush) and (not r.flush2) and dcramov.tag(i)(dlinesize-1);
       validraw(i) := dcramov.tag(i)(dlinesize-1);
@@ -1029,6 +1063,9 @@ begin
             v.holdn := '1'; v.dstate := idle;
             mds := '0'; mexc := not r.mmctrl1.nf;
           else
+            if (subiten /= 0) then
+              v.subit_mmu := mmudco.transdata.subit;
+            end if;
             v.dstate := wread;
             v.cache := r.cache and mmudco.transdata.cache;
             v.paddress := mmudco.transdata.data;
@@ -1164,6 +1201,9 @@ begin
             end if;
           else
             v.dstate := wwrite;
+            if (subiten /= 0) then
+              v.subit_mmu := mmudco.transdata.subit;
+            end if;
             v.cache := mmudco.transdata.cache;
             v.paddress := mmudco.transdata.data;
             if (r.wbinit) = '1' then
@@ -1275,6 +1315,9 @@ begin
         end if;
         miscdata(MMCTRL_TLBDIS) := r.mmctrl1.tlbdis;
         miscdata(MMCTRL_PGSZ_U downto MMCTRL_PGSZ_D) := conv_std_logic_vector(pagesize,2);
+        if subiten /= 0 then
+          miscdata(MMCTRL_SUBIT) := r.mmctrl1.subit;
+        end if;
         --custom 
       when CNR_CTXP =>
         miscdata(MMCTXP_U downto MMCTXP_D) := r.mmctrl1.ctxp; 
@@ -1348,7 +1391,7 @@ begin
         rdatav(0) := ico.cfg;
       when others =>
         rdatav(0) := cache_cfg(drepl, dsets, dlinesize, dsetsize, dsetlock, 
-                dsnoop, DLRAM_EN, dlramsize, dlramstart, mmuen);
+                dsnoop, DLRAM_EN, dlramsize, dlramstart, mmuens, subiten);
       end case;
     end case;
 
@@ -1414,7 +1457,10 @@ begin
     if r.flush = '1' then twrite := '0'; dwrite := '0'; end if;
     vmask := (others => (others => '1')); 
     if twrite = '1' then
-      if tagclear = '1' then vmask := (others => (others => '0')); end if;
+      if tagclear = '1' then
+        vmask := (others => (others => '0'));
+        subit_mmu_masked := '0';
+      end if;
       if (DSETS>1) and (drepl = lru) and (tdiagwrite = '0') then
         vl.write := '1'; vl.set := setrepl;
       end if;
@@ -1426,6 +1472,9 @@ begin
     end if;
 
     if tdiagwrite = '1' then -- diagnostic tag write
+      if subiten /= 0 then
+        subit_mmu_masked := r.mmctrl1.subit;
+      end if;
       if (dsu = 1) and (dci.dsuen = '1') then
         vmask := (others => dci.maddress(dlinesize - 1 downto 0));
       else
@@ -1445,6 +1494,9 @@ begin
           v.mmctrl1.nf     := dci.maddress(MMCTRL_NF);
           v.mmctrl1.pso    := dci.maddress(MMCTRL_PSO);
           v.mmctrl1.tlbdis := dci.maddress(MMCTRL_TLBDIS);
+          if subiten /= 0 then
+            v.mmctrl1.subit  := dci.maddress(MMCTRL_SUBIT);
+          end if;
           if mmupgsz = 4 then
             v.mmctrl1.pagesize := dci.maddress(MMCTRL_PGSZ_U downto MMCTRL_PGSZ_D);
           end if;
@@ -1469,7 +1521,8 @@ begin
     if eholdn = '1' then v.efaddr := v.xaddress(OFFSET_HIGH downto OFFSET_LOW); end if;
 
     if (r.flush = '1') and (dcen /= 0) then
-      twrite := '1'; vmask := (others => (others => '0')); 
+      twrite := '1'; vmask := (others => (others => '0'));
+      subit_mmu_masked := '0';
       v.faddr := r.faddr +1; newtag(TAG_HIGH downto TAG_LOW) := (others => '0');
       newptag := (others => '0');
       if DSNOOPSEP then flushaddr := r.faddr; end if;
@@ -1500,17 +1553,17 @@ begin
 
     if twrite = '1' then
       if tdiagwrite = '1' then ctwrite(ddset) := '1';
-      else ctwrite(conv_integer(setrepl)) := '1'; end if;
+      else ctwrite(conv_integer_x(setrepl)) := '1'; end if;
     end if;
     if DSNOOPSEP then
       if tpwrite = '1' then
         if tdiagwrite = '1' then ctpwrite(ddset) := '1';
-        else ctpwrite(conv_integer(setrepl)) := '1'; end if;
+        else ctpwrite(conv_integer_x(setrepl)) := '1'; end if;
       end if;
     end if;
     if dwrite = '1' then
       if ddiagwrite = '1' then cdwrite(ddset) := '1';
-      else cdwrite(conv_integer(setrepl)) := '1'; end if;
+      else cdwrite(conv_integer_x(setrepl)) := '1'; end if;
     end if;
     for i in 0 to DSETS-1 loop
       if cdwrite(i) = '0' then
@@ -1583,6 +1636,7 @@ begin
         v.mmctrl1.e := '0'; v.mmctrl1.nf := '0'; v.mmctrl1.ctx := (others => '0');
         v.mmctrl1.tlbdis := '0';
         v.mmctrl1.pso := '0';
+        v.mmctrl1.subit := '0';
         v.trans_op := '0'; 
         v.flush_op := '0'; 
         v.diag_op := '0';
@@ -1600,6 +1654,7 @@ begin
       v.wb.data1 := (others => '0'); v.wb.data2 := (others => '0');     
       v.noflush := '0'; v.mexc := '0';
       v.irqlatctrl := (others => '0');
+      v.subit_mmu := '0';
     end if;
 
     if dsnoop = 0 then v.cctrl.dsnoop := '0'; end if;
@@ -1629,6 +1684,7 @@ begin
     dcrami.tag <= tag;          -- virtual tag
     dcrami.ptag <= ptag;        -- physical tag
     dcrami.ctx <= ctx;          -- context
+    dcrami.subit <= subit_mmu_masked;       --su bit
     dcrami.tenable   <= enable;         -- virtual tag ram enable
     dcrami.twrite    <= ctwrite;        -- virtual tag ram write (port 1)
     dcrami.tpwrite   <= ctpwrite;       -- virtual tag ram write (port 2)

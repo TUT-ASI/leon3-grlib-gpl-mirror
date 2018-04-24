@@ -7,7 +7,7 @@ additional information.
 Note: The Vivado flow and parts of this design are still
 experimental. Currently the design configuration should be left as-is.
 
-Note: You must have Vivado 2017.1 in your path for the make targets to work.
+Note: You must have Vivado 2017.3 in your path for the make targets work.
 
 The XILINX_VIVADO variable must be exported for the mig_7series target
 to work correctly: export XILINX_VIVADO
@@ -15,7 +15,7 @@ to work correctly: export XILINX_VIVADO
 Design specifics
 ----------------
 
-* Synthesis an simulation has been tested using Vivado 2017.1
+* Synthesis and simulation have been tested using Vivado 2017.3
 
 
 * 8-bit flash prom can be read at address 0. It can be programmed
@@ -30,7 +30,7 @@ the memory controller from Xilinx use the make targets:
 
   make soft                    -- compiles software
   make map_xilinx_7series_lib
-  make sim_cpci_xc7k
+  make sim
   make mig_7series
   make sim-launch
 
@@ -57,11 +57,11 @@ Synthesis
 
 To synthesize the design and program the target, do
 
-  make vivado_cpci_xc7k        (terminal)
+  make vivado        (terminal)
 
 or
 
-  make vivado-launch_cpci_xc7k (GUI)
+  make vivado-launch (GUI)
 
 
 Simulation options

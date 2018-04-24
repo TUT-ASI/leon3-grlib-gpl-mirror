@@ -2,8 +2,7 @@ mainmenu_option next_comment
   comment 'L2 Cache'
 
      bool 'Enable L2 Cache                      ' CONFIG_L2_ENABLE
-#    if [ "$CONFIG_GPT_ENABLE" = "y" ]; then
-      choice 'Associativity (ways)            ' \
+     choice 'Associativity (ways)            ' \
 	"1		CONFIG_L2_ASSO1 \
 	2		CONFIG_L2_ASSO2 \
 	3		CONFIG_L2_ASSO3 \
@@ -32,7 +31,10 @@ mainmenu_option next_comment
       fi
       hex  'Cacheability map                     ' CONFIG_L2_MAP 00F0
       int  'Number of MTRR registers             ' CONFIG_L2_MTRR 0
-      bool 'Enable EDAC                          ' CONFIG_L2_EDAC 
+      choice 'Enable EDAC            ' \
+	"None		CONFIG_L2_EDAC_NONE \
+	Yes		CONFIG_L2_EDAC_YES \
+	TechSpec	CONFIG_L2_EDAC_TECHSPEC" None
       bool 'AXI backend interface                ' CONFIG_L2_AXI 
 
 #      fi

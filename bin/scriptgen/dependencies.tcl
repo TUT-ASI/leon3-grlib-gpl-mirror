@@ -61,6 +61,7 @@ foreach tool $tools {
 			append toolsstring "compile.synp "
 			append toolsstring "$TOP\_synplify.prj "
 			append toolsstring "$TOP\_dc.tcl "
+			append toolsstring "make.simv "
 			continue
 		}
 		"xlnx" {

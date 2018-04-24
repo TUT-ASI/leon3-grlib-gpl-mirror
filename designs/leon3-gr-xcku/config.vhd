@@ -1,9 +1,15 @@
+
+
+
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
 -- Copyright (C) 2009 Aeroflex Gaisler
 ------------------------------------------------------------------------------
+
+
 library techmap;
 use techmap.gencomp.all;
+
 package config is
 -- Technology and synthesis options
   constant CFG_FABTECH : integer := kintexu;
@@ -66,20 +72,18 @@ package config is
   constant CFG_DSU : integer := 1;
   constant CFG_ITBSZ : integer := 1 + 64*0;
   constant CFG_ATBSZ : integer := 0;
-  constant CFG_AHBPF : integer := 0;
-  constant CFG_AHBWP : integer := 0;
-  constant CFG_LEONFT_EN : integer := 0 + (0)*8;
+  constant CFG_LEONFT_EN : integer := 0 + (0)*8 + 0*2048;
   constant CFG_LEON_NETLIST : integer := 0;
   constant CFG_DISAS : integer := 0 + 0;
   constant CFG_PCLOW : integer := 2;
   constant CFG_STAT_ENABLE : integer := 1;
   constant CFG_STAT_CNT : integer := (4);
   constant CFG_STAT_NMAX : integer := (0);
-  constant CFG_STAT_DSUEN : integer := 0;
   constant CFG_NP_ASI : integer := 1;
   constant CFG_WRPSR : integer := 0;
   constant CFG_ALTWIN : integer := 0;
   constant CFG_REX : integer := 0;
+  constant CFG_LEON_MEMTECH : integer := (0*2**17 + 0*2**18 + 0*2**16);
 -- L2 Cache
   constant CFG_L2_EN : integer := 0;
   constant CFG_L2_SIZE : integer := 64;
@@ -148,12 +152,15 @@ package config is
   constant CFG_GPT_SEPIRQ : integer := 0;
   constant CFG_GPT_WDOGEN : integer := 0;
   constant CFG_GPT_WDOG : integer := 16#0#;
+
 -- GPIO port
   constant CFG_GRGPIO_ENABLE : integer := 1;
   constant CFG_GRGPIO_IMASK : integer := 16#0000#;
   constant CFG_GRGPIO_WIDTH : integer := (8);
+
 -- I2C master
   constant CFG_I2C_ENABLE : integer := 0;
+
 -- SPI controller
   constant CFG_SPICTRL_ENABLE : integer := 0;
   constant CFG_SPICTRL_NUM : integer := (1);
@@ -168,6 +175,7 @@ package config is
   constant CFG_SPICTRL_SYNCRAM : integer := 0;
   constant CFG_SPICTRL_FT : integer := 0;
   constant CFG_SPICTRL_PROT : integer := 0;
+
 -- GRLIB debugging
   constant CFG_DUART : integer := 0;
 end;

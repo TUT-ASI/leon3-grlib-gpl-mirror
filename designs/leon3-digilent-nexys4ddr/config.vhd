@@ -90,6 +90,7 @@ package config is
   constant CFG_WRPSR : integer := 0;
   constant CFG_ALTWIN : integer := 0;
   constant CFG_REX : integer := 0;
+  constant CFG_LEON_MEMTECH : integer := (0*2**17 + 0*2**18 + 0*2**16);
 -- AMBA settings
   constant CFG_DEFMST : integer := (0);
   constant CFG_RROBIN : integer := 1;
@@ -185,7 +186,7 @@ package config is
   constant CFG_SPIMCTRL_DUALOUTPUT : integer := 0;
   constant CFG_SPIMCTRL_SCALER : integer := (2);
   constant CFG_SPIMCTRL_ASCALER : integer := (2);
-  constant CFG_SPIMCTRL_PWRUPCNT : integer := (0);
+  constant CFG_SPIMCTRL_PWRUPCNT : integer := 0;
   constant CFG_SPIMCTRL_OFFSET : integer := 16#0#;
 
 -- Dynamic Partial Reconfiguration

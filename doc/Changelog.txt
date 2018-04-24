@@ -1,3 +1,59 @@
+----------------------- Release 2018.1-b4217 ---------------------------
+
+2018-04-24	Scripts: Added posibility to use GRLIB_XILINX_SOURCE_MGMT_MODE
+		to control the source_mgmt_mode variable in PlanAhead. If not
+		set, the default setting of PlanAhead is used.
+
+2018-04-24	Scripts: Changed name of variable used for setting
+		source_mgmt_mode in Vivado to GRLIB_XILINX_SOURCE_MGMT_MODE.
+
+2018-04-12	GRPCI2: PCI master did not handle wait states inserted by the
+		taget at the two last data phases. 
+
+2018-04-03	LEON_DSU_STAT_BASE subsystem: Add generic for modifying
+		LEON memtech. Note: requires update of instantiations
+		that make use of positional VHDL generic assignments.
+
+2018-03-16	SPIMCTRL: Remove PWRUPCNT functionality. Core is now always
+		ready to accept accesses after reset.
+
+2018-02-26	Changed Vivado library compilation default to not include IPs.
+		This can be changed by setting the GRLIB_COMPILE_VIVADO_IP
+		variable.
+
+2018-02-20	GRPCI2: Added support to insert gating cells in the CDC between
+		AMBA and PCI clock domains. 
+
+2018-02-05	Add GRIP documentation for LEON_DSU_STAT_BASE
+
+2018-02-01	A converter from AHB-Lite Master to AHB Master has
+		been added to lib/grlib/amba (ahblitm2ahbm.vhd)
+
+2018-01-26	LEON3/LEON4: Supervisor only bit is added to the
+		L1 instruction cache and data cache tags when 
+		mmuen generic is set to 2. When MMU is enabled, 
+		this bit allows to check access permissions 
+		fully when a load operation hits in the data cache 
+		or an instruction access hits in the instruction cache. 
+		This bit does not exist when mmuen generic is set to 1. 
+		It is recommended to set mmuen generic to 2 if the MMU 
+		is implemented.
+
+2018-01-12	Updated Xilinx designs for Vivado 2017.3
+
+2018-01-10	GRPWM: Default value for 'pmask' generic is changed to
+		16#F00# to match with datasheet. The default values for
+		"dbscaler" and "wsync" generics were wrong in the 
+		datasheet. The default values for "dbscaler" and "wsync"
+		generics are 1 and datasheet is updated accordingly. 
+
+2018-01-08	Updated make targets for leon3-gr-cpci-xc7k template design. 
+
+2017-12-07	LEON3/LEON4: Added workaround for L1-cache synplify bug
+		Synplify version after J-2015.03M-SP1-2 incorrectly implements
+		the cache write enable logic for a 2-way cache. The expression
+		is rewritten to not trigger this bug.
+
 ----------------------- Release 2017.3-b4208 ---------------------------
 
 2017-12-01	AHBTRACE: Bus select available (BA) was shadowed by BSEL

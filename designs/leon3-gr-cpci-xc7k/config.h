@@ -46,6 +46,7 @@
 #undef  CONFIG_SYN_UMC
 #undef  CONFIG_SYN_ARTIX7
 #define CONFIG_SYN_KINTEX7 1
+#undef  CONFIG_SYN_KINTEXU
 #undef  CONFIG_SYN_SPARTAN3
 #undef  CONFIG_SYN_SPARTAN3E
 #undef  CONFIG_SYN_SPARTAN6
@@ -97,6 +98,7 @@
  * Integer unit                                           
  */
 #define CONFIG_IU_NWINDOWS (32)
+#undef  CONFIG_IU_RFINF
 #define CONFIG_IU_V8MULDIV 1
 #undef  CONFIG_IU_MUL_LATENCY_2
 #undef  CONFIG_IU_MUL_LATENCY_4
@@ -168,6 +170,7 @@
  * MMU
  */
 #define CONFIG_MMU_ENABLE 1
+#undef  CONFIG_MMU_SV
 #undef  CONFIG_MMU_COMBINED
 #define CONFIG_MMU_SPLIT 1
 #define CONFIG_MMU_REPARRAY 1
@@ -190,6 +193,7 @@
 #undef  CONFIG_MMU_PAGE_16K
 #undef  CONFIG_MMU_PAGE_32K
 #undef  CONFIG_MMU_PAGE_PROG
+#undef  CONFIG_MMU_INF
 /*
  * Debug Support Unit        
  */
@@ -207,11 +211,6 @@
 #define CONFIG_DSU_ATRACESZ4 1
 #undef  CONFIG_DSU_ATRACESZ8
 #undef  CONFIG_DSU_ATRACESZ16
-#define CONFIG_DSU_AFILT 1
-#define CONFIG_DSU_ASTAT 1
-#define CONFIG_DSU_AHBWP2 1
-#undef  CONFIG_DSU_AHBWP1
-#undef  CONFIG_DSU_AHBWP0
 #undef  CONFIG_STAT_ENABLE
 /*
  * Fault-tolerance  
@@ -421,11 +420,10 @@
 #define CONFIG_SPIMCTRL_OFFSET 0
 #define CONFIG_SPIMCTRL_SCALER (1)
 #define CONFIG_SPIMCTRL_ASCALER (8)
-#define CONFIG_SPIMCTRL_PWRUPCNT (0)
 /*
  * GRCAN
  */
-#define CONFIG_GRCAN_ENABLE 1
+#undef  CONFIG_GRCAN_ENABLE
 #define CONFIG_GRCANIRQ (13)
 #undef  CONFIG_GRCANSINGLE
 /*
@@ -489,6 +487,13 @@
 #undef  CONFIG_PCI_TRACE1024
 #undef  CONFIG_PCI_TRACE2048
 #undef  CONFIG_PCI_TRACE4096
+/*
+ * MIL-STD-1553B
+ */
+#undef  CONFIG_GR1553B_ENABLE
+#undef  CONFIG_GR1553B_BCEN
+#undef  CONFIG_GR1553B_RTEN
+#undef  CONFIG_GR1553B_BMEN
 /*
  * VHDL Debugging        
  */

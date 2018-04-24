@@ -32,6 +32,7 @@ if [ "$CONFIG_LEON4" = "y" ]; then
     define_bool CONFIG_DCACHE_LOCK n
     define_bool CONFIG_DCACHE_SNOOP n
     define_bool CONFIG_MMU_ENABLE n
+    define_bool CONFIG_MMU_SV n
     define_bool CONFIG_DSU_ENABLE n
     define_bool CONFIG_NP_ASI n
     define_bool CONFIG_PWRPSR n
@@ -66,6 +67,7 @@ if [ "$CONFIG_LEON4" = "y" ]; then
     define_bool CONFIG_DCACHE_SNOOP_SEPTAG y
     define_bool CONFIG_DCACHE_LRAM n
     define_bool CONFIG_MMU_ENABLE y
+    define_bool CONFIG_MMU_SV y
     define_bool CONFIG_MMU_SPLIT y
     define_bool CONFIG_MMU_REPARRAY y
     define_bool CONFIG_MMU_I8 y
@@ -111,6 +113,7 @@ if [ "$CONFIG_LEON4" = "y" ]; then
     define_bool CONFIG_DCACHE_SNOOP_SEPTAG y
     define_bool CONFIG_DCACHE_LRAM n
     define_bool CONFIG_MMU_ENABLE y
+    define_bool CONFIG_MMU_SV y
     define_bool CONFIG_MMU_SPLIT y
     define_bool CONFIG_MMU_REPARRAY y
     define_bool CONFIG_MMU_I16 y
@@ -130,6 +133,9 @@ if [ "$CONFIG_LEON4" = "y" ]; then
     mainmenu_option next_comment
       comment 'Integer unit                                           '
       int 'SPARC register windows' CONFIG_IU_NWINDOWS 8
+      if [ "$CONFIG_LEON_MEMTECH" = "y" ]; then
+        bool 'Use inferred tech for IU register file' CONFIG_IU_RFINF
+      fi
       bool 'SPARC V8 MUL/DIV instructions' CONFIG_IU_V8MULDIV
       if [ "$CONFIG_IU_V8MULDIV" = "y" ]; then
         choice 'Hardware multiplier latency' \
@@ -177,6 +183,9 @@ if [ "$CONFIG_LEON4" = "y" ]; then
 	    Non-blocking          CONFIG_FPU_GRFPC2" Simple 	
         fi
         bool 'Use VHDL netlist          ' CONFIG_FPU_NETLIST
+        if [ "$CONFIG_LEON_MEMTECH" = "y" ]; then
+          bool 'Use inferred tech for FP register file' CONFIG_FPU_RFINF
+        fi
       fi
     endmenu
   fi
@@ -288,6 +297,7 @@ if [ "$CONFIG_LEON4" = "y" ]; then
     comment 'MMU'
     bool 'Enable MMU       ' CONFIG_MMU_ENABLE
     if [ "$CONFIG_MMU_ENABLE" = "y" ]; then
+      bool 'Include supervisor bit in tag' CONFIG_MMU_SV
       choice 'MMU type              ' \
 	  "combined	CONFIG_MMU_COMBINED \
 	   split		CONFIG_MMU_SPLIT" combined
@@ -317,6 +327,9 @@ if [ "$CONFIG_LEON4" = "y" ]; then
 	  16K		CONFIG_MMU_PAGE_16K \
 	  32K		CONFIG_MMU_PAGE_32K \
 	  Programmable	CONFIG_MMU_PAGE_PROG" 4K
+      if [ "$CONFIG_LEON_MEMTECH" = "y" ]; then
+        bool 'Use inferred tech for MMU' CONFIG_MMU_INF
+      fi
     fi
     endmenu
   fi
@@ -361,6 +374,7 @@ if [ "$CONFIG_LEON4" = "y" ]; then
   comment 'Fault-tolerance  '
       choice 'IU Register file protection     ' \
 	"None		CONFIG_IUFT_NONE \
+	TechSpec	CONFIG_IUFT_TECHSPEC \
 	TMR		CONFIG_IUFT_TMR" None
 #      bool 'Register file error injection' CONFIG_RF_ERRINJ
       choice 'Cache memory protection     ' \

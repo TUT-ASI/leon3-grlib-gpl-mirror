@@ -60,4 +60,5 @@
   constant CFG_NP_ASI   : integer := CONFIG_NP_ASI;
   constant CFG_WRPSR   : integer := CONFIG_WRPSR;
   constant CFG_REX      : integer := CONFIG_REX;
+  constant CFG_LEON_MEMTECH : integer := (CONFIG_IU_RFINF*2**17 + CONFIG_FPU_RFINF*2**18 + CONFIG_MMU_INF*2**16);
 

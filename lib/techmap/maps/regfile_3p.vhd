@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -54,7 +54,7 @@ end;
 
 architecture rtl of regfile_3p is
   constant rfinfer : boolean := (regfile_3p_infer(tech) = 1) or
-	(((is_unisim(tech) = 1)) and (abits <= 5));
+	((is_unisim(tech) = 1) and (abits <= 5));
   signal xwe,xre1,xre2 : std_ulogic;
 
 

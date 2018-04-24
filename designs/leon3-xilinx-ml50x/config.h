@@ -46,6 +46,7 @@
 #undef  CONFIG_SYN_UMC
 #undef  CONFIG_SYN_ARTIX7
 #undef  CONFIG_SYN_KINTEX7
+#undef  CONFIG_SYN_KINTEXU
 #undef  CONFIG_SYN_SPARTAN3
 #undef  CONFIG_SYN_SPARTAN3E
 #undef  CONFIG_SYN_SPARTAN6
@@ -112,6 +113,7 @@
  * Integer unit                                           
  */
 #define CONFIG_IU_NWINDOWS (8)
+#undef  CONFIG_IU_RFINF
 #define CONFIG_IU_V8MULDIV 1
 #undef  CONFIG_IU_MUL_LATENCY_2
 #define CONFIG_IU_MUL_LATENCY_4 1
@@ -142,6 +144,7 @@
 #undef  CONFIG_FPU_GRFPU_TECHSPEC
 #undef  CONFIG_FPU_GRFPU_SH
 #undef  CONFIG_FPU_NETLIST
+#undef  CONFIG_FPU_RFINF
 /*
  * Cache system
  */
@@ -194,6 +197,7 @@
  * MMU
  */
 #define CONFIG_MMU_ENABLE 1
+#undef  CONFIG_MMU_SV
 #undef  CONFIG_MMU_COMBINED
 #define CONFIG_MMU_SPLIT 1
 #undef  CONFIG_MMU_REPARRAY
@@ -216,6 +220,7 @@
 #undef  CONFIG_MMU_PAGE_16K
 #undef  CONFIG_MMU_PAGE_32K
 #undef  CONFIG_MMU_PAGE_PROG
+#undef  CONFIG_MMU_INF
 /*
  * Debug Support Unit        
  */
@@ -233,11 +238,6 @@
 #undef  CONFIG_DSU_ATRACESZ4
 #undef  CONFIG_DSU_ATRACESZ8
 #undef  CONFIG_DSU_ATRACESZ16
-#undef  CONFIG_DSU_AFILT
-#undef  CONFIG_DSU_ASTAT
-#define CONFIG_DSU_AHBWP2 1
-#undef  CONFIG_DSU_AHBWP1
-#undef  CONFIG_DSU_AHBWP0
 #undef  CONFIG_STAT_ENABLE
 /*
  * Fault-tolerance  
@@ -246,13 +246,18 @@
 #undef  CONFIG_IUFT_PAR
 #undef  CONFIG_IUFT_DMR
 #undef  CONFIG_IUFT_BCH
+#undef  CONFIG_IUFT_BCHOTF
+#undef  CONFIG_IUFT_TECHSPEC
 #undef  CONFIG_IUFT_TMR
 #define CONFIG_FPUFT_NONE 1
 #undef  CONFIG_FPUFT_PAR
 #undef  CONFIG_FPUFT_DMR
 #undef  CONFIG_FPUFT_TMR
 #undef  CONFIG_RF_ERRINJ
+#define CONFIG_CACHE_FT_NONE 1
 #undef  CONFIG_CACHE_FT_EN
+#undef  CONFIG_CACHE_FT_BCH
+#undef  CONFIG_CACHE_FT_TECH
 #define CONFIG_CACHE_ERRINJ (0)
 /*
  * VHDL debug settings       

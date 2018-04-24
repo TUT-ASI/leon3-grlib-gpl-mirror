@@ -1,0 +1,28 @@
+Microsemi Corporation - Microsemi Libero Software Release v11.7 SP1 (Version 11.7.1.11)
+
+Date      :  Wed Sep  7 19:49:10 2016
+Project   :  /home/jan/GRLIB/master/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero
+Component :  hpms_sb_HPMS
+Family    :  IGLOO2
+
+
+HDL source files for all Synthesis and Simulation tools:
+    /home/jan/GRLIB/master/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/work/hpms_sb_HPMS/hpms_sb_HPMS.vhd
+
+HDL source files for Synopsys SynplifyPro Synthesis tool:
+    /home/jan/GRLIB/master/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/work/hpms_sb_HPMS/hpms_sb_HPMS_syn.vhd
+
+HDL source files for Mentor Precision Synthesis tool:
+    /home/jan/GRLIB/master/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/work/hpms_sb_HPMS/hpms_sb_HPMS_pre.vhd
+
+Configuration files to be used for Programming:
+    /home/jan/GRLIB/master/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/work/hpms_sb_HPMS/ENVM.cfg
+    /home/jan/GRLIB/master/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/work/hpms_sb_HPMS/MDDR_init.reg
+
+Configuration files to be used for all Simulation tools:
+    /home/jan/GRLIB/master/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/work/hpms_sb_HPMS/ENVM.cfg
+    /home/jan/GRLIB/master/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/work/hpms_sb_HPMS/MDDR_init.reg
+
+Configuration files to be used for Power Analysis:
+    /home/jan/GRLIB/master/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/work/hpms_sb_HPMS/MDDR_init.reg
+

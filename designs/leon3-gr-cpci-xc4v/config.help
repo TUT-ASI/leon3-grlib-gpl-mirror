@@ -509,6 +509,11 @@ MMU enable
 CONFIG_MMU_ENABLE
   Say Y here to enable the Memory Management Unit.
 
+Include supervisor bit in tag
+CONFIG_MMU_SV
+  Say Y here to tag information in data and instruction cache
+  with access permissions. Recommended setting is Y for security.
+
 MMU split icache/dcache table lookaside buffer
 CONFIG_MMU_COMBINED
   Select "combined" for a combined icache/dcache table lookaside buffer,
@@ -629,7 +634,7 @@ CONFIG_IUFT_NONE
   7-bit BCH, 7-bit BCH with on-the-fly (OTF) correction,
   technology-specific protection and TMR.
 
-  For LEON4FT the options are none and TMR.
+  For LEON4FT the options are none, technology-specific and TMR.
 
 FPU Register file protection 
 CONFIG_FPUFT_EN
@@ -1403,7 +1408,10 @@ CONFIG_SPW_RX_SDR
   Selects the input clocking scheme for the GRSPW2. SDR means that the
   core samples data and strobe using single data rate registers at the
   receiver clock frequency. DDR is the same except DDR registers are used.
-  Xor selects the traditional self clocking scheme using a xor gate. 
+  XOR selects the traditional self clocking scheme using a xor gate. 
+  XOR-ER selects self clocking with external clock recovery (can be used
+  on Microsemi RTG4 technology) where XOR-ER1 makes use of the same design
+  of single data registers as XOR. XOR-ER2 makes use of a DDR register.
   Aeroflex sets the receiver in a mode compatible with the Aeroflex
   SpaceWire transceiver.
 

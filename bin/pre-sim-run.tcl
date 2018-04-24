@@ -42,7 +42,7 @@ proc showRegX {{remove ""} {top d3} {ports {Q QN}} {depth 10}} {
   set count 0
   foreach x $regs {
     set xx [examine $x]
-    if {$xx == "X"} {
+    if {$xx == "X" || $xx == "StX"} {
       echo $x $xx
       incr count
       if {$remove == "remove"} {

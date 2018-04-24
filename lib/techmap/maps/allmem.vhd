@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -450,7 +450,8 @@ package allmem is
   
 -- RTG4
   component rtg4_syncram
-  generic ( abits : integer := 10; dbits : integer := 8; ecc : integer range 0 to 1 := 0);
+  generic ( abits : integer := 10; dbits : integer := 8; ecc : integer range 0 to 1 := 0;
+            doutpipe : integer := 0; eccpipe : integer := 0);
   port (
     clk      : in std_ulogic;
     address  : in std_logic_vector((abits -1) downto 0);
@@ -463,7 +464,8 @@ package allmem is
   end component;
 
   component rtg4_syncram_dp is
-  generic ( abits : integer := 6; dbits : integer := 8; ecc : integer range 0 to 1 := 0);
+  generic ( abits : integer := 6; dbits : integer := 8; ecc : integer range 0 to 1 := 0;
+            doutpipe : integer := 0; eccpipe : integer := 0);
   port (
     clk1     : in std_ulogic;
     address1 : in std_logic_vector((abits -1) downto 0);
@@ -484,7 +486,8 @@ package allmem is
 
   component rtg4_syncram_2p
   generic ( abits : integer := 8; dbits : integer := 32; sepclk : integer := 0;
-            ecc : integer range 0 to 1 := 0);
+            ecc : integer range 0 to 1 := 0;
+            doutpipe : integer := 0; eccpipe : integer := 0);
   port (
     rclk     : in std_ulogic;
     renable  : in std_ulogic;
@@ -499,6 +502,63 @@ package allmem is
   end component;
 
   component rtg4_syncram_be
+  generic (abits : integer := 6; dbits : integer := 8; doutpipe : integer := 0);
+  port (
+    clk      : in std_ulogic;
+    address  : in std_logic_vector((abits -1) downto 0);
+    datain   : in std_logic_vector((dbits -1) downto 0);
+    dataout  : out std_logic_vector((dbits -1) downto 0);
+    enable   : in std_logic_vector (dbits/8-1 downto 0);
+    write    : in std_logic_vector (dbits/8-1 downto 0));
+  end component;
+
+-- polarfire
+  component polarfire_syncram
+  generic ( abits : integer := 10; dbits : integer := 8; ecc : integer range 0 to 1 := 0);
+  port (
+    clk      : in std_ulogic;
+    address  : in std_logic_vector((abits -1) downto 0);
+    datain   : in std_logic_vector((dbits -1) downto 0);
+    dataout  : out std_logic_vector((dbits -1) downto 0);
+    enable   : in std_ulogic;
+    write    : in std_ulogic;
+    rerror    : out std_logic_vector(1 downto 0));
+  end component;
+
+  component polarfire_syncram_dp is
+  generic ( abits : integer := 6; dbits : integer := 8; ecc : integer range 0 to 1 := 0);
+  port (
+    clk1     : in std_ulogic;
+    address1 : in std_logic_vector((abits -1) downto 0);
+    datain1  : in std_logic_vector((dbits -1) downto 0);
+    dataout1 : out std_logic_vector((dbits -1) downto 0);
+    enable1  : in std_ulogic;
+    write1   : in std_ulogic;
+    error    : out std_logic_vector(1 downto 0);
+    clk2     : in std_ulogic;
+    address2 : in std_logic_vector((abits -1) downto 0);
+    datain2  : in std_logic_vector((dbits -1) downto 0);
+    dataout2 : out std_logic_vector((dbits -1) downto 0);
+    enable2  : in std_ulogic;
+    write2   : in std_ulogic);
+  end component;
+
+  component polarfire_syncram_2p
+  generic ( abits : integer := 8; dbits : integer := 32; sepclk : integer := 0;
+            ecc : integer range 0 to 1 := 0);
+  port (
+    rclk     : in std_ulogic;
+    renable  : in std_ulogic;
+    raddress : in std_logic_vector((abits-1) downto 0);
+    dataout  : out std_logic_vector((dbits-1) downto 0);
+    rerror   : out std_logic_vector(1 downto 0);
+    wclk     : in std_ulogic;
+    write    : in std_ulogic;
+    waddress : in std_logic_vector((abits-1) downto 0);
+    datain   : in std_logic_vector((dbits-1) downto 0));
+  end component;
+
+  component polarfire_syncram_be
   generic (abits : integer := 6; dbits : integer := 8);
   port (
     clk      : in std_ulogic;
@@ -645,7 +705,7 @@ component altera_fifo_dp is
 end component;
 
 component generic_syncram
-  generic (abits : integer := 10; dbits : integer := 8 );
+  generic (abits : integer := 10; dbits : integer := 8; pipeline : integer := 0 );
   port (
     clk      : in std_ulogic;
     address  : in std_logic_vector((abits -1) downto 0);
@@ -656,7 +716,8 @@ component generic_syncram
 end component;
 
 component generic_syncram_2p
-  generic (abits : integer := 8; dbits : integer := 32; sepclk : integer := 0);
+  generic (abits : integer := 8; dbits : integer := 32; sepclk : integer := 0;
+  pipeline : integer := 0);
   port (
     rclk : in std_ulogic;
     wclk : in std_ulogic;
@@ -669,7 +730,7 @@ component generic_syncram_2p
 end component;
 
 component generic_syncram_reg
-  generic (abits : integer := 10; dbits : integer := 8 );
+  generic (abits : integer := 10; dbits : integer := 8; pipeline : integer := 0 );
   port (
     clk      : in std_ulogic;
     address  : in std_logic_vector((abits -1) downto 0);
@@ -680,7 +741,8 @@ component generic_syncram_reg
 end component;
 
 component generic_syncram_2p_reg
-  generic (abits : integer := 8; dbits : integer := 32; sepclk : integer := 0);
+  generic (abits : integer := 8; dbits : integer := 32; sepclk : integer := 0;
+           pipeline : integer := 0);
   port (
     rclk : in std_ulogic;
     wclk : in std_ulogic;

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -579,7 +579,8 @@ package sim is
       hbar: integer := 0;
       ahbbits: integer := 32;
       fname: string;
-      autoload: integer := 0
+      autoload: integer := 0;
+      scid: integer := 0
     );
     port (
       rst: in std_logic;
@@ -589,7 +590,29 @@ package sim is
       );
   end component;
 
-  component spwtrace is
+  component slavecheck_slv is
+    generic (
+      ahbbits: integer := 32;
+      fname: string;
+      autoload: integer := 0;
+      scid: integer := 0
+      );
+    port (
+      rst    : in std_logic;
+      clk    : in std_logic;
+      hready : in std_ulogic;
+      ihsel   : in std_ulogic;
+      ihtrans : in std_logic_vector(1 downto 0);
+      ihwrite : in std_ulogic;
+      ihaddr  : in std_logic_vector(31 downto 0);
+      ihsize  : in std_logic_vector(2 downto 0);
+      ihwdata : in std_logic_vector(ahbbits-1 downto 0);
+      ohresp  : in std_logic_vector(1 downto 0);
+      ohrdata : in std_logic_vector(ahbbits-1 downto 0)
+      );
+  end component;
+
+component spwtrace is
     generic (name: string );
     port (d,s: in std_ulogic);
   end component;

@@ -5,7 +5,7 @@ Simulation and synthesis
 ------------------------
 
 The design currently supports synthesis with Xilinx Vivado (tested
-with Vivado 2017.1).
+with Vivado 2017.3).
 
 The design currently supports simulation with modelsim 10.5a and riviera 2017.2
 

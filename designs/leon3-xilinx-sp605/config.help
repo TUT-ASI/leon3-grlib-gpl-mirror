@@ -514,6 +514,11 @@ MMU enable
 CONFIG_MMU_ENABLE
   Say Y here to enable the Memory Management Unit.
 
+Include supervisor bit in tag
+CONFIG_MMU_SV
+  Say Y here to tag information in data and instruction cache
+  with access permissions. Recommended setting is Y for security.
+
 MMU split icache/dcache table lookaside buffer
 CONFIG_MMU_COMBINED
   Select "combined" for a combined icache/dcache table lookaside buffer,
@@ -1112,9 +1117,6 @@ CONFIG_SPIMCTRL_ASCALER
   divisor used is two to the power of the specified value. This
   value must be at least 1.
 
-Power-up cnt
-CONFIG_SPIMCTRL_PWRUPCNT
-  Number of system clock cycles to wait before issuing first command.
 Gaisler Research SPI controller
 CONFIG_SPICTRL_ENABLE
   Say Y here to enable the SPI controller(s)

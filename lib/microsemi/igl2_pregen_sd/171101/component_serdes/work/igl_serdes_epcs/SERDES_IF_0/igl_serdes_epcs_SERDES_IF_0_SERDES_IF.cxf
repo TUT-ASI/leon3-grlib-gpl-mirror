@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<component> 
+<vendor></vendor>
+<library></library>
+<name>igl_serdes_epcs_SERDES_IF_0_SERDES_IF</name>
+<version></version>
+<hwModel>
+<views>
+<view>
+<name>HDL</name>
+<fileSetRef>HDL_FILESET</fileSetRef>
+<fileSetRef>SYNPLIFY_SYNTHESIS_FILESET</fileSetRef>
+<fileSetRef>PRECISION_SYNTHESIS_FILESET</fileSetRef>
+</view>
+</views>
+</hwModel>
+<fileSets>
+<fileSet fileSetId="HDL_FILESET">
+<file>
+<name>igl_serdes_epcs_SERDES_IF_0_SERDES_IF.vhd</name>
+<userFileType>vhdlSource</userFileType>
+</file>
+</fileSet>
+<fileSet fileSetId="SYNPLIFY_SYNTHESIS_FILESET">
+<file>
+<name>igl_serdes_epcs_SERDES_IF_0_SERDES_IF_syn.vhd</name>
+<userFileType>vhdlSource</userFileType>
+</file>
+</fileSet>
+<fileSet fileSetId="PRECISION_SYNTHESIS_FILESET">
+<file>
+<name>igl_serdes_epcs_SERDES_IF_0_SERDES_IF_pre.vhd</name>
+<userFileType>vhdlSource</userFileType>
+</file>
+</fileSet>
+</fileSets>
+</component>

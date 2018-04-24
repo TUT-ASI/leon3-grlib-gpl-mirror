@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -55,7 +55,7 @@ entity cachemem is
     ilramsize  : integer range 1 to 512 := 1;        
     dlram      : integer range 0 to 2 := 0;
     dlramsize  : integer range 1 to 512 := 1;
-    mmuen     : integer range 0 to 1 := 0;
+    mmuen     : integer range 0 to 2 := 0;
     testen    : integer range 0 to 3 := 0
   );
   port (
@@ -70,6 +70,9 @@ entity cachemem is
 end;
 
 architecture rtl of cachemem is
+  constant mmuens : integer := mmuen_set(mmuen);
+  constant subiten : integer := subit_set(mmuen);
+  
   constant DSNOOPSEP    : boolean := (dsnoop > 3);
   constant DSNOOPFAST   : boolean := (dsnoop = 2) or (dsnoop = 6);
   constant DSNOOPHB     : boolean := (dsnoop = 7);
@@ -80,7 +83,6 @@ architecture rtl of cachemem is
   constant DOFFSET_BITS : integer := 8 +log2(dsetsize) - DLINE_BITS;
   constant ITAG_BITS    : integer := TAG_HIGH - IOFFSET_BITS - ILINE_BITS - 2 + ilinesize + 1;
   constant DTAG_BITS    : integer := TAG_HIGH - DOFFSET_BITS - DLINE_BITS - 2 + dlinesize + 1;
-  constant IPTAG_BITS   : integer := TAG_HIGH - IOFFSET_BITS - ILINE_BITS - 2 + 1;
   constant ILRR_BIT     : integer := creplalg_tbl(irepl);
   constant DLRR_BIT     : integer := creplalg_tbl(drepl);
   constant ITAG_LOW     : integer := IOFFSET_BITS + ILINE_BITS + 2;
@@ -93,18 +95,18 @@ architecture rtl of cachemem is
 
   constant ITDEPTH : natural := 2**IOFFSET_BITS;
   constant DTDEPTH : natural := 2**DOFFSET_BITS;
-  constant MMUCTX_BITS : natural := 8*mmuen;
+  constant MMUCTX_BITS : natural := 8*mmuens;
 
   -- i/d tag layout
-  -- +-----+----------+---+--------+-----+-------+
-  -- | LRR | LOCK_BIT |PAR| MMUCTX | TAG | VALID |
-  -- +-----+----------+---+--------+-----+-------+
-  --  [opt] [  opt   ] [ ] [  opt ] [           ]           
+  -- +-----+----------+---+--------+----+-----+-------+
+  -- | LRR | LOCK_BIT |PAR| MMUCTX | SU | TAG | VALID |
+  -- +-----+----------+---+--------+----+-----+-------+
+  --  [opt] [  opt   ] [ ] [  opt ] [opt] [           ]
+    
 
-
-  constant ITWIDTH : natural := ITAG_BITS + ILRR_BIT + ICLOCK_BIT + MMUCTX_BITS
+  constant ITWIDTH : natural := ITAG_BITS + ILRR_BIT + ICLOCK_BIT + MMUCTX_BITS + subiten
                                 ;
-  constant DTWIDTH : natural := DTAG_BITS + DLRR_BIT + DCLOCK_BIT + MMUCTX_BITS
+  constant DTWIDTH : natural := DTAG_BITS + DLRR_BIT + DCLOCK_BIT + MMUCTX_BITS + subiten
                                 ;
   constant IDWIDTH : natural := 32
                                 ;
@@ -118,13 +120,18 @@ architecture rtl of cachemem is
                                                 )-1;  
   constant DTMMU_VEC_D    : natural := DTWIDTH-(DLRR_BIT+DCLOCK_BIT+
                                                 MMUCTX_BITS);
+
+  constant DSU_BIT_POS    : natural := DTMMU_VEC_D-1;
+  
   
   constant ITLRR_BIT_POS  : natural := ITWIDTH-ILRR_BIT;               -- if DLRR_BIT=0 discard (pos DTWIDTH)
   constant ITLOCK_BIT_POS : natural := ITWIDTH-(ILRR_BIT+ICLOCK_BIT);  -- if DCLOCK_BIT=0 but DLRR_BIT=1 lrr will overwrite
   constant ITMMU_VEC_U    : natural := ITWIDTH-(ILRR_BIT+ICLOCK_BIT
                                                 )-1;  
   constant ITMMU_VEC_D    : natural := ITWIDTH-(ILRR_BIT+ICLOCK_BIT+
-                                                MMUCTX_BITS);  
+                                                MMUCTX_BITS);
+
+  constant ISU_BIT_POS    : natural := ITMMU_VEC_D-1;
 
   constant DPTAG_RAM_BITS : integer := DPTAG_BITS
                                        ;
@@ -234,8 +241,11 @@ begin
 
     for i in 0 to DSETS-1 loop
       vdtdatain(i) := (others => '0');
-      if mmuen = 1 then
+      if mmuens = 1 then
         vdtdatain(i)(DTMMU_VEC_U downto DTMMU_VEC_D) := crami.dcramin.ctx(i);
+      end if;
+      if (mmuens /= 0 and subiten /= 0) then
+        vdtdatain(i)(DSU_BIT_POS) := crami.dcramin.subit;
       end if;
       vdtdatain(i)(DTLOCK_BIT_POS) := crami.dcramin.tag(i)(CTAG_LOCKPOS);
       if drepl = lrr then
@@ -274,8 +284,11 @@ begin
 
     for i in 0 to ISETS-1 loop
       vitdatain(i) := (others => '0');
-      if mmuen = 1 then
+      if mmuens = 1 then
         vitdatain(i)(ITMMU_VEC_U downto ITMMU_VEC_D) := crami.icramin.ctx;
+      end if;
+      if mmuens /= 0 and subiten /= 0 then
+        vitdatain(i)(ISU_BIT_POS) := crami.icramin.subit;
       end if;
       vitdatain(i)(ITLOCK_BIT_POS) := crami.icramin.tag(i)(CTAG_LOCKPOS);
       if irepl = lrr then
@@ -511,11 +524,17 @@ begin
     cramo.icramo.tag(i)(ilinesize-1 downto 0) <= itdataout(i)(ilinesize-1 downto 0);
     cramo.icramo.tag(i)(CTAG_LRRPOS) <= itdataout(i)(ITLRR_BIT_POS);
     cramo.icramo.tag(i)(CTAG_LOCKPOS) <= itdataout(i)(ITLOCK_BIT_POS);     
-    ictx : if mmuen = 1 generate
+    ictx : if mmuens = 1 generate
       cramo.icramo.ctx(i) <= itdataout(i)(ITMMU_VEC_U downto ITMMU_VEC_D);
     end generate;
-    noictx : if mmuen = 0 generate
+    noictx : if mmuens = 0 generate
       cramo.icramo.ctx(i) <= (others => '0');
+    end generate;
+    icsu : if mmuens /= 0 and subiten /= 0 generate
+      cramo.icramo.subit(i) <= itdataout(i)(ISU_BIT_POS);
+    end generate;
+    noicsu : if not(mmuens /= 0 and subiten /= 0) generate
+      cramo.icramo.subit(i) <= '0';
     end generate;
     cramo.icramo.data(i) <= ildataout when (ilram /= 0) and ((ISETS = 1) or (i = 1)) and (crami.icramin.ldramin.read = '1') else iddataout(i)(31 downto 0);
     itv : if ilinesize = 4 generate
@@ -535,15 +554,20 @@ begin
 
   itd : for i in 0 to DSETS-1 generate
     cramo.dcramo.tag(i)(TAG_HIGH downto DTAG_LOW) <= dtdataout(i)(DTAG_BITS-1 downto (DTAG_BITS-1) - (TAG_HIGH - DTAG_LOW));
---    cramo.dcramo.tag(i)(dlinesize-1 downto 0) <= dtdataout(i)(dlinesize-1 downto 0);
     cramo.dcramo.tag(i)(dlinesize-1 downto 0) <= (others => dtdataout(i)(dlinesize-1));
     cramo.dcramo.tag(i)(CTAG_LRRPOS) <= dtdataout(i)(DTLRR_BIT_POS);
     cramo.dcramo.tag(i)(CTAG_LOCKPOS) <= dtdataout(i)(DTLOCK_BIT_POS);     
-    dctx : if mmuen /= 0 generate
+    dctx : if mmuens /= 0 generate
       cramo.dcramo.ctx(i) <= dtdataout(i)(DTMMU_VEC_U downto DTMMU_VEC_D);
     end generate;
-    nodctx : if mmuen = 0 generate
+    nodctx : if mmuens = 0 generate
       cramo.dcramo.ctx(i) <= (others => '0');
+    end generate;
+    dcsu : if (mmuens /= 0 and subiten /= 0) generate
+      cramo.dcramo.subit(i) <= dtdataout(i)(DSU_BIT_POS);
+    end generate;
+    nodcsu : if not(mmuens /= 0 and subiten /= 0) generate
+       cramo.dcramo.subit(i) <= '0';
     end generate;
     
     stagv : if DSNOOPSEP generate

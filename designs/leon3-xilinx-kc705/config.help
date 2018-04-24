@@ -509,6 +509,11 @@ MMU enable
 CONFIG_MMU_ENABLE
   Say Y here to enable the Memory Management Unit.
 
+Include supervisor bit in tag
+CONFIG_MMU_SV
+  Say Y here to tag information in data and instruction cache
+  with access permissions. Recommended setting is Y for security.
+
 MMU split icache/dcache table lookaside buffer
 CONFIG_MMU_COMBINED
   Select "combined" for a combined icache/dcache table lookaside buffer,
@@ -629,7 +634,7 @@ CONFIG_IUFT_NONE
   7-bit BCH, 7-bit BCH with on-the-fly (OTF) correction,
   technology-specific protection and TMR.
 
-  For LEON4FT the options are none and TMR.
+  For LEON4FT the options are none, technology-specific and TMR.
 
 FPU Register file protection 
 CONFIG_FPUFT_EN
@@ -1189,9 +1194,6 @@ CONFIG_SPIMCTRL_ASCALER
   divisor used is two to the power of the specified value. This
   value must be at least 1.
 
-Power-up cnt
-CONFIG_SPIMCTRL_PWRUPCNT
-  Number of system clock cycles to wait before issuing first command.
 UART debugging
 CONFIG_DEBUG_UART
   During simulation, the output from the UARTs is printed on the

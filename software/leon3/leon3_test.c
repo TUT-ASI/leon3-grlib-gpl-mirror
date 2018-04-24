@@ -20,6 +20,10 @@ leon3_test(int domp, volatile int *irqmp, int mtest)
 	grfpu_test();
         cachetest();
 	mmu_test();
+	if (((rsysreg(8) >> 2) & 1) == 1){
+	  /*supervisor only bit exists*/
+	  mmu_so_check();
+	}
 	rextest();
         awptest();
 }

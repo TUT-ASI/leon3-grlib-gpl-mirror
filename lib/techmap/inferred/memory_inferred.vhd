@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@ library grlib;
 use grlib.stdlib.all;
 
 entity generic_syncram is
-  generic ( abits : integer := 10; dbits : integer := 8 );
+  generic ( abits : integer := 10; dbits : integer := 8; pipeline : integer := 0 );
   port (
     clk      : in std_ulogic;
     address  : in std_logic_vector((abits -1) downto 0);
@@ -59,7 +59,17 @@ begin
     end if;
   end process;
 
-  dataout <= memarr(conv_integer(ra));
+  nopipe : if pipeline = 0 generate
+    dataout <= memarr(conv_integer(ra));
+  end generate;
+  pipe : if pipeline /= 0 generate
+    pp : process(clk)
+    begin
+      if rising_edge(clk) then
+        dataout <= memarr(conv_integer(ra));
+      end if;
+    end process;
+  end generate;
 
 end;
 
@@ -69,7 +79,7 @@ library grlib;
 use grlib.stdlib.all;
 
 entity generic_syncram_reg is
-  generic ( abits : integer := 10; dbits : integer := 8 );
+  generic ( abits : integer := 10; dbits : integer := 8; pipeline : integer := 0 );
   port (
     clk      : in std_ulogic;
     address  : in std_logic_vector((abits -1) downto 0);
@@ -100,7 +110,17 @@ begin
     end if;
   end process;
 
-  dataout <= memarr(conv_integer(ra));
+  nopipe : if pipeline = 0 generate
+    dataout <= memarr(conv_integer(ra));
+  end generate;
+  pipe : if pipeline /= 0 generate
+    pp : process(clk)
+    begin
+      if rising_edge(clk) then
+        dataout <= memarr(conv_integer(ra));
+      end if;
+    end process;
+  end generate;
 
 end;
 
@@ -115,7 +135,8 @@ entity generic_syncram_2p is
   generic (
     abits : integer := 8;
     dbits : integer := 32;
-    sepclk: integer := 0
+    sepclk: integer := 0;
+    pipeline: integer := 0
   );
   port (
     rclk : in std_ulogic;
@@ -132,6 +153,7 @@ architecture behav of generic_syncram_2p is
   type dregtype is array (0 to 2**abits - 1) 
 	of std_logic_vector(dbits -1 downto 0);
   signal rfd : dregtype;
+  signal rdaddressx : std_logic_vector (abits -1 downto 0);
 begin
 
   wp : process(wclk)
@@ -141,13 +163,29 @@ begin
     end if;
   end process;
 
+  nopipe : if pipeline = 0 generate
+    rdaddressx <= rdaddress;
+  end generate;
+  
   oneclk : if sepclk = 0 generate
+    pipe : if pipeline /= 0 generate
+      pp : process(wclk)
+      begin
+        if rising_edge(wclk) then rdaddressx <= rdaddress; end if;
+      end process;
+    end generate;
     rp : process(wclk) begin
-    if rising_edge(wclk) then q <= rfd(conv_integer(rdaddress)); end if;
+    if rising_edge(wclk) then q <= rfd(conv_integer(rdaddressx)); end if;
     end process;
   end generate;
 
   twoclk : if sepclk = 1 generate
+    pipe : if pipeline /= 0 generate
+      pp : process(rclk)
+      begin
+        if rising_edge(rclk) then rdaddressx <= rdaddress; end if;
+      end process;
+    end generate;  
     rp : process(rclk) begin
     if rising_edge(rclk) then q <= rfd(conv_integer(rdaddress)); end if;
     end process;
@@ -167,7 +205,8 @@ entity generic_syncram_2p_reg is
   generic (
     abits : integer := 8;
     dbits : integer := 32;
-    sepclk: integer := 0
+    sepclk: integer := 0;
+    pipeline: integer := 0
   );
   port (
     rclk : in std_ulogic;
@@ -200,15 +239,29 @@ begin
     rp : process(wclk) begin
     if rising_edge(wclk) then ra <= rdaddress; end if;
     end process;
+    pipe : if pipeline /= 0 generate
+      pp : process(wclk)
+      begin
+        if rising_edge(wclk) then q <= rfd(conv_integer(ra)); end if;
+      end process;
+    end generate;
   end generate;
 
   twoclk : if sepclk = 1 generate
     rp : process(rclk) begin
     if rising_edge(rclk) then ra <= rdaddress; end if;
     end process;
+    pipe : if pipeline /= 0 generate
+      pp : process(rclk)
+      begin
+        if rising_edge(rclk) then q <= rfd(conv_integer(ra)); end if;
+      end process;
+    end generate;
   end generate;
 
-  q <= rfd(conv_integer(ra));
+  nopipe : if pipeline = 0 generate
+    q <= rfd(conv_integer(ra));
+  end generate;
 
 end;
 

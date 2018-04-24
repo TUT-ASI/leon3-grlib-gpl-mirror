@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -38,7 +38,8 @@ use grlib.stdlib.all;
 entity syncram_2pbw is
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
 	sepclk : integer := 0; wrfst : integer := 0; testen : integer := 0;
-	words : integer := 0; custombits : integer := 1);
+	words : integer := 0; custombits : integer := 1;
+        pipeline : integer range 0 to 15 := 0);
   port (
     rclk     : in std_ulogic;
     renable  : in std_logic_vector((dbits/8-1) downto 0);
@@ -56,7 +57,7 @@ architecture rtl of syncram_2pbw is
   
   constant nctrl : integer := abits*2 + 2 + 2*dbits/8;
   
-  signal dataoutx  : std_logic_vector((dbits -1) downto 0);
+  signal dataoutx, dataoutxx  : std_logic_vector((dbits -1) downto 0);
   signal databp, testdata : std_logic_vector((dbits -1) downto 0);
   signal renable2 : std_logic_vector((dbits/8-1) downto 0);
   constant SCANTESTBP : boolean := (testen = 1) and syncram_add_scan_bypass(tech)=1;
@@ -89,10 +90,10 @@ begin
         end process;
         dmuxout : for i in 0 to dbits-1 generate
           x0 : grmux2 generic map (tech)
-            port map (dataoutx(i), databp(i), testin(3), dataout(i));
+            port map (dataoutx(i), databp(i), testin(3), dataoutxx(i));
         end generate;
       end generate;
-      noscanbp : if not SCANTESTBP generate dataout <= dataoutx; end generate;
+      noscanbp : if not SCANTESTBP generate dataoutxx <= dataoutx; end generate;
       -- Write contention check (if applicable)
       wcheck : for i in 0 to dbits/8-1 generate
         renable2(i) <= '0' when ((sepclk = 0 and syncram_2p_dest_rw_collision(tech) = 1) and
@@ -117,8 +118,8 @@ begin
             for i in 0 to dbits/8-1 loop
               if (SCANTESTBP and (testin(3) = '1')) or
                 (((r.write(i) and r.renable(i)) = '1') and (r.raddr = r.waddr)) then
-                dataout(i*8+7 downto i*8) <= r.datain(i*8+7 downto i*8);
-              else dataout(i*8+7 downto i*8) <= dataoutx(i*8+7 downto i*8); end if;
+                dataoutxx(i*8+7 downto i*8) <= r.datain(i*8+7 downto i*8);
+              else dataoutxx(i*8+7 downto i*8) <= dataoutx(i*8+7 downto i*8); end if;
             end loop;
           end process;
           reg : process(wclk) begin
@@ -147,8 +148,8 @@ begin
                 col(i) <= '1'; renable2(i) <= '0';
               end if;
               if (SCANTESTBP and (testin(3) = '1')) or mux(i) = '1' then
-                dataout(i*8+7 downto i*8) <= rdatain(i*8+7 downto i*8);
-              else dataout(i*8+7 downto i*8) <= dataoutx(i*8+7 downto i*8); end if;
+                dataoutxx(i*8+7 downto i*8) <= rdatain(i*8+7 downto i*8);
+              else dataoutxx(i*8+7 downto i*8) <= dataoutx(i*8+7 downto i*8); end if;
             end loop;
           end process;
           reg : process(wclk) begin
@@ -166,13 +167,25 @@ begin
     customoutx <= (others => '0');
   end generate;
 
+  gendoutreg : if pipeline /= 0 and has_sram_pipe(tech) = 0 generate
+    doutreg : process(rclk)
+    begin
+      if rising_edge(rclk) then
+        dataout <= dataoutxx;
+      end if;
+    end process;
+  end generate;
+  nogendoutreg : if pipeline = 0 or has_sram_pipe(tech) = 1 generate
+    dataout <= dataoutxx;
+  end generate;
+
   n2x : if tech = easic45 generate
       x0 : n2x_syncram_2p_be generic map (abits, dbits, sepclk, iwrfst)
         port map (rclk, renable2, raddress, dataoutx, wclk,
                   write, waddress, datain);
-    end generate;
+  end generate;
 -- pragma translate_off
-    noram : if has_2pram(tech) = 0 generate
+  noram : if has_2pram(tech) = 0 generate
       x : process
       begin
         assert false report "synram_2pbw: technology " & tech_table(tech) &
@@ -202,7 +215,7 @@ begin
 
   nos2pbw : if has_sram_2pbw(tech) /= 1 generate
     rx : for i in 0 to dbits/8-1 generate
-      x0 : syncram_2p generic map (tech, abits, 8, sepclk, wrfst, testen, words, custombits)
+      x0 : syncram_2p generic map (tech, abits, 8, sepclk, wrfst, testen, words, custombits, pipeline)
         port map (rclk, renable(i), raddress, dataout(i*8+7 downto i*8), wclk, write(i),
                   waddress, datain(i*8+7 downto i*8), testin
                   );

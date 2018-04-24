@@ -35,6 +35,7 @@ comment 'Processor            '
     define_bool CONFIG_DCACHE_LOCK n
     define_bool CONFIG_DCACHE_SNOOP n
     define_bool CONFIG_MMU_ENABLE n
+    define_bool CONFIG_MMU_SV n
     define_bool CONFIG_DSU_ENABLE n
     define_bool CONFIG_NP_ASI n
     define_bool CONFIG_PWRPSR n
@@ -69,6 +70,7 @@ comment 'Processor            '
     define_bool CONFIG_DCACHE_SNOOP_SP n
     define_bool CONFIG_DCACHE_LRAM n
     define_bool CONFIG_MMU_ENABLE y
+    define_bool CONFIG_MMU_SV y
     define_bool CONFIG_MMU_SPLIT y
     define_bool CONFIG_MMU_REPARRAY y
     define_bool CONFIG_MMU_I8 y
@@ -114,6 +116,7 @@ comment 'Processor            '
     define_bool CONFIG_DCACHE_SNOOP_SP n
     define_bool CONFIG_DCACHE_LRAM n
     define_bool CONFIG_MMU_ENABLE y
+    define_bool CONFIG_MMU_SV y
     define_bool CONFIG_MMU_SPLIT y
     define_bool CONFIG_MMU_REPARRAY y
     define_bool CONFIG_MMU_I16 y
@@ -132,6 +135,7 @@ comment 'Processor            '
     mainmenu_option next_comment
       comment 'Integer unit                                           '
       int 'SPARC register windows' CONFIG_IU_NWINDOWS 8
+      bool 'Use inferred tech for IU register file' CONFIG_IU_RFINF
       bool 'SPARC V8 MUL/DIV instructions' CONFIG_IU_V8MULDIV
       if [ "$CONFIG_IU_V8MULDIV" = "y" ]; then
         choice 'Hardware multiplier latency' \
@@ -181,6 +185,7 @@ comment 'Processor            '
 	    Non-blocking          CONFIG_FPU_GRFPC2" Simple 	
         fi
         bool 'Use VHDL netlist          ' CONFIG_FPU_NETLIST
+        bool 'Use inferred tech for FP register file' CONFIG_FPU_RFINF
       fi
     endmenu
   fi
@@ -305,6 +310,7 @@ comment 'Processor            '
     comment 'MMU'
     bool 'Enable MMU       ' CONFIG_MMU_ENABLE
     if [ "$CONFIG_MMU_ENABLE" = "y" ]; then
+      bool 'Include supervisor bit in tag' CONFIG_MMU_SV
       choice 'MMU type              ' \
 	  "combined	CONFIG_MMU_COMBINED \
 	   split		CONFIG_MMU_SPLIT" combined
@@ -334,6 +340,7 @@ comment 'Processor            '
 	  16K		CONFIG_MMU_PAGE_16K \
 	  32K		CONFIG_MMU_PAGE_32K \
 	  Programmable	CONFIG_MMU_PAGE_PROG" 4K
+      bool 'Use inferred tech for MMU' CONFIG_MMU_INF
     fi
     endmenu
   fi
@@ -359,12 +366,6 @@ comment 'Processor            '
 	4		CONFIG_DSU_ATRACESZ4 \
 	8		CONFIG_DSU_ATRACESZ8 \
 	16		CONFIG_DSU_ATRACESZ16" 1
-        bool 'Enable AHB trace buffer filters ' CONFIG_DSU_AFILT
-        bool 'Enable statistics outputs       ' CONFIG_DSU_ASTAT
-        choice 'AHB watchpoints' \
-	"Pipelined	CONFIG_DSU_AHBWP2 \
-	Enabled		CONFIG_DSU_AHBWP1 \
-	Disabled	CONFIG_DSU_AHBWP0 " Pipelined
       fi
     fi
     bool 'Enable LEON Statistics Module       ' CONFIG_STAT_ENABLE
@@ -376,20 +377,28 @@ comment 'Processor            '
 
   mainmenu_option next_comment
   comment 'Fault-tolerance  '
-      choice 'IU Register file protection     ' \
-	"None		CONFIG_IUFT_NONE \
-	Parity		CONFIG_IUFT_PAR \
-	PDMR 		CONFIG_IUFT_DMR \
-	BCH  		CONFIG_IUFT_BCH \
-	BCH-OTF		CONFIG_IUFT_BCHOTF \
-	TechSpec	CONFIG_IUFT_TECHSPEC \
-	TMR		CONFIG_IUFT_TMR" None
-      if [ "$CONFIG_FPU_ENABLE" = "y" ]; then
-        choice 'FPU Register file protection     ' \
-	  "None		CONFIG_FPUFT_NONE \
-	   Parity		CONFIG_FPUFT_PAR \
- 	   PDMR 		CONFIG_FPUFT_DMR \
-	   TMR		CONFIG_FPUFT_TMR" None
+      if [ "$CONFIG_LEON3" = "y" ]; then
+        choice 'LEON3 IU Register file protection     ' \
+	  "None		CONFIG_IUFT_NONE \
+	  Parity		CONFIG_IUFT_PAR \
+	  PDMR 		CONFIG_IUFT_DMR \
+	  BCH  		CONFIG_IUFT_BCH \
+	  BCH-OTF		CONFIG_IUFT_BCHOTF \
+	  TechSpec	CONFIG_IUFT_TECHSPEC \
+	  TMR		CONFIG_IUFT_TMR" None
+        if [ "$CONFIG_FPU_ENABLE" = "y" ]; then
+          choice 'FPU Register file protection     ' \
+	    "None		CONFIG_FPUFT_NONE \
+	     Parity		CONFIG_FPUFT_PAR \
+ 	     PDMR 		CONFIG_FPUFT_DMR \
+	     TMR		CONFIG_FPUFT_TMR" None
+        fi
+      fi
+      if [ "$CONFIG_LEON4" = "y" ]; then
+        choice 'LEON4 IU Register file protection     ' \
+	  "None		CONFIG_IUFT_NONE \
+	  TechSpec	CONFIG_IUFT_TECHSPEC \
+	  TMR		CONFIG_IUFT_TMR" None
       fi
       bool 'Register file error injection' CONFIG_RF_ERRINJ
       choice 'Cache memory protection     ' \

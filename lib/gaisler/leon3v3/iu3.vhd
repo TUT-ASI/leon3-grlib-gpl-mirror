@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -4614,7 +4614,6 @@ begin
     v.d.divrdy := divo.nready;
     ici.fline <= r.x.ctrl.pc(31 downto 3);
     ici.nobpmiss <= (r.a.bp or r.e.bp) and BLOCKBPMISS;
-    dbgo.bpmiss <= bpmiss and holdn;
     if (xc_rstn = '0') then
       v.d.cnt := (others => '0');
       v.d.rexen := '0';
@@ -4755,6 +4754,7 @@ begin
       tbi.data <= (others => '0'); tbi.enable <= '0';
       tbi.write <= (others => '0');
     end if;
+    dbgo.bpmiss <= bpmiss and holdn;
     dbgo.error <= dummy and not r.x.nerror;
     dbgo.istat <= ico.cstat;
     dbgo.dstat <= dco.cstat;

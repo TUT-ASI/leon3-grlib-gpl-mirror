@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -35,7 +35,8 @@ use grlib.config_types.all;
 use grlib.stdlib.all;
 
 entity syncram256bw is
-  generic (tech : integer := 0; abits : integer := 6; testen : integer := 0; custombits: integer := 1);
+  generic (tech : integer := 0; abits : integer := 6; testen : integer := 0;
+           custombits: integer := 1; pipeline : integer range 0 to 15);
   port (
     clk     : in  std_ulogic;
     address : in  std_logic_vector (abits -1 downto 0);
@@ -113,6 +114,7 @@ architecture rtl of syncram256bw is
 
   signal xenable, xwrite : std_logic_vector(31 downto 0);
   signal custominx,customoutx: std_logic_vector(syncram_customif_maxwidth downto 0);
+  signal dataoutx : std_logic_vector (255 downto 0);
   
 begin
 
@@ -128,29 +130,41 @@ begin
   s256 : if has_sram256bw(tech) = 1 generate
     uni : if (is_unisim(tech) = 1) generate 
       x0 : unisim_syncram128bw generic map (abits)
-         port map (clk, address, datain(127 downto 0), dataout(127 downto 0),
+         port map (clk, address, datain(127 downto 0), dataoutx(127 downto 0),
 		xenable(15 downto 0), xwrite(15 downto 0));
       x1 : unisim_syncram128bw generic map (abits)
-         port map (clk, address, datain(255 downto 128), dataout(255 downto 128),
+         port map (clk, address, datain(255 downto 128), dataoutx(255 downto 128),
 		xenable(31 downto 16), xwrite(31 downto 16));
     end generate;
     alt : if (tech = stratix2) or (tech = stratix3) or (tech = stratix4) or 
 	(tech = cyclone3) or (tech = altera) or (tech = stratix5) generate
       x0 : altera_syncram256bw generic map (abits)
-         port map (clk, address, datain, dataout, xenable, xwrite);
+         port map (clk, address, datain, dataoutx, xenable, xwrite);
     end generate;
 
     tm65: if tech = tm65gplus generate
       x0 : tm65gplus_syncram256bw generic map (abits)
-         port map (clk, address, datain, dataout, xenable, xwrite, testin);
+         port map (clk, address, datain, dataoutx, xenable, xwrite, testin);
     end generate;
 
     cm9s: if tech = cmos9sf generate
       x0 : cmos9sf_syncram256bw generic map (abits)
-         port map (clk, address, datain, dataout, xenable, xwrite, testin);
+         port map (clk, address, datain, dataoutx, xenable, xwrite, testin);
     end generate;
 
 
+    gendoutreg : if pipeline /= 0 and has_sram_pipe(tech) = 0 generate
+      doutreg : process(clk)
+      begin
+        if rising_edge(clk) then
+          dataout <= dataoutx;
+        end if;
+      end process;
+    end generate;
+    nogendoutreg : if pipeline = 0 or has_sram_pipe(tech) = 1 generate
+      dataout <= dataoutx;
+    end generate;
+    
 -- pragma translate_off
     dmsg : if GRLIB_CONFIG_ARRAY(grlib_debug_level) >= 2 generate
       x : process
@@ -167,11 +181,12 @@ begin
 
   nos256 : if has_sram256bw(tech) = 0 generate
     rx : for i in 0 to 31 generate
-      x0 : syncram generic map (tech, abits, 8, testen, custombits)
+      x0 : syncram generic map (tech, abits, 8, testen, custombits, pipeline)
          port map (clk, address, datain(i*8+7 downto i*8), 
-	    dataout(i*8+7 downto i*8), enable(i), write(i), testin
+	    dataoutx(i*8+7 downto i*8), enable(i), write(i), testin
                    );
     end generate;
+    dataout <= dataoutx;
   end generate;
 
 end;

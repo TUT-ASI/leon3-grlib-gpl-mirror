@@ -83,6 +83,31 @@ mmu_double:
 _srmmu_fault_svt:
 	rd      %wim, %l3
 _srmmu_fault:
+	//check if we are coming from mmu_so_check
+	//fault address must be 0x400F0000
+	mov	0x400, %l5
+	lda	[%l5] ASI_M_MMUREGS, %l6
+	mov     0x40, %l5
+	sll	%l5,0x18,%l5
+	mov	0xF, %l7
+	sll	%l7,0x10,%l7
+	add	%l7,%l5,%l5
+	subcc   %l6,%l5,%g0
+	bne     mmu_fault_t0
+	nop
+	//come from mmu_so_check
+	//set PS and S to '1' in order execution to continue
+	rd	%psr,%l5
+	or	0xC0, %l5, %l5
+	wr	%l5,%psr
+	//indicate that we have arrived to this function
+	mov     0x123,%l3
+	sta	%l3,[%g1] 0x1C
+	add     %l1,0x4,%l1
+	add     %l2,0x4,%l2
+	ba	mmu_fault_end
+
+mmu_fault_t0:	
 	mov	0x400, %l5
 	mov	0x300, %l4
 	lda	[%l5] ASI_M_MMUREGS, %l6	! read sfar first
@@ -100,7 +125,8 @@ _srmmu_fault:
 	inc   12,%l7
 	set	pth_addr,%l5
 	st    %l7,[%l5]
-	  
+	
+mmu_fault_end:	
 	jmp	%l1				! reexecute command
 	rett	%l2
 

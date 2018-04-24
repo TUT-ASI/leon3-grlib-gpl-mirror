@@ -302,7 +302,11 @@
 #endif
 
 #ifdef CONFIG_MMU_ENABLE
+#ifdef CONFIG_MMU_SV
+#define CONFIG_MMUEN 2
+#else
 #define CONFIG_MMUEN 1
+#endif
 
 #ifdef CONFIG_MMU_SPLIT
 #define CONFIG_TLB_TYPE 0
@@ -414,22 +418,6 @@
 #define CONFIG_DSU_ITRACE_2P 0
 #endif
 
-#if defined CONFIG_DSU_ASTAT
-#define CFG_DSU_AHBPF 2
-#elif defined CONFIG_DSU_AFILT
-#define CFG_DSU_AHBPF 1
-#else
-#define CFG_DSU_AHBPF 0
-#endif
-
-#if defined CONFIG_DSU_AHBWP2
-#define CFG_DSU_AHBWP 2
-#elif defined CONFIG_DSU_AHBWP1
-#define CFG_DSU_AHBWP 1
-#else
-#define CFG_DSU_AHBWP 0
-#endif
-
 #ifndef CONFIG_LEONFT_EN
 #define CONFIG_LEONFT_EN 0
 #endif
@@ -466,11 +454,9 @@
 #if defined CONFIG_CACHE_FT_NONE
 #define CONFIG_CACHE_FT_EN 0
 #elif defined CONFIG_CACHE_FT_BCH
-#define CONFIG_CACHE_FT_EN 16*4 + 2
+#define CONFIG_CACHE_FT_EN 16*4 + 1
 #elif defined CONFIG_CACHE_FT_TECH
-#define CONFIG_CACHE_FT_EN 16*5 + 2
-#else
-#define CONFIG_CACHE_FT_EN 0
+#define CONFIG_CACHE_FT_EN 16*5 + 1
 #endif
 
 #ifndef CONFIG_CACHE_ERRINJ
@@ -505,11 +491,6 @@
 #define CONFIG_STAT_NMAX 0
 #endif
 
-#if defined CONFIG_DSU_ASTAT
-#define CONFIG_STAT_DSUEN 1
-#else
-#define CONFIG_STAT_DSUEN 0
-#endif
 
 #ifndef CONFIG_WRPSR
 #define CONFIG_WRPSR 0
@@ -525,5 +506,17 @@
 
 #ifndef CONFIG_REX
 #define CONFIG_REX 0
+#endif
+
+#ifndef CONFIG_IU_RFINF
+#define CONFIG_IU_RFINF 0
+#endif
+
+#ifndef CONFIG_FPU_RFINF
+#define CONFIG_FPU_RFINF 0
+#endif
+
+#ifndef CONFIG_MMU_INF
+#define CONFIG_MMU_INF 0
 #endif
 

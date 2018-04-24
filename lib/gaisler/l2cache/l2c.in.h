@@ -71,7 +71,13 @@
 #define CONFIG_L2_MTRR 0
 #endif
 
-#ifndef CONFIG_L2_EDAC
+#if defined CONFIG_L2_EDAC_NONE
+#define CONFIG_L2_EDAC 0
+#elif defined CONFIG_L2_EDAC_YES
+#define CONFIG_L2_EDAC 1
+#elif defined CONFIG_L2_EDAC_TECHSPEC
+#define CONFIG_L2_EDAC 2
+#else
 #define CONFIG_L2_EDAC 0
 #endif
 

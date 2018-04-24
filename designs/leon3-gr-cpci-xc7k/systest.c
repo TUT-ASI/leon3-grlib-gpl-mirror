@@ -33,7 +33,7 @@ main()
   // SPW test disabled, since SPW is disabled by default
   //spw_test(0x80105000);
 
-  gr1553b_test_bcbm(0x8010c000, (unsigned long)gr1553buf);
+  // gr1553b_test_bcbm(0x8010c000, (unsigned long)gr1553buf);
 
   report_end();
 }

@@ -336,6 +336,11 @@ MMU enable
 CONFIG_MMU_ENABLE
   Say Y here to enable the Memory Management Unit.
 
+Include supervisor bit in tag
+CONFIG_MMU_SV
+  Say Y here to tag information in data and instruction cache
+  with access permissions. Recommended setting is Y for security.
+
 MMU split icache/dcache table lookaside buffer
 CONFIG_MMU_COMBINED
   Select "combined" for a combined icache/dcache table lookaside buffer,
@@ -450,8 +455,7 @@ CONFIG_LEON4FT_EN
 IU Register file protection 
 CONFIG_IUFT_NONE
   Select the FT implementation in the LEON4FT integer unit 
-  register file. The options include parity, parity with
-  sparing, 7-bit BCH and TMR.
+  register file. The options include technology-specific and TMR.
 
 FPU Register file protection 
 CONFIG_FPUFT_EN

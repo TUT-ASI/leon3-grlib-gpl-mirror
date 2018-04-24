@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -20,8 +20,8 @@
 -------------------------------------------------------------------------------
 -- Entity:      spimctrl
 -- File:        spimctrl.vhd
--- Author:      Jan Andersson - Aeroflex Gaisler AB
---              jan@gaisler.com
+-- Author:      Jan Andersson - Cobham Gaisler AB
+--              support@gaisler.com
 --
 -- Description: SPI flash memory controller. Supports a wide range of SPI
 --              memory devices with the data read instruction configurable via
@@ -33,7 +33,7 @@
 --
 -- Revision 1 added support for burst reads when sdcard = 0
 --
--- Post revision 1: Remove support for SD card by commenting out code
+-- Post revision 1: Remove support for SD card
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -61,7 +61,7 @@ entity spimctrl is
     dualoutput  : integer range 0 to 1   := 0;  -- Enable dual output
     scaler      : integer range 1 to 512 := 1; -- SCK scaler
     altscaler   : integer range 1 to 512 := 1; -- Alternate SCK scaler 
-    pwrupcnt    : integer  := 0;               -- System clock cycles to init
+    pwrupcnt    : integer  := 0;               -- Unused
     maxahbaccsz : integer range 0 to 256 := AHBDW; -- Max AHB access size
     offset      : integer := 0
     );
@@ -90,31 +90,7 @@ architecture rtl of spimctrl is
   constant FLASH_BANK : integer := 1;
 
   constant MAXDW : integer := maxahbaccsz;
-  
-  -----------------------------------------------------------------------------
-  -- SD card constants
-  -----------------------------------------------------------------------------
-
---   constant SD_BLEN : integer := 4;
-  
---   constant SD_CRC_BYTE : std_logic_vector(7 downto 0) := X"95";
-  
---   constant SD_BLOCKLEN : std_logic_vector(31 downto 0) :=
---     conv_std_logic_vector(SD_BLEN, 32);
-  
---   -- Commands
---   constant SD_CMD0   : std_logic_vector(5 downto 0) := "000000";
---   constant SD_CMD16  : std_logic_vector(5 downto 0) := "010000";
---   constant SD_CMD17  : std_logic_vector(5 downto 0) := "010001";
---   constant SD_CMD55  : std_logic_vector(5 downto 0) := "110111";
---   constant SD_ACMD41 : std_logic_vector(5 downto 0) := "101001";
-
---   -- Command timeout
---   constant SD_CMD_TIMEOUT : integer := 100;
-
---   -- Data token timeout
---   constant SD_DATATOK_TIMEOUT : integer := 312500;
-  
+    
   -----------------------------------------------------------------------------
   -- SPI device constants
   -----------------------------------------------------------------------------
@@ -215,13 +191,7 @@ architecture rtl of spimctrl is
   type spimstate_type is (IDLE, AHB_RESPOND, USER_SPI, BUSY);
   
   -- SPI device FSM states
- type spistate_type is (SPI_PWRUP,  SPI_READY, SPI_READ, SPI_ADDR, SPI_DATA);
-    
-  -- SD FSM states
-  type sdstate_type is (SD_CHECK_PRES, SD_PWRUP0, SD_PWRUP1, SD_INIT_IDLE,
-                        SD_ISS_ACMD41, SD_CHECK_CMD16, SD_READY,
-                        SD_CHECK_CMD17, SD_CHECK_TOKEN, SD_HANDLE_DATA,
-                        SD_SEND_CMD, SD_GET_RESP);
+ type spistate_type is (SPI_CSWAIT,  SPI_READY, SPI_READ, SPI_ADDR, SPI_DATA);
   
   -----------------------------------------------------------------------------
   -- Types
@@ -243,21 +213,7 @@ architecture rtl of spimctrl is
        stat : spim_stat_reg_type;       -- Status register
   end record;
 
---   type sdcard_type is record            -- Present when SD card
---       state   : sdstate_type;           -- SD state
---       tcnt    : std_logic_vector(2 downto 0);  -- Transmit count
---       rcnt    : std_logic_vector(3 downto 0);  -- Receive count
---       cmd     : std_logic_vector(5 downto 0);  -- SD command
---       rstate  : sdstate_type;           -- Return state
---       htb     : std_ulogic; -- Handle trailing byte
---       vresp   : std_ulogic; -- Valid response
---       cd      : std_ulogic; -- Synchronized card detect
---       timeout : std_ulogic; -- Timeout status bit 
---       dtocnt  : std_logic_vector(18 downto 0); -- Data token timeout counter
---       ctocnt  : std_logic_vector(6 downto 0);  -- CMD resp. timeout counter
---   end record;
-
-  type spiflash_type is record          -- Present when !SD card
+  type spiflash_type is record
        state  : spistate_type;           -- Mem. device comm. state
        cnt    : std_logic_vector(4 downto 0);  -- Generic counter
        hsize  : std_logic_vector(2 downto 0);  -- Size of access
@@ -283,9 +239,7 @@ architecture rtl of spimctrl is
        insplit        : std_ulogic;     -- SPLIT response issued
        unsplit        : std_ulogic;     -- SPLIT complete not issued
        -- SPI flash device
-       spi            : spiflash_type;  -- Used when !SD card
-       -- SD
- --      sd             : sdcard_type;    -- Used when SD card
+       spi            : spiflash_type;
        -- AHB
        irq            : std_ulogic;     -- Interrupt request
        hsize          : std_logic_vector(2 downto 0);
@@ -336,13 +290,10 @@ begin  -- rtl
     hwdatax := ahbreadword(ahbsi.hwdata, r.haddr(4 downto 2));
     hwdata := hwdatax(7 downto 0);
     ahbirq := (others => '0'); ahbirq(hirq) := r.irq;
- --   if sdcard = 1 then v.sd.cd := r.spii(0).cd; else v.sd.cd := '0'; end if;
     read_flash := false;
-    enable_altscaler := (not r.spio.initialized or r.reg.ctrl.eas) = '1';
---    disable_flash := (r.spio.errorn = '0' or r.reg.ctrl.usrc = '1' or
-    disable_flash := (r.reg.ctrl.usrc = '1' or
-                      r.spio.initialized = '0' or r.spimstate = USER_SPI);
-    if dualoutput = 1 and sdcard = 0 then
+    enable_altscaler := r.reg.ctrl.eas = '1';
+    disable_flash := (r.reg.ctrl.usrc = '1' or r.spimstate = USER_SPI);
+    if dualoutput = 1 then
       lastbit := andv(r.bcnt(1 downto 0)) and
                  ((r.spio.mosioen xnor INPUT) or r.bcnt(2)); 
     else
@@ -365,10 +316,8 @@ begin  -- rtl
           v.haddr := ahbsi.haddr(r.haddr'range);
           v.hsel := '1';
           if ahbsi.hmbsel(FLASH_BANK) = '1' then
-            if sdcard = 0 then
-              v.hburst(r.hburst'range) := ahbsi.hburst(r.hburst'range);
-              v.seq := ahbsi.htrans(0);
-            end if;
+            v.hburst(r.hburst'range) := ahbsi.hburst(r.hburst'range);
+            v.seq := ahbsi.htrans(0);
             if ahbsi.hwrite = '1' or disable_flash then
               v.hresp := HRESP_ERROR;
               v.hsel := '0';
@@ -411,21 +360,14 @@ begin  -- rtl
       v.hsel := '0';
       case regaddr is
         when CONF_REG_OFF =>
---          if sdcard = 1 then
---            v.rrdata := (others => '0');
---          else
-            v.rrdata := cslv(readcmd, 8);
---          end if;
+          v.rrdata := cslv(readcmd, 8);
         when CTRL_REG_OFF =>
           v.rrdata(3) := r.spio.csn;
           v.rrdata(2) := r.reg.ctrl.eas;
           v.rrdata(1) := r.reg.ctrl.ien;
           v.rrdata(0) := r.reg.ctrl.usrc;
         when STAT_REG_OFF =>
- --         v.rrdata(5) := r.sd.cd;
- --         v.rrdata(4) := r.sd.timeout;
- --         v.rrdata(3) := not r.spio.errorn;
-          v.rrdata(2) := r.spio.initialized;
+          v.rrdata(2) := '1';
           v.rrdata(1) := r.reg.stat.busy;
           v.rrdata(0) := r.reg.stat.done;
         when RX_REG_OFF => v.rrdata := r.ar(7 downto 0);
@@ -524,382 +466,175 @@ begin  -- rtl
             v.stop := '1';
             change := '1';
             v.hold := '0';
-            if sdcard = 0 and dualoutput = 1 then
+            if dualoutput = 1 then
               v.spio.mosioen := OUTPUT;  
             end if;
           end if;  
         end if;
     end case;
-    
-    ---------------------------------------------------------------------------
-    -- SD Card specific code
-    ---------------------------------------------------------------------------
-    -- SD card initialization sequence:
-    -- * Check if card is present
-    -- * Perform power-up initialization sequence
-    -- * Issue CMD0   GO_IDLE_STATE
-    -- * Issue CMD55  APP_CMD
-    -- * Issue ACMD41 SEND_OP_COND
-    -- * Issue CMD16  SET_BLOCKLEN
---     if sdcard = 1 then
---      case r.sd.state is  
---         when SD_PWRUP0 =>
---           v.go := '1';
---           v.sd.vresp := '1';
---           v.sd.state := SD_GET_RESP;
---           v.sd.rstate := SD_PWRUP1;
---           v.sd.rcnt := cslv(2, r.sd.rcnt'length);
-          
---         when SD_PWRUP1 =>
---           v.sd.state := SD_SEND_CMD;
---           v.sd.rstate := SD_INIT_IDLE;
---           v.sd.cmd := SD_CMD0;
---           v.sd.rcnt := (others => '0');
---           v.ar := (others => '0');
-          
---         when SD_INIT_IDLE => 
---           v.sd.state := SD_SEND_CMD;
---           v.sd.rcnt := (others => '0');
---           if r.ar(0) = '0' and r.sd.cmd /= SD_CMD0 then
---             v.sd.cmd := SD_CMD16;
---             v.ar := SD_BLOCKLEN;
---             v.sd.rstate := SD_CHECK_CMD16;
---           else
---             v.sd.cmd := SD_CMD55;
---             v.ar := (others => '0');
---             v.sd.rstate := SD_ISS_ACMD41;
---           end if;
-          
---         when SD_ISS_ACMD41 =>
---           v.sd.state := SD_SEND_CMD;
---           v.sd.cmd := SD_ACMD41;
---           v.sd.rcnt := (others => '0');
---           v.ar := (others => '0');
---           v.sd.rstate := SD_INIT_IDLE;
-          
---         when SD_CHECK_CMD16 => 
---           if r.ar(7 downto 0) /= zero32(7 downto 0) then
---             v.spio.errorn := '0';
---           else
---             v.spio.errorn := '1';
---             v.spio.initialized := '1';
---             v.sd.timeout := '0';
---           end if;
---           v.sd.state := SD_READY;
-
---         when SD_READY => 
---           v.spio.ready := '1';
---           v.sd.cmd := SD_CMD17;
---           v.sd.rstate := SD_CHECK_CMD17;
---           if read_flash then
---             v.sd.state := SD_SEND_CMD;
---             v.spio.ready := '0';
---             v.ar := (others => '0');
---             v.ar(r.haddr'left downto 2) := r.haddr(r.haddr'left downto 2);
---           end if;
-          
---         when SD_CHECK_CMD17 =>
---           if r.ar(7 downto 0) /= X"00" then
---             v.sd.state := SD_READY;
---             v.spio.errorn := '0';
---           else
---             v.sd.rstate := SD_CHECK_TOKEN;
---             v.spio.csn := '0';
---             v.go := '1';
---             change := '1';
---           end if;
---           v.sd.dtocnt := cslv(SD_DATATOK_TIMEOUT, r.sd.dtocnt'length);
---           v.sd.state := SD_GET_RESP;
---           v.sd.vresp := '1';
---           v.hold := '0';
-          
---         when SD_CHECK_TOKEN =>
---           if (r.ar(7 downto 5) = "111" and
---               r.sd.dtocnt /= zero32(r.sd.dtocnt'range)) then
---             v.sd.dtocnt := r.sd.dtocnt - 1;
---             v.sd.state := SD_GET_RESP;
---             if r.ar(0) = '0' then
---               v.sd.rstate := SD_HANDLE_DATA;
---               v.sd.rcnt := cslv(SD_BLEN-1, r.sd.rcnt'length);
---             end if;
---             v.spio.csn := '0';
---             v.go := '1';
---             change := '1';
---           else
---             v.spio.errorn := '0';
---             v.sd.state := SD_READY;
---           end if;
---           v.sd.timeout := not orv(r.sd.dtocnt);
---           v.sd.ctocnt := cslv(SD_CMD_TIMEOUT, r.sd.ctocnt'length);
---           v.hold := '0';
-          
---         when SD_HANDLE_DATA =>
---           v.frdata := r.ar;
---           -- Receive and discard CRC
---           v.sd.state := SD_GET_RESP;
---           v.sd.rstate := SD_READY;
---           v.sd.htb := '1';
---           v.spio.csn := '0';
---           v.go := '1';
---           change := '1';
---           v.sd.vresp := '1';
---           v.spio.errorn := '1';
         
---         when SD_SEND_CMD =>
---           v.sd.htb := '1';
---           v.sd.vresp := '0';
---           v.spio.csn := '0';
---           v.sd.ctocnt := cslv(SD_CMD_TIMEOUT, r.sd.ctocnt'length);
---           if (v.bd or not r.go) = '1'then
---             v.hold := '0';
---             case r.sd.tcnt is
---               when "000" => v.sreg := "01" & r.sd.cmd;
---                             v.hold := '1'; change := '1';
---               when "001" => v.sreg := r.ar(31 downto 24);
---               when "010" => v.sreg := r.ar(30 downto 23);
---               when "011" => v.sreg := r.ar(30 downto 23);
---               when "100" => v.sreg := r.ar(30 downto 23);
---               when "101" => v.sreg := SD_CRC_BYTE;
---               when others => v.sd.state := SD_GET_RESP;
---             end case;
---             v.go := '1';
---             v.sd.tcnt := r.sd.tcnt + 1;
---           end if;
+    ---------------------------------------------------------------------------
+    -- SPI Flash specific code
+    ---------------------------------------------------------------------------
+    case r.spi.state is  
+      when SPI_READ =>
+        if r.go = '0' then
+          v.go := '1';
+          change := '1';
+        end if;
+        v.spi.cnt := cslv(SPI_ARG_LEN, r.spi.cnt'length);
+        if v.bd = '1' then
+          v.sreg := r.ar(23 downto 16);
+        end if;
+        if r.bd = '1' then
+          v.hold := '0';
+          v.spi.state := SPI_ADDR;
+        end if;
 
---         when SD_GET_RESP =>
---           if v.bd = '1' then
---             if r.sd.vresp = '1' or r.sd.ctocnt = zero32(r.sd.ctocnt'range) then
---               if r.sd.rcnt = zero32(r.sd.rcnt'range) then
---                 if r.sd.htb = '0' then
---                   v.spio.csn := '1';
---                 end if;
---                 v.sd.htb := '0';
---                 v.hold := '1';
---               else
---                 v.sd.rcnt := r.sd.rcnt - 1;
---               end if;
---             else
---               v.sd.ctocnt := r.sd.ctocnt - 1;
---             end if;
---           end if;
---           if lastbit = '1' then
---             v.sd.vresp := r.sd.vresp or not r.ar(6);
---             if r.sd.rcnt = zero32(r.sd.rcnt'range) then
---               v.stop := r.sd.vresp and r.go and not r.sd.htb;
---             end if;
---           end if;
---           if r.sd.ctocnt = zero32(r.sd.ctocnt'range) then
---             v.stop := r.go;
---           end if;
---           if (r.go or r.spio.sck) = '0' then
---             v.sd.state := r.sd.rstate;
---             if r.sd.ctocnt = zero32(r.sd.ctocnt'range) then
---               if r.spio.initialized = '1' then
---                 v.sd.state := SD_READY;
---               else
---                 -- Try to initialize again
---                 v.sd.state := SD_CHECK_PRES;
---               end if;
---               v.spio.errorn := '0';
---               v.sd.timeout := '1';
---             end if;
---             v.spio.csn := '1';
---           end if;
---           v.sd.tcnt := (others => '0');
-          
---         when others => -- SD_CHECK_PRES
---           if r.sd.cd = '1' then
---             v.go := '1';
---             v.spio.csn := '0';
---             v.sd.state := SD_GET_RESP;
---             v.spio.cdcsnoen := OUTPUT;
---           end if;
---           v.sd.htb := '0';
---           v.sd.vresp := '1';
---           v.sd.rstate := SD_PWRUP0;
---           v.sd.rcnt := cslv(10, r.sd.rcnt'length);
---           v.sd.ctocnt := cslv(SD_CMD_TIMEOUT, r.sd.ctocnt'length);
---       end case; 
---     end if;
-    
-    ---------------------------------------------------------------------------
-    -- SPI Flash (non SD) specific code
-    ---------------------------------------------------------------------------
-    if sdcard = 0 then
-      case r.spi.state is  
-        when SPI_READ =>
-          if r.go = '0' then
-            v.go := '1';
-            change := '1';
-          end if;
-          v.spi.cnt := cslv(SPI_ARG_LEN, r.spi.cnt'length);
-          if v.bd = '1' then
-            v.sreg := r.ar(23 downto 16);
-          end if;
-          if r.bd = '1' then
-            v.hold := '0';
-            v.spi.state := SPI_ADDR;
-          end if;
-          
-        when SPI_ADDR =>
-          if v.bd = '1' then
-            v.sreg := r.ar(22 downto 15);
-            if dualoutput = 1 then
-              if r.spi.cnt = zero32(r.spi.cnt'range) then
-                v.spio.mosioen := INPUT;
-              end if;
-            end if;
-          end if;
-          if r.bd = '1' then
+      when SPI_ADDR =>
+        if v.bd = '1' then
+          v.sreg := r.ar(22 downto 15);
+          if dualoutput = 1 then
             if r.spi.cnt = zero32(r.spi.cnt'range) then
-              v.spi.state := SPI_DATA;
-              v.spi.cnt := calc_spi_cnt(r.spi.hsize);
-            else
-              v.spi.cnt := r.spi.cnt - 1;
+              v.spio.mosioen := INPUT;
             end if;
           end if;
-          
-        when SPI_DATA =>
-          if v.bd = '1' then
+        end if;
+        if r.bd = '1' then
+          if r.spi.cnt = zero32(r.spi.cnt'range) then
+            v.spi.state := SPI_DATA;
+            v.spi.cnt := calc_spi_cnt(r.spi.hsize);
+          else
             v.spi.cnt := r.spi.cnt - 1;
           end if;
-          if lastbit = '1' and r.spi.cnt = zero32(r.spi.cnt'range) then
-            v.stop := r.go;
-          end if;
-          if (r.go or r.spio.sck) = '0' then
-            if r.spi.hburst(0) = '0' then   -- not an incrementing burst
-              v.spi.state := SPI_PWRUP;  -- CSN wait              
-              v.spio.csn := '1';
-              v.go := '1';
-              v.stop := '1';
-              v.seq := '1';             -- Make right choice in SPI_PWRUP
-              v.bcnt := "110";
-            else
-              v.spi.state := SPI_READY;
-            end if;
-            v.hold := '1';
-          end if;
-              
-        when SPI_READY =>
-          v.spio.ready := '1';
-          if read_flash then
-            v.go := '1';
-            if dualoutput = 1 then
-              v.bcnt(2) := '0';
-            end if;
-            if r.spio.csn = '1' then
-              -- New access, command and address
-              v.go := '0';
-              v.spio.csn := '0';
-              v.spi.state := SPI_READ;
-            elsif r.seq = '1' then
-              -- Continuation of burst
-              v.spi.state := SPI_DATA;
-              v.hold := '0';
-            else
-              -- Burst ended and new access
-              v.stop := '1';
-              v.spio.csn := '1';
-              v.spi.state := SPI_PWRUP;
-              v.bcnt := "011";
-            end if;
-            v.ar := (others => '0');
-            if offset /= 0 then
-              v.ar(r.haddr'range) := r.haddr + cslv(offset, req_addr_bits);
-            else
-              v.ar(r.haddr'range) := r.haddr;
-            end if;
-            v.spio.ready := '0';
-            v.sreg := cslv(readcmd, 8);
-          end if;
-          if r.spio.ready = '0' then
-            case r.spi.hsize is
-              when HSIZE_BYTE =>
-                for i in 0 to (MAXDW/8-1) loop
-                  v.frdata(7+8*i downto 8*i):= r.ar(7 downto 0);
-                end loop;  -- i
-              when HSIZE_HWORD =>
-                for i in 0 to (MAXDW/16-1) loop
-                  v.frdata(15+16*i downto 16*i) := r.ar(15 downto 0);
-                end loop;  -- i
-              when HSIZE_WORD =>
-                for i in 0 to (MAXDW/32-1) loop
-                  v.frdata(31+32*i downto 32*i) := r.ar(31 downto 0);
-                end loop;  -- i
-              when HSIZE_DWORD =>
-                if MAXDW > 32 and AHBDW > 32 then
-                  for i in 0 to (MAXDW/64-1) loop
-                    if MAXDW = 64 then
-                      v.frdata(MAXDW-1+MAXDW*i downto MAXDW*i) :=
-                        r.ar(MAXDW-1 downto 0);
-                    elsif MAXDW = 128 then
-                      v.frdata(MAXDW/2-1+MAXDW/2*i downto MAXDW/2*i) :=
-                        r.ar(MAXDW/2-1 downto 0);
-                    else
-                      v.frdata(MAXDW/4-1+MAXDW/4*i downto MAXDW/4*i) :=
-                        r.ar(MAXDW/4-1 downto 0);
-                    end if;
-                  end loop;  -- i
-                else
-                  null;
-                end if;
-              when HSIZE_4WORD =>
-                if MAXDW > 64 and AHBDW > 64 then
-                  for i in 0 to (MAXDW/128-1) loop
-                    if MAXDW = 128 then
-                      v.frdata(MAXDW-1+MAXDW*i downto MAXDW*i) :=
-                        r.ar(MAXDW-1 downto 0);
-                    else
-                      v.frdata(MAXDW/2-1+MAXDW/2*i downto MAXDW/2*i) :=
-                        r.ar(MAXDW/2-1 downto 0);
-                    end if;
-                  end loop;  -- i
-                else
-                  null;
-                end if;
-              when others =>
-                if MAXDW > 128 and AHBDW > 128 then
-                  v.frdata := r.ar;
-                else
-                  null;
-                end if;
-            end case;
-          end if;
-          v.spi.hsize := r.hsize;
-          v.spi.hburst(0) := r.hburst(0);
-          v.spi.cnt := calc_spi_cnt(r.spi.hsize);
+        end if;
           
-        when others => -- SPI_PWRUP
-          v.hold := '1';
-          if r.spio.initialized = '1' then
-            -- Chip select wait
-            if (r.go or r.spio.sck) = '0' then
-              if r.seq = '1' then
-                v.spi.state := SPI_READY;
-              else
-                v.spi.state := SPI_READ;
-                v.spio.csn := '0';
-              end if;
-              if dualoutput = 1 then
-                v.spio.mosioen := OUTPUT;
-                v.bcnt(2) := '0';
-              end if;
-            end if;
+      when SPI_DATA =>
+        if v.bd = '1' then
+          v.spi.cnt := r.spi.cnt - 1;
+        end if;
+        if lastbit = '1' and r.spi.cnt = zero32(r.spi.cnt'range) then
+          v.stop := r.go;
+        end if;
+        if (r.go or r.spio.sck) = '0' then
+          if r.spi.hburst(0) = '0' then   -- not an incrementing burst
+            v.spi.state := SPI_CSWAIT;  -- CSN wait              
+            v.spio.csn := '1';
+            v.go := '1';
+            v.stop := '1';
+            v.seq := '1';             -- Make right choice in SPI_CSWAIT
+            v.bcnt := "110";
           else
-            -- Power up wait
-            if pwrupcnt /= 0 then
-              v.frdata := r.frdata - 1;
-              if r.frdata = zahbdw(r.frdata'range) then
-                v.spio.initialized := '1';
-                v.spi.state := SPI_READY;
-              end if;
-            else
-              v.spio.initialized := '1';
-              v.spi.state := SPI_READY;
-            end if;
+            v.spi.state := SPI_READY;
           end if;
-      end case;
-    end if;
+          v.hold := '1';
+        end if;
+              
+      when SPI_READY =>
+        v.spio.ready := '1';
+        if read_flash then
+          v.go := '1';
+          if dualoutput = 1 then
+            v.bcnt(2) := '0';
+          end if;
+          if r.spio.csn = '1' then
+            -- New access, command and address
+            v.go := '0';
+            v.spio.csn := '0';
+            v.spi.state := SPI_READ;
+          elsif r.seq = '1' then
+            -- Continuation of burst
+            v.spi.state := SPI_DATA;
+            v.hold := '0';
+          else
+            -- Burst ended and new access
+            v.stop := '1';
+            v.spio.csn := '1';
+            v.spi.state := SPI_CSWAIT;
+            v.bcnt := "011";
+          end if;
+          v.ar := (others => '0');
+          if offset /= 0 then
+            v.ar(r.haddr'range) := r.haddr + cslv(offset, req_addr_bits);
+          else
+            v.ar(r.haddr'range) := r.haddr;
+          end if;
+          v.spio.ready := '0';
+          v.sreg := cslv(readcmd, 8);
+        end if;
+        if r.spio.ready = '0' then
+          case r.spi.hsize is
+            when HSIZE_BYTE =>
+              for i in 0 to (MAXDW/8-1) loop
+                v.frdata(7+8*i downto 8*i):= r.ar(7 downto 0);
+              end loop;  -- i
+            when HSIZE_HWORD =>
+              for i in 0 to (MAXDW/16-1) loop
+                v.frdata(15+16*i downto 16*i) := r.ar(15 downto 0);
+              end loop;  -- i
+            when HSIZE_WORD =>
+              for i in 0 to (MAXDW/32-1) loop
+                v.frdata(31+32*i downto 32*i) := r.ar(31 downto 0);
+              end loop;  -- i
+            when HSIZE_DWORD =>
+              if MAXDW > 32 and AHBDW > 32 then
+                for i in 0 to (MAXDW/64-1) loop
+                  if MAXDW = 64 then
+                    v.frdata(MAXDW-1+MAXDW*i downto MAXDW*i) :=
+                      r.ar(MAXDW-1 downto 0);
+                  elsif MAXDW = 128 then
+                    v.frdata(MAXDW/2-1+MAXDW/2*i downto MAXDW/2*i) :=
+                      r.ar(MAXDW/2-1 downto 0);
+                  else
+                    v.frdata(MAXDW/4-1+MAXDW/4*i downto MAXDW/4*i) :=
+                      r.ar(MAXDW/4-1 downto 0);
+                  end if;
+                end loop;  -- i
+              else
+                null;
+              end if;
+            when HSIZE_4WORD =>
+              if MAXDW > 64 and AHBDW > 64 then
+                for i in 0 to (MAXDW/128-1) loop
+                  if MAXDW = 128 then
+                    v.frdata(MAXDW-1+MAXDW*i downto MAXDW*i) :=
+                      r.ar(MAXDW-1 downto 0);
+                  else
+                    v.frdata(MAXDW/2-1+MAXDW/2*i downto MAXDW/2*i) :=
+                      r.ar(MAXDW/2-1 downto 0);
+                  end if;
+                end loop;  -- i
+              else
+                null;
+              end if;
+            when others =>
+              if MAXDW > 128 and AHBDW > 128 then
+                v.frdata := r.ar;
+              else
+                null;
+              end if;
+          end case;
+        end if;
+        v.spi.hsize := r.hsize;
+        v.spi.hburst(0) := r.hburst(0);
+        v.spi.cnt := calc_spi_cnt(r.spi.hsize);
+          
+      when others => -- SPI_CSWAIT
+        v.hold := '1';
+        -- Chip select wait
+        if (r.go or r.spio.sck) = '0' then
+          if r.seq = '1' then
+            v.spi.state := SPI_READY;
+          else
+            v.spi.state := SPI_READ;
+            v.spio.csn := '0';
+          end if;
+          if dualoutput = 1 then
+            v.spio.mosioen := OUTPUT;
+            v.bcnt(2) := '0';
+          end if;
+        end if;
+    end case;
 
     ---------------------------------------------------------------------------
     -- SPI communication
@@ -924,19 +659,19 @@ begin  -- rtl
       v.bcnt := r.bcnt + 1;
     end if;
     
-    if r.sample(1-sdcard) = '1' then
+    if r.sample(1) = '1' then
       if r.hold = '0' then
-        if sdcard = 0 and dualoutput = 1 and r.spio.mosioen = INPUT then
-          v.ar := r.ar(r.ar'left-2 downto 0) & r.spii(1-sdcard).miso & r.spii(1-sdcard).mosi;
+        if dualoutput = 1 and r.spio.mosioen = INPUT then
+          v.ar := r.ar(r.ar'left-2 downto 0) & r.spii(1).miso & r.spii(1).mosi;
         else
-          v.ar := r.ar(r.ar'left-1 downto 0) & r.spii(1-sdcard).miso;
+          v.ar := r.ar(r.ar'left-1 downto 0) & r.spii(1).miso;
         end if;
       end if;
     end if;
     
     if change = '1' then
       v.spio.mosi := v.sreg(7);
-      if sdcard = 1 or r.spi.state /= SPI_PWRUP then
+      if r.spi.state /= SPI_CSWAIT then
         v.sreg(7 downto 0) := v.sreg(6 downto 0) & '1';
       end if;
     end if;
@@ -945,15 +680,9 @@ begin  -- rtl
     -- System and core reset
     ---------------------------------------------------------------------------
     if (not rstn or r.rst) = '1' then
---       if sdcard = 1 then
---         v.sd.state := SD_CHECK_PRES;
---         v.spio.cdcsnoen := INPUT;
---         v.sd.timeout := '0';
---       else
-        v.spi.state := SPI_PWRUP;
-        v.frdata := cslv(pwrupcnt, r.frdata'length);
-        v.spio.cdcsnoen := OUTPUT;
---      end if;
+      v.spi.state        := SPI_READY;
+      v.frdata           := (others => '0'); 
+      v.spio.cdcsnoen    := OUTPUT;
       v.spimstate        := IDLE;
       v.rst              := '0';
       --
@@ -965,7 +694,7 @@ begin  -- rtl
       v.bcnt             := (others => '0');
       v.go               := '0';
       v.stop             := '0';
-      v.hold             := '0';
+      v.hold             := '1';
       v.unsplit          := '0';
       --
       v.hready           := '1';
@@ -979,32 +708,13 @@ begin  -- rtl
       v.spio.mosioen     := OUTPUT;
       v.spio.csn         := '1';
 --       v.spio.errorn      := '1';
-      v.spio.initialized := '0';
       v.spio.ready       := '0';      
     end if;
-
+    v.spio.initialized := '1';
+    
     ---------------------------------------------------------------------------
     -- Drive unused signals
     ---------------------------------------------------------------------------
---     if sdcard = 1 then
---       v.spi.state  := SPI_PWRUP;
---       v.spi.cnt    := (others => '0');
---       v.spi.hsize  := (others => '0');
---       v.spi.hburst := (others => '0');
---       v.hburst     := (others => '0');
---       v.seq        := '0';
---     else
---       v.sd.state   := SD_CHECK_PRES;
---       v.sd.tcnt    := (others => '0');
---       v.sd.rcnt    := (others => '0');
---       v.sd.cmd     := (others => '0');
---       v.sd.rstate  := SD_CHECK_PRES;
---       v.sd.htb     := '0';
---       v.sd.vresp   := '0';
---       v.sd.timeout := '0';
---       v.sd.dtocnt  := (others => '0');
---       v.sd.ctocnt  := (others => '0');
---     end if;
     if spliten = 0 then
       v.insplit   := '0';
       v.unsplit   := '0';

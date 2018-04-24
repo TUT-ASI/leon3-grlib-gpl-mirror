@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -93,6 +93,18 @@ architecture rtl of serdes is
   end component;
 
   component rtg4_serdes is
+    generic(
+      transtech : integer := TT_M010);
+    port(
+      apb_in : in apb_in_serdes;
+      apb_out : out apb_out_serdes;
+      insig : in sigin_serdes_type;
+      outsig : out sigout_serdes_type;
+      padin : in pad_in_serdes;
+      padout : out pad_out_serdes);
+  end component;
+
+  component polarfire_serdes is
     generic(
       transtech : integer := TT_M010);
     port(
@@ -249,6 +261,63 @@ begin
         outsig.tx_clk_lock => tx_clk_lock_serdes,
         outsig.tx_rstn => tx_rstn_serdes,
         outsig.refclk => serdes_clk125);
+
+     serdes_ready <= rx_val_serdes;
+  end generate;
+
+  pf : if (fabtech = polarfire) generate
+
+    rst_125n <= not(rst_125); -- used as SERDES macro reset
+    
+    rx_clk <= rx_clk_serdes;
+    rx_pll_clk <= rx_clk_serdes;
+
+    apbout <= apb_out_serdes_none; -- not used 
+
+    -- reset synchronizers
+    rxrst0 : process (rx_clk_serdes) begin
+      if rising_edge(rx_clk_serdes) then 
+        r0 <= r0(3 downto 0) & not(rx_idle); 
+        rx_rstn <= r0(4) and r0(3) and r0(2);
+        rx_pll_rstn <= r0(4) and r0(3) and r0(2);
+        if (rx_rstn_serdes = '0') then r0 <= "00000"; rx_rstn <= '0'; rx_pll_rstn <= '0'; end if;
+      end if;
+    end process;
+
+    txrst : process (tx_pll_clk_sig) begin
+      if rising_edge(tx_pll_clk_sig) then 
+        r1 <= r1(3 downto 0) & tx_clk_lock_serdes; 
+        tx_pll_rstn <= r1(4) and r1(3) and r1(2);
+        if (tx_rstn_serdes = '0') then r1 <= "00000"; tx_pll_rstn <= '0'; end if;
+      end if;
+    end process;
+
+    tx_out_p <= '0'; -- not used
+    tx_out_n <= '0'; -- not used
+    tx_pll_clk <= tx_pll_clk_sig;
+
+    pf0: polarfire_serdes
+      generic map(
+        transtech => transtech
+      )
+      port map(
+        apb_in             => apbin,
+        apb_out            => apbout,
+        padin              => m2gl_padin,
+        padout             => m2gl_padout,
+        insig.rstn         => rst_125n,
+        insig.tx_data      => tx_in,
+        outsig.ready       => ready_sig,  -- not used
+        outsig.rx_clk      => rx_clk_serdes,
+        outsig.rx_data     => rx_out,
+        outsig.rx_idle     => rx_idle,
+        outsig.rx_rstn     => rx_rstn_serdes,
+        outsig.rx_val      => rx_val_serdes,
+        outsig.tx_clk      => tx_pll_clk_sig,
+        outsig.tx_clk_lock => tx_clk_lock_serdes,
+        outsig.tx_rstn     => tx_rstn_serdes,
+        outsig.refclk      => serdes_clk125
+      );
 
      serdes_ready <= rx_val_serdes;
   end generate;

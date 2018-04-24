@@ -97,6 +97,11 @@ comment 'Peripherals             '
     source lib/gaisler/pci/pcitrace/pcitrace.in
   endmenu
 
+  mainmenu_option next_comment
+  comment 'MIL-STD-1553B'
+    source lib/gaisler/gr1553b/gr1553b.in
+  endmenu
+
 endmenu
 
 mainmenu_option next_comment

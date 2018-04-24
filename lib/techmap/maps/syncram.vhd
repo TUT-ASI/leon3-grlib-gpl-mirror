@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -35,7 +35,8 @@ use work.allmem.all;
 
 entity syncram is
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
-	testen : integer := 0; custombits: integer := 1);
+	testen : integer := 0; custombits: integer := 1;
+        pipeline : integer range 0 to 15 := 0);
   port (
     clk      : in std_ulogic;
     address  : in std_logic_vector((abits -1) downto 0);
@@ -49,7 +50,7 @@ end;
 
 architecture rtl of syncram is
   constant nctrl : integer := abits + (TESTIN_WIDTH-2) + 2;
-  signal dataoutx : std_logic_vector((dbits -1) downto 0);
+  signal dataoutx, dataoutxx : std_logic_vector((dbits -1) downto 0);
   constant SCANTESTBP : boolean := (testen = 1) and syncram_add_scan_bypass(tech)=1;
   signal xenable, xwrite: std_ulogic;
 
@@ -90,7 +91,7 @@ begin
       end process;
       dmuxout : for i in 0 to dbits-1 generate
         x0: grmux2 generic map (tech)
-          port map (dataoutx(i), databp(i), testin(TESTIN_WIDTH-1), dataout(i));
+          port map (dataoutx(i), databp(i), testin(TESTIN_WIDTH-1), dataoutxx(i));
       end generate;
     end block scanbpblck;
   end generate;
@@ -102,8 +103,21 @@ begin
     customoutx <= (others => '0');
   end generate;
 
-  noscanbp : if not SCANTESTBP generate dataout <= dataoutx; end generate;
+  noscanbp : if not SCANTESTBP generate dataoutxx <= dataoutx; end generate;
 
+  gendoutreg : if pipeline /= 0 and has_sram_pipe(tech) = 0 generate
+    doutreg : process(clk)
+    begin
+      if rising_edge(clk) then
+        dataout <= dataoutxx;
+      end if;
+    end process;
+  end generate;
+
+  nogendoutreg : if pipeline = 0 or has_sram_pipe(tech) = 1 generate
+    dataout <= dataoutxx;
+  end generate;
+  
   inf : if tech = inferred generate
     x0 : generic_syncram generic map (abits, dbits)
          port map (clk, address, datain, dataoutx, write);
@@ -146,9 +160,15 @@ begin
   end generate;
 
   rt4 : if tech = rtg4 generate
-    x0 : rtg4_syncram generic map (abits, dbits)
+    x0 : rtg4_syncram generic map (abits, dbits, 0, pipeline, 0)
          port map (clk, address, datain, dataoutx, xenable, xwrite,
                    open, gnd);
+  end generate;
+
+  pf : if tech = polarfire generate
+    x0 : polarfire_syncram generic map (abits, dbits)
+         port map (clk, address, datain, dataoutx, xenable, xwrite,
+                   open);
   end generate;
 
   umc18  : if tech = umc generate

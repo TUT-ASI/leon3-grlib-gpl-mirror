@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -138,6 +138,8 @@ architecture sim of ddr3ram is
   type timetab2 is array(2 to 6) of time;
   constant tRFC: timetab2 := (90 ns, 110 ns, 160 ns, 300 ns, 350 ns);
 
+  constant address_zero : std_logic_vector(abits-1 downto 0) := (others=>'0');
+
   function tRRD(tper: time; speedbin: integer range 0 to 12) return time is
     variable t: time;
   begin
@@ -252,14 +254,16 @@ begin
     subtype idata is integer range 0 to (2**20)-1;  -- 16 data bits + 2x2 X/U state
     type idata_arr is array(natural range <>) of idata;
     constant idataval_default : integer := pick(16#50000#,0,initbyte>0) + 16#101#*(initbyte mod 256);
-    variable memdata0: idata_arr(0 to b0size-1);
-    variable memdata1: idata_arr(0 to b1size-1);
-    variable memdata2: idata_arr(0 to b2size-1);
-    variable memdata3: idata_arr(0 to b3size-1);
-    variable memdata4: idata_arr(0 to b4size-1);
-    variable memdata5: idata_arr(0 to b5size-1);
-    variable memdata6: idata_arr(0 to b6size-1);
-    variable memdata7: idata_arr(0 to b7size-1);
+    type idata_arr_acc is access idata_arr;
+
+    variable memdata0: idata_arr_acc;
+    variable memdata1: idata_arr_acc;
+    variable memdata2: idata_arr_acc;
+    variable memdata3: idata_arr_acc;
+    variable memdata4: idata_arr_acc;
+    variable memdata5: idata_arr_acc;
+    variable memdata6: idata_arr_acc;
+    variable memdata7: idata_arr_acc;
 
     function reversedata(data : std_logic_vector; step : integer)
       return std_logic_vector is
@@ -447,32 +451,23 @@ begin
         severity warning;
     end checktime;
   begin
-    if first then
-        for i in memdata0'range loop
-            memdata0(i) := idataval_default;
-        end loop;
-        for i in memdata1'range loop
-            memdata1(i) := idataval_default;
-        end loop;
-        for i in memdata2'range loop
-            memdata2(i) := idataval_default;
-        end loop;
-        for i in memdata3'range loop
-            memdata3(i) := idataval_default;
-        end loop;
-        for i in memdata4'range loop
-            memdata4(i) := idataval_default;
-        end loop;
-        for i in memdata5'range loop
-            memdata5(i) := idataval_default;
-        end loop;
-        for i in memdata6'range loop
-            memdata6(i) := idataval_default;
-        end loop;
-        for i in memdata7'range loop
-            memdata7(i) := idataval_default;
-        end loop;
-        first :=  false;
+    if memdata0=null then
+      memdata0 := new idata_arr(0 to b0size-1);
+      memdata1 := new idata_arr(0 to b1size-1);
+      memdata2 := new idata_arr(0 to b2size-1);
+      memdata3 := new idata_arr(0 to b3size-1);
+      memdata4 := new idata_arr(0 to b4size-1);
+      memdata5 := new idata_arr(0 to b5size-1);
+      memdata6 := new idata_arr(0 to b6size-1);
+      memdata7 := new idata_arr(0 to b7size-1);
+      memdata0(0 to b0size-1) := (others => idataval_default);
+      memdata1(0 to b1size-1) := (others => idataval_default);
+      memdata2(0 to b2size-1) := (others => idataval_default);
+      memdata3(0 to b3size-1) := (others => idataval_default);
+      memdata4(0 to b4size-1) := (others => idataval_default);
+      memdata5(0 to b5size-1) := (others => idataval_default);
+      memdata6(0 to b6size-1) := (others => idataval_default);
+      memdata7(0 to b7size-1) := (others => idataval_default);
     end if;
     if rising_edge(ck) and resetn='1' then
       -- Update pipe regs
@@ -505,7 +500,7 @@ begin
         checktime(now-lastref, tRFC(density), true, "tRFC");
       end if;
       if vmr.mpr='1' then
-        assert cke='0' or csn='1' or cmd="111" or cmd="101"
+        assert cke='0' or csn='1' or cmd="111" or cmd="101" or (cmd = "000" and ba = "011" and a = address_zero)
           report "Command other than read in MPR mode!" severity warning;
         for x in 7 downto 0 loop
           assert banks(x).openrow<0
@@ -555,7 +550,8 @@ begin
               accpipe(3-x/2).bank := bank;
               if cmd(0)='1' then accpipe(3-x/2).r:=true; else accpipe(3-x/2).w:=true; end if;
               if vmr.rbt='0' then -- Sequential
-                colv(log2(blen)-1 downto 0) := alow(log2(blen)-1 downto 0) + x;
+                colv(1 downto 0) := alow(1 downto 0) + x;
+                colv(2 downto 2) := alow(2 downto 2) + (x/4);
               else               -- Interleaved
                 colv(log2(blen)-1 downto 0) := alow(log2(blen)-1 downto 0) xor to_unsigned(x,log2(blen));
               end if;

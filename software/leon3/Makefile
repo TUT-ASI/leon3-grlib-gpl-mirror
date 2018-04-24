@@ -12,7 +12,7 @@ XLDFLAGS=-L./ lib3tests.a $(LDFLAGS)
 PROGS = apbuart divtest multest regtest \
 	cache gpio ramfill ramtest irqmp leon3_test gptimer \
 	mulasm cacheasm spwtest mptest fpu grfpu_ops \
-	base_test grfpu_test can_oc mmu mmu_asm pcitest greth atactrl \
+	base_test grfpu_test can_oc mmu mmu_asm mmu_so_check pcitest greth atactrl \
 	amba dsu3 greth_api grcan grdmac\
 	spictrl i2cmst misc spimctrl svgactrl apbps2 \
 	i2cslv i2c l2c \

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -53,7 +53,7 @@ entity mmu_icache is
     lram      : integer range 0 to 2 := 0;
     lramsize  : integer range 1 to 512 := 1;
     lramstart : integer range 0 to 255 := 16#8e#;
-    mmuen     : integer range 0 to 1 := 0;
+    mmuen     : integer range 0 to 2 := 0;
     memtech   : integer              := 0);
   port (
     rst : in  std_ulogic;
@@ -77,8 +77,11 @@ end;
 
 architecture rtl of mmu_icache is
 
+  constant subiten : integer := subit_set(mmuen);
+  constant mmuens  : integer := mmuen_set(mmuen);
+
   constant MUXDATA      : boolean := (is_fpga(fabtech) = 1);
-  constant M_EN         : boolean := (mmuen = 1);
+  constant M_EN         : boolean := (mmuens = 1);
   constant ILINE_BITS   : integer := log2(ilinesize);
   constant IOFFSET_BITS : integer := 8 +log2(isetsize) - ILINE_BITS;
   constant TAG_LOW      : integer := IOFFSET_BITS + ILINE_BITS + 2;
@@ -173,6 +176,19 @@ architecture rtl of mmu_icache is
     return(new_lru);
   end;
 
+-- Workaround for synplify bug:
+  function conv_integer_x(iv : std_logic_vector) return integer is
+    variable resi : integer range 0 to ISETS-1;
+  begin
+    resi := 0;
+    for i in 0 to ISETS-1 loop
+      if conv_integer(iv) = i then
+        resi := i;
+      end if;
+    end loop;
+    return resi;
+  end;
+
   type istatetype is (idle, trans, streaming, stop);
 
   type icache_control_type is record                      -- all registers
@@ -205,6 +221,7 @@ architecture rtl of mmu_icache is
      eocl          : std_ulogic;
      pon           : std_ulogic;
      ctx           : std_logic_vector(7 downto 0);
+     subit_mmu     : std_logic;
   end record;
 
   type lru_reg_type is record
@@ -246,7 +263,8 @@ architecture rtl of mmu_icache is
     bpmiss        => '0',
     eocl          => '0',
     pon           => '0',
-    ctx           => (others => '0')
+    ctx           => (others => '0'),
+    subit_mmu     => '0'
     );
   constant LRES : lru_reg_type := (
     write => '0',
@@ -262,7 +280,7 @@ architecture rtl of mmu_icache is
 
   constant icfg : std_logic_vector(31 downto 0) := 
         cache_cfg(irepl, isets, ilinesize, isetsize, isetlock, 0,
-                  LRAM_EN, lramsize, lramstart, mmuen);
+                  LRAM_EN, lramsize, lramstart, mmuens, subiten);
 
 begin
 
@@ -306,6 +324,7 @@ begin
     variable mhold : std_ulogic;
     variable shtag : std_logic_vector(ilinesize-1 downto 0);
     variable keepctx : std_logic;
+    variable subit_mmu_masked : std_logic;
   begin
 
 -- init local variables
@@ -315,7 +334,14 @@ begin
     v.cmiss := '0'; mhold := '0';
     mds := '1'; dwrite := '0'; twrite := '0'; diagen := '0'; error := '0';
     write := mcio.ready; v.diagrdy := '0'; v.holdn := '1'; 
-
+    subit_mmu_masked := r.subit_mmu;
+    if (subiten = 0) then
+      v.subit_mmu := '0';
+    end if;
+    if subiten /= 0 and mmudci.mmctrl1.e = '0' then
+      v.subit_mmu := mmudci.mmctrl1.subit;
+    end if;
+    
     eholdn := dco.hold and fpuholdn;
     if icen /= 0 then
       cacheon := dco.icdiag.cctrl.ics(0) and not (r.flush 
@@ -381,6 +407,7 @@ begin
       set := conv_integer(ici.fpc(OFFSET_HIGH + SETBITS downto OFFSET_HIGH+1));
       if (icramo.tag(set)(TAG_HIGH downto TAG_LOW) = ici.fpc(TAG_HIGH downto TAG_LOW))
           and ((icramo.ctx(set) = r.ctx) or (mmudci.mmctrl1.e = '0') or not M_EN)
+        and ((subiten = 0) or (not M_EN) or (mmudci.mmctrl1.e = '0') or (mmuici_su = '1') or (icramo.subit(set)='0'))
       then hit := not r.flush; end if;
       validv(set) := genmux(ici.fpc(LINE_HIGH downto LINE_LOW), 
                           icramo.tag(set)(ilinesize -1 downto 0));
@@ -388,6 +415,7 @@ begin
       for i in ISETS-1 downto 0 loop
         if (icramo.tag(i)(TAG_HIGH downto TAG_LOW) = ici.fpc(TAG_HIGH downto TAG_LOW))
           and ((icramo.ctx(i) = r.ctx) or (mmudci.mmctrl1.e = '0') or not M_EN)
+          and ((subiten = 0) or (not M_EN) or (mmudci.mmctrl1.e = '0') or (mmuici_su = '1') or (icramo.subit(i)='0'))
         then hit := not r.flush; set := i; end if;
         validv(i) := genmux(ici.fpc(LINE_HIGH downto LINE_LOW),
                           icramo.tag(i)(ilinesize -1 downto 0));
@@ -532,6 +560,9 @@ begin
             error := r.su or not mmudci.mmctrl1.nf; mds := '0';
             v.holdn := '0'; v.istate := stop; v.burst := '0';
           else
+            if (subiten /= 0) then
+              v.subit_mmu := mmuico.transdata.subit;
+            end if;
             v.cache := r.cache and mmuico.transdata.cache;
             v.waddress := mmuico.transdata.data(31 downto 2);
             v.istate := streaming; v.req := '1'; 
@@ -590,6 +621,7 @@ begin
     twrite := write;
     if cacheon = '0' or r.cache='0' then
       twrite := '0'; vmask := (others => (others => '0'));
+      subit_mmu_masked := '0';
     elsif (dco.icdiag.cctrl.ics = "01") then
       twrite := twrite and r.hit;
       for i in 0 to ISETS-1 loop
@@ -617,8 +649,8 @@ begin
 -- cache write signals
     
     if ISETS > 1 then setrepl := r.setrepl; else setrepl := (others => '0'); end if;
-    if twrite = '1' then ctwrite(conv_integer(setrepl)) := '1'; end if;
-    if dwrite = '1' then cdwrite(conv_integer(setrepl)) := '1'; end if;
+    if twrite = '1' then ctwrite(conv_integer_x(setrepl)) := '1'; end if;
+    if dwrite = '1' then cdwrite(conv_integer_x(setrepl)) := '1'; end if;
     tenable := tenable or ctwrite;
     denable := denable or cdwrite;
 
@@ -660,6 +692,9 @@ begin
           twrite := not dco.icdiag.read; dwrite := '0';
           ctwrite := (others => '0'); cdwrite := (others => '0');
           ctwrite(vdiagset) := not dco.icdiag.read;
+          if subiten /= 0 and twrite = '1' then
+            subit_mmu_masked := mmudci.mmctrl1.subit;
+          end if;
         else
           dwrite := not dco.icdiag.read; twrite := '0';
           cdwrite := (others => '0'); cdwrite(vdiagset) := not dco.icdiag.read;
@@ -706,6 +741,7 @@ begin
     if lram /= 0 then iladdr := taddr; end if;
     if (r.flush2 = '1') and (icen /= 0) then
       twrite := '1'; ctwrite := (others => '1'); vmask := (others => (others => '0'));
+      subit_mmu_masked := '0';
       v.faddr := r.faddr + 1;
       taddr(OFFSET_HIGH downto OFFSET_LOW) := r.faddr;
       wlrr := '0'; wlock := '0'; wtag := (others => '0'); v.lrr := '0';
@@ -752,6 +788,7 @@ begin
       v.vaddress := ici.fpc(31 downto 2);
       v.trans_op := '0';
       v.bpmiss := '0';
+      v.subit_mmu := '0';
     end if;
 
     if (not RESET_ALL and rst = '0') or (r.flush = '1') then  
@@ -777,6 +814,7 @@ begin
     icrami.twrite    <= ctwrite;
     icrami.flush    <= r.flush2;
     icrami.ctx      <= r.ctx;
+    icrami.subit    <= subit_mmu_masked;
  
     -- data ram inputs
     icrami.denable  <= denable;

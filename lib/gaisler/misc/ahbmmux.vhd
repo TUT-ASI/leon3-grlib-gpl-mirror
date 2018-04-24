@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -50,13 +50,13 @@ entity ahbmmux is
     ahbm1i: in  ahb_mst_in_type;
     ahbm1o: out ahb_mst_out_type;
 
-    force : in  std_logic
+    fsel  : in  std_logic
   );
 end entity;
 
 architecture rtl of ahbmmux is
 begin
-  comb : process (mstmo, ahbm0i, ahbm1i, force)
+  comb : process (mstmo, ahbm0i, ahbm1i, fsel)
     variable m0o, m1o : ahb_mst_out_type;
     variable mi       : ahb_mst_in_type;
   begin
@@ -64,7 +64,7 @@ begin
     m1o := mstmo;
     mi  := ahbm0i; 
 
-    if force = '1' then
+    if fsel = '1' then
       mi.hready := ahbm0i.hready;
       mi.hresp  := ahbm0i.hresp ;
       mi.hrdata := ahbm0i.hrdata;

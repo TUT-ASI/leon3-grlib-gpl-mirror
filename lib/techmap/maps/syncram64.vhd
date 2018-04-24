@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -37,7 +37,8 @@ use grlib.stdlib.all;
 
 entity syncram64 is
   generic (tech : integer := 0; abits : integer := 6; testen : integer := 0;
-	   paren : integer := 0; custombits : integer := 1);
+	   paren : integer := 0; custombits : integer := 1;
+           pipeline : integer range 0 to 255 := 0);
   port (
     clk     : in  std_ulogic;
     address : in  std_logic_vector (abits -1 downto 0);
@@ -98,7 +99,11 @@ architecture rtl of syncram64 is
   );
   end component;
 
+  constant DPIPE : integer := pipeline mod 16;
+  constant ECCPIPE : integer := pipeline / 16;
+
   signal xenable : std_logic_vector(1 downto 0);
+  signal dataoutx, dataoutxx : std_logic_vector(63 downto 0);
 
   signal custominx,customoutx: std_logic_vector(syncram_customif_maxwidth downto 0);
   
@@ -115,25 +120,47 @@ nopar : if paren = 0 generate
   s64 : if has_sram64(tech) = 1 generate
     xc2v : if (is_unisim(tech) = 1) generate 
       x0 : unisim_syncram64 generic map (abits)
-         port map (clk, address, datain(63 downto 0), dataout(63 downto 0), xenable, write);
+         port map (clk, address, datain(63 downto 0), dataoutx, xenable, write);
     end generate;
     arti : if tech = memartisan generate
       x0 : artisan_syncram64 generic map (abits)
-         port map (clk, address, datain(63 downto 0), dataout(63 downto 0), xenable, write);
+         port map (clk, address, datain(63 downto 0), dataoutx, xenable, write);
     end generate;
     cust1: if tech = custom1 generate
       x0 : custom1_syncram64 generic map (abits)
-         port map (clk, address, datain(63 downto 0), dataout(63 downto 0), xenable, write);
+         port map (clk, address, datain(63 downto 0), dataoutx, xenable, write);
     end generate;
     smic: if tech = smic013 generate
       x0 : smic13_syncram64 generic map (abits)
-         port map (clk, address, datain(63 downto 0), dataout(63 downto 0), xenable, write);
+         port map (clk, address, datain(63 downto 0), dataoutx, xenable, write);
     end generate;
     n2x  : if tech = easic45 generate
       x0 : n2x_syncram_we generic map (abits => abits, dbits => 64)
-        port map(clk, address, datain(63 downto 0), dataout(63 downto 0), xenable, write);
+        port map(clk, address, datain(63 downto 0), dataoutx, xenable, write);
     end generate;
-
+    nogenreg : if DPIPE = 0 generate
+      dataoutxx <= dataoutx;
+    end generate;
+    genreg : if DPIPE /= 0 generate
+      dreg : process(clk)
+      begin
+        if rising_edge(clk) then
+          dataoutxx <= dataoutx;
+        end if;
+      end process;
+    end generate;
+    -- If ECC pipeline is enabled then add one extra cycle latency here
+    nogeneccreg : if ECCPIPE = 0 generate
+      dataout(63 downto 0) <= dataoutxx;
+    end generate;
+    geneccreg : if ECCPIPE /= 0 generate
+      eccreg : process(clk)
+      begin
+        if rising_edge(clk) then
+          dataout(63 downto 0) <= dataoutxx;
+        end if;
+      end process;
+    end generate;
     
 -- pragma translate_off
     dmsg : if GRLIB_CONFIG_ARRAY(grlib_debug_level) >= 2 generate
@@ -149,14 +176,26 @@ nopar : if paren = 0 generate
   end generate;
 
   nos64 : if has_sram64(tech) = 0 generate
-    x0 : syncram generic map (tech, abits, 32, testen, custombits)
-         port map (clk, address, datain(63 downto 32), dataout(63 downto 32), 
+    x0 : syncram generic map (tech, abits, 32, testen, custombits, DPIPE)
+         port map (clk, address, datain(63 downto 32), dataoutx(63 downto 32), 
 	           enable(1), write(1), testin
                    );
-    x1 : syncram generic map (tech, abits, 32, testen, custombits)
-         port map (clk, address, datain(31 downto 0), dataout(31 downto 0), 
+    x1 : syncram generic map (tech, abits, 32, testen, custombits, DPIPE)
+         port map (clk, address, datain(31 downto 0), dataoutx(31 downto 0), 
 	           enable(0), write(0), testin
                    );
+    nogeneccreg : if ECCPIPE = 0 generate
+      dataout(63 downto 0) <= dataoutx;
+    end generate;
+    geneccreg : if ECCPIPE /= 0 generate
+      eccreg : process(clk)
+      begin
+        if rising_edge(clk) then
+          dataout(63 downto 0) <= dataoutx;
+        end if;
+      end process;
+    end generate;
+    dataoutxx <= (others => '0');
   end generate;
 end generate;
 
@@ -166,13 +205,25 @@ par : if paren = 1 generate
   begin
     dinp <= datain(63+8*paren downto 60+8*paren) &  datain(63 downto 32) &
             datain(63+4*paren downto 60+4*paren) &  datain(31 downto 0);
-    dataout <= doutp(71 downto 68) & doutp(35 downto 32) &
+    nogeneccreg : if ECCPIPE = 0 generate
+      dataout <= doutp(71 downto 68) & doutp(35 downto 32) &
 	       doutp(67 downto 36) & doutp(31-8+8*paren downto 0);
-    x0 : syncram generic map (tech, abits, 36, testen, custombits)
+    end generate;
+    geneccreg : if ECCPIPE /= 0 generate
+      eccreg : process(clk)
+      begin
+        if rising_edge(clk) then
+          dataout <= doutp(71 downto 68) & doutp(35 downto 32) &
+	       doutp(67 downto 36) & doutp(31-8+8*paren downto 0);
+        end if;
+      end process;
+    end generate;
+    dataoutx <= (others => '0'); dataoutxx <= (others => '0');
+    x0 : syncram generic map (tech, abits, 36, testen, custombits, DPIPE)
          port map (clk, address, dinp(71 downto 36), doutp(71 downto 36), 
 	           enable(1), write(1), testin
                    );
-    x1 : syncram generic map (tech, abits, 36, testen, custombits)
+    x1 : syncram generic map (tech, abits, 36, testen, custombits, DPIPE)
          port map (clk, address, dinp(35 downto 0), doutp(35 downto 0), 
 	           enable(0), write(0), testin
                    );

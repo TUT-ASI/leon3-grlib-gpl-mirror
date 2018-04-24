@@ -144,8 +144,15 @@ proc eof_xlnx_top {} {
 	set winfile [open "$TOP\_win32.npl" w]
 	puts $winfile $wininfo
 	close $winfile
-        if {![string equal -nocase [exec uname] "Linux"] && ![string equal -nocase [exec uname] "SunOs"]} {
+        if {![catch {exec uname} myos]} {
+	    if {![string equal -nocase $myos "Linux"] && \
+		    ![string equal -nocase $myos "SunOs"]} {
 		set tnc $wininfo
+	    }
+	} else {
+	    # If uname doesn't exist, we can be quite certain that we're not on a
+	    # Linux or Unix system, which currently leaves Windows/CygWin
+	    set tnc $wininfo
 	}
 	append tnc "\[STRATEGY-LIST\]\n"
 	append tnc "Normal=True\n"
@@ -168,8 +175,15 @@ proc eof_xlnx_top {} {
 	puts $winfile $wininfo
 	close $winfile
 
-        if {![string equal -nocase [exec uname] "Linux"] && ![string equal -nocase [exec uname] "SunOs"]} {
+        if {![catch {exec uname} myos]} {
+	    if {![string equal -nocase $myos "Linux"] && \
+		    ![string equal -nocase $myos "SunOs"]} {
 		set tsnc $wininfo
+	    }
+	} else {
+	    # If uname doesn't exist, we can be quite certain that we're not on a
+	    # Linux or Unix system, which currently leaves Windows/CygWin
+	    set tsnc $wininfo
 	}
 
 	append tsnc "\[STRATEGY-LIST\]\n"

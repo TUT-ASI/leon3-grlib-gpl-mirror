@@ -51,6 +51,7 @@ comment 'Peripherals             '
   comment 'On-chip RAM/ROM                 '
     source lib/gaisler/misc/ahbrom.in
     source lib/gaisler/misc/ahbram.in
+    source lib/gaisler/misc/ftahbram.in
   endmenu
 
   mainmenu_option next_comment

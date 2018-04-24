@@ -1,6 +1,6 @@
 set vivado_contents ""
 proc create_xlnx_vivado {} {
-	global DESIGN DEVICE VIVADO_SIMSET SIMTOP GRLIB_VIVADO_SOURCE_MGMT_MODE
+	global DESIGN DEVICE VIVADO_SIMSET SIMTOP GRLIB_XILINX_SOURCE_MGMT_MODE
 	upvar vivado_contents vc
 
 	file mkdir "vivado"
@@ -11,8 +11,8 @@ proc create_xlnx_vivado {} {
 	if {![string equal $VIVADO_SIMSET "sim_1"]} {
 		append vc "\ncreate_fileset -simset $VIVADO_SIMSET"
 	}
-        if {![string equal $GRLIB_VIVADO_SOURCE_MGMT_MODE ""]} {
-	        append vc "\nset_property source_mgmt_mode $GRLIB_VIVADO_SOURCE_MGMT_MODE \[current_project\]"
+        if {![string equal $GRLIB_XILINX_SOURCE_MGMT_MODE ""]} {
+	        append vc "\nset_property source_mgmt_mode $GRLIB_XILINX_SOURCE_MGMT_MODE \[current_project\]"
 	}
 	append vc "\nset_property top $SIMTOP \[get_filesets $VIVADO_SIMSET\]"
 	append vc "\nset_property target_language verilog \[current_project\]"

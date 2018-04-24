@@ -47,6 +47,7 @@
 #undef  CONFIG_SYN_UMC
 #define CONFIG_SYN_ARTIX7 1
 #undef  CONFIG_SYN_KINTEX7
+#undef  CONFIG_SYN_KINTEXU
 #undef  CONFIG_SYN_SPARTAN3
 #undef  CONFIG_SYN_SPARTAN3E
 #undef  CONFIG_SYN_SPARTAN6
@@ -100,6 +101,7 @@
  * Integer unit                                           
  */
 #define CONFIG_IU_NWINDOWS (8)
+#undef  CONFIG_IU_RFINF
 #define CONFIG_IU_V8MULDIV 1
 #define CONFIG_IU_MUL_LATENCY_2 1
 #undef  CONFIG_IU_MUL_LATENCY_4
@@ -173,6 +175,7 @@
  * MMU
  */
 #define CONFIG_MMU_ENABLE 1
+#undef  CONFIG_MMU_SV
 #undef  CONFIG_MMU_COMBINED
 #define CONFIG_MMU_SPLIT 1
 #define CONFIG_MMU_REPARRAY 1
@@ -195,6 +198,7 @@
 #undef  CONFIG_MMU_PAGE_16K
 #undef  CONFIG_MMU_PAGE_32K
 #undef  CONFIG_MMU_PAGE_PROG
+#undef  CONFIG_MMU_INF
 /*
  * Debug Support Unit        
  */
@@ -212,11 +216,6 @@
 #define CONFIG_DSU_ATRACESZ4 1
 #undef  CONFIG_DSU_ATRACESZ8
 #undef  CONFIG_DSU_ATRACESZ16
-#define CONFIG_DSU_AFILT 1
-#define CONFIG_DSU_ASTAT 1
-#define CONFIG_DSU_AHBWP2 1
-#undef  CONFIG_DSU_AHBWP1
-#undef  CONFIG_DSU_AHBWP0
 #define CONFIG_STAT_ENABLE 1
 #define CONFIG_STAT_CNT (4)
 #define CONFIG_STAT_NMAX (0)
@@ -395,7 +394,6 @@
 #define CONFIG_SPIMCTRL_OFFSET 0
 #define CONFIG_SPIMCTRL_SCALER (8)
 #define CONFIG_SPIMCTRL_ASCALER (8)
-#define CONFIG_SPIMCTRL_PWRUPCNT (0)
 /*
  * SPI controller(s) 
  */

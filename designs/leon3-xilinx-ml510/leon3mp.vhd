@@ -4,7 +4,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -356,6 +356,8 @@ signal spii : spi_in_type;
 signal spio : spi_out_type;
 signal slvsel : std_logic_vector(CFG_SPICTRL_SLVS-1 downto 0);
 
+signal aramo : ahbram_out_type;
+
 constant BOARD_FREQ_200 : integer := 200000;   -- input frequency in KHz
 constant BOARD_FREQ : integer := 100000;   -- input frequency in KHz
 constant CPU_FREQ : integer := BOARD_FREQ * CFG_CLKMUL / CFG_CLKDIV;  -- cpu frequency in KHz
@@ -516,6 +518,7 @@ begin
   leon : leon_dsu_stat_base
     generic map (
       leon => CFG_LEON, ncpu => ncpu, fabtech => fabtech, memtech => memtech,
+      memtechmod => CFG_LEON_MEMTECH,
       nwindows => CFG_NWIN, dsu => CFG_DSU, fpu => CFG_FPU, v8 => CFG_V8, cp => 0,
       mac => CFG_MAC, pclow => pclow, notag => 0, nwp => CFG_NWP, icen => CFG_ICEN,
       irepl => CFG_IREPL, isets => CFG_ISETS, ilinesize => CFG_ILINE,
@@ -1282,10 +1285,35 @@ begin
 ---  AHB RAM ----------------------------------------------------------
 -----------------------------------------------------------------------
 
-  ocram : if CFG_AHBRAMEN = 1 generate 
+  ocram : if CFG_FTAHBRAM_EN = 0 and CFG_AHBRAMEN = 1 generate
     ahbram0 : ahbram generic map (hindex => 9, haddr => CFG_AHBRADDR, 
         tech => CFG_MEMTECH, kbytes => CFG_AHBRSZ, pipe => CFG_AHBRPIPE)
     port map ( rstn, clkm, ahbsi, ahbso(9));
+    aramo <= ahbram_out_none;
+  end generate;
+
+  ftocram : if CFG_FTAHBRAM_EN = 1 generate
+    ftahbram0 : ftahbram
+      generic map (
+        hindex    => 9, haddr => CFG_FTAHBRAM_ADDR,
+        tech      => CFG_MEMTECH, kbytes    => CFG_FTAHBRAM_SZ,
+        pindex    => 5,  paddr => 5,
+        edacen    => CFG_FTAHBRAM_EDAC, autoscrub => CFG_FTAHBRAM_SCRU,
+        errcnten  => CFG_FTAHBRAM_ECNT, cntbits   => CFG_FTAHBRAM_EBIT,
+        ahbpipe   => CFG_FTAHBRAM_PIPE)
+      port map (
+        rst   => rstn,
+        clk   => clkm,
+        ahbsi => ahbsi,
+        ahbso => ahbso(9),
+        apbi  => apbi,
+        apbo  => apbo(5),
+        aramo => aramo);
+  end generate;
+  
+  nram : if CFG_AHBRAMEN = 0 and CFG_FTAHBRAM_EN = 0 generate
+    ahbso(9) <= ahbs_none; apbo(5) <= apb_none;
+    aramo <= ahbram_out_none;
   end generate;
   
 -----------------------------------------------------------------------

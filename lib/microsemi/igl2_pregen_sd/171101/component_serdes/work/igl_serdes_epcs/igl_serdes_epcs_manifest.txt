@@ -1,0 +1,31 @@
+Microsemi Corporation - Microsemi Libero Software Release v11.8 (Version 11.8.0.26)
+
+Date      :  Wed Nov  1 13:15:06 2017
+Project   :  /home/anneli/GRLIB_GIT_REP/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero
+Component :  igl_serdes_epcs
+Family    :  IGLOO2
+
+
+HDL source files for all Synthesis and Simulation tools:
+    /home/anneli/GRLIB_GIT_REP/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/work/igl_serdes_epcs/SERDES_IF_0/igl_serdes_epcs_SERDES_IF_0_SERDES_IF.vhd
+    /home/anneli/GRLIB_GIT_REP/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/work/igl_serdes_epcs/igl_serdes_epcs.vhd
+
+HDL source files for Synopsys SynplifyPro Synthesis tool:
+    /home/anneli/GRLIB_GIT_REP/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/work/igl_serdes_epcs/SERDES_IF_0/igl_serdes_epcs_SERDES_IF_0_SERDES_IF_syn.vhd
+
+HDL source files for Mentor Precision Synthesis tool:
+    /home/anneli/GRLIB_GIT_REP/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/work/igl_serdes_epcs/SERDES_IF_0/igl_serdes_epcs_SERDES_IF_0_SERDES_IF_pre.vhd
+
+Stimulus files for all Simulation tools:
+    /home/anneli/GRLIB_GIT_REP/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/work/igl_serdes_epcs/SERDES_IF_0/SERDESIF_0_compile_bfm.tcl
+    /home/anneli/GRLIB_GIT_REP/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/work/igl_serdes_epcs/SERDES_IF_0/SERDESIF_0_user.bfm
+
+Configuration files to be used for Programming:
+    /home/anneli/GRLIB_GIT_REP/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/work/igl_serdes_epcs/SERDES_IF_0/SERDESIF_0_init.reg
+
+Configuration files to be used for all Simulation tools:
+    /home/anneli/GRLIB_GIT_REP/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/work/igl_serdes_epcs/SERDES_IF_0/SERDESIF_0_init.reg
+
+Configuration files to be used for Power Analysis:
+    /home/anneli/GRLIB_GIT_REP/designs/leon3-microsemi-m2gl-eval-kit/leon3mp_libero/component/work/igl_serdes_epcs/SERDES_IF_0/SERDESIF_0_init.reg
+

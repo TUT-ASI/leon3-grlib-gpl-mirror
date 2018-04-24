@@ -41,7 +41,7 @@ package config is
   constant CFG_NOTAG : integer := 0;
   constant CFG_NWP : integer := (2);
   constant CFG_PWD : integer := 1*2;
-  constant CFG_FPU : integer := (1+0) + 16*0 + 32*0;
+  constant CFG_FPU : integer := (1+0 + 3) + 16*0 + 32*0;
   constant CFG_GRFPUSH : integer := 0;
   constant CFG_ICEN : integer := 1;
   constant CFG_ISETS : integer := 4;
@@ -90,6 +90,7 @@ package config is
   constant CFG_WRPSR : integer := 0;
   constant CFG_ALTWIN : integer := 0;
   constant CFG_REX : integer := 0;
+  constant CFG_LEON_MEMTECH : integer := (0*2**17 + 0*2**18 + 0*2**16);
 -- AMBA settings
   constant CFG_DEFMST : integer := (0);
   constant CFG_RROBIN : integer := 1;

@@ -24,6 +24,8 @@ typedef void (*functype)(void);
 #define fail(err) do { } while(1);
 #define report(test_case) 
 
+
+
 void leon_flush_cache_all (void)
 {
 
@@ -351,6 +353,7 @@ __asm__(
  srmmu_set_mmureg_aligned(0x00000000);
  
  asm("flush");
+
  return(0);
  {
    int i = 0;
@@ -359,7 +362,8 @@ __asm__(
    }
  };
  
- 
 }
+
+
 
 

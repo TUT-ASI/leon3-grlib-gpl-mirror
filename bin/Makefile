@@ -1,5 +1,5 @@
-VER=$(VNAME)2017.3
-BID=4208
+VER=$(VNAME)2018.1
+BID=4217
 CC=gcc
 SED=sed
 
@@ -8,7 +8,7 @@ ASICLIBS = ihp25 sgb25vrh ut025crh virage rh_lib18t rh_lib18t_io2 rh_lib13t\
 	tm65gplus st65lp st65gp cmos9sf nextreme2 gf65g saed32
 FPGALIBS = apa proasic3 axcelerator ec fusion unisim virtex virtex5 secureip unimacro altera altera_mf \
 	 stratixii eclipsee cycloneiii stratixiii synplify simprim stratixiv \
-	proasic3e proasic3l smartfusion2 rtg4
+	proasic3e proasic3l smartfusion2 rtg4 polarfire
 
 ifeq ("$(GRLIB_CONFIG)","")
 GRLIB_CONFIG = dummy
@@ -57,7 +57,7 @@ ifeq ("$(SKIP_SIM_TECHLIBS)","")
 XTECHLIBS = $(TECHLIBS:%=tech/% )
 endif
 SIMLIBS = hynix micron cypress
-ACTELLIBS = apa apa3 axcelerator proasic3 proasic3e proasic3l fusion smartfusion2 rtg4
+ACTELLIBS = apa apa3 axcelerator proasic3 proasic3e proasic3l fusion smartfusion2 rtg4 polarfire
 XILINXLIBS = unisim simprim unimacro virtex virtex5
 ALTERALIBS = altera_mf stratixii altera cycloneiii stratixiii
 ALTERAFILES = $(ALTERALIBS:%=lib/techmap/%) $(RMCOMLIBS:%=lib/tech/%) netlists/altera
@@ -142,6 +142,7 @@ help:
 	@echo "   make ncsim-launch         : start NCSim GUI"
 	@echo "   make riviera-launch       : start RivieraPRO"
 	@echo "   make vsim-launch          : start ModelSim/QuestaSim"
+	@echo "   make vcs-launch           : start VCS"
 	@echo "  verification:"
 	@echo "   make alint-launch         : start Alint elaboration time linting"
 	@echo "   make fpro-launch          : start FormalPro GUI"
@@ -165,6 +166,7 @@ help:
 	@echo "   make vsim            : compile design using modelsim"
 	@echo "   make ncsim           : compile design using ncsim"
 	@echo "   make ghdl            : compile design using GHDL"
+	@echo "   make vcs-elab        : compile and elaborate design using VCS"
 	@echo "  verification:"
 	@echo "   make alint-comp      : alint compilation time linting"
 	@echo "   make fm              : Formal equivalence check using Synopsys Formality"
@@ -381,7 +383,7 @@ SVLOGANOPT =
 VHDLANOPT =
 VCSELAB = -debug_access+all
 
-vcs-comp:
+vcs-comp: make.simv
 	@sh vcs_libs
 	@make -f make.simv
 
@@ -468,7 +470,8 @@ fpro-clean:
 GHDL ?= ghdl
 GHDLI = $(GHDL) -i
 GHDLM = $(GHDL) -m
-GHDLMOPT ?= -fexplicit --ieee=synopsys --mb-comments --warn-no-binding
+GHDLIOPT ?= --mb-comments
+GHDLMOPT ?= -fexplicit --ieee=synopsys --mb-comments --warn-no-binding -O2
 GHDLRUNOPT ?= --assert-level=error --ieee-asserts=disable
 
 # Compile design
@@ -1026,6 +1029,10 @@ ifeq ("$(COMPXLIBTECH)","")
 COMPXLIBTECH=$(ISETECH)
 endif
 
+ifeq ("$(GRLIB_COMPILE_VIVADO_IP)","")
+VIVADOCOMPILEIP=-no_ip_compile
+endif
+
 
 # install-simprim, compile-simprim/xilinxcorelib/unisim/xilinx-simlibs are tailored for ModelSim/Questa
 # (target dir is ./modelsim)
@@ -1046,12 +1053,14 @@ compile-xilinx-simlibs:
 
 # Needs to depend on modelsim.ini so that the file is not overwritten by subsequent commands
 # Selects family all since GRLIB techmap layer has Virtex-5-specific primitives (for example)
+# Compilation of IPs can be turned on by setting GRLIB_COMPILE_VIVADO_IP to a non-empty value
+# This is turned off by default, since the IPs aren't used in the template designs
 compile_xilinx_7series_lib: modelsim.ini
 ifneq ("$(GRLIB_SIMULATOR)","Xilinx")
 	-@mkdir -p ./xilinx_lib
 	@if [ -d ./xilinx_lib/unisims_ver ]; then \
 	echo "Xilinx library already compiled"; else \
-	echo "compile_simlib -directory ./xilinx_lib/ -family all -language all -library all -simulator $(GRLIB_XIL_simlib_Simulator)" > ./xilinx_lib/$(TOP)_simlib.tcl ; \
+	echo "compile_simlib -directory ./xilinx_lib/ -family all -language all -library all -simulator $(GRLIB_XIL_simlib_Simulator) $(VIVADOCOMPILEIP)" > ./xilinx_lib/$(TOP)_simlib.tcl ; \
 	vivado -mode batch -source ./xilinx_lib/$(TOP)_simlib.tcl ; \
 	fi;
 endif
@@ -1415,7 +1424,7 @@ quartus-prog-fpga:
 	$(QUARTUS_PGM) -c $(ALTCABLE) -m JTAG -o p\;$(TOP)_quartus.sof
 
 quartus-prog-fpga-ref:
-	cp bitfiles/$(TOP).sof $(TOP)_ref.sof
+	cp bitfiles/$(TOP)_quartus.sof $(TOP)_ref.sof
 	$(QUARTUS_PGM) -c $(ALTCABLE) -m JTAG -o p\;$(TOP)_ref.sof
 
 quartus-srec:
@@ -1541,7 +1550,7 @@ remove-dare:
 ######### Microsemi targets ###############
 PROASIC3LIBS = proasic3 proasic3e proasic3l
 XLIBEROLIBSKIP = $(ASICLIBS) $(LATTICELIBS) $(GLS_LIBS) \
-	$(ALTERALIBS) $(XILINXLIBS) $(PROASIC3LIBS) fusion smartfusion2 axcelerator rtg4 
+	$(ALTERALIBS) $(XILINXLIBS) $(PROASIC3LIBS) fusion smartfusion2 axcelerator rtg4 polarfire 
 LIBEROLIBSKIP = $(XLIBEROLIBSKIP:%=%|) dummy
 LIBERODIRSKIPX = $(ASICLIBS) $(XILINXLIBS) $(ALTERALIBS) $(LATTICELIBS)
 LIBERODIRSKIP = $(LIBERODIRSKIPX:%=%|) dummy
@@ -1557,6 +1566,8 @@ else ifeq ("$(TECHNOLOGY)","ProASIC3E")
 LIBEROPRECOMPLIBDIR=proasic3e
 else ifeq ("$(TECHNOLOGY)","IGLOO2")
 LIBEROPRECOMPLIBDIR=smartfusion2
+else ifeq ("$(TECHNOLOGY)","PolarFire")
+LIBEROPRECOMPLIBDIR=polarfire
 else
 LIBEROPRECOMPLIBDIR=smartfusion2
 endif
@@ -1585,7 +1596,7 @@ DESIGNER_RESTRICTPROBEPINS=1
 endif
 
 ifeq ("$(DESIGNER_RTG4_SET_MITIGATION)","")
-DESIGNER_RTG4_SET_MITIGATION=0
+DESIGNER_RTG4_SET_MITIGATION=unassigned
 endif
 
 
@@ -1604,13 +1615,14 @@ actel-clean:
 	$(TOP)_libero_genbit.tcl $(TOP)_libero_progfpga.tcl
 
 remove-microsemi: remove-microsemi-precomp
-	-@for i in fusion proasic3 proasic3e proasic3l axcelerator smartfusion2 rtg4; do \
+	-@for i in fusion proasic3 proasic3e proasic3l axcelerator smartfusion2 rtg4 polarfire; do \
 	  rm $(GRLIB)/lib/tech/$$i/components/$$i.v* ;  \
 	done
 
 remove-microsemi-precomp:
 	-@rm -r $(GRLIB)/lib/tech/smartfusion2/precomp_libraries/smartfusion2
 	-@rm -r $(GRLIB)/lib/tech/rtg4/precomp_libraries/rtg4
+	-@rm -r $(GRLIB)/lib/tech/polarfire/precomp_libraries/polarfire
 
 ############  Synopsys              ########################
 

@@ -16,9 +16,10 @@ NET phy_tx_data(*) TNM = gtxphypads;
 ###########################
 #NET "sgmii_refclk" PERIOD = 8.000;
 
-NET "egtx_clk" 	TNM_NET = "egtx_clk";
-TIMESPEC "TS_clkm_egtx_clk" = FROM "clkm" TO "egtx_clk" TIG;
-TIMESPEC "TS_egtx_clk_clkm" = FROM "egtx_clk" TO "clkm" TIG;
+#If egtx_clk is used, these constraints should be reintroduced
+#NET "egtx_clk" 	TNM_NET = "egtx_clk";
+#TIMESPEC "TS_clkm_egtx_clk" = FROM "clkm" TO "egtx_clk" TIG;
+#TIMESPEC "TS_egtx_clk_clkm" = FROM "egtx_clk" TO "clkm" TIG;
 #TIMESPEC "TSGTXOUT" = FROM "egtx_clk" TO "gtxphypads" 4.3 ns;
 #TIMESPEC "TSGRXIN" = FROM "gtxphypads" TO "eth1_e1_m1000_u0_rxclk" 10 ns;
 NET clk_100 period = 10.000 ;

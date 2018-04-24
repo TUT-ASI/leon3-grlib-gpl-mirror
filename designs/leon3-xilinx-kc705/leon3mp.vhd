@@ -4,7 +4,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -381,6 +381,7 @@ begin
   leon : leon_dsu_stat_base
     generic map (
       leon => CFG_LEON, ncpu => CFG_NCPU, fabtech => fabtech, memtech => memtech,
+      memtechmod => CFG_LEON_MEMTECH,
       nwindows => CFG_NWIN, dsu => CFG_DSU, fpu => CFG_FPU, v8 => CFG_V8, cp => 0,
       mac => CFG_MAC, pclow => pclow, notag => 0, nwp => CFG_NWP, icen => CFG_ICEN,
       irepl => CFG_IREPL, isets => CFG_ISETS, ilinesize => CFG_ILINE,

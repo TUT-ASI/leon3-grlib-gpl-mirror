@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -55,7 +55,7 @@ begin
     u0 : apa3e_clkpad generic map (level, voltage) port map (pad, o); lock <= '1';
   end generate;
   igl2 : if (tech = igloo2) or (tech = rtg4) generate
-    u0 : igloo2_clkpad port map (pad, o); lock <= '1';
+    u0 : igloo2_clkpad generic map (arch) port map (pad, o); lock <= '1';
   end generate;
   pa3l : if (tech = apa3l) generate
     u0 : apa3l_clkpad generic map (level, voltage) port map (pad, o); lock <= '1';

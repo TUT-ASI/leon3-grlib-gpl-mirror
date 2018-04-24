@@ -12,6 +12,7 @@ grpci2/pcilib2.vhd
 grpci2/grpci2_ahb_mst.vhd
 grpci2/grpci2_phy.vhd
 grpci2/grpci2_phy_wrapper.vhd
+grpci2/grpci2_cdc_gate.vhd
 grpci2/grpci2.vhd
 grpci2/wrapper/grpci2_gen.vhd
 #pcif/pcifpack.vhd

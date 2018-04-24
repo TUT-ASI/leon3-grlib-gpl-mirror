@@ -5,21 +5,18 @@ proc append_file_snps_simv {f finfo} {
 	set bn [dict get $finfo bn]
 	switch $i {
 		"vhdlp1735" {
-			global VHDLAN VHDLANOPT
-			upvar compile_simv_contents cvc
-			append cvc "\tvhdlan -nc $VHDLANOPT -work $bn $f\n"
 			return
 		}		
 		"vhdlmtie" {
-			global VHDLAN VHDLANOPT
-			upvar compile_simv_contents cvc
-			append cvc "\tvhdlan -nc $VHDLANOPT -work $bn $f\n"
 			return
 		}
 		"vhdlsynpe" {
 			return
 		}
 		"vhdldce" {
+			global DCVHDL VHDLOPT
+			upvar compile_dc_contents cdc
+			append cdc "\n$DCVHDL $bn $VHDLOPT$f"
 			return
 		}
 		"vhdlcdse" {

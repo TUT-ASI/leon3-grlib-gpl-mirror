@@ -10,6 +10,5 @@ ftsdctrl.vhd
 ftsrctrl8.vhd
 ftsdmctrl.vhd
 ftmctrl.vhd
-ftsdctrl64.vhd
 spimctrl.vhd
 p8ctrl.vhd

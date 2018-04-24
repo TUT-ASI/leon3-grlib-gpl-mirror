@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2017, Cobham Gaisler
+--  Copyright (C) 2015 - 2018, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -52,7 +52,7 @@ entity ahbsmux is
     ahbs1i  : in  ahb_slv_in_type;
     ahbs1o  : out ahb_slv_out_type;
 
-    force   : in  std_logic;
+    fsel    : in  std_logic;
     locken  : in  std_logic
   );
 end entity;
@@ -131,7 +131,7 @@ begin
   busy_ahbsi.testoen  <= ahbs0i.testoen;
   busy_ahbsi.testin   <= ahbs0i.testin;
 
-  comb : process(r, s0acc, s1acc, slvso, ahbs0i, ahbs1i, busy_ahbsi, force, s0lock, s1lock)
+  comb : process(r, s0acc, s1acc, slvso, ahbs0i, ahbs1i, busy_ahbsi, fsel, s0lock, s1lock)
     variable v  : reg_type;
   begin
     v := r;
@@ -198,10 +198,10 @@ begin
       v.hmbsel    := ahbs1i.hmbsel;
     end if;
   
-    if (force = '0' and ((r.s0state = s0busy and s1acc = '0' and not (r.s1state = s1active and s1lock = '1')) or 
+    if (fsel = '0' and ((r.s0state = s0busy and s1acc = '0' and not (r.s1state = s1active and s1lock = '1')) or 
                          (r.s1state = s1busy and s0acc = '0' and not (r.s0state = s0active and s0lock = '1')))) then
       slvsi_mux <= busy_ahbsi;
-    elsif (force = '0' and ((s1acc = '1' or (r.s1state = s1active and (s1lock = '1' or slvso.hready = '0'))) and    -- S1 pending or active (locked)
+    elsif (fsel = '0' and ((s1acc = '1' or (r.s1state = s1active and (s1lock = '1' or slvso.hready = '0'))) and    -- S1 pending or active (locked)
                            ((s0acc = '0' and not (r.s0state = s0active and s0lock = '1'))   -- AND S0 not pendign or active
                             or r.s1state = s1active))) then                                 --     OR S1 already active
       slvsi_mux <= ahbs1i;
@@ -210,7 +210,7 @@ begin
       end if;
     else
       slvsi_mux <= ahbs0i;
-      if force = '0' and ahbs0i.hready = '0' and r.s0state /= s0active then
+      if fsel = '0' and ahbs0i.hready = '0' and r.s0state /= s0active then
         slvsi_mux.hsel(sindex) <= '0';
       end if;
     end if;
@@ -223,7 +223,7 @@ begin
       slvsi_mux.hready <= ahbs0i.hready;
     end if;
 
-    if force = '1' then
+    if fsel = '1' then
       v.s0state := s0idle;
       v.s1state := s1idle;
     end if;
@@ -233,20 +233,20 @@ begin
 
   slvsi <= slvsi_mux;
 
-  ahbs0o.hready  <= '0' when force = '0' and r.s0state = s0busy else
-                    '1' when force = '0' and r.s0state = s0idle else
+  ahbs0o.hready  <= '0' when fsel = '0' and r.s0state = s0busy else
+                    '1' when fsel = '0' and r.s0state = s0idle else
                     slvso.hready;
-  ahbs0o.hresp   <= slvso.hresp when force = '1' or r.s0state = s0active else "00";
+  ahbs0o.hresp   <= slvso.hresp when fsel = '1' or r.s0state = s0active else "00";
   ahbs0o.hrdata  <= slvso.hrdata;
   ahbs0o.hsplit  <= slvso.hsplit;
   ahbs0o.hirq    <= slvso.hirq;
   ahbs0o.hconfig <= slvso.hconfig;
   ahbs0o.hindex  <= slvso.hindex;
 
-  ahbs1o.hready  <= '0' when force = '0' and r.s1state = s1busy else
-                    '1' when force = '0' and r.s1state = s1idle else
+  ahbs1o.hready  <= '0' when fsel = '0' and r.s1state = s1busy else
+                    '1' when fsel = '0' and r.s1state = s1idle else
                     slvso.hready;
-  ahbs1o.hresp   <= slvso.hresp when force = '1' or r.s1state = s1active else "00";
+  ahbs1o.hresp   <= slvso.hresp when fsel = '1' or r.s1state = s1active else "00";
   ahbs1o.hrdata  <= slvso.hrdata;
   ahbs1o.hsplit  <= slvso.hsplit;
   ahbs1o.hirq    <= slvso.hirq;
