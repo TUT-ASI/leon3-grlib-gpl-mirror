@@ -15,6 +15,11 @@ CONFIG_GRETH_FIFO4
   The MAC core will perform AHB burst read/writes with half the
   size of the FIFO depth.
 
+CONFIG_GRETH_FMC_MODE
+  Enable support for Ethernet FMC extension board.
+  This option is only valid for Xilinx reference designs
+  with Ethernet extension boards via FMC connectors 
+
 CONFIG_GRETH_FT
   Enable fault-tolerance (parity with sparing) for internal RAM
   in Ethernet core. Note that FT for EDCL buffer is enabled via

@@ -61,7 +61,7 @@ set report_dir synopsys/$report_run
 
 ### Report Quality of Result
 echo "Info: Generate QoR Reports"
-report_qor -summary > $report_dir/qor_$report_run.log
+report_qor > $report_dir/qor_$report_run.log
 
 ### Check for Design Errors
 echo "Info: Generate Design Error Reports"

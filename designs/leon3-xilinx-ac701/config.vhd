@@ -42,7 +42,7 @@ package config is
   constant CFG_FPU : integer := 0 + 16*0 + 32*0;
   constant CFG_GRFPUSH : integer := 0;
   constant CFG_ICEN : integer := 1;
-  constant CFG_ISETS : integer := 4;
+  constant CFG_ISETS : integer := 1;
   constant CFG_ISETSZ : integer := 4;
   constant CFG_ILINE : integer := 4;
   constant CFG_IREPL : integer := 0;
@@ -51,7 +51,7 @@ package config is
   constant CFG_ILRAMADDR: integer := 16#8E#;
   constant CFG_ILRAMSZ : integer := 1;
   constant CFG_DCEN : integer := 1;
-  constant CFG_DSETS : integer := 4;
+  constant CFG_DSETS : integer := 1;
   constant CFG_DSETSZ : integer := 4;
   constant CFG_DLINE : integer := 4;
   constant CFG_DREPL : integer := 0;
@@ -63,11 +63,11 @@ package config is
   constant CFG_DLRAMEN : integer := 0;
   constant CFG_DLRAMADDR: integer := 16#8F#;
   constant CFG_DLRAMSZ : integer := 1;
-  constant CFG_MMUEN : integer := 1;
-  constant CFG_ITLBNUM : integer := 8;
-  constant CFG_DTLBNUM : integer := 8;
-  constant CFG_TLB_TYPE : integer := 0 + 1*2;
-  constant CFG_TLB_REP : integer := 0;
+  constant CFG_MMUEN : integer := 0;
+  constant CFG_ITLBNUM : integer := 2;
+  constant CFG_DTLBNUM : integer := 2;
+  constant CFG_TLB_TYPE : integer := 1 + 0*2;
+  constant CFG_TLB_REP : integer := 1;
   constant CFG_MMU_PAGE : integer := 0;
   constant CFG_DSU : integer := 1;
   constant CFG_ITBSZ : integer := 4 + 64*1;
@@ -85,7 +85,7 @@ package config is
   constant CFG_REX : integer := 0;
   constant CFG_LEON_MEMTECH : integer := (0*2**17 + 0*2**18 + 0*2**16);
 -- L2 Cache
-  constant CFG_L2_EN : integer := 1;
+  constant CFG_L2_EN : integer := 0;
   constant CFG_L2_SIZE : integer := 64;
   constant CFG_L2_WAYS : integer := 1;
   constant CFG_L2_HPROT : integer := 0;
@@ -132,7 +132,7 @@ package config is
   constant CFG_MCTRL_PAGE : integer := 0 + 0;
 -- Xilinx MIG 7-Series
   constant CFG_MIG_7SERIES : integer := 1;
-  constant CFG_MIG_7SERIES_MODEL : integer := 0;
+  constant CFG_MIG_7SERIES_MODEL : integer := 1;
 -- AHB status register
   constant CFG_AHBSTAT : integer := 0;
   constant CFG_AHBSTATN : integer := (1);
@@ -143,14 +143,15 @@ package config is
   constant CFG_ROMADDR : integer := 16#100#;
   constant CFG_ROMMASK : integer := 16#E00# + 16#100#;
 -- AHB RAM
-  constant CFG_AHBRAMEN : integer := 1;
+  constant CFG_AHBRAMEN : integer := 0;
   constant CFG_AHBRSZ : integer := 4;
   constant CFG_AHBRADDR : integer := 16#A00#;
   constant CFG_AHBRPIPE : integer := 0;
 -- Gaisler Ethernet core
   constant CFG_GRETH : integer := 1;
-  constant CFG_GRETH1G : integer := 0;
+  constant CFG_GRETH1G : integer := 1;
   constant CFG_ETH_FIFO : integer := 8;
+  constant CFG_GRETH_FMC : integer := 0;
 
 
 
@@ -190,7 +191,7 @@ package config is
   constant CFG_SVGA_ENABLE : integer := 0;
 
 -- SPI memory controller
-  constant CFG_SPIMCTRL : integer := 1;
+  constant CFG_SPIMCTRL : integer := 0;
   constant CFG_SPIMCTRL_SDCARD : integer := 0;
   constant CFG_SPIMCTRL_READCMD : integer := 16#0B#;
   constant CFG_SPIMCTRL_DUMMYBYTE : integer := 0;
@@ -201,7 +202,7 @@ package config is
   constant CFG_SPIMCTRL_OFFSET : integer := 16#0#;
 
 -- SPI controller
-  constant CFG_SPICTRL_ENABLE : integer := 1;
+  constant CFG_SPICTRL_ENABLE : integer := 0;
   constant CFG_SPICTRL_NUM : integer := (1);
   constant CFG_SPICTRL_SLVS : integer := (1);
   constant CFG_SPICTRL_FIFO : integer := (1);

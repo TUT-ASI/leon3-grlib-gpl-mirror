@@ -31,3 +31,8 @@
 #ifndef CONFIG_GRETH_SGMII_MODE
 #define CONFIG_GRETH_SGMII_MODE 0
 #endif
+
+#ifndef CONFIG_GRETH_FMC_MODE
+#define CONFIG_GRETH_FMC_MODE 0
+#endif
+

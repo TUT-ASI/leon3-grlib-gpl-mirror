@@ -18,10 +18,10 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------
--- Package: 	gr1553b_pkg
--- File:	gr1553b_pkg.vhd
--- Author:	Magnus Hjorth - Aeroflex Gaisler
--- Description:	Package for GR1553B top-level component and user-visible types
+-- Package:     gr1553b_pkg
+-- File:        gr1553b_pkg.vhd
+-- Author:      Magnus Hjorth - Aeroflex Gaisler
+-- Description: Package for GR1553B top-level component and user-visible types
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -63,10 +63,26 @@ package gr1553b_pkg is
     busB_rxN: std_logic;
   end record;
 
+  type gr1553b_extctrl_type is record
+    -- External control of fields of RT config register
+    rten: std_logic;
+    rtaddr: std_logic_vector(4 downto 0);
+    brs: std_logic;
+    sys: std_logic;
+    syds: std_logic;
+    -- External control of fields of RT Bus Status Register
+    busy: std_logic;
+    -- External control of RT Subaddress Table Base register
+    satb: std_logic_vector(31 downto 9);
+    -- External control of RT Mode Code Control Register
+    mccr: std_logic_vector(29 downto 0);
+  end record;
+
   type gr1553b_auxin_type is record
     extsync: std_logic;
     rtaddr: std_logic_vector(4 downto 0);
     rtpar: std_logic;
+    extctrl: gr1553b_extctrl_type;
   end record;
 
   type gr1553b_auxout_type is record
@@ -79,25 +95,30 @@ package gr1553b_pkg is
     badreg: std_logic;
     irqvec: std_logic_vector(7 downto 0);
   end record;
-  
+
   constant gr1553b_rxin_zero: gr1553b_rxin_type :=
     (busA_rxP=>'0', busA_rxN=>'0', busB_rxP=>'0', busB_rxN=>'0');
 
   constant gr1553b_txout_zero: gr1553b_txout_type :=
     ('0','0','0','0','0','0','0','0','1','1');
 
+  constant gr1553b_extctrl_zero: gr1553b_extctrl_type :=
+    (rten => '0', rtaddr => "11111", brs => '0', sys => '0',
+     syds => '0', busy => '0', satb => (others => '0'),
+     mccr => "000000000000000000010101010101");
+
   constant gr1553b_auxin_zero: gr1553b_auxin_type :=
-    (extsync => '0', rtaddr => "11111", rtpar => '1');
+    (extsync => '0', rtaddr => "11111", rtpar => '1',
+     extctrl => gr1553b_extctrl_zero);
 
   constant gr1553b_auxout_zero: gr1553b_auxout_type :=
     ('0','0','0','0','0','0','0',x"00");
-    
 
   constant gr1553b_rxin_none: gr1553b_rxin_type := gr1553b_rxin_zero;
-  constant gr1553b_txout_none: gr1553b_txout_type := gr1553b_txout_zero;  
+  constant gr1553b_txout_none: gr1553b_txout_type := gr1553b_txout_zero;
   constant gr1553b_auxin_none: gr1553b_auxin_type := gr1553b_auxin_zero;
   constant gr1553b_auxout_none: gr1553b_auxout_type := gr1553b_auxout_zero;
-  
+
   component gr1553b is
     generic(
       hindex: integer := 0;
@@ -116,7 +137,8 @@ package gr1553b_pkg is
       bm_filters: integer range 0 to 1 := 1;
       codecfreq: integer := 20;
       sameclk: integer range 0 to 1 := 0;
-      codecver: integer range 0 to 2 := 0
+      codecver: integer range 0 to 2 := 1;
+      extctrlen: integer range 0 to 1 := 0
       );
     port(
       clk: in std_logic;
@@ -164,11 +186,11 @@ package gr1553b_pkg is
       busboutp    : out std_logic;
       busboutn    : out std_logic
       );
-  end component;  
-  
+  end component;
+
   -----------------------------------------------------------------------------
   -- Wrappers for netlists etc.
-  
+
   component gr1553b_stdlogic is
     generic (
       bc_enable: integer range 0 to 1 := 1;
@@ -182,43 +204,44 @@ package gr1553b_pkg is
       bm_filters: integer range 0 to 1 := 1;
       codecfreq: integer := 20;
       sameclk: integer range 0 to 1 := 0;
-      codecver: integer range 0 to 2 := 0
-      );  
+      codecver: integer range 0 to 2 := 1;
+      extctrlen: integer range 0 to 1 := 0
+      );
     port (
       clk: in std_logic;
       rst: in std_logic;
       codec_clk: in std_logic;
       codec_rst: in std_logic;
-  
+
       -- AHB interface
-      
-      mi_hgrant	: in std_logic;                         -- bus grant
-      mi_hready	: in std_ulogic;                        -- transfer done
-      mi_hresp	: in std_logic_vector(1 downto 0); 	-- response type
-      mi_hrdata	: in std_logic_vector(31 downto 0); 	-- read data bus      
-      mo_hbusreq : out std_ulogic;                      -- bus request
-      mo_htrans	: out std_logic_vector(1 downto 0); 	-- transfer type
-      mo_haddr	: out std_logic_vector(31 downto 0); 	-- address bus (byte)
-      mo_hwrite	: out std_ulogic;                       -- read/write
-      mo_hsize	: out std_logic_vector(2 downto 0); 	-- transfer size
-      mo_hburst	: out std_logic_vector(2 downto 0); 	-- burst type
-      mo_hwdata	: out std_logic_vector(31 downto 0); 	-- write data bus
-  
+
+      mi_hgrant         : in std_logic;                         -- bus grant
+      mi_hready         : in std_ulogic;                        -- transfer done
+      mi_hresp          : in std_logic_vector(1 downto 0);      -- response type
+      mi_hrdata         : in std_logic_vector(31 downto 0);     -- read data bus
+      mo_hbusreq        : out std_ulogic;                       -- bus request
+      mo_htrans         : out std_logic_vector(1 downto 0);     -- transfer type
+      mo_haddr          : out std_logic_vector(31 downto 0);    -- address bus (byte)
+      mo_hwrite         : out std_ulogic;                       -- read/write
+      mo_hsize          : out std_logic_vector(2 downto 0);     -- transfer size
+      mo_hburst         : out std_logic_vector(2 downto 0);     -- burst type
+      mo_hwdata         : out std_logic_vector(31 downto 0);    -- write data bus
+
       -- APB interface
-      
-      si_psel	: in std_logic;                         -- slave select
-      si_penable : in std_ulogic;                       -- strobe
-      si_paddr	: in std_logic_vector(7 downto 0); 	-- address bus (byte addr)
-      si_pwrite	: in std_ulogic;                        -- write
-      si_pwdata	: in std_logic_vector(31 downto 0); 	-- write data bus
-      so_prdata	: out std_logic_vector(31 downto 0); 	-- read data bus
-      so_pirq 	: out std_logic;                        -- interrupt bus    
-  
+
+      si_psel           : in std_logic;                         -- slave select
+      si_penable        : in std_ulogic;                        -- strobe
+      si_paddr          : in std_logic_vector(7 downto 0);      -- address bus (byte addr)
+      si_pwrite         : in std_ulogic;                        -- write
+      si_pwdata         : in std_logic_vector(31 downto 0);     -- write data bus
+      so_prdata         : out std_logic_vector(31 downto 0);    -- read data bus
+      so_pirq           : out std_logic;                        -- interrupt bus
+
       -- Aux signals
       bcsync     : in std_logic;                        -- external sync input for BC
       rtaddr     : in std_logic_vector(4 downto 0);     -- reset value for RT address
       rtaddrp    : in std_logic;                        -- RT address odd parity
-  
+
       rtsync     : out std_logic;
       busreset   : out std_logic;
       validcmda  : out std_logic;
@@ -227,7 +250,7 @@ package gr1553b_pkg is
       timedoutb  : out std_logic;
       badreg     : out std_logic;
       irqvec     : out std_logic_vector(7 downto 0);
-  
+
       -- 1553 transceiver interface
       busainen   : out std_logic;                     -- bus A receiver enable
       busainp    : in  std_logic;                     -- bus A receiver, positive input
@@ -236,18 +259,28 @@ package gr1553b_pkg is
       busaoutp   : out std_logic;                     -- bus A transmitter, positive output
       busaoutn   : out std_logic;                     -- bus A transmitter, negative output
       busa_txin  : out std_logic;                     -- bus A transmitter enable (inverted)
-  
+
       busbinen   : out std_logic;                     -- bus B receiver enable
       busbinp    : in  std_logic;                     -- bus B receiver, positive input
       busbinn    : in  std_logic;                     -- bus B receiver, negative input
       busbouten  : out std_logic;                     -- bus B transmitter enable
       busboutp   : out std_logic;                     -- bus B transmitter, positive output
       busboutn   : out std_logic;                     -- bus B transmitter, negative output
-      busb_txin  : out std_logic                      -- bus B transmitter enable (inverted)
-      );  
+      busb_txin  : out std_logic;                     -- bus B transmitter enable (inverted)
+
+      -- Extra signals for extctrlen option
+      extctrl_rten   : in std_logic := '0';
+      extctrl_rtaddr : in std_logic_vector(4 downto 0) := "11111";
+      extctrl_brs    : in std_logic := '0';
+      extctrl_sys    : in std_logic := '0';
+      extctrl_syds   : in std_logic := '0';
+      extctrl_busy   : in std_logic := '0';
+      extctrl_satb   : in std_logic_vector(31 downto 9) := (others => '0');
+      extctrl_mccr   : in std_logic_vector(29 downto 0) := (others => '0')
+      );
   end component;
-  
-  
+
+
   component gr1553b_nlw is
     generic(
       tech: integer := 0;
@@ -267,7 +300,8 @@ package gr1553b_pkg is
       bm_filters: integer range 0 to 1 := 1;
       codecfreq: integer := 20;
       sameclk: integer range 0 to 1 := 0;
-      codecver: integer range 0 to 2 := 0
+      codecver: integer range 0 to 2 := 1;
+      extctrlen: integer range 0 to 1 := 0
       );
     port(
       clk: in std_logic;
@@ -285,13 +319,13 @@ package gr1553b_pkg is
       rxin: in gr1553b_rxin_type
       );
   end component;
-  
+
   -----------------------------------------------------------------------------
   -- APB Register definitions
-  
+
   constant REG_IRQSTATUS:    std_logic_vector := x"00";
   constant REG_IRQENABLE:    std_logic_vector := x"04";
-  
+
   constant REG_BCSTATUS:     std_logic_vector := x"40";
   constant REG_BCACTION:     std_logic_vector := x"44";
   constant REG_BCSCHEMADDR:  std_logic_vector := x"48";
@@ -301,9 +335,9 @@ package gr1553b_pkg is
   constant REG_BCIRQSRC:     std_logic_vector := x"58";
   constant REG_BCRTBUSMASK:  std_logic_vector := x"5C";
   constant REG_BCSCHEMSLOT:  std_logic_vector := x"68";
-  constant REG_BCASYNCSLOT:  std_logic_vector := x"6C";                                                 
-  
-  constant REG_RTSTATUS:     std_logic_vector := x"80";  
+  constant REG_BCASYNCSLOT:  std_logic_vector := x"6C";
+
+  constant REG_RTSTATUS:     std_logic_vector := x"80";
   constant REG_RTCONFIG:     std_logic_vector := x"84";
   constant REG_RTBUSSTAT:    std_logic_vector := x"88";
   constant REG_RTBUSWORDS:   std_logic_vector := x"8C";
@@ -392,23 +426,23 @@ package gr1553b_pkg is
       );
     port(
       clk: in std_logic;
-      rst: in std_logic;      
+      rst: in std_logic;
       codec_clk: in std_logic;
-      codec_rst: in std_logic;      
+      codec_rst: in std_logic;
       apbsi: in apb_slv_in_type;
-      apbso: out apb_slv_out_type;      
+      apbso: out apb_slv_out_type;
       txout_core: in gr1553b_txout_type;
-      rxin_core: out gr1553b_rxin_type;     
+      rxin_core: out gr1553b_rxin_type;
       txout_bus: out gr1553b_txout_type;
-      rxin_bus: in gr1553b_rxin_type;      
+      rxin_bus: in gr1553b_rxin_type;
       testing: out std_logic
       );
   end component;
-  
+
   -----------------------------------------------------------------------------
   -- Simulation types and components for test bench
 
-  -- U=Undefined, X=Unknown, 0=Zero, +=High, -=Low 
+  -- U=Undefined, X=Unknown, 0=Zero, +=High, -=Low
   type uwire1553 is ('U','X','0','+','-');
   type uwire1553_array is array(natural range <>) of uwire1553;
   function resolved (a: uwire1553_array) return uwire1553;
@@ -429,7 +463,7 @@ package gr1553b_pkg is
       rxN: out std_logic
       );
   end component;
-      
+
   component simtrans1553 is
     generic (
       txdelay: time := 200 ns;
@@ -451,23 +485,23 @@ package gr1553b_pkg is
       rxBP: out std_logic;
       rxBN: out std_logic
       );
-  end component;        
+  end component;
 
   component combine1553 is
     port (
       clk: in std_ulogic;
-      txin1,rxen1: in std_ulogic;      
+      txin1,rxen1: in std_ulogic;
       tx1P,tx1N: in std_ulogic;
       rx1P,rx1N: out std_ulogic;
-      txin2,rxen2: in std_ulogic;      
+      txin2,rxen2: in std_ulogic;
       tx2P,tx2N: in std_ulogic;
       rx2P,rx2N: out std_ulogic;
-      txin,rxen: out std_ulogic;      
+      txin,rxen: out std_ulogic;
       txP,txN: out std_ulogic;
       rxP,rxN: in std_ulogic
       );
-  end component;  
-  
+  end component;
+
 end package;
 
 package body gr1553b_pkg is
@@ -489,6 +523,6 @@ package body gr1553b_pkg is
     end loop;
     return w;
   end;
-  
+
 end package body;
 

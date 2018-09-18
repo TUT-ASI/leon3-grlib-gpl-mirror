@@ -2,6 +2,7 @@
 	"Inferred		CONFIG_SYN_INFERRED \
 	Actel-Axcelerator	CONFIG_SYN_AXCEL \
 	Actel-Axcelerator-DSP	CONFIG_SYN_AXDSP \
+	Actel-Fusion   	   	CONFIG_SYN_FUSION\
 	Actel-Proasic		CONFIG_SYN_PROASIC \
 	Actel-ProasicPlus	CONFIG_SYN_PROASICPLUS \
 	Actel-Proasic3       	CONFIG_SYN_PROASIC3 \
@@ -11,7 +12,7 @@
 	Actel-IGLOO2	   	CONFIG_SYN_IGLOO2 \
 	Actel-SmartFusion2 	CONFIG_SYN_SF2 \
 	Actel-RTG4 	        CONFIG_SYN_RTG4 \
-	Actel-Fusion   	   	CONFIG_SYN_FUSION\
+	Actel-PolarFire         CONFIG_SYN_POLARFIRE \
 	Aeroflex-UT025CRH	CONFIG_SYN_UT025CRH \
 	Aeroflex-UT130HBD	CONFIG_SYN_UT130HBD \
 	Aeroflex-UT90NHBD	CONFIG_SYN_UT90NHBD \

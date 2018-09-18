@@ -91,9 +91,16 @@ architecture rtl of unisim_iddr_reg is
    
 begin
      V7 : if (tech = virtex7) or (tech = kintex7) or (tech = artix7) generate
-       U0 : IDDR generic map( DDR_CLK_EDGE => "SAME_EDGE")
-         Port map( Q1 => Q1, Q2 => Q2, C => C1, CE => CE,
-                   D => D, R => R, S => S);
+      align : if arch = 0 generate
+        U0 : IDDR generic map( DDR_CLK_EDGE => "SAME_EDGE")
+          Port map( Q1 => Q1, Q2 => Q2, C => C1, CE => CE,
+                    D => D, R => R, S => S);
+        end generate;
+      align_pipe : if arch = 1 generate
+        U0 : IDDR generic map( DDR_CLK_EDGE => "SAME_EDGE_PIPELINED")
+        Port map( Q1 => Q1, Q2 => Q2, C => C1, CE => CE,
+                  D => D, R => R, S => S);
+      end generate;
      end generate;
 
      V4 : if (tech = virtex4) or (tech = virtex5) or (tech = virtex6) or (tech = zynq7000) generate

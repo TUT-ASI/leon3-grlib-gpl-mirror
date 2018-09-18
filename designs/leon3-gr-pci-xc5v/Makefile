@@ -16,6 +16,8 @@ QSF=$(GRLIB)/boards/$(BOARD)/$(TOP).qsf
 EFFORT=high
 XSTOPT=
 ISEMAPOPT=-timing
+AREA_OPT=Yes
+GRLIB_XILINX_SOURCE_MGMT_MODE=DisplayOnly
 VHDLSYNFILES=config.vhd lfclkgen.vhd leon3mp.vhd
 VHDLSIMFILES=testbench.vhd
 SIMTOP=testbench
@@ -29,12 +31,12 @@ LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip hynix cypress ihp fmf spansion gsi
 DIRSKIP = b1553 pci/pcif leon2 leon2ft leon3v1 leon3ftv2 leon3ftv1 \
 	 crypto satcan ddr slink ascs hcan \
-	i2c spi pwm iommu
+	i2c spi pwm iommu ge_1000baseX
 ifeq ("$(CONFIG_LEON4)","")
 DIRSKIP+=leon4v0
 endif
 FILESKIP = grcan.vhd i2c_slave_model.v \
-	$(GRFPWNET) $(L3FTNET)
+	$(GRFPWNET) $(L3FTNET) adapters/sgmii.vhd
 
 include $(GRLIB)/bin/Makefile
 include $(GRLIB)/software/leon3/Makefile

@@ -275,7 +275,9 @@
 #undef  CONFIG_L2_SHARE
 #define CONFIG_L2_MAP 00F0
 #define CONFIG_L2_MTRR (0)
-#undef  CONFIG_L2_EDAC
+#define CONFIG_L2_EDAC_NONE 1
+#undef  CONFIG_L2_EDAC_YES
+#undef  CONFIG_L2_EDAC_TECHSPEC
 #undef  CONFIG_L2_AXI
 /*
  * AMBA configuration
@@ -358,12 +360,12 @@
  * UARTs, timers and irq control         
  */
 #define CONFIG_UART1_ENABLE 1
-#define CONFIG_UA1_FIFO1 1
+#undef  CONFIG_UA1_FIFO1
 #undef  CONFIG_UA1_FIFO2
 #undef  CONFIG_UA1_FIFO4
 #undef  CONFIG_UA1_FIFO8
 #undef  CONFIG_UA1_FIFO16
-#undef  CONFIG_UA1_FIFO32
+#define CONFIG_UA1_FIFO32 1
 #define CONFIG_IRQ3_ENABLE 1
 #undef  CONFIG_IRQ3_SEC
 #define CONFIG_GPT_ENABLE 1

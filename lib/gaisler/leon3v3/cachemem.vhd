@@ -549,6 +549,7 @@ begin
     cramo.icramo.tag(i) <= (others => '0');
     cramo.icramo.data(i) <= (others => '0');
     cramo.icramo.ctx(i) <= (others => '0');
+    cramo.icramo.subit(i) <= '0';
   end generate;
 
 
@@ -593,6 +594,7 @@ begin
     cramo.dcramo.tag(i) <= (others => '0');
     cramo.dcramo.stag(i) <= (others => '0');
     cramo.dcramo.data(i) <= (others => '0');
+    cramo.dcramo.subit(i) <= '0';
     cramo.dcramo.ctx(i) <= (others => '0');
   end generate;
 

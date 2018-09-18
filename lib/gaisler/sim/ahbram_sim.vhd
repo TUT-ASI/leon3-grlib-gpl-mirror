@@ -46,13 +46,15 @@ use techmap.gencomp.all;
 
 entity ahbram_sim is
   generic (
-    hindex  : integer := 0;
-    haddr   : integer := 0;
-    hmask   : integer := 16#fff#;
-    tech    : integer := DEFMEMTECH; 
-    kbytes  : integer := 1;
-    pipe    : integer := 0;
-    maccsz  : integer := AHBDW;
+    hindex      : integer := 0;
+    haddr       : integer := 0;
+    hmask       : integer := 16#fff#;
+    tech        : integer := DEFMEMTECH; 
+    kbytes      : integer := 1;
+    pipe        : integer := 0;
+    maccsz      : integer := AHBDW;
+    endianness  : integer := 0; --0 access as BE
+                                --1 access as LE
     fname   : string  := "ram.dat"
    );
   port (
@@ -111,9 +113,21 @@ begin
   variable v       : reg_type;
   variable haddr   : std_logic_vector(abits-1 downto 0);
   variable hrdata  : std_logic_vector(dw-1 downto 0);
+  variable wdata   : std_logic_vector(dw-1 downto 0);
   variable seldata : std_logic_vector(dw-1 downto 0);
   variable raddr   : std_logic_vector(3 downto 2);
   variable adsel   : std_logic;
+
+  function reversedata(data : std_logic_vector; step : integer)
+    return std_logic_vector is
+    variable rdata: std_logic_vector(data'length-1 downto 0);
+  begin
+    for i in 0 to (data'length/step-1) loop
+      rdata(i*step+step-1 downto i*step) := data(data'length-i*step-1 downto data'length-i*step-step);
+    end loop;
+    return rdata;
+  end function reversedata;
+  
   begin
     v := r; v.hready := '1'; bs := (others => '0');
     v.pready := r.hready;
@@ -242,6 +256,13 @@ begin
       hrdata := r.prdata;
     end if;
 
+    wdata := ahbsi.hwdata;
+
+    -- Revert endianness
+    if endianness = 1 then
+      hrdata    := reversedata(hrdata, 8);
+      wdata     := reversedata(wdata, 8);
+    end if;
 
     if (not RESET_ALL) and (rst = '0') then
       v.hwrite := RES.hwrite; v.hready := RES.hready;
@@ -251,6 +272,9 @@ begin
 
     ahbso.hrdata <= ahbdrivedata(hrdata);
     ahbso.hready <= r.hready;
+
+    -- Select correct write data
+    hwdata <= ahbreaddata(wdata, r.addr(4 downto 2), conv_std_logic_vector(log2(dw/8), 3));
     
   end process;
 
@@ -259,10 +283,6 @@ begin
   ahbso.hirq    <= (others => '0');
   ahbso.hconfig <= hconfig;
   ahbso.hindex  <= hindex;
-
-  -- Select correct write data
-  hwdata <= ahbreaddata(ahbsi.hwdata, r.addr(4 downto 2),
-                        conv_std_logic_vector(log2(dw/8), 3));
   
 --  aram : syncrambw generic map (tech, abits, dw, scantest) port map (
 --  clk, ramaddr, hwdata, ramdata, ramsel, write, ahbsi.testin); 
@@ -275,6 +295,7 @@ begin
   variable CH : character;
   variable ai : integer := 0;
   variable len : integer := 0;
+  variable wrd : integer := 0;
   file TCF : text open read_mode is fname;
   variable rectype : std_logic_vector(3 downto 0);
   variable recaddr : std_logic_vector(31 downto 0);
@@ -309,23 +330,27 @@ begin
             if (ch = 'S') or (ch = 's') then
               hread(L1, rectype);
               hread(L1, reclen);
-              len := conv_integer(reclen)-1;
               recaddr := (others => '0');
               case rectype is 
-                 when "0001" =>
-                        hread(L1, recaddr(15 downto 0));
-                 when "0010" =>
-                        hread(L1, recaddr(23 downto 0));
-                 when "0011" =>
-                        hread(L1, recaddr);
-                 when others => next;
+                when "0001" =>
+                  hread(L1, recaddr(15 downto 0));
+                  len := conv_integer(reclen)-3;
+                when "0010" =>
+                  hread(L1, recaddr(23 downto 0));
+                  len := conv_integer(reclen)-4;
+                when "0011" =>
+                  hread(L1, recaddr);
+                  len := conv_integer(reclen)-5;
+                when others => next;
               end case;
-              hread(L1, recdata);
+              hread(L1, recdata(0 to len*8-1));
 
               recaddr(31 downto abits+2) := (others => '0');
-              ai := conv_integer(recaddr)/4;
-              for i in 0 to 3 loop
-                      ram(ai+i) <= recdata((i*32) to (i*32+31));
+              ai := conv_integer(recaddr)/(dw/8);
+              wrd := len/(dw/8);
+
+              for i in 0 to wrd-1 loop
+                ram(ai+i)       <= recdata(i*dw to i*dw+dw-1);
               end loop;
 
               if ai = 0 then

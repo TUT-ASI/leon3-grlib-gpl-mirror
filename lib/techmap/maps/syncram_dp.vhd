@@ -237,8 +237,8 @@ begin
   end generate;
 
   pf  : if tech = polarfire generate
-    x0 : polarfire_syncram_dp generic map (abits, dbits)
-         port map (clk1, address1, datain1, dataout1x, xxenable1, xwrite1, open,
+    x0 : polarfire_syncram_dp generic map (abits, dbits, pipeline)
+         port map (clk1, address1, datain1, dataout1x, xxenable1, xwrite1,
                    clk2, address2, datain2, dataout2x, xxenable2, xwrite2);
   end generate;
 

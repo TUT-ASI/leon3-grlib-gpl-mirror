@@ -33,37 +33,40 @@ package config_types is
   -----------------------------------------------------------------------------
 
   -- debug level and debug mask controls debug output from tech map
-  constant grlib_debug_level             : integer := 0; 
-  constant grlib_debug_mask              : integer := 1; 
+  constant grlib_debug_level               : integer := 0; 
+  constant grlib_debug_mask                : integer := 1; 
   -- Defines if strict RAM techmap should be used. Otherwise small (shallow)
   -- RAMs may be mapped to inferred technology.
-  constant grlib_techmap_strict_ram      : integer := 2;
+  constant grlib_techmap_strict_ram        : integer := 2;
   -- Expand testin vector to syncrams with additional bits
-  constant grlib_techmap_testin_extra    : integer := 3;
+  constant grlib_techmap_testin_extra      : integer := 3;
   -- Add synchronous resets to all registers (requires support in IP cores)
-  constant grlib_sync_reset_enable_all   : integer := 4;
+  constant grlib_sync_reset_enable_all     : integer := 4;
   -- Use asynchronous reset, with this option enabled all registers will be
   -- reset using asynchronous reset (within IP cores that support this).
-  constant grlib_async_reset_enable      : integer := 5;
+  constant grlib_async_reset_enable        : integer := 5;
   -- Disable automatic ECC config in syncram_(2p)ft
   constant grlib_syncramft_autosel_disable : integer := 6;
   -- Enable (sim only) self-checking modules in syncram/_2p/_dp
-  constant grlib_syncram_selftest_enable : integer := 7;
+  constant grlib_syncram_selftest_enable   : integer := 7;
   -- Disable testoen control even if scantest enabled (for using external boundary
   -- scan or other test logic)
-  constant grlib_external_testoen        : integer := 8;
+  constant grlib_external_testoen          : integer := 8;
   -- Increase maximum number of interrupts (32 + x*32)
-  constant grlib_amba_inc_nirq           : integer := 9; 
+  constant grlib_amba_inc_nirq             : integer := 9; 
   -- Enable little endian
-  constant grlib_little_endian           : integer := 10;
+  constant grlib_little_endian             : integer := 10;
   -- Always merge TMRd data onto same RAM block in syncram_2pft
-  constant grlib_syncram2pft_mergetmr    : integer := 11;
+  constant grlib_syncram2pft_mergetmr      : integer := 11;
   -- Enable / disable RTG4 SET mitigation
-  constant grlib_rtg4_set_mitigation     : integer := 12;
+  constant grlib_rtg4_set_mitigation       : integer := 12;
   -- Force disable of RTG4 RAM ECC (DANGER! DO NOT SET!)
-  constant grlib_rtg4_disable_ram_ecc    : integer := 13;
+  constant grlib_rtg4_disable_ram_ecc      : integer := 13;
+  -- Force disable of PolarFire RAM ECC (DANGER! DO NOT SET!)
+  constant grlib_polarfire_disable_ram_ecc : integer := 14;
+  
 
-  type grlib_config_array_type is array (0 to 14) of integer;
+  type grlib_config_array_type is array (0 to 15) of integer;
 
 end;
 

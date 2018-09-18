@@ -18,8 +18,9 @@ TOP=leon3mp
 SIMTOP=testbench
 
 # Uncomment for Modelsim or change to specify your simulator
-#GRLIB_SIMULATOR=ModelSim
+GRLIB_SIMULATOR=ModelSim
 #GRLIB_SIMULATOR=ALDEC
+#GRLIB_SIMULATOR=Xilinx
 
 # Options used during compilation
 VCOMOPT=-explicit -O0
@@ -34,7 +35,7 @@ endif
 
 # - MIG -
 ifeq ($(CONFIG_MIG_7SERIES),y)
-VSIMOPT+= -t fs -novopt
+VSIMOPT+= -t fs -voptargs="+acc" 
 VSIMOPT+= -L secureip -L unisims_ver glbl
 ifndef CONFIG_MIG_7SERIES_MODEL
 VSIMOPT+= -gUSE_MIG_INTERFACE_MODEL=false -gSIM_BYPASS_INIT_CAL=FAST -gSIMULATION=TRUE
@@ -49,7 +50,7 @@ endif
 ifeq ("$(GRLIB_SIMULATOR)","ALDEC")
 VSIMOPT+= +access +w -voptargs="+acc" +notimingchecks
 else
-VSIMOPT+=-novopt +notimingchecks
+VSIMOPT+=-voptargs="+acc" +notimingchecks
 endif
 
 # Run simulation in batch mode

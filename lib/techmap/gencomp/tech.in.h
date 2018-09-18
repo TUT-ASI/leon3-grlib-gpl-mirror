@@ -66,6 +66,8 @@
 #define CONFIG_SYN_TECH smartfusion2
 #elif defined CONFIG_SYN_RTG4
 #define CONFIG_SYN_TECH rtg4
+#elif defined CONFIG_SYN_POLARFIRE
+#define CONFIG_SYN_TECH polarfire
 #elif defined CONFIG_SYN_FUSION
 #define CONFIG_SYN_TECH actfus
 #elif defined CONFIG_SYN_SPARTAN2

@@ -133,7 +133,11 @@ proc eof_xlnx_vivado {} {
 	append vc "\nset_property top_arch rtl \[current_fileset\]"
 	append vc "\nset_property top $TOP \[current_fileset\]"
 	if {![string equal $PROTOBOARD ""]} {
-		append vc "\nset_property board_part $PROTOBOARD \[current_project\]"
+		append vc "\nif {\[regexp -nocase {\.\*board_part\.\*} \[list_property \[current_project\]\]\]} {"
+		append vc "\n  set_property board_part $PROTOBOARD \[current_project\]"
+		append vc "\n} else {"
+		append vc "\n  set_property board $PROTOBOARD \[current_project\]"
+		append vc "\n}"
 	}
 	if {[string equal $CONFIG_MIG_7SERIES "y"]} {
 		if {[string equal $BOARD "digilent-nexys4ddr-xc7a100t"]} {

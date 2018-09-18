@@ -123,6 +123,9 @@ entity sgmii_vc707 is
       gmiio             : in  eth_out_type;
       -- Asynchronous reset for entire core.
       reset             : in std_logic;
+      clkout0o          : out std_logic;
+      clkout1o          : out std_logic;
+      clkout2o          : out std_logic;
       -- APB Status bus
       apb_clk           : in    std_logic;
       apb_rstn          : in    std_logic;
@@ -653,6 +656,10 @@ begin
           O     => rxuserclk
        );
    end generate;
+
+   clkout0o <= userclk;
+   clkout1o <= rxuserclk;
+   clkout2o <= userclk2;
 
    -----------------------------------------------------------------------------
    -- Sync Reset for user clock

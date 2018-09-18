@@ -66,6 +66,8 @@
 #define CONFIG_SYN_TECH smartfusion2
 #elif defined CONFIG_SYN_RTG4
 #define CONFIG_SYN_TECH rtg4
+#elif defined CONFIG_SYN_POLARFIRE
+#define CONFIG_SYN_TECH polarfire
 #elif defined CONFIG_SYN_FUSION
 #define CONFIG_SYN_TECH actfus
 #elif defined CONFIG_SYN_SPARTAN2
@@ -843,7 +845,13 @@
 #define CONFIG_L2_MTRR 0
 #endif
 
-#ifndef CONFIG_L2_EDAC
+#if defined CONFIG_L2_EDAC_NONE
+#define CONFIG_L2_EDAC 0
+#elif defined CONFIG_L2_EDAC_YES
+#define CONFIG_L2_EDAC 1
+#elif defined CONFIG_L2_EDAC_TECHSPEC
+#define CONFIG_L2_EDAC 2
+#else
 #define CONFIG_L2_EDAC 0
 #endif
 
@@ -1105,6 +1113,11 @@
 #ifndef CONFIG_GRETH_SGMII_MODE
 #define CONFIG_GRETH_SGMII_MODE 0
 #endif
+
+#ifndef CONFIG_GRETH_FMC_MODE
+#define CONFIG_GRETH_FMC_MODE 0
+#endif
+
 #ifndef CONFIG_GRUSBHC_ENABLE
 #define CONFIG_GRUSBHC_ENABLE 0
 #endif

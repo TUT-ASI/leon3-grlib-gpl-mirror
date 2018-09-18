@@ -829,7 +829,7 @@ end generate;
       generic map(hindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SVGA_ENABLE,
         pindex => 15, paddr => 15, pirq => 12, memtech => memtech,
         mdcscaler => CPU_FREQ/1000, enable_mdio => 1, fifosize => CFG_ETH_FIFO,
-        nsync => 1, edcl => CFG_DSU_ETH, edclbufsz => CFG_ETH_BUF,
+        nsync => 2, edcl => CFG_DSU_ETH, edclbufsz => CFG_ETH_BUF,
         macaddrh => CFG_ETH_ENM, macaddrl => CFG_ETH_ENL, phyrstadr => 7,
         ipaddrh => CFG_ETH_IPM, ipaddrl => CFG_ETH_IPL, giga => CFG_GRETH1G,
 	enable_mdint => 1)

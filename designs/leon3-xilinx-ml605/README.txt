@@ -64,6 +64,7 @@ simulation and synthesis can be done.
 To generate the MIG and PCI Express and to install the Xilinx unisim verilog 
 simulation library, do as follows:
 
+  make install-unisim
   make mig39
   make pcie (do if PCI Express is enabled)
   make sim

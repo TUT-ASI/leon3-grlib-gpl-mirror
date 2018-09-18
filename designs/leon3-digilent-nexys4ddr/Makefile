@@ -41,7 +41,7 @@ VCOMOPT=-explicit -O0
 # - MIG -
 ifeq ($(CONFIG_MIG_7SERIES),y)
 SKIP_SIM_TECHLIBS = 1
-VSIMOPT+= -t fs -novopt
+VSIMOPT+= -t fs -voptargs="+acc" 
 VSIMOPT+= -L secureip_ver -L xilinxcorelib_ver -L unisims_ver glbl
 ifndef CONFIG_MIG_SERIES_7_MODEL
 VSIMOPT+= -gUSE_MIG_INTERFACE_MODEL=false -gSIM_BYPASS_INIT_CAL=FAST -gSIMULATION=TRUE
@@ -54,7 +54,7 @@ endif
 ifeq ("$(GRLIB_SIMULATOR)","ALDEC")
 VSIMOPT+= +access +w -voptargs="+acc" +notimingchecks
 else
-VSIMOPT+= -novopt +notimingchecks
+VSIMOPT+= -voptargs="+acc" +notimingchecks
 endif
 
 # Simulation scripts

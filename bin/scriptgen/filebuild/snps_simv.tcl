@@ -14,9 +14,9 @@ proc append_file_snps_simv {f finfo} {
 			return
 		}
 		"vhdldce" {
-			global DCVHDL VHDLOPT
-			upvar compile_dc_contents cdc
-			append cdc "\n$DCVHDL $bn $VHDLOPT$f"
+			global VHDLAN VHDLANOPT
+			upvar compile_simv_contents cvc
+			append cvc "\tvhdlan -nc $VHDLANOPT -work $bn $f\n"
 			return
 		}
 		"vhdlcdse" {

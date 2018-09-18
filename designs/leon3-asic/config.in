@@ -36,6 +36,7 @@ endmenu
 mainmenu_option next_comment
   comment 'Memory controllers             '
     source lib/esa/memoryctrl/mctrl.in
+    source lib/gaisler/memctrl/ftmctrl.in
     source lib/gaisler/misc/ahbstat.in
 endmenu
 

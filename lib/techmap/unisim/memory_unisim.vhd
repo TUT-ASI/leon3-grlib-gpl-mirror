@@ -1112,7 +1112,7 @@ begin
 
     x : for i in 0 to ((dbits-1)/8) generate
 
-      xwen18(i) <= '0'&write(i);
+      xwen18(i) <= write(i)&write(i);
       xdi(i) <= x"00"&di(i*8+8-1 downto i*8);
       do(i*8+8-1 downto i*8) <= xdo(i)(7 downto 0);
 
@@ -1153,7 +1153,7 @@ begin
 
     x : for i in 0 to ((dbits-1)/4) generate
 
-      xwen18(i) <= '0'&write(i/2);
+      xwen18(i) <= write(i/2)&write(i/2);
       xdi(i) <= x"000"&di(i*4+4-1 downto i*4);
       do(i*4+4-1 downto i*4) <= xdo(i)(3 downto 0);
 
@@ -1194,7 +1194,7 @@ begin
 
     x : for i in 0 to ((dbits-1)/2) generate
 
-      xwen18(i) <= '0'&write(i/4);
+      xwen18(i) <= write(i/4)&write(i/4);
       xdi(i)(15 downto 2) <= (others=>'0');
       xdi(i)(1 downto 0) <= di(i*2+2-1 downto i*2);
       do(i*2+2-1 downto i*2) <= xdo(i)(1 downto 0);
@@ -1235,7 +1235,7 @@ begin
 
     x : for i in 0 to (dbits-1) generate
 
-      xwen18(i) <= '0'&write(i/8);
+      xwen18(i) <= write(i/8)&write(i/8);
       xdi(i)(15 downto 1) <= (others=>'0');
       xdi(i)(0) <= di(i);
       do(i) <= xdo(i)(0);
@@ -1276,7 +1276,7 @@ begin
 
     x : for i in 0 to (dbits-1) generate
 
-      xwen36(i) <= "000"&write(i/8);
+      xwen36(i) <= write(i/8)&write(i/8)&write(i/8)&write(i/8);
       xdi36(i)(31 downto 1) <= (others=>'0');
       xdi36(i)(0) <= di(i);
       do(i) <= xdo36(i)(0);

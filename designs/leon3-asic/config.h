@@ -237,12 +237,14 @@
  * Leon2 memory controller        
  */
 #define CONFIG_MCTRL_LEON2 1
-#define CONFIG_MCTRL_8BIT 1
+#undef  CONFIG_MCTRL_8BIT
 #undef  CONFIG_MCTRL_16BIT
 #undef  CONFIG_MCTRL_5CS
-#define CONFIG_MCTRL_SDRAM 1
-#undef  CONFIG_MCTRL_SDRAM_SEPBUS
-#undef  CONFIG_MCTRL_PAGE
+#undef  CONFIG_MCTRL_SDRAM
+/*
+ * PROM/SRAM/SDRAM Memory controller with EDAC       
+ */
+#undef  CONFIG_MCTRLFT
 #define CONFIG_AHBSTAT_ENABLE 1
 #define CONFIG_AHBSTAT_NFTSLV (1)
 /*

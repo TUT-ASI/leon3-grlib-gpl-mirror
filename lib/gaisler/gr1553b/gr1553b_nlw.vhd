@@ -54,7 +54,8 @@ entity gr1553b_nlw is
     bm_filters: integer range 0 to 1 := 1;
     codecfreq: integer := 20;
     sameclk: integer range 0 to 1 := 0;
-    codecver: integer range 0 to 2 := 0
+    codecver: integer range 0 to 2 := 1;
+    extctrlen: integer range 0 to 1 := 0
     );
   port(
     clk: in std_logic;
@@ -74,7 +75,7 @@ entity gr1553b_nlw is
 
 
 end;
-    
+
 architecture rtl of gr1553b_nlw is
 
   signal mi_hgrant,mi_hready,mo_hbusreq,mo_hwrite,si_psel,si_penable,si_pwrite,so_pirq: std_logic;
@@ -87,14 +88,17 @@ architecture rtl of gr1553b_nlw is
   signal validcmda,validcmdb,timedouta,timedoutb,badreg: std_logic;
   signal irqvec: std_logic_vector(7 downto 0);
   signal busainen,busainp,busainn,busaouten,busaoutp,busaoutn,busa_txin: std_logic;
-  signal busbinen,busbinp,busbinn,busbouten,busboutp,busboutn,busb_txin: std_logic;  
-  
+  signal busbinen,busbinp,busbinn,busbouten,busboutp,busboutn,busb_txin: std_logic;
+  signal extctrl_rten,extctrl_brs,extctrl_sys,extctrl_syds,extctrl_busy: std_logic;
+  signal extctrl_rtaddr: std_logic_vector(4 downto 0);
+  signal extctrl_satb: std_logic_vector(31 downto 9);
+  signal extctrl_mccr: std_logic_vector(29 downto 0);
 begin
 
   geninf: if tech=0 generate
     x: gr1553b_stdlogic
       generic map (bc_enable,rt_enable,bm_enable,bc_timer,bc_rtbusmask,extra_regkeys,syncrst,
-                   ahbendian,bm_filters,codecfreq,sameclk,codecver)
+                   ahbendian,bm_filters,codecfreq,sameclk,codecver,extctrlen)
       port map (clk,rst,codec_clk,codec_rst,
                 mi_hgrant,mi_hready,mi_hresp,mi_hrdata,
                 mo_hbusreq,mo_htrans,mo_haddr,mo_hwrite,mo_hsize,mo_hburst,mo_hwdata,
@@ -103,21 +107,26 @@ begin
                 bcsync,rtaddr,rtaddrp,rtsync,busreset,validcmda,validcmdb,
                 timedouta,timedoutb,badreg,irqvec,
                 busainen,busainp,busainn,busaouten,busaoutp,busaoutn,busa_txin,
-                busbinen,busbinp,busbinn,busbouten,busboutp,busboutn,busb_txin);
+                busbinen,busbinp,busbinn,busbouten,busboutp,busboutn,busb_txin,
+                extctrl_rten,extctrl_rtaddr,extctrl_brs,extctrl_sys,extctrl_syds,
+                extctrl_busy,extctrl_satb,extctrl_mccr);
   end generate;
   gennetl : if tech /= 0 generate
     x: gr1553b_net
       generic map (tech,
                    bc_enable,rt_enable,bm_enable,bc_timer,bc_rtbusmask,extra_regkeys,syncrst,
-                   ahbendian,bm_filters,codecfreq,sameclk,codecver)
+                   ahbendian,bm_filters,codecfreq,sameclk,codecver,extctrlen)
       port map (clk,rst,codec_clk,codec_rst,
                 mi_hgrant,mi_hready,mi_hresp,mi_hrdata,
                 mo_hbusreq,mo_htrans,mo_haddr,mo_hwrite,mo_hsize,mo_hburst,mo_hwdata,
                 si_psel,si_penable,si_paddr,si_pwrite,si_pwdata,
                 so_prdata,so_pirq,
-                bcsync,rtsync,busreset,rtaddr,rtaddrp,
-                busainen,busainp,busainn,busaouten,busaoutp,busaoutn,
-                busbinen,busbinp,busbinn,busbouten,busboutp,busboutn);
+                bcsync,rtaddr,rtaddrp,rtsync,busreset,validcmda,validcmdb,
+                timedouta,timedoutb,badreg,irqvec,
+                busainen,busainp,busainn,busaouten,busaoutp,busaoutn,busa_txin,
+                busbinen,busbinp,busbinn,busbouten,busboutp,busboutn,busb_txin,
+                extctrl_rten,extctrl_rtaddr,extctrl_brs,extctrl_sys,extctrl_syds,
+                extctrl_busy,extctrl_satb,extctrl_mccr);
   end generate;
 
   mi_hgrant <= ahbmi.hgrant(hindex);
@@ -149,7 +158,15 @@ begin
   end process p;
   bcsync <= auxin.extsync;
   rtaddr <= auxin.rtaddr;
-  rtaddrp <= auxin.rtpar;  
+  rtaddrp <= auxin.rtpar;
+  extctrl_rten <= auxin.extctrl.rten;
+  extctrl_rtaddr <= auxin.extctrl.rtaddr;
+  extctrl_brs <= auxin.extctrl.brs;
+  extctrl_sys <= auxin.extctrl.sys;
+  extctrl_syds <= auxin.extctrl.syds;
+  extctrl_busy <= auxin.extctrl.busy;
+  extctrl_satb <= auxin.extctrl.satb;
+  extctrl_mccr <= auxin.extctrl.mccr;
   auxout.rtsync <= rtsync;
   auxout.busreset <= busreset;
   auxout.validcmda <= validcmda;
@@ -162,12 +179,12 @@ begin
   txout.busA_txP <= busaoutp;
   txout.busA_txN <= busaoutn;
   txout.busA_txen <= busaouten;
-  txout.busA_txin <= not busaouten;
+  txout.busA_txin <= busa_txin;
   txout.busA_rxen <= busainen;
   txout.busB_txP <= busboutp;
   txout.busB_txN <= busboutn;
   txout.busB_txen <= busbouten;
-  txout.busB_txin <= not busbouten;
+  txout.busB_txin <= busb_txin;
   txout.busB_rxen <= busbinen;
   busainp <= rxin.busA_rxP;
   busainn <= rxin.busA_rxN;
@@ -181,6 +198,6 @@ begin
   apbso.pindex <= pindex;
   apbso.pconfig <= (0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_GR1553B, gr1553b_version, gr1553b_cfgver, pirq),
                     1 => apb_iobar(paddr,pmask));
-  
+
 end;
 

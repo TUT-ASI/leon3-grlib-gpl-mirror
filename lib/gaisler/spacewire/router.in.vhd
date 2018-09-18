@@ -3,7 +3,7 @@
   constant CFG_SPWRTR_INPUT     : integer := CONFIG_SPWRTR_INPUT;
   constant CFG_SPWRTR_OUTPUT    : integer := CONFIG_SPWRTR_OUTPUT;
   constant CFG_SPWRTR_RTSAME    : integer := CONFIG_SPWRTR_RTSAME;
-  constant CFG_SPWRTR_FIFO      : integer := CONFIG_SPWRTR_FIFO;
+  constant CFG_SPWRTR_RXFIFO    : integer := CONFIG_SPWRTR_RXFIFO;
   constant CFG_SPWRTR_TECHFIFO  : integer := CONFIG_SPWRTR_TECHFIFO;
   constant CFG_SPWRTR_FT        : integer := CONFIG_SPWRTR_FT;
   constant CFG_SPWRTR_SPWEN     : integer := CONFIG_SPWRTR_SPWEN;

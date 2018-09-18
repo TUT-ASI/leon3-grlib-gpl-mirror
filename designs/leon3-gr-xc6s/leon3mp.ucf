@@ -41,79 +41,106 @@ TIMESPEC "TS_clk" = PERIOD "clk" 20.000 ns HIGH 50.00%;
 NET "clk2" TNM_NET = "clk2";
 TIMESPEC "TS_clk2" = PERIOD "clk2" 5.000 ns HIGH 50.00%;
 
-# -------------------------------
+############################################################################
 # RGMII interface
+############################################################################
+PIN "clk_mig.clkgen0/xc3s.v/bufg0.O" CLOCK_DEDICATED_ROUTE = FALSE;
+PIN "clk_mig.clk125bug.O" CLOCK_DEDICATED_ROUTE = FALSE;
+PIN "clk_mig.clk25buf.O" CLOCK_DEDICATED_ROUTE = FALSE;
 
-# Allow non dedicated clock routing (Onlu needed if clock mux is used)
-PIN "rgmii0/useclkmux0.tecclkmux.clkmux1000/tec.xil.buf/buf.O" CLOCK_DEDICATED_ROUTE = FALSE;
+#Slack:                  -1.507ns (requirement - (data path - clock path skew + uncertainty))
+#  Source:               mig_gen.ddrc/MCB_inst/memc3_infrastructure_inst/rst0_sync_r_24 (FF)
+#  Destination:          eth0.e1/m1000.u0/gtxc0/gtx0/gtx_rst/r_3 (FF)
+##INST "mig_gen.ddrc/MCB_inst/memc3_infrastructure_inst/rst0_sync_r_24" TNM_NET = "TNM_GRP_RSTETH0";
+##TIMESPEC TS_RST_ETH0 = FROM "TNM_GRP_RSTETH0" TIG ;
 
-# Ethernet PHY LOC to ease placement
-INST "rgmiirgmii0/no_clk_mux0.rgmii_tx_clk/xil.xil0/s6.c_dm" LOC = OLOGIC_X17Y67;
-INST "rgmii0/rgmii_tx_ctl/xil.xil0/s6.c_dm" LOC = OLOGIC_X17Y30;
-INST "rgmii0/rgmii_txd[0].ddr_oreg0/xil.xil0/s6.c_dm" LOC  = OLOGIC_X17Y29;
-INST "rgmii0/rgmii_txd[1].ddr_oreg0/xil.xil0/s6.c_dm" LOC  = OLOGIC_X17Y57;
-INST "rgmii0/rgmii_txd[2].ddr_oreg0/xil.xil0/s6.c_dm" LOC  = OLOGIC_X17Y66;
-INST "rgmii0/rgmii_txd[3].ddr_oreg0/xil.xil0/s6.c_dm" LOC  = OLOGIC_X17Y79;
+#Slack:                  -1.451ns (requirement - (data path - clock path skew + uncertainty))
+#  Source:               eth0.e1/m1000.u0/gtxc0/m_ctrl_reset_sync_9 (FF)
+#  Destination:          eth0.e1/m1000.u0/gtxc0/gtx0/gtx_rst/r_2 (FF)
+##INST "eth0.e1/m1000.u0/gtxc0/m_ctrl_reset_sync_9" TNM_NET = "TNM_GRP_RSTETH1";
+##TIMESPEC TS_RST_ETH1 = FROM "TNM_GRP_RSTETH1" TIG ;
 
-# -- GTX clock inout
-# Only used when external GTX clock is used
-#NET "clk125" TNM_NET = "clk125";
-#TIMESPEC "TS_clk125" = PERIOD "clk125" 8.000 ns HIGH 50.00%;
+# Ignore reset paths in RGMII block to output pads
+# TBD
 
 # To be used for internal GTX clock generation when 10/100 mode is used
 PIN "ethpads.gtx_clk0.clk_125_bufg0.O" CLOCK_DEDICATED_ROUTE = FALSE;
-#PIN "ethpads.gtx_clk2.clkgen0/xc3s.v/bufg0.O" CLOCK_DEDICATED_ROUTE =FALSE;
-#PIN "ethpads.gtx_clk2.clk_125_bufg0.O" CLOCK_DEDICATED_ROUTE = FALSE;
 
+# -- GTX clock inout (Do not use)
+NET "clk125" TNM_NET = "clk125";
+TIMESPEC "TS_clk125" = PERIOD "clk125" 8.000 ns HIGH 50.00%;
+
+# RGMII RX clock
 NET "erx_clk" TNM_NET = "erx_clk";
 TIMESPEC "TS_erx_clk" = PERIOD "erx_clk" 8.000 ns HIGH 50.00%;
 
-#NET "mig_gen.ddrc/MCB_inst/memc3_infrastructure_inst/clk0" TNM_NET = clkm;
-NET "clkm" TNM_NET = clkm;
+# Define AMBA clock for CDC
+NET "mig_gen.ddrc/MCB_inst/memc3_infrastructure_inst/clk0" TNM_NET = clkm;
 
-# All mode
-#NET "rgmii0/gmiii_gtx_clk" TNM_NET = "clk125_mux";
-NET "gmiii_gtx_clk" TNM_NET = "clk125_mux";
-TIMESPEC TS_clk125_mux = PERIOD "clk125_mux" 8 ns  HIGH 50.00%;
-TIMESPEC "TS_clkm_gtx_clk" = FROM "clkm" TO "clk125_mux" TIG;
-TIMESPEC "TS_gtx_clk_clkm" = FROM "clk125_mux" TO "clkm" TIG;
+# GTX clock
+NET "clk25" TNM_NET = "tclk25i";
+NET "clk25_bufg_90" TNM_NET = "tclk2590i";
+NET "clk125i" TNM_NET = "tclk125i";
+NET "clk125i_90" TNM_NET = "tclk12590i";
+NET "debug_rgmii_phy_tx[31]" TNM_NET = "clkdbg";
 
-# Giga mode only
-NET "clk_125_bufg" TNM_NET = "clk125_bufg";
-TIMESPEC TS_clk125_bufg = PERIOD "clk125_bufg" 8 ns  HIGH 50.00%;
-TIMESPEC "TS_clkm_gtx_clk_2" = FROM "clkm" TO "clk125_bufg" TIG;
-TIMESPEC "TS_gtx_clk_clkm_2" = FROM "clk125_bufg" TO "clkm" TIG;
+# Clock domain crossing
+#TIMESPEC TS_clk125_bufg = PERIOD "clk125_bufg" 8 ns  HIGH 50.00%;
+#TIMESPEC "TS_clkm_gtx_clk_2" = FROM "clkm" TO "clk125_bufg" 7 ns DATAPATHONLY;
+#TIMESPEC "TS_gtx_clk_clkm_2" = FROM "clk125_bufg" TO "clkm" 7 ns DATAPATHONLY;
 
-INST "etx_clk" SLEW = FAST;
-INST "etxd*  " SLEW = FAST;
-INST "etx_en " SLEW = FAST;
+TIMESPEC "TS_tclk25i_tclk2590i" = FROM "tclk25i" TO "tclk2590i" 7 ns DATAPATHONLY;
+TIMESPEC "TS_tclk2590i_tclk25i" = FROM "tclk2590i" TO "tclk25i" 7 ns DATAPATHONLY;
 
-INST "erxd*"   TNM = IN_RGMII; 
-INST "erx_dv"  TNM = IN_RGMII;
+TIMESPEC "TS_tclk125i_tclk12590i" = FROM "tclk125i" TO "tclk12590i" 7 ns DATAPATHONLY;
+TIMESPEC "TS_tclk12590i_tclk125i" = FROM "tclk12590i" TO "tclk125i" 7 ns DATAPATHONLY;
 
+TIMESPEC "TS_clkm_gtx_clk_21"  = FROM "clkm"       TO "tclk125i"    7 ns DATAPATHONLY;
+TIMESPEC "TS_gtx_clk_clkm_22"  = FROM "tclk125i"   TO "clkm"        7 ns DATAPATHONLY;
+TIMESPEC "TS_clkm_gtx_clk_21x" = FROM "clkm"       TO "tclk12590i"  7 ns DATAPATHONLY;
+TIMESPEC "TS_gtx_clk_clkm_22x" = FROM "tclk12590i" TO "clkm"        7 ns DATAPATHONLY;
+
+TIMESPEC "TS_clkm_gtx_clk_216"  = FROM "clkm"      TO "tclk25i"    7 ns DATAPATHONLY;
+TIMESPEC "TS_gtx_clk_clkm_226"  = FROM "tclk25i"   TO "clkm"        7 ns DATAPATHONLY;
+TIMESPEC "TS_clkm_gtx_clk_216x" = FROM "clkm"      TO "tclk2590i"  7 ns DATAPATHONLY;
+TIMESPEC "TS_gtx_clk_clkm_226x" = FROM "tclk2590i" TO "clkm"        7 ns DATAPATHONLY;
+
+##TIMESPEC "TS_clkm_gtx_clk_211" = FROM "clkm" TO "clkdbg" TIG;
+##TIMESPEC "TS_gtx_clk_clkm_221" = FROM "clkdbg" TO "clkm" TIG;
+
+TIMESPEC "TS_clkm_gtx_clk_2111" = FROM "tclk25i" TO "tclk125i" TIG;
+TIMESPEC "TS_gtx_clk_clkm_2211" = FROM "tclk125i" TO "tclk25i" TIG;
+
+# RX/TX 
 # See http://www.xilinx.com/support/documentation/sw_manuals/xilinx11/ug612.pdf figure 2-4
 # http://www.xilinx.com/support/documentation/sw_manuals/xilinx14_4/ug612.pdf
 
-# Use when IODELAY is inserted
-#TIMEGRP "IN_RGMII" OFFSET = IN 5.1 ns VALID 2.2 ns BEFORE "erx_clk" RISING; 
-#TIMEGRP "IN_RGMII" OFFSET = IN 5.1 ns VALID 2.2 ns BEFORE "erx_clk" FALLING;
-
-# No IODELAY
-# Please, note that these will fail but will be fixed by setup script in GRMON2
-#TIMEGRP "IN_RGMII" OFFSET = IN 1.5 ns VALID 2.25 ns BEFORE "erx_clk" RISING;
-#TIMEGRP "IN_RGMII" OFFSET = IN 1.5 ns VALID 2.25 ns BEFORE "erx_clk" FALLING;
+# RX group
+INST "erxd*"   TNM = IN_RGMII;
+INST "erx_dv"  TNM = IN_RGMII;
 
 # Use when IODELAY is inserted
-NET "etxd[0]" OFFSET = OUT 2.25 ns AFTER "clk125" REFERENCE_PIN "etx_clk" RISING;
-NET "etxd[0]" OFFSET = OUT 2.25 ns AFTER "clk125" REFERENCE_PIN "etx_clk" FALLING;
-NET "etxd[1]" OFFSET = OUT 2.25 ns AFTER "clk125" REFERENCE_PIN "etx_clk" RISING;
-NET "etxd[1]" OFFSET = OUT 2.25 ns AFTER "clk125" REFERENCE_PIN "etx_clk" FALLING;
-NET "etxd[2]" OFFSET = OUT 2.25 ns AFTER "clk125" REFERENCE_PIN "etx_clk" RISING;
-NET "etxd[2]" OFFSET = OUT 2.25 ns AFTER "clk125" REFERENCE_PIN "etx_clk" FALLING;
-NET "etxd[3]" OFFSET = OUT 2.25 ns AFTER "clk125" REFERENCE_PIN "etx_clk" RISING;
-NET "etxd[3]" OFFSET = OUT 2.25 ns AFTER "clk125" REFERENCE_PIN "etx_clk" FALLING;
-NET "etx_en"  OFFSET = OUT 2.25 ns AFTER "clk125" REFERENCE_PIN "etx_clk" RISING;
-NET "etx_en"  OFFSET = OUT 2.25 ns AFTER "clk125" REFERENCE_PIN "etx_clk" FALLING;
+#TIMEGRP "IN_RGMII" OFFSET = IN 1.25 ns VALID 2.5 ns BEFORE "erx_clk" RISING;
+#TIMEGRP "IN_RGMII" OFFSET = IN 1.25 ns VALID 2.5 ns BEFORE "erx_clk" FALLING;
+
+# TX group
+INST "etxd*"   TNM = OUT_D_RGMII;
+INST "etx_en"  TNM = OUT_E_RGMII;
+INST "etx_clk" TNM = OUT_C_RGMII;
+
+TIMEGRP "OUT_D_RGMII" OFFSET = OUT 12.0 ns AFTER "clk125" REFERENCE_PIN "etx_clk" RISING;
+TIMEGRP "OUT_D_RGMII" OFFSET = OUT 12.0 ns AFTER "clk125" REFERENCE_PIN "etx_clk" FALLING;
+
+TIMEGRP "OUT_E_RGMII" OFFSET = OUT 12.0 ns AFTER "clk125" REFERENCE_PIN "etx_clk" RISING;
+TIMEGRP "OUT_E_RGMII" OFFSET = OUT 12.0 ns AFTER "clk125" REFERENCE_PIN "etx_clk" FALLING;
+
+TIMEGRP "OUT_C_RGMII" OFFSET = OUT 14.0 ns AFTER "clk125" REFERENCE_PIN "etx_clk" RISING;
+TIMEGRP "OUT_C_RGMII" OFFSET = OUT 14.0 ns AFTER "clk125" REFERENCE_PIN "etx_clk" FALLING;
+
+# When <value> is omitted from the Offset Out constraint, the constraint becomes a 
+# report-only specification that reports the skew of the output bus. 
+#TIMEGRP "OUT_RGMII" OFFSET = OUT AFTER "clk" REFERENCE_PIN "etx_clk" RISING; 
+#TIMEGRP "OUT_RGMII" OFFSET = OUT AFTER "clk" REFERENCE_PIN "etx_clk" FALLING;
 
 ############################################################################
 # I/O STANDARDS AND LOCATIONS

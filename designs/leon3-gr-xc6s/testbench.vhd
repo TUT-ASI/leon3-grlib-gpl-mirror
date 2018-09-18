@@ -164,7 +164,7 @@ begin
 -- clock and reset
 
   clk  <= not clk after ct * 1 ns;
-  clk125  <= not clk125 after 10 ns;
+  clk125  <= not clk125 after 4 ns;
   --erx_clk <= not erx_clk after 4 ns;
   clk2 <= '0'; --not clk2 after 5 ns;
   rst <= dsurst and wdogn_local; 
@@ -189,7 +189,7 @@ begin
 	ddr_clk, ddr_clkb, ddr_cke, ddr_odt, ddr_we, ddr_ras, ddr_csb ,ddr_cas, ddr_dm,
 	ddr_dqs, ddr_dqsn, ddr_ad, ddr_ba, ddr_dq, ddr_rzq, ddr_zio,
 	txd1, rxd1, ctsn1, rtsn1, txd2, rxd2, ctsn2, rtsn2, pio, genio,
-        switch, led, erx_clk, emdio, erxd(3 downto 0)'delayed(1 ns), erx_dv'delayed(1 ns), emdint,
+        switch, led, erx_clk, emdio, erxd(3 downto 0), erx_dv, emdint,
 	etx_clk, etxd(3 downto 0), etx_en, emdc, 
 	ps2clk, ps2data, iic_scl, iic_sda, ddc_scl, ddc_sda,
 	dvi_iic_scl, dvi_iic_sda,
@@ -224,35 +224,29 @@ begin
   errorn <= 'H';			  -- ERROR pull-up
 
   phy0 : if (CFG_GRETH = 1) generate
-    emdio <= 'H'; 
-    p0: phy
-      generic map(
-             address       => 1,
-             extended_regs => 1,
-             aneg          => 1,
-             base100_t4    => 1,
-             base100_x_fd  => 1,
-             base100_x_hd  => 1,
-             fd_10         => 1,
-             hd_10         => 1,
-             base100_t2_fd => 1,
-             base100_t2_hd => 1,
-             base1000_x_fd => 1,
-             base1000_x_hd => 1,
-             base1000_t_fd => 1,
-             base1000_t_hd => 1,
-             rmii          => 0,
-             rgmii         => 1
-            )
-      port map(rst, emdio, open, erx_clk, erxd_d, erx_dv_d,
-        erx_er, erx_col, erx_crs, etxd, etx_en, etx_er, emdc, clk125);
-  end generate;
-
-  rcxclkp : process(erx_clk) is
-  begin
-      erxd   <= erxd_d;
-      erx_dv <= erx_dv_d;
-  end process;
+  emdio <= 'H'; 
+  p0: phy
+    generic map(
+           address       => 1,
+           extended_regs => 1,
+           aneg          => 1,
+           base100_t4    => 1,
+           base100_x_fd  => 1,
+           base100_x_hd  => 1,
+           fd_10         => 1,
+           hd_10         => 1,
+           base100_t2_fd => 1,
+           base100_t2_hd => 1,
+           base1000_x_fd => 0,
+           base1000_x_hd => 0,
+           base1000_t_fd => 0,
+           base1000_t_hd => 0,
+           rmii          => 0,
+           rgmii         => 1
+          )
+    port map(rst, emdio, open, erx_clk, erxd, erx_dv,
+      erx_er, erx_col, erx_crs, etxd, etx_en, etx_er, emdc, etx_clk ,clk125);
+end generate;
 
  --wdognp : process
  -- begin

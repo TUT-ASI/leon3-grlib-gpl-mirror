@@ -6,3 +6,4 @@ modgen
 amba
 atf
 dftlib
+generic_bm

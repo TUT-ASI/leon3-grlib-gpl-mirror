@@ -649,14 +649,15 @@ component spwtrace is
 
   component ahbram_sim
   generic (
-    hindex  : integer := 0;
-    haddr   : integer := 0;
-    hmask   : integer := 16#fff#;
-    tech    : integer := DEFMEMTECH; 
-    kbytes  : integer := 1;
-    pipe    : integer := 0;
-    maccsz  : integer := AHBDW;
-    fname   : string  := "ram.dat"
+    hindex      : integer := 0;
+    haddr       : integer := 0;
+    hmask       : integer := 16#fff#;
+    tech        : integer := DEFMEMTECH; 
+    kbytes      : integer := 1;
+    pipe        : integer := 0;
+    maccsz      : integer := AHBDW;
+    endianness  : integer := 0;
+    fname       : string  := "ram.dat"
    );
   port (
     rst     : in  std_ulogic;

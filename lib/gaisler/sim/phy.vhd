@@ -209,6 +209,7 @@ begin
 
   int_clk <= erxclkdel when extrxclken=1 and ifmode=mode_gmii else
              not int_clk after 10 ns  when ifmode=mode_rmii else
+             gtx_clk after 1 ns   when ifmode=mode_rgmii and r.ctrl.loopback = '1' else
              not int_clk after 4 ns   when ifmode=mode_rgmii and r.ctrl.speedsel = "01" else
              not int_clk after 20 ns  when ifmode=mode_rgmii and r.ctrl.speedsel = "10" else
              not int_clk after 200 ns when ifmode=mode_rgmii and r.ctrl.speedsel = "00" else
@@ -542,7 +543,7 @@ begin
 
     -- RESET
     if (r.ctrl.reset or not rstn) = '1' then
-      r.ctrl.loopback <= '1'; r.anegcnt <= 0;
+      r.ctrl.loopback <= '0'; r.anegcnt <= 0;
       if (base1000_x_hd = 1) or (base1000_x_fd = 1) or (base1000_t_hd = 1) or
          (base1000_t_fd = 1) then
         r.ctrl.speedsel <= "01";
@@ -644,6 +645,7 @@ begin
     end if;
   end process;
 
+no_rgmii : if (rgmii = 0) generate
   loopback_sel : process(r, gtx_clk, txd, tx_en, tx_er, lb_rxd, lb_rxer, lb_rxdv) is
   begin
     rx_col <= '0'; rx_crs <= '1';
@@ -662,13 +664,48 @@ begin
             rxd(1 downto 0) <= txd(1 downto 0);
           end if;
         when mode_rgmii =>
-          if (gtx_clk = '1' and tx_en = '0') then
-            rxd(3 downto 0) <= r.ctrl.duplexmode & r.ctrl.speedsel & r.status.linkstat;
+          if (tx_en = '0') then
+            rxd(3 downto 0) <= r.ctrl.duplexmode & r.ctrl.speedsel(0) & r.ctrl.speedsel(1) & r.ctrl.loopback;
+          else
+            if (gtx_clk = '1') then
+              rx_dv <= '1';
+            else
+              rx_dv <= '1'; -- No Error
+            end if;
+            rxd(3 downto 0) <= txd(3 downto 0);          
           end if;
+          rxd(7 downto 4) <= (others => '0');
       end case;
     end if;
   end process;
+end generate no_rgmii;
 
+en_rgmii : if (rgmii = 1) generate
+  loopback_sel : process(int_clk) is
+  begin
+    rx_col <= '0'; rx_crs <= '1';
+    rxd <= (others => '0'); rx_dv <= '0'; rx_er <= '0';
+    if r.ctrl.loopback = '1' then
+      case ifmode is
+        when mode_rgmii =>
+          if (tx_en = '0') then
+            rxd(3 downto 0) <= r.ctrl.duplexmode & r.ctrl.speedsel(0) & r.ctrl.speedsel(1) & r.ctrl.loopback;
+          else
+            if (gtx_clk = '1') then
+              rx_dv <= '1';
+            else
+              rx_dv <= '1'; -- No Error
+            end if;
+            rxd(3 downto 0) <= txd(3 downto 0);          
+          end if;
+          rxd(7 downto 4) <= (others => '0');
+        when others =>
+          rxd   <= (others => '0');
+          rx_dv <= '0';
+      end case;
+    end if;
+  end process;
+end generate en_rgmii;
 
   txsamp: process(txd,tx_en,tx_er,gtx_clk,int_clk,clkslow)
 

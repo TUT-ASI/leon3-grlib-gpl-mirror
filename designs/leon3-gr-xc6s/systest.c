@@ -25,7 +25,7 @@ apbuart_test(0x80000100);
 
 //  base_test();
 //  svgactrl_test(0x80000600, 1, 0, 0x40200000, -1, 0, 0);
-//  greth_test(0x80000e00);
+greth_test(0x80000e00);
 
 /*
   spw_test(0x80100A00);

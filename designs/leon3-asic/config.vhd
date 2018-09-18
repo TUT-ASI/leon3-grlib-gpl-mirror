@@ -1,14 +1,9 @@
-
-
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
 -- Copyright (C) 2013 Aeroflex Gaisler
 ------------------------------------------------------------------------------
-
-
 library techmap;
 use techmap.gencomp.all;
-
 package config is
 -- Technology and synthesis options
   constant CFG_FABTECH : integer := saed32;
@@ -116,14 +111,28 @@ package config is
   constant CFG_ETH_ENL : integer := 16#000000#;
 -- LEON2 memory controller
   constant CFG_MCTRL_LEON2 : integer := 1;
-  constant CFG_MCTRL_RAM8BIT : integer := 1;
+  constant CFG_MCTRL_RAM8BIT : integer := 0;
   constant CFG_MCTRL_RAM16BIT : integer := 0;
   constant CFG_MCTRL_5CS : integer := 0;
-  constant CFG_MCTRL_SDEN : integer := 1;
+  constant CFG_MCTRL_SDEN : integer := 0;
   constant CFG_MCTRL_SEPBUS : integer := 0;
   constant CFG_MCTRL_INVCLK : integer := 0;
   constant CFG_MCTRL_SD64 : integer := 0;
   constant CFG_MCTRL_PAGE : integer := 0 + 0;
+-- FTMCTRL memory controller
+  constant CFG_MCTRLFT : integer := 0;
+  constant CFG_MCTRLFT_RAM8BIT : integer := 0;
+  constant CFG_MCTRLFT_RAM16BIT : integer := 0;
+  constant CFG_MCTRLFT_5CS : integer := 0;
+  constant CFG_MCTRLFT_SDEN : integer := 0;
+  constant CFG_MCTRLFT_SEPBUS : integer := 0;
+  constant CFG_MCTRLFT_INVCLK : integer := 0;
+  constant CFG_MCTRLFT_SD64 : integer := 0;
+  constant CFG_MCTRLFT_EDAC : integer := 0 + 0 + 0;
+  constant CFG_MCTRLFT_PAGE : integer := 0 + 0;
+  constant CFG_MCTRLFT_ROMASEL : integer := 0;
+  constant CFG_MCTRLFT_WFB : integer := 0;
+  constant CFG_MCTRLFT_NET : integer := 0;
 -- AHB status register
   constant CFG_AHBSTAT : integer := 1;
   constant CFG_AHBSTATN : integer := (1);
@@ -148,12 +157,6 @@ package config is
   constant CFG_GRETH : integer := 1;
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 8;
-
-
-
-
-
-
 -- SPI memory controller
   constant CFG_SPIMCTRL : integer := 0;
   constant CFG_SPIMCTRL_SDCARD : integer := 0;
@@ -164,7 +167,6 @@ package config is
   constant CFG_SPIMCTRL_ASCALER : integer := 1;
   constant CFG_SPIMCTRL_PWRUPCNT : integer := 0;
   constant CFG_SPIMCTRL_OFFSET : integer := 16#0#;
-
 -- SPI controller
   constant CFG_SPICTRL_ENABLE : integer := 1;
   constant CFG_SPICTRL_NUM : integer := (1);
@@ -179,7 +181,6 @@ package config is
   constant CFG_SPICTRL_SYNCRAM : integer := 0;
   constant CFG_SPICTRL_FT : integer := 0;
   constant CFG_SPICTRL_PROT : integer := 0;
-
 -- CAN 2.0 interface
   constant CFG_CAN : integer := 0;
   constant CFG_CAN_NUM : integer := 1;
@@ -188,19 +189,15 @@ package config is
   constant CFG_CANSEPIRQ: integer := 0;
   constant CFG_CAN_SYNCRST : integer := 0;
   constant CFG_CANFT : integer := 0;
-
 -- UART 1
   constant CFG_UART1_ENABLE : integer := 1;
   constant CFG_UART1_FIFO : integer := 4;
-
 -- UART 2
   constant CFG_UART2_ENABLE : integer := 1;
   constant CFG_UART2_FIFO : integer := 4;
-
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE : integer := 1;
   constant CFG_IRQ3_NSEC : integer := 0;
-
 -- Modular timer
   constant CFG_GPT_ENABLE : integer := 1;
   constant CFG_GPT_NTIM : integer := (4);
@@ -210,15 +207,12 @@ package config is
   constant CFG_GPT_SEPIRQ : integer := 0;
   constant CFG_GPT_WDOGEN : integer := 1;
   constant CFG_GPT_WDOG : integer := 16#FFFFF#;
-
 -- GPIO port
   constant CFG_GRGPIO_ENABLE : integer := 1;
   constant CFG_GRGPIO_IMASK : integer := 16#FE#;
   constant CFG_GRGPIO_WIDTH : integer := (16);
-
 -- I2C master
   constant CFG_I2C_ENABLE : integer := 1;
-
 -- GRLIB debugging
   constant CFG_DUART : integer := 0;
 end;

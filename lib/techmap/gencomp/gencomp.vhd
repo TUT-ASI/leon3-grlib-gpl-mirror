@@ -268,16 +268,16 @@ constant has_sram_ecc :  tech_ability_type :=
 
 -- Support for built in pipeline register in SRAM macro
 constant has_sram_pipe : tech_ability_type :=
-  (rtg4 => 1, others => 0);
+  (rtg4 => 1, polarfire => 1, others => 0);
 
 -- Support for build in pipeline register in SRAM macro ECC
 constant has_sram_ecc_pipe : tech_ability_type :=
-  (rtg4 => 1, others => 0);
+  (rtg4 => 1, polarfire => 1, others => 0);
 
 -- Support for target (memory) technology FT features with
 -- error injection
 constant has_sram_ecc_errinj : tech_ability_type :=
-  (rtg4 => 0, polarfire => 1, virtex5 => 1, virtex6 => 1,
+  (rtg4 => 0, polarfire => 0, virtex5 => 1, virtex6 => 1,
    artix7 => 1, kintex7 => 1, virtex7 => 1,
    kintexu => 1, others => 0);
 
@@ -526,6 +526,8 @@ constant sstl18_i : integer := 9;
 constant sstl18_ii: integer := 10;
 constant lvpecl   : integer := 11;
 constant sstl     : integer := 12;
+constant sstl12_dci : integer := 13;
+constant hstl_i_18: integer := 14;
 
 -- pad types
 

@@ -47,9 +47,9 @@ set tck_clk_freq   10.0
 
 ### Define PLL Clocks [Source Name Start Freq Jitter Factor ApbClk]
 set pllclocks [list \
-clk clk1x core0/clkgen0/v/pll0/PLL0/CLK_1X [expr $sys_clk_freq * 1.0] 0.55 1.0 1 \
-clk clk2x core0/clkgen0/v/pll0/PLL0/CLK_2X [expr $sys_clk_freq * 2.0] 0.55 2.0 0 \
-clk clk4x core0/clkgen0/v/pll0/PLL0/CLK_4X [expr $sys_clk_freq * 4.0] 0.55 4.0 0 \
+clk clk1x core0/clkgen0/v/pll0/CLK_1X [expr $sys_clk_freq * 1.0] 0.55 1.0 1 \
+clk clk2x core0/clkgen0/v/pll0/CLK_2X [expr $sys_clk_freq * 2.0] 0.55 2.0 0 \
+clk clk4x core0/clkgen0/v/pll0/CLK_4X [expr $sys_clk_freq * 4.0] 0.55 4.0 0 \
 ]
 
 #################################################################################

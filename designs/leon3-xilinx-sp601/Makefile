@@ -12,6 +12,10 @@ UCF_PLANAHEAD=$(UCF)
 QSF=$(GRLIB)/boards/$(BOARD)/$(TOP).qsf
 EFFORT=high
 XSTOPT=-uc leon3mp.xcf
+#Specify if area otimization is required(yes/no) 
+AREA_OPT=yes
+GRLIB_XILINX_SOURCE_MGMT_MODE=DisplayOnly
+#XSTOPT=-auto_bram_packing yes -uc leon3mp.xcf 
 SYNPOPT="set_option -pipe 1; set_option -retiming 1; set_option -write_apr_constraint 0"
 
 VHDLOPTSYNFILES= mig37/mig_37/user_design/rtl/iodrp_controller.vhd \
@@ -44,9 +48,9 @@ LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp usbhc spw
 DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan pci leon3ft ambatest can \
 	usb grusbhc spacewire ascs slink hcan \
-	leon4v0 l2cache pwm gr1553b iommu
+	leon4v0 l2cache pwm gr1553b iommu ge_1000baseX
 FILEADD=MCB.vhd
-FILESKIP = grcan.vhd
+FILESKIP = grcan.vhd adapters/sgmii.vhd
 
 include $(GRLIB)/bin/Makefile
 include $(GRLIB)/software/leon3/Makefile

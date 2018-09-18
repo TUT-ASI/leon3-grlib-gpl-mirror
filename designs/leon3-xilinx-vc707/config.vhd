@@ -1,15 +1,9 @@
-
-
-
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
 -- Copyright (C) 2009 Aeroflex Gaisler
 ------------------------------------------------------------------------------
-
-
 library techmap;
 use techmap.gencomp.all;
-
 package config is
 -- Technology and synthesis options
   constant CFG_FABTECH : integer := virtex7;
@@ -37,23 +31,23 @@ package config is
   constant CFG_SVT : integer := 1;
   constant CFG_RSTADDR : integer := 16#00000#;
   constant CFG_LDDEL : integer := (1);
-  constant CFG_NWP : integer := (2);
+  constant CFG_NWP : integer := (4);
   constant CFG_PWD : integer := 1*2;
   constant CFG_FPU : integer := (1+0) + 16*0 + 32*0;
   constant CFG_GRFPUSH : integer := 0;
   constant CFG_ICEN : integer := 1;
-  constant CFG_ISETS : integer := 4;
+  constant CFG_ISETS : integer := 2;
   constant CFG_ISETSZ : integer := 4;
-  constant CFG_ILINE : integer := 8;
+  constant CFG_ILINE : integer := 4;
   constant CFG_IREPL : integer := 0;
   constant CFG_ILOCK : integer := 0;
   constant CFG_ILRAMEN : integer := 0;
   constant CFG_ILRAMADDR: integer := 16#8E#;
   constant CFG_ILRAMSZ : integer := 1;
   constant CFG_DCEN : integer := 1;
-  constant CFG_DSETS : integer := 4;
+  constant CFG_DSETS : integer := 2;
   constant CFG_DSETSZ : integer := 4;
-  constant CFG_DLINE : integer := 8;
+  constant CFG_DLINE : integer := 4;
   constant CFG_DREPL : integer := 0;
   constant CFG_DLOCK : integer := 0;
   constant CFG_DSNOOP : integer := 1*2 + 4*1;
@@ -63,9 +57,9 @@ package config is
   constant CFG_DLRAMEN : integer := 0;
   constant CFG_DLRAMADDR: integer := 16#8F#;
   constant CFG_DLRAMSZ : integer := 1;
-  constant CFG_MMUEN : integer := 1;
-  constant CFG_ITLBNUM : integer := 8;
-  constant CFG_DTLBNUM : integer := 8;
+  constant CFG_MMUEN : integer := 2;
+  constant CFG_ITLBNUM : integer := 16;
+  constant CFG_DTLBNUM : integer := 16;
   constant CFG_TLB_TYPE : integer := 0 + 1*2;
   constant CFG_TLB_REP : integer := 0;
   constant CFG_MMU_PAGE : integer := 0;
@@ -80,7 +74,7 @@ package config is
   constant CFG_STAT_CNT : integer := (4);
   constant CFG_STAT_NMAX : integer := (0);
   constant CFG_NP_ASI : integer := 1;
-  constant CFG_WRPSR : integer := 1;
+  constant CFG_WRPSR : integer := 0;
   constant CFG_ALTWIN : integer := 0;
   constant CFG_REX : integer := 0;
   constant CFG_LEON_MEMTECH : integer := (0*2**17 + 0*2**18 + 0*2**16);
@@ -151,18 +145,13 @@ package config is
   constant CFG_AHBRSZ : integer := 4;
   constant CFG_AHBRADDR : integer := 16#A00#;
   constant CFG_AHBRPIPE : integer := 0;
-
 -- Gaisler Ethernet core
   constant CFG_GRETH : integer := 1;
-  constant CFG_GRETH1G : integer := 0;
+  constant CFG_GRETH1G : integer := 1;
   constant CFG_ETH_FIFO : integer := 8;
-
-
-
-
+  constant CFG_GRETH_FMC : integer := 0;
   constant CFG_GRETH_FT : integer := 0;
   constant CFG_GRETH_EDCLFT : integer := 0;
-
 -- USB Host Controller
   constant CFG_GRUSBHC : integer := 0;
   constant CFG_GRUSBHC_NPORTS : integer := (1);
@@ -180,7 +169,6 @@ package config is
   constant CFG_GRUSBHC_BWRD : integer := (16);
   constant CFG_GRUSBHC_UTM : integer := 2;
   constant CFG_GRUSBHC_VBUSCONF : integer := 3;
-
 -- GR USB 2.0 Device Controller
   constant CFG_GRUSBDC : integer := 0;
   constant CFG_GRUSBDC_AIFACE : integer := 0;
@@ -220,7 +208,6 @@ package config is
   constant CFG_GRUSBDC_O13 : integer := (1024);
   constant CFG_GRUSBDC_O14 : integer := (1024);
   constant CFG_GRUSBDC_O15 : integer := (1024);
-
 -- CAN 2.0 interface
   constant CFG_CAN : integer := 0;
   constant CFG_CAN_NUM : integer := (1);
@@ -229,7 +216,6 @@ package config is
   constant CFG_CANSEPIRQ: integer := 0;
   constant CFG_CAN_SYNCRST : integer := 0;
   constant CFG_CANFT : integer := 0;
-
 -- Spacewire interface
   constant CFG_SPW_EN : integer := 0;
   constant CFG_SPW_NUM : integer := (1);
@@ -247,15 +233,12 @@ package config is
   constant CFG_SPW_INPUT : integer := 3;
   constant CFG_SPW_OUTPUT : integer := 0;
   constant CFG_SPW_RTSAME : integer := 0;
-
 -- UART 1
   constant CFG_UART1_ENABLE : integer := 1;
   constant CFG_UART1_FIFO : integer := 32;
-
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE : integer := 1;
   constant CFG_IRQ3_NSEC : integer := 0;
-
 -- Modular timer
   constant CFG_GPT_ENABLE : integer := 1;
   constant CFG_GPT_NTIM : integer := (2);
@@ -265,20 +248,16 @@ package config is
   constant CFG_GPT_SEPIRQ : integer := 1;
   constant CFG_GPT_WDOGEN : integer := 0;
   constant CFG_GPT_WDOG : integer := 16#0#;
-
 -- GPIO port
   constant CFG_GRGPIO_ENABLE : integer := 1;
   constant CFG_GRGPIO_IMASK : integer := 16#0000#;
   constant CFG_GRGPIO_WIDTH : integer := (8);
-
 -- I2C master
   constant CFG_I2C_ENABLE : integer := 1;
-
 -- VGA and PS2/ interface
   constant CFG_KBD_ENABLE : integer := 0;
   constant CFG_VGA_ENABLE : integer := 0;
   constant CFG_SVGA_ENABLE : integer := 0;
-
 -- SPI memory controller
   constant CFG_SPIMCTRL : integer := 0;
   constant CFG_SPIMCTRL_SDCARD : integer := 0;
@@ -289,7 +268,6 @@ package config is
   constant CFG_SPIMCTRL_ASCALER : integer := (8);
   constant CFG_SPIMCTRL_PWRUPCNT : integer := 0;
   constant CFG_SPIMCTRL_OFFSET : integer := 16#0#;
-
 -- SPI controller
   constant CFG_SPICTRL_ENABLE : integer := 1;
   constant CFG_SPICTRL_NUM : integer := (1);
@@ -304,7 +282,6 @@ package config is
   constant CFG_SPICTRL_SYNCRAM : integer := 0;
   constant CFG_SPICTRL_FT : integer := 0;
   constant CFG_SPICTRL_PROT : integer := 0;
-
 -- Dynamic Partial Reconfiguration
   constant CFG_PRC : integer := 0;
   constant CFG_CRC_EN : integer := 0;
@@ -312,7 +289,6 @@ package config is
   constant CFG_WORDS_BLOCK : integer := 100;
   constant CFG_DCM_FIFO : integer := 0;
   constant CFG_DPR_FIFO : integer := 9;
-
 -- GRLIB debugging
   constant CFG_DUART : integer := 0;
 end;

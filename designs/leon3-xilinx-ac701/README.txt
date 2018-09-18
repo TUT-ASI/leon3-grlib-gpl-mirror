@@ -52,6 +52,10 @@ Design specifics
 * The JTAG DSU interface is enabled and accesible via the JTAG port.
   Start grmon with -xilusb to connect.
 
+* Ethernet FMC Support is enabled via CFG_GRETH_FMC. For more information
+  see http://ethernetfmc.com/. Example FPGA image and configuration with 
+  FMC Ethernet support is supplied in sub-directory 'bitfiles/fmc'
+
 Simulation and synthesis
 ------------------------
 

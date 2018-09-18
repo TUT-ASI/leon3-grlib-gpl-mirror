@@ -303,28 +303,7 @@ if { $use_scan_clk == 0 } {
     set_min_delay -from [get_clocks clk       ] -to [get_clocks ${_Name}  ] 0
   }
  } else {
-#  set all_reg [get_object_name [all_registers]]
-#  #set all_reg [filter_collection [get_cells -hier *] is_a_generic_seq==true]
-#  foreach _reg  $all_reg {
-#   set _reg_data_pin [get_object_name [all_registers -data_pins [get_cells $_reg]]]
-#   set _fanIn [all_fanin -only_cells -startpoints_only -flat -to $_reg_data_pin]
-#   #echo "----> ${_reg_data_pin} ${_fanIn} [llength [get_object_name $_fanIn]]"
-#   if { [llength [get_object_name $_fanIn]] != 1 } { continue }
-#   set _clk1 [get_attribute [get_timing_path -to $_reg_data_pin] startpoint_clock]
-#   set _clk2 [get_attribute [get_timing_path -to $_reg_data_pin] endpoint_clock]
-#   if { [llength [get_object_name $_clk1]] == 0 } { continue  }
-#   if { [llength [get_object_name $_clk2]] == 0 } { continue  }
-#   
-#   set maxdelay [get_attribute [get_clocks spwclk] PERIOD]
-#   
-#   echo "$_reg"
-#   echo "$_reg_data_pin"
-#   echo "[get_object_name $_fanIn]"
-#   echo "[get_object_name $_clk1]"
-#   echo "[get_object_name $_clk2]"
-#   
-#  }
-#  
+   echo "Info: TODO: Create a script for only setting max/min for CDC qualifier"
  }
 }
 

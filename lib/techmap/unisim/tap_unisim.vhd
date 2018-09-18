@@ -740,6 +740,96 @@ library unisim;
 use unisim.all;
 -- pragma translate_on
 
+entity kintexu_tap is
+port (
+     tapi_tdo1   : in std_ulogic;
+     tapi_tdo2   : in std_ulogic;
+     tapo_tck    : out std_ulogic;
+     tapo_tdi    : out std_ulogic;
+     tapo_rst    : out std_ulogic;
+     tapo_capt   : out std_ulogic;
+     tapo_shft   : out std_ulogic;
+     tapo_upd    : out std_ulogic;
+     tapo_xsel1  : out std_ulogic;
+     tapo_xsel2  : out std_ulogic
+    );
+end;
+
+architecture rtl of kintexu_tap is
+
+component BSCANE2
+  generic (
+     DISABLE_JTAG : string := "FALSE";
+     JTAG_CHAIN : integer := 1
+  );
+  port (
+     CAPTURE : out std_ulogic := 'H';
+     DRCK : out std_ulogic := 'H';
+     RESET : out std_ulogic := 'H';
+     RUNTEST : out std_ulogic := 'L';
+     SEL : out std_ulogic := 'L';
+     SHIFT : out std_ulogic := 'L';
+     TCK : out std_ulogic := 'L';
+     TDI : out std_ulogic := 'L';
+     TMS : out std_ulogic := 'L';
+     UPDATE : out std_ulogic := 'L';
+     TDO : in std_ulogic := 'X'
+  );
+end component;
+
+  signal drck1, drck2, sel1, sel2 : std_ulogic;
+  signal capt1, capt2, rst1, rst2 : std_ulogic;
+  signal shift1, shift2, tdi1, tdi2 : std_ulogic;
+  signal update1, update2 : std_ulogic;
+  attribute dont_touch : boolean;
+  attribute dont_touch of u0 : label is true;
+  attribute dont_touch of u1 : label is true;
+  
+begin
+      
+  u0 : BSCANE2 
+    generic map (JTAG_CHAIN => 1) 
+    port map (
+      CAPTURE => capt1, 
+      DRCK => drck1,
+      RESET => rst1, 
+      SEL => sel1, 
+      SHIFT => shift1, 
+      TDI => tdi1, 
+      UPDATE => update1,
+      TDO => tapi_tdo1,
+      TCK => tapo_tck
+      );
+
+  u1 : BSCANE2 
+    generic map (JTAG_CHAIN => 2) 
+    port map (
+      CAPTURE => capt2, 
+      DRCK => drck2,
+      RESET => rst2, 
+      SEL => sel2, 
+      SHIFT => shift2, 
+      TDI => tdi2, 
+      UPDATE => update2,
+      TDO => tapi_tdo2
+      );  
+
+  tapo_capt <= capt1 when sel1 = '1' else capt2;
+  tapo_rst  <= rst1 when sel1 = '1' else rst2;
+  tapo_shft <= shift1 when sel1 = '1' else shift2;
+  tapo_tdi  <= tdi1  when sel1 = '1' else tdi2;
+  tapo_upd  <= update1 when sel1 ='1' else update2;
+  tapo_xsel1 <= sel1; tapo_xsel2 <= sel2;
+  
+end;
+
+library ieee;
+use ieee.std_logic_1164.all;
+-- pragma translate_off
+library unisim;
+use unisim.all;
+-- pragma translate_on
+
 entity artix7_tap is
 port (
      tapi_tdo1   : in std_ulogic;

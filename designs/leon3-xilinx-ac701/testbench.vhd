@@ -169,6 +169,54 @@ signal gmii_rxd        : std_logic_vector(7 downto 0);
 signal gmii_rx_dv      : std_logic;
 signal gmii_rx_er      : std_logic;
 
+signal    reset_port_0           :     std_logic;
+signal    reset_port_1           :     std_logic;
+signal    reset_port_2           :     std_logic;
+signal    reset_port_3           :     std_logic;
+
+signal    rgmii_port_0_rxc       :     std_logic;
+signal    rgmii_port_0_rx_ctl    :     std_logic;
+signal    rgmii_port_0_rd        :     std_logic_vector(3 downto 0);
+signal    rgmii_port_0_txc       :     std_logic;
+signal    rgmii_port_0_tx_ctl    :     std_logic;
+signal    rgmii_port_0_td        :     std_logic_vector(3 downto 0);
+signal    rgmii_port_1_rxc       :     std_logic;
+signal    rgmii_port_1_rx_ctl    :     std_logic;
+signal    rgmii_port_1_rd        :     std_logic_vector(3 downto 0);
+signal    rgmii_port_1_txc       :     std_logic;
+signal    rgmii_port_1_tx_ctl    :     std_logic;
+signal    rgmii_port_1_td        :     std_logic_vector(3 downto 0);
+signal    rgmii_port_2_rxc       :     std_logic;
+signal    rgmii_port_2_rx_ctl    :     std_logic;
+signal    rgmii_port_2_rd        :     std_logic_vector(3 downto 0);
+signal    rgmii_port_2_txc       :     std_logic;
+signal    rgmii_port_2_tx_ctl    :     std_logic;
+signal    rgmii_port_2_td        :     std_logic_vector(3 downto 0);
+signal    rgmii_port_3_rxc       :     std_logic;
+signal    rgmii_port_3_rx_ctl    :     std_logic;
+signal    rgmii_port_3_rd        :     std_logic_vector(3 downto 0);
+signal    rgmii_port_3_txc       :     std_logic;
+signal    rgmii_port_3_tx_ctl    :     std_logic;
+signal    rgmii_port_3_td        :     std_logic_vector(3 downto 0);
+    --
+signal    mdio_io_port_0_mdio_io :     std_logic;
+signal    mdio_io_port_0_mdc     :     std_logic;
+signal    mdio_io_port_1_mdio_io :     std_logic;
+signal    mdio_io_port_1_mdc     :     std_logic;
+signal    mdio_io_port_2_mdio_io :     std_logic;
+signal    mdio_io_port_2_mdc     :     std_logic;
+signal    mdio_io_port_3_mdio_io :     std_logic;
+signal    mdio_io_port_3_mdc     :     std_logic;
+
+signal    rgmii_port_0_rd8       :     std_logic_vector(7 downto 0);
+signal    rgmii_port_0_td8       :     std_logic_vector(7 downto 0);
+signal    rgmii_port_1_rd8       :     std_logic_vector(7 downto 0);
+signal    rgmii_port_1_td8       :     std_logic_vector(7 downto 0);
+signal    rgmii_port_2_rd8       :     std_logic_vector(7 downto 0);
+signal    rgmii_port_2_td8       :     std_logic_vector(7 downto 0);
+signal    rgmii_port_3_rd8       :     std_logic_vector(7 downto 0);
+signal    rgmii_port_3_td8       :     std_logic_vector(7 downto 0);
+
 component leon3mp is
   generic (
     fabtech             : integer := CFG_FABTECH;
@@ -228,7 +276,51 @@ component leon3mp is
     sdcard_spi_miso : in    std_logic;
     sdcard_spi_mosi : out   std_logic;
     sdcard_spi_cs_b : out   std_logic;
-    sdcard_spi_clk  : out   std_logic
+    sdcard_spi_clk  : out   std_logic;
+    -- FMC Ports
+    ref_clk_clk_p          : in    std_ulogic;
+    ref_clk_clk_n          : in    std_ulogic;
+    ref_clk_oe             : out   std_ulogic;  -- Enable FMC ref clock output
+    ref_clk_fsel           : out   std_ulogic;  -- Slect 125MHz/250MHz ref clock
+    --
+    reset_port_0           : out   std_ulogic;
+    reset_port_1           : out   std_ulogic;
+    reset_port_2           : out   std_ulogic;
+    reset_port_3           : out   std_ulogic;
+    --
+    rgmii_port_0_rxc       : in    std_ulogic;
+    rgmii_port_0_rx_ctl    : in    std_ulogic;
+    rgmii_port_0_rd        : in    std_logic_vector(3 downto 0);
+    rgmii_port_0_txc       : out   std_ulogic;
+    rgmii_port_0_tx_ctl    : out   std_ulogic;
+    rgmii_port_0_td        : out   std_logic_vector(3 downto 0);
+    rgmii_port_1_rxc       : in    std_ulogic;
+    rgmii_port_1_rx_ctl    : in    std_ulogic;
+    rgmii_port_1_rd        : in    std_logic_vector(3 downto 0);
+    rgmii_port_1_txc       : out   std_ulogic;
+    rgmii_port_1_tx_ctl    : out   std_ulogic;
+    rgmii_port_1_td        : out   std_logic_vector(3 downto 0);
+    rgmii_port_2_rxc       : in    std_ulogic;
+    rgmii_port_2_rx_ctl    : in    std_ulogic;
+    rgmii_port_2_rd        : in    std_logic_vector(3 downto 0);
+    rgmii_port_2_txc       : out   std_ulogic;
+    rgmii_port_2_tx_ctl    : out   std_ulogic;
+    rgmii_port_2_td        : out   std_logic_vector(3 downto 0);
+    rgmii_port_3_rxc       : in    std_ulogic;
+    rgmii_port_3_rx_ctl    : in    std_ulogic;
+    rgmii_port_3_rd        : in    std_logic_vector(3 downto 0);
+    rgmii_port_3_txc       : out   std_ulogic;
+    rgmii_port_3_tx_ctl    : out   std_ulogic;
+    rgmii_port_3_td        : out   std_logic_vector(3 downto 0);
+    --
+    mdio_io_port_0_mdio_io : inout std_logic;
+    mdio_io_port_0_mdc     : out   std_ulogic;
+    mdio_io_port_1_mdio_io : inout std_logic;
+    mdio_io_port_1_mdc     : out   std_ulogic;
+    mdio_io_port_2_mdio_io : inout std_logic;
+    mdio_io_port_2_mdc     : out   std_ulogic;
+    mdio_io_port_3_mdio_io : inout std_logic;
+    mdio_io_port_3_mdc     : out   std_ulogic
    );
 end component;
 
@@ -238,7 +330,7 @@ begin
   clk200p <= not clk200p after 2.5 ns;
   clk200n <= not clk200n after 2.5 ns;
   clkethp <= not clkethp after 4 ns;
-  clkethn <= not clkethp after 4 ns;
+  clkethn <= not clkethn after 4 ns;
 
   rst <= not dsurst;
   rxd1 <= 'H'; ctsn1 <= '0';
@@ -295,9 +387,9 @@ begin
        phy_txclk       => phy_gtxclk,
        phy_txd         => phy_txd(3 downto 0),
        phy_txctl_txen  => phy_txctl_txen,
-       phy_rxd         => phy_rxd(3 downto 0)'delayed(0 ns),
-       phy_rxctl_rxdv  => phy_rxctl_rxdv'delayed(0 ns),
-       phy_rxclk       => phy_rxclk'delayed(0 ns),
+       phy_rxd         => phy_rxd(3 downto 0),
+       phy_rxctl_rxdv  => phy_rxctl_rxdv,
+       phy_rxclk       => phy_rxclk'delayed(3 ns),
        phy_reset       => phy_reset,
        phy_mdio        => phy_mdio,
        phy_mdc         => phy_mdc,
@@ -305,7 +397,52 @@ begin
        sdcard_spi_miso => '1',
        sdcard_spi_mosi => OPEN ,
        sdcard_spi_cs_b => OPEN ,
-       sdcard_spi_clk  => OPEN
+       sdcard_spi_clk  => OPEN,
+       -- FMC Ports
+       --
+       ref_clk_clk_p          => clkethp,
+       ref_clk_clk_n          => clkethn,
+       ref_clk_oe             => OPEN,
+       ref_clk_fsel           => OPEN,
+       --
+       reset_port_0           => reset_port_0,
+       reset_port_1           => reset_port_1,
+       reset_port_2           => reset_port_2,
+       reset_port_3           => reset_port_3,
+       --
+       rgmii_port_0_rxc       => rgmii_port_0_rxc'delayed(3 ns),
+       rgmii_port_0_rx_ctl    => rgmii_port_0_rx_ctl,
+       rgmii_port_0_rd        => rgmii_port_0_rd,
+       rgmii_port_0_txc       => rgmii_port_0_txc,
+       rgmii_port_0_tx_ctl    => rgmii_port_0_tx_ctl,
+       rgmii_port_0_td        => rgmii_port_0_td,
+       rgmii_port_1_rxc       => rgmii_port_1_rxc'delayed(3 ns),
+       rgmii_port_1_rx_ctl    => rgmii_port_1_rx_ctl,
+       rgmii_port_1_rd        => rgmii_port_1_rd,
+       rgmii_port_1_txc       => rgmii_port_1_txc,
+       rgmii_port_1_tx_ctl    => rgmii_port_1_tx_ctl,
+       rgmii_port_1_td        => rgmii_port_1_td,
+       rgmii_port_2_rxc       => rgmii_port_2_rxc'delayed(3 ns),
+       rgmii_port_2_rx_ctl    => rgmii_port_2_rx_ctl,
+       rgmii_port_2_rd        => rgmii_port_2_rd,
+       rgmii_port_2_txc       => rgmii_port_2_txc,
+       rgmii_port_2_tx_ctl    => rgmii_port_2_tx_ctl,
+       rgmii_port_2_td        => rgmii_port_2_td,
+       rgmii_port_3_rxc       => rgmii_port_3_rxc'delayed(3 ns),
+       rgmii_port_3_rx_ctl    => rgmii_port_3_rx_ctl,
+       rgmii_port_3_rd        => rgmii_port_3_rd,
+       rgmii_port_3_txc       => rgmii_port_3_txc,
+       rgmii_port_3_tx_ctl    => rgmii_port_3_tx_ctl,
+       rgmii_port_3_td        => rgmii_port_3_td,
+       --
+       mdio_io_port_0_mdio_io => mdio_io_port_0_mdio_io,
+       mdio_io_port_0_mdc     => mdio_io_port_0_mdc,
+       mdio_io_port_1_mdio_io => mdio_io_port_1_mdio_io,
+       mdio_io_port_1_mdc     => mdio_io_port_1_mdc,
+       mdio_io_port_2_mdio_io => mdio_io_port_2_mdio_io,
+       mdio_io_port_2_mdc     => mdio_io_port_2_mdc,
+       mdio_io_port_3_mdio_io => mdio_io_port_3_mdio_io,
+       mdio_io_port_3_mdc     => mdio_io_port_3_mdc
       );
 
   -- SPI memory model
@@ -400,6 +537,125 @@ begin
              phy_rxctl_rxdv, phy_rxer, phy_col, phy_crs, phy_txd,
              phy_txctl_txen, phy_txer, phy_mdc, phy_gtxclk);
 
+  end generate;
+
+  fmc_phy0 : if (CFG_GRETH_FMC = 1) generate
+   -- FMC PHY0 Running at 25MHz
+   rgmii_port_0_rd  <= rgmii_port_0_rd8(3 downto 0);
+   rgmii_port_0_td8 <= rgmii_port_0_td & rgmii_port_0_td;
+   mdio_io_port_0_mdio_io <= 'H';
+   fmc_p0: phy
+    generic map (
+             address       => 0,
+             extended_regs => 1,
+             aneg          => 1,
+             base100_t4    => 1,
+             base100_x_fd  => 1,
+             base100_x_hd  => 1,
+             fd_10         => 1,
+             hd_10         => 1,
+             base100_t2_fd => 1,
+             base100_t2_hd => 1,
+             base1000_x_fd => 0,
+             base1000_x_hd => 0,
+             base1000_t_fd => 0,
+             base1000_t_hd => 0,
+             rmii          => 0,
+             rgmii         => 1
+    )
+    port map(reset_port_0, mdio_io_port_0_mdio_io, OPEN, rgmii_port_0_rxc, 
+             rgmii_port_0_rd8, rgmii_port_0_rx_ctl, OPEN, OPEN, OPEN,
+             rgmii_port_0_td8, rgmii_port_0_tx_ctl, '0',
+             mdio_io_port_0_mdc,
+             rgmii_port_0_txc, clkethp); 
+
+    -- FMC PHY1 Running at 125MHz
+   rgmii_port_1_rd  <= rgmii_port_1_rd8(3 downto 0);
+   rgmii_port_1_td8 <= rgmii_port_1_td & rgmii_port_1_td;
+   mdio_io_port_1_mdio_io <= 'H';
+   fmc_p1: phy
+    generic map (
+             address       => 0,
+             extended_regs => 1,
+             aneg          => 1,
+             base100_t4    => 1,
+             base100_x_fd  => 1,
+             base100_x_hd  => 1,
+             fd_10         => 1,
+             hd_10         => 1,
+             base100_t2_fd => 1,
+             base100_t2_hd => 1,
+             base1000_x_fd => CFG_GRETH1G,
+             base1000_x_hd => CFG_GRETH1G,
+             base1000_t_fd => CFG_GRETH1G,
+             base1000_t_hd => CFG_GRETH1G,
+             rmii          => 0,
+             rgmii         => 1
+    )
+    port map(reset_port_1, mdio_io_port_1_mdio_io, OPEN, rgmii_port_1_rxc, 
+             rgmii_port_1_rd8, rgmii_port_1_rx_ctl, OPEN, OPEN, OPEN,
+             rgmii_port_1_td8, rgmii_port_1_tx_ctl, '0',
+             mdio_io_port_1_mdc,
+             rgmii_port_1_txc, clkethp);
+             
+    -- FMC PHY2 Running at  25MHz
+    rgmii_port_2_rd  <= rgmii_port_2_rd8(3 downto 0);
+    rgmii_port_2_td8 <= rgmii_port_2_td & rgmii_port_2_td;
+    mdio_io_port_2_mdio_io <= 'H';
+    fmc_p2: phy
+    generic map (
+             address       => 0,
+             extended_regs => 1,
+             aneg          => 1,
+             base100_t4    => 1,
+             base100_x_fd  => 1,
+             base100_x_hd  => 1,
+             fd_10         => 1,
+             hd_10         => 1,
+             base100_t2_fd => 1,
+             base100_t2_hd => 1,
+             base1000_x_fd => 0,
+             base1000_x_hd => 0,
+             base1000_t_fd => 0,
+             base1000_t_hd => 0,
+             rmii          => 0,
+             rgmii         => 1
+    )
+    port map(reset_port_2, mdio_io_port_2_mdio_io, OPEN, rgmii_port_2_rxc, 
+             rgmii_port_2_rd8, rgmii_port_2_rx_ctl, OPEN, OPEN, OPEN,
+             rgmii_port_2_td8, rgmii_port_2_tx_ctl, '0',
+             mdio_io_port_2_mdc,
+             rgmii_port_2_txc, clkethp);
+             
+    -- FMC PHY3 Running at 2.5MHz
+    rgmii_port_3_rd  <= rgmii_port_3_rd8(3 downto 0);
+    rgmii_port_3_td8 <= rgmii_port_3_td & rgmii_port_3_td;
+    mdio_io_port_3_mdio_io <= 'H';
+    fmc_p3: phy
+    generic map (
+             address       => 0,
+             extended_regs => 1,
+             aneg          => 1,
+             base100_t4    => 0,
+             base100_x_fd  => 0,
+             base100_x_hd  => 0,
+             fd_10         => 1,
+             hd_10         => 1,
+             base100_t2_fd => 0,
+             base100_t2_hd => 0,
+             base1000_x_fd => 0,
+             base1000_x_hd => 0,
+             base1000_t_fd => 0,
+             base1000_t_hd => 0,
+             rmii          => 0,
+             rgmii         => 1
+    )
+    port map(reset_port_3, mdio_io_port_3_mdio_io, OPEN, rgmii_port_3_rxc, 
+             rgmii_port_3_rd8, rgmii_port_3_rx_ctl, OPEN, OPEN, OPEN,
+             rgmii_port_3_td8, rgmii_port_3_tx_ctl, '0',
+             mdio_io_port_3_mdc,
+             rgmii_port_3_txc, clkethp);    
+    
   end generate;
 
    iuerr : process

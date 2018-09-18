@@ -58,8 +58,8 @@ architecture rtl of nandtree is
 
     a := v; b(0) := '1';
 
-    for i in 0 to v'length-1 loop
-      b(i+1) := a(i) nand b(i);
+    for iter in 0 to v'length-1 loop
+      b(iter+1) := a(iter) nand b(iter);
     end loop;
 
     return b(v'length);

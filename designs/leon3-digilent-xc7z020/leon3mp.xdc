@@ -417,6 +417,7 @@ set_property PACKAGE_PIN T18 [get_ports {button[3]}]
 #NET FMC_LA33_P    LOC = B21  | IOSTANDARD=LVCMOS18;  # "FMC-LA33_P"
 #set_property PACKAGE_PIN G17 [get_ports {OTG_RESETN}]
 #NET OTG_RESETN    LOC = G17  | IOSTANDARD=LVCMOS18;  # "OTG-RESETN"
+set_property IOSTANDARD LVCMOS18 [get_ports {switch*}]
 set_property PACKAGE_PIN F22 [get_ports {switch[0]}]
 #NET SW0           LOC = F22  | IOSTANDARD=LVCMOS18;  # "SW0"
 set_property PACKAGE_PIN G22 [get_ports {switch[1]}]

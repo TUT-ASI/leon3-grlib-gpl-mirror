@@ -2,59 +2,59 @@
 create_clock -period 5.000 -name clk200 [get_ports clk200p]
 set_propagated_clock clk200
 
-# --- Clock Domain Crossings
+# --- General Clock Domain Crossings
+# N/A
 
-# --- False paths
-set_false_path -to [get_ports {led[*]}]
+# --- Global False paths
+set_false_path -to   [get_ports {led[*]}]
 set_false_path -from [get_ports {button[*]}]
 set_false_path -from [get_ports reset]
 set_false_path -from [get_ports switch*]
-set_false_path -to [get_ports switch*]
+set_false_path -to   [get_ports switch*]
 
 # --- Flash
 # Outputs
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 1.000 [get_ports oen]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay -1.000 [get_ports oen]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 1.000 [get_ports writen]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay -1.000 [get_ports writen]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 1.000 [get_ports romsn]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay -1.000 [get_ports romsn]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 1.000 [get_ports adv]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay -1.000 [get_ports adv]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -max 1.000 [get_ports oen]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -min -add_delay -1.000 [get_ports oen]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -max 1.000 [get_ports writen]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -min -add_delay -1.000 [get_ports writen]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -max 1.000 [get_ports romsn]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -min -add_delay -1.000 [get_ports romsn]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -max 1.000 [get_ports adv]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -min -add_delay -1.000 [get_ports adv]
 
 # BiDir
-set_input_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 3.000 [get_ports data*]
-set_input_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay 1.000 [get_ports data*]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max -add_delay 1.000 [get_ports data*]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay -1.000 [get_ports data*]
+set_input_delay -clock [get_clocks -include_generated_clocks *clkfb*] -max 3.000 [get_ports data*]
+set_input_delay -clock [get_clocks -include_generated_clocks *clkfb*] -min -add_delay 1.000 [get_ports data*]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -max -add_delay 1.000 [get_ports data*]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -min -add_delay -1.000 [get_ports data*]
 
 # --- UART
 # Inputs
-set_input_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 3.000 [get_ports dsurx]
-set_input_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay 1.000 [get_ports dsurx]
-set_input_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 3.000 [get_ports dsuctsn]
-set_input_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay 1.000 [get_ports dsuctsn]
+set_input_delay -clock [get_clocks -include_generated_clocks *clkfb*] -max 3.000 [get_ports dsurx]
+set_input_delay -clock [get_clocks -include_generated_clocks *clkfb*] -min -add_delay 1.000 [get_ports dsurx]
+set_input_delay -clock [get_clocks -include_generated_clocks *clkfb*] -max 3.000 [get_ports dsuctsn]
+set_input_delay -clock [get_clocks -include_generated_clocks *clkfb*] -min -add_delay 1.000 [get_ports dsuctsn]
 
 # Outputs
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 1.000 [get_ports dsutx]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay -1.000 [get_ports dsutx]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 1.000 [get_ports dsurtsn]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay -1.000 [get_ports dsurtsn]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -max 1.000 [get_ports dsutx]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -min -add_delay -1.000 [get_ports dsutx]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -max 1.000 [get_ports dsurtsn]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -min -add_delay -1.000 [get_ports dsurtsn]
 
 # --- JTAG
-# TBD....
+# N/A
 
 # --- I2C
 # BiDir
-set_input_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 3.000 [get_ports iic_scl*]
-set_input_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay 1.000 [get_ports iic_scl*]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max -add_delay 1.000 [get_ports iic_scl*]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay -1.000 [get_ports iic_scl*]
-set_input_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 3.000 [get_ports iic_sda*]
-set_input_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay 1.000 [get_ports iic_sda*]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max -add_delay 1.000 [get_ports iic_sda*]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay -1.000 [get_ports iic_sda*]
-
+set_input_delay -clock [get_clocks -include_generated_clocks *clkfb*] -max 3.000 [get_ports iic_scl*]
+set_input_delay -clock [get_clocks -include_generated_clocks *clkfb*] -min -add_delay 1.000 [get_ports iic_scl*]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -max -add_delay 1.000 [get_ports iic_scl*]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -min -add_delay -1.000 [get_ports iic_scl*]
+set_input_delay -clock [get_clocks -include_generated_clocks *clkfb*] -max 3.000 [get_ports iic_sda*]
+set_input_delay -clock [get_clocks -include_generated_clocks *clkfb*] -min -add_delay 1.000 [get_ports iic_sda*]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -max -add_delay 1.000 [get_ports iic_sda*]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -min -add_delay -1.000 [get_ports iic_sda*]
 
 # Pin and IO property
 set_property PACKAGE_PIN E19 [get_ports clk200p]
@@ -157,9 +157,9 @@ set_property IOSTANDARD LVCMOS18 [get_ports iic*]
 #              USB2 / ULPI                                 -
 #-----------------------------------------------------------
 
-create_clock -period 16.000 -name clkusbout [get_ports usb_clkout]
-set_propagated_clock clkusbout
-
+# Check if USB is in design  
+#set usbtest [get_pins -hier *usb*?RST]
+  
 set_property PACKAGE_PIN AV34 [get_ports usb_refclk_opt]
 set_property PACKAGE_PIN AY32 [get_ports usb_clkout]
 set_property PACKAGE_PIN BB36 [get_ports usb_resetn]
@@ -190,32 +190,38 @@ set_property IOSTANDARD LVCMOS18 [get_ports {usb_d[7]}]
 set_property IOSTANDARD LVCMOS18 [get_ports {usb_d[6]}]
 set_property IOSTANDARD LVCMOS18 [get_ports {usb_d[5]}]
 
-# Inputs
-set_input_delay -clock [get_clocks clkusbout] -max 7.000 [get_ports usb_nxt]
-set_input_delay -clock [get_clocks clkusbout] -min -add_delay 1.000 [get_ports usb_nxt]
-set_input_delay -clock [get_clocks clkusbout] -max 7.000 [get_ports usb_dir]
-set_input_delay -clock [get_clocks clkusbout] -min -add_delay 1.000 [get_ports usb_dir]
+#if {![string equal $usbtest ""]} {
+  # USB clock
+  create_clock -period 16.000 -name clkusbout [get_ports usb_clkout]
+  set_propagated_clock clkusbout
 
-# Outputs
-set_output_delay -clock [get_clocks clkusbout] -max 1.000 [get_ports usb_stp]
-set_output_delay -clock [get_clocks clkusbout] -min -add_delay -1.000 [get_ports usb_stp]
-
-# BiDir
-set_input_delay -clock [get_clocks clkusbout] -max 7.000 [get_ports {usb_d[*]}]
-set_input_delay -clock [get_clocks clkusbout] -min -add_delay 1.000 [get_ports {usb_d[*]}]
-set_output_delay -clock [get_clocks clkusbout] -max -add_delay 1.000 [get_ports {usb_d[*]}]
-set_output_delay -clock [get_clocks clkusbout] -min -add_delay -1.000 [get_ports {usb_d[*]}]
-
-# False paths
-set_false_path -to [get_ports usb_resetn]
-set_false_path -from [get_clocks clkusbout] -to [get_clocks -include_generated_clocks *clk_pll_i*]
-set_false_path -from [get_clocks -include_generated_clocks *clk_pll_i*] -to [get_clocks clkusbout]
-
-# Multicycle paths
-# (places the setup check at clock edge 2 and the hold check at clock edge 2(3))
-set_multicycle_path -setup -from [get_ports usb_dir] -to [get_ports {usb_d[*]}] 2
-set_multicycle_path -hold -from [get_ports usb_dir] -to [get_ports {usb_d[*]}] 3
-
+  # Inputs
+  set_input_delay -clock [get_clocks clkusbout] -max 7.000 [get_ports usb_nxt]
+  set_input_delay -clock [get_clocks clkusbout] -min -add_delay 1.000 [get_ports usb_nxt]
+  set_input_delay -clock [get_clocks clkusbout] -max 7.000 [get_ports usb_dir]
+  set_input_delay -clock [get_clocks clkusbout] -min -add_delay 1.000 [get_ports usb_dir]
+  
+  # Outputs
+  set_output_delay -clock [get_clocks clkusbout] -max 1.000 [get_ports usb_stp]
+  set_output_delay -clock [get_clocks clkusbout] -min -add_delay -1.000 [get_ports usb_stp]
+  
+  # BiDir
+  set_input_delay -clock [get_clocks clkusbout] -max 7.000 [get_ports {usb_d[*]}]
+  set_input_delay -clock [get_clocks clkusbout] -min -add_delay 1.000 [get_ports {usb_d[*]}]
+  set_output_delay -clock [get_clocks clkusbout] -max -add_delay 1.000 [get_ports {usb_d[*]}]
+  set_output_delay -clock [get_clocks clkusbout] -min -add_delay -1.000 [get_ports {usb_d[*]}]
+  
+  # False paths
+  set_false_path -to [get_ports usb_resetn]
+  set_false_path -from [get_clocks clkusbout] -to [get_clocks -include_generated_clocks *clk_pll_i*]
+  set_false_path -from [get_clocks -include_generated_clocks *clk_pll_i*] -to [get_clocks clkusbout]
+  
+  # Multicycle paths
+  # (places the setup check at clock edge 2 and the hold check at clock edge 2(3))
+  set_multicycle_path -setup -from [get_ports usb_dir] -to [get_ports {usb_d[*]}] 2
+  set_multicycle_path -hold -from [get_ports usb_dir] -to [get_ports {usb_d[*]}] 3
+#}
+  
 #-----------------------------------------------------------
 #              Ethernet / SGMII                            -
 #-----------------------------------------------------------
@@ -239,8 +245,6 @@ set_property IOSTANDARD LVCMOS18 [get_ports eint]
 # PCS/PMA Clock period Constraints: please do not relax    -
 #-----------------------------------------------------------
 
-
-
 create_clock -period 8.000 -name gtrefclk [get_pins -hier *ibufds_gtrefclk/O]
 set_propagated_clock [get_clocks gtrefclk]
 
@@ -258,56 +262,15 @@ set_max_delay -from [get_clocks gtrefclk] -to [get_clocks -include_generated_clo
 set_max_delay -from [get_clocks -include_generated_clocks txoutclk] -to [get_clocks -include_generated_clocks *clk_pll_i*] 8.000
 set_max_delay -from [get_clocks rxoutclk] -to [get_clocks -include_generated_clocks *clk_pll_i*] 8.000
 
-#set_false_path -from  [get_clocks -include_generated_clocks clk_pll_i] -to [get_clocks gtrefclk]
-#set_false_path -from  [get_clocks -include_generated_clocks clk_pll_i] -to [get_clocks [get_clocks -include_generated_clocks txoutclk]]
-#set_false_path -from  [get_clocks -include_generated_clocks clk_pll_i] -to [get_clocks rxoutclk]
-
 set_max_delay -from [get_clocks gtrefclk] -to [get_clocks {txoutclk rxoutclk}] 8.000
 set_max_delay -from [get_clocks -include_generated_clocks txoutclk] -to [get_clocks {gtrefclk rxoutclk}] 8.000
 set_max_delay -from [get_clocks rxoutclk] -to [get_clocks gtrefclk] 8.000
 set_max_delay -from [get_clocks rxoutclk] -to [get_clocks -include_generated_clocks txoutclk] 8.000
 
-set_max_delay -from [get_clocks -include_generated_clocks *CLKOUT*] -to [get_clocks -include_generated_clocks] 8.000
-set_max_delay -from [get_clocks -include_generated_clocks] -to [get_clocks -include_generated_clocks *CLKOUT*] 8.000
-
-## Control Gray Code delay and skew across clock boundary
-#set_max_delay -from [get_cells -hier -filter {name =~ eth0.sgmii0/core_wrapper/transceiver_inst/rx_elastic_buffer_inst/wr_addr_gray*}] -to [all_registers -edge_triggered] 14.000
-#set_max_delay -from [get_cells -hier -filter {name =~ eth0.sgmii0/core_wrapper/transceiver_inst/rx_elastic_buffer_inst/rd_addr_gray*}] -to [all_registers -edge_triggered] 14.000
-
-## Constrain between Distributed Memory (output data) and the 1st set of flip-flops
-#set_max_delay 6.000 -from [all_rams] -to [get_cells -hier -filter {name =~ eth0.sgmii0/core_wrapper/transceiver_inst/rx_elastic_buffer_inst/rd_data*}]
-
-#set_false_path -from [get_pins -of [get_cells -hier -filter { name =~ *transceiver_inst/data_valid_reg_reg* } ] -filter { name =~ *C } ] -to [get_pins -of [get_cells -hier -filter { name =~ *transceiver_inst/sync_block_data_valid/data_sync* } ]  -filter { name =~ *D } ]
-
-# Control Gray Code delay and skew across clock boundary
-#set_max_delay -from [get_cells -hier -filter {name =~ *transceiver_inst/rx_elastic_buffer_inst/wr_addr_gray*}] -to [get_pins -hier -filter { name =~ *reclock_wr_addrgray[*].sync_wr_addrgray/data_sync/D}] 16 -datapath_only
-#set_max_delay -from [get_cells -hier -filter {name =~ *transceiver_inst/rx_elastic_buffer_inst/rd_addr_gray*}] -to [get_pins -hier -filter { name =~ *reclock_rd_addrgray[*].sync_rd_addrgray/data_sync/D}] 8 -datapath_only
-
-# Constrain between Distributed Memory (output data) and the 1st set of flip-flops
-#set_false_path -from [get_clocks -of [get_pins eth0.sgmii0/core_wrapper/inst/transceiver_inst/gtwizard_inst/gtwizard_i/*/gt0_GTWIZARD_i/gtxe2_i/RXOUTCLK]] -to [get_pins -hierarchical -filter { name =~ *rx_elastic_buffer_inst/GEN_FIFO[*].rd_data_reg*/D } ]
+#set_max_delay -from [get_clocks -include_generated_clocks *CLKOUT*] -to [get_clocks -include_generated_clocks] 8.000
+#set_max_delay -from [get_clocks -include_generated_clocks] -to [get_clocks -include_generated_clocks *CLKOUT*] 8.000
 
 #################################################
-
-###-----------------------------------------------------------
-### PCS/PMA Clock period Constraints: please do not relax    -
-###-----------------------------------------------------------
-##
-##
-##set_false_path -from [get_pins -of [get_cells -hier -filter { name =~ *transceiver_inst/data_valid_reg_reg* } ] -filter { name =~ *C } ] -to [get_pins -of [get_cells -hier -filter { name =~ *transceiver_inst/sync_block_data_valid/data_sync* } ] -filter { name =~ *D } ]
-##
-##
-###-----------------------------------------------------------
-### Fabric Rx Elastic Buffer Timing Constraints:             -
-###-----------------------------------------------------------
-##
-##
-### Control Gray Code delay and skew across clock boundary
-##set_max_delay -from [get_cells -hier -filter {name =~ *transceiver_inst/rx_elastic_buffer_inst/wr_addr_gray_reg[*]}] -to [get_pins -hier -filter { name =~ *reclock_wr_addrgray[*].sync_wr_addrgray/data_sync*/D}] 16 -datapath_only
-##set_max_delay -from [get_cells -hier -filter {name =~  *transceiver_inst/rx_elastic_buffer_inst/rd_addr_gray_reg[*]}] -to [get_pins -hier -filter { name =~ *reclock_rd_addrgray[*].sync_rd_addrgray/data_sync*/D}] 8 -datapath_only
-##
-### Constrain between Distributed Memory (output data) and the 1st set of flip-flops
-##set_false_path  -to [get_pins -hierarchical -filter { name =~ *rx_elastic_buffer_inst/GEN_FIFO[*].rd_data_reg*/D } ]
-##set_false_path  -to [get_pins -hierarchical -filter { name =~ *rx_elastic_buffer_inst/sync_initialize_ram_comp/data_sync_reg*/D } ]
 
 #-----------------------------------------------------------
 # GT Initialization circuitry clock domain crossing
@@ -315,44 +278,361 @@ set_max_delay -from [get_clocks -include_generated_clocks] -to [get_clocks -incl
 
 set_false_path -to [get_pins -hier -filter { name =~ */gtwizard_inst/*/gt0_txresetfsm_i/sync_*/*D }]
 set_false_path -to [get_pins -hier -filter { name =~ */gtwizard_inst/*/gt0_rxresetfsm_i/sync_*/*D }]
-
 set_false_path -to [get_pins -hier -filter { name =~ */gtwizard_inst/*/sync_*/*D }]
-
-set_false_path -to [get_pins -of [get_cells -hier -filter { name =~ *gtwizard_inst/*/sync_block_gtrxreset/data_sync* }] -filter { name =~ *D }]
+#set_false_path -to [get_pins -of [get_cells -hier -filter { name =~ *gtwizard_inst/*/sync_block_gtrxreset/data_sync* }] -filter { name =~ *D }]
 
 # false path constraints to async inputs coming directly to synchronizer
 set_false_path -to [get_pins -hier -filter {name =~ *SYNC_*/data_sync*/D }]
-
 set_false_path -to [get_pins -hier -filter {name =~ */*sync_speed_10*/data_sync*/D }]
 set_false_path -to [get_pins -hier -filter {name =~ */*gen_sync_reset/reset_sync*/PRE }]
-
 set_false_path -to [get_pins -hier -filter {name =~ *gpcs_pma_inst/MGT_RESET.RESET_INT_*/PRE }]
-
 set_false_path -to [get_pins -hier -filter {name =~ *reset_sync*/PRE}]
-
-#################################################
-
-# Reset
-#set_false_path -from [get_clocks {clkout0_1}] -to [get_clocks {clk_pll_i}]
-#set_false_path -from [get_clocks {clk_pll_i}] -to [get_clocks {clkout0_1}]
 
 #-----------------------------------------------------------
 # GT Initialization circuitry clock domain crossing
 #-----------------------------------------------------------
 
-#set_false_path -to [get_pins -hier -filter { name =~ */gtwizard_inst/gt0_txresetfsm_i/sync_*/*D } ]
-#set_false_path -to [get_pins -hier -filter { name =~ */gtwizard_inst/gt0_rxresetfsm_i/sync_*/*D } ]
-
-#set_false_path -to [get_pins -hier -filter { name =~ */gtwizard_inst/sync_*/*D } ]
-#set_false_path -to [get_pins -of [get_cells -hier -filter { name =~ *gtwizard_inst/sync_block_gtrxreset/data_sync* } ]  -filter { name =~ *D } ]
-
 # false path constraints to async inputs coming directly to synchronizer
-set_false_path -to [get_pins -hier -filter {name =~ *SYNC_*/data_sync/D }]
+#set_false_path -to [get_pins -hier -filter {name =~ *SYNC_*/data_sync/D }]
 set_false_path -to [get_pins -hier -filter {name =~ *gpcs_pma_inst/MGT_RESET.RESET_INT_*/PRE }]
 
 set_false_path -to [get_pins -hier -filter {name =~ *reset_sync1/PRE }]
 set_false_path -to [get_pins -hier -filter {name =~ *reset_sync2/PRE }]
 
+#-----------------------------------------------------------
+#             FMC / RGMII                                 -
+#-----------------------------------------------------------
+
+# TODO: Check if this section can be opt out when not used.
+#if {![string equal $fmctest ""]} {
+  set_property CLOCK_DEDICATED_ROUTE FALSE [get_pins -hier -filter {name =~ *eth1*clk125*/O}]
+
+  # Enable internal termination resistor on LVDS 125MHz ref_clk
+  set_property DIFF_TERM TRUE [get_ports ref_clk_clk_p]
+  set_property DIFF_TERM TRUE [get_ports ref_clk_clk_n]
+
+  create_clock -period 8.000 -name ref_clk_clk_p -waveform {0.000 4.000} [get_ports ref_clk_clk_p]
+  create_clock -period 8.000 -name rgmii_port_0_rxc -waveform {0.000 4.000} [get_ports rgmii_port_0_rxc]
+  create_clock -period 8.000 -name rgmii_port_1_rxc -waveform {0.000 4.000} [get_ports rgmii_port_1_rxc]
+  create_clock -period 8.000 -name rgmii_port_2_rxc -waveform {0.000 4.000} [get_ports rgmii_port_2_rxc]
+  create_clock -period 8.000 -name rgmii_port_3_rxc -waveform {0.000 4.000} [get_ports rgmii_port_3_rxc]
+  create_clock -period 8.000 -name rgmii_port_4_rxc -waveform {0.000 4.000} [get_ports rgmii_port_4_rxc]
+  create_clock -period 8.000 -name rgmii_port_5_rxc -waveform {0.000 4.000} [get_ports rgmii_port_5_rxc]
+  create_clock -period 8.000 -name rgmii_port_6_rxc -waveform {0.000 4.000} [get_ports rgmii_port_6_rxc]
+  create_clock -period 8.000 -name rgmii_port_7_rxc -waveform {0.000 4.000} [get_ports rgmii_port_7_rxc]
+
+  set_false_path -from [get_clocks clk_pll_i*] -to   [get_clocks rgmii_port_*_rxc]
+  set_false_path -to   [get_clocks clk_pll_i*] -from [get_clocks rgmii_port_*_rxc]
+
+  set_false_path -from [get_clocks clk_pll_i*] -to   [get_clocks clk25*]
+  set_false_path -to   [get_clocks clk_pll_i*] -from [get_clocks clk25*]
+  set_false_path -from [get_clocks clk_pll_i*] -to   [get_clocks clk50*]
+  set_false_path -to   [get_clocks clk_pll_i*] -from [get_clocks clk50*]
+  set_false_path -from [get_clocks clk_pll_i*] -to   [get_clocks clk125*]
+  set_false_path -to   [get_clocks clk_pll_i*] -from [get_clocks clk125*]
+
+  set_false_path -from [get_clocks clk_pll_i*] -to   [get_clocks io_ref]
+  set_false_path -to   [get_clocks clk_pll_i*] -from [get_clocks io_ref]
+
+  set_false_path -from [get_clocks clk_pll_i*] -to   [get_clocks clkout0_1]
+  set_false_path -to   [get_clocks clk_pll_i*] -from [get_clocks clkout0_1]
+
+  set_false_path -from [get_clocks clk25*] -to   [get_clocks clk125*]
+  set_false_path -to   [get_clocks clk25*] -from [get_clocks clk125*]
+   
+  set_false_path -from [get_clocks clk50*] -to   [get_clocks clk125*]
+  set_false_path -to   [get_clocks clk50*] -from [get_clocks clk125*]
+  
+  set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets clk25]
+  set_property CLOCK_DEDICATED_ROUTE ANY_CMT_COLUMN [get_nets clk125]
+  set_property CLOCK_DEDICATED_ROUTE ANY_CMT_COLUMN [get_nets clk50]
+
+  set_false_path -from [get_clocks -of_objects [get_pins eth1.PLLE2_ADV0/CLKOUT0]] -to [get_clocks -of_objects [get_pins eth1.PLLE2_ADV0/CLKOUT3]]
+  set_false_path -from [get_clocks -of_objects [get_pins eth1.PLLE2_ADV0/CLKOUT0]] -to [get_clocks -of_objects [get_pins eth1.PLLE2_ADV0/CLKOUT2]]
+  set_false_path -from [get_clocks -of_objects [get_pins eth1.PLLE2_ADV0/CLKOUT0]] -to [get_clocks -of_objects [get_pins mig_gen.gen_mig.gen_ahb2mig.ddrc/gen_mig.MCB_inst/u_mig_mig/u_ddr3_infrastructure/gen_mmcm.mmcm_i/CLKFBOUT]]
+  set_false_path -from [get_clocks -of_objects [get_pins eth1.PLLE2_ADV0/CLKOUT2]] -to [get_clocks -of_objects [get_pins mig_gen.gen_mig.gen_ahb2mig.ddrc/gen_mig.MCB_inst/u_mig_mig/u_ddr3_infrastructure/gen_mmcm.mmcm_i/CLKFBOUT]]
+  set_false_path -from [get_clocks -of_objects [get_pins eth1.PLLE2_ADV0/CLKOUT3]] -to [get_clocks -of_objects [get_pins mig_gen.gen_mig.gen_ahb2mig.ddrc/gen_mig.MCB_inst/u_mig_mig/u_ddr3_infrastructure/gen_mmcm.mmcm_i/CLKFBOUT]]
+  set_false_path -from [get_clocks -of_objects [get_pins mig_gen.gen_mig.gen_ahb2mig.ddrc/gen_mig.MCB_inst/u_mig_mig/u_ddr3_infrastructure/gen_mmcm.mmcm_i/CLKFBOUT]] -to [get_clocks -of_objects [get_pins eth1.PLLE2_ADV0/CLKOUT3]]
+  set_false_path -from [get_clocks -of_objects [get_pins mig_gen.gen_mig.gen_ahb2mig.ddrc/gen_mig.MCB_inst/u_mig_mig/u_ddr3_infrastructure/gen_mmcm.mmcm_i/CLKFBOUT]] -to [get_clocks -of_objects [get_pins eth1.PLLE2_ADV0/CLKOUT2]]
+  set_false_path -from [get_clocks -of_objects [get_pins mig_gen.gen_mig.gen_ahb2mig.ddrc/gen_mig.MCB_inst/u_mig_mig/u_ddr3_infrastructure/gen_mmcm.mmcm_i/CLKFBOUT]] -to [get_clocks -of_objects [get_pins eth1.PLLE2_ADV0/CLKOUT0]]
+  set_false_path -from [get_clocks -of_objects [get_pins mig_gen.gen_mig.gen_ahb2mig.ddrc/gen_mig.MCB_inst/u_mig_mig/u_ddr3_infrastructure/gen_mmcm.mmcm_i/CLKFBOUT]] -to [get_clocks -of_objects [get_pins eth0.sgmii0/sgmii0.mmcm_adv_inst/CLKOUT0]]
+
+  # Section 4.10.2.2
+  ###set_output_delay -clock [get_clocks clk25*] -max -1.0 [get_ports {rgmii_port_0_td[*] rgmii_port_0_tx_ctl}]
+  ###set_output_delay -clock [get_clocks clk25*] -min -2.6 [get_ports {rgmii_port_0_td[*] rgmii_port_0_tx_ctl}] -add_delay
+  ###set_output_delay -clock [get_clocks clk25*] -clock_fall -max -1.0 [get_ports {rgmii_port_0_td[*] rgmii_port_0_tx_ctl}] -add_delay
+  ###set_output_delay -clock [get_clocks clk25*] -clock_fall -min -2.6 [get_ports {rgmii_port_0_td[*] rgmii_port_0_tx_ctl}] -add_delay
+  ####set_output_delay -clock [get_clocks clk125*] -max -1.0 [get_ports {rgmii_port_0_td[*] rgmii_port_0_tx_ctl}]
+  ####set_output_delay -clock [get_clocks clk125*] -min -2.6 [get_ports {rgmii_port_0_td[*] rgmii_port_0_tx_ctl}] -add_delay
+  ####set_output_delay -clock [get_clocks clk125*] -clock_fall -max -1.0 [get_ports {rgmii_port_0_td[*] rgmii_port_0_tx_ctl}] -add_delay
+  ####set_output_delay -clock [get_clocks clk125*] -clock_fall -min -2.6 [get_ports {rgmii_port_0_td[*] rgmii_port_0_tx_ctl}] -add_delay
+
+  #}
+
+# Define I/O standards
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_1_rd[0]}]
+set_property IOSTANDARD LVCMOS18 [get_ports mdio_io_port_0_mdio_io]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_1_rd[2]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {ref_clk_fsel}]
+set_property IOSTANDARD LVCMOS18 [get_ports mdio_io_port_1_mdio_io]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_3_rxc]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_3_rx_ctl]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_3_rd[1]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_3_rd[3]}]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_1_rxc]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_1_rx_ctl]
+set_property IOSTANDARD LVCMOS18 [get_ports mdio_io_port_0_mdc]
+set_property IOSTANDARD LVCMOS18 [get_ports reset_port_0]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_1_rd[1]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_1_rd[3]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {ref_clk_oe}]
+set_property IOSTANDARD LVCMOS18 [get_ports mdio_io_port_1_mdc]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_2_rxc]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_2_rd[2]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_2_rd[3]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_3_rd[0]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_3_rd[2]}]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_0_rxc]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_0_rx_ctl]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_0_rd[2]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_0_rd[3]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_0_td[1]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_0_td[2]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_1_td[0]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_1_td[2]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_1_td[3]}]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_2_rx_ctl]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_2_rd[0]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_2_td[1]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_2_td[2]}]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_2_tx_ctl]
+set_property IOSTANDARD LVCMOS18 [get_ports mdio_io_port_2_mdio_io]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_3_td[0]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_3_td[2]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_3_td[3]}]
+set_property IOSTANDARD LVDS     [get_ports ref_clk_clk_p]
+set_property IOSTANDARD LVDS     [get_ports ref_clk_clk_n]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_0_rd[0]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_0_rd[1]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_0_td[0]}]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_0_txc]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_0_td[3]}]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_0_tx_ctl]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_1_td[1]}]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_1_txc]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_1_tx_ctl]
+set_property IOSTANDARD LVCMOS18 [get_ports reset_port_1]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_2_rd[1]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_2_td[0]}]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_2_txc]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_2_td[3]}]
+set_property IOSTANDARD LVCMOS18 [get_ports mdio_io_port_2_mdc]
+set_property IOSTANDARD LVCMOS18 [get_ports reset_port_2]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_3_td[1]}]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_3_txc]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_3_tx_ctl]
+set_property IOSTANDARD LVCMOS18 [get_ports mdio_io_port_3_mdc]
+set_property IOSTANDARD LVCMOS18 [get_ports mdio_io_port_3_mdio_io]
+set_property IOSTANDARD LVCMOS18 [get_ports reset_port_3]
+
+set_property PACKAGE_PIN K42 [get_ports {rgmii_port_1_rd[0]}]
+set_property PACKAGE_PIN J42 [get_ports mdio_io_port_0_mdio_io]
+set_property PACKAGE_PIN M39 [get_ports {rgmii_port_1_rd[2]}]
+set_property PACKAGE_PIN N39 [get_ports {ref_clk_fsel}]
+set_property PACKAGE_PIN N40 [get_ports mdio_io_port_1_mdio_io]
+set_property PACKAGE_PIN M32 [get_ports rgmii_port_3_rxc]
+set_property PACKAGE_PIN L32 [get_ports rgmii_port_3_rx_ctl]
+set_property PACKAGE_PIN J31 [get_ports {rgmii_port_3_rd[1]}]
+set_property PACKAGE_PIN H31 [get_ports {rgmii_port_3_rd[3]}]
+set_property PACKAGE_PIN J40 [get_ports rgmii_port_1_rxc]
+set_property PACKAGE_PIN J41 [get_ports rgmii_port_1_rx_ctl]
+set_property PACKAGE_PIN M41 [get_ports mdio_io_port_0_mdc]
+set_property PACKAGE_PIN L41 [get_ports reset_port_0]
+set_property PACKAGE_PIN R42 [get_ports {rgmii_port_1_rd[1]}]
+set_property PACKAGE_PIN P42 [get_ports {rgmii_port_1_rd[3]}]
+set_property PACKAGE_PIN H39 [get_ports {ref_clk_oe}]
+set_property PACKAGE_PIN G39 [get_ports mdio_io_port_1_mdc]
+set_property PACKAGE_PIN L31 [get_ports rgmii_port_2_rxc]
+set_property PACKAGE_PIN P30 [get_ports {rgmii_port_2_rd[2]}]
+set_property PACKAGE_PIN N31 [get_ports {rgmii_port_2_rd[3]}]
+set_property PACKAGE_PIN J30 [get_ports {rgmii_port_3_rd[0]}]
+set_property PACKAGE_PIN H30 [get_ports {rgmii_port_3_rd[2]}]
+set_property PACKAGE_PIN K39 [get_ports rgmii_port_0_rxc]
+set_property PACKAGE_PIN K40 [get_ports rgmii_port_0_rx_ctl]
+set_property PACKAGE_PIN M42 [get_ports {rgmii_port_0_rd[2]}]
+set_property PACKAGE_PIN L42 [get_ports {rgmii_port_0_rd[3]}]
+set_property PACKAGE_PIN M37 [get_ports {rgmii_port_0_td[1]}]
+set_property PACKAGE_PIN M38 [get_ports {rgmii_port_0_td[2]}]
+set_property PACKAGE_PIN P40 [get_ports {rgmii_port_1_td[0]}]
+set_property PACKAGE_PIN K37 [get_ports {rgmii_port_1_td[2]}]
+set_property PACKAGE_PIN K38 [get_ports {rgmii_port_1_td[3]}]
+set_property PACKAGE_PIN Y29 [get_ports rgmii_port_2_rx_ctl]
+set_property PACKAGE_PIN Y30 [get_ports {rgmii_port_2_rd[0]}]
+set_property PACKAGE_PIN R28 [get_ports {rgmii_port_2_td[1]}]
+set_property PACKAGE_PIN P28 [get_ports {rgmii_port_2_td[2]}]
+set_property PACKAGE_PIN K29 [get_ports rgmii_port_2_tx_ctl]
+set_property PACKAGE_PIN K30 [get_ports mdio_io_port_2_mdio_io]
+set_property PACKAGE_PIN T30 [get_ports {rgmii_port_3_td[0]}]
+set_property PACKAGE_PIN M28 [get_ports {rgmii_port_3_td[2]}]
+set_property PACKAGE_PIN M29 [get_ports {rgmii_port_3_td[3]}]
+set_property PACKAGE_PIN L39 [get_ports ref_clk_clk_p]
+set_property PACKAGE_PIN L40 [get_ports ref_clk_clk_n]
+set_property PACKAGE_PIN P41 [get_ports {rgmii_port_0_rd[0]}]
+set_property PACKAGE_PIN N41 [get_ports {rgmii_port_0_rd[1]}]
+set_property PACKAGE_PIN H40 [get_ports {rgmii_port_0_td[0]}]
+set_property PACKAGE_PIN H41 [get_ports rgmii_port_0_txc]
+set_property PACKAGE_PIN G41 [get_ports {rgmii_port_0_td[3]}]
+set_property PACKAGE_PIN G42 [get_ports rgmii_port_0_tx_ctl]
+set_property PACKAGE_PIN F40 [get_ports {rgmii_port_1_td[1]}]
+set_property PACKAGE_PIN F41 [get_ports rgmii_port_1_txc]
+set_property PACKAGE_PIN M36 [get_ports rgmii_port_1_tx_ctl]
+set_property PACKAGE_PIN L37 [get_ports reset_port_1]
+set_property PACKAGE_PIN W30 [get_ports {rgmii_port_2_rd[1]}]
+set_property PACKAGE_PIN W31 [get_ports {rgmii_port_2_td[0]}]
+set_property PACKAGE_PIN N28 [get_ports rgmii_port_2_txc]
+set_property PACKAGE_PIN N29 [get_ports {rgmii_port_2_td[3]}]
+set_property PACKAGE_PIN R30 [get_ports mdio_io_port_2_mdc]
+set_property PACKAGE_PIN P31 [get_ports reset_port_2]
+set_property PACKAGE_PIN L29 [get_ports {rgmii_port_3_td[1]}]
+set_property PACKAGE_PIN L30 [get_ports rgmii_port_3_txc]
+set_property PACKAGE_PIN V30 [get_ports rgmii_port_3_tx_ctl]
+set_property PACKAGE_PIN V31 [get_ports mdio_io_port_3_mdc]
+set_property PACKAGE_PIN V29 [get_ports mdio_io_port_3_mdio_io]
+set_property PACKAGE_PIN U29 [get_ports reset_port_3]
+
+# Constraints for second Ethernet FMC plugged onto the HPC1 connector
+# Ports are numbered 4 to 7
+
+# Define I/O standards
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_5_rd[0]}]
+set_property IOSTANDARD LVCMOS18 [get_ports mdio_io_port_4_mdio_io]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_5_rd[2]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {ref_clk_1_fsel[0]}]
+set_property IOSTANDARD LVCMOS18 [get_ports mdio_io_port_5_mdio_io]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_7_rxc]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_7_rx_ctl]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_7_rd[1]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_7_rd[3]}]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_5_rxc]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_5_rx_ctl]
+set_property IOSTANDARD LVCMOS18 [get_ports mdio_io_port_4_mdc]
+set_property IOSTANDARD LVCMOS18 [get_ports reset_port_4]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_5_rd[1]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_5_rd[3]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {ref_clk_1_oe[0]}]
+set_property IOSTANDARD LVCMOS18 [get_ports mdio_io_port_5_mdc]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_6_rxc]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_6_rd[2]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_6_rd[3]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_7_rd[0]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_7_rd[2]}]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_4_rxc]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_4_rx_ctl]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_4_rd[2]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_4_rd[3]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_4_td[1]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_4_td[2]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_5_td[0]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_5_td[2]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_5_td[3]}]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_6_rx_ctl]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_6_rd[0]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_6_td[1]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_6_td[2]}]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_6_tx_ctl]
+set_property IOSTANDARD LVCMOS18 [get_ports mdio_io_port_6_mdio_io]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_7_td[0]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_7_td[2]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_7_td[3]}]
+set_property IOSTANDARD LVDS [get_ports ref_clk_1_clk_p]
+set_property IOSTANDARD LVDS [get_ports ref_clk_1_clk_n]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_4_rd[0]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_4_rd[1]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_4_td[0]}]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_4_txc]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_4_td[3]}]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_4_tx_ctl]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_5_td[1]}]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_5_txc]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_5_tx_ctl]
+set_property IOSTANDARD LVCMOS18 [get_ports reset_port_5]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_6_rd[1]}]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_6_td[0]}]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_6_txc]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_6_td[3]}]
+set_property IOSTANDARD LVCMOS18 [get_ports mdio_io_port_6_mdc]
+set_property IOSTANDARD LVCMOS18 [get_ports reset_port_6]
+set_property IOSTANDARD LVCMOS18 [get_ports {rgmii_port_7_td[1]}]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_7_txc]
+set_property IOSTANDARD LVCMOS18 [get_ports rgmii_port_7_tx_ctl]
+set_property IOSTANDARD LVCMOS18 [get_ports mdio_io_port_7_mdc]
+set_property IOSTANDARD LVCMOS18 [get_ports mdio_io_port_7_mdio_io]
+set_property IOSTANDARD LVCMOS18 [get_ports reset_port_7]
+
+set_property PACKAGE_PIN AD38 [get_ports {rgmii_port_5_rd[0]}]
+set_property PACKAGE_PIN AE38 [get_ports mdio_io_port_4_mdio_io]
+set_property PACKAGE_PIN AB42 [get_ports {rgmii_port_5_rd[2]}]
+set_property PACKAGE_PIN AB38 [get_ports {ref_clk_1_fsel[0]}]
+set_property PACKAGE_PIN AB39 [get_ports mdio_io_port_5_mdio_io]
+set_property PACKAGE_PIN U36  [get_ports rgmii_port_7_rxc]
+set_property PACKAGE_PIN T37  [get_ports rgmii_port_7_rx_ctl]
+set_property PACKAGE_PIN P32  [get_ports {rgmii_port_7_rd[1]}]
+set_property PACKAGE_PIN P33  [get_ports {rgmii_port_7_rd[3]}]
+set_property PACKAGE_PIN AF41 [get_ports rgmii_port_5_rxc]
+set_property PACKAGE_PIN AG41 [get_ports rgmii_port_5_rx_ctl]
+set_property PACKAGE_PIN AF42 [get_ports mdio_io_port_4_mdc]
+set_property PACKAGE_PIN AG42 [get_ports reset_port_4]
+set_property PACKAGE_PIN AJ38 [get_ports {rgmii_port_5_rd[1]}]
+set_property PACKAGE_PIN AK38 [get_ports {rgmii_port_5_rd[3]}]
+set_property PACKAGE_PIN W40  [get_ports {ref_clk_1_oe[0]}]
+set_property PACKAGE_PIN Y40  [get_ports mdio_io_port_5_mdc]
+set_property PACKAGE_PIN U37  [get_ports rgmii_port_6_rxc]
+set_property PACKAGE_PIN R38  [get_ports {rgmii_port_6_rd[2]}]
+set_property PACKAGE_PIN R39  [get_ports {rgmii_port_6_rd[3]}]
+set_property PACKAGE_PIN N33  [get_ports {rgmii_port_7_rd[0]}]
+set_property PACKAGE_PIN N34  [get_ports {rgmii_port_7_rd[2]}]
+set_property PACKAGE_PIN AD40 [get_ports rgmii_port_4_rxc]
+set_property PACKAGE_PIN AD41 [get_ports rgmii_port_4_rx_ctl]
+set_property PACKAGE_PIN AJ42 [get_ports {rgmii_port_4_rd[2]}]
+set_property PACKAGE_PIN AK42 [get_ports {rgmii_port_4_rd[3]}]
+set_property PACKAGE_PIN AD42 [get_ports {rgmii_port_4_td[1]}]
+set_property PACKAGE_PIN AE42 [get_ports {rgmii_port_4_td[2]}]
+set_property PACKAGE_PIN AA39 [get_ports {rgmii_port_5_td[0]}]
+set_property PACKAGE_PIN AJ40 [get_ports {rgmii_port_5_td[2]}]
+set_property PACKAGE_PIN AJ41 [get_ports {rgmii_port_5_td[3]}]
+set_property PACKAGE_PIN V33  [get_ports rgmii_port_6_rx_ctl]
+set_property PACKAGE_PIN V34  [get_ports {rgmii_port_6_rd[0]}]
+set_property PACKAGE_PIN W32  [get_ports {rgmii_port_6_td[1]}]
+set_property PACKAGE_PIN W33  [get_ports {rgmii_port_6_td[2]}]
+set_property PACKAGE_PIN R33  [get_ports rgmii_port_6_tx_ctl]
+set_property PACKAGE_PIN R34  [get_ports mdio_io_port_6_mdio_io]
+set_property PACKAGE_PIN W37  [get_ports {rgmii_port_7_td[0]}]
+set_property PACKAGE_PIN V39  [get_ports {rgmii_port_7_td[2]}]
+set_property PACKAGE_PIN V40  [get_ports {rgmii_port_7_td[3]}]
+set_property PACKAGE_PIN AF39 [get_ports ref_clk_1_clk_p]
+set_property PACKAGE_PIN AF40 [get_ports ref_clk_1_clk_n]
+set_property PACKAGE_PIN AK39 [get_ports {rgmii_port_4_rd[0]}]
+set_property PACKAGE_PIN AL39 [get_ports {rgmii_port_4_rd[1]}]
+set_property PACKAGE_PIN AL41 [get_ports {rgmii_port_4_td[0]}]
+set_property PACKAGE_PIN AL42 [get_ports rgmii_port_4_txc]
+set_property PACKAGE_PIN AC40 [get_ports {rgmii_port_4_td[3]}]
+set_property PACKAGE_PIN AC41 [get_ports rgmii_port_4_tx_ctl]
+set_property PACKAGE_PIN Y42  [get_ports {rgmii_port_5_td[1]}]
+set_property PACKAGE_PIN AA42 [get_ports rgmii_port_5_txc]
+set_property PACKAGE_PIN AC38 [get_ports rgmii_port_5_tx_ctl]
+set_property PACKAGE_PIN AC39 [get_ports reset_port_5]
+set_property PACKAGE_PIN U32  [get_ports {rgmii_port_6_rd[1]}]
+set_property PACKAGE_PIN U33  [get_ports {rgmii_port_6_td[0]}]
+set_property PACKAGE_PIN P35  [get_ports rgmii_port_6_txc]
+set_property PACKAGE_PIN P36  [get_ports {rgmii_port_6_td[3]}]
+set_property PACKAGE_PIN U34  [get_ports mdio_io_port_6_mdc]
+set_property PACKAGE_PIN T35  [get_ports reset_port_6]
+set_property PACKAGE_PIN V35  [get_ports {rgmii_port_7_td[1]}]
+set_property PACKAGE_PIN V36  [get_ports rgmii_port_7_txc]
+set_property PACKAGE_PIN T32  [get_ports rgmii_port_7_tx_ctl]
+set_property PACKAGE_PIN R32  [get_ports mdio_io_port_7_mdc]
+set_property PACKAGE_PIN P37  [get_ports mdio_io_port_7_mdio_io]
+set_property PACKAGE_PIN P38  [get_ports reset_port_7]
 
 #-----------------------------------------------------------
 # GRETH
@@ -364,20 +644,24 @@ set_false_path -to [get_pins -hier -filter {name =~ *reset_sync2/PRE }]
 #                  CAN                                     -
 #-----------------------------------------------------------
 
+# Check if USB is in design  
+set cantest [get_pins -hier *can*?RST]
+
 set_property PACKAGE_PIN AF35 [get_ports {can_rxd[0]}]
 set_property PACKAGE_PIN AF36 [get_ports {can_txd[0]}]
 
 set_property IOSTANDARD LVCMOS18 [get_ports {can_rxd[0]}]
 set_property IOSTANDARD LVCMOS18 [get_ports {can_txd[0]}]
 
-# Inputs
-set_input_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 3.000 [get_ports can_rxd]
-set_input_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay 1.000 [get_ports can_rxd]
+#if {![string equal $cantest ""]} {
+  # Inputs
+  set_input_delay -clock [get_clocks -include_generated_clocks *clkfb*] -max 3.000 [get_ports can_rxd]
+  set_input_delay -clock [get_clocks -include_generated_clocks *clkfb*] -min -add_delay 1.000 [get_ports can_rxd]
 
-# Outputs
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 1.000 [get_ports can_txd]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay -1.000 [get_ports can_txd]
-
+  # Outputs
+  set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -max 1.000 [get_ports can_txd]
+  set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -min -add_delay -1.000 [get_ports can_txd]
+#}
 
 #-----------------------------------------------------------
 #                  SPI                                     -
@@ -394,22 +678,24 @@ set_property IOSTANDARD LVCMOS18 [get_ports spi_clk]
 set_property IOSTANDARD LVCMOS18 [get_ports spi_data_cs_b]
 
 # Inputs
-set_input_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 3.000 [get_ports spi_data_out]
-set_input_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay 1.000 [get_ports spi_data_out]
+set_input_delay -clock [get_clocks -include_generated_clocks *clkfb*] -max 3.000 [get_ports spi_data_out]
+set_input_delay -clock [get_clocks -include_generated_clocks *clkfb*] -min -add_delay 1.000 [get_ports spi_data_out]
 
 # Outputs
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 1.000 [get_ports spi_data_in]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay -1.000 [get_ports spi_data_in]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 1.000 [get_ports spi_clk]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay -1.000 [get_ports spi_clk]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 1.000 [get_ports spi_data_cs_b]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay -1.000 [get_ports spi_data_cs_b]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -max 1.000 [get_ports spi_data_in]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -min -add_delay -1.000 [get_ports spi_data_in]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -max 1.000 [get_ports spi_clk]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -min -add_delay -1.000 [get_ports spi_clk]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -max 1.000 [get_ports spi_data_cs_b]
+set_output_delay -clock [get_clocks -include_generated_clocks *clkfb*] -min -add_delay -1.000 [get_ports spi_data_cs_b]
 
 
 #-----------------------------------------------------------
 #              MIG                                         -
 #-----------------------------------------------------------
 
+#set migtest [get_pins -hier *mig*rst*]
+#if {![string equal $migtest ""]} {
 # Bank: 39 - Byte T3
 set_property SLEW FAST [get_ports {ddr3_dq[0]}]
 set_property IOSTANDARD SSTL15_T_DCI [get_ports {ddr3_dq[0]}]
@@ -970,4 +1256,5 @@ set_property IOSTANDARD DIFF_SSTL15 [get_ports {ddr3_ck_n[0]}]
 set_property PACKAGE_PIN G18 [get_ports {ddr3_ck_n[0]}]
 
 # Bank: 38 - Byte T2
+#}
 

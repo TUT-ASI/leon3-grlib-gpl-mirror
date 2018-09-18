@@ -41,7 +41,6 @@ use gaisler.axi.all;
 
 entity ahb2axi4b is
   generic (
-    memtech         : integer                              := 0;
     hindex          : integer                              := 0;
     aximid          : integer range 0 to 15                := 0;  --AXI master transaction ID
     wbuffer_num     : integer range 1 to axi4_max_n(AXIDW) := 8;
@@ -85,7 +84,6 @@ begin  -- rtl
 
   ahb2axibx : ahb2axib
     generic map(
-      memtech         => memtech,
       hindex          => hindex,
       aximid          => aximid,
       wbuffer_num     => wbuffer_num,

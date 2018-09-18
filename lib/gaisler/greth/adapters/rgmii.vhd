@@ -69,7 +69,10 @@ entity rgmii is
     apb_clk  : in    std_logic;
     apb_rstn : in    std_logic;
     apbi     : in    apb_slv_in_type;
-    apbo     : out   apb_slv_out_type
+    apbo     : out   apb_slv_out_type;
+    -- Debug Out
+    debug_rgmii_phy_tx : out std_logic_vector(31 downto 0);
+    debug_rgmii_phy_rx : out std_logic_vector(31 downto 0)
     );
 end ;
 
@@ -129,7 +132,7 @@ architecture rtl of rgmii is
   signal line_status_vector : std_logic_vector(3 downto 0);
   signal status_vector      : std_logic_vector(15 downto 0);
   signal status_vector_sync : std_logic_vector(15 downto 0);
-
+  
   -- APB and RGMII control register
   constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
 
@@ -214,6 +217,20 @@ begin  -- rtl
 
   vcc <= '1'; gnd <= '0';
 
+  ---------------------------------------------------------------------------------------
+  -- MDIO path
+  ---------------------------------------------------------------------------------------
+
+  debug_rgmii_phy_tx(31)           <= rgmiii.tx_clk;
+  debug_rgmii_phy_tx(30 downto 10) <= (others => '0');
+  debug_rgmii_phy_tx(9 downto 8)   <= tx_en & tx_ctl;
+  debug_rgmii_phy_tx(7 downto 0)   <= txd;
+  
+  debug_rgmii_phy_rx(31)           <= rgmiii.rx_clk;
+  debug_rgmii_phy_rx(30 downto 16) <= (others => '0');
+  debug_rgmii_phy_rx(15 downto 8)  <= rxd_int;
+  debug_rgmii_phy_rx(7 downto 0)   <= rxd_pre;
+ 
   ---------------------------------------------------------------------------------------
   -- MDIO path
   ---------------------------------------------------------------------------------------
@@ -753,15 +770,15 @@ begin  -- rtl
       when "001001" =>
        rdata(23 downto 0) := r.clkedge;
       when "001010" =>
-         rdata(1 downto 0) := v.rxctrl_q2_delay;
+         rdata(1 downto 0) := r.rxctrl_q2_delay;
       when "001011" =>
-         rdata(1 downto 0) := v.rxctrl_q1_delay;
+         rdata(1 downto 0) := r.rxctrl_q1_delay;
       when "001100" =>
-         rdata(0) := v.rxctrl_q1_sel;
+         rdata(0) := r.rxctrl_q1_sel;
       when "001101" =>
-         rdata(0) := v.rxctrl_delay;
+         rdata(0) := r.rxctrl_delay;
       when "001110" =>
-         rdata(0) := v.rxctrl_c_delay;
+         rdata(0) := r.rxctrl_c_delay;
       when others =>
         null;
       end case;
@@ -815,6 +832,8 @@ begin  -- rtl
     if (not RESET_ALL) and (apb_rstn = '0') then
       if (tech = kintex7) then
         v := RES_kintex7;
+      elsif (tech = virtex7) then
+        v := RES_kintex7;
       elsif (tech = spartan6) then
         v := RES_spartan6;
       elsif (tech = artix7) then
@@ -852,6 +871,8 @@ begin  -- rtl
         if RESET_ALL and apb_rstn = '0' then
           if (tech = kintex7) then
             r <= RES_kintex7;
+          elsif (tech = virtex7) then
+            r <= RES_spartan6;
           elsif (tech = spartan6) then
             r <= RES_spartan6;
           else

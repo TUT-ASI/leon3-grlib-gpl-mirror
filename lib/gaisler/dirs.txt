@@ -9,7 +9,8 @@ leon4 leon4v0
 irqmp
 l2cache/pkg l2cache/v3
 lram
-can 
+can
+canfd 
 hcan 
 axi
 misc 

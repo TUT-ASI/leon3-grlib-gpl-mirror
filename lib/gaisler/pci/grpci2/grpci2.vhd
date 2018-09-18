@@ -1207,7 +1207,7 @@ begin
     po <= phyo.poo;
   -- PHY <=
 
-disabled_dmai <= ('0', '0', (others => '0'), (others => '0'), (others => '0'), '0', '0');
+disabled_dmai <= dma_ahb_in_none;
 
 scanen <= (ahbsi.testen and ahbsi.scanen) when (scantest = 1) else '0';
 testin <= ahbsi.testen & "0" & ahbsi.testin(TESTIN_WIDTH-3 downto 0);

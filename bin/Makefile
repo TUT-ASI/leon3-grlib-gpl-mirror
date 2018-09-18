@@ -1,5 +1,5 @@
-VER=$(VNAME)2018.1
-BID=4217
+VER=$(VNAME)2018.3
+BID=4226
 CC=gcc
 SED=sed
 
@@ -16,6 +16,7 @@ endif
 ifeq ("$(GRLIB_SIMULATOR)","")
 GRLIB_SIMULATOR = ModelSim
 endif
+
 
 # Select LEON3 version
 # The switch between gaisler/leon3 and gaisler/leon3pkgv1v2 is handled
@@ -188,7 +189,7 @@ help:
 	@echo "   make vivado          : synthesize and place&route with Xilinx Vivado"
 	@echo "  other GRLIB targets:"
 	@echo "   make scripts         : generate compile scripts only"
-	@echo "   make clean           : remove all temporary files except scripts"
+	@echo "   make clean           : remove all temporary files"
 	@echo "   make distclean       : remove all temporary files"
 	@echo
 
@@ -412,7 +413,7 @@ vsim-grlib: modelsim
 
 vsim-run: vsim
 ifeq ("$(VSIMOPT)","")
-	@vsim -c $(SIMTOP) <  $(GRLIB)/bin/runvsim.do
+	@vsim -c -voptargs="+acc" $(SIMTOP) <  $(GRLIB)/bin/runvsim.do
 else
 	@vsim -c $(VSIMOPT)
 endif
@@ -1060,7 +1061,7 @@ ifneq ("$(GRLIB_SIMULATOR)","Xilinx")
 	-@mkdir -p ./xilinx_lib
 	@if [ -d ./xilinx_lib/unisims_ver ]; then \
 	echo "Xilinx library already compiled"; else \
-	echo "compile_simlib -directory ./xilinx_lib/ -family all -language all -library all -simulator $(GRLIB_XIL_simlib_Simulator) $(VIVADOCOMPILEIP)" > ./xilinx_lib/$(TOP)_simlib.tcl ; \
+	echo "compile_simlib -quiet -directory ./xilinx_lib/ -family all -language all -simulator $(GRLIB_XIL_simlib_Simulator) $(VIVADOCOMPILEIP) -library unisim -library simprim " > ./xilinx_lib/$(TOP)_simlib.tcl ; \
 	vivado -mode batch -source ./xilinx_lib/$(TOP)_simlib.tcl ; \
 	fi;
 endif
@@ -1077,7 +1078,6 @@ ifneq ("$(GRLIB_SIMULATOR)","ALDEC_RWS")
 	vmap unimacro_ver ./xilinx_lib/unimacro_ver ; \
 	vmap unimacro ./xilinx_lib/unimacro ; \
 	vmap simprim_ver ./xilinx_lib/simprims_ver ; \
-	vmap simprim ./xilinx_lib/simprims ; \
 	vmap unifast_ver ./xilinx_lib/unifast_ver ; \
 	vmap unifast ./xilinx_lib/unifast_ver ; else \
 	echo "Xilinx Library not found. Please make sure you have installed the correct version of the Xilinx Library" ; exit 1 ; \
@@ -1167,7 +1167,6 @@ else
 	@echo "amap unimacro_ver ../xilinx_lib/unimacro_ver"  >> riviera_ws_add_sgmii_7series.do
 	@echo "amap unimacro ../xilinx_lib/unimacro"  >> riviera_ws_add_sgmii_7series.do
 	@echo "amap simprim_ver ../xilinx_lib/simprims_ver"  >> riviera_ws_add_sgmii_7series.do
-	@echo "amap simprim ../xilinx_lib/simprims"  >> riviera_ws_add_sgmii_7series.do
 	@echo "amap unifast_ver ../xilinx_lib/unifast_ver"  >> riviera_ws_add_sgmii_7series.do
 	@echo "amap unifast ../xilinx_lib/unifast_ver"  >> riviera_ws_add_sgmii_7series.do
 	@echo "design.file.add ../vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/sgmii/gig_ethernet_pcs_pma_v14_3/hdl/gig_ethernet_pcs_pma_v14_3_rfs.vhd"  >> riviera_ws_add_sgmii_7series.do
@@ -1187,7 +1186,9 @@ endif
 .PHONY: compile_xilinx_7series_lib map_xilinx_7series_lib mig_7series_generate mig_7series install-simprim compile-simprim compile-xilinxcorelib compile-unisim compile-xilinx-simlibs
 
 #########    Xilinx PlanAhead targets   ############
-
+ifeq ("$(AREA_OPT)","")
+AREA_OPT =no
+endif
 ifeq ("$(PLANAHEAD_SYNTH_FLOW)","")
 PLANAHEAD_SYNTH_FLOW="XST 14"
 endif
@@ -1197,6 +1198,11 @@ PLANAHEAD_SYNTH_STRATEGY="TimingWithIOBPacking"
 endif
 ifeq ("$(PLANAHEAD_IMPL_STRATEGY)","")
 PLANAHEAD_IMPL_STRATEGY="ParHighEffort"
+endif
+AREA_OPT_LW=$(shell echo $(AREA_OPT) | tr '[:upper:]' '[:lower:]')
+ifeq ("$(AREA_OPT_LW)","yes")
+PLANAHEAD_SYNTH_STRATEGY="AreaReduction"
+PLANAHEAD_IMPL_STRATEGY="MapCoverArea"
 endif
 
 ## Xilinx planAhead project properties that can be overrideen
@@ -1212,7 +1218,7 @@ endif
 PLANAHEAD_SIMSET=sim_1
 
 planahead-launch: planahead/$(TOP)_planAhead.tcl $(VHDLSYNFILES) $(VERILOGSYNFILES)
-	planAhead -mode gui -source ./planahead/$(TOP)_planAhead.tcl
+	planAhead -mode gui -source ./planahead/$(TOP)_planAhead.tcl 
 	@if test -r ./planahead/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).bit; then \
 	  cp ./planahead/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).bit . ; \
 	  cp ./planahead/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).msk . ; \
@@ -1240,6 +1246,7 @@ VIVADODIRSKIPX = $(ASICLIBS) $(ACTELLIBS) $(ALTERALIBS) $(LATTICELIBS)
 VIVADODIRSKIP = $(VIVADODIRSKIPX:%=%|) dware | grdware
 VIVADOSKIP = $(VIVADOSKIPX) b1553* | pci_components* | pcicore* | snpsmul.vhd | clkgen_virtex.vhd | \
 	memory_virtex.vhd | simple_simprim.vhd | unisim_VCOMP.vhd | unisim_VITAL.vhd | unisim_VPKG.vhd
+
 
 ifeq ("$(VIVADO_SYNTH_FLOW)","")
 VIVADO_SYNTH_FLOW=Vivado Synthesis 2012
@@ -1771,7 +1778,7 @@ scriptgendone: scriptgen_variable_values.tcl
 
 ######## Common cleaning   ####################
 
-clean: $(CLEAN) vsim-clean ise-clean ncsim-clean ghdl-clean synplify-clean quartus-clean \
+work-clean: $(CLEAN) vsim-clean ise-clean ncsim-clean ghdl-clean synplify-clean quartus-clean \
 	actel-clean dc-clean rc-clean isp-clean precision-clean vsimsa-clean avhdl-clean \
 	vivado-clean planahead-clean riviera-clean fpro-clean vcs-clean
 	-rm -rf verilog.txt tkparse.exe main.tk ahbrom outdata ahbrom.bin
@@ -1789,7 +1796,7 @@ scripts-clean:
 scriptgen-clean:
 	-rm -rf scriptgenwork
 
-distclean: $(CLEAN) clean scripts-clean clean-xilinx-lib scriptgen-clean
+clean distclean: $(CLEAN) work-clean scripts-clean clean-xilinx-lib scriptgen-clean
 
 libclean: remove-altera remove-unisim remove-microsemi remove-dare
 

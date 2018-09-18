@@ -38,7 +38,7 @@ endif
 
 # - MIG -
 ifeq ($(CONFIG_MIG_7SERIES),y)
-VSIMOPT+= -t fs -novopt
+VSIMOPT+= -t fs -voptargs="+acc" 
 VSIMOPT+= -L secureip -L unisims_ver -L unisim glbl
 ifndef CONFIG_MIG_7SERIES_MODEL
 VSIMOPT+= -gUSE_MIG_INTERFACE_MODEL=false
@@ -53,7 +53,7 @@ endif
 ifeq ("$(GRLIB_SIMULATOR)","ALDEC")
 VSIMOPT+= +access +w -voptargs="+acc" +notimingchecks
 else
-VSIMOPT+=-novopt +notimingchecks
+VSIMOPT+= -voptargs="+acc" +notimingchecks
 endif
 
 GRLIB_XILINX_SOURCE_MGMT_MODE=DisplayOnly
@@ -93,7 +93,7 @@ DIRSKIP = b1553 pci gr1553b/core pci/pcif leon2 leon2ft srio idt crypto satcan p
 ifeq ("$(CONFIG_LEON4)","")
 DIRSKIP+=leon4v0
 endif
-FILESKIP = grcan.vhd ddr2.v mobile_ddr.v adapters/sgmii.vhd tap_unisim.vhd
+FILESKIP = grcan.vhd ddr2.v mobile_ddr.v adapters/sgmii.vhd
 
 include $(GRLIB)/bin/Makefile
 include $(GRLIB)/software/leon3/Makefile

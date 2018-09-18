@@ -38,6 +38,9 @@ package net is
     rmii_clk   : std_ulogic;
     tx_clk     : std_ulogic;
     tx_clk_90  : std_ulogic;
+    tx_clk_100 : std_ulogic;
+    tx_clk_50  : std_ulogic;
+    tx_clk_25  : std_ulogic;
     tx_dv      : std_ulogic;
     rx_clk     : std_ulogic;
     rxd        : std_logic_vector(7 downto 0);   
@@ -55,7 +58,7 @@ package net is
   end record;
 
   constant eth_in_none : eth_in_type :=
-    ('0', '0', '0', '0', '0', '0', (others => '0'), '0', '0', '0', '0', '0',
+    ('0', '0', '0', '0', '0', '0', '0', '0', '0', (others => '0'), '0', '0', '0', '0', '0',
      '0', '0', (others => '0'), (others => '0'), '0', '0');
   type eth_in_vector is array (natural range <>) of eth_in_type;
   
@@ -263,6 +266,7 @@ package net is
       edclsepahb     : integer range 0 to 1  := 0;
       ramdebug       : integer range 0 to 2  := 0;
       mdiohold       : integer := 1;
+      rgmiimode      : integer range 0 to 1  := 0;
       gmiimode       : integer range 0 to 1  := 0;
       mdiochain      : integer range 0 to 1  := 0;
       iotest         : integer range 0 to 1  := 0
@@ -281,7 +285,11 @@ package net is
       mdchain_ui     : in  greth_mdiochain_down_type := greth_mdiochain_down_first;
       mdchain_uo     : out greth_mdiochain_up_type;
       mdchain_di     : out greth_mdiochain_down_type;
-      mdchain_do     : in  greth_mdiochain_up_type := greth_mdiochain_up_last
+      mdchain_do     : in  greth_mdiochain_up_type := greth_mdiochain_up_last;
+      -- Debug Interface
+      debug_rx        : out std_logic_vector(63 downto 0);
+      debug_tx        : out std_logic_vector(63 downto 0);
+      debug_gtx       : out std_logic_vector(63 downto 0)
     );
   end component;
 
@@ -317,6 +325,7 @@ package net is
       multicast      : integer range 0 to 1  := 0;
       ramdebug       : integer range 0 to 2  := 0;
       mdiohold       : integer := 1;
+      rgmiimode      : integer range 0 to 1  := 0;
       gmiimode       : integer range 0 to 1  := 0
       ); 
     port(
@@ -328,6 +337,10 @@ package net is
       apbo           : out apb_slv_out_type;
       ethi           : in  eth_in_type;
       etho           : out eth_out_type
+      -- Debug Interface
+      ; debug_rx      : out std_logic_vector(63 downto 0);
+      debug_tx        : out std_logic_vector(63 downto 0);
+      debug_gtx       : out std_logic_vector(63 downto 0)
     );
   end component;
 
@@ -368,6 +381,7 @@ package net is
     ramdebug       : integer range 0 to 2  := 0;
     mdiohold       : integer := 1;
     maxsize        : integer := 1500;
+    rgmiimode      : integer range 0 to 1  := 0;
     gmiimode       : integer range 0 to 1  := 0
     ); 
   port(
@@ -379,6 +393,9 @@ package net is
     apbo           : out apb_slv_out_type;
     ethi           : in  eth_in_type;
     etho           : out eth_out_type
+     ; debug_rx    : out std_logic_vector(63 downto 0);
+     debug_tx      : out std_logic_vector(63 downto 0);
+     debug_gtx     : out std_logic_vector(63 downto 0)
   );
   end component;
 
@@ -476,7 +493,8 @@ package net is
       ramdebug       : integer range 0 to 2  := 0;
       mdiohold       : integer := 1;
       maxsize        : integer := 1500;
-      pcs_phyaddr    : integer range 0 to 32 := 0
+      pcs_phyaddr    : integer range 0 to 32 := 0;
+      pcs_impl       : integer := 0
       );
     port(
       rst            : in  std_ulogic;
@@ -556,7 +574,8 @@ package net is
       ramdebug       : integer range 0 to 2  := 0;
       mdiohold       : integer := 1;
       maxsize        : integer := 1500;
-      pcs_phyaddr    : integer range 0 to 32 := 0
+      pcs_phyaddr    : integer range 0 to 32 := 0;
+      pcs_impl       : integer := 0
     );
     port(
       rst            : in  std_ulogic;
@@ -621,17 +640,77 @@ package net is
     apb_clk  : in  std_logic;
     apb_rstn : in  std_logic;
     apbi     : in  apb_slv_in_type;
-    apbo     : out apb_slv_out_type
+    apbo     : out apb_slv_out_type;
+    -- Debug Interface
+    debug_rgmii_phy_tx : out std_logic_vector(31 downto 0);
+    debug_rgmii_phy_rx : out std_logic_vector(31 downto 0)    
     );
   end component;
-  
+
+  component rgmii_series7 is
+  generic (
+    pindex         : integer := 0;
+    paddr          : integer := 0;
+    pmask          : integer := 16#fff#;
+    tech           : integer := 0;
+    gmii           : integer := 0;
+    abits          : integer := 8;
+    pirq           : integer := 0;
+    base10_x       : integer := 0
+    );
+  port (
+    rstn     : in  std_ulogic;
+    gmiii    : out eth_in_type;
+    gmiio    : in  eth_out_type;
+    rgmiii   : in  eth_in_type;
+    rgmiio   : out eth_out_type ;
+    -- APB Status bus
+    apb_clk  : in  std_logic;
+    apb_rstn : in  std_logic;
+    apbi     : in  apb_slv_in_type;
+    apbo     : out apb_slv_out_type;
+    -- Debug Interface
+    debug_rgmii_phy_tx : out std_logic_vector(31 downto 0);
+    debug_rgmii_phy_rx : out std_logic_vector(31 downto 0)    
+    );
+  end component;
+
+  component rgmii_series6 is
+    generic (
+      pindex         : integer := 0;
+      paddr          : integer := 0;
+      pmask          : integer := 16#fff#;
+      tech           : integer := 0;
+      gmii           : integer := 0;
+      abits          : integer := 8;
+      pirq           : integer := 0;
+      base10_x       : integer := 0
+      );
+    port (
+      rstn     : in  std_ulogic;
+      gmiii    : out eth_in_type;
+      gmiio    : in  eth_out_type;
+      rgmiii   : in  eth_in_type;
+      rgmiio   : out eth_out_type ;
+      -- APB Status bus
+      apb_clk  : in  std_logic;
+      apb_rstn : in  std_logic;
+      apbi     : in  apb_slv_in_type;
+      apbo     : out apb_slv_out_type;
+      -- Debug Interface
+      debug_rgmii_phy_tx : out std_logic_vector(31 downto 0);
+      debug_rgmii_phy_rx : out std_logic_vector(31 downto 0)    
+      );
+  end component;
+
   component sgmii is
     generic (
       fabtech   : integer := 0;
       memtech   : integer := 0;
       transtech : integer := 0;
       phy_addr  : integer := 0;
-      mode      : integer := 0  -- unused
+      mode      : integer := 0;  -- unused
+      impl      : integer := 0
     );
     port (
       clk_125       : in  std_logic;

@@ -18,10 +18,10 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------
--- Entity: 	gr1553b_stdlogic
--- File:	gr1553b_stdlogic.vhd
--- Author:	Magnus Hjorth - Aeroflex Gaisler
--- Description:	Wrapper for GR1553B with std_logic ports
+-- Entity:      gr1553b_stdlogic
+-- File:        gr1553b_stdlogic.vhd
+-- Author:      Magnus Hjorth - Aeroflex Gaisler
+-- Description: Wrapper for GR1553B with std_logic ports
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -45,9 +45,10 @@ entity gr1553b_stdlogic is
     bm_filters: integer range 0 to 1 := 1;
     codecfreq: integer := 20;
     sameclk: integer range 0 to 1 := 0;
-    codecver: integer range 0 to 2 := 0
+    codecver: integer range 0 to 2 := 1;
+    extctrlen: integer range 0 to 1 := 0
     );
-  
+
   port (
     clk: in std_logic;
     rst: in std_logic;
@@ -55,28 +56,28 @@ entity gr1553b_stdlogic is
     codec_rst: in std_logic;
 
     -- AHB interface
-    
-    mi_hgrant	: in std_logic;                         -- bus grant
-    mi_hready	: in std_ulogic;                        -- transfer done
-    mi_hresp	: in std_logic_vector(1 downto 0); 	-- response type
-    mi_hrdata	: in std_logic_vector(31 downto 0); 	-- read data bus    
-    mo_hbusreq	: out std_ulogic;                       -- bus request
-    mo_htrans	: out std_logic_vector(1 downto 0); 	-- transfer type
-    mo_haddr	: out std_logic_vector(31 downto 0); 	-- address bus (byte)
-    mo_hwrite	: out std_ulogic;                       -- read/write
-    mo_hsize	: out std_logic_vector(2 downto 0); 	-- transfer size
-    mo_hburst	: out std_logic_vector(2 downto 0); 	-- burst type
-    mo_hwdata	: out std_logic_vector(31 downto 0); 	-- write data bus
+
+    mi_hgrant   : in std_logic;                         -- bus grant
+    mi_hready   : in std_ulogic;                        -- transfer done
+    mi_hresp    : in std_logic_vector(1 downto 0);      -- response type
+    mi_hrdata   : in std_logic_vector(31 downto 0);     -- read data bus
+    mo_hbusreq  : out std_ulogic;                       -- bus request
+    mo_htrans   : out std_logic_vector(1 downto 0);     -- transfer type
+    mo_haddr    : out std_logic_vector(31 downto 0);    -- address bus (byte)
+    mo_hwrite   : out std_ulogic;                       -- read/write
+    mo_hsize    : out std_logic_vector(2 downto 0);     -- transfer size
+    mo_hburst   : out std_logic_vector(2 downto 0);     -- burst type
+    mo_hwdata   : out std_logic_vector(31 downto 0);    -- write data bus
 
     -- APB interface
-    
-    si_psel	: in std_logic;                         -- slave select
-    si_penable	: in std_ulogic;                        -- strobe
-    si_paddr	: in std_logic_vector(7 downto 0); 	-- address bus (byte addr)
-    si_pwrite	: in std_ulogic;                        -- write
-    si_pwdata	: in std_logic_vector(31 downto 0); 	-- write data bus
-    so_prdata	: out std_logic_vector(31 downto 0); 	-- read data bus
-    so_pirq 	: out std_logic;                        -- interrupt bus    
+
+    si_psel     : in std_logic;                         -- slave select
+    si_penable  : in std_ulogic;                        -- strobe
+    si_paddr    : in std_logic_vector(7 downto 0);      -- address bus (byte addr)
+    si_pwrite   : in std_ulogic;                        -- write
+    si_pwdata   : in std_logic_vector(31 downto 0);     -- write data bus
+    so_prdata   : out std_logic_vector(31 downto 0);    -- read data bus
+    so_pirq     : out std_logic;                        -- interrupt bus
 
     -- Aux signals
     bcsync     : in std_logic;                          -- external sync input for BC
@@ -107,9 +108,19 @@ entity gr1553b_stdlogic is
     busbouten  : out std_logic;                     -- bus B transmitter enable
     busboutp   : out std_logic;                     -- bus B transmitter, positive output
     busboutn   : out std_logic;                     -- bus B transmitter, negative output
-    busb_txin  : out std_logic                      -- bus B transmitter enable (inverted)
+    busb_txin  : out std_logic;                     -- bus B transmitter enable (inverted)
+
+    -- Extra signals for extctrlen option
+    extctrl_rten   : in std_logic;
+    extctrl_rtaddr : in std_logic_vector(4 downto 0);
+    extctrl_brs    : in std_logic;
+    extctrl_sys    : in std_logic;
+    extctrl_syds   : in std_logic;
+    extctrl_busy   : in std_logic;
+    extctrl_satb   : in std_logic_vector(31 downto 9);
+    extctrl_mccr   : in std_logic_vector(29 downto 0)
     );
-  
+
 end;
 
 architecture rtl of gr1553b_stdlogic is
@@ -124,7 +135,7 @@ architecture rtl of gr1553b_stdlogic is
 
   signal auxin: gr1553b_auxin_type;
   signal auxout: gr1553b_auxout_type;
-  
+
 begin
 
   x: gr1553b
@@ -145,7 +156,8 @@ begin
       bm_filters => bm_filters,
       codecfreq => codecfreq,
       sameclk => sameclk,
-      codecver => codecver
+      codecver => codecver,
+      extctrlen => extctrlen
       )
     port map (
       clk => clk,
@@ -160,7 +172,7 @@ begin
       txout_fb => gr1553b_txout,
       rxin => gr1553b_rxin,
       auxin => auxin,
-      auxout => auxout      
+      auxout => auxout
       );
 
   mi.hgrant(0) <= mi_hgrant;
@@ -174,7 +186,7 @@ begin
   mi.scanen <= '0';
   mi.testoen <= '0';
   mi.testin <= (others => '0');
-  
+
   mo_hbusreq <= mo.hbusreq;
   mo_htrans <= mo.htrans;
   mo_haddr <= mo.haddr;
@@ -202,6 +214,14 @@ begin
   auxin.extsync <= bcsync;
   auxin.rtaddr <= rtaddr;
   auxin.rtpar <= rtaddrp;
+  auxin.extctrl.rten <= extctrl_rten;
+  auxin.extctrl.rtaddr <= extctrl_rtaddr;
+  auxin.extctrl.brs <= extctrl_brs;
+  auxin.extctrl.sys <= extctrl_sys;
+  auxin.extctrl.syds <= extctrl_syds;
+  auxin.extctrl.busy <= extctrl_busy;
+  auxin.extctrl.satb <= extctrl_satb;
+  auxin.extctrl.mccr <= extctrl_mccr;
   rtsync <= auxout.rtsync;
   busreset <= auxout.busreset;
   validcmda <= auxout.validcmda;

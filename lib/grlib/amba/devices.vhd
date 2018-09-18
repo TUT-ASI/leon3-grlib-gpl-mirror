@@ -58,9 +58,16 @@ package devices is
   constant VENDOR_SYNOPSYS   : amba_vendor_type := 16#21#;
   constant VENDOR_NASA       : amba_vendor_type := 16#22#;
   constant VENDOR_NIIET      : amba_vendor_type := 16#23#;
+  constant VENDOR_JHUAPL_SRI : amba_vendor_type := 16#24#;
+  constant VENDOR_JHUAPL_SEE : amba_vendor_type := 16#25#;
+  constant VENDOR_JHUAPL_SER : amba_vendor_type := 16#26#;
+  constant VENDOR_JHUAPL_SES : amba_vendor_type := 16#27#;
+  constant VENDOR_SEMIBLOCKS : amba_vendor_type := 16#28#;
   constant VENDOR_S3         : amba_vendor_type := 16#31#;
+  constant VENDOR_UC_BERKELEY: amba_vendor_type := 16#AB#;
   constant VENDOR_TAS        : amba_vendor_type := 16#A5#;
   constant VENDOR_RECORE     : amba_vendor_type := 16#A6#;
+  constant VENDOR_AAC        : amba_vendor_type := 16#AA#;
   constant VENDOR_ACTEL      : amba_vendor_type := 16#AC#;
   constant VENDOR_APPLECORE  : amba_vendor_type := 16#AE#;
   constant VENDOR_C3E        : amba_vendor_type := 16#C3#;
@@ -250,6 +257,8 @@ package devices is
   constant GAISLER_DFITRACE      : amba_device_type := 16#0B1#;
   constant GAISLER_SELFTEST      : amba_device_type := 16#0B2#;
   constant GAISLER_DFIERRINJ     : amba_device_type := 16#0B3#;
+  constant GAISLER_DFICHECK      : amba_device_type := 16#0B4#;
+  constant GAISLER_GRCANFD       : amba_device_type := 16#0B5#;
 
 -- Sun Microsystems
 
@@ -390,6 +399,29 @@ package devices is
   constant RECORE_XENTIUM_ICACHE : amba_device_type := 16#005#;
   constant RECORE_XENTIUM_DEVICE : amba_device_type := 16#006#;
 
+-- AAC Microtec device IDs
+  constant AAC_MEMCTRL          : amba_device_type := 16#001#;
+  constant AAC_SOCINFO          : amba_device_type := 16#002#;
+  constant AAC_GPIO             : amba_device_type := 16#003#;
+  constant AAC_WDT              : amba_device_type := 16#004#;
+  constant AAC_NVRAM            : amba_device_type := 16#005#;
+  constant AAC_ERRMAN           : amba_device_type := 16#006#;
+  constant AAC_SCET             : amba_device_type := 16#007#;
+  constant AAC_NANDFLASH        : amba_device_type := 16#008#;
+  constant AAC_ADC              : amba_device_type := 16#009#;
+  constant AAC_SPW              : amba_device_type := 16#00a#;
+  constant AAC_MM               : amba_device_type := 16#00b#;
+  constant AAC_CCSDS            : amba_device_type := 16#00c#;
+  constant AAC_UART             : amba_device_type := 16#00d#;
+  constant AAC_I2C              : amba_device_type := 16#00e#;
+  constant AAC_ETHMAC           : amba_device_type := 16#00f#;
+  constant AAC_CAN              : amba_device_type := 16#010#;
+  constant AAC_USB              : amba_device_type := 16#011#;
+  constant AAC_SPI              : amba_device_type := 16#012#;
+  constant AAC_CUSTOM1          : amba_device_type := 16#101#;
+  constant AAC_CUSTOM2          : amba_device_type := 16#102#;
+  constant AAC_CUSTOM3          : amba_device_type := 16#103#;
+
 -- SSTL device IDs
   constant SSTL_HDLC            : amba_device_type := 16#001#;
   constant SSTL_INICAN          : amba_device_type := 16#002#;
@@ -400,6 +432,10 @@ package devices is
   constant CONTRIB_CORE1 : amba_device_type := 16#001#;
   constant CONTRIB_CORE2 : amba_device_type := 16#002#;
   constant CONTRIB_CORE3 : amba_device_type := 16#003#;
+
+  -- UC Berkeley devices ids
+  constant UC_BERKELEY_ROCKET : amba_device_type := 16#001#;
+  constant UC_BERKELEY_DEBUG  : amba_device_type := 16#002#;
 
 -- grlib system device ids
 
@@ -616,6 +652,8 @@ package devices is
     GAISLER_DFITRACE      => "DFI2.1 Trace Buffer             ",
     GAISLER_SELFTEST      => "TV selftest module              ",
     GAISLER_DFIERRINJ     => "DFI error injection module      ",
+    GAISLER_DFICHECK      => "DFI timing check module         ",
+    GAISLER_GRCANFD       => "CAN-FD Controller with DMA      ",
     others                => "Unknown Device                  ");
 
   constant gaisler_lib : vendor_library_type := (
@@ -679,6 +717,20 @@ package devices is
     vendorid     => VENDOR_OPENCHIP,
     vendordesc   => OPENCHIP_DESC,
     device_table => openchip_device_table
+    );
+
+  constant UC_BERKELEY_DESC : vendor_description := "UC, Berkeley            ";
+
+  constant uc_berkeley_device_table : device_table_type := (
+    UC_BERKELEY_ROCKET  => "RISC-V Rocket Core              ",
+    UC_BERKELEY_DEBUG   => "Rocket Core Debug Module        ",
+
+    others => "Unknown Device                  ");
+
+  constant uc_berkeley_lib : vendor_library_type := (
+    vendorid     => VENDOR_UC_BERKELEY,
+    vendordesc   => UC_BERKELEY_DESC,
+    device_table => uc_berkeley_device_table
     );
 
   constant GLEICHMANN_DESC : vendor_description := "Gleichmann Electronics  ";
@@ -957,6 +1009,61 @@ package devices is
     device_table => niiet_device_table
     );
 
+  constant JHUAPL_SRI_DESC : vendor_description := "JHUAPL Space Exploration";
+
+  constant jhuapl_sri_device_table : device_table_type := (
+    others => "Unknown Device                  ");
+
+  constant jhuapl_sri_lib : vendor_library_type := (
+    vendorid     => VENDOR_JHUAPL_SRI,
+    vendordesc   => JHUAPL_SRI_DESC,
+    device_table => jhuapl_sri_device_table
+    );
+
+  constant JHUAPL_SEE_DESC : vendor_description := "JHUAPL Space Exploration";
+
+  constant jhuapl_see_device_table : device_table_type := (
+    others => "Unknown Device                  ");
+
+  constant jhuapl_see_lib : vendor_library_type := (
+    vendorid     => VENDOR_JHUAPL_SEE,
+    vendordesc   => JHUAPL_SEE_DESC,
+    device_table => jhuapl_see_device_table
+    );
+
+  constant JHUAPL_SER_DESC : vendor_description := "JHUAPL Space Exploration";
+
+  constant jhuapl_ser_device_table : device_table_type := (
+    others => "Unknown Device                  ");
+  
+  constant jhuapl_ser_lib : vendor_library_type := (
+    vendorid     => VENDOR_JHUAPL_SER,
+    vendordesc   => JHUAPL_SER_DESC,
+    device_table => jhuapl_ser_device_table
+    );
+
+  constant JHUAPL_SES_DESC : vendor_description := "JHUAPL Space Exploration";
+
+  constant jhuapl_ses_device_table : device_table_type := (
+    others => "Unknown Device                  ");
+  
+  constant jhuapl_ses_lib : vendor_library_type := (
+    vendorid     => VENDOR_JHUAPL_SES,
+    vendordesc   => JHUAPL_SES_DESC,
+    device_table => jhuapl_ses_device_table
+    );
+
+  constant SEMIBLOCKS_DESC : vendor_description := "SemiBlocks B.V.         ";
+
+  constant semiblocks_device_table : device_table_type := (
+    others => "Unknown Device                  ");
+  
+  constant semiblocks_lib : vendor_library_type := (
+    vendorid     => VENDOR_SEMIBLOCKS,
+    vendordesc   => SEMIBLOCKS_DESC,
+    device_table => semiblocks_device_table
+    );
+
   constant NASA_GSFC_DESC : vendor_description := "NASA GSFC               ";
 
   constant nasa_gsfc_device_table : device_table_type := (
@@ -1030,6 +1137,38 @@ package devices is
     device_table => recore_device_table
     );
 
+  constant AAC_DESC : vendor_description := "AAC Microtec            ";
+
+  constant aac_device_table : device_table_type := (
+    AAC_MEMCTRL         => "SDRAM Memory controller         ",
+    AAC_SOCINFO         => "System-on-Chip info             ",
+    AAC_GPIO            => "General Purpose I/O             ",
+    AAC_WDT             => "Watchdog timer                  ",
+    AAC_NVRAM           => "Non-volatile RAM                ",
+    AAC_ERRMAN          => "Error manager                   ",
+    AAC_SCET            => "SpaceCraft Elapsed Timer        ",
+    AAC_NANDFLASH       => "System Flash for boot images    ",
+    AAC_ADC             => "Analog to Digital Converter     ",
+    AAC_SPW             => "SpaceWire interface with DMA    ",
+    AAC_MM              => "Mass memory flash with DMA      ",
+    AAC_CCSDS           => "CCSDS TM/TC with DMA            ",
+    AAC_UART            => "16550D compatible UART          ",
+    AAC_I2C             => "I2C master/slave                ",
+    AAC_ETHMAC          => "Ethernet MAC with DMA           ",
+    AAC_CAN             => "CAN bus controller              ",
+    AAC_USB             => "USB slave                       ",
+    AAC_SPI             => "SPI master with DMA             ",
+    AAC_CUSTOM1         => "Custom IP core type 1           ",
+    AAC_CUSTOM2         => "Custom IP core type 2           ",
+    AAC_CUSTOM3         => "Custom IP core type 3           ",
+    others              => "Unknown Device                  ");
+
+  constant aac_lib : vendor_library_type := (
+    vendorid     => VENDOR_AAC,
+    vendordesc   => AAC_DESC,
+    device_table => aac_device_table
+    );
+
   constant C3E_DESC : vendor_description := "TU Braunschweig C3E     ";
   constant c3e_device_table : device_table_type := (
     others => "Unknown Device                  ");
@@ -1051,29 +1190,36 @@ package devices is
     );
 
   constant iptable : device_array := (
-    VENDOR_GAISLER    => gaisler_lib,
-    VENDOR_ESA        => esa_lib,
-    VENDOR_OPENCHIP   => openchip_lib,
-    VENDOR_OPENCORES  => opencores_lib,
-    VENDOR_CONTRIB    => contrib_lib,
-    VENDOR_DLR        => dlr_lib,
-    VENDOR_EONIC      => eonic_lib,
-    VENDOR_TELECOMPT  => telecompt_lib,
-    VENDOR_GLEICHMANN => gleichmann_lib,
-    VENDOR_MENTA      => menta_lib,
-    VENDOR_EMBEDDIT   => embeddit_lib,
-    VENDOR_SUN        => sun_lib,
-    VENDOR_RADIONOR   => radionor_lib,
-    VENDOR_ORBITA     => orbita_lib,
-    VENDOR_SYNOPSYS   => synopsys_lib,
-    VENDOR_CETON      => ceton_lib,
-    VENDOR_SSTL       => sstl_lib,
-    VENDOR_ACTEL      => actel_lib,
-    VENDOR_NASA       => nasa_lib,
-    VENDOR_NIIET      => niiet_lib,
-    VENDOR_NASA_GSFC  => nasa_gsfc_lib,
-    VENDOR_S3         => s3_lib,
-    others            => unknown_lib);
+    VENDOR_GAISLER      => gaisler_lib,
+    VENDOR_ESA          => esa_lib,
+    VENDOR_OPENCHIP     => openchip_lib,
+    VENDOR_OPENCORES    => opencores_lib,
+    VENDOR_CONTRIB      => contrib_lib,
+    VENDOR_DLR          => dlr_lib,
+    VENDOR_EONIC        => eonic_lib,
+    VENDOR_TELECOMPT    => telecompt_lib,
+    VENDOR_GLEICHMANN   => gleichmann_lib,
+    VENDOR_MENTA        => menta_lib,
+    VENDOR_EMBEDDIT     => embeddit_lib,
+    VENDOR_SUN          => sun_lib,
+    VENDOR_RADIONOR     => radionor_lib,
+    VENDOR_ORBITA       => orbita_lib,
+    VENDOR_SYNOPSYS     => synopsys_lib,
+    VENDOR_CETON        => ceton_lib,
+    VENDOR_SSTL         => sstl_lib,
+    VENDOR_ACTEL        => actel_lib,
+    VENDOR_NASA         => nasa_lib,
+    VENDOR_NIIET        => niiet_lib,
+    VENDOR_NASA_GSFC    => nasa_gsfc_lib,
+    VENDOR_S3           => s3_lib,
+    VENDOR_UC_BERKELEY  => uc_berkeley_lib,
+    VENDOR_AAC          => aac_lib,
+    VENDOR_JHUAPL_SRI   => jhuapl_sri_lib,
+    VENDOR_JHUAPL_SEE   => jhuapl_see_lib,
+    VENDOR_JHUAPL_SER   => jhuapl_ser_lib,
+    VENDOR_JHUAPL_SES   => jhuapl_ses_lib,
+    VENDOR_SEMIBLOCKS   => semiblocks_lib,
+    others              => unknown_lib);
 
   type system_table_type is array (0 to 65535) of device_description;
 

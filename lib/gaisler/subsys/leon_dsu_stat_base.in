@@ -404,7 +404,6 @@ comment 'Processor            '
       choice 'Cache memory protection     ' \
 	  "None		CONFIG_CACHE_FT_NONE \
 	   Parity		CONFIG_CACHE_FT_EN \
- 	   SECDEC-BCH 		CONFIG_CACHE_FT_BCH \
 	   TechSpec		CONFIG_CACHE_FT_TECH" None
       int 'Cache memory error injection' CONFIG_CACHE_ERRINJ 0
   endmenu

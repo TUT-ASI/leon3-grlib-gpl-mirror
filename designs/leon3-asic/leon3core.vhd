@@ -361,6 +361,20 @@ begin
     port map (rstn, clk, memi, memo, ahbsi, ahbso(0), apbi, apbo(0), wpo, sdo);
   end generate;
 
+  mgft : if CFG_MCTRLFT = 1 generate
+    -- FT memory controller
+    ftmctrl0 : ftmctrl
+      generic map (
+        hindex => 0, pindex => 0, paddr => 0,
+        invclk => CFG_MCTRLFT_INVCLK, romasel => CFG_MCTRLFT_ROMASEL,
+        ram8 => CFG_MCTRLFT_RAM8BIT, ram16 => CFG_MCTRLFT_RAM16BIT,
+        oepol => OEPOL, edac => CFG_MCTRLFT_EDAC,
+        pageburst => CFG_MCTRLFT_PAGE, writefb => CFG_MCTRLFT_WFB,
+        netlist => CFG_MCTRLFT_NET, tech => fabtech)
+      port map (rstn, clk, memi, memo, ahbsi, ahbso(0), apbi,
+                apbo(0), wpo, sdo);
+  end generate mgft;
+  
   nosd0 : if (CFG_SDEN = 0) generate  -- no SDRAM controller
     sdo.sdcsn <= (others => '1');
   end generate;
@@ -368,7 +382,7 @@ begin
   memi.writen <= '1'; memi.wrn <= "1111";
   memi.brdyn <= brdyn; memi.bexcn <= bexcn;
 
-  mg0 : if CFG_MCTRL_LEON2 = 0 generate -- None PROM/SRAM controller
+  mg0 : if CFG_MCTRL_LEON2 = 0 and CFG_MCTRLFT = 0 generate -- None PROM/SRAM controller
     apbo(0) <= apb_none; ahbso(0) <= ahbs_none;
     memo.ramsn <= (others => '1'); memo.romsn <= (others => '1');
   end generate;

@@ -115,7 +115,8 @@ proc eof_mentor_vsim {} {
 	set temp "vsim:\n"
 	append temp $cvc
 	append temp "\n# Work-around for stupid secureip bug ...\n"
-	append temp "\t@if test -r $GRLIB/lib/tech/secureip/ise/mcb_001.vp && test -r modelsim/secureip; then vlog -quiet -novopt -work secureip $GRLIB/lib/tech/secureip/ise/mcb_*.vp; fi\n"
+	append temp "\t@if test -r $GRLIB/lib/tech/secureip/ise/mcb_001.vp && test -r modelsim/secureip; then vlog -quiet "
+	append temp "-work secureip $GRLIB/lib/tech/secureip/ise/mcb_*.vp; fi\n"
 	append temp $mvc
 	set mvc $temp
 	set mvc [rmvlinebreak $mvc]

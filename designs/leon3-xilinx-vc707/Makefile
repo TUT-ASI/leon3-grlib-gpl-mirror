@@ -3,6 +3,7 @@ include .config
 GRLIB=../..
 CLEAN=soft-clean
 
+GRLIB_CONFIG=grlib_config_leon3.vhd
 ifeq ("$(CONFIG_LEON4)","y")
 GRLIB_CONFIG=grlib_config_leon4.vhd
 endif
@@ -22,7 +23,7 @@ TOP=leon3mp
 SIMTOP=testbench
 
 # Uncomment for Modelsim or change to specify your simulator
-#GRLIB_SIMULATOR=ModelSim
+GRLIB_SIMULATOR=ModelSim
 #GRLIB_SIMULATOR=ALDEC
 #GRLIB_SIMULATOR=Xilinx
 
@@ -40,14 +41,14 @@ endif
 
 # - MIG -
 ifeq ($(CONFIG_MIG_7SERIES),y)
-VSIMOPT+= -t fs -novopt
+VSIMOPT+= -t fs -voptargs="+acc" 
 VSIMOPT+= -L secureip -L unisims_ver glbl
 ifndef CONFIG_MIG_7SERIES_MODEL
-VSIMOPT+= -gUSE_MIG_INTERFACE_MODEL=false -gSIM_BYPASS_INIT_CAL=FAST -gSIMULATION=TRUE
-ASIMOPT+= -gUSE_MIG_INTERFACE_MODEL=false -gSIM_BYPASS_INIT_CAL=FAST -gSIMULATION=TRUE
+VSIMOPT+= -gUSE_MIG_INTERFACE_MODEL=false -gSIM_BYPASS_INIT_CAL=FAST -gSIMULATION=TRUE -gEXAMPLE_SIMULATION=1
+ASIMOPT+= -gUSE_MIG_INTERFACE_MODEL=false -gSIM_BYPASS_INIT_CAL=FAST -gSIMULATION=TRUE -gEXAMPLE_SIMULATION=1
 else
-VSIMOPT+= -gUSE_MIG_INTERFACE_MODEL=true -t ps
-ASIMOPT+= -gUSE_MIG_INTERFACE_MODEL=true -t ps
+VSIMOPT+= -gUSE_MIG_INTERFACE_MODEL=true -t ps -gEXAMPLE_SIMULATION=1
+ASIMOPT+= -gUSE_MIG_INTERFACE_MODEL=true -t ps -gEXAMPLE_SIMULATION=1
 endif
 endif
 
@@ -69,7 +70,7 @@ endif
 ifeq ("$(GRLIB_SIMULATOR)","ALDEC")
 VSIMOPT+= +access +w -voptargs="+acc" +notimingchecks
 else
-VSIMOPT+=-novopt +notimingchecks
+VSIMOPT+=-voptargs="+acc" +notimingchecks
 endif
 
 # Run simulation in batch mode

@@ -26,7 +26,7 @@ use grlib.stdlib.all;
 package grethpkg is
   --gigabit sync types
   type data_sync_type is array (0 to 3) of std_logic_vector(31 downto 0);
-  type ctrl_sync_type is array (0 to 3) of std_logic_vector(1 downto 0);
+  type ctrl_sync_type is array (0 to 3) of std_logic_vector(2 downto 0);
 
   constant HTRANS_IDLE:   std_logic_vector(1 downto 0) := "00";
   constant HTRANS_NONSEQ: std_logic_vector(1 downto 0) := "10";
@@ -177,15 +177,20 @@ package grethpkg is
     len         : std_logic_vector(10 downto 0);
     rx_col      : std_ulogic;
     rx_crs      : std_ulogic;
+    rgmii_mode  : std_logic;
   end record;
 
   type gbit_tx_host_type is record
     txd          : std_logic_vector(3 downto 0);
     tx_en        : std_ulogic;
+    txd2         : std_logic_vector(7 downto 0);
+    tx_en2       : std_logic_vector(1 downto 0);
     done         : std_ulogic;
     read         : std_ulogic;
     restart      : std_ulogic;
     status       : std_logic_vector(1 downto 0);
+    debug1       : std_logic_vector(31 downto 0);
+    debug2       : std_logic_vector(31 downto 0);
   end record;
 
   type gbit_rx_host_type is record
@@ -197,6 +202,8 @@ package grethpkg is
     status       : std_logic_vector(3 downto 0);
     gotframe     : std_ulogic;
     mcasthash    : std_logic_vector(5 downto 0);
+    debug1       : std_logic_vector(31 downto 0);
+    debug2       : std_logic_vector(31 downto 0);  
   end record;
 
   type gbit_host_rx_type is record
@@ -213,6 +220,7 @@ package grethpkg is
     rx_col       : std_ulogic;
     rx_crs       : std_ulogic;
     rx_en        : std_ulogic;
+    rgmii_mode   : std_logic;
   end record;
 
   type gbit_gtx_host_type is record
@@ -223,6 +231,8 @@ package grethpkg is
     restart      : std_ulogic;
     read         : std_logic_vector(3 downto 0);
     status       : std_logic_vector(2 downto 0);
+    debug1       : std_logic_vector(31 downto 0);
+    debug2       : std_logic_vector(31 downto 0);    
   end record;
 
   type gbit_host_gtx_type is record
@@ -404,7 +414,8 @@ package grethpkg is
       tmsti       : in  eth_tx_ahb_in_type;
       tmsto       : out eth_tx_ahb_out_type;
       rmsti       : in  eth_rx_gbit_ahb_in_type;
-      rmsto       : out eth_rx_ahb_out_type);
+      rmsto       : out eth_rx_ahb_out_type;
+      debug1      : out std_logic_vector(31 downto 0));
   end component;
 
   component eth_edcl_ahb_mst is
@@ -414,7 +425,8 @@ package grethpkg is
     ahbmi       : in  ahbc_mst_in_type;
     ahbmo       : out ahbc_mst_out_type;
     tmsti       : in  eth_tx_ahb_in_type;
-    tmsto       : out eth_tx_ahb_out_type
+    tmsto       : out eth_tx_ahb_out_type;
+    debug1      : out std_logic_vector(31 downto 0)
   );
   end component;
 

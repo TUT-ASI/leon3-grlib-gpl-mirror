@@ -43,7 +43,8 @@ entity sgmii is
     memtech   : integer := 0;
     transtech : integer := 0;
     phy_addr  : integer := 0;
-    mode      : integer := 0  -- unused
+    mode      : integer := 0; -- unused
+    impl      : integer := 0
   );
   port (
     clk_125       : in  std_logic;
@@ -85,6 +86,53 @@ entity sgmii is
 end entity ;
 
 architecture rtl of sgmii is
+
+  -- SGMII_CORESGMII_0_CORESGMII   -   Actel:DirectCore:CORESGMII:3.2.101
+  component SGMII_CORESGMII_0_CORESGMII
+    generic( 
+        FAMILY      : integer := 25 ;
+        MDIO_PHYID  : integer := 12 ;
+        SLIP_ENABLE : integer := 0 
+        );
+    -- Port list
+    port(
+        -- Inputs
+        MDC          : in  std_logic;
+        MDI_EXT      : in  std_logic;
+        MDO          : in  std_logic;
+        MDOEN        : in  std_logic;
+        RCG          : in  std_logic_vector(9 downto 0);
+        RESET        : in  std_logic;
+        RXCLK        : in  std_logic;
+        TBI_RX_CLK   : in  std_logic;
+        TBI_RX_READY : in  std_logic;
+        TBI_RX_VALID : in  std_logic;
+        TBI_TX_CLK   : in  std_logic;
+        TXCLK        : in  std_logic;
+        TXD          : in  std_logic_vector(7 downto 0);
+        TXEN         : in  std_logic;
+        TXER         : in  std_logic;
+        -- Outputs
+        ANX_CDATA    : out std_logic_vector(15 downto 0);
+        ANX_CVALID   : out std_logic;
+        ANX_STATE    : out std_logic_vector(9 downto 0);
+        BCERR        : out std_logic_vector(1 downto 0);
+        COL          : out std_logic;
+        CRS          : out std_logic;
+        INTLB        : out std_logic;
+        MDI          : out std_logic;
+        PCSRXD       : out std_logic_vector(15 downto 0);
+        PCSRXK       : out std_logic_vector(1 downto 0);
+        RDERR        : out std_logic_vector(1 downto 0);
+        RXD          : out std_logic_vector(7 downto 0);
+        RXDV         : out std_logic;
+        RXER         : out std_logic;
+        RX_SLIP      : out std_logic;
+        SPEEDO       : out std_logic_vector(1 downto 0);
+        TBI_TX_VALID : out std_logic;
+        TCG          : out std_logic_vector(9 downto 0)
+        );
+  end component;
 
   signal tx_in_int_reversed, rx_out_int_reversed, tx_in_int, rx_out_int, rx_out_pll_int : std_logic_vector(9 downto 0);
   signal rx_clk_int, rx_pll_clk_int, tx_pll_clk_int, rx_rstn_int, rx_rst_int, rx_pll_rstn_int, rx_pll_rst_int, tx_pll_rst_int, tx_pll_rstn_int, startup_enable_int : std_logic;
@@ -190,7 +238,7 @@ begin
     
   end generate;
 
-  igl2 : if (fabtech = igloo2) or (fabtech = rtg4) generate
+  igl2 : if (fabtech = igloo2 or fabtech = rtg4) and (impl = 0) generate
     -- comma detector and word aligner
     wa0: word_aligner
     port map (
@@ -236,6 +284,74 @@ begin
 
   end generate;
 
+  -- rtg4impl1 makes use of the Microsemi CoreSGMII. This needs to be built
+  -- to the gaisler library. One way to accomplish this is to add:
+  -- bash-4.1$ cat lib/gaisler/greth/vlogsyn.txt
+  -- <path to>/component/Actel/DirectCore/CORESGMII/3.2.101/rtl/vlog/core_encrypted/CoreSGMII_ENC.v
+  -- <path to>/component/work/SGMII/CORESGMII_0/rtl/vlog/core_encrypted/CoreSGMII.v
+  rt4impl1 : if (fabtech = igloo2 or fabtech = rtg4) and (impl = 1) generate
+    -- comma detector and word aligner
+    wa0: word_aligner
+    port map (
+      clk => rx_clk_int,
+      rstn => rx_rstn_int,
+      rx_in => rx_out_int,
+      rx_out => rx_out_pll_int);
+
+  rst0 : rstgen     -- reset synchronizer for MDC clock domain in ge_1000baseX
+    generic map (syncrst => 1, acthigh => 1)
+    port map (rx_pll_rst_int, mdc, '1', mdc_rstn, open);
+
+  mdc_rst <= not(mdc_rstn);
+
+  CORESGMII_0 : SGMII_CORESGMII_0_CORESGMII
+    generic map( 
+        FAMILY      => ( 25 ),
+        MDIO_PHYID  => ( phy_addr ),
+        SLIP_ENABLE => ( 0 )
+        )
+    port map( 
+        -- Inputs
+        RESET        => startup_enable_int,  -- rx_pll_rst_int,
+        TBI_TX_CLK   => tx_pll_clk_int,
+        TXCLK        => tx_pll_clk_int,
+        RXCLK        => rx_pll_clk_int,
+        TXD          => txd,
+        TXEN         => tx_en,
+        TXER         => tx_er,
+        MDC          => mdc,            -- MDIO data clock
+        MDO          => mdio_o,         -- MDIO output
+        MDOEN        => mdio_oe,        -- MDIO oen
+        MDI_EXT      => '0',            -- Management data input from external
+                                        -- PCS/PHY
+        RCG          => tx_in_int,
+        TBI_RX_CLK   => rx_pll_clk_int,
+        TBI_RX_READY => ready_sig,
+        TBI_RX_VALID => '0', -- tied to '0' from definition
+        -- Outputs
+        SPEEDO       => open,
+        TCG          => rx_out_pll_int,
+        RXD          => rxd,
+        RXDV         => rx_dv,
+        RXER         => rx_er,
+        COL          => rx_col,
+        CRS          => rx_crs,
+        MDI          => mdio_i,          -- Management data input
+        INTLB        => open,
+        TBI_TX_VALID => open,
+        ANX_STATE    => open,
+        PCSRXD       => open,
+        PCSRXK       => open,
+        BCERR        => open,
+        RDERR        => open,
+        ANX_CVALID   => open,
+        ANX_CDATA    => open,
+        RX_SLIP      => OPEN 
+        );
+
+    
+  end generate;
+  
   mdio_int <= mdio_o when mdio_oe = '0' else
           '0'; 
 

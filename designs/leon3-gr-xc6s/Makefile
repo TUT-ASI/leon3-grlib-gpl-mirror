@@ -56,7 +56,7 @@ BITGEN=$(GRLIB)/boards/$(BOARD)/default.ut
 CLEAN=soft-clean migclean
 VCOMOPT=-explicit
 TECHLIBS = unisim secureip
-VSIMOPT= -t ps -novopt +notimingchecks -do $(GRLIB)/bin/runvsim.do $(SIMTOP)
+VSIMOPT= -t ps -voptargs="+acc" +notimingchecks -do $(GRLIB)/bin/runvsim.do $(SIMTOP)
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip cypress ihp gsi fmf spansion micron
 DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan pci ambatest ddr \

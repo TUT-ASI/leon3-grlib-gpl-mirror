@@ -34,6 +34,9 @@ use grlib.devices.all;
 library techmap;
 use techmap.gencomp.all;
 
+library gaisler;
+use gaisler.misc.all;
+
 entity logan is
   generic (
     dbits       : integer range 0  to 256 := 32;              -- Number of traced signals
@@ -58,7 +61,7 @@ end logan;
 
 architecture rtl of logan is
   
-  constant REVISION : amba_version_type := 0;
+  constant REVISION : amba_version_type := 1;
   constant pconfig : apb_config_type := (
     0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_LOGAN, 0, REVISION, 0),
     1 => apb_iobar(paddr, pmask));
@@ -110,6 +113,8 @@ architecture rtl of logan is
   signal tr, trin       : trace_reg_type;
   signal sigreg         : std_logic_vector(dbits-1 downto 0);
   signal sigold         : std_logic_vector(dbits-1 downto 0);
+
+  signal rstntclk       : std_logic;
 
 begin
 
@@ -330,7 +335,7 @@ begin
 
 
   -- Combinatorial process for trace clock domain
-  comb2 : process (rstn, tr, r, sigreg)
+  comb2 : process (rstntclk, tr, r, sigreg)
 
     variable v  : trace_reg_type;
 
@@ -424,7 +429,7 @@ begin
     
     -- end trigger
 
-    if rstn = '0' then
+    if rstntclk = '0' then
       v.armed := '0'; v.trigged := '0'; v.sample := '0'; v.finished := '0'; v.arm_demet := '0';
       v.curr_tl := 0;
       v.counter := (others => '0');
@@ -437,11 +442,22 @@ begin
 
   end process;
 
+  rstgen0 : rstgen
+  generic map (acthigh => 0)
+  port map (rstn, tclk, '1', rstntclk, OPEN);
+
   -- clk traced signals through register to minimize fan out
   inreg: if usereg = 1 generate
-    process (tclk)
-    begin  
-      if rising_edge(tclk) then 
+    process (tclk,rstntclk)
+    begin 
+     if (rstntclk = '0') then
+        tr.armed <= '0'; tr.trigged <= '0'; tr.sample <= '0'; tr.finished <= '0'; tr.arm_demet <= '0';
+       tr.curr_tl <= 0;
+       tr.counter <= (others => '0');
+       tr.divcounter <= (others => '0');
+       tr.match_count <= (others => '0');
+       tr.w_addr <= (others => '0');
+      elsif rising_edge(tclk) then 
         sigold <= sigreg;
         sigreg <= signals;     
       end if;
@@ -459,9 +475,16 @@ begin
     if rising_edge(clk) then r <= rin; end if;
   end process;
   
-  treg: process(tclk)
+  treg: process(tclk,rstntclk)
   begin
-    if rising_edge(tclk) then tr <= trin; end if;
+    if (rstntclk = '0') then
+      tr.armed <= '0'; tr.trigged <= '0'; tr.sample <= '0'; tr.finished <= '0'; tr.arm_demet <= '0';
+      tr.curr_tl <= 0;
+      tr.counter <= (others => '0');
+      tr.divcounter <= (others => '0');
+      tr.match_count <= (others => '0');
+      tr.w_addr <= (others => '0');
+    elsif rising_edge(tclk) then tr <= trin; end if;
   end process;
 
   r_addr    <= r.page & apbi.paddr(14 downto 5);

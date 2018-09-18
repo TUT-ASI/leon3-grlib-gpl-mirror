@@ -50,6 +50,7 @@ entity ahb2mig_7series is
     pmask                   : integer := 16#fff#;
     maxwriteburst           : integer := 8;
     maxreadburst            : integer := 8;
+    endianness              : integer := 0;
     SIM_BYPASS_INIT_CAL     : string  := "OFF";
     SIMULATION              : string  := "FALSE";
     USE_MIG_INTERFACE_MODEL : boolean := false
@@ -242,6 +243,16 @@ begin
   variable step_offset            : unsigned(steps_write'length-1 downto 0);
   variable haddr_offset           : unsigned(steps_write'length-1 downto 0);
 
+  function reversedata(data : std_logic_vector; step : integer)
+    return std_logic_vector is
+    variable rdata: std_logic_vector(data'length-1 downto 0);
+  begin
+    for i in 0 to (data'length/step-1) loop
+      rdata(i*step+step-1 downto i*step) := data(data'length-i*step-1 downto data'length-i*step-step);
+    end loop;
+    return rdata;
+  end function reversedata;
+
   begin
 
     -- Make all register visible for the statemachine
@@ -363,8 +374,14 @@ begin
              v.mask_burst := r.mask_burst or std_logic_vector(shift_left(resize(unsigned(wmask), r.mask_burst'length),shift_steps_write_mask));
 
              -- fetch all wdata before write to memory can begin (only supports upto 128bits i.e. addr[4:0]
-             writedata(AHBDW-1 downto 0) := ahbselectdatanoreplica(ahbsi.hwdata(AHBDW-1 downto 0),r.haddr_start(4 downto 0),r.hsize(2 downto 0));
-             v.hwdata_burst := r.hwdata_burst or std_logic_vector(shift_left(resize(unsigned(writedata),v.hwdata_burst'length),shift_steps_write));
+             -- reverse endianness 
+             if endianness /= 0 then
+               writedata(AHBDW-1 downto 0) := ahbselectdatanoreplica(reversedata(ahbsi.hwdata(AHBDW-1 downto 0),8),r.haddr_start(4 downto 0),r.hsize(2 downto 0));
+             else writedata(AHBDW-1 downto 0) := ahbselectdatanoreplica(ahbsi.hwdata(AHBDW-1 downto 0),r.haddr_start(4 downto 0),r.hsize(2 downto 0));
+             end if;
+             
+             v.hwdata_burst := r.hwdata_burst or std_logic_vector(shift_left(resize(unsigned(writedata),r.hwdata_burst'length),shift_steps_write));
+
 
              v.haddr_start := ahbsi.haddr;
          end if;
@@ -480,6 +497,11 @@ begin
       -- uses the "wr_count" signal to keep track of number of bytes output'd to AHB
       -- Select correct 32bit/64bit/128bit to output
       v.hrdata := ahbselectdatanoreplicaoutput(r.haddr_start(7 downto 0),r.wr_count,r.hsize,r.rd_buffer,r.wr_count,true);
+
+      -- reverse endianness
+      if endianness /= 0 then
+        v.hrdata := reversedata(v.hrdata, 8);
+      end if;
 
       -- Count number of bytes send
       v.wr_count := r.wr_count + 1;

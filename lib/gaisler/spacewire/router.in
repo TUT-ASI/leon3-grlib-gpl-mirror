@@ -19,8 +19,8 @@
          128	CONFIG_SPWRTR_RXFIFO128	 \
          256	CONFIG_SPWRTR_RXFIFO256	 \
          512	CONFIG_SPWRTR_RXFIFO512	 \
-         1024	CONFIG_SPWRTR_RXFIFO1024 \ 
-	 2048	CONFIG_SPWRTR_RXFIFO2048" 64
+         1024	CONFIG_SPWRTR_RXFIFO1024 \
+	 2048	CONFIG_SPWRTR_RXFIFO2048 " 64
         bool 'Use technology specific RAM blocks for routing table and port FIFOs' CONFIG_SPWRTR_TECHFIFO
         choice 'Select SpaceWire RAM fault-tolerance ' \
         "NoFT   CONFIG_SPWRTR_FT_NOFT	 \
@@ -56,9 +56,9 @@
 	 16	CONFIG_SPWRTR_FIFO2_16	 \
 	 32	CONFIG_SPWRTR_FIFO2_32" 16
         int 'FIFO port almost indication range' CONFIG_SPWRTR_ALMOST 8
-        int 'Number of DMA channels (1 - 4)' CONFIG_SPWRTR_DMACHAN 
+        int 'Number of DMA channels (1 - 4)' CONFIG_SPWRTR_DMACHAN 1
         bool 'Enable configuration port AHB slave interface   ' CONFIG_SPWRTR_AHBSLVEN
-        int 'Number of bits for Timer prescaler (0 disables timer) ' CONFIG_SPWRTR_TIMERBITS        
+        int 'Number of bits for Timer prescaler (0 disables timer) ' CONFIG_SPWRTR_TIMERBITS 0
         bool 'SpaceWire Plug and Play      ' CONFIG_SPWRTR_PNP
         bool 'Routing table Auto-scrubbing ' CONFIG_SPWRTR_AUTOSCRUB
        

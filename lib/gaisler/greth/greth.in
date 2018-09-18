@@ -9,6 +9,7 @@
 	  32		CONFIG_GRETH_FIFO32 \
 	  64		CONFIG_GRETH_FIFO64" 8
       fi
+      bool 'Enable FMC' CONFIG_GRETH_FMC_MODE
       if [ "$CONFIG_LEON3FT_PRESENT" = "y" ]; then
         bool 'Enable fault-tolerance' CONFIG_GRETH_FT
         if [ "$CONFIG_GRETH_FT" = "y" ]; then
@@ -18,4 +19,5 @@
       if [ "$CONFIG_GRETH_SGMII_PRESENT" = "y" ]; then
         bool 'Enable SGMII' CONFIG_GRETH_SGMII_MODE
       fi
+
     fi

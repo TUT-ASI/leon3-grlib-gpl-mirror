@@ -297,6 +297,7 @@
 #undef  CONFIG_GRETH_FIFO16
 #undef  CONFIG_GRETH_FIFO32
 #undef  CONFIG_GRETH_FIFO64
+#undef  CONFIG_GRETH_FMC_MODE
 #undef  CONFIG_GRETH_FT
 /*
  * CAN                     

@@ -1575,7 +1575,8 @@ package netcomp is
       bm_filters    : integer range 0 to 1     := 1;
       codecfreq     : integer                  := 20;
       sameclk       : integer range 0 to 1     := 0;
-      codecver      : integer range 0 to 2     := 0
+      codecver      : integer range 0 to 2     := 1;
+      extctrlen     : integer range 0 to 1     := 0
       );
     port (
       clk       : in std_logic;
@@ -1610,11 +1611,17 @@ package netcomp is
 
       -- Aux signals
       bcsync   : in  std_logic;
-      rtsync   : out std_logic;
-      busreset : out std_logic;
-
       rtaddr  : in std_logic_vector(4 downto 0);
       rtaddrp : in std_logic;
+
+      rtsync   : out std_logic;
+      busreset : out std_logic;
+      validcmda : out std_logic;
+      validcmdb : out std_logic;
+      timedouta : out std_logic;
+      timedoutb : out std_logic;
+      badreg    : out std_logic;
+      irqvec    : out std_logic_vector(7 downto 0);
 
       -- 1553 transceiver interface
       busainen  : out std_logic;
@@ -1623,12 +1630,24 @@ package netcomp is
       busaouten : out std_logic;
       busaoutp  : out std_logic;
       busaoutn  : out std_logic;
+      busa_txin : out std_logic;
       busbinen  : out std_logic;
       busbinp   : in  std_logic;
       busbinn   : in  std_logic;
       busbouten : out std_logic;
       busboutp  : out std_logic;
-      busboutn  : out std_logic
+      busboutn  : out std_logic;
+      busb_txin : out std_logic;
+
+      -- Extra signals for extctrlen option
+      extctrl_rten   : in std_logic := '0';
+      extctrl_rtaddr : in std_logic_vector(4 downto 0) := "11111";
+      extctrl_brs    : in std_logic := '0';
+      extctrl_sys    : in std_logic := '0';
+      extctrl_syds   : in std_logic := '0';
+      extctrl_busy   : in std_logic := '0';
+      extctrl_satb   : in std_logic_vector(31 downto 9) := (others => '0');
+      extctrl_mccr   : in std_logic_vector(29 downto 0) := (others => '0')
       );
   end component;
 

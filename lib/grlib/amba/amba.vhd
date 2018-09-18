@@ -1008,6 +1008,32 @@ component ahbxb is
     port ( ahbmo  : out ahb_mst_out_type);
   end component;
 
+  component ahblitm2ahbm 
+    generic(
+      hindex    : integer := 0;
+      venid     : integer := 16#01#;    --VENDOR_GAISLER
+      devid     : integer := 16#0A9#;--GAISLER_AHBLM2AHB;
+      version   : integer := 0);
+  port(
+      clk          : in  std_logic;
+      rstn         : in  std_logic;
+      ahbmi        : in  ahb_mst_in_type;
+      ahbmo        : out ahb_mst_out_type;
+      --ahblite ports
+      ahbmo_htrans : in  std_logic_vector(1 downto 0);
+      ahbmo_haddr  : in  std_logic_vector(31 downto 0);
+      ahbmo_hwrite : in  std_logic;
+      ahbmo_hsize  : in  std_logic_vector(2 downto 0);
+      ahbmo_hwdata : in  std_logic_vector(AHBDW-1 downto 0);
+      ahbmo_hburst : in  std_logic_vector(2 downto 0); 
+      ahbmo_hprot  : in  std_logic_vector(3 downto 0);
+      ahbmi_hready : out std_logic;
+      ahbmi_hresp  : out std_logic;
+      ahbmi_hrdata : out std_logic_vector(AHBDW-1 downto 0)
+    );
+  end component;
+
+
   type ahb_dma_in_type is record
     address         : std_logic_vector(31 downto 0);
     wdata           : std_logic_vector(AHBDW-1 downto 0);

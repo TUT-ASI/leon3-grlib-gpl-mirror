@@ -123,8 +123,16 @@ proc append_file_xlnx_planAhead {f finfo} {
 proc eof_xlnx_planAhead {} {
 	global GRLIB NETLISTTECH PLANAHEAD_SIMSET GRLIB_XIL_PlanAhead_sim_verilog_define \
 	UCF_PLANAHEAD PLANAHEAD_SYNTH_STRATEGY PLANAHEAD_IMPL_STRATEGY PLANAHEAD_BITGEN PROTOBOARD \
-	CONFIG_MIG_DDR2 TOP
+	CONFIG_MIG_DDR2 TOP TECHNOLOGY AREA_OPT
 	upvar planAhead_contents pc
+
+#	Workaround for device specific map area optimization options 
+	set LAREA_OPT [string tolower $AREA_OPT]
+	set tech [string tolower [regsub -all {[^a-zA-Z1-9]} $TECHNOLOGY ""]]
+	set vir5 [string first "virtex5" $tech]
+	set spr6 [string first "spartan6" $tech]
+	set vir4 [string first "virtex4" $tech]
+	set vir6 [string first "virtex6" $tech]
 
 	append pc "\nadd_files -fileset $PLANAHEAD_SIMSET prom.srec ram.srec"
 	if {![string equal $GRLIB_XIL_PlanAhead_sim_verilog_define ""]} {
@@ -154,8 +162,11 @@ proc eof_xlnx_planAhead {} {
 
 	}
 #	append pc "create_run synth_$(DESIGN) -flow {$(PLANAHEAD_SYNTH_FLOW)} -strategy {$(PLANAHEAD_SYNTH_STRATEGY)}"
-	append pc "\nset_property steps.xst.args.netlist_hierarchy as_optimized \[get_runs synth_1\]"
 	append pc "\nset_property strategy $PLANAHEAD_SYNTH_STRATEGY \[get_runs synth_1\]"
+	if {[expr {$vir4 > -1}]} {
+		append pc "\nset_property steps.xst.args.lc off \[get_runs synth_1\]"
+	}
+	append pc "\nset_property steps.xst.args.netlist_hierarchy as_optimized \[get_runs synth_1\]"
 	set phfile [open "planahead/$TOP\_planAhead.tcl" w]
 	puts $phfile $pc
 	close $phfile
@@ -165,8 +176,19 @@ proc eof_xlnx_planAhead {} {
 	append pc "\nwait_on_run -timeout 120 synth_1"
 	append pc "\n# Launch place and route"
 	append pc "\nset_property strategy $PLANAHEAD_IMPL_STRATEGY \[get_runs impl_1\]"
+
+	if {[string equal $LAREA_OPT "yes"]} {
+		append pc "\nset_property steps.map.args.logic_opt on \[get_runs impl_1\]"
+		append pc "\nset_property steps.map.args.ol high \[get_runs impl_1\]"
+		append pc "\nset_property steps.map.args.xe c \[get_runs impl_1\]"
+		if {[expr {$vir5 > -1}] || [expr {$spr6 > -1}] || [expr {$vir6 > -1}]} {
+			append pc "\nset_property steps.map.args.lc area \[get_runs impl_1\]"
+			append pc "\nset_property steps.map.args.global_opt area \[get_runs impl_1\]"
+		} 
+	} else {
 	append pc "\n#set_property steps.map.args.mt on \[get_runs impl_1\]"
-	append pc "\n#set_property steps.par.args.mt 4 \[get_runs impl_1\]"
+	append pc "\n#set_property steps.par.args.mt 4 \[get_runs impl_1\]"	
+	}
 	append pc "\nset_property steps.bitgen.args.m true \[get_runs impl_1\]"
 	if {![string equal $PLANAHEAD_BITGEN ""]} {
 			append pc "\nset_property {steps.bitgen.args.More Options} \{ $PLANAHEAD_BITGEN \} \[get_runs impl_1\]"

@@ -39,7 +39,8 @@ entity eth_edcl_ahb_mst is
     ahbmi       : in  ahbc_mst_in_type;
     ahbmo       : out ahbc_mst_out_type;
     tmsti       : in  eth_tx_ahb_in_type;
-    tmsto       : out eth_tx_ahb_out_type
+    tmsto       : out eth_tx_ahb_out_type;
+    debug1      : out std_logic_vector(31 downto 0)
   );
   attribute sync_set_reset of rst : signal is "true";
 end entity;
@@ -144,6 +145,27 @@ begin
     ahbmo.haddr	   <= haddr;
     ahbmo.hwrite   <= hwrite;
     ahbmo.hwdata   <= hwdata;
+        
+    debug1(0) <= r.bg;
+    debug1(1) <= '0';
+    debug1(2) <= r.ba;
+    debug1(3) <= r.bb;
+    debug1(4) <= r.retry;
+    debug1(5) <= '0';
+    debug1(6) <= '0';
+    debug1(7) <= hbusreq;
+       
+    debug1(8)  <= terror;
+    debug1(9)  <= tretry;
+    debug1(10) <= tready;
+    debug1(11) <= tgrant;
+    debug1(12) <= '0';
+    debug1(13) <= '0';
+    debug1(14) <= '0';
+    debug1(15) <= '0';
+    
+    debug1(31 downto 16) <= (others => '0');
+    
   end process;
 
   syncrregs : if not ASYNC_RESET generate

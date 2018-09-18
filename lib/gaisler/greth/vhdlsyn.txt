@@ -8,6 +8,8 @@ greths_mb.vhd
 grethm.vhd
 grethm_mb.vhd
 adapters/rgmii.vhd
+adapters/rgmii_series7.vhd
+adapters/rgmii_series6.vhd
 adapters/comma_detect.vhd
 adapters/sgmii.vhd
 adapters/elastic_buffer.vhd

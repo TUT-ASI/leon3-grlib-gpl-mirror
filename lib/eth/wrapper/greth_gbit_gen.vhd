@@ -59,6 +59,7 @@ entity greth_gbit_gen is
     multicast      : integer range 0 to 1 := 0;
     edclsepahbg    : integer range 0 to 1 := 0;
     ramdebug       : integer range 0 to 2 := 0;
+    rgmiimode      : integer range 0 to 1 := 0;
     gmiimode       : integer range 0 to 1 := 0
     );
   port(
@@ -200,6 +201,7 @@ begin
       multicast      => multicast,
       edclsepahbg    => edclsepahbg,
       ramdebug       => ramdebug,
+      rgmiimode      => rgmiimode,
       gmiimode       => gmiimode
       )
     port map(

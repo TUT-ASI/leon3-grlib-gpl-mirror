@@ -514,7 +514,8 @@ package allmem is
 
 -- polarfire
   component polarfire_syncram
-  generic ( abits : integer := 10; dbits : integer := 8; ecc : integer range 0 to 1 := 0);
+  generic (abits : integer := 10; dbits : integer := 8; ecc : integer range 0 to 1 := 0;
+           doutpipe : integer := 0; eccpipe : integer := 0);
   port (
     clk      : in std_ulogic;
     address  : in std_logic_vector((abits -1) downto 0);
@@ -522,11 +523,11 @@ package allmem is
     dataout  : out std_logic_vector((dbits -1) downto 0);
     enable   : in std_ulogic;
     write    : in std_ulogic;
-    rerror    : out std_logic_vector(1 downto 0));
+    error    : out std_logic_vector(1 downto 0));
   end component;
 
   component polarfire_syncram_dp is
-  generic ( abits : integer := 6; dbits : integer := 8; ecc : integer range 0 to 1 := 0);
+  generic ( abits : integer := 6; dbits : integer := 8; doutpipe : integer := 0);
   port (
     clk1     : in std_ulogic;
     address1 : in std_logic_vector((abits -1) downto 0);
@@ -534,7 +535,6 @@ package allmem is
     dataout1 : out std_logic_vector((dbits -1) downto 0);
     enable1  : in std_ulogic;
     write1   : in std_ulogic;
-    error    : out std_logic_vector(1 downto 0);
     clk2     : in std_ulogic;
     address2 : in std_logic_vector((abits -1) downto 0);
     datain2  : in std_logic_vector((dbits -1) downto 0);
@@ -545,7 +545,7 @@ package allmem is
 
   component polarfire_syncram_2p
   generic ( abits : integer := 8; dbits : integer := 32; sepclk : integer := 0;
-            ecc : integer range 0 to 1 := 0);
+            ecc : integer range 0 to 1 := 0; doutpipe : integer := 0; eccpipe : integer := 0);
   port (
     rclk     : in std_ulogic;
     renable  : in std_ulogic;
@@ -559,7 +559,7 @@ package allmem is
   end component;
 
   component polarfire_syncram_be
-  generic (abits : integer := 6; dbits : integer := 8);
+  generic (abits : integer := 6; dbits : integer := 8; doutpipe : integer := 0);
   port (
     clk      : in std_ulogic;
     address  : in std_logic_vector((abits -1) downto 0);

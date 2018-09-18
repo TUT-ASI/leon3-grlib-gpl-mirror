@@ -5,7 +5,7 @@ TOP=leon3mp
 BOARD=xilinx-zc702-xc7z020
 DESIGN=leon3-zc702
 include $(GRLIB)/boards/$(BOARD)/Makefile.inc
-#PROTOBOARD=xilinx.com:zc702:part0:1.2
+PROTOBOARD=xilinx.com:zynq:zc702:1.0
 
 DEVICE=$(PART)$(PACKAGE)-$(SPEED)
 UCF_PLANAHEAD=$(GRLIB)/boards/$(BOARD)/xilinx-zx702.ucf

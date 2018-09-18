@@ -197,6 +197,104 @@ signal phy_mdio        : std_logic;
 signal phy_mdc         : std_ulogic;
 
 signal txp_eth, txn_eth : std_logic;
+ 
+signal clk125 : std_logic;
+
+signal    reset_port_0           :     std_logic;
+signal    reset_port_1           :     std_logic;
+signal    reset_port_2           :     std_logic;
+signal    reset_port_3           :     std_logic;
+
+signal    rgmii_port_0_rxc       :     std_logic;
+signal    rgmii_port_0_rx_ctl    :     std_logic;
+signal    rgmii_port_0_rd        :     std_logic_vector(3 downto 0);
+signal    rgmii_port_0_txc       :     std_logic;
+signal    rgmii_port_0_tx_ctl    :     std_logic;
+signal    rgmii_port_0_td        :     std_logic_vector(3 downto 0);
+signal    rgmii_port_1_rxc       :     std_logic;
+signal    rgmii_port_1_rx_ctl    :     std_logic;
+signal    rgmii_port_1_rd        :     std_logic_vector(3 downto 0);
+signal    rgmii_port_1_txc       :     std_logic;
+signal    rgmii_port_1_tx_ctl    :     std_logic;
+signal    rgmii_port_1_td        :     std_logic_vector(3 downto 0);
+signal    rgmii_port_2_rxc       :     std_logic;
+signal    rgmii_port_2_rx_ctl    :     std_logic;
+signal    rgmii_port_2_rd        :     std_logic_vector(3 downto 0);
+signal    rgmii_port_2_txc       :     std_logic;
+signal    rgmii_port_2_tx_ctl    :     std_logic;
+signal    rgmii_port_2_td        :     std_logic_vector(3 downto 0);
+signal    rgmii_port_3_rxc       :     std_logic;
+signal    rgmii_port_3_rx_ctl    :     std_logic;
+signal    rgmii_port_3_rd        :     std_logic_vector(3 downto 0);
+signal    rgmii_port_3_txc       :     std_logic;
+signal    rgmii_port_3_tx_ctl    :     std_logic;
+signal    rgmii_port_3_td        :     std_logic_vector(3 downto 0);
+    --
+signal    mdio_io_port_0_mdio_io :     std_logic;
+signal    mdio_io_port_0_mdc     :     std_logic;
+signal    mdio_io_port_1_mdio_io :     std_logic;
+signal    mdio_io_port_1_mdc     :     std_logic;
+signal    mdio_io_port_2_mdio_io :     std_logic;
+signal    mdio_io_port_2_mdc     :     std_logic;
+signal    mdio_io_port_3_mdio_io :     std_logic;
+signal    mdio_io_port_3_mdc     :     std_logic;
+
+signal    rgmii_port_0_rd8       :     std_logic_vector(7 downto 0);
+signal    rgmii_port_0_td8       :     std_logic_vector(7 downto 0);
+signal    rgmii_port_1_rd8       :     std_logic_vector(7 downto 0);
+signal    rgmii_port_1_td8       :     std_logic_vector(7 downto 0);
+signal    rgmii_port_2_rd8       :     std_logic_vector(7 downto 0);
+signal    rgmii_port_2_td8       :     std_logic_vector(7 downto 0);
+signal    rgmii_port_3_rd8       :     std_logic_vector(7 downto 0);
+signal    rgmii_port_3_td8       :     std_logic_vector(7 downto 0);
+
+signal    reset_port_4           :     std_logic;
+signal    reset_port_5           :     std_logic;
+signal    reset_port_6           :     std_logic;
+signal    reset_port_7           :     std_logic;
+
+signal    rgmii_port_4_rxc       :     std_logic;
+signal    rgmii_port_4_rx_ctl    :     std_logic;
+signal    rgmii_port_4_rd        :     std_logic_vector(3 downto 0);
+signal    rgmii_port_4_txc       :     std_logic;
+signal    rgmii_port_4_tx_ctl    :     std_logic;
+signal    rgmii_port_4_td        :     std_logic_vector(3 downto 0);
+signal    rgmii_port_5_rxc       :     std_logic;
+signal    rgmii_port_5_rx_ctl    :     std_logic;
+signal    rgmii_port_5_rd        :     std_logic_vector(3 downto 0);
+signal    rgmii_port_5_txc       :     std_logic;
+signal    rgmii_port_5_tx_ctl    :     std_logic;
+signal    rgmii_port_5_td        :     std_logic_vector(3 downto 0);
+signal    rgmii_port_6_rxc       :     std_logic;
+signal    rgmii_port_6_rx_ctl    :     std_logic;
+signal    rgmii_port_6_rd        :     std_logic_vector(3 downto 0);
+signal    rgmii_port_6_txc       :     std_logic;
+signal    rgmii_port_6_tx_ctl    :     std_logic;
+signal    rgmii_port_6_td        :     std_logic_vector(3 downto 0);
+signal    rgmii_port_7_rxc       :     std_logic;
+signal    rgmii_port_7_rx_ctl    :     std_logic;
+signal    rgmii_port_7_rd        :     std_logic_vector(3 downto 0);
+signal    rgmii_port_7_txc       :     std_logic;
+signal    rgmii_port_7_tx_ctl    :     std_logic;
+signal    rgmii_port_7_td        :     std_logic_vector(3 downto 0);
+    --
+signal    mdio_io_port_4_mdio_io :     std_logic;
+signal    mdio_io_port_4_mdc     :     std_logic;
+signal    mdio_io_port_5_mdio_io :     std_logic;
+signal    mdio_io_port_5_mdc     :     std_logic;
+signal    mdio_io_port_6_mdio_io :     std_logic;
+signal    mdio_io_port_6_mdc     :     std_logic;
+signal    mdio_io_port_7_mdio_io :     std_logic;
+signal    mdio_io_port_7_mdc     :     std_logic;
+
+signal    rgmii_port_4_rd8       :     std_logic_vector(7 downto 0);
+signal    rgmii_port_4_td8       :     std_logic_vector(7 downto 0);
+signal    rgmii_port_5_rd8       :     std_logic_vector(7 downto 0);
+signal    rgmii_port_5_td8       :     std_logic_vector(7 downto 0);
+signal    rgmii_port_6_rd8       :     std_logic_vector(7 downto 0);
+signal    rgmii_port_6_td8       :     std_logic_vector(7 downto 0);
+signal    rgmii_port_7_rd8       :     std_logic_vector(7 downto 0);
+signal    rgmii_port_7_td8       :     std_logic_vector(7 downto 0);
 
 begin
 
@@ -204,7 +302,7 @@ begin
   clk200p <= not clk200p after 2.5 ns;
   clk200n <= not clk200n after 2.5 ns;
   clkethp <= not clkethp after 4 ns;
-  clkethn <= not clkethp after 4 ns;
+  clkethn <= not clkethn after 4 ns;
 
   rst <= not dsurst;
   rxd1 <= 'H'; ctsn1 <= '0';
@@ -277,6 +375,92 @@ begin
        emdc            => phy_mdc,
        eint            => '0',
        erst            => OPEN,
+       -- FMC Ports
+       --
+       ref_clk_clk_p          => clkethp,
+       ref_clk_clk_n          => clkethn,
+       ref_clk_oe             => OPEN,
+       ref_clk_fsel           => OPEN,
+       --
+       reset_port_0           => reset_port_0,
+       reset_port_1           => reset_port_1,
+       reset_port_2           => reset_port_2,
+       reset_port_3           => reset_port_3,
+       --
+       rgmii_port_0_rxc       => rgmii_port_0_rxc'delayed(3 ns),
+       rgmii_port_0_rx_ctl    => rgmii_port_0_rx_ctl,
+       rgmii_port_0_rd        => rgmii_port_0_rd,
+       rgmii_port_0_txc       => rgmii_port_0_txc,
+       rgmii_port_0_tx_ctl    => rgmii_port_0_tx_ctl,
+       rgmii_port_0_td        => rgmii_port_0_td,
+       rgmii_port_1_rxc       => rgmii_port_1_rxc'delayed(3 ns),
+       rgmii_port_1_rx_ctl    => rgmii_port_1_rx_ctl,
+       rgmii_port_1_rd        => rgmii_port_1_rd,
+       rgmii_port_1_txc       => rgmii_port_1_txc,
+       rgmii_port_1_tx_ctl    => rgmii_port_1_tx_ctl,
+       rgmii_port_1_td        => rgmii_port_1_td,
+       rgmii_port_2_rxc       => rgmii_port_2_rxc'delayed(3 ns),
+       rgmii_port_2_rx_ctl    => rgmii_port_2_rx_ctl,
+       rgmii_port_2_rd        => rgmii_port_2_rd,
+       rgmii_port_2_txc       => rgmii_port_2_txc,
+       rgmii_port_2_tx_ctl    => rgmii_port_2_tx_ctl,
+       rgmii_port_2_td        => rgmii_port_2_td,
+       rgmii_port_3_rxc       => rgmii_port_3_rxc'delayed(3 ns),
+       rgmii_port_3_rx_ctl    => rgmii_port_3_rx_ctl,
+       rgmii_port_3_rd        => rgmii_port_3_rd,
+       rgmii_port_3_txc       => rgmii_port_3_txc,
+       rgmii_port_3_tx_ctl    => rgmii_port_3_tx_ctl,
+       rgmii_port_3_td        => rgmii_port_3_td,
+       --
+       mdio_io_port_0_mdio_io => mdio_io_port_0_mdio_io,
+       mdio_io_port_0_mdc     => mdio_io_port_0_mdc,
+       mdio_io_port_1_mdio_io => mdio_io_port_1_mdio_io,
+       mdio_io_port_1_mdc     => mdio_io_port_1_mdc,
+       mdio_io_port_2_mdio_io => mdio_io_port_2_mdio_io,
+       mdio_io_port_2_mdc     => mdio_io_port_2_mdc,
+       mdio_io_port_3_mdio_io => mdio_io_port_3_mdio_io,
+       mdio_io_port_3_mdc     => mdio_io_port_3_mdc,
+       --
+       reset_port_4           => reset_port_4,
+       reset_port_5           => reset_port_5,
+       reset_port_6           => reset_port_6,
+       reset_port_7           => reset_port_7,
+       --
+       rgmii_port_4_rxc       => rgmii_port_4_rxc'delayed(3 ns),
+       rgmii_port_4_rx_ctl    => rgmii_port_4_rx_ctl,
+       rgmii_port_4_rd        => rgmii_port_4_rd,
+       rgmii_port_4_txc       => rgmii_port_4_txc,
+       rgmii_port_4_tx_ctl    => rgmii_port_4_tx_ctl,
+       rgmii_port_4_td        => rgmii_port_4_td,
+       rgmii_port_5_rxc       => rgmii_port_5_rxc'delayed(3 ns),
+       rgmii_port_5_rx_ctl    => rgmii_port_5_rx_ctl,
+       rgmii_port_5_rd        => rgmii_port_5_rd,
+       rgmii_port_5_txc       => rgmii_port_5_txc,
+       rgmii_port_5_tx_ctl    => rgmii_port_5_tx_ctl,
+       rgmii_port_5_td        => rgmii_port_5_td,
+       rgmii_port_6_rxc       => rgmii_port_6_rxc'delayed(3 ns),
+       rgmii_port_6_rx_ctl    => rgmii_port_6_rx_ctl,
+       rgmii_port_6_rd        => rgmii_port_6_rd,
+       rgmii_port_6_txc       => rgmii_port_6_txc,
+       rgmii_port_6_tx_ctl    => rgmii_port_6_tx_ctl,
+       rgmii_port_6_td        => rgmii_port_6_td,
+       rgmii_port_7_rxc       => rgmii_port_7_rxc'delayed(3 ns),
+       rgmii_port_7_rx_ctl    => rgmii_port_7_rx_ctl,
+       rgmii_port_7_rd        => rgmii_port_7_rd,
+       rgmii_port_7_txc       => rgmii_port_7_txc,
+       rgmii_port_7_tx_ctl    => rgmii_port_7_tx_ctl,
+       rgmii_port_7_td        => rgmii_port_7_td,
+       --
+       mdio_io_port_4_mdio_io => mdio_io_port_4_mdio_io,
+       mdio_io_port_4_mdc     => mdio_io_port_4_mdc,
+       mdio_io_port_5_mdio_io => mdio_io_port_5_mdio_io,
+       mdio_io_port_5_mdc     => mdio_io_port_5_mdc,
+       mdio_io_port_6_mdio_io => mdio_io_port_6_mdio_io,
+       mdio_io_port_6_mdc     => mdio_io_port_6_mdc,
+       mdio_io_port_7_mdio_io => mdio_io_port_7_mdio_io,
+       mdio_io_port_7_mdc     => mdio_io_port_7_mdc,
+       --
+       -- End of FMC Ports
        can_txd         => OPEN,
        can_rxd         => "0",
        spi_data_out    => '0',
@@ -286,7 +470,7 @@ begin
       );
 
   phy0 : if (CFG_GRETH = 1) generate
-
+   -- Simulation model for SGMII PHY MDIO interface 
    phy_mdio <= 'H';
    p0: phy
     generic map (
@@ -300,10 +484,10 @@ begin
              hd_10         => 1,
              base100_t2_fd => 1,
              base100_t2_hd => 1,
-             base1000_x_fd => 1,
-             base1000_x_hd => 1,
-             base1000_t_fd => 1,
-             base1000_t_hd => 1,
+             base1000_x_fd => CFG_GRETH1G,
+             base1000_x_hd => CFG_GRETH1G,
+             base1000_t_fd => CFG_GRETH1G,
+             base1000_t_hd => CFG_GRETH1G,
              rmii          => 0,
              rgmii         => 1
     )
@@ -311,7 +495,240 @@ begin
              OPEN , OPEN , OPEN , OPEN , "00000000",
              '0', '0', phy_mdc, clkethp); 
 
+  end generate;
+  
+  fmc_phy0 : if (CFG_GRETH_FMC = 1) generate
+   -- FMC PHY0 Running at 25MHz
+   rgmii_port_0_rd  <= rgmii_port_0_rd8(3 downto 0);
+   rgmii_port_0_td8 <= rgmii_port_0_td & rgmii_port_0_td;
+   mdio_io_port_0_mdio_io <= 'H';
+   fmc_p0: phy
+    generic map (
+             address       => 0,
+             extended_regs => 1,
+             aneg          => 1,
+             base100_t4    => 1,
+             base100_x_fd  => 1,
+             base100_x_hd  => 1,
+             fd_10         => 1,
+             hd_10         => 1,
+             base100_t2_fd => 1,
+             base100_t2_hd => 1,
+             base1000_x_fd => 0,
+             base1000_x_hd => 0,
+             base1000_t_fd => 0,
+             base1000_t_hd => 0,
+             rmii          => 0,
+             rgmii         => 1
+    )
+    port map(reset_port_0, mdio_io_port_0_mdio_io, OPEN, rgmii_port_0_rxc, 
+             rgmii_port_0_rd8, rgmii_port_0_rx_ctl, OPEN, OPEN, OPEN,
+             rgmii_port_0_td8, rgmii_port_0_tx_ctl, '0',
+             mdio_io_port_0_mdc,
+             rgmii_port_0_txc, clkethp); 
 
+    -- FMC PHY1 Running at 125MHz
+   rgmii_port_1_rd  <= rgmii_port_1_rd8(3 downto 0);
+   rgmii_port_1_td8 <= rgmii_port_1_td & rgmii_port_1_td;
+   mdio_io_port_1_mdio_io <= 'H';
+   fmc_p1: phy
+    generic map (
+             address       => 0,
+             extended_regs => 1,
+             aneg          => 1,
+             base100_t4    => 1,
+             base100_x_fd  => 1,
+             base100_x_hd  => 1,
+             fd_10         => 1,
+             hd_10         => 1,
+             base100_t2_fd => 1,
+             base100_t2_hd => 1,
+             base1000_x_fd => CFG_GRETH1G,
+             base1000_x_hd => CFG_GRETH1G,
+             base1000_t_fd => CFG_GRETH1G,
+             base1000_t_hd => CFG_GRETH1G,
+             rmii          => 0,
+             rgmii         => 1
+    )
+    port map(reset_port_1, mdio_io_port_1_mdio_io, OPEN, rgmii_port_1_rxc, 
+             rgmii_port_1_rd8, rgmii_port_1_rx_ctl, OPEN, OPEN, OPEN,
+             rgmii_port_1_td8, rgmii_port_1_tx_ctl, '0',
+             mdio_io_port_1_mdc,
+             rgmii_port_1_txc, clkethp);
+             
+    -- FMC PHY2 Running at  25MHz
+    rgmii_port_2_rd  <= rgmii_port_2_rd8(3 downto 0);
+    rgmii_port_2_td8 <= rgmii_port_2_td & rgmii_port_2_td;
+    mdio_io_port_2_mdio_io <= 'H';
+    fmc_p2: phy
+    generic map (
+             address       => 0,
+             extended_regs => 1,
+             aneg          => 1,
+             base100_t4    => 1,
+             base100_x_fd  => 1,
+             base100_x_hd  => 1,
+             fd_10         => 1,
+             hd_10         => 1,
+             base100_t2_fd => 1,
+             base100_t2_hd => 1,
+             base1000_x_fd => 0,
+             base1000_x_hd => 0,
+             base1000_t_fd => 0,
+             base1000_t_hd => 0,
+             rmii          => 0,
+             rgmii         => 1
+    )
+    port map(reset_port_2, mdio_io_port_2_mdio_io, OPEN, rgmii_port_2_rxc, 
+             rgmii_port_2_rd8, rgmii_port_2_rx_ctl, OPEN, OPEN, OPEN,
+             rgmii_port_2_td8, rgmii_port_2_tx_ctl, '0',
+             mdio_io_port_2_mdc,
+             rgmii_port_2_txc, clkethp);
+             
+    -- FMC PHY3 Running at 2.5MHz
+    rgmii_port_3_rd  <= rgmii_port_3_rd8(3 downto 0);
+    rgmii_port_3_td8 <= rgmii_port_3_td & rgmii_port_3_td;
+    mdio_io_port_3_mdio_io <= 'H';
+    fmc_p3: phy
+    generic map (
+             address       => 0,
+             extended_regs => 1,
+             aneg          => 1,
+             base100_t4    => 0,
+             base100_x_fd  => 0,
+             base100_x_hd  => 0,
+             fd_10         => 1,
+             hd_10         => 1,
+             base100_t2_fd => 0,
+             base100_t2_hd => 0,
+             base1000_x_fd => 0,
+             base1000_x_hd => 0,
+             base1000_t_fd => 0,
+             base1000_t_hd => 0,
+             rmii          => 0,
+             rgmii         => 1
+    )
+    port map(reset_port_3, mdio_io_port_3_mdio_io, OPEN, rgmii_port_3_rxc, 
+             rgmii_port_3_rd8, rgmii_port_3_rx_ctl, OPEN, OPEN, OPEN,
+             rgmii_port_3_td8, rgmii_port_3_tx_ctl, '0',
+             mdio_io_port_3_mdc,
+             rgmii_port_3_txc, clkethp);    
+  
+   -- FMC PHY4 Running at 125MHz
+   rgmii_port_4_rd  <= rgmii_port_4_rd8(3 downto 0);
+   rgmii_port_4_td8 <= rgmii_port_4_td & rgmii_port_4_td;
+   mdio_io_port_4_mdio_io <= 'H';
+   fmc_p4: phy
+    generic map (
+             address       => 0,
+             extended_regs => 1,
+             aneg          => 1,
+             base100_t4    => 1,
+             base100_x_fd  => 1,
+             base100_x_hd  => 1,
+             fd_10         => 1,
+             hd_10         => 1,
+             base100_t2_fd => 1,
+             base100_t2_hd => 1,
+             base1000_x_fd => CFG_GRETH1G,
+             base1000_x_hd => CFG_GRETH1G,
+             base1000_t_fd => CFG_GRETH1G,
+             base1000_t_hd => CFG_GRETH1G,
+             rmii          => 0,
+             rgmii         => 1
+    )
+    port map(reset_port_4, mdio_io_port_4_mdio_io, OPEN, rgmii_port_4_rxc, 
+             rgmii_port_4_rd8, rgmii_port_4_rx_ctl, OPEN, OPEN, OPEN,
+             rgmii_port_4_td8, rgmii_port_4_tx_ctl, '0',
+             mdio_io_port_4_mdc,
+             rgmii_port_4_txc, clkethp);
+
+  -- FMC PHY5 Running at 125MHz
+   rgmii_port_5_rd  <= rgmii_port_5_rd8(3 downto 0);
+   rgmii_port_5_td8 <= rgmii_port_5_td & rgmii_port_5_td;
+   mdio_io_port_5_mdio_io <= 'H';
+   fmc_p5: phy
+    generic map (
+             address       => 0,
+             extended_regs => 1,
+             aneg          => 1,
+             base100_t4    => 1,
+             base100_x_fd  => 1,
+             base100_x_hd  => 1,
+             fd_10         => 1,
+             hd_10         => 1,
+             base100_t2_fd => 1,
+             base100_t2_hd => 1,
+             base1000_x_fd => CFG_GRETH1G,
+             base1000_x_hd => CFG_GRETH1G,
+             base1000_t_fd => CFG_GRETH1G,
+             base1000_t_hd => CFG_GRETH1G,
+             rmii          => 0,
+             rgmii         => 1
+    )
+    port map(reset_port_5, mdio_io_port_5_mdio_io, OPEN, rgmii_port_5_rxc, 
+             rgmii_port_5_rd8, rgmii_port_5_rx_ctl, OPEN, OPEN, OPEN,
+             rgmii_port_5_td8, rgmii_port_5_tx_ctl, '0',
+             mdio_io_port_5_mdc,
+             rgmii_port_5_txc, clkethp);
+             
+    -- FMC PHY6 Running at 125MHz
+    rgmii_port_6_rd  <= rgmii_port_6_rd8(3 downto 0);
+    rgmii_port_6_td8 <= rgmii_port_6_td & rgmii_port_6_td;
+    mdio_io_port_6_mdio_io <= 'H';
+    fmc_p6: phy
+     generic map (
+              address       => 0,
+              extended_regs => 1,
+              aneg          => 1,
+              base100_t4    => 1,
+              base100_x_fd  => 1,
+              base100_x_hd  => 1,
+              fd_10         => 1,
+              hd_10         => 1,
+              base100_t2_fd => 1,
+              base100_t2_hd => 1,
+              base1000_x_fd => CFG_GRETH1G,
+              base1000_x_hd => CFG_GRETH1G,
+              base1000_t_fd => CFG_GRETH1G,
+              base1000_t_hd => CFG_GRETH1G,
+              rmii          => 0,
+              rgmii         => 1
+     )
+     port map(reset_port_6, mdio_io_port_6_mdio_io, OPEN, rgmii_port_6_rxc, 
+              rgmii_port_6_rd8, rgmii_port_6_rx_ctl, OPEN, OPEN, OPEN,
+              rgmii_port_6_td8, rgmii_port_6_tx_ctl, '0',
+              mdio_io_port_6_mdc,
+              rgmii_port_6_txc, clkethp); 
+
+    -- FMC PHY7 Running at 125MHz
+    rgmii_port_7_rd  <= rgmii_port_7_rd8(3 downto 0);
+    rgmii_port_7_td8 <= rgmii_port_7_td & rgmii_port_7_td;
+    mdio_io_port_7_mdio_io <= 'H';
+    fmc_p7: phy
+     generic map (
+              address       => 0,
+              extended_regs => 1,
+              aneg          => 1,
+              base100_t4    => 1,
+              base100_x_fd  => 1,
+              base100_x_hd  => 1,
+              fd_10         => 1,
+              hd_10         => 1,
+              base100_t2_fd => 1,
+              base100_t2_hd => 1,
+              base1000_x_fd => CFG_GRETH1G,
+              base1000_x_hd => CFG_GRETH1G,
+              base1000_t_fd => CFG_GRETH1G,
+              base1000_t_hd => CFG_GRETH1G,
+              rmii          => 0,
+              rgmii         => 1
+     )
+     port map(reset_port_7, mdio_io_port_7_mdio_io, OPEN, rgmii_port_7_rxc, 
+              rgmii_port_7_rd8, rgmii_port_7_rx_ctl, OPEN, OPEN, OPEN,
+              rgmii_port_7_td8, rgmii_port_7_tx_ctl, '0',
+              mdio_io_port_7_mdc,
+              rgmii_port_7_txc, clkethp);
   end generate;
 
   prom0 : for i in 0 to 1 generate
@@ -417,11 +834,17 @@ begin
 
    iuerr : process
    begin
-     wait for 210 us; -- This is for proper DDR3 behaviour durign init phase not needed durin simulation
+     -- This is for proper DDR3 behaviour durign init phase not needed durin simulation
+     wait for 210 us; 
      if (USE_MIG_INTERFACE_MODEL /= true) then
        wait on led(3);  -- DDR3 Memory Init ready
      end if;
      wait for 5000 ns;
+     -- Wait for Ethernet to start if simulated
+     if (CFG_GRETH_FMC = 1) then
+       wait for 500 us;
+     end if;
+     -- Wait for error or end of simulation
      if to_x01(errorn) = '1' then 
        wait on errorn;
      end if;

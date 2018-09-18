@@ -156,37 +156,111 @@ end;
 
 architecture rtl of leon3mp is
 
-component BUFG port (O : out std_logic; I : in std_logic); end component;
+  component BUFG
+    port (O : out std_logic; I : in std_logic);
+  end component;
 
-component IODELAY2
+  component IODELAY2
+    generic (COUNTER_WRAPAROUND : string := "WRAPAROUND";
+             DATA_RATE          : string := "SDR";
+             DELAY_SRC          : string := "IO";
+             IDELAY2_VALUE      : integer := 0;
+             IDELAY_MODE        : string := "NORMAL";
+             IDELAY_TYPE        : string := "DEFAULT";
+             IDELAY_VALUE       : integer := 0;
+             ODELAY_VALUE       : integer := 0;
+             SERDES_MODE        : string := "NONE";
+             SIM_TAPDELAY_VALUE : integer := 75
+    );
+    port (BUSY     : out std_ulogic;
+          DATAOUT  : out std_ulogic;
+          DATAOUT2 : out std_ulogic;
+          DOUT     : out std_ulogic;
+          TOUT     : out std_ulogic;
+          CAL      : in std_ulogic;
+          CE       : in std_ulogic;
+          CLK      : in std_ulogic;
+          IDATAIN  : in std_ulogic;
+          INC      : in std_ulogic;
+          IOCLK0   : in std_ulogic;
+          IOCLK1   : in std_ulogic;
+          ODATAIN  : in std_ulogic;
+          RST      : in std_ulogic;
+          T        : in std_ulogic
+    );
+  end component;
+
+  component PLL_ADV
   generic (
-     COUNTER_WRAPAROUND : string := "WRAPAROUND";
-     DATA_RATE : string := "SDR";
-     DELAY_SRC : string := "IO";
-     IDELAY2_VALUE : integer := 0;
-     IDELAY_MODE : string := "NORMAL";
-     IDELAY_TYPE : string := "DEFAULT";
-     IDELAY_VALUE : integer := 0;
-     ODELAY_VALUE : integer := 0;
-     SERDES_MODE : string := "NONE";
-     SIM_TAPDELAY_VALUE : integer := 75
+     BANDWIDTH : string := "OPTIMIZED";
+     CLKFBOUT_DESKEW_ADJUST : string := "NONE";
+     CLKFBOUT_MULT : integer := 1;
+     CLKFBOUT_PHASE : real := 0.0;
+     CLKIN1_PERIOD : real := 0.000;
+     CLKIN2_PERIOD : real := 0.000;
+     CLKOUT0_DESKEW_ADJUST : string := "NONE";
+     CLKOUT0_DIVIDE : integer := 1;
+     CLKOUT0_DUTY_CYCLE : real := 0.5;
+     CLKOUT0_PHASE : real := 0.0;
+     CLKOUT1_DESKEW_ADJUST : string := "NONE";
+     CLKOUT1_DIVIDE : integer := 1;
+     CLKOUT1_DUTY_CYCLE : real := 0.5;
+     CLKOUT1_PHASE : real := 0.0;
+     CLKOUT2_DESKEW_ADJUST : string := "NONE";
+     CLKOUT2_DIVIDE : integer := 1;
+     CLKOUT2_DUTY_CYCLE : real := 0.5;
+     CLKOUT2_PHASE : real := 0.0;
+     CLKOUT3_DESKEW_ADJUST : string := "NONE";
+     CLKOUT3_DIVIDE : integer := 1;
+     CLKOUT3_DUTY_CYCLE : real := 0.5;
+     CLKOUT3_PHASE : real := 0.0;
+     CLKOUT4_DESKEW_ADJUST : string := "NONE";
+     CLKOUT4_DIVIDE : integer := 1;
+     CLKOUT4_DUTY_CYCLE : real := 0.5;
+     CLKOUT4_PHASE : real := 0.0;
+     CLKOUT5_DESKEW_ADJUST : string := "NONE";
+     CLKOUT5_DIVIDE : integer := 1;
+     CLKOUT5_DUTY_CYCLE : real := 0.5;
+     CLKOUT5_PHASE : real := 0.0;
+     CLK_FEEDBACK : string := "CLKFBOUT";
+     COMPENSATION : string := "SYSTEM_SYNCHRONOUS";
+     DIVCLK_DIVIDE : integer := 1;
+     EN_REL : boolean := FALSE;
+     PLL_PMCD_MODE : boolean := FALSE;
+     REF_JITTER : real := 0.100;
+     RESET_ON_LOSS_OF_LOCK : boolean := FALSE;
+     RST_DEASSERT_CLK : string := "CLKIN1";
+     SIM_DEVICE : string := "VIRTEX5"
   );
   port (
-     BUSY : out std_ulogic;
-     DATAOUT : out std_ulogic;
-     DATAOUT2 : out std_ulogic;
-     DOUT : out std_ulogic;
-     TOUT : out std_ulogic;
-     CAL : in std_ulogic;
-     CE : in std_ulogic;
-     CLK : in std_ulogic;
-     IDATAIN : in std_ulogic;
-     INC : in std_ulogic;
-     IOCLK0 : in std_ulogic;
-     IOCLK1 : in std_ulogic;
-     ODATAIN : in std_ulogic;
-     RST : in std_ulogic;
-     T : in std_ulogic
+     CLKFBDCM : out std_ulogic := '0';
+     CLKFBOUT : out std_ulogic := '0';
+     CLKOUT0 : out std_ulogic := '0';
+     CLKOUT1 : out std_ulogic := '0';
+     CLKOUT2 : out std_ulogic := '0';
+     CLKOUT3 : out std_ulogic := '0';
+     CLKOUT4 : out std_ulogic := '0';
+     CLKOUT5 : out std_ulogic := '0';
+     CLKOUTDCM0 : out std_ulogic := '0';
+     CLKOUTDCM1 : out std_ulogic := '0';
+     CLKOUTDCM2 : out std_ulogic := '0';
+     CLKOUTDCM3 : out std_ulogic := '0';
+     CLKOUTDCM4 : out std_ulogic := '0';
+     CLKOUTDCM5 : out std_ulogic := '0';
+     DO : out std_logic_vector(15 downto 0);
+     DRDY : out std_ulogic := '0';
+     LOCKED : out std_ulogic := '0';
+     CLKFBIN : in std_ulogic;
+     CLKIN1 : in std_ulogic;
+     CLKIN2 : in std_ulogic;
+     CLKINSEL : in std_ulogic;
+     DADDR : in std_logic_vector(4 downto 0);
+     DCLK : in std_ulogic;
+     DEN : in std_ulogic;
+     DI : in std_logic_vector(15 downto 0);
+     DWE : in std_ulogic;
+     REL : in std_ulogic;
+     RST : in std_ulogic
   );
 end component;
 
@@ -223,7 +297,7 @@ signal vahbmo : ahb_mst_out_type;
 
 signal clkm, rstn, rstraw, sdclkl : std_ulogic;
 signal clk_200 : std_ulogic;
-signal clk25, clk40, clk65 : std_ulogic;
+signal clk40, clk65 : std_ulogic;
 
 signal cgi, cgi2, cgi3   : clkgen_in_type;
 signal cgo, cgo2, cgo3   : clkgen_out_type;
@@ -239,8 +313,9 @@ signal dbgo : l3_debug_out_vector(0 to CFG_NCPU-1);
 signal dsui : dsu_in_type;
 signal dsuo : dsu_out_type;
 
-signal gmiii, rgmiii, rgmiii_buf, rgmii_pad : eth_in_type;
-signal gmiio, rgmiio : eth_out_type;
+signal gmiii, rgmiii, rgmiii_buf,rgmiii_buf2 : eth_in_type;
+signal rgmii_pad                 : eth_in_type;
+signal gmiio, rgmiio, rgmiio_buf : eth_out_type;
 
 signal gpti : gptimer_in_type;
 signal gpto : gptimer_out_type;
@@ -299,6 +374,11 @@ signal stati : ahbstat_in_type;
 signal fpi : grfpu_in_vector_type;
 signal fpo : grfpu_out_vector_type;
 
+signal clk125i_nobuf, clk125i, clk25, clk25_bufg, clk125i_90, clkfbout_clkfbin, clk25_bufg_90, clk125i_0 : std_logic;
+
+signal debug_rgmii_phy_tx,debug_rgmii_phy_tx_con,debug_rgmii_phy_rx,debug_rgmii_phy_rx_con : std_logic_vector(31 downto 0);
+
+
 signal rstgtxn          : std_logic;
 signal idelay_reset_cnt : std_logic_vector(3 downto 0);
 signal idelay_cal_cnt   : std_logic_vector(3 downto 0);
@@ -348,31 +428,133 @@ begin
 ----------------------------------------------------------------------
 ---  Reset and Clock generation  -------------------------------------
 ----------------------------------------------------------------------
+  vcc <= '1';
+  gnd <= '0';
 
   vcc <= '1'; gnd <= '0';
-  cgi.pllctrl <= "00"; cgi.pllrst <= rstraw;
-
   clk_pad : clkpad generic map (tech => padtech) port map (clk, lclk);
   ddr2clk <= lclk;
   ethclk  <= lclk;
 
- no_clk_mig : if CFG_MIG_DDR2 = 0 generate
+  no_clk_mig : if CFG_MIG_DDR2 = 0 generate
+    cgi.pllctrl <= "00";
+    cgi.pllrst <= rstraw;
+    -- clock generator
+    clkgen0 : clkgen generic map (tech      => clktech,
+                                  clk_mul   => CFG_CLKMUL,
+                                  clk_div   => CFG_CLKDIV,
+                                  sdramen   => CFG_MCTRL_SDEN,
+                                  noclkfb   => CFG_CLK_NOFB,
+                                  pcien     => 0,
+                                  pcidll    => 0,
+                                  pcisysclk => 0,
+                                  freq      => BOARD_FREQ)
+                     port map (clkin    => lclk,
+                               pciclkin => lclk,
+                               clk      => clkm,
+                               clkn     => open,
+                               clk2x    => open,
+                               sdclk    => sdclkl,
+                               pciclk   => open,
+                               cgi      => cgi,
+                               cgo      => cgo,
+                               clk4x    => open,
+                               clk1xu   => clk50,
+                               clk2xu   => clk100);
 
-  clkgen0 : clkgen        -- clock generator
-    generic map (clktech, CFG_CLKMUL, CFG_CLKDIV, CFG_MCTRL_SDEN,
-   CFG_CLK_NOFB, 0, 0, 0, BOARD_FREQ)
-    port map (lclk, lclk, clkm, open, open, sdclkl, open, cgi, cgo, open, clk50, clk100);
-
-  rst0 : rstgen         -- reset generator
-   generic map(syncin => 1)
-   port map (rst, clkm, lock, rstn, rstraw);
-
- end generate;
+    -- reset generator
+    rst0 : rstgen generic map (syncrst => 1,
+                               syncin  => 1)
+                  port map (rstin     => rst,
+                            clk       => clkm,
+                            clklock   => lock,
+                            rstout    => rstn,
+                            rstoutraw => rstraw);
+  end generate;
 
  clk_mig : if CFG_MIG_DDR2 = 1 generate
    clk50 <= clkm;
    rstraw <= rst;
-   cgo.clklock <= '1';
+
+   cgi.pllctrl <= "00"; 
+   cgi.pllrst <=  not rst;
+
+   --rstpll0 : rstgen         -- reset generator
+   --generic map(syncin => 1)
+   --port map (rst, clk125i, calib_done, rstn, open);
+
+   --clkgen0 : clkgen        -- clock generator
+   --generic map (clktech, 2, 10, CFG_MCTRL_SDEN,CFG_CLK_NOFB, 0, 0, 0, 125000)
+   --port map (clk125i, clk125i, clk25_bufg, open, open, sdclkl, open, cgi, cgo, open, open, open);
+
+   u_pll_adv : PLL_ADV 
+   generic map 
+       (
+        BANDWIDTH          => "OPTIMIZED",
+        CLKIN1_PERIOD      => 8.0,
+        CLKIN2_PERIOD      => 8.0,
+        CLKOUT0_DIVIDE     => 4,
+        CLKOUT1_DIVIDE     => 20,
+        CLKOUT2_DIVIDE     => 20,
+        CLKOUT3_DIVIDE     => 4,
+        CLKOUT4_DIVIDE     => 4,
+        CLKOUT5_DIVIDE     => 4,
+        CLKOUT0_PHASE      => 90.000,
+        CLKOUT1_PHASE      => 0.000,
+        CLKOUT2_PHASE      => 20.000, -- 15 works with 0xC eq to 0x20
+        CLKOUT3_PHASE      => 0.000,
+        CLKOUT4_PHASE      => 0.000,
+        CLKOUT5_PHASE      => 0.000,
+        CLKOUT0_DUTY_CYCLE => 0.500,
+        CLKOUT1_DUTY_CYCLE => 0.500,
+        CLKOUT2_DUTY_CYCLE => 0.500,
+        CLKOUT3_DUTY_CYCLE => 0.500,
+        CLKOUT4_DUTY_CYCLE => 0.500,
+        CLKOUT5_DUTY_CYCLE => 0.500,
+        SIM_DEVICE         => "SPARTAN6",
+        COMPENSATION       => "INTERNAL",
+        DIVCLK_DIVIDE      => 1,
+        CLKFBOUT_MULT      => 4,
+        CLKFBOUT_PHASE     => 0.0,
+        REF_JITTER         => 0.005000
+        )
+       port map
+         (
+          CLKFBIN          => clkfbout_clkfbin,
+          CLKINSEL         => '1',
+          CLKIN1           => clk125,
+          CLKIN2           => '0',
+          DADDR            => (others => '0'),
+          DCLK             => '0',
+          DEN              => '0',
+          DI               => (others => '0'),
+          DWE              => '0',
+          REL              => '0',
+          RST              => cgi.pllrst,
+          CLKFBDCM         => open,
+          CLKFBOUT         => clkfbout_clkfbin,
+          CLKOUTDCM0       => open,
+          CLKOUTDCM1       => open,
+          CLKOUTDCM2       => open,
+          CLKOUTDCM3       => open,
+          CLKOUTDCM4       => open,
+          CLKOUTDCM5       => open,
+          CLKOUT0          => clk125i_90,
+          CLKOUT1          => clk25_bufg,
+          CLKOUT2          => clk25_bufg_90,
+          CLKOUT3          => clk125i_0,
+          CLKOUT4          => open,
+          CLKOUT5          => open,
+          DO               => open,
+          DRDY             => open,
+          LOCKED           => open
+          );
+
+   --clk25buf : bufg port map (i => clk25_bufg, o => clk25);
+   --clk125buf : bufg port map (i => clk125i_0, o => clk125i);
+   clk25   <= clk25_bufg;
+   clk125i <= clk125i_0;
+
  end generate;
 
   resetn_pad : inpad generic map (tech => padtech) port map (resetn, rst);
@@ -551,7 +733,7 @@ begin
      pindex => 0, paddr => 0, vgamst => CFG_SVGA_ENABLE, vgaburst => 64,
      clkdiv => 10)
     port map(
-     mcb3_dram_dq  	=> ddr_dq,
+     mcb3_dram_dq  	=> ddr_dq,                
      mcb3_dram_a	=> ddr_ad,
      mcb3_dram_ba  	=> ddr_ba,
      mcb3_dram_ras_n	=> ddr_ras,
@@ -582,7 +764,7 @@ begin
      clk_mem_n	=> ddr2clk,
      clk_mem_p	=> ddr2clk,
      test_error	=> open,
-     clk_125   	=> clk_125,
+     clk_125   	=> open,
      clk_100   	=> clk100
     );
   end generate;
@@ -826,252 +1008,60 @@ begin
       nsync => 2, edcl => CFG_DSU_ETH, edclbufsz => CFG_ETH_BUF, phyrstadr => 1,
       macaddrh => CFG_ETH_ENM, macaddrl => CFG_ETH_ENL, enable_mdint => 1,
       ipaddrh => CFG_ETH_IPM, ipaddrl => CFG_ETH_IPL,
-      giga => CFG_GRETH1G)
+      giga => CFG_GRETH1G, ramdebug => 0, gmiimode => 0, rgmiimode => 0)
     port map( rst => rstn, clk => clkm, ahbmi => ahbmi,
       ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG),
       apbi => apbi, apbo => apbo(14), ethi => gmiii, etho => gmiio);
   end generate;
 
   led(3 downto 2) <= not (gmiio.gbit & gmiio.speed);
+  rgmiii.gtx_clk    <= clk125i;   
+  rgmiii.tx_clk_100 <= '0';
+  rgmiii.tx_clk_90  <= clk125i_90;
+  rgmiii.tx_clk_50  <= clk25_bufg_90;
+  rgmiii.tx_clk_25  <= clk25;   
+  rgmiii.rmii_clk   <= '0';
 
-  noethindelay0 : if (use_eth_input_delay = 0) generate
-     rgmiii.rx_dv <= rgmiii_buf.rx_dv;
-     rgmiii.rxd   <= rgmiii_buf.rxd;
-  end generate;
+rgmii0 : rgmii_series6 
+generic map (
+pindex => 9, paddr => 16#010#, pmask => 16#ff0#, tech => fabtech,
+gmii => CFG_GRETH1G, abits => 8, pirq => 14, base10_x => 0)
+port map (rstn, gmiii, gmiio, rgmiii, rgmiio, clkm, rstn, apbi2, apbo2(9),
+     debug_rgmii_phy_tx, debug_rgmii_phy_rx);
 
-  noethoutdelay0 : if (use_eth_output_delay = 0) generate
-     rgmiio_tx_clk <= rgmiio.tx_clk;
-  end generate;
+rgmiii_buf2.rx_clk <= rgmiii_buf.rx_clk;
+bufgclkrx   : BUFG port map (I => rgmiii_buf2.rx_clk , O => rgmiii.rx_clk ); 
+rgmiii.rx_dv <= rgmiii_buf.rx_dv;
+rgmiii.rxd(3 downto 0)      <= rgmiii_buf.rxd(3 downto 0);
+rgmiii_buf.rxd(7 downto 4)  <= (others => '0');
+rgmiii.rxd(7 downto 4)      <= (others => '0');
+rgmiio_buf.tx_clk <= rgmiio.tx_clk;
+rgmiio_buf.tx_en <= rgmiio.tx_en;
+rgmiio_buf.txd <= rgmiio.txd;
 
-  noethdataoutdelay0 : if (use_eth_data_output_delay = 0) generate
-      rgmiio_tx_en  <= rgmiio.tx_en;
-     rgmiio_txd    <= rgmiio.txd(3 downto 0);
-  end generate;
+ethpads : if (CFG_GRETH = 1) generate -- eth pads
+emdio_pad : iopad generic map (tech => padtech) 
+  port map (emdio, rgmiio.mdio_o, rgmiio.mdio_oe, rgmiii.mdio_i);
+emdc_pad : outpad generic map (tech => padtech) 
+  port map (emdc, rgmiio.mdc);
+emdint_pad : inpad generic map (tech => padtech) 
+  port map (emdint, rgmiii.mdint);
 
-  ethindelay0 : if (use_eth_input_delay /= 0) generate
+erxc_pad : inpad generic map (tech => padtech) 
+  port map (erx_clk, rgmiii_buf.rx_clk);
+erxd_pad : inpadv generic map (tech => padtech, width => 4) 
+  port map (erxd, rgmiii_buf.rxd(3 downto 0));
+erxdv_pad : inpad generic map (tech => padtech) 
+  port map (erx_dv, rgmiii_buf.rx_dv);
 
-   erx_clk0 : if (use_eth_input_delay_clk /= 0) generate
-    delay_rgmii_rx_clk : IODELAY2 generic map(
-       DELAY_SRC    => "IDATAIN",
-       IDELAY_TYPE  => "FIXED",
-       DATA_RATE    => "DDR",
-       IDELAY_VALUE => 0 -- (See table 39 in Xilinx ds162.pdf)
-    )
-    port map(
-       IDATAIN     => rgmiii_buf.rx_clk,
-       T           => '1',
-       ODATAIN     => '0',
-       CAL         => '0',
-       IOCLK0      => '0',
-       IOCLK1      => '0',
-       CLK         => '0',
-       INC         => '0',
-       CE          => '0',
-       RST         => '0',
-       BUSY        => OPEN,
-       DATAOUT     => rgmiii.rx_clk,
-       DATAOUT2    => OPEN,
-       TOUT        => OPEN,
-       DOUT        => OPEN
-    );
-   end generate;
+etxc_pad : outpad generic map (tech => padtech) 
+  port map (etx_clk, rgmiio_buf.tx_clk);
+etxd_pad : outpadv generic map (tech => padtech, width => 4) 
+port map (etxd, rgmiio_buf.txd(3 downto 0));
+etxen_pad : outpad generic map (tech => padtech) 
+port map ( etx_en, rgmiio_buf.tx_en);
 
-    delay_rgmii_rx_ctl0 : IODELAY2 generic map(
-       DELAY_SRC    => "IDATAIN",
-       IDELAY_TYPE  => "FIXED",
-       DATA_RATE    => "DDR",
-       IDELAY_VALUE => 80 -- (See table 39 in Xilinx ds162.pdf)
-    )
-    port map(
-       IDATAIN     => rgmiii_buf.rx_dv,
-       T           => '1',
-       ODATAIN     => '0',
-       CAL         => '0',
-       IOCLK0      => '0',
-       IOCLK1      => '0',
-       CLK         => '0',
-       INC         => '0',
-       CE          => '0',
-       RST         => '0',
-       BUSY        => OPEN,
-       DATAOUT     => rgmiii.rx_dv,
-       DATAOUT2    => OPEN,
-       TOUT        => OPEN,
-       DOUT        => OPEN
-    );
-
-    rgmii_rxd : for i in 0 to 3 generate
-     delay_rgmii_rxd0 : IODELAY2 generic map(
-       DELAY_SRC    => "IDATAIN",
-       IDELAY_TYPE  => "FIXED",
-       DATA_RATE    => "DDR",
-       IDELAY_VALUE => 80 -- (See table 39 in Xilinx ds162.pdf)
-     )
-     port map(
-       IDATAIN     => rgmiii_buf.rxd(i),
-       T           => '1',
-       ODATAIN     => '0',
-       CAL         => '0',
-       IOCLK0      => '0',
-       IOCLK1      => '0',
-       CLK         => '0',
-       INC         => '0',
-       CE          => '0',
-       RST         => '0',
-       BUSY        => OPEN,
-       DATAOUT     => rgmiii.rxd(i),
-       DATAOUT2    => OPEN,
-       TOUT        => OPEN,
-       DOUT        => OPEN
-     );
-    end generate;
-  end generate;
-
-  ethoutdelay0 : if (use_eth_output_delay /= 0) generate
-    delay_rgmii_tx_clk0 : IODELAY2 generic map(
-       DELAY_SRC    => "ODATAIN",
-       IDELAY_TYPE  => "FIXED",
-       DATA_RATE    => "DDR",
-       ODELAY_VALUE => 30 -- (See table 39 in Xilinx ds162.pdf)
-    )
-    port map(
-       IDATAIN     => '0',
-       T           => '1',
-       ODATAIN     => rgmiio.tx_clk,
-       CAL         => '0',
-       IOCLK0      => '0',
-       IOCLK1      => '0',
-       CLK         => '0',
-       INC         => '0',
-       CE          => '0',
-       RST         => '0',
-       BUSY        => OPEN,
-       DATAOUT     => OPEN,
-       DATAOUT2    => OPEN,
-       TOUT        => OPEN,
-       DOUT        => rgmiio_tx_clk
-    );
-  end generate;
-
-  ethoutdatadelay0 : if (use_eth_data_output_delay /= 0) generate    
-    delay_rgmii_tx_en0 : IODELAY2 generic map(
-       DELAY_SRC    => "ODATAIN",
-       IDELAY_TYPE  => "FIXED",
-       DATA_RATE    => "DDR",
-       ODELAY_VALUE => 0
-    )
-    port map(
-       IDATAIN     => '0',
-       T           => '1',
-       ODATAIN     => rgmiio.tx_en,
-       CAL         => '0',
-       IOCLK0      => '0',
-       IOCLK1      => '0',
-       CLK         => '0',
-       INC         => '0',
-       CE          => '0',
-       RST         => '0',
-       BUSY        => OPEN,
-       DATAOUT     => OPEN,
-       DATAOUT2    => OPEN,
-       TOUT        => OPEN,
-       DOUT        => rgmiio_tx_en
-    );
-    
-    rgmii_txd : for i in 0 to 3 generate
-     delay_rgmii_txd0 : IODELAY2 generic map(
-       DELAY_SRC    => "ODATAIN",
-       IDELAY_TYPE  => "FIXED",
-       DATA_RATE    => "DDR",
-       ODELAY_VALUE => 0
-     )
-     port map(
-       IDATAIN     => '0',
-       T           => '1',
-       ODATAIN     => rgmiio.txd(i),
-       CAL         => '0',
-       IOCLK0      => '0',
-       IOCLK1      => '0',
-       CLK         => '0',
-       INC         => '0',
-       CE          => '0',
-       RST         => '0',
-       BUSY        => OPEN,
-       DATAOUT     => OPEN,
-       DATAOUT2    => OPEN,
-       TOUT        => OPEN,
-       DOUT        => rgmiio_txd(i)
-     );
-    end generate;
-  end generate;
-
-  rgmii0 : rgmii generic map (pindex => 15, paddr => 16#010#, pmask => 16#ff0#, tech => fabtech,
-                              gmii => CFG_GRETH1G, debugmem => 1, abits => 8, no_clk_mux => 0,
-                              pirq => 15, use90degtxclk  => 0)
-    port map (rstn, gmiii, gmiio, rgmiii, rgmiio, clkm, rstn, apbi, apbo(15));
-
-  ethpads : if (CFG_GRETH = 1) generate -- eth pads
-
-    etxc_pad : outpad generic map (tech => padtech)
-      port map (etx_clk, rgmiio_tx_clk);
-      
-    erx_clk1 : if (use_eth_input_delay_clk = 0) generate
-      erxc_pad : clkpad generic map (tech => padtech, arch => 2)
-        port map (erx_clk, rgmiii.rx_clk);
-    end generate;
-  
-    erx_clk2 : if (use_eth_input_delay_clk /= 0) generate
-     erxc_pad : inpad generic map (tech => padtech)
-       port map (erx_clk, rgmii_pad.rx_clk);
-     erxc_bufg0 : BUFG port map (O => rgmiii_buf.rx_clk, I => rgmii_pad.rx_clk);
-    end generate;
-
-    erxd_pad : inpadv generic map (tech => padtech, width => 4)
-      port map (erxd, rgmiii_buf.rxd(3 downto 0));
-    erxdv_pad : inpad generic map (tech => padtech)
-      port map (erx_dv, rgmiii_buf.rx_dv);
-
-    etxd_pad : outpadv generic map (tech => padtech, width => 4)
-      port map (etxd, rgmiio_txd(3 downto 0));
-    etxen_pad : outpad generic map (tech => padtech)
-      port map ( etx_en, rgmiio_tx_en);
-
-    emdio_pad : iopad generic map (tech => padtech)
-      port map (emdio, rgmiio.mdio_o, rgmiio.mdio_oe, rgmiii.mdio_i);
-    emdc_pad : outpad generic map (tech => padtech)
-      port map (emdc, rgmiio.mdc);
-
-    emdint_pad : inpad generic map (tech => padtech)
-      port map (emdint, rgmiii.mdint);
-
-    gtx_clk0 : if (use_gtx_clk = 0) generate
-       -- Use MIG PLL
-       -- Add to UCF (only if there is no BUFG left):
-       --  PIN "ethpads.gtx_clk0.clk_125_bufg0.O" CLOCK_DEDICATED_ROUTE = FALSE;
-       clk_125_bufg0 : BUFG port map (O => clk_125_bufg, I => clk_125);
-       rgmiii.gtx_clk <= clk_125_bufg;
-     end generate;
-
-    gtx_clk1 : if (use_gtx_clk = 1) generate
-     -- Incoming 125Mhz ref clock
-     clk125_pad : clkpad generic map (tech => padtech, arch => 3)
-       port map (clk125,  rgmiii.gtx_clk);
-    end generate;
-
-    gtx_clk2 : if (use_gtx_clk = 2) generate
-       -- Use Separate PLL
-       -- Add to UCF (only if there is no BUFG left):
-       -- PIN "ethpads.gtx_clk2.clkgen0/xc3s.v/bufg0.O" CLOCK_DEDICATED_ROUTE =FALSE;
-       -- PIN "ethpads.gtx_clk2.clk_125_bufg0.O" CLOCK_DEDICATED_ROUTE = FALSE;
-       cgi2.pllctrl <= "00"; cgi2.pllrst <= rstraw;
-       clkgen0 : clkgen        -- clock generator
-         generic map (clktech, 5, 2, CFG_MCTRL_SDEN,CFG_CLK_NOFB, 0, 0, 0, BOARD_FREQ)
-         port map (clkm, clkm, clk_125_pll, open, open, open, open, cgi2, cgo2, open, open, open);
-        clk_125_bufg0 : BUFG port map (O => clk_125_bufg, I => clk_125_pll);
-        rgmiii.gtx_clk <= clk_125_bufg;
-     end generate;
-
-  end generate;
+end generate;
 
 -----------------------------------------------------------------------
 ---  AHB RAM ----------------------------------------------------------

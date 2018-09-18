@@ -22,11 +22,11 @@
 -- File:        ahblitm2ahbm.vhd
 -- Author:      Alen Bardizbanyan - Cobham Gaisler AB
 -- Description: Adapter between AHB-Lite interface system and
---              AHB master on a full AHB system
+--              an AHB master connected to ahbctrl
 ------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------
---Currently do not support RETRY,SPLIT responses
+--Currently do not support WRAPPED accesses
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -54,9 +54,10 @@ entity ahblitm2ahbm is
     ahbmo_hwrite : in  std_logic;
     ahbmo_hsize  : in  std_logic_vector(2 downto 0);
     ahbmo_hwdata : in  std_logic_vector(AHBDW-1 downto 0);
-    ahbmo_hburst : in  std_logic_vector(2 downto 0);  -- burst signals
+    ahbmo_hburst : in  std_logic_vector(2 downto 0); 
+    ahbmo_hprot  : in  std_logic_vector(3 downto 0);
     ahbmi_hready : out std_logic;
-    ahbmi_hresp  : out std_logic_vector(1 downto 0);
+    ahbmi_hresp  : out std_logic;
     ahbmi_hrdata : out std_logic_vector(AHBDW-1 downto 0)
     );
 end ahblitm2ahbm;
@@ -71,7 +72,7 @@ architecture rtl of ahblitm2ahbm is
     others => (others => '0'));
 
 
-  type state_type is (idle, init_latched, transaction);
+  type state_type is (idle, init_latched, transaction, retsplit_idle);
 
   type reg_type is record
     htrans  : std_logic_vector(1 downto 0);
@@ -82,7 +83,9 @@ architecture rtl of ahblitm2ahbm is
     hprot   : std_logic_vector(3 downto 0);
     granted : std_logic;
     hready  : std_logic;
+    hwdata  : std_logic_vector(AHBDW-1 downto 0);
     state   : state_type;
+    hburst_mask : std_logic;
   end record;
 
 
@@ -95,7 +98,9 @@ architecture rtl of ahblitm2ahbm is
     hprot   => (others => '0'),
     granted => '0',
     hready  => '1',
-    state   => idle);
+    state   => idle,
+    hwdata  => (others => '0'),
+    hburst_mask => '0');
 
   signal r, rin : reg_type;
   
@@ -103,9 +108,10 @@ begin  -- rtl
 
 
   comb : process(r, ahbmi, ahbmo_htrans, ahbmo_haddr, ahbmo_hwrite,
-                 ahbmo_hsize, ahbmo_hwdata, ahbmo_hburst)
+                 ahbmo_hsize, ahbmo_hwdata, ahbmo_hburst, ahbmo_hprot)
     variable v              : reg_type;
     variable bus_req        : std_logic;
+    variable hburst_mask_release : std_logic;
     variable htrans_sample  : std_logic;
     variable ahbmi_hready_v : std_logic;
     variable ahbmo_htrans_v : std_logic_vector(1 downto 0);
@@ -114,9 +120,13 @@ begin  -- rtl
     variable ahbmo_hsize_v  : std_logic_vector(2 downto 0);
     variable ahbmo_hburst_v : std_logic_vector(2 downto 0);
     variable ahbmo_hprot_v  : std_logic_vector(3 downto 0);
+    variable ahbmo_hwdata_v : std_logic_vector(AHBDW-1 downto 0);
+    variable ahbmi_hresp_v : std_logic;
   begin
     bus_req       := '0';
     htrans_sample := '0';
+    hburst_mask_release := '1';
+    ahbmi_hresp_v := '0';
 
     v := r;
 
@@ -129,11 +139,16 @@ begin  -- rtl
       when idle =>
 
         v.hready := '1';
+        v.hburst_mask := '0';
 
         if (ahbmo_htrans(1) = '1') then
+          bus_req       := '1';
           htrans_sample := '1';
           v.state       := init_latched;
           v.hready      := '0';
+          if r.granted = '1' and ahbmi.hready = '1' then
+            v.state := transaction;
+          end if;
         end if;
 
       when init_latched =>
@@ -143,20 +158,58 @@ begin  -- rtl
         if r.granted = '1' and r.htrans(1) = '1' and ahbmi.hready = '1' then
           --first transaction is acknowledged
           v.state       := transaction;
-          htrans_sample := '1';
         end if;
 
       when transaction =>
 
         bus_req := '1';
 
-        if (ahbmo_htrans = HTRANS_IDLE) and (ahbmi.hready = '1') then
-          v.state  := idle;
-          v.hready := '1';
-          bus_req  := '0';
-          v.htrans := (others => '0');
+        if ahbmo_htrans = HTRANS_IDLE then
+          bus_req := '0';
+        end if;
+        
+        if ahbmi.hready = '1' then
+          htrans_sample := '1';
         end if;
 
+        if r.granted = '0' and ahbmo_htrans /= HTRANS_IDLE and ahbmi.hready = '1' then
+          --lost the grant can happen at the beginning of fixed length bursts (SINGLE,INCR4,INCR8,INC16)
+          v.state := init_latched;
+          v.hready := '0';
+        end if;
+        
+        if (ahbmo_htrans = HTRANS_IDLE) and (ahbmi.hready = '1') then
+          v.state := idle;
+          v.hready := '1';
+          v.htrans := HTRANS_IDLE;
+          v.hwrite := '0';
+        end if;
+
+        if ahbmo_htrans = HTRANS_NONSEQ and r.hburst_mask = '1' then
+          --hburst mask has to be released if a new burst is coming otherwise
+          --b2b fixed burst can keep the bus blocked until htrans_idle is arrived
+          v.hburst_mask := '0';
+          hburst_mask_release := '1';
+        end if;
+
+        if (ahbmi.hresp = HRESP_RETRY or ahbmi.hresp = HRESP_SPLIT) and ahbmi.hready = '0' then
+           v.htrans := HTRANS_IDLE;
+           v.hready := '0';
+           v.state  := retsplit_idle;
+           if r.htrans = HTRANS_SEQ and r.hburst /= "000" and r.hburst /= "001" then
+             --if RETRY or SPLIT arrives in the middle of a fixed length burst
+             --it has to be converted to be an incremental burst
+             v.hburst_mask := '1';
+           end if;
+        end if;
+
+      when retsplit_idle =>
+
+        bus_req := '1';
+        v.state := init_latched;
+        v.htrans := HTRANS_NONSEQ;
+        v.hready := '0';
+                
       when others => null;
     end case;
 
@@ -166,30 +219,43 @@ begin  -- rtl
       v.hwrite := ahbmo_hwrite;
       v.hsize  := ahbmo_hsize;
       v.hburst := ahbmo_hburst;
-      --v.hprot := ahbmo_hprot;
-      v.hprot  := (others => '0');
+      v.hprot  := ahbmo_hprot;
     end if;
 
     rin <= v;
-
-    ahbmi_hready_v := r.hready;
-    ahbmo_htrans_v := r.htrans;
-    ahbmo_haddr_v  := r.haddr;
-    ahbmo_hwrite_v := r.hwrite;
-    ahbmo_hsize_v  := r.hsize;
-    ahbmo_hburst_v := r.hburst;
-    ahbmo_hprot_v  := r.hprot;
-    if r.state = transaction then
-      --transaction is granted 1-to-1 mapping from ahb-lite to AHB
-      ahbmi_hready_v := ahbmi.hready;
-      ahbmo_htrans_v := ahbmo_htrans;
-      ahbmo_haddr_v  := ahbmo_haddr;
-      ahbmo_hwrite_v := ahbmo_hwrite;
-      ahbmo_hsize_v  := ahbmo_hsize;
-      ahbmo_hburst_v := ahbmo_hburst;
-      ahbmo_hprot_v  := (others => '0');
+    
+    ahbmi_hready_v := ahbmi.hready;
+    ahbmo_htrans_v := ahbmo_htrans;
+    ahbmo_haddr_v  := ahbmo_haddr;
+    ahbmo_hwrite_v := ahbmo_hwrite;
+    ahbmo_hsize_v  := ahbmo_hsize;
+    ahbmo_hburst_v := ahbmo_hburst;
+    ahbmo_hwdata_v := ahbmo_hwdata;
+    ahbmo_hprot_v  := (others=>'0');
+    
+    if r.state = init_latched or r.state = retsplit_idle then
+      ahbmo_htrans_v := r.htrans;
+      ahbmo_haddr_v  := r.haddr;
+      ahbmo_hwrite_v := r.hwrite;
+      ahbmo_hsize_v  := r.hsize;
+      ahbmo_hburst_v := r.hburst;
+      ahbmo_hprot_v  := r.hprot;
     end if;
 
+    if r.state = idle or r.state = init_latched or r.state = retsplit_idle then
+      ahbmi_hready_v := r.hready;
+    end if;
+
+    if r.hburst_mask = '1' and hburst_mask_release = '0' then
+      --force hburst to HBURST_INCR
+      ahbmo_hburst_v := "001";
+    end if;
+
+    ahbmi_hresp_v := '0';
+    if ahbmi.hresp = HRESP_ERROR then
+      ahbmi_hresp_v := '1';
+    end if;
+              
     ahbmi_hready <= ahbmi_hready_v;
     ahbmo.htrans <= ahbmo_htrans_v;
     ahbmo.haddr  <= ahbmo_haddr_v;
@@ -198,15 +264,15 @@ begin  -- rtl
     ahbmo.hburst <= ahbmo_hburst_v;
     ahbmo.hprot  <= ahbmo_hprot_v;
 
-    ahbmi_hresp  <= ahbmi.hresp;
+    ahbmi_hresp  <= ahbmi_hresp_v;
     ahbmi_hrdata <= ahbmi.hrdata;
 
-    ahbmo.hwdata  <= ahbmo_hwdata;
+    ahbmo.hwdata  <= ahbmo_hwdata_v;
     ahbmo.hirq    <= (others => '0');
     ahbmo.hbusreq <= bus_req;
     ahbmo.hconfig <= hconfig;
     ahbmo.hindex  <= hindex;
-    ahbmo.hlock   <= '0';               --MS added. No Locked accesses.
+    ahbmo.hlock   <= '0';          
 
   end process;
 

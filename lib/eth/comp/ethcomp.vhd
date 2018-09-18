@@ -176,6 +176,7 @@ package ethcomp is
       mdiohold       : integer := 1;
       gmiimode       : integer range 0 to 1 := 0;
       mdiochain      : integer range 0 to 1 := 0;
+      rgmiimode      : integer range 0 to 1 := 0;
       iotest         : integer range 0 to 1 := 0
     );
     port(
@@ -284,7 +285,11 @@ package ethcomp is
       mdiochain_i     : out std_ulogic;   -- To below in chain
       mdiochain_locki : in  std_ulogic := '0';   -- From below in chain
       mdiochain_o     : in  std_ulogic := '0';
-      mdiochain_oe    : in  std_ulogic := '0'
+      mdiochain_oe    : in  std_ulogic := '0';
+      -- Debug Interface
+      debug_rx        : out std_logic_vector(63 downto 0);
+      debug_tx        : out std_logic_vector(63 downto 0);
+      debug_gtx       : out std_logic_vector(63 downto 0)
       );
   end component;
 
@@ -401,6 +406,7 @@ package ethcomp is
       multicast      : integer range 0 to 1 := 0;
       edclsepahbg    : integer range 0 to 1 := 0;
       ramdebug       : integer range 0 to 2 := 0;
+      rgmiimode      : integer range 0 to 1 := 0;
       gmiimode       : integer range 0 to 1 := 0
       );
     port(

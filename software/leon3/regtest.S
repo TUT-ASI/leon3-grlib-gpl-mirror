@@ -56,6 +56,9 @@ b2:
 	subcc %g6, 0, %g0
 	be 1f			! no FT
 	nop
+        subcc %g6, 6, %g0
+	be 1f			! techspec FT
+	nop
 	srl %g3, 11, %l7
 	and %l7, 0x7, %l7
 	subcc %l7, 0, %g0	! error counter should be 0

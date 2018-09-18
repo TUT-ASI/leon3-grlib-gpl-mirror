@@ -41,7 +41,6 @@ use gaisler.axi.all;
 
 entity ahbm2axi3 is
   generic (
-    memtech         : integer               := 0;
     aximid          : integer range 0 to 15 := 0;
     wbuffer_num     : integer range 1 to 16 := 8;
     rprefetch_num   : integer range 1 to 16 := 8;
@@ -71,7 +70,6 @@ begin  -- rtl
 
   ahbm2axix : ahbm2axi
     generic map(
-      memtech         => memtech,
       aximid          => aximid,
       wbuffer_num     => wbuffer_num,
       rprefetch_num   => rprefetch_num,

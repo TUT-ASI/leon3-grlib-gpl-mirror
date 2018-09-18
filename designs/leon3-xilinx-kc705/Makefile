@@ -38,7 +38,7 @@ endif
 
 # - MIG -
 ifeq ($(CONFIG_MIG_7SERIES),y)
-VSIMOPT+= -t fs -novopt
+VSIMOPT+= -t fs -voptargs="+acc" 
 VSIMOPT+= -L secureip -L unisims_ver -L unisim glbl
 ifndef CONFIG_MIG_7SERIES_MODEL
 VSIMOPT+= -gUSE_MIG_INTERFACE_MODEL=false
@@ -53,7 +53,7 @@ endif
 ifeq ("$(GRLIB_SIMULATOR)","ALDEC")
 VSIMOPT+= +access +w -voptargs="+acc" +notimingchecks
 else
-VSIMOPT+=-novopt +notimingchecks
+VSIMOPT+=-voptargs="+acc" +notimingchecks
 endif
 
 # Run simulation in batch mode
@@ -71,6 +71,12 @@ ASIMDO = run -all
 VSIMOPT+= $(SIMTOP)
 
 ### End of Simulation Options ###
+
+### Synthesize Options ###
+
+VIVADO_IMPL_STRATEGY=Performance_ExplorePostRoutePhysOpt
+
+### End of Synthesize Options ###
 
 ### Testbench, design and libraries to compile and not to compile
 

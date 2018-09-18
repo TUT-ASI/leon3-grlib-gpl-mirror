@@ -70,6 +70,7 @@ entity greth_gbit is
     multicast      : integer range 0 to 1 := 0;
     ramdebug       : integer range 0 to 2 := 0;
     mdiohold       : integer := 1;
+    rgmiimode      : integer range 0 to 1 := 0;
     gmiimode       : integer range 0 to 1 := 0
     );
   port(
@@ -81,6 +82,10 @@ entity greth_gbit is
     apbo           : out apb_slv_out_type;
     ethi           : in  eth_in_type;
     etho           : out eth_out_type
+    -- Debug Interface
+    ; debug_rx      : out std_logic_vector(63 downto 0);
+    debug_tx        : out std_logic_vector(63 downto 0);
+    debug_gtx       : out std_logic_vector(63 downto 0)
   );
 end entity;
   
@@ -169,6 +174,7 @@ begin
       edclsepahbg    => 0,
       ramdebug       => ramdebug,
       mdiohold       => mdiohold,
+      rgmiimode      => rgmiimode,
       gmiimode       => gmiimode
       )
     port map(
@@ -274,7 +280,12 @@ begin
       mdiochain_datai => '0',
       mdiochain_locki => '0',
       mdiochain_o     => '0',
-      mdiochain_oe    => '0');
+      mdiochain_oe    => '0',
+      -- Debug
+      debug_rx        => debug_rx,
+      debug_tx        => debug_tx,
+      debug_gtx       => debug_gtx
+      );
 
   etho.tx_clk <= '0';                   -- driven in rgmii component
 

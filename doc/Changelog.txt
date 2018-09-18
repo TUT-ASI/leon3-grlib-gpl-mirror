@@ -1,3 +1,62 @@
+----------------------- Release 2018.3-b4226 ---------------------------
+
+2018-09-18	Changed behavior of the clean target to remove all
+		generated files.
+
+2018-09-12	Replaced deprecated -novopt from Modelsim and Riviera scripts
+		with -voptargs="+acc".
+
+2018-09-04	UNISIM techmap: Updated connection of WEN for Xilinx RAMB18
+		and RAMB36 in memories supporting byte enable to be derived
+		from a single source.
+
+2018-09-04	Updated script generation for Vivado to allow PROTOBOARD
+		to be used with older versions of Vivado, before the
+		BOARD_PART property was introduced.
+
+2018-08-24	Added variable AREA_OPT to allow setting of area
+		optimization in PlanAhead.
+
+2018-08-23      AHB2AXIB/AHBM2AXIB write buffer always uses inferred
+		memory.   
+
+2018-08-09	AC701: Support for Ethernet FMC modules in GRLIB.
+
+2018-08-09	VC707: Support for Ethernet Multiple FMC modules in GRLIB.
+
+2018-07-05	Add revised MMU supervisor check from LEON3 standard test.
+
+2018-07-03	RGMII: Added separate RGMII adapter block for XILINX 'series7' 
+		and 'spartan6' FPGAs. See VC707 and GR-XC6 design for reference.
+		Added support external debug support i.e. connection to on-chip 
+		logic analyzer (LOGAN).
+
+2018-07-03	GR-XC6: Updated RGMII interface
+
+2018-07-03	VC707: Support for Ethernet FMC module.
+
+2018-07-03	Support for Ethernet FMC modules in GRLIB.
+
+2018-07-03	Removed MMU supervisor check from LEON3 standard test.
+
+2018-06-26	Scripts: Updated Xilinx Vivado library compilation to use
+		the quiet flag.
+
+2018-06-11	AHBLITM2AHBM : Bugfix and feature update.
+		-a data word can be written or read wrong if bus grant 
+		is lost during back-to-back (burst without any HTRANS_IDLE
+		cycle inbetween) burst types of SINGLE/INCR4/INCR8/INCR16 
+		-RETRY and SPLIT response support has been added.
+
+2018-05-04	gaisler.ddr.ahb2axi_mig_7series: Added support for little
+		endian through new generic endianness.
+
+2018-05-04	AHBRAM: Added support for little endian through new generic
+		endianness.
+
+2018-05-04	AHBRAM_SIM: Added support for 64 bit data and little endian
+		through new generic endianness.
+
 ----------------------- Release 2018.1-b4217 ---------------------------
 
 2018-04-24	Scripts: Added posibility to use GRLIB_XILINX_SOURCE_MGMT_MODE

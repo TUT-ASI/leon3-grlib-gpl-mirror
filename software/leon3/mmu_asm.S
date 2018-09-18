@@ -1,6 +1,10 @@
 #include "leon3.h"
 #include "testmod.h" 
-#include "mmu.h" 
+#include "mmu.h"
+
+#ifndef RAMSTART
+#define RAMSTART 0x40000000
+#endif	
  
 	.seg	"text"
 	.proc	0
@@ -87,11 +91,8 @@ _srmmu_fault:
 	//fault address must be 0x400F0000
 	mov	0x400, %l5
 	lda	[%l5] ASI_M_MMUREGS, %l6
-	mov     0x40, %l5
-	sll	%l5,0x18,%l5
-	mov	0xF, %l7
-	sll	%l7,0x10,%l7
-	add	%l7,%l5,%l5
+        sethi   %hi(RAMSTART+0xF0000),%l7
+	or      %l7, %lo(RAMSTART+0xF0000), %l5
 	subcc   %l6,%l5,%g0
 	bne     mmu_fault_t0
 	nop
@@ -101,8 +102,10 @@ _srmmu_fault:
 	or	0xC0, %l5, %l5
 	wr	%l5,%psr
 	//indicate that we have arrived to this function
+	//if "check" address is changed in mmu_so_check.c
+	//the address of %l5 must also be modified
 	mov     0x123,%l3
-	sta	%l3,[%g1] 0x1C
+	sta	%l3,[%l6] 0x1C
 	add     %l1,0x4,%l1
 	add     %l2,0x4,%l2
 	ba	mmu_fault_end

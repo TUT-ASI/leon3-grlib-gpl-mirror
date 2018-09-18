@@ -8,7 +8,7 @@ CONFIG_SYN_INFERRED
   - Inferred: Generic FPGA or ASIC targets if your synthesis tool
     is capable of inferring RAMs and pads automatically.
 
-  - Actel ProAsic/P/3, IGLOO/2, RTG4 and Axcelerator FPGAs
+  - Actel ProAsic/P/3, IGLOO/2, RTG4, PolarFire and Axcelerator FPGAs
   - Aeroflex UT25CRH Rad-Hard 0.25 um CMOS
   - Altera: Most Altera FPGA families
   - Altera-CycloneIII: Altera Cyclone-III/IV FPGA family
@@ -770,8 +770,10 @@ CONFIG_L2_MTRR
   memory area to be uncached, write-through, or copy-back.
 
 EDAC protection
-CONFIG_L2_EDAC
-  Say yes here to enable EDAC protection.
+CONFIG_L2_EDAC_NONE
+  Say Yes here to enable EDAC protection.
+  Select TechSpec to enable technology specific EDAC, not
+  supported for all target technologies.
 
 AXI backend interface
 CONFIG_L2_AXI
@@ -1043,6 +1045,11 @@ CONFIG_GRETH_FIFO4
   Set the depth of the receive and transmit FIFOs in the MAC core.
   The MAC core will perform AHB burst read/writes with half the
   size of the FIFO depth.
+
+CONFIG_GRETH_FMC_MODE
+  Enable support for Ethernet FMC extension board.
+  This option is only valid for Xilinx reference designs
+  with Ethernet extension boards via FMC connectors 
 
 CONFIG_GRETH_FT
   Enable fault-tolerance (parity with sparing) for internal RAM

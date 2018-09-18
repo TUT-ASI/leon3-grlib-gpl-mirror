@@ -12,12 +12,14 @@ void mmu_so_check(void){
   int *iptr;
   volatile int *check;
 
-  check = 0x400F0000;
+  int addr = RAMSTART + 0xF0000;
+  int tmp;
+
+  check = RAMSTART + 0xF0000;
   *check = 0x0;
   //all pages are 1-1 mapped on 16MB
   //granularity apart from the one starts
   //at RAMSTART
-  //iptr=0x40040000;
   iptr = RAMSTART + 0x40000;
   for (i=0;i<256;i++){
     if (i != 64){
@@ -25,7 +27,7 @@ void mmu_so_check(void){
       *iptr = (RAMSTART>>4)+0xEE;
     } 
     else{
-      //*iptr = 0x04004801;
+      //*iptr = RAMSTART + 0x48000
       *iptr = (RAMSTART>>4)+0x04801;
     }
          
@@ -33,7 +35,7 @@ void mmu_so_check(void){
   }
 
   //256KB mappings
-  //iptr=0x40048000;
+  //iptr= RAMSTART + 0x48000
   iptr = RAMSTART+0x048000;
   //twrite = 0x04004821;
   twrite = (RAMSTART>>4)+0x04821;
@@ -43,7 +45,7 @@ void mmu_so_check(void){
   }
 
   //KB mappings
-  //iptr=0x40048200;
+  //iptr=RAMSTART+0x48200;
   iptr = RAMSTART+0x048200;
   //twrite = 0x040000EE;
   twrite = (RAMSTART>>4)+0xEE;
@@ -56,7 +58,7 @@ void mmu_so_check(void){
     }
   }
 
-  //iptr=0x40050000;
+  //iptr=RAMSTART+ 0x50000;
   //*iptr=0x04004001;
   iptr=RAMSTART+0x50000;
   *iptr=(RAMSTART>>4)+0x4001;
@@ -71,35 +73,48 @@ void mmu_so_check(void){
     asm volatile("nop\n\t");
   }
 
-  asm volatile ("add %g0,0x40,%g1\n\t");
-  asm volatile ("sll %g1,0x18,%g1\n\t");
-  asm volatile ("add %g0,0xF,%g2\n\t");
-  asm volatile ("sll %g2,0x10,%g2\n\t");
-  asm volatile ("add %g1,%g2,%g1\n\t");
   //first load
-  asm volatile ("ld [%g1],%g0");
-  for (i=0;i<10;i++){
-    asm volatile("nop\n\t");
-  }
+  asm volatile("ld [%1], %0"
+        : "=r"(tmp)
+        : "r"(addr)
+        ); 
+ 
+  asm volatile("nop\n\t");
+  asm volatile("nop\n\t");
+  asm volatile("nop\n\t");
+  asm volatile("nop\n\t");
+  asm volatile("nop\n\t");
+  asm volatile("nop\n\t");
+  asm volatile("nop\n\t");
+  asm volatile("nop\n\t");
+  asm volatile("nop\n\t");
+  asm volatile("nop\n\t");
+  
   //load in s=1  
-  asm volatile ("ld [%g1],%g0");
+  // asm volatile ("ld [%g1],%g0");
+  asm volatile("ld [%1], %0"
+        : "=r"(tmp)
+        : "r"(addr)
+        ); 
+
   for (i=0;i<10;i++){
     asm volatile("nop\n\t");
   }
-  asm volatile ("rd %psr,%g1\n\t"); 
-  asm volatile ("andn %g1,0x80,%g1\n\t");
-  asm volatile ("wr %g1,%psr\n\t"); 
+
+  //s=0
+  setpsr(xgetpsr() & (~0x80));
   for (i=0;i<10;i++){
     asm volatile("nop\n\t");
   }
-  asm volatile ("add %g0,0x40,%g1\n\t");
-  asm volatile ("sll %g1,0x18,%g1\n\t");
-  asm volatile ("add %g0,0xF,%g2\n\t");
-  asm volatile ("sll %g2,0x10,%g2\n\t");
-  asm volatile ("add %g1,%g2,%g1\n\t");
   //load in s=0 must cause an exception 
-  //addr 0x40F00000
-  asm volatile ("ld [%g1],%g0");
+  //addr 0x400F0000
+  //asm volatile ("ld [%g1],%g0");
+    asm volatile("ld [%1], %0"
+  	       : "=r"(tmp)
+  	       : "r"(addr)
+  	       ); 
+
+
    for (i=0;i<10;i++){
     asm volatile("nop\n\t");
   }
@@ -127,16 +142,27 @@ void mmu_so_check(void){
   }
   //load in user asi must cause an exception 
   //addr 0x400F0000
-  asm volatile ("add %g0,0x40,%g1\n\t");
-  asm volatile ("sll %g1,0x18,%g1\n\t");
-  asm volatile ("add %g0,0xF,%g2\n\t");
-  asm volatile ("sll %g2,0x10,%g2\n\t");
-  asm volatile ("add %g1,%g2,%g1\n\t");
-  asm volatile ("ld [%g1],%g0");
-  for (i=0;i<10;i++){
-    asm volatile("nop\n\t");
-  }
-  asm volatile ("lda [%g1] 0x0A,%g0");
+  asm volatile("ld [%1], %0"
+  	       : "=r"(tmp)
+  	       : "r"(addr)
+  	       ); 
+
+  asm volatile("nop\n\t");
+  asm volatile("nop\n\t");
+  asm volatile("nop\n\t");
+  asm volatile("nop\n\t");
+  asm volatile("nop\n\t");
+  asm volatile("nop\n\t");
+  asm volatile("nop\n\t");
+  asm volatile("nop\n\t");
+  asm volatile("nop\n\t");
+  asm volatile("nop\n\t");
+
+  asm volatile("lda [%1] 0x0A, %0"
+  	       : "=r"(tmp)
+  	       : "r"(addr)
+  	       ); 
+
   for (i=0;i<10;i++){
     asm volatile("nop\n\t");
   }
@@ -150,7 +176,7 @@ void mmu_so_check(void){
 
   if (*check != 0x123) 
     fail(2);
-  
+
 }
 
 

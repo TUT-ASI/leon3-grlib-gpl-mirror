@@ -7,7 +7,8 @@ SPEED=2
 PROMGENPAR=-u 0 $(TOP).bit -p mcs -spi -w -o $(BOARD)
 
 # For 'Vivado Synthesis' flow set:
-VIVADO_SYNTH_STRATEGY="Vivado Synthesis Defaults"
+VIVADO_SYNTH_FLOW="Vivado Synthesis 2017"
+VIVADO_SYNTH_STRATEGY="Flow_PerfOptimized_high"
 
 # Set Vivado Implementation strategy
-VIVADO_IMPL_STRATEGY="Vivado Implementation Defaults"
+VIVADO_IMPL_STRATEGY="Performance_ExtraTimingOpt"

@@ -116,12 +116,12 @@ begin
     end generate;
 
     rt4 : if tech = rtg4 generate 
-      x0 : rtg4_syncram_be generic map (abits, dbits)
+      x0 : rtg4_syncram_be generic map (abits, dbits, pipeline)
          port map (clk, address, datain, dataoutx, xenable, xwrite);
     end generate;
 
     pf : if tech = polarfire generate 
-      x0 : polarfire_syncram_be generic map (abits, dbits)
+      x0 : polarfire_syncram_be generic map (abits, dbits, pipeline)
          port map (clk, address, datain, dataoutx, xenable, xwrite);
     end generate;
 

@@ -40,7 +40,6 @@ use gaisler.axi.all;
 
 entity ahb2axib is
   generic (
-    memtech         : integer                       := 0;
     hindex          : integer                       := 0;
     aximid          : integer range 0 to 15         := 0;  --AXI master transaction ID
     wbuffer_num     : integer range 1 to 256        := 8;
@@ -269,7 +268,6 @@ begin
   
   wbuffer : syncram_2p
     generic map (
-      tech   => memtech,
       abits  => abits(wbuf_num_ptwo),
       dbits  => AXIDW,
       sepclk => 0,
