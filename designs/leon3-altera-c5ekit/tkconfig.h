@@ -44,8 +44,8 @@
 #define CONFIG_SYN_TECH ihp25rh
 #elif defined CONFIG_SYN_CMOS9SF
 #define CONFIG_SYN_TECH cmos9sf
-#elif defined CONFIG_SYN_LATTICE
-#define CONFIG_SYN_TECH lattice
+#elif defined CONFIG_SYN_BRAVEMED
+#define CONFIG_SYN_TECH nx
 #elif defined CONFIG_SYN_ECLIPSE
 #define CONFIG_SYN_TECH eclipse
 #elif defined CONFIG_SYN_PEREGRINE
@@ -66,6 +66,8 @@
 #define CONFIG_SYN_TECH smartfusion2
 #elif defined CONFIG_SYN_RTG4
 #define CONFIG_SYN_TECH rtg4
+#elif defined CONFIG_SYN_POLARFIRE
+#define CONFIG_SYN_TECH polarfire
 #elif defined CONFIG_SYN_FUSION
 #define CONFIG_SYN_TECH actfus
 #elif defined CONFIG_SYN_SPARTAN2
@@ -917,6 +919,11 @@
 #ifndef CONFIG_GRETH_SGMII_MODE
 #define CONFIG_GRETH_SGMII_MODE 0
 #endif
+
+#ifndef CONFIG_GRETH_FMC_MODE
+#define CONFIG_GRETH_FMC_MODE 0
+#endif
+
 #ifndef CONFIG_GRETH2_ENABLE
 #define CONFIG_GRETH2_ENABLE 0
 #endif

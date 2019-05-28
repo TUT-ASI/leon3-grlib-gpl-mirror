@@ -25,7 +25,8 @@ TECHLIBS = unisim
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip hynix cypress ihp gsi fmf spansion
 DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan pci leon3ft ambatest ddr \
-	leon4v0 l2cache gr1553b iommu ascs slink pwm ge_1000baseX
+	leon4v0 l2cache/v2 l2cache/v3 gr1553b iommu ascs slink pwm \
+	ge_1000baseX canfd
 FILESKIP = grcan.vhd adapters/sgmii.vhd
 
 include $(GRLIB)/bin/Makefile

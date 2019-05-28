@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -166,7 +166,8 @@ package net is
       ramdebug       : integer range 0 to 2  := 0;
       mdiohold       : integer := 1;
       maxsize        : integer := 1500;
-      gmiimode       : integer range 0 to 1  := 0
+      gmiimode       : integer range 0 to 1  := 0;
+      num_desc       : integer range 128 to 65536 := 128
       );
     port(
      rst            : in  std_ulogic;
@@ -216,7 +217,8 @@ package net is
       ramdebug       : integer range 0 to 2  := 0;
       mdiohold       : integer := 1;
       maxsize        : integer := 1500;
-      gmiimode       : integer range 0 to 1  := 0
+      gmiimode       : integer range 0 to 1  := 0;
+      num_desc       : integer range 128 to 65536 := 128
       );
     port(
       rst            : in  std_ulogic;
@@ -266,7 +268,7 @@ package net is
       edclsepahb     : integer range 0 to 1  := 0;
       ramdebug       : integer range 0 to 2  := 0;
       mdiohold       : integer := 1;
-      rgmiimode      : integer range 0 to 1  := 0;
+   --   rgmiimode      : integer range 0 to 1  := 0;
       gmiimode       : integer range 0 to 1  := 0;
       mdiochain      : integer range 0 to 1  := 0;
       iotest         : integer range 0 to 1  := 0
@@ -382,7 +384,8 @@ package net is
     mdiohold       : integer := 1;
     maxsize        : integer := 1500;
     rgmiimode      : integer range 0 to 1  := 0;
-    gmiimode       : integer range 0 to 1  := 0
+    gmiimode       : integer range 0 to 1  := 0;
+    num_desc       : integer range 128 to 65536 := 128
     ); 
   port(
     rst            : in  std_ulogic;
@@ -647,6 +650,34 @@ package net is
     );
   end component;
 
+  component rgmii_kc705 is
+  generic (
+    pindex         : integer := 0;
+    paddr          : integer := 0;
+    pmask          : integer := 16#fff#;
+    tech           : integer := 0;
+    gmii           : integer := 0;
+    abits          : integer := 8;
+    pirq           : integer := 0;
+    base10_x       : integer := 0
+    );
+  port (
+    rstn     : in  std_ulogic;
+    gmiii    : out eth_in_type;
+    gmiio    : in  eth_out_type;
+    rgmiii   : in  eth_in_type;
+    rgmiio   : out eth_out_type ;
+    -- APB Status bus
+    apb_clk  : in  std_logic;
+    apb_rstn : in  std_logic;
+    apbi     : in  apb_slv_in_type;
+    apbo     : out apb_slv_out_type;
+    -- Debug Interface
+    debug_rgmii_phy_tx : out std_logic_vector(31 downto 0);
+    debug_rgmii_phy_rx : out std_logic_vector(31 downto 0)    
+    );
+  end component;
+  
   component rgmii_series7 is
   generic (
     pindex         : integer := 0;

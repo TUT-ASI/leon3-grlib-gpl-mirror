@@ -1,14 +1,9 @@
-
-
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
 -- Copyright (C) 2009 Aeroflex Gaisler
 ------------------------------------------------------------------------------
-
-
 library techmap;
 use techmap.gencomp.all;
-
 package config is
 -- Technology and synthesis options
   constant CFG_FABTECH : integer := virtex5;
@@ -171,13 +166,11 @@ package config is
   constant CFG_AHBRODDR : integer := 16#000#;
   constant CFG_ROMADDR : integer := 16#000#;
   constant CFG_ROMMASK : integer := 16#E00# + 16#000#;
-
 -- AHB RAM
   constant CFG_AHBRAMEN : integer := 0;
   constant CFG_AHBRSZ : integer := 4;
   constant CFG_AHBRADDR : integer := 16#A00#;
   constant CFG_AHBRPIPE : integer := 0;
-
 -- FT AHB RAM
   constant CFG_FTAHBRAM_EN : integer := 0;
   constant CFG_FTAHBRAM_SZ : integer := 64;
@@ -187,31 +180,21 @@ package config is
   constant CFG_FTAHBRAM_SCRU : integer := 0;
   constant CFG_FTAHBRAM_ECNT : integer := 0;
   constant CFG_FTAHBRAM_EBIT : integer := (2);
-
 -- Gaisler Ethernet core
   constant CFG_GRETH : integer := 1;
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 64;
-
-
-
-
-
-
-
+  constant CFG_GRETH_FMC : integer := 0;
 -- Gaisler Ethernet core
   constant CFG_GRETH2 : integer := 1;
   constant CFG_GRETH21G : integer := 0;
   constant CFG_ETH2_FIFO : integer := 64;
-
 -- UART 1
   constant CFG_UART1_ENABLE : integer := 1;
   constant CFG_UART1_FIFO : integer := 4;
-
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE : integer := 1;
   constant CFG_IRQ3_NSEC : integer := 0;
-
 -- Modular timer
   constant CFG_GPT_ENABLE : integer := 1;
   constant CFG_GPT_NTIM : integer := (2);
@@ -221,15 +204,12 @@ package config is
   constant CFG_GPT_SEPIRQ : integer := 1;
   constant CFG_GPT_WDOGEN : integer := 0;
   constant CFG_GPT_WDOG : integer := 16#0#;
-
 -- GPIO port
   constant CFG_GRGPIO_ENABLE : integer := 1;
   constant CFG_GRGPIO_IMASK : integer := 16#0060#;
   constant CFG_GRGPIO_WIDTH : integer := (12);
-
 -- I2C master
   constant CFG_I2C_ENABLE : integer := 1;
-
 -- SPI controller
   constant CFG_SPICTRL_ENABLE : integer := 1;
   constant CFG_SPICTRL_NUM : integer := (1);
@@ -244,7 +224,6 @@ package config is
   constant CFG_SPICTRL_SYNCRAM : integer := 0;
   constant CFG_SPICTRL_FT : integer := 0;
   constant CFG_SPICTRL_PROT : integer := 0;
-
 -- GRPCI2 interface
   constant CFG_GRPCI2_MASTER : integer := 1;
   constant CFG_GRPCI2_TARGET : integer := 1;
@@ -272,21 +251,16 @@ package config is
   constant CFG_GRPCI2_TRACEAPB : integer := 0;
   constant CFG_GRPCI2_BYPASS : integer := 0;
   constant CFG_GRPCI2_EXTCFG : integer := (0);
-
 -- PCI arbiter
   constant CFG_PCI_ARB : integer := 1;
   constant CFG_PCI_ARBAPB : integer := 1;
   constant CFG_PCI_ARB_NGNT : integer := (8);
-
 -- SVGA controller
   constant CFG_SVGA_ENABLE : integer := 0;
-
 -- AMBA System ACE Interface Controller
   constant CFG_GRACECTRL : integer := 1;
-
 -- AMBA Wrapper for Xilinx System Monitor
   constant CFG_GRSYSMON : integer := 0;
-
 -- GRLIB debugging
   constant CFG_DUART : integer := 0;
 end;

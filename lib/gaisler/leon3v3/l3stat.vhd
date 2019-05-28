@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -311,10 +311,12 @@ begin
     rv(0 to ncnt-1) := rc; mrv(0 to nmax_right) := mrc; v := r; 
     lrc(0 to ncnt-1) := rc; lmrc(0 to nmax_right) := mrc;
     addr := conv_integer(apbi.paddr(MADDR-1 downto 2));
-    rdata := zero32; rdata2 := zero32; v.latcnt := '0'; v.timer := (others => '0');
+    rdata := zero32; rdata2 := zero32; v.latcnt := '0';
     if LATCH_CNT then
       v.latcnt := stati.latcnt;
       if r.latcnt = '1' then v.timer := stati.timer; end if;
+    else
+      v.timer := (others => '0');
     end if;
     for i in 0 to ncpu-1 loop dbgol(i) := dbgo(i); end loop;
     for i in ncpu to 15 loop dbgol(i) := l3_dbgo_none; end loop;
@@ -404,7 +406,7 @@ begin
         if apb2i.paddr(7) = '0' then
           rdata2 := lmrc(addr2).max;
         else
-          rdata := r.timer;
+          rdata2 := r.timer;
         end if;
         v.latcnt := v.latcnt or apb2i.pwrite;
       end if;

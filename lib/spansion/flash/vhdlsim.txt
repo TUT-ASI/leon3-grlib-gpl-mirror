@@ -1,1 +1,1 @@
-s29gl128p.vhd
+s29gl128p.vhd vhdlstd=93

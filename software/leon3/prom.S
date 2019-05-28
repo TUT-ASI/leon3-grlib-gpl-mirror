@@ -133,7 +133,9 @@ _fsrxx:
 	srl %g3, 28, %g3
 	andcc %g3, 0x0f, %g3
 	bne 1f
+	 nop
 
+#ifdef L2MCTRLIO
 	set L2MCTRLIO, %g1
 	set MCFG1, %g2
 	st  %g2, [%g1]
@@ -141,6 +143,7 @@ _fsrxx:
 	st  %g2, [%g1+4]
 	set MCFG3, %g2
 	st  %g2, [%g1+8]
+#endif
 !	set IRQCTRL, %g1
 !	set 0x0ffff, %g2
 !	st  %g2, [%g1+0x10]

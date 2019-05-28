@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -54,7 +54,8 @@ entity mmu_icache is
     lramsize  : integer range 1 to 512 := 1;
     lramstart : integer range 0 to 255 := 16#8e#;
     mmuen     : integer range 0 to 2 := 0;
-    memtech   : integer              := 0);
+    memtech   : integer              := 0;
+    icreadhold: integer range 0 to 1 := 0);
   port (
     rst : in  std_ulogic;
     clk : in  std_ulogic;
@@ -99,7 +100,6 @@ architecture rtl of mmu_icache is
   constant LRAM_START : std_logic_vector(7 downto 0) := conv_std_logic_vector(lramstart, 8);
   constant LRAM_BITS  : integer                      := log2(lramsize) + 10;
   constant LRAMCS_EN  : boolean                      := false or (lram > 1);
-  constant ICREADHOLD : boolean                      := (syncram_readhold(memtech) /= 0);
   subtype lru_type is std_logic_vector(ILRUBITS-1 downto 0);
   type lru_array is array (0 to 2**IOFFSET_BITS-1) of lru_type;  -- lru registers
   type rdatatype is (itag, idata, memory);  -- sources during cache read
@@ -350,7 +350,7 @@ begin
     enable := dco.icdiag.cctrl.ics(0);
     v.pon := cacheon;
     cacheon := cacheon and r.pon;
-    if ICREADHOLD then
+    if ICREADHOLD/=0 then
       enable := enable and (eholdn or not r.holdn);
     end if;
     enable := enable or r.flush2;
@@ -359,7 +359,7 @@ begin
     setmask(conv_integer(r.setrepl)) := '1';
     tenable := (others => enable); denable := (others => enable);
     keepctx := '0';
-    if ICREADHOLD and r.flush2='0' and r.hit='1' and r.istate /= stop then
+    if ICREADHOLD/=0 and r.flush2='0' and r.hit='1' and r.istate /= stop then
       if ici.rbranch='0' and ici.fpc(LINE_HIGH downto LINE_LOW) /= lline then
         tenable := (others => '0');
         if ici.fbranch='0' and ici.fpc(LINE_HIGH downto LINE_LOW) /= fline then
@@ -681,7 +681,7 @@ begin
     if diagen = '1' then -- diagnostic or local ram access
       tenable := (others => '1');
       denable := (others => '1');
-      if r.diagrdy='0' or (not ICREADHOLD) then
+      if r.diagrdy='0' or ICREADHOLD=0 then
         taddr(TAG_HIGH downto LINE_LOW) := dco.icdiag.addr(TAG_HIGH downto LINE_LOW);
         wtag(TAG_HIGH downto TAG_LOW) := dci.maddress(TAG_HIGH downto TAG_LOW);
         wlrr := dci.maddress(CTAG_LRRPOS);

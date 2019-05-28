@@ -12,6 +12,7 @@ UCF=leon3mp.ucf
 ifeq ("$(CONFIG_GR1553B_ENABLE)","y")
 UCF+=leon3mp_1553.ucf
 endif
+UCF_PLANAHEAD=$(UCF)
 QSF=$(GRLIB)/boards/$(BOARD)/$(TOP).qsf
 EFFORT=high
 XSTOPT=

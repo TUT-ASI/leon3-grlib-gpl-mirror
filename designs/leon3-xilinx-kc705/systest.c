@@ -16,18 +16,7 @@ main()
   
   base_test();
       
-  //  greth_test(0x800c0000);
-
-  /* Read RGMII status and buffers */
-  rgmiistatus = *rgmiistatusp;
-
-  for (i = 0; i < 16; i++) {
-     rgmiibuf[i] = *(rgmiiop + i);
-  }
-
-  for (i = 0; i < 16; i++) {
-     rgmiibuf[i] = *(rgmiiip + i);
-  }
+  greth_test(0x800c0000);
 
   report_end();
 }

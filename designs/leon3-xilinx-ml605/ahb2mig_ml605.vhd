@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -40,9 +40,9 @@ package ml605 is
   constant DM_WIDTH  : integer := 8;
   constant DQ_WIDTH  : integer := 64;
   constant DQS_WIDTH : integer := 8;
-  constant ROW_WIDTH : integer := 13;
+  constant ROW_WIDTH : integer := 14;
   constant PAYLOAD_WIDTH : integer := 64;
-  constant ADDR_WIDTH    : integer := 27;
+  constant ADDR_WIDTH    : integer := 28;
 
   type mig_app_in_type is record
       app_wdf_wren  : std_logic;
@@ -315,7 +315,7 @@ begin
    ahbso.hresp   <= ra.hresp;
    ahbso.hrdata <= ahbdrivedata(ra.hrdata);
 
-   migi.app_addr  <= '0' & ra.acc.haddr(28 downto 6) & "000";
+   migi.app_addr  <= '0' & ra.acc.haddr(29 downto 6) & "000";
 
    ddr_ctrl : process(rst, r, ra, migo)
    variable v        : ddr_reg_type;   -- local variables for registers

@@ -44,8 +44,8 @@
 #define CONFIG_SYN_TECH ihp25rh
 #elif defined CONFIG_SYN_CMOS9SF
 #define CONFIG_SYN_TECH cmos9sf
-#elif defined CONFIG_SYN_LATTICE
-#define CONFIG_SYN_TECH lattice
+#elif defined CONFIG_SYN_BRAVEMED
+#define CONFIG_SYN_TECH nx
 #elif defined CONFIG_SYN_ECLIPSE
 #define CONFIG_SYN_TECH eclipse
 #elif defined CONFIG_SYN_PEREGRINE
@@ -66,6 +66,8 @@
 #define CONFIG_SYN_TECH smartfusion2
 #elif defined CONFIG_SYN_RTG4
 #define CONFIG_SYN_TECH rtg4
+#elif defined CONFIG_SYN_POLARFIRE
+#define CONFIG_SYN_TECH polarfire
 #elif defined CONFIG_SYN_FUSION
 #define CONFIG_SYN_TECH actfus
 #elif defined CONFIG_SYN_SPARTAN2
@@ -183,8 +185,8 @@
 #define CFG_CLK_TECH CONFIG_SYN_TECH
 #elif defined CONFIG_CLK_HCLKBUF
 #define CFG_CLK_TECH axcel
-#elif defined CONFIG_CLK_LATDLL
-#define CFG_CLK_TECH lattice
+#elif defined CONFIG_CLK_BRAVEMED
+#define CFG_CLK_TECH nx
 #elif defined CONFIG_CLK_PRO3PLL
 #define CFG_CLK_TECH apa3
 #elif defined CONFIG_CLK_PRO3EPLL
@@ -843,7 +845,13 @@
 #define CONFIG_L2_MTRR 0
 #endif
 
-#ifndef CONFIG_L2_EDAC
+#if defined CONFIG_L2_EDAC_NONE
+#define CONFIG_L2_EDAC 0
+#elif defined CONFIG_L2_EDAC_YES
+#define CONFIG_L2_EDAC 1
+#elif defined CONFIG_L2_EDAC_TECHSPEC
+#define CONFIG_L2_EDAC 2
+#else
 #define CONFIG_L2_EDAC 0
 #endif
 
@@ -1362,6 +1370,11 @@
 #ifndef CONFIG_GRETH_SGMII_MODE
 #define CONFIG_GRETH_SGMII_MODE 0
 #endif
+
+#ifndef CONFIG_GRETH_FMC_MODE
+#define CONFIG_GRETH_FMC_MODE 0
+#endif
+
 #ifndef CONFIG_GRETH2_ENABLE
 #define CONFIG_GRETH2_ENABLE 0
 #endif

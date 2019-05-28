@@ -20,7 +20,20 @@
     fi
     bool 'Enable RMAP CRC check  ' CONFIG_SPW_RMAPCRC
     bool 'Enable Rx unaligned transfers ' CONFIG_SPW_RXUNAL
-    bool 'Spacewire FIFO protection           ' CONFIG_SPW_FT
+    if [ "$CONFIG_SPW_GRSPW1" = "y" ]; then
+      choice 'GRSPW1 FIFO protection           ' \
+        "None		CONFIG_SPW_FT_NONE \
+	 Parity-DMR	CONFIG_SPW_FT_DMR \
+	 TMR		CONFIG_SPW_FT_TMR" None
+    fi
+    if [ "$CONFIG_SPW_GRSPW2" = "y" ]; then
+      choice 'GRSPW2 FIFO protection           ' \
+        "None		CONFIG_SPW_FT_NONE \
+	 Parity-DMR	CONFIG_SPW_FT_DMR \
+	 TMR		CONFIG_SPW_FT_TMR \
+	 BCH  		CONFIG_SPW_FT_BCH \
+	 TechSpec	CONFIG_SPW_FT_TECHSPEC" None
+    fi
     bool 'Use GRSPWC netlist     ' CONFIG_SPW_NETLIST
     int 'Number of ports (1 - 2)' CONFIG_SPW_PORTS 1  
     choice 'Select GRSPW core (GRSPW1/GRSPW2) ' \

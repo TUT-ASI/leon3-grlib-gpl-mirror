@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -357,7 +357,9 @@ package libcache is
       dlram     : integer range 0 to 2     := 0;
       dlramsize : integer range 1 to 512   := 1;
       mmuen     : integer range 0 to 2     := 0;
-      testen    : integer range 0 to 3     := 0
+      testen    : integer range 0 to 3     := 0;
+      icreadhold: integer range 0 to 1     := 0;
+      dcreadhold: integer range 0 to 1     := 0
       );
     port (
         clk   : in  std_ulogic;
@@ -424,7 +426,8 @@ package libcache is
       lramsize  :     integer range 1 to 512 := 1;
       lramstart :     integer range 0 to 255 := 16#8e#;
       mmuen     :     integer range 0 to 2   := 0;
-      memtech   :     integer                := 0
+      memtech   :     integer                := 0;
+      icreadhold :    integer range 0 to 1   := 0
       );
     port (
       rst       : in  std_logic;
@@ -468,7 +471,8 @@ package libcache is
       smp        :     integer                  := 0;
       mmuen      :     integer range 0 to 2     := 0;
       icen       :     integer range 0 to 1     := 0;
-      irqlat     :     integer range 0 to 1     := 0
+      irqlat     :     integer range 0 to 1     := 0;
+      dcreadhold :     integer range 0 to 1     := 0
       );
     port (
       rst        : in  std_logic;
@@ -524,7 +528,9 @@ package libcache is
       mmupgsz    :     integer range 0 to 5     := 0;
       smp        :     integer                  := 0;
       mmuen      :     integer range 0 to 2     := 0;
-      irqlat     :     integer range 0 to 1     := 0
+      irqlat     :     integer range 0 to 1     := 0;
+      dcreadhold :     integer range 0 to 1     := 0;
+      icreadhold :     integer range 0 to 1     := 0
       );
     port (
       rst        : in  std_ulogic;

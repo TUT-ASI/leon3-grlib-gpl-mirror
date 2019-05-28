@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -74,7 +74,8 @@ entity iu3 is
     rex      : integer range 0 to 1 := 0;
     altwin   : integer range 0 to 1 := 0;
     rfmemtech: integer range 0 to NTECH := 0;
-    irqlat   : integer range 0 to 1 := 0
+    irqlat   : integer range 0 to 1 := 0;
+    rfreadhold : integer range 0 to 1 := 0
   );
   port (
     clk   : in  std_ulogic;
@@ -154,8 +155,6 @@ architecture rtl of iu3 is
   constant REXPIPE : boolean := (REX=1) and (is_fpga(FABTECH)/=0);
   constant AWPEN : boolean := (altwin /= 0);
   constant RFPART : boolean := (altwin /= 0);
-
-  constant RF_READHOLD : boolean := regfile_3p_infer(rfmemtech)/=0 or syncram_2p_readhold(rfmemtech)/=0;
 
   subtype word is std_logic_vector(31 downto 0);
   subtype pctype is std_logic_vector(31 downto PCLOW);
@@ -4575,11 +4574,11 @@ begin
     v.a.ctrl.cnt := r.d.cnt;
     v.a.step := r.d.step;
     
-    if holdn = '0' and not RF_READHOLD then
+    if holdn = '0' and RFREADHOLD=0 then
       de_raddr1(RFBITS-1 downto 0) := r.a.rfa1;
       de_raddr2(RFBITS-1 downto 0) := r.a.rfa2;
       de_ren1 := r.a.rfe1; de_ren2 := r.a.rfe2;
-    elsif holdn='0' and RF_READHOLD then
+    elsif holdn='0' and RFREADHOLD/=0 then
       de_ren1 := '0'; de_ren2 := '0';
     else
       de_ren1 := v.a.rfe1; de_ren2 := v.a.rfe2;
@@ -4996,7 +4995,7 @@ begin
     if rex=1 then pc(1):=r.x.ctrl.pc(2-1*REX); rexen:=(r.x.ctrl.pc(2-2*REX)='1'); end if;
     if (disas = 1) and rising_edge(clk) and (rstn = '1') then
       print_insn (index, pc, r.x.ctrl.inst,
-                  rin.w.result, valid, r.x.ctrl.trap = '1', rin.w.wreg = '1',
+                  rin.w.result, valid, r.x.ctrl.trap = '1' or r.x.mexc='1', rin.w.wreg = '1',
                   rexen);
     end if;
   end process;

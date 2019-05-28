@@ -3,5 +3,5 @@ sim/rmap_tp.vhd
 sim/spw_sim_codec_pkg.vhd
 sim/spw_sim_codec.vhd
 sim/grspwrouter_tp.vhd
-sim/routertestmod.vhd
+sim/routertestmod.vhd vhdlstd=93
 

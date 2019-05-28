@@ -100,63 +100,74 @@ set_property SLEW FAST [get_ports phy_tx*]
 create_clock -period 8.000 -name phy_rxclk [get_ports phy_rxclk]
 set_propagated_clock [get_clocks phy_rxclk]
 
-#create_clock -period 8.000 -name phy_gtxclk [get_pins eth0.gtrefclk_pad/xcv.u0/*/O]
-create_clock -period 8.000 -name phy_gtxclk [get_pins eth0.ibufds_gtrefclk/O]
-set_propagated_clock [get_clocks phy_gtxclk]
-
-set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets -of [get_pins eth0.ibufds_gtrefclk/O]]
-
 # CDC
 set_max_delay -datapath_only -from [all_registers -clock [get_clocks -include_generated_clocks clk200]    ] -to [all_registers -clock [get_clocks phy_rxclk]                           ] 8.000
-set_max_delay -datapath_only -from [all_registers -clock [get_clocks -include_generated_clocks clk200]    ] -to [all_registers -clock [get_clocks -include_generated_clocks phy_gtxclk]] 8.000
 set_max_delay -datapath_only -from [all_registers -clock [get_clocks phy_rxclk]                           ] -to [all_registers -clock [get_clocks -include_generated_clocks clk200]    ] 8.000
-set_max_delay -datapath_only -from [all_registers -clock [get_clocks -include_generated_clocks phy_gtxclk]] -to [all_registers -clock [get_clocks -include_generated_clocks clk200]    ] 8.000
 
-# Output MUX 
-# Data and Control
-## set_false_path -from [get_clocks -include_generated_clocks clk200] -through [get_ports phy_tx*] -to [get_clocks -include_generated_clocks phy_gtxclk]
-## set_false_path -from [get_clocks -include_generated_clocks phy_gtxclk] -through [get_ports phy_tx*] -to [get_clocks -include_generated_clocks clk200]
+set_max_delay -datapath_only -from [all_registers -clock [get_clocks clk_pll_i]  ] -to [all_registers -clock [get_clocks phy_rxclk]      ] 8.000
+set_max_delay -datapath_only -from [all_registers -clock [get_clocks clk_pll_i]  ] -to [all_registers -clock [get_clocks clk125_nobuf_0] ] 8.000
+set_max_delay -datapath_only -from [all_registers -clock [get_clocks clk_pll_i]  ] -to [all_registers -clock [get_clocks clk125_nobuf_90] ] 8.000
+set_max_delay -datapath_only -from [all_registers -clock [get_clocks clk_pll_i]  ] -to [all_registers -clock [get_clocks clk25_nobuf_0]  ] 8.000
+set_max_delay -datapath_only -from [all_registers -clock [get_clocks clk_pll_i]  ] -to [all_registers -clock [get_clocks clk25_nobuf_90]  ] 8.000
 
-# Outputs
-#set_output_delay -clock [get_clocks -include_generated_clocks phy_gtxclk] -max 2.000 [get_ports phy_txd[*]]
-#set_output_delay -clock [get_clocks -include_generated_clocks phy_gtxclk] -min 1.000 [get_ports phy_txd[*]]
-#set_output_delay -clock [get_clocks -include_generated_clocks phy_gtxclk] -max 2.000 [get_ports phy_txd[*]] -add_delay -clock_fall
-#set_output_delay -clock [get_clocks -include_generated_clocks phy_gtxclk] -min 1.000 [get_ports phy_txd[*]] -add_delay -clock_fall
+set_max_delay -datapath_only -from [all_registers -clock [get_clocks phy_rxclk]       ] -to [all_registers -clock [get_clocks clk_pll_i] ] 8.000
+set_max_delay -datapath_only -from [all_registers -clock [get_clocks clk125_nobuf_0]  ] -to [all_registers -clock [get_clocks clk_pll_i] ] 8.000
+set_max_delay -datapath_only -from [all_registers -clock [get_clocks clk25_nobuf_0]   ] -to [all_registers -clock [get_clocks clk_pll_i] ] 8.000
 
-#set_output_delay -clock [get_clocks -include_generated_clocks phy_gtxclk] -max 2.000 [get_ports phy_txctl_txen]
-#set_output_delay -clock [get_clocks -include_generated_clocks phy_gtxclk] -min 1.000 [get_ports phy_txctl_txen]
-#set_output_delay -clock [get_clocks -include_generated_clocks phy_gtxclk] -max 2.000 [get_ports phy_txctl_txen] -add_delay -clock_fall
-#set_output_delay -clock [get_clocks -include_generated_clocks phy_gtxclk] -min 1.000 [get_ports phy_txctl_txen] -add_delay -clock_fall
 
-#output timing for rgmii - derated slightly due to pessimism in the tools
-create_generated_clock -name rgmii_tx_clk -divide_by 1 -source [get_pins eth0.rgmii0/*rgmii_tx_clk/*/*/C] [get_ports phy_gtxclk]
+# Create generated clock (Forwarded Clock Driven by ODDR)
+create_generated_clock -name phy_gtxclk_clk -multiply_by 1 -source [get_pins eth0.rgmii0/rgmii_tx_clk/xil.xil0/V7.U0/C] [get_ports phy_gtxclk]
 
-set_output_delay 0.75 -max -clock [get_clocks rgmii_tx_clk] [get_ports {phy_txd[*] phy_txctl_txen}]
-set_output_delay -0.7 -min -clock [get_clocks rgmii_tx_clk] [get_ports {phy_txd[*] phy_txctl_txen}]
-set_output_delay 0.75 -max -clock [get_clocks rgmii_tx_clk] [get_ports {phy_txd[*] phy_txctl_txen}] -clock_fall -add_delay
-set_output_delay -0.7 -min -clock [get_clocks rgmii_tx_clk] [get_ports {phy_txd[*] phy_txctl_txen}] -clock_fall -add_delay
+# clk25_nobuf_0 clk125_nobuf_0
+# Outputs (Ts=1.0ns Th=0.8ns Period=8ns)
+set_output_delay -clock [get_clocks phy_gtxclk_clk] -max 0.5             [get_ports {phy_txd[*] phy_txctl_txen}]
+set_output_delay -clock [get_clocks phy_gtxclk_clk] -min 0.5             [get_ports {phy_txd[*] phy_txctl_txen}]
+set_output_delay -clock [get_clocks phy_gtxclk_clk] -max 0.5             [get_ports {phy_txd[*] phy_txctl_txen}] -clock_fall -add_delay
+set_output_delay -clock [get_clocks phy_gtxclk_clk] -min 0.5             [get_ports {phy_txd[*] phy_txctl_txen}] -clock_fall -add_delay
+set_false_path -from [get_clocks clk25_nobuf_0] -to [get_clocks clk25_nobuf_90] 
+set_false_path -from [get_clocks clk25_nobuf_0] -to [get_clocks clk125_nobuf_0] 
+set_false_path -from [get_clocks clk25_nobuf_0] -to [get_clocks clk125_nobuf_90] 
+set_false_path -from [get_clocks clk25_nobuf_90] -to [get_clocks clk25_nobuf_0] 
+set_false_path -from [get_clocks clk25_nobuf_90] -to [get_clocks clk125_nobuf_0] 
+set_false_path -from [get_clocks clk25_nobuf_90] -to [get_clocks clk125_nobuf_90] 
+set_false_path -from [get_clocks clk125_nobuf_0] -to [get_clocks clk25_nobuf_0] 
+set_false_path -from [get_clocks clk125_nobuf_0] -to [get_clocks clk25_nobuf_90] 
+set_false_path -from [get_clocks clk125_nobuf_0] -to [get_clocks clk125_nobuf_90] 
+set_false_path -from [get_clocks clk125_nobuf_90] -to [get_clocks clk25_nobuf_0] 
+set_false_path -from [get_clocks clk125_nobuf_90] -to [get_clocks clk25_nobuf_90] 
+set_false_path -from [get_clocks clk125_nobuf_90] -to [get_clocks clk125_nobuf_0] 
+set_false_path -from [get_clocks clk125_nobuf_0] -to [get_clocks phy_gtxclk_clk] 
+set_false_path -from [get_clocks clk125_nobuf_90] -to [get_clocks phy_gtxclk_clk] 
 
-# Inputs
-set_input_delay -clock [get_clocks phy_rxclk] -max 1.000 [get_ports {phy_rxd[*] phy_rxctl_rxdv}]
-set_input_delay -clock [get_clocks phy_rxclk] -min 0.000 [get_ports {phy_rxd[*] phy_rxctl_rxdv}]
-set_input_delay -clock [get_clocks phy_rxclk] -max 1.000 [get_ports {phy_rxd[*] phy_rxctl_rxdv}] -add_delay -clock_fall
-set_input_delay -clock [get_clocks phy_rxclk] -min 0.000 [get_ports {phy_rxd[*] phy_rxctl_rxdv}] -add_delay -clock_fall
+#set_case_analysis 1 [get_pins eth0.rgmii0/clkmux1000/tec.xil.buf/buf/S0]
+#set_case_analysis 0 [get_pins eth0.rgmii0/clkmux1000/tec.xil.buf/buf/S1]
+#get_pins eth0.rgmii0/clkmux1000/tec.xil.buf/buf/S0
+#get_pins eth0.rgmii0/clkmux1000/tec.xil.buf/buf/S1
+#report_timing -to [get_ports phy_txd[0]] -delay_type max
+#report_timing -to [get_ports phy_txd[0]] -delay_type min
+
+set_false_path -to   [get_clocks {io_ref_nobuf_0}]
+set_false_path -from [get_clocks {io_ref_nobuf_0}]
+
+# Inputs (Ts=0.9ns Th=0.2ns Period=8ns)
+#set_input_delay -clock [get_clocks phy_rxclk] -max [expr 8 / 2 – 0.9] [get_ports {phy_rxd[*] phy_rxctl_rxdv}]
+##set_input_delay -clock [get_clocks phy_rxclk] -min 0.200              [get_ports {phy_rxd[*] phy_rxctl_rxdv}]
+#set_input_delay -clock [get_clocks phy_rxclk] -max [expr 8 / 2 – 0.9] [get_ports {phy_rxd[*] phy_rxctl_rxdv}] -add_delay -clock_fall
+##set_input_delay -clock [get_clocks phy_rxclk] -min 0.200              [get_ports {phy_rxd[*] phy_rxctl_rxdv}] -add_delay -clock_fall
 
 # False paths
 set_false_path -to [get_ports phy_reset]
-#set_false_path -from [get_ports phy_col]
-#set_false_path -from [get_ports phy_crs]
 set_false_path -from [get_ports phy_int]
 
 # MDIO BiDir
-set_input_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 5.000 [get_ports phy_mdio]
-set_input_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay 1.000 [get_ports phy_mdio]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max -add_delay 1.000 [get_ports phy_mdio]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay -1.000 [get_ports phy_mdio]
+set_input_delay -clock  [get_clocks clk_pll_i] -max 5.000 [get_ports phy_mdio]
+set_input_delay -clock  [get_clocks clk_pll_i] -min 1.000 [get_ports phy_mdio]
+set_output_delay -clock [get_clocks clk_pll_i] -max -add_delay 1.000 [get_ports phy_mdio]
+set_output_delay -clock [get_clocks clk_pll_i] -min -add_delay -1.000 [get_ports phy_mdio]
 
 # MDIO - Outputs
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -max 1.000 [get_ports phy_mdc]
-set_output_delay -clock [get_clocks -include_generated_clocks CLKFBOUT] -min -add_delay -1.000 [get_ports phy_mdc]
+set_output_delay -clock [get_clocks clk_pll_i] -max 1.000 [get_ports phy_mdc]
+set_output_delay -clock [get_clocks clk_pll_i] -min -1.000 [get_ports phy_mdc]
 
 # apply the same IDELAY_VALUE to all GMII RX inputs
 #set_property IDELAY_VALUE 20 [get_cells {eth0.delay* eth0.rgmii*.delay*}]

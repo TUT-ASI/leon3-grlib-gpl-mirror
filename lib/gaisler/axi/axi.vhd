@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -245,6 +245,7 @@ package axi is
                                                              --1->narrow burst directly
                                                              --transalted to AXI
                                                              --supported only in BE-to-BE
+      ostand_writes  : integer range 1 to 16          := 4;
       -- scantest
       scantest        : integer                       := 0;
       -- GRLIB plug&play configuration

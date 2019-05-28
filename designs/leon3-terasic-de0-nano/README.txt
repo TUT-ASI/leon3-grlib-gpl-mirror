@@ -19,92 +19,90 @@ might need to start jtagd as root to get the proper port permissions.
 
 The output from grmon should look something like this:
 
-  GRMON2 LEON debug monitor v2.0.24b-19-g3c2d5b6
+  GRMON LEON debug monitor v3.0.13
   
-  Copyright (C) 2012 Aeroflex Gaisler - All rights reserved.
+  Copyright (C) 2018 Cobham Gaisler - All rights reserved.
   For latest updates, go to http://www.gaisler.com/
   Comments or bug-reports to support@gaisler.com
-  
- JTAG chain (1): EP3C25/EP4CE22 
 
-  GRLIB build version: 4114
+JTAG chain (1): EP3C25/EP4CE22
+  GRLIB build version: 4229
   Detected frequency:  50 MHz
   
   Component                            Vendor
-  LEON3 SPARC V8 Processor             Aeroflex Gaisler
-  JTAG Debug Link                      Aeroflex Gaisler
-  SPI Memory Controller                Aeroflex Gaisler
-  AHB/APB Bridge                       Aeroflex Gaisler
-  LEON3 Debug Support Unit             Aeroflex Gaisler
-  PC133 SDRAM Controller               Aeroflex Gaisler
-  Generic UART                         Aeroflex Gaisler
-  Multi-processor Interrupt Ctrl.      Aeroflex Gaisler
-  Modular Timer Unit                   Aeroflex Gaisler
-  AMBA Wrapper for OC I2C-master       Aeroflex Gaisler
-  SPI Controller                       Aeroflex Gaisler
-  General Purpose I/O port             Aeroflex Gaisler
-  General Purpose I/O port             Aeroflex Gaisler
-  General Purpose I/O port             Aeroflex Gaisler
-  AHB Status Register                  Aeroflex Gaisler
+  LEON3 SPARC V8 Processor             Cobham Gaisler
+  JTAG Debug Link                      Cobham Gaisler
+  SPI Memory Controller                Cobham Gaisler
+  AHB/APB Bridge                       Cobham Gaisler
+  LEON3 Debug Support Unit             Cobham Gaisler
+  PC133 SDRAM Controller               Cobham Gaisler
+  Generic UART                         Cobham Gaisler
+  Multi-processor Interrupt Ctrl.      Cobham Gaisler
+  Modular Timer Unit                   Cobham Gaisler
+  AMBA Wrapper for OC I2C-master       Cobham Gaisler
+  SPI Controller                       Cobham Gaisler
+  General Purpose I/O port             Cobham Gaisler
+  General Purpose I/O port             Cobham Gaisler
+  General Purpose I/O port             Cobham Gaisler
+  AHB Status Register                  Cobham Gaisler
   
   Use command 'info sys' to print a detailed report of attached cores
 
-grmon2> info sys
-  cpu0      Aeroflex Gaisler  LEON3 SPARC V8 Processor    
+grmon3> info sys
+  cpu0      Cobham Gaisler  LEON3 SPARC V8 Processor
             AHB Master 0
-  ahbjtag0  Aeroflex Gaisler  JTAG Debug Link    
+  ahbjtag0  Cobham Gaisler  JTAG Debug Link
             AHB Master 1
-  spim0     Aeroflex Gaisler  SPI Memory Controller    
+  spim0     Cobham Gaisler  SPI Memory Controller
             AHB: FFF00200 - FFF00300
             AHB: 00000000 - 10000000
-            IRQ: 9
+            IRQ: 10
             SPI memory device read command: 0x0b
-  apbmst0   Aeroflex Gaisler  AHB/APB Bridge    
+  apbmst0   Cobham Gaisler  AHB/APB Bridge
             AHB: 80000000 - 80100000
-  dsu0      Aeroflex Gaisler  LEON3 Debug Support Unit    
+  dsu0      Cobham Gaisler  LEON3 Debug Support Unit
             AHB: 90000000 - A0000000
-            AHB trace: 128 lines, 32-bit bus
-            CPU0:  win 8, hwbp 2, itrace 128, V8 mul/div, lddel 1
+            AHB trace: 1024 lines, 32-bit bus
+            CPU0:  win 8, nwp 4, itrace 1024, V8 mul/div, lddel 1
                    stack pointer 0x40fffff0
-                   icache 2 * 4 kB, 32 B/line rnd
-                   dcache 1 * 4 kB, 16 B/line 
-  sdctrl0   Aeroflex Gaisler  PC133 SDRAM Controller    
+                   icache 2 * 4 kB, 32 B/line
+                   dcache 2 * 4 kB, 16 B/line
+  sdctrl0   Cobham Gaisler  PC133 SDRAM Controller
             AHB: 40000000 - 42000000
             AHB: FFF00100 - FFF00200
-            32-bit sdram: 1 * 0 Mbyte @ 0x40000000, 
+            32-bit sdram: 1 * 16 Mbyte @ 0x40000000,
             col 8, cas 2, ref 7.8 us
-  uart0     Aeroflex Gaisler  Generic UART    
+  uart0     Cobham Gaisler  Generic UART
             APB: 80000100 - 80000200
             IRQ: 2
-            Baudrate 38343
-  irqmp0    Aeroflex Gaisler  Multi-processor Interrupt Ctrl.    
+            Baudrate 38343, FIFO debug mode
+  irqmp0    Cobham Gaisler  Multi-processor Interrupt Ctrl.
             APB: 80000200 - 80000300
-  gptimer0  Aeroflex Gaisler  Modular Timer Unit    
+  gptimer0  Cobham Gaisler  Modular Timer Unit
             APB: 80000300 - 80000400
             IRQ: 8
             16-bit scalar, 2 * 32-bit timers, divisor 50
-  i2cmst0   Aeroflex Gaisler  AMBA Wrapper for OC I2C-master    
+  i2cmst0   Cobham Gaisler  AMBA Wrapper for OC I2C-master
             APB: 80000400 - 80000500
             IRQ: 3
-  spi0      Aeroflex Gaisler  SPI Controller    
+  spi0      Cobham Gaisler  SPI Controller
             APB: 80000500 - 80000600
             IRQ: 5
             FIFO depth: 4, 1 slave select signals
             Maximum word length: 32 bits
             Supports 3-wire mode
             Controller index for use in GRMON: 0
-  grgpio0   Aeroflex Gaisler  General Purpose I/O port    
+  gpio0     Cobham Gaisler  General Purpose I/O port
             APB: 80000900 - 80000A00
-  grgpio1   Aeroflex Gaisler  General Purpose I/O port    
+  gpio1     Cobham Gaisler  General Purpose I/O port
             APB: 80000A00 - 80000B00
-  grgpio2   Aeroflex Gaisler  General Purpose I/O port    
+  gpio2     Cobham Gaisler  General Purpose I/O port
             APB: 80000B00 - 80000C00
-  ahbstat0  Aeroflex Gaisler  AHB Status Register    
+  ahbstat0  Cobham Gaisler  AHB Status Register
             APB: 80000F00 - 80001000
             IRQ: 1
-            non-correctable read error of size 0 by master 0 at 0x00000000
   
-grmon2> spim flash detect
+grmon3> spim flash detect
   Got manufacturer ID 0x20 and device ID 0x2017
   Detected device: ST/Numonyx M25P64
   
@@ -172,10 +170,10 @@ Execution Start Address: 00050000
 Data:   050000 - 05022F
 user@host:~/grlib/designs/leon3-terasic-de0-nano$ 
 
-We then use GRMON2 to load the S-REC. First we check that our Flash device does not
+We then use GRMON to load the S-REC. First we check that our Flash device does not
 contain data at (AMBA) address 0x0:
 
-grmon2> mem 0
+grmon3> mem 0
   0x00000000  ffffffff  ffffffff  ffffffff  ffffffff    ................
   0x00000010  ffffffff  ffffffff  ffffffff  ffffffff    ................
   0x00000020  ffffffff  ffffffff  ffffffff  ffffffff    ................
@@ -188,11 +186,11 @@ programmed with application data.
 
 If the Flash is erased (all 0xFF) we can proceed with loading our S-REC:
 
-grmon2> spim flash detect
+grmon3> spim flash detect
   Got manufacturer ID 0x20 and device ID 0x2017
   Detected device: ST/Numonyx M25P64
   
-grmon2> spim flash load prom_off.srec
+grmon3> spim flash load prom_off.srec
   00050000 prom.srec                  1.4kB /   1.4kB   [===============>] 100%
   Total size: 560B (1.52kbit/s)
   Entry point 0x50000
@@ -200,25 +198,25 @@ grmon2> spim flash load prom_off.srec
 
 The data has been loaded and is available at address 0x0:
 
-grmon2> mem 0
+grmon3> mem 0
   0x00000000  81d82000  03000004  821060e0  81884000    .. .......`...@.
   0x00000010  81900000  81980000  81800000  a1800000    ................
   0x00000020  01000000  03002040  8210600f  c2a00040    ...... @..`....@
   0x00000030  84100000  01000000  01000000  01000000    ................
   
-grmon2> 
+grmon3>
 
 The "verify" command in GRMON performs normal memory accesses. Using
 this command we can check that what the processor will see matches
 what we have in the (unmodified) prom.srec:
 
-grmon2> verify prom.srec
+grmon3> verify prom.srec
   00000000 prom.srec                  1.5kB /   1.5kB   [===============>] 100%
   Total size: 560B (10.64kbit/s)
   Entry point 0x0
   Image of /home/user/grlib/designs/leon3-terasic-de0-nano/prom.srec verified without errors
   
-grmon2> 
+grmon3>
 
 The flash can be cleared using the GRMON command "spim flash erase".
 Note that this will erase the entire Flash device, including the FPGA
@@ -246,7 +244,7 @@ One I2CMST core is connected to the board's I2C bus where the EEPROM
 and accelerometer can be accessed:
 
 
-grmon2> i2c scan
+grmon3> i2c scan
   Scanning 7-bit address space on I2C bus:
   Detected I2C device at address 0x1d
   Detected I2C device at address 0x50
@@ -260,7 +258,7 @@ grmon2> i2c scan
   
   Scan of I2C bus completed. 9 devices found
   
-grmon2> 
+grmon3>
 
 The g_sensor_int signalis mapped to the GRGPIO2 core (see below)
 

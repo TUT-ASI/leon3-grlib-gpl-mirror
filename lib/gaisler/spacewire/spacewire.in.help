@@ -50,9 +50,22 @@ CONFIG_SPW_NETLIST
   configurations can be requested from Gaisler Research.
 
 Spacewire FT
-CONFIG_SPW_FT
-  Say Y here to implement the Spacewire block rams with fault-tolerance
-  against SEU errors.
+CONFIG_SPW_FT_NONE
+  No fault-tolerance in SpaceWire internal FIFOs.
+
+CONFIG_SPW_FT_DMR
+  Implement SpaceWire internal FIFOs with parity-DMR protection.
+
+CONFIG_SPW_FT_TMR
+  Implement SpaceWire internal FIFOs with TMR protection.
+
+CONFIG_SPW_FT_BCH
+  Implement SpaceWire internal FIFOs with BCH SEC/DED protection.
+
+CONFIG_SPW_FT_TECHSPEC
+  Implement SpaceWire internal FIFOs with technology protection
+  specific protection. This selection requires that the selected
+  technology implements internal RAM protection.
 
 Spacewire core
 CONFIG_SPW_GRSPW1

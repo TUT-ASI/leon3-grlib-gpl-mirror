@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -158,10 +158,10 @@ end;
 architecture rtl of leon3mp is
 
 component mig_37
-   --generic (
-   --SIM_BYPASS_INIT_CAL  : string;
-   --CLKOUT_DIVIDE4       : integer
-   --);
+   generic (
+     SIM_BYPASS_INIT_CAL  : string;
+     CLKOUT_DIVIDE4       : integer
+   );
   port (
       clk_ref_p         : in std_logic;
       clk_ref_n         : in std_logic;
@@ -181,15 +181,15 @@ component mig_37
       ddr3_ck_p         : out   std_logic_vector(CK_WIDTH-1 downto 0);
       ddr3_ck_n         : out   std_logic_vector(CK_WIDTH-1 downto 0);
       app_wdf_wren      : in std_logic;
-      app_wdf_data      : in std_logic_vector(4*64-1 downto 0);
-      app_wdf_mask      : in std_logic_vector((4*64/8)-1 downto 0);
+      app_wdf_data      : in std_logic_vector((4*PAYLOAD_WIDTH)-1 downto 0);
+      app_wdf_mask      : in std_logic_vector((4*PAYLOAD_WIDTH)/8-1 downto 0);
       app_wdf_end       : in std_logic;
-      app_addr          : in std_logic_vector(27-1 downto 0);
+      app_addr          : in std_logic_vector(ADDR_WIDTH-1 downto 0);
       app_cmd           : in std_logic_vector(2 downto 0);
       app_en            : in std_logic;
       app_rdy           : out std_logic;
       app_wdf_rdy       : out std_logic;
-      app_rd_data       : out std_logic_vector(4*64-1 downto 0);
+      app_rd_data       : out std_logic_vector((4*PAYLOAD_WIDTH)-1 downto 0);
       app_rd_data_valid : out std_logic;
       tb_rst            : out std_logic;
       tb_clk            : out std_logic;
@@ -494,14 +494,16 @@ begin
   mig_gen : if CFG_MIG_DDR2 = 1 generate
 
     ahb2mig0 : ahb2mig_ml605
-      generic map ( hindex => 0, haddr => 16#400#, hmask => 16#E00#,
-    MHz => 400, Mbyte => 512, nosync => boolean'pos(CFG_MIG_CLK4=12)) --CFG_CLKDIV/12)
+      generic map ( hindex => 0, haddr => 16#400#, hmask => 16#C00#,
+    MHz => 400, Mbyte => 1024, nosync => boolean'pos(CFG_MIG_CLK4=12)) --CFG_CLKDIV/12)
       port map (
     rst => rstn, clk_ahb => clkm, clk_ddr => clk_ddr,
     ahbsi => ahbsi, ahbso => ahbso(0), migi => migi, migo => migo);
 
     ddr3ctrl : mig_37
-     --generic map (SIM_BYPASS_INIT_CAL => SIM_BYPASS_INIT_CAL, CLKOUT_DIVIDE4 => work.config.CFG_MIG_CLK4)
+     generic map (
+       SIM_BYPASS_INIT_CAL => SIM_BYPASS_INIT_CAL,
+       CLKOUT_DIVIDE4      => CFG_MIG_CLK4)
      port map(
       clk_ref_p         =>   clk_ref_p,
       clk_ref_n         =>   clk_ref_n,

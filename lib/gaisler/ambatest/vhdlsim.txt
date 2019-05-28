@@ -1,1 +1,2 @@
-ahbtbp.vhd ahbtbm.vhd 
+ahbtbp.vhd vhdlstd=93
+ahbtbm.vhd 

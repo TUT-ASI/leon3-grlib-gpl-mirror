@@ -26,9 +26,9 @@ CLEAN=soft-clean
 
 # Simulator switches
 ifeq ("$(GRLIB_SIMULATOR)","ALDEC")
-VSIMOPT+= +access +w -voptargs="+acc" +notimingchecks
+VSIMOPT+= +access +w -voptargs="+acc -nowarn 1" +notimingchecks
 else
-VSIMOPT+= -voptargs="+acc" +notimingchecks
+VSIMOPT+= -voptargs="+acc -nowarn 1" +notimingchecks
 endif
 
 # Simulation scripts

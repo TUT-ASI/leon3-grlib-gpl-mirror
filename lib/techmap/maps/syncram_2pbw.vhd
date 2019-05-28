@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -62,6 +62,7 @@ architecture rtl of syncram_2pbw is
   signal renable2 : std_logic_vector((dbits/8-1) downto 0);
   constant SCANTESTBP : boolean := (testen = 1) and syncram_add_scan_bypass(tech)=1;
   constant iwrfst : integer := (1-syncram_2p_write_through(tech)) * wrfst;
+  constant isepclk : integer := (sepclk mod 2);
 
   signal xrenable,xwrite : std_logic_vector(dbits/8-1 downto 0);
   signal custominx,customoutx: std_logic_vector(syncram_customif_maxwidth downto 0);
@@ -96,7 +97,7 @@ begin
       noscanbp : if not SCANTESTBP generate dataoutxx <= dataoutx; end generate;
       -- Write contention check (if applicable)
       wcheck : for i in 0 to dbits/8-1 generate
-        renable2(i) <= '0' when ((sepclk = 0 and syncram_2p_dest_rw_collision(tech) = 1) and
+        renable2(i) <= '0' when ((isepclk = 0 and syncram_2p_dest_rw_collision(tech) = 1) and
                                  (renable(i) and write(i)) = '1' and raddress = waddress) else renable(i);
       end generate;
     end generate;
@@ -180,7 +181,7 @@ begin
   end generate;
 
   n2x : if tech = easic45 generate
-      x0 : n2x_syncram_2p_be generic map (abits, dbits, sepclk, iwrfst)
+      x0 : n2x_syncram_2p_be generic map (abits, dbits, isepclk, iwrfst)
         port map (rclk, renable2, raddress, dataoutx, wclk,
                   write, waddress, datain);
   end generate;
@@ -205,7 +206,7 @@ begin
     end generate;
     generic_check : process
     begin
-      assert sepclk = 0 or wrfst = 0
+      assert isepclk = 0 or wrfst = 0
         report "syncram_2pbw: Write-first not supported for RAM with separate clocks"
         severity failure;
       wait;

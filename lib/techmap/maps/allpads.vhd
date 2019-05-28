@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -1009,7 +1009,11 @@ component n2x_sdram_phy
   );
 end component;
 
-
+component nx_iopad
+  port (pad   : inout std_ulogic; --From/To external
+        i, en : in std_ulogic;    --From internal design
+        o     : out std_ulogic);  --To internal design
+end component;
 
 end;
 

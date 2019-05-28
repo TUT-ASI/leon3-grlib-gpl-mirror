@@ -23,7 +23,7 @@ SYNPOPT="set_option -pipe 1; set_option -retiming 1; set_option -write_apr_const
 ifeq ("$(GRLIB_SIMULATOR)", "ALDEC")
 VSIMOPT=-ieee_nowarn -dbg -O2 +access +r -t ps -L work -L dll0 -L oct0 -L s0 -L m0 -L p0 -L pll0 -L uniphy -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_lnsim_ver -L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver -L altera -L lpm -L sgate -L altera_mf -L altera_lnsim -L stratixiv_hssi -L stratixiv_pcie_hip -L stratixiv -do $(GRLIB)/bin/runvsim.do $(SIMTOP)
 else
-VSIMOPT=-voptargs="+acc" -t ps -L work -L work_lib -L dll0 -L oct0 -L s0 -L m0 -L p0 -L pll0 -L uniphy -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_lnsim_ver -L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver -L altera -L lpm -L sgate -L altera_mf -L altera_lnsim -L stratixiv_hssi -L stratixiv_pcie_hip -L stratixiv -do $(GRLIB)/bin/runvsim.do $(SIMTOP)
+VSIMOPT=-voptargs="+acc -nowarn 1" -t ps -L work -L work_lib -L dll0 -L oct0 -L s0 -L m0 -L p0 -L pll0 -L uniphy -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_lnsim_ver -L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver -L altera -L lpm -L sgate -L altera_mf -L altera_lnsim -L stratixiv_hssi -L stratixiv_pcie_hip -L stratixiv -do $(GRLIB)/bin/runvsim.do $(SIMTOP)
 endif
 QSF_APPEND=qsf_append.qsf
 QSF_NEXT=qsf_pin_assign.tcl

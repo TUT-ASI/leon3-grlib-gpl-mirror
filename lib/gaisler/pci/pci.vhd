@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -509,7 +509,7 @@ component grpci2
     bar3_map    : integer := 16#000000#;
     bar4_map    : integer := 16#000000#;
     bar5_map    : integer := 16#000000#;
-    bartype     : integer range 0 to 65535 := 16#0000#;
+    bartype     : integer range 0 to 65535 := 16#003F#;
     barminsize  : integer range 5 to 31 := 12;
     fifo_depth  : integer range 3 to 7 := 3;
     fifo_count  : integer range 2 to 4 := 2; 
@@ -541,7 +541,7 @@ component grpci2
     mf1_bar3            : integer range 0 to 31 := 0;
     mf1_bar4            : integer range 0 to 31 := 0;
     mf1_bar5            : integer range 0 to 31 := 0;
-    mf1_bartype         : integer range 0 to 65535 := 16#0000#;
+    mf1_bartype         : integer range 0 to 65535 := 16#003F#;
     mf1_bar0_map        : integer := 16#000000#;
     mf1_bar1_map        : integer := 16#000000#;
     mf1_bar2_map        : integer := 16#000000#;

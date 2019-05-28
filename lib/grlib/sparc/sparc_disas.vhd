@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -165,14 +165,18 @@ begin
     end if;
     if base = dec then
       if merge then
-        if rs1 = "00000" then
+        if rs1 = "00000" and sig='+' then
           return(tost(simm)); 
         else
           return(sig & tost(simm)); 
         end if;
       else
         if rs1 = "00000" then
-          return(tost(simm)); 
+          if sig='+' then
+            return(tost(simm));
+          else
+            return(sig & tost(simm)); 
+          end if;
         else
 	  if sig = '-' then
             return(", " & sig & tost(simm)); 

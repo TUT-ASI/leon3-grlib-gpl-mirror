@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -74,7 +74,8 @@ entity greth_mb is
     ramdebug       : integer range 0 to 2  := 0;
     mdiohold       : integer := 1;
     maxsize        : integer;
-    gmiimode       : integer range 0 to 1  := 0
+    gmiimode       : integer range 0 to 1  := 0;
+    num_desc       : integer range 128 to 65536 := 128
     );
   port(
     rst            : in  std_ulogic;
@@ -183,7 +184,8 @@ begin
       ramdebug       => ramdebug,
       mdiohold       => mdiohold,
       maxsize        => maxsize,
-      gmiimode       => gmiimode
+      gmiimode       => gmiimode,
+      num_desc       => num_desc
       )
     port map(
       rst            => rst,

@@ -35,6 +35,7 @@
         <DataMask>1</DataMask>
         <ECC>Disabled</ECC>
         <Ordering>Strict</Ordering>
+        <BankMachineCnt>4</BankMachineCnt>
         <CustomPart>FALSE</CustomPart>
         <NewPartName></NewPartName>
         <RowAddress>14</RowAddress>

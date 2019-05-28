@@ -724,6 +724,7 @@ proc menu1 {w title} {
 	$w.config.f.x0.x.menu add radiobutton -label "Inferred" -variable tmpvar_0 -value "Inferred" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-Axcelerator" -variable tmpvar_0 -value "Actel-Axcelerator" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-Axcelerator-DSP" -variable tmpvar_0 -value "Actel-Axcelerator-DSP" -command "update_active"
+	$w.config.f.x0.x.menu add radiobutton -label "Actel-Fusion" -variable tmpvar_0 -value "Actel-Fusion" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-Proasic" -variable tmpvar_0 -value "Actel-Proasic" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-ProasicPlus" -variable tmpvar_0 -value "Actel-ProasicPlus" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-Proasic3" -variable tmpvar_0 -value "Actel-Proasic3" -command "update_active"
@@ -733,7 +734,7 @@ proc menu1 {w title} {
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-IGLOO2" -variable tmpvar_0 -value "Actel-IGLOO2" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-SmartFusion2" -variable tmpvar_0 -value "Actel-SmartFusion2" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-RTG4" -variable tmpvar_0 -value "Actel-RTG4" -command "update_active"
-	$w.config.f.x0.x.menu add radiobutton -label "Actel-Fusion" -variable tmpvar_0 -value "Actel-Fusion" -command "update_active"
+	$w.config.f.x0.x.menu add radiobutton -label "Actel-PolarFire" -variable tmpvar_0 -value "Actel-PolarFire" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Aeroflex-UT025CRH" -variable tmpvar_0 -value "Aeroflex-UT025CRH" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Aeroflex-UT130HBD" -variable tmpvar_0 -value "Aeroflex-UT130HBD" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Aeroflex-UT90NHBD" -variable tmpvar_0 -value "Aeroflex-UT90NHBD" -command "update_active"
@@ -749,7 +750,7 @@ proc menu1 {w title} {
 	$w.config.f.x0.x.menu add radiobutton -label "Custom1" -variable tmpvar_0 -value "Custom1" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "DARE" -variable tmpvar_0 -value "DARE" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "IBM-CMOS9SF" -variable tmpvar_0 -value "IBM-CMOS9SF" -command "update_active"
-	$w.config.f.x0.x.menu add radiobutton -label "Lattice-EC/ECP/XP" -variable tmpvar_0 -value "Lattice-EC/ECP/XP" -command "update_active"
+	$w.config.f.x0.x.menu add radiobutton -label "NanoXplore-BraveMed" -variable tmpvar_0 -value "NanoXplore-BraveMed" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Quicklogic-Eclipse" -variable tmpvar_0 -value "Quicklogic-Eclipse" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "RH-LIB18T" -variable tmpvar_0 -value "RH-LIB18T" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "RH-UMC" -variable tmpvar_0 -value "RH-UMC" -command "update_active"
@@ -771,7 +772,7 @@ proc menu1 {w title} {
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Virtex6" -variable tmpvar_0 -value "Xilinx-Virtex6" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Virtex7" -variable tmpvar_0 -value "Xilinx-Virtex7" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Zynq7000" -variable tmpvar_0 -value "Xilinx-Zynq7000" -command "update_active"
-	menusplit $w $w.config.f.x0.x.menu 50
+	menusplit $w $w.config.f.x0.x.menu 51
 	global tmpvar_1
 	minimenu $w.config.f 1 1 "Memory Library                           " tmpvar_1 CONFIG_MEM_INFERRED
 	menu $w.config.f.x1.x.menu -tearoffcommand "menutitle \"Memory Library                           \""
@@ -870,6 +871,8 @@ proc update_define_menu1 {} {
 	if {$tmpvar_0 == "Actel-Axcelerator"} then {set CONFIG_SYN_AXCEL 1} else {set CONFIG_SYN_AXCEL 0}
 	global CONFIG_SYN_AXDSP
 	if {$tmpvar_0 == "Actel-Axcelerator-DSP"} then {set CONFIG_SYN_AXDSP 1} else {set CONFIG_SYN_AXDSP 0}
+	global CONFIG_SYN_FUSION
+	if {$tmpvar_0 == "Actel-Fusion"} then {set CONFIG_SYN_FUSION 1} else {set CONFIG_SYN_FUSION 0}
 	global CONFIG_SYN_PROASIC
 	if {$tmpvar_0 == "Actel-Proasic"} then {set CONFIG_SYN_PROASIC 1} else {set CONFIG_SYN_PROASIC 0}
 	global CONFIG_SYN_PROASICPLUS
@@ -888,8 +891,8 @@ proc update_define_menu1 {} {
 	if {$tmpvar_0 == "Actel-SmartFusion2"} then {set CONFIG_SYN_SF2 1} else {set CONFIG_SYN_SF2 0}
 	global CONFIG_SYN_RTG4
 	if {$tmpvar_0 == "Actel-RTG4"} then {set CONFIG_SYN_RTG4 1} else {set CONFIG_SYN_RTG4 0}
-	global CONFIG_SYN_FUSION
-	if {$tmpvar_0 == "Actel-Fusion"} then {set CONFIG_SYN_FUSION 1} else {set CONFIG_SYN_FUSION 0}
+	global CONFIG_SYN_POLARFIRE
+	if {$tmpvar_0 == "Actel-PolarFire"} then {set CONFIG_SYN_POLARFIRE 1} else {set CONFIG_SYN_POLARFIRE 0}
 	global CONFIG_SYN_UT025CRH
 	if {$tmpvar_0 == "Aeroflex-UT025CRH"} then {set CONFIG_SYN_UT025CRH 1} else {set CONFIG_SYN_UT025CRH 0}
 	global CONFIG_SYN_UT130HBD
@@ -920,8 +923,8 @@ proc update_define_menu1 {} {
 	if {$tmpvar_0 == "DARE"} then {set CONFIG_SYN_DARE 1} else {set CONFIG_SYN_DARE 0}
 	global CONFIG_SYN_CMOS9SF
 	if {$tmpvar_0 == "IBM-CMOS9SF"} then {set CONFIG_SYN_CMOS9SF 1} else {set CONFIG_SYN_CMOS9SF 0}
-	global CONFIG_SYN_LATTICE
-	if {$tmpvar_0 == "Lattice-EC/ECP/XP"} then {set CONFIG_SYN_LATTICE 1} else {set CONFIG_SYN_LATTICE 0}
+	global CONFIG_SYN_BRAVEMED
+	if {$tmpvar_0 == "NanoXplore-BraveMed"} then {set CONFIG_SYN_BRAVEMED 1} else {set CONFIG_SYN_BRAVEMED 0}
 	global CONFIG_SYN_ECLIPSE
 	if {$tmpvar_0 == "Quicklogic-Eclipse"} then {set CONFIG_SYN_ECLIPSE 1} else {set CONFIG_SYN_ECLIPSE 0}
 	global CONFIG_SYN_RH_LIB18T
@@ -1065,7 +1068,7 @@ proc menu2 {w title} {
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-HCLKBUF" -variable tmpvar_3 -value "Actel-HCLKBUF" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Aeroflex-UT130HBD" -variable tmpvar_3 -value "Aeroflex-UT130HBD" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Altera-ALTPLL" -variable tmpvar_3 -value "Altera-ALTPLL" -command "update_active"
-	$w.config.f.x0.x.menu add radiobutton -label "Lattice-EXPLL" -variable tmpvar_3 -value "Lattice-EXPLL" -command "update_active"
+	$w.config.f.x0.x.menu add radiobutton -label "NanoXplore-NXPLL" -variable tmpvar_3 -value "NanoXplore-NXPLL" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Proasic3-PLL" -variable tmpvar_3 -value "Proasic3-PLL" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Proasic3E-PLL" -variable tmpvar_3 -value "Proasic3E-PLL" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Proasic3L-PLL" -variable tmpvar_3 -value "Proasic3L-PLL" -command "update_active"
@@ -1082,7 +1085,7 @@ proc menu2 {w title} {
 	menusplit $w $w.config.f.x0.x.menu 18
 	int $w.config.f 2 1 "Clock multiplication factor (allowed values are tech dependent)" CONFIG_CLK_MUL
 	int $w.config.f 2 2 "Clock division factor (allowed values are tech dependent)" CONFIG_CLK_DIV
-	int $w.config.f 2 3 "Outout division factor (1 - 32)" CONFIG_OCLK_DIV
+	int $w.config.f 2 3 "Outout division factor (0 - 32, see help)" CONFIG_OCLK_DIV
 	int $w.config.f 2 4 "Outout division factor, 2nd clk (0 - 32, see help)" CONFIG_OCLKB_DIV
 	int $w.config.f 2 5 "Outout division factor, 3rd clk (0 - 32, see help)" CONFIG_OCLKC_DIV
 	bool $w.config.f 2 6 "Enable Xilinx CLKDLL for PCI clock" CONFIG_PCI_CLKDLL
@@ -1134,16 +1137,17 @@ proc update_menu2 {} {
 	global CONFIG_CLK_LIB18T
 	global CONFIG_CLK_FUSPLL
 	global CONFIG_CLK_CLKPLLE2
+	global CONFIG_CLK_BRAVEMED
 	global CONFIG_CLK_MUL
-	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1)} then {.menu2.config.f.x1.x configure -state normal -foreground [ cget .ref -foreground ]; .menu2.config.f.x1.l configure -state normal; } else {.menu2.config.f.x1.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu2.config.f.x1.l configure -state disabled}
+	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {.menu2.config.f.x1.x configure -state normal -foreground [ cget .ref -foreground ]; .menu2.config.f.x1.l configure -state normal; } else {.menu2.config.f.x1.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu2.config.f.x1.l configure -state disabled}
 	global CONFIG_CLK_DIV
-	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1)} then {.menu2.config.f.x2.x configure -state normal -foreground [ cget .ref -foreground ]; .menu2.config.f.x2.l configure -state normal; } else {.menu2.config.f.x2.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu2.config.f.x2.l configure -state disabled}
+	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1 || $CONFIG_CLK_BRAVEMED == 1) && ($CONFIG_CLK_BRAVEMED != 1)} then {.menu2.config.f.x2.x configure -state normal -foreground [ cget .ref -foreground ]; .menu2.config.f.x2.l configure -state normal; } else {.menu2.config.f.x2.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu2.config.f.x2.l configure -state disabled}
 	global CONFIG_OCLK_DIV
-	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1)} then {.menu2.config.f.x3.x configure -state normal -foreground [ cget .ref -foreground ]; .menu2.config.f.x3.l configure -state normal; } else {.menu2.config.f.x3.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu2.config.f.x3.l configure -state disabled}
+	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {.menu2.config.f.x3.x configure -state normal -foreground [ cget .ref -foreground ]; .menu2.config.f.x3.l configure -state normal; } else {.menu2.config.f.x3.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu2.config.f.x3.l configure -state disabled}
 	global CONFIG_OCLKB_DIV
-	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1)} then {.menu2.config.f.x4.x configure -state normal -foreground [ cget .ref -foreground ]; .menu2.config.f.x4.l configure -state normal; } else {.menu2.config.f.x4.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu2.config.f.x4.l configure -state disabled}
+	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {.menu2.config.f.x4.x configure -state normal -foreground [ cget .ref -foreground ]; .menu2.config.f.x4.l configure -state normal; } else {.menu2.config.f.x4.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu2.config.f.x4.l configure -state disabled}
 	global CONFIG_OCLKC_DIV
-	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1)} then {.menu2.config.f.x5.x configure -state normal -foreground [ cget .ref -foreground ]; .menu2.config.f.x5.l configure -state normal; } else {.menu2.config.f.x5.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu2.config.f.x5.l configure -state disabled}
+	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {.menu2.config.f.x5.x configure -state normal -foreground [ cget .ref -foreground ]; .menu2.config.f.x5.l configure -state normal; } else {.menu2.config.f.x5.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu2.config.f.x5.l configure -state disabled}
 	global CONFIG_PCI_CLKDLL
 	if {($CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_DCM == 1)} then {
 	configure_entry .menu2.config.f.x6 normal {n l y}} else {configure_entry .menu2.config.f.x6 disabled {y n l}}
@@ -1169,8 +1173,8 @@ proc update_define_menu2 {} {
 	if {$tmpvar_3 == "Aeroflex-UT130HBD"} then {set CONFIG_CLK_UT130HBD 1} else {set CONFIG_CLK_UT130HBD 0}
 	global CONFIG_CLK_ALTDLL
 	if {$tmpvar_3 == "Altera-ALTPLL"} then {set CONFIG_CLK_ALTDLL 1} else {set CONFIG_CLK_ALTDLL 0}
-	global CONFIG_CLK_LATDLL
-	if {$tmpvar_3 == "Lattice-EXPLL"} then {set CONFIG_CLK_LATDLL 1} else {set CONFIG_CLK_LATDLL 0}
+	global CONFIG_CLK_BRAVEMED
+	if {$tmpvar_3 == "NanoXplore-NXPLL"} then {set CONFIG_CLK_BRAVEMED 1} else {set CONFIG_CLK_BRAVEMED 0}
 	global CONFIG_CLK_PRO3PLL
 	if {$tmpvar_3 == "Proasic3-PLL"} then {set CONFIG_CLK_PRO3PLL 1} else {set CONFIG_CLK_PRO3PLL 0}
 	global CONFIG_CLK_PRO3EPLL
@@ -1197,16 +1201,17 @@ proc update_define_menu2 {} {
 	if {$tmpvar_3 == "Xilinx-CLKDLL"} then {set CONFIG_CLK_CLKDLL 1} else {set CONFIG_CLK_CLKDLL 0}
 	global CONFIG_CLK_DCM
 	if {$tmpvar_3 == "Xilinx-DCM"} then {set CONFIG_CLK_DCM 1} else {set CONFIG_CLK_DCM 0}
+	global CONFIG_CLK_LATDLL
 	global CONFIG_CLK_MUL
-	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1)} then {validate_int CONFIG_CLK_MUL "$CONFIG_CLK_MUL" 2}
+	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {validate_int CONFIG_CLK_MUL "$CONFIG_CLK_MUL" 2}
 	global CONFIG_CLK_DIV
-	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1)} then {validate_int CONFIG_CLK_DIV "$CONFIG_CLK_DIV" 2}
+	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1 || $CONFIG_CLK_BRAVEMED == 1) && ($CONFIG_CLK_BRAVEMED != 1)} then {validate_int CONFIG_CLK_DIV "$CONFIG_CLK_DIV" 2}
 	global CONFIG_OCLK_DIV
-	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1)} then {validate_int CONFIG_OCLK_DIV "$CONFIG_OCLK_DIV" 1}
+	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {validate_int CONFIG_OCLK_DIV "$CONFIG_OCLK_DIV" 1}
 	global CONFIG_OCLKB_DIV
-	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1)} then {validate_int CONFIG_OCLKB_DIV "$CONFIG_OCLKB_DIV" 0}
+	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {validate_int CONFIG_OCLKB_DIV "$CONFIG_OCLKB_DIV" 0}
 	global CONFIG_OCLKC_DIV
-	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1)} then {validate_int CONFIG_OCLKC_DIV "$CONFIG_OCLKC_DIV" 0}
+	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {validate_int CONFIG_OCLKC_DIV "$CONFIG_OCLKC_DIV" 0}
 	global CONFIG_PCI_CLKDLL
 	if {($CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_DCM == 1)} then {
 	set CONFIG_PCI_CLKDLL [expr $CONFIG_PCI_CLKDLL&15]} else {set CONFIG_PCI_CLKDLL [expr $CONFIG_PCI_CLKDLL|16]}
@@ -2903,9 +2908,8 @@ proc menu9 {w title} {
 	menu $w.config.f.x4.x.menu -tearoffcommand "menutitle \"Cache memory protection     \""
 	$w.config.f.x4.x.menu add radiobutton -label "None" -variable tmpvar_32 -value "None" -command "update_active"
 	$w.config.f.x4.x.menu add radiobutton -label "Parity" -variable tmpvar_32 -value "Parity" -command "update_active"
-	$w.config.f.x4.x.menu add radiobutton -label "SECDEC-BCH" -variable tmpvar_32 -value "SECDEC-BCH" -command "update_active"
 	$w.config.f.x4.x.menu add radiobutton -label "TechSpec" -variable tmpvar_32 -value "TechSpec" -command "update_active"
-	menusplit $w $w.config.f.x4.x.menu 4
+	menusplit $w $w.config.f.x4.x.menu 3
 	int $w.config.f 9 5 "Cache memory error injection" CONFIG_CACHE_ERRINJ
 
 
@@ -2992,8 +2996,6 @@ proc update_define_menu9 {} {
 	if {$tmpvar_32 == "None"} then {set CONFIG_CACHE_FT_NONE 1} else {set CONFIG_CACHE_FT_NONE 0}
 	global CONFIG_CACHE_FT_EN
 	if {$tmpvar_32 == "Parity"} then {set CONFIG_CACHE_FT_EN 1} else {set CONFIG_CACHE_FT_EN 0}
-	global CONFIG_CACHE_FT_BCH
-	if {$tmpvar_32 == "SECDEC-BCH"} then {set CONFIG_CACHE_FT_BCH 1} else {set CONFIG_CACHE_FT_BCH 0}
 	global CONFIG_CACHE_FT_TECH
 	if {$tmpvar_32 == "TechSpec"} then {set CONFIG_CACHE_FT_TECH 1} else {set CONFIG_CACHE_FT_TECH 0}
 }
@@ -4201,6 +4203,7 @@ proc menu19 {w title} {
 	$w.config.f.x2.x.menu add radiobutton -label "32" -variable tmpvar_39 -value "32" -command "update_active"
 	$w.config.f.x2.x.menu add radiobutton -label "64" -variable tmpvar_39 -value "64" -command "update_active"
 	menusplit $w $w.config.f.x2.x.menu 5
+	bool $w.config.f 19 3 "Enable FMC" CONFIG_GRETH_FMC_MODE
 
 
 
@@ -4816,6 +4819,7 @@ set tmpvar_0 "(not set)"
 set CONFIG_SYN_INFERRED 0
 set CONFIG_SYN_AXCEL 0
 set CONFIG_SYN_AXDSP 0
+set CONFIG_SYN_FUSION 0
 set CONFIG_SYN_PROASIC 0
 set CONFIG_SYN_PROASICPLUS 0
 set CONFIG_SYN_PROASIC3 0
@@ -4825,7 +4829,7 @@ set CONFIG_SYN_IGLOO 0
 set CONFIG_SYN_IGLOO2 0
 set CONFIG_SYN_SF2 0
 set CONFIG_SYN_RTG4 0
-set CONFIG_SYN_FUSION 0
+set CONFIG_SYN_POLARFIRE 0
 set CONFIG_SYN_UT025CRH 0
 set CONFIG_SYN_UT130HBD 0
 set CONFIG_SYN_UT90NHBD 0
@@ -4841,7 +4845,7 @@ set CONFIG_SYN_ATC18RHA 0
 set CONFIG_SYN_CUSTOM1 0
 set CONFIG_SYN_DARE 0
 set CONFIG_SYN_CMOS9SF 0
-set CONFIG_SYN_LATTICE 0
+set CONFIG_SYN_BRAVEMED 0
 set CONFIG_SYN_ECLIPSE 0
 set CONFIG_SYN_RH_LIB18T 0
 set CONFIG_SYN_RHUMC 0
@@ -4890,7 +4894,7 @@ set CONFIG_CLK_INFERRED 0
 set CONFIG_CLK_HCLKBUF 0
 set CONFIG_CLK_UT130HBD 0
 set CONFIG_CLK_ALTDLL 0
-set CONFIG_CLK_LATDLL 0
+set CONFIG_CLK_BRAVEMED 0
 set CONFIG_CLK_PRO3PLL 0
 set CONFIG_CLK_PRO3EPLL 0
 set CONFIG_CLK_PRO3LPLL 0
@@ -5104,7 +5108,6 @@ set CONFIG_RF_ERRINJ 0
 set tmpvar_32 "(not set)"
 set CONFIG_CACHE_FT_NONE 0
 set CONFIG_CACHE_FT_EN 0
-set CONFIG_CACHE_FT_BCH 0
 set CONFIG_CACHE_FT_TECH 0
 set CONFIG_CACHE_ERRINJ 0
 set CONFIG_IU_DISAS 0
@@ -5209,6 +5212,7 @@ set CONFIG_GRETH_FIFO8 0
 set CONFIG_GRETH_FIFO16 0
 set CONFIG_GRETH_FIFO32 0
 set CONFIG_GRETH_FIFO64 0
+set CONFIG_GRETH_FMC_MODE 0
 set CONFIG_UART1_ENABLE 0
 set tmpvar_40 "(not set)"
 set CONFIG_UA1_FIFO1 0
@@ -5245,6 +5249,7 @@ set CONFIG_SPIMCTRL_ASCALER 8
 set CONFIG_DEBUG_UART 0
 set CONFIG_HAS_SHARED_GRFPU 4
 set CONFIG_SYN_ARTISAN 4
+set CONFIG_CLK_LATDLL 4
 set CONFIG_PCI_ENABLE 4
 set CONFIG_IU_BP 4
 set CONFIG_PWRPSR 4
@@ -5275,6 +5280,7 @@ proc writeconfig {file1 file2} {
 	if { $tmpvar_0 == "Inferred" } then { write_tristate $cfg $autocfg CONFIG_SYN_INFERRED 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_INFERRED 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Actel-Axcelerator" } then { write_tristate $cfg $autocfg CONFIG_SYN_AXCEL 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_AXCEL 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Actel-Axcelerator-DSP" } then { write_tristate $cfg $autocfg CONFIG_SYN_AXDSP 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_AXDSP 0 [list $notmod] 2 }
+	if { $tmpvar_0 == "Actel-Fusion" } then { write_tristate $cfg $autocfg CONFIG_SYN_FUSION 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_FUSION 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Actel-Proasic" } then { write_tristate $cfg $autocfg CONFIG_SYN_PROASIC 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_PROASIC 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Actel-ProasicPlus" } then { write_tristate $cfg $autocfg CONFIG_SYN_PROASICPLUS 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_PROASICPLUS 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Actel-Proasic3" } then { write_tristate $cfg $autocfg CONFIG_SYN_PROASIC3 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_PROASIC3 0 [list $notmod] 2 }
@@ -5284,7 +5290,7 @@ proc writeconfig {file1 file2} {
 	if { $tmpvar_0 == "Actel-IGLOO2" } then { write_tristate $cfg $autocfg CONFIG_SYN_IGLOO2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_IGLOO2 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Actel-SmartFusion2" } then { write_tristate $cfg $autocfg CONFIG_SYN_SF2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_SF2 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Actel-RTG4" } then { write_tristate $cfg $autocfg CONFIG_SYN_RTG4 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_RTG4 0 [list $notmod] 2 }
-	if { $tmpvar_0 == "Actel-Fusion" } then { write_tristate $cfg $autocfg CONFIG_SYN_FUSION 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_FUSION 0 [list $notmod] 2 }
+	if { $tmpvar_0 == "Actel-PolarFire" } then { write_tristate $cfg $autocfg CONFIG_SYN_POLARFIRE 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_POLARFIRE 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Aeroflex-UT025CRH" } then { write_tristate $cfg $autocfg CONFIG_SYN_UT025CRH 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_UT025CRH 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Aeroflex-UT130HBD" } then { write_tristate $cfg $autocfg CONFIG_SYN_UT130HBD 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_UT130HBD 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Aeroflex-UT90NHBD" } then { write_tristate $cfg $autocfg CONFIG_SYN_UT90NHBD 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_UT90NHBD 0 [list $notmod] 2 }
@@ -5300,7 +5306,7 @@ proc writeconfig {file1 file2} {
 	if { $tmpvar_0 == "Custom1" } then { write_tristate $cfg $autocfg CONFIG_SYN_CUSTOM1 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_CUSTOM1 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "DARE" } then { write_tristate $cfg $autocfg CONFIG_SYN_DARE 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_DARE 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "IBM-CMOS9SF" } then { write_tristate $cfg $autocfg CONFIG_SYN_CMOS9SF 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_CMOS9SF 0 [list $notmod] 2 }
-	if { $tmpvar_0 == "Lattice-EC/ECP/XP" } then { write_tristate $cfg $autocfg CONFIG_SYN_LATTICE 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_LATTICE 0 [list $notmod] 2 }
+	if { $tmpvar_0 == "NanoXplore-BraveMed" } then { write_tristate $cfg $autocfg CONFIG_SYN_BRAVEMED 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_BRAVEMED 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Quicklogic-Eclipse" } then { write_tristate $cfg $autocfg CONFIG_SYN_ECLIPSE 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_ECLIPSE 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "RH-LIB18T" } then { write_tristate $cfg $autocfg CONFIG_SYN_RH_LIB18T 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_RH_LIB18T 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "RH-UMC" } then { write_tristate $cfg $autocfg CONFIG_SYN_RHUMC 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_RHUMC 0 [list $notmod] 2 }
@@ -5370,7 +5376,7 @@ proc writeconfig {file1 file2} {
 	if { $tmpvar_3 == "Actel-HCLKBUF" } then { write_tristate $cfg $autocfg CONFIG_CLK_HCLKBUF 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_CLK_HCLKBUF 0 [list $notmod] 2 }
 	if { $tmpvar_3 == "Aeroflex-UT130HBD" } then { write_tristate $cfg $autocfg CONFIG_CLK_UT130HBD 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_CLK_UT130HBD 0 [list $notmod] 2 }
 	if { $tmpvar_3 == "Altera-ALTPLL" } then { write_tristate $cfg $autocfg CONFIG_CLK_ALTDLL 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_CLK_ALTDLL 0 [list $notmod] 2 }
-	if { $tmpvar_3 == "Lattice-EXPLL" } then { write_tristate $cfg $autocfg CONFIG_CLK_LATDLL 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_CLK_LATDLL 0 [list $notmod] 2 }
+	if { $tmpvar_3 == "NanoXplore-NXPLL" } then { write_tristate $cfg $autocfg CONFIG_CLK_BRAVEMED 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_CLK_BRAVEMED 0 [list $notmod] 2 }
 	if { $tmpvar_3 == "Proasic3-PLL" } then { write_tristate $cfg $autocfg CONFIG_CLK_PRO3PLL 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_CLK_PRO3PLL 0 [list $notmod] 2 }
 	if { $tmpvar_3 == "Proasic3E-PLL" } then { write_tristate $cfg $autocfg CONFIG_CLK_PRO3EPLL 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_CLK_PRO3EPLL 0 [list $notmod] 2 }
 	if { $tmpvar_3 == "Proasic3L-PLL" } then { write_tristate $cfg $autocfg CONFIG_CLK_PRO3LPLL 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_CLK_PRO3LPLL 0 [list $notmod] 2 }
@@ -5395,15 +5401,16 @@ proc writeconfig {file1 file2} {
 	global CONFIG_CLK_LIB18T
 	global CONFIG_CLK_FUSPLL
 	global CONFIG_CLK_CLKPLLE2
-	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1)} then {write_int $cfg $autocfg CONFIG_CLK_MUL $CONFIG_CLK_MUL $notmod }
+	global CONFIG_CLK_BRAVEMED
+	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {write_int $cfg $autocfg CONFIG_CLK_MUL $CONFIG_CLK_MUL $notmod }
 	global CONFIG_CLK_DIV
-	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1)} then {write_int $cfg $autocfg CONFIG_CLK_DIV $CONFIG_CLK_DIV $notmod }
+	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1 || $CONFIG_CLK_BRAVEMED == 1) && ($CONFIG_CLK_BRAVEMED != 1)} then {write_int $cfg $autocfg CONFIG_CLK_DIV $CONFIG_CLK_DIV $notmod }
 	global CONFIG_OCLK_DIV
-	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1)} then {write_int $cfg $autocfg CONFIG_OCLK_DIV $CONFIG_OCLK_DIV $notmod }
+	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {write_int $cfg $autocfg CONFIG_OCLK_DIV $CONFIG_OCLK_DIV $notmod }
 	global CONFIG_OCLKB_DIV
-	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1)} then {write_int $cfg $autocfg CONFIG_OCLKB_DIV $CONFIG_OCLKB_DIV $notmod }
+	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {write_int $cfg $autocfg CONFIG_OCLKB_DIV $CONFIG_OCLKB_DIV $notmod }
 	global CONFIG_OCLKC_DIV
-	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1)} then {write_int $cfg $autocfg CONFIG_OCLKC_DIV $CONFIG_OCLKC_DIV $notmod }
+	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {write_int $cfg $autocfg CONFIG_OCLKC_DIV $CONFIG_OCLKC_DIV $notmod }
 	global CONFIG_PCI_CLKDLL
 	if {($CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_DCM == 1)} then {write_tristate $cfg $autocfg CONFIG_PCI_CLKDLL $CONFIG_PCI_CLKDLL [list $notmod] 2 }
 	global CONFIG_CLK_NOFB
@@ -5836,7 +5843,6 @@ proc writeconfig {file1 file2} {
 	
 	if { $tmpvar_32 == "None" } then { write_tristate $cfg $autocfg CONFIG_CACHE_FT_NONE 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_CACHE_FT_NONE 0 [list $notmod] 2 }
 	if { $tmpvar_32 == "Parity" } then { write_tristate $cfg $autocfg CONFIG_CACHE_FT_EN 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_CACHE_FT_EN 0 [list $notmod] 2 }
-	if { $tmpvar_32 == "SECDEC-BCH" } then { write_tristate $cfg $autocfg CONFIG_CACHE_FT_BCH 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_CACHE_FT_BCH 0 [list $notmod] 2 }
 	if { $tmpvar_32 == "TechSpec" } then { write_tristate $cfg $autocfg CONFIG_CACHE_FT_TECH 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_CACHE_FT_TECH 0 [list $notmod] 2 }
 	global CONFIG_CACHE_ERRINJ
 	write_int $cfg $autocfg CONFIG_CACHE_ERRINJ $CONFIG_CACHE_ERRINJ $notmod
@@ -6012,6 +6018,8 @@ proc writeconfig {file1 file2} {
 	if { $tmpvar_39 == "16" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO16 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO16 0 [list $notmod] 2 }
 	if { $tmpvar_39 == "32" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO32 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO32 0 [list $notmod] 2 }
 	if { $tmpvar_39 == "64" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO64 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO64 0 [list $notmod] 2 }}
+	global CONFIG_GRETH_FMC_MODE
+	write_tristate $cfg $autocfg CONFIG_GRETH_FMC_MODE $CONFIG_GRETH_FMC_MODE [list $notmod] 2
 	write_comment $cfg $autocfg "UARTs, timers and irq control         "
 	global CONFIG_UART1_ENABLE
 	write_tristate $cfg $autocfg CONFIG_UART1_ENABLE $CONFIG_UART1_ENABLE [list $notmod] 2
@@ -6088,6 +6096,7 @@ proc clear_choices { } {
 	global CONFIG_SYN_INFERRED; set CONFIG_SYN_INFERRED 0
 	global CONFIG_SYN_AXCEL; set CONFIG_SYN_AXCEL 0
 	global CONFIG_SYN_AXDSP; set CONFIG_SYN_AXDSP 0
+	global CONFIG_SYN_FUSION; set CONFIG_SYN_FUSION 0
 	global CONFIG_SYN_PROASIC; set CONFIG_SYN_PROASIC 0
 	global CONFIG_SYN_PROASICPLUS; set CONFIG_SYN_PROASICPLUS 0
 	global CONFIG_SYN_PROASIC3; set CONFIG_SYN_PROASIC3 0
@@ -6097,7 +6106,7 @@ proc clear_choices { } {
 	global CONFIG_SYN_IGLOO2; set CONFIG_SYN_IGLOO2 0
 	global CONFIG_SYN_SF2; set CONFIG_SYN_SF2 0
 	global CONFIG_SYN_RTG4; set CONFIG_SYN_RTG4 0
-	global CONFIG_SYN_FUSION; set CONFIG_SYN_FUSION 0
+	global CONFIG_SYN_POLARFIRE; set CONFIG_SYN_POLARFIRE 0
 	global CONFIG_SYN_UT025CRH; set CONFIG_SYN_UT025CRH 0
 	global CONFIG_SYN_UT130HBD; set CONFIG_SYN_UT130HBD 0
 	global CONFIG_SYN_UT90NHBD; set CONFIG_SYN_UT90NHBD 0
@@ -6113,7 +6122,7 @@ proc clear_choices { } {
 	global CONFIG_SYN_CUSTOM1; set CONFIG_SYN_CUSTOM1 0
 	global CONFIG_SYN_DARE; set CONFIG_SYN_DARE 0
 	global CONFIG_SYN_CMOS9SF; set CONFIG_SYN_CMOS9SF 0
-	global CONFIG_SYN_LATTICE; set CONFIG_SYN_LATTICE 0
+	global CONFIG_SYN_BRAVEMED; set CONFIG_SYN_BRAVEMED 0
 	global CONFIG_SYN_ECLIPSE; set CONFIG_SYN_ECLIPSE 0
 	global CONFIG_SYN_RH_LIB18T; set CONFIG_SYN_RH_LIB18T 0
 	global CONFIG_SYN_RHUMC; set CONFIG_SYN_RHUMC 0
@@ -6155,7 +6164,7 @@ proc clear_choices { } {
 	global CONFIG_CLK_HCLKBUF; set CONFIG_CLK_HCLKBUF 0
 	global CONFIG_CLK_UT130HBD; set CONFIG_CLK_UT130HBD 0
 	global CONFIG_CLK_ALTDLL; set CONFIG_CLK_ALTDLL 0
-	global CONFIG_CLK_LATDLL; set CONFIG_CLK_LATDLL 0
+	global CONFIG_CLK_BRAVEMED; set CONFIG_CLK_BRAVEMED 0
 	global CONFIG_CLK_PRO3PLL; set CONFIG_CLK_PRO3PLL 0
 	global CONFIG_CLK_PRO3EPLL; set CONFIG_CLK_PRO3EPLL 0
 	global CONFIG_CLK_PRO3LPLL; set CONFIG_CLK_PRO3LPLL 0
@@ -6292,7 +6301,6 @@ proc clear_choices { } {
 	global CONFIG_IUFT_TMR; set CONFIG_IUFT_TMR 0
 	global CONFIG_CACHE_FT_NONE; set CONFIG_CACHE_FT_NONE 0
 	global CONFIG_CACHE_FT_EN; set CONFIG_CACHE_FT_EN 0
-	global CONFIG_CACHE_FT_BCH; set CONFIG_CACHE_FT_BCH 0
 	global CONFIG_CACHE_FT_TECH; set CONFIG_CACHE_FT_TECH 0
 	global CONFIG_L2_ASSO1; set CONFIG_L2_ASSO1 0
 	global CONFIG_L2_ASSO2; set CONFIG_L2_ASSO2 0
@@ -6354,6 +6362,8 @@ proc update_choices { } {
 	if { $CONFIG_SYN_AXCEL == 1 } then { set tmpvar_0 "Actel-Axcelerator" }
 	global CONFIG_SYN_AXDSP
 	if { $CONFIG_SYN_AXDSP == 1 } then { set tmpvar_0 "Actel-Axcelerator-DSP" }
+	global CONFIG_SYN_FUSION
+	if { $CONFIG_SYN_FUSION == 1 } then { set tmpvar_0 "Actel-Fusion" }
 	global CONFIG_SYN_PROASIC
 	if { $CONFIG_SYN_PROASIC == 1 } then { set tmpvar_0 "Actel-Proasic" }
 	global CONFIG_SYN_PROASICPLUS
@@ -6372,8 +6382,8 @@ proc update_choices { } {
 	if { $CONFIG_SYN_SF2 == 1 } then { set tmpvar_0 "Actel-SmartFusion2" }
 	global CONFIG_SYN_RTG4
 	if { $CONFIG_SYN_RTG4 == 1 } then { set tmpvar_0 "Actel-RTG4" }
-	global CONFIG_SYN_FUSION
-	if { $CONFIG_SYN_FUSION == 1 } then { set tmpvar_0 "Actel-Fusion" }
+	global CONFIG_SYN_POLARFIRE
+	if { $CONFIG_SYN_POLARFIRE == 1 } then { set tmpvar_0 "Actel-PolarFire" }
 	global CONFIG_SYN_UT025CRH
 	if { $CONFIG_SYN_UT025CRH == 1 } then { set tmpvar_0 "Aeroflex-UT025CRH" }
 	global CONFIG_SYN_UT130HBD
@@ -6404,8 +6414,8 @@ proc update_choices { } {
 	if { $CONFIG_SYN_DARE == 1 } then { set tmpvar_0 "DARE" }
 	global CONFIG_SYN_CMOS9SF
 	if { $CONFIG_SYN_CMOS9SF == 1 } then { set tmpvar_0 "IBM-CMOS9SF" }
-	global CONFIG_SYN_LATTICE
-	if { $CONFIG_SYN_LATTICE == 1 } then { set tmpvar_0 "Lattice-EC/ECP/XP" }
+	global CONFIG_SYN_BRAVEMED
+	if { $CONFIG_SYN_BRAVEMED == 1 } then { set tmpvar_0 "NanoXplore-BraveMed" }
 	global CONFIG_SYN_ECLIPSE
 	if { $CONFIG_SYN_ECLIPSE == 1 } then { set tmpvar_0 "Quicklogic-Eclipse" }
 	global CONFIG_SYN_RH_LIB18T
@@ -6494,8 +6504,8 @@ proc update_choices { } {
 	if { $CONFIG_CLK_UT130HBD == 1 } then { set tmpvar_3 "Aeroflex-UT130HBD" }
 	global CONFIG_CLK_ALTDLL
 	if { $CONFIG_CLK_ALTDLL == 1 } then { set tmpvar_3 "Altera-ALTPLL" }
-	global CONFIG_CLK_LATDLL
-	if { $CONFIG_CLK_LATDLL == 1 } then { set tmpvar_3 "Lattice-EXPLL" }
+	global CONFIG_CLK_BRAVEMED
+	if { $CONFIG_CLK_BRAVEMED == 1 } then { set tmpvar_3 "NanoXplore-NXPLL" }
 	global CONFIG_CLK_PRO3PLL
 	if { $CONFIG_CLK_PRO3PLL == 1 } then { set tmpvar_3 "Proasic3-PLL" }
 	global CONFIG_CLK_PRO3EPLL
@@ -6826,8 +6836,6 @@ proc update_choices { } {
 	if { $CONFIG_CACHE_FT_NONE == 1 } then { set tmpvar_32 "None" }
 	global CONFIG_CACHE_FT_EN
 	if { $CONFIG_CACHE_FT_EN == 1 } then { set tmpvar_32 "Parity" }
-	global CONFIG_CACHE_FT_BCH
-	if { $CONFIG_CACHE_FT_BCH == 1 } then { set tmpvar_32 "SECDEC-BCH" }
 	global CONFIG_CACHE_FT_TECH
 	if { $CONFIG_CACHE_FT_TECH == 1 } then { set tmpvar_32 "TechSpec" }
 	global tmpvar_33

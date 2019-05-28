@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -332,9 +332,11 @@ begin
              rmii          => 0,
              rgmii         => 1
     )
-    port map(phy_reset, phy_mdio, phy_txclk, phy_rxclk, phy_rxd,
-             phy_rxctl_rxdv, phy_rxer, phy_col, phy_crs, phy_txd,
-             phy_txctl_txen, phy_txer, phy_mdc, phy_gtxclk);
+    port map(phy_reset, phy_mdio, OPEN, phy_rxclk,
+             phy_rxd, phy_rxctl_rxdv, OPEN, OPEN, OPEN,
+             phy_txd, phy_txctl_txen, '0', 
+             phy_mdc, 
+             phy_gtxclk,phy_gtxclk);
 
   end generate;
 

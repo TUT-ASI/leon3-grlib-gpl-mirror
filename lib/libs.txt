@@ -1,6 +1,6 @@
 #tech/dware
 synplify
-techmap
+techmap           vhdlstd=93
 spw
 eth
 opencores

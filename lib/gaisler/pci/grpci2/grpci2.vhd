@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -84,7 +84,7 @@ entity grpci2 is
     bar3_map    : integer := 16#000000#;
     bar4_map    : integer := 16#000000#;
     bar5_map    : integer := 16#000000#;
-    bartype     : integer range 0 to 65535 := 16#0000#;
+    bartype     : integer range 0 to 65535 := 16#003F#;
     barminsize  : integer range 5 to 31 := 12;
     fifo_depth  : integer range 3 to 7 := 3;
     fifo_count  : integer range 2 to 4 := 2;
@@ -117,7 +117,7 @@ entity grpci2 is
     mf1_bar3            : integer range 0 to 31 := 0;
     mf1_bar4            : integer range 0 to 31 := 0;
     mf1_bar5            : integer range 0 to 31 := 0;
-    mf1_bartype         : integer range 0 to 65535 := 16#0000#;
+    mf1_bartype         : integer range 0 to 65535 := 16#003F#;
     mf1_bar0_map        : integer := 16#000000#;
     mf1_bar1_map        : integer := 16#000000#;
     mf1_bar2_map        : integer := 16#000000#;
@@ -159,6 +159,7 @@ signal phyo : grpci2_phy_out_type;
 signal sig_m_request, sig_m_mabort, sig_t_abort, sig_t_ready, sig_t_retry : std_logic;
 signal sig_pr_conf_comm_serren, sig_pr_conf_comm_perren : std_logic;
 signal sig_soft_rst : std_logic_vector(2 downto 0);
+signal pcii_phy : pci_in_type;
 -- PHY <=
 
 constant PT_DEPTH : integer := 5 + log2(tracebuffer/32);
@@ -167,6 +168,8 @@ constant MST_ACC_CNT : integer := fifo_count - 1;
 constant RAM_LATENCY : integer := 1 + ram_raw_latency(memtech); -- Delay FIFO readout one extra write clock cycle for some technologies
 constant CDCARCH : integer := 1;
 constant CDCTECH : integer := memtech;
+constant FC3     : integer := conv_integer(conv_std_logic(fifo_count >= 3));  -- 1: when 3 or more FIFOs are implemented
+constant FC4     : integer := conv_integer(conv_std_logic(fifo_count = 4));   -- 1: when 4 FIFOs are implemented
 
 type pci_bars_type is array (0 to 5) of std_logic_vector(31 downto 0);
 constant pci_bars_none : pci_bars_type := (others => (others => '0'));
@@ -807,10 +810,16 @@ signal pr_pta_trans_gated : pci_to_ahb_trans_type; -- PCI Target => AHB Master p
 signal pr_pta_trans_gated_and   : pci_to_ahb_trans_type; -- PCI Target => AHB Master pending gated with pcirst
 signal pta_tm_fifo_pending_and0 : std_logic_vector(7 downto 0);
 signal pta_tm_fifo_pending_and1 : std_logic_vector(7 downto 0);
+signal pta_tm_fifo_pending_and2 : std_logic_vector(7 downto 0);
+signal pta_tm_fifo_pending_and3 : std_logic_vector(7 downto 0);
 signal pta_ms_fifo_pending_and0 : std_logic_vector(7 downto 0);
 signal pta_ms_fifo_pending_and1 : std_logic_vector(7 downto 0);
+signal pta_ms_fifo_pending_and2 : std_logic_vector(7 downto 0);
+signal pta_ms_fifo_pending_and3 : std_logic_vector(7 downto 0);
 signal pta_md_fifo_pending_and0 : std_logic_vector(7 downto 0);
 signal pta_md_fifo_pending_and1 : std_logic_vector(7 downto 0);
+signal pta_md_fifo_pending_and2 : std_logic_vector(7 downto 0);
+signal pta_md_fifo_pending_and3 : std_logic_vector(7 downto 0);
 signal pta_tm_acc_pending_and   : std_logic_vector(3 downto 0);
 signal pta_ms_acc_done_and      : std_logic_vector(3 downto 0); 
 signal pta_md_acc_done_and      : std_logic_vector(3 downto 0);
@@ -818,10 +827,16 @@ signal pta_md_acc_done_and      : std_logic_vector(3 downto 0);
 signal ar_atp_trans_gated_and   : ahb_to_pci_trans_type;
 signal atp_tm_fifo_pending_and0 : std_logic_vector(3 downto 0);
 signal atp_tm_fifo_pending_and1 : std_logic_vector(3 downto 0);
+signal atp_tm_fifo_pending_and2 : std_logic_vector(3 downto 0);
+signal atp_tm_fifo_pending_and3 : std_logic_vector(3 downto 0);
 signal atp_ms_fifo_pending_and0 : std_logic_vector(7 downto 0);
 signal atp_ms_fifo_pending_and1 : std_logic_vector(7 downto 0);
+signal atp_ms_fifo_pending_and2 : std_logic_vector(7 downto 0);
+signal atp_ms_fifo_pending_and3 : std_logic_vector(7 downto 0);
 signal atp_md_fifo_pending_and0 : std_logic_vector(7 downto 0);
 signal atp_md_fifo_pending_and1 : std_logic_vector(7 downto 0);
+signal atp_md_fifo_pending_and2 : std_logic_vector(7 downto 0);
+signal atp_md_fifo_pending_and3 : std_logic_vector(7 downto 0);
 signal atp_ms_acc_pending_and   : std_logic_vector(3 downto 0);
 signal atp_md_acc_pending_and   : std_logic_vector(3 downto 0);
 
@@ -1154,7 +1169,7 @@ begin
               scantest => scantest, iotest => iotest)
   port map(
     pciclk  => pciclk,
-    pcii    => pcii,
+    pcii    => pcii_phy,
     phyi    => phyi,
     pcio    => pcio,
     phyo    => phyo,
@@ -1205,6 +1220,15 @@ begin
     pcirst <= (others => phyo.pcirsto(0));
     pi <= phyo.pio;
     po <= phyo.poo;
+
+    phy_pci_input : process (pcii)
+    begin
+      pcii_phy <= pcii;
+      -- Mask grant signal to PHY when master is not implemented 
+      if master = 0 then
+        pcii_phy.gnt <= '1';
+      end if;
+    end process;
   -- PHY <=
 
 disabled_dmai <= dma_ahb_in_none;
@@ -1242,6 +1266,7 @@ variable atp_trans  : ahb_to_pci_trans_type;
 variable pci        : pci_in_type;
 variable t_hit      : std_logic;  -- Target bar address match
 variable t_chit     : std_logic;  -- Target configuration space hit
+variable t_prefetch : std_logic;
 variable t_bar      : std_logic_vector(5 downto 0); -- PCI bar with hit
 variable t_func     : integer range 0 to multifunc;
 variable t_ready    : std_logic;  -- Backend ready to send/receive data
@@ -1930,7 +1955,7 @@ begin
   -- --------------------------------------------------------------------------------
   
   -- Defaults
-  t_hit := '0'; t_chit := '0';
+  t_hit := '0'; t_chit := '0'; t_prefetch := '0';
   pv.t.cur_acc(0).newacc := '0';
   pv.t.hold_reset := '1'; 
   t_cad := (others => '0');
@@ -1996,9 +2021,10 @@ begin
            pr.conf(j).bar_mask(i)(31) = '1' then
              if pr.conf(j).bar_mask(i)(0) = '0' and (pi.cbe = MEM_READ or pi.cbe = MEM_R_MULT or pi.cbe = MEM_R_LINE 
                                                      or pi.cbe = MEM_WRITE or pi.cbe = MEM_W_INV) then
-          t_hit := pr.conf(j).comm.memen; -- Only hit if memory access is enabled 
-          t_bar(i) := '1';
-          t_func := j;
+              t_hit := pr.conf(j).comm.memen; -- Only hit if memory access is enabled 
+              t_prefetch := pr.conf(j).bar_mask(i)(3);
+              t_bar(i) := '1';
+              t_func := j;
             elsif pr.conf(j).bar_mask(i)(0) = '1' and (pi.cbe = IO_READ or pi.cbe = IO_WRITE) then
               t_hit := pr.conf(j).comm.ioen; -- Only hit if io access is enabled 
               t_bar(i) := '1';
@@ -2695,7 +2721,7 @@ begin
               when MEM_R_MULT | MEM_R_LINE => 
                 t_acc_read := '1';
                  -- Burst ordering: Linear Incrementing
-                if pi.ad(1 downto 0) = "00" then t_acc_burst := '1';
+                if pi.ad(1 downto 0) = "00" then t_acc_burst := t_prefetch;
                 else t_acc_burst := '0'; end if;
                 t_acc_type := "00";
               when others =>
@@ -2864,7 +2890,7 @@ begin
               when MEM_R_MULT | MEM_R_LINE => 
                 t_acc_read := '1';
                  -- Burst ordering: Linear Incrementing
-                if pi.ad(1 downto 0) = "00" then t_acc_burst := '1';
+                if pi.ad(1 downto 0) = "00" then t_acc_burst := t_prefetch;
                 else t_acc_burst := '0'; end if;
                 t_acc_type := "00";
               when others => 
@@ -3313,10 +3339,16 @@ end process;
 
 pta_tm_fifo_pending_and0 <= (others => (ar.sync(nsync).tm_fifo(0).pending(RAM_LATENCY) xor ar.atp_trans.tm_fifo_ack(0)));
 pta_tm_fifo_pending_and1 <= (others => (ar.sync(nsync).tm_fifo(1).pending(RAM_LATENCY) xor ar.atp_trans.tm_fifo_ack(1)));
+pta_tm_fifo_pending_and2 <= (others => (ar.sync(nsync).tm_fifo(2*FC3).pending(RAM_LATENCY) xor ar.atp_trans.tm_fifo_ack(2*FC3)));
+pta_tm_fifo_pending_and3 <= (others => (ar.sync(nsync).tm_fifo(3*FC4).pending(RAM_LATENCY) xor ar.atp_trans.tm_fifo_ack(3*FC4)));
 pta_ms_fifo_pending_and0 <= (others => (ar.sync(nsync).msd_fifo(0)(0).pending(RAM_LATENCY) xor ar.atp_trans.msd_fifo_ack(0)(0)));
 pta_ms_fifo_pending_and1 <= (others => (ar.sync(nsync).msd_fifo(0)(1).pending(RAM_LATENCY) xor ar.atp_trans.msd_fifo_ack(0)(1)));
+pta_ms_fifo_pending_and2 <= (others => (ar.sync(nsync).msd_fifo(0)(2*FC3).pending(RAM_LATENCY) xor ar.atp_trans.msd_fifo_ack(0)(2*FC3)));
+pta_ms_fifo_pending_and3 <= (others => (ar.sync(nsync).msd_fifo(0)(3*FC4).pending(RAM_LATENCY) xor ar.atp_trans.msd_fifo_ack(0)(3*FC4)));
 pta_md_fifo_pending_and0 <= (others => (ar.sync(nsync).msd_fifo(1)(0).pending(RAM_LATENCY) xor ar.atp_trans.msd_fifo_ack(1)(0)));
 pta_md_fifo_pending_and1 <= (others => (ar.sync(nsync).msd_fifo(1)(1).pending(RAM_LATENCY) xor ar.atp_trans.msd_fifo_ack(1)(1)));
+pta_md_fifo_pending_and2 <= (others => (ar.sync(nsync).msd_fifo(1)(2*FC3).pending(RAM_LATENCY) xor ar.atp_trans.msd_fifo_ack(1)(2*FC3)));
+pta_md_fifo_pending_and3 <= (others => (ar.sync(nsync).msd_fifo(1)(3*FC4).pending(RAM_LATENCY) xor ar.atp_trans.msd_fifo_ack(1)(3*FC4)));
 pta_tm_acc_pending_and <= (others => (ar.sync(nsync).tm_acc.pending xor ar.atp_trans.tm_acc_ack));
 pta_ms_acc_done_and <= (others => (ar.sync(nsync).msd_acc_done(0).done xor ar.atp_trans.msd_acc_done_ack(0)));
 pta_md_acc_done_and <= (others => (ar.sync(nsync).msd_acc_done(1).done xor ar.atp_trans.msd_acc_done_ack(1)));
@@ -3407,6 +3439,58 @@ gate_pr_pta_trans_gated_tm_fifo_1_status : grpci2_cdc_gatev
 gate_pr_pta_trans_gated_tm_fifo_1_last_cbe : grpci2_cdc_gatev 
   generic map(cdctech, 4, cdcarch)
   port map (i => pr_pta_trans_gated.tm_fifo(1).last_cbe, en => pta_tm_fifo_pending_and1(0), o => pr_pta_trans_gated_and.tm_fifo(1).last_cbe);
+
+FC3_pta_tm_fifo : if FC3 = 1 generate
+
+  -- synced
+  pr_pta_trans_gated_and.tm_fifo(2*FC3).pending  <=  pr_pta_trans_gated.tm_fifo(2*FC3).pending;
+  -- gated
+  gate_pr_pta_trans_gated_tm_fifo_2_start : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => pr_pta_trans_gated.tm_fifo(2*FC3).start, en => pta_tm_fifo_pending_and2(0), o => pr_pta_trans_gated_and.tm_fifo(2*FC3).start);
+  gate_pr_pta_trans_gated_tm_fifo_2_stop : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => pr_pta_trans_gated.tm_fifo(2*FC3).stop, en => pta_tm_fifo_pending_and2(0), o =>  pr_pta_trans_gated_and.tm_fifo(2*FC3).stop);
+  gate_pr_pta_trans_gated_tm_fifo_2_firstf : grpci2_cdc_gate 
+    generic map(cdctech, cdcarch)
+    port map (i => pr_pta_trans_gated.tm_fifo(2*FC3).firstf, en => pta_tm_fifo_pending_and2(0), o => pr_pta_trans_gated_and.tm_fifo(2*FC3).firstf);
+  gate_pr_pta_trans_gated_tm_fifo_2_lastf : grpci2_cdc_gate 
+    generic map(cdctech, cdcarch)
+    port map (i => pr_pta_trans_gated.tm_fifo(2*FC3).lastf, en => pta_tm_fifo_pending_and2(0), o => pr_pta_trans_gated_and.tm_fifo(2*FC3).lastf);
+  gate_pr_pta_trans_gated_tm_fifo_2_status : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => pr_pta_trans_gated.tm_fifo(2*FC3).status, en => pta_tm_fifo_pending_and2(0), o => pr_pta_trans_gated_and.tm_fifo(2*FC3).status);
+  gate_pr_pta_trans_gated_tm_fifo_2_last_cbe : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => pr_pta_trans_gated.tm_fifo(2*FC3).last_cbe, en => pta_tm_fifo_pending_and2(0), o => pr_pta_trans_gated_and.tm_fifo(2*FC3).last_cbe);
+
+end generate;
+
+FC4_pta_tm_fifo : if FC4 = 1 generate
+
+  -- synced
+  pr_pta_trans_gated_and.tm_fifo(3*FC4).pending  <=  pr_pta_trans_gated.tm_fifo(3*FC4).pending;
+  -- gated
+  gate_pr_pta_trans_gated_tm_fifo_3_start : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => pr_pta_trans_gated.tm_fifo(3*FC4).start, en => pta_tm_fifo_pending_and3(0), o => pr_pta_trans_gated_and.tm_fifo(3*FC4).start);
+  gate_pr_pta_trans_gated_tm_fifo_3_stop : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => pr_pta_trans_gated.tm_fifo(3*FC4).stop, en => pta_tm_fifo_pending_and3(0), o =>  pr_pta_trans_gated_and.tm_fifo(3*FC4).stop);
+  gate_pr_pta_trans_gated_tm_fifo_3_firstf : grpci2_cdc_gate 
+    generic map(cdctech, cdcarch)
+    port map (i => pr_pta_trans_gated.tm_fifo(3*FC4).firstf, en => pta_tm_fifo_pending_and3(0), o => pr_pta_trans_gated_and.tm_fifo(3*FC4).firstf);
+  gate_pr_pta_trans_gated_tm_fifo_3_lastf : grpci2_cdc_gate 
+    generic map(cdctech, cdcarch)
+    port map (i => pr_pta_trans_gated.tm_fifo(3*FC4).lastf, en => pta_tm_fifo_pending_and3(0), o => pr_pta_trans_gated_and.tm_fifo(3*FC4).lastf);
+  gate_pr_pta_trans_gated_tm_fifo_3_status : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => pr_pta_trans_gated.tm_fifo(3*FC4).status, en => pta_tm_fifo_pending_and3(0), o => pr_pta_trans_gated_and.tm_fifo(3*FC4).status);
+  gate_pr_pta_trans_gated_tm_fifo_3_last_cbe : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => pr_pta_trans_gated.tm_fifo(3*FC4).last_cbe, en => pta_tm_fifo_pending_and3(0), o => pr_pta_trans_gated_and.tm_fifo(3*FC4).last_cbe);
+
+end generate;
 -------------------------------------------------------------------------------------
  
 -- synced 
@@ -3484,6 +3568,58 @@ gate_pr_pta_trans_gated_msd_fifo_0_1_last_cbe : grpci2_cdc_gatev
   generic map(cdctech, 4, cdcarch)
   port map (i => pr_pta_trans_gated.msd_fifo(0)(1).last_cbe, en => pta_ms_fifo_pending_and1(0), o => pr_pta_trans_gated_and.msd_fifo(0)(1).last_cbe);
 
+FC3_pta_msd_fifo_0 : if FC3 = 1 generate
+
+  -- synced
+  pr_pta_trans_gated_and.msd_fifo(0)(2*FC3).pending  <=  pr_pta_trans_gated.msd_fifo(0)(2*FC3).pending;
+  -- gated
+  gate_pr_pta_trans_gated_msd_fifo_0_2_start : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(0)(2*FC3).start, en => pta_ms_fifo_pending_and2(0), o => pr_pta_trans_gated_and.msd_fifo(0)(2*FC3).start);
+  gate_pr_pta_trans_gated_msd_fifo_0_2_stop : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(0)(2*FC3).stop, en => pta_ms_fifo_pending_and2(0), o => pr_pta_trans_gated_and.msd_fifo(0)(2*FC3).stop);
+  gate_pr_pta_trans_gated_msd_fifo_0_2_firstf : grpci2_cdc_gate
+    generic map(cdctech, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(0)(2*FC3).firstf, en => pta_ms_fifo_pending_and2(0), o => pr_pta_trans_gated_and.msd_fifo(0)(2*FC3).firstf);
+  gate_pr_pta_trans_gated_msd_fifo_0_2_lastf : grpci2_cdc_gate 
+    generic map(cdctech, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(0)(2*FC3).lastf, en => pta_ms_fifo_pending_and2(0), o => pr_pta_trans_gated_and.msd_fifo(0)(2*FC3).lastf);
+  gate_pr_pta_trans_gated_msd_fifo_0_2_status : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(0)(2*FC3).status, en => pta_ms_fifo_pending_and2(0), o => pr_pta_trans_gated_and.msd_fifo(0)(2*FC3).status);
+  gate_pr_pta_trans_gated_msd_fifo_0_2_last_cbe : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(0)(2*FC3).last_cbe, en => pta_ms_fifo_pending_and2(0), o => pr_pta_trans_gated_and.msd_fifo(0)(2*FC3).last_cbe);
+
+end generate;
+
+FC4_pta_msd_fifo_0 : if FC4 = 1 generate
+
+  -- synced
+  pr_pta_trans_gated_and.msd_fifo(0)(3*FC4).pending  <=  pr_pta_trans_gated.msd_fifo(0)(3*FC4).pending;
+  -- gated
+  gate_pr_pta_trans_gated_msd_fifo_0_3_start : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(0)(3*FC4).start, en => pta_ms_fifo_pending_and3(0), o => pr_pta_trans_gated_and.msd_fifo(0)(3*FC4).start);
+  gate_pr_pta_trans_gated_msd_fifo_0_3_stop : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(0)(3*FC4).stop, en => pta_ms_fifo_pending_and3(0), o => pr_pta_trans_gated_and.msd_fifo(0)(3*FC4).stop);
+  gate_pr_pta_trans_gated_msd_fifo_0_3_firstf : grpci2_cdc_gate
+    generic map(cdctech, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(0)(3*FC4).firstf, en => pta_ms_fifo_pending_and3(0), o => pr_pta_trans_gated_and.msd_fifo(0)(3*FC4).firstf);
+  gate_pr_pta_trans_gated_msd_fifo_0_3_lastf : grpci2_cdc_gate 
+    generic map(cdctech, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(0)(3*FC4).lastf, en => pta_ms_fifo_pending_and3(0), o => pr_pta_trans_gated_and.msd_fifo(0)(3*FC4).lastf);
+  gate_pr_pta_trans_gated_msd_fifo_0_3_status : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(0)(3*FC4).status, en => pta_ms_fifo_pending_and3(0), o => pr_pta_trans_gated_and.msd_fifo(0)(3*FC4).status);
+  gate_pr_pta_trans_gated_msd_fifo_0_3_last_cbe : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(0)(3*FC4).last_cbe, en => pta_ms_fifo_pending_and3(0), o => pr_pta_trans_gated_and.msd_fifo(0)(3*FC4).last_cbe);
+
+end generate;
+
 -- synced
 pr_pta_trans_gated_and.msd_fifo(1)(0).pending  <=  pr_pta_trans_gated.msd_fifo(1)(0).pending;
 -- gated
@@ -3528,6 +3664,58 @@ gate_pr_pta_trans_gated_msd_fifo_1_1_last_cbe : grpci2_cdc_gatev
   generic map(cdctech, 4, cdcarch)
   port map (i => pr_pta_trans_gated.msd_fifo(1)(1).last_cbe, en => pta_md_fifo_pending_and1(0), o => pr_pta_trans_gated_and.msd_fifo(1)(1).last_cbe);
 
+FC3_pta_msd_fifo_1 : if FC3 = 1 generate
+
+  -- synced
+  pr_pta_trans_gated_and.msd_fifo(1)(2*FC3).pending  <=  pr_pta_trans_gated.msd_fifo(1)(2*FC3).pending;
+  -- gated
+  gate_pr_pta_trans_gated_msd_fifo_1_2_start : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(1)(2*FC3).start, en => pta_md_fifo_pending_and2(0), o => pr_pta_trans_gated_and.msd_fifo(1)(2*FC3).start);
+  gate_pr_pta_trans_gated_msd_fifo_1_2_stop : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(1)(2*FC3).stop, en => pta_md_fifo_pending_and2(0), o => pr_pta_trans_gated_and.msd_fifo(1)(2*FC3).stop);
+  gate_pr_pta_trans_gated_msd_fifo_1_2_firstf : grpci2_cdc_gate
+    generic map(cdctech, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(1)(2*FC3).firstf, en => pta_md_fifo_pending_and2(0), o => pr_pta_trans_gated_and.msd_fifo(1)(2*FC3).firstf);
+  gate_pr_pta_trans_gated_msd_fifo_1_2_lastf : grpci2_cdc_gate 
+    generic map(cdctech, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(1)(2*FC3).lastf, en => pta_md_fifo_pending_and2(0), o => pr_pta_trans_gated_and.msd_fifo(1)(2*FC3).lastf);
+  gate_pr_pta_trans_gated_msd_fifo_1_2_status : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(1)(2*FC3).status, en => pta_md_fifo_pending_and2(0), o => pr_pta_trans_gated_and.msd_fifo(1)(2*FC3).status);
+  gate_pr_pta_trans_gated_msd_fifo_1_2_last_cbe : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(1)(2*FC3).last_cbe, en => pta_md_fifo_pending_and2(0), o => pr_pta_trans_gated_and.msd_fifo(1)(2*FC3).last_cbe);
+
+end generate;
+
+FC4_pta_msd_fifo_1 : if FC4 = 1 generate
+
+  -- synced
+  pr_pta_trans_gated_and.msd_fifo(1)(3*FC4).pending  <=  pr_pta_trans_gated.msd_fifo(1)(3*FC4).pending;
+  -- gated
+  gate_pr_pta_trans_gated_msd_fifo_1_3_start : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(1)(3*FC4).start, en => pta_md_fifo_pending_and3(0), o => pr_pta_trans_gated_and.msd_fifo(1)(3*FC4).start);
+  gate_pr_pta_trans_gated_msd_fifo_1_3_stop : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(1)(3*FC4).stop, en => pta_md_fifo_pending_and3(0), o => pr_pta_trans_gated_and.msd_fifo(1)(3*FC4).stop);
+  gate_pr_pta_trans_gated_msd_fifo_1_3_firstf : grpci2_cdc_gate
+    generic map(cdctech, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(1)(3*FC4).firstf, en => pta_md_fifo_pending_and3(0), o => pr_pta_trans_gated_and.msd_fifo(1)(3*FC4).firstf);
+  gate_pr_pta_trans_gated_msd_fifo_1_3_lastf : grpci2_cdc_gate 
+    generic map(cdctech, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(1)(3*FC4).lastf, en => pta_md_fifo_pending_and3(0), o => pr_pta_trans_gated_and.msd_fifo(1)(3*FC4).lastf);
+  gate_pr_pta_trans_gated_msd_fifo_1_3_status : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(1)(3*FC4).status, en => pta_md_fifo_pending_and3(0), o => pr_pta_trans_gated_and.msd_fifo(1)(3*FC4).status);
+  gate_pr_pta_trans_gated_msd_fifo_1_3_last_cbe : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => pr_pta_trans_gated.msd_fifo(1)(3*FC4).last_cbe, en => pta_md_fifo_pending_and3(0), o => pr_pta_trans_gated_and.msd_fifo(1)(3*FC4).last_cbe);
+
+end generate;
+
 -------------------------------------------------------------------------------------
 
 -- synced
@@ -3545,10 +3733,16 @@ pr_pta_trans_gated_and.rst_ack             <= pr_pta_trans_gated.rst_ack;
 
 atp_tm_fifo_pending_and0 <= (others => (pr.sync(nsync).tm_fifo(0).pending(RAM_LATENCY) xor pr.pta_trans.tm_fifo_ack(0)));
 atp_tm_fifo_pending_and1 <= (others => (pr.sync(nsync).tm_fifo(1).pending(RAM_LATENCY) xor pr.pta_trans.tm_fifo_ack(1)));
+atp_tm_fifo_pending_and2 <= (others => (pr.sync(nsync).tm_fifo(2*FC3).pending(RAM_LATENCY) xor pr.pta_trans.tm_fifo_ack(2*FC3)));
+atp_tm_fifo_pending_and3 <= (others => (pr.sync(nsync).tm_fifo(3*FC4).pending(RAM_LATENCY) xor pr.pta_trans.tm_fifo_ack(3*FC4)));
 atp_ms_fifo_pending_and0 <= (others => (pr.sync(nsync).msd_fifo(0)(0).pending(RAM_LATENCY) xor pr.pta_trans.msd_fifo_ack(0)(0)));
 atp_ms_fifo_pending_and1 <= (others => (pr.sync(nsync).msd_fifo(0)(1).pending(RAM_LATENCY) xor pr.pta_trans.msd_fifo_ack(0)(1)));
+atp_ms_fifo_pending_and2 <= (others => (pr.sync(nsync).msd_fifo(0)(2*FC3).pending(RAM_LATENCY) xor pr.pta_trans.msd_fifo_ack(0)(2*FC3)));
+atp_ms_fifo_pending_and3 <= (others => (pr.sync(nsync).msd_fifo(0)(3*FC4).pending(RAM_LATENCY) xor pr.pta_trans.msd_fifo_ack(0)(3*FC4)));
 atp_md_fifo_pending_and0 <= (others => (pr.sync(nsync).msd_fifo(1)(0).pending(RAM_LATENCY) xor pr.pta_trans.msd_fifo_ack(1)(0)));
 atp_md_fifo_pending_and1 <= (others => (pr.sync(nsync).msd_fifo(1)(1).pending(RAM_LATENCY) xor pr.pta_trans.msd_fifo_ack(1)(1)));
+atp_md_fifo_pending_and2 <= (others => (pr.sync(nsync).msd_fifo(1)(2*FC3).pending(RAM_LATENCY) xor pr.pta_trans.msd_fifo_ack(1)(2*FC3)));
+atp_md_fifo_pending_and3 <= (others => (pr.sync(nsync).msd_fifo(1)(3*FC4).pending(RAM_LATENCY) xor pr.pta_trans.msd_fifo_ack(1)(3*FC4)));
 atp_ms_acc_pending_and <= (others => (pr.sync(nsync).msd_acc(0).pending xor pr.pta_trans.msd_acc_ack(0)));
 atp_md_acc_pending_and <= (others => (pr.sync(nsync).msd_acc(1).pending xor pr.pta_trans.msd_acc_ack(1)));
 
@@ -3601,6 +3795,59 @@ gate_ar_atp_trans_tm_fifo_1_status : grpci2_cdc_gatev
 gate_ar_atp_trans_tm_fifo_1_last_cbe : grpci2_cdc_gatev 
   generic map(cdctech, 4, cdcarch)
   port map (i => ar.atp_trans.tm_fifo(1).last_cbe, en => atp_tm_fifo_pending_and1(0), o => ar_atp_trans_gated_and.tm_fifo(1).last_cbe);
+
+FC3_atp_tm_fifo : if FC3 = 1 generate
+
+  -- synced
+  ar_atp_trans_gated_and.tm_fifo(2*FC3).pending <= ar.atp_trans.tm_fifo(2*FC3).pending;
+  -- gated
+  gate_ar_atp_trans_tm_fifo_2_start : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => ar.atp_trans.tm_fifo(2*FC3).start, en => atp_tm_fifo_pending_and2(0), o => ar_atp_trans_gated_and.tm_fifo(2*FC3).start);
+  gate_ar_atp_trans_tm_fifo_2_stop : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => ar.atp_trans.tm_fifo(2*FC3).stop, en => atp_tm_fifo_pending_and2(0), o => ar_atp_trans_gated_and.tm_fifo(2*FC3).stop);
+  gate_ar_atp_trans_tm_fifo_2_firstf : grpci2_cdc_gate 
+    generic map(cdctech, cdcarch)
+    port map (i => ar.atp_trans.tm_fifo(2*FC3).firstf, en => atp_tm_fifo_pending_and2(0), o => ar_atp_trans_gated_and.tm_fifo(2*FC3).firstf);
+  gate_ar_atp_trans_tm_fifo_2_lastf : grpci2_cdc_gate 
+    generic map(cdctech, cdcarch)
+    port map (i => ar.atp_trans.tm_fifo(2*FC3).lastf, en => atp_tm_fifo_pending_and2(0), o => ar_atp_trans_gated_and.tm_fifo(2*FC3).lastf);
+  gate_ar_atp_trans_tm_fifo_2_status : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => ar.atp_trans.tm_fifo(2*FC3).status, en => atp_tm_fifo_pending_and2(0), o => ar_atp_trans_gated_and.tm_fifo(2*FC3).status);
+  gate_ar_atp_trans_tm_fifo_2_last_cbe : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => ar.atp_trans.tm_fifo(2*FC3).last_cbe, en => atp_tm_fifo_pending_and2(0), o => ar_atp_trans_gated_and.tm_fifo(2*FC3).last_cbe);
+
+end generate;
+
+FC4_atp_tm_fifo : if FC4 = 1 generate
+
+  -- synced
+  ar_atp_trans_gated_and.tm_fifo(3*FC4).pending <= ar.atp_trans.tm_fifo(3*FC4).pending;
+  -- gated
+  gate_ar_atp_trans_tm_fifo_3_start : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => ar.atp_trans.tm_fifo(3*FC4).start, en => atp_tm_fifo_pending_and3(0), o => ar_atp_trans_gated_and.tm_fifo(3*FC4).start);
+  gate_ar_atp_trans_tm_fifo_3_stop : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => ar.atp_trans.tm_fifo(3*FC4).stop, en => atp_tm_fifo_pending_and3(0), o => ar_atp_trans_gated_and.tm_fifo(3*FC4).stop);
+  gate_ar_atp_trans_tm_fifo_3_firstf : grpci2_cdc_gate 
+    generic map(cdctech, cdcarch)
+    port map (i => ar.atp_trans.tm_fifo(3*FC4).firstf, en => atp_tm_fifo_pending_and3(0), o => ar_atp_trans_gated_and.tm_fifo(3*FC4).firstf);
+  gate_ar_atp_trans_tm_fifo_3_lastf : grpci2_cdc_gate 
+    generic map(cdctech, cdcarch)
+    port map (i => ar.atp_trans.tm_fifo(3*FC4).lastf, en => atp_tm_fifo_pending_and3(0), o => ar_atp_trans_gated_and.tm_fifo(3*FC4).lastf);
+  gate_ar_atp_trans_tm_fifo_3_status : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => ar.atp_trans.tm_fifo(3*FC4).status, en => atp_tm_fifo_pending_and3(0), o => ar_atp_trans_gated_and.tm_fifo(3*FC4).status);
+  gate_ar_atp_trans_tm_fifo_3_last_cbe : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => ar.atp_trans.tm_fifo(3*FC4).last_cbe, en => atp_tm_fifo_pending_and3(0), o => ar_atp_trans_gated_and.tm_fifo(3*FC4).last_cbe);
+
+end generate;
+
 -------------------------------------------------------------------------------------
 
 -- synced
@@ -3727,6 +3974,58 @@ gate_ar_atp_trans_msd_fifo_0_1_last_cbe : grpci2_cdc_gatev
   generic map(cdctech, 4, cdcarch)
   port map (i => ar.atp_trans.msd_fifo(0)(1).last_cbe, en => atp_ms_fifo_pending_and1(0), o => ar_atp_trans_gated_and.msd_fifo(0)(1).last_cbe);
 
+FC3_atp_msd_fifo_0 : if FC3 = 1 generate
+
+  -- synced
+  ar_atp_trans_gated_and.msd_fifo(0)(2*FC3).pending  <=  ar.atp_trans.msd_fifo(0)(2*FC3).pending;
+  -- gated
+  gate_ar_atp_trans_msd_fifo_0_2_start : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(0)(2*FC3).start, en => atp_ms_fifo_pending_and2(0), o => ar_atp_trans_gated_and.msd_fifo(0)(2*FC3).start);
+  gate_ar_atp_trans_msd_fifo_0_2_stop : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(0)(2*FC3).stop, en => atp_ms_fifo_pending_and2(0), o => ar_atp_trans_gated_and.msd_fifo(0)(2*FC3).stop);
+  gate_ar_atp_trans_msd_fifo_0_2_firstf : grpci2_cdc_gate 
+    generic map(cdctech, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(0)(2*FC3).firstf, en => atp_ms_fifo_pending_and2(0), o => ar_atp_trans_gated_and.msd_fifo(0)(2*FC3).firstf);
+  gate_ar_atp_trans_msd_fifo_0_2_lastf : grpci2_cdc_gate 
+    generic map(cdctech, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(0)(2*FC3).lastf, en => atp_ms_fifo_pending_and2(0), o => ar_atp_trans_gated_and.msd_fifo(0)(2*FC3).lastf);
+  gate_ar_atp_trans_msd_fifo_0_2_status : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(0)(2*FC3).status, en => atp_ms_fifo_pending_and2(0), o => ar_atp_trans_gated_and.msd_fifo(0)(2*FC3).status);
+  gate_ar_atp_trans_msd_fifo_0_2_last_cbe : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(0)(2*FC3).last_cbe, en => atp_ms_fifo_pending_and2(0), o => ar_atp_trans_gated_and.msd_fifo(0)(2*FC3).last_cbe);
+
+end generate;
+
+FC4_atp_msd_fifo_0 : if FC4 = 1 generate
+
+  -- synced
+  ar_atp_trans_gated_and.msd_fifo(0)(3*FC4).pending  <=  ar.atp_trans.msd_fifo(0)(3*FC4).pending;
+  -- gated
+  gate_ar_atp_trans_msd_fifo_0_3_start : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(0)(3*FC4).start, en => atp_ms_fifo_pending_and3(0), o => ar_atp_trans_gated_and.msd_fifo(0)(3*FC4).start);
+  gate_ar_atp_trans_msd_fifo_0_3_stop : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(0)(3*FC4).stop, en => atp_ms_fifo_pending_and3(0), o => ar_atp_trans_gated_and.msd_fifo(0)(3*FC4).stop);
+  gate_ar_atp_trans_msd_fifo_0_3_firstf : grpci2_cdc_gate 
+    generic map(cdctech, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(0)(3*FC4).firstf, en => atp_ms_fifo_pending_and3(0), o => ar_atp_trans_gated_and.msd_fifo(0)(3*FC4).firstf);
+  gate_ar_atp_trans_msd_fifo_0_3_lastf : grpci2_cdc_gate 
+    generic map(cdctech, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(0)(3*FC4).lastf, en => atp_ms_fifo_pending_and3(0), o => ar_atp_trans_gated_and.msd_fifo(0)(3*FC4).lastf);
+  gate_ar_atp_trans_msd_fifo_0_3_status : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(0)(3*FC4).status, en => atp_ms_fifo_pending_and3(0), o => ar_atp_trans_gated_and.msd_fifo(0)(3*FC4).status);
+  gate_ar_atp_trans_msd_fifo_0_3_last_cbe : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(0)(3*FC4).last_cbe, en => atp_ms_fifo_pending_and3(0), o => ar_atp_trans_gated_and.msd_fifo(0)(3*FC4).last_cbe);
+
+end generate;
+
 -- synced
 ar_atp_trans_gated_and.msd_fifo(1)(0).pending  <=  ar.atp_trans.msd_fifo(1)(0).pending;
 -- gated
@@ -3770,6 +4069,58 @@ gate_ar_atp_trans_msd_fifo_1_1_status : grpci2_cdc_gatev
 gate_ar_atp_trans_msd_fifo_1_1_last_cbe : grpci2_cdc_gatev 
   generic map(cdctech, 4, cdcarch)
   port map (i => ar.atp_trans.msd_fifo(1)(1).last_cbe, en => atp_md_fifo_pending_and1(0), o => ar_atp_trans_gated_and.msd_fifo(1)(1).last_cbe);
+
+FC3_atp_msd_fifo_1 : if FC3 = 1 generate
+
+  -- synced
+  ar_atp_trans_gated_and.msd_fifo(1)(2*FC3).pending  <=  ar.atp_trans.msd_fifo(1)(2*FC3).pending;
+  -- gated
+  gate_ar_atp_trans_msd_fifo_1_2_start : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(1)(2*FC3).start, en => atp_md_fifo_pending_and2(0), o => ar_atp_trans_gated_and.msd_fifo(1)(2*FC3).start);
+  gate_ar_atp_trans_msd_fifo_1_2_stop : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(1)(2*FC3).stop, en => atp_md_fifo_pending_and2(0), o => ar_atp_trans_gated_and.msd_fifo(1)(2*FC3).stop);
+  gate_ar_atp_trans_msd_fifo_1_2_firstf : grpci2_cdc_gate 
+    generic map(cdctech, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(1)(2*FC3).firstf, en => atp_md_fifo_pending_and2(0), o => ar_atp_trans_gated_and.msd_fifo(1)(2*FC3).firstf);
+  gate_ar_atp_trans_msd_fifo_1_2_lastf : grpci2_cdc_gate 
+    generic map(cdctech, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(1)(2*FC3).lastf, en => atp_md_fifo_pending_and2(0), o => ar_atp_trans_gated_and.msd_fifo(1)(2*FC3).lastf);
+  gate_ar_atp_trans_msd_fifo_1_2_status : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(1)(2*FC3).status, en => atp_md_fifo_pending_and2(0), o => ar_atp_trans_gated_and.msd_fifo(1)(2*FC3).status);
+  gate_ar_atp_trans_msd_fifo_1_2_last_cbe : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(1)(2*FC3).last_cbe, en => atp_md_fifo_pending_and2(0), o => ar_atp_trans_gated_and.msd_fifo(1)(2*FC3).last_cbe);
+
+end generate;
+
+FC4_atp_msd_fifo_1 : if FC4 = 1 generate
+
+  -- synced
+  ar_atp_trans_gated_and.msd_fifo(1)(3*FC4).pending  <=  ar.atp_trans.msd_fifo(1)(3*FC4).pending;
+  -- gated
+  gate_ar_atp_trans_msd_fifo_1_3_start : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(1)(3*FC4).start, en => atp_md_fifo_pending_and3(0), o => ar_atp_trans_gated_and.msd_fifo(1)(3*FC4).start);
+  gate_ar_atp_trans_msd_fifo_1_3_stop : grpci2_cdc_gatev 
+    generic map(cdctech, FIFO_DEPTH, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(1)(3*FC4).stop, en => atp_md_fifo_pending_and3(0), o => ar_atp_trans_gated_and.msd_fifo(1)(3*FC4).stop);
+  gate_ar_atp_trans_msd_fifo_1_3_firstf : grpci2_cdc_gate 
+    generic map(cdctech, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(1)(3*FC4).firstf, en => atp_md_fifo_pending_and3(0), o => ar_atp_trans_gated_and.msd_fifo(1)(3*FC4).firstf);
+  gate_ar_atp_trans_msd_fifo_1_3_lastf : grpci2_cdc_gate 
+    generic map(cdctech, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(1)(3*FC4).lastf, en => atp_md_fifo_pending_and3(0), o => ar_atp_trans_gated_and.msd_fifo(1)(3*FC4).lastf);
+  gate_ar_atp_trans_msd_fifo_1_3_status : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(1)(3*FC4).status, en => atp_md_fifo_pending_and3(0), o => ar_atp_trans_gated_and.msd_fifo(1)(3*FC4).status);
+  gate_ar_atp_trans_msd_fifo_1_3_last_cbe : grpci2_cdc_gatev 
+    generic map(cdctech, 4, cdcarch)
+    port map (i => ar.atp_trans.msd_fifo(1)(3*FC4).last_cbe, en => atp_md_fifo_pending_and3(0), o => ar_atp_trans_gated_and.msd_fifo(1)(3*FC4).last_cbe);
+
+end generate;
 
 -------------------------------------------------------------------------------------
 
@@ -5551,7 +5902,7 @@ begin
           prdata(26) := conv_std_logic(hostirq/=0);
           prdata(25 downto 24) := conv_std_logic_vector(irqmode, 2);
           prdata(23) := conv_std_logic(tracebuffer/=0);
-          prdata(22 downto 22) := (others => '0'); -- RESERVED
+          prdata(          22) := '1'; -- Extended capability register (offset 0x38, 0x3C) 
           prdata(          21) := ar.s.fakehost;
           prdata(20 downto 19) := ar.s.cfg_status;
           prdata(18 downto 17) := ar.irq.system_status;
@@ -5624,12 +5975,11 @@ begin
           prdata(31 downto 0) := ar.apb_pr_conf_0_pta_map(4);
         when "01101" => -- 0x34 PCI BAR5 to AHB map (read only)
           prdata(31 downto 0) := ar.apb_pr_conf_0_pta_map(5);
-        when "01110" => -- 0x38 Reserved 
-          --prdata(31 downto 0) := (others => '0'); 
-          prdata := ar.debug;
+        when "01110" => -- 0x38 Capability 2
+          prdata(31 downto  1) := (others => '0'); 
+          prdata(           0) := '1'; -- BAR prefetch bit implemented
         when "01111" => -- 0x3c Reserved
-          --prdata(31 downto 0) := (others => '0'); 
-          prdata := ar.debug_pr;
+          prdata(31 downto 0) := (others => '0'); 
         when "10000" => -- 0x40 AHB master00 to PCI map 
           if apbi.pwrite = '1' then
             av.s.atp_map(0)(31 downto 3) := (others => '0');
@@ -5806,6 +6156,19 @@ begin
         when "01001" => -- 0xA4 tmp target cur state
           prdata(31 downto 8) := (others => '0');
           prdata(8 downto 0) := ptta_trans.dbg_cur_acc;
+        when "01010" => -- 0xA8  AMBA internal state
+          prdata := ar.debug;
+        when "01011" => -- 0xAC  PCI internal state
+          prdata := ar.debug_pr;
+        when others =>
+          prdata(31 downto 0) := (others => '0');
+      end case;
+    else -- apbi.paddr(7) = '1' and tracebuffer = 0
+      case apbaddr is
+        when "01010" => -- 0xA8  AMBA internal state
+          prdata := ar.debug;
+        when "01011" => -- 0xAC  PCI internal state
+          prdata := ar.debug_pr;
         when others =>
           prdata(31 downto 0) := (others => '0');
       end case;
@@ -5840,18 +6203,7 @@ begin
           tbprdata := zero32(31 downto 20) & pt_fifoo_sig.data(16 downto 0) & "000";
          end if;
       else
-        if tbapbi.paddr(7) = '0' then -- PCI core and DMA
-          case tbapbaddr is
-            when "01110" => -- 0x38 Reserved 
-              --prdata(31 downto 0) := (others => '0'); 
-              tbprdata := ar.debug;
-            when "01111" => -- 0x3c Reserved
-              --prdata(31 downto 0) := (others => '0'); 
-              tbprdata := ar.debug_pr;
-            when others =>
-              tbprdata(31 downto 0) := (others => '0'); 
-          end case;
-        elsif tracebuffer /= 0 then  -- PCI trace buffer enabled
+        if tracebuffer /= 0 then  -- PCI trace buffer enabled
           case tbapbaddr is
             when "00000" => -- 0x80 PCI trace control & status
               if tbapbi.pwrite = '1' then
@@ -5896,8 +6248,21 @@ begin
             when "01001" => -- 0xA4 tmp target cur state
               tbprdata(31 downto 8) := (others => '0');
               tbprdata(8 downto 0) := ptta_trans.dbg_cur_acc;
+            when "01010" => -- 0xA8  AMBA internal state
+              tbprdata := ar.debug;
+            when "01011" => -- 0xAC  PCI internal state
+              tbprdata := ar.debug_pr;
             when others =>
               tbprdata(31 downto 0) := (others => '0');
+          end case;
+        else -- apbi.paddr(7) = '1' and tracebuffer = 0
+          case apbaddr is
+            when "01010" => -- 0xA8  AMBA internal state
+              prdata := ar.debug;
+            when "01011" => -- 0xAC  PCI internal state
+              prdata := ar.debug_pr;
+            when others =>
+              prdata(31 downto 0) := (others => '0');
           end case;
         end if;
       end if;

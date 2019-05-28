@@ -58,7 +58,15 @@
 #define CONFIG_SPW_NETLIST 0
 #endif
 
-#ifndef CONFIG_SPW_FT
+#if defined CONFIG_SPW_FT_DMR
+#define CONFIG_SPW_FT 1
+#elif defined CONFIG_SPW_FT_TMR
+#define CONFIG_SPW_FT 2
+#elif defined CONFIG_SPW_FT_BCH
+#define CONFIG_SPW_FT 4
+#elif defined CONFIG_SPW_FT_TECHSPEC
+#define CONFIG_SPW_FT 5
+#else
 #define CONFIG_SPW_FT 0
 #endif
 

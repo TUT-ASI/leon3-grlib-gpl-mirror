@@ -1,5 +1,5 @@
-VER=$(VNAME)2018.3
-BID=4226
+VER=$(VNAME)2019.2
+BID=4241
 CC=gcc
 SED=sed
 
@@ -8,7 +8,7 @@ ASICLIBS = ihp25 sgb25vrh ut025crh virage rh_lib18t rh_lib18t_io2 rh_lib13t\
 	tm65gplus st65lp st65gp cmos9sf nextreme2 gf65g saed32
 FPGALIBS = apa proasic3 axcelerator ec fusion unisim virtex virtex5 secureip unimacro altera altera_mf \
 	 stratixii eclipsee cycloneiii stratixiii synplify simprim stratixiv \
-	proasic3e proasic3l smartfusion2 rtg4 polarfire
+	proasic3e proasic3l smartfusion2 rtg4 polarfire nx
 
 ifeq ("$(GRLIB_CONFIG)","")
 GRLIB_CONFIG = dummy
@@ -79,17 +79,17 @@ RMCOMLIBSX = $(RMCOMLIBS:%=lib/techmap/%) $(RMCOMLIBS:%=lib/tech/%)
 RMFPGALIBSX = $(ASICLIBS:%=lib/techmap/%) $(ASICLIBS:%=lib/tech/%)
 
 ALIB = alib
-ACOM = acom -quiet $(ACOMOPT) -work
-ALOG = alog -quiet $(ALOGOPT) -work
+ACOM = acom -quiet $(ACOMOPT)
+ALOG = alog -quiet $(ALOGOPT)
 AVHDL = avhdl
 
 VLIB = vlib
 ifeq ("$(GRLIB_SIMULATOR)", "ALDEC")
-VCOM = vcom -incr -nowarn ELAB1_0026 -nowarn COMP96_0259 -quiet $(VCOMOPT) -93
+VCOM = vcom -incr -nowarn ELAB1_0026 -nowarn COMP96_0259 -quiet $(VCOMOPT)
 VLOG = vlog -incr -v2k5 -quiet $(VLOGOPT)
 SVLOG = vlog -incr -quiet $(VLOGOPT)
 else
-VCOM = vcom -quiet $(VCOMOPT) -93
+VCOM = vcom -quiet $(VCOMOPT)
 VLOG = vlog -quiet $(VLOGOPT)
 SVLOG = $(VLOG)
 endif
@@ -157,6 +157,7 @@ help:
 	@echo "   make quartus-launch-synp  : start Quartus for synplify project"
 	@echo "   make synplify-launch      : start Synplify"
 	@echo "   make vivado-launch        : start Vivado project navigator"
+	@echo "   make nanoxmap-launch      : start NanoXmap GUI"
 	@echo "  other GRLIB targets:"
 	@echo "   make xgrlib               : start GRLIB GUI"
 	@echo
@@ -187,6 +188,7 @@ help:
 	@echo "   make quartus-synp    : synthesize with synplify, place&route with Quartus"
 	@echo "   make synplify        : synthesize design using synplify"
 	@echo "   make vivado          : synthesize and place&route with Xilinx Vivado"
+	@echo "   make nanoxpython     : synthesize and place&route with NanoXplore NanoXmap"
 	@echo "  other GRLIB targets:"
 	@echo "   make scripts         : generate compile scripts only"
 	@echo "   make clean           : remove all temporary files"
@@ -379,10 +381,9 @@ vsim-fix:
 	@cat make.work | sed 's/\([a-zA-Z]\)\(:[\\\/]\)/\/cygdrive\/\L\1\//' > make.work2
 	@mv make.work2 make.work
 
-VLOGANOPT = 
-SVLOGANOPT =
-VHDLANOPT =
+ifeq ("$(VCSELAB)","")
 VCSELAB = -debug_access+all
+endif
 
 vcs-comp: make.simv
 	@sh vcs_libs
@@ -413,14 +414,14 @@ vsim-grlib: modelsim
 
 vsim-run: vsim
 ifeq ("$(VSIMOPT)","")
-	@vsim -c -voptargs="+acc" $(SIMTOP) <  $(GRLIB)/bin/runvsim.do
+	@vsim -c -voptargs="+acc -nowarn 1" $(SIMTOP) <  $(GRLIB)/bin/runvsim.do
 else
 	@vsim -c $(VSIMOPT)
 endif
 
 vsim-launch: scripts modelsim
 ifeq ("$(VSIMOPT)","")
-	@vsim -i -quiet $(SIMTOP)
+	@vsim -i -quiet -voptargs="+acc -nowarn 1" $(SIMTOP)
 else
 	vsim -i -quiet $(VSIMOPT)
 endif
@@ -1299,17 +1300,23 @@ vivado: vivado/$(TOP)_vivado.tcl $(VHDLSYNFILES) $(VERILOGSYNFILES)
 	fi;
 
 vivado-clean:
-	-rm -rf ./vivado *vivado.log vivado*.jou vivado*.backup.log vivado*.str .Xil .cxl.*.version compile_simlib.log compile_simlib.log.bak xmd.ini
+	-rm -rf ./vivado *vivado.log vivado*.jou vivado*.backup.log vivado*.str .Xil .cxl.*.version compile_simlib.log compile_simlib.log.bak xmd.ini xsct.ini
+
+vivado-detected-prog := $(shell { command -v xsct || command -v xmd; } 2>/dev/null)
 
 vivado-prog-fpga:
+	@echo "connect" > ./xsct.ini
 	@echo "fpga -f ./vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).bit" > ./xmd.ini
 	@echo "exit" >> ./xmd.ini
-	xmd
+	cat  ./xmd.ini >>./xsct.ini
+	$(vivado-detected-prog)
 
 vivado-prog-fpga-ref:
+	@echo "connect" > ./xsct.ini
 	@echo "fpga -f ./bitfiles/$(TOP).bit" > ./xmd.ini
 	@echo "exit" >> ./xmd.ini
-	xmd
+	cat  ./xmd.ini >>./xsct.ini
+	$(vivado-detected-prog)
 
 #########   Altera targets   ############
 
@@ -1722,6 +1729,50 @@ $(TOP).rc: compile.rc
 rc-clean:
 	-rm -rf rtlc rc.log rc.cmd
 
+
+#########    NanoXplore  targets   ############
+
+install-nxlibrary: 
+ifeq ("$(NANOXLIBPATH)","")
+	@echo "NANOXLIBPATH is not set. NanoXplore library installation failed"
+else
+	-@cp $(NANOXLIBPATH)/nxLibrary.vhdp $(GRLIB)/lib/tech/nx/components/nxLibrary.vhdp
+	@echo "NanoXplore library installed in GRLIB"
+endif
+
+remove-nxlibrary:
+	-@rm $(GRLIB)/lib/tech/nx/components/nxLibrary.vhdp
+	@echo "NanoXplore libraries removed from GRLIB"
+
+
+ifeq ("$(TIMING_DRIVEN)","")
+TIMING_DRIVEN=No
+endif
+ifeq ("$(MAPPING_EFFORT)","")
+MAPPING_EFFORT=High
+endif
+
+#Generate project file
+nanoxmap-gen: $(TOP)_nanoxmap.py
+	nxpython $(TOP)_nanoxmap.py
+#Launch NanoXmap GUI on the project file
+nanoxmap-launch: nanoxmap-gen
+	nxmap $(TOP)_native.nxm
+#Synthetize, place, route and generate bitstream in batch mode using NanoXpython
+nanoxpython: nanoxmap-gen
+	nxpython $(TOP)_nanoxpython.py
+
+#Load the generated bitstream into the chip of the current board, using the JTAG interface.
+nx-prog-fpga:
+	nxbase2_cli -i -c "chip bitstream load  $(TOP)_bitfile.nxb"
+
+#Write the generate bitstream into the SPI flash daughter board and validate the memory content 
+nx-prog-prom:
+	nxbase2_cli -i -c "board spi flash program  $(TOP)_bitfile.nxb" -c "board spi flash validate $(TOP)_bitfile.nxb"
+
+nanoxmap-clean:
+	rm -rf logs *.nxm *.pyc *.nxb $(TOP)_nanoxmap.py $(TOP)_nanoxpython.py $(TOP)_generated_pads.py
+
 #########    Generic simulation target ###############
 
 ifeq ("$(GRLIB_SIMULATOR)", "ALDEC")
@@ -1780,7 +1831,7 @@ scriptgendone: scriptgen_variable_values.tcl
 
 work-clean: $(CLEAN) vsim-clean ise-clean ncsim-clean ghdl-clean synplify-clean quartus-clean \
 	actel-clean dc-clean rc-clean isp-clean precision-clean vsimsa-clean avhdl-clean \
-	vivado-clean planahead-clean riviera-clean fpro-clean vcs-clean
+	vivado-clean planahead-clean riviera-clean fpro-clean vcs-clean nanoxmap-clean
 	-rm -rf verilog.txt tkparse.exe main.tk ahbrom outdata ahbrom.bin
 
 scripts-clean:
@@ -1798,7 +1849,7 @@ scriptgen-clean:
 
 clean distclean: $(CLEAN) work-clean scripts-clean clean-xilinx-lib scriptgen-clean
 
-libclean: remove-altera remove-unisim remove-microsemi remove-dare
+libclean: remove-alera remove-unisim remove-microsemi remove-dare remove-nxlibrary
 
 none-clean:
 

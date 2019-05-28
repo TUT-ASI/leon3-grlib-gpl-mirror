@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -25,6 +25,20 @@
 -- Description:	Behavioural fifo generators
 ------------------------------------------------------------------------------
 
+-- Note on fwft together with separate clocks:
+--   With fwft=1, it will take (nsync+1) cycles for the data to come out,
+--     because the read enable to the RAM is asserted only when the
+--     write pointer has been synchronized over to the read domain. This is
+--     to avoid read/write collisions on the RAM, and also to avoid any risk
+--     of glitches on the RAM outputs causing timing violations downstream.
+--   Another mode is supported, fwft=2 where the read-enable of the RAM is
+--     asserted while the read-side is waiting for data. When the write
+--     pointer has been synchronized over the data is instantly available
+--     from the RAM saving one clock cycle. This is only 'safe' to use on
+--     inferred tech (RAM in flip flops) or techs where read/write
+--     collisions are not corrupting the RAM. In order to prevent the
+--     glitch propagation issue, nand gates are added which need to be
+--     preserved in synthesis.
 
 library ieee;
 library techmap;
@@ -45,7 +59,7 @@ entity generic_fifo is
     sepclk : integer := 1;  -- 1 = asynchrounous read/write clocks, 0 = synchronous read/write clocks
     afullwl : integer := 0; -- almost full min writes left until full (0 makes equal to full)
     aemptyrl : integer := 0; -- almost empty min reads left until empty (0 makes equal to empty)
-    fwft : integer := 0;     -- 1 = first word fall trough mode, 0 = standard mode
+    fwft : integer := 0;     -- 2 = FWFT minimal latency, 1 = first word fall trough mode, 0 = standard mode
     ft: integer := 0;
     custombits : integer := 1
   );
@@ -66,6 +80,7 @@ entity generic_fifo is
     wempty  : out std_logic; -- fifo empty (synchronized in write clock domain)
     wusedw  : out std_logic_vector(abits-1 downto 0); -- fifo used words (synchronized in write clock domain)
     datain  : in std_logic_vector(dbits-1 downto 0); -- fifo data input
+    dynsync : in std_ulogic;
     testin  : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
     error    : out std_logic_vector((((dbits+7)/8)-1)*(1-ft/4)+ft/4 downto 0); -- FT only
     errinj   : in std_logic_vector((((dbits + 7)/8)*2-1)*(1-ft/4)+(6*(ft/4)) downto 0) := (others => '0') -- FT only
@@ -74,16 +89,21 @@ end;
 
 architecture rtl_fifo of generic_fifo is
 
+  constant fwft_minlat : boolean := (fwft=2 and syncram_2p_dest_rw_collision(tech)=0);
+
   type wr_fifo_type is record
     waddr : std_logic_vector(abits downto 0);
     waddr_gray : std_logic_vector(abits downto 0);
+    waddr_ds1 : std_logic_vector(abits downto 0);
     full : std_logic;
   end record;
 
   type rd_fifo_type is record
     raddr : std_logic_vector(abits downto 0);
     raddr_gray : std_logic_vector(abits downto 0);
+    raddr_ds1 : std_logic_vector(abits downto 0);
     empty : std_logic;
+    waddr_ds1_del: std_logic_vector(abits downto 0);
   end record;
 
   signal wr_r, wr_rin : wr_fifo_type;
@@ -91,12 +111,17 @@ architecture rtl_fifo of generic_fifo is
   signal wr_raddr_gray, rd_waddr_gray : std_logic_vector(abits downto 0);
   signal sepfwft_rden: std_ulogic;
 
+  signal dataout_i, dataout_o, dataout_g : std_logic_vector(dbits-1 downto 0);
+  signal error_i, error_o, error_g : std_logic_vector((((dbits+7)/8)-1)*(1-ft/4)+ft/4 downto 0);
+  constant zero_error : std_logic_vector((((dbits+7)/8)-1)*(1-ft/4)+ft/4 downto 0) := (others => '0');
+
+
 begin
-    
+
   ---------------------
   -- write clock domain
   ---------------------
-  wr_comb: process(wr_r, write, wr_raddr_gray, wrstn, rd_r.raddr)
+  wr_comb: process(wr_r, write, wr_raddr_gray, wrstn, rd_r.raddr, rd_r.raddr_ds1, dynsync)
     variable wr_v : wr_fifo_type;
     variable v_wusedw : std_logic_vector(abits downto 0);
     variable v_raddr : std_logic_vector(abits downto 0);
@@ -108,7 +133,11 @@ begin
     afull <= '0';
 
     if sepclk = 1 then
-      v_raddr := gray_decoder(wr_raddr_gray);
+      if dynsync='0' then
+        v_raddr := gray_decoder(wr_raddr_gray);
+      else
+        v_raddr := rd_r.raddr_ds1;
+      end if;
     else
       v_raddr := rd_r.raddr;
     end if;
@@ -125,6 +154,8 @@ begin
 
     if sepclk = 1 then
       wr_v.waddr_gray := gray_encoder(wr_v.waddr);
+      wr_v.waddr_ds1 := wr_v.waddr;
+      if dynsync='0' then wr_v.waddr_ds1 := (others => '0'); end if;
     end if;
 
     -- synchronous reset
@@ -132,6 +163,7 @@ begin
       wr_v.waddr := (others =>'0');
       wr_v.waddr_gray := (others =>'0');
       wr_v.full := '0';
+      wr_v.waddr_ds1 := (others => '0');
     end if;
 
     -- assign wusedw and almost full fifo output
@@ -179,7 +211,7 @@ begin
     syncreg_inst3: syncreg generic map (tech => tech, stages => 2)
       port map(clk => rclk, d => wr_r.full, q => rfull);
   end generate;
-  
+
   no_sync_reg: if sepclk = 0 generate
     ---------------------------------------
     -- single clock FIFO logic (no sync) --
@@ -191,19 +223,28 @@ begin
   --------------------
   -- read clock domain
   --------------------
-  rd_comb: process(rd_r, renable, rd_waddr_gray, rrstn, wr_r.waddr)
+  rd_comb: process(rd_r, renable, rd_waddr_gray, rrstn, wr_r.waddr, wr_r.waddr_ds1, dynsync)
     variable rd_v : rd_fifo_type;
     variable v_rusedw : std_logic_vector(abits downto 0);
     variable v_waddr : std_logic_vector(abits downto 0);
   begin
-  
+
     -- initialize fifo signals on read side
     rd_v := rd_r;
     rd_v.empty := '0';
     aempty <= '0';
 
     if sepclk = 1 then
-      v_waddr := gray_decoder(rd_waddr_gray);
+      if dynsync='0' then
+        v_waddr := gray_decoder(rd_waddr_gray);
+      else
+        if fwft_minlat then
+          -- need to delay 1 cycle in fwft_minlat case to match syncram_2p latency
+          v_waddr := rd_r.waddr_ds1_del;
+        else
+          v_waddr := wr_r.waddr_ds1;
+        end if;
+      end if;
     else
       v_waddr := wr_r.waddr;
     end if;
@@ -220,7 +261,7 @@ begin
       rd_v.raddr := rd_r.raddr + 1;
     end if;
 
-    if (fwft/=0 and sepclk/=0) then
+    if (fwft/=0 and sepclk/=0 and not fwft_minlat) then
       rd_v.empty := '0';
       if v_waddr=rd_v.raddr then
         rd_v.empty := '1';
@@ -229,6 +270,9 @@ begin
 
     if sepclk = 1 then
       rd_v.raddr_gray := gray_encoder(rd_v.raddr);
+      rd_v.raddr_ds1 := rd_v.raddr;
+      if dynsync='0' then rd_v.raddr_ds1 := (others => '0'); end if;
+      rd_v.waddr_ds1_del := wr_r.waddr_ds1;
     end if;
 
     -- synchronous reset
@@ -236,6 +280,7 @@ begin
       rd_v.raddr := (others =>'0');
       rd_v.raddr_gray := (others =>'0');
       rd_v.empty := '1';
+      rd_v.raddr_ds1 := (others => '0');
     end if;
 
     -- assign almost empty
@@ -253,12 +298,17 @@ begin
 
     -- special case for fwft with separate clocks
     sepfwft_rden <= not rd_v.empty;
-    if syncram_2p_readhold(tech) /= 0 and rd_r.empty='0' and renable='0' then
+    if fwft_minlat then
+      sepfwft_rden <= '1';
+    end if;
+    if (syncram_2p_readhold(tech)/=0 and ft=0) and rd_r.empty='0' and renable='0' then
       sepfwft_rden <= '0';
     end if;
-    if (fwft/=0 and sepclk/=0) then
+    if (fwft/=0 and sepclk/=0 and not fwft_minlat) then
       rempty <= rd_r.empty;
     end if;
+    dataout_g <= (others => (not rd_v.empty));
+    error_g <= (others => (not rd_v.empty));
   end process;
 
   rd_sync: process(rclk)
@@ -271,31 +321,48 @@ begin
   -- memory instantiation
   nofwft_gen: if fwft = 0 and ft = 0 generate
     ram0 : syncram_2p generic map ( tech => tech, abits => abits, dbits => dbits, sepclk => sepclk, custombits => custombits)
-      port map (rclk => rclk, renable => renable, raddress => rd_r.raddr(abits-1 downto 0), dataout => dataout,
+      port map (rclk => rclk, renable => renable, raddress => rd_r.raddr(abits-1 downto 0), dataout => dataout_i,
                 wclk => wclk, write => write, waddress => wr_r.waddr(abits-1 downto 0), datain => datain,
                 testin => testin
                 );
-    error <= (others => '0');
   end generate;
 
-  fwft_gen: if fwft = 1 and sepclk = 0 and ft = 0 generate
+  fwft_gen: if fwft /= 0 and sepclk = 0 and ft = 0 generate
     ram0 : syncram_2p generic map ( tech => tech, abits => abits, dbits => dbits, sepclk => sepclk, wrfst => 1, custombits => custombits)
-      port map (rclk => rclk, renable => '1', raddress => rd_rin.raddr(abits-1 downto 0), dataout => dataout,
+      port map (rclk => rclk, renable => '1', raddress => rd_rin.raddr(abits-1 downto 0), dataout => dataout_i,
                 wclk => wclk, write => write, waddress => wr_r.waddr(abits-1 downto 0), datain => datain,
                 testin => testin
                 );
-    error <= (others => '0');
+    dataout_i <= (others => '0'); dataout_o <= (others => '0');
   end generate;
 
-  fwftsep_gen: if fwft = 1 and sepclk /= 0 and ft = 0 generate
-    ram0 : syncram_2p generic map ( tech => tech, abits => abits, dbits => dbits, sepclk => sepclk, custombits => custombits)
-      port map (rclk => rclk, renable => sepfwft_rden, raddress => rd_rin.raddr(abits-1 downto 0), dataout => dataout,
+  fwftsep_gen: if fwft /= 0 and sepclk /= 0 and ft = 0 generate
+    ram0 : syncram_2p generic map ( tech => tech, abits => abits, dbits => dbits, sepclk => sepclk, custombits => custombits, rdhold => syncram_2p_readhold(tech))
+      port map (rclk => rclk, renable => sepfwft_rden, raddress => rd_rin.raddr(abits-1 downto 0), dataout => dataout_i,
                 wclk => wclk, write => write, waddress => wr_r.waddr(abits-1 downto 0), datain => datain,
                 testin => testin
                 );
-    error <= (others => '0');
   end generate;
 
+
+
+  gategen: if fwft_minlat generate
+    dgates: for x in dbits-1 downto 0 generate
+      g: grnand2 generic map (tech => tech) port map (i0 => dataout_i(x), i1 => dataout_g(x), q => dataout_o(x));
+    end generate;
+ --   dataout <= not dataout_o;
+  end generate;
+
+  nogategen: if not fwft_minlat generate
+    dataout_o <= not dataout_i;
+  end generate;
+
+  dataout <= not dataout_o;
+
+    error_i <= (others => '0');
+    error_o <= not error_i;
+  error <= zero_error
+           ;
 
 end;
 

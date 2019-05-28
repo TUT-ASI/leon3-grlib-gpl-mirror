@@ -73,6 +73,10 @@ foreach tool $tools {
 			append toolsstring "$TOP\_ise.tcl "
 			continue
 		}
+                "nanoxplore" {
+		        append toolsstring "$TOP\_nanoxmap.py "
+		        continue
+	        }
 	}
 }
 

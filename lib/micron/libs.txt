@@ -1,1 +1,1 @@
-micron
+micron vhdlstd=93

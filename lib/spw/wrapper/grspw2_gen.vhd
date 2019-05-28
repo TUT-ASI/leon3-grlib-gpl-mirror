@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@ entity grspw2_gen is
     ports           : integer range 1 to 2 := 1;
     dmachan         : integer range 1 to 4 := 1;
     tech            : integer;
-    input_type      : integer range 0 to 3 := 0;
+    input_type      : integer range 0 to 6 := 0;
     output_type     : integer range 0 to 2 := 0;
     rxtx_sameclk    : integer range 0 to 1 := 0;
     ft              : integer range 0 to 2 := 0;

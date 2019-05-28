@@ -20,7 +20,7 @@ apbvga.vhd
 ahb2ahb.vhd
 ahbbridge.vhd
 #ahbdma.vhd
-svgactrl.vhd
+svgactrl.vhd        vhdlstd=93
 grfifo.vhd
 gradcdac.vhd
 spictrlx.vhd
@@ -58,3 +58,4 @@ pfmddr_wrapper.vhd
 apb3cdc.vhd
 ahbsmux.vhd
 ahbmmux.vhd
+grtachom.vhd

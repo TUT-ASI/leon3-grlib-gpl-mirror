@@ -4,7 +4,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -42,6 +42,7 @@ use gaisler.grusb.all;
 use gaisler.can.all;
 use gaisler.l2cache.all;
 use gaisler.subsys.all;
+use gaisler.axi.all;
 -- pragma translate_off
 use gaisler.sim.all;
 library unisim;
@@ -331,6 +332,45 @@ component ahb2axi_mig_7series
    );
 end component;
 
+component axi_mig_7series is
+  generic(
+    hindex                  : integer := 0;
+    haddr                   : integer := 0;
+    hmask                   : integer := 16#f00#;
+    pindex                  : integer := 0;
+    paddr                   : integer := 0;
+    pmask                   : integer := 16#fff#
+  );
+  port(
+    ddr3_dq           : inout std_logic_vector(63 downto 0);
+    ddr3_dqs_p        : inout std_logic_vector(7 downto 0);
+    ddr3_dqs_n        : inout std_logic_vector(7 downto 0);
+    ddr3_addr         : out   std_logic_vector(13 downto 0);
+    ddr3_ba           : out   std_logic_vector(2 downto 0);
+    ddr3_ras_n        : out   std_logic;
+    ddr3_cas_n        : out   std_logic;
+    ddr3_we_n         : out   std_logic;
+    ddr3_reset_n      : out   std_logic;
+    ddr3_ck_p         : out   std_logic_vector(0 downto 0);
+    ddr3_ck_n         : out   std_logic_vector(0 downto 0);
+    ddr3_cke          : out   std_logic_vector(0 downto 0);
+    ddr3_cs_n         : out   std_logic_vector(0 downto 0);
+    ddr3_dm           : out   std_logic_vector(7 downto 0);
+    ddr3_odt          : out   std_logic_vector(0 downto 0);
+    aximi             : out   axi_somi_type;
+    aximo             : in    axi_mosi_type;
+    calib_done        : out   std_logic;
+    rst_n_syn         : in    std_logic;
+    rst_n_async       : in    std_logic;
+    clk_amba          : in    std_logic;
+    sys_clk_p         : in    std_logic;
+    sys_clk_n         : in    std_logic;
+    clk_ref_i         : in    std_logic;
+    ui_clk            : out   std_logic;
+    ui_clk_sync_rst   : out   std_logic
+   );
+end component;
+
 
 component ddr_dummy 
   port (
@@ -351,7 +391,7 @@ component ddr_dummy
     ddr_odt          : out   std_logic_vector(0 downto 0)
    ); 
 end component ;
-
+  
 component IBUFDS_GTE2
   port (
      O : out std_ulogic;
@@ -617,7 +657,7 @@ signal  int_rst : std_logic;
 signal  PLLE2_ADV0_CLKFB : std_logic; 
    
 signal  clk125_nobuf, clk125 : std_logic; 
-signal  clk25_nobuf , clk25  : std_logic; 
+signal  clk25_nobuf , clk25  : std_logic;
 
 attribute keep : boolean;
 attribute syn_keep : string;
@@ -863,7 +903,7 @@ begin
   ----------------------------------------------------------------------
   mig_gen : if (CFG_MIG_7SERIES = 1) generate
     gen_mig : if (USE_MIG_INTERFACE_MODEL /= true) generate
-      gen_ahb2mig : if (CFG_L2_EN = 0) generate
+      gen_ahb2mig : if (CFG_L2_EN = 0 and CFG_L2_AXI = 0) generate
         ddrc : ahb2mig_7series generic map (
           hindex => 4*(1-CFG_L2_EN), haddr => 16#400#, hmask => 16#F00#,
           pindex => 4, paddr => 4,
@@ -900,6 +940,42 @@ begin
             ui_clk_sync_rst => open
             );
       end generate gen_ahb2mig;
+
+      gen_ahb2axi_mignol2c: if ( CFG_L2_EN = 0 and CFG_L2_AXI /= 0 ) generate
+        ddrc: ahb2axi_mig_7series generic map (
+          hindex => 4*(1-CFG_L2_EN), haddr => 16#400#, hmask => 16#F00#,
+          pindex => 4, paddr => 4)
+          port map (
+            ddr3_dq         => ddr3_dq,
+            ddr3_dqs_p      => ddr3_dqs_p,
+            ddr3_dqs_n      => ddr3_dqs_n,
+            ddr3_addr       => ddr3_addr,
+            ddr3_ba         => ddr3_ba,
+            ddr3_ras_n      => ddr3_ras_n,
+            ddr3_cas_n      => ddr3_cas_n,
+            ddr3_we_n       => ddr3_we_n,
+            ddr3_reset_n    => ddr3_reset_n,
+            ddr3_ck_p       => ddr3_ck_p,
+            ddr3_ck_n       => ddr3_ck_n,
+            ddr3_cke        => ddr3_cke,
+            ddr3_cs_n       => ddr3_cs_n,
+            ddr3_dm         => ddr3_dm,
+            ddr3_odt        => ddr3_odt,
+            ahbsi           => mig_ahbsi,
+            ahbso           => mig_ahbso,
+            apbi            => apbi,
+            apbo            => apbo(4),
+            calib_done      => calib_done,
+            rst_n_syn       => migrstn,
+            rst_n_async     => rstraw,
+            clk_amba        => clkm,
+            sys_clk_p       => clk200p,
+            sys_clk_n       => clk200n,
+            clk_ref_i       => clkref,
+            ui_clk          => clkm,
+            ui_clk_sync_rst => open
+            );
+      end generate gen_ahb2axi_mignol2c;
 
 
       gen_ahb2axi_mig: if ( CFG_L2_EN /= 0 and CFG_L2_AXI = 0 ) generate
@@ -939,7 +1015,7 @@ begin
       end generate gen_ahb2axi_mig;
       
       gen_axi_mig: if ( CFG_L2_EN /= 0 and CFG_L2_AXI /= 0 ) generate
-        ddrc: entity work.axi_mig_7series generic map (
+        ddrc:axi_mig_7series generic map (
           hindex => 9, haddr => 16#400#, hmask => 16#F00#,
           pindex => 4, paddr => 4)
           port map (

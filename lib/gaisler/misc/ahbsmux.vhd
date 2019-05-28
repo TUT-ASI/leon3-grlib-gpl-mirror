@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -84,6 +84,7 @@ architecture rtl of ahbsmux is
     hmaster   : std_logic_vector(3 downto 0);
     hmastlock : std_logic;
     hmbsel    : std_logic_vector(0 to NAHBAMR-1);
+    hready    : std_logic;
   end record;
   constant RES : reg_type := (
     s0state   => s0idle,
@@ -95,7 +96,8 @@ architecture rtl of ahbsmux is
     hprot     => zero32(3 downto 0),
     hmaster   => zero32(3 downto 0),
     hmastlock => '0',
-    hmbsel    => zero32(3 downto 0)
+    hmbsel    => zero32(3 downto 0),
+    hready    => '0'
   );
 
   signal r, rin : reg_type;
@@ -136,10 +138,16 @@ begin
   begin
     v := r;
 
+    if r.s0state = s0active or r.s1state = s1active then
+      v.hready := slvso.hready;
+    else
+      v.hready := '1';
+    end if;
+
     case r.s0state is
       when s0idle =>
         if s0acc = '1' then
-          if (s1acc = '1' or slvso.hready = '0' or s1lock = '1') and r.s1state = s1active then
+          if r.s1state = s1active or r.s1state = s1busy then 
             v.s0state := s0busy;
           else
             v.s0state := s0active;
@@ -150,7 +158,7 @@ begin
           v.s0state := s0idle;
         end if;
       when s0busy =>
-        if slvso.hready = '1' and s1acc = '0' and not (r.s1state = s1active and s1lock = '1') then
+        if r.s1state /= s1active and (r.hready and slvso.hready) = '1' then
           v.s0state := s0active;
         end if;
       when others => 
@@ -160,7 +168,7 @@ begin
     case r.s1state is
       when s1idle =>
         if s1acc = '1' then
-          if s0acc = '1' or (r.s0state = s0active and (s0lock = '1' or slvso.hready = '0')) then
+          if r.s0state = s0active or r.s0state = s0busy or s0acc = '1' then 
             v.s1state := s1busy;
           else
             v.s1state := s1active;
@@ -171,7 +179,7 @@ begin
           v.s1state := s1idle;
         end if;
       when s1busy =>
-        if slvso.hready = '1' and s0acc = '0' and not (r.s0state = s0active and s0lock = '1') then
+        if r.s0state /= s0active and (r.hready and slvso.hready) = '1' then
           v.s1state := s1active;
         end if;
       when others => 
@@ -198,20 +206,17 @@ begin
       v.hmbsel    := ahbs1i.hmbsel;
     end if;
   
-    if (fsel = '0' and ((r.s0state = s0busy and s1acc = '0' and not (r.s1state = s1active and s1lock = '1')) or 
-                         (r.s1state = s1busy and s0acc = '0' and not (r.s0state = s0active and s0lock = '1')))) then
-      slvsi_mux <= busy_ahbsi;
-    elsif (fsel = '0' and ((s1acc = '1' or (r.s1state = s1active and (s1lock = '1' or slvso.hready = '0'))) and    -- S1 pending or active (locked)
-                           ((s0acc = '0' and not (r.s0state = s0active and s0lock = '1'))   -- AND S0 not pendign or active
-                            or r.s1state = s1active))) then                                 --     OR S1 already active
-      slvsi_mux <= ahbs1i;
-      if ahbs1i.hready = '0' and r.s1state /= s1active then
-        slvsi_mux.hsel(sindex) <= '0';
+    if fsel = '0' and (v.s1state = s1active or r.s1state = s1active) then
+      if r.s1state = s1busy then
+        slvsi_mux <= busy_ahbsi;
+      else
+        slvsi_mux <= ahbs1i;
       end if;
     else
-      slvsi_mux <= ahbs0i;
-      if fsel = '0' and ahbs0i.hready = '0' and r.s0state /= s0active then
-        slvsi_mux.hsel(sindex) <= '0';
+      if r.s0state = s0busy then
+        slvsi_mux <= busy_ahbsi;
+      else
+        slvsi_mux <= ahbs0i;
       end if;
     end if;
 

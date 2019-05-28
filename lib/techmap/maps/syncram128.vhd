@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ use grlib.stdlib.all;
 entity syncram128 is
   generic (tech : integer := 0; abits : integer := 6; testen : integer := 0;
 	   paren : integer := 0; custombits : integer := 1;
-           pipeline : integer range 0 to 255 := 0);
+           pipeline : integer range 0 to 255 := 0; rdhold : integer := 0);
   port (
     clk     : in  std_ulogic;
     address : in  std_logic_vector (abits -1 downto 0);
@@ -84,7 +84,7 @@ begin
   end generate;
 
 nopar : if paren = 0 generate
-  s128 : if has_sram128(tech) = 1 generate
+  s128 : if has_sram128(tech) = 1 and (rdhold=0 or syncram_readhold(tech)/=0) generate
     uni : if (is_unisim(tech) = 1) generate 
       x0 : unisim_syncram128 generic map (abits)
          port map (clk, address, datain, dataoutx, xenable, xwrite);
@@ -129,12 +129,12 @@ nopar : if paren = 0 generate
 -- pragma translate_on
   end generate;
 
-  nos128 : if has_sram128(tech) = 0 generate
-    x0 : syncram64 generic map (tech, abits, testen, 0, custombits, pipeline)
+  nos128 : if has_sram128(tech) = 0 or (rdhold/=0 and syncram_readhold(tech)=0) generate
+    x0 : syncram64 generic map (tech, abits, testen, 0, custombits, pipeline, rdhold)
          port map (clk, address, datain(127 downto 64), dataout(127 downto 64), 
 	           enable(3 downto 2), write(3 downto 2), testin
                    );
-    x1 : syncram64 generic map (tech, abits, testen, 0, custombits, pipeline)
+    x1 : syncram64 generic map (tech, abits, testen, 0, custombits, pipeline, rdhold)
          port map (clk, address, datain(63 downto 0), dataout(63 downto 0), 
 	           enable(1 downto 0), write(1 downto 0), testin
                    );
@@ -147,11 +147,11 @@ par : if paren = 1 generate
             datain(127+8*paren downto 120+8*paren) &  datain(63 downto 0);
     dataout <= doutp(143 downto 136) & doutp(71 downto 64) &
 	       doutp(135 downto 72) & doutp(63-16+16*paren downto 0);
-    x0 : syncram64 generic map (tech, abits, testen, 1, custombits, pipeline)
+    x0 : syncram64 generic map (tech, abits, testen, 1, custombits, pipeline, rdhold)
          port map (clk, address, dinp(143 downto 72), doutp(143 downto 72), 
 	           enable(3 downto 2), write(3 downto 2), testin
                    );
-    x1 : syncram64 generic map (tech, abits, testen, 1, custombits, pipeline)
+    x1 : syncram64 generic map (tech, abits, testen, 1, custombits, pipeline, rdhold)
          port map (clk, address, dinp(71 downto 0), doutp(71 downto 0), 
 	           enable(1 downto 0), write(1 downto 0), testin
                    );

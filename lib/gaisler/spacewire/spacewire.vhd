@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -403,7 +403,7 @@ package spacewire is
       fifosize2       : integer range 16 to 64 := 64;
       rxunaligned     : integer range 0 to 1 := 0;
       rmapbufs        : integer range 2 to 8 := 4;
-      ft              : integer range 0 to 2 := 0;
+      ft              : integer range 0 to 5 := 0;
       scantest        : integer range 0 to 1 := 0;
       techfifo        : integer range 0 to 1 := 1;
       ports           : integer range 1 to 2 := 1;
@@ -513,7 +513,7 @@ package spacewire is
       rxclkbuftype    : integer range 0 to 2 := 0;
       rxunaligned     : integer range 0 to 1 := 0;
       rmapbufs        : integer range 2 to 8 := 4;
-      ft              : integer range 0 to 2 := 0;
+      ft              : integer range 0 to 5 := 0;
       scantest        : integer range 0 to 1 := 0;
       techfifo        : integer range 0 to 1 := 1;
       netlist         : integer range 0 to 1 := 0;                 -- spw1
@@ -574,7 +574,7 @@ package spacewire is
     tech         : integer;
     scantest     : integer range 0 to 1 := 0;
     techfifo     : integer range 0 to 1 := 0;
-    ft           : integer range 0 to 2 := 0;
+    ft           : integer range 0 to 5 := 0;
     inputtest    : integer range 0 to 1 := 0;
     rstsrctmr    : integer range 0 to 1 := 0
     );
@@ -637,8 +637,8 @@ package spacewire is
       fifosize        : integer range 16 to 2048 := 64;
       tech            : integer;
       scantest        : integer range 0 to 1 := 0;
-      techfifo        : integer range 0 to 255 := 0;
-      ft              : integer range 0 to 2 := 0;
+      techfifo        : integer range 0 to 1023 := 0;
+      ft              : integer range 0 to 5 := 0;
       spwen           : integer range 0 to 1 := 1;
       ambaen          : integer range 0 to 1 := 0;
       fifoen          : integer range 0 to 1 := 0;
@@ -733,8 +733,8 @@ package spacewire is
       fifosize       : integer range 16 to 2048 := 64;
       tech           : integer;
       scantest       : integer range 0 to 1 := 0;
-      techfifo       : integer range 0 to 255 := 0;
-      ft             : integer range 0 to 2 := 0;
+      techfifo       : integer range 0 to 1023 := 0;
+      ft             : integer range 0 to 5 := 0;
       spwen          : integer range 0 to 1 := 1;
       ambaen         : integer range 0 to 1 := 0;
       fifoen         : integer range 0 to 1 := 0;
@@ -837,8 +837,8 @@ package spacewire is
       scantest      : integer range 0 to 1 := 0;
       dmachan       : integer range 1 to 4 := 1;
       tech          : integer range 0 to NTECH := inferred;
-      techfifo      : integer range 0 to 7 := 1;
-      ft            : integer range 0 to 2 := 0;
+      techfifo      : integer range 0 to 15 := 1;
+      ft            : integer range 0 to 5 := 0;
       nodeaddr      : integer range 0 to 255 := 254;
       num_txdesc    : integer range 64 to 512 := 64;
       num_rxdesc    : integer range 128 to 1024 := 128;
@@ -869,7 +869,7 @@ package spacewire is
       scantest     : integer range 0 to 1 := 0;
       tech         : integer range 0 to NTECH := inferred;
       techfifo     : integer range 0 to 1 := 1;
-      ft           : integer range 0 to 2 := 0
+      ft           : integer range 0 to 5 := 0
     );
     port(
       rst          : in   std_ulogic;

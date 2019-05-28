@@ -137,7 +137,7 @@ package config is
   constant CFG_ROMADDR : integer := 16#000#;
   constant CFG_ROMMASK : integer := 16#E00# + 16#000#;
 -- AHB RAM
-  constant CFG_AHBRAMEN : integer := 1;
+  constant CFG_AHBRAMEN : integer := 0;
   constant CFG_AHBRSZ : integer := 4;
   constant CFG_AHBRADDR : integer := 16#A00#;
   constant CFG_AHBRPIPE : integer := 0;
@@ -145,6 +145,7 @@ package config is
   constant CFG_GRETH : integer := 1;
   constant CFG_GRETH1G : integer := 1;
   constant CFG_ETH_FIFO : integer := 8;
+  constant CFG_GRETH_FMC : integer := 0;
 -- UART 1
   constant CFG_UART1_ENABLE : integer := 1;
   constant CFG_UART1_FIFO : integer := 32;

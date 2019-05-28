@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -115,10 +115,15 @@ architecture sim of axixmem is
 
   signal rqdbg: rwq_type(0 to 3);
   signal err_arr : error_type := error_reset;
+  signal wqdbg : rwq_type(0 to 3);
+  signal wdqdbg : wdataq_type(0 to 7);
+
+  signal axisi_delayed : axix_mosi_type;
 
 begin
 
   axiso <= axiso_int after simCTO;
+  axisi_delayed <= transport axisi after 500 ps;
 
   rb: ramback
     generic map (
@@ -332,6 +337,8 @@ begin
 
     axiso_int <= o;
     rqdbg <= rq;
+    wqdbg <= wq;
+    wdqdbg <= wdq;
   end process;
 
 

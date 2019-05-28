@@ -144,6 +144,7 @@
   constant CFG_GRETH   	    : integer := CONFIG_GRETH_ENABLE;
   constant CFG_GRETH1G	    : integer := CONFIG_GRETH_GIGA;
   constant CFG_ETH_FIFO     : integer := CFG_GRETH_FIFO;
+  constant CFG_GRETH_FMC    : integer := CONFIG_GRETH_FMC_MODE;
 #ifdef CONFIG_GRETH_SGMII_PRESENT
   constant CFG_GRETH_SGMII  : integer := CONFIG_GRETH_SGMII_MODE;
 #endif

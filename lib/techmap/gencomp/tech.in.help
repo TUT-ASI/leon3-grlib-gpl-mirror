@@ -18,7 +18,7 @@ CONFIG_SYN_INFERRED
   - Altera-StratixIV: Altera Stratix-IV FPGA family
   - Altera-StratixV: Altera Stratix-V FPGA family
   - ATC18: Atmel-Nantes 0.18 um rad-hard CMOS
-  - Lattice : EC/ECP/XP FPGAs
+  - NanoXploree : Brave-Medium 
   - Quicklogic : Eclipse/E/II FPGAs
   - UMC-0.18 : UMC 0.18 um CMOS with Virtual Silicon libraries
   - Xilinx-Spartan/2/3/6: Xilinx Spartan/2/3/6 libraries

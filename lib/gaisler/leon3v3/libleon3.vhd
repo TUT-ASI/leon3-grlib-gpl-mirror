@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -94,7 +94,10 @@ package libleon3 is
       rex        :     integer                  := 0;
       altwin     :     integer range 0 to 1     := 0;
       rfmemtech  :     integer range 0 to NTECH := 0;
-      irqlat     :     integer range 0 to 1     := 0
+      irqlat     :     integer range 0 to 1     := 0;
+      dcreadhold :     integer range 0 to 1     := 0;
+      icreadhold :     integer range 0 to 1     := 0;
+      rfreadhold :     integer range 0 to 1     := 0
       );
     port (
       clk        : in  std_ulogic;
@@ -175,7 +178,8 @@ package libleon3 is
       dbits   :     integer := 8;
       wrfst   :     integer := 0;
       numregs :     integer := 64;
-      testen  :     integer := 0);
+      testen  :     integer := 0;
+      rfreadhold  :    integer := 0);
     port (
       wclk    : in  std_ulogic;
       waddr   : in  std_logic_vector((abits -1) downto 0);

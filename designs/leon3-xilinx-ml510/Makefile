@@ -53,12 +53,12 @@ TECHLIBS = xilinxcorelib_ver secureip_ver unisims_ver secureip unisim virtex5
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp usbhc spw micron
 DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan can \
-	grusbhc usb spacewire hcan \
+	grusbhc usb spacewire hcan canfd \
 	slink ascs pwm gr1553b iommu ambatest atf
 ifeq ("$(CONFIG_LEON4)","")
 DIRSKIP+=leon4v0
 endif
-FILESKIP = grcan.vhd ahb2mig_series7_ddr2.vhd
+FILESKIP = grcan.vhd ahb2mig_series7_ddr2.vhd l2cbe_axi.vhd
 
 include $(GRLIB)/bin/Makefile
 

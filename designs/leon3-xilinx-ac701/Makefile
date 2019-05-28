@@ -35,7 +35,7 @@ endif
 
 # - MIG -
 ifeq ($(CONFIG_MIG_7SERIES),y)
-VSIMOPT+= -t fs -voptargs="+acc" 
+VSIMOPT+= -t fs -voptargs="+acc -nowarn 1" 
 VSIMOPT+= -L secureip -L unisims_ver glbl
 ifndef CONFIG_MIG_7SERIES_MODEL
 VSIMOPT+= -gUSE_MIG_INTERFACE_MODEL=false -gSIM_BYPASS_INIT_CAL=FAST -gSIMULATION=TRUE
@@ -48,9 +48,9 @@ endif
 
 # Simulator switches
 ifeq ("$(GRLIB_SIMULATOR)","ALDEC")
-VSIMOPT+= +access +w -voptargs="+acc" +notimingchecks
+VSIMOPT+= +access +w -voptargs="+acc -nowarn 1" +notimingchecks
 else
-VSIMOPT+=-voptargs="+acc" +notimingchecks
+VSIMOPT+=-voptargs="+acc -nowarn 1" +notimingchecks
 endif
 
 # Run simulation in batch mode

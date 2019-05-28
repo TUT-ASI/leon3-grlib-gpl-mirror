@@ -44,8 +44,8 @@
 #define CONFIG_SYN_TECH ihp25rh
 #elif defined CONFIG_SYN_CMOS9SF
 #define CONFIG_SYN_TECH cmos9sf
-#elif defined CONFIG_SYN_LATTICE
-#define CONFIG_SYN_TECH lattice
+#elif defined CONFIG_SYN_BRAVEMED
+#define CONFIG_SYN_TECH nx
 #elif defined CONFIG_SYN_ECLIPSE
 #define CONFIG_SYN_TECH eclipse
 #elif defined CONFIG_SYN_PEREGRINE
@@ -185,8 +185,8 @@
 #define CFG_CLK_TECH CONFIG_SYN_TECH
 #elif defined CONFIG_CLK_HCLKBUF
 #define CFG_CLK_TECH axcel
-#elif defined CONFIG_CLK_LATDLL
-#define CFG_CLK_TECH lattice
+#elif defined CONFIG_CLK_BRAVEMED
+#define CFG_CLK_TECH nx
 #elif defined CONFIG_CLK_PRO3PLL
 #define CFG_CLK_TECH apa3
 #elif defined CONFIG_CLK_PRO3EPLL
@@ -1484,7 +1484,15 @@
 #define CONFIG_SPW_NETLIST 0
 #endif
 
-#ifndef CONFIG_SPW_FT
+#if defined CONFIG_SPW_FT_DMR
+#define CONFIG_SPW_FT 1
+#elif defined CONFIG_SPW_FT_TMR
+#define CONFIG_SPW_FT 2
+#elif defined CONFIG_SPW_FT_BCH
+#define CONFIG_SPW_FT 3
+#elif defined CONFIG_SPW_FT_TECHSPEC
+#define CONFIG_SPW_FT 4
+#else
 #define CONFIG_SPW_FT 0
 #endif
 

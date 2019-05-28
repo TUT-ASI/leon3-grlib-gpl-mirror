@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ entity generic_bm_ahb is
   generic(
     async_reset      : boolean                  := false;
     bm_dw            : integer range 32 to 128  := 128;  --bus master data width
-    be_dw            : integer range 32 to 128  := 32;   --back-end data width
+    be_dw            : integer range 32 to 256  := 32;   --back-end data width
     be_rd_pipe       : integer range 0 to 1     := 1;
     unalign_load_opt : integer                  := 0;
     addr_width       : integer                  := 32;
@@ -90,11 +90,15 @@ end generic_bm_ahb;
 
 architecture rtl of generic_bm_ahb is
 
-  constant max_burst_length_ptwo : integer := max_burst_length_cor(power_of_two(max_burst_length), power_of_two(max_size), be_dw);
-  constant burst_chop_mask_ptwo   : integer := chop_mask_sel(power_of_two(burst_chop_mask), max_burst_length_ptwo,be_dw);
+  --if back-end width is wider than front-end with, bus master mainly uses the
+  --front-end width and special muxing is done at the back-end bus which generates
+  --narrow bursts
+  constant be_dw_int : integer := back_end_width(bm_dw,be_dw);  
 
+  constant max_burst_length_ptwo : integer := max_burst_length_cor(power_of_two(max_burst_length), power_of_two(max_size), be_dw_int);
+  constant burst_chop_mask_ptwo   : integer := chop_mask_sel(power_of_two(burst_chop_mask), max_burst_length_ptwo,be_dw_int);
 
-  signal fe_wdata     : std_logic_vector(be_dw-1 downto 0);
+  signal fe_wdata     : std_logic_vector(be_dw_int-1 downto 0);
   signal fe_rvalid_wc : std_logic;
   signal fe_ren       : std_logic;
   signal fe_fwrite    : std_logic;
@@ -103,7 +107,7 @@ architecture rtl of generic_bm_ahb is
 
   signal fe_rvalid_rc : std_logic;
   signal fe_rlast     : std_logic;
-  signal fe_rdata     : std_logic_vector(be_dw-1 downto 0);
+  signal fe_rdata     : std_logic_vector(be_dw_int-1 downto 0);
 
   signal wc_start : std_logic;
   signal wc_done  : std_logic;
@@ -126,9 +130,9 @@ architecture rtl of generic_bm_ahb is
   signal rd_size     : std_logic_vector(2 downto 0);
   signal wr_addr     : std_logic_vector(31 downto 0);
   signal rd_addr     : std_logic_vector(31 downto 0);
-  signal wr_data     : std_logic_vector(be_dw-1 downto 0);
-  signal rd_data     : std_logic_vector(be_dw-1 downto 0);
-  signal rd_data_comb: std_logic_vector(be_dw-1 downto 0);
+  signal wr_data     : std_logic_vector(be_dw_int-1 downto 0);
+  signal rd_data     : std_logic_vector(be_dw_int-1 downto 0);
+  signal rd_data_comb: std_logic_vector(be_dw_int-1 downto 0);
   signal rdata_valid : std_logic;
   signal wdata_valid : std_logic;
   signal rd_gnt      : std_logic;
@@ -161,11 +165,7 @@ architecture rtl of generic_bm_ahb is
 begin  -- rtl
 
   -- pragma translate_off
-  DW_check : if be_dw > bm_dw generate
-    assert false report "Error: back end data-width can not be wider than bus master data width" severity failure;
-  end generate DW_check;
-
-  MS_check : if max_burst_length_ptwo * (be_dw/8) > max_size generate
+  MS_check : if max_burst_length_ptwo * (be_dw_int/8) > max_size generate
     assert false report "Error: max_burst_length can not exceed max_size in terms of bytes" severity failure;
   end generate MS_check;
 
@@ -173,7 +173,7 @@ begin  -- rtl
   begin
     wait for 1 ns;
     if bm_info_print /= 0 then
-      report "Bus master id: "&integer'image(bm_info_print)&"; front-end bus-width: "&integer'image(bm_dw)&"; back-end bus-width: "&integer'image(be_dw)&"; max burst length (BYTES): " & integer'image(max_burst_length_ptwo * (be_dw/8))&"; burst chop mask (BYTES): "&integer'image(burst_chop_mask_ptwo);
+      report "Bus master id: "&integer'image(bm_info_print)&"; front-end bus-width: "&integer'image(bm_dw)&"; back-end bus-width: "&integer'image(be_dw)&"; max burst length (BYTES): " & integer'image(max_burst_length_ptwo * (be_dw_int/8))&"; burst chop mask (BYTES): "&integer'image(burst_chop_mask_ptwo);
     end if;
     wait;
   end process;
@@ -183,7 +183,7 @@ begin  -- rtl
     generic map(
       async_reset  => async_reset,
       bm_dw        => bm_dw,
-      be_dw        => be_dw,
+      be_dw        => be_dw_int,
       max_size     => max_size,
       excl_enabled => excl_enabled,
       addr_width   => addr_width)
@@ -206,7 +206,7 @@ begin  -- rtl
   fifo_wc : fifo_control_wc
     generic map (
       async_reset  => async_reset,
-      be_dw => be_dw)
+      be_dw => be_dw_int)
     port map (
       clk         => clk,
       rstn        => rstn,
@@ -218,7 +218,7 @@ begin  -- rtl
   fifo_rc : fifo_control_rc
     generic map(
       async_reset      => async_reset,
-      be_dw            => be_dw,
+      be_dw            => be_dw_int,
       be_rd_pipe       => be_rd_pipe,
       unalign_load_opt => unalign_load_opt)
     port map(
@@ -234,7 +234,7 @@ begin  -- rtl
   me_wc : bm_me_wc
     generic map(
       async_reset           => async_reset,
-      be_dw                 => be_dw,
+      be_dw                 => be_dw_int,
       maxsize               => max_size,
       max_burst_length_ptwo => max_burst_length_ptwo,
       burst_chop_mask_ptwo  => burst_chop_mask_ptwo,
@@ -253,7 +253,7 @@ begin  -- rtl
   me_rc : bm_me_rc
     generic map(
       async_reset           => async_reset,
-      be_dw                 => be_dw,
+      be_dw                 => be_dw_int,
       maxsize               => max_size,
       max_burst_length_ptwo => max_burst_length_ptwo,
       burst_chop_mask_ptwo  => burst_chop_mask_ptwo,
@@ -282,6 +282,7 @@ begin  -- rtl
       version               => version,
       max_burst_length_ptwo => max_burst_length_ptwo,
       be_dw                 => be_dw,
+      be_dw_int             => be_dw_int,
       addr_width            => addr_width)
     port map(
       clk        => clk,

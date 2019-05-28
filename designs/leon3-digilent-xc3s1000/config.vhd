@@ -1,14 +1,9 @@
-
-
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
 -- Copyright (C) 2009 Aeroflex Gaisler
 ------------------------------------------------------------------------------
-
-
 library techmap;
 use techmap.gencomp.all;
-
 package config is
 -- Technology and synthesis options
   constant CFG_FABTECH : integer := spartan3;
@@ -147,7 +142,6 @@ package config is
   constant CFG_KBD_ENABLE : integer := 1;
   constant CFG_VGA_ENABLE : integer := 1;
   constant CFG_SVGA_ENABLE : integer := 0;
-
 -- GRLIB debugging
   constant CFG_DUART : integer := 0;
 end;

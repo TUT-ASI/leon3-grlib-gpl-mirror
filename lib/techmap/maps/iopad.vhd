@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -158,6 +158,12 @@ begin
     x0 : ut90nhbd_iopad generic map (level, slew, voltage, strength)
          port map (pad, i, oen, o, cfgi(0));
   end generate;
+  
+   nanox : if (tech = nx) generate
+    x0 : nx_iopad  
+         port map (pad, i, oen, o);
+  end generate;
+  
 end;
 
 library techmap;

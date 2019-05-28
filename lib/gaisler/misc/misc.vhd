@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -255,6 +255,7 @@ package misc is
     ahbmi    : in  ahb_mst_in_type;
     ahbsi    : in  ahb_slv_in_type;
     ahbso    : out ahb_slv_out_type;
+    trace_en : in  std_logic := '1';
     timer    : in  std_logic_vector(30 downto 0) := (others => '0');
     astat    : out amba_stat_type;
     resen    : in  std_ulogic := '0'
@@ -281,6 +282,7 @@ package misc is
     ahbso    : out ahb_slv_out_type;
     tahbmi   : in  ahb_mst_in_type;       -- Trace
     tahbsi   : in  ahb_slv_in_type;
+    trace_en : in  std_logic := '1';
     timer    : in  std_logic_vector(30 downto 0) := (others => '0');
     astat    : out amba_stat_type;
     resen    : in  std_ulogic := '0'
@@ -308,6 +310,7 @@ package misc is
     ahbso    : out ahb_slv_out_type;
     tahbmiv  : in  ahb_mst_in_vector_type(0 to ntrace-1);       -- Trace
     tahbsiv  : in  ahb_slv_in_vector_type(0 to ntrace-1);
+    trace_en : in  std_logic := '1';
     timer    : in  std_logic_vector(30 downto 0) := (others => '0');
     astat    : out amba_stat_type;
     resen    : in  std_ulogic := '0'
@@ -1701,27 +1704,40 @@ package misc is
   -----------------------------------------------------------------------------
   component pfmddr_wrapper
     generic (
+      tech      : integer := 0;
       hindex    : integer := 0;
       haddr     : integer := 16#400#; -- mapped at 0x40000000
       hmask     : integer := 16#FC0#; -- 64 MB
-      pindex    : integer := 13; 
-      paddr     : integer := 13; -- mapped at 0x8000d000
-      pmask     : integer := 16#FF8#; -- 2 KB
       delay     : integer := 4;
       vendorid  : integer := VENDOR_ACTEL; 
       deviceid  : integer := ACTEL_MDDR;
       pnpuser0  : integer := 0);
     port (
       rstn      : in  std_ulogic;
-      clk       : in  std_ulogic;
+      hclk      : in  std_ulogic;
+      aclk      : in  std_ulogic;
       ahbsi     : in  ahb_slv_in_type;
       ahbso     : out ahb_slv_out_type;
-      pfsi      : out axix_mosi_type;
-      pfso      : in  axi_somi_type;
-      apb3i     : in  apb3_slv_in_type;
-      apb3o     : out apb3_slv_out_type;
-      pfapbin   : out sf2_apb3_in_type;
-      pfapbout  : in  sf2_apb3_out_type);
+      pfsi      : out axi_mosi_type;
+      pfso      : in  axi_somi_type);
+  end component;
+  
+  -----------------------------------------------------------------------------
+  component grtachom is
+  generic (
+    tech           : integer   := inferred;
+    pindex         : integer   := 0;
+    paddr          : integer   := 0;
+    pmask          : integer   := 16#FFF#;
+    pirq           : integer   := 0);    
+  port (
+    clk            : in  std_ulogic;
+    rstn           : in  std_ulogic;
+    apbi           : in  apb_slv_in_type;
+    apbo           : out apb_slv_out_type;
+    tacho           : in  std_logic_vector(3 downto 0);
+    tacho_sign      : in  std_logic_vector(3 downto 0)   
+    );
   end component;
 
   -----------------------------------------------------------------------------

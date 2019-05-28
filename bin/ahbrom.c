@@ -42,7 +42,7 @@ main (argc, argv)
   fprintf(wfp, "\n\
 ----------------------------------------------------------------------------\n\
 --  This file is a part of the GRLIB VHDL IP LIBRARY\n\
---  Copyright (C) 2018 Cobham Gaisler\n\
+--  Copyright (C) 2019 Cobham Gaisler\n\
 ----------------------------------------------------------------------------\n\
 -- Entity:      ahbrom%s\n\
 -- File:        ahbrom%s.vhd\n\

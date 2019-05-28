@@ -44,25 +44,25 @@ proc append_file_snps_simv {f finfo} {
 			return
 		}
 		"vlogsyn" {
-			global VLOGAN
+			global VLOGAN VLOGANOPT
 			set l [dict get $finfo l]
 			if {[string equal $l "local"] && [string equal $bn "work"] } {
 				upvar make_simv_contents mvc 
-				append mvc "\tvlogan -nc -work $bn $f\n"
+				append mvc "\tvlogan -nc $VLOGANOPT -work $bn $f\n"
 			} else {
 				upvar compile_simv_contents cvc
 				set k [dict get $finfo k]
 				set l [dict get $finfo l]
-				append cvc "\tvlogan -nc -work $bn +incdir+$k/$l $f\n"
+				append cvc "\tvlogan -nc $VLOGANOPT -work $bn +incdir+$k/$l $f\n"
 			}
 			return
 		}
 		"svlogsyn" {
-			global VLOGAN
+			global VLOGAN VLOGANOPT
 			upvar compile_simv_contents cvc
 			set k [dict get $finfo k]
 			set l [dict get $finfo l]
-			append cvc "\tvlogan -nc -sverilog -work $bn +incdir+$k/$l $f\n"
+			append cvc "\tvlogan -nc $VLOGANOPT -sverilog -work $bn +incdir+$k/$l $f\n"
 			return
 		}
 		"vhdlsim" {
@@ -78,14 +78,14 @@ proc append_file_snps_simv {f finfo} {
 			return
 		}
 		"vlogsim" {
-			global VLOGAN
+			global VLOGAN VLOGANOPT
 			set l [dict get $finfo l]
 			if {[string equal $l "local"] && [string equal $bn "work"] } {
 				upvar make_simv_contents mvc 
-				append mvc "\tvlogan -nc -work $bn $f\n"
+				append mvc "\tvlogan $VLOGANOPT -nc -work $bn $f\n"
 			} else {
 				upvar compile_simv_contents cvc
-				append cvc "\tvlogan -nc -work $bn $f\n"
+				append cvc "\tvlogan $VLOGANOPT -nc -work $bn $f\n"
 			}
 			return
 		}

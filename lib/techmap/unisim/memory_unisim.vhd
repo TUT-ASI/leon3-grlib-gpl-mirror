@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -157,13 +157,14 @@ end component;
 end component;
 
   component generic_syncram
-  generic ( abits : integer := 10; dbits : integer := 8; pipeline : integer := 0 );
+  generic ( abits : integer := 10; dbits : integer := 8; pipeline : integer := 0; rdhold : integer := 0 );
   port (
     clk      : in std_ulogic;
     address  : in std_logic_vector((abits -1) downto 0);
     datain   : in std_logic_vector((dbits -1) downto 0);
     dataout  : out std_logic_vector((dbits -1) downto 0);
-    write    : in std_ulogic);
+    write    : in std_ulogic;
+    enable   : in std_ulogic := '1');
   end component;
 
 signal gnd : std_ulogic;
@@ -636,7 +637,7 @@ architecture behav of unisim_syncram_2p is
 
 component generic_syncram_2p
   generic (abits : integer := 8; dbits : integer := 32; sepclk : integer := 0;
-           pipeline : integer := 0);
+           pipeline : integer := 0; rdhold : integer := 0);
   port (
     rclk : in std_ulogic;
     wclk : in std_ulogic;
@@ -644,7 +645,8 @@ component generic_syncram_2p
     wraddress: in std_logic_vector (abits -1 downto 0);
     data: in std_logic_vector (dbits -1 downto 0);
     wren : in std_ulogic;
-    q: out std_logic_vector (dbits -1 downto 0)
+    q: out std_logic_vector (dbits -1 downto 0);
+    rden : in std_ulogic := '1'
   );
 end component;
 
@@ -1001,13 +1003,14 @@ architecture behav of unisim_syncram_be is
   -----------------------
 
   component generic_syncram
-  generic ( abits : integer := 10; dbits : integer := 8; pipeline : integer := 0 );
+  generic ( abits : integer := 10; dbits : integer := 8; pipeline : integer := 0; rdhold : integer := 0 );
   port (
     clk      : in std_ulogic;
     address  : in std_logic_vector((abits -1) downto 0);
     datain   : in std_logic_vector((dbits -1) downto 0);
     dataout  : out std_logic_vector((dbits -1) downto 0);
-    write    : in std_ulogic);
+    write    : in std_ulogic;
+    enable   : in std_ulogic := '1');
   end component;
 
 signal gnd, xenable : std_ulogic;

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -65,7 +65,7 @@ component l2c is
     mtrr        : integer := 0;
     edacen      : integer range 0 to 1 := 0;
     rmw         : integer range 0 to 1 := 0;
-    ft          : integer range 0 to 2 := 0;
+    ft          : integer range 0 to 3 := 0;
     fttiming    : integer range 0 to 1 := 0;
     wbmask      : integer range 0 to 16#FFFF# := 16#FFFF#;
     debug       : integer range 0 to 1 := 0);
@@ -107,7 +107,7 @@ component l2c_axi_be is
     mtrr        : integer := 0;
     edacen      : integer range 0 to 1 := 0;
     rmw         : integer range 0 to 1 := 0;
-    ft          : integer range 0 to 2 := 0;
+    ft          : integer range 0 to 3 := 0;
     fttiming    : integer range 0 to 1 := 0;
     debug       : integer range 0 to 1 := 0);
   port (

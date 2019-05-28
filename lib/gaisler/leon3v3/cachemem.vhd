@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -56,7 +56,9 @@ entity cachemem is
     dlram      : integer range 0 to 2 := 0;
     dlramsize  : integer range 1 to 512 := 1;
     mmuen     : integer range 0 to 2 := 0;
-    testen    : integer range 0 to 3 := 0
+    testen    : integer range 0 to 3 := 0;
+    icreadhold : integer range 0 to 1 := 0;
+    dcreadhold : integer range 0 to 1 := 0
   );
   port (
         clk   : in  std_ulogic;
@@ -341,10 +343,10 @@ begin
 
   ime : if icen = 1 generate
     im0 : for i in 0 to ISETS-1 generate
-      itags0 : syncram generic map (tech, IOFFSET_BITS, ITWIDTH, testen, memtest_vlen)
+      itags0 : syncram generic map (tech, IOFFSET_BITS, ITWIDTH, testen, memtest_vlen, 0, icreadhold)
       port map ( clk, itaddr, itdatain(i)(ITWIDTH-1 downto 0), itdataout(i)(ITWIDTH-1 downto 0), itenable(i), itwrite(i), testin
                  );
-      idata0 : syncram generic map (tech, IOFFSET_BITS+ILINE_BITS, IDWIDTH, testen, memtest_vlen)
+      idata0 : syncram generic map (tech, IOFFSET_BITS+ILINE_BITS, IDWIDTH, testen, memtest_vlen, 0, icreadhold)
       port map (clk, idaddr, iddatain, iddataout(i), idenable(i), idwrite(i), testin
                 );
       itdataout(i)(ITWIDTH) <= '0';
@@ -360,7 +362,7 @@ begin
 
   ild0 : if ilram /= 0 generate
     ildata0 : syncram
-     generic map (tech, ILRAM_BITS-2, 32, testen, memtest_vlen)
+     generic map (tech, ILRAM_BITS-2, 32, testen, memtest_vlen, 0, icreadhold)
       port map (clk, ildaddr, iddatain, ildataout, 
           crami.icramin.ldramin.enable, crami.icramin.ldramin.write, testin
                 );
@@ -370,7 +372,7 @@ begin
     dtags0 : if DSNOOP = 0 generate
       dt0 : for i in 0 to DSETS-1 generate
         dtags0 : syncram
-        generic map (tech, DOFFSET_BITS, DTWIDTH, testen, memtest_vlen)
+        generic map (tech, DOFFSET_BITS, DTWIDTH, testen, memtest_vlen, 0, dcreadhold)
         port map (clk, dtaddr, dtdatain(i)(DTWIDTH-1 downto 0), 
             dtdataout(i)(DTWIDTH-1 downto 0), dtenable(i), dtwrite(i), testin
                   );
@@ -381,7 +383,7 @@ begin
       dt1 : if not DSNOOPSEP generate
         dt0 : for i in 0 to DSETS-1 generate
           dtags0 : syncram_dp
-          generic map (tech, DOFFSET_BITS, DTWIDTH, testen, memtest_vlen, 0, 1) port map (
+          generic map (tech, DOFFSET_BITS, DTWIDTH, testen, memtest_vlen, 2, 1, 0, dcreadhold) port map (
            clk, dtaddr, dtdatain(i)(DTWIDTH-1 downto 0), 
                 dtdataout(i)(DTWIDTH-1 downto 0), dtenable(i), dtwrite(i),
            sclk, dtaddr2, dtdatain2(i)(DTWIDTH-1 downto 0), 
@@ -395,14 +397,14 @@ begin
        slow : if not DSNOOPFAST and not DSNOOPHB generate
         mdt0 : for i in 0 to DSETS-1 generate
           dtags0 : syncram_dp
-          generic map (tech, DOFFSET_BITS, DTWIDTH-dlinesize+1, testen, memtest_vlen, 0, 1) port map (
+          generic map (tech, DOFFSET_BITS, DTWIDTH-dlinesize+1, testen, memtest_vlen, 2, 1, 0, dcreadhold) port map (
             clk, dtaddr, dtdatain(i)(DTWIDTH-1 downto dlinesize-1), 
                  dtdataout(i)(DTWIDTH-1 downto dlinesize-1), dtenable(i), dtwrite(i),
             sclk, dtaddr2, dtdatain2(i)(DTWIDTH-1 downto dlinesize-1), 
                  dtdataout2(i)(DTWIDTH-1 downto dlinesize-1), dtenable2(i), dtwrite2(i), testin
             );
           dtags1 : syncram_dp
-          generic map (tech, DOFFSET_BITS, DPTAG_RAM_BITS, testen, memtest_vlen, 0, 1) port map (
+          generic map (tech, DOFFSET_BITS, DPTAG_RAM_BITS, testen, memtest_vlen, 2, 1, 0, dcreadhold) port map (
             clk, dtaddr, dtdatain3(i)(DTAG_RAM_BITS-1 downto DTAG_BITS-DPTAG_BITS), 
                  open, dtwrite3(i), dtwrite3(i),
             sclk, dtaddr2, dtdatainu(i)(DTAG_RAM_BITS-1 downto DTAG_BITS-DPTAG_BITS), 
@@ -414,12 +416,12 @@ begin
        fast : if DSNOOPFAST generate
         mdt0 : for i in 0 to DSETS-1 generate
           dtags0 : syncram_2p
-          generic map (tech, DOFFSET_BITS, DTWIDTH-dlinesize+1, 0, 1, testen, 0, memtest_vlen) port map (
+          generic map (tech, DOFFSET_BITS, DTWIDTH-dlinesize+1, 2, 1, testen, 0, memtest_vlen, 0, dcreadhold) port map (
             clk, dtenable(i), dtaddr, dtdataout(i)(DTWIDTH-1 downto dlinesize-1),
             sclk, dtwrite2(i), dtaddr3, dtdatain(i)(DTWIDTH-1 downto dlinesize-1), testin
             );
           dtags1 : syncram_2p
-          generic map (tech, DOFFSET_BITS, DPTAG_RAM_BITS, 0, 1, testen, 0, memtest_vlen) port map (
+          generic map (tech, DOFFSET_BITS, DPTAG_RAM_BITS, 2, 1, testen, 0, memtest_vlen, 0, dcreadhold) port map (
             sclk, dtenable2(i), dtaddr2, dtdataout3(i)(DTAG_RAM_BITS-1 downto DTAG_BITS-DPTAG_BITS),
             clk, dtwrite3(i), dtaddr, dtdatain3(i)(DTAG_RAM_BITS-1 downto DTAG_BITS-DPTAG_BITS),
             testin
@@ -431,12 +433,12 @@ begin
        hb : if DSNOOPHB generate
         mdt0 : for i in 0 to DSETS-1 generate
           dtags0 : syncram
-          generic map (tech, DOFFSET_BITS, DTWIDTH-dlinesize, testen, memtest_vlen) port map (
+          generic map (tech, DOFFSET_BITS, DTWIDTH-dlinesize, testen, memtest_vlen, 0, dcreadhold) port map (
             clk, dtaddr, dtdatain(i)(DTWIDTH-1 downto dlinesize),
                  dtdataout(i)(DTWIDTH-1 downto dlinesize), dtenable(i), dtwrite(i), testin
             );
           dtags1 : syncram
-          generic map (tech, DOFFSET_BITS, DPTAG_RAM_BITS, testen, memtest_vlen) port map (
+          generic map (tech, DOFFSET_BITS, DPTAG_RAM_BITS, testen, memtest_vlen, 0, dcreadhold) port map (
             sclk, dtaddr2, dtdatain3(i)(DTAG_RAM_BITS-1 downto DTAG_BITS-DPTAG_BITS),
             dtdataout3(i)(DTAG_RAM_BITS-1 downto DTAG_BITS-DPTAG_BITS), dtenable(i), dtwrite3(i),
             testin
@@ -472,7 +474,7 @@ begin
       ddsram : if (has_srambw(tech) >= (DOFFSET_BITS+DLINE_BITS)
         ) generate
       ddata0 : syncram
-       generic map (tech, DOFFSET_BITS+DLINE_BITS, DDWIDTH, testen, memtest_vlen)
+       generic map (tech, DOFFSET_BITS+DLINE_BITS, DDWIDTH, testen, memtest_vlen, 0, dcreadhold)
         port map (clk, ddaddr, dddatain(i), dddataout(i), ddenable(i), ddwrite(i), testin
                   );
       end generate;                     -- ddsram
@@ -480,7 +482,7 @@ begin
       bwddsram: if has_srambw(tech) < (DOFFSET_BITS+DLINE_BITS)
       generate
         ddata0: syncrambw
-          generic map (tech, DOFFSET_BITS+DLINE_BITS, DDWIDTH, testen, memtest_vlen)
+          generic map (tech, DOFFSET_BITS+DLINE_BITS, DDWIDTH, testen, memtest_vlen, 0, dcreadhold)
           port map (clk, ddaddr, crami.dcramin.bwdata(i), dddataout(i),
                     ddenablev(i),crami.dcramin.bwmask(i), testin);
       end generate;

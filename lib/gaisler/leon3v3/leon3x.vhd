@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -162,6 +162,19 @@ signal cpi   : fpc_in_type;
 signal cpo   : fpc_out_type;
 signal gnd, vcc : std_logic;
 
+constant DCREADHOLD_B    : boolean := (syncram_readhold(memtech)=1 and
+                                       (dsnoop/=6 or syncram_2p_readhold(memtech)=1) and
+                                       ((dsnoop=0 or dsnoop>5) or syncram_dp_readhold(memtech)=1));
+constant ICREADHOLD_B : boolean := syncram_readhold(memtech)/=0
+                                   ;
+constant RFREADHOLD_B : boolean := regfile_3p_infer(memtech)/=0 or (IURF_INFER/=0) or
+                                   (regfile_3p_readhold(memtech)/=0
+                                    );
+constant DCREADHOLD : integer := boolean'pos(DCREADHOLD_B);
+constant ICREADHOLD : integer := boolean'pos(ICREADHOLD_B);
+constant RFREADHOLD : integer := boolean'pos(RFREADHOLD_B);
+
+
 attribute sync_set_reset : string;
 attribute sync_set_reset of rst : signal is "true";
 
@@ -178,14 +191,15 @@ begin
          drepl, dsets, dlinesize, dsetsize, dsetlock, dsnoop, ilram, ilramsize,
          ilramstart, dlram, dlramsize, dlramstart, mmuen, itlbnum, dtlbnum,
          tlb_type, tlb_rep, lddel, disas, tbuf, pwd, svt, rstaddr, smp,
-         cached, clk2x, scantest, mmupgsz, bp, npasi, pwrpsr, rex, altwin, MEMTECH_MOD*(1-IURF_INFER), 0)
+         cached, clk2x, scantest, mmupgsz, bp, npasi, pwrpsr, rex, altwin, MEMTECH_MOD*(1-IURF_INFER), 0,
+         DCREADHOLD, ICREADHOLD, RFREADHOLD)
        port map (gclk2, rst, holdn, ahbi, ahbo, ahbsi, ahbso, rfi, rfo, crami, cramo, 
                  tbi, tbo, tbi_2p, tbo_2p, fpi, fpo, cpi, cpo, irqi, irqo, dbgi, dbgo, clk, clk2, clken
                  );
   
      -- IU register file
      rf0 : regfile_3p_l3 generic map (MEMTECH_MOD*(1-IURF_INFER), IRFBITS, 32, IRFWT, IREGNUM,
-                                      scantest)
+                                      scantest, RFREADHOLD)
        port map (gclk2, rfi.waddr(IRFBITS-1 downto 0), rfi.wdata, rfi.wren,
                  gclk2, rfi.raddr1(IRFBITS-1 downto 0), rfi.ren1, rfo.data1,
                  rfi.raddr2(IRFBITS-1 downto 0), rfi.ren2, rfo.data2,
@@ -196,7 +210,8 @@ begin
      cmem0 : cachemem
        generic map (MEMTECH_MOD, icen, irepl, isets, ilinesize, isetsize, isetlock, dcen,
                     drepl, dsets,  dlinesize, dsetsize, dsetlock, dsnoop, ilram,
-                    ilramsize, dlram, dlramsize, mmuen, scantest
+                    ilramsize, dlram, dlramsize, mmuen, scantest,
+                    ICREADHOLD, DCREADHOLD
                     )
        port map (gclk2, crami, cramo, clk2, ahbi.testin
                  );

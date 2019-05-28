@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -53,6 +53,7 @@ entity ahb2axib is
                                                            --1->narrow burst directly
                                                            --transalted to AXI
                                                            --supported only in BE-to-BE
+    ostand_writes  : integer range 1 to 16          := 4;
     -- scantest
     scantest        : integer                       := 0;
     -- GRLIB plug&play configuration
@@ -119,7 +120,7 @@ architecture rtl of ahb2axib is
   constant read_pref_addr_high : integer := log2(AXIDW/8)+log2(read_pref_ptwo)
                                             -1+wbuf_zero(read_pref_ptwo);
 
-  type ahbm_to_axis_state is (idle, read, write);
+  type ahbm_to_axis_state is (idle, resp_wait, read, write);
 
   type ahb_slv_out_local_type is record
     hready : std_ulogic;                          -- transfer done
@@ -178,6 +179,12 @@ architecture rtl of ahb2axib is
     write_verified        : std_logic;
     propagate_werror      : std_logic;
     wbuf_boundary_crossed : std_logic;
+    single_write          : std_logic;
+    resp_pos              : std_logic_vector(ostand_writes downto 0);
+    resp_wait_read        : std_logic;
+    b2b_single_write      : std_logic;
+    b2b_single_write_del  : std_logic;
+    wr_transmit_req_pipe  : std_logic;
   end record;
   
   constant rac_reset : axix_ar_mosi_type := (id    => (others => '0'), addr => (others => '0'),
@@ -246,7 +253,13 @@ architecture rtl of ahb2axib is
     write_data_finished   => '0',
     write_verified        => '0',
     propagate_werror      => '0',
-    wbuf_boundary_crossed => '0'
+    wbuf_boundary_crossed => '0',
+    single_write          => '0',
+    resp_pos              => std_logic_vector(to_unsigned(1,ostand_writes+1)),
+    resp_wait_read        => '0',
+    b2b_single_write      => '0',
+    b2b_single_write_del  => '0',
+    wr_transmit_req_pipe  => '0'
     );
 
 
@@ -255,6 +268,7 @@ architecture rtl of ahb2axib is
   signal mem_ren, mem_wen   : std_logic;
   signal mem_dout, mem_din  : std_logic_vector(AXIDW-1 downto 0);
   signal rd_ptr_i, wr_ptr_i : std_logic_vector(log2(wbuf_num_ptwo)-1+wbuf_zero(wbuf_num_ptwo) downto 0);
+  signal resp_add           : std_logic;
   
 begin
 
@@ -283,7 +297,7 @@ begin
       waddress => wr_ptr_i,
       datain   => mem_din);
 
-  comb : process(r, ahbsi, aximi, mem_dout)
+  comb : process(r, ahbsi, aximi, mem_dout, resp_add)
     variable v                       : reg_type;
     variable wsample_ahb             : std_logic;
     variable wsample_axi             : std_logic;
@@ -313,6 +327,10 @@ begin
     variable mem_din_v               : std_logic_vector(AHBDW-1 downto 0);
     variable slvcfg                  : ahb_config_type;
     variable tbar                    : std_logic_vector(29 downto 0);
+    variable resp_ready_write        : std_logic;
+    variable resp_ready_read         : std_logic;
+    variable resp_add_v              : std_logic;
+    variable b2b_single_write_sample : std_logic;
   begin
     
     v := r;
@@ -340,6 +358,42 @@ begin
     narrow_boundary_limit   := '0';
     prefetch_count_nshifted := (others => '0');
     prefetch_count_shifted  := (others => '0');
+    resp_ready_write        := '0';
+    resp_ready_read         := '0';
+    resp_add_v              := '0';
+    b2b_single_write_sample := '0';
+
+
+    if r.resp_pos(ostand_writes) = '0' or aximi.b.valid = '1' then
+      resp_ready_write := '1';
+    end if;
+
+    if r.resp_pos(0) = '1' or (r.resp_pos(1) = '1' and aximi.b.valid = '1') then
+      resp_ready_read := '1';
+    end if;
+
+    if resp_add = '0' or aximi.b.valid = '0' then
+
+      if resp_add = '1' then
+       -- if r.resp_pos(ostand_writes) /= '1' then
+          --shift left
+          v.resp_pos(0) := '0';
+          for i in ostand_writes downto 1 loop
+            v.resp_pos(i) := r.resp_pos(i-1);
+          end loop;
+       -- end if;
+      end if;
+
+      if aximi.b.valid = '1' then
+        --if r.resp_pos(0) /= '1' then
+          --shift right
+          v.resp_pos(ostand_writes) := '0';
+          for i in ostand_writes-1 downto 0 loop
+            v.resp_pos(i) := r.resp_pos(i+1);
+          end loop;
+        --end if;  
+      end if;
+    end if;
 
     haddr_endianness := ahbsi.haddr;
     if endianness_mode = 1 then
@@ -407,7 +461,10 @@ begin
     --AXI ID for read operations
     v.aximout.ar.id := std_logic_vector(to_unsigned(aximid, AXI_ID_WIDTH));
 
+    v.aximout.b.ready := '1';
+    
     v.ahbsout.hresp := HRESP_OKAY;
+
 
     if ahbsi.haddr(wbuf_boundary_high downto 0) = wbuf_addr_zero then
       wbuf_boundary := '1';
@@ -471,6 +528,7 @@ begin
       axi_len(max_len(axi4)-1 downto 0) := std_logic_vector(to_unsigned(read_pref_ptwo-1, max_len(axi4)));
     end if;
 
+    v.wr_transmit_req_pipe := '0'; 
     case r.state is
       
       when idle =>
@@ -486,6 +544,9 @@ begin
         v.rlast_reg             := '0';
         v.rlast_reg_delayed     := '0';
         v.write_op              := '0';
+        v.single_write          := '0';
+        v.b2b_single_write      := '0';
+        v.b2b_single_write_del  := '0';
 
         if (ahbsi.htrans(1) = '1' and ahbsi.hready = '1' and ahbsi.hsel(hindex) = '1')
           or r.b2b = '1' then
@@ -516,6 +577,12 @@ begin
                 axi_mux.len := (others => '0');
               end if;
             end if;
+
+            if resp_ready_read = '0' then
+              v.state := resp_wait;
+              v.resp_wait_read := '1';
+              v.aximout.ar.valid := '0';
+            end if;
             
           else
             --write operation
@@ -536,8 +603,41 @@ begin
             v.wr_ptr               := (others => '0');
             v.rd_ptr               := (others => '0');
             v.rd_mem_ptr           := (others => '0');
+            
+            if ahbin_mux.hburst = HBURST_SINGLE then
+              -- Optimization for single writes
+              wsample_axi := '1';
+              v.single_write := '1';
+              v.aximout.aw.valid := '1';
+              v.initial_wbuf_fill := '0';
+              v.wr_transmit_req := '1';
+              v.ahbsout.hready := '1';
+              v.write_op := '0';        --to optimize back-to-back single writes
+            end if;
+
+            if resp_ready_write = '0' then
+              v.state := resp_wait;
+              v.resp_wait_read := '0';
+              v.aximout.aw.valid := '0';
+              v.ahbsout.hready := '0';
+            end if;
           end if;
           
+        end if;
+
+      when resp_wait =>
+
+        if resp_ready_read = '1' and r.resp_wait_read = '1' then
+          v.aximout.ar.valid := '1';
+          v.state := read;
+        end if;
+
+        if resp_ready_write = '1' and r.resp_wait_read = '0' then
+          if r.single_write = '1' then
+            v.aximout.aw.valid := '1';
+            v.ahbsout.hready := '1';
+          end if;
+          v.state := write;
         end if;
 
       when read =>
@@ -656,7 +756,6 @@ begin
             end if;
           end if;
         end if;
-
         
       when write =>
         
@@ -673,7 +772,7 @@ begin
         --as soon as write channle is not stalled. If write channel is stalled
         --stall reading from syncram also and the last word is kept in r.mem_dout_latched
         v.ren := ((aximi.w.ready and r.aximout.w.valid and not(r.aximout.w.last)) or
-                  (not(r.aximout.w.valid) and not(r.aximout.b.ready)))
+                  (not(r.aximout.w.valid) and not(r.aximout.w.last)))
                  and r.wr_transmitting;
 
         if v.ren = '1' then
@@ -708,7 +807,6 @@ begin
               if r.rd_ptr = unsigned(r.aximout.aw.len) then
                 --last word in the AXI burst is going to be latched
                 v.aximout.w.last      := '1';
-                v.aximout.b.ready     := '1';
                 v.write_data_finished := '1';
                 if r.wbuf_boundary_crossed = '1' then
                   --if boundary is crossed set the rd_ptr to
@@ -748,21 +846,10 @@ begin
             --last word is acknowledged
             v.aximout.w.valid := '0';
             v.aximout.w.last  := '0';
-          end if;
-
-          if r.aximout.b.ready = '1' and aximi.b.valid = '1' then
-            --write verified
             v.write_verified  := '1';
-            v.aximout.b.ready := '0';
-            --Write error propagation is not supported in the bridge 
-            --if (aximi.b.resp = XRESP_SLVERR or aximi.b.resp = XRESP_DECERR) then
-            -- if r.write_error = '0' then
-            --  v.write_error := '1';
-            --end if;
-            --end if;
           end if;
 
-          if v.write_verified = '1' and r.aximout.w.valid = '0' and r.aximout.aw.valid = '0' then
+          if v.write_verified = '1' and v.aximout.w.valid = '0' and v.aximout.aw.valid = '0' then
             --transaction is finished with checking the correct order 
             if r.write_continues = '0' then
               --this was the last batch
@@ -772,12 +859,14 @@ begin
               v.ahbsout.hready  := '1';
             else
               --more beats exists in the burst continue
-              --with clearing the r.wr_transmitting 
-              v.wr_transmitting := '0';
-              v.rd_mem_ptr      := (others => '0');
+              --with clearing the r.wr_transmitting
+              if resp_ready_write = '1' then
+                v.wr_transmitting := '0';
+                v.rd_mem_ptr      := (others => '0');
+                v.write_verified  := '0';
+              end if;
             end if;
           end if;
-
           
         end if;
 
@@ -856,17 +945,54 @@ begin
 
           if r.b2b = '0' then
             --waiting for a new transaction
-            v.ahbsout.hready := '1';
+            if r.single_write = '0' then
+              v.ahbsout.hready := '1';
+            end if;
 
             if (ahbsi.hready = '1' and ahbsi.hsel(hindex) = '1' and ahbsi.htrans(1) = '1') then
               v.b2b            := '1';
               b2bsample        := '1';
               v.ahbsout.hready := '0';
+              v.b2b_single_write := '0';
+              if ahbsi.hburst = HBURST_SINGLE and ahbsi.hwrite = '1' and r.single_write = '1' then
+                v.b2b_single_write := '1';
+                if r.aximout.aw.valid = '0' then
+                  --if the slave is not ready immediately
+                  --request can stay relatively long hence
+                  --write address channel can not be updated
+                  --immediately for the next operation
+                  --in that case postpone
+                  b2b_single_write_sample := '1';
+                  wsample_axi := '1';
+                else
+                  v.b2b_single_write_del := '1';
+                end if;
+              end if;
             end if;
           else
             --a new AHB transaction has been latched
             v.ahbsout.hready := '0';
           end if;
+
+          if v.state = idle and resp_ready_write = '1' and r.single_write = '1' then
+            if v.b2b = '1' and v.b2b_single_write = '1' then
+              v.state := write;
+              v.b2b := '0';
+              v.ahbsout.hready := '1';
+              v.single_write := '1';
+              v.wr_transmit_req_pipe := '1';
+              v.initial_wbuf_fill := '0';
+              v.aximout.aw.valid := '1';
+              if r.b2b_single_write_del = '1' then
+                --write address channel update was postponed
+                --do it now
+                b2b_single_write_sample := '1';
+                wsample_axi := '1';
+                v.b2b_single_write_del := '0';
+              end if;
+            end if;            
+          end if;
+          
         else
           --There are still beats left in the AHB burst and
           --AXI burst is ongoing but there is no available
@@ -881,6 +1007,7 @@ begin
         wr_ptr_num                                  := v.wr_ptr-1;
         axi_mux.len(log2(wbuf_num_ptwo)-1 downto 0) := std_logic_vector(wr_ptr_num(log2(wbuf_num_ptwo)-1 downto 0));
 
+        v.wr_transmit_req := v.wr_transmit_req or r.wr_transmit_req_pipe;
         if v.wr_transmit_req = '1' and r.wr_transmitting = '0' then
           v.wr_transmitting  := '1';
           v.wr_transmit_req  := '0';
@@ -915,6 +1042,30 @@ begin
           wsample_axi           := '1';
           v.write_data_finished := '0';
           v.write_verified      := '0';
+          resp_add_v            := '1';
+
+          if r.single_write = '1' then
+            if endianness_mode = 0 then
+              v.aximout.w.data := byte_swap(ahbsi.hwdata);
+            else
+              v.aximout.w.data := ahbsi.hwdata;
+            end if;
+
+            if (full_dwsize(AXIDW) = r.aximout.aw.size) then
+              v.aximout.w.strb := (others => '1');
+            else
+              v.aximout.w.strb := wstrb_generate(r.aximout.aw.addr(log2(AXIDW/8)-1 downto 0), r.aximout.aw.size);
+            end if;
+            
+            wsample_axi := '0';
+            v.write_data_finished := '1';
+            if r.aximout.aw.valid = '1' and aximi.aw.ready = '1' then
+              v.aximout.aw.valid := '0';
+            end if;
+            v.aximout.w.valid := '1';
+            v.aximout.w.last  := '1';
+          end if;
+          
         end if;
         
       when others => null;
@@ -933,6 +1084,9 @@ begin
       end if;
       v.aximout.aw.size     := axi_mux.size;
       v.aximout.aw.len      := axi_mux.len;
+      if b2b_single_write_sample = '1' then
+        v.aximout.aw.len := (others=>'0');
+      end if;
       v.aximout.aw.burst    := axi_mux.burst;
       v.aximout.aw.prot(0)  := axi_mux.prot(0);
       v.aximout.aw.prot(2)  := axi_mux.prot(2);
@@ -1033,6 +1187,7 @@ begin
     mem_din <= mem_din_v;
     mem_wen <= wen;
     mem_ren <= v.ren or r.ren;
+    resp_add <= resp_add_v;
 
     -- slave configuration info
     slvcfg                  := (others => (others => '0'));

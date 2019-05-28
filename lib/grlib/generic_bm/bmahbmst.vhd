@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -41,6 +41,7 @@ entity bmahbmst is
     chprot      : integer := 3;
     incaddr     : integer := 0;
     be_dw       : integer := 32;
+    be_dw_int   : integer := 32;
     addr_width  : integer := 32); 
   port (
     rst      : in  std_ulogic;
@@ -48,8 +49,8 @@ entity bmahbmst is
     dmai     : in  bmahb_dma_in_type;
     dmao     : out bmahb_dma_out_type;
     dma_addr : in  std_logic_vector(addr_width-1 downto 0);
-    wdata    : in  std_logic_vector(be_dw-1 downto 0);
-    rdata    : out std_logic_vector(be_dw-1 downto 0);
+    wdata    : in  std_logic_vector(be_dw_int-1 downto 0);
+    rdata    : out std_logic_vector(be_dw_int-1 downto 0);
     ahbi     : in  ahb_bmst_in_type;
     ahbo     : out ahb_bmst_out_type;
     hrdata   : in  std_logic_vector(be_dw-1 downto 0);
@@ -68,9 +69,10 @@ architecture rtl of bmahbmst is
     active      : std_ulogic;
     lock_active : std_ulogic;
     lock_acked  : std_ulogic;
+    haddr       : std_logic_vector(31 downto 0);
   end record;
 
-  constant RES : reg_type := ('0', '0', '0', '0', '0', '0');
+  constant RES : reg_type := ('0', '0', '0', '0', '0', '0', (others=>'0'));
 
   signal r, rin : reg_type;
 
@@ -89,6 +91,7 @@ begin
     variable inc      : std_logic_vector(5 downto 0);
     variable haddr    : std_logic_vector(31 downto 0);
     variable hwdata_v : std_logic_vector(be_dw-1 downto 0);
+    variable hrdata_v : std_logic_vector(be_dw_int-1 downto 0);
     variable htrans   : std_logic_vector(1 downto 0);
     variable hwrite   : std_ulogic;
     variable hburst   : std_logic_vector(2 downto 0);
@@ -106,7 +109,9 @@ begin
 
     haddr    := dma_addr;
     hbusreq  := dmai.start;
-    hwdata_v := wdata;
+    for i in 0 to (be_dw/be_dw_int)-1 loop
+      hwdata_v((i+1)*be_dw_int-1 downto i*be_dw_int) := wdata;
+    end loop;
     newaddr  := dma_addr(9 downto 0);
 
     v.lock_active := dmai.lock_req;
@@ -180,6 +185,19 @@ begin
       v.active := '0';
     end if;
 
+    if ahbi.hready = '1' and r.grant = '1' then
+      v.haddr := haddr;
+    end if;
+
+    hrdata_v(be_dw_int-1 downto 0) := hrdata(be_dw_int-1 downto 0);
+    if be_dw > be_dw_int then
+      for i in 0 to (be_dw/be_dw_int)-1 loop
+        if i = unsigned(r.haddr(log_2((be_dw/16)) downto log_2(be_dw_int/8))) then
+          hrdata_v := hrdata(((i+1)*be_dw_int)-1 downto i*be_dw_int);
+        end if;
+      end loop;
+    end if;
+
     rin <= v;
 
     --port assignments
@@ -202,7 +220,7 @@ begin
     dmao.mexc   <= mexc;
     dmao.retry  <= retry;
     dmao.haddr  <= newaddr;
-    rdata       <= hrdata;
+    rdata       <= hrdata_v;
 
     --pragma translate_off
     haddr_c  <= haddr;

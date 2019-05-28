@@ -1,14 +1,9 @@
-
-
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
 -- Copyright (C) 2009 Aeroflex Gaisler
 ------------------------------------------------------------------------------
-
-
 library techmap;
 use techmap.gencomp.all;
-
 package config is
 -- Technology and synthesis options
   constant CFG_FABTECH : integer := virtex4;
@@ -146,13 +141,9 @@ package config is
   constant CFG_GRETH : integer := 1;
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 32;
-
-
-
-
+  constant CFG_GRETH_FMC : integer := 0;
   constant CFG_GRETH_FT : integer := 0;
   constant CFG_GRETH_EDCLFT : integer := 0;
-
 -- CAN 2.0 interface
   constant CFG_CAN : integer := 0;
   constant CFG_CAN_NUM : integer := (1);
@@ -161,7 +152,6 @@ package config is
   constant CFG_CANSEPIRQ: integer := 0;
   constant CFG_CAN_SYNCRST : integer := 0;
   constant CFG_CANFT : integer := 0;
-
 -- Spacewire interface
   constant CFG_SPW_EN : integer := 0;
   constant CFG_SPW_NUM : integer := (1);
@@ -179,14 +169,12 @@ package config is
   constant CFG_SPW_INPUT : integer := 3;
   constant CFG_SPW_OUTPUT : integer := 0;
   constant CFG_SPW_RTSAME : integer := 0;
-
 -- PCI interface
   constant CFG_PCI : integer := 0;
   constant CFG_PCIVID : integer := 16#1AC8#;
   constant CFG_PCIDID : integer := 16#0054#;
   constant CFG_PCIDEPTH : integer := 8;
   constant CFG_PCI_MTF : integer := 1;
-
 -- GRPCI2 interface
   constant CFG_GRPCI2_MASTER : integer := 1;
   constant CFG_GRPCI2_TARGET : integer := 1;
@@ -214,28 +202,22 @@ package config is
   constant CFG_GRPCI2_TRACEAPB : integer := 0;
   constant CFG_GRPCI2_BYPASS : integer := 0;
   constant CFG_GRPCI2_EXTCFG : integer := (0);
-
 -- PCI arbiter
   constant CFG_PCI_ARB : integer := 1;
   constant CFG_PCI_ARBAPB : integer := 1;
   constant CFG_PCI_ARB_NGNT : integer := (4);
-
 -- PCI trace buffer
   constant CFG_PCITBUFEN: integer := 0;
   constant CFG_PCITBUF : integer := 256;
-
 -- UART 1
   constant CFG_UART1_ENABLE : integer := 1;
   constant CFG_UART1_FIFO : integer := 8;
-
 -- UART 2
   constant CFG_UART2_ENABLE : integer := 1;
   constant CFG_UART2_FIFO : integer := 8;
-
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE : integer := 1;
   constant CFG_IRQ3_NSEC : integer := 0;
-
 -- Modular timer
   constant CFG_GPT_ENABLE : integer := 1;
   constant CFG_GPT_NTIM : integer := (3);
@@ -245,12 +227,10 @@ package config is
   constant CFG_GPT_SEPIRQ : integer := 1;
   constant CFG_GPT_WDOGEN : integer := 1;
   constant CFG_GPT_WDOG : integer := 16#FFFFFF#;
-
 -- GPIO port
   constant CFG_GRGPIO_ENABLE : integer := 1;
   constant CFG_GRGPIO_IMASK : integer := 16#FE#;
   constant CFG_GRGPIO_WIDTH : integer := (8);
-
 -- Dynamic Partial Reconfiguration
   constant CFG_PRC : integer := 0;
   constant CFG_CRC_EN : integer := 0;
@@ -258,7 +238,6 @@ package config is
   constant CFG_WORDS_BLOCK : integer := 100;
   constant CFG_DCM_FIFO : integer := 0;
   constant CFG_DPR_FIFO : integer := 9;
-
 -- GRLIB debugging
   constant CFG_DUART : integer := 0;
 end;

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -58,7 +58,8 @@ entity grethc is
     ramdebug       : integer range 0 to 2  := 0;
     mdiohold       : integer := 1;
     maxsize        : integer := 1500;
-    gmiimode       : integer range 0 to 1 := 0
+    gmiimode       : integer range 0 to 1 := 0;
+    num_desc       : integer range 128 to 65536 := 128
     );
   port(
     rst            : in  std_ulogic;
@@ -175,6 +176,8 @@ architecture rtl of grethc is
     speed := vspeed;
     duplex := vduplex;
   end procedure;
+
+  constant DESC_BITS : integer := log2ext(num_desc) - 7;
   
   --host constants
   constant fabits          : integer := log2(fifosize);
@@ -329,12 +332,12 @@ architecture rtl of grethc is
     mdio_ctrl   : mdio_ctrl_reg_type;
     mac_addr    : mac_addr_reg_type;
     hash        : std_logic_vector(63 downto 0);
-    txdesc      : std_logic_vector(31 downto 10);
-    rxdesc      : std_logic_vector(31 downto 10);
+    txdesc      : std_logic_vector(31 downto DESC_BITS+10);
+    rxdesc      : std_logic_vector(31 downto DESC_BITS+10);
     edclip      : std_logic_vector(31 downto 0);
         
     --master tx interface
-    txdsel          : std_logic_vector(9 downto 3);
+    txdsel          : std_logic_vector(DESC_BITS+9 downto 3);
     tmsto           : eth_tx_ahb_in_type;
     tmsto2          : eth_tx_ahb_in_type;
     txdstate        : txd_state_type;
@@ -364,7 +367,7 @@ architecture rtl of grethc is
           
     --master rx interface
     rxrenable       : std_ulogic;
-    rxdsel          : std_logic_vector(9 downto 3);
+    rxdsel          : std_logic_vector(DESC_BITS+9 downto 3);
     rmsto           : eth_rx_ahb_in_type;
     rxdstate        : rxd_state_type;
     rxstatus        : std_logic_vector(4 downto 0);
@@ -640,11 +643,11 @@ begin
            end if;
          end if;
        when "0101" => --tx descriptor 
-         v.txdesc := pwdata(31 downto 10);
-         v.txdsel := pwdata(9 downto 3);
+         v.txdesc := pwdata(31 downto DESC_BITS+10);
+         v.txdsel := pwdata(DESC_BITS+9 downto 3);
        when "0110" => --rx descriptor
-         v.rxdesc := pwdata(31 downto 10);
-         v.rxdsel := pwdata(9 downto 3);
+         v.rxdesc := pwdata(31 downto DESC_BITS+10);
+         v.rxdsel := pwdata(DESC_BITS+9 downto 3);
        when "0111" => --edcl ip
          if (edcl /= 0) then
          v.edclip := pwdata;
@@ -722,6 +725,7 @@ begin
        vprdata(1) := r.ctrl.rxen;
        vprdata(0) := r.ctrl.txen; 
      when "0001" => --status/int source reg
+       vprdata(27 downto 24) := conv_std_logic_vector(DESC_BITS, 4);
        vprdata(9) := not (r.etxidle or r.erxidle);
        if enable_mdint = 1 then
          vprdata(8) := r.status.phystat;
@@ -747,11 +751,11 @@ begin
        vprdata(1) := r.mdio_ctrl.read;
        vprdata(0) := r.mdio_ctrl.write; 
      when "0101" => --tx descriptor 
-       vprdata(31 downto 10) := r.txdesc;
-       vprdata(9 downto 3)   := r.txdsel;
+       vprdata(31 downto DESC_BITS+10) := r.txdesc;
+       vprdata(DESC_BITS+9 downto 3)   := r.txdsel;
      when "0110" => --rx descriptor
-       vprdata(31 downto 10) := r.rxdesc;
-       vprdata(9 downto 3)   := r.rxdsel;
+       vprdata(31 downto DESC_BITS+10) := r.rxdesc;
+       vprdata(DESC_BITS+9 downto 3)   := r.rxdsel;
      when "0111" => --edcl ip
        if (edcl /= 0) then
        vprdata := r.edclip;

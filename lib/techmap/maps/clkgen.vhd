@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -248,5 +248,12 @@ begin
     generic map (clk_mul, clk_div, sdramen, noclkfb, pcien, pcidll, pcisysclk, freq, clk2xen, clksel)
     port map (clkin, pciclkin, clk, clkn, clk2x, sdclk, pciclk, cgi, cgo, clk1xu, clk2xu);
   end generate;
+  
+  nanex: if tech = nx generate
+    v : clkgen_nx
+      generic map (clk_mul, clk_div, sdramen, noclkfb, pcien, pcidll, pcisysclk,freq,clksel,clk_odiv,clkb_odiv,clkc_odiv)
+      port map (clkin, pciclkin, clk, clk2x,sdclk, pciclk, cgi, cgo,clkb,clkc);
+  end generate;
+
 end;
 

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -307,6 +307,12 @@ architecture rtl of dsu3x is
     if tbits > 32 then return 32; end if;
     return tbits;
   end function tbits_dsuif;
+
+  function lahbdw return integer is
+  begin
+    if AHBDW > 128 then return 128; end if;
+    return AHBDW;
+  end function lahbdw;
   
   signal tbi   : tracebuf_in_type;
   signal tbo   : tracebuf_out_type;
@@ -392,8 +398,8 @@ begin
 
     vabufi.write := (others => '0');
     if TRACEN then
-      wdata(AHBDW-1 downto 0) := tahbsi2.hwdata;
-      rdata(AHBDW-1 downto 0) := ahbmi.hrdata;
+      wdata(lahbdw-1 downto 0) := tahbsi2.hwdata(lahbdw-1 downto 0);
+      rdata(lahbdw-1 downto 0) := ahbmi.hrdata(lahbdw-1 downto 0);
       if atact = '1' then
         vabufi.addr(TBUFABITS-1 downto 0) := tr.aindex;
         vabufi.data(127) := orv(bphit);

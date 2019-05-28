@@ -3,7 +3,7 @@
 	Actel-HCLKBUF		CONFIG_CLK_HCLKBUF \
 	Aeroflex-UT130HBD	CONFIG_CLK_UT130HBD \
 	Altera-ALTPLL		CONFIG_CLK_ALTDLL \
-	Lattice-EXPLL		CONFIG_CLK_LATDLL \
+	NanoXplore-NXPLL        CONFIG_CLK_BRAVEMED \
 	Proasic3-PLL		CONFIG_CLK_PRO3PLL \
 	Proasic3E-PLL		CONFIG_CLK_PRO3EPLL \
 	Proasic3L-PLL		CONFIG_CLK_PRO3LPLL \
@@ -21,13 +21,17 @@
         -o "$CONFIG_CLK_LATDLL" = "y" -o "$CONFIG_CLK_PRO3PLL" = "y" \
         -o "$CONFIG_CLK_PRO3EPLL" = "y" -o "$CONFIG_CLK_PRO3LPLL" = "y" \
 	-o "$CONFIG_CLK_CLKDLL" = "y" -o "$CONFIG_CLK_LIB18T" = "y" \
-	-o "$CONFIG_CLK_FUSPLL" = "y" -o "$CONFIG_CLK_CLKPLLE2" = "y"]; then
+	-o "$CONFIG_CLK_FUSPLL" = "y" -o "$CONFIG_CLK_CLKPLLE2" = "y"\
+        -o "$CONFIG_CLK_BRAVEMED" = "y"]; then
       int 'Clock multiplication factor (allowed values are tech dependent)' CONFIG_CLK_MUL 2
-      int 'Clock division factor (allowed values are tech dependent)' CONFIG_CLK_DIV 2
+      if [ "$CONFIG_CLK_BRAVEMED" != "y" ]; then 
+      	 int 'Clock division factor (allowed values are tech dependent)' CONFIG_CLK_DIV 2
+      fi
     fi
     if [ "$CONFIG_CLK_PRO3PLL" = "y" -o "$CONFIG_CLK_PRO3EPLL" = "y" \
-         -o "$CONFIG_CLK_PRO3LPLL" = "y" -o "$CONFIG_CLK_FUSPLL" = "y"]; then
-      int 'Outout division factor (1 - 32)' CONFIG_OCLK_DIV 1
+         -o "$CONFIG_CLK_PRO3LPLL" = "y" -o "$CONFIG_CLK_FUSPLL" = "y" \
+	 -o "$CONFIG_CLK_BRAVEMED" = "y"]; then
+      int 'Outout division factor (0 - 32, see help)' CONFIG_OCLK_DIV 1
       int 'Outout division factor, 2nd clk (0 - 32, see help)' CONFIG_OCLKB_DIV 0
       int 'Outout division factor, 3rd clk (0 - 32, see help)' CONFIG_OCLKC_DIV 0
     fi

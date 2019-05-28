@@ -44,8 +44,8 @@
 #define CONFIG_SYN_TECH ihp25rh
 #elif defined CONFIG_SYN_CMOS9SF
 #define CONFIG_SYN_TECH cmos9sf
-#elif defined CONFIG_SYN_LATTICE
-#define CONFIG_SYN_TECH lattice
+#elif defined CONFIG_SYN_BRAVEMED
+#define CONFIG_SYN_TECH nx
 #elif defined CONFIG_SYN_ECLIPSE
 #define CONFIG_SYN_TECH eclipse
 #elif defined CONFIG_SYN_PEREGRINE

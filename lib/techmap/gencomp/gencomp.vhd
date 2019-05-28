@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ package gencomp is
 
 -- technologies and libraries
 
-constant NTECH : integer := 61;
+constant NTECH : integer := 63;
 type tech_ability_type is array (0 to NTECH) of integer;
 
 constant inferred    : integer := 0;
@@ -104,6 +104,8 @@ constant stratix5    : integer := 58;
 constant memrhs65b   : integer := 59;
 constant kintexu     : integer := 60;
 constant polarfire   : integer := 61;
+constant nx          : integer := 62;
+constant dare65      : integer := 63;
 
 
 constant DEFMEMTECH  : integer := inferred;
@@ -119,7 +121,7 @@ constant is_fpga : tech_ability_type :=
 	 spartan6 => 1, virtex6 => 1, actfus => 1,
 	 stratix4 => 1, apa3e => 1, apa3l => 1, virtex7 => 1, kintex7 => 1,
 	 artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1,
-	 stratix5 => 1, kintexu => 1, polarfire => 1, others => 0);
+	 stratix5 => 1, kintexu => 1, polarfire => 1,nx =>1, others => 0);
 
 constant infer_mul : tech_ability_type := is_fpga;
 
@@ -156,11 +158,11 @@ constant regfile_4p_infer : tech_ability_type :=
 
 constant syncram_2p_dest_rw_collision : tech_ability_type :=
         (memartisan => 1, smic013 => 1, easic45 => 1, ut130 => 1, rhs65 => 0,
-         igloo2 => 1, rtg4 => 1, polarfire => 1, others => 0);
+         igloo2 => 1, rtg4 => 1, polarfire => 1,nx=>1, others => 0);
 
 constant syncram_dp_dest_rw_collision : tech_ability_type :=
         (memartisan => 1, smic013 => 1, easic45 => 1,
-         rtg4 => 1, polarfire => 1, others => 0);
+         rtg4 => 1, polarfire => 1,nx=>1, others => 0);
 
 -- The readhold table should be set to 1 if the techology mapping's
 -- memory blocks keep the read-data bus stable at its current value
@@ -168,13 +170,21 @@ constant syncram_dp_dest_rw_collision : tech_ability_type :=
 -- a read.
 
 constant syncram_readhold : tech_ability_type :=
-        (rhs65 => 1, memrhs65b => 1, others => 0);
+        (rhs65 => 1, memrhs65b => 1,
+         spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
+         artix7 => 1, zynq7000 => 1, kintexu => 1,
+         others => 0);
 
 constant syncram_2p_readhold : tech_ability_type :=
-        (rhs65 => 1, memrhs65b => 1, others => 0);
+        (rhs65 => 1, memrhs65b => 1,
+         spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
+         artix7 => 1, zynq7000 => 1, kintexu => 1,
+         others => 0);
 
 constant syncram_dp_readhold : tech_ability_type :=
-        (others => 0);
+        (spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
+         artix7 => 1, zynq7000 => 1, kintexu => 1,
+         others => 0);
 
 constant regfile_3p_readhold : tech_ability_type :=
         (others => 0);
@@ -185,6 +195,16 @@ constant syncram_customif_maxwidth: integer := 64;  -- Expand as needed
 -- Set to 1 to add input-to-output bypass logic during scan mode in the syncram
 -- wrappers.
 constant syncram_add_scan_bypass : tech_ability_type := (others => 0);
+
+-- Minimum abits to pass through to RAM in the techmap, if smaller than this
+-- value will use inferred implementation (can be overriden by grlib_config)
+constant syncram_abits_min    : tech_ability_type := (spartan6 => 6, virtex6 => 6, virtex7 => 6, kintex7 => 6,
+                                                      artix7 => 7, zynq7000 => 6, kintexu => 6,
+                                                      others => 0);
+constant syncram_2p_abits_min : tech_ability_type := (spartan6 => 6, virtex6 => 6, virtex7 => 6, kintex7 => 6,
+                                                      artix7 => 6, zynq7000 => 6, kintexu => 6,
+                                                      others => 0);
+
 
 constant has_sram : tech_ability_type :=
 	(atc18s => 0, others => 1);
@@ -201,7 +221,8 @@ constant has_dpram : tech_ability_type :=
 	 tm65gplus => 1, axdsp => 0, spartan6 => 1, virtex6 => 1,
 	 actfus => 1, stratix4 => 1, easic45 => 1, apa3e => 1,
 	 apa3l => 1, ut90 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1, 
-         dare => 1, igloo2 => 1, rtg4 => 1, polarfire => 1, stratix5 => 1, kintexu => 1, others => 0);
+         dare => 1, igloo2 => 1, rtg4 => 1, polarfire => 1, stratix5 => 1, kintexu => 1,
+         nx=>1,others => 0);
 
 constant has_sram64 : tech_ability_type :=
 	(inferred => 0, virtex2 => 1, spartan3 => 1, virtex4 => 1,
@@ -242,7 +263,8 @@ constant has_sram_2pbw : tech_ability_type := (
 constant has_srambw : tech_ability_type := (easic45 => 255, virtex => 0, virtex2 => 0,
 	      virtex4 => 0, virtex5 => 15, spartan3 => 0, spartan3e => 0, spartan6 => 0,
 	      virtex6 => 15, virtex7 => 15, kintex7 => 15, artix7 => 15, zynq7000 => 15,
-              rtg4 => 11, igloo2 => 11, polarfire => 11, stratix5 => 255, others => 0);
+              rtg4 => 11, igloo2 => 11, polarfire => 11, stratix5 => 255,
+              nx=> 12,others => 0);
 
 constant has_2pfifo : tech_ability_type := (
   altera    => 1, stratix1  => 1, stratix2 => 1, stratix3 => 1,
@@ -285,7 +307,7 @@ constant padoen_polarity : tech_ability_type :=
         (axcel => 1, proasic => 1, umc => 1, rhumc => 1, saed32 => 1, rhs65 => 0, dare => 1, apa3 => 1,
          ihp25 => 1, ut25 => 1, peregrine => 1, easic90 => 1, axdsp => 1,
 	 actfus => 1, apa3e => 1, apa3l => 1, ut130 => 1, easic45 => 1,
-         ut90 => 1, igloo2 => 1, rtg4 => 1, polarfire => 1, others => 0);
+         ut90 => 1, igloo2 => 1, rtg4 => 1, polarfire => 1, nx => 1,others => 0);
 
 constant has_pads : tech_ability_type :=
 	(inferred => 0, virtex => 1, virtex2 => 1, memvirage => 0,
@@ -295,7 +317,7 @@ constant has_pads : tech_ability_type :=
 	 ut25 => 1, spartan3e => 1, peregrine => 1, virtex5 => 1, axdsp => 1,
 	 easic90 => 1, atc18rha => 1, spartan6 => 1, virtex6 => 1,
          actfus => 1, apa3e => 1, apa3l => 1, ut130 => 1, easic45 => 1,
-         ut90 => 1, virtex7 => 1, kintex7 => 1,
+         ut90 => 1, virtex7 => 1, kintex7 => 1, nx => 1,
          artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1, polarfire => 1, kintexu => 1, others => 0);
 
 constant has_ds_pads : tech_ability_type :=
@@ -384,7 +406,7 @@ constant has_clkgen : tech_ability_type :=
 	 spartan6 => 1, virtex6 => 1, actfus => 1, easic90 => 1,
 	 stratix4 => 1, easic45 => 1, apa3e => 1, apa3l => 1,
 	 rhlib18t => 1, ut130 => 1, ut90 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1,
-         zynq7000 => 1, stratix5 => 1, kintexu => 1, others => 0);
+         zynq7000 => 1, stratix5 => 1, kintexu => 1,nx=>1, others => 0);
 
 constant has_ddr2phy: tech_ability_type :=
   (inferred => 0, stratix2 => 1, stratix3 => 1, stratix4 => 1, spartan3 => 1,
@@ -498,7 +520,8 @@ constant has_transceivers : tech_ability_type := (
   dare      => "dare      ", igloo2    => "igloo2    ",
   rhs65     => "rhs65     ", rtg4      => "rtg4      ",
   stratix5  => "stratixv  ", memrhs65b => "memrhs65b ",
-  kintexu   => "kintexu   ", polarfire => "polarfire ");
+  kintexu   => "kintexu   ", polarfire => "polarfire ",
+  nx        => "nx        ", dare65    => "dare65    ");
 
 -- pragma translate_on
 
@@ -573,7 +596,7 @@ constant TT_M010     : integer := 13;
   component syncram
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
 	testen : integer := 0; custombits : integer := 1;
-        pipeline : integer range 0 to 15 := 0);
+        pipeline : integer range 0 to 15 := 0; rdhold : integer := 0);
   port (
     clk      : in std_ulogic;
     address  : in std_logic_vector((abits -1) downto 0);
@@ -590,7 +613,7 @@ constant TT_M010     : integer := 13;
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
 	sepclk : integer := 0; wrfst : integer := 0; testen : integer := 0;
 	words : integer := 0; custombits : integer := 1;
-        pipeline : integer range 0 to 15 := 0);
+        pipeline : integer range 0 to 15 := 0; rdhold : integer := 0);
   port (
     rclk     : in std_ulogic;
     renable  : in std_ulogic;
@@ -608,7 +631,7 @@ constant TT_M010     : integer := 13;
   component syncram_dp
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
 	testen : integer := 0; custombits : integer := 1; sepclk: integer := 1;
-        wrfst : integer := 0; pipeline : integer range 0 to 15 := 0);
+        wrfst : integer := 0; pipeline : integer range 0 to 15 := 0; rdhold: integer := 0);
   port (
     clk1     : in std_ulogic;
     address1 : in std_logic_vector((abits -1) downto 0);
@@ -630,7 +653,7 @@ constant TT_M010     : integer := 13;
   component regfile_3p
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
            wrfst : integer := 0; numregs : integer := 64; testen : integer := 0;
-           custombits : integer := 1);
+           custombits : integer := 1; rdhold: integer := 0);
   port (
     wclk   : in  std_ulogic;
     waddr  : in  std_logic_vector((abits -1) downto 0);
@@ -653,7 +676,7 @@ constant TT_M010     : integer := 13;
   component syncram64
   generic (tech : integer := 0; abits : integer := 6; testen : integer := 0;
 	   paren : integer := 0; custombits : integer := 1;
-           pipeline : integer range 0 to 255 := 0);
+           pipeline : integer range 0 to 255 := 0; rdhold : integer := 0);
   port (
     clk     : in  std_ulogic;
     address : in  std_logic_vector (abits -1 downto 0);
@@ -669,7 +692,7 @@ constant TT_M010     : integer := 13;
   component syncram128
   generic (tech : integer := 0; abits : integer := 6; testen : integer := 0;
 	   paren : integer := 0; custombits : integer := 1;
-           pipeline : integer range 0 to 15 := 0);
+           pipeline : integer range 0 to 15 := 0; rdhold : integer := 0);
   port (
     clk     : in  std_ulogic;
     address : in  std_logic_vector (abits -1 downto 0);
@@ -763,7 +786,7 @@ constant TT_M010     : integer := 13;
   component syncrambw
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
     testen : integer := 0; custombits : integer := 1;
-    pipeline : integer range 0 to 15 := 0);
+    pipeline : integer range 0 to 15 := 0; rdhold: integer := 0);
   port (
     clk     : in  std_ulogic;
     address : in  std_logic_vector (abits-1 downto 0);
@@ -855,6 +878,7 @@ constant TT_M010     : integer := 13;
       wempty  : out std_logic;
       wusedw  : out std_logic_vector(abits-1 downto 0);
       datain  : in std_logic_vector(dbits-1 downto 0);
+      dynsync : in std_ulogic := '0';
       testin  : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
       error    : out std_logic_vector((((dbits+7)/8)-1)*(1-ft/4)+ft/4 downto 0);
       errinj   : in std_logic_vector((((dbits + 7)/8)*2-1)*(1-ft/4)+(6*(ft/4)) downto 0) := (others => '0')

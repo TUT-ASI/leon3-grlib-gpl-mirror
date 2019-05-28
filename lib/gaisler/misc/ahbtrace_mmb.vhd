@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -56,6 +56,7 @@ entity ahbtrace_mmb is
     ahbso   : out ahb_slv_out_type;
     tahbmiv : in  ahb_mst_in_vector_type(0 to ntrace-1);       -- Trace
     tahbsiv : in  ahb_slv_in_vector_type(0 to ntrace-1);
+    trace_en : in std_logic := '1';
     timer   : in  std_logic_vector(30 downto 0);
     astat   : out amba_stat_type;
     resen   : in  std_ulogic := '0'
@@ -140,6 +141,7 @@ type fregtype is record
   smask         : std_logic_vector(15 downto 0);
   mmask         : std_logic_vector(15 downto 0);
   rf            : std_ulogic;         -- Retry filtering
+  lerr          : std_ulogic;         -- log on error
 end record;
 
 type bregtype is record
@@ -180,6 +182,10 @@ begin
   if (rf.rf = '1' and hresp = HRESP_RETRY) then
     hit := true;
   end if;
+  --Log only on error
+  if (rf.lerr = '1' and hresp /= HRESP_ERROR) then
+    hit := true;
+  end if;
   return hit;
 end function ahb_filt_hit;
 
@@ -209,7 +215,7 @@ signal pr, prin : pregtype;
 
 begin
 
-  ctrl : process(rst, ahbsi, tahbmiv, tahbsiv, r, rf, rb, tbo, pr, timer, resen)
+  ctrl : process(rst, ahbsi, tahbmiv, tahbsiv, r, rf, rb, tbo, pr, timer, resen, trace_en)
   variable v : regtype;
   variable vabufi : tracebuf_in_type;
   variable regsd : std_logic_vector(31 downto 0);   -- data from registers
@@ -304,7 +310,7 @@ begin
 
 -- write trace buffer
 
-      if r.enable = '1' then 
+      if r.enable = '1' and trace_en = '1' then
         if (r.ahbactive and tahbsi.hready) = '1' then
           if not (FILTEN and ahb_filt_hit(r, rf, tahbmi.hresp)) then
             v.aindex := aindex;
@@ -420,6 +426,7 @@ begin
           end if;
           regsd(7 downto 6) := conv_std_logic_vector(log2(bwidth/32), 2);
           if FILTEN then
+            regsd(9) := rf.lerr;
             regsd(8) := rf.pf;
             regsd(5) := rf.rf;
             regsd(4) := rf.af;
@@ -433,11 +440,12 @@ begin
               vb.bsel := ahbsi.hwdata(log2x(ntrace)+11 downto 12);
             end if;
             if FILTEN then
-              vf.pf := ahbsi.hwdata(8);
-              vf.rf := ahbsi.hwdata(5);
-              vf.af := ahbsi.hwdata(4);
-              vf.fr := ahbsi.hwdata(3);
-              vf.fw := ahbsi.hwdata(2);
+              vf.lerr := ahbsi.hwdata(9);
+              vf.pf   := ahbsi.hwdata(8);
+              vf.rf   := ahbsi.hwdata(5);
+              vf.af   := ahbsi.hwdata(4);
+              vf.fr   := ahbsi.hwdata(3);
+              vf.fw   := ahbsi.hwdata(2);
             end if;
             v.dcnten := ahbsi.hwdata(1);
             v.enable := ahbsi.hwdata(0);
@@ -617,6 +625,7 @@ begin
     rf.smask     <= (others => '0');
     rf.mmask     <= (others => '0');
     rf.rf        <= '0';
+    rf.lerr      <= '0';
   end generate;
   perf : if PERFEN generate
     preg : process(clk)

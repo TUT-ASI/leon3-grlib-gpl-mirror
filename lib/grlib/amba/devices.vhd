@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -54,6 +54,7 @@ package devices is
   constant VENDOR_MENTA      : amba_vendor_type := 16#11#;
   constant VENDOR_SUN        : amba_vendor_type := 16#13#;
   constant VENDOR_MOVIDIA    : amba_vendor_type := 16#14#;
+  constant VENDOR_L3T        : amba_vendor_type := 16#15#;
   constant VENDOR_ORBITA     : amba_vendor_type := 16#17#;
   constant VENDOR_SYNOPSYS   : amba_vendor_type := 16#21#;
   constant VENDOR_NASA       : amba_vendor_type := 16#22#;
@@ -259,6 +260,15 @@ package devices is
   constant GAISLER_DFIERRINJ     : amba_device_type := 16#0B3#;
   constant GAISLER_DFICHECK      : amba_device_type := 16#0B4#;
   constant GAISLER_GRCANFD       : amba_device_type := 16#0B5#;
+  constant GAISLER_NIM           : amba_device_type := 16#0B6#;
+  constant GAISLER_GRSHYLOC      : amba_device_type := 16#0B7#;
+  constant GAISLER_GRTACHOM      : amba_device_type := 16#0B8#;
+  constant GAISLER_L5STAT        : amba_device_type := 16#0B9#;
+  constant GAISLER_LEON5         : amba_device_type := 16#0BA#;
+  constant GAISLER_LEON5DSU      : amba_device_type := 16#0BB#;
+  constant GAISLER_SPFI          : amba_device_type := 16#0BC#;
+  constant GAISLER_RV64GC        : amba_device_type := 16#0BD#;
+  constant GAISLER_RVDM          : amba_device_type := 16#0BE#;
 
 -- Sun Microsystems
 
@@ -377,6 +387,7 @@ package devices is
   constant ACTEL_FICMST        : amba_device_type := 16#009#;
   constant ACTEL_RTG4SERDES    : amba_device_type := 16#00a#;
   constant ACTEL_PFFDDR3       : amba_device_type := 16#00b#;
+  constant ACTEL_PFFDDR4       : amba_device_type := 16#00c#;
   
 -- NASA device ids
 
@@ -654,6 +665,15 @@ package devices is
     GAISLER_DFIERRINJ     => "DFI error injection module      ",
     GAISLER_DFICHECK      => "DFI timing check module         ",
     GAISLER_GRCANFD       => "CAN-FD Controller with DMA      ",
+    GAISLER_NIM           => "Synchronous serial interface    ",
+    GAISLER_GRSHYLOC      => "SHYLOC Compressor with DMA      ",
+    GAISLER_GRTACHOM      => "Simple Digital Tachometer       ",
+    GAISLER_L5STAT        => "LEON5 Statistics Unit           ",
+    GAISLER_LEON5         => "LEON5 SPARC V8 Processor        ",
+    GAISLER_LEON5DSU      => "LEON5 Debug Support Unit        ",
+    GAISLER_SPFI          => "GRSPFI SpaceFibre Serial Link   ",
+    GAISLER_RV64GC        => "RV64GC RISC-V Processor         ",
+    GAISLER_RVDM          => "RISC-V Debug Module             ",
     others                => "Unknown Device                  ");
 
   constant gaisler_lib : vendor_library_type := (
@@ -790,6 +810,17 @@ package devices is
     vendorid     => VENDOR_SUN,
     vendordesc   => SUN_DESC,
     device_table => sun_device_table
+    );
+
+  constant L3T_DESC : vendor_description := "L3 Technologies         ";
+
+  constant l3t_device_table : device_table_type := (
+    others => "Unknown Device                  ");
+
+  constant l3t_lib : vendor_library_type := (
+    vendorid     => VENDOR_L3T,
+    vendordesc   => L3T_DESC,
+    device_table => l3t_device_table
     );
 
   constant OPENCORES_DESC : vendor_description := "OpenCores               ";
@@ -978,6 +1009,7 @@ package devices is
     ACTEL_FICMST        => "FIC Master Wrapper              ",
     ACTEL_RTG4SERDES    => "RTG4 SERDES Interface           ",
     ACTEL_PFFDDR3       => "PolarFire FDDR3 Controller      ",
+    ACTEL_PFFDDR4       => "PolarFire FDDR4 Controller      ",
     others              => "Unknown Device                  ");
 
   constant actel_lib : vendor_library_type := (
@@ -1210,6 +1242,7 @@ package devices is
     VENDOR_ACTEL        => actel_lib,
     VENDOR_NASA         => nasa_lib,
     VENDOR_NIIET        => niiet_lib,
+    VENDOR_L3T          => l3t_lib,
     VENDOR_NASA_GSFC    => nasa_gsfc_lib,
     VENDOR_S3           => s3_lib,
     VENDOR_UC_BERKELEY  => uc_berkeley_lib,

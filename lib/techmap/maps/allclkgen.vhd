@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -807,6 +807,35 @@ component sim_pll is
     o4: out std_logic;
     lock: out std_logic;
     rst: in std_logic
+    );
+end component;
+
+component clkgen_nx is
+  generic (
+    clk_mul  : integer range 1 to 15 := 1;
+    clk_div  : integer range 1 to 16 := 1;
+    sdramen  : integer := 0;
+    noclkfb  : integer := 1;
+    pcien    : integer := 0;
+    pcidll   : integer := 0;
+    pcisysclk: integer := 0;
+    freq     : integer := 25000;
+    clksel   : integer := 0;
+    clk_odiv : integer := 0;
+    clkb_odiv: integer := 0;
+    clkc_odiv: integer := 0
+    );
+  port (
+    clkin   : in  std_logic;
+    pciclkin: in  std_logic;
+    clk     : out std_logic;
+    clk2x   : out std_logic;
+    sdclk   : out std_logic;
+    pciclk  : out std_logic;
+    cgi     : in  clkgen_in_type;
+    cgo     : out clkgen_out_type;
+    clkb    : out std_logic;
+    clkc    : out std_logic
     );
 end component;
 

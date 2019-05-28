@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -316,9 +316,19 @@ begin
       op : OBUF generic map (drive => strength, IOSTANDARD => "SSTL18_II")
                 port map (O => pad, I => i);
   end generate;
+  sstl12dci : if level = sstl12_dci generate
+    slow0 : if slew = 0 generate
+      op : OBUF generic map (drive => strength, IOSTANDARD => "SSTL12_DCI")
+        port map (O => pad, I => i);
+    end generate;
+    fast0 : if slew /= 0 generate
+      op : OBUF generic map (drive => strength, IOSTANDARD => "SSTL12_DCI", SLEW => "FAST")
+        port map (O => pad, I => i);
+    end generate;
+  end generate;
   gen0 : if (level /= pci33) and (level /= ttl) and (level /= cmos) and 
 	(level /= sstl2_i) and (level /= sstl2_ii) and 
-   (level /= sstl18_i) and (level /= sstl18_ii) generate
+   (level /= sstl18_i) and (level /= sstl18_ii) and (level /= sstl12_dci) generate
       op : OBUF port map (O => pad, I => i);
   end generate;
 end;
@@ -1111,6 +1121,10 @@ begin
     xsstl18_ii : if level = sstl18_ii generate
         op : OBUFDS generic map(IOSTANDARD  => "DIFF_SSTL18_II", SLEW => "FAST")
            port map (O => padp, OB => padn, I => i);
+    end generate;
+    xsstl12_dci : if level = sstl12_dci generate
+      op : OBUFDS generic map(IOSTANDARD  => "DIFF_SSTL12_DCI", SLEW => "FAST")
+        port map (O => padp, OB => padn, I => i);
     end generate;
   end generate;
 end;

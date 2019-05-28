@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -448,16 +448,9 @@ begin
 
   -- clk traced signals through register to minimize fan out
   inreg: if usereg = 1 generate
-    process (tclk,rstntclk)
-    begin 
-     if (rstntclk = '0') then
-        tr.armed <= '0'; tr.trigged <= '0'; tr.sample <= '0'; tr.finished <= '0'; tr.arm_demet <= '0';
-       tr.curr_tl <= 0;
-       tr.counter <= (others => '0');
-       tr.divcounter <= (others => '0');
-       tr.match_count <= (others => '0');
-       tr.w_addr <= (others => '0');
-      elsif rising_edge(tclk) then 
+    process (tclk)
+    begin  
+      if rising_edge(tclk) then 
         sigold <= sigreg;
         sigreg <= signals;     
       end if;

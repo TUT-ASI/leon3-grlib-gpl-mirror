@@ -1,26 +1,13 @@
-
-
 -----------------------------------------------------------------------------
 -- LEON3 Demonstration design test bench configuration
 -- Copyright (C) 2012 Aeroflex Gaisler
 ------------------------------------------------------------------------------
-
-
 library techmap;
 use techmap.gencomp.all;
 library grlib;
 use grlib.devices.all;
-
 package config is
-
 -- Board selection
-
-
-
-
-
-
-
   constant CFG_BOARD_SELECTION : system_device_type := XILINX_ML507;
 -- Technology and synthesis options
   constant CFG_FABTECH : integer := virtex5;
@@ -185,6 +172,7 @@ package config is
   constant CFG_GRETH : integer := 1;
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 32;
+  constant CFG_GRETH_FMC : integer := 0;
   constant CFG_GRETH_SGMII : integer := 0;
 -- UART 1
   constant CFG_UART1_ENABLE : integer := 1;
@@ -205,21 +193,16 @@ package config is
   constant CFG_GRGPIO_ENABLE : integer := 1;
   constant CFG_GRGPIO_IMASK : integer := 16#0FFFE#;
   constant CFG_GRGPIO_WIDTH : integer := (32);
-
 -- I2C master
   constant CFG_I2C_ENABLE : integer := 1;
-
 -- AMBA Wrapper for Xilinx System Monitor
   constant CFG_GRSYSMON : integer := 0;
-
 -- VGA and PS2/ interface
   constant CFG_KBD_ENABLE : integer := 1;
   constant CFG_VGA_ENABLE : integer := 0;
   constant CFG_SVGA_ENABLE : integer := 1;
-
 -- AMBA System ACE Interface Controller
   constant CFG_GRACECTRL : integer := 1;
-
 -- PCIEXP interface
  constant CFG_PCIEXP : integer := 0;
  constant CFG_PCIE_TYPE : integer := 0;
@@ -227,7 +210,6 @@ package config is
  constant CFG_PCIEXPVID : integer := 16#0#;
  constant CFG_PCIEXPDID : integer := 16#0#;
   constant CFG_NO_OF_LANES : integer := 1;
-
 -- GRLIB debugging
   constant CFG_DUART : integer := 0;
 end;

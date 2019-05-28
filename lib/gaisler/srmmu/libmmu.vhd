@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -44,6 +44,7 @@ package libmmu is
       tlb_type  : integer range 0 to 3 := 1;
       tlb_rep   : integer range 0 to 1 := 0;
       mmupgsz   : integer range 0 to 5 := 0;
+      scantest  : integer := 0;
       ramcbits  : integer := 1
       );
     port (

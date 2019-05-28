@@ -1,1 +1,3 @@
-flash.vhd s25fl064a.vhd m25p80.vhd
+flash.vhd
+s25fl064a.vhd vhdlstd=93
+m25p80.vhd    vhdlstd=93

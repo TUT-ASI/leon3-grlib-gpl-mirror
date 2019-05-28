@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -40,6 +40,7 @@ entity ahb_be is
     version               : integer := 0;
     max_burst_length_ptwo : integer;
     be_dw                 : integer;
+    be_dw_int             : integer;
     addr_width            : integer := 32);
   port (
     clk          : in  std_logic;
@@ -50,9 +51,9 @@ entity ahb_be is
     wr_addr      : in  std_logic_vector(addr_width-1 downto 0);
     wr_len       : in  std_logic_vector(log_2(max_burst_length_ptwo)-1 downto 0);
     rd_len       : in  std_logic_vector(log_2(max_burst_length_ptwo)-1 downto 0);
-    wr_data      : in  std_logic_vector(be_dw-1 downto 0);
-    rd_data      : out std_logic_vector(be_dw-1 downto 0);
-    rd_data_comb : out std_logic_vector(be_dw-1 downto 0);
+    wr_data      : in  std_logic_vector(be_dw_int-1 downto 0);
+    rd_data      : out std_logic_vector(be_dw_int-1 downto 0);
+    rd_data_comb : out std_logic_vector(be_dw_int-1 downto 0);
     ahbmi        : in  ahb_bmst_in_type;
     ahbmo        : out ahb_bmst_out_type;
     hrdata       : in  std_logic_vector(be_dw-1 downto 0);
@@ -71,7 +72,7 @@ architecture rtl of ahb_be is
   type input_port is record
     wr_len      : std_logic_vector(log_2(max_burst_length)-1 downto 0);
     rd_len      : std_logic_vector(log_2(max_burst_length)-1 downto 0);
-    wr_data     : std_logic_vector(be_dw-1 downto 0);
+    wr_data     : std_logic_vector(be_dw_int-1 downto 0);
     wdata_valid : std_logic;
     rd_addr     : std_logic_vector(addr_width-1 downto 0);
     wr_addr     : std_logic_vector(addr_width-1 downto 0);
@@ -82,7 +83,7 @@ architecture rtl of ahb_be is
     last_rd     : std_logic;
     haddr       : std_logic_vector(addr_width-1 downto 0);
     haddr_prev  : std_logic_vector(addr_width-1 downto 0);
-    hwdata      : std_logic_vector(be_dw-1 downto 0);
+    hwdata      : std_logic_vector(be_dw_int-1 downto 0);
     wr_pending  : std_logic;
     rd_pending  : std_logic;
     len_counter : integer range 0 to max_burst_length-1;
@@ -90,7 +91,7 @@ architecture rtl of ahb_be is
     burst_size  : std_logic_vector(2 downto 0);
     burst       : std_logic;
     rdata_valid : std_logic;
-    rd_data     : std_logic_vector(be_dw-1 downto 0);
+    rd_data     : std_logic_vector(be_dw_int-1 downto 0);
     rburst_done : std_logic;
     wburst_done : std_logic;
     retry_again : std_logic;
@@ -133,8 +134,8 @@ architecture rtl of ahb_be is
 
   signal dma_addr : std_logic_vector(addr_width-1 downto 0);
 
-  signal wdata : std_logic_vector(be_dw-1 downto 0);
-  signal rdata : std_logic_vector(be_dw-1 downto 0);
+  signal wdata : std_logic_vector(be_dw_int-1 downto 0);
+  signal rdata : std_logic_vector(be_dw_int-1 downto 0);
 
 begin
 
@@ -144,6 +145,7 @@ begin
       async_reset => async_reset,
       hindex      => hindex,
       be_dw       => be_dw,
+      be_dw_int   => be_dw_int,
       addr_width  => addr_width)
     port map (
       rst      => rstn,

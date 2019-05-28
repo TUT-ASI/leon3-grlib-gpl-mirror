@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -124,6 +124,8 @@ architecture sim of ddr3ram is
   begin
     if tRTP_ck*tper > tRTP_t then return tRTP_ck*tper; else return tRTP_t; end if;
   end tRTP;
+  function tWTR(tper: time) return time is begin return tRTP(tper); end tWTR;
+
   constant tMOD_ck: integer := 12;
   constant tMOD_t: time := 15 ns;
 
@@ -529,6 +531,11 @@ begin
             assert banks(bank).openrow >= 0 or vmr.mpr='1'
               report "Row not open" severity error;
             checktime(now-banks(bank).opentime+al*(re-prev_re), tRCD(speedbin), true, "tRCD");
+            if cmd="101" then
+              for b in 0 to 7 loop
+                checktime(now-banks(b).writetime, tWTR(re-prev_re), true, "tWTR");
+              end loop;
+            end if;
             for x in 0 to 3 loop
               assert not accpipe(x).r and not accpipe(x).w;
             end loop;

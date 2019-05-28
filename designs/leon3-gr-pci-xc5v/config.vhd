@@ -24,7 +24,7 @@ package config is
   constant CFG_CLK_NOFB : integer := 0;
 -- LEON processor core
   constant CFG_LEON : integer := 3;
-  constant CFG_NCPU : integer := (2);
+  constant CFG_NCPU : integer := (1);
   constant CFG_NWIN : integer := (8);
   constant CFG_V8 : integer := 16#32# + 4*0;
   constant CFG_MAC : integer := 0;
@@ -169,6 +169,7 @@ package config is
   constant CFG_GRETH : integer := 1;
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 16;
+  constant CFG_GRETH_FMC : integer := 0;
 -- CAN 2.0 interface
   constant CFG_CAN : integer := 0;
   constant CFG_CAN_NUM : integer := (1);

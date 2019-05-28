@@ -28,7 +28,7 @@
 	Custom1        		CONFIG_SYN_CUSTOM1 \
 	DARE      		CONFIG_SYN_DARE \
 	IBM-CMOS9SF    		CONFIG_SYN_CMOS9SF \
-        Lattice-EC/ECP/XP   	CONFIG_SYN_LATTICE \
+        NanoXplore-BraveMed     CONFIG_SYN_BRAVEMED \
         Quicklogic-Eclipse  	CONFIG_SYN_ECLIPSE \
 	RH-LIB18T  		CONFIG_SYN_RH_LIB18T \
 	RH-UMC     		CONFIG_SYN_RHUMC \

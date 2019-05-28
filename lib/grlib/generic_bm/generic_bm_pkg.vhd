@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -370,6 +370,7 @@ package generic_bm_pkg is
       version               : integer := 0;
       max_burst_length_ptwo : integer;
       be_dw                 : integer;
+      be_dw_int             : integer;
       addr_width            : integer := 32);
     port (
       clk          : in  std_logic;
@@ -380,9 +381,9 @@ package generic_bm_pkg is
       wr_addr      : in  std_logic_vector(addr_width-1 downto 0);
       wr_len       : in  std_logic_vector(log_2(max_burst_length_ptwo)-1 downto 0);
       rd_len       : in  std_logic_vector(log_2(max_burst_length_ptwo)-1 downto 0);
-      wr_data      : in  std_logic_vector(be_dw-1 downto 0);
-      rd_data      : out std_logic_vector(be_dw-1 downto 0);
-      rd_data_comb : out std_logic_vector(be_dw-1 downto 0);
+      wr_data      : in  std_logic_vector(be_dw_int-1 downto 0);
+      rd_data      : out std_logic_vector(be_dw_int-1 downto 0);
+      rd_data_comb : out std_logic_vector(be_dw_int-1 downto 0);
       ahbmi        : in  ahb_bmst_in_type;
       ahbmo        : out ahb_bmst_out_type;
       hrdata       : in  std_logic_vector(be_dw-1 downto 0);
@@ -459,7 +460,7 @@ package generic_bm_pkg is
     generic(
       async_reset      : boolean                  := false;
       bm_dw            : integer range 32 to 128  := 128;  --bus master data width
-      be_dw            : integer range 32 to 128  := 32;  --back-end data width
+      be_dw            : integer range 32 to 256  := 32;  --back-end data width
       be_rd_pipe       : integer range 0 to 1     := 1;
       unalign_load_opt : integer range 0 to 1     := 0;
       addr_width       : integer                  := 32;
@@ -608,6 +609,7 @@ package generic_bm_pkg is
       chprot      : integer := 3;
       incaddr     : integer := 0;
       be_dw       : integer := 32;
+      be_dw_int   : integer := 32;
       addr_width  : integer := 32);
     port (
       rst      : in  std_ulogic;
@@ -615,8 +617,8 @@ package generic_bm_pkg is
       dmai     : in  bmahb_dma_in_type;
       dmao     : out bmahb_dma_out_type;
       dma_addr : in  std_logic_vector(addr_width-1 downto 0);
-      wdata    : in  std_logic_vector(be_dw-1 downto 0);
-      rdata    : out std_logic_vector(be_dw-1 downto 0);
+      wdata    : in  std_logic_vector(be_dw_int-1 downto 0);
+      rdata    : out std_logic_vector(be_dw_int-1 downto 0);
       ahbi     : in  ahb_bmst_in_type;
       ahbo     : out ahb_bmst_out_type;
       hrdata   : in  std_logic_vector(be_dw-1 downto 0);
@@ -664,6 +666,9 @@ package generic_bm_pkg is
     width   : integer) return std_logic_vector;
 
   function max_burst_length_cor(max_burst_length : integer; max_size : integer; be_dw : integer)
+    return integer;
+
+  function back_end_width(bm_dw : integer; be_dw: integer)
     return integer;
   
 end;
@@ -1127,5 +1132,21 @@ package body generic_bm_pkg is
     end if;
 
   end max_burst_length_cor;
+
+  function back_end_width(
+    bm_dw : integer;
+    be_dw : integer)
+    return integer is
+  begin
+
+    if be_dw > bm_dw then
+      return bm_dw;
+    else
+      return be_dw;
+    end if;
+
+  end back_end_width;
+
+  
 
 end generic_bm_pkg;

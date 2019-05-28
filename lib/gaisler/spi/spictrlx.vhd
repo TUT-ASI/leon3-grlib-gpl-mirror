@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -865,7 +865,7 @@ begin
         if syncram /= 0 then
           -- Check if tx queue will be read
           if apbaddr(10 downto 9) = AMTX_ADDR(10 downto 9) then
-            v.am.txread := apbi_pwrite and not r.am.txread;
+            v.am.txread := not apbi_pwrite and not r.am.txread;
           end if;
           if apbaddr(10 downto 9) = AMRX_ADDR(10 downto 9) then
             v.am.rxread := not r.am.rxread;

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -30,13 +30,14 @@ library grlib;
 use grlib.stdlib.all;
 
 entity generic_syncram is
-  generic ( abits : integer := 10; dbits : integer := 8; pipeline : integer := 0 );
+  generic ( abits : integer := 10; dbits : integer := 8; pipeline : integer := 0; rdhold: integer := 0 );
   port (
     clk      : in std_ulogic;
     address  : in std_logic_vector((abits -1) downto 0);
     datain   : in std_logic_vector((dbits -1) downto 0);
     dataout  : out std_logic_vector((dbits -1) downto 0);
-    write    : in std_ulogic
+    write    : in std_ulogic;
+    enable   : in std_ulogic
   ); 
 end;     
 
@@ -55,7 +56,9 @@ begin
       if write = '1' then
         memarr(conv_integer(address)) <= datain;
       end if;
-      ra <= address;
+      if (rdhold=0 or enable='1') then
+        ra <= address;
+      end if;
     end if;
   end process;
 
@@ -136,7 +139,8 @@ entity generic_syncram_2p is
     abits : integer := 8;
     dbits : integer := 32;
     sepclk: integer := 0;
-    pipeline: integer := 0
+    pipeline: integer := 0;
+    rdhold: integer := 0
   );
   port (
     rclk : in std_ulogic;
@@ -145,7 +149,8 @@ entity generic_syncram_2p is
     wraddress: in std_logic_vector (abits -1 downto 0);
     data: in std_logic_vector (dbits -1 downto 0);
     wren : in std_ulogic;
-    q: out std_logic_vector (dbits -1 downto 0)
+    q: out std_logic_vector (dbits -1 downto 0);
+    rden : in std_ulogic := '1'
   );
 end;
 
@@ -174,20 +179,30 @@ begin
         if rising_edge(wclk) then rdaddressx <= rdaddress; end if;
       end process;
     end generate;
-    rp : process(wclk) begin
-    if rising_edge(wclk) then q <= rfd(conv_integer(rdaddressx)); end if;
+    rp : process(wclk)
+    begin
+      if rising_edge(wclk) then
+        if rdhold=0 or rden='1' then
+          q <= rfd(conv_integer(rdaddressx));
+        end if;
+      end if;
     end process;
   end generate;
 
-  twoclk : if sepclk = 1 generate
+  twoclk : if sepclk /= 0 generate
     pipe : if pipeline /= 0 generate
       pp : process(rclk)
       begin
         if rising_edge(rclk) then rdaddressx <= rdaddress; end if;
       end process;
     end generate;  
-    rp : process(rclk) begin
-    if rising_edge(rclk) then q <= rfd(conv_integer(rdaddress)); end if;
+    rp : process(rclk)
+    begin
+      if rising_edge(rclk) then
+        if rdhold=0 or rden='1' then
+          q <= rfd(conv_integer(rdaddress));
+        end if;
+      end if;
     end process;
   end generate;
 
@@ -247,7 +262,7 @@ begin
     end generate;
   end generate;
 
-  twoclk : if sepclk = 1 generate
+  twoclk : if sepclk /= 0 generate
     rp : process(rclk) begin
     if rising_edge(rclk) then ra <= rdaddress; end if;
     end process;

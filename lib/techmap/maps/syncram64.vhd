@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ use grlib.stdlib.all;
 entity syncram64 is
   generic (tech : integer := 0; abits : integer := 6; testen : integer := 0;
 	   paren : integer := 0; custombits : integer := 1;
-           pipeline : integer range 0 to 255 := 0);
+           pipeline : integer range 0 to 255 := 0; rdhold : integer := 0);
   port (
     clk     : in  std_ulogic;
     address : in  std_logic_vector (abits -1 downto 0);
@@ -117,7 +117,7 @@ begin
 
 nopar : if paren = 0 generate
 
-  s64 : if has_sram64(tech) = 1 generate
+  s64 : if has_sram64(tech) = 1 and (rdhold=0 or syncram_readhold(tech)/=0) generate
     xc2v : if (is_unisim(tech) = 1) generate 
       x0 : unisim_syncram64 generic map (abits)
          port map (clk, address, datain(63 downto 0), dataoutx, xenable, write);
@@ -175,12 +175,12 @@ nopar : if paren = 0 generate
 -- pragma translate_on
   end generate;
 
-  nos64 : if has_sram64(tech) = 0 generate
-    x0 : syncram generic map (tech, abits, 32, testen, custombits, DPIPE)
+  nos64 : if has_sram64(tech) = 0 or (rdhold/=0 and syncram_readhold(tech)=0) generate
+    x0 : syncram generic map (tech, abits, 32, testen, custombits, DPIPE, rdhold)
          port map (clk, address, datain(63 downto 32), dataoutx(63 downto 32), 
 	           enable(1), write(1), testin
                    );
-    x1 : syncram generic map (tech, abits, 32, testen, custombits, DPIPE)
+    x1 : syncram generic map (tech, abits, 32, testen, custombits, DPIPE, rdhold)
          port map (clk, address, datain(31 downto 0), dataoutx(31 downto 0), 
 	           enable(0), write(0), testin
                    );
@@ -219,11 +219,11 @@ par : if paren = 1 generate
       end process;
     end generate;
     dataoutx <= (others => '0'); dataoutxx <= (others => '0');
-    x0 : syncram generic map (tech, abits, 36, testen, custombits, DPIPE)
+    x0 : syncram generic map (tech, abits, 36, testen, custombits, DPIPE, rdhold)
          port map (clk, address, dinp(71 downto 36), doutp(71 downto 36), 
 	           enable(1), write(1), testin
                    );
-    x1 : syncram generic map (tech, abits, 36, testen, custombits, DPIPE)
+    x1 : syncram generic map (tech, abits, 36, testen, custombits, DPIPE, rdhold)
          port map (clk, address, dinp(35 downto 0), doutp(35 downto 0), 
 	           enable(0), write(0), testin
                    );

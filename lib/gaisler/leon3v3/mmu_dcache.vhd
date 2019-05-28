@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -66,7 +66,8 @@ entity mmu_dcache is
     smp        :     integer                  := 0;
     mmuen      :     integer range 0 to 2     := 0;
     icen       :     integer range 0 to 1     := 0;
-    irqlat     :     integer range 0 to 1     := 0);
+    irqlat     :     integer range 0 to 1     := 0;
+    dcreadhold :     integer range 0 to 1     := 0);
   port (
     rst        : in  std_ulogic;
     clk        : in  std_ulogic;
@@ -131,9 +132,6 @@ architecture rtl of mmu_dcache is
   constant DIR_BITS        : integer := log2x(DSETS);
   constant bend            : std_logic_vector(4 downto 2) := "101";
   constant DLRAM_EN        : integer := conv_integer(conv_std_logic(dlram /= 0));
-  constant DCREADHOLD      : boolean := syncram_readhold(memtech)=1 and
-                                        (dsnoop/=6 or syncram_2p_readhold(memtech)=1) and
-                                        ((dsnoop=0 or dsnoop>5) or syncram_dp_readhold(memtech)=1);
 
   type rdatatype is (dtag, ddata, dddata, dctx, icache, memory,
                      sysr , misc, mmusnoop_dtag);  -- sources during cache read
@@ -502,14 +500,14 @@ begin
       v.subit_mmu := r.mmctrl1.subit;
     end if;
 
-    if (dci.eenaddr='1') or ((not DCREADHOLD) and (dci.enaddr = '1' or r.dstate /= idle)) or
-       ((DCREADHOLD) and r.dstate = loadpend) or
+    if (dci.eenaddr='1') or (DCREADHOLD=0 and (dci.enaddr = '1' or r.dstate /= idle)) or
+       ((DCREADHOLD/=0) and r.dstate = loadpend) or
        ((dsu = 1) and (dci.dsuen = '1')) or (r.flush = '1')
 --        or (is_fpga(memtech) = 1)
     then
       enable := (others => '1');
     else enable := (others => '0'); end if;
-    if (DCREADHOLD and (ico.hold and fpuholdn and r.holdn)='0' and r.flush2='0' and r.flush='0') and r.dstate /= loadpend then
+    if (DCREADHOLD/=0 and (ico.hold and fpuholdn and r.holdn)='0' and r.flush2='0' and r.flush='0') and r.dstate /= loadpend then
       enable := (others => '0');
     end if;
     v.mmctrl1wr := '0';
@@ -1578,7 +1576,7 @@ begin
       end if;
     end if;
 
-    if DSNOOP /= 6 and DCREADHOLD then enable := enable or ctwrite; end if;
+    if DSNOOP /= 6 and DCREADHOLD/=0 then enable := enable or ctwrite; end if;
 
     csnoopwe := (others => '0'); flushl := '0';
     flushlv := (others => r.flush);

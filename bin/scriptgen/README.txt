@@ -47,9 +47,10 @@ The structure of fileinfo is:
 	key	   : value
 	-------------------------------------
 	bn     : lib's basename
-	l	   : parent directory dir
+	l      : parent directory dir
 	i      : the type of the file
 	q      : the filename
+	fattr  : attributes on the file
 
 See scripgencfg-examples/extrafiles for an example of added files.
 

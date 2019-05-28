@@ -58,6 +58,11 @@ foreach tool $tools {
 			append toolsstring "$TOP.xise "
 			continue
 		}
+                "nanoxplore" {
+                        append toolsstring "$TOP\_nanoxmap.py "
+                        continue
+                }
+
 	}
 }
 if {[string length $toolsstring] > 0 } {

@@ -50,7 +50,7 @@ DCSCRIPT=dc.tcl
 FMOPT = -x "set argv [lindex [list $(TECHLIBS)] 0]; set top $(TOP)"
 FMSCRIPT=fm.tcl
 
-VSIMOPT+= -t ps -L work -L $(TECH) -voptargs="+acc" $(SIMTOP) -do $(GRLIB)/bin/runvsim.do
+VSIMOPT+= -t ps -L work -L $(TECH) -voptargs="+acc -nowarn 1" $(SIMTOP) -do $(GRLIB)/bin/runvsim.do
 VSIMGTLOPT=$(VSIMOPT) -do ./gtl.do  -sdfmax /$(SIMTOP)/$(TOP)=./synopsys/$(TOP)_$(grtechlib).sdf
 
 include $(GRLIB)/bin/Makefile

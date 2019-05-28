@@ -13,8 +13,20 @@ clkand.vhd
 grgates.vhd
 ddr_ireg.vhd
 ddr_oreg.vhd
-clkpad.vhd clkpad_ds.vhd inpad.vhd inpad_ds.vhd iodpad.vhd iopad.vhd iopad_ds.vhd
-lvds_combo.vhd odpad.vhd outpad.vhd outpad_ds.vhd toutpad.vhd toutpad_ds.vhd skew_outpad.vhd
+clkpad.vhd
+clkpad_ds.vhd
+inpad.vhd
+inpad_ds.vhd
+iodpad.vhd
+iopad.vhd
+iopad_ds.vhd
+lvds_combo.vhd
+odpad.vhd
+outpad.vhd
+outpad_ds.vhd
+toutpad.vhd
+toutpad_ds.vhd
+skew_outpad.vhd
 ddrphy.vhd
 syncram.vhd
 syncram64.vhd
@@ -46,9 +58,13 @@ corepcif_net.vhd
 pci_arb_net.vhd
 grpci2_phy_net.vhd
 system_monitor.vhd
-inpad_ddr.vhd outpad_ddr.vhd iopad_ddr.vhd
-syncram128bw.vhd syncram256bw.vhd
-syncram128.vhd syncramww.vhd
+inpad_ddr.vhd
+outpad_ddr.vhd
+iopad_ddr.vhd
+syncram128bw.vhd
+syncram256bw.vhd
+syncram128.vhd
+syncramww.vhd
 syncram156bw.vhd
 techmult.vhd
 spictrl_net.vhd

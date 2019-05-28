@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -74,7 +74,9 @@ entity mmu_cache is
     mmupgsz    :     integer range 0 to 5     := 0;
     smp        :     integer                  := 0;
     mmuen      :     integer range 0 to 2     := 0;
-    irqlat     :     integer range 0 to 1     := 0
+    irqlat     :     integer range 0 to 1     := 0;
+    dcreadhold :     integer range 0 to 1     := 0;
+    icreadhold :     integer range 0 to 1     := 0
     );
   port (
     rst        : in  std_ulogic;
@@ -131,14 +133,14 @@ begin
   icache0 : mmu_icache 
     generic map (fabtech, icen, irepl, isets, ilinesize, isetsize, isetlock, ilram,
                  ilramsize, ilramstart,
-                 mmuen, MEMTECH_MOD)
+                 mmuen, MEMTECH_MOD, icreadhold)
     port map (rst, clk, ici, icol, dci, dcol, mcii, mcio, 
               crami.icramin, cramo.icramo, fpuholdn, mmudci, mmuici, mmuico);
   dcache0 : mmu_dcache 
     generic map (dsu, dcen, drepl, dsets, dlinesize, dsetsize,  dsetlock, dsnoop,
                  dlram, dlramsize, dlramstart, ilram, ilramstart,
                  itlbnum, dtlbnum, tlb_type,
-                 MEMTECH_MOD, cached, mmupgsz, smp, mmuen, icen, irqlat)
+                 MEMTECH_MOD, cached, mmupgsz, smp, mmuen, icen, irqlat, dcreadhold)
     port map (rst, clk, dci, dcol, icol, mcdi, mcdo, ahbsi2,
               crami.dcramin, cramo.dcramo, fpuholdn, mmudci, mmudco, sclk, ahbso);
 
@@ -151,7 +153,8 @@ begin
   -- MMU
   mmugen : if mmuen /= 0 generate
     m0 : mmu
-      generic map (MEMTECH_MOD*(1-TLB_INFER), itlbnum, dtlbnum, tlb_type, tlb_rep, mmupgsz, memtest_vlen)
+      generic map (MEMTECH_MOD*(1-TLB_INFER), itlbnum, dtlbnum, tlb_type, tlb_rep, mmupgsz,
+                   scantest, memtest_vlen)
       port map (rst, clk, mmudci, mmudco, mmuici, mmuico, mcmmo, mcmmi, ahbi.testin
                 );
   end generate;

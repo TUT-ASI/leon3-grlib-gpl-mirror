@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -79,6 +79,7 @@ entity syncfifo_2p is
     wempty  : out std_logic; -- fifo empty (synchronized in write clock domain)
     wusedw  : out std_logic_vector(abits-1 downto 0); -- fifo used words (synchronized in write clock domain)
     datain  : in std_logic_vector(dbits-1 downto 0); -- fifo data input
+    dynsync : in std_ulogic := '0';     -- dynamic sync select
     testin  : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
     error    : out std_logic_vector((((dbits+7)/8)-1)*(1-ft/4)+ft/4 downto 0); -- FT only
     errinj   : in std_logic_vector((((dbits + 7)/8)*2-1)*(1-ft/4)+(6*(ft/4)) downto 0) := (others => '0') -- FT only
@@ -108,6 +109,7 @@ architecture rtl of syncfifo_2p is
       wempty  : out std_logic;
       wusedw  : out std_logic_vector(abits-1 downto 0);
       datain  : in std_logic_vector(dbits-1 downto 0);
+      dynsync : in std_ulogic;
       testin  : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
       error    : out std_logic_vector((((dbits+7)/8)-1)*(1-ft/4)+ft/4 downto 0);
       errinj   : in std_logic_vector((((dbits + 7)/8)*2-1)*(1-ft/4)+(6*(ft/4)) downto 0) := (others => '0')
@@ -118,9 +120,7 @@ architecture rtl of syncfifo_2p is
   signal rempty_i, renable_i: std_logic;
   signal error_i: std_logic_vector(error'high downto 0);
 
-  type intarr is array(natural range <>) of integer;
-  constant fwfttab: intarr(0 to 2) := (0,1,1);
-  constant fwftx: integer := fwfttab(fwft+piperead);
+  constant fwftx: integer := fwft*(1-piperead) + piperead;
 
   signal piperead_d0, piperead_d1: std_logic_vector(dbits-1 downto 0);
   signal piperead_e0, piperead_e1: std_logic_vector(error'high downto 0);
@@ -142,7 +142,7 @@ begin
             (tech /= stratix3) and (tech /= stratix4) and (tech /= stratix5)) or ft/=0 generate
     x0: generic_fifo generic map (tech, abits, dbits, sepclk, afullwl, aemptyrl, fwftx, ft, custombits)
       port map (rclk, rrstn, wrstn, renable_i, rfull, rempty_i, aempty, rusedw, dataout_i,
-        wclk, write, wfull, afull, wempty, wusedw, datain, testin, error_i, errinj
+        wclk, write, wfull, afull, wempty, wusedw, datain, dynsync, testin, error_i, errinj
                 );
   end generate;
 

@@ -724,6 +724,7 @@ proc menu1 {w title} {
 	$w.config.f.x0.x.menu add radiobutton -label "Inferred" -variable tmpvar_0 -value "Inferred" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-Axcelerator" -variable tmpvar_0 -value "Actel-Axcelerator" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-Axcelerator-DSP" -variable tmpvar_0 -value "Actel-Axcelerator-DSP" -command "update_active"
+	$w.config.f.x0.x.menu add radiobutton -label "Actel-Fusion" -variable tmpvar_0 -value "Actel-Fusion" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-Proasic" -variable tmpvar_0 -value "Actel-Proasic" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-ProasicPlus" -variable tmpvar_0 -value "Actel-ProasicPlus" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-Proasic3" -variable tmpvar_0 -value "Actel-Proasic3" -command "update_active"
@@ -733,7 +734,7 @@ proc menu1 {w title} {
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-IGLOO2" -variable tmpvar_0 -value "Actel-IGLOO2" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-SmartFusion2" -variable tmpvar_0 -value "Actel-SmartFusion2" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-RTG4" -variable tmpvar_0 -value "Actel-RTG4" -command "update_active"
-	$w.config.f.x0.x.menu add radiobutton -label "Actel-Fusion" -variable tmpvar_0 -value "Actel-Fusion" -command "update_active"
+	$w.config.f.x0.x.menu add radiobutton -label "Actel-PolarFire" -variable tmpvar_0 -value "Actel-PolarFire" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Aeroflex-UT025CRH" -variable tmpvar_0 -value "Aeroflex-UT025CRH" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Aeroflex-UT130HBD" -variable tmpvar_0 -value "Aeroflex-UT130HBD" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Aeroflex-UT90NHBD" -variable tmpvar_0 -value "Aeroflex-UT90NHBD" -command "update_active"
@@ -749,7 +750,7 @@ proc menu1 {w title} {
 	$w.config.f.x0.x.menu add radiobutton -label "Custom1" -variable tmpvar_0 -value "Custom1" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "DARE" -variable tmpvar_0 -value "DARE" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "IBM-CMOS9SF" -variable tmpvar_0 -value "IBM-CMOS9SF" -command "update_active"
-	$w.config.f.x0.x.menu add radiobutton -label "Lattice-EC/ECP/XP" -variable tmpvar_0 -value "Lattice-EC/ECP/XP" -command "update_active"
+	$w.config.f.x0.x.menu add radiobutton -label "NanoXplore-BraveMed" -variable tmpvar_0 -value "NanoXplore-BraveMed" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Quicklogic-Eclipse" -variable tmpvar_0 -value "Quicklogic-Eclipse" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "RH-LIB18T" -variable tmpvar_0 -value "RH-LIB18T" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "RH-UMC" -variable tmpvar_0 -value "RH-UMC" -command "update_active"
@@ -771,7 +772,7 @@ proc menu1 {w title} {
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Virtex6" -variable tmpvar_0 -value "Xilinx-Virtex6" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Virtex7" -variable tmpvar_0 -value "Xilinx-Virtex7" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Xilinx-Zynq7000" -variable tmpvar_0 -value "Xilinx-Zynq7000" -command "update_active"
-	menusplit $w $w.config.f.x0.x.menu 50
+	menusplit $w $w.config.f.x0.x.menu 51
 	global tmpvar_1
 	minimenu $w.config.f 1 1 "Memory Library                           " tmpvar_1 CONFIG_MEM_INFERRED
 	menu $w.config.f.x1.x.menu -tearoffcommand "menutitle \"Memory Library                           \""
@@ -871,6 +872,8 @@ proc update_define_menu1 {} {
 	if {$tmpvar_0 == "Actel-Axcelerator"} then {set CONFIG_SYN_AXCEL 1} else {set CONFIG_SYN_AXCEL 0}
 	global CONFIG_SYN_AXDSP
 	if {$tmpvar_0 == "Actel-Axcelerator-DSP"} then {set CONFIG_SYN_AXDSP 1} else {set CONFIG_SYN_AXDSP 0}
+	global CONFIG_SYN_FUSION
+	if {$tmpvar_0 == "Actel-Fusion"} then {set CONFIG_SYN_FUSION 1} else {set CONFIG_SYN_FUSION 0}
 	global CONFIG_SYN_PROASIC
 	if {$tmpvar_0 == "Actel-Proasic"} then {set CONFIG_SYN_PROASIC 1} else {set CONFIG_SYN_PROASIC 0}
 	global CONFIG_SYN_PROASICPLUS
@@ -889,8 +892,8 @@ proc update_define_menu1 {} {
 	if {$tmpvar_0 == "Actel-SmartFusion2"} then {set CONFIG_SYN_SF2 1} else {set CONFIG_SYN_SF2 0}
 	global CONFIG_SYN_RTG4
 	if {$tmpvar_0 == "Actel-RTG4"} then {set CONFIG_SYN_RTG4 1} else {set CONFIG_SYN_RTG4 0}
-	global CONFIG_SYN_FUSION
-	if {$tmpvar_0 == "Actel-Fusion"} then {set CONFIG_SYN_FUSION 1} else {set CONFIG_SYN_FUSION 0}
+	global CONFIG_SYN_POLARFIRE
+	if {$tmpvar_0 == "Actel-PolarFire"} then {set CONFIG_SYN_POLARFIRE 1} else {set CONFIG_SYN_POLARFIRE 0}
 	global CONFIG_SYN_UT025CRH
 	if {$tmpvar_0 == "Aeroflex-UT025CRH"} then {set CONFIG_SYN_UT025CRH 1} else {set CONFIG_SYN_UT025CRH 0}
 	global CONFIG_SYN_UT130HBD
@@ -921,8 +924,8 @@ proc update_define_menu1 {} {
 	if {$tmpvar_0 == "DARE"} then {set CONFIG_SYN_DARE 1} else {set CONFIG_SYN_DARE 0}
 	global CONFIG_SYN_CMOS9SF
 	if {$tmpvar_0 == "IBM-CMOS9SF"} then {set CONFIG_SYN_CMOS9SF 1} else {set CONFIG_SYN_CMOS9SF 0}
-	global CONFIG_SYN_LATTICE
-	if {$tmpvar_0 == "Lattice-EC/ECP/XP"} then {set CONFIG_SYN_LATTICE 1} else {set CONFIG_SYN_LATTICE 0}
+	global CONFIG_SYN_BRAVEMED
+	if {$tmpvar_0 == "NanoXplore-BraveMed"} then {set CONFIG_SYN_BRAVEMED 1} else {set CONFIG_SYN_BRAVEMED 0}
 	global CONFIG_SYN_ECLIPSE
 	if {$tmpvar_0 == "Quicklogic-Eclipse"} then {set CONFIG_SYN_ECLIPSE 1} else {set CONFIG_SYN_ECLIPSE 0}
 	global CONFIG_SYN_RH_LIB18T
@@ -1066,7 +1069,7 @@ proc menu2 {w title} {
 	$w.config.f.x0.x.menu add radiobutton -label "Actel-HCLKBUF" -variable tmpvar_3 -value "Actel-HCLKBUF" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Aeroflex-UT130HBD" -variable tmpvar_3 -value "Aeroflex-UT130HBD" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Altera-ALTPLL" -variable tmpvar_3 -value "Altera-ALTPLL" -command "update_active"
-	$w.config.f.x0.x.menu add radiobutton -label "Lattice-EXPLL" -variable tmpvar_3 -value "Lattice-EXPLL" -command "update_active"
+	$w.config.f.x0.x.menu add radiobutton -label "NanoXplore-NXPLL" -variable tmpvar_3 -value "NanoXplore-NXPLL" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Proasic3-PLL" -variable tmpvar_3 -value "Proasic3-PLL" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Proasic3E-PLL" -variable tmpvar_3 -value "Proasic3E-PLL" -command "update_active"
 	$w.config.f.x0.x.menu add radiobutton -label "Proasic3L-PLL" -variable tmpvar_3 -value "Proasic3L-PLL" -command "update_active"
@@ -1083,7 +1086,7 @@ proc menu2 {w title} {
 	menusplit $w $w.config.f.x0.x.menu 18
 	int $w.config.f 2 1 "Clock multiplication factor (allowed values are tech dependent)" CONFIG_CLK_MUL
 	int $w.config.f 2 2 "Clock division factor (allowed values are tech dependent)" CONFIG_CLK_DIV
-	int $w.config.f 2 3 "Outout division factor (1 - 32)" CONFIG_OCLK_DIV
+	int $w.config.f 2 3 "Outout division factor (0 - 32, see help)" CONFIG_OCLK_DIV
 	int $w.config.f 2 4 "Outout division factor, 2nd clk (0 - 32, see help)" CONFIG_OCLKB_DIV
 	int $w.config.f 2 5 "Outout division factor, 3rd clk (0 - 32, see help)" CONFIG_OCLKC_DIV
 	bool $w.config.f 2 6 "Enable Xilinx CLKDLL for PCI clock" CONFIG_PCI_CLKDLL
@@ -1135,16 +1138,17 @@ proc update_menu2 {} {
 	global CONFIG_CLK_LIB18T
 	global CONFIG_CLK_FUSPLL
 	global CONFIG_CLK_CLKPLLE2
+	global CONFIG_CLK_BRAVEMED
 	global CONFIG_CLK_MUL
-	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1)} then {.menu2.config.f.x1.x configure -state normal -foreground [ cget .ref -foreground ]; .menu2.config.f.x1.l configure -state normal; } else {.menu2.config.f.x1.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu2.config.f.x1.l configure -state disabled}
+	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {.menu2.config.f.x1.x configure -state normal -foreground [ cget .ref -foreground ]; .menu2.config.f.x1.l configure -state normal; } else {.menu2.config.f.x1.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu2.config.f.x1.l configure -state disabled}
 	global CONFIG_CLK_DIV
-	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1)} then {.menu2.config.f.x2.x configure -state normal -foreground [ cget .ref -foreground ]; .menu2.config.f.x2.l configure -state normal; } else {.menu2.config.f.x2.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu2.config.f.x2.l configure -state disabled}
+	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1 || $CONFIG_CLK_BRAVEMED == 1) && ($CONFIG_CLK_BRAVEMED != 1)} then {.menu2.config.f.x2.x configure -state normal -foreground [ cget .ref -foreground ]; .menu2.config.f.x2.l configure -state normal; } else {.menu2.config.f.x2.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu2.config.f.x2.l configure -state disabled}
 	global CONFIG_OCLK_DIV
-	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1)} then {.menu2.config.f.x3.x configure -state normal -foreground [ cget .ref -foreground ]; .menu2.config.f.x3.l configure -state normal; } else {.menu2.config.f.x3.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu2.config.f.x3.l configure -state disabled}
+	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {.menu2.config.f.x3.x configure -state normal -foreground [ cget .ref -foreground ]; .menu2.config.f.x3.l configure -state normal; } else {.menu2.config.f.x3.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu2.config.f.x3.l configure -state disabled}
 	global CONFIG_OCLKB_DIV
-	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1)} then {.menu2.config.f.x4.x configure -state normal -foreground [ cget .ref -foreground ]; .menu2.config.f.x4.l configure -state normal; } else {.menu2.config.f.x4.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu2.config.f.x4.l configure -state disabled}
+	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {.menu2.config.f.x4.x configure -state normal -foreground [ cget .ref -foreground ]; .menu2.config.f.x4.l configure -state normal; } else {.menu2.config.f.x4.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu2.config.f.x4.l configure -state disabled}
 	global CONFIG_OCLKC_DIV
-	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1)} then {.menu2.config.f.x5.x configure -state normal -foreground [ cget .ref -foreground ]; .menu2.config.f.x5.l configure -state normal; } else {.menu2.config.f.x5.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu2.config.f.x5.l configure -state disabled}
+	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {.menu2.config.f.x5.x configure -state normal -foreground [ cget .ref -foreground ]; .menu2.config.f.x5.l configure -state normal; } else {.menu2.config.f.x5.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu2.config.f.x5.l configure -state disabled}
 	global CONFIG_PCI_CLKDLL
 	if {($CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_DCM == 1)} then {
 	configure_entry .menu2.config.f.x6 normal {n l y}} else {configure_entry .menu2.config.f.x6 disabled {y n l}}
@@ -1170,8 +1174,8 @@ proc update_define_menu2 {} {
 	if {$tmpvar_3 == "Aeroflex-UT130HBD"} then {set CONFIG_CLK_UT130HBD 1} else {set CONFIG_CLK_UT130HBD 0}
 	global CONFIG_CLK_ALTDLL
 	if {$tmpvar_3 == "Altera-ALTPLL"} then {set CONFIG_CLK_ALTDLL 1} else {set CONFIG_CLK_ALTDLL 0}
-	global CONFIG_CLK_LATDLL
-	if {$tmpvar_3 == "Lattice-EXPLL"} then {set CONFIG_CLK_LATDLL 1} else {set CONFIG_CLK_LATDLL 0}
+	global CONFIG_CLK_BRAVEMED
+	if {$tmpvar_3 == "NanoXplore-NXPLL"} then {set CONFIG_CLK_BRAVEMED 1} else {set CONFIG_CLK_BRAVEMED 0}
 	global CONFIG_CLK_PRO3PLL
 	if {$tmpvar_3 == "Proasic3-PLL"} then {set CONFIG_CLK_PRO3PLL 1} else {set CONFIG_CLK_PRO3PLL 0}
 	global CONFIG_CLK_PRO3EPLL
@@ -1198,16 +1202,17 @@ proc update_define_menu2 {} {
 	if {$tmpvar_3 == "Xilinx-CLKDLL"} then {set CONFIG_CLK_CLKDLL 1} else {set CONFIG_CLK_CLKDLL 0}
 	global CONFIG_CLK_DCM
 	if {$tmpvar_3 == "Xilinx-DCM"} then {set CONFIG_CLK_DCM 1} else {set CONFIG_CLK_DCM 0}
+	global CONFIG_CLK_LATDLL
 	global CONFIG_CLK_MUL
-	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1)} then {validate_int CONFIG_CLK_MUL "$CONFIG_CLK_MUL" 2}
+	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {validate_int CONFIG_CLK_MUL "$CONFIG_CLK_MUL" 2}
 	global CONFIG_CLK_DIV
-	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1)} then {validate_int CONFIG_CLK_DIV "$CONFIG_CLK_DIV" 2}
+	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1 || $CONFIG_CLK_BRAVEMED == 1) && ($CONFIG_CLK_BRAVEMED != 1)} then {validate_int CONFIG_CLK_DIV "$CONFIG_CLK_DIV" 2}
 	global CONFIG_OCLK_DIV
-	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1)} then {validate_int CONFIG_OCLK_DIV "$CONFIG_OCLK_DIV" 1}
+	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {validate_int CONFIG_OCLK_DIV "$CONFIG_OCLK_DIV" 1}
 	global CONFIG_OCLKB_DIV
-	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1)} then {validate_int CONFIG_OCLKB_DIV "$CONFIG_OCLKB_DIV" 0}
+	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {validate_int CONFIG_OCLKB_DIV "$CONFIG_OCLKB_DIV" 0}
 	global CONFIG_OCLKC_DIV
-	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1)} then {validate_int CONFIG_OCLKC_DIV "$CONFIG_OCLKC_DIV" 0}
+	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {validate_int CONFIG_OCLKC_DIV "$CONFIG_OCLKC_DIV" 0}
 	global CONFIG_PCI_CLKDLL
 	if {($CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_DCM == 1)} then {
 	set CONFIG_PCI_CLKDLL [expr $CONFIG_PCI_CLKDLL&15]} else {set CONFIG_PCI_CLKDLL [expr $CONFIG_PCI_CLKDLL|16]}
@@ -4085,35 +4090,50 @@ proc menu17 {w title} {
 	menusplit $w $w.config.f.x5.x.menu 4
 	bool $w.config.f 17 6 "Enable RMAP CRC check  " CONFIG_SPW_RMAPCRC
 	bool $w.config.f 17 7 "Enable Rx unaligned transfers " CONFIG_SPW_RXUNAL
-	bool $w.config.f 17 8 "Spacewire FIFO protection           " CONFIG_SPW_FT
-	bool $w.config.f 17 9 "Use GRSPWC netlist     " CONFIG_SPW_NETLIST
-	int $w.config.f 17 10 "Number of ports (1 - 2)" CONFIG_SPW_PORTS
 	global tmpvar_35
-	minimenu $w.config.f 17 11 "Select GRSPW core (GRSPW1/GRSPW2) " tmpvar_35 CONFIG_SPW_GRSPW1
-	menu $w.config.f.x11.x.menu -tearoffcommand "menutitle \"Select GRSPW core (GRSPW1/GRSPW2) \""
-	$w.config.f.x11.x.menu add radiobutton -label "1" -variable tmpvar_35 -value "1" -command "update_active"
-	$w.config.f.x11.x.menu add radiobutton -label "2" -variable tmpvar_35 -value "2" -command "update_active"
-	menusplit $w $w.config.f.x11.x.menu 2
-	int $w.config.f 17 12 "Number of DMA channels (1 - 4)" CONFIG_SPW_DMACHAN
-	bool $w.config.f 17 13 "Receiver and transmitter uses same clock  " CONFIG_SPW_RTSAME
+	minimenu $w.config.f 17 8 "GRSPW1 FIFO protection           " tmpvar_35 CONFIG_SPW_FT_NONE
+	menu $w.config.f.x8.x.menu -tearoffcommand "menutitle \"GRSPW1 FIFO protection           \""
+	$w.config.f.x8.x.menu add radiobutton -label "None" -variable tmpvar_35 -value "None" -command "update_active"
+	$w.config.f.x8.x.menu add radiobutton -label "Parity-DMR" -variable tmpvar_35 -value "Parity-DMR" -command "update_active"
+	$w.config.f.x8.x.menu add radiobutton -label "TMR" -variable tmpvar_35 -value "TMR" -command "update_active"
+	menusplit $w $w.config.f.x8.x.menu 3
 	global tmpvar_36
-	minimenu $w.config.f 17 14 "Select receiver clock type " tmpvar_36 CONFIG_SPW_RX_SDR
-	menu $w.config.f.x14.x.menu -tearoffcommand "menutitle \"Select receiver clock type \""
-	$w.config.f.x14.x.menu add radiobutton -label "SDR" -variable tmpvar_36 -value "SDR" -command "update_active"
-	$w.config.f.x14.x.menu add radiobutton -label "DDR" -variable tmpvar_36 -value "DDR" -command "update_active"
-	$w.config.f.x14.x.menu add radiobutton -label "PAD" -variable tmpvar_36 -value "PAD" -command "update_active"
-	$w.config.f.x14.x.menu add radiobutton -label "XOR" -variable tmpvar_36 -value "XOR" -command "update_active"
-	$w.config.f.x14.x.menu add radiobutton -label "XOR-ER1" -variable tmpvar_36 -value "XOR-ER1" -command "update_active"
-	$w.config.f.x14.x.menu add radiobutton -label "XOR-ER2" -variable tmpvar_36 -value "XOR-ER2" -command "update_active"
-	$w.config.f.x14.x.menu add radiobutton -label "Aeroflex" -variable tmpvar_36 -value "Aeroflex" -command "update_active"
-	menusplit $w $w.config.f.x14.x.menu 7
+	minimenu $w.config.f 17 9 "GRSPW2 FIFO protection           " tmpvar_36 CONFIG_SPW_FT_NONE
+	menu $w.config.f.x9.x.menu -tearoffcommand "menutitle \"GRSPW2 FIFO protection           \""
+	$w.config.f.x9.x.menu add radiobutton -label "None" -variable tmpvar_36 -value "None" -command "update_active"
+	$w.config.f.x9.x.menu add radiobutton -label "Parity-DMR" -variable tmpvar_36 -value "Parity-DMR" -command "update_active"
+	$w.config.f.x9.x.menu add radiobutton -label "TMR" -variable tmpvar_36 -value "TMR" -command "update_active"
+	$w.config.f.x9.x.menu add radiobutton -label "BCH" -variable tmpvar_36 -value "BCH" -command "update_active"
+	$w.config.f.x9.x.menu add radiobutton -label "TechSpec" -variable tmpvar_36 -value "TechSpec" -command "update_active"
+	menusplit $w $w.config.f.x9.x.menu 5
+	bool $w.config.f 17 10 "Use GRSPWC netlist     " CONFIG_SPW_NETLIST
+	int $w.config.f 17 11 "Number of ports (1 - 2)" CONFIG_SPW_PORTS
 	global tmpvar_37
-	minimenu $w.config.f 17 15 "Select transmitter clock type " tmpvar_37 CONFIG_SPW_TX_SDR
-	menu $w.config.f.x15.x.menu -tearoffcommand "menutitle \"Select transmitter clock type \""
-	$w.config.f.x15.x.menu add radiobutton -label "SDR" -variable tmpvar_37 -value "SDR" -command "update_active"
-	$w.config.f.x15.x.menu add radiobutton -label "DDR" -variable tmpvar_37 -value "DDR" -command "update_active"
-	$w.config.f.x15.x.menu add radiobutton -label "Aeroflex" -variable tmpvar_37 -value "Aeroflex" -command "update_active"
-	menusplit $w $w.config.f.x15.x.menu 3
+	minimenu $w.config.f 17 12 "Select GRSPW core (GRSPW1/GRSPW2) " tmpvar_37 CONFIG_SPW_GRSPW1
+	menu $w.config.f.x12.x.menu -tearoffcommand "menutitle \"Select GRSPW core (GRSPW1/GRSPW2) \""
+	$w.config.f.x12.x.menu add radiobutton -label "1" -variable tmpvar_37 -value "1" -command "update_active"
+	$w.config.f.x12.x.menu add radiobutton -label "2" -variable tmpvar_37 -value "2" -command "update_active"
+	menusplit $w $w.config.f.x12.x.menu 2
+	int $w.config.f 17 13 "Number of DMA channels (1 - 4)" CONFIG_SPW_DMACHAN
+	bool $w.config.f 17 14 "Receiver and transmitter uses same clock  " CONFIG_SPW_RTSAME
+	global tmpvar_38
+	minimenu $w.config.f 17 15 "Select receiver clock type " tmpvar_38 CONFIG_SPW_RX_SDR
+	menu $w.config.f.x15.x.menu -tearoffcommand "menutitle \"Select receiver clock type \""
+	$w.config.f.x15.x.menu add radiobutton -label "SDR" -variable tmpvar_38 -value "SDR" -command "update_active"
+	$w.config.f.x15.x.menu add radiobutton -label "DDR" -variable tmpvar_38 -value "DDR" -command "update_active"
+	$w.config.f.x15.x.menu add radiobutton -label "PAD" -variable tmpvar_38 -value "PAD" -command "update_active"
+	$w.config.f.x15.x.menu add radiobutton -label "XOR" -variable tmpvar_38 -value "XOR" -command "update_active"
+	$w.config.f.x15.x.menu add radiobutton -label "XOR-ER1" -variable tmpvar_38 -value "XOR-ER1" -command "update_active"
+	$w.config.f.x15.x.menu add radiobutton -label "XOR-ER2" -variable tmpvar_38 -value "XOR-ER2" -command "update_active"
+	$w.config.f.x15.x.menu add radiobutton -label "Aeroflex" -variable tmpvar_38 -value "Aeroflex" -command "update_active"
+	menusplit $w $w.config.f.x15.x.menu 7
+	global tmpvar_39
+	minimenu $w.config.f 17 16 "Select transmitter clock type " tmpvar_39 CONFIG_SPW_TX_SDR
+	menu $w.config.f.x16.x.menu -tearoffcommand "menutitle \"Select transmitter clock type \""
+	$w.config.f.x16.x.menu add radiobutton -label "SDR" -variable tmpvar_39 -value "SDR" -command "update_active"
+	$w.config.f.x16.x.menu add radiobutton -label "DDR" -variable tmpvar_39 -value "DDR" -command "update_active"
+	$w.config.f.x16.x.menu add radiobutton -label "Aeroflex" -variable tmpvar_39 -value "Aeroflex" -command "update_active"
+	menusplit $w $w.config.f.x16.x.menu 3
 
 
 
@@ -4166,23 +4186,23 @@ proc update_menu17 {} {
 	global CONFIG_SPW_RXUNAL
 	if {($CONFIG_SPW_ENABLE == 1)} then {
 	configure_entry .menu17.config.f.x7 normal {n l y}} else {configure_entry .menu17.config.f.x7 disabled {y n l}}
-	global CONFIG_SPW_FT
-	if {($CONFIG_SPW_ENABLE == 1)} then {
-	configure_entry .menu17.config.f.x8 normal {n l y}} else {configure_entry .menu17.config.f.x8 disabled {y n l}}
+	global CONFIG_SPW_GRSPW1
+	if {($CONFIG_SPW_ENABLE == 1) && ($CONFIG_SPW_GRSPW1 == 1)} then {configure_entry .menu17.config.f.x8 normal {x l}} else {configure_entry .menu17.config.f.x8 disabled {x l}}
+	global CONFIG_SPW_GRSPW2
+	if {($CONFIG_SPW_ENABLE == 1) && ($CONFIG_SPW_GRSPW2 == 1)} then {configure_entry .menu17.config.f.x9 normal {x l}} else {configure_entry .menu17.config.f.x9 disabled {x l}}
 	global CONFIG_SPW_NETLIST
 	if {($CONFIG_SPW_ENABLE == 1)} then {
-	configure_entry .menu17.config.f.x9 normal {n l y}} else {configure_entry .menu17.config.f.x9 disabled {y n l}}
+	configure_entry .menu17.config.f.x10 normal {n l y}} else {configure_entry .menu17.config.f.x10 disabled {y n l}}
 	global CONFIG_SPW_PORTS
-	if {($CONFIG_SPW_ENABLE == 1)} then {.menu17.config.f.x10.x configure -state normal -foreground [ cget .ref -foreground ]; .menu17.config.f.x10.l configure -state normal; } else {.menu17.config.f.x10.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu17.config.f.x10.l configure -state disabled}
-	if {($CONFIG_SPW_ENABLE == 1)} then {configure_entry .menu17.config.f.x11 normal {x l}} else {configure_entry .menu17.config.f.x11 disabled {x l}}
-	global CONFIG_SPW_GRSPW2
+	if {($CONFIG_SPW_ENABLE == 1)} then {.menu17.config.f.x11.x configure -state normal -foreground [ cget .ref -foreground ]; .menu17.config.f.x11.l configure -state normal; } else {.menu17.config.f.x11.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu17.config.f.x11.l configure -state disabled}
+	if {($CONFIG_SPW_ENABLE == 1)} then {configure_entry .menu17.config.f.x12 normal {x l}} else {configure_entry .menu17.config.f.x12 disabled {x l}}
 	global CONFIG_SPW_DMACHAN
-	if {($CONFIG_SPW_ENABLE == 1) && ($CONFIG_SPW_GRSPW2 == 1)} then {.menu17.config.f.x12.x configure -state normal -foreground [ cget .ref -foreground ]; .menu17.config.f.x12.l configure -state normal; } else {.menu17.config.f.x12.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu17.config.f.x12.l configure -state disabled}
+	if {($CONFIG_SPW_ENABLE == 1) && ($CONFIG_SPW_GRSPW2 == 1)} then {.menu17.config.f.x13.x configure -state normal -foreground [ cget .ref -foreground ]; .menu17.config.f.x13.l configure -state normal; } else {.menu17.config.f.x13.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu17.config.f.x13.l configure -state disabled}
 	global CONFIG_SPW_RTSAME
 	if {($CONFIG_SPW_ENABLE == 1) && ($CONFIG_SPW_GRSPW2 == 1)} then {
-	configure_entry .menu17.config.f.x13 normal {n l y}} else {configure_entry .menu17.config.f.x13 disabled {y n l}}
-	if {($CONFIG_SPW_ENABLE == 1) && ($CONFIG_SPW_GRSPW2 == 1)} then {configure_entry .menu17.config.f.x14 normal {x l}} else {configure_entry .menu17.config.f.x14 disabled {x l}}
+	configure_entry .menu17.config.f.x14 normal {n l y}} else {configure_entry .menu17.config.f.x14 disabled {y n l}}
 	if {($CONFIG_SPW_ENABLE == 1) && ($CONFIG_SPW_GRSPW2 == 1)} then {configure_entry .menu17.config.f.x15 normal {x l}} else {configure_entry .menu17.config.f.x15 disabled {x l}}
+	if {($CONFIG_SPW_ENABLE == 1) && ($CONFIG_SPW_GRSPW2 == 1)} then {configure_entry .menu17.config.f.x16 normal {x l}} else {configure_entry .menu17.config.f.x16 disabled {x l}}
 }
 
 
@@ -4226,46 +4246,61 @@ proc update_define_menu17 {} {
 	global CONFIG_SPW_RXUNAL
 	if {($CONFIG_SPW_ENABLE == 1)} then {
 	set CONFIG_SPW_RXUNAL [expr $CONFIG_SPW_RXUNAL&15]} else {set CONFIG_SPW_RXUNAL [expr $CONFIG_SPW_RXUNAL|16]}
-	global CONFIG_SPW_FT
-	if {($CONFIG_SPW_ENABLE == 1)} then {
-	set CONFIG_SPW_FT [expr $CONFIG_SPW_FT&15]} else {set CONFIG_SPW_FT [expr $CONFIG_SPW_FT|16]}
+	global tmpvar_35
+	global CONFIG_SPW_FT_NONE
+	if {$tmpvar_35 == "None"} then {set CONFIG_SPW_FT_NONE 1} else {set CONFIG_SPW_FT_NONE 0}
+	global CONFIG_SPW_FT_DMR
+	if {$tmpvar_35 == "Parity-DMR"} then {set CONFIG_SPW_FT_DMR 1} else {set CONFIG_SPW_FT_DMR 0}
+	global CONFIG_SPW_FT_TMR
+	if {$tmpvar_35 == "TMR"} then {set CONFIG_SPW_FT_TMR 1} else {set CONFIG_SPW_FT_TMR 0}
+	global tmpvar_36
+	global CONFIG_SPW_FT_NONE
+	if {$tmpvar_36 == "None"} then {set CONFIG_SPW_FT_NONE 1} else {set CONFIG_SPW_FT_NONE 0}
+	global CONFIG_SPW_FT_DMR
+	if {$tmpvar_36 == "Parity-DMR"} then {set CONFIG_SPW_FT_DMR 1} else {set CONFIG_SPW_FT_DMR 0}
+	global CONFIG_SPW_FT_TMR
+	if {$tmpvar_36 == "TMR"} then {set CONFIG_SPW_FT_TMR 1} else {set CONFIG_SPW_FT_TMR 0}
+	global CONFIG_SPW_FT_BCH
+	if {$tmpvar_36 == "BCH"} then {set CONFIG_SPW_FT_BCH 1} else {set CONFIG_SPW_FT_BCH 0}
+	global CONFIG_SPW_FT_TECHSPEC
+	if {$tmpvar_36 == "TechSpec"} then {set CONFIG_SPW_FT_TECHSPEC 1} else {set CONFIG_SPW_FT_TECHSPEC 0}
 	global CONFIG_SPW_NETLIST
 	if {($CONFIG_SPW_ENABLE == 1)} then {
 	set CONFIG_SPW_NETLIST [expr $CONFIG_SPW_NETLIST&15]} else {set CONFIG_SPW_NETLIST [expr $CONFIG_SPW_NETLIST|16]}
 	global CONFIG_SPW_PORTS
 	if {($CONFIG_SPW_ENABLE == 1)} then {validate_int CONFIG_SPW_PORTS "$CONFIG_SPW_PORTS" 1}
-	global tmpvar_35
+	global tmpvar_37
 	global CONFIG_SPW_GRSPW1
-	if {$tmpvar_35 == "1"} then {set CONFIG_SPW_GRSPW1 1} else {set CONFIG_SPW_GRSPW1 0}
+	if {$tmpvar_37 == "1"} then {set CONFIG_SPW_GRSPW1 1} else {set CONFIG_SPW_GRSPW1 0}
 	global CONFIG_SPW_GRSPW2
-	if {$tmpvar_35 == "2"} then {set CONFIG_SPW_GRSPW2 1} else {set CONFIG_SPW_GRSPW2 0}
+	if {$tmpvar_37 == "2"} then {set CONFIG_SPW_GRSPW2 1} else {set CONFIG_SPW_GRSPW2 0}
 	global CONFIG_SPW_DMACHAN
 	if {($CONFIG_SPW_ENABLE == 1) && ($CONFIG_SPW_GRSPW2 == 1)} then {validate_int CONFIG_SPW_DMACHAN "$CONFIG_SPW_DMACHAN" 1}
 	global CONFIG_SPW_RTSAME
 	if {($CONFIG_SPW_ENABLE == 1) && ($CONFIG_SPW_GRSPW2 == 1)} then {
 	set CONFIG_SPW_RTSAME [expr $CONFIG_SPW_RTSAME&15]} else {set CONFIG_SPW_RTSAME [expr $CONFIG_SPW_RTSAME|16]}
-	global tmpvar_36
+	global tmpvar_38
 	global CONFIG_SPW_RX_SDR
-	if {$tmpvar_36 == "SDR"} then {set CONFIG_SPW_RX_SDR 1} else {set CONFIG_SPW_RX_SDR 0}
+	if {$tmpvar_38 == "SDR"} then {set CONFIG_SPW_RX_SDR 1} else {set CONFIG_SPW_RX_SDR 0}
 	global CONFIG_SPW_RX_DDR
-	if {$tmpvar_36 == "DDR"} then {set CONFIG_SPW_RX_DDR 1} else {set CONFIG_SPW_RX_DDR 0}
+	if {$tmpvar_38 == "DDR"} then {set CONFIG_SPW_RX_DDR 1} else {set CONFIG_SPW_RX_DDR 0}
 	global CONFIG_SPW_RX_PAD
-	if {$tmpvar_36 == "PAD"} then {set CONFIG_SPW_RX_PAD 1} else {set CONFIG_SPW_RX_PAD 0}
+	if {$tmpvar_38 == "PAD"} then {set CONFIG_SPW_RX_PAD 1} else {set CONFIG_SPW_RX_PAD 0}
 	global CONFIG_SPW_RX_XOR
-	if {$tmpvar_36 == "XOR"} then {set CONFIG_SPW_RX_XOR 1} else {set CONFIG_SPW_RX_XOR 0}
+	if {$tmpvar_38 == "XOR"} then {set CONFIG_SPW_RX_XOR 1} else {set CONFIG_SPW_RX_XOR 0}
 	global CONFIG_SPW_RX_XORER1
-	if {$tmpvar_36 == "XOR-ER1"} then {set CONFIG_SPW_RX_XORER1 1} else {set CONFIG_SPW_RX_XORER1 0}
+	if {$tmpvar_38 == "XOR-ER1"} then {set CONFIG_SPW_RX_XORER1 1} else {set CONFIG_SPW_RX_XORER1 0}
 	global CONFIG_SPW_RX_XORER2
-	if {$tmpvar_36 == "XOR-ER2"} then {set CONFIG_SPW_RX_XORER2 1} else {set CONFIG_SPW_RX_XORER2 0}
+	if {$tmpvar_38 == "XOR-ER2"} then {set CONFIG_SPW_RX_XORER2 1} else {set CONFIG_SPW_RX_XORER2 0}
 	global CONFIG_SPW_RX_AFLEX
-	if {$tmpvar_36 == "Aeroflex"} then {set CONFIG_SPW_RX_AFLEX 1} else {set CONFIG_SPW_RX_AFLEX 0}
-	global tmpvar_37
+	if {$tmpvar_38 == "Aeroflex"} then {set CONFIG_SPW_RX_AFLEX 1} else {set CONFIG_SPW_RX_AFLEX 0}
+	global tmpvar_39
 	global CONFIG_SPW_TX_SDR
-	if {$tmpvar_37 == "SDR"} then {set CONFIG_SPW_TX_SDR 1} else {set CONFIG_SPW_TX_SDR 0}
+	if {$tmpvar_39 == "SDR"} then {set CONFIG_SPW_TX_SDR 1} else {set CONFIG_SPW_TX_SDR 0}
 	global CONFIG_SPW_TX_DDR
-	if {$tmpvar_37 == "DDR"} then {set CONFIG_SPW_TX_DDR 1} else {set CONFIG_SPW_TX_DDR 0}
+	if {$tmpvar_39 == "DDR"} then {set CONFIG_SPW_TX_DDR 1} else {set CONFIG_SPW_TX_DDR 0}
 	global CONFIG_SPW_TX_AFLEX
-	if {$tmpvar_37 == "Aeroflex"} then {set CONFIG_SPW_TX_AFLEX 1} else {set CONFIG_SPW_TX_AFLEX 0}
+	if {$tmpvar_39 == "Aeroflex"} then {set CONFIG_SPW_TX_AFLEX 1} else {set CONFIG_SPW_TX_AFLEX 0}
 }
 
 
@@ -4322,15 +4357,16 @@ proc menu18 {w title} {
 
 	bool $w.config.f 18 0 "Gaisler Research 10/100/1000 Mbit Ethernet MAC " CONFIG_GRETH_ENABLE
 	bool $w.config.f 18 1 "Enable 1000 Mbit support    " CONFIG_GRETH_GIGA
-	global tmpvar_38
-	minimenu $w.config.f 18 2 "AHB FIFO size (words)            " tmpvar_38 CONFIG_GRETH_FIFO4
+	global tmpvar_40
+	minimenu $w.config.f 18 2 "AHB FIFO size (words)            " tmpvar_40 CONFIG_GRETH_FIFO4
 	menu $w.config.f.x2.x.menu -tearoffcommand "menutitle \"AHB FIFO size (words)            \""
-	$w.config.f.x2.x.menu add radiobutton -label "4" -variable tmpvar_38 -value "4" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "8" -variable tmpvar_38 -value "8" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "16" -variable tmpvar_38 -value "16" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "32" -variable tmpvar_38 -value "32" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "64" -variable tmpvar_38 -value "64" -command "update_active"
+	$w.config.f.x2.x.menu add radiobutton -label "4" -variable tmpvar_40 -value "4" -command "update_active"
+	$w.config.f.x2.x.menu add radiobutton -label "8" -variable tmpvar_40 -value "8" -command "update_active"
+	$w.config.f.x2.x.menu add radiobutton -label "16" -variable tmpvar_40 -value "16" -command "update_active"
+	$w.config.f.x2.x.menu add radiobutton -label "32" -variable tmpvar_40 -value "32" -command "update_active"
+	$w.config.f.x2.x.menu add radiobutton -label "64" -variable tmpvar_40 -value "64" -command "update_active"
 	menusplit $w $w.config.f.x2.x.menu 5
+	bool $w.config.f 18 3 "Enable FMC" CONFIG_GRETH_FMC_MODE
 
 
 
@@ -4373,6 +4409,9 @@ proc update_menu18 {} {
 	if {($CONFIG_GRETH_ENABLE == 1)} then {
 	configure_entry .menu18.config.f.x1 normal {n l y}} else {configure_entry .menu18.config.f.x1 disabled {y n l}}
 	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_GRETH_GIGA == 0)} then {configure_entry .menu18.config.f.x2 normal {x l}} else {configure_entry .menu18.config.f.x2 disabled {x l}}
+	global CONFIG_GRETH_FMC_MODE
+	if {($CONFIG_GRETH_ENABLE == 1)} then {
+	configure_entry .menu18.config.f.x3 normal {n l y}} else {configure_entry .menu18.config.f.x3 disabled {y n l}}
 }
 
 
@@ -4383,17 +4422,20 @@ proc update_define_menu18 {} {
 	global CONFIG_GRETH_GIGA
 	if {($CONFIG_GRETH_ENABLE == 1)} then {
 	set CONFIG_GRETH_GIGA [expr $CONFIG_GRETH_GIGA&15]} else {set CONFIG_GRETH_GIGA [expr $CONFIG_GRETH_GIGA|16]}
-	global tmpvar_38
+	global tmpvar_40
 	global CONFIG_GRETH_FIFO4
-	if {$tmpvar_38 == "4"} then {set CONFIG_GRETH_FIFO4 1} else {set CONFIG_GRETH_FIFO4 0}
+	if {$tmpvar_40 == "4"} then {set CONFIG_GRETH_FIFO4 1} else {set CONFIG_GRETH_FIFO4 0}
 	global CONFIG_GRETH_FIFO8
-	if {$tmpvar_38 == "8"} then {set CONFIG_GRETH_FIFO8 1} else {set CONFIG_GRETH_FIFO8 0}
+	if {$tmpvar_40 == "8"} then {set CONFIG_GRETH_FIFO8 1} else {set CONFIG_GRETH_FIFO8 0}
 	global CONFIG_GRETH_FIFO16
-	if {$tmpvar_38 == "16"} then {set CONFIG_GRETH_FIFO16 1} else {set CONFIG_GRETH_FIFO16 0}
+	if {$tmpvar_40 == "16"} then {set CONFIG_GRETH_FIFO16 1} else {set CONFIG_GRETH_FIFO16 0}
 	global CONFIG_GRETH_FIFO32
-	if {$tmpvar_38 == "32"} then {set CONFIG_GRETH_FIFO32 1} else {set CONFIG_GRETH_FIFO32 0}
+	if {$tmpvar_40 == "32"} then {set CONFIG_GRETH_FIFO32 1} else {set CONFIG_GRETH_FIFO32 0}
 	global CONFIG_GRETH_FIFO64
-	if {$tmpvar_38 == "64"} then {set CONFIG_GRETH_FIFO64 1} else {set CONFIG_GRETH_FIFO64 0}
+	if {$tmpvar_40 == "64"} then {set CONFIG_GRETH_FIFO64 1} else {set CONFIG_GRETH_FIFO64 0}
+	global CONFIG_GRETH_FMC_MODE
+	if {($CONFIG_GRETH_ENABLE == 1)} then {
+	set CONFIG_GRETH_FMC_MODE [expr $CONFIG_GRETH_FMC_MODE&15]} else {set CONFIG_GRETH_FMC_MODE [expr $CONFIG_GRETH_FMC_MODE|16]}
 }
 
 
@@ -4692,19 +4734,19 @@ proc menu21 {w title} {
 	bool $w.config.f 21 8 "Support three-wire protocol  " CONFIG_SPICTRL_TWEN
 	int $w.config.f 21 9 "Maximum supported word length (see help!) " CONFIG_SPICTRL_MAXWLEN
 	bool $w.config.f 21 10 "Use SYNCRAM for rx and tx queues " CONFIG_SPICTRL_SYNCRAM
-	global tmpvar_39
-	minimenu $w.config.f 21 11 "Fault-tolerance" tmpvar_39 CONFIG_SPICTRL_NOFT
+	global tmpvar_41
+	minimenu $w.config.f 21 11 "Fault-tolerance" tmpvar_41 CONFIG_SPICTRL_NOFT
 	menu $w.config.f.x11.x.menu -tearoffcommand "menutitle \"Fault-tolerance\""
-	$w.config.f.x11.x.menu add radiobutton -label "None" -variable tmpvar_39 -value "None" -command "update_active"
-	$w.config.f.x11.x.menu add radiobutton -label "Parity-DMR" -variable tmpvar_39 -value "Parity-DMR" -command "update_active"
-	$w.config.f.x11.x.menu add radiobutton -label "TMR" -variable tmpvar_39 -value "TMR" -command "update_active"
+	$w.config.f.x11.x.menu add radiobutton -label "None" -variable tmpvar_41 -value "None" -command "update_active"
+	$w.config.f.x11.x.menu add radiobutton -label "Parity-DMR" -variable tmpvar_41 -value "Parity-DMR" -command "update_active"
+	$w.config.f.x11.x.menu add radiobutton -label "TMR" -variable tmpvar_41 -value "TMR" -command "update_active"
 	menusplit $w $w.config.f.x11.x.menu 3
-	global tmpvar_40
-	minimenu $w.config.f 21 12 "SPI protocols" tmpvar_40 CONFIG_SPICTRL_PROT0
+	global tmpvar_42
+	minimenu $w.config.f 21 12 "SPI protocols" tmpvar_42 CONFIG_SPICTRL_PROT0
 	menu $w.config.f.x12.x.menu -tearoffcommand "menutitle \"SPI protocols\""
-	$w.config.f.x12.x.menu add radiobutton -label "Standard" -variable tmpvar_40 -value "Standard" -command "update_active"
-	$w.config.f.x12.x.menu add radiobutton -label "Dual" -variable tmpvar_40 -value "Dual" -command "update_active"
-	$w.config.f.x12.x.menu add radiobutton -label "Quad" -variable tmpvar_40 -value "Quad" -command "update_active"
+	$w.config.f.x12.x.menu add radiobutton -label "Standard" -variable tmpvar_42 -value "Standard" -command "update_active"
+	$w.config.f.x12.x.menu add radiobutton -label "Dual" -variable tmpvar_42 -value "Dual" -command "update_active"
+	$w.config.f.x12.x.menu add radiobutton -label "Quad" -variable tmpvar_42 -value "Quad" -command "update_active"
 	menusplit $w $w.config.f.x12.x.menu 3
 
 
@@ -4805,20 +4847,20 @@ proc update_define_menu21 {} {
 	global CONFIG_SPICTRL_SYNCRAM
 	if {($CONFIG_SPICTRL_ENABLE == 1)} then {
 	set CONFIG_SPICTRL_SYNCRAM [expr $CONFIG_SPICTRL_SYNCRAM&15]} else {set CONFIG_SPICTRL_SYNCRAM [expr $CONFIG_SPICTRL_SYNCRAM|16]}
-	global tmpvar_39
+	global tmpvar_41
 	global CONFIG_SPICTRL_NOFT
-	if {$tmpvar_39 == "None"} then {set CONFIG_SPICTRL_NOFT 1} else {set CONFIG_SPICTRL_NOFT 0}
+	if {$tmpvar_41 == "None"} then {set CONFIG_SPICTRL_NOFT 1} else {set CONFIG_SPICTRL_NOFT 0}
 	global CONFIG_SPICTRL_DMRFT
-	if {$tmpvar_39 == "Parity-DMR"} then {set CONFIG_SPICTRL_DMRFT 1} else {set CONFIG_SPICTRL_DMRFT 0}
+	if {$tmpvar_41 == "Parity-DMR"} then {set CONFIG_SPICTRL_DMRFT 1} else {set CONFIG_SPICTRL_DMRFT 0}
 	global CONFIG_SPICTRL_TMRFT
-	if {$tmpvar_39 == "TMR"} then {set CONFIG_SPICTRL_TMRFT 1} else {set CONFIG_SPICTRL_TMRFT 0}
-	global tmpvar_40
+	if {$tmpvar_41 == "TMR"} then {set CONFIG_SPICTRL_TMRFT 1} else {set CONFIG_SPICTRL_TMRFT 0}
+	global tmpvar_42
 	global CONFIG_SPICTRL_PROT0
-	if {$tmpvar_40 == "Standard"} then {set CONFIG_SPICTRL_PROT0 1} else {set CONFIG_SPICTRL_PROT0 0}
+	if {$tmpvar_42 == "Standard"} then {set CONFIG_SPICTRL_PROT0 1} else {set CONFIG_SPICTRL_PROT0 0}
 	global CONFIG_SPICTRL_PROT1
-	if {$tmpvar_40 == "Dual"} then {set CONFIG_SPICTRL_PROT1 1} else {set CONFIG_SPICTRL_PROT1 0}
+	if {$tmpvar_42 == "Dual"} then {set CONFIG_SPICTRL_PROT1 1} else {set CONFIG_SPICTRL_PROT1 0}
 	global CONFIG_SPICTRL_PROT2
-	if {$tmpvar_40 == "Quad"} then {set CONFIG_SPICTRL_PROT2 1} else {set CONFIG_SPICTRL_PROT2 0}
+	if {$tmpvar_42 == "Quad"} then {set CONFIG_SPICTRL_PROT2 1} else {set CONFIG_SPICTRL_PROT2 0}
 }
 
 
@@ -5010,26 +5052,26 @@ proc menu23 {w title} {
 
 
 	bool $w.config.f 23 0 "Enable console UART                  " CONFIG_UART1_ENABLE
-	global tmpvar_41
-	minimenu $w.config.f 23 1 "UART1 FIFO depth" tmpvar_41 CONFIG_UA1_FIFO1
+	global tmpvar_43
+	minimenu $w.config.f 23 1 "UART1 FIFO depth" tmpvar_43 CONFIG_UA1_FIFO1
 	menu $w.config.f.x1.x.menu -tearoffcommand "menutitle \"UART1 FIFO depth\""
-	$w.config.f.x1.x.menu add radiobutton -label "1" -variable tmpvar_41 -value "1" -command "update_active"
-	$w.config.f.x1.x.menu add radiobutton -label "2" -variable tmpvar_41 -value "2" -command "update_active"
-	$w.config.f.x1.x.menu add radiobutton -label "4" -variable tmpvar_41 -value "4" -command "update_active"
-	$w.config.f.x1.x.menu add radiobutton -label "8" -variable tmpvar_41 -value "8" -command "update_active"
-	$w.config.f.x1.x.menu add radiobutton -label "16" -variable tmpvar_41 -value "16" -command "update_active"
-	$w.config.f.x1.x.menu add radiobutton -label "32" -variable tmpvar_41 -value "32" -command "update_active"
+	$w.config.f.x1.x.menu add radiobutton -label "1" -variable tmpvar_43 -value "1" -command "update_active"
+	$w.config.f.x1.x.menu add radiobutton -label "2" -variable tmpvar_43 -value "2" -command "update_active"
+	$w.config.f.x1.x.menu add radiobutton -label "4" -variable tmpvar_43 -value "4" -command "update_active"
+	$w.config.f.x1.x.menu add radiobutton -label "8" -variable tmpvar_43 -value "8" -command "update_active"
+	$w.config.f.x1.x.menu add radiobutton -label "16" -variable tmpvar_43 -value "16" -command "update_active"
+	$w.config.f.x1.x.menu add radiobutton -label "32" -variable tmpvar_43 -value "32" -command "update_active"
 	menusplit $w $w.config.f.x1.x.menu 6
 	bool $w.config.f 23 2 "Enable secondary UART                " CONFIG_UART2_ENABLE
-	global tmpvar_42
-	minimenu $w.config.f 23 3 "UART2 FIFO depth" tmpvar_42 CONFIG_UA2_FIFO1
+	global tmpvar_44
+	minimenu $w.config.f 23 3 "UART2 FIFO depth" tmpvar_44 CONFIG_UA2_FIFO1
 	menu $w.config.f.x3.x.menu -tearoffcommand "menutitle \"UART2 FIFO depth\""
-	$w.config.f.x3.x.menu add radiobutton -label "1" -variable tmpvar_42 -value "1" -command "update_active"
-	$w.config.f.x3.x.menu add radiobutton -label "2" -variable tmpvar_42 -value "2" -command "update_active"
-	$w.config.f.x3.x.menu add radiobutton -label "4" -variable tmpvar_42 -value "4" -command "update_active"
-	$w.config.f.x3.x.menu add radiobutton -label "8" -variable tmpvar_42 -value "8" -command "update_active"
-	$w.config.f.x3.x.menu add radiobutton -label "16" -variable tmpvar_42 -value "16" -command "update_active"
-	$w.config.f.x3.x.menu add radiobutton -label "32" -variable tmpvar_42 -value "32" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "1" -variable tmpvar_44 -value "1" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "2" -variable tmpvar_44 -value "2" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "4" -variable tmpvar_44 -value "4" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "8" -variable tmpvar_44 -value "8" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "16" -variable tmpvar_44 -value "16" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "32" -variable tmpvar_44 -value "32" -command "update_active"
 	menusplit $w $w.config.f.x3.x.menu 6
 	bool $w.config.f 23 4 "Enable LEON3 interrupt controller    " CONFIG_IRQ3_ENABLE
 	bool $w.config.f 23 5 "Enable secondary interrupts           " CONFIG_IRQ3_SEC
@@ -5121,32 +5163,32 @@ proc update_menu23 {} {
 proc update_define_menu23 {} {
 	update_define_mainmenu
 	global CONFIG_MODULES
-	global tmpvar_41
+	global tmpvar_43
 	global CONFIG_UA1_FIFO1
-	if {$tmpvar_41 == "1"} then {set CONFIG_UA1_FIFO1 1} else {set CONFIG_UA1_FIFO1 0}
+	if {$tmpvar_43 == "1"} then {set CONFIG_UA1_FIFO1 1} else {set CONFIG_UA1_FIFO1 0}
 	global CONFIG_UA1_FIFO2
-	if {$tmpvar_41 == "2"} then {set CONFIG_UA1_FIFO2 1} else {set CONFIG_UA1_FIFO2 0}
+	if {$tmpvar_43 == "2"} then {set CONFIG_UA1_FIFO2 1} else {set CONFIG_UA1_FIFO2 0}
 	global CONFIG_UA1_FIFO4
-	if {$tmpvar_41 == "4"} then {set CONFIG_UA1_FIFO4 1} else {set CONFIG_UA1_FIFO4 0}
+	if {$tmpvar_43 == "4"} then {set CONFIG_UA1_FIFO4 1} else {set CONFIG_UA1_FIFO4 0}
 	global CONFIG_UA1_FIFO8
-	if {$tmpvar_41 == "8"} then {set CONFIG_UA1_FIFO8 1} else {set CONFIG_UA1_FIFO8 0}
+	if {$tmpvar_43 == "8"} then {set CONFIG_UA1_FIFO8 1} else {set CONFIG_UA1_FIFO8 0}
 	global CONFIG_UA1_FIFO16
-	if {$tmpvar_41 == "16"} then {set CONFIG_UA1_FIFO16 1} else {set CONFIG_UA1_FIFO16 0}
+	if {$tmpvar_43 == "16"} then {set CONFIG_UA1_FIFO16 1} else {set CONFIG_UA1_FIFO16 0}
 	global CONFIG_UA1_FIFO32
-	if {$tmpvar_41 == "32"} then {set CONFIG_UA1_FIFO32 1} else {set CONFIG_UA1_FIFO32 0}
-	global tmpvar_42
+	if {$tmpvar_43 == "32"} then {set CONFIG_UA1_FIFO32 1} else {set CONFIG_UA1_FIFO32 0}
+	global tmpvar_44
 	global CONFIG_UA2_FIFO1
-	if {$tmpvar_42 == "1"} then {set CONFIG_UA2_FIFO1 1} else {set CONFIG_UA2_FIFO1 0}
+	if {$tmpvar_44 == "1"} then {set CONFIG_UA2_FIFO1 1} else {set CONFIG_UA2_FIFO1 0}
 	global CONFIG_UA2_FIFO2
-	if {$tmpvar_42 == "2"} then {set CONFIG_UA2_FIFO2 1} else {set CONFIG_UA2_FIFO2 0}
+	if {$tmpvar_44 == "2"} then {set CONFIG_UA2_FIFO2 1} else {set CONFIG_UA2_FIFO2 0}
 	global CONFIG_UA2_FIFO4
-	if {$tmpvar_42 == "4"} then {set CONFIG_UA2_FIFO4 1} else {set CONFIG_UA2_FIFO4 0}
+	if {$tmpvar_44 == "4"} then {set CONFIG_UA2_FIFO4 1} else {set CONFIG_UA2_FIFO4 0}
 	global CONFIG_UA2_FIFO8
-	if {$tmpvar_42 == "8"} then {set CONFIG_UA2_FIFO8 1} else {set CONFIG_UA2_FIFO8 0}
+	if {$tmpvar_44 == "8"} then {set CONFIG_UA2_FIFO8 1} else {set CONFIG_UA2_FIFO8 0}
 	global CONFIG_UA2_FIFO16
-	if {$tmpvar_42 == "16"} then {set CONFIG_UA2_FIFO16 1} else {set CONFIG_UA2_FIFO16 0}
+	if {$tmpvar_44 == "16"} then {set CONFIG_UA2_FIFO16 1} else {set CONFIG_UA2_FIFO16 0}
 	global CONFIG_UA2_FIFO32
-	if {$tmpvar_42 == "32"} then {set CONFIG_UA2_FIFO32 1} else {set CONFIG_UA2_FIFO32 0}
+	if {$tmpvar_44 == "32"} then {set CONFIG_UA2_FIFO32 1} else {set CONFIG_UA2_FIFO32 0}
 	global CONFIG_IRQ3_ENABLE
 	global CONFIG_IRQ3_SEC
 	if {($CONFIG_IRQ3_ENABLE == 1)} then {
@@ -5284,6 +5326,7 @@ set tmpvar_0 "(not set)"
 set CONFIG_SYN_INFERRED 0
 set CONFIG_SYN_AXCEL 0
 set CONFIG_SYN_AXDSP 0
+set CONFIG_SYN_FUSION 0
 set CONFIG_SYN_PROASIC 0
 set CONFIG_SYN_PROASICPLUS 0
 set CONFIG_SYN_PROASIC3 0
@@ -5293,7 +5336,7 @@ set CONFIG_SYN_IGLOO 0
 set CONFIG_SYN_IGLOO2 0
 set CONFIG_SYN_SF2 0
 set CONFIG_SYN_RTG4 0
-set CONFIG_SYN_FUSION 0
+set CONFIG_SYN_POLARFIRE 0
 set CONFIG_SYN_UT025CRH 0
 set CONFIG_SYN_UT130HBD 0
 set CONFIG_SYN_UT90NHBD 0
@@ -5309,7 +5352,7 @@ set CONFIG_SYN_ATC18RHA 0
 set CONFIG_SYN_CUSTOM1 0
 set CONFIG_SYN_DARE 0
 set CONFIG_SYN_CMOS9SF 0
-set CONFIG_SYN_LATTICE 0
+set CONFIG_SYN_BRAVEMED 0
 set CONFIG_SYN_ECLIPSE 0
 set CONFIG_SYN_RH_LIB18T 0
 set CONFIG_SYN_RHUMC 0
@@ -5359,7 +5402,7 @@ set CONFIG_CLK_INFERRED 0
 set CONFIG_CLK_HCLKBUF 0
 set CONFIG_CLK_UT130HBD 0
 set CONFIG_CLK_ALTDLL 0
-set CONFIG_CLK_LATDLL 0
+set CONFIG_CLK_BRAVEMED 0
 set CONFIG_CLK_PRO3PLL 0
 set CONFIG_CLK_PRO3EPLL 0
 set CONFIG_CLK_PRO3LPLL 0
@@ -5655,15 +5698,21 @@ set CONFIG_SPW_RMAPBUF6 0
 set CONFIG_SPW_RMAPBUF8 0
 set CONFIG_SPW_RMAPCRC 0
 set CONFIG_SPW_RXUNAL 0
-set CONFIG_SPW_FT 0
+set tmpvar_35 "(not set)"
+set CONFIG_SPW_FT_NONE 0
+set CONFIG_SPW_FT_DMR 0
+set CONFIG_SPW_FT_TMR 0
+set tmpvar_36 "(not set)"
+set CONFIG_SPW_FT_BCH 0
+set CONFIG_SPW_FT_TECHSPEC 0
 set CONFIG_SPW_NETLIST 0
 set CONFIG_SPW_PORTS 1
-set tmpvar_35 "(not set)"
+set tmpvar_37 "(not set)"
 set CONFIG_SPW_GRSPW1 0
 set CONFIG_SPW_GRSPW2 0
 set CONFIG_SPW_DMACHAN 1
 set CONFIG_SPW_RTSAME 0
-set tmpvar_36 "(not set)"
+set tmpvar_38 "(not set)"
 set CONFIG_SPW_RX_SDR 0
 set CONFIG_SPW_RX_DDR 0
 set CONFIG_SPW_RX_PAD 0
@@ -5671,18 +5720,19 @@ set CONFIG_SPW_RX_XOR 0
 set CONFIG_SPW_RX_XORER1 0
 set CONFIG_SPW_RX_XORER2 0
 set CONFIG_SPW_RX_AFLEX 0
-set tmpvar_37 "(not set)"
+set tmpvar_39 "(not set)"
 set CONFIG_SPW_TX_SDR 0
 set CONFIG_SPW_TX_DDR 0
 set CONFIG_SPW_TX_AFLEX 0
 set CONFIG_GRETH_ENABLE 0
 set CONFIG_GRETH_GIGA 0
-set tmpvar_38 "(not set)"
+set tmpvar_40 "(not set)"
 set CONFIG_GRETH_FIFO4 0
 set CONFIG_GRETH_FIFO8 0
 set CONFIG_GRETH_FIFO16 0
 set CONFIG_GRETH_FIFO32 0
 set CONFIG_GRETH_FIFO64 0
+set CONFIG_GRETH_FMC_MODE 0
 set CONFIG_SPIMCTRL 0
 set CONFIG_SPIMCTRL_READCMD 0B
 set CONFIG_SPIMCTRL_DUMMYBYTE 0
@@ -5701,11 +5751,11 @@ set CONFIG_SPICTRL_ODMODE 0
 set CONFIG_SPICTRL_TWEN 0
 set CONFIG_SPICTRL_MAXWLEN 0
 set CONFIG_SPICTRL_SYNCRAM 0
-set tmpvar_39 "(not set)"
+set tmpvar_41 "(not set)"
 set CONFIG_SPICTRL_NOFT 0
 set CONFIG_SPICTRL_DMRFT 0
 set CONFIG_SPICTRL_TMRFT 0
-set tmpvar_40 "(not set)"
+set tmpvar_42 "(not set)"
 set CONFIG_SPICTRL_PROT0 0
 set CONFIG_SPICTRL_PROT1 0
 set CONFIG_SPICTRL_PROT2 0
@@ -5717,7 +5767,7 @@ set CONFIG_CANSEPIRQ 0
 set CONFIG_CAN_SYNCRST 0
 set CONFIG_CAN_FT 0
 set CONFIG_UART1_ENABLE 0
-set tmpvar_41 "(not set)"
+set tmpvar_43 "(not set)"
 set CONFIG_UA1_FIFO1 0
 set CONFIG_UA1_FIFO2 0
 set CONFIG_UA1_FIFO4 0
@@ -5725,7 +5775,7 @@ set CONFIG_UA1_FIFO8 0
 set CONFIG_UA1_FIFO16 0
 set CONFIG_UA1_FIFO32 0
 set CONFIG_UART2_ENABLE 0
-set tmpvar_42 "(not set)"
+set tmpvar_44 "(not set)"
 set CONFIG_UA2_FIFO1 0
 set CONFIG_UA2_FIFO2 0
 set CONFIG_UA2_FIFO4 0
@@ -5749,6 +5799,7 @@ set CONFIG_GRGPIO_IMASK 0000
 set CONFIG_I2C_ENABLE 0
 set CONFIG_DEBUG_UART 0
 set CONFIG_SYN_ARTISAN 4
+set CONFIG_CLK_LATDLL 4
 set CONFIG_PCI_ENABLE 4
 set CONFIG_PWRPSR 4
 set CONFIG_LEON_MEMTECH 4
@@ -5773,7 +5824,6 @@ set CONFIG_FPUFT_TMR 4
 set CONFIG_RF_ERRINJ 4
 set CONFIG_CACHE_FT_NONE 4
 set CONFIG_CACHE_FT_EN 4
-set CONFIG_CACHE_FT_BCH 4
 set CONFIG_CACHE_FT_TECH 4
 set CONFIG_CACHE_ERRINJ 4
 set CONFIG_GRETH_FT 4
@@ -5799,6 +5849,7 @@ proc writeconfig {file1 file2} {
 	if { $tmpvar_0 == "Inferred" } then { write_tristate $cfg $autocfg CONFIG_SYN_INFERRED 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_INFERRED 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Actel-Axcelerator" } then { write_tristate $cfg $autocfg CONFIG_SYN_AXCEL 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_AXCEL 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Actel-Axcelerator-DSP" } then { write_tristate $cfg $autocfg CONFIG_SYN_AXDSP 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_AXDSP 0 [list $notmod] 2 }
+	if { $tmpvar_0 == "Actel-Fusion" } then { write_tristate $cfg $autocfg CONFIG_SYN_FUSION 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_FUSION 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Actel-Proasic" } then { write_tristate $cfg $autocfg CONFIG_SYN_PROASIC 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_PROASIC 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Actel-ProasicPlus" } then { write_tristate $cfg $autocfg CONFIG_SYN_PROASICPLUS 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_PROASICPLUS 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Actel-Proasic3" } then { write_tristate $cfg $autocfg CONFIG_SYN_PROASIC3 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_PROASIC3 0 [list $notmod] 2 }
@@ -5808,7 +5859,7 @@ proc writeconfig {file1 file2} {
 	if { $tmpvar_0 == "Actel-IGLOO2" } then { write_tristate $cfg $autocfg CONFIG_SYN_IGLOO2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_IGLOO2 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Actel-SmartFusion2" } then { write_tristate $cfg $autocfg CONFIG_SYN_SF2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_SF2 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Actel-RTG4" } then { write_tristate $cfg $autocfg CONFIG_SYN_RTG4 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_RTG4 0 [list $notmod] 2 }
-	if { $tmpvar_0 == "Actel-Fusion" } then { write_tristate $cfg $autocfg CONFIG_SYN_FUSION 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_FUSION 0 [list $notmod] 2 }
+	if { $tmpvar_0 == "Actel-PolarFire" } then { write_tristate $cfg $autocfg CONFIG_SYN_POLARFIRE 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_POLARFIRE 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Aeroflex-UT025CRH" } then { write_tristate $cfg $autocfg CONFIG_SYN_UT025CRH 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_UT025CRH 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Aeroflex-UT130HBD" } then { write_tristate $cfg $autocfg CONFIG_SYN_UT130HBD 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_UT130HBD 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Aeroflex-UT90NHBD" } then { write_tristate $cfg $autocfg CONFIG_SYN_UT90NHBD 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_UT90NHBD 0 [list $notmod] 2 }
@@ -5824,7 +5875,7 @@ proc writeconfig {file1 file2} {
 	if { $tmpvar_0 == "Custom1" } then { write_tristate $cfg $autocfg CONFIG_SYN_CUSTOM1 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_CUSTOM1 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "DARE" } then { write_tristate $cfg $autocfg CONFIG_SYN_DARE 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_DARE 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "IBM-CMOS9SF" } then { write_tristate $cfg $autocfg CONFIG_SYN_CMOS9SF 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_CMOS9SF 0 [list $notmod] 2 }
-	if { $tmpvar_0 == "Lattice-EC/ECP/XP" } then { write_tristate $cfg $autocfg CONFIG_SYN_LATTICE 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_LATTICE 0 [list $notmod] 2 }
+	if { $tmpvar_0 == "NanoXplore-BraveMed" } then { write_tristate $cfg $autocfg CONFIG_SYN_BRAVEMED 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_BRAVEMED 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "Quicklogic-Eclipse" } then { write_tristate $cfg $autocfg CONFIG_SYN_ECLIPSE 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_ECLIPSE 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "RH-LIB18T" } then { write_tristate $cfg $autocfg CONFIG_SYN_RH_LIB18T 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_RH_LIB18T 0 [list $notmod] 2 }
 	if { $tmpvar_0 == "RH-UMC" } then { write_tristate $cfg $autocfg CONFIG_SYN_RHUMC 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SYN_RHUMC 0 [list $notmod] 2 }
@@ -5896,7 +5947,7 @@ proc writeconfig {file1 file2} {
 	if { $tmpvar_3 == "Actel-HCLKBUF" } then { write_tristate $cfg $autocfg CONFIG_CLK_HCLKBUF 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_CLK_HCLKBUF 0 [list $notmod] 2 }
 	if { $tmpvar_3 == "Aeroflex-UT130HBD" } then { write_tristate $cfg $autocfg CONFIG_CLK_UT130HBD 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_CLK_UT130HBD 0 [list $notmod] 2 }
 	if { $tmpvar_3 == "Altera-ALTPLL" } then { write_tristate $cfg $autocfg CONFIG_CLK_ALTDLL 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_CLK_ALTDLL 0 [list $notmod] 2 }
-	if { $tmpvar_3 == "Lattice-EXPLL" } then { write_tristate $cfg $autocfg CONFIG_CLK_LATDLL 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_CLK_LATDLL 0 [list $notmod] 2 }
+	if { $tmpvar_3 == "NanoXplore-NXPLL" } then { write_tristate $cfg $autocfg CONFIG_CLK_BRAVEMED 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_CLK_BRAVEMED 0 [list $notmod] 2 }
 	if { $tmpvar_3 == "Proasic3-PLL" } then { write_tristate $cfg $autocfg CONFIG_CLK_PRO3PLL 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_CLK_PRO3PLL 0 [list $notmod] 2 }
 	if { $tmpvar_3 == "Proasic3E-PLL" } then { write_tristate $cfg $autocfg CONFIG_CLK_PRO3EPLL 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_CLK_PRO3EPLL 0 [list $notmod] 2 }
 	if { $tmpvar_3 == "Proasic3L-PLL" } then { write_tristate $cfg $autocfg CONFIG_CLK_PRO3LPLL 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_CLK_PRO3LPLL 0 [list $notmod] 2 }
@@ -5921,15 +5972,16 @@ proc writeconfig {file1 file2} {
 	global CONFIG_CLK_LIB18T
 	global CONFIG_CLK_FUSPLL
 	global CONFIG_CLK_CLKPLLE2
-	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1)} then {write_int $cfg $autocfg CONFIG_CLK_MUL $CONFIG_CLK_MUL $notmod }
+	global CONFIG_CLK_BRAVEMED
+	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {write_int $cfg $autocfg CONFIG_CLK_MUL $CONFIG_CLK_MUL $notmod }
 	global CONFIG_CLK_DIV
-	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1)} then {write_int $cfg $autocfg CONFIG_CLK_DIV $CONFIG_CLK_DIV $notmod }
+	if {($CONFIG_CLK_DCM == 1 || $CONFIG_CLK_ALTDLL == 1 || $CONFIG_CLK_LATDLL == 1 || $CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_LIB18T == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_CLKPLLE2 == 1 || $CONFIG_CLK_BRAVEMED == 1) && ($CONFIG_CLK_BRAVEMED != 1)} then {write_int $cfg $autocfg CONFIG_CLK_DIV $CONFIG_CLK_DIV $notmod }
 	global CONFIG_OCLK_DIV
-	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1)} then {write_int $cfg $autocfg CONFIG_OCLK_DIV $CONFIG_OCLK_DIV $notmod }
+	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {write_int $cfg $autocfg CONFIG_OCLK_DIV $CONFIG_OCLK_DIV $notmod }
 	global CONFIG_OCLKB_DIV
-	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1)} then {write_int $cfg $autocfg CONFIG_OCLKB_DIV $CONFIG_OCLKB_DIV $notmod }
+	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {write_int $cfg $autocfg CONFIG_OCLKB_DIV $CONFIG_OCLKB_DIV $notmod }
 	global CONFIG_OCLKC_DIV
-	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1)} then {write_int $cfg $autocfg CONFIG_OCLKC_DIV $CONFIG_OCLKC_DIV $notmod }
+	if {($CONFIG_CLK_PRO3PLL == 1 || $CONFIG_CLK_PRO3EPLL == 1 || $CONFIG_CLK_PRO3LPLL == 1 || $CONFIG_CLK_FUSPLL == 1 || $CONFIG_CLK_BRAVEMED == 1)} then {write_int $cfg $autocfg CONFIG_OCLKC_DIV $CONFIG_OCLKC_DIV $notmod }
 	global CONFIG_PCI_CLKDLL
 	if {($CONFIG_CLK_CLKDLL == 1 || $CONFIG_CLK_DCM == 1)} then {write_tristate $cfg $autocfg CONFIG_PCI_CLKDLL $CONFIG_PCI_CLKDLL [list $notmod] 2 }
 	global CONFIG_CLK_NOFB
@@ -6507,46 +6559,59 @@ proc writeconfig {file1 file2} {
 	if {($CONFIG_SPW_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_SPW_RMAPCRC $CONFIG_SPW_RMAPCRC [list $notmod] 2 }
 	global CONFIG_SPW_RXUNAL
 	if {($CONFIG_SPW_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_SPW_RXUNAL $CONFIG_SPW_RXUNAL [list $notmod] 2 }
-	global CONFIG_SPW_FT
-	if {($CONFIG_SPW_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_SPW_FT $CONFIG_SPW_FT [list $notmod] 2 }
+	global tmpvar_35
+	global CONFIG_SPW_GRSPW1
+	if {($CONFIG_SPW_ENABLE == 1) && ($CONFIG_SPW_GRSPW1 == 1)} then {
+	if { $tmpvar_35 == "None" } then { write_tristate $cfg $autocfg CONFIG_SPW_FT_NONE 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_FT_NONE 0 [list $notmod] 2 }
+	if { $tmpvar_35 == "Parity-DMR" } then { write_tristate $cfg $autocfg CONFIG_SPW_FT_DMR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_FT_DMR 0 [list $notmod] 2 }
+	if { $tmpvar_35 == "TMR" } then { write_tristate $cfg $autocfg CONFIG_SPW_FT_TMR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_FT_TMR 0 [list $notmod] 2 }}
+	global tmpvar_36
+	global CONFIG_SPW_GRSPW2
+	if {($CONFIG_SPW_ENABLE == 1) && ($CONFIG_SPW_GRSPW2 == 1)} then {
+	if { $tmpvar_36 == "None" } then { write_tristate $cfg $autocfg CONFIG_SPW_FT_NONE 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_FT_NONE 0 [list $notmod] 2 }
+	if { $tmpvar_36 == "Parity-DMR" } then { write_tristate $cfg $autocfg CONFIG_SPW_FT_DMR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_FT_DMR 0 [list $notmod] 2 }
+	if { $tmpvar_36 == "TMR" } then { write_tristate $cfg $autocfg CONFIG_SPW_FT_TMR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_FT_TMR 0 [list $notmod] 2 }
+	if { $tmpvar_36 == "BCH" } then { write_tristate $cfg $autocfg CONFIG_SPW_FT_BCH 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_FT_BCH 0 [list $notmod] 2 }
+	if { $tmpvar_36 == "TechSpec" } then { write_tristate $cfg $autocfg CONFIG_SPW_FT_TECHSPEC 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_FT_TECHSPEC 0 [list $notmod] 2 }}
 	global CONFIG_SPW_NETLIST
 	if {($CONFIG_SPW_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_SPW_NETLIST $CONFIG_SPW_NETLIST [list $notmod] 2 }
 	global CONFIG_SPW_PORTS
 	if {($CONFIG_SPW_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_SPW_PORTS $CONFIG_SPW_PORTS $notmod }
-	global tmpvar_35
+	global tmpvar_37
 	if {($CONFIG_SPW_ENABLE == 1)} then {
-	if { $tmpvar_35 == "1" } then { write_tristate $cfg $autocfg CONFIG_SPW_GRSPW1 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_GRSPW1 0 [list $notmod] 2 }
-	if { $tmpvar_35 == "2" } then { write_tristate $cfg $autocfg CONFIG_SPW_GRSPW2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_GRSPW2 0 [list $notmod] 2 }}
+	if { $tmpvar_37 == "1" } then { write_tristate $cfg $autocfg CONFIG_SPW_GRSPW1 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_GRSPW1 0 [list $notmod] 2 }
+	if { $tmpvar_37 == "2" } then { write_tristate $cfg $autocfg CONFIG_SPW_GRSPW2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_GRSPW2 0 [list $notmod] 2 }}
 	global CONFIG_SPW_DMACHAN
-	global CONFIG_SPW_GRSPW2
 	if {($CONFIG_SPW_ENABLE == 1) && ($CONFIG_SPW_GRSPW2 == 1)} then {write_int $cfg $autocfg CONFIG_SPW_DMACHAN $CONFIG_SPW_DMACHAN $notmod }
 	global CONFIG_SPW_RTSAME
 	if {($CONFIG_SPW_ENABLE == 1) && ($CONFIG_SPW_GRSPW2 == 1)} then {write_tristate $cfg $autocfg CONFIG_SPW_RTSAME $CONFIG_SPW_RTSAME [list $notmod] 2 }
-	global tmpvar_36
+	global tmpvar_38
 	if {($CONFIG_SPW_ENABLE == 1) && ($CONFIG_SPW_GRSPW2 == 1)} then {
-	if { $tmpvar_36 == "SDR" } then { write_tristate $cfg $autocfg CONFIG_SPW_RX_SDR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_RX_SDR 0 [list $notmod] 2 }
-	if { $tmpvar_36 == "DDR" } then { write_tristate $cfg $autocfg CONFIG_SPW_RX_DDR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_RX_DDR 0 [list $notmod] 2 }
-	if { $tmpvar_36 == "PAD" } then { write_tristate $cfg $autocfg CONFIG_SPW_RX_PAD 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_RX_PAD 0 [list $notmod] 2 }
-	if { $tmpvar_36 == "XOR" } then { write_tristate $cfg $autocfg CONFIG_SPW_RX_XOR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_RX_XOR 0 [list $notmod] 2 }
-	if { $tmpvar_36 == "XOR-ER1" } then { write_tristate $cfg $autocfg CONFIG_SPW_RX_XORER1 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_RX_XORER1 0 [list $notmod] 2 }
-	if { $tmpvar_36 == "XOR-ER2" } then { write_tristate $cfg $autocfg CONFIG_SPW_RX_XORER2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_RX_XORER2 0 [list $notmod] 2 }
-	if { $tmpvar_36 == "Aeroflex" } then { write_tristate $cfg $autocfg CONFIG_SPW_RX_AFLEX 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_RX_AFLEX 0 [list $notmod] 2 }}
-	global tmpvar_37
+	if { $tmpvar_38 == "SDR" } then { write_tristate $cfg $autocfg CONFIG_SPW_RX_SDR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_RX_SDR 0 [list $notmod] 2 }
+	if { $tmpvar_38 == "DDR" } then { write_tristate $cfg $autocfg CONFIG_SPW_RX_DDR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_RX_DDR 0 [list $notmod] 2 }
+	if { $tmpvar_38 == "PAD" } then { write_tristate $cfg $autocfg CONFIG_SPW_RX_PAD 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_RX_PAD 0 [list $notmod] 2 }
+	if { $tmpvar_38 == "XOR" } then { write_tristate $cfg $autocfg CONFIG_SPW_RX_XOR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_RX_XOR 0 [list $notmod] 2 }
+	if { $tmpvar_38 == "XOR-ER1" } then { write_tristate $cfg $autocfg CONFIG_SPW_RX_XORER1 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_RX_XORER1 0 [list $notmod] 2 }
+	if { $tmpvar_38 == "XOR-ER2" } then { write_tristate $cfg $autocfg CONFIG_SPW_RX_XORER2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_RX_XORER2 0 [list $notmod] 2 }
+	if { $tmpvar_38 == "Aeroflex" } then { write_tristate $cfg $autocfg CONFIG_SPW_RX_AFLEX 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_RX_AFLEX 0 [list $notmod] 2 }}
+	global tmpvar_39
 	if {($CONFIG_SPW_ENABLE == 1) && ($CONFIG_SPW_GRSPW2 == 1)} then {
-	if { $tmpvar_37 == "SDR" } then { write_tristate $cfg $autocfg CONFIG_SPW_TX_SDR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_TX_SDR 0 [list $notmod] 2 }
-	if { $tmpvar_37 == "DDR" } then { write_tristate $cfg $autocfg CONFIG_SPW_TX_DDR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_TX_DDR 0 [list $notmod] 2 }
-	if { $tmpvar_37 == "Aeroflex" } then { write_tristate $cfg $autocfg CONFIG_SPW_TX_AFLEX 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_TX_AFLEX 0 [list $notmod] 2 }}
+	if { $tmpvar_39 == "SDR" } then { write_tristate $cfg $autocfg CONFIG_SPW_TX_SDR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_TX_SDR 0 [list $notmod] 2 }
+	if { $tmpvar_39 == "DDR" } then { write_tristate $cfg $autocfg CONFIG_SPW_TX_DDR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_TX_DDR 0 [list $notmod] 2 }
+	if { $tmpvar_39 == "Aeroflex" } then { write_tristate $cfg $autocfg CONFIG_SPW_TX_AFLEX 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_TX_AFLEX 0 [list $notmod] 2 }}
 	write_comment $cfg $autocfg "Ethernet             "
 	write_tristate $cfg $autocfg CONFIG_GRETH_ENABLE $CONFIG_GRETH_ENABLE [list $notmod] 2
 	global CONFIG_GRETH_GIGA
 	if {($CONFIG_GRETH_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_GRETH_GIGA $CONFIG_GRETH_GIGA [list $notmod] 2 }
-	global tmpvar_38
+	global tmpvar_40
 	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_GRETH_GIGA == 0)} then {
-	if { $tmpvar_38 == "4" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO4 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO4 0 [list $notmod] 2 }
-	if { $tmpvar_38 == "8" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO8 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO8 0 [list $notmod] 2 }
-	if { $tmpvar_38 == "16" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO16 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO16 0 [list $notmod] 2 }
-	if { $tmpvar_38 == "32" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO32 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO32 0 [list $notmod] 2 }
-	if { $tmpvar_38 == "64" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO64 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO64 0 [list $notmod] 2 }}
+	if { $tmpvar_40 == "4" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO4 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO4 0 [list $notmod] 2 }
+	if { $tmpvar_40 == "8" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO8 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO8 0 [list $notmod] 2 }
+	if { $tmpvar_40 == "16" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO16 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO16 0 [list $notmod] 2 }
+	if { $tmpvar_40 == "32" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO32 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO32 0 [list $notmod] 2 }
+	if { $tmpvar_40 == "64" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO64 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO64 0 [list $notmod] 2 }}
+	global CONFIG_GRETH_FMC_MODE
+	if {($CONFIG_GRETH_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_GRETH_FMC_MODE $CONFIG_GRETH_FMC_MODE [list $notmod] 2 }
 	write_comment $cfg $autocfg "SPI"
 	write_comment $cfg $autocfg "SPI memory controller "
 	global CONFIG_SPIMCTRL
@@ -6586,16 +6651,16 @@ proc writeconfig {file1 file2} {
 	if {($CONFIG_SPICTRL_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_SPICTRL_MAXWLEN $CONFIG_SPICTRL_MAXWLEN $notmod }
 	global CONFIG_SPICTRL_SYNCRAM
 	if {($CONFIG_SPICTRL_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_SPICTRL_SYNCRAM $CONFIG_SPICTRL_SYNCRAM [list $notmod] 2 }
-	global tmpvar_39
+	global tmpvar_41
 	if {($CONFIG_SPICTRL_ENABLE == 1) && ($CONFIG_SPICTRL_SYNCRAM == 1)} then {
-	if { $tmpvar_39 == "None" } then { write_tristate $cfg $autocfg CONFIG_SPICTRL_NOFT 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPICTRL_NOFT 0 [list $notmod] 2 }
-	if { $tmpvar_39 == "Parity-DMR" } then { write_tristate $cfg $autocfg CONFIG_SPICTRL_DMRFT 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPICTRL_DMRFT 0 [list $notmod] 2 }
-	if { $tmpvar_39 == "TMR" } then { write_tristate $cfg $autocfg CONFIG_SPICTRL_TMRFT 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPICTRL_TMRFT 0 [list $notmod] 2 }}
-	global tmpvar_40
+	if { $tmpvar_41 == "None" } then { write_tristate $cfg $autocfg CONFIG_SPICTRL_NOFT 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPICTRL_NOFT 0 [list $notmod] 2 }
+	if { $tmpvar_41 == "Parity-DMR" } then { write_tristate $cfg $autocfg CONFIG_SPICTRL_DMRFT 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPICTRL_DMRFT 0 [list $notmod] 2 }
+	if { $tmpvar_41 == "TMR" } then { write_tristate $cfg $autocfg CONFIG_SPICTRL_TMRFT 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPICTRL_TMRFT 0 [list $notmod] 2 }}
+	global tmpvar_42
 	if {($CONFIG_SPICTRL_ENABLE == 1)} then {
-	if { $tmpvar_40 == "Standard" } then { write_tristate $cfg $autocfg CONFIG_SPICTRL_PROT0 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPICTRL_PROT0 0 [list $notmod] 2 }
-	if { $tmpvar_40 == "Dual" } then { write_tristate $cfg $autocfg CONFIG_SPICTRL_PROT1 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPICTRL_PROT1 0 [list $notmod] 2 }
-	if { $tmpvar_40 == "Quad" } then { write_tristate $cfg $autocfg CONFIG_SPICTRL_PROT2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPICTRL_PROT2 0 [list $notmod] 2 }}
+	if { $tmpvar_42 == "Standard" } then { write_tristate $cfg $autocfg CONFIG_SPICTRL_PROT0 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPICTRL_PROT0 0 [list $notmod] 2 }
+	if { $tmpvar_42 == "Dual" } then { write_tristate $cfg $autocfg CONFIG_SPICTRL_PROT1 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPICTRL_PROT1 0 [list $notmod] 2 }
+	if { $tmpvar_42 == "Quad" } then { write_tristate $cfg $autocfg CONFIG_SPICTRL_PROT2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPICTRL_PROT2 0 [list $notmod] 2 }}
 	write_comment $cfg $autocfg "CAN                     "
 	global CONFIG_CAN_ENABLE
 	write_tristate $cfg $autocfg CONFIG_CAN_ENABLE $CONFIG_CAN_ENABLE [list $notmod] 2
@@ -6614,24 +6679,24 @@ proc writeconfig {file1 file2} {
 	write_comment $cfg $autocfg "UARTs, timers and irq control         "
 	global CONFIG_UART1_ENABLE
 	write_tristate $cfg $autocfg CONFIG_UART1_ENABLE $CONFIG_UART1_ENABLE [list $notmod] 2
-	global tmpvar_41
+	global tmpvar_43
 	if {($CONFIG_UART1_ENABLE == 1)} then {
-	if { $tmpvar_41 == "1" } then { write_tristate $cfg $autocfg CONFIG_UA1_FIFO1 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA1_FIFO1 0 [list $notmod] 2 }
-	if { $tmpvar_41 == "2" } then { write_tristate $cfg $autocfg CONFIG_UA1_FIFO2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA1_FIFO2 0 [list $notmod] 2 }
-	if { $tmpvar_41 == "4" } then { write_tristate $cfg $autocfg CONFIG_UA1_FIFO4 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA1_FIFO4 0 [list $notmod] 2 }
-	if { $tmpvar_41 == "8" } then { write_tristate $cfg $autocfg CONFIG_UA1_FIFO8 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA1_FIFO8 0 [list $notmod] 2 }
-	if { $tmpvar_41 == "16" } then { write_tristate $cfg $autocfg CONFIG_UA1_FIFO16 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA1_FIFO16 0 [list $notmod] 2 }
-	if { $tmpvar_41 == "32" } then { write_tristate $cfg $autocfg CONFIG_UA1_FIFO32 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA1_FIFO32 0 [list $notmod] 2 }}
+	if { $tmpvar_43 == "1" } then { write_tristate $cfg $autocfg CONFIG_UA1_FIFO1 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA1_FIFO1 0 [list $notmod] 2 }
+	if { $tmpvar_43 == "2" } then { write_tristate $cfg $autocfg CONFIG_UA1_FIFO2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA1_FIFO2 0 [list $notmod] 2 }
+	if { $tmpvar_43 == "4" } then { write_tristate $cfg $autocfg CONFIG_UA1_FIFO4 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA1_FIFO4 0 [list $notmod] 2 }
+	if { $tmpvar_43 == "8" } then { write_tristate $cfg $autocfg CONFIG_UA1_FIFO8 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA1_FIFO8 0 [list $notmod] 2 }
+	if { $tmpvar_43 == "16" } then { write_tristate $cfg $autocfg CONFIG_UA1_FIFO16 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA1_FIFO16 0 [list $notmod] 2 }
+	if { $tmpvar_43 == "32" } then { write_tristate $cfg $autocfg CONFIG_UA1_FIFO32 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA1_FIFO32 0 [list $notmod] 2 }}
 	global CONFIG_UART2_ENABLE
 	write_tristate $cfg $autocfg CONFIG_UART2_ENABLE $CONFIG_UART2_ENABLE [list $notmod] 2
-	global tmpvar_42
+	global tmpvar_44
 	if {($CONFIG_UART2_ENABLE == 1)} then {
-	if { $tmpvar_42 == "1" } then { write_tristate $cfg $autocfg CONFIG_UA2_FIFO1 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA2_FIFO1 0 [list $notmod] 2 }
-	if { $tmpvar_42 == "2" } then { write_tristate $cfg $autocfg CONFIG_UA2_FIFO2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA2_FIFO2 0 [list $notmod] 2 }
-	if { $tmpvar_42 == "4" } then { write_tristate $cfg $autocfg CONFIG_UA2_FIFO4 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA2_FIFO4 0 [list $notmod] 2 }
-	if { $tmpvar_42 == "8" } then { write_tristate $cfg $autocfg CONFIG_UA2_FIFO8 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA2_FIFO8 0 [list $notmod] 2 }
-	if { $tmpvar_42 == "16" } then { write_tristate $cfg $autocfg CONFIG_UA2_FIFO16 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA2_FIFO16 0 [list $notmod] 2 }
-	if { $tmpvar_42 == "32" } then { write_tristate $cfg $autocfg CONFIG_UA2_FIFO32 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA2_FIFO32 0 [list $notmod] 2 }}
+	if { $tmpvar_44 == "1" } then { write_tristate $cfg $autocfg CONFIG_UA2_FIFO1 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA2_FIFO1 0 [list $notmod] 2 }
+	if { $tmpvar_44 == "2" } then { write_tristate $cfg $autocfg CONFIG_UA2_FIFO2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA2_FIFO2 0 [list $notmod] 2 }
+	if { $tmpvar_44 == "4" } then { write_tristate $cfg $autocfg CONFIG_UA2_FIFO4 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA2_FIFO4 0 [list $notmod] 2 }
+	if { $tmpvar_44 == "8" } then { write_tristate $cfg $autocfg CONFIG_UA2_FIFO8 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA2_FIFO8 0 [list $notmod] 2 }
+	if { $tmpvar_44 == "16" } then { write_tristate $cfg $autocfg CONFIG_UA2_FIFO16 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA2_FIFO16 0 [list $notmod] 2 }
+	if { $tmpvar_44 == "32" } then { write_tristate $cfg $autocfg CONFIG_UA2_FIFO32 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_UA2_FIFO32 0 [list $notmod] 2 }}
 	global CONFIG_IRQ3_ENABLE
 	write_tristate $cfg $autocfg CONFIG_IRQ3_ENABLE $CONFIG_IRQ3_ENABLE [list $notmod] 2
 	global CONFIG_IRQ3_SEC
@@ -6674,6 +6739,7 @@ proc clear_choices { } {
 	global CONFIG_SYN_INFERRED; set CONFIG_SYN_INFERRED 0
 	global CONFIG_SYN_AXCEL; set CONFIG_SYN_AXCEL 0
 	global CONFIG_SYN_AXDSP; set CONFIG_SYN_AXDSP 0
+	global CONFIG_SYN_FUSION; set CONFIG_SYN_FUSION 0
 	global CONFIG_SYN_PROASIC; set CONFIG_SYN_PROASIC 0
 	global CONFIG_SYN_PROASICPLUS; set CONFIG_SYN_PROASICPLUS 0
 	global CONFIG_SYN_PROASIC3; set CONFIG_SYN_PROASIC3 0
@@ -6683,7 +6749,7 @@ proc clear_choices { } {
 	global CONFIG_SYN_IGLOO2; set CONFIG_SYN_IGLOO2 0
 	global CONFIG_SYN_SF2; set CONFIG_SYN_SF2 0
 	global CONFIG_SYN_RTG4; set CONFIG_SYN_RTG4 0
-	global CONFIG_SYN_FUSION; set CONFIG_SYN_FUSION 0
+	global CONFIG_SYN_POLARFIRE; set CONFIG_SYN_POLARFIRE 0
 	global CONFIG_SYN_UT025CRH; set CONFIG_SYN_UT025CRH 0
 	global CONFIG_SYN_UT130HBD; set CONFIG_SYN_UT130HBD 0
 	global CONFIG_SYN_UT90NHBD; set CONFIG_SYN_UT90NHBD 0
@@ -6699,7 +6765,7 @@ proc clear_choices { } {
 	global CONFIG_SYN_CUSTOM1; set CONFIG_SYN_CUSTOM1 0
 	global CONFIG_SYN_DARE; set CONFIG_SYN_DARE 0
 	global CONFIG_SYN_CMOS9SF; set CONFIG_SYN_CMOS9SF 0
-	global CONFIG_SYN_LATTICE; set CONFIG_SYN_LATTICE 0
+	global CONFIG_SYN_BRAVEMED; set CONFIG_SYN_BRAVEMED 0
 	global CONFIG_SYN_ECLIPSE; set CONFIG_SYN_ECLIPSE 0
 	global CONFIG_SYN_RH_LIB18T; set CONFIG_SYN_RH_LIB18T 0
 	global CONFIG_SYN_RHUMC; set CONFIG_SYN_RHUMC 0
@@ -6741,7 +6807,7 @@ proc clear_choices { } {
 	global CONFIG_CLK_HCLKBUF; set CONFIG_CLK_HCLKBUF 0
 	global CONFIG_CLK_UT130HBD; set CONFIG_CLK_UT130HBD 0
 	global CONFIG_CLK_ALTDLL; set CONFIG_CLK_ALTDLL 0
-	global CONFIG_CLK_LATDLL; set CONFIG_CLK_LATDLL 0
+	global CONFIG_CLK_BRAVEMED; set CONFIG_CLK_BRAVEMED 0
 	global CONFIG_CLK_PRO3PLL; set CONFIG_CLK_PRO3PLL 0
 	global CONFIG_CLK_PRO3EPLL; set CONFIG_CLK_PRO3EPLL 0
 	global CONFIG_CLK_PRO3LPLL; set CONFIG_CLK_PRO3LPLL 0
@@ -6907,6 +6973,14 @@ proc clear_choices { } {
 	global CONFIG_SPW_RMAPBUF4; set CONFIG_SPW_RMAPBUF4 0
 	global CONFIG_SPW_RMAPBUF6; set CONFIG_SPW_RMAPBUF6 0
 	global CONFIG_SPW_RMAPBUF8; set CONFIG_SPW_RMAPBUF8 0
+	global CONFIG_SPW_FT_NONE; set CONFIG_SPW_FT_NONE 0
+	global CONFIG_SPW_FT_DMR; set CONFIG_SPW_FT_DMR 0
+	global CONFIG_SPW_FT_TMR; set CONFIG_SPW_FT_TMR 0
+	global CONFIG_SPW_FT_NONE; set CONFIG_SPW_FT_NONE 0
+	global CONFIG_SPW_FT_DMR; set CONFIG_SPW_FT_DMR 0
+	global CONFIG_SPW_FT_TMR; set CONFIG_SPW_FT_TMR 0
+	global CONFIG_SPW_FT_BCH; set CONFIG_SPW_FT_BCH 0
+	global CONFIG_SPW_FT_TECHSPEC; set CONFIG_SPW_FT_TECHSPEC 0
 	global CONFIG_SPW_GRSPW1; set CONFIG_SPW_GRSPW1 0
 	global CONFIG_SPW_GRSPW2; set CONFIG_SPW_GRSPW2 0
 	global CONFIG_SPW_RX_SDR; set CONFIG_SPW_RX_SDR 0
@@ -6954,6 +7028,8 @@ proc update_choices { } {
 	if { $CONFIG_SYN_AXCEL == 1 } then { set tmpvar_0 "Actel-Axcelerator" }
 	global CONFIG_SYN_AXDSP
 	if { $CONFIG_SYN_AXDSP == 1 } then { set tmpvar_0 "Actel-Axcelerator-DSP" }
+	global CONFIG_SYN_FUSION
+	if { $CONFIG_SYN_FUSION == 1 } then { set tmpvar_0 "Actel-Fusion" }
 	global CONFIG_SYN_PROASIC
 	if { $CONFIG_SYN_PROASIC == 1 } then { set tmpvar_0 "Actel-Proasic" }
 	global CONFIG_SYN_PROASICPLUS
@@ -6972,8 +7048,8 @@ proc update_choices { } {
 	if { $CONFIG_SYN_SF2 == 1 } then { set tmpvar_0 "Actel-SmartFusion2" }
 	global CONFIG_SYN_RTG4
 	if { $CONFIG_SYN_RTG4 == 1 } then { set tmpvar_0 "Actel-RTG4" }
-	global CONFIG_SYN_FUSION
-	if { $CONFIG_SYN_FUSION == 1 } then { set tmpvar_0 "Actel-Fusion" }
+	global CONFIG_SYN_POLARFIRE
+	if { $CONFIG_SYN_POLARFIRE == 1 } then { set tmpvar_0 "Actel-PolarFire" }
 	global CONFIG_SYN_UT025CRH
 	if { $CONFIG_SYN_UT025CRH == 1 } then { set tmpvar_0 "Aeroflex-UT025CRH" }
 	global CONFIG_SYN_UT130HBD
@@ -7004,8 +7080,8 @@ proc update_choices { } {
 	if { $CONFIG_SYN_DARE == 1 } then { set tmpvar_0 "DARE" }
 	global CONFIG_SYN_CMOS9SF
 	if { $CONFIG_SYN_CMOS9SF == 1 } then { set tmpvar_0 "IBM-CMOS9SF" }
-	global CONFIG_SYN_LATTICE
-	if { $CONFIG_SYN_LATTICE == 1 } then { set tmpvar_0 "Lattice-EC/ECP/XP" }
+	global CONFIG_SYN_BRAVEMED
+	if { $CONFIG_SYN_BRAVEMED == 1 } then { set tmpvar_0 "NanoXplore-BraveMed" }
 	global CONFIG_SYN_ECLIPSE
 	if { $CONFIG_SYN_ECLIPSE == 1 } then { set tmpvar_0 "Quicklogic-Eclipse" }
 	global CONFIG_SYN_RH_LIB18T
@@ -7094,8 +7170,8 @@ proc update_choices { } {
 	if { $CONFIG_CLK_UT130HBD == 1 } then { set tmpvar_3 "Aeroflex-UT130HBD" }
 	global CONFIG_CLK_ALTDLL
 	if { $CONFIG_CLK_ALTDLL == 1 } then { set tmpvar_3 "Altera-ALTPLL" }
-	global CONFIG_CLK_LATDLL
-	if { $CONFIG_CLK_LATDLL == 1 } then { set tmpvar_3 "Lattice-EXPLL" }
+	global CONFIG_CLK_BRAVEMED
+	if { $CONFIG_CLK_BRAVEMED == 1 } then { set tmpvar_3 "NanoXplore-NXPLL" }
 	global CONFIG_CLK_PRO3PLL
 	if { $CONFIG_CLK_PRO3PLL == 1 } then { set tmpvar_3 "Proasic3-PLL" }
 	global CONFIG_CLK_PRO3EPLL
@@ -7483,91 +7559,111 @@ proc update_choices { } {
 	global CONFIG_SPW_RMAPBUF8
 	if { $CONFIG_SPW_RMAPBUF8 == 1 } then { set tmpvar_34 "256" }
 	global tmpvar_35
-	set tmpvar_35 "2"
-	global CONFIG_SPW_GRSPW1
-	if { $CONFIG_SPW_GRSPW1 == 1 } then { set tmpvar_35 "1" }
-	global CONFIG_SPW_GRSPW2
-	if { $CONFIG_SPW_GRSPW2 == 1 } then { set tmpvar_35 "2" }
+	set tmpvar_35 "None"
+	global CONFIG_SPW_FT_NONE
+	if { $CONFIG_SPW_FT_NONE == 1 } then { set tmpvar_35 "None" }
+	global CONFIG_SPW_FT_DMR
+	if { $CONFIG_SPW_FT_DMR == 1 } then { set tmpvar_35 "Parity-DMR" }
+	global CONFIG_SPW_FT_TMR
+	if { $CONFIG_SPW_FT_TMR == 1 } then { set tmpvar_35 "TMR" }
 	global tmpvar_36
-	set tmpvar_36 "DDR"
-	global CONFIG_SPW_RX_SDR
-	if { $CONFIG_SPW_RX_SDR == 1 } then { set tmpvar_36 "SDR" }
-	global CONFIG_SPW_RX_DDR
-	if { $CONFIG_SPW_RX_DDR == 1 } then { set tmpvar_36 "DDR" }
-	global CONFIG_SPW_RX_PAD
-	if { $CONFIG_SPW_RX_PAD == 1 } then { set tmpvar_36 "PAD" }
-	global CONFIG_SPW_RX_XOR
-	if { $CONFIG_SPW_RX_XOR == 1 } then { set tmpvar_36 "XOR" }
-	global CONFIG_SPW_RX_XORER1
-	if { $CONFIG_SPW_RX_XORER1 == 1 } then { set tmpvar_36 "XOR-ER1" }
-	global CONFIG_SPW_RX_XORER2
-	if { $CONFIG_SPW_RX_XORER2 == 1 } then { set tmpvar_36 "XOR-ER2" }
-	global CONFIG_SPW_RX_AFLEX
-	if { $CONFIG_SPW_RX_AFLEX == 1 } then { set tmpvar_36 "Aeroflex" }
+	set tmpvar_36 "None"
+	global CONFIG_SPW_FT_NONE
+	if { $CONFIG_SPW_FT_NONE == 1 } then { set tmpvar_36 "None" }
+	global CONFIG_SPW_FT_DMR
+	if { $CONFIG_SPW_FT_DMR == 1 } then { set tmpvar_36 "Parity-DMR" }
+	global CONFIG_SPW_FT_TMR
+	if { $CONFIG_SPW_FT_TMR == 1 } then { set tmpvar_36 "TMR" }
+	global CONFIG_SPW_FT_BCH
+	if { $CONFIG_SPW_FT_BCH == 1 } then { set tmpvar_36 "BCH" }
+	global CONFIG_SPW_FT_TECHSPEC
+	if { $CONFIG_SPW_FT_TECHSPEC == 1 } then { set tmpvar_36 "TechSpec" }
 	global tmpvar_37
-	set tmpvar_37 "SDR"
-	global CONFIG_SPW_TX_SDR
-	if { $CONFIG_SPW_TX_SDR == 1 } then { set tmpvar_37 "SDR" }
-	global CONFIG_SPW_TX_DDR
-	if { $CONFIG_SPW_TX_DDR == 1 } then { set tmpvar_37 "DDR" }
-	global CONFIG_SPW_TX_AFLEX
-	if { $CONFIG_SPW_TX_AFLEX == 1 } then { set tmpvar_37 "Aeroflex" }
+	set tmpvar_37 "2"
+	global CONFIG_SPW_GRSPW1
+	if { $CONFIG_SPW_GRSPW1 == 1 } then { set tmpvar_37 "1" }
+	global CONFIG_SPW_GRSPW2
+	if { $CONFIG_SPW_GRSPW2 == 1 } then { set tmpvar_37 "2" }
 	global tmpvar_38
-	set tmpvar_38 "8"
-	global CONFIG_GRETH_FIFO4
-	if { $CONFIG_GRETH_FIFO4 == 1 } then { set tmpvar_38 "4" }
-	global CONFIG_GRETH_FIFO8
-	if { $CONFIG_GRETH_FIFO8 == 1 } then { set tmpvar_38 "8" }
-	global CONFIG_GRETH_FIFO16
-	if { $CONFIG_GRETH_FIFO16 == 1 } then { set tmpvar_38 "16" }
-	global CONFIG_GRETH_FIFO32
-	if { $CONFIG_GRETH_FIFO32 == 1 } then { set tmpvar_38 "32" }
-	global CONFIG_GRETH_FIFO64
-	if { $CONFIG_GRETH_FIFO64 == 1 } then { set tmpvar_38 "64" }
+	set tmpvar_38 "DDR"
+	global CONFIG_SPW_RX_SDR
+	if { $CONFIG_SPW_RX_SDR == 1 } then { set tmpvar_38 "SDR" }
+	global CONFIG_SPW_RX_DDR
+	if { $CONFIG_SPW_RX_DDR == 1 } then { set tmpvar_38 "DDR" }
+	global CONFIG_SPW_RX_PAD
+	if { $CONFIG_SPW_RX_PAD == 1 } then { set tmpvar_38 "PAD" }
+	global CONFIG_SPW_RX_XOR
+	if { $CONFIG_SPW_RX_XOR == 1 } then { set tmpvar_38 "XOR" }
+	global CONFIG_SPW_RX_XORER1
+	if { $CONFIG_SPW_RX_XORER1 == 1 } then { set tmpvar_38 "XOR-ER1" }
+	global CONFIG_SPW_RX_XORER2
+	if { $CONFIG_SPW_RX_XORER2 == 1 } then { set tmpvar_38 "XOR-ER2" }
+	global CONFIG_SPW_RX_AFLEX
+	if { $CONFIG_SPW_RX_AFLEX == 1 } then { set tmpvar_38 "Aeroflex" }
 	global tmpvar_39
-	set tmpvar_39 "None"
-	global CONFIG_SPICTRL_NOFT
-	if { $CONFIG_SPICTRL_NOFT == 1 } then { set tmpvar_39 "None" }
-	global CONFIG_SPICTRL_DMRFT
-	if { $CONFIG_SPICTRL_DMRFT == 1 } then { set tmpvar_39 "Parity-DMR" }
-	global CONFIG_SPICTRL_TMRFT
-	if { $CONFIG_SPICTRL_TMRFT == 1 } then { set tmpvar_39 "TMR" }
+	set tmpvar_39 "SDR"
+	global CONFIG_SPW_TX_SDR
+	if { $CONFIG_SPW_TX_SDR == 1 } then { set tmpvar_39 "SDR" }
+	global CONFIG_SPW_TX_DDR
+	if { $CONFIG_SPW_TX_DDR == 1 } then { set tmpvar_39 "DDR" }
+	global CONFIG_SPW_TX_AFLEX
+	if { $CONFIG_SPW_TX_AFLEX == 1 } then { set tmpvar_39 "Aeroflex" }
 	global tmpvar_40
-	set tmpvar_40 "Standard"
-	global CONFIG_SPICTRL_PROT0
-	if { $CONFIG_SPICTRL_PROT0 == 1 } then { set tmpvar_40 "Standard" }
-	global CONFIG_SPICTRL_PROT1
-	if { $CONFIG_SPICTRL_PROT1 == 1 } then { set tmpvar_40 "Dual" }
-	global CONFIG_SPICTRL_PROT2
-	if { $CONFIG_SPICTRL_PROT2 == 1 } then { set tmpvar_40 "Quad" }
+	set tmpvar_40 "8"
+	global CONFIG_GRETH_FIFO4
+	if { $CONFIG_GRETH_FIFO4 == 1 } then { set tmpvar_40 "4" }
+	global CONFIG_GRETH_FIFO8
+	if { $CONFIG_GRETH_FIFO8 == 1 } then { set tmpvar_40 "8" }
+	global CONFIG_GRETH_FIFO16
+	if { $CONFIG_GRETH_FIFO16 == 1 } then { set tmpvar_40 "16" }
+	global CONFIG_GRETH_FIFO32
+	if { $CONFIG_GRETH_FIFO32 == 1 } then { set tmpvar_40 "32" }
+	global CONFIG_GRETH_FIFO64
+	if { $CONFIG_GRETH_FIFO64 == 1 } then { set tmpvar_40 "64" }
 	global tmpvar_41
-	set tmpvar_41 "1"
-	global CONFIG_UA1_FIFO1
-	if { $CONFIG_UA1_FIFO1 == 1 } then { set tmpvar_41 "1" }
-	global CONFIG_UA1_FIFO2
-	if { $CONFIG_UA1_FIFO2 == 1 } then { set tmpvar_41 "2" }
-	global CONFIG_UA1_FIFO4
-	if { $CONFIG_UA1_FIFO4 == 1 } then { set tmpvar_41 "4" }
-	global CONFIG_UA1_FIFO8
-	if { $CONFIG_UA1_FIFO8 == 1 } then { set tmpvar_41 "8" }
-	global CONFIG_UA1_FIFO16
-	if { $CONFIG_UA1_FIFO16 == 1 } then { set tmpvar_41 "16" }
-	global CONFIG_UA1_FIFO32
-	if { $CONFIG_UA1_FIFO32 == 1 } then { set tmpvar_41 "32" }
+	set tmpvar_41 "None"
+	global CONFIG_SPICTRL_NOFT
+	if { $CONFIG_SPICTRL_NOFT == 1 } then { set tmpvar_41 "None" }
+	global CONFIG_SPICTRL_DMRFT
+	if { $CONFIG_SPICTRL_DMRFT == 1 } then { set tmpvar_41 "Parity-DMR" }
+	global CONFIG_SPICTRL_TMRFT
+	if { $CONFIG_SPICTRL_TMRFT == 1 } then { set tmpvar_41 "TMR" }
 	global tmpvar_42
-	set tmpvar_42 "1"
+	set tmpvar_42 "Standard"
+	global CONFIG_SPICTRL_PROT0
+	if { $CONFIG_SPICTRL_PROT0 == 1 } then { set tmpvar_42 "Standard" }
+	global CONFIG_SPICTRL_PROT1
+	if { $CONFIG_SPICTRL_PROT1 == 1 } then { set tmpvar_42 "Dual" }
+	global CONFIG_SPICTRL_PROT2
+	if { $CONFIG_SPICTRL_PROT2 == 1 } then { set tmpvar_42 "Quad" }
+	global tmpvar_43
+	set tmpvar_43 "1"
+	global CONFIG_UA1_FIFO1
+	if { $CONFIG_UA1_FIFO1 == 1 } then { set tmpvar_43 "1" }
+	global CONFIG_UA1_FIFO2
+	if { $CONFIG_UA1_FIFO2 == 1 } then { set tmpvar_43 "2" }
+	global CONFIG_UA1_FIFO4
+	if { $CONFIG_UA1_FIFO4 == 1 } then { set tmpvar_43 "4" }
+	global CONFIG_UA1_FIFO8
+	if { $CONFIG_UA1_FIFO8 == 1 } then { set tmpvar_43 "8" }
+	global CONFIG_UA1_FIFO16
+	if { $CONFIG_UA1_FIFO16 == 1 } then { set tmpvar_43 "16" }
+	global CONFIG_UA1_FIFO32
+	if { $CONFIG_UA1_FIFO32 == 1 } then { set tmpvar_43 "32" }
+	global tmpvar_44
+	set tmpvar_44 "1"
 	global CONFIG_UA2_FIFO1
-	if { $CONFIG_UA2_FIFO1 == 1 } then { set tmpvar_42 "1" }
+	if { $CONFIG_UA2_FIFO1 == 1 } then { set tmpvar_44 "1" }
 	global CONFIG_UA2_FIFO2
-	if { $CONFIG_UA2_FIFO2 == 1 } then { set tmpvar_42 "2" }
+	if { $CONFIG_UA2_FIFO2 == 1 } then { set tmpvar_44 "2" }
 	global CONFIG_UA2_FIFO4
-	if { $CONFIG_UA2_FIFO4 == 1 } then { set tmpvar_42 "4" }
+	if { $CONFIG_UA2_FIFO4 == 1 } then { set tmpvar_44 "4" }
 	global CONFIG_UA2_FIFO8
-	if { $CONFIG_UA2_FIFO8 == 1 } then { set tmpvar_42 "8" }
+	if { $CONFIG_UA2_FIFO8 == 1 } then { set tmpvar_44 "8" }
 	global CONFIG_UA2_FIFO16
-	if { $CONFIG_UA2_FIFO16 == 1 } then { set tmpvar_42 "16" }
+	if { $CONFIG_UA2_FIFO16 == 1 } then { set tmpvar_44 "16" }
 	global CONFIG_UA2_FIFO32
-	if { $CONFIG_UA2_FIFO32 == 1 } then { set tmpvar_42 "32" }
+	if { $CONFIG_UA2_FIFO32 == 1 } then { set tmpvar_44 "32" }
 }
 
 

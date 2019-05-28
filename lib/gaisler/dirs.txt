@@ -1,13 +1,20 @@
 devices 
 arith 
 memctrl
-grfpu grlfpu grfpc grlfpc 
-grfpc4 grlfpc4
+grfpu
+grlfpu
+grfpc
+grlfpc
+grfpc4
+grlfpc4
 srmmu
-leon3 leon3v3
-leon4 leon4v0
+leon3
+leon3v3
+leon4
+leon4v0
 irqmp
-l2cache/pkg l2cache/v3
+l2cache/pkg
+l2cache/v3
 lram
 can
 canfd 
@@ -42,4 +49,5 @@ clk2x
 grdmac
 grrm
 subsys
+ftaddr
 

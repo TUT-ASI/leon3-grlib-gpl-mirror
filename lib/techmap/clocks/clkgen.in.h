@@ -3,8 +3,8 @@
 #define CFG_CLK_TECH CONFIG_SYN_TECH
 #elif defined CONFIG_CLK_HCLKBUF
 #define CFG_CLK_TECH axcel
-#elif defined CONFIG_CLK_LATDLL
-#define CFG_CLK_TECH lattice
+#elif defined CONFIG_CLK_BRAVEMED
+#define CFG_CLK_TECH nx
 #elif defined CONFIG_CLK_PRO3PLL
 #define CFG_CLK_TECH apa3
 #elif defined CONFIG_CLK_PRO3EPLL

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -37,7 +37,8 @@ entity memrwcol is
     abits: integer;
     dbits: integer;
     sepclk: integer;
-    wrfst: integer
+    wrfst: integer;
+    rdhold: integer
     );
   port (
     clk1     : in  std_ulogic;
@@ -84,11 +85,17 @@ begin
     variable vout1,vout2: std_logic_vector((dbits-1) downto 0);
     variable domux1,domux2: std_ulogic;
   begin
-    v1.address := uaddress1;
+    v1.address := r1.address;
+    if rdhold=0 or uenable1='1' then
+      v1.address := uaddress1;
+    end if;
     v1.mux := '0';
     v1.wdata := udatain1;
     v1.wren := uenable1 and uwrite1;
-    v2.address := uaddress2;
+    v2.address := r2.address;
+    if rdhold=0 or uenable2='1' then
+      v2.address := uaddress2;
+    end if;
     v2.mux := '0';
     v2.wdata := udatain2;
     v2.wren := uenable2 and uwrite2;
@@ -126,15 +133,23 @@ begin
       vout2 := r1.wdata;
     end if;
 
-    if (techrwcol=1 or iwrfst=1) and techrdhold=1 then
+    if (techrwcol=1 or iwrfst=1) and techrdhold=1 and rdhold/=0 then
       -- If technology provides read-hold characteristics but not
       -- write-first behavior, make sure that works also in case
       -- of collisions. This is done by holding all the
       -- registers of the rw collision logic so the muxing stays active
       -- with the same write data.
-      if (domux1='1' and uenable1='0') or (domux2='1' and uenable2='0') then
-        v1 := r1;
-        v2 := r2;
+      if (domux1='1' and uenable1='0') and not (uenable2='1' and uwrite2='0') then
+        v1.mux := r1.mux;
+        v2.wren := r2.wren;
+        v2.wdata := r2.wdata;
+        v2.address := r2.address;
+      end if;
+      if (domux2='1' and uenable2='0') and not (uenable1='1' and uwrite1='0') then
+        v2.mux := r2.mux;
+        v1.wren := r1.wren;
+        v1.wdata := r1.wdata;
+        v1.address := r1.address;
       end if;
     end if;
 

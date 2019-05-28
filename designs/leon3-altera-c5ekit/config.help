@@ -8,7 +8,7 @@ CONFIG_SYN_INFERRED
   - Inferred: Generic FPGA or ASIC targets if your synthesis tool
     is capable of inferring RAMs and pads automatically.
 
-  - Actel ProAsic/P/3, IGLOO/2, RTG4 and Axcelerator FPGAs
+  - Actel ProAsic/P/3, IGLOO/2, RTG4, PolarFire and Axcelerator FPGAs
   - Aeroflex UT25CRH Rad-Hard 0.25 um CMOS
   - Altera: Most Altera FPGA families
   - Altera-CycloneIII: Altera Cyclone-III/IV FPGA family
@@ -18,7 +18,7 @@ CONFIG_SYN_INFERRED
   - Altera-StratixIV: Altera Stratix-IV FPGA family
   - Altera-StratixV: Altera Stratix-V FPGA family
   - ATC18: Atmel-Nantes 0.18 um rad-hard CMOS
-  - Lattice : EC/ECP/XP FPGAs
+  - NanoXploree : Brave-Medium 
   - Quicklogic : Eclipse/E/II FPGAs
   - UMC-0.18 : UMC 0.18 um CMOS with Virtual Silicon libraries
   - Xilinx-Spartan/2/3/6: Xilinx Spartan/2/3/6 libraries
@@ -554,7 +554,6 @@ CONFIG_CACHE_FT_NONE
 
   None - No protection
   Parity     - Technology agnostic parity protection
-  SECDEC-BCH - SECDED for cache, slow and large area overhead
   TechSpec   - Use target technology protection
 
   The recommended setting is Parity. Target technologies
@@ -800,6 +799,11 @@ CONFIG_GRETH_FIFO4
   Set the depth of the receive and transmit FIFOs in the MAC core.
   The MAC core will perform AHB burst read/writes with half the
   size of the FIFO depth.
+
+CONFIG_GRETH_FMC_MODE
+  Enable support for Ethernet FMC extension board.
+  This option is only valid for Xilinx reference designs
+  with Ethernet extension boards via FMC connectors 
 
 CONFIG_GRETH_FT
   Enable fault-tolerance (parity with sparing) for internal RAM

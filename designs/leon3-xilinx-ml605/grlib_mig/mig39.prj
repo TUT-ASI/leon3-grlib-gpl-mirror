@@ -11,19 +11,19 @@
     <IODelayHighPerformanceMode>HIGH</IODelayHighPerformanceMode>
     <InternalVref>0</InternalVref>
     <Controller number="0" >
-        <MemoryDevice>DDR3_SDRAM/SODIMMs/MT4JSF6464HY-1G1</MemoryDevice>
+        <MemoryDevice>DDR3_SDRAM/SODIMMs/MT4JSF12864HZ-1G4</MemoryDevice>
         <TimePeriod>2500</TimePeriod>
         <DataWidth>64</DataWidth>
         <DeepMemory>1</DeepMemory>
         <DataMask>1</DataMask>
         <CustomPart>FALSE</CustomPart>
         <NewPartName></NewPartName>
-        <RowAddress>13</RowAddress>
+        <RowAddress>14</RowAddress>
         <ColAddress>10</ColAddress>
         <BankAddress>3</BankAddress>
         <MasterBanks>25</MasterBanks>
         <TimingParameters>
-            <Parameters twtr="7.5" trrd="10" trefi="7.8" tfaw="37.5" trtp="7.5" trfc="110" trp="13.13" tras="37.5" trcd="13.13" />
+            <Parameters twtr="7.5" trrd="7.5" trefi="7.8" tfaw="45" trtp="7.5" trfc="160" trp="13.5" tras="36" trcd="13.5" />
         </TimingParameters>
         <ECC>Disabled</ECC>
         <DiscreteBankSelections>1</DiscreteBankSelections>
@@ -47,6 +47,7 @@
             <Pin SignalName="ddr3_addr[10]" PINNumber="M16" SignalGroup="Address" Bank="36" />
             <Pin SignalName="ddr3_addr[11]" PINNumber="M15" SignalGroup="Address" Bank="36" />
             <Pin SignalName="ddr3_addr[12]" PINNumber="H15" SignalGroup="Address" Bank="36" />
+            <Pin SignalName="ddr3_addr[13]" PINNumber="J15" SignalGroup="Address" Bank="36" />
             <Pin SignalName="ddr3_addr[1]" PINNumber="A16" SignalGroup="Address" Bank="36" />
             <Pin SignalName="ddr3_addr[2]" PINNumber="B16" SignalGroup="Address" Bank="36" />
             <Pin SignalName="ddr3_addr[3]" PINNumber="E16" SignalGroup="Address" Bank="36" />

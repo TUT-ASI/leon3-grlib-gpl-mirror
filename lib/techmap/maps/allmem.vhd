@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -705,19 +705,20 @@ component altera_fifo_dp is
 end component;
 
 component generic_syncram
-  generic (abits : integer := 10; dbits : integer := 8; pipeline : integer := 0 );
+  generic (abits : integer := 10; dbits : integer := 8; pipeline : integer := 0; rdhold : integer := 0 );
   port (
     clk      : in std_ulogic;
     address  : in std_logic_vector((abits -1) downto 0);
     datain   : in std_logic_vector((dbits -1) downto 0);
     dataout  : out std_logic_vector((dbits -1) downto 0);
-    write    : in std_ulogic
+    write    : in std_ulogic;
+    enable   : in std_ulogic := '1'
    );
 end component;
 
 component generic_syncram_2p
   generic (abits : integer := 8; dbits : integer := 32; sepclk : integer := 0;
-  pipeline : integer := 0);
+  pipeline : integer := 0; rdhold : integer := 0);
   port (
     rclk : in std_ulogic;
     wclk : in std_ulogic;
@@ -725,7 +726,8 @@ component generic_syncram_2p
     wraddress: in std_logic_vector (abits -1 downto 0);
     data: in std_logic_vector (dbits -1 downto 0);
     wren : in std_ulogic;
-    q: out std_logic_vector (dbits -1 downto 0)
+    q: out std_logic_vector (dbits -1 downto 0);
+    rden : in std_ulogic := '1'
   );
 end component;
 
@@ -1750,6 +1752,71 @@ end component;
     write    : in std_ulogic;
     diagin   : in std_logic_vector(1 downto 0) := "00");
   end component;
+
+  component nx_syncram is
+  generic ( abits : integer    := 6;
+            dbits : integer    := 8
+            );
+  port (
+    clk     : in  std_ulogic;
+    address : in  std_logic_vector (abits -1 downto 0);
+    datain  : in  std_logic_vector (dbits -1 downto 0);
+    dataout : out std_logic_vector (dbits -1 downto 0);
+    enable  : in  std_ulogic;  
+    write   : in  std_ulogic   
+    );
+  end component;
+
+  component nx_syncram_dp is
+    generic ( abits : integer    := 6;
+              dbits : integer    := 8
+              );
+    port (
+      clk1     : in  std_ulogic;
+      address1 : in  std_logic_vector((abits -1) downto 0);
+      datain1  : in  std_logic_vector((dbits -1) downto 0);
+      dataout1 : out std_logic_vector((dbits -1) downto 0);
+      enable1  : in  std_ulogic;
+      write1   : in  std_ulogic;
+      clk2     : in  std_ulogic;
+      address2 : in  std_logic_vector((abits -1) downto 0);
+      datain2  : in  std_logic_vector((dbits -1) downto 0);
+      dataout2 : out std_logic_vector((dbits -1) downto 0);
+      enable2  : in  std_ulogic;
+      write2   : in  std_ulogic
+      );
+  end component;
+
+  component nx_syncram_2p is
+    generic (abits : integer := 6; dbits : integer := 8; sepclk : integer := 0;
+             wrfst : integer := 0);
+    port (
+      rclk     : in  std_ulogic;
+      renable  : in  std_ulogic;
+      raddress : in  std_logic_vector((abits -1) downto 0);
+      dataout  : out std_logic_vector((dbits -1) downto 0);
+      wclk     : in  std_ulogic;
+      write    : in  std_ulogic;
+      waddress : in  std_logic_vector((abits -1) downto 0);
+      datain   : in  std_logic_vector((dbits -1) downto 0)
+      );
+  end component;
+
+  component nx_syncram_be is
+    generic ( abits : integer    := 6;
+              dbits : integer    := 8
+              );
+    port (
+      clk     : in  std_ulogic;
+      address : in  std_logic_vector  (abits -1  downto 0);
+      datain  : in  std_logic_vector  (dbits -1  downto 0);
+      dataout : out std_logic_vector  (dbits -1  downto 0);
+      enable  : in  std_logic_vector  (dbits/8-1 downto 0);
+      write   : in  std_logic_vector  (dbits/8-1 downto 0)
+      );
+  end component;
+
+
 
 end;
 

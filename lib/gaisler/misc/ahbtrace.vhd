@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -54,6 +54,7 @@ entity ahbtrace is
     ahbmi    : in  ahb_mst_in_type;
     ahbsi    : in  ahb_slv_in_type;
     ahbso    : out ahb_slv_out_type;
+    trace_en : in  std_logic := '1';
     timer    : in  std_logic_vector(30 downto 0) := (others => '0');
     astat    : out amba_stat_type;
     resen    : in  std_ulogic := '0'
@@ -84,6 +85,7 @@ begin
       ahbso    => ahbso,
       tahbmi   => ahbmi,
       tahbsi   => ahbsi,
+      trace_en => trace_en,
       timer    => timer,
       astat    => astat,
       resen    => resen);

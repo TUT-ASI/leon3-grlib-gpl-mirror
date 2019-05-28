@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2018, Cobham Gaisler
+--  Copyright (C) 2015 - 2019, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -37,7 +37,8 @@ use grlib.stdlib.all;
 entity syncram_dp is
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
 	testen : integer := 0; custombits : integer := 1; sepclk: integer := 1;
-        wrfst: integer := 0; pipeline : integer range 0 to 15 := 0);
+        wrfst: integer := 0; pipeline : integer range 0 to 15 := 0;
+           rdhold : integer := 0);
   port (
     clk1     : in std_ulogic;
     address1 : in std_logic_vector((abits -1) downto 0);
@@ -57,9 +58,13 @@ end;
 
 architecture rtl of syncram_dp is
   signal xenable1,xxenable1,xenable2,xxenable2,xwrite1,xwrite2: std_ulogic;
-  signal dataout1x,dataout1xx,dataout2x,dataout2xx: std_logic_vector((dbits-1) downto 0);
+  signal dataout1x,dataout1xx,dataout1xxx,dataout2x,dataout2xx,dataout2xxx: std_logic_vector((dbits-1) downto 0);
   signal custominx,customoutx: std_logic_vector(syncram_customif_maxwidth downto 0);
   signal vgnd: std_logic_vector((dbits-1) downto 0);
+  constant isepclk: integer := (sepclk mod 2);
+
+  signal preven1, preven12, preven2, preven22: std_ulogic;
+  signal prevdata1, prevdata2: std_logic_vector((dbits-1) downto 0);
 
   component memrwcol is
     generic (
@@ -69,7 +74,8 @@ architecture rtl of syncram_dp is
       abits: integer;
       dbits: integer;
       sepclk: integer;
-      wrfst: integer
+      wrfst: integer;
+      rdhold: integer
       );
     port (
       clk1     : in  std_ulogic;
@@ -100,24 +106,92 @@ begin
   xwrite1 <= write1 and not testin(TESTIN_WIDTH-2) when testen/=0 else write1;
   xwrite2 <= write2 and not testin(TESTIN_WIDTH-2) when testen/=0 else write2;
 
-  gendoutreg : if pipeline /= 0 and has_sram_pipe(tech) = 0 generate
+  gendoutreg : if pipeline /= 0 and has_sram_pipe(tech) = 0
+                 and not (rdhold /= 0 and syncram_dp_readhold(tech)=0) generate
     doutreg1 : process(clk1)
     begin
       if rising_edge(clk1) then
-        dataout1 <= dataout1xx;
+        dataout1 <= dataout1xxx;
       end if;
     end process;
     doutreg2 : process(clk2)
     begin
       if rising_edge(clk2) then
-        dataout2 <= dataout2xx;
+        dataout2 <= dataout2xxx;
       end if;
     end process;
   end generate;
-
+  combreg : if pipeline /= 0 and has_sram_pipe(tech) = 0
+              and (rdhold /= 0 and syncram_dp_readhold(tech)=0) generate
+    -- special case where we can use the read-hold prevdata register as
+    -- pipeline register
+    dataout1 <= prevdata1;
+    dataout2 <= prevdata2;
+  end generate;
   nogendoutreg : if pipeline = 0 or has_sram_pipe(tech) = 1 generate
-    dataout1 <= dataout1xx;
-    dataout2 <= dataout2xx;
+    dataout1 <= dataout1xxx;
+    dataout2 <= dataout2xxx;
+  end generate;
+
+  rdholdgen: if rdhold /= 0 and syncram_dp_readhold(tech)=0 and
+               (has_sram_pipe(tech)=0 or pipeline=0) generate
+    hpreg1: process(clk1)
+    begin
+      if rising_edge(clk1) then
+        preven1 <= enable1;
+        if preven1='1' then
+          prevdata1 <= dataout1xx;
+        end if;
+      end if;
+    end process;
+    dataout1xxx <= dataout1xx when preven1='1' else prevdata1;
+    preven12 <= '0';
+    hpreg2: process(clk2)
+    begin
+      if rising_edge(clk2) then
+        preven2 <= enable2;
+        if preven2='1' then
+          prevdata2 <= dataout2xx;
+        end if;
+      end if;
+    end process;
+    dataout2xxx <= dataout2xx when preven2='1' else prevdata2;
+    preven22 <= '0';
+  end generate;
+  rdholdgen2: if rdhold /= 0 and syncram_dp_readhold(tech)=0 and
+                not (has_sram_pipe(tech)=0 or pipeline=0) generate
+    hpreg1: process(clk1)
+    begin
+      if rising_edge(clk1) then
+        preven1 <= enable1;
+        preven12 <= preven1;
+        if preven12='1' then
+          prevdata1 <= dataout1xx;
+        end if;
+      end if;
+    end process;
+    dataout1xxx <= dataout1xx when preven12='1' else prevdata1;
+    hpreg2: process(clk2)
+    begin
+      if rising_edge(clk2) then
+        preven2 <= enable2;
+        preven22 <= preven2;
+        if preven22='1' then
+          prevdata2 <= dataout2xx;
+        end if;
+      end if;
+    end process;
+    dataout2xxx <= dataout2xx when preven22='1' else prevdata2;
+  end generate;
+  nordhold: if rdhold=0 or syncram_dp_readhold(tech)/=0 generate
+    preven1 <= '0';
+    preven12 <= '0';
+    prevdata1 <= (others => '0');
+    dataout1xxx <= dataout1xx;
+    preven2 <= '0';
+    preven22 <= '0';
+    prevdata2 <= (others => '0');
+    dataout2xxx <= dataout2xx;
   end generate;
   
   vgnd <= (others => '0');
@@ -129,8 +203,9 @@ begin
       techrdhold => syncram_dp_readhold(tech),
       abits     => abits,
       dbits     => dbits,
-      sepclk    => sepclk,
-      wrfst     => wrfst
+      sepclk    => isepclk,
+      wrfst     => wrfst,
+      rdhold    => rdhold
       )
     port map (
       clk1      => clk1,
@@ -317,6 +392,13 @@ begin
                 clk2, address2, datain2, dataout2x, xxenable2, xwrite2,
                 testin(TESTIN_WIDTH-3));
   end generate;
+
+  nanex : if tech = nx generate
+    x0 : nx_syncram_dp generic map (abits, dbits)
+      port map (clk1, address1, datain1, dataout1x, xxenable1, xwrite1,
+                clk2, address2, datain2, dataout2x, xxenable2, xwrite2);
+  end generate;
+
 
 end;
 
