@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -215,9 +215,10 @@ package testlib is
    -- Returns offset to start of valid data for an access of size 'size' in
    -- AMBA data vector
    function ahb_doff (
-     constant dw   : integer;
-     constant size : integer;           -- access size
-     constant addr : std_logic_vector(4 downto 0))
+     constant dw      : integer;
+     constant size    : integer;           -- access size
+     constant addr    : std_logic_vector(4 downto 0);
+     constant endian  : std_logic := '0')
      return integer;
 -- pragma translate_on
    
@@ -776,9 +777,11 @@ package body testlib is
      variable seed2 : inout positive;
      variable rand  : out   integer) is
      variable rand_tmp : real;
+     variable real_tmp : real;
    begin
      uniform(seed1, seed2, rand_tmp);
-     rand := integer(floor(rand_tmp*max));
+      real_tmp := floor(rand_tmp*max);
+      rand := integer(real_tmp);
    end procedure;
    
   function reverse(din : std_logic_vector)
@@ -792,15 +795,25 @@ package body testlib is
    function ahb_doff (
      constant dw   : integer;
      constant size : integer;
-     constant addr : std_logic_vector(4 downto 0))
+     constant addr : std_logic_vector(4 downto 0);
+     constant endian : std_logic := '0')
      return integer is
      variable off : integer;
    begin  -- ahb_doff
-     if size < 256 and dw = 256 and addr(4) = '0' then off := 128; else off := 0; end if;
-     if size < 128 and dw >= 128 and addr(3) = '0' then off := off + 64; end if;
-     if size < 64 and dw >= 64 and addr(2) = '0' then off := off + 32; end if;
-     if size < 32 and addr(1) = '0' then off := off + 16; end if;
-     if size < 16 and addr(0) = '0' then off := off + 8; end if;
+     
+     if endian = '1' then --little endian
+       if size < 256 and dw = 256 and addr(4) = '1' then off := 128; else off := 0; end if;
+       if size < 128 and dw >= 128 and addr(3) = '1' then off := off + 64; end if;
+       if size < 64 and dw >= 64 and addr(2) = '1' then off := off + 32; end if;
+       if size < 32 and addr(1) = '1' then off := off + 16; end if;
+       if size < 16 and addr(0) = '1' then off := off + 8; end if;
+     else --big endian
+       if size < 256 and dw = 256 and addr(4) = '0' then off := 128; else off := 0; end if;
+       if size < 128 and dw >= 128 and addr(3) = '0' then off := off + 64; end if;
+       if size < 64 and dw >= 64 and addr(2) = '0' then off := off + 32; end if;
+       if size < 32 and addr(1) = '0' then off := off + 16; end if;
+       if size < 16 and addr(0) = '0' then off := off + 8; end if;
+     end if;
      return off;
    end ahb_doff;
    

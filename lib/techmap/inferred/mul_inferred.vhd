@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -31,8 +31,8 @@ library grlib;
 use grlib.stdlib.all;
 
 entity gen_mul_61x61 is
-    port(A       : in std_logic_vector(60 downto 0);  
-         B       : in std_logic_vector(60 downto 0);
+    port(NA      : in std_logic_vector(60 downto 0);  
+         NB      : in std_logic_vector(60 downto 0);
          EN      : in std_logic;
          CLK     : in std_logic;     
          PRODUCT : out std_logic_vector(121 downto 0));
@@ -40,6 +40,7 @@ end;
 
 architecture rtl of gen_mul_61x61 is
 
+  signal A, B: std_logic_vector(60 downto 0);
   signal r1, r1in, r2, r2in : std_logic_vector(121 downto 0);
   
 begin
@@ -58,6 +59,8 @@ begin
     reg : process(clk)
     begin
       if rising_edge(clk) then
+        A <= NA;
+        B <= NB;
         if EN = '1' then
           r1 <= r1in;
           r2 <= r2in;

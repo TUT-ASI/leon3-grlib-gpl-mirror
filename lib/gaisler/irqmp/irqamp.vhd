@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -35,6 +35,8 @@ library grlib;
 use grlib.amba.all;
 use grlib.stdlib.all;
 use grlib.devices.all;
+use grlib.config_types.all;
+use grlib.config.all;
 library gaisler;
 use gaisler.leon3.all;
 
@@ -77,6 +79,8 @@ constant REVISION : integer := 4;
 constant pconfig : apb_config_type := (
   0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_IRQMP, 0, REVISION, 0),
   1 => apb_iobar(paddr, pmask));
+
+constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) /= 0;
 
 function IMAP_HIGH return integer is
 begin
@@ -200,6 +204,7 @@ signal r3, r3in : areg_type;
 signal r4, r4in : treg_type;
 signal r5, r5in : wreg_type;
 signal r6, r6in : rreg_type;
+
 
 begin
 
@@ -679,6 +684,10 @@ begin
       v.imask := (others => (others => '0'));
       v.iforce := (others => (others => '0'));
       v.ipend := (others => (others => '0'));
+      if RESET_ALL then
+        v.ilevel := (others => (others => '0'));
+        v.ibroadcast := (others => (others => '0'));
+      end if;
       if ncpu > 1 then
         v.ibroadcast := (others => (others => '0'));
       end if;
@@ -713,9 +722,18 @@ begin
           v5.msk(i) := (others => '0');
         end loop;
       end if;
+      if RESET_ALL then
+        v5.msk := (others => (others => '0'));
+        v5.irq := (others => (others => '0'));
+      end if;
       if bootreg /= 0 then
         v6.forceerr := (others => '0');
         v6.setaddr := (others => '0');
+      end if;
+      if RESET_ALL then
+        v6.newaddr := (others => '0');
+        v6.setaddrboot := '0';
+        v6.clkcount := (others => '0');
       end if;
     end if;
 

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -168,6 +168,8 @@ architecture rtl of i2cmst is
   -- Register interface
   signal r, rin : i2c_reg_type;
   signal vcc : std_logic;
+
+
 begin
   -- Byte Controller from OpenCores I2C master,
   -- by Richard Herveille (richard@asics.ws). The asynchronous
@@ -292,6 +294,7 @@ begin
       v.txr  := (others => '0');
       v.cmd  := ('0','0','0','0', '0');
       v.sts   := ('0','0','0','0', '0');
+      v.irq  := '0';
       if dynfilt /= 0 then v.filt := (others => '1'); end if;
     end if;
 

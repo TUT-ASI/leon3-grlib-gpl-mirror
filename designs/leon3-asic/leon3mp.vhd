@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -36,7 +36,6 @@ entity leon3mp is
     padtech   : integer := CFG_PADTECH;
     clktech   : integer := CFG_CLKTECH;
     disas     : integer := CFG_DISAS; -- Enable disassembly to console
-    dbguart   : integer := CFG_DUART; -- Print UART on console
     pclow     : integer := CFG_PCLOW;
     scantest  : integer := CFG_SCAN
   );
@@ -390,7 +389,6 @@ begin
       padtech  => CFG_PADTECH,
       clktech  => CFG_CLKTECH,
       disas    => CFG_DISAS,
-      dbguart  => CFG_DUART,
       pclow    => CFG_PCLOW,
       scantest => CFG_SCAN,
       bscanen  => CFG_BOUNDSCAN_EN,

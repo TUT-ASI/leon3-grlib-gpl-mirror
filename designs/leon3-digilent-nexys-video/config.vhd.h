@@ -154,11 +154,6 @@
   constant CFG_GPT_WDOGEN   : integer := CONFIG_GPT_WDOGEN;
   constant CFG_GPT_WDOG     : integer := 16#CONFIG_GPT_WDOG#;
 
--- GPIO port
-  constant CFG_GRGPIO_ENABLE : integer := CONFIG_GRGPIO_ENABLE;
-  constant CFG_GRGPIO_IMASK  : integer := 16#CONFIG_GRGPIO_IMASK#;
-  constant CFG_GRGPIO_WIDTH  : integer := CONFIG_GRGPIO_WIDTH;
-
 -- SPI memory controller
   constant CFG_SPIMCTRL            : integer := CONFIG_SPIMCTRL;
   constant CFG_SPIMCTRL_SDCARD     : integer := 0;

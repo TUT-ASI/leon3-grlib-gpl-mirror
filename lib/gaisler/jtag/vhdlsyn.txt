@@ -7,3 +7,5 @@ bscanregsbd.vhd
 jtagcom2.vhd
 ahbjtag.vhd
 ahbjtag_bsd.vhd
+jtagcomrv.vhd
+ahbjtagrv.vhd

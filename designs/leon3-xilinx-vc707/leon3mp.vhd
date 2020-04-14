@@ -4,7 +4,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -229,6 +229,7 @@ component sgmii_vc707
     autonegotiation : integer := 1;
     pirq            : integer := 0;
     debugmem        : integer := 0;
+    edclsepahb      : integer := 0;
     tech            : integer := 0
   );
   port(
@@ -506,6 +507,9 @@ component PLLE2_ADV
   );
 end component;
 
+constant fifodepth : integer := 8;
+constant burstlen : integer := 16;     -- burst length in 32-bit words
+
 constant CFG_FMC_NB  : integer := 8; -- Select 4 or 8 
 constant CFG_FMC     : integer := (CFG_GRETH_FMC * CFG_GRETH * CFG_FMC_NB);
 constant CFG_FMC_DBG : integer := 0;
@@ -515,6 +519,8 @@ constant maxahbm : integer := 16;
 --constant maxahbs : integer := 1+CFG_DSU+CFG_MCTRL_LEON2+CFG_AHBROMEN+CFG_AHBRAMEN+2+CFG_GRUSBDC;
 constant maxahbs : integer := 16;
 constant maxapbs : integer := CFG_IRQ3_ENABLE+CFG_GPT_ENABLE+CFG_GRGPIO_ENABLE+CFG_AHBSTAT+CFG_AHBSTAT+CFG_GRUSBHC+CFG_GRUSBDC+CFG_PRC;
+
+constant CFG_EN_DBGBUS : integer := 0;
 
 signal vcc, gnd   : std_logic_vector(31 downto 0);
 signal memi  : memory_in_type;
@@ -636,6 +642,14 @@ signal idelayctrl_reset : std_logic;
 signal io_ref           : std_logic;
 signal rstgtxn          : std_logic;
 
+constant DBG_AHBIO : integer := 16#EFF#;      
+signal dbg_ahbsi   : ahb_slv_in_type;
+signal dbg_ahbso   : ahb_slv_out_vector := (others => ahbs_none);
+signal dbg_ahbmi   : ahb_mst_in_type;
+signal dbg_ahbmo   : ahb_mst_out_vector := (others => ahbm_none);
+signal nolock   : ahb2ahb_ctrl_type;
+signal noifctrl : ahb2ahb_ifctrl_type;
+
 signal e1_debug_rx,e1_debug_tx,e1_debug_gtx  : std_logic_vector(63 downto 0);
 type fmc_debug_type is array (0 to CFG_FMC_NB) of std_logic_vector(63 downto 0);
 signal fmc_debug_rx,fmc_debug_tx,fmc_debug_gtx : fmc_debug_type;
@@ -702,47 +716,160 @@ begin
 
   ahb0 : ahbctrl       -- AHB arbiter/multiplexer
   generic map (defmast => CFG_DEFMST, split => CFG_SPLIT,
-   rrobin => CFG_RROBIN, ioaddr => CFG_AHBIO, fpnpen => CFG_FPNPEN,
+   rrobin => CFG_RROBIN, ioaddr => CFG_AHBIO, ioen => 1, fpnpen => CFG_FPNPEN,
      nahbm => maxahbm, nahbs => maxahbs, devid => XILINX_VC707)
   port map (rstn, clkm, ahbmi, ahbmo, ahbsi, ahbso);
 
+-------------------------------------------------------------------------------
+-- Debug BUS
+-- If enabled debug masters are connected to a separate AHB bus
+-- to isolate them from the main bus
+-------------------------------------------------------------------------------
+
+  dbgb0: if CFG_EN_DBGBUS /= 0 generate
+    
+    dahb0 : ahbctrl                -- AHB arbiter/multiplexer
+      generic map (defmast => CFG_DEFMST, split => 0, fpnpen => CFG_FPNPEN,
+                   rrobin => CFG_RROBIN, ioaddr => DBG_AHBIO,
+                   ioen => 1,
+                   nahbm => CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH,
+                   nahbs => 2)
+      port map (rstn, clkm, dbg_ahbmi, dbg_ahbmo, dbg_ahbsi, dbg_ahbso);
+
+    -- Bridge connecting debug bus -> processor bus
+    -- Configuration:
+    -- Prefetching with a maximum burst length of 8 words
+    -- No interrupt synchronisation
+    -- Debug cores cannot make locked accesses => lckdac = 0
+    -- Slave maximum access size: 32
+    -- Master maximum access size: 128
+    -- Read and write combining
+    -- No special handling for instruction bursts
+    debug_bridge: ahb2ahb
+      generic map (
+        memtech     => 0,
+        hsindex     => 1,
+        hmindex     => CFG_NCPU,
+        slv         => 0,
+        dir         => 1,
+        ffact       => 1,
+        pfen        => 1,
+        wburst      => burstlen,
+        iburst      => 8,
+        rburst      => burstlen,
+        irqsync     => 0,
+        bar0        => ahb2ahb_membar(16#000#, '1', '1', 16#800#),
+        bar1        => ahb2ahb_membar(16#800#, '0', '0', 16#C00#),
+        --   bar2        => ahb2ahb_membar(16#C00#, '0', '0', 16#E00#),
+        bar3        => ahb2ahb_membar(16#F00#, '0', '0', 16#F00#),
+        sbus        => 2,
+        mbus        => 0,
+        ioarea      => 16#FFF#,
+        ibrsten     => 0,
+        lckdac      => 0,
+        slvmaccsz   => 32,
+        mstmaccsz   => 32,
+        rdcomb      => 0,
+        wrcomb      => 0,
+        combmask    => 0,
+        allbrst     => 0,
+        ifctrlen    => 0,
+        fcfs        => 0,
+        fcfsmtech   => 0,
+        scantest    => 0,
+        split       => 0,
+        pipe        => 1)
+      port map (
+        rstn        => rstn,
+        hclkm       => clkm,
+        hclks       => clkm,
+        ahbsi       => dbg_ahbsi,
+        ahbso       => dbg_ahbso(1),
+        ahbmi       => ahbmi,
+        ahbmo       => ahbmo(CFG_NCPU),
+        ahbso2      => ahbso,
+        lcki        => nolock,
+        lcko        => open,
+        ifctrl      => noifctrl);
+    
+  end generate;
+
+  
 ----------------------------------------------------------------------
 ---  LEON processor and DSU -----------------------------------------
 ----------------------------------------------------------------------
 
-  leon : leon_dsu_stat_base
-    generic map (
-      leon => CFG_LEON, ncpu => CFG_NCPU, fabtech => fabtech, memtech => memtech,
-      memtechmod => CFG_LEON_MEMTECH,
-      nwindows => CFG_NWIN, dsu => CFG_DSU, fpu => CFG_FPU, v8 => CFG_V8, cp => 0,
-      mac => CFG_MAC, pclow => pclow, notag => 0, nwp => CFG_NWP, icen => CFG_ICEN,
-      irepl => CFG_IREPL, isets => CFG_ISETS, ilinesize => CFG_ILINE,
-      isetsize => CFG_ISETSZ, isetlock => CFG_ILOCK, dcen => CFG_DCEN,
-      drepl => CFG_DREPL, dsets => CFG_DSETS, dlinesize => CFG_DLINE,
-      dsetsize => CFG_DSETSZ, dsetlock => CFG_DLOCK, dsnoop => CFG_DSNOOP,
-      ilram => CFG_ILRAMEN, ilramsize => CFG_ILRAMSZ, ilramstart => CFG_ILRAMADDR,
-      dlram => CFG_DLRAMEN, dlramsize => CFG_DLRAMSZ, dlramstart => CFG_DLRAMADDR,
-      mmuen => CFG_MMUEN, itlbnum => CFG_ITLBNUM, dtlbnum => CFG_DTLBNUM,
-      tlb_type => CFG_TLB_TYPE, tlb_rep => CFG_TLB_REP, lddel => CFG_LDDEL,
-      disas => disas, tbuf => CFG_ITBSZ, pwd => CFG_PWD, svt => CFG_SVT,
-      rstaddr => CFG_RSTADDR, smp => CFG_NCPU-1, cached => CFG_DFIXED,
-      wbmask => CFG_BWMASK, busw => CFG_CACHEBW, netlist => CFG_LEON_NETLIST,
-      ft => CFG_LEONFT_EN, npasi => CFG_NP_ASI, pwrpsr => CFG_WRPSR,
-      rex => CFG_REX, altwin => CFG_ALTWIN, mmupgsz => CFG_MMU_PAGE,
-      grfpush => CFG_GRFPUSH,
-      dsu_hindex => 2, dsu_haddr => 16#D00#, dsu_hmask => 16#F00#, atbsz => CFG_ATBSZ,
-      stat => CFG_STAT_ENABLE, stat_pindex => 8, stat_paddr => 16#100#,
-      stat_pmask => 16#ffc#, stat_ncnt => CFG_STAT_CNT, stat_nmax => CFG_STAT_NMAX)
-    port map (
-      rstn => rstn, ahbclk => clkm, cpuclk => clkm, hclken => vcc(0),
-      leon_ahbmi => ahbmi, leon_ahbmo => ahbmo(CFG_NCPU-1 downto 0),
-      leon_ahbsi => ahbsi, leon_ahbso => ahbso,
-      irqi => irqi, irqo => irqo,
-      stat_apbi => apbi, stat_apbo => apbo(8), stat_ahbsi => ahbsi,
-      stati => perf,
-      dsu_ahbsi => ahbsi, dsu_ahbso => ahbso(2),
-      dsu_tahbmi => ahbmi, dsu_tahbsi => ahbsi,
-      sysi => sysi, syso => syso);
+  dbgbeleon: if CFG_EN_DBGBUS /=0 generate
+    leon : leon_dsu_stat_base
+      generic map (
+        leon => CFG_LEON, ncpu => CFG_NCPU, fabtech => fabtech, memtech => memtech,
+        memtechmod => CFG_LEON_MEMTECH,
+        nwindows => CFG_NWIN, dsu => CFG_DSU, fpu => CFG_FPU, v8 => CFG_V8, cp => 0,
+        mac => CFG_MAC, pclow => pclow, notag => 0, nwp => CFG_NWP, icen => CFG_ICEN,
+        irepl => CFG_IREPL, isets => CFG_ISETS, ilinesize => CFG_ILINE,
+        isetsize => CFG_ISETSZ, isetlock => CFG_ILOCK, dcen => CFG_DCEN,
+        drepl => CFG_DREPL, dsets => CFG_DSETS, dlinesize => CFG_DLINE,
+        dsetsize => CFG_DSETSZ, dsetlock => CFG_DLOCK, dsnoop => CFG_DSNOOP,
+        ilram => CFG_ILRAMEN, ilramsize => CFG_ILRAMSZ, ilramstart => CFG_ILRAMADDR,
+        dlram => CFG_DLRAMEN, dlramsize => CFG_DLRAMSZ, dlramstart => CFG_DLRAMADDR,
+        mmuen => CFG_MMUEN, itlbnum => CFG_ITLBNUM, dtlbnum => CFG_DTLBNUM,
+        tlb_type => CFG_TLB_TYPE, tlb_rep => CFG_TLB_REP, lddel => CFG_LDDEL,
+        disas => disas, tbuf => CFG_ITBSZ, pwd => CFG_PWD, svt => CFG_SVT,
+        rstaddr => CFG_RSTADDR, smp => CFG_NCPU-1, cached => CFG_DFIXED,
+        wbmask => CFG_BWMASK, busw => CFG_CACHEBW, netlist => CFG_LEON_NETLIST,
+        ft => CFG_LEONFT_EN, npasi => CFG_NP_ASI, pwrpsr => CFG_WRPSR,
+        rex => CFG_REX, altwin => CFG_ALTWIN, mmupgsz => CFG_MMU_PAGE,
+        grfpush => CFG_GRFPUSH,
+        dsu_hindex => 0, dsu_haddr => 16#D00#, dsu_hmask => 16#F00#, atbsz => CFG_ATBSZ,
+        stat => CFG_STAT_ENABLE, stat_pindex => 8, stat_paddr => 16#100#,
+        stat_pmask => 16#ffc#, stat_ncnt => CFG_STAT_CNT, stat_nmax => CFG_STAT_NMAX)
+      port map (
+        rstn => rstn, ahbclk => clkm, cpuclk => clkm, hclken => vcc(0),
+        leon_ahbmi => ahbmi, leon_ahbmo => ahbmo(CFG_NCPU-1 downto 0),
+        leon_ahbsi => ahbsi, leon_ahbso => ahbso,
+        irqi => irqi, irqo => irqo,
+        stat_apbi => apbi, stat_apbo => apbo(8), stat_ahbsi => ahbsi,
+        stati => perf,
+        dsu_ahbsi => dbg_ahbsi, dsu_ahbso => dbg_ahbso(0),
+        dsu_tahbmi => ahbmi, dsu_tahbsi => ahbsi,
+        sysi => sysi, syso => syso);
+  end generate;
+
+  dbgbdleon: if CFG_EN_DBGBUS = 0 generate
+    leon : leon_dsu_stat_base
+      generic map (
+        leon => CFG_LEON, ncpu => CFG_NCPU, fabtech => fabtech, memtech => memtech,
+        memtechmod => CFG_LEON_MEMTECH,
+        nwindows => CFG_NWIN, dsu => CFG_DSU, fpu => CFG_FPU, v8 => CFG_V8, cp => 0,
+        mac => CFG_MAC, pclow => pclow, notag => 0, nwp => CFG_NWP, icen => CFG_ICEN,
+        irepl => CFG_IREPL, isets => CFG_ISETS, ilinesize => CFG_ILINE,
+        isetsize => CFG_ISETSZ, isetlock => CFG_ILOCK, dcen => CFG_DCEN,
+        drepl => CFG_DREPL, dsets => CFG_DSETS, dlinesize => CFG_DLINE,
+        dsetsize => CFG_DSETSZ, dsetlock => CFG_DLOCK, dsnoop => CFG_DSNOOP,
+        ilram => CFG_ILRAMEN, ilramsize => CFG_ILRAMSZ, ilramstart => CFG_ILRAMADDR,
+        dlram => CFG_DLRAMEN, dlramsize => CFG_DLRAMSZ, dlramstart => CFG_DLRAMADDR,
+        mmuen => CFG_MMUEN, itlbnum => CFG_ITLBNUM, dtlbnum => CFG_DTLBNUM,
+        tlb_type => CFG_TLB_TYPE, tlb_rep => CFG_TLB_REP, lddel => CFG_LDDEL,
+        disas => disas, tbuf => CFG_ITBSZ, pwd => CFG_PWD, svt => CFG_SVT,
+        rstaddr => CFG_RSTADDR, smp => CFG_NCPU-1, cached => CFG_DFIXED,
+        wbmask => CFG_BWMASK, busw => CFG_CACHEBW, netlist => CFG_LEON_NETLIST,
+        ft => CFG_LEONFT_EN, npasi => CFG_NP_ASI, pwrpsr => CFG_WRPSR,
+        rex => CFG_REX, altwin => CFG_ALTWIN, mmupgsz => CFG_MMU_PAGE,
+        grfpush => CFG_GRFPUSH,
+        dsu_hindex => 2, dsu_haddr => 16#D00#, dsu_hmask => 16#F00#, atbsz => CFG_ATBSZ,
+        stat => CFG_STAT_ENABLE, stat_pindex => 8, stat_paddr => 16#100#,
+        stat_pmask => 16#ffc#, stat_ncnt => CFG_STAT_CNT, stat_nmax => CFG_STAT_NMAX)
+      port map (
+        rstn => rstn, ahbclk => clkm, cpuclk => clkm, hclken => vcc(0),
+        leon_ahbmi => ahbmi, leon_ahbmo => ahbmo(CFG_NCPU-1 downto 0),
+        leon_ahbsi => ahbsi, leon_ahbso => ahbso,
+        irqi => irqi, irqo => irqo,
+        stat_apbi => apbi, stat_apbo => apbo(8), stat_ahbsi => ahbsi,
+        stati => perf,
+        dsu_ahbsi => ahbsi, dsu_ahbso => ahbso(2),
+        dsu_tahbmi => ahbmi, dsu_tahbsi => ahbsi,
+        sysi => sysi, syso => syso);
+  end generate;
 
   led1_pad : outpad generic map (tech => padtech, level => cmos, voltage => x18v)
     port map (led(1), syso.proc_error);
@@ -753,14 +880,26 @@ begin
     port map (led(0), ndsuact);
   ndsuact <= not syso.dsu_active;
 
-  -- Debug UART
-  dcomgen : if CFG_AHB_UART = 1 generate
-    dcom0 : ahbuart
-      generic map (hindex => CFG_NCPU, pindex => 7, paddr => 7)
-      port map (rstn, clkm, dui, duo, apbi, apbo(7), ahbmi, ahbmo(CFG_NCPU));
-    dui.extclk <= '0';
+  dbgbeahbuart: if CFG_EN_DBGBUS /= 0 generate
+    -- Debug UART
+    dcomgen : if CFG_AHB_UART = 1 generate
+      dcom0 : ahbuart
+        generic map (hindex => 0, pindex => 7, paddr => 7)
+        port map (rstn, clkm, dui, duo, apbi, apbo(7), ahbmi, dbg_ahbmo(0));
+      dui.extclk <= '0';
+    end generate;
   end generate;
 
+  dbgbdahbuart: if CFG_EN_DBGBUS = 0 generate
+    -- Debug UART
+    dcomgen : if CFG_AHB_UART = 1 generate
+      dcom0 : ahbuart
+        generic map (hindex => CFG_NCPU, pindex => 7, paddr => 7)
+        port map (rstn, clkm, dui, duo, apbi, apbo(7), ahbmi, ahbmo(CFG_NCPU));
+      dui.extclk <= '0';
+    end generate;
+  end generate;
+ 
   nouah : if CFG_AHB_UART = 0 generate 
      apbo(7) <= apb_none; 
      duo.txd <= '0';
@@ -785,14 +924,25 @@ begin
   dsurtsn_pad : outpad generic map (level => cmos, voltage => x18v, tech => padtech) port map (dsurtsn, dsurtsn_int);
 
 
-  ahbjtaggen0 :if CFG_AHB_JTAG = 1 generate
-    ahbjtag0 : ahbjtag generic map(tech => fabtech, hindex => CFG_NCPU+1)
-      port map(rstn, clkm, tck, tms, tdi, tdo, ahbmi, ahbmo(CFG_NCPU+1),
-               open, open, open, open, open, open, open, gnd(0));
+  dbgbeahbjtag: if CFG_EN_DBGBUS /=0 generate
+    ahbjtaggen0 :if CFG_AHB_JTAG = 1 generate
+      ahbjtag0 : ahbjtag generic map(tech => fabtech, hindex => CFG_AHB_UART)
+        port map(rstn, clkm, tck, tms, tdi, tdo, dbg_ahbmi, dbg_ahbmo(CFG_AHB_UART),
+                 open, open, open, open, open, open, open, gnd(0));
+    end generate;
+    nojtag: if CFG_AHB_JTAG = 0 generate dbg_ahbmo(CFG_AHB_UART) <= ahbm_none; end generate;
+    ahbmo(CFG_NCPU+1) <= ahbm_none;
+    
   end generate;
 
-  nojtag : if CFG_AHB_JTAG = 0 generate ahbmo(CFG_NCPU+1) <= ahbm_none; end generate;
-
+  dbgbdahbjtag: if CFG_EN_DBGBUS =0 generate
+    ahbjtaggen0 :if CFG_AHB_JTAG = 1 generate
+      ahbjtag0 : ahbjtag generic map(tech => fabtech, hindex => CFG_NCPU+1)
+        port map(rstn, clkm, tck, tms, tdi, tdo, ahbmi, ahbmo(CFG_NCPU+1),
+                 open, open, open, open, open, open, open, gnd(0));
+    end generate;
+    nojtag : if CFG_AHB_JTAG = 0 generate ahbmo(CFG_NCPU+1) <= ahbm_none; end generate;
+  end generate;
 ----------------------------------------------------------------------
 ---  Memory controller  ----------------------------------------------
 ----------------------------------------------------------------------
@@ -1134,19 +1284,66 @@ begin
 -----------------------------------------------------------------------
 
     eth0 : if CFG_GRETH = 1 generate -- Gaisler ethernet MAC
-      e1 : grethm 
-       generic map(
-        hindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG, 
-        pindex => 14, paddr => 16#C00#, pmask => 16#C00#, pirq => 5, memtech => memtech,
-        mdcscaler => CPU_FREQ/1000, rmii => 0, enable_mdio => 1, fifosize => CFG_ETH_FIFO,
-        nsync => 2, edcl => CFG_DSU_ETH, edclbufsz => CFG_ETH_BUF, phyrstadr => 7,
-        macaddrh => CFG_ETH_ENM, macaddrl => CFG_ETH_ENL, enable_mdint => 1,
-        ipaddrh => CFG_ETH_IPM, ipaddrl => CFG_ETH_IPL,
-        giga => CFG_GRETH1G, ramdebug => 0, gmiimode => 1)
-       port map( rst => rstn, clk => clkm, ahbmi => ahbmi,
-        ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG), 
-        apbi => apbi, apbo => apbo(14), ethi => gmiii(0), etho => gmiio(0),
-        debug_rx => e1_debug_rx, debug_tx => e1_debug_tx, debug_gtx => e1_debug_gtx); 
+      dbgbdgreth: if CFG_EN_DBGBUS = 0 generate
+        e1 : grethm 
+          generic map(
+            hindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG, 
+            pindex => 14, paddr => 16#C00#, pmask => 16#C00#, pirq => 5, memtech => memtech,
+            mdcscaler => CPU_FREQ/1000, rmii => 0, enable_mdio => 1, fifosize => CFG_ETH_FIFO,
+            nsync => 2, edcl => CFG_DSU_ETH, edclbufsz => CFG_ETH_BUF, phyrstadr => 7,
+            macaddrh => CFG_ETH_ENM, macaddrl => CFG_ETH_ENL, enable_mdint => 1,
+            ipaddrh => CFG_ETH_IPM, ipaddrl => CFG_ETH_IPL,
+            giga => CFG_GRETH1G, ramdebug => 0, gmiimode => 1)
+          port map( rst => rstn, clk => clkm, ahbmi => ahbmi,
+                    ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG), 
+                    apbi => apbi, apbo => apbo(14), ethi => gmiii(0), etho => gmiio(0),
+                    debug_rx => e1_debug_rx, debug_tx => e1_debug_tx, debug_gtx => e1_debug_gtx);
+      end generate;
+
+      dbgbegreth: if CFG_EN_DBGBUS /= 0 generate
+        e1: grethm_mb
+          generic map(
+            hindex => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG, 
+            ehindex => CFG_AHB_UART+CFG_AHB_JTAG+1,
+            pindex => 14,
+            paddr => 16#C00#,
+            pmask => 16#C00#,
+            pirq => 5,
+            memtech => memtech,
+            mdcscaler => CPU_FREQ/1000,
+            rmii => 0,
+            enable_mdio => 1,
+            fifosize => CFG_ETH_FIFO,
+            nsync => 2,
+            edcl => CFG_DSU_ETH,
+            edclbufsz => CFG_ETH_BUF,
+            phyrstadr => 7,
+            macaddrh => CFG_ETH_ENM,
+            macaddrl => CFG_ETH_ENL,
+            enable_mdint => 1,
+            ipaddrh => CFG_ETH_IPM,
+            ipaddrl => CFG_ETH_IPL,
+            giga => CFG_GRETH1G,
+            ramdebug => 0,
+            gmiimode => 1,
+            edclsepahb => 1
+            )
+          port map(
+            rst => rstn,
+            clk => clkm,
+            ahbmi => ahbmi,
+            ahbmo => ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG),
+            ahbmi2 => dbg_ahbmi,
+            ahbmo2 => dbg_ahbmo(CFG_AHB_UART+CFG_AHB_JTAG+1),
+            apbi => apbi,
+            apbo => apbo(14),
+            ethi => gmiii(0),
+            etho => gmiio(0)
+            --   debug_rx => e1_debug_rx,
+            --   debug_tx => e1_debug_tx,
+            --   debug_gtx => e1_debug_gtx
+            );
+      end generate;
 
       ---- Debug of RX and TX
       --loganrx0 : logan
@@ -1172,6 +1369,7 @@ begin
            autonegotiation => autonegotiation,
            pirq            => 11,
            debugmem        => 0,
+           edclsepahb      => CFG_EN_DBGBUS,
            tech            => fabtech
          )
          port map(

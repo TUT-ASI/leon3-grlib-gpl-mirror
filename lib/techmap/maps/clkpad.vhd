@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -82,7 +82,7 @@ begin
     u0 : rhs65_inpad generic map (level, voltage) port map (pad, o); lock <= '1';
   end generate;
   dar : if (tech = dare) generate
-    u0 : dare_inpad generic map (level, voltage) port map (pad, o); lock <= '1';
+    u0 : dare_inpad generic map (level, voltage, filter) port map (pad, o); lock <= '1';
   end generate;
   ihp : if (tech = ihp25) generate
     u0 : ihp25_clkpad generic map (level, voltage) port map (pad, o); lock <= '1';

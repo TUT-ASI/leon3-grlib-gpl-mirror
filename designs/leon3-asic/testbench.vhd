@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -43,7 +43,6 @@ entity testbench is
     padtech   : integer := CFG_PADTECH;
     clktech   : integer := CFG_CLKTECH;
     disas     : integer := CFG_DISAS; -- Enable disassembly to console
-    dbguart   : integer := CFG_DUART; -- Print UART on console
     pclow     : integer := CFG_PCLOW;
 
     clkperiod : integer := 20;    -- system clock period
@@ -178,7 +177,7 @@ begin
   
   d3 : entity work.leon3mp
         generic map ( 
-           fabtech, memtech, padtech, clktech, disas, dbguart, pclow )
+           fabtech, memtech, padtech, clktech, disas, pclow )
         port map (
            rst, clksel, clk, lock, error, wdogn, address, data, 
            cb(7 downto 0), sdclk, sdcsn, sdwen, 
@@ -300,6 +299,8 @@ begin
   test0 :  grtestmod
     port map ( rst, clk, error, address(21 downto 2), data,
              iosn, oen, writen, brdyn);
+
+  up0: uartprint port map (txd1);
 
   data <= buskeep(data) after 5 ns;
   cb <= buskeep(cb) after 5 ns;

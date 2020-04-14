@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -50,7 +50,8 @@ entity ddr3ram is
     density: integer range 2 to 6 := 3;  -- 2:512M 3:1G 4:2G 5:4G 6:8G bits/chip
     pagesize: integer range 1 to 2 := 1;  -- 1K/2K page size (controls tRRD)
     changeendian: integer range 0 to 32 := 0;
-    initbyte: integer := 0
+    initbyte: integer := 0;
+    jitter_tol: integer := 50
     );
   port (
     ck: in std_ulogic;
@@ -113,7 +114,7 @@ architecture sim of ddr3ram is
   signal initdone: boolean := false;
 
   -- Small delta-t to adjust calculations for jitter tol.
-  constant deltat: time := 50 ps;
+  constant deltat: time := jitter_tol * (1 ps);
 
   -- Timing parameters
   constant tWR: time := 15 ns;

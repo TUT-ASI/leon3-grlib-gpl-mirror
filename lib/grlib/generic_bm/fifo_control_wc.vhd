@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@ use work.generic_bm_pkg.all;
 entity fifo_control_wc is
   generic (
     async_reset : boolean;
+    lendian_en  : integer := 0;
     be_dw       : integer := 32);
   port (
     clk         : in  std_logic;
@@ -68,13 +69,14 @@ architecture rtl of fifo_control_wc is
 
 begin  -- rtl
 
-  inp.fe_wdata <= byte_swap(fe_wdata);
+  inp.fe_wdata <= byte_swap(fe_wdata) when lendian_en = 0 else fe_wdata;
 
   comb : process(r, fifo_wc_in, inp)
     variable v          : reg_type;
     variable shift_data : std_logic;
     variable read_data  : std_logic_vector(be_dw-1 downto 0);
     variable fe_ren_v   : std_logic;
+    variable be_rdata_endian : std_logic_vector(be_dw-1 downto 0);
   begin
 
     v          := r;
@@ -156,8 +158,14 @@ begin  -- rtl
       end loop;
     end loop;
     
-    be_rdata <= byte_swap(write_byte_align(read_data, fifo_wc_in.be_rsize, be_dw));
+    --be_rdata <= byte_swap(write_byte_align(read_data, fifo_wc_in.be_rsize, be_dw));
+    be_rdata_endian := byte_swap(write_byte_align(read_data, fifo_wc_in.be_rsize, be_dw));
+    if lendian_en /= 0 then
+      be_rdata_endian :=write_byte_align(read_data, fifo_wc_in.be_rsize, be_dw);
+    end if;
 
+    be_rdata <= be_rdata_endian;
+    
     fifo_wc_out.fifo_valid_wc <= r.valid;
     fifo_wc_out.fe_ren        <= fe_ren_v;
     

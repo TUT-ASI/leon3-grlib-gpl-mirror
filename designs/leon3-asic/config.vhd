@@ -214,6 +214,4 @@ package config is
   constant CFG_GRGPIO_WIDTH : integer := (16);
 -- I2C master
   constant CFG_I2C_ENABLE : integer := 1;
--- GRLIB debugging
-  constant CFG_DUART : integer := 0;
 end;

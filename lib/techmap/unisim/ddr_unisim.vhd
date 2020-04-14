@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -86,10 +86,30 @@ architecture rtl of unisim_iddr_reg is
   );
     end component;
 
+	component IDDRE1
+		generic(DDR_CLK_EDGE   : string := "SAME_EDGE";
+		        IS_CB_INVERTED : bit    := '0';
+		        IS_C_INVERTED  : bit    := '0'
+		       );
+		port(Q1 : out std_ulogic;
+		     Q2 : out std_ulogic;
+		     C  : in  std_ulogic;
+		     CB : in  std_ulogic;
+		     D  : in  std_ulogic;
+		     R  : in  std_ulogic
+		    );
+	end component;
+	attribute BOX_TYPE of IDDRE1 : component is "PRIMITIVE";
+
   signal preQ1, preQ2   : std_ulogic;
   signal D_delay : std_ulogic;
    
 begin
+    KU : if (tech = kintexu) generate
+	    U0 : IDDRE1 generic map( IS_CB_INVERTED => '1')
+		    Port map(Q1 => Q1, Q2 => Q2, C => C1, CB => C1, D => D, R => R);
+    end generate;
+
      V7 : if (tech = virtex7) or (tech = kintex7) or (tech = artix7) generate
       align : if arch = 0 generate
         U0 : IDDR generic map( DDR_CLK_EDGE => "SAME_EDGE")

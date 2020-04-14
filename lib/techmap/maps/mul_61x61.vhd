@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -32,8 +32,8 @@ use techmap.gencomp.all;
 entity mul_61x61 is
   generic (multech : integer := 0;
            fabtech : integer := 0);
-    port(A       : in std_logic_vector(60 downto 0);
-         B       : in std_logic_vector(60 downto 0);
+    port(NA      : in std_logic_vector(60 downto 0);
+         NB      : in std_logic_vector(60 downto 0);
          EN      : in std_logic;
          CLK     : in std_logic;
          PRODUCT : out std_logic_vector(121 downto 0));
@@ -50,8 +50,8 @@ component dw_mul_61x61 is
 end component;
 
 component gen_mul_61x61 is
-    port(A       : in std_logic_vector(60 downto 0);
-         B       : in std_logic_vector(60 downto 0);
+    port(NA      : in std_logic_vector(60 downto 0);
+         NB      : in std_logic_vector(60 downto 0);
          EN      : in std_logic;
          CLK     : in std_logic;
          PRODUCT : out std_logic_vector(121 downto 0));
@@ -110,10 +110,27 @@ port(
   PRODUCT : out std_logic_vector(121 downto 0));
 end component;
 
+signal A, B: std_logic_vector(60 downto 0);
+
+constant use_gen_mul: boolean := (multech=0 or
+                                  (multech=3 and fabtech/=axdsp and
+                                   fabtech/=virtex5 and fabtech/=virtex6));
 begin
 
-  gen0 : if multech = 0 generate
-    mul0 : gen_mul_61x61 port map (A, B, EN, CLK, PRODUCT);
+  gen0 : if use_gen_mul generate
+    mul0 : gen_mul_61x61 port map (NA, NB, EN, CLK, PRODUCT);
+    A <= (others => '0');
+    B <= (others => '0');
+  end generate;
+
+  preg: if not use_gen_mul generate
+    p: process(CLK)
+    begin
+      if rising_edge(CLK) then
+        A <= NA;
+        B <= NB;
+      end if;
+    end process;
   end generate;
 
   dw0 : if multech = 1 generate
@@ -129,9 +146,6 @@ begin
     end generate;
     xc6v : if fabtech = virtex6 generate
       mul0 : virtex6_mul_61x61 port map (A, B, EN, CLK, PRODUCT);
-    end generate;
-    gen0 : if not ((fabtech = axdsp) or (fabtech = virtex5) or (fabtech = virtex6)) generate
-      mul0 : gen_mul_61x61 port map (A, B, EN, CLK, PRODUCT);
     end generate;
   end generate;
 

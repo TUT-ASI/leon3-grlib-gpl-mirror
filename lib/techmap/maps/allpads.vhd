@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -807,6 +807,17 @@ end component;
 
 component rhumc_lvds_combo 
   generic (voltage : integer := 0; width : integer := 1);
+  port (odpadp, odpadn, ospadp, ospadn : out std_logic_vector(0 to width-1); 
+        odval, osval, en : in std_logic_vector(0 to width-1); 
+	idpadp, idpadn, ispadp, ispadn : in std_logic_vector(0 to width-1);
+	idval, isval : out std_logic_vector(0 to width-1);
+        powerdown : in std_logic_vector(0 to width-1);
+        powerdownrx : in std_logic_vector(0 to width-1);
+	lvdsref : out std_logic);
+end component;
+
+component dare_lvds_combo 
+  generic (voltage : integer := 0; width : integer := 1; nobiasmod : integer := 0);
   port (odpadp, odpadn, ospadp, ospadn : out std_logic_vector(0 to width-1); 
         odval, osval, en : in std_logic_vector(0 to width-1); 
 	idpadp, idpadn, ispadp, ispadn : in std_logic_vector(0 to width-1);

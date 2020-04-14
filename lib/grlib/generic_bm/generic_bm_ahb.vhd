@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -47,6 +47,7 @@ entity generic_bm_ahb is
     --in terms of bytes
     burst_chop_mask  : integer range 8 to 1024  := 1024;
     excl_enabled     : boolean                  := true;
+    lendian_en       : integer                  := 0;
     bm_info_print    : integer                  := 0;
     hindex           : integer                  := 0;
     venid            : integer                  := 0;
@@ -186,6 +187,7 @@ begin  -- rtl
       be_dw        => be_dw_int,
       max_size     => max_size,
       excl_enabled => excl_enabled,
+      lendian_en   => lendian_en,
       addr_width   => addr_width)
     port map(
       clk       => clk,
@@ -206,6 +208,7 @@ begin  -- rtl
   fifo_wc : fifo_control_wc
     generic map (
       async_reset  => async_reset,
+      lendian_en => lendian_en,
       be_dw => be_dw_int)
     port map (
       clk         => clk,
@@ -220,6 +223,7 @@ begin  -- rtl
       async_reset      => async_reset,
       be_dw            => be_dw_int,
       be_rd_pipe       => be_rd_pipe,
+      lendian_en       => lendian_en,
       unalign_load_opt => unalign_load_opt)
     port map(
       clk         => clk,
@@ -283,6 +287,7 @@ begin  -- rtl
       max_burst_length_ptwo => max_burst_length_ptwo,
       be_dw                 => be_dw,
       be_dw_int             => be_dw_int,
+      lendian_en            => lendian_en,
       addr_width            => addr_width)
     port map(
       clk        => clk,

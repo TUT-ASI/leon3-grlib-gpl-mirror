@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -57,7 +57,6 @@ entity leon3core is
     padtech     : integer := CFG_PADTECH;
     clktech     : integer := CFG_CLKTECH;
     disas       : integer := CFG_DISAS; -- Enable disassembly to console
-    dbguart     : integer := CFG_DUART; -- Print UART on console
     pclow       : integer := CFG_PCLOW;
     scantest    : integer := CFG_SCAN
   );
@@ -397,7 +396,7 @@ begin
 
   ua1 : if CFG_UART1_ENABLE /= 0 generate
     apbuart0 : apbuart      -- UART 1
-      generic map (pindex => 1, paddr => 1,  pirq => 2, console => dbguart,
+      generic map (pindex => 1, paddr => 1,  pirq => 2,
        fifosize => CFG_UART1_FIFO)
       port map (rstapbn, clkapb, apbi, apbo(1), u1i, u1o);
     u1i.ctsn <= '0'; u1i.extclk <= '0';

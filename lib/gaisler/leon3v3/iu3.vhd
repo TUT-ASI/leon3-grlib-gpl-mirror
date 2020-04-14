@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -633,10 +633,12 @@ architecture rtl of iu3 is
       asr17(24 downto 23) := "00";
     end if;
     if (clk2x > 8) then
-      asr17(16 downto 15) := conv_std_logic_vector(clk2x-8, 2);
-      asr17(17) := '1'; 
-    elsif (clk2x > 0) then
-      asr17(16 downto 15) := conv_std_logic_vector(clk2x, 2);
+      asr17(17) := '1';
+    end if;
+    if ((clk2x mod 8)>3) then
+      asr17(16 downto 15) := "11";
+    else
+      asr17(16 downto 15) := conv_std_logic_vector(clk2x mod 8, 2);
     end if;
     asr17(14) := r.w.s.dwt;
     if svt = 1 then asr17(13) := r.w.s.svt; end if;
@@ -1727,7 +1729,7 @@ begin
     (r.e.ctrl.inst(29 downto 25) = "10100")
   then
     vwawp := not r.e.ctrl.annul;
-    vwcwp := vwcwp or (r.e.op1(5) and not r.e.ctrl.annul);
+    vwcwp := vwcwp or ((r.e.op1(5) xor r.e.op2(5)) and not r.e.ctrl.annul);
   else vwawp := '0';
   end if;
   wcwp := vwcwp;
@@ -1870,7 +1872,7 @@ end;
         ldcheck1 := '1'; ldchkra := '0';
         case r.d.cnt is
         when "00" =>
-          if (lddel = 2) and (op3(2) = '1') and (op3(5) = '0') then ldcheck3 := '1'; end if; 
+          if (lddel = 2 or (MACPIPE and mulinsn='1')) and (op3(2) = '1') and (op3(5) = '0') then ldcheck3 := '1'; end if; 
           ldcheck2 := not i; ldchkra := '1';
         when "01" =>
           ldcheck2 := not i;
@@ -1913,7 +1915,9 @@ end;
     if (((r.e.ctrl.ld or r.e.mac) and r.e.ctrl.wreg and ldchkex) = '1') and 
         ((lddel = 2) or (MACPIPE and (r.e.mac = '1')) or ((MULTYPE = 3) and (r.e.mul = '1'))) and
        (((ldcheck1 = '1') and (r.e.ctrl.rd = rfa1)) or
-        ((ldcheck2 = '1') and (r.e.ctrl.rd = rfa2)))
+        ((ldcheck2 = '1') and (r.e.ctrl.rd = rfa2)) or
+        (MACPIPE and r.e.mac='1' and ldcheck3='1' and r.e.ctrl.rd=rfrd)
+        )
     then ldlock := '1'; end if;
 
     de_fins_holdx := BPRED and fins and (r.a.bp or r.e.bp); -- skip BP on FPU inst in branch target address
@@ -1991,6 +1995,9 @@ end;
             if r.d.inull = '1' then -- contention with JMPL
               hold_pc := '1'; annul_current := '1'; annul_next := '0';
             end if;
+            if r.a.bp='1' or (r.e.bp='1' and r.a.ctrl.annul='1') then
+              hold_pc := '1'; annul_current := '1'; annul_next := '0';
+            end if;
           end if;
         end if;
       when FMT3 =>
@@ -2027,6 +2034,9 @@ end;
           rett_inst := '1'; --su := sregs.ps; 
         when JMPL =>
           de_jmpl := '1';
+          if r.a.bp='1' or (r.e.bp='1' and r.a.ctrl.annul='1') then
+            hold_pc := '1'; annul_current := '1';
+          end if;
           if (BLOCKBPMISS and (eocl or r.f.branch) and r.e.bp)='1' then
             hold_pc := '1'; annul_current := '1';
           end if;
@@ -4330,6 +4340,7 @@ begin
     dci.dsuen    <= r.m.dci.dsuen;
     dci.msu    <= r.m.su;
     dci.esu    <= r.e.su;
+    dci.casa   <= r.m.casa;
     dbgo.ipend <= v.x.ipend or irqi.forceerr or irqi.pwdsetaddr;
     
     v.x.itrhit := r.m.itrhit;
@@ -4408,7 +4419,7 @@ begin
       
     v.m.ctrl.annul := v.m.ctrl.annul or v.x.annul_all;
     v.m.ctrl.wicc := r.e.ctrl.wicc and not v.x.annul_all; 
-    v.m.mac := r.e.mac;
+    v.m.mac := r.e.mac and not r.e.ctrl.annul;
     if (DBGUNIT and (r.x.rstate = dsu2)) then v.m.ctrl.ld := '1'; end if;
     dci.eenaddr  <= v.m.dci.enaddr;
     dci.eaddress <= ex_add_res(32 downto 1);
@@ -4496,6 +4507,7 @@ begin
     if CASAEN and (de_inst(31 downto 30) = LDST) and (de_inst(24 downto 19) = CASA) then
       case r.d.cnt is
       when "00" | "01" => de_inst(4 downto 0) := "00000"; -- rs2=0
+      when "10" => if LDDEL=2 then de_inst(4 downto 0) := "00000"; end if;
       when others =>
       end case;
     end if;
@@ -4911,6 +4923,10 @@ begin
           dsur <= dsuin;
         else
           dsur.crdy <= dsuin.crdy;
+          dsur.tov <= dsuin.tov;
+          dsur.tlim <= dsuin.tlim;
+          dsur.tovb <= dsuin.tovb;
+          dsur.asifiltmask <= dsuin.asifiltmask;
         end if;
         if rstn = '0' then
           if RESET_ALL then

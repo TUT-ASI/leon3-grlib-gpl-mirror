@@ -297,7 +297,3 @@
 #define CONFIG_GRGPIO_ENABLE 1
 #define CONFIG_GRGPIO_WIDTH (8)
 #define CONFIG_GRGPIO_IMASK 0000
-/*
- * VHDL Debugging        
- */
-#undef  CONFIG_DEBUG_UART

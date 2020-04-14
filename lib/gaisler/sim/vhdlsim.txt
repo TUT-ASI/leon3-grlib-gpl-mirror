@@ -29,4 +29,6 @@ ahbram_sim.vhd
 aximem.vhd
 axirep.vhd
 axixmem.vhd
+sramtestmod.vhd
 
+uartprint.vhd

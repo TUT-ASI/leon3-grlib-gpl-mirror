@@ -230,6 +230,4 @@ package config is
   constant CFG_KBD_ENABLE : integer := 1;
   constant CFG_VGA_ENABLE : integer := 0;
   constant CFG_SVGA_ENABLE : integer := 1;
--- GRLIB debugging
-  constant CFG_DUART : integer := 0;
 end;

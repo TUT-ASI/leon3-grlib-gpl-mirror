@@ -1,3 +1,110 @@
+----------------------- Release 2020.1-b4251 ---------------------------
+
+2020-04-14	LEON3 DSU: Fix additional problem with DSU in
+		double clocking configuration that was accidentally
+		introduced by the fixes made in 2019.4-b4246. Only
+		affects LEON3 in double clocked (clk2x>0) configuration.
+
+2020-03-18	Added GRDMAC2 IP core to GRLIB.
+
+2020-02-03	VC707: Separate debug bus is can be enbaled by setting the
+                CFG_DBGBUS_EN constant to something other than 0. 
+                When seperate debug bus is enabled, While connecting with
+		grmon -ioarea 0xEFFFF000 flag must be used.
+
+2020-01-30	LEON3: The SDIV/SDIVCC instruction produced incorrect
+		results and/or condition codes for certain cases
+		involving a 64-bit dividend outside the signed 32-bit
+		range, and where the result is overflow or near-overflow.
+
+		If the dividend is positive >= 2^31, the divisor is
+		negative and the result is exactly the minimum negative
+		integer, the correct result was returned but the overflow
+		flag was set unexpectedly.
+
+		If both the dividend and divisor are negative and should
+		result in a positive overflow, the minimum negative
+		integer was returned and the overflow did not get set.
+
+		These cases are not known to be produced by existing
+		compilers. Handwritten assembler routines could be affected.
+
+2020-01-28	LEON3: Fix issue affecting only LDDEL=2
+		configuration, where the CASA instruction would not
+		update data cache contents with the new data after the
+		swap.
+
+2019-12-25	Added LEON5 and NOEL-V sections to GRIP.
+
+2019-12-16	VC707: Updated all IPs to Vivado 2018.1 
+
+2019-12-12	KCU105: Added Ethernet support and updated all IPs to 
+                Vivado 2018.1 
+
+----------------------- Release 2019.4-b4246 ---------------------------
+
+2019-12-02	AHBDPRAM: Added generic to control the prefetch and
+		cache bits in the plug&play area to allow the user to
+		configure these capabilities of the core.
+
+2019-11-13	Added template design for Digilent Arty A7
+		(leon3-digilent-arty-a7).
+
+2019-10-22	TECHMAP: Kintex7 Techmap updated for 1-PORT, 2-PORT and 
+		DUAL-PORT memories. 
+
+2019-08-26	LEON3: For software compatibility, always treat CASA
+		with ASI 0xA as supervisor access when in supervisor
+		mode and user access when in user mode. This change
+		only affects configuration with mmu=2 that was added
+		in 2017.3-b4211.
+
+2019-08-22	Template designs leon3-altera-c5ekit and
+		leon3-terasic-sockit: irqi/irqo vectors were defined
+		using "downto" instead of "to". This caused the wrong
+		CPU to start up after reset for multiprocessor configs.
+
+2019-08-21	LEON3: Fix issues related to multiply-accumulate (MAC)
+		instructions. See note GRLIB-TN-0017 for details.
+		Only applicable when mac support is included in design
+		(mac generic is non-zero).
+
+2019-08-13	LEON3: Bugfix for register file partitioning extension
+		(enabled only when altwin generic is 1). Writing to ASR20
+		with WCWP (bit 5) set would not work if the source
+		register is given in the rs2 field in the opcode.
+
+2019-08-08	LEON3: Make illegal DCTI couples such as bicc,bicc and
+		bicc,jmpl behave consistently when branch prediction and
+		DBPM are enabled.
+
+2019-08-01	LEON3 template designs: Add new scheme for UART printing
+		during simulation, based on programming UART to maximum
+		speed together with a new uartprint module in the test
+		bench that decodes the transmitted characters. This can
+		replace the existing "accelerated UART tracing" option.
+		Advantages of the new scheme are usability in gate level
+		simulation, and compatibility with BCC2 binaries.
+		Initially implemented on the LEON3MP, LEON3-ASIC and
+		LEON3-GR-XC3S-1500 template designs.
+
+2019-07-31	LEON3: Writes via the DSU to instruction trace control
+		register 1 while the processor is running could fail if
+		the write is done when the processor is held (i.e during
+		cache miss).
+
+2019-07-31	LEON3 DSU: Bugfixes for ASI access and single stepping
+		in double clocking configuration, these issues only
+		affect 1:4 and higher clock ratios.
+
+2019-07-31	LEON3: Set asr17 bits 16:15 to "11" in double clocked
+		configuration if clock ratio higher than 4 is used.
+
+2019-07-29	TECHMAP: Bugfix for pipeline=1 and separate clocks in
+		generic_syncram_2p.
+
+2019-06-26	AHBCTRL: Endianness bit added to PNP.
+
 ----------------------- Release 2019.2-b4241 ---------------------------
 
 2019-05-28	ML605 template design bugfix when targeting the

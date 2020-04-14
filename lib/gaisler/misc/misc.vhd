@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -214,12 +214,13 @@ package misc is
 
   component ahbdpram
   generic (
-    hindex  : integer := 0;
-    haddr   : integer := 0;
-    hmask   : integer := 16#fff#;
-    tech    : integer := 2;
-    abits   : integer range 8 to 19 := 8;
-    bytewrite : integer range 0 to 1 := 0
+    hindex    : integer := 0;
+    haddr     : integer := 0;
+    hmask     : integer := 16#fff#;
+    tech      : integer := 2;
+    abits     : integer range 8 to 19 := 8;
+    bytewrite : integer range 0 to 1 := 0;
+    cacheable : integer range 0 to 1 := 1
   );
   port (
     rst     : in  std_ulogic;

@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -41,7 +41,6 @@ entity core is
     padtech   : integer := CFG_PADTECH;
     clktech   : integer := CFG_CLKTECH;
     disas     : integer := CFG_DISAS; -- Enable disassembly to console
-    dbguart   : integer := CFG_DUART; -- Print UART on console
     pclow     : integer := CFG_PCLOW;
     scantest  : integer := CFG_SCAN;
     bscanen   : integer := CFG_BOUNDSCAN_EN;
@@ -276,7 +275,7 @@ begin
     when (testoen = '0') else (others => '1') when oepol = 1 else (others => '0');
 
   leon3core0 : entity work.leon3core
-    generic map ( fabtech, memtech, padtech, clktech, disas, dbguart,
+    generic map ( fabtech, memtech, padtech, clktech, disas,
     pclow, scantest*(1 - is_fpga(fabtech)))
   port map (
     resetn, clksel, lclk, lclk, --lclkapb,

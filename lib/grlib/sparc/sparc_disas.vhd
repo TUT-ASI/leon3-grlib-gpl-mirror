@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -720,6 +720,7 @@ begin
     else grlib.testlib.print ("cpu" & tost(ndx) & ": " & ins2st(pc, op, rex)); end if;
   end if;
 end;
+
 
 procedure print_fpinsn(ndx: integer; pc, op : std_logic_vector(31 downto 0);
                        res : std_logic_vector(63 downto 0);

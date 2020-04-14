@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -39,6 +39,7 @@ use gaisler.can.all;
 use gaisler.net.all;
 use gaisler.jtag.all;
 use gaisler.gr1553b_pkg.all;
+use gaisler.grdmac_pkg.all;
 -- pragma translate_off
 use gaisler.sim.all;
 -- pragma translate_on
@@ -130,6 +131,7 @@ end;
 
 architecture rtl of leon3mp is
 
+constant CFG_GRDMAC_ENABLE : integer := 1;
 constant blength : integer := 12;
 constant fifodepth : integer := 8;
 
@@ -197,6 +199,8 @@ signal tck, tms, tdi, tdo : std_logic;
 signal fpi : grfpu_in_vector_type;
 signal fpo : grfpu_out_vector_type;
 
+signal irq_trig : std_logic_vector(63 downto 0);
+
 constant BOARD_FREQ : integer := 50000;	-- Board frequency in KHz
 constant CPU_FREQ : integer := BOARD_FREQ * CFG_CLKMUL / CFG_CLKDIV;  -- cpu frequency in KHz
 constant IOAEN : integer := CFG_CAN;
@@ -237,9 +241,10 @@ begin
 
   ahb0 : ahbctrl 		-- AHB arbiter/multiplexer
   generic map (defmast => CFG_DEFMST, split => CFG_SPLIT, 
+  ahbtrace => CFG_AHB_DTRACE,
 	rrobin => CFG_RROBIN, ioaddr => CFG_AHBIO, ioen => IOAEN,
 	nahbm => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SPI2AHB+CFG_GRETH+
-               CFG_GR1553B_ENABLE,
+               CFG_GR1553B_ENABLE+CFG_GRDMAC_ENABLE,
 	nahbs => 8)
   port map (rstn, clkm, ahbmi, ahbmo, ahbsi, ahbso);
 
@@ -673,6 +678,45 @@ begin
               busbinen, busbinp, busbinn, busboutin, busboutp, busboutn);
 
 
+-----------------------------------------------------------------------
+--- AHB DMA
+-----------------------------------------------------------------------
+
+  dma: if CFG_GRDMAC_ENABLE /= 0 generate
+    dma0 : grdmac_1p
+    generic map (
+      hmindex     => (
+        CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SPI2AHB+CFG_GRETH+
+        CFG_GR1553B_ENABLE
+      ),
+      hirq        => 3,
+      pindex      => 12,
+      paddr       => 16,
+      ndmach      => 16,
+      bufsize     => 4 * 1024,
+      burstbound  => 64,
+      memtech     => memtech,
+      testen      => 0,
+      ft          => 0,
+      -- only 32-bit AHB access
+      wbmask      => 0,
+      busw        => 64
+    )
+    port map (
+      rst         => rstn,
+      clk         => clkm,
+      ahbmi       => ahbmi,
+      ahbmo       => ahbmo(
+        CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_SPI2AHB+CFG_GRETH+
+        CFG_GR1553B_ENABLE
+      ),
+      apbi        => apbi,
+      apbo        => apbo(12),
+      irq_trig    => irq_trig
+    );
+
+    irq_trig <= x"00000000" & apbi.pirq(31 downto 0);
+  end generate;
   
 -----------------------------------------------------------------------
 ---  AHB RAM ----------------------------------------------------------

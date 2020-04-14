@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -31,6 +31,8 @@ library grlib;
 use grlib.stdlib.all;
 use grlib.amba.all;
 use grlib.devices.all;
+use grlib.config_types.all;
+use grlib.config.all;
 library gaisler;
 use gaisler.leon3.all;
 
@@ -72,6 +74,8 @@ entity l3stat is
 end;
 
 architecture rtl of l3stat is
+
+constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) /= 0;
 
 constant REVISION : integer := 1 - forcer0;
 constant pconfig  : apb_config_type := (
@@ -288,10 +292,11 @@ signal rc, rcin : cnt_type_vector(0 to ncnt-1);
 signal mrc, mrcin : mcnt_type_vector(0 to nmax_right);
 signal r, rin : reg_type;
 
+
 begin
 
 
-  comb : process(r, rc, mrc, rstn, apbi, dbgo, stati, astat)
+  comb : process(r, rc, mrc, rstn, apbi, dbgo, stati, astat, dsuo, apb2i, ahbsi)
     variable rdata : std_logic_vector(31 downto 0);
     variable rdata2 : std_logic_vector(31 downto 0);
     variable rv : cnt_type_vector(0 to MAX_CNT-1);
@@ -484,7 +489,7 @@ begin
       v.active := '0'; v.hmaster := (others => '0');
     end if;
       
-    if rstn = '0' then 
+    if rstn = '0' and not RESET_ALL then 
       for i in 0 to ncnt-1 loop rv(i).en := '0'; rv(i).inc := '0'; end loop;
       if lahben /= 0 then v.active := '0'; end if;
     end if;
@@ -513,6 +518,9 @@ begin
   begin
     if rising_edge(clk) then
       rc <= rcin;
+      if rstn = '0' and RESET_ALL then 
+        for i in 0 to ncnt-1 loop rc(i) <= cnt_none; end loop;
+      end if;
     end if;
   end process;
   
@@ -521,6 +529,9 @@ begin
     begin
       if rising_edge(clk) then
         mrc <= mrcin;
+        if rstn = '0' and RESET_ALL then 
+          for i in 0 to nmax_right loop mrc(i) <= mcnt_none; end loop;
+        end if;
       end if;
     end process;
   end generate;
@@ -530,7 +541,14 @@ begin
   
   ahbregs : if lahben /= 0 or LATCH_CNT generate
     regs : process(clk)
-    begin if rising_edge(clk) then r <= rin; end if; end process;
+    begin 
+      if rising_edge(clk) then 
+        r <= rin; 
+        if rstn = '0' and RESET_ALL then 
+           r <= ((others => '0'), '0', '0', (others => '0'));
+        end if;
+      end if; 
+    end process;
   end generate;
   noahbregs : if lahben = 0 and not LATCH_CNT generate
     r <= ((others => '0'), '0', '0', (others => '0'));

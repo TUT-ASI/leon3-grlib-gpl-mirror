@@ -2,6 +2,7 @@
 synplify
 techmap           vhdlstd=93
 spw
+spfi
 eth
 opencores
 ihp

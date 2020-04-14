@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -65,10 +65,10 @@ package devices is
   constant VENDOR_JHUAPL_SES : amba_vendor_type := 16#27#;
   constant VENDOR_SEMIBLOCKS : amba_vendor_type := 16#28#;
   constant VENDOR_S3         : amba_vendor_type := 16#31#;
-  constant VENDOR_UC_BERKELEY: amba_vendor_type := 16#AB#;
   constant VENDOR_TAS        : amba_vendor_type := 16#A5#;
   constant VENDOR_RECORE     : amba_vendor_type := 16#A6#;
   constant VENDOR_AAC        : amba_vendor_type := 16#AA#;
+  constant VENDOR_UC_BERKELEY: amba_vendor_type := 16#AB#;
   constant VENDOR_ACTEL      : amba_vendor_type := 16#AC#;
   constant VENDOR_APPLECORE  : amba_vendor_type := 16#AE#;
   constant VENDOR_C3E        : amba_vendor_type := 16#C3#;
@@ -269,6 +269,11 @@ package devices is
   constant GAISLER_SPFI          : amba_device_type := 16#0BC#;
   constant GAISLER_RV64GC        : amba_device_type := 16#0BD#;
   constant GAISLER_RVDM          : amba_device_type := 16#0BE#;
+  constant GAISLER_FTMCTRL2      : amba_device_type := 16#0BF#;
+  constant GAISLER_GRDMAC2       : amba_device_type := 16#0C0#;
+  constant GAISLER_GRSCRUB       : amba_device_type := 16#0C1#;
+  constant GAISLER_GRPLIC        : amba_device_type := 16#0C2#;
+  constant GAISLER_CLINT         : amba_device_type := 16#0C3#;
 
 -- Sun Microsystems
 
@@ -628,7 +633,7 @@ package devices is
     GAISLER_DDRSDMUX      => "Muxed FT DDR/SDRAM controller   ",
     GAISLER_AHBFROM       => "Flash ROM Memory                ",
     GAISLER_PCIEXP        => "Xilinx PCI EXPRESS Wrapper      ",
-    GAISLER_MIG_7SERIES   => "Xilinx MIG DDR3 Controller      ",
+    GAISLER_MIG_7SERIES   => "Xilinx MIG Controller           ",
     GAISLER_GRSPW2_SIST   => "GRSPW Router SIST               ",
     GAISLER_SGMII         => "XILINX SGMII Interface          ",
     GAISLER_RGMII         => "Gaisler RGMII Interface         ",
@@ -672,8 +677,13 @@ package devices is
     GAISLER_LEON5         => "LEON5 SPARC V8 Processor        ",
     GAISLER_LEON5DSU      => "LEON5 Debug Support Unit        ",
     GAISLER_SPFI          => "GRSPFI SpaceFibre Serial Link   ",
-    GAISLER_RV64GC        => "RV64GC RISC-V Processor         ",
+    GAISLER_RV64GC        => "NOEL-V RISC-V Processor         ",
     GAISLER_RVDM          => "RISC-V Debug Module             ",
+    GAISLER_FTMCTRL2      => "Memory controller with EDAC     ",
+    GAISLER_GRDMAC2       => "GRDMAC2 DMA Controller          ",
+    GAISLER_GRSCRUB       => "GRSCRUB FPGA Scrubber           ",
+    GAISLER_GRPLIC        => "RISC-V PLIC                     ",
+    GAISLER_CLINT         => "RISC-V CLINT                    ",
     others                => "Unknown Device                  ");
 
   constant gaisler_lib : vendor_library_type := (

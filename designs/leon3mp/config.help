@@ -1420,19 +1420,3 @@ CONFIG_GRGPIO_IMASK
   The I/O port interrupt mask defines which bits in the I/O port
   should be able to create an interrupt. 
 
-UART debugging
-CONFIG_DEBUG_UART
-  During simulation, the output from the UARTs is printed on the
-  simulator console. Since the ratio between the system clock and
-  UART baud-rate is quite high, simulating UART output will be very
-  slow. If you say Y here, the UARTs will print a character as soon
-  as it is stored in the transmitter data register. The transmitter
-  ready flag will be permanently set, speeding up simulation. However,
-  the output on the UART tx line will be garbled.  Has not impact on
-  synthesis, but will cause the LEON test bench to fail.
-
-FPU register tracing
-CONFIG_DEBUG_FPURF
-  If you say Y here, all writes to the floating-point unit register file
-  will be printed on the simulator console.
-

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -92,9 +92,12 @@ begin
     rhu : if tech = rhumc generate
       x0 : clkmux_rhumc port map (i0 => i0, i1 => i1, sel => seli, o => oi);
     end generate;
+    gf22x : if tech = gf22 generate
+      x0 : clkmux_gf22fdx port map (clki0 => i0, clki1 => i1, sel => seli, clko => oi);
+    end generate;
    
     noxil : if not((is_unisim(tech) = 1) or (tech = rhlib18t) or (tech = ut130) or
-                   (tech = easic45) or (tech = ut90) or (tech = saed32) or (tech = rhs65) or (tech = dare) or (tech = rhumc)) generate
+                   (tech = easic45) or (tech = ut90) or (tech = saed32) or (tech = rhs65) or (tech = dare) or (tech = rhumc) or (tech = gf22)) generate
       oi <= i0 when seli = '0' else i1;
     end generate;
 

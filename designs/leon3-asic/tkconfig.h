@@ -1128,9 +1128,9 @@
 #elif defined CONFIG_SPW_FT_TMR
 #define CONFIG_SPW_FT 2
 #elif defined CONFIG_SPW_FT_BCH
-#define CONFIG_SPW_FT 3
-#elif defined CONFIG_SPW_FT_TECHSPEC
 #define CONFIG_SPW_FT 4
+#elif defined CONFIG_SPW_FT_TECHSPEC
+#define CONFIG_SPW_FT 5
 #else
 #define CONFIG_SPW_FT 0
 #endif
@@ -1438,8 +1438,4 @@
 
 #ifndef CONFIG_I2C_ENABLE
 #define CONFIG_I2C_ENABLE 0
-#endif
-
-#ifndef CONFIG_DEBUG_UART
-#define CONFIG_DEBUG_UART 0
 #endif

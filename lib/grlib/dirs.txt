@@ -2,6 +2,7 @@ stdlib
 ftlib
 util
 sparc
+riscv
 modgen
 amba
 atf

@@ -345,8 +345,14 @@ __asm__(
  }
  {
    //bypass asi:
-   unsigned int i;
+   unsigned int i,j;
    i = leon_load_bp(RAMSTART);
+   leon_store_bp(RAMSTART,i);
+   j = *((unsigned long *)RAMSTART);
+   if (j != i) fail(16);
+   leon_store_bp(RAMSTART,i+1);
+   j = *((unsigned long *)RAMSTART); /* data in Dcache should be unchanged */
+   if (j != i) fail(17);
    leon_store_bp(RAMSTART,i);
  }
  //mmu off

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -32,8 +32,8 @@ use grlib.stdlib.all;
 use grlib.amba.all;
 use grlib.config_types.all;
 use grlib.config.all;
--- pragma translate_off
 use grlib.devices.all;
+-- pragma translate_off
 use std.textio.all;
 -- pragma translate_on
 
@@ -117,6 +117,7 @@ end record;
 
 constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
 constant ASYNC_RESET : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
+constant ENDIAN      : boolean := (GRLIB_CONFIG_ARRAY(grlib_little_endian) /= 0);
 constant RES_r : reg_type := (
   hmaster => 0, hmasterd => 0, hslave => 0, hmasterlock => '0',
   hmasterlockd => '0', hready => '1', defslv => '0',
@@ -540,13 +541,15 @@ begin
 
       -- device ID, library build and potentially debug information
       if r.haddr(10 downto 4) = "1111111" then
-        if hwdebug = 0 or r.haddr(3 downto 2) = "00" then
+        if r.haddr(3 downto 2) = "00" then
           v.hrdatas(15 downto 14) := conv_std_logic_vector(LIBVHDL_CFGVER, 2);
           v.hrdatas(13 downto 0) := conv_std_logic_vector(LIBVHDL_BUILD, 14);
           v.hrdatas(31 downto 16) := conv_std_logic_vector(devid, 16);
         elsif r.haddr(3 downto 2) = "01" then
+          v.hrdatas(0) := conv_std_logic(ENDIAN);
+        elsif hwdebug = 1 and r.haddr(3 downto 2) = "10" then
           for i in 0 to nahbmx-1 loop v.hrdatas(i) := msto(i).hbusreq; end loop;
-        else
+        elsif hwdebug = 1 then
           for i in 0 to nahbmx-1 loop v.hrdatas(i) := rsplit(i); end loop;
         end if;
       end if;

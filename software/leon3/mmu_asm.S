@@ -170,10 +170,22 @@ casa_test:
 	ld	[%fp], %o3
 	sub	%o3, %fp, %o3
 	subcc	%o3, 2, %i0
-	be	1f
+	bne	8f
 	add	%g0, 1, %o0
-	call	fail
+        set 51, %l0
+        set 34, %l1
+        st %l0, [%fp]
+        casa [%fp] 0xA, %l0, %l1
+        ld [%fp], %l2
+        cmp %l1, 51
+        bne 8f
+        add %g0, 2, %o0
+        cmp %l2, 34
+        bne 8f
+        add %g0, 3, %o0
+        b 9f
+         nop
+8:      call	fail
 	nop
-1:
-	ret
+9:      ret
 	restore

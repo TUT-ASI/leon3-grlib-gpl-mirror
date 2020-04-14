@@ -644,7 +644,7 @@ set active_menus [list]
 set processed_top_level 0
 set ARCH sparc
 set menus_per_column 4
-set total_menus 25
+set total_menus 24
 
 proc toplevel_menu {num} {
 	if {$num == 4} then {return 3}
@@ -5165,13 +5165,14 @@ proc menu24 {w title} {
 	wm title $w "UARTs, timers and irq control         " 
 
 	bind $w <Escape> "catch {focus $oldFocus}; destroy $w; unregister_active 24; break"
-	set nextscript "catch {focus $oldFocus}; destroy $w; unregister_active 24; catch {destroy .menu13}; unregister_active 13; menu25 .menu25 \"$title\""
+	set nextscript "catch {focus $oldFocus}; menu25 .menu25 \"$title\""
 	frame $w.f
 	button $w.f.back -text "OK" \
 		-width 15 -command "catch {focus $oldFocus}; destroy $w; unregister_active 24"
 	button $w.f.next -text "Next" -underline 0\
 		-width 15 -command $nextscript
-	bind all <Alt-n> $nextscript
+	$w.f.next configure -state disabled
+	bind all <Alt-n> "puts \"no more menus\" "
 	button $w.f.prev -text "Prev" -underline 0\
 		-width 15 -command "catch {focus $oldFocus}; destroy $w; unregister_active 24; menu23 .menu23 \"$title\""
 	bind $w <Alt-p> "catch {focus $oldFocus}; destroy $w; unregister_active 24; menu23 .menu23 \"$title\";break"
@@ -5367,104 +5368,6 @@ proc update_define_menu24 {} {
 	if {($CONFIG_GRGPIO_ENABLE == 1)} then {validate_int CONFIG_GRGPIO_WIDTH "$CONFIG_GRGPIO_WIDTH" 8}
 	global CONFIG_GRGPIO_IMASK
 	if {($CONFIG_GRGPIO_ENABLE == 1)} then {validate_hex CONFIG_GRGPIO_IMASK "$CONFIG_GRGPIO_IMASK" 0000}
-}
-
-
-menu_option menu25 25 "VHDL Debugging        "
-proc menu25 {w title} {
-	set oldFocus [focus]
-	catch {destroy $w; unregister_active 25}
-	toplevel $w -class Dialog
-	wm withdraw $w
-	global active_menus
-	set active_menus [lsort -integer [linsert $active_menus end 25]]
-	message $w.m -width 400 -aspect 300 -text \
-		"VHDL Debugging        "  -relief raised
-	pack $w.m -pady 10 -side top -padx 10
-	wm title $w "VHDL Debugging        " 
-
-	bind $w <Escape> "catch {focus $oldFocus}; destroy $w; unregister_active 25; break"
-	set nextscript "catch {focus $oldFocus}; menu26 .menu26 \"$title\""
-	frame $w.f
-	button $w.f.back -text "Main Menu" \
-		-width 15 -command "catch {focus $oldFocus}; destroy $w; unregister_active 25"
-	button $w.f.next -text "Next" -underline 0\
-		-width 15 -command $nextscript
-	$w.f.next configure -state disabled
-	bind all <Alt-n> "puts \"no more menus\" "
-	button $w.f.prev -text "Prev" -underline 0\
-		-width 15 -command "catch {focus $oldFocus}; destroy $w; unregister_active 25; menu24 .menu24 \"$title\""
-	bind $w <Alt-p> "catch {focus $oldFocus}; destroy $w; unregister_active 25; menu24 .menu24 \"$title\";break"
-	pack $w.f.back $w.f.next $w.f.prev -side left -expand on
-	pack $w.f -pady 10 -side bottom -anchor w -fill x
-	frame $w.topline -relief ridge -borderwidth 2 -height 2
-	pack $w.topline -side top -fill x
-
-	frame $w.botline -relief ridge -borderwidth 2 -height 2
-	pack $w.botline -side bottom -fill x
-
-	frame $w.config
-	pack $w.config -fill y -expand on
-
-	scrollbar $w.config.vscroll -command "$w.config.canvas yview"
-	pack $w.config.vscroll -side right -fill y
-
-	canvas $w.config.canvas -height 1\
-		-relief flat -borderwidth 0 -yscrollcommand "$w.config.vscroll set" \
-		-width [expr [winfo screenwidth .] * 1 / 2] 
-	frame $w.config.f
-	bind $w <Key-Down> "$w.config.canvas yview scroll  1 unit;break;"
-	bind $w <Key-Up> "$w.config.canvas yview scroll  -1 unit;break;"
-	bind $w <Key-Next> "$w.config.canvas yview scroll  1 page;break;"
-	bind $w <Key-Prior> "$w.config.canvas yview scroll  -1 page;break;"
-	bind $w <Key-Home> "$w.config.canvas yview moveto 0;break;"
-	bind $w <Key-End> "$w.config.canvas yview moveto 1 ;break;"
-	pack $w.config.canvas -side right -fill y
-
-
-	bool $w.config.f 25 0 "Accelerated UART tracing       " CONFIG_DEBUG_UART
-
-
-
-	focus $w
-	update_active
-	global winx; global winy
-	set winx [expr [winfo x .]+30]; set winy [expr [winfo y .]+30]
-	if {[winfo exists $w]} then {wm geometry $w +$winx+$winy}
-	update idletasks
-	if {[winfo exists $w]} then  {$w.config.canvas create window 0 0 -anchor nw -window $w.config.f
-
-	$w.config.canvas configure \
-		-width [expr [winfo reqwidth $w.config.f] + 1]\
-		-scrollregion "-1 -1 [expr [winfo reqwidth $w.config.f] + 1] \
-			 [expr [winfo reqheight $w.config.f] + 1]"
-
-	set winy [expr [winfo reqh $w] - [winfo reqh $w.config.canvas]]
-	set scry [expr [winfo screenh $w] / 2]
-	set maxy [expr [winfo screenh $w] * 3 / 4]
-	set canvtotal [expr [winfo reqh $w.config.f] + 2]
-	if [expr $winy + $canvtotal < $maxy] {
-		$w.config.canvas configure -height $canvtotal
-	} else {
-		$w.config.canvas configure -height [expr $scry - $winy]
-		}
-	}
-	update idletasks
-	if {[winfo exists $w]} then {
-	wm maxsize $w [winfo width $w] [winfo screenheight $w]
-	wm minsize $w [winfo width $w] 100
-
-	wm deiconify $w
-}
-}
-
-proc update_menu25 {} {
-}
-
-
-proc update_define_menu25 {} {
-	update_define_mainmenu
-	global CONFIG_MODULES
 }
 
 
@@ -5968,7 +5871,6 @@ set CONFIG_GPT_WDOG FFFF
 set CONFIG_GRGPIO_ENABLE 0
 set CONFIG_GRGPIO_WIDTH 8
 set CONFIG_GRGPIO_IMASK 0000
-set CONFIG_DEBUG_UART 0
 set CONFIG_SYN_ARTISAN 4
 set CONFIG_CLK_LATDLL 4
 set CONFIG_PCI_ENABLE 4
@@ -6930,9 +6832,6 @@ proc writeconfig {file1 file2} {
 	if {($CONFIG_GRGPIO_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_GRGPIO_WIDTH $CONFIG_GRGPIO_WIDTH $notmod }
 	global CONFIG_GRGPIO_IMASK
 	if {($CONFIG_GRGPIO_ENABLE == 1)} then {write_hex $cfg $autocfg CONFIG_GRGPIO_IMASK $CONFIG_GRGPIO_IMASK $notmod }
-	write_comment $cfg $autocfg "VHDL Debugging        "
-	global CONFIG_DEBUG_UART
-	write_tristate $cfg $autocfg CONFIG_DEBUG_UART $CONFIG_DEBUG_UART [list $notmod] 2
 	close $cfg
 	close $autocfg
 }

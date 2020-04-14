@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -67,6 +67,7 @@ begin
   variable hwrite  : std_ulogic; 
   variable haddr   : std_logic_vector(31 downto 0);
   variable hwdata  : std_logic_vector(31 downto 0);
+  variable hwdatal : std_logic_vector(31 downto 0);
   variable tretry  : std_ulogic;
   variable tready  : std_ulogic;
   variable terror  : std_ulogic;
@@ -78,6 +79,13 @@ begin
     hsize := HSIZE_WORD;
     
     hwdata := tmsti.data;
+    hwdatal(7 downto 0) := hwdata(31 downto 24);
+    hwdatal(15 downto 8) := hwdata(23 downto 16);
+    hwdatal(23 downto 16) := hwdata(15 downto 8);
+    hwdatal(31 downto 24) := hwdata(7 downto 0);
+    if (tmsti.endian = '1') then
+      hwdata := hwdatal;
+    end if;
     
     hbusreq := tmsti.req; 
     if hbusreq = '1' then htrans := HTRANS_NONSEQ; end if;
@@ -134,7 +142,11 @@ begin
     end if;
     
     rin <= v;
-    tmsto.data     <= ahbmi.hrdata;
+    if (tmsti.endian = '0') then
+      tmsto.data     <= ahbmi.hrdata;
+    else
+      tmsto.data     <= ahbmi.hrdata(7 downto 0)&ahbmi.hrdata(15 downto 8)&ahbmi.hrdata(23 downto 16)&ahbmi.hrdata(31 downto 24);
+    end if;
     tmsto.error    <= terror;
     tmsto.retry    <= tretry;
     tmsto.ready    <= tready;

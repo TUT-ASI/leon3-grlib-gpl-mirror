@@ -323,7 +323,3 @@
 #define CONFIG_KBD_ENABLE 1
 #undef  CONFIG_VGA_ENABLE
 #define CONFIG_SVGA_ENABLE 1
-/*
- * VHDL Debugging        
- */
-#undef  CONFIG_DEBUG_UART

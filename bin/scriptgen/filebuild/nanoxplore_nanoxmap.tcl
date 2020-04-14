@@ -90,6 +90,8 @@ proc eof_nanoxplore_nanoxmap {} {
     append vc "\nproject.setOption('ManageUnconnectedSignals', 'Ground')"	
     append vc "\nproject.setOption('AdderToDSPMapThreshold', '0')"
     append vc "\nproject.setOption('DefaultRAMMapping', 'RAM')"	
+    append vc "\nproject.setOption('DefaultROMMapping', 'LUT')"	
+    append vc "\nproject.setOption('DisableROMFullLutRecognition', 'Yes')"	
     append vc "\nproject.setOption('MappingEffort', '$MAPPING_EFFORT\') "
     append vc "\nproject.setOption('ManageAsynchronousReadPort', 'Yes')"
     append vc "\nproject.setOption('TimingDriven', '$TIMING_DRIVEN\')"

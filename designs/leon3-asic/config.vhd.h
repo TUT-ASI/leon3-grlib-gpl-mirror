@@ -235,6 +235,3 @@
 -- I2C master
   constant CFG_I2C_ENABLE : integer := CONFIG_I2C_ENABLE;
 
--- GRLIB debugging
-  constant CFG_DUART    : integer := CONFIG_DEBUG_UART;
-

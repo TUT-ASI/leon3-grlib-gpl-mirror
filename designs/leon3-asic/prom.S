@@ -108,6 +108,14 @@ _fsrxx:
 !	set 0x0ffff, %g2
 !	st  %g2, [%g1+0x10]
 
+#ifdef UARTADDR
+        set UARTADDR, %g1
+        ! set 1, %g2
+        st  %g0, [%g1+0xC]
+        set 3, %g2
+        st %g2,  [%g1+0x8]
+#endif
+
 	set 0xFFFFF860, %g1
 	ld  [%g1], %g2
 	srl %g2, 12, %g2

@@ -1,6 +1,6 @@
 set vivado_contents ""
 proc create_xlnx_vivado {} {
-	global DESIGN DEVICE VIVADO_SIMSET SIMTOP GRLIB_XILINX_SOURCE_MGMT_MODE
+	global DESIGN DEVICE VIVADO_SIMSET SIMTOP GRLIB_XILINX_SOURCE_MGMT_MODE VIVADO_IMPL_STRATEGY
 	upvar vivado_contents vc
 
 	file mkdir "vivado"
@@ -16,6 +16,9 @@ proc create_xlnx_vivado {} {
 	}
 	append vc "\nset_property top $SIMTOP \[get_filesets $VIVADO_SIMSET\]"
 	append vc "\nset_property target_language verilog \[current_project\]"
+        if {![string equal $VIVADO_IMPL_STRATEGY ""]} {
+	        append vc "\nset_property strategy {$VIVADO_IMPL_STRATEGY} \[get_runs impl_1\]"
+	}
 	append vc "\n# Add files for simulation and synthesis"
 
 	return
@@ -147,23 +150,47 @@ proc eof_xlnx_vivado {} {
 			if {![string equal $VIVADO_MIG_AXI ""]} {
 				if {![string equal $AXI_64 ""]} {
 					set files [glob -nocomplain -type f "$GRLIB/boards/$BOARD/axi_64/mig*"]
+					if {[file exists "$GRLIB/boards/$BOARD/axi_64/axi_pipe.xci"]} {
+						lappend files [glob -nocomplain -type f "$GRLIB/boards/$BOARD/axi_64/axi_pipe*"]
+					}
 				} else {
 					if {![string equal $AXI_128 ""]} {
 						set files [glob -nocomplain -type f "$GRLIB/boards/$BOARD/axi_128/mig*"]
+						if {[file exists "$GRLIB/boards/$BOARD/axi_128/axi_pipe.xci"]} {
+							lappend files [glob -nocomplain -type f "$GRLIB/boards/$BOARD/axi_128/axi_pipe*"]
+						}
 					} else {
 						set files [glob -nocomplain -type f "$GRLIB/boards/$BOARD/axi/mig*"]
+						if {[file exists "$GRLIB/boards/$BOARD/axi/axi_pipe.xci"]} {
+							lappend files [glob -nocomplain -type f "$GRLIB/boards/$BOARD/axi/axi_pipe*"]
+						}
 					}
 				}
 			} else {
 				set files [glob -nocomplain -type f "$GRLIB/boards/$BOARD/mig.*"]
+				if {[file exists "$GRLIB/boards/$BOARD/axi_pipe.xci"]} {
+					lappend files [glob -nocomplain -type f "$GRLIB/boards/$BOARD/axi_pipe*"]
+				}
 			}
 			foreach f $files {
 				file copy $f "vivado/"
 			}
 			append vc "\nset_property target_language verilog \[current_project\]"
 			append vc "\nimport_ip -files vivado/mig.xci -name mig"
+			if {[file exists "vivado/mig_cdc.xci"]} {
+				append vc "\nimport_ip -files vivado/mig_cdc.xci -name mig_cdc"
+			}
+			if {[file exists "vivado/axi_pipe.xci"]} {
+				append vc "\nimport_ip -files vivado/axi_pipe.xci -name axi_pipe"
+			}
 			append vc "\n#upgrade_ip \[get_ips mig\]"
 			append vc "\ngenerate_target  all \[get_files ./vivado/$DESIGN/$DESIGN.srcs/sources_1/ip/mig/mig.xci\] -force "
+			if {[file exists "vivado/mig_cdc.xci"]} {
+				append vc "\ngenerate_target  all \[get_files ./vivado/$DESIGN/$DESIGN.srcs/sources_1/ip/mig_cdc/mig_cdc.xci\] -force "
+			}
+			if {[file exists "vivado/axi_pipe.xci"]} {
+				append vc "\ngenerate_target  all \[get_files ./vivado/$DESIGN/$DESIGN.srcs/sources_1/ip/axi_pipe/axi_pipe.xci\] -force "
+			}
 		} else {
 			puts "\n\nWARNING: No MIG 7series IP was found\n\n"
 		}
@@ -177,6 +204,13 @@ proc eof_xlnx_vivado {} {
 			append vc "\nset_property target_language verilog \[current_project\]"
 			append vc "\nimport_ip -files vivado/sgmii.xci -name sgmii"
 			append vc "\ngenerate_target  all \[get_files ./vivado/$DESIGN/$DESIGN.srcs/sources_1/ip/sgmii/sgmii.xci\] -force "
+		}
+	}
+	if {[string equal $BOARD "xilinx-kcu105-xcku040"]} {
+		if {[file exists "$GRLIB/boards/$BOARD/sem_ultra_0.xci"]} {
+			file copy "$GRLIB/boards/$BOARD/sem_ultra_0.xci" "vivado/"
+			append vc "\nimport_ip -files vivado/sem_ultra_0.xci -name sem_ultra_0"
+			append vc "\ngenerate_target  all \[get_files ./vivado/$DESIGN/$DESIGN.srcs/sources_1/ip/sem_ultra_0/sem_ultra_0.xci\] -force "
 		}
 	}
 	if {[file isdirectory "$GRLIB/netlists/xilinx/$NETLISTTECH" ]} {

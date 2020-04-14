@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -56,7 +56,7 @@ architecture rtl of syncram_2p is
 
 constant genimpl: boolean :=
   (tech=inferred) or
-  (abits < syncram_abits_min(tech) and GRLIB_CONFIG_ARRAY(grlib_techmap_strict_ram)=0);
+  (abits < syncram_2p_abits_min(tech) and GRLIB_CONFIG_ARRAY(grlib_techmap_strict_ram)=0);
 constant xtech : integer := tech * (1-boolean'pos(genimpl));
 
 constant xtechrdhold_b: boolean := syncram_2p_readhold(tech)/=0 or genimpl;
@@ -243,10 +243,16 @@ begin
                    rclk, raddress, vgnd, dataoutx, renable2, gnd);
   end generate;
 
-  xc2v : if (is_unisim(xtech) = 1) and (xtech /= virtex)generate
+  xc2v : if (is_unisim(xtech) = 1) and (xtech /= virtex) and (xtech /= kintex7) generate
     x0 : unisim_syncram_2p generic map (abits, dbits, isepclk, iwrfst)
          port map (rclk, renable2, raddress, dataoutx, wclk,
 		   xwrite, waddress, datain);
+  end generate;
+
+  xk7_2p : if (xtech = kintex7)  generate
+     xk7_2p : kintex7_syncram_2p generic map (abits, dbits, isepclk)
+     port map (wclk, waddress, datain, xwrite, xwrite,
+               rclk, raddress, dataoutx, renable2);
   end generate;
 
   vir  : if xtech = memvirage generate
@@ -350,7 +356,11 @@ begin
   dar : if xtech = dare generate
     x0 : dare_syncram_2p generic map (abits, dbits, isepclk)
          port map (rclk, renable2, raddress, dataoutx,
-		   wclk, waddress, datain, xwrite);
+       wclk, waddress, datain, write,
+		   custominx(0),custominx(1),
+       customoutx(0),customoutx(1),
+       testin(testin'high),custominx(2));
+    customoutx(customoutx'high downto 2) <= (others => '0');		   
   end generate;
 
   rhu : if xtech = rhumc generate
@@ -474,7 +484,45 @@ begin
       port map (rclk, renable2, raddress, dataoutx, wclk,
                 xwrite, waddress, datain);
   end generate;
-  
+
+  gf22x : if xtech = gf22 generate
+    x0 : gf22fdx_syncram_2p generic map (abits, dbits, isepclk)
+         port map (
+           rclk       => rclk,
+           renable    => renable,
+           raddress   => raddress,
+           dataout    => dataoutx,
+           wclk       => wclk,
+           waddress   => waddress,
+           datain     => datain,
+           wenable    => write,
+           tBist      => testin(TESTIN_WIDTH-3),
+           tLogic     => testin(TESTIN_WIDTH-4),
+           tScan      => testin(TESTIN_WIDTH-8),
+           tStab      => testin(TESTIN_WIDTH-5),
+           tWbt       => testin(TESTIN_WIDTH-6),
+           resetFuse  => testin(TESTIN_WIDTH-7),
+           smp_ma     => testin(TESTIN_WIDTH-20 downto TESTIN_WIDTH-31),
+           r2p_ma     => testin(TESTIN_WIDTH-32 downto TESTIN_WIDTH-40),
+           ch_bus_r2p => testin(TESTIN_WIDTH-53 downto TESTIN_WIDTH-64),
+           ch_bus_smp => testin(TESTIN_WIDTH-65 downto TESTIN_WIDTH-76),
+           tck        => customclkx,
+           eh_bus_r2p => custominx(83 downto 40),
+           eh_bus_smp => custominx(39 downto 9),
+           eh_diagSel => custominx(7 downto 4),
+           eh_memEn   => custominx(3 downto 0),
+           he_status  => customoutx(11 downto 8),
+           he_data    => customoutx(7 downto 4),
+           mempres    => customoutx(3 downto 0),
+           fShift     => testin(TESTIN_WIDTH-9),
+           fDataIn    => custominx(8),
+           fBypass    => testin(TESTIN_WIDTH-10),
+           fEnable    => testin(TESTIN_WIDTH-11),
+           fDataOut   => customoutx(12)
+           );
+    customoutx(customoutx'high downto 13) <= (others => '0');
+  end generate;
+
 -- pragma translate_off
   noram : if has_2pram(xtech) = 0 generate
     x : process

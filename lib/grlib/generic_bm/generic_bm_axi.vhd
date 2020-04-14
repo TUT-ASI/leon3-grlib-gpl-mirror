@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -46,6 +46,7 @@ entity generic_bm_axi is
     --in terms of bytes
     burst_chop_mask         : integer range 8 to 4096  := 4096;
     bm_info_print           : integer                  := 0;
+    lendian_en              : integer                  := 0;
     axi_bm_id_width         : integer                  := 5);
   port (
     clk              : in  std_logic;
@@ -226,6 +227,7 @@ begin
       be_dw        => be_dw,
       max_size     => max_size,
       excl_enabled => excl_enabled,
+      lendian_en   => lendian_en,
       addr_width   => addr_width)
     port map(
       clk       => clk,
@@ -246,6 +248,7 @@ begin
   fifo_wc : fifo_control_wc
     generic map (
       async_reset             => async_reset,
+      lendian_en              => lendian_en,
       be_dw                   => be_dw)
     port map (
       clk         => clk,
@@ -260,6 +263,7 @@ begin
       async_reset      => async_reset,
       be_dw            => be_dw,
       be_rd_pipe       => be_rd_pipe,
+      lendian_en       => lendian_en,
       unalign_load_opt => unalign_load_opt)
     port map(
       clk           => clk,
@@ -320,6 +324,7 @@ begin
       axi_bm_id_width       => axi_bm_id_width,
       addr_width            => addr_width,
       max_burst_length_ptwo => max_burst_length_ptwo,
+      lendian_en            => lendian_en,
       be_dw                 => be_dw
       )
     port map(

@@ -11,6 +11,8 @@ leon3_test(int domp, volatile int *irqmp, int mtest)
 	if (domp) mptest_start(irqmp);	
 	report_subtest(REGFILE+(get_pid()<<4));
 	if (regtest()) fail(1);
+        report_subtest(CASA_TEST+(get_pid()<<4));
+        casa_test();
 	multest();
 	divtest();
 	fputest();

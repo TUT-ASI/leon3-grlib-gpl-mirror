@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -133,7 +133,9 @@ package sim is
       -- 9:800+ (MT47H-25E)
       speedbin: integer range 0 to 9 := 0;
       density: integer range 1 to 5 := 3;  -- 1:256M 2:512M 3:1G 4:2G 5:4G bits/chip
-      pagesize: integer range 1 to 2 := 1  -- 1K/2K page size (controls tRRD)
+      pagesize: integer range 1 to 2 := 1;  -- 1K/2K page size (controls tRRD)
+      initbyte: integer := 0;
+      jitter_tol: integer := 50
       );
     port (
       ck: in std_ulogic;
@@ -169,7 +171,8 @@ package sim is
       density: integer range 2 to 6 := 3;  -- 2:512M 3:1G 4:2G 5:4G 6:8G bits/chip
       pagesize: integer range 1 to 2 := 1;  -- 1K/2K page size (controls tRRD)
       changeendian: integer range 0 to 32 := 0;
-      initbyte: integer := 0
+      initbyte: integer := 0;
+      jitter_tol: integer := 50
       );
     port (
       ck: in std_ulogic;
@@ -364,6 +367,21 @@ package sim is
       dq: inout std_logic_vector(width-1 downto 0);
       dqm: in std_logic_vector(width/8-1 downto 0)
       );
+  end component;
+
+  component sramtestmod
+    generic (
+      halt        : integer := 0;
+      width       : integer := 32);
+    port (
+      resetn      : in  std_ulogic;
+      address     : in std_logic_vector(21 downto 0);
+      data        : inout std_logic_vector(width-1 downto 0);
+      csn         : in std_ulogic;
+      writen      : in std_ulogic; 		
+      state       : out std_logic_vector(1 downto 0);
+      testdev     : out std_logic_vector(19 downto 0);
+      subtest     : out std_logic_vector(7 downto 0));
   end component;
 
   component i2c_slave_model
@@ -586,7 +604,8 @@ package sim is
       rst: in std_logic;
       clk: in std_logic;
       ahbsi: in ahb_slv_in_type;
-      ahbso: in ahb_slv_out_type
+      ahbso: in ahb_slv_out_type;
+      maskerr: in std_ulogic := '0'
       );
   end component;
 
@@ -774,7 +793,12 @@ component spwtrace is
       axiso: in axi_somi_type
       );
   end component;
-  
+
+  component uartprint is
+    port (
+      txd: in std_ulogic
+      );
+  end component;
 end;
 
 package body sim is
@@ -1059,7 +1083,7 @@ package body sim is
   begin
     if vendorid = VENDOR_GAISLER then
       case deviceid is
-        when GAISLER_LEON3 | GAISLER_LEON4 => leon3_subtest(subtest);
+        when GAISLER_LEON3 | GAISLER_LEON4 | GAISLER_LEON5 => leon3_subtest(subtest);
         when GAISLER_FTMCTRL => mctrl_subtest(subtest);
         when GAISLER_GPTIMER => gptimer_subtest(subtest);
         when GAISLER_LEON3DSU => dsu3_subtest(subtest);

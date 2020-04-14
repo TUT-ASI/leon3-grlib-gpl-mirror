@@ -290,7 +290,6 @@
 #define CONFIG_GPT_IRQ (8)
 #define CONFIG_GPT_SEPIRQ 1
 #undef  CONFIG_GPT_WDOGEN
-#undef  CONFIG_GRGPIO_ENABLE
 /*
  * SPI
  */

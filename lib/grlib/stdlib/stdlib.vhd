@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -76,6 +76,9 @@ function orv(d : std_logic_vector) return std_ulogic;
 function andv(d : std_logic_vector) return std_ulogic;
 function notx(d : std_logic_vector) return boolean;
 function notx(d : std_ulogic) return boolean;
+procedure setx(d: out std_logic_vector);
+procedure setx(d: out std_ulogic);
+procedure setx(d: out unsigned);
 function "-" (d : std_logic_vector; i : integer) return std_logic_vector;
 function "-" (i : integer; d : std_logic_vector) return std_logic_vector;
 function "+" (d : std_logic_vector; i : integer) return std_logic_vector;
@@ -85,6 +88,10 @@ function "+" (d : std_logic_vector; i : std_ulogic) return std_logic_vector;
 function "-" (a, b : std_logic_vector) return std_logic_vector;
 function "+" (a, b : std_logic_vector) return std_logic_vector;
 function "*" (a, b : std_logic_vector) return std_logic_vector;
+function add (d : std_logic_vector; i : integer) return std_logic_vector;
+function add (a, b : std_logic_vector) return std_logic_vector;
+function sub (d : std_logic_vector; i : integer) return std_logic_vector;
+function sub (a, b : std_logic_vector) return std_logic_vector;
 function unsigned_mul (a, b : std_logic_vector) return std_logic_vector;
 function signed_mul (a, b : std_logic_vector) return std_logic_vector;
 function mixed_mul (a, b : std_logic_vector; sign : std_logic) return std_logic_vector;
@@ -100,8 +107,6 @@ attribute async_set_reset : string;
 
 -- Reporting and diagnostics
 
--- pragma translate_off
-
 function tost(v:std_logic_vector) return string;
 function tost(v:std_logic) return string;
 function tost(i : integer) return string;
@@ -110,6 +115,8 @@ function tost_bits(s: std_logic_vector) return string;
 function tost(b: boolean) return string;
 function tost(r: real) return string;
 procedure print(s : string);
+
+-- pragma translate_off
 
 component report_version
   generic (msg1, msg2, msg3, msg4 : string := ""; mdel : integer := 4);
@@ -148,6 +155,30 @@ begin
 -- pragma translate_on
   return (res);
 end;
+
+procedure setx(d: out std_logic_vector) is
+begin
+  d := (d'range => '0');
+--pragma translate_off
+  d := (d'range => 'X');
+--pragma translate_on
+end setx;
+
+procedure setx(d: out std_ulogic) is
+begin
+  d := '0';
+--pragma translate_off
+  d := 'X';
+--pragma translate_on
+end setx;
+
+procedure setx(d: out unsigned) is
+begin
+  d := (d'range => '0');
+--pragma translate_off
+  d := (d'range => 'X');
+--pragma translate_on
+end setx;
 
 -- generic decoder
 
@@ -288,6 +319,22 @@ begin
 -- pragma translate_on
 end;
 
+function add (a, b : std_logic_vector) return std_logic_vector is
+variable x : std_logic_vector(a'length-1 downto 0);
+variable y : std_logic_vector(b'length-1 downto 0);
+begin
+-- pragma translate_off
+  if notx(a&b) then
+-- pragma translate_on
+    return(std_logic_vector(unsigned(a) + unsigned(b)));
+-- pragma translate_off
+  else
+     x := (others =>'X'); y := (others =>'X');
+     if (x'length > y'length) then return(x); else return(y); end if;
+  end if;
+-- pragma translate_on
+end;
+
 function "+" (i : integer; d : std_logic_vector) return std_logic_vector is
 variable x : std_logic_vector(d'length-1 downto 0);
 begin
@@ -314,13 +361,26 @@ begin
 -- pragma translate_on
 end;
 
+function add (d : std_logic_vector; i : integer) return std_logic_vector is
+variable x : std_logic_vector(d'length-1 downto 0);
+begin
+-- pragma translate_off
+  if notx(d) then
+-- pragma translate_on
+    return(std_logic_vector(unsigned(d) + i));
+-- pragma translate_off
+  else x := (others =>'X'); return(x);
+  end if;
+-- pragma translate_on
+end;
+
 function "+" (d : std_logic_vector; i : std_ulogic) return std_logic_vector is
 variable x : std_logic_vector(d'length-1 downto 0);
 variable y : std_logic_vector(0 downto 0);
 begin
   y(0) := i;
 -- pragma translate_off
-  if notx(d) then
+  if notx(d & y) then
 -- pragma translate_on
     return(std_logic_vector(unsigned(d) + unsigned(y)));
 -- pragma translate_off
@@ -347,7 +407,36 @@ begin
 -- pragma translate_on
 end;
 
+function sub (a, b : std_logic_vector) return std_logic_vector is
+variable x : std_logic_vector(a'length-1 downto 0);
+variable y : std_logic_vector(b'length-1 downto 0);
+begin
+-- pragma translate_off
+  if notx(a&b) then
+-- pragma translate_on
+    return(std_logic_vector(unsigned(a) - unsigned(b)));
+-- pragma translate_off
+  else
+     x := (others =>'X'); y := (others =>'X');
+     if (x'length > y'length) then return(x); else return(y); end if; 
+  end if;
+-- pragma translate_on
+end;
+
 function "-" (d : std_logic_vector; i : integer) return std_logic_vector is
+variable x : std_logic_vector(d'length-1 downto 0);
+begin
+-- pragma translate_off
+  if notx(d) then
+-- pragma translate_on
+    return(std_logic_vector(unsigned(d) - i));
+-- pragma translate_off
+  else x := (others =>'X'); return(x); 
+  end if;
+-- pragma translate_on
+end;
+
+function sub (d : std_logic_vector; i : integer) return std_logic_vector is
 variable x : std_logic_vector(d'length-1 downto 0);
 begin
 -- pragma translate_off
@@ -494,15 +583,19 @@ begin
   when others => return('X');
   end case;
 end;
+-- pragma translate_on
 
 function tost(v:std_logic_vector) return string is
-constant vlen : natural := v'length; --'
-constant slen : natural := (vlen+3)/4;
-variable vv : std_logic_vector(0 to slen*4-1) := (others => '0');
-variable s : string(1 to slen);
-variable nz : boolean := false;
-variable index : integer := -1;
+-- pragma translate_off
+  constant vlen : natural := v'length; --'
+  constant slen : natural := (vlen+3)/4;
+  variable vv : std_logic_vector(0 to slen*4-1) := (others => '0');
+  variable s : string(1 to slen);
+  variable nz : boolean := false;
+  variable index : integer := -1;
+-- pragma translate_on
 begin
+-- pragma translate_off
   vv(slen*4-vlen to slen*4-1) := v;
   for i in 0 to slen-1 loop
     if (vv(i*4 to i*4+3) = "0000") and nz and (i /= (slen-1)) then
@@ -514,15 +607,21 @@ begin
   end loop;
   if ((index +2) = slen) then return(s(slen to slen));
   else return(string'("0x") & s(index+2 to slen)); end if; --'
+-- pragma translate_on
+  return "";
 end;
 
 function tost(v:std_logic) return string is
 begin
+-- pragma translate_off
   if to_x01(v) = '1' then return("1"); else return("0"); end if;
+-- pragma translate_on
+  return "";
 end;
 
 function tost_any(s: std_ulogic) return string is
 begin
+-- pragma translate_off
   case s is
     when '1' => return "1";
     when '0' => return "0";
@@ -534,31 +633,44 @@ begin
     when 'L' => return "L";
     when 'W' => return "W";
   end case;
+-- pragma translate_on
+  return "";
 end;
 
 function tost_bits(s: std_logic_vector) return string is
+-- pragma translate_off
   constant len: natural := s'length;
   variable str: string(1 to len);
   variable i: integer;
+-- pragma translate_on
 begin
+-- pragma translate_off
   i := 1;
   for x in s'range loop      
     str(i to i) := tost_any(s(x));
     i := i+1;
   end loop;
   return str;
+-- pragma translate_on
+  return "";
 end;
 
 function tost(b: boolean) return string is
 begin
+-- pragma translate_off
   if b then return "true"; else return "false"; end if;
+-- pragma translate_on
+  return "";
 end tost;
   
 function tost(i : integer) return string is
-variable L : line;
-variable s, x : string(1 to 128);
-variable n, tmp : integer := 0;
+-- pragma translate_off
+  variable L : line;
+  variable s, x : string(1 to 128);
+  variable n, tmp : integer := 0;
+-- pragma translate_on
 begin
+-- pragma translate_off
   tmp := i;
   if i < 0 then tmp := -i; end if;
   loop
@@ -570,14 +682,19 @@ begin
   x(1 to n) := s(129-n to 128);
   if i < 0 then return "-" & x(1 to n); end if;
   return(x(1 to n));
+-- pragma translate_on
+  return "";
 end;
 
 function tost(r: real) return string is
+-- pragma translate_off
   variable x: real;
   variable i,j: integer;
   variable s: string(1 to 30);
   variable c: character;
+-- pragma translate_on
 begin
+-- pragma translate_off
   if r = 0.0 then
     return "0.0000";
   elsif r < 0.0 then
@@ -614,14 +731,20 @@ begin
     end loop;
     return s(1 to j-1);
   end if;    
+-- pragma translate_on
+  return "";
 end tost;
 
 procedure print(s : string) is
-    variable L : line;
-begin
-  L := new string'(s); writeline(output, L);
-end;
+-- pragma translate_off
+  variable L : line;
 -- pragma translate_on
+begin
+-- pragma translate_off
+  L := new string'(s); writeline(output, L);
+-- pragma translate_on
+end;
+
 
   function unary_to_slv(i: std_logic_vector) return std_logic_vector is
     variable o : std_logic_vector(log2(i'length)-1 downto 0);

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -226,19 +226,20 @@ begin
     
   end process;
 
-  reg : process (clk)
+  reg : process (clk, rst)
   begin
     if rising_edge(clk) then r <= rin; end if;
     if (rst = '0') and RESET_ALL then
-      r <= RES;
+      r.addr    <= RES.addr;
+      r.data    <= RES.data;
+      r.state   <= RES.state;
+      r.tcktog2 <= RES.tcktog2;
+      r.tdishft <= RES.tdishft;
+      r.shift2  <= RES.shift2;
+      r.upd2    <= RES.upd2;
+      r.seq     <= RES.seq;
+      r.holdn   <= RES.holdn;
       -- Sync registers not reset
-      r.tcktog <= rin.tcktog;
-      r.trst <= rin.trst;
-      r.tdi <= rin.tdi;
-      r.shift <= rin.shift;
-      r.upd <= rin.upd;
-      r.asel <= rin.asel;
-      r.dsel <= rin.dsel;
     end if;
   end process;
   

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -100,10 +100,11 @@ package grethpkg is
     hburst	: std_logic_vector(2 downto 0); 	-- burst type
     hprot	: std_logic_vector(3 downto 0); 	-- protection control
     hwdata	: std_logic_vector(31 downto 0); 	-- write data bus
+    endian  : std_ulogic;
   end record;
 
   constant ahbc_mst_out_none : ahbc_mst_out_type :=
-    ('0', '0', "00", zero32, '0', "000", "000", "0000", zero32);
+    ('0', '0', "00", zero32, '0', "000", "000", "0000", zero32, '0');
   
   type apbc_slv_in_type is record
     psel	: std_ulogic;                           -- slave select
@@ -122,11 +123,13 @@ package grethpkg is
     write   : std_ulogic;
     addr    : std_logic_vector(31 downto 0);
     data    : std_logic_vector(31 downto 0);
+    endian  : std_ulogic;
   end record;
 
   constant eth_tx_ahb_in_none : eth_tx_ahb_in_type := (
     req => '0', write => '0', addr => (others => '0'),
-    data => (others => '0'));
+    data => (others => '0'), 
+    endian => '0');
   
   type eth_tx_ahb_out_type is record
     grant    : std_ulogic;
@@ -161,11 +164,13 @@ package grethpkg is
     addr    : std_logic_vector(31 downto 0);
     data    : std_logic_vector(31 downto 0);
     size    : std_logic_vector(1 downto 0);
+    endian  : std_ulogic;
   end record;
 
   constant eth_rx_gbit_ahb_in_none : eth_rx_gbit_ahb_in_type := (
     req => '0', write => '0', addr => (others => '0'),
-    data => (others => '0'), size => (others => '0'));
+    data => (others => '0'), size => (others => '0'), 
+    endian => '0');
 
   type gbit_host_tx_type is record
     full_duplex : std_ulogic;

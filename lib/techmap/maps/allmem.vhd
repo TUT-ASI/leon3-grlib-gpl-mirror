@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -253,14 +253,21 @@ package allmem is
   component dare_syncram_2p
   generic ( abits : integer := 8; dbits : integer := 32; sepclk : integer := 0);
   port (
-    rclk  : in std_ulogic;
-    rena  : in std_ulogic;
-    raddr : in std_logic_vector (abits -1 downto 0);
-    dout  : out std_logic_vector (dbits -1 downto 0);
-    wclk  : in std_ulogic;
-    waddr : in std_logic_vector (abits -1 downto 0);
-    din   : in std_logic_vector (dbits -1 downto 0);
-    write : in std_ulogic);
+    rclk     : in  std_ulogic;
+    rena     : in  std_ulogic;
+    raddr    : in  std_logic_vector (abits -1 downto 0);
+    dout     : out std_logic_vector (dbits -1 downto 0);
+    wclk     : in  std_ulogic;
+    waddr    : in  std_logic_vector (abits -1 downto 0);
+    din      : in  std_logic_vector (dbits -1 downto 0);
+    write    : in  std_ulogic;
+    mbist    : in  std_ulogic;
+    fill0    : in  std_ulogic;
+    enable   : out std_ulogic;
+    error    : out std_ulogic;
+    testen   : in  std_logic;
+    testrst  : in  std_logic
+    );
   end component;
 
   component rhumc_syncram_2p
@@ -979,6 +986,24 @@ end component;
       );
   end component;
 
+  component dare_syncram_mbist
+  generic ( abits : integer := 10; dbits : integer := 8 );
+  port (
+    clk      : in std_ulogic;
+    address  : in std_logic_vector(abits -1 downto 0);
+    datain   : in std_logic_vector(dbits -1 downto 0);
+    dataout  : out std_logic_vector(dbits -1 downto 0);
+    enable   : in std_ulogic;
+    write    : in std_ulogic;
+    --
+    mbist    : in  std_ulogic;
+    fill0    : in  std_ulogic;
+    menable  : out std_ulogic;
+    error    : out std_ulogic;
+    testen   : in  std_logic;
+    testrst  : in  std_logic);
+  end component;
+
   component dare_syncram
   generic ( abits : integer := 10; dbits : integer := 8 );
   port (
@@ -987,7 +1012,33 @@ end component;
     datain   : in std_logic_vector(dbits -1 downto 0);
     dataout  : out std_logic_vector(dbits -1 downto 0);
     enable   : in std_ulogic;
-    write    : in std_ulogic);
+    write    : in std_ulogic;
+    testen   : in std_logic);
+  end component;
+
+  component dare_syncram_dp_mbist is
+  generic ( abits : integer := 6; dbits : integer := 8 );
+  port (
+    clk1     : in std_ulogic;
+    address1 : in std_logic_vector((abits -1) downto 0);
+    datain1  : in std_logic_vector((dbits -1) downto 0);
+    dataout1 : out std_logic_vector((dbits -1) downto 0);
+    enable1  : in std_ulogic;
+    write1   : in std_ulogic;
+    clk2     : in std_ulogic;
+    address2 : in std_logic_vector((abits -1) downto 0);
+    datain2  : in std_logic_vector((dbits -1) downto 0);
+    dataout2 : out std_logic_vector((dbits -1) downto 0);
+    enable2  : in std_ulogic;
+    write2   : in std_ulogic;
+    --
+    mbist    : in  std_ulogic;
+    fill0    : in  std_ulogic;
+    enable   : out std_ulogic;
+    error    : out std_ulogic;
+    testen   : in  std_logic;
+    testrst  : in  std_logic
+   );
   end component;
 
   component dare_syncram_dp is
@@ -1004,7 +1055,8 @@ end component;
     datain2  : in std_logic_vector((dbits -1) downto 0);
     dataout2 : out std_logic_vector((dbits -1) downto 0);
     enable2  : in std_ulogic;
-    write2   : in std_ulogic
+    write2   : in std_ulogic;
+    testen   : in std_logic
    );
   end component;
 
@@ -1120,6 +1172,52 @@ end component;
     enable2  : in std_ulogic;
     write2   : in std_ulogic
    );
+  end component;
+ 
+  component kintex7_syncram_dp
+  generic ( abits : integer := 10; dbits : integer := 8 );
+  port (
+    clk1     : in std_ulogic;
+    address1 : in std_logic_vector((abits -1) downto 0);
+    datain1  : in std_logic_vector((dbits -1) downto 0);
+    dataout1 : out std_logic_vector((dbits -1) downto 0);
+    enable1  : in std_ulogic;
+    write1   : in std_ulogic;
+    clk2     : in std_ulogic;
+    address2 : in std_logic_vector((abits -1) downto 0);
+    datain2  : in std_logic_vector((dbits -1) downto 0);
+    dataout2 : out std_logic_vector((dbits -1) downto 0);
+    enable2  : in std_ulogic;
+    write2   : in std_ulogic
+   );
+  end component;
+
+  component kintex7_syncram_2p is
+    generic (
+      abits : integer := 4; dbits : integer := 32; sepclk : integer := 0 );
+    port (
+      clk1     : in std_ulogic;
+      address1 : in std_logic_vector((abits -1) downto 0);
+      datain1  : in std_logic_vector((dbits -1) downto 0);
+      enable1  : in std_ulogic;
+      write1   : in std_ulogic;
+      clk2     : in std_ulogic;
+      address2 : in std_logic_vector((abits -1) downto 0);
+      dataout2 : out std_logic_vector((dbits -1) downto 0);
+      enable2  : in std_ulogic
+    );
+  end component;
+
+  component kintex7_syncram is
+    generic (
+      abits : integer := 4; dbits : integer := 32 );
+    port (
+      clk     : in std_ulogic;
+      address : in std_logic_vector((abits -1) downto 0);
+      datain  : in std_logic_vector((dbits -1) downto 0);
+      enable  : in std_ulogic;
+      write   : in std_ulogic;
+      dataout : out std_logic_vector((dbits -1) downto 0));
   end component;
 
   component unisim_syncram64
@@ -1816,7 +1914,113 @@ end component;
       );
   end component;
 
+  component gf22fdx_syncram is
+    generic (
+      abits: integer;
+      dbits: integer
+      );
+    port (
+      clk: in std_ulogic;
+      address: in std_logic_vector(abits-1 downto 0);
+      datain: in std_logic_vector(dbits-1 downto 0);
+      dataout: out std_logic_vector(dbits-1 downto 0);
+      enable: in std_ulogic;
+      wr: in std_ulogic;
+      tBist: in std_ulogic;
+      tLogic: in std_ulogic;
+      tStab: in std_ulogic;
+      tWbt: in std_ulogic;
+      resetFuse: in std_ulogic;
+      s1d_ma: in std_logic_vector(7 downto 0);
+      ch_bus_s1d: in std_logic_vector(11 downto 0);
+      tck: in std_ulogic;
+      eh_bus_s1d: in std_logic_vector(25 downto 0);
+      eh_diagSel: in std_logic_vector(3 downto 0);
+      eh_memEn: in std_logic_vector(3 downto 0);
+      he_status: out std_logic_vector(3 downto 0);
+      he_data: out std_logic_vector(3 downto 0);
+      mempres: out std_logic_vector(3 downto 0);
+      fShift: in std_ulogic;
+      fDataIn: in std_ulogic;
+      fBypass: in std_ulogic;
+      fEnable: in std_ulogic;
+      fDataOut: out std_ulogic
+      );
+  end component;
 
+  component gf22fdx_syncram156bw is
+    generic (
+      abits: integer
+      );
+    port (
+      clk: in std_ulogic;
+      address: in std_logic_vector(abits-1 downto 0);
+      datain: in std_logic_vector(155 downto 0);
+      dataout: out std_logic_vector(155 downto 0);
+      enable: in std_logic_vector(15 downto 0);
+      wr: in std_logic_vector(15 downto 0);
+      tBist: in std_ulogic;
+      tLogic: in std_ulogic;
+      tStab: in std_ulogic;
+      tWbt: in std_ulogic;
+      resetFuse: in std_ulogic;
+      s1d_ma: in std_logic_vector(7 downto 0);
+      ch_bus_s1d: in std_logic_vector(11 downto 0);
+      tck: in std_ulogic;
+      eh_bus_s1d: in std_logic_vector(25 downto 0);
+      eh_diagSel: in std_logic_vector(3 downto 0);
+      eh_memEn: in std_logic_vector(3 downto 0);
+      he_status: out std_logic_vector(3 downto 0);
+      he_data: out std_logic_vector(3 downto 0);
+      mempres: out std_logic_vector(3 downto 0);
+      fShift: in std_ulogic;
+      fDataIn: in std_ulogic;
+      fBypass: in std_ulogic;
+      fEnable: in std_ulogic;
+      fDataOut: out std_ulogic
+      );
+  end component;
+
+  component gf22fdx_syncram_2p is
+    generic (
+      abits: integer;
+      dbits: integer;
+      sepclk: integer
+      );
+    port (
+      rclk: in std_ulogic;
+      renable: in std_ulogic;
+      raddress: in std_logic_vector(abits-1 downto 0);
+      dataout: out std_logic_vector(dbits-1 downto 0);
+      wclk: in std_ulogic;
+      waddress: in std_logic_vector(abits-1 downto 0);
+      datain: in std_logic_vector(dbits-1 downto 0);
+      wenable: in std_ulogic;
+      tBist: in std_ulogic;
+      tLogic: in std_ulogic;
+      tScan: in std_ulogic;
+      tStab: in std_ulogic;
+      tWbt: in std_ulogic;
+      resetFuse: in std_ulogic;
+      smp_ma: in std_logic_vector(11 downto 0);
+      r2p_ma: in std_logic_vector(8 downto 0);
+      ch_bus_r2p: in std_logic_vector(11 downto 0);
+      ch_bus_smp: in std_logic_vector(11 downto 0);
+      tck: in std_ulogic;
+      eh_bus_r2p: in std_logic_vector(43 downto 0);
+      eh_bus_smp: in std_logic_vector(30 downto 0);
+      eh_diagSel: in std_logic_vector(3 downto 0);
+      eh_memEn: in std_logic_vector(3 downto 0);
+      he_status: out std_logic_vector(3 downto 0);
+      he_data: out std_logic_vector(3 downto 0);
+      mempres: out std_logic_vector(3 downto 0);
+      fShift: in std_ulogic;
+      fDataIn: in std_ulogic;
+      fBypass: in std_ulogic;
+      fEnable: in std_ulogic;
+      fDataOut: out std_ulogic
+      );
+  end component;
 
 end;
 

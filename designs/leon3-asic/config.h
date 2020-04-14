@@ -325,7 +325,3 @@
 #define CONFIG_GRGPIO_WIDTH (16)
 #define CONFIG_GRGPIO_IMASK FE
 #define CONFIG_I2C_ENABLE 1
-/*
- * VHDL Debugging        
- */
-#undef  CONFIG_DEBUG_UART

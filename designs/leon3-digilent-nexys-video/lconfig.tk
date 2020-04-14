@@ -4025,9 +4025,6 @@ proc menu18 {w title} {
 	bool $w.config.f 18 10 "Separate interrupts                  " CONFIG_GPT_SEPIRQ
 	bool $w.config.f 18 11 "Watchdog enable                      " CONFIG_GPT_WDOGEN
 	hex $w.config.f 18 12 "Initial watchdog time-out value       " CONFIG_GPT_WDOG
-	bool $w.config.f 18 13 "Enable generic GPIO port              " CONFIG_GRGPIO_ENABLE
-	int $w.config.f 18 14 "GPIO width            " CONFIG_GRGPIO_WIDTH
-	hex $w.config.f 18 15 "GPIO interrupt mask   " CONFIG_GRGPIO_IMASK
 
 
 
@@ -4090,11 +4087,6 @@ proc update_menu18 {} {
 	configure_entry .menu18.config.f.x11 normal {n l y}} else {configure_entry .menu18.config.f.x11 disabled {y n l}}
 	global CONFIG_GPT_WDOG
 	if {($CONFIG_GPT_ENABLE == 1) && ($CONFIG_GPT_WDOGEN == 1)} then {.menu18.config.f.x12.x configure -state normal -foreground [ cget .ref -foreground ]; .menu18.config.f.x12.l configure -state normal; } else {.menu18.config.f.x12.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu18.config.f.x12.l configure -state disabled}
-	global CONFIG_GRGPIO_ENABLE
-	global CONFIG_GRGPIO_WIDTH
-	if {($CONFIG_GRGPIO_ENABLE == 1)} then {.menu18.config.f.x14.x configure -state normal -foreground [ cget .ref -foreground ]; .menu18.config.f.x14.l configure -state normal; } else {.menu18.config.f.x14.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu18.config.f.x14.l configure -state disabled}
-	global CONFIG_GRGPIO_IMASK
-	if {($CONFIG_GRGPIO_ENABLE == 1)} then {.menu18.config.f.x15.x configure -state normal -foreground [ cget .ref -foreground ]; .menu18.config.f.x15.l configure -state normal; } else {.menu18.config.f.x15.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu18.config.f.x15.l configure -state disabled}
 }
 
 
@@ -4137,11 +4129,6 @@ proc update_define_menu18 {} {
 	set CONFIG_GPT_WDOGEN [expr $CONFIG_GPT_WDOGEN&15]} else {set CONFIG_GPT_WDOGEN [expr $CONFIG_GPT_WDOGEN|16]}
 	global CONFIG_GPT_WDOG
 	if {($CONFIG_GPT_ENABLE == 1) && ($CONFIG_GPT_WDOGEN == 1)} then {validate_hex CONFIG_GPT_WDOG "$CONFIG_GPT_WDOG" FFFF}
-	global CONFIG_GRGPIO_ENABLE
-	global CONFIG_GRGPIO_WIDTH
-	if {($CONFIG_GRGPIO_ENABLE == 1)} then {validate_int CONFIG_GRGPIO_WIDTH "$CONFIG_GRGPIO_WIDTH" 8}
-	global CONFIG_GRGPIO_IMASK
-	if {($CONFIG_GRGPIO_ENABLE == 1)} then {validate_hex CONFIG_GRGPIO_IMASK "$CONFIG_GRGPIO_IMASK" 0000}
 }
 
 
@@ -4828,9 +4815,6 @@ set CONFIG_GPT_IRQ 8
 set CONFIG_GPT_SEPIRQ 0
 set CONFIG_GPT_WDOGEN 0
 set CONFIG_GPT_WDOG FFFF
-set CONFIG_GRGPIO_ENABLE 0
-set CONFIG_GRGPIO_WIDTH 8
-set CONFIG_GRGPIO_IMASK 0000
 set CONFIG_SPIMCTRL 0
 set CONFIG_SPIMCTRL_READCMD 0B
 set CONFIG_SPIMCTRL_DUMMYBYTE 0
@@ -5562,12 +5546,6 @@ proc writeconfig {file1 file2} {
 	if {($CONFIG_GPT_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_GPT_WDOGEN $CONFIG_GPT_WDOGEN [list $notmod] 2 }
 	global CONFIG_GPT_WDOG
 	if {($CONFIG_GPT_ENABLE == 1) && ($CONFIG_GPT_WDOGEN == 1)} then {write_hex $cfg $autocfg CONFIG_GPT_WDOG $CONFIG_GPT_WDOG $notmod }
-	global CONFIG_GRGPIO_ENABLE
-	write_tristate $cfg $autocfg CONFIG_GRGPIO_ENABLE $CONFIG_GRGPIO_ENABLE [list $notmod] 2
-	global CONFIG_GRGPIO_WIDTH
-	if {($CONFIG_GRGPIO_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_GRGPIO_WIDTH $CONFIG_GRGPIO_WIDTH $notmod }
-	global CONFIG_GRGPIO_IMASK
-	if {($CONFIG_GRGPIO_ENABLE == 1)} then {write_hex $cfg $autocfg CONFIG_GRGPIO_IMASK $CONFIG_GRGPIO_IMASK $notmod }
 	write_comment $cfg $autocfg "SPI"
 	write_comment $cfg $autocfg "SPI memory controller "
 	global CONFIG_SPIMCTRL

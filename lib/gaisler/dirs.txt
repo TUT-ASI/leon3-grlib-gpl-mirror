@@ -31,6 +31,7 @@ jtag
 b1553 
 greth
 spacewire 
+spacefibre
 usb 
 ddr 
 crypto 
@@ -47,7 +48,16 @@ nand
 mma
 clk2x
 grdmac
+grdmac2
 grrm
+#noelv
+#noelvv0
 subsys
 ftaddr
-
+grscrub
+#riscv
+#plic
+#noelvsubsys
+leon5
+leon5v0
+grfpc5

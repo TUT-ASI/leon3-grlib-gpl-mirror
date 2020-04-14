@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -50,11 +50,12 @@ signal eni : std_ulogic;
 signal oi: std_ulogic;
 
 -- set to 1 to skip using ICGs and assign oi <= o for dummy gates in code below
-constant use_empty_dummy: tech_ability_type := (inferred => 0, easic45 => 1, rhs65 => 1, others => 0);
+constant use_empty_dummy: tech_ability_type := (inferred => 0, easic45 => 1, rhs65 => 1, gf22 => 1, others => 0);
 
 -- set to 1 to add 5 ps delay between oi and o in RTL sim (for clock delta balancing)
 -- set to 2 to add no delay between oi and o
-constant use_standard_delay: tech_ability_type := (inferred => 1, others => 1);
+-- set to 0 for tech-specific delay
+constant use_standard_delay: tech_ability_type := (inferred => 1, gf22 => 0, dare => 2, others => 1);
 
 begin
 
@@ -101,8 +102,17 @@ begin
     end generate;
 
     dar : if (tech = dare) generate
-      clkgate : clkand_dare port map(i => i, en => eni, o => o, tsten => tsten);
+      clkgate : clkand_dare port map(i => i, en => eni, o => oi, tsten => tsten);
     end generate;
+
+    dar65 : if (tech = dare65t) generate 
+      clkgate : clkand_dare65t port map(i => i, en => eni, o => oi, tsten => tsten);
+    end generate;
+
+    gf22x : if (tech = gf22) generate
+      clkgate : clkand_gf22fdx port map(clki => i, en => eni, clko => oi, testen => '0');
+    end generate;
+
   end generate;
 
   gen : if has_clkand(tech) = 0 generate
@@ -147,6 +157,34 @@ begin
     odup2 <= oi;
     odup3 <= oi;
     odup4 <= oi;
+  end generate;
+
+  gf22xdelay: if tech=gf22 generate
+    o <= oi
+--pragma translate_off
+         after (4+isdummy) * (1 ps)
+--pragma translate_on
+         ;
+    odup <= oi
+--pragma translate_off
+         after (4+isdummy) * (1 ps)
+--pragma translate_on
+         ;
+    odup2 <= oi
+--pragma translate_off
+         after (4+isdummy) * (1 ps)
+--pragma translate_on
+         ;
+    odup3 <= oi
+--pragma translate_off
+         after (4+isdummy) * (1 ps)
+--pragma translate_on
+         ;
+    odup4 <= oi
+--pragma translate_off
+         after (4+isdummy) * (1 ps)
+--pragma translate_on
+         ;
   end generate;
 
 end architecture;

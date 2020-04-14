@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -108,6 +108,47 @@ component ahbjtag_bsd
     rego        : out std_ulogic
     );
 end component;
+
+component ahbjtagrv
+  generic (
+    tech    : integer range 0 to NTECH := 0;
+    hindex  : integer := 0;
+    nsync : integer range 1 to 2 := 1;
+    idcode : integer range 0 to 255 := 9;
+    manf   : integer range 0 to 2047 := 804;
+    part   : integer range 0 to 65535 := 0;
+    ver    : integer range 0 to 15 := 0;
+    ainst   : integer range 0 to 255 := 2;
+    dinst   : integer range 0 to 255 := 3;
+    scantest : integer := 0;
+    oepol  : integer := 1;
+    tcknen : integer := 0;
+    versel : integer range 0 to 1 := 1);
+  port (
+    rst     : in  std_ulogic;
+    clk     : in  std_ulogic;
+    tck     : in  std_ulogic;
+    tms     : in  std_ulogic;
+    tdi     : in  std_ulogic;
+    tdo     : out std_ulogic;
+    ahbi    : in  ahb_mst_in_type;
+    ahbo    : out ahb_mst_out_type;
+    tapo_tck    : out std_ulogic;
+    tapo_tdi    : out std_ulogic;
+    tapo_inst   : out std_logic_vector(7 downto 0);
+    tapo_rst    : out std_ulogic;
+    tapo_capt   : out std_ulogic;
+    tapo_shft   : out std_ulogic;
+    tapo_upd    : out std_ulogic;
+    tapi_tdo    : in std_ulogic;
+    trst        : in std_ulogic := '1';
+    tdoen   : out std_ulogic;
+    tckn    : in std_ulogic := '0';
+    tapo_tckn   : out std_ulogic;
+    tapo_ninst  : out std_logic_vector(7 downto 0);
+    tapo_iupd   : out std_ulogic
+    );
+end component;      
 
 component bscanctrl
   generic (

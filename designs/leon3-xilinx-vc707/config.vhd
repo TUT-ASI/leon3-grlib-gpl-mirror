@@ -147,7 +147,7 @@ package config is
   constant CFG_AHBRPIPE : integer := 0;
 -- Gaisler Ethernet core
   constant CFG_GRETH : integer := 1;
-  constant CFG_GRETH1G : integer := 1;
+  constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 8;
   constant CFG_GRETH_FMC : integer := 0;
   constant CFG_GRETH_FT : integer := 0;

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -51,7 +51,9 @@ entity ddr2ram is
     -- 9:800+ (MT47H-25E)
     speedbin: integer range 0 to 9 := 0;
     density: integer range 1 to 5 := 3;  -- 1:256M 2:512M 3:1G 4:2G 5:4G bits/chip
-    pagesize: integer range 1 to 2 := 1  -- 1K/2K page size (controls tRRD)
+    pagesize: integer range 1 to 2 := 1;  -- 1K/2K page size (controls tRRD)
+    initbyte: integer := 0;              -- If >0 set all bytes to (initbyte mod 256)
+    jitter_tol: integer := 50
     );
   port (
     ck: in std_ulogic;
@@ -111,7 +113,7 @@ architecture sim of ddr2ram is
   signal initdone: boolean := false;
 
   -- Small delta-t to adjust calculations for jitter tol.
-  constant deltat: time := 50 ps;
+  constant deltat: time := jitter_tol * (1 ps);
 
   -- Timing parameters
   constant tWR: time := 15 ns;
@@ -128,6 +130,11 @@ architecture sim of ddr2ram is
 
   type timetab3 is array(1 to 2) of time;
   constant tRRD: timetab3 := (7.5 ns, 10 ns);
+
+  function pick(t,f: integer; b: boolean) return integer is
+  begin
+    if b then return t; else return f; end if;
+  end pick;
 
 begin
 
@@ -203,9 +210,98 @@ begin
   -- Command state machine
   -----------------------------------------------------------------------------
   cmdp: process(ck)
+    -- Data split by bank to avoid exceeding 4G
+    constant b0size: integer := (2**(colbits+rowbits)) * ((width+15)/16);
+    constant b1size: integer := pick(b0size, 1, implbanks>1);
+    constant b2size: integer := pick(b0size, 1, implbanks>2);
+    constant b3size: integer := pick(b0size, 1, implbanks>3);
+    constant b4size: integer := pick(b0size, 1, implbanks>4);
+    constant b5size: integer := pick(b0size, 1, implbanks>5);
+    constant b6size: integer := pick(b0size, 1, implbanks>6);
+    constant b7size: integer := pick(b0size, 1, implbanks>7);
+
     subtype coldata is std_logic_vector(width-1 downto 0);
+    subtype idata is integer range 0 to (2**20)-1;  -- 16 data bits + 2x2 X/U state
+    type idata_arr is array(natural range <>) of idata;
+    constant idataval_default : integer := pick(16#50000#,0,initbyte>0) + 16#101#*(initbyte mod 256);
+    type idata_arr_acc is access idata_arr;
+
+    variable memdata0: idata_arr_acc;
+    variable memdata1: idata_arr_acc;
+    variable memdata2: idata_arr_acc;
+    variable memdata3: idata_arr_acc;
+    variable memdata4: idata_arr_acc;
+    variable memdata5: idata_arr_acc;
+    variable memdata6: idata_arr_acc;
+    variable memdata7: idata_arr_acc;
+
     type coldata_arr is array(0 to implbanks*(2**(colbits+rowbits))-1) of coldata;
     variable memdata: coldata_arr;
+
+    impure function memdata_get(bank,idx: integer) return coldata is
+      variable r: coldata;
+      variable x: idata;
+      variable p: std_logic_vector(19 downto 0);
+      variable iidx: integer;
+    begin
+      iidx := (idx*width)/16;
+      for q in 0 to (width+15)/16-1 loop
+        case bank is
+          when 0      => x := memdata0(iidx+q);
+          when 1      => x := memdata1(iidx+q);
+          when 2      => x := memdata2(iidx+q);
+          when 3      => x := memdata3(iidx+q);
+          when 4      => x := memdata4(iidx+q);
+          when 5      => x := memdata5(iidx+q);
+          when 6      => x := memdata6(iidx+q);
+          when others => x := memdata7(iidx+q);
+        end case;
+        p := std_logic_vector(to_unsigned(x,20));
+        if p(18)='0' then p(15 downto 8) := "UUUUUUUU";
+        elsif p(19)='1' then p(15 downto 8) := "XXXXXXXX"; end if;
+        if p(16)='0' then p(7 downto 0) := "UUUUUUUU";
+        elsif p(17)='1' then p(7 downto 0) := "XXXXXXXX"; end if;
+        if width < 16 then
+          r := p(7 downto 0);
+        else
+          r(width-16*q-1 downto width-16*q-16) := p(15 downto 0);
+        end if;
+      end loop;
+      return r;
+    end memdata_get;
+
+    procedure memdata_set(bank,idx: integer; v: coldata) is
+      variable n: coldata;
+      variable x: idata;
+      variable p: std_logic_vector(19 downto 0);
+      variable iidx: integer;
+    begin
+      n := v;
+      iidx := (idx*width)/16;
+      for q in 0 to (width+15)/16-1 loop
+        p := "0101" & x"0000";
+        if width < 16 then
+          p(7 downto 0) := n;
+        else
+          p(15 downto 0) := n(width-16*q-1 downto width-16*q-16);
+        end if;
+        if p(15 downto 8)="UUUUUUUU" then p(18):='0'; p(15 downto 8):=x"00";
+        elsif is_x(p(15 downto 8)) then p(19):='1'; p(15 downto 8):=x"00"; end if;
+        if p(7 downto 0)="UUUUUUUU" then p(16):='0'; p(7 downto 0):=x"00";
+        elsif is_x(p(7 downto 0)) then p(17):='1'; p(7 downto 0):=x"00"; end if;
+        x := to_integer(unsigned(p));
+        case bank is
+          when 0      => memdata0(iidx+q) := x;
+          when 1      => memdata1(iidx+q) := x;
+          when 2      => memdata2(iidx+q) := x;
+          when 3      => memdata3(iidx+q) := x;
+          when 4      => memdata4(iidx+q) := x;
+          when 5      => memdata5(iidx+q) := x;
+          when 6      => memdata6(iidx+q) := x;
+          when others => memdata7(iidx+q) := x;
+        end case;
+      end loop;
+    end memdata_set;
 
     procedure load_srec is
       file TCF : text open read_mode is fname;
@@ -216,7 +312,7 @@ begin
       variable reclen  : std_logic_vector(7 downto 0);
       variable recdata : std_logic_vector(0 to 16*8-1);
       variable recdatatemp : std_logic_vector(0 to 63);
-      variable col, coloffs, len: integer;
+      variable idx, coloffs, len: integer;
     begin
       L1:= new string'("");
       while not endfile(TCF) loop
@@ -251,16 +347,27 @@ begin
                 recdata(0 to 63)    := recdata(64 to 127);
                 recdata(64 to 127)  := recdatatemp;
               end if;
-              col := to_integer(unsigned(recaddr(log2(width/8)+rowbits+colbits+1 downto log2(width/8))));
-              coloffs := 8*to_integer(unsigned(recaddr(log2(width/8)-1 downto 0)));
-              while len > width/8 loop
-                assert coloffs=0;
-                memdata(col) := recdata(0 to width-1);
-                col := col+1;
-                len := len-width/8;
-                recdata(0 to recdata'length-width-1) := recdata(width to recdata'length-1);
-              end loop;
-              memdata(col)(width-1-coloffs downto width-coloffs-len*8) := recdata(0 to len*8-1);
+              if width < 16 then
+                idx := to_integer(unsigned(recaddr(rowbits+colbits-1 downto 0)));
+                while len > 1 loop
+                  memdata0(idx) := 16#10000# + to_integer(unsigned(recdata(0 to 7)));
+                  idx := idx+1;
+                  len := len-1;
+                  recdata(0 to recdata'length-8-1) := recdata(8 to recdata'length-1);
+                end loop;
+              else
+                assert recaddr(0)='0';    -- Assume 16-bit alignment on SREC entry
+                idx := to_integer(unsigned(recaddr(rowbits+colbits+log2(width/16) downto 1)));
+                while len > 1 loop
+                  memdata0(idx) := 16#50000# + to_integer(unsigned(recdata(0 to 15)));
+                  idx := idx+1;
+                  len := len-2;
+                  recdata(0 to recdata'length-16-1) := recdata(16 to recdata'length-1);
+                end loop;
+                if len > 0 then
+                  memdata0(idx) := 16#40000# + to_integer(unsigned(recdata(0 to 15)));
+                end if;
+              end if;
             end if;
           end if;
         end if;
@@ -299,6 +406,7 @@ begin
     variable b: boolean;
     variable mrscount: integer := 0;
     variable loaded: boolean := false;
+    variable cold: coldata;
 
     procedure checktime(got, exp: time; gt: boolean; req: string) is
     begin
@@ -307,6 +415,24 @@ begin
         severity warning;
     end checktime;
   begin
+    if memdata0=null then
+      memdata0 := new idata_arr(0 to b0size-1);
+      memdata1 := new idata_arr(0 to b1size-1);
+      memdata2 := new idata_arr(0 to b2size-1);
+      memdata3 := new idata_arr(0 to b3size-1);
+      memdata4 := new idata_arr(0 to b4size-1);
+      memdata5 := new idata_arr(0 to b5size-1);
+      memdata6 := new idata_arr(0 to b6size-1);
+      memdata7 := new idata_arr(0 to b7size-1);
+      memdata0(0 to b0size-1) := (others => idataval_default);
+      memdata1(0 to b1size-1) := (others => idataval_default);
+      memdata2(0 to b2size-1) := (others => idataval_default);
+      memdata3(0 to b3size-1) := (others => idataval_default);
+      memdata4(0 to b4size-1) := (others => idataval_default);
+      memdata5(0 to b5size-1) := (others => idataval_default);
+      memdata6(0 to b6size-1) := (others => idataval_default);
+      memdata7(0 to b7size-1) := (others => idataval_default);
+    end if;
     if rising_edge(ck) then
       -- Update pipe regs
       prev_re := re;
@@ -378,8 +504,7 @@ begin
               else               -- Interleaved
                 colv(log2(blen)-1 downto 0) := alow(log2(blen)-1 downto 0) xor to_unsigned(x,log2(blen));
               end if;
-              col := to_integer(unsigned(ba))*(2**(colbits+rowbits)) +
-                     banks(bank).openrow * (2**colbits) + to_integer(colv(colbits-1 downto 0));
+              col := banks(bank).openrow * (2**colbits) + to_integer(colv(colbits-1 downto 0));
               accpipe(3-x/2).col(x mod 2) := col;
             end loop;
             -- Auto precharge
@@ -494,7 +619,8 @@ begin
         read_en <= true;
         -- print("Reading from col " & tost(accpipe(2+i).col(0)) & " and " & tost(accpipe(2+i).col(1)));
         -- col0 <= accpipe(2+i).col(0); col1 <= accpipe(2+i).col(1);
-        read_data <= memdata(accpipe(2+cl+al).col(0)) & memdata(accpipe(2+cl+al).col(1));
+        read_data <= memdata_get(accpipe(2+cl+al).bank, accpipe(2+cl+al).col(0)) &
+                     memdata_get(accpipe(2+cl+al).bank, accpipe(2+cl+al).col(1));
       else
         read_en <= false;
       end if;
@@ -508,11 +634,13 @@ begin
       if accpipe(3+cl+al).w then
         assert not is_x(write_mask) report "Write error!";
         for x in 0 to 1 loop
+          cold := memdata_get(accpipe(3+cl+al).bank, accpipe(3+cl+al).col(x));
           for b in width/8-1 downto 0 loop
             if write_mask((1-x)*width/8+b)='0' then
-              memdata(accpipe(3+cl+al).col(x))(8*b+7 downto 8*b) :=
+              cold(8*b+7 downto 8*b) :=
                 write_data( (1-x)*width+b*8+7 downto (1-x)*width+b*8);
             end if;
+            memdata_set(accpipe(3+cl+al).bank, accpipe(3+cl+al).col(x), cold);
           end loop;
         end loop;
         banks(accpipe(3+cl+al).bank).writetime := now;

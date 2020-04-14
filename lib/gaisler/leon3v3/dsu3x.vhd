@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -539,7 +539,7 @@ begin
       end if;
     end if;
 
-    if r.slv.hsel  = '1' then
+    if r.slv.hsel  = '1' and (clk2x=0 or (r.slv.hready='0' and r.slv.hready2='0')) then
       if (clk2x = 0) then
         v.cnt := r.cnt - 1;
       else
@@ -642,11 +642,13 @@ begin
               -- Writes are handled in comb2 process.
               hrdata(tbits_dsuif-1 downto 0) := r2.timer(tbits_dsuif-1 downto 0);
             when "01000" =>
-              if r.slv.hwrite = '1' then
-                if hclken = '1' then
-                  v.bn := hwdata(NCPU-1 downto 0);
-                  v.ss := hwdata(16+NCPU-1 downto 16);
-                else v.bn := r.bn; v.ss := r.ss; end if;
+              if (clk2x=0 or (r.slv.hready='0' and r.slv.hready2='0')) then
+                if r.slv.hwrite = '1' then
+                  if hclken = '1' then
+                    v.bn := hwdata(NCPU-1 downto 0);
+                    v.ss := hwdata(16+NCPU-1 downto 16);
+                  else v.bn := r.bn; v.ss := r.ss; end if;
+                end if;
               end if;
               hrdata(NCPU-1 downto 0) := r.bn;
               hrdata(16+NCPU-1 downto 16) := r.ss; 
@@ -849,11 +851,12 @@ begin
         when "100" =>  -- IU reg access
           iuacc := '1';
           hrdata := dbgi(index).data;
-          if r.cnt(1 downto 0) = "11" then
+          if (clk2x = 0 and r.cnt(1 downto 0) = "11") or (clk2x /= 0 and r.cnt(1 downto 0)="10") then
             if hclken = '1' then v.slv.hready := '1'; else v.slv.hready2 := '1'; end if;
           end if;
         when "111" => -- DSU ASI
-          if r.cnt(2 downto 1) = "11" then iuacc := '1'; else iuacc := '0'; end if;
+          if r.cnt(2 downto 1) = "11" and
+            (clk2x=0 or hclken='1' or r.cnt(0)='0') then iuacc := '1'; else iuacc := '0'; end if;
           if (dbgi(index).crdy = '1') or (r.cnt = "000") then
             if hclken = '1' then v.slv.hready := '1'; else v.slv.hready2 := '1'; end if;
           end if;

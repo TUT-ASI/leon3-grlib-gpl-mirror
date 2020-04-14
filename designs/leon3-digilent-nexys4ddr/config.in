@@ -65,7 +65,6 @@ comment 'Peripherals             '
     source lib/gaisler/uart/uart1.in
     source lib/gaisler/irqmp/irqmp.in
     source lib/gaisler/misc/gptimer.in
-    source lib/gaisler/misc/grgpio.in
   endmenu
 
   mainmenu_option next_comment

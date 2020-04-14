@@ -251,6 +251,3 @@
   constant CFG_VGA_ENABLE  : integer := CONFIG_VGA_ENABLE;
   constant CFG_SVGA_ENABLE : integer := CONFIG_SVGA_ENABLE;
 
--- GRLIB debugging
-  constant CFG_DUART    : integer := CONFIG_DEBUG_UART;
-

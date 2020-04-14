@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ package gencomp is
 
 -- technologies and libraries
 
-constant NTECH : integer := 63;
+constant NTECH : integer := 64;
 type tech_ability_type is array (0 to NTECH) of integer;
 
 constant inferred    : integer := 0;
@@ -105,7 +105,8 @@ constant memrhs65b   : integer := 59;
 constant kintexu     : integer := 60;
 constant polarfire   : integer := 61;
 constant nx          : integer := 62;
-constant dare65      : integer := 63;
+constant dare65t     : integer := 63;
+constant gf22        : integer := 64;
 
 
 constant DEFMEMTECH  : integer := inferred;
@@ -149,12 +150,12 @@ constant regfile_3p_write_through : tech_ability_type :=
 constant regfile_3p_infer : tech_ability_type :=
 	(inferred => 1, rhumc => 1, ihp25 => 1, rhlib18t => 0, ut90 => 1,
 	 peregrine => 1, ihp25rh => 1, umc => 1, custom1 => 0, rhs65 => 1,
-         memrhs65b => 1, others => 0);
+         memrhs65b => 1, gf22 => 1, others => 0);
 
 constant regfile_4p_infer : tech_ability_type :=
 	(inferred => 1, rhumc => 1, ihp25 => 1, rhlib18t => 0, ut90 => 1,
 	 peregrine => 1, ihp25rh => 1, umc => 1, custom1 => 0, rhs65 => 1,
-         memrhs65b => 1, rtg4 => 0, others => 0);
+         memrhs65b => 1, rtg4 => 0, gf22 => 1, others => 0);
 
 constant syncram_2p_dest_rw_collision : tech_ability_type :=
         (memartisan => 1, smic013 => 1, easic45 => 1, ut130 => 1, rhs65 => 0,
@@ -170,13 +171,13 @@ constant syncram_dp_dest_rw_collision : tech_ability_type :=
 -- a read.
 
 constant syncram_readhold : tech_ability_type :=
-        (rhs65 => 1, memrhs65b => 1,
+        (rhs65 => 1, memrhs65b => 1, gf22 => 1,
          spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
          artix7 => 1, zynq7000 => 1, kintexu => 1,
          others => 0);
 
 constant syncram_2p_readhold : tech_ability_type :=
-        (rhs65 => 1, memrhs65b => 1,
+        (rhs65 => 1, memrhs65b => 1, gf22 => 1,
          spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
          artix7 => 1, zynq7000 => 1, kintexu => 1,
          others => 0);
@@ -189,8 +190,8 @@ constant syncram_dp_readhold : tech_ability_type :=
 constant regfile_3p_readhold : tech_ability_type :=
         (others => 0);
 
-constant syncram_has_customif : tech_ability_type := (rhs65 => 1, memrhs65b => 1, others => 0);
-constant syncram_customif_maxwidth: integer := 64;  -- Expand as needed
+constant syncram_has_customif : tech_ability_type := (rhs65 => 1, dare => 1, memrhs65b => 1, gf22 => 1, others => 0);
+constant syncram_customif_maxwidth: integer := 84;  -- Expand as needed
 
 -- Set to 1 to add input-to-output bypass logic during scan mode in the syncram
 -- wrappers.
@@ -202,7 +203,7 @@ constant syncram_abits_min    : tech_ability_type := (spartan6 => 6, virtex6 => 
                                                       artix7 => 7, zynq7000 => 6, kintexu => 6,
                                                       others => 0);
 constant syncram_2p_abits_min : tech_ability_type := (spartan6 => 6, virtex6 => 6, virtex7 => 6, kintex7 => 6,
-                                                      artix7 => 6, zynq7000 => 6, kintexu => 6,
+                                                      artix7 => 6, zynq7000 => 6, kintexu => 6, gf22 => 6,
                                                       others => 0);
 
 
@@ -210,7 +211,7 @@ constant has_sram : tech_ability_type :=
 	(atc18s => 0, others => 1);
 
 constant has_2pram : tech_ability_type :=
-	( atc18s => 0, umc => 0, rhumc => 0, ihp25 => 0, others => 1);
+	( atc18s => 0, umc => 0, rhumc => 0, ihp25 => 0,  others => 1);
 
 constant has_dpram : tech_ability_type :=
 	(virtex => 1, virtex2 => 1, memvirage => 1, axcel => 0,
@@ -246,7 +247,7 @@ constant has_sram156bw : tech_ability_type := (
 	spartan3e => 0, spartan6 => 0, virtex6 => 0, virtex7 => 0, kintex7 => 0,
 	altera => 0, cyclone3 => 0, stratix2 => 0, stratix3 => 0, stratix4 => 0,
 	tm65gplus => 0, custom1 => 1, ut90 => 1, rhs65 => 1, memrhs65b => 1, stratix5 => 1,
-	kintexu => 0, others => 0);
+	kintexu => 0, gf22 => 1, others => 0);
 
 constant has_sram256bw : tech_ability_type := (
 	virtex2 => 1, virtex4 => 1, virtex5 => 1, spartan3 => 1,
@@ -331,7 +332,7 @@ constant has_ds_pads : tech_ability_type :=
          artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1, polarfire => 1, kintexu => 1, others => 0);
 
 constant has_ds_combo : tech_ability_type :=
-	( rhumc => 1, ut25 => 1, ut130 => 1, others => 0);
+	( rhumc => 1, ut25 => 1, ut130 => 1, dare => 1, others => 0);
 
 constant has_tm_pads : tech_ability_type := (rhs65 => 1, others => 0);
 
@@ -340,14 +341,14 @@ constant has_clkand : tech_ability_type :=
 	  virtex5 => 1, ut25 => 1, rhlib18t => 1,
           spartan6 => 1, virtex6 => 1, ut130 => 1, easic45 => 1,
           ut90 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1, saed32 => 1,
-	  dare => 1, rhs65 => 1, kintexu => 1, others => 0);
+	  dare => 1, dare65t => 1, rhs65 => 1, kintexu => 1, gf22 => 1, others => 0);
 
 constant has_clkmux : tech_ability_type :=
 	( virtex => 1, virtex2 => 1, spartan3 => 1, spartan3e => 1,
 	  virtex4 => 1, virtex5 => 1,  rhlib18t => 1,
           spartan6 => 1, virtex6 => 1, ut130 => 1, easic45 => 1,
           ut90 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1, saed32 => 1, dare => 1,
-	  rhumc => 1, rhs65 => 1, kintexu => 1, others => 0);
+	  rhumc => 1, rhs65 => 1, kintexu => 1, gf22 => 1, others => 0);
 
 constant has_clkinv : tech_ability_type :=
 	( saed32 => 1, dare => 1, rhs65 => 1, others => 0);
@@ -358,7 +359,7 @@ constant has_techbuf : tech_ability_type :=
 	  apa3 => 1, easic90 => 1, axdsp => 1, actfus => 1,
 	  apa3e => 1, apa3l => 1, ut130 => 1, easic45 => 1,
           ut90 => 1, spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
-          artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1, kintexu => 1, others => 0);
+          artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1, kintexu => 1, dare => 1, others => 0);
 
 constant has_techbuf_triplicated : tech_ability_type :=
         ( rtg4 => 1, others => 0);
@@ -521,7 +522,8 @@ constant has_transceivers : tech_ability_type := (
   rhs65     => "rhs65     ", rtg4      => "rtg4      ",
   stratix5  => "stratixv  ", memrhs65b => "memrhs65b ",
   kintexu   => "kintexu   ", polarfire => "polarfire ",
-  nx        => "nx        ", dare65    => "dare65    ");
+  nx        => "nx        ", dare65t   => "dare65t   ",
+  gf22      => "gf22      ");
 
 -- pragma translate_on
 
@@ -588,7 +590,7 @@ constant TT_M010     : integer := 13;
   constant testin_none : std_logic_vector(TESTIN_WIDTH-1 downto 0) := (others => '0');
 
   -- Used for mbist support via customin/out on cores that support it
-  constant memtest_vlen: integer := 16;
+  constant memtest_vlen: integer := 84;
   subtype memtest_vector is std_logic_vector(memtest_vlen-1 downto 0);
   type memtest_vector_array is array(natural range <>) of memtest_vector;
 
@@ -1127,7 +1129,7 @@ end component;
 
 component lvds_combo  is
   generic (tech : integer := 0; voltage : integer := 0; width : integer := 1;
-		oepol : integer := 0; term : integer := 0);
+		oepol : integer := 0; term : integer := 0; nobiasmod : integer := 0);
   port (odpadp, odpadn, ospadp, ospadn : out std_logic_vector(0 to width-1);
         odval, osval, en : in std_logic_vector(0 to width-1);
 	idpadp, idpadn, ispadp, ispadn : in std_logic_vector(0 to width-1);
@@ -1286,11 +1288,15 @@ type clkgen_in_type is record
   pllrst  : std_logic;			-- optional reset for PLL
   pllctrl : std_logic_vector(1 downto 0);  -- optional control for PLL
   clksel  : std_logic_vector(1 downto 0);  -- optional clock select
+  freqctrl : std_logic_vector(2 downto 0);  -- optional control for PLL
+  sel_TESTBUS : std_logic_vector(2 downto 0);
+  VREF_SW : std_logic;
 end record;
 
 type clkgen_out_type is record
   clklock : std_logic;
   pcilock : std_logic;
+  PLL_TESTOUT : std_logic;
 end record;
 
 component clkgen
@@ -2048,8 +2054,8 @@ end component;
 component mul_61x61
   generic (multech : integer := 0;
            fabtech : integer := 0);
-    port(A       : in std_logic_vector(60 downto 0);
-         B       : in std_logic_vector(60 downto 0);
+    port(NA      : in std_logic_vector(60 downto 0);
+         NB      : in std_logic_vector(60 downto 0);
          EN      : in std_logic;
          CLK     : in std_logic;
          PRODUCT : out std_logic_vector(121 downto 0));

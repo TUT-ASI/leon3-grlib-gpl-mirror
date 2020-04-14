@@ -247,6 +247,3 @@
   constant CFG_GRGPIO_IMASK  : integer := 16#CONFIG_GRGPIO_IMASK#;
   constant CFG_GRGPIO_WIDTH  : integer := CONFIG_GRGPIO_WIDTH;
 
--- GRLIB debugging
-  constant CFG_DUART    : integer := CONFIG_DEBUG_UART;
-

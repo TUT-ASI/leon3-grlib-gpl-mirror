@@ -1,11 +1,11 @@
-VER=$(VNAME)2019.2
-BID=4241
+VER=$(VNAME)2020.1
+BID=4251
 CC=gcc
 SED=sed
 
 ASICLIBS = ihp25 sgb25vrh ut025crh virage rh_lib18t rh_lib18t_io2 rh_lib13t\
 	atc18 artisan umc18 virage90 tsmc90 dare nextreme atc18rha_cell smic13 \
-	tm65gplus st65lp st65gp cmos9sf nextreme2 gf65g saed32
+	tm65gplus st65lp st65gp cmos9sf nextreme2 gf65g saed32 gf22fdx
 FPGALIBS = apa proasic3 axcelerator ec fusion unisim virtex virtex5 secureip unimacro altera altera_mf \
 	 stratixii eclipsee cycloneiii stratixiii synplify simprim stratixiv \
 	proasic3e proasic3l smartfusion2 rtg4 polarfire nx
@@ -1081,7 +1081,7 @@ ifneq ("$(GRLIB_SIMULATOR)","ALDEC_RWS")
 	vmap simprim_ver ./xilinx_lib/simprims_ver ; \
 	vmap unifast_ver ./xilinx_lib/unifast_ver ; \
 	vmap unifast ./xilinx_lib/unifast_ver ; else \
-	echo "Xilinx Library not found. Please make sure you have installed the correct version of the Xilinx Library" ; exit 1 ; \
+	echo "Xilinx Library not found. Please make sure you have installed the correct version of the Xilinx Library. This can also be caused by a simulator error. Please make sure a simulator supported by the Xilinx Vivado version is installed." ; exit 1 ; \
 	fi;
 else
 	vsimsa -c -do $(GRLIB)/bin/aldec/riviera_ws_map_xilinx_libs.do

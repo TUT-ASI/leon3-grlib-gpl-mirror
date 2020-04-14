@@ -148,6 +148,13 @@ _fsrxx:
 !	set 0x0ffff, %g2
 !	st  %g2, [%g1+0x10]
 
+#ifdef UARTADDR
+        set UARTADDR, %g1
+        st  %g0, [%g1+0xC]
+        set 3, %g2
+        st %g2,  [%g1+0x8]
+#endif
+
 #ifdef DDR2CTRLIO
 	set DDR2CTRLIO, %g1
 	set DDR2CFG4, %g2

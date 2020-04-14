@@ -33,7 +33,7 @@ package config is
   constant CFG_RSTADDR : integer := 16#00000#;
   constant CFG_LDDEL : integer := (1);
   constant CFG_NOTAG : integer := 0;
-  constant CFG_NWP : integer := (2);
+  constant CFG_NWP : integer := (4);
   constant CFG_PWD : integer := 1*2;
   constant CFG_FPU : integer := 0 + 16*0 + 32*0;
   constant CFG_GRFPUSH : integer := 0;
@@ -64,9 +64,9 @@ package config is
   constant CFG_TLB_REP : integer := 0;
   constant CFG_MMU_PAGE : integer := 0;
   constant CFG_DSU : integer := 1;
-  constant CFG_ITBSZ : integer := 2 + 64*0;
-  constant CFG_ATBSZ : integer := 2;
-  constant CFG_AHBPF : integer := 0;
+  constant CFG_ITBSZ : integer := 16 + 64*0;
+  constant CFG_ATBSZ : integer := 16;
+  constant CFG_AHBPF : integer := 1;
   constant CFG_LEON3FT_EN : integer := 0;
   constant CFG_IUFT_EN : integer := 0;
   constant CFG_FPUFT_EN : integer := 0;
@@ -81,7 +81,7 @@ package config is
   constant CFG_STAT_NMAX : integer := 0;
   constant CFG_STAT_DSUEN : integer := 0;
   constant CFG_NP_ASI : integer := 0;
-  constant CFG_WRPSR : integer := 0;
+  constant CFG_WRPSR : integer := 1;
   constant CFG_ALTWIN : integer := 0;
   constant CFG_REX : integer := 0;
   constant CFG_LEON_MEMTECH : integer := (0*2**17 + 0*2**18 + 0*2**16);
@@ -170,7 +170,7 @@ package config is
   constant CFG_SPI2AHB_CPHA : integer := 0;
 -- UART 1
   constant CFG_UART1_ENABLE : integer := 1;
-  constant CFG_UART1_FIFO : integer := 4;
+  constant CFG_UART1_FIFO : integer := 32;
 -- LEON3 interrupt controller
   constant CFG_IRQ3_ENABLE : integer := 1;
   constant CFG_IRQ3_NSEC : integer := 0;

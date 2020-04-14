@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -198,6 +198,43 @@ begin
                   custominx(47 downto 0),customoutx(47 downto 0),
                   testin(TESTIN_WIDTH-5), '0');
       customoutx(customoutx'high downto 48) <= (others => '0');
+    end generate;
+    xgf22: if tech = gf22 generate
+      x0 : gf22fdx_syncram156bw
+        generic map (abits)
+        port map (
+          clk        => clk,
+          address    => address,
+          datain     => datain,
+          dataout    => dataoutx,
+          enable     => xenable,
+          wr         => xwrite,
+          tBist      => testin(TESTIN_WIDTH-3),
+          tLogic     => testin(TESTIN_WIDTH-4),
+          tStab      => testin(TESTIN_WIDTH-5),
+          tWbt       => testin(TESTIN_WIDTH-6),
+          resetFuse  => testin(TESTIN_WIDTH-7),
+          -- tScan      => testin(TESTIN_WIDTH-8),
+          s1d_ma     => testin(TESTIN_WIDTH-12 downto TESTIN_WIDTH-19),
+          -- smp_ma     => testin(TESTIN_WIDTH-20 downto TESTIN_WIDTH-31),
+          -- r2p_ma     => testin(TESTIN_WIDTH-32 downto TESTIN_WIDTH-40),
+          ch_bus_s1d => testin(TESTIN_WIDTH-41 downto TESTIN_WIDTH-52),
+--        ch_bus_r2p => testin(TESTIN_WIDTH-53 downto TESTIN_WIDTH-64),
+--        ch_bus_smp => testin(TESTIN_WIDTH-65 downto TESTIN_WIDTH-76),
+          tck        => customclkx,
+          eh_bus_s1d => custominx(34 downto 9),
+          eh_diagSel => custominx(7 downto 4),
+          eh_memEn   => custominx(3 downto 0),
+          he_status  => customoutx(11 downto 8),
+          he_data    => customoutx(7 downto 4),
+          mempres    => customoutx(3 downto 0),
+          fShift     => testin(TESTIN_WIDTH-9),
+          fDataIn    => custominx(8),
+          fBypass    => testin(TESTIN_WIDTH-10),
+          fEnable    => testin(TESTIN_WIDTH-11),
+          fDataOut   => customoutx(12)
+          );
+      customoutx(customoutx'high downto 13) <= (others => '0');
     end generate;
     nogenreg : if pipeline = 0 generate
       dataout <= dataoutx;

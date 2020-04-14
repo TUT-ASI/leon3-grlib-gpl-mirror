@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -162,7 +162,9 @@ package spwcomp is
       pnpusn       : in   std_logic_vector(31 downto 0);
       -- Reset interconnection
       ctrlregrst   : out  std_ulogic;
-      rxrst        : out  std_ulogic
+      rxrst        : out  std_ulogic;
+      -- RMAP command processing active indicator
+      rmapact      : out  std_ulogic
     );
   end component;
 
@@ -726,7 +728,9 @@ package spwcomp is
       pnpusn       : in   std_logic_vector(31 downto 0);
       -- Reset interconnection
       ctrlregrst   : out  std_ulogic;
-      rxrst        : out  std_ulogic
+      rxrst        : out  std_ulogic;
+      -- RMAP command processing active indicator
+      rmapact      : out  std_ulogic
     );
   end component;
 

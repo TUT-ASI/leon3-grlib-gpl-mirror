@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -29,6 +29,8 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library grlib;
 use grlib.stdlib.all;
+use grlib.config_types.all;
+use grlib.config.all;
 library eth;
 use eth.grethpkg.all;
 
@@ -162,6 +164,9 @@ entity grethc is
 end entity;
   
 architecture rtl of grethc is
+
+  constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) /= 0;
+
   procedure sel_op_mode(
     capbil : in std_logic_vector(4 downto 0);
     speed  : out std_ulogic;
@@ -2042,7 +2047,10 @@ begin
                   conv_std_logic_vector(ipaddrl, 16);
       if edcl > 1 then
         v.edclip(3 downto 0) := edcladdr;
+        v.emacaddr := macaddrt;
         v.emacaddr(3 downto 0) := edcladdr;
+      else
+        v.emacaddr := macaddrt;        
       end if;
       v.duplexstate := start; v.regaddr := (others => '0');
       v.phywr := '0'; v.rstphy := '1'; v.rstaneg := '0';
@@ -2062,6 +2070,8 @@ begin
         v.ctrl.edcldis  := edcldisable;
       elsif edcl /= 0 then
         v.ctrl.edcldis := '0';
+      else
+        v.ctrl.edcldis := '0';        
       end if;
       v.ctrl.reset := '0';
       if (enable_mdio = 1) then
@@ -2075,6 +2085,8 @@ begin
       end if;
       if edclsepahbg /= 0 then
         v.edclsepahb := edclsepahb;
+      else
+        v.edclsepahb := '0'; 
       end if;
      v.txcnt := (others => '0'); v.txburstcnt := (others => '0');
      v.tedcl := '0'; v.erenable := '0';
@@ -2105,6 +2117,41 @@ begin
      v.oplen := (others => '0');
      v.udpsrc := (others => '0'); v.ecnt := (others => '0');
      v.rcntm := (others => '0'); v.rcntl := (others => '0');
+     if RESET_ALL then
+      v.ipcrc := (others => '0');
+      v.ctrl.mcasten := '0';
+      v.ctrl.ramdebugen := '0';
+      v.status.tx_int := '0';
+      v.status.rx_int := '0';
+      v.status.tx_err := '0';
+      v.status.rx_err := '0';
+      v.status.rxahberr := '0';
+      v.status.txahberr := '0';
+      v.mac_addr := (others => '0');
+      v.hash := (others => '0');
+      v.txdesc := (others => '0');
+      v.rxdesc := (others => '0');
+      v.txwrap := '0';
+      v.txden := '0';
+      v.txirq := '0';
+      v.txlength := (others => '0');
+      v.txvalid := '0';
+      v.txdata := (others => '0');
+      v.rxirq := '0';
+      v.checkdata := (others => '0');
+      v.usesizefield := '0';
+      v.hashlookup := '0';
+      v.mcast := '0';
+      v.mcastacc := '0';
+      v.mdioo := '0';
+      v.disableduplex := '0';
+      v.init_busy := '0';
+      v.ext := '0';
+      v.extcap := '0';
+      v.capbil := (others => '0');
+      v.erxidle := '1';
+      v.mdioclkold := (others => '0');
+     end if;
     end if;
 -------------------------------------------------------------------------------
 -- SIGNAL ASSIGNMENTS ---------------------------------------------------------

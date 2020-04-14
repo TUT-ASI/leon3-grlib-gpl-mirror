@@ -200,3 +200,24 @@ divpipe:
 1:
 	retl
 	mov	%g0, %o0
+
+        .global bigdiv
+bigdiv:
+        mov %o1, %y
+        nop
+        cmp %o0, 0
+        be,a 1f
+         udiv %o2, %o3, %o0
+        cmp %o0, 1
+        be,a 1f
+         udivcc %o2, %o3, %o0
+        cmp %o0, 2
+        be,a 1f
+         sdiv %o2, %o3, %o0
+        sdivcc %o2, %o3, %o0
+1:      mov %psr, %o1
+        srl %o1, 20, %o1
+        and %o1, 15, %o1
+        retl
+        st %o1, [%o4]
+

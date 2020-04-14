@@ -225,6 +225,4 @@ package config is
   constant CFG_GRGPIO_ENABLE : integer := 1;
   constant CFG_GRGPIO_IMASK : integer := 16#0000#;
   constant CFG_GRGPIO_WIDTH : integer := (8);
--- GRLIB debugging
-  constant CFG_DUART : integer := 0;
 end;

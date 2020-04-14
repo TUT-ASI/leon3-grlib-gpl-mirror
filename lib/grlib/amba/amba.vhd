@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -259,6 +259,7 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
 -- array types
   type apb_slv_in_vector_type is array (natural range <>) of apb_slv_in_type;
   type apb_slv_in_vector is array (0 to NAPBSLV-1) of apb_slv_in_type;
+  type apb_slv_out_vector_type is array (natural range <>) of apb_slv_out_type;
   type apb_slv_out_vector is array (0 to NAPBSLV-1) of apb_slv_out_type;
   type apb_slv_out_bus_vector is array (natural range <>) of apb_slv_out_vector;
   type apb3_slv_out_vector is array (0 to NAPBSLV-1) of apb3_slv_out_type;

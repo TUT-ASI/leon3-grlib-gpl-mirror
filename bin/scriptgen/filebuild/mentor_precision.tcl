@@ -58,9 +58,10 @@ proc append_file_mentor_precision {f finfo} {
 			return
 		}
 		"vlogsyn" {
+			global PRECLIBSKIP PRECDIRSKIP PRECSKIP TOP
 			set l [dict get $finfo l]
-			if {[string equal $l "local"] && [string equal $bn "work"] } {
-			} else {
+			set q [dict get $finfo q]
+			if {[lsearchmatch $PRECLIBSKIP $bn] < 0 && [lsearchmatch $PRECDIRSKIP $l] < 0 && [lsearchmatch $PRECSKIP $q] < 0 } {
 				global TOP
 				upvar TOP_precision_tcl_contents tptc
 				append tptc "add_input_file -format VERILOG -work $bn $f\n"

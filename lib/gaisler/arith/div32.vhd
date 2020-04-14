@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -58,6 +58,8 @@ architecture rtl of div32 is
 type div_regtype is record
   x      : std_logic_vector(64 downto 0);
   state  : std_logic_vector(2 downto 0);
+  ovfs   : std_logic_vector(1 downto 0);
+  op1z   : std_logic;
   zero   : std_logic;
   zero2  : std_logic;
   qcorr  : std_logic;
@@ -74,6 +76,8 @@ constant ASYNC_RESET : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) =
 constant RRES : div_regtype := (
   x      => (others => '0'),
   state  => (others => '0'),
+  ovfs   => "00",
+  op1z   => '0',
   zero   => '0',
   zero2  => '0',
   qcorr  => '0',
@@ -92,6 +96,49 @@ signal addsub : std_logic;
 
 begin
 
+  -----------------------------------------------------------------------------
+  --overflow detection
+  --Y[31:0]&op1[31:0] / op2[31:0]
+  -----------------------------------------------------------------------------
+  --Unsigned division
+  --A = y[31:0], B = op2[31:0]
+  --if A >= B then overflow
+  --if A-B is positive then there is overflow
+  -----------------------------------------------------------------------------
+  --Signed Division
+  -----------------------------------------------------------------------------
+  --A = y[31:0]&op1[31] B = op2[31]&op2[31:0]
+  --
+  --if (A->+) && (B->+) then
+  --  if A >= B then overflow 
+  --  if A-B is positive then there is overflow
+  -- *no extra action
+  -----------------------------------------------------------------------------
+  --if (A->-) && (B->+) then
+  -- if A > B then overflow 
+  -- if A+B is negative then there is overflow but remove
+  -- overflow if result is 0 since absolute negative range is lower
+  -- and act according to method B since we check for negative
+  -- no action is needed to remove on 0
+  -- **no extra action
+  -----------------------------------------------------------------------------
+  --if (A->+) && (B->-) then
+  -- if A >= B then overflow
+  -- if A+B is positive then there is overflow but remove
+  -- overflow if result is 0 and op2[30:0] is equal to zero
+  -- this will complie with method B
+  -- *extra action
+  -----------------------------------------------------------------------------
+  --if (A->-) && (B->-) then
+  -- if A > B then overflow
+  -- if A-B is negative then there is no overflow but add
+  -- overflow if result is 0 and op2[30:0] is equal to zero
+  -- sice the result will be positive and absolute positive range
+  -- is less compared to absolve negative range
+  -----------------------------------------------------------------------------
+
+
+  
   arst <= testrst when (ASYNC_RESET and scantest/=0 and testen/='0') else
           rst when ASYNC_RESET else
           '1';
@@ -102,11 +149,21 @@ begin
   variable vaddin1, vaddin2 : std_logic_vector(32 downto 0);
   variable vaddsub, ymsb : std_logic;
   constant zero33: std_logic_vector(32 downto 0) := "000000000000000000000000000000000";
+  constant zero31: std_logic_vector(30 downto 0) := "0000000000000000000000000000000";
   begin
 
     vready := '0'; vnready := '0'; v := r;
-    if addout = zero33 then v.zero := '1'; else v.zero := '0'; end if;
+    if addout = zero33 then
+      v.zero := '1';
+    else
+      v.zero := '0';
+    end if;
 
+    v.op1z := '0';
+    if divi.op1(30 downto 0) = zero31 then
+      v.op1z := '1';
+    end if;
+        
     vaddin1 := r.x(63 downto 31); vaddin2 := divi.op2; 
     vaddsub := not (divi.op2(32) xor r.x(64));
     v.zero2 := r.zero;
@@ -128,8 +185,29 @@ begin
         v.ovf := not addout(32);
       end if;
       v.state := "010";
+      
+      v.ovfs := "00";
+      if divi.y(31) = '0' and divi.op2(31) = '1' then
+        v.ovfs := "01";
+      end if;
+      if divi.y(31) = '1' and divi.op2(31) = '1' then
+        v.ovfs := "10";
+      end if;      
     when "010" =>
-      if ((divi.signed and r.neg and r.zero) = '1') and (divi.op1 = zero33) then v.ovf := '0'; end if;
+      if divi.signed = '1' then
+        if r.ovfs = "01" then
+          if r.zero = '1' and r.op1z = '1' then
+            v.ovf := '0';
+          end if;
+        end if;
+        if r.ovfs = "10" then
+          if r.zero = '1' and r.op1z = '1' then
+            v.ovf := '1';
+          end if;
+        end if;
+      end if;
+              
+    --  if ((divi.signed and r.neg and r.zero) = '1') and (divi.op1 = zero33) then v.ovf := '0'; end if;
       v.qmsb := vaddsub; v.qzero := '1';
       v.x(64 downto 32) := addout;
       v.x(31 downto 0) := r.x(30 downto 0) & vaddsub;

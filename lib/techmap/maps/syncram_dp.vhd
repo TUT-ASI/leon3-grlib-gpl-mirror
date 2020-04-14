@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -262,8 +262,14 @@ begin
                    clk2, address2, datain2, dataout2x, xxenable2, xwrite2);
   end generate;
 
-  xc2v : if (is_unisim(tech) = 1) and (tech /= virtex) generate
+  xc2v : if (is_unisim(tech) = 1) and (tech /= virtex) and (tech /= kintex7) generate
     x0 : unisim_syncram_dp generic map (abits, dbits)
+         port map (clk1, address1, datain1, dataout1x, xxenable1, xwrite1,
+                   clk2, address2, datain2, dataout2x, xxenable2, xwrite2);
+  end generate;
+
+  xk7 : if (tech = kintex7)  generate
+    xk7 : kintex7_syncram_dp generic map (abits, dbits)
          port map (clk1, address1, datain1, dataout1x, xxenable1, xwrite1,
                    clk2, address2, datain2, dataout2x, xxenable2, xwrite2);
   end generate;
@@ -330,9 +336,13 @@ begin
   end generate;
 
   dar   : if tech = dare generate
-    x0 : dare_syncram_dp generic map (abits, dbits)
+    x0 : dare_syncram_dp_mbist generic map (abits, dbits)
          port map (clk1, address1, datain1, dataout1x, xxenable1, xwrite1,
-                   clk2, address2, datain2, dataout2x, xxenable2, xwrite2);
+                   clk2, address2, datain2, dataout2x, xxenable2, xwrite2,
+		             custominx(0),custominx(1),
+                 customoutx(0),customoutx(1),
+                 testin(testin'high),custominx(2));
+    customoutx(customoutx'high downto 2) <= (others => '0');
   end generate;
 
   fus  : if tech = actfus generate

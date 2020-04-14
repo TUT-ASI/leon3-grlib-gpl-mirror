@@ -5,7 +5,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -278,8 +278,8 @@ architecture rtl of leon3mp is
   signal apbi: apb_slv_in_type;
   signal apbo: apb_slv_out_vector;
 
-  signal irqi: irq_in_vector(CFG_NCPU-1 downto 0);
-  signal irqo: irq_out_vector(CFG_NCPU-1 downto 0);
+  signal irqi: irq_in_vector(0 to CFG_NCPU-1);
+  signal irqo: irq_out_vector(0 to CFG_NCPU-1);
   signal dbgi: l3_debug_in_vector(0 to CFG_NCPU-1);
   signal dbgo: l3_debug_out_vector(0 to CFG_NCPU-1);
   signal dsui: dsu_in_type;

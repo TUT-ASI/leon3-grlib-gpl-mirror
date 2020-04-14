@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -77,6 +77,8 @@ library grlib;
 use grlib.amba.all;
 use grlib.devices.all;
 use grlib.stdlib.all;
+use grlib.config_types.all;
+use grlib.config.all;
 
 entity i2cslv is
  generic (
@@ -110,6 +112,8 @@ architecture rtl of i2cslv is
  -----------------------------------------------------------------------------
  -- Core version
  constant I2CSLV_REV : integer := 0;
+
+ constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) /= 0;
 
  -- AMBA PnP
  constant PCONFIG : apb_config_type := (
@@ -238,6 +242,7 @@ architecture rtl of i2cslv is
 
  -- Register interface
  signal r, rin : i2cslv_reg_type;
+
 
 begin
 
@@ -535,6 +540,12 @@ begin
      v.scl := '0';
      v.active := false;
      v.scloen := I2C_HIZ; v.sdaoen := I2C_HIZ;
+     if RESET_ALL then
+      v.sda := '0';
+      v.sreg := (others => '0');
+      v.cnt := (others => '0');
+      v.irq := '0';
+    end if;
    end if;
 
    ----------------------------------------------------------------------------

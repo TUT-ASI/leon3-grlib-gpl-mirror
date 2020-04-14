@@ -1,3 +1,4 @@
+memory_kintex7.vhd
 memory_unisim.vhd
 buffer_unisim.vhd
 pads_unisim.vhd

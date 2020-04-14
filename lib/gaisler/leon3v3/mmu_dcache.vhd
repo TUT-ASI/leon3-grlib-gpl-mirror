@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -629,14 +629,11 @@ begin
       maddress := r.xaddress(31 downto 0);
       read := r.read; size := r.size; edata := dci.maddress;
       mmudci_su := r.su; mmudci_read := r.read and not r.dlock;
-      if (subiten /= 0) and (r.asi(4 downto 0) = ASI_UINST or r.asi(4 downto 0) = ASI_UDATA) then
-        mmudci_su := '0';
-      end if;
     else
       maddress := dci.maddress(31 downto 0);
       read := dci.read; size := dci.size; edata := dci.edata;
       mmudci_su := dci.msu; mmudci_read := dci.read and not dci.lock;
-      if (subiten /= 0) and (dci.asi(4 downto 0) = ASI_UINST or dci.asi(4 downto 0) = ASI_UDATA) then
+      if (subiten /= 0) and (dci.asi(4 downto 0) = ASI_UINST or dci.asi(4 downto 0) = ASI_UDATA) and dci.casa='0' then
         mmudci_su := '0';
       end if;
     end if;
@@ -707,6 +704,9 @@ begin
       v.asi := dci.asi(4 downto 0);
       v.su := dci.msu; v.set := set;
       v.valid := valid; v.dlock := dci.lock;
+      if (subiten /= 0) and (dci.asi(4 downto 0) = ASI_UINST or dci.asi(4 downto 0) = ASI_UDATA) and dci.casa='0' then
+        v.su := '0';
+      end if;
     end if;
 
 -- Store buffer

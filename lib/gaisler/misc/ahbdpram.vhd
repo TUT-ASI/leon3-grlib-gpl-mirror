@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -35,12 +35,13 @@ use techmap.gencomp.all;
 
 entity ahbdpram is
   generic (
-    hindex  : integer := 0;
-    haddr   : integer := 0;
-    hmask   : integer := 16#fff#;
-    tech    : integer := 2; 
-    abits   : integer range 8 to 19 := 8;
-    bytewrite : integer range 0 to 1 := 0
+    hindex    : integer := 0;
+    haddr     : integer := 0;
+    hmask     : integer := 16#fff#;
+    tech      : integer := 2; 
+    abits     : integer range 8 to 19 := 8;
+    bytewrite : integer range 0 to 1 := 0;
+    cacheable : integer range 0 to 1 := 1
   ); 
   port (
     rst     : in  std_ulogic;
@@ -61,9 +62,12 @@ architecture rtl of ahbdpram is
 --constant abits : integer := log2(kbytes) + 8;
 constant kbytes : integer := 2**(abits - 8);
 
+constant cache : std_ulogic := conv_std_logic(cacheable/=0);
+constant prefetch : std_ulogic := conv_std_logic(cacheable/=0);
+
 constant hconfig : ahb_config_type := (
   0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_AHBDPRAM, 0, abits+2, 0),
-  4 => ahb_membar(haddr, '1', '1', hmask),
+  4 => ahb_membar(haddr, prefetch, cache, hmask),
   others => zero32);
 
 

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2019, Cobham Gaisler
+--  Copyright (C) 2015 - 2020, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ use techmap.allpads.all;
 
 entity lvds_combo  is
   generic (tech : integer := 0; voltage : integer := 0; width : integer := 1;
-		oepol : integer := 0;  term : integer := 0);
+		oepol : integer := 0;  term : integer := 0; nobiasmod : integer := 0);
   port (odpadp, odpadn, ospadp, ospadn : out std_logic_vector(0 to width-1); 
         odval, osval, en : in std_logic_vector(0 to width-1); 
 	idpadp, idpadn, ispadp, ispadn : in std_logic_vector(0 to width-1);
@@ -77,6 +77,11 @@ begin
     end generate;
     rhu : if tech = rhumc generate
       u0: rhumc_lvds_combo generic map (voltage, width)
+        port map (odpadp, odpadn, ospadp, ospadn, odval, osval, oen, 
+		  idpadp, idpadn, ispadp, ispadn, idval, isval, powerdown, powerdownrx, lvdsrefo);
+    end generate;
+    dar : if tech = dare generate
+      u0: dare_lvds_combo generic map (voltage, width, nobiasmod)
         port map (odpadp, odpadn, ospadp, ospadn, odval, osval, oen, 
 		  idpadp, idpadn, ispadp, ispadn, idval, isval, powerdown, powerdownrx, lvdsrefo);
     end generate;

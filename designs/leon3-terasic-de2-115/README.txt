@@ -1,4 +1,3 @@
-
 LEON3 Template design for TerASIC Altera DE2-115 board
 ------------------------------------------------------
 
@@ -16,105 +15,120 @@ port permissions. LEON3 reset is mapped on KEY0.
 The output from grmon should look something like this:
 
 
- GRMON LEON debug monitor v1.1.41 professional version
+  GRMON LEON debug monitor v3.1.1 64-bit professional version
+  
+  Copyright (C) 2019 Cobham Gaisler - All rights reserved.
+  For latest updates, go to http://www.gaisler.com/
+  Comments or bug-reports to support@gaisler.com
 
- Copyright (C) 2004-2008 Aeroflex Gaisler - all rights reserved.
- For latest updates, go to http://www.gaisler.com/
- Comments or bug-reports to support@gaisler.com
+ Ethernet startup...
+  GRLIB build version: 4243
+  Detected frequency:  50.0 MHz
+  
+  Component                            Vendor
+  LEON3 SPARC V8 Processor             Cobham Gaisler
+  AHB Debug UART                       Cobham Gaisler
+  JTAG Debug Link                      Cobham Gaisler
+  GR Ethernet MAC                      Cobham Gaisler
+  LEON2 Memory Controller              European Space Agency
+  AHB/APB Bridge                       Cobham Gaisler
+  LEON3 Debug Support Unit             Cobham Gaisler
+  Generic UART                         Cobham Gaisler
+  Multi-processor Interrupt Ctrl.      Cobham Gaisler
+  Modular Timer Unit                   Cobham Gaisler
+  General Purpose I/O port             Cobham Gaisler
+  SPI Controller                       Cobham Gaisler
+  GRDMAC DMA Controller                Cobham Gaisler
+  AHB Status Register                  Cobham Gaisler
+  
+  Use command 'info sys' to print a detailed report of attached cores
 
- ethernet startup.
- GRLIB build version: 4103
+grmon3> info sys
+  cpu0      Cobham Gaisler  LEON3 SPARC V8 Processor    
+            AHB Master 0
+  ahbuart0  Cobham Gaisler  AHB Debug UART    
+            AHB Master 1
+            APB: 80000700 - 80000800
+            Baudrate 115200, AHB frequency 50.00 MHz
+  ahbjtag0  Cobham Gaisler  JTAG Debug Link    
+            AHB Master 2
+  greth0    Cobham Gaisler  GR Ethernet MAC    
+            AHB Master 3
+            APB: 80000E00 - 80000F00
+            IRQ: 12
+            edcl ip 192.168.111.2, buffer 2 kbyte
+  mctrl0    European Space Agency  LEON2 Memory Controller    
+            AHB: 00000000 - 20000000
+            AHB: 40000000 - 80000000
+            APB: 80000000 - 80000100
+            8-bit prom @ 0x00000000
+            32-bit sdram: 1 * 128 Mbyte @ 0x40000000
+            col 10, cas 2, ref 7.8 us
+  apbmst0   Cobham Gaisler  AHB/APB Bridge    
+            AHB: 80000000 - 80100000
+  dsu0      Cobham Gaisler  LEON3 Debug Support Unit    
+            AHB: 90000000 - A0000000
+            AHB trace: 1024 lines, 32-bit bus
+            CPU0:  win 8, nwp 4, itrace 1024, V8 mul/div, srmmu, lddel 1
+                   stack pointer 0x47fffff0
+                   icache 4 * 4 kB, 32 B/line, lru
+                   dcache 4 * 4 kB, 16 B/line, lru, snoop tags
+  uart0     Cobham Gaisler  Generic UART    
+            APB: 80000100 - 80000200
+            IRQ: 2
+            Baudrate 38343, FIFO debug mode available
+  irqmp0    Cobham Gaisler  Multi-processor Interrupt Ctrl.    
+            APB: 80000200 - 80000300
+  gptimer0  Cobham Gaisler  Modular Timer Unit    
+            APB: 80000300 - 80000400
+            IRQ: 8
+            16-bit scalar, 2 * 32-bit timers, divisor 50
+  gpio0     Cobham Gaisler  General Purpose I/O port    
+            APB: 80000900 - 80000A00
+  spi0      Cobham Gaisler  SPI Controller    
+            APB: 80000A00 - 80000B00
+            IRQ: 10
+            FIFO depth: 4, 1 slave select signals
+            Maximum word length: 32 bits
+            Supports 3-wire mode
+            Controller index for use in GRMON: 0
+  dma0      Cobham Gaisler  GRDMAC DMA Controller    
+            APB: 80001000 - 80001100
+            IRQ: 3
+  ahbstat0  Cobham Gaisler  AHB Status Register    
+            APB: 80000F00 - 80001000
+            IRQ: 1
 
- initialising ............
- detected frequency:  50 MHz
-
- Component                            Vendor
- LEON3 SPARC V8 Processor             Gaisler Research
- AHB Debug UART                       Gaisler Research
- AHB Debug JTAG TAP                   Gaisler Research
- GR Ethernet MAC                      Gaisler Research
- LEON2 Memory Controller              European Space Agency
- AHB/APB Bridge                       Gaisler Research
- LEON3 Debug Support Unit             Gaisler Research
- Generic APB UART                     Gaisler Research
- Multi-processor Interrupt Ctrl       Gaisler Research
- Modular Timer Unit                   Gaisler Research
- General purpose I/O port             Gaisler Research
- AHB status register                  Gaisler Research
-
- Use command 'info sys' to print a detailed report of attached cores
-
-grlib> inf sys
-00.01:003   Gaisler Research  LEON3 SPARC V8 Processor (ver 0x0)
-             ahb master 0
-01.01:007   Gaisler Research  AHB Debug UART (ver 0x0)
-             ahb master 1
-             apb: 80000700 - 80000800
-             baud rate 115200, ahb frequency 50.00
-02.01:01c   Gaisler Research  AHB Debug JTAG TAP (ver 0x1)
-             ahb master 2
-03.01:01d   Gaisler Research  GR Ethernet MAC (ver 0x0)
-             ahb master 3, irq 14
-             apb: 80000e00 - 80000f00
-             edcl ip 192.168.0.56, buffer 2 kbyte
-00.04:00f   European Space Agency  LEON2 Memory Controller (ver 0x1)
-             ahb: 00000000 - 20000000
-             ahb: 20000000 - 40000000
-             ahb: 40000000 - 80000000
-             apb: 80000000 - 80000100
-             8-bit prom @ 0x00000000
-             32-bit sdram: 1 * 128 Mbyte @ 0x40000000, col 10, cas 2, ref 7.8 us
-01.01:006   Gaisler Research  AHB/APB Bridge (ver 0x0)
-             ahb: 80000000 - 80100000
-02.01:004   Gaisler Research  LEON3 Debug Support Unit (ver 0x1)
-             ahb: 90000000 - a0000000
-             AHB trace 128 lines, 32-bit bus, stack pointer 0x47fffff0
-             CPU#0 win 8, hwbp 2, itrace 128, V8 mul/div, srmmu, lddel 1, GRFPU
-                   icache 4 * 4 kbyte, 32 byte/line lru
-                   dcache 4 * 4 kbyte, 16 byte/line lru
-01.01:00c   Gaisler Research  Generic APB UART (ver 0x1)
-             irq 2
-             apb: 80000100 - 80000200
-             baud rate 38343, DSU mode (FIFO debug)
-02.01:00d   Gaisler Research  Multi-processor Interrupt Ctrl (ver 0x3)
-             apb: 80000200 - 80000300
-03.01:011   Gaisler Research  Modular Timer Unit (ver 0x0)
-             irq 8
-             apb: 80000300 - 80000400
-             16-bit scaler, 2 * 32-bit timers, divisor 50
-09.01:01a   Gaisler Research  General purpose I/O port (ver 0x1)
-             apb: 80000900 - 80000a00
-0f.01:052   Gaisler Research  AHB status register (ver 0x0)
-             irq 1
-             apb: 80000f00 - 80001000
 
 1. SDRAM interface
 
 The SDRAM works fine with the MCTRL controller, providing 128 Mbyte memory.
+
 
 2. FLASH
 
 The FLASH is also interfaced with MCTRL, in 8-bit mode. Programming
 works fine with GRMON.
 
-grlib> fla
+grmon3> flash 
+  
+  AMD-style 8-bit flash
 
- AMD-style 8-bit flash
+  Manuf.        : AMD               
+  Device        : S29JL064J         
+  
+  1 x 8 Mbytes = 8 Mbytes total @ 0x00000000
+  
+  CFI information
+  Flash family  : 2
+  Flash size    : 64 Mbit
+  Erase regions : 2
+  Erase blocks  : 135
+  Write buffer  : 32 bytes (limited to 32)
+  Lock-down     : Not supported
+  Region  0     : 8 blocks of 8 kB
+  Region  1     : 127 blocks of 64 kB
 
- Manuf.    AMD                 
- Device    MX29LV128MB       
-
- 1 x 8 Mbyte = 8 Mbyte total @ 0x00000000
-
- CFI info
- flash family  : 2
- flash size    : 64 Mbit
- erase regions : 2
- erase blocks  : 135
- write buffer  : 32 bytes
- lock-down     : yes
- region  0     : 8 blocks of 8 Kbytes
- region  1     : 127 blocks of 64 Kbytes
 
 3. UART
 
@@ -124,10 +138,11 @@ off, or as debug link for GRMON when SW0 is on.
 
 4. Ethernet
 
-The ethernet port 0 is supported in 10/100 Mbit MII mode. This requires
-that the jumper JP1 is set to short ping 2-3, rather than the 1-2 as
-is default. The ethernet debug link (EDCL) is enabled and set to IP
+The Ethernet port 0 is supported in 10/100 Mbit MII mode. This requires
+that the jumper JP1 is set to short pins 2-3, rather than the 1-2 as
+is default. The Ethernet debug link (EDCL) is enabled and set to IP
 192.168.0.51.
+
 
 5. SPI
 
@@ -150,6 +165,7 @@ Design signal  SPI signal   JP5 pin
 The general purpose I/O port (GRGPIO) is enabled by default in the
 design and maps gpio(0) to gpio(30). If SPI2AHB is enabled then the
 number of GPIO lines must be decreased to 28.
+
 
 6. Other functions
 

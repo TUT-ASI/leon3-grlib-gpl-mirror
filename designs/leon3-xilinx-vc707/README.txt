@@ -9,7 +9,7 @@ additional information.
 Note: The Vivado flow and parts of this design are still
 experimental. Currently the design configuration should be left as-is.
 
-Note: You must have Vivado 2017.3 in your path for the make targets to work.
+Note: You must have Vivado 2018.1 in your path for the make targets to work.
 
 The XILINX_VIVADO variable must be exported for the mig_7series target
 to work correctly: export XILINX_VIVADO
@@ -17,7 +17,7 @@ to work correctly: export XILINX_VIVADO
 Design specifics
 ----------------
 
-* Synthesis should be done using Vivado 2017.1 or newer. For newer versions
+* Synthesis should be done using Vivado 2018.1 or newer. For newer versions
   the MIG and SGMII projects may need to be updated.
 
 * This design has GRFPU enabled by default. If your release doesn't contain
@@ -55,7 +55,6 @@ Design specifics
   AHB UART cannot be used at the same time.
 
 * The JTAG DSU interface is enabled and accesible via the JTAG port.
-  Start grmon with -xilusb to connect.
 
 * Ethernet FMC support. (http://ethernetfmc.com/)
   Supports 1000BASE-T, 100BASE-TX, and 10BASE-T standards for RGMII interface
@@ -65,6 +64,11 @@ Design specifics
 * Ethernet FMC Support is enabled via CFG_GRETH_FMC. For more information
   see http://ethernetfmc.com/. Example FPGA image and configuration with 
   FMC Ethernet support is supplied in sub-directory 'bitfiles/fmc'
+
+* It is possible to enable separate debug bus in which debug masters and slaves
+  are connected to a separate bus to decouple debug from execution by
+  seting CFG_EN_DBGBUS constant to something other than 0. When separate debug
+  bus is enabled this flag must be added to the grmon arguments -ioarea 0xEFFFF000
 
 Simulation and synthesis
 ------------------------
@@ -167,7 +171,7 @@ SW11 should be:
 Output from GRMON
 -----------------
 
- grmon -xilusb
+ grmon -xilusb  
   
   GRMON2 LEON debug monitor v2.0.30-149-ga91ee12 internal version
   
@@ -270,7 +274,7 @@ grmon2>
 Output from GRMON using Ethernet as Debug Link
 ----------------------------------------------
 
- grmon -eth 192.168.0.51
+ grmon 
 
   GRMON2 LEON debug monitor v2.0.70 32-bit internal version
   
