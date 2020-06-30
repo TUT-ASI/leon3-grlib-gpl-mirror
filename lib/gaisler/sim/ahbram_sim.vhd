@@ -53,8 +53,9 @@ entity ahbram_sim is
     kbytes      : integer := 1;
     pipe        : integer := 0;
     maccsz      : integer := AHBDW;
-    endianness  : integer := 0; --0 access as BE
-                                --1 access as LE
+    endianness  : integer := GRLIB_CONFIG_ARRAY(grlib_little_endian);
+                             --0 access as BE
+                             --1 access as LE
     fname   : string  := "ram.dat"
    );
   port (
@@ -294,6 +295,7 @@ begin
   variable BUF : std_logic_vector(31 downto 0);
   variable CH : character;
   variable ai : integer := 0;
+  variable ofs : integer := 0;
   variable len : integer := 0;
   variable wrd : integer := 0;
   file TCF : text open read_mode is fname;
@@ -346,11 +348,13 @@ begin
               hread(L1, recdata(0 to len*8-1));
 
               recaddr(31 downto abits+2) := (others => '0');
-              ai := conv_integer(recaddr)/(dw/8);
-              wrd := len/(dw/8);
+              ai := conv_integer(recaddr)/(4);
+              wrd := len/(4);
+              ofs := conv_integer(recaddr(log2(dw/32)+2 downto 2));
 
               for i in 0 to wrd-1 loop
-                ram(ai+i)       <= recdata(i*dw to i*dw+dw-1);
+                ram((ai+i)/(dw/32))(dw-32-(32*(i+ofs) mod dw)+31 downto (dw-32-32*(i+ofs) mod dw)) <= 
+                recdata(i*32 to i*32+32-1);
               end loop;
 
               if ai = 0 then

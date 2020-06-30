@@ -7,7 +7,7 @@ proc create_nanoxplore_nanoxmap {} {
     append vc "\nimport os"
     append vc "\nimport sys"
     append vc "\nfrom os import path"
-    append vc "\nfrom nanoxmap import *"
+    append vc "\nfrom nxmap import *"
     append vc "\ndir = os.path.dirname(os.path.realpath(__file__))"
     append vc "\nsys.path.append(dir)"
     append vc "\nproject = createProject(dir)"
@@ -84,17 +84,14 @@ proc eof_nanoxplore_nanoxmap {} {
     upvar nanoxmap_contents vc
     append vc "\n"
     append vc "\n#Set project options"	
-    append vc "\nproject.setOption('UseNxLibrary', 'Yes')"
-    append vc "\nproject.setOption('MergeRegisterToPad', 'Always')"	
     append vc "\nproject.setOption('ManageUnconnectedOutputs', 'Ground')"
     append vc "\nproject.setOption('ManageUnconnectedSignals', 'Ground')"	
-    append vc "\nproject.setOption('AdderToDSPMapThreshold', '0')"
     append vc "\nproject.setOption('DefaultRAMMapping', 'RAM')"	
     append vc "\nproject.setOption('DefaultROMMapping', 'LUT')"	
     append vc "\nproject.setOption('DisableROMFullLutRecognition', 'Yes')"	
     append vc "\nproject.setOption('MappingEffort', '$MAPPING_EFFORT\') "
     append vc "\nproject.setOption('ManageAsynchronousReadPort', 'Yes')"
-    append vc "\nproject.setOption('TimingDriven', '$TIMING_DRIVEN\')"
+
 
 
     append vc "\n\n"
@@ -118,7 +115,7 @@ proc eof_nanoxplore_nanoxmap {} {
     append vc "\n   project.addPads(pads)"
  
     append vc "\n#Generate Project file"
-    append vc "\nproject.save('$TOP\_native.nxm')"
+    append vc "\nproject.save('$TOP\_native.nym')"
     
     set nanoxfile [open "$TOP\_nanoxmap.py" w]
     puts $nanoxfile $vc

@@ -29,6 +29,8 @@ use ieee.numeric_std.all;
 library grlib;
 use grlib.stdlib.all;
 use grlib.amba.all;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.generic_bm_pkg.log_2;
 library gaisler;
 use gaisler.grdmac2_pkg.all;
@@ -359,7 +361,10 @@ begin  -- rtl
       datain  => buf_in.wdata
     );  
 
+-- pragma translate_off
+   assert GRLIB_CONFIG_ARRAY(grlib_little_endian) = 0
+      report "grdmac2: little endian systems not supported"
+      severity error;
+-- pragma translate_on
+
 end architecture rtl;
-
-
-

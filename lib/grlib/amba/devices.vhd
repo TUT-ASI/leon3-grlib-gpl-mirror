@@ -468,6 +468,8 @@ package devices is
   constant LEON3_PROXIMA         : system_device_type := 16#0252#;
   constant LEON_RTG4_DEVKIT      : system_device_type := 16#0264#;
   constant LEON_POLARFIRE_EVALKIT: system_device_type := 16#0265#;
+  constant NOELV_XILINX_KCU105   : system_device_type := 16#0287#;
+  constant LEON5_XILINX_KCU105   : system_device_type := 16#0288#;
   constant GAISLER_DDRTV         : system_device_type := 16#0290#;
   constant ALTERA_DE2            : system_device_type := 16#0302#;
   constant ALTERA_DE4            : system_device_type := 16#0303#;

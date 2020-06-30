@@ -1,3 +1,39 @@
+----------------------- Release 2020.2-b4254 ---------------------------
+
+2020-06-30	Added NOEL-V template designs for Digilent Arty A7
+		(noelv-digilent-arty-a7), Xilinx VC707 and KCU105
+		development kits (noelv-xilinx-vc707 and
+		noelv-xilinx-kcu105).
+
+2020-06-30	Added LEON5 template designs for Altera CycloneV E
+		Development kit (leon5-altera-c5ekit), Xilinx VC707,
+		KC705 and KCU105 development kits (leon5-xilinx-vc707,
+		leon5-xilinx-kc705 and leon5-xilinx-kcu105).
+
+2020-06-30	NOEL-V high-performance RISC-V RV64GC processor added to
+		GRLIB. See www.gaisler.com/noelv for further
+		information.
+
+2020-06-30	LEON5 next generation high-performance SPARC processor
+		added to GRLIB. See www.gaisler.com/leon5 for further
+		information.
+
+2020-06-24	GRETH: Little endian support added.
+
+2020-06-23	AHBM2AXI/AHB2AXIB: Little endian support is added.
+
+2020-06-17	GRETH: Fix undriven internal signal added with recent
+		changes to prepare for little-endian AHB support. Bug
+		was introduced in release 2020.1-b4251.
+
+2020-06-10	Added note about endianness support to IP cores with AHB
+		interface to GRLIB IP Core User's Manual and added
+		simulation warnings to IP cores that are not prepared for
+		use in little-endian systems.
+
+2020-05-08	TECHMAP: Added memory techmap for Kintex Ultrascale for
+		non-FT syncrams.
+
 ----------------------- Release 2020.1-b4251 ---------------------------
 
 2020-04-14	LEON3 DSU: Fix additional problem with DSU in

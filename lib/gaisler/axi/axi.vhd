@@ -172,6 +172,7 @@ package axi is
       aximid        : integer range 0 to 15  := 0;  --AXI master transaction ID
       wbuffer_num   : integer range 1 to 256 := 8;
       rprefetch_num : integer range 1 to 256 := 8;
+      ahb_endianness  : integer range 0 to 1   := GRLIB_CONFIG_ARRAY(grlib_little_endian);
       always_secure : integer range 0 to 1   := 1;  --0->not secure; 1->secure
       axi4          : integer range 0 to 1   := 0;
       endianness_mode : integer range 0 to 1   := 0;  --0->BE(AHB)-to-BE(AXI)
@@ -196,6 +197,7 @@ package axi is
       rprefetch_num   : integer range 1 to 16 := 8;
       always_secure   : integer range 0 to 1  := 1;
       endianness_mode : integer range 0 to 1  := 0;
+      ahb_endianness  : integer range 0 to 1  := GRLIB_CONFIG_ARRAY(grlib_little_endian);
       --scantest
       scantest        : integer               := 0
       );
@@ -216,6 +218,7 @@ package axi is
       rprefetch_num   : integer range 1 to axi4_max_n(AXIDW) := 8;
       always_secure   : integer range 0 to 1                 := 1;
       endianness_mode : integer range 0 to 1                 := 0;
+      ahb_endianness  : integer range 0 to 1                 := GRLIB_CONFIG_ARRAY(grlib_little_endian);
       --scantest
       scantest        : integer                              := 0
       );
@@ -238,6 +241,7 @@ package axi is
       rprefetch_num   : integer range 1 to 256        := 8;
       always_secure   : integer range 0 to 1          := 1;  --0->not secure; 1->secure
       axi4            : integer range 0 to 1          := 0;
+      ahb_endianness  : integer range 0 to 1          := GRLIB_CONFIG_ARRAY(grlib_little_endian); 
       endianness_mode : integer range 0 to 1          := 0;  --0->BE(AHB)-to-BE(AXI)
                                                              --1->BE(AHB)-to-LE(AXI)
       narrow_acc_mode : integer range 0 to 1          := 0;  --0->each beat in narrow burst
@@ -274,6 +278,7 @@ package axi is
       wbuffer_num     : integer range 1 to 16         := 8;
       rprefetch_num   : integer range 1 to 16         := 8;
       always_secure   : integer range 0 to 1          := 1;  --0->not secure; 1->secure
+      ahb_endianness  : integer range 0 to 1          := GRLIB_CONFIG_ARRAY(grlib_little_endian); 
       endianness_mode : integer range 0 to 1          := 0;  --0->BE(AHB)-to-BE(AXI)
                                                              --1->BE(AHB)-to-LE(AXI)
       narrow_acc_mode : integer range 0 to 1          := 0;  --0->each beat in narrow burst
@@ -308,6 +313,7 @@ package axi is
       wbuffer_num     : integer range 1 to axi4_max_n(AXIDW) := 8;
       rprefetch_num   : integer range 1 to axi4_max_n(AXIDW) := 8;
       always_secure   : integer range 0 to 1                 := 1;  --0->not secure; 1->secure
+      ahb_endianness  : integer range 0 to 1                 := GRLIB_CONFIG_ARRAY(grlib_little_endian); 
       endianness_mode : integer range 0 to 1                 := 0;  --0->BE(AHB)-to-BE(AXI)
                                                                     --1->BE(AHB)-to-LE(AXI)
       narrow_acc_mode : integer range 0 to 1                 := 0;  --0->each beat in narrow burst

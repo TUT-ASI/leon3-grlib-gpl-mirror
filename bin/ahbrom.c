@@ -162,6 +162,11 @@ begin\n\
   generic map (\"ahbrom%s%s\" & tost(hindex) &\n\
   \": %d-bit AHB ROM Module,  \" & tost(bytes/(dbits/8)) & \" words, \" & tost(abits-log2(dbits/8)) & \" address bits\" );\n\
   -- pragma translate_on\n\
+  -- pragma translate_off\n\
+   assert GRLIB_CONFIG_ARRAY\(grlib_little_endian) = 0\n\
+      report \"ahbrom: little endian systems not supported\"\n\
+      severity error;\n\
+  -- pragma translate_on\n\
   end;\n\
 ",suffix,(dbits>32)?"_":"",dbits);
 

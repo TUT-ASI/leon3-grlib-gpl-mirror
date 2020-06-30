@@ -62,6 +62,19 @@ architecture rtl of syncram256bw is
   );
   end component;
 
+  
+  component ultrascale_syncram128bw
+  generic ( abits : integer := 9);
+  port (
+    clk     : in  std_ulogic;
+    address : in  std_logic_vector (abits -1 downto 0);
+    datain  : in  std_logic_vector (127 downto 0);
+    dataout : out std_logic_vector (127 downto 0);
+    enable  : in  std_logic_vector (15 downto 0);
+    write   : in  std_logic_vector (15 downto 0)
+  );
+  end component;
+
   component altera_syncram128bw
   generic ( abits : integer := 9);
   port (
@@ -128,7 +141,7 @@ begin
   end generate;
 
   s256 : if has_sram256bw(tech) = 1 generate
-    uni : if (is_unisim(tech) = 1) generate 
+    uni : if (is_unisim(tech) = 1) and (is_ultrascale(tech) = 0) generate 
       x0 : unisim_syncram128bw generic map (abits)
          port map (clk, address, datain(127 downto 0), dataoutx(127 downto 0),
 		xenable(15 downto 0), xwrite(15 downto 0));
@@ -136,6 +149,16 @@ begin
          port map (clk, address, datain(255 downto 128), dataoutx(255 downto 128),
 		xenable(31 downto 16), xwrite(31 downto 16));
     end generate;
+
+    xu : if (is_unisim(tech) = 1) and (is_ultrascale(tech) = 1) generate 
+      x0 : ultrascale_syncram128bw generic map (abits)
+         port map (clk, address, datain(127 downto 0), dataoutx(127 downto 0),
+		xenable(15 downto 0), xwrite(15 downto 0));
+      x1 : ultrascale_syncram128bw generic map (abits)
+         port map (clk, address, datain(255 downto 128), dataoutx(255 downto 128),
+		xenable(31 downto 16), xwrite(31 downto 16));
+    end generate;
+    
     alt : if (tech = stratix2) or (tech = stratix3) or (tech = stratix4) or 
 	(tech = cyclone3) or (tech = altera) or (tech = stratix5) generate
       x0 : altera_syncram256bw generic map (abits)

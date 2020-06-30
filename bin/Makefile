@@ -1,5 +1,5 @@
-VER=$(VNAME)2020.1
-BID=4251
+VER=$(VNAME)2020.2
+BID=4254
 CC=gcc
 SED=sed
 
@@ -211,6 +211,11 @@ make xgrlib:
 
 FILE=prom.exe
 
+#leon5 designs should use BCC1. In leon5 design set OBJCOPY_CMD=sparc-gaisler-elf-objcopy
+ifeq ("$(OBJCOPY_CMD)","")
+OBJCOPY_CMD=sparc-elf-objcopy
+endif
+
 ahbrom: $(GRLIB)/bin/ahbrom.c
 	@if test -r "/mingw/bin/gcc.exe"; then \
 	  $(CC) $(GRLIB)/bin/ahbrom.c -o ahbrom -lwsock32; \
@@ -219,7 +224,7 @@ ahbrom: $(GRLIB)/bin/ahbrom.c
 	fi;
 
 ahbrom.bin:
-	sparc-elf-objcopy -O binary $(FILE) $@
+	$(OBJCOPY_CMD) -O binary $(FILE) $@
 
 ahbrom.vhd:
 	make ahbrom
@@ -1737,11 +1742,15 @@ ifeq ("$(NANOXLIBPATH)","")
 	@echo "NANOXLIBPATH is not set. NanoXplore library installation failed"
 else
 	-@cp $(NANOXLIBPATH)/nxLibrary.vhdp $(GRLIB)/lib/tech/nx/components/nxLibrary.vhdp
+	-@cp $(NANOXLIBPATH)/nxLibrary.vhdp $(GRLIB)/lib/tech/nx/components/nxLibrary-Medium.vhdp
+	-@cp $(NANOXLIBPATH)/nxLibrary.vhdp $(GRLIB)/lib/tech/nx/components/nxLibrary-Large.vhdp
 	@echo "NanoXplore library installed in GRLIB"
 endif
 
 remove-nxlibrary:
 	-@rm $(GRLIB)/lib/tech/nx/components/nxLibrary.vhdp
+	-@rm $(GRLIB)/lib/tech/nx/components/nxLibrary-Medium.vhdp
+	-@rm $(GRLIB)/lib/tech/nx/components/nxLibrary-Large.vhdp
 	@echo "NanoXplore libraries removed from GRLIB"
 
 
@@ -1757,7 +1766,7 @@ nanoxmap-gen: $(TOP)_nanoxmap.py
 	nxpython $(TOP)_nanoxmap.py
 #Launch NanoXmap GUI on the project file
 nanoxmap-launch: nanoxmap-gen
-	nxmap $(TOP)_native.nxm
+	nxmap $(TOP)_native.nym
 #Synthetize, place, route and generate bitstream in batch mode using NanoXpython
 nanoxpython: nanoxmap-gen
 	nxpython $(TOP)_nanoxpython.py
@@ -1771,7 +1780,7 @@ nx-prog-prom:
 	nxbase2_cli -i -c "board spi flash program  $(TOP)_bitfile.nxb" -c "board spi flash validate $(TOP)_bitfile.nxb"
 
 nanoxmap-clean:
-	rm -rf logs *.nxm *.pyc *.nxb $(TOP)_nanoxmap.py $(TOP)_nanoxpython.py $(TOP)_generated_pads.py
+	rm -rf logs *.nxm *.nym __pycache__ _preMap.vhd *.pyc *.nxb $(TOP)_nanoxmap.py $(TOP)_nanoxpython.py $(TOP)_generated_pads.py
 
 #########    Generic simulation target ###############
 

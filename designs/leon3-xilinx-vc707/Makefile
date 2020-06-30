@@ -23,7 +23,7 @@ TOP=leon3mp
 SIMTOP=testbench
 
 # Uncomment for Modelsim or change to specify your simulator
-GRLIB_SIMULATOR=ModelSim
+#GRLIB_SIMULATOR=ModelSim
 #GRLIB_SIMULATOR=ALDEC
 #GRLIB_SIMULATOR=Xilinx
 

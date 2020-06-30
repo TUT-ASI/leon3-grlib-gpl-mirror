@@ -46,7 +46,7 @@ entity ahbram is
     pipe        : integer := 0;
     maccsz      : integer := AHBDW;
     scantest    : integer := 0;
-    endianness  : integer := 0);
+    endianness  : integer := GRLIB_CONFIG_ARRAY(grlib_little_endian));
   port (
     rst     : in  std_ulogic;
     clk     : in  std_ulogic;

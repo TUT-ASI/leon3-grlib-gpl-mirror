@@ -167,6 +167,9 @@ architecture rtl of grethc is
 
   constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) /= 0;
 
+  constant DATA_ENDIAN : boolean := GRLIB_CONFIG_ARRAY(grlib_little_endian) = 1;
+  signal data_endian_s : std_ulogic;
+
   procedure sel_op_mode(
     capbil : in std_logic_vector(4 downto 0);
     speed  : out std_ulogic;
@@ -489,6 +492,9 @@ architecture rtl of grethc is
   attribute async_set_reset of arst : signal is "true";
 
 begin
+
+  -- Endian
+  data_endian_s <= '1' when DATA_ENDIAN else '0';
    
   --reset generators for transmitter and receiver
   vcc <= '1';
@@ -840,6 +846,7 @@ begin
    case r.txdstate is
    when idle =>
      v.txcnt := (others => '0'); v.txburstcnt := (others => '0');
+     v.tmsto.endian := '0';
      if (edcl /= 0) then
        v.tedcl := '0'; v.erenable := '0';
      end if;
@@ -900,6 +907,8 @@ begin
          v.txdstate := req;
          v.tmsto.addr := r.txaddr & "00"; v.txcnt(10 downto 0) := r.txlength;
        end if;
+       -- Check tx data type and endian
+       v.tmsto.endian := data_endian_s;
      else
        v.txdstate := idle;
      end if;
@@ -922,6 +931,8 @@ begin
          v.txdstate := etdone; v.txstart_sync := not r.txstart_sync;
        end if;
      elsif (r.txburstav = '1') or (r.tedcl = '1') then
+       -- Check tx data type and endian
+       v.tmsto.endian := data_endian_s;
        if (edclsepahbg = 0) or (edcl = 0) or
           (r.edclsepahb = '0') or (r.tedcl = '0') then 
          v.tmsto.req := '1'; v.txdstate := fill_fifo;
@@ -995,6 +1006,7 @@ begin
        v.tmsto.data(15 downto 14) := v.txstatus;
        v.tmsto.data(13 downto 0)  := (others => '0');
        v.txdone(nsync) := r.txdone(nsync-1);
+       v.tmsto.endian := data_endian_s;
      elsif txrestart = '1' then
        v.txdstate := idle; v.txstart := '0'; 
      end if;
@@ -1063,7 +1075,7 @@ begin
    --rx dma fsm
    case r.rxdstate is
    when idle =>
-     v.rmsto.req := '0'; v.rmsto.write := '0'; v.addrok := '0';
+     v.rmsto.req := '0'; v.rmsto.write := '0'; v.rmsto.endian := '0'; v.addrok := '0'; 
      v.rxburstcnt := (others => '0'); v.addrdone := '0';
      v.rxcnt := (others => '0'); v.rxdoneold := '0';
      v.ctrlpkt := '0'; v.bcast := '0'; v.edclactive := '0';
@@ -1119,21 +1131,27 @@ begin
    when read_req =>
      if r.edclactive = '1' then
        v.rxdstate := discard;
+       v.rmsto.endian := '0';
      elsif (r.rxdoneold and r.rxstatus(3)) = '1' then
        v.rxdstate := write_status; 
+       v.rmsto.endian := '0';
        v.rfcnt := (others => '0'); v.rfwpnt := (others => '0');
        v.rfrpnt := (others => '0'); v.writeok := '1';
        v.rxbytecount := (others => '0'); v.rxlength := (others => '0');
      elsif ((r.addrdone and not r.addrok) or r.ctrlpkt) = '1' then
        v.rxdstate := discard; v.status.invaddr := '1';
+       v.rmsto.endian := '0';
      elsif ((r.rxdoneold = '1') and r.rxcnt >= r.rxlength) then
        if r.gotframe = '1' then
          v.rxdstate := write_status;
+         v.rmsto.endian := '0';
        else
          v.rxdstate := discard; v.status.toosmall := '1';
+         v.rmsto.endian := '0';
        end if;
      elsif (r.rxburstav or r.rxdoneold) = '1' then
        v.rmsto.req := '1'; v.rxdstate := read_fifo;
+       v.rmsto.endian := data_endian_s;
        v.rfrpnt := r.rfrpnt + 1; v.rfcnt := r.rfcnt - 1;
      end if;
      v.rxburstcnt := (others => '0'); v.rmsto.data := rxrdata; 
@@ -1170,7 +1188,7 @@ begin
        v.status.rxahberr := '1'; v.ctrl.rxen := '0';
      end if;
    when write_status =>
-     v.rmsto.req := '1'; v.rmsto.addr := r.rxdesc & r.rxdsel & "000";
+     v.rmsto.req := '1'; v.rmsto.addr := r.rxdesc & r.rxdsel & "000"; v.rmsto.endian := '0';
      v.rxdstate := write_status2;
      if multicast = 1 then
        v.rmsto.data := "00000" & r.mcastacc & "0000000" &
@@ -1205,6 +1223,7 @@ begin
        v.status.rxahberr := '1'; v.ctrl.rxen := '0';
      end if;
    when discard =>
+     v.rmsto.endian := '0';
      if (r.rxdoneold = '0') then
        if conv_integer(r.rfcnt) /= 0 then
          v.rfrpnt := r.rfrpnt + 1; v.rfcnt := r.rfcnt - 1;
@@ -1991,6 +2010,7 @@ begin
     if irst = '0' then
       v.txdstate := idle; v.rxdstate := idle; v.rfrpnt := (others => '0');
       v.tmsto.req := '0'; v.tmsto2.req := '0'; v.rfwpnt := (others => '0'); 
+      v.tmsto := eth_tx_ahb_in_none; v.tmsto2 := eth_tx_ahb_in_none;
       v.rfcnt := (others => '0'); 
       v.ctrl.txen := '0';
       v.txirqgen := '0'; v.ctrl.rxen := '0';

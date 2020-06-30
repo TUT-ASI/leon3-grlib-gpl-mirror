@@ -52,6 +52,7 @@ entity rgmii_kc705 is
     pmask          : integer := 16#fff#;
     tech           : integer := 0;
     gmii           : integer := 0;
+    edclsepahb     : integer := 0;
     abits          : integer := 8;
     pirq           : integer := 0;
     base10_x       : integer := 0        -- Default no support for 10Mb
@@ -394,7 +395,7 @@ begin  -- rtl
   gmiii.rx_en    <= '1';
 
   -- GMII output controlled via generics
-  gmiii.edclsepahb  <= '0';
+  gmiii.edclsepahb <=  '1' when edclsepahb /= 0 else '0';
   gmiii.edcldisable <= '0';
   gmiii.phyrstaddr  <= (others => '0');
   gmiii.edcladdr    <= (others => '0');

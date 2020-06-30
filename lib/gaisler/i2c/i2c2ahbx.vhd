@@ -94,6 +94,8 @@ library grlib;
 use grlib.amba.all;
 use grlib.devices.all;
 use grlib.stdlib.all;
+use grlib.config_types.all;
+use grlib.config.all;
 
 entity i2c2ahbx is
  generic (
@@ -515,5 +517,10 @@ begin
    generic map ("i2c2ahb" & tost(hindex) & ": I2C to AHB bridge");
  -- pragma translate_on
 
-end architecture rtl;
+-- pragma translate_off
+   assert GRLIB_CONFIG_ARRAY(grlib_little_endian) = 0
+      report "i2c2ahb: little endian systems not supported"
+      severity error;
+-- pragma translate_on
 
+end architecture rtl;

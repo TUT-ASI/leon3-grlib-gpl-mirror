@@ -433,7 +433,7 @@ package net is
       oepol          : integer range 0 to 1  := 0;
       scanen         : integer range 0 to 1  := 0;
       ft             : integer range 0 to 2  := 0;
-      edclft         : integer range 0 to 1  := 1;
+      edclft         : integer range 0 to 1  := 0;
       mdint_pol      : integer range 0 to 1  := 0;
       enable_mdint   : integer range 0 to 1  := 0;
       multicast      : integer range 0 to 1  := 0;
@@ -657,6 +657,7 @@ package net is
     pmask          : integer := 16#fff#;
     tech           : integer := 0;
     gmii           : integer := 0;
+    edclsepahb     : integer := 0;
     abits          : integer := 8;
     pirq           : integer := 0;
     base10_x       : integer := 0

@@ -50,7 +50,7 @@ entity ahb2mig_7series is
     pmask                   : integer := 16#fff#;
     maxwriteburst           : integer := 8;
     maxreadburst            : integer := 8;
-    endianness              : integer := 0;
+    endianness              : integer := GRLIB_CONFIG_ARRAY(grlib_little_endian);
     SIM_BYPASS_INIT_CAL     : string  := "OFF";
     SIMULATION              : string  := "FALSE";
     USE_MIG_INTERFACE_MODEL : boolean := false

@@ -1,0 +1,10 @@
+
+IU assembly printing
+CONFIG_IU_DISAS
+  Enable printing of executed instructions to the console.
+
+Write trace to console
+CONFIG_AHB_DTRACE
+  Say yes here to write a trace of all AHB transfers to the
+  simulator console. Has not impact on final netlist.
+

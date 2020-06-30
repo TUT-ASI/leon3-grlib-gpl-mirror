@@ -63,6 +63,7 @@ begin
   variable hwrite  : std_ulogic; 
   variable haddr   : std_logic_vector(31 downto 0);
   variable hwdata  : std_logic_vector(31 downto 0);
+  variable hwdatal : std_logic_vector(31 downto 0);
   variable nbo     : std_ulogic; 
   variable tretry  : std_ulogic;
   variable rretry  : std_ulogic;
@@ -78,6 +79,13 @@ begin
     
     if r.bo = '0' then hwdata := rmsti.data;
     else hwdata := tmsti.data; end if;
+    hwdatal(7 downto 0) := hwdata(31 downto 24);
+    hwdatal(15 downto 8) := hwdata(23 downto 16);
+    hwdatal(23 downto 16) := hwdata(15 downto 8);
+    hwdatal(31 downto 24) := hwdata(7 downto 0);
+    if (tmsti.endian = '1' or rmsti.endian = '1') then
+      hwdata := hwdatal;
+    end if;
     
     hbusreq := tmsti.req or rmsti.req;
     if hbusreq = '1' then htrans := HTRANS_NONSEQ; end if;
@@ -165,8 +173,16 @@ begin
     end if;
     
     rin <= v;
-    tmsto.data     <= ahbmi.hrdata;
-    rmsto.data     <= ahbmi.hrdata;
+    if (tmsti.endian = '0') then
+       tmsto.data     <= ahbmi.hrdata;
+    else
+       tmsto.data     <= ahbmi.hrdata(7 downto 0)&ahbmi.hrdata(15 downto 8)&ahbmi.hrdata(23 downto 16)&ahbmi.hrdata(31 downto 24);
+    end if;
+    if (tmsti.endian = '0' and rmsti.endian = '0') then
+      rmsto.data     <= ahbmi.hrdata;
+    else
+      rmsto.data     <= ahbmi.hrdata(7 downto 0)&ahbmi.hrdata(15 downto 8)&ahbmi.hrdata(23 downto 16)&ahbmi.hrdata(31 downto 24);
+    end if;
     tmsto.error    <= terror;
     tmsto.retry    <= tretry;
     tmsto.ready    <= tready;

@@ -45,6 +45,8 @@ type uart_out_type is record
   txen     	: std_ulogic;
   flow   	: std_ulogic;
   rxen     	: std_ulogic;
+  txtick        : std_ulogic;
+  rxtick        : std_ulogic;
 end record;
 type uart_out_vector_type is array (natural range <>) of uart_out_type;
 

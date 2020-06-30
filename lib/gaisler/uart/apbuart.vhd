@@ -551,6 +551,7 @@ begin
     apbo.pindex <= pindex;
     uarto.txen <= r.txen; uarto.rxen <= r.rxen;
     uarto.flow <= '0';
+    uarto.txtick <= r.txtick; uarto.rxtick <= r.rxtick;
   
   end process;
 

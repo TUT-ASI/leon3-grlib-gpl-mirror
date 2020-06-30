@@ -29,8 +29,10 @@ use ieee.std_logic_1164.all;
 library grlib;
 use grlib.amba.all;
 use grlib.stdlib.all;
-library gaisler;
 use grlib.devices.all;
+use grlib.config_types.all;
+use grlib.config.all;
+library gaisler;
 use gaisler.ddrpkg.all;
 library techmap;
 use techmap.gencomp.all;
@@ -144,5 +146,11 @@ begin
         rstdel => rstdel, scantest => scantest)
     port map (ddr_rst, rst_ahb, clkddri, clk_ahb, ahbsi, ahbso, sdi, sdo);
     
+-- pragma translate_off
+   assert GRLIB_CONFIG_ARRAY(grlib_little_endian) = 0
+      report "ddrspa: little endian systems not supported"
+      severity error;
+-- pragma translate_on
+
 end;
 

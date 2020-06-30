@@ -6864,5 +6864,12 @@ end generate;
                 ": 32-bit PCI/AHB bridge  rev, " & tost(REVISION) &
                 ", " & tost(2**FIFO_DEPTH) & "-word FIFOs" & ", PCI trace: " & tost(((2**PT_DEPTH)*conv_integer(conv_std_logic(tracebuffer/=0)))));
 --pragma translate_on
+
+-- pragma translate_off
+   assert GRLIB_CONFIG_ARRAY(grlib_little_endian) = 0
+      report "grpci2: little endian systems not supported"
+      severity error;
+-- pragma translate_on
+
 end;
 

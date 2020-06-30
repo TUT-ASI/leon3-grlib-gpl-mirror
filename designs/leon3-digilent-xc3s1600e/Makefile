@@ -26,7 +26,8 @@ LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp opencores usbhc spw
 DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan pci leon3ft ambatest can \
 	usb grusbhc spacewire synplicity hcan leon4v0 \
-	l2cache slink ascs pwm hynix gr1553b iommu
+	l2cache slink ascs pwm hynix gr1553b iommu \
+	leon5v0 grfpu5 noelv noelv/subsys riscv
 FILESKIP = grcan.vhd i2cmst.vhd adapters/sgmii.vhd
 
 include $(GRLIB)/bin/Makefile

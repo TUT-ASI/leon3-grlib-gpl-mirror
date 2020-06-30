@@ -111,11 +111,11 @@ int greth_set_mac_address(struct greth_info *greth, unsigned char *addr);
 
 int greth_init(struct greth_info *greth);
 
-inline int greth_tx(int size, char *buf, struct greth_info *greth);
+int greth_tx(int size, char *buf, struct greth_info *greth);
 
-inline int greth_rx(char *buf, struct greth_info *greth);
+int greth_rx(char *buf, struct greth_info *greth);
 
-inline int greth_checkrx(int *size, struct rxstatus *rxs, struct greth_info *greth);
+int greth_checkrx(int *size, struct rxstatus *rxs, struct greth_info *greth);
 
-inline int greth_checktx(struct greth_info *greth);
+int greth_checktx(struct greth_info *greth);
 

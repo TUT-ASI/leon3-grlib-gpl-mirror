@@ -1180,5 +1180,10 @@ begin
         memo.sa <= (others => '0');
   end generate;
 
-end;
+-- pragma translate_off
+   assert GRLIB_CONFIG_ARRAY(grlib_little_endian) = 0
+      report "mctrl: little endian systems not supported"
+      severity error;
+-- pragma translate_on
 
+end;

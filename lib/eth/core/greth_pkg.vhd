@@ -148,6 +148,7 @@ package grethpkg is
     write   : std_ulogic;
     addr    : std_logic_vector(31 downto 0);
     data    : std_logic_vector(31 downto 0);
+    endian  : std_ulogic;
   end record;
 
   type eth_rx_ahb_out_type is record

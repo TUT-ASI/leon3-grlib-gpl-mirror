@@ -46,6 +46,7 @@ entity ahb2axi3b is
     wbuffer_num     : integer range 1 to 16         := 8;
     rprefetch_num   : integer range 1 to 16         := 8;
     always_secure   : integer range 0 to 1          := 1;  --0->not secure; 1->secure
+    ahb_endianness  : integer range 0 to 1          := GRLIB_CONFIG_ARRAY(grlib_little_endian); 
     endianness_mode : integer range 0 to 1          := 0;  --0->BE(AHB)-to-BE(AXI)
                                                            --1->BE(AHB)-to-LE(AXI)
     narrow_acc_mode : integer range 0 to 1          := 0;  --0->each beat in narrow burst
@@ -90,6 +91,7 @@ begin  -- rtl
       rprefetch_num   => rprefetch_num,
       always_secure   => always_secure,
       axi4            => 0,
+      ahb_endianness  => ahb_endianness,
       endianness_mode => endianness_mode,
       narrow_acc_mode => narrow_acc_mode,
       scantest        => scantest,

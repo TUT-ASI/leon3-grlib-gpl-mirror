@@ -258,9 +258,9 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
 
 -- array types
   type apb_slv_in_vector_type is array (natural range <>) of apb_slv_in_type;
-  type apb_slv_in_vector is array (0 to NAPBSLV-1) of apb_slv_in_type;
+  subtype apb_slv_in_vector is apb_slv_in_vector_type(0 to NAPBSLV-1);
   type apb_slv_out_vector_type is array (natural range <>) of apb_slv_out_type;
-  type apb_slv_out_vector is array (0 to NAPBSLV-1) of apb_slv_out_type;
+  subtype apb_slv_out_vector is apb_slv_out_vector_type(0 to NAPBSLV-1);
   type apb_slv_out_bus_vector is array (natural range <>) of apb_slv_out_vector;
   type apb3_slv_out_vector is array (0 to NAPBSLV-1) of apb3_slv_out_type;
 

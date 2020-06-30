@@ -321,6 +321,7 @@ begin
     uarto.enable <= r.rxen;
     uarto.data <= r.rhold;
     uo.txen <= '1'; uo.flow <= '0';
+    uo.txtick <= r.txtick; uo.rxtick <= r.rxtick;
 
     apbo.prdata <= rdata;
 

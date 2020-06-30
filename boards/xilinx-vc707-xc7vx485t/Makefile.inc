@@ -7,6 +7,7 @@ SPEED=2
 PROMGENPAR=-u 0 $(TOP).bit -p mcs -data_width 16 -w -o $(BOARD)
 
 # Set Vivado Synthesis Flow and Strategy used for build
-VIVADO_SYNTH_FLOW="Vivado Synthesis 2017"
-VIVADO_SYNTH_STRATEGY="Flow_PerfOptimized_high"
-VIVADO_IMPL_STRATEGY="Performance_ExtraTimingOpt"
+VIVADO_SYNTH_FLOW="Vivado Synthesis 2018"
+VIVADO_SYNTH_STRATEGY="Vivado Synthesis Defaults"
+VIVADO_IMPL_STRATEGY="Performance_ExplorePostRoutePhysOpt"
+

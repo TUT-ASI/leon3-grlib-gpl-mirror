@@ -1,0 +1,52 @@
+
+Number of processors
+CONFIG_PROC_NUM
+  The number of processor cores.
+
+FPU selection
+CONFIG_FPU_NANOFPU
+  Select which type of floating point unit is included into the LEON5.
+
+  The NanoFPU is a very small, low performance FPU that is available in
+  all versions of GRLIB.
+
+  GRFPU5 is a high performance pipelined FPU, which provides much higher
+  performance than the NanoFPU but also uses more area. The GRFPU5 is not
+  available in all versions of GRLIB.
+
+AHB data width
+CONFIG_AHB_32BIT
+  If there are AHB slaves connected to the LEON5 system that support
+  accesses wider than 32 bits, this option should be set to match the
+  supported width. In addition, the wide slave AHB bus map must be set
+  to indicate which address ranges can be accessed using wide accesses.
+
+Wide slave AHB bus map
+CONFIG_BWMASK
+  Setting indicating which parts of the memory space that can be
+  accessed using wide accesses. This must be set manually as it
+  can not be detected through the AMBA Plug-and-play information.
+
+  The value is treated as a 16-bit hex value with each bit defining
+  if a 256 Mbyte segment supports wide access or not. The right-most
+  (LSB) bit defines the maximum width of AHB address 0 - 256 MByte,
+  while the left-most bit (MSB) defines AHB address 3840 - 4096 MByte.
+  If the bit is set, the corresponding area supports wide access.
+  For example, a value of 00F3 defines address ranges
+  0x00000000-0x1FFFFFFF and 0x40000000-0x7FFFFFFF as wide access capable.
+
+
+Fixed cacheability map
+CONFIG_CACHE_FIXED
+  If this variable is 0, the cacheable memory regions are defined
+  by the AHB plug&play information (default). To override the
+  plug&play settings, this variable can be set to indicate which
+  areas should be cached.
+
+  The value is treated as a 16-bit hex value with each bit defining
+  if a 256 Mbyte segment should be cached or not. The right-most
+  (LSB) bit defines the cacheability of AHB address 0 - 256 MByte,
+  while the left-most bit (MSB) defines AHB address 3840 - 4096 MByte.
+  If the bit is set, the corresponding area is cacheable. For example,
+  a value of 00F3 defines address ranges 0x00000000-0x1FFFFFFF and
+  0x40000000-0x7FFFFFFF as cacheable.

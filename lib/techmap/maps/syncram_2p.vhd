@@ -243,7 +243,7 @@ begin
                    rclk, raddress, vgnd, dataoutx, renable2, gnd);
   end generate;
 
-  xc2v : if (is_unisim(xtech) = 1) and (xtech /= virtex) and (xtech /= kintex7) generate
+  xc2v : if (is_unisim(xtech) = 1) and (xtech /= virtex) and (xtech /= kintex7)and (is_ultrascale(xtech) /= 1)  generate
     x0 : unisim_syncram_2p generic map (abits, dbits, isepclk, iwrfst)
          port map (rclk, renable2, raddress, dataoutx, wclk,
 		   xwrite, waddress, datain);
@@ -253,6 +253,12 @@ begin
      xk7_2p : kintex7_syncram_2p generic map (abits, dbits, isepclk)
      port map (wclk, waddress, datain, xwrite, xwrite,
                rclk, raddress, dataoutx, renable2);
+  end generate;
+
+  xku : if (is_ultrascale(xtech) = 1)  generate
+    xku_2p : ultrascale_syncram_2p generic map (abits, dbits, isepclk)
+         port map (rclk, renable2, raddress, dataoutx,
+                   wclk, xwrite, waddress, datain);
   end generate;
 
   vir  : if xtech = memvirage generate

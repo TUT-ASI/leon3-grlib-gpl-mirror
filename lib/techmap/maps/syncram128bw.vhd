@@ -62,6 +62,19 @@ architecture rtl of syncram128bw is
   );
   end component;
 
+  component ultrascale_syncram128bw
+  generic ( abits : integer := 9);
+  port (
+    clk     : in  std_ulogic;
+    address : in  std_logic_vector (abits -1 downto 0);
+    datain  : in  std_logic_vector (127 downto 0);
+    dataout : out std_logic_vector (127 downto 0);
+    enable  : in  std_logic_vector (15 downto 0);
+    write   : in  std_logic_vector (15 downto 0)
+  );
+  end component;
+
+
   component altera_syncram128bw
   generic ( abits : integer := 9);
   port (
@@ -116,8 +129,12 @@ begin
   end generate;
   
   s64 : if has_sram128bw(tech) = 1 generate
-    xc2v : if (is_unisim(tech) = 1) generate 
+    xc2v : if (is_unisim(tech) = 1)  and (is_ultrascale(tech) = 0) generate 
       x0 : unisim_syncram128bw generic map (abits)
+         port map (clk, address, datain, dataoutx, xenable, xwrite);
+    end generate;
+    xu : if (is_unisim(tech) = 1)  and (is_ultrascale(tech) = 1) generate 
+      x0 : ultrascale_syncram128bw generic map (abits)
          port map (clk, address, datain, dataoutx, xenable, xwrite);
     end generate;
     alt : if (tech = stratix2) or (tech = stratix3) or (tech = stratix4) or 

@@ -30,6 +30,8 @@ library grlib;
 use grlib.amba.all;
 use grlib.stdlib.all;
 use grlib.devices.all;
+use grlib.config_types.all;
+use grlib.config.all;
 library techmap;
 use techmap.gencomp.all;
 library gaisler;
@@ -170,5 +172,10 @@ begin
 	", irq " & tost(irq));
 -- pragma translate_on
    
-end;
+-- pragma translate_off
+   assert GRLIB_CONFIG_ARRAY(grlib_little_endian) = 0
+      report "can_oc: little endian systems not supported"
+      severity error;
+-- pragma translate_on
 
+end;

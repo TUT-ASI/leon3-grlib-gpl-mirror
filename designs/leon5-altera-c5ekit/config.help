@@ -1,0 +1,386 @@
+
+
+Prompt for target technology
+CONFIG_SYN_INFERRED
+  Selects the target technology for memory and pads.
+  The following are available:
+
+  - Inferred: Generic FPGA or ASIC targets if your synthesis tool
+    is capable of inferring RAMs and pads automatically.
+
+  - Actel ProAsic/P/3, IGLOO/2, RTG4, PolarFire and Axcelerator FPGAs
+  - Aeroflex UT25CRH Rad-Hard 0.25 um CMOS
+  - Altera: Most Altera FPGA families
+  - Altera-CycloneIII: Altera Cyclone-III/IV FPGA family
+  - Altera-Stratix: Altera Stratix FPGA family
+  - Altera-StratixII: Altera Stratix/Cyclone-II FPGA families
+  - Altera-StratixIII: Altera Stratix-III FPGA family
+  - Altera-StratixIV: Altera Stratix-IV FPGA family
+  - Altera-StratixV: Altera Stratix-V FPGA family
+  - ATC18: Atmel-Nantes 0.18 um rad-hard CMOS
+  - NanoXploree : Brave-Medium 
+  - Quicklogic : Eclipse/E/II FPGAs
+  - UMC-0.18 : UMC 0.18 um CMOS with Virtual Silicon libraries
+  - Xilinx-Spartan/2/3/6: Xilinx Spartan/2/3/6 libraries
+  - Xilinx-Spartan3E: Xilinx Spartan3E libraries
+  - Xilinx-Virtex/E: Xilinx Virtex/E libraries
+  - Xilinx-Virtex2/4/5/6/7: Xilinx Virtex2/4/5/6/7 libraries
+
+  Note: Level of technology support depends on type of GRLIB
+  distribution. A technology may be present in this list while the
+  tech support files are missing from the GRLIB distribution.
+  Actel support is only available in commercial and FT distributions.
+
+  Additional target technologies are available that are not selectable
+  via the xconfig tool.
+
+Ram library
+CONFIG_MEM_VIRAGE
+  Select RAM generators for ASIC targets.
+
+Transceiver type
+CONFIG_TRANS_GTP0
+  Select the transceiver type used in your FPGA
+
+Infer ram
+CONFIG_SYN_INFER_RAM
+  Say Y here if you want the synthesis tool to infer your
+  RAM automatically. Say N to directly instantiate technology-
+  specific RAM cells for the selected target technology package.
+
+Infer pads
+CONFIG_SYN_INFER_PADS
+  Say Y here if you want the synthesis tool to infer pads.
+  Say N to directly instantiate technology-specific pads from
+  the selected target technology package.
+
+No async reset
+CONFIG_SYN_NO_ASYNC
+  Say Y here if you disable asynchronous reset in some of the IP cores.
+  Might be necessary if the target library does not have cells with
+  asynchronous set/reset.
+
+Scan support
+CONFIG_SYN_SCAN
+  Say Y here to enable scan support in some cores. This will enable
+  the scan support generics where available and add logic to make
+  the design testable using full-scan.
+
+Number of processors
+CONFIG_PROC_NUM
+  The number of processor cores.
+
+FPU selection
+CONFIG_FPU_NANOFPU
+  Select which type of floating point unit is included into the LEON5.
+
+  The NanoFPU is a very small, low performance FPU that is available in
+  all versions of GRLIB.
+
+  GRFPU5 is a high performance pipelined FPU, which provides much higher
+  performance than the NanoFPU but also uses more area. The GRFPU5 is not
+  available in all versions of GRLIB.
+
+AHB data width
+CONFIG_AHB_32BIT
+  If there are AHB slaves connected to the LEON5 system that support
+  accesses wider than 32 bits, this option should be set to match the
+  supported width. In addition, the wide slave AHB bus map must be set
+  to indicate which address ranges can be accessed using wide accesses.
+
+Wide slave AHB bus map
+CONFIG_BWMASK
+  Setting indicating which parts of the memory space that can be
+  accessed using wide accesses. This must be set manually as it
+  can not be detected through the AMBA Plug-and-play information.
+
+  The value is treated as a 16-bit hex value with each bit defining
+  if a 256 Mbyte segment supports wide access or not. The right-most
+  (LSB) bit defines the maximum width of AHB address 0 - 256 MByte,
+  while the left-most bit (MSB) defines AHB address 3840 - 4096 MByte.
+  If the bit is set, the corresponding area supports wide access.
+  For example, a value of 00F3 defines address ranges
+  0x00000000-0x1FFFFFFF and 0x40000000-0x7FFFFFFF as wide access capable.
+
+
+Fixed cacheability map
+CONFIG_CACHE_FIXED
+  If this variable is 0, the cacheable memory regions are defined
+  by the AHB plug&play information (default). To override the
+  plug&play settings, this variable can be set to indicate which
+  areas should be cached.
+
+  The value is treated as a 16-bit hex value with each bit defining
+  if a 256 Mbyte segment should be cached or not. The right-most
+  (LSB) bit defines the cacheability of AHB address 0 - 256 MByte,
+  while the left-most bit (MSB) defines AHB address 3840 - 4096 MByte.
+  If the bit is set, the corresponding area is cacheable. For example,
+  a value of 00F3 defines address ranges 0x00000000-0x1FFFFFFF and
+  0x40000000-0x7FFFFFFF as cacheable.
+DSU enable
+CONFIG_DSU_UART
+  Say Y to enable the AHB uart (serial-to-AHB). This is the most
+  commonly used debug communication link.
+
+JTAG Enable
+CONFIG_DSU_JTAG
+  Say Y to enable the JTAG debug link (JTAG-to-AHB). Debugging is done 
+  with GRMON through the boards JTAG chain at speeds of up to 800 kbits/s. 
+
+  The TAP controller can be implemented in custom macros on
+  Altera, Actel Proasic/3 and Xilinx devices. The commercial
+  GRLIB also includes a generic TAP controller in VHDL.
+
+  Supported JTAG cables are Xilinx Parallel Cable III and IV, 
+  Xilinx Platform cables (USB), and Altera parallel and USB cables,
+  Amontech JTAG key, various FTDI chip based USB/JTAG devices, and
+  Actel Flash Pro 3/4 cable.
+
+Ethernet DSU enable
+CONFIG_DSU_ETH
+  Say Y to enable the Ethernet Debug Communication Link (EDCL). The link
+  provides a DSU gateway between ethernet and the AHB bus. Debugging is
+  done at 10 or 100 Mbit/s, using the GRMON debug monitor. You must
+  enable the GRETH Ethernet MAC for this option to become active.
+
+Size of EDCL trace buffer
+CONFIG_DSU_ETHSZ1
+  Select the buffer size (in kbytes) for the EDCL. 1 or 2 kbyte is
+  usually enough, while a larger buffer will increase the transfer rate.
+  When operating at 100 Mbit, use a buffer size of at least 8 kbyte for
+  maximum throughput.
+
+MSB IP address
+CONFIG_DSU_IPMSB
+  Set the MSB 16 bits of the IP address of the EDCL.
+
+LSB IP address
+CONFIG_DSU_IPLSB
+  Set the LSB 16 bits of the IP address of the EDCL.
+
+MSB ethernet address
+CONFIG_DSU_ETHMSB
+  Set the MSB 24 bits of the ethernet address of the EDCL.
+
+LSB ethernet address
+CONFIG_DSU_ETHLSB
+  Set the LSB 24 bits of the ethernet address of the EDCL.
+
+Programmable MAC/IP address
+CONFIG_DSU_ETH_PROG
+  Say Y to make the LSB 4 bits of the EDCL MAC and IP address
+  configurable using the ethi.edcladdr inputs.
+SDRAM controller enable
+CONFIG_SSCTRL
+  Say Y here to enabled a 32-bit synchronous SRAM (SSRAM) controller.
+  The controller is designed for piplined ZBT SSRAM.
+
+CONFIG_SSCTRL_PROM16
+  Say Y here to enabled a 16-bit PROM support. The PROM should be
+  connected to D[31:16] of the data bus.
+
+OpenCores I2C Master 
+CONFIG_I2C_ENABLE
+  Say Y here to enable the OpenCores I2C master.
+On-chip rom
+CONFIG_AHBROM_ENABLE
+  Say Y here to add a block on on-chip rom to the AHB bus. The ram
+  provides 0-waitstates read access,  burst support, and 8-, 16- 
+  and 32-bit data size. The rom will be syntheised into block rams
+  on Xilinx and Altera FPGA devices, and into gates on ASIC 
+  technologies. GRLIB includes a utility to automatically create
+  the rom VHDL model (ahbrom.vhd) from an ELF file. Refer to the GRLIB
+  documentation for details.
+
+On-chip rom address
+CONFIG_AHBROM_START
+  Set the start address of AHB ROM (HADDR[31:20]). The ROM will occupy
+  a 1 Mbyte slot at the selected address. Default is 000, corresponding
+  to AHB address 0x00000000. When address 0x0 is selected, the rom area
+  of any other memory controller is set to 0x10000000 to avoid conflicts.
+
+Enable pipeline register for on-chip rom
+CONFIG_AHBROM_PIPE
+  Say Y here to add a data pipeline register to the on-chip rom.
+  This should be done when the rom is implemenented in (ASIC) gates,
+  or in logic cells on FPGAs. Do not use this option when the rom is
+  implemented in block rams. If enabled, the rom will operate with 
+  one waitstate.
+
+On-chip ram
+CONFIG_AHBRAM_ENABLE
+  Say Y here to add a block on on-chip ram to the AHB bus. The ram
+  provides 0-waitstates read access and 0/1 waitstates write access.
+  All AHB burst types are supported, as well as 8-, 16- and 32-bit
+  data size.
+
+On-chip ram size
+CONFIG_AHBRAM_SZ1
+  Set the size of the on-chip AHB ram. The ram is infered/instantiated
+  as four byte-wide ram slices to allow byte and half-word write
+  accesses. It is therefore essential that the target package can
+  infer byte-wide rams. This is currently supported on the generic,
+  virtex, virtex2, proasic and axellerator targets.
+
+On-chip ram address
+CONFIG_AHBRAM_START
+  Set the start address of AHB RAM (HADDR[31:20]). The RAM will occupy
+  a 1 Mbyte slot at the selected address. Default is A00, corresponding
+  to AHB address 0xA0000000.
+
+On-chip ram pipeline stage
+CONFIG_AHBRAM_PIPE
+  Set this option to add an extra pipeline stage to the read data of the 
+  on-chip RAM. This can improve timing, especially when the memory is 
+  large, at the cost of adding an additional cycle delay on read.
+Gaisler Ethernet MAC enable
+CONFIG_GRETH_ENABLE
+  Say Y here to enable the Gaisler Research Ethernet MAC . The MAC has 
+  one AHB master interface to read and write packets to memory, and one
+  APB slave interface for accessing the control registers. 
+
+Gaisler Ethernet 1G MAC enable
+CONFIG_GRETH_GIGA
+  Say Y here to enable the Gaisler Research 1000 Mbit Ethernet MAC . 
+  The 1G MAC is only available in the commercial version of GRLIB,
+  so do NOT enable it if you are using the GPL version.
+
+CONFIG_GRETH_FIFO4
+  Set the depth of the receive and transmit FIFOs in the MAC core.
+  The MAC core will perform AHB burst read/writes with half the
+  size of the FIFO depth.
+
+CONFIG_GRETH_FMC_MODE
+  Enable support for Ethernet FMC extension board.
+  This option is only valid for Xilinx reference designs
+  with Ethernet extension boards via FMC connectors 
+
+CONFIG_GRETH_FT
+  Enable fault-tolerance (parity with sparing) for internal RAM
+  in Ethernet core. Note that FT for EDCL buffer is enabled via
+  separate setting.
+
+CONFIG_GRETH_EDCLFT
+  Enable protection for EDCL buffer. This is typically not used as
+  the EDCL debug link is not used in harsh environments.
+Secondary Gaisler Ethernet MAC enable
+CONFIG_GRETH2_ENABLE
+  Say Y here to enable a second Gaisler Research Ethernet MAC . The MAC has 
+  one AHB master interface to read and write packets to memory, and one
+  APB slave interface for accessing the control registers. 
+
+Gaisler Ethernet 1G MAC enable
+CONFIG_GRETH2_GIGA
+  Say Y here to enable the Gaisler Research 1000 Mbit Ethernet MAC . 
+  The 1G MAC is only available in the commercial version of GRLIB,
+  so do NOT enable it if you are using the GPL version.
+
+CONFIG_GRETH2_FIFO4
+  Set the depth of the receive and transmit FIFOs in the MAC core.
+  The MAC core will perform AHB burst read/writes with half the
+  size of the FIFO depth.
+
+
+UART1 enable
+CONFIG_UART1_ENABLE
+  Say Y here to enable UART1, or the console UART. This is needed to
+  get any print-out from LEON3 systems regardless of operating system.
+
+UART1 FIFO
+CONFIG_UA1_FIFO1
+  The UART has configurable transmitt and receive FIFO's, which can
+  be set to 1 - 32 bytes. Use 1 for minimum area, or 8 - 32 for
+  maximum throughput.
+
+
+LEON3 interrupt controller
+CONFIG_IRQ3_ENABLE
+  Say Y here to enable the LEON3 interrupt controller. This is needed
+  if you want to be able to receive interrupts. Operating systems like
+  Linux, RTEMS and eCos needs this option to be enabled. If you intend
+  to use the Bare-C run-time and not use interrupts, you could disable
+  the interrupt controller and save about 500 gates.
+
+LEON3 interrupt controller broadcast
+CONFIG_IRQ3_BROADCAST_ENABLE
+  If enabled the broadcast register is used to determine which
+  interrupt should be sent to all cpus instead of just the first
+  one that consumes it.
+
+Secondary interrupts
+CONFIG_IRQ3_SEC
+  The interrupt controller handles 15 interrupts by default (1 - 15).
+  These correspond to the 15 SPARC asyncronous traps (0x11 - 0x1F),
+  and AMBA interrupts 1 - 15. This option will enable 16 additional
+  (secondary) interrupts, corresponding to AMBA interrupts 16 - 31.
+  The secondary interrupts will be multiplexed onto one of the first
+  15 interrupts. The total number of handled interrupts can then
+  be up to 30 (14 primary and 16 secondary).
+
+Number of interrupts
+CONFIG_IRQ3_NSEC
+  Defines which of the first 15 interrupts should be used for the
+  secondary (16 - 31) interrupts. Interrupt 15 should be avoided
+  since it is not maskable by the processor.
+Timer module enable
+CONFIG_GPT_ENABLE
+  Say Y here to enable the Modular Timer Unit. The timer unit consists
+  of one common scaler and up to 7 independent timers. The timer unit
+  is needed for Linux, RTEMS, eCos and the Bare-C run-times.
+
+Timer module enable
+CONFIG_GPT_NTIM
+  Set the number of timers in the timer unit (1 - 7).
+
+Scaler width
+CONFIG_GPT_SW
+  Set the width if the common pre-scaler (2 - 16 bits). The scaler
+  is used to divide the system clock down to 1 MHz, so 8 bits should
+  be sufficient for most implementations (allows clocks up to 256 MHz).
+
+Timer width
+CONFIG_GPT_TW
+  Set the width if the timers (2 - 32 bits). 32 bits is recommended
+  for the Bare-C run-time, lower values (e.g. 16 bits) can work with
+  RTEMS and Linux.
+
+Timer Interrupt
+CONFIG_GPT_IRQ
+  Set the interrupt number for the first timer. Remaining timers will
+  have incrementing interrupts, unless the separate-interrupts option
+  below is disabled.
+
+Watchdog enable
+CONFIG_GPT_WDOGEN
+  Say Y here to enable the watchdog functionality in the timer unit.
+
+Watchdog time-out value
+CONFIG_GPT_WDOG
+  This value will be loaded in the watchdog timer at reset.
+
+GPIO port
+CONFIG_GRGPIO_ENABLE
+  Say Y here to enable a general purpose I/O port. The port can be
+  configured from 1 - 32 bits, whith each port signal individually
+  programmable as input or output. The port signals can also serve
+  as interrupt inputs.
+
+GPIO port witdth
+CONFIG_GRGPIO_WIDTH
+  Number of bits in the I/O port. Must be in the range of 1 - 32.
+
+GPIO interrupt mask
+CONFIG_GRGPIO_IMASK
+  The I/O port interrupt mask defines which bits in the I/O port
+  should be able to create an interrupt. 
+
+
+IU assembly printing
+CONFIG_IU_DISAS
+  Enable printing of executed instructions to the console.
+
+Write trace to console
+CONFIG_AHB_DTRACE
+  Say yes here to write a trace of all AHB transfers to the
+  simulator console. Has not impact on final netlist.
+

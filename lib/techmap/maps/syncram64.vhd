@@ -62,6 +62,17 @@ architecture rtl of syncram64 is
     write   : in  std_logic_vector (1 downto 0)
   );
   end component;
+  component ultrascale_syncram64
+  generic ( abits : integer := 9);
+  port (
+    clk     : in  std_ulogic;
+    address : in  std_logic_vector (abits -1 downto 0);
+    datain  : in  std_logic_vector (63 downto 0);
+    dataout : out std_logic_vector (63 downto 0);
+    enable  : in  std_logic_vector (1 downto 0);
+    write   : in  std_logic_vector (1 downto 0)
+  );
+  end component;
 
   component artisan_syncram64
   generic ( abits : integer := 9);
@@ -118,8 +129,12 @@ begin
 nopar : if paren = 0 generate
 
   s64 : if has_sram64(tech) = 1 and (rdhold=0 or syncram_readhold(tech)/=0) generate
-    xc2v : if (is_unisim(tech) = 1) generate 
+    xc2v : if (is_unisim(tech) = 1) and (is_ultrascale(tech) = 0) generate 
       x0 : unisim_syncram64 generic map (abits)
+         port map (clk, address, datain(63 downto 0), dataoutx, xenable, write);
+    end generate;
+    xu : if (is_unisim(tech) = 1) and (is_ultrascale(tech) = 1) generate 
+      x0 : ultrascale_syncram64 generic map (abits)
          port map (clk, address, datain(63 downto 0), dataoutx, xenable, write);
     end generate;
     arti : if tech = memartisan generate

@@ -44,6 +44,7 @@ entity ahbm2axi is
     aximid          : integer range 0 to 15  := 0;  --AXI master transaction ID
     wbuffer_num     : integer range 1 to 256 := 8;
     rprefetch_num   : integer range 1 to 256 := 8;
+    ahb_endianness  : integer range 0 to 1   := GRLIB_CONFIG_ARRAY(grlib_little_endian); 
     always_secure   : integer range 0 to 1   := 1;  --0->not secure; 1->secure
     axi4            : integer range 0 to 1   := 0;
     endianness_mode : integer range 0 to 1   := 0;  --0->BE(AHB)-to-BE(AXI)
@@ -311,7 +312,7 @@ begin
     vrd_ptr_i           := (others => '0');
 
     haddr_endianness := ahbsi.haddr;
-    if endianness_mode = 1 then
+    if endianness_mode = 1 and ahb_endianness = 0 then
       haddr_endianness(log2(AXIDW/8)-1 downto 0) :=
         be_to_le_address(AXIDW, ahbsi.haddr(log2(AXIDW/8)-1 downto 0), ahbsi.hsize);
     end if;
@@ -769,7 +770,7 @@ begin
             --through the last word register
             v.ren              := '0';
             --data must be stable
-            if endianness_mode = 0 then
+            if endianness_mode = 0 and ahb_endianness = 0 then
               v.mem_dout_latched := byte_swap(v.last_latched_word);
             else
               v.mem_dout_latched := v.last_latched_word;
@@ -852,7 +853,7 @@ begin
     rin <= v;
 
     ahbso.hready <= ahbso_hready;
-    if endianness_mode = 0 then
+    if endianness_mode = 0 and ahb_endianness = 0 then
       ahbso_hrdata := byte_swap(r.ahbsout.hrdata);
     else
       ahbso_hrdata := r.ahbsout.hrdata;
@@ -875,7 +876,7 @@ begin
 
     wr_ptr_i <= vwr_ptr_i;
     rd_ptr_i <= vrd_ptr_i;
-    if endianness_mode = 0 then
+    if endianness_mode = 0 and ahb_endianness = 0 then
       mem_din_v := byte_swap(ahbsi.hwdata);
     else
       mem_din_v := ahbsi.hwdata;
@@ -909,5 +910,10 @@ begin
     end process;
   end generate;
 
+-- pragma translate_off
+   assert GRLIB_CONFIG_ARRAY(grlib_little_endian) = 0
+      report "ahbm2axi: little endian systems not supported"
+      severity error;
+-- pragma translate_on
   
 end rtl;

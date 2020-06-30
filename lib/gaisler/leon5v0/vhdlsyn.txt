@@ -1,0 +1,16 @@
+leon5int.vhd
+itbufmem5.vhd
+bht_pap.vhd
+btb.vhd
+inst_text.vhd
+iu5.vhd
+cctrl5.vhd
+cachemem5.vhd
+regfile5_ram.vhd
+regfile5_dff.vhd
+nanofpu.vhd
+cpucore5.vhd
+tbufmem5.vhd
+dbgmod5.vhd
+irqmp5.vhd
+leon5sys.vhd

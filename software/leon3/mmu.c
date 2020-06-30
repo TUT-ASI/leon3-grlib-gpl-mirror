@@ -346,6 +346,10 @@ __asm__(
  {
    //bypass asi:
    unsigned int i,j;
+   /* snooping must be disabled during this test to avoid self-snooping
+    * invalidating the Dcache entry betweeen storing with bypass and
+    * reading back the stale data */
+   wsysreg(0, rsysreg(0) & (~(1<<23)));   /* disable snooping */
    i = leon_load_bp(RAMSTART);
    leon_store_bp(RAMSTART,i);
    j = *((unsigned long *)RAMSTART);
@@ -354,6 +358,7 @@ __asm__(
    j = *((unsigned long *)RAMSTART); /* data in Dcache should be unchanged */
    if (j != i) fail(17);
    leon_store_bp(RAMSTART,i);
+   wsysreg(0, rsysreg(0) | ((1<<23)));    /* re-enable snooping  */
  }
  //mmu off
  srmmu_set_mmureg_aligned(0x00000000);

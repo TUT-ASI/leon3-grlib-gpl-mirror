@@ -1244,6 +1244,64 @@ end component;
   );
   end component;
 
+  component ultrascale_syncram is
+    generic (
+      abits : integer := 4; dbits : integer := 32 );
+    port (
+      clk     : in std_ulogic;
+      address : in std_logic_vector((abits -1) downto 0);
+      datain  : in std_logic_vector((dbits -1) downto 0);
+      enable  : in std_ulogic;
+      write   : in std_ulogic;
+      dataout : out std_logic_vector((dbits -1) downto 0));
+  end component;
+
+  
+  component ultrascale_syncram_2p is
+    generic (
+      abits : integer := 4; dbits : integer := 32; sepclk : integer := 0 );
+    port (
+      rclk     : in std_ulogic;
+      renable  : in std_ulogic;
+      raddress : in std_logic_vector((abits -1) downto 0);
+      dataout  : out std_logic_vector((dbits -1) downto 0);
+      wclk     : in std_ulogic;
+      write    : in std_ulogic;
+      waddress : in std_logic_vector((abits -1) downto 0);
+      datain   : in std_logic_vector((dbits -1) downto 0)
+      );
+  end component;
+
+  component ultrascale_syncram_dp
+    generic ( abits : integer := 10; dbits : integer := 8 );
+    port (
+      clk1     : in std_ulogic;
+      address1 : in std_logic_vector((abits -1) downto 0);
+      datain1  : in std_logic_vector((dbits -1) downto 0);
+      dataout1 : out std_logic_vector((dbits -1) downto 0);
+      enable1  : in std_ulogic;
+      write1   : in std_ulogic;
+      clk2     : in std_ulogic;
+      address2 : in std_logic_vector((abits -1) downto 0);
+      datain2  : in std_logic_vector((dbits -1) downto 0);
+      dataout2 : out std_logic_vector((dbits -1) downto 0);
+      enable2  : in std_ulogic;
+      write2   : in std_ulogic
+      );
+  end component;
+
+  component ultrascale_syncram64
+    generic ( abits : integer := 9);
+    port (
+      clk     : in  std_ulogic;
+      address : in  std_logic_vector (abits -1 downto 0);
+      datain  : in  std_logic_vector (63 downto 0);
+      dataout : out std_logic_vector (63 downto 0);
+      enable  : in  std_logic_vector (1 downto 0);
+      write   : in  std_logic_vector (1 downto 0)
+      );
+  end component;
+
   component virage90_syncram_dp
   generic ( abits : integer := 10; dbits : integer := 8 );
   port (

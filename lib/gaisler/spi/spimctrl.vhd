@@ -42,6 +42,8 @@ library grlib;
 use grlib.amba.all;
 use grlib.devices.all;
 use grlib.stdlib.all;
+use grlib.config_types.all;
+use grlib.config.all;
 library gaisler;
 use gaisler.spi.all;
 
@@ -764,5 +766,10 @@ begin  -- rtl
       tost(REVISION) & ", irq " & tost(hirq));
   -- pragma translate_on
   
-end rtl;
+-- pragma translate_off
+   assert GRLIB_CONFIG_ARRAY(grlib_little_endian) = 0
+      report "spimctrl: little endian systems not supported"
+      severity error;
+-- pragma translate_on
 
+end rtl;

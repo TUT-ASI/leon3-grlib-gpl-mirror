@@ -387,6 +387,9 @@ constant is_unisim : tech_ability_type :=
 	  spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1,
 	  kintexu => 1, others => 0);
 
+constant is_ultrascale : tech_ability_type :=
+        (kintexu => 1, others => 0);
+
 constant has_tap : tech_ability_type :=
 	(inferred => 0, virtex => 1, virtex2 => 1, axcel => 0,
 	 proasic => 0, altera => 1, apa3 => 1, spartan3 => 1,
@@ -709,7 +712,7 @@ constant TT_M010     : integer := 13;
   component syncramft
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
 	ft : integer range 0 to 5 := 0; testen : integer := 0; custombits : integer := 1;
-        pipeline : integer range 0 to 255 := 0);
+        pipeline : integer range 0 to 255 := 0; rdhold : integer := 0);
   port (
     clk      : in std_ulogic;
     address  : in std_logic_vector((abits -1) downto 0);
@@ -727,7 +730,7 @@ constant TT_M010     : integer := 13;
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
 	sepclk : integer := 0; wrfst : integer := 0; ft : integer := 0;
         testen : integer := 0; words : integer := 0; custombits : integer := 1;
-        pipeline : integer range 0 to 255 := 0);
+        pipeline : integer range 0 to 255 := 0; rdhold : integer := 0);
   port (
     rclk     : in std_ulogic;
     renable  : in std_ulogic;

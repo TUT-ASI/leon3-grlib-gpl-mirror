@@ -1157,4 +1157,10 @@ begin
       datain      => buf_rdata,
       data_offset => buf_offset);
 
+-- pragma translate_off
+   assert GRLIB_CONFIG_ARRAY(grlib_little_endian) = 0
+      report "grdmac: little endian systems not supported"
+      severity error;
+-- pragma translate_on
+
 end architecture ; -- rtl

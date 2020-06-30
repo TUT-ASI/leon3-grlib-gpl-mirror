@@ -142,10 +142,10 @@ begin
     end if;
     
     rin <= v;
-    if (tmsti.endian = '0') then
-      tmsto.data     <= ahbmi.hrdata;
-    else
+    if (tmsti.endian = '1') then
       tmsto.data     <= ahbmi.hrdata(7 downto 0)&ahbmi.hrdata(15 downto 8)&ahbmi.hrdata(23 downto 16)&ahbmi.hrdata(31 downto 24);
+    else
+      tmsto.data     <= ahbmi.hrdata;
     end if;
     tmsto.error    <= terror;
     tmsto.retry    <= tretry;

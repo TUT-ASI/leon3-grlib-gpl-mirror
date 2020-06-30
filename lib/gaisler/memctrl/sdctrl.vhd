@@ -29,6 +29,8 @@ use ieee.std_logic_1164.all;
 library grlib;
 use grlib.amba.all;
 use grlib.stdlib.all;
+use grlib.config_types.all;
+use grlib.config.all;
 library gaisler;
 use grlib.devices.all;
 use gaisler.memctrl.all;
@@ -826,5 +828,10 @@ begin
     ": PC133 SDRAM controller rev " & tost(REVISION));
 -- pragma translate_on
 
-end;
+-- pragma translate_off
+   assert GRLIB_CONFIG_ARRAY(grlib_little_endian) = 0
+      report "sdctrl: little endian systems not supported"
+      severity error;
+-- pragma translate_on
 
+end;

@@ -1,0 +1,6 @@
+plic.vhd
+grplic.vhd
+plic_encoder.vhd
+plic_gateway.vhd
+plic_target.vhd
+grplic_ahb.vhd

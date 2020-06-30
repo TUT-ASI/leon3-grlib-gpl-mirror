@@ -1,0 +1,37 @@
+
+mainmenu_option next_comment
+comment 'Processor            '
+bool 'Enable NOELV RISC-V RV64 Processor' CONFIG_NOELV
+ if [ "$CONFIG_NOELV" = "y" ]; then
+   int 'Number of processors' CONFIG_PROC_NUM 1
+##    choice 'Force values from example configuration (see help)' \
+##      "Minimal-configuration	CONFIG_NOELV_MIN \
+##       General-purpose-cfg	CONFIG_NOELV_GP \
+##       High-Performance-cfg	CONFIG_NOELV_HP \
+##       Custom-configuration	CONFIG_NOELV_CUSTOM" Custom-configuration
+   choice 'Force values from example configuration (see help)' \
+     "High-Performance-cfg	CONFIG_NOELV_HP"
+
+   if [ "$CONFIG_NOELV_MIN" = "y" ]; then
+   fi
+   if [ "$CONFIG_NOELV_GP" = "y" ]; then
+   fi
+   if [ "$CONFIG_NOELV_HP" = "y" ]; then
+    define_int  CONFIG_PROC_CFG 0
+   fi
+ 
+   if [ "$CONFIG_NOELV_CUSTOM" = "y" ]; then
+   fi
+
+   mainmenu_option next_comment
+     comment 'VHDL debug settings       '
+     bool 'Processor disassembly to console         ' CONFIG_IU_DISAS
+   endmenu
+
+   mainmenu_option next_comment
+     comment 'NOEL-V subsystem GPL settings       '
+     bool 'disable non-GPL components               ' CONFIG_PROC_NODBUS
+   endmenu
+ fi
+endmenu
+

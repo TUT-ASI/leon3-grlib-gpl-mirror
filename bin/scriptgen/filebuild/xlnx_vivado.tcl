@@ -1,6 +1,6 @@
 set vivado_contents ""
 proc create_xlnx_vivado {} {
-	global DESIGN DEVICE VIVADO_SIMSET SIMTOP GRLIB_XILINX_SOURCE_MGMT_MODE VIVADO_IMPL_STRATEGY
+	global DESIGN DEVICE VIVADO_SIMSET SIMTOP GRLIB_XILINX_SOURCE_MGMT_MODE VIVADO_SYNTH_STRATEGY VIVADO_IMPL_STRATEGY
 	upvar vivado_contents vc
 
 	file mkdir "vivado"
@@ -16,8 +16,11 @@ proc create_xlnx_vivado {} {
 	}
 	append vc "\nset_property top $SIMTOP \[get_filesets $VIVADO_SIMSET\]"
 	append vc "\nset_property target_language verilog \[current_project\]"
-        if {![string equal $VIVADO_IMPL_STRATEGY ""]} {
-	        append vc "\nset_property strategy {$VIVADO_IMPL_STRATEGY} \[get_runs impl_1\]"
+  if {![string equal $VIVADO_SYNTH_STRATEGY ""]} {
+	  append vc "\nset_property strategy {$VIVADO_SYNTH_STRATEGY} \[get_runs synth_1\]"
+	}
+  if {![string equal $VIVADO_IMPL_STRATEGY ""]} {
+	  append vc "\nset_property strategy {$VIVADO_IMPL_STRATEGY} \[get_runs impl_1\]"
 	}
 	append vc "\n# Add files for simulation and synthesis"
 

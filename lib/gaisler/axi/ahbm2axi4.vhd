@@ -46,6 +46,7 @@ entity ahbm2axi4 is
     rprefetch_num   : integer range 1 to axi4_max_n(AXIDW) := 8;
     always_secure   : integer range 0 to 1                 := 1;
     endianness_mode : integer range 0 to 1                 := 0;
+    ahb_endianness  : integer range 0 to 1                 := GRLIB_CONFIG_ARRAY(grlib_little_endian);
     --scantest
     scantest        : integer                              := 0
     );
@@ -73,6 +74,7 @@ begin  -- rtl
       aximid          => aximid,
       wbuffer_num     => wbuffer_num,
       rprefetch_num   => rprefetch_num,
+      ahb_endianness  => ahb_endianness,
       always_secure   => always_secure,
       axi4            => 1,
       endianness_mode => endianness_mode,
