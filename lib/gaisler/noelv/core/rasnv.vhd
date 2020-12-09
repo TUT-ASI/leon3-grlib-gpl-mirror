@@ -18,8 +18,8 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------
--- Entity: 	ras5
--- File:	ras5.vhd
+-- Entity: 	rasnv
+-- File:	rasnv.vhd
 -- Author:	Andrea Merlo, Cobham Gaisler AB
 -- Description:	Return Address Stack
 ------------------------------------------------------------------------------
@@ -33,13 +33,13 @@ use grlib.config_types.all;
 use grlib.config.all;
 
 library gaisler;
-use gaisler.noelv.XLEN;
-use gaisler.noelvint.all;
+use gaisler.noelvint.nv_ras_in_type;
+use gaisler.noelvint.nv_ras_out_type;
 
 entity rasnv is
   generic (
     depth       : integer range 0  to 8;   -- Stack Depth
-    pchigh      : integer range 32 to 56   -- PC High Bit
+    pcbits      : integer range 32 to 56   -- PC Length
     );
   port (
     clk         : in  std_ulogic;
@@ -59,13 +59,14 @@ architecture rtl of rasnv is
   -- Constants
   ----------------------------------------------------------------------------
 
-  constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  --constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant RESET_ALL : boolean := true;
 
   ----------------------------------------------------------------------------
   -- Types
   ----------------------------------------------------------------------------
 
-  subtype ra is std_logic_vector(PCHIGH-1 downto 0);
+  subtype ra is std_logic_vector(PCBITS-1 downto 0);
   type ras is array (0 to DEPTH-1) of ra;
 
   type reg_type is record
@@ -83,9 +84,9 @@ architecture rtl of rasnv is
 begin  -- rtl
 
   comb : process(r, rasi, rstn)
-    variable v          : reg_type;
-    variable valid      : std_ulogic;
-    variable target     : std_logic_vector(XLEN-1 downto 0);
+    variable v      : reg_type;
+    variable valid  : std_ulogic;
+    variable target : std_logic_vector(raso.rdata'length - 1 downto 0);
 
   begin
 
@@ -101,7 +102,7 @@ begin  -- rtl
     -- Push new value into the stack
     elsif rasi.push = '1' and rasi.pop = '0' then
       v.valid(0)        := '1';
-      v.stack(0)        := rasi.wdata(PCHIGH-1 downto 0);
+      v.stack(0)        := rasi.wdata(PCBITS-1 downto 0);
       for i in 1 to DEPTH-1 loop
         v.valid(i)      := r.valid(i-1);
         v.stack(i)      := r.stack(i-1);
@@ -109,12 +110,12 @@ begin  -- rtl
     elsif rasi.pop = '1' and rasi.push = '1' then
     -- First pop, then push
     -- Swap data only for top of the stack
-      v.stack(0)        := rasi.wdata(PCHIGH-1 downto 0);
+      v.stack(0)        := rasi.wdata(PCBITS-1 downto 0);
     end if;
 
     -- Generate Output Signals
     target                      := (others => '0');
-    target(PCHIGH-1 downto 0)   := r.stack(0);
+    target(PCBITS-1 downto 0)   := r.stack(0);
     valid                       := r.valid(0);
 
     -- Output Signals

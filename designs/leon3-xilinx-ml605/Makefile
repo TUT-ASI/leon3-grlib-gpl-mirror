@@ -275,7 +275,9 @@ DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan ambatest can \
 ifeq ("$(CONFIG_LEON4)","")
 DIRSKIP+=leon4v0
 endif
-FILESKIP = grcan.vhd ddr2.v mobile_ddr.v adapters/sgmii.vhd
+FILESKIP = grcan.vhd ddr2.v mobile_ddr.v adapters/sgmii.vhd \
+	sf2apbslv_wrapper.vhd sf2ficmst_wrapper.vhd sf2ficslv_wrapper.vhd \
+	sf2mddr_wrapper.vhd pfmddr_wrapper.vhd
 
 include $(GRLIB)/bin/Makefile
 include $(GRLIB)/software/leon3/Makefile

@@ -35,7 +35,7 @@
 
 	
 test_pl1:
-	set	dw, %o4
+	mov	%o0, %o4
 	set	0x40080000, %o0
 	mov	0x00000000, %o1
 	set	0x3fddb3d7, %o2	
@@ -75,11 +75,10 @@ grfpu_fmuld:
 	std	%f4, [%o2]		
 
 grfpu_fsmuld:
-	set     dw, %o4
-	st	%o0, [%o4]
-	st	%o1, [%o4+8]
-	ld	[%o4], %f0
-	ld	[%o4+8], %f1
+	st	%o0, [%o3]
+	st	%o1, [%o3+4]
+	ld	[%o3], %f0
+	ld	[%o3+4], %f1
 	fsmuld  %f0, %f1, %f2
 	retl
 	std	%f2, [%o2]
@@ -122,7 +121,6 @@ divromtst:
 			
 	
 grfpu_fitod:
-	set	dw, %o1
 	st	%o0, [%o1]
 	ld	[%o1], %f0
 	fitod	%f0, %f2
@@ -131,7 +129,6 @@ grfpu_fitod:
 	ldd	[%o1], %o0
 
 grfpu_fitos:
-	set	dw, %o1
 	st	%o0, [%o1]
 	ld	[%o1], %f0
 	fitos	%f0, %f2
@@ -140,7 +137,6 @@ grfpu_fitos:
 	ld	[%o1], %o0	
 
 grfpu_fdtoi:	
-	set	dw, %o2								
 	std	%o0, [%o2]
 	ldd	[%o2], %f0
 	fdtoi	%f0, %f2
@@ -149,25 +145,22 @@ grfpu_fdtoi:
 	ld	[%o2], %o0
 			
 grfpu_fstoi:	
-	set	dw, %o2								
-	st	%o0, [%o2]
-	ld	[%o2], %f0
+	st	%o0, [%o1]
+	ld	[%o1], %f0
 	fstoi	%f0, %f2
-	st	%f2, [%o2]
+	st	%f2, [%o1]
 	retl	
-	ld	[%o2], %o0
+	ld	[%o1], %o0
 
 grfpu_fstod:	
-	set	dw, %o2
-	st	%o0, [%o2]
-	ld	[%o2], %f0
+	st	%o0, [%o1]
+	ld	[%o1], %f0
 	fstod	%f0, %f0
-	std	%f0, [%o2]
+	std	%f0, [%o1]
 	retl
-	ldd	[%o2], %o0				
+	ldd	[%o1], %o0				
 
 grfpu_fdtos:	
-	set	dw, %o2
 	std	%o0, [%o2]
 	ldd	[%o2], %f0
 	fdtos	%f0, %f0
@@ -176,35 +169,31 @@ grfpu_fdtos:
 	ld	[%o2], %o0							
 
 grfpu_fmovs:
-	set	dw, %o2
-	st	%o0, [%o2]
-	ld	[%o2], %f5
+	st	%o0, [%o1]
+	ld	[%o1], %f5
 	fmovs	%f5, %f6
-	st	%f6, [%o2]
+	st	%f6, [%o1]
 	retl
-	ld	[%o2], %o0			
+	ld	[%o1], %o0			
 
 
 grfpu_fnegs:
-	set	dw, %o2
-	st	%o0, [%o2]
-	ld	[%o2], %f5
+	st	%o0, [%o1]
+	ld	[%o1], %f5
 	fnegs	%f5, %f6
-	st	%f6, [%o2]
+	st	%f6, [%o1]
 	retl
-	ld	[%o2], %o0
+	ld	[%o1], %o0
 
 grfpu_fabss:
-	set	dw, %o2
-	st	%o0, [%o2]
-	ld	[%o2], %f5
+	st	%o0, [%o1]
+	ld	[%o1], %f5
 	fabss	%f5, %f6
-	st	%f6, [%o2]
+	st	%f6, [%o1]
 	retl
-	ld	[%o2], %o0				
+	ld	[%o1], %o0				
 
 grfpu_fcmpd:	
-	set	dw, %o4
 	std	%o0, [%o4]
 	std	%o2, [%o4+8]
 	ldd	[%o4], %f0
@@ -226,7 +215,6 @@ cmpd_end:
 
 
 grfpu_fcmped:	
-	set	dw, %o4
 	std	%o0, [%o4]
 	std	%o2, [%o4+8]
 	ldd	[%o4], %f0
@@ -245,11 +233,10 @@ grfpu_fcmped:
 							
 
 grfpu_fcmps:	
-	set	dw, %o4
-	st	%o0, [%o4]
-	st	%o1, [%o4+8]
-	ld	[%o4], %f0
-	ld	[%o4+8], %f1
+	st	%o0, [%o2]
+	st	%o1, [%o2+8]
+	ld	[%o2], %f0
+	ld	[%o2+8], %f1
 	fcmps	%f0, %f1
 	nop
 	fbe,a	cmpd_end
@@ -263,11 +250,10 @@ grfpu_fcmps:
 	ta	0x0	!error
 
 grfpu_fcmpes:	
-	set	dw, %o4
-	st	%o0, [%o4]
-	st	%o1, [%o4+8]
-	ld	[%o4], %f0
-	ld	[%o4+8], %f1
+	st	%o0, [%o2]
+	st	%o1, [%o2+8]
+	ld	[%o2], %f0
+	ld	[%o2+8], %f1
 	fcmpes	%f0, %f1
 	nop
 	fbe,a	cmpd_end
@@ -281,7 +267,6 @@ grfpu_fcmpes:
 	ta	0x0	!error	
 	
 grfpu_fsubd:	
-	set	dw, %o4
 	std	%o0, [%o4]
 	std	%o2, [%o4+8]
 	ldd	[%o4], %f0
@@ -292,57 +277,52 @@ grfpu_fsubd:
 	ldd	[%o4], %o0
 	
 grfpu_fadds:	
-	set	dw, %o4
-	st	%o0, [%o4]
-	st	%o1, [%o4+8]
-	ld	[%o4], %f0
-	ld	[%o4+8], %f1
+	st	%o0, [%o2]
+	st	%o1, [%o2+8]
+	ld	[%o2], %f0
+	ld	[%o2+8], %f1
 	fadds	%f0, %f1, %f2
-	st	%f2, [%o4]
+	st	%f2, [%o2]
 	retl
-	ld	[%o4], %o0
+	ld	[%o2], %o0
 	
 grfpu_fsubs:	
-	set	dw, %o4
-	st	%o0, [%o4]
-	st	%o1, [%o4+8]
-	ld	[%o4], %f0
-	ld	[%o4+8], %f1
+	st	%o0, [%o2]
+	st	%o1, [%o2+8]
+	ld	[%o2], %f0
+	ld	[%o2+8], %f1
 	fsubs	%f0, %f1, %f2
-	st	%f2, [%o4]
+	st	%f2, [%o2]
 	retl
-	ld	[%o4], %o0
+	ld	[%o2], %o0
 
 grfpu_fmuls:	
-	set	dw, %o4
-	st	%o0, [%o4]
-	st	%o1, [%o4+8]
-	ld	[%o4], %f0
-	ld	[%o4+8], %f1
+	st	%o0, [%o2]
+	st	%o1, [%o2+8]
+	ld	[%o2], %f0
+	ld	[%o2+8], %f1
 	fmuls	%f0, %f1, %f2
-	st	%f2, [%o4]
+	st	%f2, [%o2]
 	retl
-	ld	[%o4], %o0			
+	ld	[%o2], %o0			
 
 grfpu_fdivs:	
-	set	dw, %o4
-	st	%o0, [%o4]
-	st	%o1, [%o4+8]
-	ld	[%o4], %f0
-	ld	[%o4+8], %f1
+	st	%o0, [%o2]
+	st	%o1, [%o2+8]
+	ld	[%o2], %f0
+	ld	[%o2+8], %f1
 	fdivs	%f0, %f1, %f2
-	st	%f2, [%o4]
+	st	%f2, [%o2]
 	retl
-	ld	[%o4], %o0
+	ld	[%o2], %o0
 
 grfpu_fsqrts:	
-	set	dw, %o4
-	st	%o0, [%o4]
-	ld	[%o4], %f0
+	st	%o0, [%o1]
+	ld	[%o1], %f0
 	fsqrts	%f0, %f1
-	st	%f1, [%o4]
+	st	%f1, [%o1]
 	retl
-	ld	[%o4], %o0				
+	ld	[%o1], %o0				
 
 grfpc_dpdep_tst:	
 	set	dpbuf, %o1
@@ -419,8 +399,12 @@ initfpreg:
 	
 fptrap:
 	set	fsr1, %l4
-		
-	set	tfsr, %l3	
+	mov     %asr17, %l5
+        srl     %l5, 28, %l5
+        sll     %l5, 2, %l5
+        add     %l4, %l5, %l4
+	set	tfsr, %l3
+        add     %l3, %l5, %l3
 	st	%fsr, [%l3]
 	ld	[%l3], %l3
 	srl	%l3, 14, %l0
@@ -430,6 +414,8 @@ fptrap:
 	!be	_skip
 	!nop			
 	set	grfpufq-8, %l6
+        sll     %l5, 2, %l5
+        add     %l6, %l5, %l6
 1:
 	add	%l7, 1, %l7		
 	add	%l6, 8, %l6
@@ -453,18 +439,16 @@ fptrap:
 	and	%l3, %l5, %l3
 	st	%l3, [%l4]
 	ld	[%l4], %fsr	 ! disable exceptions		
-	set	grfpufq+4, %l5
-	set	fpreex, %l6
+	set	grfpufq, %l5
+        mov     %asr17, %l0
+        srl     %l0, 28, %l0
+        sll     %l0, 4, %l0
+        add     %l5, %l0, %l5
+        ld      [%l5], %l5
 2:	dec	%l7
-	ld	[%l5], %l0
-	st	%l0, [%l6]
-	flush		
-	nop; nop; nop; nop; nop;
-	nop; nop; nop; nop; nop;	
-	nop; nop; nop; nop; nop;
-	nop; nop; nop; nop; nop;	
-fpreex:	.word 0
-	subcc	%l7, %g0, %g0
+        jmpl    %l5+%g0, %l6
+        jmpl    %l6+8, %g0
+3:      subcc	%l7, %g0, %g0
 	bne	2b
 	add	%l5, 8, %l5
 	st	%fsr, [%l4]
@@ -489,10 +473,6 @@ get_tbr:
 	.data
 	.align 8
 	.global tfsr, grfpufq
-dw:	.word 0
-	.word 0				
-	.word 0
-	.word 0
 	
 zbuf:	.word 0
 	.word 0		
@@ -512,7 +492,85 @@ spbuf:	.word 0x3f800000
 
 tfsr:	.word 0
 	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
 grfpufq:
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
 	.word 0
 	.word 0
 	.word 0

@@ -31,16 +31,18 @@ use grlib.config_types.all;
 use grlib.config.all;
 use grlib.amba.all;
 use grlib.stdlib.all;
--- qqq
 use ieee.numeric_std.all;
---use ieee.math_real.all;
 use grlib.riscv.all;
--- qqq
 library techmap;
 use techmap.gencomp.all;
 use techmap.netcomp.all;
 library gaisler;
-use gaisler.noelv.all;
+use gaisler.noelv.XLEN;
+use gaisler.noelv.nv_irq_in_type;
+use gaisler.noelv.nv_irq_out_type;
+use gaisler.noelv.nv_debug_in_type;
+use gaisler.noelv.nv_debug_out_type;
+use gaisler.noelv.nv_counter_out_type;
 use gaisler.noelvint.all;
 
 entity cpucorenv is
@@ -51,11 +53,12 @@ entity cpucorenv is
     -- Misc
     dmen                : integer range 0  to 1         := 0;
     pbaddr              : integer                       := 16#90000#; -- Program buffer exe address
-    tbuf                : integer range 0  to 128       := 0;  -- trace buffer size in kB
+    tbuf                : integer                       := 0;  -- trace buffer size in kB
     cached              : integer                       := 0;
     wbmask              : integer                       := 0;
     busw                : integer                       := 64;
     cmemconf            : integer                       := 0;
+    rfconf              : integer                       := 0;
     clk2x               : integer                       := 0;
     ahbpipe             : integer                       := 0;
     -- Caches
@@ -90,11 +93,11 @@ entity cpucorenv is
     dtlbnum             : integer range 2  to 64        := 8;
     tlb_type            : integer range 0  to 3         := 1;
     tlb_rep             : integer range 0  to 1         := 0;
+    tlbforepl           : integer range 1  to 4         := 1;
     riscv_mmu           : integer range 0  to 3         := 1;
     pmp_no_tor          : integer range 0  to 1         := 0;  -- Disable PMP TOR
     pmp_entries         : integer range 0  to 16        := 16; -- Implemented PMP registers
     pmp_g               : integer range 0  to 10        := 0;  -- PMP grain is 2^(pmp_g + 2) bytes
---    pmp_msb             : integer range 15 to 55        := 31; -- High bit for PMP checks
     -- Extensions
     ext_m               : integer range 0  to 1         := 1;  -- M Base Extension Set
     ext_a               : integer range 0  to 1         := 0;  -- A Base Extension Set
@@ -115,11 +118,15 @@ entity cpucorenv is
     perf_evts           : integer range 0  to 255       := 16; -- Number of performance events
     illegalTval0        : integer range 0  to 1         := 0;  -- Zero TVAL on illegal instruction
     no_muladd           : integer range 0  to 1         := 0;  -- 1 - multiply-add not supported
+    single_issue        : integer range 0  to 1         := 0;  -- 1 - only one pipeline
     mularch             : integer                       := 0;  -- multiplier architecture
+    div_hiperf          : integer                       := 0;
+    div_small           : integer                       := 0;
     hw_fpu              : integer range 0  to 1         := 1;  -- 1 - use hw gpu
     rfreadhold          : integer range 0  to 1         := 0;  -- Register File Read Hold
     ft                  : integer                       := 0;  -- FT option
-    scantest            : integer                       := 0   -- scantest support
+    scantest            : integer                       := 0;  -- scantest support
+    endian              : integer
     );
   port (
     ahbclk      : in  std_ulogic; -- bus clock
@@ -132,13 +139,11 @@ entity cpucorenv is
     ahbo        : out ahb_mst_out_type;
     ahbsi       : in  ahb_slv_in_type;
     ahbso       : in  ahb_slv_out_vector;
-    irqi        : in  nv_irq_in_type;   -- irq in
-    irqo        : out nv_irq_out_type;  -- irq out
-    dbgi        : in  nv_debug_in_type; -- debug in
-    dbgo        : out nv_debug_out_type;-- debug out
-    cnt         : out nv_counter_out_type; -- Perf event Out Port
-    fpui        : out fpu5_in_type;     -- FPU unit in
-    fpuo        : in  fpu5_out_type     -- FPU unit out
+    irqi        : in  nv_irq_in_type;     -- irq in
+    irqo        : out nv_irq_out_type;    -- irq out
+    dbgi        : in  nv_debug_in_type;   -- debug in
+    dbgo        : out nv_debug_out_type;  -- debug out
+    cnt         : out nv_counter_out_type -- Perf event Out Port
     );
 end;
 
@@ -149,7 +154,6 @@ architecture rtl of cpucorenv is
 
   constant IRFBITS      : integer := 5;
   constant IREGNUM      : integer := 2 ** IRFBITS;
-  constant XLEN         : integer := gaisler.noelv.XLEN;
   constant WRT          : integer := 1;	-- enable write-through RAM
 
   constant iways        : integer := isets;
@@ -165,8 +169,6 @@ architecture rtl of cpucorenv is
   constant dusebw       : integer := (cmemconf / 4) mod 2;
   constant dtagwidth    : integer := physaddr - (log2(dwaysize) + 10) + 1;
   constant cdataw       : integer := 64;
-  constant icrepl       : integer := 1;
-  constant dcrepl       : integer := 1;
 
   -- Ensures riscv_mmu is OK.
   -- Sv32 if and only if XLEN is 32, else Sv39 unless explicitly Sv48.
@@ -229,7 +231,7 @@ architecture rtl of cpucorenv is
   -- Trace Buffer
   signal tbi            : nv_trace_in_type;
   signal tbo            : nv_trace_out_type;
-  
+
   -- Cache Signals
   signal ici          : nv_icache_in_type;
   signal ico          : nv_icache_out_type;
@@ -239,11 +241,11 @@ architecture rtl of cpucorenv is
   signal csr_mmu      : csrtype;    -- CSR values for MMU
 
   -- Mul/Div Unit
-  signal muli         : mul64_in_type;
-  signal mulo         : mul64_out_type;
-  signal divi         : div64_in_type;
-  signal divo         : div64_out_type;
-  
+  signal muli         : mul_in_type;
+  signal mulo         : mul_out_type;
+  signal divi         : div_in_type;
+  signal divo         : div_out_type;
+
   signal c_perf       : std_logic_vector(31 downto 0);
   signal iu_cnt       : nv_counter_out_type;
 
@@ -261,19 +263,18 @@ architecture rtl of cpucorenv is
 
   signal rff_fd         : std_logic_vector(fpulen - 1 downto 0);
   signal rff_rs1        : std_logic_vector(4 downto 0);
-  signal rff_ren1       : std_ulogic;
   signal rff_rs2        : std_logic_vector(4 downto 0);
-  signal rff_ren2       : std_ulogic;
   signal rff_rs3        : std_logic_vector(4 downto 0);
-  signal rff_ren3       : std_ulogic;
+  signal rff_ren        : std_logic_vector(1 to 3);
   signal rff_rd         : std_logic_vector(4 downto 0);
   signal rff_wen        : std_ulogic;
 
-  signal fpu_e_valid    : std_ulogic;
-  signal fpu_x_valid    : std_ulogic;
+  signal fs1_word64     : word64;
+  signal fs2_word64     : word64;
+  signal fs3_word64     : word64;
 
   signal mtesti_none    : std_logic_vector(memtest_vlen-1 downto 0);
-  
+
 
   attribute sync_set_reset : string;
   attribute sync_set_reset of rst : signal is "true";
@@ -284,7 +285,7 @@ begin
   gnd                   <= '0';
   vcc                   <= '1';
   holdn                 <= ico.hold and dco.hold;
-  mtesti_none           <= (others=>'0');
+  mtesti_none           <= (others => '0');
 
   -- Pipeline ---------------------------------------------------------------
   iu0 : iunv
@@ -300,12 +301,13 @@ begin
       perf_evts     => perf_evts,
       illegalTval0  => illegalTval0,
       no_muladd     => no_muladd,
+      single_issue  => single_issue,
       -- Caches
       isets         => isets,
       dsets         => dsets,
       -- MMU
       mmuen         => mmuen,
-      riscv_mmu     => riscv_mmu,
+      riscv_mmu     => actual_riscv_mmu,
       pmp_no_tor    => pmp_no_tor,
       pmp_entries   => pmp_entries,
       pmp_g         => pmp_g,
@@ -326,11 +328,12 @@ begin
       -- Misc
       pbaddr        => pbaddr,
       tbuf          => tbuf,
-      scantest      => scantest
+      scantest      => scantest,
+      endian        => endian
       )
     port map (
       clk           => gcpuclk,
-      rstn          => rstn,
+      rstn          => rstx,
       holdn         => holdn,
       ici           => ici,
       ico           => ico,
@@ -344,7 +347,6 @@ begin
       dco           => dco,
       rfi           => rfi,
       rfo           => rfo,
-      rff           => rff,
       irqi          => irqi,
       irqo          => irqo,
       dbgi          => dbgi,
@@ -375,7 +377,7 @@ begin
         )
       port map (
         clk         => gcpuclk,
-        rstn        => rstn,
+        rstn        => rstx,
         holdn       => holdn,
         muli        => muli,
         mulo        => mulo,
@@ -385,11 +387,13 @@ begin
     div0 : div64
       generic map (
         fabtech     => fabtech,
-        scantest    => scantest
+        scantest    => scantest,
+        hiperf      => div_hiperf,
+        small       => div_small
         )
       port map (
         clk         => gcpuclk,
-        rstn        => rstn,
+        rstn        => rstx,
         holdn       => holdn,
         divi        => divi,
         divo        => divo,
@@ -399,8 +403,8 @@ begin
   end generate; -- mgen
 
   nomgen : if ext_m = 0 generate
-    divo  <= div64_out_none;
-    mulo  <= mul64_out_none;
+    divo  <= div_out_none;
+    mulo  <= mul_out_none;
   end generate;
 
   -- Cache Controller -----------------------------------------------------------
@@ -421,7 +425,7 @@ begin
       -- MMU
       itlbnum       => itlbnum,
       dtlbnum       => dtlbnum,
-      riscv_mmu     => riscv_mmu,
+      riscv_mmu     => actual_riscv_mmu,
       pmp_no_tor    => pmp_no_tor,
       pmp_entries   => pmp_entries,
       pmp_g         => pmp_g,
@@ -431,11 +435,12 @@ begin
       wbmask        => wbmask,
       busw          => busw,
       cdataw        => cdataw,
-      icrepl        => icrepl,
-      dcrepl        => dcrepl
+      icrepl        => tlbforepl,
+      dcrepl        => tlbforepl,
+      endian        => endian
       )
     port map (
-      rst           => rstn,
+      rst           => rstx,
       clk           => gcpuclk,
       ici           => ici,
       ico           => ico,
@@ -474,14 +479,16 @@ begin
       hlength           => bhtlength,
       predictor         => predictor,
       dualbranch        => 1,
-      ext_c             => ext_c
+      ext_c             => ext_c,
+      testen            => scantest
       )
     port map (
       clk               => gcpuclk,
       rstn              => rstx,
       bhti              => bhti,
       bhto              => bhto,
-      holdn             => holdn
+      holdn             => holdn,
+      testin            => ahbi.testin
     );
 
   -- Branch Target Buffer ----------------------------------------------------
@@ -489,7 +496,7 @@ begin
     generic map (
       nentries          => btbentries,
       nsets             => btbsets,
-      pchigh            => pcbits,
+      pcbits            => pcbits,
       ext_c             => ext_c
       )
     port map (
@@ -503,7 +510,7 @@ begin
   ras0 : rasnv
     generic map (
       depth             => 8,
-      pchigh            => pcbits
+      pcbits            => pcbits
       )
     port map (
       clk               => gcpuclk,
@@ -513,44 +520,80 @@ begin
     );
 
   -- IU Register File ----------------------------------------------------------
-  rf0 : regfile64nv
-    generic map (
-      tech            => memtech,
-      abits           => IRFBITS,
-      dbits           => XLEN,
-      wrfst           => WRT,
-      numregs         => IREGNUM,
-      testen          => scantest,
-      rfreadhold      => rfreadhold
-      )
-    port map (
-      clk             => gcpuclk,
-      rstn            => rstx,
-      waddr1          => rfi.waddr1(IRFBITS-1 downto 0),
-      wdata1          => rfi.wdata1,
-      we1             => rfi.wen1,
-      waddr2          => rfi.waddr2(IRFBITS-1 downto 0),
-      wdata2          => rfi.wdata2,
-      we2             => rfi.wen2,
-      raddr1          => rfi.raddr1,
-      re1             => rfi.ren1,
-      rdata1          => rfo.data1,
-      raddr2          => rfi.raddr2,
-      re2             => rfi.ren2,
-      rdata2          => rfo.data2,
-      raddr3          => rfi.raddr3,
-      re3             => rfi.ren3,
-      rdata3          => rfo.data3,
-      raddr4          => rfi.raddr4,
-      re4             => rfi.ren4,
-      rdata4          => rfo.data4,
-      testin          => ahbi.testin
-      );
+  ramrf : if (rfconf mod 16) = 0 generate
+    rf0 : regfile64sramnv
+      generic map (
+        tech            => memtech,
+        abits           => IRFBITS,
+        dbits           => XLEN,
+        wrfst           => WRT,
+        numregs         => IREGNUM,
+        testen          => scantest,
+        rfreadhold      => rfreadhold
+        )
+      port map (
+        clk             => gcpuclk,
+        rstn            => rstx,
+        waddr1          => rfi.waddr1(IRFBITS-1 downto 0),
+        wdata1          => rfi.wdata1,
+        we1             => rfi.wen1,
+        waddr2          => rfi.waddr2(IRFBITS-1 downto 0),
+        wdata2          => rfi.wdata2,
+        we2             => rfi.wen2,
+        raddr1          => rfi.raddr1,
+        re1             => rfi.ren1,
+        rdata1          => rfo.data1,
+        raddr2          => rfi.raddr2,
+        re2             => rfi.ren2,
+        rdata2          => rfo.data2,
+        raddr3          => rfi.raddr3,
+        re3             => rfi.ren3,
+        rdata3          => rfo.data3,
+        raddr4          => rfi.raddr4,
+        re4             => rfi.ren4,
+        rdata4          => rfo.data4,
+        testin          => ahbi.testin
+        );
+  end generate;
+
+  dffrf : if rfconf = 1 generate
+    rf0 : regfile64dffnv
+      generic map (
+        tech            => memtech,
+        abits           => IRFBITS,
+        dbits           => XLEN,
+        wrfst           => WRT,
+        numregs         => IREGNUM
+        )
+      port map (
+        clk             => gcpuclk,
+        rstn            => rstx,
+        waddr1          => rfi.waddr1(IRFBITS-1 downto 0),
+        wdata1          => rfi.wdata1,
+        we1             => rfi.wen1,
+        waddr2          => rfi.waddr2(IRFBITS-1 downto 0),
+        wdata2          => rfi.wdata2,
+        we2             => rfi.wen2,
+        raddr1          => rfi.raddr1,
+        re1             => rfi.ren1,
+        rdata1          => rfo.data1,
+        raddr2          => rfi.raddr2,
+        re2             => rfi.ren2,
+        rdata2          => rfo.data2,
+        raddr3          => rfi.raddr3,
+        re3             => rfi.ren3,
+        rdata3          => rfo.data3,
+        raddr4          => rfi.raddr4,
+        re4             => rfi.ren4,
+        rdata4          => rfo.data4
+        );
+  end generate;
 
 
   -- FPU Register File ----------------------------------------------------------
   fpu_regs : if fpulen /= 0 generate
-    rf1 : regfile64nv
+   ramrff : if (rfconf mod 16) = 0 generate
+    rf1 : regfile64sramnv
       generic map (
         tech            => memtech,
         abits           => 5,
@@ -571,19 +614,54 @@ begin
         wdata2          => rff_fd,      -- Dummy
         we2             => '0',
         raddr1          => rff_rs1,
-        re1             => rff_ren1,
+        re1             => rff_ren(1),
         rdata1          => fs1_data,
         raddr2          => rff_rs2,
-        re2             => rff_ren2,
+        re2             => rff_ren(2),
         rdata2          => fs2_data,
         raddr3          => rff_rs3,
-        re3             => rff_ren3,
+        re3             => rff_ren(3),
         rdata3          => fs3_data,
-        raddr4          => rff.raddr3,  -- Dummy
+        raddr4          => rff_rs3,     -- Dummy
         re4             => '0',
         rdata4          => open,
         testin          => ahbi.testin
         );
+   end generate;
+
+   dffrff : if rfconf = 1 generate
+    rf1 : regfile64dffnv
+      generic map (
+        tech            => memtech,
+        abits           => 5,
+        dbits           => fpulen,
+        wrfst           => WRT,
+        numregs         => 32,
+        reg0write       => 1
+        )
+      port map (
+        clk             => gcpuclk,
+        rstn            => rstx,
+        waddr1          => rff_rd,
+        wdata1          => rff_fd,
+        we1             => rff_wen,
+        waddr2          => rff_rd,      -- Dummy
+        wdata2          => rff_fd,      -- Dummy
+        we2             => '0',
+        raddr1          => rff_rs1,
+        re1             => rff_ren(1),
+        rdata1          => fs1_data,
+        raddr2          => rff_rs2,
+        re2             => rff_ren(2),
+        rdata2          => fs2_data,
+        raddr3          => rff_rs3,
+        re3             => rff_ren(3),
+        rdata3          => fs3_data,
+        raddr4          => rff_rs3,     -- Dummy
+        re4             => '0',
+        rdata4          => open
+        );
+   end generate;
   end generate;
 
 
@@ -624,10 +702,10 @@ begin
         proc    => 1
       )
       port map (
-        clk     => gcpuclk,
-        di      => tbi,
-        do      => tbo,
-        testin  => ahbi.testin
+        clk      => gcpuclk,
+        di       => tbi,
+        do       => tbo,
+        testin   => ahbi.testin
       );
   end generate;
 
@@ -638,22 +716,22 @@ begin
   -- FPU Unit ---------------------------------------------------------------
   nofpu_gen : if (fpulen = 0) generate
     fpo         <= fpu5_out_none;
-    fpui        <= fpu5_in_none;
+  end generate;
+
+  sp_fpu: if fpulen = 32 generate
+    fs1_word64 <= onesw64(63 downto 32) & fs1_data;
+    fs2_word64 <= onesw64(63 downto 32) & fs2_data;
+    fs3_word64 <= onesw64(63 downto 32) & fs3_data;
+  end generate;
+
+  dp_fpu: if fpulen = 64 generate
+    fs1_word64 <= fs1_data;
+    fs2_word64 <= fs2_data;
+    fs3_word64 <= fs3_data;
   end generate;
 
 
   fpu_gen : if fpulen /= 0 and hw_fpu = 1 generate
-    fpu_e_valid <= fpi.op.valid and not fpi.e.nullify;
-    fpu_x_valid <= fpi.x.valid and not fpi.x.nullify when
-                   fpi.x.inst(6 downto 0) = OP_STORE_FP or
-                   fpi.x.inst(6 downto 0) = OP_LOAD_FP  or
-                   fpi.x.inst(6 downto 0) = OP_FMADD    or
-                   fpi.x.inst(6 downto 0) = OP_FMSUB    or
-                   fpi.x.inst(6 downto 0) = OP_FNMSUB   or
-                   fpi.x.inst(6 downto 0) = OP_FNMADD   or
-                   fpi.x.inst(6 downto 0) = OP_FP
-              else '0';
-
     nano : nanofpunv
       generic map (
         fpulen    => fpulen,
@@ -663,22 +741,25 @@ begin
         clk         => fpuclk,
         rstn        => rstn,
         holdn       => holdn,
-        issue_cmd   => fpu_e_valid,
-        issue_op    => fpi.op,
-        s1          => fs1_data,
-        s2          => fs2_data,
-        s3          => fs3_data,
+        e_inst      => fpi.inst,
+        e_valid     => fpi.e_valid,
+        e_nullify   => fpi.e_nullify,
+        csrfrm      => fpi.csrfrm,
+        s1          => fs1_word64,
+        s2          => fs2_word64,
+        s3          => fs3_word64,
         issue_id    => open,
         fpu_holdn   => fpo.holdn,
         ready_flop  => fpo.ready,
-        commit      => fpu_x_valid,
+        commit      => fpi.commit,
         commitid    => "00000",
         lddata      => fpi.lddata,
         unissue     => fpi.flush,
         unissue_sid => "00000",
-        rs1         => open,
-        rs2         => open,
-        rs3         => open,
+        rs1         => rff_rs1,
+        rs2         => rff_rs2,
+        rs3         => rff_rs3,
+        ren         => rff_ren,
         rd          => rff_rd,
         wen         => rff_wen,
         flags_wen   => fpo.flags_wen,
@@ -686,14 +767,9 @@ begin
         flags       => fpo.flags
       );
 
-    rff_rs1  <= rff.raddr1;
-    rff_ren1 <= rff.ren1;
-    rff_rs2  <= rff.raddr2;
-    rff_ren2 <= rff.ren2;
-    rff_rs3  <= rff.raddr3;
-    rff_ren3 <= rff.ren3;
-    rff_fd   <= fpo.data;
+    rff_fd   <= fpo.data(rff_fd'range);
   end generate;
+
 
   -- 1-clock reset delay
   rstreg : process(cpuclk)
@@ -704,5 +780,15 @@ begin
   end process;
 
   rstx <= rst and rstn when ASYNC_RESET else rst;
+
+-- pragma translate_off
+  assert endian = 1
+    report "NOEL-V: Only little endian is supported"
+    severity warning;
+  assert ( ((endian/=0) = (ahbi.endian/='0') or ahbi.endian='U') and
+           ((endian/=0) = (ahbsi.endian/='0') or ahbsi.endian='U') )
+    report "NOEL-V: Mismatch between endianness generic and AHB bus endianness signal"
+    severity warning;
+-- pragma translate_on
 
 end;

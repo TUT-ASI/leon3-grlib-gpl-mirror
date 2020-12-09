@@ -71,7 +71,7 @@ end;
 architecture behav of cpu_disas is
 
   signal clk_counter    : integer := 0;
-  
+
 begin
 
   dummy <= '1';
@@ -85,7 +85,7 @@ begin
     iindex      := conv_integer(index);
     iway        := conv_integer(way);
     csr         := (others => '0');
-    
+
     rd          := inst(11 downto 7);
 
     if (wcsren and ivalid) = '1' then
@@ -117,7 +117,7 @@ begin
           cause,                  -- Exception Cuase
           tval                    -- Exception Value
           );
-        
+
         clk_counter <= clk_counter + 1;
 
       end if;
@@ -147,35 +147,36 @@ begin
 
     if disasg = 3 then
       if rising_edge(clk) and (rstn = '1') then
-        print_insn3(
-          hndx    => iindex,                 -- Hart Index
-          way     => iway,                   -- Way Index
-          cycle   => conv_integer(cycle),    -- Clock Cycles
-          instret => conv_integer(instret),  -- Instruction Committed
-          cdual   => conv_integer(dual),     -- Dual Issued Instruction Counter
-          valid   => ivalid,                 -- Valid Instruction
-          pc      => pc,                     -- Program Counter
-          rd      => rd,                     -- Destination Register
-          csr     => csr,                    -- CSR Register
-          wrdata  => wregdata,               -- Regfile Write Data
-          wren    => wregen,                 -- Regfile Write Enable
-          wren_f  => wregen_f,               -- FPU Regfile Write Enable
-          wcdata  => wcsrdata,               -- CSR Write Data
-          wcen    => wcsren,                 -- CSR Write Enable
-          inst    => inst,                   -- Instruction
-          cinst   => cinst,                  -- Compressed Instruction
-          comp    => comp,                   -- Compressed Flag
-          prv     => prv,                    -- Privileged Level
-          trap    => trap,                   -- Exception
-          cause   => cause,                  -- Exception Cuase
-          tval    => tval                    -- Exception Value
-        );
+        if disas = '1' then
+          print_insn3(
+            hndx    => iindex,                 -- Hart Index
+            way     => iway,                   -- Way Index
+            cycle   => conv_integer(cycle),    -- Clock Cycles
+            instret => conv_integer(instret),  -- Instruction Committed
+            cdual   => conv_integer(dual),     -- Dual Issued Instruction Counter
+            valid   => ivalid,                 -- Valid Instruction
+            pc      => pc,                     -- Program Counter
+            rd      => rd,                     -- Destination Register
+            csr     => csr,                    -- CSR Register
+            wrdata  => wregdata,               -- Regfile Write Data
+            wren    => wregen,                 -- Regfile Write Enable
+            wren_f  => wregen_f,               -- FPU Regfile Write Enable
+            wcdata  => wcsrdata,               -- CSR Write Data
+            wcen    => wcsren,                 -- CSR Write Enable
+            inst    => inst,                   -- Instruction
+            cinst   => cinst,                  -- Compressed Instruction
+            comp    => comp,                   -- Compressed Flag
+            prv     => prv,                    -- Privileged Level
+            trap    => trap,                   -- Exception
+            cause   => cause,                  -- Exception Cuase
+            tval    => tval                    -- Exception Value
+          );
+        end if;
       end if;
     end if;
-    
+
   end process;
 
 end;
 
 -- pragma translate_on
-

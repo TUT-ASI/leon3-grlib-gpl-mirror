@@ -1,11 +1,5 @@
-allclkgen.vhd
 techbuf.vhd
 techbuf_triplicated.vhd
-allddr.vhd
-allmem.vhd
-allmul.vhd
-allpads.vhd
-alltap.vhd
 clkgen.vhd
 clkmux.vhd
 clkinv.vhd

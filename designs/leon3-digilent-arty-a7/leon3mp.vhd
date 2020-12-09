@@ -39,6 +39,8 @@ use gaisler.uart.all;
 use gaisler.misc.all;
 use gaisler.net.all;
 use gaisler.jtag.all;
+use gaisler.i2c.all;
+use gaisler.spi.all;
 
 --pragma translate_off
 use gaisler.sim.all;
@@ -61,15 +63,43 @@ entity leon3mp is
     );
   port (
     CLK100MHZ          : in    std_ulogic;
-    -- LEDs. 0: off, 1: on
+    -- schematic LED{0,1,2,3}_{R,G,B}
+    led0_r, led0_g, led0_b : out   std_logic;
+    led1_r, led1_g, led1_b : out   std_logic;
+    led2_r, led2_g, led2_b : out   std_logic;
+    led3_r, led3_g, led3_b : out   std_logic;
+    -- schematic LED4, LED5, LED6, LED7. 0: off, 1: on
     led                : out   std_logic_vector(3 downto 0);
+    -- Red button with label "RESET"
+    ck_rst             : in    std_ulogic;
     -- Buttons 0: not pressed, 1: pressed
     btn                : in    std_logic_vector(3 downto 0);
     -- Switches
     sw                 : in    std_logic_vector(3 downto 0);
+    -- PMOD
+    ja                 : inout std_logic_vector(7 downto 0);
+    jb                 : inout std_logic_vector(7 downto 0);
+    jc                 : inout std_logic_vector(7 downto 0);
+    jd                 : inout std_logic_vector(7 downto 0);
+    -- Arduino/ChipKit Outer Digital Header
+    ck_io              : inout std_logic_vector(13 downto 0);
+    -- Arduino/ChipKit Outer Analog Header - as Digital I/O
+    ck_a               : inout std_logic_vector(5 downto 0);
+    -- Arduino/ChipKit I2C
+    ck_scl             : inout std_ulogic;
+    ck_sda             : inout std_ulogic;
+    -- Arduino/ChipKit SPI
+    ck_miso            : in    std_ulogic;
+    ck_mosi            : out   std_ulogic;
+    ck_sck             : out   std_ulogic;
+    ck_ss              : out   std_ulogic;
     -- USB-RS232 interface
     uart_txd_in        : in    std_ulogic;
     uart_rxd_out       : out   std_ulogic;
+    -- QSPI
+    qspi_sck          : out   std_ulogic;
+    qspi_cs           : out   std_ulogic;
+    qspi_dq           : inout std_logic_vector(1 downto 0);
     -- DDR3
     ddr3_dq           : inout std_logic_vector(15 downto 0);
     ddr3_dqs_p        : inout std_logic_vector(1 downto 0);
@@ -105,6 +135,9 @@ entity leon3mp is
 end;
 
 architecture rtl of leon3mp is
+  signal spmi : spimctrl_in_type;
+  signal spmo : spimctrl_out_type;
+
   signal apbi  : apb_slv_in_type;
   signal apbo  : apb_slv_out_vector := (others => apb_none);
   signal ahbsi : ahb_slv_in_type;
@@ -128,6 +161,13 @@ architecture rtl of leon3mp is
   signal etho : eth_out_type;
 
   signal gpti : gptimer_in_type;
+  signal i2ci : i2c_in_type;
+  signal i2co : i2c_out_type;
+  signal spii : spi_in_type;
+  signal spio : spi_out_type;
+  signal slvsel : std_logic_vector(0 downto 0);
+  signal gpio0i, gpio1i, gpio2i : gpio_in_type;
+  signal gpio0o, gpio1o, gpio2o : gpio_out_type;
 
   signal clkm : std_ulogic
   -- pragma translate_off 
@@ -150,6 +190,7 @@ architecture rtl of leon3mp is
   signal txd1 : std_logic;
 
   signal swint  : std_logic_vector(sw'range);
+  signal rgbled : std_logic_vector(4*3-1 downto 0);
 
   attribute keep                     : boolean;
   attribute syn_keep                 : boolean;
@@ -161,6 +202,7 @@ architecture rtl of leon3mp is
   attribute keep of clkm             : signal is true;
 
   constant BOARD_FREQ : integer := 100000;                                -- CLK input frequency in KHz
+  constant OEPOL : integer := padoen_polarity(padtech);
 
   -- cpu frequency in KHz
   function CPU_FREQ return integer is
@@ -180,16 +222,14 @@ begin
 ----------------------------------------------------------------------
 
   rst_pad : inpad generic map (tech => padtech)
-    port map (btn(0), reset_button);
+    port map (ck_rst, reset_button);
 
   rst0 : rstgen
-    generic map(acthigh => 1)
     port map (reset_button, clkm, lock, rstn, rstnraw);
   
   lock <= calib_done and pll_locked;
 
   rst1 : rstgen
-    generic map(acthigh => 1)
     port map (reset_button, clkm, '1', migrstn, open);
 
   led(1) <= calib_done;
@@ -242,7 +282,7 @@ begin
         port map (rstn, clkm, ahbmi, ahbsi, ahbso(2), dbgo, dbgi, dsui, dsuo);
 
       dsui.enable <= swint(3);
-      dsubre_pad : inpad generic map (tech => padtech) port map (btn(1), dsui.break);
+      dsubre_pad : inpad generic map (tech => padtech) port map (btn(3), dsui.break);
 
     end generate;
   end generate;
@@ -253,14 +293,14 @@ begin
   -- Debug UART
   dcomgen : if CFG_AHB_UART = 1 generate
     dcom0 : ahbuart
-      generic map (hindex => CFG_NCPU, pindex => 4, paddr => 7)
-      port map (rstn, clkm, dui, duo, apbi, apbo(4), ahbmi, ahbmo(CFG_NCPU));
+      generic map (hindex => CFG_NCPU, pindex => 7, paddr => 7)
+      port map (rstn, clkm, dui, duo, apbi, apbo(7), ahbmi, ahbmo(CFG_NCPU));
     dsurx_pad : inpad generic map (tech  => padtech) port map (uart_txd_in, dui.rxd);
     dsutx_pad : outpad generic map (tech => padtech) port map (uart_rxd_out, duo.txd);
 --    led(0) <= not dui.rxd;
 --    led(1) <= not duo.txd;
   end generate;
-  nouah : if CFG_AHB_UART = 0 generate apbo(4) <= apb_none; end generate;
+  nouah : if CFG_AHB_UART = 0 generate apbo(7) <= apb_none; end generate;
 
   ahbjtaggen0 :if CFG_AHB_JTAG = 1 generate
     ahbjtag0 : ahbjtag generic map(tech => fabtech, hindex => CFG_NCPU+CFG_AHB_UART)
@@ -425,6 +465,28 @@ begin
    end generate;
   end generate;
 
+  spimctrl0: if CFG_SPIMCTRL /= 0 generate -- SPI Memory Controller
+    spimc : spimctrl
+      generic map (hindex => 0, hirq => 10, faddr => 16#000#, fmask  => 16#e00#,
+                   ioaddr => 16#000#, iomask => 16#800#,
+                   spliten => CFG_SPLIT, oepol => OEPOL,sdcard => CFG_SPIMCTRL_SDCARD,
+                   readcmd => CFG_SPIMCTRL_READCMD, dummybyte => CFG_SPIMCTRL_DUMMYBYTE,
+                   dualoutput => CFG_SPIMCTRL_DUALOUTPUT, scaler => CFG_SPIMCTRL_SCALER,
+                   altscaler => CFG_SPIMCTRL_ASCALER, pwrupcnt => CFG_SPIMCTRL_PWRUPCNT,
+                   offset => CFG_SPIMCTRL_OFFSET)
+      port map (rstn, clkm, ahbsi, ahbso(0), spmi, spmo);
+  end generate;
+  nospimctrl0 : if CFG_SPIMCTRL = 0 generate spmo <= spimctrl_out_none; end generate;
+
+  miso_pad : inpad generic map (tech => padtech)
+    port map (qspi_dq(1), spmi.miso);
+  mosi_pad : outpad generic map (tech => padtech)
+    port map (qspi_dq(0), spmo.mosi);
+  sck_pad  : outpad generic map (tech => padtech)
+    port map (qspi_sck, spmo.sck);
+  slvsel0_pad : outpad generic map (tech => padtech)
+    port map (qspi_cs, spmo.csn);
+
 ----------------------------------------------------------------------
 ---  APB Bridge and various periherals -------------------------------
 ----------------------------------------------------------------------
@@ -458,6 +520,43 @@ begin
   end generate;
   notim : if CFG_GPT_ENABLE = 0 generate apbo(3) <= apb_none; end generate;
 
+  i2cm: if CFG_I2C_ENABLE = 1 generate  -- I2C master
+    i2c0 : i2cmst
+      generic map (pindex => 4, paddr => 4, pmask => 16#FFF#,
+                   pirq => 3, filter => 5, dynfilt => 1)
+      port map (rstn, clkm, apbi, apbo(4), i2ci, i2co);
+  end generate;
+  noi2cm: if CFG_I2C_ENABLE = 0 generate
+    i2co.scloen <= '1'; i2co.sdaoen <= '1';
+    i2co.scl <= '0'; i2co.sda <= '0';
+  end generate;
+  i2c_scl_pad : iopad generic map (tech => padtech)
+    port map (ck_scl, i2co.scl, i2co.scloen, i2ci.scl);
+  i2c_sda_pad : iopad generic map (tech => padtech)
+    port map (ck_sda, i2co.sda, i2co.sdaoen, i2ci.sda);
+
+  spic: if CFG_SPICTRL_ENABLE = 1 generate  -- SPI controller
+    spi1 : spictrl
+      generic map (pindex => 6, paddr  => 6, pmask  => 16#fff#, pirq => 5,
+                   fdepth => CFG_SPICTRL_FIFO, slvselen => 1,
+                   slvselsz => 1, odmode => 0,
+                   twen => 0,
+                   syncram => CFG_SPICTRL_SYNCRAM,
+                   memtech => memtech
+      )
+      port map (rstn, clkm, apbi, apbo(6), spii, spio, slvsel);
+    spii.spisel <= '1';                 -- Master only
+    spii.astart <= '0';
+    miso_pad : inpad generic map (tech => padtech)
+      port map (ck_miso, spii.miso);
+    mosi_pad : outpad generic map (tech => padtech)
+      port map (ck_mosi, spio.mosi);
+    sck_pad  : outpad generic map (tech => padtech)
+      port map (ck_sck, spio.sck);
+    slvsel_pad : outpad generic map (tech => padtech)
+      port map (ck_ss, slvsel(0));
+  end generate spic;
+
   ua1 : if CFG_UART1_ENABLE /= 0 generate
     uart1 : apbuart                     -- UART 1
       generic map (pindex   => 1, paddr => 1, pirq => 2, console => dbguart, fifosize => CFG_UART1_FIFO)
@@ -472,6 +571,87 @@ begin
       end generate;
   end generate;
   noua0 : if CFG_UART1_ENABLE = 0 generate apbo(1) <= apb_none; end generate;
+
+  gpio0 : if true generate
+    -- all button and switches generate irq 4
+    grgpio0: grgpio
+      generic map(
+        pindex    => 9, paddr => 9,
+        nbits     => 4+4+12,
+        imask     => 16#000FF000#,
+        pirq      => 4,
+        irqgen    => 1,
+        iflagreg  => 1
+      )
+      port map( rstn, clkm, apbi, apbo(9), gpio0i, gpio0o);
+
+    rgbled_pads : toutpadvv generic map (tech => padtech, width => 4*3)
+      port map (
+        pad => rgbled,
+        i   => gpio0o.dout(11 downto 0),
+        en  => gpio0o.oen(11 downto 0)
+      );
+      led3_r <= rgbled(11);
+      led3_g <= rgbled(10);
+      led3_b <= rgbled( 9);
+      led2_r <= rgbled( 8);
+      led2_g <= rgbled( 7);
+      led2_b <= rgbled( 6);
+      led1_r <= rgbled( 5);
+      led1_g <= rgbled( 4);
+      led1_b <= rgbled( 3);
+      led0_r <= rgbled( 2);
+      led0_g <= rgbled( 1);
+      led0_b <= rgbled( 0);
+
+    gpio_0_inpads : inpadv generic map (tech => padtech, width => 4)
+      port map (btn, gpio0i.din(15 downto 12));
+
+    gpio0i.din(19 downto 16) <= swint(3 downto 0);
+  end generate;
+  nogpio0: if false generate apbo(9) <= apb_none; end generate;
+
+  gpio1 : if true generate
+    -- PMOD with interrupt map registers to generate AHB interrupt 1..15
+    grgpio1: grgpio
+      generic map(
+        pindex    => 10, paddr => 10,
+        nbits     => 4*8,
+        imask     => 16#7FFFFFFF#,
+        pirq      => 6,
+        irqgen    => 1,
+        iflagreg  => 1
+      )
+      port map( rstn, clkm, apbi, apbo(10), gpio1i, gpio1o);
+    gpio_ja_pads :  iopadvv generic map (tech => padtech, width => 8)
+      port map (ja, gpio1o.dout( 7 downto  0), gpio1o.oen( 7 downto  0), gpio1i.din( 7 downto  0));
+    gpio_jb_pads :  iopadvv generic map (tech => padtech, width => 8)
+      port map (jb, gpio1o.dout(15 downto  8), gpio1o.oen(15 downto  8), gpio1i.din(15 downto  8));
+    gpio_jc_pads :  iopadvv generic map (tech => padtech, width => 8)
+      port map (jc, gpio1o.dout(23 downto 16), gpio1o.oen(23 downto 16), gpio1i.din(23 downto 16));
+    gpio_jd_pads :  iopadvv generic map (tech => padtech, width => 8)
+      port map (jd, gpio1o.dout(31 downto 24), gpio1o.oen(31 downto 24), gpio1i.din(31 downto 24));
+  end generate;
+  nogpio1: if false generate apbo(10) <= apb_none; end generate;
+
+  gpio2 : if true generate
+    -- "Arduino Shield Connector" with interrupt map registers to generate AHB interrupt 1..15
+    grgpio2: grgpio
+      generic map(
+        pindex    => 11, paddr => 11,
+        nbits     => 6 + 14,
+        imask     => 16#000FFFFF#,
+        pirq      => 7,
+        irqgen    => 1,
+        iflagreg  => 1
+      )
+      port map( rstn, clkm, apbi, apbo(11), gpio2i, gpio2o);
+    gpio_ck_a_pads  :  iopadvv generic map (tech => padtech, width =>  6)
+      port map (ck_a,  gpio2o.dout(19 downto 14), gpio2o.oen(19 downto 14), gpio2i.din(19 downto 14));
+    gpio_ck_io_pads :  iopadvv generic map (tech => padtech, width => 14)
+      port map (ck_io, gpio2o.dout(13 downto  0), gpio2o.oen(13 downto  0), gpio2i.din(13 downto  0));
+  end generate;
+  nogpio2: if false generate apbo(11) <= apb_none; end generate;
 
 -----------------------------------------------------------------------
 ---  ETHERNET ---------------------------------------------------------
@@ -494,8 +674,7 @@ begin
                apbi => apbi, apbo => apbo(15), ethi => ethi, etho => etho);
       eth_rstn<=rstn;
 
-    -- sw[2:0] selects 3 LSB of EDCL IP
-    ethi.edcladdr <= '1' & swint(2 downto 0);
+    ethi.edcladdr <= (others => '0');
     emdio_pad : iopad generic map (tech => padtech)
       port map (eth_mdio, etho.mdio_o, etho.mdio_oe, ethi.mdio_i);
     etxc_pad : clkpad generic map (tech => padtech, arch => 2)
@@ -525,13 +704,13 @@ begin
 ---  AHB ROM ----------------------------------------------------------
 -----------------------------------------------------------------------
 
-  bpromgen : if CFG_AHBROMEN /= 0 generate
+  bpromgen : if CFG_AHBROMEN /= 0 and CFG_SPIMCTRL = 0 generate
     brom : entity work.ahbrom
-      generic map (hindex => 6, haddr => CFG_AHBRODDR, pipe => CFG_AHBROPIP)
+      generic map (hindex => 0, haddr => CFG_AHBRODDR, pipe => CFG_AHBROPIP)
       port map ( rstn, clkm, ahbsi, ahbso(6));
   end generate;
-  nobpromgen : if CFG_AHBROMEN = 0 generate
-     ahbso(6) <= ahbs_none;
+  nobpromgen : if CFG_AHBROMEN = 0 and CFG_SPIMCTRL = 0 generate
+     ahbso(0) <= ahbs_none;
   end generate;
 
 -----------------------------------------------------------------------

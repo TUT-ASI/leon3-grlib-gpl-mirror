@@ -32,12 +32,15 @@ LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip hynix cypress ihp fmf spansion gsi
 DIRSKIP = b1553 pci/pcif leon2 leon2ft leon3v1 leon3ftv2 leon3ftv1 \
 	 crypto satcan ddr slink ascs hcan \
-	i2c spi pwm iommu ge_1000baseX
+	i2c spi pwm iommu ge_1000baseX \
+	leon5v0 grfpu5 noelv noelv/subsys riscv
 ifeq ("$(CONFIG_LEON4)","")
 DIRSKIP+=leon4v0
 endif
 FILESKIP = grcan.vhd i2c_slave_model.v \
-	$(GRFPWNET) $(L3FTNET) adapters/sgmii.vhd
+	$(GRFPWNET) $(L3FTNET) adapters/sgmii.vhd \
+	sf2apbslv_wrapper.vhd sf2ficmst_wrapper.vhd sf2ficslv_wrapper.vhd \
+	sf2mddr_wrapper.vhd pfmddr_wrapper.vhd
 
 include $(GRLIB)/bin/Makefile
 include $(GRLIB)/software/leon3/Makefile

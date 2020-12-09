@@ -32,6 +32,8 @@ use techmap.gencomp.all;
 use techmap.alltap.all;
 library grlib;
 use grlib.stdlib.all;
+use grlib.config.all;
+use grlib.config_types.all;
 
 entity tap is
   generic (
@@ -143,6 +145,14 @@ begin
      tapo_tck <= ltck; tapo_tckn <= not ltck;
    end generate;
 
+   xcvup : if tech = virtexup generate
+     u0 : virtexup_tap port map (tapi_tdo1, tapi_tdo1, ltck, tapo_tdi, tapo_rst,
+                                tapo_capt, tapo_shft, tapo_upd, tapo_xsel1, tapo_xsel2);
+     tapo_inst <= (others => '0'); tdoen <= '0'; tdo <= '0';
+     tapo_ninst <= (others => '0'); tapo_iupd <= '0';
+     tapo_tck <= ltck; tapo_tckn <= not ltck;
+   end generate;
+
    ac7v : if tech = artix7 generate
      u0 : artix7_tap port map (tapi_tdo1, tapi_tdo1, ltck, tapo_tdi, tapo_rst,
                                 tapo_capt, tapo_shft, tapo_upd, tapo_xsel1, tapo_xsel2);
@@ -246,11 +256,11 @@ begin
        llltckn <= '0';
        lltckn <= tckn;
      end generate;
-     noscn : if tcknen=0 and scantest = 0 generate
+     noscn : if tcknen=0 and (scantest = 0 or grlib_config_array(grlib_testmode_noclkmux)/=0) generate
        llltckn <= '0';
        lltckn <= not tck;
      end generate;
-     gscn : if tcknen=0 and scantest = 1 generate
+     gscn : if tcknen=0 and scantest = 1 and grlib_config_array(grlib_testmode_noclkmux)=0 generate
        llltckn <= not tck;
        usecmux: if has_clkmux(tech)/=0 generate
          cmux0: clkmux generic map (tech) port map (llltckn, tck, testen, lltckn);

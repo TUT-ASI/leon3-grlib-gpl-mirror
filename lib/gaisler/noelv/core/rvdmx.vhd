@@ -33,8 +33,18 @@ use grlib.amba.all;
 use grlib.stdlib.all;
 use grlib.devices.all;
 library gaisler;
-use gaisler.noelv.all;
+use gaisler.noelv.XLEN;
+use gaisler.noelv.nv_dm_in_type;
+use gaisler.noelv.nv_dm_out_type;
+use gaisler.noelv.nv_debug_in_vector;
+use gaisler.noelv.nv_debug_out_vector;
 use gaisler.noelvint.progbuf;
+use gaisler.noelvint.nv_progbuf_in_vector;
+use gaisler.noelvint.nv_progbuf_out_vector;
+use gaisler.noelvint.nv_progbuf_out_none;
+use gaisler.noelvint.word;
+use gaisler.noelvint.word64;
+use gaisler.noelvint.zerow;
 library techmap;
 use techmap.gencomp.all;
 
@@ -45,7 +55,7 @@ entity rvdmx is
     hmask       : integer                       := 16#f00#;
     nharts      : integer                       := 1;   -- number of harts
     tbits       : integer                       := 30;  -- timer bits (instruction trace time tag)
-    tech        : integer                       := DEFMEMTECH; 
+    tech        : integer                       := DEFMEMTECH;
     kbytes      : integer                       := 0;   -- Size of trace buffer memory in KiB
     --bwidth      : integer                       := 64;  -- Traced AHB bus width
     --ahbpf       : integer                       := 0;
@@ -63,7 +73,7 @@ entity rvdmx is
     rst    : in  std_ulogic;
     hclk   : in  std_ulogic;
     cpuclk : in  std_ulogic;
-    fcpuclk: in  std_ulogic; 
+    fcpuclk: in  std_ulogic;
     ahbmi  : in  ahb_mst_in_type;
     ahbsi  : in  ahb_slv_in_type;
     ahbso  : out ahb_slv_out_type;
@@ -75,22 +85,23 @@ entity rvdmx is
     hclken : in  std_ulogic
     );
 
-end; 
+end;
 
 architecture rtl of rvdmx is
 
   -- Constants --------------------------------------------------------------
 
-  constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  --constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant RESET_ALL    : boolean := true;
   constant ASYNC_RESET  : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 
   constant MAXHART      : integer := 2**20;
   constant UNAVAIL_H    : integer := log2x(unavailtimeout)-1;
   constant ADDR_H       : integer := 9;
   constant ALLHARTS     : std_logic_vector(NHARTS-1 downto 0) := (others => '1');
-  
+
   -- Debug Module
-  constant HARTSELLEN   : integer               := 10;
+  constant HARTSELLEN   : integer               := log2x(nharts);
   constant IMPEBREAK    : std_ulogic            := '0';
   constant DMVERSION    : std_logic_vector(3 downto 0) := "0010"; -- Version 0.14
 
@@ -117,39 +128,43 @@ architecture rtl of rvdmx is
   constant pipe         : boolean := true;
   -- Register width
   constant regw         : integer := 32;
-  
+
   -- Types ------------------------------------------------------------------
 
-  type data_type is array (0 to DATACOUNT-1) of word;
-  type databuf_type is array (0 to XLEN/32-1) of word;
+  type data_type    is array (0 to DATACOUNT-1) of word;
+--  type databuf_type is array (0 to XLEN/32-1) of word;
 
   type dmcontrol_type is record
-    haltreq     : std_ulogic;
-    resumereq   : std_ulogic;
-    hartreset   : std_ulogic;
-    ackhavereset: std_ulogic;
-    hasel       : std_ulogic;
-    hartsel     : std_logic_vector(HARTSELLEN-1 downto 0);
-    ndmreset    : std_ulogic;
-    dmactive    : std_ulogic;
+    haltreq         : std_ulogic;
+    resumereq       : std_ulogic;
+    hartreset       : std_ulogic;
+    ackhavereset    : std_ulogic;
+    hasel           : std_ulogic;
+    hartsel         : std_logic_vector(HARTSELLEN-1 downto 0);
+    ndmreset        : std_ulogic;
+    dmactive        : std_ulogic;
+    setresethaltreq : std_ulogic;
+    clrresethaltreq : std_ulogic;
   end record;
 
   constant dmcontrol_reset : dmcontrol_type := (
-    haltreq     => '0',
-    resumereq   => '0',
-    hartreset   => '0',
-    ackhavereset=> '0',
-    hasel       => '0',
-    hartsel   => (others => '0'),
-    ndmreset    => '0',
-    dmactive    => '0'
+    haltreq         => '0',
+    resumereq       => '0',
+    hartreset       => '0',
+    ackhavereset    => '0',
+    hasel           => '0',
+    hartsel         => (others => '0'),
+    ndmreset        => '0',
+    dmactive        => '0',
+    setresethaltreq => '0',
+    clrresethaltreq => '0'
     );
 
   type abscommand_type is record
     valid       : std_logic;
     cmdtype     : std_logic_vector(7 downto 0);
     aarsize     : std_logic_vector(2 downto 0);
-    aarpostinc  : std_logic; 
+    aarpostinc  : std_logic;
     postexec    : std_logic;
     transfer    : std_logic;
     write       : std_logic;
@@ -184,6 +199,7 @@ architecture rtl of rvdmx is
     accerr      : std_ulogic;
     cmderr      : std_logic_vector(2 downto 0);
     unavailcnt  : std_logic_vector(UNAVAIL_H downto 0);
+    haltonrst   : std_logic_vector(NHARTS-1 downto 0);
     -- From Harts to Debug Module
     running     : std_logic_vector(NHARTS-1 downto 0);
     halted      : std_logic_vector(NHARTS-1 downto 0);
@@ -199,7 +215,7 @@ architecture rtl of rvdmx is
     hresp               : std_logic_vector(1 downto 0);
     hwdata              : std_logic_vector(regw-1 downto 0);
     hrdata              : std_logic_vector(regw-1 downto 0);
-    hhold               : std_logic; 
+    hhold               : std_logic;
   end record;
 
   constant RES_T : reg_type := (
@@ -220,6 +236,7 @@ architecture rtl of rvdmx is
     accerr      => '0',
     cmderr      => (others => '0'),
     unavailcnt  => (others => '0'),
+    haltonrst   => (others => '0'),
     -- From Harts to Debug Module
     running     => (others => '0'),
     halted      => (others => '0'),
@@ -237,8 +254,8 @@ architecture rtl of rvdmx is
     hrdata              => (others => '0'),
     hhold               => '0'
     );
-  
-  -- Signals ---------------------------------------------------------------- 
+
+  -- Signals ----------------------------------------------------------------
 
   signal r, rin         : reg_type;
   signal arst           : std_ulogic;
@@ -260,8 +277,8 @@ begin
     variable abstractcs         : word;
     variable command            : word;
     variable sbcs               : word;
-    variable ihartselraw        : integer range 0 to MAXHART-1;
-    variable hartselmaskraw     : std_logic_vector(2**20 downto 0);
+    variable ihartselraw        : integer range 0 to (2**HARTSELLEN)-1;
+    variable hartselmaskraw     : std_logic_vector((2**HARTSELLEN)-1 downto 0);
     variable hartselmask        : std_logic_vector(NHARTS-1 downto 0);
     variable hartselvalid       : std_ulogic;
     variable hartsel_hi_lo      : std_logic_vector(19 downto 0);
@@ -295,7 +312,7 @@ begin
     variable dcmd               : std_logic_vector(1 downto 0);
     variable dwrite             : std_ulogic;
     variable dsize              : std_logic_vector(2 downto 0);
-    variable daddr              : std_logic_vector(DBITS-1 downto 0);
+    variable daddr              : std_logic_vector(dbgo(0).daddr'range);
     variable ddata              : word64;
     variable dvalid             : std_ulogic;
     variable drdata             : word64;
@@ -308,10 +325,12 @@ begin
     -- Defaults
     ---------------------------------------------------------------------------------
     v := r;
-                
-    -- Run Control 
-    v.control.resumereq     := '0';
-    v.control.ackhavereset  := '0';
+
+    -- Run Control
+    v.control.resumereq       := '0';
+    v.control.ackhavereset    := '0';
+    v.control.setresethaltreq := '0';
+    v.control.clrresethaltreq := '0';
 
     -- Program buffer
     pbwrite := (others => '0');
@@ -377,7 +396,7 @@ begin
     if hartselvalid = '0' then
       allnonexistent    := '1';
     end if;
-    
+
     -- This field is 1 when any currently selected harts do not exist in this system.
     anynonexistent      := allnonexistent;
 
@@ -386,7 +405,7 @@ begin
     --if r.unavailcnt(UNAVAIL_H) = '1' then
     --  allunavail        := '1';
     --end if;
-    
+
     -- This field is 1 when any currently selected harts are unavailable.
     anyunavail          := allunavail;
 
@@ -395,7 +414,7 @@ begin
     if (r.running and hartselmask) = hartselmask and hartselvalid = '1' then
       allrunning        := '1';
     end if;
-    
+
     -- This field is 1 when any currently selected harts are running.
     anyrunning          := hartselvalid;
     if not (r.running and hartselmask) = ALLHARTS then
@@ -407,13 +426,13 @@ begin
     if (r.halted and hartselmask) = hartselmask and hartselvalid = '1' then
       allhalted         := '1';
     end if;
-    
+
     -- This field is 1 when any currently selected harts are halted.
     anyhalted           := hartselvalid;
     if not (r.halted and hartselmask) = ALLHARTS then
       anyhalted         := '0';
     end if;
-    
+
     dmstatus            := zerow;
     dmstatus(22)        := IMPEBREAK;
     dmstatus(19)        := allhavereset;
@@ -430,7 +449,7 @@ begin
     dmstatus(8)         := anyhalted;
     dmstatus(7)         := '1'; -- authenticated
     dmstatus(6)         := '0'; -- authbusy
-    dmstatus(5)         := '0'; -- hasresethaltreq
+    dmstatus(5)         := '1'; -- hasresethaltreq
     dmstatus(4)         := '0'; -- devtreevalid
     dmstatus(3 downto 0):= DMVERSION;
 
@@ -450,7 +469,7 @@ begin
     abstractcs(3 downto 0)      := conv_std_logic_vector(DATACOUNT, 4); -- datacount
 
     -- Abstract Command (command, at 0x17)
-    
+
     command                     := zerow;
     command(31 downto 24)       := r.cmd.cmdtype;
     command(22 downto 20)       := r.cmd.aarsize;
@@ -478,16 +497,16 @@ begin
 
     sbcs                := zerow;
     sbcs(31 downto 29)  := "001";
-    sbcs(19 downto 17)  := "010";    
+    sbcs(19 downto 17)  := "010";
 
     ---------------------------------------------------------------------------------
     -- AHB Interface
     ---------------------------------------------------------------------------------
-    
+
     v.hhold   := '0';
     v.hsel    := (others => '0');
     v.hready  := '1';
-    v.hresp   := HRESP_OKAY; 
+    v.hresp   := HRESP_OKAY;
     rdata     := (others => '0');
 
     -- Interface defined as 32-bit
@@ -607,7 +626,7 @@ begin
       end case; -- r.haddr(ADDR_H downto 6)
       v.hrdata := rdata;
     end if;
-    
+
     -- Write access
     if r.hsel(1) = '1' and r.hwrite = '1' then
       case r.haddr(ADDR_H downto 6) is
@@ -632,17 +651,17 @@ begin
         when "0001" =>
           case r.haddr(5 downto 2) is
             when "0000" => -- Debug Module Control
-              v.control.haltreq       := wdata(31);
-              v.control.resumereq     := wdata(30);
-              v.control.hartreset     := wdata(29);
-              v.control.ackhavereset  := wdata(28);
-              v.control.hasel         := wdata(26);
-              hartsel_hi_lo           := wdata(15 downto 6) & wdata(25 downto 16);
-              v.control.hartsel       := hartsel_hi_lo(HARTSELLEN-1 downto 0);
-              -- setresethaltreq is not implemented
-              -- clrsethaltreq is not implemented
-              v.control.ndmreset      := wdata(1);
-              v.control.dmactive      := wdata(0);
+              v.control.haltreq         := wdata(31);
+              v.control.resumereq       := wdata(30);
+              v.control.hartreset       := wdata(29);
+              v.control.ackhavereset    := wdata(28);
+              v.control.hasel           := wdata(26);
+              hartsel_hi_lo             := wdata(15 downto 6) & wdata(25 downto 16);
+              v.control.hartsel         := hartsel_hi_lo(HARTSELLEN-1 downto 0);
+              v.control.setresethaltreq := wdata(3);
+              v.control.clrresethaltreq := wdata(2);
+              v.control.ndmreset        := wdata(1);
+              v.control.dmactive        := wdata(0);
             when "0001" => -- Debug Module Status
               -- These entire registers are read-only
               null;
@@ -676,7 +695,7 @@ begin
                 if r.busy = '1' then
                   v.cmderr      := CMDERR_BUSY;
                   v.accerr      := '1';
-                else 
+                else
                   v.cmd.cmdtype   := wdata(31 downto 24);
                   v.cmd.aarsize   := wdata(22 downto 20);
                   v.cmd.aarpostinc:= wdata(          19);
@@ -766,7 +785,7 @@ begin
       hrdata := rdata;
       v.hrdata := (others => '0');
     end if;
-    
+
     ---------------------------------------------------------------------------------
     -- Run Control
     ---------------------------------------------------------------------------------
@@ -806,7 +825,7 @@ begin
       v.en(i)           := r.dsuen(2) and dbgi(i).dsu;
     end loop;
     v.break             := r.dsubr(2);
-      
+
     -- Generate halt signal
     haltreq             := (others => '0');
     if r.control.haltreq = '1' then
@@ -839,7 +858,15 @@ begin
       v.havereset       := r.havereset and not(hartselmask);
     end if;
 
-    -- IDLE 
+    -- Halt-on-reset
+    if r.control.setresethaltreq = '1' then
+      v.haltonrst := r.haltonrst or hartselmask;
+    end if;
+    if r.control.clrresethaltreq = '1' then
+      v.haltonrst := r.haltonrst and (not hartselmask);
+    end if;
+
+    -- IDLE
 
     -- Send an halt requesto to the selected hart in the following cases:
     -- * halt request from write to the DM register
@@ -848,7 +875,7 @@ begin
       haltreq           := hartselmask and r.en;
     end if;
 
-    -- HALTING 
+    -- HALTING
 
     -- Check the running and halted signals from the selected hart
     -- If it does not replay within the timout, set the unavalable hart bit
@@ -863,7 +890,7 @@ begin
     ---------------------------------------------------------------------------------
     -- Abstract command
     ---------------------------------------------------------------------------------
-    
+
     -- Input Hart Signals
     dvalid              := dbgi(ihartsel).dvalid;
     drdata              := dbgi(ihartsel).ddata;
@@ -961,9 +988,9 @@ begin
               when others => null;
             end case; -- r.cmd.cmdtype
           end if;
-        end if;        
+        end if;
       end if;
-    end if;  
+    end if;
 
     -- Detect when prog buffer execution done
     if r.cmd.postexec = '1' and dexec_done = '1' then
@@ -972,7 +999,7 @@ begin
         v.cmderr  := CMDERR_EXCEPTION;
       end if;
     end if;
-    
+
     ---------------------------------------------------------------------------------
     -- Reset
     ---------------------------------------------------------------------------------
@@ -987,8 +1014,8 @@ begin
     -- power up, including the platform’s system reset or Debug Transport reset signals.
     dmactive            := v.control.dmactive;
     if r.control.dmactive = '0' then
-      v.dsuen           := (others => '0');
-      v.dsubr           := (others => '0');
+      --v.dsuen           := (others => '0');
+      --v.dsubr           := (others => '0');
       v.break           := '0';
       v.en              := (others => '0');
       v.halt            := (others => '0');
@@ -1023,6 +1050,7 @@ begin
       dbgo(i).halt      <= haltreq(i);          -- Halt Request
       dbgo(i).resume    <= resumereq(i);        -- Resume Request
       dbgo(i).reset     <= hartreset(i);        -- Reset Request
+      dbgo(i).haltonrst <= r.haltonrst(i);      -- Halt-on-reset
       dbgo(i).denable   <= denable(i);          -- Command Enable
       dbgo(i).dcmd      <= dcmd;                -- Command Type
       dbgo(i).dwrite    <= dwrite;              -- Write Enable
@@ -1055,6 +1083,12 @@ begin
       r <= rin;
       if rst = '0' then
         r <= RES_T;
+        for i in 0 to NHARTS-1 loop
+          r.haltonrst(i) <= r.dsubr(2);
+        end loop;
+        -- sync regs
+        r.dsubr <= rin.dsubr;
+        r.dsuen <= rin.dsuen;
       end if;
     end if;
   end process;
@@ -1078,5 +1112,5 @@ begin
       pbo(i) <= nv_progbuf_out_none;
     end generate;
   end generate;
-  
+
 end;

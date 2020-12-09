@@ -52,7 +52,7 @@ end;
 
 architecture rtl of tbufmem5 is
 
-constant ADDRBITS : integer := 10 + log2(tbuf) - 4 - proc;
+constant ADDRBITS : integer := 10-10*(tbuf/16#10000#) + log2(tbuf mod 16#10000#) - 4 - proc;
 signal enable : std_logic_vector(1 downto 0);
 
 

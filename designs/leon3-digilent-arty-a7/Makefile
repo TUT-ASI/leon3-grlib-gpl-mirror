@@ -40,7 +40,6 @@ TECHLIBS = unisim
 
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip ihp usbhc spw
-LIBSKIP += opencores
 LIBSKIP += esa
 LIBSKIP += fmf
 LIBSKIP += spansion
@@ -51,8 +50,6 @@ LIBSKIP += cypress
 DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan pci leon3ft ambatest can \
 	usb grusbhc spacewire ascs slink hcan \
 	leon4v0 l2cache pwm gr1553b iommu
-DIRSKIP += i2c
-DIRSKIP += spi
 DIRSKIP += grdmac
 FILESKIP  =
 FILESKIP += grcan.vhd
@@ -98,6 +95,8 @@ VSIMOPT+= $(SIMTOP)
 include $(GRLIB)/bin/Makefile
 include $(GRLIB)/software/leon3/Makefile
 
+EXTRACLEAN += leon3mp.bit.bin
+EXTRACLEAN += slack.log
 
 ### Synthesize Options ###
 
@@ -115,15 +114,11 @@ vivrom:
 vivslack: vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP)_routed.dcp
 	vivado -mode tcl -nojournal -log slack.log -source slack.tcl $<
 
-leon3-vivado-launch: scripts
-	cp -f ../../boards/$(BOARD)/mig-$(PART)/mig-$(PART).prj vivado/mig.prj
-	cp -f ../../boards/$(BOARD)/mig-$(PART)/mig-$(PART).xci vivado/mig.xci
-	cp -f ../../boards/$(BOARD)/mig-$(PART)/mig-$(PART).xdc vivado/mig.xdc
-	make vivado-launch
+copy-mig:
+	cp -f $(BOARDDIR)/mig-$(PART)/mig-$(PART).prj vivado/mig.prj
+	cp -f $(BOARDDIR)/mig-$(PART)/mig-$(PART).xci vivado/mig.xci
+	cp -f $(BOARDDIR)/mig-$(PART)/mig-$(PART).xdc vivado/mig.xdc
 
-leon3-vivado: scripts
-	cp -f ../../boards/$(BOARD)/mig-$(PART)/mig-$(PART).prj vivado/mig.prj
-	cp -f ../../boards/$(BOARD)/mig-$(PART)/mig-$(PART).xci vivado/mig.xci
-	cp -f ../../boards/$(BOARD)/mig-$(PART)/mig-$(PART).xdc vivado/mig.xdc
-	make vivado
+vivado-launch: copy-mig
+vivado: copy-mig
 

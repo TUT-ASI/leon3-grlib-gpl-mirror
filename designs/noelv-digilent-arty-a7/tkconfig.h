@@ -254,6 +254,10 @@
 #define CONFIG_NOELV 0
 #endif
 
+#ifndef CONFIG_NOELV_XLEN
+#define CONFIG_NOELV_XLEN 64
+#endif
+
 #ifndef CONFIG_PROC_NUM
 #define CONFIG_PROC_NUM 1
 #endif
@@ -263,7 +267,7 @@
 #endif
 
 #ifndef CONFIG_PROC_NODBUS
-#define CONFIG_PROC_NODBUS 1
+#define CONFIG_PROC_NODBUS 0
 #endif
 
 #ifndef CONFIG_IU_DISAS
@@ -460,66 +464,6 @@
 #define CONFIG_AHBSTAT_NFTSLV  1
 #endif
 
-#ifndef CONFIG_AHBROM_ENABLE
-#define CONFIG_AHBROM_ENABLE 0
-#endif
-
-#ifndef CONFIG_AHBROM_START
-#define CONFIG_AHBROM_START 000
-#endif
-
-#ifndef CONFIG_AHBROM_PIPE
-#define CONFIG_AHBROM_PIPE 0
-#endif
-
-#if (CONFIG_AHBROM_START == 0) && (CONFIG_AHBROM_ENABLE == 1)
-#define CONFIG_ROM_START 100
-#else
-#define CONFIG_ROM_START 000
-#endif
-
-
-#ifndef CONFIG_AHBRAM_ENABLE
-#define CONFIG_AHBRAM_ENABLE 0
-#endif
-
-#ifndef CONFIG_AHBRAM_START
-#define CONFIG_AHBRAM_START A00
-#endif
-
-#if defined CONFIG_AHBRAM_SZ1
-#define CFG_AHBRAMSZ 1
-#elif CONFIG_AHBRAM_SZ2
-#define CFG_AHBRAMSZ 2
-#elif CONFIG_AHBRAM_SZ4
-#define CFG_AHBRAMSZ 4
-#elif CONFIG_AHBRAM_SZ8
-#define CFG_AHBRAMSZ 8
-#elif CONFIG_AHBRAM_SZ16
-#define CFG_AHBRAMSZ 16
-#elif CONFIG_AHBRAM_SZ32
-#define CFG_AHBRAMSZ 32
-#elif CONFIG_AHBRAM_SZ64
-#define CFG_AHBRAMSZ 64
-#elif CONFIG_AHBRAM_SZ128
-#define CFG_AHBRAMSZ 128
-#elif CONFIG_AHBRAM_SZ256
-#define CFG_AHBRAMSZ 256
-#elif CONFIG_AHBRAM_SZ512
-#define CFG_AHBRAMSZ 512
-#elif CONFIG_AHBRAM_SZ1024
-#define CFG_AHBRAMSZ 1024
-#elif CONFIG_AHBRAM_SZ2048
-#define CFG_AHBRAMSZ 2048
-#elif CONFIG_AHBRAM_SZ4096
-#define CFG_AHBRAMSZ 4096
-#else
-#define CFG_AHBRAMSZ 1
-#endif
-
-#ifndef CONFIG_AHBRAM_PIPE
-#define CONFIG_AHBRAM_PIPE 0
-#endif
 #ifndef CONFIG_GRETH_ENABLE
 #define CONFIG_GRETH_ENABLE 0
 #endif
@@ -558,79 +502,8 @@
 #define CONFIG_GRETH_FMC_MODE 0
 #endif
 
-#ifndef CONFIG_UART1_ENABLE
-#define CONFIG_UART1_ENABLE 0
-#endif
-
-#if defined CONFIG_UA1_FIFO1
-#define CFG_UA1_FIFO 1
-#elif defined CONFIG_UA1_FIFO2
-#define CFG_UA1_FIFO 2
-#elif defined CONFIG_UA1_FIFO4
-#define CFG_UA1_FIFO 4
-#elif defined CONFIG_UA1_FIFO8
-#define CFG_UA1_FIFO 8
-#elif defined CONFIG_UA1_FIFO16
-#define CFG_UA1_FIFO 16
-#elif defined CONFIG_UA1_FIFO32
-#define CFG_UA1_FIFO 32
-#else
-#define CFG_UA1_FIFO 1
-#endif
-
-#ifndef CONFIG_GPT_ENABLE
-#define CONFIG_GPT_ENABLE 0
-#endif
-
-#ifndef CONFIG_GPT_NTIM
-#define CONFIG_GPT_NTIM 1
-#endif
-
-#ifndef CONFIG_GPT_SW
-#define CONFIG_GPT_SW 8
-#endif
-
-#ifndef CONFIG_GPT_TW
-#define CONFIG_GPT_TW 8
-#endif
-
-#ifndef CONFIG_GPT_IRQ
-#define CONFIG_GPT_IRQ 8
-#endif
-
-#ifndef CONFIG_GPT_SEPIRQ
-#define CONFIG_GPT_SEPIRQ 0
-#endif
-#ifndef CONFIG_GPT_ENABLE
-#define CONFIG_GPT_ENABLE 0
-#endif
-
-#ifndef CONFIG_GPT_NTIM
-#define CONFIG_GPT_NTIM 1
-#endif
-
-#ifndef CONFIG_GPT_SW
-#define CONFIG_GPT_SW 8
-#endif
-
-#ifndef CONFIG_GPT_TW
-#define CONFIG_GPT_TW 8
-#endif
-
-#ifndef CONFIG_GPT_IRQ
-#define CONFIG_GPT_IRQ 8
-#endif
-
-#ifndef CONFIG_GPT_SEPIRQ
-#define CONFIG_GPT_SEPIRQ 0
-#endif
-
-#ifndef CONFIG_GPT_WDOGEN
-#define CONFIG_GPT_WDOGEN 0
-#endif
-
-#ifndef CONFIG_GPT_WDOG
-#define CONFIG_GPT_WDOG 0
+#ifndef CONFIG_GRETH_PHY_ADDR
+#define CONFIG_GRETH_PHY_ADDR 1
 #endif
 
 #ifndef CONFIG_GRGPIO_ENABLE

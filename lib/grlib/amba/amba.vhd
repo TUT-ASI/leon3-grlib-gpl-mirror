@@ -52,6 +52,12 @@ package amba is
 constant AHBDW        : integer := CFG_AHBDW;
 constant AXIDW        : integer := CFG_AHBDW;
 constant AXI_ID_WIDTH : integer := 4;
+
+-- GRLIB_ENDIAN - Default endianness of the system
+-- This value is configured in the GRLIB_CONFIG_ARRAY
+--
+constant GRLIB_ENDIAN : integer := GRLIB_CONFIG_ARRAY(grlib_little_endian);
+
 -- CORE_ACDM - Enable AMBA Compliant Data Muxing in cores
 --
 -- Valid values are 0 and 1
@@ -81,6 +87,9 @@ constant NBUS      : integer := 4;
 -- Number of test vector bits
 constant NTESTINBITS : integer := 4+GRLIB_CONFIG_ARRAY(grlib_techmap_testin_extra);
 
+-- Default system AHB endianness
+constant AHBENDIAN    : integer range 0 to 1 := GRLIB_CONFIG_ARRAY(grlib_little_endian);
+
 -------------------------------------------------------------------------------
 -- AMBA interface type declarations and constant
 -------------------------------------------------------------------------------
@@ -101,6 +110,7 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
     scanen      : std_ulogic;                           -- scan enable
     testoen     : std_ulogic;                           -- test output enable
     testin      : std_logic_vector(NTESTINBITS-1 downto 0);         -- test vector for syncrams
+    endian      : std_ulogic;                           -- endianness of bus
   end record;
 
 -- AHB master outputs
@@ -139,6 +149,7 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
     scanen      : std_ulogic;                           -- scan enable
     testoen     : std_ulogic;                           -- test output enable 
     testin      : std_logic_vector(NTESTINBITS-1 downto 0);         -- test vector for syncrams
+    endian      : std_ulogic;                           -- endianness of bus
   end record;
 
 -- AHB slave outputs
@@ -511,13 +522,13 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
   constant ahbm_none : ahb_mst_out_type := ( '0', '0', "00", zx,
    '0', "000", "000", "0000", zahbdw, zxirq(NAHBIRQ-1 downto 0), (others => zx), 0);
   constant ahbm_in_none : ahb_mst_in_type := ((others => '0'), '0', (others => '0'),
-   zahbdw, zxirq(NAHBIRQ-1 downto 0), '0', '0', '0', '0', ztestin);
+   zahbdw, zxirq(NAHBIRQ-1 downto 0), '0', '0', '0', '0', ztestin, '0');
   constant ahbs_none : ahb_slv_out_type := (
    '1', "00", zahbdw, zx(NAHBMST-1 downto 0), zxirq(NAHBIRQ-1 downto 0), (others => zx), 0);
   constant ahbs_in_none : ahb_slv_in_type := (
    zy(0 to NAHBSLV-1), zx, '0', "00", "000", "000", zahbdw,
    "0000", '1', "0000", '0', zy(0 to NAHBAMR-1), zxirq(NAHBIRQ-1 downto 0),
-   '0', '0', '0', '0', ztestin);
+   '0', '0', '0', '0', ztestin, '0');
 
   constant ahbsv_none : ahb_slv_out_vector := (others => ahbs_none);
 
@@ -576,19 +587,30 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
 
   function ahbdrivedata (hdata : std_logic_vector) return std_logic_vector;
 
+  function ahbselectdatabe (hdata : std_logic_vector(AHBDW-1 downto 0);
+                          haddr : std_logic_vector(4 downto 2); hsize : std_logic_vector(2 downto 0))
+    return std_logic_vector;
+
+  function ahbselectdatale (hdata : std_logic_vector(AHBDW-1 downto 0);
+                          haddr : std_logic_vector(4 downto 2); hsize : std_logic_vector(2 downto 0))
+    return std_logic_vector;
+
   function ahbselectdata (hdata : std_logic_vector(AHBDW-1 downto 0);
-    haddr : std_logic_vector(4 downto 2); hsize : std_logic_vector(2 downto 0))
+                          haddr : std_logic_vector(4 downto 2); hsize : std_logic_vector(2 downto 0);
+                          endian : integer range 0 to 1 := AHBENDIAN)
     return std_logic_vector;
 
   function ahbreadword (
     hdata : std_logic_vector(AHBDW-1 downto 0);
-    haddr : std_logic_vector(4 downto 2))
+    haddr : std_logic_vector(4 downto 2);
+    endian : integer range 0 to 1 := AHBENDIAN)
     return std_logic_vector;
 
   procedure ahbreadword (
     hdata : in  std_logic_vector(AHBDW-1 downto 0);
     haddr : in  std_logic_vector(4 downto 2);
-    data  : out std_logic_vector(31 downto 0));
+    data  : out std_logic_vector(31 downto 0);
+    endian : integer range 0 to 1 := AHBENDIAN);
 
   function ahbreadword (
     hdata : std_logic_vector(AHBDW-1 downto 0))
@@ -600,13 +622,15 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
 
   function ahbreaddword (
     hdata : std_logic_vector(AHBDW-1 downto 0);
-    haddr : std_logic_vector(4 downto 2))
+    haddr : std_logic_vector(4 downto 2);
+    endian : integer range 0 to 1 := AHBENDIAN)
     return std_logic_vector;
 
   procedure ahbreaddword (
     hdata : in  std_logic_vector(AHBDW-1 downto 0);
     haddr : in  std_logic_vector(4 downto 2);
-    data  : out std_logic_vector(63 downto 0));
+    data  : out std_logic_vector(63 downto 0);
+    endian : integer range 0 to 1 := AHBENDIAN);
 
   function ahbreaddword (
     hdata : std_logic_vector(AHBDW-1 downto 0))
@@ -618,13 +642,15 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
 
   function ahbread4word (
     hdata : std_logic_vector(AHBDW-1 downto 0);
-    haddr : std_logic_vector(4 downto 2))
+    haddr : std_logic_vector(4 downto 2);
+    endian : integer range 0 to 1 := AHBENDIAN)
     return std_logic_vector;
 
   procedure ahbread4word (
     hdata : in  std_logic_vector(AHBDW-1 downto 0);
     haddr : in  std_logic_vector(4 downto 2);
-    data  : out std_logic_vector(127 downto 0));
+    data  : out std_logic_vector(127 downto 0);
+    endian : integer range 0 to 1 := AHBENDIAN);
 
   function ahbread4word (
     hdata : std_logic_vector(AHBDW-1 downto 0))
@@ -636,13 +662,15 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
 
   function ahbread8word (
     hdata : std_logic_vector(AHBDW-1 downto 0);
-    haddr : std_logic_vector(4 downto 2))
+    haddr : std_logic_vector(4 downto 2);
+    endian : integer range 0 to 1 := AHBENDIAN)
     return std_logic_vector;
 
   procedure ahbread8word (
     hdata : in  std_logic_vector(AHBDW-1 downto 0);
     haddr : in  std_logic_vector(4 downto 2);
-    data  : out std_logic_vector(255 downto 0));
+    data  : out std_logic_vector(255 downto 0);
+    endian : integer range 0 to 1 := AHBENDIAN);
 
   function ahbread8word (
     hdata : std_logic_vector(AHBDW-1 downto 0))
@@ -655,7 +683,8 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
   function ahbreaddata (
     hdata : std_logic_vector(AHBDW-1 downto 0);
     haddr : std_logic_vector(4 downto 2);
-    hsize : std_logic_vector(2 downto 0))
+    hsize : std_logic_vector(2 downto 0);
+    endian : integer range 0 to 1 := AHBENDIAN)
     return std_logic_vector;
 
   function ahbreaddata (
@@ -720,7 +749,8 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
     hwdebug     : integer := 0;
     fourgslv    : integer := 0;
     shadow      : integer range 0 to 1 := 0;  -- Allow overlapping memory areas
-    unmapslv    : integer := 0
+    unmapslv    : integer := 0;
+    ahbendian   : integer := GRLIB_ENDIAN
   );
   port (
     rst     : in  std_ulogic;
@@ -1333,13 +1363,15 @@ package body amba is
   -- Takes in AHB data vector 'hdata' and returns valid data on the full
   -- data vector output based on 'haddr' and 'hsize' inputs together with
   -- GRLIB AHB bus width. The function works down to word granularity.
-  function ahbselectdata (
+  -- Big-endian version
+
+  function ahbselectdatabe (
     hdata : std_logic_vector(AHBDW-1 downto 0);
     haddr : std_logic_vector(4 downto 2);
     hsize : std_logic_vector(2 downto 0))
     return std_logic_vector is
     variable ret   : std_logic_vector(AHBDW-1 downto 0);
-  begin  -- ahbselectdata
+  begin  -- ahbselectdatabe
     ret := hdata;
     case hsize is
     when HSIZE_8WORD =>
@@ -1386,8 +1418,88 @@ package body amba is
       end if;
     end case;
     return ret;
+  end ahbselectdatabe;
+
+  -- Takes in AHB data vector 'hdata' and returns valid data on the full
+  -- data vector output based on 'haddr' and 'hsize' inputs together with
+  -- GRLIB AHB bus width. The function works down to word granularity.
+  -- Little-endian version
+
+  function ahbselectdatale (
+    hdata : std_logic_vector(AHBDW-1 downto 0);
+    haddr : std_logic_vector(4 downto 2);
+    hsize : std_logic_vector(2 downto 0))
+    return std_logic_vector is
+    variable ret   : std_logic_vector(AHBDW-1 downto 0);
+  begin  -- ahbselectdatale
+    ret := hdata;
+    case hsize is
+    when HSIZE_8WORD =>
+      if AHBDW = 256 then ret := hdata; end if;
+    when HSIZE_4WORD =>
+      if AHBDW = 256 then
+        if haddr(4) = '1' then ret := ahbdrivedata(hdata(AHBDW-1 downto AHBDW/2));
+        else ret := ahbdrivedata(hdata(AHBDW/2-1 downto 0)); end if;
+      end if;
+    when HSIZE_DWORD =>
+      if AHBDW = 256 then
+        case haddr(4 downto 3) is
+          when "11" =>   ret := ahbdrivedata(hdata(4*(AHBDW/4)-1 downto 3*(AHBDW/4)));
+          when "10" =>   ret := ahbdrivedata(hdata(3*(AHBDW/4)-1 downto 2*(AHBDW/4)));
+          when "01" =>   ret := ahbdrivedata(hdata(2*(AHBDW/4)-1 downto 1*(AHBDW/4)));
+          when others => ret := ahbdrivedata(hdata(1*(AHBDW/4)-1 downto 0*(AHBDW/4)));
+        end case;
+      elsif AHBDW = 128 then
+        if haddr(3) = '1' then ret := ahbdrivedata(hdata(AHBDW-1 downto AHBDW/2));
+        else ret := ahbdrivedata(hdata(AHBDW/2-1 downto 0)); end if;
+      end if;
+    when others =>
+      if AHBDW = 256 then
+        case haddr(4 downto 2) is
+          when "111" => ret  := ahbdrivedata(hdata(8*(AHBDW/8)-1 downto 7*(AHBDW/8)));
+          when "110" => ret  := ahbdrivedata(hdata(7*(AHBDW/8)-1 downto 6*(AHBDW/8)));
+          when "101" => ret  := ahbdrivedata(hdata(6*(AHBDW/8)-1 downto 5*(AHBDW/8)));
+          when "100" => ret  := ahbdrivedata(hdata(5*(AHBDW/8)-1 downto 4*(AHBDW/8)));
+          when "011" => ret  := ahbdrivedata(hdata(4*(AHBDW/8)-1 downto 3*(AHBDW/8)));
+          when "010" => ret  := ahbdrivedata(hdata(3*(AHBDW/8)-1 downto 2*(AHBDW/8)));
+          when "001" => ret  := ahbdrivedata(hdata(2*(AHBDW/8)-1 downto 1*(AHBDW/8)));
+          when others => ret := ahbdrivedata(hdata(1*(AHBDW/8)-1 downto 0*(AHBDW/8)));
+        end case;
+      elsif AHBDW = 128 then
+        case haddr(3 downto 2) is
+          when "11" =>   ret := ahbdrivedata(hdata(4*(AHBDW/4)-1 downto 3*(AHBDW/4)));
+          when "10" =>   ret := ahbdrivedata(hdata(3*(AHBDW/4)-1 downto 2*(AHBDW/4)));
+          when "01" =>   ret := ahbdrivedata(hdata(2*(AHBDW/4)-1 downto 1*(AHBDW/4)));
+          when others => ret := ahbdrivedata(hdata(1*(AHBDW/4)-1 downto 0*(AHBDW/4)));
+        end case;
+      elsif AHBDW = 64 then
+        if haddr(2) = '1' then ret := ahbdrivedata(hdata(AHBDW-1 downto AHBDW/2));
+        else ret := ahbdrivedata(hdata(AHBDW/2-1 downto 0)); end if;
+      end if;
+    end case;
+    return ret;
+  end ahbselectdatale;
+
+  -- Takes in AHB data vector 'hdata' and returns valid data on the full
+  -- data vector output based on 'haddr' and 'hsize' inputs together with
+  -- GRLIB AHB bus width. The function works down to word granularity.
+  -- Generic version, select BE or LE
+
+  function ahbselectdata (
+    hdata : std_logic_vector(AHBDW-1 downto 0);
+    haddr : std_logic_vector(4 downto 2);
+    hsize : std_logic_vector(2 downto 0);
+    endian : integer range 0 to 1 := AHBENDIAN)
+    return std_logic_vector is
+    variable ret   : std_logic_vector(AHBDW-1 downto 0);
+  begin  -- ahbselectdata
+    if endian /= 0 then
+      return ahbselectdatale(hdata,haddr,hsize);
+    else
+      return ahbselectdatabe(hdata,haddr,hsize);
+    end if;
   end ahbselectdata;
-  
+
   -- Description of ahbread* functions and procedures.
   --
   -- The ahbread* subprograms with an 'haddr' input selects the valid slice of
@@ -1401,11 +1513,12 @@ package body amba is
   --
   function ahbreadword (
     hdata : std_logic_vector(AHBDW-1 downto 0);
-    haddr : std_logic_vector(4 downto 2))
+    haddr : std_logic_vector(4 downto 2);
+    endian : integer range 0 to 1 := AHBENDIAN)
     return std_logic_vector is
     variable data : std_logic_vector(31 downto 0);
   begin 
-    if CORE_ACDM = 1 then data := ahbselectdata(hdata, haddr, HSIZE_WORD)(31 downto 0);
+    if CORE_ACDM = 1 then data := ahbselectdata(hdata, haddr, HSIZE_WORD, endian)(31 downto 0);
     else data := hdata(31 downto 0); end if;
     return data;
   end ahbreadword;
@@ -1413,9 +1526,10 @@ package body amba is
   procedure ahbreadword (
     hdata : in  std_logic_vector(AHBDW-1 downto 0);
     haddr : in  std_logic_vector(4 downto 2);
-    data  : out std_logic_vector(31 downto 0)) is
+    data  : out std_logic_vector(31 downto 0);
+    endian : integer range 0 to 1 := AHBENDIAN) is
   begin
-    data := ahbreadword(hdata, haddr);
+    data := ahbreadword(hdata, haddr, endian);
   end ahbreadword;
 
   function ahbreadword (
@@ -1441,7 +1555,8 @@ package body amba is
 
   function ahbreaddword (
     hdata : std_logic_vector(AHBDW-1 downto 0);
-    haddr : std_logic_vector(4 downto 2))
+    haddr : std_logic_vector(4 downto 2);
+    endian : integer range 0 to 1 := AHBENDIAN)
     return std_logic_vector is
     variable data : std_logic_vector(255 downto 0);
   begin 
@@ -1453,21 +1568,21 @@ package body amba is
     if AHBDW = 256 then
       if CORE_ACDM = 1 then
         data(AHBDW/4-1 downto 0) :=
-             ahbselectdata(hdata, haddr, HSIZE_DWORD)(AHBDW/4-1 downto 0);
+             ahbselectdata(hdata, haddr, HSIZE_DWORD, endian)(AHBDW/4-1 downto 0);
       else
         data(AHBDW/4-1 downto 0) := hdata(AHBDW/4-1 downto 0);
       end if;
     elsif AHBDW = 128 then
       if CORE_ACDM = 1 then
         data(AHBDW/2-1 downto 0) :=
-          ahbselectdata(hdata, haddr, HSIZE_DWORD)(AHBDW/2-1 downto 0);
+          ahbselectdata(hdata, haddr, HSIZE_DWORD, endian)(AHBDW/2-1 downto 0);
       else
         data(AHBDW/2-1 downto 0) := hdata(AHBDW/2-1 downto 0);
       end if;
     elsif AHBDW = 64 then
       if CORE_ACDM = 1 then
         data(AHBDW-1 downto 0) :=
-             ahbselectdata(hdata, haddr, HSIZE_DWORD)(AHBDW-1 downto 0);
+             ahbselectdata(hdata, haddr, HSIZE_DWORD, endian)(AHBDW-1 downto 0);
       else
         data(AHBDW-1 downto 0) := hdata(AHBDW-1 downto 0);
       end if;
@@ -1478,9 +1593,10 @@ package body amba is
   procedure ahbreaddword (
     hdata : in  std_logic_vector(AHBDW-1 downto 0);
     haddr : in  std_logic_vector(4 downto 2);
-    data  : out std_logic_vector(63 downto 0)) is
+    data  : out std_logic_vector(63 downto 0);
+    endian : integer range 0 to 1 := AHBENDIAN) is
   begin 
-    data := ahbreaddword(hdata, haddr);
+    data := ahbreaddword(hdata, haddr, endian);
   end ahbreaddword;
 
   function ahbreaddword (
@@ -1515,7 +1631,8 @@ package body amba is
 
   function ahbread4word (
     hdata : std_logic_vector(AHBDW-1 downto 0);
-    haddr : std_logic_vector(4 downto 2))
+    haddr : std_logic_vector(4 downto 2);
+    endian : integer range 0 to 1 := AHBENDIAN)
     return std_logic_vector is
     variable data : std_logic_vector(255 downto 0);
   begin
@@ -1527,14 +1644,14 @@ package body amba is
     if AHBDW = 256 then
        if CORE_ACDM = 1 then
          data(AHBDW/2-1 downto 0) :=
-           ahbselectdata(hdata, haddr, HSIZE_4WORD)(AHBDW/2-1 downto 0);
+           ahbselectdata(hdata, haddr, HSIZE_4WORD, endian)(AHBDW/2-1 downto 0);
        else
          data(AHBDW/2-1 downto 0) := hdata(AHBDW/2-1 downto 0);
        end if;
     elsif AHBDW = 128 then
       if CORE_ACDM = 1 then
         data(AHBDW-1 downto 0) :=
-          ahbselectdata(hdata, haddr, HSIZE_4WORD)(AHBDW-1 downto 0);
+          ahbselectdata(hdata, haddr, HSIZE_4WORD, endian)(AHBDW-1 downto 0);
       else
         data(AHBDW-1 downto 0) := hdata(AHBDW-1 downto 0);
       end if;
@@ -1545,9 +1662,10 @@ package body amba is
   procedure ahbread4word (
     hdata : in  std_logic_vector(AHBDW-1 downto 0);
     haddr : in  std_logic_vector(4 downto 2);
-    data  : out std_logic_vector(127 downto 0)) is
+    data  : out std_logic_vector(127 downto 0);
+    endian : integer range 0 to 1 := AHBENDIAN) is
   begin 
-    data := ahbread4word(hdata, haddr);
+    data := ahbread4word(hdata, haddr, endian);
   end ahbread4word;
   
   function ahbread4word (
@@ -1580,7 +1698,8 @@ package body amba is
   
   function ahbread8word (
     hdata : std_logic_vector(AHBDW-1 downto 0);
-    haddr : std_logic_vector(4 downto 2))
+    haddr : std_logic_vector(4 downto 2);
+    endian : integer range 0 to 1 := AHBENDIAN)
     return std_logic_vector is
     variable data : std_logic_vector(AHBDW-1 downto 0);
   begin
@@ -1600,7 +1719,8 @@ package body amba is
   procedure ahbread8word (
     hdata : in  std_logic_vector(AHBDW-1 downto 0);
     haddr : in  std_logic_vector(4 downto 2);
-    data  : out std_logic_vector(255 downto 0)) is
+    data  : out std_logic_vector(255 downto 0);
+    endian : integer range 0 to 1 := AHBENDIAN) is
   begin 
     data := ahbread8word(hdata, haddr);
   end ahbread8word;
@@ -1632,19 +1752,20 @@ package body amba is
   function ahbreaddata (
     hdata : std_logic_vector(AHBDW-1 downto 0);
     haddr : std_logic_vector(4 downto 2);
-    hsize : std_logic_vector(2 downto 0))
+    hsize : std_logic_vector(2 downto 0);
+    endian : integer range 0 to 1 := AHBENDIAN)
     return std_logic_vector is
   begin
     case hsize is
       when HSIZE_8WORD =>
-        return ahbread8word(hdata, haddr);
+        return ahbread8word(hdata, haddr, endian);
       when HSIZE_4WORD =>
-        return ahbread4word(hdata, haddr);
+        return ahbread4word(hdata, haddr, endian);
       when HSIZE_DWORD =>
-        return ahbreaddword(hdata, haddr);
+        return ahbreaddword(hdata, haddr, endian);
       when others => null;
     end case;
-    return ahbreadword(hdata, haddr);
+    return ahbreadword(hdata, haddr, endian);
   end ahbreaddata;
 
   function ahbreaddata (

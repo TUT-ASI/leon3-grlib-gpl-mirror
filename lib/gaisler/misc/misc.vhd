@@ -1705,14 +1705,15 @@ package misc is
   -----------------------------------------------------------------------------
   component pfmddr_wrapper
     generic (
-      tech      : integer := 0;
-      hindex    : integer := 0;
-      haddr     : integer := 16#400#; -- mapped at 0x40000000
-      hmask     : integer := 16#FC0#; -- 64 MB
-      delay     : integer := 4;
-      vendorid  : integer := VENDOR_ACTEL; 
-      deviceid  : integer := ACTEL_MDDR;
-      pnpuser0  : integer := 0);
+      tech           : integer := 0;
+      hindex         : integer := 0;
+      haddr          : integer := 16#400#; -- mapped at 0x40000000
+      hmask          : integer := 16#FC0#; -- 64 MB
+      delay          : integer := 4;
+      vendorid       : integer := VENDOR_ACTEL; 
+      deviceid       : integer := ACTEL_MDDR;
+      pnpuser0       : integer := 0;
+      ahb_endianness : integer := 0);
     port (
       rstn      : in  std_ulogic;
       hclk      : in  std_ulogic;

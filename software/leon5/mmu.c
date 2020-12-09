@@ -95,7 +95,7 @@ int mmu_test(void)
   int i=0;
 
   if ((rsysreg(12) & 8) == 0) return(0);
-  report_subtest(MMU_TEST);
+  report_subtest(MMU_TEST+(get_pid()<<4));
 
   bcc_set_trap(MYTT_INSTRUCTION_ACCESS_EXCEPTION, systest_instruction_access_exception);
   bcc_set_trap(MYTT_DATA_ACCESS_EXCEPTION, systest_data_access_exception);

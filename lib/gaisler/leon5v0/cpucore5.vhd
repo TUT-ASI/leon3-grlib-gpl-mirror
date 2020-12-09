@@ -48,11 +48,15 @@ entity cpucore5 is
     fpuconf : integer;
     mulimpl : integer;
     rstaddr : integer;
-    disas   : integer
+    disas   : integer;
+    scantest: integer;
+    cgen    : integer
     );
   port (
     clk   : in  std_ulogic;
     rstn  : in  std_ulogic;
+    gclk  : in  std_ulogic;
+    gclken: out std_ulogic;
     ahbi  : in  ahb_mst_in_type;
     ahbo  : out ahb_mst_out_type;
     ahbsi : in  ahb_slv_in_type;
@@ -91,7 +95,6 @@ architecture hier of cpucore5 is
   constant dusebw   : integer := (cmemconf / 4) mod 2;
   constant dtagwidth: integer := 32-(log2(dwaysize)+10)+1;
   constant v8       : integer := 16#32# + 4*mulimpl_iu;
-  constant scantest : integer := 0;      -- fixme
 
   constant cdataw   : integer := 64;
 
@@ -145,10 +148,12 @@ begin
       rstaddr     => rstaddr,
       fabtech     => fabtech,
       scantest    => scantest,
-      memtech     => memtech_mod
+      memtech     => memtech_mod,
+      cgen        => cgen
       )
     port map (
-      clk         => clk,
+      clk         => gclk,
+      uclk        => clk,
       rstn        => rstn,
       holdn       => dco.hold,
       ici         => ici,
@@ -172,9 +177,9 @@ begin
       fpc_rfwen   => fprfi.wen,
       fpc_rfwdata => fprfi.wdata,
       fpc_retid   => fpc_retid,
-      sclk        => clk,
       testen      => ahbsi.testen,
-      testrst     => ahbsi.testrst
+      testrst     => ahbsi.testrst,
+      testin      => ahbsi.testin
       );
 
   -- multiply and divide units
@@ -191,6 +196,8 @@ begin
     wakeup_req => xdbgo.wakeup_req,
     c2c_mosi   => c2c_mosi
     );
+
+  gclken <= not xdbgo.idle;
 
   ----------------------------------------------------------------------------
   -- Cache controller and MMU
@@ -216,7 +223,7 @@ begin
       )
     port map (
       rst      => rstn,
-      clk      => clk,
+      clk      => gclk,
       ici      => ici,
       ico      => ico,
       dci      => dci,
@@ -227,10 +234,7 @@ begin
       ahbso    => ahbso,
       crami    => crami,
       cramo    => cramo,
-      fpuholdn => '1',
-      hclk     => clk,
       sclk     => clk,
-      hclken   => '1',
       fpc_mosi => fpc_mosi,
       fpc_miso => fpco.miso,
       c2c_mosi => c2c_mosi,
@@ -256,7 +260,7 @@ begin
         testen  => scantest
         )
       port map(
-        clk    => clk,
+        clk    => gclk,
         rstn   => rstn,
         rdhold => rfi.rdhold,
         waddr1 => rfi.waddr1(IRFBITS-1 downto 0),
@@ -292,7 +296,7 @@ begin
         rfconf  => rfconf
         )
       port map(
-        clk    => clk,
+        clk    => gclk,
         rstn   => rstn,
         rdhold => rfi.rdhold,
         waddr1 => rfi.waddr1(IRFBITS-1 downto 0),
@@ -337,7 +341,7 @@ begin
       )
     port map (
       rstn   => rstn,
-      clk    => clk,
+      clk    => gclk,
       sclk   => clk,
       crami  => crami,
       cramo  => cramo,
@@ -352,7 +356,7 @@ begin
     -- nanofpu, all-in-one FPC+FPU+regfile
     nfpu0: nanofpu
       port map (
-        clk           => clk,
+        clk           => gclk,
         rstn          => rstn,
         ready_flop    => fpco.ready_flop,
         ready_ld      => fpco.ready_ld,
@@ -396,7 +400,7 @@ begin
     -- GRFPC5 with private FPU
     fpc5: grfpc5
       port map (
-        clk           => clk,
+        clk           => gclk,
         rstn          => rstn,
         ready_flop    => fpco.ready_flop,
         ready_ld      => fpco.ready_ld,
@@ -467,7 +471,7 @@ begin
 
     fprf0: regfile_fpu
       port map (
-        clk       => clk,
+        clk       => gclk,
         rstn      => rstn,
         rf_raddr1 => fprfi.raddr1,
         rf_ren1   => fprfi.ren1,
@@ -490,7 +494,7 @@ begin
         scantest => 0
         )
       port map (
-        clk      => clk,
+        clk      => gclk,
         reset    => rstn,
         start    => xfpui.start,
         inmode   => xfpui.inmode,
@@ -520,7 +524,7 @@ begin
     -- GRFPC5 with external FPU
     fpc5: grfpc5
       port map (
-        clk           => clk,
+        clk           => gclk,
         rstn          => rstn,
         ready_flop    => fpco.ready_flop,
         ready_ld      => fpco.ready_ld,
@@ -591,7 +595,7 @@ begin
 
     fprf0: regfile_fpu
       port map (
-        clk       => clk,
+        clk       => gclk,
         rstn      => rstn,
         rf_raddr1 => fprfi.raddr1,
         rf_ren1   => fprfi.ren1,

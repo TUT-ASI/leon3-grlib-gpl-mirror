@@ -51,7 +51,9 @@ DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan pci leon3ft ambatest can \
 	leon4v0 l2cache pwm gr1553b iommu ge_1000baseX \
 	leon5v0 grfpu5 noelv noelv/subsys riscv
 FILEADD=MCB.vhd
-FILESKIP = grcan.vhd adapters/sgmii.vhd
+FILESKIP = grcan.vhd adapters/sgmii.vhd \
+	sf2apbslv_wrapper.vhd sf2ficmst_wrapper.vhd sf2ficslv_wrapper.vhd \
+	sf2mddr_wrapper.vhd pfmddr_wrapper.vhd
 
 include $(GRLIB)/bin/Makefile
 include $(GRLIB)/software/leon3/Makefile

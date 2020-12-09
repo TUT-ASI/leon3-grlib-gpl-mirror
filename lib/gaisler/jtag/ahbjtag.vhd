@@ -30,6 +30,7 @@ library grlib;
 use grlib.amba.all;
 use grlib.stdlib.all;
 use grlib.devices.all;
+use grlib.dftlib.trstmux;
 library techmap;
 use techmap.gencomp.all;
 library gaisler;
@@ -98,8 +99,8 @@ signal ltapi : tap_in_type;
 signal ltapo : tap_out_type;
 signal lltck, lltckn, ltck, ltckn: std_ulogic;
 signal lupd: std_ulogic;
-signal ctrst: std_ulogic;
-signal crr, combrst: std_ulogic;
+signal ctrsti, ctrst: std_ulogic;
+signal crri, crr, combrst: std_ulogic;
 
 begin
 
@@ -156,13 +157,13 @@ begin
   -- Async reset for tck-domain FFs in jtagcom. 
   -- In FPGA configs use AMBA reset as real TRST may not be available.
   -- For ASIC:s we combine AMBA and JTAG TRST using synchr flip-flop
-  ctrst <= ahbi.testrst when scantest/=0 and ahbi.testen='1' else
-           rst when is_fpga(tech)/=0 else
-           combrst;
+  trstmux2: trstmux generic map (scantest) port map (ctrsti,ahbi.testrst,ahbi.testen,ctrst);
+  ctrsti <= rst when is_fpga(tech)/=0 else
+            combrst;
 
   combrstgen: if is_fpga(tech)=0 generate
-    crr <= ahbi.testrst when scantest/=0 and ahbi.testen='1' else
-           (trst and rst);
+    crri <= (trst and rst);
+    trstmux1: trstmux generic map (scantest) port map (crri,ahbi.testrst,ahbi.testen,crr);
     crproc: process(ltck, crr)
     begin
       if rising_edge(ltck) then

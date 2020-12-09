@@ -275,6 +275,10 @@ begin
 
   -- pragma translate_off
   assert not(endianness_mode = 1 and narrow_acc_mode = 1) report "Direct narrow burst propagation is currently not supported when big endian AHB to little endian AXI translation is enbled." severity error;
+
+  assert (ahb_endianness /= 0) = (ahbsi.endian/='0') or ahbsi.endian='U'
+    report "ahb2axib: Mismatch between ahb_endianness generic and AHB configuration"
+    severity warning;
   -- pragma translate_on
 
   arst <= ahbsi.testrst when (ASYNC_RESET and scantest /= 0 and ahbsi.testen /= '0') else
@@ -984,7 +988,7 @@ begin
               v.wr_transmit_req_pipe := '1';
               v.initial_wbuf_fill := '0';
               v.aximout.aw.valid := '1';
-              if r.b2b_single_write_del = '1' then
+              if v.b2b_single_write_del = '1' then
                 --write address channel update was postponed
                 --do it now
                 b2b_single_write_sample := '1';
@@ -1229,10 +1233,4 @@ begin
     end process;
   end generate;
 
--- pragma translate_off
-   assert GRLIB_CONFIG_ARRAY(grlib_little_endian) = 0
-      report "ahb2axib: little endian systems not supported"
-      severity error;
--- pragma translate_on
-  
 end rtl;

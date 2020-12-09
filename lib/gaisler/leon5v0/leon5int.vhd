@@ -291,6 +291,8 @@ package leon5int is
     dlatearith   : std_ulogic;
     fbtb         : std_ulogic;
     fbp          : std_ulogic;
+    staticbp     : std_ulogic;
+    staticd      : std_ulogic;
   end record;
 
   constant iu_control_reg_default: iu_control_reg_type := (
@@ -301,7 +303,9 @@ package leon5int is
     dlatewicc    => '0',
     dlatearith   => '0',
     fbtb         => '0',
-    fbp          => '0'
+    fbp          => '0',
+    staticbp     => '0',
+    staticd      => '1'
     );
 
   type icache_in_type5 is record
@@ -386,10 +390,10 @@ package leon5int is
     wdata1      : std_logic_vector(63 downto 0); -- write data
     wdata2      : std_logic_vector(63 downto 0); -- write data
     rdhold       : std_logic;
-    re1          : std_logic;                    -- read 1 enable
-    re2          : std_logic;                    -- read 2 enable
-    re3          : std_logic;                    -- read 2 enable
-    re4          : std_logic;                    -- read 2 enable
+    re1          : std_logic_vector(1 downto 0);-- read 1 enable
+    re2          : std_logic_vector(1 downto 0);-- read 2 enable
+    re3          : std_logic_vector(1 downto 0);-- read 2 enable
+    re4          : std_logic_vector(1 downto 0);-- read 2 enable
     we1          : std_logic_vector(1 downto 0);         -- write enable
     we2          : std_logic_vector(1 downto 0);
   end record;
@@ -587,6 +591,13 @@ package leon5int is
     rdata : std_logic_vector(31 downto 0);
   end record;
 
+  constant l5_btb_diag_in_none : l5_btb_diag_in_type := (
+    addr => (others => '0'),
+    en => '0',
+    wren => '0',
+    wrdata => (others => '0')
+    );
+
   constant l5_btb_diag_out_none : l5_btb_diag_out_type := (
     rdata => (others => '0')
     );
@@ -607,11 +618,15 @@ package leon5int is
       fpuconf : integer;
       mulimpl : integer;
       rstaddr : integer;
-      disas   : integer
+      disas   : integer;
+      scantest: integer;
+      cgen    : integer
       );
     port (
       clk   : in  std_ulogic;
       rstn  : in  std_ulogic;
+      gclk  : in  std_ulogic;
+      gclken: out std_ulogic;
       ahbi  : in  ahb_mst_in_type;
       ahbo  : out ahb_mst_out_type;
       ahbsi : in  ahb_slv_in_type;
@@ -850,10 +865,12 @@ package leon5int is
       rstaddr     : integer                              ;  -- reset vector MSB address
       fabtech     : integer range 0 to NTECH     ;
       scantest    : integer                      ;
-      memtech     : integer range 0 to NTECH
+      memtech     : integer range 0 to NTECH;
+      cgen        : integer range 0 to 1
       );
     port (
       clk         : in  std_logic;
+      uclk        : in  std_ulogic;
       rstn        : in  std_logic;
       holdn       : in  std_logic;
       ici         : out icache_in_type5;
@@ -877,9 +894,9 @@ package leon5int is
       fpc_rfwen   : in  std_logic_vector(1 downto 0);
       fpc_rfwdata : in  std_logic_vector(63 downto 0);
       fpc_retid   : in  std_logic_vector(4 downto 0);
-      sclk        : in  std_logic;
       testen      : in  std_logic;
-      testrst     : in  std_logic
+      testrst     : in  std_logic;
+      testin      : in std_logic_vector(TESTIN_WIDTH-1 downto 0)
       );
   end component;
 
@@ -915,9 +932,7 @@ package leon5int is
       ahbso  : in  ahb_slv_out_vector;
       crami : out cram_in_type5;
       cramo : in  cram_out_type5;
-      fpuholdn : in  std_ulogic;
-      hclk, sclk : in std_ulogic;
-      hclken : in std_ulogic;
+      sclk : in std_ulogic;
       fpc_mosi : out l5_intreg_mosi_type;
       fpc_miso : in  l5_intreg_miso_type;
       c2c_mosi : out l5_intreg_mosi_type;
@@ -975,16 +990,16 @@ package leon5int is
       wdata2   : in  std_logic_vector((dbits -1) downto 0);
       we2      : in  std_logic_vector(1 downto 0);
       raddr1   : in  std_logic_vector((abits -1) downto 0);
-      re1      : in  std_logic;
+      re1      : in  std_logic_vector(1 downto 0);
       rdata1   : out std_logic_vector((dbits -1) downto 0);
       raddr2   : in  std_logic_vector((abits -1) downto 0);
-      re2      : in  std_logic;
+      re2      : in  std_logic_vector(1 downto 0);
       rdata2   : out std_logic_vector((dbits -1) downto 0);
       raddr3   : in  std_logic_vector((abits -1) downto 0);
-      re3      : in  std_logic;
+      re3      : in  std_logic_vector(1 downto 0);
       rdata3   : out std_logic_vector((dbits -1) downto 0);
       raddr4   : in  std_logic_vector((abits -1) downto 0);
-      re4      : in  std_logic;
+      re4      : in  std_logic_vector(1 downto 0);
       rdata4   : out std_logic_vector((dbits -1) downto 0);
       testin   : in  std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
       );
@@ -1010,16 +1025,16 @@ package leon5int is
       wdata2 : in  std_logic_vector((dbits -1) downto 0);
       we2    : in  std_logic_vector(1 downto 0);
       raddr1 : in  std_logic_vector((abits -1) downto 0);
-      re1    : in  std_logic;
+      re1    : in  std_logic_vector(1 downto 0);
       rdata1 : out std_logic_vector((dbits -1) downto 0);
       raddr2 : in  std_logic_vector((abits -1) downto 0);
-      re2    : in  std_logic;
+      re2    : in  std_logic_vector(1 downto 0);
       rdata2 : out std_logic_vector((dbits -1) downto 0);
       raddr3 : in  std_logic_vector((abits -1) downto 0);
-      re3    : in  std_logic;
+      re3    : in  std_logic_vector(1 downto 0);
       rdata3 : out std_logic_vector((dbits -1) downto 0);
       raddr4 : in  std_logic_vector((abits -1) downto 0);
-      re4    : in  std_logic;
+      re4    : in  std_logic_vector(1 downto 0);
       rdata4 : out std_logic_vector((dbits -1) downto 0)
       );
   end component;
@@ -1057,7 +1072,8 @@ package leon5int is
       bhti        : in  l5_bht_in_type;
       bhto        : out l5_bht_out_type;
       diag_in     : in  l5_btb_diag_in_type;
-      diag_out    : out  l5_btb_diag_out_type 
+      diag_out    : out  l5_btb_diag_out_type;
+      testin      : in std_logic_vector(TESTIN_WIDTH-1 downto 0)
       );
   end component;
 

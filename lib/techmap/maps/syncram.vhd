@@ -36,7 +36,8 @@ use work.allmem.all;
 entity syncram is
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
 	testen : integer := 0; custombits: integer := 1;
-        pipeline : integer range 0 to 15 := 0; rdhold: integer := 0);
+        pipeline : integer range 0 to 15 := 0; rdhold: integer := 0;
+        gatedwr : integer := 0);
   port (
     clk      : in std_ulogic;
     address  : in std_logic_vector((abits -1) downto 0);
@@ -61,7 +62,7 @@ architecture rtl of syncram is
   constant nctrl : integer := abits + (TESTIN_WIDTH-2) + 2;
   signal dataoutx, dataoutxx, dataoutxxx : std_logic_vector((dbits -1) downto 0);
   constant SCANTESTBP : boolean := (testen = 1) and syncram_add_scan_bypass(tech)=1 and (not genimpl);
-  signal xenable, xwrite: std_ulogic;
+  signal xenable, gwrite, xwrite: std_ulogic;
 
   signal gnd : std_ulogic;
 
@@ -76,7 +77,9 @@ begin
   gnd <= '0';
 
   xenable <= enable and not testin(TESTIN_WIDTH-2) when testen/=0 else enable;
-  xwrite <= write and not testin(TESTIN_WIDTH-2) when testen/=0 else write;
+  gwrite <= (write and enable) when (gatedwr/=0 and syncram_wrignen(tech)/=0 and not genimpl) else
+            write;
+  xwrite <= gwrite and not testin(TESTIN_WIDTH-2) when testen/=0 else gwrite;
 
   -- RAM bypass for scan (dataoutx -> dataoutxx)
   scanbp : if SCANTESTBP generate
@@ -180,10 +183,11 @@ begin
   end generate;
 
   inf : if xtech=inferred generate
-    x0 : generic_syncram generic map (abits, dbits, 0, rdhold)
+    x0 : generic_syncram generic map (abits, dbits, 0, rdhold, gatedwr)
          port map (clk, address, datain, dataoutx, write, enable);
   end generate;
 
+  
   xcv : if (xtech = virtex) generate
     x0 : virtex_syncram generic map (abits, dbits)
          port map (clk, address, datain, dataoutx, xenable, xwrite);
@@ -259,7 +263,7 @@ begin
 
   rhs : if xtech = rhs65 generate
     x0 : rhs65_syncram generic map (abits, dbits)
-         port map (clk, address, datain, dataoutx, enable, write,
+         port map (clk, address, datain, dataoutx, enable, xwrite,
                    testin(TESTIN_WIDTH-8),testin(TESTIN_WIDTH-3),
                    custominx(0),customoutx(0),
                    testin(TESTIN_WIDTH-4),testin(TESTIN_WIDTH-5),testin(TESTIN_WIDTH-6),
@@ -476,9 +480,11 @@ begin
       signal refdo: std_logic_vector(dbits-1 downto 0);
       signal pren: std_ulogic;
       signal paddr: std_logic_vector(abits-1 downto 0);
+      signal refwrite: std_ulogic;
     begin
+      refwrite <= write when gatedwr=0 else (write and enable);
       refram : generic_syncram generic map (abits, dbits)
-        port map (clk, address, datain, refdo, write);
+        port map (clk, address, datain, refdo, refwrite);
       p: process(clk)
       begin
         if rising_edge(clk) then

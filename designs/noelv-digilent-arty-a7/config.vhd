@@ -24,8 +24,9 @@ package config is
   constant CFG_CLK_NOFB : integer := 0;
 -- NOEL-V processor core
   constant CFG_NOELV : integer := 1;
+  constant CFG_NOELV_XLEN : integer := (64);
   constant CFG_NCPU : integer := (1);
-  constant CFG_CFG : integer := (0);
+  constant CFG_CFG : integer := (1);
   constant CFG_NODBUS : integer := 1;
   constant CFG_DISAS : integer := 3*0;
 -- L2 Cache
@@ -38,17 +39,17 @@ package config is
   constant CFG_L2_RAN : integer := 0;
   constant CFG_L2_SHARE : integer := 0;
   constant CFG_L2_LSZ : integer := 32;
-  constant CFG_L2_MAP : integer := 16#00F0#;
+  constant CFG_L2_MAP : integer := 16#00FF#;
   constant CFG_L2_MTRR : integer := (0);
   constant CFG_L2_EDAC : integer := 0;
-  constant CFG_L2_AXI : integer := 1;
+  constant CFG_L2_AXI : integer := 0;
 -- AMBA settings
   constant CFG_DEFMST : integer := (0);
   constant CFG_RROBIN : integer := 1;
-  constant CFG_SPLIT : integer := 0;
+  constant CFG_SPLIT : integer := 1;
   constant CFG_FPNPEN : integer := 1;
   constant CFG_AHBIO : integer := 16#FFF#;
-  constant CFG_APBADDR : integer := 16#800#;
+  constant CFG_APBADDR : integer := 16#FC0#;
   constant CFG_AHB_MON : integer := 0;
   constant CFG_AHB_MONERR : integer := 0;
   constant CFG_AHB_MONWAR : integer := 0;
@@ -61,7 +62,7 @@ package config is
   constant CFG_DSU_ETH : integer := 1 + 0 + 0;
   constant CFG_ETH_BUF : integer := 2;
   constant CFG_ETH_IPM : integer := 16#C0A8#;
-  constant CFG_ETH_IPL : integer := 16#0180#;
+  constant CFG_ETH_IPL : integer := 16#0033#;
   constant CFG_ETH_ENM : integer := 16#020000#;
   constant CFG_ETH_ENL : integer := 16#000000#;
 -- Xilinx MIG 7-Series
@@ -70,34 +71,12 @@ package config is
 -- AHB status register
   constant CFG_AHBSTAT : integer := 1;
   constant CFG_AHBSTATN : integer := (1);
--- AHB ROM
-  constant CFG_AHBROMEN : integer := 1;
-  constant CFG_AHBROPIP : integer := 0;
-  constant CFG_AHBRODDR : integer := 16#000#;
-  constant CFG_ROMADDR : integer := 16#100#;
-  constant CFG_ROMMASK : integer := 16#E00# + 16#100#;
--- AHB RAM
-  constant CFG_AHBRAMEN : integer := 0;
-  constant CFG_AHBRSZ : integer := 1;
-  constant CFG_AHBRADDR : integer := 16#A00#;
-  constant CFG_AHBRPIPE : integer := 0;
 -- Gaisler Ethernet core
   constant CFG_GRETH : integer := 1;
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 8;
   constant CFG_GRETH_FMC : integer := 0;
--- UART 1
-  constant CFG_UART1_ENABLE : integer := 1;
-  constant CFG_UART1_FIFO : integer := 1;
--- Modular timer
-  constant CFG_GPT_ENABLE : integer := 1;
-  constant CFG_GPT_NTIM : integer := (2);
-  constant CFG_GPT_SW : integer := (8);
-  constant CFG_GPT_TW : integer := (32);
-  constant CFG_GPT_IRQ : integer := (8);
-  constant CFG_GPT_SEPIRQ : integer := 1;
-  constant CFG_GPT_WDOGEN : integer := 0;
-  constant CFG_GPT_WDOG : integer := 16#0#;
+  constant CFG_ETH_PHY_ADDR : integer := (1);
 -- GPIO port
   constant CFG_GRGPIO_ENABLE : integer := 1;
   constant CFG_GRGPIO_IMASK : integer := 16#FFFE#;

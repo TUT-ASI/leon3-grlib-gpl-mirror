@@ -20,7 +20,7 @@ TOP=noelvmp
 SIMTOP=testbench
 
 # Uncomment for Modelsim or change to specify your simulator
-GRLIB_SIMULATOR=ModelSim
+#GRLIB_SIMULATOR=ModelSim
 #GRLIB_SIMULATOR=ALDEC
 #GRLIB_SIMULATOR=Xilinx
 
@@ -98,6 +98,6 @@ endif
 FILESKIP = grcan.vhd ddr2.v mobile_ddr.v adapters/sgmii.vhd
 
 include $(GRLIB)/bin/Makefile
-include $(GRLIB)/software/leon3/Makefile
+include $(GRLIB)/software/noelv/Makefile
 
 ##################  project specific targets ##########################

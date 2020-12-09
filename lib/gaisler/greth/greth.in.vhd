@@ -10,3 +10,4 @@
   constant CFG_GRETH_FT     : integer := CONFIG_GRETH_FT;
   constant CFG_GRETH_EDCLFT : integer := CONFIG_GRETH_EDCLFT;
 #endif
+  constant CFG_ETH_PHY_ADDR : integer := CONFIG_GRETH_PHY_ADDR;

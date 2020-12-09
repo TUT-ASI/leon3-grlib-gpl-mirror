@@ -71,7 +71,8 @@ entity ahbctrl is
     hwdebug     : integer := 0;  --Hardware debug
     fourgslv    : integer := 0;  --1=Single slave with single 4 GB bar
     shadow      : integer range 0 to 1 := 0;  -- Allow memory area shadowing
-    unmapslv    : integer := 0    -- to redirect unmapped areas to slave, set to 256+bar*32+slv
+    unmapslv    : integer := 0;    -- to redirect unmapped areas to slave, set to 256+bar*32+slv
+    ahbendian   : integer := GRLIB_ENDIAN
   );
   port (
     rst     : in  std_ulogic;
@@ -117,7 +118,6 @@ end record;
 
 constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
 constant ASYNC_RESET : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
-constant ENDIAN      : boolean := (GRLIB_CONFIG_ARRAY(grlib_little_endian) /= 0);
 constant RES_r : reg_type := (
   hmaster => 0, hmasterd => 0, hslave => 0, hmasterlock => '0',
   hmasterlockd => '0', hready => '1', defslv => '0',
@@ -546,7 +546,7 @@ begin
           v.hrdatas(13 downto 0) := conv_std_logic_vector(LIBVHDL_BUILD, 14);
           v.hrdatas(31 downto 16) := conv_std_logic_vector(devid, 16);
         elsif r.haddr(3 downto 2) = "01" then
-          v.hrdatas(0) := conv_std_logic(ENDIAN);
+          v.hrdatas(0) := conv_std_logic(ahbendian /= 0);
         elsif hwdebug = 1 and r.haddr(3 downto 2) = "10" then
           for i in 0 to nahbmx-1 loop v.hrdatas(i) := msto(i).hbusreq; end loop;
         elsif hwdebug = 1 then
@@ -672,6 +672,7 @@ begin
     vslvi.scanen  := scanen and testen;
     vslvi.testoen := testoen;
     vslvi.testin  := testen & (scanen and testen) & testsig;
+--    vslvi.endian  := conv_std_logic(ahbendian /= 0);
 
     -- reset operation
     if (not ASYNC_RESET) and (not RESET_ALL) and (rst = '0') then
@@ -693,6 +694,7 @@ begin
     msti.scanen  <= scanen and testen;
     msti.testoen <= testoen;
     msti.testin  <= testen & (scanen and testen) & testsig;
+--    msti.endian  <= conv_std_logic(ahbendian /= 0);
 
     -- drive slave inputs
     slvi     <= vslvi;

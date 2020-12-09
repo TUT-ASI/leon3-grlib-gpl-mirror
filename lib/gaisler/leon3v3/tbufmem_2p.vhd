@@ -53,7 +53,7 @@ end;
 
 architecture rtl of tbufmem_2p is
 
-constant ADDRBITS : integer := 10 + log2(tbuf) - 4;
+constant ADDRBITS : integer := 10-10*(tbuf/16#10000#) + log2(tbuf mod 16#10000#) - 4;
 
   
 begin

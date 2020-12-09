@@ -306,13 +306,13 @@ begin
     -- ...
     -- base + 0x00217F: Enable bits for sources 992-1023 on context 2
 
-    -- base + 0x020000: Priority threshold for context 0
-    -- base + 0x020004: Claim/complete for context 0
-    -- base + 0x020008: Reserved
+    -- base + 0x200000: Priority threshold for context 0
+    -- base + 0x200004: Claim/complete for context 0
+    -- base + 0x200008: Reserved
     -- ...
-    -- base + 0x020FFC: Reserved
-    -- base + 0x021000: Priority threshold for context 1
-    -- base + 0x021004: Claim/complete for context 1
+    -- base + 0x200FFC: Reserved
+    -- base + 0x201000: Priority threshold for context 1
+    -- base + 0x201004: Claim/complete for context 1
 
     ---------------------------------------------------
     -- AHB Interface

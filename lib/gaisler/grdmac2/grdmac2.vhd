@@ -57,9 +57,10 @@ entity grdmac2 is
     en_bm1   : integer                      := 0;        -- Enable Bus master interface index1       
     -- Internal FIFO configuration
     ft       : integer range 0 to 5         := 0;        -- Enable EDAC on RAMs (GRLIB-FT only, passed on to syncram_2pft)
-    abits    : integer range 0 to 10        := 4;        -- FIFO address bits (actual fifo depth = 2**abits)
+    abits    : integer range 0 to 10        := 2;        -- FIFO address bits (actual fifo depth = 2**abits)
     -- M2B/B2M configuration
-    en_timer : integer                      := 0         -- Enable timeout mechanism
+    en_timer : integer                      := 0;        -- Enable timeout mechanism
+    en_acc   : integer range 0 to 4         := 0
     );
   port (
     rstn    : in  std_ulogic;                    -- Reset
@@ -153,6 +154,7 @@ architecture rtl of grdmac2 is
   signal m2b_resume    : std_ulogic;
   signal m2b_bmo       : bm_out_type;
   signal m2b_bmi       : bm_ctrl_reg_type;
+  signal buf_in_m2b    : buf_in_type;
   --signal m2b_bmi       : bm_in_type ;  
   signal m2b_buf_out   : fifo_out_type;
   signal m2b_buf_in    : fifo_in_type;
@@ -160,11 +162,19 @@ architecture rtl of grdmac2 is
   signal b2m_status    : d_ex_sts_out_type;
   signal b2m_start     : std_ulogic;
   signal b2m_resume    : std_ulogic;
+  signal buf_in_b2m    : buf_in_type;
   --signal b2m_bmi       : bm_in_type;
   signal b2m_bmi       : bm_ctrl_reg_type;
   signal b2m_bmo       : bm_out_type;
   signal b2m_buf_out   : fifo_out_type;
   signal b2m_buf_in    : fifo_in_type;
+  -- ACC
+  signal acc_status    : d_ex_sts_out_type;
+  signal acc_start     : std_ulogic;
+  signal acc_resume    : std_ulogic;
+  signal acc_buf_in    : fifo_in_type;
+  signal acc_buf_out   : fifo_out_type;
+  signal buf_in_acc    : buf_in_type;
   --Control
   signal ctrl_rst      : std_ulogic;
   signal ctrl_bmo      : bm_out_type;
@@ -172,6 +182,7 @@ architecture rtl of grdmac2 is
   signal curr_desc     : curr_des_out_type;
   signal curr_desc_ptr : std_logic_vector(31 downto 0);
   signal data_desc     : data_dsc_strct_type;
+  signal acc_desc      : acc_dsc_strct_type;
   signal irq_flag_sts  : std_ulogic;
   -- FIFO
   signal buf_in        : buf_in_type;
@@ -194,20 +205,41 @@ begin  -- rtl
    bm1_in                                    <= ctrl_bmi                                 when (en_bm1 /= 0 and bm_num = '1')                 else BM_IN_RST;
    bm0_in                                    <= ctrl_bmi                                 when (en_bm1 = 0 or (en_bm1 /= 0 and bm_num = '0')) else BM_IN_RST;
    ctrl_bmo                                  <= bm1_out                                  when (en_bm1 /= 0 and bm_num = '1')                 else bm0_out;
-   buf_in.clr_n                              <= b2m_buf_in.clr_n                         when (b2m_status.operation = '1')                   else m2b_buf_in.clr_n;
-   buf_in.ren                                <= b2m_buf_in.ren                           when (b2m_status.operation = '1')                   else '0';
-   buf_in.wen                                <= m2b_buf_in.wen                           when (m2b_status.operation = '1')                   else '0';
-   buf_in.wdata                              <= m2b_buf_in.wdata(127 downto (128-dbits)) when (m2b_status.operation = '1')                   else (others => '0');
+
+   -- BUF_IN control logic differ according to which block is operating
+   ---------------------------------------------------------------------------
+   buf_in_m2b.clr_n                          <= '0';
+   buf_in_b2m.clr_n                          <= b2m_buf_in.clr_n                         when (b2m_status.operation = '1')                   else m2b_buf_in.clr_n;
+   buf_in_acc.clr_n                          <= acc_buf_in.clr_n                         when (acc_status.operation = '1')                   else '0';
+   buf_in.clr_n                              <= buf_in_acc.clr_n                         when (acc_status.operation = '1')                   else buf_in_b2m.clr_n;
+   buf_in_m2b.ren                            <= '0';
+   buf_in_b2m.ren                            <= b2m_buf_in.ren                           when (b2m_status.operation = '1')                   else '0';
+   buf_in_acc.ren                            <= acc_buf_in.ren                           when (acc_status.operation = '1')                   else '0';
+   buf_in.ren                                <= buf_in_acc.ren                           when (acc_status.operation = '1')                   else buf_in_b2m.ren;
+   buf_in_b2m.wen                            <= '0';
+   buf_in_m2b.wen                            <= m2b_buf_in.wen                           when (m2b_status.operation = '1')                   else '0';
+   buf_in_acc.wen                            <= acc_buf_in.wen                           when (acc_status.operation = '1')                   else '0';
+   buf_in.wen                                <= buf_in_acc.wen                           when (acc_status.operation = '1')                   else buf_in_m2b.wen;
+   buf_in_b2m.wdata                          <= (others => '0');
+   buf_in_m2b.wdata                          <= m2b_buf_in.wdata(127 downto (128-dbits)) when (m2b_status.operation = '1')                   else (others => '0');
+   buf_in_acc.wdata                          <= acc_buf_in.wdata(127 downto (128-dbits)) when (acc_status.operation = '1')                   else (others => '0');
+   buf_in.wdata                              <= buf_in_acc.wdata                         when (acc_status.operation = '1')                   else buf_in_m2b.wdata;
+   ---------------------------------------------------------------------------
    m2b_buf_out.full                          <= buf_out.full                             when (m2b_status.operation = '1')                   else '0';
    b2m_buf_out.full                          <= buf_out.full                             when (b2m_status.operation = '1')                   else '0';
+   acc_buf_out.full                          <= buf_out.full                             when (acc_status.operation = '1')                   else '0';
    m2b_buf_out.afull                         <= buf_out.afull                            when (m2b_status.operation = '1')                   else '0';
    b2m_buf_out.afull                         <= buf_out.afull                            when (b2m_status.operation = '1')                   else '0';
+   acc_buf_out.afull                         <= buf_out.afull                            when (acc_status.operation = '1')                   else '0';
    m2b_buf_out.empty                         <= buf_out.empty                            when (m2b_status.operation = '1')                   else '0';
    b2m_buf_out.empty                         <= buf_out.empty                            when (b2m_status.operation = '1')                   else '0';
+   acc_buf_out.empty                         <= buf_out.empty                            when (acc_status.operation = '1')                   else '0';
    m2b_buf_out.aempty                        <= buf_out.aempty                           when (m2b_status.operation = '1')                   else '0';
    b2m_buf_out.aempty                        <= buf_out.aempty                           when (b2m_status.operation = '1')                   else '0';
+   acc_buf_out.aempty                        <= buf_out.aempty                           when (acc_status.operation = '1')                   else '0';
    m2b_buf_out.rdata(127 downto (128-dbits)) <= buf_out.rdata                            when (m2b_status.operation = '1')                   else (others => '0');
    b2m_buf_out.rdata(127 downto (128-dbits)) <= buf_out.rdata                            when (b2m_status.operation = '1')                   else (others => '0');
+   acc_buf_out.rdata(127 downto (128-dbits)) <= buf_out.rdata                            when (acc_status.operation = '1')                   else (others => '0');
 
    -- buffer signals for non zero ft generic values
    buf_err <= buf_out.error when ft /= 0 else (others => '0');
@@ -262,6 +294,7 @@ begin  -- rtl
       m2b_start  => m2b_start,
       m2b_resume => m2b_resume,
       d_des_in   => data_desc,
+      acc_des_in => acc_desc,
       status_out => m2b_status,
       m2b_bmi    => m2b_bmo,
       m2b_bmo    => m2b_bmi,
@@ -328,7 +361,11 @@ begin  -- rtl
       m2b_resume    => m2b_resume,
       b2m_sts_in    => b2m_status,
       b2m_start     => b2m_start,
-      b2m_resume    => b2m_resume
+      b2m_resume    => b2m_resume,
+      acc_sts_in    => acc_status,
+      acc_start     => acc_start,
+      acc_resume    => acc_resume,
+      acc_desc_out  => acc_desc
       );  
 
   -- FIFO - syncfifo_2p
@@ -361,10 +398,27 @@ begin  -- rtl
       datain  => buf_in.wdata
     );  
 
--- pragma translate_off
-   assert GRLIB_CONFIG_ARRAY(grlib_little_endian) = 0
-      report "grdmac2: little endian systems not supported"
-      severity error;
--- pragma translate_on
+  -- ACC - accelerator
+  acc : grdmac2_acc
+    generic map (
+      dbits      => dbits,
+      bm_bytes   => bm_bytes,
+      buff_bytes => buff_bytes,
+      buff_depth => buff_depth,
+      abits      => abits,
+      acc_enable => en_acc
+      )  
+    port map (
+      rstn       => rstn,
+      clk        => clk,
+      d_des_in   => data_desc,
+      acc_des_in => acc_desc,
+      acc_start  => acc_start,
+      acc_resume => acc_resume,
+      acc_status => acc_status,
+      m2b_status => m2b_status,
+      buf_in     => acc_buf_out,
+      buf_out    => acc_buf_in
+      );  
 
 end architecture rtl;

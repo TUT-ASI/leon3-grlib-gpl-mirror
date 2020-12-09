@@ -18,7 +18,7 @@ CONFIG_SYN_INFERRED
   - Altera-StratixIV: Altera Stratix-IV FPGA family
   - Altera-StratixV: Altera Stratix-V FPGA family
   - ATC18: Atmel-Nantes 0.18 um rad-hard CMOS
-  - Lattice : EC/ECP/XP FPGAs
+  - NanoXploree : Brave-Medium 
   - Quicklogic : Eclipse/E/II FPGAs
   - UMC-0.18 : UMC 0.18 um CMOS with Virtual Silicon libraries
   - Xilinx-Spartan/2/3/6: Xilinx Spartan/2/3/6 libraries
@@ -73,8 +73,9 @@ CONFIG_CLK_INFERRED
   for Xilinx, Altera and Proasic3 FPGAs. Depending on technology, you
   can select to use the Xilinx CKLDLL macro (Virtex, VirtexE, Spartan1/2),
   the Xilinx DCM (Virtex-2, Spartan3, Virtex-4), the Xilinx PLLE2 (Virtex-7,
-  Kintex-7, Artix-4), the Altera ALTDLL (Stratix, Cyclone), or the 
-  Proasic3 PLL. Choose the 'inferred' option to skip a clock generator.
+  Kintex-7, Artix-4), the Altera ALTDLL (Stratix, Cyclone),the 
+  Proasic3 PLL or the NanoXplore-NX_PLL.
+  Choose the 'inferred' option to skip a clock generator.
 
 Clock multiplier
 CONFIG_CLK_MUL
@@ -85,7 +86,11 @@ CONFIG_CLK_MUL
   the Xilinx CLKDLL generator, the resulting frequency scale f
   actor (mul/div) must be one of 1/2, 1 or 2. On Proasic3, 
   the factor can be 1 - 128. 
-  
+  When using NanoXplore-NXPLL the frequency of the generated clock is
+  out_freq  = (in_freq*mul*2)/ (2^clk_odiv)  if in_freq < 100 MHz
+  out_freq  = (in_freq*mul)/ (2^clk_odiv)    if in_freq > 100 MHz
+  mul can be in range 1-15  
+
   WARNING: The resulting clock must be within the limits specified
   by the target FPGA family.
 
@@ -111,7 +116,11 @@ CONFIG_OCLK_DIV
   To find the correct values, run the Libero Smartgen tool and
   insert you desired input and output clock frequencies in the
   Static PLL configurator. The mul/div factors can then be read
-  out from tool.
+  out from tool. 
+  When using NanoXplore-NXPLL the frequency of the generated clock is
+  out_freq  = (in_freq*mul*2)/ (2^clk_odiv)  if in_freq < 100 MHz
+  out_freq  = (in_freq*mul)/ (2^clk_odiv)    if in_freq < 100 MHz
+
 
 Output clock divider, 2nd clock
 CONFIG_OCLKB_DIV
@@ -812,6 +821,43 @@ Programmable MAC/IP address
 CONFIG_DSU_ETH_PROG
   Say Y to make the LSB 4 bits of the EDCL MAC and IP address
   configurable using the ethi.edcladdr inputs.
+SPI memory controller
+CONFIG_SPIMCTRL
+  Say Y here to enable a simple SPI memory controller.
+  The controller maps a SPI memory device into AMBA address space and
+  also has a simple interface that allows sending commands directly
+  to the SPI device.
+
+Read command
+CONFIG_SPIMCTRL_READCMD
+  Read instruction for SPI memory device (hex).
+
+Dummy byte
+CONFIG_SPIMCTRL_DUMMYBYTE
+  Output dummy byte after address when issuing read instruction.
+
+Dual output
+CONFIG_SPIMCTRL_DUALOUTPUT
+  Memory device supports dual output when reading data.
+
+Address offset
+CONFIG_SPIMCTRL_OFFSET
+  Offset that will be added by core on SPI memory address (hex).
+
+Clock scaler
+CONFIG_SPIMCTRL_SCALER
+  Selects the divisor used when dividing the system clock to produce
+  the memory device clock. The divisor used is two to the power of the
+  specified value. This value must be at least 1.
+
+Alternate clock scaler
+CONFIG_SPIMCTRL_ASCALER
+  Selects the divisor used when dividing the system clock to produce 
+  the alternate memory device clock. If the selected memory device is 
+  a SD Card this clock will be used during card initialization. The
+  divisor used is two to the power of the specified value. This
+  value must be at least 1.
+
 On-chip rom
 CONFIG_AHBROM_ENABLE
   Say Y here to add a block on on-chip rom to the AHB bus. The ram
@@ -969,6 +1015,33 @@ CONFIG_GPT_WDOGEN
 Watchdog time-out value
 CONFIG_GPT_WDOG
   This value will be loaded in the watchdog timer at reset.
+
+OpenCores I2C Master 
+CONFIG_I2C_ENABLE
+  Say Y here to enable the OpenCores I2C master.
+Gaisler Research SPI controller
+CONFIG_SPICTRL_ENABLE
+  Say Y here to enable the SPI controller(s)
+
+CONFIG_SPICTRL_NUM
+  Number of SPI controllers to implement in design. Note that most
+  template designs are limited to one SPI controller.
+  Configuration options made here in xconfig will apply to all
+  implemented SPI controllers.
+
+CONFIG_SPICTRL_MAXWLEN
+  0: Core will support lengths up to 32 bits
+  1-2: Illegal values
+  3-15: Maximum word length will be value+1 (4-16)
+
+CONFIG_SPICTRL_SYNCRAM
+  Say Y here to use SYNCRAM_2P components for the core's receive
+  and transmit queues. This is the recommended setting, particularly
+  if the core is implemented with support for automatic mode.
+
+CONFIG_SPICTRL_FT
+  Fault-tolerance for internal buffers. Only applicable if core
+  buffers are implemented with SYNCRAM components.
 
 UART debugging
 CONFIG_DEBUG_UART

@@ -31,6 +31,7 @@ bmarks = \
 	mt-vvadd \
 	mt-matmul \
 	pmp \
+	float \
 	coremark \
 	primes \
 
@@ -39,17 +40,19 @@ bmarks = \
 #--------------------------------------------------------------------
 
 ifeq ($(XLEN), 64)
-  RISCV_ABI       ?= lp64
+  RISCV_ABI       ?= lp64d
 else
-  RISCV_ABI       ?= ilp32
+  RISCV_ABI       ?= ilp32d
 endif
+RISCV_ARCH ?= rv$(XLEN)im
 RISCV_PREFIX ?= riscv$(XLEN)-unknown-elf-
 #RISCV_PREFIX ?= riscv$(XLEN)-gaisler-elf-
 RISCV_GCC ?= $(RISCV_PREFIX)gcc
-RISCV_GCC_OPTS ?= -DPREALLOCATE=1 -mcmodel=medany -static -std=gnu99 -O2 -ffast-math -fno-common -fno-builtin-printf -march=rv$(XLEN)imfd -mabi=$(RISCV_ABI) -DNO_UART_WAIT=$(UART) -DNOSTAT
+RISCV_GCC_OPTS ?= -DPREALLOCATE=1 -mcmodel=medany -static -std=gnu99 -O2 -ffast-math -fno-common -fno-builtin-printf -march=$(RISCV_ARCH) -mabi=$(RISCV_ABI) -DNO_UART_WAIT=$(UART) -DNOSTAT
 #RISCV_GCC_OPTS ?= -DPREALLOCATE=1 -mcmodel=medany -static -std=gnu99 -O2 -ffast-math -fno-common -fno-builtin-printf -march=rv$(XLEN)im -mabi=$(RISCV_ABI) -DNO_UART_WAIT=$(UART) -fgcse-after-reload -fpredictive-commoning -mtune=sifive-7-series -fipa-cp-clone -falign-loops=8 -falign-jumps=8 
 RISCV_LINK ?= $(RISCV_GCC) -T $(src_dir)/common/test.ld $(incs)
-RISCV_LINK_OPTS ?= -static -nostdlib -nostartfiles -lm -lgcc -T $(src_dir)/common/noelv.ld
+#RISCV_LINK_OPTS ?= -static -nostdlib -nostartfiles -lm -lgcc -T $(src_dir)/common/noelv.ld
+RISCV_LINK_OPTS ?= -static -nostartfiles -lm -lgcc -T $(src_dir)/common/noelv.ld
 RISCV_OBJDUMP ?= $(RISCV_PREFIX)objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.data
 RISCV_SIM ?= spike --isa=rv$(XLEN)gc
 

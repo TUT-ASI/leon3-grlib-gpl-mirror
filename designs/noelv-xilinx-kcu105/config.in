@@ -30,7 +30,7 @@ mainmenu_option next_comment
   comment 'Debug Link           '
   source lib/gaisler/uart/dcom.in
   source lib/gaisler/jtag/jtag.in
-  source lib/gaisler/usb/grusb_dcl.in
+#  source lib/gaisler/usb/grusb_dcl.in
   source lib/gaisler/net/edcl.in
 endmenu
 
@@ -39,16 +39,16 @@ comment 'Peripherals             '
 
   mainmenu_option next_comment
   comment 'Memory controller             '
-    source lib/esa/memoryctrl/mctrl.in
+#    source lib/esa/memoryctrl/mctrl.in
     source lib/gaisler/ddr/mig_7series.in
     source lib/gaisler/misc/ahbstat.in
   endmenu
 
-  mainmenu_option next_comment
-  comment 'On-chip RAM/ROM                 '
-    source lib/gaisler/misc/ahbrom.in
-    source lib/gaisler/misc/ahbram.in
-  endmenu
+#  mainmenu_option next_comment
+#  comment 'On-chip RAM/ROM                 '
+#    source lib/gaisler/misc/ahbrom.in
+#    source lib/gaisler/misc/ahbram.in
+#  endmenu
 
   mainmenu_option next_comment
   comment 'Ethernet             '
@@ -57,16 +57,16 @@ comment 'Peripherals             '
 
   mainmenu_option next_comment
   comment 'UARTs, timers and irq control         '
-    source lib/gaisler/uart/uart1.in
-    source lib/gaisler/misc/gptimer.in
+#    source lib/gaisler/uart/uart1.in
+#    source lib/gaisler/misc/gptimer.in
     source lib/gaisler/misc/grgpio.in
-    source lib/gaisler/i2c/i2c.in
+#    source lib/gaisler/i2c/i2c.in
   endmenu
 
-  mainmenu_option next_comment
-  comment 'SPI'
-    source lib/gaisler/spi/spictrl.in
-  endmenu
+#  mainmenu_option next_comment
+#  comment 'SPI'
+#    source lib/gaisler/spi/spictrl.in
+#  endmenu
 
 endmenu
 
@@ -74,3 +74,8 @@ mainmenu_option next_comment
 comment 'VHDL Debugging        '
   source lib/grlib/util/debug.in
 endmenu
+
+#mainmenu_option next_comment
+#comment 'Version number        '
+#  source lib/gaisler/misc/grversion.in
+#endmenu

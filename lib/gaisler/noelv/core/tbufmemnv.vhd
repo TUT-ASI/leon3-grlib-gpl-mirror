@@ -66,7 +66,9 @@ architecture rtl of tbufmemnv is
   end getnrams;
 
   -- Constants --------------------------------------------------------------
-  constant ADDRBITS     : integer := 10 + log2(tbuf) - 4 - proc;
+  --constant ADDRBITS     : integer := 10 - 10*(tbuf/16#10000#) + log2(tbuf mod 16#10000#) - 4 - proc;
+  --constant ADDRBITS     : integer := 10 + log2(tbuf) - 4 - proc;
+  constant ADDRBITS     : integer := 4 + log2(tbuf);
   constant nrams        : integer := getnrams;
   constant TRACE_CELLS  : integer := 7;
   

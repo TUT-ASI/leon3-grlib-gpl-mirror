@@ -64,9 +64,10 @@ package config_types is
   constant grlib_rtg4_disable_ram_ecc      : integer := 13;
   -- Force disable of PolarFire RAM ECC (DANGER! DO NOT SET!)
   constant grlib_polarfire_disable_ram_ecc : integer := 14;
-  
+  -- Avoid clkmux to make inverted clocks non-inverted in scan test mode
+  constant grlib_testmode_noclkmux         : integer := 15;
 
-  type grlib_config_array_type is array (0 to 15) of integer;
+  type grlib_config_array_type is array (0 to 16) of integer;
 
 end;
 

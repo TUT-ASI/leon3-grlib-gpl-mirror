@@ -13,7 +13,6 @@ int __bcc_timer_init(void) {
 }
 
 /* Do not probe for interrupt controller*/
-int __bcc_int_irqmp_eirq;
 int __bcc_int_init(void) {
         __bcc_int_handle = 0;
         __bcc_int_irqmp_eirq = 0;

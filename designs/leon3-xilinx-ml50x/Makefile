@@ -162,7 +162,13 @@ ifeq ("$(CONFIG_LEON4)","")
 DIRSKIP+=leon4v0
 endif
 
-FILESKIP = grcan.vhd ahb2mig_series7_ddr2.vhd
+FILESKIP = grcan.vhd ahb2mig_series7_ddr2.vhd \
+	sf2apbslv_wrapper.vhd sf2ficmst_wrapper.vhd sf2ficslv_wrapper.vhd \
+	sf2mddr_wrapper.vhd pfmddr_wrapper.vhd \
+	ahb2axi_mig_7series.vhd ahb2mig_7series_cpci_xc7k.vhd \
+	ahb2mig_7series_ddr2_dq16_ad13_ba3.vhd \
+	ahb2mig_7series_ddr3_dq16_ad15_ba3.vhd \
+	ahb2mig_7series.vhd axi_mig_7series.vhd
 
 include $(GRLIB)/bin/Makefile
 

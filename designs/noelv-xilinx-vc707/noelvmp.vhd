@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
---  LEON3 Xilinx VC707 Demonstration design
+--  NOELV Xilinx VC707 Demonstration design
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
@@ -45,7 +45,6 @@ use gaisler.l2cache.all;
 use gaisler.subsys.all;
 use gaisler.axi.all;
 use gaisler.plic.all;
-use gaisler.riscv.all;
 use gaisler.noelv.all;
 -- pragma translate_off
 use gaisler.sim.all;
@@ -683,7 +682,7 @@ constant mig_hindex : integer := 2
 
 constant mig_hconfig : ahb_config_type := (
   0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_MIG_7SERIES, 0, 0, 0),
-  4 => ahb_membar(16#400#, '1', '1', 16#C00#),
+  4 => ahb_membar(16#000#, '1', '1', 16#C00#),
   others => zero32);
 
 begin
@@ -734,14 +733,12 @@ begin
       cached    => 0,
       wbmask    => 16#00FF#,
       busw      => 128,
-      cmemconf  => 4,
+      cmemconf  => 0,
       fpuconf   => 0,
       disas     => 1,
       ahbtrace  => 0,
       cfg       => 1,
       devid     => 0,
-      version   => 0,
-      revision  => 7,
       nodbus    => CFG_NODBGBUS
       )
     port map(
@@ -863,7 +860,7 @@ begin
       hslvidx   => 0,
       axiid     => 0,
       cen       => CFG_L2_PEN,
-      haddr     => 16#400#,
+      haddr     => 16#000#,
       hmask     => 16#c00#,
       ioaddr    => 16#FF0#,
       cached    => CFG_L2_MAP,
@@ -890,16 +887,17 @@ begin
   nol2c : if CFG_L2_EN = 0 generate
     ahbso(0) <= mig_ahbso;
     mig_ahbsi <= ahbsi;
+    ahbso(mig_hindex) <= ahbs_none;
   end generate;
   
-            ----------------------------------------------------------------------
+   ----------------------------------------------------------------------
   ---  DDR3 memory controller ------------------------------------------
   ----------------------------------------------------------------------
   mig_gen : if (CFG_MIG_7SERIES = 1) generate
     gen_mig : if (USE_MIG_INTERFACE_MODEL /= true) generate
       cc:if CFG_L2_EN = 1 generate
         ddrc:axi_mig_7series generic map (
-          hindex => 0, haddr => 16#400#, hmask => 16#C00#,
+          hindex => 0, haddr => 16#000#, hmask => 16#C00#,
           pindex => 4, paddr => 4)
           port map (
             ddr3_dq         => ddr3_dq,
@@ -929,12 +927,21 @@ begin
             ui_clk          => clkm,
             ui_clk_sync_rst => open
             );
+
+        ---  Fake MIG PNP -----------------------------------------------------
+        -- ahbso(1) <= ahbs_none;
+        ahbso(mig_hindex).hindex  <= mig_hindex;
+        ahbso(mig_hindex).hconfig <= mig_hconfig;
+        ahbso(mig_hindex).hready  <= '1';
+        ahbso(mig_hindex).hresp   <= "00";
+        ahbso(mig_hindex).hirq    <= (others => '0');
+        ahbso(mig_hindex).hrdata  <= (others => '0');  
       end generate cc;
 
       dd:if CFG_L2_EN=0 generate
         ddrc: ahb2axi_mig_7series generic map (
-          hindex => 0, haddr => 16#400#, hmask => 16#C00#,
-          pindex => 5, paddr => 6)
+          hindex => 0, haddr => 16#000#, hmask => 16#C00#,
+          pindex => 5, paddr => 16#800#, pmask => 16#FFF#)
           port map (
             ddr3_dq         => ddr3_dq,
             ddr3_dqs_p      => ddr3_dqs_p,
@@ -979,7 +986,7 @@ begin
       mig_ahbram : ahbram_sim
         generic map (
           hindex   => 4*(1-CFG_L2_EN),
-          haddr    => 16#400#,
+          haddr    => 16#000#,
           hmask    => 16#C00#,
           tech     => 0,
           kbytes   => 1000,
@@ -1018,7 +1025,7 @@ begin
     
   no_mig_gen : if (CFG_MIG_7SERIES = 0) generate  
     ahbram0 : ahbram 
-      generic map (hindex => 4*(1-CFG_L2_EN), haddr => 16#400#, tech => CFG_MEMTECH, kbytes => 128)
+      generic map (hindex => 4*(1-CFG_L2_EN), haddr => 16#000#, tech => CFG_MEMTECH, kbytes => 128)
       port map ( rstn, clkm, mig_ahbsi, mig_ahbso);
    
     ddrdummy0 : ddr_dummy
@@ -1056,7 +1063,7 @@ begin
       e1 : grethm 
        generic map(
         hindex => 2,
-        pindex => 4, paddr => 5, pmask => 16#FFF#, pirq => 5, memtech => memtech,
+        pindex => 4, paddr => 16#840#, pmask => 16#FFF#, pirq => 5, memtech => memtech,
         mdcscaler => CPU_FREQ/1000/2, rmii => 0, enable_mdio => 1, fifosize => CFG_ETH_FIFO,
         nsync => 2, edcl => CFG_DSU_ETH, edclbufsz => CFG_ETH_BUF, phyrstadr => 7,
         macaddrh => CFG_ETH_ENM, macaddrl => CFG_ETH_ENL, enable_mdint => 1,
@@ -1085,11 +1092,11 @@ begin
        sgmii0 : sgmii_vc707
          generic map(
            pindex          => 7,
-           paddr           => 16#010#,
+           paddr           => 16#850#,
            pmask           => 16#ff0#,
            abits           => 8,
            autonegotiation => autonegotiation,
-           pirq            => 11,
+           pirq            => 6,
            debugmem        => 0,
            tech            => fabtech
          )
@@ -1648,7 +1655,7 @@ begin
 
   gpio0 : if CFG_GRGPIO_ENABLE /= 0 generate     -- GPIO unit
     grgpio0: grgpio
-    generic map(pindex => 3, paddr => 4, imask => CFG_GRGPIO_IMASK, nbits => 7)
+    generic map(pindex => 3, paddr => 16#830#, pmask => 16#FFF#,imask => CFG_GRGPIO_IMASK, nbits => 7)
     port map(rst => rstn, clk => clkm, apbi => apbi(3), apbo => apbo(3),
     gpioi => gpioi, gpioo => gpioo);
     
@@ -1677,7 +1684,8 @@ begin
     stati <= ahbstat_in_none;
     ahbstat0 : ahbstat
       generic map(pindex  => 2,
-                  paddr   => 15,
+                  paddr   => 16#820#,
+                  pmask   => 16#FFF#,
                   pirq    => 4,
                   nftslv  => CFG_AHBSTATN)
       port map(
@@ -1698,7 +1706,8 @@ begin
   brom : entity work.ahbrom
     generic map (
       hindex  => 1,
-      haddr   => 16#000#,
+      haddr   => 16#C00#,
+      hmask   => 16#E00#,
       pipe    => 0)
     port map (
       rst     => rstn,
@@ -1706,17 +1715,6 @@ begin
       ahbsi   => ahbsi,
       ahbso   => ahbso(1));
 
-  -----------------------------------------------------------------------
-  ---  Fake MIG PNP -----------------------------------------------------
-  -----------------------------------------------------------------------
-
- -- ahbso(1) <= ahbs_none;
-  ahbso(mig_hindex).hindex  <= mig_hindex;
-  ahbso(mig_hindex).hconfig <= mig_hconfig;
-  ahbso(mig_hindex).hready  <= '1';
-  ahbso(mig_hindex).hresp   <= "00";
-  ahbso(mig_hindex).hirq    <= (others => '0');
-  ahbso(mig_hindex).hrdata  <= (others => '0');  
 	 
 -----------------------------------------------------------------------
 ---  Test report module  ----------------------------------------------
@@ -1726,7 +1724,7 @@ begin
   test0 : ahbrep
     generic map(
       hindex => 2,
-      haddr => 16#200#)
+      haddr => 16#800#)
     port map(
       rstn,
       clkm,

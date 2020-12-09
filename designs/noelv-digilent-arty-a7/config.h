@@ -91,8 +91,15 @@
  */
 #define CONFIG_NOELV 1
 #define CONFIG_PROC_NUM (1)
-#define CONFIG_NOELV_HP 1
-#define CONFIG_PROC_CFG (0)
+#define CONFIG_NOELV_RV64 1
+#undef  CONFIG_NOELV_RV32
+#define CONFIG_NOELV_XLEN (64)
+#undef  CONFIG_NOELV_TIN
+#undef  CONFIG_NOELV_MIN
+#undef  CONFIG_NOELV_GPS
+#define CONFIG_NOELV_GPD 1
+#undef  CONFIG_NOELV_HP
+#define CONFIG_PROC_CFG (1)
 /*
  * VHDL debug settings       
  */
@@ -126,21 +133,21 @@
 #undef  CONFIG_L2_WT
 #undef  CONFIG_L2_RAN
 #undef  CONFIG_L2_SHARE
-#define CONFIG_L2_MAP 00F0
+#define CONFIG_L2_MAP 00FF
 #define CONFIG_L2_MTRR (0)
 #define CONFIG_L2_EDAC_NONE 1
 #undef  CONFIG_L2_EDAC_YES
 #undef  CONFIG_L2_EDAC_TECHSPEC
-#define CONFIG_L2_AXI 1
+#undef  CONFIG_L2_AXI
 /*
  * AMBA configuration
  */
 #define CONFIG_AHB_DEFMST (0)
 #define CONFIG_AHB_RROBIN 1
-#undef  CONFIG_AHB_SPLIT
+#define CONFIG_AHB_SPLIT 1
 #define CONFIG_AHB_FPNPEN 1
 #define CONFIG_AHB_IOADDR FFF
-#define CONFIG_APB_HADDR 800
+#define CONFIG_APB_HADDR FC0
 #undef  CONFIG_AHB_MON
 #undef  CONFIG_AHB_DTRACE
 /*
@@ -155,7 +162,7 @@
 #undef  CONFIG_DSU_ETHSZ8
 #undef  CONFIG_DSU_ETHSZ16
 #define CONFIG_DSU_IPMSB C0A8
-#define CONFIG_DSU_IPLSB 0180
+#define CONFIG_DSU_IPLSB 0033
 #define CONFIG_DSU_ETHMSB 020000
 #define CONFIG_DSU_ETHLSB 000000
 #undef  CONFIG_DSU_ETH_PROG
@@ -173,13 +180,6 @@
 #define CONFIG_AHBSTAT_ENABLE 1
 #define CONFIG_AHBSTAT_NFTSLV (1)
 /*
- * On-chip RAM/ROM                 
- */
-#define CONFIG_AHBROM_ENABLE 1
-#define CONFIG_AHBROM_START 000
-#undef  CONFIG_AHBROM_PIPE
-#undef  CONFIG_AHBRAM_ENABLE
-/*
  * Ethernet             
  */
 #define CONFIG_GRETH_ENABLE 1
@@ -190,23 +190,10 @@
 #undef  CONFIG_GRETH_FIFO32
 #undef  CONFIG_GRETH_FIFO64
 #undef  CONFIG_GRETH_FMC_MODE
+#define CONFIG_GRETH_PHY_ADDR (1)
 /*
  * UARTs, timers and irq control         
  */
-#define CONFIG_UART1_ENABLE 1
-#define CONFIG_UA1_FIFO1 1
-#undef  CONFIG_UA1_FIFO2
-#undef  CONFIG_UA1_FIFO4
-#undef  CONFIG_UA1_FIFO8
-#undef  CONFIG_UA1_FIFO16
-#undef  CONFIG_UA1_FIFO32
-#define CONFIG_GPT_ENABLE 1
-#define CONFIG_GPT_NTIM (2)
-#define CONFIG_GPT_SW (8)
-#define CONFIG_GPT_TW (32)
-#define CONFIG_GPT_IRQ (8)
-#define CONFIG_GPT_SEPIRQ 1
-#undef  CONFIG_GPT_WDOGEN
 #define CONFIG_GRGPIO_ENABLE 1
 #define CONFIG_GRGPIO_WIDTH (20)
 #define CONFIG_GRGPIO_IMASK FFFE

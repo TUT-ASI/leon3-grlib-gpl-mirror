@@ -419,6 +419,7 @@ int sprintf(char* str, const char* fmt, ...)
   return str - str0;
 }
 
+#if 0
 void* memcpy(void* dest, const void* src, size_t len)
 {
   if ((((uintptr_t)dest | (uintptr_t)src | len) & (sizeof(uintptr_t)-1)) == 0) {
@@ -489,6 +490,7 @@ char* strcpy(char* dest, const char* src)
     ;
   return dest;
 }
+#endif
 
 long atol(const char* str)
 {

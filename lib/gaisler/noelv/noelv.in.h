@@ -2,6 +2,10 @@
 #define CONFIG_NOELV 0
 #endif
 
+#ifndef CONFIG_NOELV_XLEN
+#define CONFIG_NOELV_XLEN 64
+#endif
+
 #ifndef CONFIG_PROC_NUM
 #define CONFIG_PROC_NUM 1
 #endif

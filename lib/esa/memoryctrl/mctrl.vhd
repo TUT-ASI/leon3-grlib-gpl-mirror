@@ -1181,7 +1181,7 @@ begin
   end generate;
 
 -- pragma translate_off
-   assert GRLIB_CONFIG_ARRAY(grlib_little_endian) = 0
+   assert ahbsi.endian /= '1'
       report "mctrl: little endian systems not supported"
       severity error;
 -- pragma translate_on

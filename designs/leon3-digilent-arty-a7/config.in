@@ -31,6 +31,7 @@ comment 'Peripherals             '
   mainmenu_option next_comment
   comment 'Memory controllers             '
     source lib/gaisler/ddr/mig_7series.in
+    source lib/gaisler/spi/spimctrl.in
   endmenu
 
   mainmenu_option next_comment
@@ -50,6 +51,13 @@ comment 'Peripherals             '
     source lib/gaisler/irqmp/irqmp.in
     source lib/gaisler/misc/gptimer.in
   endmenu
+
+  mainmenu_option next_comment
+  comment 'I2C master         '
+    source lib/gaisler/i2c/i2c.in
+  endmenu
+
+  source lib/gaisler/spi/spictrl.in
 
 endmenu
 

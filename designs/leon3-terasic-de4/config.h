@@ -61,6 +61,8 @@
 #undef  CONFIG_SYN_INFER_PADS
 #undef  CONFIG_SYN_NO_ASYNC
 #undef  CONFIG_SYN_SCAN
+#define CONFIG_FPGA_X230 1
+#undef  CONFIG_FPGA_X530
 /*
  * Clock generation
  */

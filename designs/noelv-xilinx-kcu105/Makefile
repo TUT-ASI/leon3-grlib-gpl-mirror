@@ -1,8 +1,13 @@
 ### GRLIB general setup and extra target to clean software
 
 ############  RISC-V NOEL-V Core  ########################
-include .config
-GRLIB=../..
+BASE_DIR ?= .
+COM_DIR ?= $(BASE_DIR)/rtl/common
+CFG_DIR ?= $(BASE_DIR)
+CFG_LOCAL_DIR ?= $(CFG_DIR)/cfg
+TB_DIR ?= $(BASE_DIR)/tb
+include $(CFG_DIR)/.config
+GRLIB=$(BASE_DIR)/../..
 CLEAN=soft-clean
 
 ############  Board Setup  ########################
@@ -13,7 +18,7 @@ DESIGN=noelv-xilinx-kcu105
 include $(GRLIB)/boards/$(BOARD)/Makefile.inc
 DEVICE=$(PART)-$(PACKAGE)-$(SPEED)
 XDC=$(GRLIB)/boards/$(BOARD)/$(BOARD).xdc
-GRLIB_CONFIG=grlib_config.vhd
+GRLIB_CONFIG ?= $(CFG_DIR)/grlib_config.vhd
 
 ############  Project  ########################
 
@@ -87,10 +92,18 @@ VSIMOPT+= $(SIMTOP)
 
 RTL=$(GRLIB)/designs/$(DESIGN)/rtl
 
-# TODO: Add rtl/axi_mig4_7series.vhd rtl/sgmii_kcu105.vhd
-VHDLSYNFILES= rtl/ddr4ram.vhd rtl/axi_mig4_7series.vhd rtl/sgmii_kcu105.vhd \
-							config.vhd ahbrom.vhd $(MEMTECH) noelvmp.vhd 
-VHDLSIMFILES= testbench.vhd 
+VHDLSYNFILES  = 
+VHDLSYNFILES += $(BASE_DIR)/rtl/ddr4ram.vhd
+VHDLSYNFILES += $(BASE_DIR)/rtl/axi_mig4_7series.vhd
+VHDLSYNFILES += $(BASE_DIR)/rtl/sgmii_kcu105.vhd
+VHDLSYNFILES += $(CFG_DIR)/config.vhd
+VHDLSYNFILES += $(CFG_LOCAL_DIR)/config_local.vhd
+VHDLSYNFILES += $(COM_DIR)/rev.vhd
+VHDLSYNFILES += $(COM_DIR)/cfgmap.vhd
+VHDLSYNFILES += $(COM_DIR)/noelvcore.vhd
+VHDLSYNFILES += $(COM_DIR)/ahbrom.vhd
+VHDLSYNFILES += $(BASE_DIR)/rtl/noelvmp.vhd 
+VHDLSIMFILES  = $(TB_DIR)/testbench.vhd 
 
 TECHLIBS = unisim
 SKIP_SIM_TECHLIBS = 1
@@ -105,13 +118,7 @@ DIRSKIP = b1553 pci gr1553b/core pci/pcif leon2 leon2ft leon5 leon5v0 srio idt c
 FILESKIP = grcan.vhd ddr2.v mobile_ddr.v adapters/sgmii.vhd iu4.vhd
 
 include $(GRLIB)/bin/Makefile
-include $(GRLIB)/software/noelv/Makefile
-OBJCOPY_OPTS = --srec-len=16 --srec-forceS3
-
-### Software ###
-XLEN = 64
-#EXTRA_PROM = --reverse-bytes=8
-UART = 1
+include $(GRLIB)/software/noelv/systest/Makefile
 
 ##################  project specific targets ##########################
 

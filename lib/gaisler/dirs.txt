@@ -54,7 +54,6 @@ subsys
 ftaddr
 grscrub
 noelv
-riscv
 plic
 noelv/subsys
 leon5

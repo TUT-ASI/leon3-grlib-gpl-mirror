@@ -15,6 +15,9 @@ mainmenu_name "LEON3MP Design Configuration"
 mainmenu_option next_comment
   comment 'Synthesis      '
   source lib/techmap/gencomp/tech.in
+  choice 'FPGA device                                    ' \
+	"EP4SGX230		CONFIG_FPGA_X230 \
+	EP4SGX530		CONFIG_FPGA_X530 " EP4SGX230
 endmenu
 
 mainmenu_option next_comment

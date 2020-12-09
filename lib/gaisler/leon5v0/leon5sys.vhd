@@ -29,6 +29,8 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library grlib;
 use grlib.amba.all;
+use grlib.config.all;
+use grlib.config_types.all;
 library techmap;
 use techmap.gencomp.all;
 library gaisler;
@@ -50,23 +52,30 @@ entity leon5sys is
     wbmask  : integer;
     busw    : integer;
     memmap  : integer;
+    ahbsplit: integer;
     rfconf  : integer;
     cmemconf: integer;
     fpuconf : integer;
     mulimpl : integer;
     disas   : integer;
     ahbtrace: integer;
-    devid   : integer
+    devid   : integer;
+    cgen    : integer;
+    scantest: integer
     );
   port (
     clk      : in  std_ulogic;
     rstn     : in  std_ulogic;
+    -- Clock gating support
+    gclk     : in  std_logic_vector(0 to ncpu-1);
+    gclken   : out std_logic_vector(0 to ncpu-1);
     -- AHB bus interface for other masters (DMA units)
     ahbmi    : out ahb_mst_in_type;
     ahbmo    : in  ahb_mst_out_vector_type(ncpu+nextmst-1 downto ncpu);
     -- AHB bus interface for slaves (memory controllers, etc)
     ahbsi    : out ahb_slv_in_type;
     ahbso    : in  ahb_slv_out_vector_type(nextslv-1 downto 0);
+    ahbpnp   : out ahb_config_array;
     -- AHB master interface for debug links
     dbgmi    : out ahb_mst_in_vector_type(ndbgmst-1 downto 0);
     dbgmo    : in  ahb_mst_out_vector_type(ndbgmst-1 downto 0);
@@ -79,7 +88,13 @@ entity leon5sys is
     cpu0errn : out std_ulogic;
     -- UART connection
     uarti    : in  uart_in_type;
-    uarto    : out uart_out_type
+    uarto    : out uart_out_type;
+    -- DFT signals propagating to ahbctrl
+    testen   : in  std_ulogic;
+    testrst  : in  std_ulogic;
+    scanen   : in  std_ulogic;
+    testoen  : in  std_ulogic;
+    testsig  : in  std_logic_vector(1+GRLIB_CONFIG_ARRAY(grlib_techmap_testin_extra) downto 0)
     );
 end;
 
@@ -129,7 +144,9 @@ begin
       ahbtrace => ahbtrace,
       fpnpen   => 1,
       debug    => 0,
-      devid    => devid
+      devid    => devid,
+      ahbendian => 0,
+      split    => ahbsplit
       )
     port map (
       rst  => rstn,
@@ -137,7 +154,12 @@ begin
       msti => cpumi,
       msto => cpumo,
       slvi => cpusi,
-      slvo => cpuso
+      slvo => cpuso,
+      testen  => testen,
+      testrst => testrst,
+      scanen  => scanen,
+      testoen => testoen,
+      testsig => testsig
       );
 
   ahbmi <= cpumi;
@@ -168,40 +190,87 @@ begin
   cpuapbo(0 to nextapb-1) <= apbo(0 to nextapb-1);
   cpuapbo(nextapb+3 to cpuapbo'high) <= (others => apb_none);
 
+  pnpoutloop: for x in NAHBSLV-1 downto 0 generate
+    ahbpnp(x) <= cpuso(x).hconfig;
+  end generate;
+
   ----------------------------------------------------------------------------
   -- Processor(s)
   ----------------------------------------------------------------------------
   cpuloop: for c in 0 to ncpu-1 generate
-    core: cpucore5
-      generic map (
-        hindex   => c,
-        fabtech  => fabtech,
-        memtech  => memtech,
-        cached   => cached,
-        wbmask   => wbmask,
-        busw     => busw,
-        cmemconf => cmemconf,
-        rfconf   => rfconf,
-        fpuconf  => fpuconf,
-        mulimpl  => mulimpl,
-        rstaddr  => rstaddr_cpu(memmap),
-        disas    => disas
-        )
-      port map (
-        clk   => clk,
-        rstn  => cpurstn(c),
-        ahbi  => cpumi,
-        ahbo  => cpumo(c),
-        ahbsi => cpusi,
-        ahbso => cpuso,
-        irqi  => irqi(c),
-        irqo  => irqo(c),
-        dbgi  => dbgi(c),
-        dbgo  => dbgo(c),
-        tpo.tdata   => tpi(c).tdata,
-        fpuo  => fpuo(c),
-        fpui  => fpui(c)
-      );
+    nocgcpu: if cgen=0 generate
+      core: cpucore5
+        generic map (
+          hindex   => c,
+          fabtech  => fabtech,
+          memtech  => memtech,
+          cached   => cached,
+          wbmask   => wbmask,
+          busw     => busw,
+          cmemconf => cmemconf,
+          rfconf   => rfconf,
+          fpuconf  => fpuconf,
+          mulimpl  => mulimpl,
+          rstaddr  => rstaddr_cpu(memmap),
+          disas    => disas,
+          scantest => scantest,
+          cgen     => cgen
+          )
+        port map (
+          clk   => clk,
+          rstn  => cpurstn(c),
+          gclk  => clk,
+          gclken => open,
+          ahbi  => cpumi,
+          ahbo  => cpumo(c),
+          ahbsi => cpusi,
+          ahbso => cpuso,
+          irqi  => irqi(c),
+          irqo  => irqo(c),
+          dbgi  => dbgi(c),
+          dbgo  => dbgo(c),
+          tpo.tdata   => tpi(c).tdata,
+          fpuo  => fpuo(c),
+          fpui  => fpui(c)
+          );
+      gclken <= (others => '1');
+    end generate;
+    cgcpu: if cgen/=0 generate
+      core: cpucore5
+        generic map (
+          hindex   => c,
+          fabtech  => fabtech,
+          memtech  => memtech,
+          cached   => cached,
+          wbmask   => wbmask,
+          busw     => busw,
+          cmemconf => cmemconf,
+          rfconf   => rfconf,
+          fpuconf  => fpuconf,
+          mulimpl  => mulimpl,
+          rstaddr  => rstaddr_cpu(memmap),
+          disas    => disas,
+          scantest => scantest,
+          cgen     => cgen
+          )
+        port map (
+          clk   => clk,
+          rstn  => cpurstn(c),
+          gclk  => gclk(c),
+          gclken => gclken(c),
+          ahbi  => cpumi,
+          ahbo  => cpumo(c),
+          ahbsi => cpusi,
+          ahbso => cpuso,
+          irqi  => irqi(c),
+          irqo  => irqo(c),
+          dbgi  => dbgi(c),
+          dbgo  => dbgo(c),
+          tpo.tdata   => tpi(c).tdata,
+          fpuo  => fpuo(c),
+          fpui  => fpui(c)
+          );
+    end generate;
   end generate;
   cpu0errn <= '0' when dbgo(0).cpustate=CPUSTATE_ERRMODE and maskerrn(0)='0' else '1';
   fpuo <= (others => grfpu5_out_none);

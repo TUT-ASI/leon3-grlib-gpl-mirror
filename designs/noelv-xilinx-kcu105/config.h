@@ -90,6 +90,13 @@
  */
 #define CONFIG_NOELV 1
 #define CONFIG_PROC_NUM (1)
+#define CONFIG_NOELV_RV64 1
+#undef  CONFIG_NOELV_RV32
+#define CONFIG_NOELV_XLEN (64)
+#undef  CONFIG_NOELV_TIN
+#undef  CONFIG_NOELV_MIN
+#undef  CONFIG_NOELV_GPS
+#undef  CONFIG_NOELV_GPD
 #define CONFIG_NOELV_HP 1
 #define CONFIG_PROC_CFG (0)
 /*
@@ -125,7 +132,7 @@
 #undef  CONFIG_L2_WT
 #undef  CONFIG_L2_RAN
 #undef  CONFIG_L2_SHARE
-#define CONFIG_L2_MAP 00F0
+#define CONFIG_L2_MAP 00FF
 #define CONFIG_L2_MTRR (0)
 #define CONFIG_L2_EDAC_NONE 1
 #undef  CONFIG_L2_EDAC_YES
@@ -147,7 +154,6 @@
  */
 #define CONFIG_DSU_UART 1
 #define CONFIG_DSU_JTAG 1
-#undef  CONFIG_GRUSB_DCL
 #define CONFIG_DSU_ETH 1
 #undef  CONFIG_DSU_ETHSZ1
 #define CONFIG_DSU_ETHSZ2 1
@@ -166,38 +172,12 @@
  * Memory controller             
  */
 /*
- * Leon2 memory controller        
- */
-#undef  CONFIG_MCTRL_LEON2
-/*
  * MIG 7-Series memory controller   
  */
 #define CONFIG_MIG_7SERIES 1
 #define CONFIG_MIG_7SERIES_MODEL 1
 #define CONFIG_AHBSTAT_ENABLE 1
 #define CONFIG_AHBSTAT_NFTSLV (1)
-/*
- * On-chip RAM/ROM                 
- */
-#define CONFIG_AHBROM_ENABLE 1
-#define CONFIG_AHBROM_START 000
-#undef  CONFIG_AHBROM_PIPE
-#define CONFIG_AHBRAM_ENABLE 1
-#undef  CONFIG_AHBRAM_SZ1
-#undef  CONFIG_AHBRAM_SZ2
-#define CONFIG_AHBRAM_SZ4 1
-#undef  CONFIG_AHBRAM_SZ8
-#undef  CONFIG_AHBRAM_SZ16
-#undef  CONFIG_AHBRAM_SZ32
-#undef  CONFIG_AHBRAM_SZ64
-#undef  CONFIG_AHBRAM_SZ128
-#undef  CONFIG_AHBRAM_SZ256
-#undef  CONFIG_AHBRAM_SZ512
-#undef  CONFIG_AHBRAM_SZ1024
-#undef  CONFIG_AHBRAM_SZ2048
-#undef  CONFIG_AHBRAM_SZ4096
-#define CONFIG_AHBRAM_START A00
-#undef  CONFIG_AHBRAM_PIPE
 /*
  * Ethernet             
  */
@@ -209,34 +189,13 @@
 #undef  CONFIG_GRETH_FIFO32
 #undef  CONFIG_GRETH_FIFO64
 #undef  CONFIG_GRETH_FMC_MODE
+#define CONFIG_GRETH_PHY_ADDR (7)
 /*
  * UARTs, timers and irq control         
  */
-#define CONFIG_UART1_ENABLE 1
-#undef  CONFIG_UA1_FIFO1
-#undef  CONFIG_UA1_FIFO2
-#undef  CONFIG_UA1_FIFO4
-#undef  CONFIG_UA1_FIFO8
-#undef  CONFIG_UA1_FIFO16
-#define CONFIG_UA1_FIFO32 1
-#define CONFIG_GPT_ENABLE 1
-#define CONFIG_GPT_NTIM (2)
-#define CONFIG_GPT_SW (8)
-#define CONFIG_GPT_TW (32)
-#define CONFIG_GPT_IRQ (8)
-#undef  CONFIG_GPT_SEPIRQ
-#undef  CONFIG_GPT_WDOGEN
 #define CONFIG_GRGPIO_ENABLE 1
 #define CONFIG_GRGPIO_WIDTH (20)
 #define CONFIG_GRGPIO_IMASK FFFE
-#undef  CONFIG_I2C_ENABLE
-/*
- * SPI
- */
-/*
- * SPI controller(s) 
- */
-#undef  CONFIG_SPICTRL_ENABLE
 /*
  * VHDL Debugging        
  */

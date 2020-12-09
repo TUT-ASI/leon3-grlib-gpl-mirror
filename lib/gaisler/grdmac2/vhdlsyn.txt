@@ -2,6 +2,9 @@ grdmac2_pkg.vhd
 grdmac2_apb.vhd
 mem2buf.vhd
 buf2mem.vhd
+aes256.vhd
+aes256_top.vhd
 grdmac2_ctrl.vhd
 grdmac2.vhd
 grdmac2_ahb.vhd
+grdmac2_acc.vhd

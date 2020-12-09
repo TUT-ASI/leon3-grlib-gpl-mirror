@@ -1,27 +1,43 @@
 
 mainmenu_option next_comment
 comment 'Processor            '
-bool 'Enable NOELV RISC-V RV64 Processor' CONFIG_NOELV
+bool 'Enable NOELV RISC-V Processor' CONFIG_NOELV
  if [ "$CONFIG_NOELV" = "y" ]; then
    int 'Number of processors' CONFIG_PROC_NUM 1
-##    choice 'Force values from example configuration (see help)' \
-##      "Minimal-configuration	CONFIG_NOELV_MIN \
-##       General-purpose-cfg	CONFIG_NOELV_GP \
-##       High-Performance-cfg	CONFIG_NOELV_HP \
-##       Custom-configuration	CONFIG_NOELV_CUSTOM" Custom-configuration
-   choice 'Force values from example configuration (see help)' \
-     "High-Performance-cfg	CONFIG_NOELV_HP"
-
-   if [ "$CONFIG_NOELV_MIN" = "y" ]; then
+   choice 'NOEL-V RV64 or RV32' \
+     "RV64	CONFIG_NOELV_RV64 \
+      RV32	CONFIG_NOELV_RV32" XLEN
+   if [ "$CONFIG_NOELV_RV32" = "y" ]; then
+    define_int  CONFIG_NOELV_XLEN 32
+   else
+    define_int  CONFIG_NOELV_XLEN 64
    fi
-   if [ "$CONFIG_NOELV_GP" = "y" ]; then
+   choice 'Select standard configuration (see help)' \
+     "Tiny-configuration	CONFIG_NOELV_TIN \
+      Minimal-configuration	CONFIG_NOELV_MIN \
+      General-purpose-cfg(single-issue)	CONFIG_NOELV_GPS \
+      General-purpose-cfg(dual-issue)	CONFIG_NOELV_GPD \
+      High-Performance-cfg	CONFIG_NOELV_HP" Std-config
+#      Custom-configuration	CONFIG_NOELV_CUSTOM" Custom-configuration
+
+   if [ "$CONFIG_NOELV_TIN" = "y" ]; then
+    define_int  CONFIG_PROC_CFG 5
+   fi
+   if [ "$CONFIG_NOELV_MIN" = "y" ]; then
+    define_int  CONFIG_PROC_CFG 4
+   fi
+   if [ "$CONFIG_NOELV_GPS" = "y" ]; then
+    define_int  CONFIG_PROC_CFG 2
+   fi
+   if [ "$CONFIG_NOELV_GPD" = "y" ]; then
+    define_int  CONFIG_PROC_CFG 1
    fi
    if [ "$CONFIG_NOELV_HP" = "y" ]; then
     define_int  CONFIG_PROC_CFG 0
    fi
  
-   if [ "$CONFIG_NOELV_CUSTOM" = "y" ]; then
-   fi
+#   if [ "$CONFIG_NOELV_CUSTOM" = "y" ]; then
+#   fi
 
    mainmenu_option next_comment
      comment 'VHDL debug settings       '

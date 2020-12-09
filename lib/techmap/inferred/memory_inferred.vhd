@@ -30,7 +30,7 @@ library grlib;
 use grlib.stdlib.all;
 
 entity generic_syncram is
-  generic ( abits : integer := 10; dbits : integer := 8; pipeline : integer := 0; rdhold: integer := 0 );
+  generic ( abits : integer := 10; dbits : integer := 8; pipeline : integer := 0; rdhold: integer := 0; gatedwr : integer := 0 );
   port (
     clk      : in std_ulogic;
     address  : in std_logic_vector((abits -1) downto 0);
@@ -53,7 +53,7 @@ begin
   main : process(clk)
   begin
     if rising_edge(clk) then
-      if write = '1' then
+      if write = '1' and (gatedwr=0 or enable='1') then
         memarr(conv_integer(address)) <= datain;
       end if;
       if (rdhold=0 or enable='1') then
