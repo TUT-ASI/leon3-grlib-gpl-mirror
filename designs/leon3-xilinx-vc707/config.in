@@ -72,6 +72,11 @@ comment 'Peripherals             '
   endmenu
 
   mainmenu_option next_comment
+  comment 'GRDMAC2                 '
+    source lib/gaisler/grdmac2/grdmac2.in
+  endmenu
+
+  mainmenu_option next_comment
   comment 'Spacewire '
     source lib/gaisler/spacewire/spacewire.in
   endmenu

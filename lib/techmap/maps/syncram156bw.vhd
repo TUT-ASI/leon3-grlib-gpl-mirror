@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -145,6 +145,30 @@ architecture rtl of syncram156bw is
       );
   end component;
 
+  component dare65t_syncram156bw
+  generic (abits : integer := 14);
+  port (
+    clk     : in  std_ulogic;
+    address : in  std_logic_vector (abits -1 downto 0);
+    datain  : in  std_logic_vector (155 downto 0);
+    dataout : out std_logic_vector (155 downto 0);
+    enable  : in  std_logic_vector (15 downto 0);
+    write   : in  std_logic_vector (15 downto 0);
+    scanen   : in std_ulogic;
+    bypass   : in std_ulogic;
+    mbtdi    : in std_ulogic;
+    mbtdo    : out std_ulogic;
+    mbshft   : in std_ulogic;
+    mbcapt   : in std_ulogic;
+    mbupd    : in std_ulogic;
+    mbclk    : in std_ulogic;
+    mbrstn   : in std_ulogic;
+    mbcgate  : in std_ulogic;
+    mbpres   : out std_ulogic;
+    mbmuxo   : out std_logic_vector(5 downto 0)
+    );
+  end component;
+
   signal xenable, xwrite : std_logic_vector(15 downto 0);
   signal custominx,customoutx: std_logic_vector(syncram_customif_maxwidth downto 0);
   signal customclkx: std_ulogic;
@@ -198,6 +222,17 @@ begin
                   custominx(47 downto 0),customoutx(47 downto 0),
                   testin(TESTIN_WIDTH-5), '0');
       customoutx(customoutx'high downto 48) <= (others => '0');
+    end generate;
+    dare65u : if tech = dare65t generate
+      x0 : dare65t_syncram156bw generic map (abits)
+        port map (clk, address, datain, dataoutx, enable, write,
+                  testin(TESTIN_WIDTH-8), testin(TESTIN_WIDTH-3),
+                  custominx(0),customoutx(0),
+                  testin(TESTIN_WIDTH-4), testin(TESTIN_WIDTH-5), testin(TESTIN_WIDTH-6),
+                  customclkx,
+                  testin(TESTIN_WIDTH-7),'0',
+                  customoutx(1), customoutx(7 downto 2));
+      customoutx(customoutx'high downto 8) <= (others => '0');
     end generate;
     xgf22: if tech = gf22 generate
       x0 : gf22fdx_syncram156bw

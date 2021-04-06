@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -46,6 +46,8 @@ entity cpucore5 is
     cmemconf: integer;
     rfconf  : integer;
     fpuconf : integer;
+    tcmconf : integer;
+    perfcfg : integer;
     mulimpl : integer;
     rstaddr : integer;
     disas   : integer;
@@ -73,6 +75,30 @@ end;
 
 architecture hier of cpucore5 is
 
+  type perfcfg_table is array (0 to 2) of integer;
+  -----------------------------------------------------------------------------
+  --       perfcfg                             0     1     2
+  --                                          HP    GP   MIN
+  constant iways_tab   : perfcfg_table := (    4,    4,    1 );
+  constant iwsize_tab  : perfcfg_table := (    4,    4,    4 );
+  constant dways_tab   : perfcfg_table := (    4,    4,    1 );
+  constant dwsize_tab  : perfcfg_table := (    4,    4,    4 );
+  constant itlbnum_tab : perfcfg_table := (   24,   16,    4 );
+  constant dtlbnum_tab : perfcfg_table := (   24,   16,    4 );
+  -----------------------------------------------------------------------------
+
+  constant iways    : integer := iways_tab(perfcfg);
+  constant iwaysize : integer := iwsize_tab(perfcfg);
+  constant dways    : integer := dways_tab(perfcfg);
+  constant dwaysize : integer := dwsize_tab(perfcfg);
+  constant itlbnum  : integer := itlbnum_tab(perfcfg);
+  constant dtlbnum  : integer := dtlbnum_tab(perfcfg);
+
+  constant dtcmen    : integer := boolean'pos( (tcmconf mod 32) /= 0);
+  constant dtcmabits : integer := (1-dtcmen) + (tcmconf mod 32);
+  constant itcmen    : integer := boolean'pos( ((tcmconf/256) mod 32) /= 0 );
+  constant itcmabits : integer := (1-itcmen) + ((tcmconf/256) mod 32);
+
   constant MEMTECH_MOD : integer := memtech mod 65536;
   constant MEMTECH_VEC : std_logic_vector(31 downto 0) := conv_std_logic_vector(memtech, 32);
   constant IURF_INFER : integer := conv_integer(MEMTECH_VEC(17));
@@ -82,13 +108,9 @@ architecture hier of cpucore5 is
   constant mulimpl_fpu: integer := (mulimpl/8) mod 8;
 
   constant nwindows : integer := 8;
-  constant iways    : integer := 4;
-  constant iwaysize : integer := 4;
   constant ilinesize: integer := 8;
   constant iidxwidth: integer := (log2(iwaysize)+10) - (log2(ilinesize)+2);
   constant itagwidth: integer := 32-(log2(iwaysize)+10)+1;
-  constant dways    : integer := 4;
-  constant dwaysize : integer := 4;
   constant dlinesize: integer := 8;
   constant didxwidth: integer := (log2(dwaysize)+10) - (log2(dlinesize)+2);
   constant dtagconf : integer := cmemconf mod 4;
@@ -149,6 +171,7 @@ begin
       fabtech     => fabtech,
       scantest    => scantest,
       memtech     => memtech_mod,
+      rfconf      => rfconf,
       cgen        => cgen
       )
     port map (
@@ -213,8 +236,12 @@ begin
       dwaysize   => dwaysize,
       dtagconf   => dtagconf,
       dusebw     => dusebw,
-      itlbnum    => 24,
-      dtlbnum    => 24,
+      itcmen     => itcmen,
+      itcmabits  => itcmabits,
+      dtcmen     => dtcmen,
+      dtcmabits  => dtcmabits,
+      itlbnum    => itlbnum,
+      dtlbnum    => dtlbnum,
       cached     => cached,
       wbmask     => wbmask,
       busw       => busw,
@@ -271,15 +298,19 @@ begin
         we2    => rfi.we2,
         raddr1 => rfi.raddr1(IRFBITS-1 downto 0),
         re1    => rfi.re1,
+        rgz1   => rfi.rgz1,
         rdata1 => rfo.rdata1,
         raddr2 => rfi.raddr2(IRFBITS-1 downto 0),
         re2    => rfi.re2,
+        rgz2   => rfi.rgz2,
         rdata2 => rfo.rdata2,
         raddr3 => rfi.raddr3(IRFBITS-1 downto 0),
         re3    => rfi.re3,
+        rgz3   => rfi.rgz3,
         rdata3 => rfo.rdata3,
         raddr4 => rfi.raddr4(IRFBITS-1 downto 0),
         re4    => rfi.re4,
+        rgz4   => rfi.rgz4,
         rdata4 => rfo.rdata4,
         testin => ahbi.testin
         );
@@ -331,12 +362,16 @@ begin
       ilinesize => ilinesize,
       iidxwidth => iidxwidth,
       itagwidth => itagwidth,
+      itcmen    => itcmen,
+      itcmabits => itcmabits,
       dways     => dways,
       dlinesize => dlinesize,
       didxwidth => didxwidth,
       dtagwidth => dtagwidth,
       dtagconf  => dtagconf,
       dusebw    => dusebw,
+      dtcmen    => dtcmen,
+      dtcmabits => dtcmabits,
       testen    => scantest
       )
     port map (

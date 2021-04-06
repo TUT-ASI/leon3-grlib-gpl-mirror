@@ -289,3 +289,290 @@ grmon3> q
   
 Exiting GRMON
 
+Output from GRMON with EDCL debug link
+-------------------------------------------------------
+[krishna@hwlin1 noelv-xilinx-vc707]$ /gsl/data/products/grmon3/grmon-internal/linux/bin64/grmon -u -eth 192.168.0.235
+
+  GRMON debug monitor v3.2.9-10-g8284505 64-bit internal version
+  
+  Copyright (C) 2020 Cobham Gaisler - All rights reserved.
+  For latest updates, go to http://www.gaisler.com/
+  Comments or bug-reports to support@gaisler.com
+  
+  This internal version will expire on 14/12/2021
+
+Parsing -u
+Parsing -eth 192.168.0.235
+
+Commands missing help:
+
+ Ethernet startup...
+  GRLIB build version: 4261
+  Detected frequency:  100.0 MHz
+  
+  Component                            Vendor
+  NOEL-V RISC-V Processor              Cobham Gaisler
+  GR Ethernet MAC                      Cobham Gaisler
+  AHB Debug UART                       Cobham Gaisler
+  JTAG Debug Link                      Cobham Gaisler
+  EDCL master interface                Cobham Gaisler
+  Xilinx MIG Controller                Cobham Gaisler
+  Generic AHB ROM                      Cobham Gaisler
+  AHB/APB Bridge                       Cobham Gaisler
+  RISC-V CLINT                         Cobham Gaisler
+  RISC-V PLIC                          Cobham Gaisler
+  RISC-V Debug Module                  Cobham Gaisler
+  AMBA Trace Buffer                    Cobham Gaisler
+  General Purpose I/O port             Cobham Gaisler
+  Modular Timer Unit                   Cobham Gaisler
+  Generic UART                         Cobham Gaisler
+  
+  Use command 'info sys' to print a detailed report of attached cores
+
+grmon3> edcl
+  Device index: greth0
+  EDCL ip 192.168.0.235, buffer 16 kB
+  
+grmon3> info sys
+  cpu0      Cobham Gaisler  NOEL-V RISC-V Processor    
+            AHB Master 0
+  greth0    Cobham Gaisler  GR Ethernet MAC    
+            AHB Master 2
+            APB: fc084000 - fc084100
+            IRQ: 5
+            edcl ip 192.168.0.235, buffer 16 kbyte
+  ahbuart0  Cobham Gaisler  AHB Debug UART    
+            AHB Master 3
+            APB: fc000e00 - fc000f00
+            Baudrate 115200, AHB frequency 100.00 MHz
+  ahbjtag0  Cobham Gaisler  JTAG Debug Link    
+            AHB Master 4
+  edcl0     Cobham Gaisler  EDCL master interface    
+            AHB Master 5
+  mig0      Cobham Gaisler  Xilinx MIG Controller    
+            AHB: 00000000 - 40000000
+            APB: fc080000 - fc080100
+            SDRAM: 1024 Mbyte
+  ahbrom0   Cobham Gaisler  Generic AHB ROM    
+            AHB: c0000000 - e0000000
+            32-bit ROM: 512 MB @ 0xc0000000
+  apbmst0   Cobham Gaisler  AHB/APB Bridge    
+            AHB: fc000000 - fc100000
+  clint0    Cobham Gaisler  RISC-V CLINT    
+            AHB: e0000000 - e0100000
+  plic0     Cobham Gaisler  RISC-V PLIC    
+            AHB: f8000000 - fc000000
+            4 contexts, 32 interrupt sources
+  dm0       Cobham Gaisler  RISC-V Debug Module    
+            AHB: fe000000 - ff000000
+            hart0: DXLEN 64, MXLEN 64, SXLEN 64, UXLEN 64
+                   ISA A D F I M,  Modes M S U
+                   Stack pointer 0x3ffffff0
+                   icache 4 * 4 kB, 32 B/line, rnd
+                   dcache 4 * 4 kB, 32 B/line, rnd
+                   3 triggers,
+                   itrace 64 lines
+  ahbtrace0 Cobham Gaisler  AMBA Trace Buffer    
+            AHB: fff00000 - fff20000
+            Trace buffer size: 128 lines
+  gpio0     Cobham Gaisler  General Purpose I/O port    
+            APB: fc083000 - fc083100
+  gptimer0  Cobham Gaisler  Modular Timer Unit    
+            APB: fc000000 - fc000100
+            IRQ: 2
+            16-bit scalar, 2 * 32-bit timers, divisor 100
+  uart0     Cobham Gaisler  Generic UART    
+            APB: fc001000 - fc001100
+            IRQ: 1
+            Baudrate 38343, FIFO debug mode available
+  
+grmon3> load /gsl/data/people/cederman/nv-Linux0                                                                                                                                                                                    0 .text             80.6kB /  80.6kB   [===============>] 100%
+             15000 .rodata            4.3kB /   4.3kB   [===============>] 100%
+             17000 .data              1.1kB /   1.1kB   [===============>] 100%
+             17498 .htif               16B              [===============>] 100%
+            200000 .payload          20.4MB /  20.4MB   [===============>] 100%
+  Total size: 20.51MB (24.50Mbit/s)
+  Entry point 0x00000000
+  Image /gsl/data/people/cederman/nv-Linux0 loaded
+  
+grmon3> 
+grmon3> verify /gsl/data/people/cederman/nv-Linux0
+                 0 .text             80.6kB /  80.6kB   [===============>] 100%
+             15000 .rodata            4.3kB /   4.3kB   [===============>] 100%
+             17000 .data              1.1kB /   1.1kB   [===============>] 100%
+             17498 .htif               16B              [===============>] 100%
+            200000 .payload          20.4MB /  20.4MB   [===============>] 100%
+  Total size: 20.51MB (23.28Mbit/s)
+  Entry point 0x00000000
+  Image of /gsl/data/people/cederman/nv-Linux0 verified without errors
+  
+grmon3> dtb /gsl/data/people/cederman/lock-test/noelv-xilinx-kcu105.dtb                                                                                                                                              DTB will be loaded to the stack
+  
+grmon3> 
+grmon3> run
+
+OpenSBI v0.8
+   ____                    _____ ____ _____
+  / __ \                  / ____|  _ \_   _|
+ | |  | |_ __   ___ _ __ | (___ | |_) || |
+ | |  | | '_ \ / _ \ '_ \ \___ \|  _ < | |
+ | |__| | |_) |  __/ | | |____) | |_) || |_
+  \____/| .__/ \___|_| |_|_____/|____/_____|
+        | |
+        |_|
+
+Platform Name       : noel-xilinx-kcu105
+Platform Features   : timer,mfdeleg
+Platform HART Count : 4
+Boot HART ID        : 0
+Boot HART ISA       : rv64imafdsu
+BOOT HART Features  : pmp,scounteren,mcounteren
+BOOT HART PMP Count : 16
+Firmware Base       : 0x0
+Firmware Size       : 140 KB
+Runtime SBI Version : 0.2
+
+MIDELEG : 0x0000000000000222
+MEDELEG : 0x000000000000b109
+[    0.000000] OF: fdt: Ignoring memory range 0x0 - 0x200000
+[    0.000000] Linux version 5.7.19 (cederman@cederman.got.gaisler.com) (gcc version 9.3.0 (Buildroot 2020.08-6-gb7b5a7c2d6), GNU ld (GNU Binutils) 2.33.1) #4 SMP Mon Nov 2 14:19:13 CET 2020
+[    0.000000] earlycon: sbi0 at I/O port 0x0 (options '')
+[    0.000000] printk: bootconsole [sbi0] enabled
+[    0.000000] Zone ranges:
+[    0.000000]   DMA32    [mem 0x0000000000200000-0x000000003fffffff]
+[    0.000000]   Normal   empty
+[    0.000000] Movable zone start for each node
+[    0.000000] Early memory node ranges
+[    0.000000]   node   0: [mem 0x0000000000200000-0x000000003fffffff]
+[    0.000000] Initmem setup node 0 [mem 0x0000000000200000-0x000000003fffffff]
+[    0.000000] software IO TLB: mapped [mem 0x3b1fb000-0x3f1fb000] (64MB)
+[    0.000000] SBI specification v0.2 detected
+[    0.000000] SBI implementation ID=0x1 Version=0x8
+[    0.000000] SBI v0.2 TIME extension detected
+[    0.000000] SBI v0.2 IPI extension detected
+[    0.000000] SBI v0.2 RFENCE extension detected
+[    0.000000] SBI v0.2 HSM extension detected
+[    0.000000] riscv: ISA extensions acim
+[    0.000000] riscv: ELF capabilities acim
+[    0.000000] percpu: Embedded 17 pages/cpu s31912 r8192 d29528 u69632
+[    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 258055
+[    0.000000] Kernel command line: earlycon=sbi console=ttyGR0,115200
+[    0.000000] Dentry cache hash table entries: 131072 (order: 8, 1048576 bytes, linear)
+[    0.000000] Inode-cache hash table entries: 65536 (order: 7, 524288 bytes, linear)
+[    0.000000] Sorting __ex_table...
+[    0.000000] mem auto-init: stack:off, heap alloc:off, heap free:off
+[    0.000000] Memory: 943204K/1046528K available (12725K kernel code, 3906K rwdata, 4096K rodata, 2123K init, 318K bss, 103324K reserved, 0K cma-reserved)
+[    0.000000] Virtual kernel memory layout:
+[    0.000000]       fixmap : 0xffffffcefee00000 - 0xffffffceff000000   (2048 kB)
+[    0.000000]       pci io : 0xffffffceff000000 - 0xffffffcf00000000   (  16 MB)
+[    0.000000]      vmemmap : 0xffffffcf00000000 - 0xffffffcfffffffff   (4095 MB)
+[    0.000000]      vmalloc : 0xffffffd000000000 - 0xffffffdfffffffff   (65535 MB)
+[    0.000000]       lowmem : 0xffffffe000000000 - 0xffffffe03fe00000   (1022 MB)
+[    0.000000] SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=4, Nodes=1
+[    0.000000] rcu: Hierarchical RCU implementation.
+[    0.000000] rcu: 	RCU restricting CPUs from NR_CPUS=8 to nr_cpu_ids=4.
+[    0.000000] rcu: 	RCU debug extended QS entry/exit.
+[    0.000000] rcu: RCU calculated value of scheduler-enlistment delay is 25 jiffies.
+[    0.000000] rcu: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=4
+[    0.000000] NR_IRQS: 0, nr_irqs: 0, preallocated irqs: 0
+[    0.000000] plic: mapped 31 interrupts with 4 handlers for 16 contexts.
+[    0.000000] riscv_timer_init_dt: Registering clocksource cpuid [0] hartid [0]
+[    0.000000] clocksource: riscv_clocksource: mask: 0xffffffffffffffff max_cycles: 0xb8812736b, max_idle_ns: 440795202655 ns
+[    0.000085] sched_clock: 64 bits at 50MHz, resolution 20ns, wraps every 4398046511100ns
+[    0.013985] Console: colour dummy device 80x25
+[    0.020854] Calibrating delay loop (skipped), value calculated using timer frequency.. 100.00 BogoMIPS (lpj=200000)
+[    0.037283] pid_max: default: 32768 minimum: 301
+[    0.047107] Mount-cache hash table entries: 2048 (order: 2, 16384 bytes, linear)
+[    0.058194] Mountpoint-cache hash table entries: 2048 (order: 2, 16384 bytes, linear)
+[    0.098782] rcu: Hierarchical SRCU implementation.
+[    0.117377] smp: Bringing up secondary CPUs ...
+[    1.189624] CPU1: failed to come online
+[    2.252606] CPU2: failed to come online
+[    3.315517] CPU3: failed to come online
+[    3.321511] smp: Brought up 1 node, 1 CPU
+[    3.334145] devtmpfs: initialized
+[    3.353548] random: get_random_u32 called from bucket_table_alloc.isra.0+0x74/0x1e4 with crng_init=0
+[    3.372311] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645041785100000 ns
+[    3.386944] futex hash table entries: 1024 (order: 4, 65536 bytes, linear)
+[    3.404864] NET: Registered protocol family 16
+[    3.674430] vgaarb: loaded
+[    3.683511] SCSI subsystem initialized
+[    3.698017] usbcore: registered new interface driver usbfs
+[    3.706832] usbcore: registered new interface driver hub
+[    3.715851] usbcore: registered new device driver usb
+[    3.739385] clocksource: Switched to clocksource riscv_clocksource
+[    3.917710] NET: Registered protocol family 2
+[    3.932063] tcp_listen_portaddr_hash hash table entries: 512 (order: 2, 20480 bytes, linear)
+[    3.944876] TCP established hash table entries: 8192 (order: 4, 65536 bytes, linear)
+[    3.957694] TCP bind hash table entries: 8192 (order: 6, 262144 bytes, linear)
+[    3.971085] TCP: Hash tables configured (established 8192 bind 8192)
+[    3.982634] UDP hash table entries: 512 (order: 3, 49152 bytes, linear)
+[    3.992797] UDP-Lite hash table entries: 512 (order: 3, 49152 bytes, linear)
+[    4.006159] NET: Registered protocol family 1
+[    4.023829] RPC: Registered named UNIX socket transport module.
+[    4.032500] RPC: Registered udp transport module.
+[    4.039761] RPC: Registered tcp transport module.
+[    4.047342] RPC: Registered tcp NFSv4.1 backchannel transport module.
+[    4.057799] PCI: CLS 0 bytes, default 64
+[    5.825072] workingset: timestamp_bits=62 max_order=18 bucket_order=0
+[    6.020532] NFS: Registering the id_resolver key type
+[    6.028259] Key type id_resolver registered
+[    6.034653] Key type id_legacy registered
+[    6.041249] nfs4filelayout_init: NFSv4 File Layout Driver Registering...
+[    6.054075] 9p: Installing v9fs 9p2000 file system support
+[    6.069084] NET: Registered protocol family 38
+[    6.076060] Block layer SCSI generic (bsg) driver version 0.4 loaded (major 252)
+[    6.088054] io scheduler mq-deadline registered
+[    6.095571] io scheduler kyber registered
+[    7.210055] Serial: GRLIB APBUART driver
+[    7.217591] fc001000.uart: ttyGR0 at MMIO 0xfc001000 (irq = 2, base_baud = 6250000) is a GRLIB/APBUART
+[    7.232670] printk: console [ttyGR0] enabled
+[    7.232670] printk: console [ttyGR0] enabled
+[    7.250703] printk: bootconsole [sbi0] disabled
+[    7.250703] printk: bootconsole [sbi0] disabled
+[    7.273705] grlib-apbuart at 0xfc001000, irq 2
+[    7.294980] [drm] radeon kernel modesetting enabled.
+[    7.472809] loop: module loaded
+[    7.498149] libphy: Fixed MDIO Bus: probed
+[    7.525545] e1000e: Intel(R) PRO/1000 Network Driver - 3.2.6-k
+[    7.541816] e1000e: Copyright(c) 1999 - 2015 Intel Corporation.
+[    7.560299] ehci_hcd: USB 2.0 'Enhanced' Host Controller (EHCI) Driver
+[    7.578701] ehci-pci: EHCI PCI platform driver
+[    7.593033] ehci-platform: EHCI generic platform driver
+[    7.608429] ohci_hcd: USB 1.1 'Open' Host Controller (OHCI) Driver
+[    7.625908] ohci-pci: OHCI PCI platform driver
+[    7.639399] ohci-platform: OHCI generic platform driver
+[    7.660394] usbcore: registered new interface driver uas
+[    7.676180] usbcore: registered new interface driver usb-storage
+[    7.696304] mousedev: PS/2 mouse device common for all mice
+[    7.723108] usbcore: registered new interface driver usbhid
+[    7.738591] usbhid: USB HID core driver
+[    7.763322] NET: Registered protocol family 10
+[    7.791728] Segment Routing with IPv6
+[    7.803367] sit: IPv6, IPv4 and MPLS over IPv4 tunneling driver
+[    7.829234] NET: Registered protocol family 17
+[    7.845110] 9pnet: Installing 9P2000 support
+[    7.858042] Key type dns_resolver registered
+[    7.905064] Freeing unused kernel memory: 2120K
+[    7.919139] Run /init as init process
+Starting syslogd: OK
+Starting klogd: OK
+Running sysctl: OK
+Saving random seed: [   11.170827] random: dd: uninitialized urandom read (512 bytes read)
+OK
+Starting network: OK
+
+Welcome to Buildroot
+buildroot login: root
+# ls -al
+total 4
+drwx------    2 root     root            60 Jan  1 00:00 .
+drwxr-xr-x   17 root     root           400 Nov  2  2020 ..
+-rw-------    1 root     root             7 Jan  1 00:00 .ash_history
+# 
+  
+  Interrupted!
+  0xffffffe00047c2e4: c40080e7  jalr    ra, 3136(ra)
+  
+grmon3> q
+

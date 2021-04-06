@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
---  NOELV Xilinx VC707 Demonstration design
+--  LEON3 Xilinx VC707 Demonstration design
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
@@ -514,6 +514,7 @@ constant CFG_FMC     : integer := (CFG_GRETH_FMC * CFG_GRETH * CFG_FMC_NB);
 constant CFG_FMC_DBG : integer := 0;
 
 constant ncpu     : integer := 1;
+constant nextmst  : integer := 2;
 constant nextslv  : integer := 3
 -- pragma translate_off
                                + 1
@@ -540,6 +541,8 @@ signal ahbsi : ahb_slv_in_type;
 signal ahbso : ahb_slv_out_vector := (others => ahbs_none);
 signal ahbmi : ahb_mst_in_type;
 signal ahbmo : ahb_mst_out_vector := (others => ahbm_none);
+signal greth_ahbmi : ahb_mst_in_type;
+signal greth_ahbmo : ahb_mst_out_type;
 signal mig_ahbsi : ahb_slv_in_type;                            
 signal mig_ahbso : ahb_slv_out_type;
   
@@ -726,7 +729,7 @@ begin
       fabtech   => fabtech,
       memtech   => memtech,
       ncpu      => ncpu,
-      nextmst   => 1,--2,
+      nextmst   => nextmst,--2,
       nextslv   => nextslv,
       nextapb   => 6,
       ndbgmst   => ndbgmst,
@@ -746,7 +749,7 @@ begin
       rstn      => rstn, -- : in  std_ulogic;
       -- AHB bus interface for other masters (DMA units)
       ahbmi     => ahbmi, -- : out ahb_mst_in_type;
-      ahbmo     => ahbmo(ncpu downto ncpu), -- : in  ahb_mst_out_vector_type(ncpu+nextmst-1 downto ncpu);
+      ahbmo     => ahbmo(ncpu+nextmst-1 downto ncpu), -- : in  ahb_mst_out_vector_type(ncpu+nextmst-1 downto ncpu);
       -- AHB bus interface for slaves (memory controllers, etc)
       ahbsi     => ahbsi, -- : out ahb_slv_in_type;
       ahbso     => ahbso(nextslv-1 downto 0), -- : in  ahb_slv_out_vector_type(nextslv-1 downto 0);
@@ -1060,19 +1063,61 @@ begin
 -----------------------------------------------------------------------
 
     eth0 : if CFG_GRETH = 1 generate -- Gaisler ethernet MAC
-      e1 : grethm 
-       generic map(
-        hindex => 2,
-        pindex => 4, paddr => 16#840#, pmask => 16#FFF#, pirq => 5, memtech => memtech,
-        mdcscaler => CPU_FREQ/1000/2, rmii => 0, enable_mdio => 1, fifosize => CFG_ETH_FIFO,
-        nsync => 2, edcl => CFG_DSU_ETH, edclbufsz => CFG_ETH_BUF, phyrstadr => 7,
-        macaddrh => CFG_ETH_ENM, macaddrl => CFG_ETH_ENL, enable_mdint => 1,
-        ipaddrh => CFG_ETH_IPM, ipaddrl => CFG_ETH_IPL,
-        giga => CFG_GRETH1G, ramdebug => 0, gmiimode => 1)
-       port map( rst => rstn, clk => clkm, ahbmi => dbgmi(2),
-        ahbmo => dbgmo(2), 
-        apbi => apbi(4), apbo => apbo(4), ethi => gmiii(0), etho => gmiio(0),
-        debug_rx => e1_debug_rx, debug_tx => e1_debug_tx, debug_gtx => e1_debug_gtx); 
+      --e1 : grethm 
+      -- generic map(
+      --  hindex => 2,
+      --  pindex => 4, paddr => 16#840#, pmask => 16#FFF#, pirq => 5, memtech => memtech,
+      --  mdcscaler => CPU_FREQ/1000/2, rmii => 0, enable_mdio => 1, fifosize => CFG_ETH_FIFO,
+      --  nsync => 2, edcl => CFG_DSU_ETH, edclbufsz => CFG_ETH_BUF, phyrstadr => 7,
+      --  macaddrh => CFG_ETH_ENM, macaddrl => CFG_ETH_ENL, enable_mdint => 1,
+      --  ipaddrh => CFG_ETH_IPM, ipaddrl => CFG_ETH_IPL,
+      --  giga => CFG_GRETH1G, ramdebug => 0, gmiimode => 1)
+      -- port map( rst => rstn, clk => clkm, ahbmi => dbgmi(2),
+      --  ahbmo => dbgmo(2), 
+      --  apbi => apbi(4), apbo => apbo(4), ethi => gmiii(0), etho => gmiio(0),
+      --  debug_rx => e1_debug_rx, debug_tx => e1_debug_tx, debug_gtx => e1_debug_gtx); 
+
+      greth_ahbmi <= ahbmi;
+      ahbmo(2)     <= greth_ahbmo;
+      e1 : grethm_mb
+        generic map (
+          hindex       => 2,
+          ehindex      => 2,
+          pindex       => 4,
+          paddr        => 16#840#,
+          pmask        => 16#FFF#,
+          pirq         => 5,
+          memtech      => memtech,
+          mdcscaler    => CPU_FREQ/1000/2,
+          rmii         => 0,
+          enable_mdio  => 1,
+          fifosize     => CFG_ETH_FIFO,
+          nsync        => 2,
+          edcl         => CFG_DSU_ETH,
+          edclbufsz    => CFG_ETH_BUF,
+          phyrstadr    => 7,
+          macaddrh     => CFG_ETH_ENM,
+          macaddrl     => CFG_ETH_ENL,
+          enable_mdint => 1,
+          ipaddrh      => CFG_ETH_IPM,
+          ipaddrl      => CFG_ETH_IPL,
+          giga         => 0,
+          ramdebug     => 0,
+          gmiimode     => 1,
+          edclsepahb   => 1
+        )
+        port map (
+          rst    => rstn,
+          clk    => clkm,
+          ahbmi  => greth_ahbmi,
+          ahbmo  => greth_ahbmo,
+          ahbmi2 => dbgmi(2),
+          ahbmo2 => dbgmo(2),
+          apbi   => apbi(4),
+          apbo   => apbo(4),
+          ethi   => gmiii(0),
+          etho   => gmiio(0)
+        );
 
       ---- Debug of RX and TX
       --loganrx0 : logan
@@ -1137,7 +1182,7 @@ begin
     end generate eth0;
 
     noeth0 : if CFG_GRETH = 0 generate
-    -- TODO: 
+      ahbmo(2)     <= ahbm_none;
     end generate noeth0;
 
     eth1 : if CFG_GRETH_FMC = 1 generate -- Extended FMC Support

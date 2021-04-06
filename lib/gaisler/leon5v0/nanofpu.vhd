@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -711,7 +711,7 @@ begin
           v.exc(EXC_NX) := '1';
         end if;
         -- Underflow
-        if v.op2.mant(54)='0' and (r.tem(EXC_UF)='1' or v.exc(EXC_NX)='1') then
+        if r.op2.mant(54)='0' and (r.tem(EXC_UF)='1' or v.exc(EXC_NX)='1') then
           v.exc(EXC_UF) := '1';
         end if;
         if (r.rddp='0' and r.op2.exp < -126) or r.op2.exp < -1022 then
@@ -783,7 +783,7 @@ begin
     if spstore_pend='0' then
       v.stfsr := '0';
     end if;
-    if issue_cmd="010" and issue_ldstreg(5)='1' and issue_ldstreg(2)='0' then
+    if issue_cmd="010" and issue_ldstreg(5)='1' and issue_ldstreg(1)='0' then
       v.stfsr := '1';
     end if;
     v.fccready := '1';
@@ -1746,7 +1746,7 @@ begin
       v.readyflop := '1';
     end if;
     v.readyldst := '0';
-    if (v.s=nf_idle and v.stfsr='0') or v.s=nf_dfq1 then
+    if (v.s=nf_idle and v.stfsr='0') or (v.s=nf_dfq1 and v.stfsr='0') then
       v.readyldst := '1';
     end if;
     if v.s=nf_fcmp2 then

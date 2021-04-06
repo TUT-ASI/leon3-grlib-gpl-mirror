@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -632,6 +632,33 @@ package spacewire is
   );
   end component;
 
+  component rt_3pbyp is
+    generic(
+      ports : integer range 3 to 3 := 3);
+    port (
+      clk         : in  std_ulogic;
+      rstn        : in  std_ulogic;
+      --
+      currport    : std_logic_vector(4 downto 0);
+      rtrenable   : in  std_ulogic;
+      rtwenable   : in  std_ulogic;
+      rtraddress  : in  std_logic_vector(7 downto 0);
+      rtwaddress  : in  std_logic_vector(7 downto 0);
+      rtwdata     : in  std_logic_vector(2 downto 0);
+      rtvalid_in  : in  std_logic;
+      rtrdata     : out std_logic_vector(2 downto 0);
+      rterror     : out std_logic_vector(0 downto 0);
+      rtvalid     : out std_logic_vector(255 downto 0);
+      --
+      perenable   : in  std_ulogic;
+      pewenable   : in  std_ulogic;
+      peraddress  : in  std_logic_vector(7 downto 0);
+      pewaddress  : in  std_logic_vector(7 downto 0);
+      pewdata     : in  std_logic_vector(ports downto 0);
+      perdata     : out std_logic_vector(ports downto 0);
+      perror      : out std_logic_vector((ports+8)/8-1 downto 0);
+      pevalid     : out std_logic_vector(255 downto 0));
+  end component;
 
   component grspwrouter is
     generic(
@@ -692,7 +719,8 @@ package spacewire is
       num_rxdesc      : integer range 128 to 1024 := 128;
       auxasync        : integer range 0 to 1 := 0;
       hirq            : integer range 0 to NAHBIRQ-1 := 0;
-      rstsrctmr       : integer range 0 to 1 := 0
+      rstsrctmr       : integer range 0 to 1 := 0;
+      ccsdscrc        : integer range 0 to 16#FFFF# := 0
       );
     port(
       rst          : in  std_ulogic;
@@ -790,7 +818,8 @@ package spacewire is
       auxasync       : integer range 0 to 1 := 0;
       hirq           : integer range 0 to NAHBIRQ-1 := 0;
       internalrstgen : integer range 0 to 1 := 1;
-      rstsrctmr      : integer range 0 to 1 := 0
+      rstsrctmr      : integer range 0 to 1 := 0;
+      ccsdscrc       : integer range 0 to 16#FFFF# := 0
       );
     port(
       rst          : in  std_ulogic;
@@ -846,7 +875,8 @@ package spacewire is
       nodeaddr      : integer range 0 to 255 := 254;
       num_txdesc    : integer range 64 to 512 := 64;
       num_rxdesc    : integer range 128 to 1024 := 128;
-      interruptdist : integer range 0 to 2 := 0
+      interruptdist : integer range 0 to 2 := 0;
+      ccsdscrc      : integer range 0 to 1 := 0
     );
     port(
       rst          : in   std_ulogic;

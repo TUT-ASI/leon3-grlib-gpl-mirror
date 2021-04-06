@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -58,15 +58,19 @@ entity regfile5_ram is
     we2      : in  std_logic_vector(1 downto 0);
     raddr1   : in  std_logic_vector((abits -1) downto 0);
     re1      : in  std_logic_vector(1 downto 0);
+    rgz1     : in  std_logic;
     rdata1   : out std_logic_vector((dbits -1) downto 0);
     raddr2   : in  std_logic_vector((abits -1) downto 0);
     re2      : in  std_logic_vector(1 downto 0);
+    rgz2     : in  std_logic;
     rdata2   : out std_logic_vector((dbits -1) downto 0);
     raddr3   : in  std_logic_vector((abits -1) downto 0);
     re3      : in  std_logic_vector(1 downto 0);
+    rgz3     : in  std_logic;
     rdata3   : out std_logic_vector((dbits -1) downto 0);
     raddr4   : in  std_logic_vector((abits -1) downto 0);
     re4      : in  std_logic_vector(1 downto 0);
+    rgz4     : in  std_logic;
     rdata4   : out std_logic_vector((dbits -1) downto 0);
     testin   : in  std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
     );
@@ -227,11 +231,11 @@ begin  -- rtl
       end if;
       if re2 /= "00" then
         v.raddr2 := raddr2;
-      end if;
+      end if;      
       if re3 /= "00" then
         v.raddr3 := raddr3;
       end if;
-      if re4 /= "00" then
+      if re4 /= "00" then       
         v.raddr4 := raddr4;
       end if;
     end if;

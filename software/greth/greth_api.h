@@ -56,50 +56,66 @@
 #define GRETH_RXBD_NUM_MASK (GRETH_RXBD_NUM-1)
 #define GRETH_RX_BUF_SIZE 2048
 
+#ifdef NOELV_SYSTEST
+#include <stdint.h>
+
+typedef uint64_t addr_t;
+typedef uint32_t greth_reg_t;
+typedef uint32_t descrptr_t;
+typedef uint32_t descrctrl_t;
+typedef uint32_t descraddr_t;
+#else
+typedef int addr_t;
+typedef int greth_reg_t;
+typedef int descrptr_t;
+typedef int descrctrl_t;
+typedef int descraddr_t;
+#endif
+
 /* Ethernet configuration registers */
 typedef struct _greth_regs {
-    volatile int    control;        
-    volatile int    status;        
-    volatile int    esa_msb;        
-    volatile int    esa_lsb;        
-    volatile int    mdio;        
-    volatile int    tx_desc_p;        
-    volatile int    rx_desc_p;        
-    volatile int    edclip;
+    volatile greth_reg_t control; // 0x00
+    volatile greth_reg_t status; // 0x04
+    volatile greth_reg_t esa_msb; // 0x08
+    volatile greth_reg_t esa_lsb; // 0x0C
+    volatile greth_reg_t mdio; // 0x10
+    volatile descrptr_t tx_desc_p; // 0x14
+    volatile descrptr_t rx_desc_p; // 0x18
+    volatile greth_reg_t edclip; // 0x1C
 } greth_regs;
 
 /* Ethernet buffer descriptor */
 typedef struct _greth_bd {
-    int    stat;
-    int    addr;           /* Buffer address */
+    int stat;
+    int addr;           /* Buffer address */
 } greth_bd;
 
-struct descriptor 
+struct descriptor
 {
-    volatile int ctrl;
-    volatile int addr;
+    volatile descrctrl_t ctrl;
+    volatile descraddr_t addr;
 };
 
-struct rxstatus 
+struct rxstatus
 {
-  
+
 };
 
 struct greth_info {
-    greth_regs *regs;            /* Address of controller registers. */  
-  
+    greth_regs *regs;            /* Address of controller registers. */
+
     unsigned char esa[6];
     unsigned int gbit;
     unsigned int phyaddr;
     unsigned int edcl;
     unsigned int edclen;
-    
+
     struct descriptor *txd;
-    struct descriptor *rxd;  
+    struct descriptor *rxd;
     unsigned int txpnt;
-    unsigned int rxpnt;  
-    unsigned int txchkpnt;
-    unsigned int rxchkpnt;
+    unsigned int rxpnt;
+    unsigned int txchkpnt; // Only used in greth_checktx()
+    unsigned int rxchkpnt; // Only used in greth_checkrx()
 
 };
 

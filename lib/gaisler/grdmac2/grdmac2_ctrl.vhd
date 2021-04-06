@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -82,7 +82,7 @@ entity grdmac2_ctrl is
     b2m_bm_in     : in  bm_ctrl_reg_type;               -- BM signals from B2M through control module
     b2m_bm_out    : out bm_out_type;                    -- BM signals to B2M through control module
     -- data descriptor out for M2B and B2M
-    d_desc_out    : out data_dsc_strct_type;            -- Data descriptor passed to M2B and B2M
+    d_desc_out    : out data_dsc_strct_type;            -- Data descriptor passed to M2B, ACC and B2M
     ctrl_rst      : out std_ulogic;                     -- Reset signal from APB interface, to M2B and B2M
     err_sts_out   : out std_ulogic;                     -- Core APB status reg error bit. Passed to M2B and B2M
     -- M2B control signals
@@ -93,10 +93,10 @@ entity grdmac2_ctrl is
     b2m_sts_in    : in  d_ex_sts_out_type;              -- B2M status signals
     b2m_start     : out std_logic;                      -- B2M start signal
     b2m_resume    : out std_ulogic;                     -- B2M resume signal
-    acc_sts_in    : in d_ex_sts_out_type;
-    acc_start     : out std_ulogic;
-    acc_resume    : out std_ulogic;
-    acc_desc_out  : out acc_dsc_strct_type
+    acc_sts_in    : in d_ex_sts_out_type;               -- ACC status signals
+    acc_start     : out std_ulogic;                     -- ACC start signal
+    acc_resume    : out std_ulogic;                     -- ACC resume signal
+    acc_desc_out  : out acc_dsc_strct_type              -- ACC descriptor passed to ACC
   );
 end entity grdmac2_ctrl;
 
@@ -262,9 +262,9 @@ architecture rtl of grdmac2_ctrl is
     b2m_start    : std_ulogic;                      -- B2M start signal
     b2m_resume   : std_ulogic;                      -- B2M resume signal
     b2m_paused   : std_ulogic;                      -- B2M paused flag
-    acc_start    : std_ulogic;                      -- B2M start signal
-    acc_resume   : std_ulogic;                      -- B2M resume signal
-    acc_paused   : std_ulogic;                      -- B2M paused flag
+    acc_start    : std_ulogic;                      -- ACC start signal
+    acc_resume   : std_ulogic;                      -- ACC resume signal
+    acc_paused   : std_ulogic;                      -- ACC paused flag
     event        : std_ulogic;                      -- Input trigger event flag
     trigger_1    : std_ulogic;                      -- current value of i/p trigger
     trigger_0    : std_ulogic;                      -- previous value of i/p trigger
@@ -363,7 +363,7 @@ begin  -- rtl
                     b2m_bm_in.wr_data when r.state = b2m else
                     bmst.wr_data;
 
-  -- Deassert the start signal and resume signal when the M2B or B2M operation has started.
+  -- Deassert the start signal and resume signal when the M2B,B2M or ACC operation has started.
   m2b_start  <= '0' when m2b_sts_in.operation = '1' else r.m2b_start;
   m2b_resume <= '0' when m2b_sts_in.operation = '1' else r.m2b_resume;
   b2m_start  <= '0' when b2m_sts_in.operation = '1' else r.b2m_start;
@@ -722,7 +722,7 @@ begin  -- rtl
               v.state     := idle;
             end if;
 
-          -- A special descriptor used for updating values in accelerator
+          -- A special descriptor used for updating registers in accelerator
           when ACC_UPDATE =>
             v.cur_desc := '0';
             v.acc_en   := '1';
@@ -968,10 +968,10 @@ begin  -- rtl
       when m2b =>
         -- Start ACC operation when M2B is completed or M2B buffer full and paused
         if ((r.m2b_resume or r.m2b_start) = '0' and m2b_sts_in.paused = '1' and r.acc_en = '1') then
-          if r.acc_paused = '1' then  -- Resume B2M if it was previously paused
+          if r.acc_paused = '1' then  -- Resume ACC if it was previously paused
             v.acc_resume := '1';
             v.acc_paused := '0';
-          else  -- Start B2M if it was not started yet at all.
+          else  -- Start ACC if it was not started yet at all.
             v.acc_start := '1';
           end if;
           v.state      := acc;
@@ -989,10 +989,10 @@ begin  -- rtl
           -- Flag that M2b is paused and need to be resumed after B2M operation empties buffer
           v.m2b_paused := '1';
         elsif ((r.m2b_resume or r.m2b_start) = '0' and m2b_sts_in.comp = '1' and r.acc_en = '1') then
-          if r.acc_paused = '1' then  -- Resume B2M if it was previously paused
+          if r.acc_paused = '1' then  -- Resume ACC if it was previously paused
             v.acc_resume := '1';
             v.acc_paused := '0';
-          else  -- Start B2M if it was not started yet at all.
+          else  -- Start ACC if it was not started yet at all.
             v.acc_start := '1';
           end if;
           v.state  := acc;
@@ -1021,7 +1021,7 @@ begin  -- rtl
         -----------
 
       when acc =>
-        if ((r.acc_resume or r.acc_start) = '0' and acc_sts_in.paused = '1' and acc_des.ctrl.desc_type = X"4") then
+        if ((r.acc_resume or r.acc_start) = '0' and acc_sts_in.paused = '1' and d_des.ctrl.desc_type = X"4") then
           if r.b2m_paused = '1' then  -- Resume B2M if it was previously paused
             v.b2m_resume := '1';
             v.b2m_paused := '0';
@@ -1032,7 +1032,7 @@ begin  -- rtl
           v.state      := b2m;
           -- Flag that ACC is paused and need to be resumed after M2B operation fills buffer
           v.acc_paused := '1';
-        elsif ((r.acc_resume or r.acc_start) = '0' and acc_sts_in.comp = '1' and acc_des.ctrl.desc_type = X"4") then
+        elsif ((r.acc_resume or r.acc_start) = '0' and acc_sts_in.comp = '1' and d_des.ctrl.desc_type = X"4") then
           if (r.b2m_paused = '1') then
             v.b2m_resume := '1';
             v.b2m_paused := '0';
@@ -1044,14 +1044,14 @@ begin  -- rtl
 
         -- IF DESCRIPTOR TYPE 5, DATA USED TO UPDATE ACCELERATOR AND SHOULD GO BACK TO M2B OR FINISH DESCRIPTOR
         ----------------------------------------------------------------------------------------------------------
-        elsif ((r.acc_resume or r.acc_start) = '0' and acc_sts_in.paused = '1' and acc_des.ctrl.desc_type = X"5") then
+        elsif ((r.acc_resume or r.acc_start) = '0' and acc_sts_in.paused = '1' and d_des.ctrl.desc_type = X"5") then
           --Resume M2b and fetch remaining data
           v.acc_paused := '1';
           v.m2b_resume := '1';
           v.bm_num     := d_des.ctrl.src_bm_num;
           v.state      := m2b;
           v.m2b_paused := '0';
-        elsif ((r.acc_resume or r.acc_start) = '0' and acc_sts_in.comp = '1' and acc_des.ctrl.desc_type = X"5") then
+        elsif ((r.acc_resume or r.acc_start) = '0' and acc_sts_in.comp = '1' and d_des.ctrl.desc_type = X"5") then
           -- ACC completed. current data descriptor completed
           v.sts.desc_comp := '1';
           v.dcomp_flg     := '1';

@@ -4,7 +4,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -38,7 +38,6 @@ use gaisler.leon5.all;
 use gaisler.uart.all;
 use gaisler.misc.all;
 use gaisler.i2c.all;
-use gaisler.spi.all;
 use gaisler.net.all;
 use gaisler.jtag.all;
 use gaisler.l2cache.all;
@@ -391,11 +390,6 @@ architecture rtl of leon5mp is
   signal tdi            : std_ulogic;
   signal tdo            : std_ulogic;
 
-  -- SPI
-  signal spii           : spi_in_type;
-  signal spio           : spi_out_type;
-  signal slvsel         : std_logic_vector(CFG_SPICTRL_SLVS - 1 downto 0);
-
   function max(x,y: integer) return integer is
   begin
     if x>y then return x; else return y; end if;
@@ -410,8 +404,7 @@ architecture rtl of leon5mp is
   constant hdidx_ahbuart : integer := 0;
   constant hdidx_ahbjtag : integer := hdidx_ahbuart + CFG_AHB_UART;
   constant hdidx_greth   : integer := hdidx_ahbjtag + CFG_AHB_JTAG;
-  constant hdidx_usbdcl  : integer := hdidx_greth   + CFG_GRETH*CFG_DSU_ETH;
-  constant hdidx_free    : integer := hdidx_usbdcl  + CFG_GRUSB_DCL;
+  constant hdidx_free    : integer := hdidx_greth   + CFG_GRETH*CFG_DSU_ETH;
   constant l5sys_ndbgmst : integer := max(hdidx_free, 1);
 
 
@@ -433,9 +426,8 @@ architecture rtl of leon5mp is
   constant pidx_sgmii    : integer := pidx_greth   + CFG_GRETH;
   constant pidx_i2cmst   : integer := pidx_sgmii   + CFG_GRETH;
   constant pidx_gpio     : integer := pidx_i2cmst  + CFG_I2C_ENABLE;
-  constant pidx_ahbstat  : integer := pidx_gpio    + CFG_GRGPIO_ENABLE;
-  constant pidx_prc      : integer := pidx_ahbstat + CFG_AHBSTAT;
-  constant pidx_free     : integer := pidx_prc     + CFG_PRC;
+  constant pidx_ahbstat  : integer := pidx_gpio    + CFG_GRGPIO_ENABLE;  
+  constant pidx_free     : integer := pidx_ahbstat + CFG_AHBSTAT;
   constant l5sys_nextapb : integer := pidx_free;
 
     -- AHB and  APB
@@ -486,7 +478,7 @@ begin
       voltage   => x12v)
       port map (clk300p, clk300n, lclk);
     clkgen0 : clkgen        -- clock generator
-      generic map (clktech, CFG_CLKMUL, CFG_CLKDIV, CFG_MCTRL_SDEN,
+      generic map (clktech, CFG_CLKMUL, CFG_CLKDIV, 0,
                    CFG_CLK_NOFB, 0, 0, 0, BOARD_FREQ)
       port map (lclk, lclk, clkm, open, open, open, open, cgi, cgo, open, open, open);
   end generate;

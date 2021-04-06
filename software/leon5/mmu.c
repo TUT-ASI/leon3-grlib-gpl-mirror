@@ -82,8 +82,18 @@ unsigned int pte_sh = 12, pte_m = 0x3f;
 
 void mmu_func1();
 
+static void *getptr(unsigned long addr)
+{
+        /* Hack to get a pointer that can be used even if addr=0 without
+         * NULL dereference issues */
+        void *p;
+        asm volatile ( "mov %1, %0" : "=r"(p) : "r"(addr));
+        return p;
+}
+
 int mmu_test(void)
 {
+  unsigned long *ramstartp = getptr(RAMSTART);
   ctxd_t *c0 = (ctxd_t *)&mmu_ctx_start;
   pgd_t *g0 = (pgd_t *)&mmu_pg0_start;
   pmd_t *m0 = (pmd_t *)&mmu_pm0_start;
@@ -226,7 +236,7 @@ int mmu_test(void)
  /* do tests*/
  if ( (*((volatile unsigned long *)a_30041000)) != 0 ||
       (*((volatile unsigned long *)a_30041004)) != 0x12345678 ) { fail(1); }
- if ( (*((volatile unsigned long *)a_30080000)) != (*((unsigned long *)RAMSTART))) { fail(2); }
+ if ( (*((volatile unsigned long *)a_30080000)) != (*ramstartp)) { fail(2); }
  
  /* page faults tests*/
  val = * ((volatile unsigned long *) a_31000000 );
@@ -289,23 +299,28 @@ int mmu_test(void)
    //check ctx field
    unsigned long a;
    srmmu_set_context(0);
-   a = *(unsigned long *)RAMSTART;
+   a = *ramstartp;
    srmmu_set_context(1);
-   a = *(unsigned long *)RAMSTART;
+   a = *ramstartp;
    srmmu_set_context(0);
-   a = *(unsigned long *)RAMSTART;
+   a = *ramstartp;
  }
  {
    //bypass asi:
    unsigned int i,j;
+   /* snooping must be disabled during this test to avoid self-snooping
+    * invalidating the Dcache entry betweeen storing with bypass and
+    * reading back the stale data */
+   wsysreg(0, rsysreg(0) & (~(1<<23)));   /* disable snooping */
    i = leon_load_bp(RAMSTART);
    leon_store_bp(RAMSTART,i);
-   j = *((unsigned long *)RAMSTART);
+   j = *ramstartp;
    if (j != i) fail(16);
    leon_store_bp(RAMSTART,i+1);
-   j = *((unsigned long *)RAMSTART); /* data in Dcache should be unchanged */
+   j = *ramstartp; /* data in Dcache should be unchanged */
    if (j != i) fail(17);
    leon_store_bp(RAMSTART,i);
+   wsysreg(0, rsysreg(0) | ((1<<23)));    /* re-enable snooping  */
  }
  //mmu off
  srmmu_set_mmureg_aligned(0x00000000);

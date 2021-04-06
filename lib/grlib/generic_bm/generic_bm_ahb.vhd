@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -47,7 +47,6 @@ entity generic_bm_ahb is
     --in terms of bytes
     burst_chop_mask  : integer range 8 to 1024  := 1024;
     excl_enabled     : boolean                  := true;
-    lendian_en       : integer                  := 0;
     bm_info_print    : integer                  := 0;
     hindex           : integer                  := 0;
     venid            : integer                  := 0;
@@ -80,6 +79,8 @@ entity generic_bm_ahb is
     bmwr_full        : out std_logic;
     bmwr_done        : out std_logic;
     bmwr_error       : out std_logic;
+    --Endianess Output
+    endian_out       : out std_logic;   --0->BE, 1->LE
     --Exclusive access
     excl_en          : in  std_logic;
     excl_nowrite     : in  std_logic;
@@ -187,11 +188,11 @@ begin  -- rtl
       be_dw        => be_dw_int,
       max_size     => max_size,
       excl_enabled => excl_enabled,
-      lendian_en   => lendian_en,
       addr_width   => addr_width)
     port map(
       clk       => clk,
       rstn      => rstn,
+      endian    => ahbmi.endian,
       bmfre_in  => bmfre_in,
       bmfre_out => bmfre_out,
       bmrd_size => bmrd_size,
@@ -208,11 +209,11 @@ begin  -- rtl
   fifo_wc : fifo_control_wc
     generic map (
       async_reset  => async_reset,
-      lendian_en => lendian_en,
       be_dw => be_dw_int)
     port map (
       clk         => clk,
       rstn        => rstn,
+      endian      => ahbmi.endian,
       fifo_wc_in  => fifo_wc_in,
       fifo_wc_out => fifo_wc_out,
       fe_wdata    => fe_wdata,
@@ -223,11 +224,11 @@ begin  -- rtl
       async_reset      => async_reset,
       be_dw            => be_dw_int,
       be_rd_pipe       => be_rd_pipe,
-      lendian_en       => lendian_en,
       unalign_load_opt => unalign_load_opt)
     port map(
       clk         => clk,
       rstn        => rstn,
+      endian      => ahbmi.endian,
       fifo_rc_in  => fifo_rc_in,
       fifo_rc_out => fifo_rc_out,
       be_wdata    => rd_data,
@@ -287,11 +288,11 @@ begin  -- rtl
       max_burst_length_ptwo => max_burst_length_ptwo,
       be_dw                 => be_dw,
       be_dw_int             => be_dw_int,
-      lendian_en            => lendian_en,
       addr_width            => addr_width)
     port map(
       clk        => clk,
       rstn       => rstn,
+      endian     => ahbmi.endian,
       ahb_be_in  => ahb_be_in,
       ahb_be_out => ahb_be_out,
       rd_addr    => bm_me_rc_out_burst_addr,
@@ -366,6 +367,8 @@ begin  -- rtl
   bmwr_full        <= bmfre_out.bmwr_full;
   bmwr_req_granted <= bmfre_out.bmwr_req_granted;
   bmwr_error       <= bm_me_wc_out.error;
+
+  endian_out       <= ahbmi.endian;
 
   excl_done <= bmfre_out.excl_done;
   --excl err is currently unused and exclusive error is

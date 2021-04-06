@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -57,10 +57,10 @@ entity grdmac2 is
     en_bm1   : integer                      := 0;        -- Enable Bus master interface index1       
     -- Internal FIFO configuration
     ft       : integer range 0 to 5         := 0;        -- Enable EDAC on RAMs (GRLIB-FT only, passed on to syncram_2pft)
-    abits    : integer range 0 to 10        := 2;        -- FIFO address bits (actual fifo depth = 2**abits)
+    abits    : integer range 0 to 10        := 4;        -- FIFO address bits (actual fifo depth = 2**abits)
     -- M2B/B2M configuration
     en_timer : integer                      := 0;        -- Enable timeout mechanism
-    en_acc   : integer range 0 to 4         := 0
+    en_acc   : integer range 0 to 4         := 0        
     );
   port (
     rstn    : in  std_ulogic;                    -- Reset
@@ -73,6 +73,8 @@ entity grdmac2 is
     bm1_in  : out bm_in_type;                    -- Input to Bus master 1
     bm0_out : in  bm_out_type;                   -- Output from Bus master 0
     bm1_out : in  bm_out_type;                   -- Output from Bus master 1
+    bm0_endian  : in std_logic;                      -- Endianness input from BM0 '0'-> BE,'1'-> LE 
+    bm1_endian  : in std_logic;                      -- Endianness input from BM1 '0'-> BE,'1'-> LE 
     -- System interrupt
     trigger : in  std_logic_vector(63 downto 0)  -- Input trigger
 
@@ -140,6 +142,7 @@ architecture rtl of grdmac2 is
   -- Signal declaration
   -----------------------------------------------------------------------------  
   signal bm_num        : std_ulogic;
+  signal endian        : std_logic;
     -- APB interface signals
   signal ctrl_reg      : grdmac2_ctrl_reg_type;
   signal trst_reg      : grdmac2_trst_reg_type;
@@ -205,6 +208,7 @@ begin  -- rtl
    bm1_in                                    <= ctrl_bmi                                 when (en_bm1 /= 0 and bm_num = '1')                 else BM_IN_RST;
    bm0_in                                    <= ctrl_bmi                                 when (en_bm1 = 0 or (en_bm1 /= 0 and bm_num = '0')) else BM_IN_RST;
    ctrl_bmo                                  <= bm1_out                                  when (en_bm1 /= 0 and bm_num = '1')                 else bm0_out;
+   endian                                    <= bm1_endian                               when (en_bm1 /= 0 and bm_num = '1')                 else bm0_endian;
 
    -- BUF_IN control logic differ according to which block is operating
    ---------------------------------------------------------------------------
@@ -299,7 +303,8 @@ begin  -- rtl
       m2b_bmi    => m2b_bmo,
       m2b_bmo    => m2b_bmi,
       buf_in     => m2b_buf_out,
-      buf_out    => m2b_buf_in
+      buf_out    => m2b_buf_in,
+      endian     => endian
       );  
 
   -- B2M
@@ -411,12 +416,14 @@ begin  -- rtl
     port map (
       rstn       => rstn,
       clk        => clk,
+      ctrl_rst   => ctrl_rst,
       d_des_in   => data_desc,
       acc_des_in => acc_desc,
       acc_start  => acc_start,
       acc_resume => acc_resume,
       acc_status => acc_status,
       m2b_status => m2b_status,
+      endian     => endian,
       buf_in     => acc_buf_out,
       buf_out    => acc_buf_in
       );  

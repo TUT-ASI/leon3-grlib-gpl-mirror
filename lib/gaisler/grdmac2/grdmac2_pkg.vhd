@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -40,6 +40,7 @@ package grdmac2_pkg is
 -- Types and records
 -------------------------------------------------------------------------------
 
+  -- AES-ACC input/output 
   type aes_in_type is record
     init      : std_logic;
     bn        : integer;
@@ -54,6 +55,14 @@ package grdmac2_pkg is
     done       : std_logic;
     brdy       : std_logic;
   end record;
+
+
+  --Reset values for AES-ACC registers
+  constant AES_OUT_RST : aes_out_type := (
+    ciphertext => (others => '0'),
+    done       => '0',
+    brdy       => '0'
+    );
 
   -- BM specific types
   type bm_out_type is record  --Input to grdmac2_ctrl from bus master interface output
@@ -663,6 +672,32 @@ package grdmac2_pkg is
                            buff_size       : integer
                            )
   return std_logic_vector;
+  
+  -- Word swap
+  function bl_wrd_swap(
+    constant data : std_logic_vector; 
+    constant endian : std_ulogic; 
+    constant dw : integer) 
+  return std_logic_vector;
+
+  -- Endianness signal generation
+  function endian_decode(
+    constant endian : integer
+    ) return std_ulogic;
+
+  -- Endianness check on both bus master interfaces
+  function endian_check(
+    signal bm0_endian : std_logic;
+    signal bm1_endian : std_logic;
+    constant en_bm1     : integer
+    ) return boolean;
+  
+  function acc_generic_check(
+    constant dbits      : integer;
+    constant abits      : integer;
+    constant en_acc     : integer
+    ) return boolean;
+
 
   -------------------------------------------------------------------------------
   -- Components
@@ -788,7 +823,8 @@ package grdmac2_pkg is
       m2b_bmi    : in  bm_out_type;
       m2b_bmo    : out bm_ctrl_reg_type;
       buf_in     : in  fifo_out_type;
-      buf_out    : out fifo_in_type
+      buf_out    : out fifo_in_type;
+      endian     : in std_logic 
           );
   end component;
 
@@ -816,6 +852,8 @@ package grdmac2_pkg is
       bm1_in  : out bm_in_type;
       bm0_out : in  bm_out_type;
       bm1_out : in  bm_out_type;
+      bm0_endian  : in std_logic;
+      bm1_endian  : in std_logic;
       trigger : in  std_logic_vector(63 downto 0));
   end component;
 
@@ -863,12 +901,14 @@ package grdmac2_pkg is
     port (
       rstn        : in  std_ulogic;
       clk         : in  std_ulogic;
+      ctrl_rst    : in  std_ulogic;
       d_des_in    : in  data_dsc_strct_type;
       acc_des_in  : in  acc_dsc_strct_type;
       acc_start   : in  std_ulogic;
       acc_resume  : in  std_ulogic;
       acc_status  : out d_ex_sts_out_type;
       m2b_status  : in d_ex_sts_out_type;
+      endian      : in std_logic;
       buf_in      : in  fifo_out_type;
       buf_out     : out fifo_in_type
           );
@@ -911,6 +951,79 @@ package body grdmac2_pkg is
     end if;
     return burst_size;
   end find_burst_size;
+
+  -- Word swap
+  function bl_wrd_swap(
+    constant data : std_logic_vector; 
+    constant endian : std_ulogic; 
+    constant dw : integer
+    ) return std_logic_vector is
+    variable newdata : std_logic_vector(dw-1 downto 0);
+    variable words_n : integer := 0;
+    variable outdata : std_logic_vector(dw-1 downto 0);
+  begin
+    words_n := dw/32;
+
+    if endian = '0' then
+      outdata := data;
+    else
+      for i in 0 to (words_n -1) loop
+        outdata((i*32)+31 downto i*32):= data( ((words_n - i)*32)-1 downto (words_n - (i + 1))*32 );
+      end loop;
+    end if;
+    return outdata;
+  end bl_wrd_swap; 
+
+  -- Endianness signal generation
+  function endian_decode(
+    constant endian : integer
+    ) return std_ulogic is
+    variable endian_l : std_ulogic := '0';
+  begin
+    if endian = 1 then
+      endian_l := '1';
+    else
+      endian_l := '0';
+    end if;
+    return endian_l;
+  end endian_decode; 
+
+  -- Endianness check on both bus master interfaces
+  function endian_check(
+    signal bm0_endian : std_logic;
+    signal bm1_endian : std_logic;
+    constant en_bm1     : integer
+    ) return boolean is
+  begin
+    if en_bm1 = 0 then
+      return true;
+    elsif bm0_endian = bm0_endian then
+      return true;
+    else      
+      return false;
+    end if;
+  end endian_check;
+
+  -- Generics check when acc enabled
+  function acc_generic_check(
+    constant dbits    : integer;
+    constant abits    : integer;
+    constant en_acc   : integer
+    ) return boolean is
+  begin
+    if (en_acc = 0) then
+      return true;
+    elsif (dbits = 32 and abits >= 2) then
+      return true;
+    elsif (dbits = 64 and abits >= 1) then
+      return true;
+    elsif (dbits = 128) then
+      return true;
+    else
+      return false;
+    end if;
+  end acc_generic_check;
+
     
 
 end package body grdmac2_pkg;

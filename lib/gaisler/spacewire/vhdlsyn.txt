@@ -7,6 +7,7 @@ grspw2_dma.vhd
 grspw2_fifo.vhd
 grspw_codec_clockgate.vhd
 grspw_codec.vhd
+rt_3pbyp.vhd
 grspwrouter.vhd
 grspwrouterm.vhd
 grspw_phy.vhd

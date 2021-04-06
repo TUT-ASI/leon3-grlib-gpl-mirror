@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -124,7 +124,14 @@ architecture rtl of grdmac2_ahb is
   signal bm0_out    : bm_out_type;
   signal bm1_in     : bm_in_type;
   signal bm1_out    : bm_out_type;
-
+  signal bm0_endian : std_logic;
+  signal bm1_endian : std_logic;
+  signal bm0_rd_data : std_logic_vector(dbits-1 downto 0);
+  signal bm1_rd_data : std_logic_vector(dbits-1 downto 0);
+  signal bm0_wr_data : std_logic_vector(dbits-1 downto 0);
+  signal bm1_wr_data : std_logic_vector(dbits-1 downto 0);
+  signal bm0_wr_data_temp : std_logic_vector(dbits-1 downto 0);
+  signal bm1_wr_data_temp : std_logic_vector(dbits-1 downto 0);
   -----------------------------------------------------------------------------
   -- Function/procedure declaration
   -----------------------------------------------------------------------------
@@ -138,12 +145,14 @@ begin  -- rtl
     ahb_bmsti1.hgrant <= '0';
     ahb_bmsti1.hready <= '0';
     ahb_bmsti1.hresp  <= (others => '0');
+    ahb_bmsti1.endian <= '0';
     ahbmo1            <= ahbm_none;
     bm1_out           <= BM_OUT_RST;
   end generate;
   ahb_bmsti0.hgrant <= ahbmi0.hgrant(hindex0);
   ahb_bmsti0.hready <= ahbmi0.hready;
   ahb_bmsti0.hresp  <= ahbmi0.hresp;
+  ahb_bmsti0.endian <= ahbmi0.endian;
 
   ahbmo0.hbusreq    <= ahb_bmsto0.hbusreq;
   ahbmo0.hlock      <= ahb_bmsto0.hlock;
@@ -157,22 +166,33 @@ begin  -- rtl
   ahbmo0.hconfig    <= hconfig;
   ahbmo0.hindex     <= hindex0;
   bm1_en : if en_bm1 = 1 generate
-  ahb_bmsti1.hgrant <= ahbmi1.hgrant(hindex1);
-  ahb_bmsti1.hready <= ahbmi1.hready;
-  ahb_bmsti1.hresp  <= ahbmi1.hresp;
+    ahb_bmsti1.hgrant <= ahbmi1.hgrant(hindex1);
+    ahb_bmsti1.hready <= ahbmi1.hready;
+    ahb_bmsti1.hresp  <= ahbmi1.hresp;
+    ahb_bmsti1.endian <= ahbmi1.endian;
+  
+    ahbmo1.hbusreq <= ahb_bmsto1.hbusreq;
+    ahbmo1.hlock   <= ahb_bmsto1.hlock;
+    ahbmo1.htrans  <= ahb_bmsto1.htrans;
+    ahbmo1.haddr   <= ahb_bmsto1.haddr;
+    ahbmo1.hwrite  <= ahb_bmsto1.hwrite;
+    ahbmo1.hsize   <= ahb_bmsto1.hsize;
+    ahbmo1.hburst  <= ahb_bmsto1.hburst;
+    ahbmo1.hprot   <= ahb_bmsto1.hprot;
+    ahbmo1.hirq    <= (others => '0');
+    ahbmo1.hconfig <= hconfig;
+    ahbmo1.hindex  <= hindex1;
 
-  ahbmo1.hbusreq <= ahb_bmsto1.hbusreq;
-  ahbmo1.hlock   <= ahb_bmsto1.hlock;
-  ahbmo1.htrans  <= ahb_bmsto1.htrans;
-  ahbmo1.haddr   <= ahb_bmsto1.haddr;
-  ahbmo1.hwrite  <= ahb_bmsto1.hwrite;
-  ahbmo1.hsize   <= ahb_bmsto1.hsize;
-  ahbmo1.hburst  <= ahb_bmsto1.hburst;
-  ahbmo1.hprot   <= ahb_bmsto1.hprot;
-  ahbmo1.hirq    <= (others => '0');
-  ahbmo1.hconfig <= hconfig;
-  ahbmo1.hindex  <= hindex1;
+    -- LE data manipulation
+    bm1_out.rd_data(127 downto 128-dbits) <= bl_wrd_swap(bm1_rd_data,bm1_endian,dbits);
+    bm1_wr_data_temp <= bm1_in.wr_data(127 downto 128-dbits);
+    bm1_wr_data <= bl_wrd_swap(bm1_wr_data_temp,ahbmi1.endian,dbits);
   end generate;
+
+  -- LE data manipulation
+  bm0_out.rd_data(127 downto 128-dbits) <= bl_wrd_swap(bm0_rd_data,bm0_endian,dbits);
+  bm0_wr_data_temp <= bm0_in.wr_data(127 downto 128-dbits);
+  bm0_wr_data <= bl_wrd_swap(bm0_wr_data_temp,ahbmi0.endian,dbits);
 
   -----------------------------------------------------------------------------
   -- Component instantiation
@@ -202,6 +222,8 @@ begin  -- rtl
       bm1_in  => bm1_in,
       bm0_out => bm0_out,
       bm1_out => bm1_out,
+      bm0_endian  => bm0_endian,
+      bm1_endian  => bm1_endian,
       trigger => trigger
       );
 
@@ -230,7 +252,7 @@ begin  -- rtl
       bmrd_size        => bm0_in.rd_size,
       bmrd_req         => bm0_in.rd_req,
       bmrd_req_granted => bm0_out.rd_req_grant,
-      bmrd_data        => bm0_out.rd_data(127 downto 128-dbits),
+      bmrd_data        => bm0_rd_data,
       bmrd_valid       => bm0_out.rd_valid,
       bmrd_done        => bm0_out.rd_done,
       bmrd_error       => bm0_out.rd_err,
@@ -238,10 +260,11 @@ begin  -- rtl
       bmwr_size        => bm0_in.wr_size,
       bmwr_req         => bm0_in.wr_req,
       bmwr_req_granted => bm0_out.wr_req_grant,
-      bmwr_data        => bm0_in.wr_data(127 downto 128-dbits),
+      bmwr_data        => bm0_wr_data,
       bmwr_full        => bm0_out.wr_full,
       bmwr_done        => bm0_out.wr_done,
       bmwr_error       => bm0_out.wr_err,
+      endian_out       => bm0_endian,   --0->BE, 1->LE
       excl_en          => '0',
       excl_nowrite     => '0',
       excl_done        => open,
@@ -273,7 +296,7 @@ begin  -- rtl
         bmrd_size        => bm1_in.rd_size,
         bmrd_req         => bm1_in.rd_req,
         bmrd_req_granted => bm1_out.rd_req_grant,
-        bmrd_data        => bm1_out.rd_data(127 downto 128-dbits),
+        bmrd_data        => bm1_rd_data,
         bmrd_valid       => bm1_out.rd_valid,
         bmrd_done        => bm1_out.rd_done,
         bmrd_error       => bm1_out.rd_err,
@@ -281,10 +304,11 @@ begin  -- rtl
         bmwr_size        => bm1_in.wr_size,
         bmwr_req         => bm1_in.wr_req,
         bmwr_req_granted => bm1_out.wr_req_grant,
-        bmwr_data        => bm1_in.wr_data(127 downto 128-dbits),
+        bmwr_data        => bm1_wr_data,
         bmwr_full        => bm1_out.wr_full,
         bmwr_done        => bm1_out.wr_done,
         bmwr_error       => bm1_out.wr_err,
+        endian_out       => bm1_endian,   --0->BE, 1->LE
         excl_en          => '0',
         excl_nowrite     => '0',
         excl_done        => open,
@@ -294,8 +318,8 @@ begin  -- rtl
   
   
 -- pragma translate_off
-   assert ahbmi0.endian /= '1' and ahbmi1.endian /= '1'
-      report "grdmac2: little endian systems not supported"
+   assert endian_check(bm0_endian,bm1_endian,en_bm1)
+      report "grdmac2: Both busmaster interfaces must have same endianness!"
       severity error;
 -- pragma translate_on
   

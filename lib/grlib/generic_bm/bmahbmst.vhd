@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -42,11 +42,11 @@ entity bmahbmst is
     incaddr     : integer := 0;
     be_dw       : integer := 32;
     be_dw_int   : integer := 32;
-    lendian_en  : integer := 0;
     addr_width  : integer := 32); 
   port (
     rst      : in  std_ulogic;
     clk      : in  std_ulogic;
+    endian   : in  std_ulogic;
     dmai     : in  bmahb_dma_in_type;
     dmao     : out bmahb_dma_out_type;
     dma_addr : in  std_logic_vector(addr_width-1 downto 0);
@@ -193,12 +193,12 @@ begin
     hrdata_v(be_dw_int-1 downto 0) := hrdata(be_dw_int-1 downto 0);
     if be_dw > be_dw_int then
       for i in 0 to (be_dw/be_dw_int)-1 loop
-        if lendian_en = 0 then
+        if endian = '0' then
           if i = unsigned(r.haddr(log_2((be_dw/16)) downto log_2(be_dw_int/8))) then
             hrdata_v := hrdata(((i+1)*be_dw_int)-1 downto i*be_dw_int);
           end if;
         end if;
-       if lendian_en = 1 then
+       if endian = '1' then
          if (be_dw/be_dw_int)-1-i = unsigned(r.haddr(log_2((be_dw/16)) downto log_2(be_dw_int/8))) then
             hrdata_v := hrdata(((i+1)*be_dw_int)-1 downto i*be_dw_int);
           end if;

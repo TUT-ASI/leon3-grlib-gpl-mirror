@@ -2,7 +2,6 @@
 	.align 64
 	.global _line0, _line1, _line2, _line3
 	.global line0, line1, line2, line3
-
 _line0:
 line0:
 	nop; nop; nop; nop; nop; nop; retl; nop;
@@ -335,3 +334,47 @@ getdw:
     retl
     ldd [%o0], %o0
 
+        .global tcmtest_iexc_handler, tcmtest_dexc_handler
+tcmtest_iexc_handler:
+        set tcmtest_iexc_ctr, %l3
+        ld [%l3], %l4
+        add %l4, 1, %l4
+        st %l4, [%l3]    ! increment counter variable
+        st %l1, [%l3+4]  ! set failing address variable
+        ! set user-allowed permissions on iTCM and re-run failing instruction
+        set 0x48, %l3
+        lda [%l3] 0x2, %l4
+        or %l4, 0x18, %l4
+        sta %l4, [%l3] 0x2
+        jmp  %l1
+        rett %l2
+
+tcmtest_dexc_handler:
+        set tcmtest_dexc_ctr, %l3
+        ld [%l3], %l4
+        add %l4, 1, %l4
+        st %l4, [%l3]    ! increment counter variable
+        st %l1, [%l3+4]  ! set failing address variable
+        ! set user-allowed permissions on dTCM and re-run failing instruction
+        set 0x4c, %l3
+        lda [%l3] 0x2, %l4
+        or %l4, 0x78, %l4
+        sta %l4, [%l3] 0x2
+        jmp  %l1
+        rett %l2
+
+        .global tcmtest_dummy_func
+tcmtest_dummy_func:
+        retl
+        add %o0, 3, %o0
+
+        .data
+        .global tcmtest_iexc_ctr, tcmtest_iexc_addr, tcmtest_dexc_ctr, tcmtest_dexc_addr
+tcmtest_iexc_ctr:
+        .word 0
+tcmtest_iexc_addr:
+        .word 0
+tcmtest_dexc_ctr:
+        .word 0
+tcmtest_dexc_addr:
+        .word 0

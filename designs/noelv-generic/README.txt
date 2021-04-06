@@ -1,0 +1,96 @@
+Generic RISC-V NOEL-V Template Design
+----------------------
+
+* Simulate
+
+make sim (compile)
+make sim-run (run simulation in batch-mode)
+make sim-launch (launch simulator and run simulation)
+
+* Synthesize
+
+This design is intended for simulation and are not targeting a development board. 
+For synthesize option see GRLIB documentation.
+
+* Test application
+
+The simulation boots the code located in prom.srec which then jumps to ram.srec.
+
+Run "make prom.srec" to recompile prom.srec. The source is prom.S located in the 
+current directory or GRLIB/software/noelv/systest.
+
+Run "make ram.srec" to recompile ram.srec. The source is systest.c located in the 
+current directory or GRLIB/software/noelv/systest.
+
+* Debug-Module control
+
+The testbench has a basic Debug-Module control sequence implemented. This is 
+enabled by setting the dm_ctrl generic to 1. When enabled, the CPU will be halted
+after reset. Then the PC is updated and the CPU resume execution.
+
+* Example simulation output
+
+# GRLIB Version 2020.4.0, build 4262
+# Target technology: inferred  , memory library: inferred  
+# ahbctrl: AHB arbiter/multiplexer rev 1
+# ahbctrl: Common I/O area at 0xfff00000, 1 Mbyte
+# ahbctrl: AHB masters: 6, AHB slaves: 12
+# ahbctrl: Configuration area at 0xfffff000, 4 kbyte
+# ahbctrl: mst0: Cobham Gaisler          NOEL-V RISC-V Processor         
+# ahbctrl: mst1: Cobham Gaisler          GR Ethernet MAC                 
+# ahbctrl: mst2: Cobham Gaisler          AHB Debug UART                  
+# ahbctrl: mst3: Cobham Gaisler          JTAG Debug Link                 
+# ahbctrl: mst4: Cobham Gaisler          EDCL master interface           
+# ahbctrl: mst5: Cobham Gaisler          Unknown Device                  
+# ahbctrl: slv0: Cobham Gaisler          Single-port AHB SRAM module     
+# ahbctrl:       memory at 0x00000000, size 1024 Mbyte, cacheable, prefetch
+# ahbctrl: slv1: Cobham Gaisler          Single-port AHB SRAM module     
+# ahbctrl:       memory at 0xc0000000, size 512 Mbyte, cacheable, prefetch
+# ahbctrl: slv2: Cobham Gaisler          Test report module              
+# ahbctrl:       memory at 0x80000000, size 1 Mbyte
+# ahbctrl: slv4: Cobham Gaisler          AHB/APB Bridge                  
+# ahbctrl:       memory at 0xfc000000, size 1 Mbyte
+# ahbctrl: slv5: Cobham Gaisler          RISC-V CLINT                    
+# ahbctrl:       memory at 0xe0000000, size 1 Mbyte
+# ahbctrl: slv6: Cobham Gaisler          RISC-V PLIC                     
+# ahbctrl:       memory at 0xf8000000, size 64 Mbyte
+# ahbctrl: slv8: Cobham Gaisler          RISC-V Debug Module             
+# ahbctrl:       memory at 0xfe000000, size 16 Mbyte
+# ahbctrl: slv11: Cobham Gaisler          AMBA Trace Buffer               
+# ahbctrl:       I/O port at 0xfff00000, size 128kbyte
+# apbctrl: APB Bridge at 0xfc000000 rev 1
+# apbctrl: slv1: Cobham Gaisler          Version and Revision Register   
+# apbctrl:       I/O ports at 0xfc081000, size 256 byte 
+# apbctrl: slv2: Cobham Gaisler          AHB Status Register             
+# apbctrl:       I/O ports at 0xfc082000, size 256 byte 
+# apbctrl: slv3: Cobham Gaisler          General Purpose I/O port        
+# apbctrl:       I/O ports at 0xfc083000, size 256 byte 
+# apbctrl: slv4: Cobham Gaisler          GR Ethernet MAC                 
+# apbctrl:       I/O ports at 0xfc084000, size 256 byte 
+# apbctrl: slv6: Cobham Gaisler          AHB Debug UART                  
+# apbctrl:       I/O ports at 0xfc086000, size 256 byte 
+# apbctrl: slv7: Cobham Gaisler          Modular Timer Unit              
+# apbctrl:       I/O ports at 0xfc000000, size 256 byte 
+# apbctrl: slv8: Cobham Gaisler          Generic UART                    
+# apbctrl:       I/O ports at 0xfc001000, size 256 byte 
+# ahbram1: AHB SRAM Module rev 1, 1024 kbytes
+# ahbram0: AHB SRAM Module rev 1, 1024 kbytes
+# testmod2: Test report module
+# greth1: 10/100 Mbit Ethernet MAC rev 01, EDCL 1, buffer 2 kbyte 128 txfifo, irq 5
+# grversion1: General Version Number rev 0
+# grgpio3: 20-bit GPIO Unit rev 3
+# ahbstat2: AHB status unit rev 0, irq 4
+# ahbjtag AHB Debug JTAG rev 2
+# ahbuart6: AHB Debug UART rev 0
+# gptimer7: Timer Unit rev 1, 16-bit scaler, 2 32-bit timers, irq 2
+# apbuart8: Generic UART rev 1, fifo 8, irq 1, scaler bits 12
+# ahbtrace11: AHB Trace Buffer, 2 kbytes
+# 
+# **** GRLIB system test starting ****
+# Test passed, halting with IU error mode
+# 
+# ** Failure: Assertion violation.
+#    Time: 59621 ns  Iteration: 1  Process: /testbench/cpu/core0/test0/log File: ./../../lib/gaisler/sim/ahbrep.vhd
+# Break in Process log at ./../../lib/gaisler/sim/ahbrep.vhd line 115
+# Stopped at ./../../lib/gaisler/sim/ahbrep.vhd line 115
+

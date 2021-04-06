@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -50,7 +50,7 @@ architecture rtl of clkmux is
 
   -- set to 1 to add 5 ps delay between oi and o in RTL sim (for clock delta balancing)
   -- set to 2 to add no delay between oi and o
-  constant use_standard_delay: tech_ability_type := (inferred => 1, others => 1);
+  constant use_standard_delay: tech_ability_type := (inferred => 1, dare65t => 2, others => 1);
 
 begin
 
@@ -89,6 +89,9 @@ begin
     dar : if tech = dare generate
       x0 : clkmux_dare port map (i0 => i0, i1 => i1, sel => seli, o => oi);
     end generate;
+    dar65 : if tech = dare65t generate
+      x0 : clkmux_dare65t port map (i0 => i0, i1 => i1, sel => seli, o => oi);
+    end generate;
     rhu : if tech = rhumc generate
       x0 : clkmux_rhumc port map (i0 => i0, i1 => i1, sel => seli, o => oi);
     end generate;
@@ -97,7 +100,7 @@ begin
     end generate;
    
     noxil : if not((is_unisim(tech) = 1) or (tech = rhlib18t) or (tech = ut130) or
-                   (tech = easic45) or (tech = ut90) or (tech = saed32) or (tech = rhs65) or (tech = dare) or (tech = rhumc) or (tech = gf22)) generate
+                   (tech = easic45) or (tech = ut90) or (tech = saed32) or (tech = rhs65) or (tech = dare65t) or (tech = dare) or (tech = rhumc) or (tech = gf22)) generate
       oi <= i0 when seli = '0' else i1;
     end generate;
 

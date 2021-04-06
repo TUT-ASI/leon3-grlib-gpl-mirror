@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -102,12 +102,16 @@ constant rhs65       : integer := 56;
 constant rtg4        : integer := 57;
 constant stratix5    : integer := 58;
 constant memrhs65b   : integer := 59;
+constant ultrascale  : integer := 60;
 constant kintexu     : integer := 60;
+constant virtexu     : integer := 60;
 constant polarfire   : integer := 61;
 constant nx          : integer := 62;
 constant dare65t     : integer := 63;
 constant gf22        : integer := 64;
+constant ultrascalep : integer := 65;
 constant virtexup    : integer := 65;
+constant kintexup    : integer := 65;
 constant rhs28       : integer := 66;
 constant techres1    : integer := 67;
 
@@ -154,12 +158,12 @@ constant regfile_3p_write_through : tech_ability_type :=
 constant regfile_3p_infer : tech_ability_type :=
 	(inferred => 1, rhumc => 1, ihp25 => 1, rhlib18t => 0, ut90 => 1,
 	 peregrine => 1, ihp25rh => 1, umc => 1, custom1 => 0, rhs65 => 1,
-         memrhs65b => 1, gf22 => 1, others => 0);
+         memrhs65b => 1, dare65t => 1, gf22 => 1, others => 0);
 
 constant regfile_4p_infer : tech_ability_type :=
 	(inferred => 1, rhumc => 1, ihp25 => 1, rhlib18t => 0, ut90 => 1,
 	 peregrine => 1, ihp25rh => 1, umc => 1, custom1 => 0, rhs65 => 1,
-         memrhs65b => 1, rtg4 => 0, gf22 => 1, others => 0);
+         memrhs65b => 1, dare65t => 1, rtg4 => 0, gf22 => 1, others => 0);
 
 constant syncram_2p_dest_rw_collision : tech_ability_type :=
         (memartisan => 1, smic013 => 1, easic45 => 1, ut130 => 1, rhs65 => 0,
@@ -203,7 +207,7 @@ constant syncram_wrignen : tech_ability_type :=
 constant syncram_dp_wrignen : tech_ability_type :=
   (inferred => 1, rhs28 => 0, others => 1);
 
-constant syncram_has_customif : tech_ability_type := (rhs65 => 1, dare => 1, memrhs65b => 1, gf22 => 1, others => 0);
+constant syncram_has_customif : tech_ability_type := (rhs65 => 1, dare65t => 1, dare => 1, memrhs65b => 1, gf22 => 1, others => 0);
 constant syncram_customif_maxwidth: integer := 84;  -- Expand as needed
 
 -- Set to 1 to add input-to-output bypass logic during scan mode in the syncram
@@ -259,7 +263,7 @@ constant has_sram156bw : tech_ability_type := (
 	virtex2 => 0, virtex4 => 0, virtex5 => 0, spartan3 => 0,
 	spartan3e => 0, spartan6 => 0, virtex6 => 0, virtex7 => 0, kintex7 => 0,
 	altera => 0, cyclone3 => 0, stratix2 => 0, stratix3 => 0, stratix4 => 0,
-	tm65gplus => 0, custom1 => 1, ut90 => 1, rhs65 => 1, memrhs65b => 1, stratix5 => 1,
+	tm65gplus => 0, custom1 => 1, ut90 => 1, rhs65 => 1, memrhs65b => 1, dare65t => 1, stratix5 => 1,
 	kintexu => 0, gf22 => 1, others => 0);
 
 constant has_sram256bw : tech_ability_type := (
@@ -326,7 +330,7 @@ constant padoen_polarity : tech_ability_type :=
 constant has_pads : tech_ability_type :=
 	(inferred => 0, virtex => 1, virtex2 => 1, memvirage => 0,
 	 axcel => 1, proasic => 1, atc18s => 1, altera => 0,
-	 umc => 1, rhumc => 1, saed32 => 1, dare => 1, rhs65 => 1, apa3 => 1, spartan3 => 1,
+	 umc => 1, rhumc => 1, saed32 => 1, dare => 1, rhs65 => 1, dare65t => 1, apa3 => 1, spartan3 => 1,
          ihp25 => 1, rhlib18t => 1, virtex4 => 1, lattice => 0,
 	 ut25 => 1, spartan3e => 1, peregrine => 1, virtex5 => 1, axdsp => 1,
 	 easic90 => 1, atc18rha => 1, spartan6 => 1, virtex6 => 1,
@@ -337,7 +341,7 @@ constant has_pads : tech_ability_type :=
 constant has_ds_pads : tech_ability_type :=
 	(inferred => 0, virtex => 1, virtex2 => 1, memvirage => 0,
 	 axcel => 1, proasic => 0, atc18s => 0, altera => 0,
-	 umc => 0, rhumc => 0, saed32 => 0, dare => 0, rhs65 => 0, apa3 => 1, spartan3 => 1,
+	 umc => 0, rhumc => 0, saed32 => 0, dare => 0, rhs65 => 0, dare65t => 0, apa3 => 1, spartan3 => 1,
          ihp25 => 0, rhlib18t => 1, virtex4 => 1, lattice => 0,
 	 ut25 => 1, spartan3e => 1, virtex5 => 1, axdsp => 1,
 	 spartan6 => 1, virtex6 => 1, actfus => 1,
@@ -360,11 +364,11 @@ constant has_clkmux : tech_ability_type :=
 	( virtex => 1, virtex2 => 1, spartan3 => 1, spartan3e => 1,
 	  virtex4 => 1, virtex5 => 1,  rhlib18t => 1,
           spartan6 => 1, virtex6 => 1, ut130 => 1, easic45 => 1,
-          ut90 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1, saed32 => 1, dare => 1,
+          ut90 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1, saed32 => 1, dare => 1, dare65t => 1,
 	  rhumc => 1, rhs65 => 1, kintexu => 1, virtexup => 1, gf22 => 1, others => 0);
 
 constant has_clkinv : tech_ability_type :=
-	( saed32 => 1, dare => 1, rhs65 => 1, others => 0);
+	( saed32 => 1, dare => 1, rhs65 => 1, dare65t => 1, others => 0);
 
 constant has_techbuf : tech_ability_type :=
         ( virtex => 1, virtex2 => 1, virtex4 => 1, virtex5 => 1,
@@ -372,7 +376,7 @@ constant has_techbuf : tech_ability_type :=
 	  apa3 => 1, easic90 => 1, axdsp => 1, actfus => 1,
 	  apa3e => 1, apa3l => 1, ut130 => 1, easic45 => 1,
           ut90 => 1, spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
-          artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1, kintexu => 1, virtexup => 1, dare => 1, others => 0);
+          artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1, kintexu => 1, virtexup => 1, dare => 1, dare65t => 1, others => 0);
 
 constant has_techbuf_triplicated : tech_ability_type :=
         ( rtg4 => 1, others => 0);
@@ -418,7 +422,7 @@ constant has_clkgen : tech_ability_type :=
 	(inferred => 0, virtex => 1, virtex2 => 1, axcel => 1,
 	 proasic => 1, altera => 1, apa3 => 1, spartan3 => 1,
          virtex4 => 1, lattice => 0, spartan3e => 1, virtex5 => 1,
-	 stratix1 => 1, stratix2 => 1, eclipse => 0, rhumc => 1, saed32 => 1, dare => 1, rhs65 => 1,
+	 stratix1 => 1, stratix2 => 1, eclipse => 0, rhumc => 1, saed32 => 1, dare => 1, dare65t => 1, rhs65 => 1,
 	 stratix3 => 1, cyclone3 => 1, axdsp => 1,
 	 spartan6 => 1, virtex6 => 1, actfus => 1, easic90 => 1,
 	 stratix4 => 1, easic45 => 1, apa3e => 1, apa3l => 1,
@@ -537,9 +541,9 @@ constant has_transceivers : tech_ability_type := (
   dare      => "dare      ", igloo2    => "igloo2    ",
   rhs65     => "rhs65     ", rtg4      => "rtg4      ",
   stratix5  => "stratixv  ", memrhs65b => "memrhs65b ",
-  kintexu   => "kintexu   ", polarfire => "polarfire ",
+  kintexu   => "ultrascale", polarfire => "polarfire ",
   nx        => "nx        ", dare65t   => "dare65t   ",
-  gf22      => "gf22      ", virtexup  => "virtexup  ",
+  gf22      => "gf22      ", virtexup  => "uscaleplus",
   rhs28     => "rhs28     ", techres1  => "techres1  "
   );
 
@@ -1308,6 +1312,7 @@ type clkgen_in_type is record
   pllctrl : std_logic_vector(1 downto 0);  -- optional control for PLL
   clksel  : std_logic_vector(1 downto 0);  -- optional clock select
   freqctrl : std_logic_vector(2 downto 0);  -- optional control for PLL
+  lockctrl : std_logic_vector(2 downto 0);  -- optional control for PLL
   sel_TESTBUS : std_logic_vector(2 downto 0);
   VREF_SW : std_logic;
 end record;

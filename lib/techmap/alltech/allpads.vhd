@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -543,6 +543,23 @@ component dare_outpad
   generic (level : integer := 0; slew : integer := 0;
 	   voltage : integer := 0; strength : integer := 0);
   port (pad : out std_logic; i : in std_logic);
+end component;
+
+component dare65t_inpad 
+  generic (level : integer := 0; voltage : integer := 0; filter : integer := 0);
+  port (pad, ienb : in std_logic; o : out std_logic);
+end component; 
+
+component dare65t_iopad 
+  generic (level : integer := 0; slew : integer := 0;
+	   voltage : integer := 0; strength : integer := 0);
+  port (pad: inout std_logic; i, en : in std_logic; o : out std_logic);
+end component;
+
+component dare65t_outpad 
+  generic (level : integer := 0; slew : integer := 0;
+	   voltage : integer := 0; strength : integer := 0);
+  port (pad, oenb : out std_logic; i : in std_logic);
 end component;
 
 component dare_toutpad 

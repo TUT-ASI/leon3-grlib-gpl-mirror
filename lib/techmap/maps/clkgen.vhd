@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -221,6 +221,11 @@ begin
    generic map (noclkfb)
    port map (clkin, clk, clk2x, sdclk, pciclk,
 	cgi, cgo, clk4x, clk1xu, clk2xu, clk8x);
+  end generate;
+  dar65 : if (tech = dare65t)  generate
+    v : clkgen_dare65t
+    port map (clkin, clk, clk2x, sdclk, pciclk,
+   cgi, cgo, clk4x, clk1xu, clk2xu);
   end generate;
 
   nextreme90 : if tech = easic90 generate

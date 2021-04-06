@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -37,11 +37,11 @@ entity axi4_be is
     axi_bm_id_width       : integer;
     addr_width            : integer := 32;
     max_burst_length_ptwo : integer;
-    lendian_en            : integer := 0;
     be_dw                 : integer);
   port (
     clk          : in  std_logic;
     rstn         : in  std_logic;
+    endian       : in  std_logic;       --0-> BE, 1-> LE
     ahb_be_in    : in  ahb_be_in_type;
     ahb_be_out   : out ahb_be_out_type;
     rd_addr      : in  std_logic_vector(addr_width-1 downto 0);
@@ -292,7 +292,7 @@ begin
   aximi.b.valid  <= axi_b_valid;
   aximi.ar.ready <= axi_ar_ready;
   aximi.r.id     <= axi_r_id;
-  aximi.r.data   <= byte_swap(axi_r_data) when lendian_en = 0 else axi_r_data;
+  aximi.r.data   <= byte_swap(axi_r_data) when endian = '0' else axi_r_data;
   aximi.r.resp   <= axi_r_resp;
   aximi.r.last   <= axi_r_last;
   aximi.r.valid  <= axi_r_valid;
@@ -530,7 +530,7 @@ begin
     axi_aw_qos   <= r.aximo.aw.qos;
     --write data channel
     axi_w_data_endian := byte_swap(r.aximo.w.data);
-    if lendian_en /= 0 then
+    if endian /= '0' then
       axi_w_data_endian := r.aximo.w.data;
     end if;
     axi_w_data   <= axi_w_data_endian;

@@ -29,6 +29,8 @@ SECTIONS = --remove-section=.comment --remove-section=.riscv.attributes
 
 DTB = noelv.dtb
 
+OBJCOPY_CMD= $(OBJCOPY) $(PROM_OPTS) $(SECTIONS)
+
 #--------------------------------------------------------------------
 # Test Programs
 #--------------------------------------------------------------------

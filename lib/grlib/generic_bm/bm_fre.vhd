@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -37,11 +37,11 @@ entity bm_fr_end is
     be_dw        : integer;
     max_size     : integer;
     excl_enabled : boolean;
-    lendian_en   : integer := 0;
     addr_width   : integer := 32);
   port(
     clk       : in  std_logic;
     rstn      : in  std_logic;
+    endian    : in  std_logic; --0->BE, 1->LE
     bmfre_in  : in  bm_fre_in_type;
     bmfre_out : out bm_fre_out_type;
     bmrd_size : in  std_logic_vector(log_2(max_size)-1 downto 0);
@@ -381,7 +381,7 @@ begin  -- rtl
     end if;
 
     bmwr_data_muxed := inp.bmwr_data(bm_dw-1 downto bm_dw-be_dw);
-    if lendian_en /= 0 then
+    if endian /= '0' then
       bmwr_data_muxed := inp.bmwr_data(be_dw-1 downto 0);
     end if;
     bmwr_pos_mask   := '0';
@@ -389,10 +389,10 @@ begin  -- rtl
       for i in 1 to (bm_dw/be_dw)-1 loop
         if r.bmwr_data_pos(i) = '1' then
           bmwr_pos_mask   := '1';
-          if lendian_en = 0 then
+          if endian = '0' then
             bmwr_data_muxed := r.bmwr_data_latched(bm_dw-(i*(be_dw))-1 downto bm_dw-(i+1)*be_dw);
           end if;
-          if lendian_en /= 0 then
+          if endian /= '0' then
             bmwr_data_muxed := r.bmwr_data_latched((i+1)*be_dw-1 downto i*be_dw);
           end if;
         end if;
@@ -500,13 +500,13 @@ begin  -- rtl
     bmfre_out.excl_done        <= r.excl_done;
     bmfre_out.bmrd_error       <= outp.bmrd_error;
 
-    if lendian_en = 0 then
+    if endian = '0' then
       for i in 0 to (bm_dw/8)-1 loop
         bmrd_data_v(((i+1)*8)-1 downto i*8) := outp.bmrd_data((bm_dw-1)-(i*8) downto bm_dw-((i+1)*8));
       end loop;
     end if;
     
-    if lendian_en /= 0 then
+    if endian /= '0' then
       for i in 0 to (bm_dw/8)-1 loop
         bmrd_data_v := outp.bmrd_data;
       end loop;

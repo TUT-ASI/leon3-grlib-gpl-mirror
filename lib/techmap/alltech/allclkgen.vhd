@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -645,13 +645,13 @@ end component;
     );
   end component;
 
-component clkinv_dare
+  component clkinv_dare65t
   port(
     i  :  in  std_ulogic;
     o  :  out std_ulogic);
 end component;
 
-component clkand_dare
+component clkand_dare65t
   port(
     i      :  in  std_ulogic;
     en     :  in  std_ulogic;
@@ -660,7 +660,35 @@ component clkand_dare
   );
 end component;
 
-component clkand_dare65t
+component clkmux_dare65t
+  port (
+    i0, i1  :  in  std_ulogic;
+    sel     :  in  std_ulogic;
+    o       :  out std_ulogic);
+end component;
+
+  component clkgen_dare65t
+  port (
+    clkin   : in  std_logic;
+    clk     : out std_logic;			-- main clock
+    clk2x   : out std_logic;			-- 2x clock
+    sdclk   : out std_logic;			-- SDRAM clock
+    pciclk  : out std_logic;			-- PCI clock
+    cgi     : in clkgen_in_type;
+    cgo     : out clkgen_out_type;
+    clk4x   : out std_logic;			-- 4x clock
+    clk1xu  : out std_logic;			-- unscaled 1X clock
+    clk2xu  : out std_logic 			-- unscaled 2X clock
+    );
+  end component;
+
+component clkinv_dare
+  port(
+    i  :  in  std_ulogic;
+    o  :  out std_ulogic);
+end component;
+
+component clkand_dare
   port(
     i      :  in  std_ulogic;
     en     :  in  std_ulogic;

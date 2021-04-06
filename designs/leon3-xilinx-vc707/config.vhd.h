@@ -164,6 +164,7 @@
   constant CFG_GRETH_FT     : integer := CONFIG_GRETH_FT;
   constant CFG_GRETH_EDCLFT : integer := CONFIG_GRETH_EDCLFT;
 #endif
+  constant CFG_ETH_PHY_ADDR : integer := CONFIG_GRETH_PHY_ADDR;
 -- USB Host Controller
   constant CFG_GRUSBHC          : integer := CONFIG_GRUSBHC_ENABLE;
   constant CFG_GRUSBHC_NPORTS   : integer := CONFIG_GRUSBHC_NPORTS;
@@ -231,6 +232,13 @@
   constant CFG_CAN_SYNCRST : integer := CONFIG_CAN_SYNCRST;
   constant CFG_CANFT    : integer := CONFIG_CAN_FT;
 
+-- GRDMAC2 interface
+  constant CFG_GRDMAC2       : integer := CONFIG_GRDMAC2_ENABLE;
+  constant CFG_GRDMAC2ACC    : integer := CONFIG_GRDMAC2ACC;
+  constant CFG_GRDMAC2FT     : integer := CONFIG_GRDMAC2FT;
+  constant CFG_GRDMAC2ABITS  : integer := CONFIG_GRDMAC2ABITS;
+  constant CFG_GRDMAC2DBITS  : integer := CONFIG_GRDMAC2DBITS;
+  
 -- Spacewire interface
   constant CFG_SPW_EN      : integer := CONFIG_SPW_ENABLE;
   constant CFG_SPW_NUM     : integer := CONFIG_SPW_NUM;

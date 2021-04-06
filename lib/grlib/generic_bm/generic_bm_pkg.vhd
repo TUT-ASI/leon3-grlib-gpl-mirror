@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -86,6 +86,7 @@ package generic_bm_pkg is
     hgrant : std_logic;                     -- bus grant
     hready : std_ulogic;                    -- transfer done
     hresp  : std_logic_vector(1 downto 0);  -- response type
+    endian : std_ulogic;                    -- 0->BE, 1->LE
   end record;
 
   -- AHB master outputs
@@ -266,11 +267,11 @@ package generic_bm_pkg is
       be_dw        : integer;
       max_size     : integer;
       excl_enabled : boolean;
-      lendian_en   : integer := 0;
       addr_width   : integer := 32);
     port(
       clk       : in  std_logic;
       rstn      : in  std_logic;
+      endian    : in  std_logic := '0';  --0->BE, 1->LE
       bmfre_in  : in  bm_fre_in_type;
       bmfre_out : out bm_fre_out_type;
       bmrd_size : in  std_logic_vector(log_2(max_size)-1 downto 0);
@@ -288,11 +289,11 @@ package generic_bm_pkg is
   component fifo_control_wc
     generic (
       async_reset             : boolean;
-      lendian_en              : integer :=0;
       be_dw                   : integer :=32);
     port (
       clk         : in  std_logic;
       rstn        : in  std_logic;
+      endian      : in  std_logic := '0';   --0->BE, 1->LE
       fifo_wc_in  : in  fifo_wc_in_type;
       fifo_wc_out : out fifo_wc_out_type;
       fe_wdata    : in  std_logic_vector(be_dw-1 downto 0);
@@ -305,12 +306,12 @@ package generic_bm_pkg is
       async_reset      : boolean;
       be_dw            : integer := 32;
       be_rd_pipe       : integer := 1;
-      lendian_en       : integer := 0;
       unalign_load_opt : integer := 0
       );
     port (
       clk           : in  std_logic;
       rstn          : in  std_logic;
+      endian        : in  std_logic := '0';  --0->BE, 1->LE
       fifo_rc_in    : in  fifo_rc_in_type;
       fifo_rc_out   : out fifo_rc_out_type;
       be_wdata      : in  std_logic_vector(be_dw-1 downto 0);
@@ -374,11 +375,11 @@ package generic_bm_pkg is
       max_burst_length_ptwo : integer;
       be_dw                 : integer;
       be_dw_int             : integer;
-      lendian_en            : integer := 0;
       addr_width            : integer := 32);
     port (
       clk          : in  std_logic;
       rstn         : in  std_logic;
+      endian       : in  std_logic := '0';   --0->BE, 1->LE
       ahb_be_in    : in  ahb_be_in_type;
       ahb_be_out   : out ahb_be_out_type;
       rd_addr      : in  std_logic_vector(addr_width-1 downto 0);
@@ -401,11 +402,11 @@ package generic_bm_pkg is
       axi_bm_id_width         : integer;
       addr_width              : integer := 32;
       max_burst_length_ptwo   : integer;
-      lendian_en              : integer := 0;
       be_dw                   : integer);
     port (
       clk             : in  std_logic;
       rstn            : in  std_logic;
+      endian          : in  std_logic := '0';   --0->BE, 1->LE
       ahb_be_in       : in  ahb_be_in_type;
       ahb_be_out      : out ahb_be_out_type;
       rd_addr         : in  std_logic_vector(addr_width-1 downto 0);
@@ -479,7 +480,6 @@ package generic_bm_pkg is
       burst_chop_mask  : integer range 8 to 1024  := 1024;
       bm_info_print    : integer                  := 0;
       excl_enabled     : boolean                  := true;
-      lendian_en       : integer                  := 0;
       hindex           : integer                  := 0;
       venid            : integer                  := 0;
       devid            : integer                  := 0;
@@ -511,6 +511,8 @@ package generic_bm_pkg is
       bmwr_full        : out std_logic;
       bmwr_done        : out std_logic;
       bmwr_error       : out std_logic;
+      --Endianess Output
+      endian_out       : out std_logic;   --0->BE, 1->LE    
       --Exclusive access
       excl_en          : in  std_logic;
       excl_nowrite     : in  std_logic;
@@ -601,7 +603,10 @@ package generic_bm_pkg is
       bmwr_data        : in  std_logic_vector(bm_dw-1 downto 0);
       bmwr_full        : out std_logic;
       bmwr_done        : out std_logic;
-      bmwr_error       : out std_logic
+      bmwr_error       : out std_logic;
+      --Endianess Output
+      endian_out       : out std_logic   --0->BE, 1->LE
+      --Exclusive access
       );
   end component generic_bm_axi;
 
@@ -617,11 +622,11 @@ package generic_bm_pkg is
       incaddr     : integer := 0;
       be_dw       : integer := 32;
       be_dw_int   : integer := 32;
-      lendian_en  : integer := 0;
       addr_width  : integer := 32);
     port (
       rst      : in  std_ulogic;
       clk      : in  std_ulogic;
+      endian   : in  std_ulogic := '0';  --0->BE, 1->LE
       dmai     : in  bmahb_dma_in_type;
       dmao     : out bmahb_dma_out_type;
       dma_addr : in  std_logic_vector(addr_width-1 downto 0);

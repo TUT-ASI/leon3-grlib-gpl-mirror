@@ -1067,6 +1067,9 @@ CONFIG_GRETH_FT
 CONFIG_GRETH_EDCLFT
   Enable protection for EDCL buffer. This is typically not used as
   the EDCL debug link is not used in harsh environments.
+
+CONFIG_GRETH_PHY_ADDR
+  Default PHY address
 Gaisler USB 2.0 Host Controller enable
 CONFIG_GRUSBHC_ENABLE
   Say Y here to enable the Gaisler Research USB 2.0 Host Controller.
@@ -1423,6 +1426,33 @@ CONFIG_CAN_SYNCRST
   when the target library does not implement registers with
   async reset. Unless you know what you are doing, say N.
 
+Enable GRDMAC2 interface
+CONFIG_GRDMAC2_ENABLE
+  Say Y here to enable the GRDMAC2 core.
+
+Enable AES256 accelerator
+CONFIG_GRDMAC2ACC
+  Say Y here to enable AES256 encryption accelerator.
+
+Enable fault tolerance
+CONFIG_GRDMAC2FT
+  Say Y here to enable fault tolerance.
+
+DBITS - Buffer size
+CONFIG_GRDMAC2DBITS32
+  Select DBITS value, the buffer size (in bytes).
+
+ABITS - Buffer depth
+CONFIG_GRDMAC2ABITS2
+  Select ABITS value, the buffer width (in bytes).
+
+ABITS - Buffer depth
+CONFIG_GRDMAC2ABITS1
+  Select ABITS value, the buffer width (in bytes).
+
+ABITS - Buffer depth
+CONFIG_GRDMAC2ABITS0
+  Select ABITS value, the buffer width (in bytes).
 Spacewire link
 CONFIG_SPW_ENABLE
   Say Y here to enable one or more Spacewire serial links. The links

@@ -38,7 +38,8 @@ leon5_test(int domp, volatile int *irqmp, int mtest)
 	int tmp, i;
 
 	if (!get_pid()) report_device(0x010BA000);
-	if (domp) mptest_start(irqmp);	
+	if (domp) mptest_start(irqmp);
+	tcmtest5_prepare();
 	report_subtest(REGFILE+(get_pid()<<4));
 	if (regtest()) fail(1);
 	report_subtest(CASA_TEST+(get_pid()<<4));
@@ -48,6 +49,7 @@ leon5_test(int domp, volatile int *irqmp, int mtest)
 	fputest5();
 	if (mtest) cramtest();
 	cachetest5();
+	tcmtest5();
 	if ((*mpfunc[get_pid()])) mpfunc[get_pid()](get_pid());
         /* MMU test uses global variables */
         mp_lock(&mmu_lock);

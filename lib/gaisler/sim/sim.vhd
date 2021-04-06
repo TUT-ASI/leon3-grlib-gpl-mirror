@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -877,6 +877,16 @@ package body sim is
 
   end;
 
+  procedure leon5_subtest(subtest : integer) is
+  begin
+
+    case (subtest mod 16) is
+      when 2 => print("  CPU#" & (tost(subtest/16)) & " tightly coupled memory");
+      when others => leon3_subtest(subtest);
+    end case;
+
+  end;
+
   procedure mctrl_subtest(subtest : integer) is
   begin
 
@@ -1079,11 +1089,28 @@ package body sim is
     end case;
 
   end;
+
+  procedure grdmac2_subtest(subtest : integer) is
+  begin
+
+    case subtest is
+    when 1 => print("  Update IV, Update KEY and 4 byte AES Descriptor test");
+    when 2 => print("  16 byte AES Descriptor test");
+    when 3 => print("  32 byte AES Descriptor test");
+    when 4 => print("  4 byte Data Descriptor test");
+    when 5 => print("  16 byte Data Descriptor test");
+    when 6 => print("  32 byte Data Descriptor test");
+    when others => print("  sub-system test " & tost(subtest));
+    end case;
+
+  end;
+
   procedure call_subtest(vendorid, deviceid, subtest : integer) is
   begin
     if vendorid = VENDOR_GAISLER then
       case deviceid is
-        when GAISLER_LEON3 | GAISLER_LEON4 | GAISLER_LEON5 => leon3_subtest(subtest);
+        when GAISLER_LEON3 | GAISLER_LEON4 => leon3_subtest(subtest);
+        when GAISLER_LEON5 => leon5_subtest(subtest);
         when GAISLER_FTMCTRL => mctrl_subtest(subtest);
         when GAISLER_GPTIMER => gptimer_subtest(subtest);
         when GAISLER_LEON3DSU => dsu3_subtest(subtest);
@@ -1102,6 +1129,7 @@ package body sim is
         when GAISLER_GRIOMMU => griommu_subtest(subtest);
         when GAISLER_L4STAT => l4stat_subtest(subtest);
         when GAISLER_GRDMAC => grdmac_subtest(subtest);
+        when GAISLER_GRDMAC2 => grdmac2_subtest(subtest);
         when others =>
           print ("  subtest " & tost(subtest));
       end case;

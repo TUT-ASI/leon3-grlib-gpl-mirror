@@ -1,0 +1,56 @@
+    bool 'Enable GRDMAC2 interface              ' CONFIG_GRDMAC2_ENABLE
+    if [ "$CONFIG_GRDMAC2_ENABLE" = "y" ]; then
+      choice 'buffer size (bytes)    ' \
+        "32	CONFIG_GRDMAC2DBITS32	 \
+	 64	CONFIG_GRDMAC2DBITS64	 \
+	 128	CONFIG_GRDMAC2DBITS128" 32
+      bool 'Enable fault tolerance ' CONFIG_GRDMAC2FT
+      bool 'Enable AES256 accelerator ' CONFIG_GRDMAC2ACC
+      if [ "$CONFIG_GRDMAC2ACC" = "n" ]; then
+        choice 'buffer depth in bytes (no accelerator)    ' \
+	  "0	CONFIG_GRDMAC2ABITS1	 \
+	   1	CONFIG_GRDMAC2ABITS2	 \
+	   2	CONFIG_GRDMAC2ABITS2	 \
+	   3	CONFIG_GRDMAC2ABITS3	 \
+	   4	CONFIG_GRDMAC2ABITS4	 \
+	   5	CONFIG_GRDMAC2ABITS5	 \
+	   6	CONFIG_GRDMAC2ABITS6	 \
+	   7	CONFIG_GRDMAC2ABITS7	 \
+	   8	CONFIG_GRDMAC2ABITS8" 4
+      fi
+      if [ "$CONFIG_GRDMAC2ACC" = "y" ]; then
+        if [ "$CONFIG_GRDMAC2DBITS32" = "y" ]; then
+          choice 'buffer depth in bytes (dbits = 32)    ' \
+	  "2	CONFIG_GRDMAC2ABITS2	 \
+	   3	CONFIG_GRDMAC2ABITS3	 \
+	   4	CONFIG_GRDMAC2ABITS4	 \
+	   5	CONFIG_GRDMAC2ABITS5	 \
+   	   6	CONFIG_GRDMAC2ABITS6	 \
+	   7	CONFIG_GRDMAC2ABITS7	 \
+	   8	CONFIG_GRDMAC2ABITS8" 4
+        fi
+        if [ "$CONFIG_GRDMAC2DBITS64" = "y" ]; then
+          choice 'buffer depth in bytes (dbits = 64)    ' \
+	  "1	CONFIG_GRDMAC2ABITS1	 \
+	   2	CONFIG_GRDMAC2ABITS2	 \
+	   3	CONFIG_GRDMAC2ABITS3	 \
+	   4	CONFIG_GRDMAC2ABITS4	 \
+	   5	CONFIG_GRDMAC2ABITS5	 \
+	   6	CONFIG_GRDMAC2ABITS6	 \
+	   7	CONFIG_GRDMAC2ABITS7	 \
+	   8	CONFIG_GRDMAC2ABITS8" 4
+        fi
+        if [ "$CONFIG_GRDMAC2DBITS128" = "y" ]; then
+          choice 'buffer depth in bytes (dbits = 128)    ' \
+	  "0	CONFIG_GRDMAC2ABITS0	 \
+	   1	CONFIG_GRDMAC2ABITS1	 \
+	   2	CONFIG_GRDMAC2ABITS2	 \
+	   3	CONFIG_GRDMAC2ABITS3	 \
+	   4	CONFIG_GRDMAC2ABITS4	 \
+	   5	CONFIG_GRDMAC2ABITS5	 \
+	   6	CONFIG_GRDMAC2ABITS6	 \
+	   7	CONFIG_GRDMAC2ABITS7	 \
+	   8	CONFIG_GRDMAC2ABITS8" 4
+        fi
+      fi
+    fi

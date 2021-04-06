@@ -44,17 +44,19 @@ entity grdmac2_acc is
     buff_bytes : integer range 4 to 16384 := 32;  -- FIFO size in bytes
     buff_depth : integer range 1 to 1024  := 16;  -- FIFO depth
     abits      : integer range 0 to 10    := 4;   -- FIFO address bits (actual fifo depth = 2**abits))
-    acc_enable : integer range 0 to 4     := 1
+    acc_enable : integer range 0 to 4     := 0
     );
   port (
     rstn        : in  std_ulogic;           -- Active low reset
     clk         : in  std_ulogic;           -- Clock
+    ctrl_rst    : in  std_ulogic;
     d_des_in    : in  data_dsc_strct_type;  -- Data descriptor needs to executed
     acc_des_in  : in  acc_dsc_strct_type;
     acc_start   : in  std_ulogic;           -- Start control signal
     acc_resume  : in  std_ulogic;           -- Resume control signal
     acc_status  : out d_ex_sts_out_type;
-    m2b_status  : in d_ex_sts_out_type;
+    m2b_status  : in  d_ex_sts_out_type;
+    endian      : in  std_logic;
     -- Error signal from FIFO
     buf_in      : in  fifo_out_type;        -- FIFO output signals
     buf_out     : out fifo_in_type          -- Input to FIFO
@@ -65,15 +67,21 @@ architecture rtl of grdmac2_acc is
 
   -- AES_256_ACC
   component aes256_top is
+    generic (
+      dbits      : integer range 32 to 128  := 32;
+      buff_bytes : integer range 4 to 16384 := 32
+      );
     port (
       rstn        : in  std_ulogic;
       clk         : in  std_ulogic;
+      ctrl_rst    : in  std_ulogic;
       d_des_in    : in  data_dsc_strct_type;
       acc_des_in  : in  acc_dsc_strct_type;
       acc_start   : in  std_ulogic;
       acc_resume  : in  std_ulogic;
       acc_status  : out d_ex_sts_out_type;
-      m2b_status  : in d_ex_sts_out_type;
+      m2b_status  : in  d_ex_sts_out_type;
+      endian      : in  std_logic;
       buf_in      : in  fifo_out_type;
       buf_out     : out fifo_in_type
           );
@@ -100,18 +108,31 @@ begin
   generate_aes256_acc: if acc_enable = 1 generate
   -- AES256 ACCELERATOR
   aes256_acc : aes256_top
+  generic map (
+    dbits => dbits,
+    buff_bytes => buff_bytes
+  )
   port map (
     rstn => rstn,
     clk => clk,
+    ctrl_rst => ctrl_rst,
     d_des_in => d_des_in,
     acc_des_in => acc_des_in,
     acc_start => acc_start,
     acc_resume => acc_resume,
     acc_status => aes_status,
     m2b_status => m2b_status,
+    endian => endian,
     buf_in => buf_in,
     buf_out => aes_buf_out
   );
   end generate generate_aes256_acc;
+
+-- pragma translate_off
+     assert acc_generic_check(dbits,abits,acc_enable)
+        report "grdmac2: buffer width must be 128 bits or larger when acc enabled!"
+        severity failure;
+-- pragma translate_on
+
   
 end architecture rtl;

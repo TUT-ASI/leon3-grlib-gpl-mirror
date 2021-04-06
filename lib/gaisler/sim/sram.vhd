@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -107,13 +107,20 @@ begin
 	      case rectype is 
 		when "0001" =>
                   hread(L1, recaddr(15 downto 0));
+                  len := len - 2;
 		when "0010" =>
                   hread(L1, recaddr(23 downto 0));
+                  len := len - 3;
 		when "0011" =>
                   hread(L1, recaddr);
+                  len := len - 4;
 		when others => next;
 	      end case;
-              hread(L1, recdata);
+              if L1.all'length*4 < recdata'length then
+                hread(L1, recdata(0 to L1.all'length*4-1));
+              else
+                hread(L1, recdata);
+              end if;
               if index = 6 then
 	        recaddr(31 downto abits) := (others => '0');
 	        ai := conv_integer(recaddr);
