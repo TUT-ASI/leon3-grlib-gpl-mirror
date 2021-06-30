@@ -58,6 +58,7 @@ port (
   wcsren        : in  std_ulogic;                       -- CSR Write Enable
   wcsrdata      : in  std_logic_vector;                 -- CSR Write Data
   prv           : in  std_logic_vector(1 downto 0);     -- Privileged Level
+  v             : in  std_ulogic;                       -- Virtualization mode
   trap          : in  std_ulogic;                       -- Exception
   trap_taken    : in  std_ulogic;
   cause         : in  std_logic_vector;                 -- Exception Cause
@@ -167,6 +168,7 @@ begin
             cinst   => cinst,                  -- Compressed Instruction
             comp    => comp,                   -- Compressed Flag
             prv     => prv,                    -- Privileged Level
+            v       => v,                      -- Virtualization mode
             trap    => trap,                   -- Exception
             cause   => cause,                  -- Exception Cuase
             tval    => tval                    -- Exception Value

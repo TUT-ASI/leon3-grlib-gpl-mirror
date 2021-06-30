@@ -2,7 +2,8 @@
 # Include Paths
 #--------------------------------------------------------------------
 
-VPATH  = $(GRLIB)/software/noelv/systest
+VPATH  = sw
+VPATH += $(GRLIB)/software/noelv/systest
 VPATH += $(GRLIB)/software/noelv/systest/sw
 VPATH += $(GRLIB)/software/greth
 VPATH += $(GRLIB)/software/l2c
@@ -63,7 +64,7 @@ SRCDIR = $(GRLIB)/software/noelv/systest/sw
 PROGS = 
 SRCFILES = $(wildcard $(SRCDIR)/*.c)
 SRCFILES += $(GRLIB)/software/greth/greth_api.c
-SRCFILES += $(GRLIB)/software/l2c/l2capi.c
+SRCFILES += $(wildcard $(GRLIB)/software/l2c/l2capi.c)
 OBJFILES = $(PROGS:%=%.o) $(addprefix $(OBJDIR)/, $(notdir $(SRCFILES:%.c=%.o)))
 #--------------------------------------------------------------------
 # Build Templates
@@ -130,5 +131,5 @@ soft: soft-setup prom.srec ram.srec #$(info $$OBJFILES is: [${OBJFILES}]) $(info
 CLEAN += soft-clean 
 
 soft-clean:
-	-rm -rf *.o *.a *.elf *.odump $(OBJDIR)
+	-rm -rf *.o *.a *.elf *.exe *.odump $(OBJDIR)
 

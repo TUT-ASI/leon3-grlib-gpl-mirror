@@ -44,7 +44,8 @@ entity ahb2axi_mig3_arty_a7 is
     hmask                   : integer := 16#f00#;
     pindex                  : integer := 0;
     paddr                   : integer := 0;
-    pmask                   : integer := 16#fff#
+    pmask                   : integer := 16#fff#;
+    ahbendian               : integer := AHBENDIAN
   );
   port(
     ddr3_dq           : inout std_logic_vector(15 downto 0);
@@ -330,7 +331,7 @@ begin
       aximid => 0,
       wbuffer_num => 8,
       rprefetch_num => 8,
-      ahb_endianness  => 1,
+      ahb_endianness  => ahbendian,
       endianness_mode => 0,
       narrow_acc_mode => 0,
       vendor  => VENDOR_GAISLER,

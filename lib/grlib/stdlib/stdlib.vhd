@@ -76,6 +76,7 @@ function orv(d : std_logic_vector) return std_ulogic;
 function andv(d : std_logic_vector) return std_ulogic;
 function notx(d : std_logic_vector) return boolean;
 function notx(d : std_ulogic) return boolean;
+function notxu(d: unsigned) return boolean;
 procedure setx(d: out std_logic_vector);
 procedure setx(d: out std_ulogic);
 procedure setx(d: out unsigned);
@@ -152,6 +153,16 @@ begin
   res := true;
 -- pragma translate_off
   res := not is_x(d);
+-- pragma translate_on
+  return (res);
+end;
+
+function notxu(d: unsigned) return boolean is
+  variable res: boolean;
+begin
+  res := true;
+-- pragma translate_off
+  res := not is_x(std_logic_vector(d));
 -- pragma translate_on
   return (res);
 end;

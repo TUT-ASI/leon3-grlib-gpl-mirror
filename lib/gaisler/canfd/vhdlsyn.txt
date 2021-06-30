@@ -1,0 +1,12 @@
+canfd.vhd
+grcanfd_pkg.vhd
+grcanfd_crc.vhd
+grcanfd_fce.vhd
+grcanfd_stuff_handler.vhd
+grcanfd_rx.vhd
+grcanfd_tx.vhd
+grcanfd_mac.vhd
+grcanfd_pl.vhd
+grcanfd_codec.vhd
+grcanfd.vhd
+grcanfd_ahb.vhd

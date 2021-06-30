@@ -40,7 +40,6 @@ package grdmac2_pkg is
 -- Types and records
 -------------------------------------------------------------------------------
 
-  -- AES-ACC input/output 
   type aes_in_type is record
     init      : std_logic;
     bn        : integer;
@@ -56,12 +55,30 @@ package grdmac2_pkg is
     brdy       : std_logic;
   end record;
 
-
-  --Reset values for AES-ACC registers
   constant AES_OUT_RST : aes_out_type := (
     ciphertext => (others => '0'),
     done       => '0',
     brdy       => '0'
+    );
+
+  type sha_in_type is record
+    init      : std_logic;
+    new_block : std_logic;
+    bn        : integer;
+    size      : integer;
+    inp       : std_logic_vector(511 downto 0);
+  end record;
+
+  type sha_out_type is record
+    outp       : std_logic_vector(255 downto 0);
+    finished   : std_logic;
+    paused     : std_logic;
+  end record;
+
+  constant SHA_OUT_RST : sha_out_type := (
+    outp       => (others => '0'),
+    finished   => '0',
+    paused   => '0'
     );
 
   -- BM specific types
@@ -698,6 +715,11 @@ package grdmac2_pkg is
     constant en_acc     : integer
     ) return boolean;
 
+  function padding(in_vector : std_logic_vector(511 downto 0);
+                       burst_size : integer;
+                       tot_size : integer
+    ) return std_logic_vector;
+
 
   -------------------------------------------------------------------------------
   -- Components
@@ -808,7 +830,7 @@ package grdmac2_pkg is
       buff_bytes : integer range 4 to 16384 := 64;
       buff_depth : integer range 1 to 1024  := 16;
       abits      : integer range 0 to 10    := 4;
-      en_acc     : integer range 0 to 1     := 0
+      en_acc     : integer range 0 to 4     := 0
       );
     port (
       rstn       : in  std_ulogic;
@@ -896,7 +918,7 @@ package grdmac2_pkg is
       buff_bytes : integer range 4 to 16384 := 64;
       buff_depth : integer range 1 to 1024  := 16;
       abits      : integer range 0 to 10    := 4;
-      acc_enable : integer range 0 to 1     := 0
+      acc_enable : integer range 0 to 4     := 0
       );
     port (
       rstn        : in  std_ulogic;
@@ -1011,7 +1033,7 @@ package body grdmac2_pkg is
     constant en_acc   : integer
     ) return boolean is
   begin
-    if (en_acc = 0) then
+    if (en_acc /= 1) then
       return true;
     elsif (dbits = 32 and abits >= 2) then
       return true;
@@ -1023,6 +1045,327 @@ package body grdmac2_pkg is
       return false;
     end if;
   end acc_generic_check;
+
+  function padding (
+      in_vector : std_logic_vector(511 downto 0);
+      burst_size : integer;
+      tot_size : integer
+    ) return std_logic_vector is
+    variable ret : std_logic_vector(511 downto 0);
+  begin
+    case burst_size is
+    when 1 => 
+      ret(511 downto 504) := in_vector(511 downto 504);
+      ret(503) := '1';
+      ret(502 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 2 => 
+      ret(511 downto 496) := in_vector(511 downto 496);
+      ret(495) := '1';
+      ret(494 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 3 => 
+      ret(511 downto 488) := in_vector(511 downto 488);
+      ret(487) := '1';
+      ret(486 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 4 => 
+      ret(511 downto 480) := in_vector(511 downto 480);
+      ret(479) := '1';
+      ret(478 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 5 => 
+      ret(511 downto 472) := in_vector(511 downto 472);
+      ret(471) := '1';
+      ret(470 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 6 => 
+      ret(511 downto 464) := in_vector(511 downto 464);
+      ret(463) := '1';
+      ret(462 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 7 => 
+      ret(511 downto 456) := in_vector(511 downto 456);
+      ret(455) := '1';
+      ret(454 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 8 => 
+      ret(511 downto 448) := in_vector(511 downto 448);
+      ret(447) := '1';
+      ret(446 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 9 => 
+      ret(511 downto 440) := in_vector(511 downto 440);
+      ret(439) := '1';
+      ret(438 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 10 => 
+      ret(511 downto 432) := in_vector(511 downto 432);
+      ret(431) := '1';
+      ret(430 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 11 => 
+      ret(511 downto 424) := in_vector(511 downto 424);
+      ret(423) := '1';
+      ret(422 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 12 => 
+      ret(511 downto 416) := in_vector(511 downto 416);
+      ret(415) := '1';
+      ret(414 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 13 => 
+      ret(511 downto 408) := in_vector(511 downto 408);
+      ret(407) := '1';
+      ret(406 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 14 => 
+      ret(511 downto 400) := in_vector(511 downto 400);
+      ret(399) := '1';
+      ret(398 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 15 => 
+      ret(511 downto 392) := in_vector(511 downto 392);
+      ret(391) := '1';
+      ret(390 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 16 => 
+      ret(511 downto 384) := in_vector(511 downto 384);
+      ret(383) := '1';
+      ret(382 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 17 => 
+      ret(511 downto 376) := in_vector(511 downto 376);
+      ret(375) := '1';
+      ret(374 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 18 => 
+      ret(511 downto 368) := in_vector(511 downto 368);
+      ret(367) := '1';
+      ret(366 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 19 => 
+      ret(511 downto 360) := in_vector(511 downto 360);
+      ret(359) := '1';
+      ret(358 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 20 => 
+      ret(511 downto 352) := in_vector(511 downto 352);
+      ret(351) := '1';
+      ret(350 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 21 => 
+      ret(511 downto 344) := in_vector(511 downto 344);
+      ret(343) := '1';
+      ret(342 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 22 => 
+      ret(511 downto 336) := in_vector(511 downto 336);
+      ret(335) := '1';
+      ret(334 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 23 => 
+      ret(511 downto 328) := in_vector(511 downto 328);
+      ret(327) := '1';
+      ret(326 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 24 => 
+      ret(511 downto 320) := in_vector(511 downto 320);
+      ret(319) := '1';
+      ret(318 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 25 => 
+      ret(511 downto 312) := in_vector(511 downto 312);
+      ret(311) := '1';
+      ret(310 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 26 => 
+      ret(511 downto 304) := in_vector(511 downto 304);
+      ret(303) := '1';
+      ret(302 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 27 => 
+      ret(511 downto 296) := in_vector(511 downto 296);
+      ret(295) := '1';
+      ret(294 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 28 => 
+      ret(511 downto 288) := in_vector(511 downto 288);
+      ret(287) := '1';
+      ret(286 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 29 => 
+      ret(511 downto 280) := in_vector(511 downto 280);
+      ret(279) := '1';
+      ret(278 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 30 => 
+      ret(511 downto 272) := in_vector(511 downto 272);
+      ret(271) := '1';
+      ret(370 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 31 => 
+      ret(511 downto 264) := in_vector(511 downto 264);
+      ret(263) := '1';
+      ret(262 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 32 => 
+      ret(511 downto 256) := in_vector(511 downto 256);
+      ret(255) := '1';
+      ret(254 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 33 => 
+      ret(511 downto 248) := in_vector(511 downto 248);
+      ret(247) := '1';
+      ret(246 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 34 => 
+      ret(511 downto 240) := in_vector(511 downto 240);
+      ret(239) := '1';
+      ret(238 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 35 => 
+      ret(511 downto 232) := in_vector(511 downto 232);
+      ret(231) := '1';
+      ret(230 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 36 => 
+      ret(511 downto 224) := in_vector(511 downto 224);
+      ret(223) := '1';
+      ret(222 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 37 => 
+      ret(511 downto 216) := in_vector(511 downto 216);
+      ret(215) := '1';
+      ret(214 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 38 => 
+      ret(511 downto 208) := in_vector(511 downto 208);
+      ret(207) := '1';
+      ret(206 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 39 => 
+      ret(511 downto 200) := in_vector(511 downto 200);
+      ret(199) := '1';
+      ret(198 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 40 => 
+      ret(511 downto 192) := in_vector(511 downto 192);
+      ret(191) := '1';
+      ret(190 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 41 => 
+      ret(511 downto 184) := in_vector(511 downto 184);
+      ret(183) := '1';
+      ret(182 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 42 => 
+      ret(511 downto 176) := in_vector(511 downto 176);
+      ret(175) := '1';
+      ret(174 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 43 => 
+      ret(511 downto 168) := in_vector(511 downto 168);
+      ret(167) := '1';
+      ret(166 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 44 => 
+      ret(511 downto 160) := in_vector(511 downto 160);
+      ret(159) := '1';
+      ret(158 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 45 => 
+      ret(511 downto 152) := in_vector(511 downto 152);
+      ret(151) := '1';
+      ret(150 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 46 => 
+      ret(511 downto 144) := in_vector(511 downto 144);
+      ret(143) := '1';
+      ret(142 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 47 => 
+      ret(511 downto 136) := in_vector(511 downto 136);
+      ret(135) := '1';
+      ret(134 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 48 => 
+      ret(511 downto 128) := in_vector(511 downto 128);
+      ret(127) := '1';
+      ret(126 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 49 => 
+      ret(511 downto 120) := in_vector(511 downto 120);
+      ret(119) := '1';
+      ret(118 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 50 => 
+      ret(511 downto 112) := in_vector(511 downto 112);
+      ret(111) := '1';
+      ret(110 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 51 => 
+      ret(511 downto 104) := in_vector(511 downto 104);
+      ret(103) := '1';
+      ret(102 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 52 => 
+      ret(511 downto 96) := in_vector(511 downto 96);
+      ret(95) := '1';
+      ret(94 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 53 => 
+      ret(511 downto 88) := in_vector(511 downto 88);
+      ret(87) := '1';
+      ret(86 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 54 => 
+      ret(511 downto 80) := in_vector(511 downto 80);
+      ret(79) := '1';
+      ret(78 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 55 => 
+      ret(511 downto 72) := in_vector(511 downto 72);
+      ret(71) := '1';
+      ret(70 downto 64) := (others => '0');
+      ret(63 downto 0) := std_logic_vector(to_unsigned(tot_size*8, 64));
+    when 56 => 
+      ret(511 downto 64) := in_vector(511 downto 64);
+      ret(63) := '1';
+      ret(62 downto 0) := (others => '0');
+    when 57 => 
+      ret(511 downto 56) := in_vector(511 downto 56);
+      ret(55) := '1';
+      ret(54 downto 0) := (others => '0');
+    when 58 => 
+      ret(511 downto 48) := in_vector(511 downto 48);
+      ret(47) := '1';
+      ret(46 downto 0) := (others => '0');
+    when 59 => 
+      ret(511 downto 40) := in_vector(511 downto 40);
+      ret(39) := '1';
+      ret(38 downto 0) := (others => '0');
+    when 60 => 
+      ret(511 downto 32) := in_vector(511 downto 32);
+      ret(31) := '1';
+      ret(30 downto 0) := (others => '0');
+    when 61 => 
+      ret(511 downto 24) := in_vector(511 downto 24);
+      ret(23) := '1';
+      ret(22 downto 0) := (others => '0');
+    when 62 => 
+      ret(511 downto 16) := in_vector(511 downto 16);
+      ret(15) := '1';
+      ret(14 downto 0) := (others => '0');
+    when 63 => 
+      ret(511 downto 8) := in_vector(511 downto 8);
+      ret(7) := '1';
+      ret(6 downto 0) := (others => '0');
+    when others =>
+      ret := in_vector;
+    end case;
+    return ret;
+  end padding;
 
     
 

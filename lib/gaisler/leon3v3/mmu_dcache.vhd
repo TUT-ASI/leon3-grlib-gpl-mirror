@@ -1598,6 +1598,12 @@ begin
       v.lock_hold := '0';
     end if;
 
+    if DSNOOP2=3 then
+      senable := senable or enable;
+      if DCREADHOLD /= 0 then
+        senable := senable or ctpwrite;
+      end if;
+    end if;
     
 
     if dci.mmucacheclr='1' then

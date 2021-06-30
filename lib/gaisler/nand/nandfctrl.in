@@ -1,0 +1,10 @@
+bool 'NANDFCTRL - NAND Flash Memory Controller' CONFIG_NANDFCTRL_ENABLE
+if [ "$CONFIG_NANDFCTRL_ENABLE" = "y" ]; then
+  int 'Number of targets (1-4)' CONFIG_NANDFCTRL_NTARGETS 2
+  int 'Number of lanes (1-8)' CONFIG_NANDFCTRL_NLANES 8
+  int 'Page buffer size (bytes)' CONFIG_NANDFCTRL_PSIZE 4096
+  int 'Spare page buffer size (bytes)' CONFIG_NANDFCTRL_SSIZE 256
+  bool 'Enable timing mode 1' CONFIG_NANDFCTRL_TM1 0
+  bool 'Enable timing mode 2' CONFIG_NANDFCTRL_TM2 0
+  bool 'Enable timing mode 3' CONFIG_NANDFCTRL_TM3 0
+fi

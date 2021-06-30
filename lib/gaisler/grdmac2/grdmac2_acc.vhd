@@ -87,25 +87,65 @@ architecture rtl of grdmac2_acc is
           );
   end component;
 
+  -- SHA_256_ACC
+  component sha256_top is
+    generic (
+      dbits      : integer range 32 to 128  := 32;
+      buff_bytes : integer range 4 to 16384 := 32
+      );
+    port (
+      rstn        : in  std_ulogic;
+      clk         : in  std_ulogic;
+      ctrl_rst    : in  std_ulogic;
+      d_des_in    : in  data_dsc_strct_type;
+      acc_des_in  : in  acc_dsc_strct_type;
+      acc_start   : in  std_ulogic;
+      acc_resume  : in  std_ulogic;
+      acc_status  : out d_ex_sts_out_type;
+      m2b_status  : in  d_ex_sts_out_type;
+      endian      : in  std_logic;
+      buf_in      : in  fifo_out_type;
+      buf_out     : out fifo_in_type
+          );
+  end component;
+
   signal aes_status : d_ex_sts_out_type;
   signal aes_buf_out : fifo_in_type;
+  
+  signal sha_status : d_ex_sts_out_type;
+  signal sha_buf_out : fifo_in_type;
+
+  signal temp_status : d_ex_sts_out_type;
+  signal temp_buf_out : fifo_in_type;
 
 begin
 
   -- binding logic
-  acc_status.m2b_err   <= aes_status.m2b_err when acc_enable = 1 else '0';
-  acc_status.b2m_err   <= aes_status.b2m_err when acc_enable = 1 else '0';
-  acc_status.state     <= aes_status.state when acc_enable = 1 else (others => '0');
-  acc_status.paused    <= aes_status.paused when acc_enable = 1 else '0';
-  acc_status.operation <= aes_status.operation when acc_enable = 1 else '0';
-  acc_status.comp      <= aes_status.comp when acc_enable = 1 else '0';
-  acc_status.fifo_err  <= aes_status.fifo_err when acc_enable = 1 else '0';
-  buf_out.clr_n        <= aes_buf_out.clr_n when acc_enable = 1 else '0';
-  buf_out.ren          <= aes_buf_out.ren when acc_enable = 1 else '0';
-  buf_out.wen          <= aes_buf_out.wen when acc_enable = 1 else '0';
-  buf_out.wdata        <= aes_buf_out.wdata when acc_enable = 1 else (others => '0');
+  temp_status.m2b_err   <= aes_status.m2b_err when ((acc_enable = 1) or (acc_enable = 3 and (d_des_in.ctrl.desc_type = X"4" or d_des_in.ctrl.desc_type = X"5"))) else '0';
+  temp_status.b2m_err   <= aes_status.b2m_err when ((acc_enable = 1) or (acc_enable = 3 and (d_des_in.ctrl.desc_type = X"4" or d_des_in.ctrl.desc_type = X"5"))) else '0';
+  temp_status.state     <= aes_status.state when ((acc_enable = 1) or (acc_enable = 3 and (d_des_in.ctrl.desc_type = X"4" or d_des_in.ctrl.desc_type = X"5"))) else (others => '0');
+  temp_status.paused    <= aes_status.paused when ((acc_enable = 1) or (acc_enable = 3 and (d_des_in.ctrl.desc_type = X"4" or d_des_in.ctrl.desc_type = X"5"))) else '0';
+  temp_status.operation <= aes_status.operation when ((acc_enable = 1) or (acc_enable = 3 and (d_des_in.ctrl.desc_type = X"4" or d_des_in.ctrl.desc_type = X"5"))) else '0';
+  temp_status.comp      <= aes_status.comp when ((acc_enable = 1) or (acc_enable = 3 and (d_des_in.ctrl.desc_type = X"4" or d_des_in.ctrl.desc_type = X"5"))) else '0';
+  temp_status.fifo_err  <= aes_status.fifo_err when ((acc_enable = 1) or (acc_enable = 3 and (d_des_in.ctrl.desc_type = X"4" or d_des_in.ctrl.desc_type = X"5"))) else '0';
+  temp_buf_out.clr_n    <= aes_buf_out.clr_n when ((acc_enable = 1) or (acc_enable = 3 and (d_des_in.ctrl.desc_type = X"4" or d_des_in.ctrl.desc_type = X"5"))) else '0';
+  temp_buf_out.ren      <= aes_buf_out.ren when ((acc_enable = 1) or (acc_enable = 3 and (d_des_in.ctrl.desc_type = X"4" or d_des_in.ctrl.desc_type = X"5"))) else '0';
+  temp_buf_out.wen      <= aes_buf_out.wen when ((acc_enable = 1) or (acc_enable = 3 and (d_des_in.ctrl.desc_type = X"4" or d_des_in.ctrl.desc_type = X"5"))) else '0';
+  temp_buf_out.wdata    <= aes_buf_out.wdata when ((acc_enable = 1) or (acc_enable = 3 and (d_des_in.ctrl.desc_type = X"4" or d_des_in.ctrl.desc_type = X"5"))) else (others => '0');
 
-  generate_aes256_acc: if acc_enable = 1 generate
+  acc_status.m2b_err    <= sha_status.m2b_err when ((acc_enable = 2) or (acc_enable = 3 and d_des_in.ctrl.desc_type = X"6")) else temp_status.m2b_err;
+  acc_status.b2m_err    <= sha_status.b2m_err when ((acc_enable = 2) or (acc_enable = 3 and d_des_in.ctrl.desc_type = X"6")) else temp_status.b2m_err;
+  acc_status.state      <= sha_status.state when ((acc_enable = 2) or (acc_enable = 3 and d_des_in.ctrl.desc_type = X"6")) else temp_status.state;
+  acc_status.paused     <= sha_status.paused when ((acc_enable = 2) or (acc_enable = 3 and d_des_in.ctrl.desc_type = X"6")) else temp_status.paused;
+  acc_status.operation  <= sha_status.operation when ((acc_enable = 2) or (acc_enable = 3 and d_des_in.ctrl.desc_type = X"6")) else temp_status.operation;
+  acc_status.comp       <= sha_status.comp when ((acc_enable = 2) or (acc_enable = 3 and d_des_in.ctrl.desc_type = X"6")) else temp_status.comp;
+  acc_status.fifo_err   <= sha_status.fifo_err when ((acc_enable = 2) or (acc_enable = 3 and d_des_in.ctrl.desc_type = X"6")) else temp_status.fifo_err;
+  buf_out.clr_n         <= sha_buf_out.clr_n when ((acc_enable = 2) or (acc_enable = 3 and d_des_in.ctrl.desc_type = X"6")) else temp_buf_out.clr_n ;
+  buf_out.ren           <= sha_buf_out.ren when ((acc_enable = 2) or (acc_enable = 3 and d_des_in.ctrl.desc_type = X"6")) else temp_buf_out.ren;
+  buf_out.wen           <= sha_buf_out.wen when ((acc_enable = 2) or (acc_enable = 3 and d_des_in.ctrl.desc_type = X"6")) else temp_buf_out.wen;
+  buf_out.wdata         <= sha_buf_out.wdata when ((acc_enable = 2) or (acc_enable = 3 and d_des_in.ctrl.desc_type = X"6")) else temp_buf_out.wdata;
+
+  generate_aes256_acc: if (acc_enable = 1 or acc_enable = 3) generate
   -- AES256 ACCELERATOR
   aes256_acc : aes256_top
   generic map (
@@ -127,6 +167,31 @@ begin
     buf_out => aes_buf_out
   );
   end generate generate_aes256_acc;
+
+  generate_sha256_acc: if (acc_enable = 2 or acc_enable = 3) generate
+  -- AES256 ACCELERATOR
+  sha256_acc : sha256_top
+  generic map (
+    dbits => dbits,
+    buff_bytes => buff_bytes
+  )
+  port map (
+    rstn => rstn,
+    clk => clk,
+    ctrl_rst => ctrl_rst,
+    d_des_in => d_des_in,
+    acc_des_in => acc_des_in,
+    acc_start => acc_start,
+    acc_resume => acc_resume,
+    acc_status => sha_status,
+    m2b_status => m2b_status,
+    endian => endian,
+    buf_in => buf_in,
+    buf_out => sha_buf_out
+  );
+  end generate generate_sha256_acc;
+
+
 
 -- pragma translate_off
      assert acc_generic_check(dbits,abits,acc_enable)

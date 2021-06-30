@@ -42,6 +42,8 @@ package noelv is
   constant FLEN                 : integer := 64;  -- Unused
   constant DBITS                : integer := 16;  -- Use in one place
 
+  constant GEILEN               : integer := 16;
+
   -- Types --------------------------------------------------------------------
 
 
@@ -50,9 +52,10 @@ package noelv is
     mtip        : std_ulogic; -- Machine Timer Interrupt
     msip        : std_ulogic; -- Machine Software Interrupt
     meip        : std_ulogic; -- Machine External Interrupt
-    seip        : std_ulogic; -- Software External Interrupt
+    seip        : std_ulogic; -- Supervisor External Interrupt
     ueip        : std_ulogic; -- User External Interrupt
     heip        : std_ulogic; -- Reserved
+    hgeip       : std_logic_vector(GEILEN downto 1); -- Hypervisor Guest External Inetrrupt
   end record;
 
   type nv_irq_out_type is record
@@ -68,7 +71,8 @@ package noelv is
     meip        => '0',
     seip        => '0',
     ueip        => '0',
-    heip        => '0'
+    heip        => '0',
+    hgeip       => (others => '0')
     );
 
   -- Stats --------------------------------------------------------------------
@@ -130,6 +134,7 @@ package noelv is
     istat       : nv_cstat_type;
     dstat       : nv_cstat_type;
     mcycle      : std_logic_vector(63 downto 0);
+    cap         : std_logic_vector(2 downto 0);
   end record;
 
   constant nv_debug_out_none    : nv_debug_out_type := (
@@ -147,7 +152,8 @@ package noelv is
     pbaddr      => (others => '0'),
     istat       => nv_cstat_none,
     dstat       => nv_cstat_none,
-    mcycle      => (others => '0')
+    mcycle      => (others => '0'),
+    cap         => (others => '0')
     );
 
   type nv_debug_in_vector  is array (natural range <>) of nv_debug_in_type;
@@ -190,26 +196,16 @@ package noelv is
       busw              : integer                       := 64;
       cmemconf          : integer                       := 0;
       rfconf            : integer                       := 0;
-      clk2x             : integer                       := 0;
-      ahbpipe           : integer                       := 0;
+      tcmconf           : integer                       := 0;
       -- Caches
       icen              : integer range 0  to 1         := 0;  -- I$ Cache Enable
-      irepl             : integer range 0  to 2         := 2;
-      isets             : integer range 1  to 4         := 1;  -- I$ Sets/Ways
+      iways             : integer range 1  to 4         := 1;  -- I$ Ways
       ilinesize         : integer range 4  to 8         := 4;  -- I$ Cache Line Size (words)
-      isetsize          : integer range 1  to 256       := 1;  -- I$ Cache Way Size (KiB)
+      iwaysize          : integer range 1  to 256       := 1;  -- I$ Cache Way Size (KiB)
       dcen              : integer range 0  to 1         := 0;  -- D$ Cache Enable
-      drepl             : integer range 0  to 2         := 2;
-      dsets             : integer range 1  to 4         := 1;  -- D$ Sets/Ways
+      dways             : integer range 1  to 4         := 1;  -- D$ Ways
       dlinesize         : integer range 4  to 8         := 4;  -- D$ Cache Line Size (words)
-      dsetsize          : integer range 1  to 256       := 1;  -- D$ Cache Way Size (KiB)
-      dsnoop            : integer range 0  to 6         := 0;  -- Enable Data Cache Snooping
-      ilram             : integer range 0  to 1         := 0;
-      ilramsize         : integer range 1  to 512       := 1;
-      ilramstart        : integer range 0  to 255       := 16#8e#;
-      dlram             : integer range 0  to 1         := 0;
-      dlramsize         : integer range 1  to 512       := 1;
-      dlramstart        : integer range 0  to 255       := 16#8f#;
+      dwaysize          : integer range 1  to 256       := 1;  -- D$ Cache Way Size (KiB)
       -- BHT
       bhtentries        : integer range 32 to 1024      := 256;-- BHT Number of Entries
       bhtlength         : integer range 2  to 10        := 5;  -- History Length
@@ -219,17 +215,17 @@ package noelv is
       btbsets           : integer range 1  to 8         := 1;  -- BTB Sets/Ways
       -- MMU
       mmuen             : integer range 0  to 2         := 0;  -- Enable MMU
-      mmupgsz           : integer                       := 0;
       itlbnum           : integer range 2  to 64        := 8;
       dtlbnum           : integer range 2  to 64        := 8;
-      tlb_type          : integer range 0  to 3         := 1;
-      tlb_rep           : integer range 0  to 1         := 0;
+      htlbnum           : integer range 1  to 64        := 8;
       tlbforepl         : integer range 1  to 4         := 1;
       riscv_mmu         : integer range 0  to 3         := 1;
+      tlb_pmp           : integer range 0  to 1         := 1;  -- Do PMP via TLB
       pmp_no_tor        : integer range 0  to 1         := 0;  -- Disable PMP TOR
       pmp_entries       : integer range 0  to 16        := 16; -- Implemented PMP registers
       pmp_g             : integer range 0  to 10        := 0;  -- PMP grain is 2^(pmp_g + 2) bytes
---      pmp_msb           : integer range 15 to 55        := 31; -- High bit for PMP checks
+      asidlen           : integer range 0 to  16        := 0;  -- Max 9 for Sv32
+      vmidlen           : integer range 0 to  14        := 0;  -- Max 7 for Sv32
       -- Extensions
       ext_m             : integer range 0  to 1         := 1;  -- M Base Extension Set
       ext_a             : integer range 0  to 1         := 0;  -- A Base Extension Set
@@ -255,16 +251,12 @@ package noelv is
       div_hiperf        : integer                       := 0;
       div_small         : integer                       := 0;
       rfreadhold        : integer range 0  to 1         := 0;  -- Register File Read Hold
-      ft                : integer                       := 0;  -- FT option
       scantest          : integer                       := 0;  -- scantest support
       endian            : integer                       := GRLIB_CONFIG_ARRAY(grlib_little_endian)
       );
     port (
-      ahbclk      : in  std_ulogic; -- bus clock
-      cpuclk      : in  std_ulogic; -- cpu clock
-      gcpuclk     : in  std_ulogic; -- gated cpu clock
-      fpuclk      : in  std_ulogic; -- gated fpu clock
-      hclken      : in  std_ulogic; -- bus clock enable qualifier
+      clk         : in  std_ulogic; -- clock
+      gclk        : in  std_ulogic; -- gated clock
       rstn        : in  std_ulogic;
       ahbi        : in  ahb_mst_in_type;
       ahbo        : out ahb_mst_out_type;
@@ -290,6 +282,7 @@ package noelv is
       cmemconf : integer;
       rfconf   : integer;
       fpuconf  : integer;
+      tcmconf  : integer;
       disas    : integer;
       pbaddr   : integer;
       cfg      : integer;
@@ -326,6 +319,7 @@ package noelv is
       cmemconf : integer;
       rfconf   : integer := 0;
       fpuconf  : integer;
+      tcmconf  : integer := 0;
       disas    : integer;
       ahbtrace : integer;
       cfg      : integer := 0;

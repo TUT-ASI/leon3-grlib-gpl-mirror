@@ -94,7 +94,16 @@ package leon5int is
   end record;
 
   type trace_port_in_vector is array(natural range <>) of trace_port_out_type;
-
+  
+  type trace_control_out_type is record
+    trace_upd   : std_logic;
+    addr_f      : std_logic_vector(3 downto 0);
+    addr_f_p    : std_logic_vector(3 downto 0);
+    inst_filter : std_logic_vector(3 downto 0);
+  end record;
+    
+  type trace_control_out_vector is array(natural range <>) of trace_control_out_type;
+  
   constant CPUSTATE_STOPPED: std_logic_vector(1 downto 0) := "00";
   constant CPUSTATE_RUNNING: std_logic_vector(1 downto 0) := "01";
   constant CPUSTATE_ERRMODE: std_logic_vector(1 downto 0) := "10";
@@ -108,6 +117,8 @@ package leon5int is
   constant CPUCMD_FORCERUN : std_logic_vector(2 downto 0) := "101";
   constant CPUCMD_FORCEERR : std_logic_vector(2 downto 0) := "110";
   constant CPUCMD_FORCESLP : std_logic_vector(2 downto 0) := "111";
+
+  type leon5_perf_array is array(0 to 7) of std_logic_vector(63 downto 0);
 
   type l5_debug_in_type is record
     dynid       : std_logic_vector(3 downto 0);
@@ -652,8 +663,30 @@ package leon5int is
       dbgi  : in  l5_debug_in_type;
       dbgo  : out l5_debug_out_type;
       tpo   : out trace_port_out_type;
+      tco   : in  trace_control_out_type;
       fpuo  : in  grfpu5_out_type;
-      fpui  : out grfpu5_in_type
+      fpui  : out grfpu5_in_type;
+      perf  : out std_logic_vector(63 downto 0)
+      );
+  end component;
+
+  ----------------------------------------------------------------------------
+  -- L5STAT
+  ----------------------------------------------------------------------------
+
+  component l5stat is
+    generic (
+      cnt_width : integer range 1 to 64 := 32;
+      ncores    : integer range 1 to 8  := 1;
+      ninpipe   : integer range 1 to 2  := 1;
+      hindex    : integer := 0;
+      ioaddr    : integer := 0);
+    port (
+      rstn      : in  std_ulogic;
+      clk       : in  std_ulogic;
+      perf      : in  leon5_perf_array;
+      ahbsi     : in  ahb_slv_in_type;
+      ahbso     : out ahb_slv_out_type
       );
   end component;
 
@@ -858,6 +891,7 @@ package leon5int is
       itod     : in  l5_irq_dbg_vector(0 to ncpu-1);
       dtoi     : out l5_dbg_irq_vector(0 to ncpu-1);
       tpi      : in  trace_port_in_vector(0 to NCPU-1);
+      tco      : out trace_control_out_vector(0 to NCPU-1);
       tstop    : out std_ulogic;
       maskerrn : out std_logic_vector(0 to NCPU-1);
       uartie   : in  uart_in_type;
@@ -907,13 +941,15 @@ package leon5int is
       fpu5o       : in  fpc5_out_type;
       fpu5i       : out fpc5_in_type;
       tpo         : out trace_port_out_type;
+      tco         : in  trace_control_out_type; 
       fpc_retire  : in  std_logic;
       fpc_rfwen   : in  std_logic_vector(1 downto 0);
       fpc_rfwdata : in  std_logic_vector(63 downto 0);
       fpc_retid   : in  std_logic_vector(4 downto 0);
       testen      : in  std_logic;
       testrst     : in  std_logic;
-      testin      : in std_logic_vector(TESTIN_WIDTH-1 downto 0)
+      testin      : in std_logic_vector(TESTIN_WIDTH-1 downto 0);
+      perf        : out std_logic_vector(63 downto 0)
       );
   end component;
 
@@ -960,7 +996,8 @@ package leon5int is
       c2c_miso : in  l5_intreg_miso_type;
       freeze : in std_ulogic;
       bootword : in std_logic_vector(31 downto 0);
-      smpflush : in std_logic_vector(1 downto 0)
+      smpflush : in std_logic_vector(1 downto 0);
+      perf : out std_logic_vector(31 downto 0)
       );
   end component;
 
@@ -1175,7 +1212,6 @@ package leon5int is
   -- Misc utilities
   -----------------------------------------------------------------------------
 
-  function mmuen_set(mmuen : integer) return integer;
 
 --pragma translate_off
   component inst_text is
@@ -1190,17 +1226,6 @@ end package;
 
 package body leon5int is
 
-  function mmuen_set(mmuen : integer)
-    return integer is
-    variable ret : integer;
-  begin
-    ret := 0;
-    if mmuen > 0 then
-      ret := 1;
-    end if;
-    return ret;
-  end ;
-  
 
 
 

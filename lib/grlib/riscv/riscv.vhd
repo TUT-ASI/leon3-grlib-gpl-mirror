@@ -126,13 +126,23 @@ package riscv is
 
   subtype funct7_type is std_logic_vector(6 downto 0);
 
-  constant F7_BASE      : funct7_type := "0000000";
-  constant F7_SUB       : funct7_type := "0100000";
-  constant F7_URET      : funct7_type := "0000000";
-  constant F7_SRET      : funct7_type := "0001000";
-  constant F7_WFI       : funct7_type := "0001000";
-  constant F7_MRET      : funct7_type := "0011000";
-  constant F7_SFENCE_VMA: funct7_type := "0001001";
+  constant F7_BASE        : funct7_type := "0000000";
+  constant F7_SUB         : funct7_type := "0100000";
+  constant F7_URET        : funct7_type := "0000000";
+  constant F7_SRET        : funct7_type := "0001000";
+  constant F7_WFI         : funct7_type := "0001000";
+  constant F7_MRET        : funct7_type := "0011000";
+  constant F7_SFENCE_VMA  : funct7_type := "0001001";
+  constant F7_HFENCE_VVMA : funct7_type := "0010001";
+  constant F7_HFENCE_GVMA : funct7_type := "0110001";
+  constant F7_HLVB        : funct7_type := "0110000";
+  constant F7_HLVH        : funct7_type := "0110010";
+  constant F7_HLVW        : funct7_type := "0110100";
+  constant F7_HLVD        : funct7_type := "0110110";
+  constant F7_HSVB        : funct7_type := "0110001";
+  constant F7_HSVH        : funct7_type := "0110011";
+  constant F7_HSVW        : funct7_type := "0110101";
+  constant F7_HSVD        : funct7_type := "0110111";
 
   -- funct3 decoding (inst(14 downto 12))
 
@@ -727,6 +737,7 @@ package riscv is
   constant CSR_DSCRATCH1        : csratype := x"7b3";
   -- Custom Read/Write Registers
   constant CSR_DFEATURESEN      : csratype := x"7c0";
+  constant CSR_DFEATURESENH     : csratype := x"7c1";
 
   constant DCAUSE_EBREAK        : std_logic_vector(2 downto 0) := "001";
   constant DCAUSE_TRIG          : std_logic_vector(2 downto 0) := "010";

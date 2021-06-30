@@ -54,6 +54,7 @@ entity noelvsys is
     cmemconf : integer;
     rfconf   : integer;
     fpuconf  : integer;
+    tcmconf  : integer;
     disas    : integer;
     ahbtrace : integer;
     cfg      : integer;
@@ -308,10 +309,12 @@ begin
         cmemconf => cmemconf,
         rfconf   => rfconf,
         fpuconf  => fpuconf,
+        tcmconf  => tcmconf,
         disas    => disas,
         pbaddr   => 16#90000#,
         cfg      => cfg,
-        scantest => scantest)
+        scantest => scantest
+      )
       port map (
         clk   => clk,
         rstn  => rstn,
@@ -407,7 +410,7 @@ begin
         nahbs    => 4,
         fpnpen   => 1,
         shadow   => 1,
-        ahbtrace => ahbtrace,
+        ahbtrace => ahbtrace/2,
         ahbendian => 1
         )
       port map (
@@ -606,8 +609,8 @@ begin
       nsources          => NAHBIRQ,
       ncpu              => ncpu,
       priorities        => 8,
-      pendingbuff       => 8,
-      irqtype           => 0,
+      pendingbuff       => 1,
+      irqtype           => 1,
       thrshld           => 1
       )
     port map (

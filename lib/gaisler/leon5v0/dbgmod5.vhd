@@ -69,6 +69,7 @@ entity dbgmod5 is
     itod     : in  l5_irq_dbg_vector(0 to ncpu-1);
     dtoi     : out l5_dbg_irq_vector(0 to ncpu-1);
     tpi      : in  trace_port_in_vector(0 to NCPU-1);
+    tco      : out trace_control_out_vector(0 to NCPU-1);
     tstop    : out std_ulogic;
     maskerrn : out std_logic_vector(0 to NCPU-1);
     uartie   : in  uart_in_type;
@@ -87,9 +88,6 @@ architecture rtl of dbgmod5 is
 
   constant nsess : integer := min(ncpu,4);
 
-  constant dsu_haddr : integer := 16#900#;
-  constant dsu_hmask : integer := 16#f00#;
-
   constant NBITS     : integer := log2x(ncpu);
   constant PROC_H    : integer := 22+NBITS-1;
   constant PROC_L    : integer := 22;
@@ -104,13 +102,14 @@ architecture rtl of dbgmod5 is
   constant ITRACEN   : boolean := (itentr /= 0);
   constant ahbwp     : integer := 2;
   constant AHBWATCH  : boolean := TRACEN and (ahbwp /= 0);
-  constant tbits     : integer := 30;
+  constant tbits     : integer := 32;
+  constant ittbits   : integer := min(tbits,30);
   constant scantest  : integer := 0;      -- temp
 
   constant DSU5_VERSION : integer := 3;
   constant hconfig : ahb_config_type := (
     0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_LEON5DSU, 0, DSU5_VERSION, 0),
-    4 => ahb_membar(dsu_haddr, '0', '0', dsu_hmask),
+    4 => ahb_membar(dsuhaddr, '0', '0', dsuhmask),
     others => zero32);
 
   type dbgmst_state is record
@@ -389,6 +388,11 @@ architecture rtl of dbgmod5 is
   subtype itbi_data_type is std_logic_vector(383 downto 0);
 
   type it_reg_type is record
+    trace_upd       : std_logic;
+    enable          : std_logic;
+    addr_f          : std_logic_vector(3 downto 0);  --address filter
+    addr_f_p        : std_logic_vector(3 downto 0);  --address filter polarity
+    inst_filter     : std_logic_vector(3 downto 0);  --instruction filter type
     sample0         : itbi_data_type;
     sample1         : itbi_data_type;
     valid           : std_logic_vector(1 downto 0);
@@ -403,8 +407,8 @@ architecture rtl of dbgmod5 is
     set_pointer_inc : std_logic;
   end record;
   constant it_reg_none: it_reg_type := (
-    (others => '0'), (others => '0'), "00", '0', '0', '0',
-    (others => '0'), (others => '0'), (others => '0'), (others => '0'), '0'
+    '0', '0', (others=>'0'), (others=>'0'), (others=>'0'), (others => '0'), (others => '0'),
+    "00", '0', '0', '0', (others => '0'), (others => '0'), (others => '0'), (others => '0'), '0'
     );
 
   type it_reg_array_type is array (0 to NCPU-1) of it_reg_type;
@@ -564,6 +568,7 @@ begin
     variable ocpumo: ahb_mst_out_type;
     variable odbgi: l5_debug_in_vector(0 to ncpu-1);
     variable odtoi: l5_dbg_irq_vector(0 to ncpu-1);
+    variable otco : trace_control_out_vector(0 to ncpu-1);
     variable otbi : tracebuf_in_type5;
     variable oit_di : itbi_data_array_type;
     variable ouartoe: uart_out_type;
@@ -1075,12 +1080,24 @@ begin
         -- 0x180 - 0x1FC Instruction trace control
         when "1100000" =>          -- 0x180 itrace pointer
           vrd := (others=>'0');
-          vrd(log2(itentr)-1 downto 0) := r.it(index).pointer(log2(itentr)-1 downto 0);
+          vrd(log2(itentr)-1 downto 0) := r.it(cpuidx).pointer(log2(itentr)-1 downto 0);
           if wr = '1' then
-            v.it(index).pointer := vwd(log2(itentr)-1+log2(NCPU) downto 0);
-            v.it(index).set_pointer_inc := '1';
+            v.it(cpuidx).pointer := vwd(log2(itentr)-1+log2(NCPU) downto 0);
+            v.it(cpuidx).set_pointer_inc := '1';
           end if;
-        when "1100001" => null;         -- 0x184
+        when "1100001" =>         -- 0x184 itrace control-1
+          vrd               := (others => '0');
+          vrd(23)           := r.it(cpuidx).enable;
+          vrd(31 downto 28) := r.it(cpuidx).addr_f;
+          vrd(27 downto 24) := r.it(cpuidx).addr_f_p;
+          vrd(22 downto 19) := r.it(cpuidx).inst_filter;
+          if wr = '1' then
+            v.it(cpuidx).trace_upd   := '1';
+            v.it(cpuidx).enable      := vwd(23);
+            v.it(cpuidx).addr_f      := vwd(31 downto 28);
+            v.it(cpuidx).addr_f_p    := vwd(27 downto 24);
+            v.it(cpuidx).inst_filter := vwd(22 downto 19);
+          end if;
         when "1100010" => null;         -- 0x188
         when "1100011" => null;         -- 0x18C
         when "1100100" => null;         -- 0x190
@@ -1731,6 +1748,11 @@ begin
     --Itrace Buffer
     ---------------------------------------------------------------------------
 
+    --this is overwritten by dsu_reg_access
+    for i in 0 to NCPU-1 loop
+      v.it(i).trace_upd   := '0';
+    end loop;
+    
     --by default lane0 (old instruction resides on 383 downto 192)
 
     for i in 0 to NCPU-1 loop
@@ -1775,42 +1797,46 @@ begin
     end loop;
 
     for i in 0 to NCPU-1 loop
-      if r.it(i).valid = "01" or r.it(i).valid = "10" then
-        v.it(i).pointer := vit_pointer(i)(log2(itentr)-1+log2(NCPU) downto 0);
-        v.it(i).pointer_inc := vit_pointer_inc(i)(log2(itentr)-1+log2(NCPU) downto 0);
-      elsif r.it(i).valid = "11" then
-        vit_pointer(i) := std_logic_vector(unsigned('0'&r.it(i).pointer)+2);
-        vit_pointer_inc(i) := std_logic_vector(unsigned('0'&r.it(i).pointer)+3);
-        v.it(i).pointer := vit_pointer(i)(log2(itentr)-1+log2(NCPU) downto 0);
-        v.it(i).pointer_inc := vit_pointer_inc(i)(log2(itentr)-1+log2(NCPU) downto 0);
+      if r.it(i).enable = '1' then
+        if r.it(i).valid = "01" or r.it(i).valid = "10" then
+          v.it(i).pointer := vit_pointer(i)(log2(itentr)-1+log2(NCPU) downto 0);
+          v.it(i).pointer_inc := vit_pointer_inc(i)(log2(itentr)-1+log2(NCPU) downto 0);
+        elsif r.it(i).valid = "11" then
+          vit_pointer(i) := std_logic_vector(unsigned('0'&r.it(i).pointer)+2);
+          vit_pointer_inc(i) := std_logic_vector(unsigned('0'&r.it(i).pointer)+3);
+          v.it(i).pointer := vit_pointer(i)(log2(itentr)-1+log2(NCPU) downto 0);
+          v.it(i).pointer_inc := vit_pointer_inc(i)(log2(itentr)-1+log2(NCPU) downto 0);
+        end if;
       end if;
     end loop;
 
     for i in 0 to NCPU-1 loop
-      v.it(i).valid := "00";
-      if r.it(i).sample0(127) = '1' and r.it(i).sample0(319) = '1' then
-        if v.it(i).pointer(0) = '0' then
-          v.it(i).sample1 := r.it(i).sample0;
-        else
-          v.it(i).sample1(191 downto 0) := r.it(i).sample0(383 downto 192);
-          v.it(i).sample1(383 downto 192) := r.it(i).sample0(191 downto 0);
-        end if;
-        v.it(i).valid := "11";
-      elsif (r.it(i).sample0(127) xor r.it(i).sample0(319)) = '1' then
-        if r.it(i).sample0(127) = '1' then
-          v.it(i).sample1(383 downto 192) := r.it(i).sample0(191 downto 0);
-          v.it(i).sample1(191 downto 0) := r.it(i).sample0(191 downto 0);
-        else
-          v.it(i).sample1(191 downto 0) := r.it(i).sample0(383 downto 192);
-          v.it(i).sample1(383 downto 192) := r.it(i).sample0(383 downto 192);
-        end if;
+        v.it(i).valid := "00";
+        if r.it(i).enable = '1' then
+          if r.it(i).sample0(127) = '1' and r.it(i).sample0(319) = '1' then
+            if v.it(i).pointer(0) = '0' then
+              v.it(i).sample1 := r.it(i).sample0;
+            else
+              v.it(i).sample1(191 downto 0) := r.it(i).sample0(383 downto 192);
+              v.it(i).sample1(383 downto 192) := r.it(i).sample0(191 downto 0);
+            end if;
+            v.it(i).valid := "11";
+          elsif (r.it(i).sample0(127) xor r.it(i).sample0(319)) = '1' then
+            if r.it(i).sample0(127) = '1' then
+              v.it(i).sample1(383 downto 192) := r.it(i).sample0(191 downto 0);
+              v.it(i).sample1(191 downto 0) := r.it(i).sample0(191 downto 0);
+            else
+              v.it(i).sample1(191 downto 0) := r.it(i).sample0(383 downto 192);
+              v.it(i).sample1(383 downto 192) := r.it(i).sample0(383 downto 192);
+            end if;
 
-        if v.it(i).pointer(0) = '0' then
-          v.it(i).valid := "10";
-        else
-          v.it(i).valid := "01";
+            if v.it(i).pointer(0) = '0' then
+              v.it(i).valid := "10";
+            else
+              v.it(i).valid := "01";
+            end if;
+          end if;
         end if;
-      end if;
     end loop;
 
     for i in 0 to NCPU-1 loop
@@ -1846,7 +1872,7 @@ begin
     -- Stage 2 - write into TB, evaluate watchpoint conditions
     otbi.addr(TBUFABITS-1 downto 0) := r.tr.aindex;
     otbi.data(127) := '0'; -- orv(bphit) or orv(wphit);
-    otbi.data(96+tbits-1 downto 96) := r.dsu.timer(tbits-1 downto 0);
+    otbi.data(96+ittbits-1 downto 96) := r.dsu.timer(ittbits-1 downto 0);
     otbi.data(94 downto 80) := (others => '0'); --ahbmipl.hirq(15 downto 1);
     otbi.data(79) := r.tr.s2hwrite;
     otbi.data(78 downto 77) := r.tr.s2htrans;
@@ -2289,6 +2315,14 @@ begin
       v.dsu.effctl_allstab := '0';
     end if;
 
+    --instruction trace filtering outputs
+    for i in 0 to NCPU-1 loop
+      otco(i).trace_upd   := r.it(i).trace_upd;
+      otco(i).addr_f      := r.it(i).addr_f;
+      otco(i).addr_f_p    := r.it(i).addr_f_p;
+      otco(i).inst_filter := r.it(i).inst_filter;
+    end loop;
+
     ---------------------------------------------------------------------------
     -- Reset
     ---------------------------------------------------------------------------
@@ -2365,6 +2399,7 @@ begin
           end loop;
         end if;
         for i in 0 to NCPU-1 loop
+          v.it(i).trace_upd       := RRES.it(i).trace_upd;
           v.it(i).valid           := RRES.it(i).valid;
           v.it(i).pointer         := RRES.it(i).pointer;
           v.it(i).pointer_inc     := RRES.it(i).pointer_inc;
@@ -2372,6 +2407,10 @@ begin
           v.it(i).buf_read2       := RRES.it(i).buf_read2;
           v.it(i).buf_ready       := RRES.it(i).buf_ready;
           v.it(i).set_pointer_inc := RRES.it(i).set_pointer_inc;
+          v.it(i).enable          := dsuen;
+          v.it(i).addr_f          := RRES.it(i).addr_f;
+          v.it(i).addr_f_p        := RRES.it(i).addr_f_p;
+          v.it(i).inst_filter     := RRES.it(i).inst_filter;
         end loop;
         v.uart.captwp      := RRES.uart.captwp;
         v.uart.captrp      := RRES.uart.captrp;
@@ -2415,6 +2454,7 @@ begin
     dbgi <= odbgi;
     dtoi <= odtoi;
     tbi <= otbi;
+    tco <= otco;
     it_di <= oit_di;
     maskerrn <= r.dsu.be;
     uartoe <= ouartoe;
@@ -2428,6 +2468,9 @@ begin
         r <= nr;
         if GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) /= 0 and rstn='0' then
           r <= RRES;
+          for i in 0 to NCPU-1 loop
+            r.it(i).enable <= dsuen;
+          end loop;
         end if;
       end if;
     end process;
@@ -2438,6 +2481,9 @@ begin
     begin
       if rstn='0' then
         r <= RRES;
+        for i in 0 to NCPU-1 loop
+          r.it(i).enable <= dsuen;
+        end loop;
       elsif rising_edge(clk) then
         r <= nr;
       end if;

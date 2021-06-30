@@ -440,7 +440,7 @@ begin
           dtags1 : syncram
           generic map (tech, DOFFSET_BITS, DPTAG_RAM_BITS, testen, memtest_vlen, 0, dcreadhold) port map (
             sclk, dtaddr2, dtdatain3(i)(DTAG_RAM_BITS-1 downto DTAG_BITS-DPTAG_BITS),
-            dtdataout3(i)(DTAG_RAM_BITS-1 downto DTAG_BITS-DPTAG_BITS), dtenable(i), dtwrite3(i),
+            dtdataout3(i)(DTAG_RAM_BITS-1 downto DTAG_BITS-DPTAG_BITS), dtenable2(i), dtwrite3(i),
             testin
             );
           vbcwd(i) <= dtdatain(i)(dlinesize-1);

@@ -84,7 +84,8 @@ entity cctrl5 is
     c2c_miso : in  l5_intreg_miso_type;
     freeze : in std_ulogic;
     bootword : in std_logic_vector(31 downto 0);
-    smpflush : in std_logic_vector(1 downto 0)
+    smpflush : in std_logic_vector(1 downto 0);
+    perf : out std_logic_vector(31 downto 0)
     );
 
 
@@ -585,6 +586,7 @@ architecture rtl of cctrl5 is
     iudiag_mosi : l5_intreg_mosi_type;
     -- context switch status signal
     ctxswitch : std_ulogic;
+    perf     : std_logic_vector(31 downto 0);
   end record;
 
   function cctrl5_regs_res return cctrl5_regs is
@@ -653,6 +655,7 @@ architecture rtl of cctrl5 is
       mmusel => (others => '0'), fpc_mosi => l5_intreg_mosi_none, c2c_mosi => l5_intreg_mosi_none,
       iudiag_mosi => l5_intreg_mosi_none,
       ctxswitch => '0'
+      , perf => (others => '0')
       );
     return v;
   end cctrl5_regs_res;
@@ -1327,6 +1330,7 @@ begin
         ocrami.ddatadin(x) := vwdata64;
       end loop;
     end if;
+    v.perf := (others=>'0');
 
 
     --------------------------------------------------------------------------
@@ -1967,10 +1971,13 @@ begin
     vvalididx := rs.s3offs;
     vs.dlctr := (others => '0');
     vs.raisereq := '0';
+    -- Setup address and data inputs for diag access if no snoop tag update
+    if rs.s3hit=(rs.s3hit'range=>'0') and rs.s3read=(rs.s3read'range=>'0') then
+      vvalididx := rs.dtaccidx;
+    end if;
     if (dtagconf/=0 or rs.s3hit=(rs.s3hit'range=>'0')) and rs.s3read=(rs.s3read'range=>'0') and
       rs.s3flush=(rs.s3flush'range=>'0') then
       ocrami.dtaguindex(DOFFSET_BITS-1 downto 0) := rs.dtaccidx;
-      vvalididx := rs.dtaccidx;
       for i in 0 to DWAYS-1 loop
         ocrami.dtagudin(i)(DTAG_HIGH-DTAG_LOW+1 downto 0) := r.dtagpipe(i)(DTAG_HIGH-DTAG_LOW+1 downto 0);
         if rs.dtacctagmod='1' then
@@ -1984,8 +1991,8 @@ begin
       if rs.dlctr /= (rs.dlctr'range => '1') then
         vs.dlctr := std_logic_vector(unsigned(rs.dlctr)+1);
       end if;
-      if (dtagconf/=0 or rs.s3hit=(rs.s3hit'range=>'0')) and rs.s3read=(rs.s3read'range=>'0') and
-        rs.s3flush=(rs.s3flush'range=>'0') then
+      if ( rs.s3hit=(rs.s3hit'range=>'0') and rs.s3read=(rs.s3read'range=>'0') and
+           rs.s3flush=(rs.s3flush'range=>'0') ) then
         vs.dtwrite := '0';
         ocrami.dtaguwrite(0 to DWAYS-1) := rs.dtaccways;
         for w in 0 to DWAYS-1 loop
@@ -2484,6 +2491,7 @@ begin
           else
             v.s := as_flush;
           end if;
+          v.perf(4) := '1';
         elsif ((not IMISSPIPE) and v.imisspend='1') or (IMISSPIPE and r.imisspend='1') then
           v.ahb_haddr := v.i2paddr;
           v.ahb_haddr(log2(ilinesize*4)-1 downto 0) := (others => '0');
@@ -2496,14 +2504,13 @@ begin
             v.ahb_htrans := "10";
             v.s := as_icfetch;
             keepreq := '1';
---GRLIB_FT_BEGIN
-            v.iramaddr := (others => '0');
---GRLIB_FT_END
+            v.perf(0) := '1';
           else
             v.s := as_mmuwalk;
             v.ahb_haddr := r.mmctrl1.ctxp(25 downto 4) & v.i2ctx & "00";
             v.ahb_htrans := "10";
             v.ahb_hsize := "010";
+            v.perf(1) := '1';
           end if;
         elsif (((not DMISSPIPE) and v.dmisspend='1') or (DMISSPIPE and r.dmisspend='1')) and v.d2specread='0' then
           v.ahb_haddr := v.d2paddr;
@@ -2528,6 +2535,7 @@ begin
               v.s := as_dcfetch;
               keepreq := '1';
               v.ahb_haddr(log2(dlinesize*4)-1 downto 0) := (others => '0');
+              v.perf(2) := '1';
             else
               v.ahb_htrans := "10";
               v.ahb_hbusreq := '1';
@@ -2539,6 +2547,7 @@ begin
             v.ahb_haddr := r.mmctrl1.ctxp(25 downto 4) & r.mmctrl1.ctx & "00";
             v.ahb_htrans := "10";
             v.ahb_hsize := "010";
+            v.perf(3) := '1';
           else
             v.s := as_rdasi;
           end if;
@@ -2620,7 +2629,7 @@ begin
         end if;
         if ahbi.hready='1' then
           -- Advance haddr/htrans
-          if r.granted='1' and ahbi.hresp(1)='0' and r.ahb_htrans(1)='1' then
+          if r.granted='1' and (ahbi.hresp(1)='0' or r.ahb2_inacc='0') and r.ahb_htrans(1)='1' then
             -- Move haddr forward
             -- Note we can not look at r.i2busw here as it may get updated while streaming
             --   therefore we look directly at ahb_hsize instead
@@ -2717,7 +2726,7 @@ begin
         end if;
         if ahbi.hready='1' then
           -- Advance haddr/htrans
-          if r.granted='1' and ahbi.hresp(1)='0' and r.ahb_htrans(1)='1' then
+          if r.granted='1' and (ahbi.hresp(1)='0' or r.ahb2_inacc='0') and r.ahb_htrans(1)='1' then
             -- Move haddr forward
             v.ahb_htrans := "11";
             if r.d2busw='1' then
@@ -2811,7 +2820,7 @@ begin
 
       when as_dcsingle =>
         if ahbi.hready='1' then
-          if r.granted='1' and ahbi.hresp(1)='0' and r.ahb_htrans(1)='1' then
+          if r.granted='1' and (ahbi.hresp(1)='0' or r.ahb2_inacc='0') and r.ahb_htrans(1)='1' then
             v.ahb_htrans := "00";
           elsif r.ahb2_inacc='1' and ahbi.hresp(1)='1' then
             v.ahb_htrans := "10";
@@ -2841,8 +2850,20 @@ begin
         odco.mds := '0';
 
       when as_mmuwalk =>
+        -- Ensure PTE writes get snooped
+        if r.mmusel(2)='0' then
+          v.ahb_snoopmask := (others => '0');
+        end if;
         -- Complete current AHB access
-        if ahbi.hready='1' and r.granted='1' then
+        if r.ahb_htrans="00" and r.ahb2_inacc='0' then
+          null;
+        elsif ahbi.hready='1' and r.ahb2_inacc='1' and ahbi.hresp(1)='0' then
+          null;
+        elsif ahbi.hready='0' and r.ahb2_inacc='1' and ahbi.hresp(1)='1' then
+          v.ahb_htrans := "00";
+        elsif ahbi.hready='1' and r.ahb2_inacc='1' and ahbi.hresp(1)='1' then
+          v.ahb_htrans := "10";
+        elsif ahbi.hready='1' and r.granted='1' then
           v.ahb_htrans := "00";
         end if;
         -- New entry and new error (if error occurs)
@@ -3320,7 +3341,7 @@ begin
           v.ahb_htrans := "00";
         end if;
         if ahbi.hready='1' then
-          if r.granted='1' and ahbi.hresp(1)='0' and r.ahb_htrans(1)='1' then
+          if r.granted='1' and (ahbi.hresp(1)='0' or r.ahb2_inacc='0') and r.ahb_htrans(1)='1' then
             v.ahb_haddr(2) := not r.ahb_haddr(2);
             v.ahb_htrans(0) := '1';
             if r.ahb_haddr(2)='1' then
@@ -3489,6 +3510,7 @@ begin
             v.flushctr := (others => '0');
             v.slowwrpend := '0';
             v.s := as_flush;
+            v.perf(4) := '1';
 
           when "00010001" =>            -- 0x11 DCache flush
             v.dflushpend := '1';
@@ -3496,6 +3518,7 @@ begin
             v.flushctr := (others => '0');
             v.slowwrpend := '0';
             v.s := as_flush;
+            v.perf(4) := '1';
 
             --when "00010011" =>            -- 0x13 ICache+Dcache flush
             -- merged with ASI 0x10
@@ -3508,6 +3531,7 @@ begin
             v.flushctr := (others => '0');
             v.slowwrpend := '0';
             v.s := as_flush;
+            v.perf(4) := '1';
 
           when "00011001" | "00000100" =>            -- 0x19 MMU registers
             vaddr3 := r.d2vaddr(10 downto 8);

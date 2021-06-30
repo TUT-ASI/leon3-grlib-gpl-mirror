@@ -48,9 +48,8 @@ entity bhtnv is
     nentries   : integer range 32 to 1024;  -- Number of Entries
     hlength    : integer range 2 to 10;     -- History Length
     predictor  : integer range 0 to 2;      -- Predictor
-    dualbranch : integer range 0 to 1;      -- Dual branch
-    sparc      : integer range 0 to 1;      -- SPARC
     ext_c      : integer range 0 to 1;      -- C Base Extension Set
+    dissue     : integer range 0 to 1;      -- Dual issue
     testen     : integer
     );
   port (
@@ -101,7 +100,7 @@ architecture rtl of bhtnv is
   -- Constants
   ----------------------------------------------------------------------------
 
-  constant OFFSET       : integer := 2 + sparc - ext_c * 1;
+  constant OFFSET       : integer := 2 - ext_c * 1;
   constant BHTBITS      : integer := log2ext(nentries) + OFFSET;
   constant COUNTERBITS  : integer := 2;
   constant PHTENTRIES   : integer := phtgen(nentries, hlength, predictor);
@@ -172,7 +171,7 @@ begin  -- rtl
     variable pht0               : std_logic_vector(MAX_PREDICTOR_BITS-1 downto 0);
     variable pht1               : std_logic_vector(MAX_PREDICTOR_BITS-1 downto 0);
     variable wdata              : std_logic_vector(COUNTERBITS-1 downto 0);
-    variable taken              : std_logic_vector(1 downto 0);
+    variable taken              : std_logic_vector(3 downto 0);
 
     variable rindex_comb            : std_logic_vector(log2ext(nentries)-1 downto 0);
     variable bhistory               : std_logic_vector(hlength-1 downto 0);
@@ -306,10 +305,16 @@ begin  -- rtl
       end loop;
       
     end if;                
-
           
     taken(0) := r.taken(conv_integer(r.rindex_bhist_reg));
     taken(1) := r.taken(conv_integer(r.rindex_bhist_reg(log2ext(nentries)-1 downto 1) & '1'));
+    taken(2) := '0';
+    taken(3) := '0';
+    if ext_c /= 0 and dissue /= 0 then
+      taken(1) := r.taken(conv_integer(r.rindex_bhist_reg(log2ext(nentries)-1 downto 2) & "01"));
+      taken(2) := r.taken(conv_integer(r.rindex_bhist_reg(log2ext(nentries)-1 downto 2) & "10"));
+      taken(3) := r.taken(conv_integer(r.rindex_bhist_reg(log2ext(nentries)-1 downto 2) & "11"));
+    end if;
   
     if bhti.flush = '1' then
       v.valid := (others=>'0');
@@ -319,11 +324,7 @@ begin  -- rtl
     bhto_phistory((2**hlength)*2-1 downto 0) := phistory;
 
     -- Output Signals
-    bhto.taken     <= '0';
-    bhto.rdata(1)  <= taken(0);
-    bhto.rdata(3)  <= taken(1);
-    bhto.rdata(0)  <= '0';
-    bhto.rdata(2)  <= '0';
+    bhto.taken     <= taken;
     bhto.phistory  <= bhto_phistory;
     bhto.bhistory  <= bhto_bhistory;
 

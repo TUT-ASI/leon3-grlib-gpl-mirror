@@ -45,9 +45,9 @@ use gaisler.noelvint.zerow64;
 entity nanofpunv is
   generic (
     -- Extensions
-    fpulen    : integer range 0  to 128 := 0;  -- Floating-point precision
+    fpulen    : integer range 0  to 128 := 64;  -- Floating-point precision
     -- Core
-    no_muladd : integer range 0  to 1   := 0   -- 1 - multiply-add not supported
+    no_muladd : integer range 0  to 1   := 0    -- 1 - multiply-add not supported
     ; do_addsel : integer := 1
   );
   port (
@@ -60,12 +60,13 @@ entity nanofpunv is
     e_valid       : in  std_ulogic;
     e_nullify     : in  std_ulogic;
     csrfrm        : in  std_logic_vector(2 downto 0);
+    mode_in       : in  std_logic_vector(2 downto 0);
     issue_id      : out std_logic_vector(4 downto 0);
     fpu_holdn     : out std_ulogic;
     ready_flop    : out std_ulogic;
     --   Commit interface
     commit        : in  std_ulogic;
-    commitid      : in  std_logic_vector(4 downto 0);
+    commit_id     : in  std_logic_vector(4 downto 0);
     lddata        : in  word64;
     --   Mispredict/trap interface
     unissue       : in  std_logic_vector(1 to 4);
@@ -83,7 +84,9 @@ entity nanofpunv is
     wen           : out std_ulogic;
     flags_wen     : out std_ulogic;
     stdata        : out word64;
-    flags         : out std_logic_vector(4 downto 0)
+    flags         : out std_logic_vector(4 downto 0);
+    wb_mode       : out std_logic_vector(2 downto 0);
+    wb_id         : out std_logic_vector(4 downto 0)
   );
 end;
 
@@ -94,7 +97,8 @@ architecture rtl of nanofpunv is
   type nanofpu_state is (nf_idle, nf_flopr, nf_flop0, nf_flop1,
                          nf_load2, nf_fromint, nf_store2, nf_mvxw2, nf_min2,
                          nf_muladd2, nf_muladd_mid,
-                         nf_muladd_xadd, nf_muladd_xadd25, nf_muladd_xadd26, nf_muladd_xadd27,
+                         nf_muladd_xadd,
+                         nf_muladd_xadd25, nf_muladd_xadd26, nf_muladd_xadd27,
                          nf_muladd_xaddsub3, nf_muladd_xaddsub4, nf_muladd_xaddsub5, nf_muladd_xaddsub6,
                          nf_muladd_xaddsub7, nf_muladd_xaddsub8, nf_muladd_xaddsub9,
                          nf_sd2, nf_fitos2, nf_fitos25, nf_fitos3,
@@ -177,6 +181,7 @@ architecture rtl of nanofpunv is
     addsel      : integer range 1 to 3;
     addneg      : std_ulogic;
     swap        : std_ulogic;              -- Muladd operands need swapping
+    inexact     : std_ulogic;              -- Low bits in extended muladd shifted out
     res         : word64;
     exc         : std_logic_vector(4 downto 0);
     rddp        : std_ulogic;              -- Double precision operation
@@ -191,6 +196,7 @@ architecture rtl of nanofpunv is
     wen         : std_ulogic;
     flags_wen   : std_ulogic;
     committed   : std_ulogic;              -- Operation marked as committed by IU
+    mode        : std_logic_vector(2 downto 0);  -- Pass along for logging
     op1         : float;
     op2         : float;
     op3neg      : boolean;
@@ -206,6 +212,7 @@ architecture rtl of nanofpunv is
     compll      : std_ulogic;
     comple      : std_ulogic;
     carry       : std_ulogic;
+    muladd      : std_ulogic;
     mulctr1     : unsigned(1 downto 0);
     mulctr2     : unsigned(1 downto 0);
     mulctrlim   : unsigned(1 downto 0);
@@ -246,6 +253,7 @@ architecture rtl of nanofpunv is
     addsel      => 1,
     addneg      => '0',
     swap        => '0',
+    inexact     => '0',
     res         => (others => '0'),
     exc         => "00000",
     rddp        => '0',
@@ -260,6 +268,7 @@ architecture rtl of nanofpunv is
     wen         => '0',
     flags_wen   => '0',
     committed   => '0',
+    mode        => (others => '0'),
     op1         => float_none,
     op2         => float_none,
     op3neg      => false,
@@ -275,6 +284,7 @@ architecture rtl of nanofpunv is
     compll      => '0',
     comple      => '0',
     carry       => '0',
+    muladd      => '0',
     mulctr1     => "00",
     mulctr2     => "00",
     mulctrlim   => "00",
@@ -307,7 +317,7 @@ begin
   comb : process(r, rstn, holdn,
                  e_inst, e_valid, e_nullify, csrfrm,
                  s1, s2, s3, lddata,
-                 commit, commitid, unissue, unissue_sid)
+                 commit, commit_id, unissue, unissue_sid)
     variable v        : nanofpu_regs;
     variable vrs1     : word64;
     variable vrs2     : word64;
@@ -333,6 +343,7 @@ begin
     variable normee   : float;
     variable adjustee : float;
     variable adjusted : float;
+    variable adjusted_mant0b : std_logic_vector(0 to 1);
     variable rounded  : float;
     variable roundexc : std_logic_vector(4 downto 0);
     variable issue_op  : fpunv_op;
@@ -343,6 +354,9 @@ begin
     variable divrem1  : unsigned(28 downto 0);
     variable divrem2  : unsigned(28 downto 0);
     variable op2low0  : boolean;
+
+    variable round_from_denormal : boolean;
+
 
     function tost(x : signed) return string is
     begin
@@ -477,14 +491,21 @@ begin
       variable adjtmp : signed(12 downto 0);
     begin
       if limdp = '1' then
-        adjtmp   := op.exp + 1022;
+        -- Limit to -1023 rather than -1022 here, since we need to be
+        -- able to deal with the underflow flag properly when rounding
+        -- goes from denormal to normal.
+        -- See for example
+        -- www.jhauser.us/arithmetic/SoftFloat-3/doc/SoftFloat-FAQ.html
+        -- regarding tininess after rounding.
+        adjtmp   := op.exp + 1023;
         -- -64 to 63?
         if all_0(adjtmp(12 downto 6)) or all_1(adjtmp(12 downto 6)) then
           maxadj := adjtmp(6 downto 0);
         end if;
       end if;
       if limsp = '1' then
-        adjtmp   := op.exp + 126;
+        -- Limit to -127 rather than -126 here. See above.
+        adjtmp   := op.exp + 127;
         -- -64 to 63?
         if all_0(adjtmp(12 downto 6)) or all_1(adjtmp(12 downto 6)) then
           maxadj := adjtmp(6 downto 0);
@@ -647,16 +668,22 @@ begin
 
 
     -- Shift mantissa
-    function adjust_new(mant_in : std_logic_vector(55 downto 0);
-                        vadj    : signed(6 downto 0)) return std_logic_vector is
-      variable mant0 : std_logic_vector(55 downto 0) := (others => mant_in(0));
+    procedure adjust_new(mant_in    : std_logic_vector(55 downto 0);
+                         vadj       : signed(6 downto 0);
+                         mant_out   : out std_logic_vector(55 downto 0);
+                         mant0b_out : out std_logic_vector(0 to 1)) is
+      variable mant0 : std_logic_vector(55 downto 0) := (others => '0');
       variable xant  : std_logic_vector(55 downto 0) := mant_in;
       variable xadj  : signed(6 downto 0)            := vadj;
       variable neg   : boolean                       := vadj(vadj'high) = '1';
       variable low1  : boolean                       := false;
     begin
       if vadj(vadj'high) = '0' then
-        xant := mant_in;
+        mant0b_out := "00";
+        if all_0(vadj) then
+          mant0b_out := xant(0) & '0';
+        end if;
+        xant       := mant_in;
         if vadj(5) = '1' then
           xant := xant(xant'high - 32 downto 0) & mant0(31 downto 0);
         end if;
@@ -677,10 +704,12 @@ begin
         end if;
       else
         xant      := (others => '0');
-        if vadj < -54 then
+        mant0b_out := "00";
+        if vadj < -55 then
           -- Too large down shift results in 0 (except for bottom rounding bit).
           if not all_0(mant_in) then
-            xant(0) := '1';
+            mant0b_out := "01";
+            xant(0)    := '1';
           end if;
         else
           xant := mant_in;
@@ -709,6 +738,7 @@ begin
             low1 := low1 or not all_0(xant(0 downto 0));
             xant := "0" & xant(xant'high downto 1);
           end if;
+          mant0b_out := xant(0) & to_bit(low1);
           -- Note any out-shifted bits at the low end.
           if low1 then
             xant(0) := '1';
@@ -716,9 +746,41 @@ begin
         end if;
       end if;
 
-      return xant;
+      mant_out := xant;
     end;
 
+
+    procedure roundup(op2 : float; dp : boolean; rm : std_logic_vector(2 downto 0);
+                      rndup_out : out std_logic; rndbits_out : out std_logic_vector(2 downto 0)) is
+      variable rndbits : std_logic_vector(2 downto 0) := op2.mant(2 downto 0);
+      variable rndup    : std_logic                   := '0';
+    begin
+      if not dp then
+        rndbits      := op2.mant(31 downto 29);
+        for x in 28 downto 0 loop
+          rndbits(0) := rndbits(0) or op2.mant(x);
+        end loop;
+      end if;
+
+      rndup := '0';
+      case rm is
+        when R_NEAREST =>
+          if rndbits(1) = '1' and (rndbits(0) = '1' or rndbits(2) = '1') then
+            rndup := '1';
+          end if;
+        when R_ZERO =>
+          rndup   := '0';
+        when R_PLUS_INF =>
+          rndup   := not to_bit(op2.neg) and (rndbits(1) or rndbits(0));
+        when R_MINUS_INF =>
+          rndup   := to_bit(op2.neg) and (rndbits(1) or rndbits(0));
+        when others =>  -- R_RMM - to nearest, ties away from zero
+          rndup   := rndbits(1);
+      end case;
+
+      rndup_out   := rndup;
+      rndbits_out := rndbits;
+    end;
 
   begin
     v := r;
@@ -842,7 +904,7 @@ begin
       vadj := (others => '0');
     end if;
 
-    adjusted.mant := adjust_new(adjustee.mant, vadj);
+    adjust_new(adjustee.mant, vadj, adjusted.mant, adjusted_mant0b);
 
     -- Single precision?
     vgrd   := '0';
@@ -860,45 +922,75 @@ begin
     end if;
     roundexc  := r.exc;
 
-    vrndbits        := r.op2.mant(2 downto 0);
-    if r.rddp = '0' then
-      vrndbits      := r.op2.mant(31 downto 29);
-      for x in 28 downto 0 loop
-        vrndbits(0) := vrndbits(0) or r.op2.mant(x);
-      end loop;
-    end if;
 
-    vrndup := '0';
-    case r.rm is
-      when R_NEAREST =>
-        if vrndbits(1) = '1' and (vrndbits(0) = '1' or vrndbits(2) = '1') then
-          vrndup := '1';
-        end if;
-      when R_ZERO =>
-        vrndup   := '0';
-      when R_PLUS_INF =>
-        vrndup   := not to_bit(r.op2.neg) and (vrndbits(1) or vrndbits(0));
-      when R_MINUS_INF =>
-        vrndup   := to_bit(r.op2.neg) and (vrndbits(1) or vrndbits(0));
-      when others =>  -- R_RMM - to nearest, ties away from zero
-        vrndup   := vrndbits(1);
-    end case;
+    roundup(r.op2, r.rddp = '1', r.rm, vrndup, vrndbits);
 
+    round_from_denormal := false;
     if vrndup = '1' then
       if r.rddp = '1' then
-        rounded.mant(53 downto 2)  := std_logic_vector(unsigned(r.op2.mant(53 downto 2)) + 1);
-        if all_1(r.op2.mant(53 downto 2)) then
-          rounded.mant(54)         := '1';
-          if r.op2.mant(54) = '1' then
-            rounded.exp            := r.op2.exp + 1;
+        if r.op2.exp = -1023 then
+          if all_1(r.op2.mant(53 downto 2)) then
+            -- Was denormal, but rounded up.
+            round_from_denormal    := true;
+          end if;
+        else
+          rounded.mant(53 downto 2)  := std_logic_vector(unsigned(r.op2.mant(53 downto 2)) + 1);
+          if all_1(r.op2.mant(53 downto 2)) then
+            rounded.mant(54)         := '1';
+            if r.op2.mant(54) = '1' then
+              rounded.exp            := r.op2.exp + 1;
+            end if;
           end if;
         end if;
       else
-        rounded.mant(53 downto 31) := std_logic_vector(unsigned(r.op2.mant(53 downto 31)) + 1);
-        if all_1(r.op2.mant(53 downto 31)) then
-          rounded.mant(54)         := '1';
-          if r.op2.mant(54) = '1' then
-            rounded.exp            := r.op2.exp + 1;
+        if r.op2.exp = -127 then
+          if all_1(r.op2.mant(53 downto 31)) then
+            -- Was denormal, but rounded up.
+            round_from_denormal    := true;
+          end if;
+        else
+          rounded.mant(53 downto 31) := std_logic_vector(unsigned(r.op2.mant(53 downto 31)) + 1);
+          if all_1(r.op2.mant(53 downto 31)) then
+            rounded.mant(54)         := '1';
+            if r.op2.mant(54) = '1' then
+              rounded.exp            := r.op2.exp + 1;
+            end if;
+          end if;
+        end if;
+      end if;
+    end if;
+
+    -- Further rounding just at the edge of denormal?
+    if    (r.rddp = '0' and rounded.exp = -127) or
+          (r.rddp = '1' and rounded.exp = -1023) then
+      rounded  := r.op2;
+      if not (notx(rounded.exp) and notx(rounded.mant)) then
+        rounded := float_none;
+      end if;
+      roundexc  := r.exc;
+      rounded.exp(1 downto 0)      := "10";  -- -126 / -1022
+      rounded.mant                 := '0' & rounded.mant(rounded.mant'high downto 1);
+      if r.rddp = '0' then
+        rounded.mant(29)           := vrndbits(1) or vrndbits(0);
+      else
+        rounded.mant(0)            := vrndbits(1) or vrndbits(0);
+      end if;
+      roundup(rounded, r.rddp = '1', r.rm, vrndup, vrndbits);
+      if vrndup = '1' then
+        if (r.rddp = '0' and all_1(rounded.mant(53 downto 31))) or
+           (r.rddp = '1' and all_1(rounded.mant(53 downto 2))) then
+          rounded.mant(53 downto 2) := (others => '0');
+          rounded.mant(54)          := '1';
+          -- Only set underflow if rounding with unconstrained
+          -- exponent would not have rounded to the same.
+          if not round_from_denormal then
+            roundexc(EXC_UF)        := '1';
+          end if;
+        else
+          if r.rddp = '0' then
+            rounded.mant(53 downto 31) := std_logic_vector(unsigned(rounded.mant(53 downto 31)) + 1);
+          else
+            rounded.mant(53 downto 2)  := std_logic_vector(unsigned(rounded.mant(53 downto 2)) + 1);
           end if;
         end if;
       end if;
@@ -934,10 +1026,12 @@ begin
   if do_addsel /= 0 then
     -- Generic adder
     case r.addsel is
-    when 1     => addy := unsigned('0' & r.op2.mant(27 downto 0));
-                  addx := unsigned('0' & r.op1.mant(27 downto 0));
-    when 2 | 3 => addy := unsigned('0' & r.op2.mant(55 downto 28));
-                  addx := unsigned('0' & r.op1.mant(55 downto 28));
+    when 1 => addy := unsigned('0' & r.op2.mant(27 downto 0));
+              addx := unsigned('0' & r.op1.mant(27 downto 0));
+    when 2 => addy := unsigned'("00") & unsigned(r.op2.mant(54 downto 28));
+              addx := unsigned'("00") & unsigned(r.op1.mant(54 downto 28));
+    when 3 => addy := unsigned('0' & r.op2.mant(55 downto 28));
+              addx := unsigned('0' & r.op1.mant(55 downto 28));
     end case;
     if r.addneg = '1' then
       vtmpadd := addx - addy;
@@ -1040,6 +1134,7 @@ begin
         v.rmb         := issue_op.opx;
         v.rddp        := not issue_op.sp;
         v.flop        := issue_op.op;
+        v.mode        := mode_in;
         v.committed   := '0';
         v.exc         := (others => '0');
         v.acc         := (others => '0');
@@ -1047,7 +1142,9 @@ begin
         v.acclo0      := (others => '0');
         v.accbot      := (others => '0');
         v.exc         := (others => '0');
+        v.inexact     := '0';
         v.fpu_holdn   := '1';
+        v.muladd      := '0';
         if issue_cmd = '1' and holdn = '1' then
           v.committed := commit;
           if issue_op.op = S_LOAD or issue_op.op = R_FMV_W_X then
@@ -1115,6 +1212,7 @@ begin
             v.s                   := nf_store2;
           when S_FMADD | S_FMSUB | S_FNMSUB | S_FNMADD =>
             if no_muladd = 0 then
+              v.muladd   := '1';
               v.s        := nf_muladd2;
             else
               v.s        := nf_idle;
@@ -1260,7 +1358,7 @@ begin
                 (v.rddp = '1' and r.flop = R_FCVT_S_W and (r.rs2 = R_FCVT_W or r.rs2 = R_FCVT_WU))) then
           v.s      := nf_round;
         end if;
-        -- In case of integer to floating point coversions,
+        -- In case of integer to floating point conversions,
         -- check for any high bits that need to be added.
         if r.flop = R_FCVT_S_W and not is_zero(r.op1) then
           v.flop   := R_FADD;
@@ -1790,7 +1888,7 @@ begin
           v.s                      := nf_mul6;
           v.unpacksel              := 3;
           -- Do not limit exponent yet if doing muladd.
-          if r.flop /= S_FMADD then
+          if r.muladd = '0' then
             if r.rddp = '1' then
               v.nalimdp              := '1';
             else
@@ -1822,7 +1920,7 @@ begin
         -- Re-normalizing
         -- Do rounding in next state
         v.s         := nf_round;
-        if no_muladd = 0 and r.flop = S_FMADD then
+        if no_muladd = 0 and r.muladd = '1' then
           v.s         := nf_muladd_mid;
           v.adjustsel := 1;
         end if;
@@ -2211,9 +2309,13 @@ begin
       when nf_round =>
         v.op2    := rounded;
         v.exc    := roundexc;
+         -- Low bits in extended muladd shifted out?
+        if r.inexact = '1' then
+          v.exc(EXC_NX) := '1';
+        end if;
         v.s      := nf_repack;
         -- Too small numbers can be the result of muladd sp as dp.
-        if no_muladd = 0 and r.rddp = '0' and is_normal(r.op2) and r.op2.exp < -126 then
+        if no_muladd = 0 and r.muladd = '1' and r.rddp = '0' and is_normal(r.op2) and r.op2.exp < -126 then
           -- Restore unrounded value and flags
           v.op2       := r.op2;
           v.exc       := r.exc;
@@ -2247,9 +2349,6 @@ begin
              (r.rm = R_MINUS_INF and r.op2.neg)) then
             v.res(0)       := '1';
           end if;
-          -- Denormalized results always trigger underflow if set in tem.
-          -- We do it here rather than in the round stage to handle cases where
-          -- rounding is bypassed such as (denorm + zero).
           -- Some operations do not produce UF exceptions on denormals.
           if r.flop = R_FSGN then
             v.exc(EXC_UF)  := '0';
@@ -2442,6 +2541,7 @@ begin
           -- If no add, handle as mul.
           if is_zero(unpacked) then
             v.flop       := R_FMUL;
+            v.muladd     := '0';
           -- Handle float muladd as if it was double, to deal with precision.
           elsif r.rddp = '0' then
             v.rddp       := '1';
@@ -2482,12 +2582,23 @@ begin
         v.s    := nf_addsub2;
         -- When double precision, special handling is needed if
         -- op2 (multiplication result) is larger and has low bits
-        -- op1 same magnitude as op2 and op2 has low bits
+        -- Extra work might be needed for double if result of multiply has low bits,
+        -- since some of the higher ones may cancel out.
+        -- This code must _not_ be used when op2low (ie no extended result),
+        -- since the handling of zero result will then fail!
         if r.rddp_real = '1' and not op2low0 then
-          if v.comphl = '1' or (v.comphe = '1' and v.compll = '1') then
+          -- Addend same or smaller magnitude?
+          if v.comphl = '1' or v.comphe = '1' then
             v.s  := nf_muladd_xadd;
           end if;
-          if v.comphe = '1' then --and v.op1.neg /= r.op2.neg then
+          -- Subtract can cancel bits even if exponent is one less.
+          if v.op1.neg /= r.op2.neg then
+            if v.op1.exp = r.op2.exp - 1 then
+              v.s  := nf_muladd_xadd;
+            end if;
+            if v.op1.exp = r.op2.exp + 1 then
+              v.s  := nf_muladd_xadd;
+            end if;
             v.s  := nf_muladd_xadd;
           end if;
         end if;
@@ -2508,80 +2619,115 @@ begin
         if r.op1.neg xor r.op2.neg then
           v.addneg    := '1';
         end if;
-        -- Make sure the bigger argument in terms of magnitude is in op1,
-        -- swap later if that is not the case.
+        -- Clear low part of op1
+        v.s1 := (others => '0');
+        -- Make sure the bigger argument in terms of magnitude is in op1.
         -- If we swap and subtract then we need to flip the signs.
-        v.expadj      := r.op1.exp - r.op2.exp;
+        v.expadj      := r.op2.exp - r.op1.exp;
         v.swap      := '0';
+        v.inexact   := '0';
         if r.comphl = '1' or (r.comphe = '1' and r.compll = '1') then
           -- Swap needed
           v.swap      := '1';
+          v.expadj    := r.op1.exp - r.op2.exp;
+          v.op1       := r.op2;
+          v.op2       := r.op1;
           -- Flip result sign if doing subtract
           if v.addneg = '1' then
             v.op2.neg := not r.op1.neg;
           end if;
+          v.accbot    := (others => '0');
+          v.s1(r.accbot'range) := std_logic_vector(r.accbot);
         else
           -- No swap needed abs(op1) > abs(op2)
+          -- This means that the lower part of op2 is irrelevant,
+          -- since op1 has no extended mantissa, except for the
+          -- presence of 1-bits on subtract.
+          -- No need to shift low part of op2!
           -- Result is negative if first operand is.
           v.op2.neg   := r.op1.neg;
+          if not all_0(r.accbot) then
+            v.inexact := '1';
+          end if;
         end if;
         v.opaction    := OPACT_SHFTA;
         -- If it will use the subtract operation then we shift up both args by 1.
         --   This is to ensure there are enough guard digits.
         if v.addneg = '1' then
-          v.expadj    := v.expadj + 1;
-          v.op2.exp   := r.op2.exp - 1;
-          v.op2.mant  := r.op2.mant(r.op2.mant'high - 1 downto 0) & std_logic(r.accbot(r.accbot'high));
-          v.accbot    := r.accbot(r.accbot'high - 1 downto 0) & '0';
+          -- Do the up-shift explicitly here, to avoid issues with bit handling.
+          if v.swap = '0' then
+            v.op1.exp   := r.op1.exp - 1;
+            v.op1.mant  := r.op1.mant(r.op1.mant'high - 1 downto 0) & '0';
+            v.op2.exp   := r.op2.exp - 1;
+            v.op2.mant  := r.op2.mant(r.op1.mant'high - 1 downto 0) & std_logic(r.accbot(r.accbot'high));
+            v.accbot    := r.accbot(r.accbot'high - 1 downto 0) & '0';
+          else
+            v.op1.exp   := r.op2.exp - 1;
+            v.op1.mant  := r.op2.mant(r.op2.mant'high - 1 downto 0) & std_logic(r.accbot(r.accbot'high));
+            v.s1(r.accbot'range) := std_logic_vector(r.accbot(r.accbot'high - 1 downto 0) & '0');
+            v.op2.exp   := r.op1.exp - 1;
+            v.op2.mant  := r.op1.mant(r.op2.mant'high - 1 downto 0) & '0';
+          end if;
         end if;
-        v.adjustsel   := 1;
+        v.adjustsel   := 2;
         -- When abs(v.expadj) is less than the mantissa length,
         -- this will be a left shit for bits to use in the bottom half,
         -- with a later right (original v.expadj) shift for the top half.
         -- When abs(v.expadj) is larger than the mantissa length,
         -- this is a right shift for bits to use in the bottom half,
         -- and the top half will later be cleared.
-        v.expadj := v.expadj + (r.op2.mant'length - 2);
-        v.s      := nf_muladd_xadd27;
-        if v.expadj > -(r.op2.mant'length - 2) then
+        v.expadj := v.expadj + (r.op2.mant'length - 4);
           v.s    := nf_muladd_xadd25;
-        end if;
+
 
       when nf_muladd_xadd25 =>
         v.s2         := (others => '0');
         v.s2(adjusted.mant'range) := adjusted.mant;
+        -- Copy actual bit over what is now sticky bit.
+        v.s2(0)  := adjusted_mant0b(0);
+        v.inexact := adjusted_mant0b(1);
         -- The top bit will be in next to last in original.
         v.s2(adjusted.mant'high)  := '0';
-        v.expadj     := r.expadj - (r.op2.mant'length - 2);
+        v.expadj     := r.expadj - (r.op2.mant'length - 4);
         v.opaction   := OPACT_SHFTA;
         v.s          := nf_muladd_xadd26;
-        v.adjustsel  := 1;
+        v.adjustsel  := 2;
 
       when nf_muladd_xadd26 =>
-        v.op1 := adjusted;
-        v.s   := nf_muladd_xaddsub3;
+        v.op2     := adjusted;
+        v.op2.neg := r.op2.neg;
+        -- Copy actual bit over what is now sticky bit.
+        v.op2.mant(0) := adjusted_mant0b(0);
+
+        -- Temporarily save high bits
+        v.s3(v.op2.mant'range) := v.op2.mant;
+        -- Take care of low bits
+        v.op2.mant := (others => '0');
+        v.op2.mant(r.accbot'range) := std_logic_vector(r.accbot);
+        v.opaction   := OPACT_SHFTA;
+        v.adjustsel := 2;
+        v.s   := nf_muladd_xadd27;
 
       when nf_muladd_xadd27 =>
-        v.op1.mant   := (others => '0');
-        v.s2         := (others => '0');
-        v.s2(adjusted.mant'range) := adjusted.mant;
-        v.s          := nf_muladd_xaddsub3;
+        -- There is no overlap, so OR bits.
+        v.s2(r.accbot'range)      := r.s2(r.accbot'range) or
+                                     (adjusted.mant(r.accbot'high downto 1) & adjusted_mant0b(0));
+        v.inexact  := r.inexact or adjusted_mant0b(1);
+        -- Restore saved high bits
+        v.op2.mant := r.s3(v.op2.mant'range);
+        v.s        := nf_muladd_xaddsub3;
+
 
       when nf_muladd_xaddsub3 =>
-        if r.swap = '1' then
-          -- Do not copy .neg since that is for the result!
-          v.op2.exp  := r.op1.exp;
-          v.op2.mant := r.op1.mant;
-          v.accbot   := unsigned(r.s2(v.accbot'range));
-          v.op1      := r.op2;
-          v.s2(r.accbot'range) := std_logic_vector(r.accbot);
-        end if;
         -- Magnitude of result is the large one
         v.op2.exp    := v.op1.exp;
         if r.addneg = '0' then
-          xtmpaddx := unsigned('0' & v.s2(r.accbot'range)) + (unsigned'("0") & v.accbot);
+          xtmpaddx := unsigned('0' & r.s1(r.accbot'range)) + unsigned('0' & r.s2(r.accbot'range));
         else
-          xtmpaddx := unsigned('0' & v.s2(r.accbot'range)) - (unsigned'("0") & v.accbot);
+          xtmpaddx := unsigned('0' & r.s1(r.accbot'range)) - unsigned('0' & r.s2(r.accbot'range));
+          if r.inexact = '1' then
+            xtmpaddx := xtmpaddx - 1;
+          end if;
         end if;
         v.carry    := xtmpaddx(xtmpaddx'high);
         v.s2                 := (others => '0');
@@ -2649,10 +2795,15 @@ begin
         v.nalimdp                := '1';
         -- No bits set in op2?
         if all_0(v.op2.mant) then
-          -- Bring up low bits
-          v.op2.mant := "00" & r.s2(r.accbot'high + 2 downto 0);
-          v.op2.exp  := r.op2.exp - r.accbot'length;
-          v.s2       := (others => '0');
+          if not all_0(r.s2(r.accbot'high + 2 downto 0)) then
+            -- Bring up low bits
+            v.op2.mant := "00" & r.s2(r.accbot'high + 2 downto 0);
+            v.op2.exp  := r.op2.exp - r.accbot'length;
+            v.s2       := (others => '0');
+          else
+            v.op2.class := C_ZERO;
+            v.s := nf_round;
+          end if;
         end if;
 
       when nf_muladd_xaddsub6 =>
@@ -2676,7 +2827,11 @@ begin
           v.op2.mant(1) := r.s2(r.accbot'high + 2);
           v.op2.mant(0) := v.op2.mant(0) or to_bit(not all_0(r.s2(r.accbot'high + 1 downto 0)));
         else
-          v.op2.mant(0) := to_bit(not all_0(r.s2(r.accbot'high + 2 downto 0)));
+          v.op2.mant(0) := v.op2.mant(0) or to_bit(not all_0(r.s2(r.accbot'high + 2 downto 0)));
+        end if;
+        -- If we had an add, any out-shifted bits must go into sticky.
+        if r.addneg = '0' then
+          v.op2.mant(0) := v.op2.mant(0) or r.inexact;
         end if;
         -- Adjust so that the implicit 1 is at the expected position.
         v.s         := nf_round;
@@ -2690,6 +2845,10 @@ begin
 
       when nf_muladd_xaddsub9 =>
         v.op2.mant  := r.op2.mant or adjusted.mant;
+        -- If we had an add, any out-shifted bits must go into sticky.
+        if r.addneg = '0' then
+          v.op2.mant(0) := v.op2.mant(0) or r.inexact;
+        end if;
         -- Adjust so that the implicit 1 is at the expected position.
         v.s         := nf_round;
 
@@ -2744,12 +2903,14 @@ begin
     rin          <= v;
     ready_flop   <= r.readyflop;
     fpu_holdn    <= v.fpu_holdn;
-    issue_id     <= "00000";
+    issue_id     <= (others => '0');
     rd           <= r.rd;
     wen          <= r.wen;
     flags_wen    <= r.flags_wen;
     stdata       <= v.res;
     flags        <= r.exc;
+    wb_mode      <= r.mode;
+    wb_id        <= (others => '0');
 
     rs1          <= v.rs1;
     rs2          <= v.rs2;

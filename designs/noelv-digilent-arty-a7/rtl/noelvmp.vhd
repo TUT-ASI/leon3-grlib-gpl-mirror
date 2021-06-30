@@ -57,9 +57,12 @@ entity noelvmp is
     memtech                 : integer := CFG_MEMTECH;
     padtech                 : integer := CFG_PADTECH;
     clktech                 : integer := CFG_CLKTECH;
-    disas                   : integer := CFG_LOCAL_DISAS     -- Enable disassembly to console
-    -- pragma translate_off
+    disas                   : integer := CFG_DISAS;     -- Enable disassembly to console
+    SIMULATION              : integer := 0
+    -- pragma translate_off 
+    + CFG_MIG_7SERIES_MODEL
     ; ramfile               : string  := "ram.srec"
+    ; romfile               : string  := "prom.srec"
     -- pragma translate_on
     );
   port (
@@ -117,11 +120,6 @@ architecture rtl of noelvmp is
     end if;
     return BOARD_FREQ * CFG_CLKMUL / CFG_CLKDIV;
   end;
-  constant SIMULATION              : integer := 0
-  -- pragma translate_off 
-  + CFG_MIG_7SERIES_MODEL
-  -- pragma translate_on
-  ;
 
   -------------------------------------
   -- Misc
@@ -324,10 +322,10 @@ begin
   -----------------------------------------------------------------------------
   -- DDR4 Memory Controller (MIG) ---------------------------------------------
   -----------------------------------------------------------------------------
-  -- No APB interface on memory controller  
-  mem_apbo0    <= apb_none;
-
   mig_gen : if (CFG_MIG_7SERIES = 1) and (SIMULATION = 0) and (CFG_L2_AXI = 1) generate
+    -- No APB interface on memory controller  
+    mem_apbo0    <= apb_none;
+
     ddr3c: entity work.axi_mig3_7series
       port map (
         ddr3_addr       => ddr3_addr,
@@ -366,7 +364,12 @@ begin
   mig_ahb_gen : if (CFG_MIG_7SERIES = 1) and (SIMULATION = 0) and (CFG_L2_AXI /= 1) generate
     ddrc:  entity work.ahb2axi_mig3_arty_a7
         generic map (
-          hindex => MEM_HSINDEX, haddr => MEM_HADDR, hmask => MEM_HMASK, pindex => MEM_PINDEX, paddr => MEM_PADDR)
+          hindex    => MEM_HSINDEX,
+          haddr     => MEM_HADDR,
+          hmask     => MEM_HMASK,
+          pindex    => MEM_PINDEX,
+          paddr     => MEM_PADDR,
+          ahbendian => 1-CFG_L2_EN)
         port map(
           ddr3_dq         => ddr3_dq,
           ddr3_dqs_p      => ddr3_dqs_p,
@@ -464,6 +467,9 @@ begin
   
   -- AHBRAM
   no_mig_mem_gen : if (CFG_MIG_7SERIES = 0) generate
+    -- No APB interface on memory controller  
+    mem_apbo0    <= apb_none;
+
     axi_mem_gen : if (CFG_L2_AXI = 1) generate
       mem_ahbso0 <= ahbs_none;
     end generate axi_mem_gen;
@@ -488,6 +494,9 @@ begin
   -- Simulation module
   -- pragma translate_off
   sim_mem_gen : if (CFG_MIG_7SERIES = 1) and (SIMULATION = 1) generate
+    -- No APB interface on memory controller  
+    mem_apbo0    <= apb_none;
+
     calib_done  <= '1';
     mmcm_locked <= '1';
     clkm        <= clkm_gen;
@@ -532,17 +541,68 @@ begin
   --  PROM
   -----------------------------------------------------------------------
 
-  brom : entity work.ahbrom
-    generic map (
-      hindex  => 1,
-      haddr   => ROM_HADDR,
-      hmask   => ROM_HMASK,
-      pipe    => 0)
-    port map (
-      rst     => rstn,
-      clk     => clkm,
-      ahbsi   => rom_ahbsi1,
-      ahbso   => rom_ahbso1);
+  prom_gen : if (SIMULATION = 0) generate
+    rom32 : if CFG_AHBDW = 32 generate
+      brom : entity work.ahbrom
+        generic map (
+          hindex  => 1,
+          haddr   => ROM_HADDR,
+          hmask   => ROM_HMASK,
+          pipe    => 0)
+        port map (
+          rst     => rstn,
+          clk     => clkm,
+          ahbsi   => rom_ahbsi1,
+          ahbso   => rom_ahbso1);
+    end generate;
+    rom64 : if CFG_AHBDW = 64 generate
+      brom : entity work.ahbrom64
+        generic map (
+          hindex  => 1,
+          haddr   => ROM_HADDR,
+          hmask   => ROM_HMASK,
+          pipe    => 0)
+        port map (
+          rst     => rstn,
+          clk     => clkm,
+          ahbsi   => rom_ahbsi1,
+          ahbso   => rom_ahbso1);
+    end generate;
+    rom128 : if CFG_AHBDW = 128 generate
+      brom : entity work.ahbrom128
+        generic map (
+          hindex  => 1,
+          haddr   => ROM_HADDR,
+          hmask   => ROM_HMASK,
+          pipe    => 0)
+        port map (
+          rst     => rstn,
+          clk     => clkm,
+          ahbsi   => rom_ahbsi1,
+          ahbso   => rom_ahbso1);
+    end generate;
+  end generate prom_gen;
+
+  -- pragma translate_off
+  sim_prom_gen : if (SIMULATION /= 0) generate
+    mig_ahbram : ahbram_sim
+      generic map (
+        hindex   => 1,
+        haddr    => ROM_HADDR,
+        hmask    => ROM_HMASK,
+        tech     => 0,
+        kbytes   => 1024,
+        pipe     => 0,
+        maccsz   => AHBDW,
+        endianness  => GRLIB_CONFIG_ARRAY(grlib_little_endian),
+        fname    => romfile)
+      port map(
+        rst     => rstn,
+        clk     => clkm,
+        ahbsi   => rom_ahbsi1,
+        ahbso   => rom_ahbso1);
+  end generate sim_prom_gen;
+  -- pragma translate_on
 
 -----------------------------------------------------------------------
 -- GPIO                                                                

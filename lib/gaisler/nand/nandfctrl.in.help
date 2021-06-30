@@ -1,0 +1,28 @@
+NANDFCTRL enable
+CONFIG_NANDFCTRL_ENABLE
+  Say Y here to enable the NAND Flash Memory Controller.
+
+CONFIG_NANDFCTRL_NTARGETS
+  Number of target = Number of CE signals.
+
+CONFIG_NANDFCTRL_NLANES
+  Number of 8-bit data lanes = Number of WE signals.
+
+CONFIG_NANDFCTRL_PSIZE
+  Page buffer size (in bytes). Value need to be a power of 2, and
+  equal to or greater than the size of the flash memory's page size.
+
+CONFIG_NANDFCTRL_PSIZE
+  Spare page buffer size (in bytes). Value need to be a power of 2,
+  and equal to or greater than the size of the flash memory's
+  spare page size.
+
+CONFIG_NANDFCTRL_TM1
+  Enable support for timing mode 1
+
+CONFIG_NANDFCTRL_TM2
+  Enable support for timing mode 2
+
+CONFIG_NANDFCTRL_TM3
+  Enable support for timing mode 3
+

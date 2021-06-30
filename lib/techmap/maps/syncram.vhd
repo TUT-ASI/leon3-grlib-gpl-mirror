@@ -291,15 +291,14 @@ begin
   end generate;
 
   dare65 : if xtech = dare65t generate
-    x0 : dare65t_syncram generic map (abits, dbits)
+    x0 : dare65t_syncram_mbist generic map (abits, dbits)
          port map (clk, address, datain, dataoutx, enable, xwrite,
-                   testin(TESTIN_WIDTH-8),testin(TESTIN_WIDTH-3),
-                   custominx(0),open,
-                   testin(TESTIN_WIDTH-4),testin(TESTIN_WIDTH-5),testin(TESTIN_WIDTH-6),
-                   customclkx,testin(TESTIN_WIDTH-7),'0',
-                   open, open);
-    --customoutx(customoutx'high downto 8) <= (others => '0');
-    customoutx(customoutx'high downto 0) <= (others => '0');
+                   custominx(0),custominx(1),
+                   customoutx(0),customoutx(1),
+                   custominx(2),
+                   customclkx
+                   );
+    customoutx(customoutx'high downto 2) <= (others => '0');
   end generate;
 
   proa3 : if xtech = apa3 generate

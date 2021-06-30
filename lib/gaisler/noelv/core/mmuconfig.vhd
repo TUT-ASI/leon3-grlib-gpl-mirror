@@ -99,6 +99,8 @@ function va_msb(what : va_type) return integer;
 function vpn(what : va_type) return std_logic_vector;
 function pa(what : va_type) return std_logic_vector;
 function pa_msb(what : va_type) return integer;
+function ga(what : va_type) return std_logic_vector;
+function ga_msb(what : va_type) return integer;
 function ppn(what : va_type) return std_logic_vector;
 function pte_hsize(what : va_type) return std_logic_vector;
 function va_size(what : va_type) return va_bits;
@@ -110,6 +112,9 @@ function is_valid_pte(what : va_type;
                       data : std_logic_vector; mask : std_logic_vector;
                       physaddr : integer range 32 to 56) return boolean;
 function is_pte(what : va_type; data : std_logic_vector) return boolean;
+function is_valid_ptd(what : va_type;
+                      data : std_logic_vector;
+                      physaddr : integer range 32 to 56) return boolean;
 function is_ptd(what : va_type; data : std_logic_vector) return boolean;
 function satp_base(what : va_type; satp : std_logic_vector) return std_logic_vector;
 function satp_asid(what : va_type; satp : std_logic_vector) return std_logic_vector;
@@ -660,6 +665,30 @@ package body mmucacheconfig is
     return tmp;
   end;
 
+  function ga(what : va_type) return std_logic_vector is
+    variable GA_SPARC : std_logic_vector(31 downto  0) := (others => '0');
+    variable GA_SV32  : std_logic_vector(33 downto  0) := (others => '0');
+    variable GA_SV39  : std_logic_vector(40 downto  0) := (others => '0');
+    variable GA_SV48  : std_logic_vector(49 downto  0) := (others => '0');
+  begin
+    case what is
+    when sv32   => return GA_SV32;
+    when sv39   => return GA_SV39;
+    when sv48   => return GA_SV48;
+    when others => return GA_SPARC;
+    end case;
+  end;
+
+  function ga_msb(what : va_type) return integer is
+  begin
+    case what is
+    when sv32   => return 33;
+    when sv39   => return 40;
+    when sv48   => return 49;
+    when others => return 31;
+    end case;
+  end;
+
   function pa(what : va_type) return std_logic_vector is
     variable PA_SPARC : std_logic_vector(31 downto  0) := (others => '0');
     variable PA_SV32  : std_logic_vector(33 downto  0) := (others => '0');
@@ -809,6 +838,27 @@ package body mmucacheconfig is
       -- PTE is marked by not R=0, W=0, X=0. Must also be valid.
       return data(rv_pte_v) = '1' and data(rv_pte_xwr'range) /= "000";
     end if;
+  end;
+
+  function is_valid_ptd(what : va_type;
+                        data : std_logic_vector;
+                        physaddr : integer range 32 to 56) return boolean is
+  begin
+    if what = sparc then
+      return true;
+    else
+      -- Reserved top bits must be zero.
+      if not all_0(data(63 downto 54)) then
+        return false;
+      end if;
+
+      -- Do not allow addressing outside the specified physical address space.
+      if not all_0(data(53 downto physaddr - 12 + 10)) then
+        return false;
+      end if;
+    end if;
+
+    return true;
   end;
 
   function is_ptd(what : va_type;
@@ -982,6 +1032,9 @@ package body mmucacheconfig is
     end if;
   end;
 
+  -- Check if PTE will be modified (accessed/modified bits).
+  -- needwb     - writeback is needed
+  -- needwblock - lock is needed due to setting 'modified'
   procedure pte_mark_modacc(what   : va_type;
                             data   : inout std_logic_vector; modified   : std_logic;
                             needwb : out std_logic;          needwblock : out std_logic) is
@@ -1022,7 +1075,7 @@ package body mmucacheconfig is
     variable pos         : integer;
   begin
     --     RISC-V requires high bits to equal MSB of VA.
-    xpaddr := paddr;
+    xpaddr(paddr'range) := paddr;
     -- Loop from low bits to high
     pos := 12;
     for i in va_size_tmp'reverse_range loop
@@ -1034,7 +1087,7 @@ package body mmucacheconfig is
       pos := pos + va_size_tmp(i);
     end loop;
 
-    paddr := xpaddr;
+    paddr := xpaddr(paddr'range);
   end;
 
   -- Return the SPARC v8 Fault Type field (thus 0 means OK).
@@ -1048,7 +1101,6 @@ package body mmucacheconfig is
                           at : std_logic_vector(2 downto 0); data : std_logic_vector)
     return std_logic_vector is
     variable sparc_acc : integer := u2i(data(PTE_ACC_U downto PTE_ACC_D));
-    variable riscv_acc : integer := u2i(data(rv_pte_u downto rv_pte_r));
     -- For RISC-V
     variable is_user   : boolean := at(0) = '0';
     variable is_exec   : boolean := at(1) = '1';
@@ -1104,7 +1156,8 @@ package body mmucacheconfig is
       -- Normally, allow access only from correct mode!
       -- SUM flag allows user page accesses from supervisor mode,
       -- but only for read/write (see below).
-      if is_user /= (data(rv_pte_u) = '1') then
+      if (    is_user and (data(rv_pte_u)     = '0')) or
+         (not is_user and (data(rv_pte_u + 1) = '0')) then
         err_perm    := '1';
       end if;
 
@@ -1112,7 +1165,7 @@ package body mmucacheconfig is
         if data(rv_pte_x) = '0' then
           err_perm  := '1';
         end if;
-        err_sum     := err_perm;       -- SUM flag does not affect execute.
+        err_sum     := '1';            -- SUM flag does not affect execute.
         err_mxr     := '1';            -- MXR is only OK for read.
       elsif is_write then
         if data(rv_pte_w) = '0' then

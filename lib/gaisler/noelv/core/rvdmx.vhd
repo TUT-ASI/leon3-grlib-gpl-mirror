@@ -26,6 +26,7 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 library grlib;
 use grlib.config_types.all;
 use grlib.config.all;
@@ -45,6 +46,7 @@ use gaisler.noelvint.nv_progbuf_out_none;
 use gaisler.noelvint.word;
 use gaisler.noelvint.word64;
 use gaisler.noelvint.zerow;
+use gaisler.utilnv.to_bit;
 library techmap;
 use techmap.gencomp.all;
 
@@ -277,6 +279,7 @@ begin
     variable abstractcs         : word;
     variable command            : word;
     variable sbcs               : word;
+    variable cap                : word;
     variable ihartselraw        : integer range 0 to (2**HARTSELLEN)-1;
     variable hartselmaskraw     : std_logic_vector((2**HARTSELLEN)-1 downto 0);
     variable hartselmask        : std_logic_vector(NHARTS-1 downto 0);
@@ -485,6 +488,13 @@ begin
 
     -- Next Debug Module (nextdm, at 0x1d)
 
+    -- Custom Feature (custom, at 0x1f)
+
+    cap                         := zerow;
+    cap(31 downto 24)           := std_logic_vector(to_unsigned(nharts-1, 8));
+    cap(23          )           := to_bit(nharts<=256);
+    cap(21 downto 19)           := dbgi(0).cap;
+
     -- Abstract Data 0 (data0, at 0x04)
 
     -- Program Buffer 0 (progbuf0, at 0x20)
@@ -594,6 +604,8 @@ begin
             when "1101" => -- Next Debug Module
               -- This entire register is read-only
               null;
+            when "1111" => -- Custom Feature
+              rdata             := cap;
             when others => null;
           end case; -- r.haddr(5 downto 2)
         when "0010" => -- Program Buffer 0 - Program Buffer 15

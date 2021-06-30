@@ -83,7 +83,7 @@ begin
     hwdatal(15 downto 8) := hwdata(23 downto 16);
     hwdatal(23 downto 16) := hwdata(15 downto 8);
     hwdatal(31 downto 24) := hwdata(7 downto 0);
-    if (tmsti.endian = '1' or rmsti.endian = '1') then
+    if ((r.bo = '1' and tmsti.endian = '1') or (r.bo = '0' and rmsti.endian = '1')) then
       hwdata := hwdatal;
     end if;
     
@@ -178,7 +178,7 @@ begin
     else
        tmsto.data     <= ahbmi.hrdata(7 downto 0)&ahbmi.hrdata(15 downto 8)&ahbmi.hrdata(23 downto 16)&ahbmi.hrdata(31 downto 24);
     end if;
-    if (tmsti.endian = '0' and rmsti.endian = '0') then
+    if (rmsti.endian = '0') then
       rmsto.data     <= ahbmi.hrdata;
     else
       rmsto.data     <= ahbmi.hrdata(7 downto 0)&ahbmi.hrdata(15 downto 8)&ahbmi.hrdata(23 downto 16)&ahbmi.hrdata(31 downto 24);

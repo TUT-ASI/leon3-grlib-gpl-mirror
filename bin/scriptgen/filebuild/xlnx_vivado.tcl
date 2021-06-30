@@ -15,6 +15,7 @@ proc create_xlnx_vivado {} {
 	        append vc "\nset_property source_mgmt_mode $GRLIB_XILINX_SOURCE_MGMT_MODE \[current_project\]"
 	}
 	append vc "\nset_property top $SIMTOP \[get_filesets $VIVADO_SIMSET\]"
+	append vc "\nset_property top_lib work \[get_filesets $VIVADO_SIMSET\]"
 	append vc "\nset_property target_language verilog \[current_project\]"
   if {![string equal $VIVADO_SYNTH_STRATEGY ""]} {
 	  append vc "\nset_property strategy {$VIVADO_SYNTH_STRATEGY} \[get_runs synth_1\]"

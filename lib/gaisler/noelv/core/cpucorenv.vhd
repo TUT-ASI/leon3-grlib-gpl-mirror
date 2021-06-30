@@ -59,26 +59,16 @@ entity cpucorenv is
     busw                : integer                       := 64;
     cmemconf            : integer                       := 0;
     rfconf              : integer                       := 0;
-    clk2x               : integer                       := 0;
-    ahbpipe             : integer                       := 0;
+    tcmconf             : integer                       := 0;
     -- Caches
     icen                : integer range 0  to 1         := 0;  -- I$ Cache Enable
-    irepl               : integer range 0  to 2         := 2;
-    isets               : integer range 1  to 4         := 1;  -- I$ Sets/Ways
+    iways               : integer range 1  to 4         := 1;  -- I$ Sets/Ways
     ilinesize           : integer range 4  to 8         := 4;  -- I$ Cache Line Size (words)
-    isetsize            : integer range 1  to 256       := 1;  -- I$ Cache Way Size (KiB)
+    iwaysize            : integer range 1  to 256       := 1;  -- I$ Cache Way Size (KiB)
     dcen                : integer range 0  to 1         := 0;  -- D$ Cache Enable
-    drepl               : integer range 0  to 2         := 2;
-    dsets               : integer range 1  to 4         := 1;  -- D$ Sets/Ways
+    dways               : integer range 1  to 4         := 1;  -- D$ Sets/Ways
     dlinesize           : integer range 4  to 8         := 4;  -- D$ Cache Line Size (words)
-    dsetsize            : integer range 1  to 256       := 1;  -- D$ Cache Way Size (KiB)
-    dsnoop              : integer range 0  to 6         := 0;  -- Enable Data Cache Snooping
-    ilram               : integer range 0  to 1         := 0;
-    ilramsize           : integer range 1  to 512       := 1;
-    ilramstart          : integer range 0  to 255       := 16#8e#;
-    dlram               : integer range 0  to 1         := 0;
-    dlramsize           : integer range 1  to 512       := 1;
-    dlramstart          : integer range 0  to 255       := 16#8f#;
+    dwaysize            : integer range 1  to 256       := 1;  -- D$ Cache Way Size (KiB)
     -- BHT
     bhtentries          : integer range 32 to 1024      := 256;-- BHT Number of Entries
     bhtlength           : integer range 2  to 10        := 5;  -- History Length
@@ -88,16 +78,17 @@ entity cpucorenv is
     btbsets             : integer range 1  to 8         := 1;  -- BTB Sets/Ways
     -- MMU
     mmuen               : integer range 0  to 2         := 0;  -- Enable MMU
-    mmupgsz             : integer                       := 0;
     itlbnum             : integer range 2  to 64        := 8;
     dtlbnum             : integer range 2  to 64        := 8;
-    tlb_type            : integer range 0  to 3         := 1;
-    tlb_rep             : integer range 0  to 1         := 0;
+    htlbnum             : integer range 1  to 64        := 8;
     tlbforepl           : integer range 1  to 4         := 1;
     riscv_mmu           : integer range 0  to 3         := 1;
+    tlb_pmp             : integer range 0  to 1         := 1;  -- Do PMP via TLB
     pmp_no_tor          : integer range 0  to 1         := 0;  -- Disable PMP TOR
     pmp_entries         : integer range 0  to 16        := 16; -- Implemented PMP registers
     pmp_g               : integer range 0  to 10        := 0;  -- PMP grain is 2^(pmp_g + 2) bytes
+    asidlen             : integer range 0 to  16        := 0;  -- Max 9 for Sv32
+    vmidlen             : integer range 0 to  14        := 0;  -- Max 7 for Sv32
     -- Extensions
     ext_m               : integer range 0  to 1         := 1;  -- M Base Extension Set
     ext_a               : integer range 0  to 1         := 0;  -- A Base Extension Set
@@ -122,18 +113,14 @@ entity cpucorenv is
     mularch             : integer                       := 0;  -- multiplier architecture
     div_hiperf          : integer                       := 0;
     div_small           : integer                       := 0;
-    hw_fpu              : integer range 0  to 1         := 1;  -- 1 - use hw gpu
+    hw_fpu              : integer range 0  to 1         := 1;  -- 1 - use hw fpu
     rfreadhold          : integer range 0  to 1         := 0;  -- Register File Read Hold
-    ft                  : integer                       := 0;  -- FT option
     scantest            : integer                       := 0;  -- scantest support
     endian              : integer
     );
   port (
-    ahbclk      : in  std_ulogic; -- bus clock
-    cpuclk      : in  std_ulogic; -- cpu clock
-    gcpuclk     : in  std_ulogic; -- gated cpu clock
-    fpuclk      : in  std_ulogic; -- gated fpu clock
-    hclken      : in  std_ulogic; -- bus clock enable qualifier
+    clk      : in  std_ulogic; -- cpu clock
+    gclk     : in  std_ulogic; -- gated cpu clock
     rstn        : in  std_ulogic;
     ahbi        : in  ahb_mst_in_type;
     ahbo        : out ahb_mst_out_type;
@@ -156,10 +143,10 @@ architecture rtl of cpucorenv is
   constant IREGNUM      : integer := 2 ** IRFBITS;
   constant WRT          : integer := 1;	-- enable write-through RAM
 
-  constant iways        : integer := isets;
-  constant iwaysize     : integer := isetsize;
-  constant dways        : integer := dsets;
-  constant dwaysize     : integer := dsetsize;
+  constant dtcmen    : integer := boolean'pos( (tcmconf mod 32) /= 0);
+  constant dtcmabits : integer := (1-dtcmen) + (tcmconf mod 32);
+  constant itcmen    : integer := boolean'pos( ((tcmconf/256) mod 32) /= 0 );
+  constant itcmabits : integer := (1-itcmen) + ((tcmconf/256) mod 32);
 
   constant iidxwidth    : integer := (log2(iwaysize) + 10) - (log2(ilinesize) + 2);
   constant itagwidth    : integer := physaddr - (log2(iwaysize) + 10) + 1;
@@ -167,6 +154,12 @@ architecture rtl of cpucorenv is
   constant didxwidth    : integer := (log2(dwaysize) + 10) - (log2(dlinesize) + 2);
   constant dtagconf     : integer := cmemconf mod 4;
   constant dusebw       : integer := (cmemconf / 4) mod 2;
+  function gen_capability return std_logic_vector is
+    variable cap : std_logic_vector(2 downto 0) := (others => '0');
+  begin
+    return cap;
+  end;
+  constant capability : std_logic_vector(2 downto 0) := gen_capability;
   constant dtagwidth    : integer := physaddr - (log2(dwaysize) + 10) + 1;
   constant cdataw       : integer := 64;
 
@@ -266,15 +259,15 @@ architecture rtl of cpucorenv is
   signal rff_rs2        : std_logic_vector(4 downto 0);
   signal rff_rs3        : std_logic_vector(4 downto 0);
   signal rff_ren        : std_logic_vector(1 to 3);
-  signal rff_rd         : std_logic_vector(4 downto 0);
-  signal rff_wen        : std_ulogic;
+--  signal rff_rd         : std_logic_vector(4 downto 0);
+--  signal rff_wen        : std_ulogic;
 
   signal fs1_word64     : word64;
   signal fs2_word64     : word64;
   signal fs3_word64     : word64;
 
-  signal mtesti_none    : std_logic_vector(memtest_vlen-1 downto 0);
 
+  signal mtesti_none    : std_logic_vector(memtest_vlen-1 downto 0);
 
   attribute sync_set_reset : string;
   attribute sync_set_reset of rst : signal is "true";
@@ -294,6 +287,7 @@ begin
       fabtech       => fabtech,
       memtech       => memtech,
       -- Core
+      physaddr      => physaddr,
       pcbits        => pcbits,
       rstaddr       => rstaddr,
       disas         => disas,
@@ -303,15 +297,14 @@ begin
       no_muladd     => no_muladd,
       single_issue  => single_issue,
       -- Caches
-      isets         => isets,
-      dsets         => dsets,
+      iways         => iways,
+      dways         => dways,
       -- MMU
       mmuen         => mmuen,
       riscv_mmu     => actual_riscv_mmu,
       pmp_no_tor    => pmp_no_tor,
       pmp_entries   => pmp_entries,
       pmp_g         => pmp_g,
-      pmp_msb       => physaddr - 1,
       -- Extensions
       ext_m         => ext_m,
       ext_a         => ext_a,
@@ -332,7 +325,7 @@ begin
       endian        => endian
       )
     port map (
-      clk           => gcpuclk,
+      clk           => gclk,
       rstn          => rstx,
       holdn         => holdn,
       ici           => ici,
@@ -359,10 +352,11 @@ begin
       fpuo          => fpo,
       cnt           => iu_cnt,
       csr_mmu       => csr_mmu,
+      cap           => capability,
       perf          => c_perf,
       tbo           => tbo,
       tbi           => tbi,
-      sclk          => cpuclk,
+      sclk          => clk,
       testen        => ahbsi.testen,
       testrst       => ahbsi.testrst
       );
@@ -376,7 +370,7 @@ begin
         scantest    => scantest
         )
       port map (
-        clk         => gcpuclk,
+        clk         => gclk,
         rstn        => rstx,
         holdn       => holdn,
         muli        => muli,
@@ -392,7 +386,7 @@ begin
         small       => div_small
         )
       port map (
-        clk         => gcpuclk,
+        clk         => gclk,
         rstn        => rstx,
         holdn       => holdn,
         divi        => divi,
@@ -414,22 +408,31 @@ begin
       -- Core
       physaddr      => physaddr,
       -- Caches
-      isets         => isets,
+      iways         => iways,
       ilinesize     => ilinesize,
-      isetsize      => isetsize,
-      dsets         => dsets,
+      iwaysize      => iwaysize,
+      dways         => dways,
       dlinesize     => dlinesize,
-      dsetsize      => dsetsize,
+      dwaysize      => dwaysize,
       dtagconf      => dtagconf,
       dusebw        => dusebw,
+      itcmen        => itcmen,
+      itcmabits     => itcmabits,
+      dtcmen        => dtcmen,
+      dtcmabits     => dtcmabits,
       -- MMU
       itlbnum       => itlbnum,
       dtlbnum       => dtlbnum,
+      htlbnum       => htlbnum,
       riscv_mmu     => actual_riscv_mmu,
       pmp_no_tor    => pmp_no_tor,
       pmp_entries   => pmp_entries,
       pmp_g         => pmp_g,
+      asidlen       => asidlen,
+      vmidlen       => vmidlen,
       ext_a         => ext_a,
+      ext_h         => ext_h,
+      tlb_pmp       => tlb_pmp,
       -- Misc
       cached        => cached,
       wbmask        => wbmask,
@@ -437,11 +440,13 @@ begin
       cdataw        => cdataw,
       icrepl        => tlbforepl,
       dcrepl        => tlbforepl,
+      hrepl         => tlbforepl,
+      mmuen         => mmuen,
       endian        => endian
       )
     port map (
       rst           => rstx,
-      clk           => gcpuclk,
+      clk           => gclk,
       ici           => ici,
       ico           => ico,
       dci           => dci,
@@ -452,16 +457,17 @@ begin
       ahbso         => ahbso,
       crami         => crami,
       cramo         => cramo,
+      sclk          => clk,
       csr           => csr_mmu,
       fpc_mosi      => fpc_mosi,
       fpc_miso      => fpc_miso,
       c2c_mosi      => c2c_mosi,
       c2c_miso      => c2c_miso,
-      fpuholdn      => fpo.holdn,
-      perf          => c_perf,
-      hclk          => ahbclk,
-      sclk          => cpuclk,
-      hclken        => hclken
+      freeze        => gnd,
+      bootword      => zero32,
+      smpflush      => zero32(1 downto 0),
+      --fpuholdn      => fpo.holdn,
+      perf          => c_perf
       );
 
 
@@ -478,12 +484,12 @@ begin
       nentries          => bhtentries,
       hlength           => bhtlength,
       predictor         => predictor,
-      dualbranch        => 1,
       ext_c             => ext_c,
+      dissue            => 1-single_issue,
       testen            => scantest
       )
     port map (
-      clk               => gcpuclk,
+      clk               => gclk,
       rstn              => rstx,
       bhti              => bhti,
       bhto              => bhto,
@@ -492,15 +498,14 @@ begin
     );
 
   -- Branch Target Buffer ----------------------------------------------------
-  btb0 : btbnv
+  btb0 : btbdmnv
     generic map (
       nentries          => btbentries,
-      nsets             => btbsets,
       pcbits            => pcbits,
-      ext_c             => ext_c
+      dissue            => 1-single_issue
       )
     port map (
-      clk               => gcpuclk,
+      clk               => gclk,
       rstn              => rstx,
       btbi              => btbi,
       btbo              => btbo
@@ -513,7 +518,7 @@ begin
       pcbits            => pcbits
       )
     port map (
-      clk               => gcpuclk,
+      clk               => gclk,
       rstn              => rstx,
       rasi              => rasi,
       raso              => raso
@@ -526,14 +531,14 @@ begin
         tech            => memtech,
         abits           => IRFBITS,
         dbits           => XLEN,
-        wrfst           => WRT,
         numregs         => IREGNUM,
-        testen          => scantest,
-        rfreadhold      => rfreadhold
+        dissue          => (1-single_issue),
+        testen          => scantest
         )
       port map (
-        clk             => gcpuclk,
+        clk             => gclk,
         rstn            => rstx,
+        rdhold          => rfi.rdhold,
         waddr1          => rfi.waddr1(IRFBITS-1 downto 0),
         wdata1          => rfi.wdata1,
         we1             => rfi.wen1,
@@ -566,8 +571,9 @@ begin
         numregs         => IREGNUM
         )
       port map (
-        clk             => gcpuclk,
+        clk             => gclk,
         rstn            => rstx,
+        rdhold          => rfi.rdhold,      
         waddr1          => rfi.waddr1(IRFBITS-1 downto 0),
         wdata1          => rfi.wdata1,
         we1             => rfi.wen1,
@@ -598,19 +604,18 @@ begin
         tech            => memtech,
         abits           => 5,
         dbits           => fpulen,
-        wrfst           => WRT,
         numregs         => 32,
         reg0write       => 1,
-        testen          => scantest,
-        rfreadhold      => rfreadhold
+        testen          => scantest
         )
       port map (
-        clk             => gcpuclk,
+        clk             => gclk,
         rstn            => rstx,
-        waddr1          => rff_rd,
+        rdhold          => '0',
+        waddr1          => fpo.rd,
         wdata1          => rff_fd,
-        we1             => rff_wen,
-        waddr2          => rff_rd,      -- Dummy
+        we1             => fpo.wen,
+        waddr2          => fpo.rd,      -- Dummy
         wdata2          => rff_fd,      -- Dummy
         we2             => '0',
         raddr1          => rff_rs1,
@@ -624,7 +629,7 @@ begin
         rdata3          => fs3_data,
         raddr4          => rff_rs3,     -- Dummy
         re4             => '0',
-        rdata4          => open,
+        rdata4          => open,     
         testin          => ahbi.testin
         );
    end generate;
@@ -640,12 +645,13 @@ begin
         reg0write       => 1
         )
       port map (
-        clk             => gcpuclk,
+        clk             => gclk,
         rstn            => rstx,
-        waddr1          => rff_rd,
+        rdhold          => '0',
+        waddr1          => fpo.rd,
         wdata1          => rff_fd,
-        we1             => rff_wen,
-        waddr2          => rff_rd,      -- Dummy
+        we1             => fpo.wen,
+        waddr2          => fpo.rd,      -- Dummy
         wdata2          => rff_fd,      -- Dummy
         we2             => '0',
         raddr1          => rff_rs1,
@@ -664,7 +670,6 @@ begin
    end generate;
   end generate;
 
-
   -- L1 Caches -----------------------------------------------------------------
 
   cmem1 : cachememnv
@@ -674,18 +679,22 @@ begin
       ilinesize => ilinesize,
       iidxwidth => iidxwidth,
       itagwidth => itagwidth,
+      itcmen    => itcmen,
+      itcmabits => itcmabits,
       dways     => dways,
       dlinesize => dlinesize,
       didxwidth => didxwidth,
       dtagwidth => dtagwidth,
       dtagconf  => dtagconf,
       dusebw    => dusebw,
+      dtcmen    => dtcmen,
+      dtcmabits => dtcmabits,
       testen    => scantest
       )
     port map (
       rstn   => rstx,
-      clk    => gcpuclk,
-      sclk   => cpuclk,
+      clk    => gclk,
+      sclk   => clk,
       crami  => crami,
       cramo  => cramo,
       testin => ahbi.testin
@@ -702,7 +711,7 @@ begin
         proc    => 1
       )
       port map (
-        clk      => gcpuclk,
+        clk      => gclk,
         di       => tbi,
         do       => tbo,
         testin   => ahbi.testin
@@ -738,7 +747,7 @@ begin
         no_muladd => no_muladd
       )
       port map (
-        clk         => fpuclk,
+        clk         => gclk,
         rstn        => rstn,
         holdn       => holdn,
         e_inst      => fpi.inst,
@@ -748,11 +757,11 @@ begin
         s1          => fs1_word64,
         s2          => fs2_word64,
         s3          => fs3_word64,
-        issue_id    => open,
+        issue_id    => fpo.issue_id,
         fpu_holdn   => fpo.holdn,
         ready_flop  => fpo.ready,
         commit      => fpi.commit,
-        commitid    => "00000",
+        commit_id   => fpi.commit_id,
         lddata      => fpi.lddata,
         unissue     => fpi.flush,
         unissue_sid => "00000",
@@ -760,11 +769,14 @@ begin
         rs2         => rff_rs2,
         rs3         => rff_rs3,
         ren         => rff_ren,
-        rd          => rff_rd,
-        wen         => rff_wen,
+        rd          => fpo.rd,
+        wen         => fpo.wen,
         flags_wen   => fpo.flags_wen,
         stdata      => fpo.data,
-        flags       => fpo.flags
+        flags       => fpo.flags,
+        mode_in     => fpi.mode,
+        wb_mode     => fpo.mode,
+        wb_id       => fpo.wb_id
       );
 
     rff_fd   <= fpo.data(rff_fd'range);
@@ -772,9 +784,9 @@ begin
 
 
   -- 1-clock reset delay
-  rstreg : process(cpuclk)
+  rstreg : process(clk)
   begin
-    if rising_edge(cpuclk) then
+    if rising_edge(clk) then
       rst <= rstn and (not dbgi.reset);
     end if;
   end process;
@@ -785,8 +797,8 @@ begin
   assert endian = 1
     report "NOEL-V: Only little endian is supported"
     severity warning;
-  assert ( ((endian/=0) = (ahbi.endian/='0') or ahbi.endian='U') and
-           ((endian/=0) = (ahbsi.endian/='0') or ahbsi.endian='U') )
+  assert ( ((endian /= 0) = (ahbi.endian  /= '0') or ahbi.endian  = 'U') and
+           ((endian /= 0) = (ahbsi.endian /= '0') or ahbsi.endian = 'U') )
     report "NOEL-V: Mismatch between endianness generic and AHB bus endianness signal"
     severity warning;
 -- pragma translate_on

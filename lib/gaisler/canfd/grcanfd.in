@@ -1,0 +1,5 @@
+    bool 'Enable GRCANFD interface               ' CONFIG_GRCANFD_ENABLE
+    if [ "$CONFIG_GRCANFD_ENABLE" = "y" ]; then
+      int 'Interrupt number                      ' CONFIG_GRCANFDIRQ 13
+      bool 'Enable single common interrupt       ' CONFIG_GRCANFDSINGLE
+    fi

@@ -1266,7 +1266,7 @@ proc menu3 {w title} {
 	pack $w.config.canvas -side right -fill y
 
 
-	bool $w.config.f 3 0 "Enable NOELV RISC-V RV64 Processor" CONFIG_NOELV
+	bool $w.config.f 3 0 "Enable NOELV RISC-V Processor" CONFIG_NOELV
 	int $w.config.f 3 1 "Number of processors" CONFIG_PROC_NUM
 	global tmpvar_4
 	minimenu $w.config.f 3 2 "NOEL-V RV64 or RV32" tmpvar_4 CONFIG_NOELV_RV64

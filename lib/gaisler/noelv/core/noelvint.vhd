@@ -1,3 +1,4 @@
+
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
@@ -86,7 +87,7 @@ package noelvint is
   constant LRU     : std_logic_vector(1 downto 0) := "01";
   constant DIR     : std_logic_vector(1 downto 0) := "00";
 
-  constant MAXSETS : integer := 4;
+  constant MAXWAYS : integer := 4;
   constant TAGMAX  : integer := 32;
   constant IDXMAX  : integer := 16;
 
@@ -133,10 +134,10 @@ package noelvint is
   constant s3201 : std_logic_vector(4 downto 0) := "11101";
   constant s3210 : std_logic_vector(4 downto 0) := "11100";
 
-  type lru_3set_table_vector_type is array(0 to 2) of std_logic_vector(2 downto 0);
-  type lru_3set_table_type        is array (0 to 7) of lru_3set_table_vector_type;
+  type lru_3way_table_vector_type is array(0 to 2) of std_logic_vector(2 downto 0);
+  type lru_3way_table_type        is array (0 to 7) of lru_3way_table_vector_type;
 
-  constant lru_3set_table : lru_3set_table_type :=
+  constant lru_3way_table : lru_3way_table_type :=
     ( (s120, s021, s012),                   -- s012
       (s210, s021, s012),                   -- s021
       (s120, s021, s102),                   -- s102
@@ -147,10 +148,10 @@ package noelvint is
       (s210, s201, s102)                    -- dummy
       );
 
-  type lru_4set_table_vector_type is array(0 to 3) of std_logic_vector(4 downto 0);
-  type lru_4set_table_type        is array(0 to 31) of lru_4set_table_vector_type;
+  type lru_4way_table_vector_type is array(0 to 3) of std_logic_vector(4 downto 0);
+  type lru_4way_table_type        is array(0 to 31) of lru_4way_table_vector_type;
 
-  constant lru_4set_table : lru_4set_table_type :=
+  constant lru_4way_table : lru_4way_table_type :=
     ( (s2310, s0231, s0312, s0213),       -- "00000" (s0231/reset)
       (s2310, s0231, s0312, s0213),       -- "00001" s0231
       (s1320, s0321, s0132, s0123),       -- "00010" s0132
@@ -250,21 +251,30 @@ package noelvint is
   constant XC_INST_STORE_ACCESS_FAULT   : cause_type;
   constant XC_INST_ENV_CALL_UMODE       : cause_type;
   constant XC_INST_ENV_CALL_SMODE       : cause_type;
+  constant XC_INST_ENV_CALL_VSMODE      : cause_type;
   constant XC_INST_ENV_CALL_MMODE       : cause_type;
   constant XC_INST_INST_PAGE_FAULT      : cause_type;
   constant XC_INST_LOAD_PAGE_FAULT      : cause_type;
   constant XC_INST_STORE_PAGE_FAULT     : cause_type;
+  constant XC_INST_INST_G_PAGE_FAULT    : cause_type;
+  constant XC_INST_LOAD_G_PAGE_FAULT    : cause_type;
+  constant XC_INST_VIRTUAL_INST         : cause_type;
+  constant XC_INST_STORE_G_PAGE_FAULT   : cause_type;
 
   -- Interrupt Codes
   constant IRQ_U_SOFTWARE               : cause_type;
   constant IRQ_S_SOFTWARE               : cause_type;
+  constant IRQ_VS_SOFTWARE              : cause_type;
   constant IRQ_M_SOFTWARE               : cause_type;
   constant IRQ_U_TIMER                  : cause_type;
   constant IRQ_S_TIMER                  : cause_type;
+  constant IRQ_VS_TIMER                 : cause_type;
   constant IRQ_M_TIMER                  : cause_type;
   constant IRQ_U_EXTERNAL               : cause_type;
   constant IRQ_S_EXTERNAL               : cause_type;
+  constant IRQ_VS_EXTERNAL              : cause_type;
   constant IRQ_M_EXTERNAL               : cause_type;
+  constant IRQ_SG_EXTERNAL              : cause_type;
 
   -- Reset Codes
   constant RST_HARD_ALL                 : cause_type;
@@ -274,7 +284,6 @@ package noelvint is
   constant CSR_ARCHID                   : wordx := (others => '0');
   constant CSR_IMPID                    : wordx := (others => '0');
   constant RST_VEC                      : wordx;
-  constant CSR_SATP_MASK                : wordx;
   constant CSR_MEDELEG_MASK             : wordx;
   constant CSR_MIDELEG_MASK             : wordx;
   constant CSR_MIE_MASK                 : wordx;
@@ -423,6 +432,8 @@ package noelvint is
     ebreakm     : std_ulogic;
     ebreaks     : std_ulogic;
     ebreaku     : std_ulogic;
+    ebreakvs    : std_ulogic;
+    ebreakvu    : std_ulogic;
     stepie      : std_ulogic;
     stopcount   : std_ulogic;
     stoptime    : std_ulogic;
@@ -431,6 +442,7 @@ package noelvint is
     nmip        : std_ulogic;
     step        : std_ulogic;
     prv         : std_logic_vector(1 downto 0);
+    v           : std_ulogic;
   end record;
 
   constant csr_dcsr_rst : csr_dcsr_type := (
@@ -438,6 +450,8 @@ package noelvint is
     ebreakm     => '0',
     ebreaks     => '0',
     ebreaku     => '0',
+    ebreakvs    => '0',
+    ebreakvu    => '0',
     stepie      => '0',
     stopcount   => '0',
     stoptime    => '0',
@@ -445,13 +459,14 @@ package noelvint is
     mprven      => '0',
     nmip        => '0',
     step        => '0',
-    prv         => "11"
+    prv         => "11",
+    v           => '0'
     );
 
   type csr_dfeaturesen_type is record
-    -- pragma translate_off
-    disas_type  : std_ulogic;
-    -- pragma translate_on
+    tpbuf_en    : std_ulogic;                   -- Include program buffer execution in trace/sim-disas
+    tmode_dis   : std_logic_vector(4 downto 0); -- Mask trace for different privilege modes [VU,VS,S,U,M]
+    nostream    : std_ulogic;   -- Do not make use of stream buffer for instruction fetch
     asi         : std_logic_vector(7 downto 0);
     mmu_adfault : std_ulogic;   -- Take page fault on access/modify.
     pte_nocache : std_ulogic;   -- Use bit 8 in PTE (one of RSW) as "uncachable".
@@ -472,9 +487,9 @@ package noelvint is
   end record;
 
   constant csr_dfeaturesen_rst : csr_dfeaturesen_type := (
-    -- pragma translate_off
-    disas_type  => '0',
-    -- pragma translate_on
+    tpbuf_en    => '0',
+    tmode_dis   => "00000",
+    nostream    => '0',
     asi         => "00001010",
     mmu_adfault => '0',
     pte_nocache => '0',
@@ -490,50 +505,37 @@ package noelvint is
     b2bsten     => '1'
     );
 
-  type hpmcounter_type    is array (0 to HWPERFMONITORS-1) of word64;
-  type hpmevent_type      is array (0 to HWPERFMONITORS-1) of std_logic_vector(7 downto 0);
-  type pmpcfg_access_type is array (0 to PMPENTRIES-1) of std_logic_vector(1 downto 0);
-  subtype pmpaddr_type    is std_logic_vector(PMPADDRBITS-1 downto 0);
-  type pmpaddr_vec_type   is array (0 to PMPENTRIES-1) of pmpaddr_type;
+  type hpmcounter_type       is array (0 to HWPERFMONITORS - 1) of word64;
+  subtype hpmevent_type      is std_logic_vector(7 downto 0);
+  type hpmevent_vec          is array (0 to HWPERFMONITORS - 1) of hpmevent_type;
+  subtype pmpcfg_access_type is std_logic_vector(1 downto 0);
+  subtype pmpaddr_type       is std_logic_vector(PMPADDRBITS - 1 downto 0);
+  type pmpaddr_vec_type      is array (0 to PMPENTRIES - 1) of pmpaddr_type;
 
   constant pmpaddrzero : pmpaddr_type := (others => '0');
-  constant HPM_EVENTS : hpmevent_type := (
-    conv_std_logic_vector(CSR_HPM_ICACHE_MISS,  8),
-    conv_std_logic_vector(CSR_HPM_DCACHE_MISS,  8),
-    conv_std_logic_vector(CSR_HPM_ITLB_MISS,    8),
-    conv_std_logic_vector(CSR_HPM_DTLB_MISS,    8),
-    conv_std_logic_vector(CSR_HPM_HOLD,         8),
-    conv_std_logic_vector(CSR_HPM_DUAL_ISSUE,   8),
-    conv_std_logic_vector(CSR_HPM_BRANCH_MISS,  8),
-    conv_std_logic_vector(CSR_HPM_HOLD_ISSUE,   8),
-    conv_std_logic_vector(CSR_HPM_BRANCH,       8),
-    conv_std_logic_vector(CSR_HPM_LOAD_DEP,     8),
-    conv_std_logic_vector(CSR_HPM_STORE_B2B,    8),
-    conv_std_logic_vector(CSR_HPM_JALR,         8),
-    conv_std_logic_vector(CSR_HPM_JAL,          8),
-    conv_std_logic_vector(CSR_HPM_ICACHE_FETCH, 8),
-    conv_std_logic_vector(CSR_HPM_DCACHE_FETCH, 8),
-    conv_std_logic_vector(CSR_HPM_DCACHE_FLUSH, 8),
-    x"00", x"00", x"00", x"00",  x"00", x"00", x"00", x"00",
-    x"00", x"00", x"00", x"00",  x"00");
+  constant HPM_EVENTS  : hpmevent_vec;
 
   type pmp_precalc_type is record
-    low  : pmpaddr_vec_type;
-    high : pmpaddr_vec_type;
+    low  : pmpaddr_type;
+    high : pmpaddr_type;
   end record;
+
+  constant pmp_precalc_none : pmp_precalc_type := (
+    low  => pmpaddrzero,
+    high => pmpaddrzero
+  );
+
+  type pmp_precalc_vec is array (integer range <>) of pmp_precalc_type;
 
   type csrtype is record
     satp        : wordx;
-    prv         : std_logic_vector(PRIV_LVL_M'range);
-    sum         : std_ulogic;   -- Allow S to access U memory (except for execution).
-    mxr         : std_ulogic;   -- Make X-only pages readable (S MMU). PMP not affected!
-    mprv        : std_ulogic;   -- When this is set and MPP=S, SUM is also in effect.
-    mpp         : std_logic_vector(PRIV_LVL_M'range);
+    vsatp       : wordx;
+    hgatp       : wordx;
     mmu_adfault : std_ulogic;   -- Take page fault on access/modify.
     pte_nocache : std_ulogic;   -- Use bit 8 in PTE (one of RSW) as "uncachable".
     pmpcfg0     : word64;
     pmpcfg2     : word64;
-    precalc     : pmp_precalc_type;
+    precalc     : pmp_precalc_vec(0 to PMPENTRIES - 1);
   end record;
 
   type csr_reg_type is record
@@ -598,7 +600,7 @@ package noelvint is
     pmpcfg0     : word64;
     pmpcfg2     : word64;
     pmpaddr     : pmpaddr_vec_type;
-    pmp_precalc : pmp_precalc_type;
+    pmp_precalc : pmp_precalc_vec(0 to PMPENTRIES - 1);
     -- Machine Counter/Timers
     mcycle      : word64;
     mtime       : word64;
@@ -612,16 +614,13 @@ package noelvint is
     dscratch1   : wordx;
     -- Hardware Performance Monitors
     hpmcounter  : hpmcounter_type;
-    hpmevent    : hpmevent_type;
+    hpmevent    : hpmevent_vec;
     mcountinhibit:word;
     -- Custom Read/Write Registers
     dfeaturesen : csr_dfeaturesen_type;
   end record;
 
-  constant PMPPRECALCRES : pmp_precalc_type := (
-    low  => (others => pmpaddrzero),
-    high => (others => pmpaddrzero)
-  );
+  constant PMPPRECALCRES : pmp_precalc_vec(0 to PMPENTRIES - 1) := (others => pmp_precalc_none);
 
   constant CSRRES : csr_reg_type := (
     misa        => zerox,
@@ -700,7 +699,9 @@ package noelvint is
     flush       : std_logic_vector(1 to 4);               -- Pipeline Flush
     e_nullify   : std_ulogic;
     commit      : std_ulogic;
+    commit_id   : std_logic_vector(4 downto 0);
     lddata      : std_logic_vector(63 downto 0);
+    mode        : std_logic_vector(2 downto 0);           -- Pass along for logging
   end record;
 
   constant fpu5_in_none : fpu5_in_type := (
@@ -710,23 +711,35 @@ package noelvint is
     flush       => (others => '0'),
     e_nullify   => '0',
     commit      => '0',
-    lddata      => (others => '0')
+    commit_id   => (others => '0'),
+    lddata      => (others => '0'),
+    mode        => (others => '0')
     );
 
   type fpu5_out_type is record
     data        : std_logic_vector(63 downto 0);
+    rd          : std_logic_vector(4 downto 0);
+    wen         : std_ulogic;
     flags       : std_logic_vector(4 downto 0);
     flags_wen   : std_ulogic;
     ready       : std_ulogic;
     holdn       : std_ulogic;
+    mode        : std_logic_vector(2 downto 0);
+    issue_id    : std_logic_vector(4 downto 0);
+    wb_id       : std_logic_vector(4 downto 0);
   end record;
 
   constant fpu5_out_none : fpu5_out_type := (
     data        => (others => '0'),
+    rd          => (others => '0'),
+    wen         => '0',
     flags       => (others => '0'),
     flags_wen   => '0',
     ready       => '1',
-    holdn       => '1'
+    holdn       => '1',
+    mode        => (others => '0'),
+    issue_id    => (others => '0'),
+    wb_id       => (others => '0')
     );
 
   type fpu5_out_vector_type is array (integer range 0 to 7) of fpu5_out_type;
@@ -742,6 +755,7 @@ package noelvint is
     ren2        : std_ulogic;
     ren3        : std_ulogic;
     ren4        : std_ulogic;
+    rdhold      : std_ulogic;
     waddr1      : std_logic_vector(4 downto 0);
     waddr2      : std_logic_vector(4 downto 0);
     wdata1      : wordx;
@@ -784,14 +798,16 @@ package noelvint is
 
   -- Caches ---------------------------------------------------------------
   subtype cword3 is std_logic_vector(IDBITS3 - 1 downto 0);
-  type nv_cdatatype is array (0 to MAXSETS - 1) of std_logic_vector(63 downto 0);
+  type nv_cdatatype is array (0 to MAXWAYS - 1) of std_logic_vector(63 downto 0);
 
 
-  subtype pcaddr is std_logic_vector(63 downto 0);
+  subtype addr_type is std_logic_vector(63 downto 0);
+
   type nv_icache_in_type is record
-    rpc              : pcaddr;                        -- raw address (npc)
-    fpc              : pcaddr;                        -- latched address (fpc)
-    dpc              : pcaddr;                        -- latched address (dpc)
+    rpc              : addr_type;                     -- raw address (npc)
+    fpc              : addr_type;                     -- latched address (fpc)
+    dpc              : addr_type;                     -- latched address (dpc)
+    nostream         : std_ulogic;                    -- Force no stream buffer use
     rbranch          : std_ulogic;                    -- Instruction branch
     fbranch          : std_ulogic;                    -- Instruction branch
     inull            : std_ulogic;                    -- instruction nullify
@@ -802,33 +818,34 @@ package noelvint is
     nobpmiss         : std_ulogic;                    -- Predicted instruction, block hold
     iustall          : std_ulogic;
     parkreq          : std_ulogic;                    -- Cache controller park request
+    vms              : std_logic_vector(2 downto 0); -- [Virtualization mode, machine mode, supervisor mode]
   end record;
 
   type nv_icache_out_type is record
-    data             : nv_cdatatype;
-    set              : std_logic_vector(log2(MAXSETS) - 1 downto 0);
-    mexc             : std_ulogic;
-    exctype          : std_ulogic;
-    hold             : std_ulogic;
-    flush            : std_ulogic;                    -- flush in progress
-    diagrdy          : std_ulogic;                    -- diagnostic access ready
-    diagdata         : cword3;                        -- diagnostic data
-    mds              : std_ulogic;                    -- memory data strobe
-    cfg              : std_logic_vector(31 downto 0);
-    bpmiss           : std_ulogic;
-    eocl             : std_ulogic;
-    badtag           : std_ulogic;
-    ics_btb          : std_logic_vector(1 downto 0);
-    btb_flush        : std_logic;
-    parked           : std_ulogic;
+    data        : nv_cdatatype;
+    way         : std_logic_vector(log2(MAXWAYS) - 1 downto 0);
+    mexc        : std_ulogic;
+    exctype     : std_ulogic;
+    exchyper    : std_ulogic;
+    addrhyper   : addr_type;
+    typehyper   : std_logic_vector(1 downto 0);
+    hold        : std_ulogic;
+    flush       : std_ulogic;                    -- flush in progress
+    mds         : std_ulogic;                    -- memory data strobe
+    cfg         : std_logic_vector(31 downto 0);
+    bpmiss      : std_ulogic;
+    eocl        : std_ulogic;
+    badtag      : std_ulogic;
+    ics_btb     : std_logic_vector(1 downto 0);
+    btb_flush   : std_logic;
+    parked      : std_ulogic;
   end record;
-
 
   type nv_dcache_in_type is record
     asi              : std_logic_vector(7 downto 0);
-    maddress         : std_logic_vector(63 downto 0);
+    maddress         : addr_type;
     easi             : std_logic_vector(7 downto 0);
-    eaddress         : std_logic_vector(63 downto 0);
+    eaddress         : addr_type;
     edata            : std_logic_vector(63 downto 0);
     size             : std_logic_vector(1 downto 0);
     enaddr           : std_ulogic;
@@ -843,6 +860,11 @@ package noelvint is
     dsuen            : std_ulogic;
     msu              : std_ulogic;                   -- memory stage supervisor
     esu              : std_ulogic;                   -- execution stage supervisor
+    vms              : std_logic_vector(2 downto 0); -- [Virtualization mode, machine mode, supervisor mode]
+    sum              : std_ulogic;                   -- Allow S to access U memory (except for execution).
+    mxr              : std_ulogic;                   -- Make X-only pages readable (S MMU). PMP not affected!
+    vmxr             : std_ulogic;                   -- Make X-only pages readable (VS MMU). PMP not affected!
+    hx               : std_ulogic;                   -- Hypervisor HLVX load instruction. Execute permission needed 
     intack           : std_ulogic;
     eread            : std_ulogic;
     mmucacheclr      : std_ulogic;
@@ -851,18 +873,20 @@ package noelvint is
   end record;
 
   type nv_dcache_out_type is record
-    data             : nv_cdatatype;
-    set              : std_logic_vector(log2(MAXSETS) - 1 downto 0);
-    mexc             : std_ulogic;
-    exctype          : std_ulogic;
-    hold             : std_ulogic;
-    mds              : std_ulogic;
-    werr             : std_ulogic;
-    cache            : std_ulogic;
-    wbhold           : std_ulogic;                   -- write buffer hold
-    badtag           : std_ulogic;
-    logan            : std_logic_vector(255 downto 0);
-    iudiag_mosi      : nv_intreg_mosi_type;
+    data        : nv_cdatatype;
+    way         : std_logic_vector(log2(MAXWAYS) - 1 downto 0);
+    mexc        : std_ulogic;
+    exctype     : std_ulogic;
+    exchyper    : std_ulogic;
+    addrhyper   : addr_type;
+    typehyper   : std_logic_vector(1 downto 0);
+    hold        : std_ulogic;
+    mds         : std_ulogic;
+    werr        : std_ulogic;
+    cache       : std_ulogic;
+    wbhold      : std_ulogic;                   -- write buffer hold
+    badtag      : std_ulogic;
+    iudiag_mosi : nv_intreg_mosi_type;
   end record;
 
   type lru_bits_type is array(1 to 4) of integer;
@@ -871,7 +895,7 @@ package noelvint is
   type cram_tags is array(0 to 3) of std_logic_vector(TAGMAX - 1 downto 0);
 
   type nv_cram_in_type is record
-    iindex      : std_logic_vector(IDXMAX - 1 downto 0);
+    iindex      : std_logic_vector(IDXMAX-1 downto 0);
     itagen      : std_logic_vector(0 to 3);
     itagwrite   : std_ulogic;
     itagdin     : cram_tags;
@@ -879,36 +903,46 @@ package noelvint is
     idataen     : std_logic_vector(0 to 3);
     idatawrite  : std_logic_vector(1 downto 0);
     idatadin    : std_logic_vector(63 downto 0);
+    ifulladdr   : std_logic_vector(31 downto 0);
+    itcmen      : std_ulogic;
+    itcmwrite   : std_logic_vector(1 downto 0);
+    itcmdin     : std_logic_vector(63 downto 0);
     -- Cache read port
-    dtagcindex  : std_logic_vector(IDXMAX - 1 downto 0);
+    dtagcindex  : std_logic_vector(IDXMAX-1 downto 0);
     dtagcen     : std_logic_vector(0 to 3);
     -- Cache update and snoop hit port
-    dtaguindex  : std_logic_vector(IDXMAX - 1 downto 0);
+    dtaguindex  : std_logic_vector(IDXMAX-1 downto 0);
     dtaguwrite  : std_logic_vector(0 to 3);
     dtagudin    : cram_tags;
     -- Combined read/update port (without snoop hit)
-    dtagcuindex : std_logic_vector(IDXMAX - 1 downto 0);
+    dtagcuindex : std_logic_vector(IDXMAX-1 downto 0);
     dtagcuen    : std_logic_vector(0 to 3);
     dtagcuwrite : std_ulogic;
     -- Snoop tag read and write
-    dtagsindex  : std_logic_vector(IDXMAX - 1 downto 0);
+    dtagsindex  : std_logic_vector(IDXMAX-1 downto 0);
     dtagsen     : std_logic_vector(0 to 3);
     dtagswrite  : std_ulogic;
     dtagsdin    : cram_tags;
     -- DCache data
-    ddataindex  : std_logic_vector(IDXMAX - 1 downto 0);
+    ddataindex  : std_logic_vector(IDXMAX-1 downto 0);
     ddataoffs   : std_logic_vector(1 downto 0);
     ddataen     : std_logic_vector(0 to 3);
     ddatawrite  : std_logic_vector(7 downto 0);
     ddatadin    : nv_cdatatype;
+    ddatafulladdr : std_logic_vector(31 downto 0);
+    dtcmen      : std_ulogic;
+    dtcmdin     : std_logic_vector(63 downto 0);
+    dtcmwrite   : std_logic_vector(7 downto 0);
   end record;
 
   type nv_cram_out_type is record
     itagdout  : cram_tags;
     idatadout : nv_cdatatype;
+    itcmdout  : std_logic_vector(63 downto 0);
     dtagcdout : cram_tags;
     dtagsdout : cram_tags;
     ddatadout : nv_cdatatype;
+    dtcmdout  : std_logic_vector(63 downto 0);
   end record;
 
   -- Instruction Trace ----------------------------------------------------
@@ -1052,12 +1086,14 @@ package noelvint is
     rdata       : wordx;
     ralign      : std_ulogic;
     hit         : std_ulogic;
+    lpc         : std_logic_vector(1 downto 0);
   end record;
 
   constant nv_btb_out_none : nv_btb_out_type := (
     rdata       => (others => '0'),
     ralign      => '0',
-    hit         => '0'
+    hit         => '0',
+    lpc         => "00"
   );
 
   -- Branch History Table -----------------------------------------------------
@@ -1077,15 +1113,13 @@ package noelvint is
   end record;
 
   type nv_bht_out_type is record
-    rdata       : std_logic_vector(2*MAX_PREDICTOR_BITS-1 downto 0);
-    taken       : std_ulogic;
+    taken       : std_logic_vector(3 downto 0);
     bhistory    : std_logic_vector(4 downto 0);
     phistory    : std_logic_vector(63 downto 0);
   end record;
 
   constant nv_bht_out_none : nv_bht_out_type := (
-    rdata       => (others => '0'),
-    taken       => '0',
+    taken       => (others => '0'),
     bhistory    => (others => '0'),
     phistory    => (others => '0')
   );
@@ -1121,44 +1155,13 @@ package noelvint is
   -- Components
   -----------------------------------------------------------------------------
 
-  component noelvcpu is
-    generic (
-      hindex   : integer;
-      fabtech  : integer;
-      memtech  : integer;
-      mularch  : integer :=0 ;
-      cached   : integer;
-      wbmask   : integer;
-      busw     : integer;
-      cmemconf : integer;
-      rfconf   : integer;
-      fpuconf  : integer;
-      disas    : integer;
-      pbaddr   : integer;
-      cfg      : integer;
-      scantest : integer
-      );
-    port (
-      clk   : in  std_ulogic;
-      rstn  : in  std_ulogic;
-      ahbi  : in  ahb_mst_in_type;
-      ahbo  : out ahb_mst_out_type;
-      ahbsi : in  ahb_slv_in_type;
-      ahbso : in  ahb_slv_out_vector;
-      irqi  : in  nv_irq_in_type;
-      irqo  : out nv_irq_out_type;
-      dbgi  : in  nv_debug_in_type;
-      dbgo  : out nv_debug_out_type;
-      cnt   : out nv_counter_out_type
-      );
-  end component;
-
   component iunv
     generic (
       hindex       : integer range 0  to 15;       -- Hart index
       fabtech      : integer range 0  to NTECH;    -- fabtech
       memtech      : integer range 0  to NTECH;    -- memtech
       -- Core
+      physaddr     : integer range 32 to 56;       -- Physical Addressing
       pcbits       : integer range 32 to 56;       -- Max bits required for PC
       rstaddr      : integer;                      -- Reset vector (MSB)
       disas        : integer;                      -- Disassembly to console
@@ -1168,15 +1171,14 @@ package noelvint is
       no_muladd    : integer range 0  to 1;        -- 1 - multiply-add not supported
       single_issue : integer range 0  to 1;        -- 1 - only one pipeline
       -- Caches
-      isets        : integer range 1  to 4;        -- I$ Sets
-      dsets        : integer range 1  to 4;        -- D$ Sets
+      iways        : integer range 1  to 4;        -- I$ Ways
+      dways        : integer range 1  to 4;        -- D$ Ways
       -- MMU
       mmuen        : integer range 0  to 2;        -- >0 - MMU enable
       riscv_mmu    : integer range 0  to 3;
       pmp_no_tor   : integer range 0  to 1;        -- Disable PMP TOR
       pmp_entries  : integer range 0  to 16;       -- Implemented PMP registers
       pmp_g        : integer range 0  to 10;       -- PMP grain is 2^(pmp_g + 2) bytes
-      pmp_msb      : integer range 15 to 55;       -- High bit for PMP checks
       -- Extensions
       ext_m        : integer range 0  to 1;        -- M Base Extension Set
       ext_a        : integer range 0  to 1;        -- A Base Extension Set
@@ -1198,39 +1200,40 @@ package noelvint is
       endian       : integer               := GRLIB_CONFIG_ARRAY(grlib_little_endian)
       );
     port (
-      clk         : in  std_ulogic;          -- clk
-      rstn        : in  std_ulogic;          -- active low reset
-      holdn       : in  std_ulogic;          -- active low hold signal
-      ici         : out nv_icache_in_type;   -- I$ In Port
-      ico         : in  nv_icache_out_type;  -- I$ Out Port
-      bhti        : out nv_bht_in_type;      -- BHT In Port
-      bhto        : in  nv_bht_out_type;     -- BHT Out Port
-      btbi        : out nv_btb_in_type;      -- BTB In Port
-      btbo        : in  nv_btb_out_type;     -- BTB Out Port
-      rasi        : out nv_ras_in_type;      -- RAS In Port
-      raso        : in  nv_ras_out_type;     -- RAS Out Port
-      dci         : out nv_dcache_in_type;   -- D$ In Port
-      dco         : in  nv_dcache_out_type;  -- D$ Out Port
-      rfi         : out iregfile_in_type;    -- Regfile In Port
-      rfo         : in  iregfile_out_type;   -- Regfile Out Port
-      irqi        : in  nv_irq_in_type;      -- Irq In Port
-      irqo        : out nv_irq_out_type;     -- Irq Out Port
-      dbgi        : in  nv_debug_in_type;    -- Debug In Port
-      dbgo        : out nv_debug_out_type;   -- Debug Out Port
-      muli        : out mul_in_type;         -- Mul Unit In Port
-      mulo        : in  mul_out_type;        -- Mul Unit Out Port
-      divi        : out div_in_type;         -- Div Unit In Port
-      divo        : in  div_out_type;        -- Div Unit Out Port
-      fpui        : out fpu5_in_type;        -- FPU Unit In Port
-      fpuo        : in  fpu5_out_type;       -- FPU Unit Out Port
-      cnt         : out nv_counter_out_type; -- Perf counters
-      csr_mmu     : out csrtype;          -- CSR values for MMU
-      perf        : in  std_logic_vector(31 downto 0);
-      tbo         : in  nv_trace_out_type;-- Trace Unit Out Port
-      tbi         : out nv_trace_in_type; -- Trace Unit In Port
-      sclk        : in  std_ulogic;
-      testen      : in  std_ulogic;
-      testrst     : in  std_ulogic
+      clk            : in  std_ulogic;           -- clk
+      rstn           : in  std_ulogic;           -- active low reset
+      holdn          : in  std_ulogic;           -- active low hold signal
+      ici            : out nv_icache_in_type;    -- I$ In Port
+      ico            : in  nv_icache_out_type;   -- I$ Out Port
+      bhti           : out nv_bht_in_type;       -- BHT In Port
+      bhto           : in  nv_bht_out_type;      -- BHT Out Port
+      btbi           : out nv_btb_in_type;       -- BTB In Port
+      btbo           : in  nv_btb_out_type;      -- BTB Out Port
+      rasi           : out nv_ras_in_type;       -- RAS In Port
+      raso           : in  nv_ras_out_type;      -- RAS Out Port
+      dci            : out nv_dcache_in_type;    -- D$ In Port
+      dco            : in  nv_dcache_out_type;   -- D$ Out Port
+      rfi            : out iregfile_in_type;     -- Regfile In Port
+      rfo            : in  iregfile_out_type;    -- Regfile Out Port
+      irqi           : in  nv_irq_in_type;       -- Irq In Port
+      irqo           : out nv_irq_out_type;      -- Irq Out Port
+      dbgi           : in  nv_debug_in_type;     -- Debug In Port
+      dbgo           : out nv_debug_out_type;    -- Debug Out Port
+      muli           : out mul_in_type;          -- Mul Unit In Port
+      mulo           : in  mul_out_type;         -- Mul Unit Out Port
+      divi           : out div_in_type;          -- Div Unit In Port
+      divo           : in  div_out_type;         -- Div Unit Out Port
+      fpui           : out fpu5_in_type;         -- FPU Unit In Port
+      fpuo           : in  fpu5_out_type;        -- FPU Unit Out Port
+      cnt            : out nv_counter_out_type;  -- Perf counters
+      csr_mmu        : out csrtype;              -- CSR values for MMU
+      perf           : in  std_logic_vector(31 downto 0);
+      cap            : in  std_logic_vector(2  downto 0);
+      tbo            : in  nv_trace_out_type;    -- Trace Unit Out Port
+      tbi            : out nv_trace_in_type;     -- Trace Unit In Port
+      sclk           : in  std_ulogic;
+      testen         : in  std_ulogic;
+      testrst        : in  std_ulogic
       );
   end component;
 
@@ -1255,15 +1258,15 @@ package noelvint is
       tech        : integer;
       abits       : integer;
       dbits       : integer;
-      wrfst       : integer;
       numregs     : integer;
       reg0write   : integer := 0;
-      testen      : integer;
-      rfreadhold  : integer
+      dissue      : integer := 1;
+      testen      : integer
       );
     port (
       clk      : in  std_ulogic;
       rstn     : in  std_ulogic;
+      rdhold   : in  std_ulogic;
       waddr1   : in  std_logic_vector((abits -1) downto 0);
       wdata1   : in  std_logic_vector((dbits -1) downto 0);
       we1      : in  std_ulogic;
@@ -1298,6 +1301,7 @@ package noelvint is
     port (
       clk      : in  std_ulogic;
       rstn     : in  std_ulogic;
+      rdhold   : in  std_ulogic;
       waddr1   : in  std_logic_vector((abits -1) downto 0);
       wdata1   : in  std_logic_vector((dbits -1) downto 0);
       we1      : in  std_ulogic;
@@ -1321,17 +1325,21 @@ package noelvint is
 
   component cachememnv is
     generic (
-      tech      : integer range 0 to NTECH;
+      tech      : integer range 0 to   NTECH;
       iways     : integer range 1 to   4;
       ilinesize : integer range 4 to   8;
       iidxwidth : integer range 1 to  10;
       itagwidth : integer range 1 to  32;
+      itcmen    : integer range 0 to   1;
+      itcmabits : integer range 1 to  20;
       dways     : integer range 1 to   4;
       dlinesize : integer range 4 to   8;
       didxwidth : integer range 1 to  10;
       dtagwidth : integer range 1 to  32;
       dtagconf  : integer range 0 to   2;
       dusebw    : integer range 0 to   1;
+      dtcmen    : integer range 0 to   1;
+      dtcmabits : integer range 1 to  20;
       testen    : integer range 0 to   1
       );
     port (
@@ -1350,29 +1358,40 @@ package noelvint is
       -- Core
       physaddr   : integer range 32 to 56;   -- Physical Addressing
       -- Caches
-      isets      : integer range 1 to   4;   --    sets/ways
+      iways      : integer range 1 to   4;   -- I$ ways
       ilinesize  : integer range 4 to   8;   --    cache line size (32 bit words)
-      isetsize   : integer range 1 to 256;   --    way size (KiB)
-      dsets      : integer range 1 to   4;   --    sets/ways
+      iwaysize   : integer range 1 to 256;   --    way size (KiB)
+      dways      : integer range 1 to   4;   -- D$ ways
       dlinesize  : integer range 4 to   8;   --    cache line size (32 bit words)
-      dsetsize   : integer range 1 to 256;   --    way size (KiB)
+      dwaysize   : integer range 1 to 256;   --    way size (KiB)
       dtagconf   : integer range 0 to   2;
       dusebw     : integer range 0 to   1;
+      itcmen     : integer range 0 to   1;
+      itcmabits  : integer range 1 to  20;
+      dtcmen     : integer range 0 to   1;
+      dtcmabits  : integer range 1 to  20;
       -- MMU
-      itlbnum    : integer range 2 to  64;   -- # I$ TLB entries
-      dtlbnum    : integer range 2 to  64;   -- # D$ TLB entries
+      itlbnum    : integer range 2 to  64;   -- # instruction  TLB entries
+      dtlbnum    : integer range 2 to  64;   -- # data TLB entries
+      htlbnum    : integer range 1 to  64;   -- # hypervisor TLB entries
       riscv_mmu  : integer range 0 to   3;
       pmp_no_tor : integer range 0 to   1;   -- Disable PMP TOR
       pmp_entries: integer range 0 to  16;   -- Implemented PMP registers
       pmp_g      : integer range 0 to  10;   -- PMP grain is 2^(pmp_g + 2) bytes
-      ext_a      : integer range 0 to   1;
+      asidlen    : integer range 0 to  16;   -- Max 9 for Sv32
+      vmidlen    : integer range 0 to  14;   -- Max 7 for Sv32
+      ext_a      : integer range 0 to   1;   -- Support for Atomic operations
+      ext_h      : integer range 0 to   1;   -- Support for Hypervisor, needs tlb_pmp if any PMP.
+      tlb_pmp    : integer range 0 to   1;   -- Do PMP via TLB
       -- Misc
-      cached     : integer;                  -- mask indexed by 4 MSB of address regarding cacheability when no TLB used
+      cached     : integer;                  -- Mask indexed by 4 MSB of address regarding cacheability when no TLB used
       wbmask     : integer;                  -- ?
-      busw       : integer;
-      cdataw     : integer;                  -- bus width in bits
-      icrepl     : integer;
+      busw       : integer;                  -- AHB bus width in bits
+      cdataw     : integer;                  -- Cache memory width in bits
+      icrepl     : integer;                  -- Address replication for TLB lookup
       dcrepl     : integer;
+      hrepl      : integer;
+      mmuen      : integer range 0 to   1;
       endian     : integer := GRLIB_CONFIG_ARRAY(grlib_little_endian)
     );
     port (
@@ -1388,17 +1407,20 @@ package noelvint is
       ahbso      : in  ahb_slv_out_vector;
       crami      : out nv_cram_in_type;
       cramo      : in  nv_cram_out_type;
-      csr        : in  csrtype := ((others => '0'), "00", '0', '0', '0', "00",
+      sclk       : in  std_ulogic;
+      csr        : in  csrtype := ((others => '0'), (others => '0'), (others => '0'),
+--                                   '0', '0', '0', '0', '0',
+--                                   "00", '0', '0', '0', "00",
                                    '0', '0', (others => '0'), (others => '0'),
                                    PMPPRECALCRES);
       fpc_mosi   : out nv_intreg_mosi_type;
       fpc_miso   : in  nv_intreg_miso_type;
       c2c_mosi   : out nv_intreg_mosi_type;
       c2c_miso   : in  nv_intreg_miso_type;
-      fpuholdn   : in  std_ulogic;
-      perf       : out std_logic_vector(31 downto 0);
-      hclk, sclk : in  std_ulogic;
-      hclken     : in  std_ulogic
+      freeze     : in  std_ulogic;
+      bootword   : in  std_logic_vector(31 downto 0);
+      smpflush   : in  std_logic_vector(1 downto 0);
+      perf       : out std_logic_vector(31 downto 0)
       );
   end component cctrlnv;
 
@@ -1424,7 +1446,8 @@ package noelvint is
       fabtech   : integer range 0 to NTECH := 0;
       scantest  : integer := 0;
       hiperf    : integer := 0;
-      small     : integer := 0
+      small     : integer := 0;
+      in_pipe   : integer := 1
       );
     port (
       clk       : in  std_ulogic;
@@ -1443,9 +1466,8 @@ package noelvint is
       nentries    : integer range 32 to 1024      := 256;       -- Number of Entries
       hlength     : integer range 2  to 10        := 5;         -- History Length
       predictor   : integer range 0  to 2         := 0;         -- Predictor
-      dualbranch  : integer range 0  to 1         := 0;         -- Dual branch
-      sparc       : integer range 0  to 1         := 0;         -- SPARC
-      ext_c       : integer range 0  to 1         := 0;         -- C Base Extension Set
+      ext_c       : integer range 0  to 1         := 1;         -- C Base Extension Set
+      dissue      : integer range 0 to  1         := 1;          -- Dual issue
       testen      : integer                       := 0
       );
     port (
@@ -1470,6 +1492,20 @@ package noelvint is
       rstn        : in  std_ulogic;
       btbi        : in  nv_btb_in_type;
       btbo        : out nv_btb_out_type
+      );
+  end component;
+
+  component btbdmnv is
+    generic (
+      nentries : integer range 1 to 32;  -- Number of Entries
+      pcbits   : integer range 32 to 56;
+      dissue   : integer range 0 to 1
+      );
+    port (
+      clk  : in  std_ulogic;
+      rstn : in  std_ulogic;
+      btbi : in  nv_btb_in_type;
+      btbo : out nv_btb_out_type
       );
   end component;
 
@@ -1511,6 +1547,7 @@ package noelvint is
       e_valid     : in  std_ulogic;
       e_nullify   : in  std_ulogic;
       csrfrm      : in  std_logic_vector(2 downto 0);
+      mode_in     : in  std_logic_vector(2 downto 0);
       s1          : in  std_logic_vector(63 downto 0);
       s2          : in  std_logic_vector(63 downto 0);
       s3          : in  std_logic_vector(63 downto 0);
@@ -1518,7 +1555,7 @@ package noelvint is
       fpu_holdn   : out std_ulogic;
       ready_flop  : out std_ulogic;
       commit      : in  std_ulogic;
-      commitid    : in  std_logic_vector(4 downto 0);
+      commit_id   : in  std_logic_vector(4 downto 0);
       lddata      : in  std_logic_vector(63 downto 0);
       unissue     : in  std_logic_vector(1 to 4);
       unissue_sid : in  std_logic_vector(4 downto 0);
@@ -1530,7 +1567,10 @@ package noelvint is
       wen         : out std_ulogic;
       flags_wen   : out std_ulogic;
       stdata      : out std_logic_vector(63 downto 0);
-      flags       : out std_logic_vector(4 downto 0));
+      flags       : out std_logic_vector(4 downto 0);
+      wb_mode     : out std_logic_vector(2 downto 0);
+      wb_id       : out std_logic_vector(4 downto 0)
+      );
   end component;
 
   component cpu_disas
@@ -1619,7 +1659,15 @@ package noelvint is
 
   -- Constants and Mask
   function extend_wordx(v : std_logic_vector) return wordx;
-  function create_satp_mask return wordx;
+  function satp_mask(id : integer; physaddr : integer) return wordx;
+  function medeleg_mask(h_en : boolean) return wordx;
+  function to_mideleg(
+    wcsr  : wordx;
+    mode_s: integer;
+    h_en  : boolean;
+    ext_n : integer) return wordx;
+  function mip_mask(mode_s : integer; h_en : boolean; ext_n : integer) return wordx;
+  function mie_mask(mode_s : integer; h_en : boolean; ext_n : integer) return wordx;
 
   function to_hstatus(status : csr_hstatus_type) return wordx;
   function to_hstatus(wdata : wordx) return csr_hstatus_type;
@@ -1628,7 +1676,10 @@ package noelvint is
   function to_vsstatus(wdata : wordx) return csr_status_type;
 
   function to_mstatus(status : csr_status_type) return wordx;
-  function to_mstatus(wdata : wordx) return csr_status_type;
+  function to_mstatus(wdata : wordx; mstatus_in : csr_status_type) return csr_status_type;
+  
+  function to_mstatush(status : csr_status_type) return wordx;
+  function to_mstatush(wdata : wordx; mstatus_in : csr_status_type) return csr_status_type;
 
   function to_sstatus(status : csr_status_type) return wordx;
   function to_sstatus(wdata : wordx; mstatus : csr_status_type) return csr_status_type;
@@ -1639,35 +1690,67 @@ package noelvint is
   procedure pmp_precalc(pmpaddr     : in  pmpaddr_vec_type;
                         pmpcfg0     : in  word64;
                         pmpcfg2     : in  word64;
-                        precalc     : out pmp_precalc_type;
+                        precalc     : out pmp_precalc_vec;
                         pmp_entries : integer;
                         pmp_no_tor  : integer;
                         pmp_g       : integer
                        );
 
   procedure pmp_unit(prv_in             : in  std_logic_vector(PRIV_LVL_M'range);
-                     precalc            : in  pmp_precalc_type;
+                     precalc            : in  pmp_precalc_vec;
                      pmpcfg0_in         : in  word64;
                      pmpcfg2_in         : in  word64;
                      mprv_in            : in  std_ulogic;
                      mpp_in             : in  std_logic_vector(PRIV_LVL_M'range);
-                     virt_in            : in  std_logic_vector;
                      addr_in            : in  std_logic_vector;
                      size_in            : in  std_logic_vector(1 downto 0);
                      access_in          : in  std_logic_vector(PMP_ACCESS_X'range);
                      valid_in           : in  std_ulogic;
                      xc_out             : out std_ulogic;
-                     cause_out          : out std_logic_vector;
-                     tval_out           : out std_logic_vector;
                      entries            : in  integer := 16;
                      no_tor             : in  integer := 1;
                      pmp_g              : in  integer := 1;
                      msb                : in  integer := 31
                     );
 
+  procedure pmp_mmuu(precalc            : in  pmp_precalc_vec;
+                     pmpcfg0_in         : in  word64;
+                     pmpcfg2_in         : in  word64;
+                     addr_low           : in  std_logic_vector;
+                     addr_mask          : in  std_logic_vector;
+                     valid              : in  std_ulogic;
+                     hit_out            : out std_logic_vector;
+                     fit_out            : out std_logic_vector;
+                     l_out              : out std_logic_vector;
+                     r_out              : out std_logic_vector;
+                     w_out              : out std_logic_vector;
+                     x_out              : out std_logic_vector;
+                     no_tor             : in  integer := 1;
+                     msb                : in  integer := 31
+                    );
+
 end package;
 
 package body noelvint is
+  function hpmevent(event : integer) return hpmevent_type is
+  begin
+    return conv_std_logic_vector(event, hpmevent_type'length);
+  end;
+
+  constant HPM_EVENTS  : hpmevent_vec := (
+    hpmevent(CSR_HPM_ICACHE_MISS),  hpmevent(CSR_HPM_DCACHE_MISS),
+    hpmevent(CSR_HPM_ITLB_MISS),    hpmevent(CSR_HPM_DTLB_MISS),
+    hpmevent(CSR_HPM_HOLD),         hpmevent(CSR_HPM_DUAL_ISSUE),
+    hpmevent(CSR_HPM_BRANCH_MISS),  hpmevent(CSR_HPM_HOLD_ISSUE),
+    hpmevent(CSR_HPM_BRANCH),       hpmevent(CSR_HPM_LOAD_DEP),
+    hpmevent(CSR_HPM_STORE_B2B),    hpmevent(CSR_HPM_JALR),
+    hpmevent(CSR_HPM_JAL),          hpmevent(CSR_HPM_ICACHE_FETCH),
+    hpmevent(CSR_HPM_DCACHE_FETCH), hpmevent(CSR_HPM_DCACHE_FLUSH),
+    hpmevent(0), hpmevent(0), hpmevent(0), hpmevent(0),
+    hpmevent(0), hpmevent(0), hpmevent(0), hpmevent(0),
+    hpmevent(0), hpmevent(0), hpmevent(0), hpmevent(0),
+    hpmevent(0));
+
   -----------------------------------------------------------------------------
   -- Functions Definitions
   -----------------------------------------------------------------------------
@@ -1715,21 +1798,30 @@ package body noelvint is
   constant XC_INST_STORE_ACCESS_FAULT   : cause_type := to_cause(7);
   constant XC_INST_ENV_CALL_UMODE       : cause_type := to_cause(8);
   constant XC_INST_ENV_CALL_SMODE       : cause_type := to_cause(9);
+  constant XC_INST_ENV_CALL_VSMODE      : cause_type := to_cause(10);
   constant XC_INST_ENV_CALL_MMODE       : cause_type := to_cause(11);
   constant XC_INST_INST_PAGE_FAULT      : cause_type := to_cause(12);
   constant XC_INST_LOAD_PAGE_FAULT      : cause_type := to_cause(13);
   constant XC_INST_STORE_PAGE_FAULT     : cause_type := to_cause(15);
+  constant XC_INST_INST_G_PAGE_FAULT    : cause_type := to_cause(20);
+  constant XC_INST_LOAD_G_PAGE_FAULT    : cause_type := to_cause(21);
+  constant XC_INST_VIRTUAL_INST         : cause_type := to_cause(22);
+  constant XC_INST_STORE_G_PAGE_FAULT   : cause_type := to_cause(23);
 
   -- Interrupt Codes
   constant IRQ_U_SOFTWARE               : cause_type := to_cause(0, true);
   constant IRQ_S_SOFTWARE               : cause_type := to_cause(1, true);
+  constant IRQ_VS_SOFTWARE              : cause_type := to_cause(2, true);
   constant IRQ_M_SOFTWARE               : cause_type := to_cause(3, true);
   constant IRQ_U_TIMER                  : cause_type := to_cause(4, true);
   constant IRQ_S_TIMER                  : cause_type := to_cause(5, true);
+  constant IRQ_VS_TIMER                 : cause_type := to_cause(6, true);
   constant IRQ_M_TIMER                  : cause_type := to_cause(7, true);
   constant IRQ_U_EXTERNAL               : cause_type := to_cause(8, true);
   constant IRQ_S_EXTERNAL               : cause_type := to_cause(9, true);
+  constant IRQ_VS_EXTERNAL              : cause_type := to_cause(10, true);
   constant IRQ_M_EXTERNAL               : cause_type := to_cause(11, true);
+  constant IRQ_SG_EXTERNAL              : cause_type := to_cause(12, true);
 
   -- Reset Codes
   constant RST_HARD_ALL                 : cause_type := to_cause(0);
@@ -1817,40 +1909,140 @@ package body noelvint is
   end;
 
 
+
   function extend_wordx(v : std_logic_vector) return wordx is
      -- Non-constant
-    variable result : wordx := (others => v(v'high));
+    variable result : wordx := (others => v(v'left));
   begin
     result(v'length - 1 downto 0) := v;
     return result;
   end;
 
-  function create_satp_mask return wordx is
-    -- Using 8 bit of ASID
-    variable ASID_MASK_64 : std_logic_vector(15 downto 0) := x"00ff";
-    variable ASID_MASK_32 : std_logic_vector( 8 downto 0) := "0" & x"ff";
+  function satp_mask(id : integer; physaddr : integer) return wordx is
     -- Non-constant
-    variable result : word64 := zerow64;
+    variable id_mask_64   : std_logic_vector(15 downto 0) := (others => '0');
+    variable id_mask_32   : std_logic_vector( 8 downto 0) := (others => '0');
+    variable addr_mask_64 : std_logic_vector(43 downto 0) := (others => '0');
+    variable addr_mask_32 : std_logic_vector(21 downto 0) := (others => '0');
+    variable result       : word64 := zerow64;
   begin
     if XLEN = 64 then
-      result             := "1111" & ASID_MASK_64 & onesw64(43 downto 0);
+      if id /= 0 then
+        id_mask_64(id - 1 downto 0)            := (others => '1');
+      end if;
+      addr_mask_64(physaddr - 1 - 12 downto 0) := (others => '1');
+      result                                   := "1111" & id_mask_64 & addr_mask_64;
     else
-      result(word'range) := "1" & ASID_MASK_32 & onesw64(21 downto 0);
+      if id /= 0 then
+        id_mask_32(id - 1 downto 0)            := (others => '1');
+      end if;
+      addr_mask_32(physaddr - 1 - 12 downto 0) := (others => '1');
+      result(word'range)                       := "1" & id_mask_32 & addr_mask_32;
     end if;
 
     return result(wordx'range);
   end;
 
   constant RST_VEC          : wordx := extend_wordx(x"00010040");
-  constant CSR_SATP_MASK    : wordx := create_satp_mask;
-  constant CSR_MEDELEG_MASK : wordx := extend_wordx(x"0000f7ff");
-  constant CSR_MIDELEG_MASK : wordx := extend_wordx(x"00000bbb");
-  constant CSR_MIE_MASK     : wordx := extend_wordx(x"00000bbb");
-  constant CSR_MIP_MASK     : wordx := extend_wordx(x"fffff333");
-  constant CSR_HEDELEG_MASK : wordx := extend_wordx(x"000071ff");
-  constant CSR_HIDELEG_MASK : wordx := extend_wordx(x"00000444");
-  constant CSR_HIE_MASK     : wordx := extend_wordx(x"00001444");
-  constant CSR_HIP_MASK     : wordx := extend_wordx(x"fffff444");
+  constant CSR_MEDELEG_MASK : wordx := extend_wordx(x"0000b3ff");
+  constant CSR_MIDELEG_MASK : wordx := extend_wordx(x"00000222"); -- Interrupts to be delegated to S-mode
+  constant CSR_MIE_MASK     : wordx := extend_wordx(x"00000888"); -- Valid bits
+  constant CSR_MIP_MASK     : wordx := extend_wordx(x"00000000"); -- Writable bits
+  
+  constant CSR_HEDELEG_MASK : wordx := extend_wordx(x"0000b5ff");
+  constant CSR_HIDELEG_MASK : wordx := extend_wordx(x"00000444"); -- Interrupts to be delegated to VS-mode
+  constant CSR_HIE_MASK     : wordx := extend_wordx(x"00001444"); -- Valid bits
+  constant CSR_HIP_MASK     : wordx := extend_wordx(x"00000004"); -- Writable bits
+
+  constant CSR_SIDELEG_MASK : wordx := extend_wordx(x"00000111"); -- Interrupts to be delegated to U-mode
+  constant CSR_SIE_MASK     : wordx := extend_wordx(x"00000222"); -- Valid bits
+  constant CSR_SIP_MASK     : wordx := extend_wordx(x"00000222"); -- Writable bits
+
+  constant CSR_UIE_MASK     : wordx := extend_wordx(x"00000111"); -- Valid bits
+  constant CSR_UIP_MASK     : wordx := extend_wordx(x"00000001"); -- Writable bits
+  --constant CSR_UIP_MASK     : wordx := extend_wordx(x"00000111"); -- Writable bits (maybe extra bit)
+  
+  -- Return mask for mie
+  function medeleg_mask(h_en : boolean) return wordx is
+    -- Non-constant
+    variable mask    : wordx := CSR_MEDELEG_MASK;
+  begin
+    if h_en then
+      mask(10) := '1';
+      mask(20) := '1';
+      mask(21) := '1';
+      mask(22) := '1';
+      mask(23) := '1';
+    end if;
+
+    return mask;
+  end;
+
+  -- Return masked mideleg value
+  function to_mideleg(
+    wcsr  : wordx;
+    mode_s: integer;
+    h_en  : boolean;
+    ext_n : integer) return wordx is
+    -- Non-constant
+    variable mideleg : wordx := zerox;
+    variable mask    : wordx := zerox;
+  begin
+    if mode_s /= 0 then
+      mask := mask or CSR_MIDELEG_MASK;
+    end if;
+    if ext_n /= 0 then
+      mask := mask or CSR_SIDELEG_MASK;
+    end if;
+
+    mideleg := wcsr and mask;
+
+    -- VS-level interrtupts are always delegeted to HS-mode 
+    if h_en then
+      mideleg(12) := '1';
+      mideleg(10) := '1';
+      mideleg(6)  := '1';
+      mideleg(2)  := '1';
+    end if;
+
+    return mideleg;
+  end;
+
+  -- Return mask for mie
+  function mip_mask(mode_s : integer; h_en : boolean; ext_n : integer) return wordx is
+    -- Non-constant
+    variable mask    : wordx := CSR_MIP_MASK;
+  begin
+    if mode_s /= 0 then
+      mask := mask or CSR_SIP_MASK;
+    end if;
+    if ext_n /= 0 then
+      mask := mask or CSR_UIP_MASK;
+    end if;
+    if h_en then
+      mask := mask or CSR_HIP_MASK;
+    end if;
+
+    return mask;
+  end;
+
+  -- Return mask for mip
+  function mie_mask(mode_s : integer; h_en : boolean; ext_n : integer) return wordx is
+    -- Non-constant
+    variable mask    : wordx := CSR_MIE_MASK;
+  begin
+    if mode_s /= 0 then
+      mask := mask or CSR_SIE_MASK;
+    end if;
+    if ext_n /= 0 then
+      mask := mask or CSR_UIE_MASK;
+    end if;
+    if h_en then
+      mask := mask or CSR_HIE_MASK;
+    end if;
+
+    return mask;
+  end;
 
   -- Return hstatus as a XLEN bit data from the record type
   function to_hstatus(status : csr_hstatus_type) return wordx is
@@ -1953,9 +2145,9 @@ package body noelvint is
   end;
 
   -- Return mstatus as a record type from a XLEN bit data
-  function to_mstatus(wdata : wordx) return csr_status_type is
+  function to_mstatus(wdata : wordx; mstatus_in : csr_status_type) return csr_status_type is
     -- Non-constant
-    variable mstatus : csr_status_type;
+    variable mstatus : csr_status_type := mstatus_in;
   begin
 
     if XLEN = 64 then
@@ -1983,6 +2175,28 @@ package body noelvint is
     mstatus.mie  := wdata(3);
     mstatus.sie  := wdata(1);
     mstatus.uie  := wdata(0);
+
+    return mstatus;
+  end;
+  
+  -- Return mstatush as a XLEN bit data from the record type
+  function to_mstatush(status : csr_status_type) return wordx is
+    -- Non-constant
+    variable mstatus : word64 := zerow64;
+  begin
+    mstatus(7 downto 6) := status.mpv & status.gva;
+
+    return mstatus(wordx'range);
+  end;
+
+  -- Return mstatush as a record type from a XLEN bit data
+  function to_mstatush(wdata : wordx; mstatus_in : csr_status_type) return csr_status_type is
+    -- Non-constant
+    variable mstatus : csr_status_type := mstatus_in;
+  begin
+
+    mstatus.mpv  := wdata(7);
+    mstatus.gva  := wdata(6);
 
     return mstatus;
   end;
@@ -2056,10 +2270,50 @@ package body noelvint is
     return ustatus;
   end;
 
+  procedure pmp_precalc(pmpaddr     : in  pmpaddr_type;
+                        pmpaddr_m1  : in  pmpaddr_type;
+                        a           : pmpcfg_access_type;
+                        precalc     : out pmp_precalc_type;
+                        pmp_no_tor  : integer;
+                        pmp_g       : integer
+                       ) is
+    -- Non-constant
+    variable mask : std_logic_vector(precalc.low'high + 2 downto 0);
+  begin
+    -- Concatenate PMP type for mask creation. It contains a zero for
+    -- TOR/NA4 and thus the used mask will then equal the input.
+    -- For NAPOT it is 11, and thus the addition will propagate up to
+    -- the marker zero. Which will be set and everything below cleared.
+    -- and thus will work in the mask calculation.
+    mask           := pmpaddr & a;
+    -- Make sure pmp_g aligns the mask properly. Low bits should not matter!
+    mask(pmp_g - 2 + 2 downto 2) := (others => '1');
+    mask           := mask + 1;
+    precalc.low    := pmpaddr and mask(mask'high downto 2);
+    if pmp_no_tor = 1 then
+      -- No actual TOR support, so provide mask (high bits set) instead.
+      precalc.high := not (pmpaddr xor mask(mask'high downto 2));
+      -- Make sure pmp_g clears the mask properly. Low bits should not matter!
+      precalc.high(pmp_g - 2 downto 0) := (others => '0');
+    else
+      precalc.high := pmpaddr or mask(mask'high downto 2);
+
+      if a = PMP_TOR then
+        -- Bottom address for PMP_TOR.
+        precalc.low := pmpaddr_m1;
+        -- Make sure pmp_g aligns low/high properly. Low bits should not matter!
+        precalc.low(pmp_g - 1 downto 0)  := (others => '0');
+        -- Compensate so that we can use the same comparator.
+        precalc.high                     := pmpaddr - 1;
+        precalc.high(pmp_g - 1 downto 0) := (others => '1');
+      end if;
+    end if;
+  end;
+
   procedure pmp_precalc(pmpaddr     : in  pmpaddr_vec_type;
                         pmpcfg0     : in  word64;
                         pmpcfg2     : in  word64;
-                        precalc     : out pmp_precalc_type;
+                        precalc     : out pmp_precalc_vec;
                         pmp_entries : integer;
                         pmp_no_tor  : integer;
                         pmp_g       : integer
@@ -2078,87 +2332,57 @@ package body noelvint is
     end;
 
     -- Non-constant
-    variable a    : pmpcfg_access_type;
-    variable mask : std_logic_vector(precalc.low(0)'high + 2 downto 0);
+    variable a          : pmpcfg_access_type;
+    variable mask       : std_logic_vector(precalc(0).low'high + 2 downto 0);
+    variable pmpaddr_m1 : pmpaddr_type;
   begin
     for i in 0 to pmp_entries - 1 loop
-      a(i) := pmpcfg(pmpcfg0, pmpcfg2, i)(4 downto 3);
+      a := pmpcfg(pmpcfg0, pmpcfg2, i)(4 downto 3);
 
-      -- Concatenate PMP type for mask creation. It contains a zero for
-      -- TOR/NA4 and thus the used mask will then equal the input.
-      -- For NAPOT it is 11, and thus the addition will propagate up to
-      -- the marker zero. Which will be set and everything below cleared.
-      -- and thus will work in the mask calculation.
-      mask           := pmpaddr(i) & a(i);
-      -- Make sure pmp_g aligns the mask properly. Low bits should not matter!
-      mask(pmp_g - 2 + 2 downto 2) := (others => '1');
-      mask           := mask + 1;
-      precalc.low(i) := pmpaddr(i) and mask(mask'high downto 2);
-      if pmp_no_tor = 1 then
-        -- No actual TOR support, so provide mask (high bits set) instead.
-        precalc.high(i) := not (pmpaddr(i) xor mask(mask'high downto 2));
-        -- Make sure pmp_g clears the mask properly. Low bits should not matter!
-        precalc.high(i)(pmp_g - 2 downto 0) := (others => '0');
-      else
-        precalc.high(i) := pmpaddr(i) or mask(mask'high downto 2);
-
-        if a(i) = PMP_TOR then
-          -- Bottom address for PMP_TOR.
-          precalc.low(i)   := pmpaddrzero;
-          if i /= 0 then
-            precalc.low(i) := pmpaddr(i - 1);
-          end if;
-          -- Make sure pmp_g aligns low/high properly. Low bits should not matter!
-          precalc.low(i)(pmp_g - 1 downto 0)  := (others => '0');
-          -- Compensate so that we can use the same comparator.
-          precalc.high(i)                     := pmpaddr(i) - 1;
-          precalc.high(i)(pmp_g - 1 downto 0) := (others => '1');
-        end if;
+      -- Bottom address for PMP_TOR.
+      pmpaddr_m1   := pmpaddrzero;
+      if i /= 0 then
+        pmpaddr_m1 := pmpaddr(i - 1);
       end if;
+
+      pmp_precalc(pmpaddr(i), pmpaddr_m1, a,
+                  precalc(i), pmp_no_tor, pmp_g);
     end loop;
   end;
 
+  -- "Borrowed" from utilnv so as to not require including that.
+  function all_0(data : std_logic_vector) return boolean is
+  begin
+    return data = zerow64(data'length - 1 downto 0);
+  end;
+
   procedure pmp_unit(prv_in             : in  std_logic_vector(PRIV_LVL_M'range);
-                     precalc            : in  pmp_precalc_type;
+                     precalc            : in  pmp_precalc_vec;
                      pmpcfg0_in         : in  word64;
                      pmpcfg2_in         : in  word64;
                      mprv_in            : in  std_ulogic;
                      mpp_in             : in  std_logic_vector(PRIV_LVL_M'range);
-                     virt_in            : in  std_logic_vector;
                      addr_in            : in  std_logic_vector;
                      size_in            : in  std_logic_vector(1 downto 0);
                      access_in          : in  std_logic_vector(PMP_ACCESS_X'range);
                      valid_in           : in  std_ulogic;
                      xc_out             : out std_ulogic;
-                     cause_out          : out std_logic_vector;
-                     tval_out           : out std_logic_vector;
                      entries            : in  integer := 16;
                      no_tor             : in  integer := 1;
                      pmp_g              : in  integer := 1;
                      msb                : in  integer := 31
                     ) is
-    subtype  pmp_vec_type is std_logic_vector(entries - 1 downto 0);
-    -- pragma translate_off
-    variable debug_lvl   : integer            := 0;
-    variable prvs        : string(1 to 4)     := "us-m";
-    variable xrw         : string(1 to 4)     := "xr-w";
-    variable pmp_names   : string(1 to 3 * 5) := "  TOR  NA4NAPOT";
-    -- pragma translate_on
+    subtype  pmp_vec_type      is std_logic_vector(entries - 1 downto 0);
+    type     pmpcfg_access_vec is array (0 to entries - 1) of pmpcfg_access_type;
     variable zero_entry  : pmp_vec_type       := (others => '0');
-    variable lowhi_msb   : integer            := msb - 55 + precalc.low(0)'high;
+    variable lowhi_msb   : integer            := msb - 55 + precalc(0).low'high;
     -- Non-constant
-    -- pragma translate_off
-    variable display     : integer            := 0;
-    variable name_pos    : integer;
-    variable i           : integer;
-    -- pragma translate_on
     variable size        : positive;
     variable addr_high   : std_logic_vector(addr_in'range);
     variable xc          : std_ulogic         := '0';
-    variable cause       : cause_type;
     variable cfg         : std_logic_vector(7 downto 0);
     variable l           : pmp_vec_type;
-    variable a           : pmpcfg_access_type;
+    variable a           : pmpcfg_access_vec;
     variable x           : pmp_vec_type;
     variable w           : pmp_vec_type;
     variable r           : pmp_vec_type;
@@ -2198,34 +2422,6 @@ package body noelvint is
       prv := mpp_in;
     end if;
 
-    --pragma translate_off
-    if access_in /= PMP_ACCESS_X and valid_in = '1' then
-      display := debug_lvl;
-    end if;
-    if prv = PRIV_LVL_M then
-      display := 0;
-      -- Check for lock bits
-      if valid_in = '1' then
-        for i in 0 to entries - 1 loop
-          if i < 8 then
-            if pmpcfg0_in(i * 8 + 7) = '1' then
-              display := debug_lvl;
-            end if;
-          else
-            if pmpcfg2_in((i - 8) * 8 + 7) = '1' then
-              display := debug_lvl;
-            end if;
-          end if;
-        end loop;
-      end if;
-    end if;
-
-    if display >= 1 then
-      grlib.testlib.print("PMP " & prvs(to_integer(unsigned(prv)) + 1) &
-                                   xrw(to_integer(unsigned(access_in)) + 1) & " " &
-                                   tost(addr_in) & " - " & tost(addr_high));
-    end if;
-    --pragma translate_on
 
     -- The A field in a PMP entry's configuration register encodes
     -- the address-matching mode of the associated PMP address register.
@@ -2269,38 +2465,38 @@ package body noelvint is
 
       if pmp_g = 0 then
         -- To enable extra checks when PMP may be 4 byte aligned.
-        if addr_in(msb downto 3) = precalc.low(i)(lowhi_msb downto 1) then
+        if addr_in(msb downto 3) = precalc(i).low(lowhi_msb downto 1) then
           equal8_low(i)  := '1';
         end if;
         if no_tor = 1 then
           -- With no TOR, the only possible 4 byte PMP alignment is NA4.
           -- Then the high address is the same as the low.
-          if addr_high(msb downto 3) = precalc.low(i)(lowhi_msb downto 1) then
+          if addr_high(msb downto 3) = precalc(i).low(lowhi_msb downto 1) then
             equal8_high(i) := '1';
           end if;
           if a(i) = PMP_NA4 then
-            pmphigh0(i) := precalc.low(i)(0);
+            pmphigh0(i) := precalc(i).low(0);
           else
             pmphigh0(i) := '1';
           end if;
         else
-          if addr_high(msb downto 3) = precalc.high(i)(lowhi_msb downto 1) then
+          if addr_high(msb downto 3) = precalc(i).high(lowhi_msb downto 1) then
             equal8_high(i) := '1';
           end if;
-          pmphigh0(i) := precalc.high(i)(0);
+          pmphigh0(i) := precalc(i).high(0);
         end if;
       end if;
 
       if no_tor = 1 then
         -- With no TOR, mask is in pmphigh.
-        if (addr_in(msb downto 3 + align) and precalc.high(i)(lowhi_msb downto 1 + align)) =
-           precalc.low(i)(lowhi_msb downto 1 + align) then
+        if (addr_in(msb downto 3 + align) and precalc(i).high(lowhi_msb downto 1 + align)) =
+           precalc(i).low(lowhi_msb downto 1 + align) then
           hit8(i)  := enable(i);
         end if;
       else
         --  OK 8 byte (or possibly higher, depending on pmp_g) alignment?
-        if addr_in(msb downto 3 + align) >= precalc.low(i) (lowhi_msb downto 1 + align) and
-           addr_in(msb downto 3 + align) <= precalc.high(i)(lowhi_msb downto 1 + align) then
+        if unsigned(addr_in(msb downto 3 + align)) >= unsigned(precalc(i).low (lowhi_msb downto 1 + align)) and
+           unsigned(addr_in(msb downto 3 + align)) <= unsigned(precalc(i).high(lowhi_msb downto 1 + align)) then
           hit8(i)  := enable(i);
         end if;
       end if;
@@ -2315,7 +2511,7 @@ package body noelvint is
         -- Aligned 8 byte accesses counts as hits if they partially overlap a
         -- 4 byte aligned PMP. But they should fail in this case.
         -- (The documentation mentions a 0x8-0xf access for 0xc-0xf range.)
-        fits(i) := not ((equal8_low(i) and precalc.low(i)(0)) or (equal8_high(i) and not pmphigh0(i)));
+        fits(i) := not ((equal8_low(i) and precalc(i).low(0)) or (equal8_high(i) and not pmphigh0(i)));
       else
         -- Since we know whether there would be a hit with 8 byte alignment,
         -- we just need to handle the corner cases for 4 byte alignment.
@@ -2334,27 +2530,12 @@ package body noelvint is
         --              or range stop in the high 4 bytes but range start earlier
         hit(i) := hit8(i) and
                   ((not equal8_low(i) and not equal8_high(i))                                    or
-                   (equal8_low(i)  and not addr_in(2) and not precalc.low(i)(0))                 or
-                   (equal8_low(i)  and addr_in(2) and (precalc.low(i)(0) or not equal8_high(i))) or
+                   (equal8_low(i)  and not addr_in(2) and not precalc(i).low(0))                 or
+                   (equal8_low(i)  and addr_in(2) and (precalc(i).low(0) or not equal8_high(i))) or
                    (equal8_high(i) and addr_in(2) and pmphigh0(i))                               or
                    (equal8_high(i) and not addr_in(2) and (not pmphigh0(i) or not equal8_low(i))));
       end if;
 
-      --pragma translate_off
-      if display >= 2 and a(i) /= PMP_OFF then
-        name_pos := 1 + to_integer(unsigned(a(i)) - 1) * 5;
-        if no_tor = 1 then
-          grlib.testlib.print(" " & pmp_names(name_pos to name_pos + 4) & "_" & tost(i) & " " &
-                              tost(hit(i)) & tost(fits(i)) & " " &
-                              tost(precalc.low(i) & "00") & " -> " &
-                              tost((precalc.low(i) or not precalc.high(i)) & "11"));
-        else
-          grlib.testlib.print(" " & pmp_names(name_pos to name_pos + 4) & "_" & tost(i) & " " &
-                              tost(hit(i)) & tost(fits(i)) & " " &
-                              tost(precalc.low(i) & "00") & " -> " & tost(precalc.high(i) & "11"));
-        end if;
-      end if;
-      --pragma translate_on
 
     end loop;
 
@@ -2362,12 +2543,6 @@ package body noelvint is
     -- defined as the highest priority PMP.
     hit_prio := hit and std_logic_vector(-signed(hit));
 
-    --pragma translate_off
-    if display >= 3 then
-      grlib.testlib.print("  " & tost(equal8_low) & " " & tost(equal8_high) & " " & tost(hit8));
-      grlib.testlib.print("  " & tost(fail) & " " & tost(hit) & " " & tost(hit_prio) & " " & tost(fits));
-    end if;
-    --pragma translate_on
 
     -- If no PMP entry matches an M-mode access, the access succeeds.
     -- If no PMP entry matches an S-mode or U-mode access, but at least
@@ -2378,70 +2553,164 @@ package body noelvint is
 
     -- Failed at highest priority PMP hit entry?
     if (hit_prio and fail) /= zero_entry then
-      --pragma translate_off
-      if display >= 3 then
-        grlib.testlib.print("Fail");
-      end if;
-      --pragma translate_on
       xc   := '1';
     end if;
     -- Did access fit completely in the entry?
     if (hit_prio and not fits) /= zero_entry then
-      --pragma translate_off
-      if display >= 3 then
-        grlib.testlib.print("No fit");
-      end if;
-      --pragma translate_on
       xc   := '1';
     end if;
     -- No hit means failure in non-machine mode, if there are implemented entries.
     if prv /= PRIV_LVL_M then
       if hit_prio = zero_entry and entries /= 0 then
-        --pragma translate_off
-        if display >= 3 then
-          grlib.testlib.print("No hit");
-        end if;
-        --pragma translate_on
         xc := '1';
       end if;
     end if;
 
-    --pragma translate_off
-    if display = 1 then
-      if hit_prio = zero_entry then
-        grlib.testlib.print("No hit!");
+
+
+    xc_out      := xc and valid_in;
+  end;
+
+  -- Specialized for MMU use.
+  -- Alignment fixed to 4 kByte.
+  procedure pmp_mmuu(precalc_low        : in  std_logic_vector;
+                     precalc_high       : in  std_logic_vector;
+                     addr_low           : in  std_logic_vector;
+                     addr_mask          : in  std_logic_vector;
+                     hit                : out std_logic;
+                     fit                : out std_logic;
+                     no_tor             : in  integer := 1
+                    ) is
+  begin
+    hit := '0';
+    fit := '0';
+    if no_tor = 1 then
+      -- With no TOR, mask is in pmphigh.
+      -- Area can fit if its mask (page size) is not "larger" than that for the PMP.
+      -- PMP area larger or equal?
+      if all_0(precalc_high and not addr_mask) then
+        fit := '1';
+        -- We need to check if MMU start (or, equivalently, end) is inside PMP area.
+        if precalc_low = (addr_low and precalc_high) then
+          hit := '1';
+        end if;
+      -- MMU area is larger
       else
-        i        := log2(to_integer(unsigned(hit_prio)));
-        name_pos := 1 + to_integer(unsigned(a(i)) - 1) * 5;
-        if no_tor = 1 then
-          grlib.testlib.print(" " & pmp_names(name_pos to name_pos + 4) & "_" & tost(i) & " " &
-                              tost(hit(i)) & tost(fits(i)) & " " &
-                              tost(precalc.low(i) & "00") & " -> " &
-                              tost((precalc.low(i) or not precalc.high(i)) & "11"));
-        else
-          grlib.testlib.print(" " & pmp_names(name_pos to name_pos + 4) & "_" & tost(i) & " " &
-                              tost(hit(i)) & tost(fits(i)) & " " &
-                              tost(precalc.low(i) & "00") & " -> " & tost(precalc.high(i) & "11"));
+        -- We need to check if either PMP start (or, equivalently, end) is inside MMU area.
+        if addr_low = (precalc_low and addr_mask) then
+          hit := '1';
+        end if;
+      end if;
+    else
+      -- MMU block vs PMP block
+      --   MMU block low >= PMP block low
+      if unsigned(addr_low) >= unsigned(precalc_low) then
+        -- and MMU block low <= PMP block high
+        if unsigned(addr_low) <= unsigned(precalc_high) then
+          -- MMU block starts inside PMP block, so hit!
+          hit := '1';
+        end if;
+        -- and MMU block high <= PMP block high
+        if unsigned(addr_low or not addr_mask) <= unsigned(precalc_high) then
+          -- MMU block lies entirely within PMP block, so fit!
+          fit := '1';
+        end if;
+      else  -- MMU block low < PMP block low
+        --     and MMU block high >= PMP block low
+        if unsigned(addr_low or not addr_mask) >= unsigned(precalc_low) then
+          -- MMU block overlaps at least low part of PMP block, so hit!
+          hit := '1';
         end if;
       end if;
     end if;
-    --pragma translate_on
-
-    -- Generate exception log
-    cause       := XC_INST_ACCESS_FAULT;
-    if access_in = PMP_ACCESS_R then          -- Load
-      cause     := XC_INST_LOAD_ACCESS_FAULT;
-    elsif access_in = PMP_ACCESS_W then       -- Store
-      cause     := XC_INST_STORE_ACCESS_FAULT;
-    end if;
-
-    xc_out      := xc and valid_in;
-    cause_out   := cause(cause_out'range);
-    if tval_out'length > virt_in'length then
-      tval_out                := (tval_out'range => virt_in(virt_in'high));
-      tval_out(virt_in'range) := virt_in;
-    else
-      tval_out                := virt_in(tval_out'range);
-    end if;
   end;
+
+  -- Specialized for MMU use.
+  -- Alignment fixed to 4 kByte.
+  procedure pmp_mmuu(precalc            : in  pmp_precalc_vec;
+                     pmpcfg0_in         : in  word64;
+                     pmpcfg2_in         : in  word64;
+                     addr_low           : in  std_logic_vector;
+                     addr_mask          : in  std_logic_vector;
+                     valid              : in  std_ulogic;
+                     hit_out            : out std_logic_vector;
+                     fit_out            : out std_logic_vector;
+                     l_out              : out std_logic_vector;
+                     r_out              : out std_logic_vector;
+                     w_out              : out std_logic_vector;
+                     x_out              : out std_logic_vector;
+                     no_tor             : in  integer := 1;
+                     msb                : in  integer := 31
+                    ) is
+    -- pmp_g > 1  hit is really hit<2 ** (pmp_g + 2)>
+    variable pmp_g       : integer            := 10;  -- 4 kByte (minimum page size)
+    variable align       : integer            := pmp_g - 1;
+    -- Non-constant
+    subtype  pmp_vec_type      is std_logic_vector(precalc'length - 1 downto 0);
+    type     pmpcfg_access_vec is array (precalc'range) of pmpcfg_access_type;
+    variable lowhi_msb   : integer            := msb - 55 + precalc(precalc'low).low'high;
+    -- Non-constant
+    variable cfg         : std_logic_vector(7 downto 0);
+    variable l           : pmp_vec_type;
+    variable a           : pmpcfg_access_vec;
+    variable x           : pmp_vec_type;
+    variable w           : pmp_vec_type;
+    variable r           : pmp_vec_type;
+    variable enable      : pmp_vec_type       := (others => '1');
+    variable hit         : pmp_vec_type       := (others => '0');
+    variable fit         : pmp_vec_type       := (others => '0');
+    variable hit_prio    : pmp_vec_type;
+  begin
+
+    -- The A field in a PMP entry's configuration register encodes
+    -- the address-matching mode of the associated PMP address register.
+    -- When A=0, this PMP entry is disabled and matches no addresses.
+    -- Two other address-matching modes are supported: naturally aligned
+    -- power-of-2 regions (NAPOT); and the top boundary of an arbitrary range (TOR).
+
+    -- Resolve address in pmpaddr CSRs registers and provide memory region
+    -- boundaries.
+
+    for i in precalc'range loop
+
+      -- Generate larwx signals.
+      if i < 8 then
+        cfg := pmpcfg0_in(i * 8 + 7 downto i * 8);
+      else
+        cfg := pmpcfg2_in((i - 8) * 8 + 7 downto (i - 8) * 8);
+      end if;
+      l(i) := cfg(7);
+      a(i) := cfg(4 downto 3);
+      x(i) := cfg(2);
+      w(i) := cfg(1);
+      r(i) := cfg(0);
+
+      if a(i) = PMP_OFF then
+        enable(i) := '0';
+      end if;
+
+      pmp_mmuu(precalc(i).low(lowhi_msb downto 1 + align), precalc(i).high(lowhi_msb downto 1 + align),
+               addr_low(msb downto 3 + align), addr_mask(msb downto 3 + align),
+               hit(i), fit(i), no_tor);
+
+
+    end loop;
+
+    hit := hit and enable;
+
+    hit_out            := (hit_out'range => '0');
+    hit_out(hit'range) := hit;
+    fit_out            := (fit_out'range => '0');
+    fit_out(fit'range) := fit;
+    l_out              := (l_out'range   => '0');
+    l_out(l'range)     := l;
+    r_out              := (r_out'range   => '0');
+    r_out(r'range)     := r;
+    w_out              := (w_out'range   => '0');
+    w_out(w'range)     := w;
+    x_out              := (x_out'range   => '0');
+    x_out(x'range)     := x;
+
+  end;
+
 end package body;

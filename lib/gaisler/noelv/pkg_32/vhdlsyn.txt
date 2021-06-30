@@ -1,0 +1,2 @@
+../pkg/noelv_cfg_32.vhd
+../pkg/noelv.vhd

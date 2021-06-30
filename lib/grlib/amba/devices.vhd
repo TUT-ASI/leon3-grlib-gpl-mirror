@@ -275,6 +275,7 @@ package devices is
   constant GAISLER_GRPLIC        : amba_device_type := 16#0C2#;
   constant GAISLER_CLINT         : amba_device_type := 16#0C3#;
   constant GAISLER_SOCBRIDGE     : amba_device_type := 16#0C4#;
+  constant GAISLER_NANDFCTRL2    : amba_device_type := 16#0C5#;
 
 -- Sun Microsystems
 
@@ -635,6 +636,7 @@ package devices is
     GAISLER_GRIOMMU2      => "IOMMU secondary master i/f      ",
     GAISLER_I2C2AHB       => "I2C to AHB Bridge               ",
     GAISLER_NANDFCTRL     => "NAND Flash Controller           ",
+    GAISLER_NANDFCTRL2    => "NAND Flash Controller 2         ",
     GAISLER_N2PLLCTRL     => "N2X PLL Dynamic Config. i/f     ",
     GAISLER_N2DLLCTRL     => "N2X DLL Dynamic Config. i/f     ",
     GAISLER_GPREGBANK     => "General Purpose Register Bank   ",
