@@ -32,13 +32,13 @@
     volatile unsigned int curr_desc;        /* 0x30 */
   };
 
-// en_acc = 1 if acc enabled in hardware, otherwise en_acc = 0
+// en_acc = 1 if AES accelerator enabled in hardware, 2 if SHA accelerator enabled in hardware and 3 if both accelerators enabled. Otherwise if no acceletator en_acc = 0.
 grdmac2_test(int paddr, int en_acc) {
 
   report_device(0x010c0000);
 
   struct grdmac2_register *grdmac2_reg = (struct grdmac2_register *) (paddr);
-  struct d_desc *ddesc_reg = (struct d_desc *) (0x400FFE90); /* Data/AES descriptor */
+  struct d_desc *ddesc_reg = (struct d_desc *) (0x400FFE90); /* Data/AES/SHA descriptor */
   struct acc_desc *adesc_reg1 = (struct acc_desc *) (0x400FFEA4); /* IV descriptor */
   struct acc_desc *adesc_reg2 = (struct acc_desc *) (0x400FFEB4); /* KEY descriptor */
 
@@ -106,7 +106,9 @@ grdmac2_test(int paddr, int en_acc) {
   *memorytx = 0x45af8e51;
   memorytx++;
 
-if (en_acc != 0) {
+
+
+if (en_acc == 1 || en_acc == 3) {
 
   report_subtest(1);
 // Setup descriptor queue for updating IV and KEY and encrypting 4 bytes
@@ -215,9 +217,136 @@ if (en_acc != 0) {
   memoryrx++;
 }
 
+if (en_acc == 2 || en_acc == 3) {
+
+  report_subtest(7);
+// Setup single descriptor for calculating hash of 4 bytes
+// Descriptor type 6, length 4 bytes
+  ddesc_reg->control = 0x0000200d;
+  ddesc_reg->next_desc = 0x00000001;
+  ddesc_reg->dest_address = memoryrxbase;
+  ddesc_reg->src_address = memorytxbase+0x30;
+  ddesc_reg->status = 0x00000000;
+
+// Restart GRDMAC2
+  grdmac2_reg->control = 0x00000008;
+// Setup GRDMAC2
+  grdmac2_reg->status = 0x00000000;
+  grdmac2_reg->empty = 0x00000000;
+  grdmac2_reg->capability = 0x00000000;
+  grdmac2_reg->fdesc = 0x400FFE90;
+// Start GRDMAC2
+  grdmac2_reg->control = 0x00000001;
+// Wait until finished with descriptor queue
+  while ((grdmac2_reg->status) != 0x00000001) ;
+
+// Check that hash is correct
+  memoryrx = (int*)memoryrxbase;
+  if (*memoryrx != 0x5A733318) fail(0);
+  memoryrx++;
+  if (*memoryrx != 0xFC529E7B) fail(1);
+  memoryrx++;
+  if (*memoryrx != 0x4BC7F859) fail(2);
+  memoryrx++;
+  if (*memoryrx != 0x7966A336) fail(3);
+  memoryrx++;
+  if (*memoryrx != 0x5E9F8C63) fail(4);
+  memoryrx++;
+  if (*memoryrx != 0x21AF93A3) fail(5);
+  memoryrx++;
+  if (*memoryrx != 0x7A621D70) fail(6);
+  memoryrx++;
+  if (*memoryrx != 0x646564E6) fail(7);
+  memoryrx++;
+
+
+  report_subtest(8);
+// Setup single descriptor for calculating hash of 16 bytes
+// Descriptor type 6, length 16 bytes
+  ddesc_reg->control = 0x0000800d;
+  ddesc_reg->next_desc = 0x00000001;
+  ddesc_reg->dest_address = memoryrxbase;
+  ddesc_reg->src_address = memorytxbase+0x30;
+  ddesc_reg->status = 0x00000000;
+
+// Restart GRDMAC2
+  grdmac2_reg->control = 0x00000008;
+// Setup GRDMAC2
+  grdmac2_reg->status = 0x00000000;
+  grdmac2_reg->empty = 0x00000000;
+  grdmac2_reg->capability = 0x00000000;
+  grdmac2_reg->fdesc = 0x400FFE90;
+// Start GRDMAC2
+  grdmac2_reg->control = 0x00000001;
+// Wait until finished with descriptor queue
+  while ((grdmac2_reg->status) != 0x00000001) ;
+
+// Check that hash is correct
+  memoryrx = (int*)memoryrxbase;
+  if (*memoryrx != 0xA063DF83) fail(0);
+  memoryrx++;
+  if (*memoryrx != 0xA8C28A49) fail(1);
+  memoryrx++;
+  if (*memoryrx != 0xDAF4AEBA) fail(2);
+  memoryrx++;
+  if (*memoryrx != 0x0E29EE7B) fail(3);
+  memoryrx++;
+  if (*memoryrx != 0x2177E851) fail(4);
+  memoryrx++;
+  if (*memoryrx != 0x1072944C) fail(5);
+  memoryrx++;
+  if (*memoryrx != 0x3D299CF7) fail(6);
+  memoryrx++;
+  if (*memoryrx != 0x7DC83E7A) fail(7);
+  memoryrx++;
+
+
+  report_subtest(9);
+// Setup single descriptor for calculating hash of 32 bytes
+// Descriptor type 6, length 32 bytes
+  ddesc_reg->control = 0x0001000d;
+  ddesc_reg->next_desc = 0x00000001;
+  ddesc_reg->dest_address = memoryrxbase;
+  ddesc_reg->src_address = memorytxbase+0x30;
+  ddesc_reg->status = 0x00000000;
+
+// Restart GRDMAC2
+  grdmac2_reg->control = 0x00000008;
+// Setup GRDMAC2
+  grdmac2_reg->status = 0x00000000;
+  grdmac2_reg->empty = 0x00000000;
+  grdmac2_reg->capability = 0x00000000;
+  grdmac2_reg->fdesc = 0x400FFE90;
+// Start GRDMAC2
+  grdmac2_reg->control = 0x00000001;
+// Wait until finished with descriptor queue
+  while ((grdmac2_reg->status) != 0x00000001) ;
+
+// Check that hash is correct
+  memoryrx = (int*)memoryrxbase;
+  if (*memoryrx != 0xB9A9C636) fail(0);
+  memoryrx++;
+  if (*memoryrx != 0xA2553AD6) fail(1);
+  memoryrx++;
+  if (*memoryrx != 0xA826BE94) fail(2);
+  memoryrx++;
+  if (*memoryrx != 0x755DC55A) fail(3);
+  memoryrx++;
+  if (*memoryrx != 0xA7013C9F) fail(4);
+  memoryrx++;
+  if (*memoryrx != 0xB23ABDC0) fail(5);
+  memoryrx++;
+  if (*memoryrx != 0xB61499CE) fail(6);
+  memoryrx++;
+  if (*memoryrx != 0x32DD6FD5) fail(7);
+  memoryrx++;
+
+}
+
+
   report_subtest(4);
 // Setup single descriptor for transferring 4 bytes
-// Descriptor type 0, length 4 bytes
+// Descriptor type 6, length 4 bytes
   ddesc_reg->control = 0x00002001;
   ddesc_reg->next_desc = 0x00000001;
   ddesc_reg->dest_address = memoryrxbase;

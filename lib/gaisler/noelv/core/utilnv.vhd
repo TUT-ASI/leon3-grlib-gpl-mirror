@@ -38,7 +38,7 @@ use gaisler.noelvint.all;
 
 package utilnv is
 
-  constant fpulen : integer := 64;  -- qqq
+  constant fpulen : integer := 64;
 
   -- Misc
 
@@ -125,8 +125,10 @@ package utilnv is
   function notx(data : signed) return boolean;
   function u2i(data : std_logic_vector) return integer;
   function u2i(data : unsigned) return integer;
+  function u2i(data : std_logic) return integer;
   function s2i(data : std_logic_vector) return integer;
   function s2i(data : signed) return integer;
+  function s2i(data : std_logic) return integer;
   function minimum(x : integer; y: integer) return integer;
   function maximum(x : integer; y: integer) return integer;
 
@@ -237,7 +239,14 @@ package body utilnv is
       f       := f * 2.0 ** (1 - (exp_max - 1) / 2);
     else
       r.class := C_NORMAL;
-      f       := (1.0 + f) * 2.0 ** (exp - (exp_max - 1) / 2);
+      -- Modelsim does not like numbers outside [-1e308, 1e308], so...
+      if exp = exp_max - 1 then
+-- pragma translate_off
+        f     := 9.99999999999e307;
+-- pragma translate_on        
+      else
+        f     := (1.0 + f) * 2.0 ** (exp - (exp_max - 1) / 2);
+      end if;
     end if;
 
     f := sign * f;
@@ -671,6 +680,12 @@ package body utilnv is
     end if;
   end;
 
+  function u2i(data : std_logic) return integer is
+    variable v : std_logic_vector(0 downto 0) := (others => data);
+  begin
+    return u2i(v);
+  end;
+
   function u2i(data : unsigned) return integer is
   begin
     if notx(data) then
@@ -688,6 +703,12 @@ package body utilnv is
     else
       return 0;
     end if;
+  end;
+
+  function s2i(data : std_logic) return integer is
+    variable v : std_logic_vector(0 downto 0) := (others => data);
+  begin
+    return s2i(v);
   end;
 
   function s2i(data : signed) return integer is

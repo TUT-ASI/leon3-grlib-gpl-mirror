@@ -56,9 +56,12 @@ entity noelvmp is
     memtech                 : integer := CFG_MEMTECH;
     padtech                 : integer := CFG_PADTECH;
     clktech                 : integer := CFG_CLKTECH;
-    disas                   : integer := CFG_DISAS     -- Enable disassembly to console
-    -- pragma translate_off
+    disas                   : integer := CFG_DISAS;     -- Enable disassembly to console
+    SIMULATION              : integer := 0
+    -- pragma translate_off 
+    + CFG_MIG_7SERIES_MODEL
     ; ramfile               : string  := "ram.srec"
+    ; romfile               : string  := "prom.srec"
     -- pragma translate_on
     );
   port (
@@ -122,11 +125,6 @@ architecture rtl of noelvmp is
   constant OEPOL        : integer := padoen_polarity(padtech);
   constant BOARD_FREQ   : integer := 300000; -- input frequency in KHz
   constant CPU_FREQ     : integer := BOARD_FREQ * CFG_CLKMUL / CFG_CLKDIV; -- cpu frequency in KHz
-  constant SIMULATION   : integer := 0
-  -- pragma translate_off 
-  + CFG_MIG_7SERIES_MODEL
-  -- pragma translate_on
-  ;
 
   -------------------------------------
   -- Misc
@@ -267,7 +265,7 @@ begin
 
   -- Clocks
   clk_gen : if (CFG_MIG_7SERIES = 0) or 
-               ((CFG_MIG_7SERIES = 1) and (SIMULATION = 1)) generate
+               ((CFG_MIG_7SERIES = 1) and (SIMULATION /= 0)) generate
     clk_pad_ds : clkpad_ds generic map (
       tech      => padtech,
       level     => sstl12_dci,
@@ -312,7 +310,7 @@ begin
     rstno       => rstn,
     -- misc
     dmen        => '1',
-    dmbreak     => '0',
+    dmbreak     => dmbreak,
     dmreset     => open,
     cpu0errn    => open,
     -- GPIO
@@ -359,10 +357,9 @@ begin
   dmen <= '1';
 
   -- Button 2,3,4 are still to be assigned
-  --dsubre_pad : inpad
-  --  generic map (tech => padtech, level => cmos, voltage => x18v)
-  --  port map (button(4), dmbreak);
-  dmbreak <= '0';
+  dmbreak_pad : inpad
+    generic map (tech => padtech, level => cmos, voltage => x18v)
+    port map (button(4), dmbreak);
 
   --ndreset_pad : outpad
   --  generic map (tech => padtech, level => cmos, voltage => x18v)
@@ -509,7 +506,7 @@ begin
 
   -- Simulation module
   -- pragma translate_off
-  sim_mem_gen : if (CFG_MIG_7SERIES = 1) and (SIMULATION = 1) generate
+  sim_mem_gen : if (CFG_MIG_7SERIES = 1) and (SIMULATION /= 0) generate
     calib_done  <= '1';
 
     axi_mem_gen : if (CFG_L2_AXI = 1) generate
@@ -552,17 +549,68 @@ begin
   --  PROM
   -----------------------------------------------------------------------
 
-  brom : entity work.ahbrom
-    generic map (
-      hindex  => 1,
-      haddr   => ROM_HADDR,
-      hmask   => ROM_HMASK,
-      pipe    => 0)
-    port map (
-      rst     => rstn,
-      clk     => clkm,
-      ahbsi   => rom_ahbsi1,
-      ahbso   => rom_ahbso1);
+  prom_gen : if (SIMULATION = 0) generate
+    rom32 : if CFG_AHBDW = 32 generate
+      brom : entity work.ahbrom
+        generic map (
+          hindex  => 1,
+          haddr   => ROM_HADDR,
+          hmask   => ROM_HMASK,
+          pipe    => 0)
+        port map (
+          rst     => rstn,
+          clk     => clkm,
+          ahbsi   => rom_ahbsi1,
+          ahbso   => rom_ahbso1);
+    end generate;
+    rom64 : if CFG_AHBDW = 64 generate
+      brom : entity work.ahbrom64
+        generic map (
+          hindex  => 1,
+          haddr   => ROM_HADDR,
+          hmask   => ROM_HMASK,
+          pipe    => 0)
+        port map (
+          rst     => rstn,
+          clk     => clkm,
+          ahbsi   => rom_ahbsi1,
+          ahbso   => rom_ahbso1);
+    end generate;
+    rom128 : if CFG_AHBDW = 128 generate
+      brom : entity work.ahbrom128
+        generic map (
+          hindex  => 1,
+          haddr   => ROM_HADDR,
+          hmask   => ROM_HMASK,
+          pipe    => 0)
+        port map (
+          rst     => rstn,
+          clk     => clkm,
+          ahbsi   => rom_ahbsi1,
+          ahbso   => rom_ahbso1);
+    end generate;
+  end generate prom_gen;
+
+  -- pragma translate_off
+  sim_prom_gen : if (SIMULATION /= 0) generate
+    mig_ahbram : ahbram_sim
+      generic map (
+        hindex   => 1,
+        haddr    => ROM_HADDR,
+        hmask    => ROM_HMASK,
+        tech     => 0,
+        kbytes   => 1024,
+        pipe     => 0,
+        maccsz   => AHBDW,
+        endianness  => GRLIB_CONFIG_ARRAY(grlib_little_endian),
+        fname    => romfile)
+      port map(
+        rst     => rstn,
+        clk     => clkm,
+        ahbsi   => rom_ahbsi1,
+        ahbso   => rom_ahbso1);
+  end generate sim_prom_gen;
+  -- pragma translate_on
 
 -----------------------------------------------------------------------
 -- GPIO                                                                

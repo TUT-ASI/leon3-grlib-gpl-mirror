@@ -1430,9 +1430,9 @@ Enable GRDMAC2 interface
 CONFIG_GRDMAC2_ENABLE
   Say Y here to enable the GRDMAC2 core.
 
-Enable AES256 accelerator
+Enable accelerator
 CONFIG_GRDMAC2ACC
-  Say Y here to enable AES256 encryption accelerator.
+  Select accelerator. 0 - no accelerator, 1 - AES256, 2 - SHA256, 3 - AES256+SHA256.
 
 Enable fault tolerance
 CONFIG_GRDMAC2FT

@@ -49,6 +49,7 @@ entity regfile64dffnv is
   port (
     clk      : in  std_ulogic;
     rstn     : in  std_ulogic;
+    rdhold   : in  std_ulogic;
     waddr1   : in  std_logic_vector((abits -1) downto 0);
     wdata1   : in  std_logic_vector((dbits -1) downto 0);
     we1      : in  std_ulogic;
@@ -86,7 +87,7 @@ architecture rtl of regfile64dffnv is
 
 begin  -- rtl
 
-  comb : process(r, rstn, waddr1, we1, waddr2, we2, re1, raddr1, re2, raddr2, re3, raddr3, re4, raddr4, wdata1, wdata2)
+  comb : process(r, rstn, waddr1, we1, waddr2, we2, re1, raddr1, re2, raddr2, re3, raddr3, re4, raddr4, wdata1, wdata2, rdhold)
     variable v       : reg_type;
     variable rdata1v : std_logic_vector(dbits-1 downto 0);
     variable rdata2v : std_logic_vector(dbits-1 downto 0);
@@ -97,19 +98,19 @@ begin  -- rtl
     v := r;
 
     -- Register Input Address
-    if re1 = '1' then
+    if re1 = '1' and rdhold = '0'then
       v.raddr1  := raddr1;
     end if;
 
-    if re2 = '1' then
+    if re2 = '1' and rdhold = '0' then
       v.raddr2  := raddr2;
     end if;
 
-    if re3 = '1' then
+    if re3 = '1' and rdhold = '0' then
       v.raddr3  := raddr3;
     end if;
 
-    if re4 = '1' then
+    if re4 = '1' and rdhold = '0' then
       v.raddr4  := raddr4;
     end if;
 

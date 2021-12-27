@@ -1,0 +1,12 @@
+CANFD interface enable
+CONFIG_GRCANFD_ENABLE
+  Say Y here to enable the GRCANFD core.
+
+CANFD interrupt
+CONFIG_GRCANFDIRQ
+  Defines which interrupt number the CANFD core will generate.
+
+CANFD interrupt
+CONFIG_GRCANFDSINGLE
+  Say Y here to assign 1 interrupt output  (common).
+  Say N here to assign 3 interrupt outputs (common, txsync, rxsync).

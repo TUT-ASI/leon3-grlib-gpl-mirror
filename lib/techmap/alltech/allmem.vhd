@@ -296,6 +296,27 @@ package allmem is
    );
   end component;
 
+  component dare65t_syncram_2p_mbist
+    generic ( abits : integer := 8; dbits : integer := 32; sepclk : integer := 0);
+    port (
+      rclk  : in std_ulogic;
+      rena  : in std_ulogic;
+      raddr : in std_logic_vector (abits -1 downto 0);
+      dout  : out std_logic_vector (dbits -1 downto 0);
+      wclk  : in std_ulogic;
+      waddr : in std_logic_vector (abits -1 downto 0);
+      din   : in std_logic_vector (dbits -1 downto 0);
+      write : in std_ulogic;
+      --
+      mbist    : in  std_ulogic;
+      fill0    : in  std_ulogic;
+      menable  : out std_ulogic;
+      error    : out std_ulogic;
+      testrst  :  in std_logic;
+      testclk  : in  std_logic
+     );
+    end component;
+
   component rhumc_syncram_2p
   generic ( abits : integer := 8; dbits : integer := 32; sepclk : integer := 0);
   port (
@@ -1037,6 +1058,25 @@ end component;
     mbmuxo   : out std_logic_vector(5 downto 0)
     );
   end component;
+
+  component dare65t_syncram_mbist
+    generic ( abits : integer := 10; dbits : integer := 8 );
+    port (
+      clk      : in std_ulogic;
+      address  : in std_logic_vector(abits -1 downto 0);
+      datain   : in std_logic_vector(dbits -1 downto 0);
+      dataout  : out std_logic_vector(dbits -1 downto 0);
+      enable   : in std_ulogic;
+      write    : in std_ulogic;
+      --
+      mbist    : in  std_ulogic;
+      fill0    : in  std_ulogic;
+      menable  : out std_ulogic;
+      error    : out std_ulogic;
+      testrst  :  in std_logic;
+      testclk  : in  std_logic
+      );
+    end component;
 
   component dare_syncram_mbist
   generic ( abits : integer := 10; dbits : integer := 8 );

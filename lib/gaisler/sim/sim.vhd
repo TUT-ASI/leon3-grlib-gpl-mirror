@@ -1100,6 +1100,9 @@ package body sim is
     when 4 => print("  4 byte Data Descriptor test");
     when 5 => print("  16 byte Data Descriptor test");
     when 6 => print("  32 byte Data Descriptor test");
+    when 7 => print("  4 byte SHA Descriptor test");
+    when 8 => print("  16 byte SHA Descriptor test");
+    when 9 => print("  32 byte SHA Descriptor test");
     when others => print("  sub-system test " & tost(subtest));
     end case;
 

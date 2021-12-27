@@ -57,6 +57,7 @@ entity fakefpunv is
     e_valid       : in  std_ulogic;
     e_nullify     : in  std_ulogic;
     csrfrm        : in  std_logic_vector(2 downto 0);
+    mode_in       : in  std_logic_vector(2 downto 0);
     s1            : in  word64;
     s2            : in  word64;
     s3            : in  word64;   -- For muladd
@@ -65,7 +66,7 @@ entity fakefpunv is
     ready_flop    : out std_ulogic;
     --   Commit interface
     commit        : in  std_ulogic;
-    commitid      : in  std_logic_vector(4 downto 0);
+    commit_id     : in  std_logic_vector(4 downto 0);
     lddata        : in  word64;
     --   Mispredict/trap interface
     unissue       : in  std_logic_vector(1 to 4);
@@ -79,7 +80,9 @@ entity fakefpunv is
     wen           : out std_ulogic;
     flags_wen     : out std_ulogic;
     stdata        : out word64;
-    flags         : out std_logic_vector(4 downto 0)
+    flags         : out std_logic_vector(4 downto 0);
+    wb_mode       : out std_logic_vector(2 downto 0);
+    wb_id         : out std_logic_vector(4 downto 0)
   );
 end;
 
@@ -334,6 +337,7 @@ architecture rtl of fakefpunv is
     wen         : std_ulogic;
     flags_wen   : std_ulogic;
     committed   : std_ulogic;
+    mode        : std_logic_vector(2 downto 0);  -- Pass along for logging
     op1         : float;
     op2         : float;
     op3         : float;
@@ -362,6 +366,7 @@ architecture rtl of fakefpunv is
     wen         => '0',
     flags_wen   => '0',
     committed   => '0',
+    mode        => (others => '0'),
     op1         => float_none,
     op2         => float_none,
     op3         => float_none
@@ -376,7 +381,7 @@ begin
   comb : process(r, rstn, holdn,
                  e_inst, e_valid, e_nullify, csrfrm,
                  s1, s2, s3, lddata,
-                 commit, commitid, unissue, unissue_sid)
+                 commit, commit_id, unissue, unissue_sid)
     -- Non-constant
     variable v         : fakefpu_regs;
     variable e_fmt     : std_logic_vector(1 downto 0);
@@ -468,6 +473,7 @@ begin
         v.rs3         := issue_op.rs3;
         v.rddp        := not issue_op.sp;
         v.flop        := issue_op.op;
+        v.mode        := mode_in;
         v.committed   := '0';
         v.exc         := (others => '0');
         v.fpu_holdn   := '1';
@@ -1067,6 +1073,8 @@ begin
     flags_wen    <= r.flags_wen;
     stdata       <= v.res;
     flags        <= r.exc;
+    wb_mode      <= r.mode;
+    wb_id        <= "00000";
 
     rs1          <= v.rs1;
     rs2          <= v.rs2;

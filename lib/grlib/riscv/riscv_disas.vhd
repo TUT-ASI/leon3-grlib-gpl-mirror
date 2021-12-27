@@ -47,6 +47,8 @@ package riscv_disas is
 
   function tostf(v : std_logic_vector) return string;
 
+  function fpreg2st(v : std_logic_vector) return string;
+
   function insn2st(pc           : std_logic_vector;
                    insn         : std_logic_vector(31 downto 0);
                    cinsn        : std_logic_vector(15 downto 0);
@@ -93,6 +95,7 @@ package riscv_disas is
     cinst    : std_logic_vector(15 downto 0);
     comp     : std_ulogic;
     prv      : std_logic_vector(1 downto 0);
+    v        : std_ulogic;
     trap     : std_ulogic;
     cause    : std_logic_vector;
     tval     : std_logic_vector);
@@ -238,26 +241,38 @@ package body riscv_disas is
   ----------------------------------------------------------------------------
   function is_ld_sd (inst : std_logic_vector(31 downto 0)) return std_logic is
     variable opcode     : std_logic_vector(6 downto 0);
+    constant funct3     : std_logic_vector(2 downto 0) := inst(14 downto 12);
   begin
     opcode        := inst(6 downto 0);
     case opcode is
       when OP_LOAD => return '1';
       when OP_STORE => return '1';
       when OP_AMO => return '1';
+      when OP_SYSTEM => 
+        if funct3 = "100" then return '1'; 
+        else return '0'; end if;
       when others => return '0';
     end case;
   end;
 
-  function prv2string(prv : std_logic_vector) return string is
+  function prv2string(prv : std_logic_vector; v : std_ulogic) return string is
     variable tmp : std_logic_vector(1 downto 0);
   begin
     tmp := prv(1 downto 0);
-    case tmp is
-      when "11" => return "M";
-      when "01" => return "S";
-      when "00" => return "U";
-      when others => return "X";
-    end case;
+    if v = '0' then
+      case tmp is
+        when PRIV_LVL_M => return " M";
+        when PRIV_LVL_S => return " S";
+        when PRIV_LVL_U => return " U";
+        when others => return "XX";
+      end case;
+    else
+      case tmp is
+        when PRIV_LVL_S => return "VS";
+        when PRIV_LVL_U => return "VU";
+        when others => return "XX";
+      end case;
+    end if;
   end;
 
   function cause2string(cause : std_logic_vector) return string is
@@ -545,6 +560,54 @@ package body riscv_disas is
       when "10100" => return("amomax" & size);
       when "11000" => return("amominu" & size);
       when "11100" => return("amomaxu" & size);
+      when others => return("xxx");
+    end case;
+  end;
+
+  function hlv2str(v : std_logic_vector; v2 : std_logic_vector) return string is
+    variable slice  : std_logic_vector(2 downto 0);
+    variable slice2 : std_logic_vector(1 downto 0);
+  begin
+    slice   := v;
+    slice2  := v2;
+    case slice is
+      when "000" => 
+        case slice2 is
+          when "00" => return("hlv.b");
+          when "01" => return("hlv.bu");
+          when others => return("xxx");
+        end case;
+      when "010" => 
+        case slice2 is
+          when "00" => return("hlv.h");
+          when "01" => return("hlv.hu");
+          when "11" => return("hlvx.hu");
+          when others => return("xxx");
+        end case;
+      when "100" => 
+        case slice2 is
+          when "00" => return("hlv.w");
+          when "01" => return("hlv.wu");
+          when "11" => return("hlvx.wu");
+          when others => return("xxx");
+        end case;
+      when "110" => 
+        case slice2 is
+          when "00" => return("hlv.d");
+          when others => return("xxx");
+        end case;
+      when others => return("xxx");
+    end case;
+  end;
+  function hsv2str(v : std_logic_vector) return string is
+    variable slice  : std_logic_vector(2 downto 0);
+  begin
+    slice   := v;
+    case slice is
+      when "001" => return("hsv.b");
+      when "011" => return("hsv.h");
+      when "101" => return("hsv.w");
+      when "111" => return("hsv.d");
       when others => return("xxx");
     end case;
   end;
@@ -1154,6 +1217,12 @@ package body riscv_disas is
             if rd = "00000" and insn(31 downto 25) = "0001001" then
               disas := strpad("sfence.vma " & reg2st(rs2) & ", " & reg2st(rs1), disas'length);
               return insn2string(insn, pc, disas, cinsn, comp);
+            elsif rd = "00000" and insn(31 downto 25) = "0010001" then
+              disas := strpad("hfence.vvma " & reg2st(rs2) & ", " & reg2st(rs1), disas'length);
+              return insn2string(insn, pc, disas, cinsn, comp);
+            elsif rd = "00000" and insn(31 downto 25) = "0110001" then
+              disas := strpad("hfence.gvma " & reg2st(rs2) & ", " & reg2st(rs1), disas'length);
+              return insn2string(insn, pc, disas, cinsn, comp);
             elsif rd = "00000" and rs1 = "00000" then
               case insn(31 downto 20) is
                 when "000000000000" => return insn2string(insn, pc, strpad("ecall", disas'length), cinsn, comp);
@@ -1178,6 +1247,26 @@ package body riscv_disas is
             imm(4 downto 0)     := rs1;
             disas := strpad(csrop2str(funct3) & " " & reg2st(rd) & ", " & csr2str(imm12) & ", " & tosti(imm), disas'length);
             return insn2string(insn, pc, disas, cinsn, comp);
+          when "100" =>
+            if funct7(6 downto 3) = "0110" then
+              if funct7(0) = '0' then
+                if rs2(4 downto 2) = "000" then
+                  disas := strpad(hlv2str(funct7(2 downto 0), rs2(1 downto 0)) & " " & reg2st(rd) & ", " & reg2st(rs1), disas'length);
+                  return insn2string(insn, pc, disas, cinsn, comp);
+                else
+                  return insn2string(insn, pc, strpad("unknown instruction", disas'length), cinsn, comp);
+                end if;
+              else -- funct7(0) = '1'
+                if rd = "00000" then
+                  disas := strpad(hsv2str(funct7(2 downto 0)) & " " & reg2st(rs2) & ", " & reg2st(rs1), disas'length);
+                  return insn2string(insn, pc, disas, cinsn, comp);
+                else
+                  return insn2string(insn, pc, strpad("unknown instruction", disas'length), cinsn, comp);
+                end if;
+              end if;
+            else
+              return insn2string(insn, pc, strpad("unknown instruction", disas'length), cinsn, comp);
+            end if;
           when others => return insn2string(insn, pc, strpad("unknown instruction", disas'length), cinsn, comp);
         end case;
 
@@ -1430,6 +1519,7 @@ package body riscv_disas is
     cinst      : std_logic_vector(15 downto 0);
     comp       : std_ulogic;
     prv        : std_logic_vector(1 downto 0);
+    v          : std_ulogic;
     trap       : std_ulogic;
     cause      : std_logic_vector;
     tval       : std_logic_vector) is
@@ -1469,7 +1559,7 @@ package body riscv_disas is
         grlib.testlib.print (
             "C" & tost(hndx)
           & " I" & tost(way)
-          & " " & prv2string(prv)
+          & " " & prv2string(prv, v)
           & " : " & strpad(tost(cycle), 8)
           & " [" & tost(valid) & "] "
           & insn2st(pc, inst, cinst, comp)
@@ -1486,7 +1576,7 @@ package body riscv_disas is
         grlib.testlib.print (
             "C" & tost(hndx)
           & " I" & tost(way)
-          & " " & prv2string(prv)
+          & " " & prv2string(prv, v)
           & " : " & strpad(tost(cycle), 8)
           & " [" & tost(valid) & "] "
           & insn2st(pc, inst, cinst, comp)

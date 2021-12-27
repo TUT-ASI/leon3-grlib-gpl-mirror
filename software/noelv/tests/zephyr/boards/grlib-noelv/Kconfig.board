@@ -1,9 +1,0 @@
-#
-# Copyright (c) 2018 - 2019 Antmicro <www.antmicro.com>
-#
-# SPDX-License-Identifier: Apache-2.0
-#
-
-config BOARD_GRLIB_NOELV
-	bool "Board with NOEL-V CPU in GRLIB"
-	depends on SOC_RISCV64_GRLIB_NOELV

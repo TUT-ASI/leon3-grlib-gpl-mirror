@@ -118,10 +118,26 @@ begin
       v.entry(to_integer(unsigned(waddr2)))(31 downto 0) := wdata2(31 downto 0);
     end if;
 
-    rdata1v := r.entry(to_integer(unsigned(r.raddr1)));
-    rdata2v := r.entry(to_integer(unsigned(r.raddr2)));
-    rdata3v := r.entry(to_integer(unsigned(r.raddr3)));
-    rdata4v := r.entry(to_integer(unsigned(r.raddr4)));
+    if notx(r.raddr1) then
+      rdata1v := r.entry(to_integer(unsigned(r.raddr1)));
+    else
+      setx(rdata1v);
+    end if;
+    if notx(r.raddr2) then
+      rdata2v := r.entry(to_integer(unsigned(r.raddr2)));
+    else
+      setx(rdata2v);
+    end if;
+    if notx(r.raddr3) then
+      rdata3v := r.entry(to_integer(unsigned(r.raddr3)));
+    else
+      setx(rdata3v);
+    end if;
+    if notx(r.raddr4) then
+      rdata4v := r.entry(to_integer(unsigned(r.raddr4)));
+    else
+      setx(rdata4v);
+    end if;
 
     if waddr1 = r.raddr1 then
       if we1(0) = '1' then

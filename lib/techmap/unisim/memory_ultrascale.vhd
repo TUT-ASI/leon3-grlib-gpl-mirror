@@ -88,18 +88,10 @@ begin
   di(dbits+72 downto dbits) <= (others => '0');
   rden <= not write;
 
-  a0 : if (abits <= 5) and (GRLIB_CONFIG_ARRAY(grlib_techmap_strict_ram) = 0) generate
-    r0 : generic_syncram generic map (abits, dbits)
-      port map (clk, address, datain, do(dbits-1 downto 0), write);
-    do(dbits+72 downto dbits) <= (others => '0');
-  end generate;
-
-  a8 : if ((abits > 5 or GRLIB_CONFIG_ARRAY(grlib_techmap_strict_ram) /= 0) and
-           (abits <= 15)) generate
+  a8 : if (abits <= 15) generate
     u5: ultrascale_syncram_2p generic map (abits, dbits)
       port map(rclk => clk, renable => enable,raddress=>address, dataout=> do(dbits-1 downto 0),
-               wclk => clk, write => write, waddress => address, datain => datain);
-    
+               wclk => clk, write => write, waddress => address, datain => datain);    
   end generate;
 
   a15 : if abits > 15 generate
@@ -107,6 +99,18 @@ begin
       port map (clk, address, datain, do(dbits-1 downto 0), write);
     do(dbits+72 downto dbits) <= (others => '0');
   end generate;
+
+  -- pragma translate_off
+  a_to_high : if abits > 15 generate
+    x : process
+    begin
+      assert false
+        report  "Address depth larger than 15 not supported for ultrascale_syncram. A generic_syncram will be inferred"
+        severity warning;
+      wait;
+    end process;
+  end generate;
+  -- pragma translate_on
   
 end;
 
@@ -1338,21 +1342,6 @@ architecture behav of ultrascale_syncram_2p is
       ); 
   end component;
 
-  component generic_syncram_2p
-    generic (abits : integer := 8; dbits : integer := 32; sepclk : integer := 0;
-             pipeline : integer := 0; rdhold : integer := 0);
-    port (
-      rclk : in std_ulogic;
-      wclk : in std_ulogic;
-      rdaddress: in std_logic_vector (abits -1 downto 0);
-      wraddress: in std_logic_vector (abits -1 downto 0);
-      data: in std_logic_vector (dbits -1 downto 0);
-      wren : in std_ulogic;
-      q: out std_logic_vector (dbits -1 downto 0);
-      rden : in std_ulogic := '1'
-      );
-  end component;
-
   signal write2, renable2 : std_ulogic;
   signal datain2 : std_logic_vector((dbits-1) downto 0);
 
@@ -1373,12 +1362,7 @@ begin
 
   gnd <= (others => '0'); vcc <=  '1';
   
-  a0 : if abits <= 5 and GRLIB_CONFIG_ARRAY(grlib_techmap_strict_ram) = 0 generate
-    x0 :  generic_syncram_2p generic map (abits, dbits, sepclk)
-      port map (rclk, wclk, raddress, waddress, datain, write, dataout);
-  end generate;
-
-  a6 : if (abits > 5 or GRLIB_CONFIG_ARRAY(grlib_techmap_strict_ram) /= 0) and abits < 10 generate
+  a6 : if (abits < 10) generate
     
     dataout <= do(dbits-1 downto 0);
     di(dbits-1 downto 0) <= datain; di(dbits+36 downto dbits) <= (others => '0');

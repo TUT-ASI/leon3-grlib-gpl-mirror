@@ -69,6 +69,7 @@ begin
     ahbso.hready  <= '1';
     ahbso.hresp   <= "00";
     ahbso.hrdata  <= (others => '0');
+    ahbso.hirq    <= (others => '0');
     ahbso.hconfig <= slvcfg;
     ahbso.hindex  <= hindex;
   end process;

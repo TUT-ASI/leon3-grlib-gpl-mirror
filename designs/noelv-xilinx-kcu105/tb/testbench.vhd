@@ -44,7 +44,10 @@ entity testbench is
     memtech : integer := CFG_MEMTECH;
     padtech : integer := CFG_PADTECH;
     clktech : integer := CFG_CLKTECH;
-    disas   : integer := CFG_DISAS
+    disas   : integer := CFG_DISAS;
+    dm_ctrl : integer := 0;
+    romfile : string := "prom.srec"; -- rom contents
+    ramfile : string := "ram.srec"  -- ram contents
     );
 end;
 
@@ -85,8 +88,7 @@ architecture behav of testbench is
   -- Constant -----------------------------------------
   -----------------------------------------------------
 
-  constant promfile  : string := "prom.srec"; -- rom contents
-  constant ramfile   : string := "ram.srec"; -- ram contents
+  constant SIMULATION : integer := CFG_MIG_7SERIES_MODEL;
 
   -----------------------------------------------------
   -- Signals ------------------------------------------
@@ -139,8 +141,9 @@ architecture behav of testbench is
   signal phy_mdio       : std_logic;
   signal phy_mdc        : std_ulogic;
 
-  signal dsutx          : std_ulogic;
-  signal dsurx          : std_ulogic;
+  signal dmbreak        : std_ulogic;
+  signal duart_tx       : std_ulogic;
+  signal duart_rx       : std_ulogic;
   signal dsuctsn        : std_ulogic;
   signal dsurtsn        : std_ulogic;
 
@@ -192,7 +195,7 @@ begin
 
   errorn        <= 'H'; -- ERROR pull-up
   switch(2 downto 0) <= (2 => '1', others => '0');
-  button        <= (others => '0');
+  button        <= (4 => dmbreak, others => '0');
 
   -----------------------------------------------------
   -- Top ----------------------------------------------
@@ -204,7 +207,10 @@ begin
       memtech                 => memtech,
       padtech                 => padtech,
       clktech                 => clktech,
-      disas                   => disas
+      disas                   => disas,
+      SIMULATION              => SIMULATION,
+      romfile                 => romfile,
+      ramfile                 => ramfile
       )
     port map(
       reset             => system_rst,
@@ -226,8 +232,8 @@ begin
       emdc              => phy_mdc,
       eint              => '0',
       erst              => OPEN,
-      dsurx             => dsurx,
-      dsutx             => dsutx,
+      dsurx             => duart_rx,
+      dsutx             => duart_tx,
       dsuctsn           => dsuctsn,
       dsurtsn           => dsurtsn,
       button            => button,
@@ -405,7 +411,108 @@ begin
       end loop;
       --return mem;
     end procedure;
-    
+
+    procedure duart_sync(signal dsurx : in std_ulogic; signal dsutx : out std_ulogic) is
+      variable w32        : std_logic_vector(31 downto 0);
+      variable w64        : std_logic_vector(63 downto 0);
+      variable c8         : std_logic_vector(7 downto 0);
+      constant txp        : time := 160 * 1 ns;
+      constant lresp      : boolean := false;
+    begin
+      txc(dsutx, 16#55#, txp);      -- sync uart
+      report "UART synced";
+    end;
+
+    procedure duart_dm_wait_busy(signal dsurx : in std_ulogic; signal dsutx : out std_ulogic) is
+      variable w32        : std_logic_vector(31 downto 0);
+      variable w64        : std_logic_vector(63 downto 0);
+      variable c8         : std_logic_vector(7 downto 0);
+      constant txp        : time := 160 * 1 ns;
+      constant lresp      : boolean := false;
+    begin
+      txc(dsutx, 16#80#, txp);
+      txa(dsutx, 16#FE#, 16#00#, 16#00#, 16#58#, txp);
+      rxi(dsurx, w32, txp, lresp);
+      while w32(12) = '1' loop
+        txc(dsutx, 16#80#, txp);
+        txa(dsutx, 16#90#, 16#00#, 16#00#, 16#58#, txp);
+        rxi(dsurx, w32, txp, lresp);
+      end loop;
+    end;
+
+    procedure duart_dm_enable(signal dsurx : in std_ulogic; signal dsutx : out std_ulogic) is
+      variable w32        : std_logic_vector(31 downto 0);
+      variable w64        : std_logic_vector(63 downto 0);
+      variable c8         : std_logic_vector(7 downto 0);
+      constant txp        : time := 160 * 1 ns;
+      constant lresp      : boolean := false;
+    begin
+      print("-- Activate the Debug Module");
+      txc(dsutx, 16#c0#, txp);
+      txa(dsutx, 16#FE#, 16#00#, 16#00#, 16#40#, txp);
+      txa(dsutx, 16#00#, 16#00#, 16#00#, 16#01#, txp);
+    end;
+
+    procedure duart_dm_set_pc(constant pc : in std_logic_vector(31 downto 0); signal dsurx : in std_ulogic; signal dsutx : out std_ulogic) is
+      variable w32        : std_logic_vector(31 downto 0);
+      variable w64        : std_logic_vector(63 downto 0);
+      variable c8         : std_logic_vector(7 downto 0);
+      constant txp        : time := 160 * 1 ns;
+      constant lresp      : boolean := false;
+      constant pc3        : integer := conv_integer(pc(31 downto 24));
+      constant pc2        : integer := conv_integer(pc(23 downto 16));
+      constant pc1        : integer := conv_integer(pc(15 downto 8));
+      constant pc0        : integer := conv_integer(pc(7 downto 0));
+    begin
+      print("-- Update PC for hart 0");
+      txc(dsutx, 16#c0#, txp);
+      txa(dsutx, 16#FE#, 16#00#, 16#00#, 16#10#, txp);
+      txa(dsutx, pc3, pc2, pc1, pc0, txp);
+
+      txc(dsutx, 16#c0#, txp);
+      txa(dsutx, 16#FE#, 16#00#, 16#00#, 16#5C#, txp);
+      txa(dsutx, 16#00#, 16#33#, 16#07#, 16#b1#, txp);
+    end;
+
+    procedure duart_dm_resume(signal dsurx : in std_ulogic; signal dsutx : out std_ulogic) is
+      variable w32        : std_logic_vector(31 downto 0);
+      variable w64        : std_logic_vector(63 downto 0);
+      variable c8         : std_logic_vector(7 downto 0);
+      constant txp        : time := 160 * 1 ns;
+      constant lresp      : boolean := false;
+    begin
+      print("-- Resume hart 0");
+      txc(dsutx, 16#c0#, txp);
+      txa(dsutx, 16#FE#, 16#00#, 16#00#, 16#40#, txp);
+      txa(dsutx, 16#40#, 16#00#, 16#00#, 16#01#, txp);
+    end;
+
+    procedure duart_dm_halt(signal dsurx : in std_ulogic; signal dsutx : out std_ulogic) is
+      variable w32        : std_logic_vector(31 downto 0);
+      variable w64        : std_logic_vector(63 downto 0);
+      variable c8         : std_logic_vector(7 downto 0);
+      constant txp        : time := 160 * 1 ns;
+      constant lresp      : boolean := false;
+    begin
+      print("-- Halt hart 0");
+      txc(dsutx, 16#c0#, txp);
+      txa(dsutx, 16#FE#, 16#00#, 16#00#, 16#40#, txp);
+      txa(dsutx, 16#80#, 16#00#, 16#00#, 16#01#, txp);
+    end;
+
+    procedure duart_dm_print_status(signal dsurx : in std_ulogic; signal dsutx : out std_ulogic) is
+      variable w32        : std_logic_vector(31 downto 0);
+      variable w64        : std_logic_vector(63 downto 0);
+      variable c8         : std_logic_vector(7 downto 0);
+      constant txp        : time := 160 * 1 ns;
+      constant lresp      : boolean := false;
+    begin
+      txc(dsutx, 16#80#, txp);
+      txa(dsutx, 16#FE#, 16#00#, 16#00#, 16#44#, txp);
+      rxi(dsurx, w32, txp, lresp);
+      print("-- Debug Module Status: Read[0xFE000040]: " & tost(w32));
+    end;
+
     procedure dsucfg(signal dsurx : in std_ulogic; signal dsutx : out std_ulogic) is
       variable w32        : std_logic_vector(31 downto 0);
       variable w64        : std_logic_vector(63 downto 0);
@@ -420,7 +527,7 @@ begin
       dsurst      <= '0';
       switch(3)   <= '0';
       
-      if CFG_MIG_7SERIES = 1 then
+      if CFG_MIG_7SERIES = 1 and SIMULATION = 0 then
         wait for 10 us; -- This is for proper DDR4 behaviour durign init phase not needed durin simulation
       end if;
 
@@ -431,165 +538,53 @@ begin
       switch(3)   <= '1';
 
       if CFG_MIG_7SERIES = 1 then
-        wait on led(7) until led(7) = '1';  -- Wait for DDR4 Memory Init ready
+        if led(7) /= '1' then
+          wait on led(7) until led(7) = '1';  -- Wait for DDR4 Memory Init ready
+        end if;
       end if;
-      report "Start DSU transfer";
-      wait for 5000 ns;
-      txc(dsutx, 16#55#, txp);      -- sync uart
-      report "UART synced";
 
-    end;
-
-    procedure riscvtb(signal dsurx : in std_ulogic; signal dsutx : out std_ulogic) is
-      variable w32        : std_logic_vector(31 downto 0);
-
-      -- Rocket Debug Unit Variables
-      variable halted   : std_logic := '0';
-      variable active   : std_logic := '0';
-      variable resumed  : std_logic := '0';
-      variable busy     : std_logic := '1';
-
-      -- tmp reg containers
-      variable regh     : std_logic_vector(31 downto 0);
-      variable regl     : std_logic_vector(31 downto 0);
-
-      variable status   : std_logic_vector(31 downto 0);
-      variable stop     : std_ulogic;
-
-      variable TP       : boolean := true;
-      variable Screen   : boolean := false;
-
-      constant txp      : time := 160 * 1 ns;
-      constant lresp    : boolean := false;
-
-    begin
-
-      print("-- Check AHBROM");
-      txc(dsutx, 16#80#, txp);
-      txa(dsutx, 16#00#, 16#01#, 16#00#, 16#00#, txp);
-      rxi(dsurx, w32, txp, lresp);
-      print("-- AHBROM @ 0001_0000: " & tost(w32));
-
-      print("-- Activate the Debug Module");
-      txc(dsutx, 16#c0#, txp);
-      txa(dsutx, 16#90#, 16#00#, 16#00#, 16#40#, txp);
-      txa(dsutx, 16#00#, 16#00#, 16#00#, 16#01#, txp);
-      print("-- Halt the core");
-      txc(dsutx, 16#c0#, txp);
-      txa(dsutx, 16#90#, 16#00#, 16#00#, 16#40#, txp);
-      txa(dsutx, 16#80#, 16#00#, 16#00#, 16#01#, txp);
-
-      txc(dsutx, 16#80#, txp);
-      txa(dsutx, 16#90#, 16#00#, 16#00#, 16#44#, txp);
-      rxi(dsurx, w32, txp, lresp);
-      print("-- DMSTATUS: " & tost(w32));
-
-      read_srec("ram.srec", 1, dsutx);
-
-      print("-- Break on ebreak");
-      txc(dsutx, 16#c0#, txp);
-      txa(dsutx, 16#90#, 16#00#, 16#00#, 16#5C#, txp);
-      txa(dsutx, 16#00#, 16#32#, 16#07#, 16#b0#, txp);
-      
-      txc(dsutx, 16#80#, txp);
-      txa(dsutx, 16#90#, 16#00#, 16#00#, 16#58#, txp);
-      rxi(dsurx, w32, txp, lresp);
-      print("-- Abstract Control and Status is " & tost(w32));
-
-      busy := w32(12);
-
-      while busy = '1' loop
-        txc(dsutx, 16#80#, txp);
-        txa(dsutx, 16#90#, 16#00#, 16#00#, 16#58#, txp);
-        rxi(dsurx, w32, txp, lresp);
-        print("-- Abstract Control and Status is " & tost(w32));
-
-        busy := w32(12);
-      end loop;
-      
-      txc(dsutx, 16#80#, txp);
-      txa(dsutx, 16#90#, 16#00#, 16#00#, 16#10#, txp);
-      rxi(dsurx, w32, txp, lresp);
-      w32(15) := '1';
-      txc(dsutx, 16#c0#, txp);
-      txa(dsutx, 16#90#, 16#00#, 16#00#, 16#10#, txp);
-      txa(dsutx, conv_integer(w32(31 downto 24)), conv_integer(w32(23 downto 16)),
-                 conv_integer(w32(15 downto 8)) , conv_integer(w32(7 downto 0)), txp);
-
-      txc(dsutx, 16#c0#, txp);
-      txa(dsutx, 16#90#, 16#00#, 16#00#, 16#5C#, txp);
-      txa(dsutx, 16#00#, 16#33#, 16#07#, 16#b0#, txp);
-
-      txc(dsutx, 16#80#, txp);
-      txa(dsutx, 16#90#, 16#00#, 16#00#, 16#58#, txp);
-      rxi(dsurx, w32, txp, lresp);
-      print("-- Abstract Control and Status is " & tost(w32));
-
-      busy := w32(12);
-
-      while busy = '1' loop
-        txc(dsutx, 16#80#, txp);
-        txa(dsutx, 16#90#, 16#00#, 16#00#, 16#58#, txp);
-        rxi(dsurx, w32, txp, lresp);
-        print("-- Abstract Control and Status is " & tost(w32));
-
-        busy := w32(12);
-      end loop;
-
-      print("-- Write new pc");
-      txc(dsutx, 16#c0#, txp);
-      txa(dsutx, 16#90#, 16#00#, 16#00#, 16#10#, txp);
-      txa(dsutx, 16#00#, 16#01#, 16#00#, 16#00#, txp);
-
-      txc(dsutx, 16#c0#, txp);
-      txa(dsutx, 16#90#, 16#00#, 16#00#, 16#5C#, txp);
-      txa(dsutx, 16#00#, 16#33#, 16#07#, 16#b1#, txp);
-      
-      txc(dsutx, 16#80#, txp);
-      txa(dsutx, 16#90#, 16#00#, 16#00#, 16#58#, txp);
-      rxi(dsurx, w32, txp, lresp);
-      print("-- Abstract Control and Status is " & tost(w32));
-
-      busy := w32(12);
-
-      while busy = '1' loop
-        txc(dsutx, 16#80#, txp);
-        txa(dsutx, 16#90#, 16#00#, 16#00#, 16#58#, txp);
-        rxi(dsurx, w32, txp, lresp);
-        print("-- Abstract Control and Status is " & tost(w32));
-
-        busy := w32(12);
-      end loop;
-
-      wait for 100 ns;
-      print("-- Remove halt for hart 0");
-      txc(dsutx, 16#c0#, txp);
-      txa(dsutx, 16#90#, 16#00#, 16#00#, 16#40#, txp);
-      txa(dsutx, 16#40#, 16#00#, 16#00#, 16#01#, txp);
-
-      txc(dsutx, 16#80#, txp);
-      txa(dsutx, 16#90#, 16#00#, 16#00#, 16#44#, txp);
-      rxi(dsurx, w32, txp, lresp);
-      print("-- Debug Module Status is " & tost(w32));
-
-      resumed := w32(10) and w32(11);
-
-      while resumed = '0' loop
-        txc(dsutx, 16#80#, txp);
-        txa(dsutx, 16#90#, 16#00#, 16#00#, 16#44#, txp);
-        rxi(dsurx, w32, txp, lresp);
-        print("-- Debug Module Status is " & tost(w32));
-
-        resumed := w32(10) and w32(11);
-      end loop;
     end;
 
   begin
-    dsuctsn <= '0';
-    dsucfg(dsutx, dsurx);
-    riscvtb(dsutx, dsurx);
+    dmbreak   <= '0';
+    dsuctsn   <= '0';
+    duart_rx  <= '1';
+    if dm_ctrl /= 0 then
+      -- Put the CPU in halt
+      dmbreak     <= '1';
+    end if;
+
+    dsucfg(duart_tx, duart_rx);
+
+    if dm_ctrl /= 0 then
+
+      --wait until rising_edge(rst);
+      --for i in 0 to 100 loop
+      --  wait until rising_edge(clk);
+      --end loop;
+      wait for 5000 ns;
+      dmbreak     <= '0';
+      
+      -- Synchronize UART debug interface
+      duart_sync(duart_tx, duart_rx);
+
+      -- Enabled Debug-Module
+      duart_dm_enable(duart_tx, duart_rx);
+
+      -- Load SREC file
+      --read_srec("ram.srec", 1, duart_rx);
+
+      -- Set PC
+      duart_dm_set_pc(x"C0000000", duart_tx, duart_rx);
+      
+      -- Print Debug-Module status
+      duart_dm_print_status(duart_tx, duart_rx);
+
+      -- Resume execution
+      duart_dm_resume(duart_tx, duart_rx);
+
+    end if;
     wait;
   end process;
-    
 end;
 

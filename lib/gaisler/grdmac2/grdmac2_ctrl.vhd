@@ -82,7 +82,7 @@ entity grdmac2_ctrl is
     b2m_bm_in     : in  bm_ctrl_reg_type;               -- BM signals from B2M through control module
     b2m_bm_out    : out bm_out_type;                    -- BM signals to B2M through control module
     -- data descriptor out for M2B and B2M
-    d_desc_out    : out data_dsc_strct_type;            -- Data descriptor passed to M2B, ACC and B2M
+    d_desc_out    : out data_dsc_strct_type;            -- Data descriptor passed to M2B and B2M
     ctrl_rst      : out std_ulogic;                     -- Reset signal from APB interface, to M2B and B2M
     err_sts_out   : out std_ulogic;                     -- Core APB status reg error bit. Passed to M2B and B2M
     -- M2B control signals
@@ -93,10 +93,10 @@ entity grdmac2_ctrl is
     b2m_sts_in    : in  d_ex_sts_out_type;              -- B2M status signals
     b2m_start     : out std_logic;                      -- B2M start signal
     b2m_resume    : out std_ulogic;                     -- B2M resume signal
-    acc_sts_in    : in d_ex_sts_out_type;               -- ACC status signals
-    acc_start     : out std_ulogic;                     -- ACC start signal
-    acc_resume    : out std_ulogic;                     -- ACC resume signal
-    acc_desc_out  : out acc_dsc_strct_type              -- ACC descriptor passed to ACC
+    acc_sts_in    : in d_ex_sts_out_type;
+    acc_start     : out std_ulogic;
+    acc_resume    : out std_ulogic;
+    acc_desc_out  : out acc_dsc_strct_type
   );
 end entity grdmac2_ctrl;
 
@@ -138,6 +138,7 @@ architecture rtl of grdmac2_ctrl is
   constant POLL_IRQ                : std_logic_vector(3 downto 0) := "0011";
   constant AES                     : std_logic_vector(3 downto 0) := "0100"; -- Descriptor type 4
   constant ACC_UPDATE              : std_logic_vector(3 downto 0) := "0101"; -- Descriptor type 5
+  constant SHA                     : std_logic_vector(3 downto 0) := "0110"; -- Descriptor type 6
   constant POLL_SZ                 : std_logic_vector(9 downto 0) := "0000000011";  -- 3+1 bytes to be fetched(1 word)
   constant DESC_BYTES              : std_logic_vector(9 downto 0) := "0000011100";  -- 28 bytes to be fetched(7 words)
   constant WB_SZ                   : std_logic_vector(9 downto 0) := "0000000011";  -- 3+1 bytes to be written(1 word)
@@ -247,7 +248,6 @@ architecture rtl of grdmac2_ctrl is
     i            : integer range 0 to 7;            -- Register for index increment
     rd_desc      : std_logic_vector(223 downto 0);  -- Register for descriptor read from BM
     cur_desc     : std_ulogic;                      -- Current descriptor type
-    aes_en       : std_ulogic;                      -- Encryption enable
     acc_en       : std_ulogic;                      -- Update values enable
     cnt_start    : std_ulogic;                      -- counting between polls started
     tm_start     : std_ulogic;                      -- Timeout counter decrement started
@@ -287,7 +287,6 @@ architecture rtl of grdmac2_ctrl is
     i            => 0,
     rd_desc      => (others => '0'),
     cur_desc     => '0',
-    aes_en       => '0',
     acc_en       => '0',
     cnt_start    => '0',
     tm_start     => '0',
@@ -710,6 +709,19 @@ begin  -- rtl
             end if;
 
           -- A type of data descriptor used for encryption
+          when SHA =>
+            v.cur_desc := '0';
+            v.acc_en   := '1';
+            v.bm_num   := r.rd_desc(198);
+            if r.rd_desc(192) = '1' then  -- enabled descriptor
+              v.m2b_start := '1';
+              v.state     := m2b;
+            else  -- Disabled descriptor. go to idle. No write back
+              v.desc_skip := '1';
+              v.state     := idle;
+            end if;
+
+          -- A type of data descriptor used for encryption
           when AES =>
             v.cur_desc := '0';
             v.acc_en   := '1';
@@ -722,7 +734,7 @@ begin  -- rtl
               v.state     := idle;
             end if;
 
-          -- A special descriptor used for updating registers in accelerator
+          -- A special descriptor used for updating values in accelerator
           when ACC_UPDATE =>
             v.cur_desc := '0';
             v.acc_en   := '1';
@@ -1041,6 +1053,20 @@ begin  -- rtl
           end if;
           v.bm_num := d_des.ctrl.dest_bm_num;
           v.state := b2m;
+
+        elsif ((r.acc_resume or r.acc_start) = '0' and acc_sts_in.paused = '1' and d_des.ctrl.desc_type = X"6") then
+          --Resume M2b and fetch remaining data
+          v.acc_paused := '1';
+          v.m2b_resume := '1';
+          v.bm_num     := d_des.ctrl.src_bm_num;
+          v.state      := m2b;
+          v.m2b_paused := '0';
+        elsif ((r.acc_resume or r.acc_start) = '0' and acc_sts_in.comp = '1' and d_des.ctrl.desc_type = X"6") then
+          v.b2m_start := '1';
+          v.rd_desc(223 downto 203) := std_logic_vector(to_unsigned(32, 21));
+          v.bm_num := d_des.ctrl.dest_bm_num;
+          v.state := b2m;
+
 
         -- IF DESCRIPTOR TYPE 5, DATA USED TO UPDATE ACCELERATOR AND SHOULD GO BACK TO M2B OR FINISH DESCRIPTOR
         ----------------------------------------------------------------------------------------------------------

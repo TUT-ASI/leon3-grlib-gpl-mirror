@@ -95,9 +95,13 @@ begin
     wprotx(nregs-1 downto 0) := wprot;
     -- APB Interface
     if nregs > 1 then
-      o.prdata(regbits-1 downto 0) := r.regs(to_integer(unsigned(apbi.paddr(1+log2(nregs) downto 2))));
-      if rdataen /= 0 then
-        o.prdata(regbits-1 downto 0) := rd(to_integer(unsigned(apbi.paddr(1+log2(nregs) downto 2))));
+      if notx(apbi.paddr) then
+        o.prdata(regbits-1 downto 0) := r.regs(to_integer(unsigned(apbi.paddr(1+log2(nregs) downto 2))));
+        if rdataen /= 0 then
+          o.prdata(regbits-1 downto 0) := rd(to_integer(unsigned(apbi.paddr(1+log2(nregs) downto 2))));
+        end if;
+      else
+        setx(o.prdata);
       end if;
       if apbi.penable='1' and apbi.psel(pindex)='1' and apbi.pwrite='1' then
         if wproten=0 or (wprotx(to_integer(unsigned(apbi.paddr(1+log2(nregs) downto 2))))='0') then

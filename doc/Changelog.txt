@@ -1,3 +1,59 @@
+----------------------- Release 2021.2-b4267 ---------------------------
+
+2021-06-30	Updated TECHMAP for Ultrascale, Ultrascale+ and Unisim.
+		The constants syncram_abits_min and syncram_2p_abits_min, 
+		defined in gencomp.vhd, determine whether the syncram 
+		should be inferred or not, depending on the address 
+		width.
+
+2021-06-29	Updated Xilinx Vivado script generation so that newer
+		version of Vivado find the top level testbench in XSim
+		by defining the top level library.
+
+2021-06-23	LEON5 processor updates
+
+		New features:
+		Statistics unit added to subsystem, enabled with
+		statcfg generic.
+		Updates to instruction trace buffer support
+
+		Updates:
+		Fix for snooping in cmemconf=2 configuration.
+		Fixes related to RETRY/SPLIT handling.
+		Fixes for debug interface cgen=1 configuration
+		Changed default number of timer bits in asr22-23 to 32
+		Order of slaves modified in LEON5 subsystem so that
+		the built-in UART always is found first by software
+		plug'n'play scanning.
+
+2021-06-23	NOEL-V template design update
+		NOEL-V template designs has been updated to use a shared
+		core design (located in noelv-generic/rtl/core).
+		Configuration change to the NOEL-V KCU105 design to make
+		ethernet interface more stable.
+
+2021-06-15	NOEL-V processor update
+		Added Hypervisor support (H extension) in the HPP
+		configuration. 
+		Re-enabled Compressed instruction support (C extension).
+		FPU and Atomic operation bug fixes and general
+		timing optimization.
+
+		NOEL-V subsystem
+		Changed PLIC configuration form level to edge.
+
+2021-06-15	Added NOEL-V generic template design
+		This design has the same core design as other NOEL-V
+		template designs, but without any target technology or
+		board. It is intended for simulating a NOEL-V system.
+
+2021-06-14	GRETH: Updated little endian bus support.
+
+2021-06-02	LEON3: Fix for dsnoop=7 (single-port memory only)
+		configuration. Snoop tag RAMs were not always enabled
+		correctly. Only affects dsnoop=7 which was introduced in
+		release 1.4.4-b4162 and is not in widespread use.
+
 ----------------------- Release 2021.1-b4265 ---------------------------
 
 2021-04-06	LEON5 processor updates
@@ -260,8 +316,6 @@
 		Template design tailored to the rev E by default,
 		with instructions on how to revert back to the
 		rev D provided in the README file.
-
-2019-05-27	CAN_OC: IP core marked as deprecated.
 
 2019-05-15	L3STAT: Timestamp register did not function.
 

@@ -5,6 +5,8 @@ CLEAN=soft-clean
 
 GRLIB_CONFIG=noelv_config.vhd
 
+DIRADD=noelv/pkg_64 noelv noelv/core noelv/subsys
+
 ### Xilinx Vivado device and board setup
 BOARD=xilinx-vc707-xc7vx485t
 DESIGN=noelv-xilinx-vc707

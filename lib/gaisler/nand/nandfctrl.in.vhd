@@ -1,0 +1,11 @@
+-- NANDFCTRL
+  constant CFG_NANDFCTRL          : integer := CONFIG_NANDFCTRL_ENABLE;
+  constant CFG_NANDFCTRL_NTARGETS : integer := CONFIG_NANDFCTRL_NTARGETS;
+  constant CFG_NANDFCTRL_NLANES   : integer := CONFIG_NANDFCTRL_NLANES;
+  constant CFG_NANDFCTRL_PSIZE    : integer := CONFIG_NANDFCTRL_PSIZE;
+  constant CFG_NANDFCTRL_SSIZE    : integer := CONFIG_NANDFCTRL_SSIZE;
+  constant CFG_NANDFCTRL_TM1      : integer := CONFIG_NANDFCTRL_TM1;
+  constant CFG_NANDFCTRL_TM2      : integer := CONFIG_NANDFCTRL_TM2;
+  constant CFG_NANDFCTRL_TM3      : integer := CONFIG_NANDFCTRL_TM3;
+  
+

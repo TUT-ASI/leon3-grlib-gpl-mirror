@@ -53,9 +53,8 @@ grrm
 subsys
 ftaddr
 grscrub
-noelv
 plic
-noelv/subsys
 leon5
 leon5v0
 grfpc5
+socbridge

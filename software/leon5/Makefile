@@ -26,7 +26,7 @@ ifneq ("$(wildcard prom.h)","")
   SOFT_SRECS += prom.srec
 endif
 
-PROGS = apbuart divtest multest regtest \
+PROGS = grcanfd apbuart divtest multest regtest \
 	cache gpio ramfill ramtest irqmp leon3_test gptimer \
 	mulasm cacheasm spwtest mptest fpu grfpu_ops \
 	base_test grfpu_test can_oc mmu mmu_asm mmu_so_check pcitest greth atactrl \

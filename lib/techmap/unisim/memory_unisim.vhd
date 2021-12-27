@@ -176,14 +176,7 @@ begin
   xa(19 downto abits) <= (others => '0'); ya(abits-1 downto 0) <= address;
   ya(19 downto abits) <= (others => '1');
 
-  a0 : if (abits <= 5) and (GRLIB_CONFIG_ARRAY(grlib_techmap_strict_ram) = 0) generate
-    r0 : generic_syncram generic map (abits, dbits)
-         port map (clk, address, datain, do(dbits-1 downto 0), write);
-    do(dbits+72 downto dbits) <= (others => '0');
-  end generate;
-
-  a8 : if ((abits > 5 or GRLIB_CONFIG_ARRAY(grlib_techmap_strict_ram) /= 0) and
-           (abits <= 8)) generate
+  a8 : if (abits <= 8) generate
     x : for i in 0 to ((dbits-1)/72) generate
       r0 : RAMB16_S36_S36
         generic map (SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
@@ -252,17 +245,17 @@ begin
     do(dbits+72 downto dbits) <= (others => '0');
   end generate;
 
--- pragma translate_off
---  a_to_high : if abits > 14 generate
---    x : process
---    begin
---      assert false
---      report  "Address depth larger than 14 not supported for unisim_syncram"
---      severity failure;
---      wait;
---    end process;
---  end generate;
--- pragma translate_on
+  --pragma translate_off
+  a_to_high : if abits > 14 generate
+    x : process
+    begin
+      assert false
+        report  "Address depth larger than 14 not supported for unisim_syncram. A generic_syncram will be inferred"
+        severity warning;
+      wait;
+    end process;
+  end generate;
+  --pragma translate_on
 
 end;
 
@@ -663,16 +656,10 @@ begin
 --      renable2 <= renable or write2; datain2 <= datain;
 --    end generate;
 
-    a0 : if abits <= 5 and GRLIB_CONFIG_ARRAY(grlib_techmap_strict_ram) = 0 generate
-      x0 :  generic_syncram_2p generic map (abits, dbits, sepclk)
-  	port map (rclk, wclk, raddress, waddress, datain, write, dataout);
-    end generate;
-
-    a6 : if abits > 5 or GRLIB_CONFIG_ARRAY(grlib_techmap_strict_ram) /= 0 generate
       x0 : unisim_syncram_dp generic map (abits, dbits)
-         port map (wclk, waddress, datain, open, write, write, 
-                   rclk, raddress, datain2, dataout, renable2, write2);
-    end generate;
+        port map (wclk, waddress, datain, open, write, write, 
+                  rclk, raddress, datain2, dataout, renable2, write2);
+
 end;
 
 -- parametrisable sync ram generator using unisim block rams
@@ -1033,16 +1020,7 @@ begin
   di(dbits-1 downto 0) <= datain;
   di(dbits+32 downto dbits) <= (others => '0');
 
-  a0 : if (abits <= 5) and (GRLIB_CONFIG_ARRAY(grlib_techmap_strict_ram) = 0) generate
-    x : for i in 0 to ((dbits-1)/8) generate
-      r : generic_syncram generic map (abits, 8)
-        port map (clk, address, di(i*8+8-1 downto i*8), do(i*8+8-1 downto i*8), write(i));
-    end generate;
-    do(dbits+32 downto 8*(((dbits-1)/8)+1)) <= (others => '0');
-  end generate;
-
-  a8 : if ((abits > 5 or GRLIB_CONFIG_ARRAY(grlib_techmap_strict_ram) /= 0) and
-           (abits <= 9)) generate
+  a8 : if (abits <= 9) generate
     
     xa(19 downto abits) <= (others => '0'); 
     xa(abits-1 downto 0) <= address;

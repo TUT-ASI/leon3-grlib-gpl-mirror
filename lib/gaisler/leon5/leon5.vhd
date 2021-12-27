@@ -41,29 +41,30 @@ package leon5 is
 
   component leon5sys is
     generic (
-      fabtech : integer;
-      memtech : integer;
-      ncpu    : integer;
-      nextmst : integer;
-      nextslv : integer;
-      nextapb : integer;
-      ndbgmst : integer;
-      cached  : integer;
-      wbmask  : integer;
-      busw    : integer;
-      memmap  : integer := 0;
-      ahbsplit: integer := 0;
-      cmemconf: integer := 0;
-      rfconf  : integer := 0;
-      fpuconf : integer;
-      tcmconf : integer := 0;
-      perfcfg : integer := 0;
-      mulimpl : integer := 0;
-      disas   : integer;
-      ahbtrace: integer;
-      devid   : integer := 0;
-      cgen    : integer := 0;
-      scantest: integer := 0
+      fabtech  : integer;
+      memtech  : integer;
+      ncpu     : integer;
+      nextmst  : integer;
+      nextslv  : integer;
+      nextapb  : integer;
+      ndbgmst  : integer;
+      cached   : integer;
+      wbmask   : integer;
+      busw     : integer;
+      memmap   : integer := 0;
+      ahbsplit : integer := 0;
+      cmemconf : integer := 0;
+      rfconf   : integer := 0;
+      fpuconf  : integer;
+      tcmconf  : integer := 0;
+      perfcfg  : integer := 0;
+      mulimpl  : integer := 0;
+      statcfg  : integer := 0;
+      disas    : integer;
+      ahbtrace : integer;
+      devid    : integer := 0;
+      cgen     : integer := 0;
+      scantest : integer := 0
       );
     port (
       clk      : in  std_ulogic;

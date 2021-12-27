@@ -46,6 +46,7 @@ entity noelvcpu is
     cmemconf : integer;
     rfconf   : integer;
     fpuconf  : integer;
+    tcmconf  : integer;
     disas    : integer;
     pbaddr   : integer;
     cfg      : integer;
@@ -99,6 +100,7 @@ architecture hier of noelvcpu is
     mmuen         : integer;
     itlbnum       : integer;
     dtlbnum       : integer;
+    htlbnum       : integer;
     div_hiperf    : integer;
     div_small     : integer;
     late_branch   : integer;
@@ -136,6 +138,7 @@ architecture hier of noelvcpu is
     mmuen         => 0,
     itlbnum       => 2,
     dtlbnum       => 2,
+    htlbnum       => 1,
     div_hiperf    => 0, 
     div_small     => 0, 
     late_branch   => 0,
@@ -154,8 +157,8 @@ architecture hier of noelvcpu is
       single_issue  => 0,
       ext_m         => 1,
       ext_a         => 1,
-      ext_c         => 0, -- Should be enabled
-      ext_h         => 0, -- Should be enabled
+      ext_c         => 1, -- Should be enabled
+      ext_h         => 1,
       mode_s        => 1,
       mode_u        => 1,
       fpulen        => 64,
@@ -177,6 +180,7 @@ architecture hier of noelvcpu is
       mmuen         => 1,
       itlbnum       => 8,
       dtlbnum       => 8,
+      htlbnum       => 8,
       div_hiperf    => 1, 
       div_small     => 0, 
       late_branch   => 1,
@@ -184,15 +188,15 @@ architecture hier of noelvcpu is
       bhtentries    => 128,
       bhtlength     => 5,
       predictor     => 2,
-      btbentries    => 32,
+      btbentries    => 16,
       btbsets       => 2),
     -- GPP (dual-issue)
     1 => (
       single_issue  => 0,
       ext_m         => 1,
       ext_a         => 1,
-      ext_c         => 0, -- Should be enabled
-      ext_h         => 0, -- Should be enabled
+      ext_c         => 1, -- Should be enabled
+      ext_h         => 1,
       mode_s        => 1,
       mode_u        => 1,
       fpulen        => 64,
@@ -214,6 +218,7 @@ architecture hier of noelvcpu is
       mmuen         => 1,
       itlbnum       => 8,
       dtlbnum       => 8,
+      htlbnum       => 8,
       div_hiperf    => 1, 
       div_small     => 0, 
       late_branch   => 1,
@@ -228,8 +233,8 @@ architecture hier of noelvcpu is
       single_issue  => 1,
       ext_m         => 1,
       ext_a         => 1,
-      ext_c         => 0, -- Should be enabled
-      ext_h         => 0, -- Should be enabled
+      ext_c         => 1, -- Should be enabled
+      ext_h         => 1,
       mode_s        => 1,
       mode_u        => 1,
       fpulen        => 64,
@@ -251,6 +256,7 @@ architecture hier of noelvcpu is
       mmuen         => 1,
       itlbnum       => 8,
       dtlbnum       => 8,
+      htlbnum       => 8,
       div_hiperf    => 1, 
       div_small     => 0, 
       late_branch   => 1,
@@ -265,7 +271,7 @@ architecture hier of noelvcpu is
       single_issue  => 1,
       ext_m         => 1,
       ext_a         => 1,
-      ext_c         => 0,
+      ext_c         => 1,
       ext_h         => 0,
       mode_s        => 0,
       mode_u        => 1,
@@ -288,6 +294,7 @@ architecture hier of noelvcpu is
       mmuen         => 0,
       itlbnum       => 2,
       dtlbnum       => 2,
+      htlbnum       => 1,
       div_hiperf    => 0, 
       div_small     => 0, 
       late_branch   => 1,
@@ -302,7 +309,7 @@ architecture hier of noelvcpu is
       single_issue  => 1,
       ext_m         => 1,
       ext_a         => 1,
-      ext_c         => 0,
+      ext_c         => 1,
       ext_h         => 0,
       mode_s        => 0,
       mode_u        => 1,
@@ -325,6 +332,7 @@ architecture hier of noelvcpu is
       mmuen         => 0,
       itlbnum       => 2,
       dtlbnum       => 2,
+      htlbnum       => 1,
       div_hiperf    => 0, 
       div_small     => 0, 
       late_branch   => 1,
@@ -362,6 +370,7 @@ architecture hier of noelvcpu is
       mmuen         => 0,
       itlbnum       => 2,
       dtlbnum       => 2,
+      htlbnum       => 1,
       div_hiperf    => 0, 
       div_small     => 1, 
       late_branch   => 0,
@@ -391,28 +400,18 @@ begin
       btbsets         => cfg_c(cfg).btbsets,
       -- Caches
       icen            => cfg_c(cfg).icen,
-      irepl           => 0,
-      isets           => cfg_c(cfg).iways,
+      iways           => cfg_c(cfg).iways,
       ilinesize       => cfg_c(cfg).ilinesize,
-      isetsize        => cfg_c(cfg).iwaysize,
+      iwaysize        => cfg_c(cfg).iwaysize,
       dcen            => cfg_c(cfg).dcen,
-      drepl           => 0,
-      dsets           => cfg_c(cfg).dways,
+      dways           => cfg_c(cfg).dways,
       dlinesize       => cfg_c(cfg).dlinesize,
-      dsetsize        => cfg_c(cfg).dwaysize,
-      dsnoop          => 6,
-      ilram           => 0,
-      ilramsize       => 1,
-      ilramstart      => 0,
-      dlram           => 0,
-      dlramsize       => 1,
-      dlramstart      => 0,
+      dwaysize        => cfg_c(cfg).dwaysize,
       -- MMU
       mmuen           => cfg_c(cfg).mmuen,
       itlbnum         => cfg_c(cfg).itlbnum,
       dtlbnum         => cfg_c(cfg).dtlbnum,
-      tlb_type        => 1,
-      tlb_rep         => 0,
+      htlbnum         => cfg_c(cfg).htlbnum,
       tlbforepl       => 4,
       riscv_mmu       => 2,
       pmp_no_tor      => cfg_c(cfg).pmp_no_tor,
@@ -432,11 +431,11 @@ begin
       late_alu        => cfg_c(cfg).late_alu,
       -- Core
       cached          => cached,
-      clk2x           => 0,
       wbmask          => wbmask,
       busw            => busw,
       cmemconf        => cmemconf,
       rfconf          => rfconf,
+      tcmconf         => tcmconf,
       tbuf            => cfg_c(cfg).tbuf,
       physaddr        => 32,
       rstaddr         => 16#C0000#,
@@ -456,11 +455,8 @@ begin
       endian          => 1  -- Only Little-endian is supported
       )
     port map (
-      ahbclk          => clk,
-      cpuclk          => clk,
-      gcpuclk         => clk,
-      fpuclk          => clk,
-      hclken          => vcc,
+      clk             => clk,
+      gclk            => clk,
       rstn            => rstn,
       ahbi            => ahbi,
       ahbo            => ahbo,

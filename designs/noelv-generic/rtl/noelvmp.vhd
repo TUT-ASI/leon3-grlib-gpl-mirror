@@ -277,7 +277,7 @@ begin
     port map (duart_tx, lduart_tx);
 
   -----------------------------------------------------------------------------
-  -- Memory Controller -------------------------------------------------------------
+  -- Memory Controller --------------------------------------------------------
   -----------------------------------------------------------------------------
   -- No APB interface on memory controller  
   mem_apbo0    <= apb_none;
@@ -350,17 +350,45 @@ begin
   -----------------------------------------------------------------------
 
   prom_gen : if (SIMULATION = 0) generate
-    brom : entity work.ahbrom
-      generic map (
-        hindex  => 1,
-        haddr   => ROM_HADDR,
-        hmask   => ROM_HMASK,
-        pipe    => 0)
-      port map (
-        rst     => rstn,
-        clk     => clkm,
-        ahbsi   => rom_ahbsi1,
-        ahbso   => rom_ahbso1);
+    rom32 : if CFG_AHBDW = 32 generate
+      brom : entity work.ahbrom
+        generic map (
+          hindex  => 1,
+          haddr   => ROM_HADDR,
+          hmask   => ROM_HMASK,
+          pipe    => 0)
+        port map (
+          rst     => rstn,
+          clk     => clkm,
+          ahbsi   => rom_ahbsi1,
+          ahbso   => rom_ahbso1);
+    end generate;
+    rom64 : if CFG_AHBDW = 64 generate
+      brom : entity work.ahbrom64
+        generic map (
+          hindex  => 1,
+          haddr   => ROM_HADDR,
+          hmask   => ROM_HMASK,
+          pipe    => 0)
+        port map (
+          rst     => rstn,
+          clk     => clkm,
+          ahbsi   => rom_ahbsi1,
+          ahbso   => rom_ahbso1);
+    end generate;
+    rom128 : if CFG_AHBDW = 128 generate
+      brom : entity work.ahbrom128
+        generic map (
+          hindex  => 1,
+          haddr   => ROM_HADDR,
+          hmask   => ROM_HMASK,
+          pipe    => 0)
+        port map (
+          rst     => rstn,
+          clk     => clkm,
+          ahbsi   => rom_ahbsi1,
+          ahbso   => rom_ahbso1);
+    end generate;
   end generate prom_gen;
 
   sim_prom_gen : if (SIMULATION = 1) generate

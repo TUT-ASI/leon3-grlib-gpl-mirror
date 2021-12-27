@@ -13,4 +13,5 @@ cpucore5.vhd
 tbufmem5.vhd
 dbgmod5.vhd
 irqmp5.vhd
+l5stat.vhd
 leon5sys.vhd
