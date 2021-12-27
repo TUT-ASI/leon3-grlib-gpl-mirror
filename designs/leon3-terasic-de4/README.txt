@@ -2,6 +2,10 @@
 LEON3 Template design for TerASIC Altera DE4 board
 ------------------------------------------------------
 
+To select the FPGA device between EP4SGX230 and EP4SGX530 use:
+
+ "make xconfig" > "Synthesis" > "FPGA Device"
+
 0verview
 --------
 The design contains:

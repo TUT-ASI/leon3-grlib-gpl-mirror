@@ -65,7 +65,7 @@ end;
 
 architecture rtl of ahbtrace_mmb is
 
-constant TBUFABITS : integer := log2(kbytes) + 6;
+constant TBUFABITS : integer := log2(kbytes mod 16#10000#) + 6 - 10*(kbytes/16#10000#);
 constant TIMEBITS  : integer := 32 - exttimer;
 constant FILTEN    : boolean := ahbfilt /= 0;
 constant PERFEN    : boolean := (ahbfilt > 1);

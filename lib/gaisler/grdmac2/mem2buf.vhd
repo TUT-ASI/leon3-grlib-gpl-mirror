@@ -54,7 +54,8 @@ entity mem2buf is
     bm_bytes   : integer range 4 to 16    := 4;   -- bus master data width in bytes
     buff_bytes : integer range 4 to 16384 := 64;  -- FIFO size in bytes
     buff_depth : integer range 1 to 1024  := 16;  -- FIFO depth
-    abits      : integer range 0 to 10    := 4    -- FIFO address bits (actual fifo depth = 2**abits)
+    abits      : integer range 0 to 10    := 4;   -- FIFO address bits (actual fifo depth = 2**abits)
+    en_acc     : integer range 0 to 4     := 0
     );
   port (
     rstn       : in  std_ulogic;           -- Active low reset
@@ -65,6 +66,7 @@ entity mem2buf is
     m2b_start  : in  std_ulogic;           -- Start control signal
     m2b_resume : in  std_ulogic;           -- Resume control signal
     d_des_in   : in  data_dsc_strct_type;  -- Data descriptor needs to executed
+    acc_des_in : in  acc_dsc_strct_type;
     status_out : out d_ex_sts_out_type;    -- M2b status out signals 
     -- Generic bus master interface
     m2b_bmi    : in  bm_out_type;          -- BM interface signals to M2B,through crontrol module
@@ -195,23 +197,44 @@ begin
 
         -- Operation starts when start/resume signal from control block arrives and no errors are present
         if m2b_start = '1' and err_sts_in = '0' then
+
+          -- Logic for ACC descriptor -------------------------------
+          if (d_des_in.ctrl.desc_type = X"5") then
+            v.tot_size     := acc_des_in.ctrl.size(20 downto 0);
+          else
+            v.tot_size     := d_des_in.ctrl.size;
+          end if;
+          -----------------------------------------------------------
+
           v.err_state  := (others => '0');
           buffer_out.clr_n := '0';
           v.sts.operation  := '1';
           v.sts.comp       := '0';
-          v.tot_size       := d_des_in.ctrl.size;
           v.inc            := 0;
           v.bmst_rd_err    := '0';
           if orv(d_des_in.ctrl.size) = '0' then
             v.sts.comp := '1';
           end if;
-          v.curr_size := find_burst_size(src_fixed_addr         => d_des_in.ctrl.src_fix_adr,
+          v.m2b_state := exec_data_desc;
+
+          -- Logic for ACC descriptor --------------------------------------
+          if (d_des_in.ctrl.desc_type = X"5") then
+            v.curr_size := find_burst_size(src_fixed_addr       => d_des_in.ctrl.src_fix_adr,
+                                                dest_fixed_addr => '0',
+                                                max_bsize       => MAX_BSIZE,
+                                                total_size      => acc_des_in.ctrl.size(20 downto 0),
+                                                buff_size       => buff_bytes
+                                                );
+          else
+            v.curr_size := find_burst_size(src_fixed_addr         => d_des_in.ctrl.src_fix_adr,
                                                 dest_fixed_addr => d_des_in.ctrl.dest_fix_adr,
                                                 max_bsize       => MAX_BSIZE,
                                                 total_size      => d_des_in.ctrl.size,
                                                 buff_size       => buff_bytes
                                                 );
-          v.m2b_state := exec_data_desc;
+          end if;
+          -------------------------------------------------------------------
+
         elsif m2b_resume = '1' and err_sts_in = '0' then  -- M2B restaring.
           v.err_state  := (others => '0');
           buffer_out.clr_n := '0';
@@ -233,14 +256,22 @@ begin
       when exec_data_desc =>
         if orv(r.curr_size) /= '0' then  -- More data remaining to be fetched
           if r.bmst_rd_busy = '0' then
-            if d_des_in.ctrl.src_fix_adr = '1' then
+
+            -- Logic for ACC descriptor ----------------------------------------------------
+            if d_des_in.ctrl.src_fix_adr = '1' and d_des_in.ctrl.desc_type /= X"5" then
               -- Fixed address implementation
               -- If souce address is fixed, data is read in a looped manner from same source address. Single access. No burst              
               m2b_bmo.rd_addr <= d_des_in.src_addr;
+            elsif acc_des_in.ctrl.src_fix_adr = '1' and d_des_in.ctrl.desc_type = X"5" then
+              m2b_bmo.rd_addr <= acc_des_in.src_addr;
+            elsif d_des_in.ctrl.desc_type = X"5" then
+              m2b_bmo.rd_addr <= acc_des_in.src_addr + r.inc;
             else
              -- If souce address is not fixed, data is read as a burst. source address is incremented between bursts.
               m2b_bmo.rd_addr <= d_des_in.src_addr + r.inc;
             end if;
+            --------------------------------------------------------------------------------
+
             m2b_bmo.rd_size <= conv_std_logic_vector(conv_integer(r.curr_size)-1, 10);
             bmst_rd_req     := '1';
             if bmst_rd_req = '1' and m2b_bmi.rd_req_grant = '1' then

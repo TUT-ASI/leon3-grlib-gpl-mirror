@@ -38,7 +38,7 @@ entity syncram_dp is
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
 	testen : integer := 0; custombits : integer := 1; sepclk: integer := 1;
         wrfst: integer := 0; pipeline : integer range 0 to 15 := 0;
-           rdhold : integer := 0);
+           rdhold : integer := 0; gatedwr : integer := 0);
   port (
     clk1     : in std_ulogic;
     address1 : in std_logic_vector((abits -1) downto 0);
@@ -58,6 +58,7 @@ end;
 
 architecture rtl of syncram_dp is
   signal xenable1,xxenable1,xenable2,xxenable2,xwrite1,xwrite2: std_ulogic;
+  signal gwrite1,gwrite2: std_ulogic;
   signal dataout1x,dataout1xx,dataout1xxx,dataout2x,dataout2xx,dataout2xxx: std_logic_vector((dbits-1) downto 0);
   signal custominx,customoutx: std_logic_vector(syncram_customif_maxwidth downto 0);
   signal vgnd: std_logic_vector((dbits-1) downto 0);
@@ -103,8 +104,10 @@ begin
 
   xenable1 <= enable1 and not testin(TESTIN_WIDTH-2) when testen/=0 else enable1;
   xenable2 <= enable2 and not testin(TESTIN_WIDTH-2) when testen/=0 else enable2;
-  xwrite1 <= write1 and not testin(TESTIN_WIDTH-2) when testen/=0 else write1;
-  xwrite2 <= write2 and not testin(TESTIN_WIDTH-2) when testen/=0 else write2;
+  gwrite1 <= (write1 and enable1) when (gatedwr/=0 and syncram_dp_wrignen(tech)/=0) else write1;
+  gwrite2 <= (write2 and enable2) when (gatedwr/=0 and syncram_dp_wrignen(tech)/=0) else write2;
+  xwrite1 <= gwrite1 and not testin(TESTIN_WIDTH-2) when testen/=0 else gwrite1;
+  xwrite2 <= gwrite2 and not testin(TESTIN_WIDTH-2) when testen/=0 else gwrite2;
 
   gendoutreg : if pipeline /= 0 and has_sram_pipe(tech) = 0
                  and not (rdhold /= 0 and syncram_dp_readhold(tech)=0) generate

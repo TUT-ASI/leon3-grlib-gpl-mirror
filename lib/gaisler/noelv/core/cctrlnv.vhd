@@ -45,19 +45,16 @@ use grlib.stdlib.conv_std_logic_vector;
 use grlib.stdlib.notx;
 use grlib.stdlib.setx;
 use grlib.stdlib.print;
---use grlib.testlib.print;
 use grlib.devices.all;
 use grlib.sparc.all;
 use grlib.config.all;
 use grlib.config_types.all;
 library gaisler;
-use gaisler.leon3.cstat_none;
 use gaisler.noelvint.nv_icache_in_type;
 use gaisler.noelvint.nv_icache_out_type;
 use gaisler.noelvint.nv_dcache_in_type;
 use gaisler.noelvint.nv_dcache_out_type;
 use gaisler.noelvint.cword3;
-use gaisler.noelvint.nv_cctrltype;
 use gaisler.noelvint.nv_cdatatype;
 use gaisler.noelvint.amo_math_op;
 use gaisler.noelvint.all;
@@ -73,11 +70,10 @@ use gaisler.noelvint.PMP_ACCESS_X;
 use gaisler.noelvint.pmp_unit;
 use gaisler.noelvint.PMPPRECALCRES;
 use gaisler.noelvint.csrtype;
-use gaisler.noelv.nv_intreg_miso_type;
-use gaisler.noelv.nv_intreg_mosi_type;
-use gaisler.noelv.nv_intreg_miso_none;
-use gaisler.noelv.nv_intreg_mosi_none;
-use gaisler.noelv.wordx;
+use gaisler.noelvint.nv_intreg_miso_type;
+use gaisler.noelvint.nv_intreg_mosi_type;
+use gaisler.noelvint.nv_intreg_miso_none;
+use gaisler.noelvint.nv_intreg_mosi_none;
 use gaisler.utilnv.minimum;
 use gaisler.utilnv.maximum;
 use gaisler.utilnv.u2i;
@@ -112,7 +108,6 @@ entity cctrlnv is
     pmp_no_tor : integer range 0 to   1;   -- Disable PMP TOR
     pmp_entries: integer range 0 to  16;   -- Implemented PMP registers
     pmp_g      : integer range 0 to  10;   -- PMP grain is 2^(pmp_g + 2) bytes
---    pmp_msb    : integer range 15 to 55;   -- High bit for PMP checks
     ext_a      : integer range 0  to 1;    -- Support for Atomic operations
     -- Misc
     cached     : integer;                  -- Mask indexed by 4 MSB of address regarding cacheability when no TLB used
@@ -122,14 +117,16 @@ entity cctrlnv is
     icrepl     : integer;
     dcrepl     : integer;
     addr_check : integer range 0 to 255 := 223;  -- Instruction PMP (7 TLB, 6 acc), high bits (5 physical, 4 virtual)
-    mmu_debug  : boolean := false                --   Data      PMP (3 TLB, 2 acc), high bits (1 physical, 0 virtual)
+    mmu_debug  : boolean := false;               --   Data      PMP (3 TLB, 2 acc), high bits (1 physical, 0 virtual)
+    no_mmu     : boolean := false;
+    endian     : integer range 0 to 1
     );
   port (
     rst        : in  std_ulogic;
     clk        : in  std_ulogic;
-    ici        : in  nv_icache_in_type;             -- I$ requests from iu5
+    ici        : in  nv_icache_in_type;             -- I$ requests from iunv
     ico        : out nv_icache_out_type;            --    replies
-    dci        : in  nv_dcache_in_type;             -- D$ requests from iu5
+    dci        : in  nv_dcache_in_type;             -- D$ requests from iunv
     dco        : out nv_dcache_out_type;            --    replies
     ahbi       : in  ahb_mst_in_type;               -- AHB replies
     ahbo       : out ahb_mst_out_type;              --     requests
@@ -266,30 +263,12 @@ architecture rtl of cctrlnv is
   begin
     return gaisler.mmucacheconfig.is_riscv(riscv_mmu);
   end;
+  
+  constant va  : std_logic_vector(gaisler.mmucacheconfig.va_msb(riscv_mmu) downto 0) := (others=>'0');
+  constant vpn : std_logic_vector(va'high downto 12) := (others=>'0');
 
-  function va_tmp return std_logic_vector is
-  begin
-    return gaisler.mmucacheconfig.va(riscv_mmu);
-  end;
-  constant va : std_logic_vector := va_tmp;
-
-  function vpn_tmp return std_logic_vector is
-  begin
-    return gaisler.mmucacheconfig.vpn(riscv_mmu);
-  end;
-  constant vpn : std_logic_vector := vpn_tmp;
-
-  function pa_tmp return std_logic_vector is
-  begin
-    return gaisler.mmucacheconfig.pa(riscv_mmu);
-  end;
-  constant pa : std_logic_vector := pa_tmp;
-
-  function ppn_tmp return std_logic_vector is
-  begin
-    return gaisler.mmucacheconfig.ppn(riscv_mmu);
-  end;
-  constant ppn : std_logic_vector := ppn_tmp;
+  constant pa  : std_logic_vector(gaisler.mmucacheconfig.pa_msb(riscv_mmu) downto 0) := (others=>'0');
+  constant ppn : std_logic_vector(pa'high downto 12) := (others=>'0');
 
   function pte_hsize return std_logic_vector is
   begin
@@ -322,10 +301,74 @@ architecture rtl of cctrlnv is
     return gaisler.mmucacheconfig.is_ptd(riscv_mmu, data);
   end;
 
+  subtype va_type is integer range 0 to 3;
+  constant sparc : integer := 0;
+  constant sv32  : integer := 1;
+  constant sv39  : integer := 2;
+  constant sv48  : integer := 3;
+  
+  type va_bits is array (integer range <>) of integer;
+  
+
+  function va_sizet(what : va_type) return va_bits is
+    variable SZ_SPARC : va_bits(1 to 3) := (8, 6, 6);    -- 8 + 6 + 6     + 12 = 32 bits
+    variable SZ_SV32  : va_bits(1 to 2) := (10, 10);     -- 10 + 10       + 12 = 32
+    variable SZ_SV39  : va_bits(1 to 3) := (9, 9, 9);    -- 9 + 9 + 9     + 12 = 39
+    variable SZ_SV48  : va_bits(1 to 4) := (9, 9, 9, 9); -- 9 + 9 + 9 + 9 + 12 = 48
+  begin
+    case what is
+      when sv32   => return SZ_SV32;
+      when sv39   => return SZ_SV39;
+      when sv48   => return SZ_SV48;
+      when others => return SZ_SPARC;
+    end case;
+  end;
+
   function pt_addr(data  : std_logic_vector; mask : std_logic_vector;
                    vaddr : std_logic_vector; code : std_logic_vector) return std_logic_vector is
+    constant pa_tmp : std_logic_vector               := pa;  -- constant
+    -- Non-constant
+    variable addr   : std_logic_vector(pa_tmp'range) := (others => '0');
+    variable pos    : integer;
   begin
-    return gaisler.mmucacheconfig.pt_addr(riscv_mmu, data, mask, vaddr, code);
+    if riscv_mmu = 0 then
+      -- Since physical address is only 32 bit, do not use the top 4 bits of PTP.
+      addr(addr'high downto 8) := data(27 downto 4);
+      -- Index into table, depending on current level.
+      if mask(1) = '0' then
+        addr(9 downto 2) := addr(9 downto 2) or vaddr(31 downto 24);
+      end if;
+      if mask(1 to 2) = "10" then
+        addr(7 downto 2) := addr(7 downto 2) or vaddr(23 downto 18);
+      end if;
+      if mask(1 to 2) = "11" then
+        addr(7 downto 2) := addr(7 downto 2) or vaddr(17 downto 12);
+      end if;
+    else
+      -- Every page table is the size of one page (thus downto 12).
+      -- 12 due to smallest page size, 10 are the information bits.
+      addr(addr'high downto 12) := data(pa_tmp'high - 12 + 10 downto 10);
+      pos := 12;
+      for i in mask'length downto 1 loop
+        if i > u2i(code) then
+          pos := pos + va_sizet(riscv_mmu)(i);
+        end if;
+      end loop;
+
+
+      -- DesignCompiler cannot count by itself...
+      if riscv_mmu = sv32 then
+        -- We know that on RISC-V32 (Sv32), va_size(what)(index) is always 10.
+        -- This means pos must be 12 + 10n (n in [0,2]).
+        addr(11 downto 11 - 10 + 1) := vaddr(pos - 1 downto pos - 10);
+      else
+        -- We know that on RISC-V64 (Sv39/48), va_size(what)(index) is always 9.
+        -- This means pos must be 12 + 9n (n in [0,3], the latter only for Sv48).
+        addr(11 downto 11 - 9 + 1) := vaddr(pos - 1 downto pos - 9);
+      end if;
+    end if;
+
+    return addr;
   end;
 
   function pte_paddr(data : std_logic_vector) return std_logic_vector is
@@ -333,13 +376,14 @@ architecture rtl of cctrlnv is
     return gaisler.mmucacheconfig.pte_paddr(riscv_mmu, data);
   end;
 
-  impure function pte_cached(data : std_logic_vector) return std_logic is
+  function pte_cached(ahbso : ahb_slv_out_vector; data : std_logic_vector) return std_logic is
     -- Non-constant
-    variable paddr : std_logic_vector(pa'range) := (others => '0');
+    variable paddr  : std_logic_vector(pa'range) := (others => '0');
+    variable ahbo_t : ahb_mst_out_type;
   begin
     if is_riscv then
       paddr(ppn'range) := pte_paddr(data);
-      return ahb_slv_dec_cache(paddr(ahbo.haddr'range), ahbso, cached);
+      return ahb_slv_dec_cache(paddr(ahbo_t.haddr'range), ahbso, cached);
     else
       return gaisler.mmucacheconfig.pte_cached(riscv_mmu, data);
     end if;
@@ -365,12 +409,14 @@ architecture rtl of cctrlnv is
   end;
 
 
-  impure function pte_busw(data : std_logic_vector) return std_logic is
+  function pte_busw(data : std_logic_vector) return std_logic is
     -- Non-constant
-    variable paddr : std_logic_vector(pa'range) := (others => '0');
+    variable paddr  : std_logic_vector(pa'range) := (others => '0');
+    variable ahbo_t : ahb_mst_out_type;
   begin
     paddr(ppn'range) := pte_paddr(data);
-    return dec_wbmask_fixed(paddr(ahbo.haddr'high downto 2), wbmask);
+
+    return dec_wbmask_fixed(paddr(ahbo_t.haddr'high downto 2), wbmask);
   end;
 
 
@@ -382,9 +428,9 @@ architecture rtl of cctrlnv is
   -- The maximum bits that are required to hold an address (physical or virtual).
   -- One bit longer than the actual address, since we need to keep track of
   -- whether higher bits are the same or not (not same - bad address).
-  -- These are what is really passed from iu5!
+  -- These are what is really passed from iunv!
   subtype addr_type      is std_logic_vector(addr_bits downto 0);
-  type    addr_repl_type is array(integer range  <>) of addr_type;
+  type    addr_repl_type is array(integer range <>) of addr_type;
 
   constant pmpen   : boolean := pmp_entries /= 0;
   constant pmp_msb : integer := physaddr - 1;
@@ -476,7 +522,7 @@ architecture rtl of cctrlnv is
   constant IMISSPIPE     : boolean := false;
   constant DMISSPIPE     : boolean := false;
 
-  constant ENDIAN        : boolean := (GRLIB_CONFIG_ARRAY(grlib_little_endian) /= 0);
+  constant ENDIAN_B      : boolean := (endian /= 0);
 
   type tlbent is record
     valid    : std_ulogic;
@@ -519,18 +565,19 @@ architecture rtl of cctrlnv is
     variable tlb : tlbentarr(0 to size - 1) := (others => tlbent_empty);
   begin
     tlb(0) := tlbent_defmap;
+
     return tlb;
   end;
 
   constant tlb_def : tlbentarr(0 to itlbnum - 1) := create_tlb_def(itlbnum);
 
   subtype lruent is std_logic_vector(4 downto 0);
-  type lruarr is array(natural range <>) of lruent;
+  type    lruarr is array(natural range <>) of lruent;
 
   type stbufent is record
     addr      : std_logic_vector(pa'range);
     size      : std_logic_vector(1 downto 0);
-    data      : std_logic_vector(63 downto 0);
+    data      : word64;
     snoopmask : std_logic_vector(d_ways'range);
   end record;
   type stbufarr is array(natural range <>) of stbufent;
@@ -552,7 +599,6 @@ architecture rtl of cctrlnv is
 
   type cctrlnv_state is (as_normal, as_flush, as_icfetch,
                         as_dcfetch, as_dcfetch2, as_dcsingle,
-                        as_pmpfault, as_ipmpfault, as_dpmpfault,
                         as_wmmuwalk, as_mmuwalk, as_mmuwalk3, as_mmuwalk4,
                         as_wptectag1, as_wptectag2, as_wptectag3,
                         as_store, as_slowwr, as_wrburst,
@@ -561,6 +607,15 @@ architecture rtl of cctrlnv is
                         as_getlock, as_parked, as_mmuprobe2, as_mmuprobe3,
                         as_regflush, as_regflush2,
                         as_mmuflush2, as_amo, as_amo_hold);
+
+  type nv_cctrltype is record
+    dfrz    : std_ulogic;                             -- dcache freeze enable
+    ifrz    : std_ulogic;                             -- icache freeze enable
+    dsnoop  : std_ulogic;                             -- data cache snooping
+    dcs     : std_logic_vector(1 downto 0);           -- dcache state
+    ics     : std_logic_vector(1 downto 0);           -- icache state
+    ics_btb : std_logic_vector(1 downto 0);           -- icache state output to btb
+  end record;
 
   constant MMCTRL_CTXP_SZ : integer := 30;
 
@@ -600,7 +655,12 @@ architecture rtl of cctrlnv is
     reserved  : std_logic;
     hold      : std_logic;
     addr      : std_logic_vector(ahbo.haddr'range);
-    data      : std_logic_vector(63 downto 0);
+    data      : word64;
+    store     : std_logic_vector(4 downto 1);
+    sc        : std_logic;
+    s4hit     : std_logic_vector(d_ways'range);
+    s4tag     : std_logic_vector(d_tag'range);
+    s4offs    : std_logic_vector(d_sets'range);
   end record amo_type;
 
   type cctrlnv_regs is record
@@ -641,7 +701,7 @@ architecture rtl of cctrlnv is
     ahb_hsize     : std_logic_vector(2 downto 0);
     ahb_hburst    : std_logic_vector(2 downto 0);
     ahb_hprot     : std_logic_vector(3 downto 0);
-    ahb_hwdata    : std_logic_vector(63 downto 0);
+    ahb_hwdata    : word64;
     ahb_snoopmask : std_logic_vector(d_ways'range);
     -- AHB delayed registers
     ahb3_inacc    : std_ulogic;
@@ -692,7 +752,7 @@ architecture rtl of cctrlnv is
     i1su       : std_ulogic;
     i1m        : std_ulogic;                      -- Machine mode execution?
     i1cont     : std_ulogic;
-    i1rep      : std_ulogic;
+    i1rep      : std_ulogic;                      -- IU stalling itself?
     ibpmiss      : std_ulogic;
     ireadway     : std_logic_vector(i_ways'range);
     irdbufen     : std_ulogic;
@@ -704,6 +764,7 @@ architecture rtl of cctrlnv is
     irepset      : std_logic_vector(maximum(1, log2(ISETS)) - 1 downto 0);
     irepdata     : nv_cdatatype;
     ireptlbhit   : std_ulogic;
+    irepfailkind : std_logic_vector(1 downto 0);
     ireptlbpaddr : std_logic_vector(pa'range);
     ireptlbid    : std_logic_vector(log2(itlbnum) - 1 downto 0);
     itlbprobeid  : std_logic_vector(log2(itlbnum) - 1 downto 0);
@@ -714,7 +775,7 @@ architecture rtl of cctrlnv is
     d2tlbhit    : std_ulogic;                      -- TLB entry touched
     d2tlbamatch : std_ulogic;
     d2tlbid     : std_logic_vector(log2(dtlbnum) - 1 downto 0);
-    d2data      : std_logic_vector(63 downto 0);
+    d2data      : word64;
     d2write     : std_ulogic;
     d2size      : std_logic_vector(1 downto 0);
     d2busw      : std_ulogic;                      -- Use wide bus
@@ -737,7 +798,7 @@ architecture rtl of cctrlnv is
     d2nocache   : std_ulogic;
     -- The d1* are valid when instruction is in memory access stage.
     d1ten        : std_ulogic;                      -- Data access with D$ enabled
-    d1chk        : std_ulogic;                      -- Data access
+    d1chk        : std_ulogic;                      -- Data access (delayed dci.eenaddr, r.holdn = '1')
     d1vaddr      : addr_type;
     d1vaddr_repl : addr_repl_type(0 to dcrepl - 1);
     d1asi        : std_logic_vector(7 downto 0);
@@ -749,8 +810,8 @@ architecture rtl of cctrlnv is
     d1mxr       : std_ulogic;
     dramaddr    : std_logic_vector(d_line'high downto DLINE_LOW_REAL);
     dvtagdone   : std_ulogic;
-    dregval     : std_logic_vector(31 downto 0);   -- ASI read value
-    dregval64   : std_logic_vector(31 downto 0);
+    dregval     : word32;                           -- ASI read value
+    dregval64   : word32;
     dregerr     : std_ulogic;
     dtlbrecheck : std_ulogic;
     -- LRU
@@ -768,7 +829,7 @@ architecture rtl of cctrlnv is
     -- IU BTB/BHT diagnostic interface (ASI 0x24)
     iudiag_mosi : nv_intreg_mosi_type;
     -- Temp perf counter
-    perf        : std_logic_vector(31 downto 0);
+    perf        : word32;
     -- Atomic instruction interface (RISC-V)
     amo         : amo_type;
   end record;
@@ -776,7 +837,7 @@ architecture rtl of cctrlnv is
   function to_bx_address(addr_in : std_logic_vector;
                          size    : std_logic_vector(1 downto 0)) return std_logic_vector is
   begin
-    if ENDIAN then
+    if ENDIAN_B then
       return addr_in;
     else
       return to_be_address(addr_in, size);
@@ -788,68 +849,69 @@ architecture rtl of cctrlnv is
     variable tmp : std_logic_vector(v'range);
   begin
     tmp := (others => '0');
+
     return tmp;
   end;
 
   function cctrlnv_regs_res return cctrlnv_regs is
     -- Non-constant
-    variable v: cctrlnv_regs;
+    variable v : cctrlnv_regs;
   begin
     v.cctrl := (dfrz => '0', ifrz => '0', dsnoop => '0',
                 dcs  => (others => '0'), ics => (others => '0'),
                 ics_btb => (others => '0')
                 );
-    v.mmctrl1 := mmctrl_type1_none; v.mmfsr := mmctrl_fs_zero; v.mmfar := (others => '0');
-    v.regflmask := (others => '0'); v.regfladdr := (others => '0'); v.iregflush := '0'; v.dregflush := '0';
+    v.mmctrl1    := mmctrl_type1_none; v.mmfsr := mmctrl_fs_zero; v.mmfar := (others => '0');
+    v.regflmask  := (others => '0'); v.regfladdr := (others => '0'); v.iregflush := '0'; v.dregflush := '0';
     v.s := as_normal; v.imisspend := '0'; v.ifailkind := "00"; v.dmisspend := '0'; v.dfailkind := "00";
     v.iflushpend := '1'; v.dflushpend := '1'; v.slowwrpend := '0'; v.holdn := '1';
     v.ramreload  := '0'; v.fastwr_rdy := '1'; v.stbuffull := '0';
-    v.flushwrd := (others => '0'); v.flushwri := (others => '0'); v.regflpipe := "00";
-    v.untagd := (others => '0'); v.untagi := (others => '0');
-    v.d_mexc := '0'; v.d_exctype := '0';
+    v.flushwrd   := (others => '0'); v.flushwri := (others => '0'); v.regflpipe := "00";
+    v.untagd     := (others => '0'); v.untagi := (others => '0');
+    v.d_mexc     := '0'; v.d_exctype := '0';
     v.ahb_hbusreq   := '0'; v.ahb_hlock := '0'; v.ahb_htrans := HTRANS_IDLE;
     v.ahb_haddr     := (others => '0'); v.ahb_hwrite := '0'; v.ahb_hsize := HSIZE_WORD;
     v.ahb_hburst    := HBURST_SINGLE; v.ahb_hprot := "0000"; v.ahb_hwdata := (others => '0');
     v.ahb_snoopmask := (others => '0');
     v.ahb3_inacc    := '0'; v.ahb3_rdbuf := (others => '0'); v.ahb3_error := '0'; v.ahb3_rdbvalid := (others => '0');
     v.ahb2_inacc    := '0'; v.ahb2_hwrite := '0'; v.ahb2_addrmask := (others => '0');
-    v.granted  := '0'; v.werr := '0';
-    v.itlb     := tlb_def; v.dtlb := tlb_def; v.tlbflush := '0'; v.newent := tlbent_empty; v.mmuerr := mmctrl_fs_zero;
+    v.granted     := '0'; v.werr := '0';
+    v.itlb        := tlb_def; v.dtlb := tlb_def; v.tlbflush := '0'; v.newent := tlbent_empty; v.mmuerr := mmctrl_fs_zero;
     v.curerrclass := "00"; v.newerrclass := "00";
-    v.itlbpmru  := (others => '0'); v.dtlbpmru := (others => '0');
-    v.tlbupdate := '0'; v.itagpipe := (others => (others => '0')); v.dtagpipe := (others => (others => '0'));
+    v.itlbpmru    := (others => '0'); v.dtlbpmru := (others => '0');
+    v.tlbupdate   := '0'; v.itagpipe := (others => (others => '0')); v.dtagpipe := (others => (others => '0'));
     v.i2pc := create_zeros(v.i2pc); v.i2paddr := create_zeros(v.i2paddr); v.i2paddrv := '0';
-    v.i2busw   := '0'; v.i2paddrc := '0';
-    v.i2tlbhit := '0'; v.i2tlbid := (others => '0');
-    v.i2ctx    := (others => '0'); v.i2su := '0'; v.i2m := '0';
+    v.i2busw     := '0'; v.i2paddrc := '0';
+    v.i2tlbhit   := '0'; v.i2tlbid := (others => '0');
+    v.i2ctx      := (others => '0'); v.i2su := '0'; v.i2m := '0';
     v.i2bufmatch := '0';
-    v.i2hitv   := (others => '0'); v.i2validv := (others => '0');
-    v.i1ten    := '0'; v.i1pc := (others => '0'); v.i1ctx := (others => '0'); v.i1su := '0'; v.i1m := '0'; v.i1cont := '0'; v.i1rep := '0';
-    v.i1ten    := '0'; v.i1pc := create_zeros(v.i1pc);
-    v.i1pc_repl := (others => create_zeros(v.i1pc));
-    v.i1ctx    := (others => '0'); v.i1su := '0'; v.i1m := '0'; v.i1cont := '0'; v.i1rep := '0';
-    v.ibpmiss  := '0'; v.iramaddr := (others => '0'); v.ireadway := (others => '0');
-    v.irdbufen := '0'; v.irdbufpaddr := (others => '0'); v.irdbufvaddr := (others => '0');
-    v.irephitv := (others => '0'); v.irepvalidv := (others => '0');
-    v.irepset  := (others => '0'); v.irepdata := (others => (others => '0'));
-    v.ireptlbhit := '0'; v.ireptlbpaddr := (others => '0'); v.ireptlbid := (others => '0');
+    v.i2hitv     := (others => '0'); v.i2validv := (others => '0');
+    v.i1ten      := '0'; v.i1pc := (others => '0'); v.i1ctx := (others => '0'); v.i1su := '0'; v.i1m := '0'; v.i1cont := '0'; v.i1rep := '0';
+    v.i1ten      := '0'; v.i1pc := create_zeros(v.i1pc);
+    v.i1pc_repl  := (others => create_zeros(v.i1pc));
+    v.i1ctx      := (others => '0'); v.i1su := '0'; v.i1m := '0'; v.i1cont := '0'; v.i1rep := '0';
+    v.ibpmiss    := '0'; v.iramaddr := (others => '0'); v.ireadway := (others => '0');
+    v.irdbufen   := '0'; v.irdbufpaddr := (others => '0'); v.irdbufvaddr := (others => '0');
+    v.irephitv   := (others => '0'); v.irepvalidv := (others => '0');
+    v.irepset    := (others => '0'); v.irepdata := (others => (others => '0'));
+    v.ireptlbhit := '0'; v.irepfailkind := "00"; v.ireptlbpaddr := (others => '0'); v.ireptlbid := (others => '0');
     v.itlbprobeid := (others => '0');
     v.d2vaddr  := create_zeros(v.d2vaddr); v.d2paddr := create_zeros(v.d2paddr); v.d2paddrv := '0';
     v.d2tlbhit := '0'; v.d2tlbamatch := '0'; v.d2tlbid := (others => '0');
     v.d2data   := (others => '0'); v.d2write := '0'; v.d2busw := '0'; v.d2tlbmod := '0';
     v.d2hitv   := (others => '0'); v.d2validv := (others => '0');
     v.d2size   := "00"; v.d2asi := x"00"; v.d2specialasi := '0'; v.d2forcemiss := '0'; v.d2lock := '0';
-    v.d2su := '0'; v.d2m := '0'; v.d2sum := '0'; v.d2mxr := '0';
+    v.d2su     := '0'; v.d2m := '0'; v.d2sum := '0'; v.d2mxr := '0';
     v.d2stbuf  := (others => stbufent_zero); v.d2stbw := "00"; v.d2stba := "00"; v.d2stbd := "00";
     v.d2specread := '0'; v.d2nocache := '0';
     v.d1ten    := '0'; v.d1chk := '0'; v.d1vaddr := create_zeros(v.d1vaddr);
     v.d1vaddr_repl  := (others => create_zeros(v.d1vaddr));
-    v.d1asi := (others => '0');
+    v.d1asi    := (others => '0');
     v.d1specialasi := '0'; v.d1forcemiss := '0';
     v.d1su     := '0'; v.d1m := '0'; v.d1sum := '0'; v.d1mxr := '0';
     v.dramaddr := (others => '0'); v.dvtagdone := '0';
     v.dregval  := (others => '0'); v.dregval64 := (others => '0');
-    v.dregerr := '0'; v.dtlbrecheck := '0';
+    v.dregerr  := '0'; v.dtlbrecheck := '0';
     v.ilru     := (others => (others => '0')); v.dlru := (others => (others => '0'));
     v.flushctr := (others => '0'); v.flushpart := (others => '0');
     v.mmusel   := (others => '0'); v.fpc_mosi := nv_intreg_mosi_none; v.c2c_mosi := nv_intreg_mosi_none;
@@ -860,6 +922,11 @@ architecture rtl of cctrlnv is
     v.amo.reserved  := '0';
     v.amo.hold      := '0';
     v.amo.addr      := (others => '0');
+    v.amo.store     := (others => '0');
+    v.amo.sc        := '0';
+    v.amo.s4hit     := (others => '0');
+    v.amo.s4tag     := (others => '0');
+    v.amo.s4offs    := (others => '0');
 
     return v;
   end cctrlnv_regs_res;
@@ -948,9 +1015,9 @@ architecture rtl of cctrlnv is
                      perm : std_logic_vector(3 downto 0);
                      sum : std_logic; mxr : std_logic) return boolean is
     -- Non-constant
-    variable data : std_logic_vector(31 downto 0) := (others => '0');
+    variable data : word32  := (others => '0');
     variable acc  : std_logic_vector(2 downto 0);
-    variable ok   : boolean                       := false;
+    variable ok   : boolean := false;
   begin
     if is_riscv then
       data(rv_pte_u downto rv_pte_r) := perm;
@@ -982,31 +1049,38 @@ architecture rtl of cctrlnv is
   -- Physical addresses should have zeroes at the top, right?
   function physical_ok(addr : std_logic_vector) return boolean is
   begin
+    -- Addresses are always OK for RV32!
+    if riscv_mmu = sv32 then
+      return true;
+    end if;
+
     return u2i(addr(addr'high downto physaddr)) = 0;
   end;
 
   -- Virtual addresses must be sign extended.
   function virtual_ok(addr : std_logic_vector) return boolean is
   begin
+    -- Addresses are always OK for RV32!
+    if riscv_mmu = sv32 then
+      return true;
+    end if;
+
     return u2i(    addr(addr'high downto va'high)) = 0 or
            u2i(not addr(addr'high downto va'high)) = 0;
   end;
 
   -- x - execution (ie ITLB, as opposed to DTLB)
-  procedure tlb_lookup(x          : std_logic;        tlb     : tlbentarr;
-                       vaddr_repl : addr_repl_type;   dsuaddr : std_logic_vector;
-                       context    : std_logic_vector; su      : std_logic;
-                       w          : std_logic;        lock    : std_logic;
-                       enabled    : std_logic;        check   : std_logic;
-                       specialasi : std_logic;        nullify : std_logic;
-                       repeat     : std_logic;        dsuen   : std_logic;
-                       tlbo       : out tlbentarr;    tlbchk  : out tlbcheck;
-                       sum        : std_logic;        mxr     : std_logic;
-                       display    : boolean := false) is
-    -- Ensure we have an array from 0 to replication count.
-    -- (The last element is not really part of the replication. See calls.)
-    constant v_repl : addr_repl_type(0 to vaddr_repl'length - 1) := vaddr_repl;
-    constant di     : string(1 to 2)                             := "DI";
+  procedure tlb_lookup(x          : std_logic;        tlb      : tlbentarr;
+                       vaddr_repl : addr_repl_type;   vaddr_in : addr_type; 
+                       dsuaddr : std_logic_vector;    context    : std_logic_vector;
+                       su      : std_logic;           w          : std_logic;
+                       lock    : std_logic;           enabled    : std_logic;
+                       check   : std_logic;           specialasi : std_logic;
+                       nullify : std_logic;           repeat     : std_logic;
+                       dsuen   : std_logic;           tlbo       : out tlbentarr;
+                       tlbchk  : out tlbcheck;        sum        : std_logic;
+                       mxr     : std_logic;           display    : boolean := false) is
+    variable di     : string(1 to 2)                             := "DI";
     -- Non-constant
     variable vaddr  : std_logic_vector(va'range);
     variable paddr  : std_logic_vector(pa'range);
@@ -1023,8 +1097,7 @@ architecture rtl of cctrlnv is
       if not is_riscv and dsuen = '1' then
         vaddr := dsuaddr(va'range);
       else
-        -- The last element ('high) is not really part of the replication.
-        vaddr := v_repl(n mod v_repl'high)(va'range);
+        vaddr := vaddr_repl(n mod vaddr_repl'length)(va'range);
       end if;
       match := true;
       pos   := 12;
@@ -1044,6 +1117,7 @@ architecture rtl of cctrlnv is
         else
           -- Invalidate matching TLB entry on permission fail since there will be a
           -- new MMU walk, and it would be a bad idea to have two instances in the TLB!
+          -- Will not invalidate on repeat due to stall, since walk already done.
           if check = '1' and specialasi = '0' and nullify = '0' and repeat = '0' then
             tlbo(n).valid := '0';
           end if;
@@ -1057,6 +1131,7 @@ architecture rtl of cctrlnv is
         tmpchk.busw    := tmpchk.busw    or tlb(n).busw;
         tmpchk.cached  := tmpchk.cached  or tlb(n).cached;
         tmpchk.modded  := tmpchk.modded  or tlb(n).modified;
+        mask           := (others => '0');
         mask           := mask           or tlb(n).mask;
         paddr          := (others => '0');
         if enabled = '1' then
@@ -1065,17 +1140,17 @@ architecture rtl of cctrlnv is
           virtual2physical(vaddr, create_zeros(mask), paddr);
         end if;
         tmpchk.paddr   := tmpchk.paddr or paddr;
+
       end if;
     end loop;
 
-    -- if enabled = '0' then
+   
     if not is_riscv and dsuen = '1' then
       tmpchk.paddr(11 downto 0) := tmpchk.paddr(11 downto 0) or dci.maddress(11 downto 0);
     else
       tmpchk.paddr(11 downto 0) := tmpchk.paddr(11 downto 0) or
-                                   v_repl(v_repl'high)(11 downto 0);
+                                   vaddr_in(11 downto 0);
     end if;
-    -- end if;
     if enabled = '1' and check = '1' then
       if tmpchk.hit = '0'then
       else
@@ -1083,21 +1158,21 @@ architecture rtl of cctrlnv is
     end if;
 
     -- Select bus width from TLB unless 4 GiB entry, then decode from virt addr
-    vbusw := dec_wbmask_fixed(v_repl(v_repl'high)(ahbo.haddr'high downto 2), wbmask);
+    vbusw := dec_wbmask_fixed(vaddr_in(ahbo.haddr'high downto 2), wbmask);
     if mask(1) = '0' then
       tmpchk.busw := tmpchk.busw or vbusw;
     end if;
 
     -- Select cacheability from TLB unless cache is off
     if enabled = '0' then
-      tmpchk.cached := ahb_slv_dec_cache(v_repl(v_repl'high)(ahbo.haddr'range), ahbso, cached);
+      tmpchk.cached := ahb_slv_dec_cache(vaddr_in(ahbo.haddr'range), ahbso, cached);
     end if;
 
     tlbchk := tmpchk;
   end;
 
   type line_info is record
-    tag   : cword3;    -- From libiu5 (32 bit)
+    tag   : cword3;    -- From libiunv (32 bit)
   end record;
   type line_info_arr is array (integer range <>) of line_info;  -- Array of sets
 
@@ -1145,14 +1220,14 @@ architecture rtl of cctrlnv is
     validv := tmpvalidv;
   end;
 
-  procedure itags_check(cramo   : nv_cram_out_type;       paddr   : std_logic_vector;
+  procedure itags_check(cramo   : nv_cram_out_type;     paddr   : std_logic_vector;
                         enabled : std_logic;            ten     : std_logic;
                         tlbhit  : std_logic;
                         set     : out std_logic_vector; validv  : out std_logic_vector;
                         hitv    : out std_logic_vector; hit     : out std_logic;
                         badtag  : out std_logic) is
     -- No separate valid bits for instruction cache, so use dummy zero length index.
-    constant dummy : std_logic_vector(0 downto 1) := (others => '0');
+    variable dummy : std_logic_vector(0 downto 1) := (others => '0');
     -- Non-constant
     variable info : line_info_arr(i_ways'range);
   begin
@@ -1164,7 +1239,7 @@ architecture rtl of cctrlnv is
     tags_check(info, paddr, enabled, ten, tlbhit, dummy, set, validv, hitv, hit, badtag);
   end;
 
-  procedure dtags_check(dcramo  : nv_cram_out_type;       paddr  : std_logic_vector;
+  procedure dtags_check(dcramo  : nv_cram_out_type;     paddr  : std_logic_vector;
                         enabled : std_logic;            ten    : std_logic;
                         tlbhit  : std_logic;            index  : std_logic_vector;
                         set     : out std_logic_vector; validv : out std_logic_vector;
@@ -1185,7 +1260,7 @@ begin
 
   comb: process(r, rs, rst, ici, dci, ahbi, ahbsi, ahbso, cramo, csr, fpuholdn, hclken, fpc_miso, c2c_miso)
 
-    impure function mmu_base return std_logic_vector is
+    function mmu_base(r : cctrlnv_regs; csr : csrtype) return std_logic_vector is
     begin
       if is_riscv then
         return gaisler.mmucacheconfig.satp_base(riscv_mmu, csr.satp);
@@ -1195,7 +1270,7 @@ begin
     end;
 
     -- Return current context, cut down to appropriate size.
-    impure function mmu_ctx return std_logic_vector is
+    function mmu_ctx(r : cctrlnv_regs; csr : csrtype) return std_logic_vector is
     begin
       if is_riscv then
         return gaisler.mmucacheconfig.satp_asid(riscv_mmu, csr.satp)(ctxword'range);
@@ -1204,8 +1279,11 @@ begin
       end if;
     end;
 
-    impure function mmu_enabled return std_logic is
+    function mmu_enabled(r : cctrlnv_regs; csr : csrtype) return std_logic is
     begin
+      if no_mmu then
+        return '0';
+      end if;
       if is_riscv then
         if gaisler.mmucacheconfig.satp_mode(riscv_mmu, csr.satp) /= 0 then
           return '1';
@@ -1218,7 +1296,7 @@ begin
     end;
 
     -- This returns '1' if I$ is enabled/frozen!
-    impure function icache_active return std_logic is
+    function icache_active(r : cctrlnv_regs) return std_logic is
     begin
       if is_riscv then
         return r.cctrl.ics(0);
@@ -1227,7 +1305,7 @@ begin
       end if;
     end;
 
-    impure function icache_enabled return boolean is
+    function icache_enabled(r : cctrlnv_regs) return boolean is
     begin
       if is_riscv then
         return r.cctrl.ics = "11";
@@ -1237,7 +1315,7 @@ begin
     end;
 
     -- This returns '1' if D$ is enabled/frozen!
-    impure function dcache_active return std_logic is
+    function dcache_active(r : cctrlnv_regs) return std_logic is
     begin
       if is_riscv then
         return r.cctrl.dcs(0);
@@ -1246,7 +1324,7 @@ begin
       end if;
     end;
 
-    impure function dcache_enabled return boolean is
+    function dcache_enabled(r : cctrlnv_regs) return boolean is
     begin
       if is_riscv then
         return r.cctrl.dcs = "11";
@@ -1315,8 +1393,8 @@ begin
     function getdmask(addr : std_logic_vector;
                       size : std_logic_vector(1 downto 0);
                       le   : boolean) return std_logic_vector is
-      constant vaddr : std_logic_vector(addr'length - 1 downto 0) := addr;
-      constant vsize : std_logic_vector(size'length - 1 downto 0) := size;
+      variable vaddr : std_logic_vector(addr'length - 1 downto 0) := addr;
+      variable vsize : std_logic_vector(size'length - 1 downto 0) := size;
       -- Non-constant
       variable dmask : std_logic_vector(3 downto 0)               := "1111";
     begin
@@ -1348,8 +1426,8 @@ begin
     function getdmask64(addr : std_logic_vector;
                         size : std_logic_vector;
                         le : boolean) return std_logic_vector is
-      constant vaddr : std_logic_vector(addr'length - 1 downto 0) := addr;
-      constant vsize : std_logic_vector(size'length - 1 downto 0) := size;
+      variable vaddr : std_logic_vector(addr'length - 1 downto 0) := addr;
+      variable vsize : std_logic_vector(size'length - 1 downto 0) := size;
       -- Non-constant
       variable dmask : std_logic_vector(7 downto 0)               := "11111111";
     begin
@@ -1380,7 +1458,7 @@ begin
 
     function cache_cfg5(crepl, sets, linesize, setsize, lock, snoop,
                         lram, lramsize, lramstart, mmuen : integer) return std_logic_vector is
-      variable cfg : std_logic_vector(31 downto 0);
+      variable cfg : word32;
     begin
       cfg := (others => '0');
       if sets /= 1 then
@@ -1430,33 +1508,39 @@ begin
     variable odco      : nv_dcache_out_type;
     variable oahbo     : ahb_mst_out_type;
     variable ocrami    : nv_cram_in_type;
-    variable ihit, ivalid, ibufaddrmatch : std_ulogic;
-    variable ihitv, ivalidv : std_logic_vector(i_ways'range);
+    variable ihit      : std_ulogic;
+    variable ivalid    : std_ulogic;
+    variable ibufaddrmatch : std_ulogic;
+    variable ihitv     : std_logic_vector(i_ways'range);
+    variable ivalidv   : std_logic_vector(i_ways'range);
     variable iset      : std_logic_vector(maximum(1, log2(ISETS)) - 1 downto 0);
     variable icont     : std_ulogic;
     variable itlbchk   : tlbcheck;
     variable ilruent   : lruent;
-    variable dhitv, dvalidv : std_logic_vector(d_ways'range);
-    variable dhit, dvalid   : std_ulogic;
-    variable dtagx          : cword3;
-    variable dset           : std_logic_vector(1 downto 0);
-    variable dasi           : std_logic_vector(7 downto 0);
-    variable dsu            : std_ulogic;
-    variable dlock          : std_ulogic;
-    variable dspecialasi, dforcemiss : std_ulogic;
-    variable dtlbchk   : tlbcheck;
-    variable dtlb_write, dtlb_lock : std_ulogic;
+    variable dhitv     : std_logic_vector(d_ways'range);
+    variable dvalidv   : std_logic_vector(d_ways'range);
+    variable dhit      : std_ulogic;
+    variable dvalid    : std_ulogic;
+    variable dset      : std_logic_vector(1 downto 0);
+    variable dasi      : std_logic_vector(7 downto 0);
+    variable dsu       : std_ulogic;
+    variable dlock     : std_ulogic;
+    variable dspecialasi : std_ulogic;
+    variable dforcemiss  : std_ulogic;
+    variable dtlbchk     : tlbcheck;
+    variable dtlb_write  : std_ulogic;
+    variable dtlb_lock   : std_ulogic;
     variable dtenall   : std_ulogic;
     variable dlruent   : lruent;
     variable vaddr4    : std_logic_vector(3 downto 0);
     variable vaddr3    : std_logic_vector(2 downto 0);  -- sub field for ASI
     variable fastwr    : std_ulogic;                    -- simple write
     variable vdiagasi  : std_logic_vector(1 downto 0);
-    variable d64       : std_logic_vector(63 downto 0);
+    variable d64       : word64;
     variable dwriting  : std_ulogic;
-    variable d32       : std_logic_vector(31 downto 0);
+    variable d32       : word32;
 
-    variable rdb64     : std_logic_vector(63 downto 0);
+    variable rdb64     : word64;
     alias    rdb32    is rdb64(31 downto 0);
     variable rdb32v    : std_ulogic;
     variable rdb64v    : std_ulogic;
@@ -1467,7 +1551,7 @@ begin
     variable vtmp2     : std_logic_vector(1 downto 0);
     variable vtmp3     : std_logic_vector(2 downto 0);
     variable vwdata128 : std_logic_vector(127 downto 0);
-    variable vwdata64  : std_logic_vector(63 downto 0);
+    variable vwdata64  : word64;
     variable vwdata    : std_logic_vector(cdataw - 1 downto 0);
     variable vwad      : std_logic_vector(4 downto 3);
     variable vtmp4i    : std_logic_vector(0 to MAXSETS - 1);
@@ -1491,14 +1575,14 @@ begin
     variable pmp_direct : std_logic;
     variable pmp_type  : std_logic_vector(1 downto 0);
     variable pmp_xc    : std_ulogic;
-    variable pmp_cause : wordx;
-    variable pmp_tval  : wordx;
+    variable pmp_cause : std_logic_vector(3 downto 0);    -- Dummies
+    variable pmp_tval  : std_logic_vector(3 downto 0);    -- Dummies
     variable pmp_mmu   : boolean;
 
     variable pmp_dfail : boolean;
 
     variable start_walk : boolean;
-    variable mmu_data  : std_logic_vector(63 downto 0);   -- To fake MMU page table data from mmu_base.
+    variable mmu_data  : word64;         -- To fake MMU page table data from mmu_base.
 
     variable iaddr_ok  : boolean;
     variable daddr_ok  : boolean;
@@ -1509,15 +1593,16 @@ begin
     variable d_exctype : std_ulogic;     --  0 - page fault, 1 - access fault (PMP/bus)
 
     -- Atomic operations
-    variable amo_op     : std_logic_vector(3 downto 0);
-    variable amo_src1   : std_logic_vector(63 downto 0);
-    variable amo_src2   : std_logic_vector(63 downto 0);
-    variable amo_data   : std_logic_vector(63 downto 0);
+    variable amo_op    : std_logic_vector(3 downto 0);
+    variable amo_src1  : word64;
+    variable amo_src2  : word64;
+    variable amo_data  : word64;
+
 
     -- Get cache control parameters
     function get_ccr(r : cctrlnv_regs; rs : cctrlnv_snoop_regs) return std_logic_vector is
       -- Non-constant
-      variable ccr : std_logic_vector(31 downto 0) := (others => '0');
+      variable ccr : word32 := (others => '0');
     begin
       ccr(23) := r.cctrl.dsnoop;
       ccr(17) := '1';
@@ -1530,7 +1615,7 @@ begin
     -- Set cache control parameters
     procedure set_ccr(val : std_logic_vector) is
       -- Non-constant
-      variable vx : std_logic_vector(31 downto 0) := val;
+      variable vx : word32 := val;
     begin
       v.cctrl.dsnoop  := vx(23);
       v.dflushpend    := v.dflushpend or vx(22);
@@ -1602,7 +1687,7 @@ begin
     end decwrap;
 
     function flushmatch(e : tlbent; vaddr : std_logic_vector; curctx : std_logic_vector) return std_ulogic is
-      constant fltp    : std_logic_vector(3 downto 0) := vaddr(11 downto 8);
+      variable fltp    : std_logic_vector(3 downto 0) := vaddr(11 downto 8);
       -- Non-constant
       variable r       : std_ulogic := '0';
       variable acctype : std_ulogic := '0';
@@ -1647,11 +1732,11 @@ begin
         end if;
       end loop;
       if validv(0) = '0' then                         -- First if unused
-        hitv(0) := '1';
+        hitv(0)   := '1';
       end if;
       if all_1(validv) then                           -- LRU
-        vtmp4i := decwrap(lruent(4 downto 3), validv'length);
-        hitv   := hitv or vtmp4i(hitv'range);
+        vtmp4i    := decwrap(lruent(4 downto 3), validv'length);
+        hitv      := hitv or vtmp4i(hitv'range);
       end if;
 
       return hitv;
@@ -1659,8 +1744,7 @@ begin
 
     procedure burst_update(linesize       : in integer; wide : in boolean;
                            ahb_htrans_out : out std_logic_vector;
-                           ahb_haddr_out  : out std_logic_vector;
-                           keepreq_out    : out std_logic) is
+                           ahb_haddr_out  : out std_logic_vector) is
       -- Non-constant
       variable ahb_htrans : std_logic_vector(HTRANS_IDLE'range)   := r.ahb_htrans;
       variable ahb_haddr  : std_logic_vector(ahb_haddr_out'range) := r.ahb_haddr;
@@ -1682,7 +1766,7 @@ begin
           ahb_htrans := HTRANS_SEQ;
           -- Was last address the final one?
           if all_1(r.ahb_haddr(log2(linesize * 4) - 1 downto log2(busw / 8))) and
-             (all_1(r.ahb_haddr(log2(busw / 8) - 1 downto 2)) or wide) then
+            (all_1(r.ahb_haddr(log2(busw / 8) - 1 downto 2)) or wide) then
             ahb_htrans := HTRANS_IDLE;
           end if;
         elsif r.ahb2_inacc = '1' and ahbi.hresp(1) = '1' then
@@ -1695,16 +1779,9 @@ begin
           ahb_htrans := HTRANS_NONSEQ;
         end if;
       end if;
-      keepreq := '1';
-      -- Is upcoming address the final one?
-      if all_1(ahb_haddr(log2(linesize * 4) - 1 downto log2(busw / 8))) and
-         (all_1(ahb_haddr(log2(busw / 8) - 1 downto 2)) or wide) then
-        keepreq := '0';
-      end if;
 
       ahb_htrans_out := ahb_htrans;
       ahb_haddr_out  := ahb_haddr;
-      keepreq_out    := keepreq;
     end;
 
   begin
@@ -1719,7 +1796,6 @@ begin
 
     d_mexc    := '0';
     d_exctype := '0';
---    d_exctype := r.dfailkind(0);
     i_mexc    := '0';
     i_exctype := '0';
 
@@ -1728,21 +1804,21 @@ begin
     iaddr_ok  := true;
     daddr_ok  := true;
 
-    pmp_prv   := (others => '0');
-    pmp_mprv  := '0';
-    pmp_mpp   := (others => '0');
-    pmp_virt  := (others => '0');
-    pmp_addr  := (others => '0');
-    pmp_iaddr := (others => '0');
-    pmp_size  := (others => '0');
-    pmp_acc   := (others => '0');
-    pmp_valid := '0';
+    pmp_prv    := (others => '0');
+    pmp_mprv   := '0';
+    pmp_mpp    := (others => '0');
+    pmp_virt   := (others => '0');
+    pmp_addr   := (others => '0');
+    pmp_iaddr  := (others => '0');
+    pmp_size   := (others => '0');
+    pmp_acc    := (others => '0');
+    pmp_valid  := '0';
     pmp_direct := '0';
-    pmp_type  := (others => '0');
-    pmp_xc    := '0';
-    pmp_cause := (others => '0');
-    pmp_tval  := (others => '0');
-    pmp_mmu   := false;
+    pmp_type   := (others => '0');
+    pmp_xc     := '0';
+    pmp_cause  := (others => '0');
+    pmp_tval   := (others => '0');
+    pmp_mmu    := false;
 
     oico.data     := cramo.idatadout;
     oico.set      := "00";
@@ -1754,7 +1830,6 @@ begin
     oico.diagdata := (others => '0');
     oico.mds      := '1';
     oico.cfg      := (others => '0');
-    oico.cstat    := cstat_none;
     oico.bpmiss   := r.ibpmiss;
     oico.eocl     := '0';
     if r.i2pc(2) = '1' and r.i2pc(3) = '1' and (ilinesize = 4 or r.i2pc(4) = '1') then
@@ -1772,11 +1847,7 @@ begin
     odco.hold     := r.holdn;
     odco.mds      := '1';
     odco.werr     := r.werr;
-    odco.icdiag   := (addr   => (others => '0'), enable => '0', read => '0', tag => '0', ctx => '0',
-                      flush  => '0', ilramen => '0', cctrl => r.cctrl,
-                      pflush => '0', pflushaddr => (others => '0'), pflushtyp => '0');
     odco.cache    := '0';
-    odco.cstat    := cstat_none;
     odco.wbhold   := '0';
     odco.badtag   := '0';
     odco.logan    := (others => '0');
@@ -1818,7 +1889,7 @@ begin
     -- Mux current 64 bit part of fetched RAM data for I$.
     for x in 0 to LINESZMAX / 2 - 1 loop
       if r.iramaddr = u2slv(x, r.iramaddr'length) then
-        if not ENDIAN then
+        if not ENDIAN_B then
           ocrami.idatadin := get(r.ahb3_rdbuf, (LINESZMAX / 2 - 1 - x) * 64, 64);
         else
           ocrami.idatadin := get(r.ahb3_rdbuf, x * 64, 64);
@@ -1858,16 +1929,16 @@ begin
       ocrami.ddatadin(w) := dci.edata;
     end loop;
 
-    vwad := (others => '0');
+    vwad        := (others => '0');
     vwad(d_line'high downto DLINE_LOW_REAL) := r.dramaddr;
-    vwdata128 := r.ahb3_rdbuf(4 * 32 - 1 downto 0);
-    if (vwad(4) = '0') xor ENDIAN then
+    vwdata128   := r.ahb3_rdbuf(4 * 32 - 1 downto 0);
+    if (vwad(4) = '0') xor ENDIAN_B then
       vwdata128 := r.ahb3_rdbuf(LINESZMAX * 32 - 1 downto LINESZMAX * 32 - 128);
     end if;
-    if (vwad(3) = '0') xor ENDIAN then
-      vwdata64 := vwdata128(127 downto 64);
+    if (vwad(3) = '0') xor ENDIAN_B then
+      vwdata64  := vwdata128(127 downto 64);
     else
-      vwdata64 := vwdata128(63 downto 0);
+      vwdata64  := vwdata128(63 downto 0);
     end if;
     if r.s = as_dcfetch then
       for x in 0 to 3 loop
@@ -1885,7 +1956,7 @@ begin
     -- ICache TLB lookup
     -- Note that this is for the previous (registered) access.
     -- Note that this is done in parallel with cache fetch (registered access).
-    if is_riscv and (r.i1m = '1' or mmu_enabled = '0') then
+    if is_riscv and (r.i1m = '1' or mmu_enabled(r, csr) = '0') then
       itlbchk         := tlbcheck_none;
       -- Some non-defaults to "fake" an MMU access
       itlbchk.hit     := '1';
@@ -1909,98 +1980,10 @@ begin
         end if;
       end if;
       -- Pass along actual r.i1pc too, for LEON5 code equivalence.
-      tlb_lookup('1', r.itlb, r.i1pc_repl & r.i1pc, "0", mmu_ctx, r.i1su, '0', '0',
-                 mmu_enabled and not r.i1m, r.i1ten, '0', ici.inull, r.i1rep, '0',
+      tlb_lookup('1', r.itlb, r.i1pc_repl , r.i1pc, "0", mmu_ctx(r, csr), r.i1su, '0', '0',
+                 mmu_enabled(r, csr) and not r.i1m, r.i1ten, '0', ici.inull, r.i1rep, '0',
                  v.itlb, itlbchk, '0', '0', false);
     end if;
-
-    -- "free running" TLB id register used in probe state
-    v.itlbprobeid := itlbchk.id;
-
-    -- Note that this is for the previous (registered) access.
-    itags_check(cramo, itlbchk.paddr, mmu_enabled and not r.i1m, r.i1ten,
-                itlbchk.hit, iset, ivalidv, ihitv, ihit, oico.badtag);
-
-    ihitv  := ihitv and ivalidv;
-
-    if r.i1rep = '1' then
-      ihitv     := r.irephitv;
-      ivalidv   := r.irepvalidv;
-      iset      := r.irepset;
-      ihit      := ihitv(u2i(iset));
---      ivalid    := ivalidv(u2i(iset));    -- unused
-      oico.data := r.irepdata;
-      itlbchk.hit   := r.ireptlbhit;
-      itlbchk.paddr := r.ireptlbpaddr;
-      itlbchk.id    := r.ireptlbid;
-    end if;
-
-    ibufaddrmatch := '0';
-    -- If line fetch buffer filling, look for hit in it.
-    if r.irdbufen = '1' then
-      ihit := '0';
-      if r.i1pc(r.irdbufvaddr'range) = r.irdbufvaddr then
-        ibufaddrmatch := '1';
-        if not ENDIAN then
-          if r.ahb3_rdbvalid(LINESZMAX - 1 - u2i(r.i1pc(i_linew'range))) = '1' then
-            ihit := '1';
-          end if;
-        else
-          if r.ahb3_rdbvalid(u2i(r.i1pc(i_linew'range))) = '1' then
-            ihit := '1';
-          end if;
-        end if;
-      end if;
-    elsif r.i1cont = '1' then
-      ihitv   := r.i2hitv;
-      ivalidv := r.i2validv;
-      ihit    := orv(r.i2hitv);
-      iset    := (others => '0');
-      for x in i_ways'range loop
-        if ihitv(x) = '1' then
-          iset := iset or u2slv(x, iset'length);
-        end if;
-      end loop;
-    end if;
-
-    oico.set             := (others => '0');
-    oico.set(iset'range) := iset;
-    if IMUXDATA then
-      oico.data(0) := oico.data(u2i(oico.set));
-      oico.set     := (others => '0');
-    end if;
-
-    if r.imisspend = '1' or r.ifailkind(1) = '1' then
-      oico.mds := '0';
-    end if;
-    if r.irdbufen = '1' then
-      -- Mux out buffer data
-      oico.set := "00";
-      for x in 0 to LINESZMAX / 2 - 1 loop
-        if (r.imisspend = '1' and u2i(r.i2pc(BUF_HIGH downto 3)) = x) or
-           (r.imisspend = '0' and u2i(r.i1pc(BUF_HIGH downto 3)) = x) then
-          if not ENDIAN then
-            oico.data(0) := get(r.ahb3_rdbuf, (LINESZMAX / 2 - x) * 64 - 64, 64);
-          else
-            oico.data(0) := get(r.ahb3_rdbuf, x * 64, 64);
-          end if;
-        end if;
-        -- Allow for streaming from read data buffer
-
-        if r.imisspend = '1' and r.i2bufmatch = '1' and u2i(r.i2pc(BUF_HIGH downto 3)) = x then
-          if not ENDIAN then
-            if get(r.ahb3_rdbvalid, LINESZMAX - 2 * x - 2, 2) = "11" then
-              v.imisspend := '0';
-            end if;
-          else
-            if get(r.ahb3_rdbvalid, 2 * x, 2) = "11" then
-              v.imisspend := '0';
-            end if;
-          end if;
-        end if;
-      end loop;
-    end if;
-
 
     -- PMP - a separate unit is needed for cached instruction fetch!
     if is_riscv then
@@ -2014,27 +1997,140 @@ begin
           pmp_iaddr(r.i1pc'range) := r.i1pc;
         end if;
       end if;
+      -- Machine, supervisor or user mode?
+      pmp_prv     := PRIV_LVL_M;
+      if r.i1m = '0' then
+        pmp_prv   := PRIV_LVL_S;
+        if r.i1su = '0' then
+          pmp_prv := PRIV_LVL_U;
+        end if;
+      end if;
       if pmpen then
-        pmp_unit(csr.prv, csr.precalc, csr.pmpcfg0, csr.pmpcfg2,
-                 csr.mprv, csr.mpp,
+        pmp_unit(pmp_prv, csr.precalc, csr.pmpcfg0, csr.pmpcfg2,
+                 pmp_mprv, pmp_mpp,   -- Not used for execution
                  r.i1pc, pmp_iaddr,
-                 "11", PMP_ACCESS_X,
-                 r.i1ten and not ici.inull,
+                 "11", PMP_ACCESS_X,  -- Always 8 byte access
+--                 r.i1ten and not ici.inull,
+                 r.i1ten,
                  pmp_xc, pmp_cause, pmp_tval,
                  pmp_entries, pmp_no_tor, pmp_g, pmp_msb);
+        if itlbchk.hit = '0' then
+          pmp_xc := '0';
+        end if;
       end if;
       if addr_check_mask(6) = '0' then
         pmp_xc := '0';
       end if;
       if pmp_xc = '1' then
         v.ifailkind := "11";
+      elsif r.imisspend = '0' then
+        v.ifailkind := "00";
       end if;
     end if;
 
     if is_riscv and not iaddr_ok then
-      -- Signal page/access fault
-      v.ifailkind := "1" & (r.i1m or not mmu_enabled);
+      if itlbchk.hit = '1' then
+        -- Signal page/access fault
+        v.ifailkind := "1" & (r.i1m or not mmu_enabled(r, csr));
+      end if;
     end if;
+
+
+
+    -- "free running" TLB id register used in probe state
+    v.itlbprobeid := itlbchk.id;
+
+    -- Note that this is for the previous (registered) access.
+    itags_check(cramo, itlbchk.paddr, mmu_enabled(r, csr) and not r.i1m, r.i1ten,
+                itlbchk.hit, iset, ivalidv, ihitv, ihit, oico.badtag);
+
+    ihitv  := ihitv and ivalidv;
+
+
+    if v.ifailkind(1) = '1' then
+      itlbchk.hit := '0';
+      ihit        := '0';
+      ihitv       := (others => '0');
+    end if;
+
+    if r.i1rep = '1' then
+      ihitv         := r.irephitv;
+      ivalidv       := r.irepvalidv;
+      iset          := r.irepset;
+      ihit          := ihitv(u2i(iset));
+      oico.data     := r.irepdata;
+      itlbchk.hit   := r.ireptlbhit;
+      itlbchk.paddr := r.ireptlbpaddr;
+      itlbchk.id    := r.ireptlbid;
+      v.ifailkind   := r.irepfailkind;
+    end if;
+
+    ibufaddrmatch := '0';
+    -- If line fetch buffer filling, look for hit in it.
+    if r.irdbufen = '1' and v.ifailkind(1) = '0' then
+      ihit       := '0';
+      if r.i1pc(r.irdbufvaddr'range) = r.irdbufvaddr then
+        ibufaddrmatch := '1';
+        if not ENDIAN_B then
+          if r.ahb3_rdbvalid(LINESZMAX - 1 - u2i(r.i1pc(i_linew'range))) = '1' then
+            ihit := '1';
+          end if;
+        else
+          if r.ahb3_rdbvalid(u2i(r.i1pc(i_linew'range))) = '1' then
+            ihit := '1';
+          end if;
+        end if;
+      end if;
+    elsif r.i1cont = '1' and v.ifailkind(1) = '0' then
+      ihitv    := r.i2hitv;
+      ivalidv  := r.i2validv;
+      ihit     := orv(r.i2hitv);
+      iset     := (others => '0');
+      for x in i_ways'range loop
+        if ihitv(x) = '1' then
+          iset := iset or u2slv(x, iset'length);
+        end if;
+      end loop;
+    end if;
+
+    oico.set             := (others => '0');
+    oico.set(iset'range) := iset;
+    if IMUXDATA then
+      oico.data(0)       := oico.data(u2i(oico.set));
+      oico.set           := (others => '0');
+    end if;
+
+    if r.imisspend = '1' then
+      oico.mds := '0';
+    end if;
+    if r.irdbufen = '1' then
+      -- Mux out buffer data
+      oico.set           := "00";
+      for x in 0 to LINESZMAX / 2 - 1 loop
+        if (r.imisspend = '1' and u2i(r.i2pc(BUF_HIGH downto 3)) = x) or
+           (r.imisspend = '0' and u2i(r.i1pc(BUF_HIGH downto 3)) = x) then
+          if not ENDIAN_B then
+            oico.data(0) := get(r.ahb3_rdbuf, (LINESZMAX / 2 - x) * 64 - 64, 64);
+          else
+            oico.data(0) := get(r.ahb3_rdbuf, x * 64, 64);
+          end if;
+        end if;
+        -- Allow for streaming from read data buffer
+
+        if r.imisspend = '1' and r.i2bufmatch = '1' and u2i(r.i2pc(BUF_HIGH downto 3)) = x then
+          if not ENDIAN_B then
+            if get(r.ahb3_rdbvalid, LINESZMAX - 2 * x - 2, 2) = "11" then
+              v.imisspend := '0';
+            end if;
+          else
+            if get(r.ahb3_rdbvalid, 2 * x, 2) = "11" then
+              v.imisspend := '0';
+            end if;
+          end if;
+        end if;
+      end loop;
+    end if;
+
 
     -- Main hit/miss checking logic (v.imisspend propagates to main FSM)
     -- Stage 2 ITLB update in case of hit
@@ -2048,8 +2144,8 @@ begin
     end if;
 --pragma translate_on
     if r.holdn = '1' then
-      vway := "00";
-      vhit := '0';
+      vway     := "00";
+      vhit     := '0';
       for x in r.i2hitv'range loop
         if r.i2hitv(x) = '1' then
           vhit := '1';
@@ -2063,21 +2159,21 @@ begin
 
     -- Stage 1 tag check (insn in fetch stage)
     if r.holdn = '1' then
-      v.ibpmiss := '0';
+      v.ibpmiss    := '0';
     end if;
     if r.holdn = '1' then
-      dbg(0)       <= '1';
-      v.i2pc       := r.i1pc;
-      v.i2paddr    := itlbchk.paddr;
-      v.i2paddrv   := itlbchk.hit;
-      v.i2tlbhit   := itlbchk.hit;
-      v.i2tlbid    := itlbchk.id;
-      v.i2busw     := itlbchk.busw;
-      v.i2paddrc   := itlbchk.cached;
-      v.i2ctx      := r.i1ctx;
-      v.i2su       := r.i1su;
-      v.i2m        := r.i1m;
-      v.i2bufmatch := ibufaddrmatch;
+      dbg(0)          <= '1';
+      v.i2pc          := r.i1pc;
+      v.i2paddr       := itlbchk.paddr;
+      v.i2paddrv      := itlbchk.hit;
+      v.i2tlbhit      := itlbchk.hit;
+      v.i2tlbid       := itlbchk.id;
+      v.i2busw        := itlbchk.busw;
+      v.i2paddrc      := itlbchk.cached;
+      v.i2ctx         := r.i1ctx;
+      v.i2su          := r.i1su;
+      v.i2m           := r.i1m;
+      v.i2bufmatch    := ibufaddrmatch;
       if r.irdbufen = '0' then
         v.i2validv    := ivalidv;
         v.i2hitv      := ihitv;
@@ -2100,6 +2196,7 @@ begin
         v.ireptlbhit   := itlbchk.hit;
         v.ireptlbpaddr := itlbchk.paddr;
         v.ireptlbid    := itlbchk.id;
+        v.irepfailkind := v.ifailkind;
       end if;
     end if;
 
@@ -2108,20 +2205,20 @@ begin
       -- NOTE: Assuming read-hold behavior
       v.i1ten := '0';
     end if;
-    if (r.holdn = '1' or r.ramreload = '1') and icache_active = '1' then
+    if (r.holdn = '1' or r.ramreload = '1') and icache_active(r) = '1' then
       ocrami.itagen  := (others => '1');
       ocrami.idataen := (others => '1');
       v.i1ten := '1';
     end if;
     icont := '0';
     if ici.rbranch = '0' and not all_1(ici.fpc(ILINE_HIGH downto ILINE_LOW)) then
-      icont := '1';
+      icont    := '1';
     end if;
     if r.i1ten = '0' and r.i1cont = '0' then
-      icont := '0';
+      icont    := '0';
     end if;
     if r.i1cont = '0' and ici.inull = '1' then
-      icont := '0';
+      icont    := '0';
     end if;
     if r.ramreload = '1' then
       icont    := '0';
@@ -2133,35 +2230,36 @@ begin
     if icont = '1' and r.i1cont = '1' then
       ocrami.idataen(i_ways'range) := ocrami.idataen(i_ways'range) and r.i2hitv;
     end if;
-    if icache_active = '0' then
-      icont := '0';
+    if icache_active(r) = '0' then
+      icont    := '0';
     end if;
     if r.holdn = '1' then
+      -- Integer pipeline not stalling itself?
       if ici.iustall = '0' then
-        v.i1pc   := ici.rpc(v.i1pc'range);
-        v.i1su   := ici.su;
-        v.i1m    := '0';
+        v.i1pc     := ici.rpc(v.i1pc'range);
+        v.i1su     := ici.su;
+        v.i1m      := '0';
         if is_riscv then
           -- Machine, supervisor or user mode?
           if csr.prv = PRIV_LVL_M then
-            v.i1m := '1';
+            v.i1m  := '1';
           end if;
-          v.i1su := '0';
+          v.i1su   := '0';
           if csr.prv = PRIV_LVL_S then
             v.i1su := '1';
           end if;
         end if;
-        v.i1cont := icont;
-        v.i1ctx  := mmu_ctx;
+        v.i1cont   := icont;
+        v.i1ctx    := mmu_ctx(r, csr);
       end if;
-      v.i1rep := ici.iustall;
+      v.i1rep      := ici.iustall;
     end if;
     if r.ramreload = '1' then
-      v.i1rep := '0';
+      v.i1rep      := '0';
     end if;
 
 
-    -- select input data for Icache
+    -- Select input data for Icache
 
     --------------------------------------------------------------------------
     -- DCache logic
@@ -2177,7 +2275,7 @@ begin
       dtlb_lock  := r.d2lock;
     end if;
 
-    if is_riscv and (r.d1m = '1' or mmu_enabled = '0') then
+    if is_riscv and (r.d1m = '1' or mmu_enabled(r, csr) = '0') then
       -- From tlb_lookup and dummy TLB entry.
       dtlbchk        := tlbcheck_none;
       -- Some non-defaults to "fake" an MMU access
@@ -2199,14 +2297,14 @@ begin
         end if;
       end if;
       -- Pass along actual rd1vaddr too, for LEON5 code equivalence.
-      tlb_lookup('0', r.dtlb, r.d1vaddr_repl & r.d1vaddr, dci.maddress, mmu_ctx, r.d1su, dtlb_write, dtlb_lock,
-                 mmu_enabled and not r.d1m, r.d1chk, r.d1specialasi, dci.nullify, '0', dci.dsuen,
+      tlb_lookup('0', r.dtlb, r.d1vaddr_repl , r.d1vaddr, dci.maddress, mmu_ctx(r, csr), r.d1su, dtlb_write, dtlb_lock,
+                 mmu_enabled(r, csr) and not r.d1m, r.d1chk, r.d1specialasi, dci.nullify, '0', dci.dsuen,
                  v.dtlb, dtlbchk, r.d1sum, r.d1mxr, false);
     end if;
 
     -- Note that this is for the previous (registered) access.
     -- Note that this is done in parallel with cache fetch (registered access).
-    dtags_check(cramo, dtlbchk.paddr, mmu_enabled and not r.d1m, r.d1ten,
+    dtags_check(cramo, dtlbchk.paddr, mmu_enabled(r, csr) and not r.d1m, r.d1ten,
                 dtlbchk.hit, r.d1vaddr(d_index'range),
                 dset, dvalidv, dhitv, dhit, odco.badtag);
     if r.d1ten = '1' then
@@ -2214,6 +2312,7 @@ begin
       else
       end if;
     end if;
+
 
     -- Note: dhit is AND:ed with valid, but dhitv is _not_ AND:ed with validv
     -- If we miss due to valid bit being zero after a snoop hit we want
@@ -2233,7 +2332,7 @@ begin
       dsu         := r.d2su;
     end if;
 
-    dlock := dci.lock;
+    dlock   := dci.lock;
     if r.holdn = '0' then
       dlock := r.d2lock;
     end if;
@@ -2242,10 +2341,10 @@ begin
     -- PMP
     if is_riscv then
       pmp_acc   := PMP_ACCESS_R;
-      if dci.write = '1' then
+      if dtlb_write = '1' then
         pmp_acc := PMP_ACCESS_W;
       end if;
-      pmp_addr := (others => '0');
+      pmp_addr  := (others => '0');
       if r.d1m = '0' then
         pmp_addr(dtlbchk.paddr'range) := dtlbchk.paddr;
       else
@@ -2259,10 +2358,12 @@ begin
       pmp_type  := "01";
       -- Only check if access now and it hit in the TLB (otherwise address is wrong).
       pmp_valid := r.d1chk and dtlbchk.hit and not dci.nullify and not dspecialasi;
-      if r.slowwrpend = '1' and dspecialasi = '0' and dci.nullify = '0' then
         -- Also check if slow write with finished TLB lookup.
+      if r.dtlbrecheck = '1' and r.d1ten = '1' then
+        -- Also check if delayed access with finished TLB lookup.
         pmp_valid := pmp_valid or dtlbchk.hit;
-        pmp_addr := r.d2paddr;
+        pmp_addr := (others => '0');
+        pmp_addr(dtlbchk.paddr'range) := dtlbchk.paddr;
         pmp_size := r.d2size;
         if pmp_valid = '1' then
         end if;
@@ -2299,8 +2400,8 @@ begin
     end if;
 --pragma translate_on
     if r.holdn = '1' then
-      vway := "00";
-      vhit := '0';
+      vway     := "00";
+      vhit     := '0';
       for x in r.d2hitv'range loop
         if r.d2hitv(x) = '1' then
           vhit := '1';
@@ -2354,23 +2455,26 @@ begin
       v.d2nocache    := not dtlbchk.cached;
 
       if is_riscv and pmp_valid = '1' and not daddr_ok then
-        v.dfailkind := "1" & (r.d1m or not mmu_enabled);
+        v.dfailkind := "1" & (r.d1m or not mmu_enabled(r, csr));
+        v.dmisspend := '1';
       elsif is_riscv and pmp_valid = '1' and pmp_xc = '1' then
         v.dfailkind := "11";
---        v.d2paddrv := '0';
+        v.dmisspend := '1';
       else
         -- Do not do any of this if we fail on PMP!
 
         -- Set dcmiss pending bit for load cache miss
-        if (dci.nullify = '0' or dci.dsuen = '1') and not (dhit = '1' and dforcemiss = '0' and dspecialasi = '0' and dci.lock = '0') and dci.read = '1' then
+        if (dci.nullify = '0' or dci.dsuen = '1') and
+           not (dhit = '1' and dforcemiss = '0' and dspecialasi = '0' and dci.lock = '0') and
+           dci.read = '1' then
           v.dmisspend := '1';
         end if;
 
         -- Cache update for writes
         if dci.nullify = '0' and r.d1ten = '1' and dci.write = '1' and r.d1specialasi = '0' and r.amo.d1type(5) = '0' then
-          dwriting := '1';
+          dwriting                     := '1';
           ocrami.ddataen(d_ways'range) := dhitv;
-          ocrami.ddatawrite            := getdmask64(r.d1vaddr, dci.size, ENDIAN);
+          ocrami.ddatawrite            := getdmask64(r.d1vaddr, dci.size, ENDIAN_B);
         end if;
 
         -- Store buffer update for writes
@@ -2395,25 +2499,36 @@ begin
       end if;
     end if;
 
+    -- We need to check data PMP here if the TLB was just rechecked.
+    if is_riscv and r.holdn = '0' and r.dtlbrecheck = '1' and r.d1ten = '1' and pmp_valid = '1' then
+      if not daddr_ok then
+        v.dfailkind := "1" & (r.d1m or not mmu_enabled(r, csr));
+        v.dmisspend := '1';
+      elsif pmp_xc = '1' then
+        v.dfailkind := "11";
+        v.dmisspend := '1';
+      end if;
+    end if;
+
     -- Copied from above, to ensure no latches.
-    pmp_prv   := (others => '0');
-    pmp_mprv  := '0';
-    pmp_mpp   := (others => '0');
-    pmp_virt  := (others => '0');
-    pmp_addr  := (others => '0');
-    pmp_iaddr := (others => '0');
-    pmp_size  := (others => '0');
-    pmp_acc   := (others => '0');
-    pmp_valid := '0';
+    pmp_prv    := (others => '0');
+    pmp_mprv   := '0';
+    pmp_mpp    := (others => '0');
+    pmp_virt   := (others => '0');
+    pmp_addr   := (others => '0');
+    pmp_iaddr  := (others => '0');
+    pmp_size   := (others => '0');
+    pmp_acc    := (others => '0');
+    pmp_valid  := '0';
     pmp_direct := '0';
-    pmp_type  := (others => '0');
-    pmp_xc    := '0';
-    pmp_cause := (others => '0');
-    pmp_tval  := (others => '0');
-    pmp_mmu   := false;
+    pmp_type   := (others => '0');
+    pmp_xc     := '0';
+    pmp_cause  := (others => '0');
+    pmp_tval   := (others => '0');
+    pmp_mmu    := false;
 
     -- Stage 0 address to tag ram
-    dtenall := ((r.holdn and dci.eenaddr) or (r.ramreload and r.d1chk)) and dcache_active;
+    dtenall := ((r.holdn and dci.eenaddr) or (r.ramreload and r.d1chk)) and dcache_active(r);
     if dtenall = '1' then
       ocrami.dtagcen   := (others => '1');
       if dwriting = '0' then
@@ -2425,9 +2540,9 @@ begin
       ocrami.dtagcen(d_ways'range) := ocrami.dtagcen(d_ways'range) or rs.s3hit;
     end if;
     if r.holdn = '1' then
-      v.d1ten   := dci.eenaddr and dcache_active;
-      v.d1chk   := dci.eenaddr;
-      v.d1vaddr := dci.eaddress(v.d1vaddr'range);
+      v.d1ten          := dci.eenaddr and dcache_active(r);
+      v.d1chk          := dci.eenaddr;
+      v.d1vaddr        := dci.eaddress(v.d1vaddr'range);
       v.d1asi          := dci.easi;
       v.d1su           := v.d1asi(0);
       v.d1forcemiss    := '0';
@@ -2438,9 +2553,9 @@ begin
       elsif v.d1asi(4 downto 0) /= ASI_UDATA and v.d1asi(4 downto 0) /= ASI_SDATA then
         v.d1specialasi := '1';
       end if;
-      v.d1m    := '0';
-      v.d1sum  := '0';
-      v.d1mxr  := '0';
+      v.d1m     := '0';
+      v.d1sum   := '0';
+      v.d1mxr   := '0';
       if is_riscv then
         v.d1sum := csr.sum and dci.msu;
         v.d1mxr := csr.mxr;
@@ -2455,7 +2570,7 @@ begin
         end if;
         if csr.mprv = '1' then
           if csr.mpp /= PRIV_LVL_M then
-            v.d1m := '0';
+            v.d1m    := '0';
             if csr.mpp = PRIV_LVL_S then
               v.d1su := '1';
             elsif csr.mpp = PRIV_LVL_U then
@@ -2482,33 +2597,78 @@ begin
         else
           v.amo.d1type := (others => '0');
         end if;
-        v.amo.d2type := r.amo.d1type;
+        v.amo.d2type   := r.amo.d1type;
 
         -- AMO_LR
         if r.amo.d2type(1 downto 0) = "10" and r.d2paddrv = '1' then
-          v.amo.addr := r.d2paddr(v.amo.addr'range);
+          v.amo.addr     := r.d2paddr(v.amo.addr'range);
           v.amo.reserved := '1';
         end if;
       end if;
+      -- track regular store operation from this hart to not invalidate the reservation
+      v.amo.store := r.amo.store(3 downto 1) & (r.ahb_htrans(1) and r.ahb_hwrite and
+                                                r.granted and not r.amo.sc);
+      v.amo.s4hit   := rs.s3hit;
+      v.amo.s4tag   := rs.s3tag;
+      v.amo.s4offs  := rs.s3offs;
 
       -- Reserved address write match
-      if not all_0(rs.s1en) then
+      if not all_0(rs.s1en) and r.amo.store(1) = '0' then
         if r.amo.addr(r.amo.addr'high downto d_tag'low) = rs.s1tag(r.amo.addr'high downto d_tag'low) and
            r.amo.addr(d_index'range) = rs.s1offs then
           v.amo.reserved := '0';
         end if;
+        -- Need to clear based of d2paddr when cache busy (holdn = 0) between 
+        -- lr and reserved being set
+        if r.amo.d2type(1 downto 0) = "10" and r.d2paddrv = '1' then
+          if r.d2paddr(rs.s1tag'high downto d_tag'low) = rs.s1tag(rs.s1tag'high downto d_tag'low) and
+             r.d2paddr(d_index'range) = rs.s1offs then
+            v.amo.reserved := '0';
+            v.amo.d2type   := (others => '0');
+          end if;
+        end if;
+      end if;
+      if not all_0(rs.s2en) and r.amo.store(2) = '0' then
+        -- Need to clear based of d2paddr and s2tag when snooping and lr happens simultaneously
+        if r.amo.d2type(1 downto 0) = "10" and r.d2paddrv = '1' then
+          if r.d2paddr(rs.s2tag'high downto d_tag'low) = rs.s2tag(rs.s2tag'high downto d_tag'low) and
+             r.d2paddr(d_index'range) = rs.s2offs then
+            v.amo.reserved := '0';
+            v.amo.d2type   := (others => '0');
+          end if;
+        end if;
+      end if;
+      if not all_0(rs.s3hit) and r.amo.store(3) = '0' then
+        -- Need to clear based of d2paddr and s3tag when snooping and lr happens simultaneously
+        if r.amo.d2type(1 downto 0) = "10" and r.d2paddrv = '1' then
+          if r.d2paddr(rs.s3tag'high downto d_tag'low) = rs.s3tag(rs.s3tag'high downto d_tag'low) and
+             r.d2paddr(d_index'range) = rs.s3offs then
+            v.amo.reserved := '0';
+            v.amo.d2type := (others => '0');
+          end if;
+        end if;
+      end if;
+      if not all_0(r.amo.s4hit) and r.amo.store(4) = '0' then
+        -- Need to clear based of d2paddr and s4tag when snooping and lr happens simultaneously
+        if r.amo.d2type(1 downto 0) = "10" and r.d2paddrv = '1' then
+          if r.d2paddr(r.amo.s4tag'high downto d_tag'low) = r.amo.s4tag(rs.s3tag'high downto d_tag'low) and
+             r.d2paddr(d_index'range) = r.amo.s4offs then
+            v.amo.reserved := '0';
+            v.amo.d2type := (others => '0');
+          end if;
+        end if;
       end if;
 
       -- AMO data
-      amo_op := (r.d2size(1) and r.d2size(0)) & r.amo.d2type(4 downto 2);
+      amo_op   := (r.d2size(1) and r.d2size(0)) & r.amo.d2type(4 downto 2);
       amo_src1 := r.d2data;
       amo_src2 := r.amo.data;
       if r.d2size = "10" then
         if r.d2vaddr(2) = '1' then
           amo_src2(31 downto 0) := amo_src2(63 downto 32);
         end if;
-        amo_src1(63 downto 32) := (others => amo_src1(31));
-        amo_src2(63 downto 32) := (others => amo_src2(31));
+        amo_src1(63 downto 32)  := (others => amo_src1(31));
+        amo_src2(63 downto 32)  := (others => amo_src2(31));
       end if;
       if r.amo.d2type(5) = '1' and r.amo.d2type(1 downto 0) = "00" then
         amo_data := amo_math_op(amo_src1, amo_src2, amo_op);
@@ -2525,7 +2685,7 @@ begin
     --------------------------------------------------------------------------
     -- DCache AHB snooping and Dtag write port pipeline
     --------------------------------------------------------------------------
-    -- grant status with ungated clock for the snooping
+    -- Grant status with ungated clock for the snooping
     if ahbi.hready = '1' then
       vs.sgranted := ahbi.hgrant(hindex);
     end if;
@@ -2570,7 +2730,7 @@ begin
     vs.s3flush  := rs.s2flush;
 
     -- Stage 1
-    --  send address to snoop to snoop tag RAM
+    --  Send address to snoop to snoop tag RAM
     --  or send address and data to update snoop tag
     ocrami.dtagsindex(d_sets'range) := rs.s1offs;
     ocrami.dtagsen(d_ways'range)    := rs.s1en;
@@ -2643,12 +2803,12 @@ begin
     -- still be using physical addresses.
 
     -- Set default 1:1 mapping if MMU disabled
-    if mmu_enabled = '0' and not is_riscv then
+    if mmu_enabled(r, csr) = '0' and not is_riscv then
       v.dtlb(0) := tlbent_defmap;
       v.itlb(0) := tlbent_defmap;
     end if;
     -- Clear valid bits on flush or MMU disable
-    if r.tlbflush = '1' or (mmu_enabled = '0' and not is_riscv) then
+    if r.tlbflush = '1' or (mmu_enabled(r, csr) = '0' and not is_riscv) then
       for x in v.dtlb'range loop
         v.dtlb(x).valid := '0';
       end loop;
@@ -2815,7 +2975,7 @@ begin
       end if;
       v.ahb2_inacc    := r.granted and r.ahb_htrans(1);
       v.ahb2_hwrite   := r.ahb_hwrite;
-      v.ahb2_addrmask := getvalidmask(r.ahb_haddr(4 downto 2), r.ahb_hsize, ENDIAN);
+      v.ahb2_addrmask := getvalidmask(r.ahb_haddr(4 downto 2), r.ahb_hsize, ENDIAN_B);
     end if;
 
     -- Read data from 32/64 bit single reads
@@ -2844,6 +3004,7 @@ begin
     if r.dmisspend = '1' and r.d2specread = '1' then
       if dci.specreadannul = '1' then
         v.dmisspend  := '0';
+        v.dfailkind  := "00";
       else
         v.d2specread := '0';
       end if;
@@ -2915,16 +3076,8 @@ begin
             v.s         := as_flush;
           end if;
           v.perf(4) := '1';
-        elsif is_riscv and (v.ifailkind(1) = '1' or v.dfailkind(1) = '1') then
-          if v.ifailkind(1) = '1' then
-            v.imisspend   := '0';
-          end if;
-          if v.dfailkind(1) = '1' then
-            v.dmisspend   := '0';
-          end if;
-          v.s           := as_pmpfault;
-        -- Intruction fetch on I$ miss?
-        elsif ((not IMISSPIPE) and v.imisspend = '1') or (IMISSPIPE and r.imisspend = '1') then
+        -- Instruction fetch on I$ miss?
+        elsif (((not IMISSPIPE) and v.imisspend = '1') or (IMISSPIPE and r.imisspend = '1')) then
           v.ahb_haddr   := v.i2paddr(v.ahb_haddr'range);
           v.ahb_haddr(i_line'range) := (others => '0');
           v.ahb_hsize   := u2slv(log2(busw / 8), 3);
@@ -2932,8 +3085,18 @@ begin
           if v.i2busw = '0' then   -- 32 bit bus?
             v.ahb_hsize := HSIZE_WORD;
           end if;
+          if is_riscv and v.ifailkind(1) = '1' then
+            v.imisspend   := '0';
+            i_mexc        := '1';
+            i_exctype     := v.ifailkind(0);
+            v.imisspend   := '0';
+            v.ifailkind   := "00";
+            v.newerrclass := "11";
+            v.mmuerr.ft   := "100";       -- Translation error
+            v.mmuerr.fav  := '1';
+            v.ramreload   := '1';
           -- TLB hit and permissions OK?
-          if v.i2paddrv = '1' then
+          elsif v.i2paddrv = '1' then
             v.ahb_htrans  := HTRANS_NONSEQ;
             v.s           := as_icfetch;
             keepreq       := '1';
@@ -2958,6 +3121,18 @@ begin
             if r.ahb_hlock = '0' then
               v.granted   := '0';
             end if;
+          elsif is_riscv and v.dfailkind(1) = '1' then
+            v.dmisspend   := '0';
+            odco.mds      := '0';
+            d_mexc        := '1';
+            d_exctype     := v.dfailkind(0);
+            v.slowwrpend  := '0';
+            v.dmisspend   := '0';
+            v.dfailkind   := "00";
+            v.newerrclass := "11";
+            v.mmuerr.ft   := "100";       -- Translation error
+            v.mmuerr.fav  := '1';
+            v.ramreload     := '1';
           -- TLB hit and permissions OK?
           elsif v.d2paddrv = '1' and dspecialasi = '0' then
             if v.d2busw = '1' then     -- Burst if wide bus.
@@ -2986,7 +3161,7 @@ begin
           -- Both TLB misses and permission fails go here!
           elsif dspecialasi = '0' then
             if not is_riscv then
-              v.ahb_haddr := mmu_base;
+              v.ahb_haddr := mmu_base(r, csr);
             end if;
             start_walk    := true;   -- See more after case.
             v.perf(3)     := '1';
@@ -3025,20 +3200,20 @@ begin
       -- Flush pending, from as_normal or explicit as_wrasi.
       when as_flush =>
         if r.flushpart(1) = '1' then
-          v.ilru   := (others => (others => '0'));
-          v.i1cont := '0';
+          v.ilru         := (others => (others => '0'));
+          v.i1cont       := '0';
         end if;
         if r.flushpart(0) = '1' then
-          v.dlru      := (others => (others => '0'));
+          v.dlru         := (others => (others => '0'));
         end if;
-        v.flushctr := std_logic_vector(unsigned(r.flushctr) + 1);
+        v.flushctr       := std_logic_vector(unsigned(r.flushctr) + 1);
         if r.flushpart(1) = '1' and all_0(v.flushctr) then
           v.flushpart(1) := '0';
           v.iflushpend   := '0';
         end if;
         if r.flushpart(0) = '1' and rs.s3flush(0) = '1' and all_1(rs.s3offs) then
           v.flushpart(0) := '0';
-          v.dflushpend := '0';
+          v.dflushpend   := '0';
         end if;
         if v.flushpart = "00" then
           v.ramreload    := '1';
@@ -3060,7 +3235,7 @@ begin
           ocrami.itagwrite := '1';
         end if;
         if r.flushpart(0) = '1' then
-          vs.s1tag   := (others => '0');
+          vs.s1tag                               := (others => '0');
           vs.s1tag(TAG_HIGH downto TAG_HIGH - 7) := x"F3";
           for x in d_ways'range loop
             vs.s1tagmsb(2 * x + 1 downto 2 * x)  := u2slv(x, 2);
@@ -3074,7 +3249,7 @@ begin
       when as_icfetch =>
         v.i1ten         := '0';
         -- Only allocate if I$ actually enabled!
-        if all_0(r.i2hitv) and icache_enabled and r.irdbufen = '0' then
+        if all_0(r.i2hitv) and icache_enabled(r) and r.irdbufen = '0' then
           v.i2hitv      := replace_vec(r.i2validv, ilruent);
         end if;
         v.irdbufen      := '1';
@@ -3085,19 +3260,25 @@ begin
           v.i2bufmatch  := '1';
         end if;
 
-        burst_update(ilinesize, r.ahb_hsize(1 downto 0) /= "10", v.ahb_htrans, v.ahb_haddr, keepreq);
+        burst_update(ilinesize, r.ahb_hsize(1 downto 0) /= "10", v.ahb_htrans, v.ahb_haddr);
+
+        keepreq := '1';
+        if all_1(v.ahb_haddr(log2(ilinesize * 4) - 1 downto log2(busw / 8))) and
+          (all_1(v.ahb_haddr(log2(busw / 8) - 1 downto 2)) or (r.ahb_hsize(1 downto 0) /= "10")) then
+          keepreq := '0';
+        end if;   
 
         -- Write read data buffer into I$ data RAM.
         ocrami.iindex(i_sets'range)      := r.irdbufvaddr(i_index'range);
         ocrami.idataoffs(i_offset'range) := r.iramaddr;
-        if icache_active = '1' and r.irdbufen = '1' then
-          ocrami.itagen                  := r.i2hitv;
+        if icache_active(r) = '1' and r.irdbufen = '1' then
+          ocrami.itagen(i_ways'range)    := r.i2hitv;
           ocrami.itagwrite               := '1';
-          ocrami.idataen                 := r.i2hitv;
+          ocrami.idataen(i_ways'range)   := r.i2hitv;
           ocrami.idatawrite              := "11";
         end if;
-        if ((not ENDIAN) and r.ahb3_rdbvalid(LINESZMAX - 1 - u2i(r.iramaddr & onev(3))) = '1') or
-           ((ENDIAN)     and r.ahb3_rdbvalid(u2i(r.iramaddr & onev(3))) = '1') then
+        if ((not ENDIAN_B) and r.ahb3_rdbvalid(LINESZMAX - 1 - u2i(r.iramaddr & onev(3))) = '1') or
+           ((ENDIAN_B)     and r.ahb3_rdbvalid(u2i(r.iramaddr & onev(3))) = '1') then
           v.iramaddr        := std_logic_vector(unsigned(r.iramaddr) + 1);
           -- Finished fetching I$ line?
           if all_1(r.iramaddr) then
@@ -3120,8 +3301,6 @@ begin
             end if;
           end if;
         end if;
---        oico.mexc    := r.ahb3_error;
---        oico.exctype := '1';
         i_mexc    := r.ahb3_error;
         i_exctype := '1';
         if r.ahb3_error = '1' then
@@ -3130,25 +3309,31 @@ begin
 
       when as_dcfetch =>
         -- Only allocate if D$ actually enabled!
-        if all_0(r.d2hitv) and dcache_enabled and r.d2nocache = '0' then
+        if all_0(r.d2hitv) and dcache_enabled(r) and r.d2nocache = '0' then
           v.d2hitv := replace_vec(r.d2validv, dlruent);
         end if;
         if not all_0(rs.s2read) then
           v.dvtagdone := '1';
         end if;
 
-        burst_update(dlinesize, r.d2busw = '1', v.ahb_htrans, v.ahb_haddr, keepreq);
+        burst_update(dlinesize, r.d2busw = '1', v.ahb_htrans, v.ahb_haddr);
+        
+        keepreq := '1';
+        if all_1(v.ahb_haddr(log2(dlinesize * 4) - 1 downto log2(busw / 8))) and
+          (all_1(v.ahb_haddr(log2(busw / 8) - 1 downto 2)) or (r.d2busw = '1')) then
+          keepreq := '0';
+        end if; 
 
         -- Write read data buffer into D$ data RAM
         -- Note virtual and physical tag write managed by snoop pipeline above
         -- Data managed here
         ocrami.ddataindex(d_sets'range)  := r.d2vaddr(d_index'range);
         ocrami.ddataoffs(d_offset'range) := r.dramaddr;
-        if ((not ENDIAN) and r.ahb3_rdbvalid(LINESZMAX - 1 - u2i(std_logic_vector'(r.dramaddr & onev(DLINE_LOW_REAL - 1 downto 2)))) = '1') or
-           ((ENDIAN)     and r.ahb3_rdbvalid(u2i(std_logic_vector'(r.dramaddr & onev(DLINE_LOW_REAL - 1 downto 2)))) = '1')
+        if ((not ENDIAN_B) and r.ahb3_rdbvalid(LINESZMAX - 1 - u2i(std_logic_vector'(r.dramaddr & onev(DLINE_LOW_REAL - 1 downto 2)))) = '1') or
+           ((ENDIAN_B)     and r.ahb3_rdbvalid(u2i(std_logic_vector'(r.dramaddr & onev(DLINE_LOW_REAL - 1 downto 2)))) = '1')
         then
           ocrami.ddataen                 := (others => '0');
-          if dcache_active = '1' then
+          if dcache_active(r) = '1' then
             ocrami.ddataen(d_ways'range) := r.d2hitv;
             ocrami.ddatawrite            := (others => '1');
           end if;
@@ -3173,7 +3358,7 @@ begin
         odco.set := "00";
         for x in 0 to LINESZMAX / 2 - 1 loop
           if r.d2vaddr(BUF_HIGH downto 3) = u2slv(x, BUF_HIGH - 2) then
-            if not ENDIAN then
+            if not ENDIAN_B then
               odco.data(0) := get(r.ahb3_rdbuf, (LINESZMAX - 2 * x - 2) * 32, 64);
             else
               odco.data(0) := get(r.ahb3_rdbuf, x * 64, 64);
@@ -3181,7 +3366,6 @@ begin
           end if;
         end loop;
         odco.mds := '0';
-
 
       when as_dcfetch2 =>
         if not all_0(rs.s2read) then
@@ -3198,33 +3382,33 @@ begin
       when as_dcsingle =>
         if ahbi.hready = '1' then
           if r.granted = '1' and ahbi.hresp(1) = '0' and r.ahb_htrans(1) = '1' then
-            v.ahb_htrans  := HTRANS_IDLE;
+            v.ahb_htrans   := HTRANS_IDLE;
           elsif r.ahb2_inacc = '1' and ahbi.hresp(1) = '1' then
-            v.ahb_htrans  := HTRANS_NONSEQ;
+            v.ahb_htrans   := HTRANS_NONSEQ;
           elsif r.ahb2_inacc = '1' and r.d2busw = '0' and r.d2size = "11" and r.ahb_haddr(2) = '0' then
             v.ahb_haddr(2) := '1';
-            v.ahb_htrans := HTRANS_NONSEQ;
+            v.ahb_htrans   := HTRANS_NONSEQ;
           end if;
         end if;
 
         if r.ahb3_inacc = '1' and r.ahb_htrans(1) = '0' then
-          v.dmisspend := '0';
-          v.s := as_normal;
+          v.dmisspend   := '0';
+          v.s           := as_normal;
           if r.d1ten = '1' then
             v.ramreload := '1';
           end if;
         end if;
         for x in 0 to LINESZMAX / 2 - 1 loop
           if r.d2vaddr(BUF_HIGH downto 3) = u2slv(x, BUF_HIGH - 2) then
-            if not ENDIAN then
+            if not ENDIAN_B then
               odco.data(0) := get(r.ahb3_rdbuf, (LINESZMAX - 2 * x - 2) * 32, 64);
             else
               odco.data(0) := get(r.ahb3_rdbuf, x * 64, 64);
             end if;
           end if;
         end loop;
-        odco.set := "00";
-        odco.mds := '0';
+        odco.set  := "00";
+        odco.mds  := '0';
         d_mexc    := r.ahb3_error;
         d_exctype := r.ahb3_error;  -- Count AHB error as access fault.
 
@@ -3244,7 +3428,7 @@ begin
           v.mmuerr.at_id    := '1';        -- Instruction space
           v.mmuerr.at_su    := r.i2su;
         else
-          v.newent.ctx      := mmu_ctx;
+          v.newent.ctx      := mmu_ctx(r, csr);
           v.newent.vaddr    := r.d2vaddr(vpn'range);
           v.newent.modified := r.mmusel(1);
           v.newerrclass     := "10";
@@ -3252,7 +3436,7 @@ begin
           v.mmuerr.at_id    := '0';
           v.mmuerr.at_su    := r.d2su;
           -- Treat atomic access as store to avoid store phase of atomic
-          -- causing mmu fault
+          -- causing mmu fault.
           if r.d2lock = '1' then
             v.newent.modified := '1';
             v.mmuerr.at_ls    := '1';
@@ -3271,7 +3455,7 @@ begin
 
         v.newent.paddr  := pte_paddr(rdb64);
         if not is_riscv or csr.pte_nocache = '0' then
-          v.newent.cached := pte_cached(rdb64);
+          v.newent.cached := pte_cached(ahbso, rdb64);
         else
           v.newent.cached := not rdb64(8);
         end if;
@@ -3378,8 +3562,7 @@ begin
                 v.s                 := as_rdasi2;
               end if;
             elsif is_riscv then
---              pmp_mmu     := true;
-              pmp_type    := r.mmusel(1 downto 0);
+              pmp_type     := r.mmusel(1 downto 0);
               v.s          := as_wmmuwalk;
               v.ahb_htrans := HTRANS_IDLE;
             end if;
@@ -3433,75 +3616,12 @@ begin
         if v.s = as_normal then
         end if;
 
-      -- PMP fault reporting
-      when as_pmpfault =>
-        if is_riscv then
-          if r.ifailkind(1) = '1' then
-            oico.mds      := '0';
-            i_mexc        := '1';
-            i_exctype     := r.ifailkind(0);
-            v.imisspend   := '0';
-            v.ifailkind   := "00";
-          end if;
-          if r.dfailkind(1) = '1' then
-            odco.mds      := '0';
---            odco.mexc     := '1';
---            odco.exctype  := '1';      -- Signal PMP error
-            d_mexc        := '1';
---            d_exctype     := '1';      -- Signal PMP error
-            d_exctype     := r.dfailkind(0);
-            v.slowwrpend  := '0';
-            v.dmisspend   := '0';
-            v.dfailkind   := "00";
---            v.dfailkind(1):= '0';
-            v.ramreload   := '0';
-          end if;
-          v.newerrclass := "11";
-          v.mmuerr.ft   := "100";       -- Translation error
-          v.mmuerr.fav  := '1';
-        end if;
-        v.s := as_normal;
-
-      when as_ipmpfault =>
-        if is_riscv then
-          oico.mds      := '0';
---          oico.mexc      := '1';
---          oico.exctype   := '1';      -- Signal PMP error
-          i_mexc        := '1';
-          i_exctype     := r.ifailkind(0);
-          v.imisspend   := '0';
-          v.ifailkind   := "00";
-          v.newerrclass := "11";
-          v.mmuerr.ft   := "100";       -- Translation error
-          v.mmuerr.fav  := '1';
-        end if;
-        v.s := as_normal;
-
-      when as_dpmpfault =>
-        if is_riscv then
-          odco.mds      := '0';
---          odco.mexc     := '1';
---          odco.exctype  := '1';      -- Signal PMP error
-          d_mexc        := '1';
---          d_exctype     := '1';      -- Signal PMP error
-          d_exctype     := r.dfailkind(0);
-          v.slowwrpend  := '0';
-          v.dmisspend   := '0';
-          v.dfailkind   := "00";
-          v.ramreload   := '0';
-          v.newerrclass := "11";
-          v.mmuerr.ft   := "100";       -- Translation error
-          v.mmuerr.fav  := '1';
-        end if;
-        v.s := as_normal;
-
       -- Some kind of error occurred during MMU walk
       when as_mmuwalk3 =>
         if r.mmusel(2) = '0' then
           if r.mmusel(0) = '0' then
             oico.mds    := '0';
             if r.mmctrl1.nf = '0' then
---              oico.mexc  := '1';
               i_mexc    := '1';
             end if;
             v.imisspend := '0';
@@ -3589,7 +3709,7 @@ begin
         v.i2m     := r.i1m;
         v.i2ctx   := r.i1ctx;
         v.i1ctx   := r.i2ctx;
-        if icache_active = '1' and r.imisspend = '1' then
+        if icache_active(r) = '1' and r.imisspend = '1' then
           ocrami.itagen  := "1111";
           ocrami.idataen := "1111";
           v.i1ten := '1';
@@ -3608,11 +3728,12 @@ begin
         v.d2m         := r.d1m;
         v.dtlbrecheck := '1';           -- To swap dci.write/dci.lock
         v.d1ten       := '0';
-        if dcache_active = '1' and r.mmusel(0) = '1' and
+        -- Did we miss earlier and need to do a new tag check?
+        if dcache_active(r) = '1' and r.mmusel(0) = '1' and
            (r.dmisspend = '1' or r.slowwrpend = '1') then
           ocrami.dtagcen := (others => '1');
           ocrami.ddataen := (others => '1');
-          v.d1ten     := '1';
+          v.d1ten        := '1';
         end if;
 
       when as_wptectag2 =>
@@ -3679,9 +3800,9 @@ begin
         if r.mmusel(0) = '1' and r.slowwrpend = '1' and r.d2specialasi = '0' then
           ocrami.ddataen(d_ways'range) := dhitv;
         end if;
-        ocrami.ddatawrite := getdmask64(r.d1vaddr, r.d2size, ENDIAN);
+        ocrami.ddatawrite := getdmask64(r.d1vaddr, r.d2size, ENDIAN_B);
         ocrami.ddatadin   := (others => r.d2data);
-        v.d1ten           := r.d1chk and dcache_active;
+        v.d1ten           := r.d1chk and dcache_active(r);
         v.ramreload       := '1';
 
       when as_wptectag3 =>
@@ -3706,18 +3827,18 @@ begin
       -- Stay in this state until store buffer is empty.
       when as_store =>
         if r.ahb2_inacc = '1' and ahbi.hresp(1) = '1' and ahbi.hready = '0' then
-          v.ahb_htrans := HTRANS_IDLE;
-          v.d2stba     := r.d2stba - 1;
+          v.ahb_htrans   := HTRANS_IDLE;
+          v.d2stba       := r.d2stba - 1;
         else
           if ahbi.hready = '1' and r.granted = '1' then
             if r.ahb_htrans(1) = '1' then
-              v.d2stba := r.d2stba + 1;
+              v.d2stba   := r.d2stba + 1;
             end if;
           end if;
           if ahbi.hready = '1' then
-            v.d2stbd := r.d2stba;
+            v.d2stbd     := r.d2stba;
           end if;
-          v.ahb_htrans := HTRANS_IDLE;
+          v.ahb_htrans   := HTRANS_IDLE;
           if v.d2stba /= r.d2stbw or r.stbuffull = '1' then
             v.ahb_htrans := HTRANS_NONSEQ;
           end if;
@@ -3738,7 +3859,7 @@ begin
           v.stbuffull := '0';
         end if;
         if fastwr = '1' then
-          v.d2stbw := r.d2stbw + 1;
+          v.d2stbw      := r.d2stbw + 1;
           if v.d2stbw = r.d2stbd then
             v.stbuffull := '1';
           end if;
@@ -3764,7 +3885,7 @@ begin
         -- Miss or not written before.
         elsif r.d2paddrv = '0' or r.d2tlbmod = '0' then
           if not is_riscv then
-            v.ahb_haddr   := mmu_base;
+            v.ahb_haddr   := mmu_base(r, csr);
           end if;
           start_walk      := true;   -- See more after case.
         -- 64 bit write on 32 bit bus?
@@ -3810,7 +3931,7 @@ begin
             if r.ahb_haddr(2) = '1' then
               v.ahb_htrans  := HTRANS_IDLE;
             end if;
-            if (r.ahb_haddr(2) = '0') xor ENDIAN then
+            if (r.ahb_haddr(2) = '0') xor ENDIAN_B then
               v.ahb_hwdata  := hi_h(r.d2data) & hi_h(r.d2data);
             else
               v.ahb_hwdata  := lo_h(r.d2data) & lo_h(r.d2data);
@@ -3822,7 +3943,7 @@ begin
             v.s             := as_normal;
             v.slowwrpend    := '0';
             if r.d1ten = '1' then
-              v.ramreload := '1';
+              v.ramreload   := '1';
             end if;
           end if;
         end if;
@@ -3924,8 +4045,6 @@ begin
                   v.mmctrl1.ctxp := r.d2data(32 + 31 downto 32 + 2);
                 when "010" =>  -- 0x200 Context register
                   v.mmctrl1.ctx  := r.d2data(32 + 7 downto 32 + 0);
---              when "011" =>  -- 0x300 Fault status register
---              when "100" =>  -- 0x400 Fault address register
                 when others =>
                   v.dregerr := '1';
               end case;
@@ -3959,7 +4078,7 @@ begin
               start_walk    := true;
               v.mmusel      := "101";
               if not is_riscv then
-                v.ahb_haddr := mmu_base;
+                v.ahb_haddr := mmu_base(r, csr);
               end if;
             end if;
 
@@ -3992,13 +4111,13 @@ begin
             elsif r.fpc_mosi.accen = '1' and fpc_miso.accrdy = '1' and r.d2size = "11" then
               v.fpc_mosi.addr(0) := '1';
             end if;
-            if v.fpc_mosi.addr(0) = '0' xor ENDIAN then
+            if v.fpc_mosi.addr(0) = '0' xor ENDIAN_B then
               v.fpc_mosi.wrdata  := hi_h(r.d2data);
             else
               v.fpc_mosi.wrdata  := lo_h(r.d2data);
             end if;
             if r.fpc_mosi.accen = '1' and fpc_miso.accrdy = '1' then
-              if not ENDIAN then
+              if not ENDIAN_B then
                 v.dregval64      := r.dregval;
                 v.dregval        := fpc_miso.rddata;
               else
@@ -4023,7 +4142,7 @@ begin
             elsif r.c2c_mosi.accen = '1' and c2c_miso.accrdy = '1' and r.d2size = "11" then
               v.c2c_mosi.addr(0) := '1';
             end if;
-            if v.c2c_mosi.addr(0) = '0' xor ENDIAN then
+            if v.c2c_mosi.addr(0) = '0' xor ENDIAN_B then
               v.c2c_mosi.wrdata  := hi_h(r.d2data);
             else
               v.c2c_mosi.wrdata  := lo_h(r.d2data);
@@ -4087,7 +4206,7 @@ begin
             elsif r.iudiag_mosi.accen = '1' and dci.iudiag_miso.accrdy = '1' and r.d2size = "11" then
               v.iudiag_mosi.addr(0) := '1';
             end if;
-            if v.iudiag_mosi.addr(0) = '0' xor ENDIAN then
+            if v.iudiag_mosi.addr(0) = '0' xor ENDIAN_B then
               v.iudiag_mosi.wrdata  := hi_h(r.d2data);
             else
               v.iudiag_mosi.wrdata  := lo_h(r.d2data);
@@ -4145,10 +4264,10 @@ begin
 
         case r.d2asi is
           when x"0c" =>                 -- ICache tags
-            ocrami.itagen                   := r.i2hitv;
+            ocrami.itagen(i_ways'range)     := r.i2hitv;
             ocrami.itagwrite                := '1';
           when x"0d" =>                 -- ICache data
-            ocrami.idataen                  := r.i2hitv;
+            ocrami.idataen(i_ways'range)    := r.i2hitv;
             ocrami.idatawrite               := "11";
           when x"0e" =>                 -- DCache tags
             if all_0(rs.s3hit) then
@@ -4168,15 +4287,15 @@ begin
             end if;
           when x"0f" =>                 -- DCache data
             ocrami.ddataen(d_ways'range)    := r.d2hitv;
-            if r.d2vaddr(2) = '0' xor ENDIAN then
+            if r.d2vaddr(2) = '0' xor ENDIAN_B then
               ocrami.ddatawrite(7 downto 4) := "1111";
             else
               ocrami.ddatawrite(3 downto 0) := "1111";
             end if;
           when x"1e" =>                 -- Snoop tags
             if all_0(rs.s1en) then
-              ocrami.dtagsen    := r.d2hitv;
-              ocrami.dtagswrite := '1';
+              ocrami.dtagsen(d_ways'range)  := r.d2hitv;
+              ocrami.dtagswrite             := '1';
             else
               v.s := r.s; -- Stall here
             end if;
@@ -4337,7 +4456,7 @@ begin
               v.c2c_mosi.addr(0) := '1';
             end if;
             if r.c2c_mosi.accen = '1' and c2c_miso.accrdy = '1' then
-              if not ENDIAN then
+              if not ENDIAN_B then
                 v.dregval64      := r.dregval;
                 v.dregval        := c2c_miso.rddata;
               else
@@ -4394,7 +4513,7 @@ begin
               v.iudiag_mosi.addr(0) := '1';
             end if;
             if r.iudiag_mosi.accen = '1' and dci.iudiag_miso.accrdy = '1' then
-              if not ENDIAN then
+              if not ENDIAN_B then
                 v.dregval64         := r.dregval;
                 v.dregval           := dci.iudiag_miso.rddata;
               else
@@ -4430,15 +4549,15 @@ begin
         v.s          := as_normal;
 
       when as_rdcdiag =>
-        ocrami.iindex(i_sets'range)      := r.irdbufvaddr(i_index'range);
-        ocrami.idataoffs(i_offset'range) := r.iramaddr;
-        ocrami.itagen                    := "1111";
-        ocrami.idataen                   := "1111";
-        ocrami.dtagcindex(d_sets'range)  := r.d2vaddr(d_index'range);
-        ocrami.ddataindex(d_sets'range)  := r.d2vaddr(d_index'range);
-        ocrami.ddataoffs(d_offset'range) := r.d2vaddr(DLINE_HIGH downto DLINE_LOW_REAL);
-        ocrami.dtagcen                   := (others => '1');
-        ocrami.ddataen                   := (others => '1');
+        ocrami.iindex(i_sets'range)       := r.irdbufvaddr(i_index'range);
+        ocrami.idataoffs(i_offset'range)  := r.iramaddr;
+        ocrami.itagen                     := "1111";
+        ocrami.idataen                    := "1111";
+        ocrami.dtagcindex(d_sets'range)   := r.d2vaddr(d_index'range);
+        ocrami.ddataindex(d_sets'range)   := r.d2vaddr(d_index'range);
+        ocrami.ddataoffs(d_offset'range)  := r.d2vaddr(DLINE_HIGH downto DLINE_LOW_REAL);
+        ocrami.dtagcen                    := (others => '1');
+        ocrami.ddataen                    := (others => '1');
         v.s := as_rdcdiag2;
         if all_0(rs.s1en) then
           ocrami.dtagcindex(d_sets'range) := r.d2vaddr(d_index'range);
@@ -4458,7 +4577,7 @@ begin
             v.dregval(7 downto 0)               := (others => d32(0));
           when "01" =>                  -- 0x0D ICache data
             d64 := cramo.idatadout(u2i(r.d2vaddr(ITAG_LOW + 1 downto ITAG_LOW)));
-            if r.d2vaddr(2) = '0' then
+            if (r.d2vaddr(2) = '0') xor ENDIAN_B then
               if r.d2write = '0' then
                 v.dregval   := hi_h(d64);
               else
@@ -4488,7 +4607,7 @@ begin
             end if;
           when others =>                -- 0x0F DCache data
             d64 := cramo.ddatadout(u2i(r.d2vaddr(DTAG_LOW + 1 downto DTAG_LOW)));
-            if r.d2vaddr(2) = '0' then
+            if (r.d2vaddr(2) = '0') xor ENDIAN_B then
               v.dregval := hi_h(d64);
             else
               v.dregval := lo_h(d64);
@@ -4512,32 +4631,29 @@ begin
           v.mmusel          := "011";
           if r.d2paddrv = '0' or r.d2tlbmod = '0' then
             if not is_riscv then
-              v.ahb_haddr   := mmu_base;
+              v.ahb_haddr   := mmu_base(r, csr);
             end if;
             start_walk      := true;   -- See more after case.
           -- SC:
           elsif r.amo.d2type(1 downto 0) = "11" then -- SC
-            v.amo.d2type := (others => '0');
-            odco.mds     := '0';
-            odco.data(0) := (others => '0');
+            v.amo.d2type    := (others => '0');
+            v.amo.reserved  := '0';
+            odco.mds        := '0';
+            odco.data(0)    := (others => '0');
             -- Cancel SC
             if (r.amo.reserved = '0' or r.d2paddr(v.ahb_haddr'range) /= r.amo.addr) then
               v.slowwrpend       := '0';
               v.s                := as_amo_hold;
-              v.amo.reserved     := '0';
               odco.data(0)(0)    := '1';
               if r.d2size = "10" then
                 odco.data(0)(32) := '1';
               end if;
-              vs.s1en   := (others => '1');
-              vs.s1tag  := (others => '0');
-              vs.s1tag(ahbsi.haddr'high downto d_tag'low) := r.d2paddr(ahbsi.haddr'high downto d_tag'low);
-              vs.s1offs := r.d2paddr(d_index'range);
             else
               v.s        := as_slowwr;
               -- Snoop on this write
               v.d2hitv   := (others => '0');
               v.amo.hold := '1';
+              v.amo.sc   := '1';
             end if;
           else                                    -- AMO
             v.s        := as_slowwr;
@@ -4546,6 +4662,12 @@ begin
             v.amo.hold := '1';
             v.d2data   := amo_data;
           end if;
+          -- Force a snooping hit on all atomics 
+          vs.s1en   := (others => '1');
+          vs.s1tag  := (others => '0');
+          vs.s1tag(ahbsi.haddr'high downto d_tag'low) := r.d2paddr(ahbsi.haddr'high downto d_tag'low);
+          vs.s1offs := r.d2paddr(d_index'range);
+          vs.s1read := '0';
         else
           v.s := as_normal;
         end if;
@@ -4574,7 +4696,7 @@ begin
           -- Fall back to MMU walk
           v.mmusel      := "101";
           if not is_riscv then
-            v.ahb_haddr := mmu_base;
+            v.ahb_haddr := mmu_base(r, csr);
           end if;
         end if;
 
@@ -4590,10 +4712,10 @@ begin
       when as_mmuflush2 =>
         v.itlbprobeid  := std_logic_vector(unsigned(r.itlbprobeid) + 1);
         v.d2tlbid      := std_logic_vector(unsigned(r.d2tlbid) + 1);
-        if flushmatch(r.itlb(u2i(r.itlbprobeid)), r.d2vaddr, mmu_ctx) = '1' then
+        if flushmatch(r.itlb(u2i(r.itlbprobeid)), r.d2vaddr, mmu_ctx(r, csr)) = '1' then
           v.itlb(u2i(r.itlbprobeid)).valid := '0';
         end if;
-        if flushmatch(r.dtlb(u2i(r.d2tlbid)), r.d2vaddr, mmu_ctx) = '1' then
+        if flushmatch(r.dtlb(u2i(r.d2tlbid)), r.d2vaddr, mmu_ctx(r, csr)) = '1' then
           v.dtlb(u2i(r.d2tlbid)).valid     := '0';
         end if;
         if (dtlbnum >= itlbnum and all_1(r.d2tlbid)) or
@@ -4619,8 +4741,8 @@ begin
           ocrami.itagen      := "1111";
           ocrami.itagwrite   := '0';
           if not all_0(r.flushwri) then
-            ocrami.itagen    := r.flushwri;
-            ocrami.itagwrite := '1';
+            ocrami.itagen(i_ways'range) := r.flushwri;
+            ocrami.itagwrite            := '1';
           end if;
         end if;
         if r.flushpart(0) = '1' then
@@ -4697,7 +4819,7 @@ begin
 
     -- There really should never be a table walk with MMU disabled.
     -- Ensure this!
-    if mmu_enabled = '0' then
+    if mmu_enabled(r, csr) = '0' then
       start_walk := false;
       pmp_mmu    := false;
     end if;
@@ -4720,7 +4842,7 @@ begin
         -- mask - pre-shift (ie before new 1 at bit 1 (first)) page table mask
         -- code - mask recoded as position for first 0 (from 1)
         mmu_data                                := (others => '0');
-        mmu_data(ppn'length + 10 - 1 downto 10) := mmu_base(ppn'range);
+        mmu_data(ppn'length + 10 - 1 downto 10) := mmu_base(r, csr)(ppn'range);
         case v.mmusel(1 downto 0) is
         when "00"   => v.ahb_haddr := pt_addr(mmu_data, v.newent.mask, r.i1pc, "00")(v.ahb_haddr'range);
         when "01"   => v.ahb_haddr := pt_addr(mmu_data, v.newent.mask, v.d2vaddr, "00")(v.ahb_haddr'range);
@@ -4742,7 +4864,7 @@ begin
         pmp_addr      := (others => '0');
         pmp_addr(r.ahb_haddr'range) := r.ahb_haddr;
         pmp_size      := r.ahb_hsize(pmp_size'range);
-        if not ENDIAN then
+        if not ENDIAN_B then
           pmp_addr    := to_le_address(pmp_addr, pmp_size);
         end if;
         pmp_acc       := PMP_ACCESS_R;
@@ -4776,6 +4898,7 @@ begin
     -- AMO: extend hold until store is executed
     if (r.amo.hold = '1' and v.s = as_normal) or ext_a = 0 then
       v.amo.hold := '0';
+      v.amo.sc   := '0';
     end if;
     -- AMO: data
     if odco.mds = '0' or r.holdn = '1' then
@@ -4789,7 +4912,7 @@ begin
     v.holdn := '1';
     if v.imisspend  = '1' or v.dmisspend  = '1' or v.slowwrpend = '1' or
        v.iflushpend = '1' or v.dflushpend = '1' or v.ramreload  = '1' or
-       v.stbuffull  = '1' or pmp_dfail or v.ifailkind(1) = '1' or v.dfailkind(1) = '1' or
+       v.stbuffull  = '1' or
        v.amo.hold = '1' then
       v.holdn := '0';
     end if;
@@ -4834,67 +4957,75 @@ begin
     ocrami.dtagcuwrite                 := '0';
     if not all_0(rs.s3read) or not all_0(rs.s3flush) then
       ocrami.dtagcuindex(d_sets'range) := rs.s3offs;
-      ocrami.dtagcuen(d_ways'range)    := rs.s3read;
+      ocrami.dtagcuen(d_ways'range)    := rs.s3read or rs.s3flush;
       ocrami.dtagcuwrite               := '1';
     elsif r.s = as_wrasi2 and r.d2asi = "00001110" then
-      ocrami.dtagcuen    := r.d2hitv;
-      ocrami.dtagcuwrite := '1';
+      ocrami.dtagcuen(d_ways'range)    := r.d2hitv;
+      ocrami.dtagcuwrite               := '1';
     end if;
 
-    -- Debug
-    odco.logan(2 downto 0) := rdb32(4 downto 2);
-    odco.logan(5 downto 3) := r.mmuerr.at_ls & r.mmuerr.at_id & r.mmuerr.at_su;
-    odco.logan(6)          := r.ahb3_error;
-    odco.logan(7)          := r.dregerr;
 
+
+    if no_mmu then
+      v.itlb := tlb_def;
+      v.dtlb := tlb_def;
+    end if;
 
     --------------------------------------------------------------------------
     -- Reset
     --------------------------------------------------------------------------
     if rst = '0' then
-      v.ahb_hlock     := '0';
-      v.cctrl.dcs     := RRES.cctrl.dcs;
-      v.cctrl.ics     := RRES.cctrl.ics;
-      v.cctrl.dsnoop  := RRES.cctrl.dsnoop;
-      v.cctrl.ics_btb := RRES.cctrl.ics_btb;
-      v.regflmask     := RRES.regflmask;
-      v.regfladdr     := RRES.regfladdr;
-      v.iregflush     := RRES.iregflush;
-      v.dregflush     := RRES.dregflush;
-      v.mmctrl1.e     := RRES.mmctrl1.e;
-      v.mmctrl1.nf    := RRES.mmctrl1.nf;
-      v.mmctrl1.ctx   := RRES.mmctrl1.ctx;
+      v.ahb_hlock      := '0';
+      v.cctrl          := RRES.cctrl;
+      v.mmctrl1.e      := RRES.mmctrl1.e;
+      v.mmctrl1.nf     := RRES.mmctrl1.nf;
+      v.mmctrl1.pso    := RRES.mmctrl1.pso;
+      v.mmctrl1.ctx    := RRES.mmctrl1.ctx;
       v.mmctrl1.tlbdis := RRES.mmctrl1.tlbdis;
-      v.mmctrl1.pso   := RRES.mmctrl1.pso;
-      v.mmctrl1.bar   := RRES.mmctrl1.bar;
-      v.mmfsr.fav     := RRES.mmfsr.fav;
-      v.s             := RRES.s;
-      v.imisspend     := RRES.imisspend;
-      v.ifailkind     := RRES.ifailkind;
-      v.dmisspend     := RRES.dmisspend;
-      v.dfailkind     := RRES.dfailkind;
-      v.iflushpend    := RRES.iflushpend;
-      v.dflushpend    := RRES.dflushpend;
-      v.slowwrpend    := RRES.slowwrpend;
-      v.irdbufen      := RRES.irdbufen;
-      v.holdn         := RRES.holdn;
-      v.ahb_hbusreq   := RRES.ahb_hbusreq;
-      v.ahb_hlock     := RRES.ahb_hlock;
-      v.ahb_htrans    := RRES.ahb_htrans;
-      v.granted       := RRES.granted;
-      v.i2paddrv      := RRES.i2paddrv;
-      v.i1ten         := RRES.i1ten;
-      v.i1cont        := RRES.i1cont;
-      v.i1rep         := RRES.i1rep;
-      v.ibpmiss       := RRES.ibpmiss;
-      v.d1ten         := RRES.d1ten;
-      v.d1ten         := RRES.d1ten;
-      vs.sgranted     := RSRES.sgranted;
+      v.mmctrl1.bar    := RRES.mmctrl1.bar;
+      v.mmfsr.fav      := RRES.mmfsr.fav;
+      v.regflmask      := RRES.regflmask;
+      v.regfladdr      := RRES.regfladdr;
+      v.iregflush      := RRES.iregflush;
+      v.dregflush      := RRES.dregflush;
+      v.s              := RRES.s;
+      v.imisspend      := RRES.imisspend;
+      v.ifailkind      := RRES.ifailkind;
+      v.dmisspend      := RRES.dmisspend;
+      v.dfailkind      := RRES.dfailkind;
+      v.iflushpend     := RRES.iflushpend;
+      v.dflushpend     := RRES.dflushpend;
+      v.slowwrpend     := RRES.slowwrpend;
+      v.holdn          := RRES.holdn;
+      v.ahb_hbusreq    := RRES.ahb_hbusreq;
+      v.ahb_hlock      := RRES.ahb_hlock;
+      v.ahb_htrans     := RRES.ahb_htrans;
+      v.granted        := RRES.granted;
+      v.i2paddrv       := RRES.i2paddrv;
+      v.i1ten          := RRES.i1ten;
+      v.i1cont         := RRES.i1cont;
+      v.i1rep          := RRES.i1rep;
+      v.ibpmiss        := RRES.ibpmiss;
+      v.irdbufen       := RRES.irdbufen;
+      v.d1ten          := RRES.d1ten;
+      vs.sgranted      := RSRES.sgranted;
       -- Atomic operations
-      v.amo.d1type    := RRES.amo.d1type;
-      v.amo.d2type    := RRES.amo.d2type;
-      v.amo.reserved  := RRES.amo.reserved;
-      v.amo.hold      := RRES.amo.hold;
+      v.amo.d1type     := RRES.amo.d1type;
+      v.amo.d2type     := RRES.amo.d2type;
+      v.amo.reserved   := RRES.amo.reserved;
+      v.amo.hold       := RRES.amo.hold;
+      v.amo.store      := RRES.amo.store;
+      v.amo.sc         := RRES.amo.sc;
+      v.amo.s4hit      := RRES.amo.s4hit;
+      -- RISC-V does not use a default TLB, so must invalidate.
+      if is_riscv then
+        for x in v.itlb'range loop
+          v.itlb(x).valid := RRES.itlb(0).valid;
+        end loop;
+        for x in v.dtlb'range loop
+          v.dtlb(x).valid := RRES.dtlb(0).valid;
+        end loop;
+      end if;
     end if;
 
     if dtagconf = 0 then
@@ -4905,7 +5036,7 @@ begin
     -- Replication
     ---------------------------------------------------------------------------
     for x in v.i1pc_repl'range loop
-      v.i1pc_repl(x) := v.i1pc;
+      v.i1pc_repl(x)    := v.i1pc;
     end loop;
     for x in v.d1vaddr_repl'range loop
       v.d1vaddr_repl(x) := v.d1vaddr;

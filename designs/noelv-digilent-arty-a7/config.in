@@ -32,11 +32,11 @@ comment 'Peripherals             '
     source lib/gaisler/misc/ahbstat.in
   endmenu
 
-  mainmenu_option next_comment
-  comment 'On-chip RAM/ROM                 '
-    source lib/gaisler/misc/ahbrom.in
-    source lib/gaisler/misc/ahbram.in
-  endmenu
+#  mainmenu_option next_comment
+#  comment 'On-chip RAM/ROM                 '
+#    source lib/gaisler/misc/ahbrom.in
+#    source lib/gaisler/misc/ahbram.in
+#  endmenu
 
   mainmenu_option next_comment
   comment 'Ethernet             '
@@ -45,8 +45,8 @@ comment 'Peripherals             '
 
   mainmenu_option next_comment
   comment 'UARTs, timers and irq control         '
-    source lib/gaisler/uart/uart1.in
-    source lib/gaisler/misc/gptimer.in
+#    source lib/gaisler/uart/uart1.in
+#    source lib/gaisler/misc/gptimer.in
     source lib/gaisler/misc/grgpio.in
   endmenu
 

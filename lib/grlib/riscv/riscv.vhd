@@ -17,7 +17,7 @@
 --  You should have received a copy of the GNU General Public License
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
------------------------------------------------------------------------------   
+-----------------------------------------------------------------------------
 -- package:     opcodes
 -- File:        opcodes.vhd
 -- Author:      Andrea Merlo, Cobham Gaisler AB
@@ -26,7 +26,7 @@
 --              RISC-V Instruction Set Manual Volume I: User-Level ISA 2.2
 --              RISC-V Instruction Set Manual Volume II: Privileged
 --              Architecture 1.12
-------------------------------------------------------------------------------  
+------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -121,9 +121,9 @@ package riscv is
 
   constant I_ECALL      : funct12_type := "000000000000";
   constant I_EBREAK     : funct12_type := "000000000001";
-  
+
   -- funct7 decoding (inst(31 downto 25))
-  
+
   subtype funct7_type is std_logic_vector(6 downto 0);
 
   constant F7_BASE      : funct7_type := "0000000";
@@ -148,7 +148,7 @@ package riscv is
   constant I_SLLI       : funct3_type := "001";
   constant I_SRLI       : funct3_type := "101";
   constant I_SRAI       : funct3_type := "101";
-  
+
   constant I_JALR       : funct3_type := "000";
 
   constant I_LB         : funct3_type := "000";
@@ -168,7 +168,7 @@ package riscv is
   constant I_FENCE_I    : funct3_type := "001";
 
   constant I_ENV        : funct3_type := "000";
-  
+
   -- R-Type Format
   constant R_ADD        : funct3_type := "000";
   constant R_SUB        : funct3_type := "000";
@@ -193,7 +193,7 @@ package riscv is
   constant S_SB         : funct3_type := "000";
   constant S_SH         : funct3_type := "001";
   constant S_SW         : funct3_type := "010";
-  
+
   -- opcode decoding (inst(6 downto 0))
 
   subtype opcode_type is std_logic_vector(6 downto 0);
@@ -203,7 +203,7 @@ package riscv is
   constant OP_LOAD      : opcode_type := "0000011";
   constant OP_SYSTEM    : opcode_type := "1110011";
   constant OP_FENCE     : opcode_type := "0001111";
-  
+
   -- U-Type Format
   constant LUI          : opcode_type := "0110111";
   constant AUIPC        : opcode_type := "0010111";
@@ -236,7 +236,7 @@ package riscv is
   -- Opcode
   constant OP_IMM_32    : opcode_type := "0011011";
   constant OP_32        : opcode_type := "0111011";
-  
+
   -- I-Type Format
   constant I_LWU        : funct3_type := "110";
   constant I_LD         : funct3_type := "011";
@@ -260,7 +260,7 @@ package riscv is
   -----------------------------------------------------------------------------
 
   constant F7_MUL       : funct7_type := "0000001";
-  
+
   -- R-Type Format
   constant R_MUL        : funct3_type := "000";
   constant R_MULH       : funct3_type := "001";
@@ -270,7 +270,7 @@ package riscv is
   constant R_DIVU       : funct3_type := "101";
   constant R_REM        : funct3_type := "110";
   constant R_REMU       : funct3_type := "111";
-  
+
   -----------------------------------------------------------------------------
   -- RV64M Standard Extension Set
   -----------------------------------------------------------------------------
@@ -280,7 +280,7 @@ package riscv is
   constant R_DIVUW      : funct3_type := "101";
   constant R_REMW       : funct3_type := "110";
   constant R_REMUW      : funct3_type := "111";
-  
+
   -----------------------------------------------------------------------------
   -- RV32A Standard Extension Set
   -----------------------------------------------------------------------------
@@ -288,13 +288,13 @@ package riscv is
   -- funct5 decoding (inst(31 downto 27))
 
   subtype funct5_type is std_logic_vector(4 downto 0);
-  
+
   -- Opcode
   constant OP_AMO       : opcode_type := "0101111";
 
   -- R-Type Format
   constant R_WORD       : funct3_type := "010";
-  
+
   constant R_LR         : funct5_type := "00010";
   constant R_SC         : funct5_type := "00011";
   constant R_AMOSWAP    : funct5_type := "00001";
@@ -306,7 +306,7 @@ package riscv is
   constant R_AMOMAX     : funct5_type := "10100";
   constant R_AMOMINU    : funct5_type := "11000";
   constant R_AMOMAXU    : funct5_type := "11100";
-    
+
   -----------------------------------------------------------------------------
   -- RV64A Standard Extension Set
   -----------------------------------------------------------------------------
@@ -329,7 +329,7 @@ package riscv is
   constant OP_FMSUB     : opcode_type := "1000111";
   constant OP_FNMSUB    : opcode_type := "1001011";
   constant OP_FNMADD    : opcode_type := "1001111";
-  
+
   -- I-Type Format
   constant I_FLW        : funct3_type := "010";
 
@@ -338,7 +338,7 @@ package riscv is
 
   -- R4-Type Format
   constant R4_SINGLE    : funct2_type := "00";
-  
+
   -- R-Type Format
   constant R_FADD       : funct5_type := "00000";
   constant R_FSUB       : funct5_type := "00001";
@@ -354,7 +354,7 @@ package riscv is
   constant R_FMV_W_X    : funct5_type := "11110";
   constant R_FCMP       : funct5_type := "10100";
   constant R_FCLASS     : funct5_type := "11100";
-  
+
   constant R_FSGNJ      : funct3_type := "000";
   constant R_FSGNJN     : funct3_type := "001";
   constant R_FSGNJX     : funct3_type := "010";
@@ -364,7 +364,7 @@ package riscv is
   constant R_FLT        : funct3_type := "001";
   constant R_FLE        : funct3_type := "000";
   constant R_CLASS      : funct3_type := "001";
-  
+
   constant R_FCVT_W     : funct5_type := "00000";
   constant R_FCVT_WU    : funct5_type := "00001";
 
@@ -734,8 +734,5 @@ package riscv is
   constant DCAUSE_STEP          : std_logic_vector(2 downto 0) := "100";
   constant DCAUSE_RSTHALT       : std_logic_vector(2 downto 0) := "101";
   constant DCAUSE_GROUPHALT     : std_logic_vector(2 downto 0) := "110";
-  
+
 end;
-
-
-

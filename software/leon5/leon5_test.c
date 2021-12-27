@@ -45,11 +45,7 @@ leon5_test(int domp, volatile int *irqmp, int mtest)
 	casa_test();
 	multest();
 	divtest();
-        /* FPU test uses global variables currently, avoid concurrently
-         * running by using a simple spinlock */
-        mp_lock(&fpu_lock);
 	fputest5();
-        mp_unlock(&fpu_lock);
 	if (mtest) cramtest();
 	cachetest5();
 	if ((*mpfunc[get_pid()])) mpfunc[get_pid()](get_pid());

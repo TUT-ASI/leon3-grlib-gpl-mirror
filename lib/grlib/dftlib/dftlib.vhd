@@ -29,6 +29,21 @@ use ieee.std_logic_1164.all;
 
 package dftlib is
 
+  ----------------------------------------------------------------------------
+  -- Generic block to mux in test reset
+  ----------------------------------------------------------------------------
+  component trstmux is
+    generic (
+      scantest : integer
+      );
+    port (
+      arsti    : in  std_ulogic;
+      testrst  : in  std_ulogic;
+      testen   : in  std_ulogic;
+      arsto    : out std_ulogic
+      );
+  end component;
+
   -----------------------------------------------------------------------------
   -- Synchronous I/O test module
   -----------------------------------------------------------------------------

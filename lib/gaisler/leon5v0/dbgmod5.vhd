@@ -99,7 +99,7 @@ architecture rtl of dbgmod5 is
   constant SESS_L    : integer := 14;
   constant kbytes    : integer := 4;
   constant itentr    : integer := 256;
-  constant TBUFABITS : integer := log2(kbytes) + 6;
+  constant TBUFABITS : integer := log2(kbytes mod 16#10000#) + 6 - 10*(kbytes/16#10000#);
   constant TRACEN    : boolean := (kbytes /= 0);
   constant ITRACEN   : boolean := (itentr /= 0);
   constant ahbwp     : integer := 2;
@@ -107,7 +107,7 @@ architecture rtl of dbgmod5 is
   constant tbits     : integer := 30;
   constant scantest  : integer := 0;      -- temp
 
-  constant DSU5_VERSION : integer := 2;
+  constant DSU5_VERSION : integer := 3;
   constant hconfig : ahb_config_type := (
     0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_LEON5DSU, 0, DSU5_VERSION, 0),
     4 => ahb_membar(dsu_haddr, '0', '0', dsu_hmask),
@@ -155,6 +155,7 @@ architecture rtl of dbgmod5 is
     prevstate      : std_logic_vector(2*NCPU-1 downto 0);
     statechg       : std_logic_vector(2*NCPU-1 downto 0);
     plidle         : std_logic_vector(NCPU-1 downto 0);
+    forcedstop     : std_logic_vector(NCPU-1 downto 0);
     -- Control signals going to CPU
     cpu_cmd        : cpu_cmd_array(0 to NCPU-1);
     te             : std_logic_vector(0 to NCPU-1);
@@ -196,6 +197,7 @@ architecture rtl of dbgmod5 is
     prevstate      => (others => '0'),
     statechg       => (others => '0'),
     plidle         => (others => '0'),
+    forcedstop     => (others => '0'),
     cpu_cmd        => (others => CPUCMD_NONE),
     te             => (others => '0'),
     be             => (others => '0'),
@@ -467,12 +469,12 @@ architecture rtl of dbgmod5 is
     mst_inacc         : std_ulogic;
     -- Debug port state
     dsu_htrans1       : std_ulogic;
-    hrdata            :  std_logic_vector(31 downto 0);
+    hdata             :  std_logic_vector(31 downto 0);
     dbgmst            : dbgmst_state_vector;
     selmst            : unsigned(log2x(ndbgmst)-1 downto 0);
     -- Main dbgmod FSM state
     s                 : dbgmod5_state;
-    ctr               : std_logic_vector(5 downto 0);
+    ctr               : std_logic_vector(11 downto 0);
     -- Registers for processor control
     dsu               : dsu_reg_type;
     sess              : dsu_session_reg_vector(0 to nsess-1);
@@ -512,7 +514,7 @@ architecture rtl of dbgmod5 is
     mst_granted       => '0',
     mst_inacc         => '0',
     dsu_htrans1       => '0',
-    hrdata            => x"00000000",
+    hdata             => x"00000000",
     dbgmst            => (others => dbgmst_state_none),
     selmst            => (others => '0'),
     s                 => dmrstwait,
@@ -754,18 +756,23 @@ begin
           -- 0x80 - 0xBC per CPU
         when "0100000" =>          -- 0x80 CPU status/control register
           if wr = '1' then
+            if vwd(21)='1' then
+              v.dsu.forcedstop(cpuidx) := RRES.dsu.forcedstop(cpuidx);
+              v.dsu.prevstate(2*cpuidx+1) := RRES.dsu.prevstate(2*cpuidx+1);
+              v.dsu.prevstate(2*cpuidx+0) := RRES.dsu.prevstate(2*cpuidx+0);
+            end if;
             if cpuidx=0 then
               v.nolegacy := vwd(20);
             end if;
             v.dsu.blockusr(cpuidx) := vwd(19);
             if vwd(17)='1' then
               v.dsu.usr_wakeup(cpuidx) := v.dsu.usr_wakeup(cpuidx) or vwd(16);
-              v.dsu.usr_break(cpuidx) := v.dsu.usr_wakeup(cpuidx) or vwd(15);
-              v.dsu.usr_start(cpuidx) := v.dsu.usr_wakeup(cpuidx) or vwd(14);
+              v.dsu.usr_break(cpuidx) := v.dsu.usr_break(cpuidx) or vwd(15);
+              v.dsu.usr_start(cpuidx) := v.dsu.usr_start(cpuidx) or vwd(14);
             else
               v.dsu.usr_wakeup(cpuidx) := v.dsu.usr_wakeup(cpuidx) and not vwd(16);
-              v.dsu.usr_break(cpuidx) := v.dsu.usr_wakeup(cpuidx) and not vwd(15);
-              v.dsu.usr_start(cpuidx) := v.dsu.usr_wakeup(cpuidx) and not vwd(14);
+              v.dsu.usr_break(cpuidx) := v.dsu.usr_break(cpuidx) and not vwd(15);
+              v.dsu.usr_start(cpuidx) := v.dsu.usr_start(cpuidx) and not vwd(14);
             end if;
             if vwd(13)='1' then
               v.dsu.dbg_cmd(cpuidx) := vwd(12 downto 10);
@@ -777,6 +784,7 @@ begin
             v.dsu.be(cpuidx) := vwd(1);
             v.dsu.te(cpuidx) := vwd(0);
           end if;
+          vrd(21) := r.dsu.forcedstop(cpuidx);
           if cpuidx=0 then
             vrd(20) := r.nolegacy;
           end if;
@@ -1129,7 +1137,7 @@ begin
       odbgmi(m).hgrant := (others => '1');
       odbgmi(m).hready := r.dbgmst(m).hready;
       odbgmi(m).hresp := "00";
-      odbgmi(m).hrdata := ahbdrivedata(r.hrdata);
+      odbgmi(m).hrdata := ahbdrivedata(r.hdata);
       if r.dbgmst(m).hready='1' then
         v.dbgmst(m).haddr := dbgmo(m).haddr;
         v.dbgmst(m).hsize := dbgmo(m).hsize;
@@ -1139,6 +1147,12 @@ begin
           v.dbgmst(m).hready := '0';
         end if;
       end if;
+      -- Forward DFT signals
+      odbgmi(m).testen  := cpumi.testen;
+      odbgmi(m).testrst := cpumi.testrst;
+      odbgmi(m).scanen  := cpumi.scanen;
+      odbgmi(m).testoen := cpumi.testoen;
+      odbgmi(m).testin  := cpumi.testin;
     end loop;
 
     ---------------------------------------------------------------------------
@@ -1153,12 +1167,8 @@ begin
     -- For now re-use the DSU5 PnP ID for the master
     ocpumo.hconfig(0) := hconfig(0);
     ocpumo.hindex := cpumidx;
-    for m in 0 to ndbgmst-1 loop
-      if m=0 or std_logic_vector(to_unsigned(m,r.selmst'length))=std_logic_vector(r.selmst) then
-        ocpumo.hwdata := ahbdrivedata(ahbreadword(dbgmo(m).hwdata, r.dbgmst(m).haddr(4 downto 2)));
-      end if;
-    end loop;
-    hwdata := ocpumo.hwdata(31 downto 0);
+    ocpumo.hwdata := ahbdrivedata(r.hdata);
+    hwdata := r.hdata;
     if cpumi.hready='1' then
       v.mst_granted := cpumi.hgrant(cpumidx);
       v.mst_inacc := r.mst_granted and r.mst_htrans(1);
@@ -1167,19 +1177,19 @@ begin
              maskmatch(r.mst_haddr(19 downto  8), pnpaddrlo, 16#ff0#)='1' and
              r.mst_haddr(11)='1' and
              r.mst_haddr(10 downto 5)=std_logic_vector(to_unsigned(dsuslvidx,6)) ) then
-          v.hrdata := hconfig(to_integer(unsigned(r.mst_haddr(4 downto 2))));
+          v.hdata := hconfig(to_integer(unsigned(r.mst_haddr(4 downto 2))));
         elsif ( maskmatch(r.mst_haddr(31 downto 20), pnpaddrhi, 16#fff#)='1' and
              maskmatch(r.mst_haddr(19 downto  8), pnpaddrlo, 16#ff0#)='1' and
              r.mst_haddr(11)='0' and
              unsigned(r.mst_haddr(10 downto 5))>=to_unsigned(dsumstidx,6) ) then
           vmst := unsigned(r.mst_haddr(10 downto 5))-dsumstidx;
           if vmst >= ndbgmst then
-            v.hrdata := (others => '0');
+            v.hdata := (others => '0');
           else
-            v.hrdata := dbgmo(to_integer(vmst)).hconfig(to_integer(unsigned(r.mst_haddr(4 downto 2))));
+            v.hdata := dbgmo(to_integer(vmst)).hconfig(to_integer(unsigned(r.mst_haddr(4 downto 2))));
           end if;
-        else
-          v.hrdata := ahbreadword(cpumi.hrdata, r.mst_haddr(4 downto 2));
+        elsif r.mst_hwrite='0' then
+          v.hdata := ahbreadword(cpumi.hrdata, r.mst_haddr(4 downto 2));
         end if;
       end if;
     end if;
@@ -1251,6 +1261,10 @@ begin
       if dbgo(i).cpustate /= r.dsu.plstate(2*i+1 downto 2*i) then
         v.dsu.statechg(i) := '1';
         v.dsu.prevstate(2*i+1 downto 2*i) := r.dsu.plstate(2*i+1 downto 2*i);
+        v.dsu.forcedstop(i) := '0';
+        if dbgo(i).cpustate=CPUSTATE_STOPPED and (r.dsu.blockusr(i)='1' or r.dsu.usr_break(i)='0') then
+          v.dsu.forcedstop(i) := '1';
+        end if;
       end if;
       v.dsu.plidle(i) := dbgo(i).idle;
     end loop;
@@ -1988,18 +2002,28 @@ begin
         end if;
         if dsuen='0' then
           vfound := '0';
-          v.hrdata := x"DEAD1234";      -- simplify debugging
+          v.hdata := x"DEAD1234";      -- simplify debugging
           for x in 0 to ndbgmst-1 loop
             v.dbgmst(x).hready := '1';
           end loop;
         end if;
         if notx(std_logic_vector(v.selmst)) then
+          v.mst_hsize := r.dbgmst(to_integer(v.selmst)).hsize;
           v.mst_hwrite := r.dbgmst(to_integer(v.selmst)).hwrite;
           v.mst_haddr := r.dbgmst(to_integer(v.selmst)).haddr;
         else
+          setx(v.mst_hsize);
           setx(v.mst_hwrite);
           setx(v.mst_haddr);
         end if;
+        for x in 0 to ndbgmst-1 loop
+          if std_logic_vector(v.selmst)=std_logic_vector(to_unsigned(x,v.selmst'length)) then
+            v.hdata := ahbreadword(dbgmo(x).hwdata, r.dbgmst(x).haddr(4 downto 2));
+            if r.dbgmst(x).hready='0' and r.dbgmst(x).hwrite='1' then
+              v.dbgmst(x).hready := '1';
+            end if;
+          end if;
+        end loop;
         -- TODO perform bursts properly rather than forward as single accesses
         -- v.mst_hburst0 := r.dbgmst(to_integer(v.selmst)).hburst0;
 
@@ -2021,18 +2045,22 @@ begin
         end if;
 
       when dmsingle =>
-        if cpumi.hready='1' then
-          if r.mst_granted='1' then
-            v.mst_htrans := "00";
-          end if;
-          if r.mst_inacc='1' then
-            v.s := dmidle;
+        if r.mst_inacc='1' and cpumi.hready='1' then
+          v.s := dmidle;
+          if r.mst_hwrite='0' then
             v.dbgmst(to_integer(r.selmst)).hready := '1';
           end if;
-        elsif r.mst_inacc='1' and cpumi.hresp(1)='1' then
-          v.mst_htrans := "10";
+        elsif r.mst_inacc='1' and cpumi.hready='0' and cpumi.hresp(1)='1' then
           v.mst_inacc := '0';
+        elsif r.mst_inacc='1' then
+          null; -- wait for hready=1
+        elsif cpumi.hready='1' and r.mst_htrans(1)='1' and r.mst_granted='1' then
+          v.mst_htrans := "00";
+          -- v.mst_inacc:='1'; alredy set by general AHB logic
+        else
+          v.mst_htrans := "10";
         end if;
+        v.mst_hbusreq := v.mst_htrans(1);
 
       when dmdsu1 =>
 
@@ -2137,7 +2165,7 @@ begin
             end if;
 
           when "001" =>                   --IU tbuf
-            if r.ctr="111111" then
+            if r.ctr= (r.ctr'range => '1') then
               v.it(index).buf_read := '1';
               if r.it(index).buf_read = '0' then
                 v.it(index).buf_read_addr := r.mst_haddr(log2(itentr)-1+5 downto 2)&"00";
@@ -2158,7 +2186,9 @@ begin
             v.s := dmdsu2;
         end case;
 
-        v.hrdata := hrdata;
+        if r.mst_hwrite='0' then
+          v.hdata := hrdata;
+        end if;
 
       when dmdsu2 =>
         vsessbusy := '0';
@@ -2166,7 +2196,9 @@ begin
           if r.sess(i).docmd='1' then vsessbusy:='1'; end if;
         end loop;
         if vsessbusy='0' and dbgo(index).miso.accrdy='0' then
-          v.dbgmst(to_integer(r.selmst)).hready := '1';
+          if r.mst_hwrite='0' then
+            v.dbgmst(to_integer(r.selmst)).hready := '1';
+          end if;
           v.s := dmidle;
         end if;
 
@@ -2220,7 +2252,7 @@ begin
     end case;
 
     -- Deadlock detect
-    if r.ctr="000000" then
+    if r.ctr = (r.ctr'range => '0') then
       v.s := dmidle;
       for x in 0 to ndbgmst-1 loop
         v.dbgmst(x).hready := '1';
@@ -2294,6 +2326,7 @@ begin
           v.sess(x).claimed       := RRES.sess(x).claimed;
           v.sess(x).pending       := RRES.sess(x).pending;
           v.sess(x).statechg      := RRES.sess(x).statechg;
+          v.sess(x).docmd         := RRES.sess(x).docmd;
         end loop;
         for x in 0 to NCPU-1 loop
           v.bootreq(x).ben        := RRES.bootreq(x).ben;
@@ -2412,7 +2445,7 @@ begin
   end generate arstregs;
 
   tb0 : if TRACEN generate
-    mem0 : tbufmem5 generic map (tech => memtech, tbuf => kbytes, dwidth => busw, proc => 0, testen => scantest)
+    atmem0 : tbufmem5 generic map (tech => memtech, tbuf => kbytes, dwidth => busw, proc => 0, testen => scantest)
       port map (clk, tbi, tbo, cpusi.testin
                 );
 -- pragma translate_off
@@ -2424,7 +2457,7 @@ begin
 
   itb0 : if ITRACEN generate
     mcpu:for i in 0 to NCPU-1 generate
-      mem0 : itbufmem5
+      itmem0 : itbufmem5
         generic map( tech => memtech,
                      entry => itentr,
                      testen => scantest)

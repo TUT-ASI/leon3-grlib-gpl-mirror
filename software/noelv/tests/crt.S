@@ -232,10 +232,10 @@ mmu_trap_entry:
   nop
   csrw mscratch, x31
   lui x31, 0x4000c
-  sd a0, 0(x31)
-  sd a1, 8(x31)
-  sd a2, 16(x31)
-  sd a3, 24(x31)	
+  SREG a0, 0(x31)
+  SREG a1, 8(x31)
+  SREG a2, 16(x31)
+  SREG a3, 24(x31)	
   ##take different actions depending on the trap cause
   csrr a0, mcause
   ##for illegal instruction trap, return to machine mode
@@ -244,7 +244,14 @@ mmu_trap_entry:
   ##For EBREAK, go to a special routine
   li a1, 3
   beq a1, a0, ebreak_routine
-  #for page fault traps, go to page_fault_routine	
+  #for access fault traps, go to page_fault_routine	
+  li a1, 1
+  beq a0, a1, access_fault_routine
+  li a1, 5
+  beq a0, a1, access_fault_routine
+  li a1, 7
+  beq a0, a1, access_fault_routine
+  #for page fault traps, go to access_fault_routine	
   li a1, 12
   bgeu a0, a1, page_fault_routine
   nop
@@ -258,17 +265,16 @@ return_m_mode:
   li a1, 0x1800
   or a0,a0,a1
   csrw mstatus, a0
-  ld a0, 0(x31)
-  ld a1, 8(x31)
-  ld a2, 16(x31)
-  ld a3, 24(x31)
+  LREG a0, 0(x31)
+  LREG a1, 8(x31)
+  LREG a2, 16(x31)
+  LREG a3, 24(x31)
   csrr x31, mscratch
   mret
 
 ##This routine investigates and fixes the cause of a page fault
 ##by setting the appropriate bits in the PTE
 page_fault_routine:
-  ##if trap cause was instruction page fault use mepc, else use mtval
   csrr a2, mcause
   li a1, 12
   csrr a0, mtval
@@ -282,7 +288,7 @@ fix_pte:
   ##PTE address in a0
   add a0, a0, a1
   ##Load the PTE in a1
-  ld a1, (a0)
+  LREG a1, (a0)
   ##Determine if the page fault was caused by user/supervisor access privilege
   csrr a2, mstatus
   li  a3, 0x800
@@ -296,7 +302,7 @@ fix_pte:
   bne a3, a2, fix_pte_xwr
   ##otherwise switch the privilege mode of the PTE
   xori a1, a1, 0x10
-  sd a1, (a0)
+  SREG a1, (a0)
 fix_pte_xwr:
   ##take different actions depending on the trap cause
   csrr a2, mcause
@@ -309,21 +315,21 @@ fix_pte_xwr:
   #Othewise store_amo page fault. Set WR bits to 1
 set_wr:	
   ori a1,a1, 0x7
-  sd a1, (a0)
+  SREG a1, (a0)
   jal x0, return_pf 	
 set_x:	
   ori a1,a1, 0x9
-  sd a1, (a0)
+  SREG a1, (a0)
   jal x0, return_pf 	
 set_r:
   ori a1,a1, 0x3
-  sd a1, (a0) 
+  SREG a1, (a0) 
 return_pf:
   sfence.vma
-  ld a0, 0(x31)
-  ld a1, 8(x31)
-  ld a2, 16(x31)
-  ld a3, 24(x31)
+  LREG a0, 0(x31)
+  LREG a1, 8(x31)
+  LREG a2, 16(x31)
+  LREG a3, 24(x31)
   csrr x31, mscratch
   nop
   mret
@@ -351,13 +357,68 @@ ebreak_routine:
   addi a0, a0, 2
   cont_trap_handle:
   csrw mepc, a0
-  ld a0, 0(x31)
-  ld a1, 8(x31)
-  ld a2, 16(x31)
-  ld a3, 24(x31)
+  LREG a0, 0(x31)
+  LREG a1, 8(x31)
+  LREG a2, 16(x31)
+  LREG a3, 24(x31)
   csrr x31, mscratch	
   mret
 
+access_fault_routine:
+  csrr a2, mcause
+  #instruction access fault. Set X bit to 1
+  li a3, 1
+  beq a2,a3, set_xa
+  #load access fault. Set R bit to 1
+  li a3, 5
+  beq a2,a3, set_ra
+  #Othewise store_amo access fault. Set WR bits to 1
+ser_wra:
+  li a2, 3
+  jal x0, fix_access_fault 
+set_xa:
+  li a2, 4
+  jal x0, fix_access_fault
+set_ra:	
+  li a2, 1
+	
+fix_access_fault:
+  csrr a0, mtval
+  li a1, 0x40000000
+  bgeu a1,a0, write_pmpcfg0	
+  srli a0,a0, 12	
+  andi a0,a0, 0xFF	
+  li a1, 7
+  bge a0, a1, use_pmpcfg2
+##shift to affect the correct pmpXcfg
+  sll a2, a2, 8		
+  li a1, 1
+shift_0:
+  bge x0, a0, write_pmpcfg0	
+  sll a2, a2, 8	
+  sub a0,a0, a1
+  jal x0, shift_0
+write_pmpcfg0:	
+  csrr a3, pmpcfg0
+  or a3, a3,a2
+  csrw pmpcfg0, a3
+  jal x0, return_pf
+use_pmpcfg2:
+  sub a0, a0, a1
+  li a1, 1
+shift_1:
+  bge x0, a0, write_pmpcfg2	
+  sll a2, a2, 8	
+  sub a0,a0, a1
+  jal x0, shift_1
+write_pmpcfg2:	
+  csrr a3, pmpcfg2
+  or a3, a3,a2
+  csrw pmpcfg2, a3
+  jal x0, return_pf
+
+
+	
 endtest_mmu:
   fence
   mv a5,x0

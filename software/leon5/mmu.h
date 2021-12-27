@@ -213,16 +213,16 @@ static  int srmmu_device_memory(unsigned long x)
 	return ((x & 0xF0000000) != 0);
 }
 
-int srmmu_cache_pagetables;
+extern int srmmu_cache_pagetables;
 
 /* XXX Make this dynamic based on ram size - Anton */
 #define SRMMU_NOCACHE_BITMAP_SIZE (SRMMU_NOCACHE_NPAGES * 16)
 #define SRMMU_NOCACHE_BITMAP_SHIFT (PAGE_SHIFT - 4)
 
-void *srmmu_nocache_pool;
-void *srmmu_nocache_bitmap;
-int srmmu_nocache_low;
-int srmmu_nocache_used;
+extern void *srmmu_nocache_pool;
+extern void *srmmu_nocache_bitmap;
+extern int srmmu_nocache_low;
+extern int srmmu_nocache_used;
 //spinlock_t srmmu_nocache_spinlock;
 
 /* This makes sense. Honest it does - Anton */

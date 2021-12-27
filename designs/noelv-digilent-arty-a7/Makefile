@@ -1,8 +1,13 @@
-include .config
+BASE_DIR ?= .
+COM_DIR ?= $(BASE_DIR)/rtl/common
+CFG_DIR ?= $(BASE_DIR)
+CFG_LOCAL_DIR ?= $(CFG_DIR)/cfg
+TB_DIR ?= $(BASE_DIR)/tb
+include $(CFG_DIR)/.config
 
-GRLIB=../..
+GRLIB=$(BASE_DIR)/../..
 TOP=noelvmp
-GRLIB_CONFIG=grlib_config.vhd
+GRLIB_CONFIG ?= $(CFG_DIR)/grlib_config.vhd
 
 #PART=XC7A35TI
 PART=XC7A100TI
@@ -27,10 +32,18 @@ SYNPOPT="set_option -pipe 1; set_option -retiming 1; set_option -write_apr_const
 #GRLIB_SIMULATOR=ALDEC
 
 VHDLSYNFILES  =
-VHDLSYNFILES += rtl/axi_mig3_7series.vhd
-VHDLSYNFILES += rtl/clockers_mig.vhd
-VHDLSYNFILES += config.vhd ahbrom.vhd noelvmp.vhd
-VHDLSIMFILES=testbench.vhd
+VHDLSYNFILES += $(BASE_DIR)/rtl/axi_mig3_7series.vhd
+VHDLSYNFILES += $(BOARDDIR)/ahb2mig_arty_a7.vhdl
+VHDLSYNFILES += $(BOARDDIR)/ahb2axi_mig3_arty_a7.vhd
+VHDLSYNFILES += $(BASE_DIR)/rtl/clockers_mig.vhd
+VHDLSYNFILES += $(CFG_DIR)/config.vhd
+VHDLSYNFILES += $(CFG_LOCAL_DIR)/config_local.vhd
+VHDLSYNFILES += $(COM_DIR)/rev.vhd
+VHDLSYNFILES += $(COM_DIR)/cfgmap.vhd
+VHDLSYNFILES += $(COM_DIR)/noelvcore.vhd
+VHDLSYNFILES += $(COM_DIR)/ahbrom.vhd
+VHDLSYNFILES += $(BASE_DIR)/rtl/noelvmp.vhd
+VHDLSIMFILES  = $(TB_DIR)/testbench.vhd
 
 SIMTOP=testbench
 #SDCFILE=$(BOARDDIR)/default.sdc
@@ -61,6 +74,12 @@ FILESKIP  =
 FILESKIP += grcan.vhd
 FILESKIP += adapters/sgmii.vhd
 FILESKIP += adapters/rgmii_series7.vhd
+
+#32-bit NOEL-V
+ifeq ($(CONFIG_NOELV_RV32),y)
+DIRSKIP += noelv noelv/subsys
+DIRADD = noelv/noelv32
+endif
 
 # Options used during compilation
 VCOMOPT=-explicit -O0
@@ -101,7 +120,7 @@ VSIMOPT+= -do $(GRLIB)/bin/runvsim.do
 VSIMOPT+= $(SIMTOP)
 
 include $(GRLIB)/bin/Makefile
-include $(GRLIB)/software/leon3/Makefile
+include $(GRLIB)/software/noelv/systest/Makefile
 
 
 ### Synthesize Options ###
@@ -110,18 +129,12 @@ VIVADO_IMPL_STRATEGY=Performance_ExplorePostRoutePhysOpt
 
 
 ##################  project specific targets ##########################
-##	@cp rtl/mig.* rtl/mig_a.* rtl/mig_cdc.* vivado/
-
-#local-scripts: scripts
-#	@cp rtl/mig.* rtl/mig_cdc.* vivado/
-#	@echo "import_ip -files vivado/mig_cdc.xci -name mig_cdc" >> ./vivado/$(TOP)_vivado.tcl
-#	@echo "generate_target  all [get_files ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip/mig_cdc/mig_cdc.xci] -force " >> ./vivado/$(TOP)_vivado.tcl
 
 vivprog:
-	vivado -mode tcl -source doprog.tcl
+	vivado -mode tcl -source bitfile/doprog.tcl
 
 vivrom:
-	vivado -mode tcl -source dorom.tcl
+	vivado -mode tcl -source bitfile/dorom.tcl
 
 vivslack: vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP)_routed.dcp
 	vivado -mode tcl -nojournal -log slack.log -source slack.tcl $<

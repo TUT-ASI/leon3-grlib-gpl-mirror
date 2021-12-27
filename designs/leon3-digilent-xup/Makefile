@@ -25,7 +25,14 @@ DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan pci leon3ft ambatest \
 	can usb spacewire grusbhc hcan leon4v0 l2cache \
 	slink ascs pwm gr1553b iommu \
 	leon5v0 grfpu5 noelv noelv/subsys riscv
-FILESKIP = grcan.vhd i2cmst.vhd adapters/sgmii.vhd
+FILESKIP = grcan.vhd i2cmst.vhd adapters/sgmii.vhd \
+	sf2apbslv_wrapper.vhd sf2ficmst_wrapper.vhd sf2ficslv_wrapper.vhd \
+	sf2mddr_wrapper.vhd pfmddr_wrapper.vhd \
+	ahb2mig_7series_pkg.vhd ahb2mig_7series.vhd \
+	ahb2mig_7series_ddr2_dq16_ad13_ba3.vhd \
+	ahb2mig_7series_ddr3_dq16_ad15_ba3.vhd \
+	ahb2mig_7series_cpci_xc7k.vhd ahb2axi_mig_7series.vhd \
+	axi_mig_7series.vhd
 
 include $(GRLIB)/bin/Makefile
 include $(GRLIB)/software/leon3/Makefile

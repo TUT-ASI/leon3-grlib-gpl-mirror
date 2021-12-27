@@ -13,7 +13,8 @@ RISCV_PREFIX ?= riscv$(XLEN)-unknown-elf-
 XCC = $(RISCV_PREFIX)gcc $(XINC)
 XAS = $(RISCV_PREFIX)gcc -c -I. $(XINC)
 XAR = $(RISCV_PREFIX)ar
-XCFLAGS = -mcmodel=medany -static -std=gnu99 -O2 -ffast-math -fno-common -fno-builtin-printf -march=rv$(XLEN)im
+RISCV_ARCH ?= rv$(XLEN)im
+XCFLAGS = -mcmodel=medany -static -std=gnu99 -O2 -ffast-math -fno-common -fno-builtin-printf -march=$(RISCV_ARCH)
 
 LINK = $(XCC) -Tlink.ld
 LINK_OPTS = -static -nostdlib -nostartfiles -lm -lgcc
@@ -42,11 +43,11 @@ TOOLCHAIN_REPO = https://github.com/riscv/riscv-gnu-toolchain
 TOOLCHAIN = $(GRLIB)/software/noelv/riscv-gnu-toolchain
 RTOOLCHAIN = $(realpath $(TOOLCHAIN))
 ifeq ($(XLEN), 64)
-  BUILD_OPTS  = --with-arch=rv$(XLEN)im --with-abi=lp$(XLEN)
-  RISCV_ABI  ?= lp64
+  BUILD_OPTS  = --with-arch=rv$(XLEN)im --with-abi=lp$(XLEN)d
+  RISCV_ABI  ?= lp64d
 else
-  BUILD_OPTS  = --with-arch=rv$(XLEN)im --with-abi=ilp$(XLEN)
-  RISCV_ABI  ?= ilp32
+  BUILD_OPTS  = --with-arch=rv$(XLEN)im --with-abi=ilp$(XLEN)d
+  RISCV_ABI  ?= ilp32d
 endif
 
 update-riscv-toolchain:
@@ -278,7 +279,7 @@ DHRYSTONE_LOCAL = $(GRLIB)/software/noelv/benchmark-dhrystone
 #--------------------------------------------------------------------
 
 torture.elf: $(TORTURE_LOCAL)/torture.S prom.ld $(TORTURE_LOCAL)/link.ld install-riscv-torture
-	$(XCC) -I$(TORTURE)/env/p -T$(TORTURE_LOCAL)/link.ld $< -nostdlib -static -Wl,--no-gc-sections -march=rv$(XLEN)im -mabi=$(RISCV_ABI) -o $@
+	$(XCC) -I$(TORTURE)/env/p -T$(TORTURE_LOCAL)/link.ld $< -nostdlib -static -Wl,--no-gc-sections -march=$(RISCV_ARCH) -mabi=$(RISCV_ABI) -o $@
 
 torture.srec: torture.elf
 	$(OBJCOPY) $(OBJCOPY_OPTS) $(EXTRA_PROM) --remove-section=.riscv.attributes -O srec $< $@
@@ -300,7 +301,7 @@ sim-torture: gen-torture torture.srec
 #--------------------------------------------------------------------
 
 %.dv.elf: %.dv
-	$(XCC) -T$(TESTS_LOCAL)/link.ld $(DV)/build/$*.S -nostdlib -static -Wl,--no-gc-sections -march=rv$(XLEN)im -mabi=$(RISCV_ABI) -o $@
+	$(XCC) -T$(TESTS_LOCAL)/link.ld $(DV)/build/$*.S -nostdlib -static -Wl,--no-gc-sections -march=$(RISCV_ARCH) -mabi=$(RISCV_ABI) -o $@
 
 %.dv.srec: %.dv.elf
 	$(OBJCOPY) $(OBJCOPY_OPTS) $(EXTRA_PROM) --remove-section=.riscv.attributes -O srec $*.dv.elf $@
@@ -355,7 +356,7 @@ endif
 	dtc -I dts $< -O dtb -o $@
 
 %.elf: %.S prom.ld $(DTB)
-	$(XCC) -march=rv$(XLEN)im -mabi=$(RISCV_ABI) -Tprom.ld $< -nostdlib -static -Wl,--no-gc-sections -o $@
+	$(XCC) -march=$(RISCV_ARCH) -mabi=$(RISCV_ABI) -Tprom.ld $< -nostdlib -static -Wl,--no-gc-sections -o $@
 
 prom.srec: prom.elf
 	$(OBJCOPY) $(PROM_OPTS) $(EXTRA_PROM) --remove-section=.riscv.attributes -O srec $< $@

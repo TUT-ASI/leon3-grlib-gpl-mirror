@@ -68,6 +68,7 @@ architecture behav of testbench is
   -- LEDs
   signal led                : std_logic_vector(3 downto 0);
   -- Buttons
+  signal ck_rst             : std_ulogic;
   signal btn                : std_logic_vector(3 downto 0);
   signal cpu_resetn         : std_ulogic;
   -- Switches
@@ -93,9 +94,9 @@ architecture behav of testbench is
   -- Fan PWM
   signal fan_pwm            : std_ulogic;    
   -- SPI
+  signal qspi_sck           : std_ulogic;
   signal qspi_cs            : std_logic;
   signal qspi_dq            : std_logic_vector(3 downto 0);
-  signal scl                : std_ulogic;
 
   signal gnd                : std_ulogic;
 
@@ -121,21 +122,26 @@ begin
   -- clock and reset
   CLK100MHZ     <= not CLK100MHZ after ct * 1 ns;
   -- reset
-  btn(0)        <= '1', '0' after 100 ns;
+  ck_rst        <= '0', '1' after 100 ns;
   -- dsui.break
-  btn(1)        <= '0';
+  btn(3)        <= '0';
   -- dsui.enable
-  sw(0)         <= '1';
+  sw(3)         <= '1';
 
   d3 : entity work.leon3mp
     generic map (fabtech, memtech, padtech, clktech, disas, dbguart, pclow,
                  SIM_BYPASS_INIT_CAL, SIMULATION, USE_MIG_INTERFACE_MODEL)
     port map (
       CLK100MHZ => CLK100MHZ, led => led,
+      ck_rst => ck_rst,
       btn => btn,
       sw => sw,
+      ck_miso => '1',
       uart_txd_in => '1',
       uart_rxd_out => open,
+      qspi_sck        => qspi_sck,
+      qspi_cs         => qspi_cs,
+      qspi_dq         => qspi_dq(1 downto 0),
       eth_col         => erx_col,
       eth_crs         => erx_crs,
       eth_mdc         => emdc,
@@ -151,6 +157,25 @@ begin
       eth_txd         => etxdt
      );
 
+  spif : if CFG_SPIMCTRL /= 0 generate
+    spi0: spi_flash
+      generic map (
+        ftype      => 4,
+        debug      => 0,
+        fname      => promfile,
+        readcmd    => CFG_SPIMCTRL_READCMD,
+        dummybyte  => CFG_SPIMCTRL_DUMMYBYTE,
+        dualoutput => CFG_SPIMCTRL_DUALOUTPUT,
+        memoffset  => CFG_SPIMCTRL_OFFSET)
+      port map (
+        sck             => qspi_sck,
+        di              => qspi_dq(0),
+        do              => qspi_dq(1),
+        csn             => qspi_cs,
+        sd_cmd_timeout  => open,
+        sd_data_timeout => open);
+  end generate;
+
   iuerr : process
   begin
     wait for 10 us;
@@ -160,5 +185,4 @@ begin
   end process;
 
 end;
-
 

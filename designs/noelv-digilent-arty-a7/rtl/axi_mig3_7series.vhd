@@ -68,7 +68,7 @@ entity axi_mig3_7series is
     sys_clk_i           : in    std_logic;
     clk_ref_i           : in    std_logic;
     rst_n_syn           : in    std_logic;
-    rst_n_async         : in    std_logic;
+    amba_rstn           : in    std_logic;
     amba_clk            : in    std_logic
     );
 end ; 
@@ -314,7 +314,7 @@ begin
   MCB_CDC : mig_cdc
     PORT MAP (
       s_axi_aclk        => amba_clk,
-      s_axi_aresetn     => rst_n_syn,
+      s_axi_aresetn     => amba_rstn,
       s_axi_awid        => aximo.aw.id,
       s_axi_awaddr      => aximo.aw.addr,
       s_axi_awlen       => aximo_aw_len,
@@ -355,7 +355,7 @@ begin
       s_axi_rvalid      => aximi.r.valid,
       s_axi_rready      => aximo.r.ready,
       m_axi_aclk        => ddr3_axi_clk,
-      m_axi_aresetn     => ddr3_axi_rstn,
+      m_axi_aresetn     => amba_rstn,
       m_axi_awid        => ddr3_awid,
       m_axi_awaddr      => ddr3_awaddr,
       m_axi_awlen       => ddr3_awlen,
@@ -420,7 +420,7 @@ begin
       ui_clk_sync_rst      => lui_clk_sync_rst,
       
       mmcm_locked          => mmcm_locked,
-      aresetn              => ddr3_axi_rstn,
+      aresetn              => amba_rstn,
       app_sr_req           => '0',
       app_ref_req          => '0',
       app_zq_req           => '0',
@@ -468,7 +468,7 @@ begin
       
       init_calib_complete => calib_done,
       device_temp       => open, --output fixme
-      sys_rst           => rst_n_async --rst_n_syn
+      sys_rst           => rst_n_syn
     );  
 
   ui_clk            <= lui_clk;

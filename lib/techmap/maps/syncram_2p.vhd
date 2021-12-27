@@ -237,6 +237,7 @@ begin
          port map (rclk, wclk, raddress, waddress, datain, write, dataoutx, renable);
   end generate;
 
+
   xcv : if xtech = virtex generate
     x0 : virtex_syncram_dp generic map (abits, dbits)
          port map (wclk, waddress, datain, open, xwrite, xwrite,

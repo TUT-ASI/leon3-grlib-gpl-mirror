@@ -1,4 +1,5 @@
 gencomp 
+alltech
 inferred
 #dw02
 #dware

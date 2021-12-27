@@ -44,7 +44,7 @@ entity progbuf is
 end;
 
 architecture rtl of progbuf is
-  type progbuf_type is array (0 to size/2-1) of wordx;
+  type progbuf_type is array (0 to size/2-1) of word64;
   signal r, rin : progbuf_type;
 begin
   comb : process(pbi)
@@ -72,7 +72,7 @@ begin
       -- EBREAK
       pbo.data <= x"00100073";
     end if;
-    
+
     if (size /= 0) and (eidx < size/2) then
       pbo.edata <= r(eidx);
     else
@@ -94,4 +94,3 @@ begin
     end if;
   end process;
 end;
-

@@ -24,8 +24,6 @@
 -- Description: Register file for LEON5 built from syncram_2p instances
 ------------------------------------------------------------------------------
 
---!!!You probably don't need to reset anything in this block
-
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -59,16 +57,16 @@ entity regfile5_ram is
     wdata2   : in  std_logic_vector((dbits -1) downto 0);
     we2      : in  std_logic_vector(1 downto 0);
     raddr1   : in  std_logic_vector((abits -1) downto 0);
-    re1      : in  std_logic;
+    re1      : in  std_logic_vector(1 downto 0);
     rdata1   : out std_logic_vector((dbits -1) downto 0);
     raddr2   : in  std_logic_vector((abits -1) downto 0);
-    re2      : in  std_logic;
+    re2      : in  std_logic_vector(1 downto 0);
     rdata2   : out std_logic_vector((dbits -1) downto 0);
     raddr3   : in  std_logic_vector((abits -1) downto 0);
-    re3      : in  std_logic;
+    re3      : in  std_logic_vector(1 downto 0);
     rdata3   : out std_logic_vector((dbits -1) downto 0);
     raddr4   : in  std_logic_vector((abits -1) downto 0);
-    re4      : in  std_logic;
+    re4      : in  std_logic_vector(1 downto 0);
     rdata4   : out std_logic_vector((dbits -1) downto 0);
     testin   : in  std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
     );
@@ -123,76 +121,76 @@ architecture rtl of regfile5_ram is
  
   signal r, rin : reg_type;
 
-  signal re1_masked, re2_masked, re3_masked, re4_masked : std_logic;
+  signal re1_masked, re2_masked, re3_masked, re4_masked : std_logic_vector(1 downto 0);
 begin  -- rtl
 
   --PORT1
   x00 : syncram_2p generic map (tech, abits, dbits/2, 0, wrfst, testen, 0, memtest_vlen,0,1)
-    port map (clk, re1_masked, raddr1, rdata10(31 downto 0), clk, we1(0), waddr1, wdata1(63 downto 32), testin
+    port map (clk, re1_masked(0), raddr1, rdata10(31 downto 0), clk, we1(0), waddr1, wdata1(63 downto 32), testin
               );
 
   x01 : syncram_2p generic map (tech, abits, dbits/2, 0, wrfst, testen, 0, memtest_vlen, 0, 1)
-    port map (clk, re1_masked, raddr1, rdata11(31 downto 0), clk, we2(0), waddr2, wdata2(63 downto 32), testin
+    port map (clk, re1_masked(0), raddr1, rdata11(31 downto 0), clk, we2(0), waddr2, wdata2(63 downto 32), testin
               );
 
   x02 : syncram_2p generic map (tech, abits, dbits/2, 0, wrfst, testen, 0, memtest_vlen, 0, 1)
-    port map (clk, re1_masked, raddr1, rdata12(31 downto 0), clk, we1(1), waddr1, wdata1(31 downto 0), testin
+    port map (clk, re1_masked(1), raddr1, rdata12(31 downto 0), clk, we1(1), waddr1, wdata1(31 downto 0), testin
               );
 
   x03 : syncram_2p generic map (tech, abits, dbits/2, 0, wrfst, testen, 0, memtest_vlen, 0, 1)
-    port map (clk, re1_masked, raddr1, rdata13(31 downto 0), clk, we2(1), waddr2, wdata2(31 downto 0), testin
+    port map (clk, re1_masked(1), raddr1, rdata13(31 downto 0), clk, we2(1), waddr2, wdata2(31 downto 0), testin
               );
 
 
   --PORT2
   x10 : syncram_2p generic map (tech, abits, dbits/2, 0, wrfst, testen, 0, memtest_vlen, 0, 1)
-    port map (clk, re2_masked, raddr2, rdata20(31 downto 0), clk, we1(0), waddr1, wdata1(63 downto 32), testin
+    port map (clk, re2_masked(0), raddr2, rdata20(31 downto 0), clk, we1(0), waddr1, wdata1(63 downto 32), testin
               );
 
   x11 : syncram_2p generic map (tech, abits, dbits/2, 0, wrfst, testen, 0, memtest_vlen, 0, 1)
-    port map (clk, re2_masked, raddr2, rdata21(31 downto 0), clk, we2(0), waddr2, wdata2(63 downto 32), testin
+    port map (clk, re2_masked(0), raddr2, rdata21(31 downto 0), clk, we2(0), waddr2, wdata2(63 downto 32), testin
               );
 
   x12 : syncram_2p generic map (tech, abits, dbits/2, 0, wrfst, testen, 0, memtest_vlen, 0, 1)
-    port map (clk, re2_masked, raddr2, rdata22(31 downto 0), clk, we1(1), waddr1, wdata1(31 downto 0), testin
+    port map (clk, re2_masked(1), raddr2, rdata22(31 downto 0), clk, we1(1), waddr1, wdata1(31 downto 0), testin
               );
 
   x13 : syncram_2p generic map (tech, abits, dbits/2, 0, wrfst, testen, 0, memtest_vlen, 0, 1)
-    port map (clk, re2_masked, raddr2, rdata23(31 downto 0), clk, we2(1), waddr2, wdata2(31 downto 0), testin
+    port map (clk, re2_masked(1), raddr2, rdata23(31 downto 0), clk, we2(1), waddr2, wdata2(31 downto 0), testin
               );
 
   --PORT3
   x20 : syncram_2p generic map (tech, abits, dbits/2, 0, wrfst, testen, 0, memtest_vlen, 0, 1)
-    port map (clk, re3_masked, raddr3, rdata30(31 downto 0), clk, we1(0), waddr1, wdata1(63 downto 32), testin
+    port map (clk, re3_masked(0), raddr3, rdata30(31 downto 0), clk, we1(0), waddr1, wdata1(63 downto 32), testin
               );
 
   x21 : syncram_2p generic map (tech, abits, dbits/2, 0, wrfst, testen, 0, memtest_vlen, 0, 1)
-    port map (clk, re3_masked, raddr3, rdata31(31 downto 0), clk, we2(0), waddr2, wdata2(63 downto 32), testin
+    port map (clk, re3_masked(0), raddr3, rdata31(31 downto 0), clk, we2(0), waddr2, wdata2(63 downto 32), testin
               );
 
   x22 : syncram_2p generic map (tech, abits, dbits/2, 0, wrfst, testen, 0, memtest_vlen, 0, 1)
-    port map (clk, re3_masked, raddr3, rdata32(31 downto 0), clk, we1(1), waddr1, wdata1(31 downto 0), testin
+    port map (clk, re3_masked(1), raddr3, rdata32(31 downto 0), clk, we1(1), waddr1, wdata1(31 downto 0), testin
               );
 
   x23 : syncram_2p generic map (tech, abits, dbits/2, 0, wrfst, testen, 0, memtest_vlen, 0, 1)
-    port map (clk, re3_masked, raddr3, rdata33(31 downto 0), clk, we2(1), waddr2, wdata2(31 downto 0), testin
+    port map (clk, re3_masked(1), raddr3, rdata33(31 downto 0), clk, we2(1), waddr2, wdata2(31 downto 0), testin
               );
 
   --PORT4
   x30 : syncram_2p generic map (tech, abits, dbits/2, 0, wrfst, testen, 0, memtest_vlen, 0, 1)
-    port map (clk, re4_masked, raddr4, rdata40(31 downto 0), clk, we1(0), waddr1, wdata1(63 downto 32), testin
+    port map (clk, re4_masked(0), raddr4, rdata40(31 downto 0), clk, we1(0), waddr1, wdata1(63 downto 32), testin
               );
 
   x31 : syncram_2p generic map (tech, abits, dbits/2, 0, wrfst, testen, 0, memtest_vlen, 0, 1)
-    port map (clk, re4_masked, raddr4, rdata41(31 downto 0), clk, we2(0), waddr2, wdata2(63 downto 32), testin
+    port map (clk, re4_masked(0), raddr4, rdata41(31 downto 0), clk, we2(0), waddr2, wdata2(63 downto 32), testin
               );
 
   x32 : syncram_2p generic map (tech, abits, dbits/2, 0, wrfst, testen, 0, memtest_vlen, 0, 1)
-    port map (clk, re4_masked, raddr4, rdata42(31 downto 0), clk, we1(1), waddr1, wdata1(31 downto 0), testin
+    port map (clk, re4_masked(1), raddr4, rdata42(31 downto 0), clk, we1(1), waddr1, wdata1(31 downto 0), testin
               );
 
   x33 : syncram_2p generic map (tech, abits, dbits/2, 0, wrfst, testen, 0, memtest_vlen, 0, 1)
-    port map (clk, re4_masked, raddr4, rdata43(31 downto 0), clk, we2(1), waddr2, wdata2(31 downto 0), testin
+    port map (clk, re4_masked(1), raddr4, rdata43(31 downto 0), clk, we2(1), waddr2, wdata2(31 downto 0), testin
               );
 
   comb : process(rstn, r, we1, we2, waddr1, waddr2, wdata1, wdata2,
@@ -224,16 +222,16 @@ begin  -- rtl
       v.port2_wf := "00";
       v.port3_wf := "00";
       v.port4_wf := "00";
-      if re1 = '1' then
+      if re1 /= "00" then
         v.raddr1 := raddr1;
       end if;
-      if re2 = '1' then
+      if re2 /= "00" then
         v.raddr2 := raddr2;
       end if;
-      if re3 = '1' then
+      if re3 /= "00" then
         v.raddr3 := raddr3;
       end if;
-      if re4 = '1' then
+      if re4 /= "00" then
         v.raddr4 := raddr4;
       end if;
     end if;
@@ -264,7 +262,7 @@ begin  -- rtl
     end if;
 
     rdata1v(31 downto 0) := rdata12;
-    if notx(r.raddr2) then
+    if notx(r.raddr1) then
       if r.lwrite(to_integer(unsigned(r.raddr1)))(1) = '1' then
         rdata1v(31 downto 0) := rdata13;
       end if;
@@ -671,10 +669,13 @@ begin  -- rtl
     rdata2 <= rdata2v;
     rdata3 <= rdata3v;
     rdata4 <= rdata4v;
-    re1_masked <= re1 and not(rdhold);
-    re2_masked <= re2 and not(rdhold);
-    re3_masked <= re3 and not(rdhold);
-    re4_masked <= re4 and not(rdhold);
+    
+    for i in 0 to 1 loop
+      re1_masked(i) <= re1(i) and not(rdhold);
+      re2_masked(i) <= re2(i) and not(rdhold);
+      re3_masked(i) <= re3(i) and not(rdhold);
+      re4_masked(i) <= re4(i) and not(rdhold);
+    end loop;
     rin    <= v;
 
   end process;
@@ -687,6 +688,5 @@ begin  -- rtl
     end if;
 
   end process;
-  
 
 end rtl;

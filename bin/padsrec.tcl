@@ -6,12 +6,12 @@
 # Usage: tclsh padsrec.tcl <in.srec >out.srec
 #
 # Limitations:
-# - Each line except the last of the SREC must contain a multiple of 8 bytes of data
 # - Records other than S1-3 are passed on unchanged
 # - SREC checksums are not correct
 #
 # Revision history:
 #   2011-08-12, MH, First version (based on ftddrcb.tcl)
+#   2020-12-01, MH, Rewrite to support realigning data
 #
 
 
@@ -19,59 +19,63 @@
 # -------------------------------------------------------------
 # SREC processing
 
-set valtable {  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F }
-for { set i 0 } { $i < 16 } { incr i } {
-    set symval([lindex $valtable $i]) $i
-}
-
 proc hex2int { h } {
-    global symval
-    set l [string length $h]
-    set r 0
-    for {set i 0} {$i < $l} {incr i} {
-	set r [expr {($r << 4) + $symval([string index $h $i])}]
-    }
-    return $r;
+        return [expr {"0x$h"}]
 }
 
-proc int2hex { i l } {
-    global valtable
-    set r ""
-    set ol 0
-    while { $i > 0 || $ol < $l || $ol < 1 } { 
-	set r [ format "%s%s" [lindex $valtable [ expr { $i & 15 } ] ] $r ]
-	set i [ expr { $i >> 4 } ]
-	incr ol
-    }
-    return $r
-}
+set outrecs [list] ; # output records without check byte
+set prerecs [list]
+set postrecs [list]
+
+set startaddr 0
+set recbytes 16
 
 set lineno 0
 while { ! [eof stdin] } {
-    set l [gets stdin]
-    incr lineno
-    set llen [string length $l]
-    if { $llen == 0 } then continue
-    set rt [string index $l 1 ]
-    if { $rt > 0 && $rt < 4 } then {
-	# Byte count and data position
-	set bc [expr { [hex2int [string range $l 2 3]] - 2 - $rt } ]
-	set dp [expr {6 + $rt*2}]
-
-	if { [expr {$bc & 7}] != 0 } then {
-	    # puts stderr "Warning: Padding line $lineno to even multiple of 8 bytes"
-	    while { [expr {$bc & 7}] != 0 } {
-		set l0 [ string range $l 4 [expr {$llen-3}] ]
-		set l1 [ string range $l [expr {$llen-2}] $llen ]
-		incr bc
-		set l [format "S%s%s%s%s%s" $rt [int2hex [expr {$bc+2+$rt}] 2] $l0 "00" $l1]
-		incr llen
-		incr llen
-	    }
-	    # puts stderr "Became: $l"
-	}
-    }
-    puts $l
+        set l [gets stdin]
+        incr lineno
+        set llen [string length $l]
+        if { $llen == 0 } then continue
+        set rt [string index $l 1 ]
+        if { $rt > 0 && $rt < 4 } then {
+                # Byte count and data position
+                set bc [expr { [hex2int [string range $l 2 3]] - 2 - $rt } ]
+                set dp [expr {6 + $rt*2}]
+                # Address
+                set haddr [string range $l 4 $dp-1]
+                set addr 0x${haddr}
+                if { [llength $outrecs] == 0 } {
+                        set startaddr [expr { $addr - ($addr & (1-$recbytes)) }]
+                }
+                while { $bc > 0 } {
+                        set recno [expr { ($addr-$startaddr) / $recbytes }]
+                        while { $recno >= [llength $outrecs] } {
+                                set newrec [format "S3%02X%08X%0*X" [expr {$recbytes + 5}] [expr {$startaddr + [llength $outrecs]*$recbytes}] [expr {2*$recbytes}] 0]
+                                lappend outrecs $newrec
+                        }
+                        set recoffs [expr {$addr - $recno*$recbytes - $startaddr}]
+                        set cbc [expr { min($bc, $recbytes-$recoffs) }]
+                        set rec [lindex $outrecs $recno]
+                        set nrec [string replace $rec [expr { 12+2*$recoffs}] [expr { 11+2*($recoffs+$cbc) }] [string range $l $dp [expr {$dp+2*$cbc-1}]] ]
+                        lset outrecs $recno $nrec
+                        set dp [expr { $dp + 2*$cbc }]
+                        set bc [expr { $bc - $cbc }]
+                        incr addr $cbc
+                }
+        } elseif { [llength $outrecs] == 0 } {
+                lappend prerecs $l
+        } else {
+                lappend postrecs $l
+        }
 }
 
-
+foreach l $prerecs { puts $l }
+foreach l $outrecs {
+        set c 0
+        for { set b 1 } { $b < (1+4+16+1) } { incr b } {
+                incr c [hex2int [string range $l [expr {2*$b}] [expr {2*$b+1}]]]
+        }
+        set c [expr { (~$c) & 255 }]
+        puts [format %s%02X $l $c]
+}
+foreach l $postrecs { puts $l }

@@ -29,9 +29,11 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library grlib;
 use grlib.stdlib.all;
-
 use grlib.amba.hsize_word;
 use grlib.amba.hsize_dword;
+library gaisler;
+use gaisler.utilnv.all_0;
+use gaisler.utilnv.u2i;
 
 package mmucacheconfig is
 
@@ -93,8 +95,10 @@ subtype page_offset is std_logic_vector(11 downto 0);
 -- while Sparc counts from 1, starting at high bits (at least in the LEON MMU code).
 
 function va(what : va_type) return std_logic_vector;
+function va_msb(what : va_type) return integer;
 function vpn(what : va_type) return std_logic_vector;
 function pa(what : va_type) return std_logic_vector;
+function pa_msb(what : va_type) return integer;
 function ppn(what : va_type) return std_logic_vector;
 function pte_hsize(what : va_type) return std_logic_vector;
 function va_size(what : va_type) return va_bits;
@@ -626,10 +630,10 @@ end mmucacheconfig;
 package body mmucacheconfig is
 
   function va(what : va_type) return std_logic_vector is
-    constant VA_SPARC : std_logic_vector(31 downto  0) := (others => '0');
-    constant VA_SV32  : std_logic_vector(31 downto  0) := (others => '0');
-    constant VA_SV39  : std_logic_vector(38 downto  0) := (others => '0');
-    constant VA_SV48  : std_logic_vector(47 downto  0) := (others => '0');
+    variable VA_SPARC : std_logic_vector(31 downto  0) := (others => '0');
+    variable VA_SV32  : std_logic_vector(31 downto  0) := (others => '0');
+    variable VA_SV39  : std_logic_vector(38 downto  0) := (others => '0');
+    variable VA_SV48  : std_logic_vector(47 downto  0) := (others => '0');
   begin
     case what is
     when sv32   => return VA_SV32;
@@ -639,18 +643,28 @@ package body mmucacheconfig is
     end case;
   end;
 
+  function va_msb(what : va_type) return integer is
+  begin
+    case what is
+    when sv32   => return 31;
+    when sv39   => return 38;
+    when sv48   => return 47;
+    when others => return 31;
+    end case;
+  end;  
+
   function vpn(what : va_type) return std_logic_vector is
     constant va_tmp : std_logic_vector                        := va(what);  -- constant
-    constant tmp    : std_logic_vector(va_tmp'high downto 12) := (others => '0');
+    variable tmp    : std_logic_vector(va_tmp'high downto 12) := (others => '0');
   begin
     return tmp;
   end;
 
   function pa(what : va_type) return std_logic_vector is
-    constant PA_SPARC : std_logic_vector(31 downto  0) := (others => '0');
-    constant PA_SV32  : std_logic_vector(33 downto  0) := (others => '0');
-    constant PA_SV39  : std_logic_vector(55 downto  0) := (others => '0');
-    constant PA_SV48  : std_logic_vector(55 downto  0) := (others => '0');
+    variable PA_SPARC : std_logic_vector(31 downto  0) := (others => '0');
+    variable PA_SV32  : std_logic_vector(33 downto  0) := (others => '0');
+    variable PA_SV39  : std_logic_vector(55 downto  0) := (others => '0');
+    variable PA_SV48  : std_logic_vector(55 downto  0) := (others => '0');
   begin
     case what is
     when sv32   => return PA_SV32;
@@ -660,18 +674,28 @@ package body mmucacheconfig is
     end case;
   end;
 
+  function pa_msb(what : va_type) return integer is
+  begin
+    case what is
+    when sv32   => return 33;
+    when sv39   => return 55;
+    when sv48   => return 55;
+    when others => return 31;
+    end case;
+  end;
+
   function ppn(what : va_type) return std_logic_vector is
     constant pa_tmp : std_logic_vector                        := pa(what);  -- constant
-    constant tmp    : std_logic_vector(pa_tmp'high downto 12) := (others => '0');
+    variable tmp    : std_logic_vector(pa_tmp'high downto 12) := (others => '0');
   begin
     return tmp;
   end;
 
   function pte_hsize(what : va_type) return std_logic_vector is
-    constant HSIZE_SPARC : std_logic_vector(2 downto 0) := HSIZE_WORD;
-    constant HSIZE_SV32  : std_logic_vector(2 downto 0) := HSIZE_WORD;
-    constant HSIZE_SV39  : std_logic_vector(2 downto 0) := HSIZE_DWORD;
-    constant HSIZE_SV48  : std_logic_vector(2 downto 0) := HSIZE_DWORD;
+    variable HSIZE_SPARC : std_logic_vector(2 downto 0) := HSIZE_WORD;
+    variable HSIZE_SV32  : std_logic_vector(2 downto 0) := HSIZE_WORD;
+    variable HSIZE_SV39  : std_logic_vector(2 downto 0) := HSIZE_DWORD;
+    variable HSIZE_SV48  : std_logic_vector(2 downto 0) := HSIZE_DWORD;
   begin
     case what is
     when sv32   => return HSIZE_SV32;
@@ -684,10 +708,10 @@ package body mmucacheconfig is
   -- Bits per PTD, from MSB:s (low index) to LSB:s.
   -- Smallest pages are 4 kbyte, ie 12 bits.
   function va_size(what : va_type) return va_bits is
-    constant SZ_SPARC : va_bits(1 to 3) := (8, 6, 6);    -- 8 + 6 + 6     + 12 = 32 bits
-    constant SZ_SV32  : va_bits(1 to 2) := (10, 10);     -- 10 + 10       + 12 = 32
-    constant SZ_SV39  : va_bits(1 to 3) := (9, 9, 9);    -- 9 + 9 + 9     + 12 = 39
-    constant SZ_SV48  : va_bits(1 to 4) := (9, 9, 9, 9); -- 9 + 9 + 9 + 9 + 12 = 48
+    variable SZ_SPARC : va_bits(1 to 3) := (8, 6, 6);    -- 8 + 6 + 6     + 12 = 32 bits
+    variable SZ_SV32  : va_bits(1 to 2) := (10, 10);     -- 10 + 10       + 12 = 32
+    variable SZ_SV39  : va_bits(1 to 3) := (9, 9, 9);    -- 9 + 9 + 9     + 12 = 39
+    variable SZ_SV48  : va_bits(1 to 4) := (9, 9, 9, 9); -- 9 + 9 + 9 + 9 + 12 = 48
   begin
     case what is
     when sv32   => return SZ_SV32;
@@ -750,25 +774,25 @@ package body mmucacheconfig is
       if data(rv_pte_w downto rv_pte_r) = "10" then
         return false;
       end if;
-      if mask(mask'high) = '0' and data(18 downto 10) /= "000000000" then
+      if mask(mask'high) = '0' and not all_0(data(18 downto 10)) then
         return false;
       end if;
-      if mask(mask'high - 1) = '0' and data(27 downto 19) /= "000000000" then
+      if mask(mask'high - 1) = '0' and not all_0(data(27 downto 19)) then
         return false;
       end if;
       if what = sv48 then
-        if mask(mask'high - 2) = '0' and data(36 downto 28) /= "000000000" then
+        if mask(mask'high - 2) = '0' and not all_0(data(36 downto 28)) then
           return false;
         end if;
       end if;
 
       -- Reserved top bits must be zero.
-      if data(63 downto 54) /= "0000000000" then
+      if not all_0(data(63 downto 54)) then
         return false;
       end if;
 
       -- Do not allow addressing outside the specified physical address space.
-      if to_integer(unsigned(data(53 downto physaddr - 12 + 10))) /= 0 then
+      if not all_0(data(53 downto physaddr - 12 + 10)) then
         return false;
       end if;
     end if;
@@ -799,9 +823,9 @@ package body mmucacheconfig is
   end;
 
   function satp_base(what : va_type; satp : std_logic_vector) return std_logic_vector is
-    constant BASE_SV32  : std_logic_vector(21 downto 0)  := (others => '0');
-    constant BASE_SV39  : std_logic_vector(43 downto 0)  := (others => '0');
-    constant BASE_SV48  : std_logic_vector(43 downto 0)  := (others => '0');
+    --variable BASE_SV32  : std_logic_vector(21 downto 0)  := (others => '0');
+    --variable BASE_SV39  : std_logic_vector(43 downto 0)  := (others => '0');
+    --variable BASE_SV48  : std_logic_vector(43 downto 0)  := (others => '0');
     constant pa_tmp     : std_logic_vector               := pa(what);   -- constant
     constant ppn_sv32   : std_logic_vector               := ppn(sv32);  -- constant
     constant ppn_sv39   : std_logic_vector               := ppn(sv39);  -- constant
@@ -809,10 +833,20 @@ package body mmucacheconfig is
     -- Non-constant
     variable base       : std_logic_vector(pa_tmp'range) := (others => '0');
   begin
+   
     case what is
-    when sv32   => base(ppn_sv32'range) := satp(BASE_SV32'range);
-    when sv39   => base(ppn_sv39'range) := satp(BASE_SV39'range);
-    when sv48   => base(ppn_sv48'range) := satp(BASE_SV48'range);
+    when sv32   => --base(ppn_sv32'range) := satp(BASE_SV32'range);
+      for i in ppn_sv32'high downto ppn_sv32'low loop
+        base(i) := satp(i-12);
+      end loop;
+    when sv39   => --base(ppn_sv39'range) := satp(BASE_SV39'range);
+      for i in ppn_sv39'high downto ppn_sv39'low loop
+        base(i) := satp(i-12);
+      end loop;
+    when sv48   => --base(ppn_sv48'range) := satp(BASE_SV48'range);
+      for i in ppn_sv48'high downto ppn_sv48'low loop
+        base(i) := satp(i-12);
+      end loop;
     when others => assert false
                      report "This function does not work for Sparc!"
                      severity failure;
@@ -822,9 +856,9 @@ package body mmucacheconfig is
   end;
 
   function satp_asid(what : va_type; satp : std_logic_vector) return std_logic_vector is
-    constant ASID_SV32 : std_logic_vector(30 downto 22) := (others => '0');
-    constant ASID_SV39 : std_logic_vector(59 downto 44) := (others => '0');
-    constant ASID_SV48 : std_logic_vector(59 downto 44) := (others => '0');
+    variable ASID_SV32 : std_logic_vector(30 downto 22) := (others => '0');
+    variable ASID_SV39 : std_logic_vector(59 downto 44) := (others => '0');
+    variable ASID_SV48 : std_logic_vector(59 downto 44) := (others => '0');
     -- Non-constant
     variable asid32    : std_logic_vector(ASID_SV32'length - 1 downto 0);
     variable asid39    : std_logic_vector(ASID_SV39'length - 1 downto 0);
@@ -843,21 +877,21 @@ package body mmucacheconfig is
   end;
 
   function satp_mode(what : va_type; satp : std_logic_vector) return integer is
-    constant MODE_RV32 : std_logic_vector(31 downto 31) := (others => '0');
-    constant MODE_RV64 : std_logic_vector(63 downto 60) := (others => '0');
+    variable MODE_RV32 : std_logic_vector(31 downto 31) := (others => '0');
+    variable MODE_RV64 : std_logic_vector(63 downto 60) := (others => '0');
   begin
     case what is
     when sv32 =>
       if satp'length = 32 then
-        return to_integer(unsigned(satp(MODE_RV32'range)));
+        return u2i(satp(MODE_RV32'range));
       else
-        return to_integer(unsigned(satp(MODE_RV64'range)));
+        return u2i(satp(MODE_RV64'range));
       end if;
     when sv39 | sv48 =>
       assert satp'length = 64
         report "XLEN does not match requested MMU mode!"
         severity failure;
-      return to_integer(unsigned(satp(MODE_RV64'range)));
+      return u2i(satp(MODE_RV64'range));
     when others => assert false
                      report "This function does not work for Sparc!"
                      severity failure;
@@ -871,9 +905,8 @@ package body mmucacheconfig is
                    data  : std_logic_vector; mask : std_logic_vector;
                    vaddr : std_logic_vector; code : std_logic_vector) return std_logic_vector is
     constant pa_tmp : std_logic_vector               := pa(what);  -- constant
---    constant index  : integer range 1 to mask'length := mask'length - u2i(code);
-    constant index  : integer range 1 to mask'length := mask'length - to_integer(unsigned(code));
-    constant lowbit : integer                        := 11 - va_size(what)(index) + 1;
+    variable index  : integer range 1 to mask'length := mask'length - u2i(code);
+    variable lowbit : integer                        := 11 - va_size(what)(index) + 1;
     -- Non-constant
     variable addr   : std_logic_vector(pa_tmp'range) := (others => '0');
     variable pos    : integer;
@@ -896,9 +929,8 @@ package body mmucacheconfig is
       -- 12 due to smallest page size, 10 are the information bits.
       addr(addr'high downto 12) := data(pa_tmp'high - 12 + 10 downto 10);
       pos := 12;
---      for i in mask'length downto u2i(code) + 1 loop
       for i in mask'length downto 1 loop
-        if i > to_integer(unsigned(code)) then
+        if i > u2i(code) then
           pos := pos + va_size(what)(i);
         end if;
       end loop;
@@ -1015,12 +1047,12 @@ package body mmucacheconfig is
   function ft_acc_resolve(what : va_type;
                           at : std_logic_vector(2 downto 0); data : std_logic_vector)
     return std_logic_vector is
-    constant sparc_acc : integer := to_integer(unsigned(data(PTE_ACC_U downto PTE_ACC_D)));
-    constant riscv_acc : integer := to_integer(unsigned(data(rv_pte_u downto rv_pte_r)));
+    variable sparc_acc : integer := u2i(data(PTE_ACC_U downto PTE_ACC_D));
+    variable riscv_acc : integer := u2i(data(rv_pte_u downto rv_pte_r));
     -- For RISC-V
-    constant is_user   : boolean := at(0) = '0';
-    constant is_exec   : boolean := at(1) = '1';
-    constant is_write  : boolean := at(2) = '1';
+    variable is_user   : boolean := at(0) = '0';
+    variable is_exec   : boolean := at(1) = '1';
+    variable is_write  : boolean := at(2) = '1';
     -- From the table in SPARC v8 H.5
     --
     -- Bit Permission
@@ -1032,14 +1064,14 @@ package body mmucacheconfig is
     -- 5 - user read, supervisor read/write      xxx xx   supervisor
     -- 6 - supervisor read/execute              w w w w
     -- 7 - supervisor all                      rrrr rrr       space        access
-    constant v0 : std_logic_vector(0 to 7) := "00001011";  -- user       d load
-    constant v1 : std_logic_vector(0 to 7) := "00001000";  -- supervisor d load
-    constant v2 : std_logic_vector(0 to 7) := "11000111";  -- user       i load/execute
-    constant v3 : std_logic_vector(0 to 7) := "11000100";  -- supervisor i load/execute
-    constant v4 : std_logic_vector(0 to 7) := "10101111";  -- user       d store
-    constant v5 : std_logic_vector(0 to 7) := "10101010";  -- supervisor d store
-    constant v6 : std_logic_vector(0 to 7) := "11101111";  -- user       i store
-    constant v7 : std_logic_vector(0 to 7) := "11101110";  -- supervisor i store
+    variable v0 : std_logic_vector(0 to 7) := "00001011";  -- user       d load
+    variable v1 : std_logic_vector(0 to 7) := "00001000";  -- supervisor d load
+    variable v2 : std_logic_vector(0 to 7) := "11000111";  -- user       i load/execute
+    variable v3 : std_logic_vector(0 to 7) := "11000100";  -- supervisor i load/execute
+    variable v4 : std_logic_vector(0 to 7) := "10101111";  -- user       d store
+    variable v5 : std_logic_vector(0 to 7) := "10101010";  -- supervisor d store
+    variable v6 : std_logic_vector(0 to 7) := "11101111";  -- user       i store
+    variable v7 : std_logic_vector(0 to 7) := "11101110";  -- supervisor i store
     -- Non-constant
     variable r        : std_logic_vector(2 downto 0);
     -- For RISC-V

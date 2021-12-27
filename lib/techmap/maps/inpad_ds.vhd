@@ -51,7 +51,7 @@ begin
   end generate;
   xc4v : if (tech = virtex4) or (tech = spartan3e) or (tech = virtex5) or (tech = spartan6) 
             or (tech = virtex6) or (tech = virtex7) or (tech = kintex7) or (tech =artix7) or (tech =zynq7000)
-            or (tech = kintexu) generate
+            or (tech = kintexu) or (tech = virtexup) generate
     u0 : virtex4_inpad_ds generic map (level, voltage) port map (padp, padn, o);
   end generate;
   axc : if (tech = axcel) or (tech = axdsp) generate

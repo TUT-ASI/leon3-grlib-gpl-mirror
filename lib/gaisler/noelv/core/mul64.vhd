@@ -21,7 +21,7 @@
 -- Entity:      mul64
 -- File:        mul64.vhd
 -- Author:      Andrea Merlo, Cobham Gaisler AB
--- Description: NOEL-V 64-bit Multiplication Unit
+-- Description: NOEL-V Multiplication Unit
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -54,8 +54,8 @@ entity mul64 is
     clk       : in  std_ulogic;       
     rstn      : in  std_ulogic;
     holdn     : in  std_ulogic;
-    muli      : in  mul64_in_type;
-    mulo      : out mul64_out_type;
+    muli      : in  mul_in_type;
+    mulo      : out mul_out_type;
     testen    : in  std_ulogic := '0';
     testrst   : in  std_ulogic := '1'
     );
@@ -63,8 +63,11 @@ end;
 
 architecture rtl of mul64 is
 
+  constant bits : integer := muli.op1'length;
+
   -- Constants ----------------------------------------------------
-  constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  --constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant RESET_ALL    : boolean := true;
   constant ASYNC_RESET  : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 
   -- Signals ------------------------------------------------------
@@ -81,28 +84,27 @@ architecture rtl of mul64 is
     );
 
   signal r, rin           : regtype;
-  signal mul_op1, mul_op2 : std_logic_vector(64 downto 0);
-  signal prod             : std_logic_vector(129 downto 0);
+  signal mul_op1, mul_op2 : std_logic_vector(bits downto 0);
+  signal prod             : std_logic_vector(2 * bits + 1 downto 0);
   signal vcc              : std_ulogic;
 
-  signal arstn : std_ulogic;
+  signal arstn            : std_ulogic;
 
 begin
 
   -- Misc
-  arstn         <= testrst when (ASYNC_RESET and scantest/=0 and testen/='0') else
-                   rstn when ASYNC_RESET else '1';
+  arstn <= testrst when (ASYNC_RESET and scantest /= 0 and testen /= '0')
+      else rstn    when ASYNC_RESET
+      else '1';
 
-  vcc           <= '1';
+  vcc   <= '1';
 
-  comb : process (r, muli,prod)
-    variable v          : regtype;
-    variable sign1      : std_ulogic;
-    variable sign2      : std_ulogic;
-    variable result     : std_logic_vector(63 downto 0);
-
+  comb : process (r, muli, prod)
+    variable v      : regtype;
+    variable sign1  : std_ulogic;
+    variable sign2  : std_ulogic;
+    variable result : std_logic_vector(bits - 1 downto 0);
   begin
-
     v := r;
 
     -- Always Ready
@@ -128,28 +130,33 @@ begin
 
     -- Select Higher or Lower part
     case r.ctrl is
-      when "000" => result := prod(63 downto 0);
-      when "001" | "010" | "011" => result := prod(127 downto 64);
+      when "000" =>
+        result := prod(bits - 1 downto 0);
+      when "001" | "010" | "011" =>
+        result := prod(2 * bits - 1 downto bits);
       when "100" =>
-        result(63 downto 32) := (others => prod(31));
-        result(31 downto 0)  := prod(31 downto 0);
+        -- This is mulw, which does not exist for RV32.
+        if bits = 64 then
+          result(bits - 1 downto bits - 32) := (others => prod(31));
+          result(31 downto 0)               := prod(31 downto 0);
+        end if;
       when others =>
     end case;
 
-    rin                 <= v;
+    rin         <= v;
 
-    mul_op1             <= (muli.op1(63) and sign1) & muli.op1;
-    mul_op2             <= (muli.op2(63) and sign2) & muli.op2;
+    mul_op1     <= (muli.op1(bits - 1) and sign1) & muli.op1;
+    mul_op2     <= (muli.op2(bits - 1) and sign2) & muli.op2;
     -- Drive Outputs
-    mulo.nready         <= not(r.ready);
-    mulo.result         <= result;
-    mulo.icc            <= (others => '0');
+    mulo.nready <= not r.ready;
+    mulo.result <= result;
+    mulo.icc    <= (others => '0');
 
   end process;
 
 
-  m0: techmult generic map (fabtech,arch,65,65,2,1)
-    port map(mul_op1,mul_op2,clk,holdn,vcc,prod(129 downto 0));
+  m0: techmult generic map (fabtech, arch, bits + 1, bits + 1, 2, 1)
+    port map(mul_op1, mul_op2, clk, holdn, vcc, prod);
 
   syncrregs : if not ASYNC_RESET generate
     regs : process(clk)

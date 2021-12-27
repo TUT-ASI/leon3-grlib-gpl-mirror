@@ -31,8 +31,8 @@ use grlib.amba.all;
 use grlib.stdlib.all;
 use grlib.devices.all;
 library gaisler;
-use gaisler.noelv.all; 
-use gaisler.noelvint.all; 
+use gaisler.noelv.all;
+use gaisler.noelvint.all;
 library techmap;
 use techmap.gencomp.all;
 
@@ -43,7 +43,7 @@ entity rvdm is
     hmask       : integer                       := 16#f00#;
     nharts      : integer                       := 1;   -- number of harts
     tbits       : integer                       := 30;  -- timer bits (instruction trace time tag)
-    tech        : integer                       := DEFMEMTECH; 
+    tech        : integer                       := DEFMEMTECH;
     kbytes      : integer                       := 0;   -- Size of trace buffer memory in KiB
     --bwidth      : integer                       := 64;  -- Traced AHB bus width
     --ahbpf       : integer                       := 0;
@@ -62,7 +62,7 @@ entity rvdm is
     dsuo   : out nv_dm_out_type
     );
 
-end; 
+end;
 
 architecture rtl of rvdm is
 
@@ -71,13 +71,13 @@ architecture rtl of rvdm is
 
 begin
 
-  -- Signals ---------------------------------------------------------------- 
+  -- Signals ----------------------------------------------------------------
 
   gnd <= '0';
   vcc <= '1';
 
   -- Debug Module -----------------------------------------------------------
-  
+
   x0 : rvdmx
     generic map (
       hindex    => hindex,
@@ -106,6 +106,5 @@ begin
       dsuo      => dsuo,
       hclken    => vcc
       );
-  
-end;
 
+end;

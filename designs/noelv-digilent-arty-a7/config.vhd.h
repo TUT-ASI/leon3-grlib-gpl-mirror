@@ -19,6 +19,7 @@
 
 -- NOEL-V processor core
   constant CFG_NOELV  	        : integer := CONFIG_NOELV;
+  constant CFG_NOELV_XLEN       : integer := CONFIG_NOELV_XLEN;
   constant CFG_NCPU             : integer := CONFIG_PROC_NUM;
   constant CFG_CFG              : integer := CONFIG_PROC_CFG;
   constant CFG_NODBUS           : integer := CONFIG_PROC_NODBUS;
@@ -73,19 +74,6 @@
   constant CFG_AHBSTAT 	: integer := CONFIG_AHBSTAT_ENABLE;
   constant CFG_AHBSTATN	: integer := CONFIG_AHBSTAT_NFTSLV;
 
--- AHB ROM
-  constant CFG_AHBROMEN	: integer := CONFIG_AHBROM_ENABLE;
-  constant CFG_AHBROPIP	: integer := CONFIG_AHBROM_PIPE;
-  constant CFG_AHBRODDR	: integer := 16#CONFIG_AHBROM_START#;
-  constant CFG_ROMADDR	: integer := 16#CONFIG_ROM_START#;
-  constant CFG_ROMMASK	: integer := 16#E00# + 16#CONFIG_ROM_START#;
-
--- AHB RAM
-  constant CFG_AHBRAMEN	: integer := CONFIG_AHBRAM_ENABLE;
-  constant CFG_AHBRSZ	: integer := CFG_AHBRAMSZ;
-  constant CFG_AHBRADDR	: integer := 16#CONFIG_AHBRAM_START#;
-  constant CFG_AHBRPIPE : integer := CONFIG_AHBRAM_PIPE;
-
 -- Gaisler Ethernet core
   constant CFG_GRETH   	    : integer := CONFIG_GRETH_ENABLE;
   constant CFG_GRETH1G	    : integer := CONFIG_GRETH_GIGA;
@@ -98,20 +86,7 @@
   constant CFG_GRETH_FT     : integer := CONFIG_GRETH_FT;
   constant CFG_GRETH_EDCLFT : integer := CONFIG_GRETH_EDCLFT;
 #endif
--- UART 1
-  constant CFG_UART1_ENABLE : integer := CONFIG_UART1_ENABLE;
-  constant CFG_UART1_FIFO   : integer := CFG_UA1_FIFO;
-
--- Modular timer
-  constant CFG_GPT_ENABLE   : integer := CONFIG_GPT_ENABLE;
-  constant CFG_GPT_NTIM     : integer := CONFIG_GPT_NTIM;
-  constant CFG_GPT_SW       : integer := CONFIG_GPT_SW;
-  constant CFG_GPT_TW       : integer := CONFIG_GPT_TW;
-  constant CFG_GPT_IRQ      : integer := CONFIG_GPT_IRQ;
-  constant CFG_GPT_SEPIRQ   : integer := CONFIG_GPT_SEPIRQ;
-  constant CFG_GPT_WDOGEN   : integer := CONFIG_GPT_WDOGEN;
-  constant CFG_GPT_WDOG     : integer := 16#CONFIG_GPT_WDOG#;
-
+  constant CFG_ETH_PHY_ADDR : integer := CONFIG_GRETH_PHY_ADDR;
 -- GPIO port
   constant CFG_GRGPIO_ENABLE : integer := CONFIG_GRGPIO_ENABLE;
   constant CFG_GRGPIO_IMASK  : integer := 16#CONFIG_GRGPIO_IMASK#;

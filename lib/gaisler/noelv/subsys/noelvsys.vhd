@@ -18,8 +18,8 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------
--- Entity:      leon5sys
--- File:        leon5sys.vhd
+-- Entity:      noelvsys
+-- File:        noelvsys.vhd
 -- Author:      Nils Wessman, Cobham Gaisler
 -- Description: NOEL-V processor system (CPUs,FPUs,DM,CLINT,PLIC,UART,AMBA)
 ------------------------------------------------------------------------------
@@ -28,15 +28,15 @@ library ieee;
 use ieee.std_logic_1164.all;
 library grlib;
 use grlib.amba.all;
+use grlib.config.all;
+use grlib.config_types.all;
 library techmap;
 use techmap.gencomp.all;
 library gaisler;
 use gaisler.uart.all;
 use gaisler.misc.all;
-use gaisler.noelvint.all;
 use gaisler.noelv.all;
 use gaisler.plic.all;
-use gaisler.riscv.all;
 
 entity noelvsys is
   generic (
@@ -52,14 +52,14 @@ entity noelvsys is
     wbmask   : integer;
     busw     : integer;
     cmemconf : integer;
+    rfconf   : integer;
     fpuconf  : integer;
     disas    : integer;
     ahbtrace : integer;
     cfg      : integer;
     devid    : integer;
-    version  : integer;
-    revision : integer;
-    nodbus   : integer
+    nodbus   : integer;
+    scantest : integer
     );
   port (
     clk      : in  std_ulogic;
@@ -84,7 +84,13 @@ entity noelvsys is
     uarti    : in  uart_in_type;
     uarto    : out uart_out_type;
     -- Perf counter
-    cnt      : out nv_counter_out_vector(ncpu-1 downto 0)
+    cnt      : out nv_counter_out_vector(ncpu-1 downto 0);
+    -- DFT support
+    testen  : in  std_ulogic := '0';
+    testrst : in  std_ulogic := '1';
+    scanen  : in  std_ulogic := '0';
+    testoen : in  std_ulogic := '1';
+    testsig : in  std_logic_vector(1+GRLIB_CONFIG_ARRAY(grlib_techmap_testin_extra) downto 0) := (others => '0')
     );
 end;
 
@@ -98,8 +104,6 @@ architecture hier of noelvsys is
   signal irqo    : nv_irq_out_vector(0 to ncpu-1);
   signal dbgi    : nv_debug_in_vector(0 to ncpu-1);
   signal dbgo    : nv_debug_out_vector(0 to ncpu-1);
-  signal fpui    : grfpu5_in_vector(0 to ncpu-1);
-  signal fpuo    : grfpu5_out_vector(0 to ncpu-1);
   signal cpuapbi : apb_slv_in_vector;
   signal cpuapbo : apb_slv_out_vector;
   signal gpti    : gptimer_in_type;
@@ -127,7 +131,56 @@ architecture hier of noelvsys is
   signal nolock         : ahb2ahb_ctrl_type;
   signal noifctrl       : ahb2ahb_ifctrl_type;
 
-  constant scantest : integer := 0;
+  -- AHB master index
+  --constant CPU_HMINDEX    : integer := 0..ncpu-1
+  constant AHBB_HMINDEX   : integer := ncpu+nextmst;
+  -- AHB slave index
+  constant APBC_HINDEX    : integer := nextslv;
+  constant CLINT_HINDEX   : integer := nextslv+1;
+  constant PLIC_HINDEX    : integer := nextslv+2;
+  constant DUMMY_HINDEX   : integer := nextslv+3;
+  -- AHB slave address
+  constant AHBC_IOADDR    : integer := 16#FFF#; --16#FFE# + nodbus;
+  constant PLIC_HADDR     : integer := 16#F80#;
+  constant PLIC_HMASK     : integer := 16#FC0#;
+  constant CLINT_HADDR    : integer := 16#E00#;
+  constant CLINT_HMASK    : integer := 16#FFF#;
+  constant DM_HADDR       : integer := 16#FE0#;
+  constant DM_HMASK       : integer := 16#FF0#;
+  constant AHBT_IOADDR    : integer := 16#000#;
+  constant AHBT_IOMASK    : integer := 16#E00#;
+  constant APBC_HADDR     : integer := 16#FC0#;
+  constant APBC_HMASK     : integer := 16#FFF#;
+  constant DUMMY_HADDR    : integer := 16#FFE#;
+  -- APB slave index
+  constant GPTIME_PINDEX  : integer := nextapb+0;
+  constant APBUART_PINDEX : integer := nextapb+1;
+  -- APB slave address
+  constant GPTIME_PADDR   : integer := 16#000#;
+  constant GPTIME_PMASK   : integer := 16#FFF#;
+  constant APBUART_PADDR  : integer := 16#010#;
+  constant APBUART_PMASK  : integer := 16#FFF#;
+  -- Debug bus
+  constant DM_DM_HINDEX   : integer := 0+(nodbus*(nextslv+1+2+1));
+  constant APBC_DM_HINDEX : integer := 1;
+  constant AHBB_DM_HINDEX : integer := 2;
+  constant AHBT_DM_HINDEX : integer := 3+(nodbus*(nextslv+1+2+1));
+  --
+  constant AHBC_DM_IOADDR : integer := 16#FFE#; --16#FFF#;
+  constant AHBB_DM_HADDR0 : integer := 16#000#;
+  constant AHBB_DM_HMASK0 : integer := 16#800#;
+  constant AHBB_DM_HADDR1 : integer := 16#800#;
+  constant AHBB_DM_HMASK1 : integer := 16#C00#;
+  constant AHBB_DM_HADDR2 : integer := 16#C00#;
+  constant AHBB_DM_HMASK2 : integer := 16#E00#;
+  constant AHBB_DM_HADDR3 : integer := 16#E00#;
+  constant AHBB_DM_HMASK3 : integer := 16#E00#;
+
+  -- IRQ
+  constant APBUART_PIRQ   : integer := 1;
+  constant GPTIME_PIRQ    : integer := 2; -- , 3
+  --constant GPTIME_PIRQ2   : integer := 3;
+
 begin
 
   ----------------------------------------------------------------------------
@@ -136,14 +189,15 @@ begin
   ac0: ahbctrl
     generic map (
       devid    => devid,
-      ioaddr   => 16#FFE# + nodbus,
+      ioaddr   => AHBC_IOADDR,
       rrobin   => 1,
       split    => 1,
       nahbm    => ncpu+nextmst+1+(nodbus*(ndbgmst-1)),
-      nahbs    => nextslv+1+2+(nodbus*4),
+      nahbs    => nextslv+1+2+1+(nodbus*4),
       fpnpen   => 1,
       shadow   => 1,
-      ahbtrace => ahbtrace
+      ahbtrace => ahbtrace,
+      ahbendian => 1
       )
     port map (
       rst  => rstn,
@@ -151,7 +205,12 @@ begin
       msti => cpumi,
       msto => cpumo,
       slvi => cpusi,
-      slvo => cpuso
+      slvo => cpuso,
+      testen  => testen,
+      testrst => testrst,
+      scanen  => scanen,
+      testoen => testoen,
+      testsig => testsig
       );
 
   ahbmi <= cpumi;
@@ -178,11 +237,11 @@ begin
   ahbsi <= cpusi;
   cpuso(nextslv-1 downto 0) <= ahbso;
   dbgslv_to_dbg : if nodbus = 0 generate
-    cpuso(cpuso'high downto nextslv+1+2) <= (others => ahbs_none);
+    cpuso(cpuso'high downto nextslv+1+2+1) <= (others => ahbs_none);
   end generate;
   dbgslv_to_cpu : if nodbus /= 0 generate
-    cpuso(nextslv+1+2+4-1 downto nextslv+1+2) <= dbgso(3 downto 0);
-    cpuso(cpuso'high downto nextslv+1+2+4) <= (others => ahbs_none);
+    cpuso(nextslv+1+2+1+4-1 downto nextslv+1+2+1) <= dbgso(3 downto 0);
+    cpuso(cpuso'high downto nextslv+1+2+1+4) <= (others => ahbs_none);
     dbgsi <= cpusi;
     dbgso(2) <= ahbs_none;
   end generate;
@@ -190,21 +249,21 @@ begin
   dual_apb_gen : if nodbus = 0 generate
     ap0: apbctrldp
       generic map (
-        hindex0 => nextslv,
-        haddr0  => 16#800#,
-        hmask0  => 16#fff#,
-        hindex1 => 1,
-        haddr1  => 16#800#,
-        hmask1  => 16#fff#,
-        nslaves => nextapb+3
+        hindex0 => APBC_HINDEX,
+        haddr0  => APBC_HADDR,
+        hmask0  => APBC_HMASK,
+        hindex1 => APBC_DM_HINDEX,
+        haddr1  => APBC_HADDR,
+        hmask1  => APBC_HMASK,
+        nslaves => nextapb+2
         )
       port map (
         rst  => rstn,
         clk  => clk,
         ahb0i => cpusi,
-        ahb0o => cpuso(nextslv),
+        ahb0o => cpuso(APBC_HINDEX),
         ahb1i => dbgsi,
-        ahb1o => dbgso(1),
+        ahb1o => dbgso(APBC_DM_HINDEX),
         apbi => cpuapbi,
         apbo => cpuapbo
         );
@@ -213,9 +272,9 @@ begin
     ap0: apbctrl
       generic map (
         hindex => nextslv,
-        haddr  => 16#800#,
-        hmask  => 16#fff#,
-        nslaves => nextapb+3
+        haddr  => APBC_HADDR,
+        hmask  => APBC_HMASK,
+        nslaves => nextapb+2
         )
       port map (
         rst  => rstn,
@@ -231,7 +290,7 @@ begin
 
   apbi(0 to nextapb-1) <= cpuapbi(0 to nextapb-1);
   cpuapbo(0 to nextapb-1) <= apbo(0 to nextapb-1);
-  cpuapbo(nextapb+3 to cpuapbo'high) <= (others => apb_none);
+  cpuapbo(nextapb+2 to cpuapbo'high) <= (others => apb_none);
 
   ----------------------------------------------------------------------------
   -- Processor(s)
@@ -247,10 +306,12 @@ begin
         wbmask   => wbmask,
         busw     => busw,
         cmemconf => cmemconf,
+        rfconf   => rfconf,
         fpuconf  => fpuconf,
         disas    => disas,
         pbaddr   => 16#90000#,
-        cfg      => cfg)
+        cfg      => cfg,
+        scantest => scantest)
       port map (
         clk   => clk,
         rstn  => rstn,
@@ -262,8 +323,6 @@ begin
         irqo  => irqo(c),
         dbgi  => dbgi(c),
         dbgo  => dbgo(c),
-        fpuo  => fpuo(c),
-        fpui  => fpui(c),
         cnt   => cnt(c)
       );
   end generate;
@@ -274,9 +333,9 @@ begin
   ----------------------------------------------------------------------------
   dm0 : rvdm -- NOEL-V Debug Support Unit
     generic map(
-      hindex          => 0+(nodbus*(nextslv+1+2)),
-      haddr           => 16#900#,
-      hmask           => 16#F00#,
+      hindex          => DM_DM_HINDEX,
+      haddr           => DM_HADDR,
+      hmask           => DM_HMASK,
       nharts          => ncpu,
       tbits           => 30,
       tech            => memtech,
@@ -287,7 +346,7 @@ begin
       clk             => clk,
       ahbmi           => cpumi,
       ahbsi           => dbgsi,
-      ahbso           => dbgso(0),
+      ahbso           => dbgso(0),-- This is handled separately for nodbus = 1
       dbgi            => dbgo,
       dbgo            => dbgi,
       dsui            => dsui,
@@ -301,22 +360,24 @@ begin
 
   ahbtrace0: ahbtrace_mmb
     generic map (
-      hindex  => 3+(nodbus*(nextslv+1+2)),
-      ioaddr  => 16#000#,
-      iomask  => 16#E00#,
+      hindex  => AHBT_DM_HINDEX,
+      ioaddr  => AHBT_IOADDR,
+      iomask  => AHBT_IOMASK,
       tech    => memtech,
       irq     => 0,
       kbytes  => 2,
-      bwidth  => 128,
+      bwidth  => AHBDW,
       ahbfilt => 2,
       ntrace  => 2,
-      exttimer => 0,
-      exten    => 0)
+      exttimer => 1,
+      exten    => 0,
+      scantest => scantest)
     port map(
       rst     => rstn,
       clk     => clk,
       ahbsi   => dbgsi,
-      ahbso   => dbgso(3),
+      ahbso   => dbgso(3),    -- This is handled separately for nodbus = 1
+      timer   => dbgo(0).mcycle(30 downto 0),
       tahbmiv => trace_ahbmiv,
       tahbsiv => trace_ahbsiv
     );
@@ -339,14 +400,15 @@ begin
     ac1: ahbctrl
       generic map (
         devid    => devid,
-        ioaddr   => 16#FFF#,
+        ioaddr   => AHBC_DM_IOADDR,
         rrobin   => 1,
         split    => 1,
         nahbm    => ndbgmst,
         nahbs    => 4,
         fpnpen   => 1,
         shadow   => 1,
-        ahbtrace => ahbtrace
+        ahbtrace => ahbtrace,
+        ahbendian => 1
         )
       port map (
         rst  => rstn,
@@ -354,7 +416,12 @@ begin
         msti => dbgahbmi,
         msto => dbgahbmo,
         slvi => dbgsi,
-        slvo => dbgso
+        slvo => dbgso,
+        testen  => testen,
+        testrst => testrst,
+        scanen  => scanen,
+        testoen => testoen,
+        testsig => testsig
         );
 
     dbgso(dbgso'high downto 4) <= (others => ahbs_none);
@@ -370,8 +437,8 @@ begin
     debug_bridge: ahb2ahb
       generic map (
         memtech     => inferred,
-        hsindex     => 2,
-        hmindex     => ncpu+nextmst,
+        hsindex     => AHBB_DM_HINDEX,
+        hmindex     => AHBB_HMINDEX,
         slv         => 1,
         dir         => 1,
         ffact       => 1,
@@ -380,13 +447,13 @@ begin
         iburst      => 4,
         rburst      => 4,
         irqsync     => 0,
-        bar0        => ahb2ahb_membar(16#000#, '1', '1', 16#800#),
-        bar1        => ahb2ahb_membar(16#800#, '0', '0', 16#F00#),
-        bar2        => ahb2ahb_membar(16#E00#, '0', '0', 16#E00#),
-        bar3        => 0,
+        bar0        => ahb2ahb_membar(AHBB_DM_HADDR0, '1', '1', AHBB_DM_HMASK0),
+        bar1        => ahb2ahb_membar(AHBB_DM_HADDR1, '0', '0', AHBB_DM_HMASK1),
+        bar2        => ahb2ahb_membar(AHBB_DM_HADDR2, '1', '1', AHBB_DM_HMASK2),
+        bar3        => ahb2ahb_membar(AHBB_DM_HADDR3, '0', '0', AHBB_DM_HMASK3),
         sbus        => 1,
         mbus        => 0,
-        ioarea      => 16#FFE#,
+        ioarea      => AHBC_IOADDR,
         ibrsten     => 0,
         lckdac      => 0,
         slvmaccsz   => 32,
@@ -405,9 +472,9 @@ begin
         hclkm       => clk,
         hclks       => clk,
         ahbsi       => dbgsi,
-        ahbso       => dbgso(2),
+        ahbso       => dbgso(AHBB_DM_HINDEX),
         ahbmi       => cpumi,
-        ahbmo       => cpumo(ncpu+nextmst),
+        ahbmo       => cpumo(AHBB_HMINDEX),
         ahbso2      => cpuso,
         lcki        => nolock,
         lcko        => open,
@@ -415,13 +482,29 @@ begin
   end generate;
 
   ----------------------------------------------------------------------------
+  -- Dummy PnP
+  ----------------------------------------------------------------------------
+  dummypnp_gen : if nodbus = 0 generate
+    dummypnp : dummy_pnp
+      generic map (
+        hindex  => DUMMY_HINDEX,
+        ioarea  => DUMMY_HADDR,
+        devid   => devid)
+      port map (
+      ahbsi    => cpusi,
+      ahbso    => cpuso(DUMMY_HINDEX));
+  end generate;
+  nodummypnp_gen : if nodbus /= 0 generate
+      cpuso(DUMMY_HINDEX) <= ahbs_none;
+  end generate;
+  ----------------------------------------------------------------------------
   -- Standard UART
   ----------------------------------------------------------------------------
   uart0: apbuart
     generic map (
-      pindex => nextapb,
-      paddr => 16#001#,
-      pmask => 16#fff#,
+      pindex => APBUART_PINDEX,
+      paddr => APBUART_PADDR,
+      pmask => APBUART_PMASK,
       console => 1,
       pirq => 1,
       parity => 1,
@@ -433,8 +516,8 @@ begin
     port map (
       rst => rstn,
       clk => clk,
-      apbi => cpuapbi(nextapb),
-      apbo => cpuapbo(nextapb),
+      apbi => cpuapbi(APBUART_PINDEX),
+      apbo => cpuapbo(APBUART_PINDEX),
       uarti => uarti,
       uarto => xuarto
       );
@@ -444,29 +527,13 @@ begin
 --pragma translate_on
 
   ----------------------------------------------------------------------------
-  -- Version
-  ----------------------------------------------------------------------------
-  grver0 : grversion
-    generic map(
-      pindex      => nextapb+1,
-      paddr       => 16#002#,
-      pmask       => 16#FFF#,
-      versionnr   => version,
-      revisionnr  => revision)
-    port map(
-      rstn  => rstn,
-      clk   => clk,
-      apbi  => cpuapbi(nextapb+1),
-      apbo  => cpuapbo(nextapb+1));
-
-  ----------------------------------------------------------------------------
   -- Timer
   ----------------------------------------------------------------------------
   gpt0: gptimer
     generic map (
-      pindex  => nextapb+2,
-      paddr   => 16#003#,
-      pmask   => 16#fff#,
+      pindex  => GPTIME_PINDEX,
+      paddr   => GPTIME_PADDR,
+      pmask   => GPTIME_PMASK,
       pirq    => 2,
       sepirq  => 1,
       sbits   => 16,
@@ -483,8 +550,8 @@ begin
     port map (
       rst  => rstn,
       clk  => clk,
-      apbi => cpuapbi(nextapb+2),
-      apbo => cpuapbo(nextapb+2),
+      apbi => cpuapbi(GPTIME_PINDEX),
+      apbo => cpuapbo(GPTIME_PINDEX),
       gpti => gpti,
       gpto => gpto
       );
@@ -504,9 +571,9 @@ begin
   -- CLINT -----------------------------------------------------------
   clint0 : clint_ahb
     generic map (
-      hindex    => nextslv+1,
-      haddr     => 16#E01#,
-      hmask     => 16#FFF#,
+      hindex    => CLINT_HINDEX,
+      haddr     => CLINT_HADDR,
+      hmask     => CLINT_HMASK,
       ncpu      => ncpu
       )
     port map (
@@ -514,7 +581,7 @@ begin
       clk       => clk,
       rtc       => rtc,
       ahbi      => cpusi,
-      ahbo      => cpuso(nextslv+1),
+      ahbo      => cpuso(CLINT_HINDEX),
       halt      => dbgo(0).stoptime,
       irqi      => eip,
       irqo      => irqi
@@ -533,9 +600,9 @@ begin
   -- GRPLIC -----------------------------------------------------------
   grplic0 : grplic_ahb
     generic map (
-      hindex            => nextslv+2,
-      haddr             => 16#840#,
-      hmask             => 16#FC0#,
+      hindex            => PLIC_HINDEX,
+      haddr             => PLIC_HADDR,
+      hmask             => PLIC_HMASK,
       nsources          => NAHBIRQ,
       ncpu              => ncpu,
       priorities        => 8,
@@ -547,7 +614,7 @@ begin
       rst               => rstn,
       clk               => clk,
       ahbi              => cpusi,
-      ahbo              => cpuso(nextslv+2),
+      ahbo              => cpuso(PLIC_HINDEX),
       irqo              => eip
       );
 

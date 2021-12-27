@@ -52,21 +52,21 @@ entity clkgen_virtex5 is
     pcien    : integer := 0;
     pcidll   : integer := 0;
     pcisysclk: integer := 0;
-    freq     : integer := 25000;	-- clock frequency in KHz
+    freq     : integer := 25000;        -- clock frequency in KHz
     clk2xen  : integer := 0;
     clksel   : integer := 0);             -- enable clock select     
   port (
     clkin   : in  std_ulogic;
     pciclkin: in  std_ulogic;
-    clk     : out std_ulogic;			-- main clock
-    clkn    : out std_ulogic;			-- inverted main clock
-    clk2x   : out std_ulogic;			-- double clock
-    sdclk   : out std_ulogic;			-- SDRAM clock
-    pciclk  : out std_ulogic;			-- PCI clock
+    clk     : out std_ulogic;                   -- main clock
+    clkn    : out std_ulogic;                   -- inverted main clock
+    clk2x   : out std_ulogic;                   -- double clock
+    sdclk   : out std_ulogic;                   -- SDRAM clock
+    pciclk  : out std_ulogic;                   -- PCI clock
     cgi     : in clkgen_in_type;
     cgo     : out clkgen_out_type;
-    clk1xu  : out std_ulogic;			-- unscaled clock
-    clk2xu  : out std_ulogic			-- unscaled 2X clock
+    clk1xu  : out std_ulogic;                   -- unscaled clock
+    clk2xu  : out std_ulogic                    -- unscaled 2X clock
   );
 end; 
 
@@ -194,7 +194,7 @@ begin
     begin
       if dll0lock = '0' then dll2xrst <= (others => '1');
       elsif rising_edge(clk_i) then
-	dll2xrst <= dll2xrst(1 to 3) & '0';
+        dll2xrst <= dll2xrst(1 to 3) & '0';
       end if;
     end process;      
   end generate;
@@ -222,7 +222,7 @@ begin
     begin
       if dll2xlock = '0' then dll1rst <= (others => '1');
       elsif rising_edge(clk_sd) then
-	dll1rst <= dll1rst(1 to 3) & '0';
+        dll1rst <= dll1rst(1 to 3) & '0';
       end if;
     end process;
   end generate;
@@ -269,7 +269,7 @@ entity clkgen_virtex7 is
   generic (
     clk_mul  : integer := 1; 
     clk_div  : integer := 1;
-    freq     : integer := 200000	-- clock frequency in KHz
+    freq     : integer := 200000        -- clock frequency in KHz
     );
   port (
     clkin   : in  std_ulogic;
@@ -456,149 +456,149 @@ library techmap;
 use techmap.gencomp.all;
 
 entity clkgen_kintexu is
-	generic(
-		clk_mul : integer := 1;
-		clk_div : integer := 1;		
-		sdramen   : integer := 0;
-		noclkfb: integer := 1;
-		freq    : integer := 100000     -- clock frequency in KHz
-	);
-	port(
-		clkin : in  std_ulogic;
-		clk   : out std_ulogic;         -- main clock
-		clk90 : out std_ulogic;         -- main clock 90deg
-		clkio : out std_ulogic;         -- IO ref clock
-		sdclk : out std_ulogic;         -- SD ref clock
-		cgi   : in  clkgen_in_type;
-		cgo   : out clkgen_out_type	
-	);
+        generic(
+                clk_mul : integer := 1;
+                clk_div : integer := 1;         
+                sdramen   : integer := 0;
+                noclkfb: integer := 1;
+                freq    : integer := 100000     -- clock frequency in KHz
+        );
+        port(
+                clkin : in  std_ulogic;
+                clk   : out std_ulogic;         -- main clock
+                clk90 : out std_ulogic;         -- main clock 90deg
+                clkio : out std_ulogic;         -- IO ref clock
+                sdclk : out std_ulogic;         -- SD ref clock
+                cgi   : in  clkgen_in_type;
+                cgo   : out clkgen_out_type     
+        );
 end;
 
 architecture struct of clkgen_kintexu is
 
-	component BUFG
-		port(O : out std_logic; I : in std_logic);
-	end component;
+        component BUFG
+                port(O : out std_logic; I : in std_logic);
+        end component;
 
-	component MMCME3_ADV
-		generic(
-			BANDWIDTH          : string  := "OPTIMIZED";
-			CLKFBOUT_MULT_F      : real    := 5.0; -- Multiply value for all CLKOUT (2.000-64.000)
-			CLKFBOUT_PHASE       : real    := 0.0; -- Phase offset in degrees of CLKFB (-360.000-360.000)
-			-- CLKIN_PERIOD: Input clock period in ns units; ps resolution (i.e. 33.333 is 30 MHz).
-			CLKIN1_PERIOD       : real    := 0.0;
-			CLKIN2_PERIOD       : real    := 0.0;
-			CLKOUT0_DIVIDE_F    : real    := 1.0; -- Divide amount for CLKOUT0 (1.000-128.000)
-			-- CLKOUT0_DUTY_CYCLE - CLKOUT6_DUTY_CYCLE: Duty cycle for CLKOUT outputs (0.001-0.999).
-			CLKOUT0_DUTY_CYCLE   : real    := 0.5;
-			CLKOUT1_DUTY_CYCLE   : real    := 0.5;
-			CLKOUT2_DUTY_CYCLE   : real    := 0.5;
-			CLKOUT3_DUTY_CYCLE   : real    := 0.5;
-			CLKOUT4_DUTY_CYCLE   : real    := 0.5;
-			CLKOUT5_DUTY_CYCLE   : real    := 0.5;
-			CLKOUT6_DUTY_CYCLE   : real    := 0.5;
-			-- CLKOUT0_PHASE - CLKOUT6_PHASE: Phase offset for CLKOUT outputs (-360.000-360.000).
-			CLKOUT0_PHASE        : real    := 0.0;
-			CLKOUT1_PHASE        : real    := 0.0;
-			CLKOUT2_PHASE        : real    := 0.0;
-			CLKOUT3_PHASE        : real    := 0.0;
-			CLKOUT4_PHASE        : real    := 0.0;
-			CLKOUT5_PHASE        : real    := 0.0;
-			CLKOUT6_PHASE        : real    := 0.0;
-			-- CLKOUT1_DIVIDE - CLKOUT6_DIVIDE: Divide amount for CLKOUT (1-128)
-			CLKOUT1_DIVIDE      : integer := 1;
-			CLKOUT2_DIVIDE      : integer := 1;
-			CLKOUT3_DIVIDE      : integer := 1;
-			CLKOUT4_CASCADE      : string  :=  "FALSE";
-			CLKOUT4_DIVIDE      : integer := 1;
-			CLKOUT5_DIVIDE      : integer := 1;
-			CLKOUT6_DIVIDE      : integer := 1;
-			COMPENSATION         : string  :=  "AUTO"; -- AUTO; BUF_IN; EXTERNAL; INTERNAL; ZHOLD
-			DIVCLK_DIVIDE        : integer := 1; -- Master division value (1-106)
-			-- Programmable Inversion Attributes: Specifies built-in programmable inversion on specific pins
-			IS_CLKFBIN_INVERTED  : bit     := '0'; -- Optional inversion for CLKFBIN
-			IS_CLKIN1_INVERTED   : bit     := '0'; -- Optional inversion for CLKIN1
-			IS_CLKIN2_INVERTED   : bit     := '0'; -- Optional inversion for CLKIN2
-			IS_CLKINSEL_INVERTED : bit     := '0'; -- Optional inversion for CLKINSEL
-			IS_PSEN_INVERTED     : bit     := '0'; -- Optional inversion for PSEN
-			IS_PSINCDEC_INVERTED : bit     := '0'; -- Optional inversion for PSINCDEC
-			IS_PWRDWN_INVERTED   : bit     := '0'; -- Optional inversion for PWRDWN
-			IS_RST_INVERTED      : bit     := '0'; -- Optional inversion for RST
-			-- REF_JITTER: Reference input jitter in UI (0.000-0.999).
-			REF_JITTER1          : real    := 0.0;
-			REF_JITTER2          : real    := 0.0;
-			STARTUP_WAIT         : string  :=  "FALSE"; -- Delays DONE until MMCM is locked (FALSE; TRUE)
-			-- Spread Spectrum: Spread Spectrum Attributes
-			SS_EN                : string  :=  "FALSE"; -- Enables spread spectrum (FALSE; TRUE)
-			SS_MODE              : string  :=  "CENTER_HIGH"; -- CENTER_HIGH; CENTER_LOW; DOWN_HIGH; DOWN_LOW
-			SS_MOD_PERIOD        : integer := 10000; -- Spread spectrum modulation period (ns) (4000-40000)
-			-- USE_FINE_PS: Fine phase shift enable (TRUE/FALSE)
-			CLKFBOUT_USE_FINE_PS : string  :=  "FALSE";
-			CLKOUT0_USE_FINE_PS  : string  :=  "FALSE";
-			CLKOUT1_USE_FINE_PS  : string  :=  "FALSE";
-			CLKOUT2_USE_FINE_PS  : string  :=  "FALSE";
-			CLKOUT3_USE_FINE_PS  : string  :=  "FALSE";
-			CLKOUT4_USE_FINE_PS  : string  :=  "FALSE";
-			CLKOUT5_USE_FINE_PS  : string  :=  "FALSE";
-			CLKOUT6_USE_FINE_PS  : string  :=  "FALSE"							
-		);
-		port(
-			CLKOUT0      : out std_ulogic := '0'; --1-bitoutput:GeneralClockoutput         
-			CLKOUT0B     : out std_ulogic := '0'; --1-bitoutput:InvertedCLKOUT0            
-			CLKOUT1      : out std_ulogic := '0'; --1-bitoutput:GeneralClockoutput         
-			CLKOUT1B     : out std_ulogic := '0'; --1-bitoutput:InvertedCLKOUT1            
-			CLKOUT2      : out std_ulogic := '0'; --1-bitoutput:Bitsliceclock     
-			CLKOUT2B     : out std_ulogic := '0';
-			CLKOUT3      : out std_ulogic := '0';
-			CLKOUT3B     : out std_ulogic := '0';
-			CLKOUT4      : out std_ulogic := '0';
-			CLKOUT5      : out std_ulogic := '0';
-			CLKOUT6      : out std_ulogic := '0';
-			--DRPPortsoutputs:Dynamicreconfigurationports                         
-			DO           : out std_logic_vector(15 downto 0); --16-bitoutput:DRPdata                   
-			DRDY         : out std_ulogic := '0'; --1-bitoutput:DRPready     
-			-- Dynamic Phase Shift Ports outputs: Ports used for dynamic phase shifting of the outputs
-			PSDONE       : out std_ulogic := '0'; -- 1-bit output: Phase shift done              
-			--FeedbackClocksoutputs:Clockfeedbackports                              
-			CLKFBOUT     : out std_ulogic := '0'; --1-bitoutput:Feedbackclock 
-			CLKFBOUTB    : out std_ulogic := '0'; -- 1-bit output: Inverted CLKFBOUT      
-			-- Status Ports outputs: MMCM status ports
-			CDDCDONE     : out std_ulogic := '0'; -- 1-bit output: Clock dynamic divide done
-			CLKFBSTOPPED : out std_ulogic := '0'; -- 1-bit output: Feedback clock stopped
-			CLKINSTOPPED : out std_ulogic := '0'; -- 1-bit output: Input clock stopped
-			LOCKED       : out std_ulogic := '0'; -- 1-bit output: LOCK
-			CDDCREQ      : in  std_ulogic; -- 1-bit input: Request to dynamic divide clock
-			-- Clock Inputs inputs: Clock inputs
-			CLKIN1       : in  std_ulogic; -- 1-bit input: Primary clock
-			CLKIN2       : in  std_ulogic; -- 1-bit input: Secondary clock  
-			-- Control Ports inputs: MMCM control ports
-			CLKINSEL     : in  std_ulogic; -- 1-bit input: Clock select, High=CLKIN1 Low=CLKIN2
-			PWRDWN       : in  std_ulogic; --1-bitinput:Power-down                  
-			RST          : in  std_ulogic; --1-bitinput:Reset      	                          			                 
-			--DRPPortsinputs:Dynamicreconfigurationports                     
-			DADDR        : in  std_logic_vector(6 downto 0); --7-bitinput:DRPaddress                  
-			DCLK         : in  std_ulogic; --1-bitinput:DRPclock                    
-			DEN          : in  std_ulogic; --1-bitinput:DRPenable                   
-			DI           : in  std_logic_vector(15 downto 0); --16-bitinput:DRPdata                    
-			DWE          : in  std_ulogic; --1-bitinput:DRPwriteenable     
-			-- Dynamic Phase Shift Ports inputs: Ports used for dynamic phase shifting of the outputs
-			PSCLK        : in  std_ulogic; -- 1-bit input: Phase shift clock
-			PSEN         : in  std_ulogic; -- 1-bit input: Phase shift enable
-			PSINCDEC     : in  std_ulogic; -- 1-bit input: Phase shift increment/decrement         
-			--FeedbackClocksinputs:Clockfeedbackports                           
-			CLKFBIN      : in  std_ulogic --1-bitinput:Feedbackclock               										
-		);
-	end component;
-	
-	constant VERSION : integer := 1;
-	constant period : real := 1000000.0/real(freq);
-	constant clkio_div : integer := freq*clk_mul/200000;
-	signal CLKFBOUT : std_logic;
-	signal CLKFBIN : std_logic;
-	signal int_rst : std_logic;
-	signal clk_nobuf : std_logic;
-	signal clk90_nobuf : std_logic;
-	signal clkio_nobuf : std_logic;
+        component MMCME3_ADV
+                generic(
+                        BANDWIDTH          : string  := "OPTIMIZED";
+                        CLKFBOUT_MULT_F      : real    := 5.0; -- Multiply value for all CLKOUT (2.000-64.000)
+                        CLKFBOUT_PHASE       : real    := 0.0; -- Phase offset in degrees of CLKFB (-360.000-360.000)
+                        -- CLKIN_PERIOD: Input clock period in ns units; ps resolution (i.e. 33.333 is 30 MHz).
+                        CLKIN1_PERIOD       : real    := 0.0;
+                        CLKIN2_PERIOD       : real    := 0.0;
+                        CLKOUT0_DIVIDE_F    : real    := 1.0; -- Divide amount for CLKOUT0 (1.000-128.000)
+                        -- CLKOUT0_DUTY_CYCLE - CLKOUT6_DUTY_CYCLE: Duty cycle for CLKOUT outputs (0.001-0.999).
+                        CLKOUT0_DUTY_CYCLE   : real    := 0.5;
+                        CLKOUT1_DUTY_CYCLE   : real    := 0.5;
+                        CLKOUT2_DUTY_CYCLE   : real    := 0.5;
+                        CLKOUT3_DUTY_CYCLE   : real    := 0.5;
+                        CLKOUT4_DUTY_CYCLE   : real    := 0.5;
+                        CLKOUT5_DUTY_CYCLE   : real    := 0.5;
+                        CLKOUT6_DUTY_CYCLE   : real    := 0.5;
+                        -- CLKOUT0_PHASE - CLKOUT6_PHASE: Phase offset for CLKOUT outputs (-360.000-360.000).
+                        CLKOUT0_PHASE        : real    := 0.0;
+                        CLKOUT1_PHASE        : real    := 0.0;
+                        CLKOUT2_PHASE        : real    := 0.0;
+                        CLKOUT3_PHASE        : real    := 0.0;
+                        CLKOUT4_PHASE        : real    := 0.0;
+                        CLKOUT5_PHASE        : real    := 0.0;
+                        CLKOUT6_PHASE        : real    := 0.0;
+                        -- CLKOUT1_DIVIDE - CLKOUT6_DIVIDE: Divide amount for CLKOUT (1-128)
+                        CLKOUT1_DIVIDE      : integer := 1;
+                        CLKOUT2_DIVIDE      : integer := 1;
+                        CLKOUT3_DIVIDE      : integer := 1;
+                        CLKOUT4_CASCADE      : string  :=  "FALSE";
+                        CLKOUT4_DIVIDE      : integer := 1;
+                        CLKOUT5_DIVIDE      : integer := 1;
+                        CLKOUT6_DIVIDE      : integer := 1;
+                        COMPENSATION         : string  :=  "AUTO"; -- AUTO; BUF_IN; EXTERNAL; INTERNAL; ZHOLD
+                        DIVCLK_DIVIDE        : integer := 1; -- Master division value (1-106)
+                        -- Programmable Inversion Attributes: Specifies built-in programmable inversion on specific pins
+                        IS_CLKFBIN_INVERTED  : bit     := '0'; -- Optional inversion for CLKFBIN
+                        IS_CLKIN1_INVERTED   : bit     := '0'; -- Optional inversion for CLKIN1
+                        IS_CLKIN2_INVERTED   : bit     := '0'; -- Optional inversion for CLKIN2
+                        IS_CLKINSEL_INVERTED : bit     := '0'; -- Optional inversion for CLKINSEL
+                        IS_PSEN_INVERTED     : bit     := '0'; -- Optional inversion for PSEN
+                        IS_PSINCDEC_INVERTED : bit     := '0'; -- Optional inversion for PSINCDEC
+                        IS_PWRDWN_INVERTED   : bit     := '0'; -- Optional inversion for PWRDWN
+                        IS_RST_INVERTED      : bit     := '0'; -- Optional inversion for RST
+                        -- REF_JITTER: Reference input jitter in UI (0.000-0.999).
+                        REF_JITTER1          : real    := 0.0;
+                        REF_JITTER2          : real    := 0.0;
+                        STARTUP_WAIT         : string  :=  "FALSE"; -- Delays DONE until MMCM is locked (FALSE; TRUE)
+                        -- Spread Spectrum: Spread Spectrum Attributes
+                        SS_EN                : string  :=  "FALSE"; -- Enables spread spectrum (FALSE; TRUE)
+                        SS_MODE              : string  :=  "CENTER_HIGH"; -- CENTER_HIGH; CENTER_LOW; DOWN_HIGH; DOWN_LOW
+                        SS_MOD_PERIOD        : integer := 10000; -- Spread spectrum modulation period (ns) (4000-40000)
+                        -- USE_FINE_PS: Fine phase shift enable (TRUE/FALSE)
+                        CLKFBOUT_USE_FINE_PS : string  :=  "FALSE";
+                        CLKOUT0_USE_FINE_PS  : string  :=  "FALSE";
+                        CLKOUT1_USE_FINE_PS  : string  :=  "FALSE";
+                        CLKOUT2_USE_FINE_PS  : string  :=  "FALSE";
+                        CLKOUT3_USE_FINE_PS  : string  :=  "FALSE";
+                        CLKOUT4_USE_FINE_PS  : string  :=  "FALSE";
+                        CLKOUT5_USE_FINE_PS  : string  :=  "FALSE";
+                        CLKOUT6_USE_FINE_PS  : string  :=  "FALSE"                                                      
+                );
+                port(
+                        CLKOUT0      : out std_ulogic := '0'; --1-bitoutput:GeneralClockoutput         
+                        CLKOUT0B     : out std_ulogic := '0'; --1-bitoutput:InvertedCLKOUT0            
+                        CLKOUT1      : out std_ulogic := '0'; --1-bitoutput:GeneralClockoutput         
+                        CLKOUT1B     : out std_ulogic := '0'; --1-bitoutput:InvertedCLKOUT1            
+                        CLKOUT2      : out std_ulogic := '0'; --1-bitoutput:Bitsliceclock     
+                        CLKOUT2B     : out std_ulogic := '0';
+                        CLKOUT3      : out std_ulogic := '0';
+                        CLKOUT3B     : out std_ulogic := '0';
+                        CLKOUT4      : out std_ulogic := '0';
+                        CLKOUT5      : out std_ulogic := '0';
+                        CLKOUT6      : out std_ulogic := '0';
+                        --DRPPortsoutputs:Dynamicreconfigurationports                         
+                        DO           : out std_logic_vector(15 downto 0); --16-bitoutput:DRPdata                   
+                        DRDY         : out std_ulogic := '0'; --1-bitoutput:DRPready     
+                        -- Dynamic Phase Shift Ports outputs: Ports used for dynamic phase shifting of the outputs
+                        PSDONE       : out std_ulogic := '0'; -- 1-bit output: Phase shift done              
+                        --FeedbackClocksoutputs:Clockfeedbackports                              
+                        CLKFBOUT     : out std_ulogic := '0'; --1-bitoutput:Feedbackclock 
+                        CLKFBOUTB    : out std_ulogic := '0'; -- 1-bit output: Inverted CLKFBOUT      
+                        -- Status Ports outputs: MMCM status ports
+                        CDDCDONE     : out std_ulogic := '0'; -- 1-bit output: Clock dynamic divide done
+                        CLKFBSTOPPED : out std_ulogic := '0'; -- 1-bit output: Feedback clock stopped
+                        CLKINSTOPPED : out std_ulogic := '0'; -- 1-bit output: Input clock stopped
+                        LOCKED       : out std_ulogic := '0'; -- 1-bit output: LOCK
+                        CDDCREQ      : in  std_ulogic; -- 1-bit input: Request to dynamic divide clock
+                        -- Clock Inputs inputs: Clock inputs
+                        CLKIN1       : in  std_ulogic; -- 1-bit input: Primary clock
+                        CLKIN2       : in  std_ulogic; -- 1-bit input: Secondary clock  
+                        -- Control Ports inputs: MMCM control ports
+                        CLKINSEL     : in  std_ulogic; -- 1-bit input: Clock select, High=CLKIN1 Low=CLKIN2
+                        PWRDWN       : in  std_ulogic; --1-bitinput:Power-down                  
+                        RST          : in  std_ulogic; --1-bitinput:Reset                                                                        
+                        --DRPPortsinputs:Dynamicreconfigurationports                     
+                        DADDR        : in  std_logic_vector(6 downto 0); --7-bitinput:DRPaddress                  
+                        DCLK         : in  std_ulogic; --1-bitinput:DRPclock                    
+                        DEN          : in  std_ulogic; --1-bitinput:DRPenable                   
+                        DI           : in  std_logic_vector(15 downto 0); --16-bitinput:DRPdata                    
+                        DWE          : in  std_ulogic; --1-bitinput:DRPwriteenable     
+                        -- Dynamic Phase Shift Ports inputs: Ports used for dynamic phase shifting of the outputs
+                        PSCLK        : in  std_ulogic; -- 1-bit input: Phase shift clock
+                        PSEN         : in  std_ulogic; -- 1-bit input: Phase shift enable
+                        PSINCDEC     : in  std_ulogic; -- 1-bit input: Phase shift increment/decrement         
+                        --FeedbackClocksinputs:Clockfeedbackports                           
+                        CLKFBIN      : in  std_ulogic --1-bitinput:Feedbackclock                                                                                        
+                );
+        end component;
+        
+        constant VERSION : integer := 1;
+        constant period : real := 1000000.0/real(freq);
+        constant clkio_div : integer := freq*clk_mul/200000;
+        signal CLKFBOUT : std_logic;
+        signal CLKFBIN : std_logic;
+        signal int_rst : std_logic;
+        signal clk_nobuf : std_logic;
+        signal clk90_nobuf : std_logic;
+        signal clkio_nobuf : std_logic;
     signal sdclk_nobuf : std_logic;
    
     
@@ -606,68 +606,299 @@ begin
 
      CLKFBIN <= CLKFBOUT;
                
-	int_rst <= not cgi.pllrst;
+        int_rst <= not cgi.pllrst;
 
-	MMCME3_ADV_inst : MMCME3_ADV
-		generic map(
-			CLKFBOUT_MULT_F  => real(clk_mul),
-			CLKIN1_PERIOD    => period,
-			CLKOUT0_DIVIDE_F => real(clk_div),
-			CLKOUT1_DIVIDE   => clk_div,
-			CLKOUT2_DIVIDE   => clkio_div
-		)
-		port map(
-			CLKOUT0      => clk_nobuf,
-			CLKOUT0B     => clk90_nobuf,
-			CLKOUT1      => sdclk_nobuf,
-			CLKOUT1B     => open,
-			CLKOUT2      => clkio_nobuf,
-			CLKOUT2B     => open,
-			CLKOUT3      => open,
-			CLKOUT3B     => open,
-			CLKOUT4      => open,
-			CLKOUT5      => open,
-			CLKOUT6      => open,
-			DO           => open,
-			DRDY         => open,
-			PSDONE       => open,
-			CLKFBOUT     => CLKFBOUT,
-			CLKFBOUTB    => open,
-			CDDCDONE     => open,
-			CLKFBSTOPPED => open,
-			CLKINSTOPPED => open,
-			LOCKED       => cgo.clklock,
-			CDDCREQ      => '0',
-			CLKIN1       => clkin,
-			CLKIN2       => '0',
-			CLKINSEL     => '1',
-			PWRDWN       => '0',
-			RST          => int_rst,
-			DADDR        => "0000000",
-			DCLK         => '0',
-			DEN          => '0',
-			DI           => "0000000000000000",
-			DWE          => '0',
-			PSCLK        => '0',
-			PSEN         => '0',
-			PSINCDEC     => '0',
-			CLKFBIN      => CLKFBIN
-		);
-	cgo.pcilock <= '0';
+        MMCME3_ADV_inst : MMCME3_ADV
+                generic map(
+                        CLKFBOUT_MULT_F  => real(clk_mul),
+                        CLKIN1_PERIOD    => period,
+                        CLKOUT0_DIVIDE_F => real(clk_div),
+                        CLKOUT1_DIVIDE   => clk_div,
+                        CLKOUT2_DIVIDE   => clkio_div
+                )
+                port map(
+                        CLKOUT0      => clk_nobuf,
+                        CLKOUT0B     => clk90_nobuf,
+                        CLKOUT1      => sdclk_nobuf,
+                        CLKOUT1B     => open,
+                        CLKOUT2      => clkio_nobuf,
+                        CLKOUT2B     => open,
+                        CLKOUT3      => open,
+                        CLKOUT3B     => open,
+                        CLKOUT4      => open,
+                        CLKOUT5      => open,
+                        CLKOUT6      => open,
+                        DO           => open,
+                        DRDY         => open,
+                        PSDONE       => open,
+                        CLKFBOUT     => CLKFBOUT,
+                        CLKFBOUTB    => open,
+                        CDDCDONE     => open,
+                        CLKFBSTOPPED => open,
+                        CLKINSTOPPED => open,
+                        LOCKED       => cgo.clklock,
+                        CDDCREQ      => '0',
+                        CLKIN1       => clkin,
+                        CLKIN2       => '0',
+                        CLKINSEL     => '1',
+                        PWRDWN       => '0',
+                        RST          => int_rst,
+                        DADDR        => "0000000",
+                        DCLK         => '0',
+                        DEN          => '0',
+                        DI           => "0000000000000000",
+                        DWE          => '0',
+                        PSCLK        => '0',
+                        PSEN         => '0',
+                        PSINCDEC     => '0',
+                        CLKFBIN      => CLKFBIN
+                );
+        cgo.pcilock <= '0';
 
-	bufgclk0 : BUFG port map(I => clk_nobuf, O => clk);
-	bufgclk90 : BUFG port map(I => clk90_nobuf, O => clk90);
-	bufgclkio : BUFG port map(I => clkio_nobuf, O => clkio);
-	SDCLKEN: if sdramen /=0 generate 
+        bufgclk0 : BUFG port map(I => clk_nobuf, O => clk);
+        bufgclk90 : BUFG port map(I => clk90_nobuf, O => clk90);
+        bufgclkio : BUFG port map(I => clkio_nobuf, O => clkio);
+        SDCLKEN: if sdramen /=0 generate 
         bufgsdclk : BUFG port map(I => sdclk_nobuf, O => sdclk);
         end generate;
 
-		-- pragma translate_off
-	bootmsg : report_version
-		generic map(
-			"clkgen_Kintex_Ultrascale" & ": Kintex Ultrascale sdram/pci clock generator, version " & tost(VERSION),
-			"clkgen_Kintex_Ultrascale" & ": Frequency " & tost(freq) & " KHz, DCM divisor " & tost(clk_mul) & "/" & tost(clk_div));
-		-- pragma translate_on
+                -- pragma translate_off
+        bootmsg : report_version
+                generic map(
+                        "clkgen_Kintex_Ultrascale" & ": Kintex Ultrascale sdram/pci clock generator, version " & tost(VERSION),
+                        "clkgen_Kintex_Ultrascale" & ": Frequency " & tost(freq) & " KHz, DCM divisor " & tost(clk_mul) & "/" & tost(clk_div));
+                -- pragma translate_on
+
+end;
+
+------------------------------------------------------------------
+-- Virtex Ultrascale Plus clock generator ---------------------------------------
+------------------------------------------------------------------
+
+library ieee;
+use ieee.std_logic_1164.all;
+-- pragma translate_off
+library grlib;
+use grlib.stdlib.all;
+library unisim;
+use UNISIM.vcomponents.all;
+-- pragma translate_on
+library techmap;
+use techmap.gencomp.all;
+
+entity clkgen_virtexup is
+        generic(
+                clk_mul : integer := 1;
+                clk_div : integer := 1;         
+                sdramen   : integer := 0;
+                noclkfb: integer := 1;
+                freq    : integer := 100000     -- clock frequency in KHz
+        );
+        port(
+                clkin : in  std_ulogic;
+                clk   : out std_ulogic;         -- main clock
+                clk90 : out std_ulogic;         -- main clock 90deg
+                clkio : out std_ulogic;         -- IO ref clock
+                sdclk : out std_ulogic;         -- SD ref clock
+                cgi   : in  clkgen_in_type;
+                cgo   : out clkgen_out_type     
+        );
+end;
+
+architecture struct of clkgen_virtexup is
+
+        component BUFG
+                port(O : out std_logic; I : in std_logic);
+        end component;
+
+        component MMCME3_ADV
+                generic(
+                        BANDWIDTH          : string  := "OPTIMIZED";
+                        CLKFBOUT_MULT_F      : real    := 5.0; -- Multiply value for all CLKOUT (2.000-64.000)
+                        CLKFBOUT_PHASE       : real    := 0.0; -- Phase offset in degrees of CLKFB (-360.000-360.000)
+                        -- CLKIN_PERIOD: Input clock period in ns units; ps resolution (i.e. 33.333 is 30 MHz).
+                        CLKIN1_PERIOD       : real    := 0.0;
+                        CLKIN2_PERIOD       : real    := 0.0;
+                        CLKOUT0_DIVIDE_F    : real    := 1.0; -- Divide amount for CLKOUT0 (1.000-128.000)
+                        -- CLKOUT0_DUTY_CYCLE - CLKOUT6_DUTY_CYCLE: Duty cycle for CLKOUT outputs (0.001-0.999).
+                        CLKOUT0_DUTY_CYCLE   : real    := 0.5;
+                        CLKOUT1_DUTY_CYCLE   : real    := 0.5;
+                        CLKOUT2_DUTY_CYCLE   : real    := 0.5;
+                        CLKOUT3_DUTY_CYCLE   : real    := 0.5;
+                        CLKOUT4_DUTY_CYCLE   : real    := 0.5;
+                        CLKOUT5_DUTY_CYCLE   : real    := 0.5;
+                        CLKOUT6_DUTY_CYCLE   : real    := 0.5;
+                        -- CLKOUT0_PHASE - CLKOUT6_PHASE: Phase offset for CLKOUT outputs (-360.000-360.000).
+                        CLKOUT0_PHASE        : real    := 0.0;
+                        CLKOUT1_PHASE        : real    := 0.0;
+                        CLKOUT2_PHASE        : real    := 0.0;
+                        CLKOUT3_PHASE        : real    := 0.0;
+                        CLKOUT4_PHASE        : real    := 0.0;
+                        CLKOUT5_PHASE        : real    := 0.0;
+                        CLKOUT6_PHASE        : real    := 0.0;
+                        -- CLKOUT1_DIVIDE - CLKOUT6_DIVIDE: Divide amount for CLKOUT (1-128)
+                        CLKOUT1_DIVIDE      : integer := 1;
+                        CLKOUT2_DIVIDE      : integer := 1;
+                        CLKOUT3_DIVIDE      : integer := 1;
+                        CLKOUT4_CASCADE      : string  :=  "FALSE";
+                        CLKOUT4_DIVIDE      : integer := 1;
+                        CLKOUT5_DIVIDE      : integer := 1;
+                        CLKOUT6_DIVIDE      : integer := 1;
+                        COMPENSATION         : string  :=  "AUTO"; -- AUTO; BUF_IN; EXTERNAL; INTERNAL; ZHOLD
+                        DIVCLK_DIVIDE        : integer := 1; -- Master division value (1-106)
+                        -- Programmable Inversion Attributes: Specifies built-in programmable inversion on specific pins
+                        IS_CLKFBIN_INVERTED  : bit     := '0'; -- Optional inversion for CLKFBIN
+                        IS_CLKIN1_INVERTED   : bit     := '0'; -- Optional inversion for CLKIN1
+                        IS_CLKIN2_INVERTED   : bit     := '0'; -- Optional inversion for CLKIN2
+                        IS_CLKINSEL_INVERTED : bit     := '0'; -- Optional inversion for CLKINSEL
+                        IS_PSEN_INVERTED     : bit     := '0'; -- Optional inversion for PSEN
+                        IS_PSINCDEC_INVERTED : bit     := '0'; -- Optional inversion for PSINCDEC
+                        IS_PWRDWN_INVERTED   : bit     := '0'; -- Optional inversion for PWRDWN
+                        IS_RST_INVERTED      : bit     := '0'; -- Optional inversion for RST
+                        -- REF_JITTER: Reference input jitter in UI (0.000-0.999).
+                        REF_JITTER1          : real    := 0.0;
+                        REF_JITTER2          : real    := 0.0;
+                        STARTUP_WAIT         : string  :=  "FALSE"; -- Delays DONE until MMCM is locked (FALSE; TRUE)
+                        -- Spread Spectrum: Spread Spectrum Attributes
+                        SS_EN                : string  :=  "FALSE"; -- Enables spread spectrum (FALSE; TRUE)
+                        SS_MODE              : string  :=  "CENTER_HIGH"; -- CENTER_HIGH; CENTER_LOW; DOWN_HIGH; DOWN_LOW
+                        SS_MOD_PERIOD        : integer := 10000; -- Spread spectrum modulation period (ns) (4000-40000)
+                        -- USE_FINE_PS: Fine phase shift enable (TRUE/FALSE)
+                        CLKFBOUT_USE_FINE_PS : string  :=  "FALSE";
+                        CLKOUT0_USE_FINE_PS  : string  :=  "FALSE";
+                        CLKOUT1_USE_FINE_PS  : string  :=  "FALSE";
+                        CLKOUT2_USE_FINE_PS  : string  :=  "FALSE";
+                        CLKOUT3_USE_FINE_PS  : string  :=  "FALSE";
+                        CLKOUT4_USE_FINE_PS  : string  :=  "FALSE";
+                        CLKOUT5_USE_FINE_PS  : string  :=  "FALSE";
+                        CLKOUT6_USE_FINE_PS  : string  :=  "FALSE"                                                      
+                );
+                port(
+                        CLKOUT0      : out std_ulogic := '0'; --1-bitoutput:GeneralClockoutput         
+                        CLKOUT0B     : out std_ulogic := '0'; --1-bitoutput:InvertedCLKOUT0            
+                        CLKOUT1      : out std_ulogic := '0'; --1-bitoutput:GeneralClockoutput         
+                        CLKOUT1B     : out std_ulogic := '0'; --1-bitoutput:InvertedCLKOUT1            
+                        CLKOUT2      : out std_ulogic := '0'; --1-bitoutput:Bitsliceclock     
+                        CLKOUT2B     : out std_ulogic := '0';
+                        CLKOUT3      : out std_ulogic := '0';
+                        CLKOUT3B     : out std_ulogic := '0';
+                        CLKOUT4      : out std_ulogic := '0';
+                        CLKOUT5      : out std_ulogic := '0';
+                        CLKOUT6      : out std_ulogic := '0';
+                        --DRPPortsoutputs:Dynamicreconfigurationports                         
+                        DO           : out std_logic_vector(15 downto 0); --16-bitoutput:DRPdata                   
+                        DRDY         : out std_ulogic := '0'; --1-bitoutput:DRPready     
+                        -- Dynamic Phase Shift Ports outputs: Ports used for dynamic phase shifting of the outputs
+                        PSDONE       : out std_ulogic := '0'; -- 1-bit output: Phase shift done              
+                        --FeedbackClocksoutputs:Clockfeedbackports                              
+                        CLKFBOUT     : out std_ulogic := '0'; --1-bitoutput:Feedbackclock 
+                        CLKFBOUTB    : out std_ulogic := '0'; -- 1-bit output: Inverted CLKFBOUT      
+                        -- Status Ports outputs: MMCM status ports
+                        CDDCDONE     : out std_ulogic := '0'; -- 1-bit output: Clock dynamic divide done
+                        CLKFBSTOPPED : out std_ulogic := '0'; -- 1-bit output: Feedback clock stopped
+                        CLKINSTOPPED : out std_ulogic := '0'; -- 1-bit output: Input clock stopped
+                        LOCKED       : out std_ulogic := '0'; -- 1-bit output: LOCK
+                        CDDCREQ      : in  std_ulogic; -- 1-bit input: Request to dynamic divide clock
+                        -- Clock Inputs inputs: Clock inputs
+                        CLKIN1       : in  std_ulogic; -- 1-bit input: Primary clock
+                        CLKIN2       : in  std_ulogic; -- 1-bit input: Secondary clock  
+                        -- Control Ports inputs: MMCM control ports
+                        CLKINSEL     : in  std_ulogic; -- 1-bit input: Clock select, High=CLKIN1 Low=CLKIN2
+                        PWRDWN       : in  std_ulogic; --1-bitinput:Power-down                  
+                        RST          : in  std_ulogic; --1-bitinput:Reset                                                                        
+                        --DRPPortsinputs:Dynamicreconfigurationports                     
+                        DADDR        : in  std_logic_vector(6 downto 0); --7-bitinput:DRPaddress                  
+                        DCLK         : in  std_ulogic; --1-bitinput:DRPclock                    
+                        DEN          : in  std_ulogic; --1-bitinput:DRPenable                   
+                        DI           : in  std_logic_vector(15 downto 0); --16-bitinput:DRPdata                    
+                        DWE          : in  std_ulogic; --1-bitinput:DRPwriteenable     
+                        -- Dynamic Phase Shift Ports inputs: Ports used for dynamic phase shifting of the outputs
+                        PSCLK        : in  std_ulogic; -- 1-bit input: Phase shift clock
+                        PSEN         : in  std_ulogic; -- 1-bit input: Phase shift enable
+                        PSINCDEC     : in  std_ulogic; -- 1-bit input: Phase shift increment/decrement         
+                        --FeedbackClocksinputs:Clockfeedbackports                           
+                        CLKFBIN      : in  std_ulogic --1-bitinput:Feedbackclock                                                                                        
+                );
+        end component;
+        
+        constant VERSION : integer := 1;
+        constant period : real := 1000000.0/real(freq);
+        constant clkio_div : integer := freq*clk_mul/200000;
+        signal CLKFBOUT : std_logic;
+        signal CLKFBIN : std_logic;
+        signal int_rst : std_logic;
+        signal clk_nobuf : std_logic;
+        signal clk90_nobuf : std_logic;
+        signal clkio_nobuf : std_logic;
+    signal sdclk_nobuf : std_logic;
+   
+    
+begin
+
+     CLKFBIN <= CLKFBOUT;
+               
+        int_rst <= not cgi.pllrst;
+
+        MMCME3_ADV_inst : MMCME3_ADV
+                generic map(
+                        CLKFBOUT_MULT_F  => real(clk_mul),
+                        CLKIN1_PERIOD    => period,
+                        CLKOUT0_DIVIDE_F => real(clk_div),
+                        CLKOUT1_DIVIDE   => clk_div,
+                        CLKOUT2_DIVIDE   => clkio_div
+                )
+                port map(
+                        CLKOUT0      => clk_nobuf,
+                        CLKOUT0B     => clk90_nobuf,
+                        CLKOUT1      => sdclk_nobuf,
+                        CLKOUT1B     => open,
+                        CLKOUT2      => clkio_nobuf,
+                        CLKOUT2B     => open,
+                        CLKOUT3      => open,
+                        CLKOUT3B     => open,
+                        CLKOUT4      => open,
+                        CLKOUT5      => open,
+                        CLKOUT6      => open,
+                        DO           => open,
+                        DRDY         => open,
+                        PSDONE       => open,
+                        CLKFBOUT     => CLKFBOUT,
+                        CLKFBOUTB    => open,
+                        CDDCDONE     => open,
+                        CLKFBSTOPPED => open,
+                        CLKINSTOPPED => open,
+                        LOCKED       => cgo.clklock,
+                        CDDCREQ      => '0',
+                        CLKIN1       => clkin,
+                        CLKIN2       => '0',
+                        CLKINSEL     => '1',
+                        PWRDWN       => '0',
+                        RST          => int_rst,
+                        DADDR        => "0000000",
+                        DCLK         => '0',
+                        DEN          => '0',
+                        DI           => "0000000000000000",
+                        DWE          => '0',
+                        PSCLK        => '0',
+                        PSEN         => '0',
+                        PSINCDEC     => '0',
+                        CLKFBIN      => CLKFBIN
+                );
+        cgo.pcilock <= '0';
+
+        bufgclk0 : BUFG port map(I => clk_nobuf, O => clk);
+        bufgclk90 : BUFG port map(I => clk90_nobuf, O => clk90);
+        bufgclkio : BUFG port map(I => clkio_nobuf, O => clkio);
+        SDCLKEN: if sdramen /=0 generate 
+        bufgsdclk : BUFG port map(I => sdclk_nobuf, O => sdclk);
+        end generate;
+
+                -- pragma translate_off
+        bootmsg : report_version
+                generic map(
+                        "clkgen_Virtex_Ultrascale_Plus" & ": Virtex Ultrascale Plus sdram/pci clock generator, version " & tost(VERSION),
+                        "clkgen_Virtex_Ultrascale_Plus" & ": Frequency " & tost(freq) & " KHz, DCM divisor " & tost(clk_mul) & "/" & tost(clk_div));
+                -- pragma translate_on
 
 end;
 

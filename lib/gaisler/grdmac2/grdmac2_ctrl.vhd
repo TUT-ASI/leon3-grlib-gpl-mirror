@@ -92,7 +92,11 @@ entity grdmac2_ctrl is
     -- B2M control signals
     b2m_sts_in    : in  d_ex_sts_out_type;              -- B2M status signals
     b2m_start     : out std_logic;                      -- B2M start signal
-    b2m_resume    : out std_ulogic                      -- B2M resume signal
+    b2m_resume    : out std_ulogic;                     -- B2M resume signal
+    acc_sts_in    : in d_ex_sts_out_type;
+    acc_start     : out std_ulogic;
+    acc_resume    : out std_ulogic;
+    acc_desc_out  : out acc_dsc_strct_type
   );
 end entity grdmac2_ctrl;
 
@@ -125,12 +129,15 @@ architecture rtl of grdmac2_ctrl is
   constant WB_DESC    : std_logic_vector(4 downto 0) := "01111";  -- 0x0F
   constant WB_CHECK   : std_logic_vector(4 downto 0) := "10000";  -- 0x10
   constant RD_NXT_PTR : std_logic_vector(4 downto 0) := "10001";  -- 0x11
+  -- 0x12 - 0x1A used for ACC
   
   -- Other constants
   constant DATA                    : std_logic_vector(3 downto 0) := "0000";
   constant C_POLL                  : std_logic_vector(3 downto 0) := "0001";
   constant C_TRIG                  : std_logic_vector(3 downto 0) := "0010";
   constant POLL_IRQ                : std_logic_vector(3 downto 0) := "0011";
+  constant AES                     : std_logic_vector(3 downto 0) := "0100"; -- Descriptor type 4
+  constant ACC_UPDATE              : std_logic_vector(3 downto 0) := "0101"; -- Descriptor type 5
   constant POLL_SZ                 : std_logic_vector(9 downto 0) := "0000000011";  -- 3+1 bytes to be fetched(1 word)
   constant DESC_BYTES              : std_logic_vector(9 downto 0) := "0000011100";  -- 28 bytes to be fetched(7 words)
   constant WB_SZ                   : std_logic_vector(9 downto 0) := "0000000011";  -- 3+1 bytes to be written(1 word)
@@ -200,6 +207,14 @@ architecture rtl of grdmac2_ctrl is
   -- paused previously when the m2b_paused status is received, core sends b2m_resume
   -- signal to buf2mem module and resumes B2M operation.
   -- 
+  -- acc =>
+  -- If ACC paused status is received from accelerator module and B2M operation has
+  -- not been started yet, core sends b2m_start signal. If the B2M operation is
+  -- paused previously when the acc_paused status is received, core sends b2m_resume
+  -- signal to buf2mem module and resumes B2M operation. When an acc_comp status is
+  -- received and the descriptor type is X"5", core assumes the completion of the
+  -- descriptor execution.
+  --
   -- b2m =>
   -- Always monitors for any errors and status from B2M module.
   -- If an error is reported from buf2mem module, handles the error.
@@ -222,7 +237,7 @@ architecture rtl of grdmac2_ctrl is
   -- assumes that the descriptor queue has been modified with new descriptors
   -- appended to the queue. Proceed to fetch next descriptor.
 
-  type ctrl_state_type is (idle, fetch_desc, read_desc, decode_desc, conditional_poll, poll_adr, conditional_trigger, m2b, b2m, writeback_desc, writeback_check, read_nxt_ptr);
+  type ctrl_state_type is (idle, fetch_desc, read_desc, decode_desc, conditional_poll, poll_adr, conditional_trigger, m2b, b2m, acc, writeback_desc, writeback_check, read_nxt_ptr);
 
   -- grdmac2_ctrl local reg type
   type ctrl_reg_type is record
@@ -232,6 +247,8 @@ architecture rtl of grdmac2_ctrl is
     i            : integer range 0 to 7;            -- Register for index increment
     rd_desc      : std_logic_vector(223 downto 0);  -- Register for descriptor read from BM
     cur_desc     : std_ulogic;                      -- Current descriptor type
+    aes_en       : std_ulogic;                      -- Encryption enable
+    acc_en       : std_ulogic;                      -- Update values enable
     cnt_start    : std_ulogic;                      -- counting between polls started
     tm_start     : std_ulogic;                      -- Timeout counter decrement started
     timeout_cntr : std_logic_vector(31 downto 0);   -- counter for Timeout check
@@ -245,6 +262,9 @@ architecture rtl of grdmac2_ctrl is
     b2m_start    : std_ulogic;                      -- B2M start signal
     b2m_resume   : std_ulogic;                      -- B2M resume signal
     b2m_paused   : std_ulogic;                      -- B2M paused flag
+    acc_start    : std_ulogic;                      -- B2M start signal
+    acc_resume   : std_ulogic;                      -- B2M resume signal
+    acc_paused   : std_ulogic;                      -- B2M paused flag
     event        : std_ulogic;                      -- Input trigger event flag
     trigger_1    : std_ulogic;                      -- current value of i/p trigger
     trigger_0    : std_ulogic;                      -- previous value of i/p trigger
@@ -267,6 +287,8 @@ architecture rtl of grdmac2_ctrl is
     i            => 0,
     rd_desc      => (others => '0'),
     cur_desc     => '0',
+    aes_en       => '0',
+    acc_en       => '0',
     cnt_start    => '0',
     tm_start     => '0',
     timeout_cntr => (others => '0'),
@@ -280,6 +302,9 @@ architecture rtl of grdmac2_ctrl is
     b2m_start    => '0',
     b2m_resume   => '0',
     b2m_paused   => '0',
+    acc_start    => '0',
+    acc_resume   => '0',
+    acc_paused   => '0',
     event        => '0',
     trigger_1    => '1',
     trigger_0    => '1',
@@ -299,10 +324,11 @@ architecture rtl of grdmac2_ctrl is
   -- Signal declaration
   -----------------------------------------------------------------------------
 
-  signal r, rin : ctrl_reg_type;
-  signal c_des  : cond_dsc_strct_type;  -- Conditional descriptor
-  signal d_des  : data_dsc_strct_type;  -- Data descriptor
-  signal bmst   : bm_ctrl_reg_type;     -- Bus master control signals
+  signal r, rin  : ctrl_reg_type;
+  signal c_des   : cond_dsc_strct_type;  -- Conditional descriptor
+  signal d_des   : data_dsc_strct_type;  -- Data descriptor and AES descriptor
+  signal acc_des : acc_dsc_strct_type;   -- ACC desctiptor
+  signal bmst    : bm_ctrl_reg_type;     -- Bus master control signals
 
   -----------------------------------------------------------------------------
   -- Function/procedure declaration
@@ -342,12 +368,14 @@ begin  -- rtl
   m2b_resume <= '0' when m2b_sts_in.operation = '1' else r.m2b_resume;
   b2m_start  <= '0' when b2m_sts_in.operation = '1' else r.b2m_start;
   b2m_resume <= '0' when b2m_sts_in.operation = '1' else r.b2m_resume;
+  acc_start  <= '0' when acc_sts_in.operation = '1' else r.acc_start;
+  acc_resume <= '0' when acc_sts_in.operation = '1' else r.acc_resume;
 
 
   -----------------------------------------------------------------------------
   -- Combinational logic
   ----------------------------------------------------------------------------- 
-  comb : process (r, ctrl, des_ptr, active, trst, m2b_sts_in, b2m_sts_in, m2b_bm_in, b2m_bm_in, trigger, err_status, bm_in, d_des, c_des, bmst)
+  comb : process (r, ctrl, des_ptr, active, trst, m2b_sts_in, b2m_sts_in, acc_sts_in, m2b_bm_in, b2m_bm_in, trigger, err_status, bm_in, d_des, c_des, acc_des, bmst)
 
     variable v           : ctrl_reg_type; 
     variable remainder   : integer range 0 to 96;          -- Variable for BM read_data handling
@@ -396,6 +424,9 @@ begin  -- rtl
     elsif b2m_sts_in.operation = '1' then
       v.b2m_start  := '0';
       v.b2m_resume := '0';
+    elsif acc_sts_in.operation = '1' then
+      v.acc_start  := '0';
+      v.acc_resume := '0';
     end if;
 
     v.err_status := err_status;
@@ -433,8 +464,11 @@ begin  -- rtl
         v.b2m_resume          := '0';
         v.m2b_start           := '0';
         v.m2b_resume          := '0';
+        v.acc_start           := '0';
+        v.acc_resume          := '0';
         v.m2b_paused          := '0';
         v.b2m_paused          := '0';
+        v.acc_paused          := '0';
         -- Clear all errors
         v.sts.err             := '0';
         v.sts.decode_desc_err := '0';
@@ -665,6 +699,7 @@ begin  -- rtl
         case r.rd_desc(196 downto 193) is
           when DATA =>
             v.cur_desc := '0';
+            v.acc_en   := '0';
             v.bm_num   := r.rd_desc(198);
             if r.rd_desc(192) = '1' then  -- enabled descriptor
               v.m2b_start := '1';
@@ -673,9 +708,36 @@ begin  -- rtl
               v.desc_skip := '1';
               v.state     := idle;
             end if;
-            
+
+          -- A type of data descriptor used for encryption
+          when AES =>
+            v.cur_desc := '0';
+            v.acc_en   := '1';
+            v.bm_num   := r.rd_desc(198);
+            if r.rd_desc(192) = '1' then  -- enabled descriptor
+              v.m2b_start := '1';
+              v.state     := m2b;
+            else  -- Disabled descriptor. go to idle. No write back
+              v.desc_skip := '1';
+              v.state     := idle;
+            end if;
+
+          -- A special descriptor used for updating values in accelerator
+          when ACC_UPDATE =>
+            v.cur_desc := '0';
+            v.acc_en   := '1';
+            v.bm_num   := r.rd_desc(198);
+            if r.rd_desc(192) = '1' then  -- enabled descriptor
+              v.m2b_start := '1';
+              v.state     := m2b;
+            else  -- Disabled descriptor. go to idle. No write back
+              v.desc_skip := '1';
+              v.state     := idle;
+            end if;
+
           when C_POLL|C_TRIG|POLL_IRQ =>
             v.cur_desc := '1';
+            v.acc_en   := '0';
             -- Bus master index
             v.bm_num   := r.rd_desc(198);
             -- check if the descriptor is enabled or not
@@ -904,8 +966,18 @@ begin  -- rtl
         -----------
         
       when m2b =>
-        -- Start B2M operation when M2B is completed or M2B buffer full and paused
-        if ((r.m2b_resume or r.m2b_start) = '0' and m2b_sts_in.paused = '1') then
+        -- Start ACC operation when M2B is completed or M2B buffer full and paused
+        if ((r.m2b_resume or r.m2b_start) = '0' and m2b_sts_in.paused = '1' and r.acc_en = '1') then
+          if r.acc_paused = '1' then  -- Resume B2M if it was previously paused
+            v.acc_resume := '1';
+            v.acc_paused := '0';
+          else  -- Start B2M if it was not started yet at all.
+            v.acc_start := '1';
+          end if;
+          v.state      := acc;
+          -- Flag that M2b is paused and need to be resumed after B2M operation empties buffer
+          v.m2b_paused := '1';
+        elsif ((r.m2b_resume or r.m2b_start) = '0' and m2b_sts_in.paused = '1' and r.acc_en = '0') then
           if r.b2m_paused = '1' then  -- Resume B2M if it was previously paused
             v.b2m_resume := '1';
             v.b2m_paused := '0';
@@ -916,7 +988,15 @@ begin  -- rtl
           v.state      := b2m;
           -- Flag that M2b is paused and need to be resumed after B2M operation empties buffer
           v.m2b_paused := '1';
-        elsif ((r.m2b_resume or r.m2b_start) = '0' and m2b_sts_in.comp = '1') then
+        elsif ((r.m2b_resume or r.m2b_start) = '0' and m2b_sts_in.comp = '1' and r.acc_en = '1') then
+          if r.acc_paused = '1' then  -- Resume B2M if it was previously paused
+            v.acc_resume := '1';
+            v.acc_paused := '0';
+          else  -- Start B2M if it was not started yet at all.
+            v.acc_start := '1';
+          end if;
+          v.state  := acc;
+        elsif ((r.m2b_resume or r.m2b_start) = '0' and m2b_sts_in.comp = '1' and r.acc_en = '0') then
           if r.b2m_paused = '1' then  -- Resume B2M if it was previously paused
             v.b2m_resume := '1';
             v.b2m_paused := '0';
@@ -930,6 +1010,51 @@ begin  -- rtl
           v.err_flag        := '1';
           v.err_state       := m2b_sts_in.state;
           v.sts.rd_data_err := '1';
+          -- go to write back if it is enabled, else go to idle
+          if d_des.ctrl.write_back = '1' then
+            v.state := writeback_desc;
+          else
+            v.state := idle;
+          end if;
+          v.bm_num := '0';
+        end if;
+        -----------
+
+      when acc =>
+        if ((r.acc_resume or r.acc_start) = '0' and acc_sts_in.paused = '1' and acc_des.ctrl.desc_type = X"4") then
+          if r.b2m_paused = '1' then  -- Resume B2M if it was previously paused
+            v.b2m_resume := '1';
+            v.b2m_paused := '0';
+          else  -- Start B2M if it was not started yet at all.
+            v.b2m_start := '1';
+          end if;
+          v.bm_num     := d_des.ctrl.dest_bm_num;
+          v.state      := b2m;
+          -- Flag that ACC is paused and need to be resumed after M2B operation fills buffer
+          v.acc_paused := '1';
+        elsif ((r.acc_resume or r.acc_start) = '0' and acc_sts_in.comp = '1' and acc_des.ctrl.desc_type = X"4") then
+          if (r.b2m_paused = '1') then
+            v.b2m_resume := '1';
+            v.b2m_paused := '0';
+          else  -- Start B2M if it was not started yet at all.
+            v.b2m_start := '1';
+          end if;
+          v.bm_num := d_des.ctrl.dest_bm_num;
+          v.state := b2m;
+
+        -- IF DESCRIPTOR TYPE 5, DATA USED TO UPDATE ACCELERATOR AND SHOULD GO BACK TO M2B OR FINISH DESCRIPTOR
+        ----------------------------------------------------------------------------------------------------------
+        elsif ((r.acc_resume or r.acc_start) = '0' and acc_sts_in.paused = '1' and acc_des.ctrl.desc_type = X"5") then
+          --Resume M2b and fetch remaining data
+          v.acc_paused := '1';
+          v.m2b_resume := '1';
+          v.bm_num     := d_des.ctrl.src_bm_num;
+          v.state      := m2b;
+          v.m2b_paused := '0';
+        elsif ((r.acc_resume or r.acc_start) = '0' and acc_sts_in.comp = '1' and acc_des.ctrl.desc_type = X"5") then
+          -- ACC completed. current data descriptor completed
+          v.sts.desc_comp := '1';
+          v.dcomp_flg     := '1';
           -- go to write back if it is enabled, else go to idle
           if d_des.ctrl.write_back = '1' then
             v.state := writeback_desc;
@@ -1075,6 +1200,20 @@ begin  -- rtl
     -- Conditional mask
     c_des.cond_mask          <= r.rd_desc(31 downto 0);
 
+    -- Key/IV descriptor signals
+    acc_des.ctrl.en           <= r.rd_desc(192);
+    acc_des.ctrl.desc_type    <= r.rd_desc(196 downto 193);
+    acc_des.ctrl.write_back   <= r.rd_desc(197);
+    acc_des.ctrl.src_bm_num   <= r.rd_desc(198);
+    acc_des.ctrl.irq_en       <= r.rd_desc(199);
+    acc_des.ctrl.src_fix_adr  <= r.rd_desc(200);
+    acc_des.ctrl.size         <= r.rd_desc(223 downto 201);
+    -- Next descriptor pointer
+    acc_des.nxt_des.ptr       <= (r.rd_desc(191 downto 161) & "0");
+    acc_des.nxt_des.last      <= r.rd_desc(160);
+    -- Address where data is to be fetced
+    acc_des.src_addr          <= r.rd_desc(159 downto 128);
+
     -- Demultiplex Bus Master signals and drive M2B or B2M 
     if r.state = m2b then               --M2B
     m2b_bm_out <= bm_in;
@@ -1103,6 +1242,8 @@ begin  -- rtl
           status.state <= COND_TRIG;
         when m2b =>
           status.state <= m2b_sts_in.state;
+        when acc =>
+          status.state <= acc_sts_in.state;
         when b2m =>
           status.state <= b2m_sts_in.state;
         when writeback_desc =>
@@ -1168,6 +1309,7 @@ begin  -- rtl
     
     bm_num        <= r.bm_num;
     d_desc_out    <= d_des;
+    acc_desc_out  <= acc_des;
     ctrl_rst      <= ctrl.rst or err_status;
     curr_desc_ptr <= r.desc_ptr;
     err_sts_out   <= err_status;

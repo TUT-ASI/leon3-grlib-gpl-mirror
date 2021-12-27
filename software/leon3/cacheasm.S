@@ -213,7 +213,7 @@ bpred_test:
 	ld 	[%o1], %o2
 	subcc	%o2, 1, %g0
 	bne	1f
-	subcc	%02, 2, %g0
+	subcc %o2, 2, %g0
 	ld 	[%o1], %o2
 	ld 	[%o1], %o2
 	sll	%o2, 2, %o2

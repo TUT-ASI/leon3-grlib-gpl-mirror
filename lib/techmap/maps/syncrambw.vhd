@@ -38,7 +38,7 @@ use grlib.stdlib.all;
 entity syncrambw is
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
     testen : integer := 0; custombits: integer := 1;
-    pipeline : integer range 0 to 15 := 0; rdhold : integer := 0);
+    pipeline : integer range 0 to 15 := 0; rdhold : integer := 0; gatedwr: integer := 0);
   port (
     clk     : in  std_ulogic;
     address : in  std_logic_vector (abits-1 downto 0);
@@ -58,7 +58,7 @@ architecture rtl of syncrambw is
   signal dataoutx, dataoutxx, dataoutxxx, databp, testdata : std_logic_vector((dbits -1) downto 0);
   constant SCANTESTBP : boolean := (testen = 1) and syncram_add_scan_bypass(tech)=1;
 
-  signal xenable, xwrite : std_logic_vector(dbits/8-1 downto 0);
+  signal xenable, xwrite, gwrite : std_logic_vector(dbits/8-1 downto 0);
   signal custominx,customoutx: std_logic_vector((dbits/8)*syncram_customif_maxwidth downto 0);
 
   signal preven, preven2: std_ulogic;
@@ -67,6 +67,7 @@ architecture rtl of syncrambw is
 begin
 
   xenable <= enable when testen=0 or testin(TESTIN_WIDTH-2)='0' else (others => '0');
+  gwrite <= (write and enable) when (gatedwr/=0 and syncram_wrignen(tech)/=0) else write;
   xwrite <= write when testen=0 or testin(TESTIN_WIDTH-2)='0' else (others => '0');
 
   sbw : if has_srambw(tech) >= abits generate
@@ -211,7 +212,7 @@ begin
 
   nosbw : if has_srambw(tech) < abits generate
     rx : for i in 0 to dbits/8-1 generate
-      x0 : syncram generic map (tech, abits, 8, testen, custombits, pipeline, rdhold)
+      x0 : syncram generic map (tech, abits, 8, testen, custombits, pipeline, rdhold, gatedwr)
          port map (clk, address, datain(i*8+7 downto i*8), 
 	    dataoutx(i*8+7 downto i*8), enable(i), write(i), testin
                    );

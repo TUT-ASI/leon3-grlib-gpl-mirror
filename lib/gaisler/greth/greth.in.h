@@ -36,3 +36,7 @@
 #define CONFIG_GRETH_FMC_MODE 0
 #endif
 
+#ifndef CONFIG_GRETH_PHY_ADDR
+#define CONFIG_GRETH_PHY_ADDR 1
+#endif
+

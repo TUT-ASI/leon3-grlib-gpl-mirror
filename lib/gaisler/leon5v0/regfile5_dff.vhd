@@ -50,16 +50,16 @@ entity regfile5_dff is
     wdata2 : in  std_logic_vector((dbits -1) downto 0);
     we2    : in  std_logic_vector(1 downto 0);
     raddr1 : in  std_logic_vector((abits -1) downto 0);
-    re1    : in  std_logic;
+    re1    : in  std_logic_vector(1 downto 0);
     rdata1 : out std_logic_vector((dbits -1) downto 0);
     raddr2 : in  std_logic_vector((abits -1) downto 0);
-    re2    : in  std_logic;
+    re2    : in  std_logic_vector(1 downto 0);
     rdata2 : out std_logic_vector((dbits -1) downto 0);
     raddr3 : in  std_logic_vector((abits -1) downto 0);
-    re3    : in  std_logic;
+    re3    : in  std_logic_vector(1 downto 0);
     rdata3 : out std_logic_vector((dbits -1) downto 0);
     raddr4 : in  std_logic_vector((abits -1) downto 0);
-    re4    : in  std_logic;
+    re4    : in  std_logic_vector(1 downto 0);
     rdata4 : out std_logic_vector((dbits -1) downto 0)
     );
 end regfile5_dff;
@@ -82,7 +82,7 @@ architecture rtl of regfile5_dff is
 begin
 
 
-  comb : process(rdhold, re1, re2, re3, re4, waddr1, waddr2, wdata1, wdata2, raddr1, raddr2, raddr3, raddr4, we1, we2)
+  comb : process(rdhold, re1, re2, re3, re4, waddr1, waddr2, wdata1, wdata2, raddr1, raddr2, raddr3, raddr4, we1, we2, r)
     variable v                                  : reg_type;
     variable rdata1v, rdata2v, rdata3v, rdata4v : std_logic_vector(63 downto 0);
   begin
@@ -90,16 +90,16 @@ begin
     v := r;
 
     if rdhold = '0' then
-      if re1 = '1' then
+      if re1 /= "00" then
         v.raddr1 := raddr1;
       end if;
-      if re2 = '1' then
+      if re2 /= "00" then
         v.raddr2 := raddr2;
       end if;
-      if re3 = '1' then
+      if re3 /= "00" then
         v.raddr3 := raddr3;
       end if;
-      if re4 = '1' then
+      if re4 /= "00" then
         v.raddr4 := raddr4;
       end if;
     end if;

@@ -111,6 +111,17 @@
   constant CFG_MIG_7SERIES    : integer := CONFIG_MIG_7SERIES;
   constant CFG_MIG_7SERIES_MODEL    : integer := CONFIG_MIG_7SERIES_MODEL;
 
+-- SPI memory controller
+  constant CFG_SPIMCTRL            : integer := CONFIG_SPIMCTRL;
+  constant CFG_SPIMCTRL_SDCARD     : integer := 0;
+  constant CFG_SPIMCTRL_READCMD    : integer := 16#CONFIG_SPIMCTRL_READCMD#;
+  constant CFG_SPIMCTRL_DUMMYBYTE  : integer := CONFIG_SPIMCTRL_DUMMYBYTE;
+  constant CFG_SPIMCTRL_DUALOUTPUT : integer := CONFIG_SPIMCTRL_DUALOUTPUT;
+  constant CFG_SPIMCTRL_SCALER     : integer := CONFIG_SPIMCTRL_SCALER;
+  constant CFG_SPIMCTRL_ASCALER    : integer := CONFIG_SPIMCTRL_ASCALER;
+  constant CFG_SPIMCTRL_PWRUPCNT   : integer := CONFIG_SPIMCTRL_PWRUPCNT;
+  constant CFG_SPIMCTRL_OFFSET     : integer := 16#CONFIG_SPIMCTRL_OFFSET#;
+
 -- AHB ROM
   constant CFG_AHBROMEN	: integer := CONFIG_AHBROM_ENABLE;
   constant CFG_AHBROPIP	: integer := CONFIG_AHBROM_PIPE;
@@ -153,6 +164,24 @@
   constant CFG_GPT_SEPIRQ   : integer := CONFIG_GPT_SEPIRQ;
   constant CFG_GPT_WDOGEN   : integer := CONFIG_GPT_WDOGEN;
   constant CFG_GPT_WDOG     : integer := 16#CONFIG_GPT_WDOG#;
+
+-- I2C master
+  constant CFG_I2C_ENABLE : integer := CONFIG_I2C_ENABLE;
+
+-- SPI controller
+  constant CFG_SPICTRL_ENABLE  : integer := CONFIG_SPICTRL_ENABLE;
+  constant CFG_SPICTRL_NUM     : integer := CONFIG_SPICTRL_NUM;
+  constant CFG_SPICTRL_SLVS    : integer := CONFIG_SPICTRL_SLVS;
+  constant CFG_SPICTRL_FIFO    : integer := CONFIG_SPICTRL_FIFO;
+  constant CFG_SPICTRL_SLVREG  : integer := CONFIG_SPICTRL_SLVREG;
+  constant CFG_SPICTRL_ODMODE  : integer := CONFIG_SPICTRL_ODMODE;
+  constant CFG_SPICTRL_AM      : integer := CONFIG_SPICTRL_AM;
+  constant CFG_SPICTRL_ASEL    : integer := CONFIG_SPICTRL_ASEL;
+  constant CFG_SPICTRL_TWEN    : integer := CONFIG_SPICTRL_TWEN;
+  constant CFG_SPICTRL_MAXWLEN : integer := CONFIG_SPICTRL_MAXWLEN;
+  constant CFG_SPICTRL_SYNCRAM : integer := CONFIG_SPICTRL_SYNCRAM;
+  constant CFG_SPICTRL_FT      : integer := CONFIG_SPICTRL_FT;
+  constant CFG_SPICTRL_PROT    : integer := CONFIG_SPICTRL_PROT;
 
 -- GRLIB debugging
   constant CFG_DUART    : integer := CONFIG_DEBUG_UART;

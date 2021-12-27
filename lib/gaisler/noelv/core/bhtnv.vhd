@@ -18,8 +18,8 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------
--- Entity: 	bht5
--- File:	bht5.vhd
+-- Entity: 	bhtnv
+-- File:	bhtnv.vhd
 -- Author:	Andrea Merlo, Cobham Gaisler AB
 --              Alen Bardizbanyan, Cobham Gaisler AB
 -- Description:	Branch History Table with configurable predictor
@@ -58,7 +58,8 @@ entity bhtnv is
     rstn         : in  std_ulogic;
     holdn        : in  std_ulogic;
     bhti         : in  nv_bht_in_type;
-    bhto         : out nv_bht_out_type
+    bhto         : out nv_bht_out_type;
+    testin       : in std_logic_vector(TESTIN_WIDTH-1 downto 0)
     );
 end bhtnv;
 
@@ -106,7 +107,8 @@ architecture rtl of bhtnv is
   constant PHTENTRIES   : integer := phtgen(nentries, hlength, predictor);
   constant PHTBITS      : integer := phtbit(hlength, predictor, counterbits);
 
-  constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  --constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant RESET_ALL    : boolean := true;
 
   ----------------------------------------------------------------------------
   -- Types
@@ -152,7 +154,7 @@ architecture rtl of bhtnv is
 begin  -- rtl
 
     phtable : syncram_2p generic map (tech, log2ext(nentries), (2**hlength)*2, 0, 0, testen, 0, memtest_vlen)
-    port map (clk, pht_re, pht_raddr, pht_rdata, clk, pht_we, pht_waddr, pht_wdata, testin_none
+    port map (clk, pht_re, pht_raddr, pht_rdata, clk, pht_we, pht_waddr, pht_wdata, testin
                );   
 
   comb : process(r, bhti, rstn, pht_rdata)

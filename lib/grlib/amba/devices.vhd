@@ -274,6 +274,7 @@ package devices is
   constant GAISLER_GRSCRUB       : amba_device_type := 16#0C1#;
   constant GAISLER_GRPLIC        : amba_device_type := 16#0C2#;
   constant GAISLER_CLINT         : amba_device_type := 16#0C3#;
+  constant GAISLER_SOCBRIDGE     : amba_device_type := 16#0C4#;
 
 -- Sun Microsystems
 
@@ -470,10 +471,16 @@ package devices is
   constant LEON_POLARFIRE_EVALKIT: system_device_type := 16#0265#;
   constant NOELV_XILINX_KCU105   : system_device_type := 16#0287#;
   constant LEON5_XILINX_KCU105   : system_device_type := 16#0288#;
+  constant DERISC_XILINX_KCU105  : system_device_type := 16#0289#;
   constant GAISLER_DDRTV         : system_device_type := 16#0290#;
+  constant NOELV_SOC             : system_device_type := 16#0291#;
   constant ALTERA_DE2            : system_device_type := 16#0302#;
   constant ALTERA_DE4            : system_device_type := 16#0303#;
   constant ALTERA_S5GSDSP        : system_device_type := 16#0304#;
+  constant DERISC_CPCIS_XKU      : system_device_type := 16#0310#;
+  constant NOELV_MICROCHIP_PF    : system_device_type := 16#0320#;
+  constant LEON5_MICROCHIP_PF    : system_device_type := 16#0321#;
+  constant NOELV_DIGILENT_ARTY   : system_device_type := 16#0330#;
   constant XILINX_ML401          : system_device_type := 16#0401#;
   constant LEON3FT_GRXC4V        : system_device_type := 16#0453#;
   constant XILINX_ML501          : system_device_type := 16#0501#;
@@ -686,6 +693,7 @@ package devices is
     GAISLER_GRSCRUB       => "GRSCRUB FPGA Scrubber           ",
     GAISLER_GRPLIC        => "RISC-V PLIC                     ",
     GAISLER_CLINT         => "RISC-V CLINT                    ",
+    GAISLER_SOCBRIDGE     => "SoC to SoC bridge               ",
     others                => "Unknown Device                  ");
 
   constant gaisler_lib : vendor_library_type := (
@@ -1294,6 +1302,14 @@ package devices is
     MICROSEMI_M2GL_EVAL    => "Microsemi IGLOO2 Evaluation kit ",
     XILINX_SP601           => "Xilinx SP601 Development board  ",
     XILINX_ML605           => "Xilinx ML605 Development board  ",
+    LEON5_XILINX_KCU105    => "LEON5 Xilinx KCU105 SoC         ",
+    NOELV_XILINX_KCU105    => "NOEL-V Xilinx KCU105 SoC        ",
+    DERISC_XILINX_KCU105   => "De-RISC Xilinx KCU105 SoC       ",
+    DERISC_CPCIS_XKU       => "De-RISC GR-CPCIS-XKU  SoC       ",
+    LEON5_MICROCHIP_PF     => "LEON5 Microsemi Polarfire SoC   ",
+    NOELV_MICROCHIP_PF     => "NOEL-V Microsemi Polarfire SoC  ",
+    NOELV_DIGILENT_ARTY    => "NOEL-V Digilent Arty-A7 SoC     ",
+    NOELV_SOC              => "NOEL-V SoC                      ",
     others                 => "Unknown system                  ");
 
 -- pragma translate_on

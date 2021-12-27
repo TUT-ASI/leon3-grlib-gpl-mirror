@@ -64,7 +64,8 @@ entity grdmac2_ahb is
                                                                   -- Valid values of 'ft' : 0 to 5 for dbits =32 (ft=5 is target technology specific); 0 to 4 for dbits = 64 and 128
     abits            : integer range 0 to 10        := 4;         -- FIFO address bits (actual fifo depth = 2**abits)
     -- M2B/B2M configuration
-    en_timer         : integer                      := 0          -- Enable timeout mechanism
+    en_timer         : integer                      := 0;         -- Enable timeout mechanism
+    en_acc           : integer range 0 to 4         := 0
     );
   port (
     rstn    : in  std_ulogic;                    -- Reset
@@ -100,7 +101,7 @@ architecture rtl of grdmac2_ahb is
 
   -- Plug and Play Information (AHB master interface)
 
-  constant REVISION : integer := 0;
+  constant REVISION : integer := 1;
   constant hconfig : ahb_config_type := (
     0      => ahb_device_reg (VENDOR_GAISLER, GAISLER_GRDMAC, 0, REVISION, 0),
     others => zero32);
@@ -189,7 +190,8 @@ begin  -- rtl
       en_bm1   => en_bm1,
       ft       => ft,
       abits    => abits,
-      en_timer => en_timer
+      en_timer => en_timer,
+      en_acc   => en_acc
       )
     port map (
       rstn    => rstn,
@@ -290,6 +292,12 @@ begin  -- rtl
         );
   end generate;
   
+  
+-- pragma translate_off
+   assert ahbmi0.endian /= '1' and ahbmi1.endian /= '1'
+      report "grdmac2: little endian systems not supported"
+      severity error;
+-- pragma translate_on
   
 end architecture rtl;
 

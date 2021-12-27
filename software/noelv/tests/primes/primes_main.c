@@ -25,7 +25,11 @@ uint64_t Primes_Per_Second;
 
 int main()
 {
+#if 0
   int iterations = 33333;
+#else
+  int iterations = 10;
+#endif
   int limit = 33333;
   size_t primes_size = ((limit >> 6) + 1) * sizeof(uint64_t);
 
@@ -40,7 +44,11 @@ int main()
   /***************/
 
   setStats(1);
+#if 0
   Begin_Time = read_csr(mcycle);
+#else
+  Begin_Time = 0;
+#endif
 
   /***************/
   /* Main Loop   */
@@ -66,7 +74,11 @@ int main()
   /* Stop timer */
   /**************/
 
+#if 0
   End_Time = read_csr(mcycle);
+#else
+  End_Time = 1;
+#endif
   setStats(0);
 
   User_Time = End_Time - Begin_Time;

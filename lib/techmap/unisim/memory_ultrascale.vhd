@@ -101,6 +101,12 @@ begin
                wclk => clk, write => write, waddress => address, datain => datain);
     
   end generate;
+
+  a15 : if abits > 15 generate
+    x: generic_syncram generic map (abits, dbits)
+      port map (clk, address, datain, do(dbits-1 downto 0), write);
+    do(dbits+72 downto dbits) <= (others => '0');
+  end generate;
   
 end;
 

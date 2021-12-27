@@ -19,5 +19,5 @@
       if [ "$CONFIG_GRETH_SGMII_PRESENT" = "y" ]; then
         bool 'Enable SGMII' CONFIG_GRETH_SGMII_MODE
       fi
-
+      int 'PHY address  '   CONFIG_GRETH_PHY_ADDR 1
     fi

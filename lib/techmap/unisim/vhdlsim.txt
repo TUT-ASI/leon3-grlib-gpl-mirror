@@ -3,5 +3,8 @@ leon3ft_grfpul_unisim.vhd
 grfpw_0_unisim.vhd
 grfpw4_0_unisim.vhd
 grlfpw_0_unisim.vhd
+grlfpw_p0_unisim.vhd
+grlfpw_p1_unisim.vhd
+grlfpw_p2_unisim.vhd
 grlfpw4_0_unisim.vhd
 DP4096W12A24D_VIRTEX6.vhd

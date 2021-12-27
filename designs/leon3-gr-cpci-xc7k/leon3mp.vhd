@@ -621,7 +621,7 @@ constant PCI_PADDR          : integer := 16#0a0#;
 constant I2CSLV_PADDR       : integer := 16#0b0#;
 constant PCI_DMA_PADDR      : integer := 16#0c0#;
 constant SPI1_PADDR         : integer := 16#0d0#;
-constant RGMII_PADDR        : integer := 16#0e0#;
+constant PCI_ARB_PADDR      : integer := 16#0e0#;
 constant AHBSTAT_PADDR      : integer := 16#0f0#;
 
 -- APB1 memory map (offsets from base address 0x80100000):
@@ -1696,7 +1696,7 @@ begin
       pciarb0 : pciarb
 	generic map (
 	  pindex => PCI_ARB_PINDEX,
-	  paddr  => 8, 
+	  paddr  => PCI_ARB_PADDR, 
           apb_en => CFG_PCI_ARBAPB)
 	port map (
 	  clk     => pciclk,

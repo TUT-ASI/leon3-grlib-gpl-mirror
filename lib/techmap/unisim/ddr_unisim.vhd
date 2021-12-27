@@ -110,6 +110,11 @@ begin
 		    Port map(Q1 => Q1, Q2 => Q2, C => C1, CB => C1, D => D, R => R);
     end generate;
 
+    VUP : if (tech = virtexup) generate
+	    U0 : IDDRE1 generic map( IS_CB_INVERTED => '1')
+		    Port map(Q1 => Q1, Q2 => Q2, C => C1, CB => C1, D => D, R => R);
+    end generate;
+
      V7 : if (tech = virtex7) or (tech = kintex7) or (tech = artix7) generate
       align : if arch = 0 generate
         U0 : IDDR generic map( DDR_CLK_EDGE => "SAME_EDGE")
@@ -234,6 +239,51 @@ entity unisim_iddre1_reg is
 end;
 
 architecture rtl of unisim_iddre1_reg is
+	attribute BOX_TYPE : string;
+	component IDDRE1
+		generic(DDR_CLK_EDGE   : string := "SAME_EDGE";
+		        IS_CB_INVERTED : bit    := '0';
+		        IS_C_INVERTED  : bit    := '0'
+		       );
+		port(Q1 : out std_ulogic;
+		     Q2 : out std_ulogic;
+		     C  : in  std_ulogic;
+		     CB : in  std_ulogic;
+		     D  : in  std_ulogic;
+		     R  : in  std_ulogic
+		    );
+	end component;
+	attribute BOX_TYPE of IDDRE1 : component is "PRIMITIVE";
+
+begin
+	U0 : IDDRE1
+		Port map(Q1 => Q1, Q2 => Q2, C => C, CB => CB, D => D, R => R);
+
+end;
+
+------------Ultrascale Plus-------------------------
+library ieee;
+use ieee.std_logic_1164.all;
+library techmap;
+use techmap.gencomp.all;
+-- pragma translate_off
+library unisim;
+use unisim.vcomponents.all;
+--pragma translate_on
+
+entity unisim_iddre2_reg is
+	generic(tech : integer := virtexup; arch : integer := 0);
+	port(
+		Q1 : out std_ulogic;
+		Q2 : out std_ulogic;
+		C  : in  std_ulogic;
+		CB : in  std_ulogic;
+		D  : in  std_ulogic;
+		R  : in  std_ulogic
+	);
+end;
+
+architecture rtl of unisim_iddre2_reg is
 	attribute BOX_TYPE : string;
 	component IDDRE1
 		generic(DDR_CLK_EDGE   : string := "SAME_EDGE";

@@ -1,0 +1,11 @@
+SECTIONS
+{
+    ROM_BASE = 0xC0000000; /* ... but actually position independent */
+
+    . = ROM_BASE;
+    .text.start : { *(.text.start) }
+    . = ROM_BASE + 0x4000;
+    .text.hang : { *(.text.hang) }
+    . = ROM_BASE + 0x8000;
+    .rodata.dtb : { *(.rodata.dtb) }
+}

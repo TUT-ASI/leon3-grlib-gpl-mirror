@@ -56,7 +56,8 @@ entity bht_pap is
     bhti     : in  l5_bht_in_type;
     bhto     : out l5_bht_out_type;
     diag_in     : in  l5_btb_diag_in_type;
-    diag_out    : out l5_btb_diag_out_type
+    diag_out    : out l5_btb_diag_out_type;
+    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0)
     );
 end bht_pap;
 
@@ -85,10 +86,10 @@ architecture rtl of bht_pap is
     btb_taken        : std_logic_vector(nentries-1 downto 0);
     valid            : std_logic_vector(nentries-1 downto 0);
     ren              : std_logic;
-    wr_forward       : std_logic;
     rindex_reg       : std_logic_vector(log2ext(nentries)-1 downto 0);
     rindex_bhist_reg : std_logic_vector(log2ext(nentries)-1 downto 0);
     pht_rdata_hold   : std_logic_vector((2**hlength)*2-1 downto 0);
+    write_forwarded  : std_logic;
   end record;
 
   constant RES : reg_type := (
@@ -96,10 +97,10 @@ architecture rtl of bht_pap is
     btb_taken        => (others => '0'),
     valid            => (others => '0'),
     ren              => '0',
-    wr_forward       => '0',
     rindex_reg       => (others => '0'),
     rindex_bhist_reg => (others => '0'),
-    pht_rdata_hold   => (others => '0')
+    pht_rdata_hold   => (others => '0'),
+    write_forwarded  => '0'
     );
 
   signal r, rin : reg_type;
@@ -111,7 +112,7 @@ architecture rtl of bht_pap is
 begin  -- rtl
 
   phtable : syncram_2p generic map (tech, log2ext(nentries), (2**hlength)*2, 0, 0, testen, 0, memtest_vlen)
-    port map (clk, pht_re, pht_raddr, pht_rdata, clk, pht_we, pht_waddr, pht_wdata, testin_none
+    port map (clk, pht_re, pht_raddr, pht_rdata, clk, pht_we, pht_waddr, pht_wdata, testin
                );   
 
   comb : process(r, bhti, rstn, pht_rdata, holdn, diag_in)
@@ -156,6 +157,7 @@ begin  -- rtl
     if holdn = '1' and bhti.ren = '1' then
       v.ren        := '1';
       v.rindex_reg := rindex_comb;
+      v.write_forwarded := '0';
     end if;
     if bhti.iustall = '0' and holdn = '1' then
       v.rindex_bhist_reg := bhti.rindex_bhist(BHTINMSB downto 3);
@@ -166,7 +168,7 @@ begin  -- rtl
       v.rindex_bhist_reg := diag_in.addr(BHTINMSB-3 downto 0);
     end if;
     ---------------------------------------------------------------------------
-    if r.ren = '1' then
+    if r.ren = '1' and r.write_forwarded = '0' then
       pht_rdatav := pht_rdata;
       if notx(r.rindex_reg) then
         if r.valid(to_integer(unsigned(r.rindex_reg))) = '0' then
@@ -256,7 +258,6 @@ begin  -- rtl
 
     pht_wev      := '0';
     pht_waddrv   := windex;
-    v.wr_forward := '0';
     if bhti.wen = '1'then
       pht_wev   := '1';
       bwhistory := bhti.bhistory(hlength-1 downto 0);
@@ -272,13 +273,11 @@ begin  -- rtl
         v.pht_rdata_hold := bhti_phistory_temp;
       end if;
 
-      --this can not happen when bht SRAM is accessed in
-      --memory stage since wen and ren will always be
-      --stalled at the same time with holdn signal
-      --if v.ren = '1' and rindex_comb = pht_waddrv then
-      --  v.wr_forward := '1';
-      --  v.pht_rdata_hold := bhti_phistory_temp;
-      --end if;
+      v.write_forwarded := '0';
+      if pht_waddrv = pht_raddrv then
+        v.write_forwarded := '1';
+        v.pht_rdata_hold := bhti_phistory_temp;
+      end if;
       
     end if;
 
@@ -366,10 +365,10 @@ begin  -- rtl
     if rising_edge(clk) then
       r <= rin;
       if rstn = '0' then
-        r.btb_taken  <= (others => '0');
-        r.valid      <= (others => '0');
-        r.ren        <= '0';
-        r.wr_forward <= '0';
+        r.btb_taken       <= (others => '0');
+        r.valid           <= (others => '0');
+        r.ren             <= '0';
+        r.write_forwarded <= '0';
       end if;
     end if;
   end process;

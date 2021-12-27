@@ -131,6 +131,10 @@ architecture rtl of iu3 is
         conv_std_logic_vector(NWIN-1, NWINLOG2);
   constant CWPGLB : std_logic_vector(NWINLOG2-1 downto 0) :=
         conv_std_logic_vector(NWIN, NWINLOG2);
+  constant RAMAX  : std_logic_vector(RFBITS-1 downto 0) :=
+        conv_std_logic_vector(NWIN,RFBITS-4) & "0111";
+  constant RAG0   : std_logic_vector(RFBITS-1 downto 0) :=
+        conv_std_logic_vector(NWIN,RFBITS-4) & "0000";
   constant FPEN   : boolean := (fpu /= 0);
   constant CPEN   : boolean := (cp = 1);
   constant MULEN  : boolean := (v8 /= 0);
@@ -1046,7 +1050,8 @@ architecture rtl of iu3 is
     ld    => '0',
     pv    => '0',
     rett  => '0',
-    itovr => '0');
+    itovr => '0'
+    );
   constant fpc_res : pctype := conv_std_logic_vector(rstaddr, 20) & zero32(11 downto PCLOW);
   
   constant fetch_reg_res : fetch_reg_type := (
@@ -4456,7 +4461,7 @@ begin
     alu_op(r, ra_op1, ra_op2, v.m.icc, v.m.y(0), ex_ldbp2, v.e.op1, v.e.op2,
            v.e.aluop, v.e.alusel, v.e.aluadd, v.e.shcnt, v.e.sari, v.e.shleft,
            v.e.ymsb, v.e.mul, ra_div, v.e.mulstep, v.e.mac, v.e.ldbp2, v.e.invop2
-    );
+           );
     cin_gen(r, v.m.icc(0), v.e.alucin);
     bp_miss_ra(r, ra_bpmiss, de_bpannul);
     v.e.bp := r.a.bp and not ra_bpmiss;

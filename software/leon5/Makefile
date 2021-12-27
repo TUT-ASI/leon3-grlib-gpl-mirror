@@ -112,10 +112,9 @@ prom.srec: prom.exe
 systest.exe: systest.o report_device.o bcc2sim.o lib3tests.a
 	$(XCC) $(XCFLAGS) systest.o report_device.o bcc2sim.o $(XLDFLAGS) -o systest.exe
 
-# NOTE: .bss section not included in ram.srec but can be added with
-# --set-section-flags .bss=alloc,contents,load
+# NOTE: .bss section included in ram.srec to allow skipping bss init
 ram.srec: systest.exe
-	$(XOBJCOPY) -O srec --gap-fill 0 systest.exe ram.srec
+	$(XOBJCOPY) -O srec --gap-fill 0 --set-section-flags .bss=alloc,contents,load systest.exe ram.srec
 
 soft-clean:
 	-rm -rf *.o *.exe *.a

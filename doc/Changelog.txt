@@ -1,3 +1,82 @@
+----------------------- Release 2020.4-b4261 ---------------------------
+
+2020-12-09	LEON5 processor updates
+
+		New features:
+		Support for clock gating added.
+
+		Updates:
+		Updates and fixes in debug module.
+		Cache controller fixes for diagnostic ASI access and region
+		flush. Bug fixes for cmemconf=2 (single-port) configuration.
+		Fixes for scan test signal propagation to RAMs.
+		Syncram instantiations updated to use gatedwr generic.
+		Added simulation monitors for cache tag consistency and
+		reading X over AHB.
+		Test software updated to add region flush and cache FT test,
+		FPU test updated to run in parallel in multi-CPU config.
+
+2020-12-07	GRFPU-lite : Provide additional netlists for Virtex-5 to
+		support GRFPU-lite with data forwarding and non-blocking
+		FPC as netlist.
+
+2020-12-06	NOEL-V RISC-V processor update
+		Added support for standard configurations (TIN32, MIN64/32,
+		GPP64/32, HPP64/32). Updated support for FPU and atomic 
+		instructions.
+
+2020-12-03	GRDMAC2: Added functionality for connecting an accelera-
+		tor to GRDMAC2. Also added AES-256 accelerator.
+
+2020-11-24	AHBRAM: byte select logic corrected for 64- and 128-
+		bit accesses in wide AMBA buses (AHBDW > 64)
+
+2020-11-09	TECHMAP: Add gatedwr generic to syncram, syncram_dp,
+		syncramft. When the generic set to 1, an access with
+		enable=0,write=1 will not cause a write, gating logic
+		will be added to technologies that require it.
+
+2020-10-29	Add a GRLIB-global config option to keep clock
+		polarity of inverted clocks inverted also in test mode.
+		The JTAG TAP is updated to honor this config option,
+		other IP with inverted clocks have not been updated.
+
+2020-10-29	Add a separate trstmux entity to perform the muxing of
+		testrst in test mode, in order to easier identify the
+		muxes in the synthesis flow. The AHBJTAG and inferred
+		JTAG TAP are updated to use this entity, other IP with
+		async reset have not been updated.
+
+2020-10-28	Endian-ness support updated to allow for designs where
+		different AHB buses may have different endianness. All
+		cores must still have the same endian-ness as the AHB
+		bus(es) they are connected to. Existing designs do not
+		need to be changed.
+
+		On the AHBCTRL, an ahbendian generic is added to
+		configure endianness of that AHB bus. If not set, this
+		defaults to the global endian-ness setting in the grlib
+		config package. The setting is communicated out via
+		static signals added to the AHB master and slave
+		records.
+
+		IP cores supporting both big and little endian may
+		adjust the endian-ness automatically based on the signal
+		coming through the AMBA record. IP cores supporting only
+		one endianness or with endian-ness configured via a
+		separate generic with instead have a simulation assert
+		to ensure the AMBA bus configuration seen through the
+		records matches what the IP core expects.
+
+2020-10-21	AHB2AXI3B/AHB2AXI4b: Bugfix. Address of a single write
+		operation on AHB bus can be transferred wrongly to
+		AXI bus on certain conditions. Refer to GRLIB-TN-0019.
+
+2020-10-05	TECHMAP: Move the allx packages into separate alltech
+		directory and build before inferred to fix file
+		compilation order issue when recompiling previously
+		compiled designs with Riviera.
+
 ----------------------- Release 2020.2-b4254 ---------------------------
 
 2020-06-30	Added NOEL-V template designs for Digilent Arty A7

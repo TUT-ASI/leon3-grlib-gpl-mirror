@@ -172,7 +172,7 @@ begin
         elsif dw = 64 then bs := (others => '1');
         else
           for i in 0 to dw/64-1 loop
-            if i = conv_integer(r.addr(3)) then
+            if i = conv_integer(r.addr(log2(dw/16) downto 3)) then
               bs(bs'left-i*8 downto bs'left-i*8-7) := (others => '1');
             end if;
           end loop;  -- i
@@ -181,9 +181,9 @@ begin
         if dw < 128 then null;
         elsif dw = 128 then bs := (others => '1');
         else
-          for i in 0 to dw/64-1 loop
-            if i = conv_integer(r.addr(3)) then
-              bs(bs'left-i*8 downto bs'left-i*8-7) := (others => '1');
+          for i in 0 to dw/128-1 loop
+            if i = conv_integer(r.addr(log2(dw/16) downto 4)) then
+              bs(bs'left-i*16 downto bs'left-i*16-15) := (others => '1');
             end if;
           end loop;  -- i  
         end if;

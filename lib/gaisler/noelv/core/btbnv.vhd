@@ -18,8 +18,8 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------
--- Entity: 	btb5
--- File:	btb5.vhd
+-- Entity: 	btbnv
+-- File:	btbnv.vhd
 -- Author:	Andrea Merlo, Cobham Gaisler AB
 -- Description:	Branch Target Buffer
 ------------------------------------------------------------------------------
@@ -33,14 +33,15 @@ use grlib.config_types.all;
 use grlib.config.all;
 
 library gaisler;
-use gaisler.noelv.all;
-use gaisler.noelvint.all;
+--use gaisler.noelv.all;
+use gaisler.noelvint.nv_btb_in_type;
+use gaisler.noelvint.nv_btb_out_type;
 
 entity btbnv is
   generic (
     nentries    : integer range 8  to 128;   -- Number of Entries
     nsets       : integer range 1  to 8;     -- Associativity
-    pchigh      : integer range 32 to 56;
+    pcbits      : integer range 32 to 56;
     ext_c       : integer range 0  to 1      -- C Base Extension Set
     );
   port (
@@ -64,16 +65,17 @@ architecture rtl of btbnv is
   constant OFFSET       : integer := 3 - ext_c * 1 + log2ext(NSETS);
   constant NLINES       : integer := NENTRIES / NSETS;  -- Lines per Set
   constant INDEXBITS    : integer := log2ext(NLINES) + OFFSET;
-  constant BTBTAG_HIGH  : integer := PCHIGH;
+  constant BTBTAG_HIGH  : integer := PCBITS - 1;
   constant BTBTAG_LOW   : integer := INDEXBITS;
 
-  constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  --constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant RESET_ALL    : boolean := true;
 
   ----------------------------------------------------------------------------
   -- Types
   ----------------------------------------------------------------------------
 
-  subtype data is std_logic_vector(PCHIGH-1 downto 0);
+  subtype data is std_logic_vector(PCBITS-1 downto 0);
   type btbdata is array (0 to NENTRIES-1) of data;
   subtype tag is std_logic_vector(BTBTAG_HIGH - BTBTAG_LOW + 1 + log2ext(NSETS) downto 0);
   type btbtag is array (0 to NENTRIES-1) of tag;
@@ -113,7 +115,7 @@ begin  -- rtl
     variable rtag       : tag;
     variable hit        : std_ulogic;
     variable align      : std_ulogic;
-    variable target     : std_logic_vector(XLEN-1 downto 0);
+    variable target     : std_logic_vector(btbo.rdata'length - 1 downto 0);
     variable valid      : std_logic_vector(NSETS-1 downto 0);
     variable data       : bdata;
     variable tag        : btag;
@@ -156,7 +158,7 @@ begin  -- rtl
       v.update          := '1';
       v.windex          := btbi.waddr(INDEXBITS-1 downto OFFSET);
       v.wtag            := btbi.waddr(BTBTAG_HIGH downto BTBTAG_LOW) & btbi.waddr(OFFSET-1 downto OFFSET-1-log2ext(NSETS));
-      v.wdata           := btbi.wdata(PCHIGH-1 downto 0);
+      v.wdata           := btbi.wdata(PCBITS-1 downto 0);
     end if;
 
     -- Search the tree in order to know the set to replace
@@ -235,7 +237,7 @@ begin  -- rtl
       end if;
       if tagcheck(i) = '1' and valid(i) = '1' and hit = '0' then
         hit                             := '1';
-        target(PCHIGH-1 downto 0)       := data(i);
+        target(PCBITS-1 downto 0)       := data(i);
         way                             := i;
         align                           := tag(i)(0);
       end if;

@@ -13,7 +13,7 @@ PROGS = apbuart divtest multest regtest \
 	cache gpio ramfill ramtest irqmp leon3_test gptimer \
 	mulasm cacheasm spwtest mptest fpu grfpu_ops \
 	base_test grfpu_test can_oc mmu mmu_asm mmu_so_check pcitest greth atactrl \
-	amba dsu3 greth_api grcan grdmac\
+	amba dsu3 greth_api grcan grcanfd grdmac\
 	spictrl i2cmst misc spimctrl svgactrl apbps2 \
 	i2cslv i2c l2c \
 	grusbdc rt_1553 brm_1553 pcif grtc grtm satcan memscrub_test \

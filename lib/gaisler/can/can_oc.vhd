@@ -173,7 +173,7 @@ begin
 -- pragma translate_on
    
 -- pragma translate_off
-   assert GRLIB_CONFIG_ARRAY(grlib_little_endian) = 0
+   assert ahbsi.endian /= '1'
       report "can_oc: little endian systems not supported"
       severity error;
 -- pragma translate_on

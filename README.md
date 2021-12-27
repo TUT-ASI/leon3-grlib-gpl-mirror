@@ -11,6 +11,7 @@ is available. This repository is an attempt to fix the situation.
 
 |       Release name       | Available? |
 |--------------------------|------------|
+| grlib-gpl-2020.4-b4261   |    Yes     |
 | grlib-gpl-2020.2-b4254   |    Yes     |
 | grlib-gpl-2020.1-b4251   |    Yes     |
 | grlib-gpl-2019.4-b4246   |    No      |

@@ -254,6 +254,10 @@
 #define CONFIG_NOELV 0
 #endif
 
+#ifndef CONFIG_NOELV_XLEN
+#define CONFIG_NOELV_XLEN 64
+#endif
+
 #ifndef CONFIG_PROC_NUM
 #define CONFIG_PROC_NUM 1
 #endif
@@ -263,7 +267,7 @@
 #endif
 
 #ifndef CONFIG_PROC_NODBUS
-#define CONFIG_PROC_NODBUS 1
+#define CONFIG_PROC_NODBUS 0
 #endif
 
 #ifndef CONFIG_IU_DISAS
@@ -401,20 +405,6 @@
 #define CONFIG_DSU_JTAG 0
 #endif
 
-#ifndef CONFIG_GRUSB_DCL
-#define CONFIG_GRUSB_DCL 0
-#endif
-
-#if defined CONFIG_GRUSB_DCL_UTMI16
-#define CONFIG_GRUSB_DCL_UIFACE 0
-#define CONFIG_GRUSB_DCL_DW 16
-#elif defined CONFIG_GRUSB_DCL_UTMI8
-#define CONFIG_GRUSB_DCL_UIFACE 0
-#define CONFIG_GRUSB_DCL_DW 8
-#else
-#define CONFIG_GRUSB_DCL_UIFACE 1
-#define CONFIG_GRUSB_DCL_DW 8
-#endif
 #ifndef CONFIG_DSU_ETH
 #define CONFIG_DSU_ETH 0
 #endif
@@ -459,50 +449,6 @@
 #define CONFIG_DSU_ETH_DIS 0
 #endif
 
-#ifndef CONFIG_MCTRL_LEON2
-#define CONFIG_MCTRL_LEON2 0
-#endif
-
-#ifndef CONFIG_MCTRL_SDRAM
-#define CONFIG_MCTRL_SDRAM 0
-#endif
-
-#ifndef CONFIG_MCTRL_SDRAM_SEPBUS
-#define CONFIG_MCTRL_SDRAM_SEPBUS 0
-#endif
-
-#ifndef CONFIG_MCTRL_SDRAM_INVCLK
-#define CONFIG_MCTRL_SDRAM_INVCLK 0
-#endif
-
-#ifndef CONFIG_MCTRL_SDRAM_BUS64
-#define CONFIG_MCTRL_SDRAM_BUS64 0
-#endif
-
-#ifndef CONFIG_MCTRL_8BIT
-#define CONFIG_MCTRL_8BIT 0
-#endif
-
-#ifndef CONFIG_MCTRL_16BIT
-#define CONFIG_MCTRL_16BIT 0
-#endif
-
-#ifndef CONFIG_MCTRL_5CS
-#define CONFIG_MCTRL_5CS 0
-#endif
-
-#ifndef CONFIG_MCTRL_EDAC
-#define CONFIG_MCTRL_EDAC 0
-#endif
-
-#ifndef CONFIG_MCTRL_PAGE
-#define CONFIG_MCTRL_PAGE 0
-#endif
-
-#ifndef CONFIG_MCTRL_PROGPAGE
-#define CONFIG_MCTRL_PROGPAGE 0
-#endif
-
 
 #ifndef CONFIG_MIG_7SERIES
 #define CONFIG_MIG_7SERIES 0
@@ -518,66 +464,6 @@
 #define CONFIG_AHBSTAT_NFTSLV  1
 #endif
 
-#ifndef CONFIG_AHBROM_ENABLE
-#define CONFIG_AHBROM_ENABLE 0
-#endif
-
-#ifndef CONFIG_AHBROM_START
-#define CONFIG_AHBROM_START 000
-#endif
-
-#ifndef CONFIG_AHBROM_PIPE
-#define CONFIG_AHBROM_PIPE 0
-#endif
-
-#if (CONFIG_AHBROM_START == 0) && (CONFIG_AHBROM_ENABLE == 1)
-#define CONFIG_ROM_START 100
-#else
-#define CONFIG_ROM_START 000
-#endif
-
-
-#ifndef CONFIG_AHBRAM_ENABLE
-#define CONFIG_AHBRAM_ENABLE 0
-#endif
-
-#ifndef CONFIG_AHBRAM_START
-#define CONFIG_AHBRAM_START A00
-#endif
-
-#if defined CONFIG_AHBRAM_SZ1
-#define CFG_AHBRAMSZ 1
-#elif CONFIG_AHBRAM_SZ2
-#define CFG_AHBRAMSZ 2
-#elif CONFIG_AHBRAM_SZ4
-#define CFG_AHBRAMSZ 4
-#elif CONFIG_AHBRAM_SZ8
-#define CFG_AHBRAMSZ 8
-#elif CONFIG_AHBRAM_SZ16
-#define CFG_AHBRAMSZ 16
-#elif CONFIG_AHBRAM_SZ32
-#define CFG_AHBRAMSZ 32
-#elif CONFIG_AHBRAM_SZ64
-#define CFG_AHBRAMSZ 64
-#elif CONFIG_AHBRAM_SZ128
-#define CFG_AHBRAMSZ 128
-#elif CONFIG_AHBRAM_SZ256
-#define CFG_AHBRAMSZ 256
-#elif CONFIG_AHBRAM_SZ512
-#define CFG_AHBRAMSZ 512
-#elif CONFIG_AHBRAM_SZ1024
-#define CFG_AHBRAMSZ 1024
-#elif CONFIG_AHBRAM_SZ2048
-#define CFG_AHBRAMSZ 2048
-#elif CONFIG_AHBRAM_SZ4096
-#define CFG_AHBRAMSZ 4096
-#else
-#define CFG_AHBRAMSZ 1
-#endif
-
-#ifndef CONFIG_AHBRAM_PIPE
-#define CONFIG_AHBRAM_PIPE 0
-#endif
 #ifndef CONFIG_GRETH_ENABLE
 #define CONFIG_GRETH_ENABLE 0
 #endif
@@ -616,79 +502,8 @@
 #define CONFIG_GRETH_FMC_MODE 0
 #endif
 
-#ifndef CONFIG_UART1_ENABLE
-#define CONFIG_UART1_ENABLE 0
-#endif
-
-#if defined CONFIG_UA1_FIFO1
-#define CFG_UA1_FIFO 1
-#elif defined CONFIG_UA1_FIFO2
-#define CFG_UA1_FIFO 2
-#elif defined CONFIG_UA1_FIFO4
-#define CFG_UA1_FIFO 4
-#elif defined CONFIG_UA1_FIFO8
-#define CFG_UA1_FIFO 8
-#elif defined CONFIG_UA1_FIFO16
-#define CFG_UA1_FIFO 16
-#elif defined CONFIG_UA1_FIFO32
-#define CFG_UA1_FIFO 32
-#else
-#define CFG_UA1_FIFO 1
-#endif
-
-#ifndef CONFIG_GPT_ENABLE
-#define CONFIG_GPT_ENABLE 0
-#endif
-
-#ifndef CONFIG_GPT_NTIM
-#define CONFIG_GPT_NTIM 1
-#endif
-
-#ifndef CONFIG_GPT_SW
-#define CONFIG_GPT_SW 8
-#endif
-
-#ifndef CONFIG_GPT_TW
-#define CONFIG_GPT_TW 8
-#endif
-
-#ifndef CONFIG_GPT_IRQ
-#define CONFIG_GPT_IRQ 8
-#endif
-
-#ifndef CONFIG_GPT_SEPIRQ
-#define CONFIG_GPT_SEPIRQ 0
-#endif
-#ifndef CONFIG_GPT_ENABLE
-#define CONFIG_GPT_ENABLE 0
-#endif
-
-#ifndef CONFIG_GPT_NTIM
-#define CONFIG_GPT_NTIM 1
-#endif
-
-#ifndef CONFIG_GPT_SW
-#define CONFIG_GPT_SW 8
-#endif
-
-#ifndef CONFIG_GPT_TW
-#define CONFIG_GPT_TW 8
-#endif
-
-#ifndef CONFIG_GPT_IRQ
-#define CONFIG_GPT_IRQ 8
-#endif
-
-#ifndef CONFIG_GPT_SEPIRQ
-#define CONFIG_GPT_SEPIRQ 0
-#endif
-
-#ifndef CONFIG_GPT_WDOGEN
-#define CONFIG_GPT_WDOGEN 0
-#endif
-
-#ifndef CONFIG_GPT_WDOG
-#define CONFIG_GPT_WDOG 0
+#ifndef CONFIG_GRETH_PHY_ADDR
+#define CONFIG_GRETH_PHY_ADDR 1
 #endif
 
 #ifndef CONFIG_GRGPIO_ENABLE
@@ -701,56 +516,6 @@
 #define CONFIG_GRGPIO_WIDTH 1
 #endif
 
-#ifndef CONFIG_I2C_ENABLE
-#define CONFIG_I2C_ENABLE 0
-#endif
-#ifndef CONFIG_SPICTRL_ENABLE
-#define CONFIG_SPICTRL_ENABLE 0
-#endif
-#ifndef CONFIG_SPICTRL_NUM
-#define CONFIG_SPICTRL_NUM 1
-#endif
-#ifndef CONFIG_SPICTRL_SLVS
-#define CONFIG_SPICTRL_SLVS 1
-#endif
-#ifndef CONFIG_SPICTRL_FIFO
-#define CONFIG_SPICTRL_FIFO 1
-#endif
-#ifndef CONFIG_SPICTRL_SLVREG
-#define CONFIG_SPICTRL_SLVREG 0
-#endif
-#ifndef CONFIG_SPICTRL_ODMODE
-#define CONFIG_SPICTRL_ODMODE 0
-#endif
-#ifndef CONFIG_SPICTRL_AM
-#define CONFIG_SPICTRL_AM 0
-#endif
-#ifndef CONFIG_SPICTRL_ASEL
-#define CONFIG_SPICTRL_ASEL 0
-#endif
-#ifndef CONFIG_SPICTRL_TWEN
-#define CONFIG_SPICTRL_TWEN 0
-#endif
-#ifndef CONFIG_SPICTRL_MAXWLEN
-#define CONFIG_SPICTRL_MAXWLEN 0
-#endif
-#ifndef CONFIG_SPICTRL_SYNCRAM
-#define CONFIG_SPICTRL_SYNCRAM 0
-#endif
-#if defined(CONFIG_SPICTRL_DMRFT)
-#define CONFIG_SPICTRL_FT 1
-#elif defined(CONFIG_SPICTRL_TMRFT)
-#define CONFIG_SPICTRL_FT 2
-#else
-#define CONFIG_SPICTRL_FT 0
-#endif
-#if defined(CONFIG_SPICTRL_PROT1)
-#define CONFIG_SPICTRL_PROT 1
-#elif defined(CONFIG_SPICTRL_PROT2)
-#define CONFIG_SPICTRL_PROT 2
-#else
-#define CONFIG_SPICTRL_PROT 0
-#endif
 
 #ifndef CONFIG_DEBUG_UART
 #define CONFIG_DEBUG_UART 0

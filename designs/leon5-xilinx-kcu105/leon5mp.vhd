@@ -815,7 +815,7 @@ begin
   ocram : if CFG_AHBRAMEN = 1 generate
     ahbram0 : ahbram
       generic map (hindex => hsidx_ahbram, haddr => CFG_AHBRADDR, tech => CFG_MEMTECH,
-                   kbytes => CFG_AHBRSZ, pipe => CFG_AHBRPIPE, endianness => 1)
+                   kbytes => CFG_AHBRSZ, pipe => CFG_AHBRPIPE)
       port map (rstn, clkm, ahbsi, ahbso(hsidx_ahbram));
   end generate;
 

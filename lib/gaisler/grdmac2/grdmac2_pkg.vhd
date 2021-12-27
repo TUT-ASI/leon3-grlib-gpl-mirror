@@ -40,6 +40,21 @@ package grdmac2_pkg is
 -- Types and records
 -------------------------------------------------------------------------------
 
+  type aes_in_type is record
+    init      : std_logic;
+    bn        : integer;
+    size      : integer;
+    key       : std_logic_vector(255 downto 0);
+    plaintext : std_logic_vector(127 downto 0);
+    iv        : std_logic_vector(127 downto 0);
+  end record;
+
+  type aes_out_type is record
+    ciphertext : std_logic_vector(127 downto 0);
+    done       : std_logic;
+    brdy       : std_logic;
+  end record;
+
   -- BM specific types
   type bm_out_type is record  --Input to grdmac2_ctrl from bus master interface output
     -- Read channel
@@ -280,6 +295,28 @@ package grdmac2_pkg is
     size         => (others => '0')
     );
 
+  -- Data descriptor control 
+  type acc_dsc_ctrl_type is record
+    en           : std_ulogic;                    -- Enable descriptor 
+    desc_type    : std_logic_vector(3 downto 0);  -- Type of descriptor. 0 for data 
+    write_back   : std_ulogic;                    -- Write back status to descriptor after completion
+    src_bm_num   : std_ulogic;                    -- Bus master index for M2B
+    irq_en       : std_ulogic;                    -- Interrupt enable on descriptor completion 
+    src_fix_adr  : std_ulogic;                    -- Fetch data from fixed address
+    size         : std_logic_vector(22 downto 0); -- Size of data to be transfered
+  end record;
+
+  -- Reset value for data descriptor control
+  constant ACC_DSC_CTRL_RST : acc_dsc_ctrl_type := (
+    en           => '0',
+    desc_type    => (others => '0'),
+    write_back   => '0',
+    src_bm_num   => '0',
+    irq_en       => '0',
+    src_fix_adr  => '0',
+    size         => (others => '0')
+    );
+
   -- Data descriptor status
   --type data_dsc_sts_type is record
     --done : std_ulogic;                         -- Done executing descriptor
@@ -347,6 +384,21 @@ package grdmac2_pkg is
     ptr  => (others => '0'),
     last => '0'
     );
+
+  -- Data descriptor structure 
+  type acc_dsc_strct_type is record
+    ctrl      : acc_dsc_ctrl_type;             -- Data descriptor control
+    nxt_des   : nxt_des_type;                   -- Next descriptor pointer
+    src_addr  : std_logic_vector(31 downto 0);  -- Address from where data is to be fetched    
+  end record;
+
+  -- Reset value for data descriptor structure
+  constant ACC_DSC_STRCT_RST : acc_dsc_strct_type := (
+    ctrl      => ACC_DSC_CTRL_RST,
+    nxt_des   => NXT_DES_RST,
+    src_addr  => (others => '0')
+    );
+
 
    -- conditional address field 
   type cond_addr_type is record
@@ -678,7 +730,11 @@ package grdmac2_pkg is
       m2b_resume    : out std_ulogic;
       b2m_sts_in    : in  d_ex_sts_out_type;
       b2m_start     : out std_logic;
-      b2m_resume    : out std_ulogic
+      b2m_resume    : out std_ulogic;
+      acc_sts_in    : in d_ex_sts_out_type;
+      acc_start     : out std_ulogic;
+      acc_resume    : out std_ulogic;
+      acc_desc_out  : out acc_dsc_strct_type
           );
   end component;
 
@@ -716,7 +772,8 @@ package grdmac2_pkg is
       bm_bytes   : integer range 4 to 16    := 4;
       buff_bytes : integer range 4 to 16384 := 64;
       buff_depth : integer range 1 to 1024  := 16;
-      abits      : integer range 0 to 10    := 4
+      abits      : integer range 0 to 10    := 4;
+      en_acc     : integer range 0 to 1     := 0
       );
     port (
       rstn       : in  std_ulogic;
@@ -726,6 +783,7 @@ package grdmac2_pkg is
       m2b_start  : in  std_ulogic;
       m2b_resume : in  std_ulogic;
       d_des_in   : in  data_dsc_strct_type;
+      acc_des_in : in  acc_dsc_strct_type;
       status_out : out d_ex_sts_out_type;
       m2b_bmi    : in  bm_out_type;
       m2b_bmo    : out bm_ctrl_reg_type;
@@ -746,7 +804,8 @@ package grdmac2_pkg is
       en_bm1   : integer                      := 0;
       ft       : integer range 0 to 5         := 0;
       abits    : integer range 0 to 22        := 4;
-      en_timer : integer                      := 0
+      en_timer : integer                      := 0;
+      en_acc   : integer                      := 0
       );
     port (
       rstn    : in  std_ulogic;
@@ -775,7 +834,8 @@ package grdmac2_pkg is
       max_burst_length : integer range 2 to 256       := 256;
       ft               : integer range 0 to 5         := 0;
       abits            : integer range 0 to 22        := 4;
-      en_timer         : integer                      := 0
+      en_timer         : integer                      := 0;
+      en_acc           : integer                      := 0
       );
     port (
       rstn    : in  std_ulogic;
@@ -788,6 +848,30 @@ package grdmac2_pkg is
       ahbmo1  : out ahb_mst_out_type;
       trigger : in  std_logic_vector(63 downto 0)
       );
+  end component;
+
+  -- ACC
+  component grdmac2_acc is
+    generic (
+      dbits      : integer range 32 to 128  := 32;
+      bm_bytes   : integer range 4 to 16    := 4;
+      buff_bytes : integer range 4 to 16384 := 64;
+      buff_depth : integer range 1 to 1024  := 16;
+      abits      : integer range 0 to 10    := 4;
+      acc_enable : integer range 0 to 1     := 0
+      );
+    port (
+      rstn        : in  std_ulogic;
+      clk         : in  std_ulogic;
+      d_des_in    : in  data_dsc_strct_type;
+      acc_des_in  : in  acc_dsc_strct_type;
+      acc_start   : in  std_ulogic;
+      acc_resume  : in  std_ulogic;
+      acc_status  : out d_ex_sts_out_type;
+      m2b_status  : in d_ex_sts_out_type;
+      buf_in      : in  fifo_out_type;
+      buf_out     : out fifo_in_type
+          );
   end component;
   
 end package grdmac2_pkg;
