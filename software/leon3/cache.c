@@ -262,7 +262,10 @@ maintest()
 
 	/**** INSTRUCTION CACHE TESTS ****/
 
-      if (((cachectrl >> ITE_BIT) & 3) == 0) { // skip test during err. injection
+	/* Skip test if ISETS=1 as the location of the test function and of the test code
+	 * may end up on the same sets in the cache causing the test function to be evicted.
+	 */
+	if (((cachectrl >> ITE_BIT) & 3) == 0 && ISETS>1) { // skip test during err. injection
 	  for (i=0;i<ISETS;i++) {
 	    line[i]();
 	  }	

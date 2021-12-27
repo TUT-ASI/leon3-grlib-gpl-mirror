@@ -174,6 +174,9 @@ proc eof_xlnx_vivado {} {
 				if {[file exists "$GRLIB/boards/$BOARD/axi_pipe.xci"]} {
 					lappend files [glob -nocomplain -type f "$GRLIB/boards/$BOARD/axi_pipe*"]
 				}
+			    	if {[file exists "$GRLIB/boards/$BOARD/mig_cdc.xci"]} {
+					lappend files [glob -nocomplain -type f "$GRLIB/boards/$BOARD/mig_cdc*"]
+				}
 			}
 			foreach f $files {
 				file copy $f "vivado/"

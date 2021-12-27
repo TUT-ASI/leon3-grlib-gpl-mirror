@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -220,6 +220,7 @@ package testlib is
      constant addr    : std_logic_vector(4 downto 0);
      constant endian  : std_logic := '0')
      return integer;
+
 -- pragma translate_on
    
 end package testlib;
@@ -816,7 +817,7 @@ package body testlib is
      end if;
      return off;
    end ahb_doff;
-   
+
 end package body ; --=======================================--
 -- pragma translate_on
 

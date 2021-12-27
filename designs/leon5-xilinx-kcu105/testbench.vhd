@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -172,16 +172,6 @@ architecture behav of testbench is
   signal ddr4_ten       : std_logic;
   signal ddr4_cs_n      : std_logic_vector(0 downto 0);
   signal ddr4_reset_n   : std_logic;
-
-  -- Signals to STAR-Dundee mezzanine
-  signal spw_dout_p     : std_logic_vector(1 to CFG_SPW_PORTS*CFG_SPW_NUM);
-  signal spw_dout_n     : std_logic_vector(1 to CFG_SPW_PORTS*CFG_SPW_NUM);
-  signal spw_sout_p     : std_logic_vector(1 to CFG_SPW_PORTS*CFG_SPW_NUM);
-  signal spw_sout_n     : std_logic_vector(1 to CFG_SPW_PORTS*CFG_SPW_NUM);
-  signal spw_din_p      : std_logic_vector(1 to CFG_SPW_PORTS*CFG_SPW_NUM);
-  signal spw_din_n      : std_logic_vector(1 to CFG_SPW_PORTS*CFG_SPW_NUM);
-  signal spw_sin_p      : std_logic_vector(1 to CFG_SPW_PORTS*CFG_SPW_NUM);
-  signal spw_sin_n      : std_logic_vector(1 to CFG_SPW_PORTS*CFG_SPW_NUM);
 
   -- Testbench Related Signals
   signal dsurst         : std_ulogic;

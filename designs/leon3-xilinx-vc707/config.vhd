@@ -152,6 +152,7 @@ package config is
   constant CFG_GRETH_FMC : integer := 0;
   constant CFG_GRETH_FT : integer := 0;
   constant CFG_GRETH_EDCLFT : integer := 0;
+  constant CFG_ETH_PHY_ADDR : integer := (1);
 -- USB Host Controller
   constant CFG_GRUSBHC : integer := 0;
   constant CFG_GRUSBHC_NPORTS : integer := (1);
@@ -216,6 +217,12 @@ package config is
   constant CFG_CANSEPIRQ: integer := 0;
   constant CFG_CAN_SYNCRST : integer := 0;
   constant CFG_CANFT : integer := 0;
+-- GRDMAC2 interface
+  constant CFG_GRDMAC2 : integer := 1;
+  constant CFG_GRDMAC2ACC : integer := 0;
+  constant CFG_GRDMAC2FT : integer := 0;
+  constant CFG_GRDMAC2ABITS : integer := 4;
+  constant CFG_GRDMAC2DBITS : integer := 32;
 -- Spacewire interface
   constant CFG_SPW_EN : integer := 0;
   constant CFG_SPW_NUM : integer := (1);

@@ -26,8 +26,8 @@ TOP=leon5mp
 # Simulation top level
 SIMTOP=testbench
 
-# Uncomment for Modelsim or change to specify your simulator
-GRLIB_SIMULATOR=ALDEC
+# Uncomment to change to specify your simulator (default is Modelsim)
+#GRLIB_SIMULATOR=ALDEC
 
 # Options used during compilation
 VCOMOPT=-explicit -O0
@@ -36,10 +36,6 @@ VCOMOPT=-explicit -O0
 VSIMOPT= -L secureip -L unisims_ver  
 GRLIB_COMPILE_VIVADO_IP=Y
 
-# GRETH options
-ifeq ($(CONFIG_GRETH_ENABLE),y)
-VSIMOPT+= -L gig_ethernet_pcs_pma_v16_1_3
-endif
 
 # Use MIG with AXI interface with width=128 when AXI4 interface is selected
 ifeq ($(CONFIG_MIG_7SERIES),y)
@@ -51,7 +47,7 @@ endif
 ifeq ("$(GRLIB_SIMULATOR)","ALDEC")
 VSIMOPT+= +access +w -voptargs="+acc -nowarn 1" +notimingchecks
 else
-VSIMOPT+= -voptargs="+acc -nowarn 1" +notimingchecks
+VSIMOPT+= -voptargs="+acc -nowarn 1" +notimingchecks -64
 endif
 
 GRLIB_XILINX_SOURCE_MGMT_MODE=DisplayOnly

@@ -42,7 +42,7 @@ main (argc, argv)
   fprintf(wfp, "\n\
 ----------------------------------------------------------------------------\n\
 --  This file is a part of the GRLIB VHDL IP LIBRARY\n\
---  Copyright (C) 2020 Cobham Gaisler\n\
+--  Copyright (C) 2021 Cobham Gaisler\n\
 ----------------------------------------------------------------------------\n\
 -- Entity:      ahbrom%s\n\
 -- File:        ahbrom%s.vhd\n\
@@ -66,7 +66,7 @@ entity ahbrom%s is\n\
     hmask   : integer := 16#fff#;\n\
     pipe    : integer := 0;\n\
     tech    : integer := 0;\n\
-    kbytes  : integer := 1%s);\n\
+    kbytes  : integer := 1%s); \n\
   port (\n\
     rst     : in  std_ulogic;\n\
     clk     : in  std_ulogic;\n\
@@ -139,33 +139,44 @@ begin\n\
     ahbselectdata(ahbdrivedata(romdata),addr(4 downto 2),hsize);\n\
 ");
   }
-  fprintf(wfp, "\n\
-  comb : process (romaddr)\n\
+  fprintf(wfp, "  comb : process (romaddr)\n\
   begin\n\
-    case conv_integer(romaddr) is\n\
-");
+    if ahbsi.endian = '0' then --big endian\n\
+      case conv_integer(romaddr) is\n");
   i = 0;
   while (!feof(fp)) {
     memset(x,0,dbits/8);
     fread(x, 1, dbits/8, fp);
-    fprintf(wfp, "    when 16#%05X# => romdata <= X\"", i++);
+    fprintf(wfp, "        when 16#%05X# => romdata <= X\"", i++);
     for (j=0; j<dbits/8; j++)
             fprintf(wfp, "%02x",x[j]);
     fprintf(wfp,"\";\n");
   }
   fprintf(wfp, "\
-    when others => romdata <= (others => '-');\n\
-    end case;\n\
-  end process;\n\
-  -- pragma translate_off\n\
+        when others => romdata <= (others => '-');\n\
+      end case;\n\
+    else --little endian\n\
+      case conv_integer(romaddr) is\n");
+  i = 0;
+  fclose(fp);
+  fp = fopen(argv[1], "rb");
+  while (!feof(fp)) {
+    memset(x,0,dbits/8);
+    fread(x, 1, dbits/8, fp);
+    fprintf(wfp, "        when 16#%05X# => romdata <= X\"", i++);    
+    for (j=dbits/8-1; j>=0; j--)
+            fprintf(wfp, "%02x",x[j]);
+    fprintf(wfp,"\";\n");
+  }
+  fprintf(wfp, "           when others => romdata <= (others => '-');\n\
+        end case;\n\
+    end if; \n\
+  end process;\n");
+  
+  fprintf(wfp, "-- pragma translate_off\n\
   bootmsg : report_version\n\
   generic map (\"ahbrom%s%s\" & tost(hindex) &\n\
   \": %d-bit AHB ROM Module,  \" & tost(bytes/(dbits/8)) & \" words, \" & tost(abits-log2(dbits/8)) & \" address bits\" );\n\
-  -- pragma translate_on\n\
-  -- pragma translate_off\n\
-   assert GRLIB_CONFIG_ARRAY\(grlib_little_endian) = 0\n\
-      report \"ahbrom: little endian systems not supported\"\n\
-      severity error;\n\
   -- pragma translate_on\n\
   end;\n\
 ",suffix,(dbits>32)?"_":"",dbits);

@@ -4,7 +4,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -43,6 +43,7 @@ use gaisler.can.all;
 use gaisler.l2cache.all;
 use gaisler.subsys.all;
 use gaisler.axi.all;
+use gaisler.grdmac2_pkg.all;
 -- pragma translate_off
 use gaisler.sim.all;
 library unisim;
@@ -521,6 +522,8 @@ constant maxahbs : integer := 16;
 constant maxapbs : integer := CFG_IRQ3_ENABLE+CFG_GPT_ENABLE+CFG_GRGPIO_ENABLE+CFG_AHBSTAT+CFG_AHBSTAT+CFG_GRUSBHC+CFG_GRUSBDC+CFG_PRC;
 
 constant CFG_EN_DBGBUS : integer := 0;
+
+signal trigger : std_logic_vector(63 downto 0);
 
 signal vcc, gnd   : std_logic_vector(31 downto 0);
 signal memi  : memory_in_type;
@@ -1929,6 +1932,45 @@ begin
 
    ncan : if CFG_CAN = 0 generate ahbso(6) <= ahbs_none; end generate;
 
+-----------------------------------------------------------------------
+---  GRDMAC2 ----------------------------------------------------------
+-----------------------------------------------------------------------
+
+  grdmac2 : if CFG_GRDMAC2 = 1 generate
+    grdmac2 : grdmac2_ahb
+     generic map (
+       tech             => 0,
+       pindex           => 6,
+       paddr            => 16#a00#,
+       pmask            => 16#a00#,
+       pirq             => 0,
+       dbits            => CFG_GRDMAC2DBITS,
+       en_bm1           => 0,
+       hindex0          => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH+CFG_FMC+CFG_GRUSBDC+CFG_GRUSBHC*2+CFG_GRUSB_DCL+CFG_PRC,
+       hindex1          => 0,
+       max_burst_length => 4,
+       ft               => CFG_GRDMAC2FT,
+       abits            => CFG_GRDMAC2ABITS,
+       en_timer         => 1,
+       en_acc           => CFG_GRDMAC2ACC
+       )
+     port map (
+       -- Clock and reset
+       rstn    => rstn,
+       clk     => clkm,
+       -- APB slave interface  input and output
+       apbi    => apbi,
+       apbo    => apbo(6),
+       -- AHB master input and output
+       ahbmi0  => ahbmi,
+       ahbmo0  => ahbmo(CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH+CFG_FMC+CFG_GRUSBDC+CFG_GRUSBHC*2+CFG_GRUSB_DCL+CFG_PRC),
+       ahbmi1  => ahbmi,
+       ahbmo1  => open,
+       -- System interrupt trigger
+       trigger => trigger
+       );
+  end generate;
+
 -------------------------------------------------------------------------------
 -- USB ------------------------------------------------------------------------
 -------------------------------------------------------------------------------
@@ -2197,7 +2239,7 @@ begin
  ---  Drive unused bus elements  ---------------------------------------
  -----------------------------------------------------------------------
 
-  nam1 : for i in (CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH+CFG_FMC+CFG_GRUSBDC+CFG_GRUSBHC*2+CFG_GRUSB_DCL+CFG_PRC) to NAHBMST-1 generate
+  nam1 : for i in (CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH+CFG_FMC+CFG_GRUSBDC+CFG_GRUSBHC*2+CFG_GRUSB_DCL+CFG_PRC+CFG_GRDMAC2) to NAHBMST-1 generate
     ahbmo(i) <= ahbm_none;
   end generate;
 

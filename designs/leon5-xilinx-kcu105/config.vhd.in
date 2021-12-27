@@ -2,8 +2,8 @@
 #include "tkconfig.h"
 
 -----------------------------------------------------------------------------
---  LEON3 Demonstration design test bench configuration
---  Copyright (C) 2009 Aeroflex Gaisler
+--  LEON5 Demonstration design test bench configuration
+--  Copyright (C) 2021 Aeroflex Gaisler
 ------------------------------------------------------------------------------
 
 

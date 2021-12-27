@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -41,11 +41,11 @@ entity ahb_be is
     max_burst_length_ptwo : integer;
     be_dw                 : integer;
     be_dw_int             : integer;
-    lendian_en            : integer := 0;
     addr_width            : integer := 32);
   port (
     clk          : in  std_logic;
     rstn         : in  std_logic;
+    endian       : in  std_logic;
     ahb_be_in    : in  ahb_be_in_type;
     ahb_be_out   : out ahb_be_out_type;
     rd_addr      : in  std_logic_vector(addr_width-1 downto 0);
@@ -147,11 +147,11 @@ begin
       hindex      => hindex,
       be_dw       => be_dw,
       be_dw_int   => be_dw_int,
-      lendian_en  => lendian_en,
       addr_width  => addr_width)
     port map (
       rst      => rstn,
       clk      => clk,
+      endian   => endian,
       dmai     => dmai,
       dmao     => dmao,
       dma_addr => dma_addr,

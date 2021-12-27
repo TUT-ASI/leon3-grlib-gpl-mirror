@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -288,6 +288,18 @@ begin
                  customoutx(0),customoutx(1),
                  testin(testin'high),custominx(2));
     customoutx(customoutx'high downto 2) <= (others => '0');
+  end generate;
+
+  dare65 : if xtech = dare65t generate
+    x0 : dare65t_syncram generic map (abits, dbits)
+         port map (clk, address, datain, dataoutx, enable, xwrite,
+                   testin(TESTIN_WIDTH-8),testin(TESTIN_WIDTH-3),
+                   custominx(0),open,
+                   testin(TESTIN_WIDTH-4),testin(TESTIN_WIDTH-5),testin(TESTIN_WIDTH-6),
+                   customclkx,testin(TESTIN_WIDTH-7),'0',
+                   open, open);
+    --customoutx(customoutx'high downto 8) <= (others => '0');
+    customoutx(customoutx'high downto 0) <= (others => '0');
   end generate;
 
   proa3 : if xtech = apa3 generate

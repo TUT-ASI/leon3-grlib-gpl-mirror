@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -56,6 +56,8 @@ package leon5 is
       cmemconf: integer := 0;
       rfconf  : integer := 0;
       fpuconf : integer;
+      tcmconf : integer := 0;
+      perfcfg : integer := 0;
       mulimpl : integer := 0;
       disas   : integer;
       ahbtrace: integer;

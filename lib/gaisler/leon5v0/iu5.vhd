@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -62,6 +62,7 @@ entity iu5 is
     fabtech     : integer range 0 to NTECH;
     scantest    : integer;
     memtech     : integer range 0 to NTECH;
+    rfconf      : integer;
     cgen        : integer range 0 to 1
     );
   port (
@@ -137,6 +138,9 @@ architecture rtl of iu5 is
   constant DYNRST      : boolean                             := (rstaddr = 16#FFFFF#);
   constant RF_READHOLD : boolean                             := regfile_4p_infer(memtech) /= 0 or syncram_2p_readhold(memtech) /= 0;
   constant RF_ZERO     : std_logic_vector(RFBITS-1 downto 0) := (others => '0');
+  constant DIV_LANE    : integer                             := 1;
+  constant globals_v : std_logic_vector(RFBITS-5 downto 0) := conv_std_logic_vector(NWIN, RFBITS-4);
+  
 
   signal BPRED       : std_logic;
   signal BLOCKBPMISS : std_logic;
@@ -176,6 +180,9 @@ architecture rtl of iu5 is
   type we_data_type is array (0 to 1) of std_logic_vector(1 downto 0);
   type rf_wa_data_type is array (0 to 1) of std_logic_vector(9 downto 0);
   type tt_array_type is array (0 to 1) of std_logic_vector(5 downto 0);
+
+  type exception_state is (run, trap, dsu1, dsu2, run_pre, dsu3, dsu4, unpcti_repeat
+                           );
 
   signal hold_issue_s     : std_logic;
   signal waiting_ficc_s   : std_logic;
@@ -255,6 +262,7 @@ architecture rtl of iu5 is
     no_forward    : std_logic_vector(1 downto 0);
     ctx_switch    : std_logic;
     spec_access   : std_logic_vector(1 downto 0);
+    unpcti        : std_logic_vector(1 downto 0);
     --statistics
     dual_issued   : std_logic;
     btb_miss      : std_logic;
@@ -336,6 +344,7 @@ architecture rtl of iu5 is
     no_forward    => "00",
     ctx_switch    => '0',
     spec_access   => "00",
+    unpcti        => "00",
     dual_issued   => '0',
     btb_miss      => '0',
     mexc          => '0',
@@ -362,6 +371,7 @@ architecture rtl of iu5 is
   type decode_reg_type is record
     pc                      : pctype;
     ct_state                : ct_state_type;
+    br_cond                 : std_logic;  --to detect unpreditable cti couples
     inst                    : icdtype;
     inst_pc                 : inst_pc_type;                  --
     inst_valid              : std_logic_vector(1 downto 0);  --
@@ -404,7 +414,7 @@ architecture rtl of iu5 is
     hissue_deadlock_counter : std_logic_vector(19 downto 0);
   end record;
 
-  type atomic_state is (idle, ld_exe, ld_mem, ld_exc);
+  type atomic_state is (idle, count, ld_exe, ld_mem, ld_exc);
 
   type regacc_reg_type is record
     ctrl                : pipeline_ctrl_type;
@@ -431,6 +441,7 @@ architecture rtl of iu5 is
     rs3_ra3u            : std_logic;
     rs3_ra4u            : std_logic;
     astate              : atomic_state;
+    atomic_cnt          : std_logic_vector(1 downto 0);
     call_op             : std_logic_vector(1 downto 0);
     casa                : std_logic;
     atomic_nullified    : std_logic;
@@ -545,9 +556,6 @@ architecture rtl of iu5 is
     dc_nullify          : std_logic;
   end record;
 
-  type exception_state is (run, trap, dsu1, dsu2, run_pre, dsu3, dsu4
-                           );
-
   type exception_reg_type is record
     ctrl                : pipeline_ctrl_type;
     rs1, rs2            : reg_pair_type;
@@ -601,6 +609,7 @@ architecture rtl of iu5 is
     fpc_ctrl            : fpc_ctrl_type;
     miso                : l5_intreg_miso_type;
     ret_sleep           : std_logic;
+    tt_ticc             : std_logic;
   end record;
 
   type dsu_registers is record
@@ -1319,6 +1328,7 @@ architecture rtl of iu5 is
     v.f.valid            := '0';
     v.d.pc               := v.f.pc;
     v.d.ct_state         := idle;
+    v.d.br_cond          := '0';
     for i in 0 to (iways-1) loop
       v.d.inst(i) := (others => '0');
     end loop;
@@ -1387,6 +1397,7 @@ architecture rtl of iu5 is
     v.a.rs3_ra3u := '0';
     v.a.rs3_ra4u := '0';
     v.a.astate              := idle;
+    v.a.atomic_cnt          := "00";
     v.a.casa                := '0';
     v.a.atomic_nullified    := '0';
     v.a.call_op             := "00";
@@ -1553,6 +1564,7 @@ architecture rtl of iu5 is
     v.x.storedata         := (others => '0');
     v.x.bht_ctrl          := v.e.bht_ctrl;
     v.x.ret_sleep         := '0';
+    v.x.tt_ticc           := '0';
     v.w.s.cwp             := (others => '0');
     v.w.s.icc             := (others => '0');
     v.w.s.tt              := (others => '0');
@@ -1860,6 +1872,16 @@ architecture rtl of iu5 is
   function is_branch(inst : word) return std_logic is
   begin
     if inst(31 downto 30) = "00" and inst(24 downto 22) = "010" then
+      return '1';
+    else
+      return '0';
+    end if;
+  end;
+
+  function is_bicc(inst: word) return std_logic is
+    --acording to definition TABLE 5-13 SPARC V8 manual
+  begin
+    if inst(28 downto 25) /= "1000" then
       return '1';
     else
       return '0';
@@ -3195,11 +3217,6 @@ architecture rtl of iu5 is
       hold_issue_type_int(3) := '1';
     end if;
 
-    if is_atomic(r.a.ctrl.inst(0)) = '1' and r.a.ctrl.inst_valid(0) = '1' and (is_store(r.e.ctrl.inst(0)) = '1' or is_load(r.e.ctrl.inst(0)) = '1') and r.e.ctrl.inst_valid(0) = '1' then
-      hold_issue_int         := '1';
-      hold_issue_type_int(4) := '1';
-    end if;
-
     if is_atomic(r.a.ctrl.inst(0)) = '1' and r.a.ctrl.inst_valid(0) = '1' then
       --no speculative atomic instruction
       --in addition don't start atomic operation until a jmpl/rett is resolved
@@ -3215,14 +3232,6 @@ architecture rtl of iu5 is
           hold_issue_type_int(5) := '1';
         end if;
       end loop;
-    end if;
-
-    if is_atomic(r.a.ctrl.inst(0)) = '1' and r.a.ctrl.inst_valid(0) = '1' then
-      if is_late_alu_depen(r, r.a.rs1(0)) = '1' or is_late_alu_depen(r, r.a.rs2(0)) = '1' or is_late_alu_depen(r, r.a.rs3) = '1' then
-        hold_issue_int          := '1';
-        hold_issue_type_int(19) := '1';
-        --new type here
-      end if;
     end if;
 
     ---------------------------------------------------------------------------
@@ -5042,9 +5051,12 @@ architecture rtl of iu5 is
       fpc_conflict := '1';
     end if;
 
-    if FPEN and (is_fpop(de_inst(0)) = '1' and is_fpop(de_inst(1)) = '1') then
-      conflict     := '1';
-      fpc_conflict := '1';
+    if FPEN then
+      if (is_fpop(de_inst(0)) = '1' or is_fpu_branch(de_inst(0)) = '1') and
+         (is_fpop(de_inst(1)) = '1' or is_fpu_branch(de_inst(1)) = '1') then
+        conflict     := '1';
+        fpc_conflict := '1';
+      end if;
     end if;
 
     --right now no speculative fpop issue
@@ -6225,7 +6237,7 @@ architecture rtl of iu5 is
           dci.size := SZBYTE;
         when LDSTUB | LDSTUBA =>
           dci.size := SZBYTE;
-          if r.a.astate /= idle and r.a.astate /= ld_exc then
+          if r.a.astate /= idle and r.a.astate /= count and r.a.astate /= ld_exc then
             dci.lock := '1';
           end if;
         when LDUH | LDUHA =>
@@ -6240,7 +6252,7 @@ architecture rtl of iu5 is
           dci.size := SZWORD;
         when SWAP | SWAPA | CASA =>
           dci.size := SZWORD;
-          if r.a.astate /= idle and r.a.astate /= ld_exc then
+          if r.a.astate /= idle and r.a.astate /= count and r.a.astate /= ld_exc then
             dci.lock := '1';
           end if;
         when LDD | LDDA | LDDF | LDDC =>
@@ -6274,7 +6286,7 @@ architecture rtl of iu5 is
     dci.write  := '0';
 
 -- load/store control decoding
-    if ((valid = '1' or (r.a.astate /= idle and r.a.astate /= ld_exc)) and op = LDST) then
+    if ((valid = '1' or (r.a.astate /= idle and r.a.astate /= count and r.a.astate /= ld_exc)) and op = LDST) then
       dci.enaddr := '1';
       dci.read   := not op3(2);
       dci.write  := op3(2);
@@ -6669,6 +6681,9 @@ architecture rtl of iu5 is
       irq_allowed := '0';
     end if;
     if trap /= "00" then
+      irq_allowed := '0';
+    end if;
+    if r.m.ctrl.unpcti /= "00" then
       irq_allowed := '0';
     end if;
 
@@ -7216,6 +7231,7 @@ begin
     variable rfi_re30,rfi_re31                              : std_logic;
     variable rfi_re40,rfi_re41                              : std_logic;
     variable rfi_debugen                                    : std_logic;
+    variable rgz1,rgz2,rgz3,rgz4                            : std_logic;
     variable v_a_wunf0_tmp, v_a_wovf0_tmp                   : std_logic;
     variable late_wicc                                      : std_logic;
     variable late_wicc_ic                                   : std_logic;
@@ -7293,9 +7309,12 @@ begin
     variable atomic_finished                                : std_logic;
     variable v_a_astate                                     : atomic_state;
     variable atomic_hold_issue                              : std_logic;
+    variable v_a_atomic_cnt                                 : std_logic_vector(1 downto 0);
+    variable v_a_atomic_cnts                                : unsigned(2 downto 0);
     variable v_e_ctrl_inst_valid0                           : std_logic;
     variable v_a_casa                                       : std_logic;
     variable hold_issue_type                                : std_logic_vector(31 downto 0);
+    variable divi_start                                     : std_logic;
     --EXECUTE STAGE
     variable exe_br_miss                                    : std_logic;
     variable exe_br_lane                                    : std_logic;
@@ -7445,9 +7464,19 @@ begin
     variable specreadannul                                  : std_logic;
     variable mask_trap_l                                    : std_logic_vector(1 downto 0);
     variable xc_br_miss_npc                                 : std_logic;
+    variable xc_branch_true                                 : std_logic;
+    variable xc_branch_addr                                 : pctype;
+    variable xc_branch_pc                                   : pctype;
+    variable xc_branch_inst                                 : std_logic_vector(31 downto 0);
+    variable npc_lane0                                      : pctype;
+    variable npc_lane1                                      : pctype;
     variable step_add                                       : std_logic_vector(32 downto 0);
     variable icache_en                                      : std_logic;
     variable wakeup_req                                     : std_logic;
+--  WB
+    variable rfi_waddr1_f                                   : std_logic_vector(9 downto 0);
+    variable rfi_we10_f, rfi_we11_f                         : std_logic;
+    variable rfi_wdata1_f                                   : std_logic_vector(63 downto 0);
     
   begin
 
@@ -7507,22 +7536,42 @@ begin
     --slot and if the branch is not resolved yet resolve the branch and mask
     --the trap if the instruction is going to be anunled
 
+    xc_branch_true := '0';
     if r.x.ctrl.branch(0) = '1' and r.x.ctrl.inst(0)(29) = '1' and r.x.ctrl.swap = '0' and r.x.ctrl.inst_valid(0) = '1' then
+      xc_branch_true := branch_true(exception_icc,r.x.ctrl.inst(0));
       if (branch_mispredict(exception_icc, r.x.ctrl.inst(0), r.x.ctrl.br_taken) xor r.x.ctrl.br_taken) = '0' then
         mask_trap_l(1) := '1';
       end if;
     end if;
 
     if r.x.ctrl.branch(1) = '1' and r.x.ctrl.inst(1)(29) = '1' and r.x.ctrl.swap = '1' and r.x.ctrl.inst_valid(1) = '1' then
+      xc_branch_true := branch_true(r.w.s.icc,r.x.ctrl.inst(1));
       if (branch_mispredict(r.w.s.icc, r.x.ctrl.inst(1), r.x.ctrl.br_taken) xor r.x.ctrl.br_taken) = '0' then
         mask_trap_l(0) := '1';
       end if;
     end if;
 
+    if (r.x.ctrl.branch(0) = '0' and r.x.ctrl.unpcti(0) = '1') or
+      (r.x.ctrl.branch(1) = '0' and r.x.ctrl.unpcti(1) = '1') then
+      xc_branch_true := r.x.ctrl.br_taken;
+    end if;
+
+    xc_branch_pc := r.x.ctrl.inst_pc(0);
+    xc_branch_inst := r.x.ctrl.inst(0);
+    if r.x.ctrl.inst_valid(1) = '1' and is_branch(r.x.ctrl.inst(1)) = '1' then
+      xc_branch_pc    := r.x.ctrl.inst_pc(1);
+      xc_branch_inst := r.x.ctrl.inst(1);
+    end if;
+    xc_branch_inst(30) := '0';
+    xc_branch_addr := branch_address(xc_branch_inst,xc_branch_pc);
+    
     xc_br_miss_npc := branch_mispredict(exception_icc, r.x.ctrl.inst(0), r.x.ctrl.br_taken);
     if r.x.ctrl.inst_valid(1) = '1' and r.x.ctrl.branch(1) = '1' then
       xc_br_miss_npc := branch_mispredict(r.w.s.icc, r.x.ctrl.inst(1), r.x.ctrl.br_taken);
     end if;
+
+    npc_lane0 := npc_find(0, xc_br_miss_npc, r);
+    npc_lane1 := npc_find(1, xc_br_miss_npc, r);
 
     xc_exception                   := '0';
     icnt                           := '0';
@@ -7553,7 +7602,7 @@ begin
     end if;
     if r.x.mexc = '1' and xc_trapl = '0' then
       xc_vectt := "00" & TT_DAEX;
-    elsif xc_trapl = '0' and r.x.ctrl.tt(0) = TT_TICC then
+    elsif xc_trapl = '0' and r.x.tt_ticc = '1' then
       xc_vectt := '1' & r.x.result(0)(6 downto 0);
     end if;
 
@@ -7679,9 +7728,9 @@ begin
           end if;
           v.x.rstate := dsu1;
           v.x.debug  := '1';
-          v.x.npc    := npc_find(0, xc_br_miss_npc, r);
+          v.x.npc    := npc_lane0;
           if (dbgm_l0 = '0' and dbgm_l1 = '1') or (r.x.ctrl.swap = '1' and dbgm_l1 = '1') then
-            v.x.npc := npc_find(1, xc_br_miss_npc, r);
+            v.x.npc := npc_lane1;
           end if;
           vdsu.tt      := xc_vectt;
           vdsu.brktype := "00";
@@ -7716,7 +7765,7 @@ begin
           v.x.annul_all := '1';
           vir.addr      := r.x.ctrl.inst_pc(0);
           v.x.rstate    := dsu1;
-          v.x.npc       := npc_find(0, xc_br_miss_npc, r);
+          v.x.npc       := npc_lane0;
           vdsu.tt       := "00" & TT_WATCH;
           if pwrd = '1' then
             v.x.cpustate := CPUSTATE_INSLEEP;
@@ -7727,14 +7776,14 @@ begin
             vdsu.brktype := "11";
             if r.x.ctrl.inst_valid(0) = '0' or (r.x.ctrl.inst_valid(1) = '1' and r.x.ctrl.swap = '1') then
               vir.addr := r.x.ctrl.inst_pc(1);
-              v.x.npc  := npc_find(1, xc_br_miss_npc, r);
+              v.x.npc  := npc_lane1;
             end if;
           else
             v.x.cpustate := CPUSTATE_STOPPED;
             vdsu.brktype := "10";
             if r.x.ctrl.inst_valid(0) = '0' or (r.x.ctrl.inst_valid(1) = '1' and r.x.ctrl.swap = '1') then
               vir.addr := r.x.ctrl.inst_pc(1);
-              v.x.npc  := npc_find(1, xc_br_miss_npc, r);
+              v.x.npc  := npc_lane1;
             end if;
           end if;
         elsif (xc_trap) = '0' then
@@ -7800,9 +7849,9 @@ begin
           v.w.s.s       := '1';
           v.x.annul_all := '1';
           v.x.rstate    := trap;
-          v.x.npc       := npc_find(0, xc_br_miss_npc, r);
+          v.x.npc       := npc_lane0;
           if xc_trapl = '1' then
-            v.x.npc := npc_find(1, xc_br_miss_npc, r);
+            v.x.npc := npc_lane1;
           end if;
           assert r.w.s.et = '1';
         end if;
@@ -7854,6 +7903,12 @@ begin
         if DBGUNIT then
           v.x.debug := r.x.debug;
         end if;
+      when unpcti_repeat =>
+        v.x.annul_all                    := '1';
+        xc_exception                     := '1';
+        xc_trap_address(31 downto PCLOW) := r.x.npc;
+        v.x.rstate                       := run_pre;
+        v.x.debug_ret                    := '1';
       when dsu2 =>
         xc_exception                     := '1';
         v.x.annul_all                    := '1';
@@ -8295,6 +8350,21 @@ begin
       v.w.s.y := r.w.s.y;
     end if;
 
+    if (r.x.ctrl.inst_valid(0) = '1' and r.x.ctrl.unpcti(0) = '1' and mask_we1 = '0') or
+      (r.x.ctrl.inst_valid(1) = '1' and r.x.ctrl.unpcti(1) = '1' and mask_we2 = '0') then
+      if xc_branch_true = '1' then
+        --during unpcti the next instruction is a branch hence can not be dual
+        --issued so nothing to mask
+        v.x.annul_all := '1';
+        v.x.rstate    := unpcti_repeat;
+        v.x.npc       := npc_lane0;
+        if r.x.ctrl.unpcti(1) = '1' then
+          v.x.npc := npc_lane1;
+        end if;
+        vir.addr := xc_branch_addr;
+      end if;
+    end if;
+
 
     specreadannul := '0';
     --if there is a speculative load opeartion and the load oeprations is going
@@ -8336,7 +8406,9 @@ begin
     v.w.wb_data(0) := rfi_wdata1v;
     v.w.wb_data(1) := rfi_wdata2;
 
-    rfi.wdata1 <= r.w.wb_data(0);
+    rfi_wdata1_f   := r.w.wb_data(0);
+    
+    rfi.wdata1 <= rfi_wdata1_f;
     rfi.wdata2 <= r.w.wb_data(1);
 
     rfi_wdata1_dbg <= v.w.wb_data(0);
@@ -8391,9 +8463,14 @@ begin
     v.w.rd(0) := r.x.ctrl.rd(0);
     v.w.rd(1) := r.x.ctrl.rd(1);
 
-    rfi.waddr1 <= r.w.waddr(0);
-    rfi.we1(0) <= r.w.we(0)(0) and holdn;
-    rfi.we1(1) <= r.w.we(0)(1) and holdn;
+    rfi_waddr1_f := r.w.waddr(0);
+    rfi_we10_f   := r.w.we(0)(0) and holdn;
+    rfi_we11_f   := r.w.we(0)(1) and holdn;
+ 
+
+    rfi.waddr1 <= rfi_waddr1_f;
+    rfi.we1(0) <= rfi_we10_f;
+    rfi.we1(1) <= rfi_we11_f;
     rfi.waddr2 <= r.w.waddr(1);
     rfi.we2(0) <= r.w.we(1)(0) and holdn;
     rfi.we2(1) <= r.w.we(1)(1) and holdn;
@@ -8913,13 +8990,15 @@ begin
     end if;
 
 
-    ---------------------------------------------------------------------------
-    --Just for Debug
-    ---------------------------------------------------------------------------
-
+    
     if dco.badtag = '1' then
       v.x.ctrl.trap(0) := '1';
       v.x.ctrl.tt(0)   := TT_IINST;
+    end if;
+
+    v.x.tt_ticc := '0';
+    if v.x.ctrl.tt(0) = TT_TICC then
+      v.x.tt_ticc := '1';
     end if;
 
 -------------------------------------------------------------------------------
@@ -9659,7 +9738,7 @@ begin
     ---------------------------------------------------------------------------
     --CASA
     ---------------------------------------------------------------------------
-    if r.a.astate /= idle and r.a.casa = '1' then
+    if r.a.astate /= idle and r.a.astate /= count and r.a.casa = '1' then
       v.e.alu_ctrl.alusel(1) := EXE_RES_ADD;
       v.e.alu_ctrl.aluadd(1) := '0';
       v.e.alu_ctrl.invop2(1) := '1';
@@ -9860,23 +9939,33 @@ begin
     --Atomic Instruction State Machine
     ---------------------------------------------------------------------------
     atomic_finished    := '0';
-    v.e.atomic_trapped := '0';
+    v.e.atomic_trapped := '0';  
     case r.a.astate is
       when idle =>
         v.a.casa := '0';
+        v.a.atomic_cnt := "00";
         if v.e.ctrl.inst_valid(0) = '1' and is_atomic(r.a.ctrl.inst(0)) = '1' and r.a.ctrl.trap(0) = '0' then
+          --in order to prevent any forwarding during atomic operation wait
+          --until the last operation before atomic reaches wb stage
+          v.a.astate := count;
+        end if;
+
+        if v.e.ctrl.trap(0) = '1' then
+          --atomic instruction can get privilage trap
+          v.a.astate         := idle;
+          v.e.atomic_trapped := '1';
+          v.a.atomic_cnt     := "00";
+        end if;
+
+      when count =>
+        if unsigned(r.a.atomic_cnt) = 2 then
           v.a.astate := ld_exe;
           if r.a.ctrl.inst(0)(24 downto 19) = CASA then
             v.a.casa := '1';
           end if;
-
-          if v.e.ctrl.trap(0) = '1' then
-            --atomic instruction can get privilage trap
-            v.a.casa           := '0';
-            v.a.astate         := idle;
-            v.e.atomic_trapped := '1';
-          end if;
-          
+        else
+          v_a_atomic_cnts := unsigned('0'&r.a.atomic_cnt)+1;
+          v.a.atomic_cnt := std_logic_vector(v_a_atomic_cnts(1 downto 0));
         end if;
 
       when ld_exe =>
@@ -9897,12 +9986,26 @@ begin
 
     v.a.atomic_nullified := '0';
     if v.e.ctrl.inst_valid(0) = '0' then
-      if r.a.astate /= idle and v.a.astate /= idle then
+      if r.a.astate /= idle and r.a.astate /= count and v.a.astate /= idle then
         atomic_nullify       := '1';
         v.a.atomic_nullified := '1';
       end if;
       v.a.astate := idle;
     end if;
+
+--GAISLER_INTERNAL_BEGIN
+--this is needed for FT
+--GAISLER_INTERNAL_END
+    if r.a.astate /= idle and r.a.astate /= count then
+      v.e.ex_op1 := r.e.ex_op1;
+      v.e.ex_op2 := r.e.ex_op2;
+      v.e.iustdata := r.e.iustdata;
+    end if;
+
+    if r.a.astate = ld_mem or r.a.astate = ld_exc then
+      v.m.result(0) := r.m.result(0);
+    end if;
+    
 
     if r.a.atomic_nullified = '1' then
       atomic_nullify := '1';
@@ -10259,6 +10362,21 @@ begin
       
     end if;
 
+--Detection of unpredictable CTI couples
+    v.e.ctrl.unpcti(0) := '0';
+    v.e.ctrl.unpcti(1) := '0';
+    if r.d.br_cond = '1' and r.d.mexc = '0' then
+      if (v.a.ctrl.delay_inst(0) = '1' and is_toc(de_inst(0)) = '1' and r.d.inst_valid(0) = '1') or
+        (v.a.ctrl.delay_inst(1) = '1' and is_toc(de_inst(1)) = '1' and r.d.inst_valid(1) = '1') then
+        --find the first branch in CTI couple and assert the trap
+        if r.a.ctrl.inst_valid(0) = '1' and is_branch(r.a.ctrl.inst(0)) = '1' then
+          v.e.ctrl.unpcti(0) := '1';
+        elsif r.a.ctrl.inst_valid(1) = '1' and is_branch(r.a.ctrl.inst(1)) = '1' then
+          v.e.ctrl.unpcti(1) := '1';
+        end if;
+      end if;
+    end if;
+       
     de_branch_address(0) := branch_address(de_inst(0), r.d.inst_pc(0)(31 downto PCLOW));
     de_branch_address(1) := branch_address(de_inst(1), r.d.inst_pc(1)(31 downto PCLOW));
     v.a.ctrl.branch      := "00";
@@ -10294,12 +10412,19 @@ begin
       v.d.ct_state := idle;
     end if;
 
-    if r.x.debug_ret2 = '1' then
+    if r.x.debug_ret2 = '1' and de_hold_pc = '0' then
       if r.f.pc(2) = '0' then
         v.d.inst_valid := "11";
       else
         v.d.inst_valid := "10";
       end if;
+    end if;
+
+    if r.x.debug_ret2 = '1' and de_hold_pc = '1' then
+      --if the first instruction after return is for example
+      --a floating point it can be stalled due to FPU unit in that case
+      --delay the debug_ret2 operation
+      v.x.debug_ret2 := '1';
     end if;
 
 
@@ -10325,6 +10450,7 @@ begin
       de_branch_l1_true := fpbranch_true(de_inst(1), fpu5o.fcc);
     end if;
 
+    v.d.br_cond := '0';
     if (is_branch(de_inst(1)) = '1' or (FPEN and is_fpu_branch(de_inst(1)) = '1'))
       and r.d.inst_valid(1) = '1' and r.d.mexc = '0'
       and r.d.ct_state /= toc_d and r.d.ct_state /= toc_e then
@@ -10368,6 +10494,11 @@ begin
           end if;
         end if;
 
+        --for the detection of unpredictable CTI couples
+        if is_bicc(de_inst(1)) = '1' then
+          v.d.br_cond := '1';
+        end if;
+
         --if icc is not going to be modified it is possible to determine branch in
         --this stage
         --validity of v.a. might be modified later but it would
@@ -10406,6 +10537,7 @@ begin
               if r.f.pc(2) = '1' then
                 mask_de_hold_pc := '1';
               end if;
+              v.d.br_cond := '0';
             end if;
           end if;
 
@@ -10420,6 +10552,7 @@ begin
           v.a.bht_ctrl.br_miss_pc := de_branch_address(1);
         end if;
         v.a.bht_ctrl.pc_delay_slot := pc_delay_slot(1)(31 downto 0);
+        
         
       end if;  --de_issue
 
@@ -10661,6 +10794,14 @@ begin
           end if;
         end if;
 
+        --for the detection of unpredictable CTI couples
+        if is_bicc(de_inst(0)) = '1' then
+          if r.d.inst_valid(1) = '0' or is_toc(de_inst(1)) = '1' then 
+            v.d.br_cond := '1';
+          end if;
+        end if;
+        
+
         if de_branch_l0_resolve = '1' or de_inst(0)(27 downto 25) = "000" then
           v.a.ctrl.branch(0)        := '0';
           v.d.delay_slot            := '0';
@@ -10706,6 +10847,7 @@ begin
             if r.d.btb_hit = '0' or r.d.bht_taken = '0' then
               --  de_branchl(0) := '0';
               if de_inst(0)(29) = '1' then
+                v.d.br_cond := '0';
                 if r.d.inst_valid(1) = '1' then
                   if de_issue(1) = '1' then
                     de_issue(1)           := '0';
@@ -11110,7 +11252,7 @@ begin
     --forwarding
     rs_check(de_inst(0), de_rs1_valid(0), de_rs2_valid(0));
     rs_check(de_inst(1), de_rs1_valid(1), de_rs2_valid(1));
-
+    
     rd_gen(de_inst(0), de_rdw(0), ldd_z(0), de_rd(0));
     regaddr(r.d.cwp, de_rs1(0), de_rs1_valid(0), de_raddr1(0)(RFBITS downto 0));
     regaddr(r.d.cwp, de_rs2(0), de_rs2_valid(0), de_raddr2(0)(RFBITS downto 0));
@@ -11725,29 +11867,58 @@ begin
     rfi_raddr1    := (others => '0');
     rfi_raddr1(RFBITS-1 downto 0) := v.a.rs1(0)(RFBITS downto 1);
     rfi_raddr1lsb := v.a.rs1(0)(0);
+    rgz1 := '0';
+    if (v.a.rs1(0)(RFBITS-1 downto 4) = globals_v) and (v.a.rs1(0)(3 downto 1) = "000") then
+      rgz1 := '1';
+    end if;
+      
     -- rfi_raddr2    := "00" & v.a.rs2(0)(RFBITS downto 1);
+    rgz2 := '0';
     rfi_raddr2    := (others => '0');
     rfi_raddr2(RFBITS-1 downto 0) := v.a.rs2(0)(RFBITS downto 1);
     rfi_raddr2lsb := v.a.rs2(0)(0);
+    if (v.a.rs2(0)(RFBITS-1 downto 4) = globals_v) and (v.a.rs2(0)(3 downto 1) = "000") then
+      rgz2 := '1';
+    end if;
     if v.a.rs3_ra2u = '1' then
+      rgz2 := '0';
       rfi_raddr2(RFBITS-1 downto 0) := v.a.rs3(RFBITS downto 1);
       rfi_raddr2lsb := v.a.rs3(0);
+      if (v.a.rs3(RFBITS-1 downto 4) = globals_v) and (v.a.rs3(3 downto 1) = "000") then
+        rgz2 := '1';
+      end if;
     end if;
     -- rfi_raddr3    := "00" & v.a.rs1(1)(RFBITS downto 1);
+    rgz3  := '0';
     rfi_raddr3    := (others => '0');
     rfi_raddr3(RFBITS-1 downto 0) := v.a.rs1(1)(RFBITS downto 1);
     rfi_raddr3lsb := v.a.rs1(1)(0);
+    if (v.a.rs1(1)(RFBITS-1 downto 4) = globals_v) and (v.a.rs1(1)(3 downto 1) = "000") then
+      rgz3 := '1';
+    end if;
     if v.a.rs3_ra3u = '1' then
+      rgz3 := '0';
       rfi_raddr3(RFBITS-1 downto 0) := v.a.rs3(RFBITS downto 1);
       rfi_raddr3lsb := v.a.rs3(0);
+      if (v.a.rs3(RFBITS-1 downto 4) = globals_v) and (v.a.rs3(3 downto 1) = "000") then
+        rgz3 := '1';
+      end if;
     end if;
     -- rfi_raddr4    := "00" & v.a.rs2(1)(RFBITS downto 1);
+    rgz4 := '0';
     rfi_raddr4    := (others => '0');
     rfi_raddr4(RFBITS-1 downto 0) := v.a.rs2(1)(RFBITS downto 1);
     rfi_raddr4lsb := v.a.rs2(1)(0);
+    if (v.a.rs2(1)(RFBITS-1 downto 4) = globals_v) and (v.a.rs2(1)(3 downto 1) = "000") then
+      rgz4 := '1';
+    end if;
     if v.a.rs3_ra4u = '1' then
+      rgz4 := '0';
       rfi_raddr4(RFBITS-1 downto 0) := v.a.rs3(RFBITS downto 1);
       rfi_raddr4lsb := v.a.rs3(0);
+      if (v.a.rs3(RFBITS-1 downto 4) = globals_v) and (v.a.rs3(3 downto 1) = "000") then
+        rgz4 := '1';
+      end if;
     end if;
     rfi_rdhold := not(holdn) or hold_issue_s;
 
@@ -11761,7 +11932,6 @@ begin
     end if;
 
 
-      
 
     --FPU--
     fpu5i_issue_cmd         := "000";
@@ -11935,13 +12105,6 @@ begin
         v.w.fp_exc_ack(0) := '1';
       end if;
 
-      if r.w.fp_exc_ack(0) = '1' then
-        fpu5i_issue_cmd := "100";
-        if r.w.fp_exc_ack(1) = '1' then
-          fpu5i_issue_cmd := "110";
-        end if;
-      end if;
-
       if r.x.fpc_ctrl.issued = '1' or r.x.fpc_ctrl.spstore = '1' then
         if (r.x.ctrl.inst_valid(0) = '1' and is_fpop(r.x.ctrl.inst(0)) = '1' and (mask_we1 = '0' and (xc_trapl = '1' or xc_trap = '0'))) or
           (r.x.ctrl.inst_valid(1) = '1' and is_fpop(r.x.ctrl.inst(1)) = '1' and mask_we2 = '0' and r.x.ctrl.trap(1) = '0') then
@@ -11958,6 +12121,14 @@ begin
         fpu5i_commit       := '0';
         fpu5i_issue_cmd    := "000";
         fpu5i_spstore_done := '0';
+        v.w.fp_exc_ack     := "00";
+      end if;
+
+      if r.w.fp_exc_ack(0) = '1' then
+        fpu5i_issue_cmd := "100";
+        if r.w.fp_exc_ack(1) = '1' then
+          fpu5i_issue_cmd := "110";
+        end if;
       end if;
 
       if fpu5i_issue_cmd /= "000" and fpu5i_issue_cmd /= "100" and fpu5i_issue_cmd /= "110" and is_store(fpu_issue_inst) = '0' then
@@ -12085,6 +12256,9 @@ begin
 
       v.w.fpu_unissue     := fpu5i_unissue;
       v.w.fpu_unissue_sid := fpu5i_unissue_sid;
+      if holdn = '0' then
+        v.w.fpu_unissue := '0';
+      end if;
 
       
     end if;  --fpu/=0
@@ -12122,6 +12296,7 @@ begin
     end if;
 
 
+    divi_start := r.a.divstart and div_a_valid and not(mask_divstart);
 
     --right now the read enable signals will be active during holdn
     --cycles if there is a valid instruction with RS,
@@ -12132,7 +12307,9 @@ begin
     rfi_re11   := (rfi_raddr1(RFBITS-1) and rfi_raddr1lsb) or rfi_debugen;
     rfi_re20   := rfi_raddr2(RFBITS-1) and ((not rfi_raddr2lsb) or (v.a.rs3_ra2u and st_dbl and not st_dbla0));
     rfi_re21   := rfi_raddr2(RFBITS-1) and (rfi_raddr2lsb or (v.a.rs3_ra2u and st_dbl));
-
+    rfi.rgz1   <= rgz1;
+    rfi.rgz2   <= rgz2;
+    
 
     rfi.re1(0) <= rfi_re10;
     rfi.re1(1) <= rfi_re11;
@@ -12145,7 +12322,9 @@ begin
     rfi_re31   := rfi_raddr3(RFBITS-1) and (rfi_raddr3lsb or (v.a.rs3_ra3u and st_dbl));
     rfi_re40   := rfi_raddr4(RFBITS-1) and ((not rfi_raddr4lsb) or (v.a.rs3_ra4u and st_dbl and not st_dbla0));
     rfi_re41   := rfi_raddr4(RFBITS-1) and (rfi_raddr4lsb or (v.a.rs3_ra4u and st_dbl));
-
+    rfi.rgz3   <= rgz3;
+    rfi.rgz4   <= rgz4;
+    
 
     rfi.re3(0) <= rfi_re30;
     rfi.re3(1) <= rfi_re31;
@@ -12166,7 +12345,7 @@ begin
     fpu5i.commit        <= fpu5i_commit;
     fpu5i.commitid      <= fpu5i_commitid;
     fpu5i.lddata        <= fpu5i_lddata;
-    fpu5i.unissue       <= r.w.fpu_unissue and holdn;
+    fpu5i.unissue       <= r.w.fpu_unissue;
     fpu5i.unissue_sid   <= r.w.fpu_unissue_sid;
     fpu5i.spstore_pend  <= fpu5i_spstore_pend;
     fpu5i.spstore_done  <= fpu5i_spstore_done;
@@ -12337,6 +12516,7 @@ begin
     v_d_way              := v.d.way;
     v_d_mexc             := v.d.mexc;
     v_a_astate           := v.a.astate;
+    v_a_atomic_cnt       := v.a.atomic_cnt;
     v_e_ctrl_inst_valid0 := v.e.ctrl.inst_valid(0);
     v_a_casa             := v.a.casa;
     v_d_iudiags          := v.d.iudiags;
@@ -12423,6 +12603,7 @@ begin
           v.a.astate             := v_a_astate;
           v.a.casa               := v_a_casa;
           v.e.ctrl.no_forward(0) := r.a.ctrl.no_forward(0);
+          v.a.atomic_cnt         := v_a_atomic_cnt;
           --CASA instruction never has rs2 as address offset
           if v_a_casa = '1' then
             v.e.ldfwd_rs2(0)      := '0';
@@ -12433,7 +12614,7 @@ begin
             v.e.ctrl.inst_valid(0) := '1';
           end if;
         else
-          if r.a.astate /= idle then
+          if r.a.astate /= idle and r.a.astate /= count then
             atomic_nullify := '1';
           end if;
         end if;
@@ -12708,7 +12889,7 @@ begin
     muli.flush            <= '0';  
     ---------------------------------------------------------------------------
     --holdn is handled internally in the division unit
-    divi.start            <= r.a.divstart and div_a_valid and not(mask_divstart);
+    divi.start            <= divi_start;
     divi.signed           <= div_a_sign;
     divi.flush            <= r.x.annul_all or div_flush;
     divi.op1              <= (div_op1_muxed(31) and div_a_sign) & div_op1_muxed;
@@ -12728,6 +12909,7 @@ begin
     end if;
     dbgo.wakeup_req <= wakeup_req;
     dbgo.c2c_mosi <= l5_intreg_mosi_none;
+
 
 
     -------------------------------------------------------------------------------
@@ -12845,6 +13027,8 @@ begin
           if dbgi.pushpc = '1' then
             r.f.pc <= rin.f.pc;
           end if;
+          r.w.fpu_unissue             <= rin.w.fpu_unissue;
+          r.w.fp_exc_ack              <= rin.w.fp_exc_ack;
           r.w.tdata                   <= rin.w.tdata;
           r.w.s.holdn_deadlock        <= rin.w.s.holdn_deadlock;
           r.w.s.fpc_deadlock          <= rin.w.s.fpc_deadlock;
@@ -12973,11 +13157,13 @@ begin
   dis1 : if disas > 0 generate
     trc : process(clk)
       variable valid       : std_logic_vector(1 downto 0);
+      variable valids      : std_logic_vector(1 downto 0);
       variable op          : std_logic_vector(1 downto 0);
       variable op3         : std_logic_vector(5 downto 0);
       variable fpins, fpld : boolean;
       variable pc          : inst_pc_type;  --std_logic_vector(31 downto 0);
       variable in_irq      : std_logic := '0';
+      type repeat_type is array (0 to 1) of boolean;
     begin
       if (disas > 0) and rising_edge(clk) and (rstn = '1') then
         for i in 0 to 1 loop
@@ -12991,26 +13177,34 @@ begin
           end if;
 
           valid(i) := '0';
+          valids(i) := '0';
           if r.x.ctrl.inst_valid(i) = '1' and r.x.annul_all /= '1' and mask_we_dbg(i) = '0' then
             valid(i) := '1';
+            valids(i) := '1';
           end if;
 
+
           valid(i) := valid(i) and holdn;
+          valids(i) := valids(i) and holdn;
 
           if false then
             if r.w.s.et = '0' and r.w.s.tt(5 downto 4) = "01" then
               valid(i) := '0';
+              valids(i) := '0';
               in_irq   := '1';
             end if;
             if xc_trapl_dbg = '0' and i = 0 and xc_trap_dbg = '1' and r.x.ctrl.tt(0)(5 downto 4) = "01" then
               valid(0) := '0';
+              valids(0) := '0';
             end if;
             if xc_trapl_dbg = '1' and i = 1 and xc_trap_dbg = '1' and r.x.ctrl.tt(1)(5 downto 4) = "01" then
               valid(1) := '0';
+              valids(1) := '0';
             end if;
 
             if in_irq = '1' then
               valid := "00";
+              valids := "00";
             end if;
 
             if r.x.ctrl.rett_op = '1' and r.x.ctrl.inst_valid(1) = '1' then
@@ -13029,7 +13223,7 @@ begin
               print_insn (conv_integer(cpu_index),
                           pc(0),
                           r.x.ctrl.inst(0),
-                          rfi_wdata1_dbg(63 downto 32),  -- FIXME
+                          rfi_wdata1_dbg(63 downto 32),  
                           valid(0) = '1',
                           r.x.ctrl.trap(0) = '1',
                           (r.x.ctrl.rdw(0) and not(is_div(r.x.ctrl.inst(0)))) = '1',
@@ -13037,7 +13231,7 @@ begin
               print_insn (conv_integer(cpu_index),
                           pc(1),
                           r.x.ctrl.inst(1),
-                          rfi_wdata2_dbg(63 downto 32),  -- FIXME
+                          rfi_wdata2_dbg(63 downto 32),  
                           valid(1) = '1',
                           r.x.ctrl.trap(1) = '1',
                           (r.x.ctrl.rdw(1) and not(is_div(r.x.ctrl.inst(1)))) = '1',
@@ -13047,7 +13241,7 @@ begin
               print_insn (conv_integer(cpu_index),
                           pc(1),
                           r.x.ctrl.inst(1),
-                          rfi_wdata2_dbg(63 downto 32),  -- FIXME
+                          rfi_wdata2_dbg(63 downto 32), 
                           valid(1) = '1',
                           r.x.ctrl.trap(1) = '1',
                           (r.x.ctrl.rdw(1) and not(is_div(r.x.ctrl.inst(1)))) = '1',
@@ -13056,7 +13250,7 @@ begin
               print_insn (conv_integer(cpu_index),
                           pc(0),
                           r.x.ctrl.inst(0),
-                          rfi_wdata1_dbg(63 downto 32),  -- FIXME
+                          rfi_wdata1_dbg(63 downto 32),  
                           valid(0) = '1',
                           r.x.ctrl.trap(0) = '1',
                           (r.x.ctrl.rdw(0) and not(is_div(r.x.ctrl.inst(0)))) = '1',

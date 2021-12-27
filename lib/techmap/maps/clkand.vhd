@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -55,7 +55,7 @@ constant use_empty_dummy: tech_ability_type := (inferred => 0, easic45 => 1, rhs
 -- set to 1 to add 5 ps delay between oi and o in RTL sim (for clock delta balancing)
 -- set to 2 to add no delay between oi and o
 -- set to 0 for tech-specific delay
-constant use_standard_delay: tech_ability_type := (inferred => 1, gf22 => 0, dare => 2, others => 1);
+constant use_standard_delay: tech_ability_type := (inferred => 1, gf22 => 0, dare65t => 2, dare => 2, others => 1);
 
 begin
 
@@ -159,7 +159,7 @@ begin
     odup4 <= oi;
   end generate;
 
-  gf22xdelay: if tech=gf22 generate
+  gf22xdelay: if use_standard_delay(tech)=0 and tech=gf22 generate
     o <= oi
 --pragma translate_off
          after (4+isdummy) * (1 ps)

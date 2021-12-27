@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "testmod.h"
 #include "leon3.h"
 
@@ -247,6 +248,30 @@ static void sta0x1c(unsigned long addr, unsigned long data)
         asm volatile ("sta %0, [%1] 0x1c" : : "r"(data),"r"(addr));
 }
 
+static unsigned long lda0x26(unsigned long addr)
+{
+        unsigned long l;
+        asm volatile ("lda [%1] 0x26, %0" : "=r"(l) : "r"(addr));
+        return l;
+}
+
+static void sta0x26(unsigned long addr, unsigned long data)
+{
+        asm volatile ("sta %0, [%1] 0x26" : : "r"(data),"r"(addr));
+}
+
+static unsigned long lda0x27(unsigned long addr)
+{
+        unsigned long l;
+        asm volatile ("lda [%1] 0x27, %0" : "=r"(l) : "r"(addr));
+        return l;
+}
+
+static void sta0x27(unsigned long addr, unsigned long data)
+{
+        asm volatile ("sta %0, [%1] 0x27" : : "r"(data),"r"(addr));
+}
+
 void regfltest(unsigned long freeaddr)
 {
         unsigned long iccfg, dccfg;
@@ -450,7 +475,10 @@ maintest()
 
 	/**** INSTRUCTION CACHE TESTS ****/
 
-      if (((cachectrl >> ITE_BIT) & 3) == 0) { // skip test during err. injection
+	/* Skip test if ISETS=1 as the location of the test function and of the test code
+	 * may end up on the same sets in the cache causing the test function to be evicted.
+	 */
+	if (((cachectrl >> ITE_BIT) & 3) == 0 && ISETS>1) { // skip test during err. injection
 	  for (i=0;i<ISETS;i++) {
 	    line[i]();
 	  }
@@ -1011,4 +1039,296 @@ void cfttest5(int cft)
                 if (errctr != 0 || v != 0) fail(137);
         }
         wsysreg(0x14, 0);
+}
+
+/* SPARC V8 TT values */
+#define MYTT_INSTRUCTION_ACCESS_EXCEPTION 1
+#define MYTT_DATA_ACCESS_EXCEPTION 9
+/* 0x8F is the software trap number for "set_supervisor" */
+#define MYTT_SET_SUPERVISOR 0x8F
+
+/*
+ * User functions for enter supervisor/user mode. ABI compatible and requires
+ * the SET_SUPERVISOR software trap to be installed before use.
+ */
+void systest_enter_supervisor(void);
+void systest_enter_user(void);
+
+/* defined in mmu_asm.S */
+extern void systest_trap_set_supervisor(void);
+/* defined in cacheasm.S */
+extern void tcmtest_dexc_handler(void);
+extern void tcmtest_iexc_handler(void);
+extern int tcmtest_dummy_func(int);
+
+extern volatile int tcmtest_dexc_ctr, tcmtest_dexc_addr;
+extern volatile int tcmtest_iexc_ctr, tcmtest_iexc_addr;
+
+static unsigned long get_tbr(void)
+{
+        unsigned long r;
+        asm volatile (" mov %%tbr, %0" : "=r"(r) );
+        return r;
+}
+
+volatile static int testvar=35;
+
+void tcmtest5_prepare(void)
+{
+        unsigned long leon5cfg;
+        leon5cfg = rsysreg(0x10);
+        if ( ((leon5cfg >> 27) & 3) == 0 ) return; /* TCM not implemented */
+        wsysreg(0x40,(1<<31)|(1<<15)); /* Wipe ITCM and DTCM */
+}
+
+
+void tcmtest5(void)
+{
+        unsigned long leon5cfg, tcmcfg, ftcfg;
+        int dtcmsz, itcmsz, i, j;
+        int sumode;
+        typedef int (*funcptr)(int);
+        funcptr f = (funcptr)0x50000000;
+        volatile unsigned long *lptr = (volatile unsigned long *)0x50000000;
+        volatile unsigned long long *llptr = (volatile unsigned long long *)0x50000000;
+        volatile unsigned short *sptr = (volatile unsigned short *)0x50000000;
+        volatile unsigned char *cptr = (volatile unsigned char *)0x50000000;
+        char pgtblbuf[4096];
+        char *pgtblp;
+        unsigned long test_func_addr, a, test_var_addr;
+        funcptr test_func;
+        volatile unsigned long *testvarp;
+        int do_fttest, cft, eitype, cemode, correxp;
+        unsigned long errctr;
+        leon5cfg = rsysreg(0x10);
+        if ( ((leon5cfg >> 27) & 3) == 0 ) return; /* TCM not implemented */
+        report_subtest( (get_pid()<<4) | 2 );
+        do {
+                tcmcfg = rsysreg(0x40);
+        } while ((tcmcfg & (1<<31))!=0 || (tcmcfg & (1<<15))!=0 );
+        dtcmsz = tcmcfg & 31;
+        itcmsz = (tcmcfg >> 16) & 31;
+        /* Test ASI read and write to ITCM and DTCM memories */
+        if (itcmsz > 0) {
+                sta0x26(0,1);
+                for (i=2; i<itcmsz; i++) {
+                        sta0x26(1<<i, i);
+                }
+                if (lda0x26(0) != 1) fail(1);
+                for (i=2; i<itcmsz; i++) {
+                        if (lda0x26(1<<i) != i) fail(1);
+                }
+        }
+        if (dtcmsz > 0) {
+                sta0x27(0,1);
+                for (i=2; i<dtcmsz; i++) {
+                        sta0x27(1<<i, i);
+                }
+                if (lda0x27(0) != 1) fail(2);
+                for (i=2; i<dtcmsz; i++) {
+                        if (lda0x27(1<<i) != i) fail(2);
+                }
+        }
+        /* Setup trap handler for supervisor-only check */
+        bcc_set_trap(MYTT_INSTRUCTION_ACCESS_EXCEPTION, tcmtest_iexc_handler);
+        bcc_set_trap(MYTT_DATA_ACCESS_EXCEPTION, tcmtest_dexc_handler);
+        bcc_set_trap(MYTT_SET_SUPERVISOR, systest_trap_set_supervisor);
+        /* region flush of trap table in Icache */
+        wsysreg(0x18, ~0xfff);
+        wsysreg(0x1c, (get_tbr() & (~0xfff)) | 2);
+        /* Setup ITCM with simple function to call in test */
+        if (itcmsz > 0) {
+                sta0x26(0, 0x81c3e008); /* retl */
+                sta0x26(4, 0x912a2004); /* sll %o0, 4, %o0 */
+        }
+        /* Test ITCM in MMU-off configuration, all combinations of permissions */
+        if (itcmsz > 0) {
+                i = tcmtest_iexc_ctr;
+                for (sumode=0; sumode<8; sumode++) {
+                        /* sumode: 0:run as supervisor 1:run as user
+                         *         0:clear itcmu bit, 2:set itcmu bit
+                         *         0:clear itcmsu bit 4: set itcmsu bit*/
+                        wsysreg(0x48, 0x50000000 | 1 | (((sumode >> 1)&3)<<3) );
+                        if ((sumode & 1) != 0) systest_enter_user();
+                        asm volatile ("nop; nop; nop; nop");
+                        if (f(23) != (23<<4)) fail(3);
+                        if (tcmtest_iexc_ctr != i) {
+                                /* trap triggered */
+                                i++;
+                                if (tcmtest_iexc_addr != 0x50000000) fail(4);
+                                if ((sumode & 1)==0 && (sumode & 4)!=0) fail(5);
+                                if ((sumode & 1)!=0 && (sumode & 2)!=0) fail(6);
+                        } else {
+                                /* trap not triggered */
+                                if ((sumode & 1)==0 && (sumode & 4)==0) fail(7);
+                                if ((sumode & 1)!=0 && (sumode & 2)==0) fail(8);
+                        }
+                        if ( (sumode & 1) != 0) systest_enter_supervisor();
+                }
+        }
+        /* Test DTCM in MMU-off configuration, all combinations of permissions */
+        if (dtcmsz > 0) {
+                i = tcmtest_dexc_ctr;
+                for (sumode=0; sumode<32; sumode++) {
+                        /* chkp(sumode); */
+                        wsysreg(0x4C, 0x50000000 | 1 | (((sumode >> 1)&15)<<3) );
+                        sta0x27(0, 0);
+                        /* test write */
+                        if ((sumode & 1) != 0) systest_enter_user();
+                        *lptr = 0x11223344;
+                        if ((sumode & 1) != 0) systest_enter_supervisor();
+                        if (lda0x27(0) != 0x11223344) fail(9);
+                        if (tcmtest_dexc_ctr != i) {
+                                /* trap triggered */
+                                i++;
+                                if ((sumode & 1)==0 && (sumode & 16)!=0) fail(11);
+                                if ((sumode & 1)!=0 && (sumode & 4)!=0) fail(12);
+                                /* restore permissions setting for read test */
+                                wsysreg(0x4C, 0x50000000 | 1 | (((sumode >> 1)&15)<<3) );
+                        } else {
+                                /* trap not triggered */
+                                if ((sumode & 1)==0 && (sumode & 16)==0) fail(13);
+                                if ((sumode & 1)!=0 && (sumode & 4)==0) fail(14);
+                        }
+                        /* test read */
+                        if ((sumode & 1) != 0) systest_enter_user();
+                        if (*lptr != 0x11223344) fail(15);
+                        if ((sumode & 1) != 0) systest_enter_supervisor();
+                        if (tcmtest_dexc_ctr != i) {
+                                /* trap triggered */
+                                i++;
+                                if ((sumode & 1)==0 && (sumode & 8)!=0) fail(17);
+                                if ((sumode & 1)!=0 && (sumode & 2)!=0) fail(18);
+                        } else {
+                                /* trap not triggered */
+                                if ((sumode & 1)==0 && (sumode & 8)==0) fail(19);
+                                if ((sumode & 1)!=0 && (sumode & 2)==0) fail(20);
+                        }
+                }
+        }
+        /* Setup MMU mapping for virtual mapping tests, 1:1 except 0x50xxxxxx -> 0x40xxxxxx  */
+        pgtblp = pgtblbuf;
+        pgtblp += 0x800 - (((unsigned long)pgtblp)&0x7ff);
+        mmudmap((unsigned long *)pgtblp,0x00ff);
+        mmudmap_modify((unsigned long *)pgtblp, 0x50000000, 0x40000000, 1, 7);
+        /* ITCM virtual mapping test */
+        if (itcmsz > 0) {
+                /* address of tcmtest_dummy_func in virtual 0x50000000 region
+                 *   this will be shadowed by the TCM when it's enabled so depending on if TCM is active
+                 *   or not, either the tcmtest_dummy_func or the function in the  */
+                test_func_addr = (unsigned long)tcmtest_dummy_func;
+                test_func_addr &= 0x00ffffff;
+                test_func_addr |= 0x50000000;
+                test_func = (funcptr)test_func_addr;
+                /* Write test function via ASI so that it overlaps with the test function */
+                sta0x26(test_func_addr,   0x81c3e008); /* retl */
+                sta0x26(test_func_addr+4, 0x912a2004); /* sll %o0, 4, %o0 */
+                for (i=0; i<5; i++) {
+                        /* i=0: TCM disabled
+                         * i=1: TCM enabled for MMU-off
+                         * i=2: TCM enabled for virtual one-context, same context
+                         * i=3: TCM enabled for virtual one-context, different context
+                         * i=4: TCM enabled for virtual all contexts
+                         * expect to reach TCM for cases 2 and 4, otherwise fall through to dummy function */
+                        switch (i) {
+                        case 0:  wsysreg(0x48, (test_func_addr & 0xffff0000) | 0x18 | 0); break;
+                        case 1:  wsysreg(0x48, (test_func_addr & 0xffff0000) | 0x18 | 1); break;
+                        case 2:  wsysreg(0x48, (test_func_addr & 0xffff0000) | 0x18 | 2); break;
+                        case 3:  wsysreg(0x48, (test_func_addr & 0xffff0000) | 0x18 | 2 | 0x0100); break;
+                        default: wsysreg(0x48, (test_func_addr & 0xffff0000) | 0x18 | 4); break;
+                        }
+                        j = test_func(73);
+                        if (i == 0 && j != (73+3)) fail(21);
+                        if (i == 1 && j != (73+3)) fail(22);
+                        if (i == 2 && j != (73<<4)) fail(23);
+                        if (i == 3 && j != (73+3)) fail(24);
+                        if (i == 4 && j != (73<<4)) fail(25);
+                }
+        }
+        /* DTCM virtual mapping test */
+        if (dtcmsz > 0) {
+                test_var_addr = (unsigned long)(&testvar);
+                test_var_addr &= 0x00ffffff;
+                test_var_addr |= 0x50000000;
+                testvarp = (volatile unsigned long *)test_var_addr;
+                sta0x27(test_var_addr, 99);
+                for (i=0; i<5; i++) {
+                        switch (i) {
+                        case 0:  wsysreg(0x4C, (test_var_addr & 0xffff0000) | 0x78 | 0); break;
+                        case 1:  wsysreg(0x4C, (test_var_addr & 0xffff0000) | 0x78 | 1); break;
+                        case 2:  wsysreg(0x4C, (test_var_addr & 0xffff0000) | 0x78 | 2); break;
+                        case 3:  wsysreg(0x4C, (test_var_addr & 0xffff0000) | 0x78 | 2 | 0x0100); break;
+                        default: wsysreg(0x4C, (test_var_addr & 0xffff0000) | 0x78 | 4); break;
+                        }
+                        j = *testvarp;
+                        if (i == 0 && j != 35) fail(26);
+                        if (i == 1 && j != 35) fail(27);
+                        if (i == 2 && j != 99) fail(28);
+                        if (i == 3 && j != 35) fail(29);
+                        if (i == 4 && j != 99) fail(30);
+                }
+        }
+        /* Disable TCM and MMU and restore trap table for remaining tests */
+        wsysreg(0x48, 0);
+        wsysreg(0x4C, 0);
+        bcc_set_trap(MYTT_INSTRUCTION_ACCESS_EXCEPTION, NULL);
+        bcc_set_trap(MYTT_DATA_ACCESS_EXCEPTION, NULL);
+        bcc_set_trap(MYTT_SET_SUPERVISOR, NULL);
+        asm volatile ("sta %0, [%%g0] 0x19" : : "r"(0));
+        /* region flush of trap table in Icache */
+        wsysreg(0x18, ~0xfff);
+        wsysreg(0x1c, (get_tbr() & (~0xfff)) | 2);
+        /* TCM FT test */
+        do_fttest = 0;
+        if (((leon5cfg >> 29) & 1) != 0) {
+                ftcfg=rsysreg(0x14);
+                cft = ftcfg >> 30;
+                if (cft != 0) {
+                        eitype = rsysreg(0x30) >> 30;
+                        if (eitype != 0) { do_fttest = 1;}
+                }
+        }
+        if (do_fttest != 0) {
+                /* clear error counters  */
+                wsysreg(0x38,0xffffffff);
+        }
+        for (cemode=0; cemode<2; cemode++) {
+                if (cemode == 1 && cft != 1) continue;
+                if (cemode==0) correxp=1; else correxp=0;
+                if (do_fttest != 0 && itcmsz > 0) {
+                        /* Enable ITCM */
+                        sta0x26(0, 0x81c3e008); /* retl */
+                        sta0x26(4, 0x912a2004); /* sll %o0, 4, %o0 */
+                        wsysreg(0x48, 0x50000000 | 1 | (3<<3) );
+                        wsysreg(0x44, cemode<<8);
+                        /* Inject corr error into ITCM */
+                        wsysreg(0x30, 1);
+                        lda0x26(0);
+                        /* A couple of NOPs to ensure code below is not already in pipeline */
+                        asm volatile ("nop; nop; nop; nop");
+                        /* Execute */
+                        if (f(6) != (6<<4)) fail(31);
+                        /* Check error ctr */
+                        errctr = rsysreg(0x38);
+                        if (errctr != ((correxp<<15)|(1<<24))) fail(32);
+                        /* Clear error ctr */
+                        wsysreg(0x38,0xffffffff);
+                }
+                if (do_fttest != 0 && dtcmsz > 0) {
+                        /* Enable DTCM */
+                        sta0x27(0, 432);
+                        wsysreg(0x4C, 0x50000000 | 1 | (7<<3) );
+                        wsysreg(0x44, cemode<<0);
+                        /* Inject corr error into ITCM */
+                        wsysreg(0x30, 1);
+                        lda0x27(0);
+                        /* Trigger CE */
+                        if (*lptr != 432) fail(33);
+                        /* Check error ctr */
+                        errctr = rsysreg(0x38);
+                        if (errctr != ((correxp<<15)|(1<<22))) fail(34);
+                        /* Clear error ctr */
+                        wsysreg(0x38,0xffffffff);
+                }
+        }
 }

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -389,13 +389,17 @@ package leon5int is
     waddr2      : std_logic_vector(9 downto 0); -- write address
     wdata1      : std_logic_vector(63 downto 0); -- write data
     wdata2      : std_logic_vector(63 downto 0); -- write data
-    rdhold       : std_logic;
-    re1          : std_logic_vector(1 downto 0);-- read 1 enable
-    re2          : std_logic_vector(1 downto 0);-- read 2 enable
-    re3          : std_logic_vector(1 downto 0);-- read 2 enable
-    re4          : std_logic_vector(1 downto 0);-- read 2 enable
-    we1          : std_logic_vector(1 downto 0);         -- write enable
-    we2          : std_logic_vector(1 downto 0);
+    rdhold      : std_logic;
+    re1         : std_logic_vector(1 downto 0);-- read 1 enable
+    re2         : std_logic_vector(1 downto 0);-- read 2 enable
+    re3         : std_logic_vector(1 downto 0);-- read 2 enable
+    re4         : std_logic_vector(1 downto 0);-- read 2 enable
+    rgz1        : std_logic;            --port1 g0 read
+    rgz2        : std_logic;            --port2 g0 read
+    rgz3        : std_logic;            --port3 g0 read
+    rgz4        : std_logic;            --port4 g0 read
+    we1         : std_logic_vector(1 downto 0);         -- write enable
+    we2         : std_logic_vector(1 downto 0);
   end record;
 
   type iregfile_out_type5 is record
@@ -493,6 +497,10 @@ package leon5int is
     idataen    : std_logic_vector(0 to 3);
     idatawrite : std_logic_vector(1 downto 0);
     idatadin   : std_logic_vector(63 downto 0);
+    ifulladdr  : std_logic_vector(31 downto 0);
+    itcmen     : std_ulogic;
+    itcmwrite  : std_logic_vector(1 downto 0);
+    itcmdin    : std_logic_vector(63 downto 0);
     -- Cache read port
     dtagcindex : std_logic_vector(IDXMAX-1 downto 0);
     dtagcen    : std_logic_vector(0 to 3);
@@ -515,14 +523,20 @@ package leon5int is
     ddataen    : std_logic_vector(0 to 3);
     ddatawrite : std_logic_vector(7 downto 0);
     ddatadin   : cdatatype5;
+    ddatafulladdr : std_logic_vector(31 downto 0);
+    dtcmen     : std_ulogic;
+    dtcmdin    : std_logic_vector(63 downto 0);
+    dtcmwrite : std_logic_vector(7 downto 0);
   end record;
 
   type cram_out_type5 is record
     itagdout: cram_tags;
     idatadout: cdatatype5;
+    itcmdout: std_logic_vector(63 downto 0);
     dtagcdout: cram_tags;
     dtagsdout: cram_tags;
     ddatadout: cdatatype5;
+    dtcmdout: std_logic_vector(63 downto 0);
   end record;
 
   constant MAX_PREDICTOR_BITS  : integer := 2;
@@ -616,6 +630,8 @@ package leon5int is
       cmemconf: integer;
       rfconf  : integer;
       fpuconf : integer;
+      tcmconf : integer;
+      perfcfg : integer;
       mulimpl : integer;
       rstaddr : integer;
       disas   : integer;
@@ -866,6 +882,7 @@ package leon5int is
       fabtech     : integer range 0 to NTECH     ;
       scantest    : integer                      ;
       memtech     : integer range 0 to NTECH;
+      rfconf      : integer;
       cgen        : integer range 0 to 1
       );
     port (
@@ -911,6 +928,10 @@ package leon5int is
       dwaysize  : integer range 1 to 256;
       dtagconf  : integer range 0 to 2;
       dusebw    : integer range 0 to 1;
+      itcmen    : integer range 0 to 1;
+      itcmabits : integer range 1 to 20;
+      dtcmen    : integer range 0 to 1;
+      dtcmabits : integer range 1 to 20;
       itlbnum   : integer range 2 to 64;
       dtlbnum   : integer range 2 to 64;
       cached    : integer;
@@ -950,12 +971,16 @@ package leon5int is
       ilinesize : integer range 4 to 8;
       iidxwidth : integer range 1 to 10;
       itagwidth : integer range 1 to 32;
+      itcmen    : integer range 0 to 1;
+      itcmabits : integer range 1 to 20;
       dways     : integer range 1 to 4;
       dlinesize : integer range 4 to 8;
       didxwidth : integer range 1 to 10;
       dtagwidth : integer range 1 to 32;
       dtagconf  : integer range 0 to 2;
       dusebw    : integer range 0 to 1;
+      dtcmen    : integer range 0 to 1;
+      dtcmabits : integer range 1 to 20;
       testen    : integer range 0 to 1
       );
     port (
@@ -991,15 +1016,19 @@ package leon5int is
       we2      : in  std_logic_vector(1 downto 0);
       raddr1   : in  std_logic_vector((abits -1) downto 0);
       re1      : in  std_logic_vector(1 downto 0);
+      rgz1     : in  std_logic;
       rdata1   : out std_logic_vector((dbits -1) downto 0);
       raddr2   : in  std_logic_vector((abits -1) downto 0);
       re2      : in  std_logic_vector(1 downto 0);
+      rgz2     : in  std_logic;
       rdata2   : out std_logic_vector((dbits -1) downto 0);
       raddr3   : in  std_logic_vector((abits -1) downto 0);
       re3      : in  std_logic_vector(1 downto 0);
+      rgz3     : in  std_logic;
       rdata3   : out std_logic_vector((dbits -1) downto 0);
       raddr4   : in  std_logic_vector((abits -1) downto 0);
       re4      : in  std_logic_vector(1 downto 0);
+      rgz4     : in  std_logic;
       rdata4   : out std_logic_vector((dbits -1) downto 0);
       testin   : in  std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
       );

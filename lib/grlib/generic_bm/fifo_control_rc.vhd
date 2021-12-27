@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -36,12 +36,12 @@ entity fifo_control_rc is
     async_reset      : boolean;
     be_dw            : integer := 32;
     be_rd_pipe       : integer := 1;
-    lendian_en       : integer := 0;
     unalign_load_opt : integer := 0
     );
   port (
     clk           : in  std_logic;
     rstn          : in  std_logic;
+    endian        : in  std_logic;  --0->BE, 1->LE
     fifo_rc_in    : in  fifo_rc_in_type;
     fifo_rc_out   : out fifo_rc_out_type;
     be_wdata      : in  std_logic_vector(be_dw-1 downto 0);
@@ -172,7 +172,7 @@ begin  -- rtl
     rdata_endian      := byte_swap(inp.be_wdata);
     rdata_endian_comb := byte_swap(inp.be_wdata_comb);
     inp_data_shifted  := load_byte_align(rdata_endian, fifo_rc_in.be_rsize, fifo_rc_in.addr, be_dw);
-    if lendian_en /= 0 then
+    if endian /= '0' then
       rdata_endian := inp.be_wdata;
       rdata_endian_comb := inp.be_wdata_comb;
       inp_data_shifted := load_byte_align(rdata_endian, fifo_rc_in.be_rsize, fifo_rc_in.addr, be_dw);

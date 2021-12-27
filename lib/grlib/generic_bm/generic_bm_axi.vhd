@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -112,7 +112,10 @@ entity generic_bm_axi is
     bmwr_data        : in  std_logic_vector(bm_dw-1 downto 0);
     bmwr_full        : out std_logic;
     bmwr_done        : out std_logic;
-    bmwr_error       : out std_logic
+    bmwr_error       : out std_logic;
+    --Endianess Output
+    endian_out       : out std_logic   --0->BE, 1->LE
+    --Exclusive access
     );
 end generic_bm_axi;
 
@@ -189,6 +192,8 @@ architecture rtl of generic_bm_axi is
 
   signal excl_size : std_logic_vector(log_2(max_size)-1 downto 0);
 
+  signal endian : std_logic;
+
 
   signal excl_en      : std_logic;
   signal excl_nowrite : std_logic;
@@ -200,6 +205,8 @@ begin
 
   excl_en      <= '0';
   excl_nowrite <= '0';
+
+  endian <= '0' when lendian_en = 0 else '1';
 
   -- pragma translate_off
   DW_check : if be_dw > bm_dw generate
@@ -227,11 +234,11 @@ begin
       be_dw        => be_dw,
       max_size     => max_size,
       excl_enabled => excl_enabled,
-      lendian_en   => lendian_en,
       addr_width   => addr_width)
     port map(
       clk       => clk,
       rstn      => rstn,
+      endian    => endian,
       bmfre_in  => bmfre_in,
       bmfre_out => bmfre_out,
       bmrd_size => bmrd_size,
@@ -248,11 +255,11 @@ begin
   fifo_wc : fifo_control_wc
     generic map (
       async_reset             => async_reset,
-      lendian_en              => lendian_en,
       be_dw                   => be_dw)
     port map (
       clk         => clk,
       rstn        => rstn,
+      endian      => endian,
       fifo_wc_in  => fifo_wc_in,
       fifo_wc_out => fifo_wc_out,
       fe_wdata    => fe_wdata,
@@ -263,11 +270,11 @@ begin
       async_reset      => async_reset,
       be_dw            => be_dw,
       be_rd_pipe       => be_rd_pipe,
-      lendian_en       => lendian_en,
       unalign_load_opt => unalign_load_opt)
     port map(
       clk           => clk,
       rstn          => rstn,
+      endian        => endian,
       fifo_rc_in    => fifo_rc_in,
       fifo_rc_out   => fifo_rc_out,
       be_wdata      => rd_data,
@@ -324,12 +331,12 @@ begin
       axi_bm_id_width       => axi_bm_id_width,
       addr_width            => addr_width,
       max_burst_length_ptwo => max_burst_length_ptwo,
-      lendian_en            => lendian_en,
       be_dw                 => be_dw
       )
     port map(
       clk             => clk,
       rstn            => rstn,
+      endian          => endian,
       ahb_be_in       => ahb_be_in,
       ahb_be_out      => ahb_be_out,
       rd_addr         => bm_me_rc_out_burst_addr,
@@ -442,6 +449,8 @@ begin
   bmwr_full        <= bmfre_out.bmwr_full;
   bmwr_req_granted <= bmfre_out.bmwr_req_granted;
   bmwr_error       <= bm_me_wc_out.error;
+
+  endian_out       <= endian;
 
   excl_done <= bmfre_out.excl_done;
   --excl err is currently unused and exclusive error is

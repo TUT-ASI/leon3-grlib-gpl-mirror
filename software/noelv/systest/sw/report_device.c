@@ -19,7 +19,8 @@ typedef short testmod_type;
 #endif
 
 #ifndef GRLIB_REPORTDEV_BASE
-#define GRLIB_REPORTDEV_BASE 0x80000000
+// #define GRLIB_REPORTDEV_BASE 0x80000000 // LEON3 e De-RISC
+#define GRLIB_REPORTDEV_BASE 0x20000000 // Generic
 #endif
 
 

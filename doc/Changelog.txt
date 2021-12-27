@@ -1,3 +1,36 @@
+----------------------- Release 2021.1-b4265 ---------------------------
+
+2021-04-06	LEON5 processor updates
+
+		New features:
+		Tightly coupled memory option (scratchpad RAM) for
+		instructions and data.
+		Generic added on the leon5sys level to select between
+		pre-defined standard cache/TLB size configurations.
+
+		Updates:
+		Bug fixes for FPU in rare corner cases.
+		NanoFPU rounding logic modified to implement tininess
+		before rounding as required/expected by SPARC V8.
+
+2021-04-01	Added LEON3 template design for the Xilinx KCU105 
+		development kit (leon3-xilinx-kcu105).
+
+2021-03-17	TECHMAP: Added constants for generic UltraScale and
+		UltraScale+ as well as for Virtex UltraScale and
+		Kintex UltraScale+. All UltraScale devices share the
+		constant value 60 and all UltraScale+ devices
+		share constant value 65.
+
+2021-03-07	GRPCI2: small update to when interrupt status bit is set
+		Interrupt status bit in configuration space for device/
+		function 0 was reflecting the state of dirq[3] instead
+		of dirq[0].
+
+2021-03-03:     GRDMAC2: added support for little endian AHB buses.
+
+2021-01-19:     AHBROM: added support for little endian AHB buses.
+
 ----------------------- Release 2020.4-b4261 ---------------------------
 
 2020-12-09	LEON5 processor updates
@@ -26,7 +59,7 @@
 		instructions.
 
 2020-12-03	GRDMAC2: Added functionality for connecting an accelera-
-		tor to GRDMAC2. Also added AES-256 accelerator.
+		tor to GRDMAC2.
 
 2020-11-24	AHBRAM: byte select logic corrected for 64- and 128-
 		bit accesses in wide AMBA buses (AHBDW > 64)

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -60,6 +60,12 @@ architecture rtl of ringosc is
       roout :  out   Std_ULogic);
   end component;
 
+  component ringosc_dare65t
+   port (
+      roen  :  in    Std_ULogic;
+      roout :  out   Std_ULogic);
+  end component;
+
 begin
 
   rh : if tech = rhumc generate
@@ -78,8 +84,12 @@ begin
     rhs65rx : ringosc_rhs65 port map (roen, roout);
   end generate;
 
+  dare65tr : if tech = dare65t generate
+    dare65trx : ringosc_dare65t port map (roen, roout);
+  end generate;
+
 -- pragma translate_off
-  gen : if tech /= dare and tech /= rhumc and tech /= ut130 and tech /= rhs65 generate
+  gen : if tech /= dare and tech /= dare and tech /= dare65t and tech /= ut130 and tech /= rhs65 generate
   signal tmp : std_ulogic := '0';
   begin
     tmp <= not tmp after 1 ns when roen = '1' else '0';

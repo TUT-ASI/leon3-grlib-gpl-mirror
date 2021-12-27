@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -73,7 +73,8 @@ entity mem2buf is
     m2b_bmo    : out bm_ctrl_reg_type;     -- Signals from M2B to BM IF throgh control module
     --FIFO signals
     buf_in     : in  fifo_out_type;        -- FIFO output signals
-    buf_out    : out fifo_in_type          -- Input to FIFO
+    buf_out    : out fifo_in_type;          -- Input to FIFO
+    endian     : in std_logic               -- Endianness input '0'-> BE,'1'-> LE 
     );
 end entity mem2buf;
 
@@ -101,6 +102,7 @@ architecture rtl of mem2buf is
   -- Bus master interface front end width in bytes := dbits/8
   constant MAX_BSIZE : integer := 1024;  -- Maximum BM fe interface data size
                                          -- in single burst is 1024 bytes
+  constant zeros : std_logic_vector(127 downto 0) := (others => '0');
 
   -----------------------------------------------------------------------------
   -- Type and record 
@@ -160,7 +162,7 @@ begin
   -- Combinational process
   -----------------------------------------------------------------------------
   
-  comb : process (m2b_bmi, r, d_des_in, buf_in, m2b_start, m2b_resume, err_sts_in)
+  comb : process (m2b_bmi, r, acc_des_in, d_des_in, buf_in, m2b_start, m2b_resume, err_sts_in)
 
     variable v             : m2b_reg_type;
     variable remaining     : std_logic_vector(20 downto 0);  -- Remaining size to be read after each burst
@@ -367,17 +369,7 @@ begin
     -- Signal update --
     ----------------------
     -- Data write to buffer output
-    if conv_integer(r.curr_size) >= bm_bytes then
-      buffer_out.wdata(127 downto (128-dbits)) := m2b_bmi.rd_data(127 downto (128-dbits));
-    else --curr_size is less than bm_bytes
-      for i in 1 to (bm_bytes-1) loop
-        if (i = conv_integer(r.curr_size)) then
-          rem_bits := to_integer(shift_left(to_unsigned(i,11),SHIFT_BIT));
-          buffer_out.wdata(127 downto (128-rem_bits)) := m2b_bmi.rd_data(127 downto (128-rem_bits));
-          exit;
-        end if;
-      end loop;               
-    end if;
+    buffer_out.wdata(127 downto (128-dbits)) := m2b_bmi.rd_data(127 downto (128-dbits));
     -- State decoding for status display
     if r.sts.m2b_err = '1' then
       status_out.state <= r.err_state;

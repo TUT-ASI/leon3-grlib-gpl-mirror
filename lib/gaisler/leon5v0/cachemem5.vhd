@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -44,12 +44,16 @@ entity cachemem5 is
     ilinesize : integer range 4 to 8;
     iidxwidth : integer range 1 to 10;
     itagwidth : integer range 1 to 32;
+    itcmen    : integer range 0 to 1;
+    itcmabits : integer range 1 to 20;
     dways     : integer range 1 to 4;
     dlinesize : integer range 4 to 8;
     didxwidth : integer range 1 to 10;
     dtagwidth : integer range 1 to 32;
     dtagconf  : integer range 0 to 2;
     dusebw    : integer range 0 to 1;
+    dtcmen    : integer range 0 to 1;
+    dtcmabits : integer range 1 to 20;
     testen    : integer range 0 to 1
   );
   port (
@@ -73,6 +77,7 @@ architecture rtl of cachemem5 is
 
   type denv_type is array(0 to 3) of std_logic_vector(7 downto 0);
   signal denv: denv_type;
+  signal denvtcm: std_logic_vector(7 downto 0);
 
 
 begin
@@ -146,6 +151,50 @@ begin
         dataout => cramo.idatadout(s)(31 downto 0),
         enable  => crami.idataen(s),
         write   => crami.idatawrite(0),
+        testin  => testin
+        );
+  end generate;
+
+  -- Instruction cache tightly coupled memory
+  itcm0: if itcmen /= 0 generate
+    itcmmemh: syncram
+      generic map (
+        tech       => tech,
+        abits      => itcmabits,
+        dbits      => 32,
+        testen     => testen,
+        custombits => memtest_vlen,
+        pipeline   => 0,
+        rdhold     => 1,
+        gatedwr    => 1
+        )
+      port map (
+        clk     => clk,
+        address => crami.ifulladdr(2+itcmabits downto 3),
+        datain  => crami.itcmdin(63 downto 32),
+        dataout => cramo.itcmdout(63 downto 32),
+        enable  => crami.itcmen,
+        write   => crami.itcmwrite(1),
+        testin  => testin
+        );
+    itcmmeml: syncram
+      generic map (
+        tech       => tech,
+        abits      => itcmabits,
+        dbits      => 32,
+        testen     => testen,
+        custombits => memtest_vlen,
+        pipeline   => 0,
+        rdhold     => 1,
+        gatedwr    => 1
+        )
+      port map (
+        clk     => clk,
+        address => crami.ifulladdr(2+itcmabits downto 3),
+        datain  => crami.itcmdin(31 downto 0),
+        dataout => cramo.itcmdout(31 downto 0),
+        enable  => crami.itcmen,
+        write   => crami.itcmwrite(0),
         testin  => testin
         );
   end generate;
@@ -304,6 +353,7 @@ begin
            1 => (others => crami.ddataen(1)),
            2 => (others => crami.ddataen(2)),
            3 => (others => crami.ddataen(3)));
+  denvtcm <= (others => crami.dtcmen);
   ddusebw: if dusebw=1 generate
     -- Memories with byte writes
     ddataloop: for s in 0 to dways-1 generate
@@ -395,6 +445,95 @@ begin
     end generate;
   end generate;
 
+  -- Data cache tightly coupled memory
+  ddtcmbw : if dtcmen/=0 and dusebw/=0 generate
+    -- Memories with byte writes
+    dtcmmemh: syncrambw
+      generic map (
+        tech => tech,
+        abits => dtcmabits,
+        dbits => 32,
+        testen => testen,
+        pipeline => 0,
+        rdhold => 1,
+        gatedwr => 1,
+        custombits => memtest_vlen
+        )
+      port map (
+        clk => clk,
+        address => crami.ddatafulladdr(2+dtcmabits downto 3),
+        datain => crami.dtcmdin(63 downto 32),
+        dataout => cramo.dtcmdout(63 downto 32),
+        enable => denvtcm(7 downto 4),
+        write => crami.dtcmwrite(7 downto 4),
+        testin => testin
+        );
+    dtcmmeml: syncrambw
+      generic map (
+        tech => tech,
+        abits => dtcmabits,
+        dbits => 32,
+        testen => testen,
+        pipeline => 0,
+        rdhold => 1,
+        gatedwr => 1,
+        custombits => memtest_vlen
+        )
+      port map (
+        clk => clk,
+        address => crami.ddatafulladdr(2+dtcmabits downto 3),
+        datain => crami.dtcmdin(31 downto 0),
+        dataout => cramo.dtcmdout(31 downto 0),
+        enable => denvtcm(3 downto 0),
+        write => crami.dtcmwrite(3 downto 0),
+        testin => testin
+        );
+  end generate;
+
+  ddtcmnobw : if dtcmen/=0 and dusebw=0 generate
+    -- Memories without byte writes, data loopback in cache controller
+    dtcmmemh: syncram
+      generic map (
+        tech => tech,
+        abits => dtcmabits,
+        dbits => 32,
+        testen => testen,
+        pipeline => 0,
+        rdhold => 1,
+        gatedwr => 1,
+        custombits => memtest_vlen
+        )
+      port map (
+        clk => clk,
+        address => crami.ddatafulladdr(2+dtcmabits downto 3),
+        datain => crami.dtcmdin(63 downto 32),
+        dataout => cramo.dtcmdout(63 downto 32),
+        enable => crami.dtcmen,
+        write => crami.dtcmwrite(7),
+        testin => testin
+        );
+    dtcmmeml: syncram
+      generic map (
+        tech => tech,
+        abits => dtcmabits,
+        dbits => 32,
+        testen => testen,
+        pipeline => 0,
+        rdhold => 1,
+        gatedwr => 1,
+        custombits => memtest_vlen
+        )
+      port map (
+        clk => clk,
+        address => crami.ddatafulladdr(2+dtcmabits downto 3),
+        datain => crami.dtcmdin(31 downto 0),
+        dataout => cramo.dtcmdout(31 downto 0),
+        enable => crami.dtcmen,
+        write => crami.dtcmwrite(3),
+        testin => testin
+        );
+  end generate;
+
   unusediloop: for s in iways to 3 generate
     cramo.itagdout(s) <= (others => '0');
     cramo.idatadout(s) <= (others => '0');
@@ -405,6 +544,13 @@ begin
     cramo.ddatadout(s) <= (others => '0');
   end generate;
 
+  noitcm: if itcmen=0 generate
+    cramo.itcmdout <= (others => '0');
+  end generate;
+
+  nodtcm: if dtcmen=0 generate
+    cramo.dtcmdout <= (others => '0');
+  end generate;
 
 --pragma translate_off
   tagmon: process(sclk)

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2020, Cobham Gaisler
+--  Copyright (C) 2015 - 2021, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -50,6 +50,10 @@ begin
       x0 : clkinv_dare port map (i => i, o => o);
     end generate;
 
+    dar65 : if (tech = dare65t) generate
+      x0 : clkinv_dare65t port map (i => i, o => o);
+    end generate;
+  
     rhs : if (tech = rhs65) generate
       x0 : clkinv_rhs65 port map (i => i, o => o);
     end generate;
