@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -98,6 +98,7 @@ package noelv is
     itlbmiss : std_logic;
     dcmiss   : std_logic;
     dtlbmiss : std_logic;
+    bpmiss   : std_logic;
   end record;
 
   type nv_counter_out_vector is array (natural range <>) of nv_counter_out_type;
@@ -109,6 +110,7 @@ package noelv is
     resume      : std_ulogic;                           -- Resume Request
     reset       : std_ulogic;                           -- Reset Request
     haltonrst   : std_ulogic;                           -- Halt-on-reset Request
+    freeze      : std_ulogic;                           -- Hold CPU
     denable     : std_ulogic;                           -- Diagnostic Enable
     dcmd        : std_logic_vector(1 downto 0);         -- Diagnostic Operation
     dwrite      : std_ulogic;                           -- Diagnostic Read/Write
@@ -197,6 +199,7 @@ package noelv is
       cmemconf          : integer                       := 0;
       rfconf            : integer                       := 0;
       tcmconf           : integer                       := 0;
+      mulconf           : integer                       := 0;
       -- Caches
       icen              : integer range 0  to 1         := 0;  -- I$ Cache Enable
       iways             : integer range 1  to 4         := 1;  -- I$ Ways
@@ -250,6 +253,7 @@ package noelv is
       mularch           : integer                       := 0;  -- multiplier architecture
       div_hiperf        : integer                       := 0;
       div_small         : integer                       := 0;
+      hw_fpu            : integer range 0  to 3         := 1;  -- 1 - use hw fpu
       rfreadhold        : integer range 0  to 1         := 0;  -- Register File Read Hold
       scantest          : integer                       := 0;  -- scantest support
       endian            : integer                       := GRLIB_CONFIG_ARRAY(grlib_little_endian)
@@ -283,6 +287,7 @@ package noelv is
       rfconf   : integer;
       fpuconf  : integer;
       tcmconf  : integer;
+      mulconf  : integer;
       disas    : integer;
       pbaddr   : integer;
       cfg      : integer;
@@ -320,6 +325,7 @@ package noelv is
       rfconf   : integer := 0;
       fpuconf  : integer;
       tcmconf  : integer := 0;
+      mulconf  : integer := 0;
       disas    : integer;
       ahbtrace : integer;
       cfg      : integer := 0;

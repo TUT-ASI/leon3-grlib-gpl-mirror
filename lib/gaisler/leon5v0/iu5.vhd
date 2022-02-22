@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -7452,6 +7452,7 @@ begin
     variable v_x_y_l                                        : operand_pair_type;
     variable me_asr18_l                                     : operand_pair_type;
     variable me_icc_l                                       : icc_pair_type;
+    variable me_newtrap                                     : std_logic_vector(1 downto 0);
     variable me_newtt                                       : tt_array_type;
     variable me_nullify, me_nullify2                        : std_logic;
     variable me_iflush                                      : std_logic;
@@ -7561,6 +7562,7 @@ begin
     variable step_add                                       : std_logic_vector(32 downto 0);
     variable icache_en                                      : std_logic;
     variable wakeup_req                                     : std_logic;
+    variable spectmp                                        : special_register_type;
 --  WB
     variable rfi_waddr1_f                                   : std_logic_vector(9 downto 0);
     variable rfi_we10_f, rfi_we11_f                         : std_logic;
@@ -7848,7 +7850,7 @@ begin
             --a trap hence no need to check trap here
             xc_wreg_l1 := r.x.ctrl.rdw(1) and r.x.ctrl.inst_valid(1);
             if r.x.ctrl.inst_valid(1) = '1' then
-              sp_write_l1(r, v.w.s, v.w.s);
+              sp_write_l1(r, v.w.s, spectmp); v.w.s := spectmp;
             end if;
           end if;
 
@@ -7893,7 +7895,7 @@ begin
           --right now we assume SAVE,RESTORE,RETT can not be issued in parallel
           --in addition write special register ops are issued only to lane0
           if r.x.ctrl.inst_valid(1) = '1' and mask_trap_l(1) = '0' then
-            sp_write_l1(r, v.w.s, v.w.s);
+            sp_write_l1(r, v.w.s, spectmp); v.w.s := spectmp;
           end if;
           vir.pwd := '0';
           if is_ldd_int(r.x.ctrl.inst(0)) = '1' then
@@ -7915,7 +7917,7 @@ begin
           if xc_trapl = '0' and r.x.ctrl.swap = '1' then
             xc_wreg_l1 := r.x.ctrl.rdw(1) and r.x.ctrl.inst_valid(1) and not(r.x.ctrl.trap(1));
             if r.x.ctrl.inst_valid(1) = '1' and r.x.ctrl.trap(1) = '0' then
-              sp_write_l1(r, v.w.s, v.w.s);
+              sp_write_l1(r, v.w.s, spectmp); v.w.s := spectmp;
             end if;
           end if;
 
@@ -8724,14 +8726,15 @@ begin
 
     mem_trap(r, wpr, v.x.annul_all, holdn, v.x.ctrl.trap, me_iflush,
              me_nullify, v.m.werr, v.x.ctrl.tt);
+    me_newtrap := v.x.ctrl.trap;
     me_newtt := v.x.ctrl.tt;
-    
+
     irq_trap(v,
              r,
              ir,
              irqi.irl,
              v.x.annul_all or xc_br_miss,
-             v.x.ctrl.trap,
+             me_newtrap,
              me_newtt,
              me_nullify,
              v.m.irqen,

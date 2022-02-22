@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -37,17 +37,16 @@ use grlib.config.all;
 use grlib.config_types.all;
 library gaisler;
 use gaisler.utilnv.all;
+use gaisler.fputilnv.all;
 use grlib.riscv.all;
-use gaisler.noelvint.word;
-use gaisler.noelvint.word64;
-use gaisler.noelvint.zerow64;
 
 entity nanofpunv is
   generic (
     -- Extensions
     fpulen    : integer range 0  to 128 := 64;  -- Floating-point precision
     -- Core
-    no_muladd : integer range 0  to 1   := 0    -- 1 - multiply-add not supported
+    no_muladd : integer range 0  to 1   := 0;   -- 1 - multiply-add not supported
+    extmul    : integer range 0  to 1   := 0    -- 1 - multiply done externally
     ; do_addsel : integer := 1
   );
   port (
@@ -56,21 +55,23 @@ entity nanofpunv is
     -- Pipeline interface
     --   Issue interface
     holdn         : in  std_ulogic;
+    issue_id      : in  fpu_id;
     e_inst        : in  word;
     e_valid       : in  std_ulogic;
     e_nullify     : in  std_ulogic;
-    csrfrm        : in  std_logic_vector(2 downto 0);
+    csrfrm        : in  rm_t;
     mode_in       : in  std_logic_vector(2 downto 0);
-    issue_id      : out std_logic_vector(4 downto 0);
     fpu_holdn     : out std_ulogic;
     ready_flop    : out std_ulogic;
     --   Commit interface
     commit        : in  std_ulogic;
-    commit_id     : in  std_logic_vector(4 downto 0);
+    commit_id     : in  fpu_id;
+    lddata_id     : in  fpu_id;
+    lddata_now    : in  std_ulogic;
     lddata        : in  word64;
     --   Mispredict/trap interface
-    unissue       : in  std_logic_vector(1 to 4);
-    unissue_sid   : in  std_logic_vector(4 downto 0);
+    unissue       : in  std_ulogic;
+    unissue_id    : in  fpu_id;
     -- Register file read interface
     rs1           : out std_logic_vector(4 downto 0);
     rs2           : out std_logic_vector(4 downto 0);
@@ -82,11 +83,21 @@ entity nanofpunv is
     -- Result data interface
     rd            : out std_logic_vector(4 downto 0);
     wen           : out std_ulogic;
-    flags_wen     : out std_ulogic;
     stdata        : out word64;
+    flags_wen     : out std_ulogic;
     flags         : out std_logic_vector(4 downto 0);
+    now2int       : out std_ulogic;
+    id2int        : out fpu_id;
+    stdata2int    : out word64;
+    flags2int     : out std_logic_vector(4 downto 0);
     wb_mode       : out std_logic_vector(2 downto 0);
-    wb_id         : out std_logic_vector(4 downto 0)
+    wb_id         : out fpu_id;
+    idle          : out std_ulogic;
+    events        : out word64
+    -- Debug
+    ; state_d     : out std_logic_vector(7 downto 0)
+--    ; data_d      : out std_logic_vector(56 * 2 - 2 - 1 downto 2 * 2)
+    ; data_d      : out std_logic_vector(127 downto 0)
   );
 end;
 
@@ -110,7 +121,8 @@ architecture rtl of nanofpunv is
                          nf_sqrt2, nf_sqrt3, nf_sqrt4, nf_sqrt5, nf_sqrt6,
                          nf_sqrt7, nf_sqrt8, nf_sqrt9, nf_sqrt10, nf_sqrt11,
                          nf_round, nf_round2, nf_repack,
-                         nf_opdone, nf_rdwrite, nf_rdwrite2, nf_cmp2, nf_finish, nf_end);
+                         nf_opdone, nf_rdwrite, nf_rdwrite2, nf_cmp2, nf_finish, nf_end
+                         );
 
   -- Operand can be in different "states":
   --   invalid - Values are undefined.
@@ -133,45 +145,21 @@ architecture rtl of nanofpunv is
   -- S - single precision
   type op_action is (OPACT_SHFTN, OPACT_SHFTA, OPACT_SHFTNS, OPACT_SHFTAS);
 
-  constant R_NEAREST   : std_logic_vector(2 downto 0) := "000";  -- RNE Nearest, ties to even
-  constant R_ZERO      : std_logic_vector(2 downto 0) := "001";  -- RTZ Towards zero
-  constant R_MINUS_INF : std_logic_vector(2 downto 0) := "010";  -- RDN Down, towards negative infinity
-  constant R_PLUS_INF  : std_logic_vector(2 downto 0) := "011";  -- RUP Up, towards positive infinity
-  constant R_RMM       : std_logic_vector(2 downto 0) := "100";  -- Nearest, ties to max magnitude
-  -- The rest are illegal, except that in an instruction "111" (DYN)
-  -- means that rouding mode should be fetched from CSR register.
-
-  -- Floating point flags
-  constant EXC_NX : integer := 0;  -- Inexact
-  constant EXC_UF : integer := 1;  -- Underflow
-  constant EXC_OF : integer := 2;  -- Overflow
-  constant EXC_DZ : integer := 3;  -- Divide by zero
-  constant EXC_NV : integer := 4;  -- Invalid
-
-  constant defnan_dp : word64 := x"7ff8000000000000";
-  constant defnan_sp : word64 := x"ffffffff7fc00000";
-
-  type fpunv_op is record
-    valid : std_ulogic;
-    op    : std_logic_vector(4 downto 0);  -- FPU operation
-    opx   : std_logic_vector(2 downto 0);  --   extension
-    rm    : std_logic_vector(2 downto 0);  -- Rounding mode
-    sp    : std_ulogic;                    -- Single precision
-    rd    : std_logic_vector(4 downto 0);
-    rs1   : std_logic_vector(4 downto 0);
-    rs2   : std_logic_vector(4 downto 0);
-    rs3   : std_logic_vector(4 downto 0);
-    ren   : std_logic_vector(1 to 3);
-  end record;
 
   type nanofpu_regs is record
     -- State
     s           : nanofpu_state;
     fpu_holdn   : std_ulogic;
     readyflop   : std_ulogic;
+
+
+    events      : fpevt_t;
+    events_pipe : fpevt_t;
+
     -- FSR fields
-    rm          : std_logic_vector(2 downto 0);
+    rm          : rm_t;
     -- Current operation
+    id          : fpu_id;
     s1          : word64;
     s2          : word64;
     s3          : word64;
@@ -184,10 +172,13 @@ architecture rtl of nanofpunv is
     inexact     : std_ulogic;              -- Low bits in extended muladd shifted out
     res         : word64;
     exc         : std_logic_vector(4 downto 0);
+    now2int     : std_ulogic;
+    res2int     : word64;
+    exc2int     : std_logic_vector(4 downto 0);
     rddp        : std_ulogic;              -- Double precision operation
     rddp_real   : std_ulogic;              --   actual in case of internal change
-    flop        : std_logic_vector(4 downto 0);
-    rmb         : std_logic_vector(2 downto 0);
+    flop        : fpuop_t;
+    rmb         : rm_t;
     rs1         : std_logic_vector(4 downto 0);
     rs2         : std_logic_vector(4 downto 0);
     rs3         : std_logic_vector(4 downto 0);
@@ -243,7 +234,10 @@ architecture rtl of nanofpunv is
     s           => nf_idle,
     fpu_holdn   => '1',
     readyflop   => '0',
+    events      => (others => '0'),
+    events_pipe => (others => '0'),
     rm          => R_NEAREST,
+    id          => (others => '0'),
     s1          => (others => '0'),
     s2          => (others => '0'),
     s3          => (others => '0'),
@@ -256,9 +250,12 @@ architecture rtl of nanofpunv is
     inexact     => '0',
     res         => (others => '0'),
     exc         => "00000",
+    now2int     => '0',
+    res2int     => (others => '0'),
+    exc2int     => "00000",
     rddp        => '0',
     rddp_real   => '0',
-    flop        => (others => '0'),
+    flop        => FPU_UNKNOWN,
     rmb         => (others => '0'),
     rs1         => "00000",
     rs2         => "00000",
@@ -310,14 +307,50 @@ architecture rtl of nanofpunv is
   );
 
 
-  signal r, rin : nanofpu_regs;
+  signal r, rin    : nanofpu_regs;
+
+  -- For external multiplier
+  signal multiply  : std_ulogic;
+  signal sqrt      : std_ulogic;
+  signal mulrddp   : std_ulogic;
+  signal mulsrc    : std_logic_vector(55 downto 0);
+  signal mulmant   : std_logic_vector(55 downto 0);
+  signal mulbottom : std_logic_vector(51 downto 0);
+  signal mullo0    : std_logic_vector(0 downto 0);
+  signal muldone   : std_ulogic;
+
+  signal mul_dbg   : std_logic_vector(56 * 2 - 2 - 1 downto 2 * 2);
 
 begin
 
+  mulfp_gen: if extmul = 1 generate
+    mulfp_i: entity gaisler.mulfp
+      generic map (
+        fpulen => fpulen
+      )
+      port map (
+        clk      => clk,
+        rstn     => rstn,
+        multiply => multiply,
+        sqrt     => '0',
+        rddp     => mulrddp,
+        src      => mulsrc,
+        mant     => mulmant,
+        bottom   => mulbottom,
+        lo0      => mullo0,
+        done     => muldone
+--        , data_d => data_d(56 * 2 - 2 - 1 downto 2 * 2)  -- mul_dbg
+      );
+  end generate;
+
+
   comb : process(r, rstn, holdn,
                  e_inst, e_valid, e_nullify, csrfrm,
-                 s1, s2, s3, lddata,
-                 commit, commit_id, unissue, unissue_sid)
+                 s1, s2, s3, lddata_id, lddata_now, lddata,
+                 issue_id,
+                 muldone, mulmant, mulbottom, mullo0,
+                 mode_in, commit, commit_id, unissue, unissue_id
+                )
     variable v        : nanofpu_regs;
     variable vrs1     : word64;
     variable vrs2     : word64;
@@ -330,7 +363,7 @@ begin
     variable vadj     : signed(6 downto 0);
     variable vgrd     : std_ulogic;
     variable vrndbits : std_logic_vector(2 downto 0);
-    variable vrndup   : std_ulogic;
+    variable vrndup   : boolean;
     variable vop      : float;
     variable inf_1x2  : float;
     variable defnan   : word64;
@@ -354,182 +387,19 @@ begin
     variable divrem1  : unsigned(28 downto 0);
     variable divrem2  : unsigned(28 downto 0);
     variable op2low0  : boolean;
-
     variable round_from_denormal : boolean;
-
+    variable is_idle  : std_ulogic;
+    variable evt      : fpevt_t;
+    -- "Notifications" to simplify some logic
+    variable to_idle   : boolean;
+    variable to_finish : boolean;
+    variable to_addsub : boolean;
+    
 
     function tost(x : signed) return string is
     begin
       return tost(std_logic_vector(x));
     end;
-
-    -- FPU Signals Generation
-
-    -- Fs1 register validity check
-    -- Returns '1' if the instruction has a valid FPU fs1 field.
-    function fs1_gen(inst : word) return std_ulogic is
-      variable op     : opcode_type := inst(6 downto 0);
-      variable funct5 : funct5_type := inst(31 downto 27);
-      -- Non-constant
-      variable vreg   : std_ulogic  := '1';
-    begin
-      case op is
-        when OP_FMADD  | OP_FMSUB |
-             OP_FNMSUB | OP_FNMADD =>
-        when OP_FP =>
-          case funct5 is
-            when R_FCVT_S_W |
-                 R_FMV_W_X         => vreg := '0';
-            when others            =>
-          end case;
-        when others                => vreg := '0';
-      end case;
-
-      return vreg;
-    end;
-
-    -- Fs2 register validity check
-    -- Returns '1' if the instruction has a valid FPU fs2 field.
-    function fs2_gen(inst : word) return std_ulogic is
-      variable op     : opcode_type := inst(6 downto 0);
-      variable funct5 : funct5_type := inst(31 downto 27);
-      -- Non-constant
-      variable vreg   : std_ulogic  := '1';
-    begin
-      case op is
-        when OP_STORE_FP |
-             OP_FMADD    | OP_FMSUB |
-             OP_FNMSUB   | OP_FNMADD =>
-        when OP_FP =>
-          case funct5 is
-            when R_FCVT_S_W | R_FMV_W_X |
-                 R_FCVT_W_S | R_FMV_X_W |  -- Latter includes R_FCLASS
-                 R_FSQRT             => vreg := '0';
-            when others              =>
-          end case;
-        when others                  => vreg := '0';
-      end case;
-
-      return vreg;
-    end;
-
-    -- Fs3 register validity check
-    -- Returns '1' if the instruction has a valid FPU fs3 field.
-    function fs3_gen(inst : word) return std_ulogic is
-      variable op   : opcode_type := inst(6 downto 0);
-      -- Non-constant
-      variable vreg : std_ulogic  := '1';
-    begin
-      case op is
-        when OP_FMADD  | OP_FMSUB |
-             OP_FNMSUB | OP_FNMADD =>
-        when others                => vreg := '0';
-      end case;
-
-      return vreg;
-    end;
-
-    -- Partial decode of FPU operation
-    procedure fpu_gen(inst_in     : in  std_logic_vector;
-                      csr_frm     : in  std_logic_vector;
-                      valid_in    : in  std_ulogic;
-                      op_out      : out fpunv_op) is
-      subtype word2  is std_logic_vector(1 downto 0);
-      subtype word3  is std_logic_vector(2 downto 0);
-      variable RFBITS : integer := 5;
-      subtype rfatype is std_logic_vector(RFBITS-1 downto 0);
-      variable opcode : opcode_type := inst_in(6 downto 0);
-      variable funct5 : funct5_type := inst_in(31 downto 27);
-      variable funct3 : funct3_type := inst_in(14 downto 12);
-      variable fmt    : word2       := inst_in(26 downto 25);
-      variable rs1    : rfatype     := inst_in(19 downto 15);
-      variable rs2    : rfatype     := inst_in(24 downto 20);
-      variable rs3    : rfatype     := inst_in(31 downto 27);
-      variable rd     : rfatype     := inst_in(11 downto  7);
-      -- Non-constant
-      variable valid  : std_ulogic  := valid_in;
-      variable rm     : word3       := funct3;
-      variable sp     : boolean;
-      variable op     : std_logic_vector(4 downto 0);
-      variable ren    : std_logic_vector(op_out.ren'range);
-    begin
-      sp := fmt = "00";      -- single precision
-
-      case opcode is
-        when OP_FP       => op := funct5;
-        when OP_LOAD_FP  => op := S_LOAD;
-                            sp := funct3 = "010";  -- 32 bit memory access?
-        when OP_STORE_FP => op := S_STORE;
-                            sp := funct3 = "010";
-        when OP_FMADD  |
-             OP_FMSUB  |
-             OP_FNMADD |
-             OP_FNMSUB   => op := opcode(6 downto 2);
-        when others      => op := opcode(6 downto 2);  -- Dummy!
-                            valid := '0';
-      end case;
-
-      -- CSR controlled rounding?
-      if funct3 = "111" then
-        rm := csr_frm;
-      end if;
-
-      ren(1) := fs1_gen(inst_in);
-      ren(2) := fs2_gen(inst_in);
-      ren(3) := fs3_gen(inst_in);
-
-      op_out := (valid, op, funct3, rm, to_bit(sp), rd, rs1, rs2, rs3, ren);
-    end;
-
-    -- Find shift amount for normalization.
-    function find_normadj(op     : float;
-                          limdp  : std_ulogic; limsp : std_ulogic;
-                          mkeven : std_ulogic) return signed is
-      -- Non-constant
-      variable r      : signed(6 downto 0)  := "0000000";
-      variable maxadj : signed(6 downto 0)  := "0111111";   -- 63
-      variable adjtmp : signed(12 downto 0);
-    begin
-      if limdp = '1' then
-        -- Limit to -1023 rather than -1022 here, since we need to be
-        -- able to deal with the underflow flag properly when rounding
-        -- goes from denormal to normal.
-        -- See for example
-        -- www.jhauser.us/arithmetic/SoftFloat-3/doc/SoftFloat-FAQ.html
-        -- regarding tininess after rounding.
-        adjtmp   := op.exp + 1023;
-        -- -64 to 63?
-        if all_0(adjtmp(12 downto 6)) or all_1(adjtmp(12 downto 6)) then
-          maxadj := adjtmp(6 downto 0);
-        end if;
-      end if;
-      if limsp = '1' then
-        -- Limit to -127 rather than -126 here. See above.
-        adjtmp   := op.exp + 127;
-        -- -64 to 63?
-        if all_0(adjtmp(12 downto 6)) or all_1(adjtmp(12 downto 6)) then
-          maxadj := adjtmp(6 downto 0);
-        end if;
-      end if;
-
-      -- Look for top '1', r will be -1 to 52.
-      for x in 2 to 55 loop
-        if op.mant(x) = '1' then
-          r := to_signed(54 - x, 7);
-        end if;
-      end loop;
-
-      -- Square root needs even exponent after adjustment.
-      if mkeven = '1' then
-        if (r(0) xor op.exp(0)) = '1' then
-          r := r + 1;
-        end if;
-      elsif r > maxadj then
-        r   := maxadj;
-      end if;
-
-      return r;
-    end find_normadj;
 
     -- Convert integer value to internal format.
     function int2ernal(opu : word64; neg : boolean) return float is
@@ -561,229 +431,18 @@ begin
       return r;
     end int2ernalh;
 
-    -- Convert single/double precision floating point value to internal format.
-    function unpack(opu : word64;
-                    sp  : std_ulogic) return float is
-      variable r : float := float_none;
-    begin
-      r.w            := opu;
-      if sp = '1' then
-        r.neg        := opu(31) = '1';
-        r.exp        := signed(sub(std_logic_vector'("00000" & opu(30 downto 23)), 127));
-        r.mant       := "01" & opu(22 downto 0) & zerow64(30 downto 0);
-        if all_0(opu(30 downto 23)) then                       -- Denormal?
-          r.exp      := to_signed(-126, 13);
-          r.mant(54) := '0';
-        end if;
-        if all_1(opu(30 downto 23)) then                       -- Special?
-          r.class(1) := '1';
-          r.mant(54) := '0';
-          r.snan     := opu(22) = '0';                         -- Assume NaN
-        end if;
-        if all_0(opu(22 downto 0)) and r.mant(54) = '0' then   -- Inf or zero?
-          r.class(0) := '1';
-          r.snan     := false;                                 -- Assumption above was wrong
-        end if;
-        -- Check NaN-boxing (previously swapped to bottom)
-        if not all_1(opu(63 downto 32)) then
-          r.class    := C_NAN;
-          r.snan     := false;
-        end if;
-      else
-        r.neg        := opu(63) = '1';
-        r.mant       := "01" & opu(51 downto 0) & "00";
-        r.exp        := signed(sub(std_logic_vector'("00" & opu(62 downto 52)), 1023));
-        if all_0(opu(62 downto 52)) then                       -- Denormal?
-          r.exp      := to_signed(-1022, 13);
-          r.mant(54) := '0';
-        end if;
-        if all_1(opu(62 downto 52)) then                       -- Special?
-          r.class(1) := '1';
-          r.mant(54) := '0';
-          r.snan     := opu(51) = '0';                         -- Assume NaN
-        end if;
-        if all_0(opu(51 downto 0)) and r.mant(54) = '0' then   -- Inf or zero?
-          r.class(0) := '1';
-          r.snan     := false;                                 -- Assumption above was wrong
-        end if;
-      end if;
-
-      return r;
-    end unpack;
-
-    -- Convert internal format to IEEE754 single/double precision value.
-    function pack(op : float; sp : std_ulogic) return std_logic_vector is
-      variable r : word64;
-    begin
-      r                   := (others => '0');
-      r(63)               := to_bit(op.neg);
-      r(51 downto 0)      := op.mant(53 downto 2);
-      if sp = '0' then
-        assert (op.exp > -1023 and op.exp < 1024) or not is_normal(op);
-        r(62 downto 52)   := std_logic_vector(op.exp(10 downto 0) + 1023);
-        if op.exp = -1022 then
-          r(52)           := op.mant(54);
-        end if;
-        if is_nan(op) or is_inf(op) then
-          r(62 downto 52) := (others => '1');
-        elsif is_zero(op) then
-          r(62 downto 52) := (others => '0');
-        end if;
-        if is_zero(op) or is_nan(op) or is_inf(op) then
-          r(51 downto 0)  := (others => '0');
-        end if;
-        if is_nan(op) and not is_signan(op) then
-          r(51)           := '1';
-        end if;
-        if is_nan(op) then
-          r(63)           := '0';
-        end if;
-      else
-        assert (op.exp > -127 and op.exp < 128) or not is_normal(op);
-        r(62 downto 55)   := std_logic_vector(op.exp(7 downto 0) + 127);
-        if op.exp = -126 then
-          r(55)           := op.mant(54);
-        end if;
-        if is_nan(op) or is_inf(op) then
-          r(62 downto 55) := (others => '1');
-        elsif is_zero(op) then
-          r(62 downto 55) := (others => '0');
-        end if;
-        r(54 downto 32)   := op.mant(53 downto 31);
-        if is_zero(op) or is_nan(op) or is_inf(op) then
-          r(54 downto 32) := (others => '0');
-        end if;
-        if is_nan(op) and not is_signan(op) then
-          r(54)           := '1';
-        end if;
-        if is_nan(op) then
-          r(63)           := '0';
-        end if;
-        r(31 downto 0)    := r(63 downto 32);
-        r(63 downto 32)   := (others => '1');   -- NaN-boxing
-      end if;
-
-      return r;
-    end pack;
-
-
-    -- Shift mantissa
-    procedure adjust_new(mant_in    : std_logic_vector(55 downto 0);
-                         vadj       : signed(6 downto 0);
-                         mant_out   : out std_logic_vector(55 downto 0);
-                         mant0b_out : out std_logic_vector(0 to 1)) is
-      variable mant0 : std_logic_vector(55 downto 0) := (others => '0');
-      variable xant  : std_logic_vector(55 downto 0) := mant_in;
-      variable xadj  : signed(6 downto 0)            := vadj;
-      variable neg   : boolean                       := vadj(vadj'high) = '1';
-      variable low1  : boolean                       := false;
-    begin
-      if vadj(vadj'high) = '0' then
-        mant0b_out := "00";
-        if all_0(vadj) then
-          mant0b_out := xant(0) & '0';
-        end if;
-        xant       := mant_in;
-        if vadj(5) = '1' then
-          xant := xant(xant'high - 32 downto 0) & mant0(31 downto 0);
-        end if;
-        if vadj(4) = '1' then
-          xant := xant(xant'high - 16 downto 0) & mant0(15 downto 0);
-        end if;
-        if vadj(3) = '1' then
-          xant := xant(xant'high - 8 downto 0) & mant0(7 downto 0);
-        end if;
-        if vadj(2) = '1' then
-          xant := xant(xant'high - 4 downto 0) & mant0(3 downto 0);
-        end if;
-        if vadj(1) = '1' then
-          xant := xant(xant'high - 2 downto 0) & mant0(1 downto 0);
-        end if;
-        if vadj(0) = '1' then
-          xant := xant(xant'high - 1 downto 0) & mant0(0);
-        end if;
-      else
-        xant      := (others => '0');
-        mant0b_out := "00";
-        if vadj < -55 then
-          -- Too large down shift results in 0 (except for bottom rounding bit).
-          if not all_0(mant_in) then
-            mant0b_out := "01";
-            xant(0)    := '1';
-          end if;
-        else
-          xant := mant_in;
-          xadj := -vadj;
-          if xadj(5) = '1' then
-            low1 := low1 or not all_0(xant(31 downto 0));
-            xant := x"00000000" & xant(xant'high downto 32);
-          end if;
-          if xadj(4) = '1' then
-            low1 := low1 or not all_0(xant(15 downto 0));
-            xant := x"0000" & xant(xant'high downto 16);
-          end if;
-          if xadj(3) = '1' then
-            low1 := low1 or not all_0(xant(7 downto 0));
-            xant := x"00" & xant(xant'high downto 8);
-          end if;
-          if xadj(2) = '1' then
-            low1 := low1 or not all_0(xant(3 downto 0));
-            xant := x"0" & xant(xant'high downto 4);
-          end if;
-          if xadj(1) = '1' then
-            low1 := low1 or not all_0(xant(1 downto 0));
-            xant := "00" & xant(xant'high downto 2);
-          end if;
-          if xadj(0) = '1' then
-            low1 := low1 or not all_0(xant(0 downto 0));
-            xant := "0" & xant(xant'high downto 1);
-          end if;
-          mant0b_out := xant(0) & to_bit(low1);
-          -- Note any out-shifted bits at the low end.
-          if low1 then
-            xant(0) := '1';
-          end if;
-        end if;
-      end if;
-
-      mant_out := xant;
-    end;
-
-
-    procedure roundup(op2 : float; dp : boolean; rm : std_logic_vector(2 downto 0);
-                      rndup_out : out std_logic; rndbits_out : out std_logic_vector(2 downto 0)) is
-      variable rndbits : std_logic_vector(2 downto 0) := op2.mant(2 downto 0);
-      variable rndup    : std_logic                   := '0';
-    begin
-      if not dp then
-        rndbits      := op2.mant(31 downto 29);
-        for x in 28 downto 0 loop
-          rndbits(0) := rndbits(0) or op2.mant(x);
-        end loop;
-      end if;
-
-      rndup := '0';
-      case rm is
-        when R_NEAREST =>
-          if rndbits(1) = '1' and (rndbits(0) = '1' or rndbits(2) = '1') then
-            rndup := '1';
-          end if;
-        when R_ZERO =>
-          rndup   := '0';
-        when R_PLUS_INF =>
-          rndup   := not to_bit(op2.neg) and (rndbits(1) or rndbits(0));
-        when R_MINUS_INF =>
-          rndup   := to_bit(op2.neg) and (rndbits(1) or rndbits(0));
-        when others =>  -- R_RMM - to nearest, ties away from zero
-          rndup   := rndbits(1);
-      end case;
-
-      rndup_out   := rndup;
-      rndbits_out := rndbits;
-    end;
-
   begin
     v := r;
+
+    to_idle   := false;
+    to_finish := false;
+    to_addsub := false;
+
+    evt := (others => '0');
+
+    v.now2int := '0';
+    v.exc2int := (others => '0');
+
 
     -- Sometimes reused storage
     divrem  := false;    -- Assume not use
@@ -793,11 +452,7 @@ begin
     fpu_gen(e_inst, csrfrm, e_valid, issue_op);
     issue_cmd := issue_op.valid;
 
-    if r.rddp_real = '1' then
-      defnan := defnan_dp;
-    else
-      defnan := defnan_sp;
-    end if;
+    defnan := NaN(r.rddp_real = '1');
 
     -- S1/S2/S3 data path
 
@@ -874,7 +529,7 @@ begin
       unpackee := r.s3;
     end if;
 
-    unpacked := unpack(unpackee, not r.rddp_real);
+    unpacked := unpack(unpackee, r.rddp_real = '1');
 
     case r.adjustsel is
     when 1 => adjustee := r.op1;
@@ -912,7 +567,8 @@ begin
       vgrd := vgrd or adjusted.mant(q);
     end loop;
     if r.opaction = OPACT_SHFTAS or r.opaction = OPACT_SHFTNS then
-      adjusted.mant(29) := vgrd;
+      adjusted.mant(29)          := vgrd;
+      adjusted.mant(28 downto 0) := (others => '0');
     end if;
 
 
@@ -926,7 +582,7 @@ begin
     roundup(r.op2, r.rddp = '1', r.rm, vrndup, vrndbits);
 
     round_from_denormal := false;
-    if vrndup = '1' then
+    if vrndup then
       if r.rddp = '1' then
         if r.op2.exp = -1023 then
           if all_1(r.op2.mant(53 downto 2)) then
@@ -934,7 +590,7 @@ begin
             round_from_denormal    := true;
           end if;
         else
-          rounded.mant(53 downto 2)  := std_logic_vector(unsigned(r.op2.mant(53 downto 2)) + 1);
+          rounded.mant(53 downto 2)  := uadd(r.op2.mant(53 downto 2), 1);
           if all_1(r.op2.mant(53 downto 2)) then
             rounded.mant(54)         := '1';
             if r.op2.mant(54) = '1' then
@@ -949,7 +605,7 @@ begin
             round_from_denormal    := true;
           end if;
         else
-          rounded.mant(53 downto 31) := std_logic_vector(unsigned(r.op2.mant(53 downto 31)) + 1);
+          rounded.mant(53 downto 31) := uadd(r.op2.mant(53 downto 31), 1);
           if all_1(r.op2.mant(53 downto 31)) then
             rounded.mant(54)         := '1';
             if r.op2.mant(54) = '1' then
@@ -976,7 +632,7 @@ begin
         rounded.mant(0)            := vrndbits(1) or vrndbits(0);
       end if;
       roundup(rounded, r.rddp = '1', r.rm, vrndup, vrndbits);
-      if vrndup = '1' then
+      if vrndup then
         if (r.rddp = '0' and all_1(rounded.mant(53 downto 31))) or
            (r.rddp = '1' and all_1(rounded.mant(53 downto 2))) then
           rounded.mant(53 downto 2) := (others => '0');
@@ -988,9 +644,9 @@ begin
           end if;
         else
           if r.rddp = '0' then
-            rounded.mant(53 downto 31) := std_logic_vector(unsigned(rounded.mant(53 downto 31)) + 1);
+            rounded.mant(53 downto 31) := uadd(rounded.mant(53 downto 31), 1);
           else
-            rounded.mant(53 downto 2)  := std_logic_vector(unsigned(rounded.mant(53 downto 2)) + 1);
+            rounded.mant(53 downto 2)  := uadd(rounded.mant(53 downto 2), 1);
           end if;
         end if;
       end if;
@@ -1053,7 +709,7 @@ begin
       when 1 => normee := r.op1;
       when 2 => normee := r.op2;
     end case;
-    v.opnormadj := find_normadj(normee, r.nalimdp, r.nalimsp, r.naeven);
+    v.opnormadj := find_normadj(normee, r.nalimdp = '1', r.nalimsp = '1', r.naeven = '1');
 
     -- Multiplier/accumulator pipeline
     -- Dealing with 14 bits at a time.
@@ -1105,7 +761,8 @@ begin
 
     -- FPC flow control
     if commit = '1' and holdn = '1' then
-      v.committed := '1';
+      fpu_event(evt, FPEVT_COMMIT);
+      v.committed      := '1';
     end if;
 
     -- Main command FSM
@@ -1129,6 +786,7 @@ begin
 
     case r.s is
       when nf_idle =>
+        v.id          := issue_id;
         v.rd          := issue_op.rd;
         v.rm          := issue_op.rm;
         v.rmb         := issue_op.opx;
@@ -1141,37 +799,48 @@ begin
         v.acclo       := (others => '0');
         v.acclo0      := (others => '0');
         v.accbot      := (others => '0');
-        v.exc         := (others => '0');
         v.inexact     := '0';
         v.fpu_holdn   := '1';
         v.muladd      := '0';
         if issue_cmd = '1' and holdn = '1' then
+          fpu_event(evt, FPEVT_ISSUE);
           v.committed := commit;
-          if issue_op.op = S_LOAD or issue_op.op = R_FMV_W_X then
+          if issue_op.op = FPU_LOAD or issue_op.op = FPU_MV_W_X then
             v.s       := nf_load2;
-          elsif issue_op.op = S_STORE then
-            v.rs1     := issue_op.rs2;
+            if issue_op.op = FPU_LOAD then
+              fpu_event(evt, FPEVT_LOAD);
+            else
+              fpu_event(evt, FPEVT_X2F);
+            end if;
+          elsif issue_op.op = FPU_STORE then
+            v.rs1     := issue_op.rs(2);
             v.ren     := issue_op.ren;
             v.s       := nf_flop0;
-          elsif issue_op.op = R_FCVT_S_W then
-            v.rs2     := issue_op.rs2;  -- Used for instruction disambiguation
+          elsif issue_op.op = FPU_CVT_S_W then
+            v.rs2     := issue_op.rs(2);  -- Used for instruction disambiguation
             v.s       := nf_fromint;
+            fpu_event(evt, FPEVT_I2F);
           else
-            v.rs1     := issue_op.rs1;
-            v.rs2     := issue_op.rs2;
-            v.rs3     := issue_op.rs3;
+            v.rs1     := issue_op.rs(1);
+            v.rs2     := issue_op.rs(2);
+            v.rs3     := issue_op.rs(3);
             v.ren     := issue_op.ren;
             v.s       := nf_flopr;
           end if;
           -- The source is the other size for fcvt.s/d.d/s!
-          if issue_op.op = R_FCVT_S_D then
+          if issue_op.op = FPU_CVT_S_D then
             v.rddp    := issue_op.sp;
           end if;
           -- Some operations require the integer pipeline to wait on completion.
-          if issue_op.op = S_STORE   or issue_op.op = R_FCMP or
-             issue_op.op = R_FMV_X_W or issue_op.op = R_FCVT_W_S then
+          if issue_op.op = FPU_STORE  or issue_op.op = FPU_CMP or
+             issue_op.op = FPU_MV_X_W or issue_op.op = FPU_CVT_W_S then
+            -- Commit will not happen for these!
+            v.committed := '1';
             v.fpu_holdn := '0';
           end if;
+        else
+          -- Staying here!
+          to_idle := true;
         end if;
         -- Some operations will temporarily change r.rddp.
         v.rddp_real     := v.rddp;
@@ -1186,14 +855,15 @@ begin
       when nf_flop0 =>
         v.op1                 := unpacked;
         case r.flop is
-          when S_FMADD | S_FMSUB | S_FNMSUB | S_FNMADD =>
+          when FPU_MADD | FPU_MSUB | FPU_NMSUB | FPU_NMADD =>
             v.ren             := "001";
             v.rs1             := r.rs3;
           when others =>
         end case;
         v.unpacksel           := 2;
-        v.res                 := r.s1;  -- For fmv.x.w and fs*
-        if r.rddp = '0' and r.flop /= R_FSGN and r.flop /= R_FMIN then
+        v.res2int             := r.s1;  -- For fmv.x.w
+        v.res                 := r.s1;  -- For fsgn
+        if r.rddp = '0' and r.flop /= FPU_SGN and r.flop /= FPU_MIN then
           v.res(63 downto 32) := (others => r.s1(31));
         end if;
         v.s                   := nf_flop1;
@@ -1204,24 +874,37 @@ begin
         v.unpacksel     := 3;
         -- Unpack operands
         case r.flop is
-          when S_STORE =>
-            v.res                 := r.s2;
+          when FPU_STORE =>
+            v.res2int             := r.s2;
             if r.rddp = '0' then
-              v.res(63 downto 32) := r.s2(31 downto 0);
+              v.res2int(63 downto 32) := r.s2(31 downto 0);
             end if;
             v.s                   := nf_store2;
-          when S_FMADD | S_FMSUB | S_FNMSUB | S_FNMADD =>
+            fpu_event(evt, FPEVT_STORE);
+          when FPU_MADD | FPU_MSUB | FPU_NMSUB | FPU_NMADD =>
             if no_muladd = 0 then
               v.muladd   := '1';
               v.s        := nf_muladd2;
             else
+              to_idle    := true;
               v.s        := nf_idle;
             end if;
-          when R_FCMP =>
+            fpu_event(evt, FPEVT_MADD);
+          when FPU_CMP =>
             v.s          := nf_cmp2;
-          when R_FMV_X_W =>
+            if r.rmb = R_FEQ then
+              fpu_event(evt, FPEVT_EQ);
+            else
+              fpu_event(evt, FPEVT_CMP);
+            end if;
+          when FPU_MV_X_W =>
             v.s          := nf_mvxw2;
-          when R_FCVT_S_D =>        -- Also D_S
+            if r.rmb = "000" then
+              fpu_event(evt, FPEVT_F2X);
+            else
+              fpu_event(evt, FPEVT_CLASS);
+            end if;
+          when FPU_CVT_S_D =>        -- Also D_S
             -- Swap around for result!
             v.rddp       := not r.rddp;
             v.rddp_real  := v.rddp;
@@ -1231,28 +914,43 @@ begin
             v.op2        := r.op1;
             v.normadjsel := 2;
             v.s          := nf_sd2;
-          when R_FCVT_W_S =>
+            -- qqq Is this the right way around?
+            if r.rddp = '1' then
+              fpu_event(evt, FPEVT_S2D);
+            else
+              fpu_event(evt, FPEVT_D2S);
+            end if;
+          when FPU_CVT_W_S =>
             v.op2       := r.op1;
             v.s         := nf_fstoi2;
-          when R_FSGN =>
+            fpu_event(evt, FPEVT_F2I);
+          when FPU_SGN =>
             v.s         := nf_sgn2;
-          when R_FMIN =>
+            fpu_event(evt, FPEVT_SGN);
+          when FPU_MIN =>
             v.s         := nf_min2;
-          when R_FADD | R_FSUB =>
+            fpu_event(evt, FPEVT_MINMAX);
+          when FPU_ADD | FPU_SUB =>
             v.s         := nf_addsub2;
-          when R_FMUL =>
+            fpu_event(evt, FPEVT_ADD);
+          when FPU_MUL =>
             v.s         := nf_mul2;
-          when R_FDIV =>
+            fpu_event(evt, FPEVT_MUL);
+          when FPU_DIV =>
             v.res       := (others => '0');
             v.s         := nf_div2;
-          when R_FSQRT =>
+            fpu_event(evt, FPEVT_DIV);
+          when FPU_SQRT =>
             v.res       := (others => '0');
             v.op2       := r.op1;
             v.normadjsel := 2;
             v.s         := nf_sqrt2;
             v.naeven    := '1';
+            fpu_event(evt, FPEVT_SQRT);
           when others =>
+            to_idle     := true;
             v.s         := nf_idle;
+            fpu_event(evt, FPEVT_UNKNOWN);
         end case;
 
       when nf_load2 =>
@@ -1268,7 +966,7 @@ begin
             v.res(63 downto 32) := (others => '1');  -- NaN-boxing
           end if;
         end if;
-
+        
       -- S/D_W/WU/L/LU
       when nf_fromint =>
         -- Remember last valid lddata (exception stage)
@@ -1277,8 +975,8 @@ begin
         end if;
         -- Continue when instruction is committed (write-back stage)
         if commit = '1' and holdn = '1' then
-          v.s2 := r.s2;
-          v.s     := nf_fitos2;
+          v.s2      := r.s2;
+          v.s       := nf_fitos2;
           sign      := '0';
           case r.rs2(1 downto 0) is
             when "00" =>  -- _W
@@ -1292,7 +990,7 @@ begin
               null;
           end case;
           if sign = '1' then
-            v.s2 := std_logic_vector(unsigned(not v.s2) + 1);
+            v.s2 := uadd(not v.s2, 1);
           end if;
           -- Take care of top bits with an add later if needed.
           v.op1     := int2ernalh(v.s2, sign = '1');
@@ -1354,14 +1052,14 @@ begin
         -- Also do this for FITOS to get inexact exception check.
         -- Note that fcvt.d.s and fcvt.d.w[u] are always exact and thus do not require rounding.
         if is_normal(r.op2) and
-           not ((v.rddp = '1' and r.flop = R_FCVT_S_D) or
-                (v.rddp = '1' and r.flop = R_FCVT_S_W and (r.rs2 = R_FCVT_W or r.rs2 = R_FCVT_WU))) then
+           not ((v.rddp = '1' and r.flop = FPU_CVT_S_D) or
+                (v.rddp = '1' and r.flop = FPU_CVT_S_W and (r.rs2 = R_FCVT_W or r.rs2 = R_FCVT_WU))) then
           v.s      := nf_round;
         end if;
         -- In case of integer to floating point conversions,
         -- check for any high bits that need to be added.
-        if r.flop = R_FCVT_S_W and not is_zero(r.op1) then
-          v.flop   := R_FADD;
+        if r.flop = FPU_CVT_S_W and not is_zero(r.op1) then
+          v.flop   := FPU_ADD;
           v.comphl := '0';  -- v.op1 _is_ higher
           v.comphe := '0';
           v.compll := '0';
@@ -1380,22 +1078,22 @@ begin
            (r.rs2(1 downto 0) = "11" and r.op2.exp > 63) then  -- _LU
           if is_nan(r.op2) or not r.op2.neg then
             if r.rs2(0) = '1' then     -- _WU or _LU
-              v.res       := x"ffffffffffffffff";
+              v.res2int   := x"ffffffffffffffff";
             else
               if r.rs2(1) = '1' then   -- _L
-                v.res     := x"7fffffffffffffff";
+                v.res2int := x"7fffffffffffffff";
               else
-                v.res     := x"000000007fffffff";
+                v.res2int := x"000000007fffffff";
               end if;
             end if;
           else
             if r.rs2(0) = '1' then     -- _WU or _LU
-              v.res       := x"0000000000000000";
+              v.res2int   := x"0000000000000000";
             else
               if r.rs2(1) = '1' then   -- _L
-                v.res     := x"8000000000000000";
+                v.res2int := x"8000000000000000";
               else
-                v.res     := x"ffffffff80000000";
+                v.res2int := x"ffffffff80000000";
               end if;
             end if;
           end if;
@@ -1417,7 +1115,7 @@ begin
                 v.exc(EXC_NX) := not v.exc(EXC_NV);
               end if;
             else                                                   -- _L
-              -- No faction. Integer part greater than maximum negative?
+              -- No fraction. Integer part greater than maximum negative?
               if not (r.op2.exp = 63 and all_0(r.op2.mant(53 downto 2))) then
                 v.exc(EXC_NV) := '1';
               end if;
@@ -1431,29 +1129,17 @@ begin
             v.s           := nf_finish;
           else
             v.s           := nf_end;
-            if commit = '1' or r.committed = '1' then
-              v.s         := nf_idle;
-            end if;
-            v.fpu_holdn   := '1';
           end if;
         elsif is_zero(r.op2) then
-          v.res           := (others => '0');
-          v.fpu_holdn     := '1';
+          v.res2int       := (others => '0');
           v.s             := nf_end;
-          if commit = '1' or r.committed = '1' then
-            v.s           := nf_idle;
-          end if;
         elsif r.op2.neg and r.op2.exp >= 0 and r.rs2(0) = '1' then   -- _WU or _LU
-          v.res           := zerow64;
+          v.res2int       := zerow64;
           if r.op2.exp >= 0 then
             v.exc(EXC_NV) := '1';
             v.s           := nf_finish;
           else
-            v.fpu_holdn   := '1';
             v.s           := nf_end;
-            if commit = '1' or r.committed = '1' then
-              v.s         := nf_idle;
-            end if;
           end if;
         else
           -- Calculate the amount to shift up to get an exponent of 2^64.
@@ -1463,6 +1149,7 @@ begin
           v.s             := nf_fstoi25;
           v.adjustsel     := 1;
         end if;
+        v.exc2int := v.exc;
 
       when nf_fstoi25 =>
         v.op1       := adjusted;
@@ -1487,10 +1174,7 @@ begin
         -- toward 0                           +11   +12   -11   -12
         -- toward positive infinity           +12   +13   -11   -12
         -- toward negative infinity           +11   +12   -12   -13
-        v.s                   := nf_end;
-        if commit = '1' or r.committed = '1' then
-          v.s                 := nf_idle;
-        end if;
+        v.s         := nf_end;
         roundadd := 0;
         case r.rm is
           when R_ZERO =>
@@ -1517,76 +1201,91 @@ begin
         if r.op2.neg then
           -- _W or _WU?
           if r.rs2(1) = '0' then
-            v.res(31 downto 0)   := std_logic_vector(-signed(r.op2.mant(33 downto 2)));
-            roundchk             := v.res(31);
-            v.res(31 downto 0)   := std_logic_vector(signed(v.res(31 downto 0)) - roundadd);
-            if roundadd = 1 and roundchk = '1' and v.res(31) = '0' then
-              v.res(31 downto 0) := (others => '1');
-              v.exc(EXC_NV)      := '1';
-              v.s                := nf_finish;
+            v.res2int(31 downto 0)   := std_logic_vector(-signed(r.op2.mant(33 downto 2)));
+            roundchk                 := v.res2int(31);
+            v.res2int(31 downto 0)   := std_logic_vector(signed(v.res2int(31 downto 0)) - roundadd);
+            if roundadd = 1 and roundchk = '1' and v.res2int(31) = '0' then
+              v.res2int(31 downto 0) := (others => '1');
+              v.exc(EXC_NV    )      := '1';
+              to_idle                := false;
+              to_finish              := true;
+              v.s                    := nf_finish;
             end if;
           else
-            v.res(51 downto 0)   := r.op2.mant(53 downto 2);
-            v.res(63 downto 52)  := r.op1.mant(53 downto 42);
-            v.res                := std_logic_vector(-signed(v.res));
-            roundchk             := v.res(63);
-            v.res                := std_logic_vector(signed(v.res) - roundadd);
-            if roundadd = 1 and roundchk = '1' and v.res(63) = '0' then
-              v.res              := (others => '1');
+            v.res2int(51 downto 0)   := r.op2.mant(53 downto 2);
+            v.res2int(63 downto 52)  := r.op1.mant(53 downto 42);
+            v.res2int            := std_logic_vector(-signed(v.res2int));
+            roundchk             := v.res2int(63);
+            v.res2int            := std_logic_vector(signed(v.res2int) - roundadd);
+            if roundadd = 1 and roundchk = '1' and v.res2int(63) = '0' then
+              v.res2int          := (others => '1');
               v.exc(EXC_NV)      := '1';
+              to_idle            := false;
+              to_finish          := true;
               v.s                := nf_finish;
             end if;
           end if;
         else
           -- _W or _WU?
           if r.rs2(1) = '0' then
-            v.res(31 downto 0)   := '0' & r.op2.mant(32 downto 2);
+            v.res2int(31 downto 0) := '0' & r.op2.mant(32 downto 2);
             -- _WU (known not to be _LU from just above)
             if r.rs2(0) = '1' then
-              v.res(31)          := r.op2.mant(33);
+              v.res2int(31)        := r.op2.mant(33);
             end if;
-            roundchk             := v.res(31);
-            v.res(31 downto 0)   := v.res(31 downto 0) + roundadd;
+            roundchk               := v.res2int(31);
+            v.res2int(31 downto 0)   := v.res2int(31 downto 0) + roundadd;
             -- When modified due to rounding, ensure that we do not
             -- get any overflow.
             if r.rs2(0) = '0' then   -- _W
-              if roundadd = 1 and roundchk = '0' and v.res(31) = '1' then
-                v.res(31 downto 0) := x"7fffffff";
-                v.exc(EXC_NV)      := '1';
-                v.s                := nf_finish;
+              if roundadd = 1 and roundchk = '0' and v.res2int(31) = '1' then
+                v.res2int(31 downto 0) := x"7fffffff";
+                v.exc(EXC_NV)          := '1';
+                to_idle                := false;
+                to_finish              := true;
+                v.s                    := nf_finish;
               end if;
             else                     -- _WU
-              if roundadd = 1 and roundchk = '1' and v.res(31) = '0' then
-                v.res(31 downto 0) := x"ffffffff";
-                v.exc(EXC_NV)      := '1';
-                v.s                := nf_finish;
+              if roundadd = 1 and roundchk = '1' and v.res2int(31) = '0' then
+                v.res2int(31 downto 0) := x"ffffffff";
+                v.exc(EXC_NV)          := '1';
+                to_idle                := false;
+                to_finish              := true;
+                v.s                    := nf_finish;
               end if;
             end if;
-            v.res(63 downto 32)  := (others => '0');
+            v.res2int(63 downto 32)  := (others => '0');
           else
-            v.res(51 downto 0)   := r.op2.mant(53 downto 2);
-            v.res(63 downto 52)  := r.op1.mant(53 downto 42);
-            roundchk             := v.res(63);
-            v.res                := v.res + roundadd;
-            if roundadd = 1 and roundchk = '1' and v.res(31) = '0' then
-              v.res              := (others => '1');
+            v.res2int(51 downto 0)   := r.op2.mant(53 downto 2);
+            v.res2int(63 downto 52)  := r.op1.mant(53 downto 42);
+            roundchk                 := v.res2int(63);
+            v.res2int                := v.res2int + roundadd;
+            if roundadd = 1 and roundchk = '1' and v.res2int(31) = '0' then
+              v.res2int              := (others => '1');
             end if;
           end if;
         end if;
         -- _W or _WU?
         if r.rs2(1) = '0' then
-          v.res(63 downto 32)   := (others => v.res(31));
+          v.res2int(63 downto 32) := (others => v.res2int(31));
         end if;
         -- _WU or _LU and negative actual result?
-        if r.rs2(0) = '1' and r.op2.neg and v.res(63) = '1' then
-          v.res               := (others => '0');
+        if r.rs2(0) = '1' and r.op2.neg and v.res2int(63) = '1' then
+          v.res2int           := (others => '0');
           v.exc(EXC_NV)       := '1';
+          to_idle             := false;
+          to_finish           := true;
           v.s                 := nf_finish;
         elsif v.exc(EXC_NV) = '0' and r.op2.mant(1 downto 0) /= "00" then
           v.exc(EXC_NX)       := '1';
+          to_idle             := false;
+          to_finish           := true;
           v.s                 := nf_finish;
         end if;
-        v.fpu_holdn           := '1';
+        if to_idle then
+          v.now2int := '1';
+        end if;
+        v.exc2int := v.exc;
 
       when nf_sgn2 =>
         if r.rddp = '0' then
@@ -1599,7 +1298,7 @@ begin
             sign := '0';
           end if;
           case r.rmb is
-            when R_FSGNJ  => v.res(31) := sign; -- and not to_bit(all_0(r.op2.w(30 downto 0)));
+            when R_FSGNJ  => v.res(31) := sign; -- and not all_0(r.op2.w(30 downto 0));
             when R_FSGNJN => v.res(31) := not sign;  -- R_FSGNJX below
             when others   => v.res(31) := v.res(31) xor sign;
           end case;
@@ -1619,21 +1318,21 @@ begin
           v.exc(EXC_NV) := to_bit(is_signan(r.op2) or is_signan(r.op1));
           v.res         := defnan;
         elsif is_inf(r.op1) and is_inf(r.op2) and
-              (r.flop = R_FSUB xor r.op1.neg xor r.op2.neg) then
+              (r.flop = FPU_SUB xor r.op1.neg xor r.op2.neg) then
           -- inf - inf = NaN
           v.res         := defnan;
           v.s           := nf_opdone;
           v.exc(EXC_NV) := '1';
         elsif is_inf(r.op2) then
           v.s           := nf_repack;
-          if r.flop = R_FSUB then
+          if r.flop = FPU_SUB then
             v.op2.neg   := not r.op2.neg;
           end if;
         elsif is_inf(r.op1) then
           v.s           := nf_repack;
           v.op2         := r.op1;
         elsif r.comphe = '1' and r.comple = '1' and
-              (r.flop = R_FSUB xor r.op1.neg xor r.op2.neg) then
+              (r.flop = FPU_SUB xor r.op1.neg xor r.op2.neg) then
           -- Sum to zero
           v.s           := nf_opdone;
           v.res         := (others => '0');
@@ -1652,12 +1351,12 @@ begin
           v.op2         := r.op1;
         elsif is_zero(r.op1) then
           v.s           := nf_repack;
-          if r.flop = R_FSUB then
+          if r.flop = FPU_SUB then
             v.op2.neg  := not r.op2.neg;
           end if;
         else
           v.addneg      := '0';
-          if r.flop = R_FSUB xor r.op1.neg xor r.op2.neg then
+          if r.flop = FPU_SUB xor r.op1.neg xor r.op2.neg then
             v.addneg    := '1';
           end if;
           -- Make sure the bigger argument in terms of magnitude is in op2,
@@ -1800,7 +1499,13 @@ begin
         v.s         := nf_round;
         -- Restore actual float type, in case it
         -- was changed to do float muladd.
-        v.rddp      := v.rddp_real;
+        v.rddp      := r.rddp_real;
+        -- Keep them different, to allow check in nf_round!
+        v.rddp_real := r.rddp;
+--        if r.rddp_real = '0' then
+--          v.op2.mant(29) := to_bit(not all_0(v.op2.mant(29 downto 0)));
+--          v.op2.mant(28 downto 0) := (others => '0');
+--        end if;
 
       when nf_mul2 =>
         if is_signan(r.op2) or is_signan(r.op1) or mul_illegal(r.op1, r.op2) then
@@ -1835,16 +1540,20 @@ begin
 
       when nf_mul3 =>
         v.op2         := adjusted;
-        -- Normalization done in this stage
-        v.s           := nf_mul4;
-        v.shftpl      := '0';
-        -- If sources are single precision we can skip ahead in the sequence.
-        v.mulctrlim   := "00";
-        if r.rddp = '0' then
-          v.mulctrlim := "10";
+        if extmul = 0 then
+          -- Normalization done in this stage
+          v.s           := nf_mul4;
+          v.shftpl      := '0';
+          -- If sources are single precision we can skip ahead in the sequence.
+          v.mulctrlim   := "00";
+          if r.rddp = '0' then
+            v.mulctrlim := "10";
+          end if;
+          v.mulctr1     := v.mulctrlim;
+          v.mulctr2     := v.mulctrlim;
+        else
+          v.s := nf_mul5;
         end if;
-        v.mulctr1     := v.mulctrlim;
-        v.mulctr2     := v.mulctrlim;
 
       -- dp lim 0
       --   01 02 103 210 3213 23 3
@@ -1874,15 +1583,26 @@ begin
         end if;
 
       when nf_mul5 =>
-        -- Finish multiplier pipeline
-        v.mulen                    := '0';
-        v.shftpl2                  := '0';
-        if r.accen = '0' then
-          -- Copy result into op2
-          -- Leading one could be in either bit 27 or 26 of accumulator.
-          assert r.acc(29 downto 28) = "00";
-          v.op2.mant(55 downto 28) := std_logic_vector(r.acc(27 downto 0));
-          v.op2.mant(27 downto 0)  := std_logic_vector(r.acclo);
+        if extmul = 0 then
+          -- Finish multiplier pipeline
+          v.mulen                    := '0';
+          v.shftpl2                  := '0';
+          if r.accen = '0' then
+            -- Copy result into op2
+            -- Leading one could be in either bit 27 or 26 of accumulator.
+            assert r.acc(29 downto 28) = "00";
+            v.op2.mant(55 downto 28) := std_logic_vector(r.acc(27 downto 0));
+            v.op2.mant(27 downto 0)  := std_logic_vector(r.acclo);
+          end if;
+        else
+          if muldone = '1' then
+            v.op2.mant := mulmant;
+            v.accbot   := unsigned(mulbottom);
+            v.acclo0   := unsigned(mullo0);
+          end if;
+        end if;
+        if (extmul = 0 and r.accen = '0') or
+           (extmul = 1 and muldone = '1') then
           -- Adjust exponent
           v.op2.exp                := r.op2.exp + r.op1.exp;
           v.s                      := nf_mul6;
@@ -1976,15 +1696,13 @@ begin
         divrem      := true;
         -- Run division using basic radix-2 algorithm.
         -- Subtract divisor from remainder.
-        vtmpadd     := unsigned('0' & r.op1.mant(27 downto 0)) -
-                       unsigned('0' & r.op2.mant(27 downto 0));
+        vtmpadd     := usubx(r.op1.mant(27 downto 0), r.op2.mant(27 downto 0));
         divrem2     := vtmpadd;
         v.divcmp2   := '0';
         if all_0(vtmpadd) then
           v.divcmp2 := '1';
         end if;
-        vtmpadd     := unsigned('0' & r.op1.mant(55 downto 28)) -
-                       unsigned('0' & r.op2.mant(55 downto 28));
+        vtmpadd     := usubx(r.op1.mant(55 downto 28), r.op2.mant(55 downto 28));
         divrem1     := vtmpadd;
         v.divcmp1   := '0';
         if all_0(vtmpadd) then
@@ -2011,16 +1729,14 @@ begin
           end if;
           v.op1.mant(28 downto 1)    := std_logic_vector(divrem2(27 downto 0));
           v.op1.mant(0)              := '0';
-          vtmpadd                    := unsigned('0' & divrem1(26 downto 0) & '0') -
-                                        unsigned('0' & r.op2.mant(55 downto 28));
+          vtmpadd                    := usubx(divrem1(26 downto 0) & '0', r.op2.mant(55 downto 28));
         else
           assert r.op1.mant(55) = '0';
           v.op1.mant                 := r.op1.mant(54 downto 0) & '0';
           if r.divfirst = '1' then
             v.op2.exp                := r.op2.exp - 1;
           end if;
-          vtmpadd                    := unsigned(r.op1.mant(55 downto 28) & '0') -
-                                        unsigned('0' & r.op2.mant(55 downto 28));
+          vtmpadd                    := usub(r.op1.mant(55 downto 28) & '0', '0' & r.op2.mant(55 downto 28));
         end if;
 
         v.s         := nf_div4;
@@ -2046,8 +1762,8 @@ begin
             v.op2.mant(55 downto 31) := "01" & r.res(22 downto 0);
             v.op2.mant(30)           := v.res(0);
             v.op2.mant(29 downto 1)  := (others => '0');
-            v.expadj                 := r.op2.exp + 126;
-            if r.op2.exp < -126 then
+            v.expadj                 := r.op2.exp + 127;
+            if r.op2.exp < -127 then
               v.s                    := nf_div6;
               v.opaction             := OPACT_SHFTA;
               v.adjustsel            := 2;
@@ -2055,8 +1771,8 @@ begin
           else
             v.op2.mant(55 downto 2)  := "01" & r.res(51 downto 0);
             v.op2.mant(1)            := v.res(0);
-            v.expadj                 := r.op2.exp + 1022;
-            if r.op2.exp < -1022 then
+            v.expadj                 := r.op2.exp + 1023;
+            if r.op2.exp < -1023 then
               v.s                    := nf_div6;
               v.opaction             := OPACT_SHFTA;
               v.adjustsel            := 2;
@@ -2247,16 +1963,14 @@ begin
         if r.accen = '0' then
           assert r.acc(29 downto 28) = "00";
           -- Subtract input from mul result
-          vtmpadd     := unsigned('0' & r.acclo) -
-                         unsigned('0' & r.op2.mant(27 downto 0));
+          vtmpadd     := usubx(r.acclo, r.op2.mant(27 downto 0));
           divrem2     := vtmpadd;
           -- Exact match for low bits?
           v.divcmp2   := '0';
           if all_0(vtmpadd) then
             v.divcmp2 := '1';
           end if;
-          vtmpadd     := unsigned('0' & r.acc(27 downto 0)) -
-                         unsigned('0' & r.op2.mant(55 downto 28));
+          vtmpadd     := usubx(r.acc(27 downto 0), r.op2.mant(55 downto 28));
           divrem1     := vtmpadd;
           -- Exact match for high bits?
           v.divcmp1   := '0';
@@ -2315,14 +2029,17 @@ begin
         end if;
         v.s      := nf_repack;
         -- Too small numbers can be the result of muladd sp as dp.
-        if no_muladd = 0 and r.muladd = '1' and r.rddp = '0' and is_normal(r.op2) and r.op2.exp < -126 then
+        if no_muladd = 0 and r.muladd = '1' and r.rddp /= r.rddp_real and
+           is_normal(r.op2) and r.op2.exp < -126 then
+          -- Do not go another loop here - so mark these equal!
+          v.rddp_real := r.rddp;
           -- Restore unrounded value and flags
           v.op2       := r.op2;
           v.exc       := r.exc;
           -- Adjust to denormal
-          v.expadj    := r.op2.exp + 126;
+          v.expadj    := r.op2.exp + 127;
           v.adjustsel := 2;
-          v.opaction  := OPACT_SHFTA;
+          v.opaction  := OPACT_SHFTAS;
           v.s         := nf_round2;
         end if;
 
@@ -2343,14 +2060,14 @@ begin
             v.res(31 - 8)  := '0';
           end if;
         else
-          v.res            := pack(r.op2, not r.rddp);
+          v.res            := pack(r.op2, r.rddp = '1');
           if r.exc(EXC_UF) = '1' and is_zero(r.op2) and
             ((r.rm = R_PLUS_INF  and not r.op2.neg) or
              (r.rm = R_MINUS_INF and r.op2.neg)) then
             v.res(0)       := '1';
           end if;
           -- Some operations do not produce UF exceptions on denormals.
-          if r.flop = R_FSGN then
+          if r.flop = FPU_SGN then
             v.exc(EXC_UF)  := '0';
           end if;
         end if;
@@ -2382,74 +2099,76 @@ begin
         v.s              := nf_opdone;
 
       when nf_store2 =>
-        v.fpu_holdn := '1';
         v.s         := nf_end;
-        if commit = '1' or r.committed = '1' then
-          v.s       := nf_idle;
-        end if;
 
       when nf_cmp2 =>
         -- R_FEQ is a quiet comparison (not NV for non-signalling NaN).
         if (is_signan(r.op1) or is_signan(r.op2) or
             (r.rmb /= R_FEQ and (is_nan(r.op1) or is_nan(r.op2)))) then
-          v.exc(EXC_NV) := '1';
+          v.exc(EXC_NV)  := '1';
         end if;
-        v.res           := (others => '0');
+        v.res2int        := (others => '0');
         -- Result is always 0 when one input is NaN.
         if not (is_nan(r.op1) or is_nan(r.op2)) then
           -- Check all comparison operations.
           if (r.rmb = R_FEQ and fcc  = "00") or
              (r.rmb = R_FLT and fcc  = "01") or
              (r.rmb = R_FLE and fcc /= "10") then
-            v.res(0)    := '1';
+            v.res2int(0) := '1';
           end if;
         end if;
-        v.s             := nf_finish;
+        v.exc2int        := v.exc;
+        v.s              := nf_finish;
 
       when nf_mvxw2 =>
         -- This is always the rm field in the instruction here.
         if r.rmb = R_CLASS then
-          v.res          := (others => '0');
+          v.res2int          := (others => '0');
           --  Exponent all 1 - infinity (frac 0) or NaN
           if is_nan(r.op1) then
-            v.res(9)     := to_bit(not is_signan(r.op1));      -- Quiet NaN
-            v.res(8)     := to_bit(is_signan(r.op1));
+            v.res2int(9)     := to_bit(not is_signan(r.op1));      -- Quiet NaN
+            v.res2int(8)     := to_bit(is_signan(r.op1));
           else
             if is_inf(r.op1) then
-              n          := 0;
+              n              := 0;
             elsif is_zero(r.op1) then
-              n          := 3;
+              n              := 3;
             elsif r.op1.mant(54) = '0' then
-              n          := 2;   -- Denormal
+              n              := 2;   -- Denormal
             else
-              n          := 1;   -- Normal
+              n              := 1;   -- Normal
             end if;
-            v.res(n)     := to_bit(r.op1.neg);
-            v.res(7 - n) := not to_bit(r.op1.neg);
+            v.res2int(n)     := to_bit(r.op1.neg);
+            v.res2int(7 - n) := not to_bit(r.op1.neg);
           end if;
         elsif r.rmb = "000" then   -- fmv.x.w/d
-          -- v.res already contains the incoming rs1 value.
+          -- v.res2int already contains the incoming rs1 value.
           if r.rddp = '0' then
             -- Extend sign bit when moving 32 bit float.
-            v.res(63 downto 32) := (others => r.res(31));
+            v.res2int(63 downto 32) := (others => r.res2int(31));
           end if;
         end if;
+        v.exc2int        := v.exc;
         v.s              := nf_finish;
 
+      -- When doing integer returns, flags are passed along,
+      -- not written via flags_wen.
+      -- Make sure we have a cycle with flags but still asserted fpu_holdn.
       when nf_finish =>
+        v.exc2int     := r.exc2int;
+        v.now2int   := '1';
         v.fpu_holdn := '1';
-        v.flags_wen := '1';
-        v.s         := nf_end;
-        if commit = '1' or r.committed = '1' then
-          v.s       := nf_idle;
-        end if;
+        to_idle     := true;
+        v.s         := nf_idle;
 
       -- Done, but return to nf_idle before instruction actually
       -- commits runs the risk of mixup with the next instruction.
       when nf_end =>
-        if commit = '1' or r.committed = '1' then
-          v.s := nf_idle;
-        end if;
+        v.fpu_holdn := '1';
+        v.exc2int   :=  r.exc2int;
+        v.now2int := '1';
+        to_idle   := true;
+        v.s       := nf_idle;
 
       -- Finish and write back result when committed
       when nf_opdone =>
@@ -2464,6 +2183,7 @@ begin
 
       when nf_rdwrite2 =>
         v.fpu_holdn := '1';
+        to_idle     := true;
         v.s         := nf_idle;
 
       when others =>
@@ -2488,8 +2208,8 @@ begin
         elsif is_nan(unpacked) then
           v.res          := defnan;
           v.s            := nf_opdone;
-        elsif ((r.flop = S_FMADD or r.flop = S_FNMADD) and add_illegal(inf_1x2, unpacked))          or
-              ((r.flop = S_FMSUB or r.flop = S_FNMSUB) and add_illegal(inf_1x2, inf_neg(unpacked))) then
+        elsif ((r.flop = FPU_MADD or r.flop = FPU_NMADD) and add_illegal(inf_1x2, unpacked))          or
+              ((r.flop = FPU_MSUB or r.flop = FPU_NMSUB) and add_illegal(inf_1x2, inf_neg(unpacked))) then
           v.exc(EXC_NV)  := '1';
           v.res          := defnan;
           v.s            := nf_opdone;
@@ -2498,12 +2218,12 @@ begin
           v.op2.neg      := false;
           if is_inf(r.op1) or is_inf(r.op2) then
             v.op2.neg    := inf_1x2.neg;
-          elsif ((r.flop = S_FMADD or r.flop = S_FNMADD) and unpacked.neg)     or
-                ((r.flop = S_FMSUB or r.flop = S_FNMSUB) and not unpacked.neg) then
+          elsif ((r.flop = FPU_MADD or r.flop = FPU_NMADD) and unpacked.neg)     or
+                ((r.flop = FPU_MSUB or r.flop = FPU_NMSUB) and not unpacked.neg) then
             v.op2.neg    := true;
           end if;
-          -- These are the opposites of S_FMADD/SUB
-          if r.flop = S_FNMADD or r.flop = S_FNMSUB then
+          -- These are the opposites of FPU_MADD/SUB
+          if r.flop = FPU_NMADD or r.flop = FPU_NMSUB then
             v.op2.neg    := not v.op2.neg;
           end if;
           v.s            := nf_repack;
@@ -2511,15 +2231,15 @@ begin
           v.op2          := unpacked;
           if is_zero(unpacked) then
             v.op2.neg    := r.op1.neg xor r.op2.neg;
-            if r.flop = S_FNMADD or r.flop = S_FNMSUB then
+            if r.flop = FPU_NMADD or r.flop = FPU_NMSUB then
               v.op2.neg  := not v.op2.neg;
             end if;
-            if ((r.flop = S_FMADD  or r.flop = S_FNMSUB) and v.op2.neg /= unpacked.neg) or
-               ((r.flop = S_FNMADD or r.flop = S_FMSUB)  and v.op2.neg  = unpacked.neg) then
+            if ((r.flop = FPU_MADD  or r.flop = FPU_NMSUB) and v.op2.neg /= unpacked.neg) or
+               ((r.flop = FPU_NMADD or r.flop = FPU_MSUB)  and v.op2.neg  = unpacked.neg) then
               v.op2.neg  := r.rm = R_MINUS_INF;
             end if;
           else
-            if r.flop = S_FMSUB or r.flop = S_FNMADD then
+            if r.flop = FPU_MSUB or r.flop = FPU_NMADD then
               v.op2.neg  := not v.op2.neg;
             end if;
           end if;
@@ -2529,18 +2249,18 @@ begin
           v.adjustsel    := 1;
           v.opaction     := OPACT_SHFTN;
           -- Handle all as fmadd
-          v.flop         := S_FMADD;
+          v.flop         := FPU_MADD;
           -- All negations handled here
           v.op2.neg      := r.op1.neg xor r.op2.neg;
-          if r.flop = S_FNMADD or r.flop = S_FNMSUB then
+          if r.flop = FPU_NMADD or r.flop = FPU_NMSUB then
             v.op2.neg    := not v.op2.neg;
           end if;
-          if r.flop = S_FNMADD or r.flop = S_FMSUB then
+          if r.flop = FPU_NMADD or r.flop = FPU_MSUB then
             v.op3neg     := not unpacked.neg;
           end if;
           -- If no add, handle as mul.
           if is_zero(unpacked) then
-            v.flop       := R_FMUL;
+            v.flop       := FPU_MUL;
             v.muladd     := '0';
           -- Handle float muladd as if it was double, to deal with precision.
           elsif r.rddp = '0' then
@@ -2563,7 +2283,7 @@ begin
         if v.op1.exp < r.op2.exp then
           v.comphl := '1';
         end if;
-        if v.op1.mant < r.op2.mant then
+        if unsigned(v.op1.mant) < unsigned(r.op2.mant) then
           v.compll := '1';
         end if;
         -- Also need to check for equivalence since addsub2 expects it.
@@ -2578,7 +2298,8 @@ begin
             v.compll := '1';
           end if;
         end if;
-        v.flop := R_FADD;
+        v.flop := FPU_ADD;
+        to_addsub := true;
         v.s    := nf_addsub2;
         -- When double precision, special handling is needed if
         -- op2 (multiplication result) is larger and has low bits
@@ -2589,20 +2310,24 @@ begin
         if r.rddp_real = '1' and not op2low0 then
           -- Addend same or smaller magnitude?
           if v.comphl = '1' or v.comphe = '1' then
+            to_addsub := false;
             v.s  := nf_muladd_xadd;
           end if;
           -- Subtract can cancel bits even if exponent is one less.
           if v.op1.neg /= r.op2.neg then
             if v.op1.exp = r.op2.exp - 1 then
+              to_addsub := false;
               v.s  := nf_muladd_xadd;
             end if;
             if v.op1.exp = r.op2.exp + 1 then
+              to_addsub := false;
               v.s  := nf_muladd_xadd;
             end if;
+            to_addsub := false;
             v.s  := nf_muladd_xadd;
           end if;
         end if;
-        if v.s = nf_addsub2 then
+        if to_addsub then
         else
           -- Set actual low bit, since the rest is in r.accbot.
           v.op2.mant(0) := std_logic(r.acclo0(0));
@@ -2722,9 +2447,9 @@ begin
         -- Magnitude of result is the large one
         v.op2.exp    := v.op1.exp;
         if r.addneg = '0' then
-          xtmpaddx := unsigned('0' & r.s1(r.accbot'range)) + unsigned('0' & r.s2(r.accbot'range));
+          xtmpaddx := uaddx(r.s1(r.accbot'range), r.s2(r.accbot'range));
         else
-          xtmpaddx := unsigned('0' & r.s1(r.accbot'range)) - unsigned('0' & r.s2(r.accbot'range));
+          xtmpaddx := usubx(r.s1(r.accbot'range), r.s2(r.accbot'range));
           if r.inexact = '1' then
             xtmpaddx := xtmpaddx - 1;
           end if;
@@ -2825,9 +2550,9 @@ begin
         -- Need to check if this is actually exact.
         if all_0(r.opnormadj) then
           v.op2.mant(1) := r.s2(r.accbot'high + 2);
-          v.op2.mant(0) := v.op2.mant(0) or to_bit(not all_0(r.s2(r.accbot'high + 1 downto 0)));
+          v.op2.mant(0) := v.op2.mant(0) or not all_0(r.s2(r.accbot'high + 1 downto 0));
         else
-          v.op2.mant(0) := v.op2.mant(0) or to_bit(not all_0(r.s2(r.accbot'high + 2 downto 0)));
+          v.op2.mant(0) := v.op2.mant(0) or not all_0(r.s2(r.accbot'high + 2 downto 0));
         end if;
         -- If we had an add, any out-shifted bits must go into sticky.
         if r.addneg = '0' then
@@ -2855,12 +2580,15 @@ begin
       when others => null;
     end case;
   else
+    to_idle := true;
     v.s := nf_idle;
   end if;
     end case;
 
 
-    if unissue(2 to 4) /= "000" then
+    if unissue = '1' then
+      fpu_event(evt, FPEVT_UNISSUE_1ST);
+      to_idle     := true;
       v.s         := nf_idle;
       v.fpu_holdn := '1';
       v.wen       := '0';
@@ -2869,8 +2597,11 @@ begin
 
     -- Generate flow control flags
     v.readyflop   := '0';
-    if v.s = nf_idle then --or v.s = nf_rdwrite2 then
+    is_idle       := '0';
+    -- Always when going to idle, but less logic.
+    if to_idle then
       v.readyflop := '1';
+      is_idle     := '1';
     end if;
 
     if GRLIB_CONFIG_ARRAY(grlib_async_reset_enable)    = 0 and
@@ -2896,26 +2627,54 @@ begin
       v.s1(28 + 32 downto 32) := std_logic_vector(divrem2);
     end if;
 
-      v.op1.w := (others => '0');
-      v.op2.w := (others => '0');
+--jk      v.op1.w := (others => '0');
+--jk      v.op2.w := (others => '0');
 
-    -- Signal assignments
+    v.events_pipe := r.events;
+    v.events      := evt;
+
+  -- Signal assignments
+
     rin          <= v;
-    ready_flop   <= r.readyflop;
+    ready_flop   <= v.readyflop;
     fpu_holdn    <= v.fpu_holdn;
-    issue_id     <= (others => '0');
+    idle         <= is_idle;
     rd           <= r.rd;
     wen          <= r.wen;
+    if notx(v.res) then
+      stdata     <= v.res;
+    else
+      stdata     <= (others => '0');
+    end if;
     flags_wen    <= r.flags_wen;
-    stdata       <= v.res;
     flags        <= r.exc;
+    now2int      <= v.now2int;
+    id2int       <= r.id;
+    if notx(r.res2int) then
+      stdata2int <= r.res2int;
+    else
+      stdata2int <= (others => '0');
+    end if;
+    flags2int    <= r.exc2int;
     wb_mode      <= r.mode;
-    wb_id        <= (others => '0');
+    wb_id        <= r.id;
 
     rs1          <= v.rs1;
     rs2          <= v.rs2;
     rs3          <= v.rs3;
     ren          <= (v.ren(1) or v.ren(2) or v.ren(3)) & "00";
+
+    if extmul = 1 then
+      mulsrc     <= adjusted.mant;
+      multiply   <= to_bit(r.s = nf_mul3);
+      mulrddp    <= r.rddp;
+    end if;
+
+    events       <= uext(r.events_pipe, events'length);
+
+  -- For debugging
+    state_d      <= std_logic_vector(to_unsigned(nanofpu_state'pos(v.s), state_d'length));
+
   end process;
 
   srstregs: if GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 0 generate

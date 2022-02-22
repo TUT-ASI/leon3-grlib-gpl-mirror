@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -71,7 +71,7 @@ begin  -- rtl
 
   inp.fe_wdata <= byte_swap(fe_wdata) when endian = '0' else fe_wdata;
 
-  comb : process(r, fifo_wc_in, inp)
+  comb : process(r, fifo_wc_in, inp, endian )
     variable v          : reg_type;
     variable shift_data : std_logic;
     variable read_data  : std_logic_vector(be_dw-1 downto 0);

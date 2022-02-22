@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -117,6 +117,126 @@ component l2c_axi_be is
     ahbso : out ahb_slv_out_type;
     aximi : in  axi_somi_type;
     aximo : out axi_mosi_type;
+    sto   : out std_logic_vector(10 downto 0);
+    debugo: out std_logic_vector(255*debug downto 0)
+    );
+end component;
+
+component l2c_axix_be is
+  generic (
+    hslvidx     : integer := 0;
+    axiid       : integer := 0;
+    haddr       : integer := 16#F00#;
+    hmask       : integer := 16#F00#;
+    ioaddr      : integer := 16#000#;
+    cached      : integer := 16#0000#;
+    hirq        : integer := 0;
+    cen         : integer range 0 to 1 := 0;
+    hproten     : integer range 0 to 1 := 0;
+    wp          : integer range 0 to 1 := 0;
+    repl        : integer range 0 to 1 := 0;
+    ways        : integer range 1 to 4 := 1;
+    linesize    : integer range 16 to 64 := 32;
+    waysize     : integer range 1 to 512 := 1;
+    memtech     : integer range 0 to NTECH := 0;
+    sbus        : integer := 0;
+    mbus        : integer := 1;
+    stat        : integer range 0 to 2 := 0;
+    scantest    : integer := 0;
+    arch        : integer := 0;
+    mtrr        : integer := 0;
+    edacen      : integer range 0 to 1 := 0;
+    rmw         : integer range 0 to 1 := 0;
+    ft          : integer range 0 to 3 := 0;
+    fttiming    : integer range 0 to 1 := 0;
+    debug       : integer range 0 to 1 := 0);
+  port (
+    rst   : in  std_ulogic;
+    clk   : in  std_ulogic;
+    ahbsi : in  ahb_slv_in_type;
+    ahbso : out ahb_slv_out_type;
+    aximi : in  axi_somi_type;
+    aximo : out axix_mosi_type;
+    sto   : out std_logic_vector(10 downto 0);
+    debugo: out std_logic_vector(255*debug downto 0)
+    );
+end component;
+
+component l2c_axi3_be is
+  generic (
+    hslvidx     : integer := 0;
+    axiid       : integer := 0;
+    haddr       : integer := 16#F00#;
+    hmask       : integer := 16#F00#;
+    ioaddr      : integer := 16#000#;
+    cached      : integer := 16#0000#;
+    hirq        : integer := 0;
+    cen         : integer range 0 to 1 := 0;
+    hproten     : integer range 0 to 1 := 0;
+    wp          : integer range 0 to 1 := 0;
+    repl        : integer range 0 to 1 := 0;
+    ways        : integer range 1 to 4 := 1;
+    linesize    : integer range 16 to 64 := 32;
+    waysize     : integer range 1 to 512 := 1;
+    memtech     : integer range 0 to NTECH := 0;
+    sbus        : integer := 0;
+    mbus        : integer := 1;
+    stat        : integer range 0 to 2 := 0;
+    scantest    : integer := 0;
+    arch        : integer := 0;
+    mtrr        : integer := 0;
+    edacen      : integer range 0 to 1 := 0;
+    rmw         : integer range 0 to 1 := 0;
+    ft          : integer range 0 to 3 := 0;
+    fttiming    : integer range 0 to 1 := 0;
+    debug       : integer range 0 to 1 := 0);
+  port (
+    rst   : in  std_ulogic;
+    clk   : in  std_ulogic;
+    ahbsi : in  ahb_slv_in_type;
+    ahbso : out ahb_slv_out_type;
+    aximi : in  axi_somi_type;
+    aximo : out axi3_mosi_type;
+    sto   : out std_logic_vector(10 downto 0);
+    debugo: out std_logic_vector(255*debug downto 0)
+    );
+end component;
+
+component l2c_axi4_be is
+  generic (
+    hslvidx     : integer := 0;
+    axiid       : integer := 0;
+    haddr       : integer := 16#F00#;
+    hmask       : integer := 16#F00#;
+    ioaddr      : integer := 16#000#;
+    cached      : integer := 16#0000#;
+    hirq        : integer := 0;
+    cen         : integer range 0 to 1 := 0;
+    hproten     : integer range 0 to 1 := 0;
+    wp          : integer range 0 to 1 := 0;
+    repl        : integer range 0 to 1 := 0;
+    ways        : integer range 1 to 4 := 1;
+    linesize    : integer range 16 to 64 := 32;
+    waysize     : integer range 1 to 512 := 1;
+    memtech     : integer range 0 to NTECH := 0;
+    sbus        : integer := 0;
+    mbus        : integer := 1;
+    stat        : integer range 0 to 2 := 0;
+    scantest    : integer := 0;
+    arch        : integer := 0;
+    mtrr        : integer := 0;
+    edacen      : integer range 0 to 1 := 0;
+    rmw         : integer range 0 to 1 := 0;
+    ft          : integer range 0 to 3 := 0;
+    fttiming    : integer range 0 to 1 := 0;
+    debug       : integer range 0 to 1 := 0);
+  port (
+    rst   : in  std_ulogic;
+    clk   : in  std_ulogic;
+    ahbsi : in  ahb_slv_in_type;
+    ahbso : out ahb_slv_out_type;
+    aximi : in  axi_somi_type;
+    aximo : out axi4_mosi_type;
     sto   : out std_logic_vector(10 downto 0);
     debugo: out std_logic_vector(255*debug downto 0)
     );

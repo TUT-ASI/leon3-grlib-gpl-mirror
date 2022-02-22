@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -81,9 +81,12 @@ use gaisler.utilnv.s2i;
 use gaisler.utilnv.u2i;
 use gaisler.utilnv.u2slv;
 use gaisler.utilnv.get;
+use gaisler.utilnv.get_hi;
 use gaisler.utilnv.set;
+use gaisler.utilnv.set_hi;
 use gaisler.utilnv.all_1;
 use gaisler.utilnv.all_0;
+use gaisler.utilnv.uadd;
 use gaisler.utilnv.uadd_range;
 use gaisler.utilnv.lo_h;
 use gaisler.utilnv.hi_h;
@@ -248,7 +251,6 @@ architecture rtl of cctrlnv is
 
   -- Guest physical address
   constant ga  : std_logic_vector(ga_msb downto 0)  := (others => '0');
---  constant gpn : std_logic_vector(ga_msb downto 12) := (others => '0');
 
   -- Incoming addresses have, at maximum, this many useful bits.
   function addr_bits return integer is
@@ -264,7 +266,6 @@ architecture rtl of cctrlnv is
   -- To PT lookup
   -- Virtual address or guest physical address.
   constant gva : std_logic_vector(gva_msb downto 0)  := (others => '0');
---  constant gvn : std_logic_vector(gva_msb downto 12) := (others => '0');
 
   -- From PT lookup
   -- Guest physical address or actual physical address.
@@ -291,18 +292,24 @@ architecture rtl of cctrlnv is
     return gaisler.mmucacheconfig.pte_hsize(riscv_mmu);
   end;
 
-  function va_size_tmp return gaisler.mmucacheconfig.va_bits is
+  function va_size(index : integer) return integer is
+  begin
+    return gaisler.mmucacheconfig.va_size(riscv_mmu, index);
+  end;
+
+  function va_size return integer is
   begin
     return gaisler.mmucacheconfig.va_size(riscv_mmu);
   end;
-  constant va_size : gaisler.mmucacheconfig.va_bits := va_size_tmp;
+
+  constant va_size_a : gaisler.mmucacheconfig.va_bits(1 to va_size) := (others => 0);
 
   function is_pt_invalid(data : std_logic_vector) return boolean is
   begin
     return gaisler.mmucacheconfig.is_pt_invalid(riscv_mmu, data);
   end;
 
-  function is_valid_pte(data     : std_logic_vector; mask : std_logic_vector;
+  function is_valid_pte(data    : std_logic_vector; mask : std_logic_vector;
                         maxaddr : integer range 32 to 56) return boolean is
   begin
     return gaisler.mmucacheconfig.is_valid_pte(riscv_mmu, data, mask, maxaddr);
@@ -330,21 +337,6 @@ architecture rtl of cctrlnv is
   constant sv48  : integer := 3;
 
   type va_bits is array (integer range <>) of integer;
-
-
-  function va_sizet(what : va_type) return va_bits is
-    variable SZ_SPARC : va_bits(1 to 3) := (8, 6, 6);    -- 8 + 6 + 6     + 12 = 32 bits
-    variable SZ_SV32  : va_bits(1 to 2) := (10, 10);     -- 10 + 10       + 12 = 32
-    variable SZ_SV39  : va_bits(1 to 3) := (9, 9, 9);    -- 9 + 9 + 9     + 12 = 39
-    variable SZ_SV48  : va_bits(1 to 4) := (9, 9, 9, 9); -- 9 + 9 + 9 + 9 + 12 = 48
-  begin
-    case what is
-      when sv32   => return SZ_SV32;
-      when sv39   => return SZ_SV39;
-      when sv48   => return SZ_SV48;
-      when others => return SZ_SPARC;
-    end case;
-  end;
 
   -- Returns address of page table entry.
   -- Returned address is 64 bit long and must be cut down to size by caller.
@@ -379,7 +371,7 @@ architecture rtl of cctrlnv is
       pos := 12;
       for i in mask'length downto 1 loop
         if i > u2i(code) then
-          pos := pos + va_sizet(riscv_mmu)(i);
+          pos := pos + va_size(i);
         end if;
       end loop;
 
@@ -433,7 +425,8 @@ architecture rtl of cctrlnv is
       -- Any 0:s will be in a row from high indices.
       for i in mask'length downto 1 loop
         if mask(i) = '0' then
-          pos := pos + va_sizet(riscv_mmu)(i);
+          -- This will not sum to above gaisler.mmucacheconfig.pa_msb.
+          pos := pos + va_size(i);
         end if;
       end loop;
 
@@ -600,24 +593,39 @@ architecture rtl of cctrlnv is
     variable r: cram_tags;
   begin
     r := (others => (others => '0'));
-    for w in 0 to IWAYS-1 loop
-      r(w)(TAG_HIGH - ITAG_LOW + 1 downto TAG_HIGH - ITAG_LOW - 6) := x"FF";
-      r(w)(TAG_HIGH - ITAG_LOW - 7 downto TAG_HIGH - ITAG_LOW - 8) := u2slv(w, 2);
+    for w in i_ways'range loop
+      r(w)(TAG_HIGH - ITAG_LOW + 1 downto TAG_HIGH - ITAG_LOW - 6)  := x"FF";
+      r(w)(TAG_HIGH - ITAG_LOW - 7 downto TAG_HIGH - ITAG_LOW - 8)  := u2slv(w, 2);
       r(w)(TAG_HIGH - ITAG_LOW - 9 downto TAG_HIGH - ITAG_LOW - 10) := u2slv(w, 2);
       r(w)(0) := '0';
     end loop;
+
     return r;
-  end get_itags_default;
+  end;
   constant itags_default: cram_tags := get_itags_default;
 
-  subtype ctxword is std_logic_vector(asidlen + vmidlen - 1 downto 0);
+  function has_context return boolean is
+  begin
+    return asidlen + vmidlen > 0;
+  end;
+
+  -- Some tools _really_ don't like types with zero length!
+  function context_length return integer is
+  begin
+    if has_context then
+      return asidlen + vmidlen;
+    else
+      return 1;
+    end if;
+  end;
+  subtype ctxword is std_logic_vector(context_length - 1 downto 0);
 
   type tlbent is record
     valid    : std_ulogic;
     ctx      : ctxword;
     -- 00 - SATP, 01 - VSATP, 10 - HGATP
     mode     : word2;
-    mask     : std_logic_vector(va_size'range);
+    mask     : std_logic_vector(va_size_a'range);
     vaddr    : std_logic_vector(vpn'range);
     paddr    : std_logic_vector(gpn'range);
     perm     : std_logic_vector(4 downto 0);  -- priv write/priv read/user write/user read OK
@@ -805,16 +813,16 @@ architecture rtl of cctrlnv is
     ctx        : ctxword;
     mode       : word2;
   end record;
-  
+
   constant i12_empty : i12_type := ((others => '0'), '0', '1', '1', (others => '0'), (others => '0'));
 
   type regfl_pipe_entry is record
-    valid: std_ulogic;
-    addr: std_logic_vector(d_sets'range);
+    valid  : std_ulogic;
+    addr   : std_logic_vector(d_sets'range);
   end record;
   constant regfl_pipe_entry_zero: regfl_pipe_entry := (
     valid => '0',
-    addr => (others => '0')
+    addr  => (others => '0')
     );
   type regfl_pipe_array is array (0 to 2) of regfl_pipe_entry;
 
@@ -862,7 +870,7 @@ architecture rtl of cctrlnv is
     stbuffull     : std_ulogic;     -- No more space in write buffer.
     flushwrd      : std_logic_vector(d_ways'range);
     flushwri      : std_logic_vector(i_ways'range);
-    regflpipe: regfl_pipe_array;
+    regflpipe     : regfl_pipe_array;
     regfldone     : std_ulogic;
     d_mexc        : std_ulogic;     -- Memory exception (unused)
     d_exctype     : std_ulogic;     --  0 - page fault, 1 - access fault (PMP/bus) (unused)
@@ -971,6 +979,7 @@ architecture rtl of cctrlnv is
     d2tcmhit    : std_ulogic;
     h2tlbupd    : std_ulogic;                      -- TLB entry updated
     h2tlbid     : std_logic_vector(log2(htlbnum) - 1 downto 0);
+    h2tlbclr    : std_ulogic;
     -- The d1* are valid when instruction is in memory access stage.
     d1ten       : std_ulogic;                      -- Data access with D$ enabled
     d1chk       : std_ulogic;                      -- Data access (delayed dci.eenaddr, r.holdn = '1')
@@ -1054,17 +1063,16 @@ architecture rtl of cctrlnv is
                 );
     v.mmctrl1    := mmctrl_type1_none; v.mmfsr := mmctrl_fs_zero; v.mmfar := (others => '0');
     v.regflmask  := (others => '0'); v.regfladdr := (others => '0'); v.iregflush := '0'; v.dregflush := '0';
-    --v.iuctrl := iu_control_reg_default,
-    v.icignerr := '0'; v.dcignerr := '0'; v.dcerrmask := '0'; v.dcerrmaskval := '0';
-    v.itcmenp := '0'; v.itcmenva := '0'; v.itcmenvc := '0'; v.itcmperm := "00";
-    v.itcmaddr := (others => '0'); v.itcmctx := (others => '0');
-    v.dtcmenp := '0'; v.dtcmenva := '0'; v.dtcmenvc := '0'; v.dtcmperm := "0000";
-    v.dtcmaddr := (others => '0'); v.dtcmctx := (others => '0'); v.itcmwipe := '0'; v.dtcmwipe := '0';
-    v.s := as_normal; v.imisspend := '0'; v.ifailkind := "00"; v.dmisspend := '0'; v.dfailkind := "00";
+    v.icignerr   := '0'; v.dcignerr := '0'; v.dcerrmask := '0'; v.dcerrmaskval := '0';
+    v.itcmenp    := '0'; v.itcmenva := '0'; v.itcmenvc := '0'; v.itcmperm := "00";
+    v.itcmaddr   := (others => '0'); v.itcmctx := (others => '0');
+    v.dtcmenp    := '0'; v.dtcmenva := '0'; v.dtcmenvc := '0'; v.dtcmperm := "0000";
+    v.dtcmaddr   := (others => '0'); v.dtcmctx := (others => '0'); v.itcmwipe := '0'; v.dtcmwipe := '0';
+    v.s          := as_normal; v.imisspend := '0'; v.ifailkind := "00"; v.dmisspend := '0'; v.dfailkind := "00";
     v.iflushpend := '1'; v.dflushpend := '1'; v.slowwrpend := '0'; v.holdn := '1';
     v.ramreload  := '0'; v.fastwr_rdy := '1'; v.stbuffull := '0';
     v.flushwrd   := (others => '0'); v.flushwri := (others => '0'); v.regflpipe := (others => regfl_pipe_entry_zero);
-    v.regfldone := '0';
+    v.regfldone  := '0';
     v.untagd     := (others => '0'); v.untagi := (others => '0');
     v.d_mexc     := '0'; v.d_exctype := '0';
     v.ahb_hbusreq   := '0'; v.ahb_hlock := '0'; v.ahb_htrans := HTRANS_IDLE;
@@ -1073,7 +1081,7 @@ architecture rtl of cctrlnv is
     v.ahb_snoopmask := (others => '0');
     v.ahb3_inacc    := '0'; v.ahb3_rdbuf := (others => '0'); v.ahb3_error := '0'; v.ahb3_rdbvalid := (others => '0');
     v.ahb3_rdberr := (others => '0');
-    v.ahb2_inacc    := '0'; v.ahb2_hwrite := '0'; v.ahb2_addrmask := (others => '0');
+    v.ahb2_inacc  := '0'; v.ahb2_hwrite := '0'; v.ahb2_addrmask := (others => '0');
     v.ahb2_ifetch := '0'; v.ahb2_dacc := '0';
     v.granted     := '0'; v.werr := '0';
     v.itlb        := tlb_def(v.itlb'range); v.dtlb := tlb_def(v.dtlb'range); v.htlb := tlb_def(v.htlb'range);
@@ -1081,7 +1089,7 @@ architecture rtl of cctrlnv is
     v.curerrclass := "00"; v.newerrclass := "00";
     v.itlbpmru    := (others => '0'); v.dtlbpmru := (others => '0'); v.htlbpmru := (others => '0');
     v.tlbupdate   := '0'; v.itagpipe := (others => (others => '0')); v.dtagpipe := (others => (others => '0'));
-    v.i2paddr := create_zeros(v.i2paddr); v.i2paddrv := '0';
+    v.i2paddr    := create_zeros(v.i2paddr); v.i2paddrv := '0';
     v.i2busw     := '0'; v.i2paddrc := '0';
     v.i2tlbhit   := '0'; v.i2tlbid := (others => '0');
     v.i2         := i12_empty;
@@ -1097,8 +1105,7 @@ architecture rtl of cctrlnv is
     v.irepway    := (others => '0'); v.irepdata := (others => (others => '0'));
     v.ireptlbhit := '0';
     v.ireptlbpaddr := (others => '0'); v.ireptlbid := (others => '0'); v.tcmdata := (others => '0');
-    v.itlbprobeid := (others => '0');
-
+    v.itlbprobeid  := (others => '0');
     v.d2vaddr  := create_zeros(v.d2vaddr); v.d2paddr := create_zeros(v.d2paddr); v.d2paddrv := '0';
     v.d2tlbhit := '0'; v.d2tlbamatch := '0'; v.d2tlbid := (others => '0'); v.d2tlbclr := '0';
     v.d2data   := (others => '0'); v.d2write := '0'; v.d2busw := '0'; v.d2tlbmod := '0';
@@ -1107,9 +1114,9 @@ architecture rtl of cctrlnv is
     v.d2       := d12_empty;
     v.d2stbuf  := (others => stbufent_zero); v.d2stbw := "00"; v.d2stba := "00"; v.d2stbd := "00";
     v.d2specread := '0'; v.d2nocache := '0'; v.d2tcmhit := '0';
-    v.h2tlbupd := '0'; v.h2tlbid := (others => '0');
+    v.h2tlbupd := '0'; v.h2tlbid := (others => '0'); v.h2tlbclr := '0';
     v.d1ten    := '0'; v.d1chk := '0'; v.d1vaddr := create_zeros(v.d1vaddr);
-    v.d1vaddr_repl  := (others => create_zeros(v.d1vaddr_repl(0)));
+    v.d1vaddr_repl := (others => create_zeros(v.d1vaddr_repl(0)));
     v.d1       := d12_empty;
     v.dramaddr := (others => '0'); v.dvtagdone := '0';
     v.dregval  := (others => '0'); v.dregval64 := (others => '0');
@@ -1119,27 +1126,27 @@ architecture rtl of cctrlnv is
     v.mmusel   := (others => '0');
     v.fpc_mosi := nv_intreg_mosi_none; v.c2c_mosi := nv_intreg_mosi_none;
     v.iudiag_mosi := nv_intreg_mosi_none;
-    v.pmp_low  := (others => '0'); v.pmp_mask := (others => '0'); v.pmp_do := '0';
-    v.pmp_hit  := '0'; v.pmp_fit := '0'; v.pmp_rwx := (others => '0');
-    v.h_addr   := (others => '0'); v.h_addr_repl := (others => create_zeros(v.h_addr_repl(0)));
-    v.h_do     := '0'; v.h_done := '0'; v.h_v := '0'; v.h_x := '0';
-    v.h_ls     := '0'; v.h_mxr := '0'; v.h_vmxr := '0'; v.h_hx := '0';
-    v.h_cause  := "00";
-    v.h_w      := '0'; v.h_pmp_no_w := '0'; v.h_pmp_no_x := '0';
-    v.addrhyper   := (others => '0');
-    v.itypehyper  := (others => '0');
-    v.dtypehyper  := (others => '0');
-    v.perf     := (others => '0');
-    v.amo.d1type    := (others => '0');
-    v.amo.d2type    := (others => '0');
-    v.amo.reserved  := '0';
-    v.amo.hold      := '0';
-    v.amo.addr      := (others => '0');
-    v.amo.store     := (others => '0');
-    v.amo.sc        := '0';
-    v.amo.s4hit     := (others => '0');
-    v.amo.s4tag     := (others => '0');
-    v.amo.s4offs    := (others => '0');
+    v.pmp_low := (others => '0'); v.pmp_mask := (others => '0'); v.pmp_do := '0';
+    v.pmp_hit := '0'; v.pmp_fit := '0'; v.pmp_rwx := (others => '0');
+    v.h_addr  := (others => '0'); v.h_addr_repl := (others => create_zeros(v.h_addr_repl(0)));
+    v.h_do    := '0'; v.h_done := '0'; v.h_v := '0'; v.h_x := '0';
+    v.h_ls    := '0'; v.h_mxr := '0'; v.h_vmxr := '0'; v.h_hx := '0';
+    v.h_cause := "00";
+    v.h_w     := '0'; v.h_pmp_no_w := '0'; v.h_pmp_no_x := '0';
+    v.addrhyper    := (others => '0');
+    v.itypehyper   := (others => '0');
+    v.dtypehyper   := (others => '0');
+    v.perf         := (others => '0');
+    v.amo.d1type   := (others => '0');
+    v.amo.d2type   := (others => '0');
+    v.amo.reserved := '0';
+    v.amo.hold     := '0';
+    v.amo.addr     := (others => '0');
+    v.amo.store    := (others => '0');
+    v.amo.sc       := '0';
+    v.amo.s4hit    := (others => '0');
+    v.amo.s4tag    := (others => '0');
+    v.amo.s4offs   := (others => '0');
 
     return v;
   end cctrlnv_regs_res;
@@ -1194,13 +1201,13 @@ architecture rtl of cctrlnv is
     dtaccidx      : std_logic_vector(d_sets'range);
     dtaccways     : std_logic_vector(d_ways'range);
     dtacctagmod   : std_ulogic;
-    dtacctagmsb   : std_logic_vector(2*DWAYS-1 downto 0);
-    dtacctaglsb   : std_logic_vector(DWAYS-1 downto 0);
+    dtacctagmsb   : std_logic_vector(2 * DWAYS - 1 downto 0);
+    dtacctaglsb   : std_logic_vector(DWAYS - 1 downto 0);
     --  snoop tag read / write
     stread        : std_ulogic;
     stwrite       : std_ulogic;
     staccidx      : std_logic_vector(d_sets'range);
-    stacctag      : std_logic_vector(TAG_HIGH-DTAG_LOW+1 downto 1);
+    stacctag      : std_logic_vector(TAG_HIGH - DTAG_LOW + 1 downto 1);
     staccways     : std_logic_vector(d_ways'range);
     strdstarted   : std_ulogic;
     strddone      : std_ulogic;
@@ -1268,8 +1275,8 @@ architecture rtl of cctrlnv is
 
   constant addr_check_mask : word8 := u2slv(addr_check, 8);
 
-  signal r, c   : cctrlnv_regs;
   signal rs, cs : cctrlnv_snoop_regs;
+  signal r, c   : cctrlnv_regs;
 
   signal dbg    : std_logic_vector(11 downto 0);
 
@@ -1283,18 +1290,19 @@ architecture rtl of cctrlnv is
     busw       : std_ulogic;
     cached     : std_ulogic;
     modded     : std_ulogic;
-    h_w        : std_ulogic;                       -- For RISC-V hypervisor, also writeable
-    h_pmp_r    : std_ulogic;                       -- For RISC-V hypervisor (PMP R)
-    h_pmp_no_w : std_ulogic;                       -- For RISC-V hypervisor (PMP blocks W)
-    h_pmp_no_x : std_ulogic;                       -- For RISC-V hypervisor (PMP blocks X)
-    h_perm     : std_logic_vector(2 downto 0);     -- For RISC-V hypervisor (XWR)
-    h_mask     : std_logic_vector(va_size'range);  -- For RISC-V hypervisor
+    h_w        : std_ulogic;                         -- For RISC-V hypervisor, also writeable
+    h_pmp_r    : std_ulogic;                         -- For RISC-V hypervisor (PMP R)
+    h_pmp_no_w : std_ulogic;                         -- For RISC-V hypervisor (PMP blocks W)
+    h_pmp_no_x : std_ulogic;                         -- For RISC-V hypervisor (PMP blocks X)
+    h_perm     : std_logic_vector(2 downto 0);       -- For RISC-V hypervisor (XWR)
+    h_mask     : std_logic_vector(va_size_a'range);  -- For RISC-V hypervisor
+    clr        : std_ulogic;
   end record;
 
   constant tlbcheck_none : tlbcheck := (
     '0', '0', (others => '0'), (others => '0'),
     (others => '0'), (others => '0'), '0', '0', '0', '0', '0', '0', '0',
-    (others => '0'), (others => '0'));
+    (others => '0'), (others => '0'), '0');
 
 --  impure
   function permitted(x : std_logic; su : std_logic; w : std_logic; lock : std_logic;
@@ -1309,7 +1317,7 @@ architecture rtl of cctrlnv is
   begin
     if is_riscv then
       data(rv_pte_u + 1 downto rv_pte_r) := perm;
-      acc  := ft_acc_resolve(w & x & su, data);
+      acc  := ft_acc_resolve("" & w & x & su, data);
       if sum = '0' then
         ok := acc(1) = '0';   -- acc(1) is normal check.
       else
@@ -1398,7 +1406,7 @@ architecture rtl of cctrlnv is
                        lock    : std_logic;           enabled    : std_logic;
                        check   : std_logic;           specialasi : std_logic;
                        nullify : std_logic;           repeat     : std_logic;
-                       dsuen   : std_logic;           tlbo       : out tlbentarr;
+                       dsuen   : std_logic;
                        tlbchk  : out tlbcheck;        sum        : std_logic;
                        mxr     : std_logic;           vmxr       : std_logic;
                        hx      : std_logic;           mode       : std_logic_vector;
@@ -1415,7 +1423,6 @@ architecture rtl of cctrlnv is
     variable index     : integer                             := -1;
     variable ctx_match : boolean                             := true;
   begin
-    tlbo := tlb;
 
     for n in tlb'range loop
       if not is_riscv and dsuen = '1' then
@@ -1431,7 +1438,7 @@ architecture rtl of cctrlnv is
         pos := pos + va_size(i);
       end loop;
 
-      if context'length /= 0 then
+      if has_context then
         ctx_match := tlb(n).ctx = context;
       else
         ctx_match := true;
@@ -1441,7 +1448,7 @@ architecture rtl of cctrlnv is
           ctx_match := false;
         -- HGATP - guest to physical translation
         elsif mode = "10" then
-          if context'length /= 0 then
+          if has_context then
             ctx_match := tlb(n).ctx(tlb(0).ctx'high downto asidlen) = context(tlb(0).ctx'high downto asidlen);
           end if;
         end if;
@@ -1463,7 +1470,7 @@ architecture rtl of cctrlnv is
           -- new MMU walk, and it would be a bad idea to have two instances in the TLB!
           -- Will not invalidate on repeat due to stall, since walk already done.
           if check = '1' and specialasi = '0' and nullify = '0' and repeat = '0' then
-            tlbo(n).valid := '0';
+            tmpchk.clr := '1';
           end if;
         end if;
         index := (n);
@@ -1556,8 +1563,7 @@ begin
       if is_riscv then
         base := gaisler.mmucacheconfig.satp_base(riscv_mmu, csr.hgatp)(base'range);
         -- Two extra bits of address at the top, so possibly add n*4k to base.
-        base := std_logic_vector(unsigned(base) +
-                                 (unsigned(gpaddr(gpaddr'high downto gpaddr'high - 1)) & x"000"));
+        base := uadd(base, gpaddr(gpaddr'high downto gpaddr'high - 1) & x"000");
         return base;
       else
         -- This will never be called except for RISC-V!
@@ -1574,7 +1580,7 @@ begin
         if riscv_mmu = Sv32 then
           assert vmidlen <= 7 and asidlen <= 9 report "Bad VM/ASIDLEN" severity failure;
         end if;
-        if ctx'length /= 0 then
+        if has_context then
           ctx := gaisler.mmucacheconfig.satp_asid(riscv_mmu, csr.hgatp)(vmidlen - 1 downto 0) &
                  gaisler.mmucacheconfig.satp_asid(riscv_mmu, csr.satp) (asidlen - 1 downto 0);
         end if;
@@ -1744,7 +1750,7 @@ begin
       end if;
 
       return r;
-    end getvalidmask;
+    end;
 
     -- Create a byte (8 bit) mask to select a properly sized chunk
     -- out of a 32 bit vector, depending on address.
@@ -1780,7 +1786,7 @@ begin
       end if;
 
       return dmask;
-    end getdmask;
+    end;
 
     function getdmask64(addr : std_logic_vector;
                         size : std_logic_vector;
@@ -1798,7 +1804,7 @@ begin
         end if;
       end if;
       if vsize(1) = '0' then
-        if vaddr(1) ='0' xor le then
+        if vaddr(1) = '0' xor le then
           dmask := dmask and "11001100";
         else
           dmask := dmask and "00110011";
@@ -1813,10 +1819,11 @@ begin
       end if;
 
       return dmask;
-    end getdmask64;
+    end;
 
     function cache_cfg5(crepl, ways, linesize, waysize, lock, snoop,
                         lram, lramsize, lramstart, mmuen : integer) return std_logic_vector is
+      -- Non-constant
       variable cfg : word32;
     begin
       cfg := (others => '0');
@@ -1832,11 +1839,11 @@ begin
       cfg(3  downto  3) := conv_std_logic_vector(mmuen, 1);
 
       return cfg;
-    end cache_cfg5;
+    end;
 
-    -- function to calculate tag msb bits to guarantee that the tags are unique
-    -- regarless of the other bits of the tag.
-    function uniquemsb(msbin: std_logic_vector; wways: std_logic_vector) return std_logic_vector is
+    -- Function to calculate tag msb bits to guarantee that the tags are unique,
+    -- regardless of the other bits of the tag.
+    function uniquemsb(msbin : std_logic_vector; wways : std_logic_vector) return std_logic_vector is
       -- Non-constant
       variable r       : std_logic_vector(msbin'length - 1 downto 0) := (others => '0');
       variable msbused : std_logic_vector(0 to 3)                    := "0000";
@@ -1850,7 +1857,7 @@ begin
           end if;
         end loop;
         -- For all ways that will be replaced, select the lowest free value from the
-        -- msbused list, and update the msbused list for the next way
+        -- msbused list, and update the msbused list for the next way.
         for x in 0 to msbin'length / 2 - 1 loop
           if wways(x) = '0' then
             nmsb     := "11";
@@ -1865,9 +1872,9 @@ begin
         end loop;
       else
 --pragma translate_off
-        for x in 0 to msbin'length/2-1 loop
+        for x in 0 to msbin'length / 2 - 1 loop
           if wways(x) /= '0' then
-            r(2*x+1 downto 2*x) := "XX";
+            r(2 * x + 1 downto 2 * x) := "XX";
           end if;
         end loop;
 --pragma translate_on
@@ -1875,7 +1882,7 @@ begin
       end if;
 
       return r;
-    end uniquemsb;
+    end;
 
     type pmp_t is record
       prv   : std_logic_vector(PRIV_LVL_S'range);
@@ -1886,7 +1893,7 @@ begin
       acc   : std_logic_vector(PMP_ACCESS_W'range);
       valid : std_ulogic;
     end record;
-    variable pmp_clear : pmp_t := ((others => '0'), '0', (others => '0'),
+    constant pmp_clear : pmp_t := ((others => '0'), '0', (others => '0'),
                                    (others => '0'), (others => '0'),
                                    (others => '0'), '0');
 
@@ -1906,7 +1913,6 @@ begin
     variable iway      : std_logic_vector(1 downto 0);
     variable icont     : std_ulogic;
     variable itlbchk   : tlbcheck;
-    variable itlbclr   : std_ulogic;
     variable ilruent   : lruent;
     variable itcmact   : std_ulogic;
     variable dctagsv   : cram_tags;
@@ -1922,7 +1928,6 @@ begin
     variable dspecialasi : std_ulogic;
     variable dforcemiss  : std_ulogic;
     variable dtlbchk     : tlbcheck;
-    variable dtlbclr     : std_ulogic;
     variable dtlb_write  : std_ulogic;
     variable dtlb_lock   : std_ulogic;
     variable dtenall   : std_ulogic;
@@ -2016,13 +2021,13 @@ begin
       ccr(23) := r.cctrl.dsnoop;
       ccr(17) := '1';
       ccr(15 downto 14) := r.iflushpend & r.dflushpend;
-      ccr(5 downto 0) := r.cctrl.dfrz & r.cctrl.ifrz & r.cctrl.dcs & r.cctrl.ics;
+      ccr( 5 downto  0) := r.cctrl.dfrz & r.cctrl.ifrz & r.cctrl.dcs & r.cctrl.ics;
 
       return ccr;
-    end get_ccr;
+    end;
 
     -- Set cache control parameters
-    procedure set_ccr(val : std_logic_vector) is
+    procedure set_ccr(val : word32) is
       -- Non-constant
       variable vx : word32 := val;
     begin
@@ -2034,7 +2039,7 @@ begin
       v.cctrl.dcs     := vx(3 downto 2);
       v.cctrl.ics     := vx(1 downto 0);
       v.cctrl.ics_btb := vx(1 downto 0);
-    end set_ccr;
+    end;
 
     -- Find first zero in pmru vector, returns index
     -- (returns highest index if all ones)
@@ -2056,7 +2061,7 @@ begin
       end loop;
 
       return r;
-    end pmru_decode;
+    end;
 
     function calc_lruent(oent : lruent; hway : unsigned(1 downto 0); nways : integer) return lruent is
       -- Non-constant
@@ -2078,7 +2083,7 @@ begin
       end case;
 
       return nent;
-    end calc_lruent;
+    end;
 
     -- Return vector with a bit set at n mod w.
     -- Normally only used with n < w.
@@ -2093,57 +2098,63 @@ begin
       end loop;
 
       return r;
-    end decwrap;
+    end;
 
-    function flushmatch(e : tlbent; vaddr : std_logic_vector; curctx : std_logic_vector) return std_ulogic is
+    function flushmatch(e : tlbent; vaddr : std_logic_vector; curctx : std_logic_vector) return boolean is
       variable fltp    : std_logic_vector(3 downto 0) := vaddr(11 downto 8);
       -- Non-constant
-      variable r       : std_ulogic := '0';
-      variable acctype : std_ulogic := '0';
-      variable ctxeq   : std_ulogic := '0';
+      variable r       : boolean := false;
+      variable acctype : boolean := false;
+      variable ctxeq   : boolean := false;
     begin
       if unsigned(e.acc) > 5 then
-        acctype := '1';
+        acctype := true;
       end if;
-      if e.ctx = curctx then
-        ctxeq := '1';
+      if not has_context or e.ctx = curctx then
+        ctxeq := true;
       end if;
       case fltp is
         when "0000" =>
         when "0001" =>
-          if (acctype = '1' or ctxeq = '1') and vaddr(31 downto 18) = e.vaddr(31 downto 18) and e.mask(2) = '1' then
-            r := '1';
+          if (acctype or ctxeq) and vaddr(31 downto 18) = e.vaddr(31 downto 18) and e.mask(2) = '1' then
+            r := true;
           end if;
         when "0010" =>
-          if (acctype = '1' or ctxeq = '1') and vaddr(31 downto 24) = e.vaddr(31 downto 24) and e.mask(1) = '1' then
-            r := '1';
+          if (acctype or ctxeq) and vaddr(31 downto 24) = e.vaddr(31 downto 24) and e.mask(1) = '1' then
+            r := true;
           end if;
         when "0011" =>
-          if acctype = '0' and ctxeq = '1' then
-            r := '1';
+          if not acctype and ctxeq then
+            r := true;
           end if;
-        when "0100" => r := '1';
-        when others => r := '0';
+        when "0100" => r := true;
+        when others => r := false;
       end case;
 
       return r;
-    end flushmatch;
+    end;
 
-    function tcmaddr_comp(accaddr: std_logic_vector(31 downto 16); tcmaddr: std_logic_vector(31 downto 16);
-                          tcmen: integer; tcmabits: integer) return std_ulogic is
-      variable r: std_ulogic;
-      variable vmask: std_logic_vector(31 downto 16);
+    function tcmaddr_comp(accaddr : std_logic_vector(31 downto 16);
+                          tcmaddr : std_logic_vector(31 downto 16);
+                          tcmen   : integer; tcmabits : integer) return std_ulogic is
+      -- Non-constant
+      variable r     : std_ulogic;
+      variable vmask : std_logic_vector(31 downto 16);
     begin
       vmask := (others => '0');
       for x in 31 downto 16 loop
-        if x>(2+tcmabits) then
+        if x > (2 + tcmabits) then
           vmask(x) := '1';
         end if;
       end loop;
+
       r := '0';
-      if (accaddr and vmask)=(tcmaddr and vmask) and tcmen/=0 then r:='1'; end if;
+      if (accaddr and vmask) = (tcmaddr and vmask) and tcmen /= 0 then
+        r := '1';
+      end if;
+
       return r;
-    end tcmaddr_comp;
+    end;
 
     -- Select way to replace
     function replace_vec(validv : std_logic_vector; lruent : std_logic_vector) return std_logic_vector is
@@ -2208,6 +2219,7 @@ begin
       ahb_htrans_out := ahb_htrans;
       ahb_haddr_out  := ahb_haddr;
     end;
+
 
   begin
     dbg <= (others => '0');
@@ -2330,11 +2342,11 @@ begin
     if r.holdn = '0' or dci.write = '1' then
       ocrami.ddataindex(d_sets'range)  := r.d1vaddr(d_index'range);
       ocrami.ddataoffs(d_offset'range) := r.d1vaddr(DLINE_HIGH downto DLINE_LOW_REAL);
-      ocrami.ddatafulladdr := r.d1vaddr(ocrami.ddatafulladdr'range);
+      ocrami.ddatafulladdr             := r.d1vaddr(ocrami.ddatafulladdr'range);
     else
       ocrami.ddataindex(d_sets'range)  := dci.eaddress(d_index'range);
       ocrami.ddataoffs(d_offset'range) := dci.eaddress(DLINE_HIGH downto DLINE_LOW_REAL);
-      ocrami.ddatafulladdr := dci.eaddress(ocrami.ddatafulladdr'range);
+      ocrami.ddatafulladdr             := dci.eaddress(ocrami.ddatafulladdr'range);
     end if;
     ocrami.ddataen     := (others => '0');
     ocrami.ddatawrite  := (others => '0');
@@ -2342,7 +2354,7 @@ begin
     for w in d_ways'range loop
       ocrami.ddatadin(w) := dci.edata;
     end loop;
-    ocrami.dtcmen := '0';
+    ocrami.dtcmen  := '0';
     ocrami.dtcmdin := dci.edata;
 
     vwad        := (others => '0');
@@ -2394,7 +2406,7 @@ begin
       -- Pass along actual r.i1.pc too, for LEON5 code equivalence.
       tlb_lookup("01", r.itlb, r.i1pc_repl, r.i1.pc, "0", r.i1.ctx, r.i1.su, '0', '0',
                  mmu_enabled(r, csr, r.i1.mode(0)) and not r.i1.m, r.i1ten, '0', ici.inull, r.i1rep, '0',
-                 v.itlb, itlbchk, '0', '0', '0', '0', r.i1.mode, false
+                 itlbchk, '0', '0', '0', '0', r.i1.mode, false
                  );
     end if;
 
@@ -2456,20 +2468,21 @@ begin
 
 
     -- Tag compare logic
-    -- ihitv := "0000";
-    ihitv := (others => '0');
-    ihit := '0';
-    iway := "00";
+    ihitv  := (others => '0');
+    ihit   := '0';
+    iway   := "00";
     ivalid := '0';
-    for i in IWAYS-1 downto 0 loop
-      if ( (cramo.itagdout(i)(TAG_HIGH-ITAG_LOW+1 downto 1) = itlbchk.paddr(i_tag'range)) and
-           r.i1ten='1' and itlbchk.hit='1') then
-        ihitv(i) := '1';
-        if ihit='1' then oico.badtag:='1'; end if;
-        ihit := '1';
-        iway := iway or u2slv(i,iway'length);
+    for i in i_ways'range loop
+      if cramo.itagdout(i)(TAG_HIGH - ITAG_LOW + 1 downto 1) = itlbchk.paddr(i_tag'range) and
+         r.i1ten = '1' and itlbchk.hit = '1' then
+        ihitv(i)      := '1';
+        if ihit = '1' then
+          oico.badtag := '1';
+        end if;
+        ihit          := '1';
+        iway          := iway or u2slv(i, iway'length);
       end if;
-      ivalidv(i) := cramo.itagdout(i)(0);
+      ivalidv(i)      := cramo.itagdout(i)(0);
     end loop;
     ivalid := ivalidv(u2i(iway));
     -- Note: ihit is AND:ed with ivalid, but ihitv is _not_ AND:ed with ivalidv
@@ -2484,16 +2497,16 @@ begin
     ihit := ihit and ivalid;
 
     -- Instruction TCM hit and muxing logic
-    itcmhit := '0';
+    itcmhit          := '0';
     if itcmen /= 0 then
-      if r.i1tcmen='1' and tcmaddr_comp(r.i1.pc(31 downto 16),r.itcmaddr,itcmen,itcmabits)='1' then
-        itcmhit := '1';
-        ihit := '1';
-        ihitv := (others => '0');
-        iway := "00";
+      if r.i1tcmen = '1' and tcmaddr_comp(r.i1.pc(31 downto 16), r.itcmaddr, itcmen, itcmabits) = '1' then
+        itcmhit      := '1';
+        ihit         := '1';
+        ihitv        := (others => '0');
+        iway         := "00";
         oico.data(0) := cramo.itcmdout;
-        if r.holdn='1' then
-          if (r.itcmperm(0)='0' and r.i1.su='0') or (r.itcmperm(1)='0' and r.i1.su='1') then
+        if r.holdn = '1' then
+          if (r.itcmperm(0) = '0' and r.i1.su = '0') or (r.itcmperm(1) = '0' and r.i1.su = '1') then
             oico.mexc := '1';
           end if;
         end if;
@@ -2529,11 +2542,11 @@ begin
       if r.i1.pc(r.irdbufvaddr'range) = r.irdbufvaddr and r.i1.nostream = '0' then
         ibufaddrmatch := '1';
         if not ENDIAN_B then
-          if r.ahb3_rdbvalid(LINESZMAX-2-2*to_integer(unsigned(r.i1.pc(log2(4*ilinesize)-1 downto 3))))='1' then
+          if r.ahb3_rdbvalid(LINESZMAX - 2 - 2 * u2i(r.i1.pc(log2(4 * ilinesize) - 1 downto 3))) = '1' then
             ihit := '1';
           end if;
         else
-          if r.ahb3_rdbvalid(1+2*to_integer(unsigned(r.i1.pc(log2(4*ilinesize)-1 downto 3))))='1' then
+          if r.ahb3_rdbvalid(1 + 2 * u2i(r.i1.pc(log2(4 * ilinesize) - 1 downto 3))) = '1' then
             ihit := '1';
           end if;
         end if;
@@ -2559,7 +2572,7 @@ begin
       oico.way           := (others => '0');
     end if;
 
-    if r.imisspend = '1' and r.i2tcmhit='0' then
+    if r.imisspend = '1' and r.i2tcmhit = '0' then
       oico.mds := '0';
     end if;
 
@@ -2594,7 +2607,7 @@ begin
     -- Main hit/miss checking logic (v.imisspend propagates to main FSM)
     -- Stage 2 ITLB update in case of hit
     d32 := r.i2.pc(d32'range);
-    if r.s=as_rdasi then
+    if r.s = as_rdasi then
       d32 := r.d2vaddr(d32'range);
     end if;
     if notx(d32) then
@@ -2626,7 +2639,7 @@ begin
       v.i2paddrv      := itlbchk.hit;
       v.i2tlbhit      := itlbchk.hit;
       v.i2tlbid       := itlbchk.id(v.i2tlbid'range);
-      v.i2tlbclr      := itlbclr;
+      v.i2tlbclr      := itlbchk.clr;
       v.i2busw        := itlbchk.busw;
       v.i2paddrc      := itlbchk.cached;
       v.i2            := r.i1;
@@ -2670,17 +2683,18 @@ begin
       v.i1ten := '1';
     end if;
     itcmact := '0';
-    if r.itcmenp='1' and r.mmctrl1.e='0' then itcmact := '1'; end if;
-    if r.itcmenva='1' and r.mmctrl1.e='1' then itcmact := '1'; end if;
-    if r.itcmenvc='1' and r.mmctrl1.e='1' and r.mmctrl1.ctx=r.itcmctx then itcmact:='1'; end if;
-    if (r.holdn='1' or r.ramreload='1') then
-      v.i1tcmen := '0';
-      if itcmact='1' then
+    if r.itcmenp  = '1' and r.mmctrl1.e = '0' then      itcmact := '1'; end if;
+    if r.itcmenva = '1' and r.mmctrl1.e = '1' then      itcmact := '1'; end if;
+    if r.itcmenvc = '1' and r.mmctrl1.e = '1' and
+       (has_context and r.mmctrl1.ctx = r.itcmctx) then itcmact := '1'; end if;
+    if r.holdn = '1' or r.ramreload = '1' then
+      v.i1tcmen       := '0';
+      if itcmact = '1' then
         ocrami.itcmen := '1';
-        v.i1tcmen := '1';
+        v.i1tcmen     := '1';
       end if;
     end if;
-    
+
     icont := '0';
     if ici.rbranch = '0' and not all_1(ici.fpc(ILINE_HIGH downto ILINE_LOW)) then
       icont    := '1';
@@ -2737,12 +2751,12 @@ begin
     dctagsv := cramo.dtagcdout;
     if dtagconf > 0 then
       voffs := r.d1vaddr(d_index'range);
-      if r.s=as_regflush then
+      if r.s = as_regflush then
         voffs := r.regflpipe(2).addr;
       end if;
-      for w in 0 to DWAYS-1 loop
+      for w in d_ways'range loop
         if notx(voffs) then
-          dctagsv(w)(0) := rs.validarr(to_integer(unsigned(voffs)))(w);
+          dctagsv(w)(0) := rs.validarr(u2i(voffs))(w);
         else
           setx(dctagsv(w)(0));
         end if;
@@ -2782,7 +2796,7 @@ begin
       -- Pass along actual rd1vaddr too, for LEON5 code equivalence.
       tlb_lookup("00", r.dtlb, r.d1vaddr_repl, r.d1vaddr, dci.maddress, mmu_ctx(r, csr), r.d1.su, dtlb_write, dtlb_lock,
                  mmu_enabled(r, csr, r.d1.mode(0)) and not r.d1.m, r.d1chk, r.d1.specialasi, dci.nullify, '0', dci.dsuen,
-                 v.dtlb, dtlbchk, r.d1.sum, r.d1.mxr, r.d1.vmxr, r.d1.hx, r.d1.mode, true
+                 dtlbchk, r.d1.sum, r.d1.mxr, r.d1.vmxr, r.d1.hx, r.d1.mode, true
                  );
     end if;
 
@@ -2790,20 +2804,22 @@ begin
     -- Note that this is done in parallel with cache fetch (registered access).
 
     -- Tag compare logic
-    dhitv := (others => '0');
-    dhit := '0';
-    dway := "00";
-    dvalid := '0';
-    dvalidv := (others => '0');
-    for i in DWAYS-1 downto 0 loop
-      if ( (dctagsv(i)(TAG_HIGH-DTAG_LOW+1 downto 1) = dtlbchk.paddr(d_tag'range)) and
-           r.d1ten='1' and dtlbchk.hit='1') then
-        dhitv(i) := '1';
-        if dhit='1' then odco.badtag:='1'; end if;
-        dhit := '1';
-        dway := dway or u2slv(i,dway'length);
+    dhitv             := (others => '0');
+    dhit              := '0';
+    dway              := "00";
+    dvalid            := '0';
+    dvalidv           := (others => '0');
+    for i in d_ways'range loop
+      if dctagsv(i)(TAG_HIGH - DTAG_LOW + 1 downto 1) = dtlbchk.paddr(d_tag'range) and
+         r.d1ten = '1' and dtlbchk.hit = '1' then
+        dhitv(i)          := '1';
+        if dhit = '1' then
+          odco.badtag     := '1';
+        end if;
+        dhit              := '1';
+        dway              := dway or u2slv(i, dway'length);
       end if;
-      dvalidv(i) := dctagsv(i)(0);
+      dvalidv(i)          := dctagsv(i)(0);
     end loop;
     dvalid := dvalidv(u2i(dway));
     -- Note: dhit is AND:ed with valid, but dhitv is _not_ AND:ed with validv
@@ -2816,17 +2832,17 @@ begin
     -- Data TCM hit and muxing logic
     dtcmhit := '0';
     if dtcmen /= 0 then
-      if r.d1tcmen='1' and tcmaddr_comp(r.d1vaddr(31 downto 16),r.dtcmaddr,dtcmen,dtcmabits)='1' then
-        dtcmhit := '1';
-        dhit := '1';
-        dhitv := (others => '0');
-        dway := "00";
+      if r.d1tcmen = '1' and tcmaddr_comp(r.d1vaddr(31 downto 16), r.dtcmaddr, dtcmen, dtcmabits) = '1' then
+        dtcmhit      := '1';
+        dhit         := '1';
+        dhitv        := (others => '0');
+        dway         := "00";
         odco.data(0) := cramo.dtcmdout;
-        if r.holdn='1' then
-          if ( (dci.read='1' and r.d1.su='0' and r.dtcmperm(0)='0') or
-               (dci.write='1' and r.d1.su='0' and r.dtcmperm(1)='0') or
-               (dci.read='1' and r.d1.su='1' and r.dtcmperm(2)='0') or
-               (dci.write='1' and r.d1.su='1' and r.dtcmperm(3)='0') ) then
+        if r.holdn = '1' then
+          if (dci.read  = '1' and r.d1.su = '0' and r.dtcmperm(0) = '0') or
+             (dci.write = '1' and r.d1.su = '0' and r.dtcmperm(1) = '0') or
+             (dci.read  = '1' and r.d1.su = '1' and r.dtcmperm(2) = '0') or
+             (dci.write = '1' and r.d1.su = '1' and r.dtcmperm(3) = '0') then
             odco.mexc := '1';
           end if;
         end if;
@@ -2835,15 +2851,11 @@ begin
 
     odco.way := dway;
 
-    --dasi          := r.d1.asi;
     dspecialasi   := r.d1.specialasi;
     dforcemiss    := r.d1.forcemiss;
-    --dsu           := r.d1.su;
     if r.holdn = '0' then
-      --dasi        := r.d2.asi;
       dspecialasi := r.d2.specialasi;
       dforcemiss  := r.d2.forcemiss;
-      --dsu         := r.d2.su;
     end if;
 
     dlock   := dci.lock;
@@ -2953,7 +2965,7 @@ begin
       v.d2paddr      := dtlbchk.paddr(v.d2paddr'range);
       v.d2paddrv     := dtlbchk.hit;
       v.d2tlbhit     := dtlbchk.hit;
-      v.d2tlbclr     := dtlbclr;
+      v.d2tlbclr     := dtlbchk.clr;
       v.d2tlbamatch  := dtlbchk.amatch;
       v.d2tlbid      := dtlbchk.id(v.d2tlbid'range);
       v.d2tlbmod     := dtlbchk.modded;
@@ -3015,10 +3027,10 @@ begin
         if dci.nullify = '0' and r.d1ten = '1' and dci.write = '1' and r.d1.specialasi = '0' and r.amo.d1type(5) = '0' then
           ocrami.ddataen(d_ways'range) := dhitv;
         end if;
-        if dci.nullify='0' and r.d1tcmen='1' and dci.write='1' and r.d1.specialasi='0' then
+        if dci.nullify = '0' and r.d1tcmen = '1' and dci.write = '1' and r.d1.specialasi = '0' then
           ocrami.dtcmen := dtcmhit;
         end if;
-        if (r.d1ten='1' or r.d1tcmen='1') and dci.write='1' and r.d1.specialasi='0' and r.amo.d1type(5) = '0' then
+        if (r.d1ten = '1' or r.d1tcmen = '1') and dci.write = '1' and r.d1.specialasi = '0' and r.amo.d1type(5) = '0' then
           dwriting := '1';
           ocrami.ddatawrite := getdmask64(r.d1vaddr, dci.size, ENDIAN_B);
         end if;
@@ -3026,7 +3038,7 @@ begin
         -- Store buffer update for writes
         if (dci.nullify = '0' or dci.dsuen = '1') and dci.write = '1' and dtcmhit = '0' then
           dbg(1) <= '1';
-          if v.d2paddrv = '1' and v.d2busw = '1' and v.d2tlbmod = '1' and r.fastwr_rdy = '1' and 
+          if v.d2paddrv = '1' and v.d2busw = '1' and v.d2tlbmod = '1' and r.fastwr_rdy = '1' and
             dspecialasi = '0' and dci.lock = '0' then
             -- Fast write path (TLB hit, modified set in PTE, wide bus, store buffer
             -- idle, and standard ASIs)
@@ -3065,10 +3077,11 @@ begin
       end if;
     end if;
     dtcmact := '0';
-    if r.dtcmenp='1' and r.mmctrl1.e='0' then dtcmact := '1'; end if;
-    if r.dtcmenva='1' and r.mmctrl1.e='1' then dtcmact := '1'; end if;
-    if r.dtcmenvc='1' and r.mmctrl1.e='1' and r.mmctrl1.ctx=r.dtcmctx then dtcmact:='1'; end if;
-    if dtenall='1' and dtcmact='1' and dwriting='0' then
+    if r.dtcmenp  = '1' and r.mmctrl1.e = '0' then      dtcmact := '1'; end if;
+    if r.dtcmenva = '1' and r.mmctrl1.e = '1' then      dtcmact := '1'; end if;
+    if r.dtcmenvc = '1' and r.mmctrl1.e = '1' and
+       (has_context and r.mmctrl1.ctx = r.dtcmctx) then dtcmact := '1'; end if;
+    if dtenall = '1' and dtcmact = '1' and dwriting = '0' then
       ocrami.dtcmen := '1';
     end if;
 
@@ -3158,7 +3171,7 @@ begin
           end if;
         end if;
       end if;
-      if not all_0(rs.s2en) and r.amo.store(2+AMO_P) = '0' then
+      if not all_0(rs.s2en) and r.amo.store(2 + AMO_P) = '0' then
         -- Need to clear based of d2paddr and s2tag when snooping and lr happens simultaneously
         if r.amo.d2type(5) = '1' and r.amo.d2type(1 downto 0) = "10" and r.d2paddrv = '1' then
           if r.d2paddr(rs.s2tag'high downto d_tag'low) = rs.s2tag(rs.s2tag'high downto d_tag'low) and
@@ -3168,23 +3181,23 @@ begin
           end if;
         end if;
       end if;
-      if not all_0(rs.s3hit) and r.amo.store(3+AMO_P) = '0' then
+      if not all_0(rs.s3hit) and r.amo.store(3 + AMO_P) = '0' then
         -- Need to clear based of d2paddr and s3tag when snooping and lr happens simultaneously
         if r.amo.d2type(5) = '1' and r.amo.d2type(1 downto 0) = "10" and r.d2paddrv = '1' then
           if r.d2paddr(rs.s3tag'high downto d_tag'low) = rs.s3tag(rs.s3tag'high downto d_tag'low) and
              r.d2paddr(d_index'range) = rs.s3offs then
             v.amo.reserved := '0';
-            v.amo.d2type := (others => '0');
+            v.amo.d2type   := (others => '0');
           end if;
         end if;
       end if;
-      if not all_0(r.amo.s4hit) and r.amo.store(4+AMO_P) = '0' then
+      if not all_0(r.amo.s4hit) and r.amo.store(4 + AMO_P) = '0' then
         -- Need to clear based of d2paddr and s4tag when snooping and lr happens simultaneously
         if r.amo.d2type(5) = '1' and r.amo.d2type(1 downto 0) = "10" and r.d2paddrv = '1' then
           if r.d2paddr(r.amo.s4tag'high downto d_tag'low) = r.amo.s4tag(rs.s3tag'high downto d_tag'low) and
              r.d2paddr(d_index'range) = r.amo.s4offs then
             v.amo.reserved := '0';
-            v.amo.d2type := (others => '0');
+            v.amo.d2type   := (others => '0');
           end if;
         end if;
       end if;
@@ -3224,40 +3237,42 @@ begin
     -- Stage 3 virtual tag update to RAM
     ocrami.dtaguindex(d_sets'range) := rs.s3offs;
     ocrami.dtaguwrite(d_ways'range) := rs.s3hit or rs.s3read;
-    for i in DWAYS-1 downto 0 loop
-      ocrami.dtagudin(i)(TAG_HIGH-DTAG_LOW+1 downto 0) := rs.s3tag & rs.s3read(i);
-      ocrami.dtagudin(i)(TAG_HIGH-DTAG_LOW+1 downto TAG_HIGH-DTAG_LOW) := rs.s3tagmsb(2*i+1 downto 2*i);
+    for i in d_ways'range loop
+      ocrami.dtagudin(i)(TAG_HIGH - DTAG_LOW + 1 downto 0) := rs.s3tag & rs.s3read(i);
+      ocrami.dtagudin(i)(TAG_HIGH - DTAG_LOW + 1 downto TAG_HIGH - DTAG_LOW) :=
+        rs.s3tagmsb(2 * i + 1 downto 2 * i);
     end loop;
-    vvalidset := rs.s3read;
-    vvalidclr := rs.s3hit;
-    vvalididx := rs.s3offs;
-    vs.dlctr := (others => '0');
+    vvalidset   := rs.s3read;
+    vvalidclr   := rs.s3hit;
+    vvalididx   := rs.s3offs;
+    vs.dlctr    := (others => '0');
     vs.raisereq := '0';
     -- Setup address and data inputs for diag access if no snoop tag update
     if all_0(rs.s3hit) and all_0(rs.s3read) then
       vvalididx := rs.dtaccidx;
     end if;
-    if (dtagconf/=0 or all_0(rs.s3hit)) and all_0(rs.s3read) and all_0(rs.s3flush) then
+    if (dtagconf /= 0 or all_0(rs.s3hit)) and all_0(rs.s3read) and all_0(rs.s3flush) then
       ocrami.dtaguindex(d_sets'range) := rs.dtaccidx;
       for i in d_ways'range loop
-        ocrami.dtagudin(i)(TAG_HIGH-DTAG_LOW+1 downto 0) := r.dtagpipe(i)(TAG_HIGH-DTAG_LOW+1 downto 0);
-        if rs.dtacctagmod='1' then
-          ocrami.dtagudin(i)(TAG_HIGH-DTAG_LOW+1 downto TAG_HIGH-DTAG_LOW) := rs.dtacctagmsb(2*i+1 downto 2*i);
+        ocrami.dtagudin(i)(TAG_HIGH - DTAG_LOW + 1 downto 0) := r.dtagpipe(i)(TAG_HIGH - DTAG_LOW + 1 downto 0);
+        if rs.dtacctagmod = '1' then
+          ocrami.dtagudin(i)(TAG_HIGH - DTAG_LOW + 1 downto TAG_HIGH - DTAG_LOW) :=
+            rs.dtacctagmsb(2 * i + 1 downto 2 * i);
           ocrami.dtagudin(i)(0) := rs.dtacctaglsb(i);
         end if;
       end loop;
     end if;
     -- Inject diagnostic tag writes during idle cycles
-    if rs.dtwrite='1' then
+    if rs.dtwrite = '1' then
       if not all_1(rs.dlctr) then
-        vs.dlctr := std_logic_vector(unsigned(rs.dlctr)+1);
+        vs.dlctr           := uadd(rs.dlctr, 1);
       end if;
       if all_0(rs.s3hit) and all_0(rs.s3read) and all_0(rs.s3flush) then
-        vs.dtwrite := '0';
+        vs.dtwrite                      := '0';
         ocrami.dtaguwrite(d_ways'range) := rs.dtaccways;
         for w in d_ways'range loop
-          if rs.dtaccways(w)='1' then
-            if ocrami.dtagudin(w)(0)='0' then
+          if rs.dtaccways(w) = '1' then
+            if ocrami.dtagudin(w)(0) = '0' then
               vvalidclr(w) := '1';
             else
               vvalidset(w) := '1';
@@ -3265,20 +3280,22 @@ begin
           end if;
         end loop;
       elsif all_1(rs.dlctr) then
-        vs.raisereq := '1';
+        vs.raisereq        := '1';
       end if;
     end if;
     if notx(vvalididx) then
-      vs.validarr(to_integer(unsigned(vvalididx))) :=
-        (vs.validarr(to_integer(unsigned(vvalididx))) and (not vvalidclr)) or vvalidset;
+      vs.validarr(u2i(vvalididx)) :=
+        (vs.validarr(u2i(vvalididx)) and (not vvalidclr)) or vvalidset;
     else
       if (not all_0(vvalidclr)) or (not all_0(vvalidset)) then
-        for x in vs.validarr'range loop setx(vs.validarr(x)); end loop;
+        for x in vs.validarr'range loop
+          setx(vs.validarr(x));
+        end loop;
       end if;
     end if;
     -- Stage 2 snoop tag compare
-    vs.s3hit := (others => '0');
-    for i in DWAYS-1 downto 0 loop
+    vs.s3hit          := (others => '0');
+    for i in d_ways'range loop
       if rs.s2en(i) = '1' then
         if cramo.dtagsdout(i)(TAG_HIGH - DTAG_LOW + 1 downto 1) = rs.s2tag then
           vs.s3hit(i) := '1';
@@ -3292,13 +3309,13 @@ begin
     vs.s3offs   := rs.s2offs;
     vs.s3tagmsb := rs.s2tagmsb;
     vs.s3flush  := rs.s2flush;
-    -- collect data for external read
+    -- Collect data for external read
     vs.strddone := '0';
-    if rs.s2eread='1' then
+    if rs.s2eread = '1' then
       vs.strddone := '1';
       for w in d_ways'range loop
-        if rs.staccways(w)='1' then
-          vs.stacctag := cramo.dtagsdout(w)(TAG_HIGH-DTAG_LOW+1 downto 1);
+        if rs.staccways(w) = '1' then
+          vs.stacctag := cramo.dtagsdout(w)(TAG_HIGH - DTAG_LOW + 1 downto 1);
         end if;
       end loop;
     end if;
@@ -3306,124 +3323,124 @@ begin
     --  send address to snoop to snoop tag RAM
     --  or send address and data to update snoop tag
     ocrami.dtagsindex(d_sets'range) := rs.s1haddr(d_index'range);
-    ocrami.dtagsen(d_ways'range) := rs.s1en;
-    if rs.s1read='1' then
-      ocrami.dtagswrite := '1';
-      ocrami.dtagsen(d_ways'range) := r.d2hitv;
+    ocrami.dtagsen(d_ways'range)    := rs.s1en;
+    if rs.s1read = '1' then
+      ocrami.dtagswrite             := '1';
+      ocrami.dtagsen(d_ways'range)  := r.d2hitv;
     end if;
-    for w in 0 to DWAYS-1 loop
-      ocrami.dtagsdin(w)(TAG_HIGH-DTAG_LOW+1 downto 1) := rs.s1haddr(d_tag'range);
-      ocrami.dtagsdin(w)(TAG_HIGH-DTAG_LOW+1 downto TAG_HIGH-DTAG_LOW) := rs.s1tagmsb(2*w+1 downto 2*w);
+    for w in d_ways'range loop
+      ocrami.dtagsdin(w)(TAG_HIGH - DTAG_LOW + 1 downto 1) := rs.s1haddr(d_tag'range);
+      ocrami.dtagsdin(w)(TAG_HIGH - DTAG_LOW + 1 downto TAG_HIGH - DTAG_LOW) := rs.s1tagmsb(2 * w + 1 downto 2 * w);
     end loop;
-    vs.s2en := rs.s1en and not rs.s1flush;
-    vs.s2tag := rs.s1haddr(d_tag'range);
-    vs.s2offs := rs.s1haddr(d_index'range);
-    vs.s2read := (others => '0');
-    if rs.s1read='1' then
+    vs.s2en     := rs.s1en and not rs.s1flush;
+    vs.s2tag    := rs.s1haddr(d_tag'range);
+    vs.s2offs   := rs.s1haddr(d_index'range);
+    vs.s2read   := (others => '0');
+    if rs.s1read = '1' then
       vs.s2read := r.d2hitv;
     end if;
-    vs.s2read := vs.s2read and not rs.s1flush;
-    vs.s2flush := rs.s1flush;
+    vs.s2read   := vs.s2read and not rs.s1flush;
+    vs.s2flush  := rs.s1flush;
     vs.s2tagmsb := rs.s1tagmsb;
-    if rs.s1flush /= (rs.s1flush'range => '0') then
+    if not all_0(rs.s1flush) then
       ocrami.dtagsen(d_ways'range) := rs.s1flush;
       vs.s2read := (others => '0');
     end if;
-    vs.s2eread := '0';
-    if rs.s1en=(rs.s1en'range=>'0') and rs.s1read='0' and rs.s1flush=(rs.s1flush'range => '0') then
+    vs.s2eread  := '0';
+    if all_0(rs.s1en) and rs.s1read = '0' and all_0(rs.s1flush) then
       ocrami.dtagsindex(d_sets'range) := rs.staccidx;
-      for w in 0 to DWAYS-1 loop
-        ocrami.dtagsdin(w)(TAG_HIGH-DTAG_LOW+1 downto 1) := rs.stacctag;
+      for w in d_ways'range loop
+        ocrami.dtagsdin(w)(TAG_HIGH - DTAG_LOW + 1 downto 1) := rs.stacctag;
       end loop;
       vs.s2offs := rs.staccidx;
-      vs.s2tag := rs.stacctag;
-      for w in 0 to DWAYS-1 loop
-        vs.s2tagmsb(2*w+1 downto 2*w) := rs.stacctag(TAG_HIGH-DTAG_LOW+1 downto TAG_HIGH-DTAG_LOW);
+      vs.s2tag  := rs.stacctag;
+      for w in d_ways'range loop
+        vs.s2tagmsb(2 * w + 1 downto 2 * w) := rs.stacctag(TAG_HIGH - DTAG_LOW + 1 downto TAG_HIGH - DTAG_LOW);
       end loop;
     end if;
-    if rs.stwrite='1' or rs.stread='1' then
+    if rs.stwrite = '1' or rs.stread = '1' then
       if (not all_1(rs.dlctr)) and all_0(rs.s1flush) then
-        vs.dlctr := std_logic_vector(unsigned(rs.dlctr)+1);
+        vs.dlctr := uadd(rs.dlctr, 1);
       end if;
-      -- mux in diagnostic tag access if RAM is available this cycle
-      if all_0(rs.s1en) and rs.s1read='0' and all_0(rs.s1flush) then
-        if rs.stwrite='1' then
-          vs.stwrite :=  '0';
+      -- Mux in diagnostic tag access if RAM is available this cycle
+      if all_0(rs.s1en) and rs.s1read = '0' and all_0(rs.s1flush) then
+        if rs.stwrite = '1' then
+          vs.stwrite        :=  '0';
           ocrami.dtagsen(d_ways'range) := rs.staccways;
           ocrami.dtagswrite := '1';
           ocrami.dtagsindex(d_sets'range) := rs.staccidx;
-        elsif rs.stread='1' and rs.strdstarted='0' then
-          vs.s2eread := '1';
+        elsif rs.stread = '1' and rs.strdstarted = '0' then
+          vs.s2eread        := '1';
           ocrami.dtagsen(d_ways'range) := rs.staccways;
-          vs.strdstarted := '1';
-          ocrami.dtagsen := (others => '1');
+          vs.strdstarted    := '1';
+          ocrami.dtagsen    := (others => '1');
           ocrami.dtagswrite := '0';
         end if;
-      elsif rs.dlctr=(rs.dlctr'range => '1') then
-        vs.raisereq := '1';
+      elsif all_1(rs.dlctr) then
+        vs.raisereq         := '1';
       end if;
     end if;
-    if rs.strdstarted='1' and rs.strddone='1' then
-      vs.stread := '0';
+    if rs.strdstarted = '1' and rs.strddone = '1' then
+      vs.stread      := '0';
       vs.strdstarted := '0';
     end if;
     -- AMBA error register handling
-    if ahbsi.hready='1' then
-      if rs.s1htrans0='0' then
-        vs.errburstfilt := '0';
+    if ahbsi.hready = '1' then
+      if rs.s1htrans0 = '0' then
+        vs.errburstfilt       := '0';
       end if;
-      if ahbi.hresp="01" then
-        vs.errburstfilt := '1';
-        if rs.s1htrans0='0' or rs.errburstfilt='0' then
-          if r.ahb2_inacc='1' then
-            vs.ahberr := '1';
-            if rs.ahberr='1' then
-              vs.ahberrm := '1';
+      if ahbi.hresp = "01" then
+        vs.errburstfilt       := '1';
+        if rs.s1htrans0 = '0' or rs.errburstfilt = '0' then
+          if r.ahb2_inacc = '1' then
+            vs.ahberr         := '1';
+            if rs.ahberr = '1' then
+              vs.ahberrm      := '1';
             end if;
-            if r.ahb2_ifetch='1' then
+            if r.ahb2_ifetch = '1' then
               vs.ahberracc(0) := '1';
             end if;
-            if r.ahb2_dacc='1' and r.ahb2_hwrite='0' then
+            if r.ahb2_dacc = '1' and r.ahb2_hwrite = '0' then
               vs.ahberracc(1) := '1';
             end if;
-            if r.ahb2_dacc='1' and r.ahb2_hwrite='1' then
+            if r.ahb2_dacc = '1' and r.ahb2_hwrite = '1' then
               vs.ahberracc(2) := '1';
             end if;
-            if r.ahb2_ifetch='0' and r.ahb2_dacc='0' and r.ahb_hwrite='0' then
+            if r.ahb2_ifetch = '0' and r.ahb2_dacc = '0' and r.ahb_hwrite = '0' then
               vs.ahberracc(3) := '1';
             end if;
-            if r.ahb2_ifetch='0' and r.ahb2_dacc='0' and r.ahb_hwrite='1' then
+            if r.ahb2_ifetch = '0' and r.ahb2_dacc = '0' and r.ahb_hwrite = '1' then
               vs.ahberracc(4) := '1';
             end if;
           else
-            vs.ahboerr := '1';
-            if rs.ahboerr='1' then
-              vs.ahboerrm := '1';
+            vs.ahboerr        := '1';
+            if rs.ahboerr = '1' then
+              vs.ahboerrm     := '1';
             end if;
           end if;
         end if;
       end if;
     end if;
-    if rs.ahberr='0' then
-      if r.ahb2_ifetch='1' then
+    if rs.ahberr = '0' then
+      if r.ahb2_ifetch = '1' then
         vs.ahberrtype := "00";
-      elsif r.ahb2_dacc='1' then
+      elsif r.ahb2_dacc = '1' then
         vs.ahberrtype := "01";
       else
         vs.ahberrtype := "10";
       end if;
     end if;
-    if (vs.ahberr='1' and rs.ahberr='0') or (rs.ahberr='0' and rs.ahboerr='0') then
+    if (vs.ahberr = '1' and rs.ahberr = '0') or (rs.ahberr = '0' and rs.ahboerr = '0') then
       vs.ahberrhaddr    := rs.s1haddr;
       vs.ahberrhwrite   := rs.s1hwrite;
       vs.ahberrhsize    := rs.s1hsize;
       vs.ahberrhmaster  := rs.s1hmaster;
     end if;
     -- Stage 0 get address from AHB bus
-    vs.s1en     := (others => '0');
-    vs.s1read   := '0';
-    vs.s1flush  := (others => '0');
-    if ahbsi.hready='1' then
+    vs.s1en         := (others => '0');
+    vs.s1read       := '0';
+    vs.s1flush      := (others => '0');
+    if ahbsi.hready = '1' then
       vs.s1haddr    := ahbsi.haddr;
       vs.s1hwrite   := ahbsi.hwrite;
       vs.s1hsize    := ahbsi.hsize;
@@ -3432,18 +3449,18 @@ begin
     end if;
     if ahbsi.hready = '1' and ahbsi.htrans(1) = '1' and ahbsi.hwrite = '1' and r.cctrl.dsnoop = '1' then
       if rs.sgranted = '0' then
-        vs.s1en := (others => '1');
+        vs.s1en     := (others => '1');
       else
-        vs.s1en := not r.ahb_snoopmask;
+        vs.s1en     := not r.ahb_snoopmask;
       end if;
     elsif ahbsi.hready = '1' and ahbsi.htrans = HTRANS_NONSEQ and ahbsi.hwrite = '0' and rs.sgranted = '1' then
       -- Note in first cycle of dcfetch we do not know which set will be used
       if r.s = as_dcfetch then
-        vs.s1read := '1';
+        vs.s1read   := '1';
       end if;
     end if;
     for x in d_ways'range loop
-      vs.s1tagmsb(2*x+1 downto 2*x) := vs.s1haddr(TAG_HIGH downto TAG_HIGH-1);
+      vs.s1tagmsb(2 * x + 1 downto 2 * x) := vs.s1haddr(TAG_HIGH downto TAG_HIGH-1);
     end loop;
 
     --------------------------------------------------------------------------
@@ -3451,6 +3468,15 @@ begin
     --------------------------------------------------------------------------
 
     -- TLB update
+    if r.i2tlbclr = '1' then
+      v.itlb(u2i(r.i2tlbid)).valid := '0';
+    end if;
+    if r.d2tlbclr = '1' then
+      v.dtlb(u2i(r.d2tlbid)).valid := '0';
+    end if;
+    if r.h2tlbclr = '1' then
+      v.htlb(u2i(r.h2tlbid)).valid := '0';
+    end if;
     if r.tlbupdate = '1' then
       if r.mmusel(0) = '0' and r.i2tlbhit = '1' then
         v.itlb(u2i(r.i2tlbid)) := tlbent_mask(r.newent);
@@ -3573,9 +3599,9 @@ begin
           v.mmfsr.ow    := '1';
         end if;
       end if;
-      v.mmuerr.fav := '0';
-      v.mmuerr.ow  := '0';
-      v.mmuerr.ebe := (others => '0');
+      v.mmuerr.fav      := '0';
+      v.mmuerr.ow       := '0';
+      v.mmuerr.ebe      := (others => '0');
     end if;
 
 
@@ -3583,46 +3609,46 @@ begin
     -- Region flush
     ---------------------------------------------------------------------------
 
-    v.regflpipe(0 to r.regflpipe'high-1) := r.regflpipe(1 to r.regflpipe'high);
-    v.regflpipe(r.regflpipe'high).valid := '0';
-    v.regflpipe(r.regflpipe'high).addr := r.flushctr;
+    v.regflpipe(0 to r.regflpipe'high - 1) := r.regflpipe(1 to r.regflpipe'high);
+    v.regflpipe(r.regflpipe'high).valid    := '0';
+    v.regflpipe(r.regflpipe'high).addr     := r.flushctr;
 
     -- Stage 4: Write back commit
     --   inside SRAMs
     -- Stage 3: Command write back in case of match
     --  handled in FSM
     -- Stage 2: Compare with region flush mask
-    v.regflpipe(0) := r.regflpipe(1);
-    frdmatch := (others => '0');
-    for x in 0 to DWAYS-1 loop
-      if ( (r.dtagpipe(x)(TAG_HIGH-DTAG_LOW+1 downto 1) and r.regflmask(d_tag'range))
-           = r.regfladdr(d_tag'range) ) then
+    v.regflpipe(0)  := r.regflpipe(1);
+    frdmatch        := (others => '0');
+    for x in d_ways'range loop
+      if (r.dtagpipe(x)(TAG_HIGH - DTAG_LOW + 1 downto 1) and r.regflmask(d_tag'range))
+           = r.regfladdr(d_tag'range) then
         frdmatch(x) := '1';
       end if;
     end loop;
-    v.flushwrd := frdmatch;
-    frimatch := (others => '0');
-    for x in 0 to IWAYS-1 loop
-      if ( (r.itagpipe(x)(TAG_HIGH-ITAG_LOW+1 downto 1) and r.regflmask(i_tag'range))
-           = r.regfladdr(i_tag'range) ) then
+    v.flushwrd      := frdmatch;
+    frimatch        := (others => '0');
+    for x in i_ways'range loop
+      if (r.itagpipe(x)(TAG_HIGH - ITAG_LOW + 1 downto 1) and r.regflmask(i_tag'range))
+           = r.regfladdr(i_tag'range) then
         frimatch(x) := '1';
       end if;
     end loop;
     v.flushwri := frimatch;
-    -- compute unique msb:s for the tags we are replacing to avoid duplicate tags
+    -- Compute unique msb:s for the tags we are replacing to avoid duplicate tags
     for x in d_ways'range loop
-      frmsbd(2*x+1 downto 2*x) := r.dtagpipe(x)(TAG_HIGH-DTAG_LOW+1 downto TAG_HIGH-DTAG_LOW);
+      frmsbd(2 * x + 1 downto 2 * x) := r.dtagpipe(x)(TAG_HIGH - DTAG_LOW + 1 downto TAG_HIGH - DTAG_LOW);
     end loop;
     v.untagd := uniquemsb(frmsbd, frdmatch);
     for x in i_ways'range loop
-      frmsbi(2*x+1 downto 2*x) := r.itagpipe(x)(TAG_HIGH-ITAG_LOW+1 downto TAG_HIGH-ITAG_LOW);
+      frmsbi(2 * x + 1 downto 2 * x) := r.itagpipe(x)(TAG_HIGH - ITAG_LOW + 1 downto TAG_HIGH - ITAG_LOW);
     end loop;
     v.untagi := uniquemsb(frmsbi, frimatch);
 
     -- Stage 1: Capture tags
     v.regflpipe(1) := r.regflpipe(2);
-    v.dtagpipe := dctagsv;
-    v.itagpipe := cramo.itagdout;
+    v.dtagpipe     := dctagsv;
+    v.itagpipe     := cramo.itagdout;
 
     -- Stage 0: Read from tag RAMs, done in main FSM
 
@@ -3640,23 +3666,23 @@ begin
     -- should be kept high
     keepreq := '0';
 
-    if r.dcerrmask='1' or r.ahb2_ifetch='1' then
-      for x in LINESZMAX-1 downto 0 loop
-        if r.ahb3_rdberr(x)='1' then
-          v.ahb3_rdbuf((x+1)*32-1 downto x*32) := (others => (r.dcerrmaskval and not r.ahb2_ifetch));
+    if r.dcerrmask = '1' or r.ahb2_ifetch = '1' then
+      for x in LINESZMAX - 1 downto 0 loop
+        if r.ahb3_rdberr(x) = '1' then
+          v.ahb3_rdbuf((x + 1) * 32 - 1 downto x * 32) := (others => (r.dcerrmaskval and not r.ahb2_ifetch));
         end if;
       end loop;
     end if;
     -- Read data buffer pipeline, advance with AHB hready
-    v.werr := '0';
+    v.werr                := '0';
     if ahbi.hready = '1' then
-      dbg(3) <= '1';
+      dbg(3)              <= '1';
       v.ahb3_inacc := r.ahb2_inacc;
       -- Reading?
       if r.ahb2_inacc = '1' and r.ahb2_hwrite = '0' then
-        dbg(4) <= '1';
+        dbg(4)            <= '1';
         if ahbi.hresp = HRESP_ERROR then
-          v.ahb3_error := '1';
+          v.ahb3_error    := '1';
         end if;
         for x in LINESZMAX - 1 downto 0 loop
           if r.ahb2_addrmask(x) = '1' then
@@ -3665,49 +3691,48 @@ begin
         end loop;
         -- Allow both OK and ERROR, to not hang the cache in as_dcfetch.
         if ahbi.hresp(1) = '0' then
-          dbg(5) <= '1';
+          dbg(5)          <= '1';
           v.ahb3_rdbvalid := v.ahb3_rdbvalid or r.ahb2_addrmask;
         end if;
       end if;
       if r.ahb2_inacc = '1' and r.ahb2_hwrite = '1' then
         if ahbi.hresp = HRESP_ERROR then
-          v.werr := '1';
+          v.werr          := '1';
         end if;
       end if;
-      v.ahb2_inacc    := r.granted and r.ahb_htrans(1);
-      v.ahb2_hwrite   := r.ahb_hwrite;
-      v.ahb2_addrmask := getvalidmask(r.ahb_haddr(4 downto 2), r.ahb_hsize, ENDIAN_B);
-      v.ahb2_ifetch   := '0';
+      v.ahb2_inacc        := r.granted and r.ahb_htrans(1);
+      v.ahb2_hwrite       := r.ahb_hwrite;
+      v.ahb2_addrmask     := getvalidmask(r.ahb_haddr(4 downto 2), r.ahb_hsize, ENDIAN_B);
+      v.ahb2_ifetch       := '0';
       if r.s = as_icfetch then
-        v.ahb2_ifetch := '1';
+        v.ahb2_ifetch     := '1';
       end if;
-      v.ahb2_dacc     := '0';
+      v.ahb2_dacc         := '0';
       if v.s = as_store or v.s = as_dcfetch or v.s = as_dcsingle or v.s = as_wrburst then
-        v.ahb2_dacc   := '0';
+        v.ahb2_dacc       := '1';
       end if;
     end if;
-    v.ahb3_rdbvalid := v.ahb3_rdbvalid or r.ahb3_rdberr;
-    -- set rdberr during first cycle of response to get another cycle to clear
-    -- ahb3_rdbuf if needed (to simplify logic both cycles of error response)
-    -- we also clear ahb2_addrmask during the first cycle of the response to
+    v.ahb3_rdbvalid       := v.ahb3_rdbvalid or r.ahb3_rdberr;
+    -- Set rdberr during first cycle of response, to get another cycle to clear
+    -- ahb3_rdbuf if needed (to simplify logic both cycles of error response).
+    -- We also clear ahb2_addrmask during the first cycle of the response, to
     -- allow the assignment of hrdata to ahb3_rdbuf to be muxed in last without
-    -- any extra masking logic needed afterwards
-    if ahbi.hready='0' and ahbi.hresp="01" and (r.dcerrmask='1' or r.ahb2_ifetch='1') then
-      v.ahb2_addrmask := (others => '0');
+    -- any extra masking logic needed afterwards.
+    if ahbi.hready = '0' and ahbi.hresp = "01" and (r.dcerrmask = '1' or r.ahb2_ifetch = '1') then
+      v.ahb2_addrmask     := (others => '0');
     end if;
-    if ahbi.hresp="01" and r.ahb2_inacc='1' and r.ahb2_hwrite='0' then
-      v.ahb3_rdberr := v.ahb3_rdberr or r.ahb2_addrmask;
+    if ahbi.hresp = "01" and r.ahb2_inacc = '1' and r.ahb2_hwrite = '0' then
+      v.ahb3_rdberr       := v.ahb3_rdberr or r.ahb2_addrmask;
     end if;
 
     -- Read data from 32/64 bit single reads
-    rdb64  := (others => '0');
-    rdb32v := '0';
+    rdb64        := (others => '0');
+    rdb32v       := '0';
     if pte_hsize = HSIZE_WORD then
-      -- rdb64 := (others => '0');
       for x in r.ahb3_rdbvalid'range loop
         if r.ahb3_rdbvalid(x) = '1' then
           rdb32v := '1';
-          rdb32 := rdb32 or get(r.ahb3_rdbuf, x * 32, 32);
+          rdb32  := rdb32 or get(r.ahb3_rdbuf, x * 32, 32);
         end if;
       end loop;
     else
@@ -3733,7 +3758,7 @@ begin
 
     -- Do this above FSM as it may set ramreload
     if r.imisspend = '0' and r.dmisspend  = '0' and r.slowwrpend = '0' and
-      r.iflushpend = '0' and r.dflushpend = '0' and r.ramreload  = '1' then
+       r.iflushpend = '0' and r.dflushpend = '0' and r.ramreload  = '1' then
       v.ramreload := '0';
     end if;
 
@@ -3765,11 +3790,11 @@ begin
       -- Hit but not fit means a smaller MMU page size must be tried!
 
       if r.pmp_do = '1' then
-        v.pmp_hit := to_bit(not all_0(pmp_hit));
-        v.pmp_fit := to_bit(not all_0(pmp_prio and pmp_fit));
-        v.pmp_rwx(2) := to_bit(not all_0(pmp_r and pmp_prio));
-        v.pmp_rwx(1) := to_bit(not all_0(pmp_w and pmp_prio));
-        v.pmp_rwx(0) := to_bit(not all_0(pmp_x and pmp_prio));
+        v.pmp_hit := not all_0(pmp_hit);
+        v.pmp_fit := not all_0(pmp_prio and pmp_fit);
+        v.pmp_rwx(2) := not all_0(pmp_r and pmp_prio);
+        v.pmp_rwx(1) := not all_0(pmp_w and pmp_prio);
+        v.pmp_rwx(0) := not all_0(pmp_x and pmp_prio);
 
         -- Fault masking
         if r.mmusel(0) = '0' then      -- Data read/write?
@@ -3800,16 +3825,19 @@ begin
       v.pmp_mask(ppn'range) := (others => '1');
     end if;
 
+    v.h2tlbclr := '0';
     htlbchk := tlbcheck_none;
     if ext_h = 1 and r.h_do = '1' then
       tlb_lookup('1' & r.h_x, r.htlb, r.h_addr_repl, r.h_addr, "0", mmu_ctx(r, csr), '0', r.h_ls, '0',
                  to_bit(ext_h), r.h_do, '0', '0', '0', '0',
-                 v.htlb, htlbchk, '0', r.h_mxr, r.h_vmxr, r.h_hx, "10", true
+                 htlbchk, '0', r.h_mxr, r.h_vmxr, r.h_hx, "10", true
                  );
       -- These may be needed later.
       v.h_w        := htlbchk.h_w;
       v.h_pmp_no_w := htlbchk.h_pmp_no_w;
       v.h_pmp_no_x := htlbchk.h_pmp_no_x;
+      v.h2tlbclr   := htlbchk.clr;
+      v.h2tlbid    := htlbchk.id(v.h2tlbid'range);
     end if;
     v.h_do := '0';
 
@@ -3843,7 +3871,7 @@ begin
         v.stbuffull     := '0';
         -- Release lock?
         if r.ahb_hlock = '1' and dlock = '0' then
-          v.ahb_hlock := '0';
+          v.ahb_hlock   := '0';
         -- Normal write?
         elsif fastwr = '1' then
           v.ahb_htrans    := HTRANS_NONSEQ;
@@ -3851,7 +3879,7 @@ begin
           v.ahb_haddr     := v.d2paddr(v.ahb_haddr'range);
           v.ahb_hsize     := "0" & v.d2size;
           v.ahb_hwrite    := '1';
-          v.d2stbw := r.d2stbw + 1;
+          v.d2stbw        := r.d2stbw + 1;
           v.s := as_store;
         -- I$/D$ flush?
         elsif ( ((not IMISSPIPE) and v.iflushpend = '1') or (IMISSPIPE and r.iflushpend = '1') or
@@ -4181,13 +4209,13 @@ begin
         if r.flushpart(0) = '1' then
           v.dlru         := (others => (others => '0'));
         end if;
-        v.flushctr       := std_logic_vector(unsigned(r.flushctr) + 1);
+        v.flushctr       := uadd(r.flushctr, 1);
         if r.flushpart(1) = '1' and all_0(v.flushctr) then
           v.flushpart(1) := '0';
           v.iflushpend   := '0';
         end if;
-        if r.flushpart(0)='1' and all_0(v.flushctr) then
-          v.dtflushdone := '1';
+        if r.flushpart(0) = '1' and all_0(v.flushctr) then
+          v.dtflushdone  := '1';
         end if;
         if r.flushpart(0) = '1' and r.dtflushdone = '1' and rs.s3flush(0) = '0' then
           v.flushpart(0) := '0';
@@ -4198,21 +4226,20 @@ begin
           v.s            := as_normal;
         end if;
         ocrami.iindex               := (others => '0');
-        ocrami.iindex(i_sets'range) :=
-          r.flushctr(r.flushctr'high downto r.flushctr'high - IOFFSET_BITS + 1);
-        ocrami.idataoffs := (others => '0');
-        ocrami.itagdin   := itags_default;
+        ocrami.iindex(i_sets'range) := get_hi(r.flushctr, i_sets'length);
+        ocrami.idataoffs            := (others => '0');
+        ocrami.itagdin              := itags_default;
         if r.flushpart(1) = '1' then
-          ocrami.itagen    := "1111";
-          ocrami.itagwrite := '1';
+          ocrami.itagen             := "1111";
+          ocrami.itagwrite          := '1';
         end if;
-        if r.flushpart(0) = '1' and r.dtflushdone='0' then
+        if r.flushpart(0) = '1' and r.dtflushdone = '0' then
           vs.s1haddr(d_tag'range)                  := (others => '0');
           vs.s1haddr(TAG_HIGH downto TAG_HIGH - 7) := x"F3";
           for x in d_ways'range loop
-            vs.s1tagmsb(2 * x + 1 downto 2 * x)  := u2slv(x, 2);
+            vs.s1tagmsb(2 * x + 1 downto 2 * x)    := u2slv(x, 2);
           end loop;
-          vs.s1haddr(d_index'range) := r.flushctr(DOFFSET_HIGH-DOFFSET_LOW downto 0);
+          vs.s1haddr(d_index'range) := r.flushctr(DOFFSET_HIGH - DOFFSET_LOW downto 0);
           vs.s1read                 := '1';
           vs.s1flush                := (others => '1');
         end if;
@@ -4252,7 +4279,7 @@ begin
         end if;
         if ((not ENDIAN_B) and r.ahb3_rdbvalid(LINESZMAX - 1 - u2i(r.iramaddr & onev(3))) = '1') or
            ((ENDIAN_B)     and r.ahb3_rdbvalid(u2i(r.iramaddr & onev(3))) = '1') then
-          v.iramaddr        := std_logic_vector(unsigned(r.iramaddr) + 1);
+          v.iramaddr        := uadd(r.iramaddr, 1);
           -- Finished fetching I$ line?
           if all_1(r.iramaddr) then
             v.irdbufen      := '0';
@@ -4276,7 +4303,7 @@ begin
         end if;
         i_mexc    := r.ahb3_error and not r.icignerr;
         i_exctype := '1';
-        if r.ahb3_error = '1' and r.icignerr='0' then
+        if r.ahb3_error = '1' and r.icignerr = '0' then
           v.iflushpend := '1';
         end if;
         ocrami.itcmen := '0';
@@ -4311,10 +4338,10 @@ begin
             ocrami.ddataen(d_ways'range) := r.d2hitv;
             ocrami.ddatawrite            := (others => '1');
           end if;
-          v.dramaddr := std_logic_vector(unsigned(r.dramaddr) + 1);
+          v.dramaddr      := uadd(r.dramaddr, 1);
           if all_1(r.dramaddr) then
             if r.dvtagdone = '0' then
-              v.s := as_dcfetch2;
+              v.s         := as_dcfetch2;
             else
               v.dmisspend := '0';
               v.s         := as_normal;
@@ -4654,7 +4681,7 @@ begin
             v.ahb_htrans  := HTRANS_NONSEQ;
             -- ASI?
             if r.mmusel(2) = '1' then
-              v.d2vaddr(9 downto 8) := std_logic_vector(unsigned(r.d2vaddr(9 downto 8)) + 1);
+              v.d2vaddr(9 downto 8) := uadd(r.d2vaddr(9 downto 8), 1);
               if r.d2vaddr(9 downto 8) = "11" then
                 v.s                 := as_rdasi2;
               end if;
@@ -5497,7 +5524,7 @@ begin
             v.dmisspend := '0';
           end if;
         end if;
-        if r.d2write='1' and r.d2.specialasi='0' and r.amo.d2type(5) = '0' then
+        if r.d2write = '1' and r.d2.specialasi = '0' and r.amo.d2type(5) = '0' then
           ocrami.ddataen(d_ways'range) := dhitv;
           ocrami.dtcmen                := r.d2tcmhit;
         end if;
@@ -5669,11 +5696,11 @@ begin
         v.dregval     := lo_h(r.d2data);
         v.ramreload   := '1';
         d32 := hi_h(r.d2data);
-        if r.d2vaddr(2)='1' xor ENDIAN_B then
+        if r.d2vaddr(2) = '1' xor ENDIAN_B then
           d32 := lo_h(r.d2data);
         end if;
         for w in d_ways'range loop
-          v.dtagpipe(w)(TAG_HIGH-DTAG_LOW+1 downto 1) := d32(d_tag'range);
+          v.dtagpipe(w)(TAG_HIGH - DTAG_LOW + 1 downto 1) := d32(d_tag'range);
           v.dtagpipe(w)(0) := d32(0);
         end loop;
 
@@ -5700,55 +5727,55 @@ begin
                 v.dflushpend := v.dflushpend or v.dregflush;
 
               when "01000" =>            -- AHB error register
-                v.icignerr     := r.d2data(32+27);
-                v.dcerrmaskval := r.d2data(32+26);
-                v.dcerrmask    := r.d2data(32+25);
-                v.dcignerr     := r.d2data(32+24);
-                vs.ahberracc := vs.ahberracc and not r.d2data(32+20 downto 32+16);
-                if r.d2data(32+3)='1' then vs.ahboerrm := '0'; end if;
-                if r.d2data(32+2)='1' then vs.ahberrm := '0'; end if;
-                if r.d2data(32+1)='1' then vs.ahboerr := '0'; end if;
-                if r.d2data(32+0)='1' then vs.ahberr := '0'; end if;
+                v.icignerr     := r.d2data(32 + 27);
+                v.dcerrmaskval := r.d2data(32 + 26);
+                v.dcerrmask    := r.d2data(32 + 25);
+                v.dcignerr     := r.d2data(32 + 24);
+                vs.ahberracc := vs.ahberracc and not r.d2data(32 + 20 downto 32 + 16);
+                if r.d2data(32 + 3) = '1' then vs.ahboerrm := '0'; end if;
+                if r.d2data(32 + 2) = '1' then vs.ahberrm  := '0'; end if;
+                if r.d2data(32 + 1) = '1' then vs.ahboerr  := '0'; end if;
+                if r.d2data(32 + 0) = '1' then vs.ahberr   := '0'; end if;
 
               when "10000" => -- TCM configuration register
-                if itcmen=0 and dtcmen=0 then
+                if itcmen = 0 and dtcmen = 0 then
                   v.dregerr := '1';
                 else
-                  if r.itcmwipe='0' and r.dtcmwipe='0' then
+                  if r.itcmwipe = '0' and r.dtcmwipe = '0' then
                     if itcmen /= 0 then
-                      v.itcmwipe := r.d2data(32+31);
+                      v.itcmwipe := r.d2data(32 + 31);
                     end if;
                     if dtcmen /= 0 then
-                      v.dtcmwipe := r.d2data(32+15);
+                      v.dtcmwipe := r.d2data(32 + 15);
                     end if;
                   end if;
                   v.tcmdata := (others => '0');
                 end if;
 
               when "10010" => -- Instruction TCM control register
-                if itcmen=0 and dtcmen=0 then
+                if itcmen = 0 and dtcmen = 0 then
                   v.dregerr := '1';
                 end if;
-                if itcmen /=0 then
-                  v.itcmaddr := r.d2data(32+31 downto 32+16);
-                  v.itcmctx := r.d2data(32+15 downto 32+8);
-                  v.itcmperm := r.d2data(32+4 downto 32+3);
-                  v.itcmenva := r.d2data(32+2);
-                  v.itcmenvc := r.d2data(32+1);
-                  v.itcmenp := r.d2data(32+0);
+                if itcmen /= 0 then
+                  v.itcmaddr := r.d2data(32 + 31 downto 32 + 16);
+                  v.itcmctx  := r.d2data(32 + 15 downto 32 +  8);
+                  v.itcmperm := r.d2data(32 +  4 downto 32 +  3);
+                  v.itcmenva := r.d2data(32 +  2);
+                  v.itcmenvc := r.d2data(32 +  1);
+                  v.itcmenp  := r.d2data(32 +  0);
                 end if;
 
               when "10011" =>   -- Data TCM control register
-                if itcmen=0 and dtcmen=0 then
+                if itcmen = 0 and dtcmen = 0 then
                   v.dregerr := '1';
                 end if;
                 if dtcmen /= 0 then
                   v.dtcmaddr := r.d2data(31 downto 16);
-                  v.dtcmctx := r.d2data(15 downto 8);
-                  v.dtcmperm := r.d2data(6 downto 3);
+                  v.dtcmctx  := r.d2data(15 downto 8);
+                  v.dtcmperm := r.d2data( 6 downto 3);
                   v.dtcmenva := r.d2data(2);
                   v.dtcmenvc := r.d2data(1);
-                  v.dtcmenp := r.d2data(0);
+                  v.dtcmenp  := r.d2data(0);
                 end if;
 
               when others =>    -- Unimplemented
@@ -5930,7 +5957,7 @@ begin
             end if;
             if r.d2vaddr(8) = '0' then
               if r.d2vaddr(2) = '0' or r.d2size = "11" then
-                v.newent.ctx      := r.d2data(32 + v.newent.ctx'length - 1 + 4 downto 32 + 4);
+                v.newent.ctx      := get(r.d2data, 32 + 4, v.newent.ctx'length);
                 v.newent.mask(1)  := r.d2data(32 + 3);
                 v.newent.mask(2)  := r.d2data(32 + 2);
                 v.newent.valid    := r.d2data(32 + 0);
@@ -6063,7 +6090,7 @@ begin
             end if;
           when x"0e" =>                 -- 0x0E DCache tags
             -- wait for write to complete in snoop tag pipeline
-            if rs.dtwrite='1' then
+            if rs.dtwrite = '1' then
               v.s := r.s;
             end if;
           when x"0f" =>                 -- 0x0F DCache data
@@ -6076,7 +6103,7 @@ begin
             end if;
           when x"1e" =>                 -- 0x1E Snoop tags
             -- wait for write to complete in snoop tag pipeline
-            if rs.stwrite='1' then
+            if rs.stwrite = '1' then
               v.s := r.s;
             end if;
           when x"26" =>            -- 0x26 Instruction TCM
@@ -6143,20 +6170,20 @@ begin
                 v.dregval(0)            := r.dregflush;
 
               when "01000" =>    -- AHB error register
-                v.dregval := (others => '0');
-                v.dregval(27) := r.icignerr;
-                v.dregval(26) := r.dcerrmaskval;
-                v.dregval(25) := r.dcerrmask;
-                v.dregval(24) := r.dcignerr;
+                v.dregval               := (others => '0');
+                v.dregval(27)           := r.icignerr;
+                v.dregval(26)           := r.dcerrmaskval;
+                v.dregval(25)           := r.dcerrmask;
+                v.dregval(24)           := r.dcignerr;
                 v.dregval(20 downto 16) := rs.ahberracc;
-                v.dregval(15) := rs.ahberrhwrite;
+                v.dregval(15)           := rs.ahberrhwrite;
                 v.dregval(14 downto 11) := rs.ahberrhmaster;
-                v.dregval(10 downto 8) := rs.ahberrhsize;
-                v.dregval(5 downto 4) := rs.ahberrtype;
-                v.dregval(3) := rs.ahboerrm;
-                v.dregval(2) := rs.ahberrm;
-                v.dregval(1) := rs.ahboerr;
-                v.dregval(0) := rs.ahberr;
+                v.dregval(10 downto  8) := rs.ahberrhsize;
+                v.dregval( 5 downto  4) := rs.ahberrtype;
+                v.dregval(3)            := rs.ahboerrm;
+                v.dregval(2)            := rs.ahberrm;
+                v.dregval(1)            := rs.ahboerr;
+                v.dregval(0)            := rs.ahberr;
 
               when "01001" =>    -- AHB error address register
                 v.dregval := rs.ahberrhaddr;
@@ -6166,43 +6193,43 @@ begin
                 v.dregval := bootword;
 
               when "10000" =>   -- TCM configuration register
-                if itcmen=0 and dtcmen=0 then
-                  v.dregerr := '1';
+                if itcmen = 0 and dtcmen = 0 then
+                  v.dregerr                 := '1';
                 else
                   if itcmen /= 0 then
-                    v.dregval(31) := r.itcmwipe;
-                    v.dregval(20 downto 16) := std_logic_vector(to_unsigned(itcmabits+3,5));
+                    v.dregval(31)           := r.itcmwipe;
+                    v.dregval(20 downto 16) := u2slv(itcmabits + 3, 5);
                   end if;
                   if dtcmen /= 0 then
-                    v.dregval(15) := r.dtcmwipe;
-                    v.dregval(4 downto 0) := std_logic_vector(to_unsigned(dtcmabits+3,5));
+                    v.dregval(15)           := r.dtcmwipe;
+                    v.dregval(4 downto 0)   := u2slv(dtcmabits + 3, 5);
                   end if;
                 end if;
 
               when "10010" => -- Instruction TCM control register
-                if itcmen=0 and dtcmen=0 then
-                  v.dregerr := '1';
+                if itcmen = 0 and dtcmen = 0 then
+                  v.dregerr               := '1';
                 end if;
-                if itcmen /=0 then
+                if itcmen /= 0 then
                   v.dregval(31 downto 16) := r.itcmaddr;
-                  v.dregval(15 downto 8) := r.itcmctx;
-                  v.dregval(4 downto 3) := r.itcmperm;
-                  v.dregval(2) := r.itcmenva;
-                  v.dregval(1) := r.itcmenvc;
-                  v.dregval(0) := r.itcmenp;
+                  v.dregval(15 downto  8) := r.itcmctx;
+                  v.dregval( 4 downto  3) := r.itcmperm;
+                  v.dregval(2)            := r.itcmenva;
+                  v.dregval(1)            := r.itcmenvc;
+                  v.dregval(0)            := r.itcmenp;
                 end if;
 
               when "10011" =>   -- Data TCM control register
-                if itcmen=0 and dtcmen=0 then
+                if itcmen = 0 and dtcmen = 0 then
                   v.dregerr := '1';
                 end if;
                 if dtcmen /= 0 then
                   v.dregval(31 downto 16) := r.dtcmaddr;
-                  v.dregval(15 downto 8) := r.dtcmctx;
-                  v.dregval(6 downto 3) := r.dtcmperm;
-                  v.dregval(2) := r.dtcmenva;
-                  v.dregval(1) := r.dtcmenvc;
-                  v.dregval(0) := r.dtcmenp;
+                  v.dregval(15 downto  8) := r.dtcmctx;
+                  v.dregval( 6 downto  3) := r.dtcmperm;
+                  v.dregval(2)            := r.dtcmenva;
+                  v.dregval(1)            := r.dtcmenvc;
+                  v.dregval(0)            := r.dtcmenp;
                 end if;
 
               when others =>    -- Unimplemented
@@ -6262,17 +6289,17 @@ begin
             v.s := as_rdasi2;
 
           when x"1b" =>                 -- 0x1B MMU flush/probe
-            if r.d2vaddr(11)='1' or (r.d2vaddr(10)='1' and r.d2vaddr(9 downto 8)/="00") then
+            if r.d2vaddr(11) = '1' or (r.d2vaddr(10) = '1' and r.d2vaddr(9 downto 8) /= "00") then
               -- Undefined probe type -- return 0
               v.dregval := (others => '0');
-              v.s := as_rdasi2;
-            elsif r.d2vaddr(10)='1' then
+              v.s       := as_rdasi2;
+            elsif r.d2vaddr(10) = '1' then
               -- Return data from DTLB if address matched and "entire" mode
-              if r.d2tlbamatch='1' then
+              if r.d2tlbamatch = '1' then
                 v.dregval(31 downto 28) := "0000";
-                v.dregval(7) := r.dtlb(u2i(r.d2tlbid)).cached;
-                v.dregval(6) := r.dtlb(u2i(r.d2tlbid)).modified;
-                v.dregval(5) := '1';    -- referenced
+                v.dregval(7)          := r.dtlb(u2i(r.d2tlbid)).cached;
+                v.dregval(6)          := r.dtlb(u2i(r.d2tlbid)).modified;
+                v.dregval(5)          := '1';    -- referenced
                 v.dregval(4 downto 2) := r.dtlb(u2i(r.d2tlbid)).acc;
                 v.dregval(1 downto 0) := "10";  -- PTE
                 v.s := as_rdasi2;
@@ -6285,7 +6312,7 @@ begin
             else
               -- Fall back to MMU walk
               start_walk := true;
-              v.mmusel := "101";
+              v.mmusel   := "101";
               if not is_riscv then
                 v.ahb_haddr := mmu_base(r, csr);
               end if;
@@ -6372,7 +6399,7 @@ begin
             end if;
             if r.d2vaddr(8) = '0' then
               if r.d2vaddr(2) = '0' then
-                v.dregval(v.newent.ctx'length - 1 + 4 downto 4)  := v.newent.ctx;
+                set(v.dregval, 4, v.newent.ctx);
                 v.dregval(3)            := v.newent.mask(1);
                 v.dregval(2)            := v.newent.mask(2);
                 v.dregval(0)            := v.newent.valid;
@@ -6484,20 +6511,20 @@ begin
         ocrami.ddataen                    := (others => '1');
         ocrami.dtcmen                     := '1';
         v.s := as_rdcdiag2;
-        if r.d2.asi="00011110" then
-          if vs.stread='0' and vs.stwrite='0' then
-            vs.stread := '1';
-            vs.staccidx := r.d2vaddr(d_index'range);
+        if r.d2.asi = "00011110" then
+          if vs.stread = '0' and vs.stwrite = '0' then
+            vs.stread    := '1';
+            vs.staccidx  := r.d2vaddr(d_index'range);
             vs.staccways := (others => '0');
-            vs.staccways(u2i(r.d2vaddr(DTAG_LOW+1 downto DTAG_LOW))) := '1';
+            vs.staccways(u2i(r.d2vaddr(DTAG_LOW + 1 downto DTAG_LOW))) := '1';
           else
             v.s := as_rdcdiag;
           end if;
         end if;
 
       when as_rdcdiag2 =>
-        v.s := as_rdasi2;
-        vdiagasi := r.d2.asi(5) & r.d2.asi(4) & r.d2.asi(1 downto 0);
+        v.s       := as_rdasi2;
+        vdiagasi  := r.d2.asi(5) & r.d2.asi(4) & r.d2.asi(1 downto 0);
         case vdiagasi is
           when "0000" | "0100" | "1000" | "1100" =>                  -- 0x0C ICache tags
             d32 := cramo.itagdout(u2i(r.d2vaddr(ITAG_LOW + 1 downto ITAG_LOW)));
@@ -6520,31 +6547,31 @@ begin
               end if;
             end if;
           when "0010" =>                  -- 0x0E DCache tags
-            d32 := dctagsv(u2i(r.d2vaddr(DTAG_LOW + 1 downto DTAG_LOW)));
+            d32   := dctagsv(u2i(r.d2vaddr(DTAG_LOW + 1 downto DTAG_LOW)));
             v.dregval              := (others => '0');
             v.dregval(d_tag'range) := d32(TAG_HIGH - DTAG_LOW + 1 downto 1);
             v.dregval(7 downto 0)  := (others => d32(0));
           when "0110" | "1110"            =>  -- 0x1E snoop tags
-            d32 := dctagsv(u2i(r.d2vaddr(DTAG_LOW+1 downto DTAG_LOW)));
+            d32   := dctagsv(u2i(r.d2vaddr(DTAG_LOW + 1 downto DTAG_LOW)));
             v.dregval              := (others => '0');
             v.dregval(d_tag'range) := d32(TAG_HIGH - DTAG_LOW + 1 downto 1);
             v.dregval(7 downto 0)  := (others => d32(0));
-            if rs.strddone='1' then
-              v.dregval := (others => '0');
+            if rs.strddone = '1' then
+              v.dregval              := (others => '0');
               v.dregval(d_tag'range) := rs.stacctag;
             else
               v.s := r.s;
             end if;
           when "1010" =>                -- 0x26 ITCM
             d64 := cramo.itcmdout;
-            if (r.d2vaddr(2)='0') xor ENDIAN_B then
+            if (r.d2vaddr(2) = '0') xor ENDIAN_B then
               v.dregval := hi_h(d64);
             else
               v.dregval := lo_h(d64);
             end if;
           when "1011" =>                -- 0x27 DTCM
             d64 := cramo.dtcmdout;
-            if (r.d2vaddr(2)='0') xor ENDIAN_B then
+            if (r.d2vaddr(2) = '0') xor ENDIAN_B then
               v.dregval := hi_h(d64);
             else
               v.dregval := lo_h(d64);
@@ -6646,12 +6673,12 @@ begin
         v.s                     := as_rdasi2;
 
       when as_mmuflush2 =>
-        v.itlbprobeid  := std_logic_vector(unsigned(r.itlbprobeid) + 1);
-        v.d2tlbid      := std_logic_vector(unsigned(r.d2tlbid) + 1);
-        if flushmatch(r.itlb(u2i(r.itlbprobeid)), r.d2vaddr, mmu_ctx(r, csr)) = '1' then
+        v.itlbprobeid  := uadd(r.itlbprobeid, 1);
+        v.d2tlbid      := uadd(r.d2tlbid, 1);
+        if flushmatch(r.itlb(u2i(r.itlbprobeid)), r.d2vaddr, mmu_ctx(r, csr)) then
           v.itlb(u2i(r.itlbprobeid)).valid := '0';
         end if;
-        if flushmatch(r.dtlb(u2i(r.d2tlbid)), r.d2vaddr, mmu_ctx(r, csr)) = '1' then
+        if flushmatch(r.dtlb(u2i(r.d2tlbid)), r.d2vaddr, mmu_ctx(r, csr)) then
           v.dtlb(u2i(r.d2tlbid)).valid     := '0';
         end if;
         if (dtlbnum >= itlbnum and all_1(r.d2tlbid)) or
@@ -6673,70 +6700,69 @@ begin
           ocrami.itagdin(w)(TAG_HIGH - ITAG_LOW + 1 downto TAG_HIGH - ITAG_LOW)      := r.untagi(2 * w + 1 downto 2 * w);
           ocrami.itagdin(w)(0)                                                       := '0';
         end loop;
-        ocrami.dtagcindex := (others => '0');
-        ocrami.dtagcindex(DOFFSET_BITS-1 downto 0) :=
-          r.flushctr(r.flushctr'high downto r.flushctr'high-DOFFSET_BITS+1);
+        ocrami.dtagcindex               := (others => '0');
+        ocrami.dtagcindex(d_sets'range) := get_hi(r.flushctr, d_sets'length);
 
         -- Stage 3: Write back to itag/dtag
         vbubble0 := '0';
-        vstall := '0';
-        if r.regflpipe(0).valid='1' then
+        vstall   := '0';
+        if r.regflpipe(0).valid = '1' then
           if r.flushwri /= (r.flushwri'range => '0') then
-            ocrami.iindex(IOFFSET_BITS-1 downto 0) := r.regflpipe(0).addr(IOFFSET_BITS-1 downto 0);
-            ocrami.itagen(0 to IWAYS-1) := r.flushwri;
-            ocrami.itagwrite := '1';
-            vbubble0 := '1';
+            ocrami.iindex(i_sets'range) := r.regflpipe(0).addr(i_sets'range);
+            ocrami.itagen(i_ways'range) := r.flushwri;
+            ocrami.itagwrite            := '1';
+            vbubble0                    := '1';
           end if;
           if dtagconf /= 0 then
             for w in d_ways'range loop
-              if r.flushwrd(w)='1' then
-                vs.validarr(to_integer(unsigned(r.regflpipe(0).addr)))(w) := '0';
+              if r.flushwrd(w) = '1' then
+                vs.validarr(u2i(r.regflpipe(0).addr))(w) := '0';
               end if;
             end loop;
           else
-            if vs.dtwrite='0' then
-              vs.dtaccidx := r.regflpipe(0).addr(DOFFSET_BITS-1 downto 0);
+            if vs.dtwrite = '0' then
+              vs.dtaccidx    := r.regflpipe(0).addr(d_sets'range);
               vs.dtacctagmsb := r.untagd;
               vs.dtacctaglsb := (others => '0');
             end  if;
             if r.flushwrd /= (r.flushwrd'range => '0') then
-              if vs.dtwrite='0' then
-                vs.dtwrite := '1';
-                vs.dtaccways := r.flushwrd;
-                vs.dtacctagmod := '1';
+              if vs.dtwrite = '0' then
+                vs.dtwrite      := '1';
+                vs.dtaccways    := r.flushwrd;
+                vs.dtacctagmod  := '1';
               else
                 vstall := '1';
               end if;
             end if;
           end if;
         end if;
-        if vstall='1' then
+        if vstall = '1' then
           v.regflpipe := r.regflpipe;
         end if;
         -- Stage 2: Compare with region flush mask
         -- Most is handled in region flush section above FSM, just handle stall
         -- here
-        if vstall='1' then
-          v.untagi := r.untagi;
-          v.untagd := r.untagd;
+        if vstall = '1' then
+          v.untagi   := r.untagi;
+          v.untagd   := r.untagd;
           v.flushwrd := r.flushwrd;
           v.flushwri := r.flushwri;
         end if;
         -- Stage 1: Capture tags or itag/dtag write ongoing
         -- Most is handled in region flush section above FSM, just handle stall
         -- here
-        if vstall='1' then
+        if vstall = '1' then
           v.dtagpipe := r.dtagpipe;
           v.itagpipe := r.itagpipe;
         end if;
         -- Stage 0: Command Read from tag RAMs
-        if r.regfldone='0' and vbubble0='0' and vstall='0' then
-          if r.flushpart(1)='1' then
-            ocrami.itagen := (others => '1');
+        if r.regfldone = '0' and vbubble0 = '0' and vstall = '0' then
+          if r.flushpart(1) = '1' then
+            ocrami.itagen    := (others => '1');
             ocrami.itagwrite := '0';
           end if;
-          if r.flushpart(0)='1' then
-            ocrami.dtagcen := (others => '1');
+          if r.flushpart(0) = '1' then
+            ocrami.dtagcen   := (others => '1');
           end if;
           v.regflpipe(r.regflpipe'high).valid := '1';
           -- Advance counter, skip addrs guaranteed not to match
@@ -6744,26 +6770,28 @@ begin
           --   after incrementing, force fixed bits back to determined value
           vfoffs := r.flushctr;
           vfoffs := vfoffs or r.regflmask(d_index'range);
-          vfoffs := std_logic_vector(unsigned(vfoffs)+1);
-          if vfoffs=(vfoffs'range => '0') then
+          vfoffs := uadd(vfoffs, 1);
+          if all_0(vfoffs) then
             v.regfldone := '1';
           end if;
-          vfoffs := vfoffs and not r.regflmask(d_index'range);
-          vfoffs := vfoffs or (r.regflmask(d_index'range) and
-                               r.regfladdr(d_index'range));
+          vfoffs     := vfoffs and not r.regflmask(d_index'range);
+          vfoffs     := vfoffs or (r.regflmask(d_index'range) and
+                                   r.regfladdr(d_index'range));
           v.flushctr := vfoffs;
         end if;
 
-        if r.regfldone='1' then
+        if r.regfldone = '1' then
           vhit := '0';
           for x in 0 to r.regflpipe'high loop
-            if r.regflpipe(x).valid='1' then vhit := '1'; end if;
+            if r.regflpipe(x).valid = '1' then
+              vhit := '1';
+            end if;
           end loop;
-          if vhit='0' then
+          if vhit = '0' then
             v.ramreload := '1';
             v.s := as_normal;
-            if r.flushpart(1)='1' then v.iflushpend:='0'; v.iregflush:='0'; end if;
-            if r.flushpart(0)='1' then v.dflushpend:='0'; v.dregflush:='0'; end if;
+            if r.flushpart(1) = '1' then v.iflushpend := '0'; v.iregflush := '0'; end if;
+            if r.flushpart(0) = '1' then v.dflushpend := '0'; v.dregflush := '0'; end if;
           end if;
         end if;
 
@@ -6943,29 +6971,29 @@ begin
       v.amo.data := odco.data(u2i(odco.way));
     end if;
 
-    if v.itcmwipe='1' or v.dtcmwipe='1' then
-      v.itcmenp := '0';
+    if v.itcmwipe = '1' or v.dtcmwipe = '1' then
+      v.itcmenp  := '0';
       v.itcmenva := '0';
       v.itcmenvc := '0';
-      v.dtcmenp := '0';
+      v.dtcmenp  := '0';
       v.dtcmenva := '0';
       v.dtcmenvc := '0';
     end if;
 
     -- SMP broadcast flush
-    if smpflush(1)='1' then
+    if smpflush(1) = '1' then
       v.iflushpend := '1';
     end if;
-    if smpflush(0)='1' then
-      v.tlbflush := '1';
+    if smpflush(0) = '1' then
+      v.tlbflush   := '1';
     end if;
 
     -- SMP broadcast flush
-    if smpflush(1)='1' then
+    if smpflush(1) = '1' then
       v.iflushpend := '1';
     end if;
-    if smpflush(0)='1' then
-      v.tlbflush := '1';
+    if smpflush(0) = '1' then
+      v.tlbflush   := '1';
     end if;
 
 
@@ -6990,7 +7018,8 @@ begin
     -- Bus request handling
     v.ahb_hbusreq := '0';
     if (v.ahb_htrans(1) = '1' or r.s = as_getlock or
-        v.s = as_mmuwalk_lock or v.s = as_hmmuwalk_lock) and
+        v.s = as_mmuwalk_lock or v.s = as_hmmuwalk_lock or
+        v.s = as_xmmuwalk_lock) and
        (v.granted = '0' or v.ahb_hlock = '1' or keepreq = '1') then
       v.ahb_hbusreq := '1';
     end if;
@@ -7004,16 +7033,16 @@ begin
     end if;
 
     -- Data loopback if no bw support
-    if dusebw=0 then
-      for w in 0 to DWAYS-1 loop
+    if dusebw = 0 then
+      for w in d_ways'range loop
         for x in 7 downto 0 loop
-          if ocrami.ddatawrite(x)='0' then
+          if ocrami.ddatawrite(x) = '0' then
             ocrami.ddatadin(w)(8*x+7 downto 8*x) := cramo.ddatadout(w)(8*x+7 downto 8*x);
           end if;
         end loop;
       end loop;
       for x in 7 downto 0 loop
-        if ocrami.ddatawrite(x)='0' then
+        if ocrami.ddatawrite(x) = '0' then
           ocrami.dtcmdin(8*x+7 downto 8*x) := cramo.dtcmdout(8*x+7 downto 8*x);
         end if;
       end loop;
@@ -7033,7 +7062,7 @@ begin
       ocrami.dtagcuindex(d_sets'range) := rs.s3offs;
       ocrami.dtagcuen(d_ways'range)    := rs.s3read or rs.s3flush;
       ocrami.dtagcuwrite               := '1';
-    elsif rs.dtwrite='1' then
+    elsif rs.dtwrite = '1' then
       ocrami.dtagcuindex(d_sets'range) := rs.dtaccidx;
       ocrami.dtagcuen(d_ways'range)    := rs.dtaccways;
       ocrami.dtagcuwrite               := '1';
@@ -7041,29 +7070,29 @@ begin
 
     -- TCM wiping support
     ocrami.dtcmwrite := ocrami.ddatawrite;
-    if r.dtcmwipe='1' then
-      ocrami.dtcmen := '1';
-      ocrami.dtcmwrite := "11111111";
-      ocrami.dtcmdin := (others => '0');
+    if r.dtcmwipe = '1' then
+      ocrami.dtcmen        := '1';
+      ocrami.dtcmwrite     := "11111111";
+      ocrami.dtcmdin       := (others => '0');
       ocrami.ddatafulladdr := r.tcmdata;
     end if;
-    ocrami.itcmwrite := ocrami.idatawrite;
-    ocrami.itcmdin := ocrami.idatadin;
-    if r.itcmwipe='1' then
-      ocrami.itcmen := '1';
+    ocrami.itcmwrite       := ocrami.idatawrite;
+      ocrami.itcmdin       := ocrami.idatadin;
+    if r.itcmwipe = '1' then
+      ocrami.itcmen    := '1';
       ocrami.itcmwrite := "11";
-      ocrami.itcmdin := (others => '1');
+      ocrami.itcmdin   := (others => '1');
       ocrami.ifulladdr := r.tcmdata;
     end if;
-    if r.dtcmwipe='1' or r.itcmwipe='1' then
-      v.tcmdata(31 downto 3) := std_logic_vector(unsigned(r.tcmdata(31 downto 3))+1);
-      v.tcmdata(2 downto 0) := "000";
+    if r.dtcmwipe = '1' or r.itcmwipe = '1' then
+      v.tcmdata(31 downto 3) := uadd(r.tcmdata(31 downto 3), 1);
+      v.tcmdata(2 downto 0)  := "000";
       for x in 31 downto 3 loop
-        if (itcmen=0 or x>(2+itcmabits)) and (dtcmen=0 or x>(2+dtcmabits)) then
-          v.tcmdata(x) := '0';
+        if (itcmen = 0 or x > (2 + itcmabits)) and (dtcmen = 0 or x > (2 + dtcmabits)) then
+          v.tcmdata(x)       := '0';
         end if;
       end loop;
-      if v.tcmdata=(v.tcmdata'range => '0') then
+      if all_0(v.tcmdata) then
         v.dtcmwipe := '0';
         v.itcmwipe := '0';
       end if;
@@ -7072,8 +7101,8 @@ begin
     --------------------------------------------------------------------------
     -- Reset
     --------------------------------------------------------------------------
-    if ( GRLIB_CONFIG_ARRAY(grlib_async_reset_enable)=0 and
-         GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all)=0 ) then
+    if GRLIB_CONFIG_ARRAY(grlib_async_reset_enable)    = 0 and
+       GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 0 then
       if rst = '0' then
         v.ahb_hlock      := RRES.ahb_hlock;
         v.cctrl          := RRES.cctrl;
@@ -7132,7 +7161,7 @@ begin
         v.itypehyper     := RRES.itypehyper;
         v.dtypehyper     := RRES.dtypehyper;
         vs.sgranted      := RSRES.sgranted;
-        if dtagconf=0 then
+        if dtagconf = 0 then
           vs.validarr    := RSRES.validarr;
         end if;
         vs.dtwrite       := RSRES.dtwrite;
@@ -7179,12 +7208,14 @@ begin
     ---------------------------------------------------------------------------
     -- Constant registers
     ---------------------------------------------------------------------------
-    case dways is
+    case DWAYS is
       when 1 =>
-        for w in r.dlru'range loop v.dlru(w) := (others => '0'); end loop;
+        for w in r.dlru'range loop
+          v.dlru(w)             := (others => '0');
+        end loop;
       when 2 =>
         for w in r.dlru'range loop
-          v.dlru(w)(4) := '0';
+          v.dlru(w)(4)          := '0';
           v.dlru(w)(2 downto 0) := "000";
         end loop;
       when 3 =>
@@ -7193,12 +7224,14 @@ begin
         end loop;
       when 4 => null;
     end case;
-    case iways is
+    case IWAYS is
       when 1 =>
-        for w in r.ilru'range loop v.ilru(w) := (others => '0'); end loop;
+        for w in r.ilru'range loop
+          v.ilru(w)             := (others => '0');
+        end loop;
       when 2 =>
         for w in r.ilru'range loop
-          v.ilru(w)(4) := '0';
+          v.ilru(w)(4)          := '0';
           v.ilru(w)(2 downto 0) := "000";
         end loop;
       when 3 =>
@@ -7208,10 +7241,10 @@ begin
       when 4 => null;
     end case;
     for x in 31 downto 16 loop
-      if (x <= 2+itcmabits) or itcmen=0 then
+      if (x <= 2 + itcmabits) or itcmen = 0 then
         v.itcmaddr(x) := '0';
       end if;
-      if (x <= 2+dtcmabits) or dtcmen=0 then
+      if (x <= 2 + dtcmabits) or dtcmen = 0 then
         v.dtcmaddr(x) := '0';
       end if;
     end loop;
@@ -7255,12 +7288,12 @@ begin
     perf     <= r.perf;
   end process;
 
-  srstregs: if GRLIB_CONFIG_ARRAY(grlib_async_reset_enable)=0 generate
+  srstregs: if GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 0 generate
     regs: process(clk)
     begin
       if rising_edge(clk) then
         r <= c;
-        if GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) /= 0 and rst='0' then
+        if GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) /= 0 and rst = '0' then
           r <= RRES;
         end if;
       end if;
@@ -7270,26 +7303,26 @@ begin
     begin
       if rising_edge(sclk) then
         rs <= cs;
-        if GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) /= 0 and rst='0' then
+        if GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) /= 0 and rst = '0' then
           rs <= RSRES;
         end if;
       end if;
     end process;
   end generate srstregs;
 
-  arstregs: if GRLIB_CONFIG_ARRAY(grlib_async_reset_enable)/=0 generate
-    regs: process(clk,rst)
+  arstregs: if GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) /= 0 generate
+    regs: process(clk, rst)
     begin
-      if rst='0' then
+      if rst = '0' then
         r <= RRES;
       elsif rising_edge(clk) then
         r <= c;
       end if;
     end process;
 
-    sregs: process(sclk,rst)
+    sregs: process(sclk, rst)
     begin
-      if rst='0' then
+      if rst = '0' then
         rs <= RSRES;
       elsif rising_edge(sclk) then
         rs <= cs;
@@ -7301,10 +7334,10 @@ begin
   --ahbxchk: process(clk)
   --begin
   --  if rising_edge(clk) then
-  --    if r.ahb2_inacc='1' and r.ahb2_hwrite='0' and ahbi.hready='1' and ahbi.hresp="00" then
+  --    if r.ahb2_inacc = '1' and r.ahb2_hwrite = '0' and ahbi.hready = '1' and ahbi.hresp = "00" then
   --      for x in LINESZMAX-1 downto 0 loop
   --        assert
-  --          not (r.ahb2_addrmask(x)='1' and is_x(ahbi.hrdata((((x+1)*32-1) mod busw) downto ((x*32) mod busw))))
+  --          not (r.ahb2_addrmask(x) = '1' and is_x(ahbi.hrdata((((x+1)*32-1) mod busw) downto ((x*32) mod busw))))
   --          report "Reading in X over AHB bus into CPU"
   --          severity warning;
   --      end loop;

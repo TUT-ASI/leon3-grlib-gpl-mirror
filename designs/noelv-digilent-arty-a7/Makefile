@@ -13,11 +13,11 @@ include $(CFG_DIR)/.config
 
 #32-bit NOEL-V
 ifeq ($(CONFIG_NOELV_RV32),y)
-DIRADD = noelv/pkg_32 noelv noelv/core noelv/subsys
+DIRADD = noelv/pkg_32 noelv noelv/core noelv/subsys noelv/grfpunv
 XLEN   = 32
 else
 #64-bit NOEL-V
-DIRADD = noelv/pkg_64 noelv noelv/core noelv/subsys
+DIRADD = noelv/pkg_64 noelv noelv/core noelv/subsys noelv/grfpunv
 XLEN   = 64
 endif
 
@@ -26,7 +26,7 @@ endif
 #PART=XC7A35TI
 PART=XC7A100TI
 BOARD=digilent-arty-a7
-DESIGN=noelv-arty
+DESIGN=noelv-digilent-arty-a7
 BOARDDIR=$(GRLIB)/boards/$(BOARD)
 include $(BOARDDIR)/Makefile.inc
 
@@ -91,6 +91,8 @@ VSIMOPT+= +access +w -voptargs="+acc" +notimingchecks
 else
 VSIMOPT+= -voptargs="+acc" +notimingchecks
 endif
+
+GRLIB_XILINX_SOURCE_MGMT_MODE=DisplayOnly
 
 # Simulation scripts
 VSIMOPT+= -do wave.do

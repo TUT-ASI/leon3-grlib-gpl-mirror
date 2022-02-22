@@ -52,7 +52,7 @@ package config is
   constant CFG_ETH_IPM : integer := 16#C0A8#;
   constant CFG_ETH_IPL : integer := 16#0033#;
   constant CFG_ETH_ENM : integer := 16#020000#;
-  constant CFG_ETH_ENL : integer := 16#000000#;
+  constant CFG_ETH_ENL : integer := 16#000005#;
 -- Xilinx MIG 7-Series
   constant CFG_MIG_7SERIES : integer := 1;
   constant CFG_MIG_7SERIES_MODEL : integer := 0;

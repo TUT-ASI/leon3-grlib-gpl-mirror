@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -27,6 +27,9 @@
 library ieee;
 library techmap;
 use ieee.std_logic_1164.all;
+--pragma translate_off
+use ieee.numeric_std.all;
+--pragma translate_on
 use techmap.gencomp.all;
 use work.allmem.all;
 library grlib;
@@ -77,6 +80,8 @@ signal xrenable,xwrite : std_ulogic;
 
 signal custominx,customoutx: std_logic_vector(syncram_customif_maxwidth downto 0);
 signal customclkx: std_ulogic;
+constant TIXW: integer := 100;
+signal testinx : std_logic_vector(TIXW-1 downto 0);
 
 signal preven, preven2: std_ulogic;
 signal prevdata: std_logic_vector((dbits-1) downto 0);
@@ -225,6 +230,9 @@ begin
     testdata <= (others => '0');
   end generate;
 
+  testinx(TIXW-1 downto TIXW-TESTIN_WIDTH) <= testin;
+  testinx(TIXW-TESTIN_WIDTH-1 downto 0) <= (others => '0');
+
     custominx <= (others => '0');
     customclkx <= '0';
 
@@ -341,11 +349,11 @@ begin
     x0 : rhs65_syncram_2p generic map (abits, dbits, isepclk)
          port map (rclk, renable, raddress, dataoutx,
 		   wclk, waddress, datain, write,
-                   testin(TESTIN_WIDTH-8),testin(TESTIN_WIDTH-3),
+                   testinx(TIXW-8),testinx(TIXW-3),
                    custominx(0),customoutx(0),
-                   testin(TESTIN_WIDTH-4),testin(TESTIN_WIDTH-5),testin(TESTIN_WIDTH-6),
+                   testinx(TIXW-4),testinx(TIXW-5),testinx(TIXW-6),
                    customclkx,
-                   testin(TESTIN_WIDTH-7),'0',customoutx(1),
+                   testinx(TIXW-7),'0',customoutx(1),
                    customoutx(7 downto 2));
     customoutx(customoutx'high downto 8) <= (others => '0');
   end generate;
@@ -354,9 +362,9 @@ begin
     x0 : rhs65_syncram_2p_bist generic map (abits, dbits, isepclk)
          port map (rclk, renable, raddress, dataoutx,
 		   wclk, waddress, datain, write,
-                   testin(TESTIN_WIDTH-3),testin(TESTIN_WIDTH-4),
+                   testinx(TIXW-3),testinx(TIXW-4),
                    custominx(47 downto 0),customoutx(47 downto 0),
-                   testin(TESTIN_WIDTH-5),'0');
+                   testinx(TIXW-5),'0');
     customoutx(customoutx'high downto 48) <= (others => '0');
   end generate;
 
@@ -372,14 +380,28 @@ begin
 
   dare65tech : if xtech = dare65t generate
     x0 : dare65t_syncram_2p_mbist generic map (abits, dbits, isepclk)
-         port map (rclk, renable, raddress, dataoutx,
-                   wclk, waddress, datain, write,
-                   custominx(0),custominx(1),
-                   customoutx(0),customoutx(1),
-                   custominx(2),
-                   customclkx
-                   );
-    customoutx(customoutx'high downto 2) <= (others => '0');
+         port map (
+           rclk => rclk,
+           rena => renable2,
+           raddr => raddress,
+           dout => dataoutx,
+           wclk => wclk,
+           waddr => waddress,
+           din => datain,
+           write => write,
+           mbist => custominx(0),
+           fill0 => custominx(1),
+           fill1 => custominx(2),
+           mpresent => customoutx(0),
+           menable => customoutx(1),
+           merror => customoutx(2),
+           bistrst => testinx(TIXW-4),
+           testen => testinx(TIXW-1),
+           testrst => testinx(TIXW-3),
+           sysclk => customclkx,
+           awtb => testinx(TIXW-5)
+           );
+    customoutx(customoutx'high downto 3) <= (others => '0');
   end generate;
 
   rhu : if xtech = rhumc generate
@@ -515,16 +537,16 @@ begin
            waddress   => waddress,
            datain     => datain,
            wenable    => write,
-           tBist      => testin(TESTIN_WIDTH-3),
-           tLogic     => testin(TESTIN_WIDTH-4),
-           tScan      => testin(TESTIN_WIDTH-8),
-           tStab      => testin(TESTIN_WIDTH-5),
-           tWbt       => testin(TESTIN_WIDTH-6),
-           resetFuse  => testin(TESTIN_WIDTH-7),
-           smp_ma     => testin(TESTIN_WIDTH-20 downto TESTIN_WIDTH-31),
-           r2p_ma     => testin(TESTIN_WIDTH-32 downto TESTIN_WIDTH-40),
-           ch_bus_r2p => testin(TESTIN_WIDTH-53 downto TESTIN_WIDTH-64),
-           ch_bus_smp => testin(TESTIN_WIDTH-65 downto TESTIN_WIDTH-76),
+           tBist      => testinx(TIXW-3),
+           tLogic     => testinx(TIXW-4),
+           tScan      => testinx(TIXW-8),
+           tStab      => testinx(TIXW-5),
+           tWbt       => testinx(TIXW-6),
+           resetFuse  => testinx(TIXW-7),
+           smp_ma     => testinx(TIXW-20 downto TIXW-31),
+           r2p_ma     => testinx(TIXW-32 downto TIXW-40),
+           ch_bus_r2p => testinx(TIXW-53 downto TIXW-64),
+           ch_bus_smp => testinx(TIXW-65 downto TIXW-76),
            tck        => customclkx,
            eh_bus_r2p => custominx(83 downto 40),
            eh_bus_smp => custominx(39 downto 9),
@@ -533,10 +555,10 @@ begin
            he_status  => customoutx(11 downto 8),
            he_data    => customoutx(7 downto 4),
            mempres    => customoutx(3 downto 0),
-           fShift     => testin(TESTIN_WIDTH-9),
+           fShift     => testinx(TIXW-9),
            fDataIn    => custominx(8),
-           fBypass    => testin(TESTIN_WIDTH-10),
-           fEnable    => testin(TESTIN_WIDTH-11),
+           fBypass    => testinx(TIXW-10),
+           fEnable    => testinx(TIXW-11),
            fDataOut   => customoutx(12)
            );
     customoutx(customoutx'high downto 13) <= (others => '0');
@@ -576,23 +598,39 @@ begin
       signal refdo,pwdata: std_logic_vector(dbits-1 downto 0);
       signal pren,bpen: std_ulogic;
       signal praddr,pwaddr: std_logic_vector(abits-1 downto 0);
+      signal wmask, pwmask: std_logic_vector(0 to (2**abits)-1) := (others => '0');
     begin
       refram : generic_syncram_2p generic map (abits, dbits, 1)
         port map (rclk, wclk, raddress, waddress, datain, write, refdo);
-      p: process(rclk)
+      p: process(rclk,wclk)
+        variable wmcheck: boolean;
       begin
         if rising_edge(rclk) then
+          wmcheck := false;
+          if not is_x(praddr) and sepclk /= 0 then
+            if ( wmask(to_integer(unsigned(praddr)))='1' or
+                 pwmask(to_integer(unsigned(praddr)))='1' ) then
+              wmcheck := true;
+            end if;
+          end if;
           assert pren/='1' or (bpen='0' and refdo=dataoutxx) or
-            (bpen='1' and pwdata=dataoutxx) or is_x(refdo) or is_x(praddr)
+            (bpen='1' and pwdata=dataoutxx) or is_x(refdo) or is_x(praddr) or wmcheck
             report "Read mismatch addr=" & tost(praddr) & " impl=" & tost(dataoutxx) & " ref=" & tost(refdo)
             severity error;
           pren <= renable;
           praddr <= raddress;
           pwdata <= datain;
+          pwmask <= wmask;
+          wmask <= (others => '0');
           if wrfst/=0 and renable='1' and write='1' and raddress=waddress then
             bpen <= '1';
           else
             bpen <= '0';
+          end if;
+        end if;
+        if rising_edge(wclk) then
+          if write='1' then
+            wmask(to_integer(unsigned(waddress))) <= '1';
           end if;
         end if;
       end process;

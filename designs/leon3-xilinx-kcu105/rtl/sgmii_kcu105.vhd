@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -86,10 +86,6 @@ use grlib.config.all;
 use grlib.amba.all;
 use grlib.stdlib.all;
 use grlib.devices.all;
-
-library techmap;
-use techmap.gencomp.all;
-use techmap.allclkgen.all;
 
 library techmap;
 use techmap.gencomp.all;
@@ -221,7 +217,7 @@ END COMPONENT;
   -- APB and SGMII control register
   constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
 
-  constant RES_configuration_vector : std_logic_vector(4 downto 0) := std_logic_vector(to_unsigned(autonegotiation,1)) & "0000";
+  constant RES_configuration_vector : std_logic_vector(4 downto 0) := conv_std_logic(autonegotiation = 1) & "0000";
 
   constant RES : sgmiiregs :=
     ( irq => (others => '0'), mask => (others => '0'),

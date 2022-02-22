@@ -7,6 +7,10 @@ CLEAN=soft-clean
 ############  Leon Core  ########################
 
 GRLIB_CONFIG=grlib_config.vhd
+GRLIB_CONFIG=grlib_config_leon3.vhd
+ifeq ("$(CONFIG_LEON4)","y")
+GRLIB_CONFIG=grlib_config_leon4.vhd
+endif
 
 ############  Board Setup  ########################
 
@@ -36,9 +40,14 @@ VCOMOPT=-explicit -O0
 VSIMOPT= -L work -L secureip -L unisims_ver glbl
 GRLIB_COMPILE_VIVADO_IP=Y
 
+# GRLIB Options
+VSIMOPT= -gdisas=1
+
 # GRETH options
 ifeq ($(CONFIG_GRETH_ENABLE),y)
 VSIMOPT+= -L gig_ethernet_pcs_pma_v16_1_3
+VSIMOPT+= -gEXAMPLE_SIMULATION=1
+ASIMOPT+= -gEXAMPLE_SIMULATION=1
 endif
 
 # - MIG -

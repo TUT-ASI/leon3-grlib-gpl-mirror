@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -72,6 +72,7 @@ package spwcomp is
       hready       : in  std_ulogic;
       hresp        : in  std_logic_vector(1 downto 0);
       hrdata       : in  std_logic_vector(31 downto 0);
+      endian       : in  std_ulogic;
       --ahb mst out
       hbusreq      : out  std_ulogic;
       hlock        : out  std_ulogic;
@@ -666,6 +667,7 @@ package spwcomp is
       hready       : in  std_ulogic;
       hresp        : in  std_logic_vector(1 downto 0);
       hrdata       : in  std_logic_vector(31 downto 0);
+      endian       : in  std_ulogic;
       --ahb mst out
       hbusreq      : out  std_ulogic;
       hlock        : out  std_ulogic;

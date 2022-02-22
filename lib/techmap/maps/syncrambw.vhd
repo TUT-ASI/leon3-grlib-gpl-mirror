@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -68,7 +68,7 @@ begin
 
   xenable <= enable when testen=0 or testin(TESTIN_WIDTH-2)='0' else (others => '0');
   gwrite <= (write and enable) when (gatedwr/=0 and syncram_wrignen(tech)/=0) else write;
-  xwrite <= write when testen=0 or testin(TESTIN_WIDTH-2)='0' else (others => '0');
+  xwrite <= gwrite when testen=0 or testin(TESTIN_WIDTH-2)='0' else (others => '0');
 
   sbw : if has_srambw(tech) >= abits generate
     -- RAM bypass for scan

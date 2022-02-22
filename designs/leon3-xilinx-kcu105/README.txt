@@ -87,7 +87,9 @@ make sim-launch (no ram.srec if on-chip ahbram)
 Simulate
 ************************
 
-* The design does not support DDR4 MIG and GRETH IPs.
+* The design does not support DDR4 MIG.
+* GRETH IP can only be simulated separately due to limitation of memory simulation model.
+  To simulate the GRETH IP open systest.c and uncomment 'greth_test' and remove/comment 'base_test'
 * An AHBRAM loaded with the ram.srec image is instantiated only if you opt for the DDR4 memory with 
   the CONFIG_MIG_7SERIES_MODEL variables set to Y. This will instantiate and ahbramsim with the 
    image loaded.

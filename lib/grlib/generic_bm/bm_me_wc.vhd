@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -93,6 +93,7 @@ architecture rtl of bm_me_wc is
     fe_burst_done     : std_logic;
     delay             : std_logic;
     error             : std_logic;
+    excl_error        : std_logic;
   end record;
 
   constant RES_T : reg_type := (
@@ -107,7 +108,8 @@ architecture rtl of bm_me_wc is
     init             => '0',
     fe_burst_done    => '0',
     delay            => '0',
-    error            => '0'
+    error            => '0',
+    excl_error       => '0'
     );
 
   signal r, rin : reg_type;
@@ -227,6 +229,7 @@ begin  -- rtl
       when idle =>
 
         v.error := '0';
+        v.excl_error := '0';
 
         if bm_me_wc_in.start = '1' then
           v.cur_address     := inp.start_address;
@@ -353,6 +356,10 @@ begin  -- rtl
             v.error := '1';
           end if;
 
+          if bm_me_wc_in.excl_error = '1' then
+            v.excl_error := '1';
+          end if;
+
           if size_left_temp = 0 then
             v.state         := idle;
             v.fe_burst_done := '1';
@@ -373,6 +380,7 @@ begin  -- rtl
     bm_me_wc_out.addr          <= r.cur_address(4 downto 0);
     bm_me_wc_out.burst_last    <= outp.burst_last;
     bm_me_wc_out.error         <= r.error and r.fe_burst_done;
+    bm_me_wc_out.excl_error    <= r.excl_error and r.fe_burst_done;
     bm_me_wc_out.be_no_align   <= not(v.adrsize_aligned);
     burst_length               <= outp.burst_length;
 

@@ -1,5 +1,5 @@
-VER=$(VNAME)2021.2
-BID=4267
+VER=$(VNAME)2022.1
+BID=4272
 CC=gcc
 SED=sed
 
@@ -1040,6 +1040,10 @@ ifeq ("$(GRLIB_COMPILE_VIVADO_IP)","")
 VIVADOCOMPILEIP=-no_ip_compile
 endif
 
+ifeq ("$(GRLIB_VIVADO_COMPILE_VERBOSE)","")
+VERBOSE7SERIESCOMPILE=-quiet
+endif
+
 
 # install-simprim, compile-simprim/xilinxcorelib/unisim/xilinx-simlibs are tailored for ModelSim/Questa
 # (target dir is ./modelsim)
@@ -1067,7 +1071,7 @@ ifneq ("$(GRLIB_SIMULATOR)","Xilinx")
 	-@mkdir -p ./xilinx_lib
 	@if [ -d ./xilinx_lib/unisims_ver ]; then \
 	echo "Xilinx library already compiled"; else \
-	echo "compile_simlib -quiet -directory ./xilinx_lib/ -family all -language all -simulator $(GRLIB_XIL_simlib_Simulator) $(VIVADOCOMPILEIP) -library unisim -library simprim " > ./xilinx_lib/$(TOP)_simlib.tcl ; \
+	echo "compile_simlib $(VERBOSE7SERIESCOMPILE) -directory ./xilinx_lib/ -family all -language all -simulator $(GRLIB_XIL_simlib_Simulator) $(VIVADOCOMPILEIP) -library unisim -library simprim " > ./xilinx_lib/$(TOP)_simlib.tcl ; \
 	vivado -mode batch -source ./xilinx_lib/$(TOP)_simlib.tcl ; \
 	fi;
 endif
@@ -1858,7 +1862,7 @@ scriptgen-clean:
 
 clean distclean: $(CLEAN) work-clean scripts-clean clean-xilinx-lib scriptgen-clean
 
-libclean: remove-alera remove-unisim remove-microsemi remove-dare remove-nxlibrary
+libclean: remove-altera remove-unisim remove-microsemi remove-dare remove-nxlibrary
 
 none-clean:
 

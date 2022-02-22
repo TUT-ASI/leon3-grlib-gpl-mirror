@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -270,32 +270,6 @@ package allmem is
     );
   end component;
 
-  component dare65t_syncram_2p
-  generic ( abits : integer := 8; dbits : integer := 32; sepclk : integer := 0);
-  port (
-    rclk  : in std_ulogic;
-    rena  : in std_ulogic;
-    raddr : in std_logic_vector (abits -1 downto 0);
-    dout  : out std_logic_vector (dbits -1 downto 0);
-    wclk  : in std_ulogic;
-    waddr : in std_logic_vector (abits -1 downto 0);
-    din   : in std_logic_vector (dbits -1 downto 0);
-    write : in std_ulogic;
-    scanen   : in std_ulogic;
-    bypass   : in std_ulogic;
-    mbtdi    : in std_ulogic;
-    mbtdo    : out std_ulogic;
-    mbshft   : in std_ulogic;
-    mbcapt   : in std_ulogic;
-    mbupd    : in std_ulogic;
-    mbclk    : in std_ulogic;
-    mbrstn   : in std_ulogic;
-    mbcgate  : in std_ulogic;
-    mbpres   : out std_ulogic;
-    mbmuxo   : out std_logic_vector(5 downto 0)
-   );
-  end component;
-
   component dare65t_syncram_2p_mbist
     generic ( abits : integer := 8; dbits : integer := 32; sepclk : integer := 0);
     port (
@@ -310,10 +284,16 @@ package allmem is
       --
       mbist    : in  std_ulogic;
       fill0    : in  std_ulogic;
+      fill1    : in  std_ulogic;
+      mpresent : out std_ulogic;
       menable  : out std_ulogic;
-      error    : out std_ulogic;
+      merror   : out std_ulogic;
+      bistrst  : in  std_ulogic;
+      testen   : in  std_ulogic;
       testrst  :  in std_logic;
-      testclk  : in  std_logic
+      sysclk   : in  std_logic;
+      --
+      awtb     : in  std_ulogic
      );
     end component;
 
@@ -1035,30 +1015,6 @@ end component;
       );
   end component;
 
-  component dare65t_syncram
-  generic ( abits : integer := 10; dbits : integer := 8 );
-  port (
-    clk      : in std_ulogic;
-    address  : in std_logic_vector(abits -1 downto 0);
-    datain   : in std_logic_vector(dbits -1 downto 0);
-    dataout  : out std_logic_vector(dbits -1 downto 0);
-    enable   : in std_ulogic;
-    write    : in std_ulogic;
-    scanen   : in std_ulogic;
-    bypass   : in std_ulogic;
-    mbtdi    : in std_ulogic;
-    mbtdo    : out std_ulogic;
-    mbshft   : in std_ulogic;
-    mbcapt   : in std_ulogic;
-    mbupd    : in std_ulogic;
-    mbclk    : in std_ulogic;
-    mbrstn   : in std_ulogic;
-    mbcgate  : in std_ulogic;
-    mbpres   : out std_ulogic;
-    mbmuxo   : out std_logic_vector(5 downto 0)
-    );
-  end component;
-
   component dare65t_syncram_mbist
     generic ( abits : integer := 10; dbits : integer := 8 );
     port (
@@ -1071,10 +1027,16 @@ end component;
       --
       mbist    : in  std_ulogic;
       fill0    : in  std_ulogic;
+      fill1    : in  std_ulogic;
+      mpresent : out std_ulogic;
       menable  : out std_ulogic;
-      error    : out std_ulogic;
-      testrst  :  in std_logic;
-      testclk  : in  std_logic
+      merror   : out std_ulogic;
+      bistrst  : in  std_ulogic;
+      testen   : in  std_ulogic;
+      testrst  : in  std_logic;
+      sysclk   : in  std_logic;
+      --
+      awtb     : in  std_ulogic
       );
     end component;
 

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -60,6 +60,7 @@ entity cpucorenv is
     cmemconf            : integer                       := 0;
     rfconf              : integer                       := 0;
     tcmconf             : integer                       := 0;
+    mulconf             : integer                       := 0;
     -- Caches
     icen                : integer range 0  to 1         := 0;  -- I$ Cache Enable
     iways               : integer range 1  to 4         := 1;  -- I$ Sets/Ways
@@ -113,7 +114,7 @@ entity cpucorenv is
     mularch             : integer                       := 0;  -- multiplier architecture
     div_hiperf          : integer                       := 0;
     div_small           : integer                       := 0;
-    hw_fpu              : integer range 0  to 1         := 1;  -- 1 - use hw fpu
+    hw_fpu              : integer range 0  to 3         := 1;  -- 1 - use hw fpu
     rfreadhold          : integer range 0  to 1         := 0;  -- Register File Read Hold
     scantest            : integer                       := 0;  -- scantest support
     endian              : integer
@@ -154,6 +155,8 @@ architecture rtl of cpucorenv is
   constant didxwidth    : integer := (log2(dwaysize) + 10) - (log2(dlinesize) + 2);
   constant dtagconf     : integer := cmemconf mod 4;
   constant dusebw       : integer := (cmemconf / 4) mod 2;
+  constant mulconf_int  : integer := mulconf mod 4;
+  constant mulconf_fpu  : integer := (mulconf / 16) mod 4;
   function gen_capability return std_logic_vector is
     variable cap : std_logic_vector(2 downto 0) := (others => '0');
   begin
@@ -254,13 +257,14 @@ architecture rtl of cpucorenv is
   signal fs2_data       : std_logic_vector(fpulen - 1 downto 0);
   signal fs3_data       : std_logic_vector(fpulen - 1 downto 0);
 
+
   signal rff_fd         : std_logic_vector(fpulen - 1 downto 0);
   signal rff_rs1        : std_logic_vector(4 downto 0);
   signal rff_rs2        : std_logic_vector(4 downto 0);
   signal rff_rs3        : std_logic_vector(4 downto 0);
   signal rff_ren        : std_logic_vector(1 to 3);
 --  signal rff_rd         : std_logic_vector(4 downto 0);
---  signal rff_wen        : std_ulogic;
+  signal rff_wen        : std_ulogic;
 
   signal fs1_word64     : word64;
   signal fs2_word64     : word64;
@@ -367,17 +371,24 @@ begin
       generic map (
         fabtech     => fabtech,
         arch        => mularch,
+        split       => mulconf_int,
         scantest    => scantest
         )
       port map (
         clk         => gclk,
         rstn        => rstx,
         holdn       => holdn,
-        muli        => muli,
-        mulo        => mulo,
+        ctrl        => muli.ctrl,
+        op1         => muli.op1,
+        op2         => muli.op2,
+        nready      => mulo.nready,
+        mresult     => mulo.result,
         testen      => ahbsi.testen,
         testrst     => ahbsi.testrst
         );
+
+    mulo.icc <= (others => '0');
+
     div0 : div64
       generic map (
         fabtech     => fabtech,
@@ -463,7 +474,7 @@ begin
       fpc_miso      => fpc_miso,
       c2c_mosi      => c2c_mosi,
       c2c_miso      => c2c_miso,
-      freeze        => gnd,
+      freeze        => dbgi.freeze,
       bootword      => zero32,
       smpflush      => zero32(1 downto 0),
       --fpuholdn      => fpo.holdn,
@@ -476,6 +487,7 @@ begin
   cnt.itlbmiss <= c_perf(1);
   cnt.dcmiss   <= c_perf(2);
   cnt.dtlbmiss <= c_perf(3);
+  cnt.bpmiss   <= iu_cnt.bpmiss;
 
   -- Branch History Table ---------------------------------------------------
   bht0 : bhtnv
@@ -573,7 +585,7 @@ begin
       port map (
         clk             => gclk,
         rstn            => rstx,
-        rdhold          => rfi.rdhold,      
+        rdhold          => rfi.rdhold,
         waddr1          => rfi.waddr1(IRFBITS-1 downto 0),
         wdata1          => rfi.wdata1,
         we1             => rfi.wen1,
@@ -595,7 +607,6 @@ begin
         );
   end generate;
 
-
   -- FPU Register File ----------------------------------------------------------
   fpu_regs : if fpulen /= 0 generate
    ramrff : if (rfconf mod 16) = 0 generate
@@ -614,7 +625,7 @@ begin
         rdhold          => '0',
         waddr1          => fpo.rd,
         wdata1          => rff_fd,
-        we1             => fpo.wen,
+        we1             => rff_wen,
         waddr2          => fpo.rd,      -- Dummy
         wdata2          => rff_fd,      -- Dummy
         we2             => '0',
@@ -629,7 +640,7 @@ begin
         rdata3          => fs3_data,
         raddr4          => rff_rs3,     -- Dummy
         re4             => '0',
-        rdata4          => open,     
+        rdata4          => open,
         testin          => ahbi.testin
         );
    end generate;
@@ -650,7 +661,7 @@ begin
         rdhold          => '0',
         waddr1          => fpo.rd,
         wdata1          => rff_fd,
-        we1             => fpo.wen,
+        we1             => rff_wen,
         waddr2          => fpo.rd,      -- Dummy
         wdata2          => rff_fd,      -- Dummy
         we2             => '0',
@@ -668,6 +679,7 @@ begin
         rdata4          => open
         );
    end generate;
+
   end generate;
 
   -- L1 Caches -----------------------------------------------------------------
@@ -748,38 +760,102 @@ begin
       )
       port map (
         clk         => gclk,
-        rstn        => rstn,
+        rstn        => rstx,
         holdn       => holdn,
         e_inst      => fpi.inst,
         e_valid     => fpi.e_valid,
         e_nullify   => fpi.e_nullify,
+        issue_id    => fpi.issue_id,
         csrfrm      => fpi.csrfrm,
         s1          => fs1_word64,
         s2          => fs2_word64,
         s3          => fs3_word64,
-        issue_id    => fpo.issue_id,
         fpu_holdn   => fpo.holdn,
         ready_flop  => fpo.ready,
         commit      => fpi.commit,
         commit_id   => fpi.commit_id,
-        lddata      => fpi.lddata,
-        unissue     => fpi.flush,
-        unissue_sid => "00000",
+        lddata_id   => fpi.data_id,
+        lddata_now  => fpi.data_valid,
+        lddata      => fpi.data,
+        unissue     => fpi.unissue,
+        unissue_id  => fpi.unissue_id,
         rs1         => rff_rs1,
         rs2         => rff_rs2,
         rs3         => rff_rs3,
         ren         => rff_ren,
         rd          => fpo.rd,
         wen         => fpo.wen,
-        flags_wen   => fpo.flags_wen,
         stdata      => fpo.data,
+        flags_wen   => fpo.flags_wen,
         flags       => fpo.flags,
+        now2int     => fpo.now2int,
+        id2int      => fpo.id2int,
+        stdata2int  => fpo.data2int,
+        flags2int   => fpo.flags2int,
         mode_in     => fpi.mode,
         wb_mode     => fpo.mode,
-        wb_id       => fpo.wb_id
+        wb_id       => fpo.wb_id,
+        idle        => fpo.idle,
+        events      => fpo.events
+      );
+
+    fpo.issue     <= '0';
+    rff_fd        <= fpo.data(rff_fd'range);
+    rff_wen       <= fpo.wen
+                     ;
+  end generate;
+
+  pfpu_gen : if fpulen /= 0 and hw_fpu = 3 generate
+    piped : pipefpunv
+      generic map (
+        fpulen    => fpulen,
+        mulconf   => mulconf_fpu
+      )
+      port map (
+        clk         => gclk,
+        rstn        => rstx,
+        holdn       => holdn,
+        e_inst      => fpi.inst,
+        e_valid     => fpi.e_valid,
+        e_nullify   => fpi.e_nullify,
+        issue_id    => fpi.issue_id,
+        csrfrm      => fpi.csrfrm,
+        s1          => fs1_word64,
+        s2          => fs2_word64,
+        s3          => fs3_word64,
+        issue       => fpo.issue,
+        fpu_holdn   => fpo.holdn,
+        ready_flop  => fpo.ready,
+        commit      => fpi.commit,
+        commit_id   => fpi.commit_id,
+        lddata_id   => fpi.data_id,
+        lddata_now  => fpi.data_valid,
+        lddata      => fpi.data,
+        unissue     => fpi.unissue,
+        unissue_id  => fpi.unissue_id,
+        rs1         => rff_rs1,
+        rs2         => rff_rs2,
+        rs3         => rff_rs3,
+        ren         => rff_ren,
+        rd          => fpo.rd,
+        wen         => fpo.wen,
+        stdata      => fpo.data,
+        flags_wen   => fpo.flags_wen,
+        flags       => fpo.flags,
+        now2int     => fpo.now2int,
+        id2int      => fpo.id2int,
+        stdata2int  => fpo.data2int,
+        flags2int   => fpo.flags2int,
+        mode_in     => fpi.mode,
+        wb_mode     => fpo.mode,
+        wb_id       => fpo.wb_id,
+        idle        => fpo.idle,
+        events      => fpo.events
       );
 
     rff_fd   <= fpo.data(rff_fd'range);
+    rff_wen  <= fpo.wen
+                ;
   end generate;
 
 

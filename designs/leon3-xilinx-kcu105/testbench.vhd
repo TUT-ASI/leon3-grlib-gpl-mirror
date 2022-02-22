@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -108,8 +108,8 @@ architecture behav of testbench is
 
   signal clk300p        : std_ulogic := '0';
   signal clk300n        : std_ulogic := '1';
-  signal clk125p        : std_ulogic := '0';
-  signal clk125n        : std_ulogic := '1';
+  signal clk625p        : std_ulogic := '0';
+  signal clk625n        : std_ulogic := '1';
 
   signal txd1           : std_ulogic;
   signal rxd1           : std_ulogic;
@@ -197,8 +197,8 @@ begin
 
   clk300p <= not clk300p after 1.666 ns;
   clk300n <= not clk300n after 1.666 ns;
-  clk125p <= not clk125p after 4 ns; -- clkethp
-  clk125n <= not clk125n after 4 ns; -- clkethn
+  clk625p <= not clk625p after 0.800 ns; -- clkethp
+  clk625n <= not clk625n after 0.800 ns; -- clkethn
 
   dsurst <= '0', '1' after 200 ns;
   system_rst    <= not dsurst;
@@ -210,9 +210,12 @@ begin
 
   errorn                <= 'H'; -- ERROR pull-up
   switch(2 downto 0)    <= (others => '0');
+  switch(3)             <= '0';
   button                <= (others => '0');
 
   gpio                  <= (others => 'Z');
+
+  iic_mreset            <= '0';
 
   -----------------------------------------------------
   -- SpaceWire ----------------------------------------
@@ -249,8 +252,8 @@ begin
       iic_scl           => iic_scl,
       iic_sda           => iic_sda,
       iic_mreset        => iic_mreset,
-      gtrefclk_n        => clk125n,
-      gtrefclk_p        => clk125p,
+      gtrefclk_n        => clk625n,
+      gtrefclk_p        => clk625p,
       txp               => txp_eth,
       txn               => txn_eth,
       rxp               => txp_eth,
@@ -318,7 +321,7 @@ begin
     )
     port map(dsurst, phy_mdio, OPEN , OPEN , OPEN ,
              OPEN , OPEN , OPEN , OPEN , "00000000",
-             '0', '0', phy_mdc, clk125p); 
+             '0', '0', phy_mdc, clk625p); 
 
   end generate;
 
@@ -365,6 +368,9 @@ begin
     ddr4_dqs_t <= (others => 'Z');
   end generate mig_mem_model;
 
+  -- Misc
+  ddr4_alert_n <= '1';
+
   -----------------------------------------------------
   -- Process ------------------------------------------
   -----------------------------------------------------
@@ -395,10 +401,14 @@ begin
       Print("dsucom process starts here");
       -- add here if needed....
 
+      wait for 5000 ns;
+      txc(dsutx, 16#55#, txp);      -- sync uart
+
     end;
 
   begin
     dsuctsn <= '0';
+    dsurx   <= '1';
     dsucfg(dsutx, dsurx);
     wait;
   end process;

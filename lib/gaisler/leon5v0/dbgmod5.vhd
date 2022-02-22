@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -35,12 +35,15 @@ use grlib.config.all;
 use grlib.config_types.all;
 library gaisler;
 use gaisler.leon5int.all;
+use gaisler.leon5.leon5_bretry_in_type;
+use gaisler.leon5.leon5_bretry_out_type;
 use gaisler.uart.all;
 library techmap;
 use techmap.gencomp.all;
 
 entity dbgmod5 is
   generic (
+    fabtech   : integer;
     memtech   : integer;
     ncpu      : integer;
     ndbgmst   : integer;
@@ -51,11 +54,15 @@ entity dbgmod5 is
     pnpaddrhi : integer;
     pnpaddrlo : integer;
     dsuslvidx : integer;
-    dsumstidx : integer
+    dsumstidx : integer;
+    bretryen  : integer
     );
   port (
     clk      : in  std_ulogic;
     rstn     : in  std_ulogic;
+    bretclk  : in  std_ulogic;
+    bretrstn : in  std_ulogic;
+    rstreqn  : out std_ulogic;
     cpurstn  : out std_logic_vector(0 to ncpu-1);
     dbgmi    : out ahb_mst_in_vector_type(ndbgmst-1 downto 0);
     dbgmo    : in  ahb_mst_out_vector_type(ndbgmst-1 downto 0);
@@ -71,11 +78,15 @@ entity dbgmod5 is
     tpi      : in  trace_port_in_vector(0 to NCPU-1);
     tco      : out trace_control_out_vector(0 to NCPU-1);
     tstop    : out std_ulogic;
+    dbgtime  : out std_logic_vector(31 downto 0);
     maskerrn : out std_logic_vector(0 to NCPU-1);
     uartie   : in  uart_in_type;
     uartoe   : out uart_out_type;
     uartii   : out uart_in_type;
-    uartoi   : in  uart_out_type
+    uartoi   : in  uart_out_type;
+    sysstat  : in  std_logic_vector(15 downto 0);
+    bretin   : in  leon5_bretry_in_type;
+    bretout  : out leon5_bretry_out_type
     );
 end;
 
@@ -93,8 +104,6 @@ architecture rtl of dbgmod5 is
   constant PROC_L    : integer := 22;
   constant AREA_H    : integer := 21;
   constant AREA_L    : integer := 19;
-  constant SESS_H    : integer := 17;
-  constant SESS_L    : integer := 14;
   constant kbytes    : integer := 4;
   constant itentr    : integer := 256;
   constant TBUFABITS : integer := log2(kbytes mod 16#10000#) + 6 - 10*(kbytes/16#10000#);
@@ -461,6 +470,7 @@ architecture rtl of dbgmod5 is
   type dbgmod5_regs is record
     -- Reset control for processors
     cpurstn           : std_logic_vector(0 to ncpu-1);
+    tstop             : std_ulogic;
     -- Processor bus output registers
     mst_hbusreq       : std_ulogic;
     mst_htrans        : std_logic_vector(1 downto 0);
@@ -498,6 +508,9 @@ architecture rtl of dbgmod5 is
     it                : it_reg_array_type;
     -- Registers for UART debug
     uart              : uart_reg_type;
+    -- Registers for status / reset via debug master
+    hready_pipe       : std_ulogic;
+    rstreqn           : std_ulogic;
     -- Diagnostic registers
     deadlock_hit      :  std_ulogic;
     deadlock_addr     : std_logic_vector(31 downto 0);
@@ -509,6 +522,7 @@ architecture rtl of dbgmod5 is
 
   constant RRES: dbgmod5_regs := (
     cpurstn           => (others => '0'),
+    tstop             => '0',
     mst_hbusreq       => '0',
     mst_htrans        => "00",
     mst_haddr         => (others => '0'),
@@ -538,12 +552,26 @@ architecture rtl of dbgmod5 is
     twr               => watch_reg_none,
     it                => (others => it_reg_none),
     uart              => uart_reg_none,
+    hready_pipe       => '0',
+    rstreqn           => '1',
     deadlock_hit      => '0',
     deadlock_addr     => x"00000000",
     deadlock_hwrite   => '0',
     deadlock_hsize    => "000",
     deadlock_cpustate => (others => '0'),
     deadlock_multi    => '0'
+    );
+
+  type bret_reg_type is record
+    rstn_prev: std_ulogic;
+    curent: std_logic_vector(2 downto 0);
+    bootctr: std_logic_vector(3 downto 0);
+  end record;
+
+  constant BRRES: bret_reg_type := (
+    rstn_prev => '0',
+    curent   => "000",
+    bootctr  => "0000"
     );
 
   signal r,nr: dbgmod5_regs;
@@ -557,12 +585,14 @@ architecture rtl of dbgmod5 is
   signal it_di : itbi_data_array_type;
   signal it_do : itbo_data_array_type;
 
+  signal psrstn: std_logic_vector(2 downto 0);
+  signal rstn_sync: std_ulogic;
+  signal br,nbr: bret_reg_type;
+
 begin
 
-  tstop <= '1' when dbgo(0).cpustate=CPUSTATE_STOPPED else '0';
-
   comb: process(rstn,r,dbgo,itod,dbgmo,cpumi,uartie,uartoi,tpi,it_do,cpusi,dsubreak,
-                dsuen,tbo)
+                dsuen,tbo,br,bretin)
     variable v: dbgmod5_regs;
     variable odbgmi: ahb_mst_in_vector_type(ndbgmst-1 downto 0);
     variable ocpumo: ahb_mst_out_type;
@@ -573,6 +603,7 @@ begin
     variable oit_di : itbi_data_array_type;
     variable ouartoe: uart_out_type;
     variable ouartii: uart_in_type;
+    variable otstop: std_ulogic;
     variable vfound, vfound2: std_ulogic;
     variable vmst: unsigned(5 downto 0);
     variable hasel1 : std_logic_vector(AREA_H downto AREA_L);
@@ -1150,6 +1181,8 @@ begin
     ---------------------------------------------------------------------------
     -- Debug AHB port handling logic (main part inside FSM)
     ---------------------------------------------------------------------------
+    v.rstreqn := '1';
+    v.hready_pipe := cpumi.hready;
     for m in 0 to ndbgmst-1 loop
       odbgmi(m).hgrant := (others => '1');
       odbgmi(m).hready := r.dbgmst(m).hready;
@@ -1162,6 +1195,25 @@ begin
         v.dbgmst(m).hburst0 := dbgmo(m).hburst(0);
         if dbgmo(m).htrans(1) /= '0' then
           v.dbgmst(m).hready := '0';
+        end if;
+      end if;
+      -- Low-level debug register accessible even if AHB bus or debug module
+      -- FSM has locked up.
+      -- Located on area 000 (DSU registers) with address bit 18 high
+      -- Writing 0x99 causes reset (if implemented in SoC)
+      -- Reading returns system status signal
+      if dsuen='1' then
+        if maskmatch(r.dbgmst(m).haddr(31 downto 20), dsuhaddr, dsuhmask)='1' and
+          r.dbgmst(m).haddr(21 downto 18)="0001" then
+          hrdata := (others => '0');
+          hrdata(31 downto 16) := sysstat;
+          hrdata(1) := r.deadlock_hit;
+          hrdata(0) := r.hready_pipe;
+          odbgmi(m).hrdata := ahbdrivedata(sysstat & "0000000000000000");
+          if r.dbgmst(m).hwrite='1' and r.dbgmst(m).hready='0' and
+            dbgmo(m).hwdata(7 downto 0)=x"99" then
+            v.rstreqn := '0';
+          end if;
         end if;
       end if;
       -- Forward DFT signals
@@ -1301,7 +1353,9 @@ begin
       end if;
     end loop;
 
-    v.dsu.timer := add(r.dsu.timer, 1);
+    if r.tstop='0' then
+      v.dsu.timer := add(r.dsu.timer, 1);
+    end if;
 
     ---------------------------------------------------------------------------
     -- CPU to CPU control interface
@@ -1612,10 +1666,15 @@ begin
     end loop;
 
     -- Bootup via IRQ controller (legacy)
+    v.dsu.pushpc := (others => '0');
     if r.nolegacy='0' then
       for i in 0 to NCPU-1 loop
         if itod(i).resume='1' then
           v.dsu.usr_start(i) := '1';
+        end if;
+        if itod(i).pwdsetaddr='1' and r.dsu.blockusr(i)='0' then
+          v.dsu.pushpc(i) := '1';
+          v.dsu.pcin := itod(i).pwdnewaddr;
         end if;
       end loop;
     end if;
@@ -1967,6 +2026,21 @@ begin
       v.uart.captsreg := uartoi.txd & r.uart.captsreg(9 downto 1);
     end if;
 
+    --------------------------------------------------------------------------
+    -- Watchdog / Timer handling
+    --------------------------------------------------------------------------
+
+    otstop := '0';
+    if dsuen='1' then
+      otstop := r.tstop;
+    end if;
+    v.tstop := '1';
+    for x in 0 to NCPU-1 loop
+      if r.dsu.tstopcfg(x)='1' and dbgo(x).cpustate/=CPUSTATE_STOPPED then
+        v.tstop := '0';
+      end if;
+    end loop;
+
     ---------------------------------------------------------------------------
     -- Main debug module FSM
     ---------------------------------------------------------------------------
@@ -1981,7 +2055,6 @@ begin
     itbuf_read := (others => '0');
 
     v.cpurstn := (others => '1');
-    v.dsu.pushpc := (others => '0');
 
     case r.s is
 
@@ -1994,6 +2067,13 @@ begin
         for i in 0 to NCPU-1 loop
           v.dsu.prevstate(2*i+1 downto 2*i) := CPUSTATE_STOPPED;
         end loop;
+        if bretryen /= 0 then
+          if r.ctr(3 downto 1)="001" then
+            v.dsu.pushpc(0) := '1';
+            v.dsu.pcin(31 downto 3) := bretin.addrlist(to_integer(unsigned(br.curent)))(31 downto 3);
+            v.dsu.pcin(2) := not r.ctr(0);
+          end if;
+        end if;
         if r.ctr(3 downto 0)="0000" then
           v.s := dmidle;
           if dsubreak='0' then
@@ -2267,6 +2347,7 @@ begin
         -- ctr=11: Push PC
         -- ctr=10: Push nPC
         -- ctr=01: Start CPU, return
+        v.dsu.pushpc := (others => '0');  -- Prevent interference from legacy i/f
         if r.ctr(1)='1' then
           v.dsu.pushpc(to_integer(r.selbootcpu)) := '1';
         else
@@ -2326,7 +2407,6 @@ begin
     ---------------------------------------------------------------------------
     -- Reset
     ---------------------------------------------------------------------------
-
     if ( GRLIB_CONFIG_ARRAY(grlib_async_reset_enable)=0 and
          GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all)=0 ) then
       if rstn='0' then
@@ -2431,6 +2511,12 @@ begin
     for i in 0 to NCPU-1 loop
       v.dsu.ctlmat(i)(i) := '0';
     end loop;
+    if ncpu < 2 then
+      v.selboot := (others => '0');
+    end if;
+    if nsess < 2 then
+      v.selsess := (others => '0');
+    end if;
     -- Zero out unused parts of session buffers
     vsessmask := (others => '0');
     vsessmask(2*NCPU-1 downto 0) := (others => '1');
@@ -2459,6 +2545,10 @@ begin
     maskerrn <= r.dsu.be;
     uartoe <= ouartoe;
     uartii <= ouartii;
+    tstop <= otstop;
+    dbgtime <= r.dsu.timer;
+    rstreqn <= r.rstreqn;
+    bretout <= (curent => br.curent, bootctr => br.bootctr);
   end process;
 
   srstregs: if GRLIB_CONFIG_ARRAY(grlib_async_reset_enable)=0 generate
@@ -2473,6 +2563,12 @@ begin
           end loop;
         end if;
       end if;
+      if ncpu < 2 then
+        r.selboot <= (others => '0');
+      end if;
+      if nsess < 2 then
+        r.selsess <= (others => '0');
+      end if;
     end process;
   end generate srstregs;
 
@@ -2486,6 +2582,12 @@ begin
         end loop;
       elsif rising_edge(clk) then
         r <= nr;
+      end if;
+      if ncpu < 2 then
+        r.selboot <= (others => '0');
+      end if;
+      if nsess < 2 then
+        r.selsess <= (others => '0');
       end if;
     end process;
   end generate arstregs;
@@ -2513,6 +2615,88 @@ begin
                  testin => cpusi.testin
                  );
     end generate;
+  end generate;
+
+  bret0: if bretryen /= 0 generate
+    -- For rstn we first use a async-fall, sync-rise
+    -- reset synchronizer as a "pulse strecher" to guarantee
+    -- that the reset pulse is long enough to capture, then
+    -- we synchronize it over into the bretclk domain
+    psrstnproc: process(bretclk,rstn)
+    begin
+      if rstn='0' then
+        psrstn <= "000";
+      elsif rising_edge(bretclk) then
+        psrstn <= psrstn(1 downto 0) & '1';
+      end if;
+    end process;
+
+    sreg_sysrstn: syncreg
+      generic map (tech => fabtech, stages => 3)
+      port map (clk => bretclk, d => psrstn(2), q => rstn_sync);
+
+    bretcomb: process(br,bretrstn,rstn_sync,bretin)
+      variable bv: bret_reg_type;
+      variable vnextent, vent: std_logic_vector(2 downto 0);
+    begin
+      bv := br;
+      bv.rstn_prev := rstn_sync;
+      vnextent := (others => '0');
+      for x in 0 to 7 loop
+        vent := std_logic_vector(to_unsigned(x,3));
+        for y in 7 downto 1 loop
+          if bretin.addrvalid((x+y) mod 8)='1' then
+            vent := std_logic_vector(to_unsigned((x+y) mod 8,3));
+          end if;
+        end loop;
+        if br.curent=std_logic_vector(to_unsigned(x,3)) then
+          vnextent := vent;
+        end if;
+      end loop;
+      if br.rstn_prev='1' and rstn_sync='0' then
+        bv.bootctr := add(br.bootctr,1);
+        if br.bootctr="1111" then bv.bootctr := "1000"; end if;
+        bv.curent := vnextent;
+      end if;
+      if ( GRLIB_CONFIG_ARRAY(grlib_async_reset_enable)=0 and
+           GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all)=0 ) then
+        if bretrstn='0' then
+          bv.curent := BRRES.curent;
+          bv.bootctr := BRRES.bootctr;
+        end if;
+      end if;
+      nbr <= bv;
+    end process;
+
+    srstregs: if GRLIB_CONFIG_ARRAY(grlib_async_reset_enable)=0 generate
+      bretregs: process(bretclk)
+      begin
+        if rising_edge(bretclk) then
+          br <= nbr;
+          if GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) /= 0 and bretrstn='0' then
+            br <= BRRES;
+          end if;
+        end if;
+      end process;
+    end generate;
+
+    arstregs: if GRLIB_CONFIG_ARRAY(grlib_async_reset_enable)/=0 generate
+      bretregs: process(bretclk,bretrstn)
+      begin
+        if bretrstn='0' then
+          br <= BRRES;
+        elsif rising_edge(bretclk) then
+          br <= nbr;
+        end if;
+      end process;
+    end generate;
+  end generate;
+
+  nobret: if bretryen=0 generate
+    psrstn <= "000";
+    rstn_sync <= '0';
+    br <= BRRES;
+    nbr <= BRRES;
   end generate;
 
 end;

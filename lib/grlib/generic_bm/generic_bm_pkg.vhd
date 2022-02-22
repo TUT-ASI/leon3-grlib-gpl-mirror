@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -121,6 +121,7 @@ package generic_bm_pkg is
     wr_done          : std_logic;
     rd_done          : std_logic;
     wr_error         : std_logic;
+    excl_error       : std_logic;
     rd_error         : std_logic;
     rdata_valid_comb : std_logic;
     rd_done_comb     : std_logic;
@@ -204,6 +205,7 @@ package generic_bm_pkg is
     grant      : std_logic;
     burst_done : std_logic;
     error      : std_logic;
+    excl_error : std_logic;
   end record;
 
   type bm_me_wc_out_type is record
@@ -215,6 +217,7 @@ package generic_bm_pkg is
     fe_burst_done : std_logic;
     error         : std_logic;
     be_no_align   : std_logic;
+    excl_error    : std_logic;
   end record;
 
 

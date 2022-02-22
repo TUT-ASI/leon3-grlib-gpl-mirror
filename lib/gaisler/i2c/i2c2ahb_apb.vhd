@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -59,6 +59,7 @@ entity i2c2ahb_apb is
    i2cslvaddr : integer range 0 to 127 := 0;
    i2ccfgaddr : integer range 0 to 127 := 0;
    oepol      : integer range 0 to 1 := 0;
+   rstaddr    : integer range 0 to 1 := 0;
    --
    filter     : integer range 2 to 512 := 2
    );
@@ -73,7 +74,8 @@ entity i2c2ahb_apb is
    apbo   : out apb_slv_out_type;
    -- I2C signals
    i2ci   : in  i2c_in_type;
-   i2co   : out i2c_out_type
+   i2co   : out i2c_out_type;
+   i2crstaddr :  in std_logic_vector(2 downto 0)
    );
 end entity i2c2ahb_apb;
 
@@ -115,7 +117,7 @@ begin
               i2ci => i2ci, i2co => i2co, i2c2ahbi => r.i2c2ahbi,
               i2c2ahbo => i2c2ahbo);
     
-  comb: process (r, rstn, apbi, i2c2ahbo)
+  comb: process (r, rstn, apbi, i2c2ahbo, i2crstaddr)
     variable v         : apb_reg_type;
     variable apbaddr   : std_logic_vector(4 downto 2);
     variable apbout    : std_logic_vector(31 downto 0);
@@ -173,6 +175,20 @@ begin
                           conv_std_logic_vector(ahbmaskl, 16);
       v.i2c2ahbi.slvaddr := conv_std_logic_vector(i2cslvaddr, 7);
       v.i2c2ahbi.cfgaddr := conv_std_logic_vector(i2ccfgaddr, 7);
+      
+      -- Possible to set I2C address for 8 devices using external signals      
+      -- i2caddr bit (3 2 1) are set through bootstrap signal i2crstaddr), 
+      -- i2caddr bit (0) is not configurable through bootstrap, 
+      -- Bit 0 is not configurable to let the IP core to choose addr '0' to be 
+      --   slave address and '1' to be cfgaddress.
+      -- For example: if i2caddress is set to 16#5E# then the slvaddr is 16#5E# 
+      --   and cfgaddr is 16#5F#                  
+      
+      if rstaddr = 1 then
+         v.i2c2ahbi.cfgaddr(3 downto 0) := i2crstaddr & '1';    
+         v.i2c2ahbi.slvaddr(3 downto 0) := i2crstaddr & '0';         
+      end if;      	                                            
+      	
       v.irqen := '0'; v.prot := '0'; v.wr := '0'; v.dma := '0';
     end if;
 

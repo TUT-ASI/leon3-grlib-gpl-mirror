@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -135,49 +135,54 @@ package canfd is
   -- Components
   -------------------------------------------------------------------------------
 
-  component grcanfd_codec
+  component grcanfd_codec is
+    generic (
+      scantest : integer range 0 to 1 := 0);
     port (
-      clk                : in  std_ulogic;
-      rstn               : in  std_ulogic;
-      ---- Configuration interface ----
+      clk               : in  std_ulogic;
+      rstn              : in  std_ulogic;
+      ---- Configuration/control interface ----
       -- Nominal bit rate (FD enabled)
-      nom_presc_quant    : in  std_logic_vector(7 downto 0);
-      nom_prop_ph1_seg   : in  std_logic_vector(5 downto 0);
-      nom_ph2_seg        : in  std_logic_vector(4 downto 0);
-      nom_sync_jmp_wdt   : in  std_logic_vector(4 downto 0);
+      nom_presc_quant   : in  std_logic_vector(7 downto 0);
+      nom_prop_ph1_seg  : in  std_logic_vector(5 downto 0);
+      nom_ph2_seg       : in  std_logic_vector(4 downto 0);
+      nom_sync_jmp_wdt  : in  std_logic_vector(4 downto 0);
       -- Data bit rate (FD enabled)
-      data_presc_quant   : in  std_logic_vector(7 downto 0);
-      data_prop_ph1_seg  : in  std_logic_vector(3 downto 0);
-      data_ph2_seg       : in  std_logic_vector(3 downto 0);
-      data_sync_jmp_wdt  : in  std_logic_vector(3 downto 0);
+      data_presc_quant  : in  std_logic_vector(7 downto 0);
+      data_prop_ph1_seg : in  std_logic_vector(3 downto 0);
+      data_ph2_seg      : in  std_logic_vector(3 downto 0);
+      data_sync_jmp_wdt : in  std_logic_vector(3 downto 0);
       -- Transmitter delay compensation (FD only)
-      txdelcomp_en       : in  std_ulogic;
-      txdelcomp_val      : in  std_logic_vector(5 downto 0);
+      txdelcomp_en      : in  std_ulogic;
+      txdelcomp_val     : in  std_logic_vector(5 downto 0);
       -- Loopback mode
-      loopback           : in  std_ulogic;
+      loopback          : in  std_ulogic;
       -- Restart operation (bus-off)
-      restart_req        : in  std_ulogic;
+      restart_req       : in  std_ulogic;
       -- Flow control
-      overload_req       : in  std_ulogic;
+      overload_req      : in  std_ulogic;
       ---- Internal message interface ----
       -- TX
-      tx_msg             : in  grcanfd_int_msg_type;
-      next_data_req      : out std_ulogic;
-      tx_busy            : out std_ulogic;
-      tx_complete        : out std_ulogic;
+      tx_msg            : in  grcanfd_int_msg_type;
+      next_data_req     : out std_ulogic;
+      tx_busy           : out std_ulogic;
+      tx_complete       : out std_ulogic;
       -- RX
-      rx_msg             : out grcanfd_int_msg_type;
-      rx_complete        : out std_ulogic;
+      rx_msg            : out grcanfd_int_msg_type;
+      rx_complete       : out std_ulogic;
       ---- Status interface ----
-      arb_lost           : out std_ulogic;
-      bus_off            : out std_ulogic;
-      err_passive        : out std_ulogic;
-      tx_err_cnt         : out std_logic_vector(7 downto 0);
-      rx_err_cnt         : out std_logic_vector(7 downto 0);
+      arb_lost          : out std_ulogic;
+      bus_off           : out std_ulogic;
+      err_passive       : out std_ulogic;
+      tx_err_cnt        : out std_logic_vector(7 downto 0);
+      rx_err_cnt        : out std_logic_vector(7 downto 0);
       ---- CAN interface ----
-      can_sp             : out std_ulogic;
-      can_tx_bit         : out std_ulogic;
-      can_rx_bit         : in  std_ulogic
+      can_sp            : out std_ulogic;
+      can_tx_bit        : out std_ulogic;
+      can_rx_bit        : in  std_ulogic;
+      ---- Scan test ----
+      testen            : in  std_ulogic := '0';
+      testrst           : in  std_ulogic := '0'
       );
   end component grcanfd_codec;
 

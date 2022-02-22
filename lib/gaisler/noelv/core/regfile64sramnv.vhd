@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -78,6 +78,7 @@ architecture rtl of regfile64sramnv is
 
   constant RPORTS : integer := 4;
   constant WPORTS : integer := 2;
+  constant DB32   : integer := 2 - dbits / 32;
 
   type lwrite is array (0 to 2**abits-1) of std_logic_vector(log2x(WPORTS)-1 downto 0);
 

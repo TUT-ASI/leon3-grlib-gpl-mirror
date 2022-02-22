@@ -16,10 +16,12 @@ package config_local is
   constant CFG_LOCAL_ETH_IPL      : integer := CFG_ETH_IPL;
   constant CFG_LOCAL_ETH_ENL      : integer := CFG_ETH_ENL;
   constant CFG_LOCAL_ETH_GMII     : integer := 1;
+  constant CFG_LOCAL_WBMASK       : integer := 16#50FF#; 
   constant CFG_LOCAL_CMEMCONF     : integer := 0; 
   constant CFG_LOCAL_FPUCONF      : integer := 0; 
   constant CFG_LOCAL_RFCONF       : integer := 0; 
   constant CFG_LOCAL_TCMCONF      : integer := 0; 
+  constant CFG_LOCAL_MULCONF      : integer := 0;
   constant CFG_LOCAL_JTAG_NSYNC   : integer := 1; 
   constant CFG_LOCAL_JTAG_AINST   : integer := 2; 
   constant CFG_LOCAL_JTAG_DINST   : integer := 3; 

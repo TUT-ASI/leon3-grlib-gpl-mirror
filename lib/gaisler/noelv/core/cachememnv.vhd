@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -536,7 +536,7 @@ begin
 
 
   unusediloop: for s in iways to 3 generate
-    cramo.itagdout(s) <= (others => '0');
+    cramo.itagdout(s)  <= (others => '0');
     cramo.idatadout(s) <= (others => '0');
   end generate;
   unuseddloop: for s in dways to 3 generate
@@ -555,83 +555,83 @@ begin
 
 --pragma translate_off
   tagmon: process(sclk)
-    subtype itag_type is std_logic_vector(itagwidth-1 downto 0);
-    type itagset_type is array(0 to iways-1) of itag_type;
-    type itags_type is array(0 to 2**iidxwidth-1) of itagset_type;
-    variable itags: itags_type;
-    subtype dctag_type is std_logic_vector(dtagwidth-1 downto 0);
-    subtype dstag_type is std_logic_vector(dtagwidth-1 downto 1);
-    type dctagset_type is array(0 to iways-1) of dctag_type;
-    type dstagset_type is array(0 to iways-1) of dstag_type;
-    type dctags_type is array(0 to 2**iidxwidth-1) of dctagset_type;
-    type dstags_type is array(0 to 2**iidxwidth-1) of dstagset_type;
-    variable dctags: dctags_type;
-    variable dstags: dstags_type;
-    variable idx, cidx: integer;
-    variable tagupd: boolean;
-    type boolarr is array(natural range <>) of boolean;
-    variable ctagupd: boolarr(0 to DWAYS-1);
+    subtype itag_type  is std_logic_vector(itagwidth - 1 downto 0);
+    type itagset_type  is array(0 to iways - 1) of itag_type;
+    type itags_type    is array(0 to 2 ** iidxwidth - 1) of itagset_type;
+    variable itags      : itags_type;
+    subtype dctag_type is std_logic_vector(dtagwidth - 1 downto 0);
+    subtype dstag_type is std_logic_vector(dtagwidth - 1 downto 1);
+    type dctagset_type is array(0 to iways - 1) of dctag_type;
+    type dstagset_type is array(0 to iways - 1) of dstag_type;
+    type dctags_type   is array(0 to 2 ** iidxwidth - 1) of dctagset_type;
+    type dstags_type   is array(0 to 2 ** iidxwidth - 1) of dstagset_type;
+    variable dctags     : dctags_type;
+    variable dstags     : dstags_type;
+    variable idx, cidx  : integer;
+    variable tagupd     : boolean;
+    type boolarr       is array(natural range <>) of boolean;
+    variable ctagupd    : boolarr(0 to DWAYS - 1);
   begin
     if rising_edge(sclk) then
       tagupd := false;
       for w in 0 to IWAYS-1 loop
-        if crami.itagen(w)='1' and crami.itagwrite='1' then
-          idx := to_integer(unsigned(crami.iindex(iidxwidth-1 downto 0)));
+        if crami.itagen(w) = '1' and crami.itagwrite = '1' then
+          idx := to_integer(unsigned(crami.iindex(iidxwidth - 1 downto 0)));
           if notx(itags(idx)(w)) then tagupd := true; end if;
-          itags(idx)(w) := crami.itagdin(w)(itagwidth-1 downto 0);
+          itags(idx)(w) := crami.itagdin(w)(itagwidth - 1 downto 0);
           assert notx(crami.itagdin(w)) report "Writing X into Itag!" severity failure;
         end if;
       end loop;
       if tagupd then
         for w1 in 0 to IWAYS-2 loop
           for w2 in w1+1 to IWAYS-1 loop
-            assert itags(idx)(w1)(dtagwidth-1 downto 1) /= itags(idx)(w2)(dtagwidth-1 downto 1)
+            assert itags(idx)(w1)(dtagwidth - 1 downto 1) /= itags(idx)(w2)(dtagwidth - 1 downto 1)
               report "Duplicated Itag written" severity failure;
           end loop;
         end loop;
       end if;
-      tagupd := false;
+      tagupd  := false;
       ctagupd := (others => false);
       for w in 0 to DWAYS-1 loop
-        if dtagconf=0 and crami.dtaguwrite(w)='1' then
-          cidx := to_integer(unsigned(crami.dtaguindex(didxwidth-1 downto 0)));
+        if dtagconf = 0 and crami.dtaguwrite(w) = '1' then
+          cidx         := to_integer(unsigned(crami.dtaguindex(didxwidth - 1 downto 0)));
           if notx(dctags(cidx)(w)) then
-            tagupd := true;
+            tagupd     := true;
             ctagupd(w) := true;
           end if;
-          dctags(cidx)(w) := crami.dtagudin(w)(dtagwidth-1 downto 0);
+          dctags(cidx)(w) := crami.dtagudin(w)(dtagwidth - 1 downto 0);
           assert notx(crami.dtagudin(w)) report "Writing X into Dtag!" severity failure;
         end if;
-        if dtagconf /= 0 and crami.dtagcuen(w)='1' and crami.dtagcuwrite='1' then
-          cidx := to_integer(unsigned(crami.dtagcuindex(didxwidth-1 downto 0)));
+        if dtagconf /= 0 and crami.dtagcuen(w) = '1' and crami.dtagcuwrite = '1' then
+          cidx := to_integer(unsigned(crami.dtagcuindex(didxwidth - 1 downto 0)));
           if notx(dctags(cidx)(w)) then
-            tagupd := true;
+            tagupd     := true;
             ctagupd(w) := true;
           end if;
-          dctags(cidx)(w) := crami.dtagudin(w)(dtagwidth-1 downto 0);
+          dctags(cidx)(w) := crami.dtagudin(w)(dtagwidth - 1 downto 0);
           assert notx(crami.dtagudin(w)) report "Writing X into Dtag!" severity failure;
         end if;
-        if crami.dtagsen(w)='1' and crami.dtagswrite='1' then
-          idx := to_integer(unsigned(crami.dtagsindex(didxwidth-1 downto 0)));
+        if crami.dtagsen(w) = '1' and crami.dtagswrite = '1' then
+          idx      := to_integer(unsigned(crami.dtagsindex(didxwidth - 1 downto 0)));
           if notx(dstags(idx)(w)) then
             tagupd := true;
           end if;
-          dstags(idx)(w) := crami.dtagsdin(w)(dtagwidth-1 downto 1);
+          dstags(idx)(w) := crami.dtagsdin(w)(dtagwidth - 1 downto 1);
           assert notx(crami.dtagsdin(w)) report "Writing X into Dstag!" severity failure;
         end if;
       end loop;
       if tagupd then
         for w1 in 0 to DWAYS-2 loop
           for w2 in w1+1 to DWAYS-1 loop
-            assert dctags(idx)(w1)(dtagwidth-1 downto 1) /= dctags(idx)(w2)(dtagwidth-1 downto 1)
+            assert dctags(idx)(w1)(dtagwidth - 1 downto 1) /= dctags(idx)(w2)(dtagwidth - 1 downto 1)
               report "Duplicated dtag written" severity failure;
-            assert dstags(idx)(w1)(dtagwidth-1 downto 1) /= dstags(idx)(w2)(dtagwidth-1 downto 1)
+            assert dstags(idx)(w1)(dtagwidth - 1 downto 1) /= dstags(idx)(w2)(dtagwidth - 1 downto 1)
               report "Duplicated snoop-dtag written" severity failure;
           end loop;
         end loop;
         for w in 0 to DWAYS-1 loop
           if ctagupd(w) then
-            assert dctags(cidx)(w)(dtagwidth-1 downto 1)=dstags(cidx)(w) or dctags(cidx)(w)(0)='0'
+            assert dctags(cidx)(w)(dtagwidth - 1 downto 1) = dstags(cidx)(w) or dctags(cidx)(w)(0) = '0'
               report "Snoop and regular tag mismatch" severity failure;
           end if;
         end loop;

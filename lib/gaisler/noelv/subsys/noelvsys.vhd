@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -55,6 +55,7 @@ entity noelvsys is
     rfconf   : integer;
     fpuconf  : integer;
     tcmconf  : integer;
+    mulconf  : integer;
     disas    : integer;
     ahbtrace : integer;
     cfg      : integer;
@@ -310,6 +311,7 @@ begin
         rfconf   => rfconf,
         fpuconf  => fpuconf,
         tcmconf  => tcmconf,
+        mulconf  => mulconf,
         disas    => disas,
         pbaddr   => 16#90000#,
         cfg      => cfg,

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -295,8 +295,7 @@ begin
           haddr       => L2C_HADDR,
           hmask       => L2C_HMASK,
           tech        => CFG_MEMTECH,
-          kbytes      => 1024,
-          endianness  => GRLIB_CONFIG_ARRAY(grlib_little_endian))
+          kbytes      => 1024)
         port map (
           rstn,
           clkm,
@@ -334,7 +333,6 @@ begin
           kbytes   => 1024,
           pipe     => 0,
           maccsz   => AHBDW,
-          endianness  => GRLIB_CONFIG_ARRAY(grlib_little_endian),
           fname    => ramfile)
         port map(
           rst     => rstn,
@@ -401,7 +399,6 @@ begin
         kbytes   => 1024,
         pipe     => 0,
         maccsz   => AHBDW,
-        endianness  => GRLIB_CONFIG_ARRAY(grlib_little_endian),
         fname    => romfile)
       port map(
         rst     => rstn,

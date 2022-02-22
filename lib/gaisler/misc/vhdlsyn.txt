@@ -59,3 +59,4 @@ apb3cdc.vhd
 ahbsmux.vhd
 ahbmmux.vhd
 grtachom.vhd
+grwatchdog.vhd

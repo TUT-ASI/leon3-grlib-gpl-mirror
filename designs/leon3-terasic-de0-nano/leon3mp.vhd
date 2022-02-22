@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -187,6 +187,7 @@ begin
   generic map (defmast => CFG_DEFMST, split => CFG_SPLIT, 
                rrobin => CFG_RROBIN, ioaddr => CFG_AHBIO, ioen => IOAEN,
                nahbm => CFG_NCPU+CFG_AHB_JTAG,
+               ahbtrace => CFG_AHB_DTRACE,
                nahbs => 6) 
   port map (rstn, clkm, ahbmi, ahbmo, ahbsi, ahbso);
 

@@ -4,7 +4,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -63,7 +63,7 @@ entity leon5mp is
     ahbtrace                : integer := CFG_AHBTRACE;
     simulation              : boolean := false;
     autonegotiation         : integer := 1
-  );
+    );
   port (
     -- Clock and Reset
     reset       : in    std_ulogic;
@@ -118,7 +118,7 @@ entity leon5mp is
     ddr4_ten    : out   std_ulogic;                   -- Connectivity Test Mode
     ddr4_cs_n   : out   std_logic_vector(0 downto 0); -- Chip Select
     ddr4_reset_n: out   std_ulogic                    -- Asynchronous Reset
-  );
+    );
 end;
 
 
@@ -173,7 +173,7 @@ architecture rtl of leon5mp is
       debugmem        : integer := 0;
       tech            : integer := 0;
       simulation      : integer := 0
-    );
+      );
     port(
       sgmiii    : in  eth_sgmii_in_type;
       sgmiio    : out eth_sgmii_out_type;
@@ -187,7 +187,7 @@ architecture rtl of leon5mp is
       apb_rstn  : in  std_logic;
       apbi      : in  apb_slv_in_type;
       apbo      : out apb_slv_out_type
-    );
+      );
   end component;
 
   component IBUFDS
@@ -199,7 +199,7 @@ architecture rtl of leon5mp is
       O         : out std_ulogic;
       I         : in  std_ulogic;
       IB        : in  std_ulogic
-    );
+      );
   end component;
 
   component ahb2axi_mig4_7series
@@ -211,7 +211,7 @@ architecture rtl of leon5mp is
       pindex                  : integer := 0;
       paddr                   : integer := 0;
       pmask                   : integer := 16#fff#
-    );
+      );
     port (
       calib_done          : out   std_logic;
       sys_clk_p           : in    std_logic;
@@ -247,7 +247,7 @@ architecture rtl of leon5mp is
       -- Misc
       ddr4_ui_clkout1     : out   std_logic;
       clk_ref_i           : in    std_logic
-    );
+      );
   end component;
 
   component ddr_dummy
@@ -267,7 +267,7 @@ architecture rtl of leon5mp is
       ddr_cs_n         : out   std_logic_vector(0 downto 0);
       ddr_dm           : out   std_logic_vector(7 downto 0);
       ddr_odt          : out   std_logic_vector(0 downto 0)
-    );
+      );
   end component;
 
   -----------------------------------------------------
@@ -282,6 +282,8 @@ architecture rtl of leon5mp is
   constant BOARD_FREQ   : integer := 300000; -- input frequency in KHz
   constant CPU_FREQ     : integer := BOARD_FREQ * CFG_CLKMUL / CFG_CLKDIV; -- cpu frequency in KHz
   constant ramfile      : string := "ram.srec"; -- ram contents
+
+  constant MEMAHB_IOADDR : integer := 16#FFE#;
 
   -----------------------------------------------------
   -- Signals ------------------------------------------
@@ -311,11 +313,12 @@ architecture rtl of leon5mp is
   signal calib_done     : std_ulogic;
 
   -- Memory AHB Signals
-  signal mem_ahbmi      : ahb_mst_in_type;
-  signal mem_ahbmo      : ahb_mst_out_type;
-  signal mem_ahbsi      : ahb_slv_in_type;
-  signal mem_ahbso      : ahb_slv_out_type;
-
+  signal mem_ahbsi : ahb_slv_in_type;
+  signal mem_ahbso : ahb_slv_out_vector := (others => ahbs_none);
+  signal mem_ahbmi : ahb_mst_in_type;
+  signal mem_ahbmo : ahb_mst_out_vector := (others => ahbm_none);
+  signal l2c_stato : std_logic_vector(10 downto 0);
+  
   -- Clocks and Reset
   signal clkm           : std_ulogic := '0';
   signal rstn           : std_ulogic;
@@ -409,15 +412,17 @@ architecture rtl of leon5mp is
 
 
   constant hsidx_mig       : integer := 0;
-  constant hsidx_l2c       : integer := CFG_L2_EN;
-  constant hsidx_ahbram    : integer := hsidx_l2c    + CFG_AHBRAMEN;
-  constant hsidx_ahbrom    : integer := hsidx_ahbram + 1;
-  constant hsidx_ahbrep    : integer := hsidx_ahbrom + 1;
+  constant hsidx_fakemig   : integer := hsidx_mig     + CFG_L2_EN*CFG_L2_AXI;
+  constant hsidx_l2c       : integer := hsidx_fakemig + CFG_L2_EN;
+  constant hsidx_ahbram    : integer := hsidx_l2c     + CFG_AHBRAMEN;
+  constant hsidx_ahbrom    : integer := hsidx_ahbram  + 1;
+  constant hsidx_ahbrep    : integer := hsidx_ahbrom  + 1;
   constant hsidx_free      : integer := hsidx_ahbrep
 --pragma translate_off
-  + 1
+                                        + 1
 --pragma translate_on
-    ;
+                                        ;
+  
   constant l5sys_nextslv : integer := max(hsidx_free, 1);
 
   constant pidx_ahbuart  : integer := 0;
@@ -430,7 +435,7 @@ architecture rtl of leon5mp is
   constant pidx_free     : integer := pidx_ahbstat + CFG_AHBSTAT;
   constant l5sys_nextapb : integer := pidx_free;
 
-    -- AHB and  APB
+  -- AHB and  APB
   signal ahbmi: ahb_mst_in_type;
   signal ahbmo: ahb_mst_out_vector_type(CFG_NCPU+l5sys_nextmst-1 downto CFG_NCPU);
   signal ahbsi: ahb_slv_in_type;
@@ -524,15 +529,18 @@ begin
       nextslv  => l5sys_nextslv,
       nextapb  => l5sys_nextapb,
       ndbgmst  => l5sys_ndbgmst,
+      ahbsplit => 1,
       cached   => CFG_DFIXED,
       wbmask   => CFG_BWMASK,
       busw     => CFG_AHBW,
       fpuconf  => CFG_FPUTYPE,
+      cmemconf => 0,
+      rfconf   => 0,
       disas    => disas,
       ahbtrace => ahbtrace,
       devid    => LEON5_XILINX_KCU105
       )
-     port map (
+    port map (
       clk      => clkm,
       rstn     => rstn,
       ahbmi    => ahbmi,
@@ -618,9 +626,18 @@ begin
   -----------------------------------------------------------------------------
   -- L2 cache
   -----------------------------------------------------------------------------
-   l2_mig_gen : if (CFG_L2_EN = 1) and (CFG_MIG_7SERIES = 1) generate
-     
-    gen_ddr4c : if (simulation = false) generate
+  l2c_gen : if (CFG_L2_EN = 1) generate
+    
+    l2c_axi : if (CFG_L2_AXI = 1) generate
+      -- pragma translate_off
+      l2_axi_err : process
+        begin
+          report "*** ERROR: CFG_L2_AXI= 1 is currently only supported for synthesis ***"
+            severity failure;
+          wait;      
+      end process;
+      -- pragma translate_on          
+    
       l2c0 : l2c_axi_be
         generic map (
           hslvidx   => hsidx_l2c,
@@ -648,6 +665,106 @@ begin
           aximi => mem_aximi,
           aximo => mem_aximo,
           sto   => open);
+      
+    end generate l2c_axi;
+
+    l2c_ahb : if (CFG_L2_AXI = 0) generate
+      l2c0 : l2c generic map (
+        hslvidx   => hsidx_l2c,
+        hmstidx   => 0,
+        cen       => CFG_L2_PEN,
+        haddr     => 16#400#, hmask => 16#c00#, ioaddr => 16#FF0#,
+        cached    => CFG_L2_MAP,
+        repl      => CFG_L2_RAN,
+        ways      => CFG_L2_WAYS,
+        linesize  => CFG_L2_LSZ,
+        waysize   => CFG_L2_SIZE,
+        memtech   => memtech,
+        bbuswidth => AHBDW,
+        bioaddr   => MEMAHB_IOADDR,
+        biomask   => 16#fff#,
+        sbus      => 0,
+        mbus      => 1,
+        arch      => CFG_L2_SHARE,
+        ft        => CFG_L2_EDAC)
+        port map (
+          rst    => rstn,
+          clk    => clkm,
+          ahbsi  => ahbsi,
+          ahbso  => ahbso(hsidx_l2c),
+          ahbmi  => mem_ahbmi,
+          ahbmo  => mem_ahbmo(0),
+          ahbsov => mem_ahbso,
+          sto => l2c_stato);
+
+      memahb0 : ahbctrl -- AHB arbiter/multiplexer
+        generic map (defmast => 0, split => 0,
+                     rrobin => 0, ioaddr => MEMAHB_IOADDR,
+                     ioen => 1, nahbm => 1, nahbs => 1)
+        port map (rstn, clkm, mem_ahbmi, mem_ahbmo, mem_ahbsi, mem_ahbso);
+
+      mig_ahbsi    <= mem_ahbsi;
+      mem_ahbso(0) <= mig_ahbso;
+
+    end generate l2c_ahb;
+
+  end generate l2c_gen;
+
+  no_l2 : if (CFG_L2_EN = 0) generate
+    mig_ahbsi        <= ahbsi;
+    ahbso(hsidx_mig) <= mig_ahbso;
+  end generate no_l2;
+
+  -----------------------------------------------------------------------
+  ---  Xilinx DDR4 Memory Controller ------------------------------------
+  ----------------------------------------------------------------------- 
+
+  mig_gen: if (CFG_MIG_7SERIES = 1) and simulation = false generate
+    
+    mig_ahb: if (CFG_L2_EN = 0) or (CFG_L2_AXI = 0) generate
+      
+      ddrc: ahb2axi_mig4_7series generic map (
+        hindex => 0, haddr => 16#400#, hmask => 16#F00#,
+        pindex => pidx_mig, paddr => 4
+        )
+        port map (
+          calib_done      => calib_done,
+          sys_clk_p       => clk300p,
+          sys_clk_n       => clk300n,
+          ddr4_addr       => ddr4_addr,
+          ddr4_we_n       => ddr4_we_n,
+          ddr4_cas_n      => ddr4_cas_n,
+          ddr4_ras_n      => ddr4_ras_n,
+          ddr4_ba         => ddr4_ba,
+          ddr4_cke        => ddr4_cke,
+          ddr4_cs_n       => ddr4_cs_n,
+          ddr4_dm_n       => ddr4_dm_n,
+          ddr4_dq         => ddr4_dq,
+          ddr4_dqs_c      => ddr4_dqs_c,
+          ddr4_dqs_t      => ddr4_dqs_t,
+          ddr4_odt        => ddr4_odt,
+          ddr4_bg         => ddr4_bg,
+          ddr4_reset_n    => ddr4_reset_n,
+          ddr4_act_n      => ddr4_act_n,
+          ddr4_ck_c       => ddr4_ck_c,
+          ddr4_ck_t       => ddr4_ck_t,
+          ddr4_ui_clk     => open,
+          ddr4_ui_clk_sync_rst => open,
+          rst_n_syn       => migrstn,
+          rst_n_async     => rstraw,
+          ahbsi           => mig_ahbsi,
+          ahbso           => mig_ahbso,
+          apbi            => apbi,
+          apbo            => apbo(pidx_mig),
+          clk_amba        => clkm,
+          -- Misc
+          ddr4_ui_clkout1 => clkm,
+          clk_ref_i       => clkref
+          );
+
+    end generate mig_ahb;
+
+    mig_axi: if (CFG_L2_EN = 1) and (CFG_L2_AXI = 1) generate
 
       ddr4c: axi_mig4_7series generic map (
         mem_bits  => 30
@@ -686,62 +803,18 @@ begin
 
       -----------------------------------------------------------------------
       ---  Fake MIG PNP -----------------------------------------------------
-      -----------------------------------------------------------------------      
-      ahbso(hsidx_mig).hindex  <= hsidx_mig;
-      ahbso(hsidx_mig).hconfig <= mig_hconfig;
-      ahbso(hsidx_mig).hready  <= '1';
-      ahbso(hsidx_mig).hresp   <= "00";
-      ahbso(hsidx_mig).hirq    <= (others => '0');
-      ahbso(hsidx_mig).hrdata  <= (others => '0');
+      -----------------------------------------------------------------------
+      ahbso(hsidx_fakemig).hindex  <= hsidx_fakemig;
+      ahbso(hsidx_fakemig).hconfig <= mig_hconfig;
+      ahbso(hsidx_fakemig).hready  <= '1';
+      ahbso(hsidx_fakemig).hresp   <= "00";
+      ahbso(hsidx_fakemig).hirq    <= (others => '0');
+      ahbso(hsidx_fakemig).hrdata  <= (others => '0');
       -- No APB interface on mig
-      apbo(pidx_mig)    <= apb_none;
+      apbo(pidx_mig)    <= apb_none;      
       
-    end generate gen_ddr4c;
-  end generate l2_mig_gen;
+    end generate mig_axi;      
 
-  mig_gen : if (CFG_L2_EN = 0) and (CFG_MIG_7SERIES = 1)  generate
-
-    ddrc_gen : if (simulation = false) generate  
-     ddrc: ahb2axi_mig4_7series generic map (
-      hindex => hsidx_mig, haddr => 16#400#, hmask => 16#F00#,
-      pindex => pidx_mig, paddr => 4
-      )
-      port map (
-        calib_done      => calib_done,
-        sys_clk_p       => clk300p,
-        sys_clk_n       => clk300n,
-        ddr4_addr       => ddr4_addr,
-        ddr4_we_n       => ddr4_we_n,
-        ddr4_cas_n      => ddr4_cas_n,
-        ddr4_ras_n      => ddr4_ras_n,
-        ddr4_ba         => ddr4_ba,
-        ddr4_cke        => ddr4_cke,
-        ddr4_cs_n       => ddr4_cs_n,
-        ddr4_dm_n       => ddr4_dm_n,
-        ddr4_dq         => ddr4_dq,
-        ddr4_dqs_c      => ddr4_dqs_c,
-        ddr4_dqs_t      => ddr4_dqs_t,
-        ddr4_odt        => ddr4_odt,
-        ddr4_bg         => ddr4_bg,
-        ddr4_reset_n    => ddr4_reset_n,
-        ddr4_act_n      => ddr4_act_n,
-        ddr4_ck_c       => ddr4_ck_c,
-        ddr4_ck_t       => ddr4_ck_t,
-        ddr4_ui_clk     => open,
-        ddr4_ui_clk_sync_rst => open,
-        rst_n_syn       => migrstn,
-        rst_n_async     => rstraw,
-        ahbsi           => ahbsi,
-        ahbso           => ahbso(hsidx_mig),
-        apbi            => apbi,
-        apbo            => apbo(pidx_mig),
-        clk_amba        => clkm,
-        -- Misc
-        ddr4_ui_clkout1 => clkm,
-        clk_ref_i       => clkref
-        );
-     end generate ddrc_gen;
-     
   end generate mig_gen;
 
   simgen: if (CFG_MIG_7SERIES = 1) and (simulation = true) generate
@@ -751,10 +824,6 @@ begin
     clkm <= not clkm after 5.0 ns;
     -- No APB interface on mig
     apbo(pidx_mig)    <= apb_none;
-
-    no_l2_gen : if  (CFG_L2_EN = 1) generate
-      ahbso(hsidx_l2c)  <= ahbs_none;
-    end generate no_l2_gen;
     
     mig_ahbram : ahbram_sim
       generic map (
@@ -765,14 +834,13 @@ begin
         kbytes        => 4096,
         pipe          => 0,
         maccsz        => AHBDW,
-        endianness    => 0,
         fname         => ramfile
         )
       port map(
         rst     => rstn,
         clk     => clkm,
-        ahbsi   => ahbsi,
-        ahbso   => ahbso(hsidx_mig)
+        ahbsi   => mig_ahbsi,
+        ahbso   => mig_ahbso
         );
 
     -- Tie-Off DDR4 Signals
@@ -796,10 +864,10 @@ begin
     
     calib_done <= '1';
 
-    -- pragma translate_on
+  -- pragma translate_on
   end generate simgen;
   
- 
+  
   -----------------------------------------------------------------------
   ---  AHB RAM ----------------------------------------------------------
   -----------------------------------------------------------------------
@@ -816,7 +884,7 @@ begin
 ---  AHB ROM ----------------------------------------------------------
 -----------------------------------------------------------------------
 
- bpromgen : if CFG_AHBROMEN /= 0 or (simulation = true) generate
+  bpromgen : if CFG_AHBROMEN /= 0 or (simulation = true) generate
     brom : entity work.ahbrom128
       generic map (hindex => hsidx_ahbrom, haddr => CFG_AHBRODDR, pipe => CFG_AHBROPIP)
       port map (rstn, clkm, ahbsi, ahbso(hsidx_ahbrom));
@@ -923,8 +991,8 @@ begin
   end generate eth0;
 
   edcl0 : if (CFG_GRETH=1 and CFG_DSU_ETH=1)  generate
-      greth_dbgmi <= dbgmi(hdidx_greth);
-      dbgmo(hdidx_greth) <= greth_dbgmo;
+    greth_dbgmi <= dbgmi(hdidx_greth);
+    dbgmo(hdidx_greth) <= greth_dbgmo;
   end generate;
 
   noedcl0 : if not (CFG_GRETH=1 and CFG_DSU_ETH=1) generate
@@ -1044,9 +1112,9 @@ begin
   -- pragma translate_off
   x : report_design
     generic map (
-      msg1    => "LEON3/GRLIB Xilinx KCU105 Demonstration design",
+      msg1    => "LEON5/GRLIB Xilinx KCU105 Demonstration design",
       fabtech => tech_table(fabtech), memtech => tech_table(memtech),
       mdel    => 1
-    );
+      );
 -- pragma translate_on
- end;
+end;

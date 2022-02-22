@@ -13,10 +13,12 @@ div64.vhd
 regfile64sramnv.vhd
 regfile64dffnv.vhd
 progbuf.vhd
+fputilnv.vhd
 iunv.vhd
 cpucorenv.vhd
 rvdmx.vhd
 rvdm.vhd
 cctrlnv.vhd
 fakefpunv.vhd
+mulfp.vhd
 nanofpunv.vhd

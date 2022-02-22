@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -53,7 +53,8 @@ entity grdmac2_apb is
                                                          -- Valid values of 'ft' : 0 to 5 for dbits =32 (ft=5 is target technology specific); 0 to 4 for dbits = 64 and 128
     abits    : integer range 0 to 10        := 4;        -- FIFO address bits (actual fifo depth = 2**abits)
     en_timer : integer                      := 0;        -- Enable timeout mechanism
-    dbits    : integer range 32 to 128      := 32        -- Data width of BM and FIFO 
+    dbits    : integer range 32 to 128      := 32;       -- Data width of BM and FIFO
+    en_acc   : integer range 0  to 4        := 4         -- Enable accelerators
     );
   port (
     rstn             : in  std_ulogic;                        -- Reset
@@ -65,6 +66,7 @@ entity grdmac2_apb is
     desc_ptr_out     : out grdmac2_desc_ptr_type;             -- First descriptor pointer
     active           : out std_ulogic;                        -- GRDMAC2 enabled after reset, status
     err_status       : out std_ulogic;                        -- Core error status in APB status register
+    irqf_clr_sts         : out std_ulogic;                        -- IRQ flag clear status when no error and desc completed
     irq_flag_sts     : in std_ulogic;                         -- IRQ flag     
     curr_desc_in     : in curr_des_out_type;                  -- Current descriptor fields for debug display
     curr_desc_ptr    : in std_logic_vector(31 downto 0);      -- Current descriptor pointer for debug display
@@ -89,9 +91,6 @@ architecture rtl of grdmac2_apb is
   constant ASYNC_RST : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 
   -- Plug and Play Information (APB interface)
-
-  constant REVISION : integer := 0;
-
   constant pconfig  : apb_config_type := (
     0 => ahb_device_reg (VENDOR_GAISLER, GAISLER_GRDMAC2, 0, REVISION, pirq), 
     1 => apb_iobar(paddr, pmask));
@@ -134,10 +133,12 @@ begin -- rtl
     ----------------------
 
     -- Core Status update
-    v.sts.comp    := sts_in.comp;
-    v.sts.ongoing := sts_in.ongoing;
-    v.sts.paused  := sts_in.paused;
-    v.sts.timeout := sts_in.timeout;
+    v.sts.comp     := sts_in.comp;
+    v.sts.ongoing  := sts_in.ongoing;
+    v.sts.paused   := sts_in.paused;
+    v.sts.timeout  := sts_in.timeout;
+    v.misc.err_irq := sts_in.err;
+    v.misc.cmp_irq := sts_in.desc_comp;
 
     -- Error updates
     if sts_in.err = '1' then
@@ -255,6 +256,7 @@ begin -- rtl
             when others => -- 32 bits
               prdata(11 downto 9) := "101";
           end case; 
+          prdata(15 downto 12) := conv_std_logic_vector(en_acc,4);
           prdata(31 downto 28) := conv_std_logic_vector(abits, 4);
         when "000100" => --0x10 GRDMAC2 descriptor pointer register
           prdata(31 downto 0) := r.desc_ptr.ptr;
@@ -294,7 +296,11 @@ begin -- rtl
            v.ctrl.te     := apbi.pwdata(7); --TODO check
           else
            v.ctrl.te     := '0'; 
-          end if;     
+          end if;
+          -- If kicked or restarted, the irq_sts_clrd register bit is reset.  
+          if (apbi.pwdata(2)= '1' or apbi.pwdata(3) = '1') then
+            v.misc.irq_sts_clrd := '0';
+          end if;  
         when "000001" => --0x04 GRDMAC2 status register. Errors are cleared on write
           v.sts.err             := r.sts.err and not(apbi.pwdata(2));		  
           v.sts.irq_flag        := r.sts.irq_flag and not(apbi.pwdata(4));
@@ -309,6 +315,8 @@ begin -- rtl
           if ft /= 0 then
             v.sts.fifo_err := r.sts.fifo_err and not(apbi.pwdata(16));
           end if;
+          -- If irq_flag status bit is cleared by user, by writing 1 to it, the irq_sts_clrd register bit is set.  
+          v.misc.irq_sts_clrd := apbi.pwdata(4);
         when "000010" => --0x08 GRDMAC2 Timer reset value register
           v.trst.trst_val := apbi.pwdata(31 downto 0);
         when "000100" => --0x10 GRDMAC2 descriptor pointer register
@@ -328,9 +336,11 @@ begin -- rtl
     apbo.prdata     <= prdata;
     apbo.pirq       <= (others => '0');
     -- IRQ pulse generation
-    if sts_in.err = '1' then
+    -- Generating IRQ pulse only on the rising edge of the error status signal and descriptor complete signal because 
+    -- the error status stays until cleared and the desc complete status stays once the last desc is completed.
+    if r.misc.err_irq = '0' and sts_in.err = '1' then
       apbo.pirq(pirq) <= r.ctrl.irq_en and r.ctrl.irq_err;
-    elsif sts_in.desc_comp = '1' then
+    elsif  r.misc.cmp_irq = '0' and sts_in.desc_comp = '1' then
       if orv(curr_desc_in.dbg_ctrl(4 downto 1))= '0' then
         apbo.pirq(pirq) <= curr_desc_in.dbg_ctrl(8) and r.ctrl.irq_en and (not r.ctrl.irq_msk);
       else
@@ -345,6 +355,7 @@ begin -- rtl
                        r.sts.pol_err or r.sts.trig_err or r.sts.wb_err or
                        r.sts.m2b_rd_data_err or r.sts.b2m_wr_data_err or
                        r.sts.rd_nxt_ptr_err or r.sts.fifo_err;
+    irqf_clr_sts    <= r.misc.irq_sts_clrd ;
     active          <= r.sts.active;
     
   end process comb;

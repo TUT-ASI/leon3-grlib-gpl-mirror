@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -675,7 +675,6 @@ component spwtrace is
     kbytes      : integer := 1;
     pipe        : integer := 0;
     maccsz      : integer := AHBDW;
-    endianness  : integer := 0;
     fname       : string  := "ram.dat"
    );
   port (
@@ -799,6 +798,82 @@ component spwtrace is
       txd: in std_ulogic
       );
   end component;
+
+  component dfi_phy_sim is
+    generic (
+      -- DDR type
+      ddrtype     : integer range 2 to 3 := 2;
+      -- For DDR vectors, if low or high half is taken first
+      -- 1=low half first, 0=high half first
+      dfi_lowfirst : integer range 0 to 1 := 1;
+      -- DFI widths
+      dfi_addr_width          : integer := 13;
+      dfi_bank_width          : integer := 3;
+      dfi_cs_width            : integer := 1;
+      dfi_data_width          : integer := 64;
+      dfi_data_en_width       : integer := 1;
+      dfi_rdata_valid_width   : integer := 1;
+      -- DFI timings
+      -- Note: timings relative to CAS latency are given as 100+T
+      tctrl_delay : integer := 2;
+      tphy_wrdata : integer := 1;
+      tphy_wrlat  : integer := 100-1;
+      trddata_en  : integer := 100-2
+      );
+    port (
+      -- Master reset for PHY
+      phy_resetn : in std_ulogic;
+      -- DFI clock
+      dfi_clk    : in std_ulogic;
+      --DFI control
+      dfi_address            : in    std_logic_vector(dfi_addr_width-1 downto 0);
+      dfi_bank               : in    std_logic_vector(dfi_bank_width-1 downto 0);
+      dfi_cas_n              : in    std_ulogic;
+      dfi_cke                : in    std_logic_vector(dfi_cs_width-1 downto 0);
+      dfi_cs_n               : in    std_logic_vector(dfi_cs_width-1 downto 0);
+      dfi_odt                : in    std_logic_vector(dfi_cs_width-1 downto 0);
+      dfi_ras_n              : in    std_ulogic;
+      dfi_reset_n            : in    std_logic_vector(dfi_cs_width-1 downto 0);
+      dfi_we_n               : in    std_ulogic;
+      --DFI write data interface
+      dfi_wrdata             : in    std_logic_vector(dfi_data_width-1 downto 0);
+      dfi_wrdata_en          : in    std_logic_vector(dfi_data_en_width-1 downto 0);
+      dfi_wrdata_mask        : in    std_logic_vector((dfi_data_width/8)-1 downto 0);
+                                        --DFI read data interface
+      dfi_rddata_en          : in    std_logic_vector(dfi_data_en_width-1 downto 0);
+      dfi_rddata             : out   std_logic_vector(dfi_data_width-1 downto 0);
+      dfi_rddata_dnv         : out   std_logic_vector((dfi_data_width/8)-1 downto 0);  --LPDDR2 specific
+      dfi_rddata_valid       : out   std_logic_vector(dfi_rdata_valid_width-1 downto 0);
+                                        --DFI update interface
+      dfi_ctrlupd_req        : in    std_ulogic;
+      dfi_ctrlupd_ack        : out   std_ulogic;
+      dfi_phyupd_req         : out   std_ulogic;
+      dfi_phyupd_type        : out   std_logic_vector(1 downto 0);
+      dfi_phyupd_ack         : in    std_ulogic;
+                                        --DFI status interface
+      dfi_data_byte_disable  : in    std_logic_vector((dfi_data_width/16)-1 downto 0);
+      dfi_dram_clk_disable   : in    std_logic_vector(dfi_cs_width-1 downto 0);
+      dfi_init_complete      : out   std_ulogic;
+      dfi_init_start         : in    std_ulogic;
+                                        --DDR2/3 ports
+      ddr_ck                 : out   std_logic_vector(dfi_cs_width-1 downto 0);
+      ddr_ckn                : out   std_logic_vector(dfi_cs_width-1 downto 0);
+      ddr_cke                : out   std_logic_vector(dfi_cs_width-1 downto 0);
+      ddr_csn                : out   std_logic_vector(dfi_cs_width-1 downto 0);
+      ddr_odt                : out   std_logic_vector(dfi_cs_width-1 downto 0);
+      ddr_rasn               : out   std_logic;
+      ddr_casn               : out   std_logic;
+      ddr_wen                : out   std_logic;
+      ddr_dm                 : out   std_logic_vector((dfi_data_width/2)/8-1 downto 0);
+      ddr_ba                 : out   std_logic_vector(dfi_bank_width-1 downto 0);
+      ddr_a                  : out   std_logic_vector(dfi_addr_width-1 downto 0);
+      ddr_resetn             : out   std_logic_vector(dfi_cs_width-1 downto 0);  --DDR3 specific
+      ddr_dq                 : inout std_logic_vector((dfi_data_width/2)-1 downto 0);
+      ddr_dqs                : inout std_logic_vector((dfi_data_width/2)/8-1 downto 0);
+      ddr_dqsn               : inout std_logic_vector((dfi_data_width/2)/8-1 downto 0)
+      );
+  end component;
+
 end;
 
 package body sim is

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -637,7 +637,6 @@ architecture rtl of cctrl5 is
       irepway => "00", irepdata => (others => (others => '0')),  ireptlbhit => '0',
       ireptlbpaddr => (others => '0'), ireptlbid => (others => '0'), tcmdata => (others => '0'),
       itlbprobeid => (others => '0'),
-
       d2vaddr => (others => '0'), d2paddr => (others => '0'), d2paddrv => '0',
       d2tlbhit => '0', d2tlbamatch => '0', d2tlbid => (others => '0'), d2tlbclr => '0',
       d2data => (others => '0'), d2write => '0', d2busw => '0', d2tlbmod => '0',
@@ -2385,7 +2384,7 @@ begin
       if r.s=as_icfetch then v.ahb2_ifetch:='1'; end if;
       v.ahb2_dacc := '0';
       if v.s=as_store or v.s=as_dcfetch or v.s=as_dcsingle or v.s=as_wrburst then
-        v.ahb2_dacc := '0';
+        v.ahb2_dacc := '1';
       end if;
     end if;
     v.ahb3_rdbvalid := v.ahb3_rdbvalid or r.ahb3_rdberr;
@@ -2675,8 +2674,10 @@ begin
         end if;
         if ( ((not ENDIAN) and r.ahb3_rdbvalid(LINESZMAX-1-to_integer(unsigned(r.iramaddr & onev(3))))='1') or
              ((ENDIAN) and r.ahb3_rdbvalid(to_integer(unsigned(r.iramaddr & onev(3))))='1') ) then
-          v.iramaddr := std_logic_vector(unsigned(r.iramaddr)+1);
-          if r.iramaddr=(r.iramaddr'range => '1') then
+          if r.iramaddr /= (r.iramaddr'range => '1') then
+            v.iramaddr := std_logic_vector(unsigned(r.iramaddr)+1);
+          end if;
+          if r.iramaddr=(r.iramaddr'range => '1') and not (r.cctrl.ics(0)='0' and ici.parkreq='0' and (r.holdn='1' or (r.imisspend='1' and r.i2bufmatch='1'))) then
             v.irdbufen := '0';
             v.ramreload := '1';
             -- Update irdbufvaddr/paddr since used in icfetch2 stage
@@ -4691,6 +4692,7 @@ begin
     crami <= ocrami;
     fpc_mosi <= r.fpc_mosi;
     c2c_mosi <= r.c2c_mosi;
+    perf <= r.perf;
   end process;
 
   srstregs: if GRLIB_CONFIG_ARRAY(grlib_async_reset_enable)=0 generate
@@ -4729,7 +4731,7 @@ begin
     begin
       if rst='0' then
         rs <= RSRES;
-      else
+      elsif rising_edge(sclk) then
         rs <= cs;
       end if;
     end process;

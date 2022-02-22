@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -50,6 +50,7 @@ entity i2c2ahb_apb_gen is
    i2cslvaddr : integer range 0 to 127 := 0;
    i2ccfgaddr : integer range 0 to 127 := 0;
    oepol      : integer range 0 to 1 := 0;
+   rstaddr    : integer range 0 to 1 := 0;
    --
    filter     : integer range 2 to 512 := 2
    );
@@ -89,7 +90,8 @@ entity i2c2ahb_apb_gen is
    i2co_scloen   : out std_ulogic;
    i2co_sda      : out std_ulogic;
    i2co_sdaoen   : out std_ulogic;
-   i2co_enable   : out std_ulogic
+   i2co_enable   : out std_ulogic;
+   i2crstaddr    : in std_logic_vector(2 downto 0)
    );
 end entity i2c2ahb_apb_gen;
 
@@ -106,7 +108,7 @@ architecture rtl of i2c2ahb_apb_gen is
   -- I2C signals
   signal i2ci  : i2c_in_type;
   signal i2co  : i2c_out_type;
-  
+    
 begin
   
   ahbi.hgrant(0) <= ahbi_hgrant;
@@ -157,8 +159,8 @@ begin
       resen  => resen,
       pindex => 0, paddr => 0, pmask => 0, pirq => 0,
       i2cslvaddr => i2cslvaddr, i2ccfgaddr => i2ccfgaddr,
-      oepol  => oepol, filter => filter)
-    port map (rstn, clk, ahbi, ahbo, apbi, apbo, i2ci, i2co);
+      oepol  => oepol, rstaddr => 0, filter => filter)
+    port map (rstn, clk, ahbi, ahbo, apbi, apbo, i2ci, i2co, i2crstaddr);
   
 end architecture rtl;
 

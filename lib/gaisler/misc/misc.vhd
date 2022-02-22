@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -117,8 +117,7 @@ package misc is
     kbytes      : integer := 1;
     pipe        : integer := 0;
     maccsz      : integer := AHBDW;
-    scantest    : integer := 0;
-    endianness  : integer := 0);
+    scantest    : integer := 0);
   port (
     rst    : in  std_ulogic;
     clk    : in  std_ulogic;
@@ -1007,7 +1006,7 @@ package misc is
       paddr : integer := 0;
       pmask : integer := 16#fff#;
       regbits: integer range 1 to 32 := 32;
-      nregs : integer  range 1 to 32 := 1;
+      nregs : integer  range 1 to 512 := 1;
       rstval: integer := 0;
       extrst: integer := 0;
       rdataen: integer := 0;
@@ -1740,6 +1739,28 @@ package misc is
     tacho           : in  std_logic_vector(3 downto 0);
     tacho_sign      : in  std_logic_vector(3 downto 0)   
     );
+  end component;
+
+  component grwatchdog is
+    generic (
+      fabtech : integer               := inferred;
+      pindex  : integer               := 0;
+      paddr   : integer               := 0;
+      pmask   : integer               := 16#FFF#;
+      pirq    : integer               := 0;
+      tobits  : integer range 4 to 64 := 4;
+      sameclk : integer range 0 to 1  := 0
+      );
+    port (
+      apb_clk  : in  std_ulogic;
+      apb_rstn : in  std_ulogic;
+      wdt_clk  : in  std_ulogic;
+      wdt_rstn : in  std_ulogic;
+      apbi     : in  apb_slv_in_type;
+      apbo     : out apb_slv_out_type;
+      wdogn    : out std_ulogic;
+      tfreeze  : in  std_ulogic
+      );
   end component;
 
   -----------------------------------------------------------------------------
