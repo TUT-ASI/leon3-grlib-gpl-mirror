@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -81,7 +81,7 @@ entity proc3 is
     tlb_rep    : integer range 0 to 1     := 0;
     lddel      : integer range 1 to 2     := 2;
     disas      : integer range 0 to 2     := 0;
-    tbuf       : integer range 0 to 128    := 0;
+    tbuf       : integer                  := 0;
     pwd        : integer range 0 to 2     := 0;
     svt        : integer range 0 to 1     := 0;
     rstaddr    : integer                  := 0;

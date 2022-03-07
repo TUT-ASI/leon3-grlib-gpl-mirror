@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -47,7 +47,7 @@ architecture rtl of progbuf is
   type progbuf_type is array (0 to size/2-1) of word64;
   signal r, rin : progbuf_type;
 begin
-  comb : process(pbi)
+  comb : process(r, pbi)
     variable v          : progbuf_type;
     variable idx, eidx  : integer;
   begin

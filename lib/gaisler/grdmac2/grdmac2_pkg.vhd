@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -35,6 +35,8 @@ use techmap.gencomp.all;
 
 
 package grdmac2_pkg is
+
+  constant REVISION : integer := 1;
 
 -------------------------------------------------------------------------------
 -- Types and records
@@ -321,10 +323,10 @@ package grdmac2_pkg is
     size         => (others => '0')
     );
 
-  -- Data descriptor control 
+  -- ACC descriptor control 
   type acc_dsc_ctrl_type is record
     en           : std_ulogic;                    -- Enable descriptor 
-    desc_type    : std_logic_vector(3 downto 0);  -- Type of descriptor. 0 for data 
+    desc_type    : std_logic_vector(3 downto 0);  -- Type of descriptor. 5 for acc update
     write_back   : std_ulogic;                    -- Write back status to descriptor after completion
     src_bm_num   : std_ulogic;                    -- Bus master index for M2B
     irq_en       : std_ulogic;                    -- Interrupt enable on descriptor completion 
@@ -332,7 +334,7 @@ package grdmac2_pkg is
     size         : std_logic_vector(22 downto 0); -- Size of data to be transfered
   end record;
 
-  -- Reset value for data descriptor control
+  -- Reset value for ACC descriptor control
   constant ACC_DSC_CTRL_RST : acc_dsc_ctrl_type := (
     en           => '0',
     desc_type    => (others => '0'),
@@ -411,14 +413,14 @@ package grdmac2_pkg is
     last => '0'
     );
 
-  -- Data descriptor structure 
+  -- ACC descriptor structure 
   type acc_dsc_strct_type is record
-    ctrl      : acc_dsc_ctrl_type;             -- Data descriptor control
+    ctrl      : acc_dsc_ctrl_type;             -- ACC descriptor control
     nxt_des   : nxt_des_type;                   -- Next descriptor pointer
     src_addr  : std_logic_vector(31 downto 0);  -- Address from where data is to be fetched    
   end record;
 
-  -- Reset value for data descriptor structure
+  -- Reset value for ACC descriptor structure
   constant ACC_DSC_STRCT_RST : acc_dsc_strct_type := (
     ctrl      => ACC_DSC_CTRL_RST,
     nxt_des   => NXT_DES_RST,
@@ -663,12 +665,27 @@ package grdmac2_pkg is
     ptr => (others => '0')
     ); 
 
+  -- Miscellaneous internal registers
+  type grdmac2_misc_type is record
+    err_irq       : std_ulogic;  --Register to find rising edge of the error status signal
+    cmp_irq       : std_ulogic;  --Register to find rising edge of the error status signal
+    irq_sts_clrd  : std_ulogic;  --shows if the IRQ flag is cleared by writing 1 to 'irq_flag' status bits 
+  end record;
+
+  -- Reset value for Miscellaneous internal registers
+  constant GRDMAC2_MISC_RST : grdmac2_misc_type := (
+    err_irq => '0',
+    cmp_irq => '0',
+    irq_sts_clrd => '0'
+    ); 
+
   -- GRDMAC combined register type
   type grdmac2_reg_type is record
     ctrl     : grdmac2_ctrl_reg_type;   -- Control register
     sts      : grdmac2_sts_reg_type;    -- Status register
     trst     : grdmac2_trst_reg_type;   -- Timer reset value register
     desc_ptr : grdmac2_desc_ptr_type;   -- Descriptor pointer
+    misc     : grdmac2_misc_type;       -- Miscellaneous internal registers
   end record;
 
   -- Reset value for reg_type
@@ -676,7 +693,8 @@ package grdmac2_pkg is
     ctrl     => GRDMAC2_CTRL_REG_RST,
     sts      => GRDMAC2_STS_REG_RST,
     trst     => GRDMAC2_TRST_REG_RST,
-    desc_ptr => GRDMAC2_DESC_PTR_RST
+    desc_ptr => GRDMAC2_DESC_PTR_RST,
+    misc     => GRDMAC2_MISC_RST
     );
 
   -------------------------------------------------------------------------------
@@ -735,7 +753,8 @@ package grdmac2_pkg is
       ft       : integer range 0 to 5    := 0;
       abits    : integer range 0 to 10   := 4;
       en_timer : integer                 := 0;
-      dbits    : integer range 32 to 128 := 32
+      dbits    : integer range 32 to 128 := 32;
+      en_acc   : integer range 0 to 4    := 0
       );
     port (
       rstn          : in  std_ulogic;
@@ -747,6 +766,7 @@ package grdmac2_pkg is
       desc_ptr_out  : out grdmac2_desc_ptr_type;
       active        : out std_ulogic;
       err_status    : out std_ulogic;
+      irqf_clr_sts      : out std_ulogic;
       irq_flag_sts  : in  std_ulogic;
       curr_desc_in  : in  curr_des_out_type;
       curr_desc_ptr : in  std_logic_vector(31 downto 0);
@@ -768,6 +788,7 @@ package grdmac2_pkg is
       active        : in  std_ulogic;
       trst          : in  grdmac2_trst_reg_type;
       err_status    : in  std_ulogic;
+      irqf_clr_sts      : in std_ulogic;
       curr_desc_out : out curr_des_out_type;
       curr_desc_ptr : out std_logic_vector(31 downto 0);
       status        : out status_out_type;
@@ -910,6 +931,36 @@ package grdmac2_pkg is
       );
   end component;
 
+  -- grdmac2_axi top level interface
+  component grdmac2_axi is
+    generic (
+      tech             : integer range 0 to NTECH     := inferred;
+      pindex           : integer                      := 0;
+      paddr            : integer                      := 0;
+      pmask            : integer                      := 16#FF8#;
+      pirq             : integer range 0 to NAHBIRQ-1 := 0;
+      dbits            : integer range 32 to 128      := 32;
+      en_bm1           : integer                      := 0;
+      max_burst_length : integer range 2 to 256       := 256;
+      ft               : integer range 0 to 5         := 0;
+      abits            : integer range 0 to 10        := 4;
+      en_timer         : integer                      := 0;
+      lendian_en       : integer                      := 0;
+      en_acc           : integer range 0 to 4         := 0
+      );
+    port (
+      rstn    : in  std_ulogic;
+      clk     : in  std_ulogic;
+      apbi    : in  apb_slv_in_type;
+      apbo    : out apb_slv_out_type;
+      aximi0  : in  axi_somi_type;
+      aximo0  : out axi4_mosi_type;
+      aximi1  : in  axi_somi_type;
+      aximo1  : out axi4_mosi_type;
+      trigger : in  std_logic_vector(63 downto 0)
+    );
+  end component;
+
   -- ACC
   component grdmac2_acc is
     generic (
@@ -1019,7 +1070,7 @@ package body grdmac2_pkg is
   begin
     if en_bm1 = 0 then
       return true;
-    elsif bm0_endian = bm0_endian then
+    elsif bm0_endian = bm1_endian then
       return true;
     else      
       return false;
@@ -1033,19 +1084,26 @@ package body grdmac2_pkg is
     constant en_acc   : integer
     ) return boolean is
   begin
-    if (en_acc /= 1) then
+    if (en_acc = 0) then
       return true;
-    elsif (dbits = 32 and abits >= 2) then
+    elsif (en_acc = 1 and dbits = 32 and abits >= 2) then
       return true;
-    elsif (dbits = 64 and abits >= 1) then
+    elsif (en_acc = 1 and dbits = 64 and abits >= 1) then
       return true;
-    elsif (dbits = 128) then
+    elsif (en_acc = 1 and dbits = 128) then
+      return true;
+    elsif ((en_acc = 2 or en_acc = 3) and dbits = 32 and abits >= 4) then
+      return true;
+    elsif ((en_acc = 2 or en_acc = 3) and dbits = 64 and abits >= 3) then
+      return true;
+    elsif ((en_acc = 2 or en_acc = 3) and dbits = 128 and abits >= 2) then
       return true;
     else
       return false;
     end if;
   end acc_generic_check;
 
+  -- pad used in SHA
   function padding (
       in_vector : std_logic_vector(511 downto 0);
       burst_size : integer;

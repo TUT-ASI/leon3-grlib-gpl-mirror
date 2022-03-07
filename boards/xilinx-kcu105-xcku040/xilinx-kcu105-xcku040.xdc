@@ -1150,8 +1150,8 @@ connect_debug_port dbg_hub/clk [get_nets clk]
 
 set_property BITSTREAM.CONFIG.SPI_BUSWIDTH 4 [current_design]
 set_property BITSTREAM.CONFIG.CONFIGRATE 40 [current_design]
-set_property CONFIG_VOLTAGE 3.3 [current_design]
-set_property CFGBVS VCCO [current_design]
+set_property CONFIG_VOLTAGE 1.8 [current_design]
+set_property CFGBVS GND [current_design]
 
 set_property BITSTREAM.CONFIG.SPI_FALL_EDGE YES [current_design]
 set_property CONFIG_MODE SPIx4 [current_design]

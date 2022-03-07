@@ -33,7 +33,7 @@ package config is
   constant CFG_LDDEL : integer := (1);
   constant CFG_NWP : integer := (4);
   constant CFG_PWD : integer := 1*2;
-  constant CFG_FPU : integer := (0) + 16*0 + 32*0;
+  constant CFG_FPU : integer := 0 + 16*0 + 32*0;
   constant CFG_GRFPUSH : integer := 0;
   constant CFG_ICEN : integer := 1;
   constant CFG_ISETS : integer := 4;
@@ -113,7 +113,7 @@ package config is
   constant CFG_GRUSB_DCL_DW : integer := 8;
 -- Ethernet DSU
   constant CFG_DSU_ETH : integer := 1 + 0 + 0;
-  constant CFG_ETH_BUF : integer := 2;
+  constant CFG_ETH_BUF : integer := 16;
   constant CFG_ETH_IPM : integer := 16#C0A8#;
   constant CFG_ETH_IPL : integer := 16#0033#;
   constant CFG_ETH_ENM : integer := 16#020000#;
@@ -138,8 +138,8 @@ package config is
   constant CFG_AHBROMEN : integer := 1;
   constant CFG_AHBROPIP : integer := 0;
   constant CFG_AHBRODDR : integer := 16#000#;
-  constant CFG_ROMADDR : integer := 16#000#;
-  constant CFG_ROMMASK : integer := 16#E00# + 16#000#;
+  constant CFG_ROMADDR : integer := 16#100#;
+  constant CFG_ROMMASK : integer := 16#E00# + 16#100#;
 -- AHB RAM
   constant CFG_AHBRAMEN : integer := 1;
   constant CFG_AHBRSZ : integer := 4;
@@ -152,6 +152,7 @@ package config is
   constant CFG_GRETH_FMC : integer := 0;
   constant CFG_GRETH_FT : integer := 0;
   constant CFG_GRETH_EDCLFT : integer := 0;
+  constant CFG_ETH_PHY_ADDR : integer := (1);
 -- USB Host Controller
   constant CFG_GRUSBHC : integer := 0;
   constant CFG_GRUSBHC_NPORTS : integer := (1);

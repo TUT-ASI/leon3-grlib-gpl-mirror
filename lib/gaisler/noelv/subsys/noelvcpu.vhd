@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -47,6 +47,7 @@ entity noelvcpu is
     rfconf   : integer;
     fpuconf  : integer;
     tcmconf  : integer;
+    mulconf  : integer;
     disas    : integer;
     pbaddr   : integer;
     cfg      : integer;
@@ -139,8 +140,8 @@ architecture hier of noelvcpu is
     itlbnum       => 2,
     dtlbnum       => 2,
     htlbnum       => 1,
-    div_hiperf    => 0, 
-    div_small     => 0, 
+    div_hiperf    => 0,
+    div_small     => 0,
     late_branch   => 0,
     late_alu      => 0,
     bhtentries    => 32,
@@ -181,8 +182,8 @@ architecture hier of noelvcpu is
       itlbnum       => 8,
       dtlbnum       => 8,
       htlbnum       => 8,
-      div_hiperf    => 1, 
-      div_small     => 0, 
+      div_hiperf    => 1,
+      div_small     => 0,
       late_branch   => 1,
       late_alu      => 1,
       bhtentries    => 128,
@@ -219,8 +220,8 @@ architecture hier of noelvcpu is
       itlbnum       => 8,
       dtlbnum       => 8,
       htlbnum       => 8,
-      div_hiperf    => 1, 
-      div_small     => 0, 
+      div_hiperf    => 1,
+      div_small     => 0,
       late_branch   => 1,
       late_alu      => 1,
       bhtentries    => 128,
@@ -257,8 +258,8 @@ architecture hier of noelvcpu is
       itlbnum       => 8,
       dtlbnum       => 8,
       htlbnum       => 8,
-      div_hiperf    => 1, 
-      div_small     => 0, 
+      div_hiperf    => 1,
+      div_small     => 0,
       late_branch   => 1,
       late_alu      => 1,
       bhtentries    => 128,
@@ -295,8 +296,8 @@ architecture hier of noelvcpu is
       itlbnum       => 2,
       dtlbnum       => 2,
       htlbnum       => 1,
-      div_hiperf    => 0, 
-      div_small     => 0, 
+      div_hiperf    => 0,
+      div_small     => 0,
       late_branch   => 1,
       late_alu      => 1,
       bhtentries    => 64,
@@ -333,8 +334,8 @@ architecture hier of noelvcpu is
       itlbnum       => 2,
       dtlbnum       => 2,
       htlbnum       => 1,
-      div_hiperf    => 0, 
-      div_small     => 0, 
+      div_hiperf    => 0,
+      div_small     => 0,
       late_branch   => 1,
       late_alu      => 1,
       bhtentries    => 64,
@@ -371,14 +372,52 @@ architecture hier of noelvcpu is
       itlbnum       => 2,
       dtlbnum       => 2,
       htlbnum       => 1,
-      div_hiperf    => 0, 
-      div_small     => 1, 
+      div_hiperf    => 0,
+      div_small     => 1,
       late_branch   => 0,
       late_alu      => 0,
       bhtentries    => 32,
       bhtlength     => 2,
       predictor     => 2,
       btbentries    => 8,
+      btbsets       => 2),
+    -- GPP-lite (dual-issue)
+    6 => (
+      single_issue  => 0,
+      ext_m         => 1,
+      ext_a         => 1,
+      ext_c         => 1, -- Should be enabled
+      ext_h         => 0,
+      mode_s        => 1,
+      mode_u        => 1,
+      fpulen        => 64,
+      pmp_no_tor    => 0,
+      pmp_entries   => 0,
+      pmp_g         => 10,
+      perf_cnts     => 3,
+      perf_evts     => 16,
+      tbuf          => 4,
+      trigger       => 32*0 + 16*0 + 2,
+      icen          => 1,
+      iways         => 4,
+      iwaysize      => 4,
+      ilinesize     => 8,
+      dcen          => 1,
+      dways         => 4,
+      dwaysize      => 4,
+      dlinesize     => 8,
+      mmuen         => 1,
+      itlbnum       => 8,
+      dtlbnum       => 8,
+      htlbnum       => 8,
+      div_hiperf    => 1,
+      div_small     => 0,
+      late_branch   => 1,
+      late_alu      => 1,
+      bhtentries    => 64,
+      bhtlength     => 5,
+      predictor     => 2,
+      btbentries    => 16,
       btbsets       => 2),
     others => cfg_none
     );
@@ -435,7 +474,9 @@ begin
       busw            => busw,
       cmemconf        => cmemconf,
       rfconf          => rfconf,
+--      rfconf          => 1,  -- qqq Use this for DC
       tcmconf         => tcmconf,
+      mulconf         => mulconf,
       tbuf            => cfg_c(cfg).tbuf,
       physaddr        => 32,
       rstaddr         => 16#C0000#,
@@ -451,6 +492,7 @@ begin
       mularch         => mularch,
       div_hiperf      => cfg_c(cfg).div_hiperf,
       div_small       => cfg_c(cfg).div_small,
+      hw_fpu          => 1 + 2*fpuconf,
       scantest        => scantest,
       endian          => 1  -- Only Little-endian is supported
       )

@@ -58,3 +58,4 @@ leon5
 leon5v0
 grfpc5
 socbridge
+l2c_lite

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -157,9 +157,16 @@ architecture rtl of syncram156bw is
     --
     mbist    : in  std_ulogic;
     fill0    : in  std_ulogic;
+    fill1    : in  std_ulogic;
+    mpresent : out std_ulogic;
     menable  : out std_ulogic;
     error    : out std_ulogic;
-    testrst  :  in std_logic
+    bistrst  : in  std_ulogic;
+    testen   : in  std_ulogic;
+    testrst  : in  std_ulogic;
+    sysclk   : in  std_ulogic;
+    --
+    awtb     : in  std_ulogic
     );
   end component;
 
@@ -167,6 +174,8 @@ architecture rtl of syncram156bw is
   signal custominx,customoutx: std_logic_vector(syncram_customif_maxwidth downto 0);
   signal customclkx: std_ulogic;
   signal dataoutx: std_logic_vector(155 downto 0);
+  constant TIXW: integer := 100;
+  signal testinx: std_logic_vector(TIXW-1 downto 0);
 
 begin
 
@@ -175,6 +184,8 @@ begin
 
     custominx <= (others => '0');
     customclkx <= '0';
+  testinx(TIXW-1 downto TIXW-TESTIN_WIDTH) <= testin;
+  testinx(TIXW-TESTIN_WIDTH-1 downto 0) <= (others => '0');
 
   nocust: if syncram_has_customif(tech)=0 or has_sram156bw(tech)=0 generate
     customoutx <= (others => '0');
@@ -201,30 +212,34 @@ begin
     rhs65u : if tech = rhs65 generate
       x0 : rhs65_syncram156bw generic map (abits)
         port map (clk, address, datain, dataoutx, enable, write,
-                  testin(TESTIN_WIDTH-8), testin(TESTIN_WIDTH-3),
+                  testinx(TIXW-8), testinx(TIXW-3),
                   custominx(0),customoutx(0),
-                  testin(TESTIN_WIDTH-4), testin(TESTIN_WIDTH-5), testin(TESTIN_WIDTH-6),
+                  testinx(TIXW-4), testinx(TIXW-5), testinx(TIXW-6),
                   customclkx,
-                  testin(TESTIN_WIDTH-7),'0',
+                  testinx(TIXW-7),'0',
                   customoutx(1), customoutx(7 downto 2));
       customoutx(customoutx'high downto 8) <= (others => '0');
     end generate;
     rhs65ub : if tech = memrhs65b generate
       x0 : rhs65_syncram156bw_bist generic map (abits)
         port map (clk, address, datain, dataoutx, enable, write,
-                  testin(TESTIN_WIDTH-3), testin(TESTIN_WIDTH-4),
+                  testinx(TIXW-3), testinx(TIXW-4),
                   custominx(47 downto 0),customoutx(47 downto 0),
-                  testin(TESTIN_WIDTH-5), '0');
+                  testinx(TIXW-5), '0');
       customoutx(customoutx'high downto 48) <= (others => '0');
     end generate;
     dare65u : if tech = dare65t generate
       x0 : dare65t_syncram156bw_mbist generic map (abits)
-        port map (clk, address, datain, dataoutx, enable, write,
-                  custominx(0),custominx(1),
-                  customoutx(0),customoutx(1),
-                  custominx(2)
+        port map (clk, address, datain, dataoutx, xenable, write,
+                  custominx(0),custominx(1),custominx(2),
+                  customoutx(0),customoutx(1),customoutx(2),
+                  testinx(TIXW-4),
+                  testinx(TIXW-1),
+                  testinx(TIXW-3),
+                  customclkx,
+                  testinx(TIXW-5)
                   );
-        customoutx(customoutx'high downto 2) <= (others => '0');
+        customoutx(customoutx'high downto 3) <= (others => '0');
     end generate;
     xgf22: if tech = gf22 generate
       x0 : gf22fdx_syncram156bw
@@ -236,18 +251,18 @@ begin
           dataout    => dataoutx,
           enable     => xenable,
           wr         => xwrite,
-          tBist      => testin(TESTIN_WIDTH-3),
-          tLogic     => testin(TESTIN_WIDTH-4),
-          tStab      => testin(TESTIN_WIDTH-5),
-          tWbt       => testin(TESTIN_WIDTH-6),
-          resetFuse  => testin(TESTIN_WIDTH-7),
-          -- tScan      => testin(TESTIN_WIDTH-8),
-          s1d_ma     => testin(TESTIN_WIDTH-12 downto TESTIN_WIDTH-19),
-          -- smp_ma     => testin(TESTIN_WIDTH-20 downto TESTIN_WIDTH-31),
-          -- r2p_ma     => testin(TESTIN_WIDTH-32 downto TESTIN_WIDTH-40),
-          ch_bus_s1d => testin(TESTIN_WIDTH-41 downto TESTIN_WIDTH-52),
---        ch_bus_r2p => testin(TESTIN_WIDTH-53 downto TESTIN_WIDTH-64),
---        ch_bus_smp => testin(TESTIN_WIDTH-65 downto TESTIN_WIDTH-76),
+          tBist      => testinx(TIXW-3),
+          tLogic     => testinx(TIXW-4),
+          tStab      => testinx(TIXW-5),
+          tWbt       => testinx(TIXW-6),
+          resetFuse  => testinx(TIXW-7),
+          -- tScan      => testinx(TIXW-8),
+          s1d_ma     => testinx(TIXW-12 downto TIXW-19),
+          -- smp_ma     => testinx(TIXW-20 downto TIXW-31),
+          -- r2p_ma     => testinx(TIXW-32 downto TIXW-40),
+          ch_bus_s1d => testinx(TIXW-41 downto TIXW-52),
+--        ch_bus_r2p => testinx(TIXW-53 downto TIXW-64),
+--        ch_bus_smp => testinx(TIXW-65 downto TIXW-76),
           tck        => customclkx,
           eh_bus_s1d => custominx(34 downto 9),
           eh_diagSel => custominx(7 downto 4),
@@ -255,10 +270,10 @@ begin
           he_status  => customoutx(11 downto 8),
           he_data    => customoutx(7 downto 4),
           mempres    => customoutx(3 downto 0),
-          fShift     => testin(TESTIN_WIDTH-9),
+          fShift     => testinx(TIXW-9),
           fDataIn    => custominx(8),
-          fBypass    => testin(TESTIN_WIDTH-10),
-          fEnable    => testin(TESTIN_WIDTH-11),
+          fBypass    => testinx(TIXW-10),
+          fEnable    => testinx(TIXW-11),
           fDataOut   => customoutx(12)
           );
       customoutx(customoutx'high downto 13) <= (others => '0');

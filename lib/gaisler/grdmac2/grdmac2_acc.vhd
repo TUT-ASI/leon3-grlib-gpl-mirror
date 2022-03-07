@@ -169,7 +169,7 @@ begin
   end generate generate_aes256_acc;
 
   generate_sha256_acc: if (acc_enable = 2 or acc_enable = 3) generate
-  -- AES256 ACCELERATOR
+  -- SHA256 ACCELERATOR
   sha256_acc : sha256_top
   generic map (
     dbits => dbits,
@@ -195,7 +195,7 @@ begin
 
 -- pragma translate_off
      assert acc_generic_check(dbits,abits,acc_enable)
-        report "grdmac2: buffer width must be 128 bits or larger when acc enabled!"
+        report "grdmac2: buffer width must be 128 bits or larger when acc_en = 1, and must be 512 bits or larger when acc_en = 2 or acc_en = 3!"
         severity failure;
 -- pragma translate_on
 

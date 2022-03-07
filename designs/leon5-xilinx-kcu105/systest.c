@@ -1,3 +1,4 @@
+int __bcc_cfg_skip_clear_bss;
 
 main()
 

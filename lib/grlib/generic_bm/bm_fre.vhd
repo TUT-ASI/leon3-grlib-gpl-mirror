@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -136,7 +136,7 @@ begin  -- rtl
   inp.bmrd_addr <= bmrd_addr;
 
 
-  comb : process (r, bmfre_in, inp)
+  comb : process (r, bmfre_in, inp, endian )
     variable v               : reg_type;
     variable outp            : output_port;
     variable bmwr_data_muxed : std_logic_vector(be_dw-1 downto 0);
@@ -144,6 +144,8 @@ begin  -- rtl
     variable excl_pending    : std_logic;
     variable bmrd_data_v     : std_logic_vector(bm_dw-1 downto 0);
   begin  -- process comb
+    
+    bmrd_data_v := (others => '0');
     
     v := r;
 
@@ -205,7 +207,7 @@ begin  -- rtl
         v.bmrd_data_pos(0) := '1';
         v.bmwr_req_granted := '0';
         v.excl_addr        := inp.bmrd_addr;
-        v.excl_size        := bmrd_size;
+        v.excl_size        := inp.bmrd_size;
       end if;
 
     else

@@ -4232,6 +4232,7 @@ proc menu19 {w title} {
 	bool $w.config.f 19 3 "Enable FMC" CONFIG_GRETH_FMC_MODE
 	bool $w.config.f 19 4 "Enable fault-tolerance" CONFIG_GRETH_FT
 	bool $w.config.f 19 5 "Enable fault tolerance for EDCL buffer " CONFIG_GRETH_EDCLFT
+	int $w.config.f 19 6 "PHY address  " CONFIG_GRETH_PHY_ADDR
 
 
 
@@ -6310,6 +6311,7 @@ set CONFIG_GRETH_FIFO64 0
 set CONFIG_GRETH_FMC_MODE 0
 set CONFIG_GRETH_FT 0
 set CONFIG_GRETH_EDCLFT 0
+set CONFIG_GRETH_PHY_ADDR 1
 set CONFIG_GRUSBHC_ENABLE 0
 set CONFIG_GRUSBHC_EHC 0
 set CONFIG_GRUSBHC_UHC 0
@@ -7291,6 +7293,8 @@ proc writeconfig {file1 file2} {
 	if {($CONFIG_LEON3FT_PRESENT == 1)} then {write_tristate $cfg $autocfg CONFIG_GRETH_FT $CONFIG_GRETH_FT [list $notmod] 2 }
 	global CONFIG_GRETH_EDCLFT
 	if {($CONFIG_LEON3FT_PRESENT == 1) && ($CONFIG_GRETH_FT == 1)} then {write_tristate $cfg $autocfg CONFIG_GRETH_EDCLFT $CONFIG_GRETH_EDCLFT [list $notmod] 2 }
+	global CONFIG_GRETH_PHY_ADDR
+	write_int $cfg $autocfg CONFIG_GRETH_PHY_ADDR $CONFIG_GRETH_PHY_ADDR $notmod
 	write_comment $cfg $autocfg "USB 2.0 Host Controller      "
 	global CONFIG_GRUSBHC_ENABLE
 	write_tristate $cfg $autocfg CONFIG_GRUSBHC_ENABLE $CONFIG_GRUSBHC_ENABLE [list $notmod] 2

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -173,7 +173,7 @@ package libiu is
       lddel   :     integer range 1 to 2     := 2;
       irfwt   :     integer range 0 to 1     := 0;
       disas   :     integer range 0 to 2     := 0;
-      tbuf    :     integer range 0 to 128    := 0;  -- trace buf size in kB (0 - no trace buffer)
+      tbuf    :     integer                  := 0;  -- trace buf size in kB (0 - no trace buffer)
       pwd     :     integer range 0 to 2     := 0;  -- power-down    
       svt     :     integer range 0 to 1     := 0;  -- single-vector trapping
       rstaddr :     integer                  := 0;

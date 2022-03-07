@@ -3,8 +3,10 @@ devices.vhd
 defmst.vhd
 apbctrl.vhd
 apbctrlx.vhd
-apbctrldp.vhd
 apbctrlsp.vhd
+apbctrldp.vhd
+apbctrl3p.vhd
+apbctrl4p.vhd
 apb3ctrl.vhd
 ahbctrl.vhd
 ahbxb.vhd

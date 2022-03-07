@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -151,6 +151,7 @@ architecture rtl of grdmac2 is
   signal err_sts_data  : std_ulogic;
   signal status        : status_out_type;
   signal active        : std_ulogic;
+  signal irqf_clr_sts : std_ulogic;
   -- M2B
   signal m2b_status    : d_ex_sts_out_type;
   signal m2b_start     : std_ulogic;
@@ -263,7 +264,8 @@ begin  -- rtl
       ft       => ft,
       abits    => abits,
       en_timer => en_timer,
-      dbits    => dbits)
+      dbits    => dbits,
+      en_acc   => en_acc)
     port map (
       rstn          => rstn,
       clk           => clk,
@@ -274,6 +276,7 @@ begin  -- rtl
       desc_ptr_out  => desc_ptr_reg,
       active        => active,
       err_status    => err_status,
+      irqf_clr_sts  => irqf_clr_sts,
       irq_flag_sts  => irq_flag_sts,
       curr_desc_in  => curr_desc,
       curr_desc_ptr => curr_desc_ptr,
@@ -347,6 +350,7 @@ begin  -- rtl
       active        => active,
       trst          => trst_reg,
       err_status    => err_status,
+      irqf_clr_sts  => irqf_clr_sts,
       curr_desc_out => curr_desc,
       curr_desc_ptr => curr_desc_ptr,
       status        => status,

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -333,7 +333,6 @@ begin
                 wclk => wclk, write => write, waddress => wr_r.waddr(abits-1 downto 0), datain => datain,
                 testin => testin
                 );
-    dataout_i <= (others => '0'); dataout_o <= (others => '0');
   end generate;
 
   fwftsep_gen: if fwft /= 0 and sepclk /= 0 and ft = 0 generate

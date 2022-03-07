@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -200,6 +200,7 @@ architecture rtl of axi4_be is
     wr_counter      : unsigned(7 downto 0);
     rd_error        : std_logic;
     wr_error        : std_logic;
+    excl_error      : std_logic;
     rd_data         : std_logic_vector(be_dw-1 downto 0);
     block_validated : std_logic;
   end record;
@@ -252,6 +253,7 @@ architecture rtl of axi4_be is
     wr_counter      => (others => '0'),
     rd_error        => '0',
     wr_error        => '0',
+    excl_error      => '0',
     rd_data         => (others => '0'),
     block_validated => '0');
 
@@ -378,6 +380,7 @@ begin
         v.aximo.w.valid   := '0';
         v.aximo.w.last    := '0';
         v.wr_error        := '0';
+        v.excl_error      := '0';
         v.wr_counter      := (others => '0');
         v.block_validated := '0';
         v.aximo.b.ready   := '0';
@@ -447,6 +450,11 @@ begin
             --error is signaled for write transaction propagate to the middle-end
             v.wr_error := '1';
           end if;
+
+          if aximi.b.resp = BMXRESP_SLVERR then
+            --distinguish slave error in order to handle exclusive acceesses
+            v.excl_error := '1';
+          end if;
           
         end if;
     end case;
@@ -513,9 +521,10 @@ begin
     rd_data                     <= r.rd_data;
     rd_data_comb                <= v.rd_data;
 
-    ahb_be_out.wdata_ren <= new_data;
-    ahb_be_out.wr_error  <= r.wr_error;
-    ahb_be_out.wr_done   <= r.wburst_done;
+    ahb_be_out.wdata_ren  <= new_data;
+    ahb_be_out.wr_error   <= r.wr_error;
+    ahb_be_out.excl_error <= r.excl_error;
+    ahb_be_out.wr_done    <= r.wburst_done;
 
     --write address channel
     axi_aw_id    <= r.aximo.aw.id;

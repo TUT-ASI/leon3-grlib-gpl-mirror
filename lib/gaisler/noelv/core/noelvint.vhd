@@ -3,7 +3,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -50,6 +50,7 @@ use gaisler.noelv.nv_counter_out_type;
 
 package noelvint is
 
+  subtype word8  is std_logic_vector( 7 downto 0);
   subtype word16 is std_logic_vector(15 downto 0);
   subtype word64 is std_logic_vector(63 downto 0);
   subtype word   is std_logic_vector(31 downto 0);
@@ -260,6 +261,7 @@ package noelvint is
   constant XC_INST_LOAD_G_PAGE_FAULT    : cause_type;
   constant XC_INST_VIRTUAL_INST         : cause_type;
   constant XC_INST_STORE_G_PAGE_FAULT   : cause_type;
+  constant XC_INST_RFFT                 : cause_type;
 
   -- Interrupt Codes
   constant IRQ_U_SOFTWARE               : cause_type;
@@ -310,6 +312,8 @@ package noelvint is
   constant CSR_HPM_ICACHE_FETCH         :  integer := 14;
   constant CSR_HPM_DCACHE_FETCH         :  integer := 15;
   constant CSR_HPM_DCACHE_FLUSH         :  integer := 16;
+
+  constant CSR_HPM_FPU_LOW              :  integer := 17;
 
   -- PMP Configuration Codes
   constant PMP_OFF                      : std_logic_vector(1 downto 0) := "00";
@@ -411,7 +415,7 @@ package noelvint is
     tdata2      : csr_tdata_vector;
     tdata3      : csr_tdata_vector;
     tinfo       : csr_tinfo_vector;
-    tcontrol    : std_logic_vector(7 downto 0);
+    tcontrol    : word8;
     mcontext    : word64;
     scontext    : word64;
   end record;
@@ -467,14 +471,14 @@ package noelvint is
     tpbuf_en    : std_ulogic;                   -- Include program buffer execution in trace/sim-disas
     tmode_dis   : std_logic_vector(4 downto 0); -- Mask trace for different privilege modes [VU,VS,S,U,M]
     nostream    : std_ulogic;   -- Do not make use of stream buffer for instruction fetch
-    asi         : std_logic_vector(7 downto 0);
+    asi         : word8;
     mmu_adfault : std_ulogic;   -- Take page fault on access/modify.
     pte_nocache : std_ulogic;   -- Use bit 8 in PTE (one of RSW) as "uncachable".
     doasi       : std_ulogic;
     -- Dual Issue Capabilities
     dualen      : std_ulogic;
     -- Branch Prediction
-    bprden      : std_ulogic;
+    btben      : std_ulogic;
     jprden      : std_ulogic;
     staticbp    : std_ulogic;
     staticdir   : std_ulogic;
@@ -495,7 +499,7 @@ package noelvint is
     pte_nocache => '0',
     doasi       => '0',
     dualen      => '1',
-    bprden      => '1',
+    btben       => '1',
     jprden      => '1',
     staticbp    => '0',
     staticdir   => '0',
@@ -505,12 +509,12 @@ package noelvint is
     b2bsten     => '1'
     );
 
-  type hpmcounter_type       is array (0 to HWPERFMONITORS - 1) of word64;
-  subtype hpmevent_type      is std_logic_vector(7 downto 0);
-  type hpmevent_vec          is array (0 to HWPERFMONITORS - 1) of hpmevent_type;
+  type    hpmcounter_type    is array (0 to HWPERFMONITORS - 1) of word64;
+  subtype hpmevent_type      is word8;
+  type    hpmevent_vec       is array (0 to HWPERFMONITORS - 1) of hpmevent_type;
   subtype pmpcfg_access_type is std_logic_vector(1 downto 0);
   subtype pmpaddr_type       is std_logic_vector(PMPADDRBITS - 1 downto 0);
-  type pmpaddr_vec_type      is array (0 to PMPENTRIES - 1) of pmpaddr_type;
+  type    pmpaddr_vec_type   is array (0 to PMPENTRIES - 1) of pmpaddr_type;
 
   constant pmpaddrzero : pmpaddr_type := (others => '0');
   constant HPM_EVENTS  : hpmevent_vec;
@@ -695,55 +699,77 @@ package noelvint is
   type fpu5_in_type is record
     inst        : word;
     e_valid     : std_ulogic;
+    issue_id    : std_logic_vector(4 downto 0);
     csrfrm      : std_logic_vector(2 downto 0);
     flush       : std_logic_vector(1 to 4);               -- Pipeline Flush
     e_nullify   : std_ulogic;
     commit      : std_ulogic;
     commit_id   : std_logic_vector(4 downto 0);
-    lddata      : std_logic_vector(63 downto 0);
+    unissue     : std_ulogic;
+    unissue_id  : std_logic_vector(4 downto 0);
+    data_id     : std_logic_vector(4 downto 0);
+    data_valid  : std_ulogic;
+    data        : std_logic_vector(63 downto 0);
     mode        : std_logic_vector(2 downto 0);           -- Pass along for logging
   end record;
 
   constant fpu5_in_none : fpu5_in_type := (
     inst        => (others => '0'),
     e_valid     => '0',
+    issue_id    => (others => '0'),
     csrfrm      => (others => '0'),
     flush       => (others => '0'),
     e_nullify   => '0',
     commit      => '0',
     commit_id   => (others => '0'),
-    lddata      => (others => '0'),
+    unissue     => '0',
+    unissue_id  => (others => '0'),
+    data_id     => (others => '0'),
+    data_valid  => '0',
+    data        => (others => '0'),
     mode        => (others => '0')
     );
 
   type fpu5_out_type is record
     data        : std_logic_vector(63 downto 0);
+    data2int    : std_logic_vector(63 downto 0);
     rd          : std_logic_vector(4 downto 0);
     wen         : std_ulogic;
     flags       : std_logic_vector(4 downto 0);
     flags_wen   : std_ulogic;
+    flags2int   : std_logic_vector(4 downto 0);
     ready       : std_ulogic;
     holdn       : std_ulogic;
     mode        : std_logic_vector(2 downto 0);
-    issue_id    : std_logic_vector(4 downto 0);
+    issue       : std_ulogic;
     wb_id       : std_logic_vector(4 downto 0);
+    idle        : std_ulogic;
+    now2int     : std_ulogic;
+    id2int      : std_logic_vector(4 downto 0);
+    events      : std_logic_vector(63 downto 0);
   end record;
 
   constant fpu5_out_none : fpu5_out_type := (
     data        => (others => '0'),
+    data2int    => (others => '0'),
     rd          => (others => '0'),
     wen         => '0',
     flags       => (others => '0'),
     flags_wen   => '0',
+    flags2int   => (others => '0'),
     ready       => '1',
     holdn       => '1',
     mode        => (others => '0'),
-    issue_id    => (others => '0'),
-    wb_id       => (others => '0')
+    issue       => '0',
+    wb_id       => (others => '0'),
+    idle        => '0',
+    now2int     => '0',
+    id2int      => (others => '0'),
+    events      => (others => '0')
     );
 
   type fpu5_out_vector_type is array (integer range 0 to 7) of fpu5_out_type;
-  type fpu5_in_vector_type is array (integer range 0 to 7) of fpu5_in_type;
+  type fpu5_in_vector_type  is array (integer range 0 to 7) of fpu5_in_type;
 
   -- Register File --------------------------------------------------------
   type iregfile_in_type is record
@@ -842,9 +868,9 @@ package noelvint is
   end record;
 
   type nv_dcache_in_type is record
-    asi              : std_logic_vector(7 downto 0);
+    asi              : word8;
     maddress         : addr_type;
-    easi             : std_logic_vector(7 downto 0);
+    easi             : word8;
     eaddress         : addr_type;
     edata            : std_logic_vector(63 downto 0);
     size             : std_logic_vector(1 downto 0);
@@ -864,7 +890,7 @@ package noelvint is
     sum              : std_ulogic;                   -- Allow S to access U memory (except for execution).
     mxr              : std_ulogic;                   -- Make X-only pages readable (S MMU). PMP not affected!
     vmxr             : std_ulogic;                   -- Make X-only pages readable (VS MMU). PMP not affected!
-    hx               : std_ulogic;                   -- Hypervisor HLVX load instruction. Execute permission needed 
+    hx               : std_ulogic;                   -- Hypervisor HLVX load instruction. Execute permission needed
     intack           : std_ulogic;
     eread            : std_ulogic;
     mmucacheclr      : std_ulogic;
@@ -927,12 +953,12 @@ package noelvint is
     ddataindex  : std_logic_vector(IDXMAX-1 downto 0);
     ddataoffs   : std_logic_vector(1 downto 0);
     ddataen     : std_logic_vector(0 to 3);
-    ddatawrite  : std_logic_vector(7 downto 0);
+    ddatawrite  : word8;
     ddatadin    : nv_cdatatype;
     ddatafulladdr : std_logic_vector(31 downto 0);
     dtcmen      : std_ulogic;
     dtcmdin     : std_logic_vector(63 downto 0);
-    dtcmwrite   : std_logic_vector(7 downto 0);
+    dtcmwrite   : word8;
   end record;
 
   type nv_cram_out_type is record
@@ -1004,7 +1030,7 @@ package noelvint is
   type mul_out_type is record
     nready      : std_ulogic;
     result      : wordx;
-    icc         : std_logic_vector(7 downto 0);
+    icc         : word8;
   end record;
 
   type div_in_type is record
@@ -1017,7 +1043,7 @@ package noelvint is
   type div_out_type is record
     nready      : std_ulogic;
     result      : wordx;
-    icc         : std_logic_vector(7 downto 0);
+    icc         : word8;
   end record;
 
   constant div_in_none          : div_in_type := (
@@ -1101,7 +1127,6 @@ package noelvint is
     waddr        : wordx;
     wen          : std_ulogic;
     wdata        : std_logic_vector(MAX_PREDICTOR_BITS-1 downto 0);
-    dbranch      : std_ulogic;
     taken        : std_ulogic;
     raddr_comb   : wordx;
     rindex_bhist : wordx;
@@ -1424,22 +1449,26 @@ package noelvint is
       );
   end component cctrlnv;
 
-  component mul64
+  component mul64 is
     generic (
-      fabtech   : integer range 0 to NTECH := 0;
-      arch      : integer := 0;
-      scantest  : integer := 0
-      );
+      fabtech  : integer range 0 to NTECH := 0;
+      arch     : integer := 0;
+      split    : integer := 1;
+      scantest : integer := 0
+    );
     port (
-      clk       : in  std_ulogic;
-      rstn      : in  std_ulogic;
-      holdn     : in  std_ulogic;
-      muli      : in  mul_in_type;
-      mulo      : out mul_out_type;
-      testen    : in  std_ulogic := '0';
-      testrst   : in  std_ulogic := '1'
-      );
-  end component;
+      clk     : in  std_ulogic;
+      rstn    : in  std_ulogic;
+      holdn   : in  std_ulogic;
+      ctrl    : in  std_logic_vector(2 downto 0);
+      op1     : in  std_logic_vector;
+      op2     : in  std_logic_vector;
+      nready  : out std_ulogic;
+      mresult : out std_logic_vector;
+      testen  : in  std_ulogic := '0';
+      testrst : in  std_ulogic := '1'
+    );
+  end component mul64;
 
   component div64
     generic (
@@ -1538,7 +1567,8 @@ package noelvint is
   component nanofpunv is
     generic (
       fpulen    : integer range 0 to 128;
-      no_muladd : integer range 0 to 1);
+      no_muladd : integer range 0 to 1
+    );
     port (
       clk         : in  std_ulogic;
       rstn        : in  std_ulogic;
@@ -1546,19 +1576,69 @@ package noelvint is
       e_inst      : in  word;
       e_valid     : in  std_ulogic;
       e_nullify   : in  std_ulogic;
+      issue_id    : in  std_logic_vector(4 downto 0);
       csrfrm      : in  std_logic_vector(2 downto 0);
       mode_in     : in  std_logic_vector(2 downto 0);
       s1          : in  std_logic_vector(63 downto 0);
       s2          : in  std_logic_vector(63 downto 0);
       s3          : in  std_logic_vector(63 downto 0);
-      issue_id    : out std_logic_vector(4 downto 0);
       fpu_holdn   : out std_ulogic;
       ready_flop  : out std_ulogic;
       commit      : in  std_ulogic;
       commit_id   : in  std_logic_vector(4 downto 0);
+      lddata_id   : in  std_logic_vector(4 downto 0);
+      lddata_now  : in  std_ulogic;
       lddata      : in  std_logic_vector(63 downto 0);
-      unissue     : in  std_logic_vector(1 to 4);
-      unissue_sid : in  std_logic_vector(4 downto 0);
+      unissue     : in  std_ulogic;
+      unissue_id  : in  std_logic_vector(4 downto 0);
+      rs1         : out std_logic_vector(4 downto 0);
+      rs2         : out std_logic_vector(4 downto 0);
+      rs3         : out std_logic_vector(4 downto 0);
+      ren         : out std_logic_vector(1 to 3);
+      rd          : out std_logic_vector(4 downto 0);
+      wen         : out std_ulogic;
+      stdata      : out std_logic_vector(63 downto 0);
+      flags_wen   : out std_ulogic;
+      flags       : out std_logic_vector(4 downto 0);
+      now2int     : out std_ulogic;
+      id2int      : out std_logic_vector(4 downto 0);
+      stdata2int  : out std_logic_vector(63 downto 0);
+      flags2int   : out std_logic_vector(4 downto 0);
+      wb_mode     : out std_logic_vector(2 downto 0);
+      wb_id       : out std_logic_vector(4 downto 0);
+      idle        : out std_ulogic;
+      events      : out std_logic_vector(63 downto 0)
+      );
+  end component;
+
+  component pfpunv is
+    generic (
+      fpulen    : integer range 0 to 128;
+      mulconf   : integer range 0 to 1
+    );
+    port (
+      clk         : in  std_ulogic;
+      rstn        : in  std_ulogic;
+      holdn       : in  std_ulogic;
+      e_inst      : in  word;
+      e_valid     : in  std_ulogic;
+      e_nullify   : in  std_ulogic;
+      issue_id    : in  std_logic_vector(4 downto 0);
+      csrfrm      : in  std_logic_vector(2 downto 0);
+      mode_in     : in  std_logic_vector(2 downto 0);
+      s1          : in  std_logic_vector(63 downto 0);
+      s2          : in  std_logic_vector(63 downto 0);
+      s3          : in  std_logic_vector(63 downto 0);
+      issue       : out std_ulogic;
+      fpu_holdn   : out std_ulogic;
+      ready_flop  : out std_ulogic;
+      commit      : in  std_ulogic;
+      commit_id   : in  std_logic_vector(4 downto 0);
+      lddata_id   : in  std_logic_vector(4 downto 0);
+      lddata_now  : in  std_ulogic;
+      lddata      : in  std_logic_vector(63 downto 0);
+      unissue     : in  std_ulogic;
+      unissue_id  : in  std_logic_vector(4 downto 0);
       rs1         : out std_logic_vector(4 downto 0);
       rs2         : out std_logic_vector(4 downto 0);
       rs3         : out std_logic_vector(4 downto 0);
@@ -1568,9 +1648,61 @@ package noelvint is
       flags_wen   : out std_ulogic;
       stdata      : out std_logic_vector(63 downto 0);
       flags       : out std_logic_vector(4 downto 0);
+      now2int     : out std_ulogic;
+      stdata2int  : out std_logic_vector(63 downto 0);
+      flags2int   : out std_logic_vector(4 downto 0);
       wb_mode     : out std_logic_vector(2 downto 0);
-      wb_id       : out std_logic_vector(4 downto 0)
-      );
+      wb_id       : out std_logic_vector(4 downto 0);
+      idle        : out std_ulogic
+    );
+  end component;
+
+  component pipefpunv is
+    generic (
+      fpulen    : integer range 0 to 128;
+      mulconf   : integer range 0 to 1
+    );
+    port (
+      clk         : in  std_ulogic;
+      rstn        : in  std_ulogic;
+      holdn       : in  std_ulogic;
+      e_inst      : in  word;
+      e_valid     : in  std_ulogic;
+      e_nullify   : in  std_ulogic;
+      issue_id    : in  std_logic_vector(4 downto 0);
+      csrfrm      : in  std_logic_vector(2 downto 0);
+      mode_in     : in  std_logic_vector(2 downto 0);
+      s1          : in  std_logic_vector(63 downto 0);
+      s2          : in  std_logic_vector(63 downto 0);
+      s3          : in  std_logic_vector(63 downto 0);
+      issue       : out std_ulogic;
+      fpu_holdn   : out std_ulogic;
+      ready_flop  : out std_ulogic;
+      commit      : in  std_ulogic;
+      commit_id   : in  std_logic_vector(4 downto 0);
+      lddata_id   : in  std_logic_vector(4 downto 0);
+      lddata_now  : in  std_ulogic;
+      lddata      : in  std_logic_vector(63 downto 0);
+      unissue     : in  std_ulogic;
+      unissue_id  : in  std_logic_vector(4 downto 0);
+      rs1         : out std_logic_vector(4 downto 0);
+      rs2         : out std_logic_vector(4 downto 0);
+      rs3         : out std_logic_vector(4 downto 0);
+      ren         : out std_logic_vector(1 to 3);
+      rd          : out std_logic_vector(4 downto 0);
+      wen         : out std_ulogic;
+      stdata      : out std_logic_vector(63 downto 0);
+      flags_wen   : out std_ulogic;
+      flags       : out std_logic_vector(4 downto 0);
+      now2int     : out std_ulogic;
+      id2int      : out std_logic_vector(4 downto 0);
+      stdata2int  : out std_logic_vector(63 downto 0);
+      flags2int   : out std_logic_vector(4 downto 0);
+      wb_mode     : out std_logic_vector(2 downto 0);
+      wb_id       : out std_logic_vector(4 downto 0);
+      idle        : out std_ulogic;
+      events      : out std_logic_vector(63 downto 0)
+    );
   end component;
 
   component cpu_disas
@@ -1677,7 +1809,7 @@ package noelvint is
 
   function to_mstatus(status : csr_status_type) return wordx;
   function to_mstatus(wdata : wordx; mstatus_in : csr_status_type) return csr_status_type;
-  
+
   function to_mstatush(status : csr_status_type) return wordx;
   function to_mstatush(wdata : wordx; mstatus_in : csr_status_type) return csr_status_type;
 
@@ -1756,6 +1888,7 @@ package body noelvint is
   -----------------------------------------------------------------------------
 
   function to_cause(code : integer; irq : boolean := false) return cause_type is
+    -- Non-constant
     variable v : cause_type := conv_std_logic_vector(code, cause_type'length);
   begin
     if irq then
@@ -1771,6 +1904,7 @@ package body noelvint is
   end;
 
   function cause2wordx(cause : cause_type) return wordx is
+    -- Non-constant
     variable v : wordx := zerox;
   begin
     v(cause'high - 1 downto 0) := cause(cause'high - 1 downto 0);
@@ -1780,6 +1914,7 @@ package body noelvint is
   end;
 
   function cause2vec(cause : cause_type; vec_in : std_logic_vector) return std_logic_vector is
+    -- Non-constant
     variable vec : std_logic_vector(vec_in'length - 1 downto 0) := vec_in;
   begin
     vec(0) := '0';
@@ -1807,6 +1942,7 @@ package body noelvint is
   constant XC_INST_LOAD_G_PAGE_FAULT    : cause_type := to_cause(21);
   constant XC_INST_VIRTUAL_INST         : cause_type := to_cause(22);
   constant XC_INST_STORE_G_PAGE_FAULT   : cause_type := to_cause(23);
+  constant XC_INST_RFFT                 : cause_type := to_cause(31);
 
   -- Interrupt Codes
   constant IRQ_U_SOFTWARE               : cause_type := to_cause(0, true);
@@ -1829,17 +1965,16 @@ package body noelvint is
 
 
   function to_floating(fpulen : integer; set : integer) return integer is
-    variable ret : integer;
+    -- Non-constant
+    variable ret : integer := 0;
   begin
-
-    ret   := 0;
     -- FPU length implies lower ones too.
     if fpulen >= set then
       ret := 1;
     end if;
 
     return ret;
-  end function;
+  end;
 
   -- Math operation
   -- ctrl_in(3)   -> size
@@ -1899,6 +2034,7 @@ package body noelvint is
   end;
 
   function mmuen_set(mmuen : integer) return integer is
+    -- Non-constant
     variable ret : integer := 0;
   begin
     if mmuen > 0 then
@@ -1915,6 +2051,7 @@ package body noelvint is
     variable result : wordx := (others => v(v'left));
   begin
     result(v'length - 1 downto 0) := v;
+
     return result;
   end;
 
@@ -1948,7 +2085,7 @@ package body noelvint is
   constant CSR_MIDELEG_MASK : wordx := extend_wordx(x"00000222"); -- Interrupts to be delegated to S-mode
   constant CSR_MIE_MASK     : wordx := extend_wordx(x"00000888"); -- Valid bits
   constant CSR_MIP_MASK     : wordx := extend_wordx(x"00000000"); -- Writable bits
-  
+
   constant CSR_HEDELEG_MASK : wordx := extend_wordx(x"0000b5ff");
   constant CSR_HIDELEG_MASK : wordx := extend_wordx(x"00000444"); -- Interrupts to be delegated to VS-mode
   constant CSR_HIE_MASK     : wordx := extend_wordx(x"00001444"); -- Valid bits
@@ -1961,7 +2098,7 @@ package body noelvint is
   constant CSR_UIE_MASK     : wordx := extend_wordx(x"00000111"); -- Valid bits
   constant CSR_UIP_MASK     : wordx := extend_wordx(x"00000001"); -- Writable bits
   --constant CSR_UIP_MASK     : wordx := extend_wordx(x"00000111"); -- Writable bits (maybe extra bit)
-  
+
   -- Return mask for mie
   function medeleg_mask(h_en : boolean) return wordx is
     -- Non-constant
@@ -1980,10 +2117,10 @@ package body noelvint is
 
   -- Return masked mideleg value
   function to_mideleg(
-    wcsr  : wordx;
-    mode_s: integer;
-    h_en  : boolean;
-    ext_n : integer) return wordx is
+    wcsr   : wordx;
+    mode_s : integer;
+    h_en   : boolean;
+    ext_n  : integer) return wordx is
     -- Non-constant
     variable mideleg : wordx := zerox;
     variable mask    : wordx := zerox;
@@ -1997,7 +2134,7 @@ package body noelvint is
 
     mideleg := wcsr and mask;
 
-    -- VS-level interrtupts are always delegeted to HS-mode 
+    -- VS-level interrtupts are always delegeted to HS-mode
     if h_en then
       mideleg(12) := '1';
       mideleg(10) := '1';
@@ -2011,7 +2148,7 @@ package body noelvint is
   -- Return mask for mie
   function mip_mask(mode_s : integer; h_en : boolean; ext_n : integer) return wordx is
     -- Non-constant
-    variable mask    : wordx := CSR_MIP_MASK;
+    variable mask : wordx := CSR_MIP_MASK;
   begin
     if mode_s /= 0 then
       mask := mask or CSR_SIP_MASK;
@@ -2029,7 +2166,7 @@ package body noelvint is
   -- Return mask for mip
   function mie_mask(mode_s : integer; h_en : boolean; ext_n : integer) return wordx is
     -- Non-constant
-    variable mask    : wordx := CSR_MIE_MASK;
+    variable mask : wordx := CSR_MIE_MASK;
   begin
     if mode_s /= 0 then
       mask := mask or CSR_SIE_MASK;
@@ -2178,7 +2315,7 @@ package body noelvint is
 
     return mstatus;
   end;
-  
+
   -- Return mstatush as a XLEN bit data from the record type
   function to_mstatush(status : csr_status_type) return wordx is
     -- Non-constant
@@ -2320,7 +2457,7 @@ package body noelvint is
                        ) is
     function pmpcfg(cfg0 : word64; cfg2 : word64; n : integer range 0 to 15) return std_logic_vector is
       -- Non-constant
-      variable cfg : std_logic_vector(7 downto 0);
+      variable cfg : word8;
     begin
       if n < 8 then
         cfg := cfg0(n * 8 + 7 downto n * 8);
@@ -2353,24 +2490,24 @@ package body noelvint is
   -- "Borrowed" from utilnv so as to not require including that.
   function all_0(data : std_logic_vector) return boolean is
   begin
-    return data = zerow64(data'length - 1 downto 0);
+    return data = (data'length - 1 downto 0 => '0');
   end;
 
-  procedure pmp_unit(prv_in             : in  std_logic_vector(PRIV_LVL_M'range);
-                     precalc            : in  pmp_precalc_vec;
-                     pmpcfg0_in         : in  word64;
-                     pmpcfg2_in         : in  word64;
-                     mprv_in            : in  std_ulogic;
-                     mpp_in             : in  std_logic_vector(PRIV_LVL_M'range);
-                     addr_in            : in  std_logic_vector;
-                     size_in            : in  std_logic_vector(1 downto 0);
-                     access_in          : in  std_logic_vector(PMP_ACCESS_X'range);
-                     valid_in           : in  std_ulogic;
-                     xc_out             : out std_ulogic;
-                     entries            : in  integer := 16;
-                     no_tor             : in  integer := 1;
-                     pmp_g              : in  integer := 1;
-                     msb                : in  integer := 31
+  procedure pmp_unit(prv_in     : in  std_logic_vector(PRIV_LVL_M'range);
+                     precalc    : in  pmp_precalc_vec;
+                     pmpcfg0_in : in  word64;
+                     pmpcfg2_in : in  word64;
+                     mprv_in    : in  std_ulogic;
+                     mpp_in     : in  std_logic_vector(PRIV_LVL_M'range);
+                     addr_in    : in  std_logic_vector;
+                     size_in    : in  std_logic_vector(1 downto 0);
+                     access_in  : in  std_logic_vector(PMP_ACCESS_X'range);
+                     valid_in   : in  std_ulogic;
+                     xc_out     : out std_ulogic;
+                     entries    : in  integer := 16;
+                     no_tor     : in  integer := 1;
+                     pmp_g      : in  integer := 1;
+                     msb        : in  integer := 31
                     ) is
     subtype  pmp_vec_type      is std_logic_vector(entries - 1 downto 0);
     type     pmpcfg_access_vec is array (0 to entries - 1) of pmpcfg_access_type;
@@ -2380,7 +2517,7 @@ package body noelvint is
     variable size        : positive;
     variable addr_high   : std_logic_vector(addr_in'range);
     variable xc          : std_ulogic         := '0';
-    variable cfg         : std_logic_vector(7 downto 0);
+    variable cfg         : word8;
     variable l           : pmp_vec_type;
     variable a           : pmpcfg_access_vec;
     variable x           : pmp_vec_type;
@@ -2573,13 +2710,13 @@ package body noelvint is
 
   -- Specialized for MMU use.
   -- Alignment fixed to 4 kByte.
-  procedure pmp_mmuu(precalc_low        : in  std_logic_vector;
-                     precalc_high       : in  std_logic_vector;
-                     addr_low           : in  std_logic_vector;
-                     addr_mask          : in  std_logic_vector;
-                     hit                : out std_logic;
-                     fit                : out std_logic;
-                     no_tor             : in  integer := 1
+  procedure pmp_mmuu(precalc_low  : in  std_logic_vector;
+                     precalc_high : in  std_logic_vector;
+                     addr_low     : in  std_logic_vector;
+                     addr_mask    : in  std_logic_vector;
+                     hit          : out std_logic;
+                     fit          : out std_logic;
+                     no_tor       : in  integer := 1
                     ) is
   begin
     hit := '0';
@@ -2627,20 +2764,20 @@ package body noelvint is
 
   -- Specialized for MMU use.
   -- Alignment fixed to 4 kByte.
-  procedure pmp_mmuu(precalc            : in  pmp_precalc_vec;
-                     pmpcfg0_in         : in  word64;
-                     pmpcfg2_in         : in  word64;
-                     addr_low           : in  std_logic_vector;
-                     addr_mask          : in  std_logic_vector;
-                     valid              : in  std_ulogic;
-                     hit_out            : out std_logic_vector;
-                     fit_out            : out std_logic_vector;
-                     l_out              : out std_logic_vector;
-                     r_out              : out std_logic_vector;
-                     w_out              : out std_logic_vector;
-                     x_out              : out std_logic_vector;
-                     no_tor             : in  integer := 1;
-                     msb                : in  integer := 31
+  procedure pmp_mmuu(precalc    : in  pmp_precalc_vec;
+                     pmpcfg0_in : in  word64;
+                     pmpcfg2_in : in  word64;
+                     addr_low   : in  std_logic_vector;
+                     addr_mask  : in  std_logic_vector;
+                     valid      : in  std_ulogic;
+                     hit_out    : out std_logic_vector;
+                     fit_out    : out std_logic_vector;
+                     l_out      : out std_logic_vector;
+                     r_out      : out std_logic_vector;
+                     w_out      : out std_logic_vector;
+                     x_out      : out std_logic_vector;
+                     no_tor     : in  integer := 1;
+                     msb        : in  integer := 31
                     ) is
     -- pmp_g > 1  hit is really hit<2 ** (pmp_g + 2)>
     variable pmp_g       : integer            := 10;  -- 4 kByte (minimum page size)
@@ -2650,7 +2787,7 @@ package body noelvint is
     type     pmpcfg_access_vec is array (precalc'range) of pmpcfg_access_type;
     variable lowhi_msb   : integer            := msb - 55 + precalc(precalc'low).low'high;
     -- Non-constant
-    variable cfg         : std_logic_vector(7 downto 0);
+    variable cfg         : word8;
     variable l           : pmp_vec_type;
     variable a           : pmpcfg_access_vec;
     variable x           : pmp_vec_type;

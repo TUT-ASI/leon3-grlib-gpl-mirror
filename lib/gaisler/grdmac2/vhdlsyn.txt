@@ -10,3 +10,4 @@ grdmac2_ctrl.vhd
 grdmac2.vhd
 grdmac2_ahb.vhd
 grdmac2_acc.vhd
+grdmac2_axi.vhd

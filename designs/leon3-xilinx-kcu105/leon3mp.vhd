@@ -4,7 +4,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -870,7 +870,6 @@ begin
           kbytes        => 1024,
           pipe          => 0,
           maccsz        => AHBDW,
-          endianness    => 0,
           fname         => ramfile
         )
         port map (
@@ -1420,7 +1419,7 @@ begin
   ocram : if CFG_AHBRAMEN = 1 generate
     ahbram0 : ahbram
       generic map (hindex => 6, haddr => CFG_AHBRADDR, tech => CFG_MEMTECH,
-                   kbytes => CFG_AHBRSZ, pipe => CFG_AHBRPIPE, endianness => 1)
+                   kbytes => CFG_AHBRSZ, pipe => CFG_AHBRPIPE)
       port map (rstn, clkm, ahbsi, ahbso(6));
   end generate;
 

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -184,6 +184,7 @@ package i2c is
       i2cslvaddr : integer range 0 to 127 := 0;
       i2ccfgaddr : integer range 0 to 127 := 0;
       oepol      : integer range 0 to 1 := 0;
+      rstaddr    : integer range 0 to 1 := 0;
       --
       filter     : integer range 2 to 512 := 2
       );
@@ -198,7 +199,8 @@ package i2c is
       apbo   : out apb_slv_out_type;
       -- I2C signals
       i2ci   : in  i2c_in_type;
-      i2co   : out i2c_out_type
+      i2co   : out i2c_out_type;
+      i2crstaddr :  in std_logic_vector(2 downto 0)
       );
   end component;
 
@@ -284,6 +286,7 @@ package i2c is
       i2cslvaddr : integer range 0 to 127 := 0;
       i2ccfgaddr : integer range 0 to 127 := 0;
       oepol      : integer range 0 to 1 := 0;
+      rstaddr    : integer range 0 to 1 := 0;
       --
       filter     : integer range 2 to 512 := 2
       );
@@ -323,7 +326,8 @@ package i2c is
       i2co_scloen   : out std_ulogic;
       i2co_sda      : out std_ulogic;
       i2co_sdaoen   : out std_ulogic;
-      i2co_enable   : out std_ulogic
+      i2co_enable   : out std_ulogic;
+      i2crstaddr    : in std_logic_vector(2 downto 0)
       );
   end component;
 

@@ -967,7 +967,7 @@ void cfttest5(int cft)
         unsigned long dways, dwaysize, dtagmask;
         unsigned long errctr;
         unsigned long l=0,v;
-        int cemode, correxp;
+        int cemode, correxp, cntexp;
         /* Skip test if error injection is not supported by technology */
         if ((rsysreg(0x30) >> 30) == 0) return;
         /* Get sizes */
@@ -989,7 +989,15 @@ void cfttest5(int cft)
                 itag_inject(&line0,1,iwaysize,itagmask);
                 line0();
                 errctr = rsysreg(0x38);
-                if (errctr != ((correxp<<15)|(1<<8))) fail(128);
+                cntexp = 1;
+                if (cemode == 1) {
+                        /* May get multiple errors since tag read once per
+                         * instruction pair */
+                        cntexp = (errctr >> 8) & 3;
+                        if (cntexp == 0) cntexp++;
+                }
+                if (errctr != ((correxp<<15)|(cntexp<<8))) fail(128);
+                if (cemode == 1) itag_inject(&line0,0,iwaysize,itagmask);
                 wsysreg(0x38,~0);
                 line0();
                 errctr = rsysreg(0x38);
@@ -998,6 +1006,7 @@ void cfttest5(int cft)
                 line0();
                 errctr = rsysreg(0x38);
                 if (errctr != ((correxp<<15)|(1<<6))) fail(130);
+                if (cemode == 1) idata_inject(&line0,0,iwaysize,itagmask);
                 wsysreg(0x38,~0);
                 line0();
                 errctr = rsysreg(0x38);
@@ -1008,12 +1017,14 @@ void cfttest5(int cft)
                 v = regld(&l);
                 errctr = rsysreg(0x38);
                 if (errctr != ((correxp<<15)|(1<<4)) || v != 0) fail(132);
+                if (cemode == 1) dtag_inject(&l,0,dwaysize,dtagmask);
                 wsysreg(0x38,~0);
                 regld(&l);
                 ddata_inject(&l,1,dwaysize,dtagmask);
                 v = regld(&l);
                 errctr = rsysreg(0x38);
                 if (errctr != ((correxp<<15)|(1<<0)) || v != 0) fail(133);
+                if (cemode == 1) ddata_inject(&l,0,dwaysize,dtagmask);
                 wsysreg(0x38,~0);
                 v = regld(&l);
                 errctr = rsysreg(0x38);

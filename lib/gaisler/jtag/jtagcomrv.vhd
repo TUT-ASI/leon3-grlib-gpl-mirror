@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -290,7 +290,7 @@ begin
     --qual_areg <= (others => ar.qual_areg);
     --if ar.qual_areg='1' then av.areg:=not aregq; end if;
 
-    vdmai.address := x"90000" & "000" & ar.dreg(33+7 downto 34) & "00";
+    vdmai.address := x"fe000" & "000" & ar.dreg(33+7 downto 34) & "00";
     vdmai.wdata := ahbdrivedata(ar.dreg(33 downto 2));
     vdmai.start := '0'; vdmai.burst := '0';
     vdmai.write := ar.dreg(1) and not ar.dreg(0);

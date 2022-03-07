@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -211,7 +211,9 @@ begin
   -----------------------------------------------------------------------------
   cmdp: process(ck)
     -- Data split by bank to avoid exceeding 4G
-    constant b0size: integer := (2**(colbits+rowbits)) * ((width+15)/16);
+    constant w16 : integer := (width+15)/16;
+    constant rwidth: integer := 16*w16;
+    constant b0size: integer := (2**(colbits+rowbits)) * w16;
     constant b1size: integer := pick(b0size, 1, implbanks>1);
     constant b2size: integer := pick(b0size, 1, implbanks>2);
     constant b3size: integer := pick(b0size, 1, implbanks>3);
@@ -244,8 +246,8 @@ begin
       variable p: std_logic_vector(19 downto 0);
       variable iidx: integer;
     begin
-      iidx := (idx*width)/16;
-      for q in 0 to (width+15)/16-1 loop
+      iidx := (idx*rwidth)/16;
+      for q in 0 to w16-1 loop
         case bank is
           when 0      => x := memdata0(iidx+q);
           when 1      => x := memdata1(iidx+q);
@@ -261,8 +263,8 @@ begin
         elsif p(19)='1' then p(15 downto 8) := "XXXXXXXX"; end if;
         if p(16)='0' then p(7 downto 0) := "UUUUUUUU";
         elsif p(17)='1' then p(7 downto 0) := "XXXXXXXX"; end if;
-        if width < 16 then
-          r := p(7 downto 0);
+        if width-q*16 < 16 then
+          r(width-16*q-1 downto width-16*q-8) := p(7 downto 0);
         else
           r(width-16*q-1 downto width-16*q-16) := p(15 downto 0);
         end if;
@@ -277,11 +279,11 @@ begin
       variable iidx: integer;
     begin
       n := v;
-      iidx := (idx*width)/16;
-      for q in 0 to (width+15)/16-1 loop
+      iidx := (idx*rwidth)/16;
+      for q in 0 to w16-1 loop
         p := "0101" & x"0000";
-        if width < 16 then
-          p(7 downto 0) := n;
+        if width-q*16 < 16 then
+          p(7 downto 0) := n(width-16*q-1 downto width-16*q-8);
         else
           p(15 downto 0) := n(width-16*q-1 downto width-16*q-16);
         end if;
@@ -358,9 +360,17 @@ begin
               else
                 assert recaddr(0)='0';    -- Assume 16-bit alignment on SREC entry
                 idx := to_integer(unsigned(recaddr(rowbits+colbits+log2(width/16) downto 1)));
+                if (width mod 16) /= 0 then
+                  idx := idx + (idx/(w16-1));
+                end if;
                 while len > 1 loop
                   memdata0(idx) := 16#50000# + to_integer(unsigned(recdata(0 to 15)));
                   idx := idx+1;
+                  if (width mod 16)/=0 and (idx mod w16)=(w16-1) then
+                    -- set top byte (ECC byte) to 0
+                    memdata0(idx) := 16#10000#;
+                    idx := idx+1;
+                  end if;
                   len := len-2;
                   recdata(0 to recdata'length-16-1) := recdata(16 to recdata'length-1);
                 end loop;

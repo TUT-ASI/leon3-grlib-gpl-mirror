@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 -----------------------------------------------------------------------------   
 -- Entity:      apbctrl
 -- File:        apbctrl.vhd
--- Author:      Cobham Gaisler
+-- Author:      Jiri Gaisler, Nils Wessman - Gaisler
 -- Description: AMBA AHB/APB bridge with plug&play support
 ------------------------------------------------------------------------------ 
 
@@ -44,8 +44,14 @@ entity apbctrlx is
     hindex1     : integer := 0;
     haddr1      : integer := 0;
     hmask1      : integer := 16#fff#;
+    hindex2     : integer := 0;
+    haddr2      : integer := 0;
+    hmask2      : integer := 16#fff#;
+    hindex3     : integer := 0;
+    haddr3      : integer := 0;
+    hmask3      : integer := 16#fff#;
     nslaves     : integer range 1 to NAPBSLV := NAPBSLV;
-    nports      : integer range 1 to 2 := 2;
+    nports      : integer range 1 to 4 := 2;
     wprot       : integer range 0 to 1 := 0;
     debug       : integer range 0 to 2 := 2;
     icheck      : integer range 0 to 1 := 1;
@@ -81,13 +87,19 @@ constant multiport: integer := conv_integer(conv_std_logic(nports>1));
 constant VERSION   : amba_version_type := 1;
 
 
-constant hindex : ivector_type(0 to 1) := (hindex0, hindex1);
-constant hconfig : ahb_config_vector_type(0 to 1) := (
+constant hindex : ivector_type(0 to 3) := (hindex0, hindex1, hindex2, hindex3);
+constant hconfig : ahb_config_vector_type(0 to 3) := (
   (0 => ahb_device_reg (VENDOR_GAISLER, GAISLER_APBMST, 0, VERSION, 0),
    4 => ahb_membar(haddr0, '0', '0', hmask0),
    others => zero32),
   (0 => ahb_device_reg (VENDOR_GAISLER, GAISLER_APBMST, 0, VERSION, 0),
    4 => ahb_membar(haddr1, '0', '0', hmask1),
+   others => zero32),
+  (0 => ahb_device_reg (VENDOR_GAISLER, GAISLER_APBMST, 0, VERSION, 0),
+   4 => ahb_membar(haddr2, '0', '0', hmask2),
+   others => zero32),
+  (0 => ahb_device_reg (VENDOR_GAISLER, GAISLER_APBMST, 0, VERSION, 0),
+   4 => ahb_membar(haddr3, '0', '0', hmask3),
    others => zero32));
 
 constant IOAREA : std_logic_vector(11 downto 0) := 
@@ -99,6 +111,16 @@ constant IOAREA1 : std_logic_vector(11 downto 0) :=
         conv_std_logic_vector(haddr1, 12);
 constant IOMSK1  : std_logic_vector(11 downto 0) := 
         conv_std_logic_vector(hmask1, 12);
+
+constant IOAREA2 : std_logic_vector(11 downto 0) := 
+        conv_std_logic_vector(haddr2, 12);
+constant IOMSK2  : std_logic_vector(11 downto 0) := 
+        conv_std_logic_vector(hmask2, 12);
+
+constant IOAREA3 : std_logic_vector(11 downto 0) := 
+        conv_std_logic_vector(haddr3, 12);
+constant IOMSK3  : std_logic_vector(11 downto 0) := 
+        conv_std_logic_vector(hmask3, 12);
 
 
 type port_reg_type is record
@@ -132,7 +154,7 @@ constant ASYNC_RESET : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) =
 signal r, rin : reg_type;
 signal arst : std_ulogic;
 --pragma translate_off
-signal lapbi  : apb_slv_in_type;
+signal lapbi  : apb_slv_in_vector_type(0 to nports-1);
 --pragma translate_on
 
 begin
@@ -151,12 +173,15 @@ begin
   variable bnslave : std_logic_vector(3 downto 0);
   variable vapbi    : apb_slv_in_vector_type(0 to nports-1);
 
-  variable lwprot : std_logic_vector(0 to 1);
+  variable lwprot : std_logic_vector(0 to nports-1);
   variable lwprotv  : std_logic_vector(15 downto 0);
+
+  variable busy : std_logic_vector(0 to NAPBSLV-1);
 
   begin
 
     v := r; pirq := (others => '0'); 
+    busy := (others => '0');
 		
 		for j in 0 to nports-1 loop
 			v.p(j).psel := '0'; v.p(j).penable := '0'; psel(j) := (others => '0');
@@ -179,6 +204,24 @@ begin
     	              psel(j)(12) or psel(j)(13) or psel(j)(14) or psel(j)(15);
     	nslave(j) := conv_integer(bnslave);
 
+    end loop;
+
+    -- Peripheral are busy
+    -- Last cycle of access should not be marked as busy
+    --   write: state = 00
+    --   read:  state = 10
+		for j in 0 to nports-1 loop
+      for i in 0 to nslaves-1 loop
+        if r.p(j).psel = '1' and psel(j)(i) = '1' and
+           (r.p(j).state = "01" or 
+            (r.p(j).state = "10" and r.p(j).hwrite = '1')) then
+          busy(i) := '1';
+        end if;
+      end loop;
+    end loop;
+
+		for j in 0 to nports-1 loop
+			v.p(j).psel := '0'; v.p(j).penable := '0';
 
       -- write protection
       if wprot = 1 then
@@ -199,7 +242,15 @@ begin
     	  then
     	    v.p(j).hready := '0'; v.p(j).hwrite := ahbi(j).hwrite; 
     	    v.p(j).haddr(apbmax downto 0) := ahbi(j).haddr(apbmax downto 0); 
-    	    v.p(j).state := "01"; v.p(j).psel := not ahbi(j).hwrite;
+    	    v.p(j).state := "01"; --v.p(j).psel := not ahbi(j).hwrite;
+          -- Setup phase for reads (delayed if peripheral is busy)
+          if multiport = 1 then
+            if orv(busy and psel(j)) = '0' then
+              v.p(j).psel := not ahbi(j).hwrite;
+            end if;
+          else
+            v.p(j).psel := not ahbi(j).hwrite;
+          end if;
           if wprot = 1 then
             v.p(j).hmaster := ahbi(j).hmaster;
           end if;
@@ -210,11 +261,13 @@ begin
     	when "00" => -- idle
         v.p(j).hresp := HRESP_OKAY;
     	when "01" =>
-        if (multiport = 1) and (
-           (j = 1 and (r.p(0).penable = '0' or r.p(1*multiport).hwrite = '0') and (r.p(0).psel and orv(psel(0) and psel(1*multiport))) = '1') or 
-           (j = 0 and r.p(1*multiport).penable = '1' and (r.p(1*multiport).psel and not r.p(0).hwrite and orv(psel(0) and psel(1*multiport))) = '1')) then
-          v.p(j).psel := '1'; 
+        if (multiport = 1) and r.p(j).psel = '0' and orv(busy and psel(j)) = '1' then
+          -- Wait on busy peripheral 
+        elsif (multiport = 1) and r.p(j).psel = '0' and r.p(j).hwrite = '0' then
+          -- Setup phase for reads (when delayed due to busy peripheral)
+          v.p(j).psel := '1';
         else
+          -- Enable phase for reads, Setup phase for writes
     	    if r.p(j).hwrite = '0' then v.p(j).penable := '1'; 
     	    else v.p(j).pwdata := ahbreadword(ahbi(j).hwdata, r.p(j).haddr(4 downto 2)); end if;
     	    v.p(j).psel := '1'; v.p(j).state := "10";
@@ -232,15 +285,15 @@ begin
           null;
         end if;
     	when others =>
-        if (multiport = 1) and (
-           (j = 1 and r.p(1*multiport).penable = '0' and (r.p(0).psel and orv(psel(0) and psel(1*multiport))) = '1') or 
-           (j = 0 and r.p(1*multiport).penable = '1' and (r.p(1*multiport).psel and orv(psel(0) and psel(1*multiport))) = '1')) then
-          v.p(j).psel := '1';
-        else
-    	    if r.p(j).penable = '0' then v.p(j).psel := '1'; v.p(j).penable := '1'; end if;
-    	    v.p(j).state := "00"; v.p(j).hready := '1';
-        end if;
+        -- Enable phase for writes
+    	  if r.p(j).penable = '0' then v.p(j).psel := '1'; v.p(j).penable := '1'; end if;
+    	  v.p(j).state := "00"; v.p(j).hready := '1';
     	end case;
+
+      -- New access started for this port => mark peripheral as busy for following ports
+      if v.p(j).psel = '1' then
+        busy := busy or psel(j);
+      end if;
 
       -- Decode PNP access
     	if (r.p(j).haddr(19 downto  12) = "11111111") then 
@@ -302,23 +355,18 @@ begin
           apbi(j).psel    <= psel(0);
         end if;
       elsif j < nslaves then
-        if (psel(0)(j) and r.p(0).psel and not (r.p(1*multiport).penable and r.p(1*multiport).psel and orv(psel(0) and psel(1*multiport)))) = '1' then
-          apbaddr(apbmax downto 0) := r.p(0).haddr(apbmax downto 0);
-          apbi(j).pwdata  <= r.p(0).pwdata;
-          apbi(j).pwrite  <= r.p(0).hwrite;
-          apbi(j).penable <= r.p(0).penable;
-          apbi(j).psel(j) <= '1';
-        elsif (psel(1*multiport)(j) and r.p(1*multiport).psel) = '1' then
-          apbaddr(apbmax downto 0) := r.p(1*multiport).haddr(apbmax downto 0);
-          apbi(j).pwdata  <= r.p(1*multiport).pwdata;
-          apbi(j).pwrite  <= r.p(1*multiport).hwrite;
-          apbi(j).penable <= r.p(1*multiport).penable;
-          apbi(j).psel(j) <= '1';
-        else
-          apbi(j).pwdata  <= r.p(0).pwdata;
-          apbi(j).pwrite  <= '0';
-          apbi(j).penable <= '0';
-        end if;
+        apbi(j).pwdata  <= r.p(0).pwdata;
+        apbi(j).pwrite  <= '0';
+        apbi(j).penable <= '0';
+        for k in 0 to nports-1 loop
+          if r.p(k).psel = '1' and psel(k)(j) = '1' then
+            apbaddr(apbmax downto 0) := r.p(k).haddr(apbmax downto 0);
+            apbi(j).pwdata  <= r.p(k).pwdata;
+            apbi(j).pwrite  <= r.p(k).hwrite;
+            apbi(j).penable <= r.p(k).penable;
+            apbi(j).psel(j) <= '1';
+          end if;
+        end loop;
       else
         apbi(j).pwdata  <= (others => '0');
         apbi(j).pwrite  <= '0';
@@ -335,13 +383,19 @@ begin
     end loop;
 
 --pragma translate_off
-    lapbi.paddr   <= apbaddr;
-    lapbi.pwdata  <= r.p(0).pwdata;
-    lapbi.pwrite  <= r.p(0).hwrite;
-    lapbi.penable <= r.p(0).penable;
-    lapbi.pirq    <= ahbi(0).hirq;
-
-    for i in 0 to nslaves-1 loop lapbi.psel(i) <= (psel(0)(i) and r.p(0).psel) or (psel(1*multiport)(i) and r.p(1*multiport).psel); end loop;
+    for i in 0 to nports-1 loop 
+      apbaddr(apbmax downto 0) := r.p(i).haddr(apbmax downto 0);
+      lapbi(i).paddr   <= apbaddr;
+      lapbi(i).pwdata  <= r.p(i).pwdata;
+      lapbi(i).pwrite  <= r.p(i).hwrite;
+      lapbi(i).penable <= r.p(i).penable;
+      lapbi(i).pirq    <= ahbi(i).hirq;
+      if r.p(i).psel = '1' then
+        lapbi(i).psel <= psel(i);
+      else
+        lapbi(i).psel <= (others => '0');
+      end if;
+    end loop;
 --pragma translate_on
 
   end process;
@@ -371,18 +425,20 @@ begin
 -- pragma translate_off
 
   mon0 : if enbusmon /= 0 generate
-    mon :  apbmon 
-      generic map(
-        asserterr   => asserterr,
-        assertwarn  => assertwarn,
-        pslvdisable => pslvdisable,
-        napb        => nslaves)
-      port map(
-        rst         => rst,
-        clk         => clk,
-        apbi        => lapbi,
-        apbo        => apbo,
-        err         => open);
+    x : for i in 0 to nports-1 generate
+      mon :  apbmon 
+        generic map(
+          asserterr   => asserterr,
+          assertwarn  => assertwarn,
+          pslvdisable => pslvdisable,
+          napb        => nslaves)
+        port map(
+          rst         => rst,
+          clk         => clk,
+          apbi        => lapbi(i),
+          apbo        => apbo,
+          err         => open);
+    end generate;
   end generate;
 
   diag : process
@@ -401,6 +457,8 @@ begin
   variable iounit : string(1 to 5) := "byte ";
   variable memstart : std_logic_vector(11 downto 0) := IOAREA and IOMSK;
   variable memstart1 : std_logic_vector(11 downto 0) := IOAREA1 and IOMSK1;
+  variable memstart2 : std_logic_vector(11 downto 0) := IOAREA2 and IOMSK2;
+  variable memstart3 : std_logic_vector(11 downto 0) := IOAREA3 and IOMSK3;
   variable L1 : line := new string'("");
   variable memmap : memmap_type;
   begin
@@ -408,6 +466,9 @@ begin
     if debug > 0 then
 			if nports = 2 then
       	print("apbctrl: APB Bridge at " & tost(memstart) & "00000 (Port1 at " & tost(memstart1) & "00000) rev 1");
+			elsif nports > 2 then
+      	print("apbctrl: APB Bridge at " & tost(memstart) & "00000 (Port1 at " & tost(memstart1) & "00000) rev 1");
+      	print("             (Port2 at " & tost(memstart2) & "00000 Port3 at " & tost(memstart3) & "00000");
       else
         print("apbctrl: APB Bridge at " & tost(memstart) & "00000 rev 1");
 			end if;

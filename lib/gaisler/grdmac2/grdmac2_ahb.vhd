@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -101,9 +101,8 @@ architecture rtl of grdmac2_ahb is
 
   -- Plug and Play Information (AHB master interface)
 
-  constant REVISION : integer := 1;
   constant hconfig : ahb_config_type := (
-    0      => ahb_device_reg (VENDOR_GAISLER, GAISLER_GRDMAC, 0, REVISION, 0),
+    0      => ahb_device_reg (VENDOR_GAISLER, GAISLER_GRDMAC2, 0, REVISION, 0),
     others => zero32);
 
   -- Bus master interface burst chop mask
@@ -318,9 +317,13 @@ begin  -- rtl
   
   
 -- pragma translate_off
-   assert endian_check(bm0_endian,bm1_endian,en_bm1)
+  tb : process
+  begin
+    wait for 1 ns;
+    assert endian_check(bm0_endian,bm1_endian,en_bm1)
       report "grdmac2: Both busmaster interfaces must have same endianness!"
       severity error;
+  end process tb;
 -- pragma translate_on
   
 end architecture rtl;

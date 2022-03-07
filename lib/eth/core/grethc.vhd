@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -505,7 +505,7 @@ begin
   comb : process(rst, irst, r, rmsti, tmsti, txo, rxo, psel, paddr, penable,
                  erdata, pwrite, pwdata, rxrdata, txrdata, mdio_i, phyrstaddr,
                  testen, testrst, edcladdr, mdint, tmsti2, edcldisable,
-                 edclsepahb) is
+                 edclsepahb, data_endian_s) is
     variable v             : reg_type;
     variable vpirq         : std_ulogic;
     variable vprdata       : std_logic_vector(31 downto 0);
@@ -900,15 +900,13 @@ begin
      if r.txden = '1' then
        if (unsigned(r.txlength) > unsigned(maxsizetx)) or
                   (conv_integer(r.txlength) = 0) then
-         v.txdstate := write_result; v.tmsto.req := '1';
+         v.txdstate := write_result; v.tmsto.req := '1'; v.tmsto.endian := '0';
          v.tmsto.write := '1'; v.tmsto.addr := r.txdesc & r.txdsel & "000";
          v.tmsto.data := (others => '0');
        else
          v.txdstate := req;
          v.tmsto.addr := r.txaddr & "00"; v.txcnt(10 downto 0) := r.txlength;
        end if;
-       -- Check tx data type and endian
-       v.tmsto.endian := data_endian_s;
      else
        v.txdstate := idle;
      end if;
@@ -1006,7 +1004,7 @@ begin
        v.tmsto.data(15 downto 14) := v.txstatus;
        v.tmsto.data(13 downto 0)  := (others => '0');
        v.txdone(nsync) := r.txdone(nsync-1);
-       v.tmsto.endian := data_endian_s;
+       v.tmsto.endian := '0';
      elsif txrestart = '1' then
        v.txdstate := idle; v.txstart := '0'; 
      end if;

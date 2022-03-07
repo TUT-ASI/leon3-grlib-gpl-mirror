@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -20,8 +20,8 @@
 -----------------------------------------------------------------------------   
 -- Entity:      apbctrl
 -- File:        apbctrl.vhd
--- Author:      Jiri Gaisler - Gaisler Research
--- Description: AMBA AHB/APB bridge with plug&play support
+-- Author:      Nils Wessman - Gaisler
+-- Description: Dual-port wrapper for AMBA AHB/APB bridge
 ------------------------------------------------------------------------------ 
 
 library ieee;
@@ -83,6 +83,12 @@ begin
       hindex1     => hindex1,
       haddr1      => haddr1,
       hmask1      => hmask1,
+      hindex2     => 0,
+      haddr2      => 0,
+      hmask2      => 0,
+      hindex3     => 0,
+      haddr3      => 0,
+      hmask3      => 0,
       nslaves     => nslaves,
       nports      => 2,
       wprot       => wprot,

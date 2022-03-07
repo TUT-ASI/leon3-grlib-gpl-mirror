@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -878,8 +878,14 @@ component ahbxb is
     hindex1     : integer := 0;
     haddr1      : integer := 0;
     hmask1      : integer := 16#fff#;
+    hindex2     : integer := 0;
+    haddr2      : integer := 0;
+    hmask2      : integer := 16#fff#;
+    hindex3     : integer := 0;
+    haddr3      : integer := 0;
+    hmask3      : integer := 16#fff#;
     nslaves     : integer range 1 to NAPBSLV := NAPBSLV;
-    nports      : integer range 1 to 2 := 2;
+    nports      : integer range 1 to 4 := 2;
     wprot       : integer range 0 to 1 := 0;
     debug       : integer range 0 to 2 := 2;   -- print config to console
     icheck      : integer range 0 to 1 := 1;
@@ -963,6 +969,84 @@ component ahbxb is
   );
   end component;
 
+  component apbctrl3p
+  generic (
+    hindex0     : integer := 0;
+    haddr0      : integer := 0;
+    hmask0      : integer := 16#fff#;
+    hindex1     : integer := 0;
+    haddr1      : integer := 0;
+    hmask1      : integer := 16#fff#;
+    nslaves     : integer range 1 to NAPBSLV := NAPBSLV;
+    wprot       : integer range 0 to 1 := 0;
+    debug       : integer range 0 to 2 := 2;   -- print config to console
+    icheck      : integer range 0 to 1 := 1;
+    enbusmon    : integer range 0 to 1 := 0;
+    asserterr   : integer range 0 to 1 := 0;
+    assertwarn  : integer range 0 to 1 := 0;
+    pslvdisable : integer := 0;
+    mcheck      : integer range 0 to 1 := 1;
+    ccheck      : integer range 0 to 1 := 1
+  );
+  port (
+    rst     : in  std_ulogic;
+    clk     : in  std_ulogic;
+    ahb0i   : in  ahb_slv_in_type;
+    ahb0o   : out ahb_slv_out_type;
+    ahb1i   : in  ahb_slv_in_type;
+    ahb1o   : out ahb_slv_out_type;
+    ahb2i   : in  ahb_slv_in_type;
+    ahb2o   : out ahb_slv_out_type;
+    apbi    : out apb_slv_in_vector;
+    apbo    : in  apb_slv_out_vector;
+    wp      : in  std_logic_vector(0 to 2) := (others => '0');
+    wpv     : in  std_logic_vector((256*3)-1 downto 0) := (others => '0')
+  );
+  end component;
+
+  component apbctrl4p
+    generic (
+      hindex0     : integer := 0;
+      haddr0      : integer := 0;
+      hmask0      : integer := 16#fff#;
+      hindex1     : integer := 0;
+      haddr1      : integer := 0;
+      hmask1      : integer := 16#fff#;
+      hindex2     : integer := 0;
+      haddr2      : integer := 0;
+      hmask2      : integer := 16#fff#;
+      hindex3     : integer := 0;
+      haddr3      : integer := 0;
+      hmask3      : integer := 16#fff#;
+      nslaves     : integer range 1 to NAPBSLV := NAPBSLV;
+      wprot       : integer range 0 to 1 := 0;
+      debug       : integer range 0 to 2 := 2;
+      icheck      : integer range 0 to 1 := 1;
+      enbusmon    : integer range 0 to 1 := 0;
+      asserterr   : integer range 0 to 1 := 0;
+      assertwarn  : integer range 0 to 1 := 0;
+      pslvdisable : integer := 0;
+      mcheck      : integer range 0 to 1 := 1;
+      ccheck      : integer range 0 to 1 := 1
+      );
+    port (
+      rst     : in  std_ulogic;
+      clk     : in  std_ulogic;
+      ahb0i   : in  ahb_slv_in_type;
+      ahb0o   : out ahb_slv_out_type;
+      ahb1i   : in  ahb_slv_in_type;
+      ahb1o   : out ahb_slv_out_type;
+      ahb2i   : in  ahb_slv_in_type;
+      ahb2o   : out ahb_slv_out_type;
+      ahb3i   : in  ahb_slv_in_type;
+      ahb3o   : out ahb_slv_out_type;
+      apbi    : out apb_slv_in_vector;
+      apbo    : in  apb_slv_out_vector;
+      wp      : in  std_logic_vector(0 to 3) := (others => '0');
+      wpv     : in  std_logic_vector((256*4)-1 downto 0) := (others => '0')
+    );
+  end component;
+  
   component apb3ctrl
   generic (
     hindex      : integer := 0;

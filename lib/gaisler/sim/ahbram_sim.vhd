@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -53,9 +53,6 @@ entity ahbram_sim is
     kbytes      : integer := 1;
     pipe        : integer := 0;
     maccsz      : integer := AHBDW;
-    endianness  : integer := GRLIB_CONFIG_ARRAY(grlib_little_endian);
-                             --0 access as BE
-                             --1 access as LE
     fname   : string  := "ram.dat"
    );
   port (
@@ -260,7 +257,7 @@ begin
     wdata := ahbsi.hwdata;
 
     -- Revert endianness
-    if endianness = 1 then
+    if ahbsi.endian = '1' then
       hrdata    := reversedata(hrdata, 8);
       wdata     := reversedata(wdata, 8);
     end if;

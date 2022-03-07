@@ -1,3 +1,87 @@
+----------------------- Release 2022.1-b4272 ---------------------------
+
+2022-02-22	Generic DDR2/DDR3 simulation models: Added support
+		for instantiating 72-bit wide memory banks.
+
+2022-02-21	LEON3/LEON3FT: Fix issue affecting only TLB_TYPE=0
+		configuration, where if an ITLB miss occurs between the bus
+		read and the bus write of a RMW instruction, then the bus
+		write of the RMW could be performed un-translated. The RMW
+		instruction can be LDSTUB, SWAP or CASA.
+		The issue did not affect LEON3/LEON3FT systems with
+		TLB_TYPE=1 or TLB_TYPE=2.
+
+2022-02-02	GRDMAC2: AXI wrapper added to GRDMAC2.
+
+2022-02-02	Added L2C-LITE IP core.
+
+2022-02-01	NOEL-V: Modifications to nanoFPUnv to improve timing.
+
+2022-01-31	NOEL-V: FPU and branch prediction update.
+		- Improve branch prediction when compressed instruction
+		  is used.
+		- Corrected issue with FPU state dirty flag.
+
+2022-01-19	LEON5: corrected write handling for syncrambw (used only
+		when cmemconf=4) in polarfire and other affected
+		technologies.
+
+2021-12-21	NOEL-V: Updated NOEL-V release.
+		- High Performance GRFPUnv support
+		- Update atomic operation to work correctly when RTL
+		  EDAC is enabled
+		- Improve flushing of BTB
+		- Update to fix issue with TLB entry incorrectly being
+		  invalidated by annulled instruction
+		- Update to fix issue with AHB access generated when A,
+		  D bits are updated in a PT-entry for second stage page
+		  table (H-extension)
+		- Updated RISC-V JTAG interface to work with current
+		  version of NOEL-V
+		- Debug-module extended to support automatic execution
+		  of abstract commands
+
+2021-12-14      GRGPRBANK: Support more than 32 registers in one regbank.
+
+2021-12-02	LEON5: Stream data from the icache buffer as long as
+		possible, in order to avoid having to re-fetch the
+		cache line multiple times in a row during early boot
+		when the icache is disabled.
+
+2021-11-23	Enabled AHBSPLIT in template design leon5-xilinx-kcu105.
+
+2021-11-15	AHBRAM/AHBRAM_SIM: Updated endianness implementation to
+		use the side-band signal in the AHB record. This removes
+		the ahbendian generic.
+
+2021-11-17	TECHMAP: fixed a bug in fifo_inferred.vhd that created
+		multiple drivers for the output data. This bug only
+		affected instantiations with the following combination
+		of generics: fwft /= 0, sepclk = 0 and ft = 0.
+
+2021-11-04	LEON5: Added boot auto-retry function. This will take
+		in a static array of reset addresses and alternate
+		between them on each reset, to allow re-try if the boot
+		PROM is bad for example.
+
+2021-11-01	I2C2AHB: Added support for setting the I2C slv and cfg
+		addresses through external signals.
+
+2021-10-28	LEON3: Fixed support for small instruction trace.
+
+2021-10-17	APBCTRL: Update to support up to 4 AHB ports.
+
+2021-09-29	GRETH: Updated little endian bus support.
+
+2021-09-01	Scripts: New debug variable GRLIB_VIVADO_COMPILE_VERBOSE
+		to allow disabling of the quiet flag when compiling
+		Xilinx simulation libraries for 7-series, Ultrascale and
+		Ultrascale+ targets.
+
+2021-07-08	LEON5: Fixes to avoid synthesis warnings.
+
+2021-07-05	LEON5SYS: Export the internal APB slaves when nextapb=0.
+
 ----------------------- Release 2021.2-b4267 ---------------------------
 
 2021-06-30	Updated TECHMAP for Ultrascale, Ultrascale+ and Unisim.

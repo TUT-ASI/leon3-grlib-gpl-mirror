@@ -5,7 +5,7 @@ CLEAN=soft-clean
 
 GRLIB_CONFIG=noelv_config.vhd
 
-DIRADD=noelv/pkg_64 noelv noelv/core noelv/subsys
+DIRADD=noelv/pkg_64 noelv noelv/core noelv/subsys noelv/grfpunv
 
 ### Xilinx Vivado device and board setup
 BOARD=xilinx-vc707-xc7vx485t
@@ -99,7 +99,11 @@ DIRSKIP+=leon4v0
 endif
 FILESKIP = grcan.vhd ddr2.v mobile_ddr.v adapters/sgmii.vhd
 
+### Makefile Includes #################################################
+
+include $(GRLIB)/software/noelv/systest/Makefile
+OBJCOPY_CMD = $(OBJCOPY)
+
 include $(GRLIB)/bin/Makefile
-include $(GRLIB)/software/noelv/Makefile
 
 ##################  project specific targets ##########################

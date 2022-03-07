@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -250,6 +250,7 @@ begin
         dushift    := firstone(std_logic_vector(v.dividend));
         ddshift    := firstone(std_logic_vector(divisor));
         if dushift >= ddshift then
+          -- Due to the condition above, the subtraction is always in range.
           dshift   := dushift - ddshift;
         else
           dshift   := 0;

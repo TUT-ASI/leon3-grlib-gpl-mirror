@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -360,6 +360,7 @@ begin
     ahb_be_out.rd_error         <= r.rd_error;
     ahb_be_out.rd_error_comb    <= v.rd_error;
     ahb_be_out.wr_error         <= r.error;
+    ahb_be_out.excl_error       <= '0';
     rd_data                     <= r.rd_data;
     rd_data_comb                <= v.rd_data;
 

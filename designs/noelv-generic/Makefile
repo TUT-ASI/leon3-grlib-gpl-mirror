@@ -13,11 +13,11 @@ include $(CFG_DIR)/.config
 
 #32-bit NOEL-V
 ifeq ($(CONFIG_NOELV_RV32),y)
-DIRADD = noelv/pkg_32 noelv noelv/core noelv/subsys
+DIRADD = noelv/pkg_32 noelv noelv/core noelv/subsys noelv/grfpunv
 XLEN   = 32
 else
 #64-bit NOEL-V
-DIRADD = noelv/pkg_64 noelv noelv/core noelv/subsys
+DIRADD = noelv/pkg_64 noelv noelv/core noelv/subsys noelv/grfpunv
 XLEN   = 64
 endif
 
@@ -36,13 +36,13 @@ GRLIB_SIMULATOR ?= ModelSim
 VCOMOPT=-explicit -O0
 
 # GRLIB Options
-VSIMOPT= -gdisas=0
+VSIMOPT=
 
 # Simulator switches
 ifeq ("$(GRLIB_SIMULATOR)","ALDEC")
 VSIMOPT+= +access +w -voptargs="+acc" +notimingchecks
 else
-VSIMOPT+=-novopt +notimingchecks
+VSIMOPT+=-voptargs="+acc -nowarn 1" +notimingchecks
 endif
 
 # Simulation scripts

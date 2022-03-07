@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -60,6 +60,7 @@ entity leon5sys is
     perfcfg  : integer;
     mulimpl  : integer;
     statcfg  : integer;
+    breten   : integer;
     disas    : integer;
     ahbtrace : integer;
     devid    : integer;
@@ -72,6 +73,11 @@ entity leon5sys is
     -- Clock gating support
     gclk     : in  std_logic_vector(0 to ncpu-1);
     gclken   : out std_logic_vector(0 to ncpu-1);
+    -- Clock and reset for boot auto-retry functionality
+    bretclk  : in  std_ulogic;
+    bretrstn : in  std_ulogic;
+    -- Request for reset from debug master
+    rstreqn  : out std_ulogic;
     -- AHB bus interface for other masters (DMA units)
     ahbmi    : out ahb_mst_in_type;
     ahbmo    : in  ahb_mst_out_vector_type(ncpu+nextmst-1 downto ncpu);
@@ -89,9 +95,15 @@ entity leon5sys is
     dsuen    : in  std_ulogic;
     dsubreak : in  std_ulogic;
     cpu0errn : out std_ulogic;
+    sysstat  : in  std_logic_vector(15 downto 0);
+    dbgtstop : out std_ulogic;
+    dbgtime  : out std_logic_vector(31 downto 0);
     -- UART connection
     uarti    : in  uart_in_type;
     uarto    : out uart_out_type;
+    -- Boot retry signals
+    bretin   : in  leon5_bretry_in_type;
+    bretout  : out leon5_bretry_out_type;
     -- DFT signals propagating to ahbctrl
     testen   : in  std_ulogic;
     testrst  : in  std_ulogic;
@@ -127,6 +139,7 @@ architecture hier of leon5sys is
   signal xuarti  : uart_in_type;
   signal xuarto  : uart_out_type;
   signal perf    : leon5_perf_array;
+  signal sysstat_samp : std_logic_vector(15 downto 0);
 
   signal cpusix: ahb_slv_in_type;
   signal ahbso_apbctrl : ahb_slv_out_type;
@@ -265,10 +278,20 @@ begin
       apbo => cpuapbo
       );
 
+  noextapb: if nextapb=0 generate
+    apbi <= cpuapbi;
+    cpuapbix <= cpuapbi;
+    cpuapbo(nextapb)   <= apbo_uart;
+    cpuapbo(nextapb+1) <= apbo_irqmp;
+    cpuapbo(nextapb+2) <= apbo_timer;
+  end generate;
   noshiftapb: if stdperfirst(memmap)=0 and nextapb>0 generate
     apbi <= cpuapbi;
     cpuapbix <= cpuapbi;
     cpuapbo(0 to nextapb-1) <= apbo(0 to nextapb-1);
+    cpuapbo(nextapb)   <= apbo_uart;
+    cpuapbo(nextapb+1) <= apbo_irqmp;
+    cpuapbo(nextapb+2) <= apbo_timer;
   end generate;
   doshiftapb: if stdperfirst(memmap)/=0 and nextapb>0 generate
     apbi <= shift_psel(cpuapbi,3,nextapb+3);
@@ -380,6 +403,7 @@ begin
   ----------------------------------------------------------------------------
   dbgmod: dbgmod5
     generic map (
+      fabtech => fabtech,
       memtech => memtech,
       ncpu    => ncpu,
       ndbgmst => ndbgmst,
@@ -390,11 +414,15 @@ begin
       pnpaddrhi => 16#FFF#,
       pnpaddrlo => 16#FF0#,
       dsuslvidx => nextslv+2,
-      dsumstidx => ncpu+nextmst+1
+      dsumstidx => ncpu+nextmst+1,
+      bretryen  => breten
       )
     port map (
       clk      => clk,
       rstn     => rstn,
+      bretclk  => bretclk,
+      bretrstn => bretrstn,
+      rstreqn  => rstreqn,
       cpurstn  => cpurstn,
       dbgmi    => dbgmi,
       dbgmo    => dbgmo,
@@ -410,12 +438,34 @@ begin
       tpi      => tpi,
       tco      => tco,
       tstop    => tstop,
+      dbgtime  => dbgtime,
       maskerrn => maskerrn,
       uartie   => uarti,
       uartoe   => uarto,
       uartii   => xuarti,
-      uartoi   => xuarto
+      uartoi   => xuarto,
+      sysstat  => sysstat_samp,
+      bretin   => bretin,
+      bretout  => bretout
       );
+
+  -- Capture the sysstat signal with a cdcbus to get one stage of
+  -- synchronization when dsuen=1 and ensure that it's stable
+  -- when dsuen=0
+  statcapt: cdcbus
+    generic map (
+      tech => fabtech,
+      width => 16
+      )
+    port map (
+      busin => sysstat,
+      clk => clk,
+      enable => dsuen,
+      busout => sysstat_samp,
+      tsten => testen
+      );
+
+  dbgtstop <= tstop;
 
   ----------------------------------------------------------------------------
   -- Standard UART

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ package cfgmap is
   
   -- AHB slave address
   constant L2C_HADDR        : integer := 16#000#;
-  constant L2C_HMASK        : integer := 16#C00#;
+  constant L2C_HMASK        : integer := 16#800#;
   constant L2C_IOADDR       : integer := 16#FF0#;
   constant MEM_HADDR        : integer := 16#000#;
   constant MEM_HMASK        : integer := 16#800#;

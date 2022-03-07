@@ -32,3 +32,4 @@ axixmem.vhd
 sramtestmod.vhd
 
 uartprint.vhd
+dfi_phy_sim.vhd

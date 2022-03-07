@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -202,10 +202,10 @@ constant regfile_3p_readhold : tech_ability_type :=
 -- Gates to prevent writing in this case can be added in the
 -- syncram block if gatedwr is set
 constant syncram_wrignen : tech_ability_type :=
-  (inferred => 1, rhs28 => 0, others => 1);
+  (inferred => 1, rhs28 => 0, dare65t => 0, others => 1);
 
 constant syncram_dp_wrignen : tech_ability_type :=
-  (inferred => 1, rhs28 => 0, others => 1);
+  (inferred => 1, rhs28 => 0, dare65t => 0, others => 1);
 
 constant syncram_has_customif : tech_ability_type := (rhs65 => 1, dare65t => 1, dare => 1, memrhs65b => 1, gf22 => 1, others => 0);
 constant syncram_customif_maxwidth: integer := 84;  -- Expand as needed
@@ -218,7 +218,7 @@ constant syncram_add_scan_bypass : tech_ability_type := (others => 0);
 -- value will use inferred implementation (can be overriden by grlib_config)
 constant syncram_abits_min    : tech_ability_type := (spartan6 => 6, virtex6 => 6, virtex7 => 6, kintex7 => 6,
                                                       artix7 => 7, zynq7000 => 6, ultrascale => 6, ultrascalep => 6,
-                                                      others => 0);
+                                                      dare65t => 6, others => 0);
 constant syncram_2p_abits_min : tech_ability_type := (spartan6 => 6, virtex6 => 6, virtex7 => 6, kintex7 => 6,
                                                       artix7 => 6, zynq7000 => 6, ultrascale => 6, ultrascalep => 6, gf22 => 6,
                                                       others => 0);

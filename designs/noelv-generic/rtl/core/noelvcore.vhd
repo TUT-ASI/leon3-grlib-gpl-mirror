@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -216,12 +216,13 @@ begin
       nextapb   => 7,
       ndbgmst   => ndbgmst,
       cached    => 0,
-      wbmask    => 16#50FF#,
+      wbmask    => CFG_LOCAL_WBMASK,
       busw      => AHBDW,
       cmemconf  => CFG_LOCAL_CMEMCONF,
       fpuconf   => CFG_LOCAL_FPUCONF,
       rfconf    => CFG_LOCAL_RFCONF,
       --tcmconf   => CFG_LOCAL_TCMCONF,
+      mulconf   => CFG_LOCAL_MULCONF,
       disas     => disas,
       ahbtrace  => 0,
       cfg       => CFG_LOCAL_CFG,

@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -197,7 +197,9 @@ begin
     assert resetn='0' report "RESETn raised with less than 200 us init delay" severity warning;
     l0: loop
       initdone <= false;
-      wait until resetn/='0';
+      if resetn='0' then
+        wait until resetn/='0';
+      end if;
       assert cke='0' report "CKE not low when RESETn deasserted" severity warning;
       wait until (resetn='0' or cke/='0') for 500 us;
       if resetn='0' then next; end if;
@@ -243,8 +245,10 @@ begin
   -- Command state machine
   -----------------------------------------------------------------------------
   cmdp: process(ck)
+    constant w16: integer := (width+15)/16;
+    constant rwidth : integer := 16*w16;
     -- Data split by bank to avoid exceeding 4G
-    constant b0size: integer := (2**(colbits+rowbits)) * ((width+15)/16);
+    constant b0size: integer := (2**(colbits+rowbits)) * w16;
     constant b1size: integer := pick(b0size, 1, implbanks>1);
     constant b2size: integer := pick(b0size, 1, implbanks>2);
     constant b3size: integer := pick(b0size, 1, implbanks>3);
@@ -284,8 +288,8 @@ begin
       variable p: std_logic_vector(19 downto 0);
       variable iidx: integer;
     begin
-      iidx := (idx*width)/16;
-      for q in 0 to (width+15)/16-1 loop
+      iidx := (idx*rwidth)/16;
+      for q in 0 to w16-1 loop
         case bank is
           when 0      => x := memdata0(iidx+q);
           when 1      => x := memdata1(iidx+q);
@@ -301,8 +305,8 @@ begin
         elsif p(19)='1' then p(15 downto 8) := "XXXXXXXX"; end if;
         if p(16)='0' then p(7 downto 0) := "UUUUUUUU";
         elsif p(17)='1' then p(7 downto 0) := "XXXXXXXX"; end if;
-        if width < 16 then
-          r := p(7 downto 0);
+        if width-q*16 < 16 then
+          r(width-16*q-1 downto width-16*q-8) := p(7 downto 0);
         else
           r(width-16*q-1 downto width-16*q-16) := p(15 downto 0);
         end if;
@@ -326,11 +330,11 @@ begin
       if changeendian /= 0 then
         n := reversedata(n, changeendian);
       end if;
-      iidx := (idx*width)/16;
-      for q in 0 to (width+15)/16-1 loop
+      iidx := (idx*rwidth)/16;
+      for q in 0 to w16-1 loop
         p := "0101" & x"0000";
-        if width < 16 then
-          p(7 downto 0) := n;
+        if width-q*16 < 16 then
+          p(7 downto 0) := n(width-16*q-1 downto width-16*q-8);
         else
           p(15 downto 0) := n(width-16*q-1 downto width-16*q-16);
         end if;
@@ -393,10 +397,21 @@ begin
                 end loop;
               else
                 assert recaddr(0)='0';    -- Assume 16-bit alignment on SREC entry
+                assert recaddr(rowbits+colbits+log2(width/16)+1)='0'
+                  report ("Load address " & tost(recaddr) & " exceeds size setting!")
+                  severity warning;
                 idx := to_integer(unsigned(recaddr(rowbits+colbits+log2(width/16) downto 1)));
+                if (width mod 16) /= 0 then
+                  idx := idx + (idx/(w16-1));
+                end if;
                 while len > 1 loop
                   memdata0(idx) := 16#50000# + to_integer(unsigned(recdata(0 to 15)));
                   idx := idx+1;
+                  if (width mod 16)/=0 and (idx mod w16)=(w16-1) then
+                    -- set top byte (ECC byte) to 0
+                    memdata0(idx) := 16#10000#;
+                    idx := idx+1;
+                  end if;
                   len := len-2;
                   recdata(0 to recdata'length-16-1) := recdata(16 to recdata'length-1);
                 end loop;
@@ -496,7 +511,7 @@ begin
       mrscount := mrscount+1;
       assert (mrscount >= tMRD_ck) or (cke='1' and (csn='1' or cmd="111"))
         report "tMRD violation!" severity warning;
-      assert (mrscount > tMOD_ck and now > mrstime+tMOD_t-deltat) or
+      assert (mrscount >= tMOD_ck and now > mrstime+tMOD_t-deltat) or
         (cke='1' and (csn='1' or cmd="111" or cmd="000"))
         report "tMOD violation!" severity warning;
       if cke='1' and csn='0' and cmd/="111" then
@@ -563,13 +578,17 @@ begin
               else               -- Interleaved
                 colv(log2(blen)-1 downto 0) := alow(log2(blen)-1 downto 0) xor to_unsigned(x,log2(blen));
               end if;
-              col := banks(bank).openrow * (2**colbits) + to_integer(colv(colbits-1 downto 0));
+              if vmr.mpr='1' then
+                col := 0;
+              else
+                col := banks(bank).openrow * (2**colbits) + to_integer(colv(colbits-1 downto 0));
+              end if;
               accpipe(3-x/2).col(x mod 2) := col;
               accpipe(3-x/2).wchop := (blen<wblen);
             end loop;
             accpipe(3).first := true;
             -- Auto precharge
-            if a(10)='1' then
+            if a(10)='1' and vmr.mpr='0' then
               if cmd(0)='1' then
                 banks(bank).autopch := al+tRTP_ck;
               else
@@ -693,9 +712,9 @@ begin
         loaded := true;
       end if;
       if accpipe(2+cl+al).r then
+        -- print("Reading from col " & tost(accpipe(2+cl+al).col(0)) & " and " & tost(accpipe(2+cl+al).col(1)));
         assert cl>1 report "Incorrect CL setting!" severity warning;
         read_en <= true;
-        -- print("Reading from col " & tost(accpipe(2+i).col(0)) & " and " & tost(accpipe(2+i).col(1)));
         -- col0 <= accpipe(2+i).col(0); col1 <= accpipe(2+i).col(1);
         if vmr.mpr='1' then
           assert vmr.mprloc="00" report "Read from undefined MPR!" severity warning;
@@ -716,6 +735,7 @@ begin
       write_en <= accpipe(2+cwl+al).w or accpipe(3+cwl+al).w;
       if accpipe(4+cwl+al).w then
         assert not is_x(write_mask) report "Write error!";
+        -- print("Write mask: " & tost(write_mask) & " data: " & tost(write_data));
         for x in 0 to 1 loop
           cold := memdata_get(accpipe(4+cwl+al).bank, accpipe(4+cwl+al).col(x));
           for b in width/8-1 downto 0 loop

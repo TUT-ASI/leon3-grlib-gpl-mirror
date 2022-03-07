@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -67,6 +67,7 @@ entity grdmac2_ctrl is
     active        : in  std_ulogic;                     -- Core enabled after reset?
     trst          : in  grdmac2_trst_reg_type;          -- Timer reset value for timeout mechanism
     err_status    : in  std_ulogic;                     -- Core error status from APB status register    
+    irqf_clr_sts      : in std_ulogic;                        -- IRQ flag clear status when no error and desc completed
     curr_desc_out : out curr_des_out_type;              -- Current descriptor field out for debug display
     curr_desc_ptr : out std_logic_vector(31 downto 0);  -- Current descriptor pointer for debug display
     status        : out status_out_type;                -- Status signals
@@ -277,6 +278,8 @@ architecture rtl of grdmac2_ctrl is
     bmst_rd_busy : std_ulogic;                      -- bus master read busy
     bmst_rd_err  : std_ulogic;                      -- bus master read error
     err_status   : std_ulogic;                      -- register to find the falling edge of err_status input signal
+    irqf_clr_sts : std_ulogic;                    -- register to find the falling edge of interrupt flag in status reg, when desc is completed without any errors
+    irqf_clrd    : std_ulogic;                      -- desc comp IRQ clear flag
     sts          : status_out_type;                 -- Status register   
   end record;
   -- Reset value for grdmac2_ctrl local reg type
@@ -316,6 +319,8 @@ architecture rtl of grdmac2_ctrl is
     bmst_rd_busy => '0',
     bmst_rd_err  => '0',
     err_status   => '0',
+    irqf_clr_sts => '0',
+    irqf_clrd    => '0',
     sts          => STATUS_OUT_RST
     );
 
@@ -374,7 +379,7 @@ begin  -- rtl
   -----------------------------------------------------------------------------
   -- Combinational logic
   ----------------------------------------------------------------------------- 
-  comb : process (r, ctrl, des_ptr, active, trst, m2b_sts_in, b2m_sts_in, acc_sts_in, m2b_bm_in, b2m_bm_in, trigger, err_status, bm_in, d_des, c_des, acc_des, bmst)
+  comb : process (r, ctrl, des_ptr, active, trst, m2b_sts_in, b2m_sts_in, acc_sts_in, m2b_bm_in, b2m_bm_in, trigger, err_status, irqf_clr_sts, bm_in, d_des, c_des, acc_des, bmst)
 
     variable v           : ctrl_reg_type; 
     variable remainder   : integer range 0 to 96;          -- Variable for BM read_data handling
@@ -432,6 +437,12 @@ begin  -- rtl
     -- Falling edge of err_status signal
     if (r.err_status = '1' and err_status = '0') then
       v.err_flag := '0';
+    end if;
+
+    v.irqf_clr_sts := irqf_clr_sts;
+    -- Rising edge of irqf_clr_sts signal
+    if (r.irqf_clr_sts = '0' and irqf_clr_sts = '1') then
+      v.irqf_clrd := '1';
     end if;
 
     -- Input trigger latching
@@ -496,6 +507,7 @@ begin  -- rtl
           if active = '0' or r.sts.restart = '1' then
             -- Initial starting after reset. Or restart request is received
             -- Start descriptor read from first descriptor pointer
+            v.irqf_clrd     := '0';
             v.sts.timeout   := '0';
             v.desc_skip     := '0';
             v.sts.restart   := '0';
@@ -506,6 +518,7 @@ begin  -- rtl
             v.rd_desc       := (others => '0');
             v.state         := fetch_desc;
           elsif r.sts.ongoing = '1' or r.sts.kick = '1' or v.sts.kick = '1' then
+            v.irqf_clrd := '0';
             if r.init_error = '1' then  -- Taking up the same descriptor to fetch again since previously
                                         -- it encountered an error before reaching decoding state
               v.sts.ongoing := '1';
@@ -532,6 +545,7 @@ begin  -- rtl
                 v.sts.timeout   := '0';
                 v.desc_ptr      := d_des.nxt_des.ptr;
                 v.dcomp_flg     := '0';
+                v.irqf_clrd     := '0';
                 v.sts.ongoing   := '1';
                 v.sts.comp      := '0';
                 v.rd_desc       := (others => '0');
@@ -544,6 +558,7 @@ begin  -- rtl
                 v.desc_ptr      := c_des.f_nxt_des.ptr;
                 v.sts.ongoing   := '1';
                 v.dcomp_flg     := '0';
+                v.irqf_clrd     := '0';
                 v.sts.comp      := '0';
                 v.desc_skip     := '0';
                 v.rd_desc       := (others => '0');
@@ -570,6 +585,7 @@ begin  -- rtl
                 v.sts.timeout   := '0';
                 v.sts.ongoing   := '1';
                 v.dcomp_flg     := '0';
+                v.irqf_clrd     := '0';
                 v.sts.comp      := '0';
                 v.desc_skip     := '0';
                 v.rd_desc       := (others => '0');
@@ -608,6 +624,7 @@ begin  -- rtl
                 end if;
                 v.desc_ptr      := bm_in.rd_data(127 downto 97) & "0";
                 v.dcomp_flg     := '0';
+                v.irqf_clrd     := '0';
                 v.sts.ongoing   := '1';
                 v.sts.comp      := '0';
                 v.desc_skip     := '0';
@@ -708,7 +725,7 @@ begin  -- rtl
               v.state     := idle;
             end if;
 
-          -- A type of data descriptor used for encryption
+          -- A type of data descriptor used for authentication
           when SHA =>
             v.cur_desc := '0';
             v.acc_en   := '1';
@@ -1078,7 +1095,7 @@ begin  -- rtl
           v.state      := m2b;
           v.m2b_paused := '0';
         elsif ((r.acc_resume or r.acc_start) = '0' and acc_sts_in.comp = '1' and d_des.ctrl.desc_type = X"5") then
-          -- ACC completed. current data descriptor completed
+          -- ACC completed. current descriptor completed
           v.sts.desc_comp := '1';
           v.dcomp_flg     := '1';
           -- go to write back if it is enabled, else go to idle
@@ -1142,7 +1159,11 @@ begin  -- rtl
         if r.bmst_wr_busy = '0' then
           -- The status of the descriptor is written to memory
           -- Single access of 4 bytes
-          bmst.wr_addr <= r.desc_ptr + 16;  -- Status word of descriptor (offset 0x10)
+          if (d_des.ctrl.desc_type = X"5") then
+            bmst.wr_addr <= r.desc_ptr + 12;  -- Status word of descriptor (offset 0x0C)
+          else
+            bmst.wr_addr <= r.desc_ptr + 16;  -- Status word of descriptor (offset 0x10)
+          end if;
           bmst.wr_size <= WB_SZ;        -- Write back size is always 4 bytes
           bmst_wr_req  := '1';
           if r.cur_desc = '0' then
@@ -1284,17 +1305,34 @@ begin  -- rtl
     end if;
     
     -- Drive IRQ flag
-    if (r.sts.err = '1' or err_status = '1') then
-      irq_flag_sts <= ctrl.irq_en and ctrl.irq_err;
-    elsif r.dcomp_flg = '1' then
-      if r.cur_desc = '0' then
-        irq_flag_sts <= d_des.ctrl.irq_en and ctrl.irq_en and (not ctrl.irq_msk);
-      else
-        irq_flag_sts <= c_des.ctrl.irq_en and ctrl.irq_en and (not ctrl.irq_msk);
-      end if;
-    else
+    if v.irqf_clrd = '1' or r.irqf_clrd = '1' then      
       irq_flag_sts <= '0';
+    else
+      if (r.err_flag = '1' or err_status = '1') then
+        irq_flag_sts <= ctrl.irq_en and ctrl.irq_err;     
+      elsif r.dcomp_flg = '1' then
+        if r.cur_desc = '0' then
+          irq_flag_sts <= d_des.ctrl.irq_en and ctrl.irq_en and (not ctrl.irq_msk);
+        else
+          irq_flag_sts <= c_des.ctrl.irq_en and ctrl.irq_en and (not ctrl.irq_msk);
+        end if;
+      else
+        irq_flag_sts <= '0';
+      end if;
     end if;
+
+
+   -- if (r.err_flag = '1' or err_status = '1') then
+   --   irq_flag_sts <= ctrl.irq_en and ctrl.irq_err;     
+   -- elsif r.irqf_clrd = '1' or r.dcomp_flg = '1' then
+   --   if r.cur_desc = '0' then
+   --     irq_flag_sts <= d_des.ctrl.irq_en and ctrl.irq_en and (not ctrl.irq_msk);
+   --   else
+   --     irq_flag_sts <= c_des.ctrl.irq_en and ctrl.irq_en and (not ctrl.irq_msk);
+   --   end if;
+   -- else
+   --   irq_flag_sts <= '0';
+   -- end if;
 
     rin                    <= v;
     status.err             <= r.sts.err;

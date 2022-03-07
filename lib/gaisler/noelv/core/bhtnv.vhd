@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -68,29 +68,31 @@ architecture rtl of bhtnv is
   -- Functions
   ----------------------------------------------------------------------------
 
-  function phtgen (entries      : integer;
-                   hlength      : integer;
-                   predictor    : integer) return integer is
+  function phtgen (entries   : integer;
+                   hlength   : integer;
+                   predictor : integer) return integer is
+    -- Non-constant
     variable ret : integer;
   begin
 
     ret         := entries;
     if predictor = 1 then
-      ret       := 2**hlength;
+      ret       := 2 ** hlength;
     end if;
 
     return ret;
   end;
 
-  function phtbit (hlength     : integer;
-                   predictor   : integer;
-                   cbits       : integer) return integer is
+  function phtbit (hlength   : integer;
+                   predictor : integer;
+                   cbits     : integer) return integer is
+    -- Non-constant
     variable ret : integer;
   begin
 
     ret         := cbits;
     if predictor = 2 then
-      ret       := 2**hlength * cbits;
+      ret       := 2 ** hlength * cbits;
     end if;
 
     return ret;
@@ -113,21 +115,21 @@ architecture rtl of bhtnv is
   -- Types
   ----------------------------------------------------------------------------
 
-  subtype bhthistory is std_logic_vector(HLENGTH-1 downto 0);
-  type bht is array (0 to NENTRIES-1) of bhthistory;
-  subtype phtcounter is std_logic_vector(PHTBITS-1 downto 0);
-  type pht is array (0 to PHTENTRIES-1) of phtcounter;
-  type phto is array (0 to 2**HLENGTH-1) of std_logic_vector(COUNTERBITS-1 downto 0);
+  subtype bhthistory is std_logic_vector(HLENGTH - 1 downto 0);
+  type    bht        is array (0 to NENTRIES - 1) of bhthistory;
+  subtype phtcounter is std_logic_vector(PHTBITS - 1 downto 0);
+  type    pht        is array (0 to PHTENTRIES - 1) of phtcounter;
+  type    phto       is array (0 to 2 ** HLENGTH - 1) of std_logic_vector(COUNTERBITS - 1 downto 0);
 
   type reg_type is record
-    taken            : std_logic_vector(nentries-1 downto 0);
-    valid            : std_logic_vector(nentries-1 downto 0);
+    taken            : std_logic_vector(nentries - 1 downto 0);
+    valid            : std_logic_vector(nentries - 1 downto 0);
     bhttable         : bht;
     ren              : std_ulogic;
-    rindex_reg       : std_logic_vector(log2ext(nentries)-1 downto 0);
-    rindex_bhist_reg : std_logic_vector(log2ext(nentries)-1 downto 0);
-    pht_rdata_hold   : std_logic_vector((2**hlength)*2-1 downto 0);
-    bhist_data_hold  : std_logic_vector(hlength-1 downto 0);
+    rindex_reg       : std_logic_vector(log2ext(nentries) - 1 downto 0);
+    rindex_bhist_reg : std_logic_vector(log2ext(nentries) - 1 downto 0);
+    pht_rdata_hold   : std_logic_vector((2 ** hlength) * 2 - 1 downto 0);
+    bhist_data_hold  : std_logic_vector(hlength - 1 downto 0);
     write_forwarded  : std_logic;
   end record;
 
@@ -139,79 +141,79 @@ architecture rtl of bhtnv is
     rindex_reg       => (others => '0'),
     rindex_bhist_reg => (others => '0'),
     pht_rdata_hold   => (others => '0'),
-    bhist_data_hold => (others => '0'),
-    write_forwarded => '0'
+    bhist_data_hold  => (others => '0'),
+    write_forwarded  => '0'
     );
 
 
   signal pht_re, pht_we       : std_logic;
-  signal pht_raddr, pht_waddr : std_logic_vector(log2ext(nentries)-1 downto 0);
-  signal pht_rdata, pht_wdata : std_logic_vector((2**hlength)*2-1 downto 0);
+  signal pht_raddr, pht_waddr : std_logic_vector(log2ext(nentries) - 1 downto 0);
+  signal pht_rdata, pht_wdata : std_logic_vector((2 ** hlength) * 2 - 1 downto 0);
 
   signal r, rin : reg_type := RES;
 
 begin  -- rtl
 
-    phtable : syncram_2p generic map (tech, log2ext(nentries), (2**hlength)*2, 0, 0, testen, 0, memtest_vlen)
+    phtable : syncram_2p generic map (tech, log2ext(nentries), (2 ** hlength) * 2, 0, 0, testen, 0, memtest_vlen)
     port map (clk, pht_re, pht_raddr, pht_rdata, clk, pht_we, pht_waddr, pht_wdata, testin
                );   
 
-  comb : process(r, bhti, rstn, pht_rdata)
-    variable v                  : reg_type;
-    variable rindex             : std_logic_vector(BHTBITS-1 downto OFFSET);
-    variable windex             : std_logic_vector(BHTBITS-1 downto OFFSET);
-    variable history            : bhthistory;
-    variable whistory           : bhthistory;
-    variable rhistory0          : bhthistory;
-    variable rhistory1          : bhthistory;
-    variable rphthistory0       : std_logic_vector(PHTBITS-1 downto 0);
-    variable rphthistory1       : std_logic_vector(PHTBITS-1 downto 0);
-    variable rpht0              : phto;
-    variable rpht1              : phto;
-    variable pht0               : std_logic_vector(MAX_PREDICTOR_BITS-1 downto 0);
-    variable pht1               : std_logic_vector(MAX_PREDICTOR_BITS-1 downto 0);
-    variable wdata              : std_logic_vector(COUNTERBITS-1 downto 0);
-    variable taken              : std_logic_vector(3 downto 0);
+  comb : process(r, bhti, rstn, holdn, pht_rdata)
+    variable v                     : reg_type;
+    variable rindex                : std_logic_vector(BHTBITS - 1 downto OFFSET);
+    variable windex                : std_logic_vector(BHTBITS - 1 downto OFFSET);
+    variable history               : bhthistory;
+    variable whistory              : bhthistory;
+    variable rhistory0             : bhthistory;
+    variable rhistory1             : bhthistory;
+    variable rphthistory0          : std_logic_vector(PHTBITS - 1 downto 0);
+    variable rphthistory1          : std_logic_vector(PHTBITS - 1 downto 0);
+    variable rpht0                 : phto;
+    variable rpht1                 : phto;
+    variable pht0                  : std_logic_vector(MAX_PREDICTOR_BITS - 1 downto 0);
+    variable pht1                  : std_logic_vector(MAX_PREDICTOR_BITS - 1 downto 0);
+    variable wdata                 : std_logic_vector(COUNTERBITS - 1 downto 0);
+    variable taken                 : std_logic_vector(3 downto 0);
 
-    variable rindex_comb            : std_logic_vector(log2ext(nentries)-1 downto 0);
-    variable bhistory               : std_logic_vector(hlength-1 downto 0);
-    variable phistory               : std_logic_vector((2**hlength)*2-1 downto 0);
-    variable bwhistory              : std_logic_vector(hlength-1 downto 0);
-    variable bhto_bhistory          : std_logic_vector(4 downto 0);
-    variable bhto_phistory          : std_logic_vector(63 downto 0);
-    variable bhti_wdata             : std_logic_vector(1 downto 0);
-    variable bhti_phistory_temp     : std_logic_vector((2**hlength)*2-1 downto 0);
-    variable bhistory_new           : std_logic_vector(hlength-1 downto 0);
+    variable rindex_comb           : std_logic_vector(log2ext(nentries) - 1 downto 0);
+    variable bhistory              : std_logic_vector(hlength - 1 downto 0);
+    variable phistory              : std_logic_vector((2 ** hlength) * 2 - 1 downto 0);
+    variable bwhistory             : std_logic_vector(hlength - 1 downto 0);
+    variable bhto_bhistory         : std_logic_vector( 4 downto 0);
+    variable bhto_phistory         : std_logic_vector(63 downto 0);
+    variable bhti_wdata            : std_logic_vector( 1 downto 0);
+    variable bhti_phistory_temp    : std_logic_vector((2 ** hlength) * 2 - 1 downto 0);
+    variable bhistory_new          : std_logic_vector(hlength - 1 downto 0);
     variable pht_rev,pht_wev       : std_ulogic;
-    variable pht_raddrv,pht_waddrv : std_logic_vector(log2ext(nentries)-1 downto 0);
-    variable pht_rdatav            : std_logic_vector((2**hlength)*2-1 downto 0);
-    variable pht_wdatav             : std_logic_vector((2**hlength)*2-1 downto 0);
+    variable pht_raddrv,pht_waddrv : std_logic_vector(log2ext(nentries) - 1 downto 0);
+    variable pht_rdatav            : std_logic_vector((2 ** hlength) * 2 - 1 downto 0);
+    variable pht_wdatav            : std_logic_vector((2 ** hlength) * 2 - 1 downto 0);
   begin
 
     v := r;
 
     -- Sample input signals
-    windex              := bhti.waddr(BHTBITS-1 downto OFFSET);
-    rindex_comb         := bhti.raddr_comb(BHTBITS-1 downto OFFSET);
+    windex              := bhti.waddr(BHTBITS - 1 downto OFFSET);
+    rindex_comb         := bhti.raddr_comb(BHTBITS - 1 downto OFFSET);
 
-    v.ren := '0';
+    v.ren               := '0';
     if holdn = '1' and bhti.ren = '1' then
-      v.ren := '1';
-      v.rindex_reg := rindex_comb;
+      v.ren             := '1';
+      v.rindex_reg      := rindex_comb;
       v.write_forwarded := '0';
     end if;
-    pht_rev := v.ren;
+    pht_rev             := v.ren;
     
     if bhti.iustall = '0' and holdn = '1' then
-      v.rindex_bhist_reg := bhti.rindex_bhist(BHTBITS-1 downto OFFSET);
+      v.rindex_bhist_reg := bhti.rindex_bhist(BHTBITS - 1 downto OFFSET);
     end if;
 
-    pht_rdatav := r.pht_rdata_hold;
+    pht_rdatav         := r.pht_rdata_hold;
     if r.ren = '1' and r.write_forwarded = '0' then
-      pht_rdatav := pht_rdata;
+      pht_rdatav       := pht_rdata;
       if notx(r.rindex_reg) then
         if r.valid(to_integer(unsigned(r.rindex_reg))) = '0' then
-          pht_rdatav := (others => '0');
+          pht_rdatav   := (others => '0');
         end if;
       else
         setx(pht_rdatav);
@@ -222,21 +224,21 @@ begin  -- rtl
     phistory := pht_rdatav;
 
 
-    bhistory := r.bhist_data_hold;
+    bhistory            := r.bhist_data_hold;
     if r.ren = '1' then
-      bhistory := r.bhttable(conv_integer(r.rindex_reg));
+      bhistory          := r.bhttable(conv_integer(r.rindex_reg));
 
       if r.valid(to_integer(unsigned(r.rindex_reg))) = '0' then
-        bhistory := (others => '0');
+        bhistory        := (others => '0');
       end if;
       v.bhist_data_hold := bhistory;
     end if;
     
     bhti_wdata := bhti.phistory(1 downto 0);
     if notx(bhti.bhistory) then
-      for i in 0 to 2**hlength-1 loop
-        if i = unsigned(bhti.bhistory(hlength-1 downto 0)) then
-          bhti_wdata := bhti.phistory(i*2+1 downto i*2);
+      for i in 0 to 2 ** hlength - 1 loop
+        if i = unsigned(bhti.bhistory(hlength - 1 downto 0)) then
+          bhti_wdata := bhti.phistory(i * 2 + 1 downto i * 2);
         end if;
       end loop;
     else
@@ -259,82 +261,82 @@ begin  -- rtl
       end case;
     end if;
              
-    bhti_phistory_temp := bhti.phistory((2**hlength)*2-1 downto 0);
+    bhti_phistory_temp := bhti.phistory((2 ** hlength) * 2 - 1 downto 0);
 
     pht_raddrv := rindex_comb;
     
-    pht_wev    := '0';
-    pht_waddrv := windex;
+    pht_wev     := '0';
+    pht_waddrv  := windex;
     if bhti.wen = '1' then
-      pht_wev := '1';
-      bwhistory := bhti.bhistory(hlength-1 downto 0);
-      for i in 0 to 2**hlength-1 loop
+      pht_wev   := '1';
+      bwhistory := bhti.bhistory(hlength - 1 downto 0);
+      for i in 0 to 2 ** hlength - 1 loop
         if i = unsigned(bwhistory) then
-          bhti_phistory_temp(i*2+1 downto i*2) := wdata;
+          bhti_phistory_temp(i * 2 + 1 downto i * 2) := wdata;
         end if;
       end loop;
-      v.valid(to_integer(unsigned(pht_waddrv))) := '1';
+      v.valid(to_integer(unsigned(pht_waddrv)))      := '1';
 
       if pht_waddrv = r.rindex_reg then
-        --write forwarding
+        -- Write forwarding
         v.pht_rdata_hold := bhti_phistory_temp;
       end if;
 
-      v.write_forwarded := '0';
+      v.write_forwarded   := '0';
       if pht_waddrv = pht_raddrv then
         v.write_forwarded := '1';
-        v.pht_rdata_hold := bhti_phistory_temp;
+        v.pht_rdata_hold  := bhti_phistory_temp;
       end if;
       
     end if;
 
     pht_wdatav := bhti_phistory_temp;
     
-    bhistory_new := bhti.taken & bhti.bhistory(hlength-1 downto 1);
+    bhistory_new := bhti.taken & bhti.bhistory(hlength - 1 downto 1);
     if bhti.wen = '1' then
-      v.bhttable(conv_integer(windex))(hlength-1)          := bhti.taken;
-      v.bhttable(conv_integer(windex))(hlength-2 downto 0) := bhti.bhistory(hlength-1 downto 1);
+      v.bhttable(conv_integer(windex))(hlength - 1)          := bhti.taken;
+      v.bhttable(conv_integer(windex))(hlength - 2 downto 0) := bhti.bhistory(hlength - 1 downto 1);
 
-      --update btb taken for the upcoming history
-      --for "0000" and "1111" the next history might correspond to an updated value
-      --on this cycle hence use the updated phistory
-      for i in 0 to 2**hlength-1 loop
+      -- Update btb taken for the upcoming history
+      -- For "0000" and "1111", the next history might correspond to an updated value
+      -- on this cycle, hence use the updated phistory.
+      for i in 0 to 2 ** hlength - 1 loop
         if i = unsigned(bhistory_new) then
-          v.taken(conv_integer(windex)) := bhti_phistory_temp(i*2+1);
+          v.taken(conv_integer(windex)) := bhti_phistory_temp(i * 2 + 1);
         end if;
       end loop;
       
     end if;                
           
-    taken(0) := r.taken(conv_integer(r.rindex_bhist_reg));
-    taken(1) := r.taken(conv_integer(r.rindex_bhist_reg(log2ext(nentries)-1 downto 1) & '1'));
-    taken(2) := '0';
-    taken(3) := '0';
+    taken(0)   := r.taken(conv_integer(r.rindex_bhist_reg));
+    taken(1)   := r.taken(conv_integer(r.rindex_bhist_reg(log2ext(nentries) - 1 downto 1) & '1'));
+    taken(2)   := '0';
+    taken(3)   := '0';
     if ext_c /= 0 and dissue /= 0 then
-      taken(1) := r.taken(conv_integer(r.rindex_bhist_reg(log2ext(nentries)-1 downto 2) & "01"));
-      taken(2) := r.taken(conv_integer(r.rindex_bhist_reg(log2ext(nentries)-1 downto 2) & "10"));
-      taken(3) := r.taken(conv_integer(r.rindex_bhist_reg(log2ext(nentries)-1 downto 2) & "11"));
+      taken(1) := r.taken(conv_integer(r.rindex_bhist_reg(log2ext(nentries) - 1 downto 2) & "01"));
+      taken(2) := r.taken(conv_integer(r.rindex_bhist_reg(log2ext(nentries) - 1 downto 2) & "10"));
+      taken(3) := r.taken(conv_integer(r.rindex_bhist_reg(log2ext(nentries) - 1 downto 2) & "11"));
     end if;
   
     if bhti.flush = '1' then
-      v.valid := (others=>'0');
+      v.valid := (others => '0');
     end if;
 
-    bhto_bhistory(hlength-1 downto 0)        := bhistory;
-    bhto_phistory((2**hlength)*2-1 downto 0) := phistory;
+    bhto_bhistory(hlength - 1 downto 0)            := bhistory;
+    bhto_phistory((2 ** hlength) * 2 - 1 downto 0) := phistory;
 
     -- Output Signals
-    bhto.taken     <= taken;
-    bhto.phistory  <= bhto_phistory;
-    bhto.bhistory  <= bhto_bhistory;
+    bhto.taken    <= taken;
+    bhto.phistory <= bhto_phistory;
+    bhto.bhistory <= bhto_bhistory;
 
-    rin         <= v;
+    rin           <= v;
 
-    pht_re      <= pht_rev;
-    pht_we      <= pht_wev;
-    pht_raddr   <= pht_raddrv;
-    pht_waddr   <= pht_waddrv;
-    pht_wdata   <= pht_wdatav;
+    pht_re        <= pht_rev;
+    pht_we        <= pht_wev;
+    pht_raddr     <= pht_raddrv;
+    pht_waddr     <= pht_waddrv;
+    pht_wdata     <= pht_wdatav;
 
   end process;
 
@@ -342,10 +344,10 @@ begin  -- rtl
   begin
     if rising_edge(clk) then
       if rstn = '0' then
-        r.pht_rdata_hold <= (others=>'0');
-        r.bhist_data_hold <= (others=>'0');
-        r.valid <= (others=>'0');
-        r.ren   <= '0';
+        r.pht_rdata_hold  <= (others => '0');
+        r.bhist_data_hold <= (others => '0');
+        r.valid           <= (others => '0');
+        r.ren             <= '0';
         r.write_forwarded <= '0';
       else
         r <= rin;

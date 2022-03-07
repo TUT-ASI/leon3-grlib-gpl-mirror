@@ -2,7 +2,7 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2021, Cobham Gaisler
+--  Copyright (C) 2015 - 2022, Cobham Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -34,6 +34,8 @@ use techmap.gencomp.all;
 library gaisler;
 use gaisler.arith.all;
 use gaisler.uart.all;
+use gaisler.leon5.leon5_bretry_in_type;
+use gaisler.leon5.leon5_bretry_out_type;
 
 package leon5int is
 
@@ -559,7 +561,6 @@ package leon5int is
     waddr        : std_logic_vector(XLEN-1 downto 0);
     iustall      : std_logic;
     wen          : std_logic;
-    dbranch      : std_logic;
     taken        : std_logic;
     flush        : std_logic;
     ren          : std_logic;
@@ -863,6 +864,7 @@ package leon5int is
   -----------------------------------------------------------------------------
   component dbgmod5 is
     generic (
+      fabtech   : integer;
       memtech   : integer;
       ncpu      : integer;
       ndbgmst   : integer;
@@ -873,11 +875,15 @@ package leon5int is
       pnpaddrhi : integer;
       pnpaddrlo : integer;
       dsuslvidx : integer;
-      dsumstidx : integer
+      dsumstidx : integer;
+      bretryen  : integer
       );
     port (
       clk      : in  std_ulogic;
       rstn     : in  std_ulogic;
+      bretclk  : in  std_ulogic;
+      bretrstn : in  std_ulogic;
+      rstreqn  : out std_ulogic;
       cpurstn  : out std_logic_vector(0 to ncpu-1);
       dbgmi    : out ahb_mst_in_vector_type(ndbgmst-1 downto 0);
       dbgmo    : in  ahb_mst_out_vector_type(ndbgmst-1 downto 0);
@@ -893,11 +899,15 @@ package leon5int is
       tpi      : in  trace_port_in_vector(0 to NCPU-1);
       tco      : out trace_control_out_vector(0 to NCPU-1);
       tstop    : out std_ulogic;
+      dbgtime  : out std_logic_vector(31 downto 0);
       maskerrn : out std_logic_vector(0 to NCPU-1);
       uartie   : in  uart_in_type;
       uartoe   : out uart_out_type;
       uartii   : out uart_in_type;
-      uartoi   : in  uart_out_type
+      uartoi   : in  uart_out_type;
+      sysstat  : in  std_logic_vector(15 downto 0);
+      bretin   : in  leon5_bretry_in_type;
+      bretout  : out leon5_bretry_out_type
       );
   end component;
 
