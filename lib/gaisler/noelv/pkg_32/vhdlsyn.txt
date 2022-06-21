@@ -1,2 +1,3 @@
 ../pkg/noelv_cfg_32.vhd
 ../pkg/noelv.vhd
+../pkg/noelv_cpu_cfg.vhd

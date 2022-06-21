@@ -43,7 +43,9 @@ use gaisler.noelv.nv_irq_out_type;
 use gaisler.noelv.nv_debug_in_type;
 use gaisler.noelv.nv_debug_out_type;
 use gaisler.noelv.nv_counter_out_type;
+use gaisler.noelv.nv_etrace_out_type;
 use gaisler.noelvint.all;
+use gaisler.utilnv.u2vec;
 
 entity cpucorenv is
   generic (
@@ -95,6 +97,14 @@ entity cpucorenv is
     ext_a               : integer range 0  to 1         := 0;  -- A Base Extension Set
     ext_c               : integer range 0  to 1         := 0;  -- C Base Extension Set
     ext_h               : integer range 0  to 1         := 0;  -- H Extension
+    ext_zba             : integer range 0  to 1         := 0;  -- Zba Extension
+    ext_zbb             : integer range 0  to 1         := 0;  -- Zbb Extension
+    ext_zbc             : integer range 0  to 1         := 0;  -- Zbc Extension
+    ext_zbs             : integer range 0  to 1         := 0;  -- Zbs Extension
+    ext_zbkb            : integer range 0  to 1         := 0;  -- Zbkb Extension
+    ext_zbkc            : integer range 0  to 1         := 0;  -- Zbkc Extension
+    ext_zbkx            : integer range 0  to 1         := 0;  -- Zbkx Extension
+    ext_sscofpmf        : integer range 0  to 1         := 0;  -- Sscofpmf Extension
     mode_s              : integer range 0  to 1         := 0;  -- Supervisor Mode Support
     mode_u              : integer range 0  to 1         := 0;  -- User Mode Support
     fpulen              : integer range 0  to 128       := 0;  -- Floating-point precision
@@ -106,8 +116,9 @@ entity cpucorenv is
     physaddr            : integer range 32 to 56        := 32; -- Physical Addressing
     rstaddr             : integer                       := 16#00000#; -- reset vector (MSB)
     disas               : integer                       := 0;  -- Disassembly to console
-    perf_cnts           : integer range 0  to 31        := 16; -- Number of performance counters
+    perf_cnts           : integer range 0  to 29        := 16; -- Number of performance counters
     perf_evts           : integer range 0  to 255       := 16; -- Number of performance events
+    perf_bits           : integer range 0  to 64        := 64; -- Bits of performance counting
     illegalTval0        : integer range 0  to 1         := 0;  -- Zero TVAL on illegal instruction
     no_muladd           : integer range 0  to 1         := 0;  -- 1 - multiply-add not supported
     single_issue        : integer range 0  to 1         := 0;  -- 1 - only one pipeline
@@ -131,6 +142,7 @@ entity cpucorenv is
     irqo        : out nv_irq_out_type;    -- irq out
     dbgi        : in  nv_debug_in_type;   -- debug in
     dbgo        : out nv_debug_out_type;  -- debug out
+    eto         : out nv_etrace_out_type;
     cnt         : out nv_counter_out_type -- Perf event Out Port
     );
 end;
@@ -157,12 +169,22 @@ architecture rtl of cpucorenv is
   constant dusebw       : integer := (cmemconf / 4) mod 2;
   constant mulconf_int  : integer := mulconf mod 4;
   constant mulconf_fpu  : integer := (mulconf / 16) mod 4;
-  function gen_capability return std_logic_vector is
-    variable cap : std_logic_vector(2 downto 0) := (others => '0');
+  function regen_fpuconf return integer is
   begin
+    if hw_fpu = 3 then
+      return 1;
+    else
+      return 0;
+    end if;
+  end;
+  constant fpuconf      : integer := regen_fpuconf;
+  function gen_capability return std_logic_vector is
+    variable cap : std_logic_vector(6 downto 0) := (others => '0');
+  begin
+    cap(6 downto 3) := u2vec(NOELV_VERSION,4);
     return cap;
   end;
-  constant capability : std_logic_vector(2 downto 0) := gen_capability;
+  constant capability : std_logic_vector(6 downto 0) := gen_capability;
   constant dtagwidth    : integer := physaddr - (log2(dwaysize) + 10) + 1;
   constant cdataw       : integer := 64;
 
@@ -234,7 +256,8 @@ architecture rtl of cpucorenv is
   signal dci          : nv_dcache_in_type;
   signal dco          : nv_dcache_out_type;
 
-  signal csr_mmu      : csrtype;    -- CSR values for MMU
+  signal csr_mmu      : nv_csr_out_type;    -- CSR values for MMU
+  signal mmu_csr      : nv_csr_in_type;    -- CSR values for MMU
 
   -- Mul/Div Unit
   signal muli         : mul_in_type;
@@ -271,7 +294,7 @@ architecture rtl of cpucorenv is
   signal fs3_word64     : word64;
 
 
-  signal mtesti_none    : std_logic_vector(memtest_vlen-1 downto 0);
+  signal mtesti_none    : std_logic_vector(memtest_vlen - 1 downto 0);
 
   attribute sync_set_reset : string;
   attribute sync_set_reset of rst : signal is "true";
@@ -297,12 +320,15 @@ begin
       disas         => disas,
       perf_cnts     => perf_cnts,
       perf_evts     => perf_evts,
+      perf_bits     => perf_bits,
       illegalTval0  => illegalTval0,
       no_muladd     => no_muladd,
       single_issue  => single_issue,
       -- Caches
       iways         => iways,
       dways         => dways,
+      itcmen        => itcmen,
+      dtcmen        => dtcmen,
       -- MMU
       mmuen         => mmuen,
       riscv_mmu     => actual_riscv_mmu,
@@ -314,10 +340,19 @@ begin
       ext_a         => ext_a,
       ext_c         => ext_c,
       ext_h         => ext_h,
+      ext_zba       => ext_zba,
+      ext_zbb       => ext_zbb,
+      ext_zbc       => ext_zbc,
+      ext_zbs       => ext_zbs,
+      ext_zbkb      => ext_zbkb,
+      ext_zbkc      => ext_zbkc,
+      ext_zbkx      => ext_zbkx,
+      ext_sscofpmf  => ext_sscofpmf,
       mode_s        => mode_s,
       mode_u        => mode_u,
       dmen          => dmen,
       fpulen        => fpulen,
+      fpuconf       => fpuconf,
       trigger       => trigger,
       -- Advanced Features
       late_branch   => late_branch,
@@ -356,10 +391,12 @@ begin
       fpuo          => fpo,
       cnt           => iu_cnt,
       csr_mmu       => csr_mmu,
+      mmu_csr       => mmu_csr,
       cap           => capability,
       perf          => c_perf,
       tbo           => tbo,
       tbi           => tbi,
+      eto           => eto,
       sclk          => clk,
       testen        => ahbsi.testen,
       testrst       => ahbsi.testrst
@@ -469,7 +506,8 @@ begin
       crami         => crami,
       cramo         => cramo,
       sclk          => clk,
-      csr           => csr_mmu,
+      csro          => csr_mmu,
+      csri          => mmu_csr,
       fpc_mosi      => fpc_mosi,
       fpc_miso      => fpc_miso,
       c2c_mosi      => c2c_mosi,
@@ -497,7 +535,7 @@ begin
       hlength           => bhtlength,
       predictor         => predictor,
       ext_c             => ext_c,
-      dissue            => 1-single_issue,
+      dissue            => 1 - single_issue,
       testen            => scantest
       )
     port map (
@@ -514,7 +552,7 @@ begin
     generic map (
       nentries          => btbentries,
       pcbits            => pcbits,
-      dissue            => 1-single_issue
+      dissue            => 1 - single_issue
       )
     port map (
       clk               => gclk,
@@ -544,7 +582,7 @@ begin
         abits           => IRFBITS,
         dbits           => XLEN,
         numregs         => IREGNUM,
-        dissue          => (1-single_issue),
+        dissue          => 1 - single_issue,
         testen          => scantest
         )
       port map (
@@ -799,7 +837,6 @@ begin
         events      => fpo.events
       );
 
-    fpo.issue     <= '0';
     rff_fd        <= fpo.data(rff_fd'range);
     rff_wen       <= fpo.wen
                      ;
@@ -823,7 +860,6 @@ begin
         s1          => fs1_word64,
         s2          => fs2_word64,
         s3          => fs3_word64,
-        issue       => fpo.issue,
         fpu_holdn   => fpo.holdn,
         ready_flop  => fpo.ready,
         commit      => fpi.commit,
@@ -850,7 +886,8 @@ begin
         wb_mode     => fpo.mode,
         wb_id       => fpo.wb_id,
         idle        => fpo.idle,
-        events      => fpo.events
+        events      => fpo.events,
+        ctrl        => fpi.ctrl
       );
 
     rff_fd   <= fpo.data(rff_fd'range);

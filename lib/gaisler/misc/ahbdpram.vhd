@@ -66,7 +66,7 @@ constant kbytes : integer := 2**(abits - 8);
 
 constant cache : std_ulogic := conv_std_logic(cacheable/=0);
 constant prefetch : std_ulogic := conv_std_logic(cacheable/=0);
-
+--AHBRAM-like cores use the version Plug&Play field to indicate memory size.
 constant hconfig : ahb_config_type := (
   0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_AHBDPRAM, 0, abits+2, 0),
   4 => ahb_membar(haddr, prefetch, cache, hmask),

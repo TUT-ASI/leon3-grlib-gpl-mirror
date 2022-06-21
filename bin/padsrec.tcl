@@ -45,7 +45,7 @@ while { ! [eof stdin] } {
                 set haddr [string range $l 4 $dp-1]
                 set addr 0x${haddr}
                 if { [llength $outrecs] == 0 } {
-                        set startaddr [expr { $addr - ($addr & (1-$recbytes)) }]
+                        set startaddr [expr { $addr - ($addr & ($recbytes-1)) }]
                 }
                 while { $bc > 0 } {
                         set recno [expr { ($addr-$startaddr) / $recbytes }]

@@ -379,6 +379,15 @@ component clkand_gf22fdx
   );
 end component;
 
+component clkand_rhs28
+  port(
+    i   :  in  std_ulogic;
+    en  :  in  std_ulogic;
+    o   :  out std_ulogic;
+    tsten: in  std_ulogic
+  );
+end component;
+
 component clkmux_unisim
   port(
     i0, i1  :  in  std_ulogic;
@@ -870,7 +879,9 @@ component sim_pll is
     clkphase4: integer := 0;
     -- Frequency limits in kHz, for checking only
     minfreq: integer := 0;
-    maxfreq: integer := 10000000
+    maxfreq: integer := 10000000;
+    -- Lock tolerance in ps
+    locktol: integer := 2
     );
   port (
     i: in std_logic;

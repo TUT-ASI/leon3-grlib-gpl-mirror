@@ -886,7 +886,7 @@ component ahbxb is
     hmask3      : integer := 16#fff#;
     nslaves     : integer range 1 to NAPBSLV := NAPBSLV;
     nports      : integer range 1 to 4 := 2;
-    wprot       : integer range 0 to 1 := 0;
+    wprot       : integer range 0 to 2 := 0;
     debug       : integer range 0 to 2 := 2;   -- print config to console
     icheck      : integer range 0 to 1 := 1;
     enbusmon    : integer range 0 to 1 := 0;
@@ -917,7 +917,7 @@ component ahbxb is
     haddr1      : integer := 0;
     hmask1      : integer := 16#fff#;
     nslaves     : integer range 1 to NAPBSLV := NAPBSLV;
-    wprot       : integer range 0 to 1 := 0;
+    wprot       : integer range 0 to 2 := 0;
     debug       : integer range 0 to 2 := 2;   -- print config to console
     icheck      : integer range 0 to 1 := 1;
     enbusmon    : integer range 0 to 1 := 0;
@@ -948,7 +948,7 @@ component ahbxb is
     hmask       : integer := 16#fff#;
     nslaves     : integer range 1 to NAPBSLV := NAPBSLV;
     debug       : integer range 0 to 2 := 2;   -- print config to console
-    wprot       : integer range 0 to 1 := 0;
+    wprot       : integer range 0 to 2 := 0;
     icheck      : integer range 0 to 1 := 1;
     enbusmon    : integer range 0 to 1 := 0;
     asserterr   : integer range 0 to 1 := 0;
@@ -978,7 +978,7 @@ component ahbxb is
     haddr1      : integer := 0;
     hmask1      : integer := 16#fff#;
     nslaves     : integer range 1 to NAPBSLV := NAPBSLV;
-    wprot       : integer range 0 to 1 := 0;
+    wprot       : integer range 0 to 2 := 0;
     debug       : integer range 0 to 2 := 2;   -- print config to console
     icheck      : integer range 0 to 1 := 1;
     enbusmon    : integer range 0 to 1 := 0;
@@ -1019,7 +1019,7 @@ component ahbxb is
       haddr3      : integer := 0;
       hmask3      : integer := 16#fff#;
       nslaves     : integer range 1 to NAPBSLV := NAPBSLV;
-      wprot       : integer range 0 to 1 := 0;
+      wprot       : integer range 0 to 2 := 0;
       debug       : integer range 0 to 2 := 2;
       icheck      : integer range 0 to 1 := 1;
       enbusmon    : integer range 0 to 1 := 0;

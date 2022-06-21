@@ -99,20 +99,13 @@
 #define CONFIG_NOELV_RV64 1
 #undef  CONFIG_NOELV_RV32
 #define CONFIG_NOELV_XLEN (64)
-#undef  CONFIG_NOELV_TIN
-#undef  CONFIG_NOELV_MIN
-#undef  CONFIG_NOELV_GPS
-#undef  CONFIG_NOELV_GPD
 #define CONFIG_NOELV_HP 1
-#define CONFIG_PROC_CFG (0)
-/*
- * VHDL debug settings       
- */
-#undef  CONFIG_IU_DISAS
-/*
- * NOEL-V subsystem GPL settings       
- */
-#define CONFIG_PROC_NODBUS 1
+#undef  CONFIG_NOELV_GP
+#undef  CONFIG_NOELV_MC
+#define CONFIG_PROC_TYP (4)
+#define CONFIG_PROC_LITE (0)
+#define CONFIG_PROC_NOFPU (0)
+#define CONFIG_PROC_S (0)
 /*
  * L2 Cache
  */

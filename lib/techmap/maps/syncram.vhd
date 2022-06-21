@@ -486,6 +486,22 @@ begin
     customoutx(customoutx'high downto 13) <= (others => '0');
   end generate;
 
+  rhs28x: if xtech=rhs28 generate
+    x0: syncram_rhs28
+      generic map (abits => abits, dbits => dbits, pipeline => pipeline)
+      port map (
+        clk => clk,
+        address => address,
+        datain => datain,
+        dataout => dataoutx,
+        enable => xenable,
+        write => xwrite,
+        initn => testin(TESTIN_WIDTH-3),
+        testen => testin(TESTIN_WIDTH-1),
+        scanen => testin(TESTIN_WIDTH-2)
+        );
+  end generate;
+
 -- pragma translate_off
   noram : if has_sram(xtech) = 0 generate
     x : process

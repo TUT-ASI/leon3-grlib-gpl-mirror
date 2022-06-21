@@ -689,6 +689,14 @@ package leon3 is
     (active => '0', tstop => '0', pwd => (others => '0'),
      astat => dsu_astat_none);
   
+  type dsu_ext_ctrl_type is record
+    set_bn  : std_logic_vector(15 downto 0);
+    clr_bn  : std_logic_vector(15 downto 0);
+  end record;                        
+  constant dsu_ext_ctrl_none : dsu_ext_ctrl_type := (
+    set_bn => (others => '0'),
+    clr_bn => (others => '0'));
+  
   component dsu3 
   generic (
     hindex  : integer := 0;
@@ -759,7 +767,8 @@ package leon3 is
     clk2x   : integer range 0 to 1 := 0;
     testen  : integer := 0;
     bwidth  : integer := 32;
-    ahbpf   : integer := 0
+    ahbpf   : integer := 0;
+    ectrlen : integer := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -774,7 +783,8 @@ package leon3 is
     dbgo   : out l3_debug_in_vector(0 to NCPU-1);
     dsui   : in dsu_in_type;
     dsuo   : out dsu_out_type;
-    hclken : in std_ulogic
+    hclken : in std_ulogic;
+    extctrl: in  dsu_ext_ctrl_type := dsu_ext_ctrl_none
   );
   end component;
 

@@ -112,7 +112,7 @@ proc append_file_xlnx_vivado {f finfo} {
 proc eof_xlnx_vivado {} {
 	global VIVADO_SIMSET GRLIB_XIL_Vivado_sim_verilog_define XDC TCL VIVADO_UCF \
 	GRLIB_XIL_Vivado_Simulator TOP PROTOBOARD CONFIG_MIG_7SERIES BOARD VIVADO_MIG_AXI \
-	AXI_64 AXI_128 DESIGN CONFIG_GRETH_ENABLE NETLISTTECH GRLIB CONFIG_HSSL_SERDES \
+	AXI_64 AXI_128 DESIGN CONFIG_GRETH_ENABLE NETLISTTECH GRLIB CONFIG_GRHSSL_ENABLE \
 	VIVADO_SYNTH_FLOW VIVADO_SYNTH_STRATEGY VIVADO_IMPL_STRATEGY VIVADO_INCL_DIRS
 	upvar vivado_contents vc
 
@@ -213,7 +213,7 @@ proc eof_xlnx_vivado {} {
 			append vc "\ngenerate_target  all \[get_files ./vivado/$DESIGN/$DESIGN.srcs/sources_1/ip/sgmii/sgmii.xci\] -force "
 		}
 	}
-        if {[string equal $CONFIG_HSSL_SERDES "y"]} {
+        if {[string equal $CONFIG_GRHSSL_ENABLE "y"]} {
 		if {[file exists "$GRLIB/boards/$BOARD/hssl_serdes.xci"]} {
 			set files [glob -nocomplain -type f "$GRLIB/boards/$BOARD/hssl_serdes.*"]
 			foreach f $files {

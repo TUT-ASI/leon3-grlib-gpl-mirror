@@ -153,6 +153,8 @@ architecture rtl of nanofpunv is
     readyflop   : std_ulogic;
 
 
+    last_unissued : boolean;
+
     events      : fpevt_t;
     events_pipe : fpevt_t;
 
@@ -234,6 +236,7 @@ architecture rtl of nanofpunv is
     s           => nf_idle,
     fpu_holdn   => '1',
     readyflop   => '0',
+    last_unissued => true,
     events      => (others => '0'),
     events_pipe => (others => '0'),
     rm          => R_NEAREST,
@@ -390,6 +393,7 @@ begin
     variable round_from_denormal : boolean;
     variable is_idle  : std_ulogic;
     variable evt      : fpevt_t;
+    variable valid    : std_ulogic;
     -- "Notifications" to simplify some logic
     variable to_idle   : boolean;
     variable to_finish : boolean;
@@ -441,7 +445,7 @@ begin
     evt := (others => '0');
 
     v.now2int := '0';
-    v.exc2int := (others => '0');
+--    v.exc2int := (others => '0');
 
 
     -- Sometimes reused storage
@@ -449,7 +453,12 @@ begin
     divrem1 := unsigned(r.s1(28      downto 0));
     divrem2 := unsigned(r.s1(28 + 32 downto 32));
 
-    fpu_gen(e_inst, csrfrm, e_valid, issue_op);
+    -- Only a single valid per new issue_id!
+    valid := e_valid;
+    if r.id = issue_id and not r.last_unissued then
+      valid := '0';
+    end if;
+    fpu_gen(e_inst, csrfrm, valid and not e_nullify, issue_op);
     issue_cmd := issue_op.valid;
 
     defnan := NaN(r.rddp_real = '1');
@@ -786,7 +795,6 @@ begin
 
     case r.s is
       when nf_idle =>
-        v.id          := issue_id;
         v.rd          := issue_op.rd;
         v.rm          := issue_op.rm;
         v.rmb         := issue_op.opx;
@@ -803,6 +811,8 @@ begin
         v.fpu_holdn   := '1';
         v.muladd      := '0';
         if issue_cmd = '1' and holdn = '1' then
+          v.id        := issue_id;
+          v.last_unissued := false;
           fpu_event(evt, FPEVT_ISSUE);
           v.committed := commit;
           if issue_op.op = FPU_LOAD or issue_op.op = FPU_MV_W_X then
@@ -2083,7 +2093,7 @@ begin
         elsif is_nan(r.op1) then
           v.res          := r.s2;
         elsif not is_nan(r.op2) then
-          -- Assume R_MIN
+          -- Assume R_FMIN
           if (is_zero(r.op1) and is_zero(r.op2)) or is_inf(r.op1) then
             use_fs2      := not r.op1.neg;
           elsif is_inf(r.op2) then
@@ -2091,8 +2101,8 @@ begin
           else
             use_fs2      := fcc /= "01";
           end if;
-          -- Conditions are opposite for R_MAX
-          if use_fs2 xor (r.rmb = R_MAX) then
+          -- Conditions are opposite for R_FMAX
+          if use_fs2 xor (r.rmb = R_FMAX) then
             v.res        := r.s2;
           end if;
         end if;
@@ -2384,11 +2394,11 @@ begin
             v.op1.exp   := r.op1.exp - 1;
             v.op1.mant  := r.op1.mant(r.op1.mant'high - 1 downto 0) & '0';
             v.op2.exp   := r.op2.exp - 1;
-            v.op2.mant  := r.op2.mant(r.op1.mant'high - 1 downto 0) & std_logic(r.accbot(r.accbot'high));
+            v.op2.mant  := r.op2.mant(r.op1.mant'high - 1 downto 0) & std_logic(get_hi(r.accbot));
             v.accbot    := r.accbot(r.accbot'high - 1 downto 0) & '0';
           else
             v.op1.exp   := r.op2.exp - 1;
-            v.op1.mant  := r.op2.mant(r.op2.mant'high - 1 downto 0) & std_logic(r.accbot(r.accbot'high));
+            v.op1.mant  := r.op2.mant(r.op2.mant'high - 1 downto 0) & std_logic(get_hi(r.accbot));
             v.s1(r.accbot'range) := std_logic_vector(r.accbot(r.accbot'high - 1 downto 0) & '0');
             v.op2.exp   := r.op1.exp - 1;
             v.op2.mant  := r.op1.mant(r.op2.mant'high - 1 downto 0) & '0';
@@ -2454,7 +2464,7 @@ begin
             xtmpaddx := xtmpaddx - 1;
           end if;
         end if;
-        v.carry    := xtmpaddx(xtmpaddx'high);
+        v.carry              := get_hi(xtmpaddx);
         v.s2                 := (others => '0');
         v.s2(xtmpaddx'range) := std_logic_vector(xtmpaddx);
         v.s2(xtmpaddx'high)  := '0';  -- Clear carry
@@ -2586,13 +2596,14 @@ begin
     end case;
 
 
-    if unissue = '1' then
+    if unissue = '1' and v.id = unissue_id then
       fpu_event(evt, FPEVT_UNISSUE_1ST);
       to_idle     := true;
       v.s         := nf_idle;
       v.fpu_holdn := '1';
       v.wen       := '0';
       v.flags_wen := '0';
+      v.last_unissued := true;
     end if;
 
     -- Generate flow control flags

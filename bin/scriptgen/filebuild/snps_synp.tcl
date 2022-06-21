@@ -24,6 +24,9 @@ proc append_file_snps_synp {f finfo} {
 		"vhdlfpro" {
 		}
 		"vhdlprec" {
+			global SYNPVHDL VHDLOPT
+			upvar compile_synp_contents csc
+			append csc "$SYNPVHDL $VHDLOPT$bn $f\n"
 		}
 		"vhdlsyn" {
 			set l [dict get $finfo l]

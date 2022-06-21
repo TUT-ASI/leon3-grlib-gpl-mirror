@@ -50,7 +50,8 @@ entity dsu3x is
     clk2x   : integer range 0 to 1 := 0;
     testen  : integer := 0;
     bwidth  : integer := 32;
-    ahbpf   : integer := 0
+    ahbpf   : integer := 0;
+    ectrlen : integer := 0
   );
   port (
     rst    : in  std_ulogic;
@@ -65,7 +66,8 @@ entity dsu3x is
     dbgo   : out l3_debug_in_vector(0 to NCPU-1);
     dsui   : in dsu_in_type;
     dsuo   : out dsu_out_type;
-    hclken : in std_ulogic
+    hclken : in std_ulogic;
+    extctrl: in  dsu_ext_ctrl_type
   );
   attribute sync_set_reset of rst : signal is "true"; 
 end; 
@@ -129,6 +131,8 @@ architecture rtl of dsu3x is
     timer : std_logic_vector(tbits-1 downto 0);
     pwd   : std_logic_vector(NCPU-1 downto 0);    
     tstop : std_ulogic;
+    set_bn: std_logic_vector(NCPU-1 downto 0);
+    clr_bn: std_logic_vector(NCPU-1 downto 0);
   end record;
 
   type reg2_type is record
@@ -157,7 +161,9 @@ architecture rtl of dsu3x is
     act    => '0',
     timer  => (others => '0'),
     pwd    => (others => '0'),
-    tstop  => '0'
+    tstop  => '0',
+    set_bn => (others => '0'),
+    clr_bn => (others => '0')
     );
 
   constant RRES2 : reg2_type := (timer => (others => '0'),
@@ -371,6 +377,7 @@ begin
     vabufi.write := (others => '0'); aindex := (others => '0');
     hirq := (others => '0'); v.reset := (others => '0');
     tfv := tfr; pv := pr;
+    v.set_bn := (others => '0'); v.clr_bn := (others => '0');
     
     if TRACEN then 
       aindex := tr.aindex + 1;
@@ -574,6 +581,19 @@ begin
       v.bn(i) := v.bn(i) or (dbgmode and r.bmsk(i)) or (r.dsubre(1) and not r.dsubre(2));
       if TRACEN then v.bn(i) := v.bn(i) or (tr.bphit and not r.ss(i) and not r.act); end if;
       v.pwd(i) := dbgi(i).idle and (not dbgi(i).ipend) and not v.bn(i);
+
+      -- External set/clear if break-now register
+      if ectrlen = 1 then
+        -- Need to be active two cycles to mask dbgi.dsumode from CPU when cleared 
+        v.set_bn(i) := extctrl.set_bn(i);
+        v.clr_bn(i) := extctrl.clr_bn(i);
+        if extctrl.clr_bn(i) = '1' or r.clr_bn(i) = '1' then
+          v.bn(i) := '0';
+        end if;
+        if extctrl.set_bn(i) = '1' or r.set_bn(i) = '1' then
+          v.bn(i) := '1';
+        end if;
+      end if;
     end loop;
     cpwd(NCPU-1 downto 0) := r.pwd;  
 

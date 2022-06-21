@@ -2850,6 +2850,8 @@ begin
         odco.way := "00";
         odco.mds := '0';
 
+        odco.mexc := r.ahb3_error and not r.dcignerr;
+
       when as_mmuwalk =>
         -- Ensure PTE writes get snooped
         if r.mmusel(2)='0' then

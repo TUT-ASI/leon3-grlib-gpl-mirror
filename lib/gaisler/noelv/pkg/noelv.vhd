@@ -40,6 +40,7 @@ package noelv is
 
   constant XLEN                 : integer := NV_XLEN;
   constant FLEN                 : integer := 64;  -- Unused
+  constant CAUSELEN             : integer := 5;
   constant DBITS                : integer := 16;  -- Use in one place
 
   constant GEILEN               : integer := 16;
@@ -136,7 +137,7 @@ package noelv is
     istat       : nv_cstat_type;
     dstat       : nv_cstat_type;
     mcycle      : std_logic_vector(63 downto 0);
-    cap         : std_logic_vector(2 downto 0);
+    cap         : std_logic_vector(6 downto 0);
   end record;
 
   constant nv_debug_out_none    : nv_debug_out_type := (
@@ -160,6 +161,110 @@ package noelv is
 
   type nv_debug_in_vector  is array (natural range <>) of nv_debug_in_type;
   type nv_debug_out_vector is array (natural range <>) of nv_debug_out_type;
+
+  -- Hart-Encoder Interface
+  type nv_etrace_out_type is record
+    -- Mandatory signals
+    itype     : std_logic_vector(3 downto 0);
+    cause     : std_logic_vector(CAUSELEN-1 downto 0);
+    tval      : std_logic_vector(XLEN-1 downto 0);
+    priv      : std_logic_vector(2 downto 0);
+    iaddr     : std_logic_vector(XLEN-1 downto 0);
+    -- Optional signals
+    ctext     : std_logic_vector(XLEN-1 downto 0);
+    tetime    : std_logic_vector(XLEN-1 downto 0);
+    ctype     : std_logic_vector(1 downto 0);
+    sijump    : std_logic_vector(0 downto 0);
+    -- Block Retire
+    iretire   : std_logic_vector(2 downto 0);
+    ilastsize : std_logic_vector(0 downto 0);
+  end record;
+
+  constant nv_etrace_out_none : nv_etrace_out_type := (
+    itype     => (others => '0'),
+    cause     => (others => '0'),
+    tval      => (others => '0'),
+    priv      => (others => '0'),
+    iaddr     => (others => '0'),
+    ctext   => (others => '0'),
+    tetime    => (others => '0'),
+    ctype     => (others => '0'),
+    sijump    => (others => '0'),
+    iretire   => (others => '0'),
+    ilastsize => (others => '0')
+  );
+  
+  type nv_etrace_out_vector is array (natural range <>) of nv_etrace_out_type;
+  
+  -- E-trace sink Interfaces
+  type nv_etrace_sink_in_type is record
+    full  : std_logic;
+  end record;
+  constant nv_etrace_sink_in_none : nv_etrace_sink_in_type := (
+    full  => '0'
+  );
+  type nv_etrace_sink_in_vector is array (natural range <>) of nv_etrace_sink_in_type;
+  type nv_etrace_sink_out_type is record
+    en    : std_logic;
+    data  : std_logic_vector(255 downto 0);
+    size  : std_logic_vector(5 downto 0);
+  end record;
+  constant nv_etrace_sink_out_none : nv_etrace_sink_out_type := (
+    en    => '0',
+    data  => (others => '0'),
+    size  => (others => '0')
+  );
+  type nv_etrace_sink_out_vector is array (natural range <>) of nv_etrace_sink_out_type;
+
+  -- CPU configurations type
+  type nv_cpu_cfg_type is record
+    single_issue  : integer;
+    ext_m         : integer;
+    ext_a         : integer;
+    ext_c         : integer;
+    ext_h         : integer;
+    ext_zba       : integer;
+    ext_zbb       : integer;
+    ext_zbc       : integer;
+    ext_zbs       : integer;
+    ext_zbkb      : integer;
+    ext_zbkc      : integer;
+    ext_zbkx      : integer;
+    ext_sscofpmf  : integer;
+    mode_s        : integer;
+    mode_u        : integer;
+    fpulen        : integer;
+    pmp_no_tor    : integer;
+    pmp_entries   : integer;
+    pmp_g         : integer;
+    perf_cnts     : integer;
+    perf_evts     : integer;
+    perf_bits     : integer;
+    tbuf          : integer;
+    trigger       : integer;
+    icen          : integer;
+    iways         : integer;
+    iwaysize      : integer;
+    ilinesize     : integer;
+    dcen          : integer;
+    dways         : integer;
+    dwaysize      : integer;
+    dlinesize     : integer;
+    mmuen         : integer;
+    itlbnum       : integer;
+    dtlbnum       : integer;
+    htlbnum       : integer;
+    div_hiperf    : integer;
+    div_small     : integer;
+    late_branch   : integer;
+    late_alu      : integer;
+    bhtentries    : integer;
+    bhtlength     : integer;
+    predictor     : integer;
+    btbentries    : integer;
+    btbsets       : integer;
+  end record;
+
 
   type nv_dm_in_type is record
     enable      : std_ulogic;
@@ -234,6 +339,14 @@ package noelv is
       ext_a             : integer range 0  to 1         := 0;  -- A Base Extension Set
       ext_c             : integer range 0  to 1         := 0;  -- C Base Extension Set
       ext_h             : integer range 0  to 1         := 0;  -- H Extension
+      ext_zba           : integer range 0  to 1         := 0;  -- Zba Extension
+      ext_zbb           : integer range 0  to 1         := 0;  -- Zbb Extension
+      ext_zbc           : integer range 0  to 1         := 0;  -- Zbc Extension
+      ext_zbs           : integer range 0  to 1         := 0;  -- Zbs Extension
+      ext_zbkb          : integer range 0  to 1         := 0;  -- Zbkb Extension
+      ext_zbkc          : integer range 0  to 1         := 0;  -- Zbkc Extension
+      ext_zbkx          : integer range 0  to 1         := 0;  -- Zbkx Extension
+      ext_sscofpmf      : integer range 0  to 1         := 0;  -- Sscofpmf Extension
       mode_s            : integer range 0  to 1         := 0;  -- Supervisor Mode Support
       mode_u            : integer range 0  to 1         := 0;  -- User Mode Support
       fpulen            : integer range 0  to 128       := 0;  -- Floating-point precision
@@ -245,8 +358,9 @@ package noelv is
       physaddr          : integer range 32 to 56        := 32; -- Physical Addressing
       rstaddr           : integer                       := 16#00000#; -- reset vector (MSB)
       disas             : integer                       := 0;  -- Disassembly to console
-      perf_cnts         : integer range 0  to 31        := 16; -- Number of performance counters
+      perf_cnts         : integer range 0  to 29        := 16; -- Number of performance counters
       perf_evts         : integer range 0  to 255       := 16; -- Number of performance events
+      perf_bits         : integer range 0  to 64        := 64; -- Bits of performance counting
       illegalTval0      : integer range 0  to 1         := 0;  -- Zero TVAL on illegal instruction
       no_muladd         : integer range 0  to 1         := 0;  -- 1 - multiply-add not supported
       single_issue      : integer range 0  to 1         := 0;  -- 1 - only one pipeline
@@ -270,10 +384,11 @@ package noelv is
       irqo        : out nv_irq_out_type;  -- irq out
       dbgi        : in  nv_debug_in_type; -- debug in
       dbgo        : out nv_debug_out_type;-- debug out
+      eto         : out nv_etrace_out_type;
       cnt         : out nv_counter_out_type
       );
   end component;
-  
+
   component noelvcpu is
     generic (
       hindex   : integer;
@@ -304,6 +419,7 @@ package noelv is
       irqo  : out nv_irq_out_type;
       dbgi  : in  nv_debug_in_type;
       dbgo  : out nv_debug_out_type;
+      eto   : out nv_etrace_out_type;
       cnt   : out nv_counter_out_type
       );
   end component;
@@ -331,6 +447,7 @@ package noelv is
       cfg      : integer := 0;
       devid    : integer := 0;
       nodbus   : integer := 0;
+      trace    : integer := 0;
       scantest : integer := 0
       );
     port (
@@ -357,6 +474,9 @@ package noelv is
       uarto    : out uart_out_type;
       -- Perf counter
       cnt      : out nv_counter_out_vector(ncpu-1 downto 0);
+      -- E-trace sink interface
+      etso     : out nv_etrace_sink_out_vector(ncpu-1 downto 0);
+      etsi     : in  nv_etrace_sink_in_vector(ncpu-1 downto 0) := (others => nv_etrace_sink_in_none);
       -- DFT support
       testen  : in  std_ulogic := '0';
       testrst : in  std_ulogic := '1';
@@ -440,5 +560,29 @@ package noelv is
     port (
       ahbsi    : in  ahb_slv_in_type;
       ahbso    : out ahb_slv_out_type);
+  end component;
+
+  component etracenv is
+    generic (
+      ext_c   : integer;
+      ncpu    : integer;
+      -- Encoder APB
+      pindex  : integer;
+      paddr   : integer;
+      pmask   : integer;
+      pirq    : integer
+    );
+    port (
+      rstn    : in  std_ulogic;
+      clk     : in  std_ulogic;
+      -- Encoder APB interface
+      apbi    : in  apb_slv_in_type;
+      apbo    : out apb_slv_out_type;
+      -- Encoder-Hart interface
+      eto     : in  nv_etrace_out_vector(ncpu-1 downto 0);
+      -- Encoder to sink interface
+      etso    : out nv_etrace_sink_out_vector(ncpu-1 downto 0);
+      etsi    : in  nv_etrace_sink_in_vector(ncpu-1 downto 0)
+    );
   end component;
 end;

@@ -20,7 +20,7 @@
 -----------------------------------------------------------------------------
 -- Entity:      mul64
 -- File:        mul64.vhd
--- Author:      Andrea Merlo, Cobham Gaisler AB
+-- Author:      Andrea Merlo and Johan Klockars, Cobham Gaisler AB
 -- Description: NOEL-V Multiplication Unit
 ------------------------------------------------------------------------------
 
@@ -34,11 +34,7 @@ use grlib.multlib.all;
 library techmap;
 use techmap.gencomp.all;
 library gaisler;
-use gaisler.noelv.all;
-use gaisler.noelvint.all;
-library techmap;
-use techmap.gencomp.all;
-use grlib.stdlib.tost;
+use gaisler.utilnv.get_hi;
 
 -----
 -- arch0 -> generic mult
@@ -156,20 +152,20 @@ begin
       sign2      := '0';
     elsif ctrl = "010" then  -- MULHSU
       sign2      := '0';
-      if v1(v1'high) = '1' then
+      if get_hi(v1) = '1' then
         v1       := (not v1) + 1;
         v.negate := '1';
       end if;
     elsif ctrl = "001" then  -- MULH
-      if v1(v1'high) = '1' then
+      if get_hi(v1) = '1' then
         v1       := (not v1) + 1;
         v.negate := not v.negate;
       end if;
-      if v2(v2'high) = '1' then
+      if get_hi(v2) = '1' then
         v2       := (not v2) + 1;
         v.negate := not v.negate;
       end if;
-    elsif v2(v2'high) = '1' then
+    elsif get_hi(v2) = '1' then
       v1        := (not v1) + 1;
       v2        := (not v2) + 1;
     end if;

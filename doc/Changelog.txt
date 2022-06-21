@@ -1,3 +1,64 @@
+----------------------- Release 2022.2-b4274 ---------------------------
+
+2022-06-21	SYNCFIFO_2P: Various fixes and updates to inferred FIFO:
+		 - write-side empty (wempty) and read-side full (rfull) signals
+		   did not immediately de-assert as expected after a write/read
+		 - Fix so that the almost-empty flag accounts for the state of
+		   the pipeline registers when pipelining is enabled
+		   (piperead=1).
+		 - Include the state of the pipeline registers in the write-side
+		   empty indication when piperead=1
+		 - Added rdhold generic that is passed through to the underlying
+		   syncram_2p instances. Enabling this will cause the outputs to
+		   remain valid after a read in fwft=0 mode.
+		 - For simulation, make dataout go to U when data is not
+		   guaranteed to be valid. This is to make it easier to detect
+		   bugs in interfacing IP.
+
+2022-06-05	NOEL-V: release update:
+		- Added support for ratified bit manipulation and simple crypto 
+		  instructions (Zba/b/c/s, Zbkb/c/x).
+		- Added counter filtering and overflow extension (Sscofpmf).
+		- Added custom instructions and custom CSR for L1-cache control
+		  Updated prom code accordingly.
+		- Program buffer execute could be triggered when not in debug
+		  mode
+		- Reset value for maskmax field in mcontrol triggers was
+		  incorrect
+		- Added support for mtinst/htinst and corrected mstatus.gva
+		- Corrected issue with a compressed hint instruction
+		  (c.lui x0, v) and illegal instruction (c.fswsp without F)
+		- Hypervisor TLB handling was not handled correctly when no PMP
+		  was available. Handling of hPTEs (or PMP) entries smaller
+		  than PTE entries could be handled incorrectly.
+		- Bugfix related to PMP
+		  Fixed issue with 0 at the top and for PMP TOR issues with
+		  reverse and null range and handling of range top alignment
+		  when the PMPADDR was not itself properly aligned
+		- Bugfix related to FPU stalls and data forwarding.
+
+2022-05-30	LEON5: Add additional pipeline register for data between debug
+		masters and the debug module.
+
+2022-05-08	GRDMAC2: Add type casts to pirq generic in order to work
+		around synthesis tool issues
+
+2022-03-28	Generic DDR3 simulation model: Improve Read-to-write and
+		write-to-read timing checks.
+
+2022-03-28	Generic DFI PHY simulation model: Workaround for issue
+		with Riviera Pro.
+
+2022-03-28	TECHMAP/SIMPLL: locktol generic on generic PLL model (sim_pll)
+		was not exposed on the component.
+
+2022-03-24	APBCTRL: Added access protection option.
+
+2022-02-24	LEON5: Loads and atomics with cache/MMU bypass
+		(ASI 0x1C) or from uncached memory areas (based on
+		MMU cacheability setting or cached generic) did
+		not trap as expected when getting an AHB error response.
+
 ----------------------- Release 2022.1-b4272 ---------------------------
 
 2022-02-22	Generic DDR2/DDR3 simulation models: Added support

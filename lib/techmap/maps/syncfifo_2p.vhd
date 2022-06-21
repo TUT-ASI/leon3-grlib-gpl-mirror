@@ -60,7 +60,8 @@ entity syncfifo_2p is
     fwft : integer := 0;     -- 1 = first word fall trough mode, 0 = standard mode
     piperead: integer := 0;   -- add full pipeline stage on read side (ping pong buffer)
     ft   : integer := 0;     -- enable EDAC on RAMs (GRLIB-FT only, passed on to syncram_2pft)
-    custombits : integer := 1
+    custombits : integer := 1;
+    rdhold: integer := 0
     );
   port (
     rclk    : in std_logic;  -- read clock
@@ -91,7 +92,7 @@ architecture rtl of syncfifo_2p is
   component generic_fifo
     generic (tech  : integer := 0; abits : integer := 10; dbits : integer := 32;
     sepclk : integer := 1; afullwl : integer := 0; aemptyrl : integer := 0; fwft : integer := 0;
-    ft : integer := 0; custombits : integer := 1);
+    ft : integer := 0; custombits : integer := 1; rdhold : integer := 0; extrempty: integer := 0);
     port (
       rclk    : in std_logic;
       rrstn   : in std_logic;
@@ -110,6 +111,7 @@ architecture rtl of syncfifo_2p is
       wusedw  : out std_logic_vector(abits-1 downto 0);
       datain  : in std_logic_vector(dbits-1 downto 0);
       dynsync : in std_ulogic;
+      rextempty: in std_ulogic;
       testin  : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
       error    : out std_logic_vector((((dbits+7)/8)-1)*(1-ft/4)+ft/4 downto 0);
       errinj   : in std_logic_vector((((dbits + 7)/8)*2-1)*(1-ft/4)+(6*(ft/4)) downto 0) := (others => '0')
@@ -118,6 +120,7 @@ architecture rtl of syncfifo_2p is
 
   signal dataout_i: std_logic_vector(dbits-1 downto 0);
   signal rempty_i, renable_i: std_logic;
+  signal aempty_i: std_ulogic;
   signal error_i: std_logic_vector(error'high downto 0);
 
   constant fwftx: integer := fwft*(1-piperead) + piperead;
@@ -127,28 +130,31 @@ architecture rtl of syncfifo_2p is
   signal piperead_valid, piperead_read: std_logic_vector(1 downto 0);
   signal piperead_selout: std_ulogic;
 
+  signal plempty: std_ulogic;
+
 begin
 
 -- Altera fifo
   alt : if ((tech = altera) or (tech = stratix1) or (tech = stratix2) or
             (tech = stratix3) or (tech = stratix4) or (tech = stratix5)) and ft=0 generate
     x0 : altera_fifo_dp generic map (tech, abits, dbits, sepclk, afullwl, aemptyrl, fwftx)
-      port map (rclk, renable_i, rfull, rempty_i, aempty, rusedw, dataout_i, wclk,
+      port map (rclk, renable_i, rfull, rempty_i, aempty_i, rusedw, dataout_i, wclk,
         write, wfull, afull, wempty, wusedw, datain);
   end generate;
 
 -- generic FIFO implemented using syncram_2p component
   inf : if ((tech /= altera) and (tech /= stratix1) and (tech /= stratix2) and 
             (tech /= stratix3) and (tech /= stratix4) and (tech /= stratix5)) or ft/=0 generate
-    x0: generic_fifo generic map (tech, abits, dbits, sepclk, afullwl, aemptyrl, fwftx, ft, custombits)
-      port map (rclk, rrstn, wrstn, renable_i, rfull, rempty_i, aempty, rusedw, dataout_i,
-        wclk, write, wfull, afull, wempty, wusedw, datain, dynsync, testin, error_i, errinj
+    x0: generic_fifo generic map (tech, abits, dbits, sepclk, afullwl, aemptyrl, fwftx, ft, custombits, rdhold, piperead)
+      port map (rclk, rrstn, wrstn, renable_i, rfull, rempty_i, aempty_i, rusedw, dataout_i,
+        wclk, write, wfull, afull, wempty, wusedw, datain, dynsync, plempty, testin, error_i, errinj
                 );
   end generate;
 
   nopout: if piperead=0 generate
     dataout <= dataout_i;
     rempty <= rempty_i;
+    aempty <= aempty_i;
     renable_i <= renable;
     error <= error_i;
     piperead_d0 <= (others => '0');
@@ -156,6 +162,7 @@ begin
     piperead_valid <= "00";
     piperead_selout <= '0';
     piperead_read <= "00";
+    plempty <= '0';
   end generate;
 
   pout: if piperead=1 generate
@@ -163,12 +170,14 @@ begin
       dop: process(rclk)
       begin
         if rising_edge(rclk) then
-          if piperead_selout='0' then
-            dataout <= piperead_d0;
-            error <= piperead_e0;
-          else
-            dataout <= piperead_d1;
-            error <= piperead_e1;
+          if rdhold=0 or renable='1' then
+            if piperead_selout='0' then
+              dataout <= piperead_d0;
+              error <= piperead_e0;
+            else
+              dataout <= piperead_d1;
+              error <= piperead_e1;
+            end if;
           end if;
         end if;
       end process;
@@ -177,7 +186,12 @@ begin
       dataout <= piperead_d0 when piperead_selout='0' else piperead_d1;
       error <= piperead_e0 when piperead_selout='0' else piperead_e1;
     end generate;
+    plempty <= not piperead_valid(0) and not piperead_valid(1) and not renable_i;
     rempty <= not piperead_valid(0) and not piperead_valid(1);
+    aempty <= not piperead_valid(0) and not piperead_valid(1) when aemptyrl=0 else
+              not (piperead_valid(0) and piperead_valid(1)) when aemptyrl=1 else
+              not (piperead_valid(0) and piperead_valid(1)) when aemptyrl=2 else
+              (not piperead_valid(0) and not piperead_valid(1)) or aempty_i;
     piperead_read(0) <= (not piperead_selout or piperead_valid(1)) and not piperead_valid(0) and not rempty_i;
     piperead_read(1) <= (piperead_selout     or piperead_valid(0)) and not piperead_valid(1) and not rempty_i;
     renable_i <= piperead_read(0) or piperead_read(1);

@@ -39,6 +39,7 @@ use gaisler.noelvint.all;
 use gaisler.utilnv.all_0;
 use gaisler.utilnv.to_bit;
 use gaisler.utilnv.u2i;
+use gaisler.utilnv.get_hi;
 
 entity div64 is
   generic (
@@ -294,7 +295,7 @@ begin
 
     -- Shift as needed, if small divider.
     elsif small = 1 and r.shifting = '1' then
-      if r.divisor <= r.dividend and r.divisor(r.divisor'high) = '0' then
+      if r.divisor <= r.dividend and get_hi(r.divisor) = '0' then
         v.divisor      := shift_left(r.divisor, 1);
         v.quotient_msk := shift_left(r.quotient_msk, 1);
       else

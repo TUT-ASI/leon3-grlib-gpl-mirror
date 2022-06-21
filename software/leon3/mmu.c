@@ -20,6 +20,12 @@ extern unsigned long ctx;
 extern unsigned long pg0,pm0,pt0,page0,page1,page2,pth_addr,pth_addr1;
 typedef void (*functype)(void);
 
+/* return: value at location before the conditional swap */
+unsigned int vxAtomic32Cas(
+  unsigned int *location,
+  unsigned int oldval,
+  unsigned int newval
+);
 
 #define fail(err) do { } while(1);
 #define report(test_case) 
@@ -268,6 +274,20 @@ __asm__(
                       "g1","g2","g3");
  if ( (*((volatile unsigned long *)a_30041000)) != 0x12345678 ||
       (*((volatile unsigned long *)a_30041004)) != 0xabcdef01) { fail(4); }
+
+ {
+  unsigned int t;
+
+  t = vxAtomic32Cas((unsigned int *) a_30041000, 0x12345678, 0xdeadbeef);
+  if (t != 0x12345678) {
+    fail(18);
+  }
+
+  t = vxAtomic32Cas((unsigned int *) a_30041000, 0xdeadbeef, 0x12345678);
+  if (t != 0xdeadbeef) {
+    fail(19);
+  }
+ }
   
  for (j=a_30043000,i = 3;i<TLBNUM+3;i++,j+=REAL_PAGE_SIZE) {
        *((unsigned long *)j) = j;

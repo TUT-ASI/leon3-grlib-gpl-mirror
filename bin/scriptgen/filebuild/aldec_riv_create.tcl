@@ -57,6 +57,11 @@ proc append_file_aldec_riv_create {f finfo riv_fs riv_path} {
 			return
 		}
 		"vhdlprec" {
+			upvar $riv_fs rivfs
+			upvar riviera_ws_create_do_contents rwcdc
+			set rivfs "$rivfs $f"
+			set f_real [dict get $finfo f_real]
+			append rwcdc "\ndesign.file.add $riv_path$f_real"
 			return
 		}
 		"vhdlsyn" {

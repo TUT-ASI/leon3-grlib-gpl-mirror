@@ -243,6 +243,7 @@ begin
     generic map (defmast => CFG_DEFMST, split => CFG_SPLIT,
                  rrobin  => CFG_RROBIN, ioaddr => CFG_AHBIO, ioen => 1,
                  nahbm => CFG_NCPU+CFG_AHB_UART+CFG_AHB_JTAG+CFG_GRETH,
+                 ahbtrace => CFG_AHB_DTRACE,
                  nahbs => 8)
     port map (rstn, clkm, ahbmi, ahbmo, ahbsi, ahbso);
 

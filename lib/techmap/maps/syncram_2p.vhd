@@ -399,7 +399,8 @@ begin
            testen => testinx(TIXW-1),
            testrst => testinx(TIXW-3),
            sysclk => customclkx,
-           awtb => testinx(TIXW-5)
+           awtb => testinx(TIXW-5),
+           memreset => testinx(TIXW-6)
            );
     customoutx(customoutx'high downto 3) <= (others => '0');
   end generate;
@@ -562,6 +563,27 @@ begin
            fDataOut   => customoutx(12)
            );
     customoutx(customoutx'high downto 13) <= (others => '0');
+  end generate;
+
+  rhs28x: if xtech=rhs28 generate
+    x0: syncram_2p_rhs28
+      generic map (
+        abits => abits,
+        dbits => dbits
+        )
+      port map (
+        rclk     => rclk,
+        renable  => renable,
+        raddress => raddress,
+        dataout  => dataoutx,
+        wclk     => wclk,
+        write    => write,
+        waddress => waddress,
+        datain   => datain,
+        initn    => testin(TESTIN_WIDTH-3),
+        testen   => testin(TESTIN_WIDTH-1),
+        scanen   => testin(TESTIN_WIDTH-2)
+        );
   end generate;
 
 -- pragma translate_off

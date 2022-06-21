@@ -129,45 +129,42 @@ package fputilnv is
   end record;
 
   type fpuevent_t is (
-    FPEVT_MULADD_PIPE  , --    :  integer :=  0;  -- Finish muladd pipeline
-    FPEVT_DIVSQRT_UNIT , --    :  integer :=  1;  -- Finish divsqrt unit
-    FPEVT_RD_UNISSUE   , --    :  integer :=  2;  -- Unissue instruction with Rd
-    FPEVT_PICK_RD      , --    :  integer :=  3;  -- Pick Rs from current Rd
-    FPEVT_UNISSUE_1ST  , --    :  integer :=  4;  -- Unissue in first stage
-    FPEVT_UNISSUE_2ND  , --    :  integer :=  5;  -- Unissue in second stage
-    FPEVT_AWAIT_FORWARD, --    :  integer :=  6;  -- Await muladd pipe forwarding
-    FPEVT_AWAIT_RD     , --    :  integer :=  7;  -- Await Rd clash resolve
-    FPEVT_AWAIT_FREE   , --    :  integer :=  8;  -- Await divsqrt pipe free
-    FPEVT_AWAIT_RS     , --    :  integer :=  9;  -- Await Rs results
-    FPEVT_UNISSUE_RD   , --    :  integer := 10;  -- Unissue due to Rd cancel
-    FPEVT_ISSUE        , --    :  integer := 11;  -- Issue operation
-    FPEVT_HOLD         , --    :  integer := 12;  -- Hold issue
-    FPEVT_EARLY_DATA   , --    :  integer := 13;  -- Early data from IU
-    FPEVT_COMMIT       , --    :  integer := 14;  -- Commit operation
-    FPEVT_DIV          , --    :  integer := 15;  -- div
-    FPEVT_SQRT         , --    :  integer := 16;  -- sqrt
-    FPEVT_MADD         , --    :  integer := 17;  -- madd / msub / nmsub / nmadd
-    FPEVT_ADD          , --    :  integer := 18;  -- add / sub
-    FPEVT_MINMAX       , --    :  integer := 19;  -- min / max
-    FPEVT_SGN          , --    :  integer := 20;  -- sgn
-    FPEVT_MUL          , --    :  integer := 21;  -- mul
-    FPEVT_S2D          , --    :  integer := 22;  -- s->d
-    FPEVT_D2S          , --    :  integer := 23;  -- d->s
-    FPEVT_LOAD         , --    :  integer := 24;  -- load
-    FPEVT_X2F          , --    :  integer := 25;  -- x->f
-    FPEVT_I2F          , --    :  integer := 26;  -- i->f
-    FPEVT_F2I          , --    :  integer := 27;  -- f->i
-    FPEVT_EQ           , --    :  integer := 28;  -- eq
-    FPEVT_CMP          , --    :  integer := 29;  -- lt le
-    FPEVT_F2X          , --    :  integer := 30;  -- f->x
-    FPEVT_CLASS        , --    :  integer := 31;  -- class
-    FPEVT_STORE        , --    :  integer := 32;  -- store
-    FPEVT_UNKNOWN      , --    :  integer := 33;  -- Should never happen!
-    FPEVT_TIMEOUT      , --    :  integer := 34;  -- Internal error in FPU
-    FPEVT_CE           , --    :  integer := 35;  -- Correctable RF error
-    FPEVT_UE           , --    :  integer := 36;  -- Uncorrectable RF error
-    FPEVT_SCRUB_OR     , --    :  integer := 37;  -- Scrub over-run
-    FPEVT_EVENTS                                  -- Only for fpevt_t type!
+    FPEVT_HOLD         ,  --  Hold issue
+    FPEVT_AWAIT_FORWARD,  --  Await muladd pipe forwarding
+    FPEVT_AWAIT_RD     ,  --  Await Rd clash resolve
+    FPEVT_AWAIT_FREE   ,  --  Await divsqrt pipe free
+    FPEVT_AWAIT_RS     ,  --  Await Rs results
+    FPEVT_ISSUE        ,  --  Issue operation
+    FPEVT_COMMIT       ,  --  Commit operation
+    FPEVT_MULADD_PIPE  ,  --  Finish muladd pipeline
+    FPEVT_DIVSQRT_UNIT ,  --  Finish divsqrt unit
+    FPEVT_PICK_RD      ,  --  Pick Rs from current Rd
+    FPEVT_RD_UNISSUE   ,  --  Unissue instruction with Rd
+    FPEVT_UNISSUE_2ND  ,  --  Unissue in second stage
+    FPEVT_UNISSUE_1ST  ,  --  Unissue in first stage
+    FPEVT_UNISSUE_QUEUE,  --  Unissue in queue
+    FPEVT_UNISSUE_RD   ,  --  Unissue due to Rd cancel
+    FPEVT_EARLY_DATA   ,  --  Early data from IU
+    FPEVT_LOAD         ,  --  load
+    FPEVT_STORE        ,  --  store
+    FPEVT_DIV          ,  --  div
+    FPEVT_SQRT         ,  --  sqrt
+    FPEVT_MADD         ,  --  madd / msub / nmsub / nmadd
+    FPEVT_MUL          ,  --  mul
+    FPEVT_ADD          ,  --  add / sub
+    FPEVT_MINMAX       ,  --  min / max
+    FPEVT_SGN          ,  --  sgn
+    FPEVT_EQ           ,  --  eq
+    FPEVT_CMP          ,  --  lt le
+    FPEVT_CLASS        ,  --  class
+    FPEVT_S2D          ,  --  s->d
+    FPEVT_D2S          ,  --  d->s
+    FPEVT_I2F          ,  --  i->f
+    FPEVT_F2I          ,  --  f->i
+    FPEVT_X2F          ,  --  x->f
+    FPEVT_F2X          ,  --  f->x
+    FPEVT_UNKNOWN      ,  --  Should never happen!
+    FPEVT_EVENTS          -- Only for fpevt_t type!
   );
 
   subtype fpevt_t is std_logic_vector(1 to fpuevent_t'pos(FPEVT_EVENTS));
@@ -230,6 +227,11 @@ package fputilnv is
   function is_fromint(op : fpuop_t) return boolean;
   function fd_gen(op : fpuop_t) return boolean;
 
+  function is_fpu(inst : word) return boolean;
+  function is_fpu_mem(inst : word) return boolean;
+  function is_fpu_from_int(inst : word) return boolean;
+  function is_fpu_rd(inst : word) return boolean;
+  function is_fpu_modify(inst : word) return boolean;
 
   function find_normadj(op     : float;
                         limdp  : boolean; limsp : boolean;
@@ -838,29 +840,37 @@ package body fputilnv is
   -- FPU Signals Generation
 
   -- Partial decode of FPU operation
-  function fpuop(op : std_logic_vector(4 downto 0)) return fpuop_t is
+  function fpuop(inst : word) return fpuop_t is
+    variable opcode : opcode_type := inst(6 downto 0);
+    variable funct5 : funct5_type := inst(31 downto 27);
+    -- Non-constant
+    variable op     : std_logic_vector(4 downto 0);
   begin
-    case op is
-    when R_FADD     => return FPU_ADD;
-    when R_FSUB     => return FPU_SUB;
-    when R_FMIN     => return FPU_MIN;
-    when R_FSGN     => return FPU_SGN;
-    when R_FCVT_S_D => return FPU_CVT_S_D;
-    when R_FMUL     => return FPU_MUL;
-    when S_FMADD    => return FPU_MADD;
-    when S_FMSUB    => return FPU_MSUB;
-    when S_FNMSUB   => return FPU_NMSUB;
-    when S_FNMADD   => return FPU_NMADD;
-    when S_STORE    => return FPU_STORE;
-    when R_FCVT_W_S => return FPU_CVT_W_S;
-    when R_FMV_X_W  => return FPU_MV_X_W;
-    when R_FCMP     => return FPU_CMP;
-    when S_LOAD     => return FPU_LOAD;
-    when R_FCVT_S_W => return FPU_CVT_S_W;
-    when R_FMV_W_X  => return FPU_MV_W_X;
-    when R_FDIV     => return FPU_DIV;
-    when R_FSQRT    => return FPU_SQRT;
-    when others     => return FPU_UNKNOWN;
+    case opcode is
+      when OP_FP       =>
+        case funct5 is
+        when R_FADD     => return FPU_ADD;
+        when R_FSUB     => return FPU_SUB;
+        when R_FMINMAX  => return FPU_MIN;
+        when R_FSGN     => return FPU_SGN;
+        when R_FCVT_S_D => return FPU_CVT_S_D;
+        when R_FMUL     => return FPU_MUL;
+        when R_FCVT_W_S => return FPU_CVT_W_S;
+        when R_FMV_X_W  => return FPU_MV_X_W;
+        when R_FCMP     => return FPU_CMP;
+        when R_FCVT_S_W => return FPU_CVT_S_W;
+        when R_FMV_W_X  => return FPU_MV_W_X;
+        when R_FDIV     => return FPU_DIV;
+        when R_FSQRT    => return FPU_SQRT;
+        when others     => return FPU_UNKNOWN;
+        end case;
+      when OP_LOAD_FP   => return FPU_LOAD;
+      when OP_STORE_FP  => return FPU_STORE;
+      when OP_FMADD     => return FPU_MADD;
+      when OP_FMSUB     => return FPU_MSUB;
+      when OP_FNMADD    => return FPU_NMADD;
+      when OP_FNMSUB    => return FPU_NMSUB;
+      when others       => return FPU_UNKNOWN;
     end case;
   end;
 
@@ -872,8 +882,6 @@ package body fputilnv is
     subtype word3  is std_logic_vector(2 downto 0);
     variable RFBITS : integer := 5;
     subtype rfatype is std_logic_vector(RFBITS-1 downto 0);
-    variable opcode : opcode_type := inst(6 downto 0);
-    variable funct5 : funct5_type := inst(31 downto 27);
     variable funct3 : funct3_type := inst(14 downto 12);
     variable fmt    : word2       := inst(26 downto 25);
     variable rs1    : rfatype     := inst(19 downto 15);
@@ -881,27 +889,15 @@ package body fputilnv is
     variable rs3    : rfatype     := inst(31 downto 27);
     variable rd     : rfatype     := inst(11 downto  7);
     -- Non-constant
-    variable valid  : std_ulogic  := valid_in;
+    variable op     : fpuop_t     := fpuop(inst);
+    variable valid  : std_ulogic  := valid_in and to_bit(op /= FPU_UNKNOWN);
     variable rm     : rm_t        := funct3;
-    variable sp     : boolean;
-    variable op     : std_logic_vector(4 downto 0);
+    variable sp     : boolean     := fmt = "00";      -- single precision
     variable ren    : std_logic_vector(1 to 3);
   begin
-    sp := fmt = "00";      -- single precision
-
-    case opcode is
-      when OP_FP       => op := funct5;
-      when OP_LOAD_FP  => op := S_LOAD;
-                          sp := funct3 = "010";  -- 32 bit memory access?
-      when OP_STORE_FP => op := S_STORE;
-                          sp := funct3 = "010";
-      when OP_FMADD  |
-           OP_FMSUB  |
-           OP_FNMADD |
-           OP_FNMSUB   => op := opcode(6 downto 2);
-      when others      => op := opcode(6 downto 2);  -- Dummy!
-                          valid := '0';
-    end case;
+    if op = FPU_STORE or op = FPU_LOAD then
+      sp := funct3 = "010";  -- 32 bit memory access?
+    end if;
 
     -- CSR controlled rounding?
     if funct3 = "111" then
@@ -912,7 +908,7 @@ package body fputilnv is
     ren(2) := fs2_gen(inst);
     ren(3) := fs3_gen(inst);
 
-    op_out := (valid, fpuop(op), funct3, rm, to_bit(sp), rd, (rs1, rs2, rs3), ren);
+    op_out := (valid, op, funct3, rm, to_bit(sp), rd, (rs1, rs2, rs3), ren);
   end;
 
   -- Fs1 register validity check
@@ -1002,8 +998,44 @@ package body fputilnv is
   -- Returns true if the instruction has a valid FPU fd field.
   function fd_gen(op : fpuop_t) return boolean is
   begin
-    return op /= FPU_CMP    and op /= FPU_STORE   and
-           op /= FPU_MV_X_W and op /= FPU_CVT_W_S;
+    return op /= FPU_UNKNOWN and
+           op /= FPU_CMP     and op /= FPU_STORE   and
+           op /= FPU_MV_X_W  and op /= FPU_CVT_W_S;
+  end;
+
+  -- FPU instruction that does not touch memory?
+  function is_fpu(inst : word) return boolean is
+    variable op : fpuop_t := fpuop(inst);
+  begin
+    return op /= FPU_UNKNOWN and op /= FPU_LOAD and op /= FPU_STORE;
+  end;
+
+  -- FPU instruction that touches memory?
+  function is_fpu_mem(inst : word) return boolean is
+    variable op : fpuop_t := fpuop(inst);
+  begin
+    return op = FPU_LOAD or op = FPU_STORE;
+  end;
+
+  -- FPU instruction with data from integer pipeline?
+  function is_fpu_from_int(inst : word) return boolean is
+    variable op : fpuop_t := fpuop(inst);
+  begin
+    return is_fromint(op);
+  end;
+
+  -- FPU instruction with FPU destination register?
+  function is_fpu_rd(inst : word) return boolean is
+    variable op : fpuop_t := fpuop(inst);
+  begin
+    return fd_gen(op);
+  end;
+
+  -- FPU instruction can modify FPU state (including flags)?
+  function is_fpu_modify(inst : word) return boolean is
+    variable op : fpuop_t := fpuop(inst);
+  begin
+    return op /= FPU_UNKNOWN and op /= FPU_STORE and op /= FPU_MV_X_W;
   end;
 
   -- Find shift amount for normalization.
@@ -1187,10 +1219,10 @@ package body fputilnv is
     variable xhi   : std_logic_vector( 9 downto 0) := (others => '0');
     variable xant  : std_logic_vector(55 downto 0) := mant_in;
     variable xadj  : signed(6 downto 0)            := vadj;
-    variable neg   : boolean                       := vadj(vadj'high) = '1';
+    variable neg   : boolean                       := get_hi(vadj) = '1';
     variable low1  : boolean                       := false;
   begin
-    if vadj(vadj'high) = '0' then
+    if get_hi(vadj) = '0' then
       mant0b_out := "00";
       if all_0(vadj) then
         mant0b_out := xant(0) & '0';

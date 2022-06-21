@@ -1,5 +1,5 @@
-noelvint.vhd
 utilnv.vhd
+noelvint.vhd
 mmuconfig.vhd
 bhtnv.vhd
 btbnv.vhd
@@ -14,6 +14,7 @@ regfile64sramnv.vhd
 regfile64dffnv.vhd
 progbuf.vhd
 fputilnv.vhd
+alunv.vhd
 iunv.vhd
 cpucorenv.vhd
 rvdmx.vhd

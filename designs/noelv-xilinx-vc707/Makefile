@@ -91,7 +91,7 @@ LIBSKIP = pci pci/pcif core1553bbc core1553brm srio core1553brt idt gr1553 coreP
 	spansion secureip grdmac mmuconfig fmf esa micron
 DIRSKIP = b1553 pci gr1553b/core pci/pcif leon2 leon2ft srio idt crypto satcan pci ambatest \
 	spacewire ascs slink irqmp grdmac grrm nand\
-	pwm gr1553b iommu ac97 secureip mmuiface clk2x generic_bm canfd leon4v0 spacefibre grdmac2 grscrub
+	pwm gr1553b iommu ac97 secureip mmuiface clk2x generic_bm canfd leon4v0 hssl grdmac2 grscrub
 
 
 ifeq ("$(CONFIG_LEON4)","")

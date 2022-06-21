@@ -189,3 +189,22 @@ casa_test:
 	nop
 9:      ret
 	restore
+
+  .global vxAtomic32Cas
+  .text
+.rept 12
+        nop
+.endr
+vxAtomic32Cas:
+        save    %sp, -104, %sp
+        nop
+        nop
+        nop
+        nop
+        nop
+        casa    [%i0] 0xa, %i1, %i2
+        mov     %i2, %i0
+        ret
+        restore
+        nop
+

@@ -293,7 +293,8 @@ package allmem is
       testrst  :  in std_logic;
       sysclk   : in  std_logic;
       --
-      awtb     : in  std_ulogic
+      awtb     : in  std_ulogic;
+      memreset : in  std_ulogic
      );
     end component;
 
@@ -2195,5 +2196,43 @@ end component;
       );
   end component;
 
-end;
+  component syncram_rhs28 is
+    generic (
+      abits : integer;
+      dbits : integer;
+      pipeline : integer
+      );
+    port (
+      clk      : in std_ulogic;
+      address  : in std_logic_vector((abits -1) downto 0);
+      datain   : in std_logic_vector((dbits -1) downto 0);
+      dataout  : out std_logic_vector((dbits -1) downto 0);
+      enable   : in std_ulogic;
+      write    : in std_ulogic;
+      initn    : in std_ulogic;
+      testen   : in std_ulogic;
+      scanen   : in std_ulogic
+      );
+  end component;
 
+  component syncram_2p_rhs28 is
+    generic (
+      abits : integer;
+      dbits : integer
+      );
+    port (
+      rclk     : in std_ulogic;
+      renable  : in std_ulogic;
+      raddress : in std_logic_vector((abits -1) downto 0);
+      dataout  : out std_logic_vector((dbits -1) downto 0);
+      wclk     : in std_ulogic;
+      write    : in std_ulogic;
+      waddress : in std_logic_vector((abits -1) downto 0);
+      datain   : in std_logic_vector((dbits -1) downto 0);
+      initn    : in std_ulogic;
+      testen   : in std_ulogic;
+      scanen   : in std_ulogic
+      );
+  end component;
+
+end;

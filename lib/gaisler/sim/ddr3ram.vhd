@@ -155,6 +155,8 @@ architecture sim of ddr3ram is
     return t;
   end tRRD;
 
+  constant tCCD_ck: integer := 4;
+
   function pick(t,f: integer; b: boolean) return integer is
   begin
     if b then return t; else return f; end if;
@@ -552,6 +554,11 @@ begin
                 checktime(now-banks(b).writetime, tWTR(re-prev_re), true, "tWTR");
               end loop;
             end if;
+            if cmd="100" then
+              for b in 0 to 7 loop
+                checktime(now-banks(b).readtime, (cl+2-cwl+tCCD_ck) * (re-prev_re), true, "READ-to-WRITE");
+              end loop;
+            end if;
             for x in 0 to 3 loop
               assert not accpipe(x).r and not accpipe(x).w;
             end loop;
@@ -733,6 +740,13 @@ begin
         banks(accpipe(3+al).bank).readtime := now;
       end if;
       write_en <= accpipe(2+cwl+al).w or accpipe(3+cwl+al).w;
+      -- Make sure we update writetime while write in pipeline to catch major
+      -- tWTR violations (read immediately after write)
+      for x in 3 to 3+cwl+al loop
+        if accpipe(x).w then
+          banks(accpipe(x).bank).writetime := now + (re-prev_re);
+        end if;
+      end loop;
       if accpipe(4+cwl+al).w then
         assert not is_x(write_mask) report "Write error!";
         -- print("Write mask: " & tost(write_mask) & " data: " & tost(write_data));

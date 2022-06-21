@@ -1,6 +1,8 @@
 #define RAM_BASE 0x00000000  
 #define STACK 0x00010000  
 
+.equ CCTRL,       0x7c1
+
   .section ".text.first"
   .globl _boot
 _boot:
@@ -85,7 +87,8 @@ _boot:
   csrw mtvec, t0
 
   # flush and enable cache
-  fence.i
+  li t0, 0x1cf
+  csrw CCTRL, t0
 
   # get core id
   csrr a0, mhartid

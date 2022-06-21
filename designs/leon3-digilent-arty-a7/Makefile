@@ -111,7 +111,7 @@ vivprog:
 vivrom:
 	vivado -mode tcl -source dorom.tcl
 
-vivslack: vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP)_routed.dcp
+vivslack: vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP)_postroute_physopt.dcp
 	vivado -mode tcl -nojournal -log slack.log -source slack.tcl $<
 
 copy-mig:

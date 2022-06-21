@@ -2031,7 +2031,6 @@ begin
         v.tcnt := (others => '0'); v.edclactive := '0';
         v.tarp := '0'; v.abufs := (others => '0');
         v.edclrstate := idle;
-        v.emacaddr := macaddrt;
       end if;
       if (rmii = 1) then
         v.ctrl.speed := '1';

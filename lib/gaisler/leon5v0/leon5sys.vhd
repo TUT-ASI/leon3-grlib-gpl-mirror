@@ -158,6 +158,9 @@ architecture hier of leon5sys is
   -- set to 1 to put timer/irqmp/uart first in the APB PnP
   constant stdperfirst   : memmap_table := (1,         1);
 
+  -- enable debug master pipelining except for MIN configuration (perfcfg=2)
+  constant dbgmod_plmdata : integer := boolean'pos(perfcfg/=2);
+
   type statcfg_table is array(0 to 3) of integer;
   constant l5st_en_tbl   : statcfg_table := (0,        1,          1,         1);
   constant l5swidth      : statcfg_table := (16,      16,         32,        48);
@@ -415,7 +418,8 @@ begin
       pnpaddrlo => 16#FF0#,
       dsuslvidx => nextslv+2,
       dsumstidx => ncpu+nextmst+1,
-      bretryen  => breten
+      bretryen  => breten,
+      plmdata => dbgmod_plmdata
       )
     port map (
       clk      => clk,

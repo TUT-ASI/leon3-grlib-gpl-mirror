@@ -124,10 +124,12 @@ architecture sim of dfi_phy_sim is
     wrdata_mask: std_logic_vector((dfi_data_width/8)-1 downto 0);
     rddata_en: std_ulogic;
   end record;
-  type ctrl_array_type is array(0 to 6) of ctrl_type;
+  type ctrl_array_type is array(0 to 17) of ctrl_type;
   signal ctrl_pipe: ctrl_array_type;
+  signal pwdqsctrl: ctrl_type;
 
   constant wdqsidx: integer := tctrl_delay-tphy_wrlat+100;
+  constant pwdqsidx: integer range 0 to 17 := tctrl_delay-tphy_wrlat+99;
   constant wdqidx:  integer := tctrl_delay-tphy_wrlat+100-tphy_wrdata;
 
   signal dqs_gate_enable: std_logic_vector((dfi_data_width/2)/8-1 downto 0);
@@ -235,6 +237,7 @@ begin
   ----------------------------------------------------------------------------
   -- Write data
   ----------------------------------------------------------------------------
+  pwdqsctrl <= ctrl_pipe(pwdqsidx);
   drvdqs: process(dfi_clk,phy_resetn)
     variable vdrv: integer range 0 to 2;
   begin
@@ -242,7 +245,7 @@ begin
     if phy_resetn='0' then
       null;
     elsif rising_edge(dfi_clk) then
-      if ctrl_pipe(wdqsidx-1).wrdata_en='1' or
+      if pwdqsctrl.wrdata_en='1' or
          ctrl_pipe(wdqsidx).wrdata_en='1' then
         vdrv := 0;
       end if;
@@ -250,7 +253,7 @@ begin
       if ctrl_pipe(wdqsidx).wrdata_en='1' then
         vdrv := 1;
       end if;
-      if ddrtype=3 and ctrl_pipe(wdqsidx-1).wrdata_en='1' then
+      if ddrtype=3 and pwdqsctrl.wrdata_en='1' then
         vdrv := 1;
       end if;
     end if;

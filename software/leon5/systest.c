@@ -6,7 +6,7 @@ main()
 {
 	report_start();
 
-	base_test();
+	base_test5();
 /*
 	ramfill();
 	leon3_test(1, 0x80000200, 0);

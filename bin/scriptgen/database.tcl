@@ -174,7 +174,7 @@ proc generatefilelists {filetree fileinfo} {
                 if {[lsearch $XDIRSKIP $dname] < 0 } {
                     set flist {}
                     foreach i {vlogsyn vhdlsyn svlogsyn vhdlmtie vhdlsynpe vhdldce\
-                                   vhdlcdse vhdlxile vhdlprec vhdlprec vhdlfpro\
+                                   vhdlcdse vhdlxile vhdlprec vhdlfpro\
                                    vhdlp1735 vlogsim vhdlsim svlogsim } {
                         set m $k/$realdir/$i
                         if {[file exists $m.txt]} {

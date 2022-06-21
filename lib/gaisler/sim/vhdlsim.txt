@@ -33,3 +33,5 @@ sramtestmod.vhd
 
 uartprint.vhd
 dfi_phy_sim.vhd
+dfi_phy_sim_fr.vhd
+

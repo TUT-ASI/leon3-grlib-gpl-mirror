@@ -193,6 +193,7 @@ static void griommu_reg_test(addr_t addr)
 {
     unsigned char ngrp, nmst;
     unsigned int i, cap[3];
+    unsigned int val0, mask0, val1, mask1;
     struct griommu_reg *r = (struct griommu_reg *) addr;
 
     cap[0] = r->cap[0];
@@ -206,16 +207,28 @@ static void griommu_reg_test(addr_t addr)
     if (!(r->ctrl & ~GRIOMMU_CTRL_SP) && !(cap[0] & GRIOMMU_CAP0_A) &&
       (cap[0] & GRIOMMU_CAP0_I)) fail(2);
     r->ctrl = GRIOMMU_CTRL_CE;
-    if (((cap[0] & GRIOMMU_CAP0_AC) && !(r->ctrl & GRIOMMU_CTRL_CE)) ||
-      (!(cap[0] & GRIOMMU_CAP0_AC) && (r->ctrl & GRIOMMU_CTRL_CE)))
+    if (((cap[0] & (GRIOMMU_CAP0_AC | GRIOMMU_CAP0_IT)) && !(r->ctrl & GRIOMMU_CTRL_CE)) ||
+      (!(cap[0] & (GRIOMMU_CAP0_AC | GRIOMMU_CAP0_IT)) && (r->ctrl & GRIOMMU_CTRL_CE)))
         fail(3);
+
     r->ctrl = GRIOMMU_CTRL_GS;
-    if (((cap[0] & GRIOMMU_CAP0_CA) && !(r->ctrl & GRIOMMU_CTRL_GS)) ||
-      (!(cap[0] & GRIOMMU_CAP0_CA) && (r->ctrl & GRIOMMU_CTRL_GS)))
+    mask0 = GRIOMMU_CAP0_A | GRIOMMU_CAP0_CA;
+    val0 = mask0;
+    mask1 = GRIOMMU_CAP0_I | GRIOMMU_CAP0_IA;
+    val1 = mask1;
+    if (((cap[0] & mask0) == val0) || ((cap[0] & mask1) == val1)) {
+      if (!(r->ctrl & GRIOMMU_CTRL_GS)) {
         fail(4);
+      }
+    } else {
+      if (r->ctrl & GRIOMMU_CTRL_GS) {
+        fail(4);
+      }
+    }
+
     r->ctrl = GRIOMMU_CTRL_DM;
-    if (((cap[0] & GRIOMMU_CAP0_AC) && !(r->ctrl & GRIOMMU_CTRL_DM)) ||
-      (!(cap[0] & GRIOMMU_CAP0_AC) && (r->ctrl & GRIOMMU_CTRL_DM)))
+    if (((cap[0] & (GRIOMMU_CAP0_AC | GRIOMMU_CAP0_IT)) && !(r->ctrl & GRIOMMU_CTRL_DM)) ||
+      (!(cap[0] & (GRIOMMU_CAP0_AC | GRIOMMU_CAP0_IT)) && (r->ctrl & GRIOMMU_CTRL_DM)))
         fail(5);
     r->ctrl = GRIOMMU_CTRL_WP;
     if (!(r->ctrl & GRIOMMU_CTRL_WP))
@@ -259,12 +272,12 @@ static void griommu_reg_test(addr_t addr)
     if (!(r->mask &  GRIOMMU_MASK_ADI))
         fail(14);
     r->mask = GRIOMMU_MASK_FLI;
-    if (((cap[0] & GRIOMMU_CAP0_AC) && !(r->mask & GRIOMMU_MASK_FLI)) ||
-      (!(cap[0] & GRIOMMU_CAP0_AC) && (r->mask & GRIOMMU_MASK_FLI)))
+    if (((cap[0] & (GRIOMMU_CAP0_AC | GRIOMMU_CAP0_IT)) && !(r->mask & GRIOMMU_MASK_FLI)) ||
+      (!(cap[0] & (GRIOMMU_CAP0_AC | GRIOMMU_CAP0_IT)) && (r->mask & GRIOMMU_MASK_FLI)))
         fail(15);
     r->mask = GRIOMMU_MASK_FCI;
-    if (((cap[0] & GRIOMMU_CAP0_AC) && !(r->mask & GRIOMMU_MASK_FCI)) ||
-      (!(cap[0] & GRIOMMU_CAP0_AC) && (r->mask & GRIOMMU_MASK_FCI)))
+    if (((cap[0] & (GRIOMMU_CAP0_AC | GRIOMMU_CAP0_IT)) && !(r->mask & GRIOMMU_MASK_FCI)) ||
+      (!(cap[0] & (GRIOMMU_CAP0_AC | GRIOMMU_CAP0_IT)) && (r->mask & GRIOMMU_MASK_FCI)))
         fail(16);
     r->mask = GRIOMMU_MASK_PEI;
     if ((((cap[0] >> GRIOMMU_CAP0_FT) & 0x3) && !(r->mask & GRIOMMU_MASK_PEI)) ||

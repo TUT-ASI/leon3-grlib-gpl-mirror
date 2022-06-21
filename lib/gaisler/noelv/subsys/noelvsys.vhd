@@ -61,6 +61,7 @@ entity noelvsys is
     cfg      : integer;
     devid    : integer;
     nodbus   : integer;
+    trace    : integer;
     scantest : integer
     );
   port (
@@ -87,12 +88,15 @@ entity noelvsys is
     uarto    : out uart_out_type;
     -- Perf counter
     cnt      : out nv_counter_out_vector(ncpu-1 downto 0);
+    -- E-trace sink interface
+    etso     : out nv_etrace_sink_out_vector(ncpu-1 downto 0);
+    etsi     : in  nv_etrace_sink_in_vector(ncpu-1 downto 0) := (others => nv_etrace_sink_in_none);
     -- DFT support
-    testen  : in  std_ulogic := '0';
-    testrst : in  std_ulogic := '1';
-    scanen  : in  std_ulogic := '0';
-    testoen : in  std_ulogic := '1';
-    testsig : in  std_logic_vector(1+GRLIB_CONFIG_ARRAY(grlib_techmap_testin_extra) downto 0) := (others => '0')
+    testen   : in  std_ulogic := '0';
+    testrst  : in  std_ulogic := '1';
+    scanen   : in  std_ulogic := '0';
+    testoen  : in  std_ulogic := '1';
+    testsig  : in  std_logic_vector(1+GRLIB_CONFIG_ARRAY(grlib_techmap_testin_extra) downto 0) := (others => '0')
     );
 end;
 
@@ -127,6 +131,7 @@ architecture hier of noelvsys is
   -- Trace buffer
   signal trace_ahbsiv     : ahb_slv_in_vector_type(0 to 1);
   signal trace_ahbmiv     : ahb_mst_in_vector_type(0 to 1);
+  signal eto              : nv_etrace_out_vector(ncpu-1 downto 0);
 
   signal dsui           : nv_dm_in_type;
   signal dsuo           : nv_dm_out_type;
@@ -157,11 +162,14 @@ architecture hier of noelvsys is
   -- APB slave index
   constant GPTIME_PINDEX  : integer := nextapb+0;
   constant APBUART_PINDEX : integer := nextapb+1;
+  constant ETRACE_PINDEX  : integer := nextapb+2;
   -- APB slave address
   constant GPTIME_PADDR   : integer := 16#000#;
   constant GPTIME_PMASK   : integer := 16#FFF#;
   constant APBUART_PADDR  : integer := 16#010#;
   constant APBUART_PMASK  : integer := 16#FFF#;
+  constant ETRACE_PADDR   : integer := 16#020#;
+  constant ETRACE_PMASK   : integer := 16#FF0#;
   -- Debug bus
   constant DM_DM_HINDEX   : integer := 0+(nodbus*(nextslv+1+2+1));
   constant APBC_DM_HINDEX : integer := 1;
@@ -182,6 +190,7 @@ architecture hier of noelvsys is
   constant APBUART_PIRQ   : integer := 1;
   constant GPTIME_PIRQ    : integer := 2; -- , 3
   --constant GPTIME_PIRQ2   : integer := 3;
+  constant ETRACE_PIRQ    : integer := 4;
 
 begin
 
@@ -257,7 +266,7 @@ begin
         hindex1 => APBC_DM_HINDEX,
         haddr1  => APBC_HADDR,
         hmask1  => APBC_HMASK,
-        nslaves => nextapb+2
+        nslaves => nextapb+3
         )
       port map (
         rst  => rstn,
@@ -276,7 +285,7 @@ begin
         hindex => nextslv,
         haddr  => APBC_HADDR,
         hmask  => APBC_HMASK,
-        nslaves => nextapb+2
+        nslaves => nextapb+3
         )
       port map (
         rst  => rstn,
@@ -291,8 +300,9 @@ begin
   end generate;
 
   apbi(0 to nextapb-1) <= cpuapbi(0 to nextapb-1);
+  apbi(nextapb to cpuapbo'high) <= (others => apb_slv_in_none);
   cpuapbo(0 to nextapb-1) <= apbo(0 to nextapb-1);
-  cpuapbo(nextapb+2 to cpuapbo'high) <= (others => apb_none);
+  cpuapbo(nextapb+3 to cpuapbo'high) <= (others => apb_none);
 
   ----------------------------------------------------------------------------
   -- Processor(s)
@@ -328,6 +338,7 @@ begin
         irqo  => irqo(c),
         dbgi  => dbgi(c),
         dbgo  => dbgo(c),
+        eto   => eto(c),
         cnt   => cnt(c)
       );
   end generate;
@@ -362,6 +373,31 @@ begin
 
   dsui.enable <= dsuen;
   dsui.break  <= dsubreak;
+
+  etrace : if trace /= 0 generate
+    x : etracenv
+      generic map(
+        ext_c   => 1,
+        ncpu    => ncpu,
+        pindex  => ETRACE_PINDEX,
+        paddr   => ETRACE_PADDR,
+        pmask   => ETRACE_PMASK,
+        pirq    => ETRACE_PIRQ
+      )
+      port map(
+        rstn    => rstn,
+        clk     => clk,
+        apbi    => cpuapbi(ETRACE_PINDEX),
+        apbo    => cpuapbo(ETRACE_PINDEX),
+        eto     => eto,
+        etso    => etso,
+        etsi    => etsi
+      );
+  end generate;
+  notrace : if trace = 0 generate
+    cpuapbo(ETRACE_PINDEX) <= apb_none;
+    etso <= (others => nv_etrace_sink_out_none);
+  end generate;
 
   ahbtrace0: ahbtrace_mmb
     generic map (

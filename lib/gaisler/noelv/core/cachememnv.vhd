@@ -622,9 +622,16 @@ begin
       end loop;
       if tagupd then
         for w1 in 0 to DWAYS-2 loop
+          if dctags(idx)(w1) = "UUUUUUUUUUUUUUUUUUUUU" then
+            next;
+          end if;
           for w2 in w1+1 to DWAYS-1 loop
+            if dctags(idx)(w2) = "UUUUUUUUUUUUUUUUUUUUU" then
+              next;
+            end if;
             assert dctags(idx)(w1)(dtagwidth - 1 downto 1) /= dctags(idx)(w2)(dtagwidth - 1 downto 1)
-              report "Duplicated dtag written" severity failure;
+--              report "Duplicated dtag written" severity failure;
+              report "Duplicated dtag written " & tost_bits(dctags(idx)(w1)) & " " & tost_bits(dctags(idx)(w2)) severity failure;
             assert dstags(idx)(w1)(dtagwidth - 1 downto 1) /= dstags(idx)(w2)(dtagwidth - 1 downto 1)
               report "Duplicated snoop-dtag written" severity failure;
           end loop;

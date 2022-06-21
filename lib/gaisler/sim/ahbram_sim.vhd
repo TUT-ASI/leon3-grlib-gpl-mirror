@@ -65,12 +65,12 @@ end;
 
 architecture rtl of ahbram_sim is
 
-constant abits : integer := log2ext(kbytes) + 8 - maccsz/64;
+constant abits : integer := log2ext(kbytes) + 8 - log2(maccsz/32);
 
 constant dw : integer := maccsz;
-
+--AHBRAM-like cores use the version Plug&Play field to indicate memory size.
 constant hconfig : ahb_config_type := (
-  0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_AHBRAM, 0, abits+2+maccsz/64, 0),
+  0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_AHBRAM, 0, abits+2+log2(maccsz/32), 0),
   4 => ahb_membar(haddr, '1', '1', hmask),
   others => zero32);
 

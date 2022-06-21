@@ -73,7 +73,7 @@ LIBSKIP = pci pci/pcif core1553bbc core1553brm srio core1553brt idt gr1553 coreP
 	spansion secureip usb ddr grdmac mmuconfig fmf esa micron spfi
 DIRSKIP = b1553 pci gr1553b/core pci/pcif leon2 leon2ft leon5 leon5v0 srio idt crypto satcan pci ambatest \
 	spacewire ascs slink irqmp grdmac grrm nand\
-	pwm gr1553b iommu ac97 secureip mmuiface clk2x canfd leon4v0 spacefibre
+	pwm gr1553b iommu ac97 secureip mmuiface clk2x canfd leon4v0 hssl
 FILESKIP = grcan.vhd ddr2.v mobile_ddr.v adapters/sgmii.vhd iu4.vhd
 
 ### Regenerate AHBROM ##########################################################

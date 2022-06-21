@@ -507,7 +507,8 @@ begin
     cap                         := zerow;
     cap(31 downto 24)           := u2slv(nharts - 1, 8);
     cap(23          )           := to_bit(nharts <= 256);
-    cap(21 downto 19)           := dbgi(0).cap;
+    cap(21 downto 19)           := dbgi(0).cap(2 downto 0);
+    cap( 3 downto  0)           := dbgi(0).cap(6 downto 3);
 
     -- Abstract Data 0 (data0, at 0x04)
 

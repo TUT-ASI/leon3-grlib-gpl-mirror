@@ -33,10 +33,30 @@ use grlib.config.all;
 use grlib.stdlib.all;
 use ieee.numeric_std.all;
 use grlib.riscv.all;
-library gaisler;
-use gaisler.noelvint.all;
 
 package utilnv is
+
+  type     x_type is (x_first,
+                      x_rv64,
+                      x_m,
+                      x_zba, x_zbb, x_zbc, x_zbs,
+                      x_zbkb, x_zbkc, x_zbkx,
+                      x_last);
+  subtype  extension_type is std_logic_vector(x_type'pos(x_first) + 1 to x_type'pos(x_last) - 1);
+  constant extension_none  : extension_type := (others => '0');
+  constant extension_all   : extension_type := (others => '1');
+
+  function cond(c : boolean;
+                t : std_logic_vector;
+                f : std_logic_vector) return std_logic_vector;
+  function is_set(v : integer) return boolean;
+  function extension(item : x_type) return extension_type;
+  function extension(item : x_type; valid : boolean) return extension_type;
+  function enable(active : extension_type; item : x_type) return extension_type;
+  function disable(active : extension_type; item : x_type) return extension_type;
+  function disable(active : extension_type; item1, item2 : x_type) return extension_type;
+  function is_enabled(active : extension_type; item : x_type) return boolean;
+  function is_enabled(active : extension_type; item : x_type) return integer;
 
 -- pragma translate_off
   function tost(v : unsigned) return string;
@@ -68,16 +88,21 @@ package utilnv is
   function set(data : std_logic_vector; n : integer) return std_logic_vector;
   function get(data  : std_logic_vector;
                start : integer; bits : integer) return std_logic_vector;
-  function get_hi(data  : std_logic_vector;
-                  bits  : integer) return std_logic_vector;
+  function get_hi(data : std_logic_vector;
+                  bits : integer) return std_logic_vector;
+  function get_hi(data : std_logic_vector) return std_logic;
+  function get_hi(data : signed) return std_logic;
+  function get_hi(data : unsigned) return std_logic;
   function lo_h(v : std_logic_vector) return std_logic_vector;
   function hi_h(v : std_logic_vector) return std_logic_vector;
   procedure uadd_range(src : std_logic_vector; addend : integer; dst : out std_logic_vector);
   function uadd(src : std_logic_vector; addend : integer) return std_logic_vector;
   function uadd(src : std_logic_vector; addend : std_logic_vector) return std_logic_vector;
   function uadd(src : std_logic_vector; addend : std_logic_vector) return unsigned;
+  function uaddx(src : std_logic_vector; addend : integer) return std_logic_vector;
   function uaddx(src : std_logic_vector; addend : std_logic_vector) return std_logic_vector;
   function uaddx(src : std_logic_vector; addend : std_logic_vector) return unsigned;
+  function uaddx(src : unsigned; addend : unsigned) return unsigned;
   function usub(src : std_logic_vector; subtrahend : std_logic_vector) return std_logic_vector;
   function usub(src : std_logic_vector; subtrahend : std_logic_vector) return unsigned;
   function usubx(src : std_logic_vector; subtrahend : std_logic_vector) return std_logic_vector;
@@ -100,16 +125,79 @@ package utilnv is
   function s2i(data : std_logic_vector) return integer;
   function s2i(data : signed) return integer;
   function s2i(data : std_logic) return integer;
+  function b2i(data : boolean) return integer;
   function sext(v : std_logic_vector; template : std_logic_vector) return std_logic_vector;
   function sext(v : std_logic_vector; length : integer) return std_logic_vector;
   function uext(v : std_logic_vector; template : std_logic_vector) return std_logic_vector;
   function uext(v : std_logic_vector; length : integer) return std_logic_vector;
+  function uext(v : unsigned; template : std_logic_vector) return std_logic_vector;
+  function uext(v : unsigned; length : integer) return std_logic_vector;
+  function repl2w64(v : std_logic_vector) return std_logic_vector;
   function minimum(x : integer; y: integer) return integer;
   function maximum(x : integer; y: integer) return integer;
 
 end;
 
 package body utilnv is
+
+  function cond(c : boolean;
+                t : std_logic_vector;
+                f : std_logic_vector) return std_logic_vector is
+  begin
+    if c then
+      return t;
+    else
+      return f;
+    end if;
+  end;
+
+  function is_set(v : integer) return boolean is
+  begin
+    return v /= 0;
+  end;
+
+  function extension(item : x_type) return extension_type is
+    -- Non-constant
+    variable v : extension_type := extension_none;
+  begin
+    v(x_type'pos(item)) := '1';
+
+    return v;
+  end;
+
+  function extension(item : x_type; valid : boolean) return extension_type is
+  begin
+    if not valid then
+      return extension_none;
+    end if;
+
+    return extension(item);
+  end;
+
+  function enable(active : extension_type; item : x_type) return extension_type is
+  begin
+    return active or extension(item);
+  end;
+    
+  function disable(active : extension_type; item : x_type) return extension_type is
+  begin
+    return active and not extension(item);
+  end;
+    
+  function disable(active : extension_type; item1, item2 : x_type) return extension_type is
+  begin
+    return active and not (extension(item1) or extension(item2));
+  end;
+    
+  function is_enabled(active : extension_type; item : x_type) return boolean is
+  begin
+    return active(x_type'pos(item)) = '1';  --jk not all_0(active and extension(item));
+  end;
+
+  function is_enabled(active : extension_type; item : x_type) return integer is
+  begin
+    return b2i(is_enabled(active, item));
+  end;
 
 -- pragma translate_off
   function tost(v : unsigned) return string is
@@ -218,6 +306,16 @@ package body utilnv is
     return '1';
   end;
 
+  function repl2w64(v : std_logic_vector) return std_logic_vector is
+    constant v_v : std_logic_vector(v'length * 2 - 1 downto 0) := v & v;
+  begin
+    if v'length = 64 then
+      return v;
+    end if;
+
+    return v_v(63 downto 0);
+  end;
+
   function maximum(x : integer; y: integer) return integer is
   begin
     if x > y then
@@ -296,14 +394,21 @@ package body utilnv is
     end if;
   end;
 
+  function b2i(data : boolean) return integer is
+  begin
+    return u2i(to_bit(data));
+  end;
+
   -- Sign-extend
   function sext(v : std_logic_vector; length : integer) return std_logic_vector is
     variable v_normal : std_logic_vector(v'length - 1 downto 0) := v;
     -- Non-constant
-    variable ext      : std_logic_vector(length - 1 downto 0)   := (others => v_normal(v_normal'high));
+    variable ext      : std_logic_vector(length - 1 downto 0) := (others => '0');
   begin
-    ext(v_normal'range) := v;
-
+    if v_normal'length > 0 then
+      ext := (others => v_normal(v_normal'high));
+      ext(v_normal'range) := v;
+    end if;
     return ext;
   end;
 
@@ -327,6 +432,11 @@ package body utilnv is
     return ext;
   end;
 
+  function uext(v : unsigned; length : integer) return std_logic_vector is
+  begin
+    return uext(std_logic_vector(v), length);
+  end;
+
   function uext(v : std_logic_vector; template : std_logic_vector) return std_logic_vector is
     -- Non-constant
     variable ext : std_logic_vector(template'range);
@@ -334,6 +444,11 @@ package body utilnv is
     ext := uext(v, template'length);
 
     return ext;
+  end;
+
+  function uext(v : unsigned; template : std_logic_vector) return std_logic_vector is
+  begin
+    return uext(std_logic_vector(v), template);
   end;
 
   -- Return data interpreted as unsigned, as bits of std_logic_vector.
@@ -448,11 +563,33 @@ package body utilnv is
     return std_logic_vector(dst);
   end;
 
+  function uaddx(src : std_logic_vector; addend : integer) return std_logic_vector is
+    -- Non-constant
+    variable dst : unsigned(src'length downto 0);
+  begin
+    if addend >= 0 then
+      dst := unsigned('0' & src) + addend;
+    else
+      dst := unsigned('0' & src) - (-addend);
+    end if;
+
+    return std_logic_vector(dst);
+  end;
+
   function uaddx(src : std_logic_vector; addend : std_logic_vector) return unsigned is
     -- Non-constant
     variable dst : unsigned(src'length downto 0);
   begin
     dst := unsigned('0' & src) + unsigned('0' & addend);
+
+    return dst;
+  end;
+
+  function uaddx(src : unsigned; addend : unsigned) return unsigned is
+    -- Non-constant
+    variable dst : unsigned(src'length downto 0);
+  begin
+    dst := ('0' & src) + ('0' & addend);
 
     return dst;
   end;
@@ -515,10 +652,26 @@ package body utilnv is
   end;
 
   -- Return high bits from data.
-  function get_hi(data  : std_logic_vector;
-                 bits  : integer) return std_logic_vector is
+  function get_hi(data : std_logic_vector;
+                  bits : integer) return std_logic_vector is
   begin
     return get(data, data'high - bits + 1, bits);
+  end;
+
+  -- Return high bit from data.
+  function get_hi(data : std_logic_vector) return std_logic is
+  begin
+    return data(data'high);
+  end;
+
+  function get_hi(data : signed) return std_logic is
+  begin
+    return get_hi(std_logic_vector(data));
+  end;
+
+  function get_hi(data : unsigned) return std_logic is
+  begin
+    return get_hi(std_logic_vector(data));
   end;
 
   -- Sets data in dest from start, away from bit 0.
@@ -570,7 +723,7 @@ package body utilnv is
   begin
 -- pragma translate_off
     assert v'length mod 2 = 0
-      report "lo_h only works for items with even number of bits"
+      report "lo_h only works for items with even number of bits (" & tost(v'length) & ")"
       severity failure;
 -- pragma translate_on
     return v_normal(v'length / 2 - 1 downto 0);
@@ -582,7 +735,7 @@ package body utilnv is
   begin
 -- pragma translate_off
     assert v'length mod 2 = 0
-      report "lo_h only works for items with even number of bits"
+      report "hi_h only works for items with even number of bits (" & tost(v'length) & ")"
       severity failure;
 -- pragma translate_on
     return v_normal(v'length - 1 downto v'length / 2);

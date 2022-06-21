@@ -26,8 +26,8 @@ package config is
   constant CFG_NOELV : integer := 1;
   constant CFG_NOELV_XLEN : integer := (64);
   constant CFG_NCPU : integer := (1);
-  constant CFG_CFG : integer := (0);
-  constant CFG_NODBUS : integer := 1;
+  constant CFG_CFG : integer := (4)*256 + (0)*128 + (0)*2 + (0);
+  constant CFG_NODBUS : integer := 0;
   constant CFG_DISAS : integer := 3*0;
 -- L2 Cache
   constant CFG_L2_EN : integer := 0;

@@ -48,6 +48,17 @@ proc append_file_mentor_simtop_mpf {f finfo nfiles} {
 			return
 		}
 		"vhdlprec" {
+			global SIMTOP
+			upvar SIMTOP_mpf_contents smc
+			upvar $nfiles nf
+			append smc "Project_File_$nf = $f\n"
+			append smc "Project_File_P_$nf = vhdl_novitalcheck 0\
+			file_type VHDL group_id 0 vhdl_nodebug 0 vhdl_1164 1 vhdl_noload 0\
+			vhdl_synth 0 folder {Top Level} last_compile 0 vhdl_disableopt 0 vhdl_vital 0\
+			vhdl_warn1 0 vhdl_warn2 1 vhdl_explicit 0 vhdl_showsource 1 vhdl_warn3 1\
+			vhdl_options {} vhdl_warn4 1 ood 0 vhdl_warn5 0 compile_to $bn compile_order\
+			$nf dont_compile 0 cover_stmt 1 vhdl_use93 93\n"
+			incr nf
 			return
 		}
 		"vhdlsyn" {

@@ -463,6 +463,11 @@ package body mmucacheconfig is
       if not all_0(data(53 downto physaddr - 12 + 10)) then
         return false;
       end if;
+
+      -- PTD also has D, A and U reserved, so enforce 0 (Spike does).
+      if data(rv_pte_d) = '1' or data(rv_pte_a) = '1' or data(rv_pte_u) = '1' then
+        return false;
+      end if;
     end if;
 
     return true;

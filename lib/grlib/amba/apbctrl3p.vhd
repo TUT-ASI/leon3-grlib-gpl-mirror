@@ -44,7 +44,7 @@ entity apbctrl3p is
     haddr2      : integer := 0;
     hmask2      : integer := 16#fff#;
     nslaves     : integer range 1 to NAPBSLV := NAPBSLV;
-    wprot       : integer range 0 to 1 := 0;
+    wprot       : integer range 0 to 2 := 0;
     debug       : integer range 0 to 2 := 2;
     icheck      : integer range 0 to 1 := 1;
     enbusmon    : integer range 0 to 1 := 0;

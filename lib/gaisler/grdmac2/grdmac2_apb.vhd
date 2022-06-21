@@ -92,7 +92,7 @@ architecture rtl of grdmac2_apb is
 
   -- Plug and Play Information (APB interface)
   constant pconfig  : apb_config_type := (
-    0 => ahb_device_reg (VENDOR_GAISLER, GAISLER_GRDMAC2, 0, REVISION, pirq), 
+    0 => ahb_device_reg (VENDOR_GAISLER, GAISLER_GRDMAC2, 0, REVISION, to_integer(to_unsigned(pirq,8))), 
     1 => apb_iobar(paddr, pmask));
 
   -----------------------------------------------------------------------------
@@ -339,12 +339,12 @@ begin -- rtl
     -- Generating IRQ pulse only on the rising edge of the error status signal and descriptor complete signal because 
     -- the error status stays until cleared and the desc complete status stays once the last desc is completed.
     if r.misc.err_irq = '0' and sts_in.err = '1' then
-      apbo.pirq(pirq) <= r.ctrl.irq_en and r.ctrl.irq_err;
+      apbo.pirq(to_integer(to_unsigned(pirq,8))) <= r.ctrl.irq_en and r.ctrl.irq_err;
     elsif  r.misc.cmp_irq = '0' and sts_in.desc_comp = '1' then
       if orv(curr_desc_in.dbg_ctrl(4 downto 1))= '0' then
-        apbo.pirq(pirq) <= curr_desc_in.dbg_ctrl(8) and r.ctrl.irq_en and (not r.ctrl.irq_msk);
+        apbo.pirq(to_integer(to_unsigned(pirq,8))) <= curr_desc_in.dbg_ctrl(8) and r.ctrl.irq_en and (not r.ctrl.irq_msk);
       else
-        apbo.pirq(pirq) <= curr_desc_in.dbg_ctrl(14) and r.ctrl.irq_en and (not r.ctrl.irq_msk);
+        apbo.pirq(to_integer(to_unsigned(pirq,8))) <= curr_desc_in.dbg_ctrl(14) and r.ctrl.irq_en and (not r.ctrl.irq_msk);
       end if;
     end if;
     --  control signals

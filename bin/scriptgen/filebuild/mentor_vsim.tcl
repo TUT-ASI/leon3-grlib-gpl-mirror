@@ -34,6 +34,9 @@ proc append_file_mentor_vsim {f finfo} {
 	    return
 	}
 	"vhdlprec" {
+	    global VCOM VHDLOPT
+	    upvar compile_vsim_contents cvc
+	    append cvc "\t$VCOM $VHDLOPT -$vhdlstd -work $bn $f\n"
 	    return
 	}
 	"vhdlsyn" {

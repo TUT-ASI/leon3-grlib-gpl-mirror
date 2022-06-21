@@ -52,7 +52,7 @@ entity apbctrlx is
     hmask3      : integer := 16#fff#;
     nslaves     : integer range 1 to NAPBSLV := NAPBSLV;
     nports      : integer range 1 to 4 := 2;
-    wprot       : integer range 0 to 1 := 0;
+    wprot       : integer range 0 to 2 := 0;
     debug       : integer range 0 to 2 := 2;
     icheck      : integer range 0 to 1 := 1;
     enbusmon    : integer range 0 to 1 := 0;
@@ -228,6 +228,9 @@ begin
         --lwprotv := wpv(15+16*nslave(j)+256*j downto 16*nslave(j)+256*j); 
         --lwprot(j) := lwprotv(conv_integer(r.p(j).hmaster)); 
         lwprot(j) := wpv(16*nslave(j)+256*j+conv_integer(r.p(j).hmaster)); 
+      elsif wprot = 2 then
+        lwprot(j) := wpv(nslave(j)+16*j); 
+        v.p(j).hmaster := (others => '0');
       else
         lwprotv := (others => '0');
         lwprot(j) := '0';
@@ -272,13 +275,14 @@ begin
     	    else v.p(j).pwdata := ahbreadword(ahbi(j).hwdata, r.p(j).haddr(4 downto 2)); end if;
     	    v.p(j).psel := '1'; v.p(j).state := "10";
         end if;
-        if wprot = 1 and r.p(j).hwrite = '1' and (wp(j*multiport) or lwprot(j*multiport)) = '1' then
+        if (wprot = 1 and (r.p(j).hwrite = '1' and (wp(j*multiport) or lwprot(j*multiport)) = '1')) or 
+           (wprot = 2 and ((r.p(j).hwrite and wp(j*multiport)) = '1' or lwprot(j*multiport) = '1')) then
           v.p(j).state := "11";
           v.p(j).psel := '0';
           v.p(j).hresp := HRESP_ERROR;
         end if;
       when "11" =>
-        if wprot = 1 then
+        if wprot /= 0 then
           v.p(j).hready := '1';
           v.p(j).state := "00";
         else

@@ -54,6 +54,8 @@ port (
   pc            : in  std_logic_vector;                 -- PC
   wregen        : in  std_ulogic;                       -- Regfile Write Enable
   wregdata      : in  std_logic_vector;                 -- Regfile Write Data
+  fsd           : in  std_ulogic;                       -- RV32 and fsd
+  fsd_hi        : in  std_logic_vector;                 -- High half of fsd on RV32
   wregen_f      : in  std_ulogic;                       -- FPU Regfile Write Enable
   wcsren        : in  std_ulogic;                       -- CSR Write Enable
   wcsrdata      : in  std_logic_vector;                 -- CSR Write Data
@@ -78,8 +80,8 @@ begin
   dummy <= '1';
 
   trc : process(clk)
-    variable rd         : std_logic_vector(4 downto 0);
-    variable csr        : std_logic_vector(11 downto 0);
+    variable rd         : gpr_type;
+    variable csr        : csratype;
     variable iindex     : integer;
     variable iway       : integer;
   begin
@@ -106,6 +108,8 @@ begin
           rd,                     -- Destination Register
           csr,                    -- CSR Register
           wregdata,               -- Regfile Write Data
+          fsd,                    -- RV32 and fsd?
+          fsd_hi,                 -- High half of fsd on RV32
           wregen,                 -- Regfile Write Enable
           wregen_f,               -- FPU Regfile Write Enable
           wcsrdata,               -- CSR Write Data
@@ -131,6 +135,8 @@ begin
           pc => pc,
           csr => csr,
           wrdata => wregdata,
+          fsd => fsd,
+          fsd_hi => fsd_hi,
           wren => wregen,
           wren_f => wregen_f,
           wcen => wcsren,
@@ -160,6 +166,8 @@ begin
             rd      => rd,                     -- Destination Register
             csr     => csr,                    -- CSR Register
             wrdata  => wregdata,               -- Regfile Write Data
+            fsd     => fsd,                    -- RV32 and fsd?
+            fsd_hi  => fsd_hi,                 -- High half of fsd on RV32
             wren    => wregen,                 -- Regfile Write Enable
             wren_f  => wregen_f,               -- FPU Regfile Write Enable
             wcdata  => wcsrdata,               -- CSR Write Data

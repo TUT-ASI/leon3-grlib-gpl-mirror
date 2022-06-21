@@ -438,7 +438,7 @@ architecture sim of spi_flash is
 
       index := 0; command := (others => '0');
       while received_command = '0' and csn = '0' loop
-        wait until rising_edge(sck);
+        wait until sck'event and sck = '1';
         indata := indata(6 downto 0) & di;
         index := index + 1;
         if index = 8 then
@@ -484,7 +484,7 @@ architecture sim of spi_flash is
                   tost(response(index downto 0)));
           end if;
           while index >= 0 and csn = '0' loop
-            wait until falling_edge(sck) or csn = '1';
+            wait until (sck'event and sck = '0') or csn = '1';
             if dualoutput then
               do <= response(index);
               di <= response(index-1);

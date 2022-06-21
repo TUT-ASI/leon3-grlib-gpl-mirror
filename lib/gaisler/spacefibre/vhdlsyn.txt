@@ -1,7 +1,0 @@
-spacefibre.vhd
-grspfi_pkg.vhd
-grspfi_codec.vhd
-grspfi_core.vhd
-grspfi_dma.vhd
-grspfi.vhd
-grspfi_ahb.vhd

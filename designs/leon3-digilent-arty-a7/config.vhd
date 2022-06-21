@@ -168,5 +168,5 @@ package config is
   constant CFG_SPICTRL_FT : integer := 0;
   constant CFG_SPICTRL_PROT : integer := 0;
 -- GRLIB debugging
-  constant CFG_DUART : integer := 1;
+  constant CFG_DUART : integer := 0;
 end;

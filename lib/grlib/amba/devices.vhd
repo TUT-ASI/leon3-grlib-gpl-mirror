@@ -276,10 +276,11 @@ package devices is
   constant GAISLER_CLINT         : amba_device_type := 16#0C3#;
   constant GAISLER_SOCBRIDGE     : amba_device_type := 16#0C4#;
   constant GAISLER_NANDFCTRL2    : amba_device_type := 16#0C5#;
-  constant GAISLER_GR765ESTHS    : amba_device_type := 16#0C6#;
+  constant GAISLER_DARE65THS     : amba_device_type := 16#0C6#;
   constant GAISLER_WIZL          : amba_device_type := 16#0C7#;
   constant GAISLER_HSSL          : amba_device_type := 16#0C8#;
   constant GAISLER_GRWATCHDOG    : amba_device_type := 16#0C9#;
+  constant GAISLER_ETRACE        : amba_device_type := 16#0CA#;
   constant GAISLER_L2CL          : amba_device_type := 16#0D0#;
 
 -- Sun Microsystems
@@ -660,6 +661,7 @@ package devices is
     GAISLER_SPWTDP        => "CCSDS TDP / SpaceWire I/F       ",
     GAISLER_L3STAT        => "LEON3 Statistics Unit           ",
     GAISLER_GR740THS      => "Temperature sensor              ",
+    GAISLER_DARE65THS     => "DARE65T Temperature sensor      ",
     GAISLER_GRRM          => "Reconfiguration Module          ",
     GAISLER_CMAP          => "CCSDS Memory Access Protocol    ",
     GAISLER_CPGEN         => "Discrete Command Pulse Gen      ",
@@ -705,6 +707,7 @@ package devices is
     GAISLER_WIZL          => "GRWIZL WizardLink Serial Link   ",
     GAISLER_HSSL          => "GRHSSL SpaceFibre + WizardLink  ",
     GAISLER_GRWATCHDOG    => "Watchdog unit with sep clock    ",
+    GAISLER_ETRACE        => "RISC-V E-trace encoder          ",
     GAISLER_L2CL          => "L2-Cache Controller - Lite      ",
     others                => "Unknown Device                  ");
 

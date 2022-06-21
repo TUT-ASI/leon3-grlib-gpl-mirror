@@ -232,7 +232,8 @@ package canfd is
       scantest    : integer := 0;
       canopen     : integer := 0;
       sepbus      : integer := 0;
-      hindexcopen : integer := 0);
+      hindexcopen : integer := 0;
+      ahbbits     : integer := AHBDW);
     port (
       clk      : in  std_ulogic;
       rstn     : in  std_ulogic;

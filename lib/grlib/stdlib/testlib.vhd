@@ -806,14 +806,14 @@ package body testlib is
        if size < 256 and dw = 256 and addr(4) = '1' then off := 128; else off := 0; end if;
        if size < 128 and dw >= 128 and addr(3) = '1' then off := off + 64; end if;
        if size < 64 and dw >= 64 and addr(2) = '1' then off := off + 32; end if;
-       if size < 32 and addr(1) = '1' then off := off + 16; end if;
-       if size < 16 and addr(0) = '1' then off := off + 8; end if;
+       if size < 32 and dw >= 32 and addr(1) = '1' then off := off + 16; end if;
+       if size < 16 and dw >= 16 and addr(0) = '1' then off := off + 8; end if;
      else --big endian
        if size < 256 and dw = 256 and addr(4) = '0' then off := 128; else off := 0; end if;
        if size < 128 and dw >= 128 and addr(3) = '0' then off := off + 64; end if;
        if size < 64 and dw >= 64 and addr(2) = '0' then off := off + 32; end if;
-       if size < 32 and addr(1) = '0' then off := off + 16; end if;
-       if size < 16 and addr(0) = '0' then off := off + 8; end if;
+       if size < 32 and dw >= 32 and addr(1) = '0' then off := off + 16; end if;
+       if size < 16 and dw >= 16 and addr(0) = '0' then off := off + 8; end if;
      end if;
      return off;
    end ahb_doff;

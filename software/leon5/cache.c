@@ -280,7 +280,7 @@ void regfltest(unsigned long freeaddr)
         int w,s,a,d,r,ra,rv,ev;
         int testcase;
         unsigned flmask, fladdr;
-        int nrepli,nrepld;
+        int nrepli,nrepld,nrepliw,nrepldw;
         /* Get sizes */
         iccfg = rsysreg(8);
         iways = ((iccfg >> 24) & 7) + 1;
@@ -341,7 +341,7 @@ void regfltest(unsigned long freeaddr)
                 wsysreg(0x18, flmask);
                 wsysreg(0x1C, fladdr | 3);
                 /* Check tags */
-                nrepli = nrepld = 0;
+                nrepli = nrepld = nrepliw = nrepldw = 0;
                 for (w=0,a=0,d=freeaddr; w<iways; w++) {
                         for (s=0; s<isets; s++, a+=iclsize, d+=(iclsize+(3<<12))) {
                                 r = lda0x0c(a);
@@ -353,11 +353,17 @@ void regfltest(unsigned long freeaddr)
                                         ra = (d & itagmask) | (a & (~itagmask));
                                         ev = ((ra & flmask) == fladdr)?0:1;
                                         rv = r & 1;
-                                        if (ev != rv) fail(61+(testcase<<3));
+                                        if (ev==1 && rv==0 &&
+                                            ((a & (~itagmask) & flmask) == (fladdr & (~itagmask) & flmask))) {
+                                                /* cache line was replaced between population and flush
+                                                 * and then got flushed out */
+                                                nrepliw++;
+                                        } else if (ev != rv)
+                                                fail(61+(testcase<<3));
                                 }
                         }
                 }
-                if (nrepli > 24) fail(62+(testcase<<3));
+                if (nrepli > 24 || nrepliw > 1) fail(62+(testcase<<3));
                 for (w=0,a=0,d=freeaddr; w<dways; w++) {
                         for (s=0; s<dsets; s++, a+=dclsize, d+=(dclsize+(7<<12))) {
                                 r = lda0x0e(a);
@@ -369,11 +375,17 @@ void regfltest(unsigned long freeaddr)
                                         ra = (d & dtagmask) | (a & (~dtagmask));
                                         ev = ((ra & flmask) == fladdr)?0:1;
                                         rv = r & 1;
-                                        if (ev != rv) fail(64+(testcase<<3));
+                                        if (ev==1 && rv==0 &&
+                                            ((a & (~dtagmask) & flmask) == (fladdr & (~dtagmask) & flmask))) {
+                                                /* cache line was replaced between population and flush
+                                                 * and then got flushed out */
+                                                nrepldw++;
+                                        } else if (ev != rv)
+                                                fail(64+(testcase<<3));
                                 }
                         }
                 }
-                if (nrepld > 8) fail(65+(testcase<<3));
+                if (nrepld > 8 || nrepldw > 1) { fail(65+(testcase<<3)); }
         }
 }
 

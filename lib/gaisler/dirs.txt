@@ -31,7 +31,7 @@ jtag
 b1553 
 greth
 spacewire 
-spacefibre
+hssl
 usb 
 ddr 
 crypto 
@@ -59,3 +59,5 @@ leon5v0
 grfpc5
 socbridge
 l2c_lite
+bch
+nandfctrl2

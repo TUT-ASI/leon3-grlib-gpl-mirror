@@ -535,7 +535,7 @@ set_property IOSTANDARD LVDS [get_ports spw_dout_p[2]]
 set_property PACKAGE_PIN K8 [get_ports spw_dout_n[2]]
 set_property IOSTANDARD LVDS [get_ports spw_dout_n[2]]
 set_property PACKAGE_PIN D9 [get_ports spw_sout_p[2]]
-set_property IOSTANDARD LVDS [get_ports spw_sout_P[2]]
+set_property IOSTANDARD LVDS [get_ports spw_sout_p[2]]
 set_property PACKAGE_PIN C9 [get_ports spw_sout_n[2]]
 set_property IOSTANDARD LVDS [get_ports spw_sout_n[2]]
 

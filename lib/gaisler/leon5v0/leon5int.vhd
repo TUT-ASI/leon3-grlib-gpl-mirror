@@ -876,7 +876,8 @@ package leon5int is
       pnpaddrlo : integer;
       dsuslvidx : integer;
       dsumstidx : integer;
-      bretryen  : integer
+      bretryen  : integer;
+      plmdata   : integer
       );
     port (
       clk      : in  std_ulogic;

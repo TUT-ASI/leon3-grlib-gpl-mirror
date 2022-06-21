@@ -2,52 +2,86 @@
 mainmenu_option next_comment
 comment 'Processor            '
 bool 'Enable NOELV RISC-V Processor' CONFIG_NOELV
- if [ "$CONFIG_NOELV" = "y" ]; then
-   int 'Number of processors' CONFIG_PROC_NUM 1
-   choice 'NOEL-V RV64 or RV32' \
-     "RV64	CONFIG_NOELV_RV64 \
+  if [ "$CONFIG_NOELV" = "y" ]; then
+    int 'Number of processors' CONFIG_PROC_NUM 1
+    choice 'NOEL-V RV64 or RV32' \
+      "RV64	CONFIG_NOELV_RV64 \
       RV32	CONFIG_NOELV_RV32" XLEN
-   if [ "$CONFIG_NOELV_RV32" = "y" ]; then
-    define_int  CONFIG_NOELV_XLEN 32
-   else
-    define_int  CONFIG_NOELV_XLEN 64
-   fi
-   choice 'Select standard configuration (see help)' \
-     "Tiny-configuration	CONFIG_NOELV_TIN \
-      Minimal-configuration	CONFIG_NOELV_MIN \
-      General-purpose-cfg(single-issue)	CONFIG_NOELV_GPS \
-      General-purpose-cfg(dual-issue)	CONFIG_NOELV_GPD \
-      High-Performance-cfg	CONFIG_NOELV_HP" Std-config
+    if [ "$CONFIG_NOELV_RV32" = "y" ]; then
+      define_int  CONFIG_NOELV_XLEN 32
+    else
+      define_int  CONFIG_NOELV_XLEN 64
+    fi
+    choice 'Select standard configuration (see help)' \
+      "High-Performance CONFIG_NOELV_HP \
+      General-purpose	CONFIG_NOELV_GP \
+      Minimal-configuration CONFIG_NOELV_MC"
 #      Custom-configuration	CONFIG_NOELV_CUSTOM" Custom-configuration
 
-   if [ "$CONFIG_NOELV_TIN" = "y" ]; then
-    define_int  CONFIG_PROC_CFG 5
-   fi
-   if [ "$CONFIG_NOELV_MIN" = "y" ]; then
-    define_int  CONFIG_PROC_CFG 4
-   fi
-   if [ "$CONFIG_NOELV_GPS" = "y" ]; then
-    define_int  CONFIG_PROC_CFG 2
-   fi
-   if [ "$CONFIG_NOELV_GPD" = "y" ]; then
-    define_int  CONFIG_PROC_CFG 1
-   fi
+    if [ "$CONFIG_NOELV_GP" = "y" -o "$CONFIG_NOELV_MC" = "y" ]; then
+      choice 'Select Full or (limited) Lite version' \
+        "Full CONFIG_NOELV_FULL \
+        Lite CONFIG_NOELV_LITE"
+    fi
+
+    if [ "$CONFIG_NOELV_GP" = "y" ]; then
+      choice 'Select signel-/dual-issue ' \
+        "Dual-issue CONFIG_NOELV_DISSUE \
+        Single-issue	CONFIG_NOELV_SISSUE"
+    fi
+    
+    if [ "$CONFIG_NOELV_MC" = "y" ]; then
+      choice 'Select to enable/disable FPU' \
+        "FPU-enable CONFIG_NOELV_FPU \
+        FPU-disable CONFIG_NOELV_NOFPU"
+    fi
+
    if [ "$CONFIG_NOELV_HP" = "y" ]; then
-    define_int  CONFIG_PROC_CFG 0
+    define_int  CONFIG_PROC_TYP 4
+    define_int  CONFIG_PROC_LITE 0
+    define_int  CONFIG_PROC_NOFPU 0
+    define_int  CONFIG_PROC_S 0
    fi
+   if [ "$CONFIG_NOELV_GP" = "y" ]; then
+    define_int  CONFIG_PROC_TYP 3
+    define_int  CONFIG_PROC_NOFPU 0
+    if [ "$CONFIG_NOELV_LITE" = "y" ]; then
+      define_int  CONFIG_PROC_LITE 1
+    else
+      define_int  CONFIG_PROC_LITE 0
+    fi
+    if [ "$CONFIG_NOELV_SISSUE" = "y" ]; then
+      define_int  CONFIG_PROC_S 1
+    else
+      define_int  CONFIG_PROC_S 0
+    fi
+   fi
+   if [ "$CONFIG_NOELV_MC" = "y" ]; then
+    define_int  CONFIG_PROC_TYP 2
+    define_int  CONFIG_PROC_S 1
+    if [ "$CONFIG_NOELV_LITE" = "y" ]; then
+      define_int  CONFIG_PROC_LITE 1
+    else
+      define_int  CONFIG_PROC_LITE 0
+    fi
+    if [ "$CONFIG_NOELV_FPU" = "y" ]; then
+      define_int  CONFIG_PROC_NOFPU 0
+    else
+      define_int  CONFIG_PROC_NOFPU 1
+    fi
  
 #   if [ "$CONFIG_NOELV_CUSTOM" = "y" ]; then
 #   fi
 
-   mainmenu_option next_comment
-     comment 'VHDL debug settings       '
-     bool 'Processor disassembly to console         ' CONFIG_IU_DISAS
-   endmenu
+    mainmenu_option next_comment
+      comment 'VHDL debug settings       '
+      bool 'Processor disassembly to console         ' CONFIG_IU_DISAS
+    endmenu
 
-   mainmenu_option next_comment
-     comment 'NOEL-V subsystem GPL settings       '
-     bool 'disable non-GPL components               ' CONFIG_PROC_NODBUS
-   endmenu
- fi
+    mainmenu_option next_comment
+      comment 'NOEL-V subsystem GPL settings       '
+      bool 'disable non-GPL components               ' CONFIG_PROC_NODBUS
+    endmenu
+  fi
 endmenu
 

@@ -55,7 +55,8 @@ entity dbgmod5 is
     pnpaddrlo : integer;
     dsuslvidx : integer;
     dsumstidx : integer;
-    bretryen  : integer
+    bretryen  : integer;
+    plmdata   : integer
     );
   port (
     clk      : in  std_ulogic;
@@ -127,8 +128,11 @@ architecture rtl of dbgmod5 is
     hsize   : std_logic_vector(2 downto 0);
     hwrite  : std_ulogic;
     hburst0 : std_ulogic;
+    phready : std_ulogic;
+    nhready : std_ulogic;
+    mhdata   : std_logic_vector(31 downto 0);
   end record;
-  constant dbgmst_state_none: dbgmst_state := ('1',x"00000000","000",'0','0');
+  constant dbgmst_state_none: dbgmst_state := ('1',x"00000000","000",'0','0','0','0',x"00000000");
   type dbgmst_state_vector is array(ndbgmst-1 downto 0) of dbgmst_state;
 
   type dbgmod5_state is (dmrstwait, dmidle, dmsingle, dmdsu1, dmdsu2, dmbootreq1, dmbootreq2, dmbootreq3);
@@ -1187,7 +1191,11 @@ begin
       odbgmi(m).hgrant := (others => '1');
       odbgmi(m).hready := r.dbgmst(m).hready;
       odbgmi(m).hresp := "00";
-      odbgmi(m).hrdata := ahbdrivedata(r.hdata);
+      if plmdata /= 0 then
+        odbgmi(m).hrdata := ahbdrivedata(r.dbgmst(m).mhdata);
+      else
+        odbgmi(m).hrdata := ahbdrivedata(r.hdata);
+      end if;
       if r.dbgmst(m).hready='1' then
         v.dbgmst(m).haddr := dbgmo(m).haddr;
         v.dbgmst(m).hsize := dbgmo(m).hsize;
@@ -1195,6 +1203,20 @@ begin
         v.dbgmst(m).hburst0 := dbgmo(m).hburst(0);
         if dbgmo(m).htrans(1) /= '0' then
           v.dbgmst(m).hready := '0';
+        end if;
+      end if;
+      v.dbgmst(m).phready := r.dbgmst(m).hready;
+      v.dbgmst(m).nhready := '0';
+      if plmdata /= 0 then
+        if r.dbgmst(m).nhready='1' then
+          v.dbgmst(m).hready := '1';
+        end if;
+        if r.dbgmst(m).hready='0' then
+          if r.dbgmst(m).hwrite='0' then
+            v.dbgmst(m).mhdata := r.hdata;
+          else
+            v.dbgmst(m).mhdata := ahbreadword(dbgmo(m).hwdata, r.dbgmst(m).haddr(4 downto 2));
+          end if;
         end if;
       end if;
       -- Low-level debug register accessible even if AHB bus or debug module
@@ -1209,10 +1231,21 @@ begin
           hrdata(31 downto 16) := sysstat;
           hrdata(1) := r.deadlock_hit;
           hrdata(0) := r.hready_pipe;
-          odbgmi(m).hrdata := ahbdrivedata(sysstat & "0000000000000000");
+          if plmdata=0 then
+            odbgmi(m).hrdata := ahbdrivedata(hrdata);
+          else
+            v.dbgmst(m).mhdata := hrdata;
+          end if;
           if r.dbgmst(m).hwrite='1' and r.dbgmst(m).hready='0' and
             dbgmo(m).hwdata(7 downto 0)=x"99" then
             v.rstreqn := '0';
+          end if;
+          if r.dbgmst(m).hready='0' then
+            if plmdata /= 0 then
+              v.dbgmst(m).nhready := '1';
+            else
+              v.dbgmst(m).hready := '1';
+            end if;
           end if;
         end if;
       end if;
@@ -2091,15 +2124,20 @@ begin
         -- TODO round robin arbitration
         vfound := '0';
         for m in 0 to ndbgmst-1 loop
-          if r.dbgmst(m).hready='0' then
+          if r.dbgmst(m).hready='0' and (plmdata=0 or r.dbgmst(m).hwrite='0' or r.dbgmst(m).phready='0') and r.dbgmst(m).nhready='0' then
             v.selmst := to_unsigned(m,v.selmst'length);
             vfound := '1';
           end if;
         end loop;
         if vfound='1' and dsuen='1' then
           if maskmatch(r.dbgmst(to_integer(v.selmst)).haddr(31 downto 20), dsuhaddr, dsuhmask)='1' then
-            v.s := dmdsu1;
-            v.dsu_htrans1 := '1';
+            if r.dbgmst(to_integer(v.selmst)).haddr(21 downto 18) = "0001" then
+              -- Special debug register handled directly in master code above
+              null;
+            else
+              v.s := dmdsu1;
+              v.dsu_htrans1 := '1';
+            end if;
           else
             v.s := dmsingle;
             v.mst_hbusreq := '1';
@@ -2110,6 +2148,7 @@ begin
           vfound := '0';
           v.hdata := x"DEAD1234";      -- simplify debugging
           for x in 0 to ndbgmst-1 loop
+            v.dbgmst(x).mhdata := x"DEAD1234";
             v.dbgmst(x).hready := '1';
           end loop;
         end if;
@@ -2124,8 +2163,12 @@ begin
         end if;
         for x in 0 to ndbgmst-1 loop
           if std_logic_vector(v.selmst)=std_logic_vector(to_unsigned(x,v.selmst'length)) then
-            v.hdata := ahbreadword(dbgmo(x).hwdata, r.dbgmst(x).haddr(4 downto 2));
-            if r.dbgmst(x).hready='0' and r.dbgmst(x).hwrite='1' then
+            if plmdata /= 0 then
+              v.hdata := r.dbgmst(x).mhdata;
+            else
+              v.hdata := ahbreadword(dbgmo(x).hwdata, r.dbgmst(x).haddr(4 downto 2));
+            end if;
+            if r.dbgmst(x).hready='0' and r.dbgmst(x).hwrite='1' and (plmdata=0 or r.dbgmst(x).phready='0') then
               v.dbgmst(x).hready := '1';
             end if;
           end if;
@@ -2154,7 +2197,11 @@ begin
         if r.mst_inacc='1' and cpumi.hready='1' then
           v.s := dmidle;
           if r.mst_hwrite='0' then
-            v.dbgmst(to_integer(r.selmst)).hready := '1';
+            if plmdata/=0 then
+              v.dbgmst(to_integer(r.selmst)).nhready := '1';
+            else
+              v.dbgmst(to_integer(r.selmst)).hready := '1';
+            end if;
           end if;
         elsif r.mst_inacc='1' and cpumi.hready='0' and cpumi.hresp(1)='1' then
           v.mst_inacc := '0';
@@ -2303,7 +2350,11 @@ begin
         end loop;
         if vsessbusy='0' and dbgo(index).miso.accrdy='0' then
           if r.mst_hwrite='0' then
-            v.dbgmst(to_integer(r.selmst)).hready := '1';
+            if plmdata /= 0 then
+              v.dbgmst(to_integer(r.selmst)).nhready := '1';
+            else
+              v.dbgmst(to_integer(r.selmst)).hready := '1';
+            end if;
           end if;
           v.s := dmidle;
         end if;
@@ -2532,6 +2583,13 @@ begin
     for i in 0 to NCPU-1 loop
       v.dsu.timerrep(i) := v.dsu.timer;
     end loop;
+    if plmdata=0 then
+      for m in ndbgmst-1 downto 0 loop
+        v.dbgmst(m).mhdata := (others => '0');
+        v.dbgmst(m).nhready := '0';
+        v.dbgmst(m).phready := '0';
+      end loop;
+    end if;
 
     nr <= v;
     cpurstn <= r.cpurstn;
@@ -2653,7 +2711,7 @@ begin
           vnextent := vent;
         end if;
       end loop;
-      if br.rstn_prev='1' and rstn_sync='0' then
+      if br.rstn_prev='1' and rstn_sync='0' and bretin.noswitch='0' then
         bv.bootctr := add(br.bootctr,1);
         if br.bootctr="1111" then bv.bootctr := "1000"; end if;
         bv.curent := vnextent;

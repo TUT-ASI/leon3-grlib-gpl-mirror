@@ -179,13 +179,13 @@ constant syncram_dp_dest_rw_collision : tech_ability_type :=
 -- a read.
 
 constant syncram_readhold : tech_ability_type :=
-        (rhs65 => 1, memrhs65b => 1, gf22 => 1,
+        (rhs65 => 1, memrhs65b => 1, gf22 => 1, rhs28 => 1,
          spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
          artix7 => 1, zynq7000 => 1, ultrascale => 1, ultrascalep => 1,
          others => 0);
 
 constant syncram_2p_readhold : tech_ability_type :=
-        (rhs65 => 1, memrhs65b => 1, gf22 => 1,
+        (rhs65 => 1, memrhs65b => 1, gf22 => 1, rhs28 => 1,
          spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
          artix7 => 1, zynq7000 => 1, ultrascale => 1, ultrascalep => 1,
          others => 0);
@@ -218,9 +218,9 @@ constant syncram_add_scan_bypass : tech_ability_type := (others => 0);
 -- value will use inferred implementation (can be overriden by grlib_config)
 constant syncram_abits_min    : tech_ability_type := (spartan6 => 6, virtex6 => 6, virtex7 => 6, kintex7 => 6,
                                                       artix7 => 7, zynq7000 => 6, ultrascale => 6, ultrascalep => 6,
-                                                      dare65t => 6, others => 0);
+                                                      rhs28 => 5, dare65t => 6, others => 0);
 constant syncram_2p_abits_min : tech_ability_type := (spartan6 => 6, virtex6 => 6, virtex7 => 6, kintex7 => 6,
-                                                      artix7 => 6, zynq7000 => 6, ultrascale => 6, ultrascalep => 6, gf22 => 6,
+                                                      artix7 => 6, zynq7000 => 6, ultrascale => 6, ultrascalep => 6, gf22 => 6, rhs28 => 7,
                                                       others => 0);
 
 
@@ -308,7 +308,7 @@ constant has_sram_ecc :  tech_ability_type :=
 
 -- Support for built in pipeline register in SRAM macro
 constant has_sram_pipe : tech_ability_type :=
-  (rtg4 => 1, polarfire => 1, others => 0);
+  (rtg4 => 1, polarfire => 1, rhs28 => 1, others => 0);
 
 -- Support for build in pipeline register in SRAM macro ECC
 constant has_sram_ecc_pipe : tech_ability_type :=
@@ -358,7 +358,7 @@ constant has_clkand : tech_ability_type :=
 	  virtex5 => 1, ut25 => 1, rhlib18t => 1,
           spartan6 => 1, virtex6 => 1, ut130 => 1, easic45 => 1,
           ut90 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1, saed32 => 1,
-	  dare => 1, dare65t => 1, rhs65 => 1, ultrascale => 1, ultrascalep => 1, gf22 => 1, others => 0);
+	  dare => 1, dare65t => 1, rhs65 => 1, ultrascale => 1, ultrascalep => 1, gf22 => 1, rhs28 => 1, others => 0);
 
 constant has_clkmux : tech_ability_type :=
 	( virtex => 1, virtex2 => 1, spartan3 => 1, spartan3e => 1,
@@ -884,7 +884,8 @@ constant TT_M010     : integer := 13;
       fwft : integer := 0;     -- 0 = standard fifo mode, 1 = first word-fall through mode
       piperead : integer := 0;    -- add full pipeline stage on read side (ping pong buffer)
       ft : integer := 0;
-      custombits : integer := 1
+      custombits : integer := 1;
+      rdhold: integer := 0
     );
     port (
       rclk    : in std_logic;

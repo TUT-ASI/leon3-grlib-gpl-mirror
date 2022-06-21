@@ -44,6 +44,7 @@ package leon5 is
   type leon5_bretry_in_type is record
     addrlist: leon5_bretry_addrlist;
     addrvalid: std_logic_vector(0 to 7);
+    noswitch: std_ulogic;
   end record;
 
   type leon5_bretry_out_type is record
@@ -53,7 +54,8 @@ package leon5 is
 
   constant leon5_bretry_in_none : leon5_bretry_in_type := (
     addrlist => (others => (others => '0')),
-    addrvalid => (others => '0')
+    addrvalid => (others => '0'),
+    noswitch => '0'
     );
 
   component leon5sys is

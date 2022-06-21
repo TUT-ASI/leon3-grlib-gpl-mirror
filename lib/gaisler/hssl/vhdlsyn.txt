@@ -1,0 +1,11 @@
+hssl.vhd
+grspfi_codec.vhd
+grwizl_codec.vhd
+grhssl_pkg.vhd
+grhssl_spfi.vhd
+grhssl_wizl.vhd
+grhssl_dma.vhd
+grhssl.vhd
+grhssl_ahb.vhd
+grspfi_ahb.vhd
+grwizl_ahb.vhd

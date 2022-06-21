@@ -100,6 +100,7 @@ begin
       testin    => testin
     );
   end generate;
+  do.data(do.data'high downto 64*TRACE_CELLS) <= (others => '0');
   
   -- Drive test signals
   

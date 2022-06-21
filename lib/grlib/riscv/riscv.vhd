@@ -37,27 +37,31 @@ package riscv is
   -- GPRs
   ----------------------------------------------------------------------------
 
+  -- The calling convention is marked for the registers below.
+  -- Caller is responsible for saving return address, arguments and temporaries.
+  -- Callee is responsible for saving stack pointer and saved registers.
+
   subtype gpr_type is std_logic_vector(4 downto 0);
 
-  constant GPR_X0       : gpr_type := "00000";
-  constant GPR_RA       : gpr_type := "00001";
-  constant GPR_SP       : gpr_type := "00010";
-  constant GPR_GP       : gpr_type := "00011";
-  constant GPR_TP       : gpr_type := "00100";
-  constant GPR_T0       : gpr_type := "00101";
+  constant GPR_X0       : gpr_type := "00000";  -- Hard-wired zero
+  constant GPR_RA       : gpr_type := "00001";  -- Return address
+  constant GPR_SP       : gpr_type := "00010";  -- Stack pointer
+  constant GPR_GP       : gpr_type := "00011";  -- Global pointer
+  constant GPR_TP       : gpr_type := "00100";  -- Thread pointer
+  constant GPR_T0       : gpr_type := "00101";  -- Temporaries
   constant GPR_T1       : gpr_type := "00110";
   constant GPR_T2       : gpr_type := "00111";
-  constant GPR_FP       : gpr_type := "01000";
-  constant GPR_S1       : gpr_type := "01001";
-  constant GPR_A0       : gpr_type := "01010";
+  constant GPR_FP       : gpr_type := "01000";  -- Saved register/frame pointer
+  constant GPR_S1       : gpr_type := "01001";  -- Saved register
+  constant GPR_A0       : gpr_type := "01010";  -- Function arguments/return values
   constant GPR_A1       : gpr_type := "01011";
-  constant GPR_A2       : gpr_type := "01100";
+  constant GPR_A2       : gpr_type := "01100";  -- Function arguments
   constant GPR_A3       : gpr_type := "01101";
   constant GPR_A4       : gpr_type := "01110";
   constant GPR_A5       : gpr_type := "01111";
   constant GPR_A6       : gpr_type := "10000";
   constant GPR_A7       : gpr_type := "10001";
-  constant GPR_S2       : gpr_type := "10010";
+  constant GPR_S2       : gpr_type := "10010";  -- Saved registers
   constant GPR_S3       : gpr_type := "10011";
   constant GPR_S4       : gpr_type := "10100";
   constant GPR_S5       : gpr_type := "10101";
@@ -67,7 +71,7 @@ package riscv is
   constant GPR_S9       : gpr_type := "11001";
   constant GPR_S10      : gpr_type := "11010";
   constant GPR_S11      : gpr_type := "11011";
-  constant GPR_T3       : gpr_type := "11100";
+  constant GPR_T3       : gpr_type := "11100";  -- Temporaries
   constant GPR_T4       : gpr_type := "11101";
   constant GPR_T5       : gpr_type := "11110";
   constant GPR_T6       : gpr_type := "11111";
@@ -76,9 +80,13 @@ package riscv is
   -- FPUs
   ----------------------------------------------------------------------------
 
+  -- The calling convention is marked for the registers below.
+  -- Caller is responsible for saving arguments and temporaries.
+  -- Callee is responsible for saving saved registers.
+
   subtype fpu_type is std_logic_vector(4 downto 0);
 
-  constant FPU_FT0      : gpr_type := "00000";
+  constant FPU_FT0      : gpr_type := "00000";  -- Temporaries
   constant FPU_FT1      : gpr_type := "00001";
   constant FPU_FT2      : gpr_type := "00010";
   constant FPU_FT3      : gpr_type := "00011";
@@ -86,17 +94,17 @@ package riscv is
   constant FPU_FT5      : gpr_type := "00101";
   constant FPU_FT6      : gpr_type := "00110";
   constant FPU_FT7      : gpr_type := "00111";
-  constant FPU_FS0      : gpr_type := "01000";
+  constant FPU_FS0      : gpr_type := "01000";  -- Saved registers
   constant FPU_FS1      : gpr_type := "01001";
-  constant FPU_FA0      : gpr_type := "01010";
+  constant FPU_FA0      : gpr_type := "01010";  -- Function arguments/return values
   constant FPU_FA1      : gpr_type := "01011";
-  constant FPU_FA2      : gpr_type := "01100";
+  constant FPU_FA2      : gpr_type := "01100";  -- Function arguments
   constant FPU_FA3      : gpr_type := "01101";
   constant FPU_FA4      : gpr_type := "01110";
   constant FPU_FA5      : gpr_type := "01111";
   constant FPU_FA6      : gpr_type := "10000";
   constant FPU_FA7      : gpr_type := "10001";
-  constant FPU_FS2      : gpr_type := "10010";
+  constant FPU_FS2      : gpr_type := "10010";  -- Saved registers
   constant FPU_FS3      : gpr_type := "10011";
   constant FPU_FS4      : gpr_type := "10100";
   constant FPU_FS5      : gpr_type := "10101";
@@ -106,7 +114,7 @@ package riscv is
   constant FPU_FS9      : gpr_type := "11001";
   constant FPU_FS10     : gpr_type := "11010";
   constant FPU_FS11     : gpr_type := "11011";
-  constant FPU_FT8      : gpr_type := "11100";
+  constant FPU_FT8      : gpr_type := "11100";  -- Temporaries
   constant FPU_FT9      : gpr_type := "11101";
   constant FPU_FT10     : gpr_type := "11110";
   constant FPU_FT11     : gpr_type := "11111";
@@ -121,6 +129,22 @@ package riscv is
 
   constant I_ECALL      : funct12_type := "000000000000";
   constant I_EBREAK     : funct12_type := "000000000001";
+
+  -- Zbb
+  constant F12_ZEXTH      : funct12_type := "000010000000";  -- R_XOR
+  constant F12_CLZ        : funct12_type := "011000000000";  -- R_SLL
+  constant F12_CTZ        : funct12_type := "011000000001";  -- R_SLL
+  constant F12_CPOP       : funct12_type := "011000000010";  -- R_SLL
+  constant F12_SEXTB      : funct12_type := "011000000100";  -- R_SLL
+  constant F12_SEXTH      : funct12_type := "011000000101";  -- R_SLL
+  constant F12_REV8_RV32  : funct12_type := "011010011000";  -- R_SRL
+  constant F12_REV8_RV64  : funct12_type := "011010111000";  -- R_SRL
+  constant F12_ORCB       : funct12_type := "001010000111";  -- R_SRL
+
+  -- Zbkb
+  constant F12_BREV8      : funct12_type := "011010000111";  -- R_SRL
+  constant F12_ZIP        : funct12_type := "000010001111";  -- R_SRL UNZIP, R_SLL ZIP
+
 
   -- funct7 decoding (inst(31 downto 25))
 
@@ -143,6 +167,34 @@ package riscv is
   constant F7_HSVH        : funct7_type := "0110011";
   constant F7_HSVW        : funct7_type := "0110101";
   constant F7_HSVD        : funct7_type := "0110111";
+
+  constant F7_BASE_RV64   : funct7_type := "0000001";
+  constant F7_SUB_RV64    : funct7_type := "0100001";
+
+  -- Zba
+  constant F7_ADDSLLIUW   : funct7_type := "0000100";  -- R_ADD, R_SLL (see Zbb above)
+  constant F7_SLLIUW_I64  : funct7_type := "0000101";  -- R_SLL
+  constant F7_SHADD       : funct7_type := "0010000";  -- 010 1, 100 2, 110 3
+
+  -- Zbb / Zbc(CLMUL)
+  constant F7_MINMAXCLMUL : funct7_type := "0000101";
+  constant F7_LOGICAL_INV : funct7_type := "0100000";  -- R_XOR R_OR R_AND
+  constant F7_ROT         : funct7_type := "0110000";  -- R_SLL ROL, R_SRL ROR
+  constant F7_ROR_I64     : funct7_type := "0110001";  --   RV64 (>= 32)
+
+  -- Zbs
+  constant F7_BSET        : funct7_type := "0010100";  -- R_SLL (see ORCB above)
+  constant F7_BSET_I64    : funct7_type := "0010101";  --   RV64 (>= 32)
+  constant F7_BINV        : funct7_type := "0110100";  -- R_SLL
+  constant F7_BINV_I64    : funct7_type := "0110101";  --   RV64 (>= 32)
+  constant F7_BCLREXT     : funct7_type := "0100100";  -- R_SLL BCLR, R_SRL BEXT
+  constant F7_BCLREXT_I64 : funct7_type := "0100101";  --   RV64 (>= 32)
+
+  -- Zbkb
+  constant F7_PACK        : funct7_type := "0000100";  -- 100 pack/packw, 111 packh (see Zba above)
+  -- Zbkx
+  constant F7_XPERM       : funct7_type := "0010100";  -- 100 xperm8, 010 xperm4 (see Zbs above)
+
 
   -- funct3 decoding (inst(14 downto 12))
 
@@ -191,6 +243,15 @@ package riscv is
   constant R_OR         : funct3_type := "110";
   constant R_AND        : funct3_type := "111";
 
+  -- For MINMAXCLMUL
+  constant R_CLMUL        : funct3_type := "001";
+  constant R_CLMULR       : funct3_type := "010";
+  constant R_CLMULH       : funct3_type := "011";
+  constant R_MIN          : funct3_type := "100";
+  constant R_MINU         : funct3_type := "101";
+  constant R_MAX          : funct3_type := "110";
+  constant R_MAXU         : funct3_type := "111";
+
   -- B-Type Format
   constant B_BEQ        : funct3_type := "000";
   constant B_BNE        : funct3_type := "001";
@@ -230,6 +291,9 @@ package riscv is
 
   -- S-Type Format
   constant OP_STORE     : opcode_type := "0100011";
+
+  constant OP_CUSTOM0   : opcode_type := "0001011";
+  constant OP_CUSTOM1   : opcode_type := "0101011";
 
   -----------------------------------------------------------------------------
   -- RV64I Base Instruction Set
@@ -356,8 +420,7 @@ package riscv is
   constant R_FDIV       : funct5_type := "00011";
   constant R_FSQRT      : funct5_type := "01011";
   constant R_FSGN       : funct5_type := "00100";
-  constant R_FMIN       : funct5_type := "00101";
-  constant R_FMAX       : funct5_type := "00101";
+  constant R_FMINMAX    : funct5_type := "00101";
   constant R_FCVT_W_S   : funct5_type := "11000";
   constant R_FCVT_S_W   : funct5_type := "11010";
   constant R_FMV_X_W    : funct5_type := "11100";
@@ -368,8 +431,8 @@ package riscv is
   constant R_FSGNJ      : funct3_type := "000";
   constant R_FSGNJN     : funct3_type := "001";
   constant R_FSGNJX     : funct3_type := "010";
-  constant R_MIN        : funct3_type := "000";
-  constant R_MAX        : funct3_type := "001";
+  constant R_FMIN       : funct3_type := "000";
+  constant R_FMAX       : funct3_type := "001";
   constant R_FEQ        : funct3_type := "010";
   constant R_FLT        : funct3_type := "001";
   constant R_FLE        : funct3_type := "000";
@@ -550,6 +613,8 @@ package riscv is
   constant CSR_SIP              : csratype := x"144";
   -- Supervisor Protection and Translation
   constant CSR_SATP             : csratype := x"180";
+  -- Supervisor Count Overflow
+  constant CSR_SCOUNTOVF        : csratype := x"da0";
 
   -- Hypervisor Trap Setup
   constant CSR_HSTATUS          : csratype := x"600";
@@ -721,6 +786,36 @@ package riscv is
   constant CSR_MHPMEVENT29      : csratype := x"33d";
   constant CSR_MHPMEVENT30      : csratype := x"33e";
   constant CSR_MHPMEVENT31      : csratype := x"33f";
+  constant CSR_MHPMEVENT0H      : csratype := x"720";  -- Does not exist!
+  constant CSR_MHPMEVENT3H      : csratype := x"723";
+  constant CSR_MHPMEVENT4H      : csratype := x"724";
+  constant CSR_MHPMEVENT5H      : csratype := x"725";
+  constant CSR_MHPMEVENT6H      : csratype := x"726";
+  constant CSR_MHPMEVENT7H      : csratype := x"727";
+  constant CSR_MHPMEVENT8H      : csratype := x"728";
+  constant CSR_MHPMEVENT9H      : csratype := x"729";
+  constant CSR_MHPMEVENT10H     : csratype := x"72a";
+  constant CSR_MHPMEVENT11H     : csratype := x"72b";
+  constant CSR_MHPMEVENT12H     : csratype := x"72c";
+  constant CSR_MHPMEVENT13H     : csratype := x"72d";
+  constant CSR_MHPMEVENT14H     : csratype := x"72e";
+  constant CSR_MHPMEVENT15H     : csratype := x"72f";
+  constant CSR_MHPMEVENT16H     : csratype := x"730";
+  constant CSR_MHPMEVENT17H     : csratype := x"731";
+  constant CSR_MHPMEVENT18H     : csratype := x"732";
+  constant CSR_MHPMEVENT19H     : csratype := x"733";
+  constant CSR_MHPMEVENT20H     : csratype := x"734";
+  constant CSR_MHPMEVENT21H     : csratype := x"735";
+  constant CSR_MHPMEVENT22H     : csratype := x"736";
+  constant CSR_MHPMEVENT23H     : csratype := x"737";
+  constant CSR_MHPMEVENT24H     : csratype := x"738";
+  constant CSR_MHPMEVENT25H     : csratype := x"739";
+  constant CSR_MHPMEVENT26H     : csratype := x"73a";
+  constant CSR_MHPMEVENT27H     : csratype := x"73b";
+  constant CSR_MHPMEVENT28H     : csratype := x"73c";
+  constant CSR_MHPMEVENT29H     : csratype := x"73d";
+  constant CSR_MHPMEVENT30H     : csratype := x"73e";
+  constant CSR_MHPMEVENT31H     : csratype := x"73f";
   -- Debug/Trace Registers
   constant CSR_TSELECT          : csratype := x"7a0";
   constant CSR_TDATA1           : csratype := x"7a1";
@@ -736,8 +831,23 @@ package riscv is
   constant CSR_DSCRATCH0        : csratype := x"7b2";
   constant CSR_DSCRATCH1        : csratype := x"7b3";
   -- Custom Read/Write Registers
-  constant CSR_DFEATURESEN      : csratype := x"7c0";
-  constant CSR_DFEATURESENH     : csratype := x"7c1";
+  constant CSR_FEATURES         : csratype := x"7c0";
+  constant CSR_CCTRL            : csratype := x"7c1";
+  constant CSR_TCMICTRL         : csratype := x"7c2";
+  constant CSR_TCMDCTRL         : csratype := x"7c3";
+  constant CSR_FT               : csratype := x"7c4";
+  constant CSR_EINJECT          : csratype := x"7c5";
+  constant CSR_DFEATURES        : csratype := x"7c6";
+  constant CSR_FEATURESH        : csratype := x"7d0";
+  constant CSR_CCTRLH           : csratype := x"7d1";
+  constant CSR_TCMICTRLH        : csratype := x"7d2";
+  constant CSR_TCMDCTRLH        : csratype := x"7d3";
+  constant CSR_FTH              : csratype := x"7d4";
+  constant CSR_EINJECTH         : csratype := x"7d5";
+  constant CSR_DFEATURESH       : csratype := x"7d6";
+  -- Custom Read-only Registers
+  constant CSR_CAPABILITY       : csratype := x"fc0";
+  constant CSR_CAPABILITYH      : csratype := x"fd0";
 
   constant DCAUSE_EBREAK        : std_logic_vector(2 downto 0) := "001";
   constant DCAUSE_TRIG          : std_logic_vector(2 downto 0) := "010";

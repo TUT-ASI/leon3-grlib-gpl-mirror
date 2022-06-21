@@ -47,6 +47,9 @@ use gaisler.noelv.nv_debug_out_type;
 use gaisler.noelv.nv_debug_in_vector;
 use gaisler.noelv.nv_debug_out_vector;
 use gaisler.noelv.nv_counter_out_type;
+use gaisler.noelv.nv_etrace_out_type;
+use gaisler.utilnv.get_hi;
+use gaisler.utilnv.all_0;
 
 package noelvint is
 
@@ -55,6 +58,8 @@ package noelvint is
   subtype word64 is std_logic_vector(63 downto 0);
   subtype word   is std_logic_vector(31 downto 0);
   subtype wordx  is std_logic_vector(XLEN - 1 downto 0);
+
+  type wordx_arr is array (integer range <>) of wordx;
 
   constant zerow16      : word16 := (others => '0');
   constant zerow64      : word64 := (others => '0');
@@ -65,7 +70,7 @@ package noelvint is
   -----------------------------------------------------------------------------
   -- Constants
   -----------------------------------------------------------------------------
-  constant NOELV_VERSION        : integer := 0;
+  constant NOELV_VERSION        : integer := 1;
 
   constant HWPERFMONITORS       : integer := 29;
   constant PMPENTRIES           : integer := 16;
@@ -277,6 +282,7 @@ package noelvint is
   constant IRQ_VS_EXTERNAL              : cause_type;
   constant IRQ_M_EXTERNAL               : cause_type;
   constant IRQ_SG_EXTERNAL              : cause_type;
+  constant IRQ_LCOF                     : cause_type;
 
   -- Reset Codes
   constant RST_HARD_ALL                 : cause_type;
@@ -295,6 +301,14 @@ package noelvint is
   constant CSR_HIE_MASK                 : wordx;
   constant CSR_HIP_MASK                 : wordx;
 
+  constant TINST_LOAD_MASK              : word := "00000000000000000111111111111111";
+  constant TINST_H_MASK                 : word := "11111111111100000111111111111111";
+  constant TINST_STORE_MASK             : word := "00000001111100000111000001111111";
+  constant TINST_AMO_MASK               : word := "11111111111100000111111111111111";
+
+  function tinst_vs_pt_read return word;
+  function tinst_vs_pt_write return word;
+
   -- Hardware Performance Monitors
   constant CSR_HPM_ICACHE_MISS          :  integer := 1;
   constant CSR_HPM_DCACHE_MISS          :  integer := 2;
@@ -309,11 +323,10 @@ package noelvint is
   constant CSR_HPM_STORE_B2B            :  integer := 11;
   constant CSR_HPM_JALR                 :  integer := 12;
   constant CSR_HPM_JAL                  :  integer := 13;
-  constant CSR_HPM_ICACHE_FETCH         :  integer := 14;
-  constant CSR_HPM_DCACHE_FETCH         :  integer := 15;
-  constant CSR_HPM_DCACHE_FLUSH         :  integer := 16;
+  constant CSR_HPM_DCACHE_FLUSH         :  integer := 14;
+  constant CSR_HPM_SINGLE_ISSUE         :  integer := 15;
 
-  constant CSR_HPM_FPU_LOW              :  integer := 17;
+  constant CSR_HPM_FPU_LOW              :  integer := 16;
 
   -- PMP Configuration Codes
   constant PMP_OFF                      : std_logic_vector(1 downto 0) := "00";
@@ -471,67 +484,114 @@ package noelvint is
     tpbuf_en    : std_ulogic;                   -- Include program buffer execution in trace/sim-disas
     tmode_dis   : std_logic_vector(4 downto 0); -- Mask trace for different privilege modes [VU,VS,S,U,M]
     nostream    : std_ulogic;   -- Do not make use of stream buffer for instruction fetch
-    asi         : word8;
     mmu_adfault : std_ulogic;   -- Take page fault on access/modify.
     pte_nocache : std_ulogic;   -- Use bit 8 in PTE (one of RSW) as "uncachable".
-    doasi       : std_ulogic;
     -- Dual Issue Capabilities
-    dualen      : std_ulogic;
+    dual_dis    : std_ulogic;
     -- Branch Prediction
-    btben      : std_ulogic;
-    jprden      : std_ulogic;
+    btb_dis     : std_ulogic;
+    jprd_dis    : std_ulogic;
     staticbp    : std_ulogic;
     staticdir   : std_ulogic;
     -- Return Address Stack
-    rasen       : std_ulogic;
+    ras_dis     : std_ulogic;
     -- Performance Features
-    lbranchen   : std_ulogic;
-    laluen      : std_ulogic;
-    b2bsten     : std_ulogic;
+    lbranch_dis : std_ulogic;
+    lalu_dis    : std_ulogic;
+    b2bst_dis   : std_ulogic;
   end record;
 
   constant csr_dfeaturesen_rst : csr_dfeaturesen_type := (
     tpbuf_en    => '0',
     tmode_dis   => "00000",
     nostream    => '0',
-    asi         => "00001010",
     mmu_adfault => '0',
     pte_nocache => '0',
-    doasi       => '0',
-    dualen      => '1',
-    btben       => '1',
-    jprden      => '1',
+    dual_dis    => '0',
+    btb_dis     => '0',
+    jprd_dis    => '0',
     staticbp    => '0',
     staticdir   => '0',
-    rasen       => '1',
-    lbranchen   => '1',
-    laluen      => '1',
-    b2bsten     => '1'
+    ras_dis     => '0',
+    lbranch_dis => '0',
+    lalu_dis    => '0',
+    b2bst_dis   => '0'
     );
+  
+  type csr_out_cctrl_type is record
+    itcmwipe  : std_ulogic;
+    dtcmwipe  : std_ulogic;
+    dsnoop    : std_ulogic;
+    iflush    : std_ulogic; 
+    dflush    : std_ulogic; 
+    dcs       : std_logic_vector(1 downto 0);
+    ics       : std_logic_vector(1 downto 0);
+  end record;
+  constant csr_out_cctrl_rst : csr_out_cctrl_type := (
+    itcmwipe  => '0',
+    dtcmwipe  => '0',
+    dsnoop    => '0',
+    iflush    => '0',
+    dflush    => '0',
+    dcs       => "00",
+    ics       => "00"
+  );
 
-  type    hpmcounter_type    is array (0 to HWPERFMONITORS - 1) of word64;
-  subtype hpmevent_type      is word8;
-  type    hpmevent_vec       is array (0 to HWPERFMONITORS - 1) of hpmevent_type;
+  type csr_in_cctrl_type is record
+    dflushpend  : std_ulogic;
+    iflushpend  : std_ulogic;
+    itcmwipe    : std_ulogic;
+    dtcmwipe    : std_ulogic;
+  end record;
+  constant csr_in_cctrl_rst : csr_in_cctrl_type := (
+    iflushpend  => '0',
+    dflushpend  => '0',
+    itcmwipe    => '0',
+    dtcmwipe    => '0'
+  );
+
+  -- 0-2 of hpmcounter_type and hpmevent_vec are not used!
+  type hpmcounter_type is array (0 to HWPERFMONITORS + 3 - 1) of word64;
+  type hpmevent_type is record
+    overflow : std_ulogic;
+    minh     : std_ulogic;
+    sinh     : std_ulogic;
+    uinh     : std_ulogic;
+    vsinh    : std_ulogic;
+    vuinh    : std_ulogic;
+    event    : word8;
+  end record;
+
+  constant hpmevent_none : hpmevent_type := ('0', '0', '0', '0', '0', '0', (others => '0'));
+
+  type hpmevent_vec is array (0 to HWPERFMONITORS + 3 - 1) of hpmevent_type;
+
   subtype pmpcfg_access_type is std_logic_vector(1 downto 0);
-  subtype pmpaddr_type       is std_logic_vector(PMPADDRBITS - 1 downto 0);
+  -- One bit extra length to deal with < condition on high NAPOT limits,
+  -- and another one because it is allowed to have all 1's in the CSR and
+  -- an implicit 0 above that.
+  subtype pmpaddr_type       is std_logic_vector(PMPADDRBITS + 1 downto 0);
   type    pmpaddr_vec_type   is array (0 to PMPENTRIES - 1) of pmpaddr_type;
 
   constant pmpaddrzero : pmpaddr_type := (others => '0');
-  constant HPM_EVENTS  : hpmevent_vec;
 
   type pmp_precalc_type is record
-    low  : pmpaddr_type;
-    high : pmpaddr_type;
+    valid : std_ulogic;
+    low   : pmpaddr_type;
+    high  : pmpaddr_type;
   end record;
 
   constant pmp_precalc_none : pmp_precalc_type := (
-    low  => pmpaddrzero,
-    high => pmpaddrzero
+    valid => '0',
+    low   => pmpaddrzero,
+    high  => pmpaddrzero
   );
 
   type pmp_precalc_vec is array (integer range <>) of pmp_precalc_type;
 
-  type csrtype is record
+  constant PMPPRECALCRES : pmp_precalc_vec(0 to PMPENTRIES - 1) := (others => pmp_precalc_none);
+
+  type nv_csr_out_type is record
     satp        : wordx;
     vsatp       : wordx;
     hgatp       : wordx;
@@ -540,7 +600,27 @@ package noelvint is
     pmpcfg0     : word64;
     pmpcfg2     : word64;
     precalc     : pmp_precalc_vec(0 to PMPENTRIES - 1);
+    cctrl       : csr_out_cctrl_type;
   end record;
+  constant nv_csr_out_type_none : nv_csr_out_type := (
+    satp        => (others => '0'),
+    vsatp       => (others => '0'),
+    hgatp       => (others => '0'),
+    mmu_adfault => '0',
+    pte_nocache => '0',
+    pmpcfg0     => (others => '0'),
+    pmpcfg2     => (others => '0'),
+    precalc     => PMPPRECALCRES,
+    cctrl       => csr_out_cctrl_rst
+  );
+  type nv_csr_in_type is record
+    cctrl       : csr_in_cctrl_type;
+    cconfig     : word64;
+  end record;
+  constant nv_csr_in_type_none : nv_csr_in_type := (
+    cctrl       => csr_in_cctrl_rst,
+    cconfig     => (others => '0')
+  );
 
   type csr_reg_type is record
     -- Machine ISA (needs to be configured before use!)
@@ -550,6 +630,7 @@ package noelvint is
     -- Virtualization mode
     v           : std_ulogic;
     -- User Floating-Point CSRs
+    fctrl       : std_logic_vector(15 downto 8);  -- qqq Non-standard!
     frm         : std_logic_vector(7 downto 5);
     fflags      : std_logic_vector(4 downto 0);
     -- Hypervisor
@@ -622,14 +703,14 @@ package noelvint is
     mcountinhibit:word;
     -- Custom Read/Write Registers
     dfeaturesen : csr_dfeaturesen_type;
+    cctrl       : csr_out_cctrl_type;
   end record;
-
-  constant PMPPRECALCRES : pmp_precalc_vec(0 to PMPENTRIES - 1) := (others => pmp_precalc_none);
 
   constant CSRRES : csr_reg_type := (
     misa        => zerox,
     prv         => PRIV_LVL_M,
     v           => '0',
+    fctrl       => (others => '0'),
     frm         => (others => '0'),
     fflags      => (others => '0'),
     hstatus     => csr_hstatus_rst,
@@ -685,9 +766,10 @@ package noelvint is
     dscratch0   => zerox,
     dscratch1   => zerox,
     hpmcounter  => (others => zerow64),
-    hpmevent    => (others => (others => '0')),
+    hpmevent    => (others => hpmevent_none),
     mcountinhibit=>zerow,
-    dfeaturesen => csr_dfeaturesen_rst
+    dfeaturesen => csr_dfeaturesen_rst,
+    cctrl       => csr_out_cctrl_rst
     );
 
   -----------------------------------------------------------------------------
@@ -711,6 +793,7 @@ package noelvint is
     data_valid  : std_ulogic;
     data        : std_logic_vector(63 downto 0);
     mode        : std_logic_vector(2 downto 0);           -- Pass along for logging
+    ctrl        : std_logic_vector(7 downto 0);           -- Debug control
   end record;
 
   constant fpu5_in_none : fpu5_in_type := (
@@ -727,7 +810,8 @@ package noelvint is
     data_id     => (others => '0'),
     data_valid  => '0',
     data        => (others => '0'),
-    mode        => (others => '0')
+    mode        => (others => '0'),
+    ctrl        => (others => '0')
     );
 
   type fpu5_out_type is record
@@ -741,7 +825,6 @@ package noelvint is
     ready       : std_ulogic;
     holdn       : std_ulogic;
     mode        : std_logic_vector(2 downto 0);
-    issue       : std_ulogic;
     wb_id       : std_logic_vector(4 downto 0);
     idle        : std_ulogic;
     now2int     : std_ulogic;
@@ -760,9 +843,8 @@ package noelvint is
     ready       => '1',
     holdn       => '1',
     mode        => (others => '0'),
-    issue       => '0',
     wb_id       => (others => '0'),
-    idle        => '0',
+    idle        => '1',
     now2int     => '0',
     id2int      => (others => '0'),
     events      => (others => '0')
@@ -1190,14 +1272,17 @@ package noelvint is
       pcbits       : integer range 32 to 56;       -- Max bits required for PC
       rstaddr      : integer;                      -- Reset vector (MSB)
       disas        : integer;                      -- Disassembly to console
-      perf_cnts    : integer range 0  to 31;       -- Number of performance counters
+      perf_cnts    : integer range 0  to 29;       -- Number of performance counters
       perf_evts    : integer range 0  to 255;      -- Number of performance events
+      perf_bits    : integer range 0  to 64;       -- Bits of performance counting
       illegalTval0 : integer range 0  to 1;        -- Zero TVAL on illegal instruction
       no_muladd    : integer range 0  to 1;        -- 1 - multiply-add not supported
       single_issue : integer range 0  to 1;        -- 1 - only one pipeline
       -- Caches
       iways        : integer range 1  to 4;        -- I$ Ways
       dways        : integer range 1  to 4;        -- D$ Ways
+      itcmen       : integer range 0  to 1;        -- Instruction TCM
+      dtcmen       : integer range 0  to 1;        -- Data TCM
       -- MMU
       mmuen        : integer range 0  to 2;        -- >0 - MMU enable
       riscv_mmu    : integer range 0  to 3;
@@ -1209,10 +1294,19 @@ package noelvint is
       ext_a        : integer range 0  to 1;        -- A Base Extension Set
       ext_c        : integer range 0  to 1;        -- C Base Extension Set
       ext_h        : integer range 0  to 1;        -- H Extension
+      ext_zba      : integer range 0  to 1;        -- Zba Extension
+      ext_zbb      : integer range 0  to 1;        -- Zbb Extension
+      ext_zbc      : integer range 0  to 1;        -- Zbc Extension
+      ext_zbs      : integer range 0  to 1;        -- Zbs Extension
+      ext_zbkb     : integer range 0  to 1;        -- Zbkb Extension
+      ext_zbkc     : integer range 0  to 1;        -- Zbkc Extension
+      ext_zbkx     : integer range 0  to 1;        -- Zbkx Extension
+      ext_sscofpmf : integer range 0  to 1;        -- Sscofpmf Extension
       mode_s       : integer range 0  to 1;        -- Supervisor Mode Support
       mode_u       : integer range 0  to 1;        -- User Mode Support
       dmen         : integer range 0  to 1;        -- Using RISC-V Debug Module
       fpulen       : integer range 0  to 128;      -- Floating-point precision
+      fpuconf      : integer range 0  to 1;        -- 0 = nanoFPUnv, 1 = GRFPUnv
       trigger      : integer;
       -- Advanced Features
       late_branch  : integer range 0  to 1;        -- Late Branch Support
@@ -1251,11 +1345,13 @@ package noelvint is
       fpui           : out fpu5_in_type;         -- FPU Unit In Port
       fpuo           : in  fpu5_out_type;        -- FPU Unit Out Port
       cnt            : out nv_counter_out_type;  -- Perf counters
-      csr_mmu        : out csrtype;              -- CSR values for MMU
+      csr_mmu        : out nv_csr_out_type;         -- CSR values for MMU
+      mmu_csr        : in  nv_csr_in_type;          -- CSR values for MMU
       perf           : in  std_logic_vector(31 downto 0);
-      cap            : in  std_logic_vector(2  downto 0);
+      cap            : in  std_logic_vector(6  downto 0);
       tbo            : in  nv_trace_out_type;    -- Trace Unit Out Port
       tbi            : out nv_trace_in_type;     -- Trace Unit In Port
+      eto            : out nv_etrace_out_type;
       sclk           : in  std_ulogic;
       testen         : in  std_ulogic;
       testrst        : in  std_ulogic
@@ -1433,11 +1529,8 @@ package noelvint is
       crami      : out nv_cram_in_type;
       cramo      : in  nv_cram_out_type;
       sclk       : in  std_ulogic;
-      csr        : in  csrtype := ((others => '0'), (others => '0'), (others => '0'),
---                                   '0', '0', '0', '0', '0',
---                                   "00", '0', '0', '0', "00",
-                                   '0', '0', (others => '0'), (others => '0'),
-                                   PMPPRECALCRES);
+      csro       : in  nv_csr_out_type := nv_csr_out_type_none;
+      csri       : out nv_csr_in_type := nv_csr_in_type_none;
       fpc_mosi   : out nv_intreg_mosi_type;
       fpc_miso   : in  nv_intreg_miso_type;
       c2c_mosi   : out nv_intreg_mosi_type;
@@ -1629,7 +1722,6 @@ package noelvint is
       s1          : in  std_logic_vector(63 downto 0);
       s2          : in  std_logic_vector(63 downto 0);
       s3          : in  std_logic_vector(63 downto 0);
-      issue       : out std_ulogic;
       fpu_holdn   : out std_ulogic;
       ready_flop  : out std_ulogic;
       commit      : in  std_ulogic;
@@ -1675,7 +1767,6 @@ package noelvint is
       s1          : in  std_logic_vector(63 downto 0);
       s2          : in  std_logic_vector(63 downto 0);
       s3          : in  std_logic_vector(63 downto 0);
-      issue       : out std_ulogic;
       fpu_holdn   : out std_ulogic;
       ready_flop  : out std_ulogic;
       commit      : in  std_ulogic;
@@ -1701,7 +1792,8 @@ package noelvint is
       wb_mode     : out std_logic_vector(2 downto 0);
       wb_id       : out std_logic_vector(4 downto 0);
       idle        : out std_ulogic;
-      events      : out std_logic_vector(63 downto 0)
+      events      : out std_logic_vector(63 downto 0);
+      ctrl        : in  std_logic_vector(7 downto 0) := x"00"
     );
   end component;
 
@@ -1775,6 +1867,7 @@ package noelvint is
   -- Functions Declarations
   -----------------------------------------------------------------------------
 
+  function cause_bit(bits : std_logic_vector; cause : cause_type) return std_logic;
   function is_irq(cause : cause_type) return boolean;
   function cause2wordx(cause : cause_type) return wordx;
   function cause2vec(cause : cause_type; vec_in : std_logic_vector) return std_logic_vector;
@@ -1782,8 +1875,8 @@ package noelvint is
   function to_floating(fpulen : integer;  set : integer) return integer;
 
   function amo_math_op(
-    op1_in  : std_logic_vector(63 downto 0);
-    op2_in  : std_logic_vector(63 downto 0);
+    op1_in  : std_logic_vector;
+    op2_in  : std_logic_vector;
     ctrl_in : std_logic_vector(3 downto 0)) return std_logic_vector;
 
 
@@ -1794,12 +1887,15 @@ package noelvint is
   function satp_mask(id : integer; physaddr : integer) return wordx;
   function medeleg_mask(h_en : boolean) return wordx;
   function to_mideleg(
-    wcsr  : wordx;
-    mode_s: integer;
-    h_en  : boolean;
-    ext_n : integer) return wordx;
-  function mip_mask(mode_s : integer; h_en : boolean; ext_n : integer) return wordx;
-  function mie_mask(mode_s : integer; h_en : boolean; ext_n : integer) return wordx;
+    wcsr         : wordx;
+    mode_s       : integer;
+    h_en         : boolean;
+    ext_n        : integer;
+    ext_sscofpmf : integer) return wordx;
+  function mip_mask(mode_s : integer; h_en : boolean;
+                    ext_n  : integer; ext_sscofpmf : integer) return wordx;
+  function mie_mask(mode_s : integer; h_en : boolean;
+                    ext_n  : integer; ext_sscofpmf : integer) return wordx;
 
   function to_hstatus(status : csr_hstatus_type) return wordx;
   function to_hstatus(wdata : wordx) return csr_hstatus_type;
@@ -1819,13 +1915,24 @@ package noelvint is
   function to_ustatus(status : csr_status_type) return wordx;
   function to_ustatus(wdata : wordx; mstatus : csr_status_type) return csr_status_type;
 
+
+  function to_capabilityh(fpuconf : std_logic_vector(1 downto 0); cconfig : word64) return word;
+  function to_capability(fpuconf : std_logic_vector(1 downto 0); cconfig : word64) return wordx;
+
+  function to_hpmevent(wdata : wordx; hpmevent_in : hpmevent_type) return hpmevent_type;
+  function to_hpmeventh(wdata : wordx; hpmevent_in : hpmevent_type) return hpmevent_type;
+
+  function to_hpmevent(hpmevent : hpmevent_type) return wordx;
+  function to_hpmeventh(hpmevent : hpmevent_type) return wordx;
+
   procedure pmp_precalc(pmpaddr     : in  pmpaddr_vec_type;
                         pmpcfg0     : in  word64;
                         pmpcfg2     : in  word64;
                         precalc     : out pmp_precalc_vec;
                         pmp_entries : integer;
                         pmp_no_tor  : integer;
-                        pmp_g       : integer
+                        pmp_g       : integer;
+                        msb         : integer := 31
                        );
 
   procedure pmp_unit(prv_in             : in  std_logic_vector(PRIV_LVL_M'range);
@@ -1835,13 +1942,12 @@ package noelvint is
                      mprv_in            : in  std_ulogic;
                      mpp_in             : in  std_logic_vector(PRIV_LVL_M'range);
                      addr_in            : in  std_logic_vector;
-                     size_in            : in  std_logic_vector(1 downto 0);
                      access_in          : in  std_logic_vector(PMP_ACCESS_X'range);
                      valid_in           : in  std_ulogic;
                      xc_out             : out std_ulogic;
                      entries            : in  integer := 16;
                      no_tor             : in  integer := 1;
-                     pmp_g              : in  integer := 1;
+                     pmp_g              : in  integer range 1 to 32 := 1;
                      msb                : in  integer := 31
                     );
 
@@ -1866,22 +1972,9 @@ end package;
 package body noelvint is
   function hpmevent(event : integer) return hpmevent_type is
   begin
-    return conv_std_logic_vector(event, hpmevent_type'length);
+    return to_hpmevent(conv_std_logic_vector(event, XLEN), hpmevent_none);
   end;
 
-  constant HPM_EVENTS  : hpmevent_vec := (
-    hpmevent(CSR_HPM_ICACHE_MISS),  hpmevent(CSR_HPM_DCACHE_MISS),
-    hpmevent(CSR_HPM_ITLB_MISS),    hpmevent(CSR_HPM_DTLB_MISS),
-    hpmevent(CSR_HPM_HOLD),         hpmevent(CSR_HPM_DUAL_ISSUE),
-    hpmevent(CSR_HPM_BRANCH_MISS),  hpmevent(CSR_HPM_HOLD_ISSUE),
-    hpmevent(CSR_HPM_BRANCH),       hpmevent(CSR_HPM_LOAD_DEP),
-    hpmevent(CSR_HPM_STORE_B2B),    hpmevent(CSR_HPM_JALR),
-    hpmevent(CSR_HPM_JAL),          hpmevent(CSR_HPM_ICACHE_FETCH),
-    hpmevent(CSR_HPM_DCACHE_FETCH), hpmevent(CSR_HPM_DCACHE_FLUSH),
-    hpmevent(0), hpmevent(0), hpmevent(0), hpmevent(0),
-    hpmevent(0), hpmevent(0), hpmevent(0), hpmevent(0),
-    hpmevent(0), hpmevent(0), hpmevent(0), hpmevent(0),
-    hpmevent(0));
 
   -----------------------------------------------------------------------------
   -- Functions Definitions
@@ -1898,9 +1991,15 @@ package body noelvint is
     return v;
   end;
 
+  function cause_bit(bits : std_logic_vector; cause : cause_type) return std_logic is
+    variable n : integer := to_integer(unsigned(cause(cause'high - 1 downto 0)));
+  begin
+    return bits(n);
+  end;
+
   function is_irq(cause : cause_type) return boolean is
   begin
-    return cause(cause'high) = '1';
+    return get_hi(cause) = '1';
   end;
 
   function cause2wordx(cause : cause_type) return wordx is
@@ -1958,6 +2057,7 @@ package body noelvint is
   constant IRQ_VS_EXTERNAL              : cause_type := to_cause(10, true);
   constant IRQ_M_EXTERNAL               : cause_type := to_cause(11, true);
   constant IRQ_SG_EXTERNAL              : cause_type := to_cause(12, true);
+  constant IRQ_LCOF                     : cause_type := to_cause(13, true);
 
   -- Reset Codes
   constant RST_HARD_ALL                 : cause_type := to_cause(0);
@@ -1982,33 +2082,31 @@ package body noelvint is
   -- ctrl_in(1)   -> MINMAX/MINMAXU
   -- ctrl_in(0)   -> MIN/MAX
   function amo_math_op(
-    op1_in  : std_logic_vector(63 downto 0);
-    op2_in  : std_logic_vector(63 downto 0);
+    op1_in  : std_logic_vector;
+    op2_in  : std_logic_vector;
     ctrl_in : std_logic_vector(3 downto 0)) return std_logic_vector is
     -- Non-constant
-    variable op1     : std_logic_vector(64 downto 0);
-    variable op2     : std_logic_vector(64 downto 0);
-    variable add_res : std_logic_vector(64 downto 0);
+    subtype  op_t   is std_logic_vector(op1_in'length downto 0);
+    subtype  res_t  is std_logic_vector(op1_in'length - 1 downto 0);
+    variable op1     : op_t := ((not ctrl_in(1)) and op1_in(op1_in'left)) & op1_in;
+    variable op2     : op_t := ((not ctrl_in(1)) and op2_in(op2_in'left)) & op2_in;
+    variable add_res : res_t;
     variable less    : std_ulogic;
     variable pad     : std_logic_vector(31 downto 0);
-    variable res     : std_logic_vector(63 downto 0);
+    variable res     : res_t;
   begin
-    -- Select Operands
-    op1     := ((not ctrl_in(1)) and op1_in(63)) & op1_in;
-    op2     := ((not ctrl_in(1)) and op2_in(63)) & op2_in;
-
     -- Compute Results
-    add_res(63 downto 0) := std_logic_vector(signed(op1_in) + signed(op2_in));
+    add_res   := std_logic_vector(signed(op1_in) + signed(op2_in));
     if signed(op1) < signed(op2) then
-      less      := '1';
+      less    := '1';
     else
-      less      := '0';
+      less    := '0';
     end if;
 
     if ctrl_in(2) = '0' then
       case ctrl_in(1 downto 0) is
         when "00" =>
-          res := add_res(63 downto 0);
+          res := add_res;
         when "01" =>
           res := op1_in xor op2_in;
         when "10" =>
@@ -2019,15 +2117,15 @@ package body noelvint is
       end case;
     else
       if (less xor ctrl_in(0)) = '1' then
-        res := op1_in;
+        res   := op1_in;
       else
-        res := op2_in;
+        res   := op2_in;
       end if;
     end if;
 
     pad := (others => res(31));
     if ctrl_in(3) = '0' then
-      res(63 downto 32) := pad;
+      res(res'high downto res'length - pad'length) := pad;
     end if;
 
     return res;
@@ -2081,6 +2179,8 @@ package body noelvint is
   end;
 
   constant RST_VEC          : wordx := extend_wordx(x"00010040");
+
+  
   constant CSR_MEDELEG_MASK : wordx := extend_wordx(x"0000b3ff");
   constant CSR_MIDELEG_MASK : wordx := extend_wordx(x"00000222"); -- Interrupts to be delegated to S-mode
   constant CSR_MIE_MASK     : wordx := extend_wordx(x"00000888"); -- Valid bits
@@ -2097,7 +2197,26 @@ package body noelvint is
 
   constant CSR_UIE_MASK     : wordx := extend_wordx(x"00000111"); -- Valid bits
   constant CSR_UIP_MASK     : wordx := extend_wordx(x"00000001"); -- Writable bits
-  --constant CSR_UIP_MASK     : wordx := extend_wordx(x"00000111"); -- Writable bits (maybe extra bit)
+--  constant CSR_UIP_MASK     : wordx := extend_wordx(x"00000111"); -- Writable bits (maybe extra bit)
+
+  -- These two only occurs together with mtval2/htval!
+  function tinst_vs_pt_read return word is
+  begin
+    if XLEN = 64 then
+      return x"00003000";
+    end if;
+
+    return x"00002000";
+  end;
+
+  function tinst_vs_pt_write return word is
+  begin
+    if XLEN = 64 then
+      return x"00003020";
+    end if;
+
+    return x"00002020";
+  end;
 
   -- Return mask for mie
   function medeleg_mask(h_en : boolean) return wordx is
@@ -2117,14 +2236,18 @@ package body noelvint is
 
   -- Return masked mideleg value
   function to_mideleg(
-    wcsr   : wordx;
-    mode_s : integer;
-    h_en   : boolean;
-    ext_n  : integer) return wordx is
+    wcsr         : wordx;
+    mode_s       : integer;
+    h_en         : boolean;
+    ext_n        : integer;
+    ext_sscofpmf : integer) return wordx is
     -- Non-constant
     variable mideleg : wordx := zerox;
     variable mask    : wordx := zerox;
   begin
+    if ext_sscofpmf /= 0 then
+      mask(13) := '1';
+    end if;
     if mode_s /= 0 then
       mask := mask or CSR_MIDELEG_MASK;
     end if;
@@ -2134,7 +2257,7 @@ package body noelvint is
 
     mideleg := wcsr and mask;
 
-    -- VS-level interrtupts are always delegeted to HS-mode
+    -- VS-level interrupts are always delegeted to HS-mode
     if h_en then
       mideleg(12) := '1';
       mideleg(10) := '1';
@@ -2145,11 +2268,15 @@ package body noelvint is
     return mideleg;
   end;
 
-  -- Return mask for mie
-  function mip_mask(mode_s : integer; h_en : boolean; ext_n : integer) return wordx is
+  -- Return mask for mip
+  function mip_mask(mode_s : integer; h_en : boolean;
+                    ext_n : integer; ext_sscofpmf : integer) return wordx is
     -- Non-constant
     variable mask : wordx := CSR_MIP_MASK;
   begin
+    if ext_sscofpmf /= 0 then
+      mask(13) := '1';
+    end if;
     if mode_s /= 0 then
       mask := mask or CSR_SIP_MASK;
     end if;
@@ -2163,11 +2290,15 @@ package body noelvint is
     return mask;
   end;
 
-  -- Return mask for mip
-  function mie_mask(mode_s : integer; h_en : boolean; ext_n : integer) return wordx is
+  -- Return mask for mie
+  function mie_mask(mode_s : integer; h_en : boolean;
+                    ext_n : integer;  ext_sscofpmf : integer) return wordx is
     -- Non-constant
     variable mask : wordx := CSR_MIE_MASK;
   begin
+    if ext_sscofpmf /= 0 then
+      mask(13) := '1';
+    end if;
     if mode_s /= 0 then
       mask := mask or CSR_SIE_MASK;
     end if;
@@ -2195,7 +2326,7 @@ package body noelvint is
     return hstatus(wordx'range);
   end;
 
-  -- Return mstatus as a record type from a XLEN bit data
+  -- Return mstatus as a record type from an XLEN bit data
   function to_hstatus(wdata : wordx) return csr_hstatus_type is
     -- Non-constant
     variable hstatus : csr_hstatus_type;
@@ -2234,7 +2365,7 @@ package body noelvint is
     return vsstatus(wordx'range);
   end;
 
-  -- Return vsstatus as a record type from a XLEN bit data
+  -- Return vsstatus as a record type from an XLEN bit data
   function to_vsstatus(wdata : wordx) return csr_status_type is
     -- Non-constant
     variable vsstatus : csr_status_type;
@@ -2253,7 +2384,7 @@ package body noelvint is
     return vsstatus;
   end;
 
-  -- Return mstatus as a XLEN bit data from the record type
+  -- Return mstatus as an XLEN bit data from the record type
   function to_mstatus(status : csr_status_type) return wordx is
     -- Non-constant
     variable mstatus : word64 := zerow64;
@@ -2281,7 +2412,7 @@ package body noelvint is
     return mstatus(wordx'range);
   end;
 
-  -- Return mstatus as a record type from a XLEN bit data
+  -- Return mstatus as a record type from an XLEN bit data
   function to_mstatus(wdata : wordx; mstatus_in : csr_status_type) return csr_status_type is
     -- Non-constant
     variable mstatus : csr_status_type := mstatus_in;
@@ -2316,7 +2447,7 @@ package body noelvint is
     return mstatus;
   end;
 
-  -- Return mstatush as a XLEN bit data from the record type
+  -- Return mstatush as an XLEN bit data from the record type
   function to_mstatush(status : csr_status_type) return wordx is
     -- Non-constant
     variable mstatus : word64 := zerow64;
@@ -2326,7 +2457,7 @@ package body noelvint is
     return mstatus(wordx'range);
   end;
 
-  -- Return mstatush as a record type from a XLEN bit data
+  -- Return mstatush as a record type from an XLEN bit data
   function to_mstatush(wdata : wordx; mstatus_in : csr_status_type) return csr_status_type is
     -- Non-constant
     variable mstatus : csr_status_type := mstatus_in;
@@ -2338,7 +2469,7 @@ package body noelvint is
     return mstatus;
   end;
 
-  -- Return sstatus as a XLEN bit data from the record type
+  -- Return sstatus as an XLEN bit data from the record type
   function to_sstatus(status : csr_status_type) return wordx is
     -- Non-constant
     variable sstatus : word64 := zerow64;
@@ -2356,7 +2487,7 @@ package body noelvint is
     return sstatus(wordx'range);
   end;
 
-  -- Return sstatus as a record type from a XLEN bit data
+  -- Return sstatus as a record type from an XLEN bit data
   function to_sstatus(wdata : wordx; mstatus : csr_status_type) return csr_status_type is
     -- Non-constant
     variable sstatus : csr_status_type;
@@ -2379,7 +2510,7 @@ package body noelvint is
     return sstatus;
   end;
 
-  -- Return ustatus as a XLEN bit data from the record type
+  -- Return ustatus as an XLEN bit data from the record type
   function to_ustatus(status : csr_status_type) return wordx is
     -- Non-constant
     variable ustatus : wordx;
@@ -2392,7 +2523,7 @@ package body noelvint is
     return ustatus;
   end;
 
-  -- Return ustatus as a record type from a XLEN bit data
+  -- Return ustatus as a record type from an XLEN bit data
   function to_ustatus(wdata : wordx; mstatus : csr_status_type) return csr_status_type is
     -- Non-constant
     variable ustatus    : csr_status_type;
@@ -2406,45 +2537,153 @@ package body noelvint is
 
     return ustatus;
   end;
+  
+  
+  function to_capabilityh(fpuconf : std_logic_vector(1 downto 0); cconfig : word64) return word is
+    variable data : word := zerow;
+  begin
+    data := cconfig(cconfig'high downto cconfig'length/2);
+    data(13 downto 12) := fpuconf;
+    return data;
+  end;
+  function to_capability(fpuconf : std_logic_vector(1 downto 0); cconfig : word64) return wordx is
+    variable data : word64 := zerow64;
+  begin
+    data := cconfig;
+    if XLEN = 64 then
+      data(data'high downto data'length/2) := to_capabilityh(fpuconf, cconfig);
+    end if;
+    return data(wordx'range);
+  end;
 
+  -- Return hpmevent as a record type from an XLEN bit data
+  function to_hpmevent(wdata : wordx; hpmevent_in : hpmevent_type) return hpmevent_type is
+    -- Non-constant
+    variable hpmevent : hpmevent_type := hpmevent_in;
+  begin
+    if XLEN = 64 then
+      hpmevent.overflow := wdata(63);
+      hpmevent.minh     := wdata(62);
+      hpmevent.sinh     := wdata(61);
+      hpmevent.uinh     := wdata(60);
+      hpmevent.vsinh    := wdata(59);
+      hpmevent.vuinh    := wdata(58);
+    end if;
+    hpmevent.event      := wdata(hpmevent.event'range);
+
+    return hpmevent;
+  end;
+
+  -- Return hpmeventh as a record type from an XLEN bit data
+  function to_hpmeventh(wdata : wordx; hpmevent_in : hpmevent_type) return hpmevent_type is
+    -- Non-constant
+    variable hpmevent : hpmevent_type := hpmevent_in;
+  begin
+    hpmevent.overflow := wdata(63 - 32);
+    hpmevent.minh     := wdata(62 - 32);
+    hpmevent.sinh     := wdata(61 - 32);
+    hpmevent.uinh     := wdata(60 - 32);
+    hpmevent.vsinh    := wdata(59 - 32);
+    hpmevent.vuinh    := wdata(58 - 32);
+
+    return hpmevent;
+  end;
+
+  -- Return hpmevent as an XLEN bit data from the record type
+  function to_hpmevent(hpmevent : hpmevent_type) return wordx is
+    -- Non-constant
+    variable rdata : word64 := zerow64;
+  begin
+    rdata(63) := hpmevent.overflow;
+    rdata(62) := hpmevent.minh;
+    rdata(61) := hpmevent.sinh;
+    rdata(60) := hpmevent.uinh;
+    rdata(59) := hpmevent.vsinh;
+    rdata(58) := hpmevent.vuinh;
+    rdata(hpmevent.event'range) := hpmevent.event;
+
+    return rdata(wordx'range);
+  end;
+
+  -- Return hpmeventh as an XLEN bit data from the record type
+  function to_hpmeventh(hpmevent : hpmevent_type) return wordx is
+    -- Non-constant
+    variable rdata : word64 := zerow64;
+  begin
+    rdata(63 - 32) := hpmevent.overflow;
+    rdata(62 - 32) := hpmevent.minh;
+    rdata(61 - 32) := hpmevent.sinh;
+    rdata(60 - 32) := hpmevent.uinh;
+    rdata(59 - 32) := hpmevent.vsinh;
+    rdata(58 - 32) := hpmevent.vuinh;
+
+    return rdata(wordx'range);
+  end;
+
+
+  -- Incoming pmpaddr has at least two zeros at the top.
   procedure pmp_precalc(pmpaddr     : in  pmpaddr_type;
                         pmpaddr_m1  : in  pmpaddr_type;
                         a           : pmpcfg_access_type;
                         precalc     : out pmp_precalc_type;
                         pmp_no_tor  : integer;
-                        pmp_g       : integer
+                        pmp_g       : integer;
+                        msb         : integer := 31
                        ) is
     -- Non-constant
-    variable mask : std_logic_vector(precalc.low'high + 2 downto 0);
+    variable mask  : std_logic_vector(precalc.low'high + 2 downto 0);
+    variable valid : std_ulogic := '1';
+    variable low   : pmpaddr_type;
+    variable high  : pmpaddr_type;
   begin
+    -- At startup there may be X's.
+    assert is_x(pmpaddr) or get_hi(pmpaddr, 2) = "00"
+      report "Bad pmpaddr for precalc"
+      severity failure;
+    if a = PMP_OFF or (pmp_no_tor = 1 and a = PMP_TOR) then
+      valid := '0';
+    end if;
     -- Concatenate PMP type for mask creation. It contains a zero for
     -- TOR/NA4 and thus the used mask will then equal the input.
     -- For NAPOT it is 11, and thus the addition will propagate up to
     -- the marker zero. Which will be set and everything below cleared.
     -- and thus will work in the mask calculation.
-    mask           := pmpaddr & a;
+    mask                         := pmpaddr & a;
     -- Make sure pmp_g aligns the mask properly. Low bits should not matter!
     mask(pmp_g - 2 + 2 downto 2) := (others => '1');
-    mask           := mask + 1;
-    precalc.low    := pmpaddr and mask(mask'high downto 2);
+    mask                         := mask + 1;
+    -- Keep the bits above the marker zero.
+    low                          := pmpaddr and mask(mask'high downto 2);
     if pmp_no_tor = 1 then
       -- No actual TOR support, so provide mask (high bits set) instead.
-      precalc.high := not (pmpaddr xor mask(mask'high downto 2));
+      high                       := not (pmpaddr xor mask(mask'high downto 2));
       -- Make sure pmp_g clears the mask properly. Low bits should not matter!
-      precalc.high(pmp_g - 2 downto 0) := (others => '0');
+      high(pmp_g - 2 downto 0)   := (others => '0');
     else
-      precalc.high := pmpaddr or mask(mask'high downto 2);
-
       if a = PMP_TOR then
-        -- Bottom address for PMP_TOR.
-        precalc.low := pmpaddr_m1;
-        -- Make sure pmp_g aligns low/high properly. Low bits should not matter!
-        precalc.low(pmp_g - 1 downto 0)  := (others => '0');
+        low                      := pmpaddr_m1;
+        low(pmp_g - 1 downto 0)  := (others => '0');
+        high                     := pmpaddr;
+        high(pmp_g - 1 downto 0) := (others => '0');
+      else
+        -- "Fill in" the zero marker to get the high address.
+        high                     := pmpaddr or mask(mask'high downto 2);
         -- Compensate so that we can use the same comparator.
-        precalc.high                     := pmpaddr - 1;
-        precalc.high(pmp_g - 1 downto 0) := (others => '1');
+        high                     := high + 1;
+        -- Set max address plus 1 if bits of high set above our msb.
+        if not all_0(high(high'high downto msb + 1 - 2)) then
+          high                   := (others => '0');
+          high(msb + 1 - 2)      := '1';
+        end if;
       end if;
     end if;
+
+    if valid = '1' then
+--      report "Precalc " & tost(pmpaddr) & " " & tost(mask) & " " & tost(low) & " high " & tost(high);
+    end if;
+    precalc.valid := valid;
+    precalc.low   := low;
+    precalc.high  := high;
   end;
 
   procedure pmp_precalc(pmpaddr     : in  pmpaddr_vec_type;
@@ -2453,7 +2692,8 @@ package body noelvint is
                         precalc     : out pmp_precalc_vec;
                         pmp_entries : integer;
                         pmp_no_tor  : integer;
-                        pmp_g       : integer
+                        pmp_g       : integer;
+                        msb         : integer := 31
                        ) is
     function pmpcfg(cfg0 : word64; cfg2 : word64; n : integer range 0 to 15) return std_logic_vector is
       -- Non-constant
@@ -2470,7 +2710,6 @@ package body noelvint is
 
     -- Non-constant
     variable a          : pmpcfg_access_type;
-    variable mask       : std_logic_vector(precalc(0).low'high + 2 downto 0);
     variable pmpaddr_m1 : pmpaddr_type;
   begin
     for i in 0 to pmp_entries - 1 loop
@@ -2483,16 +2722,11 @@ package body noelvint is
       end if;
 
       pmp_precalc(pmpaddr(i), pmpaddr_m1, a,
-                  precalc(i), pmp_no_tor, pmp_g);
+                  precalc(i), pmp_no_tor, pmp_g, msb);
     end loop;
   end;
 
-  -- "Borrowed" from utilnv so as to not require including that.
-  function all_0(data : std_logic_vector) return boolean is
-  begin
-    return data = (data'length - 1 downto 0 => '0');
-  end;
-
+  -- Note that this does not support pmp_g = 0!
   procedure pmp_unit(prv_in     : in  std_logic_vector(PRIV_LVL_M'range);
                      precalc    : in  pmp_precalc_vec;
                      pmpcfg0_in : in  word64;
@@ -2500,13 +2734,12 @@ package body noelvint is
                      mprv_in    : in  std_ulogic;
                      mpp_in     : in  std_logic_vector(PRIV_LVL_M'range);
                      addr_in    : in  std_logic_vector;
-                     size_in    : in  std_logic_vector(1 downto 0);
                      access_in  : in  std_logic_vector(PMP_ACCESS_X'range);
                      valid_in   : in  std_ulogic;
                      xc_out     : out std_ulogic;
                      entries    : in  integer := 16;
                      no_tor     : in  integer := 1;
-                     pmp_g      : in  integer := 1;
+                     pmp_g      : in  integer range 1 to 32 := 1;
                      msb        : in  integer := 31
                     ) is
     subtype  pmp_vec_type      is std_logic_vector(entries - 1 downto 0);
@@ -2514,8 +2747,6 @@ package body noelvint is
     variable zero_entry  : pmp_vec_type       := (others => '0');
     variable lowhi_msb   : integer            := msb - 55 + precalc(0).low'high;
     -- Non-constant
-    variable size        : positive;
-    variable addr_high   : std_logic_vector(addr_in'range);
     variable xc          : std_ulogic         := '0';
     variable cfg         : word8;
     variable l           : pmp_vec_type;
@@ -2523,36 +2754,13 @@ package body noelvint is
     variable x           : pmp_vec_type;
     variable w           : pmp_vec_type;
     variable r           : pmp_vec_type;
-    variable pmphigh0    : pmp_vec_type;
     variable enable      : pmp_vec_type       := (others => '1');
-    variable hit8        : pmp_vec_type       := (others => '0');
-    variable equal8_low  : pmp_vec_type       := (others => '0');
-    variable equal8_high : pmp_vec_type       := (others => '0');
     variable hit         : pmp_vec_type       := (others => '0');
-    variable fits        : pmp_vec_type       := (others => '1');
     variable hit_prio    : pmp_vec_type;
     variable fail        : pmp_vec_type       := (others => '0');
     variable prv         : std_logic_vector(1 downto 0);
-    variable align       : integer            := 0;
+    variable align       : integer            := pmp_g - 1;
   begin
-    size := 1;
-    if size_in = "01" then
-      size := 2;
-    elsif size_in = "10" then
-      size := 4;
-    elsif size_in = "11" then
-      size := 8;
-    end if;
-    addr_high := std_logic_vector(unsigned(addr_in) + size - 1);
-
-
-    -- Extra alignment?
-    -- pmp_g = 1  8 byte alignment, which is already used for hit8.
-    -- pmp_g > 1  hit8 is really hit<2 ** (pmp_g + 2)>
-    if pmp_g > 1 then
-      align := pmp_g - 1;
-    end if;
-
     prv := prv_in;
     if prv_in = PRIV_LVL_M and mprv_in = '1' and
        access_in /= PMP_ACCESS_X then
@@ -2585,9 +2793,7 @@ package body noelvint is
       w(i) := cfg(1);
       r(i) := cfg(0);
 
-      if a(i) = PMP_OFF then
-        enable(i) := '0';
-      end if;
+      enable(i) := precalc(i).valid;
 
       -- Only fail if not machine mode access, or for locked entries.
       if prv /= PRIV_LVL_M or l(i) = '1' then
@@ -2597,80 +2803,24 @@ package body noelvint is
           fail(i) := not r(i);
         elsif access_in = PMP_ACCESS_W then
           fail(i) := not w(i);
-        end if;
-      end if;
-
-      if pmp_g = 0 then
-        -- To enable extra checks when PMP may be 4 byte aligned.
-        if addr_in(msb downto 3) = precalc(i).low(lowhi_msb downto 1) then
-          equal8_low(i)  := '1';
-        end if;
-        if no_tor = 1 then
-          -- With no TOR, the only possible 4 byte PMP alignment is NA4.
-          -- Then the high address is the same as the low.
-          if addr_high(msb downto 3) = precalc(i).low(lowhi_msb downto 1) then
-            equal8_high(i) := '1';
-          end if;
-          if a(i) = PMP_NA4 then
-            pmphigh0(i) := precalc(i).low(0);
-          else
-            pmphigh0(i) := '1';
-          end if;
-        else
-          if addr_high(msb downto 3) = precalc(i).high(lowhi_msb downto 1) then
-            equal8_high(i) := '1';
-          end if;
-          pmphigh0(i) := precalc(i).high(0);
+        else  -- Unknown access - cannot happen!
+          fail(i) := '1';
         end if;
       end if;
 
       if no_tor = 1 then
         -- With no TOR, mask is in pmphigh.
-        if (addr_in(msb downto 3 + align) and precalc(i).high(lowhi_msb downto 1 + align)) =
+        if (('0' & addr_in(msb downto 3 + align)) and precalc(i).high(lowhi_msb downto 1 + align)) =
            precalc(i).low(lowhi_msb downto 1 + align) then
-          hit8(i)  := enable(i);
+          hit(i) := enable(i);
         end if;
       else
-        --  OK 8 byte (or possibly higher, depending on pmp_g) alignment?
-        if unsigned(addr_in(msb downto 3 + align)) >= unsigned(precalc(i).low (lowhi_msb downto 1 + align)) and
-           unsigned(addr_in(msb downto 3 + align)) <= unsigned(precalc(i).high(lowhi_msb downto 1 + align)) then
-          hit8(i)  := enable(i);
+        -- This deals with the requirement to fail on reverse and null ranges,
+        -- since it is then impossible to be >= low and < high.
+        if unsigned('0' & addr_in(msb downto 3 + align)) >= unsigned(precalc(i).low(lowhi_msb downto 1 + align)) and
+           unsigned('0' & addr_in(msb downto 3 + align)) < unsigned(precalc(i).high(lowhi_msb downto 1 + align)) then
+          hit(i)  := enable(i);
         end if;
-      end if;
-
-      if pmp_g > 0 then
-        -- PMP is 8 byte aligned or more.
-        hit(i) := hit8(i);
-        -- No further hit check needed since since accesses must be aligned enough.
-        -- Fit check is not needed for the same reason.
-      elsif size = 8 then
-        hit(i) := hit8(i);
-        -- Aligned 8 byte accesses counts as hits if they partially overlap a
-        -- 4 byte aligned PMP. But they should fail in this case.
-        -- (The documentation mentions a 0x8-0xf access for 0xc-0xf range.)
-        fits(i) := not ((equal8_low(i) and precalc(i).low(0)) or (equal8_high(i) and not pmphigh0(i)));
-      else
-        -- Since we know whether there would be a hit with 8 byte alignment,
-        -- we just need to handle the corner cases for 4 byte alignment.
-        -- The corner cases occur when an access is in the same 8 byte aligned
-        -- chunk as the range start or stop, but the range starts/stops in another
-        -- 4 byte aligned chunk.
-        -- The five lines of extra logic below represent:
-        -- 1  access was not at either end of the range
-        -- 2  at low end, with both address and range start in the low 4 bytes
-        -- 3  at low end, with access in the high 4 bytes and
-        --                range start in the high 4 bytes,
-        --             or range start in the low 4 bytes but range stop later
-        -- 4  at high end, with access and range start in the high 4 bytes
-        -- 5  at high end, with access in the low 4 bytes and
-        --                 range stop in the low 4 bytes,
-        --              or range stop in the high 4 bytes but range start earlier
-        hit(i) := hit8(i) and
-                  ((not equal8_low(i) and not equal8_high(i))                                    or
-                   (equal8_low(i)  and not addr_in(2) and not precalc(i).low(0))                 or
-                   (equal8_low(i)  and addr_in(2) and (precalc(i).low(0) or not equal8_high(i))) or
-                   (equal8_high(i) and addr_in(2) and pmphigh0(i))                               or
-                   (equal8_high(i) and not addr_in(2) and (not pmphigh0(i) or not equal8_low(i))));
       end if;
 
 
@@ -2692,17 +2842,12 @@ package body noelvint is
     if (hit_prio and fail) /= zero_entry then
       xc   := '1';
     end if;
-    -- Did access fit completely in the entry?
-    if (hit_prio and not fits) /= zero_entry then
-      xc   := '1';
-    end if;
     -- No hit means failure in non-machine mode, if there are implemented entries.
     if prv /= PRIV_LVL_M then
       if hit_prio = zero_entry and entries /= 0 then
         xc := '1';
       end if;
     end if;
-
 
 
     xc_out      := xc and valid_in;
@@ -2725,16 +2870,16 @@ package body noelvint is
       -- With no TOR, mask is in pmphigh.
       -- Area can fit if its mask (page size) is not "larger" than that for the PMP.
       -- PMP area larger or equal?
-      if all_0(precalc_high and not addr_mask) then
+      if all_0(precalc_high and ('0' & not addr_mask)) then
         fit := '1';
         -- We need to check if MMU start (or, equivalently, end) is inside PMP area.
-        if precalc_low = (addr_low and precalc_high) then
+        if precalc_low = (('0' & addr_low) and precalc_high) then
           hit := '1';
         end if;
       -- MMU area is larger
       else
         -- We need to check if either PMP start (or, equivalently, end) is inside MMU area.
-        if addr_low = (precalc_low and addr_mask) then
+        if ('0' & addr_low) = (precalc_low and ('0' & addr_mask)) then
           hit := '1';
         end if;
       end if;
@@ -2743,12 +2888,14 @@ package body noelvint is
       --   MMU block low >= PMP block low
       if unsigned(addr_low) >= unsigned(precalc_low) then
         -- and MMU block low <= PMP block high
-        if unsigned(addr_low) <= unsigned(precalc_high) then
+        -- This deals with the requirement to fail on reverse and null ranges,
+        -- since it is then impossible to be >= low and < high.
+        if unsigned('0' & addr_low) < unsigned(precalc_high) then
           -- MMU block starts inside PMP block, so hit!
           hit := '1';
         end if;
         -- and MMU block high <= PMP block high
-        if unsigned(addr_low or not addr_mask) <= unsigned(precalc_high) then
+        if unsigned('0' & (addr_low or not addr_mask)) < unsigned(precalc_high) then
           -- MMU block lies entirely within PMP block, so fit!
           fit := '1';
         end if;
@@ -2822,9 +2969,7 @@ package body noelvint is
       w(i) := cfg(1);
       r(i) := cfg(0);
 
-      if a(i) = PMP_OFF then
-        enable(i) := '0';
-      end if;
+      enable(i) := precalc(i).valid;
 
       pmp_mmuu(precalc(i).low(lowhi_msb downto 1 + align), precalc(i).high(lowhi_msb downto 1 + align),
                addr_low(msb downto 3 + align), addr_mask(msb downto 3 + align),

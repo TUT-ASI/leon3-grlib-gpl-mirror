@@ -50,7 +50,8 @@ signal eni : std_ulogic;
 signal oi: std_ulogic;
 
 -- set to 1 to skip using ICGs and assign oi <= o for dummy gates in code below
-constant use_empty_dummy: tech_ability_type := (inferred => 0, easic45 => 1, rhs65 => 1, gf22 => 1, others => 0);
+constant use_empty_dummy: tech_ability_type := (inferred => 0, easic45 => 1, rhs65 => 1, gf22 => 1,
+                                                rhs28 => 1, dare65t => 1, others => 0);
 
 -- set to 1 to add 5 ps delay between oi and o in RTL sim (for clock delta balancing)
 -- set to 2 to add no delay between oi and o
@@ -111,6 +112,10 @@ begin
 
     gf22x : if (tech = gf22) generate
       clkgate : clkand_gf22fdx port map(clki => i, en => eni, clko => oi, testen => '0');
+    end generate;
+
+    rhs28x : if (tech = rhs28) generate
+      clkgate : clkand_rhs28 port map(i => i, en => eni, o => oi, tsten => tsten);
     end generate;
 
   end generate;

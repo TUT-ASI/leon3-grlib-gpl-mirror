@@ -32,6 +32,7 @@ use grlib.stdlib.all;
 library gaisler;
 use gaisler.noelvint.all;
 use gaisler.noelv.all;
+use gaisler.noelv_cpu_cfg.all;
 use gaisler.arith.all;
 
 entity noelvcpu is
@@ -64,6 +65,7 @@ entity noelvcpu is
     irqo  : out nv_irq_out_type;
     dbgi  : in  nv_debug_in_type;
     dbgo  : out nv_debug_out_type;
+    eto   : out nv_etrace_out_type;
     cnt   : out nv_counter_out_type
     );
 end;
@@ -74,50 +76,142 @@ architecture hier of noelvcpu is
   signal vcc            : std_logic;
   signal gnd            : std_logic;
 
-  type cfg_i_type is record
-    single_issue  : integer;
-    ext_m         : integer;
-    ext_a         : integer;
-    ext_c         : integer;
-    ext_h         : integer;
-    mode_s        : integer;
-    mode_u        : integer;
-    fpulen        : integer;
-    pmp_no_tor    : integer;
-    pmp_entries   : integer;
-    pmp_g         : integer;
-    perf_cnts     : integer;
-    perf_evts     : integer;
-    tbuf          : integer;
-    trigger       : integer;
-    icen          : integer;
-    iways         : integer;
-    iwaysize      : integer;
-    ilinesize     : integer;
-    dcen          : integer;
-    dways         : integer;
-    dwaysize      : integer;
-    dlinesize     : integer;
-    mmuen         : integer;
-    itlbnum       : integer;
-    dtlbnum       : integer;
-    htlbnum       : integer;
-    div_hiperf    : integer;
-    div_small     : integer;
-    late_branch   : integer;
-    late_alu      : integer;
-    bhtentries    : integer;
-    bhtlength     : integer;
-    predictor     : integer;
-    btbentries    : integer;
-    btbsets       : integer;
+  type cfg_setup_type is record
+    typ     : integer; 
+    fpu     : integer; 
+    sissue  : integer; 
   end record;
-  constant cfg_none : cfg_i_type := (
+  
+  function cfg_map (cfg : integer) return cfg_setup_type is
+    variable cfg_res    : cfg_setup_type := (0, 1, 0);
+    variable cfg_typ    : integer := (cfg / 256)  mod 16; 
+    variable cfg_lite   : integer := (cfg / 128)  mod 2; 
+    variable cfg_fpu    : integer := (cfg / 2)    mod 2; 
+    variable cfg_sissue : integer :=  cfg         mod 2; 
+    variable cfg_valid  : boolean := false;
+  begin
+    if cfg_typ /= 0 then
+      cfg_res.fpu     := (1 - cfg_fpu);
+      cfg_res.sissue  := cfg_sissue;
+      case cfg_typ is
+        when 4 => -- HP
+          cfg_res.typ := 0;
+          if (cfg_lite + cfg_fpu + cfg_sissue) = 0 then
+            cfg_valid := true;
+          end if;
+        when 3 => -- GP/GP-lite
+          cfg_res.typ := 1;
+          if cfg_lite = 1 then
+            cfg_res.typ := 2;
+          end if;
+          if (cfg_fpu) = 0 then
+            cfg_valid := true;
+          end if;
+        when 2 => -- MIN/MIN-lite
+          cfg_res.typ := 3;
+          if cfg_lite = 1 then
+            cfg_res.typ := 4;
+            if (cfg_fpu*cfg_sissue) = 1 then
+              cfg_valid := true;
+            end if;
+          else
+            if (cfg_sissue) = 1 then
+              cfg_valid := true;
+            end if;
+          end if;
+        when 16 => -- Custom
+          cfg_res.typ := 5;
+          cfg_res.fpu := 1;
+          cfg_res.sissue  := cfg_custom0.single_issue;
+          cfg_valid := true;
+        when others => -- Default to HP
+          cfg_res.typ := 0;
+      end case;
+    else -- Old configurations
+      cfg_valid := true;
+      case cfg is
+        when 0 => -- HP
+          cfg_res.typ := 0;
+          cfg_res.fpu := 1;
+          cfg_res.sissue := 0;
+        when 1 => -- GP dual-issue
+          cfg_res.typ := 1;
+          cfg_res.fpu := 1;
+          cfg_res.sissue := 0;
+        when 2 => -- GP signle-issue
+          cfg_res.typ := 1;
+          cfg_res.fpu := 1;
+          cfg_res.sissue := 1;
+        when 3 => -- MIN with FPU
+          cfg_res.typ := 3;
+          cfg_res.fpu := 1;
+          cfg_res.sissue := 1;
+        when 4 => -- MIN without FPU
+          cfg_res.typ := 3;
+          cfg_res.fpu := 0;
+          cfg_res.sissue := 1;
+        when 5 => -- Closes to MIN-lite
+          cfg_res.typ := 4;
+          cfg_res.fpu := 0;
+          cfg_res.sissue := 1;
+        when 6 => -- GP-lite
+          cfg_res.typ := 2;
+          cfg_res.fpu := 1;
+          cfg_res.sissue := 0;
+        when others => -- Default to HP
+          cfg_res.typ := 0;
+          cfg_res.fpu := 1;
+          cfg_res.sissue := 0;
+          cfg_valid := false;
+      end case;
+    end if;
+-- pragma translate_off
+    case cfg_res.typ is
+      when 0 =>
+        assert false report "NV-HP configuration" severity note;
+      when 1 =>
+        assert false report "NV-GP configuration" severity note;
+      when 2 =>
+        assert false report "NV-GP-lite configuration" severity note;
+      when 3 =>
+        assert false report "NV-MIN configuration" severity note;
+      when 4 =>
+        assert false report "NV-MIN-lite configuration" severity note;
+      when 5 =>
+        assert false report "Custom0 configuration" severity note;
+      when others =>
+    end case;
+    if cfg_res.fpu = 1 then
+      assert false report "NOELV FPU enabled" severity warning;
+    else
+      assert false report "NOELV FPU disabled" severity warning;
+    end if;
+    if cfg_res.sissue = 1 then
+      assert false report "NOELV signle-issue" severity warning;
+    else
+      assert false report "NOELV dual-issue" severity warning;
+    end if;
+    assert cfg_valid report "Un-supported NOELV configuration" severity warning;
+-- pragma translate_on
+    return cfg_res;
+  end function;
+
+  constant c : cfg_setup_type := cfg_map(cfg);
+
+  constant cfg_none : nv_cpu_cfg_type := (
     single_issue  => 0,
     ext_m         => 0,
     ext_a         => 0,
     ext_c         => 0,
     ext_h         => 0,
+    ext_zba       => 0,
+    ext_zbb       => 0,
+    ext_zbc       => 0,
+    ext_zbs       => 0,
+    ext_zbkb      => 0,
+    ext_zbkc      => 0,
+    ext_zbkx      => 0,
+    ext_sscofpmf  => 0,
     mode_s        => 0,
     mode_u        => 0,
     fpulen        => 0,
@@ -126,6 +220,7 @@ architecture hier of noelvcpu is
     pmp_g         => 0,
     perf_cnts     => 0,
     perf_evts     => 0,
+    perf_bits     => 0,
     tbuf          => 0,
     trigger       => 0,
     icen          => 0,
@@ -150,16 +245,24 @@ architecture hier of noelvcpu is
     btbentries    => 8,
     btbsets       => 1);
 
-  type cfg_type is array (natural range <>) of cfg_i_type;
+  type cfg_type is array (natural range <>) of nv_cpu_cfg_type;
 
   constant cfg_c : cfg_type(0 to 7) := (
-    -- HPP
+    -- HP
     0 => (
-      single_issue  => 0,
+      single_issue  => 0, -- Not Used
       ext_m         => 1,
       ext_a         => 1,
-      ext_c         => 1, -- Should be enabled
+      ext_c         => 1,
       ext_h         => 1,
+      ext_zba       => 1,
+      ext_zbb       => 1,
+      ext_zbc       => 1,
+      ext_zbs       => 1,
+      ext_zbkb      => 1,
+      ext_zbkc      => 1,
+      ext_zbkx      => 1,
+      ext_sscofpmf  => 1,
       mode_s        => 1,
       mode_u        => 1,
       fpulen        => 64,
@@ -167,7 +270,8 @@ architecture hier of noelvcpu is
       pmp_entries   => 8,
       pmp_g         => 10,
       perf_cnts     => 16,
-      perf_evts     => 16,
+      perf_evts     => 32,
+      perf_bits     => 32,
       tbuf          => 4,
       trigger       => 32*0 + 16*1 + 2,
       icen          => 1,
@@ -179,9 +283,9 @@ architecture hier of noelvcpu is
       dwaysize      => 4,
       dlinesize     => 8,
       mmuen         => 1,
-      itlbnum       => 8,
-      dtlbnum       => 8,
-      htlbnum       => 8,
+      itlbnum       => 16,
+      dtlbnum       => 16,
+      htlbnum       => 16,
       div_hiperf    => 1,
       div_small     => 0,
       late_branch   => 1,
@@ -191,13 +295,21 @@ architecture hier of noelvcpu is
       predictor     => 2,
       btbentries    => 16,
       btbsets       => 2),
-    -- GPP (dual-issue)
+    -- GP
     1 => (
-      single_issue  => 0,
+      single_issue  => 0, -- Not Used
       ext_m         => 1,
       ext_a         => 1,
-      ext_c         => 1, -- Should be enabled
+      ext_c         => 1,
       ext_h         => 1,
+      ext_zba       => 1,
+      ext_zbb       => 1,
+      ext_zbc       => 1,
+      ext_zbs       => 1,
+      ext_zbkb      => 1,
+      ext_zbkc      => 1,
+      ext_zbkx      => 1,
+      ext_sscofpmf  => 1,
       mode_s        => 1,
       mode_u        => 1,
       fpulen        => 64,
@@ -205,7 +317,8 @@ architecture hier of noelvcpu is
       pmp_entries   => 8,
       pmp_g         => 10,
       perf_cnts     => 16,
-      perf_evts     => 16,
+      perf_evts     => 32,
+      perf_bits     => 32,
       tbuf          => 4,
       trigger       => 32*0 + 16*1 + 2,
       icen          => 1,
@@ -217,9 +330,9 @@ architecture hier of noelvcpu is
       dwaysize      => 4,
       dlinesize     => 8,
       mmuen         => 1,
-      itlbnum       => 8,
-      dtlbnum       => 8,
-      htlbnum       => 8,
+      itlbnum       => 16,
+      dtlbnum       => 16,
+      htlbnum       => 16,
       div_hiperf    => 1,
       div_small     => 0,
       late_branch   => 1,
@@ -229,23 +342,32 @@ architecture hier of noelvcpu is
       predictor     => 2,
       btbentries    => 16,
       btbsets       => 2),
-    -- GPP (single-issue)
+    -- GP-lite
     2 => (
-      single_issue  => 1,
+      single_issue  => 0, -- Not Used
       ext_m         => 1,
       ext_a         => 1,
-      ext_c         => 1, -- Should be enabled
-      ext_h         => 1,
+      ext_c         => 1,
+      ext_h         => 0,
+      ext_zba       => 1,
+      ext_zbb       => 1,
+      ext_zbc       => 0,
+      ext_zbs       => 1,
+      ext_zbkb      => 0,
+      ext_zbkc      => 0,
+      ext_zbkx      => 0,
+      ext_sscofpmf  => 1,
       mode_s        => 1,
       mode_u        => 1,
       fpulen        => 64,
       pmp_no_tor    => 0,
-      pmp_entries   => 8,
+      pmp_entries   => 0,
       pmp_g         => 10,
-      perf_cnts     => 16,
+      perf_cnts     => 3,
       perf_evts     => 16,
+      perf_bits     => 32,
       tbuf          => 4,
-      trigger       => 32*0 + 16*1 + 2,
+      trigger       => 32*0 + 16*0 + 2,
       icen          => 1,
       iways         => 4,
       iwaysize      => 4,
@@ -262,28 +384,37 @@ architecture hier of noelvcpu is
       div_small     => 0,
       late_branch   => 1,
       late_alu      => 1,
-      bhtentries    => 128,
+      bhtentries    => 64,
       bhtlength     => 5,
       predictor     => 2,
       btbentries    => 16,
       btbsets       => 2),
-    -- MIN (FPU)
+    -- MIN
     3 => (
       single_issue  => 1,
       ext_m         => 1,
       ext_a         => 1,
       ext_c         => 1,
       ext_h         => 0,
+      ext_zba       => 1,
+      ext_zbb       => 0,
+      ext_zbc       => 0,
+      ext_zbs       => 1,
+      ext_zbkb      => 0,
+      ext_zbkc      => 0,
+      ext_zbkx      => 0,
+      ext_sscofpmf  => 1,
       mode_s        => 0,
       mode_u        => 1,
       fpulen        => 64,
       pmp_no_tor    => 0,
       pmp_entries   => 8,
       pmp_g         => 10,
-      perf_cnts     => 16,
+      perf_cnts     => 8,
       perf_evts     => 16,
+      perf_bits     => 32,
       tbuf          => 4,
-      trigger       => 32*0 + 16*0 + 2,
+      trigger       => 32*0 + 16*1 + 2,
       icen          => 1,
       iways         => 2,
       iwaysize      => 4,
@@ -297,7 +428,7 @@ architecture hier of noelvcpu is
       dtlbnum       => 2,
       htlbnum       => 1,
       div_hiperf    => 0,
-      div_small     => 0,
+      div_small     => 1,
       late_branch   => 1,
       late_alu      => 1,
       bhtentries    => 64,
@@ -305,21 +436,30 @@ architecture hier of noelvcpu is
       predictor     => 2,
       btbentries    => 16,
       btbsets       => 2),
-    -- MIN (no FPU)
+    -- MIN-lite
     4 => (
       single_issue  => 1,
       ext_m         => 1,
       ext_a         => 1,
       ext_c         => 1,
       ext_h         => 0,
+      ext_zba       => 0,
+      ext_zbb       => 0,
+      ext_zbc       => 0,
+      ext_zbs       => 0,
+      ext_zbkb      => 0,
+      ext_zbkc      => 0,
+      ext_zbkx      => 0,
+      ext_sscofpmf  => 0,
       mode_s        => 0,
       mode_u        => 1,
       fpulen        => 0,
       pmp_no_tor    => 0,
       pmp_entries   => 8,
       pmp_g         => 10,
-      perf_cnts     => 16,
+      perf_cnts     => 3,
       perf_evts     => 16,
+      perf_bits     => 32,
       tbuf          => 4,
       trigger       => 32*0 + 16*0 + 2,
       icen          => 1,
@@ -329,44 +469,6 @@ architecture hier of noelvcpu is
       dcen          => 1,
       dways         => 2,
       dwaysize      => 4,
-      dlinesize     => 8,
-      mmuen         => 0,
-      itlbnum       => 2,
-      dtlbnum       => 2,
-      htlbnum       => 1,
-      div_hiperf    => 0,
-      div_small     => 0,
-      late_branch   => 1,
-      late_alu      => 1,
-      bhtentries    => 64,
-      bhtlength     => 5,
-      predictor     => 2,
-      btbentries    => 16,
-      btbsets       => 2),
-    -- TIN
-    5 => (
-      single_issue  => 1,
-      ext_m         => 1,
-      ext_a         => 0,
-      ext_c         => 0,
-      ext_h         => 0,
-      mode_s        => 0,
-      mode_u        => 0,
-      fpulen        => 0,
-      pmp_no_tor    => 0,
-      pmp_entries   => 0,
-      pmp_g         => 10,
-      perf_cnts     => 0,
-      perf_evts     => 0,
-      tbuf          => 1,
-      trigger       => 32*0 + 16*0 + 0,
-      icen          => 0,
-      iways         => 1,
-      iwaysize      => 1,
-      ilinesize     => 8,
-      dcen          => 0,
-      dways         => 1,
-      dwaysize      => 1,
       dlinesize     => 8,
       mmuen         => 0,
       itlbnum       => 2,
@@ -376,49 +478,12 @@ architecture hier of noelvcpu is
       div_small     => 1,
       late_branch   => 0,
       late_alu      => 0,
-      bhtentries    => 32,
-      bhtlength     => 2,
-      predictor     => 2,
-      btbentries    => 8,
-      btbsets       => 2),
-    -- GPP-lite (dual-issue)
-    6 => (
-      single_issue  => 0,
-      ext_m         => 1,
-      ext_a         => 1,
-      ext_c         => 1, -- Should be enabled
-      ext_h         => 0,
-      mode_s        => 1,
-      mode_u        => 1,
-      fpulen        => 64,
-      pmp_no_tor    => 0,
-      pmp_entries   => 0,
-      pmp_g         => 10,
-      perf_cnts     => 3,
-      perf_evts     => 16,
-      tbuf          => 4,
-      trigger       => 32*0 + 16*0 + 2,
-      icen          => 1,
-      iways         => 4,
-      iwaysize      => 4,
-      ilinesize     => 8,
-      dcen          => 1,
-      dways         => 4,
-      dwaysize      => 4,
-      dlinesize     => 8,
-      mmuen         => 1,
-      itlbnum       => 8,
-      dtlbnum       => 8,
-      htlbnum       => 8,
-      div_hiperf    => 1,
-      div_small     => 0,
-      late_branch   => 1,
-      late_alu      => 1,
       bhtentries    => 64,
       bhtlength     => 5,
       predictor     => 2,
       btbentries    => 16,
       btbsets       => 2),
+    5 => cfg_custom0,
     others => cfg_none
     );
 
@@ -431,43 +496,51 @@ begin
       fabtech         => fabtech,
       memtech         => memtech,
       -- BHT
-      bhtentries      => cfg_c(cfg).bhtentries,
-      bhtlength       => cfg_c(cfg).bhtlength,
-      predictor       => cfg_c(cfg).predictor,
+      bhtentries      => cfg_c(c.typ).bhtentries,
+      bhtlength       => cfg_c(c.typ).bhtlength,
+      predictor       => cfg_c(c.typ).predictor,
       -- BTB
-      btbentries      => cfg_c(cfg).btbentries,
-      btbsets         => cfg_c(cfg).btbsets,
+      btbentries      => cfg_c(c.typ).btbentries,
+      btbsets         => cfg_c(c.typ).btbsets,
       -- Caches
-      icen            => cfg_c(cfg).icen,
-      iways           => cfg_c(cfg).iways,
-      ilinesize       => cfg_c(cfg).ilinesize,
-      iwaysize        => cfg_c(cfg).iwaysize,
-      dcen            => cfg_c(cfg).dcen,
-      dways           => cfg_c(cfg).dways,
-      dlinesize       => cfg_c(cfg).dlinesize,
-      dwaysize        => cfg_c(cfg).dwaysize,
+      icen            => cfg_c(c.typ).icen,
+      iways           => cfg_c(c.typ).iways,
+      ilinesize       => cfg_c(c.typ).ilinesize,
+      iwaysize        => cfg_c(c.typ).iwaysize,
+      dcen            => cfg_c(c.typ).dcen,
+      dways           => cfg_c(c.typ).dways,
+      dlinesize       => cfg_c(c.typ).dlinesize,
+      dwaysize        => cfg_c(c.typ).dwaysize,
       -- MMU
-      mmuen           => cfg_c(cfg).mmuen,
-      itlbnum         => cfg_c(cfg).itlbnum,
-      dtlbnum         => cfg_c(cfg).dtlbnum,
-      htlbnum         => cfg_c(cfg).htlbnum,
+      mmuen           => cfg_c(c.typ).mmuen,
+      itlbnum         => cfg_c(c.typ).itlbnum,
+      dtlbnum         => cfg_c(c.typ).dtlbnum,
+      htlbnum         => cfg_c(c.typ).htlbnum,
       tlbforepl       => 4,
       riscv_mmu       => 2,
-      pmp_no_tor      => cfg_c(cfg).pmp_no_tor,
-      pmp_entries     => cfg_c(cfg).pmp_entries,
-      pmp_g           => cfg_c(cfg).pmp_g,
+      pmp_no_tor      => cfg_c(c.typ).pmp_no_tor,
+      pmp_entries     => cfg_c(c.typ).pmp_entries,
+      pmp_g           => cfg_c(c.typ).pmp_g,
       -- Extensions
-      ext_m           => cfg_c(cfg).ext_m,
-      ext_a           => cfg_c(cfg).ext_a,
-      ext_c           => cfg_c(cfg).ext_c,
-      ext_h           => cfg_c(cfg).ext_h,
-      mode_s          => cfg_c(cfg).mode_s,
-      mode_u          => cfg_c(cfg).mode_u,
-      fpulen          => cfg_c(cfg).fpulen,
-      trigger         => cfg_c(cfg).trigger,
+      ext_m           => cfg_c(c.typ).ext_m,
+      ext_a           => cfg_c(c.typ).ext_a,
+      ext_c           => cfg_c(c.typ).ext_c,
+      ext_h           => cfg_c(c.typ).ext_h,
+      ext_zba         => cfg_c(c.typ).ext_zba,
+      ext_zbb         => cfg_c(c.typ).ext_zbb,
+      ext_zbc         => cfg_c(c.typ).ext_zbc,
+      ext_zbs         => cfg_c(c.typ).ext_zbs,
+      ext_zbkb        => cfg_c(c.typ).ext_zbkb,
+      ext_zbkc        => cfg_c(c.typ).ext_zbkc,
+      ext_zbkx        => cfg_c(c.typ).ext_zbkx,
+      ext_sscofpmf    => cfg_c(c.typ).ext_sscofpmf,
+      mode_s          => cfg_c(c.typ).mode_s,
+      mode_u          => cfg_c(c.typ).mode_u,
+      fpulen          => cfg_c(c.typ).fpulen * c.fpu,
+      trigger         => cfg_c(c.typ).trigger,
       -- Advanced Features
-      late_branch     => cfg_c(cfg).late_branch,
-      late_alu        => cfg_c(cfg).late_alu,
+      late_branch     => cfg_c(c.typ).late_branch,
+      late_alu        => cfg_c(c.typ).late_alu,
       -- Core
       cached          => cached,
       wbmask          => wbmask,
@@ -477,21 +550,22 @@ begin
 --      rfconf          => 1,  -- qqq Use this for DC
       tcmconf         => tcmconf,
       mulconf         => mulconf,
-      tbuf            => cfg_c(cfg).tbuf,
+      tbuf            => cfg_c(c.typ).tbuf,
       physaddr        => 32,
       rstaddr         => 16#C0000#,
       -- Misc
       dmen            => 1,
       pbaddr          => pbaddr,
       disas           => disas,
-      perf_cnts       => cfg_c(cfg).perf_cnts,
-      perf_evts       => cfg_c(cfg).perf_evts,
+      perf_cnts       => cfg_c(c.typ).perf_cnts,
+      perf_evts       => cfg_c(c.typ).perf_evts,
+      perf_bits       => cfg_c(c.typ).perf_bits,
       illegalTval0    => 0,
       no_muladd       => 0,
-      single_issue    => cfg_c(cfg).single_issue,
+      single_issue    => c.sissue,
       mularch         => mularch,
-      div_hiperf      => cfg_c(cfg).div_hiperf,
-      div_small       => cfg_c(cfg).div_small,
+      div_hiperf      => cfg_c(c.typ).div_hiperf,
+      div_small       => cfg_c(c.typ).div_small,
       hw_fpu          => 1 + 2*fpuconf,
       scantest        => scantest,
       endian          => 1  -- Only Little-endian is supported
@@ -508,6 +582,7 @@ begin
       irqo            => irqo,
       dbgi            => dbgi,
       dbgo            => dbgo,
+      eto             => eto,
       cnt             => cnt
       );
 end;
